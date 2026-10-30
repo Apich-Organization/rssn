@@ -285,14 +285,19 @@ fn smooth_colour_2d(
     let updates: Vec<(usize, f64)> = (1..n - 1)
         .into_par_iter()
         .flat_map_iter(|i| {
-            (1..n - 1).filter(move |j| (i + j) % 2 == parity).map(move |j| {
-                let u_neighbors = u_view[(i - 1) * n + j]
-                    + u_view[(i + 1) * n + j]
-                    + u_view[i * n + (j - 1)]
-                    + u_view[i * n + (j + 1)];
+            (1..n - 1)
+                .filter(move |j| (i + j) % 2 == parity)
+                .map(move |j| {
+                    let u_neighbors = u_view[(i - 1) * n + j]
+                        + u_view[(i + 1) * n + j]
+                        + u_view[i * n + (j - 1)]
+                        + u_view[i * n + (j + 1)];
 
-                (i * n + j, 0.25 * h_sq.mul_add(f_view[i * n + j], u_neighbors))
-            })
+                    (
+                        i * n + j,
+                        0.25 * h_sq.mul_add(f_view[i * n + j], u_neighbors),
+                    )
+                })
         })
         .collect();
 
@@ -520,7 +525,12 @@ pub fn solve_poisson_multigrid_nd(
     let hi: Vec<f64> = (0..dims.len())
         .map(|a| {
             let periodic = bcs.axis_periodic(a).unwrap_or(false);
-            spacing[a] * if periodic { dims[a] } else { dims[a] - 1 } as f64
+            spacing[a]
+                * if periodic {
+                    dims[a]
+                } else {
+                    dims[a] - 1
+                } as f64
         })
         .collect();
     let grid = crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)?;

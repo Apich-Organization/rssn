@@ -52,9 +52,14 @@ const SAMPLES: usize = 256;
 /// `values[k]`.
 pub(super) fn jacobi(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
     let n = a.len();
-    let mut v: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect();
+    let mut v: Vec<Vec<f64>> = (0..n)
+        .map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect())
+        .collect();
     for _ in 0..60 {
-        let off: f64 = (0..n).flat_map(|i| (0..n).filter(move |&j| j != i).map(move |j| (i, j))).map(|(i, j)| a[i][j] * a[i][j]).sum();
+        let off: f64 = (0..n)
+            .flat_map(|i| (0..n).filter(move |&j| j != i).map(move |j| (i, j)))
+            .map(|(i, j)| a[i][j] * a[i][j])
+            .sum();
         if off < 1e-26 {
             break;
         }
@@ -89,7 +94,10 @@ pub(super) fn jacobi(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by(|&i, &j| a[i][i].total_cmp(&a[j][j]));
     let values = order.iter().map(|&i| a[i][i]).collect();
-    let vectors = order.iter().map(|&i| (0..n).map(|k| v[k][i]).collect()).collect();
+    let vectors = order
+        .iter()
+        .map(|&i| (0..n).map(|k| v[k][i]).collect())
+        .collect();
     (values, vectors)
 }
 
@@ -104,7 +112,12 @@ fn basis(
     }
     let k = i.div_ceil(2) as f64;
     let angle = 2.0 * PI * k * x / l;
-    (2.0 / l).sqrt() * if i % 2 == 1 { angle.cos() } else { angle.sin() }
+    (2.0 / l).sqrt()
+        * if i % 2 == 1 {
+            angle.cos()
+        } else {
+            angle.sin()
+        }
 }
 
 struct Solved {
@@ -122,7 +135,12 @@ thread_local! {
 /// The decomposition for `L, N, V…`.
 fn solved(args: &[f64]) -> Option<Rc<Solved>> {
     let key: Vec<u64> = args.iter().map(|v| v.to_bits()).collect();
-    if let Some(found) = CACHE.with(|c| c.borrow().iter().find(|(k, _)| *k == key).map(|(_, v)| Rc::clone(v))) {
+    if let Some(found) = CACHE.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, v)| Rc::clone(v))
+    }) {
         return Some(found);
     }
     let (&l, &harmonics) = (args.first()?, args.get(1)?);
@@ -157,9 +175,17 @@ fn solved(args: &[f64]) -> Option<Rc<Solved>> {
     Some(value)
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::float_cmp)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
 fn index(m: f64) -> Option<usize> {
-    if (1.0..=1e4).contains(&m) && m.fract() == 0.0 { Some(m as usize) } else { None }
+    if (1.0..=1e4).contains(&m) && m.fract() == 0.0 {
+        Some(m as usize)
+    } else {
+        None
+    }
 }
 
 /// `hill_eigen(m, L, N, V…)`.
@@ -167,12 +193,18 @@ pub(super) fn hill_eigen(args: &[f64]) -> f64 {
     let (Some(m), Some(rest)) = (args.first().and_then(|&m| index(m)), args.get(1..)) else {
         return f64::NAN;
     };
-    solved(rest).and_then(|s| s.values.get(m - 1).copied()).unwrap_or(f64::NAN)
+    solved(rest)
+        .and_then(|s| s.values.get(m - 1).copied())
+        .unwrap_or(f64::NAN)
 }
 
 /// `hill_mode(m, ξ, L, N, V…)`.
 pub(super) fn hill_mode(args: &[f64]) -> f64 {
-    let (Some(m), Some(&x), Some(rest)) = (args.first().and_then(|&m| index(m)), args.get(1), args.get(2..)) else {
+    let (Some(m), Some(&x), Some(rest)) = (
+        args.first().and_then(|&m| index(m)),
+        args.get(1),
+        args.get(2..),
+    ) else {
         return f64::NAN;
     };
     let Some(s) = solved(rest) else {
@@ -181,7 +213,11 @@ pub(super) fn hill_mode(args: &[f64]) -> f64 {
     let Some(vector) = s.vectors.get(m - 1) else {
         return f64::NAN;
     };
-    vector.iter().enumerate().map(|(i, c)| c * basis(i, x, s.l)).sum()
+    vector
+        .iter()
+        .enumerate()
+        .map(|(i, c)| c * basis(i, x, s.l))
+        .sum()
 }
 
 /// Registers the operators.
@@ -204,17 +240,26 @@ pub(super) fn solve(
     let j = 1 - time_index;
     let x = p.vars[j];
     let n = 2;
-    let (ca, cb) = (p.coefficient(cx.graph, &p.unit(j, 2)), p.coefficient(cx.graph, &p.unit(j, 1)));
+    let (ca, cb) = (
+        p.coefficient(cx.graph, &p.unit(j, 2)),
+        p.coefficient(cx.graph, &p.unit(j, 1)),
+    );
     let cc = p.coefficient(cx.graph, &vec![0; n]);
     if cx.is_zero(ca) || !p.constant(cx.graph, ca) || !cx.is_zero(cb) {
         return None;
     }
-    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
+    let (a1, a2) = (
+        p.coefficient(cx.graph, &p.unit(time_index, 1)),
+        p.coefficient(cx.graph, &p.unit(time_index, 2)),
+    );
     if !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) {
         return None;
     }
     for (index, c) in &p.linear {
-        let known = *index == p.unit(j, 2) || *index == vec![0; n] || *index == p.unit(time_index, 1) || *index == p.unit(time_index, 2);
+        let known = *index == p.unit(j, 2)
+            || *index == vec![0; n]
+            || *index == p.unit(time_index, 1)
+            || *index == p.unit(time_index, 2);
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
@@ -245,13 +290,39 @@ pub(super) fn solve(
     for v in potential {
         params.push(number(cx, v));
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = Time { var: p.vars[time_index], order, a2, a1 };
-    let axes = vec![Axis { var: x, shape: Shape::Hill { start: iv.start, stop: iv.stop, params } }];
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = Time {
+        var: p.vars[time_index],
+        order,
+        a2,
+        a1,
+    };
+    let axes = vec![Axis {
+        var: x,
+        shape: Shape::Hill {
+            start: iv.start,
+            stop: iv.stop,
+            params,
+        },
+    }];
     let mut items = time_items(cx, p, conditions, Some(time_index), order, n)?;
     if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: p.source,
+            special: None,
+        });
     }
-    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(vec![(vec![1], ca)]), face: None, exterior: None };
+    let engine = Engine {
+        axes,
+        time: Some(time),
+        symbol: Symbol::Cartesian(vec![(vec![1], ca)]),
+        face: None,
+        exterior: None,
+    };
     finish(cx, p, conditions, &engine, &items, None, None)
 }

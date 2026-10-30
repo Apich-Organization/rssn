@@ -67,7 +67,11 @@ impl SplitStep {
     ///
     /// # Errors
     /// See [`SpectralGrid::new`].
-    pub fn centered(n: &[usize], len: &[f64], mass: f64) -> Result<Self, String> {
+    pub fn centered(
+        n: &[usize],
+        len: &[f64],
+        mass: f64,
+    ) -> Result<Self, String> {
         let grid = SpectralGrid::new(n, len)?;
         let mut origin = [0.0; 3];
         for a in 0..grid.dim {
@@ -78,9 +82,16 @@ impl SplitStep {
 
     /// Physical coordinate of point `p`.
     #[must_use]
-    pub fn x(&self, p: usize) -> [f64; 3] {
+    pub fn x(
+        &self,
+        p: usize,
+    ) -> [f64; 3] {
         let c = self.grid.coord(p);
-        [self.origin[0] + c[0], self.origin[1] + c[1], self.origin[2] + c[2]]
+        [
+            self.origin[0] + c[0],
+            self.origin[1] + c[1],
+            self.origin[2] + c[2],
+        ]
     }
 
     fn cell(&self) -> f64 {
@@ -89,26 +100,46 @@ impl SplitStep {
 
     /// `∫ |ψ|²`.
     #[must_use]
-    pub fn norm2(&self, psi: &[Complex<f64>]) -> f64 {
+    pub fn norm2(
+        &self,
+        psi: &[Complex<f64>],
+    ) -> f64 {
         psi.iter().map(Complex::norm_sqr).sum::<f64>() * self.cell()
     }
 
     /// Samples a complex function on the grid.
-    pub fn sample(&self, f: impl Fn([f64; 3]) -> Complex<f64>) -> Vec<Complex<f64>> {
+    pub fn sample(
+        &self,
+        f: impl Fn([f64; 3]) -> Complex<f64>,
+    ) -> Vec<Complex<f64>> {
         (0..self.grid.size()).map(|p| f(self.x(p))).collect()
     }
 
     /// Kinetic energy `∫ |∇ψ|² / (2m)`.
     #[must_use]
-    pub fn kinetic_energy(&self, psi: &[Complex<f64>]) -> f64 {
+    pub fn kinetic_energy(
+        &self,
+        psi: &[Complex<f64>],
+    ) -> f64 {
         let ph = self.grid.to_spec_c(psi);
         let n = self.grid.size() as f64;
         // Parseval: sum |psi|^2 = sum |psi_hat|^2 / N
-        ph.iter().enumerate().map(|(p, v)| 0.5 / self.mass * self.grid.k2(p) * v.norm_sqr()).sum::<f64>() / n * self.cell()
+        ph.iter()
+            .enumerate()
+            .map(|(p, v)| 0.5 / self.mass * self.grid.k2(p) * v.norm_sqr())
+            .sum::<f64>()
+            / n
+            * self.cell()
     }
 
     /// Total energy `∫ [|∇ψ|²/2m + V|ψ|² + g|ψ|⁴/2]`.
-    pub fn energy(&self, psi: &[Complex<f64>], v: &dyn Fn(f64, [f64; 3]) -> f64, t: f64, g: f64) -> f64 {
+    pub fn energy(
+        &self,
+        psi: &[Complex<f64>],
+        v: &dyn Fn(f64, [f64; 3]) -> f64,
+        t: f64,
+        g: f64,
+    ) -> f64 {
         let pot: f64 = psi
             .iter()
             .enumerate()
@@ -122,7 +153,13 @@ impl SplitStep {
     }
 
     /// `∫ ψ* (H ψ)` with the nonlinear term `g|ψ|²` counted fully (chemical potential).
-    pub fn chemical_potential(&self, psi: &[Complex<f64>], v: &dyn Fn(f64, [f64; 3]) -> f64, t: f64, g: f64) -> f64 {
+    pub fn chemical_potential(
+        &self,
+        psi: &[Complex<f64>],
+        v: &dyn Fn(f64, [f64; 3]) -> f64,
+        t: f64,
+        g: f64,
+    ) -> f64 {
         let pot: f64 = psi
             .iter()
             .enumerate()
@@ -136,11 +173,24 @@ impl SplitStep {
     }
 
     #[allow(clippy::too_many_arguments)] // state, potential, nonlinearity, step, mode, kinetic factors and the optional absorber
-    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>], damp: Option<&[f64]>) {
+    fn strang(
+        &self,
+        psi: &mut [Complex<f64>],
+        vv: &[f64],
+        g: f64,
+        dt: f64,
+        imaginary: bool,
+        kin: &[Complex<f64>],
+        damp: Option<&[f64]>,
+    ) {
         let half = |psi: &mut [Complex<f64>]| {
             for (p, c) in psi.iter_mut().enumerate() {
                 let phase = f64::midpoint(vv[p], g * c.norm_sqr()) * dt;
-                *c *= if imaginary { Complex::new((-phase).exp(), 0.0) } else { Complex::new(0.0, -phase).exp() };
+                *c *= if imaginary {
+                    Complex::new((-phase).exp(), 0.0)
+                } else {
+                    Complex::new(0.0, -phase).exp()
+                };
                 if let Some(w) = damp {
                     *c *= (-0.5 * w[p] * dt).exp();
                 }
@@ -156,11 +206,19 @@ impl SplitStep {
         half(psi);
     }
 
-    fn kinetic_factors(&self, dt: f64, imaginary: bool) -> Vec<Complex<f64>> {
+    fn kinetic_factors(
+        &self,
+        dt: f64,
+        imaginary: bool,
+    ) -> Vec<Complex<f64>> {
         (0..self.grid.size())
             .map(|p| {
                 let e = 0.5 / self.mass * self.grid.k2(p) * dt;
-                if imaginary { Complex::new((-e).exp(), 0.0) } else { Complex::new(0.0, -e).exp() }
+                if imaginary {
+                    Complex::new((-e).exp(), 0.0)
+                } else {
+                    Complex::new(0.0, -e).exp()
+                }
             })
             .collect()
     }
@@ -181,15 +239,20 @@ impl SplitStep {
         let c3 = 2.0_f64.cbrt();
         let (w1, w0) = (1.0 / (2.0 - c3), -c3 / (2.0 - c3));
         let weights: Vec<f64> = match order {
-            SplitOrder::Strang => vec![1.0],
-            SplitOrder::Yoshida4 => vec![w1, w0, w1],
+            | SplitOrder::Strang => vec![1.0],
+            | SplitOrder::Yoshida4 => vec![w1, w0, w1],
         };
-        let kins: Vec<Vec<Complex<f64>>> = weights.iter().map(|w| self.kinetic_factors(w * dt, false)).collect();
+        let kins: Vec<Vec<Complex<f64>>> = weights
+            .iter()
+            .map(|w| self.kinetic_factors(w * dt, false))
+            .collect();
         let mut t = t0;
         for _ in 0..steps {
             let mut tt = t;
             for (w, kin) in weights.iter().zip(&kins) {
-                let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
+                let vv: Vec<f64> = (0..psi.len())
+                    .map(|p| v(tt + 0.5 * w * dt, self.x(p)))
+                    .collect();
                 self.strang(&mut psi, &vv, g, w * dt, false, kin, None);
                 tt += w * dt;
             }
@@ -216,16 +279,23 @@ impl SplitStep {
         let c3 = 2.0_f64.cbrt();
         let (w1, w0) = (1.0 / (2.0 - c3), -c3 / (2.0 - c3));
         let weights: Vec<f64> = match order {
-            SplitOrder::Strang => vec![1.0],
-            SplitOrder::Yoshida4 => vec![w1, w0, w1],
+            | SplitOrder::Strang => vec![1.0],
+            | SplitOrder::Yoshida4 => vec![w1, w0, w1],
         };
-        let kins: Vec<Vec<Complex<f64>>> = weights.iter().map(|w| self.kinetic_factors(w * dt, false)).collect();
-        let damp: Vec<f64> = (0..psi.len()).map(|p| absorber(self.x(p)).max(0.0)).collect();
+        let kins: Vec<Vec<Complex<f64>>> = weights
+            .iter()
+            .map(|w| self.kinetic_factors(w * dt, false))
+            .collect();
+        let damp: Vec<f64> = (0..psi.len())
+            .map(|p| absorber(self.x(p)).max(0.0))
+            .collect();
         let mut t = t0;
         for _ in 0..steps {
             let mut tt = t;
             for (w, kin) in weights.iter().zip(&kins) {
-                let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
+                let vv: Vec<f64> = (0..psi.len())
+                    .map(|p| v(tt + 0.5 * w * dt, self.x(p)))
+                    .collect();
                 self.strang(&mut psi, &vv, g, w * dt, false, kin, Some(&damp));
                 tt += w * dt;
             }
@@ -275,6 +345,12 @@ impl SplitStep {
             }
         }
         let mu = self.chemical_potential(&psi, v, 0.0, g);
-        GroundState { psi, energy: e_old, mu, steps, converged }
+        GroundState {
+            psi,
+            energy: e_old,
+            mu,
+            steps,
+            converged,
+        }
     }
 }

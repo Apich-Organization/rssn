@@ -64,7 +64,10 @@ pub(super) fn signalling(
         return Some(signal);
     }
     // Homogeneous boundary value, the initial data kept.
-    let mut homogeneous = vec![Condition { value: cx.graph.int(0), ..(*boundary).clone() }];
+    let mut homogeneous = vec![Condition {
+        value: cx.graph.int(0),
+        ..(*boundary).clone()
+    }];
     homogeneous.extend(initial.iter().map(|c| (*c).clone()));
     let found = super::solve(cx, p, &Conditions(homogeneous), super::Method::Any)?;
     let &[_, response] = cx.graph.children(found) else {
@@ -88,21 +91,35 @@ fn parabolic_signal(
 ) -> Option<NodeId> {
     let (x, t) = (p.vars[space], p.vars[time]);
     let zero_index = vec![0; 2];
-    let (a1, a0, b) = (p.coefficient(cx.graph, &p.unit(time, 1)), p.coefficient(cx.graph, &zero_index), p.coefficient(cx.graph, &p.unit(space, 2)));
+    let (a1, a0, b) = (
+        p.coefficient(cx.graph, &p.unit(time, 1)),
+        p.coefficient(cx.graph, &zero_index),
+        p.coefficient(cx.graph, &p.unit(space, 2)),
+    );
     if cx.is_zero(a1) || cx.is_zero(b) || ![a1, a0, b].iter().all(|&c| p.constant(cx.graph, c)) {
         return None;
     }
-    if !p.only(cx.graph, &[p.unit(time, 1), zero_index.clone(), p.unit(space, 2)]) {
+    if !p.only(
+        cx.graph,
+        &[p.unit(time, 1), zero_index.clone(), p.unit(space, 2)],
+    ) {
         return None;
     }
     let mut boundary = None;
     for c in &conditions.0 {
         if c.on == space {
-            if !is_zero_number(cx.graph, c.point) || boundary.is_some() || c.derivative != p.unit(space, 1) {
+            if !is_zero_number(cx.graph, c.point)
+                || boundary.is_some()
+                || c.derivative != p.unit(space, 1)
+            {
                 return None;
             }
             boundary = Some(c);
-        } else if !(c.on == time && c.derivative == zero_index && is_zero_number(cx.graph, c.point) && cx.is_zero(c.value)) {
+        } else if !(c.on == time
+            && c.derivative == zero_index
+            && is_zero_number(cx.graph, c.point)
+            && cx.is_zero(c.value))
+        {
             return None;
         }
     }
@@ -117,7 +134,9 @@ fn parabolic_signal(
         let q = neg(cx.graph, q);
         cx.simplify(q)
     };
-    if cx.graph.facts(diffusivity).has(Facts::NEGATIVE) || sample(cx.graph, diffusivity, 0).is_none_or(|v| v <= 0.0) {
+    if cx.graph.facts(diffusivity).has(Facts::NEGATIVE)
+        || sample(cx.graph, diffusivity, 0).is_none_or(|v| v <= 0.0)
+    {
         return None;
     }
     let rho = {
@@ -212,10 +231,19 @@ fn quiet_signal(
         p.coefficient(cx.graph, &zero_index),
         p.coefficient(cx.graph, &p.unit(space, 2)),
     );
-    if cx.is_zero(a2) || cx.is_zero(b) || ![a2, a1, a0, b].iter().all(|&c| p.constant(cx.graph, c)) {
+    if cx.is_zero(a2) || cx.is_zero(b) || ![a2, a1, a0, b].iter().all(|&c| p.constant(cx.graph, c))
+    {
         return None;
     }
-    if !p.only(cx.graph, &[p.unit(time, 2), p.unit(time, 1), zero_index.clone(), p.unit(space, 2)]) {
+    if !p.only(
+        cx.graph,
+        &[
+            p.unit(time, 2),
+            p.unit(time, 1),
+            zero_index.clone(),
+            p.unit(space, 2),
+        ],
+    ) {
         return None;
     }
     // The boundary datum and the quiet initial state.
@@ -237,7 +265,11 @@ fn quiet_signal(
                 return None;
             };
             boundary = Some((neumann, c.value));
-        } else if !(c.on == time && (c.derivative == zero_index || c.derivative == p.unit(time, 1)) && is_zero_number(cx.graph, c.point) && cx.is_zero(c.value)) {
+        } else if !(c.on == time
+            && (c.derivative == zero_index || c.derivative == p.unit(time, 1))
+            && is_zero_number(cx.graph, c.point)
+            && cx.is_zero(c.value))
+        {
             return None;
         }
         counted += 1;
@@ -246,7 +278,10 @@ fn quiet_signal(
         return None;
     }
     let (neumann, g) = boundary?;
-    if cx.graph.depends_on(cx.graph.find(g), cx.graph.symbol_of(x)?) {
+    if cx
+        .graph
+        .depends_on(cx.graph.find(g), cx.graph.symbol_of(x)?)
+    {
         return None;
     }
     let ratio = |cx: &mut Cx<'_>, num: NodeId, den: NodeId| {
@@ -275,7 +310,9 @@ fn quiet_signal(
     };
     let kind = if cx.is_zero(m2) {
         0
-    } else if cx.graph.facts(m2).has(Facts::POSITIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0) {
+    } else if cx.graph.facts(m2).has(Facts::POSITIVE)
+        || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0)
+    {
         1
     } else if sample(cx.graph, m2, 0).is_some_and(|v| v < 0.0) {
         -1
@@ -305,7 +342,9 @@ fn quiet_signal(
     let kernel = if kind == 0 {
         None
     } else {
-        let m = if kind > 0 { sqrt(cx, m2)? } else {
+        let m = if kind > 0 {
+            sqrt(cx, m2)?
+        } else {
             let n = neg(cx.graph, m2);
             sqrt(cx, n)?
         };
@@ -316,7 +355,11 @@ fn quiet_signal(
         };
         let root = sqrt(cx, gap)?;
         let argument = mul(cx.graph, &[m, root]);
-        let function = if kind > 0 { "besselj" } else { "besseli" };
+        let function = if kind > 0 {
+            "besselj"
+        } else {
+            "besseli"
+        };
         let order_node = cx.graph.int(i64::from(!neumann));
         let bessel = call(cx, function, &[order_node, argument])?;
         let k = if neumann {
@@ -324,7 +367,11 @@ fn quiet_signal(
         } else {
             let scaled = mul(cx.graph, &[m, delay, bessel]);
             let k = div(cx, scaled, root);
-            if kind > 0 { neg(cx.graph, k) } else { k }
+            if kind > 0 {
+                neg(cx.graph, k)
+            } else {
+                k
+            }
         };
         Some(k)
     };

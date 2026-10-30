@@ -159,7 +159,8 @@ impl Field for f64 {
 
         let u = lu.U();
 
-        if (0..n).any(|i| u.get(i, i).abs().partial_cmp(&tol) != Some(std::cmp::Ordering::Greater)) {
+        if (0..n).any(|i| u.get(i, i).abs().partial_cmp(&tol) != Some(std::cmp::Ordering::Greater))
+        {
             return None;
         }
 
@@ -1088,9 +1089,10 @@ impl<T: Field> Matrix<T> {
     #[must_use]
     pub fn inverse(&self) -> Option<Self> {
         if self.backend == Backend::Faer
-            && let Some(res) = T::faer_inverse(self) {
-                return Some(res);
-            }
+            && let Some(res) = T::faer_inverse(self)
+        {
+            return Some(res);
+        }
 
         if self.rows != self.cols {
             return None;
@@ -1665,9 +1667,10 @@ impl<T: Field> Mul for Matrix<T> {
 
         // Try Faer backend
         if (self.backend == Backend::Faer || rhs.backend == Backend::Faer)
-            && let Some(res) = T::faer_mul(&self, &rhs) {
-                return res.with_backend(self.backend); // Propagate lhs backend preference
-            }
+            && let Some(res) = T::faer_mul(&self, &rhs)
+        {
+            return res.with_backend(self.backend); // Propagate lhs backend preference
+        }
 
         let mut data = vec![T::zero(); self.rows * rhs.cols];
 

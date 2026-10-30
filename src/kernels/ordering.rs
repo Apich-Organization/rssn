@@ -72,26 +72,28 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let mut head = vec![NIL; n + 1];
     let mut next = vec![NIL; n];
     let mut prev = vec![NIL; n];
-    let insert = |v: usize, d: usize, head: &mut [usize], next: &mut [usize], prev: &mut [usize]| {
-        let d = d.min(head.len() - 1);
-        next[v] = head[d];
-        prev[v] = NIL;
-        if head[d] != NIL {
-            prev[head[d]] = v;
-        }
-        head[d] = v;
-    };
-    let remove = |v: usize, d: usize, head: &mut [usize], next: &mut [usize], prev: &mut [usize]| {
-        let d = d.min(head.len() - 1);
-        if prev[v] == NIL {
-            head[d] = next[v];
-        } else {
-            next[prev[v]] = next[v];
-        }
-        if next[v] != NIL {
-            prev[next[v]] = prev[v];
-        }
-    };
+    let insert =
+        |v: usize, d: usize, head: &mut [usize], next: &mut [usize], prev: &mut [usize]| {
+            let d = d.min(head.len() - 1);
+            next[v] = head[d];
+            prev[v] = NIL;
+            if head[d] != NIL {
+                prev[head[d]] = v;
+            }
+            head[d] = v;
+        };
+    let remove =
+        |v: usize, d: usize, head: &mut [usize], next: &mut [usize], prev: &mut [usize]| {
+            let d = d.min(head.len() - 1);
+            if prev[v] == NIL {
+                head[d] = next[v];
+            } else {
+                next[prev[v]] = next[v];
+            }
+            if next[v] != NIL {
+                prev[next[v]] = prev[v];
+            }
+        };
     for v in 0..n {
         if status[v] == VAR {
             insert(v, degree[v], &mut head, &mut next, &mut prev);
@@ -326,11 +328,11 @@ pub fn nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let mut tag = 0usize;
     while let Some(task) = tasks.pop() {
         let verts = match task {
-            Task::Emit(s) => {
+            | Task::Emit(s) => {
                 perm.extend(s);
                 continue;
-            }
-            Task::Part(v) => v,
+            },
+            | Task::Part(v) => v,
         };
         if verts.len() <= 300 {
             let sub = induced(adj, &verts, &mut local);
@@ -417,15 +419,15 @@ pub fn nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
         let (mut pa, mut pb): (Vec<usize>, Vec<usize>) = (Vec::new(), Vec::new());
         for &v in &verts {
             match level[v].cmp(&best) {
-                std::cmp::Ordering::Less => pa.push(v),
-                std::cmp::Ordering::Greater => pb.push(v),
-                std::cmp::Ordering::Equal => {
+                | std::cmp::Ordering::Less => pa.push(v),
+                | std::cmp::Ordering::Greater => pb.push(v),
+                | std::cmp::Ordering::Equal => {
                     if adj[v].iter().any(|&u| inpart[u] == tag && level[u] > best) {
                         sep.push(v);
                     } else {
                         pa.push(v);
                     }
-                }
+                },
             }
         }
         tasks.push(Task::Emit(sep));
@@ -436,7 +438,11 @@ pub fn nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
 }
 
 /// Subgraph induced by `verts` with local numbering `0..verts.len()`.
-fn induced(adj: &[Vec<usize>], verts: &[usize], local: &mut [usize]) -> Vec<Vec<usize>> {
+fn induced(
+    adj: &[Vec<usize>],
+    verts: &[usize],
+    local: &mut [usize],
+) -> Vec<Vec<usize>> {
     for (i, &v) in verts.iter().enumerate() {
         local[v] = i;
     }
@@ -460,7 +466,10 @@ fn induced(adj: &[Vec<usize>], verts: &[usize], local: &mut [usize]) -> Vec<Vec<
 /// of the pattern `adj` ordered by `perm` (`perm[new] = old`), by symbolic
 /// factorisation along the elimination tree.
 #[must_use]
-pub fn cholesky_fill(adj: &[Vec<usize>], perm: &[usize]) -> usize {
+pub fn cholesky_fill(
+    adj: &[Vec<usize>],
+    perm: &[usize],
+) -> usize {
     let n = adj.len();
     let mut inv = vec![0usize; n];
     for (new, &old) in perm.iter().enumerate() {

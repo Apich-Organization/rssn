@@ -48,15 +48,33 @@ pub trait DgLaw: Send + Sync {
     /// Number of conserved variables.
     fn nvar(&self) -> usize;
     /// Flux `F_dir(q)` written to `out`.
-    fn flux(&self, q: &[f64], dir: usize, out: &mut [f64]);
+    fn flux(
+        &self,
+        q: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    );
     /// Largest signal speed in direction `dir`.
-    fn max_speed(&self, q: &[f64], dir: usize) -> f64;
+    fn max_speed(
+        &self,
+        q: &[f64],
+        dir: usize,
+    ) -> f64;
     /// Density and pressure of a state for positivity limiting (`None` for laws without such notion).
-    fn rho_p(&self, _q: &[f64]) -> Option<(f64, f64)> {
+    fn rho_p(
+        &self,
+        _q: &[f64],
+    ) -> Option<(f64, f64)> {
         None
     }
     /// Numerical flux between a left and right state (default: Rusanov).
-    fn numerical_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
+    fn numerical_flux(
+        &self,
+        ql: &[f64],
+        qr: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         let n = self.nvar();
         let mut fl = vec![0.0; n];
         let mut fr = vec![0.0; n];
@@ -70,7 +88,13 @@ pub trait DgLaw: Send + Sync {
     /// Two-point volume flux `F#(q_l, q_r)` for flux differencing (consistent
     /// and symmetric; the default arithmetic mean reproduces the strong form,
     /// laws with an entropy-conservative flux override it).
-    fn two_point_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
+    fn two_point_flux(
+        &self,
+        ql: &[f64],
+        qr: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         let n = self.nvar();
         let mut fl = vec![0.0; n];
         let mut fr = vec![0.0; n];
@@ -82,7 +106,13 @@ pub trait DgLaw: Send + Sync {
     }
     /// Entropy-stable interface flux: the two-point flux with a local
     /// Lax–Friedrichs dissipation on the conserved variables.
-    fn entropy_stable_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
+    fn entropy_stable_flux(
+        &self,
+        ql: &[f64],
+        qr: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         self.two_point_flux(ql, qr, dir, out);
         let s = self.max_speed(ql, dir).max(self.max_speed(qr, dir));
         for c in 0..self.nvar() {
@@ -94,16 +124,33 @@ pub trait DgLaw: Send + Sync {
         false
     }
     /// Characteristic variables `L(q_ref) v` of the flux Jacobian in direction `dir` (identity by default).
-    fn to_characteristic(&self, _q_ref: &[f64], _dir: usize, v: &[f64], out: &mut [f64]) {
+    fn to_characteristic(
+        &self,
+        _q_ref: &[f64],
+        _dir: usize,
+        v: &[f64],
+        out: &mut [f64],
+    ) {
         out[..v.len()].copy_from_slice(v);
     }
     /// Inverse of [`DgLaw::to_characteristic`]: `R(q_ref) w`.
     #[allow(clippy::wrong_self_convention)] // mirrors `to_characteristic`: applies the eigenvector matrix of the Jacobian
-    fn from_characteristic(&self, _q_ref: &[f64], _dir: usize, w: &[f64], out: &mut [f64]) {
+    fn from_characteristic(
+        &self,
+        _q_ref: &[f64],
+        _dir: usize,
+        w: &[f64],
+        out: &mut [f64],
+    ) {
         out[..w.len()].copy_from_slice(w);
     }
     /// Exterior state of a slip wall normal to `dir` (copy by default).
-    fn wall_state(&self, q: &[f64], _dir: usize, out: &mut [f64]) {
+    fn wall_state(
+        &self,
+        q: &[f64],
+        _dir: usize,
+        out: &mut [f64],
+    ) {
         out[..q.len()].copy_from_slice(q);
     }
 }
@@ -119,10 +166,21 @@ impl DgLaw for LinearAdvection {
     fn nvar(&self) -> usize {
         1
     }
-    fn flux(&self, q: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn flux(
+        &self,
+        q: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         out[0] = self.a[dir] * q[0];
     }
-    fn max_speed(&self, _q: &[f64], dir: usize) -> f64 {
+
+    fn max_speed(
+        &self,
+        _q: &[f64],
+        dir: usize,
+    ) -> f64 {
         self.a[dir].abs()
     }
 }
@@ -135,10 +193,21 @@ impl DgLaw for Burgers {
     fn nvar(&self) -> usize {
         1
     }
-    fn flux(&self, q: &[f64], _dir: usize, out: &mut [f64]) {
+
+    fn flux(
+        &self,
+        q: &[f64],
+        _dir: usize,
+        out: &mut [f64],
+    ) {
         out[0] = 0.5 * q[0] * q[0];
     }
-    fn max_speed(&self, q: &[f64], _dir: usize) -> f64 {
+
+    fn max_speed(
+        &self,
+        q: &[f64],
+        _dir: usize,
+    ) -> f64 {
         q[0].abs()
     }
 }
@@ -154,40 +223,86 @@ impl DgLaw for Euler1d {
     fn nvar(&self) -> usize {
         3
     }
-    fn flux(&self, q: &[f64], _dir: usize, out: &mut [f64]) {
+
+    fn flux(
+        &self,
+        q: &[f64],
+        _dir: usize,
+        out: &mut [f64],
+    ) {
         let u = q[1] / q[0];
         let p = (self.gamma - 1.0) * (q[2] - 0.5 * q[1] * u);
         out[0] = q[1];
         out[1] = q[1] * u + p;
         out[2] = (q[2] + p) * u;
     }
-    fn two_point_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn two_point_flux(
+        &self,
+        ql: &[f64],
+        qr: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         euler_ec_flux(self.gamma, 1, dir, ql, qr, out);
     }
+
     fn has_characteristics(&self) -> bool {
         true
     }
-    fn to_characteristic(&self, q_ref: &[f64], dir: usize, v: &[f64], out: &mut [f64]) {
+
+    fn to_characteristic(
+        &self,
+        q_ref: &[f64],
+        dir: usize,
+        v: &[f64],
+        out: &mut [f64],
+    ) {
         euler_eigen_transform(self.gamma, 1, dir, q_ref, v, out, true);
     }
-    fn from_characteristic(&self, q_ref: &[f64], dir: usize, w: &[f64], out: &mut [f64]) {
+
+    fn from_characteristic(
+        &self,
+        q_ref: &[f64],
+        dir: usize,
+        w: &[f64],
+        out: &mut [f64],
+    ) {
         euler_eigen_transform(self.gamma, 1, dir, q_ref, w, out, false);
     }
-    fn wall_state(&self, q: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn wall_state(
+        &self,
+        q: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         euler_wall_state(1, dir, q, out);
     }
-    fn max_speed(&self, q: &[f64], _dir: usize) -> f64 {
+
+    fn max_speed(
+        &self,
+        q: &[f64],
+        _dir: usize,
+    ) -> f64 {
         let u = q[1] / q[0];
         let p = (self.gamma - 1.0) * (q[2] - 0.5 * q[1] * u);
         u.abs() + (self.gamma * p.max(0.0) / q[0]).sqrt()
     }
-    fn rho_p(&self, q: &[f64]) -> Option<(f64, f64)> {
+
+    fn rho_p(
+        &self,
+        q: &[f64],
+    ) -> Option<(f64, f64)> {
         Some((q[0], self.pressure(q)))
     }
 }
 
 impl Euler1d {
-    fn pressure(self, q: &[f64]) -> f64 {
+    fn pressure(
+        self,
+        q: &[f64],
+    ) -> f64 {
         (self.gamma - 1.0) * (q[2] - 0.5 * q[1] * q[1] / q[0])
     }
 }
@@ -200,7 +315,10 @@ pub struct Euler2d {
 }
 
 impl Euler2d {
-    fn pressure(self, q: &[f64]) -> f64 {
+    fn pressure(
+        self,
+        q: &[f64],
+    ) -> f64 {
         (self.gamma - 1.0) * (q[3] - f64::midpoint(q[1] * q[1], q[2] * q[2]) / q[0])
     }
 }
@@ -209,7 +327,13 @@ impl DgLaw for Euler2d {
     fn nvar(&self) -> usize {
         4
     }
-    fn flux(&self, q: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn flux(
+        &self,
+        q: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         let p = self.pressure(q);
         let vel = q[1 + dir] / q[0];
         out[0] = q[1 + dir];
@@ -218,26 +342,63 @@ impl DgLaw for Euler2d {
         out[1 + dir] += p;
         out[3] = (q[3] + p) * vel;
     }
-    fn two_point_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn two_point_flux(
+        &self,
+        ql: &[f64],
+        qr: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         euler_ec_flux(self.gamma, 2, dir, ql, qr, out);
     }
+
     fn has_characteristics(&self) -> bool {
         true
     }
-    fn to_characteristic(&self, q_ref: &[f64], dir: usize, v: &[f64], out: &mut [f64]) {
+
+    fn to_characteristic(
+        &self,
+        q_ref: &[f64],
+        dir: usize,
+        v: &[f64],
+        out: &mut [f64],
+    ) {
         euler_eigen_transform(self.gamma, 2, dir, q_ref, v, out, true);
     }
-    fn from_characteristic(&self, q_ref: &[f64], dir: usize, w: &[f64], out: &mut [f64]) {
+
+    fn from_characteristic(
+        &self,
+        q_ref: &[f64],
+        dir: usize,
+        w: &[f64],
+        out: &mut [f64],
+    ) {
         euler_eigen_transform(self.gamma, 2, dir, q_ref, w, out, false);
     }
-    fn wall_state(&self, q: &[f64], dir: usize, out: &mut [f64]) {
+
+    fn wall_state(
+        &self,
+        q: &[f64],
+        dir: usize,
+        out: &mut [f64],
+    ) {
         euler_wall_state(2, dir, q, out);
     }
-    fn max_speed(&self, q: &[f64], dir: usize) -> f64 {
+
+    fn max_speed(
+        &self,
+        q: &[f64],
+        dir: usize,
+    ) -> f64 {
         let p = self.pressure(q).max(0.0);
         (q[1 + dir] / q[0]).abs() + (self.gamma * p / q[0]).sqrt()
     }
-    fn rho_p(&self, q: &[f64]) -> Option<(f64, f64)> {
+
+    fn rho_p(
+        &self,
+        q: &[f64],
+    ) -> Option<(f64, f64)> {
         Some((q[0], self.pressure(q)))
     }
 }
@@ -245,7 +406,10 @@ impl DgLaw for Euler2d {
 
 /// Logarithmic mean `(a - b) / (ln a - ln b)` with a series for close arguments.
 #[must_use]
-pub fn log_mean(a: f64, b: f64) -> f64 {
+pub fn log_mean(
+    a: f64,
+    b: f64,
+) -> f64 {
     let xi = (a - b) / (a + b);
     let f = xi * xi;
     if f < 1e-3 {
@@ -256,7 +420,11 @@ pub fn log_mean(a: f64, b: f64) -> f64 {
 }
 
 /// Primitive variables `(ρ, velocities, p)` of an Euler state with `nvel` velocity components.
-pub(crate) fn euler_prim(gamma: f64, nvel: usize, q: &[f64]) -> (f64, [f64; 3], f64) {
+pub(crate) fn euler_prim(
+    gamma: f64,
+    nvel: usize,
+    q: &[f64],
+) -> (f64, [f64; 3], f64) {
     let rho = q[0];
     let mut vel = [0.0; 3];
     let mut ke = 0.0;
@@ -269,7 +437,14 @@ pub(crate) fn euler_prim(gamma: f64, nvel: usize, q: &[f64]) -> (f64, [f64; 3], 
 
 /// Entropy-conservative flux of Chandrashekar (2013) for the Euler equations
 /// with `nvel` (1 or 2) velocity components in direction `dir`.
-pub(crate) fn euler_ec_flux(gamma: f64, nvel: usize, dir: usize, ql: &[f64], qr: &[f64], out: &mut [f64]) {
+pub(crate) fn euler_ec_flux(
+    gamma: f64,
+    nvel: usize,
+    dir: usize,
+    ql: &[f64],
+    qr: &[f64],
+    out: &mut [f64],
+) {
     let (rl, vl, pl) = euler_prim(gamma, nvel, ql);
     let (rr, vr, pr) = euler_prim(gamma, nvel, qr);
     let (bl, br) = (rl / (2.0 * pl), rr / (2.0 * pr));
@@ -297,11 +472,23 @@ pub(crate) fn euler_ec_flux(gamma: f64, nvel: usize, dir: usize, ql: &[f64], qr:
 
 /// Applies the left (`to_char`) or right eigenvector matrix of the Euler flux
 /// Jacobian in direction `dir`, evaluated at the state `q`, to `v`.
-pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f64], v: &[f64], out: &mut [f64], to_char: bool) {
+pub(crate) fn euler_eigen_transform(
+    gamma: f64,
+    nvel: usize,
+    dir: usize,
+    q: &[f64],
+    v: &[f64],
+    out: &mut [f64],
+    to_char: bool,
+) {
     let (rho, vel, p) = euler_prim(gamma, nvel, q);
     let c = (gamma * p.max(1e-300) / rho).sqrt();
     let un = vel[dir];
-    let ut = if nvel == 2 { vel[1 - dir] } else { 0.0 };
+    let ut = if nvel == 2 {
+        vel[1 - dir]
+    } else {
+        0.0
+    };
     let q2 = un * un + ut * ut;
     let h = (q[1 + nvel] + p) / rho;
     let b1 = (gamma - 1.0) / (c * c);
@@ -309,7 +496,11 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
     if nvel == 1 {
         if to_char {
             let l = [
-                [f64::midpoint(b2, un / c), -0.5 * (b1 * un + 1.0 / c), 0.5 * b1],
+                [
+                    f64::midpoint(b2, un / c),
+                    -0.5 * (b1 * un + 1.0 / c),
+                    0.5 * b1,
+                ],
                 [1.0 - b2, b1 * un, -b1],
                 [0.5 * (b2 - un / c), -0.5 * (b1 * un - 1.0 / c), 0.5 * b1],
             ];
@@ -317,7 +508,11 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
                 out[i] = l[i][0] * v[0] + l[i][1] * v[1] + l[i][2] * v[2];
             }
         } else {
-            let r = [[1.0, 1.0, 1.0], [un - c, un, un + c], [h - un * c, 0.5 * un * un, h + un * c]];
+            let r = [
+                [1.0, 1.0, 1.0],
+                [un - c, un, un + c],
+                [h - un * c, 0.5 * un * un, h + un * c],
+            ];
             for i in 0..3 {
                 out[i] = r[i][0] * v[0] + r[i][1] * v[1] + r[i][2] * v[2];
             }
@@ -329,10 +524,20 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
     if to_char {
         let w = [v[0], v[1 + dir], v[1 + t], v[3]];
         let l = [
-            [f64::midpoint(b2, un / c), -0.5 * (b1 * un + 1.0 / c), -0.5 * b1 * ut, 0.5 * b1],
+            [
+                f64::midpoint(b2, un / c),
+                -0.5 * (b1 * un + 1.0 / c),
+                -0.5 * b1 * ut,
+                0.5 * b1,
+            ],
             [-ut, 0.0, 1.0, 0.0],
             [1.0 - b2, b1 * un, b1 * ut, -b1],
-            [0.5 * (b2 - un / c), -0.5 * (b1 * un - 1.0 / c), -0.5 * b1 * ut, 0.5 * b1],
+            [
+                0.5 * (b2 - un / c),
+                -0.5 * (b1 * un - 1.0 / c),
+                -0.5 * b1 * ut,
+                0.5 * b1,
+            ],
         ];
         for i in 0..4 {
             out[i] = (0..4).map(|k| l[i][k] * w[k]).sum();
@@ -356,7 +561,12 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
 }
 
 /// Ghost state of a slip wall normal to `dir`: the normal momentum is reversed.
-pub(crate) fn euler_wall_state(nvel: usize, dir: usize, q: &[f64], out: &mut [f64]) {
+pub(crate) fn euler_wall_state(
+    nvel: usize,
+    dir: usize,
+    q: &[f64],
+    out: &mut [f64],
+) {
     out[..nvel + 2].copy_from_slice(&q[..nvel + 2]);
     out[1 + dir] = -q[1 + dir];
 }
@@ -398,17 +608,42 @@ pub struct DgMesh {
 impl DgMesh {
     /// One-dimensional mesh of `ne` elements on `[lo, hi]`.
     #[must_use]
-    pub const fn line(ne: usize, lo: f64, hi: f64, p: usize) -> Self {
-        Self { dim: 1, ne: [ne, 1], lo: [lo, 0.0], hi: [hi, 1.0], p }
+    pub const fn line(
+        ne: usize,
+        lo: f64,
+        hi: f64,
+        p: usize,
+    ) -> Self {
+        Self {
+            dim: 1,
+            ne: [ne, 1],
+            lo: [lo, 0.0],
+            hi: [hi, 1.0],
+            p,
+        }
     }
 
     /// Two-dimensional mesh.
     #[must_use]
-    pub const fn rect(ne: [usize; 2], lo: [f64; 2], hi: [f64; 2], p: usize) -> Self {
-        Self { dim: 2, ne, lo, hi, p }
+    pub const fn rect(
+        ne: [usize; 2],
+        lo: [f64; 2],
+        hi: [f64; 2],
+        p: usize,
+    ) -> Self {
+        Self {
+            dim: 2,
+            ne,
+            lo,
+            hi,
+            p,
+        }
     }
 
-    fn h(&self, a: usize) -> f64 {
+    fn h(
+        &self,
+        a: usize,
+    ) -> f64 {
         (self.hi[a] - self.lo[a]) / self.ne[a] as f64
     }
 
@@ -421,12 +656,20 @@ impl DgMesh {
     /// Number of elements.
     #[must_use]
     pub const fn elements(&self) -> usize {
-        self.ne[0] * if self.dim == 2 { self.ne[1] } else { 1 }
+        self.ne[0]
+            * if self.dim == 2 {
+                self.ne[1]
+            } else {
+                1
+            }
     }
 }
 
 /// Legendre polynomials `P_0..=P_n` at `x`.
-fn legendre(n: usize, x: f64) -> Vec<f64> {
+pub(crate) fn legendre(
+    n: usize,
+    x: f64,
+) -> Vec<f64> {
     let mut v = vec![1.0, x];
     for k in 1..n {
         let kf = k as f64;
@@ -440,7 +683,9 @@ fn legendre(n: usize, x: f64) -> Vec<f64> {
 #[must_use]
 pub fn lgl(p: usize) -> (Vec<f64>, Vec<f64>) {
     let n = p;
-    let mut x: Vec<f64> = (0..=n).map(|i| -(std::f64::consts::PI * i as f64 / n as f64).cos()).collect();
+    let mut x: Vec<f64> = (0..=n)
+        .map(|i| -(std::f64::consts::PI * i as f64 / n as f64).cos())
+        .collect();
     for i in 1..n {
         for _ in 0..100 {
             let l = legendre(n, x[i]);
@@ -494,11 +739,16 @@ pub struct ModalFilter {
     pub order: u32,
 }
 
-fn invert(mut a: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+/// Inverse of a small dense matrix by Gauss–Jordan elimination with partial pivoting.
+pub(crate) fn invert(mut a: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let n = a.len();
-    let mut inv: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| f64::from(u8::from(i == j))).collect()).collect();
+    let mut inv: Vec<Vec<f64>> = (0..n)
+        .map(|i| (0..n).map(|j| f64::from(u8::from(i == j))).collect())
+        .collect();
     for c in 0..n {
-        let piv = (c..n).max_by(|&i, &j| a[i][c].abs().total_cmp(&a[j][c].abs())).unwrap_or(c);
+        let piv = (c..n)
+            .max_by(|&i, &j| a[i][c].abs().total_cmp(&a[j][c].abs()))
+            .unwrap_or(c);
         a.swap(c, piv);
         inv.swap(c, piv);
         let d = a[c][c];
@@ -539,14 +789,21 @@ pub struct DgSolution {
 }
 
 impl DgSolution {
-    const fn node_ij(&self, node: usize) -> [usize; 2] {
+    const fn node_ij(
+        &self,
+        node: usize,
+    ) -> [usize; 2] {
         let n1 = self.mesh.p + 1;
         [node % n1, node / n1]
     }
 
     /// Physical coordinates of a node.
     #[must_use]
-    pub fn coord(&self, e: usize, node: usize) -> [f64; 2] {
+    pub fn coord(
+        &self,
+        e: usize,
+        node: usize,
+    ) -> [f64; 2] {
         let m = &self.mesh;
         let ij = self.node_ij(node);
         let ex = [e % m.ne[0], e / m.ne[0]];
@@ -559,12 +816,21 @@ impl DgSolution {
 
     /// Value of a variable.
     #[must_use]
-    pub fn value(&self, e: usize, node: usize, var: usize) -> f64 {
+    pub fn value(
+        &self,
+        e: usize,
+        node: usize,
+        var: usize,
+    ) -> f64 {
         self.q[(e * self.mesh.nodes_per_element() + node) * self.nvar + var]
     }
 
     /// Quadrature `L2` norm of `q_var - exact`.
-    pub fn l2_error(&self, var: usize, exact: impl Fn([f64; 2]) -> f64) -> f64 {
+    pub fn l2_error(
+        &self,
+        var: usize,
+        exact: impl Fn([f64; 2]) -> f64,
+    ) -> f64 {
         let m = &self.mesh;
         let jac: f64 = (0..m.dim).map(|a| 0.5 * m.h(a)).product();
         let mut s = 0.0;
@@ -581,7 +847,10 @@ impl DgSolution {
 
     /// Integral of a variable over the domain.
     #[must_use]
-    pub fn integral(&self, var: usize) -> f64 {
+    pub fn integral(
+        &self,
+        var: usize,
+    ) -> f64 {
         let m = &self.mesh;
         let jac: f64 = (0..m.dim).map(|a| 0.5 * m.h(a)).product();
         let mut s = 0.0;
@@ -611,11 +880,20 @@ struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    const fn node(&self, i: usize, j: usize) -> usize {
+    const fn node(
+        &self,
+        i: usize,
+        j: usize,
+    ) -> usize {
         i + self.n1 * j
     }
 
-    fn rhs(&self, q: &[f64], t: f64, xi: &[f64]) -> Vec<f64> {
+    fn rhs(
+        &self,
+        q: &[f64],
+        t: f64,
+        xi: &[f64],
+    ) -> Vec<f64> {
         let m = &self.mesh;
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let ne = m.elements();
@@ -658,9 +936,17 @@ impl Ctx<'_> {
                 let tr = if m.dim == 2 { n1 } else { 1 };
                 for t_idx in 0..tr {
                     for i in 0..n1 {
-                        let nd = if a == 0 { self.node(i, t_idx) } else { self.node(t_idx, i) };
+                        let nd = if a == 0 {
+                            self.node(i, t_idx)
+                        } else {
+                            self.node(t_idx, i)
+                        };
                         for k in 0..n1 {
-                            let nk = if a == 0 { self.node(k, t_idx) } else { self.node(t_idx, k) };
+                            let nk = if a == 0 {
+                                self.node(k, t_idx)
+                            } else {
+                                self.node(t_idx, k)
+                            };
                             if self.es {
                                 self.law.two_point_flux(at(e, nd), at(e, nk), a, &mut fbuf);
                                 for c in 0..nv {
@@ -668,7 +954,8 @@ impl Ctx<'_> {
                                 }
                             } else {
                                 for c in 0..nv {
-                                    r[(e * np + nd) * nv + c] -= sc * self.d[i][k] * flux[nk * nv + c];
+                                    r[(e * np + nd) * nv + c] -=
+                                        sc * self.d[i][k] * flux[nk * nv + c];
                                 }
                             }
                         }
@@ -676,46 +963,61 @@ impl Ctx<'_> {
                     // surface terms
                     for max in [false, true] {
                         let edge = if max { self.n1 - 1 } else { 0 };
-                        let nd = if a == 0 { self.node(edge, t_idx) } else { self.node(t_idx, edge) };
+                        let nd = if a == 0 {
+                            self.node(edge, t_idx)
+                        } else {
+                            self.node(t_idx, edge)
+                        };
                         let qi = at(e, nd);
                         let nb = nbr(e, a, max);
                         let mut qo = vec![0.0; nv];
                         if let Some(en) = nb {
                             {
-                                let ond = if a == 0 { self.node(self.n1 - 1 - edge, t_idx) } else { self.node(t_idx, self.n1 - 1 - edge) };
+                                let ond = if a == 0 {
+                                    self.node(self.n1 - 1 - edge, t_idx)
+                                } else {
+                                    self.node(t_idx, self.n1 - 1 - edge)
+                                };
                                 qo.copy_from_slice(at(en, ond));
                             }
                         } else {
                             {
                                 let bc = &self.bcs[2 * a + usize::from(max)];
                                 let xpos = || {
-                                    let ij = if a == 0 { [edge, t_idx] } else { [t_idx, edge] };
+                                    let ij = if a == 0 {
+                                        [edge, t_idx]
+                                    } else {
+                                        [t_idx, edge]
+                                    };
                                     let ex = [e % m.ne[0], e / m.ne[0]];
                                     let mut x = [0.0; 2];
                                     for b in 0..m.dim {
-                                        x[b] = m.lo[b] + (ex[b] as f64 + f64::midpoint(1.0, xi[ij[b]])) * m.h(b);
+                                        x[b] = m.lo[b]
+                                            + (ex[b] as f64 + f64::midpoint(1.0, xi[ij[b]]))
+                                                * m.h(b);
                                     }
                                     x
                                 };
                                 match bc {
-                                    DgBc::Fixed(f) => qo.copy_from_slice(&f(t, xpos())),
-                                    DgBc::Custom(f) => qo.copy_from_slice(&f(t, xpos(), qi)),
-                                    DgBc::Wall => self.law.wall_state(qi, a, &mut qo),
-                                    _ => qo.copy_from_slice(qi),
+                                    | DgBc::Fixed(f) => qo.copy_from_slice(&f(t, xpos())),
+                                    | DgBc::Custom(f) => qo.copy_from_slice(&f(t, xpos(), qi)),
+                                    | DgBc::Wall => self.law.wall_state(qi, a, &mut qo),
+                                    | _ => qo.copy_from_slice(qi),
                                 }
                             }
                         }
                         let mut fstar = vec![0.0; nv];
                         match (max, self.es) {
-                            (true, false) => self.law.numerical_flux(qi, &qo, a, &mut fstar),
-                            (false, false) => self.law.numerical_flux(&qo, qi, a, &mut fstar),
-                            (true, true) => self.law.entropy_stable_flux(qi, &qo, a, &mut fstar),
-                            (false, true) => self.law.entropy_stable_flux(&qo, qi, a, &mut fstar),
+                            | (true, false) => self.law.numerical_flux(qi, &qo, a, &mut fstar),
+                            | (false, false) => self.law.numerical_flux(&qo, qi, a, &mut fstar),
+                            | (true, true) => self.law.entropy_stable_flux(qi, &qo, a, &mut fstar),
+                            | (false, true) => self.law.entropy_stable_flux(&qo, qi, a, &mut fstar),
                         }
                         self.law.flux(qi, a, &mut fbuf);
                         let sign = if max { -1.0 } else { 1.0 };
                         for c in 0..nv {
-                            r[(e * np + nd) * nv + c] += sign * sc * (fstar[c] - fbuf[c]) / self.w[edge];
+                            r[(e * np + nd) * nv + c] +=
+                                sign * sc * (fstar[c] - fbuf[c]) / self.w[edge];
                         }
                     }
                 }
@@ -724,10 +1026,15 @@ impl Ctx<'_> {
         r
     }
 
-    fn max_rate(&self, q: &[f64]) -> f64 {
+    fn max_rate(
+        &self,
+        q: &[f64],
+    ) -> f64 {
         let mut best: f64 = 0.0;
         for chunk in q.chunks(self.nv) {
-            let s: f64 = (0..self.mesh.dim).map(|a| self.law.max_speed(chunk, a) / self.mesh.h(a)).sum();
+            let s: f64 = (0..self.mesh.dim)
+                .map(|a| self.law.max_speed(chunk, a) / self.mesh.h(a))
+                .sum();
             best = best.max(s);
         }
         best
@@ -745,7 +1052,11 @@ pub struct DgLimiter {
     pub positivity: bool,
 }
 
-fn minmod3(a: f64, b: f64, c: f64) -> f64 {
+fn minmod3(
+    a: f64,
+    b: f64,
+    c: f64,
+) -> f64 {
     if a > 0.0 && b > 0.0 && c > 0.0 {
         a.min(b).min(c)
     } else if a < 0.0 && b < 0.0 && c < 0.0 {
@@ -756,7 +1067,12 @@ fn minmod3(a: f64, b: f64, c: f64) -> f64 {
 }
 
 impl Ctx<'_> {
-    const fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
+    const fn neighbour(
+        &self,
+        e: usize,
+        axis: usize,
+        max: bool,
+    ) -> Option<usize> {
         let m = &self.mesh;
         let mut c = [e % m.ne[0], e / m.ne[0]];
         let periodic = matches!(self.bcs[2 * axis], DgBc::Periodic);
@@ -778,18 +1094,28 @@ impl Ctx<'_> {
         Some(c[0] + m.ne[0] * c[1])
     }
 
-    fn node_weight(&self, nd: usize) -> f64 {
+    fn node_weight(
+        &self,
+        nd: usize,
+    ) -> f64 {
         let n1 = self.n1;
         let ij = [nd % n1, nd / n1];
         (0..self.mesh.dim).map(|a| self.w[ij[a]] / 2.0).product()
     }
 
-    fn limit(&self, q: &mut [f64], lim: &DgLimiter, xi: &[f64]) {
+    fn limit(
+        &self,
+        q: &mut [f64],
+        lim: &DgLimiter,
+        xi: &[f64],
+    ) {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
         let ne = m.elements();
         let mean_of = |q: &[f64], e: usize, var: usize| -> f64 {
-            (0..np).map(|nd| self.node_weight(nd) * q[(e * np + nd) * nv + var]).sum()
+            (0..np)
+                .map(|nd| self.node_weight(nd) * q[(e * np + nd) * nv + var])
+                .sum()
         };
         if let Some(mt) = lim.tvb_m {
             let means: Vec<f64> = (0..ne * nv).map(|k| mean_of(q, k / nv, k % nv)).collect();
@@ -803,21 +1129,35 @@ impl Ctx<'_> {
                         let (mut ul, mut ur) = (0.0, 0.0);
                         let tr = if m.dim == 2 { n1 } else { 1 };
                         for t in 0..tr {
-                            let wt = if m.dim == 2 { self.w[t] / 2.0 } else { 1.0 };
-                            let (nl, nr) = if a == 0 { (self.node(0, t), self.node(n1 - 1, t)) } else { (self.node(t, 0), self.node(t, n1 - 1)) };
+                            let wt = if m.dim == 2 {
+                                self.w[t] / 2.0
+                            } else {
+                                1.0
+                            };
+                            let (nl, nr) = if a == 0 {
+                                (self.node(0, t), self.node(n1 - 1, t))
+                            } else {
+                                (self.node(t, 0), self.node(t, n1 - 1))
+                            };
                             ul += wt * old[(e * np + nl) * nv + var];
                             ur += wt * old[(e * np + nr) * nv + var];
                         }
                         let mp = self.neighbour(e, a, true).map(|k| means[k * nv + var]);
                         let mm = self.neighbour(e, a, false).map(|k| means[k * nv + var]);
                         let (dp, dm) = match (mp, mm) {
-                            (Some(p), Some(mi)) => (p - mean, mean - mi),
-                            (Some(p), None) => (p - mean, p - mean),
-                            (None, Some(mi)) => (mean - mi, mean - mi),
-                            (None, None) => (0.0, 0.0),
+                            | (Some(p), Some(mi)) => (p - mean, mean - mi),
+                            | (Some(p), None) => (p - mean, p - mean),
+                            | (None, Some(mi)) => (mean - mi, mean - mi),
+                            | (None, None) => (0.0, 0.0),
                         };
                         let thr = mt * m.h(a) * m.h(a);
-                        let tvb = |x: f64| if x.abs() <= thr { x } else { minmod3(x, dp, dm) };
+                        let tvb = |x: f64| {
+                            if x.abs() <= thr {
+                                x
+                            } else {
+                                minmod3(x, dp, dm)
+                            }
+                        };
                         let (up, um) = (ur - mean, mean - ul);
                         let (sp, sm) = (tvb(up), tvb(um));
                         let scale = 1e-9 * (mean.abs() + up.abs() + um.abs() + 1e-300);
@@ -845,7 +1185,9 @@ impl Ctx<'_> {
             let eps = 1e-10;
             for e in 0..ne {
                 let mean: Vec<f64> = (0..nv).map(|v| mean_of(q, e, v)).collect();
-                let Some((rm, pm)) = self.law.rho_p(&mean) else { return };
+                let Some((rm, pm)) = self.law.rho_p(&mean) else {
+                    return;
+                };
                 if rm <= eps || pm <= eps {
                     for nd in 0..np {
                         for v in 0..nv {
@@ -854,8 +1196,14 @@ impl Ctx<'_> {
                     }
                     continue;
                 }
-                let rho_min = (0..np).map(|nd| q[(e * np + nd) * nv]).fold(f64::INFINITY, f64::min);
-                let th1 = if rho_min < eps { ((rm - eps) / (rm - rho_min)).clamp(0.0, 1.0) } else { 1.0 };
+                let rho_min = (0..np)
+                    .map(|nd| q[(e * np + nd) * nv])
+                    .fold(f64::INFINITY, f64::min);
+                let th1 = if rho_min < eps {
+                    ((rm - eps) / (rm - rho_min)).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
                 for nd in 0..np {
                     for v in 0..nv {
                         let i = (e * np + nd) * nv + v;
@@ -867,8 +1215,11 @@ impl Ctx<'_> {
                     let base = (e * np + nd) * nv;
                     let node = &q[base..base + nv];
                     let ok = |s: f64| {
-                        let st: Vec<f64> = (0..nv).map(|v| mean[v] + s * (node[v] - mean[v])).collect();
-                        self.law.rho_p(&st).is_some_and(|(r, p)| r >= eps && p >= eps)
+                        let st: Vec<f64> =
+                            (0..nv).map(|v| mean[v] + s * (node[v] - mean[v])).collect();
+                        self.law
+                            .rho_p(&st)
+                            .is_some_and(|(r, p)| r >= eps && p >= eps)
                     };
                     if !ok(1.0) {
                         let (mut lo, mut hi) = (0.0, 1.0);
@@ -933,7 +1284,9 @@ pub fn solve_dg_limited(
 ) -> Result<DgSolution, String> {
     let opt = DgOptions {
         filter,
-        shock: limiter.and_then(|l| l.tvb_m).map_or(ShockLimiter::None, |m| ShockLimiter::Tvb { m }),
+        shock: limiter
+            .and_then(|l| l.tvb_m)
+            .map_or(ShockLimiter::None, |m| ShockLimiter::Tvb { m }),
         positivity: limiter.is_some_and(|l| l.positivity),
         entropy_stable: false,
     };
@@ -984,21 +1337,40 @@ pub struct DgOptions {
 
 impl Default for DgOptions {
     fn default() -> Self {
-        Self { filter: None, shock: ShockLimiter::None, positivity: false, entropy_stable: false }
+        Self {
+            filter: None,
+            shock: ShockLimiter::None,
+            positivity: false,
+            entropy_stable: false,
+        }
     }
 }
 
 impl Ctx<'_> {
-    fn element_mean(&self, q: &[f64], e: usize, var: usize) -> f64 {
-        (0..self.np).map(|nd| self.node_weight(nd) * q[(e * self.np + nd) * self.nv + var]).sum()
+    fn element_mean(
+        &self,
+        q: &[f64],
+        e: usize,
+        var: usize,
+    ) -> f64 {
+        (0..self.np)
+            .map(|nd| self.node_weight(nd) * q[(e * self.np + nd) * self.nv + var])
+            .sum()
     }
 
     /// TVB limiter on characteristic variables.
-    fn limit_tvb_characteristic(&self, q: &mut [f64], mt: f64, xi: &[f64]) {
+    fn limit_tvb_characteristic(
+        &self,
+        q: &mut [f64],
+        mt: f64,
+        xi: &[f64],
+    ) {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
         let ne = m.elements();
-        let means: Vec<f64> = (0..ne * nv).map(|k| self.element_mean(q, k / nv, k % nv)).collect();
+        let means: Vec<f64> = (0..ne * nv)
+            .map(|k| self.element_mean(q, k / nv, k % nv))
+            .collect();
         let old = q.to_vec();
         let mut buf = vec![0.0; nv];
         for e in 0..ne {
@@ -1009,8 +1381,16 @@ impl Ctx<'_> {
                 let (mut ul, mut ur) = (vec![0.0; nv], vec![0.0; nv]);
                 let tr = if m.dim == 2 { n1 } else { 1 };
                 for t in 0..tr {
-                    let wt = if m.dim == 2 { self.w[t] / 2.0 } else { 1.0 };
-                    let (nl, nr) = if a == 0 { (self.node(0, t), self.node(n1 - 1, t)) } else { (self.node(t, 0), self.node(t, n1 - 1)) };
+                    let wt = if m.dim == 2 {
+                        self.w[t] / 2.0
+                    } else {
+                        1.0
+                    };
+                    let (nl, nr) = if a == 0 {
+                        (self.node(0, t), self.node(n1 - 1, t))
+                    } else {
+                        (self.node(t, 0), self.node(t, n1 - 1))
+                    };
                     for v in 0..nv {
                         ul[v] += wt * old[(e * np + nl) * nv + v];
                         ur[v] += wt * old[(e * np + nr) * nv + v];
@@ -1027,16 +1407,18 @@ impl Ctx<'_> {
                     um[v] = mean[v] - ul[v];
                     let (p, mi) = (mp.map(|k| means[k * nv + v]), mm.map(|k| means[k * nv + v]));
                     let (a1, a2) = match (p, mi) {
-                        (Some(p), Some(mi)) => (p - mean[v], mean[v] - mi),
-                        (Some(p), None) => (p - mean[v], p - mean[v]),
-                        (None, Some(mi)) => (mean[v] - mi, mean[v] - mi),
-                        (None, None) => (0.0, 0.0),
+                        | (Some(p), Some(mi)) => (p - mean[v], mean[v] - mi),
+                        | (Some(p), None) => (p - mean[v], p - mean[v]),
+                        | (None, Some(mi)) => (mean[v] - mi, mean[v] - mi),
+                        | (None, None) => (0.0, 0.0),
                     };
                     dp[v] = a1;
                     dm[v] = a2;
                 }
-                let tf = |vec: &[f64], buf: &mut [f64]| self.law.to_characteristic(&mean, a, vec, buf);
-                let (mut cup, mut cum, mut cdp, mut cdm) = (vec![0.0; nv], vec![0.0; nv], vec![0.0; nv], vec![0.0; nv]);
+                let tf =
+                    |vec: &[f64], buf: &mut [f64]| self.law.to_characteristic(&mean, a, vec, buf);
+                let (mut cup, mut cum, mut cdp, mut cdm) =
+                    (vec![0.0; nv], vec![0.0; nv], vec![0.0; nv], vec![0.0; nv]);
                 tf(&up, &mut buf);
                 cup.copy_from_slice(&buf);
                 tf(&um, &mut buf);
@@ -1048,9 +1430,19 @@ impl Ctx<'_> {
                 let thr = mt * m.h(a) * m.h(a);
                 let mut cs = vec![0.0; nv];
                 for k in 0..nv {
-                    let tvb = |x: f64| if x.abs() <= thr { x } else { minmod3(x, cdp[k], cdm[k]) };
+                    let tvb = |x: f64| {
+                        if x.abs() <= thr {
+                            x
+                        } else {
+                            minmod3(x, cdp[k], cdm[k])
+                        }
+                    };
                     let (sp, sm) = (tvb(cup[k]), tvb(cum[k]));
-                    let scale = 1e-9 * (mean.iter().map(|x| x.abs()).sum::<f64>() + cup[k].abs() + cum[k].abs() + 1e-300);
+                    let scale = 1e-9
+                        * (mean.iter().map(|x| x.abs()).sum::<f64>()
+                            + cup[k].abs()
+                            + cum[k].abs()
+                            + 1e-300);
                     if (sp - cup[k]).abs() > scale || (sm - cum[k]).abs() > scale {
                         troubled = true;
                         cs[k] = f64::midpoint(sp, sm);
@@ -1079,11 +1471,16 @@ impl Ctx<'_> {
     }
 
     /// Nodal-to-modal (Legendre) coefficients of one element and variable, tensor layout `k + n1 l`.
-    fn to_modal(&self, vals: &[f64]) -> Vec<f64> {
+    fn to_modal(
+        &self,
+        vals: &[f64],
+    ) -> Vec<f64> {
         let n1 = self.n1;
         let vi = &self.vinv;
         if self.mesh.dim == 1 {
-            return (0..n1).map(|k| (0..n1).map(|j| vi[k][j] * vals[j]).sum()).collect();
+            return (0..n1)
+                .map(|k| (0..n1).map(|j| vi[k][j] * vals[j]).sum())
+                .collect();
         }
         let mut tmp = vec![0.0; self.np];
         for l in 0..n1 {
@@ -1101,11 +1498,16 @@ impl Ctx<'_> {
     }
 
     #[allow(clippy::wrong_self_convention)] // inverse of `to_modal`
-    fn from_modal(&self, c: &[f64]) -> Vec<f64> {
+    fn from_modal(
+        &self,
+        c: &[f64],
+    ) -> Vec<f64> {
         let n1 = self.n1;
         let v = &self.vmat;
         if self.mesh.dim == 1 {
-            return (0..n1).map(|i| (0..n1).map(|k| v[i][k] * c[k]).sum()).collect();
+            return (0..n1)
+                .map(|i| (0..n1).map(|k| v[i][k] * c[k]).sum())
+                .collect();
         }
         let mut tmp = vec![0.0; self.np];
         for l in 0..n1 {
@@ -1123,7 +1525,10 @@ impl Ctx<'_> {
     }
 
     /// Krivodonova's hierarchical moment limiter.
-    fn limit_hierarchical(&self, q: &mut [f64]) {
+    fn limit_hierarchical(
+        &self,
+        q: &mut [f64],
+    ) {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
         let ne = m.elements();
@@ -1158,10 +1563,17 @@ impl Ctx<'_> {
                                 if order == 0 {
                                     continue;
                                 }
-                                let lower = if a == 0 { (k - 1) + n1 * l } else { k + n1 * (l - 1) };
+                                let lower = if a == 0 {
+                                    (k - 1) + n1 * l
+                                } else {
+                                    k + n1 * (l - 1)
+                                };
                                 let own = old[base + lower];
-                                let (np_, nm_) = (self.neighbour(e, a, true), self.neighbour(e, a, false));
-                                let (Some(ep), Some(em)) = (np_, nm_) else { continue };
+                                let (np_, nm_) =
+                                    (self.neighbour(e, a, true), self.neighbour(e, a, false));
+                                let (Some(ep), Some(em)) = (np_, nm_) else {
+                                    continue;
+                                };
                                 let plus = old[(ep * nv + v) * np + lower];
                                 let minus = old[(em * nv + v) * np + lower];
                                 let f = (2 * order - 1) as f64;
@@ -1202,7 +1614,11 @@ impl Ctx<'_> {
     }
 
     /// Value at reference coordinate `x` of the interpolant through the LGL nodes `xi` with nodal values `f`.
-    fn lagrange_eval(xi: &[f64], f: &[f64], x: f64) -> f64 {
+    fn lagrange_eval(
+        xi: &[f64],
+        f: &[f64],
+        x: f64,
+    ) -> f64 {
         let n = xi.len();
         let mut s = 0.0;
         for j in 0..n {
@@ -1218,15 +1634,26 @@ impl Ctx<'_> {
     }
 
     /// Zhong–Shu WENO limiter for troubled elements (1D).
-    fn limit_weno(&self, q: &mut [f64], mt: f64, xi: &[f64]) {
+    fn limit_weno(
+        &self,
+        q: &mut [f64],
+        mt: f64,
+        xi: &[f64],
+    ) {
         let (nv, np) = (self.nv, self.np);
         let ne = self.mesh.elements();
         let mut trial = q.to_vec();
-        let tvb = DgLimiter { tvb_m: Some(mt), positivity: false };
+        let tvb = DgLimiter {
+            tvb_m: Some(mt),
+            positivity: false,
+        };
         self.limit(&mut trial, &tvb, xi);
         let old = q.to_vec();
         for e in 0..ne {
-            let troubled = (0..np * nv).any(|k| (trial[e * np * nv + k] - old[e * np * nv + k]).abs() > 1e-9 * (old[e * np * nv + k].abs() + 1e-12));
+            let troubled = (0..np * nv).any(|k| {
+                (trial[e * np * nv + k] - old[e * np * nv + k]).abs()
+                    > 1e-9 * (old[e * np * nv + k].abs() + 1e-12)
+            });
             if !troubled {
                 continue;
             }
@@ -1237,7 +1664,9 @@ impl Ctx<'_> {
                 for (max, shift) in [(false, -2.0), (true, 2.0)] {
                     if let Some(en) = self.neighbour(e, 0, max) {
                         let nb: Vec<f64> = (0..np).map(|nd| old[(en * np + nd) * nv + v]).collect();
-                        let vals: Vec<f64> = (0..np).map(|j| Self::lagrange_eval(xi, &nb, xi[j] - shift)).collect();
+                        let vals: Vec<f64> = (0..np)
+                            .map(|j| Self::lagrange_eval(xi, &nb, xi[j] - shift))
+                            .collect();
                         cands.push((vals, 0.001));
                     }
                 }
@@ -1258,7 +1687,9 @@ impl Ctx<'_> {
                     let mut beta = 0.0;
                     let mut d = vals.clone();
                     for l in 1..=self.mesh.p {
-                        d = (0..np).map(|i| (0..np).map(|k| self.d[i][k] * d[k]).sum::<f64>()).collect();
+                        d = (0..np)
+                            .map(|i| (0..np).map(|k| self.d[i][k] * d[k]).sum::<f64>())
+                            .collect();
                         let scale = f64::from(1u32 << (2 * l - 1));
                         beta += scale * (0..np).map(|j| self.w[j] * d[j] * d[j]).sum::<f64>();
                     }
@@ -1266,35 +1697,74 @@ impl Ctx<'_> {
                 }
                 let tot: f64 = omegas.iter().sum();
                 for nd in 0..np {
-                    q[(e * np + nd) * nv + v] = cands.iter().zip(&omegas).map(|((vals, _), w)| w / tot * vals[nd]).sum();
+                    q[(e * np + nd) * nv + v] = cands
+                        .iter()
+                        .zip(&omegas)
+                        .map(|((vals, _), w)| w / tot * vals[nd])
+                        .sum();
                 }
             }
         }
     }
 
     /// Applies the shock limiter and the positivity scaling.
-    fn limit_all(&self, q: &mut [f64], opt: &DgOptions, xi: &[f64]) {
+    fn limit_all(
+        &self,
+        q: &mut [f64],
+        opt: &DgOptions,
+        xi: &[f64],
+    ) {
         match opt.shock {
-            ShockLimiter::None => {},
-            ShockLimiter::Tvb { m } => self.limit(q, &DgLimiter { tvb_m: Some(m), positivity: false }, xi),
-            ShockLimiter::TvbCharacteristic { m } => {
+            | ShockLimiter::None => {},
+            | ShockLimiter::Tvb { m } => {
+                self.limit(
+                    q,
+                    &DgLimiter {
+                        tvb_m: Some(m),
+                        positivity: false,
+                    },
+                    xi,
+                )
+            },
+            | ShockLimiter::TvbCharacteristic { m } => {
                 if self.law.has_characteristics() {
                     self.limit_tvb_characteristic(q, m, xi);
                 } else {
-                    self.limit(q, &DgLimiter { tvb_m: Some(m), positivity: false }, xi);
+                    self.limit(
+                        q,
+                        &DgLimiter {
+                            tvb_m: Some(m),
+                            positivity: false,
+                        },
+                        xi,
+                    );
                 }
             },
-            ShockLimiter::Hierarchical => self.limit_hierarchical(q),
-            ShockLimiter::Weno { m } => {
+            | ShockLimiter::Hierarchical => self.limit_hierarchical(q),
+            | ShockLimiter::Weno { m } => {
                 if self.mesh.dim == 1 {
                     self.limit_weno(q, m, xi);
                 } else {
-                    self.limit(q, &DgLimiter { tvb_m: Some(m), positivity: false }, xi);
+                    self.limit(
+                        q,
+                        &DgLimiter {
+                            tvb_m: Some(m),
+                            positivity: false,
+                        },
+                        xi,
+                    );
                 }
             },
         }
         if opt.positivity {
-            self.limit(q, &DgLimiter { tvb_m: None, positivity: true }, xi);
+            self.limit(
+                q,
+                &DgLimiter {
+                    tvb_m: None,
+                    positivity: true,
+                },
+                xi,
+            );
         }
     }
 }
@@ -1329,8 +1799,28 @@ pub fn solve_dg_with(
     let np = mesh.nodes_per_element();
     let vmat: Vec<Vec<f64>> = xi.iter().map(|&x| legendre(mesh.p, x)).collect();
     let vinv = invert(vmat.clone());
-    let ctx = Ctx { mesh: *mesh, law, bcs, d, w: w.clone(), nv, np, n1, es: opt.entropy_stable, vmat: vmat.clone(), vinv: vinv.clone() };
-    let mut sol = DgSolution { mesh: *mesh, xi: xi.clone(), w, q: vec![0.0; mesh.elements() * np * nv], nvar: nv, t: 0.0, steps: 0 };
+    let ctx = Ctx {
+        mesh: *mesh,
+        law,
+        bcs,
+        d,
+        w: w.clone(),
+        nv,
+        np,
+        n1,
+        es: opt.entropy_stable,
+        vmat: vmat.clone(),
+        vinv: vinv.clone(),
+    };
+    let mut sol = DgSolution {
+        mesh: *mesh,
+        xi: xi.clone(),
+        w,
+        q: vec![0.0; mesh.elements() * np * nv],
+        nvar: nv,
+        t: 0.0,
+        steps: 0,
+    };
     for e in 0..mesh.elements() {
         for nd in 0..np {
             let v = init(sol.coord(e, nd));
@@ -1343,7 +1833,9 @@ pub fn solve_dg_with(
         }
     }
     let fmat = opt.filter.map(|f| {
-        let sig: Vec<f64> = (0..n1).map(|k| (-f.alpha * (k as f64 / mesh.p as f64).powi(f.order as i32)).exp()).collect();
+        let sig: Vec<f64> = (0..n1)
+            .map(|k| (-f.alpha * (k as f64 / mesh.p as f64).powi(f.order as i32)).exp())
+            .collect();
         let mut m = vec![vec![0.0; n1]; n1];
         for i in 0..n1 {
             for j in 0..n1 {
@@ -1360,11 +1852,19 @@ pub fn solve_dg_with(
             for e in 0..mesh.elements() {
                 for t_idx in 0..tr {
                     for i in 0..n1 {
-                        let nd = if a == 0 { i + n1 * t_idx } else { t_idx + n1 * i };
+                        let nd = if a == 0 {
+                            i + n1 * t_idx
+                        } else {
+                            t_idx + n1 * i
+                        };
                         for c in 0..nv {
                             let mut s = 0.0;
                             for k in 0..n1 {
-                                let nk = if a == 0 { k + n1 * t_idx } else { t_idx + n1 * k };
+                                let nk = if a == 0 {
+                                    k + n1 * t_idx
+                                } else {
+                                    t_idx + n1 * k
+                                };
                                 s += fm[i][k] * src[(e * np + nk) * nv + c];
                             }
                             q[(e * np + nd) * nv + c] = s;
@@ -1390,12 +1890,16 @@ pub fn solve_dg_with(
             ctx.limit_all(&mut q1, opt, &xi);
         }
         let l1 = ctx.rhs(&q1, t + dt, &xi);
-        let mut q2: Vec<f64> = (0..q.len()).map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i])).collect();
+        let mut q2: Vec<f64> = (0..q.len())
+            .map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i]))
+            .collect();
         if limiting {
             ctx.limit_all(&mut q2, opt, &xi);
         }
         let l2 = ctx.rhs(&q2, t + 0.5 * dt, &xi);
-        q = (0..q.len()).map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i])).collect();
+        q = (0..q.len())
+            .map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i]))
+            .collect();
         if limiting {
             ctx.limit_all(&mut q, opt, &xi);
         }

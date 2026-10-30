@@ -23,8 +23,6 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Extractor;
@@ -40,15 +38,17 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SizeCost;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 
 use self::groebner::GPoly;
 use self::groebner::GroebnerLimits;
 use self::groebner::Order;
-use self::repr::from_term;
-use self::repr::to_term;
 use self::repr::Gens;
 use self::repr::Limits;
 use self::repr::Poly;
+use self::repr::from_term;
+use self::repr::to_term;
 use self::univariate::QPoly;
 use super::arith::arith;
 
@@ -92,17 +92,32 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("pgcd", 3, Request::Gcd, false),
     ];
     for (name, arity, request, is_form) in requests {
-        let mut desc = OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+        let mut desc = OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100);
         if is_form {
             desc = desc.eval(identity);
         }
         let op = i.op(desc)?;
-        i.kernel(&format!("poly/{name}"), Tier::Reduce, PolyKernel { op, request });
+        i.kernel(
+            &format!("poly/{name}"),
+            Tier::Reduce,
+            PolyKernel { op, request },
+        );
     }
     // groebner(list(p1, ...), list(x1, ...)) or with a third argument, one
     // of the symbols `lex`, `grlex`, `grevlex`.
-    let op = i.op(OpDescriptor::new("groebner", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("poly/groebner", Tier::Reduce, PolyKernel { op, request: Request::Groebner });
+    let op = i.op(OpDescriptor::new("groebner", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "poly/groebner",
+        Tier::Reduce,
+        PolyKernel {
+            op,
+            request: Request::Groebner,
+        },
+    );
     i.kernel("poly/collapse", Tier::Normalize, Collapse);
     algebra::install(i)?;
     rootof::install(i)?;
@@ -157,7 +172,8 @@ impl Kernel for Collapse {
         // may still be best spelled by a request that produced it.
         let mut terms = Vec::new();
         for &child in &graph.children(node).to_vec() {
-            let closed = Extractor::new(graph, &[child], &crate::graph::ClosedForm).build(graph, child);
+            let closed =
+                Extractor::new(graph, &[child], &crate::graph::ClosedForm).build(graph, child);
             let Some(t) = closed.or_else(|| best(graph, child)) else {
                 return Outcome::Pass;
             };
@@ -200,7 +216,11 @@ impl Collapse {
             return Outcome::Pass;
         }
         let simplified = cx.simplify(candidate);
-        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
+        if tree_size(cx.graph, simplified, CAP) < before {
+            Outcome::Equal(simplified)
+        } else {
+            Outcome::Pass
+        }
     }
 
     /// The rational normal form of `term`: one numerator over one
@@ -210,7 +230,10 @@ impl Collapse {
         graph: &mut Graph,
         term: NodeId,
     ) -> Option<NodeId> {
-        let limits = Limits { terms: 64, exponent: 8 };
+        let limits = Limits {
+            terms: 64,
+            exponent: 8,
+        };
         let mut gens = Gens::default();
         let r = ratio(graph, &mut gens, term, limits)?;
         if r.denom.is_zero() {
@@ -224,7 +247,11 @@ impl Collapse {
         let (cn, cd) = (numer.monomial_content(), denom.monomial_content());
         let common: crate::rules::poly::repr::Mono = cn
             .iter()
-            .filter_map(|&(g, e)| cd.iter().find(|&&(h, _)| h == g).map(|&(_, f)| (g, e.min(f))))
+            .filter_map(|&(g, e)| {
+                cd.iter()
+                    .find(|&&(h, _)| h == g)
+                    .map(|&(_, f)| (g, e.min(f)))
+            })
             .collect();
         if !common.is_empty() {
             numer = numer.div_monomial(&common);
@@ -243,12 +270,20 @@ impl Collapse {
         let top = to_term(graph, &gens, &numer);
         if let Some(c) = denom.as_constant() {
             let inverse = graph.num(c.recip()?);
-            return Some(if c.is_one() { top } else { graph.node(core::MUL, &[inverse, top]) });
+            return Some(if c.is_one() {
+                top
+            } else {
+                graph.node(core::MUL, &[inverse, top])
+            });
         }
         let bottom = to_term(graph, &gens, &denom);
         let minus_one = graph.int(-1);
         let inverse = graph.node(core::POW, &[bottom, minus_one]);
-        Some(if graph.number_of(top).is_some_and(Number::is_one) { inverse } else { graph.node(core::MUL, &[top, inverse]) })
+        Some(if graph.number_of(top).is_some_and(Number::is_one) {
+            inverse
+        } else {
+            graph.node(core::MUL, &[top, inverse])
+        })
     }
 
     /// A product with a sum in a denominator: cancel what can be
@@ -267,10 +302,20 @@ impl Collapse {
         }
         let divides_by_sum = graph.children(term).iter().any(|&f| {
             graph.op(f) == core::POW
-                && graph.children(f).first().is_some_and(|&b| graph.op(b) == core::ADD)
-                && graph.children(f).get(1).and_then(|&e| graph.number_of(e)).is_some_and(Number::is_negative)
+                && graph
+                    .children(f)
+                    .first()
+                    .is_some_and(|&b| graph.op(b) == core::ADD)
+                && graph
+                    .children(f)
+                    .get(1)
+                    .and_then(|&e| graph.number_of(e))
+                    .is_some_and(Number::is_negative)
         });
-        let has_sum = graph.children(term).iter().any(|&f| graph.op(f) == core::ADD);
+        let has_sum = graph
+            .children(term)
+            .iter()
+            .any(|&f| graph.op(f) == core::ADD);
         let before = tree_size(graph, term, CAP);
         if !(divides_by_sum || has_sum) || before > CAP {
             return Outcome::Pass;
@@ -307,20 +352,28 @@ impl Kernel for PolyKernel {
         // raw form is tried first because simplification may hide structure
         // (exp(t)^2 - 1 becomes exp(2*t) - 1).
         if let Some((&first, rest)) = args.split_first() {
-            let form = |graph: &mut Graph, e: NodeId| match (self.request, rest) {
-                | (Request::Expand, &[]) => expand(graph, e),
-                | (Request::Collect, &[x]) => collect(graph, e, x),
-                | (Request::Factor, &[]) => factor(graph, e),
-                | (Request::Together, &[]) => together(graph, e, false),
-                | (Request::Cancel, &[]) => together(graph, e, true),
-                | (Request::Apart, &[x]) => apart_term(graph, e, x),
-                | _ => None,
+            let form = |graph: &mut Graph, e: NodeId| {
+                match (self.request, rest) {
+                    | (Request::Expand, &[]) => expand(graph, e),
+                    | (Request::Collect, &[x]) => collect(graph, e, x),
+                    | (Request::Factor, &[]) => factor(graph, e),
+                    | (Request::Together, &[]) => together(graph, e, false),
+                    | (Request::Cancel, &[]) => together(graph, e, true),
+                    | (Request::Apart, &[x]) => apart_term(graph, e, x),
+                    | _ => None,
+                }
             };
             if matches!(
                 self.request,
-                Request::Expand | Request::Collect | Request::Factor | Request::Together | Request::Cancel | Request::Apart
+                Request::Expand
+                    | Request::Collect
+                    | Request::Factor
+                    | Request::Together
+                    | Request::Cancel
+                    | Request::Apart
             ) {
-                let raw = form(cx.graph, first).filter(|&r| cx.graph.find(r) != cx.graph.find(first));
+                let raw =
+                    form(cx.graph, first).filter(|&r| cx.graph.find(r) != cx.graph.find(first));
                 if let Some(r) = raw {
                     return Outcome::Pinned(r);
                 }
@@ -335,22 +388,30 @@ impl Kernel for PolyKernel {
         let result = match (self.request, args.as_slice()) {
             | (Request::Degree, &[p, x]) => degree(graph, p, x).map(Outcome::Equal),
             | (Request::Coeff, &[p, x, n]) => coeff(graph, p, x, n).map(Outcome::Equal),
-            | (Request::Quo, &[p, q, x]) => divide(graph, p, q, x).map(|(quo, _)| Outcome::Equal(quo)),
-            | (Request::Rem, &[p, q, x]) => divide(graph, p, q, x).map(|(_, rem)| Outcome::Equal(rem)),
+            | (Request::Quo, &[p, q, x]) => {
+                divide(graph, p, q, x).map(|(quo, _)| Outcome::Equal(quo))
+            },
+            | (Request::Rem, &[p, q, x]) => {
+                divide(graph, p, q, x).map(|(_, rem)| Outcome::Equal(rem))
+            },
             | (Request::Gcd, &[p, q, x]) => gcd(graph, p, q, x).map(Outcome::Equal),
             | (Request::Groebner, &[polys, vars]) => {
                 groebner_basis(graph, polys, vars, Order::Lex).map(Outcome::Pinned)
             },
-            | (Request::Groebner, &[polys, vars, order]) => graph
-                .symbol_of(order)
-                .and_then(|s| match graph.interner().symbol_name(s) {
-                    | "lex" => Some(Order::Lex),
-                    | "grlex" => Some(Order::GradedLex),
-                    | "grevlex" => Some(Order::GradedRevLex),
-                    | _ => None,
-                })
-                .and_then(|order| groebner_basis(graph, polys, vars, order))
-                .map(Outcome::Pinned),
+            | (Request::Groebner, &[polys, vars, order]) => {
+                graph
+                    .symbol_of(order)
+                    .and_then(|s| {
+                        match graph.interner().symbol_name(s) {
+                            | "lex" => Some(Order::Lex),
+                            | "grlex" => Some(Order::GradedLex),
+                            | "grevlex" => Some(Order::GradedRevLex),
+                            | _ => None,
+                        }
+                    })
+                    .and_then(|order| groebner_basis(graph, polys, vars, order))
+                    .map(Outcome::Pinned)
+            },
             | _ => None,
         };
         result.unwrap_or(Outcome::Pass)
@@ -377,7 +438,12 @@ pub(crate) fn rational_function_in(
     if gens.len() != 1 {
         return None;
     }
-    let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gx)?.iter().map(Number::to_rational).collect() };
+    let as_q = |p: &Poly| -> Option<QPoly> {
+        p.univariate_in(gx)?
+            .iter()
+            .map(Number::to_rational)
+            .collect()
+    };
     Some((as_q(&r.numer)?, as_q(&r.denom)?))
 }
 
@@ -395,7 +461,12 @@ fn apart_term(
     if gens.len() != 1 {
         return None;
     }
-    let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gx)?.iter().map(Number::to_rational).collect() };
+    let as_q = |p: &Poly| -> Option<QPoly> {
+        p.univariate_in(gx)?
+            .iter()
+            .map(Number::to_rational)
+            .collect()
+    };
     let parts = apart::apart(&as_q(&r.numer)?, &as_q(&r.denom)?)?;
     let poly_term = |graph: &mut Graph, q: &[BigRational]| {
         let numbers: Vec<Number> = q.iter().cloned().map(Number::rat).collect();
@@ -553,8 +624,12 @@ fn rational_in(
     x: NodeId,
 ) -> Option<QPoly> {
     let view = in_variable(graph, e, x)?;
-    let mut coefficients: QPoly =
-        view.poly.univariate_in(view.x)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+    let mut coefficients: QPoly = view
+        .poly
+        .univariate_in(view.x)?
+        .iter()
+        .map(Number::to_rational)
+        .collect::<Option<_>>()?;
     while coefficients.last().is_some_and(num_traits::Zero::is_zero) {
         coefficients.pop();
     }
@@ -605,7 +680,11 @@ fn factored_term(
         pieces.push(graph.num(Number::rat(unit.clone())));
     }
     for (factor, multiplicity) in factors {
-        let coefficients: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+        let coefficients: Vec<BigRational> = factor
+            .iter()
+            .cloned()
+            .map(BigRational::from_integer)
+            .collect();
         let base = from_rational(graph, &coefficients, x);
         pieces.push(power(graph, base, *multiplicity as usize).unwrap_or(base));
     }
@@ -627,8 +706,11 @@ fn factor(
     }
     let support = poly.support();
     if let &[only] = support.as_slice() {
-        let coefficients: QPoly =
-            poly.univariate_in(only)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+        let coefficients: QPoly = poly
+            .univariate_in(only)?
+            .iter()
+            .map(Number::to_rational)
+            .collect::<Option<_>>()?;
         let (unit, factors) = univariate::factor(&coefficients);
         return Some(factored_term(graph, &unit, &factors, gens.node(only)?));
     }
@@ -645,10 +727,15 @@ fn factor(
         content = rational_gcd(&content, &c);
         common = Some(match common {
             | None => mono.clone(),
-            | Some(old) => old
-                .iter()
-                .filter_map(|&(g, e)| mono.iter().find(|&&(h, _)| h == g).map(|&(_, f)| (g, e.min(f))))
-                .collect(),
+            | Some(old) => {
+                old.iter()
+                    .filter_map(|&(g, e)| {
+                        mono.iter()
+                            .find(|&&(h, _)| h == g)
+                            .map(|&(_, f)| (g, e.min(f)))
+                    })
+                    .collect()
+            },
         });
     }
     let common = common.unwrap_or_default();
@@ -664,8 +751,14 @@ fn factor(
         let scaled = Number::rat(c.to_rational()? / &content);
         reduced = reduced.add(&Poly::monomial(lowered, scaled));
     }
-    let (unit, pieces) = multifactor::factor(&reduced, &support).unwrap_or_else(|| (Number::from(1), vec![(reduced.clone(), 1)]));
-    if content.is_one() && common.is_empty() && unit.is_one() && pieces.len() == 1 && pieces[0].1 == 1 {
+    let (unit, pieces) = multifactor::factor(&reduced, &support)
+        .unwrap_or_else(|| (Number::from(1), vec![(reduced.clone(), 1)]));
+    if content.is_one()
+        && common.is_empty()
+        && unit.is_one()
+        && pieces.len() == 1
+        && pieces[0].1 == 1
+    {
         return Some(to_term(graph, &gens, &poly));
     }
     let scale = Number::rat(content * unit.to_rational()?);
@@ -759,8 +852,11 @@ fn groebner_basis(
     order: Order,
 ) -> Option<NodeId> {
     let (generators, gens) = to_groebner(graph, polys, vars, order)?;
-    let basis = groebner::groebner(&generators, order, GroebnerLimits::default())?;
-    let terms: Vec<NodeId> = basis.iter().map(|g| from_groebner(graph, &gens, g)).collect();
+    let basis = groebner::groebner_via(&generators, order, GroebnerLimits::default())?;
+    let terms: Vec<NodeId> = basis
+        .iter()
+        .map(|g| from_groebner(graph, &gens, g))
+        .collect();
     Some(graph.node(core::LIST, &terms))
 }
 
@@ -801,14 +897,23 @@ pub(crate) fn ratio(
     let one = || Poly::constant(Number::from(1));
     let children = graph.children(node).to_vec();
     if graph.op(node) == core::ADD {
-        let mut acc = Ratio { numer: Poly::zero(), denom: one() };
+        let mut acc = Ratio {
+            numer: Poly::zero(),
+            denom: one(),
+        };
         for child in children {
             let r = ratio(graph, gens, child, limits)?;
             acc = if acc.denom == r.denom {
-                Ratio { numer: acc.numer.add(&r.numer), denom: acc.denom }
+                Ratio {
+                    numer: acc.numer.add(&r.numer),
+                    denom: acc.denom,
+                }
             } else {
                 Ratio {
-                    numer: acc.numer.mul(&r.denom, limits.terms)?.add(&r.numer.mul(&acc.denom, limits.terms)?),
+                    numer: acc
+                        .numer
+                        .mul(&r.denom, limits.terms)?
+                        .add(&r.numer.mul(&acc.denom, limits.terms)?),
                     denom: acc.denom.mul(&r.denom, limits.terms)?,
                 }
             };
@@ -816,7 +921,10 @@ pub(crate) fn ratio(
         return Some(acc);
     }
     if graph.op(node) == core::MUL {
-        let mut acc = Ratio { numer: one(), denom: one() };
+        let mut acc = Ratio {
+            numer: one(),
+            denom: one(),
+        };
         for child in children {
             let r = ratio(graph, gens, child, limits)?;
             acc = Ratio {
@@ -827,13 +935,29 @@ pub(crate) fn ratio(
         return Some(acc);
     }
     if let (true, &[base, exp]) = (graph.op(node) == core::POW, children.as_slice())
-        && let Some(e) = graph.number_of(exp).and_then(Number::to_i64) {
-            let magnitude = u32::try_from(e.unsigned_abs()).ok().filter(|&m| m <= limits.exponent)?;
-            let r = ratio(graph, gens, base, limits)?;
-            let (numer, denom) = (r.numer.pow(magnitude, limits.terms)?, r.denom.pow(magnitude, limits.terms)?);
-            return Some(if e < 0 { Ratio { numer: denom, denom: numer } } else { Ratio { numer, denom } });
-        }
-    Some(Ratio { numer: from_term_shared(graph, gens, node, limits)?, denom: one() })
+        && let Some(e) = graph.number_of(exp).and_then(Number::to_i64)
+    {
+        let magnitude = u32::try_from(e.unsigned_abs())
+            .ok()
+            .filter(|&m| m <= limits.exponent)?;
+        let r = ratio(graph, gens, base, limits)?;
+        let (numer, denom) = (
+            r.numer.pow(magnitude, limits.terms)?,
+            r.denom.pow(magnitude, limits.terms)?,
+        );
+        return Some(if e < 0 {
+            Ratio {
+                numer: denom,
+                denom: numer,
+            }
+        } else {
+            Ratio { numer, denom }
+        });
+    }
+    Some(Ratio {
+        numer: from_term_shared(graph, gens, node, limits)?,
+        denom: one(),
+    })
 }
 
 /// [`from_term`] against an existing generator table.
@@ -865,19 +989,28 @@ fn together(
         support.dedup();
         if let &[only] = support.as_slice() {
             let as_q = |p: &Poly| -> Option<QPoly> {
-                p.univariate_in(only)?.iter().map(Number::to_rational).collect()
+                p.univariate_in(only)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect()
             };
             if let (Some(n), Some(d)) = (as_q(&r.numer), as_q(&r.denom)) {
                 let g = univariate::gcd(&n, &d);
                 let lead = d.last().cloned().unwrap_or_else(BigRational::one);
                 // Normalise so that the denominator is monic.
                 let scaled: QPoly = g.iter().map(|c| c * &lead).collect();
-                if let (Some((nq, _)), Some((dq, _))) = (univariate::divrem(&n, &scaled), univariate::divrem(&d, &scaled)) {
+                if let (Some((nq, _)), Some((dq, _))) = (
+                    univariate::divrem(&n, &scaled),
+                    univariate::divrem(&d, &scaled),
+                ) {
                     let back = |q: &QPoly| {
                         let numbers: Vec<Number> = q.iter().cloned().map(Number::rat).collect();
                         Poly::from_univariate(only, &numbers)
                     };
-                    r = Ratio { numer: back(&nq), denom: back(&dq) };
+                    r = Ratio {
+                        numer: back(&nq),
+                        denom: back(&dq),
+                    };
                 }
             }
         }
@@ -885,7 +1018,11 @@ fn together(
     let numer = to_term(graph, &gens, &r.numer);
     if let Some(c) = r.denom.as_constant() {
         let inverse = graph.num(c.recip()?);
-        return Some(if c.is_one() { numer } else { graph.node(core::MUL, &[inverse, numer]) });
+        return Some(if c.is_one() {
+            numer
+        } else {
+            graph.node(core::MUL, &[inverse, numer])
+        });
     }
     let denom = to_term(graph, &gens, &r.denom);
     let minus_one = graph.int(-1);
@@ -920,7 +1057,10 @@ mod tests {
 
     #[test]
     fn collect_groups_by_powers() {
-        assert_eq!(run("collect(a*x^2 + b*x + c*x^2 + d, x)"), "x^2*(a + c) + b*x + d");
+        assert_eq!(
+            run("collect(a*x^2 + b*x + c*x^2 + d, x)"),
+            "x^2*(a + c) + b*x + d"
+        );
         assert_eq!(run("collect((x + y)^2, x)"), "x^2 + 2*x*y + y^2");
         assert_eq!(run("collect(x*y + x*z + x, x)"), "x*(y + z + 1)");
     }
@@ -935,7 +1075,10 @@ mod tests {
         assert_eq!(run("factor(2*x^2 - 2)"), "2*(x - 1)*(x + 1)");
         assert_eq!(run("factor(x^3/2 - x/2)"), "1/2*x*(x - 1)*(x + 1)");
         assert_eq!(
-            simplify(&[poly(), crate::rules::elementary()], "factor(exp(t)^2 - 1)"),
+            simplify(
+                &[poly(), crate::rules::elementary()],
+                "factor(exp(t)^2 - 1)"
+            ),
             "(exp(t) - 1)*(exp(t) + 1)",
             "any generator will do"
         );
@@ -963,11 +1106,20 @@ mod tests {
         ] {
             let expanded = run(&format!("expand({src})"));
             let factored = run(&format!("factor({expanded})"));
-            assert!(factored.contains(")*(") || factored.contains(")^"), "{src}: {factored}");
+            assert!(
+                factored.contains(")*(") || factored.contains(")^"),
+                "{src}: {factored}"
+            );
             for (a, b, c) in [(0.3, -1.1, 0.7), (2.2, 0.4, -1.9), (-0.8, 1.5, 2.6)] {
                 let at = [("x", a), ("y", b), ("z", c), ("a", b), ("b", c)];
-                let (want, got) = (eval(&[poly()], &expanded, &at), eval(&[poly()], &factored, &at));
-                assert!((want - got).abs() < 1e-9 * (1.0 + want.abs()), "{src} = {factored}: {want} vs {got}");
+                let (want, got) = (
+                    eval(&[poly()], &expanded, &at),
+                    eval(&[poly()], &factored, &at),
+                );
+                assert!(
+                    (want - got).abs() < 1e-9 * (1.0 + want.abs()),
+                    "{src} = {factored}: {want} vs {got}"
+                );
             }
         }
         // Irreducible inputs stay as they are.
@@ -977,12 +1129,20 @@ mod tests {
 
     #[test]
     fn factoring_preserves_value() {
-        for src in ["x^6 - 1", "x^5 - 3*x^4 + x - 3", "12*x^3 - 8*x^2 - 3*x + 2", "x^8 + x^4 + 1"] {
+        for src in [
+            "x^6 - 1",
+            "x^5 - 3*x^4 + x - 3",
+            "12*x^3 - 8*x^2 - 3*x + 2",
+            "x^8 + x^4 + 1",
+        ] {
             let factored = run(&format!("factor({src})"));
             for at in [-1.7, 0.3, 2.2] {
                 let want = eval(&[poly()], src, &[("x", at)]);
                 let got = eval(&[poly()], &factored, &[("x", at)]);
-                assert!((want - got).abs() < 1e-9 * (1.0 + want.abs()), "{src} = {factored}? at {at}: {want} vs {got}");
+                assert!(
+                    (want - got).abs() < 1e-9 * (1.0 + want.abs()),
+                    "{src} = {factored}? at {at}: {want} vs {got}"
+                );
             }
             assert!(factored.contains('('), "{src} should split: {factored}");
         }
@@ -1006,18 +1166,37 @@ mod tests {
         assert_eq!(run("rem(x^2 + 1, x - 1, x)"), "2");
         assert_eq!(run("pgcd(x^2 - 1, x^2 - 2*x + 1, x)"), "x - 1");
         assert_eq!(run("pgcd(x^2 + 1, x + 1, x)"), "1");
-        assert!(!reduce_with(&[poly()], "quo(x, 0, x)", &[]).1, "division by zero is not reduced");
+        assert!(
+            !reduce_with(&[poly()], "quo(x, 0, x)", &[]).1,
+            "division by zero is not reduced"
+        );
     }
 
     #[test]
     fn groebner_bases() {
-        assert_eq!(run("groebner(list(x + y - 3, x - y - 1), list(x, y))"), "list(y - 1, x - 2)");
-        assert_eq!(run("groebner(list(x^2 + y^2 = 1, x = y), list(x, y))"), "list(y^2 - 1/2, x - y)");
+        assert_eq!(
+            run("groebner(list(x + y - 3, x - y - 1), list(x, y))"),
+            "list(y - 1, x - 2)"
+        );
+        assert_eq!(
+            run("groebner(list(x^2 + y^2 = 1, x = y), list(x, y))"),
+            "list(y^2 - 1/2, x - y)"
+        );
         assert_eq!(run("groebner(list(x, x + 1), list(x))"), "list(1)");
         assert_eq!(
             run("groebner(list(x^3 - 2*x*y, x^2*y - 2*y^2 + x), list(x, y), grlex)"),
             "list(y^2 - 1/2*x, x*y, x^2)"
         );
+        // Zero-dimensional ideals in lex go through the graded reverse-lex
+        // basis and FGLM; the result is the same reduced basis. The cyclic-3
+        // system (elementary symmetric functions 0, 0, 1) is the triangular
+        // system z^3 = 1, y^2 + y z + z^2 = 0, x = -y - z.
+        assert_eq!(
+            run("groebner(list(x + y + z, x*y + y*z + z*x, x*y*z - 1), list(x, y, z))"),
+            "list(z^3 - 1, y^2 + y*z + z^2, x + y + z)"
+        );
+        // A positive-dimensional ideal falls back to Buchberger in lex.
+        assert_eq!(run("groebner(list(x*y - 1), list(x, y))"), "list(x*y - 1)");
         // A parameter that is not among the variables is refused.
         assert!(!reduce_with(&[poly()], "groebner(list(a*x + 1), list(x))", &[]).1);
     }
@@ -1030,6 +1209,9 @@ mod tests {
         assert_eq!(run("cancel((x^2 + 2*x + 1)/(x^2 - 1))"), "(x + 1)/(x - 1)");
         assert_eq!(run("cancel(x/x^3)"), "1/x^2");
         assert_eq!(run("apart(1/(x^2 - 1), x)"), "1/2/(x - 1) - 1/2/(x + 1)");
-        assert_eq!(run("apart((x^3 + 1)/(x^2 + 1), x)"), "x + (1 - x)/(x^2 + 1)");
+        assert_eq!(
+            run("apart((x^3 + 1)/(x^2 + 1), x)"),
+            "x + (1 - x)/(x^2 + 1)"
+        );
     }
 }

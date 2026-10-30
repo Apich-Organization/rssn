@@ -41,7 +41,10 @@ fn scan_roots(
             env.bind(s, v);
         }
         env.bind(x, t);
-        graph.eval(residual, &env).filter(|v| v.is_finite()).unwrap_or(f64::NAN)
+        graph
+            .eval(residual, &env)
+            .filter(|v| v.is_finite())
+            .unwrap_or(f64::NAN)
     };
     let steps = 48_000_i32;
     let h = 2.0 * WINDOW / f64::from(steps);
@@ -100,33 +103,65 @@ pub(super) fn audit(
     let rules = crate::rules::standard();
     let mut g = Graph::new();
     let Ok(engine) = Engine::install(&mut g, &rules) else {
-        return Report { status: "install".into(), text: String::new() };
+        return Report {
+            status: "install".into(),
+            text: String::new(),
+        };
     };
-    let name = if general { "solve_general" } else { solver };
+    let name = if general {
+        "solve_general"
+    } else {
+        solver
+    };
     let src = format!("{name}({eq}, x)");
     let Ok(root) = g.parse(&src) else {
-        return Report { status: "parse".into(), text: src };
+        return Report {
+            status: "parse".into(),
+            text: src,
+        };
     };
     let n_symbol = g.interner_mut().symbol("n");
     g.assume(n_symbol, crate::graph::Facts::INTEGER);
-    engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+    engine.run(
+        &mut g,
+        &[root],
+        &Env::symbolic(),
+        &Saturate,
+        &Budget::default(),
+    );
     let Some(answer) = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root) else {
-        return Report { status: "UNSOLVED".into(), text: String::new() };
+        return Report {
+            status: "UNSOLVED".into(),
+            text: String::new(),
+        };
     };
     let text = g.display(answer);
     if g.op(answer) != crate::graph::op::core::LIST {
-        return Report { status: "UNSOLVED".into(), text };
+        return Report {
+            status: "UNSOLVED".into(),
+            text,
+        };
     }
     let Ok(residual) = g.parse(&residual_text(eq)) else {
-        return Report { status: "parse".into(), text };
+        return Report {
+            status: "parse".into(),
+            text,
+        };
     };
     let x = g.interner_mut().symbol("x");
-    let params: Vec<(crate::graph::SymbolId, f64)> = params.iter().map(|&(n, v)| (g.interner_mut().symbol(n), v)).collect();
+    let params: Vec<(crate::graph::SymbolId, f64)> = params
+        .iter()
+        .map(|&(n, v)| (g.interner_mut().symbol(n), v))
+        .collect();
     let items = g.children(answer).to_vec();
     let mut values: Vec<f64> = Vec::new();
     for item in items {
         let uses_n = g.depends_on(g.find(item), n_symbol);
-        let ns: Vec<f64> = if uses_n { (-10..=10).map(f64::from).collect() } else { vec![0.0] };
+        let ns: Vec<f64> = if uses_n {
+            (-10..=10).map(f64::from).collect()
+        } else {
+            vec![0.0]
+        };
         for k in ns {
             let mut env = Env::numeric(0.0);
             for &(s, v) in &params {
@@ -136,7 +171,10 @@ pub(super) fn audit(
             let Some(v) = g.eval(item, &env).filter(|v| v.is_finite()) else {
                 // A formula that is not real at these parameter values.
                 if !uses_n && params.is_empty() {
-                    return Report { status: "NOEVAL".into(), text };
+                    return Report {
+                        status: "NOEVAL".into(),
+                        text,
+                    };
                 }
                 continue;
             };
@@ -148,21 +186,42 @@ pub(super) fn audit(
             env2.bind(x, v);
             match g.eval(residual, &env2) {
                 | Some(r) if r.is_finite() && r.abs() <= 1e-6 * (1.0 + v.abs().powi(3)) => {},
-                | other => return Report { status: format!("WRONG(x={v}, r={other:?})"), text },
+                | other => {
+                    return Report {
+                        status: format!("WRONG(x={v}, r={other:?})"),
+                        text,
+                    };
+                },
             }
             values.push(v);
         }
     }
     if mode == 2 {
-        return Report { status: if values.is_empty() { "EMPTY".into() } else { "ok".into() }, text };
+        return Report {
+            status: if values.is_empty() {
+                "EMPTY".into()
+            } else {
+                "ok".into()
+            },
+            text,
+        };
     }
     let reference = scan_roots(&g, residual, &params, x);
     for r in reference {
-        if !values.iter().any(|&v| (v - r).abs() <= 1e-6 * (1.0 + r.abs())) {
-            return Report { status: format!("INCOMPLETE(missing {r})"), text };
+        if !values
+            .iter()
+            .any(|&v| (v - r).abs() <= 1e-6 * (1.0 + r.abs()))
+        {
+            return Report {
+                status: format!("INCOMPLETE(missing {r})"),
+                text,
+            };
         }
     }
-    Report { status: "ok".into(), text }
+    Report {
+        status: "ok".into(),
+        text,
+    }
 }
 
 macro_rules! p {
@@ -211,7 +270,10 @@ pub(super) const ALGEBRAIC: &[Case] = &[
     p!("x^5 - x - 1 = 0"),
     p!("x^3 + 3*x + 1 = 0"),
     p!("x^4 - 4*x^3 + x^2 + 6*x + 2 = 0"),
-    p!("x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0", [("a", 1.0), ("b", 2.0), ("c", 4.0)]),
+    p!(
+        "x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0",
+        [("a", 1.0), ("b", 2.0), ("c", 4.0)]
+    ),
     p!("x^2 - (a + b)*x + a*b = 0", [("a", 1.5), ("b", -2.0)]),
     p!("x^3 + p*x + q = 0", [("p", 3.0), ("q", 1.0)]),
     p!("x^3 - 6*x^2 + 12*x - 8 = a", [("a", 1.0)]),
@@ -336,8 +398,14 @@ pub(super) const ALGEBRAIC: &[Case] = &[
     general!("sin(x)^2 = cos(x)^2"),
     general!("cos(x/2) = 1/2"),
     general!("sin(x + pi/3) = 1/2"),
-    general!("a*sin(x) + b*cos(x) = c", [("a", 3.0), ("b", 4.0), ("c", 5.0)]),
-    general!("a*sin(x) + b*cos(x) = c", [("a", 1.0), ("b", 2.0), ("c", 1.0)]),
+    general!(
+        "a*sin(x) + b*cos(x) = c",
+        [("a", 3.0), ("b", 4.0), ("c", 5.0)]
+    ),
+    general!(
+        "a*sin(x) + b*cos(x) = c",
+        [("a", 1.0), ("b", 2.0), ("c", 1.0)]
+    ),
     general!("sin(x)*cos(x) = 1/4"),
     general!("cos(3*x) = cos(x)"),
     general!("sin(x)^4 + cos(x)^4 = 1/2"),
@@ -359,46 +427,138 @@ pub(super) const ALGEBRAIC: &[Case] = &[
 ];
 
 /// `(equations, unknowns, parameters, expected number of real tuples)`.
-type SystemCase = (&'static [&'static str], &'static [&'static str], &'static [(&'static str, f64)], Option<usize>);
+type SystemCase = (
+    &'static [&'static str],
+    &'static [&'static str],
+    &'static [(&'static str, f64)],
+    Option<usize>,
+);
 
 pub(super) const SYSTEMS: &[SystemCase] = &[
     (&["x^2 + y^2 = 25", "x*y = 12"], &["x", "y"], &[], Some(4)),
     (&["x + y = 5", "x*y = 6"], &["x", "y"], &[], Some(2)),
     (&["x^2 - y = 1", "x + y = 3"], &["x", "y"], &[], Some(2)),
-    (&["x^2 + y^2 + z^2 = 3", "x = y", "y = z"], &["x", "y", "z"], &[], Some(2)),
+    (
+        &["x^2 + y^2 + z^2 = 3", "x = y", "y = z"],
+        &["x", "y", "z"],
+        &[],
+        Some(2),
+    ),
     (&["x*y = 1", "x + y = 3"], &["x", "y"], &[], Some(2)),
     (&["x^2 - y^2 = 3", "x*y = 2"], &["x", "y"], &[], Some(2)),
     (&["y = exp(x)", "y = x + 2"], &["x", "y"], &[], Some(2)),
     (&["sin(x) = y", "y = 1/2"], &["x", "y"], &[], None),
     (&["x + y = 1", "x^2 + y^2 = 1"], &["x", "y"], &[], Some(2)),
-    (&["exp(x)*exp(y) = 6", "x - y = 0"], &["x", "y"], &[], Some(1)),
+    (
+        &["exp(x)*exp(y) = 6", "x - y = 0"],
+        &["x", "y"],
+        &[],
+        Some(1),
+    ),
     (&["x^2*y = 4", "x*y^2 = 2"], &["x", "y"], &[], Some(1)),
-    (&["x + y + z = 6", "x*y*z = 6", "x*y + y*z + z*x = 11"], &["x", "y", "z"], &[], Some(6)),
+    (
+        &["x + y + z = 6", "x*y*z = 6", "x*y + y*z + z*x = 11"],
+        &["x", "y", "z"],
+        &[],
+        Some(6),
+    ),
     (&["x + y = 1"], &["x", "y"], &[], Some(1)),
-    (&["x^2 + y^2 = 1", "z = x + y"], &["x", "y", "z"], &[], Some(2)),
-    (&["x + y = 3", "x - y = 1", "2*x + y = 5"], &["x", "y"], &[], Some(1)),
+    (
+        &["x^2 + y^2 = 1", "z = x + y"],
+        &["x", "y", "z"],
+        &[],
+        Some(2),
+    ),
+    (
+        &["x + y = 3", "x - y = 1", "2*x + y = 5"],
+        &["x", "y"],
+        &[],
+        Some(1),
+    ),
     (&["x + y = 1", "x + y = 2"], &["x", "y"], &[], Some(0)),
-    (&["x^2 + y^2 = 1", "x + y = a"], &["x", "y"], &[("a", 1.0)], Some(2)),
+    (
+        &["x^2 + y^2 = 1", "x + y = a"],
+        &["x", "y"],
+        &[("a", 1.0)],
+        Some(2),
+    ),
     (&["y = x^2", "y = 2*x + 3"], &["x", "y"], &[], Some(2)),
     (&["x^2 + y = 7", "x + y^2 = 11"], &["x", "y"], &[], None),
-    (&["ln(x) + ln(y) = ln(6)", "x + y = 5"], &["x", "y"], &[], Some(2)),
+    (
+        &["ln(x) + ln(y) = ln(6)", "x + y = 5"],
+        &["x", "y"],
+        &[],
+        Some(2),
+    ),
     (&["x*exp(y) = 1", "y = ln(2)"], &["x", "y"], &[], Some(1)),
     (&["cos(x) = y", "sin(x) = y"], &["x", "y"], &[], None),
-    (&["x + y + z = 1", "x - y = 0"], &["x", "y", "z"], &[], Some(1)),
-    (&["x*y = 1", "x^2 + y^2 = a"], &["x", "y"], &[("a", 3.0)], Some(4)),
+    (
+        &["x + y + z = 1", "x - y = 0"],
+        &["x", "y", "z"],
+        &[],
+        Some(1),
+    ),
+    (
+        &["x*y = 1", "x^2 + y^2 = a"],
+        &["x", "y"],
+        &[("a", 3.0)],
+        Some(4),
+    ),
     (&["x^2 = y^2", "x + y = 2"], &["x", "y"], &[], Some(1)),
     (&["x^3 + y^3 = 9", "x + y = 3"], &["x", "y"], &[], Some(2)),
-    (&["x = y + 1", "y = z + 1", "z = 1"], &["x", "y", "z"], &[], Some(1)),
-    (&["a*x + b*y = e", "c*x + d*y = f"], &["x", "y"], &[("a", 1.0), ("b", 2.0), ("c", 3.0), ("d", 5.0), ("e", 1.0), ("f", 2.0)], Some(1)),
+    (
+        &["x = y + 1", "y = z + 1", "z = 1"],
+        &["x", "y", "z"],
+        &[],
+        Some(1),
+    ),
+    (
+        &["a*x + b*y = e", "c*x + d*y = f"],
+        &["x", "y"],
+        &[
+            ("a", 1.0),
+            ("b", 2.0),
+            ("c", 3.0),
+            ("d", 5.0),
+            ("e", 1.0),
+            ("f", 2.0),
+        ],
+        Some(1),
+    ),
     (&["x^2 + y^2 = 4", "x*y = 1"], &["x", "y"], &[], Some(4)),
-    (&["x*y + x + y = 5", "x*y - x - y = -1"], &["x", "y"], &[], Some(2)),
+    (
+        &["x*y + x + y = 5", "x*y - x - y = -1"],
+        &["x", "y"],
+        &[],
+        Some(2),
+    ),
     (&["x^2 - 2*y^2 = 1", "x + y = 2"], &["x", "y"], &[], Some(2)),
-    (&["x^2 + y^2 = r^2", "y = m*x"], &["x", "y"], &[("r", 2.0), ("m", 0.5)], Some(2)),
-    (&["x*z = 1", "y = 2*z", "x + y = 3"], &["x", "y", "z"], &[], Some(2)),
-    (&["x^4 + y^4 = 17", "x^2 + y^2 = 5"], &["x", "y"], &[], Some(8)),
+    (
+        &["x^2 + y^2 = r^2", "y = m*x"],
+        &["x", "y"],
+        &[("r", 2.0), ("m", 0.5)],
+        Some(2),
+    ),
+    (
+        &["x*z = 1", "y = 2*z", "x + y = 3"],
+        &["x", "y", "z"],
+        &[],
+        Some(2),
+    ),
+    (
+        &["x^4 + y^4 = 17", "x^2 + y^2 = 5"],
+        &["x", "y"],
+        &[],
+        Some(8),
+    ),
     (&["exp(x) + y = 3", "x - y = 1"], &["x", "y"], &[], Some(1)),
     (&["x^2 + y = 0", "x + y = 0"], &["x", "y"], &[], Some(2)),
-    (&["u + v = 3", "u*v = 2", "w = u - v"], &["u", "v", "w"], &[], Some(2)),
+    (
+        &["u + v = 3", "u*v = 2", "w = u - v"],
+        &["u", "v", "w"],
+        &[],
+        Some(2),
+    ),
 ];
 
 pub(super) fn audit_system(case: &SystemCase) -> Report {
@@ -406,23 +566,54 @@ pub(super) fn audit_system(case: &SystemCase) -> Report {
     let rules = crate::rules::standard();
     let mut g = Graph::new();
     let Ok(engine) = Engine::install(&mut g, &rules) else {
-        return Report { status: "install".into(), text: String::new() };
+        return Report {
+            status: "install".into(),
+            text: String::new(),
+        };
     };
-    let src = format!("solve(list({}), list({}))", eqs.join(", "), unknowns.join(", "));
+    let src = format!(
+        "solve(list({}), list({}))",
+        eqs.join(", "),
+        unknowns.join(", ")
+    );
     let Ok(root) = g.parse(&src) else {
-        return Report { status: "parse".into(), text: src };
+        return Report {
+            status: "parse".into(),
+            text: src,
+        };
     };
-    engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+    engine.run(
+        &mut g,
+        &[root],
+        &Env::symbolic(),
+        &Saturate,
+        &Budget::default(),
+    );
     let Some(answer) = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root) else {
-        return Report { status: "UNSOLVED".into(), text: String::new() };
+        return Report {
+            status: "UNSOLVED".into(),
+            text: String::new(),
+        };
     };
     let text = g.display(answer);
     if g.op(answer) != crate::graph::op::core::LIST {
-        return Report { status: "UNSOLVED".into(), text };
+        return Report {
+            status: "UNSOLVED".into(),
+            text,
+        };
     }
-    let residuals: Vec<NodeId> = eqs.iter().filter_map(|e| g.parse(&residual_text(e)).ok()).collect();
-    let unknown_symbols: Vec<crate::graph::SymbolId> = unknowns.iter().map(|n| g.interner_mut().symbol(n)).collect();
-    let param_symbols: Vec<(crate::graph::SymbolId, f64)> = params.iter().map(|&(n, v)| (g.interner_mut().symbol(n), v)).collect();
+    let residuals: Vec<NodeId> = eqs
+        .iter()
+        .filter_map(|e| g.parse(&residual_text(e)).ok())
+        .collect();
+    let unknown_symbols: Vec<crate::graph::SymbolId> = unknowns
+        .iter()
+        .map(|n| g.interner_mut().symbol(n))
+        .collect();
+    let param_symbols: Vec<(crate::graph::SymbolId, f64)> = params
+        .iter()
+        .map(|&(n, v)| (g.interner_mut().symbol(n), v))
+        .collect();
     let mut real = 0;
     for tuple in g.children(answer).to_vec() {
         let mut env = Env::numeric(0.0);
@@ -451,19 +642,33 @@ pub(super) fn audit_system(case: &SystemCase) -> Report {
         for &r in &residuals {
             match g.eval(r, &env2) {
                 | Some(v) if v.is_finite() && v.abs() < 1e-6 => {},
-                | other => return Report { status: format!("WRONG({other:?})"), text },
+                | other => {
+                    return Report {
+                        status: format!("WRONG({other:?})"),
+                        text,
+                    };
+                },
             }
         }
         real += 1;
     }
     if let Some(n) = expected {
         if real != n {
-            return Report { status: format!("COUNT(got {real}, want {n})"), text };
+            return Report {
+                status: format!("COUNT(got {real}, want {n})"),
+                text,
+            };
         }
     } else if real == 0 {
-        return Report { status: "EMPTY".into(), text };
+        return Report {
+            status: "EMPTY".into(),
+            text,
+        };
     }
-    Report { status: "ok".into(), text }
+    Report {
+        status: "ok".into(),
+        text,
+    }
 }
 
 #[cfg(test)]
@@ -485,11 +690,19 @@ mod tests {
                 if ok { "ok" } else { "FAIL" },
                 start.elapsed().as_secs_f64(),
                 case.0.join(", "),
-                if ok { report.text } else { format!("{} {}", report.status, report.text) }
+                if ok {
+                    report.text
+                } else {
+                    format!("{} {}", report.status, report.text)
+                }
             );
         }
         eprintln!("SYSTEMS {passed}/{}", SYSTEMS.len());
-        assert_eq!(passed, SYSTEMS.len(), "some probe systems failed; run with --nocapture");
+        assert_eq!(
+            passed,
+            SYSTEMS.len(),
+            "some probe systems failed; run with --nocapture"
+        );
     }
 
     #[test]
@@ -506,12 +719,24 @@ mod tests {
                 "{:6} {:>6.2}s {}{}  ->  {}",
                 if ok { "ok" } else { "FAIL" },
                 start.elapsed().as_secs_f64(),
-                if case.2 == 1 { "[general] " } else { "" },
+                if case.2 == 1 {
+                    "[general] "
+                } else {
+                    ""
+                },
                 case.0,
-                if ok { report.text } else { format!("{} {}", report.status, report.text) }
+                if ok {
+                    report.text
+                } else {
+                    format!("{} {}", report.status, report.text)
+                }
             );
         }
         eprintln!("ALGEBRAIC {passed}/{}", ALGEBRAIC.len());
-        assert_eq!(passed, ALGEBRAIC.len(), "some probe equations failed; run with --nocapture");
+        assert_eq!(
+            passed,
+            ALGEBRAIC.len(),
+            "some probe equations failed; run with --nocapture"
+        );
     }
 }

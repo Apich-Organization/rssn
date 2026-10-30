@@ -23,6 +23,7 @@
 
 use num_bigint::BigInt;
 
+use super::V;
 use super::big;
 use super::byte_list;
 use super::bytes;
@@ -30,13 +31,12 @@ use super::def;
 use super::idx;
 use super::items;
 use super::small;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
-use crate::graph::Number;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 use crate::kernels::error_correction as ec;
 use crate::kernels::finite_field as ff;
 
@@ -102,7 +102,9 @@ fn rs_encode(
     a: &[NodeId],
 ) -> Option<V> {
     let (data, n) = word_count(cx, a)?;
-    ec::reed_solomon_encode(&data, n).ok().map(|c| byte_list(&c))
+    ec::reed_solomon_encode(&data, n)
+        .ok()
+        .map(|c| byte_list(&c))
 }
 
 fn rs_check(
@@ -178,7 +180,10 @@ fn crc32_verify(
 ) -> Option<V> {
     let [d, c] = a else { return None };
     let data = bytes(cx.graph, *d)?;
-    Some(V::Bool(ec::crc32_verify_numerical(&data, crc_value(cx, *c)?)))
+    Some(V::Bool(ec::crc32_verify_numerical(
+        &data,
+        crc_value(cx, *c)?,
+    )))
 }
 
 fn crc32_update(
@@ -187,7 +192,10 @@ fn crc32_update(
 ) -> Option<V> {
     let [c, d] = a else { return None };
     let data = bytes(cx.graph, *d)?;
-    Some(V::Int(BigInt::from(ec::crc32_update_numerical(crc_value(cx, *c)?, &data))))
+    Some(V::Int(BigInt::from(ec::crc32_update_numerical(
+        crc_value(cx, *c)?,
+        &data,
+    ))))
 }
 
 fn crc32_finalize(
@@ -220,7 +228,11 @@ fn interleave(
     forward: bool,
 ) -> Option<V> {
     let (data, depth) = word_count(cx, a)?;
-    Some(byte_list(&if forward { ec::interleave(&data, depth) } else { ec::deinterleave(&data, depth) }))
+    Some(byte_list(&if forward {
+        ec::interleave(&data, depth)
+    } else {
+        ec::deinterleave(&data, depth)
+    }))
 }
 
 fn conv_encode(
@@ -301,7 +313,10 @@ fn gf256_log(
     a: &[NodeId],
 ) -> Option<V> {
     let x = byte(cx, *a.first()?)?;
-    (1..255_u64).find(|&k| ff::gf256_pow(2, k) == x).or_else(|| (x == 1).then_some(0)).map(|k| V::Int(BigInt::from(k)))
+    (1..255_u64)
+        .find(|&k| ff::gf256_pow(2, k) == x)
+        .or_else(|| (x == 1).then_some(0))
+        .map(|k| V::Int(BigInt::from(k)))
 }
 
 type Bytes = Vec<u8>;
@@ -375,9 +390,10 @@ fn pgcd(
         b = strip(r);
     }
     if let Some(&lead) = a.first()
-        && let Ok(inv) = ff::gf256_inv(lead) {
-            a = a.iter().map(|&c| ff::gf256_mul(c, inv)).collect();
-        }
+        && let Ok(inv) = ff::gf256_inv(lead)
+    {
+        a = a.iter().map(|&c| ff::gf256_mul(c, inv)).collect();
+    }
     a
 }
 
@@ -407,7 +423,9 @@ fn poly_scale(
 ) -> Option<V> {
     let [p, c] = a else { return None };
     let (p, c) = (bytes(cx.graph, *p)?, byte(cx, *c)?);
-    Some(byte_list(&p.iter().map(|&x| ff::gf256_mul(x, c)).collect::<Vec<_>>()))
+    Some(byte_list(
+        &p.iter().map(|&x| ff::gf256_mul(x, c)).collect::<Vec<_>>(),
+    ))
 }
 
 fn poly_derivative(
@@ -420,7 +438,12 @@ fn poly_derivative(
     }
     let n = p.len() - 1;
     // In characteristic 2 only odd powers survive.
-    let mut out: Vec<u8> = p.iter().enumerate().take(n).map(|(i, &c)| if (n - i) % 2 == 1 { c } else { 0 }).collect();
+    let mut out: Vec<u8> = p
+        .iter()
+        .enumerate()
+        .take(n)
+        .map(|(i, &c)| if (n - i) % 2 == 1 { c } else { 0 })
+        .collect();
     while out.len() > 1 && out[0] == 0 {
         out.remove(0);
     }
@@ -445,31 +468,49 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "crc32_finalize", Arity::Fixed(1), crc32_finalize)?;
     def(i, "crc16", Arity::Fixed(1), crc16)?;
     def(i, "crc8", Arity::Fixed(1), crc8)?;
-    def(i, "interleave", Arity::Fixed(2), |cx, a| interleave(cx, a, true))?;
-    def(i, "deinterleave", Arity::Fixed(2), |cx, a| interleave(cx, a, false))?;
+    def(i, "interleave", Arity::Fixed(2), |cx, a| {
+        interleave(cx, a, true)
+    })?;
+    def(i, "deinterleave", Arity::Fixed(2), |cx, a| {
+        interleave(cx, a, false)
+    })?;
     def(i, "conv_encode", Arity::Fixed(1), conv_encode)?;
     def(i, "code_min_distance", Arity::Fixed(1), code_min_distance)?;
     def(i, "code_rate", Arity::Fixed(2), code_rate)?;
 
-    def(i, "gf256_add", Arity::Fixed(2), |cx, a| gf256_binary(cx, a, |x, y| Some(ff::gf256_add(x, y))))?;
-    def(i, "gf256_mul", Arity::Fixed(2), |cx, a| gf256_binary(cx, a, |x, y| Some(ff::gf256_mul(x, y))))?;
-    def(i, "gf256_div", Arity::Fixed(2), |cx, a| gf256_binary(cx, a, |x, y| ff::gf256_div(x, y).ok()))?;
+    def(i, "gf256_add", Arity::Fixed(2), |cx, a| {
+        gf256_binary(cx, a, |x, y| Some(ff::gf256_add(x, y)))
+    })?;
+    def(i, "gf256_mul", Arity::Fixed(2), |cx, a| {
+        gf256_binary(cx, a, |x, y| Some(ff::gf256_mul(x, y)))
+    })?;
+    def(i, "gf256_div", Arity::Fixed(2), |cx, a| {
+        gf256_binary(cx, a, |x, y| ff::gf256_div(x, y).ok())
+    })?;
     def(i, "gf256_inv", Arity::Fixed(1), gf256_inv)?;
     def(i, "gf256_pow", Arity::Fixed(2), gf256_pow)?;
     def(i, "gf256_exp", Arity::Fixed(1), gf256_exp)?;
     def(i, "gf256_log", Arity::Fixed(1), gf256_log)?;
     def(i, "gf256_poly_eval", Arity::Fixed(2), poly_eval)?;
-    def(i, "gf256_poly_add", Arity::Fixed(2), |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&padd(p, q)))))?;
-    def(i, "gf256_poly_mul", Arity::Fixed(2), |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&pmul(p, q)))))?;
+    def(i, "gf256_poly_add", Arity::Fixed(2), |cx, a| {
+        poly_pair(cx, a, |p, q| Some(byte_list(&padd(p, q))))
+    })?;
+    def(i, "gf256_poly_mul", Arity::Fixed(2), |cx, a| {
+        poly_pair(cx, a, |p, q| Some(byte_list(&pmul(p, q))))
+    })?;
     def(i, "gf256_poly_scale", Arity::Fixed(2), poly_scale)?;
     def(i, "gf256_poly_derivative", Arity::Fixed(1), poly_derivative)?;
     def(i, "gf256_poly_mod", Arity::Fixed(2), |cx, a| {
         poly_pair(cx, a, |p, d| pdivmod(p, d).map(|(_, r)| byte_list(&r)))
     })?;
     def(i, "gf256_poly_divmod", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, d| pdivmod(p, d).map(|(q, r)| V::List(vec![byte_list(&q), byte_list(&r)])))
+        poly_pair(cx, a, |p, d| {
+            pdivmod(p, d).map(|(q, r)| V::List(vec![byte_list(&q), byte_list(&r)]))
+        })
     })?;
-    def(i, "gf256_poly_gcd", Arity::Fixed(2), |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&pgcd(p, q)))))?;
+    def(i, "gf256_poly_gcd", Arity::Fixed(2), |cx, a| {
+        poly_pair(cx, a, |p, q| Some(byte_list(&pgcd(p, q))))
+    })?;
     Ok(())
 }
 
@@ -480,27 +521,48 @@ mod tests {
     use super::super::test_util::s;
 
     fn word(w: &[i64]) -> String {
-        format!("list({})", w.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+        format!(
+            "list({})",
+            w.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     /// A small deterministic generator.
     struct Lcg(u64);
 
     impl Lcg {
-        fn next(&mut self, bound: u64) -> u64 {
-            self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        fn next(
+            &mut self,
+            bound: u64,
+        ) -> u64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             (self.0 >> 33) % bound
         }
     }
 
     #[test]
     fn hamming_distance_and_weight() {
-        assert_eq!(s("hamming_distance(list(1, 0, 1, 1), list(1, 1, 1, 0))"), "2");
+        assert_eq!(
+            s("hamming_distance(list(1, 0, 1, 1), list(1, 1, 1, 0))"),
+            "2"
+        );
         assert_eq!(s("hamming_distance(list(), list())"), "0");
-        assert_eq!(s("hamming_distance(list(1), list(1, 0))"), "hamming_distance(list(1), list(1, 0))");
+        assert_eq!(
+            s("hamming_distance(list(1), list(1, 0))"),
+            "hamming_distance(list(1), list(1, 0))"
+        );
         assert_eq!(s("hamming_weight(list(1, 0, 1, 1))"), "3");
         assert_eq!(s("hamming_weight(list(0, 0, 0))"), "0");
-        assert_eq!(s("hamming_weight(list(1, x))"), "hamming_weight(list(1, x))");
+        assert_eq!(
+            s("hamming_weight(list(1, x))"),
+            "hamming_weight(list(1, x))"
+        );
     }
 
     #[test]
@@ -510,7 +572,10 @@ mod tests {
             let cw = nums(&s(&format!("hamming_encode({})", word(&data))));
             assert_eq!(cw.len(), 7);
             assert_eq!(s(&format!("hamming_check({})", word(&cw))), "true");
-            assert_eq!(s(&format!("hamming_decode({})", word(&cw))), format!("list({}, 0)", word(&data)));
+            assert_eq!(
+                s(&format!("hamming_decode({})", word(&cw))),
+                format!("list({}, 0)", word(&data))
+            );
             for pos in 0..7 {
                 let mut bad = cw.clone();
                 bad[pos] ^= 1;
@@ -524,10 +589,21 @@ mod tests {
         }
         // minimum distance 3: all 16 codewords
         let words: Vec<String> = (0..16_i64)
-            .map(|m| s(&format!("hamming_encode({})", word(&[(m >> 3) & 1, (m >> 2) & 1, (m >> 1) & 1, m & 1]))))
+            .map(|m| {
+                s(&format!(
+                    "hamming_encode({})",
+                    word(&[(m >> 3) & 1, (m >> 2) & 1, (m >> 1) & 1, m & 1])
+                ))
+            })
             .collect();
-        assert_eq!(s(&format!("code_min_distance(list({}))", words.join(", "))), "3");
-        assert_eq!(s("hamming_encode(list(1, 0, 1))"), "hamming_encode(list(1, 0, 1))");
+        assert_eq!(
+            s(&format!("code_min_distance(list({}))", words.join(", "))),
+            "3"
+        );
+        assert_eq!(
+            s("hamming_encode(list(1, 0, 1))"),
+            "hamming_encode(list(1, 0, 1))"
+        );
     }
 
     #[test]
@@ -554,7 +630,10 @@ mod tests {
                         bad[p] ^= 1 + rng.next(255) as i64;
                     }
                     assert_eq!(s(&format!("rs_check({}, {nsym})", word(&bad))), "false");
-                    assert_eq!(s(&format!("rs_error_count({}, {nsym})", word(&bad))), errors.to_string());
+                    assert_eq!(
+                        s(&format!("rs_error_count({}, {nsym})", word(&bad))),
+                        errors.to_string()
+                    );
                     assert_eq!(
                         s(&format!("rs_decode({}, {nsym})", word(&bad))),
                         word(&data),
@@ -589,7 +668,10 @@ mod tests {
         assert!(out.starts_with("rs_decode") || out != word(&data));
         assert_eq!(s("rs_encode(list(1), 255)"), "rs_encode(list(1), 255)");
         assert_eq!(s("rs_decode(list(1, 2), 3)"), "rs_decode(list(1, 2), 3)");
-        assert_eq!(s("rs_encode(list(1, 2, 256), 2)"), "rs_encode(list(1, 2, 256), 2)");
+        assert_eq!(
+            s("rs_encode(list(1, 2, 256), 2)"),
+            "rs_encode(list(1, 2, 256), 2)"
+        );
     }
 
     #[test]
@@ -604,11 +686,19 @@ mod tests {
         for p in 0..cw.len() {
             let mut bad = cw.clone();
             bad[p] ^= 1;
-            assert_eq!(s(&format!("bch_decode({}, 2)", word(&bad))), word(&data), "bit {p}");
+            assert_eq!(
+                s(&format!("bch_decode({}, 2)", word(&bad))),
+                word(&data),
+                "bit {p}"
+            );
             for q in p + 1..cw.len() {
                 let mut worse = bad.clone();
                 worse[q] ^= 1;
-                assert_eq!(s(&format!("bch_decode({}, 2)", word(&worse))), word(&data), "bits {p},{q}");
+                assert_eq!(
+                    s(&format!("bch_decode({}, 2)", word(&worse))),
+                    word(&data),
+                    "bits {p},{q}"
+                );
             }
         }
     }
@@ -619,7 +709,11 @@ mod tests {
         for &b in data {
             crc ^= u32::from(b);
             for _ in 0..8 {
-                crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+                crc = if crc & 1 == 1 {
+                    (crc >> 1) ^ 0xEDB8_8320
+                } else {
+                    crc >> 1
+                };
             }
         }
         !crc
@@ -630,19 +724,31 @@ mod tests {
         // the standard check value of CRC-32
         let digits: Vec<i64> = b"123456789".iter().map(|&b| i64::from(b)).collect();
         assert_eq!(s(&format!("crc32({})", word(&digits))), "3421780262");
-        assert_eq!(s(&format!("crc32_verify({}, 3421780262)", word(&digits))), "true");
-        assert_eq!(s(&format!("crc32_verify({}, 3421780263)", word(&digits))), "false");
+        assert_eq!(
+            s(&format!("crc32_verify({}, 3421780262)", word(&digits))),
+            "true"
+        );
+        assert_eq!(
+            s(&format!("crc32_verify({}, 3421780263)", word(&digits))),
+            "false"
+        );
         assert_eq!(s("crc32(list())"), "0");
         let mut rng = Lcg(3);
         for len in [1_usize, 2, 7, 33] {
             let data: Vec<u8> = (0..len).map(|_| rng.next(256) as u8).collect();
             let list: Vec<i64> = data.iter().map(|&b| i64::from(b)).collect();
-            assert_eq!(s(&format!("crc32({})", word(&list))), crc32_reference(&data).to_string());
+            assert_eq!(
+                s(&format!("crc32({})", word(&list))),
+                crc32_reference(&data).to_string()
+            );
             // streaming: update over two chunks then finalize
             let cut = len / 2;
             let first = s(&format!("crc32_update(4294967295, {})", word(&list[..cut])));
             let second = s(&format!("crc32_update({first}, {})", word(&list[cut..])));
-            assert_eq!(s(&format!("crc32_finalize({second})")), crc32_reference(&data).to_string());
+            assert_eq!(
+                s(&format!("crc32_finalize({second})")),
+                crc32_reference(&data).to_string()
+            );
         }
         assert_eq!(s("crc32_finalize(0)"), "4294967295");
         // CRC-16 and CRC-8 are deterministic and sensitive to every byte
@@ -704,7 +810,10 @@ mod tests {
         let mut rng = Lcg(11);
         for _ in 0..40 {
             let (a, b) = (rng.next(256) as u32, rng.next(256) as u32);
-            assert_eq!(s(&format!("gf256_mul({a}, {b})")), reference(a, b).to_string());
+            assert_eq!(
+                s(&format!("gf256_mul({a}, {b})")),
+                reference(a, b).to_string()
+            );
         }
         assert_eq!(s("gf256_pow(0, 0)"), "1");
         assert_eq!(s("gf256_pow(0, 3)"), "0");
@@ -720,25 +829,40 @@ mod tests {
         assert_eq!(s("gf256_poly_eval(list(1, 3, 2), 1)"), "0");
         assert_eq!(s("gf256_poly_eval(list(1, 3, 2), 2)"), "0");
         // x^3 + x^2 + x + 1: derivative keeps only odd powers: x^2 + 1
-        assert_eq!(s("gf256_poly_derivative(list(1, 1, 1, 1))"), "list(1, 0, 1)");
+        assert_eq!(
+            s("gf256_poly_derivative(list(1, 1, 1, 1))"),
+            "list(1, 0, 1)"
+        );
         assert_eq!(s("gf256_poly_derivative(list(5))"), "list(0)");
         // division: f = q g + r
         let mut rng = Lcg(5);
         for _ in 0..20 {
             let f: Vec<i64> = (0..6).map(|_| rng.next(256) as i64).collect();
-            let g: Vec<i64> = std::iter::once(1 + rng.next(255) as i64).chain((0..2).map(|_| rng.next(256) as i64)).collect();
-            let qr = nested(&s(&format!("gf256_poly_divmod({}, {})", word(&f), word(&g))));
+            let g: Vec<i64> = std::iter::once(1 + rng.next(255) as i64)
+                .chain((0..2).map(|_| rng.next(256) as i64))
+                .collect();
+            let qr = nested(&s(&format!(
+                "gf256_poly_divmod({}, {})",
+                word(&f),
+                word(&g)
+            )));
             let qg = s(&format!("gf256_poly_mul({}, {})", word(&qr[0]), word(&g)));
             let sum = nums(&s(&format!("gf256_poly_add({qg}, {})", word(&qr[1]))));
             assert_eq!(sum, f);
             assert_eq!(qr[1].len(), g.len() - 1);
-            assert_eq!(nums(&s(&format!("gf256_poly_mod({}, {})", word(&f), word(&g)))), qr[1]);
+            assert_eq!(
+                nums(&s(&format!("gf256_poly_mod({}, {})", word(&f), word(&g)))),
+                qr[1]
+            );
         }
         // gcd of (x+1)(x+2) and (x+1)(x+4) is x + 1
         let a = s("gf256_poly_mul(list(1, 1), list(1, 2))");
         let b = s("gf256_poly_mul(list(1, 1), list(1, 4))");
         assert_eq!(s(&format!("gf256_poly_gcd({a}, {b})")), "list(1, 1)");
-        assert_eq!(s("gf256_poly_gcd(list(0, 0, 3, 3), list(2, 2))"), "list(1, 1)");
+        assert_eq!(
+            s("gf256_poly_gcd(list(0, 0, 3, 3), list(2, 2))"),
+            "list(1, 1)"
+        );
         // the Reed-Solomon generator has roots alpha^0 .. alpha^(n-1)
         let mut g = "list(1)".to_string();
         for k in 0..4 {

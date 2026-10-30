@@ -27,17 +27,17 @@ use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
 
+use super::V;
 use super::big;
 use super::bigs;
 use super::def;
 use super::mod_inverse;
 use super::modulo;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 pub(super) type Poly = Vec<BigInt>;
 
@@ -161,7 +161,8 @@ fn peval(
     x: &BigInt,
     p: &BigInt,
 ) -> BigInt {
-    f.iter().fold(BigInt::zero(), |acc, c| modulo(&(acc * x + c), p))
+    f.iter()
+        .fold(BigInt::zero(), |acc, c| modulo(&(acc * x + c), p))
 }
 
 fn modulus(
@@ -222,7 +223,11 @@ fn gf_pow(
     let [x, e, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let (x, e) = (modulo(&big(cx.graph, *x)?, &p), big(cx.graph, *e)?);
-    let base = if e.is_negative() { mod_inverse(&x, &p)? } else { x };
+    let base = if e.is_negative() {
+        mod_inverse(&x, &p)?
+    } else {
+        x
+    };
     Some(V::Int(base.modpow(&e.abs(), &p)))
 }
 
@@ -235,7 +240,11 @@ fn gf_is(
     let [x, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let x = modulo(&big(cx.graph, *x)?, &p);
-    Some(V::Bool(if one { x.is_one() } else { x.is_zero() }))
+    Some(V::Bool(if one {
+        x.is_one()
+    } else {
+        x.is_zero()
+    }))
 }
 
 // ---------------- polynomials ----------------
@@ -369,21 +378,40 @@ fn gfx2(
     Some(poly_value(op(&x, &y, &m, &p)?))
 }
 
-fn xadd(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xadd(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&padd(x, y, p), m, p)
 }
 
-fn xsub(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xsub(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&psub(x, y, p), m, p)
 }
 
-fn xmul(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xmul(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&pmul(x, y, p), m, p)
 }
 
 /// The inverse of `x` modulo `m` over GF(p): `s x + t m = d` with `d` a
 /// non-zero constant.
-pub(super) fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+pub(super) fn xinv(
+    x: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     let x = reduce(x, m, p)?;
     let (d, s, _) = pegcd(&x, m, p)?;
     if d.len() != 1 {
@@ -393,7 +421,12 @@ pub(super) fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
     reduce(&norm(s.iter().map(|c| c * &d_inv).collect(), p), m, p)
 }
 
-fn xdiv(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xdiv(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     xmul(x, &xinv(y, m, p)?, m, p)
 }
 
@@ -425,7 +458,11 @@ fn gfx_pow(
     let (m, p) = field(cx, *m, *p)?;
     let x = read_poly(cx, *x, &p)?;
     let e = big(cx.graph, *e)?;
-    let mut base = if e.is_negative() { xinv(&x, &m, &p)? } else { reduce(&x, &m, &p)? };
+    let mut base = if e.is_negative() {
+        xinv(&x, &m, &p)?
+    } else {
+        reduce(&x, &m, &p)?
+    };
     let mut e = e.abs();
     let mut acc = reduce(&vec![BigInt::one()], &m, &p)?;
     while !e.is_zero() {
@@ -439,16 +476,24 @@ fn gfx_pow(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "gf_add", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p))))?;
-    def(i, "gf_sub", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p))))?;
-    def(i, "gf_mul", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p))))?;
+    def(i, "gf_add", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p)))
+    })?;
+    def(i, "gf_sub", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p)))
+    })?;
+    def(i, "gf_mul", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p)))
+    })?;
     def(i, "gf_div", Arity::Fixed(3), |cx, a| {
         scalar2(cx, a, |x, y, p| Some(modulo(&(x * mod_inverse(y, p)?), p)))
     })?;
     def(i, "gf_neg", Arity::Fixed(2), gf_neg)?;
     def(i, "gf_inv", Arity::Fixed(2), gf_inv)?;
     def(i, "gf_pow", Arity::Fixed(3), gf_pow)?;
-    def(i, "gf_is_zero", Arity::Fixed(2), |cx, a| gf_is(cx, a, false))?;
+    def(i, "gf_is_zero", Arity::Fixed(2), |cx, a| {
+        gf_is(cx, a, false)
+    })?;
     def(i, "gf_is_one", Arity::Fixed(2), |cx, a| gf_is(cx, a, true))?;
 
     def(i, "gfp_norm", Arity::Fixed(2), gfp_norm)?;
@@ -480,7 +525,13 @@ mod tests {
     use super::super::test_util::s;
 
     fn poly(c: &[i64]) -> String {
-        format!("list({})", c.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+        format!(
+            "list({})",
+            c.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     #[test]
@@ -510,7 +561,10 @@ mod tests {
             }
         }
         // big modulus
-        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100)));
+        assert_eq!(
+            s("gf_mul(2^100, 3, 2^127 - 1)"),
+            format!("{}", (3_u128 << 100))
+        );
     }
 
     #[test]
@@ -532,7 +586,13 @@ mod tests {
     #[test]
     fn division_satisfies_its_definition() {
         let p = 7_i64;
-        let dividends = [vec![3, 0, 5, 1, 2], vec![1, 2, 3], vec![5], vec![1, 0, 0, 0, 0, 1], vec![2, 3, 4, 5, 6, 1]];
+        let dividends = [
+            vec![3, 0, 5, 1, 2],
+            vec![1, 2, 3],
+            vec![5],
+            vec![1, 0, 0, 0, 0, 1],
+            vec![2, 3, 4, 5, 6, 1],
+        ];
         let divisors = [vec![1, 1], vec![3, 0, 2], vec![5], vec![2, 1, 4, 1]];
         for f in &dividends {
             for g in &divisors {
@@ -542,15 +602,28 @@ mod tests {
                 // f = q g + r and deg r < deg g
                 let qg = s(&format!("gfp_mul({}, {}, {p})", poly(q), poly(g)));
                 let back = s(&format!("gfp_add({qg}, {}, {p})", poly(r)));
-                assert_eq!(back, s(&format!("gfp_norm({}, {p})", poly(f))), "{f:?} / {g:?}");
+                assert_eq!(
+                    back,
+                    s(&format!("gfp_norm({}, {p})", poly(f))),
+                    "{f:?} / {g:?}"
+                );
                 assert!(r.len() < g.len());
             }
         }
         // division by zero or by a non-invertible leading coefficient stays
-        assert_eq!(s("gfp_divmod(list(1, 1), list(), 7)"), "gfp_divmod(list(1, 1), list(), 7)");
-        assert_eq!(s("gfp_divmod(list(1, 1), list(2, 1), 4)"), "gfp_divmod(list(1, 1), list(2, 1), 4)");
+        assert_eq!(
+            s("gfp_divmod(list(1, 1), list(), 7)"),
+            "gfp_divmod(list(1, 1), list(), 7)"
+        );
+        assert_eq!(
+            s("gfp_divmod(list(1, 1), list(2, 1), 4)"),
+            "gfp_divmod(list(1, 1), list(2, 1), 4)"
+        );
         // the quotient is read in the right orientation: x^2 / x = x
-        assert_eq!(s("gfp_divmod(list(1, 0, 0), list(1, 0), 5)"), "list(list(1, 0), list())");
+        assert_eq!(
+            s("gfp_divmod(list(1, 0, 0), list(1, 0), 5)"),
+            "list(list(1, 0), list())"
+        );
     }
 
     #[test]
@@ -563,16 +636,24 @@ mod tests {
         let f3 = s("gfp_mul(list(3), list(1, 1), 7)");
         assert_eq!(s(&format!("gfp_gcd({f3}, {g}, 7)")), "list(1, 1)");
         assert_eq!(s("gfp_gcd(list(1, 0, 1), list(1, 1), 7)"), "list(1)");
-        for (a, b) in [(f.as_str(), g.as_str()), ("list(1, 0, 1)", "list(1, 1)"), ("list(1, 2, 3, 4)", "list(2, 5, 1)")] {
+        for (a, b) in [
+            (f.as_str(), g.as_str()),
+            ("list(1, 0, 1)", "list(1, 1)"),
+            ("list(1, 2, 3, 4)", "list(2, 5, 1)"),
+        ] {
             let e = nested(&s(&format!("gfp_egcd({a}, {b}, 7)")));
             assert_eq!(e.len(), 3);
             let sa = s(&format!("gfp_mul({}, {a}, 7)", poly(&e[1])));
             let tb = s(&format!("gfp_mul({}, {b}, 7)", poly(&e[2])));
-            assert_eq!(s(&format!("gfp_add({sa}, {tb}, 7)")), poly(&e[0]), "{a} {b}");
+            assert_eq!(
+                s(&format!("gfp_add({sa}, {tb}, 7)")),
+                poly(&e[0]),
+                "{a} {b}"
+            );
             // d divides both
             for x in [a, b] {
                 let r = nested(&s(&format!("gfp_divmod({x}, {}, 7)", poly(&e[0]))));
-                assert!(r[1].is_empty());
+                assert!(r[1].is_empty(), "not empty");
             }
         }
     }
@@ -604,17 +685,24 @@ mod tests {
             c
         };
         let mp = poly(m);
-        let mul = |a: &[i64], b: &[i64]| s(&format!("gfx_mul({}, {}, {mp}, {p})", poly(a), poly(b)));
+        let mul =
+            |a: &[i64], b: &[i64]| s(&format!("gfx_mul({}, {}, {mp}, {p})", poly(a), poly(b)));
         let one = s(&format!("gfx_reduce(list(1), {mp}, {p})"));
         for code in 1..order {
             let a = element(code);
             let inv = s(&format!("gfx_inv({}, {mp}, {p})", poly(&a)));
             assert_eq!(mul(&a, &nums(&inv)), one, "{a:?} in GF({p}^{deg})");
             // a^(q-1) = 1
-            assert_eq!(s(&format!("gfx_pow({}, {}, {mp}, {p})", poly(&a), order - 1)), one);
+            assert_eq!(
+                s(&format!("gfx_pow({}, {}, {mp}, {p})", poly(&a), order - 1)),
+                one
+            );
             // a^-1 through gfx_pow and division
             assert_eq!(s(&format!("gfx_pow({}, -1, {mp}, {p})", poly(&a))), inv);
-            assert_eq!(s(&format!("gfx_div({}, {}, {mp}, {p})", poly(&a), poly(&a))), one);
+            assert_eq!(
+                s(&format!("gfx_div({}, {}, {mp}, {p})", poly(&a), poly(&a))),
+                one
+            );
         }
         // distributivity and commutativity on a sample
         for x in (0..order).step_by(2) {
@@ -629,9 +717,15 @@ mod tests {
                     assert_eq!(lhs, rhs);
                     assert_eq!(mul(&a, &b), mul(&b, &a));
                     let sum = s(&format!("gfx_add({}, {}, {mp}, {p})", poly(&a), poly(&b)));
-                    assert_eq!(s(&format!("gfx_sub({sum}, {}, {mp}, {p})", poly(&b))), s(&format!("gfx_reduce({}, {mp}, {p})", poly(&a))));
+                    assert_eq!(
+                        s(&format!("gfx_sub({sum}, {}, {mp}, {p})", poly(&b))),
+                        s(&format!("gfx_reduce({}, {mp}, {p})", poly(&a)))
+                    );
                     let n = s(&format!("gfx_neg({}, {mp}, {p})", poly(&a)));
-                    assert_eq!(s(&format!("gfx_add({}, {n}, {mp}, {p})", poly(&a))), "list()");
+                    assert_eq!(
+                        s(&format!("gfx_add({}, {n}, {mp}, {p})", poly(&a))),
+                        "list()"
+                    );
                 }
             }
         }
@@ -649,12 +743,24 @@ mod tests {
     #[test]
     fn extension_field_specifics() {
         // x^2 = x + 1 in GF(4) = GF(2)[x]/(x^2 + x + 1)
-        assert_eq!(s("gfx_mul(list(1, 0), list(1, 0), list(1, 1, 1), 2)"), "list(1, 1)");
-        assert_eq!(s("gfx_reduce(list(1, 0, 0), list(1, 1, 1), 2)"), "list(1, 1)");
+        assert_eq!(
+            s("gfx_mul(list(1, 0), list(1, 0), list(1, 1, 1), 2)"),
+            "list(1, 1)"
+        );
+        assert_eq!(
+            s("gfx_reduce(list(1, 0, 0), list(1, 1, 1), 2)"),
+            "list(1, 1)"
+        );
         // with a reducible modulus a zero divisor has no inverse
-        assert_eq!(s("gfx_inv(list(1, 1), list(1, 0, 1), 2)"), "gfx_inv(list(1, 1), list(1, 0, 1), 2)");
+        assert_eq!(
+            s("gfx_inv(list(1, 1), list(1, 0, 1), 2)"),
+            "gfx_inv(list(1, 1), list(1, 0, 1), 2)"
+        );
         // zero has no inverse
-        assert_eq!(s("gfx_inv(list(), list(1, 1, 1), 2)"), "gfx_inv(list(), list(1, 1, 1), 2)");
+        assert_eq!(
+            s("gfx_inv(list(), list(1, 1, 1), 2)"),
+            "gfx_inv(list(), list(1, 1, 1), 2)"
+        );
         // the multiplicative group of GF(8) is cyclic of order 7
         assert_eq!(s("gfx_pow(list(1, 0), 7, list(1, 1, 0, 1), 2)"), "list(1)");
     }

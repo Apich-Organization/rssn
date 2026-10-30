@@ -65,8 +65,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("variational_ground_state", 4, Request::Variational),
         ("wkb_energy", 4, Request::Wkb),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("physics_quantum/{name}"), Tier::Reduce, Quantum { op, request });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("physics_quantum/{name}"),
+            Tier::Reduce,
+            Quantum { op, request },
+        );
     }
     i.define(&[
         "hydrogen_wavefunction(n, l, m, r, theta, phi) := hydrogen_radial(n, l, r) * spherical_harmonic(l, m, theta, phi)",
@@ -92,14 +98,18 @@ impl Kernel for Quantum {
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
         let result = match self.request {
-            | Request::ClebschGordan => rationals(cx.graph, &args).and_then(|v| {
-                let c = clebsch_gordan(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
-                Some(signed_root(cx.graph, &c))
-            }),
-            | Request::Wigner3j => rationals(cx.graph, &args).and_then(|v| {
-                let c = wigner_3j(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
-                Some(signed_root(cx.graph, &c))
-            }),
+            | Request::ClebschGordan => {
+                rationals(cx.graph, &args).and_then(|v| {
+                    let c = clebsch_gordan(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
+                    Some(signed_root(cx.graph, &c))
+                })
+            },
+            | Request::Wigner3j => {
+                rationals(cx.graph, &args).and_then(|v| {
+                    let c = wigner_3j(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
+                    Some(signed_root(cx.graph, &c))
+                })
+            },
             | Request::SphericalHarmonic => spherical_harmonic(cx, &args),
             | Request::HydrogenRadial => hydrogen_radial(cx, &args),
             | Request::SecondOrder => second_order(cx, &args),
@@ -117,7 +127,9 @@ fn rationals(
     graph: &Graph,
     args: &[NodeId],
 ) -> Option<Vec<BigRational>> {
-    args.iter().map(|&a| graph.number_of(a)?.to_rational()).collect()
+    args.iter()
+        .map(|&a| graph.number_of(a)?.to_rational())
+        .collect()
 }
 
 /// A value `s √q` stored as `(s, q)` with `s ∈ {-1, 0, 1}`.
@@ -152,7 +164,9 @@ fn factorial(n: &BigRational) -> Option<BigRational> {
     if n > 500 {
         return None;
     }
-    Some(BigRational::from_integer((1..=n).fold(BigInt::one(), |acc, k| acc * k)))
+    Some(BigRational::from_integer(
+        (1..=n).fold(BigInt::one(), |acc, k| acc * k),
+    ))
 }
 
 fn is_half_integer(v: &BigRational) -> bool {
@@ -171,9 +185,19 @@ fn clebsch_gordan(
     if ![j1, m1, j2, m2, j, m].iter().all(|v| is_half_integer(v)) {
         return None;
     }
-    let zero = SignedRoot { sign: 0, square: BigRational::zero() };
+    let zero = SignedRoot {
+        sign: 0,
+        square: BigRational::zero(),
+    };
     // Selection rules.
-    if m1 + m2 != *m || m1.abs() > *j1 || m2.abs() > *j2 || m.abs() > *j || !(j1 - m1).is_integer() || !(j2 - m2).is_integer() || !(j - m).is_integer() {
+    if m1 + m2 != *m
+        || m1.abs() > *j1
+        || m2.abs() > *j2
+        || m.abs() > *j
+        || !(j1 - m1).is_integer()
+        || !(j2 - m2).is_integer()
+        || !(j - m).is_integer()
+    {
         return Some(zero);
     }
     if *j > j1 + j2 || *j < (j1 - j2).abs() || !(j1 + j2 + j).is_integer() {
@@ -182,7 +206,8 @@ fn clebsch_gordan(
     let one = BigRational::one();
     let two = BigRational::from_integer(BigInt::from(2));
     let f = |v: BigRational| factorial(&v);
-    let prefactor = (&two * j + &one) * f(j + j1 - j2)? * f(j - j1 + j2)? * f(j1 + j2 - j)? / f(j1 + j2 + j + &one)?;
+    let prefactor = (&two * j + &one) * f(j + j1 - j2)? * f(j - j1 + j2)? * f(j1 + j2 - j)?
+        / f(j1 + j2 + j + &one)?;
     let product = f(j + m)? * f(j - m)? * f(j1 - m1)? * f(j1 + m1)? * f(j2 - m2)? * f(j2 + m2)?;
     let mut sum = BigRational::zero();
     let mut k = BigRational::zero();
@@ -204,7 +229,11 @@ fn clebsch_gordan(
                 denominator *= f(p.clone())?;
             }
             let term = BigRational::one() / denominator;
-            if k.to_integer().to_i64()? % 2 == 0 { sum += term } else { sum -= term }
+            if k.to_integer().to_i64()? % 2 == 0 {
+                sum += term
+            } else {
+                sum -= term
+            }
         }
         k += &one;
     }
@@ -212,7 +241,10 @@ fn clebsch_gordan(
         return Some(zero);
     }
     let sign = if sum.is_negative() { -1 } else { 1 };
-    Some(SignedRoot { sign, square: &sum * &sum * prefactor * product })
+    Some(SignedRoot {
+        sign,
+        square: &sum * &sum * prefactor * product,
+    })
 }
 
 /// The Wigner 3j symbol `(j1 j2 j3; m1 m2 m3) = (-1)^(j1-j2-m3) ⟨j1 m1; j2
@@ -232,7 +264,10 @@ fn wigner_3j(
     }
     let flip = exponent.to_integer().to_i64()?.rem_euclid(2) == 1;
     let scale = BigRational::from_integer(BigInt::from(2)) * j3 + BigRational::one();
-    Some(SignedRoot { sign: if flip { -c.sign } else { c.sign }, square: c.square / scale })
+    Some(SignedRoot {
+        sign: if flip { -c.sign } else { c.sign },
+        square: c.square / scale,
+    })
 }
 
 /// Coefficients (ascending) of the Legendre polynomial `P_l` by Rodrigues'
@@ -251,12 +286,19 @@ fn legendre(l: usize) -> Vec<BigRational> {
     for _ in 0..l {
         p = derivative(&p);
     }
-    let scale = BigRational::from_integer(BigInt::from(2).pow(u32::try_from(l).unwrap_or(0)) * (1..=l).fold(BigInt::one(), |a, k| a * k));
+    let scale = BigRational::from_integer(
+        BigInt::from(2).pow(u32::try_from(l).unwrap_or(0))
+            * (1..=l).fold(BigInt::one(), |a, k| a * k),
+    );
     p.into_iter().map(|c| c / &scale).collect()
 }
 
 fn derivative(p: &[BigRational]) -> Vec<BigRational> {
-    p.iter().enumerate().skip(1).map(|(k, c)| c * BigRational::from_integer(BigInt::from(k))).collect()
+    p.iter()
+        .enumerate()
+        .skip(1)
+        .map(|(k, c)| c * BigRational::from_integer(BigInt::from(k)))
+        .collect()
 }
 
 fn polynomial_in(
@@ -274,7 +316,11 @@ fn polynomial_in(
         let power = graph.node(core::POW, &[x, e]);
         terms.push(graph.node(core::MUL, &[c, power]));
     }
-    if terms.is_empty() { graph.int(0) } else { graph.node(core::ADD, &terms) }
+    if terms.is_empty() {
+        graph.int(0)
+    } else {
+        graph.node(core::ADD, &terms)
+    }
 }
 
 fn call(
@@ -302,14 +348,20 @@ fn spherical_harmonic(
     if m.abs() > l {
         return Some(graph.int(0));
     }
-    let (lu, mu) = (usize::try_from(l).ok()?, usize::try_from(m.unsigned_abs()).ok()?);
+    let (lu, mu) = (
+        usize::try_from(l).ok()?,
+        usize::try_from(m.unsigned_abs()).ok()?,
+    );
     let mut p = legendre(lu);
     for _ in 0..mu {
         p = derivative(&p);
     }
     let fact = |n: usize| (1..=n).fold(BigInt::one(), |a, k| a * k);
     // N² = (2l + 1)/(4π) (l - |m|)!/(l + |m|)!
-    let n2 = BigRational::new(BigInt::from(2 * l + 1) * fact(lu - mu), BigInt::from(4) * fact(lu + mu));
+    let n2 = BigRational::new(
+        BigInt::from(2 * l + 1) * fact(lu - mu),
+        BigInt::from(4) * fact(lu + mu),
+    );
     let n2 = graph.num(Number::rat(n2));
     let pi = call(graph, "pi", &[])?;
     let minus_one = graph.int(-1);
@@ -351,7 +403,13 @@ fn hydrogen_radial(
         return None;
     }
     let fact = |k: i64| (1..=k).fold(BigInt::one(), |a, j| a * j);
-    let binomial = |a: i64, b: i64| if b < 0 || b > a { BigInt::zero() } else { fact(a) / (fact(b) * fact(a - b)) };
+    let binomial = |a: i64, b: i64| {
+        if b < 0 || b > a {
+            BigInt::zero()
+        } else {
+            fact(a) / (fact(b) * fact(a - b))
+        }
+    };
     let (k, alpha) = (n - l - 1, 2 * l + 1);
     // L_k^α(ρ) = Σ_i (-1)^i C(k + α, k - i) ρ^i / i!
     let laguerre: Vec<BigRational> = (0..=k)
@@ -368,7 +426,10 @@ fn hydrogen_radial(
     let inv_na = graph.node(core::POW, &[na, minus_one]);
     let rho = graph.node(core::MUL, &[two, r, inv_na]);
     // norm² = 8 (n-l-1)! / (n³ 2n (n+l)!) · a^-3
-    let norm_sq = BigRational::new(BigInt::from(8) * fact(k), BigInt::from(n).pow(3) * BigInt::from(2 * n) * fact(n + l));
+    let norm_sq = BigRational::new(
+        BigInt::from(8) * fact(k),
+        BigInt::from(n).pow(3) * BigInt::from(2 * n) * fact(n + l),
+    );
     let norm_sq = graph.num(Number::rat(norm_sq));
     let half = graph.num(Number::fraction(1, 2)?);
     let norm = graph.node(core::POW, &[norm_sq, half]);
@@ -396,7 +457,9 @@ fn second_order(
     }
     let states = cx.graph.children(states).to_vec();
     let energies = cx.graph.children(energies).to_vec();
-    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok()?.checked_sub(1)?;
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?)
+        .ok()?
+        .checked_sub(1)?;
     if states.len() != energies.len() || n >= states.len() {
         return None;
     }
@@ -419,7 +482,11 @@ fn second_order(
         let inv = cx.graph.node(core::POW, &[gap, minus]);
         terms.push(cx.graph.node(core::MUL, &[numerator, inv]));
     }
-    Some(if terms.is_empty() { cx.graph.int(0) } else { cx.graph.node(core::ADD, &terms) })
+    Some(if terms.is_empty() {
+        cx.graph.int(0)
+    } else {
+        cx.graph.node(core::ADD, &terms)
+    })
 }
 
 /// Rayleigh–Ritz: minimise `E(a)` over `a > 0`.
@@ -555,9 +622,18 @@ mod tests {
         let rules = rules();
         let run = |s: &str| simplify(&rules, s);
         // Two spin-1/2: |1 0> = (|↑↓> + |↓↑>)/√2, singlet antisymmetric.
-        assert_eq!(run("clebsch_gordan(1/2, 1/2, 1/2, -1/2, 1, 0)"), "1/2^(1/2)");
-        assert_eq!(run("clebsch_gordan(1/2, -1/2, 1/2, 1/2, 0, 0)"), "-1/2^(1/2)");
-        assert_eq!(run("clebsch_gordan(1, 1, 1/2, -1/2, 3/2, 1/2)"), "1/3^(1/2)");
+        assert_eq!(
+            run("clebsch_gordan(1/2, 1/2, 1/2, -1/2, 1, 0)"),
+            "1/2^(1/2)"
+        );
+        assert_eq!(
+            run("clebsch_gordan(1/2, -1/2, 1/2, 1/2, 0, 0)"),
+            "-1/2^(1/2)"
+        );
+        assert_eq!(
+            run("clebsch_gordan(1, 1, 1/2, -1/2, 3/2, 1/2)"),
+            "1/3^(1/2)"
+        );
         assert_eq!(run("clebsch_gordan(1, 0, 1, 0, 1, 0)"), "0");
         assert_eq!(run("clebsch_gordan(2, 1, 1, -1, 2, 0)"), "1/2^(1/2)");
         // Orthonormality: Σ_M1 m2 |C|² over a column is 1.
@@ -570,7 +646,10 @@ mod tests {
             .sum();
         assert!((total - 1.0).abs() < 1e-12);
         let three_j = simplify(&rules, "wigner_3j(1, 1, 0, 0, 0, 0)");
-        assert!((eval(&rules, &three_j, &[]) + 1.0 / 3.0_f64.sqrt()).abs() < 1e-12, "{three_j}");
+        assert!(
+            (eval(&rules, &three_j, &[]) + 1.0 / 3.0_f64.sqrt()).abs() < 1e-12,
+            "{three_j}"
+        );
     }
 
     #[test]
@@ -578,14 +657,26 @@ mod tests {
         let rules = rules();
         let y10 = simplify(&rules, "spherical_harmonic(1, 0, theta, phi)");
         let want = (3.0 / (4.0 * std::f64::consts::PI)).sqrt() * 0.7_f64.cos();
-        assert!((eval(&rules, &y10, &[("theta", 0.7), ("phi", 0.3)]) - want).abs() < 1e-12, "{y10}");
+        assert!(
+            (eval(&rules, &y10, &[("theta", 0.7), ("phi", 0.3)]) - want).abs() < 1e-12,
+            "{y10}"
+        );
         // Y_2^0 integrates to 1 in |Y|² over the sphere (azimuth trivial).
         let y20 = simplify(&rules, "spherical_harmonic(2, 0, theta, phi)");
-        let norm = simplify(&rules, &format!("2*pi*defint(({y20})^2*sin(theta), theta, 0, pi)"));
+        let norm = simplify(
+            &rules,
+            &format!("2*pi*defint(({y20})^2*sin(theta), theta, 0, pi)"),
+        );
         assert!((eval(&rules, &norm, &[]) - 1.0).abs() < 1e-10, "{norm}");
         // R_10 = 2 a^(-3/2) e^(-r/a); ∫ R_21² r² dr = 1.
         let r10 = simplify(&rules, "hydrogen_radial(1, 0, r)");
-        assert!((eval(&rules, &r10, &[("r", 0.4)]) - 2.0 * (-0.4 / 5.291_772_109e-11_f64).exp() * 5.291_772_109e-11_f64.powf(-1.5)).abs() / 1e15 < 1e-3);
+        assert!(
+            (eval(&rules, &r10, &[("r", 0.4)])
+                - 2.0 * (-0.4 / 5.291_772_109e-11_f64).exp() * 5.291_772_109e-11_f64.powf(-1.5))
+            .abs()
+                / 1e15
+                < 1e-3
+        );
         let norm = simplify(&rules, "defint(hydrogen_radial(2, 1, r)^2*r^2, r, 0, oo)");
         assert_eq!(norm, "1");
         let e = simplify(&rules, "hydrogen_energy(2)/hydrogen_energy(1)");
@@ -596,7 +687,10 @@ mod tests {
     fn approximation_methods() {
         let rules = rules();
         // Gaussian trial for the harmonic oscillator is exact: E = ħω/2.
-        let ground = simplify(&rules, "variational_ground_state(hamiltonian_harmonic_oscillator(m, w, x), exp(-a*x^2), x, a)");
+        let ground = simplify(
+            &rules,
+            "variational_ground_state(hamiltonian_harmonic_oscillator(m, w, x), exp(-a*x^2), x, a)",
+        );
         // The second item of `list(a*, E*)`, split at the top-level comma.
         let inner = ground.trim_start_matches("list(").trim_end_matches(')');
         let mut depth = 0;
@@ -616,11 +710,20 @@ mod tests {
         // ħ is the CODATA constant.
         let hbar = crate::constant::REDUCED_PLANCK_CONSTANT;
         let at = [("m", 1.3), ("w", 0.7)];
-        assert!((eval(&rules, e_star, &at) / (0.5 * hbar * 0.7) - 1.0).abs() < 1e-10, "{ground}");
-        assert!((eval(&rules, a_star, &at) / (1.3 * 0.7 / (2.0 * hbar)) - 1.0).abs() < 1e-10, "{ground}");
+        assert!(
+            (eval(&rules, e_star, &at) / (0.5 * hbar * 0.7) - 1.0).abs() < 1e-10,
+            "{ground}"
+        );
+        assert!(
+            (eval(&rules, a_star, &at) / (1.3 * 0.7 / (2.0 * hbar)) - 1.0).abs() < 1e-10,
+            "{ground}"
+        );
         // WKB for the oscillator is exact: E_n = ħω(n + 1/2) with c = m ω²/2.
         let wkb = simplify(&rules, "wkb_energy(m*w^2/2, 2, m, n)/(hbar*w*(n + 1/2))");
-        assert!((eval(&rules, &wkb, &[("m", 1.3), ("w", 0.7), ("n", 2.0)]) - 1.0).abs() < 1e-10, "{wkb}");
+        assert!(
+            (eval(&rules, &wkb, &[("m", 1.3), ("w", 0.7), ("n", 2.0)]) - 1.0).abs() < 1e-10,
+            "{wkb}"
+        );
         // Second-order correction for x perturbing the oscillator ground
         // state with a two-state basis: -|⟨1|x|0⟩|²/ħω.
         let corr = simplify(

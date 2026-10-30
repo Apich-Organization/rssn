@@ -95,7 +95,12 @@ impl<const D: usize> Lattice<D> {
                 }
             }
         }
-        Ok(Self { dims, periodic, nbr, n })
+        Ok(Self {
+            dims,
+            periodic,
+            nbr,
+            n,
+        })
     }
 
     /// Number of sites.
@@ -180,7 +185,9 @@ struct UnionFind {
 
 impl UnionFind {
     fn new(n: usize) -> Self {
-        Self { parent: (0..n).collect() }
+        Self {
+            parent: (0..n).collect(),
+        }
     }
 
     fn find(
@@ -223,11 +230,15 @@ pub fn heat_bath_direction<const N: usize>(
     let fm = dot(f, f).sqrt();
     let a = beta * fm;
     match N {
-        1 => {
+        | 1 => {
             let p_up = 1.0 / (1.0 + (-2.0 * beta * f[0]).exp());
-            out[0] = if rng.uniform() < p_up { 1.0 } else { -1.0 };
+            out[0] = if rng.uniform() < p_up {
+                1.0
+            } else {
+                -1.0
+            };
         },
-        2 => {
+        | 2 => {
             let alpha = f[1].atan2(f[0]);
             let theta = if a < 1e-10 {
                 (2.0 * rng.uniform() - 1.0) * std::f64::consts::PI
@@ -242,20 +253,36 @@ pub fn heat_bath_direction<const N: usize>(
                     let fz = (1.0 + r * z) / (r + z);
                     let c = a * (r - fz);
                     if c * (2.0 - c) - u2 > 0.0 || (c / u2).ln() + 1.0 - c >= 0.0 {
-                        break if u3 > 0.5 { fz.clamp(-1.0, 1.0).acos() } else { -fz.clamp(-1.0, 1.0).acos() };
+                        break if u3 > 0.5 {
+                            fz.clamp(-1.0, 1.0).acos()
+                        } else {
+                            -fz.clamp(-1.0, 1.0).acos()
+                        };
                     }
                 }
             };
             out[0] = (alpha + theta).cos();
             out[1] = (alpha + theta).sin();
         },
-        3 => {
+        | 3 => {
             let u = rng.uniform();
-            let x = if a < 1e-10 { 2.0 * u - 1.0 } else { (1.0 + (u + (1.0 - u) * (-2.0 * a).exp()).ln() / a).clamp(-1.0, 1.0) };
+            let x = if a < 1e-10 {
+                2.0 * u - 1.0
+            } else {
+                (1.0 + (u + (1.0 - u) * (-2.0 * a).exp()).ln() / a).clamp(-1.0, 1.0)
+            };
             let sx = (1.0 - x * x).max(0.0).sqrt();
             let psi = 2.0 * std::f64::consts::PI * rng.uniform();
-            let axis = if fm > 0.0 { [f[0] / fm, f[1] / fm, f[2] / fm] } else { [0.0, 0.0, 1.0] };
-            let helper = if axis[0].abs() < 0.9 { [1.0, 0.0, 0.0] } else { [0.0, 1.0, 0.0] };
+            let axis = if fm > 0.0 {
+                [f[0] / fm, f[1] / fm, f[2] / fm]
+            } else {
+                [0.0, 0.0, 1.0]
+            };
+            let helper = if axis[0].abs() < 0.9 {
+                [1.0, 0.0, 0.0]
+            } else {
+                [0.0, 1.0, 0.0]
+            };
             let mut e1 = [
                 axis[1] * helper[2] - axis[2] * helper[1],
                 axis[2] * helper[0] - axis[0] * helper[2],
@@ -274,8 +301,8 @@ pub fn heat_bath_direction<const N: usize>(
                 out[k] = x * axis[k] + sx * (psi.cos() * e1[k] + psi.sin() * e2[k]);
             }
         },
-        0 => return Err("heat bath needs N >= 1".into()),
-        _ => {
+        | 0 => return Err("heat bath needs N >= 1".into()),
+        | _ => {
             // von Mises-Fisher distribution on S^(N-1) with concentration `a` (Wood, 1994):
             // sample the cosine `w` to the mean direction by rejection from a Beta envelope,
             // then a uniform direction orthogonal to it.
@@ -364,14 +391,25 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
             .map(|_| {
                 if N == 1 {
                     let mut s = [0.0; N];
-                    s[0] = if rng.uniform() < 0.5 { 1.0 } else { -1.0 };
+                    s[0] = if rng.uniform() < 0.5 {
+                        1.0
+                    } else {
+                        -1.0
+                    };
                     s
                 } else {
                     random_unit::<N>(&mut rng)
                 }
             })
             .collect();
-        Ok(Self { lattice, spins, beta, j: 1.0, field: 0.0, rng })
+        Ok(Self {
+            lattice,
+            spins,
+            beta,
+            j: 1.0,
+            field: 0.0,
+            rng,
+        })
     }
 
     /// Aligns all spins along component 0 (cold start).
@@ -386,7 +424,8 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
     #[must_use]
     pub fn energy(&self) -> f64 {
         let mut e = 0.0;
-        self.lattice.for_each_bond(|i, j| e -= self.j * dot(&self.spins[i], &self.spins[j]));
+        self.lattice
+            .for_each_bond(|i, j| e -= self.j * dot(&self.spins[i], &self.spins[j]));
         for s in &self.spins {
             e -= self.field * s[0];
         }
@@ -533,14 +572,20 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         while let Some(i) = stack.pop() {
             let pi = dot(&self.spins[i], &r);
             // ghost bond: the cluster absorbs the ghost, which then bonds to every other site
-            if !ghost_in && hh > 0.0 && pi * g0 > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pi * g0).exp() {
+            if !ghost_in
+                && hh > 0.0
+                && pi * g0 > 0.0
+                && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pi * g0).exp()
+            {
                 ghost_in = true;
                 for j in 0..n {
                     if in_cluster[j] || j == i {
                         continue;
                     }
                     let pj = dot(&self.spins[j], &r);
-                    if pj * g0 > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pj * g0).exp() {
+                    if pj * g0 > 0.0
+                        && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pj * g0).exp()
+                    {
                         in_cluster[j] = true;
                         stack.push(j);
                     }
@@ -559,7 +604,8 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                 let pj = dot(&self.spins[j], &r);
                 // after flipping i its projection is -pi; bond uses the pre-flip product
                 let prod = pi * pj;
-                if prod > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * self.j * prod).exp() {
+                if prod > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * self.j * prod).exp()
+                {
                     in_cluster[j] = true;
                     stack.push(j);
                 }
@@ -616,7 +662,9 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         let mut clusters = 0;
         for i in 0..n {
             let root = uf.find(i);
-            let f = if let Some(f) = flip[root] { f } else {
+            let f = if let Some(f) = flip[root] {
+                f
+            } else {
                 let f = self.rng.uniform() < 0.5;
                 flip[root] = Some(f);
                 clusters += 1;
@@ -640,14 +688,14 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         u: Update,
     ) -> Result<(), String> {
         match u {
-            Update::Metropolis(d) => {
+            | Update::Metropolis(d) => {
                 self.metropolis_sweep(d);
             },
-            Update::HeatBath => self.heat_bath_sweep()?,
-            Update::Wolff => {
+            | Update::HeatBath => self.heat_bath_sweep()?,
+            | Update::Wolff => {
                 self.wolff_step()?;
             },
-            Update::SwendsenWang => {
+            | Update::SwendsenWang => {
                 self.swendsen_wang_step()?;
             },
         }
@@ -689,8 +737,17 @@ impl<const D: usize> Potts<D> {
         }
         let lattice = Lattice::new(dims, periodic)?;
         let mut rng = Rng::new(seed);
-        let spins = (0..lattice.sites()).map(|_| rng.below(q as u64) as usize).collect();
-        Ok(Self { lattice, q, spins, beta, j: 1.0, rng })
+        let spins = (0..lattice.sites())
+            .map(|_| rng.below(q as u64) as usize)
+            .collect();
+        Ok(Self {
+            lattice,
+            q,
+            spins,
+            beta,
+            j: 1.0,
+            rng,
+        })
     }
 
     /// Total energy `-J * (number of equal bonds)`.
@@ -721,7 +778,11 @@ impl<const D: usize> Potts<D> {
         i: usize,
         state: usize,
     ) -> usize {
-        self.lattice.neighbours(i).iter().filter(|&&j| j != usize::MAX && self.spins[j] == state).count()
+        self.lattice
+            .neighbours(i)
+            .iter()
+            .filter(|&&j| j != usize::MAX && self.spins[j] == state)
+            .count()
     }
 
     /// Metropolis sweep; returns the acceptance rate.
@@ -735,7 +796,8 @@ impl<const D: usize> Potts<D> {
             if new >= old {
                 new += 1;
             }
-            let de = -self.j * (self.equal_neighbours(i, new) as f64 - self.equal_neighbours(i, old) as f64);
+            let de = -self.j
+                * (self.equal_neighbours(i, new) as f64 - self.equal_neighbours(i, old) as f64);
             if de <= 0.0 || self.rng.uniform() < (-self.beta * de).exp() {
                 self.spins[i] = new;
                 acc += 1;
@@ -823,14 +885,14 @@ impl<const D: usize> Potts<D> {
         u: Update,
     ) {
         match u {
-            Update::Metropolis(_) => {
+            | Update::Metropolis(_) => {
                 self.metropolis_sweep();
             },
-            Update::HeatBath => self.heat_bath_sweep(),
-            Update::Wolff => {
+            | Update::HeatBath => self.heat_bath_sweep(),
+            | Update::Wolff => {
                 self.wolff_step();
             },
-            Update::SwendsenWang => {
+            | Update::SwendsenWang => {
                 self.swendsen_wang_step();
             },
         }
@@ -869,9 +931,19 @@ impl<const D: usize, const N: usize> ParallelTempering<D, N> {
         }
         let mut replicas = Vec::new();
         for (k, &b) in betas.iter().enumerate() {
-            replicas.push(OnModel::new(dims, periodic, b, seed.wrapping_add(1000 + k as u64))?);
+            replicas.push(OnModel::new(
+                dims,
+                periodic,
+                b,
+                seed.wrapping_add(1000 + k as u64),
+            )?);
         }
-        Ok(Self { replicas, betas: betas.to_vec(), swap_stats: vec![(0, 0); betas.len() - 1], rng: Rng::new(seed ^ 0xABCD) })
+        Ok(Self {
+            replicas,
+            betas: betas.to_vec(),
+            swap_stats: vec![(0, 0); betas.len() - 1],
+            rng: Rng::new(seed ^ 0xABCD),
+        })
     }
 
     /// Performs `rounds` rounds of (`update` on every replica, then an exchange sweep).
@@ -937,9 +1009,20 @@ impl<const D: usize> PottsTempering<D> {
         }
         let mut replicas = Vec::new();
         for (k, &b) in betas.iter().enumerate() {
-            replicas.push(Potts::new(dims, periodic, q, b, seed.wrapping_add(2000 + k as u64))?);
+            replicas.push(Potts::new(
+                dims,
+                periodic,
+                q,
+                b,
+                seed.wrapping_add(2000 + k as u64),
+            )?);
         }
-        Ok(Self { replicas, betas: betas.to_vec(), swap_stats: vec![(0, 0); betas.len() - 1], rng: Rng::new(seed ^ 0x5EED) })
+        Ok(Self {
+            replicas,
+            betas: betas.to_vec(),
+            swap_stats: vec![(0, 0); betas.len() - 1],
+            rng: Rng::new(seed ^ 0x5EED),
+        })
     }
 
     /// `rounds` rounds of (`update` on every replica, then alternating even/odd exchanges
@@ -1004,7 +1087,8 @@ pub fn wang_landau_on<const D: usize, const N: usize>(
         }
     };
     let mut e = m.energy();
-    let mut cur = bin(e).ok_or_else(|| "initial energy outside the window; widen it or start cold".to_string())?;
+    let mut cur = bin(e)
+        .ok_or_else(|| "initial energy outside the window; widen it or start cold".to_string())?;
     let mut ln_g = vec![0.0f64; nbins];
     let mut visited = vec![false; nbins];
     let mut ln_f = 1.0;
@@ -1049,7 +1133,10 @@ pub fn wang_landau_on<const D: usize, const N: usize>(
             e = m.energy();
             cur = bin(e).unwrap_or(cur);
             guard += 1;
-            let vis: Vec<usize> = (0..nbins).filter(|&k| visited[k]).map(|k| hist[k]).collect();
+            let vis: Vec<usize> = (0..nbins)
+                .filter(|&k| visited[k])
+                .map(|k| hist[k])
+                .collect();
             let mean = vis.iter().sum::<usize>() as f64 / vis.len() as f64;
             let mn = vis.iter().copied().min().unwrap_or(0) as f64;
             if mn > flatness * mean || guard > 2000 {
@@ -1058,10 +1145,19 @@ pub fn wang_landau_on<const D: usize, const N: usize>(
         }
         ln_f /= 2.0;
     }
-    let mx = (0..nbins).filter(|&k| visited[k]).map(|k| ln_g[k]).fold(f64::NEG_INFINITY, f64::max);
-    let total: f64 = (0..nbins).filter(|&k| visited[k]).map(|k| (ln_g[k] - mx).exp()).sum();
+    let mx = (0..nbins)
+        .filter(|&k| visited[k])
+        .map(|k| ln_g[k])
+        .fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..nbins)
+        .filter(|&k| visited[k])
+        .map(|k| (ln_g[k] - mx).exp())
+        .sum();
     let shift = -(mx + total.ln());
-    Ok((0..nbins).filter(|&k| visited[k]).map(|k| (e_min + (k as f64 + 0.5) * width, ln_g[k] + shift)).collect())
+    Ok((0..nbins)
+        .filter(|&k| visited[k])
+        .map(|k| (e_min + (k as f64 + 0.5) * width, ln_g[k] + shift))
+        .collect())
 }
 
 // ---------------------------------------------------------------------------
@@ -1117,7 +1213,9 @@ pub fn wang_landau_ising<const D: usize>(
     // energy index (E + nb) / 2
     let levels = (nb + 1) as usize;
     let mut rng = Rng::new(seed);
-    let mut spins: Vec<i64> = (0..n).map(|_| if rng.uniform() < 0.5 { 1 } else { -1 }).collect();
+    let mut spins: Vec<i64> = (0..n)
+        .map(|_| if rng.uniform() < 0.5 { 1 } else { -1 })
+        .collect();
     let energy_of = |s: &[i64]| -> i64 {
         let mut e = 0;
         lat.for_each_bond(|i, j| e -= s[i] * s[j]);
@@ -1152,7 +1250,10 @@ pub fn wang_landau_ising<const D: usize>(
                 visited[k] = true;
             }
             checks += 1;
-            let vis: Vec<usize> = (0..levels).filter(|&k| visited[k]).map(|k| hist[k]).collect();
+            let vis: Vec<usize> = (0..levels)
+                .filter(|&k| visited[k])
+                .map(|k| hist[k])
+                .collect();
             let mean = vis.iter().sum::<usize>() as f64 / vis.len() as f64;
             let mn = vis.iter().copied().min().unwrap_or(0) as f64;
             if mn > flatness * mean && checks > 2 {
@@ -1164,10 +1265,19 @@ pub fn wang_landau_ising<const D: usize>(
         }
         ln_f /= 2.0;
     }
-    let mx = (0..levels).filter(|&k| visited[k]).map(|k| ln_g[k]).fold(f64::NEG_INFINITY, f64::max);
-    let total: f64 = (0..levels).filter(|&k| visited[k]).map(|k| (ln_g[k] - mx).exp()).sum();
+    let mx = (0..levels)
+        .filter(|&k| visited[k])
+        .map(|k| ln_g[k])
+        .fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..levels)
+        .filter(|&k| visited[k])
+        .map(|k| (ln_g[k] - mx).exp())
+        .sum();
     let shift = (n as f64) * std::f64::consts::LN_2 - (mx + total.ln());
-    Ok((0..levels).filter(|&k| visited[k]).map(|k| (2 * k as i64 - nb, ln_g[k] + shift)).collect())
+    Ok((0..levels)
+        .filter(|&k| visited[k])
+        .map(|k| (2 * k as i64 - nb, ln_g[k] + shift))
+        .collect())
 }
 
 /// Canonical quantities from a density of states `(E, ln g)`: returns `(ln Z, <E>, C)` (`C` is the heat capacity `beta^2 var(E)`).
@@ -1176,7 +1286,10 @@ pub fn canonical_from_dos(
     dos: &[(f64, f64)],
     beta: f64,
 ) -> (f64, f64, f64) {
-    let m = dos.iter().map(|&(e, lg)| lg - beta * e).fold(f64::NEG_INFINITY, f64::max);
+    let m = dos
+        .iter()
+        .map(|&(e, lg)| lg - beta * e)
+        .fold(f64::NEG_INFINITY, f64::max);
     let (mut z, mut e1, mut e2) = (0.0, 0.0, 0.0);
     for &(e, lg) in dos {
         let w = (lg - beta * e - m).exp();
@@ -1200,7 +1313,10 @@ pub fn reweight(
     beta1: f64,
 ) -> f64 {
     let d = beta1 - beta0;
-    let m = energies.iter().map(|&e| -d * e).fold(f64::NEG_INFINITY, f64::max);
+    let m = energies
+        .iter()
+        .map(|&e| -d * e)
+        .fold(f64::NEG_INFINITY, f64::max);
     let (mut num, mut den) = (0.0, 0.0);
     for (&e, &o) in energies.iter().zip(observable) {
         let w = (-d * e - m).exp();
@@ -1226,7 +1342,12 @@ pub fn mean_and_error(x: &[f64]) -> (f64, f64) {
         let mu = cur.iter().sum::<f64>() / m;
         let var = cur.iter().map(|v| (v - mu).powi(2)).sum::<f64>() / (m - 1.0);
         best = best.max((var / m).sqrt());
-        cur = cur.as_chunks::<2>().0.iter().map(|c| f64::midpoint(c[0], c[1])).collect();
+        cur = cur
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| f64::midpoint(c[0], c[1]))
+            .collect();
     }
     (mean, best)
 }
@@ -1341,7 +1462,11 @@ pub fn onsager_energy_per_site(
     let k = j / t;
     let th = (2.0 * k).tanh();
     let modulus = 2.0 * (2.0 * k).sinh() / (2.0 * k).cosh().powi(2);
-    -j / th * (1.0 + 2.0 / std::f64::consts::PI * (2.0 * th * th - 1.0) * ellip_k(modulus.min(1.0 - 1e-15)))
+    -j / th
+        * (1.0
+            + 2.0 / std::f64::consts::PI
+                * (2.0 * th * th - 1.0)
+                * ellip_k(modulus.min(1.0 - 1e-15)))
 }
 
 /// Onsager-Yang spontaneous magnetisation of the 2-D Ising model (`0` above `Tc`).
@@ -1481,11 +1606,19 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
     // window layout in bins: [lo_w, hi_w)
     let span = 1.0 + (nwin - 1) as f64 * (1.0 - opt.overlap);
     let nw = ((nbins as f64 / span).ceil() as usize).clamp(2, nbins);
-    let stride = if nwin > 1 { (((nbins - nw) as f64) / (nwin - 1) as f64).ceil().max(1.0) as usize } else { 0 };
+    let stride = if nwin > 1 {
+        (((nbins - nw) as f64) / (nwin - 1) as f64).ceil().max(1.0) as usize
+    } else {
+        0
+    };
     let ranges: Vec<(usize, usize)> = (0..nwin)
         .map(|w| {
             let lo = (w * stride).min(nbins - nw);
-            let hi = if w + 1 == nwin { nbins } else { (lo + nw).min(nbins) };
+            let hi = if w + 1 == nwin {
+                nbins
+            } else {
+                (lo + nw).min(nbins)
+            };
             (lo, hi)
         })
         .collect();
@@ -1505,7 +1638,9 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
     for (w, &(lo, hi)) in ranges.iter().enumerate() {
         let mut ws = Vec::new();
         for k in 0..opt.walkers {
-            let seed = opt.seed.wrapping_add(7919 * (w * opt.walkers + k) as u64 + 1);
+            let seed = opt
+                .seed
+                .wrapping_add(7919 * (w * opt.walkers + k) as u64 + 1);
             let mut model = OnModel::<D, N>::new(dims, periodic, 1.0, seed)?;
             let elo = e_min + lo as f64 * width;
             let ehi = e_min + hi as f64 * width;
@@ -1592,7 +1727,10 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
             round += 1;
             guard += 1;
             let flat = ranges.iter().enumerate().all(|(w, &(lo, hi))| {
-                let vals: Vec<usize> = (lo..hi).filter(|&k| visited[w][k]).map(|k| hist[w][k]).collect();
+                let vals: Vec<usize> = (lo..hi)
+                    .filter(|&k| visited[w][k])
+                    .map(|k| hist[w][k])
+                    .collect();
                 if vals.is_empty() {
                     return false;
                 }
@@ -1621,7 +1759,9 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
     for w in 1..nwin {
         let (lo, hi) = ranges[w];
         let prev_hi = ranges[w - 1].1;
-        let mut common: Vec<usize> = (lo..prev_hi).filter(|&k| visited[w][k] && known[k]).collect();
+        let mut common: Vec<usize> = (lo..prev_hi)
+            .filter(|&k| visited[w][k] && known[k])
+            .collect();
         if common.is_empty() {
             return Err("adjacent windows share no visited bin".into());
         }
@@ -1630,7 +1770,8 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
             common.remove(0);
             common.pop();
         }
-        let shift = common.iter().map(|&k| merged[k] - ln_g[w][k]).sum::<f64>() / common.len() as f64;
+        let shift =
+            common.iter().map(|&k| merged[k] - ln_g[w][k]).sum::<f64>() / common.len() as f64;
         let mid = all[all.len() / 2];
         for k in mid..hi {
             if visited[w][k] {
@@ -1639,8 +1780,17 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
             }
         }
     }
-    let mx = (0..nbins).filter(|&k| known[k]).map(|k| merged[k]).fold(f64::NEG_INFINITY, f64::max);
-    let total: f64 = (0..nbins).filter(|&k| known[k]).map(|k| (merged[k] - mx).exp()).sum();
+    let mx = (0..nbins)
+        .filter(|&k| known[k])
+        .map(|k| merged[k])
+        .fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..nbins)
+        .filter(|&k| known[k])
+        .map(|k| (merged[k] - mx).exp())
+        .sum();
     let shift = -(mx + total.ln());
-    Ok((0..nbins).filter(|&k| known[k]).map(|k| (e_min + (k as f64 + 0.5) * width, merged[k] + shift)).collect())
+    Ok((0..nbins)
+        .filter(|&k| known[k])
+        .map(|k| (e_min + (k as f64 + 0.5) * width, merged[k] + shift))
+        .collect())
 }

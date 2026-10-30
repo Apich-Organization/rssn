@@ -147,7 +147,8 @@ fn euler_maclaurin_difference(
     panels: usize,
 ) -> f64 {
     const H: f64 = 0.05;
-    let d1 = |x: f64| (-g(x + 2.0 * H) + 8.0 * g(x + H) - 8.0 * g(x - H) + g(x - 2.0 * H)) / (12.0 * H);
+    let d1 =
+        |x: f64| (-g(x + 2.0 * H) + 8.0 * g(x + H) - 8.0 * g(x - H) + g(x - 2.0 * H)) / (12.0 * H);
     let d3 = |x: f64| {
         (g(x + 2.0 * H) - 2.0 * g(x + H) + 2.0 * g(x - H) - g(x - 2.0 * H)) / (2.0 * H.powi(3))
     };
@@ -200,17 +201,21 @@ fn taylor_strategy(
     #[allow(clippy::cast_possible_truncation)]
     let n = whole as i64;
     if n >= 0 {
-        base + (0..n).map(|j| {
-            #[allow(clippy::cast_precision_loss)]
-            let j = j as f64;
-            g(y + j)
-        }).sum::<f64>()
+        base + (0..n)
+            .map(|j| {
+                #[allow(clippy::cast_precision_loss)]
+                let j = j as f64;
+                g(y + j)
+            })
+            .sum::<f64>()
     } else {
-        base - (n..0).map(|j| {
-            #[allow(clippy::cast_precision_loss)]
-            let j = j as f64;
-            g(y + j)
-        }).sum::<f64>()
+        base - (n..0)
+            .map(|j| {
+                #[allow(clippy::cast_precision_loss)]
+                let j = j as f64;
+                g(y + j)
+            })
+            .sum::<f64>()
     }
 }
 
@@ -239,13 +244,24 @@ pub fn indefinite_sum(
             #[allow(clippy::cast_precision_loss)]
             range.map(|k| g(k as f64)).sum()
         };
-        let value = if n >= 0 { sum(0..n) } else { -sum(n..0) };
-        return if value.is_finite() { Ok(value) } else { Err("f is not finite on the sum".to_string()) };
+        let value = if n >= 0 {
+            sum(0..n)
+        } else {
+            -sum(n..0)
+        };
+        return if value.is_finite() {
+            Ok(value)
+        } else {
+            Err("f is not finite on the sum".to_string())
+        };
     }
     let tolerance = config.tolerance.max(1e-14);
     let first = shifted_euler_maclaurin(&g, u, config.shift);
     let second = shifted_euler_maclaurin(&g, u, config.shift + 10);
-    if first.is_finite() && second.is_finite() && (first - second).abs() <= tolerance * first.abs().max(1.0) {
+    if first.is_finite()
+        && second.is_finite()
+        && (first - second).abs() <= tolerance * first.abs().max(1.0)
+    {
         return Ok(second);
     }
     let taylor = taylor_strategy(&g, u, config.taylor_terms);
@@ -270,7 +286,11 @@ pub fn indefinite_product(
 ) -> Result<f64, String> {
     let log_f = |t: f64| {
         let value = f(t);
-        if value > 0.0 { value.ln() } else { f64::NAN }
+        if value > 0.0 {
+            value.ln()
+        } else {
+            f64::NAN
+        }
     };
     let log_sum = indefinite_sum(log_f, x, config)
         .map_err(|e| format!("indefinite product needs f > 0: {e}"))?;

@@ -18,7 +18,10 @@
 use crate::kernels::krylov::IterResult;
 use crate::kernels::random::Rng;
 
-fn dot(a: &[f64], b: &[f64]) -> f64 {
+fn dot(
+    a: &[f64],
+    b: &[f64],
+) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
@@ -26,13 +29,21 @@ fn nrm(a: &[f64]) -> f64 {
     dot(a, a).sqrt()
 }
 
-fn axpy(alpha: f64, x: &[f64], y: &mut [f64]) {
+fn axpy(
+    alpha: f64,
+    x: &[f64],
+    y: &mut [f64],
+) {
     for (yi, xi) in y.iter_mut().zip(x) {
         *yi += alpha * xi;
     }
 }
 
-fn residual<A: Fn(&[f64], &mut [f64])>(apply: &A, b: &[f64], x: &[f64]) -> Vec<f64> {
+fn residual<A: Fn(&[f64], &mut [f64])>(
+    apply: &A,
+    b: &[f64],
+    x: &[f64],
+) -> Vec<f64> {
     let mut ax = vec![0.0; b.len()];
     apply(x, &mut ax);
     b.iter().zip(&ax).map(|(bi, ai)| bi - ai).collect()
@@ -66,7 +77,12 @@ where
     let beta1sq = dot(&r0, &y);
     if beta1sq <= 0.0 || nrm(&r0) / bn <= tol {
         let res = nrm(&r0) / bn;
-        return IterResult { x, residual: res, iterations: 0, converged: res <= tol };
+        return IterResult {
+            x,
+            residual: res,
+            iterations: 0,
+            converged: res <= tol,
+        };
     }
     let beta1 = beta1sq.sqrt();
     let mut r1 = r0.clone();
@@ -106,14 +122,21 @@ where
         let phi = cs * phibar;
         phibar *= sn;
         let w1 = std::mem::replace(&mut w2, std::mem::take(&mut w));
-        w = (0..n).map(|i| (v[i] - oldeps * w1[i] - delta * w2[i]) / gamma).collect();
+        w = (0..n)
+            .map(|i| (v[i] - oldeps * w1[i] - delta * w2[i]) / gamma)
+            .collect();
         axpy(phi, &w, &mut x);
         if phibar / beta1 <= tol || beta == 0.0 {
             break;
         }
     }
     let res = nrm(&residual(&apply, b, &x)) / bn;
-    IterResult { x, residual: res, iterations: itn, converged: res <= 10.0 * tol.max(1e-15) }
+    IterResult {
+        x,
+        residual: res,
+        iterations: itn,
+        converged: res <= 10.0 * tol.max(1e-15),
+    }
 }
 
 /// `BiCGSTAB`(`l`) with right preconditioning (`l >= 1`).
@@ -201,7 +224,11 @@ where
                 axpy(-tau[i][j], &ri, &mut r[j]);
             }
             sigma[j] = dot(&r[j], &r[j]);
-            gp[j] = if sigma[j] == 0.0 { 0.0 } else { dot(&r[0], &r[j]) / sigma[j] };
+            gp[j] = if sigma[j] == 0.0 {
+                0.0
+            } else {
+                dot(&r[0], &r[j]) / sigma[j]
+            };
         }
         let mut g = vec![0.0; l + 1];
         g[l] = gp[l];
@@ -242,7 +269,14 @@ where
     finish(&apply, &precond, b, &x0v, &xc, it)
 }
 
-fn finish<A, M>(apply: &A, precond: &M, b: &[f64], x0: &[f64], xc: &[f64], it: usize) -> IterResult
+fn finish<A, M>(
+    apply: &A,
+    precond: &M,
+    b: &[f64],
+    x0: &[f64],
+    xc: &[f64],
+    it: usize,
+) -> IterResult
 where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
@@ -252,7 +286,12 @@ where
     precond(xc, &mut corr);
     let x: Vec<f64> = x0.iter().zip(&corr).map(|(a, c)| a + c).collect();
     let res = nrm(&residual(apply, b, &x)) / nrm(b).max(f64::MIN_POSITIVE);
-    IterResult { x, residual: res, iterations: it, converged: res.is_finite() && res < 1.0 }
+    IterResult {
+        x,
+        residual: res,
+        iterations: it,
+        converged: res.is_finite() && res < 1.0,
+    }
 }
 
 /// Parameters of [`idr_s_with`].
@@ -286,7 +325,12 @@ where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
-    let IdrOptions { s, tol, max_iter, seed } = *opts;
+    let IdrOptions {
+        s,
+        tol,
+        max_iter,
+        seed,
+    } = *opts;
     let n = b.len();
     let s = s.clamp(1, n.max(1));
     let bn = nrm(b).max(f64::MIN_POSITIVE);
@@ -295,7 +339,12 @@ where
     let mut mv = 1usize;
     if nrm(&r) / bn <= tol {
         let res = nrm(&r) / bn;
-        return IterResult { x, residual: res, iterations: 0, converged: true };
+        return IterResult {
+            x,
+            residual: res,
+            iterations: 0,
+            converged: true,
+        };
     }
     // orthonormal shadow vectors
     let mut rng = Rng::new(seed);
@@ -394,7 +443,12 @@ where
         }
     }
     let res = nrm(&residual(&apply, b, &x)) / bn;
-    IterResult { x, residual: res, iterations: mv, converged: res <= 10.0 * tol.max(1e-15) }
+    IterResult {
+        x,
+        residual: res,
+        iterations: mv,
+        converged: res <= 10.0 * tol.max(1e-15),
+    }
 }
 
 /// [`idr_s_with`] with the options passed as separate arguments.
@@ -414,7 +468,18 @@ where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
-    idr_s_with(apply, precond, b, x0, &IdrOptions { s, tol, max_iter, seed })
+    idr_s_with(
+        apply,
+        precond,
+        b,
+        x0,
+        &IdrOptions {
+            s,
+            tol,
+            max_iter,
+            seed,
+        },
+    )
 }
 
 /// Flexible GMRES(`restart`) with a variable right preconditioner.
@@ -519,5 +584,10 @@ where
         }
     }
     let res = nrm(&residual(&apply, b, &x)) / bn;
-    IterResult { x, residual: res, iterations: total, converged: res <= tol.max(1e-15) * 10.0 }
+    IterResult {
+        x,
+        residual: res,
+        iterations: total,
+        converged: res <= tol.max(1e-15) * 10.0,
+    }
 }

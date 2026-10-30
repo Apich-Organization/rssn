@@ -152,9 +152,10 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
         even = !even;
         if even
             && let Some(&last) = current.last()
-                && last.is_finite() {
-                    estimates.push(last);
-                }
+            && last.is_finite()
+        {
+            estimates.push(last);
+        }
     }
     estimates
 }
@@ -183,14 +184,28 @@ pub enum LevinVariant {
 /// terms. `beta` is the shift (`1.0` is the usual choice). Entries that
 /// are not finite are dropped.
 #[must_use]
-pub fn levin_transform(partial_sums: &[f64], variant: LevinVariant, beta: f64) -> Vec<f64> {
+pub fn levin_transform(
+    partial_sums: &[f64],
+    variant: LevinVariant,
+    beta: f64,
+) -> Vec<f64> {
     let m = partial_sums.len();
-    let usable = if variant == LevinVariant::V { m.saturating_sub(1) } else { m };
+    let usable = if variant == LevinVariant::V {
+        m.saturating_sub(1)
+    } else {
+        m
+    };
     if usable == 0 {
         return Vec::new();
     }
     let a: Vec<f64> = (0..m)
-        .map(|n| if n == 0 { partial_sums[0] } else { partial_sums[n] - partial_sums[n - 1] })
+        .map(|n| {
+            if n == 0 {
+                partial_sums[0]
+            } else {
+                partial_sums[n] - partial_sums[n - 1]
+            }
+        })
         .collect();
     let mut num = Vec::with_capacity(usable);
     let mut den = Vec::with_capacity(usable);
@@ -198,9 +213,9 @@ pub fn levin_transform(partial_sums: &[f64], variant: LevinVariant, beta: f64) -
         #[allow(clippy::cast_precision_loss)]
         let nf = n as f64;
         let omega = match variant {
-            LevinVariant::U => (beta + nf) * a[n],
-            LevinVariant::T => a[n],
-            LevinVariant::V => a[n] * a[n + 1] / (a[n] - a[n + 1]),
+            | LevinVariant::U => (beta + nf) * a[n],
+            | LevinVariant::T => a[n],
+            | LevinVariant::V => a[n] * a[n + 1] / (a[n] - a[n + 1]),
         };
         if omega == 0.0 || !omega.is_finite() {
             break;

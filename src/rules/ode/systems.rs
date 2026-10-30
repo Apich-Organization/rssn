@@ -39,7 +39,9 @@ fn mat_mul(
     let mut out = vec![vec![NodeId::NONE; m]; n];
     for i in 0..n {
         for j in 0..m {
-            let terms: Vec<NodeId> = (0..b.len()).map(|k| mul(cx.graph, &[a[i][k], b[k][j]])).collect();
+            let terms: Vec<NodeId> = (0..b.len())
+                .map(|k| mul(cx.graph, &[a[i][k], b[k][j]]))
+                .collect();
             let sum = add(cx.graph, &terms);
             out[i][j] = cx.simplify(sum);
         }
@@ -94,8 +96,14 @@ pub(super) fn solve_system(
             let d = derivative(cx.graph, derivatives[i], states[j])?;
             let d = cx.simplify(d);
             let symbols = cx.graph.free_symbols(cx.graph.find(d)).to_vec();
-            let state_symbols: Vec<_> = states.iter().filter_map(|&s| cx.graph.symbol_of(s)).collect();
-            if symbols.iter().any(|s| *s == t_symbol || state_symbols.contains(s)) {
+            let state_symbols: Vec<_> = states
+                .iter()
+                .filter_map(|&s| cx.graph.symbol_of(s))
+                .collect();
+            if symbols
+                .iter()
+                .any(|s| *s == t_symbol || state_symbols.contains(s))
+            {
                 return None;
             }
             a[i][j] = d;
@@ -108,7 +116,9 @@ pub(super) fn solve_system(
     }
     // Characteristic polynomial by Faddeev–LeVerrier: c[n] = 1.
     let one = cx.graph.int(1);
-    let identity: Matrix = (0..n).map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect()).collect();
+    let identity: Matrix = (0..n)
+        .map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect())
+        .collect();
     let mut c = vec![zero; n + 1];
     c[n] = one;
     let mut m: Matrix = vec![vec![zero; n]; n];
@@ -122,7 +132,9 @@ pub(super) fn solve_system(
         }
         let am = mat_mul(cx, &a, &m);
         let trace = add(cx.graph, &(0..n).map(|i| am[i][i]).collect::<Vec<_>>());
-        let scale = cx.graph.num(crate::graph::Number::fraction(-1, i64::try_from(k).ok()?)?);
+        let scale = cx
+            .graph
+            .num(crate::graph::Number::fraction(-1, i64::try_from(k).ok()?)?);
         let value = mul(cx.graph, &[scale, trace]);
         c[n - k] = cx.simplify(value);
     }
@@ -149,7 +161,11 @@ fn eliminate(
     let one = cx.graph.int(1);
     // Krylov rows e_pᵀ A^k, k = 0..n.
     let mut rows: Vec<Vec<NodeId>> = Vec::with_capacity(n + 1);
-    rows.push((0..n).map(|j| if j == pivot { one } else { zero }).collect());
+    rows.push(
+        (0..n)
+            .map(|j| if j == pivot { one } else { zero })
+            .collect(),
+    );
     for _ in 0..n {
         let last = vec![rows.last()?.clone()];
         let next = super::systems::mat_mul(cx, &last, a);
@@ -168,7 +184,10 @@ fn eliminate(
         for j in 0..k {
             let row = &rows[k - 1 - j];
             for (idx, &entry) in row.iter().enumerate() {
-                let fj = *f_derivatives.get(j).and_then(|v| v.get(idx)).unwrap_or(&zero);
+                let fj = *f_derivatives
+                    .get(j)
+                    .and_then(|v| v.get(idx))
+                    .unwrap_or(&zero);
                 terms.push(mul(cx.graph, &[entry, fj]));
             }
         }
@@ -184,7 +203,9 @@ fn eliminate(
         chain.push(cx.graph.node(diff, &[last, t]));
     }
     let lhs_terms: Vec<NodeId> = (0..=n).map(|k| mul(cx.graph, &[c[k], chain[k]])).collect();
-    let rhs_terms: Vec<NodeId> = (0..=n).map(|k| mul(cx.graph, &[c[k], corrections[k]])).collect();
+    let rhs_terms: Vec<NodeId> = (0..=n)
+        .map(|k| mul(cx.graph, &[c[k], corrections[k]]))
+        .collect();
     let lhs = add(cx.graph, &lhs_terms);
     let rhs = add(cx.graph, &rhs_terms);
     let rhs = cx.simplify(rhs);
@@ -209,7 +230,9 @@ fn eliminate(
     }
     let mut linear = Vec::with_capacity(n);
     for k in 0..n {
-        let terms: Vec<NodeId> = (0..n).map(|j| mul(cx.graph, &[rows[k][j], unknowns[j]])).collect();
+        let terms: Vec<NodeId> = (0..n)
+            .map(|j| mul(cx.graph, &[rows[k][j], unknowns[j]]))
+            .collect();
         let combination = add(cx.graph, &terms);
         let target = sub(cx.graph, values[k], corrections[k]);
         let equation = sub(cx.graph, combination, target);
@@ -224,7 +247,10 @@ fn eliminate(
     if !satisfies(cx, a, f, &items, t) {
         return None;
     }
-    let equations: Vec<NodeId> = items.iter().map(|&(f, v)| cx.graph.node(core::EQ, &[f, v])).collect();
+    let equations: Vec<NodeId> = items
+        .iter()
+        .map(|&(f, v)| cx.graph.node(core::EQ, &[f, v]))
+        .collect();
     Some(cx.graph.node(core::LIST, &equations))
 }
 
@@ -256,7 +282,14 @@ fn satisfies(
         for &r in &residuals {
             let mut env = Env::numeric(0.0);
             for &s in cx.graph.free_symbols(cx.graph.find(r)) {
-                env.bind(s, if s == t_symbol { point } else { 0.5 + 0.13 * f64::from(s.raw() % 7) });
+                env.bind(
+                    s,
+                    if s == t_symbol {
+                        point
+                    } else {
+                        0.5 + 0.13 * f64::from(s.raw() % 7)
+                    },
+                );
             }
             match cx.graph.eval(r, &env) {
                 | Some(v) if v.is_finite() && v.abs() > 1e-6 => return false,

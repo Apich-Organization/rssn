@@ -1,9 +1,15 @@
 //! Tests for near-integer `c - a - b` and complex-argument `2F1`.
 
 use num_complex::Complex64;
-use rssn::kernels::special_ext::{hyp2f1, hyp2f1_complex};
+use rssn::kernels::special_ext::hyp2f1;
+use rssn::kernels::special_ext::hyp2f1_complex;
 
-fn series(a: f64, b: f64, c: f64, x: f64) -> f64 {
+fn series(
+    a: f64,
+    b: f64,
+    c: f64,
+    x: f64,
+) -> f64 {
     let (mut t, mut s) = (1.0, 1.0);
     for n in 0..200_000 {
         let nf = f64::from(n);
@@ -62,17 +68,26 @@ fn complex_argument_closed_forms() {
         // 2F1(1,1;2;z) = -ln(1-z)/z
         let want = -(Complex64::new(1.0, 0.0) - z).ln() / z;
         let got = hyp2f1_complex(1.0, 1.0, 2.0, z);
-        assert!((got - want).norm() <= 1e-12 * want.norm(), "z={z}: {got} vs {want}");
+        assert!(
+            (got - want).norm() <= 1e-12 * want.norm(),
+            "z={z}: {got} vs {want}"
+        );
         // 2F1(a,b;b;z) = (1-z)^(-a)
         let want = (Complex64::new(1.0, 0.0) - z).powf(-0.7);
         let got = hyp2f1_complex(0.7, 1.3, 1.3, z);
-        assert!((got - want).norm() <= 1e-12 * want.norm(), "z={z}: {got} vs {want}");
+        assert!(
+            (got - want).norm() <= 1e-12 * want.norm(),
+            "z={z}: {got} vs {want}"
+        );
         // 2F1(1/2,1/2;3/2;z) = asin(sqrt z)/sqrt z  (principal branch away from the cut)
         if z.im.abs() > 0.05 {
             let sq = z.sqrt();
             let want = sq.asin() / sq;
             let got = hyp2f1_complex(0.5, 0.5, 1.5, z);
-            assert!((got - want).norm() <= 1e-11 * want.norm(), "z={z}: {got} vs {want}");
+            assert!(
+                (got - want).norm() <= 1e-11 * want.norm(),
+                "z={z}: {got} vs {want}"
+            );
         }
     }
 }
@@ -87,12 +102,18 @@ fn complex_matches_real_and_cut_convention() {
     }
     // on the cut the value is the limit from above: 2F1(1,1;2;2) = i pi / 2
     let v = hyp2f1_complex(1.0, 1.0, 2.0, Complex64::new(2.0, 0.0));
-    assert!((v - Complex64::new(0.0, std::f64::consts::FRAC_PI_2)).norm() < 1e-12, "{v}");
+    assert!(
+        (v - Complex64::new(0.0, std::f64::consts::FRAC_PI_2)).norm() < 1e-12,
+        "{v}"
+    );
     let below = hyp2f1_complex(1.0, 1.0, 2.0, Complex64::new(2.0, -1e-12));
     assert!((below + Complex64::new(0.0, std::f64::consts::FRAC_PI_2)).norm() < 1e-9);
     // conjugate symmetry off the cut
     let z = Complex64::new(-2.5, 1.7);
-    let (u, w) = (hyp2f1_complex(0.3, 0.9, 1.7, z), hyp2f1_complex(0.3, 0.9, 1.7, z.conj()));
+    let (u, w) = (
+        hyp2f1_complex(0.3, 0.9, 1.7, z),
+        hyp2f1_complex(0.3, 0.9, 1.7, z.conj()),
+    );
     assert!((u - w.conj()).norm() < 1e-13 * u.norm());
     // terminating series for |z| > 1, and failure modes
     let p = hyp2f1_complex(-2.0, 3.0, 1.5, Complex64::new(1.5, 2.0));

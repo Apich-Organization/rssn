@@ -32,19 +32,20 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::Value;
 use super::egcd;
 use super::exact;
 use super::factor;
+use super::factor_big;
 use super::gcd;
 use super::invmod;
 use super::is_prime;
 use super::jacobi;
 use super::modulo;
-use super::Value;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 const SET: &str = "number_theory";
 const MAX_TABLE: u64 = 100_000;
@@ -191,11 +192,17 @@ fn primitive_root(n: &BigInt) -> Option<BigInt> {
     if !cyclic {
         return None;
     }
-    let phi: u64 = primes.iter().map(|&(p, e)| (p - 1) * p.pow(e - 1)).product();
+    let phi: u64 = primes
+        .iter()
+        .map(|&(p, e)| (p - 1) * p.pow(e - 1))
+        .product();
     let prime_factors: Vec<u64> = factor(&big(phi))?.into_iter().map(|(p, _)| p).collect();
     (2..modulus)
         .find(|&g| {
-            gcd(&big(g), n).is_one() && prime_factors.iter().all(|&q| pow_mod(g, phi / q, modulus) != 1)
+            gcd(&big(g), n).is_one()
+                && prime_factors
+                    .iter()
+                    .all(|&q| pow_mod(g, phi / q, modulus) != 1)
         })
         .map(BigInt::from)
 }
@@ -354,7 +361,11 @@ fn lucas_binomial(
         // C(ni, ki) mod p with ni < p, as a product of small factors.
         let mut term = 1_u64;
         for j in 0..ki {
-            term = mulm(mulm(term, (ni - j) % p, p), pow_mod((j + 1) % p, p - 2, p), p);
+            term = mulm(
+                mulm(term, (ni - j) % p, p),
+                pow_mod((j + 1) % p, p - 2, p),
+                p,
+            );
         }
         result = mulm(result, term, p);
         n /= p;
@@ -380,21 +391,27 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
 
-    exact(i, SET, binary("legendre_symbol"), |a| match a {
-        | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
-        | _ => None,
+    exact(i, SET, binary("legendre_symbol"), |a| {
+        match a {
+            | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, binary("kronecker_symbol"), |a| match a {
-        | [x, n] => kronecker(x, n).and_then(int),
-        | _ => None,
+    exact(i, SET, binary("kronecker_symbol"), |a| {
+        match a {
+            | [x, n] => kronecker(x, n).and_then(int),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, binary("sqrtmod"), |a| match a {
-        | [x, p] if is_prime(p) => {
-            let p = p.to_u64()?;
-            let x = modulo(x, &big(p))?.to_u64()?;
-            tonelli_shanks(x, p).and_then(int)
-        },
-        | _ => None,
+    exact(i, SET, binary("sqrtmod"), |a| {
+        match a {
+            | [x, p] if is_prime(p) => {
+                let p = p.to_u64()?;
+                let x = modulo(x, &big(p))?.to_u64()?;
+                tonelli_shanks(x, p).and_then(int)
+            },
+            | _ => None,
+        }
     })?;
     exact(i, SET, unary("quadratic_residues"), |a| {
         let [n] = a else { return None };
@@ -404,53 +421,75 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         seen.dedup();
         Some(Value::Flat(seen.into_iter().map(BigInt::from).collect()))
     })?;
-    exact(i, SET, binary("mult_order"), |a| match a {
-        | [x, n] => mult_order(x, n).map(Value::Int),
-        | _ => None,
+    exact(i, SET, binary("mult_order"), |a| {
+        match a {
+            | [x, n] => mult_order(x, n).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("carmichael"), |a| match a {
-        | [n] => carmichael(n).map(Value::Int),
-        | _ => None,
+    exact(i, SET, unary("carmichael"), |a| {
+        match a {
+            | [n] => carmichael(n).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("primitive_root"), |a| match a {
-        | [n] => primitive_root(n).map(Value::Int),
-        | _ => None,
+    exact(i, SET, unary("primitive_root"), |a| {
+        match a {
+            | [n] => primitive_root(n).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, ternary("dlog"), |a| match a {
-        | [g, h, n] => dlog(g, h, n).map(Value::Int),
-        | _ => None,
+    exact(i, SET, ternary("dlog"), |a| {
+        match a {
+            | [g, h, n] => dlog(g, h, n).map(Value::Int),
+            | _ => None,
+        }
     })?;
     exact(i, SET, unary("mobius"), |a| {
         let [n] = a else { return None };
-        let primes = factor(n)?;
+        let primes = factor_big(n)?;
         if primes.iter().any(|&(_, e)| e > 1) {
             return int(0);
         }
-        int(if primes.len() % 2 == 0 { 1 } else { -1 })
+        int(if primes.len() % 2 == 0 {
+            1
+        } else {
+            -1
+        })
     })?;
     exact(i, SET, unary("liouville"), |a| {
         let [n] = a else { return None };
-        let total: u32 = factor(n)?.iter().map(|&(_, e)| e).sum();
-        int(if total.is_multiple_of(2) { 1 } else { -1 })
+        let total: u32 = factor_big(n)?.iter().map(|&(_, e)| e).sum();
+        int(if total.is_multiple_of(2) {
+            1
+        } else {
+            -1
+        })
     })?;
     exact(i, SET, unary("omega"), |a| {
         let [n] = a else { return None };
-        count(factor(n)?.len())
+        count(factor_big(n)?.len())
     })?;
     exact(i, SET, unary("bigomega"), |a| {
         let [n] = a else { return None };
-        int(factor(n)?.iter().map(|&(_, e)| u64::from(e)).sum::<u64>())
+        int(factor_big(n)?
+            .iter()
+            .map(|&(_, e)| u64::from(e))
+            .sum::<u64>())
     })?;
     exact(i, SET, unary("radical"), |a| {
         let [n] = a else { return None };
-        int(factor(n)?.iter().map(|&(p, _)| big(p)).product::<BigInt>())
+        int(factor_big(n)?
+            .iter()
+            .map(|(p, _)| p.clone())
+            .product::<BigInt>())
     })?;
     exact(i, SET, binary("sigma"), |a| {
         let [n, k] = a else { return None };
         let k = k.to_u32().filter(|&k| k <= 64)?;
         let mut total = BigInt::one();
-        for (p, e) in factor(n)? {
-            let q = big(p).pow(k);
+        for (p, e) in factor_big(n)? {
+            let q = p.pow(k);
             total *= (0..=e).fold(BigInt::zero(), |acc, j| acc + q.pow(j));
         }
         Some(Value::Int(total))
@@ -461,7 +500,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     })?;
     exact(i, SET, unary("is_squarefree"), |a| {
         let [n] = a else { return None };
-        Some(Value::Bool(factor(n)?.iter().all(|&(_, e)| e == 1)))
+        Some(Value::Bool(factor_big(n)?.iter().all(|&(_, e)| e == 1)))
     })?;
     exact(i, SET, unary("is_square"), |a| {
         let [n] = a else { return None };
@@ -471,13 +510,19 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let r = n.sqrt();
         Some(Value::Bool(&r * &r == *n))
     })?;
-    exact(i, SET, unary("isqrt"), |a| match a {
-        | [n] if !n.is_negative() => int(n.sqrt()),
-        | _ => None,
+    exact(i, SET, unary("isqrt"), |a| {
+        match a {
+            | [n] if !n.is_negative() => int(n.sqrt()),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, binary("iroot"), |a| match a {
-        | [n, k] if !n.is_negative() && k.is_positive() => int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?)),
-        | _ => None,
+    exact(i, SET, binary("iroot"), |a| {
+        match a {
+            | [n, k] if !n.is_negative() && k.is_positive() => {
+                int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
+            },
+            | _ => None,
+        }
     })?;
     exact(i, SET, unary("perfect_power"), |a| {
         let [n] = a else { return None };
@@ -634,6 +679,9 @@ mod tests {
         assert_eq!(s("lincong(2, 1, 4)"), "list()");
         assert_eq!(s("binomial_mod(10, 3, 7)"), "1");
         assert_eq!(s("binomial_mod(100, 50, 7)"), "4");
-        assert_eq!(s("farey(3)"), "list(list(0, 1), list(1, 3), list(1, 2), list(2, 3), list(1, 1))");
+        assert_eq!(
+            s("farey(3)"),
+            "list(list(0, 1), list(1, 3), list(1, 2), list(2, 3), list(1, 1))"
+        );
     }
 }

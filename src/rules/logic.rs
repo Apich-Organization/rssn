@@ -152,7 +152,9 @@ impl Cmp {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let ac = OpFlags::COMMUTATIVE.with(OpFlags::ASSOCIATIVE).with(OpFlags::PREDICATE);
+    let ac = OpFlags::COMMUTATIVE
+        .with(OpFlags::ASSOCIATIVE)
+        .with(OpFlags::PREDICATE);
     let and = i.op(OpDescriptor::new("and", Arity::Variadic)
         .flags(ac)
         .eval(|a| bit(a.iter().all(|&x| is_true(x)))))?;
@@ -166,20 +168,23 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .flags(OpFlags::PREDICATE)
         .eval(|a| a.first().map_or(f64::NAN, |&x| bit(!is_true(x)))))?;
     // Costlier than their expansions, so extraction prefers and/or/not.
-    let implies =
-        i.op(OpDescriptor::new("implies", Arity::Fixed(2))
-            .flags(OpFlags::PREDICATE)
-            .cost(12)
-            .eval(|a| match a {
+    let implies = i.op(OpDescriptor::new("implies", Arity::Fixed(2))
+        .flags(OpFlags::PREDICATE)
+        .cost(12)
+        .eval(|a| {
+            match a {
                 | [p, q] => bit(!is_true(*p) || is_true(*q)),
                 | _ => f64::NAN,
-            }))?;
+            }
+        }))?;
     let iff = i.op(OpDescriptor::new("iff", Arity::Fixed(2))
         .flags(OpFlags::PREDICATE)
         .cost(30)
-        .eval(|a| match a {
-            | [p, q] => bit(is_true(*p) == is_true(*q)),
-            | _ => f64::NAN,
+        .eval(|a| {
+            match a {
+                | [p, q] => bit(is_true(*p) == is_true(*q)),
+                | _ => f64::NAN,
+            }
         }))?;
     let tru = i.op(OpDescriptor::new("true", Arity::Fixed(0)).eval(|_| 1.0))?;
     let fals = i.op(OpDescriptor::new("false", Arity::Fixed(0)).eval(|_| 0.0))?;
@@ -207,7 +212,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("ge", ge, Cmp::Ge),
         ("ne", ne, Cmp::Ne),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(2)).flags(OpFlags::PREDICATE).eval(eval))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(2))
+            .flags(OpFlags::PREDICATE)
+            .eval(eval))?;
         comparisons.push((op, cmp));
     }
     comparisons.push((core::EQ, Cmp::Eq));
@@ -281,11 +288,13 @@ fn constant(
     ops: &Ops,
     node: NodeId,
 ) -> Option<bool> {
-    let of = |n: NodeId| match graph.payload(n) {
-        | Some(Payload::Bool(b)) if graph.op(n) == core::LIT => Some(*b),
-        | _ if graph.op(n) == ops.tru => Some(true),
-        | _ if graph.op(n) == ops.fals => Some(false),
-        | _ => None,
+    let of = |n: NodeId| {
+        match graph.payload(n) {
+            | Some(Payload::Bool(b)) if graph.op(n) == core::LIT => Some(*b),
+            | _ if graph.op(n) == ops.tru => Some(true),
+            | _ if graph.op(n) == ops.fals => Some(false),
+            | _ => None,
+        }
     };
     of(node).or_else(|| graph.enodes(graph.find(node)).find_map(of))
 }
@@ -395,11 +404,13 @@ impl Boolean {
         for &kid in &kids {
             match constant(graph, &self.ops, kid) {
                 | Some(value) => negated ^= value,
-                | None => match kept.iter().position(|&k| graph.same(k, kid)) {
-                    | Some(at) => {
-                        kept.remove(at);
-                    },
-                    | None => kept.push(kid),
+                | None => {
+                    match kept.iter().position(|&k| graph.same(k, kid)) {
+                        | Some(at) => {
+                            kept.remove(at);
+                        },
+                        | None => kept.push(kid),
+                    }
                 },
             }
         }
@@ -659,11 +670,13 @@ impl Formula {
             | Self::Not(x) => x.nnf(!negate, budget),
             | Self::And(xs) => junction(xs, true, budget),
             | Self::Or(xs) => junction(xs, false, budget),
-            | Self::Implies(a, b) => Some(if negate {
-                Nnf::and(vec![a.nnf(false, budget)?, b.nnf(true, budget)?])
-            } else {
-                Nnf::or(vec![a.nnf(true, budget)?, b.nnf(false, budget)?])
-            }),
+            | Self::Implies(a, b) => {
+                Some(if negate {
+                    Nnf::and(vec![a.nnf(false, budget)?, b.nnf(true, budget)?])
+                } else {
+                    Nnf::or(vec![a.nnf(true, budget)?, b.nnf(false, budget)?])
+                })
+            },
             | Self::Iff(a, b) => {
                 let (pa, na) = (a.nnf(false, budget)?, a.nnf(true, budget)?);
                 let (pb, nb) = (b.nnf(false, budget)?, b.nnf(true, budget)?);
@@ -674,14 +687,16 @@ impl Formula {
                     Nnf::and(vec![Nnf::or(vec![na, pb]), Nnf::or(vec![pa, nb])])
                 })
             },
-            | Self::Xor(xs) => match xs.as_slice() {
-                | [] => Some(Nnf::Const(negate)),
-                | [only] => only.nnf(negate, budget),
-                // a ^ rest = !(a <-> rest)
-                | [first, rest @ ..] => {
-                    Self::Iff(Box::new(first.clone()), Box::new(Self::Xor(rest.to_vec())))
-                        .nnf(!negate, budget)
-                },
+            | Self::Xor(xs) => {
+                match xs.as_slice() {
+                    | [] => Some(Nnf::Const(negate)),
+                    | [only] => only.nnf(negate, budget),
+                    // a ^ rest = !(a <-> rest)
+                    | [first, rest @ ..] => {
+                        Self::Iff(Box::new(first.clone()), Box::new(Self::Xor(rest.to_vec())))
+                            .nnf(!negate, budget)
+                    },
+                }
             },
         }
     }
@@ -799,14 +814,16 @@ impl Builder<'_> {
         match items {
             | [] => truth_literal(self.graph, conjunction),
             | [only] => *only,
-            | _ => self.graph.node(
-                if conjunction {
-                    self.ops.and
-                } else {
-                    self.ops.or
-                },
-                items,
-            ),
+            | _ => {
+                self.graph.node(
+                    if conjunction {
+                        self.ops.and
+                    } else {
+                        self.ops.or
+                    },
+                    items,
+                )
+            },
         }
     }
 
@@ -1230,10 +1247,11 @@ mod tests {
     ) -> bool {
         let name = g.ops().get(g.op(node)).name.clone();
         match &*name {
-            | "not" => g
-                .children(node)
-                .first()
-                .is_some_and(|&c| !is_logical(&g.ops().get(g.op(c)).name)),
+            | "not" => {
+                g.children(node)
+                    .first()
+                    .is_some_and(|&c| !is_logical(&g.ops().get(g.op(c)).name))
+            },
             | n => !is_logical(n),
         }
     }

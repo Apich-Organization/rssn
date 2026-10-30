@@ -25,19 +25,19 @@ use num_rational::BigRational;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
+use crate::rules::poly::galois_high::Analysis;
+use crate::rules::poly::galois_high::Lagrange;
+use crate::rules::poly::galois_high::Tower;
 use crate::rules::poly::galois_high::analyse;
 use crate::rules::poly::galois_high::cyclotomic;
 use crate::rules::poly::galois_high::cyclotomic_complex;
 use crate::rules::poly::galois_high::lagrange;
-use crate::rules::poly::galois_high::Lagrange;
 use crate::rules::poly::galois_high::towers;
-use crate::rules::poly::galois_high::Analysis;
-use crate::rules::poly::galois_high::Tower;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Poly;
 
@@ -45,7 +45,9 @@ fn value_of(
     graph: &Graph,
     node: NodeId,
 ) -> Option<f64> {
-    graph.eval(node, &Env::numeric(0.0)).filter(|v| v.is_finite())
+    graph
+        .eval(node, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())
 }
 
 /// Relative residual test of the integer polynomial at `x`.
@@ -73,11 +75,15 @@ fn select(
 ) -> Option<Vec<(f64, NodeId)>> {
     let mut chosen: Vec<Option<(f64, NodeId)>> = vec![None; objects.len()];
     for node in candidates {
-        let Some(value) = value_of(graph, node) else { continue };
+        let Some(value) = value_of(graph, node) else {
+            continue;
+        };
         if !is_root(factor, value) {
             continue;
         }
-        let slot = objects.iter().position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
+        let slot = objects
+            .iter()
+            .position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
         if let Some(entry) = chosen.get_mut(slot)
             && entry.is_none()
         {
@@ -107,7 +113,10 @@ fn original_variable(
     analysis: &Analysis,
     z: NodeId,
 ) -> NodeId {
-    let inverse = rational_node(graph, &BigRational::new(BigInt::from(1), analysis.scale.clone()));
+    let inverse = rational_node(
+        graph,
+        &BigRational::new(BigInt::from(1), analysis.scale.clone()),
+    );
     let scaled = mul(graph, &[inverse, z]);
     if analysis.shift.is_zero() {
         scaled
@@ -134,7 +143,8 @@ fn gauss_period_roots(
             let angle_factor = graph.num(Number::fraction(2 * i64::try_from(*j).ok()?, p)?);
             let angle = mul(graph, &[angle_factor, pi_node]);
             let wave = graph.node(cos, &[angle]);
-            let coefficient = rational_node(graph, &(q * BigRational::from_integer(BigInt::from(2))));
+            let coefficient =
+                rational_node(graph, &(q * BigRational::from_integer(BigInt::from(2))));
             sum_terms.push(mul(graph, &[coefficient, wave]));
         }
         let z = graph.node(core::ADD, &sum_terms);
@@ -150,7 +160,12 @@ fn tower_roots(
     tower: &Tower,
     objects: &[(f64, NodeId)],
 ) -> Option<Vec<(f64, NodeId)>> {
-    let theta: Vec<BigRational> = tower.theta.iter().cloned().map(BigRational::from_integer).collect();
+    let theta: Vec<BigRational> = tower
+        .theta
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let thetas = super::rational_polynomial_roots(graph, &theta)?;
     let x_symbol = graph.interner_mut().fresh_symbol("x");
     let x_node = graph.symbol_node(x_symbol);
@@ -169,7 +184,9 @@ fn tower_roots(
                 if q.is_zero() {
                     continue;
                 }
-                let term = t.pow(u32::try_from(power).ok()?, cap)?.scale(&Number::rat(q.clone()));
+                let term = t
+                    .pow(u32::try_from(power).ok()?, cap)?
+                    .scale(&Number::rat(q.clone()));
                 c = c.add(&term);
             }
             h = h.add(&c.mul(&x.pow(u32::try_from(m).ok()?, cap)?, cap)?);
@@ -188,7 +205,11 @@ fn contains_op(
     node: NodeId,
     op: crate::graph::OpId,
 ) -> bool {
-    graph.op(node) == op || graph.children(node).iter().any(|&c| contains_op(graph, c, op))
+    graph.op(node) == op
+        || graph
+            .children(node)
+            .iter()
+            .any(|&c| contains_op(graph, c, op))
 }
 
 /// `R_1 … R_6` (in this order) as closed forms for the `Paired` Lagrange data:
@@ -212,7 +233,11 @@ fn paired_resolvents(
         for (power, c) in s_poly.iter().enumerate() {
             let coefficient = rational_node(graph, c);
             let exponent = graph.int(i64::try_from(power).ok()?);
-            let p = if power == 0 { graph.int(1) } else { graph.node(core::POW, &[*u, exponent]) };
+            let p = if power == 0 {
+                graph.int(1)
+            } else {
+                graph.node(core::POW, &[*u, exponent])
+            };
             s_terms.push(mul(graph, &[coefficient, p]));
         }
         let s_node = graph.node(core::ADD, &s_terms);
@@ -226,7 +251,11 @@ fn paired_resolvents(
         let discriminant = graph.node(core::ADD, &[s_squared, neg]);
         let root = graph.node(core::POW, &[discriminant, half]);
         let s_value = rj + rmj;
-        let signed_root = if s_value >= 0.0 { root } else { mul(graph, &[minus_one, root]) };
+        let signed_root = if s_value >= 0.0 {
+            root
+        } else {
+            mul(graph, &[minus_one, root])
+        };
         let big_sum = graph.node(core::ADD, &[s_node, signed_root]);
         let big = mul(graph, &[half, big_sum]);
         let inverse = graph.node(core::POW, &[big, minus_one]);
@@ -251,7 +280,11 @@ fn matched_roots(
     polynomial: &[BigInt],
     targets: &[f64],
 ) -> Option<Vec<NodeId>> {
-    let rational: Vec<BigRational> = polynomial.iter().cloned().map(BigRational::from_integer).collect();
+    let rational: Vec<BigRational> = polynomial
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let nodes = super::rational_polynomial_roots(graph, &rational)?;
     // Unsolved factors stay `root_of` objects, which are of no use inside a larger
     // closed form (and expensive to evaluate for large coefficients).
@@ -268,7 +301,9 @@ fn matched_roots(
     // node matched by several targets.
     let mut out = Vec::new();
     for &target in targets {
-        let slot = valued.iter().position(|(v, _)| (v - target).abs() <= 1e-7 * (1.0 + target.abs()))?;
+        let slot = valued
+            .iter()
+            .position(|(v, _)| (v - target).abs() <= 1e-7 * (1.0 + target.abs()))?;
         out.push(valued.get(slot)?.1);
     }
     Some(out)
@@ -286,7 +321,11 @@ fn lagrange_roots(
     let seventh = Number::fraction(1, 7)?;
     let mut candidates = Vec::new();
     match data {
-        | Lagrange::OneReal { phi, resolvents, trace } => {
+        | Lagrange::OneReal {
+            phi,
+            resolvents,
+            trace,
+        } => {
             let nodes = matched_roots(graph, &phi, &resolvents)?;
             let mut terms = vec![graph.num(Number::Int(trace))];
             for node in nodes {
@@ -297,7 +336,12 @@ fn lagrange_roots(
             let z = mul(graph, &[factor_node, sum]);
             candidates.push(original_variable(graph, analysis, z));
         },
-        | Lagrange::Paired { u_poly, s_poly, terms, trace } => {
+        | Lagrange::Paired {
+            u_poly,
+            s_poly,
+            terms,
+            trace,
+        } => {
             let resolvents = paired_resolvents(graph, &u_poly, &s_poly, &terms)?;
             let mut sum_terms = vec![graph.num(Number::Int(trace))];
             for node in resolvents {
@@ -308,10 +352,19 @@ fn lagrange_roots(
             let z = mul(graph, &[factor_node, sum]);
             candidates.push(original_variable(graph, analysis, z));
         },
-        | Lagrange::AllReal { s_poly, n_poly, terms, trace } => {
+        | Lagrange::AllReal {
+            s_poly,
+            n_poly,
+            terms,
+            trace,
+        } => {
             let targets: Vec<f64> = terms.iter().map(|t| t.1).collect();
             let s_nodes = matched_roots(graph, &s_poly, &targets)?;
-            let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+            let (acos, cos, pi) = (
+                graph.ops().lookup("acos")?,
+                graph.ops().lookup("cos")?,
+                graph.ops().lookup("pi")?,
+            );
             let pi_node = graph.node(pi, &[]);
             let half = graph.num(Number::fraction(1, 2)?);
             let minus_half = graph.num(Number::fraction(-1, 2)?);
@@ -323,7 +376,11 @@ fn lagrange_roots(
                 for (power, c) in n_poly.iter().enumerate() {
                     let coefficient = rational_node(graph, c);
                     let exponent = graph.int(i64::try_from(power).ok()?);
-                    let p = if power == 0 { graph.int(1) } else { graph.node(core::POW, &[*s_node, exponent]) };
+                    let p = if power == 0 {
+                        graph.int(1)
+                    } else {
+                        graph.node(core::POW, &[*s_node, exponent])
+                    };
                     n_terms.push(mul(graph, &[coefficient, p]));
                 }
                 let n_node = graph.node(core::ADD, &n_terms);
@@ -341,7 +398,8 @@ fn lagrange_roots(
                     let numerator = graph.node(core::ADD, &[*phi, turn]);
                     let seventh_node = graph.num(Number::fraction(1, 7)?);
                     let first = mul(graph, &[seventh_node, numerator]);
-                    let shift_coefficient = graph.num(Number::fraction(-2 * i64::try_from(*j).ok()? * k, 7)?);
+                    let shift_coefficient =
+                        graph.num(Number::fraction(-2 * i64::try_from(*j).ok()? * k, 7)?);
                     let second = mul(graph, &[shift_coefficient, pi_node]);
                     let angle = graph.node(core::ADD, &[first, second]);
                     let wave = graph.node(cos, &[angle]);
@@ -364,8 +422,12 @@ fn unit_root(
     u: i64,
     m: i64,
 ) -> Option<NodeId> {
-    let (cos, sin, pi, i_unit) =
-        (graph.ops().lookup("cos")?, graph.ops().lookup("sin")?, graph.ops().lookup("pi")?, graph.ops().lookup("I")?);
+    let (cos, sin, pi, i_unit) = (
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("sin")?,
+        graph.ops().lookup("pi")?,
+        graph.ops().lookup("I")?,
+    );
     let pi_node = graph.node(pi, &[]);
     let angle_factor = graph.num(Number::fraction(2 * u, m)?);
     let angle = mul(graph, &[angle_factor, pi_node]);
@@ -389,7 +451,11 @@ pub(super) fn complex_roots(
     if !(7..=8).contains(&factor.len()) {
         return None;
     }
-    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+    let rational: Vec<BigRational> = factor
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let analysis = analyse(&rational)?;
     if !analysis.group.solvable {
         return None;
@@ -410,8 +476,17 @@ pub(super) fn complex_roots(
         }
     } else if degree == 7 {
         let (nodes, trace) = match lagrange(&analysis)? {
-            | Lagrange::OneReal { phi, resolvents, trace } => (matched_roots(graph, &phi, &resolvents)?, trace),
-            | Lagrange::Paired { u_poly, s_poly, terms, trace } => (paired_resolvents(graph, &u_poly, &s_poly, &terms)?, trace),
+            | Lagrange::OneReal {
+                phi,
+                resolvents,
+                trace,
+            } => (matched_roots(graph, &phi, &resolvents)?, trace),
+            | Lagrange::Paired {
+                u_poly,
+                s_poly,
+                terms,
+                trace,
+            } => (paired_resolvents(graph, &u_poly, &s_poly, &terms)?, trace),
             | Lagrange::AllReal { .. } => return None,
         };
         let mut roots7 = Vec::new();
@@ -437,7 +512,9 @@ pub(super) fn complex_roots(
     // Keep the candidates that are roots and distinct.
     let mut out: Vec<((f64, f64), NodeId)> = Vec::new();
     for node in candidates {
-        let Some(z) = graph.eval_complex(node, &std::collections::HashMap::new()) else { continue };
+        let Some(z) = graph.eval_complex(node, &std::collections::HashMap::new()) else {
+            continue;
+        };
         let mut value = num_complex::Complex64::new(0.0, 0.0);
         let mut scale = 0.0_f64;
         for c in factor.iter().rev() {
@@ -448,7 +525,10 @@ pub(super) fn complex_roots(
         if !value.re.is_finite() || value.norm() > 1e-7 * scale.max(f64::MIN_POSITIVE) {
             return None;
         }
-        if !out.iter().any(|((re, im), _)| (re - z.re).hypot(im - z.im) < 1e-9 * (1.0 + z.norm())) {
+        if !out
+            .iter()
+            .any(|((re, im), _)| (re - z.re).hypot(im - z.im) < 1e-9 * (1.0 + z.norm()))
+        {
             out.push(((z.re, z.im), node));
         }
     }
@@ -466,7 +546,11 @@ pub(super) fn roots(
     if objects.is_empty() || !(7..=8).contains(&factor.len()) {
         return None;
     }
-    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+    let rational: Vec<BigRational> = factor
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let analysis = analyse(&rational)?;
     if !analysis.group.solvable {
         return None;

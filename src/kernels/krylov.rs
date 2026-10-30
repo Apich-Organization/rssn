@@ -12,6 +12,9 @@
 //! [`Csr::min_degree_ordering`]), approximate minimum degree
 //! ([`Csr::amd_ordering`]) or nested dissection
 //! ([`Csr::nested_dissection_ordering`]), see [`crate::kernels::ordering`].
+//!
+//! Parallelism: [`Csr::matvec`] processes blocks of 512 rows concurrently from 60000 nonzeros on
+//! (every row is an independent sequential dot product, so the product is bit-identical).
 
 /// Compressed sparse row matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -28,12 +31,24 @@ pub struct Csr {
     pub values: Vec<f64>,
 }
 
+/// Nonzeros from which [`Csr::matvec`] runs in parallel.
+const SPMV_PAR_NNZ: usize = 60_000;
+/// Rows per parallel block of [`Csr::matvec`].
+const SPMV_BLOCK: usize = 512;
+
 impl Csr {
     /// Builds a matrix from `(row, col, value)` triplets; duplicates are summed.
     #[must_use]
-    pub fn from_triplets(rows: usize, cols: usize, trip: &[(usize, usize, f64)]) -> Self {
-        let mut t: Vec<(usize, usize, f64)> =
-            trip.iter().copied().filter(|&(r, c, _)| r < rows && c < cols).collect();
+    pub fn from_triplets(
+        rows: usize,
+        cols: usize,
+        trip: &[(usize, usize, f64)],
+    ) -> Self {
+        let mut t: Vec<(usize, usize, f64)> = trip
+            .iter()
+            .copied()
+            .filter(|&(r, c, _)| r < rows && c < cols)
+            .collect();
         t.sort_by_key(|a| (a.0, a.1));
         let mut indptr = vec![0; rows + 1];
         let mut indices: Vec<usize> = Vec::new();
@@ -54,17 +69,43 @@ impl Csr {
         for i in 0..rows {
             indptr[i + 1] += indptr[i];
         }
-        Self { rows, cols, indptr, indices, values }
+        Self {
+            rows,
+            cols,
+            indptr,
+            indices,
+            values,
+        }
     }
 
     /// Matrix-vector product `y = A x`.
-    pub fn matvec(&self, x: &[f64], y: &mut [f64]) {
-        for i in 0..self.rows {
+    ///
+    /// Every row is an independent sequential dot product, so large matrices
+    /// are processed in parallel blocks of rows without changing a bit of the
+    /// result.
+    pub fn matvec(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
+        let row = |i: usize| {
             let mut s = 0.0;
             for k in self.indptr[i]..self.indptr[i + 1] {
                 s += self.values[k] * x[self.indices[k]];
             }
-            y[i] = s;
+            s
+        };
+        if self.values.len() >= SPMV_PAR_NNZ {
+            let rows = self.rows.min(y.len());
+            super::par::for_chunks_mut(&mut y[..rows], SPMV_BLOCK, 2, |b, block| {
+                for (r, slot) in block.iter_mut().enumerate() {
+                    *slot = row(b * SPMV_BLOCK + r);
+                }
+            });
+        } else {
+            for i in 0..self.rows {
+                y[i] = row(i);
+            }
         }
     }
 
@@ -83,7 +124,10 @@ impl Csr {
     /// Jacobi preconditioner apply function data: the inverse diagonal.
     #[must_use]
     pub fn jacobi_inverse(&self) -> Vec<f64> {
-        self.diagonal().iter().map(|&d| if d == 0.0 { 1.0 } else { 1.0 / d }).collect()
+        self.diagonal()
+            .iter()
+            .map(|&d| if d == 0.0 { 1.0 } else { 1.0 / d })
+            .collect()
     }
 
     /// ILU(0) factorisation (incomplete LU keeping the sparsity pattern).
@@ -123,7 +167,13 @@ impl Csr {
                 pos[self.indices[k]] = usize::MAX;
             }
         }
-        Some(Ilu0 { a: Self { values: lu, ..self.clone() }, diag })
+        Some(Ilu0 {
+            a: Self {
+                values: lu,
+                ..self.clone()
+            },
+            diag,
+        })
     }
 }
 
@@ -136,7 +186,11 @@ pub struct Ilu0 {
 
 impl Ilu0 {
     /// Solves `L U z = r` (applies the preconditioner `M^-1`).
-    pub fn apply(&self, r: &[f64], z: &mut [f64]) {
+    pub fn apply(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
         let n = self.a.rows;
         for i in 0..n {
             let mut s = r[i];
@@ -168,7 +222,10 @@ pub struct IterResult {
     pub converged: bool,
 }
 
-fn dot(a: &[f64], b: &[f64]) -> f64 {
+fn dot(
+    a: &[f64],
+    b: &[f64],
+) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
@@ -177,14 +234,24 @@ fn nrm(a: &[f64]) -> f64 {
 }
 
 /// Identity preconditioner helper.
-pub const fn identity_precond(r: &[f64], z: &mut [f64]) {
+pub const fn identity_precond(
+    r: &[f64],
+    z: &mut [f64],
+) {
     z.copy_from_slice(r);
 }
 
 /// Preconditioned conjugate gradients for SPD operators.
 ///
 /// `apply(x, y)` computes `y = A x`; `precond(r, z)` computes `z = M^-1 r`.
-pub fn cg<A, M>(apply: A, precond: M, b: &[f64], x0: Option<&[f64]>, tol: f64, max_iter: usize) -> IterResult
+pub fn cg<A, M>(
+    apply: A,
+    precond: M,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
 where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
@@ -222,7 +289,12 @@ where
         it += 1;
     }
     let res = nrm(&r) / bn;
-    IterResult { x, residual: res, iterations: it, converged: res <= tol }
+    IterResult {
+        x,
+        residual: res,
+        iterations: it,
+        converged: res <= tol,
+    }
 }
 
 /// Restarted GMRES(`restart`) with right preconditioning.
@@ -317,11 +389,23 @@ where
             x[q] += tmp[q];
         }
     }
-    IterResult { x, residual: res, iterations: total, converged: res <= tol }
+    IterResult {
+        x,
+        residual: res,
+        iterations: total,
+        converged: res <= tol,
+    }
 }
 
 /// Preconditioned `BiCGSTAB` for general nonsymmetric operators.
-pub fn bicgstab<A, M>(apply: A, precond: M, b: &[f64], x0: Option<&[f64]>, tol: f64, max_iter: usize) -> IterResult
+pub fn bicgstab<A, M>(
+    apply: A,
+    precond: M,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
 where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
@@ -384,7 +468,12 @@ where
         }
     }
     let res = nrm(&r) / bn;
-    IterResult { x, residual: res, iterations: it, converged: res <= tol }
+    IterResult {
+        x,
+        residual: res,
+        iterations: it,
+        converged: res <= tol,
+    }
 }
 
 // ------------------------------------------------------------------
@@ -420,7 +509,11 @@ pub enum SparseLuError {
 /// Breadth-first search from `start`; fills `dist` for the visited
 /// vertices (which must be `usize::MAX` on entry) and returns them in
 /// visiting order.
-fn bfs_order(adj: &[Vec<usize>], start: usize, dist: &mut [usize]) -> Vec<usize> {
+fn bfs_order(
+    adj: &[Vec<usize>],
+    start: usize,
+    dist: &mut [usize],
+) -> Vec<usize> {
     let mut queue = vec![start];
     dist[start] = 0;
     let mut head = 0;
@@ -472,7 +565,10 @@ impl Csr {
 
     /// Symmetric permutation `B[i][j] = A[perm[i]][perm[j]]`.
     #[must_use]
-    pub fn permute_symmetric(&self, perm: &[usize]) -> Self {
+    pub fn permute_symmetric(
+        &self,
+        perm: &[usize],
+    ) -> Self {
         let n = self.rows;
         let mut inv = vec![0; n];
         for (new, &old) in perm.iter().enumerate() {
@@ -563,7 +659,8 @@ impl Csr {
     #[must_use]
     pub fn min_degree_ordering(&self) -> Vec<usize> {
         use std::cmp::Reverse;
-        use std::collections::{BTreeSet, BinaryHeap};
+        use std::collections::BTreeSet;
+        use std::collections::BinaryHeap;
         let adj0 = self.symmetric_adjacency();
         let n = adj0.len();
         let mut adj: Vec<BTreeSet<usize>> =
@@ -618,7 +715,10 @@ impl Csr {
     ///
     /// # Errors
     /// [`SparseLuError::NotSquare`] or [`SparseLuError::Singular`].
-    pub fn sparse_lu(&self, ordering: SparseOrdering) -> Result<SparseLu, SparseLuError> {
+    pub fn sparse_lu(
+        &self,
+        ordering: SparseOrdering,
+    ) -> Result<SparseLu, SparseLuError> {
         self.sparse_lu_with(ordering, 0.1)
     }
 
@@ -639,11 +739,11 @@ impl Csr {
         }
         let n = self.rows;
         let perm: Vec<usize> = match ordering {
-            SparseOrdering::Natural => (0..n).collect(),
-            SparseOrdering::Rcm => self.rcm_ordering(),
-            SparseOrdering::MinDegree => self.min_degree_ordering(),
-            SparseOrdering::Amd => self.amd_ordering(),
-            SparseOrdering::NestedDissection => self.nested_dissection_ordering(),
+            | SparseOrdering::Natural => (0..n).collect(),
+            | SparseOrdering::Rcm => self.rcm_ordering(),
+            | SparseOrdering::MinDegree => self.min_degree_ordering(),
+            | SparseOrdering::Amd => self.amd_ordering(),
+            | SparseOrdering::NestedDissection => self.nested_dissection_ordering(),
         };
         let b = self.permute_symmetric(&perm);
         // CSC of B
@@ -695,9 +795,17 @@ impl Csr {
                     let jnew = pinv[j];
                     if mark[j] != k {
                         mark[j] = k;
-                        pstack[head] = if jnew == usize::MAX { 0 } else { lp[jnew] };
+                        pstack[head] = if jnew == usize::MAX {
+                            0
+                        } else {
+                            lp[jnew]
+                        };
                     }
-                    let p2 = if jnew == usize::MAX { 0 } else { lp[jnew + 1] };
+                    let p2 = if jnew == usize::MAX {
+                        0
+                    } else {
+                        lp[jnew + 1]
+                    };
                     let mut q = pstack[head];
                     let mut pushed = false;
                     while q < p2 {
@@ -782,7 +890,17 @@ impl Csr {
         for v in &mut li {
             *v = pinv[*v];
         }
-        Ok(SparseLu { n, perm, pinv, lp, li, lx, up, ui, ux })
+        Ok(SparseLu {
+            n,
+            perm,
+            pinv,
+            lp,
+            li,
+            lx,
+            up,
+            ui,
+            ux,
+        })
     }
 }
 
@@ -822,7 +940,10 @@ impl SparseLu {
 
     /// Solves `A x = b`.
     #[must_use]
-    pub fn solve(&self, b: &[f64]) -> Vec<f64> {
+    pub fn solve(
+        &self,
+        b: &[f64],
+    ) -> Vec<f64> {
         let n = self.n;
         let mut w = vec![0.0; n];
         for i in 0..n {

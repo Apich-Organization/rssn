@@ -4,6 +4,9 @@
 //! forms, ranks, null spaces, solutions of linear systems, inverses and
 //! determinants. Used by the Lie-algebra structure theory and by the
 //! homology bases of simplicial complexes.
+//!
+//! Parallelism: the row updates of an elimination step run concurrently from 48 rows on (exact
+//! arithmetic, identical result).
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -61,15 +64,15 @@ pub fn rref(
             *x = &*x * &inv;
         }
         let pivot_row = m[r].clone();
-        for (i, row) in m.iter_mut().enumerate() {
+        super::par::for_each_mut(m, 48, |i, row| {
             if i == r || row[c].is_zero() {
-                continue;
+                return;
             }
             let f = row[c].clone();
             for (x, y) in row.iter_mut().zip(&pivot_row) {
                 *x -= &f * y;
             }
-        }
+        });
         pivots.push(c);
         r += 1;
     }
@@ -125,7 +128,16 @@ pub fn solve(
     cols: usize,
     b: &[Q],
 ) -> Option<Vec<Q>> {
-    let mut aug: QMat = m.iter().zip(b).map(|(row, bi)| row.iter().cloned().chain(std::iter::once(bi.clone())).collect()).collect();
+    let mut aug: QMat = m
+        .iter()
+        .zip(b)
+        .map(|(row, bi)| {
+            row.iter()
+                .cloned()
+                .chain(std::iter::once(bi.clone()))
+                .collect()
+        })
+        .collect();
     let pivots = rref(&mut aug, cols + 1);
     if pivots.last() == Some(&cols) {
         return None;
@@ -186,14 +198,25 @@ pub fn transpose(
     a: &[Vec<Q>],
     cols: usize,
 ) -> QMat {
-    (0..cols).map(|j| a.iter().map(|row| row[j].clone()).collect()).collect()
+    (0..cols)
+        .map(|j| a.iter().map(|row| row[j].clone()).collect())
+        .collect()
 }
 
 /// The inverse of a square matrix.
 #[must_use]
 pub fn inverse(m: &[Vec<Q>]) -> Option<QMat> {
     let n = m.len();
-    let mut aug: QMat = m.iter().enumerate().map(|(i, row)| row.iter().cloned().chain((0..n).map(|j| q(i64::from(i == j)))).collect()).collect();
+    let mut aug: QMat = m
+        .iter()
+        .enumerate()
+        .map(|(i, row)| {
+            row.iter()
+                .cloned()
+                .chain((0..n).map(|j| q(i64::from(i == j))))
+                .collect()
+        })
+        .collect();
     let pivots = rref(&mut aug, 2 * n);
     if pivots.len() != n || pivots.last().is_some_and(|&p| p >= n) {
         return None;
@@ -263,7 +286,9 @@ mod tests {
     use super::*;
 
     fn m(rows: &[&[i64]]) -> QMat {
-        rows.iter().map(|r| r.iter().map(|&x| q(x)).collect()).collect()
+        rows.iter()
+            .map(|r| r.iter().map(|&x| q(x)).collect())
+            .collect()
     }
 
     #[test]

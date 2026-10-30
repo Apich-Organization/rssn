@@ -28,13 +28,13 @@ pub mod store;
 pub mod subst;
 pub mod window;
 
+pub use eval::ComplexEval;
 pub use extract::ClosedForm;
 pub use extract::CostModel;
 pub use extract::Extractor;
 pub use extract::SizeCost;
-pub use facts::Facts;
-pub use eval::ComplexEval;
 pub use facts::Always;
+pub use facts::Facts;
 pub use facts::OnReals;
 pub use id::ClassId;
 pub use id::NodeId;

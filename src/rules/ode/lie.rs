@@ -127,7 +127,15 @@ pub(super) fn solve_identity(
 ) -> Option<Vec<Vec<BigRational>>> {
     let mut gens = Gens::default();
     let indices: Vec<u32> = unknowns.iter().map(|&u| gens.index(graph, u)).collect();
-    let fraction = crate::rules::poly::ratio(graph, &mut gens, expr, Limits { terms: 20_000, exponent: 64 })?;
+    let fraction = crate::rules::poly::ratio(
+        graph,
+        &mut gens,
+        expr,
+        Limits {
+            terms: 20_000,
+            exponent: 64,
+        },
+    )?;
     // Group the numerator's terms by their part free of the unknowns.
     let mut equations: BTreeMap<Mono, Vec<BigRational>> = BTreeMap::new();
     for (mono, coeff) in fraction.numer.terms() {
@@ -141,10 +149,15 @@ pub(super) fn solve_identity(
             }
         }
         let k = unknown?;
-        let row = equations.entry(rest).or_insert_with(|| vec![BigRational::zero(); unknowns.len()]);
+        let row = equations
+            .entry(rest)
+            .or_insert_with(|| vec![BigRational::zero(); unknowns.len()]);
         row[k] += coeff.to_rational()?;
     }
-    Some(null_space(equations.into_values().collect(), unknowns.len()))
+    Some(null_space(
+        equations.into_values().collect(),
+        unknowns.len(),
+    ))
 }
 
 /// Point symmetries `(ξ, η)` of `y' = ω(x, y)` with polynomial
@@ -260,7 +273,8 @@ pub(super) fn integrate_with_symmetry(
     // Φ_y = μ, Φ_x = -μ ω.
     let mu_omega = mul(cx.graph, &[minus_one, mu, omega]);
     let mu_omega = cx.simplify(mu_omega);
-    let potential = potential(cx, mu, mu_omega, y, x).or_else(|| potential(cx, mu_omega, mu, x, y))?;
+    let potential =
+        potential(cx, mu, mu_omega, y, x).or_else(|| potential(cx, mu_omega, mu, x, y))?;
     let c = problem.constant(cx.graph);
     let relation = sub(cx.graph, potential, c);
     implicit(cx, problem, relation)
@@ -283,7 +297,11 @@ pub(super) fn potential(
         // Free of u in value though not in form: specialise u.
         rest = specialise_constant(cx, rest, u)?;
     }
-    let rest_integral = if cx.is_zero(rest) { cx.graph.int(0) } else { integrate(cx, rest, v)? };
+    let rest_integral = if cx.is_zero(rest) {
+        cx.graph.int(0)
+    } else {
+        integrate(cx, rest, v)?
+    };
     let total = add(cx.graph, &[part, rest_integral]);
     Some(cx.simplify(total))
 }
@@ -296,7 +314,13 @@ pub(super) fn specialise_constant(
     u: NodeId,
 ) -> Option<NodeId> {
     let u_symbol = cx.graph.symbol_of(u)?;
-    let others: Vec<_> = cx.graph.free_symbols(cx.graph.find(e)).iter().copied().filter(|&s| s != u_symbol).collect();
+    let others: Vec<_> = cx
+        .graph
+        .free_symbols(cx.graph.find(e))
+        .iter()
+        .copied()
+        .filter(|&s| s != u_symbol)
+        .collect();
     for base in [0.43, 1.31] {
         let mut reference = None;
         for at in [0.27, 0.91, 1.73, 2.6] {
@@ -422,15 +446,24 @@ pub(super) fn higher_order_symmetries(
     for k in 1..=n {
         d = total_x(cx, d, x, &mut jets)?;
         while jets.len() <= k + 1 {
-            let symbol = cx.graph.interner_mut().fresh_symbol(&format!("y{}", jets.len()));
+            let symbol = cx
+                .graph
+                .interner_mut()
+                .fresh_symbol(&format!("y{}", jets.len()));
             jets.push(cx.graph.symbol_node(symbol));
         }
         let shift = mul(cx.graph, &[xi, jets[k + 1]]);
         prolonged.push(add(cx.graph, &[d, shift]));
     }
     // Condition, then on shell: y^(n) → ω, y^(n+1) → D ω.
-    let (omega_x, omega_y) = (derivative(cx.graph, omega, x)?, derivative(cx.graph, omega, y)?);
-    let mut rhs = vec![mul(cx.graph, &[xi, omega_x]), mul(cx.graph, &[eta, omega_y])];
+    let (omega_x, omega_y) = (
+        derivative(cx.graph, omega, x)?,
+        derivative(cx.graph, omega, y)?,
+    );
+    let mut rhs = vec![
+        mul(cx.graph, &[xi, omega_x]),
+        mul(cx.graph, &[eta, omega_y]),
+    ];
     for k in 1..n {
         let partial = derivative(cx.graph, omega, jets[k])?;
         rhs.push(mul(cx.graph, &[prolonged[k - 1], partial]));
@@ -440,7 +473,11 @@ pub(super) fn higher_order_symmetries(
     let mut omega_jets: Vec<NodeId> = problem.stand[..n].to_vec();
     let d_omega = total_x(cx, omega, x, &mut omega_jets)?;
     // D ω may reference y^(n) (as jets[n]); replace it by ω as well.
-    let d_omega = cx.graph.substitute(d_omega, omega_jets.get(n).copied().unwrap_or(jets[n]), omega);
+    let d_omega = cx.graph.substitute(
+        d_omega,
+        omega_jets.get(n).copied().unwrap_or(jets[n]),
+        omega,
+    );
     condition = cx.graph.substitute(condition, jets[n + 1], d_omega);
     condition = cx.graph.substitute(condition, jets[n], omega);
     let solutions = solve_identity(cx.graph, condition, &unknowns)?;
@@ -522,7 +559,12 @@ pub(super) fn second_order(
     if problem.order() != 2 || depth > 2 {
         return None;
     }
-    let (x, y, dy, ddy) = (problem.x, problem.stand[0], problem.stand[1], problem.stand[2]);
+    let (x, y, dy, ddy) = (
+        problem.x,
+        problem.stand[0],
+        problem.stand[1],
+        problem.stand[2],
+    );
     let omega = *super::solve_for(cx.graph, problem.expr, ddy, 0)?.first()?;
     let omega = cx.simplify(omega);
     let symmetries = higher_order_symmetries(cx, problem, omega)?;
@@ -659,7 +701,14 @@ fn constants_in(
     cx.graph
         .free_symbols(cx.graph.find(node))
         .iter()
-        .filter_map(|&s| cx.graph.interner().symbol_name(s).strip_prefix('C')?.parse::<usize>().ok())
+        .filter_map(|&s| {
+            cx.graph
+                .interner()
+                .symbol_name(s)
+                .strip_prefix('C')?
+                .parse::<usize>()
+                .ok()
+        })
         .max()
         .unwrap_or(0)
 }
@@ -673,6 +722,9 @@ mod tests {
         let q = |v: i64| BigRational::from_integer(v.into());
         let basis = null_space(vec![vec![q(1), q(1), q(0)], vec![q(0), q(0), q(1)]], 3);
         assert_eq!(basis, vec![vec![q(-1), q(1), q(0)]]);
-        assert!(null_space(vec![vec![q(1), q(0)], vec![q(0), q(1)]], 2).is_empty());
+        assert!(
+            null_space(vec![vec![q(1), q(0)], vec![q(0), q(1)]], 2).is_empty(),
+            "not empty"
+        );
     }
 }

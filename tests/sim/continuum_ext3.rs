@@ -1,7 +1,9 @@
 //! SPH grad-h equations and dissipative particle dynamics.
 
-use rssn::sim::dpd::{Dpd, DpdParams};
-use rssn::sim::sph::{Sph, SphBoundary};
+use rssn::sim::dpd::Dpd;
+use rssn::sim::dpd::DpdParams;
+use rssn::sim::sph::Sph;
+use rssn::sim::sph::SphBoundary;
 
 const GAMMA: f64 = 1.4;
 
@@ -29,7 +31,10 @@ fn sod_system(grad_h: bool) -> Sph<1> {
     s
 }
 
-fn evolve(s: &mut Sph<1>, t_end: f64) {
+fn evolve(
+    s: &mut Sph<1>,
+    t_end: f64,
+) {
     let mut t = 0.0;
     while t < t_end {
         let dt = s.suggest_dt(0.25).min(t_end - t);
@@ -43,7 +48,12 @@ fn grad_h_sph_conserves_and_reproduces_the_sod_tube() {
     let mut s = sod_system(true);
     let e0 = s.total_energy();
     evolve(&mut s, 0.2);
-    assert!((s.total_energy() - e0).abs() < 1e-3 * e0.abs(), "energy {} -> {}", e0, s.total_energy());
+    assert!(
+        (s.total_energy() - e0).abs() < 1e-3 * e0.abs(),
+        "energy {} -> {}",
+        e0,
+        s.total_energy()
+    );
     // left plateau of the star region: u* = 0.92745, p* = 0.30313
     let mut best = 0;
     for i in 0..s.pos.len() {
@@ -51,8 +61,16 @@ fn grad_h_sph_conserves_and_reproduces_the_sod_tube() {
             best = i;
         }
     }
-    assert!((s.vel[best][0] - 0.927_45).abs() < 0.05, "star velocity {}", s.vel[best][0]);
-    assert!((s.pressure(best) - 0.303_13).abs() < 0.04, "star pressure {}", s.pressure(best));
+    assert!(
+        (s.vel[best][0] - 0.927_45).abs() < 0.05,
+        "star velocity {}",
+        s.vel[best][0]
+    );
+    assert!(
+        (s.pressure(best) - 0.303_13).abs() < 0.04,
+        "star pressure {}",
+        s.pressure(best)
+    );
 }
 
 #[test]
@@ -60,8 +78,17 @@ fn grad_h_equals_standard_sph_when_smoothing_lengths_are_uniform() {
     let n = 100;
     let pos: Vec<[f64; 1]> = (0..n).map(|i| [(i as f64 + 0.5) / n as f64]).collect();
     let make = |g: bool| {
-        let u: Vec<f64> = (0..n).map(|i| 1.0 + 0.2 * (2.0 * std::f64::consts::PI * pos[i][0]).sin()).collect();
-        let mut s = Sph::<1>::new(pos.clone(), vec![1.0 / n as f64; n], u, [0.0], [1.0], [SphBoundary::Periodic]);
+        let u: Vec<f64> = (0..n)
+            .map(|i| 1.0 + 0.2 * (2.0 * std::f64::consts::PI * pos[i][0]).sin())
+            .collect();
+        let mut s = Sph::<1>::new(
+            pos.clone(),
+            vec![1.0 / n as f64; n],
+            u,
+            [0.0],
+            [1.0],
+            [SphBoundary::Periodic],
+        );
         s.alpha = 0.0;
         s.beta = 0.0;
         s.grad_h = g;
@@ -71,15 +98,33 @@ fn grad_h_equals_standard_sph_when_smoothing_lengths_are_uniform() {
     let (acc_a, _) = a.derivatives();
     let (acc_b, _) = b.derivatives();
     let scale = acc_a.iter().map(|x| x[0].abs()).fold(0.0, f64::max);
-    let diff = acc_a.iter().zip(&acc_b).map(|(x, y)| (x[0] - y[0]).abs()).fold(0.0, f64::max);
-    assert!(scale > 0.0 && diff < 0.05 * scale, "uniform-h difference {diff} vs scale {scale}");
+    let diff = acc_a
+        .iter()
+        .zip(&acc_b)
+        .map(|(x, y)| (x[0] - y[0]).abs())
+        .fold(0.0, f64::max);
+    assert!(
+        scale > 0.0 && diff < 0.05 * scale,
+        "uniform-h difference {diff} vs scale {scale}"
+    );
     // pairwise antisymmetric forces: momentum is conserved
     let total: f64 = acc_b.iter().map(|x| x[0]).sum::<f64>() / n as f64;
     assert!(total.abs() < 1e-12, "net force {total}");
 }
 
-fn gw_params(dim: usize, l: f64) -> DpdParams {
-    DpdParams { dim, box_len: [l, l, l], a: 25.0, gamma: 4.5, kt: 1.0, rc: 1.0, mass: 1.0 }
+fn gw_params(
+    dim: usize,
+    l: f64,
+) -> DpdParams {
+    DpdParams {
+        dim,
+        box_len: [l, l, l],
+        a: 25.0,
+        gamma: 4.5,
+        kt: 1.0,
+        rc: 1.0,
+        mass: 1.0,
+    }
 }
 
 #[test]
@@ -118,7 +163,11 @@ fn dpd_2d_and_input_checks() {
         t_sum += d.temperature();
     }
     assert!((t_sum / 200.0 - 1.0).abs() < 0.04);
-    assert!(d.pos.iter().all(|p| p[2] == 0.0 && p[0] >= 0.0 && p[0] < l && p[1] >= 0.0 && p[1] < l));
+    assert!(
+        d.pos
+            .iter()
+            .all(|p| p[2] == 0.0 && p[0] >= 0.0 && p[0] < l && p[1] >= 0.0 && p[1] < l)
+    );
     assert!(Dpd::new(10, gw_params(4, l), 1).is_err());
     assert!(Dpd::new(10, gw_params(3, 2.0), 1).is_err());
 }

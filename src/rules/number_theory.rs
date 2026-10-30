@@ -5,6 +5,21 @@
 //! its arguments are literal integers; anything else stays symbolic. Results
 //! are computed with arbitrary-precision integers, so nothing overflows.
 //!
+//! Primality is deterministic Miller-Rabin below `2^64` and the
+//! Baillie-PSW test (base-2 strong probable prime plus strong Lucas with
+//! Selfridge's parameters) above, for which no counterexample is known.
+//! `factorint` and the arithmetic functions built on it (`totient`,
+//! `divisor_count`, `divisor_sum`, `omega`, `bigomega`, `radical`, `mobius`,
+//! `liouville`, `sigma`, `is_squarefree`) factor 64-bit numbers by Pollard's
+//! rho and larger ones by trial division, perfect-power detection, BPSW and
+//! Lenstra's elliptic-curve method (Montgomery curves, Suyama's
+//! parametrisation, stage 1 with bounds 2 000 / 11 000 / 50 000 and the
+//! standard stage 2): prime factors of up to about 25 digits are found, a
+//! composite cofactor that resists the curves leaves the request
+//! unevaluated. The other operators of `ext` that need a prime
+//! as a machine word (`sqrtmod`, `primitive_root`, `mult_order`, ...) still
+//! stop at 64-bit factors.
+//!
 //! The core operators are `gcd`, `lcm`, `mod`, `powmod`, `invmod`,
 //! `isprime`, `nextprime`, `totient`, `divisor_count`, `divisor_sum`,
 //! `factorint`, `jacobi`, `egcd`, `crt`, `pell`, `primes`, `cfrac`,
@@ -16,8 +31,13 @@
 //! `divisors`, `is_squarefree`, `is_square`, `isqrt`, `iroot`,
 //! `perfect_power`, `prevprime`, `prime_pi`, `nth_prime`, `two_squares`,
 //! `lincong`, `binomial_mod` and `farey`.
+//!
+//! Parallelism: the ECM curves of one stage run in groups of 1, 2, 4, ... up to one per thread; the
+//! lowest curve index that finds a factor wins, so the divisor found does not depend on the thread
+//! count.
 
 use num_bigint::BigInt;
+use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Signed;
@@ -386,7 +406,8 @@ fn powmod_u64(
 }
 
 /// Deterministic Miller-Rabin: the first 12 primes are witnesses for every
-/// `n < 3.3e24`, so all of `u64`.
+/// `n < 3.18e23` (the smallest strong pseudoprime to all of them is
+/// 318665857834031151167461), so all of `u64`. Larger numbers use [`bpsw`].
 fn is_prime_u64(n: u64) -> bool {
     if n < 2 {
         return false;
@@ -424,29 +445,7 @@ pub(crate) fn is_prime(n: &BigInt) -> bool {
     if n.is_negative() {
         return false;
     }
-    let one = BigInt::one();
-    for p in BASES {
-        if (n % p).is_zero() {
-            return false;
-        }
-    }
-    let n1 = n - &one;
-    let s = n1.trailing_zeros().unwrap_or(0);
-    let d = &n1 >> s;
-    'witness: for a in BASES {
-        let mut x = BigInt::from(a).modpow(&d, n);
-        if x == one || x == n1 {
-            continue;
-        }
-        for _ in 1..s {
-            x = &x * &x % n;
-            if x == n1 {
-                continue 'witness;
-            }
-        }
-        return false;
-    }
-    true
+    bpsw(n)
 }
 
 const fn gcd_u64(
@@ -517,6 +516,408 @@ pub(crate) fn factor(n: &BigInt) -> Option<Vec<(u64, u32)>> {
     }
     primes.sort_unstable();
     let mut out: Vec<(u64, u32)> = Vec::new();
+    for p in primes {
+        match out.last_mut() {
+            | Some((q, e)) if *q == p => *e += 1,
+            | _ => out.push((p, 1)),
+        }
+    }
+    Some(out)
+}
+
+// ------------------------------------------------- BPSW and Lenstra's ECM
+
+/// `x mod n` in `[0, n)`.
+fn mod_pos(
+    x: &BigInt,
+    n: &BigInt,
+) -> BigInt {
+    let r = x % n;
+    if r.is_negative() { r + n } else { r }
+}
+
+/// Strong probable-prime test of the odd `n > 2` to the base `a`.
+fn strong_probable_prime(
+    n: &BigInt,
+    a: &BigInt,
+) -> bool {
+    let one = BigInt::one();
+    let n1 = n - &one;
+    let s = n1.trailing_zeros().unwrap_or(0);
+    let d = &n1 >> s;
+    let mut x = a.modpow(&d, n);
+    if x == one || x == n1 {
+        return true;
+    }
+    for _ in 1..s {
+        x = &x * &x % n;
+        if x == n1 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Strong Lucas probable-prime test of the odd `n > 2` with Selfridge's
+/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol
+/// `-1`, `P = 1`, `Q = (1 - D)/4`): `U_d = 0` or `V_{d 2^r} = 0` for some
+/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+fn strong_lucas(n: &BigInt) -> bool {
+    let root = n.sqrt();
+    if &root * &root == *n {
+        return false;
+    }
+    let mut d: i64 = 5;
+    loop {
+        match jacobi(&BigInt::from(d), n) {
+            | Some(-1) => break,
+            // A common factor with D: composite unless n is D itself.
+            | Some(0) if BigInt::from(d.abs()) != *n => return false,
+            | _ => {},
+        }
+        d = if d > 0 { -(d + 2) } else { -d + 2 };
+    }
+    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
+    let n1: BigInt = n + 1;
+    let s = n1.trailing_zeros().unwrap_or(0);
+    let m = &n1 >> s;
+    // Halving modulo the odd n.
+    let half = |x: BigInt| -> BigInt {
+        let x = mod_pos(&x, n);
+        if x.bit(0) {
+            (x + n) >> 1
+        } else {
+            x >> 1
+        }
+    };
+    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos(&q, n));
+    for i in (0..m.bits().saturating_sub(1)).rev() {
+        u = &u * &v % n;
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if m.bit(i) {
+            let next_u = half(&u + &v);
+            let next_v = half(&d_big * &u + &v);
+            u = next_u;
+            v = next_v;
+            qk = mod_pos(&(&qk * &q), n);
+        }
+    }
+    if u.is_zero() || v.is_zero() {
+        return true;
+    }
+    for _ in 1..s {
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if v.is_zero() {
+            return true;
+        }
+    }
+    false
+}
+
+/// The Baillie–PSW test: trial division by the primes below 100, a strong
+/// probable-prime test to base 2 and a strong Lucas test. No composite is
+/// known that passes it (and none exists below `2^64`).
+pub(crate) fn bpsw(n: &BigInt) -> bool {
+    if *n < BigInt::from(2) {
+        return false;
+    }
+    for p in SMALL_PRIMES {
+        let p = BigInt::from(p);
+        if *n == p {
+            return true;
+        }
+        if (n % &p).is_zero() {
+            return false;
+        }
+    }
+    strong_probable_prime(n, &BigInt::from(2)) && strong_lucas(n)
+}
+
+const SMALL_PRIMES: [u32; 25] = [
+    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
+];
+
+/// Sieve of Eratosthenes: `flags[k]` says whether `k` is prime.
+fn prime_flags(limit: usize) -> Vec<bool> {
+    let mut flags = vec![true; limit + 1];
+    for k in 0..=1.min(limit) {
+        flags[k] = false;
+    }
+    let mut p = 2;
+    while p * p <= limit {
+        if flags[p] {
+            let mut multiple = p * p;
+            while multiple <= limit {
+                flags[multiple] = false;
+                multiple += p;
+            }
+        }
+        p += 1;
+    }
+    flags
+}
+
+/// A point `(X : Z)` of a Montgomery curve in projective x-only form.
+type XzPoint = (BigInt, BigInt);
+
+/// The curve `B y^2 = x^3 + A x^2 + x` over `Z/n` through `a24 = (A + 2)/4`.
+struct Montgomery<'a> {
+    n: &'a BigInt,
+    a24: BigInt,
+}
+
+impl Montgomery<'_> {
+    fn double(
+        &self,
+        p: &XzPoint,
+    ) -> XzPoint {
+        let n = self.n;
+        let sum = (&p.0 + &p.1) % n;
+        let diff = mod_pos(&(&p.0 - &p.1), n);
+        let (t1, t2) = (&sum * &sum % n, &diff * &diff % n);
+        let t3 = mod_pos(&(&t1 - &t2), n);
+        let x = &t1 * &t2 % n;
+        let z = &t3 * ((&t2 + &self.a24 * &t3) % n) % n;
+        (x, z)
+    }
+
+    /// `P + Q` given `P - Q`.
+    fn add(
+        &self,
+        p: &XzPoint,
+        q: &XzPoint,
+        difference: &XzPoint,
+    ) -> XzPoint {
+        let n = self.n;
+        let u = mod_pos(&(&p.0 - &p.1), n) * ((&q.0 + &q.1) % n) % n;
+        let v = ((&p.0 + &p.1) % n) * mod_pos(&(&q.0 - &q.1), n) % n;
+        let (sum, diff) = ((&u + &v) % n, mod_pos(&(&u - &v), n));
+        let x = &difference.1 * (&sum * &sum % n) % n;
+        let z = &difference.0 * (&diff * &diff % n) % n;
+        (x, z)
+    }
+
+    /// `k P` by the Montgomery ladder (`k >= 1`).
+    fn multiply(
+        &self,
+        p: &XzPoint,
+        k: u64,
+    ) -> XzPoint {
+        if k == 1 {
+            return p.clone();
+        }
+        let (mut r0, mut r1) = (p.clone(), self.double(p));
+        for i in (0..k.ilog2()).rev() {
+            if (k >> i) & 1 == 0 {
+                r1 = self.add(&r0, &r1, p);
+                r0 = self.double(&r0);
+            } else {
+                r0 = self.add(&r0, &r1, p);
+                r1 = self.double(&r1);
+            }
+        }
+        r0
+    }
+}
+
+/// The step of the stage-2 continuation of [`ecm_curve`].
+const D: u64 = 210;
+
+/// One ECM curve (Suyama's parametrisation of Montgomery curves with
+/// torsion `Z/12`) with the given `sigma`: stage 1 multiplies the point by
+/// every prime power up to `b1`, stage 2 (the standard continuation with
+/// `D = 210`) looks for a prime `q` in `(b1, b2]` with `q Q = O`. Returns a
+/// non-trivial divisor of `n`.
+fn ecm_curve(
+    n: &BigInt,
+    sigma: u64,
+    b1: u64,
+    flags: &[bool],
+    b2: u64,
+) -> Option<BigInt> {
+    let sigma = BigInt::from(sigma);
+    let u = mod_pos(&(&sigma * &sigma - 5), n);
+    let v = mod_pos(&(4 * &sigma), n);
+    let u3 = &u * &u % n * &u % n;
+    let diff = mod_pos(&(&v - &u), n);
+    let numerator = &diff * &diff % n * &diff % n * ((3 * &u + &v) % n) % n;
+    let denominator = 16 * &u3 % n * &v % n;
+    let g = Integer::gcd(&denominator, n);
+    if g > BigInt::one() {
+        return (g < *n).then_some(g);
+    }
+    let inverse = invmod(&denominator, n)?;
+    let curve = Montgomery {
+        n,
+        a24: numerator * inverse % n,
+    };
+    let mut point: XzPoint = (u3, &v * &v % n * &v % n);
+    let nontrivial = |z: &BigInt| {
+        let g = Integer::gcd(z, n);
+        (g > BigInt::one() && g < *n).then_some(g)
+    };
+    // Stage 1.
+    for p in (2..=b1).filter(|&p| {
+        flags
+            .get(usize::try_from(p).unwrap_or(usize::MAX))
+            .copied()
+            .unwrap_or(false)
+    }) {
+        let mut power = p;
+        while power.saturating_mul(p) <= b1 {
+            power *= p;
+        }
+        point = curve.multiply(&point, power);
+    }
+    if let Some(found) = nontrivial(&point.1) {
+        return Some(found);
+    }
+    if Integer::gcd(&point.1, n) == *n || point.1.is_zero() {
+        return None;
+    }
+    // Stage 2.
+    let coprime: Vec<u64> = (1..=D / 2).filter(|&j| gcd_u64(j, D) == 1).collect();
+    let mut multiples: Vec<XzPoint> = vec![
+        (BigInt::zero(), BigInt::zero()),
+        point.clone(),
+        curve.double(&point),
+    ];
+    for j in 3..=usize::try_from(D / 2).ok()? {
+        let next = curve.add(&multiples[j - 1], &point, &multiples[j - 2]);
+        multiples.push(next);
+    }
+    let step = curve.multiply(&point, D);
+    let first = (b1 / D).max(2);
+    let mut previous = curve.multiply(&point, (first - 1) * D);
+    let mut current = curve.multiply(&point, first * D);
+    let mut accumulator = BigInt::one();
+    let last = b2 / D + 1;
+    for k in first..=last {
+        for &j in &coprime {
+            let (low, high) = (k * D - j, k * D + j);
+            let hit = |q: u64| {
+                q > b1
+                    && q <= b2
+                    && flags
+                        .get(usize::try_from(q).unwrap_or(usize::MAX))
+                        .copied()
+                        .unwrap_or(false)
+            };
+            if hit(low) || hit(high) {
+                let (xj, zj) = &multiples[usize::try_from(j).ok()?];
+                let term = mod_pos(&(&current.0 * zj - xj * &current.1), n);
+                accumulator = accumulator * term % n;
+            }
+        }
+        if k % 64 == 0
+            && let Some(found) = nontrivial(&accumulator)
+        {
+            return Some(found);
+        }
+        let next = curve.add(&current, &step, &previous);
+        previous = current;
+        current = next;
+    }
+    nontrivial(&accumulator)
+}
+
+/// Lenstra's elliptic-curve method: a non-trivial divisor of the composite
+/// `n`, by stage-1 bounds 2 000, 11 000 and 50 000 with 20, 80 and 60
+/// curves (stage 2 up to 50 times the bound). Finds prime factors of up to
+/// about 25 digits; `None` when the curves are exhausted.
+fn ecm(n: &BigInt) -> Option<BigInt> {
+    const SCHEDULE: [(u64, usize); 3] = [(2_000, 20), (11_000, 80), (50_000, 60)];
+    let mut sigma = 6_u64;
+    for (b1, curves) in SCHEDULE {
+        let b2 = 50 * b1;
+        let flags = prime_flags(usize::try_from(b2 + 2 * 210 + 2).ok()?);
+        // Curves are independent: they run in groups of one per thread and
+        // the lowest curve index that succeeds wins, so the divisor found
+        // does not depend on the thread count (one thread = sequential).
+        let sigmas: Vec<u64> = (sigma..sigma + curves as u64).collect();
+        sigma += curves as u64;
+        // The group size ramps up (1, 2, 4, ...) so that a first-curve
+        // success costs no more than in the sequential code.
+        let cap = rayon::current_num_threads().clamp(1, 64);
+        let (mut at, mut width) = (0_usize, 1_usize);
+        while at < sigmas.len() {
+            let end = (at + width).min(sigmas.len());
+            let group = sigmas.get(at..end).unwrap_or(&[]);
+            let found =
+                crate::kernels::par::map_slice(group, 2, |&s| ecm_curve(n, s, b1, &flags, b2));
+            if let Some(d) = found.into_iter().flatten().next() {
+                return Some(d);
+            }
+            at = end;
+            width = (width * 2).min(cap);
+        }
+    }
+    None
+}
+
+/// Prime factorisation of any positive integer as ascending
+/// `(prime, exponent)` pairs: the 64-bit path of [`factor`] for small
+/// numbers, otherwise trial division by the primes below 1000, perfect
+/// powers, BPSW primality and [`ecm`] for the rest. `None` for `n <= 0` and
+/// when a composite cofactor resists the curves.
+pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
+    if !n.is_positive() {
+        return None;
+    }
+    let widen = |pairs: Vec<(u64, u32)>| -> Vec<(BigInt, u32)> {
+        pairs
+            .into_iter()
+            .map(|(p, e)| (BigInt::from(p), e))
+            .collect()
+    };
+    if n.to_u64().is_some() {
+        return factor(n).map(widen);
+    }
+    let mut primes: Vec<BigInt> = Vec::new();
+    let mut rest = n.clone();
+    for d in 2_u32..=1000 {
+        let d = BigInt::from(d);
+        while (&rest % &d).is_zero() {
+            primes.push(d.clone());
+            rest /= &d;
+        }
+    }
+    let mut stack = vec![rest];
+    while let Some(m) = stack.pop() {
+        if m.is_one() {
+            continue;
+        }
+        if m.to_u64().is_some() {
+            for (p, e) in factor(&m)? {
+                primes.extend(std::iter::repeat_n(
+                    BigInt::from(p),
+                    usize::try_from(e).ok()?,
+                ));
+            }
+            continue;
+        }
+        if is_prime(&m) {
+            primes.push(m);
+            continue;
+        }
+        // Perfect powers (the curves cannot split p^k reliably).
+        if let Some(root) = (2..=8_u32).rev().find_map(|k| {
+            let r = m.nth_root(k);
+            (r.pow(k) == m).then_some((r, k))
+        }) {
+            for _ in 0..root.1 {
+                stack.push(root.0.clone());
+            }
+            continue;
+        }
+        let d = ecm(&m)?;
+        stack.push(&m / &d);
+        stack.push(d);
+    }
+    primes.sort();
+    let mut out: Vec<(BigInt, u32)> = Vec::new();
     for p in primes {
         match out.last_mut() {
             | Some((q, e)) if *q == p => *e += 1,
@@ -757,10 +1158,12 @@ impl Expansion {
     ) -> Vec<BigInt> {
         match self {
             | Self::Finite(q) => q.iter().take(count).cloned().collect(),
-            | Self::Surd(a0, period) => std::iter::once(a0.clone())
-                .chain(period.iter().cycle().cloned())
-                .take(count)
-                .collect(),
+            | Self::Surd(a0, period) => {
+                std::iter::once(a0.clone())
+                    .chain(period.iter().cycle().cloned())
+                    .take(count)
+                    .collect()
+            },
         }
     }
 }
@@ -1077,60 +1480,69 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i,
         set,
         binary("gcd").flags(commutative).eval(gcd_eval),
-        |a| match a {
-            | [x, y] => Some(Value::Int(gcd(x, y))),
-            | _ => None,
+        |a| {
+            match a {
+                | [x, y] => Some(Value::Int(gcd(x, y))),
+                | _ => None,
+            }
         },
     )?;
     exact(
         i,
         set,
         binary("lcm").flags(commutative).eval(lcm_eval),
-        |a| match a {
-            | [x, y] => {
-                let g = gcd(x, y);
-                if g.is_zero() {
-                    return Some(Value::Int(g));
-                }
-                Some(Value::Int((x / g * y).abs()))
-            },
-            | _ => None,
+        |a| {
+            match a {
+                | [x, y] => {
+                    let g = gcd(x, y);
+                    if g.is_zero() {
+                        return Some(Value::Int(g));
+                    }
+                    Some(Value::Int((x / g * y).abs()))
+                },
+                | _ => None,
+            }
         },
     )?;
-    exact(i, set, binary("mod").eval(mod_eval), |a| match a {
-        | [x, m] => modulo(x, m).map(Value::Int),
-        | _ => None,
+    exact(i, set, binary("mod").eval(mod_eval), |a| {
+        match a {
+            | [x, m] => modulo(x, m).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(
-        i,
-        set,
-        OpDescriptor::new("powmod", Arity::Fixed(3)),
-        |a| match a {
+    exact(i, set, OpDescriptor::new("powmod", Arity::Fixed(3)), |a| {
+        match a {
             | [b, e, m] if !e.is_negative() && m.is_positive() => {
                 Some(Value::Int(modulo(b, m)?.modpow(e, m)))
             },
             | _ => None,
-        },
-    )?;
-    exact(i, set, binary("invmod"), |a| match a {
-        | [x, m] => invmod(x, m).map(Value::Int),
-        | _ => None,
+        }
     })?;
-    exact(i, set, unary("isprime"), |a| match a {
-        | [n] => Some(Value::Bool(is_prime(n))),
-        | _ => None,
+    exact(i, set, binary("invmod"), |a| {
+        match a {
+            | [x, m] => invmod(x, m).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, set, unary("nextprime"), |a| match a {
-        | [n] => next_prime(n).map(Value::Int),
-        | _ => None,
+    exact(i, set, unary("isprime"), |a| {
+        match a {
+            | [n] => Some(Value::Bool(is_prime(n))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("nextprime"), |a| {
+        match a {
+            | [n] => next_prime(n).map(Value::Int),
+            | _ => None,
+        }
     })?;
     exact(i, set, unary("totient"), |a| {
         let [n] = a else {
             return None;
         };
         let mut phi = BigInt::one();
-        for (p, e) in factor(n)? {
-            phi *= BigInt::from(p - 1) * BigInt::from(p).pow(e - 1);
+        for (p, e) in factor_big(n)? {
+            phi *= (&p - 1) * p.pow(e - 1);
         }
         Some(Value::Int(phi))
     })?;
@@ -1138,7 +1550,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let [n] = a else {
             return None;
         };
-        let count = factor(n)?
+        let count = factor_big(n)?
             .iter()
             .fold(BigInt::one(), |acc, &(_, e)| acc * (e + 1));
         Some(Value::Int(count))
@@ -1148,9 +1560,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             return None;
         };
         let mut sigma = BigInt::one();
-        for (p, e) in factor(n)? {
+        for (p, e) in factor_big(n)? {
             // 1 + p + ... + p^e
-            let p = BigInt::from(p);
             sigma *= (0..=e).fold(BigInt::zero(), |acc, k| acc + p.pow(k));
         }
         Some(Value::Int(sigma))
@@ -1159,38 +1570,48 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let [n] = a else {
             return None;
         };
-        let rows = factor(n)?
+        let rows = factor_big(n)?
             .into_iter()
-            .map(|(p, e)| vec![BigInt::from(p), BigInt::from(e)])
+            .map(|(p, e)| vec![p, BigInt::from(e)])
             .collect();
         Some(Value::Nested(rows))
     })?;
-    exact(i, set, binary("jacobi"), |a| match a {
-        | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
-        | _ => None,
+    exact(i, set, binary("jacobi"), |a| {
+        match a {
+            | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
+            | _ => None,
+        }
     })?;
-    exact(i, set, binary("egcd"), |a| match a {
-        | [x, y] => {
-            let (g, s, t) = egcd(x, y);
-            Some(Value::Flat(vec![g, s, t]))
-        },
-        | _ => None,
+    exact(i, set, binary("egcd"), |a| {
+        match a {
+            | [x, y] => {
+                let (g, s, t) = egcd(x, y);
+                Some(Value::Flat(vec![g, s, t]))
+            },
+            | _ => None,
+        }
     })?;
     exact_lists(i, set, binary("crt"), crt)?;
-    exact(i, set, unary("pell"), |a| match a {
-        | [n] => match pell_solution(n, false)? {
-            | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
-            | Pell::Unsolvable => None,
-        },
-        | _ => None,
+    exact(i, set, unary("pell"), |a| {
+        match a {
+            | [n] => {
+                match pell_solution(n, false)? {
+                    | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
+                    | Pell::Unsolvable => None,
+                }
+            },
+            | _ => None,
+        }
     })?;
-    exact(i, set, unary("primes"), |a| match a {
-        | [n] => {
-            let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
-            let primes = crate::kernels::number_theory::primes_sieve(limit);
-            Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
-        },
-        | _ => None,
+    exact(i, set, unary("primes"), |a| {
+        match a {
+            | [n] => {
+                let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
+                let primes = crate::kernels::number_theory::primes_sieve(limit);
+                Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
+            },
+            | _ => None,
+        }
     })?;
     procedure(i, set, unary("cfrac"), Tier::Normalize, cfrac)?;
     procedure(i, set, binary("convergents"), Tier::Normalize, convergents)?;
@@ -1298,6 +1719,60 @@ mod tests {
     }
 
     #[test]
+    fn baillie_psw_against_a_sieve_and_known_pseudoprimes() {
+        // Every number below 30 000 through BPSW agrees with the sieve.
+        let flags = prime_flags(30_000);
+        for k in 0..=30_000_usize {
+            assert_eq!(bpsw(&BigInt::from(k)), flags[k], "{k}");
+        }
+        // Strong pseudoprimes to base 2 (the Lucas half rejects them) and
+        // Carmichael numbers.
+        for composite in [
+            2047_u64, 3277, 4033, 4681, 8321, 15841, 29341, 42799, 49141, 52633, 65281, 74665,
+            80581, 85489, 88357, 90751,
+        ] {
+            assert!(!bpsw(&BigInt::from(composite)), "{composite}");
+        }
+        for carmichael in [
+            561_u64, 1105, 1729, 2465, 2821, 6601, 8911, 41041, 825265, 321197185,
+        ] {
+            assert!(!bpsw(&BigInt::from(carmichael)), "{carmichael}");
+        }
+        // Strong Lucas pseudoprimes (5459, 5777, 10877, 16109, 18971) are
+        // caught by the base-2 half.
+        for lucas in [
+            5459_u64, 5777, 10877, 16109, 18971, 22499, 24569, 25199, 40309, 58519,
+        ] {
+            assert!(!bpsw(&BigInt::from(lucas)), "{lucas}");
+        }
+        // The smallest strong pseudoprimes to the first 12 and 13 prime
+        // bases defeat Miller-Rabin with those bases but not BPSW.
+        let spsp12: BigInt = "318665857834031151167461".parse().unwrap();
+        let spsp13: BigInt = "3317044064679887385961981".parse().unwrap();
+        for composite in [&spsp12, &spsp13] {
+            assert!(!bpsw(composite));
+            assert!(!is_prime(composite));
+        }
+        // A few large primes and composites.
+        for exponent in [127_u32, 521, 607] {
+            let mersenne = (BigInt::one() << exponent) - 1;
+            assert!(is_prime(&mersenne), "2^{exponent} - 1");
+            assert!(!is_prime(&(&mersenne + 2)) || exponent == 0);
+        }
+        for exponent in [67_u32, 101, 257, 523] {
+            assert!(
+                !is_prime(&((BigInt::one() << exponent) - 1)),
+                "2^{exponent} - 1"
+            );
+        }
+        // Squares of primes and products of two large primes.
+        let p: BigInt = "1000000000000000000000007".parse().unwrap();
+        let q = super::next_prime(&p).unwrap();
+        assert!(is_prime(&p) && is_prime(&q));
+        assert!(!is_prime(&(&p * &p)) && !is_prime(&(&p * &q)));
+    }
+
+    #[test]
     fn next_prime() {
         assert_eq!(s("nextprime(-5)"), "2");
         assert_eq!(s("nextprime(1)"), "2");
@@ -1350,8 +1825,64 @@ mod tests {
             s("factorint(2^64 - 1)"),
             "list(list(3, 1), list(5, 1), list(17, 1), list(257, 1), list(641, 1), list(65537, 1), list(6700417, 1))"
         );
-        // Beyond 64 bits the kernel declines.
-        assert_eq!(s("factorint(2^70)"), "factorint(1180591620717411303424)");
+        // Beyond 64 bits: powers, many small factors and, by the elliptic
+        // curve method, large prime factors.
+        assert_eq!(s("factorint(2^70)"), "list(list(2, 70))");
+        assert_eq!(s("factorint(3^50)"), "list(list(3, 50))");
+    }
+
+    #[test]
+    fn elliptic_curve_factorisation_of_large_numbers() {
+        // Fermat numbers: F6 = 274177 * 67280421310721 and
+        // F7 = 59649589127497217 * 5704689200685129054721.
+        assert_eq!(
+            s("factorint(2^64 + 1)"),
+            "list(list(274177, 1), list(67280421310721, 1))"
+        );
+        assert_eq!(
+            s("factorint(2^128 + 1)"),
+            "list(list(59649589127497217, 1), list(5704689200685129054721, 1))"
+        );
+        // M101 = 7432339208719 * 341117531003194129.
+        assert_eq!(
+            s("factorint(2^101 - 1)"),
+            "list(list(7432339208719, 1), list(341117531003194129, 1))"
+        );
+        // Many small primes beyond 64 bits and a prime power.
+        assert_eq!(
+            s("factorint(2^96 - 1)"),
+            "list(list(3, 2), list(5, 1), list(7, 1), list(13, 1), list(17, 1), list(97, 1), list(193, 1), list(241, 1), list(257, 1), list(673, 1), list(65537, 1), list(22253377, 1))"
+        );
+        assert_eq!(s("factorint(1000003^5)"), "list(list(1000003, 5))");
+        assert_eq!(
+            s("factorint(2^521 - 1)"),
+            "list(list(6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151, 1))"
+        );
+        // The arithmetic functions follow.
+        assert_eq!(s("omega(2^128 + 1)"), "2");
+        assert_eq!(s("totient(2^64 + 1)"), "18446676793287966720"); // 274176 * 67280421310720
+        assert_eq!(s("divisor_count(2^128 + 1)"), "4");
+        assert_eq!(s("is_squarefree(2^101 - 1)"), "true");
+        assert_eq!(s("mobius(2^101 - 1)"), "1");
+        assert_eq!(s("radical((2^64 + 1)^3)"), "18446744073709551617");
+    }
+
+    #[test]
+    fn three_prime_factors_of_twelve_digits_and_degenerate_input() {
+        let p1 = super::next_prime(&BigInt::from(10_u64).pow(11)).unwrap();
+        let p2 = super::next_prime(&(&p1 * 3)).unwrap();
+        let p3 = super::next_prime(&(&p1 * 7)).unwrap();
+        let n = &p1 * &p2 * &p3;
+        let want = {
+            let mut v = vec![p1, p2, p3];
+            v.sort();
+            v.into_iter().map(|p| (p, 1)).collect::<Vec<_>>()
+        };
+        assert_eq!(factor_big(&n), Some(want));
+        // Non-positive input is refused; 1 has no prime factors.
+        assert_eq!(factor_big(&BigInt::zero()), None);
+        assert_eq!(factor_big(&BigInt::from(-12)), None);
+        assert_eq!(factor_big(&BigInt::one()), Some(Vec::new()));
     }
 
     #[test]
@@ -1635,7 +2166,10 @@ mod tests {
                     &format!("{a}*({}) + {b}*({})", v[0], v[1]),
                     &[("t", t)],
                 );
-                assert!((value - c as f64).abs() < 1e-9, "{a}x + {b}y = {c}, t = {t}: {text}");
+                assert!(
+                    (value - c as f64).abs() < 1e-9,
+                    "{a}x + {b}y = {c}, t = {t}: {text}"
+                );
             }
         }
         // Rational coefficients are scaled to integers; the equation may

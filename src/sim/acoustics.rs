@@ -21,7 +21,9 @@
 //! Limitations: homogeneous medium, no dispersive attenuation, Dirichlet data
 //! must be zero (`p = 0`).
 
-use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
+use crate::sim::boundary::BoundaryCondition;
+use crate::sim::boundary::Face;
+use crate::sim::boundary::FaceBcs;
 
 type SourceFn = Box<dyn Fn(f64) -> f64 + Send + Sync>;
 
@@ -50,7 +52,11 @@ impl AcousticsConfig {
     ///
     /// # Errors
     /// For a bad dimension or sizes.
-    pub fn new(n: &[usize], h: &[f64], c: f64) -> Result<Self, String> {
+    pub fn new(
+        n: &[usize],
+        h: &[f64],
+        c: f64,
+    ) -> Result<Self, String> {
         let dim = n.len();
         if !(1..=3).contains(&dim) || h.len() != dim || n.iter().any(|&m| m < 4) || c <= 0.0 {
             return Err("invalid acoustics grid".into());
@@ -108,19 +114,22 @@ impl Acoustics {
         let mut release = [[false; 2]; 3];
         let mut use_pml = false;
         let mut pml_c: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
-        let mut pml_f: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a] + 1]);
+        let mut pml_f: [Vec<(f64, f64)>; 3] =
+            std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a] + 1]);
         for a in 0..cfg.dim {
             periodic[a] = cfg.bcs.axis_periodic(a)?;
             for (m, max) in [false, true].into_iter().enumerate() {
                 match cfg.bcs.get(Face::of_axis(a, max)) {
-                    BoundaryCondition::Neumann(_) | BoundaryCondition::Symmetry | BoundaryCondition::Periodic => {},
-                    BoundaryCondition::Dirichlet(g) => {
+                    | BoundaryCondition::Neumann(_)
+                    | BoundaryCondition::Symmetry
+                    | BoundaryCondition::Periodic => {},
+                    | BoundaryCondition::Dirichlet(g) => {
                         if g.eval(0.0, [0.0; 3]) != 0.0 {
                             return Err("pressure-release faces need zero data".into());
                         }
                         release[a][m] = true;
                     },
-                    BoundaryCondition::Absorbing => {
+                    | BoundaryCondition::Absorbing => {
                         let d = cfg.pml_cells;
                         let n = cfg.n[a];
                         if 2 * d >= n {
@@ -129,7 +138,11 @@ impl Acoustics {
                         use_pml = true;
                         let smax = 0.8 * (cfg.pml_order + 1.0) * cfg.c / cfg.h[a];
                         let prof = |pos: f64| -> Option<(f64, f64)> {
-                            let depth = if max { pos - (n - d) as f64 } else { d as f64 - pos };
+                            let depth = if max {
+                                pos - (n - d) as f64
+                            } else {
+                                d as f64 - pos
+                            };
                             (depth > 0.0).then(|| {
                                 let sigma = smax * (depth / d as f64).powf(cfg.pml_order);
                                 let b = (-sigma * dt).exp();
@@ -147,7 +160,9 @@ impl Acoustics {
                             }
                         }
                     },
-                    BoundaryCondition::Robin { .. } => return Err("Robin faces are not supported".into()),
+                    | BoundaryCondition::Robin { .. } => {
+                        return Err("Robin faces are not supported".into());
+                    },
                 }
             }
         }
@@ -161,9 +176,35 @@ impl Acoustics {
                 Vec::new()
             }
         });
-        let psi_p: [Vec<f64>; 3] = std::array::from_fn(|a| if use_pml && a < cfg.dim { vec![0.0; nn] } else { Vec::new() });
-        let psi_v: [Vec<f64>; 3] = std::array::from_fn(|a| if use_pml && a < cfg.dim { vec![0.0; v[a].len()] } else { Vec::new() });
-        Ok(Self { cfg, dt, t: 0.0, p: vec![0.0; nn], v, periodic, pml_c, pml_f, psi_p, psi_v, use_pml, release, sources: Vec::new() })
+        let psi_p: [Vec<f64>; 3] = std::array::from_fn(|a| {
+            if use_pml && a < cfg.dim {
+                vec![0.0; nn]
+            } else {
+                Vec::new()
+            }
+        });
+        let psi_v: [Vec<f64>; 3] = std::array::from_fn(|a| {
+            if use_pml && a < cfg.dim {
+                vec![0.0; v[a].len()]
+            } else {
+                Vec::new()
+            }
+        });
+        Ok(Self {
+            cfg,
+            dt,
+            t: 0.0,
+            p: vec![0.0; nn],
+            v,
+            periodic,
+            pml_c,
+            pml_f,
+            psi_p,
+            psi_v,
+            use_pml,
+            release,
+            sources: Vec::new(),
+        })
     }
 
     /// Cells per axis.
@@ -174,12 +215,20 @@ impl Acoustics {
 
     /// Flat cell index.
     #[must_use]
-    pub const fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+    pub const fn idx(
+        &self,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> usize {
         i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
     }
 
     /// Sets the pressure from a function of the cell-centre position (velocity zero).
-    pub fn set_pressure(&mut self, f: impl Fn([f64; 3]) -> f64) {
+    pub fn set_pressure(
+        &mut self,
+        f: impl Fn([f64; 3]) -> f64,
+    ) {
         let n = self.cfg.n;
         for p in 0..self.p.len() {
             let ijk = [p % n[0], (p / n[0]) % n[1], p / (n[0] * n[1])];
@@ -192,7 +241,11 @@ impl Acoustics {
     }
 
     /// Adds a soft source `s(t)` to the pressure equation of a cell.
-    pub fn add_source(&mut self, cell: usize, s: impl Fn(f64) -> f64 + Send + Sync + 'static) {
+    pub fn add_source(
+        &mut self,
+        cell: usize,
+        s: impl Fn(f64) -> f64 + Send + Sync + 'static,
+    ) {
         self.sources.push((cell, Box::new(s)));
     }
 
@@ -207,21 +260,31 @@ impl Acoustics {
             e[a] += 1;
             for (q, x) in self.v[a].iter().enumerate() {
                 let ia = (q / e[..a].iter().product::<usize>().max(1)) % e[a];
-                let w = if ia == 0 || ia == self.cfg.n[a] { 0.5 } else { 1.0 };
+                let w = if ia == 0 || ia == self.cfg.n[a] {
+                    0.5
+                } else {
+                    1.0
+                };
                 s += w * x * x;
             }
         }
         0.5 * s * dv
     }
 
-    const fn face_dims(&self, a: usize) -> [usize; 3] {
+    const fn face_dims(
+        &self,
+        a: usize,
+    ) -> [usize; 3] {
         let mut e = self.cfg.n;
         e[a] += 1;
         e
     }
 
     /// Velocity half of the leapfrog step with step size `dt`.
-    fn update_v(&mut self, dt: f64) {
+    fn update_v(
+        &mut self,
+        dt: f64,
+    ) {
         let cfg = &self.cfg;
         let (n, dim) = (cfg.n, cfg.dim);
         // velocity update at faces
@@ -280,7 +343,10 @@ impl Acoustics {
         }
     }
 
-    fn update_p(&mut self, dt: f64) {
+    fn update_p(
+        &mut self,
+        dt: f64,
+    ) {
         let cfg = &self.cfg;
         let (n, dim) = (cfg.n, cfg.dim);
         let c2 = cfg.c * cfg.c;
@@ -293,7 +359,9 @@ impl Acoustics {
                 let h = cfg.h[a];
                 let mut hi = ijk;
                 hi[a] += 1;
-                let d = (self.v[a][hi[0] + e[0] * (hi[1] + e[1] * hi[2])] - self.v[a][ijk[0] + e[0] * (ijk[1] + e[1] * ijk[2])]) / h;
+                let d = (self.v[a][hi[0] + e[0] * (hi[1] + e[1] * hi[2])]
+                    - self.v[a][ijk[0] + e[0] * (ijk[1] + e[1] * ijk[2])])
+                    / h;
                 let mut dd = d;
                 if self.use_pml {
                     let (b, aa) = self.pml_c[a][ijk[a]];
@@ -326,7 +394,10 @@ impl Acoustics {
     }
 
     /// Runs `steps` steps.
-    pub fn run(&mut self, steps: usize) {
+    pub fn run(
+        &mut self,
+        steps: usize,
+    ) {
         for _ in 0..steps {
             self.step();
         }

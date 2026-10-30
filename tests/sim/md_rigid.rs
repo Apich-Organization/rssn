@@ -19,9 +19,21 @@ fn random_rotation(rng: &mut Rng) -> [[f64; 3]; 3] {
     }
     let [w, x, y, z] = q;
     [
-        [1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
-        [2.0 * (x * y + w * z), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z - w * x)],
-        [2.0 * (x * z - w * y), 2.0 * (y * z + w * x), 1.0 - 2.0 * (x * x + y * y)],
+        [
+            1.0 - 2.0 * (y * y + z * z),
+            2.0 * (x * y - w * z),
+            2.0 * (x * z + w * y),
+        ],
+        [
+            2.0 * (x * y + w * z),
+            1.0 - 2.0 * (x * x + z * z),
+            2.0 * (y * z - w * x),
+        ],
+        [
+            2.0 * (x * z - w * y),
+            2.0 * (y * z + w * x),
+            1.0 - 2.0 * (x * x + y * y),
+        ],
     ]
 }
 
@@ -36,7 +48,13 @@ fn molecular_fluid(
 ) -> (MdSystem<3>, Vec<Vec<usize>>) {
     let bx = SimBox::periodic([l; 3]);
     let mut rng = Rng::new(seed);
-    let centres = random_positions(nmol, &bx, if shape.len() == 1 { 1.0 } else { 2.0 }, &mut rng).unwrap();
+    let centres = random_positions(
+        nmol,
+        &bx,
+        if shape.len() == 1 { 1.0 } else { 2.0 },
+        &mut rng,
+    )
+    .unwrap();
     let ns = shape.len();
     let mut pos = Vec::new();
     let mut mass = Vec::new();
@@ -68,7 +86,10 @@ fn molecular_fluid(
 }
 
 fn water_like() -> ([[f64; 3]; 3], [f64; 3]) {
-    ([[0.0, 0.0, 0.0], [0.8, 0.1, 0.0], [-0.3, 0.7, 0.2]], [1.0, 0.5, 0.7])
+    (
+        [[0.0, 0.0, 0.0], [0.8, 0.1, 0.0], [-0.3, 0.7, 0.2]],
+        [1.0, 0.5, 0.7],
+    )
 }
 
 #[test]
@@ -86,7 +107,10 @@ fn rigid_molecules_stay_rigid_and_conserve_energy_and_momentum() {
             worst = worst.max((sim.total_energy() - e0).abs());
         }
         let p = sim.momentum();
-        assert!((0..3).all(|k| (p[k] - p0[k]).abs() < 1e-10), "momentum {p:?} vs {p0:?}");
+        assert!(
+            (0..3).all(|k| (p[k] - p0[k]).abs() < 1e-10),
+            "momentum {p:?} vs {p0:?}"
+        );
         assert!(sim.max_geometry_error() < 1e-12);
         assert_eq!(sim.dof(), (27 * 6 - 3) as f64);
         worst
@@ -107,11 +131,24 @@ fn rigid_integrator_agrees_with_shake_rattle_for_dimers() {
         let mut rigid = RigidMdSimulation::new(sys.clone(), lj_ff(), 0.3, dt, &mols).unwrap();
         // SHAKE/RATTLE system with the rigid-consistent velocities
         let mut ff = lj_ff();
-        ff.bonds = mols.iter().map(|m| Bond { i: m[0], j: m[1], k: 0.0, r0: d }).collect();
+        ff.bonds = mols
+            .iter()
+            .map(|m| {
+                Bond {
+                    i: m[0],
+                    j: m[1],
+                    k: 0.0,
+                    r0: d,
+                }
+            })
+            .collect();
         let mut s2 = sys;
         s2.vel = rigid.sys.vel.clone();
         let mut shake = MdSimulation::new(s2, ff, 0.3, dt, 3).unwrap();
-        shake.constraints = mols.iter().map(|m| Constraint { i: m[0], j: m[1], d }).collect();
+        shake.constraints = mols
+            .iter()
+            .map(|m| Constraint { i: m[0], j: m[1], d })
+            .collect();
         let steps = (0.3 / dt) as usize;
         rigid.run(steps).unwrap();
         shake.run(steps).unwrap();
@@ -129,7 +166,10 @@ fn rigid_integrator_agrees_with_shake_rattle_for_dimers() {
     let e1 = compare(0.004);
     let e2 = compare(0.002);
     assert!(e1 < 5e-3, "trajectory difference {e1}");
-    assert!(e2 < e1 / 2.5, "difference should shrink as dt^2: {e1} -> {e2}");
+    assert!(
+        e2 < e1 / 2.5,
+        "difference should shrink as dt^2: {e1} -> {e2}"
+    );
 }
 
 #[test]
@@ -176,7 +216,11 @@ fn molecular_virial_equals_the_affine_scaling_derivative_of_the_energy() {
     energy_at(0.0);
     let p = sim.pressure_tensor();
     let tr_w = (p[0][0] + p[1][1] + p[2][2]) * sim.sys.bx.volume();
-    assert!((tr_w + dudeps).abs() < 1e-5 * dudeps.abs().max(1.0), "{tr_w} vs {}", -dudeps);
+    assert!(
+        (tr_w + dudeps).abs() < 1e-5 * dudeps.abs().max(1.0),
+        "{tr_w} vs {}",
+        -dudeps
+    );
 }
 
 #[test]
@@ -235,15 +279,34 @@ fn exact_constraint_virial_reproduces_the_molecular_pressure_without_a_time_step
     let mut rigid = RigidMdSimulation::new(sys, lj_ff(), 0.3, 0.004, &mols).unwrap();
     rigid.run(60).unwrap();
     let mut ff = lj_ff();
-    ff.bonds = mols.iter().map(|m| Bond { i: m[0], j: m[1], k: 0.0, r0: d }).collect();
+    ff.bonds = mols
+        .iter()
+        .map(|m| {
+            Bond {
+                i: m[0],
+                j: m[1],
+                k: 0.0,
+                r0: d,
+            }
+        })
+        .collect();
     let mut sim = MdSimulation::new(rigid.sys.clone(), ff, 0.3, 0.004, 3).unwrap();
-    sim.constraints = mols.iter().map(|m| Constraint { i: m[0], j: m[1], d }).collect();
+    sim.constraints = mols
+        .iter()
+        .map(|m| Constraint { i: m[0], j: m[1], d })
+        .collect();
     sim.refresh_constraint_virial();
     let p_atom = sim.pressure_tensor();
     let p_mol = rigid.pressure_tensor();
     let tr = |p: &[[f64; 3]; 3]| p[0][0] + p[1][1] + p[2][2];
-    assert!((tr(&p_atom) - tr(&p_mol)).abs() < 1e-9 * (1.0 + tr(&p_mol).abs()), "{} vs {}", tr(&p_atom), tr(&p_mol));
+    assert!(
+        (tr(&p_atom) - tr(&p_mol)).abs() < 1e-9 * (1.0 + tr(&p_mol).abs()),
+        "{} vs {}",
+        tr(&p_atom),
+        tr(&p_mol)
+    );
     // the constraint force is a genuine contribution
-    let tc = sim.constraint_virial[0][0] + sim.constraint_virial[1][1] + sim.constraint_virial[2][2];
+    let tc =
+        sim.constraint_virial[0][0] + sim.constraint_virial[1][1] + sim.constraint_virial[2][2];
     assert!(tc.abs() > 1e-3);
 }

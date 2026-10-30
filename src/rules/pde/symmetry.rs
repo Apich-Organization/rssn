@@ -60,7 +60,11 @@ pub(super) struct Jets {
 
 impl Jets {
     pub(super) fn new(vars: &[NodeId]) -> Self {
-        Self { vars: vars.to_vec(), by_index: HashMap::new(), by_symbol: HashMap::new() }
+        Self {
+            vars: vars.to_vec(),
+            by_index: HashMap::new(),
+            by_symbol: HashMap::new(),
+        }
     }
 
     pub(super) fn get(
@@ -71,7 +75,11 @@ impl Jets {
         if let Some(&n) = self.by_index.get(index) {
             return n;
         }
-        let name: String = index.iter().map(u32::to_string).collect::<Vec<_>>().join("_");
+        let name: String = index
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join("_");
         let symbol = cx.graph.interner_mut().fresh_symbol(&format!("u_{name}"));
         let node = cx.graph.symbol_node(symbol);
         self.by_index.insert(index.clone(), node);
@@ -161,7 +169,11 @@ fn leading(
     candidates.sort_by_key(|i| {
         let pure_t = i.iter().enumerate().all(|(k, &e)| k == t || e == 0) && i[t] > 0;
         let pure_x = i.iter().enumerate().all(|(k, &e)| k == 0 || e == 0) && i[0] > 0;
-        (std::cmp::Reverse(u8::from(pure_t)), std::cmp::Reverse(u8::from(pure_x)), std::cmp::Reverse(i.iter().sum::<u32>()))
+        (
+            std::cmp::Reverse(u8::from(pure_t)),
+            std::cmp::Reverse(u8::from(pure_x)),
+            std::cmp::Reverse(i.iter().sum::<u32>()),
+        )
     });
     for index in candidates {
         let symbol = jets.get(cx, &index);
@@ -257,10 +269,14 @@ pub(super) fn symmetries(
     };
     let mut xi = Vec::with_capacity(n);
     for _ in 0..n {
-        let terms: Vec<NodeId> = basis.clone().into_iter().map(|m| {
-            let c = fresh(cx);
-            mul(cx.graph, &[c, m])
-        }).collect();
+        let terms: Vec<NodeId> = basis
+            .clone()
+            .into_iter()
+            .map(|m| {
+                let c = fresh(cx);
+                mul(cx.graph, &[c, m])
+            })
+            .collect();
         xi.push(add(cx.graph, &terms));
     }
     let phi = {
@@ -422,10 +438,16 @@ pub(super) fn similarity(
     let [g_x, g_t, g_u] = parts.as_slice() else {
         return None;
     };
-    let (g_x, g_t) = if x_index == 0 { (*g_x, *g_t) } else { (*g_t, *g_x) };
+    let (g_x, g_t) = if x_index == 0 {
+        (*g_x, *g_t)
+    } else {
+        (*g_t, *g_x)
+    };
     let linear = |cx: &mut Cx<'_>, f: NodeId, v: NodeId| -> Option<(f64, f64)> {
         let parts = crate::rules::ode::coefficients_of(cx.graph, f, v)?;
-        let value = |cx: &Cx<'_>, n: Option<&NodeId>| n.map_or(Some(0.0), |&n| cx.graph.eval(n, &Env::numeric(0.0)));
+        let value = |cx: &Cx<'_>, n: Option<&NodeId>| {
+            n.map_or(Some(0.0), |&n| cx.graph.eval(n, &Env::numeric(0.0)))
+        };
         match parts.len() {
             | 1 | 2 => Some((value(cx, parts.get(1))?, value(cx, parts.first())?)),
             | _ => None,
@@ -546,7 +568,10 @@ pub(super) fn similarity(
         let mut env = Env::numeric(0.0);
         env.bind(z_symbol, point);
         for (k, &f) in f_jets.iter().enumerate() {
-            env.bind(cx.graph.symbol_of(f)?, 0.4 + 0.3 * f64::from(u32::try_from(k).ok()?) + point);
+            env.bind(
+                cx.graph.symbol_of(f)?,
+                0.4 + 0.3 * f64::from(u32::try_from(k).ok()?) + point,
+            );
         }
         let (a, b) = (cx.graph.eval(e1, &env)?, cx.graph.eval(e2, &env)?);
         if a.abs() < 1e-12 {
@@ -579,12 +604,13 @@ pub(super) fn similarity(
         cx.simplify(product)
     };
     if let Some(answer) = crate::rules::ode::solve_ode(cx, equation, big_f)
-        && let [_, rhs] = *cx.graph.children(answer) {
-            let solved = mul(cx.graph, &[gauge, rhs]);
-            let solved = cx.graph.substitute(solved, z, z_of);
-            let solved = cx.simplify(solved);
-            return Some(cx.graph.node(core::EQ, &[p.unknown, solved]));
-        }
+        && let [_, rhs] = *cx.graph.children(answer)
+    {
+        let solved = mul(cx.graph, &[gauge, rhs]);
+        let solved = cx.graph.substitute(solved, z, z_of);
+        let solved = cx.simplify(solved);
+        return Some(cx.graph.node(core::EQ, &[p.unknown, solved]));
+    }
     let ansatz = cx.graph.node(core::EQ, &[p.unknown, form]);
     Some(cx.graph.node(core::LIST, &[ansatz, equation]))
 }

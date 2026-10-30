@@ -114,6 +114,7 @@ use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 use crate::rules::complex::complex;
+use crate::rules::pde::pde;
 use crate::rules::poly::apart::apart;
 use crate::rules::poly::best;
 use crate::rules::poly::ratio;
@@ -122,14 +123,17 @@ use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
 use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::to_term;
-use crate::rules::pde::pde;
 use crate::rules::poly::univariate::QPoly;
 use crate::rules::special::special;
 
 /// The transforms rule set.
 #[must_use]
 pub fn transforms() -> RuleSet {
-    RuleSet::new("transforms", install).needs(calculus()).needs(complex()).needs(special()).needs(pde())
+    RuleSet::new("transforms", install)
+        .needs(calculus())
+        .needs(complex())
+        .needs(special())
+        .needs(pde())
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -181,14 +185,21 @@ struct Ops {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dirac = i.op(OpDescriptor::new("dirac", Arity::Fixed(1)))?;
-    let kronecker = i.op(OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| match a {
-        | [n] if *n == 0.0 => 1.0,
-        | [n] if n.is_finite() => 0.0,
-        | _ => f64::NAN,
+    let kronecker = i.op(OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| {
+        match a {
+            | [n] if *n == 0.0 => 1.0,
+            | [n] if n.is_finite() => 0.0,
+            | _ => f64::NAN,
+        }
     }))?;
-    i.rewrites(Tier::Normalize, &["transforms/kronecker: kronecker(?n) => 0 if integer(?n), nonzero(?n)"])?;
+    i.rewrites(
+        Tier::Normalize,
+        &["transforms/kronecker: kronecker(?n) => 0 if integer(?n), nonzero(?n)"],
+    )?;
     let request = |name: &str, arity: u8, binder: Option<(u8, u32)>| {
-        let desc = OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+        let desc = OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100);
         match binder {
             | Some((var, scope)) => desc.binder(var, scope),
             | None => desc,
@@ -196,16 +207,41 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     };
     let table = [
         ("laplace", Request::Laplace, 3, Some((1, 0b1))),
-        ("inverse_laplace", Request::InverseLaplace, 3, Some((1, 0b1))),
+        (
+            "inverse_laplace",
+            Request::InverseLaplace,
+            3,
+            Some((1, 0b1)),
+        ),
         ("fourier", Request::Fourier, 3, Some((1, 0b1))),
-        ("inverse_fourier", Request::InverseFourier, 3, Some((1, 0b1))),
+        (
+            "inverse_fourier",
+            Request::InverseFourier,
+            3,
+            Some((1, 0b1)),
+        ),
         ("ztransform", Request::Z, 3, Some((1, 0b1))),
         ("inverse_ztransform", Request::InverseZ, 3, Some((1, 0b1))),
         ("convolve", Request::Convolve, 3, None),
         ("convolution", Request::Convolution, 3, None),
-        ("discrete_convolution", Request::DiscreteConvolution, 3, None),
-        ("initial_value_laplace", Request::InitialLaplace, 2, Some((1, 0b1))),
-        ("final_value_laplace", Request::FinalLaplace, 2, Some((1, 0b1))),
+        (
+            "discrete_convolution",
+            Request::DiscreteConvolution,
+            3,
+            None,
+        ),
+        (
+            "initial_value_laplace",
+            Request::InitialLaplace,
+            2,
+            Some((1, 0b1)),
+        ),
+        (
+            "final_value_laplace",
+            Request::FinalLaplace,
+            2,
+            Some((1, 0b1)),
+        ),
         ("initial_value_z", Request::InitialZ, 2, Some((1, 0b1))),
         ("final_value_z", Request::FinalZ, 2, Some((1, 0b1))),
     ];
@@ -214,7 +250,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         registered.push((i.op(request(name, arity, binder))?, kind));
     }
     let get = |i: &mut Installer<'_>, name: &str| {
-        i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid { rule: format!("transforms/{name}"), reason: "missing operator" })
+        i.graph().ops().lookup(name).ok_or_else(|| {
+            RuleError::Invalid {
+                rule: format!("transforms/{name}"),
+                reason: "missing operator",
+            }
+        })
     };
     let ops = Ops {
         laplace: registered[0].0,
@@ -245,7 +286,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     };
     for (op, request) in registered {
         let name = i.graph().ops().get(op).name.to_string();
-        i.kernel(&format!("transforms/{name}"), Tier::Reduce, Transform { op, request, ops });
+        i.kernel(
+            &format!("transforms/{name}"),
+            Tier::Reduce,
+            Transform { op, request, ops },
+        );
     }
     Ok(())
 }
@@ -268,11 +313,22 @@ impl Kernel for Transform {
     ) -> Outcome {
         let children = cx.graph.children(node).to_vec();
         match (self.request, children.as_slice()) {
-            | (Request::Convolve | Request::Convolution | Request::DiscreteConvolution, &[f, g, t]) => {
-                return convolution_request(cx, self.ops, self.request, f, g, t).map_or(Outcome::Pass, Outcome::Equal);
+            | (
+                Request::Convolve | Request::Convolution | Request::DiscreteConvolution,
+                &[f, g, t],
+            ) => {
+                return convolution_request(cx, self.ops, self.request, f, g, t)
+                    .map_or(Outcome::Pass, Outcome::Equal);
             },
-            | (Request::InitialLaplace | Request::FinalLaplace | Request::InitialZ | Request::FinalZ, &[f, v]) => {
-                return value_theorem(cx, self.ops, self.request, f, v).map_or(Outcome::Pass, Outcome::Equal);
+            | (
+                Request::InitialLaplace
+                | Request::FinalLaplace
+                | Request::InitialZ
+                | Request::FinalZ,
+                &[f, v],
+            ) => {
+                return value_theorem(cx, self.ops, self.request, f, v)
+                    .map_or(Outcome::Pass, Outcome::Equal);
             },
             | _ => {},
         }
@@ -285,13 +341,27 @@ impl Kernel for Transform {
         let (Some(xs), Some(_)) = (cx.graph.symbol_of(x), cx.graph.symbol_of(y)) else {
             return Outcome::Pass;
         };
-        let mut t = Tx { cx, ops: self.ops, kind: self.request, x, xs, y };
+        let mut t = Tx {
+            cx,
+            ops: self.ops,
+            kind: self.request,
+            x,
+            xs,
+            y,
+        };
         let result = match self.request {
             | Request::Laplace => t.laplace(f).filter(|&r| t.check_laplace(f, r)),
-            | Request::InverseLaplace => t.inverse_laplace(f).filter(|&r| t.check_inverse_laplace(f, r)),
+            | Request::InverseLaplace => {
+                t.inverse_laplace(f)
+                    .filter(|&r| t.check_inverse_laplace(f, r))
+            },
             | Request::Fourier => t.fourier(f).filter(|&r| t.check_fourier(f, r)),
             | Request::InverseFourier => t.inverse_fourier(f),
-            | Request::Z => t.ztransform(f).filter(|&r| t.check_z(f, r)).map(|r| t.normal(r)),
+            | Request::Z => {
+                t.ztransform(f)
+                    .filter(|&r| t.check_z(f, r))
+                    .map(|r| t.normal(r))
+            },
             | Request::InverseZ => t.inverse_z(f).filter(|&r| t.check_inverse_z(f, r)),
             | _ => None,
         };
@@ -304,7 +374,11 @@ impl Kernel for Transform {
         let simplified = t.cx.simplify(r);
         // A theorem applied to an unknown function leaves requests behind;
         // it is still the answer.
-        if has_heavy(t.cx.graph, simplified) { Outcome::Pinned(simplified) } else { Outcome::Equal(simplified) }
+        if has_heavy(t.cx.graph, simplified) {
+            Outcome::Pinned(simplified)
+        } else {
+            Outcome::Equal(simplified)
+        }
     }
 }
 
@@ -338,7 +412,14 @@ fn convolution_request(
 ) -> Option<NodeId> {
     cx.graph.symbol_of(t)?;
     let (f, g) = (best(cx.graph, f)?, best(cx.graph, g)?);
-    let fresh = cx.graph.interner_mut().fresh_symbol(if request == Request::DiscreteConvolution { "k" } else { "u" });
+    let fresh = cx
+        .graph
+        .interner_mut()
+        .fresh_symbol(if request == Request::DiscreteConvolution {
+            "k"
+        } else {
+            "u"
+        });
     let u = cx.graph.symbol_node(fresh);
     let t_minus_u = sub(cx.graph, t, u);
     let integrand = |cx: &mut Cx<'_>, f: NodeId, g: NodeId| {
@@ -359,11 +440,25 @@ fn convolution_request(
         | _ => {
             // Causal signals: both carry heaviside(t).
             let strip = |cx: &mut Cx<'_>, h: NodeId| -> Option<NodeId> {
-                let factors = if cx.graph.op(h) == core::MUL { cx.graph.children(h).to_vec() } else { vec![h] };
+                let factors = if cx.graph.op(h) == core::MUL {
+                    cx.graph.children(h).to_vec()
+                } else {
+                    vec![h]
+                };
                 let k = factors.iter().position(|&p| {
-                    cx.graph.op(p) == ops.heaviside && cx.graph.children(p).first().is_some_and(|&a| cx.graph.same(a, t))
+                    cx.graph.op(p) == ops.heaviside
+                        && cx
+                            .graph
+                            .children(p)
+                            .first()
+                            .is_some_and(|&a| cx.graph.same(a, t))
                 })?;
-                let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &p)| p).collect();
+                let rest: Vec<NodeId> = factors
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != k)
+                    .map(|(_, &p)| p)
+                    .collect();
                 Some(mul(cx.graph, &rest))
             };
             if let (Some(f0), Some(g0)) = (strip(cx, f), strip(cx, g)) {
@@ -387,7 +482,9 @@ fn eval_q(
     p: &[BigRational],
     x: &BigRational,
 ) -> BigRational {
-    p.iter().rev().fold(BigRational::zero(), |acc, c| acc * x + c)
+    p.iter()
+        .rev()
+        .fold(BigRational::zero(), |acc, c| acc * x + c)
 }
 
 /// `p / (x - r)^m` with `m` maximal.
@@ -423,10 +520,23 @@ fn complex_roots(p: &[BigRational]) -> Vec<Complex64> {
         return Vec::new();
     }
     let monic: Vec<f64> = coefficients.iter().map(|c| c / lead).collect();
-    let value = |z: Complex64| monic.iter().rev().fold(Complex64::new(0.0, 0.0), |acc, &c| acc * z + c);
-    let radius = 1.0 + monic.iter().take(n).copied().map(f64::abs).fold(0.0, f64::max);
+    let value = |z: Complex64| {
+        monic
+            .iter()
+            .rev()
+            .fold(Complex64::new(0.0, 0.0), |acc, &c| acc * z + c)
+    };
+    let radius = 1.0
+        + monic
+            .iter()
+            .take(n)
+            .copied()
+            .map(f64::abs)
+            .fold(0.0, f64::max);
     let seed = Complex64::new(0.4, 0.9);
-    let mut roots: Vec<Complex64> = (0..n).map(|k| seed.powi(i32::try_from(k).unwrap_or(0)) * radius * 0.5).collect();
+    let mut roots: Vec<Complex64> = (0..n)
+        .map(|k| seed.powi(i32::try_from(k).unwrap_or(0)) * radius * 0.5)
+        .collect();
     for _ in 0..2000 {
         let mut change = 0.0_f64;
         for k in 0..n {
@@ -466,7 +576,12 @@ fn value_theorem(
     if gens.len() != 1 {
         return None;
     }
-    let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gv)?.iter().map(Number::to_rational).collect() };
+    let as_q = |p: &Poly| -> Option<QPoly> {
+        p.univariate_in(gv)?
+            .iter()
+            .map(Number::to_rational)
+            .collect()
+    };
     let (mut numer, mut denom) = (as_q(&r.numer)?, as_q(&r.denom)?);
     let trim = |p: &mut QPoly| {
         while p.last().is_some_and(Zero::is_zero) {
@@ -497,19 +612,32 @@ fn value_theorem(
                 // numerator must lie in the open unit disc (z) or left
                 // half-plane (s), except a simple pole at 1 (z) or 0 (s).
                 let z = request == Request::FinalZ;
-                let point = if z { BigRational::one() } else { BigRational::zero() };
+                let point = if z {
+                    BigRational::one()
+                } else {
+                    BigRational::zero()
+                };
                 let (numer_rest, m_n) = deflate_root(&numer, &point);
                 let (denom_rest, m_d) = deflate_root(&denom, &point);
                 if m_d > m_n + 1 {
                     return None;
                 }
                 for root in complex_roots(&denom_rest) {
-                    let stable = if z { root.norm() < 1.0 - 1e-9 } else { root.re < -1e-9 };
+                    let stable = if z {
+                        root.norm() < 1.0 - 1e-9
+                    } else {
+                        root.re < -1e-9
+                    };
                     if stable {
                         continue;
                     }
                     // cancelled by the numerator?
-                    let at: Complex64 = numer_rest.iter().rev().fold(Complex64::new(0.0, 0.0), |acc, c| acc * root + Number::rat(c.clone()).to_f64());
+                    let at: Complex64 = numer_rest
+                        .iter()
+                        .rev()
+                        .fold(Complex64::new(0.0, 0.0), |acc, c| {
+                            acc * root + Number::rat(c.clone()).to_f64()
+                        });
                     if at.norm() > 1e-8 {
                         return None;
                     }
@@ -563,7 +691,9 @@ impl Tx<'_, '_> {
     }
 
     fn half(&mut self) -> NodeId {
-        self.cx.graph.num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)))
+        self.cx
+            .graph
+            .num(Number::fraction(1, 2).unwrap_or_else(|| Number::from(0)))
     }
 
     fn pi(&mut self) -> NodeId {
@@ -606,7 +736,11 @@ impl Tx<'_, '_> {
         &mut self,
         f: NodeId,
     ) -> (Vec<NodeId>, Vec<NodeId>) {
-        let factors = if self.cx.graph.op(f) == core::MUL { self.cx.graph.children(f).to_vec() } else { vec![f] };
+        let factors = if self.cx.graph.op(f) == core::MUL {
+            self.cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
         factors.into_iter().partition(|&g| self.free(g))
     }
 
@@ -642,7 +776,11 @@ impl Tx<'_, '_> {
         };
         let request = call(self.cx.graph, cancel, &[r]);
         let reduced = self.cx.simplify(request);
-        if self.cx.graph.op(reduced) == cancel { r } else { reduced }
+        if self.cx.graph.op(reduced) == cancel {
+            r
+        } else {
+            reduced
+        }
     }
 
     fn is_zero(
@@ -719,7 +857,8 @@ impl Tx<'_, '_> {
         let &[head, argument] = self.cx.graph.children(g) else {
             return None;
         };
-        (self.cx.graph.symbol_of(head).is_some() && !self.free(argument)).then_some((head, argument))
+        (self.cx.graph.symbol_of(head).is_some() && !self.free(argument))
+            .then_some((head, argument))
     }
 
     /// `d node / d(output variable)`, also through inert transforms.
@@ -762,7 +901,10 @@ impl Tx<'_, '_> {
                 let inner = self.d_out(base)?;
                 mul(self.cx.graph, &[exponent, power, inner])
             },
-            | op if op == self.ops.diff && children.len() == 2 && self.cx.graph.same(children[1], self.y) => {
+            | op if op == self.ops.diff
+                && children.len() == 2
+                && self.cx.graph.same(children[1], self.y) =>
+            {
                 // a further derivative of a derivative request
                 let y = self.y;
                 call(self.cx.graph, self.ops.diff, &[node, y])
@@ -810,10 +952,17 @@ impl Tx<'_, '_> {
         let Some(&dependent) = self.cx.graph.symbol_of(from).as_ref() else {
             return term;
         };
-        if !self.cx.graph.depends_on(self.cx.graph.find(term), dependent) {
+        if !self
+            .cx
+            .graph
+            .depends_on(self.cx.graph.find(term), dependent)
+        {
             return term;
         }
-        let rebuilt: Vec<NodeId> = children.iter().map(|&c| self.subst_out(c, from, to)).collect();
+        let rebuilt: Vec<NodeId> = children
+            .iter()
+            .map(|&c| self.subst_out(c, from, to))
+            .collect();
         self.cx.graph.try_node(op, &rebuilt).unwrap_or(term)
     }
 
@@ -868,7 +1017,11 @@ impl Tx<'_, '_> {
             | Request::Fourier => {
                 // y(a t + b): exp(I w b/a) Y(w/a)/|a|
                 let scaled = self.div(out, a);
-                let moved = if a_is_one { base } else { self.subst_out(base, out, scaled) };
+                let moved = if a_is_one {
+                    base
+                } else {
+                    self.subst_out(base, out, scaled)
+                };
                 let mut factors = vec![moved];
                 if !self.is_zero(b) {
                     let unit = self.unit();
@@ -999,7 +1152,11 @@ impl Tx<'_, '_> {
         }
         let mut parts = parts.into_iter();
         let mut acc = parts.next()?;
-        let op = if self.kind == Request::InverseZ { self.ops.dconvolution } else { self.ops.convolution };
+        let op = if self.kind == Request::InverseZ {
+            self.ops.dconvolution
+        } else {
+            self.ops.convolution
+        };
         for next in parts {
             let t = self.y;
             acc = self.cx.graph.node(op, &[acc, next, t]);
@@ -1047,17 +1204,26 @@ impl Tx<'_, '_> {
             return Some(self.inverse(s));
         }
         if let [g] = factors
-            && let Some(r) = self.unknown(*g).or_else(|| self.convolution_theorem(*g)) {
-                return Some(r);
-            }
+            && let Some(r) = self.unknown(*g).or_else(|| self.convolution_theorem(*g))
+        {
+            return Some(r);
+        }
         if let Some(sum) = self.distribute(factors) {
             return self.laplace(sum);
         }
         // exp(a t + b) g(t): e^b G(s - a)
-        if let Some(k) = factors.iter().position(|&g| self.cx.graph.op(g) == self.ops.exp) {
+        if let Some(k) = factors
+            .iter()
+            .position(|&g| self.cx.graph.op(g) == self.ops.exp)
+        {
             let argument = *self.cx.graph.children(factors[k]).first()?;
             if let Some((a, b)) = self.linear(argument) {
-                let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &g)| g).collect();
+                let rest: Vec<NodeId> = factors
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != k)
+                    .map(|(_, &g)| g)
+                    .collect();
                 let g = self.laplace_product(&rest, depth + 1)?;
                 let shifted = sub(self.cx.graph, s, a);
                 let g = self.subst_out(g, s, shifted);
@@ -1069,10 +1235,17 @@ impl Tx<'_, '_> {
             }
         }
         // heaviside(t - c) g(t): e^(-c s) L[g(t + c)], c >= 0
-        if let Some(k) = factors.iter().position(|&g| self.cx.graph.op(g) == self.ops.heaviside) {
+        if let Some(k) = factors
+            .iter()
+            .position(|&g| self.cx.graph.op(g) == self.ops.heaviside)
+        {
             let argument = *self.cx.graph.children(factors[k]).first()?;
             let (a, b) = self.linear(argument)?;
-            let one = self.cx.graph.number_of(a).is_some_and(|n| n.to_f64() == 1.0);
+            let one = self
+                .cx
+                .graph
+                .number_of(a)
+                .is_some_and(|n| n.to_f64() == 1.0);
             let c = neg(self.cx.graph, b);
             if !one || !self.nonnegative(c) {
                 return None;
@@ -1094,10 +1267,18 @@ impl Tx<'_, '_> {
             return Some(mul(self.cx.graph, &[scale, g]));
         }
         // dirac(t - c) g(t): g(c) e^(-c s), c >= 0
-        if let Some(k) = factors.iter().position(|&g| self.cx.graph.op(g) == self.ops.dirac) {
+        if let Some(k) = factors
+            .iter()
+            .position(|&g| self.cx.graph.op(g) == self.ops.dirac)
+        {
             let argument = *self.cx.graph.children(factors[k]).first()?;
             let (a, b) = self.linear(argument)?;
-            if !self.cx.graph.number_of(a).is_some_and(|n| n.to_f64() == 1.0) {
+            if !self
+                .cx
+                .graph
+                .number_of(a)
+                .is_some_and(|n| n.to_f64() == 1.0)
+            {
                 return None;
             }
             let c = neg(self.cx.graph, b);
@@ -1119,17 +1300,28 @@ impl Tx<'_, '_> {
         }
         // t^n g(t): (-1)^n d^n/ds^n G(s)
         if factors.len() > 1
-            && let Some((k, n)) = factors.iter().enumerate().find_map(|(k, &g)| Some((k, self.power_of_x(g)?)))
-                && n.is_integer() && n.to_f64() >= 1.0 && n.to_f64() <= 12.0 {
-                    let n = n.to_i64()?;
-                    let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &g)| g).collect();
-                    let mut g = self.laplace_product(&rest, depth + 1)?;
-                    for _ in 0..n {
-                        g = self.d_out(g)?;
-                    }
-                    let sign = self.int(if n % 2 == 0 { 1 } else { -1 });
-                    return Some(mul(self.cx.graph, &[sign, g]));
-                }
+            && let Some((k, n)) = factors
+                .iter()
+                .enumerate()
+                .find_map(|(k, &g)| Some((k, self.power_of_x(g)?)))
+            && n.is_integer()
+            && n.to_f64() >= 1.0
+            && n.to_f64() <= 12.0
+        {
+            let n = n.to_i64()?;
+            let rest: Vec<NodeId> = factors
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != k)
+                .map(|(_, &g)| g)
+                .collect();
+            let mut g = self.laplace_product(&rest, depth + 1)?;
+            for _ in 0..n {
+                g = self.d_out(g)?;
+            }
+            let sign = self.int(if n % 2 == 0 { 1 } else { -1 });
+            return Some(mul(self.cx.graph, &[sign, g]));
+        }
         // Products of two trigonometric or hyperbolic factors, and squares:
         // product-to-sum.
         if let Some(sum) = self.product_to_sum(factors) {
@@ -1168,9 +1360,16 @@ impl Tx<'_, '_> {
             if hyperbolic && !self.is_zero(b) {
                 return None;
             }
-            let a2_signed = if hyperbolic { neg(self.cx.graph, a2) } else { a2 };
+            let a2_signed = if hyperbolic {
+                neg(self.cx.graph, a2)
+            } else {
+                a2
+            };
             let denominator = add(self.cx.graph, &[s2, a2_signed]);
-            let (sin_b, cos_b) = (call(self.cx.graph, self.ops.sin, &[b]), call(self.cx.graph, self.ops.cos, &[b]));
+            let (sin_b, cos_b) = (
+                call(self.cx.graph, self.ops.sin, &[b]),
+                call(self.cx.graph, self.ops.cos, &[b]),
+            );
             let numerator = if op == self.ops.sin {
                 // (s sin b + a cos b)
                 let first = mul(self.cx.graph, &[s, sin_b]);
@@ -1201,7 +1400,12 @@ impl Tx<'_, '_> {
         }
         // L[∫_0^t g(u) du] = G(s)/s
         if op == self.ops.defint {
-            let (&body, &u, &lower, &upper) = (children.first()?, children.get(1)?, children.get(2)?, children.get(3)?);
+            let (&body, &u, &lower, &upper) = (
+                children.first()?,
+                children.get(1)?,
+                children.get(2)?,
+                children.get(3)?,
+            );
             if !self.is_zero(lower) || !self.cx.graph.same(upper, self.x) {
                 return None;
             }
@@ -1224,7 +1428,9 @@ impl Tx<'_, '_> {
         let &[base, exponent] = self.cx.graph.children(g) else {
             return None;
         };
-        (self.cx.graph.op(g) == core::POW && self.cx.graph.same(base, self.x)).then(|| self.cx.graph.number_of(exponent).cloned()).flatten()
+        (self.cx.graph.op(g) == core::POW && self.cx.graph.same(base, self.x))
+            .then(|| self.cx.graph.number_of(exponent).cloned())
+            .flatten()
     }
 
     /// `sin A sin B`, `cos A cos B`, `sin A cos B` and squares of `sin`,
@@ -1246,7 +1452,9 @@ impl Tx<'_, '_> {
             let &[base, exponent] = self.cx.graph.children(g) else {
                 continue;
             };
-            if self.cx.graph.op(g) != core::POW || self.cx.graph.number_of(exponent).and_then(Number::to_i64) != Some(2) {
+            if self.cx.graph.op(g) != core::POW
+                || self.cx.graph.number_of(exponent).and_then(Number::to_i64) != Some(2)
+            {
                 continue;
             }
             let Some((is_sin, a)) = trig(self.cx.graph, base) else {
@@ -1256,24 +1464,46 @@ impl Tx<'_, '_> {
             let double = mul(self.cx.graph, &[two, a]);
             let cos = call(self.cx.graph, ops.cos, &[double]);
             let one = self.int(1);
-            let signed = if is_sin { neg(self.cx.graph, cos) } else { cos };
+            let signed = if is_sin {
+                neg(self.cx.graph, cos)
+            } else {
+                cos
+            };
             let numerator = add(self.cx.graph, &[one, signed]);
             let half = self.half();
-            let mut rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &h)| h).collect();
+            let mut rest: Vec<NodeId> = factors
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != k)
+                .map(|(_, &h)| h)
+                .collect();
             rest.push(half);
             rest.push(numerator);
             let product = mul(self.cx.graph, &rest);
-            return Some(crate::rules::complex::build::call(self.cx.graph, core::ADD, &[product]));
+            return Some(crate::rules::complex::build::call(
+                self.cx.graph,
+                core::ADD,
+                &[product],
+            ));
         }
-        let positions: Vec<(usize, bool, NodeId)> =
-            factors.iter().enumerate().filter_map(|(k, &g)| trig(self.cx.graph, g).map(|(s, a)| (k, s, a))).collect();
+        let positions: Vec<(usize, bool, NodeId)> = factors
+            .iter()
+            .enumerate()
+            .filter_map(|(k, &g)| trig(self.cx.graph, g).map(|(s, a)| (k, s, a)))
+            .collect();
         let [(i, sin_i, a), (j, sin_j, b), ..] = positions.as_slice() else {
             return None;
         };
         let difference = sub(self.cx.graph, *a, *b);
         let sum = add(self.cx.graph, &[*a, *b]);
-        let (cos_d, cos_s) = (call(self.cx.graph, ops.cos, &[difference]), call(self.cx.graph, ops.cos, &[sum]));
-        let (sin_d, sin_s) = (call(self.cx.graph, ops.sin, &[difference]), call(self.cx.graph, ops.sin, &[sum]));
+        let (cos_d, cos_s) = (
+            call(self.cx.graph, ops.cos, &[difference]),
+            call(self.cx.graph, ops.cos, &[sum]),
+        );
+        let (sin_d, sin_s) = (
+            call(self.cx.graph, ops.sin, &[difference]),
+            call(self.cx.graph, ops.sin, &[sum]),
+        );
         let combined = match (sin_i, sin_j) {
             | (true, true) => sub(self.cx.graph, cos_d, cos_s),
             | (false, false) => add(self.cx.graph, &[cos_d, cos_s]),
@@ -1282,7 +1512,12 @@ impl Tx<'_, '_> {
             | (false, true) => sub(self.cx.graph, sin_s, sin_d),
         };
         let half = self.half();
-        let mut rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(k, _)| k != *i && k != *j).map(|(_, &h)| h).collect();
+        let mut rest: Vec<NodeId> = factors
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != *i && k != *j)
+            .map(|(_, &h)| h)
+            .collect();
         rest.push(half);
         rest.push(combined);
         let product = mul(self.cx.graph, &rest);
@@ -1312,19 +1547,28 @@ impl Tx<'_, '_> {
         let mut all = constants;
         // A product of inert transforms: their convolution.
         if !rest.is_empty()
-            && let Some(r) = self.inverse_of_inert(&rest) {
-                all.push(r);
-                return Some(mul(self.cx.graph, &all));
-            }
+            && let Some(r) = self.inverse_of_inert(&rest)
+        {
+            all.push(r);
+            return Some(mul(self.cx.graph, &all));
+        }
         // exp(-c s) G(s): heaviside(t - c) g(t - c), c >= 0
-        if let Some(k) = rest.iter().position(|&g| self.cx.graph.op(g) == self.ops.exp) {
+        if let Some(k) = rest
+            .iter()
+            .position(|&g| self.cx.graph.op(g) == self.ops.exp)
+        {
             let argument = *self.cx.graph.children(rest[k]).first()?;
             let (a, b) = self.linear(argument)?;
             let c = neg(self.cx.graph, a);
             if !self.is_zero(b) || !self.nonnegative(c) {
                 return None;
             }
-            let others: Vec<NodeId> = rest.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &g)| g).collect();
+            let others: Vec<NodeId> = rest
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != k)
+                .map(|(_, &g)| g)
+                .collect();
             let g = mul(self.cx.graph, &others);
             let inverse = self.inverse_laplace(g)?;
             let t = self.y;
@@ -1348,7 +1592,12 @@ impl Tx<'_, '_> {
         let mut gens = Gens::default();
         let gs = gens.index(self.cx.graph, self.x);
         let r = ratio(self.cx.graph, &mut gens, g, Limits::default())?;
-        let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gs)?.iter().map(Number::to_rational).collect() };
+        let as_q = |p: &Poly| -> Option<QPoly> {
+            p.univariate_in(gs)?
+                .iter()
+                .map(Number::to_rational)
+                .collect()
+        };
         if gens.len() == 1 {
             let (numer, denom) = (as_q(&r.numer)?, as_q(&r.denom)?);
             let parts = apart(&numer, &denom)?;
@@ -1413,7 +1662,10 @@ impl Tx<'_, '_> {
                     }
                     // 1/(s - r)^m -> t^(m-1) e^(r t) / (m-1)!
                     let factorial: BigInt = (1..m).map(BigInt::from).product();
-                    let scale = self.cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial)));
+                    let scale = self
+                        .cx
+                        .graph
+                        .num(Number::rat(BigRational::new(BigInt::one(), factorial)));
                     let tp = powi(self.cx.graph, t, i64::from(m) - 1);
                     let rt = mul(self.cx.graph, &[r, t]);
                     let e = call(self.cx.graph, self.ops.exp, &[rt]);
@@ -1442,7 +1694,11 @@ impl Tx<'_, '_> {
                 } else {
                     return None;
                 };
-                let magnitude = if trigonometric { beta2 } else { neg(self.cx.graph, beta2) };
+                let magnitude = if trigonometric {
+                    beta2
+                } else {
+                    neg(self.cx.graph, beta2)
+                };
                 let beta = self.sqrt(magnitude);
                 let beta = self.cx.simplify(beta);
                 // numerator in u: n1 u + (n0 + n1 alpha), over a^m
@@ -1450,9 +1706,15 @@ impl Tx<'_, '_> {
                 let constant = add(self.cx.graph, &[n0, n1_alpha]);
                 let am = powi(self.cx.graph, a, i64::from(power));
                 let bt = mul(self.cx.graph, &[beta, t]);
-                let (sin_op, cos_op) =
-                    if trigonometric { (self.ops.sin, self.ops.cos) } else { (self.ops.sinh, self.ops.cosh) };
-                let (sin, cos) = (call(self.cx.graph, sin_op, &[bt]), call(self.cx.graph, cos_op, &[bt]));
+                let (sin_op, cos_op) = if trigonometric {
+                    (self.ops.sin, self.ops.cos)
+                } else {
+                    (self.ops.sinh, self.ops.cosh)
+                };
+                let (sin, cos) = (
+                    call(self.cx.graph, sin_op, &[bt]),
+                    call(self.cx.graph, cos_op, &[bt]),
+                );
                 let core = match power {
                     | 1 => {
                         // u/(u^2 ± b^2) -> cos, 1/(u^2 ± b^2) -> sin/b
@@ -1483,7 +1745,10 @@ impl Tx<'_, '_> {
                         self.cx.graph.assume(fresh, Facts::POSITIVE);
                         let b = self.cx.graph.symbol_node(fresh);
                         let bt_param = mul(self.cx.graph, &[b, t]);
-                        let (s_p, c_p) = (call(self.cx.graph, sin_op, &[bt_param]), call(self.cx.graph, cos_op, &[bt_param]));
+                        let (s_p, c_p) = (
+                            call(self.cx.graph, sin_op, &[bt_param]),
+                            call(self.cx.graph, cos_op, &[bt_param]),
+                        );
                         let mut sine_part = self.div(s_p, b);
                         let mut cosine_part = c_p;
                         for k in 1..m {
@@ -1518,13 +1783,21 @@ impl Tx<'_, '_> {
         &mut self,
         g: NodeId,
     ) -> Option<NodeId> {
-        let factors = if self.cx.graph.op(g) == core::MUL { self.cx.graph.children(g).to_vec() } else { vec![g] };
+        let factors = if self.cx.graph.op(g) == core::MUL {
+            self.cx.graph.children(g).to_vec()
+        } else {
+            vec![g]
+        };
         let mut numerator = Vec::new();
         let mut denominator = None;
         for f in factors {
             let children = self.cx.graph.children(f).to_vec();
             let negative_power = self.cx.graph.op(f) == core::POW
-                && children.get(1).and_then(|&e| self.cx.graph.number_of(e)).and_then(Number::to_i64).is_some_and(|e| e < 0);
+                && children
+                    .get(1)
+                    .and_then(|&e| self.cx.graph.number_of(e))
+                    .and_then(Number::to_i64)
+                    .is_some_and(|e| e < 0);
             if negative_power && !self.free(f) {
                 if denominator.is_some() {
                     return None;
@@ -1540,7 +1813,11 @@ impl Tx<'_, '_> {
             let mut gens = Gens::default();
             let gs = gens.index(tx.cx.graph, tx.x);
             let poly = from_term(tx.cx.graph, &mut gens, term, Limits::default())?;
-            let parts: Vec<NodeId> = poly.coefficients_in(gs).iter().map(|c| to_term(tx.cx.graph, &gens, c)).collect();
+            let parts: Vec<NodeId> = poly
+                .coefficients_in(gs)
+                .iter()
+                .map(|c| to_term(tx.cx.graph, &gens, c))
+                .collect();
             parts.iter().all(|&c| tx.free(c)).then_some(parts)
         };
         let numerator_term = mul(self.cx.graph, &numerator);
@@ -1622,11 +1899,18 @@ impl Tx<'_, '_> {
             let mut gens = Gens::default();
             let gx = gens.index(self.cx.graph, self.x);
             if let Some(poly) = from_term(self.cx.graph, &mut gens, argument, Limits::default()) {
-                let parts: Vec<NodeId> = poly.coefficients_in(gx).iter().map(|c| to_term(self.cx.graph, &gens, c)).collect();
+                let parts: Vec<NodeId> = poly
+                    .coefficients_in(gx)
+                    .iter()
+                    .map(|c| to_term(self.cx.graph, &gens, c))
+                    .collect();
                 if let [c0, c1, c2] = parts.as_slice() {
                     let a = neg(self.cx.graph, *c2);
                     let a = self.cx.simplify(a);
-                    if self.cx.graph.facts(a).has(Facts::POSITIVE) && self.free(*c0) && self.free(*c1) {
+                    if self.cx.graph.facts(a).has(Facts::POSITIVE)
+                        && self.free(*c0)
+                        && self.free(*c1)
+                    {
                         // exp(c0 + c1 t - a t^2) = exp(c0 + c1^2/(4a)) exp(-a (t - tau)^2),
                         // tau = c1/(2a); the shift gives exp(-I w tau)
                         let pi = self.pi();
@@ -1637,7 +1921,8 @@ impl Tx<'_, '_> {
                         let four_a = mul(self.cx.graph, &[four, a]);
                         let exponent = self.div(w2, four_a);
                         let exponent = neg(self.cx.graph, exponent);
-                        let mut factors = vec![scale, call(self.cx.graph, self.ops.exp, &[exponent])];
+                        let mut factors =
+                            vec![scale, call(self.cx.graph, self.ops.exp, &[exponent])];
                         if !self.is_zero(*c1) {
                             let c1_squared = powi(self.cx.graph, *c1, 2);
                             let extra = self.div(c1_squared, four_a);
@@ -1660,25 +1945,37 @@ impl Tx<'_, '_> {
             // exp(-a abs(t)), a > 0: 2a/(a^2 + w^2)
             let (k, rest) = self.factors(argument);
             if let [abs] = rest.as_slice()
-                && self.cx.graph.op(*abs) == self.ops.abs && self.cx.graph.children(*abs).first().is_some_and(|&c| self.cx.graph.same(c, self.x)) {
-                    let k = mul(self.cx.graph, &k);
-                    let a = neg(self.cx.graph, k);
-                    let a = self.cx.simplify(a);
-                    if self.cx.graph.facts(a).has(Facts::POSITIVE) {
-                        let two = self.int(2);
-                        let numerator = mul(self.cx.graph, &[two, a]);
-                        let a2 = powi(self.cx.graph, a, 2);
-                        let w2 = powi(self.cx.graph, w, 2);
-                        let denominator = add(self.cx.graph, &[a2, w2]);
-                        return Some(self.div(numerator, denominator));
-                    }
+                && self.cx.graph.op(*abs) == self.ops.abs
+                && self
+                    .cx
+                    .graph
+                    .children(*abs)
+                    .first()
+                    .is_some_and(|&c| self.cx.graph.same(c, self.x))
+            {
+                let k = mul(self.cx.graph, &k);
+                let a = neg(self.cx.graph, k);
+                let a = self.cx.simplify(a);
+                if self.cx.graph.facts(a).has(Facts::POSITIVE) {
+                    let two = self.int(2);
+                    let numerator = mul(self.cx.graph, &[two, a]);
+                    let a2 = powi(self.cx.graph, a, 2);
+                    let w2 = powi(self.cx.graph, w, 2);
+                    let denominator = add(self.cx.graph, &[a2, w2]);
+                    return Some(self.div(numerator, denominator));
                 }
+            }
             return None;
         }
         if op == self.ops.dirac {
             // dirac(t - c): exp(-I w c)
             let (a, b) = self.linear(*children.first()?)?;
-            if !self.cx.graph.number_of(a).is_some_and(|n| n.to_f64() == 1.0) {
+            if !self
+                .cx
+                .graph
+                .number_of(a)
+                .is_some_and(|n| n.to_f64() == 1.0)
+            {
                 return None;
             }
             let unit = self.unit();
@@ -1694,7 +1991,11 @@ impl Tx<'_, '_> {
             let mut gens = Gens::default();
             let gx = gens.index(self.cx.graph, self.x);
             let poly = from_term(self.cx.graph, &mut gens, base, Limits::default())?;
-            let parts: Vec<NodeId> = poly.coefficients_in(gx).iter().map(|c| to_term(self.cx.graph, &gens, c)).collect();
+            let parts: Vec<NodeId> = poly
+                .coefficients_in(gx)
+                .iter()
+                .map(|c| to_term(self.cx.graph, &gens, c))
+                .collect();
             let [c0, c1, c2] = parts.as_slice() else {
                 return None;
             };
@@ -1729,12 +2030,24 @@ impl Tx<'_, '_> {
         factors: &[NodeId],
     ) -> Option<NodeId> {
         let w = self.y;
-        let others = |k: usize| -> Vec<NodeId> { factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &g)| g).collect() };
+        let others = |k: usize| -> Vec<NodeId> {
+            factors
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != k)
+                .map(|(_, &g)| g)
+                .collect()
+        };
         // heaviside(t) exp(-a t), a > 0: 1/(a + I w)
         if let [first, second] = factors {
             for (h, e) in [(*first, *second), (*second, *first)] {
                 if self.cx.graph.op(h) == self.ops.heaviside
-                    && self.cx.graph.children(h).first().is_some_and(|&c| self.cx.graph.same(c, self.x))
+                    && self
+                        .cx
+                        .graph
+                        .children(h)
+                        .first()
+                        .is_some_and(|&c| self.cx.graph.same(c, self.x))
                     && self.cx.graph.op(e) == self.ops.exp
                 {
                     let argument = *self.cx.graph.children(e).first()?;
@@ -1791,7 +2104,10 @@ impl Tx<'_, '_> {
                     mul(self.cx.graph, &[half, over])
                 });
             }
-            if let Some(n) = self.power_of_x(g).filter(|n| n.is_integer() && n.to_f64() >= 1.0 && n.to_f64() <= 12.0) {
+            if let Some(n) = self
+                .power_of_x(g)
+                .filter(|n| n.is_integer() && n.to_f64() >= 1.0 && n.to_f64() <= 12.0)
+            {
                 // t^n g: (I d/dw)^n G
                 let mut inner = self.fourier(rest_term)?;
                 for _ in 0..n.to_i64()? {
@@ -2000,7 +2316,14 @@ impl Tx<'_, '_> {
         let (w, t) = (self.x, self.y);
         let fresh = self.cx.graph.interner_mut().fresh_symbol("u");
         let u = self.cx.graph.symbol_node(fresh);
-        let mut forward = Tx { cx: &mut *self.cx, ops: self.ops, kind: Request::Fourier, x: w, xs: self.xs, y: u };
+        let mut forward = Tx {
+            cx: &mut *self.cx,
+            ops: self.ops,
+            kind: Request::Fourier,
+            x: w,
+            xs: self.xs,
+            y: u,
+        };
         let transformed = forward.fourier(f)?;
         let minus_t = neg(self.cx.graph, t);
         let at = self.cx.graph.substitute(transformed, u, minus_t);
@@ -2055,18 +2378,34 @@ impl Tx<'_, '_> {
         // a^n g(n): G(z/a); exp(c n) = (e^c)^n
         for (k, &g) in factors.iter().enumerate() {
             // base^(a n + b) = base^b (base^a)^n and exp(c n + d) = e^d (e^c)^n
-            let base = match (self.cx.graph.op(g), self.cx.graph.children(g).to_vec().as_slice()) {
+            let base = match (
+                self.cx.graph.op(g),
+                self.cx.graph.children(g).to_vec().as_slice(),
+            ) {
                 | (core::POW, &[base, exponent]) if self.free(base) && !self.free(exponent) => {
-                    self.linear(exponent).filter(|&(a, _)| !self.is_zero(a)).map(|(a, b)| (pow(self.cx.graph, base, a), pow(self.cx.graph, base, b)))
+                    self.linear(exponent)
+                        .filter(|&(a, _)| !self.is_zero(a))
+                        .map(|(a, b)| (pow(self.cx.graph, base, a), pow(self.cx.graph, base, b)))
                 },
-                | (op, &[argument]) if op == self.ops.exp && !self.free(argument) => self
-                    .linear(argument)
-                    .filter(|&(c, _)| !self.is_zero(c))
-                    .map(|(c, d)| (call(self.cx.graph, self.ops.exp, &[c]), call(self.cx.graph, self.ops.exp, &[d]))),
+                | (op, &[argument]) if op == self.ops.exp && !self.free(argument) => {
+                    self.linear(argument)
+                        .filter(|&(c, _)| !self.is_zero(c))
+                        .map(|(c, d)| {
+                            (
+                                call(self.cx.graph, self.ops.exp, &[c]),
+                                call(self.cx.graph, self.ops.exp, &[d]),
+                            )
+                        })
+                },
                 | _ => None,
             };
             if let Some((base, scale)) = base {
-                let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &h)| h).collect();
+                let rest: Vec<NodeId> = factors
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, _)| j != k)
+                    .map(|(_, &h)| h)
+                    .collect();
                 let g = self.z_product(&rest, depth + 1)?;
                 let scaled = self.div(z, base);
                 let moved = self.subst_out(g, z, scaled);
@@ -2074,12 +2413,20 @@ impl Tx<'_, '_> {
             }
         }
         // n g(n): -z G'(z)
-        if let Some(k) = factors.iter().position(|&g| self.power_of_x(g).is_some_and(|n| n.is_integer() && n.to_f64() >= 1.0)) {
+        if let Some(k) = factors.iter().position(|&g| {
+            self.power_of_x(g)
+                .is_some_and(|n| n.is_integer() && n.to_f64() >= 1.0)
+        }) {
             let n = self.power_of_x(factors[k])?.to_i64()?;
             if n > MAX_ORDER {
                 return None;
             }
-            let mut rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &h)| h).collect();
+            let mut rest: Vec<NodeId> = factors
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != k)
+                .map(|(_, &h)| h)
+                .collect();
             if n > 1 {
                 let x = self.x;
                 let lower = powi(self.cx.graph, x, n - 1);
@@ -2101,7 +2448,12 @@ impl Tx<'_, '_> {
         if op == self.ops.kronecker {
             // kronecker(n - k): z^-k
             let (a, b) = self.linear(*children.first()?)?;
-            if !self.cx.graph.number_of(a).is_some_and(|n| n.to_f64() == 1.0) {
+            if !self
+                .cx
+                .graph
+                .number_of(a)
+                .is_some_and(|n| n.to_f64() == 1.0)
+            {
                 return None;
             }
             let k = self.cx.graph.number_of(b)?.to_i64()?;
@@ -2114,7 +2466,10 @@ impl Tx<'_, '_> {
             if !self.is_zero(offset) {
                 return None;
             }
-            let (sin_b, cos_b) = (call(self.cx.graph, self.ops.sin, &[b]), call(self.cx.graph, self.ops.cos, &[b]));
+            let (sin_b, cos_b) = (
+                call(self.cx.graph, self.ops.sin, &[b]),
+                call(self.cx.graph, self.ops.cos, &[b]),
+            );
             let z2 = powi(self.cx.graph, z, 2);
             let two = self.int(2);
             let middle = mul(self.cx.graph, &[two, z, cos_b]);
@@ -2137,11 +2492,12 @@ impl Tx<'_, '_> {
     ) -> Option<NodeId> {
         let (constants, rest) = self.factors(f);
         if !rest.is_empty()
-            && let Some(r) = self.inverse_of_inert(&rest) {
-                let mut all = constants;
-                all.push(r);
-                return Some(mul(self.cx.graph, &all));
-            }
+            && let Some(r) = self.inverse_of_inert(&rest)
+        {
+            let mut all = constants;
+            all.push(r);
+            return Some(mul(self.cx.graph, &all));
+        }
         // Partial fractions of F(z)/z over Q.
         let z = self.x;
         let n = self.y;
@@ -2151,7 +2507,12 @@ impl Tx<'_, '_> {
         if gens.len() != 1 {
             return None;
         }
-        let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gz)?.iter().map(Number::to_rational).collect() };
+        let as_q = |p: &Poly| -> Option<QPoly> {
+            p.univariate_in(gz)?
+                .iter()
+                .map(Number::to_rational)
+                .collect()
+        };
         let (numer, mut denom) = (as_q(&r.numer)?, as_q(&r.denom)?);
         denom.insert(0, BigRational::zero());
         let parts = apart(&numer, &denom)?;
@@ -2185,7 +2546,11 @@ impl Tx<'_, '_> {
                         falling.push(sub(self.cx.graph, n, j));
                     }
                     let factorial: BigInt = (1..m).map(BigInt::from).product();
-                    factors.push(self.cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial))));
+                    factors.push(
+                        self.cx
+                            .graph
+                            .num(Number::rat(BigRational::new(BigInt::one(), factorial))),
+                    );
                     factors.extend(falling);
                     let offset = self.int(i64::from(m) - 1);
                     let exponent = sub(self.cx.graph, n, offset);
@@ -2197,7 +2562,12 @@ impl Tx<'_, '_> {
                     // with complex roots rho e^(± I theta).
                     let (p, q) = (p / lead, q / lead);
                     let zero = BigRational::zero();
-                    let big_b = piece.numerator.get(1).cloned().unwrap_or_else(|| zero.clone()) / lead;
+                    let big_b = piece
+                        .numerator
+                        .get(1)
+                        .cloned()
+                        .unwrap_or_else(|| zero.clone())
+                        / lead;
                     let big_c = piece.numerator.first().cloned().unwrap_or(zero) / lead;
                     let discriminant = &p * &p - BigRational::from_integer(BigInt::from(4)) * &q;
                     if discriminant.is_positive() {
@@ -2230,12 +2600,16 @@ impl Tx<'_, '_> {
                     }
                     let q_node = self.rat(&q);
                     let rho = self.sqrt(q_node);
-                    let minus_half_p = self.rat(&(-&p / BigRational::from_integer(BigInt::from(2))));
+                    let minus_half_p =
+                        self.rat(&(-&p / BigRational::from_integer(BigInt::from(2))));
                     let cos_theta = self.div(minus_half_p, rho);
                     let acos = self.cx.graph.ops().lookup("acos")?;
                     let theta = call(self.cx.graph, acos, &[cos_theta]);
                     let n_theta = mul(self.cx.graph, &[n, theta]);
-                    let (cos, sin) = (call(self.cx.graph, self.ops.cos, &[n_theta]), call(self.cx.graph, self.ops.sin, &[n_theta]));
+                    let (cos, sin) = (
+                        call(self.cx.graph, self.ops.cos, &[n_theta]),
+                        call(self.cx.graph, self.ops.sin, &[n_theta]),
+                    );
                     // sin coefficient: (C + B rho cos theta)/(rho sin theta)
                     let b_node = self.rat(&big_b);
                     let c_node = self.rat(&big_c);
@@ -2269,10 +2643,17 @@ impl Tx<'_, '_> {
         skip: &[SymbolId],
     ) -> Env {
         let mut env = Env::numeric(0.0);
-        let mut symbols: Vec<SymbolId> = nodes.iter().flat_map(|&n| self.cx.graph.free_symbols(self.cx.graph.find(n)).to_vec()).collect();
+        let mut symbols: Vec<SymbolId> = nodes
+            .iter()
+            .flat_map(|&n| self.cx.graph.free_symbols(self.cx.graph.find(n)).to_vec())
+            .collect();
         symbols.sort_unstable();
         symbols.dedup();
-        for (k, symbol) in symbols.into_iter().filter(|s| !skip.contains(s)).enumerate() {
+        for (k, symbol) in symbols
+            .into_iter()
+            .filter(|s| !skip.contains(s))
+            .enumerate()
+        {
             #[allow(clippy::cast_precision_loss)]
             env.bind(symbol, 0.45 + 0.17 * k as f64);
         }
@@ -2320,8 +2701,18 @@ impl Tx<'_, '_> {
                 )
             };
             let integrand = std::cell::RefCell::new(integrand);
-            let quadrature = gauss_kronrod_any(|t| (integrand.borrow_mut())(t), 0.0, f64::INFINITY, 1e-10, 2000);
-            if failed.get() || !quadrature.value.is_finite() || !quadrature.error.is_finite() || quadrature.error > 1e-6 {
+            let quadrature = gauss_kronrod_any(
+                |t| (integrand.borrow_mut())(t),
+                0.0,
+                f64::INFINITY,
+                1e-10,
+                2000,
+            );
+            if failed.get()
+                || !quadrature.value.is_finite()
+                || !quadrature.error.is_finite()
+                || quadrature.error > 1e-6
+            {
                 return true;
             }
             if !Self::agrees(quadrature.value, want) {
@@ -2370,7 +2761,11 @@ impl Tx<'_, '_> {
                 1e-10,
                 2000,
             );
-            if failed.get() || !quadrature.value.is_finite() || !quadrature.error.is_finite() || quadrature.error > 1e-6 {
+            if failed.get()
+                || !quadrature.value.is_finite()
+                || !quadrature.error.is_finite()
+                || quadrature.error > 1e-6
+            {
                 return true;
             }
             if !Self::agrees(quadrature.value, want) {
@@ -2394,7 +2789,11 @@ impl Tx<'_, '_> {
         };
         let env = self.sample_bindings(&[f, result], &[self.xs, ws]);
         for w0 in [0.7, 1.9] {
-            let mut bindings: HashMap<SymbolId, Complex64> = env.bindings().iter().map(|&(s, v)| (s, Complex64::new(v, 0.0))).collect();
+            let mut bindings: HashMap<SymbolId, Complex64> = env
+                .bindings()
+                .iter()
+                .map(|&(s, v)| (s, Complex64::new(v, 0.0)))
+                .collect();
             bindings.insert(ws, Complex64::new(w0, 0.0));
             let Some(want) = self.cx.graph.eval_complex(result, &bindings) else {
                 return true;
@@ -2421,7 +2820,11 @@ impl Tx<'_, '_> {
                     1e-10,
                     2000,
                 );
-                if failed.get() || !quadrature.value.is_finite() || !quadrature.error.is_finite() || quadrature.error > 1e-6 {
+                if failed.get()
+                    || !quadrature.value.is_finite()
+                    || !quadrature.error.is_finite()
+                    || quadrature.error > 1e-6
+                {
                     return true;
                 }
                 *slot = quadrature.value;
@@ -2480,7 +2883,8 @@ impl Tx<'_, '_> {
         let mut env = self.sample_bindings(&[f, result], &[self.xs, zs]);
         // Sampled symbols stay small so that every test series converges
         // at |z| >= 3.5.
-        self.z_series_agrees(f, self.xs, result, zs, &mut env).unwrap_or(true)
+        self.z_series_agrees(f, self.xs, result, zs, &mut env)
+            .unwrap_or(true)
     }
 
     fn check_inverse_z(
@@ -2495,7 +2899,8 @@ impl Tx<'_, '_> {
             return true;
         };
         let mut env = self.sample_bindings(&[f, result], &[self.xs, ns]);
-        self.z_series_agrees(result, ns, f, self.xs, &mut env).unwrap_or(true)
+        self.z_series_agrees(result, ns, f, self.xs, &mut env)
+            .unwrap_or(true)
     }
 }
 
@@ -2503,8 +2908,10 @@ fn add_number(
     n: &Number,
     k: i64,
 ) -> Number {
-    n.to_rational()
-        .map_or_else(|| Number::from(n.to_f64() + 1.0), |r| Number::rat(r + BigRational::from_integer(BigInt::from(k))))
+    n.to_rational().map_or_else(
+        || Number::from(n.to_f64() + 1.0),
+        |r| Number::rat(r + BigRational::from_integer(BigInt::from(k))),
+    )
 }
 
 #[cfg(test)]
@@ -2533,8 +2940,16 @@ mod tests {
             g.assume(s, Facts::POSITIVE);
         }
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let term = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let term = Extractor::new(&g, &[root], &SizeCost)
+            .build(&mut g, root)
+            .unwrap_or(root);
         g.display(term)
     }
 
@@ -2559,10 +2974,20 @@ mod tests {
 
     #[test]
     fn laplace_of_derivatives_and_symbolic_parameters() {
-        let (text, _) = crate::rules::testing::reduce_with(&[transforms()], "laplace(diff(y(t), t), t, s)", &[]);
+        let (text, _) = crate::rules::testing::reduce_with(
+            &[transforms()],
+            "laplace(diff(y(t), t), t, s)",
+            &[],
+        );
         assert_eq!(text, "s*laplace(y(t), t, s) - y(0)");
-        assert_eq!(run_positive("laplace(exp(-a*t), t, s)", &["a"]), "1/(a + s)");
-        assert_eq!(run_positive("laplace(sin(w*t), t, s)", &["w"]), "w/(s^2 + w^2)");
+        assert_eq!(
+            run_positive("laplace(exp(-a*t), t, s)", &["a"]),
+            "1/(a + s)"
+        );
+        assert_eq!(
+            run_positive("laplace(sin(w*t), t, s)", &["w"]),
+            "w/(s^2 + w^2)"
+        );
     }
 
     #[test]
@@ -2572,11 +2997,26 @@ mod tests {
         assert_eq!(run("inverse_laplace(1/(s^2 + 4), s, t)"), "1/2*sin(2*t)");
         assert_eq!(run("inverse_laplace(s/(s^2 + 4), s, t)"), "cos(2*t)");
         assert_eq!(run("inverse_laplace(1/(s*(s + 1)), s, t)"), "1 - exp(-t)");
-        assert_eq!(run("inverse_laplace(1/(s^2 + 2*s + 5), s, t)"), "1/2*exp(-t)*sin(2*t)");
-        assert_eq!(run("inverse_laplace(1/(s^2 + 1)^2, s, t)"), "1/2*(sin(t) - t*cos(t))");
-        assert_eq!(run("inverse_laplace(exp(-3*s)/s, s, t)"), "heaviside(t - 3)");
-        assert_eq!(run_positive("inverse_laplace(1/(s + a), s, t)", &["a"]), "exp(-a*t)");
-        assert_eq!(run_positive("inverse_laplace(1/(s^2 + w^2), s, t)", &["w"]), "sin(t*w)/w");
+        assert_eq!(
+            run("inverse_laplace(1/(s^2 + 2*s + 5), s, t)"),
+            "1/2*exp(-t)*sin(2*t)"
+        );
+        assert_eq!(
+            run("inverse_laplace(1/(s^2 + 1)^2, s, t)"),
+            "1/2*(sin(t) - t*cos(t))"
+        );
+        assert_eq!(
+            run("inverse_laplace(exp(-3*s)/s, s, t)"),
+            "heaviside(t - 3)"
+        );
+        assert_eq!(
+            run_positive("inverse_laplace(1/(s + a), s, t)", &["a"]),
+            "exp(-a*t)"
+        );
+        assert_eq!(
+            run_positive("inverse_laplace(1/(s^2 + w^2), s, t)", &["w"]),
+            "sin(t*w)/w"
+        );
     }
 
     /// The transform and its inverse compose to the identity.
@@ -2589,11 +3029,20 @@ mod tests {
 
     #[test]
     fn laplace_round_trips() {
-        for f in ["t^2*exp(-3*t)", "exp(-t)*cos(2*t)", "sin(t) + t", "cosh(t)", "t*sin(2*t)"] {
+        for f in [
+            "t^2*exp(-3*t)",
+            "exp(-t)*cos(2*t)",
+            "sin(t) + t",
+            "cosh(t)",
+            "t*sin(2*t)",
+        ] {
             let back = run(&format!("inverse_laplace(laplace({f}, t, s), s, t)"));
             for t in [0.3, 1.7] {
                 let (a, b) = (eval(f, t), eval(&back, t));
-                assert!((a - b).abs() < 1e-9 * (1.0 + a.abs()), "{f} -> {back}: {a} vs {b}");
+                assert!(
+                    (a - b).abs() < 1e-9 * (1.0 + a.abs()),
+                    "{f} -> {back}: {a} vs {b}"
+                );
             }
         }
     }
@@ -2604,13 +3053,24 @@ mod tests {
         assert_eq!(run("fourier(exp(-abs(t)), t, w)"), "2/(w^2 + 1)");
         assert_eq!(run("fourier(heaviside(t)*exp(-2*t), t, w)"), "1/(w*I + 2)");
         assert_eq!(run("fourier(1/(t^2 + 4), t, w)"), "1/2*exp(-2*abs(w))*pi");
-        assert_eq!(run("fourier(cos(3*t)*exp(-t^2), t, w)"), "1/2*exp(-1/4*(w - 3)^2)*pi^(1/2) + 1/2*exp(-1/4*(w + 3)^2)*pi^(1/2)");
+        assert_eq!(
+            run("fourier(cos(3*t)*exp(-t^2), t, w)"),
+            "1/2*exp(-1/4*(w - 3)^2)*pi^(1/2) + 1/2*exp(-1/4*(w + 3)^2)*pi^(1/2)"
+        );
         assert_eq!(run("fourier(dirac(t - 2), t, w)"), "exp(-2*w*I)");
         assert_eq!(run("inverse_fourier(2/(w^2 + 1), w, t)"), "exp(-abs(t))");
         // Repeated and complex-coefficient denominators by residues.
-        assert_eq!(run("inverse_fourier(4/(w^2 + 1)^2, w, t)"), "abs(t)*exp(-abs(t)) + exp(-abs(t))");
+        assert_eq!(
+            run("inverse_fourier(4/(w^2 + 1)^2, w, t)"),
+            "abs(t)*exp(-abs(t)) + exp(-abs(t))"
+        );
         let one_sided = run("inverse_fourier(2/((1 + w^2)*(1 + I*w)), w, t)");
-        assert!(one_sided.contains("heaviside(t)") && one_sided.contains("heaviside(-t)") && !one_sided.contains("fourier"), "{one_sided}");
+        assert!(
+            one_sided.contains("heaviside(t)")
+                && one_sided.contains("heaviside(-t)")
+                && !one_sided.contains("fourier"),
+            "{one_sided}"
+        );
     }
 
     #[test]
@@ -2620,7 +3080,10 @@ mod tests {
         assert_eq!(run("ztransform(n, n, z)"), "z/(z^2 - 2*z + 1)");
         assert_eq!(run("ztransform(kronecker(n - 2), n, z)"), "1/z^2");
         assert_eq!(run("inverse_ztransform(z/(z - 1/2), z, n)"), "(1/2)^n");
-        assert_eq!(run("inverse_ztransform(z/((z - 1)*(z - 2)), z, n)"), "2^n - 1");
+        assert_eq!(
+            run("inverse_ztransform(z/((z - 1)*(z - 2)), z, n)"),
+            "2^n - 1"
+        );
         assert_eq!(run("inverse_ztransform(1/z, z, n)"), "kronecker(n - 1)");
         // Complex poles: z/(z^2 + 1) is the transform of sin(n pi/2).
         let back = run("inverse_ztransform(z/(z^2 + 1), z, n)");
@@ -2632,7 +3095,10 @@ mod tests {
             let back = run(&format!("inverse_ztransform(ztransform({f}, n, z), z, n)"));
             for n in [0.0, 1.0, 5.0] {
                 let (a, b) = (eval(f, n), eval(&back, n));
-                assert!((a - b).abs() < 1e-9 * (1.0 + a.abs()), "{f} -> {back}: {a} vs {b}");
+                assert!(
+                    (a - b).abs() < 1e-9 * (1.0 + a.abs()),
+                    "{f} -> {back}: {a} vs {b}"
+                );
             }
         }
     }
@@ -2660,49 +3126,95 @@ mod tests {
     ) -> Complex64 {
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &[transforms()]).unwrap_or_else(|e| panic!("{e}"));
-        let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let term = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
+        let root = g
+            .parse(src)
+            .unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let term = Extractor::new(&g, &[root], &SizeCost)
+            .build(&mut g, root)
+            .unwrap_or(root);
         let mut map = HashMap::new();
         for (name, v) in bindings {
             let symbol = g.interner_mut().symbol(name);
             map.insert(symbol, Complex64::new(*v, 0.0));
         }
-        g.eval_complex(term, &map).unwrap_or_else(|| panic!("cannot evaluate `{}`", g.display(term)))
+        g.eval_complex(term, &map)
+            .unwrap_or_else(|| panic!("cannot evaluate `{}`", g.display(term)))
     }
 
     #[test]
     fn laplace_derivative_theorem_of_any_order() {
-        assert_eq!(theorem("laplace(diff(y(t), t), t, s)"), "s*laplace(y(t), t, s) - y(0)");
-        assert_eq!(theorem("laplace(diff(diff(y(t), t), t), t, s)"), "s*(s*laplace(y(t), t, s) - y(0)) - at(diff(y(t), t), t, 0)");
+        assert_eq!(
+            theorem("laplace(diff(y(t), t), t, s)"),
+            "s*laplace(y(t), t, s) - y(0)"
+        );
+        assert_eq!(
+            theorem("laplace(diff(diff(y(t), t), t), t, s)"),
+            "s*(s*laplace(y(t), t, s) - y(0)) - at(diff(y(t), t), t, 0)"
+        );
         assert_eq!(
             theorem("laplace(diff(diff(diff(y(t), t), t), t), t, s)"),
             "s*(s*(s*laplace(y(t), t, s) - y(0)) - at(diff(y(t), t), t, 0)) - at(diff(diff(y(t), t), t), t, 0)"
         );
         // a linear ODE y'' + 3 y' + 2 y = 0 transforms to an algebraic equation
         let text = theorem("laplace(diff(diff(y(t), t), t) + 3*diff(y(t), t) + 2*y(t), t, s)");
-        assert!(text.contains("laplace(y(t), t, s)") && text.contains("at(diff(y(t), t), t, 0)") && text.contains("y(0)"), "{text}");
+        assert!(
+            text.contains("laplace(y(t), t, s)")
+                && text.contains("at(diff(y(t), t), t, 0)")
+                && text.contains("y(0)"),
+            "{text}"
+        );
     }
 
     #[test]
     fn laplace_theorems_for_unknown_functions() {
         // frequency shift
-        assert_eq!(theorem("laplace(exp(2*t)*y(t), t, s)"), "laplace(y(t), t, s - 2)");
-        assert_eq!(theorem("laplace(exp(-a*t)*y(t), t, s)"), "laplace(y(t), t, a + s)");
+        assert_eq!(
+            theorem("laplace(exp(2*t)*y(t), t, s)"),
+            "laplace(y(t), t, s - 2)"
+        );
+        assert_eq!(
+            theorem("laplace(exp(-a*t)*y(t), t, s)"),
+            "laplace(y(t), t, a + s)"
+        );
         // time shift
-        assert_eq!(theorem("laplace(heaviside(t - 2)*y(t - 2), t, s)"), "exp(-2*s)*laplace(y(t), t, s)");
+        assert_eq!(
+            theorem("laplace(heaviside(t - 2)*y(t - 2), t, s)"),
+            "exp(-2*s)*laplace(y(t), t, s)"
+        );
         // scaling
-        assert_eq!(theorem("laplace(y(3*t), t, s)"), "1/3*laplace(y(t), t, 1/3*s)");
+        assert_eq!(
+            theorem("laplace(y(3*t), t, s)"),
+            "1/3*laplace(y(t), t, 1/3*s)"
+        );
         // integral
-        assert_eq!(theorem("laplace(defint(y(u), u, 0, t), t, s)"), "laplace(y(t), t, s)/s");
+        assert_eq!(
+            theorem("laplace(defint(y(u), u, 0, t), t, s)"),
+            "laplace(y(t), t, s)/s"
+        );
         // multiplication by t^n
-        assert_eq!(theorem("laplace(t*y(t), t, s)"), "-diff(laplace(y(t), t, s), s)");
-        assert_eq!(theorem("laplace(t^2*y(t), t, s)"), "diff(diff(laplace(y(t), t, s), s), s)");
+        assert_eq!(
+            theorem("laplace(t*y(t), t, s)"),
+            "-diff(laplace(y(t), t, s), s)"
+        );
+        assert_eq!(
+            theorem("laplace(t^2*y(t), t, s)"),
+            "diff(diff(laplace(y(t), t, s), s), s)"
+        );
         // a shift of t y(t): the derivative moves with the argument
         let text = theorem("laplace(exp(2*t)*t*y(t), t, s)");
         assert!(text.contains("at(diff(laplace(y(t), t, "), "{text}");
         // an unknown transform alone is not reduced
-        assert_eq!(attempt("laplace(y(t), t, s)"), ("laplace(y(t), t, s)".to_owned(), false));
+        assert_eq!(
+            attempt("laplace(y(t), t, s)"),
+            ("laplace(y(t), t, s)".to_owned(), false)
+        );
         // a product of two unknowns has no theorem
         assert!(!attempt("laplace(y(t)*g(t), t, s)").1);
     }
@@ -2711,36 +3223,75 @@ mod tests {
     fn laplace_theorems_agree_with_closed_forms() {
         // shift: L[e^(2t) sin t] = L[sin](s - 2)
         for s in [3.0, 5.5] {
-            let (a, b) = (value("laplace(exp(2*t)*sin(t), t, s)", &[("s", s)]), value("1/((s - 2)^2 + 1)", &[("s", s)]));
+            let (a, b) = (
+                value("laplace(exp(2*t)*sin(t), t, s)", &[("s", s)]),
+                value("1/((s - 2)^2 + 1)", &[("s", s)]),
+            );
             assert!((a - b).norm() < 1e-12);
         }
         // scaling: L[sin(3t)] = L[sin](s/3)/3
-        let (a, b) = (value("laplace(sin(3*t), t, s)", &[("s", 4.0)]), value("laplace(sin(t), t, s)/3", &[("s", 4.0 / 3.0)]));
+        let (a, b) = (
+            value("laplace(sin(3*t), t, s)", &[("s", 4.0)]),
+            value("laplace(sin(t), t, s)/3", &[("s", 4.0 / 3.0)]),
+        );
         assert!((a - b).norm() < 1e-12);
         // multiplication by t^2: L[t^2 e^(-t)] = d^2/ds^2 L[e^(-t)]
-        let (a, b) = (value("laplace(t^2*exp(-t), t, s)", &[("s", 2.0)]), value("2/(s + 1)^3", &[("s", 2.0)]));
+        let (a, b) = (
+            value("laplace(t^2*exp(-t), t, s)", &[("s", 2.0)]),
+            value("2/(s + 1)^3", &[("s", 2.0)]),
+        );
         assert!((a - b).norm() < 1e-12);
         // integral: L[∫_0^t sin] = L[sin]/s
-        let (a, b) = (value("laplace(defint(sin(u), u, 0, t), t, s)", &[("s", 2.0)]), value("1/(s*(s^2 + 1))", &[("s", 2.0)]));
+        let (a, b) = (
+            value("laplace(defint(sin(u), u, 0, t), t, s)", &[("s", 2.0)]),
+            value("1/(s*(s^2 + 1))", &[("s", 2.0)]),
+        );
         assert!((a - b).norm() < 1e-12);
         // time shift: L[heaviside(t - 2) sin(t - 2)] = e^(-2s) L[sin]
-        let (a, b) = (value("laplace(heaviside(t - 2)*sin(t - 2), t, s)", &[("s", 1.5)]), value("exp(-2*s)/(s^2 + 1)", &[("s", 1.5)]));
+        let (a, b) = (
+            value("laplace(heaviside(t - 2)*sin(t - 2), t, s)", &[("s", 1.5)]),
+            value("exp(-2*s)/(s^2 + 1)", &[("s", 1.5)]),
+        );
         assert!((a - b).norm() < 1e-12);
     }
 
     #[test]
     fn laplace_convolution_theorem() {
-        assert_eq!(theorem("laplace(convolution(y(t), g(t), t), t, s)"), "laplace(g(t), t, s)*laplace(y(t), t, s)");
-        assert_eq!(theorem("laplace(convolve(y(t), g(t), t), t, s)"), "laplace(g(t), t, s)*laplace(y(t), t, s)");
+        assert_eq!(
+            theorem("laplace(convolution(y(t), g(t), t), t, s)"),
+            "laplace(g(t), t, s)*laplace(y(t), t, s)"
+        );
+        assert_eq!(
+            theorem("laplace(convolve(y(t), g(t), t), t, s)"),
+            "laplace(g(t), t, s)*laplace(y(t), t, s)"
+        );
         // known factors give a closed form: L[e^t] L[sin t]
-        assert_eq!(run("laplace(convolve(exp(t), sin(t), t), t, s)"), "1/((s - 1)*(s^2 + 1))");
-        assert_eq!(run("laplace(convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t), t, s)"), "1/(s^2 + 3*s + 2)");
+        assert_eq!(
+            run("laplace(convolve(exp(t), sin(t), t), t, s)"),
+            "1/((s - 1)*(s^2 + 1))"
+        );
+        assert_eq!(
+            run("laplace(convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t), t, s)"),
+            "1/(s^2 + 3*s + 2)"
+        );
         // a known factor with an unknown one
-        assert_eq!(theorem("laplace(convolution(exp(-t), y(t), t), t, s)"), "laplace(y(t), t, s)/(s + 1)");
+        assert_eq!(
+            theorem("laplace(convolution(exp(-t), y(t), t), t, s)"),
+            "laplace(y(t), t, s)/(s + 1)"
+        );
         // and the converse
-        assert_eq!(theorem("inverse_laplace(laplace(y(t), t, s)*laplace(g(t), t, s), s, t)"), "convolution(y(t), g(t), t)");
-        assert_eq!(theorem("inverse_laplace(laplace(y(t), t, s), s, t)"), "y(t)");
-        assert_eq!(theorem("inverse_laplace(3*laplace(y(t), t, s)*laplace(g(t), t, s), s, t)"), "3*convolution(y(t), g(t), t)");
+        assert_eq!(
+            theorem("inverse_laplace(laplace(y(t), t, s)*laplace(g(t), t, s), s, t)"),
+            "convolution(y(t), g(t), t)"
+        );
+        assert_eq!(
+            theorem("inverse_laplace(laplace(y(t), t, s), s, t)"),
+            "y(t)"
+        );
+        assert_eq!(
+            theorem("inverse_laplace(3*laplace(y(t), t, s)*laplace(g(t), t, s), s, t)"),
+            "3*convolution(y(t), g(t), t)"
+        );
         // numerically, for a known pair
         let direct = value("laplace(convolve(t, exp(-t), t), t, s)", &[("s", 2.0)]);
         assert!((direct - value("1/(s^2*(s + 1))", &[("s", 2.0)])).norm() < 1e-12);
@@ -2748,22 +3299,52 @@ mod tests {
 
     #[test]
     fn fourier_derivative_scaling_and_shifts() {
-        assert_eq!(theorem("fourier(diff(y(t), t), t, w)"), "w*I*fourier(y(t), t, w)");
-        assert_eq!(theorem("fourier(diff(diff(y(t), t), t), t, w)"), "-w^2*fourier(y(t), t, w)");
+        assert_eq!(
+            theorem("fourier(diff(y(t), t), t, w)"),
+            "w*I*fourier(y(t), t, w)"
+        );
+        assert_eq!(
+            theorem("fourier(diff(diff(y(t), t), t), t, w)"),
+            "-w^2*fourier(y(t), t, w)"
+        );
         // scaling
-        assert_eq!(theorem("fourier(y(2*t), t, w)"), "1/2*fourier(y(t), t, 1/2*w)");
-        assert_eq!(theorem("fourier(y(-2*t), t, w)"), "1/2*fourier(y(t), t, -1/2*w)");
+        assert_eq!(
+            theorem("fourier(y(2*t), t, w)"),
+            "1/2*fourier(y(t), t, 1/2*w)"
+        );
+        assert_eq!(
+            theorem("fourier(y(-2*t), t, w)"),
+            "1/2*fourier(y(t), t, -1/2*w)"
+        );
         // time shift
-        assert_eq!(theorem("fourier(y(t - 3), t, w)"), "exp(-3*w*I)*fourier(y(t), t, w)");
-        assert_eq!(theorem("fourier(y(2*t + 4), t, w)"), "1/2*exp(2*w*I)*fourier(y(t), t, 1/2*w)");
+        assert_eq!(
+            theorem("fourier(y(t - 3), t, w)"),
+            "exp(-3*w*I)*fourier(y(t), t, w)"
+        );
+        assert_eq!(
+            theorem("fourier(y(2*t + 4), t, w)"),
+            "1/2*exp(2*w*I)*fourier(y(t), t, 1/2*w)"
+        );
         // frequency shift
-        assert_eq!(theorem("fourier(exp(I*3*t)*y(t), t, w)"), "fourier(y(t), t, w - 3)");
+        assert_eq!(
+            theorem("fourier(exp(I*3*t)*y(t), t, w)"),
+            "fourier(y(t), t, w - 3)"
+        );
         // multiplication by t^n
-        assert_eq!(theorem("fourier(t*y(t), t, w)"), "I*diff(fourier(y(t), t, w), w)");
-        assert_eq!(theorem("fourier(t^2*y(t), t, w)"), "-diff(diff(fourier(y(t), t, w), w), w)");
+        assert_eq!(
+            theorem("fourier(t*y(t), t, w)"),
+            "I*diff(fourier(y(t), t, w), w)"
+        );
+        assert_eq!(
+            theorem("fourier(t^2*y(t), t, w)"),
+            "-diff(diff(fourier(y(t), t, w), w), w)"
+        );
         // modulation
         let text = theorem("fourier(cos(2*t)*y(t), t, w)");
-        assert!(text.contains("fourier(y(t), t, w - 2)") && text.contains("fourier(y(t), t, w + 2)"), "{text}");
+        assert!(
+            text.contains("fourier(y(t), t, w - 2)") && text.contains("fourier(y(t), t, w + 2)"),
+            "{text}"
+        );
     }
 
     #[test]
@@ -2787,47 +3368,91 @@ mod tests {
 
     #[test]
     fn fourier_convolution_theorem() {
-        assert_eq!(theorem("fourier(convolution(y(t), g(t), t), t, w)"), "fourier(g(t), t, w)*fourier(y(t), t, w)");
-        // two Gaussians: sqrt(pi) e^(-w^2/4) squared
-        assert_eq!(run("fourier(convolution(exp(-t^2), exp(-t^2), t), t, w)"), "exp(-1/2*w^2)*pi");
-        // known with unknown
-        assert_eq!(theorem("fourier(convolution(exp(-t^2), y(t), t), t, w)"), "exp(-1/4*w^2)*fourier(y(t), t, w)*pi^(1/2)");
-        // inverse: product of transforms is the convolution
-        assert_eq!(theorem("inverse_fourier(fourier(y(t), t, w)*fourier(g(t), t, w), w, t)"), "convolution(y(t), g(t), t)");
-        assert_eq!(theorem("inverse_fourier(fourier(y(t), t, w), w, t)"), "y(t)");
-        // a convolution in the frequency domain multiplies in time: 2 pi f g
-        assert_eq!(run("inverse_fourier(convolution(exp(-w^2), exp(-w^2), w), w, t)"), "1/2*exp(-1/2*t^2)");
         assert_eq!(
-            theorem("inverse_fourier(convolution(fourier(y(t), t, w), fourier(g(t), t, w), w), w, t)"),
+            theorem("fourier(convolution(y(t), g(t), t), t, w)"),
+            "fourier(g(t), t, w)*fourier(y(t), t, w)"
+        );
+        // two Gaussians: sqrt(pi) e^(-w^2/4) squared
+        assert_eq!(
+            run("fourier(convolution(exp(-t^2), exp(-t^2), t), t, w)"),
+            "exp(-1/2*w^2)*pi"
+        );
+        // known with unknown
+        assert_eq!(
+            theorem("fourier(convolution(exp(-t^2), y(t), t), t, w)"),
+            "exp(-1/4*w^2)*fourier(y(t), t, w)*pi^(1/2)"
+        );
+        // inverse: product of transforms is the convolution
+        assert_eq!(
+            theorem("inverse_fourier(fourier(y(t), t, w)*fourier(g(t), t, w), w, t)"),
+            "convolution(y(t), g(t), t)"
+        );
+        assert_eq!(
+            theorem("inverse_fourier(fourier(y(t), t, w), w, t)"),
+            "y(t)"
+        );
+        // a convolution in the frequency domain multiplies in time: 2 pi f g
+        assert_eq!(
+            run("inverse_fourier(convolution(exp(-w^2), exp(-w^2), w), w, t)"),
+            "1/2*exp(-1/2*t^2)"
+        );
+        assert_eq!(
+            theorem(
+                "inverse_fourier(convolution(fourier(y(t), t, w), fourier(g(t), t, w), w), w, t)"
+            ),
             "2*g(t)*y(t)*pi"
         );
         // the Gaussian convolution is consistent with its direct evaluation
-        assert_eq!(run("convolution(exp(-t^2), exp(-t^2), t)"), "exp(-1/2*t^2)*pi^(1/2)/2^(1/2)");
+        assert_eq!(
+            run("convolution(exp(-t^2), exp(-t^2), t)"),
+            "exp(-1/2*t^2)*pi^(1/2)/2^(1/2)"
+        );
     }
 
     #[test]
     fn z_time_shift_and_scaling() {
         // delay of a causal sequence
-        assert_eq!(theorem("ztransform(y(n - 3), n, z)"), "ztransform(y(n), n, z)/z^3");
+        assert_eq!(
+            theorem("ztransform(y(n - 3), n, z)"),
+            "ztransform(y(n), n, z)/z^3"
+        );
         // advance by two
-        assert_eq!(theorem("ztransform(y(n + 2), n, z)"), "z^2*ztransform(y(n), n, z) - z^2*y(0) - z*y(1)");
-        assert_eq!(theorem("ztransform(y(n + 1), n, z)"), "z*ztransform(y(n), n, z) - z*y(0)");
+        assert_eq!(
+            theorem("ztransform(y(n + 2), n, z)"),
+            "z^2*ztransform(y(n), n, z) - z^2*y(0) - z*y(1)"
+        );
+        assert_eq!(
+            theorem("ztransform(y(n + 1), n, z)"),
+            "z*ztransform(y(n), n, z) - z*y(0)"
+        );
         // scaling and multiplication by n
-        assert_eq!(theorem("ztransform(2^n*y(n), n, z)"), "ztransform(y(n), n, 1/2*z)");
-        assert_eq!(theorem("ztransform(n*y(n), n, z)"), "-z*diff(ztransform(y(n), n, z), z)");
+        assert_eq!(
+            theorem("ztransform(2^n*y(n), n, z)"),
+            "ztransform(y(n), n, 1/2*z)"
+        );
+        assert_eq!(
+            theorem("ztransform(n*y(n), n, z)"),
+            "-z*diff(ztransform(y(n), n, z), z)"
+        );
         assert_eq!(
             theorem("ztransform(n^2*y(n), n, z)"),
             "z^2*diff(diff(ztransform(y(n), n, z), z), z) + z*diff(ztransform(y(n), n, z), z)"
         );
         // a difference equation: y(n + 1) - y(n) transforms algebraically
-        assert_eq!(theorem("ztransform(y(n + 1) - y(n), n, z)"), "z*ztransform(y(n), n, z) - z*y(0) - ztransform(y(n), n, z)");
+        assert_eq!(
+            theorem("ztransform(y(n + 1) - y(n), n, z)"),
+            "z*ztransform(y(n), n, z) - z*y(0) - ztransform(y(n), n, z)"
+        );
     }
 
     #[test]
     fn z_theorems_agree_with_closed_forms() {
         // advance: Z[x(n + 1)] = z X(z) - z x(0) for x = 2^n: z/(z-2) * z - z
         let advance = value("ztransform(2^(n + 1), n, z)", &[("z", 5.0)]);
-        assert!((advance - (5.0 * 5.0 / 3.0 - 5.0)).norm() < 1e-9, "{advance}");
+        assert!(
+            (advance - (5.0 * 5.0 / 3.0 - 5.0)).norm() < 1e-9,
+            "{advance}"
+        );
         // multiplication by n: -z d/dz (z/(z - 2)) = 2z/(z - 2)^2
         let by_n = value("ztransform(n*2^n, n, z)", &[("z", 5.0)]);
         assert!((by_n - 10.0 / 9.0).norm() < 1e-9, "{by_n}");
@@ -2838,45 +3463,81 @@ mod tests {
 
     #[test]
     fn z_convolution_theorem() {
-        assert_eq!(theorem("ztransform(discrete_convolution(y(n), g(n), n), n, z)"), "ztransform(g(n), n, z)*ztransform(y(n), n, z)");
-        assert_eq!(run("ztransform(discrete_convolution(2^n, 3^n, n), n, z)"), "z^2/(z^2 - 5*z + 6)");
-        assert_eq!(theorem("inverse_ztransform(ztransform(y(n), n, z)*ztransform(g(n), n, z), z, n)"), "discrete_convolution(y(n), g(n), n)");
-        assert_eq!(theorem("inverse_ztransform(ztransform(y(n), n, z), z, n)"), "y(n)");
+        assert_eq!(
+            theorem("ztransform(discrete_convolution(y(n), g(n), n), n, z)"),
+            "ztransform(g(n), n, z)*ztransform(y(n), n, z)"
+        );
+        assert_eq!(
+            run("ztransform(discrete_convolution(2^n, 3^n, n), n, z)"),
+            "z^2/(z^2 - 5*z + 6)"
+        );
+        assert_eq!(
+            theorem("inverse_ztransform(ztransform(y(n), n, z)*ztransform(g(n), n, z), z, n)"),
+            "discrete_convolution(y(n), g(n), n)"
+        );
+        assert_eq!(
+            theorem("inverse_ztransform(ztransform(y(n), n, z), z, n)"),
+            "y(n)"
+        );
         // the discrete convolution itself
-        assert_eq!(run("discrete_convolution(2^n, 3^n, n)"), "3*3^n - 2^(n + 1)");
+        assert_eq!(
+            run("discrete_convolution(2^n, 3^n, n)"),
+            "3*3^n - 2^(n + 1)"
+        );
         assert_eq!(run("discrete_convolution(1, 1, n)"), "n + 1");
         assert!(!attempt("discrete_convolution(y(n), g(n), n)").1);
         // consistent with the product: inverse z of z^2/((z-2)(z-3))
         let back = run("inverse_ztransform(z^2/((z - 2)*(z - 3)), z, n)");
         for n in [0.0, 1.0, 4.0] {
-            assert!((eval(&back, n) - eval("3*3^n - 2^(n + 1)", n)).abs() < 1e-9, "{back}");
+            assert!(
+                (eval(&back, n) - eval("3*3^n - 2^(n + 1)", n)).abs() < 1e-9,
+                "{back}"
+            );
         }
     }
 
     #[test]
     fn convolution_operators() {
         // causal signals
-        assert_eq!(run("convolution(heaviside(t), heaviside(t), t)"), "t*heaviside(t)");
-        assert_eq!(run("convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t)"), "(exp(-t) - exp(-2*t))*heaviside(t)");
-        assert_eq!(run("convolution(heaviside(t)*t, heaviside(t), t)"), "1/2*t^2*heaviside(t)");
+        assert_eq!(
+            run("convolution(heaviside(t), heaviside(t), t)"),
+            "t*heaviside(t)"
+        );
+        assert_eq!(
+            run("convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t)"),
+            "(exp(-t) - exp(-2*t))*heaviside(t)"
+        );
+        assert_eq!(
+            run("convolution(heaviside(t)*t, heaviside(t), t)"),
+            "1/2*t^2*heaviside(t)"
+        );
         // the unilateral convolution of functions on t >= 0
         assert_eq!(run("convolve(t, exp(-t), t)"), "t + exp(-t) - 1");
         // two-sided
-        assert_eq!(run("convolution(exp(-t^2), exp(-t^2), t)"), "exp(-1/2*t^2)*pi^(1/2)/2^(1/2)");
+        assert_eq!(
+            run("convolution(exp(-t^2), exp(-t^2), t)"),
+            "exp(-1/2*t^2)*pi^(1/2)/2^(1/2)"
+        );
         // unknown functions are left alone
         for src in ["convolution(y(t), g(t), t)", "convolve(y(t), g(t), t)"] {
             let (text, reduced) = attempt(src);
             assert_eq!((text.as_str(), reduced), (src, false));
         }
         // commutativity and the unit: delta is not available, heaviside integrates
-        assert_eq!(run("convolution(heaviside(t)*exp(-2*t), heaviside(t)*exp(-t), t)"), run("convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t)"));
+        assert_eq!(
+            run("convolution(heaviside(t)*exp(-2*t), heaviside(t)*exp(-t), t)"),
+            run("convolution(heaviside(t)*exp(-t), heaviside(t)*exp(-2*t), t)")
+        );
     }
 
     #[test]
     fn initial_and_final_value_theorems() {
         assert_eq!(run("initial_value_laplace(1/(s + 1), s)"), "1");
         assert_eq!(run("initial_value_laplace(3/(s^2 + 1), s)"), "0");
-        assert_eq!(run("initial_value_laplace((2*s + 1)/(s^2 + 3*s + 5), s)"), "2");
+        assert_eq!(
+            run("initial_value_laplace((2*s + 1)/(s^2 + 3*s + 5), s)"),
+            "2"
+        );
         assert_eq!(run("final_value_laplace(1/(s*(s + 1)), s)"), "1");
         assert_eq!(run("final_value_laplace(1/(s + 2), s)"), "0");
         assert_eq!(run("final_value_laplace(3/(s*(s + 2)*(s + 3)), s)"), "1/2");
@@ -2887,7 +3548,10 @@ mod tests {
         assert_eq!(run("final_value_z(z/((z - 1)*(z - 1/2)), z)"), "2");
         assert_eq!(run("final_value_z(z/(z - 1/2), z)"), "0");
         // the theorems are checked against the time function
-        let x_final = eval(&run("inverse_ztransform(z/((z - 1)*(z - 1/2)), z, n)"), 60.0);
+        let x_final = eval(
+            &run("inverse_ztransform(z/((z - 1)*(z - 1/2)), z, n)"),
+            60.0,
+        );
         assert!((x_final - 2.0).abs() < 1e-9);
         let f_final = eval(&run("inverse_laplace(1/(s*(s + 1)), s, t)"), 60.0);
         assert!((f_final - 1.0).abs() < 1e-9);
@@ -2925,11 +3589,23 @@ mod tests {
             // forward transform of the result, numerically, against the original
             let forward = value(&format!("laplace({back}, t, s)"), &[("s", 3.5)]);
             let want = value(f, &[("s", 3.5)]);
-            assert!((forward - want).norm() < 1e-9 * (1.0 + want.norm()), "{f} -> {back}: {forward} vs {want}");
+            assert!(
+                (forward - want).norm() < 1e-9 * (1.0 + want.norm()),
+                "{f} -> {back}: {forward} vs {want}"
+            );
         }
-        assert_eq!(run("inverse_laplace(1/(s^2 + 1)^3, s, t)"), "3/8*sin(t) - 1/8*t^2*sin(t) - 3/8*t*cos(t)");
-        assert_eq!(run("inverse_laplace(s/(s^2 + 1)^3, s, t)"), "1/8*t*sin(t) - 1/8*t^2*cos(t)");
-        assert_eq!(run("inverse_laplace(1/(s^2 - 1)^2, s, t)"), "1/4*t*exp(t) + 1/4*t*exp(-t) - 1/4*exp(t) + 1/4*exp(-t)");
+        assert_eq!(
+            run("inverse_laplace(1/(s^2 + 1)^3, s, t)"),
+            "3/8*sin(t) - 1/8*t^2*sin(t) - 3/8*t*cos(t)"
+        );
+        assert_eq!(
+            run("inverse_laplace(s/(s^2 + 1)^3, s, t)"),
+            "1/8*t*sin(t) - 1/8*t^2*cos(t)"
+        );
+        assert_eq!(
+            run("inverse_laplace(1/(s^2 - 1)^2, s, t)"),
+            "1/4*t*exp(t) + 1/4*t*exp(-t) - 1/4*exp(t) + 1/4*exp(-t)"
+        );
     }
 
     #[test]
@@ -2937,13 +3613,31 @@ mod tests {
         // z/(z^2 - 2): roots ±sqrt 2
         let back = run("inverse_ztransform(z/(z^2 - 2), z, n)");
         // x(0) = 0, x(1) = 1, x(2) = 0, x(3) = 2, x(4) = 0, x(5) = 4
-        for (n, want) in [(0.0, 0.0), (1.0, 1.0), (2.0, 0.0), (3.0, 2.0), (4.0, 0.0), (5.0, 4.0)] {
+        for (n, want) in [
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (2.0, 0.0),
+            (3.0, 2.0),
+            (4.0, 0.0),
+            (5.0, 4.0),
+        ] {
             assert!((eval(&back, n) - want).abs() < 1e-9, "n = {n}: {back}");
         }
         // z^2/(z^2 - z - 1): the Fibonacci numbers 1, 1, 2, 3, 5, 8
         let fibonacci = run("inverse_ztransform(z^2/(z^2 - z - 1), z, n)");
-        for (n, want) in [(0.0, 1.0), (1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 5.0), (5.0, 8.0), (10.0, 89.0)] {
-            assert!((eval(&fibonacci, n) - want).abs() < 1e-7, "n = {n}: {fibonacci}");
+        for (n, want) in [
+            (0.0, 1.0),
+            (1.0, 1.0),
+            (2.0, 2.0),
+            (3.0, 3.0),
+            (4.0, 5.0),
+            (5.0, 8.0),
+            (10.0, 89.0),
+        ] {
+            assert!(
+                (eval(&fibonacci, n) - want).abs() < 1e-7,
+                "n = {n}: {fibonacci}"
+            );
         }
         // a mix of a rational pole and an irrational pair
         let mixed = run("inverse_ztransform(z/((z - 1)*(z^2 - 3)), z, n)");
@@ -2960,7 +3654,10 @@ mod tests {
             x[usize::try_from(n).unwrap_or(0)]
         };
         for n in [0, 1, 2, 3, 6, 9] {
-            assert!((eval(&mixed, f64::from(n)) - series(n)).abs() < 1e-6 * (1.0 + series(n).abs()), "n = {n}: {mixed}");
+            assert!(
+                (eval(&mixed, f64::from(n)) - series(n)).abs() < 1e-6 * (1.0 + series(n).abs()),
+                "n = {n}: {mixed}"
+            );
         }
     }
 }

@@ -74,7 +74,11 @@ pub fn euclidean_distance(
     p1: &[f64],
     p2: &[f64],
 ) -> f64 {
-    p1.iter().zip(p2).map(|(a, b)| (a - b).powi(2)).sum::<f64>().sqrt()
+    p1.iter()
+        .zip(p2)
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
 /// The Vietoris-Rips complex of a point cloud.
@@ -105,9 +109,14 @@ pub fn vietoris_rips_complex(
     for _ in 2..=max_dim {
         let mut next = Vec::new();
         for simplex in &current {
-            let Some(&last) = simplex.last() else { continue };
+            let Some(&last) = simplex.last() else {
+                continue;
+            };
             for i in (last + 1)..n {
-                if simplex.iter().all(|&v| euclidean_distance(&points[v], &points[i]) <= epsilon) {
+                if simplex
+                    .iter()
+                    .all(|&v| euclidean_distance(&points[v], &points[i]) <= epsilon)
+                {
                     let mut bigger = simplex.clone();
                     bigger.push(i);
                     next.push(bigger);
@@ -145,7 +154,12 @@ pub fn close_complex(simplices: &[Simplex]) -> Vec<Simplex> {
         }
         if s.len() > 1 {
             for skip in 0..s.len() {
-                let face: Simplex = s.iter().enumerate().filter(|&(i, _)| i != skip).map(|(_, &v)| v).collect();
+                let face: Simplex = s
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| i != skip)
+                    .map(|(_, &v)| v)
+                    .collect();
                 if !seen.contains(&face) {
                     stack.push(face);
                 }
@@ -169,13 +183,20 @@ pub fn simplices_of_dim(
     complex: &[Simplex],
     k: usize,
 ) -> Vec<Simplex> {
-    complex.iter().filter(|s| s.len() == k + 1).cloned().collect()
+    complex
+        .iter()
+        .filter(|s| s.len() == k + 1)
+        .cloned()
+        .collect()
 }
 
 /// The Euler characteristic `sum (-1)^k #k-simplices`.
 #[must_use]
 pub fn euler_characteristic(complex: &[Simplex]) -> i64 {
-    complex.iter().map(|s| if s.len() % 2 == 1 { 1 } else { -1 }).sum()
+    complex
+        .iter()
+        .map(|s| if s.len() % 2 == 1 { 1 } else { -1 })
+        .sum()
 }
 
 /// The boundary of an oriented simplex: `(sign, face)` pairs, with sign
@@ -187,7 +208,12 @@ pub fn simplex_boundary(simplex: &[usize]) -> Vec<(i64, Simplex)> {
     }
     (0..simplex.len())
         .map(|i| {
-            let face = simplex.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, &v)| v).collect();
+            let face = simplex
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != i)
+                .map(|(_, &v)| v)
+                .collect();
             (if i % 2 == 0 { 1 } else { -1 }, face)
         })
         .collect()
@@ -220,7 +246,11 @@ pub fn int_matmul(
 ) -> Vec<Vec<i64>> {
     let cols = b.first().map_or(0, Vec::len);
     a.iter()
-        .map(|row| (0..cols).map(|j| row.iter().zip(b).map(|(x, brow)| x * brow[j]).sum()).collect())
+        .map(|row| {
+            (0..cols)
+                .map(|j| row.iter().zip(b).map(|(x, brow)| x * brow[j]).sum())
+                .collect()
+        })
         .collect()
 }
 
@@ -230,19 +260,29 @@ pub fn transpose(
     m: &[Vec<i64>],
     cols: usize,
 ) -> Vec<Vec<i64>> {
-    (0..cols).map(|j| m.iter().map(|row| row[j]).collect()).collect()
+    (0..cols)
+        .map(|j| m.iter().map(|row| row[j]).collect())
+        .collect()
 }
 
 /// The rank of an integer matrix, computed exactly over the rationals by
 /// Gaussian elimination.
 #[must_use]
 pub fn integer_rank(m: &[Vec<i64>]) -> usize {
-    let mut a: Vec<Vec<BigRational>> =
-        m.iter().map(|r| r.iter().map(|&x| BigRational::from_integer(x.into())).collect()).collect();
+    let mut a: Vec<Vec<BigRational>> = m
+        .iter()
+        .map(|r| {
+            r.iter()
+                .map(|&x| BigRational::from_integer(x.into()))
+                .collect()
+        })
+        .collect();
     let cols = a.first().map_or(0, Vec::len);
     let mut rank = 0;
     for c in 0..cols {
-        let Some(p) = (rank..a.len()).find(|&r| !a[r][c].is_zero()) else { continue };
+        let Some(p) = (rank..a.len()).find(|&r| !a[r][c].is_zero()) else {
+            continue;
+        };
         a.swap(rank, p);
         let pivot = a[rank][c].clone();
         for r in (rank + 1)..a.len() {
@@ -250,7 +290,8 @@ pub fn integer_rank(m: &[Vec<i64>]) -> usize {
                 continue;
             }
             let f = &a[r][c] / &pivot;
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for k in c..cols {
                 let d = &f * &a[rank][k];
                 a[r][k] -= d;
@@ -281,7 +322,11 @@ pub fn betti_number(
         integer_rank(&boundary_matrix(&simplices_of_dim(complex, k - 1), &sk))
     };
     let above = simplices_of_dim(complex, k + 1);
-    let rank_up = if above.is_empty() { 0 } else { integer_rank(&boundary_matrix(&sk, &above)) };
+    let rank_up = if above.is_empty() {
+        0
+    } else {
+        integer_rank(&boundary_matrix(&sk, &above))
+    };
     sk.len().saturating_sub(rank_k).saturating_sub(rank_up)
 }
 
@@ -327,7 +372,9 @@ fn check_squares(
     complex: &[Simplex],
     dual: bool,
 ) -> bool {
-    let Some(top) = complex_dimension(complex) else { return true };
+    let Some(top) = complex_dimension(complex) else {
+        return true;
+    };
     (1..top).all(|k| {
         let (a, b, c) = (
             simplices_of_dim(complex, k - 1),
@@ -391,7 +438,11 @@ fn radius(
     step: usize,
     steps: usize,
 ) -> f64 {
-    if steps == 0 { max_epsilon } else { max_epsilon * (step as f64 / steps as f64) }
+    if steps == 0 {
+        max_epsilon
+    } else {
+        max_epsilon * (step as f64 / steps as f64)
+    }
 }
 
 /// The Vietoris-Rips filtration restricted to its 1-skeleton: for each of
@@ -444,18 +495,18 @@ fn xor_sorted(
     let (mut i, mut j) = (0, 0);
     while i < a.len() && j < b.len() {
         match a[i].cmp(&b[j]) {
-            std::cmp::Ordering::Less => {
+            | std::cmp::Ordering::Less => {
                 out.push(a[i]);
                 i += 1;
-            }
-            std::cmp::Ordering::Greater => {
+            },
+            | std::cmp::Ordering::Greater => {
                 out.push(b[j]);
                 j += 1;
-            }
-            std::cmp::Ordering::Equal => {
+            },
+            | std::cmp::Ordering::Equal => {
                 i += 1;
                 j += 1;
-            }
+            },
         }
     }
     out.extend_from_slice(&a[i..]);
@@ -495,10 +546,15 @@ pub fn persistent_homology(
         })
         .filter(|(_, s)| !s.is_empty())
         .collect();
-    items.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.len().cmp(&b.1.len())).then_with(|| a.1.cmp(&b.1)));
+    items.sort_by(|a, b| {
+        a.0.total_cmp(&b.0)
+            .then(a.1.len().cmp(&b.1.len()))
+            .then_with(|| a.1.cmp(&b.1))
+    });
     items.dedup_by(|a, b| a.1 == b.1);
     let m = items.len();
-    let index: HashMap<&Simplex, usize> = items.iter().enumerate().map(|(i, (_, s))| (s, i)).collect();
+    let index: HashMap<&Simplex, usize> =
+        items.iter().enumerate().map(|(i, (_, s))| (s, i)).collect();
     let dim_of = |i: usize| items[i].1.len() - 1;
 
     // Boundary columns (sorted row indices), grouped by dimension.
@@ -513,8 +569,15 @@ pub fn persistent_homology(
         if s.len() > 1 && d <= max_dim + 1 {
             let mut col = Vec::with_capacity(s.len());
             for skip in 0..s.len() {
-                let face: Simplex = s.iter().enumerate().filter(|&(i, _)| i != skip).map(|(_, &v)| v).collect();
-                let i = *index.get(&face).ok_or(PersistenceError::InvalidFiltration)?;
+                let face: Simplex = s
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| i != skip)
+                    .map(|(_, &v)| v)
+                    .collect();
+                let i = *index
+                    .get(&face)
+                    .ok_or(PersistenceError::InvalidFiltration)?;
                 if i >= j {
                     return Err(PersistenceError::InvalidFiltration);
                 }
@@ -528,8 +591,14 @@ pub fn persistent_homology(
     let mut pivot_owner: Vec<Option<usize>> = vec![None; m];
     let mut paired = vec![false; m];
     let mut cleared = vec![false; m];
-    let mut diagrams: Vec<PersistenceDiagram> =
-        (0..=max_dim).map(|d| PersistenceDiagram { dimension: d, intervals: Vec::new() }).collect();
+    let mut diagrams: Vec<PersistenceDiagram> = (0..=max_dim)
+        .map(|d| {
+            PersistenceDiagram {
+                dimension: d,
+                intervals: Vec::new(),
+            }
+        })
+        .collect();
 
     for d in (1..=max_dim + 1).rev() {
         for &j in &by_dim[d] {
@@ -548,7 +617,9 @@ pub fn persistent_homology(
                 cleared[low] = true;
                 let (birth, death) = (items[low].0, items[j].0);
                 if death > birth {
-                    diagrams[dim_of(low)].intervals.push(PersistenceInterval { birth, death });
+                    diagrams[dim_of(low)]
+                        .intervals
+                        .push(PersistenceInterval { birth, death });
                 }
                 break;
             }
@@ -557,11 +628,18 @@ pub fn persistent_homology(
     for i in 0..m {
         let d = dim_of(i);
         if !paired[i] && d <= max_dim {
-            diagrams[d].intervals.push(PersistenceInterval { birth: items[i].0, death: f64::INFINITY });
+            diagrams[d].intervals.push(PersistenceInterval {
+                birth: items[i].0,
+                death: f64::INFINITY,
+            });
         }
     }
     for dg in &mut diagrams {
-        dg.intervals.sort_by(|a, b| a.birth.total_cmp(&b.birth).then(a.death.total_cmp(&b.death)));
+        dg.intervals.sort_by(|a, b| {
+            a.birth
+                .total_cmp(&b.birth)
+                .then(a.death.total_cmp(&b.death))
+        });
     }
     Ok(diagrams)
 }
@@ -584,8 +662,9 @@ pub fn persistent_homology_rips(
     simplex_limit: usize,
 ) -> Result<Vec<PersistenceDiagram>, PersistenceError> {
     let dist = super::homology::distance_matrix(points);
-    let filtration = super::homology::rips_filtration(&dist, max_epsilon, max_dim + 1, simplex_limit)
-        .ok_or(PersistenceError::TooManySimplices)?;
+    let filtration =
+        super::homology::rips_filtration(&dist, max_epsilon, max_dim + 1, simplex_limit)
+            .ok_or(PersistenceError::TooManySimplices)?;
     persistent_homology(&filtration, max_dim)
 }
 
@@ -604,8 +683,18 @@ pub fn compute_persistence(
     _steps: usize,
     max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
-    let mut diagrams = persistent_homology_rips(points, max_epsilon, max_dim, DEFAULT_SIMPLEX_LIMIT)
-        .unwrap_or_else(|_| (0..=max_dim).map(|d| PersistenceDiagram { dimension: d, intervals: Vec::new() }).collect());
+    let mut diagrams =
+        persistent_homology_rips(points, max_epsilon, max_dim, DEFAULT_SIMPLEX_LIMIT)
+            .unwrap_or_else(|_| {
+                (0..=max_dim)
+                    .map(|d| {
+                        PersistenceDiagram {
+                            dimension: d,
+                            intervals: Vec::new(),
+                        }
+                    })
+                    .collect()
+            });
     for dg in &mut diagrams {
         for iv in &mut dg.intervals {
             if iv.death.is_infinite() {

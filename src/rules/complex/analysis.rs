@@ -116,12 +116,25 @@ enum Request {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("circle", Arity::Fixed(2)))?;
     i.op(OpDescriptor::new("path", Arity::Fixed(4)).binder(1, 0b1))?;
-    let distance = i.op(OpDescriptor::new("distance", Arity::Fixed(2)).eval(|a| match a {
-        | [x, y] => (x - y).abs(),
-        | _ => f64::NAN,
+    let distance = i.op(OpDescriptor::new("distance", Arity::Fixed(2)).eval(|a| {
+        match a {
+            | [x, y] => (x - y).abs(),
+            | _ => f64::NAN,
+        }
     }))?;
-    i.graph().ops_mut().set_attr(distance, crate::graph::ComplexEval(|a| Some(num_complex::Complex64::new((*a.first()? - *a.get(1)?).norm(), 0.0))));
-    i.rewrites(Tier::Normalize, &["complex/distance: distance(?a, ?b) => abs(?a - ?b)"])?;
+    i.graph().ops_mut().set_attr(
+        distance,
+        crate::graph::ComplexEval(|a| {
+            Some(num_complex::Complex64::new(
+                (*a.first()? - *a.get(1)?).norm(),
+                0.0,
+            ))
+        }),
+    );
+    i.rewrites(
+        Tier::Normalize,
+        &["complex/distance: distance(?a, ?b) => abs(?a - ?b)"],
+    )?;
     i.op(OpDescriptor::new("polygon", Arity::Fixed(1)))?;
     i.op(OpDescriptor::new("ray", Arity::Fixed(2)))?;
     let table: [(&str, u8, Request); 18] = [
@@ -141,13 +154,28 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("check_analytic", 2, Request::CheckAnalytic),
         ("is_inside_contour", 2, Request::InsideContour),
         ("winding_number", 2, Request::WindingNumber),
-        ("contour_integral_residue_theorem", 3, Request::ResidueTheorem),
+        (
+            "contour_integral_residue_theorem",
+            3,
+            Request::ResidueTheorem,
+        ),
         ("branch_cut", 2, Request::BranchCut),
     ];
-    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid { rule: "complex/analysis".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "complex/analysis".into(),
+            reason: "needs elementary",
+        }
+    })?;
     for (name, arity, request) in table {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("complex/{name}"), Tier::Reduce, Analysis { op, request, ops });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("complex/{name}"),
+            Tier::Reduce,
+            Analysis { op, request, ops },
+        );
     }
     Ok(())
 }
@@ -184,10 +212,12 @@ fn is_entire(
         let children = graph.children(n);
         let ok = match op {
             | core::ADD | core::MUL => true,
-            | core::POW => children
-                .get(1)
-                .and_then(|&e| graph.number_of(e))
-                .is_some_and(|e| e.is_integer() && e.to_f64() >= 0.0),
+            | core::POW => {
+                children
+                    .get(1)
+                    .and_then(|&e| graph.number_of(e))
+                    .is_some_and(|e| e.is_integer() && e.to_f64() >= 0.0)
+            },
             | _ if children.is_empty() => true,
             | _ => op != ops.ln && entire_fns.contains(&graph.ops().get(op).name.as_ref()),
         };
@@ -211,7 +241,12 @@ fn quotient(
     let gz = gens.index(graph, z);
     let r = ratio(graph, &mut gens, term, Limits::default())?;
     // The denominator must be a polynomial in z alone, over Q.
-    let denom: QPoly = r.denom.univariate_in(gz)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+    let denom: QPoly = r
+        .denom
+        .univariate_in(gz)?
+        .iter()
+        .map(Number::to_rational)
+        .collect::<Option<_>>()?;
     if r.denom.support().iter().any(|&g| g != gz) {
         return None;
     }
@@ -220,7 +255,10 @@ fn quotient(
         return None;
     }
     let (lead, factors) = univariate::factor(&denom);
-    let factors = factors.into_iter().map(|(f, m)| (f.into_iter().map(BigRational::from_integer).collect(), m)).collect();
+    let factors = factors
+        .into_iter()
+        .map(|(f, m)| (f.into_iter().map(BigRational::from_integer).collect(), m))
+        .collect();
     Some(Quotient { numer, lead, factors })
 }
 
@@ -242,7 +280,10 @@ fn roots_of(
     match factor {
         | [c0, c1] => {
             let value = -c0 / c1;
-            Some(vec![(rational(graph, &value), Complex64::new(to_f(&value), 0.0))])
+            Some(vec![(
+                rational(graph, &value),
+                Complex64::new(to_f(&value), 0.0),
+            )])
         },
         | [c, b, a] => {
             // (-b ± sqrt(D)) / 2a; D < 0 for an irreducible quadratic with
@@ -253,7 +294,10 @@ fn roots_of(
             let half = graph.num(Number::fraction(1, 2)?);
             let magnitude = rational(graph, &discriminant.abs());
             let radical = build::pow(graph, magnitude, half);
-            let scale = rational(graph, &(BigRational::from_integer(BigInt::from(1)) / &two_a));
+            let scale = rational(
+                graph,
+                &(BigRational::from_integer(BigInt::from(1)) / &two_a),
+            );
             let offset = if discriminant.is_negative() {
                 let unit = graph.node(ops.unit, &[]);
                 build::mul(graph, &[scale, radical, unit])
@@ -320,7 +364,12 @@ fn poles_of(
     for (index, (factor, multiplicity)) in q.factors.iter().enumerate() {
         for (point, value) in roots_of(cx.graph, ops, factor)? {
             let point = cx.simplify(point);
-            out.push(Root { point, value, factor: index, multiplicity: *multiplicity });
+            out.push(Root {
+                point,
+                value,
+                factor: index,
+                multiplicity: *multiplicity,
+            });
         }
     }
     Some(out)
@@ -380,7 +429,11 @@ fn regular_part(
 ) -> NodeId {
     let mut denominator = vec![rational(cx.graph, &q.lead)];
     for (index, (factor, m)) in q.factors.iter().enumerate() {
-        let base = if index == root.factor { deflate(cx, factor, root.point, z) } else { qpoly_term(cx.graph, factor, z) };
+        let base = if index == root.factor {
+            deflate(cx, factor, root.point, z)
+        } else {
+            qpoly_term(cx.graph, factor, z)
+        };
         denominator.push(build::powi(cx.graph, base, i64::from(*m)));
     }
     let denominator = build::mul(cx.graph, &denominator);
@@ -404,7 +457,9 @@ fn taylor_coefficient(
         factorial *= BigInt::from(k);
     }
     let at = cx.graph.substitute(current, z, a);
-    let scale = cx.graph.num(Number::rat(BigRational::new(BigInt::from(1), factorial)));
+    let scale = cx
+        .graph
+        .num(Number::rat(BigRational::new(BigInt::from(1), factorial)));
     let value = build::mul(cx.graph, &[scale, at]);
     Some(cx.simplify(value))
 }
@@ -475,7 +530,8 @@ impl Kernel for Analysis {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 }
 
@@ -512,7 +568,10 @@ fn contour_of(
             };
             let centre = value_of(graph, c)?;
             let radius = value_of(graph, r)?;
-            (centre.is_finite() && radius.im == 0.0 && radius.re > 0.0).then_some(Contour::Circle { centre, radius: radius.re })
+            (centre.is_finite() && radius.im == 0.0 && radius.re > 0.0).then_some(Contour::Circle {
+                centre,
+                radius: radius.re,
+            })
         },
         | "polygon" => {
             let &[list] = graph.children(term) else {
@@ -522,8 +581,12 @@ fn contour_of(
             if graph.op(list) != core::LIST {
                 return None;
             }
-            let vertices: Vec<Complex64> =
-                graph.children(list).to_vec().into_iter().map(|v| value_of(graph, v).filter(|c| c.is_finite())).collect::<Option<_>>()?;
+            let vertices: Vec<Complex64> = graph
+                .children(list)
+                .to_vec()
+                .into_iter()
+                .map(|v| value_of(graph, v).filter(|c| c.is_finite()))
+                .collect::<Option<_>>()?;
             (vertices.len() >= 3).then_some(Contour::Polygon(vertices))
         },
         | _ => None,
@@ -557,7 +620,11 @@ fn polygon_winding(
         let (a, b) = (v[k], v[(k + 1) % v.len()]);
         let edge = b - a;
         let length2 = edge.norm_sqr();
-        let t = if length2 == 0.0 { 0.0 } else { (((z - a) * edge.conj()).re / length2).clamp(0.0, 1.0) };
+        let t = if length2 == 0.0 {
+            0.0
+        } else {
+            (((z - a) * edge.conj()).re / length2).clamp(0.0, 1.0)
+        };
         if (z - (a + edge * t)).norm() <= tol {
             return None;
         }
@@ -633,9 +700,10 @@ impl Analysis {
             let radius = (nearest / 2.0).min(0.5);
             let want = numeric::residue(&function, root.value, radius, 256);
             if let Some(got) = value_of(cx.graph, residue)
-                && (got - want).norm() > 1e-6 * (1.0 + want.norm()) {
-                    return None;
-                }
+                && (got - want).norm() > 1e-6 * (1.0 + want.norm())
+            {
+                return None;
+            }
         }
         Some(residue)
     }
@@ -685,7 +753,8 @@ impl Analysis {
                 if self.request == Request::Poles {
                     let poles = poles_of(cx, self.ops, &q)?;
                     for root in poles {
-                        let cancelled = vanishing_order(cx, q.numer, z, root.point, root.multiplicity);
+                        let cancelled =
+                            vanishing_order(cx, q.numer, z, root.point, root.multiplicity);
                         let order = root.multiplicity - cancelled;
                         if order > 0 {
                             let m = cx.graph.int(i64::from(order));
@@ -694,7 +763,10 @@ impl Analysis {
                     }
                 } else {
                     // Zeros of a polynomial numerator.
-                    let numer = Quotient { numer: cx.graph.int(1), ..polynomial_quotient(cx.graph, q.numer, z)? };
+                    let numer = Quotient {
+                        numer: cx.graph.int(1),
+                        ..polynomial_quotient(cx.graph, q.numer, z)?
+                    };
                     for root in poles_of(cx, self.ops, &numer)? {
                         let m = cx.graph.int(i64::from(root.multiplicity));
                         entries.push(build::call(cx.graph, core::LIST, &[root.point, m]));
@@ -708,7 +780,10 @@ impl Analysis {
                 if let Some(q) = quotient(cx.graph, self.ops, f, z) {
                     let poles = poles_of(cx, self.ops, &q)?;
                     let at = at?;
-                    return match poles.iter().find(|r| (r.value - at).norm() < 1e-9 * (1.0 + at.norm())) {
+                    return match poles
+                        .iter()
+                        .find(|r| (r.value - at).norm() < 1e-9 * (1.0 + at.norm()))
+                    {
                         | Some(root) => Self::residue_at(cx, f, &q, &root.clone(), &poles, z),
                         | None => Some(cx.graph.int(0)),
                     };
@@ -737,7 +812,11 @@ impl Analysis {
                 let at = cx.graph.substitute(f, z, a);
                 let at = best(cx.graph, at)?;
                 let defined = value_of(cx.graph, at).is_some_and(num_complex::Complex::is_finite);
-                Some(cx.graph.sym(if defined { "regular" } else { "removable" }))
+                Some(cx.graph.sym(if defined {
+                    "regular"
+                } else {
+                    "removable"
+                }))
             },
             | Request::Contour => {
                 let (f, z, contour) = (arg(0)?, arg(1)?, arg(2)?);
@@ -767,9 +846,13 @@ impl Analysis {
                 // The argument principle, numerically: robust, and an
                 // integer.
                 let symbol = cx.graph.symbol_of(z)?;
-                let winding = numeric_function(cx.graph, f, symbol).and_then(|function| match &contour {
-                    | Contour::Circle { centre, radius } => numeric::count_zeros_poles(function, *centre, *radius, 4096),
-                    | Contour::Polygon(vertices) => polygon_count(function, vertices, 2048),
+                let winding = numeric_function(cx.graph, f, symbol).and_then(|function| {
+                    match &contour {
+                        | Contour::Circle { centre, radius } => {
+                            numeric::count_zeros_poles(function, *centre, *radius, 4096)
+                        },
+                        | Contour::Polygon(vertices) => polygon_count(function, vertices, 2048),
+                    }
                 });
                 let exact = self.count_exactly(cx, f, z, &contour);
                 match (exact, winding) {
@@ -913,11 +996,20 @@ impl Analysis {
         let (xs, ys) = (fresh(cx.graph, "x"), fresh(cx.graph, "y"));
         let (x, y) = (cx.graph.symbol_node(xs), cx.graph.symbol_node(ys));
         let mut term = term;
-        let others: Vec<SymbolId> = cx.graph.free_symbols(cx.graph.find(term)).iter().copied().filter(|&s| s != zs).collect();
+        let others: Vec<SymbolId> = cx
+            .graph
+            .free_symbols(cx.graph.find(term))
+            .iter()
+            .copied()
+            .filter(|&s| s != zs)
+            .collect();
         let mut constants = Vec::new();
         for other in others {
             let replacement = fresh(cx.graph, "c");
-            let (from, to) = (cx.graph.symbol_node(other), cx.graph.symbol_node(replacement));
+            let (from, to) = (
+                cx.graph.symbol_node(other),
+                cx.graph.symbol_node(replacement),
+            );
             term = cx.graph.substitute(term, from, to);
             constants.push(replacement);
         }
@@ -941,13 +1033,17 @@ impl Analysis {
         let mut valid = 0;
         for k in 0..6_u32 {
             let mut env = Env::numeric(0.0);
-            env.bind(xs, 0.31 + 0.53 * f64::from(k) * if k % 2 == 0 { 1.0 } else { -1.0 });
+            env.bind(
+                xs,
+                0.31 + 0.53 * f64::from(k) * if k % 2 == 0 { 1.0 } else { -1.0 },
+            );
             env.bind(ys, 0.47 - 0.29 * f64::from(k));
             for (j, &c) in constants.iter().enumerate() {
                 #[allow(clippy::cast_precision_loss)]
                 env.bind(c, 0.45 + 0.17 * j as f64);
             }
-            let (Some(a), Some(b)) = (cx.graph.eval(first, &env), cx.graph.eval(second, &env)) else {
+            let (Some(a), Some(b)) = (cx.graph.eval(first, &env), cx.graph.eval(second, &env))
+            else {
                 continue;
             };
             if !a.is_finite() || !b.is_finite() {
@@ -971,8 +1067,16 @@ impl Analysis {
     ) -> Option<NodeId> {
         let term = best(cx.graph, f)?;
         let named = |graph: &Graph, name: &str| graph.ops().lookup(name);
-        let (asin, acos, atan) = (named(cx.graph, "asin"), named(cx.graph, "acos"), named(cx.graph, "atan"));
-        let (asinh, acosh, atanh) = (named(cx.graph, "asinh"), named(cx.graph, "acosh"), named(cx.graph, "atanh"));
+        let (asin, acos, atan) = (
+            named(cx.graph, "asin"),
+            named(cx.graph, "acos"),
+            named(cx.graph, "atan"),
+        );
+        let (asinh, acosh, atanh) = (
+            named(cx.graph, "asinh"),
+            named(cx.graph, "acosh"),
+            named(cx.graph, "atanh"),
+        );
         let (sqrt, pi) = (named(cx.graph, "sqrt"), named(cx.graph, "pi")?);
         let arg_op = named(cx.graph, "arg")?;
         // Cuts in the plane of the argument: (start, angle in units of
@@ -992,12 +1096,19 @@ impl Analysis {
                 children.first().map(|&g| (g, vec![(Start::Zero, 2)]))
             } else if op == core::POW {
                 let (&base, &exponent) = (children.first()?, children.get(1)?);
-                let non_integer = cx.graph.number_of(exponent).is_some_and(|e| !e.is_integer());
+                let non_integer = cx
+                    .graph
+                    .number_of(exponent)
+                    .is_some_and(|e| !e.is_integer());
                 non_integer.then_some((base, vec![(Start::Zero, 2)]))
             } else if Some(op) == asin || Some(op) == acos || Some(op) == atanh {
-                children.first().map(|&g| (g, vec![(Start::MinusOne, 2), (Start::One, 0)]))
+                children
+                    .first()
+                    .map(|&g| (g, vec![(Start::MinusOne, 2), (Start::One, 0)]))
             } else if Some(op) == atan || Some(op) == asinh {
-                children.first().map(|&g| (g, vec![(Start::I, 1), (Start::MinusI, -1)]))
+                children
+                    .first()
+                    .map(|&g| (g, vec![(Start::I, 1), (Start::MinusI, -1)]))
             } else if Some(op) == acosh {
                 children.first().map(|&g| (g, vec![(Start::One, 2)]))
             } else {
@@ -1013,14 +1124,19 @@ impl Analysis {
         for (g, cuts) in found {
             let mut gens = Gens::default();
             let gz = gens.index(cx.graph, z);
-            let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, g, Limits::default())?;
+            let poly =
+                crate::rules::poly::repr::from_term(cx.graph, &mut gens, g, Limits::default())?;
             if poly.degree_in(gz) != 1 {
                 return None;
             }
             let parts = poly.coefficients_in(gz);
             let b = to_term(cx.graph, &gens, parts.first()?);
             let a = to_term(cx.graph, &gens, parts.get(1)?);
-            let depends = |graph: &Graph, n: NodeId| graph.symbol_of(z).is_some_and(|s| graph.depends_on(graph.find(n), s));
+            let depends = |graph: &Graph, n: NodeId| {
+                graph
+                    .symbol_of(z)
+                    .is_some_and(|s| graph.depends_on(graph.find(n), s))
+            };
             if depends(cx.graph, a) || depends(cx.graph, b) {
                 return None;
             }
@@ -1100,15 +1216,22 @@ impl Analysis {
         let Some(term) = best(cx.graph, f) else {
             return false;
         };
-        let transcendental = [self.ops.exp, self.ops.sin, self.ops.cos, self.ops.sinh, self.ops.cosh];
+        let transcendental = [
+            self.ops.exp,
+            self.ops.sin,
+            self.ops.cos,
+            self.ops.sinh,
+            self.ops.cosh,
+        ];
         let mut stack = vec![term];
         while let Some(n) = stack.pop() {
             let children = cx.graph.children(n).to_vec();
             if transcendental.contains(&cx.graph.op(n))
                 && let Some(&inner) = children.first()
-                    && laurent_expansion(cx, inner, z, a, 0).is_some_and(|(v, _)| v < 0) {
-                        return true;
-                    }
+                && laurent_expansion(cx, inner, z, a, 0).is_some_and(|(v, _)| v < 0)
+            {
+                return true;
+            }
             stack.extend(children);
         }
         false
@@ -1144,7 +1267,12 @@ impl Analysis {
         let defint = cx.graph.ops().lookup("defint")?;
         let re_integral = build::call(cx.graph, defint, &[re, s, t0, t1]);
         let im_integral = build::call(cx.graph, defint, &[im, s, t0, t1]);
-        Some(build::complex(cx.graph, self.ops.unit, re_integral, im_integral))
+        Some(build::complex(
+            cx.graph,
+            self.ops.unit,
+            re_integral,
+            im_integral,
+        ))
     }
 }
 
@@ -1169,7 +1297,10 @@ fn desugar(
             rebuilt.push(desugar(graph, ops, *c, memo)?);
         }
         let op = graph.op(node);
-        if let (true, &[w]) = ([ops.re, ops.im, ops.conj, ops.abs, ops.arg].contains(&op), rebuilt.as_slice()) {
+        if let (true, &[w]) = (
+            [ops.re, ops.im, ops.conj, ops.abs, ops.arg].contains(&op),
+            rebuilt.as_slice(),
+        ) {
             let (a, b) = super::split(graph, ops, w)?;
             let minus_b = build::neg(graph, b);
             Some(match op {
@@ -1229,10 +1360,22 @@ fn polynomial_quotient(
     if r.numer.support().iter().any(|&g| g != gz) || r.denom.as_constant().is_none() {
         return None;
     }
-    let numer: QPoly = r.numer.univariate_in(gz)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+    let numer: QPoly = r
+        .numer
+        .univariate_in(gz)?
+        .iter()
+        .map(Number::to_rational)
+        .collect::<Option<_>>()?;
     let (lead, factors) = univariate::factor(&numer);
-    let factors = factors.into_iter().map(|(f, m)| (f.into_iter().map(BigRational::from_integer).collect(), m)).collect();
-    Some(Quotient { numer: graph.int(1), lead, factors })
+    let factors = factors
+        .into_iter()
+        .map(|(f, m)| (f.into_iter().map(BigRational::from_integer).collect(), m))
+        .collect();
+    Some(Quotient {
+        numer: graph.int(1),
+        lead,
+        factors,
+    })
 }
 
 fn mobius(
@@ -1274,8 +1417,14 @@ mod tests {
 
     #[test]
     fn poles_and_zeros() {
-        assert_eq!(run("poles(1/(z^2 + 1), z)"), "list(list(I, 1), list(-I, 1))");
-        assert_eq!(run("poles(z/(z^3 - z^2), z)"), "list(list(1, 1), list(0, 1))");
+        assert_eq!(
+            run("poles(1/(z^2 + 1), z)"),
+            "list(list(I, 1), list(-I, 1))"
+        );
+        assert_eq!(
+            run("poles(z/(z^3 - z^2), z)"),
+            "list(list(1, 1), list(0, 1))"
+        );
         assert_eq!(run("poles(sin(z)/(z - 1)^2, z)"), "list(list(1, 2))");
         assert_eq!(run("zeros_of(z^2 - 4, z)"), "list(list(2, 1), list(-2, 1))");
     }
@@ -1295,10 +1444,16 @@ mod tests {
         assert_eq!(run("contour_integral(1/z, z, circle(0, 1))"), "2*I*pi");
         assert_eq!(run("contour_integral(1/(z^2 + 1), z, circle(I, 1))"), "pi");
         assert_eq!(run("contour_integral(1/(z^2 + 1), z, circle(0, 2))"), "0");
-        assert_eq!(run("contour_integral(exp(z)/z^2, z, circle(0, 1))"), "2*I*pi");
+        assert_eq!(
+            run("contour_integral(exp(z)/z^2, z, circle(0, 1))"),
+            "2*I*pi"
+        );
         assert_eq!(run("contour_integral(z^2, z, circle(0, 1))"), "0");
         // A parametrised path: the unit circle, explicitly.
-        assert_eq!(run("contour_integral(1/z, z, path(cos(t) + I*sin(t), t, 0, 2*pi))"), "2*I*pi");
+        assert_eq!(
+            run("contour_integral(1/z, z, path(cos(t) + I*sin(t), t, 0, 2*pi))"),
+            "2*I*pi"
+        );
     }
 
     #[test]
@@ -1309,7 +1464,10 @@ mod tests {
 
     #[test]
     fn counting_and_radius() {
-        assert_eq!(run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, circle(0, 1))"), "-1");
+        assert_eq!(
+            run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, circle(0, 1))"),
+            "-1"
+        );
         assert_eq!(run("count_zeros_poles(z^5 - 1, z, circle(0, 2))"), "5");
         assert_eq!(run("radius_of_convergence(1/(z^2 + 1), z, 0)"), "1");
         assert_eq!(run("radius_of_convergence(1/(1 - z), z, 3)"), "2");
@@ -1327,9 +1485,20 @@ mod tests {
 
     #[test]
     fn mobius_maps() {
-        assert_eq!(run("mobius_apply(list(list(1, 1), list(0, 1)), z)"), "z + 1");
-        assert_eq!(run("mobius_apply(mobius_inverse(list(list(2, 1), list(1, 1))), mobius_apply(list(list(2, 1), list(1, 1)), 3))"), "3");
-        assert_eq!(run("mobius_compose(list(list(1, 1), list(0, 1)), list(list(1, 2), list(0, 1)))"), "list(list(1, 3), list(0, 1))");
+        assert_eq!(
+            run("mobius_apply(list(list(1, 1), list(0, 1)), z)"),
+            "z + 1"
+        );
+        assert_eq!(
+            run(
+                "mobius_apply(mobius_inverse(list(list(2, 1), list(1, 1))), mobius_apply(list(list(2, 1), list(1, 1)), 3))"
+            ),
+            "3"
+        );
+        assert_eq!(
+            run("mobius_compose(list(list(1, 1), list(0, 1)), list(list(1, 2), list(0, 1)))"),
+            "list(list(1, 3), list(0, 1))"
+        );
     }
 
     #[test]
@@ -1340,17 +1509,42 @@ mod tests {
 
     #[test]
     fn analyticity_by_cauchy_riemann() {
-        for f in ["z^2", "exp(z)", "z*sin(z)", "1/z", "(z^2 + 1)/(z - 1)", "cos(z)^2 + 3", "a*z^2 + b", "sqrt(z)", "ln(z)", "z^(1/3)", "5", "z"] {
+        for f in [
+            "z^2",
+            "exp(z)",
+            "z*sin(z)",
+            "1/z",
+            "(z^2 + 1)/(z - 1)",
+            "cos(z)^2 + 3",
+            "a*z^2 + b",
+            "sqrt(z)",
+            "ln(z)",
+            "z^(1/3)",
+            "5",
+            "z",
+        ] {
             assert_eq!(run(&format!("check_analytic({f}, z)")), "true", "{f}");
         }
-        for f in ["conj(z)", "abs(z)", "re(z)", "im(z)", "z*conj(z)", "abs(z)^2", "z + conj(z)", "exp(conj(z))", "arg(z)", "z/conj(z)"] {
+        for f in [
+            "conj(z)",
+            "abs(z)",
+            "re(z)",
+            "im(z)",
+            "z*conj(z)",
+            "abs(z)^2",
+            "z + conj(z)",
+            "exp(conj(z))",
+            "arg(z)",
+            "z/conj(z)",
+        ] {
             assert_eq!(run(&format!("check_analytic({f}, z)")), "false", "{f}");
         }
         // other variable names
         assert_eq!(run("check_analytic(w^2, w)"), "true");
         assert_eq!(run("check_analytic(conj(w), w)"), "false");
         // Unknown functions cannot be decided.
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "check_analytic(g(z), z)", &[]);
+        let (text, reduced) =
+            crate::rules::testing::reduce_with(&[complex()], "check_analytic(g(z), z)", &[]);
         assert!(!reduced, "{text}");
     }
 
@@ -1361,18 +1555,33 @@ mod tests {
         assert_eq!(run("is_inside_contour(1, circle(0, 1))"), "false");
         assert_eq!(run("is_inside_contour(1 + I, circle(1 + I, 1/2))"), "true");
         assert_eq!(run("is_inside_contour(I/2 + 1/2, circle(0, 1))"), "true");
-        assert_eq!(run("is_inside_contour(sqrt(2)/2 + sqrt(2)/2*I, circle(0, 1))"), "false");
+        assert_eq!(
+            run("is_inside_contour(sqrt(2)/2 + sqrt(2)/2*I, circle(0, 1))"),
+            "false"
+        );
         let square = "polygon(list(0, 1, 1 + I, I))";
         let clockwise = "polygon(list(0, I, 1 + I, 1))";
         for contour in [square, clockwise] {
-            assert_eq!(run(&format!("is_inside_contour(1/2 + I/2, {contour})")), "true");
+            assert_eq!(
+                run(&format!("is_inside_contour(1/2 + I/2, {contour})")),
+                "true"
+            );
             assert_eq!(run(&format!("is_inside_contour(2, {contour})")), "false");
-            assert_eq!(run(&format!("is_inside_contour(-1/2 + I/2, {contour})")), "false");
-            assert_eq!(run(&format!("is_inside_contour(1/2 + 2*I, {contour})")), "false");
+            assert_eq!(
+                run(&format!("is_inside_contour(-1/2 + I/2, {contour})")),
+                "false"
+            );
+            assert_eq!(
+                run(&format!("is_inside_contour(1/2 + 2*I, {contour})")),
+                "false"
+            );
             // vertices and edges are not strictly inside
             assert_eq!(run(&format!("is_inside_contour(0, {contour})")), "false");
             assert_eq!(run(&format!("is_inside_contour(1/2, {contour})")), "false");
-            assert_eq!(run(&format!("is_inside_contour(1 + I/2, {contour})")), "false");
+            assert_eq!(
+                run(&format!("is_inside_contour(1 + I/2, {contour})")),
+                "false"
+            );
         }
         // A non-convex L: the notch x > 2, y > 2 is outside.
         let ell = "polygon(list(0, 4, 4 + 2*I, 2 + 2*I, 2 + 4*I, 4*I))";
@@ -1382,10 +1591,20 @@ mod tests {
         assert_eq!(run(&format!("is_inside_contour(3 + I, {ell})")), "true");
         assert_eq!(run(&format!("is_inside_contour(5 + I, {ell})")), "false");
         // a triangle
-        assert_eq!(run("is_inside_contour(1 + I/2, polygon(list(0, 3, 3*I)))"), "true");
-        assert_eq!(run("is_inside_contour(2 + 2*I, polygon(list(0, 3, 3*I)))"), "false");
+        assert_eq!(
+            run("is_inside_contour(1 + I/2, polygon(list(0, 3, 3*I)))"),
+            "true"
+        );
+        assert_eq!(
+            run("is_inside_contour(2 + 2*I, polygon(list(0, 3, 3*I)))"),
+            "false"
+        );
         // a symbolic point is undecided
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "is_inside_contour(a, circle(0, 1))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[complex()],
+            "is_inside_contour(a, circle(0, 1))",
+            &[],
+        );
         assert!(!reduced, "{text}");
     }
 
@@ -1393,13 +1612,26 @@ mod tests {
     fn winding_numbers() {
         assert_eq!(run("winding_number(0, circle(0, 1))"), "1");
         assert_eq!(run("winding_number(3, circle(0, 1))"), "0");
-        assert_eq!(run("winding_number(1/2 + I/2, polygon(list(0, 1, 1 + I, I)))"), "1");
-        assert_eq!(run("winding_number(1/2 + I/2, polygon(list(0, I, 1 + I, 1)))"), "-1");
+        assert_eq!(
+            run("winding_number(1/2 + I/2, polygon(list(0, 1, 1 + I, I)))"),
+            "1"
+        );
+        assert_eq!(
+            run("winding_number(1/2 + I/2, polygon(list(0, I, 1 + I, 1)))"),
+            "-1"
+        );
         assert_eq!(run("winding_number(5, polygon(list(0, 1, 1 + I, I)))"), "0");
         // traversed twice
-        assert_eq!(run("winding_number(1/2 + I/2, polygon(list(0, 1, 1 + I, I, 0, 1, 1 + I, I)))"), "2");
+        assert_eq!(
+            run("winding_number(1/2 + I/2, polygon(list(0, 1, 1 + I, I, 0, 1, 1 + I, I)))"),
+            "2"
+        );
         // a point on the contour has no winding number
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "winding_number(1/2, polygon(list(0, 1, 1 + I, I)))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[complex()],
+            "winding_number(1/2, polygon(list(0, 1, 1 + I, I)))",
+            &[],
+        );
         assert!(!reduced, "{text}");
     }
 
@@ -1407,44 +1639,127 @@ mod tests {
     fn residue_theorem_over_polygons() {
         let square = "polygon(list(-1 - I, 1 - I, 1 + I, -1 + I))";
         let clockwise = "polygon(list(-1 - I, -1 + I, 1 + I, 1 - I))";
-        assert_eq!(run(&format!("contour_integral(1/z, z, {square})")), "2*I*pi");
-        assert_eq!(run(&format!("contour_integral(1/z, z, {clockwise})")), "-2*I*pi");
-        assert_eq!(run(&format!("contour_integral(exp(z)/z^2, z, {square})")), "2*I*pi");
-        assert_eq!(run(&format!("contour_integral(z^3 + 2*z, z, {square})")), "0");
+        assert_eq!(
+            run(&format!("contour_integral(1/z, z, {square})")),
+            "2*I*pi"
+        );
+        assert_eq!(
+            run(&format!("contour_integral(1/z, z, {clockwise})")),
+            "-2*I*pi"
+        );
+        assert_eq!(
+            run(&format!("contour_integral(exp(z)/z^2, z, {square})")),
+            "2*I*pi"
+        );
+        assert_eq!(
+            run(&format!("contour_integral(z^3 + 2*z, z, {square})")),
+            "0"
+        );
         // 1/(z^2 + 1) has poles at ±I; a rectangle around the upper one
-        assert_eq!(run("contour_integral(1/(z^2 + 1), z, polygon(list(-1, 1, 1 + 2*I, -1 + 2*I)))"), "pi");
-        assert_eq!(run("contour_integral(1/(z^2 + 1), z, polygon(list(-2 - 2*I, 2 - 2*I, 2 + 2*I, -2 + 2*I)))"), "0");
+        assert_eq!(
+            run("contour_integral(1/(z^2 + 1), z, polygon(list(-1, 1, 1 + 2*I, -1 + 2*I)))"),
+            "pi"
+        );
+        assert_eq!(
+            run(
+                "contour_integral(1/(z^2 + 1), z, polygon(list(-2 - 2*I, 2 - 2*I, 2 + 2*I, -2 + 2*I)))"
+            ),
+            "0"
+        );
         // a triangle around 1 and 2 but not 0
-        assert_eq!(run("contour_integral(1/(z*(z - 1)*(z - 2)), z, polygon(list(1/2 - I, 3 - I, 1 + 3*I)))"), "-I*pi");
+        assert_eq!(
+            run(
+                "contour_integral(1/(z*(z - 1)*(z - 2)), z, polygon(list(1/2 - I, 3 - I, 1 + 3*I)))"
+            ),
+            "-I*pi"
+        );
         // twice around
-        assert_eq!(run("contour_integral(1/z, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I, -1 - I, 1 - I, 1 + I, -1 + I)))"), "4*I*pi");
+        assert_eq!(
+            run(
+                "contour_integral(1/z, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I, -1 - I, 1 - I, 1 + I, -1 + I)))"
+            ),
+            "4*I*pi"
+        );
         // the circle agrees with the polygon
-        assert_eq!(run("contour_integral(1/(z - 1/2), z, circle(0, 1))"), run("contour_integral(1/(z - 1/2), z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"));
+        assert_eq!(
+            run("contour_integral(1/(z - 1/2), z, circle(0, 1))"),
+            run("contour_integral(1/(z - 1/2), z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))")
+        );
         // a pole on the contour: undefined
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "contour_integral(1/z, z, polygon(list(0, 1, 1 + I)))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[complex()],
+            "contour_integral(1/z, z, polygon(list(0, 1, 1 + I)))",
+            &[],
+        );
         assert!(!reduced, "{text}");
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "contour_integral(1/(z - 1), z, polygon(list(0, 2, 2*I)))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[complex()],
+            "contour_integral(1/(z - 1), z, polygon(list(0, 2, 2*I)))",
+            &[],
+        );
         assert!(!reduced, "{text}");
         // explicit residue sums
-        assert_eq!(run("contour_integral_residue_theorem(1/(z^2 + 1), z, list(I))"), "pi");
-        assert_eq!(run("contour_integral_residue_theorem(1/(z^2 + 1), z, list(I, -I))"), "0");
-        assert_eq!(run("contour_integral_residue_theorem(exp(z)/z^2, z, list(0))"), "2*I*pi");
-        assert_eq!(run("contour_integral_residue_theorem(z/(z - 1)/(z - 2), z, list(1, 2))"), "2*I*pi");
+        assert_eq!(
+            run("contour_integral_residue_theorem(1/(z^2 + 1), z, list(I))"),
+            "pi"
+        );
+        assert_eq!(
+            run("contour_integral_residue_theorem(1/(z^2 + 1), z, list(I, -I))"),
+            "0"
+        );
+        assert_eq!(
+            run("contour_integral_residue_theorem(exp(z)/z^2, z, list(0))"),
+            "2*I*pi"
+        );
+        assert_eq!(
+            run("contour_integral_residue_theorem(z/(z - 1)/(z - 2), z, list(1, 2))"),
+            "2*I*pi"
+        );
         assert_eq!(run("contour_integral_residue_theorem(1/z, z, list())"), "0");
     }
 
     #[test]
     fn argument_principle_over_polygons() {
         let square = "polygon(list(-2 - 2*I, 2 - 2*I, 2 + 2*I, -2 + 2*I))";
-        assert_eq!(run(&format!("count_zeros_poles(z^5 - 1, z, {square})")), "5");
-        assert_eq!(run("count_zeros_poles(z^5 - 1, z, polygon(list(-1/2 - I/2, 1/2 - I/2, 1/2 + I/2, -1/2 + I/2)))"), "0");
-        assert_eq!(run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"), "-1");
-        assert_eq!(run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, -1 + I, 1 + I, 1 - I)))"), "1");
-        assert_eq!(run("count_zeros_poles(1/z^3, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"), "-3");
+        assert_eq!(
+            run(&format!("count_zeros_poles(z^5 - 1, z, {square})")),
+            "5"
+        );
+        assert_eq!(
+            run(
+                "count_zeros_poles(z^5 - 1, z, polygon(list(-1/2 - I/2, 1/2 - I/2, 1/2 + I/2, -1/2 + I/2)))"
+            ),
+            "0"
+        );
+        assert_eq!(
+            run(
+                "count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"
+            ),
+            "-1"
+        );
+        assert_eq!(
+            run(
+                "count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, -1 + I, 1 + I, 1 - I)))"
+            ),
+            "1"
+        );
+        assert_eq!(
+            run("count_zeros_poles(1/z^3, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"),
+            "-3"
+        );
         // transcendental numerator: exp has no zeros
-        assert_eq!(run("count_zeros_poles(exp(z)/(z - 1/2)^2, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"), "-2");
+        assert_eq!(
+            run(
+                "count_zeros_poles(exp(z)/(z - 1/2)^2, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"
+            ),
+            "-2"
+        );
         // a zero on the contour is undefined
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "count_zeros_poles(z - 1, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[complex()],
+            "count_zeros_poles(z - 1, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))",
+            &[],
+        );
         assert!(!reduced, "{text}");
     }
 
@@ -1459,13 +1774,26 @@ mod tests {
         assert_eq!(run("branch_cut(z^2 + exp(z) + 1/z, z)"), "list()");
         assert_eq!(run("branch_cut(z^(-2), z)"), "list()");
         assert_eq!(run("branch_cut(acosh(z), z)"), "list(ray(1, pi))");
-        assert_eq!(run("branch_cut(asin(z), z)"), "list(ray(-1, pi), ray(1, 0))");
-        assert_eq!(run("branch_cut(atan(z), z)"), "list(ray(-I, -1/2*pi), ray(I, 1/2*pi))");
+        assert_eq!(
+            run("branch_cut(asin(z), z)"),
+            "list(ray(-1, pi), ray(1, 0))"
+        );
+        assert_eq!(
+            run("branch_cut(atan(z), z)"),
+            "list(ray(-I, -1/2*pi), ray(I, 1/2*pi))"
+        );
         // a sum collects the cuts of both terms
-        assert_eq!(run("branch_cut(sqrt(z) + ln(z - 2), z)"), "list(ray(0, pi), ray(2, pi))");
-        assert_eq!(run("branch_cut(ln(z - 2) + sqrt(z), z)"), "list(ray(0, pi), ray(2, pi))");
+        assert_eq!(
+            run("branch_cut(sqrt(z) + ln(z - 2), z)"),
+            "list(ray(0, pi), ray(2, pi))"
+        );
+        assert_eq!(
+            run("branch_cut(ln(z - 2) + sqrt(z), z)"),
+            "list(ray(0, pi), ray(2, pi))"
+        );
         // a non-linear argument is not handled
-        let (text, reduced) = crate::rules::testing::reduce_with(&[complex()], "branch_cut(ln(z^2 + 1), z)", &[]);
+        let (text, reduced) =
+            crate::rules::testing::reduce_with(&[complex()], "branch_cut(ln(z^2 + 1), z)", &[]);
         assert!(!reduced, "{text}");
     }
 
@@ -1485,12 +1813,23 @@ mod tests {
         let z = g.interner_mut().symbol("z");
         for (f, start, angle) in [
             ("ln(z)", Complex64::new(0.0, 0.0), std::f64::consts::PI),
-            ("sqrt(z - 1)", Complex64::new(1.0, 0.0), std::f64::consts::PI),
-            ("ln(2*z + 4)", Complex64::new(-2.0, 0.0), std::f64::consts::PI),
+            (
+                "sqrt(z - 1)",
+                Complex64::new(1.0, 0.0),
+                std::f64::consts::PI,
+            ),
+            (
+                "ln(2*z + 4)",
+                Complex64::new(-2.0, 0.0),
+                std::f64::consts::PI,
+            ),
             ("ln(-z)", Complex64::new(0.0, 0.0), 0.0),
         ] {
             let node = g.parse(f).unwrap_or_else(|e| panic!("{e}"));
-            let at = |g: &Graph, p: Complex64| g.eval_complex(node, &HashMap::from([(z, p)])).unwrap_or(Complex64::new(f64::NAN, f64::NAN));
+            let at = |g: &Graph, p: Complex64| {
+                g.eval_complex(node, &HashMap::from([(z, p)]))
+                    .unwrap_or(Complex64::new(f64::NAN, f64::NAN))
+            };
             let direction = Complex64::from_polar(1.0, angle);
             let normal = direction * Complex64::new(0.0, 1.0);
             let on_cut = start + direction * 1.7;

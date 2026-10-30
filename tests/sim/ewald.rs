@@ -40,7 +40,9 @@ fn perturb(
     let mut s = 12345u64;
     for p in pos.iter_mut() {
         for c in p.iter_mut() {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             *c += amp * ((s >> 33) as f64 / (1u64 << 31) as f64 - 0.5);
         }
     }
@@ -52,7 +54,10 @@ fn ewald_reproduces_the_madelung_constant_of_rock_salt() {
     let (e, f) = ewald_energy_forces(&pos, &q, len, 2.2, 14, 1.99, 1.0);
     // E per ion = -M q^2 / (2 r0) with r0 = 1
     let per_ion = e / pos.len() as f64;
-    assert!((per_ion + MADELUNG_NACL / 2.0).abs() < 1e-6, "E/ion = {per_ion}");
+    assert!(
+        (per_ion + MADELUNG_NACL / 2.0).abs() < 1e-6,
+        "E/ion = {per_ion}"
+    );
     // the perfect crystal is in equilibrium
     for fi in &f {
         for c in fi {
@@ -70,7 +75,12 @@ fn ewald_energy_is_independent_of_the_splitting_parameter() {
     assert!((e1 - e2).abs() < 1e-5 * e1.abs(), "{e1} vs {e2}");
     for i in 0..pos.len() {
         for a in 0..3 {
-            assert!((f1[i][a] - f2[i][a]).abs() < 1e-4, "force {i}/{a}: {} vs {}", f1[i][a], f2[i][a]);
+            assert!(
+                (f1[i][a] - f2[i][a]).abs() < 1e-4,
+                "force {i}/{a}: {} vs {}",
+                f1[i][a],
+                f2[i][a]
+            );
         }
     }
 }
@@ -91,7 +101,11 @@ fn ewald_forces_are_the_gradient_of_the_energy() {
             p[i][a] -= 2.0 * h;
             let (em, _) = ewald_energy_forces(&p, &q, len, alpha, 12, 0.999, 1.0);
             let num = -(ep - em) / (2.0 * h);
-            assert!((f[i][a] - num).abs() < 1e-5 * f[i][a].abs().max(1.0), "{i}/{a}: {} vs {num}", f[i][a]);
+            assert!(
+                (f[i][a] - num).abs() < 1e-5 * f[i][a].abs().max(1.0),
+                "{i}/{a}: {} vs {num}",
+                f[i][a]
+            );
         }
     }
 }
@@ -103,16 +117,34 @@ fn pme_matches_the_direct_reciprocal_sum() {
     let alpha = 1.1;
     let direct = ewald_reciprocal(&pos, &q, len, alpha, 10, 1.0);
     let mesh = pme_reciprocal(&pos, &q, len, alpha, [32, 32, 32], 6, 1.0);
-    assert!((direct.energy - mesh.energy).abs() < 1e-4 * direct.energy.abs(), "{} vs {}", direct.energy, mesh.energy);
-    let scale = direct.forces.iter().flat_map(|f| f.iter()).map(|c| c.abs()).fold(0.0, f64::max);
+    assert!(
+        (direct.energy - mesh.energy).abs() < 1e-4 * direct.energy.abs(),
+        "{} vs {}",
+        direct.energy,
+        mesh.energy
+    );
+    let scale = direct
+        .forces
+        .iter()
+        .flat_map(|f| f.iter())
+        .map(|c| c.abs())
+        .fold(0.0, f64::max);
     for i in 0..pos.len() {
         for a in 0..3 {
-            assert!((direct.forces[i][a] - mesh.forces[i][a]).abs() < 2e-3 * scale, "{i}/{a}: {} vs {}", direct.forces[i][a], mesh.forces[i][a]);
+            assert!(
+                (direct.forces[i][a] - mesh.forces[i][a]).abs() < 2e-3 * scale,
+                "{i}/{a}: {} vs {}",
+                direct.forces[i][a],
+                mesh.forces[i][a]
+            );
         }
     }
     for a in 0..3 {
         for b in 0..3 {
-            assert!((direct.virial[a][b] - mesh.virial[a][b]).abs() < 1e-3 * direct.virial[0][0].abs().max(1.0));
+            assert!(
+                (direct.virial[a][b] - mesh.virial[a][b]).abs()
+                    < 1e-3 * direct.virial[0][0].abs().max(1.0)
+            );
         }
     }
     // refining the mesh reduces the error
@@ -134,14 +166,25 @@ fn md_force_field_with_ewald_and_pme_matches_the_reference() {
         let mut sys = MdSystem::new(pos.clone(), SimBox::periodic(len));
         sys.charge = q.clone();
         let mut ff = ForceField::<3>::new(vec![PairTerm::Coulomb { k: 1.0, alpha }], 1.99);
-        ff.extra.push(if pme { pme_extra(alpha, [48, 48, 48], 6, 1.0) } else { ewald_extra(alpha, 14, 1.0) });
+        ff.extra.push(if pme {
+            pme_extra(alpha, [48, 48, 48], 6, 1.0)
+        } else {
+            ewald_extra(alpha, 14, 1.0)
+        });
         let mut nl = NeighbourList::new(1.99, 0.2);
         let out = compute_forces(&sys, &ff, &mut nl).unwrap();
         let tol = if pme { 1e-3 } else { 1e-8 };
-        assert!((out.epot - e_ref).abs() < tol * e_ref.abs(), "pme={pme}: {} vs {e_ref}", out.epot);
+        assert!(
+            (out.epot - e_ref).abs() < tol * e_ref.abs(),
+            "pme={pme}: {} vs {e_ref}",
+            out.epot
+        );
         for i in 0..pos.len() {
             for a in 0..3 {
-                assert!((out.f[i][a] - f_ref[i][a]).abs() < 50.0 * tol, "pme={pme} {i}/{a}");
+                assert!(
+                    (out.f[i][a] - f_ref[i][a]).abs() < 50.0 * tol,
+                    "pme={pme} {i}/{a}"
+                );
             }
         }
     }
@@ -196,13 +239,22 @@ fn triclinic_ewald_gives_the_madelung_constant_from_the_fcc_primitive_cell() {
     let pos = vec![[0.0; 3], [1.0, 0.0, 0.0]];
     let q = vec![1.0, -1.0];
     let (e, f) = ewald_energy_forces_cell(&pos, &q, &h, 2.4, 14, 3.9, 1.0).unwrap();
-    assert!((e + MADELUNG_NACL).abs() < 1e-8, "{e} vs {}", -MADELUNG_NACL);
+    assert!(
+        (e + MADELUNG_NACL).abs() < 1e-8,
+        "{e} vs {}",
+        -MADELUNG_NACL
+    );
     for fi in &f {
         assert!(fi.iter().all(|c| c.abs() < 1e-8));
     }
     let r = pme_reciprocal_cell(&pos, &q, &h, 2.4, [32, 32, 32], 6, 1.0).unwrap();
     let d = ewald_reciprocal_cell(&pos, &q, &h, 2.4, 14, 1.0).unwrap();
-    assert!((r.energy - d.energy).abs() < 1e-6, "{} vs {}", r.energy, d.energy);
+    assert!(
+        (r.energy - d.energy).abs() < 1e-6,
+        "{} vs {}",
+        r.energy,
+        d.energy
+    );
 }
 
 #[test]
@@ -214,7 +266,12 @@ fn triclinic_ewald_is_independent_of_alpha_and_forces_are_gradients() {
     assert!((e1 - e2).abs() < 1e-6 * e1.abs().max(1.0), "{e1} vs {e2}");
     for i in 0..pos.len() {
         for a in 0..3 {
-            assert!((f1[i][a] - f2[i][a]).abs() < 1e-5, "force {i},{a}: {} vs {}", f1[i][a], f2[i][a]);
+            assert!(
+                (f1[i][a] - f2[i][a]).abs() < 1e-5,
+                "force {i},{a}: {} vs {}",
+                f1[i][a],
+                f2[i][a]
+            );
         }
     }
     let alpha = 1.2;
@@ -238,18 +295,32 @@ fn triclinic_pme_matches_the_direct_sum_and_the_virial_is_the_strain_derivative(
     let alpha = 0.9;
     let direct = ewald_reciprocal_cell(&pos, &q, &h, alpha, 12, 1.0).unwrap();
     let mesh = pme_reciprocal_cell(&pos, &q, &h, alpha, [40, 40, 40], 6, 1.0).unwrap();
-    assert!((direct.energy - mesh.energy).abs() < 2e-5 * direct.energy.abs().max(1.0), "{} vs {}", direct.energy, mesh.energy);
+    assert!(
+        (direct.energy - mesh.energy).abs() < 2e-5 * direct.energy.abs().max(1.0),
+        "{} vs {}",
+        direct.energy,
+        mesh.energy
+    );
     for i in 0..pos.len() {
         for a in 0..3 {
-            assert!((direct.forces[i][a] - mesh.forces[i][a]).abs() < 2e-4, "{} vs {}", direct.forces[i][a], mesh.forces[i][a]);
+            assert!(
+                (direct.forces[i][a] - mesh.forces[i][a]).abs() < 2e-4,
+                "{} vs {}",
+                direct.forces[i][a],
+                mesh.forces[i][a]
+            );
         }
     }
     // virial = -dE/d(strain) for symmetric strains (affine deformation of cell and positions)
     let strained = |eps: [[f64; 3]; 3]| {
-        let tf = |v: &[f64; 3]| -> [f64; 3] { std::array::from_fn(|c| v[c] + (0..3).map(|d| v[d] * eps[d][c]).sum::<f64>()) };
+        let tf = |v: &[f64; 3]| -> [f64; 3] {
+            std::array::from_fn(|c| v[c] + (0..3).map(|d| v[d] * eps[d][c]).sum::<f64>())
+        };
         let h2 = [tf(&h[0]), tf(&h[1]), tf(&h[2])];
         let p2: Vec<[f64; 3]> = pos.iter().map(tf).collect();
-        ewald_reciprocal_cell(&p2, &q, &h2, alpha, 12, 1.0).unwrap().energy
+        ewald_reciprocal_cell(&p2, &q, &h2, alpha, 12, 1.0)
+            .unwrap()
+            .energy
     };
     for (x, y) in [(0usize, 0usize), (1, 1), (0, 1), (2, 0)] {
         let d = 1e-6;
@@ -265,10 +336,24 @@ fn triclinic_pme_matches_the_direct_sum_and_the_virial_is_the_strain_derivative(
         if x != y {
             fd /= 2.0;
         }
-        assert!((fd - direct.virial[x][y]).abs() < 1e-5 * (1.0 + fd.abs()), "virial {x}{y}: {fd} vs {}", direct.virial[x][y]);
+        assert!(
+            (fd - direct.virial[x][y]).abs() < 1e-5 * (1.0 + fd.abs()),
+            "virial {x}{y}: {fd} vs {}",
+            direct.virial[x][y]
+        );
     }
     assert!(pme_reciprocal_cell(&pos, &q, &h, alpha, [4, 4, 4], 6, 1.0).is_err());
-    assert!(ewald_reciprocal_cell(&pos, &q, &[[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]], alpha, 4, 1.0).is_err());
+    assert!(
+        ewald_reciprocal_cell(
+            &pos,
+            &q,
+            &[[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            alpha,
+            4,
+            1.0
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -278,16 +363,33 @@ fn p3m_with_the_optimal_influence_function_beats_pme_on_a_coarse_mesh() {
     let alpha = 0.9;
     let direct = ewald_reciprocal_cell(&pos, &q, &h, alpha, 12, 1.0).unwrap();
     let rms = |f: &[[f64; 3]]| -> f64 {
-        let s: f64 = f.iter().zip(&direct.forces).map(|(a, b)| (0..3).map(|c| (a[c] - b[c]).powi(2)).sum::<f64>()).sum();
+        let s: f64 = f
+            .iter()
+            .zip(&direct.forces)
+            .map(|(a, b)| (0..3).map(|c| (a[c] - b[c]).powi(2)).sum::<f64>())
+            .sum();
         (s / f.len() as f64).sqrt()
     };
-    for (grid, order) in [([12usize, 12, 12], 4usize), ([16, 16, 16], 4), ([16, 16, 16], 6)] {
+    for (grid, order) in [
+        ([12usize, 12, 12], 4usize),
+        ([16, 16, 16], 4),
+        ([16, 16, 16], 6),
+    ] {
         let pme = pme_reciprocal_cell(&pos, &q, &h, alpha, grid, order, 1.0).unwrap();
         let p3m = p3m_reciprocal_cell(&pos, &q, &h, alpha, grid, order, 1.0).unwrap();
-        let (e_pme, e_p3m) = ((pme.energy - direct.energy).abs(), (p3m.energy - direct.energy).abs());
+        let (e_pme, e_p3m) = (
+            (pme.energy - direct.energy).abs(),
+            (p3m.energy - direct.energy).abs(),
+        );
         let (f_pme, f_p3m) = (rms(&pme.forces), rms(&p3m.forces));
-        assert!(f_p3m < f_pme, "grid {grid:?} order {order}: P3M force error {f_p3m} vs PME {f_pme}");
-        assert!(e_p3m < 3.0 * e_pme + 1e-8, "energy errors {e_p3m} vs {e_pme}");
+        assert!(
+            f_p3m < f_pme,
+            "grid {grid:?} order {order}: P3M force error {f_p3m} vs PME {f_pme}"
+        );
+        assert!(
+            e_p3m < 3.0 * e_pme + 1e-8,
+            "energy errors {e_p3m} vs {e_pme}"
+        );
         assert!(f_p3m < 0.05, "P3M force error {f_p3m}");
     }
     // fine mesh: accurate forces, energy and virial
@@ -295,12 +397,20 @@ fn p3m_with_the_optimal_influence_function_beats_pme_on_a_coarse_mesh() {
     assert!((p3m.energy - direct.energy).abs() < 1e-6 * direct.energy.abs().max(1.0));
     for i in 0..pos.len() {
         for a in 0..3 {
-            assert!((p3m.forces[i][a] - direct.forces[i][a]).abs() < 1e-3, "{} vs {}", p3m.forces[i][a], direct.forces[i][a]);
+            assert!(
+                (p3m.forces[i][a] - direct.forces[i][a]).abs() < 1e-3,
+                "{} vs {}",
+                p3m.forces[i][a],
+                direct.forces[i][a]
+            );
         }
     }
     for a in 0..3 {
         for b in 0..3 {
-            assert!((p3m.virial[a][b] - direct.virial[a][b]).abs() < 1e-3 * (1.0 + direct.virial[a][b].abs()));
+            assert!(
+                (p3m.virial[a][b] - direct.virial[a][b]).abs()
+                    < 1e-3 * (1.0 + direct.virial[a][b].abs())
+            );
         }
     }
     assert!(p3m_reciprocal_cell(&pos, &q, &h, alpha, [4, 4, 4], 6, 1.0).is_err());

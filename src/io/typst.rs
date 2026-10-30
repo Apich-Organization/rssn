@@ -72,7 +72,11 @@ fn order_script(
     s: &str,
     order: u32,
 ) -> String {
-    if order == 1 { s.to_owned() } else { format!("{s}^{order}") }
+    if order == 1 {
+        s.to_owned()
+    } else {
+        format!("{s}^{order}")
+    }
 }
 
 impl Dialect for Typst {
@@ -153,7 +157,11 @@ impl Dialect for Typst {
         _prev: &str,
         next: &str,
     ) -> &'static str {
-        if next.chars().next().is_some_and(|c| c.is_ascii_digit()) { " dot " } else { " " }
+        if next.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            " dot "
+        } else {
+            " "
+        }
     }
 
     fn function(
@@ -224,7 +232,11 @@ impl Dialect for Typst {
             .map(|(v, o)| format!("{op} {}", order_script(v, *o)))
             .collect::<Vec<_>>()
             .join(" ");
-        let lead = if d.partial { total } else { order_script("d", d.total) };
+        let lead = if d.partial {
+            total
+        } else {
+            order_script("d", d.total)
+        };
         if d.inline {
             format!("frac({lead} {}, {denom})", d.body)
         } else {
@@ -252,7 +264,11 @@ impl Dialect for Typst {
         lo: &str,
         hi: &str,
     ) -> String {
-        let op = if kind == BigOp::Sum { "sum" } else { "product" };
+        let op = if kind == BigOp::Sum {
+            "sum"
+        } else {
+            "product"
+        };
         format!("{op}_({var}={lo})^{} {f}", script(hi))
     }
 
@@ -329,8 +345,14 @@ mod tests {
             (r"list(list(1, 2), list(3, 4))", r"mat(1, 2; 3, 4)"),
             (r"(a+b)/c", r"frac(a + b, c)"),
             (r"diff(f(x), x)", r"frac(d, dif x) f"),
-            (r"diff(diff(u(x, t), x), x)", r"frac(partial^2 u, partial x^2)"),
-            (r"x^2/(2*y) + sqrt(x+1) - 3/4*z", r"frac(x^2, 2 y) - frac(3 z, 4) + sqrt(x + 1)"),
+            (
+                r"diff(diff(u(x, t), x), x)",
+                r"frac(partial^2 u, partial x^2)",
+            ),
+            (
+                r"x^2/(2*y) + sqrt(x+1) - 3/4*z",
+                r"frac(x^2, 2 y) - frac(3 z, 4) + sqrt(x + 1)",
+            ),
             (r"x^(1/n)", r"root(n, x)"),
             (r"exp(x^2)", r"e^(x^2)"),
             (r"alpha*beta", r"alpha beta"),

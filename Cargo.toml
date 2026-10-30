@@ -138,7 +138,7 @@ all-features = true
 rustdoc-args = ["--html-in-header", "doc-header.html"]
 
 [lints.clippy]
-empty-line-after-doc-comments = "allow"
+empty_line_after_doc_comments = "allow"
 
 [lints.rust]
 # Allowed here because of kani.

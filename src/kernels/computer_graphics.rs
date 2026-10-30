@@ -1538,21 +1538,30 @@ pub fn catmull_rom(
     let t3 = t2 * t;
 
     Point3D {
-        x: f64::midpoint((4.0f64.mul_add(p2.x, 2.0f64.mul_add(p0.x, -(5.0 * p1.x))) - p3.x)
-                .mul_add(t2, 2.0f64.mul_add(p1.x, (-p0.x + p2.x) * t)), t3.mul_add(
-                    3.0f64.mul_add(-p2.x, 3.0f64.mul_add(p1.x, -p0.x)) + p3.x,
-                    0.0,
-                )),
-        y: f64::midpoint((4.0f64.mul_add(p2.y, 2.0f64.mul_add(p0.y, -(5.0 * p1.y))) - p3.y)
-                .mul_add(t2, 2.0f64.mul_add(p1.y, (-p0.y + p2.y) * t)), t3.mul_add(
-                    3.0f64.mul_add(-p2.y, 3.0f64.mul_add(p1.y, -p0.y)) + p3.y,
-                    0.0,
-                )),
-        z: f64::midpoint((4.0f64.mul_add(p2.z, 2.0f64.mul_add(p0.z, -(5.0 * p1.z))) - p3.z)
-                .mul_add(t2, 2.0f64.mul_add(p1.z, (-p0.z + p2.z) * t)), t3.mul_add(
-                    3.0f64.mul_add(-p2.z, 3.0f64.mul_add(p1.z, -p0.z)) + p3.z,
-                    0.0,
-                )),
+        x: f64::midpoint(
+            (4.0f64.mul_add(p2.x, 2.0f64.mul_add(p0.x, -(5.0 * p1.x))) - p3.x)
+                .mul_add(t2, 2.0f64.mul_add(p1.x, (-p0.x + p2.x) * t)),
+            t3.mul_add(
+                3.0f64.mul_add(-p2.x, 3.0f64.mul_add(p1.x, -p0.x)) + p3.x,
+                0.0,
+            ),
+        ),
+        y: f64::midpoint(
+            (4.0f64.mul_add(p2.y, 2.0f64.mul_add(p0.y, -(5.0 * p1.y))) - p3.y)
+                .mul_add(t2, 2.0f64.mul_add(p1.y, (-p0.y + p2.y) * t)),
+            t3.mul_add(
+                3.0f64.mul_add(-p2.y, 3.0f64.mul_add(p1.y, -p0.y)) + p3.y,
+                0.0,
+            ),
+        ),
+        z: f64::midpoint(
+            (4.0f64.mul_add(p2.z, 2.0f64.mul_add(p0.z, -(5.0 * p1.z))) - p3.z)
+                .mul_add(t2, 2.0f64.mul_add(p1.z, (-p0.z + p2.z) * t)),
+            t3.mul_add(
+                3.0f64.mul_add(-p2.z, 3.0f64.mul_add(p1.z, -p0.z)) + p3.z,
+                0.0,
+            ),
+        ),
     }
 }
 

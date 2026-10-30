@@ -43,8 +43,6 @@ use num_traits::Zero;
 use super::algebra::isolate;
 use super::algebra::refine_interval;
 use super::univariate;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -57,10 +55,16 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let op = i.op(OpDescriptor::new("root_of", Arity::Variadic).cost(40).eval(evaluate))?;
-    i.graph().ops_mut().set_attr(op, crate::graph::ComplexEval(evaluate_complex));
+    let op = i.op(OpDescriptor::new("root_of", Arity::Variadic)
+        .cost(40)
+        .eval(evaluate))?;
+    i.graph()
+        .ops_mut()
+        .set_attr(op, crate::graph::ComplexEval(evaluate_complex));
     i.kernel("poly/root_of", Tier::Normalize, RootOf { op });
     Ok(())
 }
@@ -99,15 +103,26 @@ fn complex_order(
 /// canonical order: the real roots ascending, then the non-real roots by
 /// real part and imaginary part.
 fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
-    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+    let rational: Vec<BigRational> = factor
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(40));
     let mut out = Vec::new();
     let intervals = isolate(&rational);
     let real_count = intervals.len();
     for (j, interval) in intervals.into_iter().enumerate() {
         let refined = refine_interval(&rational, interval, &width);
-        let mid = ((&refined.0 + &refined.1) / BigRational::from_integer(BigInt::from(2))).to_f64().unwrap_or(f64::NAN);
-        out.push(Root { factor: factor.to_vec(), local: j, interval: Some(refined), value: (mid, 0.0) });
+        let mid = ((&refined.0 + &refined.1) / BigRational::from_integer(BigInt::from(2)))
+            .to_f64()
+            .unwrap_or(f64::NAN);
+        out.push(Root {
+            factor: factor.to_vec(),
+            local: j,
+            interval: Some(refined),
+            value: (mid, 0.0),
+        });
     }
     let floats: Option<Vec<f64>> = factor.iter().map(ToPrimitive::to_f64).collect();
     if let Some(mut approximations) = floats.and_then(|c| super::galois::durand_kerner(&c)) {
@@ -116,7 +131,12 @@ fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
         let mut complex: Vec<(f64, f64)> = approximations.into_iter().skip(real_count).collect();
         complex.sort_by(|a, b| complex_order(*a, *b));
         for (i, value) in complex.into_iter().enumerate() {
-            out.push(Root { factor: factor.to_vec(), local: real_count + i, interval: None, value });
+            out.push(Root {
+                factor: factor.to_vec(),
+                local: real_count + i,
+                interval: None,
+                value,
+            });
         }
     }
     out
@@ -130,11 +150,13 @@ fn all_roots(q: &[BigRational]) -> Vec<Root> {
     for (factor, _) in factors {
         all.extend(factor_roots(&factor));
     }
-    all.sort_by(|a, b| match (a.interval.is_some(), b.interval.is_some()) {
-        | (true, true) => a.value.0.total_cmp(&b.value.0),
-        | (true, false) => std::cmp::Ordering::Less,
-        | (false, true) => std::cmp::Ordering::Greater,
-        | (false, false) => complex_order(a.value, b.value),
+    all.sort_by(|a, b| {
+        match (a.interval.is_some(), b.interval.is_some()) {
+            | (true, true) => a.value.0.total_cmp(&b.value.0),
+            | (true, false) => std::cmp::Ordering::Less,
+            | (false, true) => std::cmp::Ordering::Greater,
+            | (false, false) => complex_order(a.value, b.value),
+        }
     });
     all
 }
@@ -171,7 +193,11 @@ pub(crate) fn real_roots_as_objects(
     graph: &mut Graph,
     factor: &[BigInt],
 ) -> Option<Vec<(f64, NodeId)>> {
-    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+    let rational: Vec<BigRational> = factor
+        .iter()
+        .cloned()
+        .map(BigRational::from_integer)
+        .collect();
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(17));
     let mut out = Vec::new();
     for (j, interval) in isolate(&rational).into_iter().enumerate() {
@@ -185,10 +211,14 @@ pub(crate) fn real_roots_as_objects(
 /// Numeric semantics: the `k`-th real root of the polynomial whose
 /// coefficients follow `k`.
 fn evaluate(args: &[f64]) -> f64 {
-    let Some((&k, coefficients)) = args.split_first() else { return f64::NAN };
+    let Some((&k, coefficients)) = args.split_first() else {
+        return f64::NAN;
+    };
     let descending: Vec<f64> = coefficients.iter().rev().copied().collect();
     let polynomial = crate::kernels::polynomial::Polynomial::new(descending);
-    let Ok(mut roots) = crate::kernels::real_roots::find_roots(&polynomial, 1e-14) else { return f64::NAN };
+    let Ok(mut roots) = crate::kernels::real_roots::find_roots(&polynomial, 1e-14) else {
+        return f64::NAN;
+    };
     roots.sort_by(f64::total_cmp);
     roots.dedup_by(|a, b| (*a - *b).abs() < 1e-12 * (1.0 + a.abs()));
     if k < 0.0 || k.fract() != 0.0 {
@@ -210,14 +240,25 @@ fn evaluate_complex(args: &[num_complex::Complex64]) -> Option<num_complex::Comp
     }
     let approximations = super::galois::durand_kerner(&ascending)?;
     let tolerance = |re: f64| 1e-9 * (1.0 + re.abs());
-    let mut real: Vec<f64> = approximations.iter().filter(|r| r.1.abs() <= tolerance(r.0)).map(|r| r.0).collect();
+    let mut real: Vec<f64> = approximations
+        .iter()
+        .filter(|r| r.1.abs() <= tolerance(r.0))
+        .map(|r| r.0)
+        .collect();
     real.sort_by(f64::total_cmp);
-    let mut complex: Vec<(f64, f64)> = approximations.into_iter().filter(|r| r.1.abs() > tolerance(r.0)).collect();
+    let mut complex: Vec<(f64, f64)> = approximations
+        .into_iter()
+        .filter(|r| r.1.abs() > tolerance(r.0))
+        .collect();
     complex.sort_by(|a, b| complex_order(*a, *b));
     let index = k.re as usize;
     match real.get(index) {
         | Some(&r) => Some(num_complex::Complex64::new(r, 0.0)),
-        | None => complex.get(index - real.len()).map(|&(re, im)| num_complex::Complex64::new(re, im)),
+        | None => {
+            complex
+                .get(index - real.len())
+                .map(|&(re, im)| num_complex::Complex64::new(re, im))
+        },
     }
 }
 
@@ -248,12 +289,20 @@ impl Kernel for RootOf {
         let args = cx.graph.children(node).to_vec();
         let numeric = cx.env.numeric;
         let graph = &mut *cx.graph;
-        let Some((&k, coefficients)) = args.split_first() else { return Outcome::Pass };
-        let Some(k) = graph.number_of(k).and_then(Number::to_i64).and_then(|k| usize::try_from(k).ok()) else {
+        let Some((&k, coefficients)) = args.split_first() else {
             return Outcome::Pass;
         };
-        let q: Option<Vec<BigRational>> =
-            coefficients.iter().map(|&c| graph.number_of(c).and_then(Number::to_rational)).collect();
+        let Some(k) = graph
+            .number_of(k)
+            .and_then(Number::to_i64)
+            .and_then(|k| usize::try_from(k).ok())
+        else {
+            return Outcome::Pass;
+        };
+        let q: Option<Vec<BigRational>> = coefficients
+            .iter()
+            .map(|&c| graph.number_of(c).and_then(Number::to_rational))
+            .collect();
         let Some(mut q) = q else { return Outcome::Pass };
         while q.last().is_some_and(Zero::is_zero) {
             q.pop();
@@ -262,7 +311,15 @@ impl Kernel for RootOf {
             return Outcome::Pass;
         }
         let roots = all_roots(&q);
-        let Some(Root { factor, local: j, interval, .. }) = roots.get(k).cloned() else { return Outcome::Pass };
+        let Some(Root {
+            factor,
+            local: j,
+            interval,
+            ..
+        }) = roots.get(k).cloned()
+        else {
+            return Outcome::Pass;
+        };
         let factor = positive(factor);
         match factor.as_slice() {
             | [c0, c1] => {
@@ -274,37 +331,61 @@ impl Kernel for RootOf {
                 let (outside, inside) = square_part(&discriminant);
                 let denominator = BigInt::from(2) * a;
                 let sign = if j == 0 { -1 } else { 1 };
-                let centre = graph.num(Number::rat(BigRational::new(-b.clone(), denominator.clone())));
+                let centre = graph.num(Number::rat(BigRational::new(
+                    -b.clone(),
+                    denominator.clone(),
+                )));
                 let negative = discriminant.is_negative();
                 let magnitude = if negative { -inside } else { inside };
                 let scale = BigRational::new(outside * BigInt::from(sign), denominator);
-                let (scale_node, radicand) = (graph.num(Number::rat(scale)), graph.num(Number::Int(magnitude)));
-                let Some(half) = Number::fraction(1, 2) else { return Outcome::Pass };
+                let (scale_node, radicand) = (
+                    graph.num(Number::rat(scale)),
+                    graph.num(Number::Int(magnitude)),
+                );
+                let Some(half) = Number::fraction(1, 2) else {
+                    return Outcome::Pass;
+                };
                 let half = graph.num(half);
                 let radical = graph.node(core::POW, &[radicand, half]);
                 let mut factors = vec![scale_node, radical];
                 if negative {
-                    let Some(unit) = graph.ops().lookup("I") else { return Outcome::Pass };
+                    let Some(unit) = graph.ops().lookup("I") else {
+                        return Outcome::Pass;
+                    };
                     factors.push(graph.node(unit, &[]));
                 }
                 let offset = graph.node(core::MUL, &factors);
                 Outcome::Equal(graph.node(core::ADD, &[centre, offset]))
             },
             | _ => {
-                let Some(canonical) = make(graph, &factor, j) else { return Outcome::Pass };
+                let Some(canonical) = make(graph, &factor, j) else {
+                    return Outcome::Pass;
+                };
                 if graph.find(canonical) != graph.find(node) && !graph.same(canonical, node) {
                     return Outcome::Equal(canonical);
                 }
-                let Some(interval) = interval else { return Outcome::Pass };
+                let Some(interval) = interval else {
+                    return Outcome::Pass;
+                };
                 if !numeric {
                     return Outcome::Pass;
                 }
-                let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+                let rational: Vec<BigRational> = factor
+                    .iter()
+                    .cloned()
+                    .map(BigRational::from_integer)
+                    .collect();
                 let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(17));
                 let (a, b) = refine_interval(&rational, interval, &width);
-                let (lo, hi) = (a.to_f64().unwrap_or(f64::NAN), b.to_f64().unwrap_or(f64::NAN));
+                let (lo, hi) = (
+                    a.to_f64().unwrap_or(f64::NAN),
+                    b.to_f64().unwrap_or(f64::NAN),
+                );
                 let mid = 0.5 * lo + 0.5 * hi;
-                Outcome::Approx(Ball { mid, rad: (hi - mid).max(mid - lo) })
+                Outcome::Approx(Ball {
+                    mid,
+                    rad: (hi - mid).max(mid - lo),
+                })
             },
         }
     }

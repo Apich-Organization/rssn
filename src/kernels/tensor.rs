@@ -211,9 +211,18 @@ pub fn contract(
         return Err("Dimensions along contraction axes must be equal.".to_string());
     }
     // Remove the higher axis first so the lower index stays valid.
-    let (low, high) = if axis1 < axis2 { (axis1, axis2) } else { (axis2, axis1) };
-    let shape: Vec<usize> =
-        a.shape().iter().enumerate().filter(|&(i, _)| i != low && i != high).map(|(_, &d)| d).collect();
+    let (low, high) = if axis1 < axis2 {
+        (axis1, axis2)
+    } else {
+        (axis2, axis1)
+    };
+    let shape: Vec<usize> = a
+        .shape()
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| i != low && i != high)
+        .map(|(_, &d)| d)
+        .collect();
     let mut out = ArrayD::<f64>::zeros(IxDyn(&shape));
     for t in 0..n {
         let diagonal = a.index_axis(ndarray::Axis(high), t);

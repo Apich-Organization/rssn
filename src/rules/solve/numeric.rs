@@ -16,7 +16,6 @@
 
 use super::as_expression;
 use crate::backend::Compiled;
-use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -25,6 +24,7 @@ use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::rules::poly::best;
 
 /// The equations as compiled functions of the unknowns (then the bound
@@ -55,7 +55,10 @@ impl Compiled_ {
             let term = best(graph, expr)?;
             functions.push(crate::backend::compile(graph, term, &inputs).ok()?);
         }
-        Some(Self { functions, parameters })
+        Some(Self {
+            functions,
+            parameters,
+        })
     }
 
     fn residual(
@@ -180,7 +183,9 @@ fn starts(
         .map(|_| {
             (0..n)
                 .map(|_| {
-                    *seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                    *seed = seed
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1_442_695_040_888_963_407);
                     #[allow(clippy::cast_precision_loss)]
                     let unit = (*seed >> 11) as f64 / (1_u64 << 53) as f64;
                     radius * (2.0 * unit - 1.0)
@@ -207,11 +212,22 @@ pub(super) fn system_roots(
     }
     for start in all {
         if let Some(root) = newton(&system, &start)
-            && !roots.iter().any(|r| r.iter().zip(&root).all(|(a, b)| (a - b).abs() < 1e-6 * (1.0 + a.abs()))) {
-                roots.push(root);
-            }
+            && !roots.iter().any(|r| {
+                r.iter()
+                    .zip(&root)
+                    .all(|(a, b)| (a - b).abs() < 1e-6 * (1.0 + a.abs()))
+            })
+        {
+            roots.push(root);
+        }
     }
-    roots.sort_by(|a, b| a.iter().zip(b).map(|(x, y)| x.total_cmp(y)).find(|o| o.is_ne()).unwrap_or(std::cmp::Ordering::Equal));
+    roots.sort_by(|a, b| {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| x.total_cmp(y))
+            .find(|o| o.is_ne())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Some(roots)
 }
 
@@ -277,7 +293,14 @@ pub(super) fn scalar_roots(
     bindings: &[(SymbolId, f64)],
 ) -> Option<Vec<f64>> {
     let system = Compiled_::new(graph, &[equation], &[unknown], bindings)?;
-    let f = |t: f64| system.residual(&[t]).first().copied().filter(|v| v.is_finite()).unwrap_or(f64::NAN);
+    let f = |t: f64| {
+        system
+            .residual(&[t])
+            .first()
+            .copied()
+            .filter(|v| v.is_finite())
+            .unwrap_or(f64::NAN)
+    };
     let points = grid();
     let mut roots: Vec<f64> = Vec::new();
     for (r, fa, fb) in sign_changes(&f, &points) {
@@ -296,7 +319,14 @@ pub(super) fn scalar_roots(
         if let Some(d) = crate::rules::calculus::derivative(graph, term, x_node)
             && let Some(dsystem) = Compiled_::new(graph, &[d], &[unknown], bindings)
         {
-            let df = |t: f64| dsystem.residual(&[t]).first().copied().filter(|v| v.is_finite()).unwrap_or(f64::NAN);
+            let df = |t: f64| {
+                dsystem
+                    .residual(&[t])
+                    .first()
+                    .copied()
+                    .filter(|v| v.is_finite())
+                    .unwrap_or(f64::NAN)
+            };
             // Round-off makes f' change sign many times near a root of high
             // multiplicity: nearby candidates form one cluster, represented
             // by the member where |f| is smallest.
@@ -312,12 +342,21 @@ pub(super) fn scalar_roots(
             let mut clusters: Vec<Vec<f64>> = Vec::new();
             for r in candidates {
                 match clusters.last_mut() {
-                    | Some(cluster) if cluster.last().is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) => cluster.push(r),
+                    | Some(cluster)
+                        if cluster
+                            .last()
+                            .is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) =>
+                    {
+                        cluster.push(r)
+                    },
                     | _ => clusters.push(vec![r]),
                 }
             }
             for cluster in clusters {
-                if let Some(best) = cluster.into_iter().min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs())) {
+                if let Some(best) = cluster
+                    .into_iter()
+                    .min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs()))
+                {
                     roots.push(best);
                 }
             }
@@ -331,14 +370,24 @@ pub(super) fn scalar_roots(
     let mut chains: Vec<Vec<f64>> = Vec::new();
     for r in roots {
         match chains.last_mut() {
-            | Some(chain) if chain.last().is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) => chain.push(r),
+            | Some(chain)
+                if chain
+                    .last()
+                    .is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) =>
+            {
+                chain.push(r)
+            },
             | _ => chains.push(vec![r]),
         }
     }
     let mut roots: Vec<f64> = Vec::new();
     for chain in chains {
         if chain.len() >= 4 {
-            roots.extend(chain.into_iter().min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs())));
+            roots.extend(
+                chain
+                    .into_iter()
+                    .min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs())),
+            );
         } else {
             roots.extend(chain);
         }
@@ -366,7 +415,11 @@ impl Kernel for NumericSolve {
             return Outcome::Pass;
         }
         let heavy = |g: &Graph, n: NodeId| g.ops().get(g.op(n)).flags.has(OpFlags::HEAVY);
-        if cx.graph.enodes(cx.graph.find(node)).any(|n| !heavy(cx.graph, n)) {
+        if cx
+            .graph
+            .enodes(cx.graph.find(node))
+            .any(|n| !heavy(cx.graph, n))
+        {
             return Outcome::Pass;
         }
         let bindings = cx.env.bindings().to_vec();
@@ -378,11 +431,18 @@ impl Kernel for NumericSolve {
             | &[e, u, g] if is_nsolve => (e, u, Some(g)),
             | _ => return Outcome::Pass,
         };
-        let equations: Vec<NodeId> =
-            if graph.op(equation) == core::LIST { graph.children(equation).to_vec() } else { vec![equation] };
+        let equations: Vec<NodeId> = if graph.op(equation) == core::LIST {
+            graph.children(equation).to_vec()
+        } else {
+            vec![equation]
+        };
         if graph.op(unknown) == core::LIST {
             let nodes = graph.children(unknown).to_vec();
-            let Some(symbols) = nodes.iter().map(|&u| graph.symbol_of(u)).collect::<Option<Vec<_>>>() else {
+            let Some(symbols) = nodes
+                .iter()
+                .map(|&u| graph.symbol_of(u))
+                .collect::<Option<Vec<_>>>()
+            else {
                 return Outcome::Pass;
             };
             if let Some(guess) = guess {

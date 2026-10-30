@@ -19,12 +19,12 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 
 use super::product;
-use crate::graph::op::core;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::OpId;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 
 /// A rewrite of one node given its rebuilt children.
 type Rewrite<'a> = dyn FnMut(&mut Graph, NodeId, &[NodeId]) -> Option<NodeId> + 'a;
@@ -49,10 +49,18 @@ pub(super) fn map_term(
         }
         if !expanded {
             stack.push((node, true));
-            stack.extend(children.iter().filter(|c| !done.contains_key(c)).map(|&c| (c, false)));
+            stack.extend(
+                children
+                    .iter()
+                    .filter(|c| !done.contains_key(c))
+                    .map(|&c| (c, false)),
+            );
             continue;
         }
-        let rebuilt: Vec<NodeId> = children.iter().map(|c| done.get(c).copied().unwrap_or(*c)).collect();
+        let rebuilt: Vec<NodeId> = children
+            .iter()
+            .map(|c| done.get(c).copied().unwrap_or(*c))
+            .collect();
         let new = match f(graph, node, &rebuilt) {
             | Some(replacement) => replacement,
             | None if rebuilt == children => node,
@@ -78,14 +86,19 @@ fn exponential_parts(
         let &[argument] = children else {
             return None;
         };
-        return graph.depends_on(graph.find(argument), symbol).then_some((op, NodeId::NONE, argument));
+        return graph.depends_on(graph.find(argument), symbol).then_some((
+            op,
+            NodeId::NONE,
+            argument,
+        ));
     }
     if op == core::POW {
         let &[base, argument] = children else {
             return None;
         };
         let constant_base = !graph.depends_on(graph.find(base), symbol);
-        return (constant_base && graph.depends_on(graph.find(argument), symbol)).then_some((op, base, argument));
+        return (constant_base && graph.depends_on(graph.find(argument), symbol))
+            .then_some((op, base, argument));
     }
     None
 }
@@ -150,34 +163,53 @@ pub(super) fn exponentials(
     let exp = graph.ops().lookup("exp");
     // Pass 1: split sums in exponents, normalise integer bases.
     let mut sums = |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
-        let rebuilt_node = if children == graph.children(node) { node } else { graph.try_node(graph.op(node), children)? };
+        let rebuilt_node = if children == graph.children(node) {
+            node
+        } else {
+            graph.try_node(graph.op(node), children)?
+        };
         let (op, base, argument) = exponential_parts(graph, rebuilt_node, symbol, exp)?;
         // Perfect-power base: 4^u = 2^(2u).
         if base != NodeId::NONE
-            && let Some(n) = graph.number_of(base).and_then(Number::to_rational) {
-                if n.is_integer() {
-                    if let Some((r, k)) = perfect_power(&n.to_integer()) {
-                        let r_node = graph.num(Number::Int(r));
-                        let k_node = graph.int(i64::from(k));
-                        let scaled = graph.node(core::MUL, &[k_node, argument]);
-                        return graph.try_node(op, &[r_node, scaled]);
-                    }
-                } else if n.numer().is_one() && n.is_positive()
-                    && let Some(inverse) = n.recip().to_integer().to_i64() {
-                        let r_node = graph.int(inverse);
-                        let minus_one = graph.int(-1);
-                        let negated = graph.node(core::MUL, &[minus_one, argument]);
-                        return graph.try_node(op, &[r_node, negated]);
-                    }
+            && let Some(n) = graph.number_of(base).and_then(Number::to_rational)
+        {
+            if n.is_integer() {
+                if let Some((r, k)) = perfect_power(&n.to_integer()) {
+                    let r_node = graph.num(Number::Int(r));
+                    let k_node = graph.int(i64::from(k));
+                    let scaled = graph.node(core::MUL, &[k_node, argument]);
+                    return graph.try_node(op, &[r_node, scaled]);
+                }
+            } else if n.numer().is_one()
+                && n.is_positive()
+                && let Some(inverse) = n.recip().to_integer().to_i64()
+            {
+                let r_node = graph.int(inverse);
+                let minus_one = graph.int(-1);
+                let negated = graph.node(core::MUL, &[minus_one, argument]);
+                return graph.try_node(op, &[r_node, negated]);
             }
+        }
         if graph.op(argument) == core::ADD {
             let (mut dependent, mut free) = (Vec::new(), Vec::new());
             for &t in graph.children(argument) {
-                if graph.depends_on(graph.find(t), symbol) { dependent.push(t) } else { free.push(t) }
+                if graph.depends_on(graph.find(t), symbol) {
+                    dependent.push(t)
+                } else {
+                    free.push(t)
+                }
             }
             if !dependent.is_empty() && !free.is_empty() {
-                let dep_sum = if dependent.len() == 1 { dependent[0] } else { graph.node(core::ADD, &dependent) };
-                let free_sum = if free.len() == 1 { free[0] } else { graph.node(core::ADD, &free) };
+                let dep_sum = if dependent.len() == 1 {
+                    dependent[0]
+                } else {
+                    graph.node(core::ADD, &dependent)
+                };
+                let free_sum = if free.len() == 1 {
+                    free[0]
+                } else {
+                    graph.node(core::ADD, &free)
+                };
                 let a = rebuild_exponential(graph, op, base, dep_sum)?;
                 let b = rebuild_exponential(graph, op, base, free_sum)?;
                 return Some(graph.node(core::MUL, &[a, b]));
@@ -203,10 +235,17 @@ pub(super) fn exponentials(
         }
     }
     let mut multiples = |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
-        let rebuilt_node = if children == graph.children(node) { node } else { graph.try_node(graph.op(node), children)? };
+        let rebuilt_node = if children == graph.children(node) {
+            node
+        } else {
+            graph.try_node(graph.op(node), children)?
+        };
         let (op, base, argument) = exponential_parts(graph, rebuilt_node, symbol, exp)?;
         let (c, rest) = split_multiple(graph, argument);
-        let d = groups.get(&(op, base, rest)).cloned().unwrap_or_else(BigInt::one);
+        let d = groups
+            .get(&(op, base, rest))
+            .cloned()
+            .unwrap_or_else(BigInt::one);
         let multiplier = &c * BigRational::from_integer(d.clone());
         if !multiplier.is_integer() {
             return (rebuilt_node != node).then_some(rebuilt_node);
@@ -300,7 +339,9 @@ pub(super) fn powers_to_exp(
         let &[base, argument] = children else {
             return None;
         };
-        if graph.depends_on(graph.find(base), symbol) || !graph.depends_on(graph.find(argument), symbol) {
+        if graph.depends_on(graph.find(base), symbol)
+            || !graph.depends_on(graph.find(argument), symbol)
+        {
             return None;
         }
         changed = true;

@@ -53,18 +53,18 @@ use std::collections::HashSet;
 
 use num_bigint::BigInt;
 
+use super::V;
 use super::def;
 use super::groups::build_group;
 use super::idx;
 use super::items;
-use super::V;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 
 /// A permutation as 0-based images.
 pub(crate) type Perm = Vec<usize>;
@@ -124,7 +124,13 @@ impl Chain {
         n: usize,
         gens: &[Perm],
     ) -> Self {
-        let mut c = Self { n, base: Vec::new(), gens: Vec::new(), trans: Vec::new(), orbit: Vec::new() };
+        let mut c = Self {
+            n,
+            base: Vec::new(),
+            gens: Vec::new(),
+            trans: Vec::new(),
+            orbit: Vec::new(),
+        };
         for g in gens {
             if !is_identity(g) {
                 c.insert_generator(g);
@@ -220,7 +226,9 @@ impl Chain {
             'outer: for &pt in &self.orbit[l].clone() {
                 for s in &self.gens[l].clone() {
                     let img = s[pt];
-                    let (Some(up), Some(ui)) = (&self.trans[l][pt], &self.trans[l][img]) else { continue };
+                    let (Some(up), Some(ui)) = (&self.trans[l][pt], &self.trans[l][img]) else {
+                        continue;
+                    };
                     let h = compose(&inverse(ui), &compose(s, up));
                     let (r, j) = self.sift(h, l + 1);
                     if !is_identity(&r) {
@@ -262,7 +270,9 @@ impl Chain {
     }
 
     pub(crate) fn order(&self) -> BigInt {
-        self.orbit.iter().fold(BigInt::from(1), |acc, o| acc * o.len())
+        self.orbit
+            .iter()
+            .fold(BigInt::from(1), |acc, o| acc * o.len())
     }
 
     pub(crate) fn base(&self) -> &[usize] {
@@ -294,7 +304,13 @@ impl Chain {
         point: usize,
     ) -> BigInt {
         let gens = self.strong_generators();
-        let mut c = Self { n: self.n, base: Vec::new(), gens: Vec::new(), trans: Vec::new(), orbit: Vec::new() };
+        let mut c = Self {
+            n: self.n,
+            base: Vec::new(),
+            gens: Vec::new(),
+            trans: Vec::new(),
+            orbit: Vec::new(),
+        };
         // Force `point` to be the first base point by a first level with
         // (possibly) no generators moving it.
         c.base.push(point);
@@ -492,7 +508,12 @@ struct Cosets {
 
 impl Cosets {
     fn new(ngens: usize) -> Self {
-        let mut c = Self { ncols: 2 * ngens, table: Vec::new(), parent: Vec::new(), live: 0 };
+        let mut c = Self {
+            ncols: 2 * ngens,
+            table: Vec::new(),
+            parent: Vec::new(),
+            live: 0,
+        };
         c.new_coset();
         c
     }
@@ -712,7 +733,10 @@ fn read_letter(
         return Some(());
     }
     if let Some(v) = super::small(g, l) {
-        let i = usize::try_from(v.unsigned_abs()).ok()?.checked_sub(1).filter(|&i| i < gens.len())?;
+        let i = usize::try_from(v.unsigned_abs())
+            .ok()?
+            .checked_sub(1)
+            .filter(|&i| i < gens.len())?;
         out.push(2 * i + usize::from(v < 0));
         return Some(());
     }
@@ -743,9 +767,17 @@ fn read_presentation(
     if gens.is_empty() {
         return None;
     }
-    let rels: Vec<Vec<usize>> = items(g, *a.get(1)?)?.into_iter().map(|w| read_word(g, &gens, w)).collect::<Option<_>>()?;
+    let rels: Vec<Vec<usize>> = items(g, *a.get(1)?)?
+        .into_iter()
+        .map(|w| read_word(g, &gens, w))
+        .collect::<Option<_>>()?;
     let subs: Vec<Vec<usize>> = match a.get(2) {
-        | Some(&s) => items(g, s)?.into_iter().map(|w| read_word(g, &gens, w)).collect::<Option<_>>()?,
+        | Some(&s) => {
+            items(g, s)?
+                .into_iter()
+                .map(|w| read_word(g, &gens, w))
+                .collect::<Option<_>>()?
+        },
         | None => Vec::new(),
     };
     Some((gens.len(), rels, subs))
@@ -761,7 +793,10 @@ fn todd_coxeter(
 ) -> Option<V> {
     let (n, rels, subs) = read_presentation(cx.graph, a)?;
     let (index, perms) = todd_coxeter_table(n, &rels, &subs)?;
-    Some(V::List(vec![V::uint(index), V::List(perms.iter().map(|p| perm_v(p)).collect())]))
+    Some(V::List(vec![
+        V::uint(index),
+        V::List(perms.iter().map(|p| perm_v(p)).collect()),
+    ]))
 }
 
 fn todd_coxeter_index(
@@ -836,7 +871,10 @@ fn perm_node(
     g: &mut Graph,
     p: &[usize],
 ) -> NodeId {
-    let nodes: Vec<NodeId> = p.iter().map(|&x| g.int(i64::try_from(x + 1).unwrap_or(0))).collect();
+    let nodes: Vec<NodeId> = p
+        .iter()
+        .map(|&x| g.int(i64::try_from(x + 1).unwrap_or(0)))
+        .collect();
     super::list(g, &nodes)
 }
 
@@ -895,7 +933,9 @@ fn perm_group_base(
     a: &[NodeId],
 ) -> Option<V> {
     let c = chain_of(cx, a)?;
-    Some(V::ints(c.base().iter().map(|&b| i64::try_from(b + 1).unwrap_or(0))))
+    Some(V::ints(
+        c.base().iter().map(|&b| i64::try_from(b + 1).unwrap_or(0)),
+    ))
 }
 
 fn perm_group_strong_generators(
@@ -903,7 +943,9 @@ fn perm_group_strong_generators(
     a: &[NodeId],
 ) -> Option<V> {
     let c = chain_of(cx, a)?;
-    Some(V::List(c.strong_generators().iter().map(|p| perm_v(p)).collect()))
+    Some(V::List(
+        c.strong_generators().iter().map(|p| perm_v(p)).collect(),
+    ))
 }
 
 fn perm_group_basic_orbits(
@@ -911,7 +953,11 @@ fn perm_group_basic_orbits(
     a: &[NodeId],
 ) -> Option<V> {
     let c = chain_of(cx, a)?;
-    Some(V::ints(c.basic_orbit_lengths().into_iter().map(|l| i64::try_from(l).unwrap_or(0))))
+    Some(V::ints(
+        c.basic_orbit_lengths()
+            .into_iter()
+            .map(|l| i64::try_from(l).unwrap_or(0)),
+    ))
 }
 
 fn perm_group_orbits(
@@ -920,7 +966,10 @@ fn perm_group_orbits(
 ) -> Option<V> {
     let c = chain_of(cx, a)?;
     Some(V::List(
-        c.orbits().iter().map(|o| V::ints(o.iter().map(|&x| i64::try_from(x + 1).unwrap_or(0)))).collect(),
+        c.orbits()
+            .iter()
+            .map(|o| V::ints(o.iter().map(|&x| i64::try_from(x + 1).unwrap_or(0))))
+            .collect(),
     ))
 }
 
@@ -946,7 +995,12 @@ fn perm_group_elements(
     a: &[NodeId],
 ) -> Option<V> {
     let c = chain_of(cx, a)?;
-    Some(V::List(c.elements(ELEMENT_LIMIT)?.iter().map(|p| perm_v(p)).collect()))
+    Some(V::List(
+        c.elements(ELEMENT_LIMIT)?
+            .iter()
+            .map(|p| perm_v(p))
+            .collect(),
+    ))
 }
 
 fn group_from_perms(
@@ -962,7 +1016,9 @@ fn perm_group_is_abelian(
     a: &[NodeId],
 ) -> Option<V> {
     let (_, gens) = read_gens(cx.graph, *a.first()?)?;
-    Some(V::Bool(gens.iter().all(|x| gens.iter().all(|y| compose(x, y) == compose(y, x)))))
+    Some(V::Bool(gens.iter().all(|x| {
+        gens.iter().all(|y| compose(x, y) == compose(y, x))
+    })))
 }
 
 fn orders_v(orders: Vec<BigInt>) -> V {
@@ -982,7 +1038,11 @@ fn perm_group_is_solvable(
     a: &[NodeId],
 ) -> Option<V> {
     let (n, gens) = read_gens(cx.graph, *a.first()?)?;
-    Some(V::Bool(derived_series(n, &gens).last().is_some_and(|o| *o == BigInt::from(1))))
+    Some(V::Bool(
+        derived_series(n, &gens)
+            .last()
+            .is_some_and(|o| *o == BigInt::from(1)),
+    ))
 }
 
 fn perm_group_lower_central_series(
@@ -998,7 +1058,11 @@ fn perm_group_is_nilpotent(
     a: &[NodeId],
 ) -> Option<V> {
     let (n, gens) = read_gens(cx.graph, *a.first()?)?;
-    Some(V::Bool(lower_central_series(n, &gens).last().is_some_and(|o| *o == BigInt::from(1))))
+    Some(V::Bool(
+        lower_central_series(n, &gens)
+            .last()
+            .is_some_and(|o| *o == BigInt::from(1)),
+    ))
 }
 
 fn perm_group_derived_subgroup(
@@ -1016,21 +1080,81 @@ fn perm_group_derived_subgroup(
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "perm_group_order", Arity::Fixed(1), perm_group_order)?;
-    def(i, "perm_group_contains", Arity::Fixed(2), perm_group_contains)?;
+    def(
+        i,
+        "perm_group_contains",
+        Arity::Fixed(2),
+        perm_group_contains,
+    )?;
     def(i, "perm_group_base", Arity::Fixed(1), perm_group_base)?;
-    def(i, "perm_group_strong_generators", Arity::Fixed(1), perm_group_strong_generators)?;
-    def(i, "perm_group_basic_orbits", Arity::Fixed(1), perm_group_basic_orbits)?;
+    def(
+        i,
+        "perm_group_strong_generators",
+        Arity::Fixed(1),
+        perm_group_strong_generators,
+    )?;
+    def(
+        i,
+        "perm_group_basic_orbits",
+        Arity::Fixed(1),
+        perm_group_basic_orbits,
+    )?;
     def(i, "perm_group_orbits", Arity::Fixed(1), perm_group_orbits)?;
-    def(i, "perm_group_is_transitive", Arity::Fixed(1), perm_group_is_transitive)?;
-    def(i, "perm_group_stabilizer_order", Arity::Fixed(2), perm_group_stabilizer_order)?;
-    def(i, "perm_group_elements", Arity::Fixed(1), perm_group_elements)?;
+    def(
+        i,
+        "perm_group_is_transitive",
+        Arity::Fixed(1),
+        perm_group_is_transitive,
+    )?;
+    def(
+        i,
+        "perm_group_stabilizer_order",
+        Arity::Fixed(2),
+        perm_group_stabilizer_order,
+    )?;
+    def(
+        i,
+        "perm_group_elements",
+        Arity::Fixed(1),
+        perm_group_elements,
+    )?;
     def(i, "group_from_perms", Arity::Fixed(1), group_from_perms)?;
-    def(i, "perm_group_is_abelian", Arity::Fixed(1), perm_group_is_abelian)?;
-    def(i, "perm_group_derived_series", Arity::Fixed(1), perm_group_derived_series)?;
-    def(i, "perm_group_is_solvable", Arity::Fixed(1), perm_group_is_solvable)?;
-    def(i, "perm_group_lower_central_series", Arity::Fixed(1), perm_group_lower_central_series)?;
-    def(i, "perm_group_is_nilpotent", Arity::Fixed(1), perm_group_is_nilpotent)?;
-    def(i, "perm_group_derived_subgroup", Arity::Fixed(1), perm_group_derived_subgroup)?;
+    def(
+        i,
+        "perm_group_is_abelian",
+        Arity::Fixed(1),
+        perm_group_is_abelian,
+    )?;
+    def(
+        i,
+        "perm_group_derived_series",
+        Arity::Fixed(1),
+        perm_group_derived_series,
+    )?;
+    def(
+        i,
+        "perm_group_is_solvable",
+        Arity::Fixed(1),
+        perm_group_is_solvable,
+    )?;
+    def(
+        i,
+        "perm_group_lower_central_series",
+        Arity::Fixed(1),
+        perm_group_lower_central_series,
+    )?;
+    def(
+        i,
+        "perm_group_is_nilpotent",
+        Arity::Fixed(1),
+        perm_group_is_nilpotent,
+    )?;
+    def(
+        i,
+        "perm_group_derived_subgroup",
+        Arity::Fixed(1),
+        perm_group_derived_subgroup,
+    )?;
     def(i, "todd_coxeter", Arity::Fixed(3), todd_coxeter)?;
     def(i, "todd_coxeter_index", Arity::Fixed(3), todd_coxeter_index)?;
     def(i, "fp_group_order", Arity::Fixed(2), fp_group_order)?;
@@ -1060,13 +1184,18 @@ mod tests {
             let fact: usize = (1..=n).product();
             assert_eq!(c.order(), BigInt::from(fact), "S{n}");
         }
-        assert_eq!(Chain::new(12, &[cyc(12), swap01(12)]).order(), BigInt::from(479_001_600_u64));
+        assert_eq!(
+            Chain::new(12, &[cyc(12), swap01(12)]).order(),
+            BigInt::from(479_001_600_u64)
+        );
     }
 
     #[test]
     fn mathieu_groups() {
         assert_eq!(
-            s("perm_group_order(list(list(2,3,4,5,6,7,8,9,10,11,1), list(1,2,7,10,6,4,11,3,9,5,8)))"),
+            s(
+                "perm_group_order(list(list(2,3,4,5,6,7,8,9,10,11,1), list(1,2,7,10,6,4,11,3,9,5,8)))"
+            ),
             "7920"
         );
         // M12 on twelve points
@@ -1074,19 +1203,34 @@ mod tests {
         assert_eq!(s(&format!("perm_group_order({m12})")), "95040");
         assert_eq!(s(&format!("perm_group_is_transitive({m12})")), "true");
         // the point stabiliser of M12 is M11
-        assert_eq!(s(&format!("perm_group_stabilizer_order({m12}, 12)")), "7920");
+        assert_eq!(
+            s(&format!("perm_group_stabilizer_order({m12}, 12)")),
+            "7920"
+        );
         assert_eq!(s(&format!("perm_group_stabilizer_order({m12}, 1)")), "7920");
         assert_eq!(s(&format!("perm_group_is_solvable({m12})")), "false");
-        assert_eq!(s(&format!("perm_group_derived_series({m12})")), "list(95040)");
+        assert_eq!(
+            s(&format!("perm_group_derived_series({m12})")),
+            "list(95040)"
+        );
     }
 
     #[test]
     fn membership_and_base() {
         let a4 = "list(list(2,3,1,4), list(1,3,4,2))";
         assert_eq!(s(&format!("perm_group_order({a4})")), "12");
-        assert_eq!(s(&format!("perm_group_contains({a4}, list(2,1,4,3))")), "true");
-        assert_eq!(s(&format!("perm_group_contains({a4}, list(2,1,3,4))")), "false");
-        assert_eq!(s(&format!("perm_group_contains({a4}, list(1,2,3))")), "false");
+        assert_eq!(
+            s(&format!("perm_group_contains({a4}, list(2,1,4,3))")),
+            "true"
+        );
+        assert_eq!(
+            s(&format!("perm_group_contains({a4}, list(2,1,3,4))")),
+            "false"
+        );
+        assert_eq!(
+            s(&format!("perm_group_contains({a4}, list(1,2,3))")),
+            "false"
+        );
         let c = Chain::new(4, &[vec![1, 2, 0, 3], vec![0, 2, 3, 1]]);
         // the product of the basic orbit lengths is the order
         assert_eq!(c.basic_orbit_lengths().iter().product::<usize>(), 12);
@@ -1105,54 +1249,107 @@ mod tests {
         assert_eq!(s("perm_group_order(list(list(2,3,1), list(2,1,3)))"), "6");
         let e = s("perm_group_elements(list(list(2,3,1)))");
         assert_eq!(e, "list(list(1, 2, 3), list(2, 3, 1), list(3, 1, 2))");
-        assert_eq!(s("group_order(group_from_perms(list(list(2,3,4,1), list(1,4,3,2))))"), "8");
-        assert_eq!(s("group_is_valid(group_from_perms(list(list(2,3,4,1), list(1,4,3,2))))"), "true");
-        assert_eq!(s("perm_group_orbits(list(list(2,1,3,5,4)))"), "list(list(1, 2), list(3), list(4, 5))");
+        assert_eq!(
+            s("group_order(group_from_perms(list(list(2,3,4,1), list(1,4,3,2))))"),
+            "8"
+        );
+        assert_eq!(
+            s("group_is_valid(group_from_perms(list(list(2,3,4,1), list(1,4,3,2))))"),
+            "true"
+        );
+        assert_eq!(
+            s("perm_group_orbits(list(list(2,1,3,5,4)))"),
+            "list(list(1, 2), list(3), list(4, 5))"
+        );
     }
 
     #[test]
     fn solvability_and_nilpotency() {
         // S4: derived series 24 > 12 > 4 > 1, lower central series 24 > 12
         let s4 = "list(list(2,3,4,1), list(2,1,3,4))";
-        assert_eq!(s(&format!("perm_group_derived_series({s4})")), "list(24, 12, 4, 1)");
+        assert_eq!(
+            s(&format!("perm_group_derived_series({s4})")),
+            "list(24, 12, 4, 1)"
+        );
         assert_eq!(s(&format!("perm_group_is_solvable({s4})")), "true");
-        assert_eq!(s(&format!("perm_group_lower_central_series({s4})")), "list(24, 12)");
+        assert_eq!(
+            s(&format!("perm_group_lower_central_series({s4})")),
+            "list(24, 12)"
+        );
         assert_eq!(s(&format!("perm_group_is_nilpotent({s4})")), "false");
         // S5 is not solvable; A5 is perfect
         let s5 = "list(list(2,3,4,5,1), list(2,1,3,4,5))";
-        assert_eq!(s(&format!("perm_group_derived_series({s5})")), "list(120, 60)");
+        assert_eq!(
+            s(&format!("perm_group_derived_series({s5})")),
+            "list(120, 60)"
+        );
         assert_eq!(s(&format!("perm_group_is_solvable({s5})")), "false");
         // D4 is nilpotent of class 2
         let d4 = "list(list(2,3,4,1), list(1,4,3,2))";
-        assert_eq!(s(&format!("perm_group_lower_central_series({d4})")), "list(8, 2, 1)");
+        assert_eq!(
+            s(&format!("perm_group_lower_central_series({d4})")),
+            "list(8, 2, 1)"
+        );
         assert_eq!(s(&format!("perm_group_is_nilpotent({d4})")), "true");
-        assert_eq!(s(&format!("perm_group_derived_series({d4})")), "list(8, 2, 1)");
+        assert_eq!(
+            s(&format!("perm_group_derived_series({d4})")),
+            "list(8, 2, 1)"
+        );
         assert_eq!(s(&format!("perm_group_is_abelian({d4})")), "false");
-        assert_eq!(s("perm_group_is_abelian(list(list(2,1,3,4), list(1,2,4,3)))"), "true");
-        assert!(s(&format!("perm_group_derived_subgroup({s4})")).matches("list(").count() >= 2);
+        assert_eq!(
+            s("perm_group_is_abelian(list(list(2,1,3,4), list(1,2,4,3)))"),
+            "true"
+        );
+        assert!(
+            s(&format!("perm_group_derived_subgroup({s4})"))
+                .matches("list(")
+                .count()
+                >= 2
+        );
     }
 
     #[test]
     fn todd_coxeter_basics() {
         // <a, b | a^3, b^2, (ab)^2> = S3
-        assert_eq!(s("todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list())"), "6");
-        assert_eq!(s("fp_group_order(list(a, b), list(list(a^3), list(b^2), list(a, b, a, b)))"), "6");
+        assert_eq!(
+            s(
+                "todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list())"
+            ),
+            "6"
+        );
+        assert_eq!(
+            s("fp_group_order(list(a, b), list(list(a^3), list(b^2), list(a, b, a, b)))"),
+            "6"
+        );
         // over the subgroup <b> the index is 3
         assert_eq!(
-            s("todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list(list(b)))"),
+            s(
+                "todd_coxeter_index(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list(list(b)))"
+            ),
             "3"
         );
         // the action is a permutation representation of degree 3
-        let act = s("todd_coxeter(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list(list(b)))");
+        let act = s(
+            "todd_coxeter(list(a, b), list(list(a, a, a), list(b, b), list(a, b, a, b)), list(list(b)))",
+        );
         assert!(act.starts_with("list(3, list(list("), "{act}");
         // Z4 x Z2 and the quaternion group Q8
-        assert_eq!(s("fp_group_order(list(a, b), list(list(a^4), list(b^2), list(a, b, -1, -2)))"), "8");
-        assert_eq!(s("fp_group_order(list(a, b), list(list(a^4), list(a, a, -2, -2), list(b, a, -2, a)))"), "8");
+        assert_eq!(
+            s("fp_group_order(list(a, b), list(list(a^4), list(b^2), list(a, b, -1, -2)))"),
+            "8"
+        );
+        assert_eq!(
+            s("fp_group_order(list(a, b), list(list(a^4), list(a, a, -2, -2), list(b, a, -2, a)))"),
+            "8"
+        );
         // the trivial and the free abelian quotient
         assert_eq!(s("fp_group_order(list(a), list(list(a)))"), "1");
         assert_eq!(s("fp_group_order(list(a), list(list(a^12)))"), "12");
         // an infinite group exceeds the coset limit and stays unreduced
-        assert_eq!(s("fp_group_order(list(a), list())"), "fp_group_order(list(a), list())");
+        assert_eq!(
+            s("fp_group_order(list(a), list())"),
+            "fp_group_order(list(a), list())"
+        );
     }
 
     #[test]

@@ -8,7 +8,10 @@
 //! * linear programming: two-phase tableau simplex with Dantzig or
 //!   steepest-edge pricing and Bland's rule as an anti-cycling fallback.
 
-use crate::kernels::dense::{self, Mat};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::random::Rng;
 
 /// Result of a minimisation.
@@ -27,7 +30,10 @@ pub struct OptResult {
 }
 
 /// Central-difference gradient of `f` at `x`.
-pub fn numerical_gradient<F: Fn(&[f64]) -> f64>(f: &F, x: &[f64]) -> Vec<f64> {
+pub fn numerical_gradient<F: Fn(&[f64]) -> f64>(
+    f: &F,
+    x: &[f64],
+) -> Vec<f64> {
     let mut xp = x.to_vec();
     (0..x.len())
         .map(|i| {
@@ -42,7 +48,10 @@ pub fn numerical_gradient<F: Fn(&[f64]) -> f64>(f: &F, x: &[f64]) -> Vec<f64> {
         .collect()
 }
 
-fn dot(a: &[f64], b: &[f64]) -> f64 {
+fn dot(
+    a: &[f64],
+    b: &[f64],
+) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
@@ -58,7 +67,11 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
     let mut pts: Vec<Vec<f64>> = vec![x0.to_vec()];
     for i in 0..n {
         let mut p = x0.to_vec();
-        p[i] += if p[i] == 0.0 { step * 0.05_f64.max(step) } else { step * p[i].abs().max(1.0) * p[i].signum() };
+        p[i] += if p[i] == 0.0 {
+            step * 0.05_f64.max(step)
+        } else {
+            step * p[i].abs().max(1.0) * p[i].signum()
+        };
         pts.push(p);
     }
     let mut vals: Vec<f64> = pts.iter().map(|p| f(p)).collect();
@@ -72,15 +85,24 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
         pts = idx.iter().map(|&i| pts[i].clone()).collect();
         vals = idx.iter().map(|&i| vals[i]).collect();
         let spread = (vals[n] - vals[0]).abs();
-        let size = pts[1..].iter().map(|p| {
-            p.iter().zip(&pts[0]).map(|(a, b)| (a - b).abs()).fold(0.0, f64::max)
-        }).fold(0.0, f64::max);
+        let size = pts[1..]
+            .iter()
+            .map(|p| {
+                p.iter()
+                    .zip(&pts[0])
+                    .map(|(a, b)| (a - b).abs())
+                    .fold(0.0, f64::max)
+            })
+            .fold(0.0, f64::max);
         if spread <= tol * (1.0 + vals[0].abs()) && size <= tol.sqrt() {
             converged = true;
             break;
         }
-        let cen: Vec<f64> = (0..n).map(|j| pts[..n].iter().map(|p| p[j]).sum::<f64>() / n as f64).collect();
-        let along = |t: f64| -> Vec<f64> { (0..n).map(|j| cen[j] + t * (pts[n][j] - cen[j])).collect() };
+        let cen: Vec<f64> = (0..n)
+            .map(|j| pts[..n].iter().map(|p| p[j]).sum::<f64>() / n as f64)
+            .collect();
+        let along =
+            |t: f64| -> Vec<f64> { (0..n).map(|j| cen[j] + t * (pts[n][j] - cen[j])).collect() };
         let xr = along(-1.0);
         let fr = f(&xr);
         evals += 1;
@@ -123,8 +145,16 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
             }
         }
     }
-    let best = (0..=n).min_by(|&a, &b| vals[a].total_cmp(&vals[b])).unwrap_or(0);
-    OptResult { x: pts[best].clone(), fx: vals[best], iterations: it, evaluations: evals, converged }
+    let best = (0..=n)
+        .min_by(|&a, &b| vals[a].total_cmp(&vals[b]))
+        .unwrap_or(0);
+    OptResult {
+        x: pts[best].clone(),
+        fx: vals[best],
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
 }
 
 /// Backtracking line search with the Armijo condition and a curvature
@@ -157,7 +187,11 @@ fn line_search<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
                 return best;
             }
         }
-        t = if hi.is_finite() { f64::midpoint(lo, hi) } else { 2.0 * lo.max(t) };
+        t = if hi.is_finite() {
+            f64::midpoint(lo, hi)
+        } else {
+            2.0 * lo.max(t)
+        };
     }
     best
 }
@@ -230,7 +264,13 @@ pub fn bfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
         fx = fnw;
         gx = gn;
     }
-    OptResult { x, fx, iterations: it, evaluations: evals, converged }
+    OptResult {
+        x,
+        fx,
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
 }
 
 /// Limited-memory BFGS with history `m` (two-loop recursion).
@@ -304,7 +344,13 @@ pub fn lbfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
         fx = fnw;
         gx = gn;
     }
-    OptResult { x, fx, iterations: it, evaluations: evals, converged }
+    OptResult {
+        x,
+        fx,
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
 }
 
 /// Trust-region method with the dogleg step. The Hessian is supplied
@@ -368,31 +414,45 @@ where
         let bg = b.matvec(&g);
         let gbg = dot(&g, &bg);
         // Cauchy point
-        let tau = if gbg <= 0.0 { f64::INFINITY } else { gn2 / gbg };
+        let tau = if gbg <= 0.0 {
+            f64::INFINITY
+        } else {
+            gn2 / gbg
+        };
         let pu: Vec<f64> = g.iter().map(|v| -tau * v).collect();
         let neg: Vec<f64> = g.iter().map(|v| -v).collect();
-        let pb = dense::solve(&b, &neg).ok().filter(|p| dot(p, &b.matvec(p)) > 0.0);
+        let pb = dense::solve(&b, &neg)
+            .ok()
+            .filter(|p| dot(p, &b.matvec(p)) > 0.0);
         let norm = |v: &[f64]| dot(v, v).sqrt();
         let step: Vec<f64> = match pb {
-            Some(pb) if norm(&pb) <= radius => pb,
-            Some(pb) if tau.is_finite() && norm(&pu) < radius => {
+            | Some(pb) if norm(&pb) <= radius => pb,
+            | Some(pb) if tau.is_finite() && norm(&pu) < radius => {
                 // intersection of the segment pu -> pb with the boundary
                 let d: Vec<f64> = pb.iter().zip(&pu).map(|(a, c)| a - c).collect();
-                let (a2, b2, c2) = (dot(&d, &d), 2.0 * dot(&pu, &d), dot(&pu, &pu) - radius * radius);
+                let (a2, b2, c2) = (
+                    dot(&d, &d),
+                    2.0 * dot(&pu, &d),
+                    dot(&pu, &pu) - radius * radius,
+                );
                 let s = (-b2 + (b2 * b2 - 4.0 * a2 * c2).max(0.0).sqrt()) / (2.0 * a2);
                 pu.iter().zip(&d).map(|(a, c)| a + s * c).collect()
-            }
-            _ => {
+            },
+            | _ => {
                 let gn = gn2.sqrt();
                 g.iter().map(|v| -radius * v / gn).collect()
-            }
+            },
         };
         let bp = b.matvec(&step);
         let pred = -(dot(&g, &step) + 0.5 * dot(&step, &bp));
         let xn: Vec<f64> = x.iter().zip(&step).map(|(a, c)| a + c).collect();
         let fnw = f(&xn);
         evals += 1;
-        let rho = if pred.abs() < 1e-300 { 0.0 } else { (fx - fnw) / pred };
+        let rho = if pred.abs() < 1e-300 {
+            0.0
+        } else {
+            (fx - fnw) / pred
+        };
         if rho < 0.25 {
             radius = 0.25 * norm(&step);
         } else if rho > 0.75 && (norm(&step) - radius).abs() < 1e-10 * radius.max(1.0) {
@@ -406,7 +466,13 @@ where
             break;
         }
     }
-    OptResult { x, fx, iterations: it, evaluations: evals, converged }
+    OptResult {
+        x,
+        fx,
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
 }
 
 /// Differential evolution (`rand/1/bin`) within box `bounds`, seeded.
@@ -421,7 +487,12 @@ pub fn differential_evolution<F: Fn(&[f64]) -> f64>(
     let np = pop_size.max(4);
     let mut rng = Rng::new(seed);
     let mut pop: Vec<Vec<f64>> = (0..np)
-        .map(|_| bounds.iter().map(|&(a, b)| rng.uniform_range(a, b)).collect())
+        .map(|_| {
+            bounds
+                .iter()
+                .map(|&(a, b)| rng.uniform_range(a, b))
+                .collect()
+        })
         .collect();
     let mut vals: Vec<f64> = pop.iter().map(|p| f(p)).collect();
     let mut evals = np;
@@ -430,10 +501,12 @@ pub fn differential_evolution<F: Fn(&[f64]) -> f64>(
     while generation < generations {
         generation += 1;
         for i in 0..np {
-            let mut pick = || loop {
-                let k = rng.below(np as u64) as usize;
-                if k != i {
-                    return k;
+            let mut pick = || {
+                loop {
+                    let k = rng.below(np as u64) as usize;
+                    if k != i {
+                        return k;
+                    }
                 }
             };
             let (a, b, c) = loop {
@@ -465,8 +538,16 @@ pub fn differential_evolution<F: Fn(&[f64]) -> f64>(
             break;
         }
     }
-    let best = (0..np).min_by(|&a, &b| vals[a].total_cmp(&vals[b])).unwrap_or(0);
-    OptResult { x: pop[best].clone(), fx: vals[best], iterations: generation, evaluations: evals, converged: generation < generations }
+    let best = (0..np)
+        .min_by(|&a, &b| vals[a].total_cmp(&vals[b]))
+        .unwrap_or(0);
+    OptResult {
+        x: pop[best].clone(),
+        fx: vals[best],
+        iterations: generation,
+        evaluations: evals,
+        converged: generation < generations,
+    }
 }
 
 /// Simulated annealing with geometric cooling and Gaussian proposals of
@@ -498,7 +579,13 @@ pub fn simulated_annealing<F: Fn(&[f64]) -> f64>(
         }
         t *= cooling;
     }
-    OptResult { x: best.0, fx: best.1, iterations, evaluations: iterations + 1, converged: true }
+    OptResult {
+        x: best.0,
+        fx: best.1,
+        iterations,
+        evaluations: iterations + 1,
+        converged: true,
+    }
 }
 
 /// Augmented Lagrangian for `min f(x)` subject to `h(x) = 0` and
@@ -552,9 +639,17 @@ where
         for i in 0..ni {
             mu[i] = (mu[i] + rho * g[i]).max(0.0);
         }
-        let viol = h.iter().map(|v| v.abs()).chain(g.iter().map(|v| v.max(0.0))).fold(0.0, f64::max);
+        let viol = h
+            .iter()
+            .map(|v| v.abs())
+            .chain(g.iter().map(|v| v.max(0.0)))
+            .fold(0.0, f64::max);
         if viol <= tol {
-            let comp = g.iter().zip(&mu).map(|(a, b)| (a * b).abs()).fold(0.0, f64::max);
+            let comp = g
+                .iter()
+                .zip(&mu)
+                .map(|(a, b)| (a * b).abs())
+                .fold(0.0, f64::max);
             if comp <= tol.max(1e-6) {
                 converged = true;
                 break;
@@ -563,7 +658,13 @@ where
         rho = (rho * 4.0).min(1e8);
     }
     let fx = f(&x);
-    OptResult { x, fx, iterations: outer, evaluations: evals, converged }
+    OptResult {
+        x,
+        fx,
+        iterations: outer,
+        evaluations: evals,
+        converged,
+    }
 }
 
 /// Constraint sense of a linear-programming row.
@@ -621,7 +722,12 @@ pub struct LpResult {
 /// and `x >= 0`, with steepest-edge pricing and the Bland anti-cycling
 /// fallback; see [`simplex_with`].
 #[must_use]
-pub fn simplex(c: &[f64], a: &[Vec<f64>], rel: &[Relation], b: &[f64]) -> LpStatus {
+pub fn simplex(
+    c: &[f64],
+    a: &[Vec<f64>],
+    rel: &[Relation],
+    b: &[f64],
+) -> LpStatus {
     simplex_with(c, a, rel, b, Pricing::SteepestEdge).status
 }
 
@@ -645,7 +751,11 @@ pub fn simplex_with(
     let iters = std::cell::Cell::new(0usize);
     let bland_n = std::cell::Cell::new(0usize);
     let status = simplex_core(c, a, rel, b, pricing, &iters, &bland_n);
-    LpResult { status, iterations: iters.get(), bland_pivots: bland_n.get() }
+    LpResult {
+        status,
+        iterations: iters.get(),
+        bland_pivots: bland_n.get(),
+    }
 }
 
 fn simplex_core(
@@ -664,9 +774,9 @@ fn simplex_core(
         .map(|i| {
             if b[i] < 0.0 {
                 let flipped = match rel[i] {
-                    Relation::Le => Relation::Ge,
-                    Relation::Ge => Relation::Le,
-                    Relation::Eq => Relation::Eq,
+                    | Relation::Le => Relation::Ge,
+                    | Relation::Ge => Relation::Le,
+                    | Relation::Eq => Relation::Eq,
                 };
                 (a[i].iter().map(|v| -v).collect(), flipped, -b[i])
             } else {
@@ -684,30 +794,32 @@ fn simplex_core(
         t[i][..n].copy_from_slice(row);
         t[i][total] = *bv;
         match r {
-            Relation::Le => {
+            | Relation::Le => {
                 t[i][si] = 1.0;
                 basis[i] = si;
                 si += 1;
-            }
-            Relation::Ge => {
+            },
+            | Relation::Ge => {
                 t[i][si] = -1.0;
                 si += 1;
                 t[i][ai] = 1.0;
                 basis[i] = ai;
                 ai += 1;
-            }
-            Relation::Eq => {
+            },
+            | Relation::Eq => {
                 t[i][ai] = 1.0;
                 basis[i] = ai;
                 ai += 1;
-            }
+            },
         }
     }
     let eps = 1e-9;
     // Runs the simplex on cost vector `cost` (length `total`) restricted to columns < `limit`.
     let run = |t: &mut Vec<Vec<f64>>, basis: &mut Vec<usize>, cost: &[f64], limit: usize| -> bool {
         // reduced costs row
-        let mut rc: Vec<f64> = (0..=total).map(|j| if j < total { cost[j] } else { 0.0 }).collect();
+        let mut rc: Vec<f64> = (0..=total)
+            .map(|j| if j < total { cost[j] } else { 0.0 })
+            .collect();
         for i in 0..m {
             let cb = cost[basis[i]];
             if cb != 0.0 {
@@ -754,8 +866,10 @@ fn simplex_core(
                 if t[i][e] > eps {
                     let ratio = t[i][total] / t[i][e];
                     let better = match best {
-                        None => true,
-                        Some((bi, br)) => ratio < br - 1e-12 || (ratio <= br + 1e-12 && basis[i] < basis[bi]),
+                        | None => true,
+                        | Some((bi, br)) => {
+                            ratio < br - 1e-12 || (ratio <= br + 1e-12 && basis[i] < basis[bi])
+                        },
                     };
                     if better {
                         best = Some((i, ratio));
@@ -796,28 +910,32 @@ fn simplex_core(
             *v = 1.0;
         }
         run(&mut t, &mut basis, &c1, total);
-        let infeas: f64 = (0..m).filter(|&i| basis[i] >= n + nslack).map(|i| t[i][total]).sum();
+        let infeas: f64 = (0..m)
+            .filter(|&i| basis[i] >= n + nslack)
+            .map(|i| t[i][total])
+            .sum();
         if infeas > 1e-7 {
             return LpStatus::Infeasible;
         }
         // Pivot remaining (degenerate) artificials out of the basis.
         for i in 0..m {
             if basis[i] >= n + nslack
-                && let Some(e) = (0..n + nslack).find(|&j| t[i][j].abs() > eps) {
-                    let p = t[i][e];
-                    for j in 0..=total {
-                        t[i][j] /= p;
-                    }
-                    for k in 0..m {
-                        if k != i && t[k][e] != 0.0 {
-                            let fct = t[k][e];
-                            for j in 0..=total {
-                                t[k][j] -= fct * t[i][j];
-                            }
+                && let Some(e) = (0..n + nslack).find(|&j| t[i][j].abs() > eps)
+            {
+                let p = t[i][e];
+                for j in 0..=total {
+                    t[i][j] /= p;
+                }
+                for k in 0..m {
+                    if k != i && t[k][e] != 0.0 {
+                        let fct = t[k][e];
+                        for j in 0..=total {
+                            t[k][j] -= fct * t[i][j];
                         }
                     }
-                    basis[i] = e;
                 }
+                basis[i] = e;
+            }
         }
     }
     let mut c2 = vec![0.0; total];

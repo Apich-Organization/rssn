@@ -66,7 +66,15 @@ use crate::kernels::vector::norm;
 use crate::kernels::vector::scalar_mul;
 use crate::kernels::vector::vec_add;
 use crate::kernels::vector::vec_sub;
-use crate::sim::md_engine::{ForceField, MdSimulation, MdSystem, NeighbourList, NoseHooverChain, PairTerm, Rdf, SimBox, Thermostat};
+use crate::sim::md_engine::ForceField;
+use crate::sim::md_engine::MdSimulation;
+use crate::sim::md_engine::MdSystem;
+use crate::sim::md_engine::NeighbourList;
+use crate::sim::md_engine::NoseHooverChain;
+use crate::sim::md_engine::PairTerm;
+use crate::sim::md_engine::Rdf;
+use crate::sim::md_engine::SimBox;
+use crate::sim::md_engine::Thermostat;
 
 // ============================================================================
 // Physical Constants (Reduced Units)
@@ -725,10 +733,10 @@ pub fn radial_distribution_function(
     }
 
     let engine = match particles[0].position.len() {
-        1 => engine_rdf::<1>(particles, box_size, num_bins, r_max),
-        2 => engine_rdf::<2>(particles, box_size, num_bins, r_max),
-        3 => engine_rdf::<3>(particles, box_size, num_bins, r_max),
-        _ => None,
+        | 1 => engine_rdf::<1>(particles, box_size, num_bins, r_max),
+        | 2 => engine_rdf::<2>(particles, box_size, num_bins, r_max),
+        | 3 => engine_rdf::<3>(particles, box_size, num_bins, r_max),
+        | _ => None,
     };
     if let Some(r) = engine {
         return r;
@@ -945,7 +953,10 @@ impl GaussianStream {
     /// A stream seeded with `seed`.
     #[must_use]
     pub const fn new(seed: u64) -> Self {
-        Self { state: seed, spare: None }
+        Self {
+            state: seed,
+            spare: None,
+        }
     }
 
     fn uniform(&mut self) -> f64 {
@@ -1039,8 +1050,18 @@ where
     F: FnMut(&mut [Particle]) -> Result<(), String>,
 {
     let degrees: f64 = particles.iter().map(|p| p.velocity.len() as f64).sum();
-    let mut chain = NoseHooverChain { t0: kt, q: vec![q_mass], xi: vec![0.0], vxi: vec![xi0], nf: degrees };
-    let kinetic2 = |ps: &[Particle]| -> f64 { ps.iter().map(|p| p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>()).sum() };
+    let mut chain = NoseHooverChain {
+        t0: kt,
+        q: vec![q_mass],
+        xi: vec![0.0],
+        vxi: vec![xi0],
+        nf: degrees,
+    };
+    let kinetic2 = |ps: &[Particle]| -> f64 {
+        ps.iter()
+            .map(|p| p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>())
+            .sum()
+    };
     force_calculator(particles)?;
     for _ in 0..num_steps {
         let scale = chain.propagate(kinetic2(particles), dt);
@@ -1076,7 +1097,12 @@ where
 /// least `cutoff`; a plain double loop when the box holds fewer than three
 /// cells per side).
 #[must_use]
-#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss
+)]
 pub fn neighbour_pairs(
     particles: &[Particle],
     box_length: f64,
@@ -1085,22 +1111,22 @@ pub fn neighbour_pairs(
     let dim = particles.first().map_or(0, |p| p.position.len());
     let side = [box_length; 3];
     match dim {
-        1 => {
+        | 1 => {
             if let Some(p) = engine_pairs::<1>(particles, &side[..1], cutoff) {
                 return p;
             }
         },
-        2 => {
+        | 2 => {
             if let Some(p) = engine_pairs::<2>(particles, &side[..2], cutoff) {
                 return p;
             }
         },
-        3 => {
+        | 3 => {
             if let Some(p) = engine_pairs::<3>(particles, &side[..3], cutoff) {
                 return p;
             }
         },
-        _ => {},
+        | _ => {},
     }
     let distance2 = |a: &[f64], b: &[f64]| -> f64 {
         a.iter()
@@ -1153,8 +1179,11 @@ pub fn neighbour_pairs(
     for (i, p) in particles.iter().enumerate() {
         let home = cell_of(&p.position);
         for offset in &offsets {
-            let neighbour: Vec<usize> =
-                home.iter().zip(offset).map(|(&c, &o)| (c as isize + o).rem_euclid(cells_per_side as isize) as usize).collect();
+            let neighbour: Vec<usize> = home
+                .iter()
+                .zip(offset)
+                .map(|(&c, &o)| (c as isize + o).rem_euclid(cells_per_side as isize) as usize)
+                .collect();
             for &j in &cells[flat(&neighbour)] {
                 if j > i && distance2(&p.position, &particles[j].position) < cutoff * cutoff {
                     pairs.push((i, j));
@@ -1177,7 +1206,11 @@ fn engine_system<const D: usize>(
     particles: &[Particle],
     box_size: &[f64],
 ) -> Option<MdSystem<D>> {
-    if box_size.len() != D || particles.iter().any(|p| p.position.len() != D || p.velocity.len() != D) {
+    if box_size.len() != D
+        || particles
+            .iter()
+            .any(|p| p.position.len() != D || p.velocity.len() != D)
+    {
         return None;
     }
     let mut len = [0.0; D];
@@ -1207,7 +1240,10 @@ fn engine_rdf<const D: usize>(
     let mut rdf = Rdf::<D>::new(bins, r_max);
     rdf.add_frame(&sys);
     let res = rdf.result();
-    Some((res.iter().map(|x| x.0).collect(), res.iter().map(|x| x.1).collect()))
+    Some((
+        res.iter().map(|x| x.0).collect(),
+        res.iter().map(|x| x.1).collect(),
+    ))
 }
 
 fn engine_pairs<const D: usize>(
@@ -1245,16 +1281,19 @@ fn run_engine_md_dim<const D: usize>(
     steps: usize,
     thermostat: EngineThermostat,
 ) -> Result<f64, String> {
-    let sys = engine_system::<D>(particles, box_size).ok_or("dimension mismatch between particles and box")?;
+    let sys = engine_system::<D>(particles, box_size)
+        .ok_or("dimension mismatch between particles and box")?;
     let mut ff = ForceField::<D>::new(vec![PairTerm::LennardJones { eps: epsilon, sigma }], r_cut);
     ff.shift_force = true;
     let mut sim = MdSimulation::new(sys, ff, 0.3 * sigma, dt, 12345)?;
     let dof = sim.dof();
     sim.thermostat = match thermostat {
-        EngineThermostat::None => Thermostat::None,
-        EngineThermostat::NoseHooverChain(t0, tau, m) => Thermostat::NoseHooverChain(NoseHooverChain::new(t0, tau, m.max(1), dof)),
-        EngineThermostat::Langevin(t0, gamma) => Thermostat::Langevin { t0, gamma },
-        EngineThermostat::Berendsen(t0, tau) => Thermostat::Berendsen { t0, tau },
+        | EngineThermostat::None => Thermostat::None,
+        | EngineThermostat::NoseHooverChain(t0, tau, m) => {
+            Thermostat::NoseHooverChain(NoseHooverChain::new(t0, tau, m.max(1), dof))
+        },
+        | EngineThermostat::Langevin(t0, gamma) => Thermostat::Langevin { t0, gamma },
+        | EngineThermostat::Berendsen(t0, tau) => Thermostat::Berendsen { t0, tau },
     };
     sim.run(steps)?;
     for (i, p) in particles.iter_mut().enumerate() {
@@ -1283,10 +1322,10 @@ pub fn run_engine_md(
     thermostat: EngineThermostat,
 ) -> Result<f64, String> {
     match box_size.len() {
-        1 => run_engine_md_dim::<1>(particles, box_size, lj, dt, steps, thermostat),
-        2 => run_engine_md_dim::<2>(particles, box_size, lj, dt, steps, thermostat),
-        3 => run_engine_md_dim::<3>(particles, box_size, lj, dt, steps, thermostat),
-        _ => Err("the engine bridge supports dimensions 1 to 3".into()),
+        | 1 => run_engine_md_dim::<1>(particles, box_size, lj, dt, steps, thermostat),
+        | 2 => run_engine_md_dim::<2>(particles, box_size, lj, dt, steps, thermostat),
+        | 3 => run_engine_md_dim::<3>(particles, box_size, lj, dt, steps, thermostat),
+        | _ => Err("the engine bridge supports dimensions 1 to 3".into()),
     }
 }
 
@@ -1305,7 +1344,9 @@ mod thermostat_tests {
     #[test]
     fn langevin_samples_the_canonical_distribution() {
         // Harmonic oscillators: <v²> = <x²> = kT (m = k = 1).
-        let mut ps: Vec<Particle> = (0..200).map(|i| Particle::new(i, 1.0, vec![0.0], vec![0.0])).collect();
+        let mut ps: Vec<Particle> = (0..200)
+            .map(|i| Particle::new(i, 1.0, vec![0.0], vec![0.0]))
+            .collect();
         let mut noise = GaussianStream::new(42);
         integrate_langevin_baoab(&mut ps, 0.05, 2000, 1.0, 0.7, &mut noise, harmonic).unwrap();
         let (mut v2, mut x2) = (0.0, 0.0);
@@ -1318,22 +1359,43 @@ mod thermostat_tests {
                 samples += 1.0;
             }
         }
-        assert!((v2 / samples - 0.7).abs() < 0.03 && (x2 / samples - 0.7).abs() < 0.03, "{} {}", v2 / samples, x2 / samples);
+        assert!(
+            (v2 / samples - 0.7).abs() < 0.03 && (x2 / samples - 0.7).abs() < 0.03,
+            "{} {}",
+            v2 / samples,
+            x2 / samples
+        );
     }
 
     #[test]
     fn nose_hoover_conserves_its_extended_energy() {
-        let mut ps: Vec<Particle> =
-            (0..5).map(|i| Particle::new(i, 1.0, vec![0.1 * i as f64, -0.2], vec![0.3, 0.1 * i as f64 - 0.2])).collect();
+        let mut ps: Vec<Particle> = (0..5)
+            .map(|i| {
+                Particle::new(
+                    i,
+                    1.0,
+                    vec![0.1 * i as f64, -0.2],
+                    vec![0.3, 0.1 * i as f64 - 0.2],
+                )
+            })
+            .collect();
         let (kt, q) = (0.5, 2.0);
         let energy = |ps: &[Particle]| -> f64 {
-            ps.iter().map(|p| 0.5 * p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>() + 0.5 * p.position.iter().map(|x| x * x).sum::<f64>()).sum()
+            ps.iter()
+                .map(|p| {
+                    0.5 * p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>()
+                        + 0.5 * p.position.iter().map(|x| x * x).sum::<f64>()
+                })
+                .sum()
         };
         let e0 = energy(&ps);
         let (xi, s) = integrate_nose_hoover(&mut ps, 0.01, 5000, kt, q, 0.0, harmonic).unwrap();
         let degrees = 10.0;
         let invariant = energy(&ps) + 0.5 * q * xi * xi + degrees * kt * s;
-        assert!((invariant - e0).abs() < 1e-3 * (1.0 + e0), "{invariant} vs {e0}");
+        assert!(
+            (invariant - e0).abs() < 1e-3 * (1.0 + e0),
+            "{invariant} vs {e0}"
+        );
     }
 
     #[test]
@@ -1342,7 +1404,9 @@ mod thermostat_tests {
         let box_length = 10.0;
         let ps: Vec<Particle> = (0..300)
             .map(|i| {
-                let pos: Vec<f64> = (0..3).map(|_| (noise.next_normal() * 3.0).rem_euclid(box_length)).collect();
+                let pos: Vec<f64> = (0..3)
+                    .map(|_| (noise.next_normal() * 3.0).rem_euclid(box_length))
+                    .collect();
                 Particle::new(i, 1.0, pos, vec![0.0; 3])
             })
             .collect();
@@ -1365,6 +1429,6 @@ mod thermostat_tests {
             })
             .collect();
         assert_eq!(fast, brute);
-        assert!(!fast.is_empty());
+        assert_ne!(fast, []);
     }
 }

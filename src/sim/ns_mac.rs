@@ -54,11 +54,22 @@
 //! eddy-viscosity stress is not wall-modelled and is evaluated on the plain
 //! grid stencils near immersed bodies, and the high-resolution convection
 //! schemes fall back to central differences next to walls and bodies.
+//!
+//! Validation: the immersed-body solver reproduces the `Re = 100` flow past a
+//! circular cylinder (`D = 1`, `U_inf = 1`).  A 40 x 20 box (5 % blockage)
+//! with 8 cells per diameter gives `C_D = 1.399` and `St = 0.1653` after six
+//! shedding periods (literature `C_D = 1.32-1.34`, `St = 0.164-0.166`; Braza,
+//! Chassaing & Ha Minh 1986, Williamson 1989), i.e. +5.2 % and +0.2 %; a
+//! 20 x 10 box at 12-16 cells per diameter gives `C_D = 1.49` and
+//! `St = 0.178`, the difference being blockage.  See `tests/sim/ns_mac.rs`.
 
 use crate::kernels::krylov::Csr;
-use crate::sim::boundary::{Face, FluidBoundary, FluidFaceBcs};
+use crate::sim::boundary::Face;
+use crate::sim::boundary::FluidBoundary;
+use crate::sim::boundary::FluidFaceBcs;
 use crate::sim::cutcell;
-use crate::sim::structured::{LinearSolver, LinearSystem};
+use crate::sim::structured::LinearSolver;
+use crate::sim::structured::LinearSystem;
 
 /// Body-force closure `f(t, x)`.
 pub type ForceFn = dyn Fn(f64, [f64; 3]) -> [f64; 3] + Send + Sync;
@@ -93,12 +104,15 @@ pub enum ConvLimiter {
 }
 
 impl ConvLimiter {
-    fn psi(self, r: f64) -> f64 {
+    fn psi(
+        self,
+        r: f64,
+    ) -> f64 {
         match self {
-            Self::Minmod => r.clamp(0.0, 1.0),
-            Self::VanLeer => (r + r.abs()) / (1.0 + r.abs()),
-            Self::Superbee => (2.0 * r).min(1.0).max(r.min(2.0)).max(0.0),
-            Self::Mc => f64::midpoint(1.0, r).min(2.0).min(2.0 * r).max(0.0),
+            | Self::Minmod => r.clamp(0.0, 1.0),
+            | Self::VanLeer => (r + r.abs()) / (1.0 + r.abs()),
+            | Self::Superbee => (2.0 * r).min(1.0).max(r.min(2.0)).max(0.0),
+            | Self::Mc => f64::midpoint(1.0, r).min(2.0).min(2.0 * r).max(0.0),
         }
     }
 }
@@ -170,7 +184,10 @@ pub struct CutCellOptions {
 
 impl Default for CutCellOptions {
     fn default() -> Self {
-        Self { conservative: true, beta_min: 0.5 }
+        Self {
+            conservative: true,
+            beta_min: 0.5,
+        }
     }
 }
 
@@ -211,7 +228,11 @@ impl NsConfig {
     ///
     /// # Errors
     /// For bad dimensions or sizes.
-    pub fn new(n: &[usize], len: &[f64], nu: f64) -> Result<Self, String> {
+    pub fn new(
+        n: &[usize],
+        len: &[f64],
+        nu: f64,
+    ) -> Result<Self, String> {
         let dim = n.len();
         if !(2..=3).contains(&dim) || len.len() != dim || n.iter().any(|&m| m < 3) || nu <= 0.0 {
             return Err("invalid Navier-Stokes grid or viscosity".into());
@@ -274,7 +295,7 @@ struct Ib {
 
 struct Helm {
     sys: LinearSystem,
-    rows: Vec<usize>,   // face index of each unknown row
+    rows: Vec<usize>, // face index of each unknown row
     terms: Vec<(usize, f64, Term)>,
 }
 
@@ -302,7 +323,10 @@ pub struct NsSolver {
 }
 
 impl NsSolver {
-    const fn ext(cfg: &NsConfig, c: usize) -> [usize; 3] {
+    const fn ext(
+        cfg: &NsConfig,
+        c: usize,
+    ) -> [usize; 3] {
         let mut e = cfg.n;
         if c < cfg.dim {
             e[c] += 1;
@@ -310,24 +334,39 @@ impl NsSolver {
         e
     }
 
-    const fn fidx(e: [usize; 3], i: [usize; 3]) -> usize {
+    const fn fidx(
+        e: [usize; 3],
+        i: [usize; 3],
+    ) -> usize {
         i[0] + e[0] * (i[1] + e[1] * i[2])
     }
 
-    const fn fijk(e: [usize; 3], p: usize) -> [usize; 3] {
+    const fn fijk(
+        e: [usize; 3],
+        p: usize,
+    ) -> [usize; 3] {
         [p % e[0], (p / e[0]) % e[1], p / (e[0] * e[1])]
     }
 
-    fn cell_solid(cfg: &NsConfig, i: [isize; 3]) -> bool {
+    fn cell_solid(
+        cfg: &NsConfig,
+        i: [isize; 3],
+    ) -> bool {
         for a in 0..3 {
             if i[a] < 0 || i[a] >= cfg.n[a] as isize {
                 return false;
             }
         }
-        cfg.solid.as_ref().is_some_and(|s| s[Self::fidx(cfg.n, [i[0] as usize, i[1] as usize, i[2] as usize])])
+        cfg.solid
+            .as_ref()
+            .is_some_and(|s| s[Self::fidx(cfg.n, [i[0] as usize, i[1] as usize, i[2] as usize])])
     }
 
-    fn face_pos(cfg: &NsConfig, c: usize, i: [usize; 3]) -> [f64; 3] {
+    fn face_pos(
+        cfg: &NsConfig,
+        c: usize,
+        i: [usize; 3],
+    ) -> [f64; 3] {
         let mut x = [0.0; 3];
         for a in 0..cfg.dim {
             let h = cfg.len[a] / cfg.n[a] as f64;
@@ -420,10 +459,22 @@ impl NsSolver {
                     lo[b] -= 0.5 * hs[b];
                     len[b] = hs[b];
                 }
-                aperture[p] = cutcell::open_fraction(&phi, lo, len, &others, cutcell::default_depth(others.len()));
+                aperture[p] = cutcell::open_fraction(
+                    &phi,
+                    lo,
+                    len,
+                    &others,
+                    cutcell::default_depth(others.len()),
+                );
             }
-            let rough: Vec<bool> = (0..total).map(|p| inside[p] || (0..6).any(|k| cross[6 * p + k])).collect();
-            if inside_val.iter().chain(wall.iter()).any(|v| v.abs() > 1e-14) {
+            let rough: Vec<bool> = (0..total)
+                .map(|p| inside[p] || (0..6).any(|k| cross[6 * p + k]))
+                .collect();
+            if inside_val
+                .iter()
+                .chain(wall.iter())
+                .any(|v| v.abs() > 1e-14)
+            {
                 ib.moving = true;
             }
             let (mut dual_beta, mut dual_ap) = (vec![1.0; total], vec![1.0; 6 * total]);
@@ -437,7 +488,13 @@ impl NsSolver {
                         lo[a] -= 0.5 * hs[a];
                     }
                     len[..dim].copy_from_slice(&hs[..dim]);
-                    dual_beta[p] = cutcell::open_fraction(&phi, lo, len, &axes_all, cutcell::default_depth(dim));
+                    dual_beta[p] = cutcell::open_fraction(
+                        &phi,
+                        lo,
+                        len,
+                        &axes_all,
+                        cutcell::default_depth(dim),
+                    );
                     for a in 0..dim {
                         let others: Vec<usize> = (0..dim).filter(|&b| b != a).collect();
                         for s in 0..2 {
@@ -447,8 +504,18 @@ impl NsSolver {
                                 lo[b] -= 0.5 * hs[b];
                                 len[b] = hs[b];
                             }
-                            lo[a] += if s == 0 { -0.5 * hs[a] } else { 0.5 * hs[a] };
-                            dual_ap[6 * p + 2 * a + s] = cutcell::open_fraction(&phi, lo, len, &others, cutcell::default_depth(others.len()));
+                            lo[a] += if s == 0 {
+                                -0.5 * hs[a]
+                            } else {
+                                0.5 * hs[a]
+                            };
+                            dual_ap[6 * p + 2 * a + s] = cutcell::open_fraction(
+                                &phi,
+                                lo,
+                                len,
+                                &others,
+                                cutcell::default_depth(others.len()),
+                            );
                         }
                     }
                 }
@@ -480,16 +547,34 @@ impl NsSolver {
         Some(ib)
     }
 
-    fn ib_theta(&self, c: usize, p: usize, a: usize) -> (f64, f64) {
-        self.ib.as_ref().map_or((1.0, 1.0), |ib| (ib.theta[c][6 * p + 2 * a], ib.theta[c][6 * p + 2 * a + 1]))
+    fn ib_theta(
+        &self,
+        c: usize,
+        p: usize,
+        a: usize,
+    ) -> (f64, f64) {
+        self.ib.as_ref().map_or((1.0, 1.0), |ib| {
+            (ib.theta[c][6 * p + 2 * a], ib.theta[c][6 * p + 2 * a + 1])
+        })
     }
 
-    fn ib_cross(&self, c: usize, p: usize, a: usize, s: usize) -> Option<f64> {
+    fn ib_cross(
+        &self,
+        c: usize,
+        p: usize,
+        a: usize,
+        s: usize,
+    ) -> Option<f64> {
         let ib = self.ib.as_ref()?;
         ib.cross[c][6 * p + 2 * a + s].then(|| ib.wall[c][6 * p + 2 * a + s])
     }
 
-    fn aperture(&self, a: usize, i: [usize; 3], side: isize) -> f64 {
+    fn aperture(
+        &self,
+        a: usize,
+        i: [usize; 3],
+        side: isize,
+    ) -> f64 {
         let Some(ib) = &self.ib else { return 1.0 };
         let mut f = i;
         if side > 0 {
@@ -502,11 +587,18 @@ impl NsSolver {
     ///
     /// # Errors
     /// For inconsistent periodic faces or singular systems.
-    pub fn new(cfg: NsConfig, dt: f64, init: &dyn Fn([f64; 3]) -> [f64; 3]) -> Result<Self, String> {
+    pub fn new(
+        cfg: NsConfig,
+        dt: f64,
+        init: &dyn Fn([f64; 3]) -> [f64; 3],
+    ) -> Result<Self, String> {
         let dim = cfg.dim;
         let mut periodic = [false; 3];
         for a in 0..dim {
-            let lo = matches!(cfg.bcs.get(Face::of_axis(a, false)), FluidBoundary::Periodic);
+            let lo = matches!(
+                cfg.bcs.get(Face::of_axis(a, false)),
+                FluidBoundary::Periodic
+            );
             let hi = matches!(cfg.bcs.get(Face::of_axis(a, true)), FluidBoundary::Periodic);
             if lo != hi {
                 return Err("periodic must be set on both faces of an axis".into());
@@ -514,9 +606,10 @@ impl NsSolver {
             periodic[a] = lo;
         }
         if let Some(s) = &cfg.solid
-            && s.len() != cfg.n.iter().product::<usize>() {
-                return Err("solid mask has the wrong length".into());
-            }
+            && s.len() != cfg.n.iter().product::<usize>()
+        {
+            return Err("solid mask has the wrong length".into());
+        }
         let ib = Self::build_ib(&cfg);
         let mut status: [Vec<Status>; 3] = std::array::from_fn(|_| Vec::new());
         let mut bvals: [Vec<f64>; 3] = std::array::from_fn(|_| Vec::new());
@@ -535,13 +628,13 @@ impl NsSolver {
                 if i[c] == 0 || i[c] == cfg.n[c] {
                     let max = i[c] == cfg.n[c];
                     match cfg.bcs.get(Face::of_axis(c, max)) {
-                        FluidBoundary::Outflow(_) => {},
-                        FluidBoundary::Periodic => {
+                        | FluidBoundary::Outflow(_) => {},
+                        | FluidBoundary::Periodic => {
                             if max {
                                 fixed = true; // alias of face 0
                             }
                         },
-                        _ => fixed = true,
+                        | _ => fixed = true,
                     }
                 }
                 // solid cells on either side
@@ -554,7 +647,11 @@ impl NsSolver {
                 if ib.as_ref().is_some_and(|b| b.inside[c][p]) {
                     fixed = true;
                 }
-                st[p] = if fixed { Status::Fixed } else { Status::Unknown };
+                st[p] = if fixed {
+                    Status::Fixed
+                } else {
+                    Status::Unknown
+                };
             }
             status[c] = st;
             bvals[c] = vec![0.0; total];
@@ -574,7 +671,8 @@ impl NsSolver {
                     let e = Self::ext(&cfg, a);
                     let mut j = i;
                     j[a] += 1;
-                    b.aperture[a][Self::fidx(e, i)] > 1e-12 || b.aperture[a][Self::fidx(e, j)] > 1e-12
+                    b.aperture[a][Self::fidx(e, i)] > 1e-12
+                        || b.aperture[a][Self::fidx(e, j)] > 1e-12
                 });
                 if !open {
                     pfluid[p] = false;
@@ -590,7 +688,10 @@ impl NsSolver {
             status,
             bvals,
             helm: Vec::new(),
-            pmat: LinearSystem::new(Csr::from_triplets(1, 1, &[(0, 0, 1.0)]), LinearSolver::Direct)?,
+            pmat: LinearSystem::new(
+                Csr::from_triplets(1, 1, &[(0, 0, 1.0)]),
+                LinearSolver::Direct,
+            )?,
             pfluid,
             ib,
             conv_prev: None,
@@ -606,12 +707,20 @@ impl NsSolver {
         Ok(solver)
     }
 
-    fn h(&self, a: usize) -> f64 {
+    fn h(
+        &self,
+        a: usize,
+    ) -> f64 {
         self.cfg.len[a] / self.cfg.n[a] as f64
     }
 
     /// Boundary value of a fixed face at time `t`.
-    fn bc_value(&self, c: usize, i: [usize; 3], t: f64) -> f64 {
+    fn bc_value(
+        &self,
+        c: usize,
+        i: [usize; 3],
+        t: f64,
+    ) -> f64 {
         let cfg = &self.cfg;
         if let Some(ib) = &self.ib {
             let pf = Self::fidx(Self::ext(cfg, c), i);
@@ -629,20 +738,27 @@ impl NsSolver {
             let max = i[c] == cfg.n[c];
             let x = Self::face_pos(cfg, c, i);
             return match cfg.bcs.get(Face::of_axis(c, max)) {
-                FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => v[c].eval(t, x),
-                _ => 0.0,
+                | FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => v[c].eval(t, x),
+                | _ => 0.0,
             };
         }
         0.0
     }
 
-    fn update_boundary_values(&mut self, t: f64) {
+    fn update_boundary_values(
+        &mut self,
+        t: f64,
+    ) {
         for c in 0..self.cfg.dim {
             let e = Self::ext(&self.cfg, c);
             for p in 0..self.bvals[c].len() {
                 if self.status[c][p] == Status::Fixed {
                     let i = Self::fijk(e, p);
-                    let v = if self.periodic[c] && i[c] == self.cfg.n[c] { 0.0 } else { self.bc_value(c, i, t) };
+                    let v = if self.periodic[c] && i[c] == self.cfg.n[c] {
+                        0.0
+                    } else {
+                        self.bc_value(c, i, t)
+                    };
                     self.bvals[c][p] = v;
                 }
             }
@@ -698,7 +814,11 @@ impl NsSolver {
                             continue;
                         }
                         let ni = i[a] as isize + side;
-                        let (lo, hi): (isize, isize) = if a == c { (0, self.cfg.n[a] as isize) } else { (0, self.cfg.n[a] as isize - 1) };
+                        let (lo, hi): (isize, isize) = if a == c {
+                            (0, self.cfg.n[a] as isize)
+                        } else {
+                            (0, self.cfg.n[a] as isize - 1)
+                        };
                         let mut q = i;
                         if ni >= lo && ni <= hi {
                             q[a] = ni as usize;
@@ -748,20 +868,24 @@ impl NsSolver {
                             let max = ni > hi;
                             let face = Face::of_axis(a, max);
                             match self.cfg.bcs.get(face) {
-                                FluidBoundary::NoSlip(_) | FluidBoundary::Inflow(_) => {
+                                | FluidBoundary::NoSlip(_) | FluidBoundary::Inflow(_) => {
                                     trip.push((r, r, w));
                                     let mut pos = Self::face_pos(&self.cfg, c, i);
                                     pos[a] = if max { self.cfg.len[a] } else { 0.0 };
                                     terms.push((r, 2.0 * w, Term::Wall { face, pos }));
                                 },
-                                _ => trip.push((r, r, -w)),
+                                | _ => trip.push((r, r, -w)),
                             }
                         }
                     }
                 }
             }
             let a = Csr::from_triplets(rows.len(), rows.len(), &trip);
-            out.push(Helm { sys: LinearSystem::new(a, LinearSolver::Auto)?, rows, terms });
+            out.push(Helm {
+                sys: LinearSystem::new(a, LinearSolver::Auto)?,
+                rows,
+                terms,
+            });
         }
         self.helm = out;
         Ok(())
@@ -802,7 +926,10 @@ impl NsSolver {
                             trip.push((p, qp, w));
                             trip.push((p, p, -w));
                         }
-                    } else if matches!(cfg.bcs.get(Face::of_axis(a, ni > 0)), FluidBoundary::Outflow(_)) {
+                    } else if matches!(
+                        cfg.bcs.get(Face::of_axis(a, ni > 0)),
+                        FluidBoundary::Outflow(_)
+                    ) {
                         trip.push((p, p, -2.0 * w));
                         has_dirichlet = true;
                     }
@@ -821,7 +948,11 @@ impl NsSolver {
     }
 
     /// Extended velocity component (one ghost layer on active axes) at time `t`.
-    fn extended(&self, c: usize, t: f64) -> (Vec<f64>, [usize; 3]) {
+    fn extended(
+        &self,
+        c: usize,
+        t: f64,
+    ) -> (Vec<f64>, [usize; 3]) {
         let cfg = &self.cfg;
         let e = Self::ext(cfg, c);
         let mut d = e;
@@ -859,7 +990,7 @@ impl NsSolver {
                         wrap_idx = if a == c { na - 2 } else { na - 1 };
                     }
                     let mut src = i;
-                    
+
                     let value = if self.periodic[a] {
                         src[a] = wrap_idx;
                         self.u[c][Self::fidx(e, src)]
@@ -871,16 +1002,20 @@ impl NsSolver {
                         let uin = self.u[c][Self::fidx(e, src)];
                         let face = Face::of_axis(a, side);
                         match cfg.bcs.get(face) {
-                            FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => {
+                            | FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => {
                                 let mut pos = Self::face_pos(cfg, c, src);
                                 pos[a] = if side { cfg.len[a] } else { 0.0 };
                                 2.0 * v[c].eval(t, pos) - uin
                             },
-                            _ => uin,
+                            | _ => uin,
                         }
                     };
                     i[a] = g_idx;
-                    out[eid([i[0] + if a == 0 { 0 } else { off[0] }, i[1] + if a == 1 { 0 } else { off[1] }, i[2] + if a == 2 { 0 } else { off[2] }])] = value;
+                    out[eid([
+                        i[0] + if a == 0 { 0 } else { off[0] },
+                        i[1] + if a == 1 { 0 } else { off[1] },
+                        i[2] + if a == 2 { 0 } else { off[2] },
+                    ])] = value;
                 }
             }
         }
@@ -888,7 +1023,12 @@ impl NsSolver {
     }
 
     /// Value of an extended component array at (possibly ghost) face indices.
-    fn ext_get(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, i: [isize; 3]) -> f64 {
+    fn ext_get(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        c: usize,
+        i: [isize; 3],
+    ) -> f64 {
         let (arr, d) = &ext[c];
         let mut ix = [0usize; 3];
         for a in 0..3 {
@@ -898,7 +1038,12 @@ impl NsSolver {
     }
 
     /// Like [`Self::ext_get`], `None` outside the one-cell ghost layer.
-    fn ext_try(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, i: [isize; 3]) -> Option<f64> {
+    fn ext_try(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        c: usize,
+        i: [isize; 3],
+    ) -> Option<f64> {
         let e = Self::ext(&self.cfg, c);
         for a in 0..self.cfg.dim {
             if i[a] < -1 || i[a] > e[a] as isize {
@@ -909,7 +1054,11 @@ impl NsSolver {
     }
 
     /// Whether the face at `i` (array index) is inside or touches the body.
-    fn is_rough(&self, c: usize, i: [isize; 3]) -> bool {
+    fn is_rough(
+        &self,
+        c: usize,
+        i: [isize; 3],
+    ) -> bool {
         let Some(ib) = &self.ib else { return false };
         let e = Self::ext(&self.cfg, c);
         for a in 0..self.cfg.dim {
@@ -924,7 +1073,13 @@ impl NsSolver {
     /// nodes `nodes[1]` and `nodes[2]` (adjacent along an axis), with the
     /// upwind-biased neighbours `nodes[0]` (before) and `nodes[3]` (after);
     /// `v` is the transporting velocity.
-    fn face_value(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, nodes: [[isize; 3]; 4], v: f64) -> f64 {
+    fn face_value(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        c: usize,
+        nodes: [[isize; 3]; 4],
+        v: f64,
+    ) -> f64 {
         let q0 = self.ext_get(ext, c, nodes[1]);
         let q1 = self.ext_get(ext, c, nodes[2]);
         let central = f64::midpoint(q0, q1);
@@ -932,16 +1087,22 @@ impl NsSolver {
             return central;
         }
         // the stencil must lie in the ghosted array and away from walls of bodies
-        let (up, upup, down) = if v >= 0.0 { (nodes[1], nodes[0], nodes[2]) } else { (nodes[2], nodes[3], nodes[1]) };
-        let (Some(qu), Some(quu)) = (self.ext_try(ext, c, up), self.ext_try(ext, c, upup)) else { return central };
+        let (up, upup, down) = if v >= 0.0 {
+            (nodes[1], nodes[0], nodes[2])
+        } else {
+            (nodes[2], nodes[3], nodes[1])
+        };
+        let (Some(qu), Some(quu)) = (self.ext_try(ext, c, up), self.ext_try(ext, c, upup)) else {
+            return central;
+        };
         if [up, upup, down].iter().any(|&n| self.is_rough(c, n)) {
             return central;
         }
         let qd = self.ext_get(ext, c, down);
         match self.cfg.convection {
-            Convection::Central => central,
-            Convection::Quick => 0.75 * qu + 0.375 * qd - 0.125 * quu,
-            Convection::Tvd(lim) => {
+            | Convection::Central => central,
+            | Convection::Quick => 0.75 * qu + 0.375 * qd - 0.125 * quu,
+            | Convection::Tvd(lim) => {
                 let den = qd - qu;
                 if den.abs() < 1e-300 {
                     return qu;
@@ -953,7 +1114,14 @@ impl NsSolver {
     }
 
     /// Transporting velocity `u_a` at the dual face (normal to axis `a`) on side `sgn` of face `ii` of component `c`.
-    fn transport_velocity(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, a: usize, ii: [isize; 3], sgn: isize) -> f64 {
+    fn transport_velocity(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        c: usize,
+        a: usize,
+        ii: [isize; 3],
+        sgn: isize,
+    ) -> f64 {
         let mut hi = ii;
         let mut lo = ii;
         if sgn > 0 {
@@ -969,7 +1137,13 @@ impl NsSolver {
     /// With `cons` the flux form uses the dual-cell apertures and volume
     /// fraction (and the surface term of a moving rigid body), otherwise the
     /// plain form with a clamped linear ghost extrapolation at the wall.
-    fn conv_dof(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, p: usize, cons: bool) -> f64 {
+    fn conv_dof(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        c: usize,
+        p: usize,
+        cons: bool,
+    ) -> f64 {
         let cfg = &self.cfg;
         let dim = cfg.dim;
         let e = Self::ext(cfg, c);
@@ -1007,11 +1181,28 @@ impl NsSolver {
                         (v, self.face_value(ext, c, nodes, v))
                     },
                     |w| {
-                        let val = if cons { uc + (w - uc) * (0.5 / th).min(1.0) } else { f64::midpoint(uc, uc + (w - uc) / th.max(0.3)) };
-                        (if a == c { val } else { self.transport_velocity(ext, c, a, ii, sgn) }, val)
+                        let val = if cons {
+                            uc + (w - uc) * (0.5 / th).min(1.0)
+                        } else {
+                            f64::midpoint(uc, uc + (w - uc) / th.max(0.3))
+                        };
+                        (
+                            if a == c {
+                                val
+                            } else {
+                                self.transport_velocity(ext, c, a, ii, sgn)
+                            },
+                            val,
+                        )
                     },
                 );
-                let ap = if cons { self.ib.as_ref().map_or(1.0, |ib| ib.dual_ap[c][6 * p + 2 * a + si]) } else { 1.0 };
+                let ap = if cons {
+                    self.ib
+                        .as_ref()
+                        .map_or(1.0, |ib| ib.dual_ap[c][6 * p + 2 * a + si])
+                } else {
+                    1.0
+                };
                 fl[si] = ap * v * q;
                 sdiv[a] += if si == 1 { ap } else { -ap };
             }
@@ -1033,7 +1224,10 @@ impl NsSolver {
     }
 
     /// Computes convection and diffusion (explicit part) at all unknown faces.
-    fn convection_and_laplacian(&self, ext: &[(Vec<f64>, [usize; 3])]) -> ([Vec<f64>; 3], [Vec<f64>; 3]) {
+    fn convection_and_laplacian(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+    ) -> ([Vec<f64>; 3], [Vec<f64>; 3]) {
         let cfg = &self.cfg;
         let dim = cfg.dim;
         let mut conv: [Vec<f64>; 3] = std::array::from_fn(|_| Vec::new());
@@ -1062,8 +1256,12 @@ impl NsSolver {
                     let (thm, thp) = self.ib_theta(c, p, a);
                     let vp_raw = self.ext_get(ext, c, ep);
                     let vm_raw = self.ext_get(ext, c, em);
-                    let (vm, vp) = (self.ib_cross(c, p, a, 0).unwrap_or(vm_raw), self.ib_cross(c, p, a, 1).unwrap_or(vp_raw));
-                    lp += 2.0 / (h * h) * (vm / (thm * (thm + thp)) + vp / (thp * (thm + thp)) - uc / (thm * thp));
+                    let (vm, vp) = (
+                        self.ib_cross(c, p, a, 0).unwrap_or(vm_raw),
+                        self.ib_cross(c, p, a, 1).unwrap_or(vp_raw),
+                    );
+                    lp += 2.0 / (h * h)
+                        * (vm / (thm * (thm + thp)) + vp / (thp * (thm + thp)) - uc / (thm * thp));
                 }
                 lap[c][p] = lp;
                 let cv = self.conv_dof(ext, c, p, cons);
@@ -1085,7 +1283,8 @@ impl NsSolver {
                             q[a] = ni as usize;
                             let qp = Self::fidx(e, q);
                             if self.status[c][qp] == Status::Unknown {
-                                let vol = self.ib.as_ref().map_or(1.0, |ib| ib.dual_beta[c][qp]) * hv;
+                                let vol =
+                                    self.ib.as_ref().map_or(1.0, |ib| ib.dual_beta[c][qp]) * hv;
                                 if vol > 0.0 {
                                     nbrs.push((qp, vol));
                                 }
@@ -1112,7 +1311,13 @@ impl NsSolver {
     }
 
     /// Pressure gradient component at an unknown face.
-    fn pressure_gradient(&self, c: usize, i: [usize; 3], p: &[f64], bc_pressure: bool) -> f64 {
+    fn pressure_gradient(
+        &self,
+        c: usize,
+        i: [usize; 3],
+        p: &[f64],
+        bc_pressure: bool,
+    ) -> f64 {
         let cfg = &self.cfg;
         let n = cfg.n;
         let h = self.h(c);
@@ -1124,9 +1329,11 @@ impl NsSolver {
                 return (cell(i) - cell(q)) / h;
             }
             let pout = match cfg.bcs.get(Face::of_axis(c, false)) {
-                FluidBoundary::Outflow(v) if bc_pressure => v.eval(self.t, Self::face_pos(cfg, c, i)),
-                FluidBoundary::Outflow(_) => 0.0,
-                _ => cell(i),
+                | FluidBoundary::Outflow(v) if bc_pressure => {
+                    v.eval(self.t, Self::face_pos(cfg, c, i))
+                },
+                | FluidBoundary::Outflow(_) => 0.0,
+                | _ => cell(i),
             };
             return (cell(i) - pout) / (0.5 * h);
         }
@@ -1134,9 +1341,11 @@ impl NsSolver {
             let mut q = i;
             q[c] = n[c] - 1;
             let pout = match cfg.bcs.get(Face::of_axis(c, true)) {
-                FluidBoundary::Outflow(v) if bc_pressure => v.eval(self.t, Self::face_pos(cfg, c, i)),
-                FluidBoundary::Outflow(_) => 0.0,
-                _ => cell(q),
+                | FluidBoundary::Outflow(v) if bc_pressure => {
+                    v.eval(self.t, Self::face_pos(cfg, c, i))
+                },
+                | FluidBoundary::Outflow(_) => 0.0,
+                | _ => cell(q),
             };
             return (pout - cell(q)) / (0.5 * h);
         }
@@ -1159,9 +1368,13 @@ impl NsSolver {
                 let mut j = i;
                 j[c] += 1;
                 let (ap_hi, ap_lo) = self.ib.as_ref().map_or((1.0, 1.0), |ib| {
-                    (ib.aperture[c][Self::fidx(e, j)], ib.aperture[c][Self::fidx(e, i)])
+                    (
+                        ib.aperture[c][Self::fidx(e, j)],
+                        ib.aperture[c][Self::fidx(e, i)],
+                    )
                 });
-                s += (ap_hi * self.u[c][Self::fidx(e, j)] - ap_lo * self.u[c][Self::fidx(e, i)]) / self.h(c);
+                s += (ap_hi * self.u[c][Self::fidx(e, j)] - ap_lo * self.u[c][Self::fidx(e, i)])
+                    / self.h(c);
             }
             d[p] = s;
         }
@@ -1177,11 +1390,13 @@ impl NsSolver {
         let dt = self.dt;
         let t_new = self.t + dt;
         let nu = self.cfg.nu;
-        let ext: Vec<(Vec<f64>, [usize; 3])> = (0..cfg_dim).map(|c| self.extended(c, self.t)).collect();
+        let ext: Vec<(Vec<f64>, [usize; 3])> =
+            (0..cfg_dim).map(|c| self.extended(c, self.t)).collect();
         let (conv, lap) = self.convection_and_laplacian(&ext);
         let les = self.les_force(&ext);
         if self.th.is_some() {
-            let adv = self.temperature_advection(&self.th.as_ref().map(|t| t.t.clone()).unwrap_or_default());
+            let adv = self
+                .temperature_advection(&self.th.as_ref().map(|t| t.t.clone()).unwrap_or_default());
             if let Some(st) = &mut self.th {
                 st.adv_now = adv;
             }
@@ -1192,7 +1407,13 @@ impl NsSolver {
             }
             self.conv_prev.as_ref().map_or_else(
                 || conv[c].clone(),
-                |prev| conv[c].iter().zip(&prev[c]).map(|(a, b)| 1.5 * a - 0.5 * b).collect(),
+                |prev| {
+                    conv[c]
+                        .iter()
+                        .zip(&prev[c])
+                        .map(|(a, b)| 1.5 * a - 0.5 * b)
+                        .collect()
+                },
             )
         });
         self.update_boundary_values(t_new);
@@ -1204,7 +1425,11 @@ impl NsSolver {
             for (r, &p) in helm.rows.iter().enumerate() {
                 let i = Self::fijk(e, p);
                 let x = Self::face_pos(&self.cfg, c, i);
-                let f = self.cfg.force.as_ref().map_or(0.0, |ff| ff(self.t + 0.5 * dt, x)[c])
+                let f = self
+                    .cfg
+                    .force
+                    .as_ref()
+                    .map_or(0.0, |ff| ff(self.t + 0.5 * dt, x)[c])
                     + self.buoyancy(c, i)
                     + les.as_ref().map_or(0.0, |l| l[c][p]);
                 let g = self.pressure_gradient(c, i, &self.p, true);
@@ -1213,11 +1438,15 @@ impl NsSolver {
             for (r, coef, term) in &helm.terms {
                 rhs[*r] += coef
                     * match term {
-                        Term::Const(v) => *v,
-                        Term::Fixed(idx) => self.bvals[c][*idx],
-                        Term::Wall { face, pos } => match self.cfg.bcs.get(*face) {
-                            FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => v[c].eval(t_new, *pos),
-                            _ => 0.0,
+                        | Term::Const(v) => *v,
+                        | Term::Fixed(idx) => self.bvals[c][*idx],
+                        | Term::Wall { face, pos } => {
+                            match self.cfg.bcs.get(*face) {
+                                | FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => {
+                                    v[c].eval(t_new, *pos)
+                                },
+                                | _ => 0.0,
+                            }
                         },
                     };
             }
@@ -1231,16 +1460,29 @@ impl NsSolver {
         // projection
         let div = self.divergence();
         let ncell = div.len();
-        let rhs: Vec<f64> = (0..ncell).map(|p| if self.pfluid[p] { div[p] / dt } else { 0.0 }).collect();
+        let rhs: Vec<f64> = (0..ncell)
+            .map(|p| {
+                if self.pfluid[p] {
+                    div[p] / dt
+                } else {
+                    0.0
+                }
+            })
+            .collect();
         let mut rhs = rhs;
         if !(0..self.cfg.dim).any(|a| {
             !self.periodic[a]
-                && (matches!(self.cfg.bcs.get(Face::of_axis(a, false)), FluidBoundary::Outflow(_))
-                    || matches!(self.cfg.bcs.get(Face::of_axis(a, true)), FluidBoundary::Outflow(_)))
-        })
-            && let Some(p0) = (0..ncell).find(|&p| self.pfluid[p]) {
-                rhs[p0] = 0.0;
-            }
+                && (matches!(
+                    self.cfg.bcs.get(Face::of_axis(a, false)),
+                    FluidBoundary::Outflow(_)
+                ) || matches!(
+                    self.cfg.bcs.get(Face::of_axis(a, true)),
+                    FluidBoundary::Outflow(_)
+                ))
+        }) && let Some(p0) = (0..ncell).find(|&p| self.pfluid[p])
+        {
+            rhs[p0] = 0.0;
+        }
         let phi = self.pmat.solve(&rhs, None)?;
         for c in 0..self.cfg.dim {
             let e = Self::ext(&self.cfg, c);
@@ -1255,7 +1497,12 @@ impl NsSolver {
         self.apply_fixed();
         for p in 0..ncell {
             if self.pfluid[p] {
-                self.p[p] += phi[p] - if self.cfg.rotational { 0.5 * nu * div[p] } else { 0.0 };
+                self.p[p] += phi[p]
+                    - if self.cfg.rotational {
+                        0.5 * nu * div[p]
+                    } else {
+                        0.0
+                    };
             }
         }
         let _ = old;
@@ -1270,7 +1517,10 @@ impl NsSolver {
     ///
     /// # Errors
     /// See [`NsSolver::step`].
-    pub fn run(&mut self, steps: usize) -> Result<(), String> {
+    pub fn run(
+        &mut self,
+        steps: usize,
+    ) -> Result<(), String> {
         for _ in 0..steps {
             self.step()?;
         }
@@ -1291,13 +1541,20 @@ impl NsSolver {
 
     /// Cell size.
     #[must_use]
-    pub fn cell_size(&self, a: usize) -> f64 {
+    pub fn cell_size(
+        &self,
+        a: usize,
+    ) -> f64 {
         self.h(a)
     }
 
     /// Multilinear interpolation of velocity component `c` at `x`.
     #[must_use]
-    pub fn sample_velocity(&self, c: usize, x: [f64; 3]) -> f64 {
+    pub fn sample_velocity(
+        &self,
+        c: usize,
+        x: [f64; 3],
+    ) -> f64 {
         let cfg = &self.cfg;
         let e = Self::ext(cfg, c);
         let mut lo = [0usize; 3];
@@ -1330,7 +1587,10 @@ impl NsSolver {
 
     /// Cell-centred pressure at flat cell index.
     #[must_use]
-    pub const fn cell_index(&self, i: [usize; 3]) -> usize {
+    pub const fn cell_index(
+        &self,
+        i: [usize; 3],
+    ) -> usize {
         Self::fidx(self.cfg.n, i)
     }
 
@@ -1344,7 +1604,11 @@ impl NsSolver {
             let e = Self::ext(cfg, c);
             for p in 0..self.u[c].len() {
                 let i = Self::fijk(e, p);
-                let wgt = if i[c] == 0 || i[c] == cfg.n[c] { 0.5 } else { 1.0 };
+                let wgt = if i[c] == 0 || i[c] == cfg.n[c] {
+                    0.5
+                } else {
+                    1.0
+                };
                 s += wgt * self.u[c][p] * self.u[c][p];
             }
         }
@@ -1353,14 +1617,21 @@ impl NsSolver {
 
     /// Volumetric flux through the plane `x_axis = index` (face index).
     #[must_use]
-    pub fn flux_through(&self, axis: usize, face_index: usize) -> f64 {
+    pub fn flux_through(
+        &self,
+        axis: usize,
+        face_index: usize,
+    ) -> f64 {
         let cfg = &self.cfg;
         let e = Self::ext(cfg, axis);
         let mut s = 0.0;
         for p in 0..self.u[axis].len() {
             let i = Self::fijk(e, p);
             if i[axis] == face_index {
-                let area: f64 = (0..cfg.dim).filter(|&a| a != axis).map(|a| self.h(a)).product();
+                let area: f64 = (0..cfg.dim)
+                    .filter(|&a| a != axis)
+                    .map(|a| self.h(a))
+                    .product();
                 s += self.u[axis][p] * area;
             }
         }
@@ -1370,7 +1641,10 @@ impl NsSolver {
     /// Maximum speed over the faces (for CFL estimates).
     #[must_use]
     pub fn max_speed(&self) -> f64 {
-        self.u.iter().flat_map(|v| v.iter()).fold(0.0_f64, |m, x| m.max(x.abs()))
+        self.u
+            .iter()
+            .flat_map(|v| v.iter())
+            .fold(0.0_f64, |m, x| m.max(x.abs()))
     }
 }
 
@@ -1386,8 +1660,13 @@ struct ThermalState {
 }
 
 impl NsSolver {
-    fn build_thermal(cfg: &NsConfig, dt: f64) -> Result<Option<ThermalState>, String> {
-        let Some(th) = &cfg.thermal else { return Ok(None) };
+    fn build_thermal(
+        cfg: &NsConfig,
+        dt: f64,
+    ) -> Result<Option<ThermalState>, String> {
+        let Some(th) = &cfg.thermal else {
+            return Ok(None);
+        };
         if cfg.body.is_some() || cfg.solid.is_some() {
             return Err("the thermal field needs a domain without obstacles".into());
         }
@@ -1430,8 +1709,8 @@ impl NsSolver {
                         mtrip.push((p, p, 0.5 * th.kappa * dt * w));
                     } else {
                         match th.bcs[2 * a + si] {
-                            ScalarBc::Adiabatic | ScalarBc::Periodic => {},
-                            ScalarBc::Dirichlet(tw) => {
+                            | ScalarBc::Adiabatic | ScalarBc::Periodic => {},
+                            | ScalarBc::Dirichlet(tw) => {
                                 atrip.push((p, p, -2.0 * w));
                                 bsrc[p] += 2.0 * w * tw;
                                 mtrip.push((p, p, 0.5 * th.kappa * dt * 2.0 * w));
@@ -1443,12 +1722,27 @@ impl NsSolver {
         }
         let amat = Csr::from_triplets(ncell, ncell, &atrip);
         let sys = LinearSystem::new(Csr::from_triplets(ncell, ncell, &mtrip), LinearSolver::Auto)?;
-        Ok(Some(ThermalState { t, t_prev: None, adv_prev: None, adv_now: vec![0.0; ncell], sys, amat, bsrc }))
+        Ok(Some(ThermalState {
+            t,
+            t_prev: None,
+            adv_prev: None,
+            adv_now: vec![0.0; ncell],
+            sys,
+            amat,
+            bsrc,
+        }))
     }
 
     /// Face value of the temperature between cells `f - 1` and `f` along `a`
     /// (`f` in `0..=n`), for the transporting velocity `v`.
-    fn temperature_face(&self, t: &[f64], i: [usize; 3], a: usize, f: usize, v: f64) -> f64 {
+    fn temperature_face(
+        &self,
+        t: &[f64],
+        i: [usize; 3],
+        a: usize,
+        f: usize,
+        v: f64,
+    ) -> f64 {
         let n = self.cfg.n;
         let th = self.cfg.thermal.as_ref();
         let cell = |k: isize| -> Option<f64> {
@@ -1467,36 +1761,51 @@ impl NsSolver {
         let fi = f as isize;
         let (c0, c1) = (cell(fi - 1), cell(fi));
         match (c0, c1) {
-            (Some(l), Some(r)) => {
+            | (Some(l), Some(r)) => {
                 let central = f64::midpoint(l, r);
                 if self.cfg.convection == Convection::Central {
                     return central;
                 }
-                let (up, upup, down) = if v >= 0.0 { (l, cell(fi - 2), r) } else { (r, cell(fi + 1), l) };
+                let (up, upup, down) = if v >= 0.0 {
+                    (l, cell(fi - 2), r)
+                } else {
+                    (r, cell(fi + 1), l)
+                };
                 let Some(uu) = upup else { return central };
                 match self.cfg.convection {
-                    Convection::Central => central,
-                    Convection::Quick => 0.75 * up + 0.375 * down - 0.125 * uu,
-                    Convection::Tvd(lim) => {
+                    | Convection::Central => central,
+                    | Convection::Quick => 0.75 * up + 0.375 * down - 0.125 * uu,
+                    | Convection::Tvd(lim) => {
                         let den = down - up;
-                        if den.abs() < 1e-300 { up } else { up + 0.5 * lim.psi((up - uu) / den) * den }
+                        if den.abs() < 1e-300 {
+                            up
+                        } else {
+                            up + 0.5 * lim.psi((up - uu) / den) * den
+                        }
                     },
                 }
             },
-            (None, Some(r)) => match th.map(|t| t.bcs[2 * a]) {
-                Some(ScalarBc::Dirichlet(tw)) => tw,
-                _ => r,
+            | (None, Some(r)) => {
+                match th.map(|t| t.bcs[2 * a]) {
+                    | Some(ScalarBc::Dirichlet(tw)) => tw,
+                    | _ => r,
+                }
             },
-            (Some(l), None) => match th.map(|t| t.bcs[2 * a + 1]) {
-                Some(ScalarBc::Dirichlet(tw)) => tw,
-                _ => l,
+            | (Some(l), None) => {
+                match th.map(|t| t.bcs[2 * a + 1]) {
+                    | Some(ScalarBc::Dirichlet(tw)) => tw,
+                    | _ => l,
+                }
             },
-            (None, None) => 0.0,
+            | (None, None) => 0.0,
         }
     }
 
     /// Conservative advection `∇·(u T)` of the temperature at every cell.
-    fn temperature_advection(&self, t: &[f64]) -> Vec<f64> {
+    fn temperature_advection(
+        &self,
+        t: &[f64],
+    ) -> Vec<f64> {
         let cfg = &self.cfg;
         let n = cfg.n;
         let ncell: usize = n.iter().product();
@@ -1530,7 +1839,10 @@ impl NsSolver {
     ///
     /// # Errors
     /// Without a thermal model or for a wrong length.
-    pub fn set_temperature(&mut self, t: &[f64]) -> Result<(), String> {
+    pub fn set_temperature(
+        &mut self,
+        t: &[f64],
+    ) -> Result<(), String> {
         let st = self.th.as_mut().ok_or("no thermal model configured")?;
         if t.len() != st.t.len() {
             return Err("temperature field has the wrong length".into());
@@ -1547,11 +1859,21 @@ impl NsSolver {
         let Some(st) = &self.th else { return Ok(()) };
         let kappa = self.cfg.thermal.as_ref().map_or(0.0, |t| t.kappa);
         let adv = st.adv_now.clone();
-        let adv_ab = st.adv_prev.as_ref().map_or_else(|| adv.clone(), |prev| adv.iter().zip(prev).map(|(a, b)| 1.5 * a - 0.5 * b).collect());
+        let adv_ab = st.adv_prev.as_ref().map_or_else(
+            || adv.clone(),
+            |prev| {
+                adv.iter()
+                    .zip(prev)
+                    .map(|(a, b)| 1.5 * a - 0.5 * b)
+                    .collect()
+            },
+        );
         let ncell = st.t.len();
         let mut lt = vec![0.0; ncell];
         st.amat.matvec(&st.t, &mut lt);
-        let rhs: Vec<f64> = (0..ncell).map(|p| st.t[p] - dt * adv_ab[p] + 0.5 * kappa * dt * lt[p] + kappa * dt * st.bsrc[p]).collect();
+        let rhs: Vec<f64> = (0..ncell)
+            .map(|p| st.t[p] - dt * adv_ab[p] + 0.5 * kappa * dt * lt[p] + kappa * dt * st.bsrc[p])
+            .collect();
         let new = st.sys.solve(&rhs, Some(&st.t))?;
         if let Some(st) = &mut self.th {
             st.t_prev = Some(std::mem::replace(&mut st.t, new));
@@ -1561,12 +1883,20 @@ impl NsSolver {
     }
 
     /// Boussinesq force on face `p` of component `c` from the extrapolated temperature.
-    fn buoyancy(&self, c: usize, i: [usize; 3]) -> f64 {
-        let (Some(st), Some(th)) = (&self.th, &self.cfg.thermal) else { return 0.0 };
+    fn buoyancy(
+        &self,
+        c: usize,
+        i: [usize; 3],
+    ) -> f64 {
+        let (Some(st), Some(th)) = (&self.th, &self.cfg.thermal) else {
+            return 0.0;
+        };
         let n = self.cfg.n;
         let tval = |q: [usize; 3]| {
             let k = Self::fidx(n, q);
-            st.t_prev.as_ref().map_or(st.t[k], |tp| 1.5 * st.t[k] - 0.5 * tp[k])
+            st.t_prev
+                .as_ref()
+                .map_or(st.t[k], |tp| 1.5 * st.t[k] - 0.5 * tp[k])
         };
         let mut hi = i;
         hi[c] = i[c].min(n[c] - 1);
@@ -1576,7 +1906,11 @@ impl NsSolver {
     }
 
     /// Velocity gradient `G[c][a] = ∂_a u_c` at the centre of cell `j`.
-    fn centre_gradient(&self, ext: &[(Vec<f64>, [usize; 3])], j: [isize; 3]) -> [[f64; 3]; 3] {
+    fn centre_gradient(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+        j: [isize; 3],
+    ) -> [[f64; 3]; 3] {
         let dim = self.cfg.dim;
         let mut g = [[0.0; 3]; 3];
         let ucen = |c: usize, cell: [isize; 3]| {
@@ -1601,10 +1935,16 @@ impl NsSolver {
         g
     }
 
-    fn eddy_viscosity_from(&self, ext: &[(Vec<f64>, [usize; 3])]) -> Vec<f64> {
+    fn eddy_viscosity_from(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+    ) -> Vec<f64> {
         let cfg = &self.cfg;
         let ncell: usize = cfg.n.iter().product();
-        let delta = (0..cfg.dim).map(|a| self.h(a)).product::<f64>().powf(1.0 / cfg.dim as f64);
+        let delta = (0..cfg.dim)
+            .map(|a| self.h(a))
+            .product::<f64>()
+            .powf(1.0 / cfg.dim as f64);
         let mut out = vec![0.0; ncell];
         for (p, nut) in out.iter_mut().enumerate() {
             let i = Self::fijk(cfg.n, p);
@@ -1617,9 +1957,9 @@ impl NsSolver {
             }
             let ss: f64 = sij.iter().flatten().map(|x| x * x).sum();
             *nut = match cfg.les {
-                LesModel::None => 0.0,
-                LesModel::Smagorinsky { cs } => (cs * delta).powi(2) * (2.0 * ss).sqrt(),
-                LesModel::Wale { cw } => {
+                | LesModel::None => 0.0,
+                | LesModel::Smagorinsky { cs } => (cs * delta).powi(2) * (2.0 * ss).sqrt(),
+                | LesModel::Wale { cw } => {
                     let mut g2 = [[0.0; 3]; 3];
                     for r in 0..3 {
                         for c in 0..3 {
@@ -1630,12 +1970,17 @@ impl NsSolver {
                     let mut sd2 = 0.0;
                     for r in 0..3 {
                         for c in 0..3 {
-                            let v = f64::midpoint(g2[r][c], g2[c][r]) - if r == c { tr / 3.0 } else { 0.0 };
+                            let v = f64::midpoint(g2[r][c], g2[c][r])
+                                - if r == c { tr / 3.0 } else { 0.0 };
                             sd2 += v * v;
                         }
                     }
                     let den = ss.powf(2.5) + sd2.powf(1.25);
-                    if den < 1e-300 { 0.0 } else { (cw * delta).powi(2) * sd2.powf(1.5) / den }
+                    if den < 1e-300 {
+                        0.0
+                    } else {
+                        (cw * delta).powi(2) * sd2.powf(1.5) / den
+                    }
                 },
             };
         }
@@ -1645,12 +1990,17 @@ impl NsSolver {
     /// Eddy viscosity `ν_t` of the sub-grid-scale model at every cell centre.
     #[must_use]
     pub fn eddy_viscosity(&self) -> Vec<f64> {
-        let ext: Vec<(Vec<f64>, [usize; 3])> = (0..self.cfg.dim).map(|c| self.extended(c, self.t)).collect();
+        let ext: Vec<(Vec<f64>, [usize; 3])> = (0..self.cfg.dim)
+            .map(|c| self.extended(c, self.t))
+            .collect();
         self.eddy_viscosity_from(&ext)
     }
 
     /// Explicit sub-grid force `∇·(ν_t (∇u + ∇uᵀ))` at every face.
-    fn les_force(&self, ext: &[(Vec<f64>, [usize; 3])]) -> Option<[Vec<f64>; 3]> {
+    fn les_force(
+        &self,
+        ext: &[(Vec<f64>, [usize; 3])],
+    ) -> Option<[Vec<f64>; 3]> {
         if self.cfg.les == LesModel::None {
             return None;
         }
@@ -1701,13 +2051,15 @@ impl NsSolver {
                                 hi[a] += 1;
                                 let mut lo = hi;
                                 lo[c] -= 1;
-                                dau = (self.ext_get(ext, a, hi) - self.ext_get(ext, a, lo)) / self.h(c);
+                                dau = (self.ext_get(ext, a, hi) - self.ext_get(ext, a, lo))
+                                    / self.h(c);
                             } else {
                                 nb[a] -= 1;
                                 dcu = (uc - self.ext_get(ext, c, nb)) / h;
                                 let mut lo = ii;
                                 lo[c] -= 1;
-                                dau = (self.ext_get(ext, a, ii) - self.ext_get(ext, a, lo)) / self.h(c);
+                                dau = (self.ext_get(ext, a, ii) - self.ext_get(ext, a, lo))
+                                    / self.h(c);
                             }
                             // viscosity at the edge: mean of the four cells around it
                             let ia = if sgn > 0 { ii[a] } else { ii[a] - 1 };
@@ -1733,7 +2085,10 @@ impl NsSolver {
 
     /// Multilinear interpolation of the cell-centred pressure at `x`.
     #[must_use]
-    pub fn sample_pressure(&self, x: [f64; 3]) -> f64 {
+    pub fn sample_pressure(
+        &self,
+        x: [f64; 3],
+    ) -> f64 {
         let cfg = &self.cfg;
         let mut lo = [0usize; 3];
         let mut fr = [0.0; 3];
@@ -1762,14 +2117,25 @@ impl NsSolver {
 
     /// Fluid volume fraction of pressure cell `i` (1 without an immersed body).
     #[must_use]
-    pub fn volume_fraction(&self, i: [usize; 3]) -> f64 {
-        self.ib.as_ref().map_or(1.0, |ib| ib.vol_frac[Self::fidx(self.cfg.n, i)])
+    pub fn volume_fraction(
+        &self,
+        i: [usize; 3],
+    ) -> f64 {
+        self.ib
+            .as_ref()
+            .map_or(1.0, |ib| ib.vol_frac[Self::fidx(self.cfg.n, i)])
     }
 
     /// Open fraction of the cell face normal to axis `axis` with face index `i`.
     #[must_use]
-    pub fn face_aperture(&self, axis: usize, i: [usize; 3]) -> f64 {
-        self.ib.as_ref().map_or(1.0, |ib| ib.aperture[axis][Self::fidx(Self::ext(&self.cfg, axis), i)])
+    pub fn face_aperture(
+        &self,
+        axis: usize,
+        i: [usize; 3],
+    ) -> f64 {
+        self.ib.as_ref().map_or(1.0, |ib| {
+            ib.aperture[axis][Self::fidx(Self::ext(&self.cfg, axis), i)]
+        })
     }
 
     /// Force exerted by the fluid on whatever lies inside the box `[lo, hi]`,
@@ -1780,16 +2146,35 @@ impl NsSolver {
     /// result to be the drag of the enclosed body. In 2D the force is per unit
     /// length.
     #[must_use]
-    pub fn force_on_region(&self, lo: [f64; 3], hi: [f64; 3]) -> [f64; 3] {
+    pub fn force_on_region(
+        &self,
+        lo: [f64; 3],
+        hi: [f64; 3],
+    ) -> [f64; 3] {
         let cfg = &self.cfg;
         let dim = cfg.dim;
         let mut force = [0.0; 3];
-        let vel = |x: [f64; 3]| -> [f64; 3] { std::array::from_fn(|c| if c < dim { self.sample_velocity(c, x) } else { 0.0 }) };
+        let vel = |x: [f64; 3]| -> [f64; 3] {
+            std::array::from_fn(|c| {
+                if c < dim {
+                    self.sample_velocity(c, x)
+                } else {
+                    0.0
+                }
+            })
+        };
         for d in 0..dim {
             let others: Vec<usize> = (0..dim).filter(|&b| b != d).collect();
-            let counts: Vec<usize> = others.iter().map(|&b| (((hi[b] - lo[b]) / self.h(b)).round() as usize).max(1)).collect();
+            let counts: Vec<usize> = others
+                .iter()
+                .map(|&b| (((hi[b] - lo[b]) / self.h(b)).round() as usize).max(1))
+                .collect();
             let total: usize = counts.iter().product();
-            let da: f64 = others.iter().zip(&counts).map(|(&b, &m)| (hi[b] - lo[b]) / m as f64).product();
+            let da: f64 = others
+                .iter()
+                .zip(&counts)
+                .map(|(&b, &m)| (hi[b] - lo[b]) / m as f64)
+                .product();
             for (side, nd) in [(lo[d], -1.0_f64), (hi[d], 1.0)] {
                 for q in 0..total {
                     let mut x = [0.0; 3];

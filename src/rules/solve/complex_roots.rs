@@ -18,7 +18,6 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::as_expression;
-use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -26,6 +25,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::OpId;
 use crate::graph::Outcome;
+use crate::graph::op::core;
 use crate::rules::poly::rational_function_in;
 use crate::rules::poly::rootof::all_roots_as_objects;
 use crate::rules::poly::rootof::canonical_order;
@@ -77,10 +77,21 @@ fn quadratic(
             factors.push(graph.node(unit?, &[]));
         }
         let offset = graph.node(core::MUL, &factors);
-        let node = if centre_value.is_zero() { offset } else { graph.node(core::ADD, &[centre, offset]) };
+        let node = if centre_value.is_zero() {
+            offset
+        } else {
+            graph.node(core::ADD, &[centre, offset])
+        };
         let re = centre_value.to_f64()?;
         let signed = f64::from(i32::try_from(sign).ok()?) * size;
-        out.push((if negative { (re, signed) } else { (re + signed, 0.0) }, node));
+        out.push((
+            if negative {
+                (re, signed)
+            } else {
+                (re + signed, 0.0)
+            },
+            node,
+        ));
     }
     Some(out)
 }
@@ -96,9 +107,13 @@ impl Kernel for SolveComplex {
         node: NodeId,
     ) -> Outcome {
         let graph = &mut *cx.graph;
-        let &[equation, unknown] = graph.children(node) else { return Outcome::Pass };
+        let &[equation, unknown] = graph.children(node) else {
+            return Outcome::Pass;
+        };
         let expr = as_expression(graph, equation);
-        let Some((numerator, _)) = rational_function_in(graph, expr, unknown) else { return Outcome::Pass };
+        let Some((numerator, _)) = rational_function_in(graph, expr, unknown) else {
+            return Outcome::Pass;
+        };
         let mut q = numerator;
         while q.last().is_some_and(Zero::is_zero) {
             q.pop();
@@ -117,11 +132,15 @@ impl Kernel for SolveComplex {
             match factor.as_slice() {
                 | [c0, c1] => {
                     let value = BigRational::new(-c0.clone(), c1.clone());
-                    let Some(approx) = value.to_f64() else { return Outcome::Pass };
+                    let Some(approx) = value.to_f64() else {
+                        return Outcome::Pass;
+                    };
                     roots.push(((approx, 0.0), graph.num(Number::rat(value))));
                 },
                 | [c, b, a] => {
-                    let Some(found) = quadratic(graph, c, b, a) else { return Outcome::Pass };
+                    let Some(found) = quadratic(graph, c, b, a) else {
+                        return Outcome::Pass;
+                    };
                     roots.extend(found);
                 },
                 | _ => {
@@ -129,7 +148,9 @@ impl Kernel for SolveComplex {
                         roots.extend(found);
                         continue;
                     }
-                    let Some(found) = all_roots_as_objects(graph, &factor) else { return Outcome::Pass };
+                    let Some(found) = all_roots_as_objects(graph, &factor) else {
+                        return Outcome::Pass;
+                    };
                     roots.extend(found);
                 },
             }
@@ -158,14 +179,25 @@ mod tests {
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &rules).unwrap_or_else(|e| panic!("{e}"));
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let node = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root).unwrap_or(root);
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let node = Extractor::new(&g, &[root], &ClosedForm)
+            .build(&mut g, root)
+            .unwrap_or(root);
         let text = g.display(node);
         let values = g
             .children(node)
             .to_vec()
             .iter()
-            .map(|&item| g.eval_complex(item, &std::collections::HashMap::new()).unwrap_or(Complex64::new(f64::NAN, f64::NAN)))
+            .map(|&item| {
+                g.eval_complex(item, &std::collections::HashMap::new())
+                    .unwrap_or(Complex64::new(f64::NAN, f64::NAN))
+            })
             .collect();
         (text, values)
     }
@@ -175,8 +207,18 @@ mod tests {
         // x^2 + 1: the imaginary unit.
         let (text, roots) = complex_roots("solve_complex(x^2 + 1, x)");
         assert_eq!(roots.len(), 2, "{text}");
-        assert!(roots.iter().any(|r| (r - Complex64::new(0.0, 1.0)).norm() < 1e-12), "{text}");
-        assert!(roots.iter().any(|r| (r - Complex64::new(0.0, -1.0)).norm() < 1e-12), "{text}");
+        assert!(
+            roots
+                .iter()
+                .any(|r| (r - Complex64::new(0.0, 1.0)).norm() < 1e-12),
+            "{text}"
+        );
+        assert!(
+            roots
+                .iter()
+                .any(|r| (r - Complex64::new(0.0, -1.0)).norm() < 1e-12),
+            "{text}"
+        );
         // x^5 - x - 1: one real root and four complex ones as root_of objects.
         let (text, roots) = complex_roots("solve_complex(x^5 - x - 1, x)");
         assert_eq!(roots.len(), 5, "{text}");
@@ -212,7 +254,10 @@ mod tests {
         assert!(!text.contains("root_of"), "{text}");
         for r in &roots {
             let residual = r.powi(7) - 7.0 * r.powi(5) + 14.0 * r.powi(3) - 7.0 * r - 3.0;
-            assert!(residual.norm() < 1e-7 * (1.0 + r.norm().powi(7)), "{r}: {residual}");
+            assert!(
+                residual.norm() < 1e-7 * (1.0 + r.norm().powi(7)),
+                "{r}: {residual}"
+            );
         }
     }
 }

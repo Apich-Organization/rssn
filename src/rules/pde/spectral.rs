@@ -30,6 +30,7 @@ use super::Conditions;
 use super::Problem;
 use super::agree;
 use super::dummy;
+use super::modes::Cylinder;
 use super::modes::Family;
 use super::modes::annulus_families;
 use super::modes::associated_mode;
@@ -39,7 +40,6 @@ use super::modes::kind_of;
 use super::modes::legendre_integral;
 use super::modes::polar_norm;
 use super::modes::robin_families;
-use super::modes::Cylinder;
 use super::satisfies;
 use super::util::call;
 use super::util::contains_op;
@@ -101,7 +101,13 @@ impl End {
         } else {
             return None;
         };
-        Some(Self { kind, point: c.point, p: a, q: b, value: c.value })
+        Some(Self {
+            kind,
+            point: c.point,
+            p: a,
+            q: b,
+            value: c.value,
+        })
     }
 }
 
@@ -125,25 +131,46 @@ pub(super) enum Shape {
     /// A polar angle `[0, π]`: Legendre functions of `cos θ`, associated
     /// Legendre functions of the order of the preceding azimuthal axis when
     /// `azimuth` is set.
-    Polar { azimuth: bool },
+    Polar {
+        azimuth: bool,
+    },
     /// The interval `[-1, 1]` with regularity at both ends: Legendre
     /// polynomials of the variable itself.
     Legendre,
     /// A radius `[0, R]` (`[a, R]` with `inner = Some((a, end))`); `sphere`
     /// for a ball (weight `r²`); `has_angle` when the Bessel order comes
     /// from the previous axis.
-    Radial { radius: NodeId, inner: Option<(NodeId, End)>, end: End, sphere: bool, has_angle: bool },
+    Radial {
+        radius: NodeId,
+        inner: Option<(NodeId, End)>,
+        end: End,
+        sphere: bool,
+        has_angle: bool,
+    },
     /// A regular Sturm–Liouville problem on `[start, stop]` with the numeric
     /// operators `sl_eigen`, `sl_mode`, `sl_weight` (`params` their shared
     /// arguments after the mode index and the point).
-    General { start: NodeId, stop: NodeId, params: Vec<NodeId> },
+    General {
+        start: NodeId,
+        stop: NodeId,
+        params: Vec<NodeId>,
+    },
     /// A periodic problem solved by Hill's method: orthonormal modes
     /// `hill_mode(m, x - start, params…)`, eigenvalues `hill_eigen`.
-    Hill { start: NodeId, stop: NodeId, params: Vec<NodeId> },
+    Hill {
+        start: NodeId,
+        stop: NodeId,
+        params: Vec<NodeId>,
+    },
     /// Polynomial eigenfunctions (Hermite, Laguerre, Jacobi type) on
     /// `[start, stop]` with weight `weight`: `(mode, eigenvalue, norm)` per
     /// degree.
-    Orthogonal { start: NodeId, stop: NodeId, weight: NodeId, modes: Vec<(NodeId, NodeId, NodeId)> },
+    Orthogonal {
+        start: NodeId,
+        stop: NodeId,
+        weight: NodeId,
+        modes: Vec<(NodeId, NodeId, NodeId)>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -193,8 +220,12 @@ impl Axis {
             },
             | Shape::Polar { .. } => Some((zero, pi(cx)?)),
             | Shape::Legendre => Some((cx.graph.int(-1), cx.graph.int(1))),
-            | Shape::Radial { radius, inner, .. } => Some((inner.as_ref().map_or(zero, |(a, _)| *a), *radius)),
-            | Shape::General { start, stop, .. } | Shape::Hill { start, stop, .. } | Shape::Orthogonal { start, stop, .. } => Some((*start, *stop)),
+            | Shape::Radial { radius, inner, .. } => {
+                Some((inner.as_ref().map_or(zero, |(a, _)| *a), *radius))
+            },
+            | Shape::General { start, stop, .. }
+            | Shape::Hill { start, stop, .. }
+            | Shape::Orthogonal { start, stop, .. } => Some((*start, *stop)),
         }
     }
 
@@ -203,7 +234,9 @@ impl Axis {
         cx: &mut Cx<'_>,
     ) -> Option<NodeId> {
         Some(match &self.shape {
-            | Shape::Interval(_) | Shape::Angle | Shape::Legendre | Shape::Hill { .. } => cx.graph.int(1),
+            | Shape::Interval(_) | Shape::Angle | Shape::Legendre | Shape::Hill { .. } => {
+                cx.graph.int(1)
+            },
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
             | Shape::Orthogonal { weight, .. } => *weight,
@@ -216,7 +249,10 @@ impl Axis {
     }
 
     const fn finite_only(&self) -> bool {
-        matches!(self.shape, Shape::Polar { .. } | Shape::Legendre | Shape::Orthogonal { .. })
+        matches!(
+            self.shape,
+            Shape::Polar { .. } | Shape::Legendre | Shape::Orthogonal { .. }
+        )
     }
 
     fn families(
@@ -247,17 +283,37 @@ impl Axis {
                 let n_theta = mul(cx.graph, &[n, theta]);
                 let cos = call(cx, "cos", &[n_theta])?;
                 let sin = call(cx, "sin", &[n_theta])?;
-                let norm = if numeric { None } else { Some(pi(cx)?) };
-                Some(vec![Family::new(cos, zero, 0, 1, norm), Family::new(sin, zero, 1, 0, norm)])
+                let norm = if numeric {
+                    None
+                } else {
+                    Some(pi(cx)?)
+                };
+                Some(vec![
+                    Family::new(cos, zero, 0, 1, norm),
+                    Family::new(sin, zero, 1, 0, norm),
+                ])
             },
             | Shape::Polar { azimuth } => {
                 // The order m comes from the azimuthal index (a literal).
-                let m = if *azimuth { cx.graph.number_of(path.last()?.index)?.to_i64()? } else { 0 };
-                let l = if numeric { Some(cx.graph.number_of(n)?.to_i64()?) } else { None };
+                let m = if *azimuth {
+                    cx.graph.number_of(path.last()?.index)?.to_i64()?
+                } else {
+                    0
+                };
+                let l = if numeric {
+                    Some(cx.graph.number_of(n)?.to_i64()?)
+                } else {
+                    None
+                };
                 let c = call(cx, "cos", &[self.var])?;
                 let (mode, norm) = match l {
                     | Some(l) if l < m => return None,
-                    | Some(l) if m > 0 => (associated_mode(cx, self.var, l, m)?, Some(polar_norm(cx, l, m)?)),
+                    | Some(l) if m > 0 => {
+                        (
+                            associated_mode(cx, self.var, l, m)?,
+                            Some(polar_norm(cx, l, m)?),
+                        )
+                    },
                     | Some(l) => (call(cx, "legendre", &[n, c])?, Some(polar_norm(cx, l, 0)?)),
                     | None => {
                         let mode = call(cx, "legendre", &[n, c])?;
@@ -265,7 +321,14 @@ impl Axis {
                         let two_n = mul(cx.graph, &[two, n]);
                         let one = cx.graph.int(1);
                         let odd = add(cx.graph, &[two_n, one]);
-                        (mode, if m == 0 { Some(div(cx, two, odd)) } else { None })
+                        (
+                            mode,
+                            if m == 0 {
+                                Some(div(cx, two, odd))
+                            } else {
+                                None
+                            },
+                        )
                     },
                 };
                 Some(vec![Family::new(mode, zero, m, 0, norm)])
@@ -293,7 +356,11 @@ impl Axis {
                 Some(vec![Family::new(mode, eigen, 1, 0, Some(one))])
             },
             | Shape::Orthogonal { modes, .. } => {
-                let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+                let literal = if numeric {
+                    cx.graph.number_of(n).and_then(Number::to_i64)
+                } else {
+                    None
+                };
                 match literal {
                     | Some(degree) => {
                         let &(mode, eigen, norm) = modes.get(usize::try_from(degree).ok()?)?;
@@ -312,11 +379,34 @@ impl Axis {
                 let one = cx.graph.int(1);
                 Some(vec![Family::new(mode, eigen, 1, 0, Some(one))])
             },
-            | Shape::Radial { radius, inner, end, sphere, has_angle } => {
-                let order = if *has_angle { path.last()?.index } else { cx.graph.int(0) };
+            | Shape::Radial {
+                radius,
+                inner,
+                end,
+                sphere,
+                has_angle,
+            } => {
+                let order = if *has_angle {
+                    path.last()?.index
+                } else {
+                    cx.graph.int(0)
+                };
                 match inner {
-                    | Some((a, a_end)) => annulus_families(cx, self.var, (*a, a_end), (*radius, end), *sphere, order, n, numeric),
-                    | None => radial_families(cx, self.var, *radius, end, *sphere, order, n, numeric),
+                    | Some((a, a_end)) => {
+                        annulus_families(
+                            cx,
+                            self.var,
+                            (*a, a_end),
+                            (*radius, end),
+                            *sphere,
+                            order,
+                            n,
+                            numeric,
+                        )
+                    },
+                    | None => {
+                        radial_families(cx, self.var, *radius, end, *sphere, order, n, numeric)
+                    },
                 }
             },
         }
@@ -332,12 +422,20 @@ pub(super) fn interval_families(
     let pi = pi(cx)?;
     let l = iv.length;
     let inverse_l = powi(cx.graph, l, -1);
-    let xi = if is_zero_number(cx.graph, iv.start) { iv.var } else { sub(cx.graph, iv.var, iv.start) };
+    let xi = if is_zero_number(cx.graph, iv.start) {
+        iv.var
+    } else {
+        sub(cx.graph, iv.var, iv.start)
+    };
     let half_l = {
         let half = fraction(cx, 1, 2)?;
         mul(cx.graph, &[half, l])
     };
-    let norm = if numeric { None } else { Some(half_l) };
+    let norm = if numeric {
+        None
+    } else {
+        Some(half_l)
+    };
     let trig = |cx: &mut Cx<'_>, name: &str, k: NodeId| -> Option<NodeId> {
         let kx = mul(cx.graph, &[k, xi]);
         call(cx, name, &[kx])
@@ -352,7 +450,10 @@ pub(super) fn interval_families(
         let k = mul(cx.graph, &[two, n, pi, inverse_l]);
         let e = eigen(cx, k);
         let (c, s) = (trig(cx, "cos", k)?, trig(cx, "sin", k)?);
-        return Some(vec![Family::new(c, e, 0, 1, norm), Family::new(s, e, 1, 0, norm)]);
+        return Some(vec![
+            Family::new(c, e, 0, 1, norm),
+            Family::new(s, e, 1, 0, norm),
+        ]);
     }
     let integer_k = mul(cx.graph, &[n, pi, inverse_l]);
     let half_integer_k = {
@@ -360,11 +461,12 @@ pub(super) fn interval_families(
         let shifted = add(cx.graph, &[n, minus_half]);
         mul(cx.graph, &[shifted, pi, inverse_l])
     };
-    let one = |name: &str, k: NodeId, first: i64, forced: i64, cx: &mut Cx<'_>| -> Option<Vec<Family>> {
-        let mode = trig(cx, name, k)?;
-        let e = eigen(cx, k);
-        Some(vec![Family::new(mode, e, first, forced, norm)])
-    };
+    let one =
+        |name: &str, k: NodeId, first: i64, forced: i64, cx: &mut Cx<'_>| -> Option<Vec<Family>> {
+            let mode = trig(cx, name, k)?;
+            let e = eigen(cx, k);
+            Some(vec![Family::new(mode, e, first, forced, norm)])
+        };
     match (left, right) {
         | (Kind::Dirichlet, Kind::Dirichlet) => one("sin", integer_k, 1, 0, cx),
         | (Kind::Neumann, Kind::Neumann) => one("cos", integer_k, 0, 1, cx),
@@ -388,11 +490,16 @@ fn radial_families(
     let zero = cx.graph.int(0);
     let half = fraction(cx, 1, 2)?;
     // The Bessel order: n for a disk, l + 1/2 for a ball.
-    let nu = if sphere { add(cx.graph, &[order, half]) } else { order };
+    let nu = if sphere {
+        add(cx.graph, &[order, half])
+    } else {
+        order
+    };
     let nu = cx.simplify(nu);
     let order_value = cx.graph.number_of(nu).map(Number::to_f64);
     let neumann_like = is_zero_number(cx.graph, end.p);
-    let constant_mode = neumann_like && order_value.is_some_and(|v| (v - if sphere { 0.5 } else { 0.0 }).abs() < 1e-12);
+    let constant_mode = neumann_like
+        && order_value.is_some_and(|v| (v - if sphere { 0.5 } else { 0.0 }).abs() < 1e-12);
     if numeric && constant_mode && cx.graph.number_of(n).is_some_and(Number::is_zero) {
         let one = cx.graph.int(1);
         return Some(vec![Family::new(one, zero, 0, 1, None)]);
@@ -428,8 +535,12 @@ fn radial_families(
         | (_, Some(h), None) if h < 0.0 && !constant_mode => return None,
         | _ => None,
     };
-    if let (Some(sign), true) = (non_positive, numeric && cx.graph.number_of(n).is_some_and(Number::is_zero)) {
-        return super::modes::radial_non_positive(cx, r, radius, nu, shifted, sphere, sign).map(|f| vec![f]);
+    if let (Some(sign), true) = (
+        non_positive,
+        numeric && cx.graph.number_of(n).is_some_and(Number::is_zero),
+    ) {
+        return super::modes::radial_non_positive(cx, r, radius, nu, shifted, sphere, sign)
+            .map(|f| vec![f]);
     }
     let constant_mode = constant_mode || non_positive.is_some();
     let sin_form_hint = sphere && order_value.is_some_and(|v| (v - 0.5).abs() < 1e-12);
@@ -507,9 +618,29 @@ fn radial_families(
         let bracket = add(cx.graph, &[d2, second]);
         mul(cx.graph, &[r2_half, bracket])
     };
-    let norm = if numeric { if constant_mode && cx.graph.number_of(n).is_some_and(Number::is_zero) { None } else { Some(norm) } } else { Some(norm) };
-    let cylinder = Cylinder { nu, kappa, power2: if sphere { -1 } else { 0 }, parts: vec![(one, false)] };
-    Some(vec![Family { mode, eigen, first, forced, norm, cylinder: Some(cylinder) }])
+    let norm = if numeric {
+        if constant_mode && cx.graph.number_of(n).is_some_and(Number::is_zero) {
+            None
+        } else {
+            Some(norm)
+        }
+    } else {
+        Some(norm)
+    };
+    let cylinder = Cylinder {
+        nu,
+        kappa,
+        power2: if sphere { -1 } else { 0 },
+        parts: vec![(one, false)],
+    };
+    Some(vec![Family {
+        mode,
+        eigen,
+        first,
+        forced,
+        norm,
+        cylinder: Some(cylinder),
+    }])
 }
 
 // ----------------------------------------------------------------------
@@ -843,7 +974,11 @@ fn project(
             let factor = mul(cx.graph, &[sp.weight, at_end]);
             let c = mul(cx.graph, &[item.h, factor]);
             let c = div(cx, c, norm);
-            return Some(Item { role: item.role, h: cx.simplify(c), special: None });
+            return Some(Item {
+                role: item.role,
+                h: cx.simplify(c),
+                special: None,
+            });
         },
         | _ => {
             let (lo, hi) = axis.domain(cx)?;
@@ -858,7 +993,11 @@ fn project(
             div(cx, integral, norm)
         },
     };
-    Some(Item { role: item.role, h: cx.simplify(h), special: item.special })
+    Some(Item {
+        role: item.role,
+        h: cx.simplify(h),
+        special: item.special,
+    })
 }
 
 /// The projection integral `∫ h φ w dx` in closed form for polynomial data
@@ -884,7 +1023,15 @@ fn closed_projection(
         },
         | Shape::Radial { sphere, .. } => {
             let cylinder = fam.cylinder.as_ref()?;
-            cylinder_integral(cx, axis.var, lo, hi, if *sphere { 4 } else { 2 }, cylinder, h)
+            cylinder_integral(
+                cx,
+                axis.var,
+                lo,
+                hi,
+                if *sphere { 4 } else { 2 },
+                cylinder,
+                h,
+            )
         },
         | _ => None,
     }
@@ -949,7 +1096,11 @@ fn structural(
         for (it, r) in items.iter().zip(remaining.iter_mut()) {
             let zero = cx.graph.int(0);
             if cx.is_zero(*r) {
-                projected.push(Item { role: it.role, h: zero, special: None });
+                projected.push(Item {
+                    role: it.role,
+                    h: zero,
+                    special: None,
+                });
                 continue;
             }
             let c = super::derivative_by_node(cx, *r, fam.mode)?;
@@ -962,13 +1113,21 @@ fn structural(
                 *r = cx.simplify(rest);
                 any = true;
             }
-            projected.push(Item { role: it.role, h: c, special: None });
+            projected.push(Item {
+                role: it.role,
+                h: c,
+                special: None,
+            });
         }
         if any {
             out.push((m, number, fam, projected));
         }
     }
-    if remaining.iter().all(|&r| cx.is_zero(r)) { Some(out) } else { None }
+    if remaining.iter().all(|&r| cx.is_zero(r)) {
+        Some(out)
+    } else {
+        None
+    }
 }
 
 fn expand(
@@ -985,7 +1144,8 @@ fn expand(
     let axis = engine.axes.get(level)?;
     let stems = ["n", "m", "l", "q"];
     let (n_node, n_symbol) = dummy(cx, p, stems.get(level).copied().unwrap_or("q"));
-    cx.graph.assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
+    cx.graph
+        .assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
     let general_families = axis.families(cx, path, n_node)?;
     let zero = zero_node(cx);
     let mut terms = Vec::new();
@@ -993,7 +1153,10 @@ fn expand(
         let first = gfam.first;
         if let Some(branches) = structural(cx, engine, level, path, fi, first, items) {
             for (_, number, fam, projected) in branches {
-                path.push(Step { index: number, family: fam });
+                path.push(Step {
+                    index: number,
+                    family: fam,
+                });
                 let body = expand(cx, p, engine, level + 1, &projected, path);
                 path.pop();
                 terms.push(body?);
@@ -1009,8 +1172,14 @@ fn expand(
             for m in first..=LEGENDRE_MAX {
                 let number = cx.graph.int(m);
                 let fam_m = axis.families(cx, path, number)?.get(fi)?.clone();
-                let projected: Vec<Item> = items.iter().map(|it| project(cx, engine, level, &fam_m, it)).collect::<Option<_>>()?;
-                if projected.iter().any(|it| contains_op(cx.graph, it.h, "defint")) {
+                let projected: Vec<Item> = items
+                    .iter()
+                    .map(|it| project(cx, engine, level, &fam_m, it))
+                    .collect::<Option<_>>()?;
+                if projected
+                    .iter()
+                    .any(|it| contains_op(cx.graph, it.h, "defint"))
+                {
                     return None;
                 }
                 let live = projected.iter().any(|it| !is_zero_item(cx, it));
@@ -1018,7 +1187,10 @@ fn expand(
                     tail_zero = !live;
                 }
                 if live {
-                    path.push(Step { index: number, family: fam_m });
+                    path.push(Step {
+                        index: number,
+                        family: fam_m,
+                    });
                     let body = expand(cx, p, engine, level + 1, &projected, path);
                     path.pop();
                     terms.push(body?);
@@ -1029,25 +1201,43 @@ fn expand(
             }
             continue;
         }
-        let general: Vec<Item> = items.iter().map(|it| project(cx, engine, level, gfam, it)).collect::<Option<_>>()?;
-        let unresolved = general.iter().any(|it| contains_op(cx.graph, it.h, "defint"));
+        let general: Vec<Item> = items
+            .iter()
+            .map(|it| project(cx, engine, level, gfam, it))
+            .collect::<Option<_>>()?;
+        let unresolved = general
+            .iter()
+            .any(|it| contains_op(cx.graph, it.h, "defint"));
         let mut general_zero = general.iter().all(|it| is_zero_item(cx, it));
-        if !general_zero && !unresolved && general.iter().all(|it| vanishes_on_integers(cx, it.h, n_node, first + gfam.forced + WINDOW)) {
+        if !general_zero
+            && !unresolved
+            && general
+                .iter()
+                .all(|it| vanishes_on_integers(cx, it.h, n_node, first + gfam.forced + WINDOW))
+        {
             general_zero = true;
         }
         // Literal indices.
         let mut exact: Vec<(i64, NodeId, Family, Vec<Item>)> = Vec::new();
         let mut last_exceptional: Option<i64> = None;
-        let window = if unresolved { gfam.forced } else { WINDOW };
+        let window = if unresolved {
+            gfam.forced
+        } else {
+            WINDOW
+        };
         for m in first..first + window {
             let number = cx.graph.int(m);
             let fam_m = axis.families(cx, path, number)?.get(fi)?.clone();
-            let projected: Vec<Item> = items.iter().map(|it| project(cx, engine, level, &fam_m, it)).collect::<Option<_>>()?;
+            let projected: Vec<Item> = items
+                .iter()
+                .map(|it| project(cx, engine, level, &fam_m, it))
+                .collect::<Option<_>>()?;
             let mut differs = m < first + gfam.forced;
             if !differs && !unresolved {
                 for (g, e) in general.iter().zip(&projected) {
                     if general_zero {
-                        let live = !is_zero_item(cx, e) && sample(cx.graph, e.h, 0).is_none_or(|v| v.abs() > 1e-9);
+                        let live = !is_zero_item(cx, e)
+                            && sample(cx.graph, e.h, 0).is_none_or(|v| v.abs() > 1e-9);
                         differs |= live;
                     } else {
                         let substituted = cx.graph.substitute(g.h, n_node, number);
@@ -1068,14 +1258,20 @@ fn expand(
             if projected.iter().all(|it| is_zero_item(cx, it)) {
                 continue;
             }
-            path.push(Step { index: number, family: fam_m });
+            path.push(Step {
+                index: number,
+                family: fam_m,
+            });
             let body = expand(cx, p, engine, level + 1, &projected, path);
             path.pop();
             terms.push(body?);
         }
         if !general_zero {
             let start = last_exceptional.map_or(first, |m| m + 1);
-            path.push(Step { index: n_node, family: gfam.clone() });
+            path.push(Step {
+                index: n_node,
+                family: gfam.clone(),
+            });
             let body = expand(cx, p, engine, level + 1, &general, path);
             path.pop();
             let body = body?;
@@ -1116,7 +1312,16 @@ fn leaf(
     let f = cx.simplify(f);
     if let Some(ex) = engine.exterior {
         let index = path.last().map_or_else(|| cx.graph.int(0), |s| s.index);
-        let profile = exterior_profile(cx, ex.var, ex.radius, &ex.end, ex.sphere, ex.interior, ex.wavenumber2, index)?;
+        let profile = exterior_profile(
+            cx,
+            ex.var,
+            ex.radius,
+            &ex.end,
+            ex.sphere,
+            ex.interior,
+            ex.wavenumber2,
+            index,
+        )?;
         let mut factors = vec![c0, profile];
         factors.extend(path.iter().map(|st| st.family.mode));
         let term = mul(cx.graph, &factors);
@@ -1148,16 +1353,32 @@ fn face_profile(
     let ratio = div(cx, s, face.cjj);
     let k2 = neg(cx.graph, ratio);
     let k2 = cx.simplify(k2);
-    let xi = if is_zero_number(cx.graph, face.start) { face.var } else { sub(cx.graph, face.var, face.start) };
-    let arg = if face.near { sub(cx.graph, face.length, xi) } else { xi };
+    let xi = if is_zero_number(cx.graph, face.start) {
+        face.var
+    } else {
+        sub(cx.graph, face.var, face.start)
+    };
+    let arg = if face.near {
+        sub(cx.graph, face.length, xi)
+    } else {
+        xi
+    };
     if !face.classic {
         return robin_profile(cx, face, k2, arg);
     }
     if cx.is_zero(k2) {
-        return Some(if face.far_neumann { cx.graph.int(1) } else { div(cx, arg, face.length) });
+        return Some(if face.far_neumann {
+            cx.graph.int(1)
+        } else {
+            div(cx, arg, face.length)
+        });
     }
     let kappa = sqrt(cx, k2)?;
-    let (num, den) = if face.far_neumann { ("cosh", "cosh") } else { ("sinh", "sinh") };
+    let (num, den) = if face.far_neumann {
+        ("cosh", "cosh")
+    } else {
+        ("sinh", "sinh")
+    };
     let top_arg = mul(cx.graph, &[kappa, arg]);
     let bottom_arg = mul(cx.graph, &[kappa, face.length]);
     let top = call(cx, num, &[top_arg])?;
@@ -1238,7 +1459,11 @@ fn order_points(
         return Some((b, a, true));
     }
     let (va, vb) = (sample(cx.graph, a, 0)?, sample(cx.graph, b, 0)?);
-    if va <= vb { Some((a, b, false)) } else { Some((b, a, true)) }
+    if va <= vb {
+        Some((a, b, false))
+    } else {
+        Some((b, a, true))
+    }
 }
 
 /// The interval structure of variable `j`, from its two conditions.
@@ -1253,10 +1478,21 @@ pub(super) fn interval(
     let zero_index = vec![0; p.dimension()];
     // Operators of order four and more carry the extra conditions
     // `u_xx = 0` (with `u = 0`) or `u_xxx = 0` (with `u_x = 0`).
-    let on: Vec<&Condition> = all_on.iter().copied().filter(|c| c.derivative == zero_index || c.derivative == p.unit(j, 1)).collect();
-    let secondary: Vec<&Condition> = all_on.iter().copied().filter(|c| !(c.derivative == zero_index || c.derivative == p.unit(j, 1))).collect();
+    let on: Vec<&Condition> = all_on
+        .iter()
+        .copied()
+        .filter(|c| c.derivative == zero_index || c.derivative == p.unit(j, 1))
+        .collect();
+    let secondary: Vec<&Condition> = all_on
+        .iter()
+        .copied()
+        .filter(|c| !(c.derivative == zero_index || c.derivative == p.unit(j, 1)))
+        .collect();
     if !secondary.is_empty() {
-        let higher = p.linear.iter().any(|(i, c)| i[j] >= 4 && !is_zero_number(cx.graph, *c));
+        let higher = p
+            .linear
+            .iter()
+            .any(|(i, c)| i[j] >= 4 && !is_zero_number(cx.graph, *c));
         if !higher {
             return None;
         }
@@ -1268,7 +1504,9 @@ pub(super) fn interval(
             } else {
                 return None;
             };
-            let paired = on.iter().any(|q| q.derivative == *pairs_with && cx.graph.same(q.point, c.point));
+            let paired = on
+                .iter()
+                .any(|q| q.derivative == *pairs_with && cx.graph.same(q.point, c.point));
             if !paired || !cx.is_zero(c.value) || c.robin.is_some() {
                 return None;
             }
@@ -1286,12 +1524,14 @@ pub(super) fn interval(
         let (start, stop, _) = order_points(cx, c.point, other)?;
         let length = sub(cx.graph, stop, start);
         let length = cx.simplify(length);
-        let end = |point: NodeId, cx: &mut Cx<'_>| End {
-            kind: Kind::Dirichlet,
-            point,
-            p: cx.graph.int(1),
-            q: cx.graph.int(0),
-            value: cx.graph.int(0),
+        let end = |point: NodeId, cx: &mut Cx<'_>| {
+            End {
+                kind: Kind::Dirichlet,
+                point,
+                p: cx.graph.int(1),
+                q: cx.graph.int(0),
+                value: cx.graph.int(0),
+            }
         };
         let (left, right) = (end(start, cx), end(stop, cx));
         for c in &on {
@@ -1300,18 +1540,38 @@ pub(super) fn interval(
                 return None;
             }
         }
-        return Some(Interval { var, start, stop, length, left, right, periodic: true });
+        return Some(Interval {
+            var,
+            start,
+            stop,
+            length,
+            left,
+            right,
+            periodic: true,
+        });
     }
     let [a, b] = on.as_slice() else {
         return None;
     };
     let (start, stop, swapped) = order_points(cx, a.point, b.point)?;
-    let (ca, cb) = if swapped { (*b, *a) } else { (*a, *b) };
+    let (ca, cb) = if swapped {
+        (*b, *a)
+    } else {
+        (*a, *b)
+    };
     let left = End::from_condition(cx, p, ca)?;
     let right = End::from_condition(cx, p, cb)?;
     let length = sub(cx.graph, stop, start);
     let length = cx.simplify(length);
-    Some(Interval { var, start, stop, length, left, right, periodic: false })
+    Some(Interval {
+        var,
+        start,
+        stop,
+        length,
+        left,
+        right,
+        periodic: false,
+    })
 }
 
 /// The time variable of an evolution equation, if the equation is one.
@@ -1320,8 +1580,15 @@ pub(super) fn evolution_time(
     p: &Problem,
 ) -> Option<usize> {
     let time = p.time(cx.graph);
-    let named_t = cx.graph.symbol_of(p.vars[time]).is_some_and(|s| cx.graph.interner().symbol_name(s) == "t");
-    let has = |order: u32| p.linear.iter().any(|(i, c)| i[time] == order && !is_zero_number(cx.graph, *c));
+    let named_t = cx
+        .graph
+        .symbol_of(p.vars[time])
+        .is_some_and(|s| cx.graph.interner().symbol_name(s) == "t");
+    let has = |order: u32| {
+        p.linear
+            .iter()
+            .any(|(i, c)| i[time] == order && !is_zero_number(cx.graph, *c))
+    };
     if !has(1) && !has(2) {
         return None;
     }
@@ -1365,17 +1632,18 @@ pub(super) fn solve_box(
             return None;
         }
         if let Some(t) = time_index
-            && index[t] > 0 {
-                if index.iter().enumerate().any(|(j, &d)| j != t && d != 0) {
-                    return None;
-                }
-                match index[t] {
-                    | 1 => a1 = *c,
-                    | 2 => a2 = *c,
-                    | _ => return None,
-                }
-                continue;
+            && index[t] > 0
+        {
+            if index.iter().enumerate().any(|(j, &d)| j != t && d != 0) {
+                return None;
             }
+            match index[t] {
+                | 1 => a1 = *c,
+                | 2 => a2 = *c,
+                | _ => return None,
+            }
+            continue;
+        }
         if let Some(pos) = space.iter().position(|&j| *index == p.unit(j, 1)) {
             drift.push((pos, *c));
             continue;
@@ -1388,8 +1656,19 @@ pub(super) fn solve_box(
     if spatial.is_empty() {
         return None;
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = time_index.map(|t| Time { var: p.vars[t], order, a2, a1 });
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = time_index.map(|t| {
+        Time {
+            var: p.vars[t],
+            order,
+            a2,
+            a1,
+        }
+    });
     // Axes.
     let mut intervals = Vec::new();
     for &j in &space {
@@ -1404,7 +1683,12 @@ pub(super) fn solve_box(
         if iv.periodic {
             return None;
         }
-        let pure = |halves: &[u32]| halves.iter().enumerate().all(|(k, &h)| if k == pos { h == 1 } else { h == 0 });
+        let pure = |halves: &[u32]| {
+            halves
+                .iter()
+                .enumerate()
+                .all(|(k, &h)| if k == pos { h == 1 } else { h == 0 })
+        };
         let b = spatial.iter().find(|(h, _)| pure(h)).map(|(_, c)| *c)?;
         let two_b = {
             let two = cx.graph.int(2);
@@ -1447,7 +1731,13 @@ pub(super) fn solve_box(
     let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
     // exp(-Σ_{k ≠ skip} α_k x_k).
     let inverse_gauge = |cx: &mut Cx<'_>, skip: Option<usize>| -> Option<NodeId> {
-        let terms: Vec<NodeId> = alphas.iter().zip(&xs).enumerate().filter(|(k, _)| Some(*k) != skip).map(|(_, (&a, &x))| mul(cx.graph, &[a, x])).collect();
+        let terms: Vec<NodeId> = alphas
+            .iter()
+            .zip(&xs)
+            .enumerate()
+            .filter(|(k, _)| Some(*k) != skip)
+            .map(|(_, (&a, &x))| mul(cx.graph, &[a, x]))
+            .collect();
         let sum = add(cx.graph, &terms);
         let minus = neg(cx.graph, sum);
         call(cx, "exp", &[minus])
@@ -1467,7 +1757,10 @@ pub(super) fn solve_box(
     }
     let mut axes = Vec::new();
     for iv in &intervals {
-        axes.push(Axis { var: iv.var, shape: Shape::Interval(iv.clone()) });
+        axes.push(Axis {
+            var: iv.var,
+            shape: Shape::Interval(iv.clone()),
+        });
     }
     // Every condition is a boundary condition on an axis or an initial one.
     for c in &conditions.0 {
@@ -1510,12 +1803,20 @@ pub(super) fn solve_box(
             }
             if !has_displacement {
                 let negated = neg(cx.graph, w0);
-                items.push(Item { role: Role::Displacement, h: cx.simplify(negated), special: None });
+                items.push(Item {
+                    role: Role::Displacement,
+                    h: cx.simplify(negated),
+                    special: None,
+                });
             }
         }
     }
     if !cx.is_zero(source) {
-        items.push(Item { role: Role::Source, h: source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: source,
+            special: None,
+        });
     }
     if gauged {
         let factor = inverse_gauge(cx, None)?;
@@ -1547,7 +1848,10 @@ pub(super) fn solve_box(
             if halves.get(level).copied().unwrap_or(0) == 0 {
                 continue;
             }
-            let pure = halves.iter().enumerate().all(|(k, &h)| if k == level { h == 1 } else { h == 0 });
+            let pure = halves
+                .iter()
+                .enumerate()
+                .all(|(k, &h)| if k == level { h == 1 } else { h == 0 });
             if !pure || cjj.is_some() {
                 cjj = Some(NodeId::NONE);
                 break;
@@ -1561,13 +1865,26 @@ pub(super) fn solve_box(
         let cjj = cjj.filter(|c| *c != NodeId::NONE)?;
         items.extend(boundary_items(cx, iv, level, cjj));
     }
-    if time_index.is_none() && !gauged && lifting.is_none()
-        && let Faces::Solved(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
-            return Some(solution);
-        }
-    let engine = Engine { axes, time, symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
+    if time_index.is_none()
+        && !gauged
+        && lifting.is_none()
+        && let Faces::Solved(solution) = faces(cx, p, conditions, &intervals, &spatial, source)?
+    {
+        return Some(solution);
+    }
+    let engine = Engine {
+        axes,
+        time,
+        symbol: Symbol::Cartesian(spatial),
+        face: None,
+        exterior: None,
+    };
     let prefactor = if gauged {
-        let terms: Vec<NodeId> = alphas.iter().zip(&xs).map(|(&a, &x)| mul(cx.graph, &[a, x])).collect();
+        let terms: Vec<NodeId> = alphas
+            .iter()
+            .zip(&xs)
+            .map(|(&a, &x)| mul(cx.graph, &[a, x]))
+            .collect();
         let sum = add(cx.graph, &terms);
         Some(call(cx, "exp", &[sum])?)
     } else {
@@ -1582,7 +1899,11 @@ fn lift(
     cx: &mut Cx<'_>,
     iv: &Interval,
 ) -> Option<NodeId> {
-    let xi = if is_zero_number(cx.graph, iv.start) { iv.var } else { sub(cx.graph, iv.var, iv.start) };
+    let xi = if is_zero_number(cx.graph, iv.start) {
+        iv.var
+    } else {
+        sub(cx.graph, iv.var, iv.start)
+    };
     let (p0, q0, p1, q1) = (iv.left.p, iv.left.q, iv.right.p, iv.right.q);
     let (g0, g1) = (iv.left.value, iv.right.value);
     let l = iv.length;
@@ -1680,27 +2001,55 @@ fn faces(
     let mut parts = Vec::new();
     for &(level, near) in &data_faces {
         let iv = &intervals[level];
-        let (end, opposite) = if near { (iv.left, iv.right) } else { (iv.right, iv.left) };
+        let (end, opposite) = if near {
+            (iv.left, iv.right)
+        } else {
+            (iv.right, iv.left)
+        };
         // Data of any kind on this face with the homogeneous condition on
         // the opposite one. (Data on the opposite end belongs to the problem
         // of that face.)
-        let classic = end.kind == Kind::Dirichlet && matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann);
+        let classic =
+            end.kind == Kind::Dirichlet && matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann);
         // The operator: a pure second derivative in this axis.
         let mut cjj = None;
         let mut rest: Vec<(Vec<u32>, NodeId)> = Vec::new();
         for (halves, c) in spatial {
             let here = halves.get(level).copied().unwrap_or(0);
             if here == 0 {
-                rest.push((halves.iter().enumerate().filter(|(k, _)| *k != level).map(|(_, &h)| h).collect(), *c));
-            } else if here == 1 && halves.iter().enumerate().all(|(k, &h)| k == level || h == 0) && cjj.is_none() {
+                rest.push((
+                    halves
+                        .iter()
+                        .enumerate()
+                        .filter(|(k, _)| *k != level)
+                        .map(|(_, &h)| h)
+                        .collect(),
+                    *c,
+                ));
+            } else if here == 1
+                && halves
+                    .iter()
+                    .enumerate()
+                    .all(|(k, &h)| k == level || h == 0)
+                && cjj.is_none()
+            {
                 cjj = Some(*c);
             } else {
                 return Some(Faces::Other);
             }
         }
         let cjj = cjj?;
-        let others: Vec<Axis> =
-            intervals.iter().enumerate().filter(|(k, _)| *k != level).map(|(_, v)| Axis { var: v.var, shape: Shape::Interval(v.clone()) }).collect();
+        let others: Vec<Axis> = intervals
+            .iter()
+            .enumerate()
+            .filter(|(k, _)| *k != level)
+            .map(|(_, v)| {
+                Axis {
+                    var: v.var,
+                    shape: Shape::Interval(v.clone()),
+                }
+            })
+            .collect();
         let face = Face {
             var: iv.var,
             start: iv.start,
@@ -1712,10 +2061,24 @@ fn faces(
             far_neumann: opposite.kind == Kind::Neumann,
             cjj,
         };
-        let engine = Engine { axes: others, time: None, symbol: Symbol::Cartesian(rest), face: Some(face), exterior: None };
-        let scaled = if classic { div(cx, end.value, end.p) } else { end.value };
+        let engine = Engine {
+            axes: others,
+            time: None,
+            symbol: Symbol::Cartesian(rest),
+            face: Some(face),
+            exterior: None,
+        };
+        let scaled = if classic {
+            div(cx, end.value, end.p)
+        } else {
+            end.value
+        };
         let scaled = cx.simplify(scaled);
-        let items = [Item { role: Role::Displacement, h: scaled, special: None }];
+        let items = [Item {
+            role: Role::Displacement,
+            h: scaled,
+            special: None,
+        }];
         parts.push(run(cx, p, &engine, &items)?);
     }
     // The source, with homogeneous ends.
@@ -1727,11 +2090,24 @@ fn faces(
                 let zero = cx.graph.int(0);
                 homogeneous.left.value = zero;
                 homogeneous.right.value = zero;
-                Axis { var: v.var, shape: Shape::Interval(homogeneous) }
+                Axis {
+                    var: v.var,
+                    shape: Shape::Interval(homogeneous),
+                }
             })
             .collect();
-        let engine = Engine { axes, time: None, symbol: Symbol::Cartesian(spatial.to_vec()), face: None, exterior: None };
-        let items = [Item { role: Role::Source, h: source, special: None }];
+        let engine = Engine {
+            axes,
+            time: None,
+            symbol: Symbol::Cartesian(spatial.to_vec()),
+            face: None,
+            exterior: None,
+        };
+        let items = [Item {
+            role: Role::Source,
+            h: source,
+            special: None,
+        }];
         parts.push(run(cx, p, &engine, &items)?);
     }
     let total = add(cx.graph, &parts);
@@ -1764,17 +2140,33 @@ pub(super) fn time_items(
     }
     let disp = conditions.find(cx.graph, t, &zero_index, None);
     let vel = conditions.find(cx.graph, t, &p.unit(t, 1), None);
-    if conditions.0.iter().filter(|c| c.on == t).count() != usize::from(disp.is_some()) + usize::from(vel.is_some()) {
+    if conditions.0.iter().filter(|c| c.on == t).count()
+        != usize::from(disp.is_some()) + usize::from(vel.is_some())
+    {
         return None;
     }
     match (order, disp, vel) {
-        | (1, Some(d), None) => items.push(Item { role: Role::Displacement, h: d.value, special: None }),
+        | (1, Some(d), None) => {
+            items.push(Item {
+                role: Role::Displacement,
+                h: d.value,
+                special: None,
+            })
+        },
         | (2, d, v) if d.is_some() || v.is_some() => {
             if let Some(d) = d {
-                items.push(Item { role: Role::Displacement, h: d.value, special: None });
+                items.push(Item {
+                    role: Role::Displacement,
+                    h: d.value,
+                    special: None,
+                });
             }
             if let Some(v) = v {
-                items.push(Item { role: Role::Velocity, h: v.value, special: None });
+                items.push(Item {
+                    role: Role::Velocity,
+                    h: v.value,
+                    special: None,
+                });
             }
         },
         | _ => return None,
@@ -1795,7 +2187,11 @@ pub(super) fn boundary_items(
         if iv.periodic || cx.is_zero(end.value) {
             continue;
         }
-        let divisor = if end.kind == Kind::Dirichlet { end.p } else { end.q };
+        let divisor = if end.kind == Kind::Dirichlet {
+            end.p
+        } else {
+            end.q
+        };
         let sign = cx.graph.int(side);
         let scaled = mul(cx.graph, &[sign, cjj, end.value]);
         let scaled = div(cx, scaled, divisor);
@@ -1803,7 +2199,12 @@ pub(super) fn boundary_items(
         items.push(Item {
             role: Role::Source,
             h: scaled,
-            special: Some(Special { axis: level, kind: end.kind, point: end.point, weight: cx.graph.int(1) }),
+            special: Some(Special {
+                axis: level,
+                kind: end.kind,
+                point: end.point,
+                weight: cx.graph.int(1),
+            }),
         });
     }
     items
@@ -1835,7 +2236,9 @@ pub(super) fn finish(
         },
         | None => solution,
     };
-    if is_closed(cx, solution) && (!verified(cx, p, solution) || !satisfies(cx, p, conditions, solution)) {
+    if is_closed(cx, solution)
+        && (!verified(cx, p, solution) || !satisfies(cx, p, conditions, solution))
+    {
         return None;
     }
     Some(solution)

@@ -1,9 +1,20 @@
 //! Tests for the dense linear algebra kernels.
 
-use rssn::kernels::dense::{
-    Mat, cholesky, cholesky_solve, cond, eigen_symmetric, eigenvalues, lstsq, lstsq_svd,
-    lu_factor, pinv, qr, rank, solve, spectral_radius, svd,
-};
+use rssn::kernels::dense::Mat;
+use rssn::kernels::dense::cholesky;
+use rssn::kernels::dense::cholesky_solve;
+use rssn::kernels::dense::cond;
+use rssn::kernels::dense::eigen_symmetric;
+use rssn::kernels::dense::eigenvalues;
+use rssn::kernels::dense::lstsq;
+use rssn::kernels::dense::lstsq_svd;
+use rssn::kernels::dense::lu_factor;
+use rssn::kernels::dense::pinv;
+use rssn::kernels::dense::qr;
+use rssn::kernels::dense::rank;
+use rssn::kernels::dense::solve;
+use rssn::kernels::dense::spectral_radius;
+use rssn::kernels::dense::svd;
 
 fn m(rows: &[&[f64]]) -> Mat {
     Mat::from_rows(&rows.iter().map(|r| r.to_vec()).collect::<Vec<_>>()).unwrap()
@@ -25,7 +36,11 @@ fn lu_solve_det_inverse() {
 
 #[test]
 fn cholesky_factor() {
-    let a = m(&[&[4.0, 12.0, -16.0], &[12.0, 37.0, -43.0], &[-16.0, -43.0, 98.0]]);
+    let a = m(&[
+        &[4.0, 12.0, -16.0],
+        &[12.0, 37.0, -43.0],
+        &[-16.0, -43.0, 98.0],
+    ]);
     let l = cholesky(&a).unwrap();
     assert_eq!((l.at(0, 0), l.at(1, 0), l.at(2, 0)), (2.0, 6.0, -8.0));
     assert!((l.at(2, 2) - 3.0).abs() < 1e-12);
@@ -78,7 +93,9 @@ fn svd_cond_rank_pinv() {
     let h = Mat {
         rows: 4,
         cols: 4,
-        data: (0..16).map(|k| 1.0 / f64::from(k / 4 + k % 4 + 1)).collect(),
+        data: (0..16)
+            .map(|k| 1.0 / f64::from(k / 4 + k % 4 + 1))
+            .collect(),
     };
     assert!((cond(&h).unwrap() - 15_513.738_738).abs() < 1e-2);
     let r = m(&[&[1.0, 2.0], &[2.0, 4.0], &[3.0, 6.0]]);

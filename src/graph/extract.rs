@@ -90,10 +90,11 @@ fn base_cost(
         cost = cost.saturating_add(1);
     }
     if (op == super::op::core::ADD || op == super::op::core::MUL)
-        && graph
-            .children(node)
-            .iter()
-            .any(|&c| graph.enodes(graph.find(c)).any(|n| graph.op(n) == super::op::core::LIST))
+        && graph.children(node).iter().any(|&c| {
+            graph
+                .enodes(graph.find(c))
+                .any(|n| graph.op(n) == super::op::core::LIST)
+        })
     {
         cost = cost.saturating_add(LIST_ARITHMETIC);
     }
@@ -112,7 +113,8 @@ impl CostModel for ClosedForm {
         node: NodeId,
     ) -> Option<u64> {
         let desc = graph.ops().get(graph.op(node));
-        (!desc.flags.has(OpFlags::HEAVY) || opaque_on_apply(graph, node, 8)).then(|| base_cost(graph, node))
+        (!desc.flags.has(OpFlags::HEAVY) || opaque_on_apply(graph, node, 8))
+            .then(|| base_cost(graph, node))
     }
 }
 
@@ -123,7 +125,13 @@ fn opaque_on_apply(
     node: NodeId,
     depth: u8,
 ) -> bool {
-    if depth == 0 || !graph.ops().get(graph.op(node)).flags.has(OpFlags::OPAQUE_ON_APPLY) {
+    if depth == 0
+        || !graph
+            .ops()
+            .get(graph.op(node))
+            .flags
+            .has(OpFlags::OPAQUE_ON_APPLY)
+    {
         return false;
     }
     let Some(&first) = graph.children(node).first() else {
@@ -153,7 +161,10 @@ pub fn reachable(
         // (`sin(pi)`, `x - x`, a reduced request ...) lead nowhere useful,
         // and following them would turn every constant into a hub that
         // makes the whole graph reachable from any term mentioning it.
-        if graph.enodes(class).any(|n| graph.op(n) == super::op::core::LIT) {
+        if graph
+            .enodes(class)
+            .any(|n| graph.op(n) == super::op::core::LIT)
+        {
             continue;
         }
         for enode in graph.enodes(class) {

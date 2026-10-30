@@ -33,7 +33,11 @@ fn brute<const D: usize>(
     shift: bool,
 ) -> (f64, Vec<[f64; D]>) {
     let term = PairTerm::LennardJones { eps: 1.0, sigma: 1.0 };
-    let us = if shift { term.eval(rc * rc, 0.0).0 } else { 0.0 };
+    let us = if shift {
+        term.eval(rc * rc, 0.0).0
+    } else {
+        0.0
+    };
     let mut e = 0.0;
     let mut f = vec![[0.0; D]; sys.n()];
     for i in 0..sys.n() {
@@ -71,10 +75,17 @@ fn check_cell_list<const D: usize>(
     let mut nl = NeighbourList::new(2.5, 0.3);
     let out = compute_forces(&sys, &ff, &mut nl).unwrap();
     let (e, f) = brute(&sys, 2.5, true);
-    assert!((out.epot - e).abs() < 1e-9 * e.abs().max(1.0), "D={D}: {} vs {e}", out.epot);
+    assert!(
+        (out.epot - e).abs() < 1e-9 * e.abs().max(1.0),
+        "D={D}: {} vs {e}",
+        out.epot
+    );
     for i in 0..n {
         for a in 0..D {
-            assert!((out.f[i][a] - f[i][a]).abs() < 1e-8 * f[i][a].abs().max(1.0), "D={D} i={i}");
+            assert!(
+                (out.f[i][a] - f[i][a]).abs() < 1e-8 * f[i][a].abs().max(1.0),
+                "D={D} i={i}"
+            );
         }
     }
 }
@@ -85,7 +96,15 @@ fn cell_list_matches_brute_force_in_one_two_and_three_dimensions() {
     check_cell_list::<2>(SimBox::periodic([14.0, 15.0]), 120, 0.85, 2);
     check_cell_list::<3>(SimBox::periodic([9.0, 9.5, 10.0]), 300, 0.85, 3);
     // mixed boundaries: periodic, reflecting, open
-    check_cell_list::<3>(SimBox::new([9.0, 9.5, 10.0], [Boundary::Periodic, Boundary::Reflecting, Boundary::Open]), 250, 0.85, 4);
+    check_cell_list::<3>(
+        SimBox::new(
+            [9.0, 9.5, 10.0],
+            [Boundary::Periodic, Boundary::Reflecting, Boundary::Open],
+        ),
+        250,
+        0.85,
+        4,
+    );
     // very small box (fewer than three cells per axis)
     check_cell_list::<2>(SimBox::periodic([5.0, 5.2]), 14, 0.9, 5);
 }
@@ -100,7 +119,10 @@ fn verlet_skin_avoids_rebuilds_and_stays_correct() {
     assert!((sim.forces.epot - reference.epot).abs() < 1e-8 * reference.epot.abs());
     for i in 0..sim.sys.n() {
         for a in 0..3 {
-            assert!((sim.forces.f[i][a] - reference.f[i][a]).abs() < 1e-7 * reference.f[i][a].abs().max(1.0));
+            assert!(
+                (sim.forces.f[i][a] - reference.f[i][a]).abs()
+                    < 1e-7 * reference.f[i][a].abs().max(1.0)
+            );
         }
     }
 }
@@ -109,7 +131,11 @@ fn verlet_skin_avoids_rebuilds_and_stays_correct() {
 fn pair_terms_have_consistent_energy_and_force() {
     let terms = [
         PairTerm::LennardJones { eps: 0.7, sigma: 1.1 },
-        PairTerm::Morse { d: 1.3, alpha: 1.7, r0: 1.2 },
+        PairTerm::Morse {
+            d: 1.3,
+            alpha: 1.7,
+            r0: 1.2,
+        },
         PairTerm::Coulomb { k: 1.4, alpha: 0.0 },
         PairTerm::Coulomb { k: 1.4, alpha: 0.9 },
     ];
@@ -119,7 +145,10 @@ fn pair_terms_have_consistent_energy_and_force() {
             let up = t.eval((r + h) * (r + h), -1.0).0;
             let um = t.eval((r - h) * (r - h), -1.0).0;
             let (_, fr) = t.eval(r * r, -1.0);
-            assert!((fr * r + (up - um) / (2.0 * h)).abs() < 1e-6, "{t:?} at {r}");
+            assert!(
+                (fr * r + (up - um) / (2.0 * h)).abs() < 1e-6,
+                "{t:?} at {r}"
+            );
         }
     }
 }
@@ -148,21 +177,75 @@ fn numeric_forces<const D: usize>(
 #[test]
 fn bonded_forces_match_numerical_gradients() {
     // 3-D molecule with bonds, angles and a dihedral
-    let pos = vec![[0.1, 0.0, 0.2], [1.2, 0.3, 0.0], [1.9, 1.4, 0.4], [3.0, 1.6, 1.3], [2.5, 2.9, 0.1]];
+    let pos = vec![
+        [0.1, 0.0, 0.2],
+        [1.2, 0.3, 0.0],
+        [1.9, 1.4, 0.4],
+        [3.0, 1.6, 1.3],
+        [2.5, 2.9, 0.1],
+    ];
     let sys = MdSystem::new(pos, SimBox::new([20.0; 3], [Boundary::Open; 3]));
     let mut ff = ForceField::<3>::new(vec![], 1.0);
-    ff.bonds = vec![Bond { i: 0, j: 1, k: 30.0, r0: 1.1 }, Bond { i: 1, j: 2, k: 25.0, r0: 1.3 }];
-    ff.angles = vec![Angle { i: 0, j: 1, k: 2, ktheta: 12.0, theta0: 1.9 }, Angle { i: 2, j: 3, k: 4, ktheta: 9.0, theta0: 2.1 }];
-    ff.dihedrals = vec![Dihedral { atoms: [0, 1, 2, 3], k: 2.0, n: 3.0, delta: 0.4 }, Dihedral { atoms: [1, 2, 3, 4], k: 1.5, n: 2.0, delta: 0.0 }];
+    ff.bonds = vec![
+        Bond {
+            i: 0,
+            j: 1,
+            k: 30.0,
+            r0: 1.1,
+        },
+        Bond {
+            i: 1,
+            j: 2,
+            k: 25.0,
+            r0: 1.3,
+        },
+    ];
+    ff.angles = vec![
+        Angle {
+            i: 0,
+            j: 1,
+            k: 2,
+            ktheta: 12.0,
+            theta0: 1.9,
+        },
+        Angle {
+            i: 2,
+            j: 3,
+            k: 4,
+            ktheta: 9.0,
+            theta0: 2.1,
+        },
+    ];
+    ff.dihedrals = vec![
+        Dihedral {
+            atoms: [0, 1, 2, 3],
+            k: 2.0,
+            n: 3.0,
+            delta: 0.4,
+        },
+        Dihedral {
+            atoms: [1, 2, 3, 4],
+            k: 1.5,
+            n: 2.0,
+            delta: 0.0,
+        },
+    ];
     let mut nl = NeighbourList::new(1.0, 0.3);
     let out = compute_forces(&sys, &ff, &mut nl).unwrap();
     let num = numeric_forces(&sys, &ff);
     for i in 0..5 {
         for a in 0..3 {
-            assert!((out.f[i][a] - num[i][a]).abs() < 1e-6, "atom {i} comp {a}: {} vs {}", out.f[i][a], num[i][a]);
+            assert!(
+                (out.f[i][a] - num[i][a]).abs() < 1e-6,
+                "atom {i} comp {a}: {} vs {}",
+                out.f[i][a],
+                num[i][a]
+            );
         }
     }
-    let net: f64 = (0..3).map(|a| out.f.iter().map(|f| f[a]).sum::<f64>().abs()).sum();
+    let net: f64 = (0..3)
+        .map(|a| out.f.iter().map(|f| f[a]).sum::<f64>().abs())
+        .sum();
     assert!(net < 1e-10);
     // dihedrals need D = 3
     let mut ff2 = ForceField::<2>::new(vec![], 1.0);
@@ -172,9 +255,18 @@ fn bonded_forces_match_numerical_gradients() {
 
 #[test]
 fn angle_forces_work_in_two_dimensions() {
-    let sys = MdSystem::new(vec![[0.0, 0.1], [1.0, 0.0], [1.4, 1.2]], SimBox::new([20.0; 2], [Boundary::Open; 2]));
+    let sys = MdSystem::new(
+        vec![[0.0, 0.1], [1.0, 0.0], [1.4, 1.2]],
+        SimBox::new([20.0; 2], [Boundary::Open; 2]),
+    );
     let mut ff = ForceField::<2>::new(vec![], 1.0);
-    ff.angles = vec![Angle { i: 0, j: 1, k: 2, ktheta: 5.0, theta0: 1.8 }];
+    ff.angles = vec![Angle {
+        i: 0,
+        j: 1,
+        k: 2,
+        ktheta: 5.0,
+        theta0: 1.8,
+    }];
     let mut nl = NeighbourList::new(1.0, 0.3);
     let out = compute_forces(&sys, &ff, &mut nl).unwrap();
     let num = numeric_forces(&sys, &ff);
@@ -187,12 +279,35 @@ fn angle_forces_work_in_two_dimensions() {
 
 #[test]
 fn virial_trace_equals_the_scaling_derivative_of_the_energy() {
-    let pos = vec![[0.1, 0.0, 0.2], [1.2, 0.3, 0.0], [1.9, 1.4, 0.4], [3.0, 1.6, 1.3], [2.5, 2.9, 0.1], [1.0, 2.0, 2.5]];
+    let pos = vec![
+        [0.1, 0.0, 0.2],
+        [1.2, 0.3, 0.0],
+        [1.9, 1.4, 0.4],
+        [3.0, 1.6, 1.3],
+        [2.5, 2.9, 0.1],
+        [1.0, 2.0, 2.5],
+    ];
     let sys = MdSystem::new(pos, SimBox::new([40.0; 3], [Boundary::Open; 3]));
     let mut ff = ForceField::<3>::new(lj(), 3.0);
-    ff.bonds = vec![Bond { i: 0, j: 1, k: 30.0, r0: 1.1 }];
-    ff.angles = vec![Angle { i: 0, j: 1, k: 2, ktheta: 12.0, theta0: 1.9 }];
-    ff.dihedrals = vec![Dihedral { atoms: [1, 2, 3, 4], k: 1.5, n: 2.0, delta: 0.3 }];
+    ff.bonds = vec![Bond {
+        i: 0,
+        j: 1,
+        k: 30.0,
+        r0: 1.1,
+    }];
+    ff.angles = vec![Angle {
+        i: 0,
+        j: 1,
+        k: 2,
+        ktheta: 12.0,
+        theta0: 1.9,
+    }];
+    ff.dihedrals = vec![Dihedral {
+        atoms: [1, 2, 3, 4],
+        k: 1.5,
+        n: 2.0,
+        delta: 0.3,
+    }];
     ff.exclude_bonded = true;
     let energy_at = |lam: f64| {
         let mut p = sys.clone();
@@ -219,7 +334,11 @@ fn virial_trace_equals_the_scaling_derivative_of_the_energy() {
     let mut nl = NeighbourList::new(3.0, 0.3);
     let out = compute_forces(&sys, &f2, &mut nl).unwrap();
     let tr: f64 = (0..3).map(|a| out.virial[a][a]).sum();
-    assert!((tr + de).abs() < 1e-5 * de.abs().max(1.0), "trace {tr} vs -dE/dlambda {}", -de);
+    assert!(
+        (tr + de).abs() < 1e-5 * de.abs().max(1.0),
+        "trace {tr} vs -dE/dlambda {}",
+        -de
+    );
 }
 
 #[test]
@@ -262,17 +381,24 @@ fn lj_liquid_rdf_has_its_first_peak_near_the_potential_minimum() {
         }
     }
     let g = rdf.result();
-    let (rpk, gpk) = g.iter().copied().fold((0.0, 0.0), |b, x| if x.1 > b.1 { x } else { b });
+    let (rpk, gpk) = g
+        .iter()
+        .copied()
+        .fold((0.0, 0.0), |b, x| if x.1 > b.1 { x } else { b });
     assert!(rpk > 1.0 && rpk < 1.18, "first peak at {rpk}");
     assert!(gpk > 2.2 && gpk < 3.6, "peak height {gpk}");
     assert!(g[0].1 < 1e-3, "core is excluded: {}", g[0].1);
-    let tail: f64 = g.iter().filter(|x| x.0 > 2.8).map(|x| x.1).sum::<f64>() / g.iter().filter(|x| x.0 > 2.8).count() as f64;
+    let tail: f64 = g.iter().filter(|x| x.0 > 2.8).map(|x| x.1).sum::<f64>()
+        / g.iter().filter(|x| x.0 > 2.8).count() as f64;
     assert!((tail - 1.0).abs() < 0.08, "long-range limit {tail}");
 }
 
 #[test]
 fn rdf_of_an_ideal_gas_is_one_in_every_dimension() {
-    fn run<const D: usize>(bx: SimBox<D>, n: usize) {
+    fn run<const D: usize>(
+        bx: SimBox<D>,
+        n: usize,
+    ) {
         let mut rng = Rng::new(5 + D as u64);
         let mut rdf = Rdf::<D>::new(12, 0.5 * bx.len[0].min(bx.len[D - 1]));
         let mut sys = MdSystem::new(vec![[0.0; D]; n], bx);
@@ -302,12 +428,13 @@ fn langevin_baoab_samples_the_canonical_ensemble() {
     sys.vel = vec![[0.0]; n];
     let ff = {
         let mut ff = ForceField::<1>::new(vec![], 1.0);
-        ff.extra.push(Box::new(|sys: &MdSystem<1>, out: &mut Forces<1>| {
-            for i in 0..sys.n() {
-                out.f[i][0] -= sys.pos[i][0];
-                out.epot += 0.5 * sys.pos[i][0] * sys.pos[i][0];
-            }
-        }));
+        ff.extra
+            .push(Box::new(|sys: &MdSystem<1>, out: &mut Forces<1>| {
+                for i in 0..sys.n() {
+                    out.f[i][0] -= sys.pos[i][0];
+                    out.epot += 0.5 * sys.pos[i][0] * sys.pos[i][0];
+                }
+            }));
         ff
     };
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.1, 99).unwrap();
@@ -340,8 +467,15 @@ fn nose_hoover_chain_thermostats_a_fluid_and_conserves_its_extended_energy() {
         t_sum += sim.temperature();
         worst = worst.max((sim.conserved_energy() - h0).abs());
     }
-    assert!((t_sum / steps as f64 - 1.2).abs() < 0.04, "mean T {}", t_sum / steps as f64);
-    assert!(worst < 3e-3 * sim.sys.kinetic_energy(), "extended energy drift {worst}");
+    assert!(
+        (t_sum / steps as f64 - 1.2).abs() < 0.04,
+        "mean T {}",
+        t_sum / steps as f64
+    );
+    assert!(
+        worst < 3e-3 * sim.sys.kinetic_energy(),
+        "extended energy drift {worst}"
+    );
 }
 
 #[test]
@@ -349,14 +483,22 @@ fn berendsen_thermostat_relaxes_to_the_target() {
     let mut sim = lj_fluid_3d(3, 0.8, 0.5, 0.004, 41);
     sim.thermostat = Thermostat::Berendsen { t0: 1.5, tau: 0.1 };
     sim.run(1500).unwrap();
-    assert!((sim.temperature() - 1.5).abs() < 0.1, "T {}", sim.temperature());
+    assert!(
+        (sim.temperature() - 1.5).abs() < 0.1,
+        "T {}",
+        sim.temperature()
+    );
 }
 
 #[test]
 fn berendsen_barostat_drives_the_pressure_to_its_target() {
     let mut sim = lj_fluid_3d(3, 0.6, 1.5, 0.004, 51);
     sim.thermostat = Thermostat::Berendsen { t0: 1.5, tau: 0.1 };
-    sim.barostat = Barostat::Berendsen { p0: 2.0, tau: 1.0, beta: 0.05 };
+    sim.barostat = Barostat::Berendsen {
+        p0: 2.0,
+        tau: 1.0,
+        beta: 0.05,
+    };
     let v0 = sim.sys.bx.volume();
     sim.run(3000).unwrap();
     let mut p = 0.0;
@@ -365,15 +507,26 @@ fn berendsen_barostat_drives_the_pressure_to_its_target() {
         sim.step().unwrap();
         p += sim.pressure();
     }
-    assert!((p / n as f64 - 2.0).abs() < 0.25, "mean pressure {}", p / n as f64);
-    assert!((sim.sys.bx.volume() - v0).abs() > 0.5, "the box must have changed");
+    assert!(
+        (p / n as f64 - 2.0).abs() < 0.25,
+        "mean pressure {}",
+        p / n as f64
+    );
+    assert!(
+        (sim.sys.bx.volume() - v0).abs() > 0.5,
+        "the box must have changed"
+    );
 }
 
 #[test]
 fn mtk_barostat_conserves_the_extended_enthalpy_with_second_order_error() {
     let err = |dt: f64| {
         let mut sim = lj_fluid_3d(3, 0.75, 1.2, dt, 61);
-        sim.barostat = Barostat::Mtk { p0: 1.0, w: 50.0, p_eps: 0.0 };
+        sim.barostat = Barostat::Mtk {
+            p0: 1.0,
+            w: 50.0,
+            p_eps: 0.0,
+        };
         sim.run((0.4 / dt) as usize).unwrap();
         let h0 = sim.conserved_energy();
         let mut worst = 0.0_f64;
@@ -390,7 +543,11 @@ fn mtk_barostat_conserves_the_extended_enthalpy_with_second_order_error() {
     assert!(dv > 1e-3, "volume must fluctuate");
     // combining the MTK barostat with a thermostat is rejected
     let mut sim = lj_fluid_3d(3, 0.75, 1.2, 0.004, 62);
-    sim.barostat = Barostat::Mtk { p0: 1.0, w: 50.0, p_eps: 0.0 };
+    sim.barostat = Barostat::Mtk {
+        p0: 1.0,
+        w: 50.0,
+        p_eps: 0.0,
+    };
     sim.thermostat = Thermostat::Berendsen { t0: 1.0, tau: 1.0 };
     assert!(sim.step().is_err());
 }
@@ -410,17 +567,42 @@ fn shake_rattle_keep_rigid_dimers_rigid_and_conserve_energy() {
         for x in &mut u {
             *x /= nrm;
         }
-        pos.push([c[0] + 0.5 * d * u[0], c[1] + 0.5 * d * u[1], c[2] + 0.5 * d * u[2]]);
-        pos.push([c[0] - 0.5 * d * u[0], c[1] - 0.5 * d * u[1], c[2] - 0.5 * d * u[2]]);
+        pos.push([
+            c[0] + 0.5 * d * u[0],
+            c[1] + 0.5 * d * u[1],
+            c[2] + 0.5 * d * u[2],
+        ]);
+        pos.push([
+            c[0] - 0.5 * d * u[0],
+            c[1] - 0.5 * d * u[1],
+            c[2] - 0.5 * d * u[2],
+        ]);
     }
     let mut sys = MdSystem::new(pos, bx);
     sys.maxwell_boltzmann(1.0, &mut rng);
     let mut ff = ForceField::<3>::new(lj(), 2.5);
     ff.shift = true;
     // zero-strength bonds exclude the intramolecular pair from the non-bonded sum
-    ff.bonds = (0..nmol).map(|m| Bond { i: 2 * m, j: 2 * m + 1, k: 0.0, r0: d }).collect();
+    ff.bonds = (0..nmol)
+        .map(|m| {
+            Bond {
+                i: 2 * m,
+                j: 2 * m + 1,
+                k: 0.0,
+                r0: d,
+            }
+        })
+        .collect();
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.004, 72).unwrap();
-    sim.constraints = (0..nmol).map(|m| Constraint { i: 2 * m, j: 2 * m + 1, d }).collect();
+    sim.constraints = (0..nmol)
+        .map(|m| {
+            Constraint {
+                i: 2 * m,
+                j: 2 * m + 1,
+                d,
+            }
+        })
+        .collect();
     // start from velocities consistent with the constraints
     for _ in 0..3 {
         sim.step().unwrap();
@@ -447,7 +629,10 @@ fn shake_rattle_keep_rigid_dimers_rigid_and_conserve_energy() {
         worst_e = worst_e.max((sim.total_energy() - e0).abs());
     }
     assert!(worst_len < 1e-9, "bond length drift {worst_len}");
-    assert!(worst_e < 0.05 * sim.sys.kinetic_energy(), "energy drift {worst_e}");
+    assert!(
+        worst_e < 0.05 * sim.sys.kinetic_energy(),
+        "energy drift {worst_e}"
+    );
 }
 
 #[test]
@@ -460,7 +645,11 @@ fn reflecting_walls_conserve_energy_and_bounce_in_every_dimension() {
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.01, 1).unwrap();
     sim.run(1000).unwrap();
     // unfolded position 0.2 + 0.7*10 = 7.2 -> reflected into [0,1]: 7.2 mod 2 = 1.2 -> 0.8
-    assert!((sim.sys.pos[0][0] - 0.8).abs() < 1e-9, "{}", sim.sys.pos[0][0]);
+    assert!(
+        (sim.sys.pos[0][0] - 0.8).abs() < 1e-9,
+        "{}",
+        sim.sys.pos[0][0]
+    );
     assert!((sim.sys.kinetic_energy() - 0.245).abs() < 1e-12);
     // 3-D gas with LJ interaction in a reflecting box keeps energy and stays inside
     let bx = SimBox::new([6.0; 3], [Boundary::Reflecting; 3]);
@@ -507,7 +696,10 @@ fn lees_edwards_minimum_image_and_shear_stress() {
     bx.offset = 0.3;
     let mut d = [0.1, 0.9];
     bx.min_image(&mut d);
-    assert!((d[0] + 0.2).abs() < 1e-12 && (d[1] + 0.1).abs() < 1e-12, "{d:?}");
+    assert!(
+        (d[0] + 0.2).abs() < 1e-12 && (d[1] + 0.1).abs() < 1e-12,
+        "{d:?}"
+    );
     // a particle crossing the top boundary is shifted by -offset and loses gamma*L of velocity
     let mut sys = MdSystem::new(vec![[0.5, 0.99]], bx);
     sys.vel[0] = [0.0, 1.0];
@@ -549,16 +741,27 @@ fn ideal_gas_pressure_msd_and_initial_conditions() {
         let mut sys = MdSystem::new(pos, bx);
         sys.maxwell_boltzmann(1.3, &mut rng);
         let reference = sys.unwrapped.clone();
-        let v2: f64 = sys.vel.iter().map(|v| v.iter().map(|x| x * x).sum::<f64>()).sum::<f64>() / 80.0;
+        let v2: f64 = sys
+            .vel
+            .iter()
+            .map(|v| v.iter().map(|x| x * x).sum::<f64>())
+            .sum::<f64>()
+            / 80.0;
         let ff = ForceField::<D>::new(vec![], 1.0);
         let mut sim = MdSimulation::new(sys, ff, 0.3, 0.05, 1).unwrap();
         sim.run(200).unwrap();
         // free flight: msd = <v^2> t^2, far beyond the box size thanks to unwrapping
         let t = 10.0;
-        assert!((msd(&sim.sys, &reference) - v2 * t * t).abs() < 1e-8 * v2 * t * t, "D={D}");
+        assert!(
+            (msd(&sim.sys, &reference) - v2 * t * t).abs() < 1e-8 * v2 * t * t,
+            "D={D}"
+        );
         // ideal-gas pressure: P V = (N-1) T for exact temperature and zero momentum
         let p = sim.pressure();
-        assert!((p * sim.sys.bx.volume() - 79.0 * 1.3).abs() < 1e-8, "D={D}: {p}");
+        assert!(
+            (p * sim.sys.bx.volume() - 79.0 * 1.3).abs() < 1e-8,
+            "D={D}: {p}"
+        );
         for q in sim.sys.momentum() {
             assert!(q.abs() < 1e-10);
         }
@@ -574,7 +777,11 @@ fn ideal_gas_pressure_msd_and_initial_conditions() {
     let mut dmin = f64::INFINITY;
     for i in 0..fcc.len() {
         for j in i + 1..fcc.len() {
-            let mut d = [fcc[i][0] - fcc[j][0], fcc[i][1] - fcc[j][1], fcc[i][2] - fcc[j][2]];
+            let mut d = [
+                fcc[i][0] - fcc[j][0],
+                fcc[i][1] - fcc[j][1],
+                fcc[i][2] - fcc[j][2],
+            ];
             bx.min_image(&mut d);
             dmin = dmin.min(d.iter().map(|x| x * x).sum::<f64>().sqrt());
         }
@@ -590,7 +797,10 @@ fn ideal_gas_pressure_msd_and_initial_conditions() {
             dmin = dmin.min(d.iter().map(|x| x * x).sum::<f64>().sqrt());
         }
     }
-    assert!((dmin - 1.0).abs() < 1e-12, "triangular nearest neighbour {dmin}");
+    assert!(
+        (dmin - 1.0).abs() < 1e-12,
+        "triangular nearest neighbour {dmin}"
+    );
     assert_eq!(lattice_cubic([3, 4], 1.0).len(), 12);
     let bx = SimBox::<3>::periodic([3.0; 3]);
     assert!(random_positions(500, &bx, 1.5, &mut Rng::new(1)).is_none());
@@ -599,7 +809,9 @@ fn ideal_gas_pressure_msd_and_initial_conditions() {
 #[test]
 fn vacf_and_energy_drift_helpers() {
     // harmonic oscillator velocity: v(t) = cos(t)
-    let frames: Vec<Vec<[f64; 1]>> = (0..4000).map(|k| vec![[(0.01 * k as f64 * 2.0).cos()]]).collect();
+    let frames: Vec<Vec<[f64; 1]>> = (0..4000)
+        .map(|k| vec![[(0.01 * k as f64 * 2.0).cos()]])
+        .collect();
     let c = vacf(&frames, 400);
     assert!((c[0] - 0.5).abs() < 0.02);
     // <v(0) v(tau)> = cos(0.02 lag) / 2: lag 39 gives cos(0.78)/2, a quarter period (lag 78.5) gives ~0
@@ -660,7 +872,10 @@ fn triclinic_cell_energy_matches_an_explicit_image_sum() {
                         }
                         let mut d = [0.0; 3];
                         for k in 0..3 {
-                            d[k] = sim.sys.pos[i][k] - sim.sys.pos[j][k] + a as f64 * h[0][k] + b as f64 * h[1][k] + c as f64 * h[2][k];
+                            d[k] = sim.sys.pos[i][k] - sim.sys.pos[j][k]
+                                + a as f64 * h[0][k]
+                                + b as f64 * h[1][k]
+                                + c as f64 * h[2][k];
                         }
                         let r = d.iter().map(|x| x * x).sum::<f64>().sqrt();
                         if r < rc {
@@ -671,8 +886,14 @@ fn triclinic_cell_energy_matches_an_explicit_image_sum() {
             }
         }
     }
-    assert!((sim.forces.epot - e).abs() < 1e-8 * e.abs().max(1.0), "{} vs {e}", sim.forces.epot);
-    let net: f64 = (0..3).map(|k| sim.forces.f.iter().map(|f| f[k]).sum::<f64>().abs()).sum();
+    assert!(
+        (sim.forces.epot - e).abs() < 1e-8 * e.abs().max(1.0),
+        "{} vs {e}",
+        sim.forces.epot
+    );
+    let net: f64 = (0..3)
+        .map(|k| sim.forces.f.iter().map(|f| f[k]).sum::<f64>().abs())
+        .sum();
     assert!(net < 1e-9, "net force {net}");
     for p in &sim.sys.pos {
         let s = sim.sys.bx.to_fractional(p);
@@ -684,7 +905,8 @@ fn triclinic_cell_energy_matches_an_explicit_image_sum() {
 fn flexible_cell_nph_conserves_its_extended_enthalpy_with_second_order_error() {
     let err = |dt: f64| {
         let mut sim = lj_triclinic(3, 0.75, 1.2, dt, 81);
-        sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 40.0, CellMode::Full));
+        sim.barostat =
+            Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 40.0, CellMode::Full));
         sim.run((0.4 / dt) as usize).unwrap();
         let h0 = sim.conserved_energy();
         let mut worst = 0.0_f64;
@@ -709,7 +931,9 @@ fn flexible_cell_npt_with_nose_hoover_chains_reaches_the_target_stress_and_tempe
     let mut sim = lj_fluid_3d(3, 0.7, t0, 0.005, 91);
     let dof = sim.dof();
     sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(t0, 0.5, 3, dof));
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_chain(t0, 1.0, 3));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_chain(t0, 1.0, 3),
+    );
     sim.run(3000).unwrap();
     let (mut tm, mut pt) = (0.0, [[0.0; 3]; 3]);
     let ns = 6000;
@@ -729,10 +953,18 @@ fn flexible_cell_npt_with_nose_hoover_chains_reaches_the_target_stress_and_tempe
     let nsf = ns as f64;
     assert!((tm / nsf - t0).abs() < 0.05, "T = {}", tm / nsf);
     for a in 0..3 {
-        assert!((pt[a][a] / nsf - p0).abs() < 0.12, "P[{a}][{a}] = {}", pt[a][a] / nsf);
+        assert!(
+            (pt[a][a] / nsf - p0).abs() < 0.12,
+            "P[{a}][{a}] = {}",
+            pt[a][a] / nsf
+        );
         for b in 0..3 {
             if a != b {
-                assert!((pt[a][b] / nsf).abs() < 0.08, "P[{a}][{b}] = {}", pt[a][b] / nsf);
+                assert!(
+                    (pt[a][b] / nsf).abs() < 0.08,
+                    "P[{a}][{b}] = {}",
+                    pt[a][b] / nsf
+                );
             }
         }
     }
@@ -746,7 +978,9 @@ fn orthorhombic_mode_follows_an_anisotropic_target_pressure() {
     let dof = sim.dof();
     sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(t0, 0.5, 3, dof));
     let pext = vec![0.8, 0.0, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.2];
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::with_tensor(3, pext, 20.0, CellMode::Orthorhombic).with_chain(t0, 1.0, 3));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::with_tensor(3, pext, 20.0, CellMode::Orthorhombic).with_chain(t0, 1.0, 3),
+    );
     sim.run(4000).unwrap();
     let mut p = [0.0; 3];
     let ns = 6000;
@@ -779,16 +1013,41 @@ fn dimer_system(
         for x in &mut u {
             *x /= nrm;
         }
-        pos.push([c[0] + 0.5 * d * u[0], c[1] + 0.5 * d * u[1], c[2] + 0.5 * d * u[2]]);
-        pos.push([c[0] - 0.5 * d * u[0], c[1] - 0.5 * d * u[1], c[2] - 0.5 * d * u[2]]);
+        pos.push([
+            c[0] + 0.5 * d * u[0],
+            c[1] + 0.5 * d * u[1],
+            c[2] + 0.5 * d * u[2],
+        ]);
+        pos.push([
+            c[0] - 0.5 * d * u[0],
+            c[1] - 0.5 * d * u[1],
+            c[2] - 0.5 * d * u[2],
+        ]);
     }
     let mut sys = MdSystem::new(pos, bx);
     sys.maxwell_boltzmann(1.0, &mut rng);
     let mut ff = ForceField::<3>::new(lj(), 2.5);
     ff.shift = true;
-    ff.bonds = (0..nmol).map(|m| Bond { i: 2 * m, j: 2 * m + 1, k: 0.0, r0: d }).collect();
+    ff.bonds = (0..nmol)
+        .map(|m| {
+            Bond {
+                i: 2 * m,
+                j: 2 * m + 1,
+                k: 0.0,
+                r0: d,
+            }
+        })
+        .collect();
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.004, seed + 1).unwrap();
-    sim.constraints = (0..nmol).map(|m| Constraint { i: 2 * m, j: 2 * m + 1, d }).collect();
+    sim.constraints = (0..nmol)
+        .map(|m| {
+            Constraint {
+                i: 2 * m,
+                j: 2 * m + 1,
+                d,
+            }
+        })
+        .collect();
     sim
 }
 
@@ -814,7 +1073,9 @@ fn flexible_cell_with_constraints_keeps_dimers_rigid_and_conserves_the_extended_
     }
     let dof = sim.dof();
     sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(1.0, 0.5, 3, dof));
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Full).with_chain(1.0, 1.0, 3));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Full).with_chain(1.0, 1.0, 3),
+    );
     sim.run(200).unwrap();
     let c0 = sim.conserved_energy();
     let (mut worst_len, mut worst_e) = (0.0_f64, 0.0_f64);
@@ -824,7 +1085,10 @@ fn flexible_cell_with_constraints_keeps_dimers_rigid_and_conserves_the_extended_
         worst_e = worst_e.max((sim.conserved_energy() - c0).abs());
     }
     assert!(worst_len < 1e-9, "bond length drift {worst_len}");
-    assert!(worst_e < 0.02 * sim.sys.kinetic_energy(), "extended energy drift {worst_e}");
+    assert!(
+        worst_e < 0.02 * sim.sys.kinetic_energy(),
+        "extended energy drift {worst_e}"
+    );
     let tr: f64 = (0..3).map(|a| sim.constraint_virial[a][a]).sum();
     assert!(tr.is_finite() && tr != 0.0);
 }
@@ -843,13 +1107,23 @@ fn constrained_langevin_keeps_bonds_rigid_and_samples_the_target_temperature() {
         worst = worst.max(max_bond_error(&sim));
     }
     assert!(worst < 1e-9, "bond drift {worst}");
-    assert!((tm / ns as f64 - 1.5).abs() < 0.06, "T = {}", tm / ns as f64);
+    assert!(
+        (tm / ns as f64 - 1.5).abs() < 0.06,
+        "T = {}",
+        tm / ns as f64
+    );
     // the flexible cell now composes with Langevin dynamics
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, 1.0, 30.0, CellMode::Isotropic).with_langevin_cell(1.0),
+    );
     assert!(sim.step().is_ok());
 }
 
-fn ideal_gas(n: usize, l: f64, seed: u64) -> MdSimulation<3> {
+fn ideal_gas(
+    n: usize,
+    l: f64,
+    seed: u64,
+) -> MdSimulation<3> {
     let bx = SimBox::<3>::periodic([l; 3]);
     let mut rng = Rng::new(seed);
     let pos = random_positions(n, &bx, 0.0, &mut rng).unwrap();
@@ -865,7 +1139,9 @@ fn langevin_piston_samples_the_isothermal_isobaric_ensemble_of_an_ideal_gas() {
     for (mode, cell_dof) in [(CellMode::Isotropic, 1.0), (CellMode::Orthorhombic, 3.0)] {
         let mut sim = ideal_gas(n, 5.0, 3);
         sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 1.0 };
-        sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 4.0, mode).with_langevin_cell(0.5));
+        sim.barostat = Barostat::Flexible(
+            FlexibleBarostat::hydrostatic(3, 1.0, 4.0, mode).with_langevin_cell(0.5),
+        );
         sim.run(3000).unwrap();
         let (mut v, mut cke, mut cnt) = (0.0, 0.0, 0.0);
         for k in 0..40_000 {
@@ -880,8 +1156,14 @@ fn langevin_piston_samples_the_isothermal_isobaric_ensemble_of_an_ideal_gas() {
         }
         let (v, cke) = (v / cnt, cke / cnt);
         let expected = (n + 1) as f64;
-        assert!((v / expected - 1.0).abs() < 0.08, "{mode:?}: <V> = {v} vs {expected}");
-        assert!((cke / (0.5 * cell_dof) - 1.0).abs() < 0.08, "{mode:?}: cell kinetic energy {cke}");
+        assert!(
+            (v / expected - 1.0).abs() < 0.08,
+            "{mode:?}: <V> = {v} vs {expected}"
+        );
+        assert!(
+            (cke / (0.5 * cell_dof) - 1.0).abs() < 0.08,
+            "{mode:?}: cell kinetic energy {cke}"
+        );
     }
 }
 
@@ -890,7 +1172,9 @@ fn langevin_piston_with_full_cell_reaches_target_stress_for_a_lj_fluid() {
     let (t0, p0) = (1.2, 1.0);
     let mut sim = lj_fluid_3d(3, 0.7, t0, 0.005, 191);
     sim.thermostat = Thermostat::Langevin { t0, gamma: 1.0 };
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_langevin_cell(1.0));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_langevin_cell(1.0),
+    );
     sim.run(1500).unwrap();
     let (mut tm, mut pt) = (0.0, [[0.0; 3]; 3]);
     let ns = 3000;
@@ -915,7 +1199,9 @@ fn constrained_dimers_under_a_langevin_piston_stay_rigid() {
     let d = 0.7;
     let mut sim = dimer_system(32, 7.0, d, 121);
     sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 1.5 };
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0),
+    );
     sim.run(500).unwrap();
     let (mut worst, mut tm) = (0.0_f64, 0.0);
     let ns = 2500;
@@ -925,7 +1211,11 @@ fn constrained_dimers_under_a_langevin_piston_stay_rigid() {
         tm += sim.temperature();
     }
     assert!(worst < 1e-9, "bond drift {worst}");
-    assert!((tm / ns as f64 - 1.0).abs() < 0.12, "T = {}", tm / ns as f64);
+    assert!(
+        (tm / ns as f64 - 1.0).abs() < 0.12,
+        "T = {}",
+        tm / ns as f64
+    );
     let tr: f64 = (0..3).map(|a| sim.constraint_virial[a][a]).sum();
     assert!(tr.is_finite() && tr != 0.0);
 }
@@ -950,12 +1240,17 @@ fn sllod_on_a_deforming_cell_is_exact_for_free_particles_and_reduces_the_cell() 
         assert!(worst_offset <= 2.0 + 1e-9, "cell offset {worst_offset}");
         let c = sim.sys.bx.cell.unwrap();
         let wraps = ((rate * t_end * 4.0 - c[1][0]) / 4.0).round();
-        assert!((rate * t_end * 4.0 - c[1][0] - wraps * 4.0).abs() < 1e-8, "lattice-equivalent strain");
+        assert!(
+            (rate * t_end * 4.0 - c[1][0] - wraps * 4.0).abs() < 1e-8,
+            "lattice-equivalent strain"
+        );
         let mut err = 0.0_f64;
         for i in 0..30 {
             // v_x(t) = v_x0 - rate v_y0 t, v_y, v_z constant; x(t) = x0 + (v_x0 + rate y0) t
             err = err.max((sim.sys.vel[i][0] - (v0[i][0] - rate * v0[i][1] * t_end)).abs());
-            err = err.max((sim.sys.vel[i][1] - v0[i][1]).abs()).max((sim.sys.vel[i][2] - v0[i][2]).abs());
+            err = err
+                .max((sim.sys.vel[i][1] - v0[i][1]).abs())
+                .max((sim.sys.vel[i][2] - v0[i][2]).abs());
             let xe = x0[i][0] + (v0[i][0] + rate * x0[i][1]) * t_end;
             err = err.max((sim.sys.unwrapped[i][0] - xe).abs());
             err = err.max((sim.sys.unwrapped[i][1] - (x0[i][1] + v0[i][1] * t_end)).abs());
@@ -984,11 +1279,18 @@ fn sllod_shear_viscosity_of_a_lj_fluid_is_positive_and_shear_thins_weakly() {
             tm += sim.temperature();
         }
         let eta = -pxy / ns as f64 / rate;
-        assert!((tm / ns as f64 - 1.0).abs() < 0.15, "T = {}", tm / ns as f64);
+        assert!(
+            (tm / ns as f64 - 1.0).abs() < 0.15,
+            "T = {}",
+            tm / ns as f64
+        );
         assert!(eta > 1.0 && eta < 5.0, "rate {rate}: eta = {eta}");
         stress.push(-pxy / ns as f64);
     }
-    assert!(stress[1] > stress[0], "stress must grow with the rate: {stress:?}");
+    assert!(
+        stress[1] > stress[0],
+        "stress must grow with the rate: {stress:?}"
+    );
 }
 
 #[test]
@@ -1002,20 +1304,39 @@ fn sliding_brick_lees_edwards_with_a_flexible_cell_follows_the_sllod_equations()
     for i in 0..n {
         sim.sys.vel[i][0] += rate * (sim.sys.pos[i][1] - 0.5 * l);
     }
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 1e12, CellMode::Orthorhombic));
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(
+        3,
+        1.0,
+        1e12,
+        CellMode::Orthorhombic,
+    ));
     let steps = 300;
     sim.run(steps).unwrap();
     let t = steps as f64 * sim.dt;
     let ly = sim.sys.bx.len[1];
     for i in 0..n {
-        let u = [sim.sys.vel[i][0] - rate * (sim.sys.pos[i][1] - 0.5 * ly), sim.sys.vel[i][1], sim.sys.vel[i][2]];
-        assert!((u[0] - (u0[i][0] - rate * u0[i][1] * t)).abs() < 1e-7, "u_x {} vs {}", u[0], u0[i][0] - rate * u0[i][1] * t);
+        let u = [
+            sim.sys.vel[i][0] - rate * (sim.sys.pos[i][1] - 0.5 * ly),
+            sim.sys.vel[i][1],
+            sim.sys.vel[i][2],
+        ];
+        assert!(
+            (u[0] - (u0[i][0] - rate * u0[i][1] * t)).abs() < 1e-7,
+            "u_x {} vs {}",
+            u[0],
+            u0[i][0] - rate * u0[i][1] * t
+        );
         assert!((u[1] - u0[i][1]).abs() < 1e-7 && (u[2] - u0[i][2]).abs() < 1e-7);
         assert!(sim.sys.pos[i][1] >= 0.0 && sim.sys.pos[i][1] < ly + 1e-9);
     }
     // the box stays rectangular and the offset advanced by rate * L * t (modulo L)
     let expected = (rate * l * t) % l;
-    assert!((sim.sys.bx.offset - expected).abs() < 1e-6 || (sim.sys.bx.offset - expected).abs() > l - 1e-6, "offset {} vs {expected}", sim.sys.bx.offset);
+    assert!(
+        (sim.sys.bx.offset - expected).abs() < 1e-6
+            || (sim.sys.bx.offset - expected).abs() > l - 1e-6,
+        "offset {} vs {expected}",
+        sim.sys.bx.offset
+    );
     assert!(sim.sys.bx.cell.is_none());
     // unsupported combinations are errors
     let mut bad = ideal_gas(10, l, 6);
@@ -1040,7 +1361,12 @@ fn sliding_brick_and_deforming_cell_give_the_same_lj_shear_stress() {
                 sim.sys.vel[i][0] += rate * (sim.sys.pos[i][1] - 0.5 * l);
             }
             // frozen cell: the point is the sliding-brick boundary, not the barostat
-            sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 1e12, CellMode::Orthorhombic));
+            sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(
+                3,
+                1.0,
+                1e12,
+                CellMode::Orthorhombic,
+            ));
         }
         sim.run(800).unwrap();
         let mut pxy = 0.0;
@@ -1065,7 +1391,10 @@ fn sliding_brick_and_deforming_cell_give_the_same_lj_shear_stress() {
     };
     let (eta_a, eta_b) = (eta_of(true), eta_of(false));
     assert!(eta_a > 1.0 && eta_b > 1.0, "{eta_a} {eta_b}");
-    assert!((eta_a - eta_b).abs() < 0.2 * eta_a, "viscosity: SLLOD {eta_a} vs sliding brick {eta_b}");
+    assert!(
+        (eta_a - eta_b).abs() < 0.2 * eta_a,
+        "viscosity: SLLOD {eta_a} vs sliding brick {eta_b}"
+    );
 }
 
 #[test]
@@ -1078,7 +1407,9 @@ fn constrained_dimers_stay_rigid_under_sliding_brick_shear_with_a_langevin_pisto
         sim.sys.vel[i][0] += 0.3 * (sim.sys.pos[i][1] - 0.5 * l);
     }
     sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 2.0 };
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    sim.barostat = Barostat::Flexible(
+        FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0),
+    );
     sim.run(300).unwrap();
     let mut worst = 0.0_f64;
     for _ in 0..1500 {

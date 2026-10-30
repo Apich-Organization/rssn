@@ -41,7 +41,9 @@ use serde::Serialize;
 
 use crate::sim::physics_rkm::DormandPrince54;
 use crate::sim::physics_rkm::OdeSystem;
-use crate::sim::relativity::{Geodesic, KerrNewman, Termination};
+use crate::sim::relativity::Geodesic;
+use crate::sim::relativity::KerrNewman;
+use crate::sim::relativity::Termination;
 
 /// Parameters for the geodesic simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -165,7 +167,11 @@ pub fn run_kerr_newman_geodesic(
     spin: f64,
     charge: f64,
 ) -> Result<Vec<(f64, f64)>, String> {
-    let metric = KerrNewman { m: params.black_hole_mass, a: spin, q: charge };
+    let metric = KerrNewman {
+        m: params.black_hole_mass,
+        a: spin,
+        q: charge,
+    };
     let mut g = equatorial_geodesic(metric, params.initial_state)?;
     let r_stop = metric.horizon().map_or(0.05 * metric.m, |rh| 1.001 * rh);
     if g.r <= r_stop {

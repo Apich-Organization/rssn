@@ -1,8 +1,10 @@
 //! Christoffel symbols and curvature from closure metrics.
 
-use rssn::kernels::differential_geometry::{
-    christoffel_symbols, metric_tensor_at_point, ricci_scalar, ricci_tensor, riemann_tensor,
-};
+use rssn::kernels::differential_geometry::christoffel_symbols;
+use rssn::kernels::differential_geometry::metric_tensor_at_point;
+use rssn::kernels::differential_geometry::ricci_scalar;
+use rssn::kernels::differential_geometry::ricci_tensor;
+use rssn::kernels::differential_geometry::riemann_tensor;
 
 fn polar(p: &[f64]) -> Vec<Vec<f64>> {
     vec![vec![1.0, 0.0], vec![0.0, p[0] * p[0]]]
@@ -36,7 +38,12 @@ fn flat_polar_plane_has_no_curvature() {
     for value in riemann.iter().flatten().flatten().flatten() {
         assert!(value.abs() < 1e-6, "{value}");
     }
-    assert!(ricci_scalar(polar, &p).unwrap_or_else(|e| panic!("{e}")).abs() < 1e-6);
+    assert!(
+        ricci_scalar(polar, &p)
+            .unwrap_or_else(|e| panic!("{e}"))
+            .abs()
+            < 1e-6
+    );
 }
 
 #[test]

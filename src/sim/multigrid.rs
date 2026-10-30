@@ -18,9 +18,12 @@
 //! `σ <= 0` Helmholtz problems are solvable while the coarse-grid problems
 //! stay nonsingular (σ below the first eigenvalue of the coarsest level).
 
-use crate::kernels::krylov::{Csr, SparseLu, SparseOrdering};
+use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::SparseLu;
+use crate::kernels::krylov::SparseOrdering;
 use crate::sim::boundary::FaceBcs;
-use crate::sim::structured::{Grid, LaplacianOp};
+use crate::sim::structured::Grid;
+use crate::sim::structured::LaplacianOp;
 
 /// Multigrid cycle type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,7 +55,14 @@ pub struct MgOptions {
 
 impl Default for MgOptions {
     fn default() -> Self {
-        Self { cycle: MgCycle::V, pre: 2, post: 2, max_cycles: 50, tol: 1e-10, coarsest_nodes: 64 }
+        Self {
+            cycle: MgCycle::V,
+            pre: 2,
+            post: 2,
+            max_cycles: 50,
+            tol: 1e-10,
+            coarsest_nodes: 64,
+        }
     }
 }
 
@@ -95,7 +105,10 @@ pub struct MultigridSolver {
     opts: MgOptions,
 }
 
-fn coarse_n(n: usize, periodic: bool) -> Option<usize> {
+fn coarse_n(
+    n: usize,
+    periodic: bool,
+) -> Option<usize> {
     if periodic {
         (n.is_multiple_of(2) && n >= 6).then_some(n / 2)
     } else {
@@ -104,16 +117,22 @@ fn coarse_n(n: usize, periodic: bool) -> Option<usize> {
 }
 
 /// Applies a 1D map along `axis` of an array with extents `ns`, producing extent `nd` there.
-fn along_axis(src: &[f64], ns: [usize; 3], axis: usize, nd: usize, f: &dyn Fn(&[f64], &mut [f64])) -> Vec<f64> {
+fn along_axis(
+    src: &[f64],
+    ns: [usize; 3],
+    axis: usize,
+    nd: usize,
+    f: &dyn Fn(&[f64], &mut [f64]),
+) -> Vec<f64> {
     let mut nd_all = ns;
     nd_all[axis] = nd;
     let mut out = vec![0.0; nd_all.iter().product()];
     let stride_s: usize = ns[..axis].iter().product();
     let stride_d: usize = nd_all[..axis].iter().product();
     let (o1, o2) = match axis {
-        0 => (1, 2),
-        1 => (0, 2),
-        _ => (0, 1),
+        | 0 => (1, 2),
+        | 1 => (0, 2),
+        | _ => (0, 1),
     };
     let mut line_in = vec![0.0; ns[axis]];
     let mut line_out = vec![0.0; nd];
@@ -136,7 +155,11 @@ fn along_axis(src: &[f64], ns: [usize; 3], axis: usize, nd: usize, f: &dyn Fn(&[
     out
 }
 
-fn restrict_line(fine: &[f64], coarse: &mut [f64], periodic: bool) {
+fn restrict_line(
+    fine: &[f64],
+    coarse: &mut [f64],
+    periodic: bool,
+) {
     let nf = fine.len();
     let nc = coarse.len();
     for j in 0..nc {
@@ -154,12 +177,20 @@ fn restrict_line(fine: &[f64], coarse: &mut [f64], periodic: bool) {
     }
 }
 
-fn prolong_line(coarse: &[f64], fine: &mut [f64], periodic: bool) {
+fn prolong_line(
+    coarse: &[f64],
+    fine: &mut [f64],
+    periodic: bool,
+) {
     let nc = coarse.len();
     for j in 0..nc {
         fine[2 * j] = coarse[j];
         if 2 * j + 1 < fine.len() {
-            let nxt = if periodic { coarse[(j + 1) % nc] } else { coarse[j + 1] };
+            let nxt = if periodic {
+                coarse[(j + 1) % nc]
+            } else {
+                coarse[j + 1]
+            };
             fine[2 * j + 1] = f64::midpoint(coarse[j], nxt);
         }
     }
@@ -170,7 +201,12 @@ impl MultigridSolver {
     ///
     /// # Errors
     /// On invalid boundary descriptions or a singular coarsest problem.
-    pub fn new(grid: &Grid, bcs: &FaceBcs, sigma: f64, opts: MgOptions) -> Result<Self, String> {
+    pub fn new(
+        grid: &Grid,
+        bcs: &FaceBcs,
+        sigma: f64,
+        opts: MgOptions,
+    ) -> Result<Self, String> {
         let hom = bcs.homogeneous();
         let mut levels: Vec<Level> = Vec::new();
         let mut g = grid.clone();
@@ -192,7 +228,12 @@ impl MultigridSolver {
                 }
             }
             let any = coarsen.iter().any(|&c| c);
-            levels.push(Level { grid: g.clone(), op, a, coarsen });
+            levels.push(Level {
+                grid: g.clone(),
+                op,
+                a,
+                coarsen,
+            });
             first = false;
             if !any {
                 break;
@@ -206,7 +247,11 @@ impl MultigridSolver {
             .a
             .sparse_lu(SparseOrdering::MinDegree)
             .map_err(|e| format!("coarsest-level LU failed: {e:?}"))?;
-        Ok(Self { levels, coarse_lu, opts })
+        Ok(Self {
+            levels,
+            coarse_lu,
+            opts,
+        })
     }
 
     /// Number of levels.
@@ -215,7 +260,13 @@ impl MultigridSolver {
         self.levels.len()
     }
 
-    fn smooth(&self, l: usize, u: &mut [f64], b: &[f64], backward: bool) {
+    fn smooth(
+        &self,
+        l: usize,
+        u: &mut [f64],
+        b: &[f64],
+        backward: bool,
+    ) {
         let a = &self.levels[l].a;
         let n = a.rows;
         let mut sweep = |i: usize| {
@@ -242,17 +293,30 @@ impl MultigridSolver {
         }
     }
 
-    fn residual(&self, l: usize, u: &[f64], b: &[f64]) -> Vec<f64> {
+    fn residual(
+        &self,
+        l: usize,
+        u: &[f64],
+        b: &[f64],
+    ) -> Vec<f64> {
         let lev = &self.levels[l];
         let mut r = vec![0.0; u.len()];
         lev.a.matvec(u, &mut r);
         for p in 0..r.len() {
-            r[p] = if lev.op.is_dirichlet(p) { 0.0 } else { b[p] - r[p] };
+            r[p] = if lev.op.is_dirichlet(p) {
+                0.0
+            } else {
+                b[p] - r[p]
+            };
         }
         r
     }
 
-    fn restrict(&self, l: usize, r: &[f64]) -> Vec<f64> {
+    fn restrict(
+        &self,
+        l: usize,
+        r: &[f64],
+    ) -> Vec<f64> {
         let lev = &self.levels[l];
         let mut cur = r.to_vec();
         let mut ext = lev.grid.n;
@@ -273,21 +337,33 @@ impl MultigridSolver {
         cur
     }
 
-    fn prolong(&self, l: usize, e: &[f64]) -> Vec<f64> {
+    fn prolong(
+        &self,
+        l: usize,
+        e: &[f64],
+    ) -> Vec<f64> {
         let fine = &self.levels[l];
         let mut ext = self.levels[l + 1].grid.n;
         let mut cur = e.to_vec();
         for ax in 0..fine.grid.dim {
             if fine.coarsen[ax] {
                 let per = fine.grid.periodic[ax];
-                cur = along_axis(&cur, ext, ax, fine.grid.n[ax], &|c, f| prolong_line(c, f, per));
+                cur = along_axis(&cur, ext, ax, fine.grid.n[ax], &|c, f| {
+                    prolong_line(c, f, per)
+                });
                 ext[ax] = fine.grid.n[ax];
             }
         }
         cur
     }
 
-    fn cycle(&self, l: usize, u: &mut [f64], b: &[f64], gamma: usize) {
+    fn cycle(
+        &self,
+        l: usize,
+        u: &mut [f64],
+        b: &[f64],
+        gamma: usize,
+    ) {
         if l + 1 == self.levels.len() {
             let sol = self.coarse_lu.solve(b);
             u.copy_from_slice(&sol);
@@ -314,7 +390,11 @@ impl MultigridSolver {
     }
 
     /// Full-multigrid pass for the error equation `A e = r` (homogeneous data).
-    fn fmg(&self, l: usize, r: &[f64]) -> Vec<f64> {
+    fn fmg(
+        &self,
+        l: usize,
+        r: &[f64],
+    ) -> Vec<f64> {
         if l + 1 == self.levels.len() {
             return self.coarse_lu.solve(r);
         }
@@ -334,7 +414,11 @@ impl MultigridSolver {
     ///
     /// # Errors
     /// If `f` has the wrong length.
-    pub fn solve(&self, f: &[f64], t: f64) -> Result<MgResult, String> {
+    pub fn solve(
+        &self,
+        f: &[f64],
+        t: f64,
+    ) -> Result<MgResult, String> {
         let lev0 = &self.levels[0];
         let nn = lev0.grid.len();
         if f.len() != nn {
@@ -346,7 +430,14 @@ impl MultigridSolver {
         let bn = b.iter().map(|v| v * v).sum::<f64>().sqrt().max(1e-300);
         let mut u = vec![0.0; nn];
         lev0.op.set_dirichlet(&mut u, t);
-        let rn = |this: &Self, u: &[f64]| this.residual(0, u, &b).iter().map(|v| v * v).sum::<f64>().sqrt() / bn;
+        let rn = |this: &Self, u: &[f64]| {
+            this.residual(0, u, &b)
+                .iter()
+                .map(|v| v * v)
+                .sum::<f64>()
+                .sqrt()
+                / bn
+        };
         let mut residuals = vec![rn(self, &u)];
         if self.opts.cycle == MgCycle::Fmg {
             let r = self.residual(0, &u, &b);
@@ -356,7 +447,11 @@ impl MultigridSolver {
             }
             residuals.push(rn(self, &u));
         }
-        let gamma = if self.opts.cycle == MgCycle::W { 2 } else { 1 };
+        let gamma = if self.opts.cycle == MgCycle::W {
+            2
+        } else {
+            1
+        };
         let mut converged = residuals.last().is_some_and(|&r| r <= self.opts.tol);
         let mut k = 0;
         while !converged && k < self.opts.max_cycles {
@@ -366,7 +461,11 @@ impl MultigridSolver {
             converged = r <= self.opts.tol;
             k += 1;
         }
-        Ok(MgResult { u, residuals, converged })
+        Ok(MgResult {
+            u,
+            residuals,
+            converged,
+        })
     }
 }
 

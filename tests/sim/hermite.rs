@@ -3,20 +3,43 @@
 use rssn::kernels::random::Rng;
 use rssn::sim::hermite::*;
 
-fn cfg(order: HermiteOrder, policy: StepPolicy) -> HermiteConfig {
-    HermiteConfig { g: 1.0, eps: 0.0, order, policy, t0: 0.0 }
+fn cfg(
+    order: HermiteOrder,
+    policy: StepPolicy,
+) -> HermiteConfig {
+    HermiteConfig {
+        g: 1.0,
+        eps: 0.0,
+        order,
+        policy,
+        t0: 0.0,
+    }
 }
 
 /// Test-mass orbit of eccentricity `e` and semi-major axis 1 around a unit mass.
 fn kepler_ic(e: f64) -> (Vec<f64>, Vec<[f64; 3]>, Vec<[f64; 3]>) {
     let vp = ((1.0 + e) / (1.0 - e)).sqrt();
-    (vec![1.0, 0.0], vec![[0.0; 3], [1.0 - e, 0.0, 0.0]], vec![[0.0; 3], [0.0, vp, 0.0]])
+    (
+        vec![1.0, 0.0],
+        vec![[0.0; 3], [1.0 - e, 0.0, 0.0]],
+        vec![[0.0; 3], [0.0, vp, 0.0]],
+    )
 }
 
-fn kepler_error(order: HermiteOrder, e: f64, steps: usize) -> f64 {
+fn kepler_error(
+    order: HermiteOrder,
+    e: f64,
+    steps: usize,
+) -> f64 {
     let (m, x, v) = kepler_ic(e);
     let period = 2.0 * std::f64::consts::PI;
-    let mut s = HermiteSystem::new(m, x.clone(), v, &cfg(order, StepPolicy::Shared(period / steps as f64))).unwrap();
+    let mut s = HermiteSystem::new(
+        m,
+        x.clone(),
+        v,
+        &cfg(order, StepPolicy::Shared(period / steps as f64)),
+    )
+    .unwrap();
     s.advance_to(period * (1.0 + 1e-12)).unwrap();
     let (xs, _) = s.state_at(s.time).unwrap();
     let d = [xs[1][0] - x[1][0], xs[1][1] - x[1][1], xs[1][2] - x[1][2]];
@@ -25,10 +48,16 @@ fn kepler_error(order: HermiteOrder, e: f64, steps: usize) -> f64 {
 
 #[test]
 fn shared_step_hermite_schemes_have_orders_four_and_six() {
-    let (e4a, e4b) = (kepler_error(HermiteOrder::Fourth, 0.5, 400), kepler_error(HermiteOrder::Fourth, 0.5, 800));
+    let (e4a, e4b) = (
+        kepler_error(HermiteOrder::Fourth, 0.5, 400),
+        kepler_error(HermiteOrder::Fourth, 0.5, 800),
+    );
     let r4 = (e4a / e4b).log2();
     assert!(r4 > 3.6 && r4 < 4.6, "4th order rate {r4}");
-    let (e6a, e6b) = (kepler_error(HermiteOrder::Sixth, 0.5, 200), kepler_error(HermiteOrder::Sixth, 0.5, 400));
+    let (e6a, e6b) = (
+        kepler_error(HermiteOrder::Sixth, 0.5, 200),
+        kepler_error(HermiteOrder::Sixth, 0.5, 400),
+    );
     let r6 = (e6a / e6b).log2();
     assert!(r6 > 5.4 && r6 < 6.6, "6th order rate {r6}: {e6a} {e6b}");
     assert!(e6b < e4b);
@@ -39,16 +68,36 @@ fn figure_eight_choreography_returns_after_one_period() {
     let x1 = [0.970_004_36, -0.243_087_53, 0.0];
     let v3 = [-0.932_407_37, -0.864_731_46, 0.0];
     let pos = vec![x1, [-x1[0], -x1[1], 0.0], [0.0; 3]];
-    let vel = vec![[-v3[0] / 2.0, -v3[1] / 2.0, 0.0], [-v3[0] / 2.0, -v3[1] / 2.0, 0.0], v3];
+    let vel = vec![
+        [-v3[0] / 2.0, -v3[1] / 2.0, 0.0],
+        [-v3[0] / 2.0, -v3[1] / 2.0, 0.0],
+        v3,
+    ];
     let period = 6.325_913_9;
-    let mut s = HermiteSystem::new(vec![1.0; 3], pos.clone(), vel, &cfg(HermiteOrder::Sixth, StepPolicy::Shared(period / 800.0))).unwrap();
+    let mut s = HermiteSystem::new(
+        vec![1.0; 3],
+        pos.clone(),
+        vel,
+        &cfg(HermiteOrder::Sixth, StepPolicy::Shared(period / 800.0)),
+    )
+    .unwrap();
     s.advance_to(period * (1.0 + 1e-9)).unwrap();
     let (xs, _) = s.state_at(s.time).unwrap();
-    let err = (0..3).map(|i| (0..2).map(|k| (xs[i][k] - pos[i][k]).powi(2)).sum::<f64>().sqrt()).fold(0.0, f64::max);
+    let err = (0..3)
+        .map(|i| {
+            (0..2)
+                .map(|k| (xs[i][k] - pos[i][k]).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        })
+        .fold(0.0, f64::max);
     assert!(err < 2e-5, "figure-eight return error {err}");
 }
 
-fn plummer_like(n: usize, seed: u64) -> (Vec<f64>, Vec<[f64; 3]>, Vec<[f64; 3]>) {
+fn plummer_like(
+    n: usize,
+    seed: u64,
+) -> (Vec<f64>, Vec<[f64; 3]>, Vec<[f64; 3]>) {
     let mut rng = Rng::new(seed);
     let mut x = Vec::new();
     let mut v = Vec::new();
@@ -75,15 +124,33 @@ fn block_time_steps_conserve_energy_and_agree_with_a_fine_reference() {
     let (xr, _) = reference.state_at(t_end).unwrap();
     let mut results = Vec::new();
     for order in [HermiteOrder::Fourth, HermiteOrder::Sixth] {
-        let mut c = cfg(order, StepPolicy::Block { eta: 0.02, dt_max: 1.0 / 16.0, dt_min: 1.0 / 65536.0 });
+        let mut c = cfg(
+            order,
+            StepPolicy::Block {
+                eta: 0.02,
+                dt_max: 1.0 / 16.0,
+                dt_min: 1.0 / 65536.0,
+            },
+        );
         c.eps = eps;
         let mut s = HermiteSystem::new(m.clone(), x.clone(), v.clone(), &c).unwrap();
         let e0 = s.total_energy().unwrap();
         s.advance_to(t_end).unwrap();
         let e1 = s.total_energy().unwrap();
-        assert!(((e1 - e0) / e0).abs() < 1e-4, "{order:?} energy drift {}", (e1 - e0) / e0);
+        assert!(
+            ((e1 - e0) / e0).abs() < 1e-4,
+            "{order:?} energy drift {}",
+            (e1 - e0) / e0
+        );
         let (xs, _) = s.state_at(t_end).unwrap();
-        let dev = (0..m.len()).map(|i| (0..3).map(|k| (xs[i][k] - xr[i][k]).powi(2)).sum::<f64>().sqrt()).fold(0.0, f64::max);
+        let dev = (0..m.len())
+            .map(|i| {
+                (0..3)
+                    .map(|k| (xs[i][k] - xr[i][k]).powi(2))
+                    .sum::<f64>()
+                    .sqrt()
+            })
+            .fold(0.0, f64::max);
         assert!(dev < 5e-3, "{order:?} deviation {dev}");
         // individual steps: the number of particle updates is below that of a shared-step run
         let min_dt = s.dt.iter().copied().fold(f64::INFINITY, f64::min);
@@ -97,7 +164,14 @@ fn block_time_steps_conserve_energy_and_agree_with_a_fine_reference() {
 #[test]
 fn block_steps_form_a_power_of_two_hierarchy() {
     let (m, x, v) = plummer_like(16, 9);
-    let mut c = cfg(HermiteOrder::Fourth, StepPolicy::Block { eta: 0.03, dt_max: 0.125, dt_min: 1e-6 });
+    let mut c = cfg(
+        HermiteOrder::Fourth,
+        StepPolicy::Block {
+            eta: 0.03,
+            dt_max: 0.125,
+            dt_min: 1e-6,
+        },
+    );
     c.eps = 0.05;
     let mut s = HermiteSystem::new(m, x, v, &c).unwrap();
     for _ in 0..400 {
@@ -105,7 +179,11 @@ fn block_steps_form_a_power_of_two_hierarchy() {
         for i in 0..16 {
             let q = s.dt[i] / 0.125;
             let l = q.log2();
-            assert!((l - l.round()).abs() < 1e-12, "dt {} is not a power-of-two fraction", s.dt[i]);
+            assert!(
+                (l - l.round()).abs() < 1e-12,
+                "dt {} is not a power-of-two fraction",
+                s.dt[i]
+            );
             // block steps must be commensurable with the particle's own time
             assert!((s.t_last[i] / s.dt[i] - (s.t_last[i] / s.dt[i]).round()).abs() < 1e-9);
         }
@@ -113,10 +191,27 @@ fn block_steps_form_a_power_of_two_hierarchy() {
 }
 
 /// Apsidal precession per orbit of the relative orbit from successive pericentres.
-fn pn_precession(c_light: f64, e: f64, orbits: f64) -> (f64, f64) {
+fn pn_precession(
+    c_light: f64,
+    e: f64,
+    orbits: f64,
+) -> (f64, f64) {
     let (mut m, x, v) = kepler_ic(e);
     m[1] = 1e-9;
-    let mut s = HermiteSystem::new(m, x, v, &cfg(HermiteOrder::Fourth, StepPolicy::Block { eta: 0.002, dt_max: 1.0 / 64.0, dt_min: 1e-9 })).unwrap();
+    let mut s = HermiteSystem::new(
+        m,
+        x,
+        v,
+        &cfg(
+            HermiteOrder::Fourth,
+            StepPolicy::Block {
+                eta: 0.002,
+                dt_max: 1.0 / 64.0,
+                dt_min: 1e-9,
+            },
+        ),
+    )
+    .unwrap();
     s.enable_post_newtonian(c_light).unwrap();
     let e0 = s.total_energy().unwrap();
     let mut peri: Vec<f64> = Vec::new();
@@ -166,7 +261,10 @@ fn one_pn_perihelion_precession_matches_the_einstein_formula() {
     let (dphi, drift) = pn_precession(c_light, e, 6.2);
     // 6 pi G M / (c^2 a (1 - e^2)) per orbit
     let expected = 6.0 * std::f64::consts::PI / (c_light * c_light * (1.0 - e * e));
-    assert!((dphi - expected).abs() < 0.02 * expected, "precession {dphi} vs {expected}");
+    assert!(
+        (dphi - expected).abs() < 0.02 * expected,
+        "precession {dphi} vs {expected}"
+    );
     assert!(drift < 1e-4, "1PN energy drift {drift}");
     // the precession scales as 1/c^2
     let (dphi2, _) = pn_precession(2.0 * c_light, e, 6.2);
@@ -180,7 +278,20 @@ fn eih_two_body_accelerations_are_momentum_conserving_to_one_pn() {
     let m = vec![1.0, 1.0];
     let x = vec![[0.5, 0.0, 0.0], [-0.5, 0.0, 0.0]];
     let v = vec![[0.0, 0.5, 0.0], [0.0, -0.5, 0.0]];
-    let mut s = HermiteSystem::new(m, x, v, &cfg(HermiteOrder::Fourth, StepPolicy::Block { eta: 0.003, dt_max: 1.0 / 128.0, dt_min: 1e-9 })).unwrap();
+    let mut s = HermiteSystem::new(
+        m,
+        x,
+        v,
+        &cfg(
+            HermiteOrder::Fourth,
+            StepPolicy::Block {
+                eta: 0.003,
+                dt_max: 1.0 / 128.0,
+                dt_min: 1e-9,
+            },
+        ),
+    )
+    .unwrap();
     s.enable_post_newtonian(30.0).unwrap();
     let e0 = s.total_energy().unwrap();
     s.advance_to(10.0).unwrap();
@@ -194,9 +305,26 @@ fn eih_two_body_accelerations_are_momentum_conserving_to_one_pn() {
 #[test]
 fn hermite_validates_its_inputs() {
     let (m, x, v) = kepler_ic(0.1);
-    assert!(HermiteSystem::new(m.clone(), x.clone(), v.clone(), &cfg(HermiteOrder::Fourth, StepPolicy::Shared(-1.0))).is_err());
-    assert!(HermiteSystem::new(vec![1.0], vec![[0.0; 3]], vec![[0.0; 3]], &cfg(HermiteOrder::Fourth, StepPolicy::Shared(0.1))).is_err());
-    let mut s = HermiteSystem::new(m, x, v, &cfg(HermiteOrder::Sixth, StepPolicy::Shared(0.01))).unwrap();
+    assert!(
+        HermiteSystem::new(
+            m.clone(),
+            x.clone(),
+            v.clone(),
+            &cfg(HermiteOrder::Fourth, StepPolicy::Shared(-1.0))
+        )
+        .is_err()
+    );
+    assert!(
+        HermiteSystem::new(
+            vec![1.0],
+            vec![[0.0; 3]],
+            vec![[0.0; 3]],
+            &cfg(HermiteOrder::Fourth, StepPolicy::Shared(0.1))
+        )
+        .is_err()
+    );
+    let mut s =
+        HermiteSystem::new(m, x, v, &cfg(HermiteOrder::Sixth, StepPolicy::Shared(0.01))).unwrap();
     assert!(s.enable_post_newtonian(10.0).is_err());
 }
 
@@ -227,7 +355,14 @@ fn ks_binary_in_a_hierarchical_triple_matches_a_direct_reference() {
         masses.clone(),
         pos.clone(),
         vel.clone(),
-        &cfg(HermiteOrder::Sixth, StepPolicy::Block { eta: 0.005, dt_max: 1.0 / 64.0, dt_min: 1e-10 }),
+        &cfg(
+            HermiteOrder::Sixth,
+            StepPolicy::Block {
+                eta: 0.005,
+                dt_max: 1.0 / 64.0,
+                dt_min: 1e-10,
+            },
+        ),
     )
     .unwrap();
     let e_ref0 = reference.total_energy().unwrap();
@@ -239,7 +374,14 @@ fn ks_binary_in_a_hierarchical_triple_matches_a_direct_reference() {
         masses,
         pos,
         vel,
-        &cfg(HermiteOrder::Fourth, StepPolicy::Block { eta: 0.02, dt_max: 1.0 / 32.0, dt_min: 1e-8 }),
+        &cfg(
+            HermiteOrder::Fourth,
+            StepPolicy::Block {
+                eta: 0.02,
+                dt_max: 1.0 / 32.0,
+                dt_min: 1e-8,
+            },
+        ),
     )
     .unwrap();
     hybrid.add_binary(0, 1, 0.02).unwrap();
@@ -247,16 +389,33 @@ fn ks_binary_in_a_hierarchical_triple_matches_a_direct_reference() {
     hybrid.advance_to(t_end).unwrap();
     let (xh, _) = hybrid.state_at(t_end).unwrap();
     let e1 = hybrid.total_energy().unwrap();
-    assert!(((e1 - e0) / e0).abs() < 1e-5, "hybrid energy drift {}", (e1 - e0) / e0);
+    assert!(
+        ((e1 - e0) / e0).abs() < 1e-5,
+        "hybrid energy drift {}",
+        (e1 - e0) / e0
+    );
     // the third body and the binary centre of mass follow the reference
-    let dev3 = (0..3).map(|k| (xh[2][k] - xr[2][k]).powi(2)).sum::<f64>().sqrt();
+    let dev3 = (0..3)
+        .map(|k| (xh[2][k] - xr[2][k]).powi(2))
+        .sum::<f64>()
+        .sqrt();
     assert!(dev3 < 1e-4, "third-body deviation {dev3}");
     let cm = |x: &[[f64; 3]]| [0.5 * (x[0][0] + x[1][0]), 0.5 * (x[0][1] + x[1][1])];
     let (cr, ch) = (cm(&xr), cm(&xh));
     assert!((cr[0] - ch[0]).hypot(cr[1] - ch[1]) < 1e-4);
     // internal binary orbit: separation agrees
     let sep = |x: &[[f64; 3]]| ((x[1][0] - x[0][0]).powi(2) + (x[1][1] - x[0][1]).powi(2)).sqrt();
-    assert!((sep(&xr) - sep(&xh)).abs() < 2e-3, "{} vs {}", sep(&xr), sep(&xh));
+    assert!(
+        (sep(&xr) - sep(&xh)).abs() < 2e-3,
+        "{} vs {}",
+        sep(&xr),
+        sep(&xh)
+    );
     // the hybrid takes far fewer outer updates than the directly integrated binary needs
-    assert!(hybrid.updates * 3 < reference.updates, "{} vs {}", hybrid.updates, reference.updates);
+    assert!(
+        hybrid.updates * 3 < reference.updates,
+        "{} vs {}",
+        hybrid.updates,
+        reference.updates
+    );
 }

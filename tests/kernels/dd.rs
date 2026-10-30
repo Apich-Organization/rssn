@@ -1,6 +1,7 @@
 //! Tests for double-double arithmetic.
 
-use rssn::kernels::dd::{Cdd, Dd};
+use rssn::kernels::dd::Cdd;
+use rssn::kernels::dd::Dd;
 
 fn atan_inv(k: f64) -> Dd {
     // atan(1/k) = sum (-1)^j / ((2j+1) k^(2j+1))
@@ -29,7 +30,10 @@ fn real_arithmetic_reaches_thirty_digits() {
     assert!((s2 * s2 - Dd::from_f64(2.0)).abs().hi < 1e-31);
     // Machin: pi = 16 atan(1/5) - 4 atan(1/239)
     let pi = Dd::from_f64(16.0) * atan_inv(5.0) - Dd::from_f64(4.0) * atan_inv(239.0);
-    let want = Dd { hi: std::f64::consts::PI, lo: 1.224_646_799_147_353_2e-16 };
+    let want = Dd {
+        hi: std::f64::consts::PI,
+        lo: 1.224_646_799_147_353_2e-16,
+    };
     assert!((pi - want).abs().hi < 2e-31, "{pi:?}");
     // e = sum 1/k!
     let mut e = Dd::ZERO;
@@ -38,7 +42,10 @@ fn real_arithmetic_reaches_thirty_digits() {
         e += t;
         t /= Dd::from_f64(f64::from(k));
     }
-    let want = Dd { hi: std::f64::consts::E, lo: 1.445_646_891_729_250_2e-16 };
+    let want = Dd {
+        hi: std::f64::consts::E,
+        lo: 1.445_646_891_729_250_2e-16,
+    };
     assert!((e - want).abs().hi < 2e-31, "{e:?}");
     // 1 + 2^-80 is not representable in f64 but is in Dd
     let tiny = Dd::from_f64(2.0_f64.powi(-80));

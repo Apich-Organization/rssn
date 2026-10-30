@@ -3,20 +3,31 @@
 use rssn::kernels::topology::*;
 
 fn square() -> Vec<Vec<f64>> {
-    vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![1.0, 1.0], vec![0.0, 1.0]]
+    vec![
+        vec![0.0, 0.0],
+        vec![1.0, 0.0],
+        vec![1.0, 1.0],
+        vec![0.0, 1.0],
+    ]
 }
 
 #[test]
 fn distance_and_components() {
     assert!((euclidean_distance(&[0.0, 0.0], &[3.0, 4.0]) - 5.0).abs() < 1e-12);
     let adj = vec![vec![1], vec![0], vec![3], vec![2], vec![]];
-    assert_eq!(find_connected_components(&adj), vec![vec![0, 1], vec![2, 3], vec![4]]);
+    assert_eq!(
+        find_connected_components(&adj),
+        vec![vec![0, 1], vec![2, 3], vec![4]]
+    );
 }
 
 #[test]
 fn rank_is_exact() {
     assert_eq!(integer_rank(&[vec![1, 2], vec![2, 4]]), 1);
-    assert_eq!(integer_rank(&[vec![1, 0, 1], vec![0, 1, 1], vec![1, 1, 2]]), 2);
+    assert_eq!(
+        integer_rank(&[vec![1, 0, 1], vec![0, 1, 1], vec![1, 1, 2]]),
+        2
+    );
     assert_eq!(integer_rank(&[]), 0);
 }
 
@@ -77,7 +88,9 @@ fn persistence_of_a_square() {
 
 mod exact_persistence {
     use super::*;
-    use rssn::kernels::homology::{distance_matrix, persistence_bars, rips_filtration};
+    use rssn::kernels::homology::distance_matrix;
+    use rssn::kernels::homology::persistence_bars;
+    use rssn::kernels::homology::rips_filtration;
 
     const INF: f64 = f64::INFINITY;
 
@@ -85,10 +98,14 @@ mod exact_persistence {
         d.intervals.iter().map(|i| (i.birth, i.death)).collect()
     }
 
-    fn approx(a: &[(f64, f64)], b: &[(f64, f64)]) -> bool {
+    fn approx(
+        a: &[(f64, f64)],
+        b: &[(f64, f64)],
+    ) -> bool {
         a.len() == b.len()
             && a.iter().zip(b).all(|(x, y)| {
-                (x.0 - y.0).abs() < 1e-12 && ((x.1 - y.1).abs() < 1e-12 || (x.1 == INF && y.1 == INF))
+                (x.0 - y.0).abs() < 1e-12
+                    && ((x.1 - y.1).abs() < 1e-12 || (x.1 == INF && y.1 == INF))
             })
     }
 
@@ -136,7 +153,11 @@ mod exact_persistence {
     #[test]
     fn boundary_of_tetrahedron_has_an_essential_h2() {
         let tet = close_complex(&[vec![0, 1, 2, 3]]);
-        let mut f: Vec<(f64, Vec<usize>)> = tet.iter().filter(|s| s.len() < 4).map(|s| (s.len() as f64, s.clone())).collect();
+        let mut f: Vec<(f64, Vec<usize>)> = tet
+            .iter()
+            .filter(|s| s.len() < 4)
+            .map(|s| (s.len() as f64, s.clone()))
+            .collect();
         let d = persistent_homology(&f, 2).unwrap();
         assert!(approx(&ivs(&d[2]), &[(3.0, INF)]));
         // every H1 class (an edge's cycle) is killed by the triangles
@@ -160,7 +181,10 @@ mod exact_persistence {
     #[test]
     fn square_h1_bar_is_exact() {
         let d = persistent_homology_rips(&square(), 2.0, 2, 10_000).unwrap();
-        assert!(approx(&ivs(&d[0]), &[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, INF)]));
+        assert!(approx(
+            &ivs(&d[0]),
+            &[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, INF)]
+        ));
         assert!(approx(&ivs(&d[1]), &[(1.0, 2.0_f64.sqrt())]));
         assert!(d[2].intervals.is_empty());
     }
@@ -178,8 +202,22 @@ mod exact_persistence {
             .collect();
         let d = persistent_homology_rips(&pts, 2.5, 2, 100_000).unwrap();
         let r2 = 2.0_f64.sqrt();
-        assert!(approx(&ivs(&d[0]), &[(0.0, r2), (0.0, r2), (0.0, r2), (0.0, r2), (0.0, r2), (0.0, INF)]));
-        assert!(d[1].intervals.is_empty(), "triangles enter with the edges: {:?}", d[1]);
+        assert!(approx(
+            &ivs(&d[0]),
+            &[
+                (0.0, r2),
+                (0.0, r2),
+                (0.0, r2),
+                (0.0, r2),
+                (0.0, r2),
+                (0.0, INF)
+            ]
+        ));
+        assert!(
+            d[1].intervals.is_empty(),
+            "triangles enter with the edges: {:?}",
+            d[1]
+        );
         assert!(approx(&ivs(&d[2]), &[(r2, 2.0)]));
     }
 
@@ -187,13 +225,23 @@ mod exact_persistence {
     fn circle_sample_has_one_long_h1_bar() {
         let n = 24;
         let d = persistent_homology_rips(&circle(n), 2.0, 1, 1_000_000).unwrap();
-        let long: Vec<_> = d[1].intervals.iter().filter(|i| i.death - i.birth > 0.5).collect();
+        let long: Vec<_> = d[1]
+            .intervals
+            .iter()
+            .filter(|i| i.death - i.birth > 0.5)
+            .collect();
         assert_eq!(long.len(), 1, "{:?}", d[1]);
         let pi = std::f64::consts::PI;
         // born with the nearest-neighbour edges, dead when chords span a third of the circle
         assert!((long[0].birth - 2.0 * (pi / n as f64).sin()).abs() < 1e-12);
         assert!((long[0].death - 2.0 * (pi * (n / 3) as f64 / n as f64).sin()).abs() < 1e-12);
-        assert_eq!(d[0].intervals.iter().filter(|i| i.death.is_infinite()).count(), 1);
+        assert_eq!(
+            d[0].intervals
+                .iter()
+                .filter(|i| i.death.is_infinite())
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -210,11 +258,25 @@ mod exact_persistence {
             })
             .collect();
         let d = persistent_homology_rips(&pts, 1.9, 2, 10_000_000).unwrap();
-        let long: Vec<_> = d[2].intervals.iter().filter(|i| i.death - i.birth > 0.3).collect();
+        let long: Vec<_> = d[2]
+            .intervals
+            .iter()
+            .filter(|i| i.death - i.birth > 0.3)
+            .collect();
         assert_eq!(long.len(), 1, "{:?}", d[2]);
         assert!(long[0].birth < 1.3 && long[0].death > 1.5);
-        assert!(d[1].intervals.iter().all(|i| i.death - i.birth < 0.35), "{:?}", d[1]);
-        assert_eq!(d[0].intervals.iter().filter(|i| i.death.is_infinite()).count(), 1);
+        assert!(
+            d[1].intervals.iter().all(|i| i.death - i.birth < 0.35),
+            "{:?}",
+            d[1]
+        );
+        assert_eq!(
+            d[0].intervals
+                .iter()
+                .filter(|i| i.death.is_infinite())
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -234,10 +296,17 @@ mod exact_persistence {
             let plain = persistence_bars(&filt, 2).unwrap();
             let fast = persistent_homology(&filt, 2).unwrap();
             for k in 0..=2 {
-                let mut want: Vec<(f64, f64)> =
-                    plain.iter().filter(|b| b.dim == k).map(|b| (b.birth, b.death)).collect();
+                let mut want: Vec<(f64, f64)> = plain
+                    .iter()
+                    .filter(|b| b.dim == k)
+                    .map(|b| (b.birth, b.death))
+                    .collect();
                 want.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
-                assert!(approx(&ivs(&fast[k]), &want), "dim {k}: {:?} vs {want:?}", ivs(&fast[k]));
+                assert!(
+                    approx(&ivs(&fast[k]), &want),
+                    "dim {k}: {:?} vs {want:?}",
+                    ivs(&fast[k])
+                );
             }
         }
     }
@@ -246,12 +315,21 @@ mod exact_persistence {
     fn invalid_filtrations_are_rejected() {
         // edge enters before its vertex
         let f = vec![(0.0, vec![0]), (1.0, vec![1]), (0.5, vec![0, 1])];
-        assert_eq!(persistent_homology(&f, 1), Err(PersistenceError::InvalidFiltration));
+        assert_eq!(
+            persistent_homology(&f, 1),
+            Err(PersistenceError::InvalidFiltration)
+        );
         // missing face
         let f = vec![(0.0, vec![0]), (1.0, vec![0, 1])];
-        assert_eq!(persistent_homology(&f, 1), Err(PersistenceError::InvalidFiltration));
+        assert_eq!(
+            persistent_homology(&f, 1),
+            Err(PersistenceError::InvalidFiltration)
+        );
         // too many simplices
         let pts = circle(30);
-        assert_eq!(persistent_homology_rips(&pts, 2.0, 2, 100), Err(PersistenceError::TooManySimplices));
+        assert_eq!(
+            persistent_homology_rips(&pts, 2.0, 2, 100),
+            Err(PersistenceError::TooManySimplices)
+        );
     }
 }

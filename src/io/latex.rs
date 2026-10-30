@@ -89,11 +89,19 @@ fn order_script(
     s: &str,
     order: u32,
 ) -> String {
-    if order == 1 { s.to_owned() } else { format!("{s}^{}", digit_group(order)) }
+    if order == 1 {
+        s.to_owned()
+    } else {
+        format!("{s}^{}", digit_group(order))
+    }
 }
 
 fn digit_group(n: u32) -> String {
-    if n < 10 { n.to_string() } else { braced(&n.to_string()) }
+    if n < 10 {
+        n.to_string()
+    } else {
+        braced(&n.to_string())
+    }
 }
 
 impl Dialect for Latex {
@@ -193,10 +201,10 @@ impl Dialect for Latex {
         if let ("log", [base, x]) = (name, args) {
             return format!(r"\log_{{{base}}}({x})");
         }
-        let head = FUNCTIONS
-            .iter()
-            .find(|(n, _)| *n == name)
-            .map_or_else(|| format!(r"\operatorname{{{}}}", name.replace('_', r"\_")), |(_, c)| (*c).to_owned());
+        let head = FUNCTIONS.iter().find(|(n, _)| *n == name).map_or_else(
+            || format!(r"\operatorname{{{}}}", name.replace('_', r"\_")),
+            |(_, c)| (*c).to_owned(),
+        );
         format!("{head}({})", args.join(", "))
     }
 
@@ -250,7 +258,13 @@ impl Dialect for Latex {
         let denom = d
             .vars
             .iter()
-            .map(|(v, o)| format!("{op}{}{}", if d.partial { " " } else { "" }, order_script(v, *o)))
+            .map(|(v, o)| {
+                format!(
+                    "{op}{}{}",
+                    if d.partial { " " } else { "" },
+                    order_script(v, *o)
+                )
+            })
             .collect::<Vec<_>>()
             .join(" ");
         if d.inline {
@@ -280,7 +294,11 @@ impl Dialect for Latex {
         lo: &str,
         hi: &str,
     ) -> String {
-        let op = if kind == BigOp::Sum { r"\sum" } else { r"\prod" };
+        let op = if kind == BigOp::Sum {
+            r"\sum"
+        } else {
+            r"\prod"
+        };
         format!("{op}_{{{var}={lo}}}^{{{hi}}} {f}")
     }
 
@@ -354,18 +372,30 @@ mod tests {
     fn constructs() {
         let cases: &[(&str, &str)] = &[
             (r"list(1, 2, 3)", r"\left[ 1, 2, 3 \right]"),
-            (r"list(list(1, 2), list(3, 4))", r"\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}"),
+            (
+                r"list(list(1, 2), list(3, 4))",
+                r"\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}",
+            ),
             (r"(a+b)/c", r"\frac{a + b}{c}"),
             (r"diff(f(x), x)", r"\frac{d}{dx} f"),
-            (r"diff(diff(u(x, t), x), x)", r"\frac{\partial^2 u}{\partial x^2}"),
-            (r"x^2/(2*y) + sqrt(x+1) - 3/4*z", r"\frac{x^{2}}{2y} - \frac{3z}{4} + \sqrt{x + 1}"),
+            (
+                r"diff(diff(u(x, t), x), x)",
+                r"\frac{\partial^2 u}{\partial x^2}",
+            ),
+            (
+                r"x^2/(2*y) + sqrt(x+1) - 3/4*z",
+                r"\frac{x^{2}}{2y} - \frac{3z}{4} + \sqrt{x + 1}",
+            ),
             (r"x^(1/n)", r"\sqrt[n]{x}"),
             (r"x^(2/3)", r"x^{\frac{2}{3}}"),
             (r"x_1^2", r"x_{1}^{2}"),
             (r"exp(x^2)", r"e^{x^{2}}"),
             (r"alpha*beta", r"\alpha \beta"),
             (r"sum(n^2, n, 1, 10)", r"\sum_{n=1}^{10} n^{2}"),
-            (r"limit(sin(x)/x, x, 0)", r"\lim_{x \to 0} \frac{\sin(x)}{x}"),
+            (
+                r"limit(sin(x)/x, x, 0)",
+                r"\lim_{x \to 0} \frac{\sin(x)}{x}",
+            ),
             (r"defint(f(x), x, 0, 1)", r"\int_{0}^{1} f(x) \, dx"),
             (r"abs(x)", r"\left| x \right|"),
             (r"binomial(n,k)", r"\binom{n}{k}"),

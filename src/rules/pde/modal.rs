@@ -98,8 +98,15 @@ pub(super) fn solve(
         return None;
     }
     let n = p.dimension();
-    let (c1, c2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
-    let order = if is_zero_number(cx.graph, c2) { 1 } else { 2 };
+    let (c1, c2) = (
+        p.coefficient(cx.graph, &p.unit(time_index, 1)),
+        p.coefficient(cx.graph, &p.unit(time_index, 2)),
+    );
+    let order = if is_zero_number(cx.graph, c2) {
+        1
+    } else {
+        2
+    };
     if order == 2 && !is_zero_number(cx.graph, c1) {
         return None;
     }
@@ -142,7 +149,11 @@ pub(super) fn solve(
     }
     let (radius, kind) = boundary?;
     let displacement = conditions.find(cx.graph, time_index, &zero_index, None)?;
-    let velocity = if order == 2 { conditions.find(cx.graph, time_index, &p.unit(time_index, 1), None) } else { None };
+    let velocity = if order == 2 {
+        conditions.find(cx.graph, time_index, &p.unit(time_index, 1), None)
+    } else {
+        None
+    };
     let expected = 1 + usize::from(velocity.is_some());
     if conditions.0.iter().filter(|c| c.on == time_index).count() != expected {
         return None;
@@ -152,10 +163,13 @@ pub(super) fn solve(
     let theta_symbol = geometry.theta.and_then(|j| cx.graph.symbol_of(p.vars[j]));
     let phi_symbol = geometry.phi.and_then(|j| cx.graph.symbol_of(p.vars[j]));
     let allowed = [Some(r_symbol), theta_symbol, phi_symbol];
-    let data: Vec<(NodeId, bool)> = [(displacement.value, true), (velocity.map_or_else(|| cx.graph.int(0), |v| v.value), false)]
-        .into_iter()
-        .filter(|(v, _)| !cx.is_zero(*v))
-        .collect();
+    let data: Vec<(NodeId, bool)> = [
+        (displacement.value, true),
+        (velocity.map_or_else(|| cx.graph.int(0), |v| v.value), false),
+    ]
+    .into_iter()
+    .filter(|(v, _)| !cx.is_zero(*v))
+    .collect();
     for (value, _) in &data {
         for symbol in cx.graph.free_symbols(cx.graph.find(*value)).to_vec() {
             if !allowed.contains(&Some(symbol)) {
@@ -167,16 +181,54 @@ pub(super) fn solve(
         return None;
     }
     // Quadrature in the radius.
-    let radial: Vec<(f64, f64)> = gauss_legendre(RADIAL_NODES).into_iter().map(|(x, w)| (0.5 * radius * (1.0 + x), 0.5 * radius * w)).collect();
+    let radial: Vec<(f64, f64)> = gauss_legendre(RADIAL_NODES)
+        .into_iter()
+        .map(|(x, w)| (0.5 * radius * (1.0 + x), 0.5 * radius * w))
+        .collect();
     // Angular grids: (cos θ or θ, weight, θ), φ values.
     let (angles, azimuths): (Vec<(f64, f64, f64)>, Vec<f64>) = if geometry.sphere {
-        let theta_nodes = if geometry.theta.is_some() { 24 } else { 1 };
-        let a: Vec<(f64, f64, f64)> = if geometry.theta.is_some() { gauss_legendre(theta_nodes).into_iter().map(|(x, w)| (x, w, x.acos())).collect() } else { vec![(0.0, 2.0, 0.0)] };
-        let m = if geometry.phi.is_some() { 32 } else { 1 };
-        (a, (0..m).map(|k| 2.0 * PI * f64::from(k) / f64::from(m)).collect())
+        let theta_nodes = if geometry.theta.is_some() {
+            24
+        } else {
+            1
+        };
+        let a: Vec<(f64, f64, f64)> = if geometry.theta.is_some() {
+            gauss_legendre(theta_nodes)
+                .into_iter()
+                .map(|(x, w)| (x, w, x.acos()))
+                .collect()
+        } else {
+            vec![(0.0, 2.0, 0.0)]
+        };
+        let m = if geometry.phi.is_some() {
+            32
+        } else {
+            1
+        };
+        (
+            a,
+            (0..m)
+                .map(|k| 2.0 * PI * f64::from(k) / f64::from(m))
+                .collect(),
+        )
     } else {
-        let m = if geometry.theta.is_some() { 48 } else { 1 };
-        ((0..m).map(|k| (0.0, 2.0 * PI / f64::from(m), 2.0 * PI * f64::from(k) / f64::from(m))).collect(), vec![0.0])
+        let m = if geometry.theta.is_some() {
+            48
+        } else {
+            1
+        };
+        (
+            (0..m)
+                .map(|k| {
+                    (
+                        0.0,
+                        2.0 * PI / f64::from(m),
+                        2.0 * PI * f64::from(k) / f64::from(m),
+                    )
+                })
+                .collect(),
+            vec![0.0],
+        )
     };
     // Tables of the data on the grid: [datum][radius][angle][azimuth].
     let mut tables: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
@@ -217,7 +269,11 @@ pub(super) fn solve(
             if omega2 < -1e-12 {
                 return None;
             }
-            return Some(if is_displacement { cx.graph.int(1) } else { t });
+            return Some(if is_displacement {
+                cx.graph.int(1)
+            } else {
+                t
+            });
         }
         let omega = omega2.sqrt();
         let arg = t_scaled(cx, omega);
@@ -230,73 +286,114 @@ pub(super) fn solve(
         }
     };
     // Radial modes of a Bessel order `nu` (the disk order, or `l + 1/2`).
-    let radial_modes = |cx: &mut Cx<'_>, nu: f64, ball: bool, constant: bool| -> Option<Vec<RadialMode>> {
-        let count = if ball { BALL_ROOTS } else { DISK_ROOTS };
-        let mut modes = Vec::new();
-        let mut roots: Vec<f64> = Vec::new();
-        if constant {
-            roots.push(0.0);
-        }
-        for m in 1..=count {
-            let z = match kind {
-                | Boundary::Dirichlet => super::numeric::bessel_zero(&[nu, m as f64]),
-                | Boundary::Robin(h) => {
-                    let shifted = if ball { h * radius - 0.5 } else { h * radius };
-                    if shifted + nu <= 0.0 {
-                        return None;
-                    }
-                    super::numeric::bessel_root(&[nu, shifted, m as f64])
-                },
-            };
-            if !z.is_finite() {
-                return None;
-            }
-            roots.push(z / radius);
-        }
-        for kappa in roots {
-            if kappa.abs() < 1e-14 {
-                let values = vec![1.0; radial.len()];
-                let node = cx.graph.int(1);
-                modes.push(RadialMode { kappa, values, node });
-                continue;
-            }
-            let scale = if ball { (PI / (2.0 * kappa)).sqrt() } else { 1.0 };
-            let values: Vec<f64> = radial.iter().map(|&(rv, _)| if ball { scale * bessel_j(nu, kappa * rv) / rv.sqrt() } else { bessel_j(nu, kappa * rv) }).collect();
-            let kr = {
-                let k_node = cx.graph.num(Number::from(kappa));
-                mul(cx.graph, &[k_node, r_var])
-            };
-            let order_node = cx.graph.num(Number::fraction((2.0 * nu).round() as i64, 2)?);
-            let bessel = call(cx, "besselj", &[order_node, kr])?;
-            let node = if ball {
-                let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
-                let root = pow(cx.graph, r_var, minus_half);
-                let c = cx.graph.num(Number::from(scale));
-                mul(cx.graph, &[c, root, bessel])
+    let radial_modes =
+        |cx: &mut Cx<'_>, nu: f64, ball: bool, constant: bool| -> Option<Vec<RadialMode>> {
+            let count = if ball {
+                BALL_ROOTS
             } else {
-                bessel
+                DISK_ROOTS
             };
-            modes.push(RadialMode { kappa, values, node });
-        }
-        Some(modes)
-    };
+            let mut modes = Vec::new();
+            let mut roots: Vec<f64> = Vec::new();
+            if constant {
+                roots.push(0.0);
+            }
+            for m in 1..=count {
+                let z = match kind {
+                    | Boundary::Dirichlet => super::numeric::bessel_zero(&[nu, m as f64]),
+                    | Boundary::Robin(h) => {
+                        let shifted = if ball {
+                            h * radius - 0.5
+                        } else {
+                            h * radius
+                        };
+                        if shifted + nu <= 0.0 {
+                            return None;
+                        }
+                        super::numeric::bessel_root(&[nu, shifted, m as f64])
+                    },
+                };
+                if !z.is_finite() {
+                    return None;
+                }
+                roots.push(z / radius);
+            }
+            for kappa in roots {
+                if kappa.abs() < 1e-14 {
+                    let values = vec![1.0; radial.len()];
+                    let node = cx.graph.int(1);
+                    modes.push(RadialMode { kappa, values, node });
+                    continue;
+                }
+                let scale = if ball {
+                    (PI / (2.0 * kappa)).sqrt()
+                } else {
+                    1.0
+                };
+                let values: Vec<f64> = radial
+                    .iter()
+                    .map(|&(rv, _)| {
+                        if ball {
+                            scale * bessel_j(nu, kappa * rv) / rv.sqrt()
+                        } else {
+                            bessel_j(nu, kappa * rv)
+                        }
+                    })
+                    .collect();
+                let kr = {
+                    let k_node = cx.graph.num(Number::from(kappa));
+                    mul(cx.graph, &[k_node, r_var])
+                };
+                let order_node = cx
+                    .graph
+                    .num(Number::fraction((2.0 * nu).round() as i64, 2)?);
+                let bessel = call(cx, "besselj", &[order_node, kr])?;
+                let node = if ball {
+                    let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
+                    let root = pow(cx.graph, r_var, minus_half);
+                    let c = cx.graph.num(Number::from(scale));
+                    mul(cx.graph, &[c, root, bessel])
+                } else {
+                    bessel
+                };
+                modes.push(RadialMode { kappa, values, node });
+            }
+            Some(modes)
+        };
     let radial_weight = |i: usize| -> f64 {
         let (rv, w) = radial.get(i).copied().unwrap_or((0.0, 0.0));
-        if geometry.sphere { w * rv * rv } else { w * rv }
+        if geometry.sphere {
+            w * rv * rv
+        } else {
+            w * rv
+        }
     };
     if geometry.sphere {
-        let lmax = if geometry.theta.is_some() { BALL_DEGREE } else { 0 };
+        let lmax = if geometry.theta.is_some() {
+            BALL_DEGREE
+        } else {
+            0
+        };
         for l in 0..=lmax {
             let nu = l as f64 + 0.5;
             let constant = l == 0 && matches!(kind, Boundary::Robin(h) if h.abs() < 1e-14);
             let modes = radial_modes(cx, nu, true, constant)?;
-            let mmax = if geometry.phi.is_some() { l } else { 0 };
+            let mmax = if geometry.phi.is_some() {
+                l
+            } else {
+                0
+            };
             for m in 0..=mmax {
                 // Angular functions: P_l^m(cos θ) cos(mφ) and sin(mφ).
-                let p_values: Vec<f64> = angles.iter().map(|&(x, _, _)| associated_values(x, m, l).get(l).copied().unwrap_or(0.0)).collect();
+                let p_values: Vec<f64> = angles
+                    .iter()
+                    .map(|&(x, _, _)| associated_values(x, m, l).get(l).copied().unwrap_or(0.0))
+                    .collect();
                 let theta_node = geometry.theta.map(|j| p.vars[j]);
                 let angular_theta = match theta_node {
-                    | Some(th) => associated_mode(cx, th, i64::try_from(l).ok()?, i64::try_from(m).ok()?)?,
+                    | Some(th) => {
+                        associated_mode(cx, th, i64::try_from(l).ok()?, i64::try_from(m).ok()?)?
+                    },
                     | None => cx.graph.int(1),
                 };
                 let mut norm_theta = 2.0 / (2 * l + 1) as f64;
@@ -316,10 +413,19 @@ pub(super) fn solve(
                     | None => vec![(cx.graph.int(1), true)],
                 };
                 for (phi_node, is_cos) in phi_nodes {
-                    let norm_phi = if geometry.phi.is_none() || m == 0 { 2.0 * PI } else { PI };
+                    let norm_phi = if geometry.phi.is_none() || m == 0 {
+                        2.0 * PI
+                    } else {
+                        PI
+                    };
                     let norm_ang = norm_theta * norm_phi;
                     for mode in &modes {
-                        let norm_r: f64 = mode.values.iter().enumerate().map(|(i, v)| radial_weight(i) * v * v).sum();
+                        let norm_r: f64 = mode
+                            .values
+                            .iter()
+                            .enumerate()
+                            .map(|(i, v)| radial_weight(i) * v * v)
+                            .sum();
                         for (table, &(_, is_displacement)) in tables.iter().zip(&data) {
                             let mut total = 0.0;
                             for (i, by_angle) in table.iter().enumerate() {
@@ -334,7 +440,11 @@ pub(super) fn solve(
                                         } else {
                                             (m as f64 * azimuths[k]).sin()
                                         };
-                                        angular += wx * fv * p_values[j] * trig * (2.0 * PI / azimuths.len() as f64);
+                                        angular += wx
+                                            * fv
+                                            * p_values[j]
+                                            * trig
+                                            * (2.0 * PI / azimuths.len() as f64);
                                     }
                                 }
                                 total += radial_weight(i) * mode.values[i] * angular;
@@ -345,14 +455,21 @@ pub(super) fn solve(
                             }
                             let factor = time_factor(cx, mode.kappa, is_displacement)?;
                             let c = cx.graph.num(Number::from(coefficient));
-                            terms.push(mul(cx.graph, &[c, factor, mode.node, angular_theta, phi_node]));
+                            terms.push(mul(
+                                cx.graph,
+                                &[c, factor, mode.node, angular_theta, phi_node],
+                            ));
                         }
                     }
                 }
             }
         }
     } else {
-        let nmax = if geometry.theta.is_some() { DISK_ANGLES } else { 0 };
+        let nmax = if geometry.theta.is_some() {
+            DISK_ANGLES
+        } else {
+            0
+        };
         for order_n in 0..=nmax {
             let nu = order_n as f64;
             let constant = order_n == 0 && matches!(kind, Boundary::Robin(h) if h.abs() < 1e-14);
@@ -371,9 +488,18 @@ pub(super) fn solve(
                 | None => trig_nodes.push((cx.graph.int(1), true)),
             }
             for (trig_node, is_cos) in trig_nodes {
-                let norm_ang = if geometry.theta.is_none() || order_n == 0 { 2.0 * PI } else { PI };
+                let norm_ang = if geometry.theta.is_none() || order_n == 0 {
+                    2.0 * PI
+                } else {
+                    PI
+                };
                 for mode in &modes {
-                    let norm_r: f64 = mode.values.iter().enumerate().map(|(i, v)| radial_weight(i) * v * v).sum();
+                    let norm_r: f64 = mode
+                        .values
+                        .iter()
+                        .enumerate()
+                        .map(|(i, v)| radial_weight(i) * v * v)
+                        .sum();
                     for (table, &(_, is_displacement)) in tables.iter().zip(&data) {
                         let mut total = 0.0;
                         for (i, by_angle) in table.iter().enumerate() {

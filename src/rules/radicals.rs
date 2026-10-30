@@ -36,9 +36,19 @@ pub fn radicals() -> RuleSet {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let identity = |a: &[f64]| a.first().copied().unwrap_or(f64::NAN);
-    let denest = i.op(OpDescriptor::new("denest_sqrt", Arity::Fixed(1)).flags(OpFlags::HEAVY).cost(100).eval(identity))?;
-    let simplify = i.op(OpDescriptor::new("simplify_radicals", Arity::Fixed(1)).flags(OpFlags::HEAVY).cost(100).eval(identity))?;
-    i.kernel("radicals/requests", Tier::Reduce, Requests { denest, simplify });
+    let denest = i.op(OpDescriptor::new("denest_sqrt", Arity::Fixed(1))
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .eval(identity))?;
+    let simplify = i.op(OpDescriptor::new("simplify_radicals", Arity::Fixed(1))
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .eval(identity))?;
+    i.kernel(
+        "radicals/requests",
+        Tier::Reduce,
+        Requests { denest, simplify },
+    );
     i.kernel("radicals/denest", Tier::Normalize, Denest);
     Ok(())
 }
@@ -60,7 +70,11 @@ fn split_quadratic(
     let half = BigRational::new(BigInt::from(1), BigInt::from(2));
     let surd = |n: NodeId| -> Option<(BigRational, BigRational)> {
         // q √c  or  √c
-        let factors: Vec<NodeId> = if graph.op(n) == core::MUL { graph.children(n).to_vec() } else { vec![n] };
+        let factors: Vec<NodeId> = if graph.op(n) == core::MUL {
+            graph.children(n).to_vec()
+        } else {
+            vec![n]
+        };
         let mut q = BigRational::from_integer(BigInt::from(1));
         let mut c = None;
         for f in factors {
@@ -78,7 +92,11 @@ fn split_quadratic(
         }
         Some((q, c?))
     };
-    let terms: Vec<NodeId> = if graph.op(e) == core::ADD { graph.children(e).to_vec() } else { vec![e] };
+    let terms: Vec<NodeId> = if graph.op(e) == core::ADD {
+        graph.children(e).to_vec()
+    } else {
+        vec![e]
+    };
     let mut p = BigRational::zero();
     let mut found = None;
     for t in terms {
@@ -148,7 +166,11 @@ fn rewrite(
     let children = graph.children(e).to_vec();
     let op = graph.op(e);
     let new: Vec<NodeId> = children.iter().map(|&c| rewrite(graph, c, f)).collect();
-    let rebuilt = if new == children { e } else { graph.try_node(op, &new).unwrap_or(e) };
+    let rebuilt = if new == children {
+        e
+    } else {
+        graph.try_node(op, &new).unwrap_or(e)
+    };
     f(graph, rebuilt).unwrap_or(rebuilt)
 }
 
@@ -161,7 +183,8 @@ fn as_sqrt(
         | &[base] if Some(graph.op(n)) == sqrt => Some(base),
         | &[base, exp]
             if graph.op(n) == core::POW
-                && graph.number_of(exp).and_then(Number::to_rational) == Some(BigRational::new(BigInt::from(1), BigInt::from(2))) =>
+                && graph.number_of(exp).and_then(Number::to_rational)
+                    == Some(BigRational::new(BigInt::from(1), BigInt::from(2))) =>
         {
             Some(base)
         },
@@ -260,21 +283,40 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
         // The results are free of nested radicals and equal in value.
-        let nested = |text: &str| text.matches("^(1/2)").count() > 0 && text.contains(")^(1/2)") && text.contains(" + ") && text.starts_with('(');
+        let nested = |text: &str| {
+            text.matches("^(1/2)").count() > 0
+                && text.contains(")^(1/2)")
+                && text.contains(" + ")
+                && text.starts_with('(')
+        };
         for (src, want) in [
             ("denest_sqrt((3 + 2*2^(1/2))^(1/2))", 2.0_f64.sqrt() + 1.0),
-            ("denest_sqrt((5 - 2*6^(1/2))^(1/2))", 3.0_f64.sqrt() - 2.0_f64.sqrt()),
+            (
+                "denest_sqrt((5 - 2*6^(1/2))^(1/2))",
+                3.0_f64.sqrt() - 2.0_f64.sqrt(),
+            ),
         ] {
             let got = run(src);
             assert!(!nested(&got), "{got}");
-            assert!((eval(&rules, &got, &[]) - want).abs() < 1e-12, "{src} = {got}");
+            assert!(
+                (eval(&rules, &got, &[]) - want).abs() < 1e-12,
+                "{src} = {got}"
+            );
         }
         // No denesting possible: unchanged value.
         let stay = run("denest_sqrt((2 + 3^(1/2)*5)^(1/2))");
         assert!((eval(&rules, &stay, &[]) - (2.0 + 5.0 * 3.0_f64.sqrt()).sqrt()).abs() < 1e-12);
         let rational = run("simplify_radicals(1/(1 + 2^(1/2)))");
-        assert!(!rational.contains("/(") && (eval(&rules, &rational, &[]) - (2.0_f64.sqrt() - 1.0)).abs() < 1e-12, "{rational}");
+        assert!(
+            !rational.contains("/(")
+                && (eval(&rules, &rational, &[]) - (2.0_f64.sqrt() - 1.0)).abs() < 1e-12,
+            "{rational}"
+        );
         let both = run("simplify_radicals(1/(3 + 2*2^(1/2))^(1/2))");
-        assert!((eval(&rules, &both, &[]) - (2.0_f64.sqrt() - 1.0)).abs() < 1e-12 && !both.contains("(3 +"), "{both}");
+        assert!(
+            (eval(&rules, &both, &[]) - (2.0_f64.sqrt() - 1.0)).abs() < 1e-12
+                && !both.contains("(3 +"),
+            "{both}"
+        );
     }
 }

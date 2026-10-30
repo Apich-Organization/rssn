@@ -72,9 +72,12 @@ pub fn resolve(
     session: &Session,
     id: u32,
 ) -> Result<Term<'_>, RssnStatus> {
-    session
-        .term_by_id(id)
-        .ok_or_else(|| fail(RssnStatus::NoSuchTerm, "term handle does not belong to this session"))
+    session.term_by_id(id).ok_or_else(|| {
+        fail(
+            RssnStatus::NoSuchTerm,
+            "term handle does not belong to this session",
+        )
+    })
 }
 
 /// Builds a term, mapping any failure to [`RSSN_NO_TERM`].
@@ -188,8 +191,13 @@ pub unsafe extern "C" fn rssn_term_apply(
             // SAFETY: `args` points to `count` handles by contract.
             | (false, n) => unsafe { std::slice::from_raw_parts(args, n) },
         };
-        let terms = ids.iter().map(|&id| resolve(s, id)).collect::<Result<Vec<_>, _>>()?;
-        s.call(op, &terms).map(Term::id).map_err(|e| compute_error(&e))
+        let terms = ids
+            .iter()
+            .map(|&id| resolve(s, id))
+            .collect::<Result<Vec<_>, _>>()?;
+        s.call(op, &terms)
+            .map(Term::id)
+            .map_err(|e| compute_error(&e))
     })
 }
 
@@ -316,7 +324,8 @@ pub unsafe extern "C" fn rssn_term_to_latex(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
-    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
+    #[allow(clippy::redundant_closure_for_method_calls)]
+    // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_latex())
 }
 
@@ -329,7 +338,8 @@ pub unsafe extern "C" fn rssn_term_to_typst(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
-    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
+    #[allow(clippy::redundant_closure_for_method_calls)]
+    // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_typst())
 }
 
@@ -342,7 +352,8 @@ pub unsafe extern "C" fn rssn_term_to_pretty(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
-    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
+    #[allow(clippy::redundant_closure_for_method_calls)]
+    // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_pretty())
 }
 
@@ -373,7 +384,14 @@ pub unsafe extern "C" fn rssn_term_tensor_data(
         let shape = Box::into_raw(shape.into_boxed_slice()).cast::<usize>();
         let data = Box::into_raw(data.into_boxed_slice()).cast::<f64>();
         // SAFETY: non-null and valid by contract.
-        unsafe { *out = RssnTensor { rank, shape, len, data } };
+        unsafe {
+            *out = RssnTensor {
+                rank,
+                shape,
+                len,
+                data,
+            }
+        };
         RssnStatus::Ok
     })
 }

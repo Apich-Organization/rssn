@@ -160,9 +160,10 @@ fn sum_node(
         }
     }
     if let Some(c) = constant
-        && (!c.is_zero() || rest.is_empty()) {
-            rest.insert(0, g.num(c));
-        }
+        && (!c.is_zero() || rest.is_empty())
+    {
+        rest.insert(0, g.num(c));
+    }
     match rest.as_slice() {
         | [] => g.int(0),
         | [only] => *only,
@@ -553,12 +554,12 @@ fn mode(
     let mut winners = groups.iter().filter(|g| g.1 == top).map(|g| g.0);
     let first = winners.next()?;
     // Among equally frequent numbers the smallest one.
-    Some(
-        winners.fold(first, |best, x| match (g.number_of(x), g.number_of(best)) {
+    Some(winners.fold(first, |best, x| {
+        match (g.number_of(x), g.number_of(best)) {
             | (Some(a), Some(b)) if a.total_cmp(b).is_lt() => x,
             | _ => best,
-        }),
-    )
+        }
+    }))
 }
 
 fn covariance(
@@ -571,11 +572,12 @@ fn covariance(
         return None;
     }
     if let (Some(a), Some(b)) = (float_items(g, xs), float_items(g, ys))
-        && n >= 2 {
-            // The kernel divides by n - 1.
-            let factor = (count(n) - 1.0) / count(n);
-            return Some(g.float(num::covariance(&a, &b) * factor));
-        }
+        && n >= 2
+    {
+        // The kernel divides by n - 1.
+        let factor = (count(n) - 1.0) / count(n);
+        return Some(g.float(num::covariance(&a, &b) * factor));
+    }
     let (mx, my) = (mean_term(g, xs)?, mean_term(g, ys)?);
     let (minus_mx, minus_my) = (negate(g, mx), negate(g, my));
     let mut terms = Vec::with_capacity(n);
@@ -1012,9 +1014,11 @@ fn admissible(
     let probability = |i: usize| p(i).is_none_or(|v| (0.0..=1.0).contains(&v));
     match family.name {
         | "normal" => positive(1),
-        | "uniform" => match (p(0), p(1)) {
-            | (Some(a), Some(b)) => a < b,
-            | _ => true,
+        | "uniform" => {
+            match (p(0), p(1)) {
+                | (Some(a), Some(b)) => a < b,
+                | _ => true,
+            }
         },
         | "exponential" | "poisson" | "student_t" | "chi_squared" => positive(0),
         | "bernoulli" => probability(0),
@@ -1122,7 +1126,11 @@ fn distribution_request(
         return Outcome::Pass;
     };
     let name = g.ops().get(g.op(dist)).name.clone();
-    let Some(family) = FAMILIES.iter().chain(ext::FAMILIES.iter()).find(|f| *f.name == *name) else {
+    let Some(family) = FAMILIES
+        .iter()
+        .chain(ext::FAMILIES.iter())
+        .find(|f| *f.name == *name)
+    else {
         return Outcome::Pass;
     };
     let params = g.children(dist).to_vec();
@@ -1763,7 +1771,8 @@ fn polynomial_regression(
     let (Some((x, x_float)), Some((y, y_float))) = (exact_column(g, &xs), exact_column(g, &ys))
     else {
         // Symbolic data: the normal equations, solved exactly.
-        return symbolic_polynomial_regression(cx, &xs, &ys, degree).map_or(Outcome::Pass, Outcome::Equal);
+        return symbolic_polynomial_regression(cx, &xs, &ys, degree)
+            .map_or(Outcome::Pass, Outcome::Equal);
     };
     let rows: Vec<Vec<BigRational>> = x
         .iter()
@@ -3761,7 +3770,13 @@ mod tests {
             .trim_start_matches("list(")
             .trim_end_matches(')')
             .split("), (")
-            .map(|p| crate::rules::testing::eval(&rules, &format!("({})", p.trim_matches(|c| c == '(' || c == ')')), &[("a", 1.0)]))
+            .map(|p| {
+                crate::rules::testing::eval(
+                    &rules,
+                    &format!("({})", p.trim_matches(|c| c == '(' || c == ')')),
+                    &[("a", 1.0)],
+                )
+            })
             .collect();
         assert!(fit.contains('a'), "{fit} {parts:?}");
         stays("polynomial_regression(list(1, 1, 1), list(1, 2, 3), 1)");

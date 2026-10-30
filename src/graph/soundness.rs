@@ -11,14 +11,17 @@
 //! integrals, ...) cannot be tested this way and are reported as
 //! inconclusive; they are covered by checking the reduced results of whole
 //! requests instead.
+//!
+//! Parallelism: [`check_program`] checks the rewrites concurrently (each on its own graph copy and
+//! with a name-seeded generator) and returns the first refutation in rule order.
 
 use std::collections::HashMap;
 
 use num_complex::Complex64;
 
 use super::facts::Facts;
-use super::id::SymbolId;
 use super::id::NodeId;
+use super::id::SymbolId;
 use super::number::Number;
 use super::rule::Action;
 use super::rule::Env;
@@ -73,7 +76,10 @@ struct Lcg(u64);
 
 impl Lcg {
     const fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         self.0 >> 33
     }
 
@@ -134,8 +140,14 @@ pub fn check_rewrite(
     samples: usize,
 ) -> Result<Verdict, Refutation> {
     let mut graph = graph.clone();
-    let mut rng = Lcg(0x5eed_0000 ^ name.bytes().fold(0_u64, |h, b| h.wrapping_mul(131).wrapping_add(u64::from(b))));
-    let mut verdict = Verdict { agreed: 0, inconclusive: 0 };
+    let mut rng = Lcg(0x5eed_0000
+        ^ name
+            .bytes()
+            .fold(0_u64, |h, b| h.wrapping_mul(131).wrapping_add(u64::from(b))));
+    let mut verdict = Verdict {
+        agreed: 0,
+        inconclusive: 0,
+    };
     for _ in 0..samples {
         let mut env = Env::numeric(0.0);
         let mut subst = Vec::with_capacity(rewrite.nvars);
@@ -152,7 +164,11 @@ pub fn check_rewrite(
             let node = if need.integer {
                 #[allow(clippy::cast_possible_truncation)]
                 let value = rng.range(lo, hi + 1.0).floor() as i64;
-                let value = if value == 0 && !need.nonnegative { 2 } else { value };
+                let value = if value == 0 && !need.nonnegative {
+                    2
+                } else {
+                    value
+                };
                 graph.int(value)
             } else if need.number {
                 #[allow(clippy::cast_possible_truncation)]
@@ -180,9 +196,10 @@ pub fn check_rewrite(
             verdict.inconclusive = verdict.inconclusive.saturating_add(1);
             continue;
         }
-        let (Some(lhs), Some(rhs)) =
-            (rewrite.lhs.instantiate(&mut graph, &subst), rewrite.rhs.instantiate(&mut graph, &subst))
-        else {
+        let (Some(lhs), Some(rhs)) = (
+            rewrite.lhs.instantiate(&mut graph, &subst),
+            rewrite.rhs.instantiate(&mut graph, &subst),
+        ) else {
             verdict.inconclusive = verdict.inconclusive.saturating_add(1);
             continue;
         };
@@ -204,9 +221,15 @@ pub fn check_rewrite(
             | _ => {
                 // Terms with complex values (the imaginary unit, branches
                 // of multi-valued functions) are compared over C.
-                let bindings: HashMap<SymbolId, Complex64> =
-                    env.bindings().iter().map(|&(s, v)| (s, Complex64::new(v, 0.0))).collect();
-                match (graph.eval_complex(lhs, &bindings), graph.eval_complex(rhs, &bindings)) {
+                let bindings: HashMap<SymbolId, Complex64> = env
+                    .bindings()
+                    .iter()
+                    .map(|&(s, v)| (s, Complex64::new(v, 0.0)))
+                    .collect();
+                match (
+                    graph.eval_complex(lhs, &bindings),
+                    graph.eval_complex(rhs, &bindings),
+                ) {
                     | (Some(a), Some(b)) if a.is_finite() && b.is_finite() => {
                         if (a - b).norm() <= 1e-7 * (1.0 + a.norm().max(b.norm())) {
                             verdict.agreed = verdict.agreed.saturating_add(1);
@@ -238,13 +261,25 @@ pub fn check_program(
     program: &Program,
     samples: usize,
 ) -> Result<Vec<(String, Verdict)>, Refutation> {
-    let mut out = Vec::new();
-    for rule in &program.rules {
-        if let Action::Rewrite(rewrite) = &rule.action {
-            out.push((rule.name.to_string(), check_rewrite(graph, &rule.name, rewrite, samples)?));
-        }
-    }
-    Ok(out)
+    // Every rewrite is checked on its own private copy of the graph with a
+    // generator seeded from the rule name, so the rules are independent: they
+    // run in parallel and the first refutation in rule order is returned,
+    // exactly as in the sequential scan.
+    let rewrites: Vec<(&str, &Rewrite)> = program
+        .rules
+        .iter()
+        .filter_map(|rule| {
+            if let Action::Rewrite(rewrite) = &rule.action {
+                Some((&*rule.name, rewrite))
+            } else {
+                None
+            }
+        })
+        .collect();
+    let results = crate::kernels::par::map_slice(&rewrites, 8, |&(name, rewrite)| {
+        check_rewrite(graph, name, rewrite, samples).map(|verdict| (name.to_owned(), verdict))
+    });
+    results.into_iter().collect()
 }
 
 /// Builds the instantiated sides of a rewrite for inspection in tests.
@@ -254,7 +289,10 @@ pub fn sides(
     rewrite: &Rewrite,
     subst: &[NodeId],
 ) -> Option<(NodeId, NodeId)> {
-    Some((rewrite.lhs.instantiate(graph, subst)?, rewrite.rhs.instantiate(graph, subst)?))
+    Some((
+        rewrite.lhs.instantiate(graph, subst)?,
+        rewrite.rhs.instantiate(graph, subst)?,
+    ))
 }
 
 #[cfg(test)]
@@ -267,8 +305,10 @@ mod tests {
     fn program(texts: &'static [&'static str]) -> (Graph, Program) {
         let mut g = Graph::new();
         let set = RuleSet::new("t", move |i| {
-            i.op(crate::graph::OpDescriptor::new("ln", crate::graph::Arity::Fixed(1))
-                .eval(|a| a.first().map_or(f64::NAN, |x| x.ln())))?;
+            i.op(
+                crate::graph::OpDescriptor::new("ln", crate::graph::Arity::Fixed(1))
+                    .eval(|a| a.first().map_or(f64::NAN, |x| x.ln())),
+            )?;
             i.rewrites(Tier::Normalize, texts)
         });
         let engine = Engine::install(&mut g, &[set]).unwrap_or_else(|e| panic!("{e}"));

@@ -48,8 +48,8 @@
 pub mod coding;
 pub mod crypto;
 pub mod finite_field;
-pub mod gf_factor;
 pub mod fractal;
+pub mod gf_factor;
 pub mod graphics;
 pub mod graphs;
 pub mod group_theory;
@@ -66,8 +66,6 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -82,6 +80,8 @@ use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 
 use super::complex::complex;
 use super::elementary::elementary;
@@ -201,7 +201,11 @@ impl Kernel for Fun {
         };
         let result = value.build(cx.graph);
         let head = cx.graph.op(result);
-        let structured = head == core::LIST || matches!(&*cx.graph.ops().get(head).name, "graph" | "digraph" | "group" | "sc");
+        let structured = head == core::LIST
+            || matches!(
+                &*cx.graph.ops().get(head).name,
+                "graph" | "digraph" | "group" | "sc"
+            );
         if self.pin && structured {
             Outcome::Pinned(result)
         } else {
@@ -222,7 +226,11 @@ pub(crate) fn def(
     run: Run,
 ) -> Result<OpId, RuleError> {
     let op = i.op(OpDescriptor::new(name, arity))?;
-    i.kernel(&format!("discrete/{name}"), Tier::Normalize, Fun { op, run, pin: true });
+    i.kernel(
+        &format!("discrete/{name}"),
+        Tier::Normalize,
+        Fun { op, run, pin: true },
+    );
     Ok(op)
 }
 
@@ -235,8 +243,14 @@ pub(crate) fn def_request(
     arity: Arity,
     run: Run,
 ) -> Result<OpId, RuleError> {
-    let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel(&format!("discrete/{name}"), Tier::Reduce, Fun { op, run, pin: false });
+    let op = i.op(OpDescriptor::new(name, arity)
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        &format!("discrete/{name}"),
+        Tier::Reduce,
+        Fun { op, run, pin: false },
+    );
     Ok(op)
 }
 
@@ -382,9 +396,10 @@ pub(crate) fn sum(
     }
     let mut all = Vec::new();
     if let Some(a) = acc
-        && (!a.is_zero() || rest.is_empty()) {
-            all.push(g.num(a));
-        }
+        && (!a.is_zero() || rest.is_empty())
+    {
+        all.push(g.num(a));
+    }
     all.extend(rest);
     match all.as_slice() {
         | [] => g.int(0),
@@ -506,7 +521,8 @@ pub(crate) fn matmul(
             return None;
         }
         let mut new_row = Vec::with_capacity(cols);
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for j in 0..cols {
             let terms: Vec<NodeId> = (0..inner)
                 .map(|k| prod(cx.graph, &[row[k], b[k][j]]))
@@ -591,9 +607,19 @@ pub(crate) mod test_util {
         use crate::graph::Saturate;
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &[discrete()]).unwrap_or_else(|e| panic!("{e}"));
-        let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let node = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root).unwrap_or_else(|| panic!("`{src}` not reduced"));
+        let root = g
+            .parse(src)
+            .unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let node = Extractor::new(&g, &[root], &ClosedForm)
+            .build(&mut g, root)
+            .unwrap_or_else(|| panic!("`{src}` not reduced"));
         let bindings = HashMap::new();
         let rows = super::items(&g, node).unwrap_or_else(|| panic!("`{src}` is not a list"));
         rows.into_iter()
@@ -601,7 +627,10 @@ pub(crate) mod test_util {
                 super::items(&g, r)
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|x| g.eval_complex(x, &bindings).unwrap_or_else(|| panic!("cannot evaluate {}", g.display(x))))
+                    .map(|x| {
+                        g.eval_complex(x, &bindings)
+                            .unwrap_or_else(|| panic!("cannot evaluate {}", g.display(x)))
+                    })
                     .collect()
             })
             .collect()
@@ -615,7 +644,10 @@ pub(crate) mod test_util {
             &mut self,
             bound: u64,
         ) -> u64 {
-            self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             (self.0 >> 33) % bound
         }
     }
@@ -630,7 +662,10 @@ pub(crate) mod test_util {
 
     /// The rows of a `list(list(..), list(..))`.
     pub fn nested(text: &str) -> Vec<Vec<i64>> {
-        let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|t| t.strip_suffix(')'))
+            .unwrap_or("");
         inner.split("list(").skip(1).map(nums).collect()
     }
 }
@@ -643,7 +678,10 @@ mod tests {
 
     #[test]
     fn discrete_installs_with_the_standard_sets() {
-        let s = simplify(&[discrete()], "ec_add(list(2, 3, 97), list(3, 6), list(3, 6))");
+        let s = simplify(
+            &[discrete()],
+            "ec_add(list(2, 3, 97), list(3, 6), list(3, 6))",
+        );
         assert_eq!(s, "list(80, 10)");
         let (text, reduced) = reduce_with(&[discrete()], "hamming_weight(list(1, 0, 1, 1))", &[]);
         assert!(reduced);

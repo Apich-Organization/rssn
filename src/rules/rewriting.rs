@@ -56,8 +56,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("rewrite_with", Arity::Fixed(3), Request::Rewrite),
         ("critical_pairs", Arity::Fixed(2), Request::CriticalPairs),
     ] {
-        let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("rewriting/{name}"), Tier::Reduce, Rewriting { op, request });
+        let op = i.op(OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("rewriting/{name}"),
+            Tier::Reduce,
+            Rewriting { op, request },
+        );
     }
     Ok(())
 }
@@ -101,13 +107,20 @@ impl Codec {
         let children = graph.children(node);
         if op == core::APPLY
             && let Some((&f, args)) = children.split_first()
-                && graph.as_symbol(f).is_some() {
-                    return T::App(Head::Fun(f), args.iter().map(|&a| self.read(graph, a)).collect());
-                }
+            && graph.as_symbol(f).is_some()
+        {
+            return T::App(
+                Head::Fun(f),
+                args.iter().map(|&a| self.read(graph, a)).collect(),
+            );
+        }
         if children.is_empty() && (op == core::LIT || op == core::SYM) {
             return T::App(Head::Leaf(node), Vec::new());
         }
-        T::App(Head::Op(op), children.iter().map(|&a| self.read(graph, a)).collect())
+        T::App(
+            Head::Op(op),
+            children.iter().map(|&a| self.read(graph, a)).collect(),
+        )
     }
 
     fn write(
@@ -126,7 +139,10 @@ impl Codec {
                 graph.node(core::APPLY, &children)
             },
             | T::App(Head::Op(op), args) => {
-                let children = args.iter().map(|a| self.write(graph, a)).collect::<Option<Vec<_>>>()?;
+                let children = args
+                    .iter()
+                    .map(|a| self.write(graph, a))
+                    .collect::<Option<Vec<_>>>()?;
                 graph.try_node(*op, &children)?
             },
         })
@@ -155,9 +171,11 @@ impl Precedence {
             // Listed symbols rank above unlisted ones.
             | (Some(_), None) => Ordering::Greater,
             | (None, Some(_)) => Ordering::Less,
-            | (None, None) => f_arity
-                .cmp(&g_arity)
-                .then_with(|| self.names.get(&f).cmp(&self.names.get(&g))),
+            | (None, None) => {
+                f_arity
+                    .cmp(&g_arity)
+                    .then_with(|| self.names.get(&f).cmp(&self.names.get(&g)))
+            },
         }
     }
 }
@@ -229,18 +247,22 @@ fn matches(
     sigma: &mut Subst,
 ) -> bool {
     match pattern {
-        | T::Var(v) => match sigma.get(v) {
-            | Some(bound) => bound == t,
-            | None => {
-                sigma.insert(*v, t.clone());
-                true
-            },
+        | T::Var(v) => {
+            match sigma.get(v) {
+                | Some(bound) => bound == t,
+                | None => {
+                    sigma.insert(*v, t.clone());
+                    true
+                },
+            }
         },
-        | T::App(f, ps) => match t {
-            | T::App(g, ts) if f == g && ps.len() == ts.len() => {
-                ps.iter().zip(ts).all(|(p, u)| matches(p, u, sigma))
-            },
-            | _ => false,
+        | T::App(f, ps) => {
+            match t {
+                | T::App(g, ts) if f == g && ps.len() == ts.len() => {
+                    ps.iter().zip(ts).all(|(p, u)| matches(p, u, sigma))
+                },
+                | _ => false,
+            }
         },
     }
 }
@@ -404,7 +426,9 @@ fn complete(
     let mut rules: Vec<Rule> = Vec::new();
     let mut work = 0_usize;
     // Fair selection: always the smallest pending equation.
-    while let Some(pick) = (0..pending.len()).min_by_key(|&i| size(&pending[i].0) + size(&pending[i].1)) {
+    while let Some(pick) =
+        (0..pending.len()).min_by_key(|&i| size(&pending[i].0) + size(&pending[i].1))
+    {
         let (s, t) = pending.swap_remove(pick);
         work = work.saturating_add(1);
         if work > 5_000 || rules.len() > 200 {
@@ -490,9 +514,13 @@ fn read_equations(
     graph
         .children(list)
         .iter()
-        .map(|&e| match *graph.children(e) {
-            | [l, r] if graph.op(e) == core::EQ => Some((codec.read(graph, l), codec.read(graph, r))),
-            | _ => None,
+        .map(|&e| {
+            match *graph.children(e) {
+                | [l, r] if graph.op(e) == core::EQ => {
+                    Some((codec.read(graph, l), codec.read(graph, r)))
+                },
+                | _ => None,
+            }
         })
         .collect()
 }
@@ -520,7 +548,9 @@ fn write_rules(
     rules: &[Rule],
 ) -> Option<NodeId> {
     let mut items = Vec::with_capacity(rules.len());
-    let mut codec = Codec { variables: codec.variables.clone() };
+    let mut codec = Codec {
+        variables: codec.variables.clone(),
+    };
     for (l, r) in rules {
         let mut names = Vec::new();
         let (l, r) = (canonical(l, &mut names), canonical(r, &mut names));
@@ -551,56 +581,70 @@ impl Kernel for Rewriting {
             (graph.op(list) == core::LIST).then(|| graph.children(list).to_vec())
         };
         let result = match (self.request, args.as_slice()) {
-            | (Request::Complete, [equations, vars, rest @ ..]) if rest.len() <= 1 => (|| {
-                let codec = Codec { variables: variables_of(graph, *vars)? };
-                let equations = read_equations(graph, &codec, *equations)?;
-                let mut heads = Vec::new();
-                for (l, r) in &equations {
-                    collect_heads(l, &mut heads);
-                    collect_heads(r, &mut heads);
-                }
-                let mut explicit = HashMap::new();
-                if let Some(&order) = rest.first() {
-                    let symbols = variables_of(graph, order)?;
-                    for (rank, s) in symbols.iter().enumerate() {
-                        let name = graph.display(*s);
-                        for &h in &heads {
-                            if head_name(graph, h) == name {
-                                explicit.insert(h, rank);
+            | (Request::Complete, [equations, vars, rest @ ..]) if rest.len() <= 1 => {
+                (|| {
+                    let codec = Codec {
+                        variables: variables_of(graph, *vars)?,
+                    };
+                    let equations = read_equations(graph, &codec, *equations)?;
+                    let mut heads = Vec::new();
+                    for (l, r) in &equations {
+                        collect_heads(l, &mut heads);
+                        collect_heads(r, &mut heads);
+                    }
+                    let mut explicit = HashMap::new();
+                    if let Some(&order) = rest.first() {
+                        let symbols = variables_of(graph, order)?;
+                        for (rank, s) in symbols.iter().enumerate() {
+                            let name = graph.display(*s);
+                            for &h in &heads {
+                                if head_name(graph, h) == name {
+                                    explicit.insert(h, rank);
+                                }
                             }
                         }
                     }
-                }
-                let names = heads.iter().map(|&h| (h, head_name(graph, h))).collect();
-                let prec = Precedence { explicit, names };
-                let rules = complete(equations, &prec)?;
-                write_rules(graph, &codec, &rules)
-            })(),
-            | (Request::Rewrite, &[t, rules, vars]) => (|| {
-                let codec = Codec { variables: variables_of(graph, vars)? };
-                let rules = read_equations(graph, &codec, rules)?;
-                // Variables of the term itself are ordinary constants.
-                let plain = Codec { variables: Vec::new() };
-                let term = plain.read(graph, t);
-                let normal = normalize(&term, &rules)?;
-                plain.write(graph, &normal)
-            })(),
-            | (Request::CriticalPairs, &[rules, vars]) => (|| {
-                let codec = Codec { variables: variables_of(graph, vars)? };
-                let rules = read_equations(graph, &codec, rules)?;
-                let mut pairs = Vec::new();
-                for (i, a) in rules.iter().enumerate() {
-                    for (j, b) in rules.iter().enumerate() {
-                        for (s, t) in overlaps(a, b, i == j) {
-                            let (s, t) = (normalize(&s, &rules)?, normalize(&t, &rules)?);
-                            if s != t && !pairs.contains(&(s.clone(), t.clone())) {
-                                pairs.push((s, t));
+                    let names = heads.iter().map(|&h| (h, head_name(graph, h))).collect();
+                    let prec = Precedence { explicit, names };
+                    let rules = complete(equations, &prec)?;
+                    write_rules(graph, &codec, &rules)
+                })()
+            },
+            | (Request::Rewrite, &[t, rules, vars]) => {
+                (|| {
+                    let codec = Codec {
+                        variables: variables_of(graph, vars)?,
+                    };
+                    let rules = read_equations(graph, &codec, rules)?;
+                    // Variables of the term itself are ordinary constants.
+                    let plain = Codec {
+                        variables: Vec::new(),
+                    };
+                    let term = plain.read(graph, t);
+                    let normal = normalize(&term, &rules)?;
+                    plain.write(graph, &normal)
+                })()
+            },
+            | (Request::CriticalPairs, &[rules, vars]) => {
+                (|| {
+                    let codec = Codec {
+                        variables: variables_of(graph, vars)?,
+                    };
+                    let rules = read_equations(graph, &codec, rules)?;
+                    let mut pairs = Vec::new();
+                    for (i, a) in rules.iter().enumerate() {
+                        for (j, b) in rules.iter().enumerate() {
+                            for (s, t) in overlaps(a, b, i == j) {
+                                let (s, t) = (normalize(&s, &rules)?, normalize(&t, &rules)?);
+                                if s != t && !pairs.contains(&(s.clone(), t.clone())) {
+                                    pairs.push((s, t));
+                                }
                             }
                         }
                     }
-                }
-                write_rules(graph, &codec, &pairs)
-            })(),
+                    write_rules(graph, &codec, &pairs)
+                })()
+            },
             | _ => None,
         };
         result.map_or(Outcome::Pass, Outcome::Pinned)
@@ -618,10 +662,15 @@ mod tests {
     #[test]
     fn group_axioms_complete_to_ten_rules() {
         let sets = [rewriting()];
-        let (rules, reduced) = reduce_with(&sets, &format!("knuth_bendix({GROUP}, list(x, y, z), list(u, op, inv))"), &[]);
+        let (rules, reduced) = reduce_with(
+            &sets,
+            &format!("knuth_bendix({GROUP}, list(x, y, z), list(u, op, inv))"),
+            &[],
+        );
         assert!(reduced, "{rules}");
         assert_eq!(rules.matches(" = ").count(), 10, "{rules}");
-        let normal = |t: &str| simplify(&sets, &format!("rewrite_with({t}, {rules}, list(x, y, z))"));
+        let normal =
+            |t: &str| simplify(&sets, &format!("rewrite_with({t}, {rules}, list(x, y, z))"));
         assert_eq!(normal("op(inv(op(a, b)), op(a, b))"), "u");
         assert_eq!(normal("inv(inv(a))"), "a");
         assert_eq!(normal("inv(op(a, b))"), "op(inv(b), inv(a))");
@@ -632,14 +681,33 @@ mod tests {
     #[test]
     fn rewriting_and_critical_pairs() {
         let sets = [rewriting()];
-        assert_eq!(simplify(&sets, "rewrite_with(f(f(a)), list(f(f(x)) = x), list(x))"), "a");
-        assert_eq!(simplify(&sets, "rewrite_with(g(f(f(f(b)))), list(f(f(x)) = x), list(x))"), "g(f(b))");
+        assert_eq!(
+            simplify(&sets, "rewrite_with(f(f(a)), list(f(f(x)) = x), list(x))"),
+            "a"
+        );
+        assert_eq!(
+            simplify(
+                &sets,
+                "rewrite_with(g(f(f(f(b)))), list(f(f(x)) = x), list(x))"
+            ),
+            "g(f(b))"
+        );
         // f(f(f(x))) overlaps with itself: f(x) and f(x) — joinable, so no pairs.
-        assert_eq!(simplify(&sets, "critical_pairs(list(f(f(x)) = x), list(x))"), "list()");
-        let pairs = simplify(&sets, "critical_pairs(list(f(g(x)) = a, g(h(y)) = b), list(x, y))");
+        assert_eq!(
+            simplify(&sets, "critical_pairs(list(f(f(x)) = x), list(x))"),
+            "list()"
+        );
+        let pairs = simplify(
+            &sets,
+            "critical_pairs(list(f(g(x)) = a, g(h(y)) = b), list(x, y))",
+        );
         assert!(pairs.contains("f(b)") && pairs.contains('a'), "{pairs}");
         // An equation that no path order can orient (commutativity) fails.
-        let (_, reduced) = reduce_with(&sets, "knuth_bendix(list(m(x, y) = m(y, x)), list(x, y))", &[]);
+        let (_, reduced) = reduce_with(
+            &sets,
+            "knuth_bendix(list(m(x, y) = m(y, x)), list(x, y))",
+            &[],
+        );
         assert!(!reduced);
     }
 }

@@ -4,7 +4,10 @@ use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::polynomial::Polynomial;
-use rssn::kernels::real_roots::{find_roots, isolate_real_roots, refine_root_bisection, sturm_sequence};
+use rssn::kernels::real_roots::find_roots;
+use rssn::kernels::real_roots::isolate_real_roots;
+use rssn::kernels::real_roots::refine_root_bisection;
+use rssn::kernels::real_roots::sturm_sequence;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -56,7 +59,11 @@ fn no_real_roots() {
 fn sturm_sequence_of_cubic_starts_with_poly_and_derivative() {
     let poly = Polynomial::new(vec![1.0, -6.0, 11.0, -6.0]);
     let seq = sturm_sequence(&poly);
-    assert!(seq.len() >= 3, "a cubic with 3 simple roots has a full chain, got {}", seq.len());
+    assert!(
+        seq.len() >= 3,
+        "a cubic with 3 simple roots has a full chain, got {}",
+        seq.len()
+    );
     assert_eq!(seq[0].coeffs, poly.coeffs);
     assert_eq!(seq[1].coeffs, poly.derivative().coeffs);
     assert!(sturm_sequence(&Polynomial::new(vec![])).is_empty());
@@ -69,7 +76,10 @@ fn isolation_returns_one_interval_per_root_each_containing_it() {
     intervals.sort_by(|a, b| a.0.total_cmp(&b.0));
     assert_eq!(intervals.len(), 3);
     for ((lo, hi), root) in intervals.iter().zip([1.0, 2.0, 3.0]) {
-        assert!(*lo <= root + 1e-6 && root - 1e-6 <= *hi, "[{lo}, {hi}] misses {root}");
+        assert!(
+            *lo <= root + 1e-6 && root - 1e-6 <= *hi,
+            "[{lo}, {hi}] misses {root}"
+        );
     }
 }
 

@@ -167,7 +167,10 @@ impl Builder {
         let mut key = key_of(&inst);
         if let Inst::Call(_, start, len) = inst {
             let mut h = std::collections::hash_map::DefaultHasher::new();
-            self.tape.args.get(start as usize..(start as usize).saturating_add(len as usize)).hash(&mut h);
+            self.tape
+                .args
+                .get(start as usize..(start as usize).saturating_add(len as usize))
+                .hash(&mut h);
             key.2 = h.finish();
         }
         if let Some(&r) = self.seen.get(&key) {
@@ -267,7 +270,14 @@ pub fn lower(
     inputs: &[SymbolId],
     params: &[SymbolId],
 ) -> Result<Tape, BackendError> {
-    let mut b = Builder { tape: Tape { inputs: inputs.len(), params: params.len(), ..Tape::default() }, seen: HashMap::new() };
+    let mut b = Builder {
+        tape: Tape {
+            inputs: inputs.len(),
+            params: params.len(),
+            ..Tape::default()
+        },
+        seen: HashMap::new(),
+    };
     let mut slot: HashMap<NodeId, Reg> = HashMap::new();
     for &root in roots {
         let r = lower_node(graph, root, inputs, params, &mut b, &mut slot)?;
@@ -301,7 +311,12 @@ fn lower_node(
         let children = graph.children(node);
         if !expanded && !children.is_empty() {
             stack.push((node, true));
-            stack.extend(children.iter().filter(|c| !slot.contains_key(c)).map(|&c| (c, false)));
+            stack.extend(
+                children
+                    .iter()
+                    .filter(|c| !slot.contains_key(c))
+                    .map(|&c| (c, false)),
+            );
             continue;
         }
         let reg = lower_one(graph, node, inputs, params, b, slot)?;
@@ -328,7 +343,9 @@ fn lower_one(
         if let Some(i) = params.iter().position(|&s| s == symbol) {
             return Ok(b.push(Inst::Param(u32::try_from(i).unwrap_or(u32::MAX))));
         }
-        return Err(BackendError::UnboundSymbol(graph.interner().symbol_name(symbol).to_owned()));
+        return Err(BackendError::UnboundSymbol(
+            graph.interner().symbol_name(symbol).to_owned(),
+        ));
     }
     if graph.payload(node).is_some() {
         return Err(BackendError::NotNumeric);
@@ -369,19 +386,26 @@ fn lower_one(
                 continue;
             }
             if let (true, &[base, e]) = (graph.op(child) == core::POW, graph.children(child))
-                && let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
-                    let base = reg(&base)?;
-                    denominator.push(power(graph, b, base, e, -k));
-                    continue;
-                }
+                && let Some(k) = literal(graph, e).filter(|k| *k < 0.0)
+            {
+                let base = reg(&base)?;
+                denominator.push(power(graph, b, base, e, -k));
+                continue;
+            }
             numerator.push(reg(&child)?);
         }
-        let n = b.tree(numerator, Inst::Mul).unwrap_or_else(|| b.constant(1.0));
+        let n = b
+            .tree(numerator, Inst::Mul)
+            .unwrap_or_else(|| b.constant(1.0));
         let value = match b.tree(denominator, Inst::Mul) {
             | Some(d) => b.push(Inst::Div(n, d)),
             | None => n,
         };
-        return Ok(if sign { b.push(Inst::Neg(value)) } else { value });
+        return Ok(if sign {
+            b.push(Inst::Neg(value))
+        } else {
+            value
+        });
     }
     if op == core::POW {
         let (&[base_node, e], [base, exponent]) = (children, args.as_slice()) else {
@@ -415,17 +439,24 @@ fn lower_one(
         | _ => {},
     }
     if op == core::EQ
-        && let &[x, y] = args.as_slice() {
-            return Ok(b.push(Inst::Cmp(Cmp::Eq, x, y)));
-        }
-    let f = desc.eval.ok_or_else(|| BackendError::NoSemantics(desc.name.to_string()))?;
+        && let &[x, y] = args.as_slice()
+    {
+        return Ok(b.push(Inst::Cmp(Cmp::Eq, x, y)));
+    }
+    let f = desc
+        .eval
+        .ok_or_else(|| BackendError::NoSemantics(desc.name.to_string()))?;
     if args.is_empty() {
         // Constants such as `pi`.
         return Ok(b.constant(f(&[])));
     }
     let start = u32::try_from(b.tape.args.len()).unwrap_or(u32::MAX);
     b.tape.args.extend_from_slice(&args);
-    Ok(b.push(Inst::Call(f, start, u32::try_from(args.len()).unwrap_or(u32::MAX))))
+    Ok(b.push(Inst::Call(
+        f,
+        start,
+        u32::try_from(args.len()).unwrap_or(u32::MAX),
+    )))
 }
 
 /// `c · rest` for a summand `mul(c, rest...)` with a negative literal `c`:
@@ -443,7 +474,11 @@ fn negated(
         return Ok(None);
     }
     let factors = graph.children(child);
-    let Some(c) = factors.iter().find_map(|&f| literal(graph, f)).filter(|c| *c < 0.0) else {
+    let Some(c) = factors
+        .iter()
+        .find_map(|&f| literal(graph, f))
+        .filter(|c| *c < 0.0)
+    else {
         return Ok(None);
     };
     let mut rest = Vec::new();
@@ -455,11 +490,12 @@ fn negated(
             continue;
         }
         if let (true, &[base, e]) = (graph.op(f) == core::POW, graph.children(f))
-            && let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
-                let base = slot.get(&base).copied().ok_or(BackendError::NotNumeric)?;
-                denominator.push(power(graph, b, base, e, -k));
-                continue;
-            }
+            && let Some(k) = literal(graph, e).filter(|k| *k < 0.0)
+        {
+            let base = slot.get(&base).copied().ok_or(BackendError::NotNumeric)?;
+            denominator.push(power(graph, b, base, e, -k));
+            continue;
+        }
         rest.push(slot.get(&f).copied().ok_or(BackendError::NotNumeric)?);
     }
     if (c + 1.0).abs() > 0.0 {
@@ -480,24 +516,28 @@ fn power(
     e: NodeId,
     k: f64,
 ) -> Reg {
-    let exact = graph.as_number(e).and_then(crate::graph::Number::to_rational).map(|r| r.abs());
+    let exact = graph
+        .as_number(e)
+        .and_then(crate::graph::Number::to_rational)
+        .map(|r| r.abs());
     if let Some(r) = exact {
         let (numer, denom) = (r.numer().clone(), r.denom().clone());
         if let (Ok(p), Ok(q)) = (i64::try_from(numer), i64::try_from(denom))
-            && p <= 64 {
-                match q {
-                    | 1 => return b.pow_int(base, p),
-                    | 2 => {
-                        let s = b.push(Inst::Unary(Intrinsic::Sqrt, base));
-                        return b.pow_int(s, p);
-                    },
-                    | 3 => {
-                        let s = b.push(Inst::Unary(Intrinsic::Cbrt, base));
-                        return b.pow_int(s, p);
-                    },
-                    | _ => {},
-                }
+            && p <= 64
+        {
+            match q {
+                | 1 => return b.pow_int(base, p),
+                | 2 => {
+                    let s = b.push(Inst::Unary(Intrinsic::Sqrt, base));
+                    return b.pow_int(s, p);
+                },
+                | 3 => {
+                    let s = b.push(Inst::Unary(Intrinsic::Cbrt, base));
+                    return b.pow_int(s, p);
+                },
+                | _ => {},
             }
+        }
     }
     let k = b.constant(k);
     b.push(Inst::PowF(base, k))
@@ -520,7 +560,10 @@ impl Tape {
                 if let Inst::Const(c) = inst {
                     return Some(c);
                 }
-                let values: Option<Vec<f64>> = operands.iter().map(|&r| constants.get(r as usize).copied().flatten()).collect();
+                let values: Option<Vec<f64>> = operands
+                    .iter()
+                    .map(|&r| constants.get(r as usize).copied().flatten())
+                    .collect();
                 let values = values?;
                 Some(apply::<f64>(&inst, &values))
             });
@@ -544,7 +587,11 @@ impl Tape {
             }
         }
         let mut map = vec![Reg::MAX; folded.insts.len()];
-        let mut out = Self { inputs: folded.inputs, params: folded.params, ..Self::default() };
+        let mut out = Self {
+            inputs: folded.inputs,
+            params: folded.params,
+            ..Self::default()
+        };
         for (i, inst) in folded.insts.iter().enumerate() {
             if !live.get(i).copied().unwrap_or(false) {
                 continue;
@@ -579,7 +626,11 @@ impl Tape {
             }
             out.insts.push(renamed);
         }
-        out.outputs = folded.outputs.iter().map(|&r| map.get(r as usize).copied().unwrap_or(Reg::MAX)).collect();
+        out.outputs = folded
+            .outputs
+            .iter()
+            .map(|&r| map.get(r as usize).copied().unwrap_or(Reg::MAX))
+            .collect();
         out
     }
 
@@ -613,7 +664,11 @@ impl Tape {
                 | Inst::Param(i) => params.get(i as usize).copied().unwrap_or_else(T::nan),
                 | _ => {
                     scratch.clear();
-                    scratch.extend(operands(inst, &self.args).iter().map(|&r| values.get(r as usize).copied().unwrap_or_else(T::nan)));
+                    scratch.extend(
+                        operands(inst, &self.args)
+                            .iter()
+                            .map(|&r| values.get(r as usize).copied().unwrap_or_else(T::nan)),
+                    );
                     apply(inst, &scratch)
                 },
             };
@@ -649,7 +704,11 @@ impl Tape {
         let mut out = vec![Dual(0.0, 0.0); self.outputs.len()];
         (0..inputs.len())
             .map(|i| {
-                let seeded: Vec<Dual> = inputs.iter().enumerate().map(|(j, &x)| Dual(x, if i == j { 1.0 } else { 0.0 })).collect();
+                let seeded: Vec<Dual> = inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(j, &x)| Dual(x, if i == j { 1.0 } else { 0.0 }))
+                    .collect();
                 self.run(&seeded, &params, &mut values, &mut out);
                 out.get(k).map_or(f64::NAN, |d| d.1)
             })
@@ -688,7 +747,11 @@ fn operands(
         | Inst::Cmp(_, a, b)
         | Inst::Extern2(_, a, b) => vec![a, b],
         | Inst::Select(c, a, b) => vec![c, a, b],
-        | Inst::Call(_, start, len) => args.get(start as usize..(start as usize).saturating_add(len as usize)).unwrap_or(&[]).to_vec(),
+        | Inst::Call(_, start, len) => {
+            args.get(start as usize..(start as usize).saturating_add(len as usize))
+                .unwrap_or(&[])
+                .to_vec()
+        },
     }
 }
 
@@ -702,39 +765,74 @@ pub trait Scalar: Copy + FromExtern {
     fn constant(c: f64) -> Self;
     /// `a + b`.
     #[must_use]
-    fn add(self, b: Self) -> Self;
+    fn add(
+        self,
+        b: Self,
+    ) -> Self;
     /// `a - b`.
     #[must_use]
-    fn sub(self, b: Self) -> Self;
+    fn sub(
+        self,
+        b: Self,
+    ) -> Self;
     /// `a * b`.
     #[must_use]
-    fn mul(self, b: Self) -> Self;
+    fn mul(
+        self,
+        b: Self,
+    ) -> Self;
     /// `a / b`.
     #[must_use]
-    fn div(self, b: Self) -> Self;
+    fn div(
+        self,
+        b: Self,
+    ) -> Self;
     /// `-a`.
     #[must_use]
     fn neg(self) -> Self;
     /// `a^n`.
     #[must_use]
-    fn powi(self, n: i32) -> Self;
+    fn powi(
+        self,
+        n: i32,
+    ) -> Self;
     /// `a^b`.
     #[must_use]
-    fn powf(self, b: Self) -> Self;
+    fn powf(
+        self,
+        b: Self,
+    ) -> Self;
     /// An elementary function.
     #[must_use]
-    fn unary(self, f: Intrinsic) -> Self;
+    fn unary(
+        self,
+        f: Intrinsic,
+    ) -> Self;
     /// `atan2(self, x)`.
     #[must_use]
-    fn atan2(self, x: Self) -> Self;
+    fn atan2(
+        self,
+        x: Self,
+    ) -> Self;
     /// A comparison (`1` or `0`).
     #[must_use]
-    fn compare(self, c: Cmp, b: Self) -> Self;
+    fn compare(
+        self,
+        c: Cmp,
+        b: Self,
+    ) -> Self;
     /// `if self != 0 { a } else { b }`.
     #[must_use]
-    fn select(self, a: Self, b: Self) -> Self;
+    fn select(
+        self,
+        a: Self,
+        b: Self,
+    ) -> Self;
     /// A call of scalar semantics.
-    fn call(f: EvalFn, args: &[Self]) -> Self;
+    fn call(
+        f: EvalFn,
+        args: &[Self],
+    ) -> Self;
 }
 
 fn apply<T: Scalar>(
@@ -765,9 +863,16 @@ fn apply<T: Scalar>(
 /// How a number type evaluates external functions.
 pub trait FromExtern: Sized {
     /// `f(a)`.
-    fn from_extern1(f: extern "C" fn(f64) -> f64, a: Self) -> Self;
+    fn from_extern1(
+        f: extern "C" fn(f64) -> f64,
+        a: Self,
+    ) -> Self;
     /// `f(a, b)`.
-    fn from_extern2(f: extern "C" fn(f64, f64) -> f64, a: Self, b: Self) -> Self;
+    fn from_extern2(
+        f: extern "C" fn(f64, f64) -> f64,
+        a: Self,
+        b: Self,
+    ) -> Self;
 }
 
 impl Intrinsic {
@@ -930,7 +1035,11 @@ impl Scalar for f64 {
         a: Self,
         b: Self,
     ) -> Self {
-        if (self - 0.0).abs() > 0.0 || self.is_nan() { a } else { b }
+        if (self - 0.0).abs() > 0.0 || self.is_nan() {
+            a
+        } else {
+            b
+        }
     }
 
     fn call(
@@ -1030,7 +1139,11 @@ impl Scalar for Dual {
         n: i32,
     ) -> Self {
         let value = int_pow(self.0, n);
-        let slope = if n == 0 { 0.0 } else { f64::from(n) * int_pow(self.0, n - 1) };
+        let slope = if n == 0 {
+            0.0
+        } else {
+            f64::from(n) * int_pow(self.0, n - 1)
+        };
         Self(value, slope * self.1)
     }
 
@@ -1039,8 +1152,16 @@ impl Scalar for Dual {
         b: Self,
     ) -> Self {
         let value = self.0.powf(b.0);
-        let d_base = if self.1 == 0.0 { 0.0 } else { b.0 * self.0.powf(b.0 - 1.0) * self.1 };
-        let d_exp = if b.1 == 0.0 { 0.0 } else { value * self.0.ln() * b.1 };
+        let d_base = if self.1 == 0.0 {
+            0.0
+        } else {
+            b.0 * self.0.powf(b.0 - 1.0) * self.1
+        };
+        let d_exp = if b.1 == 0.0 {
+            0.0
+        } else {
+            value * self.0.ln() * b.1
+        };
         Self(value, d_base + d_exp)
     }
 
@@ -1072,7 +1193,11 @@ impl Scalar for Dual {
         a: Self,
         b: Self,
     ) -> Self {
-        if (self.0 - 0.0).abs() > 0.0 || self.0.is_nan() { a } else { b }
+        if (self.0 - 0.0).abs() > 0.0 || self.0.is_nan() {
+            a
+        } else {
+            b
+        }
     }
 
     fn call(
@@ -1131,7 +1256,10 @@ pub struct Interval {
 
 impl Interval {
     /// The whole line.
-    pub const ENTIRE: Self = Self { lo: f64::NEG_INFINITY, hi: f64::INFINITY };
+    pub const ENTIRE: Self = Self {
+        lo: f64::NEG_INFINITY,
+        hi: f64::INFINITY,
+    };
 
     /// The degenerate interval `[x, x]`.
     #[must_use]
@@ -1147,7 +1275,10 @@ impl Interval {
         if lo.is_nan() || hi.is_nan() {
             return Self::ENTIRE;
         }
-        Self { lo: lo.next_down(), hi: hi.next_up() }
+        Self {
+            lo: lo.next_down(),
+            hi: hi.next_up(),
+        }
     }
 
     /// Whether `x` lies in the interval.
@@ -1165,7 +1296,11 @@ impl Interval {
         increasing: bool,
     ) -> Self {
         let (a, b) = (f(self.lo), f(self.hi));
-        if increasing { Self::outward(a, b) } else { Self::outward(b, a) }
+        if increasing {
+            Self::outward(a, b)
+        } else {
+            Self::outward(b, a)
+        }
     }
 
     fn contains_point_of(
@@ -1185,7 +1320,11 @@ impl Scalar for Interval {
     }
 
     fn constant(c: f64) -> Self {
-        if c.is_finite() { Self::point(c) } else { Self { lo: c, hi: c } }
+        if c.is_finite() {
+            Self::point(c)
+        } else {
+            Self { lo: c, hi: c }
+        }
     }
 
     fn add(
@@ -1206,11 +1345,19 @@ impl Scalar for Interval {
         self,
         b: Self,
     ) -> Self {
-        let p = [self.lo * b.lo, self.lo * b.hi, self.hi * b.lo, self.hi * b.hi];
+        let p = [
+            self.lo * b.lo,
+            self.lo * b.hi,
+            self.hi * b.lo,
+            self.hi * b.hi,
+        ];
         if p.iter().any(|v| v.is_nan()) {
             return Self::ENTIRE;
         }
-        Self::outward(p.iter().copied().fold(f64::INFINITY, f64::min), p.iter().copied().fold(f64::NEG_INFINITY, f64::max))
+        Self::outward(
+            p.iter().copied().fold(f64::INFINITY, f64::min),
+            p.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        )
     }
 
     fn div(
@@ -1220,11 +1367,20 @@ impl Scalar for Interval {
         if b.lo <= 0.0 && b.hi >= 0.0 {
             return Self::ENTIRE;
         }
-        self.mul(Self { lo: 1.0 / b.hi, hi: 1.0 / b.lo }.widen())
+        self.mul(
+            Self {
+                lo: 1.0 / b.hi,
+                hi: 1.0 / b.lo,
+            }
+            .widen(),
+        )
     }
 
     fn neg(self) -> Self {
-        Self { lo: -self.hi, hi: -self.lo }
+        Self {
+            lo: -self.hi,
+            hi: -self.lo,
+        }
     }
 
     fn powi(
@@ -1272,7 +1428,15 @@ impl Scalar for Interval {
                 if self.hi <= 0.0 {
                     Self::ENTIRE
                 } else {
-                    Self { lo: if self.lo <= 0.0 { f64::NEG_INFINITY } else { self.lo.ln() }, hi: self.hi.ln() }.widen()
+                    Self {
+                        lo: if self.lo <= 0.0 {
+                            f64::NEG_INFINITY
+                        } else {
+                            self.lo.ln()
+                        },
+                        hi: self.hi.ln(),
+                    }
+                    .widen()
                 }
             },
             | Intrinsic::Sqrt => {
@@ -1287,35 +1451,74 @@ impl Scalar for Interval {
             | Intrinsic::Sinh => self.monotone(f64::sinh, true),
             | Intrinsic::Tanh => self.monotone(f64::tanh, true),
             | Intrinsic::Asinh => self.monotone(f64::asinh, true),
-            | Intrinsic::Floor => Self { lo: self.lo.floor(), hi: self.hi.floor() },
-            | Intrinsic::Ceil => Self { lo: self.lo.ceil(), hi: self.hi.ceil() },
-            | Intrinsic::Asin if self.lo >= -1.0 && self.hi <= 1.0 => self.monotone(f64::asin, true),
-            | Intrinsic::Acos if self.lo >= -1.0 && self.hi <= 1.0 => self.monotone(f64::acos, false),
+            | Intrinsic::Floor => {
+                Self {
+                    lo: self.lo.floor(),
+                    hi: self.hi.floor(),
+                }
+            },
+            | Intrinsic::Ceil => {
+                Self {
+                    lo: self.lo.ceil(),
+                    hi: self.hi.ceil(),
+                }
+            },
+            | Intrinsic::Asin if self.lo >= -1.0 && self.hi <= 1.0 => {
+                self.monotone(f64::asin, true)
+            },
+            | Intrinsic::Acos if self.lo >= -1.0 && self.hi <= 1.0 => {
+                self.monotone(f64::acos, false)
+            },
             | Intrinsic::Acosh if self.lo >= 1.0 => self.monotone(f64::acosh, true),
-            | Intrinsic::Atanh if self.lo > -1.0 && self.hi < 1.0 => self.monotone(f64::atanh, true),
+            | Intrinsic::Atanh if self.lo > -1.0 && self.hi < 1.0 => {
+                self.monotone(f64::atanh, true)
+            },
             | Intrinsic::Abs => {
                 if self.lo >= 0.0 {
                     self
                 } else if self.hi <= 0.0 {
                     self.neg()
                 } else {
-                    Self { lo: 0.0, hi: (-self.lo).max(self.hi) }
+                    Self {
+                        lo: 0.0,
+                        hi: (-self.lo).max(self.hi),
+                    }
                 }
             },
             | Intrinsic::Cosh => {
                 let (a, b) = (self.lo.cosh(), self.hi.cosh());
-                let lo = if self.lo <= 0.0 && self.hi >= 0.0 { 1.0 } else { a.min(b) };
+                let lo = if self.lo <= 0.0 && self.hi >= 0.0 {
+                    1.0
+                } else {
+                    a.min(b)
+                };
                 Self::outward(lo, a.max(b))
             },
             | Intrinsic::Sin | Intrinsic::Cos => {
                 if !(self.hi - self.lo).is_finite() || self.hi - self.lo >= 2.0 * PI {
                     return Self { lo: -1.0, hi: 1.0 };
                 }
-                let g = if f == Intrinsic::Sin { f64::sin } else { f64::cos };
+                let g = if f == Intrinsic::Sin {
+                    f64::sin
+                } else {
+                    f64::cos
+                };
                 let (a, b) = (g(self.lo), g(self.hi));
-                let (max_at, min_at) = if f == Intrinsic::Sin { (FRAC_PI_2, -FRAC_PI_2) } else { (0.0, PI) };
-                let hi = if self.contains_point_of(max_at, 2.0 * PI) { 1.0 } else { a.max(b) };
-                let lo = if self.contains_point_of(min_at, 2.0 * PI) { -1.0 } else { a.min(b) };
+                let (max_at, min_at) = if f == Intrinsic::Sin {
+                    (FRAC_PI_2, -FRAC_PI_2)
+                } else {
+                    (0.0, PI)
+                };
+                let hi = if self.contains_point_of(max_at, 2.0 * PI) {
+                    1.0
+                } else {
+                    a.max(b)
+                };
+                let lo = if self.contains_point_of(min_at, 2.0 * PI) {
+                    -1.0
+                } else {
+                    a.min(b)
+                };
                 Self::outward(lo, hi).clamp(-1.0, 1.0)
             },
             | _ => Self::ENTIRE,
@@ -1327,7 +1530,10 @@ impl Scalar for Interval {
         x: Self,
     ) -> Self {
         let _ = x;
-        Self { lo: -std::f64::consts::PI, hi: std::f64::consts::PI }
+        Self {
+            lo: -std::f64::consts::PI,
+            hi: std::f64::consts::PI,
+        }
     }
 
     fn compare(
@@ -1360,7 +1566,10 @@ impl Scalar for Interval {
         } else if self.lo == 0.0 && self.hi == 0.0 {
             b
         } else {
-            Self { lo: a.lo.min(b.lo), hi: a.hi.max(b.hi) }
+            Self {
+                lo: a.lo.min(b.lo),
+                hi: a.hi.max(b.hi),
+            }
         }
     }
 
@@ -1418,7 +1627,10 @@ impl Interval {
         self,
         lo: f64,
     ) -> Self {
-        Self { lo: self.lo.max(lo), hi: self.hi }
+        Self {
+            lo: self.lo.max(lo),
+            hi: self.hi,
+        }
     }
 
     const fn clamp(
@@ -1426,7 +1638,10 @@ impl Interval {
         lo: f64,
         hi: f64,
     ) -> Self {
-        Self { lo: self.lo.max(lo), hi: self.hi.min(hi) }
+        Self {
+            lo: self.lo.max(lo),
+            hi: self.hi.min(hi),
+        }
     }
 }
 
@@ -1441,21 +1656,41 @@ mod tests {
         assert!(Engine::install(&mut g, &rules::standard()).is_ok());
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
         let inputs = [g.interner_mut().symbol("x"), g.interner_mut().symbol("y")];
-        lower(&g, &[root], &inputs, &[]).unwrap_or_else(|e| panic!("{e}")).optimise()
+        lower(&g, &[root], &inputs, &[])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise()
     }
 
     #[test]
     fn canonical_forms_become_native_operations() {
         let t = tape("x - y");
-        assert!(t.insts.iter().any(|i| matches!(i, Inst::Sub(..))) && !t.insts.iter().any(|i| matches!(i, Inst::Mul(..))));
+        assert!(
+            t.insts.iter().any(|i| matches!(i, Inst::Sub(..)))
+                && !t.insts.iter().any(|i| matches!(i, Inst::Mul(..)))
+        );
         let t = tape("x / y");
-        assert!(t.insts.iter().any(|i| matches!(i, Inst::Div(..))) && !t.insts.iter().any(|i| matches!(i, Inst::PowF(..))));
+        assert!(
+            t.insts.iter().any(|i| matches!(i, Inst::Div(..)))
+                && !t.insts.iter().any(|i| matches!(i, Inst::PowF(..)))
+        );
         let t = tape("x^(1/2) + y^(3/2) + x^5");
-        assert_eq!(t.insts.iter().filter(|i| matches!(i, Inst::Unary(Intrinsic::Sqrt, _))).count(), 2);
+        assert_eq!(
+            t.insts
+                .iter()
+                .filter(|i| matches!(i, Inst::Unary(Intrinsic::Sqrt, _)))
+                .count(),
+            2
+        );
         assert!(!t.insts.iter().any(|i| matches!(i, Inst::PowF(..))));
         // Constants fold (`x + 0.0` stays: it maps -0.0 to +0.0).
         let t = tape("2^10*x + sin(0)");
-        assert!(!t.insts.iter().any(|i| matches!(i, Inst::Unary(..) | Inst::PowI(..))), "{:?}", t.insts);
+        assert!(
+            !t.insts
+                .iter()
+                .any(|i| matches!(i, Inst::Unary(..) | Inst::PowI(..))),
+            "{:?}",
+            t.insts
+        );
     }
 
     #[test]
@@ -1465,17 +1700,28 @@ mod tests {
         let g = t.gradient(0, &[x, y], &[]);
         let dx = 3.0 * x * x * y + y * (x * y).cos() - y.exp() / (x * x);
         let dy = x.powi(3) + x * (x * y).cos() + y.exp() / x;
-        assert!((g[0] - dx).abs() < 1e-12 && (g[1] - dy).abs() < 1e-12, "{g:?}");
+        assert!(
+            (g[0] - dx).abs() < 1e-12 && (g[1] - dy).abs() < 1e-12,
+            "{g:?}"
+        );
     }
 
     #[test]
     fn special_functions_lower_to_direct_calls() {
         let mut g = Graph::new();
         assert!(crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok());
-        let root = g.parse("gamma(x) + erf(x) + besselj(1, x) + floor(x)").unwrap_or_else(|e| panic!("{e}"));
+        let root = g
+            .parse("gamma(x) + erf(x) + besselj(1, x) + floor(x)")
+            .unwrap_or_else(|e| panic!("{e}"));
         let x = g.interner_mut().symbol("x");
-        let tape = lower(&g, &[root], &[x], &[]).unwrap_or_else(|e| panic!("{e}")).optimise();
-        assert!(!tape.insts.iter().any(|i| matches!(i, Inst::Call(..))), "{:?}", tape.insts);
+        let tape = lower(&g, &[root], &[x], &[])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise();
+        assert!(
+            !tape.insts.iter().any(|i| matches!(i, Inst::Call(..))),
+            "{:?}",
+            tape.insts
+        );
         let mut out = [0.0];
         tape.eval(&[2.5], &[], &mut out);
         let want = 1.329_340_388_179_137 + 0.999_593_047_982_555 + 0.497_094_102_464_274_4 + 2.0;
@@ -1485,7 +1731,10 @@ mod tests {
     #[test]
     fn interval_enclosures_are_rigorous() {
         let t = tape("x^2 - 2*x*y + sin(x) + exp(-y^2)");
-        let boxed = [Interval { lo: 0.9, hi: 1.1 }, Interval { lo: -0.2, hi: 0.3 }];
+        let boxed = [
+            Interval { lo: 0.9, hi: 1.1 },
+            Interval { lo: -0.2, hi: 0.3 },
+        ];
         let enclosure = t.enclose(&boxed, &[]);
         let e = enclosure[0];
         let mut out = [0.0];
@@ -1497,7 +1746,8 @@ mod tests {
             }
         }
         // A sign decided rigorously: x^2 + 1 > 0 on any box.
-        let positive = tape("x^2 + 1").enclose(&[Interval { lo: -5.0, hi: 3.0 }, Interval::point(0.0)], &[]);
+        let positive =
+            tape("x^2 + 1").enclose(&[Interval { lo: -5.0, hi: 3.0 }, Interval::point(0.0)], &[]);
         assert!(positive[0].lo > 0.0);
     }
 }

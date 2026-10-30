@@ -651,10 +651,14 @@ pub fn solve_poisson_2d(
                 u_mut[i] = new_val;
             }
 
-            if let Some(d) = updates.iter().map(|&(_, _, d)| d).max_by(|a, b| a.partial_cmp(b).unwrap())
-                && d > max_diff {
-                    max_diff = d;
-                }
+            if let Some(d) = updates
+                .iter()
+                .map(|&(_, _, d)| d)
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                && d > max_diff
+            {
+                max_diff = d;
+            }
         }
 
         if max_diff < tolerance {
@@ -833,12 +837,24 @@ fn structured_grid(
         return Err("one spacing per axis is required".into());
     }
     let hi: Vec<f64> = (0..dims.len())
-        .map(|a| spacing[a] * if bcs.axis_periodic(a).unwrap_or(false) { dims[a] } else { dims[a] - 1 } as f64)
+        .map(|a| {
+            spacing[a]
+                * if bcs.axis_periodic(a).unwrap_or(false) {
+                    dims[a]
+                } else {
+                    dims[a] - 1
+                } as f64
+        })
         .collect();
     crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)
 }
 
-fn node_value(grid: &crate::sim::structured::Grid, data: &[f64], spacing: &[f64], x: [f64; 3]) -> f64 {
+fn node_value(
+    grid: &crate::sim::structured::Grid,
+    data: &[f64],
+    spacing: &[f64],
+    x: [f64; 3],
+) -> f64 {
     let mut idx = [0usize; 3];
     for a in 0..grid.dim {
         idx[a] = ((x[a] / spacing[a]).round() as usize).min(grid.n[a] - 1);
@@ -861,11 +877,20 @@ pub fn solve_heat_equation_bc(
     steps: usize,
     bcs: &crate::sim::boundary::FaceBcs,
 ) -> Result<FdmGrid<f64>, String> {
-    use crate::sim::structured::{HeatProblem, LinearSolver, heat_fixed};
+    use crate::sim::structured::HeatProblem;
+    use crate::sim::structured::LinearSolver;
+    use crate::sim::structured::heat_fixed;
     let dims = dims_of(initial.dimensions());
     let grid = structured_grid(&dims, spacing, bcs)?;
     let init = |x: [f64; 3]| node_value(&grid, initial.as_slice(), spacing, x);
-    let prob = HeatProblem { grid: &grid, bcs, alpha, init: &init, source: None, solver: LinearSolver::Auto };
+    let prob = HeatProblem {
+        grid: &grid,
+        bcs,
+        alpha,
+        init: &init,
+        source: None,
+        solver: LinearSolver::Auto,
+    };
     let u = heat_fixed(&prob, dt * steps as f64, steps, 0.5)?;
     Ok(FdmGrid::from_data(u, initial.dimensions().clone()))
 }
@@ -884,11 +909,22 @@ pub fn solve_wave_equation_bc(
     steps: usize,
     bcs: &crate::sim::boundary::FaceBcs,
 ) -> Result<FdmGrid<f64>, String> {
-    use crate::sim::structured::{WaveProblem, wave_leapfrog};
+    use crate::sim::structured::WaveProblem;
+    use crate::sim::structured::wave_leapfrog;
     let dims = dims_of(u0.dimensions());
     let grid = structured_grid(&dims, spacing, bcs)?;
-    let (f0, f1) = (|x: [f64; 3]| node_value(&grid, u0.as_slice(), spacing, x), |x: [f64; 3]| node_value(&grid, v0.as_slice(), spacing, x));
-    let prob = WaveProblem { grid: &grid, bcs, c, u0: &f0, v0: &f1, source: None };
+    let (f0, f1) = (
+        |x: [f64; 3]| node_value(&grid, u0.as_slice(), spacing, x),
+        |x: [f64; 3]| node_value(&grid, v0.as_slice(), spacing, x),
+    );
+    let prob = WaveProblem {
+        grid: &grid,
+        bcs,
+        c,
+        u0: &f0,
+        v0: &f1,
+        source: None,
+    };
     let u = wave_leapfrog(&prob, dt * steps as f64, steps)?;
     Ok(FdmGrid::from_data(u, u0.dimensions().clone()))
 }
@@ -905,6 +941,13 @@ pub fn solve_poisson_bc(
     bcs: &crate::sim::boundary::FaceBcs,
 ) -> Result<FdmGrid<f64>, String> {
     let dims = dims_of(source.dimensions());
-    let r = crate::sim::physics_mtm::solve_poisson_multigrid_nd(&dims, spacing, source.as_slice(), sigma, bcs, crate::sim::multigrid::MgOptions::default())?;
+    let r = crate::sim::physics_mtm::solve_poisson_multigrid_nd(
+        &dims,
+        spacing,
+        source.as_slice(),
+        sigma,
+        bcs,
+        crate::sim::multigrid::MgOptions::default(),
+    )?;
     Ok(FdmGrid::from_data(r.u, source.dimensions().clone()))
 }

@@ -23,8 +23,6 @@ use super::list_items;
 use super::number;
 use super::solve_system;
 use super::substitute_point;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -37,6 +35,8 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
 use crate::rules::poly::best;
 use crate::rules::solve::solve_for;
@@ -120,7 +120,8 @@ impl Tableau {
                     let better = match &best {
                         | None => true,
                         | Some((at, current)) => {
-                            ratio < *current || (ratio == *current && self.basis[r] < self.basis[*at])
+                            ratio < *current
+                                || (ratio == *current && self.basis[r] < self.basis[*at])
                         },
                     };
                     if better {
@@ -142,7 +143,9 @@ impl Tableau {
         costs: &[Q],
     ) {
         let width = self.objective.len();
-        let mut objective: Vec<Q> = (0..width).map(|j| costs.get(j).cloned().unwrap_or_else(Q::zero)).collect();
+        let mut objective: Vec<Q> = (0..width)
+            .map(|j| costs.get(j).cloned().unwrap_or_else(Q::zero))
+            .collect();
         objective[width - 1] = Q::zero();
         for (r, &b) in self.basis.iter().enumerate() {
             let cost = costs.get(b).cloned().unwrap_or_else(Q::zero);
@@ -165,7 +168,9 @@ fn simplex(
 ) -> Lp {
     let (n, m) = (c.len(), a.len());
     // Columns: variables, slacks, artificials.
-    let slack_rows: Vec<usize> = (0..m).filter(|&i| relations[i] == Relation::AtMost).collect();
+    let slack_rows: Vec<usize> = (0..m)
+        .filter(|&i| relations[i] == Relation::AtMost)
+        .collect();
     let slack_start = n;
     let artificial_start = n + slack_rows.len();
     let mut rows: Vec<Vec<Q>> = Vec::with_capacity(m);
@@ -204,7 +209,11 @@ fn simplex(
             *slot = next_basic.next().unwrap_or(0);
         }
     }
-    let mut tableau = Tableau { rows, basis: basis_full, objective: vec![Q::zero(); total + 1] };
+    let mut tableau = Tableau {
+        rows,
+        basis: basis_full,
+        objective: vec![Q::zero(); total + 1],
+    };
     if !artificial_rows.is_empty() {
         let mut costs = vec![Q::zero(); total];
         for cost in costs.iter_mut().skip(artificial_start) {
@@ -248,7 +257,11 @@ fn simplex(
             point[b] = tableau.rows[r][width].clone();
         }
     }
-    let value = c.iter().zip(&point).map(|(ci, xi)| ci * xi).fold(Q::zero(), |acc, v| acc + v);
+    let value = c
+        .iter()
+        .zip(&point)
+        .map(|(ci, xi)| ci * xi)
+        .fold(Q::zero(), |acc, v| acc + v);
     Lp::Optimal(value, point)
 }
 
@@ -268,7 +281,12 @@ fn rational_vector(
     if graph.op(node) != core::LIST {
         return None;
     }
-    graph.children(node).to_vec().into_iter().map(|c| rational(graph, c)).collect()
+    graph
+        .children(node)
+        .to_vec()
+        .into_iter()
+        .map(|c| rational(graph, c))
+        .collect()
 }
 
 fn rational_matrix(
@@ -279,8 +297,12 @@ fn rational_matrix(
     if graph.op(node) != core::LIST {
         return None;
     }
-    let rows: Option<Vec<Vec<Q>>> =
-        graph.children(node).to_vec().into_iter().map(|r| rational_vector(graph, r)).collect();
+    let rows: Option<Vec<Vec<Q>>> = graph
+        .children(node)
+        .to_vec()
+        .into_iter()
+        .map(|r| rational_vector(graph, r))
+        .collect();
     let rows = rows?;
     let width = rows.first().map_or(0, Vec::len);
     rows.iter().all(|r| r.len() == width).then_some(rows)
@@ -311,7 +333,11 @@ fn linprog(
             *v = -v.clone();
         }
     }
-    let relation = if equality { Relation::Equal } else { Relation::AtMost };
+    let relation = if equality {
+        Relation::Equal
+    } else {
+        Relation::AtMost
+    };
     let relations = vec![relation; a.len()];
     Some(match simplex(&c, &a, &b, &relations) {
         | Lp::Optimal(value, point) => {
@@ -358,18 +384,33 @@ fn principal_minors_nonnegative(m: &[Vec<Q>]) -> bool {
     let n = m.len();
     (1_u32..1 << n).all(|mask| {
         let picked: Vec<usize> = (0..n).filter(|&k| mask >> k & 1 == 1).collect();
-        let sub: Vec<Vec<Q>> = picked.iter().map(|&r| picked.iter().map(|&c| m[r][c].clone()).collect()).collect();
+        let sub: Vec<Vec<Q>> = picked
+            .iter()
+            .map(|&r| picked.iter().map(|&c| m[r][c].clone()).collect())
+            .collect();
         !rational_determinant(&sub).is_negative()
     })
 }
 
 fn definiteness(m: &[Vec<Q>]) -> &'static str {
     let n = m.len();
-    let negated: Vec<Vec<Q>> = m.iter().map(|r| r.iter().map(|v| -v.clone()).collect()).collect();
-    let positive_leading =
-        (1..=n).all(|k| rational_determinant(&m[..k].iter().map(|r| r[..k].to_vec()).collect::<Vec<_>>()).is_positive());
-    let negative_leading = (1..=n)
-        .all(|k| rational_determinant(&negated[..k].iter().map(|r| r[..k].to_vec()).collect::<Vec<_>>()).is_positive());
+    let negated: Vec<Vec<Q>> = m
+        .iter()
+        .map(|r| r.iter().map(|v| -v.clone()).collect())
+        .collect();
+    let positive_leading = (1..=n).all(|k| {
+        rational_determinant(&m[..k].iter().map(|r| r[..k].to_vec()).collect::<Vec<_>>())
+            .is_positive()
+    });
+    let negative_leading = (1..=n).all(|k| {
+        rational_determinant(
+            &negated[..k]
+                .iter()
+                .map(|r| r[..k].to_vec())
+                .collect::<Vec<_>>(),
+        )
+        .is_positive()
+    });
     if positive_leading {
         "positive_definite"
     } else if negative_leading {
@@ -441,7 +482,10 @@ fn provably_nonnegative(
         return false;
     };
     let decided = cx.simplify(request);
-    matches!(cx.graph.payload(decided), Some(crate::graph::Payload::Bool(true)))
+    matches!(
+        cx.graph.payload(decided),
+        Some(crate::graph::Payload::Bool(true))
+    )
 }
 
 fn truth(
@@ -485,15 +529,18 @@ fn convexity(
             })
             .collect();
         if let Some(values) = rational_hessian_at(cx, &h, &vars, &point)
-            && !principal_minors_nonnegative(&values) {
-                return Some(truth(cx.graph, false));
-            }
+            && !principal_minors_nonnegative(&values)
+        {
+            return Some(truth(cx.graph, false));
+        }
     }
     // Proof: every principal minor provably non-negative.
     for mask in 1_u32..1 << n {
         let picked: Vec<usize> = (0..n).filter(|&k| mask >> k & 1 == 1).collect();
-        let sub: Vec<Vec<NodeId>> =
-            picked.iter().map(|&r| picked.iter().map(|&c| h[r][c]).collect()).collect();
+        let sub: Vec<Vec<NodeId>> = picked
+            .iter()
+            .map(|&r| picked.iter().map(|&c| h[r][c]).collect())
+            .collect();
         let minor = symbolic_determinant(cx, &sub)?;
         if !provably_nonnegative(cx, minor) {
             return None;
@@ -543,7 +590,9 @@ fn inequality(
     let mut current = node;
     let mut name = cx.graph.ops().get(cx.graph.op(current)).name.to_string();
     while name == "not" {
-        let &[inner] = cx.graph.children(current) else { return None };
+        let &[inner] = cx.graph.children(current) else {
+            return None;
+        };
         current = inner;
         negated = !negated;
         name = cx.graph.ops().get(cx.graph.op(current)).name.to_string();
@@ -563,7 +612,11 @@ fn inequality(
         | _ => return Some(node),
     };
     let lower = lower != negated;
-    Some(if lower { minus(cx, a, b) } else { minus(cx, b, a) })
+    Some(if lower {
+        minus(cx, a, b)
+    } else {
+        minus(cx, b, a)
+    })
 }
 
 fn subsets(
@@ -589,7 +642,9 @@ fn kkt(
     cx: &mut Cx<'_>,
     args: &[NodeId],
 ) -> Option<Vec<KktPoint>> {
-    let &[f, constraints, vars] = args else { return None };
+    let &[f, constraints, vars] = args else {
+        return None;
+    };
     let f = best(cx.graph, f)?;
     let vars = list_items(cx.graph, vars)?;
     let mut gs = Vec::new();
@@ -619,7 +674,10 @@ fn kkt(
         let mus: Vec<NodeId> = active
             .iter()
             .map(|&k| {
-                let s = cx.graph.interner_mut().fresh_symbol(&format!("mu{}", k + 1));
+                let s = cx
+                    .graph
+                    .interner_mut()
+                    .fresh_symbol(&format!("mu{}", k + 1));
                 cx.graph.symbol_node(s)
             })
             .collect();
@@ -667,7 +725,11 @@ fn kkt(
             if !ok {
                 continue;
             }
-            let key = point.iter().map(|&p| cx.graph.display(p)).collect::<Vec<_>>().join(",");
+            let key = point
+                .iter()
+                .map(|&p| cx.graph.display(p))
+                .collect::<Vec<_>>()
+                .join(",");
             if seen.contains(&key) {
                 continue;
             }
@@ -680,12 +742,19 @@ fn kkt(
             let value = substitute_point(cx.graph, f, &vars, point);
             let value = cx.simplify(value);
             let numeric = number(cx, value);
-            found.push(KktPoint { point: point.to_vec(), multipliers, value, numeric });
+            found.push(KktPoint {
+                point: point.to_vec(),
+                multipliers,
+                value,
+                numeric,
+            });
         }
     }
-    found.sort_by(|a, b| match (a.numeric, b.numeric) {
-        | (Some(x), Some(y)) => x.total_cmp(&y),
-        | _ => std::cmp::Ordering::Equal,
+    found.sort_by(|a, b| {
+        match (a.numeric, b.numeric) {
+            | (Some(x), Some(y)) => x.total_cmp(&y),
+            | _ => std::cmp::Ordering::Equal,
+        }
     });
     Some(found)
 }
@@ -735,9 +804,18 @@ fn qp_eq(
     args: &[NodeId],
 ) -> Option<NodeId> {
     let &[q, c, a, b] = args else { return None };
-    let (q, c, a, b) = (matrix_of(cx.graph, q)?, vector_of(cx.graph, c)?, matrix_of(cx.graph, a)?, vector_of(cx.graph, b)?);
+    let (q, c, a, b) = (
+        matrix_of(cx.graph, q)?,
+        vector_of(cx.graph, c)?,
+        matrix_of(cx.graph, a)?,
+        vector_of(cx.graph, b)?,
+    );
     let (n, m) = (c.len(), b.len());
-    if q.len() != n || q.iter().any(|r| r.len() != n) || a.len() != m || a.iter().any(|r| r.len() != n) {
+    if q.len() != n
+        || q.iter().any(|r| r.len() != n)
+        || a.len() != m
+        || a.iter().any(|r| r.len() != n)
+    {
         return None;
     }
     let zero = cx.graph.int(0);
@@ -770,7 +848,10 @@ fn qp_eq(
         return None;
     }
     let (x, lambda) = items.split_at(n);
-    let (x, lambda) = (cx.graph.node(core::LIST, x), cx.graph.node(core::LIST, lambda));
+    let (x, lambda) = (
+        cx.graph.node(core::LIST, x),
+        cx.graph.node(core::LIST, lambda),
+    );
     Some(cx.graph.node(core::LIST, &[x, lambda]))
 }
 
@@ -804,7 +885,9 @@ fn legendre_transform(
         cx.simplify(sum)
     };
     let roots = solve_for(cx.graph, equation, x, 0)?;
-    let &[root] = roots.as_slice() else { return None };
+    let &[root] = roots.as_slice() else {
+        return None;
+    };
     let at = cx.graph.substitute(f, x, root);
     let minus_one = cx.graph.int(-1);
     let negated = cx.graph.node(core::MUL, &[minus_one, at]);
@@ -859,9 +942,30 @@ impl Kernel for Extension {
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
-        ("linprog", 3, Kind::Linprog { maximise: false, equality: false }),
-        ("linprog_max", 3, Kind::Linprog { maximise: true, equality: false }),
-        ("linprog_eq", 3, Kind::Linprog { maximise: false, equality: true }),
+        (
+            "linprog",
+            3,
+            Kind::Linprog {
+                maximise: false,
+                equality: false,
+            },
+        ),
+        (
+            "linprog_max",
+            3,
+            Kind::Linprog {
+                maximise: true,
+                equality: false,
+            },
+        ),
+        (
+            "linprog_eq",
+            3,
+            Kind::Linprog {
+                maximise: false,
+                equality: true,
+            },
+        ),
         ("kkt_points", 3, Kind::KktPoints),
         ("kkt_minimum", 3, Kind::KktMinimum),
         ("is_convex", 2, Kind::Convex { concave: false }),
@@ -870,8 +974,14 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("qp_eq", 4, Kind::QpEq),
         ("legendre_transform", 3, Kind::Legendre),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("optimize/{name}"), Tier::Reduce, Extension { op, kind });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("optimize/{name}"),
+            Tier::Reduce,
+            Extension { op, kind },
+        );
     }
     Ok(())
 }
@@ -935,7 +1045,11 @@ pub(super) fn projected_kind(
     }
     if minors.iter().all(|&m| m > 0.0) {
         Some("local_min")
-    } else if minors.iter().enumerate().all(|(k, &m)| (m < 0.0) == (k % 2 == 0)) {
+    } else if minors
+        .iter()
+        .enumerate()
+        .all(|(k, &m)| (m < 0.0) == (k % 2 == 0))
+    {
         Some("local_max")
     } else {
         Some("saddle")
@@ -955,7 +1069,8 @@ fn null_basis(
         if row >= m.len() {
             break;
         }
-        let Some(p) = (row..m.len()).max_by(|&a, &b| m[a][col].abs().total_cmp(&m[b][col].abs())) else {
+        let Some(p) = (row..m.len()).max_by(|&a, &b| m[a][col].abs().total_cmp(&m[b][col].abs()))
+        else {
             break;
         };
         if m[p][col].abs() < 1e-10 {
@@ -1012,15 +1127,33 @@ mod tests {
     #[test]
     fn exact_linear_programs() {
         // max 3x + 2y, x + y <= 4, x + 3y <= 6, x, y >= 0: optimum 12 at (4, 0).
-        assert_eq!(run("linprog_max(list(3, 2), list(list(1, 1), list(1, 3)), list(4, 6))"), "list(12, list(4, 0))");
+        assert_eq!(
+            run("linprog_max(list(3, 2), list(list(1, 1), list(1, 3)), list(4, 6))"),
+            "list(12, list(4, 0))"
+        );
         // min -x - y with the same constraints: -4.
-        assert_eq!(run("linprog(list(-1, -1), list(list(1, 1), list(1, 3)), list(4, 6))"), "list(-4, list(4, 0))");
+        assert_eq!(
+            run("linprog(list(-1, -1), list(list(1, 1), list(1, 3)), list(4, 6))"),
+            "list(-4, list(4, 0))"
+        );
         // Fractional optimum.
-        assert_eq!(run("linprog_max(list(1, 1), list(list(2, 1), list(1, 3)), list(4, 5))"), "list(13/5, list(7/5, 6/5))");
-        assert_eq!(run("linprog_eq(list(1, 2), list(list(1, 1)), list(3))"), "list(3, list(3, 0))");
+        assert_eq!(
+            run("linprog_max(list(1, 1), list(list(2, 1), list(1, 3)), list(4, 5))"),
+            "list(13/5, list(7/5, 6/5))"
+        );
+        assert_eq!(
+            run("linprog_eq(list(1, 2), list(list(1, 1)), list(3))"),
+            "list(3, list(3, 0))"
+        );
         // x >= 2 and x <= 1 is infeasible; -x is unbounded.
-        assert_eq!(run("linprog(list(1), list(list(-1), list(1)), list(-2, 1))"), "infeasible");
-        assert_eq!(run("linprog(list(-1), list(list(-1)), list(0))"), "unbounded");
+        assert_eq!(
+            run("linprog(list(1), list(list(-1), list(1)), list(-2, 1))"),
+            "infeasible"
+        );
+        assert_eq!(
+            run("linprog(list(-1), list(list(-1)), list(0))"),
+            "unbounded"
+        );
     }
 
     #[test]
@@ -1034,11 +1167,20 @@ mod tests {
             run("kkt_points(x^2 + y^2, list(le(2, x + y)), list(x, y))"),
             "list(list(list(1, 1), list(2), 2))"
         );
-        assert_eq!(run("kkt_minimum(x^2 + y^2, list(le(2, x + y)), list(x, y))"), "list(list(1, 1), 2)");
+        assert_eq!(
+            run("kkt_minimum(x^2 + y^2, list(le(2, x + y)), list(x, y))"),
+            "list(list(1, 1), 2)"
+        );
         // min (x - 2)^2 subject to x <= 1: boundary point.
-        assert_eq!(run("kkt_minimum((x - 2)^2, list(x - 1), list(x))"), "list(list(1), 1)");
+        assert_eq!(
+            run("kkt_minimum((x - 2)^2, list(x - 1), list(x))"),
+            "list(list(1), 1)"
+        );
         // Inactive constraint: the unconstrained minimum survives.
-        assert_eq!(run("kkt_minimum((x - 2)^2, list(x - 5), list(x))"), "list(list(2), 0)");
+        assert_eq!(
+            run("kkt_minimum((x - 2)^2, list(x - 5), list(x))"),
+            "list(list(2), 0)"
+        );
     }
 
     #[test]
@@ -1047,10 +1189,22 @@ mod tests {
         assert_eq!(run("is_convex(x^2 - y^2, list(x, y))"), "false");
         assert_eq!(run("is_concave(-x^2 - y^2, list(x, y))"), "true");
         assert_eq!(run("is_convex(x^3, list(x))"), "false");
-        assert_eq!(run("hessian_definiteness(x^2 + y^2, list(x, y), list(0, 0))"), "positive_definite");
-        assert_eq!(run("hessian_definiteness(x*y, list(x, y), list(0, 0))"), "indefinite");
-        assert_eq!(run("hessian_definiteness(x^2, list(x, y), list(1, 1))"), "positive_semidefinite");
-        assert_eq!(run("hessian_definiteness(-x^2 - y^2, list(x, y), list(1, 1))"), "negative_definite");
+        assert_eq!(
+            run("hessian_definiteness(x^2 + y^2, list(x, y), list(0, 0))"),
+            "positive_definite"
+        );
+        assert_eq!(
+            run("hessian_definiteness(x*y, list(x, y), list(0, 0))"),
+            "indefinite"
+        );
+        assert_eq!(
+            run("hessian_definiteness(x^2, list(x, y), list(1, 1))"),
+            "positive_semidefinite"
+        );
+        assert_eq!(
+            run("hessian_definiteness(-x^2 - y^2, list(x, y), list(1, 1))"),
+            "negative_definite"
+        );
     }
 
     #[test]
@@ -1067,7 +1221,11 @@ mod tests {
     #[test]
     fn constrained_extrema_in_three_variables() {
         // Extremes of x + y + z on the unit sphere: +-sqrt(3), classified by the projected Hessian.
-        let text = run("find_constrained_extrema(x + y + z, list(x^2 + y^2 + z^2 - 1), list(x, y, z))");
-        assert!(text.contains("local_max") && text.contains("local_min"), "{text}");
+        let text =
+            run("find_constrained_extrema(x + y + z, list(x^2 + y^2 + z^2 - 1), list(x, y, z))");
+        assert!(
+            text.contains("local_max") && text.contains("local_min"),
+            "{text}"
+        );
     }
 }

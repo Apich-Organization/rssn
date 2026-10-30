@@ -19,14 +19,26 @@
 //! negative real axis (for `logm` also that `A` is nonsingular); they return
 //! an error otherwise.
 
-use crate::kernels::dense::{self, DenseError, Mat};
+use crate::kernels::dense::DenseError;
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::krylov::Csr;
 
-fn mm(a: &Mat, b: &Mat) -> Result<Mat, DenseError> {
+fn mm(
+    a: &Mat,
+    b: &Mat,
+) -> Result<Mat, DenseError> {
     a.matmul(b)
 }
 
-fn lin(a: &Mat, ca: f64, b: &Mat, cb: f64) -> Mat {
+fn lin(
+    a: &Mat,
+    ca: f64,
+    b: &Mat,
+    cb: f64,
+) -> Mat {
     let mut r = a.clone();
     for (x, y) in r.data.iter_mut().zip(&b.data) {
         *x = ca * *x + cb * y;
@@ -34,7 +46,10 @@ fn lin(a: &Mat, ca: f64, b: &Mat, cb: f64) -> Mat {
     r
 }
 
-fn scaled_identity_add(a: &Mat, c: f64) -> Mat {
+fn scaled_identity_add(
+    a: &Mat,
+    c: f64,
+) -> Mat {
     let mut r = a.clone();
     for i in 0..r.rows {
         r.set(i, i, r.at(i, i) + c);
@@ -45,12 +60,16 @@ fn scaled_identity_add(a: &Mat, c: f64) -> Mat {
 /// Matrix 1-norm (maximum absolute column sum).
 #[must_use]
 pub fn norm1(a: &Mat) -> f64 {
-    (0..a.cols).map(|j| (0..a.rows).map(|i| a.at(i, j).abs()).sum::<f64>()).fold(0.0, f64::max)
+    (0..a.cols)
+        .map(|j| (0..a.rows).map(|i| a.at(i, j).abs()).sum::<f64>())
+        .fold(0.0, f64::max)
 }
 
 const PADE3: [f64; 4] = [120.0, 60.0, 12.0, 1.0];
 const PADE5: [f64; 6] = [30240.0, 15120.0, 3360.0, 420.0, 30.0, 1.0];
-const PADE7: [f64; 8] = [17297280.0, 8648640.0, 1995840.0, 277200.0, 25200.0, 1512.0, 56.0, 1.0];
+const PADE7: [f64; 8] = [
+    17297280.0, 8648640.0, 1995840.0, 277200.0, 25200.0, 1512.0, 56.0, 1.0,
+];
 const PADE9: [f64; 10] = [
     17643225600.0,
     8821612800.0,
@@ -134,7 +153,11 @@ pub fn expm(a: &Mat) -> Result<Mat, DenseError> {
         }
     }
     // degree 13 with scaling and squaring
-    let s = if nrm > THETA[4] { (nrm / THETA[4]).log2().ceil().max(0.0) as i32 } else { 0 };
+    let s = if nrm > THETA[4] {
+        (nrm / THETA[4]).log2().ceil().max(0.0) as i32
+    } else {
+        0
+    };
     let a_s = lin(a, 1.0 / 2f64.powi(s), a, 0.0);
     let a2 = mm(&a_s, &a_s)?;
     let a4 = mm(&a2, &a2)?;
@@ -161,7 +184,10 @@ pub fn expm(a: &Mat) -> Result<Mat, DenseError> {
     Ok(r)
 }
 
-fn pade_solve(u: &Mat, v: &Mat) -> Result<Mat, DenseError> {
+fn pade_solve(
+    u: &Mat,
+    v: &Mat,
+) -> Result<Mat, DenseError> {
     // (V - U)^{-1} (V + U)
     let den = lin(v, 1.0, u, -1.0);
     let num = lin(v, 1.0, u, 1.0);
@@ -200,7 +226,11 @@ pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
         let lz = dense::lu_factor(&z)?;
         let (dy, dz) = (ly.det(), lz.det());
         let mu = (dy * dz).abs().powf(-1.0 / (2.0 * n as f64));
-        let mu = if mu.is_finite() && mu > 0.0 { mu } else { 1.0 };
+        let mu = if mu.is_finite() && mu > 0.0 {
+            mu
+        } else {
+            1.0
+        };
         let yi = ly.inverse();
         let zi = lz.inverse();
         let yn = lin(&y, 0.5 * mu, &zi, 0.5 / mu);
@@ -296,7 +326,10 @@ pub fn logm(a: &Mat) -> Result<Mat, DenseError> {
 ///
 /// # Errors
 /// As [`expm`].
-pub fn phi_matrices(a: &Mat, p: usize) -> Result<Vec<Mat>, DenseError> {
+pub fn phi_matrices(
+    a: &Mat,
+    p: usize,
+) -> Result<Vec<Mat>, DenseError> {
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
@@ -343,7 +376,11 @@ pub fn csr_norm1(a: &Csr) -> f64 {
 /// `s` steps with `|t A|_1 / s <= 1` and summing the Taylor series of each
 /// step until the terms are below `1e-16` of the partial sum.
 #[must_use]
-pub fn expm_multiply(a: &Csr, v: &[f64], t: f64) -> Vec<f64> {
+pub fn expm_multiply(
+    a: &Csr,
+    v: &[f64],
+    t: f64,
+) -> Vec<f64> {
     let n = v.len();
     let nrm = csr_norm1(a) * t.abs();
     let s = nrm.ceil().max(1.0) as usize;

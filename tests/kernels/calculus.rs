@@ -4,7 +4,11 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::calculus::{derivative, gradient, hessian, jacobian, partial_derivative};
+use rssn::kernels::calculus::derivative;
+use rssn::kernels::calculus::gradient;
+use rssn::kernels::calculus::hessian;
+use rssn::kernels::calculus::jacobian;
+use rssn::kernels::calculus::partial_derivative;
 
 #[test]
 fn derivative_of_x_squared() {
@@ -101,7 +105,11 @@ fn hessian_of_cubic_form() {
     for (got, want) in h.iter().zip(want) {
         assert_approx_eq!(*got, want, 1e-4);
     }
-    assert_eq!(h[1].to_bits(), h[2].to_bits(), "Hessian must be exactly symmetric");
+    assert_eq!(
+        h[1].to_bits(),
+        h[2].to_bits(),
+        "Hessian must be exactly symmetric"
+    );
 }
 
 /// Fixed seed so the property tests are reproducible.

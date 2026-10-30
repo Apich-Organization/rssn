@@ -81,7 +81,10 @@ fn first_order_form(
 ) -> Option<FirstOrder> {
     let diff = cx.graph.ops().lookup("diff")?;
     let t = *cx.graph.children(*funcs.first()?).get(1)?;
-    let mut residuals: Vec<NodeId> = equations.iter().map(|&e| as_expression(cx.graph, e)).collect();
+    let mut residuals: Vec<NodeId> = equations
+        .iter()
+        .map(|&e| as_expression(cx.graph, e))
+        .collect();
     if residuals.len() != funcs.len() {
         return None;
     }
@@ -121,7 +124,11 @@ fn first_order_form(
     for (i, chain) in orders.iter().enumerate() {
         let m = chain.len();
         for k in (0..m).rev() {
-            let replacement = if k + 1 == m { highest[i] } else { symbols[offsets[i] + k] };
+            let replacement = if k + 1 == m {
+                highest[i]
+            } else {
+                symbols[offsets[i] + k]
+            };
             for r in &mut residuals {
                 *r = cx.graph.replace_subterm(*r, chain[k], replacement);
             }
@@ -141,10 +148,21 @@ fn first_order_form(
     for (i, chain) in orders.iter().enumerate() {
         let order = chain.len() - 1;
         for k in 0..order {
-            rates[offsets[i] + k] = if k + 1 < order { symbols[offsets[i] + k + 1] } else { solved[i] };
+            rates[offsets[i] + k] = if k + 1 < order {
+                symbols[offsets[i] + k + 1]
+            } else {
+                solved[i]
+            };
         }
     }
-    Some(FirstOrder { t, funcs: funcs.to_vec(), states: state_funcs, symbols, rates, primary })
+    Some(FirstOrder {
+        t,
+        funcs: funcs.to_vec(),
+        states: state_funcs,
+        symbols,
+        rates,
+        primary,
+    })
 }
 
 /// `rates` with the stand-in symbols replaced by the state functions.
@@ -172,7 +190,10 @@ fn shift_constants(
     let count = super::reduce::constants_in(cx.graph, e);
     let mut out = e;
     for k in (1..=count).rev() {
-        let (from, to) = (cx.graph.sym(&format!("C{k}")), cx.graph.sym(&format!("C{}", k + offset)));
+        let (from, to) = (
+            cx.graph.sym(&format!("C{k}")),
+            cx.graph.sym(&format!("C{}", k + offset)),
+        );
         out = cx.graph.substitute(out, from, to);
     }
     out
@@ -200,7 +221,11 @@ fn depends_on_symbols(
     symbols
         .iter()
         .enumerate()
-        .filter(|&(_, &s)| cx.graph.symbol_of(s).is_some_and(|sym| cx.graph.depends_on(cx.graph.find(e), sym)))
+        .filter(|&(_, &s)| {
+            cx.graph
+                .symbol_of(s)
+                .is_some_and(|sym| cx.graph.depends_on(cx.graph.find(e), sym))
+        })
         .map(|(i, _)| i)
         .collect()
 }
@@ -217,7 +242,9 @@ fn triangular(
     for _ in 0..n {
         let pick = (0..n).find(|&i| {
             solved[i].is_none()
-                && depends_on_symbols(cx, system.rates[i], &system.symbols).iter().all(|&j| j == i || solved[j].is_some())
+                && depends_on_symbols(cx, system.rates[i], &system.symbols)
+                    .iter()
+                    .all(|&j| j == i || solved[j].is_some())
         })?;
         let mut rhs = system.rates[pick];
         for (j, value) in solved.iter().enumerate() {
@@ -355,7 +382,9 @@ fn autonomous_integral(
     }
     let t_symbol = cx.graph.symbol_of(system.t)?;
     let (f, g) = (system.rates[0], system.rates[1]);
-    if cx.graph.depends_on(cx.graph.find(f), t_symbol) || cx.graph.depends_on(cx.graph.find(g), t_symbol) {
+    if cx.graph.depends_on(cx.graph.find(f), t_symbol)
+        || cx.graph.depends_on(cx.graph.find(g), t_symbol)
+    {
         return None;
     }
     let diff = cx.graph.ops().lookup("diff")?;
@@ -519,9 +548,10 @@ pub(super) fn solve(
         return Some(found);
     }
     if n == 2
-        && let Some(found) = autonomous_integral(cx, &system, depth) {
-            return Some(found);
-        }
+        && let Some(found) = autonomous_integral(cx, &system, depth)
+    {
+        return Some(found);
+    }
     if system.primary.len() == n {
         return polynomial_integrals(cx, &system);
     }

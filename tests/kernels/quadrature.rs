@@ -2,11 +2,24 @@
 
 use std::f64::consts::PI;
 
-use rssn::kernels::quadrature::{
-    GkRule, LowDiscrepancy, Sobol, clenshaw_curtis, cubature_genz_malik, cubature_nested, exp_sinh, filon,
-    halton_point, integrate, integrate_gk, integrate_infinite, integrate_semi_infinite,
-    monte_carlo, quasi_monte_carlo, romberg, sinh_sinh, tanh_sinh,
-};
+use rssn::kernels::quadrature::GkRule;
+use rssn::kernels::quadrature::LowDiscrepancy;
+use rssn::kernels::quadrature::Sobol;
+use rssn::kernels::quadrature::clenshaw_curtis;
+use rssn::kernels::quadrature::cubature_genz_malik;
+use rssn::kernels::quadrature::cubature_nested;
+use rssn::kernels::quadrature::exp_sinh;
+use rssn::kernels::quadrature::filon;
+use rssn::kernels::quadrature::halton_point;
+use rssn::kernels::quadrature::integrate;
+use rssn::kernels::quadrature::integrate_gk;
+use rssn::kernels::quadrature::integrate_infinite;
+use rssn::kernels::quadrature::integrate_semi_infinite;
+use rssn::kernels::quadrature::monte_carlo;
+use rssn::kernels::quadrature::quasi_monte_carlo;
+use rssn::kernels::quadrature::romberg;
+use rssn::kernels::quadrature::sinh_sinh;
+use rssn::kernels::quadrature::tanh_sinh;
 
 #[test]
 fn gk_smooth_both_rules() {
@@ -26,7 +39,15 @@ fn gk_polynomial_exact() {
 
 #[test]
 fn gk_endpoint_singularity() {
-    let r = integrate_gk(|x| 1.0 / x.sqrt(), 0.0, 1.0, GkRule::G7K15, 1e-10, 1e-10, 2000);
+    let r = integrate_gk(
+        |x| 1.0 / x.sqrt(),
+        0.0,
+        1.0,
+        GkRule::G7K15,
+        1e-10,
+        1e-10,
+        2000,
+    );
     assert!((r.value - 2.0).abs() < 1e-7, "{r:?}");
     let r = integrate_gk(f64::ln, 0.0, 1.0, GkRule::G10K21, 1e-10, 1e-10, 2000);
     assert!((r.value + 1.0).abs() < 1e-8, "{r:?}");
@@ -129,18 +150,49 @@ fn nested_cubature() {
 #[test]
 fn genz_malik_smooth_2_to_5d() {
     // 2D: int exp(x+y) = (e-1)^2
-    let r = cubature_genz_malik(|x| (x[0] + x[1]).exp(), &[0.0; 2], &[1.0; 2], 1e-12, 1e-12, 200_000);
+    let r = cubature_genz_malik(
+        |x| (x[0] + x[1]).exp(),
+        &[0.0; 2],
+        &[1.0; 2],
+        1e-12,
+        1e-12,
+        200_000,
+    );
     assert!(r.converged);
-    assert!((r.value - (1.0_f64.exp() - 1.0).powi(2)).abs() < 1e-10, "{r:?}");
+    assert!(
+        (r.value - (1.0_f64.exp() - 1.0).powi(2)).abs() < 1e-10,
+        "{r:?}"
+    );
     // 3D polynomial of degree <= 7 is integrated exactly: int x^2 y^3 z over [0,2]x[0,1]x[-1,1] = 8/3 * 1/4 * 0
-    let r = cubature_genz_malik(|x| x[0].powi(4) * x[1].powi(3) + x[2].powi(6), &[0.0, 0.0, -1.0], &[2.0, 1.0, 1.0], 1e-9, 1e-9, 100_000);
+    let r = cubature_genz_malik(
+        |x| x[0].powi(4) * x[1].powi(3) + x[2].powi(6),
+        &[0.0, 0.0, -1.0],
+        &[2.0, 1.0, 1.0],
+        1e-9,
+        1e-9,
+        100_000,
+    );
     let exact = 3.2 + 4.0 / 7.0;
     assert!((r.value - exact).abs() < 1e-11 * exact, "{r:?} vs {exact}");
     // 4D: int prod cos(x_i) = sin(1)^4
-    let r = cubature_genz_malik(|x| x.iter().map(|v| v.cos()).product(), &[0.0; 4], &[1.0; 4], 1e-11, 1e-11, 2_000_000);
+    let r = cubature_genz_malik(
+        |x| x.iter().map(|v| v.cos()).product(),
+        &[0.0; 4],
+        &[1.0; 4],
+        1e-11,
+        1e-11,
+        2_000_000,
+    );
     assert!((r.value - 1.0_f64.sin().powi(4)).abs() < 1e-9, "{r:?}");
     // 5D
-    let r = cubature_genz_malik(|x| x.iter().map(|v| v.cos()).product(), &[0.0; 5], &[1.0; 5], 1e-9, 1e-9, 5_000_000);
+    let r = cubature_genz_malik(
+        |x| x.iter().map(|v| v.cos()).product(),
+        &[0.0; 5],
+        &[1.0; 5],
+        1e-9,
+        1e-9,
+        5_000_000,
+    );
     assert!(r.converged, "{r:?}");
     assert!((r.value - 1.0_f64.sin().powi(5)).abs() < 1e-8, "{r:?}");
 }
@@ -159,7 +211,11 @@ fn genz_malik_peaked_integrands() {
         5_000_000,
     );
     assert!(r.converged, "{r:?}");
-    assert!((r.value - exact1.powi(3)).abs() < 1e-6 * exact1.powi(3), "{r:?} vs {}", exact1.powi(3));
+    assert!(
+        (r.value - exact1.powi(3)).abs() < 1e-6 * exact1.powi(3),
+        "{r:?} vs {}",
+        exact1.powi(3)
+    );
     // Genz corner peak: (1 + sum x)^-(n+1) over [0,1]^n = (1/n!) sum (-1)^k C(n,k)/(1+k)
     for n in 2..=4usize {
         let mut fact = 1.0;
@@ -183,7 +239,10 @@ fn genz_malik_peaked_integrands() {
             1e-10,
             3_000_000,
         );
-        assert!((r.value - exact).abs() < 1e-9 * exact, "n={n}: {r:?} vs {exact}");
+        assert!(
+            (r.value - exact).abs() < 1e-9 * exact,
+            "n={n}: {r:?} vs {exact}"
+        );
     }
     // off-centre narrow peak in 2D
     let r = cubature_genz_malik(
@@ -194,10 +253,18 @@ fn genz_malik_peaked_integrands() {
         1e-9,
         2_000_000,
     );
-    let e = (PI / 1000.0).sqrt() * 0.5 * (rssn_erf(0.3 * 1000f64.sqrt()) + rssn_erf(0.7 * 1000f64.sqrt()));
-    let e2 = (PI / 1000.0).sqrt() * 0.5 * (rssn_erf(0.7 * 1000f64.sqrt()) + rssn_erf(0.3 * 1000f64.sqrt()));
+    let e = (PI / 1000.0).sqrt()
+        * 0.5
+        * (rssn_erf(0.3 * 1000f64.sqrt()) + rssn_erf(0.7 * 1000f64.sqrt()));
+    let e2 = (PI / 1000.0).sqrt()
+        * 0.5
+        * (rssn_erf(0.7 * 1000f64.sqrt()) + rssn_erf(0.3 * 1000f64.sqrt()));
     assert!((r.value - e * e2).abs() < 1e-8, "{r:?} vs {}", e * e2);
-    assert!(cubature_genz_malik(|_| 1.0, &[], &[], 1e-6, 1e-6, 100).value.is_nan());
+    assert!(
+        cubature_genz_malik(|_| 1.0, &[], &[], 1e-6, 1e-6, 100)
+            .value
+            .is_nan()
+    );
 }
 
 /// erf via the Gauss-Kronrod rule (reference helper for the tests).

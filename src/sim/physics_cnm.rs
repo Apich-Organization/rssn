@@ -169,7 +169,9 @@ pub fn solve_heat_equation_1d_cn(
     if n >= 3 && dx > 0.0 && dt > 0.0 && steps > 0 {
         // delegate to the dimension-generic θ-method (θ = 1/2, zero Dirichlet ends)
         let bcs = crate::sim::boundary::FaceBcs::dirichlet_zero();
-        if let Ok(grid) = crate::sim::structured::Grid::new(&[n], &[0.0], &[dx * (n - 1) as f64], &bcs) {
+        if let Ok(grid) =
+            crate::sim::structured::Grid::new(&[n], &[0.0], &[dx * (n - 1) as f64], &bcs)
+        {
             let init = |x: [f64; 3]| initial_condition[((x[0] / dx).round() as usize).min(n - 1)];
             let prob = crate::sim::structured::HeatProblem {
                 grid: &grid,
@@ -179,7 +181,8 @@ pub fn solve_heat_equation_1d_cn(
                 source: None,
                 solver: crate::sim::structured::LinearSolver::Direct,
             };
-            if let Ok(u) = crate::sim::structured::heat_fixed(&prob, dt * steps as f64, steps, 0.5) {
+            if let Ok(u) = crate::sim::structured::heat_fixed(&prob, dt * steps as f64, steps, 0.5)
+            {
                 return u;
             }
         }
@@ -460,14 +463,25 @@ pub fn solve_heat_equation_nd_cn(
     steps: usize,
     bcs: &crate::sim::boundary::FaceBcs,
 ) -> Result<Vec<f64>, String> {
-    use crate::sim::structured::{Grid, HeatProblem, LinearSolver, heat_fixed};
-    if dims.len() != spacing.len() || initial_condition.len() != dims.iter().product::<usize>() || steps == 0 {
+    use crate::sim::structured::Grid;
+    use crate::sim::structured::HeatProblem;
+    use crate::sim::structured::LinearSolver;
+    use crate::sim::structured::heat_fixed;
+    if dims.len() != spacing.len()
+        || initial_condition.len() != dims.iter().product::<usize>()
+        || steps == 0
+    {
         return Err("inconsistent grid description".into());
     }
     let hi: Vec<f64> = (0..dims.len())
         .map(|a| {
             let periodic = bcs.axis_periodic(a).unwrap_or(false);
-            spacing[a] * if periodic { dims[a] } else { dims[a] - 1 } as f64
+            spacing[a]
+                * if periodic {
+                    dims[a]
+                } else {
+                    dims[a] - 1
+                } as f64
         })
         .collect();
     let grid = Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)?;
@@ -478,6 +492,13 @@ pub fn solve_heat_equation_nd_cn(
         }
         initial_condition[grid.index(idx)]
     };
-    let prob = HeatProblem { grid: &grid, bcs, alpha: d_coeff, init: &init, source: None, solver: LinearSolver::Auto };
+    let prob = HeatProblem {
+        grid: &grid,
+        bcs,
+        alpha: d_coeff,
+        init: &init,
+        source: None,
+        solver: LinearSolver::Auto,
+    };
     heat_fixed(&prob, dt * steps as f64, steps, 0.5)
 }

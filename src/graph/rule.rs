@@ -131,9 +131,11 @@ impl Guard {
     ) -> bool {
         let get = |v: u32| subst.get(v as usize).copied().filter(|n| !n.is_none());
         match self {
-            | Self::FreeOf(a, x) => match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
-                | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
-                | _ => false,
+            | Self::FreeOf(a, x) => {
+                match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
+                    | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
+                    | _ => false,
+                }
             },
             | Self::IsNumber(a) => get(*a).is_some_and(|a| graph.number_of(a).is_some()),
             | Self::IsInteger(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::INTEGER)),
@@ -145,9 +147,11 @@ impl Guard {
                 get(*a).is_some_and(|a| graph.facts(a).has(Facts::NONNEGATIVE))
             },
             | Self::Real(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::REAL)),
-            | Self::Same(a, b) => match (get(*a), get(*b)) {
-                | (Some(a), Some(b)) => graph.same(a, b),
-                | _ => false,
+            | Self::Same(a, b) => {
+                match (get(*a), get(*b)) {
+                    | (Some(a), Some(b)) => graph.same(a, b),
+                    | _ => false,
+                }
             },
             | Self::Not(inner) => !inner.holds(graph, subst),
             | Self::Custom(f) => f(graph, subst),
@@ -329,9 +333,17 @@ impl Cx<'_> {
         env.depth = self.env.depth.saturating_add(1);
         // No exploring rules (`max_nodes: 0`): a nested run is asked for a
         // normal form, quickly, not for a search.
-        let budget = Budget { max_iterations: 6, max_nodes: 0, patience: 2, ..Budget::default() };
-        self.engine.run(self.graph, &[term], &env, &Saturate, &budget);
-        Extractor::new(self.graph, &[term], &SizeCost).build(self.graph, term).unwrap_or(term)
+        let budget = Budget {
+            max_iterations: 6,
+            max_nodes: 0,
+            patience: 2,
+            ..Budget::default()
+        };
+        self.engine
+            .run(self.graph, &[term], &env, &Saturate, &budget);
+        Extractor::new(self.graph, &[term], &SizeCost)
+            .build(self.graph, term)
+            .unwrap_or(term)
     }
 
     /// Whether `term` simplifies to the literal zero.
@@ -340,7 +352,9 @@ impl Cx<'_> {
         term: NodeId,
     ) -> bool {
         let simplified = self.simplify(term);
-        self.graph.number_of(simplified).is_some_and(super::number::Number::is_zero)
+        self.graph
+            .number_of(simplified)
+            .is_some_and(super::number::Number::is_zero)
     }
 }
 
@@ -536,13 +550,17 @@ impl<'g> Installer<'g> {
         tier: Tier,
         text: &str,
     ) -> Result<(), RuleError> {
-        let parse_err = |error: ParseError| RuleError::Parse {
-            rule: text.to_owned(),
-            error,
+        let parse_err = |error: ParseError| {
+            RuleError::Parse {
+                rule: text.to_owned(),
+                error,
+            }
         };
-        let invalid = |reason: &'static str| RuleError::Invalid {
-            rule: text.to_owned(),
-            reason,
+        let invalid = |reason: &'static str| {
+            RuleError::Invalid {
+                rule: text.to_owned(),
+                reason,
+            }
         };
         let (name, body) = text
             .split_once(':')
@@ -644,44 +662,73 @@ impl<'g> Installer<'g> {
         &mut self,
         text: &str,
     ) -> Result<(), RuleError> {
-        let invalid = |reason: &'static str| RuleError::Invalid {
-            rule: text.to_owned(),
-            reason,
+        let invalid = |reason: &'static str| {
+            RuleError::Invalid {
+                rule: text.to_owned(),
+                reason,
+            }
         };
-        let (head, body) = text.split_once(":=").ok_or_else(|| invalid("missing `:=`"))?;
+        let (head, body) = text
+            .split_once(":=")
+            .ok_or_else(|| invalid("missing `:=`"))?;
         let head = head.trim();
         let (name, params) = match head.split_once('(') {
             | Some((name, rest)) => {
-                let inner = rest.trim_end().strip_suffix(')').ok_or_else(|| invalid("missing `)` in the head"))?;
-                let params: Vec<&str> = inner.split(',').map(str::trim).filter(|p| !p.is_empty()).collect();
+                let inner = rest
+                    .trim_end()
+                    .strip_suffix(')')
+                    .ok_or_else(|| invalid("missing `)` in the head"))?;
+                let params: Vec<&str> = inner
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|p| !p.is_empty())
+                    .collect();
                 (name.trim(), params)
             },
             | None => (head, Vec::new()),
         };
         let is_ident = |s: &str| {
-            s.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_')
+            s.chars()
+                .next()
+                .is_some_and(|c| c.is_alphabetic() || c == '_')
                 && s.chars().all(|c| c.is_alphanumeric() || c == '_')
         };
         if !is_ident(name) || !params.iter().all(|p| is_ident(p)) {
             return Err(invalid("the head must be `name(param, ...)`"));
         }
         let arity = u8::try_from(params.len()).map_err(|_| invalid("too many parameters"))?;
-        let op = self.op(OpDescriptor::new(name, super::op::Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
+        let op = self.op(OpDescriptor::new(name, super::op::Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
         let mut vars = VarNames::default();
         for p in &params {
             vars.index(p);
         }
         let marked = mark_parameters(body, &params);
         let mut parser = Parser::new(&marked, self.graph, &mut vars, false);
-        let parse_err = |error: ParseError| RuleError::Parse { rule: text.to_owned(), error };
+        let parse_err = |error: ParseError| {
+            RuleError::Parse {
+                rule: text.to_owned(),
+                error,
+            }
+        };
         let pat = parser.expr().map_err(parse_err)?;
         if !parser.at_end() {
-            return Err(parse_err(ParseError { message: "unexpected trailing input".to_owned(), offset: parser.offset() }));
+            return Err(parse_err(ParseError {
+                message: "unexpected trailing input".to_owned(),
+                offset: parser.offset(),
+            }));
         }
         if vars.len() != params.len() {
-            return Err(invalid("the body uses a pattern variable that is not a parameter"));
+            return Err(invalid(
+                "the body uses a pattern variable that is not a parameter",
+            ));
         }
-        self.kernel(&format!("define/{name}"), Tier::Reduce, Definition { op, body: pat });
+        self.kernel(
+            &format!("define/{name}"),
+            Tier::Reduce,
+            Definition { op, body: pat },
+        );
         Ok(())
     }
 
@@ -721,7 +768,8 @@ fn mark_parameters(
     while k < chars.len() {
         let c = chars[k];
         let starts_ident = (c.is_alphabetic() || c == '_')
-            && (k == 0 || !(chars[k - 1].is_alphanumeric() || chars[k - 1] == '_' || chars[k - 1] == '?'))
+            && (k == 0
+                || !(chars[k - 1].is_alphanumeric() || chars[k - 1] == '_' || chars[k - 1] == '?'))
             && (k == 0 || !chars[k - 1].is_ascii_digit());
         if !starts_ident {
             out.push(c);
@@ -759,14 +807,18 @@ impl Kernel for Definition {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.body.instantiate(cx.graph, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.body
+            .instantiate(cx.graph, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 }
 
 fn parse_guard(parser: &mut Parser<'_>) -> Result<Guard, ParseError> {
-    let fail = |parser: &Parser<'_>, message: &str| ParseError {
-        message: message.to_owned(),
-        offset: parser.offset(),
+    let fail = |parser: &Parser<'_>, message: &str| {
+        ParseError {
+            message: message.to_owned(),
+            offset: parser.offset(),
+        }
     };
     if parser.eat("!") {
         return Ok(Guard::Not(Box::new(parse_guard(parser)?)));
@@ -975,13 +1027,23 @@ mod tests {
     fn definitions_expand() {
         let set = RuleSet::new("s", |i| {
             i.op(OpDescriptor::new("sin", Arity::Fixed(1)))?;
-            i.define(&["sq(x) := x * x", "wave(a, x) := list(a, sin(x), x_0)", "two := 2"])
+            i.define(&[
+                "sq(x) := x * x",
+                "wave(a, x) := list(a, sin(x), x_0)",
+                "two := 2",
+            ])
         })
         .needs(RuleSet::new("arith", |_| Ok(())));
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &[set]).unwrap_or_else(|e| panic!("{e}"));
         let root = g.parse("wave(sq(y), two)").unwrap_or(NodeId::NONE);
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
         let expected = g.parse("list(y * y, sin(2), x_0)").unwrap_or(NodeId::NONE);
         assert!(g.same(root, expected));
         for bad in ["nohead x", "f(x := x", "f(1) := 1", "f(x) := ?y"] {

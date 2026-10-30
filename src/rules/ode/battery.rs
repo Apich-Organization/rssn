@@ -24,7 +24,12 @@ pub(super) struct Report {
     pub text: String,
 }
 
-const CONSTANT_SETS: [[f64; 4]; 4] = [[0.8, -0.6, 0.4, 0.3], [-1.7, 0.9, -0.5, 1.2], [3.1, -2.2, 0.7, -0.8], [0.15, 0.35, -0.25, 0.45]];
+const CONSTANT_SETS: [[f64; 4]; 4] = [
+    [0.8, -0.6, 0.4, 0.3],
+    [-1.7, 0.9, -0.5, 1.2],
+    [3.1, -2.2, 0.7, -0.8],
+    [0.15, 0.35, -0.25, 0.45],
+];
 
 fn bind_constants(
     graph: &mut Graph,
@@ -42,13 +47,34 @@ fn run(
     src: &str,
 ) -> Result<NodeId, Report> {
     let rules = crate::rules::standard();
-    let engine = Engine::install(graph, &rules).map_err(|e| Report { status: format!("install {e}"), text: String::new() })?;
-    let root = graph.parse(src).map_err(|e| Report { status: format!("parse {e}"), text: src.into() })?;
-    engine.run(graph, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+    let engine = Engine::install(graph, &rules).map_err(|e| {
+        Report {
+            status: format!("install {e}"),
+            text: String::new(),
+        }
+    })?;
+    let root = graph.parse(src).map_err(|e| {
+        Report {
+            status: format!("parse {e}"),
+            text: src.into(),
+        }
+    })?;
+    engine.run(
+        graph,
+        &[root],
+        &Env::symbolic(),
+        &Saturate,
+        &Budget::default(),
+    );
     let answer = Extractor::new(graph, &[root], &ClosedForm).build(graph, root);
     match answer {
         | Some(a) if &*graph.ops().get(graph.op(a)).name != "dsolve" => Ok(a),
-        | _ => Err(Report { status: "UNSOLVED".into(), text: String::new() }),
+        | _ => {
+            Err(Report {
+                status: "UNSOLVED".into(),
+                text: String::new(),
+            })
+        },
     }
 }
 
@@ -79,7 +105,10 @@ pub(super) fn audit(
     eq: &str,
     order: usize,
 ) -> Report {
-    let mut last = Report { status: "UNCHECKED".into(), text: String::new() };
+    let mut last = Report {
+        status: "UNCHECKED".into(),
+        text: String::new(),
+    };
     for constants in &CONSTANT_SETS {
         let report = audit_with(eq, order, constants);
         if report.status == "ok" {
@@ -106,25 +135,44 @@ fn audit_with(
     };
     let text = g.display(answer);
     if text.contains("integral(") {
-        return Report { status: "ok".into(), text };
+        return Report {
+            status: "ok".into(),
+            text,
+        };
     }
     let (Ok(equation), Ok(unknown)) = (g.parse(eq), g.parse("y(x)")) else {
-        return Report { status: "parse".into(), text };
+        return Report {
+            status: "parse".into(),
+            text,
+        };
     };
     let Some(problem) = super::parse(&mut g, equation, unknown) else {
-        return Report { status: "parse-problem".into(), text };
+        return Report {
+            status: "parse-problem".into(),
+            text,
+        };
     };
     if g.op(answer) == core::LIST {
         return audit_parametric(&mut g, &problem, answer, order, constants, text);
     }
     if g.op(answer) != core::EQ {
-        return Report { status: "UNSOLVED".into(), text };
+        return Report {
+            status: "UNSOLVED".into(),
+            text,
+        };
     }
     let &[lhs, rhs] = g.children(answer) else {
-        return Report { status: "shape".into(), text };
+        return Report {
+            status: "shape".into(),
+            text,
+        };
     };
     let x_symbol = problem.x_symbol;
-    let stand: Vec<SymbolId> = problem.stand.iter().filter_map(|&s| g.as_symbol(s)).collect();
+    let stand: Vec<SymbolId> = problem
+        .stand
+        .iter()
+        .filter_map(|&s| g.as_symbol(s))
+        .collect();
     let mut base = Env::numeric(0.0);
     bind_constants(&mut g, &mut base, constants);
     let residual_at = |g: &Graph, x: f64, derivs: &[f64]| -> Option<f64> {
@@ -153,7 +201,10 @@ fn audit_with(
             checked += 1;
             let tolerance = if order >= 3 { 1e-2 } else { 1e-3 };
             if r.abs() > tolerance * (1.0 + d[0].abs()) {
-                return Report { status: format!("WRONG(residual {r} at {at})"), text };
+                return Report {
+                    status: format!("WRONG(residual {r} at {at})"),
+                    text,
+                };
             }
         }
     } else {
@@ -177,7 +228,9 @@ fn audit_with(
             for at in [0.6, 1.1, 1.7, 0.9, 1.4, -0.6, -1.1, -1.7] {
                 // Newton in y from several starts.
                 let mut found = None;
-                for start in [0.5, 1.0, 2.0, -1.0, 0.1, 3.0, -2.0, 0.01, 5.0, -4.0, 0.3, 1.5, -0.3, 8.0] {
+                for start in [
+                    0.5, 1.0, 2.0, -1.0, 0.1, 3.0, -2.0, 0.01, 5.0, -4.0, 0.3, 1.5, -0.3, 8.0,
+                ] {
                     let mut y = start;
                     let mut ok = false;
                     for _ in 0..80 {
@@ -233,16 +286,25 @@ fn audit_with(
                 checked += 1;
                 let tolerance = if order >= 3 { 1e-2 } else { 1e-3 };
                 if r.abs() > tolerance * (1.0 + d[0].abs()) {
-                    return Report { status: format!("WRONG(implicit residual {r} at {at})"), text };
+                    return Report {
+                        status: format!("WRONG(implicit residual {r} at {at})"),
+                        text,
+                    };
                 }
             }
             let _ = guess_store;
         }
     }
     if checked == 0 {
-        return Report { status: "UNCHECKED".into(), text };
+        return Report {
+            status: "UNCHECKED".into(),
+            text,
+        };
     }
-    Report { status: "ok".into(), text }
+    Report {
+        status: "ok".into(),
+        text,
+    }
 }
 
 /// A parametric answer `list(x = X(p), y(x) = Y(p))` of a first-order
@@ -269,12 +331,19 @@ fn audit_parametric(
         }
     }
     let (Some(xp), Some(yp)) = (x_of, y_of) else {
-        return Report { status: "shape".into(), text };
+        return Report {
+            status: "shape".into(),
+            text,
+        };
     };
     let p_symbol = g.interner_mut().symbol("p");
     let mut base = Env::numeric(0.0);
     bind_constants(g, &mut base, constants);
-    let stand: Vec<SymbolId> = problem.stand.iter().filter_map(|&s| g.as_symbol(s)).collect();
+    let stand: Vec<SymbolId> = problem
+        .stand
+        .iter()
+        .filter_map(|&s| g.as_symbol(s))
+        .collect();
     let x_symbol = problem.x_symbol;
     let eval_at = |g: &Graph, node: NodeId, p: f64| -> Option<f64> {
         let mut env = base.clone();
@@ -301,7 +370,10 @@ fn audit_parametric(
         let slope = dy / dx;
         // The parameter is the slope.
         if (slope - p).abs() > 1e-4 * (1.0 + p.abs()) {
-            return Report { status: format!("WRONG(slope {slope} vs p {p})"), text };
+            return Report {
+                status: format!("WRONG(slope {slope} vs p {p})"),
+                text,
+            };
         }
         let mut env = base.clone();
         env.bind(x_symbol, x0);
@@ -311,14 +383,23 @@ fn audit_parametric(
         if let Some(r) = g.eval(problem.expr, &env).filter(|v| v.is_finite()) {
             checked += 1;
             if r.abs() > 1e-6 * (1.0 + y0.abs() + x0.abs()) {
-                return Report { status: format!("WRONG(parametric residual {r} at p = {p})"), text };
+                return Report {
+                    status: format!("WRONG(parametric residual {r} at p = {p})"),
+                    text,
+                };
             }
         }
     }
     if checked == 0 {
-        return Report { status: "UNCHECKED".into(), text };
+        return Report {
+            status: "UNCHECKED".into(),
+            text,
+        };
     }
-    Report { status: "ok".into(), text }
+    Report {
+        status: "ok".into(),
+        text,
+    }
 }
 
 /// First-order cases: `(equation, order)`.
@@ -336,7 +417,10 @@ pub(super) const SINGLE: &[(&str, usize)] = &[
     // Riccati classes.
     ("diff(y(x), x) = y(x)^2 - 2/x^2", 1),
     ("diff(y(x), x) = -y(x)^2 + 2*x*y(x) + 1 - x^2", 1),
-    ("diff(y(x), x) = y(x)^2 - 2*y(x)*exp(x) + exp(2*x) + exp(x)", 1),
+    (
+        "diff(y(x), x) = y(x)^2 - 2*y(x)*exp(x) + exp(2*x) + exp(x)",
+        1,
+    ),
     ("x^2*diff(y(x), x) + x*y(x) + x^2*y(x)^2 = 4", 1),
     ("diff(y(x), x) = y(x)^2 + x", 1),
     ("diff(y(x), x) = y(x)^2 - x^2 + 1", 1),
@@ -368,26 +452,62 @@ pub(super) const SINGLE: &[(&str, usize)] = &[
     // Higher order.
     ("diff(diff(y(x), x), x) + diff(y(x), x)^2 = 0", 2),
     ("diff(diff(y(x), x), x) = diff(y(x), x)/x + x", 2),
-    ("x^2*diff(diff(y(x), x), x) - 3*x*diff(y(x), x) + 4*y(x) = 0", 2),
-    ("x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + y(x) = ln(x)", 2),
+    (
+        "x^2*diff(diff(y(x), x), x) - 3*x*diff(y(x), x) + 4*y(x) = 0",
+        2,
+    ),
+    (
+        "x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + y(x) = ln(x)",
+        2,
+    ),
     ("x^2*diff(diff(y(x), x), x) - 2*y(x) = x^3", 2),
     ("diff(diff(y(x), x), x) + y(x) = tan(x)", 2),
     ("diff(diff(y(x), x), x) + 4*y(x) = 1/cos(2*x)", 2),
     ("x*diff(diff(y(x), x), x) + 2*diff(y(x), x) + x*y(x) = 0", 2),
-    ("(1 + x^2)*diff(diff(y(x), x), x) + 2*x*diff(y(x), x) = 0", 2),
+    (
+        "(1 + x^2)*diff(diff(y(x), x), x) + 2*x*diff(y(x), x) = 0",
+        2,
+    ),
     ("diff(diff(y(x), x), x) - x*diff(y(x), x) + y(x) = 0", 2),
-    ("(x^2 - 1)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0", 2),
-    ("diff(diff(y(x), x), x) + 2*diff(y(x), x) + 5*y(x) = exp(-x)*cos(2*x)", 2),
-    ("x*diff(diff(y(x), x), x) + (1 - x)*diff(y(x), x) + 2*y(x) = 0", 2),
-    ("(1 - x^2)*diff(diff(y(x), x), x) - x*diff(y(x), x) + 4*y(x) = 0", 2),
-    ("diff(diff(diff(y(x), x), x), x) = diff(diff(y(x), x), x)", 3),
+    (
+        "(x^2 - 1)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0",
+        2,
+    ),
+    (
+        "diff(diff(y(x), x), x) + 2*diff(y(x), x) + 5*y(x) = exp(-x)*cos(2*x)",
+        2,
+    ),
+    (
+        "x*diff(diff(y(x), x), x) + (1 - x)*diff(y(x), x) + 2*y(x) = 0",
+        2,
+    ),
+    (
+        "(1 - x^2)*diff(diff(y(x), x), x) - x*diff(y(x), x) + 4*y(x) = 0",
+        2,
+    ),
+    (
+        "diff(diff(diff(y(x), x), x), x) = diff(diff(y(x), x), x)",
+        3,
+    ),
     ("x*diff(diff(y(x), x), x) + diff(y(x), x) = 0", 2),
     ("diff(diff(y(x), x), x) = 2*y(x)*diff(y(x), x)", 2),
-    ("y(x)*diff(diff(y(x), x), x) = diff(y(x), x)^2 + diff(y(x), x)", 2),
-    ("x^2*diff(diff(y(x), x), x) + 3*x*diff(y(x), x) + y(x) = 1/x", 2),
-    ("diff(diff(y(x), x), x) - 4*diff(y(x), x) + 4*y(x) = exp(2*x)*x", 2),
+    (
+        "y(x)*diff(diff(y(x), x), x) = diff(y(x), x)^2 + diff(y(x), x)",
+        2,
+    ),
+    (
+        "x^2*diff(diff(y(x), x), x) + 3*x*diff(y(x), x) + y(x) = 1/x",
+        2,
+    ),
+    (
+        "diff(diff(y(x), x), x) - 4*diff(y(x), x) + 4*y(x) = exp(2*x)*x",
+        2,
+    ),
     ("(x^2 + 1)*diff(diff(y(x), x), x) - 2*y(x) = 0", 2),
-    ("x^2*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = x^2*exp(x)", 2),
+    (
+        "x^2*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = x^2*exp(x)",
+        2,
+    ),
 ];
 
 #[cfg(test)]
@@ -409,7 +529,12 @@ mod tests {
                 });
             let report = rx
                 .recv_timeout(std::time::Duration::from_secs(20))
-                .unwrap_or_else(|_| Report { status: "TIMEOUT".into(), text: String::new() });
+                .unwrap_or_else(|_| {
+                    Report {
+                        status: "TIMEOUT".into(),
+                        text: String::new(),
+                    }
+                });
             let ok = report.status == "ok";
             if ok {
                 passed += 1;
@@ -419,11 +544,19 @@ mod tests {
                 if ok { "ok" } else { "FAIL" },
                 start.elapsed().as_secs_f64(),
                 eq,
-                if ok { report.text } else { format!("{} {}", report.status, report.text) }
+                if ok {
+                    report.text
+                } else {
+                    format!("{} {}", report.status, report.text)
+                }
             );
         }
         eprintln!("ODE {passed}/{}", SINGLE.len());
-        assert_eq!(passed, SINGLE.len(), "some equations failed; run with --nocapture");
+        assert_eq!(
+            passed,
+            SINGLE.len(),
+            "some equations failed; run with --nocapture"
+        );
     }
 }
 
@@ -431,21 +564,82 @@ mod tests {
 /// solutions (finite differences) or as first integrals (conserved along
 /// the flow).
 pub(super) const SYSTEMS: &[(&[&str], &[&str])] = &[
-    (&["diff(x(t), t) = y(t)", "diff(y(t), t) = -x(t)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = -x(t)^2", "diff(y(t), t) = x(t)*y(t)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = 2*x(t)", "diff(y(t), t) = x(t) + y(t)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = y(t)", "diff(y(t), t) = -sin(x(t))"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = x(t)*(2 - y(t))", "diff(y(t), t) = y(t)*(x(t) - 3)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = t*y(t)", "diff(y(t), t) = t*x(t)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = y(t) + 1", "diff(y(t), t) = -x(t) + t"], &["x(t)", "y(t)"]),
-    (&["diff(diff(x(t), t), t) = -x(t) + y(t)", "diff(diff(y(t), t), t) = x(t) - y(t)"], &["x(t)", "y(t)"]),
-    (&["diff(q(t), t) = p(t)", "diff(p(t), t) = -q(t)^3"], &["q(t)", "p(t)"]),
-    (&["diff(s(t), t) = -s(t)*i(t)", "diff(i(t), t) = s(t)*i(t) - i(t)"], &["s(t)", "i(t)"]),
-    (&["diff(x(t), t) = y(t)*z(t)", "diff(y(t), t) = -x(t)*z(t)", "diff(z(t), t) = -x(t)*y(t)/2"], &["x(t)", "y(t)", "z(t)"]),
+    (
+        &["diff(x(t), t) = y(t)", "diff(y(t), t) = -x(t)"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = -x(t)^2", "diff(y(t), t) = x(t)*y(t)"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = 2*x(t)", "diff(y(t), t) = x(t) + y(t)"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = y(t)", "diff(y(t), t) = -sin(x(t))"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &[
+            "diff(x(t), t) = x(t)*(2 - y(t))",
+            "diff(y(t), t) = y(t)*(x(t) - 3)",
+        ],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = t*y(t)", "diff(y(t), t) = t*x(t)"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = y(t) + 1", "diff(y(t), t) = -x(t) + t"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &[
+            "diff(diff(x(t), t), t) = -x(t) + y(t)",
+            "diff(diff(y(t), t), t) = x(t) - y(t)",
+        ],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(q(t), t) = p(t)", "diff(p(t), t) = -q(t)^3"],
+        &["q(t)", "p(t)"],
+    ),
+    (
+        &[
+            "diff(s(t), t) = -s(t)*i(t)",
+            "diff(i(t), t) = s(t)*i(t) - i(t)",
+        ],
+        &["s(t)", "i(t)"],
+    ),
+    (
+        &[
+            "diff(x(t), t) = y(t)*z(t)",
+            "diff(y(t), t) = -x(t)*z(t)",
+            "diff(z(t), t) = -x(t)*y(t)/2",
+        ],
+        &["x(t)", "y(t)", "z(t)"],
+    ),
     (&["diff(diff(x(t), t), t) = -4*x(t)"], &["x(t)"]),
-    (&["diff(x(t), t) = -y(t)/(1 + t^2)", "diff(y(t), t) = x(t)/(1 + t^2)"], &["x(t)", "y(t)"]),
-    (&["diff(x(t), t) = x(t) - y(t)", "diff(y(t), t) = x(t) + y(t)"], &["x(t)", "y(t)"]),
-    (&["diff(u(t), t) = u(t)*(1 - u(t))", "diff(v(t), t) = u(t) - v(t)"], &["u(t)", "v(t)"]),
+    (
+        &[
+            "diff(x(t), t) = -y(t)/(1 + t^2)",
+            "diff(y(t), t) = x(t)/(1 + t^2)",
+        ],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &["diff(x(t), t) = x(t) - y(t)", "diff(y(t), t) = x(t) + y(t)"],
+        &["x(t)", "y(t)"],
+    ),
+    (
+        &[
+            "diff(u(t), t) = u(t)*(1 - u(t))",
+            "diff(v(t), t) = u(t) - v(t)",
+        ],
+        &["u(t)", "v(t)"],
+    ),
 ];
 
 #[cfg(test)]
@@ -458,31 +652,52 @@ mod system_tests {
         unknowns: &[&str],
     ) -> Report {
         let mut g = Graph::new();
-        let src = format!("dsolve(list({}), list({}))", eqs.join(", "), unknowns.join(", "));
+        let src = format!(
+            "dsolve(list({}), list({}))",
+            eqs.join(", "),
+            unknowns.join(", ")
+        );
         let answer = match run(&mut g, &src) {
             | Ok(a) => a,
             | Err(r) => return r,
         };
         let text = g.display(answer);
         if g.op(answer) != core::LIST {
-            return Report { status: "UNSOLVED".into(), text };
+            return Report {
+                status: "UNSOLVED".into(),
+                text,
+            };
         }
         let originals: Vec<NodeId> = eqs.iter().filter_map(|e| g.parse(e).ok()).collect();
         let funcs: Vec<NodeId> = unknowns.iter().filter_map(|u| g.parse(u).ok()).collect();
         let Some(&first) = funcs.first() else {
-            return Report { status: "parse".into(), text };
+            return Report {
+                status: "parse".into(),
+                text,
+            };
         };
         let Some(&t) = g.children(first).get(1) else {
-            return Report { status: "parse".into(), text };
+            return Report {
+                status: "parse".into(),
+                text,
+            };
         };
         let Some(t_symbol) = g.symbol_of(t) else {
-            return Report { status: "parse".into(), text };
+            return Report {
+                status: "parse".into(),
+                text,
+            };
         };
         let Some(diff) = g.ops().lookup("diff") else {
-            return Report { status: "parse".into(), text };
+            return Report {
+                status: "parse".into(),
+                text,
+            };
         };
         let items = g.children(answer).to_vec();
-        let explicit = items.iter().all(|&i| g.children(i).first().is_some_and(|l| funcs.contains(l)));
+        let explicit = items
+            .iter()
+            .all(|&i| g.children(i).first().is_some_and(|l| funcs.contains(l)));
         let mut base = Env::numeric(0.0);
         bind_constants(&mut g, &mut base, &CONSTANT_SETS[0]);
         let mut checked = 0;
@@ -491,7 +706,10 @@ mod system_tests {
             let mut value_of: Vec<(NodeId, NodeId)> = Vec::new();
             for &item in &items {
                 let &[l, r] = g.children(item) else {
-                    return Report { status: "shape".into(), text };
+                    return Report {
+                        status: "shape".into(),
+                        text,
+                    };
                 };
                 value_of.push((l, r));
             }
@@ -521,11 +739,14 @@ mod system_tests {
                         let d = g.node(diff, &[f, t]);
                         let dd = g.node(diff, &[d, t]);
                         let h2 = 1e-3;
-                        let (Some(plus), Some(minus), Some(mid)) = (at(&g, f, tv + h), at(&g, f, tv - h), at(&g, f, tv)) else {
+                        let (Some(plus), Some(minus), Some(mid)) =
+                            (at(&g, f, tv + h), at(&g, f, tv - h), at(&g, f, tv))
+                        else {
                             ok = false;
                             break;
                         };
-                        let (Some(plus2), Some(minus2)) = (at(&g, f, tv + h2), at(&g, f, tv - h2)) else {
+                        let (Some(plus2), Some(minus2)) = (at(&g, f, tv + h2), at(&g, f, tv - h2))
+                        else {
                             ok = false;
                             break;
                         };
@@ -542,26 +763,39 @@ mod system_tests {
                         continue;
                     }
                     if let (Some(a), Some(b)) = (g.eval(lhs, &env), g.eval(rhs, &env))
-                        && a.is_finite() && b.is_finite() {
-                            checked += 1;
-                            if (a - b).abs() > 1e-4 * (1.0 + a.abs()) {
-                                return Report { status: format!("WRONG({a} vs {b} at t = {tv})"), text };
-                            }
+                        && a.is_finite()
+                        && b.is_finite()
+                    {
+                        checked += 1;
+                        if (a - b).abs() > 1e-4 * (1.0 + a.abs()) {
+                            return Report {
+                                status: format!("WRONG({a} vs {b} at t = {tv})"),
+                                text,
+                            };
                         }
+                    }
                 }
             }
         } else {
             // First integrals Φ(x(t), y(t), …) = 0 with constants: the
             // gradient along the vector field must vanish. Each unknown is
             // replaced by a stand-in symbol.
-            let stands: Vec<SymbolId> = (0..funcs.len()).map(|i| g.interner_mut().symbol(&format!("Z{i}"))).collect();
+            let stands: Vec<SymbolId> = (0..funcs.len())
+                .map(|i| g.interner_mut().symbol(&format!("Z{i}")))
+                .collect();
             let mut fields = Vec::new();
             for &eq in &originals {
                 let &[l, r] = g.children(eq) else {
-                    return Report { status: "shape".into(), text };
+                    return Report {
+                        status: "shape".into(),
+                        text,
+                    };
                 };
                 let Some(pos) = funcs.iter().position(|&f| g.node(diff, &[f, t]) == l) else {
-                    return Report { status: "needs-first-order-form".into(), text };
+                    return Report {
+                        status: "needs-first-order-form".into(),
+                        text,
+                    };
                 };
                 fields.push((pos, r));
             }
@@ -585,7 +819,13 @@ mod system_tests {
                     }
                     field_nodes.push((*pos, v));
                 }
-                for point in [[0.7, 1.1, 0.9], [1.3, -0.6, 1.7], [0.5, -1.9, 0.8], [0.3, 0.8, -0.6], [-0.9, 0.4, 0.5]] {
+                for point in [
+                    [0.7, 1.1, 0.9],
+                    [1.3, -0.6, 1.7],
+                    [0.5, -1.9, 0.8],
+                    [0.3, 0.8, -0.6],
+                    [-0.9, 0.4, 0.5],
+                ] {
                     let mut env = base.clone();
                     env.bind(t_symbol, 0.5);
                     for (&s, v) in stands.iter().zip(point) {
@@ -653,16 +893,25 @@ mod system_tests {
                     if ok && total.is_finite() {
                         checked += 1;
                         if total.abs() > 1e-4 {
-                            return Report { status: format!("NOT-CONSERVED({total})"), text };
+                            return Report {
+                                status: format!("NOT-CONSERVED({total})"),
+                                text,
+                            };
                         }
                     }
                 }
             }
         }
         if checked == 0 {
-            return Report { status: "UNCHECKED".into(), text };
+            return Report {
+                status: "UNCHECKED".into(),
+                text,
+            };
         }
-        Report { status: "ok".into(), text }
+        Report {
+            status: "ok".into(),
+            text,
+        }
     }
 
     #[test]
@@ -680,10 +929,18 @@ mod system_tests {
                 if ok { "ok" } else { "FAIL" },
                 start.elapsed().as_secs_f64(),
                 eqs.join(", "),
-                if ok { report.text } else { format!("{} {}", report.status, report.text) }
+                if ok {
+                    report.text
+                } else {
+                    format!("{} {}", report.status, report.text)
+                }
             );
         }
         eprintln!("ODESYS {passed}/{}", SYSTEMS.len());
-        assert_eq!(passed, SYSTEMS.len(), "some systems failed; run with --nocapture");
+        assert_eq!(
+            passed,
+            SYSTEMS.len(),
+            "some systems failed; run with --nocapture"
+        );
     }
 }

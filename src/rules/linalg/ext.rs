@@ -40,6 +40,8 @@ use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
 
+use super::Field;
+use super::Terms;
 use super::add;
 use super::eigenvalues;
 use super::identity_rows;
@@ -57,10 +59,6 @@ use super::request;
 use super::sqrt;
 use super::transpose;
 use super::vector;
-use super::Field;
-use super::Terms;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -73,6 +71,8 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
 use crate::rules::poly::best;
 
@@ -186,7 +186,11 @@ fn apply(
 ) -> Vec<NodeId> {
     m.iter()
         .map(|row| {
-            let terms: Vec<NodeId> = row.iter().zip(v).map(|(&a, &b)| mul(cx.graph, &[a, b])).collect();
+            let terms: Vec<NodeId> = row
+                .iter()
+                .zip(v)
+                .map(|(&a, &b)| mul(cx.graph, &[a, b]))
+                .collect();
             let total = add(cx.graph, &terms);
             normal(cx, total)
         })
@@ -245,7 +249,11 @@ fn jordan_blocks(
                 continue;
             }
             // The span already accounted for inside ker N^size.
-            let mut current: Vec<Vec<NodeId>> = if size >= 2 { kernels[size - 2].clone() } else { Vec::new() };
+            let mut current: Vec<Vec<NodeId>> = if size >= 2 {
+                kernels[size - 2].clone()
+            } else {
+                Vec::new()
+            };
             for (bigger, top) in &tops {
                 let mut image = top.clone();
                 for _ in 0..(bigger - size) {
@@ -377,7 +385,10 @@ fn matrix_function(
                 factorial *= k;
             }
             let value = cx.graph.substitute(d, x, block.value);
-            let divisor = cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial.clone())));
+            let divisor = cx.graph.num(Number::rat(BigRational::new(
+                BigInt::one(),
+                factorial.clone(),
+            )));
             let term = mul(cx.graph, &[divisor, value]);
             entries.push(normal(cx, term));
         }
@@ -529,7 +540,12 @@ fn matrix_polynomial(
     }
     let mut gens = crate::rules::poly::repr::Gens::default();
     let gx = gens.index(cx.graph, x);
-    let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, p, crate::rules::poly::repr::Limits::default())?;
+    let poly = crate::rules::poly::repr::from_term(
+        cx.graph,
+        &mut gens,
+        p,
+        crate::rules::poly::repr::Limits::default(),
+    )?;
     // Coefficients by repeated differentiation at zero: c_k = p^(k)(0)/k!.
     let mut coefficients = Vec::new();
     let mut current = poly;
@@ -542,7 +558,10 @@ fn matrix_polynomial(
         }
         let term = crate::rules::poly::repr::to_term(cx.graph, &gens, &current);
         let at_zero = cx.graph.substitute(term, x, zero);
-        let divisor = cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial.clone())));
+        let divisor = cx.graph.num(Number::rat(BigRational::new(
+            BigInt::one(),
+            factorial.clone(),
+        )));
         let value = mul(cx.graph, &[divisor, at_zero]);
         coefficients.push(cx.simplify(value));
         current = current.derivative(gx);
@@ -573,7 +592,9 @@ fn pseudo_inverse(
         return Some(zero_matrix(cx.graph, cols, rows));
     }
     // A = C R with C the pivot columns and R the non-zero rows of rref(A).
-    let c: Mat = (0..rows).map(|i| pivots.iter().map(|&p| m[i][p]).collect()).collect();
+    let c: Mat = (0..rows)
+        .map(|i| pivots.iter().map(|&p| m[i][p]).collect())
+        .collect();
     let r: Mat = reduced.into_iter().take(pivots.len()).collect();
     let (ct, rt) = (transpose(&c), transpose(&r));
     let rrt = product(cx, &r, &rt)?;
@@ -589,7 +610,12 @@ fn colspace(
     m: &[Vec<NodeId>],
 ) -> Option<Vec<Vec<NodeId>>> {
     let (_, pivots, _) = reduce(cx, m)?;
-    Some(pivots.iter().map(|&p| m.iter().map(|row| row[p]).collect()).collect())
+    Some(
+        pivots
+            .iter()
+            .map(|&p| m.iter().map(|row| row[p]).collect())
+            .collect(),
+    )
 }
 
 fn rowspace(
@@ -667,9 +693,10 @@ fn cholesky(
     let (mut l, d) = ldl(cx, m)?;
     for (j, &dj) in d.iter().enumerate() {
         if let Some(q) = cx.graph.number_of(dj).and_then(Number::to_rational)
-            && !q.is_positive() {
-                return None;
-            }
+            && !q.is_positive()
+        {
+            return None;
+        }
         let root = sqrt(cx.graph, dj)?;
         let root = cx.simplify(root);
         for row in &mut l {
@@ -734,7 +761,11 @@ fn dot(
     a: &[NodeId],
     b: &[NodeId],
 ) -> NodeId {
-    let terms: Vec<NodeId> = a.iter().zip(b).map(|(&x, &y)| mul(cx.graph, &[x, y])).collect();
+    let terms: Vec<NodeId> = a
+        .iter()
+        .zip(b)
+        .map(|(&x, &y)| mul(cx.graph, &[x, y]))
+        .collect();
     let total = add(cx.graph, &terms);
     normal(cx, total)
 }
@@ -753,9 +784,11 @@ fn integer_matrix(
     m.iter()
         .map(|row| {
             row.iter()
-                .map(|&e| match graph.number_of(e)? {
-                    | Number::Int(v) => Some(v.clone()),
-                    | _ => None,
+                .map(|&e| {
+                    match graph.number_of(e)? {
+                        | Number::Int(v) => Some(v.clone()),
+                        | _ => None,
+                    }
                 })
                 .collect()
         })
@@ -763,14 +796,23 @@ fn integer_matrix(
 }
 
 fn integer_identity(n: usize) -> Ints {
-    (0..n).map(|i| (0..n).map(|j| BigInt::from(i32::from(i == j))).collect()).collect()
+    (0..n)
+        .map(|i| (0..n).map(|j| BigInt::from(i32::from(i == j))).collect())
+        .collect()
 }
 
 fn integers_to_term(
     graph: &mut Graph,
     m: &Ints,
 ) -> NodeId {
-    let rows: Mat = m.iter().map(|r| r.iter().map(|v| graph.num(Number::Int(v.clone()))).collect()).collect();
+    let rows: Mat = m
+        .iter()
+        .map(|r| {
+            r.iter()
+                .map(|v| graph.num(Number::Int(v.clone())))
+                .collect()
+        })
+        .collect();
     matrix_term(graph, &rows)
 }
 
@@ -819,7 +861,9 @@ fn smith(a: &Ints) -> (Ints, Ints, Ints) {
             let mut best: Option<(usize, usize)> = None;
             for i in t..rows {
                 for j in t..cols {
-                    if !d[i][j].is_zero() && best.is_none_or(|(bi, bj)| d[i][j].abs() < d[bi][bj].abs()) {
+                    if !d[i][j].is_zero()
+                        && best.is_none_or(|(bi, bj)| d[i][j].abs() < d[bi][bj].abs())
+                    {
                         best = Some((i, j));
                     }
                 }
@@ -989,7 +1033,13 @@ fn minor(
     m.iter()
         .enumerate()
         .filter(|&(r, _)| r != row)
-        .map(|(_, r)| r.iter().enumerate().filter(|&(c, _)| c != col).map(|(_, &e)| e).collect())
+        .map(|(_, r)| {
+            r.iter()
+                .enumerate()
+                .filter(|&(c, _)| c != col)
+                .map(|(_, &e)| e)
+                .collect()
+        })
         .collect()
 }
 
@@ -1010,7 +1060,11 @@ fn cofactors(
         for j in 0..n {
             let sub = minor(m, i, j);
             let value = super::determinant(cx, &sub)?;
-            let value = if (i + j) % 2 == 0 { value } else { neg(cx.graph, value) };
+            let value = if (i + j) % 2 == 0 {
+                value
+            } else {
+                neg(cx.graph, value)
+            };
             row.push(normal(cx, value));
         }
         out.push(row);
@@ -1025,7 +1079,12 @@ fn companion(
 ) -> Option<Mat> {
     let mut gens = crate::rules::poly::repr::Gens::default();
     let gx = gens.index(cx.graph, x);
-    let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, p, crate::rules::poly::repr::Limits::default())?;
+    let poly = crate::rules::poly::repr::from_term(
+        cx.graph,
+        &mut gens,
+        p,
+        crate::rules::poly::repr::Limits::default(),
+    )?;
     let mut degree = 0_usize;
     let mut current = poly;
     let mut coefficients = Vec::new();
@@ -1034,7 +1093,10 @@ fn companion(
     while !current.is_zero() {
         let term = crate::rules::poly::repr::to_term(cx.graph, &gens, &current);
         let at_zero = cx.graph.substitute(term, x, zero);
-        let divisor = cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial.clone())));
+        let divisor = cx.graph.num(Number::rat(BigRational::new(
+            BigInt::one(),
+            factorial.clone(),
+        )));
         let value = mul(cx.graph, &[divisor, at_zero]);
         coefficients.push(cx.simplify(value));
         degree += 1;
@@ -1067,8 +1129,14 @@ fn positive_definite(
     if !square(m) {
         return None;
     }
-    let q: Vec<Vec<BigRational>> =
-        m.iter().map(|r| r.iter().map(|&e| graph.number_of(e).and_then(Number::to_rational)).collect()).collect::<Option<_>>()?;
+    let q: Vec<Vec<BigRational>> = m
+        .iter()
+        .map(|r| {
+            r.iter()
+                .map(|&e| graph.number_of(e).and_then(Number::to_rational))
+                .collect()
+        })
+        .collect::<Option<_>>()?;
     for (i, row) in q.iter().enumerate() {
         for (j, entry) in row.iter().enumerate().take(i) {
             if *entry != q[j][i] {
@@ -1184,7 +1252,9 @@ impl Extension {
                 Some(matrix_term(cx.graph, &rows))
             },
             | Kind::Hilbert => {
-                let n = usize::try_from(cx.graph.number_of(arg(0)?)?.to_i64()?).ok().filter(|&n| (1..=64).contains(&n))?;
+                let n = usize::try_from(cx.graph.number_of(arg(0)?)?.to_i64()?)
+                    .ok()
+                    .filter(|&n| (1..=64).contains(&n))?;
                 let mut rows = Vec::with_capacity(n);
                 for i in 0..n {
                     let mut row = Vec::with_capacity(n);
@@ -1204,7 +1274,11 @@ impl Extension {
             | Kind::Cofactors | Kind::Adjugate => {
                 let m = matrix(cx.graph, arg(0)?)?;
                 let c = cofactors(cx, &m)?;
-                let c = if matches!(self.kind, Kind::Adjugate) { transpose(&c) } else { c };
+                let c = if matches!(self.kind, Kind::Adjugate) {
+                    transpose(&c)
+                } else {
+                    c
+                };
                 Some(matrix_term(cx.graph, &c))
             },
             | Kind::Colspace => {
@@ -1315,8 +1389,11 @@ impl Extension {
             | Kind::Smith => {
                 let a = integer_matrix(cx.graph, arg(0)?)?;
                 let (u, d, v) = smith(&a);
-                let (u, d, v) =
-                    (integers_to_term(cx.graph, &u), integers_to_term(cx.graph, &d), integers_to_term(cx.graph, &v));
+                let (u, d, v) = (
+                    integers_to_term(cx.graph, &u),
+                    integers_to_term(cx.graph, &d),
+                    integers_to_term(cx.graph, &v),
+                );
                 Some(list(cx.graph, &[u, d, v]))
             },
             | Kind::InvariantFactors => {
@@ -1332,7 +1409,10 @@ impl Extension {
             | Kind::Hermite => {
                 let a = integer_matrix(cx.graph, arg(0)?)?;
                 let (h, u) = hermite(&a);
-                let (h, u) = (integers_to_term(cx.graph, &h), integers_to_term(cx.graph, &u));
+                let (h, u) = (
+                    integers_to_term(cx.graph, &h),
+                    integers_to_term(cx.graph, &u),
+                );
                 Some(list(cx.graph, &[h, u]))
             },
             | Kind::IsSymmetric => {
@@ -1376,7 +1456,8 @@ impl Kernel for Extension {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -1419,8 +1500,14 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("is_orthogonal", 1, Kind::IsOrthogonal),
         ("is_positive_definite", 1, Kind::IsPositiveDefinite),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("linalg/{name}"), Tier::Reduce, Extension { op, kind });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("linalg/{name}"),
+            Tier::Reduce,
+            Extension { op, kind },
+        );
     }
     Ok(())
 }
@@ -1428,7 +1515,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 #[cfg(test)]
 mod tests {
     use crate::rules::linalg::linalg;
-        use crate::rules::testing::simplify;
+    use crate::rules::testing::simplify;
 
     fn run(src: &str) -> String {
         simplify(&[linalg()], src)
@@ -1443,59 +1530,133 @@ mod tests {
             run("kron(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)))"),
             "list(list(0, 1, 0, 2), list(1, 0, 2, 0), list(0, 3, 0, 4), list(3, 0, 4, 0))"
         );
-        assert_eq!(run("diag(list(1, a, 3))"), "list(list(1, 0, 0), list(0, a, 0), list(0, 0, 3))");
-        assert_eq!(run("vandermonde(list(1, 2, 3))"), "list(list(1, 1, 1), list(1, 2, 4), list(1, 3, 9))");
+        assert_eq!(
+            run("diag(list(1, a, 3))"),
+            "list(list(1, 0, 0), list(0, a, 0), list(0, 0, 3))"
+        );
+        assert_eq!(
+            run("vandermonde(list(1, 2, 3))"),
+            "list(list(1, 1, 1), list(1, 2, 4), list(1, 3, 9))"
+        );
         assert_eq!(run("hilbert(2)"), "list(list(1, 1/2), list(1/2, 1/3))");
-        assert_eq!(run("companion(x^3 - 2*x^2 + 3*x - 4, x)"), "list(list(0, 0, 4), list(1, 0, -3), list(0, 1, 2))");
+        assert_eq!(
+            run("companion(x^3 - 2*x^2 + 3*x - 4, x)"),
+            "list(list(0, 0, 4), list(1, 0, -3), list(0, 1, 2))"
+        );
         assert_eq!(run("det(vandermonde(list(a, b)))"), "b - a");
     }
 
     #[test]
     fn adjugate_and_spaces() {
-        assert_eq!(run("adjugate(list(list(1, 2), list(3, 4)))"), "list(list(4, -2), list(-3, 1))");
-        assert_eq!(run("cofactors(list(list(1, 2), list(3, 4)))"), "list(list(4, -3), list(-2, 1))");
-        assert_eq!(run("colspace(list(list(1, 2, 3), list(2, 4, 6), list(1, 0, 1)))"), "list(list(1, 2, 1), list(2, 4, 0))");
-        assert_eq!(run("rowspace(list(list(1, 2, 3), list(4, 5, 6)))"), "list(list(1, 0, -1), list(0, 1, 2))");
-        assert_eq!(run("left_nullspace(list(list(1, 2), list(2, 4)))"), "list(list(-2, 1))");
+        assert_eq!(
+            run("adjugate(list(list(1, 2), list(3, 4)))"),
+            "list(list(4, -2), list(-3, 1))"
+        );
+        assert_eq!(
+            run("cofactors(list(list(1, 2), list(3, 4)))"),
+            "list(list(4, -3), list(-2, 1))"
+        );
+        assert_eq!(
+            run("colspace(list(list(1, 2, 3), list(2, 4, 6), list(1, 0, 1)))"),
+            "list(list(1, 2, 1), list(2, 4, 0))"
+        );
+        assert_eq!(
+            run("rowspace(list(list(1, 2, 3), list(4, 5, 6)))"),
+            "list(list(1, 0, -1), list(0, 1, 2))"
+        );
+        assert_eq!(
+            run("left_nullspace(list(list(1, 2), list(2, 4)))"),
+            "list(list(-2, 1))"
+        );
     }
 
     #[test]
     fn pseudo_inverse_and_least_squares() {
-        assert_eq!(run("pinv(list(list(1, 0), list(0, 2), list(0, 0)))"), "list(list(1, 0, 0), list(0, 1/2, 0))");
+        assert_eq!(
+            run("pinv(list(list(1, 0), list(0, 2), list(0, 0)))"),
+            "list(list(1, 0, 0), list(0, 1/2, 0))"
+        );
         // Rank deficient.
-        assert_eq!(run("pinv(list(list(1, 1), list(1, 1)))"), "list(list(1/4, 1/4), list(1/4, 1/4))");
+        assert_eq!(
+            run("pinv(list(list(1, 1), list(1, 1)))"),
+            "list(list(1/4, 1/4), list(1/4, 1/4))"
+        );
         // The line fit y = a + b x through (0,1), (1,2), (2,2): a = 7/6, b = 1/2.
-        assert_eq!(run("lstsq(list(list(1, 0), list(1, 1), list(1, 2)), list(1, 2, 2))"), "list(7/6, 1/2)");
+        assert_eq!(
+            run("lstsq(list(list(1, 0), list(1, 1), list(1, 2)), list(1, 2, 2))"),
+            "list(7/6, 1/2)"
+        );
     }
 
     #[test]
     fn minimal_and_matrix_polynomials() {
         assert_eq!(run(&format!("minpoly({A}, l)")), "l^2 - 4*l + 4");
         assert_eq!(run("minpoly(list(list(2, 0), list(0, 2)), l)"), "l - 2");
-        assert_eq!(run(&format!("cayley_hamilton({B})")), "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))");
-        assert_eq!(run("cayley_hamilton(list(list(a, b), list(c, d)))"), "list(list(0, 0), list(0, 0))");
-        assert_eq!(run(&format!("matpoly(x^2 - 4*x + 4, x, {A})")), "list(list(0, 0), list(0, 0))");
-        assert_eq!(run("matpoly(x^2 + 1, x, list(list(0, -1), list(1, 0)))"), "list(list(0, 0), list(0, 0))");
+        assert_eq!(
+            run(&format!("cayley_hamilton({B})")),
+            "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))"
+        );
+        assert_eq!(
+            run("cayley_hamilton(list(list(a, b), list(c, d)))"),
+            "list(list(0, 0), list(0, 0))"
+        );
+        assert_eq!(
+            run(&format!("matpoly(x^2 - 4*x + 4, x, {A})")),
+            "list(list(0, 0), list(0, 0))"
+        );
+        assert_eq!(
+            run("matpoly(x^2 + 1, x, list(list(0, -1), list(1, 0)))"),
+            "list(list(0, 0), list(0, 0))"
+        );
     }
 
     #[test]
     fn jordan_form_and_matrix_functions() {
         assert_eq!(run(&format!("jordan_blocks({B})")), "list(list(4, 3))");
-        assert_eq!(run("jordan_blocks(list(list(2, 0), list(0, 2)))"), "list(list(2, 1), list(2, 1))");
+        assert_eq!(
+            run("jordan_blocks(list(list(2, 0), list(0, 2)))"),
+            "list(list(2, 1), list(2, 1))"
+        );
         // A P = P J.
         let pj = run(&format!("jordan({B})"));
         assert!(pj.starts_with("list(list("), "{pj}");
         let p = tests_part(&pj, 0);
         let j = tests_part(&pj, 1);
-        assert_eq!(run(&format!("madd(matmul({B}, {p}), smul(-1, matmul({p}, {j})))")), "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            run(&format!(
+                "madd(matmul({B}, {p}), smul(-1, matmul({p}, {j})))"
+            )),
+            "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))"
+        );
         // exp(A t) for a Jordan block: e^(2t) (I + t N).
-        assert_eq!(run(&format!("matexp({A}, t)")), "list(list(exp(2*t), t*exp(2*t)), list(0, exp(2*t)))");
-        assert_eq!(run("matexp(list(list(1, 0), list(0, 2)), t)"), "list(list(exp(t), 0), list(0, exp(2*t)))");
-        assert_eq!(run(&format!("mpow({A}, 5)")), "list(list(32, 80), list(0, 32))");
-        assert_eq!(run(&format!("mpow({A}, -1)")), "list(list(1/2, -1/4), list(0, 1/2))");
-        assert_eq!(run(&format!("mpow({A}, n)")), "list(list(2^n, n*2^(n - 1)), list(0, 2^n))");
-        assert_eq!(run("matsqrt(list(list(4, 0), list(0, 9)))"), "list(list(2, 0), list(0, 3))");
-        assert_eq!(run(&format!("matfun(x^2 + 1, x, {A})")), "list(list(5, 4), list(0, 5))");
+        assert_eq!(
+            run(&format!("matexp({A}, t)")),
+            "list(list(exp(2*t), t*exp(2*t)), list(0, exp(2*t)))"
+        );
+        assert_eq!(
+            run("matexp(list(list(1, 0), list(0, 2)), t)"),
+            "list(list(exp(t), 0), list(0, exp(2*t)))"
+        );
+        assert_eq!(
+            run(&format!("mpow({A}, 5)")),
+            "list(list(32, 80), list(0, 32))"
+        );
+        assert_eq!(
+            run(&format!("mpow({A}, -1)")),
+            "list(list(1/2, -1/4), list(0, 1/2))"
+        );
+        assert_eq!(
+            run(&format!("mpow({A}, n)")),
+            "list(list(2^n, n*2^(n - 1)), list(0, 2^n))"
+        );
+        assert_eq!(
+            run("matsqrt(list(list(4, 0), list(0, 9)))"),
+            "list(list(2, 0), list(0, 3))"
+        );
+        assert_eq!(
+            run(&format!("matfun(x^2 + 1, x, {A})")),
+            "list(list(5, 4), list(0, 5))"
+        );
     }
 
     #[test]
@@ -1512,18 +1673,34 @@ mod tests {
             run("ldl(list(list(4, 2), list(2, 3)))"),
             "list(list(list(1, 0), list(1/2, 1)), list(4, 2))"
         );
-        assert_eq!(run("cholesky(list(list(4, 2), list(2, 3)))"), "list(list(2, 0), list(1, 2^(1/2)))");
-        let (text, reduced) = crate::rules::testing::reduce_with(&[linalg()], "cholesky(list(list(1, 2), list(2, 1)))", &[]);
+        assert_eq!(
+            run("cholesky(list(list(4, 2), list(2, 3)))"),
+            "list(list(2, 0), list(1, 2^(1/2)))"
+        );
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[linalg()],
+            "cholesky(list(list(1, 2), list(2, 1)))",
+            &[],
+        );
         assert!(!reduced, "not positive definite: {text}");
         assert_eq!(
             run("orthogonalize(list(list(1, 1, 0), list(1, 0, 1), list(0, 1, 1)))"),
             "list(list(1, 1, 0), list(1/2, -1/2, 1), list(-2/3, 2/3, 2/3))"
         );
-        assert_eq!(run("orthonormalize(list(list(3, 4), list(1, 0)))"), "list(list(3/5, 4/5), list(4/5, -3/5))");
+        assert_eq!(
+            run("orthonormalize(list(list(3, 4), list(1, 0)))"),
+            "list(list(3/5, 4/5), list(4/5, -3/5))"
+        );
         assert_eq!(run("is_symmetric(list(list(1, 2), list(2, 5)))"), "true");
         assert_eq!(run("is_orthogonal(list(list(0, 1), list(-1, 0)))"), "true");
-        assert_eq!(run("is_positive_definite(list(list(2, 1), list(1, 2)))"), "true");
-        assert_eq!(run("is_positive_definite(list(list(1, 2), list(2, 1)))"), "false");
+        assert_eq!(
+            run("is_positive_definite(list(list(2, 1), list(1, 2)))"),
+            "true"
+        );
+        assert_eq!(
+            run("is_positive_definite(list(list(1, 2), list(2, 1)))"),
+            "false"
+        );
     }
 
     #[test]
@@ -1531,13 +1708,26 @@ mod tests {
         let a = "list(list(2, 4, 4), list(-6, 6, 12), list(10, 4, 16))";
         assert_eq!(run(&format!("invariant_factors({a})")), "list(2, 2, 156)");
         let smith = run(&format!("smith({a})"));
-        let (u, d, v) = (tests_part(&smith, 0), tests_part(&smith, 1), tests_part(&smith, 2));
+        let (u, d, v) = (
+            tests_part(&smith, 0),
+            tests_part(&smith, 1),
+            tests_part(&smith, 2),
+        );
         assert_eq!(run(&format!("matmul({u}, {a}, {v})")), d);
         assert_eq!(run("det(list(list(1, 0), list(0, 1)))"), "1");
-        let hermite = run("hermite_form(list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))");
+        let hermite =
+            run("hermite_form(list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))");
         let (h, u) = (tests_part(&hermite, 0), tests_part(&hermite, 1));
-        assert_eq!(run(&format!("matmul({u}, list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))")), h);
-        assert_eq!(h, "list(list(1, 0, 50, -11), list(0, 3, 28, -2), list(0, 0, 61, -13))");
+        assert_eq!(
+            run(&format!(
+                "matmul({u}, list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))"
+            )),
+            h
+        );
+        assert_eq!(
+            h,
+            "list(list(1, 0, 50, -11), list(0, 3, 28, -2), list(0, 0, 61, -13))"
+        );
         assert_eq!(run("det(list(list(1, 2), list(3, 4)))"), "-2");
     }
 
@@ -1546,7 +1736,10 @@ mod tests {
         text: &str,
         index: usize,
     ) -> String {
-        let inner = text.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|s| s.strip_suffix(')'))
+            .unwrap_or("");
         let mut depth = 0_i32;
         let mut start = 0;
         let mut items = Vec::new();

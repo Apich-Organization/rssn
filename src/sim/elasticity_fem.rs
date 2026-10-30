@@ -22,9 +22,12 @@
 //! Limitations: this module is isotropic, homogeneous, small strain and static.
 
 use crate::kernels::krylov::Csr;
-use crate::sim::boundary::{ElasticBoundary, MarkerBcs};
-use crate::sim::fem_simplex::{FemSpace, simplex_rule};
-use crate::sim::structured::{LinearSolver, LinearSystem};
+use crate::sim::boundary::ElasticBoundary;
+use crate::sim::boundary::MarkerBcs;
+use crate::sim::fem_simplex::FemSpace;
+use crate::sim::fem_simplex::simplex_rule;
+use crate::sim::structured::LinearSolver;
+use crate::sim::structured::LinearSystem;
 
 /// Constitutive model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -65,18 +68,29 @@ pub struct ElasticityProblem<'a> {
 
 /// Elasticity matrix in Voigt notation.
 #[must_use]
-pub fn constitutive_matrix(model: Model, m: &Material) -> Vec<Vec<f64>> {
+pub fn constitutive_matrix(
+    model: Model,
+    m: &Material,
+) -> Vec<Vec<f64>> {
     let (e, nu) = (m.young, m.poisson);
     match model {
-        Model::PlaneStress => {
+        | Model::PlaneStress => {
             let c = e / (1.0 - nu * nu);
-            vec![vec![c, c * nu, 0.0], vec![c * nu, c, 0.0], vec![0.0, 0.0, c * (1.0 - nu) / 2.0]]
+            vec![
+                vec![c, c * nu, 0.0],
+                vec![c * nu, c, 0.0],
+                vec![0.0, 0.0, c * (1.0 - nu) / 2.0],
+            ]
         },
-        Model::PlaneStrain => {
+        | Model::PlaneStrain => {
             let c = e / ((1.0 + nu) * (1.0 - 2.0 * nu));
-            vec![vec![c * (1.0 - nu), c * nu, 0.0], vec![c * nu, c * (1.0 - nu), 0.0], vec![0.0, 0.0, c * (1.0 - 2.0 * nu) / 2.0]]
+            vec![
+                vec![c * (1.0 - nu), c * nu, 0.0],
+                vec![c * nu, c * (1.0 - nu), 0.0],
+                vec![0.0, 0.0, c * (1.0 - 2.0 * nu) / 2.0],
+            ]
         },
-        Model::Solid3d => {
+        | Model::Solid3d => {
             let c = e / ((1.0 + nu) * (1.0 - 2.0 * nu));
             let (a, b, g) = (c * (1.0 - nu), c * nu, c * (1.0 - 2.0 * nu) / 2.0);
             let mut d = vec![vec![0.0; 6]; 6];
@@ -91,17 +105,21 @@ pub fn constitutive_matrix(model: Model, m: &Material) -> Vec<Vec<f64>> {
     }
 }
 
-fn strain_column(dim: usize, comp: usize, g: [f64; 3]) -> Vec<f64> {
+fn strain_column(
+    dim: usize,
+    comp: usize,
+    g: [f64; 3],
+) -> Vec<f64> {
     if dim == 2 {
         match comp {
-            0 => vec![g[0], 0.0, g[1]],
-            _ => vec![0.0, g[1], g[0]],
+            | 0 => vec![g[0], 0.0, g[1]],
+            | _ => vec![0.0, g[1], g[0]],
         }
     } else {
         match comp {
-            0 => vec![g[0], 0.0, 0.0, g[1], 0.0, g[2]],
-            1 => vec![0.0, g[1], 0.0, g[0], g[2], 0.0],
-            _ => vec![0.0, 0.0, g[2], 0.0, g[1], g[0]],
+            | 0 => vec![g[0], 0.0, 0.0, g[1], 0.0, g[2]],
+            | 1 => vec![0.0, g[1], 0.0, g[0], g[2], 0.0],
+            | _ => vec![0.0, 0.0, g[2], 0.0, g[1], g[0]],
         }
     }
 }
@@ -118,7 +136,10 @@ pub struct ElasticSolution<'a> {
 impl ElasticSolution<'_> {
     /// Displacement vector at dof `d`.
     #[must_use]
-    pub fn displacement(&self, d: usize) -> [f64; 3] {
+    pub fn displacement(
+        &self,
+        d: usize,
+    ) -> [f64; 3] {
         let dim = self.space.mesh.dim;
         let mut v = [0.0; 3];
         for a in 0..dim {
@@ -129,11 +150,16 @@ impl ElasticSolution<'_> {
 
     /// Displacement at a point (point location by search).
     #[must_use]
-    pub fn eval(&self, x: [f64; 3]) -> Option<[f64; 3]> {
+    pub fn eval(
+        &self,
+        x: [f64; 3],
+    ) -> Option<[f64; 3]> {
         let dim = self.space.mesh.dim;
         let mut out = [0.0; 3];
         for a in 0..dim {
-            let comp: Vec<f64> = (0..self.space.size()).map(|d| self.u[d * dim + a]).collect();
+            let comp: Vec<f64> = (0..self.space.size())
+                .map(|d| self.u[d * dim + a])
+                .collect();
             out[a] = self.space.eval(&comp, x)?;
         }
         Some(out)
@@ -141,7 +167,10 @@ impl ElasticSolution<'_> {
 
     /// Stress (Voigt) at the centroid of a cell.
     #[must_use]
-    pub fn stress_at_cell(&self, cell: usize) -> Vec<f64> {
+    pub fn stress_at_cell(
+        &self,
+        cell: usize,
+    ) -> Vec<f64> {
         let dim = self.space.mesh.dim;
         let lam = vec![1.0 / (dim + 1) as f64; dim + 1];
         let (_, dl) = self.space.basis(&lam);
@@ -164,7 +193,9 @@ impl ElasticSolution<'_> {
                 }
             }
         }
-        (0..nv).map(|r| (0..nv).map(|k| self.c[r][k] * eps[k]).sum()).collect()
+        (0..nv)
+            .map(|r| (0..nv).map(|k| self.c[r][k] * eps[k]).sum())
+            .collect()
     }
 
     /// Von Mises equivalent of a Voigt stress (2D: plane-stress form with `σ_zz = 0`).
@@ -174,7 +205,9 @@ impl ElasticSolution<'_> {
             (s[0] * s[0] - s[0] * s[1] + s[1] * s[1] + 3.0 * s[2] * s[2]).sqrt()
         } else {
             let d = [s[0] - s[1], s[1] - s[2], s[2] - s[0]];
-            (0.5 * (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) + 3.0 * (s[3] * s[3] + s[4] * s[4] + s[5] * s[5])).sqrt()
+            (0.5 * (d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+                + 3.0 * (s[3] * s[3] + s[4] * s[4] + s[5] * s[5]))
+                .sqrt()
         }
     }
 }
@@ -194,7 +227,11 @@ pub fn solve<'a>(
         return Err("model and mesh dimension do not match".into());
     }
     let c = constitutive_matrix(prob.model, &prob.material);
-    let scale = if dim == 2 { prob.material.thickness } else { 1.0 };
+    let scale = if dim == 2 {
+        prob.material.thickness
+    } else {
+        1.0
+    };
     let nd = space.size();
     let ndof = nd * dim;
     let (pts, w) = simplex_rule(dim, space.degree + 1);
@@ -220,7 +257,10 @@ pub fn solve<'a>(
                     gr
                 })
                 .collect();
-            let cols: Vec<Vec<Vec<f64>>> = grads.iter().map(|gr| (0..dim).map(|a| strain_column(dim, a, *gr)).collect()).collect();
+            let cols: Vec<Vec<Vec<f64>>> = grads
+                .iter()
+                .map(|gr| (0..dim).map(|a| strain_column(dim, a, *gr)).collect())
+                .collect();
             let mut x = [0.0; 3];
             for (m, &l) in p.iter().enumerate() {
                 for a in 0..3 {
@@ -251,8 +291,8 @@ pub fn solve<'a>(
     for &(ci, face, mk) in &space.mesh.facets {
         let Some(bc) = prob.bcs.get(mk) else { continue };
         match bc {
-            ElasticBoundary::Free => {},
-            ElasticBoundary::Displacement(vals) => {
+            | ElasticBoundary::Free => {},
+            | ElasticBoundary::Displacement(vals) => {
                 for d in space.facet_dofs(ci, face) {
                     for a in 0..dim {
                         if let Some(v) = &vals[a] {
@@ -261,7 +301,7 @@ pub fn solve<'a>(
                     }
                 }
             },
-            ElasticBoundary::Traction(tv) => {
+            | ElasticBoundary::Traction(tv) => {
                 let meas = space.mesh.facet_measure(ci, face);
                 let cd = &space.cell_dofs[ci];
                 for (q, wq) in fp.iter().zip(&fw) {

@@ -1,25 +1,48 @@
 //! Nodal discontinuous Galerkin tests.
 
-use rssn::sim::dg::{
-    Burgers, DgBc, DgMesh, Euler1d, LinearAdvection, ModalFilter, lgl, lgl_diff_matrix, solve_dg,
-};
+use rssn::sim::dg::Burgers;
+use rssn::sim::dg::DgBc;
+use rssn::sim::dg::DgMesh;
+use rssn::sim::dg::Euler1d;
+use rssn::sim::dg::LinearAdvection;
+use rssn::sim::dg::ModalFilter;
+use rssn::sim::dg::lgl;
+use rssn::sim::dg::lgl_diff_matrix;
+use rssn::sim::dg::solve_dg;
 use std::f64::consts::PI;
 use std::sync::Arc;
 
 fn periodic() -> [DgBc; 4] {
-    [DgBc::Periodic, DgBc::Periodic, DgBc::Periodic, DgBc::Periodic]
+    [
+        DgBc::Periodic,
+        DgBc::Periodic,
+        DgBc::Periodic,
+        DgBc::Periodic,
+    ]
 }
 
 #[test]
 fn lgl_nodes_weights_and_differentiation() {
     let (x, w) = lgl(2);
-    assert!((x[1]).abs() < 1e-14 && (w[0] - 1.0 / 3.0).abs() < 1e-14 && (w[1] - 4.0 / 3.0).abs() < 1e-14);
+    assert!(
+        (x[1]).abs() < 1e-14
+            && (w[0] - 1.0 / 3.0).abs() < 1e-14
+            && (w[1] - 4.0 / 3.0).abs() < 1e-14
+    );
     for p in 1..=8 {
         let (x, w) = lgl(p);
         assert!((w.iter().sum::<f64>() - 2.0).abs() < 1e-13);
         // exact for degree 2p-1
-        let q: f64 = x.iter().zip(&w).map(|(xi, wi)| wi * xi.powi((2 * p - 1) as i32 - 1)).sum();
-        let exact = if (2 * p - 2) % 2 == 0 { 2.0 / (2 * p - 1) as f64 } else { 0.0 };
+        let q: f64 = x
+            .iter()
+            .zip(&w)
+            .map(|(xi, wi)| wi * xi.powi((2 * p - 1) as i32 - 1))
+            .sum();
+        let exact = if (2 * p - 2) % 2 == 0 {
+            2.0 / (2 * p - 1) as f64
+        } else {
+            0.0
+        };
         assert!((q - exact).abs() < 1e-12, "p {p}");
         let d = lgl_diff_matrix(&x);
         for i in 0..=p {
@@ -29,11 +52,27 @@ fn lgl_nodes_weights_and_differentiation() {
     }
 }
 
-fn advect_error(p: usize, ne: usize) -> f64 {
+fn advect_error(
+    p: usize,
+    ne: usize,
+) -> f64 {
     let mesh = DgMesh::line(ne, 0.0, 1.0, p);
     let law = LinearAdvection { a: [1.0, 0.0] };
-    let cfl = if p > 2 { 0.4 * (4.0 / ne as f64).powf((p as f64 - 2.0) / 3.0) } else { 0.4 };
-    let s = solve_dg(&mesh, &law, &periodic(), &|x| vec![(2.0 * PI * x[0]).sin()], 1.0, cfl, None).unwrap();
+    let cfl = if p > 2 {
+        0.4 * (4.0 / ne as f64).powf((p as f64 - 2.0) / 3.0)
+    } else {
+        0.4
+    };
+    let s = solve_dg(
+        &mesh,
+        &law,
+        &periodic(),
+        &|x| vec![(2.0 * PI * x[0]).sin()],
+        1.0,
+        cfl,
+        None,
+    )
+    .unwrap();
     s.l2_error(0, |x| (2.0 * PI * x[0]).sin())
 }
 
@@ -44,7 +83,10 @@ fn linear_advection_1d_converges_with_order_p_plus_one() {
         let e2 = advect_error(p, 8);
         let e3 = advect_error(p, 16);
         let o = (e2 / e3).log2();
-        assert!(o > p as f64 + 0.5, "p {p}: order {o}, errors {e1} {e2} {e3}");
+        assert!(
+            o > p as f64 + 0.5,
+            "p {p}: order {o}, errors {e1} {e2} {e3}"
+        );
     }
 }
 
@@ -55,14 +97,26 @@ fn linear_advection_2d_converges() {
     let run = |ne: usize| {
         let mesh = DgMesh::rect([ne, ne], [0.0; 2], [1.0; 2], 2);
         let cfl = 0.4 * (3.0 / ne as f64).powf(0.0);
-        let s = solve_dg(&mesh, &law, &periodic(), &|x| vec![exact(x)], 1.0, cfl, None).unwrap();
+        let s = solve_dg(
+            &mesh,
+            &law,
+            &periodic(),
+            &|x| vec![exact(x)],
+            1.0,
+            cfl,
+            None,
+        )
+        .unwrap();
         s.l2_error(0, exact)
     };
     let (e1, e2) = (run(4), run(8));
     assert!((e1 / e2).log2() > 2.5, "{e1} {e2}");
 }
 
-fn burgers_exact(x: f64, t: f64) -> f64 {
+fn burgers_exact(
+    x: f64,
+    t: f64,
+) -> f64 {
     // u0 = 0.5 + 0.3 sin(2 pi x), characteristics x = x0 + u0 t (periodic)
     let u0 = |x0: f64| 0.5 + 0.3 * (2.0 * PI * x0).sin();
     let mut x0 = x - 0.5 * t;
@@ -78,19 +132,43 @@ fn burgers_exact(x: f64, t: f64) -> f64 {
 fn burgers_smooth_solution_converges_before_shock_formation() {
     let run = |ne: usize| {
         let mesh = DgMesh::line(ne, 0.0, 1.0, 2);
-        let s = solve_dg(&mesh, &Burgers, &periodic(), &|x| vec![0.5 + 0.3 * (2.0 * PI * x[0]).sin()], 0.3, 0.3, None).unwrap();
+        let s = solve_dg(
+            &mesh,
+            &Burgers,
+            &periodic(),
+            &|x| vec![0.5 + 0.3 * (2.0 * PI * x[0]).sin()],
+            0.3,
+            0.3,
+            None,
+        )
+        .unwrap();
         // the characteristic solution is periodic in x
         s.l2_error(0, |x| burgers_exact(x[0], 0.3))
     };
     let (e1, e2, e3) = (run(8), run(16), run(32));
-    assert!((e2 / e3).log2() > 2.2 && (e1 / e2).log2() > 2.0, "{e1} {e2} {e3}");
+    assert!(
+        (e2 / e3).log2() > 2.2 && (e1 / e2).log2() > 2.0,
+        "{e1} {e2} {e3}"
+    );
 }
 
 #[test]
 fn burgers_shock_with_filter_is_bounded_and_conservative() {
     let mesh = DgMesh::line(40, 0.0, 1.0, 3);
-    let filt = Some(ModalFilter { alpha: 36.0, order: 4 });
-    let s = solve_dg(&mesh, &Burgers, &periodic(), &|x| vec![(2.0 * PI * x[0]).sin()], 0.5, 0.3, filt).unwrap();
+    let filt = Some(ModalFilter {
+        alpha: 36.0,
+        order: 4,
+    });
+    let s = solve_dg(
+        &mesh,
+        &Burgers,
+        &periodic(),
+        &|x| vec![(2.0 * PI * x[0]).sin()],
+        0.5,
+        0.3,
+        filt,
+    )
+    .unwrap();
     let m0 = 0.0;
     assert!((s.integral(0) - m0).abs() < 1e-12);
     let mx = s.q.iter().fold(0.0_f64, |m, v| m.max(v.abs()));

@@ -52,7 +52,10 @@ impl TriMesh {
         let mut nodes = Vec::with_capacity((nx + 1) * (ny + 1));
         for j in 0..=ny {
             for i in 0..=nx {
-                nodes.push([x0 + (x1 - x0) * i as f64 / nx as f64, y0 + (y1 - y0) * j as f64 / ny as f64]);
+                nodes.push([
+                    x0 + (x1 - x0) * i as f64 / nx as f64,
+                    y0 + (y1 - y0) * j as f64 / ny as f64,
+                ]);
             }
         }
         let id = |i: usize, j: usize| j * (nx + 1) + i;
@@ -81,7 +84,11 @@ impl TriMesh {
                 !(cx > 0.0 && cy < 0.0)
             })
             .collect();
-        Self { nodes: square.nodes, triangles: keep }.compacted()
+        Self {
+            nodes: square.nodes,
+            triangles: keep,
+        }
+        .compacted()
     }
 
     /// The mesh without unused vertices.
@@ -147,13 +154,19 @@ impl TriMesh {
         };
         let key = |a: usize, b: usize| (a.min(b), a.max(b));
         let longest = |t: &[usize; 3]| -> (usize, usize) {
-            (0..3).map(|i| key(t[i], t[(i + 1) % 3])).max_by(|&(a, b), &(c, d)| length2(a, b).total_cmp(&length2(c, d))).unwrap_or((0, 0))
+            (0..3)
+                .map(|i| key(t[i], t[(i + 1) % 3]))
+                .max_by(|&(a, b), &(c, d)| length2(a, b).total_cmp(&length2(c, d)))
+                .unwrap_or((0, 0))
         };
         // Mark the longest edge of every marked triangle, then close: a
         // triangle with any marked edge has its longest edge marked too.
         let mut split: HashMap<(usize, usize), usize> = HashMap::new();
         let mut nodes = self.nodes.clone();
-        let mark = |e: (usize, usize), nodes: &mut Vec<[f64; 2]>, split: &mut HashMap<(usize, usize), usize>| -> bool {
+        let mark = |e: (usize, usize),
+                    nodes: &mut Vec<[f64; 2]>,
+                    split: &mut HashMap<(usize, usize), usize>|
+         -> bool {
             if split.contains_key(&e) {
                 return false;
             }
@@ -194,7 +207,9 @@ impl TriMesh {
             };
             let best = (0..3)
                 .filter(|&i| split.contains_key(&key(t[i], t[(i + 1) % 3])))
-                .max_by(|&i, &j| length2(t[i], t[(i + 1) % 3]).total_cmp(&length2(t[j], t[(j + 1) % 3])));
+                .max_by(|&i, &j| {
+                    length2(t[i], t[(i + 1) % 3]).total_cmp(&length2(t[j], t[(j + 1) % 3]))
+                });
             let Some(i) = best else {
                 out.push(t);
                 return;
@@ -278,7 +293,12 @@ fn basis(
     l: [f64; 3],
 ) -> (Vec<f64>, Vec<[f64; 3]>) {
     match degree {
-        | Degree::P1 => (l.to_vec(), vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        | Degree::P1 => {
+            (
+                l.to_vec(),
+                vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            )
+        },
         | Degree::P2 => {
             let v = |i: usize| l[i] * (2.0 * l[i] - 1.0);
             let dv = |i: usize| {
@@ -293,7 +313,10 @@ fn basis(
                 g[j] = 4.0 * l[i];
                 g
             };
-            (vec![v(0), v(1), v(2), e(0, 1), e(1, 2), e(2, 0)], vec![dv(0), dv(1), dv(2), de(0, 1), de(1, 2), de(2, 0)])
+            (
+                vec![v(0), v(1), v(2), e(0, 1), e(1, 2), e(2, 0)],
+                vec![dv(0), dv(1), dv(2), de(0, 1), de(1, 2), de(2, 0)],
+            )
         },
     }
 }
@@ -325,7 +348,11 @@ impl Csr {
             }
             starts.push(columns.len());
         }
-        Self { starts, columns, values }
+        Self {
+            starts,
+            columns,
+            values,
+        }
     }
 
     fn apply(
@@ -333,13 +360,21 @@ impl Csr {
         x: &[f64],
     ) -> Vec<f64> {
         (0..self.starts.len() - 1)
-            .map(|i| (self.starts[i]..self.starts[i + 1]).map(|k| self.values[k] * x[self.columns[k]]).sum())
+            .map(|i| {
+                (self.starts[i]..self.starts[i + 1])
+                    .map(|k| self.values[k] * x[self.columns[k]])
+                    .sum()
+            })
             .collect()
     }
 
     fn diagonal(&self) -> Vec<f64> {
         (0..self.starts.len() - 1)
-            .map(|i| (self.starts[i]..self.starts[i + 1]).find(|&k| self.columns[k] == i).map_or(1.0, |k| self.values[k]))
+            .map(|i| {
+                (self.starts[i]..self.starts[i + 1])
+                    .find(|&k| self.columns[k] == i)
+                    .map_or(1.0, |k| self.values[k])
+            })
             .collect()
     }
 }
@@ -353,7 +388,17 @@ fn pcg(
     max_iterations: usize,
 ) -> (Vec<f64>, usize) {
     let n = b.len();
-    let inv_diag: Vec<f64> = a.diagonal().iter().map(|d| if d.abs() > 0.0 { 1.0 / d } else { 1.0 }).collect();
+    let inv_diag: Vec<f64> = a
+        .diagonal()
+        .iter()
+        .map(|d| {
+            if d.abs() > 0.0 {
+                1.0 / d
+            } else {
+                1.0
+            }
+        })
+        .collect();
     let mut x = vec![0.0; n];
     let mut r = b.to_vec();
     let mut z: Vec<f64> = r.iter().zip(&inv_diag).map(|(r, d)| r * d).collect();
@@ -428,24 +473,36 @@ pub fn solve(
             [(a[1] - b[1]) / (2.0 * area), (b[0] - a[0]) / (2.0 * area)],
         ];
         for &(l, w) in &rule {
-            let (x, y) = (l[0] * a[0] + l[1] * b[0] + l[2] * c[0], l[0] * a[1] + l[1] * b[1] + l[2] * c[1]);
+            let (x, y) = (
+                l[0] * a[0] + l[1] * b[0] + l[2] * c[0],
+                l[0] * a[1] + l[1] * b[1] + l[2] * c[1],
+            );
             let weight = w * area.abs();
             let (phi, dphi) = basis(degree, l);
-            let grads: Vec<[f64; 2]> =
-                dphi.iter().map(|d| [0, 1].map(|k| d[0] * grad_l[0][k] + d[1] * grad_l[1][k] + d[2] * grad_l[2][k])).collect();
+            let grads: Vec<[f64; 2]> = dphi
+                .iter()
+                .map(|d| {
+                    [0, 1].map(|k| d[0] * grad_l[0][k] + d[1] * grad_l[1][k] + d[2] * grad_l[2][k])
+                })
+                .collect();
             let (kv, cv, fv) = ((problem.k)(x, y), (problem.c)(x, y), (problem.f)(x, y));
             for (i, &gi) in dofs.iter().enumerate() {
                 load[gi] += weight * fv * phi[i];
                 for (j, &gj) in dofs.iter().enumerate() {
-                    let value = weight * (kv * (grads[i][0] * grads[j][0] + grads[i][1] * grads[j][1]) + cv * phi[i] * phi[j]);
+                    let value = weight
+                        * (kv * (grads[i][0] * grads[j][0] + grads[i][1] * grads[j][1])
+                            + cv * phi[i] * phi[j]);
                     *triplets.entry((gi, gj)).or_insert(0.0) += value;
                 }
             }
         }
     }
     // Dirichlet rows: u = g, eliminated symmetrically from other rows.
-    let fixed: Vec<Option<f64>> =
-        points.iter().zip(&boundary).map(|(p, &on)| on.then(|| (problem.g)(p[0], p[1]))).collect();
+    let fixed: Vec<Option<f64>> = points
+        .iter()
+        .zip(&boundary)
+        .map(|(p, &on)| on.then(|| (problem.g)(p[0], p[1])))
+        .collect();
     let mut reduced: HashMap<(usize, usize), f64> = HashMap::with_capacity(triplets.len());
     for (&(i, j), &v) in &triplets {
         match (fixed[i], fixed[j]) {
@@ -464,7 +521,13 @@ pub fn solve(
     }
     let matrix = Csr::from_triplets(n, &reduced);
     let (values, iterations) = pcg(&matrix, &load, 1e-12, 20 * n + 100);
-    Ok(Solution { points, values, elements, degree, iterations })
+    Ok(Solution {
+        points,
+        values,
+        elements,
+        degree,
+        iterations,
+    })
 }
 
 impl Solution {
@@ -474,7 +537,11 @@ impl Solution {
         &self,
         exact: &dyn Fn(f64, f64) -> f64,
     ) -> f64 {
-        self.points.iter().zip(&self.values).map(|(p, v)| (v - exact(p[0], p[1])).abs()).fold(0.0, f64::max)
+        self.points
+            .iter()
+            .zip(&self.values)
+            .map(|(p, v)| (v - exact(p[0], p[1])).abs())
+            .fold(0.0, f64::max)
     }
 
     /// The `L²` error against `exact`, by quadrature on every element.
@@ -490,7 +557,10 @@ impl Solution {
             let [a, b, c] = t.map(|v| mesh.nodes[v]);
             let area = mesh.area(t).abs();
             for &(l, w) in &rule {
-                let (x, y) = (l[0] * a[0] + l[1] * b[0] + l[2] * c[0], l[0] * a[1] + l[1] * b[1] + l[2] * c[1]);
+                let (x, y) = (
+                    l[0] * a[0] + l[1] * b[0] + l[2] * c[0],
+                    l[0] * a[1] + l[1] * b[1] + l[2] * c[1],
+                );
                 let (phi, _) = basis(self.degree, l);
                 let uh: f64 = phi.iter().zip(dofs).map(|(p, &d)| p * self.values[d]).sum();
                 total += w * area * (uh - exact(x, y)).powi(2);
@@ -524,10 +594,16 @@ pub fn error_indicators(
         .map(|t| {
             let [a, b, c] = t.map(|v| mesh.nodes[v]);
             let area = mesh.area(t).abs();
-            let h2 = [(a, b), (b, c), (c, a)].iter().map(|(p, q)| (p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2)).fold(0.0, f64::max);
+            let h2 = [(a, b), (b, c), (c, a)]
+                .iter()
+                .map(|(p, q)| (p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2))
+                .fold(0.0, f64::max);
             let mut interior = 0.0;
             for &(l, w) in &rule {
-                let (x, y) = (l[0] * a[0] + l[1] * b[0] + l[2] * c[0], l[0] * a[1] + l[1] * b[1] + l[2] * c[1]);
+                let (x, y) = (
+                    l[0] * a[0] + l[1] * b[0] + l[2] * c[0],
+                    l[0] * a[1] + l[1] * b[1] + l[2] * c[1],
+                );
                 let uh: f64 = (0..3).map(|i| l[i] * solution.values[t[i]]).sum();
                 let r = (problem.f)(x, y) - (problem.c)(x, y) * uh;
                 interior += w * area * r * r;
@@ -540,7 +616,10 @@ pub fn error_indicators(
             let (p, q) = (mesh.nodes[a], mesh.nodes[b]);
             let he = (p[0] - q[0]).hypot(p[1] - q[1]);
             let normal = [(q[1] - p[1]) / he, (p[0] - q[0]) / he];
-            let (g1, g2) = (gradient(&mesh.triangles[*t1]), gradient(&mesh.triangles[*t2]));
+            let (g1, g2) = (
+                gradient(&mesh.triangles[*t1]),
+                gradient(&mesh.triangles[*t2]),
+            );
             let mid = [f64::midpoint(p[0], q[0]), f64::midpoint(p[1], q[1])];
             let k = (problem.k)(mid[0], mid[1]);
             let jump = k * ((g1[0] - g2[0]) * normal[0] + (g1[1] - g2[1]) * normal[1]);
@@ -602,7 +681,10 @@ mod tests {
     use super::*;
 
     fn sine_problem() -> (impl Fn(f64, f64) -> f64, impl Fn(f64, f64) -> f64) {
-        (|x: f64, y: f64| (PI * x).sin() * (PI * y).sin(), |x: f64, y: f64| 2.0 * PI * PI * (PI * x).sin() * (PI * y).sin())
+        (
+            |x: f64, y: f64| (PI * x).sin() * (PI * y).sin(),
+            |x: f64, y: f64| 2.0 * PI * PI * (PI * x).sin() * (PI * y).sin(),
+        )
     }
 
     #[test]
@@ -610,7 +692,12 @@ mod tests {
         let (exact, source) = sine_problem();
         let one = |_: f64, _: f64| 1.0;
         let zero = |_: f64, _: f64| 0.0;
-        let problem = Problem { k: &one, c: &zero, f: &source, g: &zero };
+        let problem = Problem {
+            k: &one,
+            c: &zero,
+            f: &source,
+            g: &zero,
+        };
         let error = |n: usize, degree: Degree| {
             let mesh = TriMesh::rectangle(0.0, 1.0, 0.0, 1.0, n, n);
             let s = solve(&mesh, degree, &problem).unwrap();
@@ -619,8 +706,16 @@ mod tests {
         let (p1a, p1b) = (error(8, Degree::P1), error(16, Degree::P1));
         let (p2a, p2b) = (error(8, Degree::P2), error(16, Degree::P2));
         let rate = |a: f64, b: f64| (a / b).log2();
-        assert!((rate(p1a, p1b) - 2.0).abs() < 0.2, "P1 rate {}", rate(p1a, p1b));
-        assert!((rate(p2a, p2b) - 3.0).abs() < 0.3, "P2 rate {}", rate(p2a, p2b));
+        assert!(
+            (rate(p1a, p1b) - 2.0).abs() < 0.2,
+            "P1 rate {}",
+            rate(p1a, p1b)
+        );
+        assert!(
+            (rate(p2a, p2b) - 3.0).abs() < 0.3,
+            "P2 rate {}",
+            rate(p2a, p2b)
+        );
         assert!(p2b < p1b / 20.0, "{p1b} {p2b}");
     }
 
@@ -632,11 +727,20 @@ mod tests {
         let c = |_: f64, _: f64| 1.0;
         // ∇u = (2x + y, x + 2y); ∇·(k∇u) = (2x + y) + (1 + x)(2 + 2)
         let f = move |x: f64, y: f64| -((2.0 * x + y) + 4.0 * (1.0 + x)) + exact(x, y);
-        let problem = Problem { k: &k, c: &c, f: &f, g: &exact };
+        let problem = Problem {
+            k: &k,
+            c: &c,
+            f: &f,
+            g: &exact,
+        };
         let mesh = TriMesh::rectangle(-1.0, 2.0, 0.0, 1.0, 6, 3);
         // P2 reproduces a quadratic exactly.
         let s = solve(&mesh, Degree::P2, &problem).unwrap();
-        assert!(s.max_nodal_error(&exact) < 1e-9, "{}", s.max_nodal_error(&exact));
+        assert!(
+            s.max_nodal_error(&exact) < 1e-9,
+            "{}",
+            s.max_nodal_error(&exact)
+        );
     }
 
     #[test]
@@ -652,15 +756,31 @@ mod tests {
         };
         let one = |_: f64, _: f64| 1.0;
         let zero = |_: f64, _: f64| 0.0;
-        let problem = Problem { k: &one, c: &zero, f: &zero, g: &exact };
+        let problem = Problem {
+            k: &one,
+            c: &zero,
+            f: &zero,
+            g: &exact,
+        };
         let start = TriMesh::l_shape(2);
         let (mesh, solution, history) = solve_adaptive(&start, &problem, 8, 0.5).unwrap();
         // The estimator decreases and the mesh is graded towards the corner.
         let (first, last) = (history[0].1, history.last().unwrap().1);
         assert!(last < 0.35 * first, "{history:?}");
-        let near: usize = mesh.triangles.iter().filter(|t| t.iter().all(|&v| mesh.nodes[v][0].hypot(mesh.nodes[v][1]) < 0.1)).count();
+        let near: usize = mesh
+            .triangles
+            .iter()
+            .filter(|t| {
+                t.iter()
+                    .all(|&v| mesh.nodes[v][0].hypot(mesh.nodes[v][1]) < 0.1)
+            })
+            .count();
         assert!(near > 10, "{near} small triangles at the corner");
-        assert!(solution.max_nodal_error(&exact) < 0.03, "{}", solution.max_nodal_error(&exact));
+        assert!(
+            solution.max_nodal_error(&exact) < 0.03,
+            "{}",
+            solution.max_nodal_error(&exact)
+        );
         // The refined mesh is conforming: every interior edge has two triangles.
         assert!(mesh.edges().values().all(|ts| ts.len() <= 2));
         let area: f64 = mesh.triangles.iter().map(|t| mesh.area(t)).sum();

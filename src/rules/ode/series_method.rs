@@ -35,7 +35,9 @@ pub(super) fn series_solution(
     x0: NodeId,
     degree: NodeId,
 ) -> Option<NodeId> {
-    let n_max = usize::try_from(cx.graph.number_of(degree)?.to_i64()?).ok().filter(|&n| n <= 16)?;
+    let n_max = usize::try_from(cx.graph.number_of(degree)?.to_i64()?)
+        .ok()
+        .filter(|&n| n <= 16)?;
     let problem: Problem = parse(cx.graph, equation, unknown)?;
     let order = problem.order();
     if n_max < order {
@@ -250,7 +252,11 @@ fn transform_terms(
 ) -> Vec<NodeId> {
     let expr = cx.simplify(expr);
     let expr = crate::rules::poly::expand_form(cx.graph, expr).unwrap_or(expr);
-    let terms = if cx.graph.op(expr) == core::ADD { cx.graph.children(expr).to_vec() } else { vec![expr] };
+    let terms = if cx.graph.op(expr) == core::ADD {
+        cx.graph.children(expr).to_vec()
+    } else {
+        vec![expr]
+    };
     terms
         .into_iter()
         .map(|t| {
@@ -283,7 +289,10 @@ pub(super) fn rsolve(
     unknown: NodeId,
     conditions: Option<NodeId>,
 ) -> Option<NodeId> {
-    let (ztransform, inverse) = (cx.graph.ops().lookup("ztransform")?, cx.graph.ops().lookup("inverse_ztransform")?);
+    let (ztransform, inverse) = (
+        cx.graph.ops().lookup("ztransform")?,
+        cx.graph.ops().lookup("inverse_ztransform")?,
+    );
     let n = *cx.graph.children(unknown).get(1)?;
     let function = *cx.graph.children(unknown).first()?;
     cx.graph.symbol_of(n)?;
@@ -303,7 +312,9 @@ pub(super) fn rsolve(
                 return None;
             };
             match *cx.graph.children(target) {
-                | [f, k] if cx.graph.op(target) == core::APPLY && f == function => given.push((k, value)),
+                | [f, k] if cx.graph.op(target) == core::APPLY && f == function => {
+                    given.push((k, value))
+                },
                 | _ => return None,
             }
         }
@@ -350,12 +361,21 @@ pub(super) fn rsolve(
     for m in [3.0, 5.0, 8.0] {
         let mut env = Env::numeric(0.0);
         for &sym in cx.graph.free_symbols(cx.graph.find(check)) {
-            env.bind(sym, if sym == n_symbol { m } else { 0.7 + 0.11 * f64::from(sym.raw() % 5) });
+            env.bind(
+                sym,
+                if sym == n_symbol {
+                    m
+                } else {
+                    0.7 + 0.11 * f64::from(sym.raw() % 5)
+                },
+            );
         }
         if let Some(v) = cx.graph.eval(check, &env)
-            && v.is_finite() && v.abs() > 1e-7 {
-                return None;
-            }
+            && v.is_finite()
+            && v.abs() > 1e-7
+        {
+            return None;
+        }
     }
     Some(cx.graph.node(core::EQ, &[unknown, back]))
 }

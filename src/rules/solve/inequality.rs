@@ -14,16 +14,16 @@ use super::as_expression;
 use super::difference;
 use super::heuristics::nodes_with;
 use super::solve_for;
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::OpId;
+use crate::graph::op::core;
 use crate::rules::poly::best;
 use crate::rules::poly::ratio;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::to_term;
 
 /// One end of an interval: its numeric value and the term that writes it.
 #[derive(Copy, Clone)]
@@ -55,7 +55,10 @@ fn lo_max(
         | (None, x) | (x, None) => x,
         | (Some(x), Some(y)) => {
             if (x.value - y.value).abs() <= 1e-12 * (1.0 + x.value.abs()) {
-                Some(Bound { closed: x.closed && y.closed, ..x })
+                Some(Bound {
+                    closed: x.closed && y.closed,
+                    ..x
+                })
             } else if x.value > y.value {
                 Some(x)
             } else {
@@ -73,7 +76,10 @@ fn hi_min(
         | (None, x) | (x, None) => x,
         | (Some(x), Some(y)) => {
             if (x.value - y.value).abs() <= 1e-12 * (1.0 + x.value.abs()) {
-                Some(Bound { closed: x.closed && y.closed, ..x })
+                Some(Bound {
+                    closed: x.closed && y.closed,
+                    ..x
+                })
             } else if x.value < y.value {
                 Some(x)
             } else {
@@ -87,7 +93,8 @@ fn nonempty(i: &Interval) -> bool {
     match (i.lo, i.hi) {
         | (Some(l), Some(h)) => {
             let tolerance = 1e-12 * (1.0 + l.value.abs());
-            h.value > l.value + tolerance || ((h.value - l.value).abs() <= tolerance && l.closed && h.closed)
+            h.value > l.value + tolerance
+                || ((h.value - l.value).abs() <= tolerance && l.closed && h.closed)
         },
         | _ => true,
     }
@@ -100,7 +107,10 @@ fn intersect(
     let mut out = Vec::new();
     for x in a {
         for y in b {
-            let i = Interval { lo: lo_max(x.lo, y.lo), hi: hi_min(x.hi, y.hi) };
+            let i = Interval {
+                lo: lo_max(x.lo, y.lo),
+                hi: hi_min(x.hi, y.hi),
+            };
             if nonempty(&i) {
                 out.push(i);
             }
@@ -131,7 +141,8 @@ fn union(
                     | (None, _) | (_, None) => true,
                     | (Some(h), Some(l)) => {
                         let tolerance = 1e-12 * (1.0 + h.value.abs());
-                        l.value < h.value - tolerance || ((l.value - h.value).abs() <= tolerance && (h.closed || l.closed))
+                        l.value < h.value - tolerance
+                            || ((l.value - h.value).abs() <= tolerance && (h.closed || l.closed))
                     },
                 };
                 if touches {
@@ -139,7 +150,10 @@ fn union(
                         | (None, _) | (_, None) => None,
                         | (Some(x), Some(y)) => {
                             if (x.value - y.value).abs() <= 1e-12 * (1.0 + x.value.abs()) {
-                                Some(Bound { closed: x.closed || y.closed, ..x })
+                                Some(Bound {
+                                    closed: x.closed || y.closed,
+                                    ..x
+                                })
                             } else if x.value > y.value {
                                 Some(x)
                             } else {
@@ -167,11 +181,13 @@ fn comparison_set(
     kind: usize,
 ) -> Option<Set> {
     let symbol = graph.symbol_of(x)?;
-    let holds = |v: f64| match kind {
-        | 0 => v < 0.0,
-        | 1 => v <= 1e-12,
-        | 2 => v > 0.0,
-        | _ => v >= -1e-12,
+    let holds = |v: f64| {
+        match kind {
+            | 0 => v < 0.0,
+            | 1 => v <= 1e-12,
+            | 2 => v > 0.0,
+            | _ => v >= -1e-12,
+        }
     };
     let strict = kind == 0 || kind == 2;
     let eval_at = |graph: &Graph, at: f64| -> Option<f64> {
@@ -193,11 +209,12 @@ fn comparison_set(
     let mut gens = Gens::default();
     gens.index(graph, x);
     if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default())
-        && fraction.denom.as_constant().is_none() {
-            let denominator = to_term(graph, &gens, &fraction.denom);
-            let poles = solve_for(graph, denominator, x, 0)?;
-            add(graph, poles);
-        }
+        && fraction.denom.as_constant().is_none()
+    {
+        let denominator = to_term(graph, &gens, &fraction.denom);
+        let poles = solve_for(graph, denominator, x, 0)?;
+        add(graph, poles);
+    }
     // Domain boundaries of logarithms and roots.
     let ln = graph.ops().lookup("ln");
     let sqrt = graph.ops().lookup("sqrt");
@@ -206,13 +223,18 @@ fn comparison_set(
         g.depends_on(g.find(n), symbol)
             && (Some(op) == ln
                 || Some(op) == sqrt
-                || (op == core::POW && g.children(n).get(1).and_then(|&e| g.number_of(e)).is_some_and(|e| !e.is_integer())))
+                || (op == core::POW
+                    && g.children(n)
+                        .get(1)
+                        .and_then(|&e| g.number_of(e))
+                        .is_some_and(|e| !e.is_integer())))
     });
     for n in domain {
         if let Some(&arg) = graph.children(n).first()
-            && let Some(roots) = solve_for(graph, arg, x, 0) {
-                add(graph, roots);
-            }
+            && let Some(roots) = solve_for(graph, arg, x, 0)
+        {
+            add(graph, roots);
+        }
     }
     boundary.sort_by(|a, b| a.0.total_cmp(&b.0));
     boundary.dedup_by(|a, b| (a.0 - b.0).abs() <= 1e-12 * (1.0 + a.0.abs()));
@@ -220,7 +242,10 @@ fn comparison_set(
     let count = boundary.len();
     let mut included: Vec<bool> = Vec::new();
     for i in 0..=count {
-        let sample = match (i.checked_sub(1).map(|j| boundary[j].0), boundary.get(i).map(|b| b.0)) {
+        let sample = match (
+            i.checked_sub(1).map(|j| boundary[j].0),
+            boundary.get(i).map(|b| b.0),
+        ) {
             | (None, None) => 0.0,
             | (None, Some(b)) => b - 1.0 - b.abs(),
             | (Some(a), None) => a + 1.0 + a.abs(),
@@ -250,21 +275,37 @@ fn comparison_set(
         // Item k: even = region k/2, odd = point (k-1)/2.
         let lo = if start % 2 == 1 {
             let (value, node) = boundary[(start - 1) / 2];
-            Some(Bound { value, node, closed: true })
+            Some(Bound {
+                value,
+                node,
+                closed: true,
+            })
         } else if start == 0 {
             None
         } else {
             let (value, node) = boundary[start / 2 - 1];
-            Some(Bound { value, node, closed: false })
+            Some(Bound {
+                value,
+                node,
+                closed: false,
+            })
         };
         let hi = if end % 2 == 1 {
             let (value, node) = boundary[(end - 1) / 2];
-            Some(Bound { value, node, closed: true })
+            Some(Bound {
+                value,
+                node,
+                closed: true,
+            })
         } else if end / 2 >= count {
             None
         } else {
             let (value, node) = boundary[end / 2];
-            Some(Bound { value, node, closed: false })
+            Some(Bound {
+                value,
+                node,
+                closed: false,
+            })
         };
         out.push(Interval { lo, hi });
     }
@@ -298,7 +339,8 @@ fn floor_condition(
     let &[a, b] = graph.children(node) else {
         return None;
     };
-    let rounding = |g: &Graph, n: NodeId| (g.op(n) == floor || g.op(n) == ceil) && g.children(n).len() == 1;
+    let rounding =
+        |g: &Graph, n: NodeId| (g.op(n) == floor || g.op(n) == ceil) && g.children(n).len() == 1;
     // (rounding node, constant, kind seen from the rounding side)
     let (r, c, kind) = if rounding(graph, a) {
         (a, b, kind)
@@ -307,7 +349,9 @@ fn floor_condition(
     } else {
         return None;
     };
-    let value = graph.eval(c, &Env::numeric(0.0)).filter(|v| v.is_finite())?;
+    let value = graph
+        .eval(c, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())?;
     let u = *graph.children(r).first()?;
     let is_floor = graph.op(r) == floor;
     let (lt, le, gt, ge) = (
@@ -392,11 +436,21 @@ fn condition_set(
         let mut set: Set = Vec::new();
         let mut previous: Option<Bound> = None;
         for &(value, node) in &points {
-            let b = Bound { value, node, closed: false };
-            set.push(Interval { lo: previous, hi: Some(b) });
+            let b = Bound {
+                value,
+                node,
+                closed: false,
+            };
+            set.push(Interval {
+                lo: previous,
+                hi: Some(b),
+            });
             previous = Some(b);
         }
-        set.push(Interval { lo: previous, hi: None });
+        set.push(Interval {
+            lo: previous,
+            hi: None,
+        });
         return Some(set);
     }
     let and = graph.ops().lookup("and");
@@ -420,9 +474,21 @@ fn condition_set(
     let roots = solve_for(graph, expr, x, 0)?;
     let mut set: Set = Vec::new();
     for r in roots {
-        let value = graph.eval(r, &Env::numeric(0.0)).filter(|v| v.is_finite())?;
-        let b = Bound { value, node: r, closed: true };
-        set = union(&set, &vec![Interval { lo: Some(b), hi: Some(b) }]);
+        let value = graph
+            .eval(r, &Env::numeric(0.0))
+            .filter(|v| v.is_finite())?;
+        let b = Bound {
+            value,
+            node: r,
+            closed: true,
+        };
+        set = union(
+            &set,
+            &vec![Interval {
+                lo: Some(b),
+                hi: Some(b),
+            }],
+        );
     }
     Some(set)
 }
@@ -435,10 +501,14 @@ pub(super) fn is_condition(
 ) -> bool {
     let op = graph.op(node);
     let rounded = |n: NodeId| {
-        ["floor", "ceil"].iter().any(|name| graph.ops().lookup(name) == Some(graph.op(n)))
+        ["floor", "ceil"]
+            .iter()
+            .any(|name| graph.ops().lookup(name) == Some(graph.op(n)))
     };
     (op == core::EQ && graph.children(node).iter().any(|&c| rounded(c)))
-        || ["lt", "le", "gt", "ge", "ne", "and", "or"].iter().any(|n| graph.ops().lookup(n) == Some(op))
+        || ["lt", "le", "gt", "ge", "ne", "and", "or"]
+            .iter()
+            .any(|n| graph.ops().lookup(n) == Some(op))
         || (op == core::LIST
             && !graph.children(node).is_empty()
             && graph.children(node).iter().any(|&c| is_condition(graph, c)))
@@ -454,10 +524,13 @@ fn formula(
     let mut formulas = Vec::new();
     for i in set {
         if let (Some(a), Some(b)) = (i.lo, i.hi)
-            && a.closed && b.closed && (a.value - b.value).abs() <= 1e-12 * (1.0 + a.value.abs()) {
-                formulas.push(graph.node(core::EQ, &[x, a.node]));
-                continue;
-            }
+            && a.closed
+            && b.closed
+            && (a.value - b.value).abs() <= 1e-12 * (1.0 + a.value.abs())
+        {
+            formulas.push(graph.node(core::EQ, &[x, a.node]));
+            continue;
+        }
         let mut conditions = Vec::new();
         if let Some(a) = i.lo {
             conditions.push(graph.node(if a.closed { le } else { lt }, &[a.node, x]));

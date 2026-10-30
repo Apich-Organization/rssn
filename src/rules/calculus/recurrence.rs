@@ -124,21 +124,32 @@ fn rewrite_binomials(
     if children.is_empty() {
         return node;
     }
-    let new_children: Vec<NodeId> = children.iter().map(|&c| rewrite_binomials(graph, c, binomial)).collect();
+    let new_children: Vec<NodeId> = children
+        .iter()
+        .map(|&c| rewrite_binomials(graph, c, binomial))
+        .collect();
     if Some(op) == binomial
         && let &[x, j] = new_children.as_slice()
-            && let Some(j) = graph.number_of(j).and_then(Number::to_i64).filter(|j| (0..=40).contains(j)) {
-                let mut factors = Vec::new();
-                let mut factorial = BigInt::one();
-                for i in 0..j {
-                    let minus_i = graph.int(-i);
-                    factors.push(graph.node(core::ADD, &[x, minus_i]));
-                    factorial *= BigInt::from(i + 1);
-                }
-                factors.push(graph.num(Number::rat(BigRational::new(BigInt::one(), factorial))));
-                return graph.node(core::MUL, &factors);
-            }
-    if new_children == children { node } else { graph.try_node(op, &new_children).unwrap_or(node) }
+        && let Some(j) = graph
+            .number_of(j)
+            .and_then(Number::to_i64)
+            .filter(|j| (0..=40).contains(j))
+    {
+        let mut factors = Vec::new();
+        let mut factorial = BigInt::one();
+        for i in 0..j {
+            let minus_i = graph.int(-i);
+            factors.push(graph.node(core::ADD, &[x, minus_i]));
+            factorial *= BigInt::from(i + 1);
+        }
+        factors.push(graph.num(Number::rat(BigRational::new(BigInt::one(), factorial))));
+        return graph.node(core::MUL, &factors);
+    }
+    if new_children == children {
+        node
+    } else {
+        graph.try_node(op, &new_children).unwrap_or(node)
+    }
 }
 
 fn agrees(
@@ -189,12 +200,19 @@ fn guess(values: &[Frac]) -> Option<(usize, Vec<Vec<Frac>>)> {
                 let rhs: Vec<Frac> = rows.iter().map(|r| Frac::zero().sub(&r[pivot])).collect();
                 let reduced: Vec<Vec<Frac>> = rows
                     .iter()
-                    .map(|r| r.iter().enumerate().filter(|&(c, _)| c != pivot).map(|(_, v)| v.clone()).collect())
+                    .map(|r| {
+                        r.iter()
+                            .enumerate()
+                            .filter(|&(c, _)| c != pivot)
+                            .map(|(_, v)| v.clone())
+                            .collect()
+                    })
                     .collect();
                 if let Some(x) = solve(reduced, rhs, unknowns - 1) {
                     let mut all = x;
                     all.insert(pivot, Frac::poly(vec![BigRational::one()]));
-                    let coefficients: Vec<Vec<Frac>> = all.chunks(degree + 1).map(<[Frac]>::to_vec).collect();
+                    let coefficients: Vec<Vec<Frac>> =
+                        all.chunks(degree + 1).map(<[Frac]>::to_vec).collect();
                     return Some((order, coefficients));
                 }
             }
@@ -244,7 +262,9 @@ fn divide_root(
         carry = frac_add(&p[i], &r.mul(&carry));
         quotient[i - 1] = carry.clone();
     }
-    frac_add(&p[0], &r.mul(&carry)).is_zero().then_some(quotient)
+    frac_add(&p[0], &r.mul(&carry))
+        .is_zero()
+        .then_some(quotient)
 }
 
 /// `p(n) = lead · ∏ (n - rᵢ)` with roots `rᵢ` in `Q(γ)` that are at most
@@ -276,10 +296,14 @@ fn find_root(p: &[Frac]) -> Option<Frac> {
         let roots = specialized(&BigRational::zero())?;
         return roots.first().map(|r| frac_const(r.clone()));
     }
-    let points: Vec<BigRational> =
-        [2, 3, 5, 7, 11, 13, 17].iter().map(|&g| BigRational::from_integer(BigInt::from(g))).collect();
-    let sets: Vec<(BigRational, Vec<BigRational>)> =
-        points.iter().filter_map(|g| specialized(g).map(|r| (g.clone(), r))).collect();
+    let points: Vec<BigRational> = [2, 3, 5, 7, 11, 13, 17]
+        .iter()
+        .map(|&g| BigRational::from_integer(BigInt::from(g)))
+        .collect();
+    let sets: Vec<(BigRational, Vec<BigRational>)> = points
+        .iter()
+        .filter_map(|g| specialized(g).map(|r| (g.clone(), r)))
+        .collect();
     let [(g1, r1s), (g2, r2s), ..] = sets.as_slice() else {
         return None;
     };
@@ -331,7 +355,7 @@ fn frac_term(
 }
 
 /// Solves `P1(n) S(n+1) + P0(n) S(n) = 0` from a starting value.
-fn solve_first_order(
+pub(super) fn solve_first_order(
     graph: &mut Graph,
     coefficients: &[Vec<Frac>],
     values: &[Frac],
@@ -352,13 +376,21 @@ fn solve_first_order(
     // parameter-dependent shifts are generic.
     let blocked = |m: i64| {
         let m = BigRational::from_integer(BigInt::from(m));
-        alphas.iter().chain(&betas).filter_map(frac_constant).any(|s| {
-            let v = &m + s;
-            v <= BigRational::zero() && v.is_integer()
-        })
+        alphas
+            .iter()
+            .chain(&betas)
+            .filter_map(frac_constant)
+            .any(|s| {
+                let v = &m + s;
+                v <= BigRational::zero() && v.is_integer()
+            })
     };
     let n0 = (0..i64::try_from(values.len()).ok()?).find(|&m| {
-        !blocked(m) && usize::try_from(m).ok().and_then(|i| values.get(i)).is_some_and(|v| !v.is_zero())
+        !blocked(m)
+            && usize::try_from(m)
+                .ok()
+                .and_then(|i| values.get(i))
+                .is_some_and(|v| !v.is_zero())
     })?;
     let start = values.get(usize::try_from(n0).ok()?)?;
     let gamma_op = graph.ops().lookup("gamma")?;
@@ -375,15 +407,20 @@ fn solve_first_order(
     // (n+β)(n+β+1)…(n+α-1): pair such shifts off first.
     let mut i = 0;
     while i < alphas.len() {
-        let partner = betas.iter().position(|b| frac_constant(&alphas[i].sub(b)).is_some_and(|d| d.is_integer()));
+        let partner = betas
+            .iter()
+            .position(|b| frac_constant(&alphas[i].sub(b)).is_some_and(|d| d.is_integer()));
         let Some(j) = partner else {
             i += 1;
             continue;
         };
         let (alpha, beta) = (alphas.swap_remove(i), betas.swap_remove(j));
         let d = frac_constant(&alpha.sub(&beta)).unwrap_or_else(BigRational::zero);
-        let (mut low, count, exponent) =
-            if d >= BigRational::zero() { (beta, d, 1) } else { (alpha, -d, -1) };
+        let (mut low, count, exponent) = if d >= BigRational::zero() {
+            (beta, d, 1)
+        } else {
+            (alpha, -d, -1)
+        };
         let mut done = BigRational::zero();
         while done < count {
             let s_term = frac_term(graph, &low, gamma)?;

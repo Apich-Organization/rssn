@@ -41,24 +41,45 @@ fn bh_vs_direct<const D: usize>(
 ) -> (f64, f64, f64) {
     let pos = random_points::<D>(n, 10 + D as u64);
     let mut rng = Rng::new(77);
-    let src: Vec<f64> = (0..n).map(|_| if signed { rng.normal() } else { 0.5 + rng.uniform() }).collect();
+    let src: Vec<f64> = (0..n)
+        .map(|_| {
+            if signed {
+                rng.normal()
+            } else {
+                0.5 + rng.uniform()
+            }
+        })
+        .collect();
     let exact = direct_field(&pos, &src, 0.0);
     let field = |theta: f64| -> Vec<[f64; D]> {
         let t = BhTree::new(&pos, &src, theta, 0.0).unwrap();
         (0..n).map(|i| t.field(&pos[i], i)).collect()
     };
-    (rel_error(&field(0.0), &exact), rel_error(&field(0.3), &exact), rel_error(&field(0.8), &exact))
+    (
+        rel_error(&field(0.0), &exact),
+        rel_error(&field(0.3), &exact),
+        rel_error(&field(0.8), &exact),
+    )
 }
 
 #[test]
 fn barnes_hut_converges_to_direct_summation_in_one_two_and_three_dimensions() {
     for signed in [false, true] {
         let (e0, e3, e8) = bh_vs_direct::<1>(400, signed);
-        assert!(e0 < 1e-12 && e3 < 1e-12 && e8 < 1e-12, "D=1 signed={signed}: {e0} {e3} {e8}");
+        assert!(
+            e0 < 1e-12 && e3 < 1e-12 && e8 < 1e-12,
+            "D=1 signed={signed}: {e0} {e3} {e8}"
+        );
         let (e0, e3, e8) = bh_vs_direct::<2>(600, signed);
-        assert!(e0 < 1e-12 && e3 < 5e-2 && e3 < e8, "D=2 signed={signed}: {e0} {e3} {e8}");
+        assert!(
+            e0 < 1e-12 && e3 < 5e-2 && e3 < e8,
+            "D=2 signed={signed}: {e0} {e3} {e8}"
+        );
         let (e0, e3, e8) = bh_vs_direct::<3>(600, signed);
-        assert!(e0 < 1e-12 && e3 < 5e-2 && e3 < e8, "D=3 signed={signed}: {e0} {e3} {e8}");
+        assert!(
+            e0 < 1e-12 && e3 < 5e-2 && e3 < e8,
+            "D=3 signed={signed}: {e0} {e3} {e8}"
+        );
     }
 }
 
@@ -134,10 +155,21 @@ fn barnes_hut_gravity_with_a_sixth_order_integrator_keeps_a_kepler_orbit() {
     };
     let period = 2.0 * std::f64::consts::PI * r / v;
     let n = 200;
-    integrate(Scheme::Yoshida6, &mut q, &mut p, period / n as f64, n, &mut acc);
+    integrate(
+        Scheme::Yoshida6,
+        &mut q,
+        &mut p,
+        period / n as f64,
+        n,
+        &mut acc,
+    );
     let rr = ((q[3] - q[0]).powi(2) + (q[4] - q[1]).powi(2) + (q[5] - q[2]).powi(2)).sqrt();
     assert!((rr - r).abs() < 1e-6, "radius {rr}");
-    assert!((q[3] - q[0] - r).abs() < 1e-4, "returns after one period: {}", q[3] - q[0]);
+    assert!(
+        (q[3] - q[0] - r).abs() < 1e-4,
+        "returns after one period: {}",
+        q[3] - q[0]
+    );
 }
 
 fn clustered_points(
@@ -149,12 +181,16 @@ fn clustered_points(
     (0..n)
         .map(|i| {
             let (c, s) = match i % 4 {
-                0 => ([0.0, 0.0, 0.0], 0.02),
-                1 => ([3.0, 1.0, -2.0], 0.2),
-                2 => ([-4.0, 2.0, 1.0], 0.005),
-                _ => ([0.0, 0.0, 0.0], 3.0),
+                | 0 => ([0.0, 0.0, 0.0], 0.02),
+                | 1 => ([3.0, 1.0, -2.0], 0.2),
+                | 2 => ([-4.0, 2.0, 1.0], 0.005),
+                | _ => ([0.0, 0.0, 0.0], 3.0),
             };
-            [c[0] + s * rng.normal(), c[1] + s * rng.normal(), c[2] + s * rng.normal()]
+            [
+                c[0] + s * rng.normal(),
+                c[1] + s * rng.normal(),
+                c[2] + s * rng.normal(),
+            ]
         })
         .collect()
 }
@@ -163,7 +199,11 @@ fn clustered_points(
 fn fmm_3d_error_decreases_geometrically_with_order_on_uniform_and_clustered_sets() {
     for clustered in [false, true] {
         let n = 1200;
-        let pos = if clustered { clustered_points(n, 21) } else { random_points::<3>(n, 22) };
+        let pos = if clustered {
+            clustered_points(n, 21)
+        } else {
+            random_points::<3>(n, 22)
+        };
         let mut rng = Rng::new(8);
         let src: Vec<f64> = (0..n).map(|_| rng.normal()).collect();
         let exact = direct_field(&pos, &src, 0.0);
@@ -176,13 +216,17 @@ fn fmm_3d_error_decreases_geometrically_with_order_on_uniform_and_clustered_sets
             assert!(e < prev, "clustered={clustered} p={p}: {e} vs {prev}");
             prev = e;
         }
-        assert!(errs[4] < 1e-4 && errs[4] < errs[0] * 1e-2, "clustered={clustered}: {errs:?}");
+        assert!(
+            errs[4] < 1e-4 && errs[4] < errs[0] * 1e-2,
+            "clustered={clustered}: {errs:?}"
+        );
     }
 }
 
 #[test]
 fn fmm_3d_potential_and_field_match_direct_sums_and_tightening_theta_helps() {
-    use rssn::sim::fmm::{fmm3d, FmmOptions};
+    use rssn::sim::fmm::FmmOptions;
+    use rssn::sim::fmm::fmm3d;
     let n = 500;
     let pos = random_points::<3>(n, 31);
     let mut rng = Rng::new(32);
@@ -199,18 +243,58 @@ fn fmm_3d_potential_and_field_match_direct_sums_and_tightening_theta_helps() {
     }
     let mut last = f64::INFINITY;
     for theta in [0.7, 0.5, 0.3] {
-        let r = fmm3d(&pos, &src, &FmmOptions { order: 8, leaf_size: 12, theta, eps: 0.0 }).unwrap();
+        let r = fmm3d(
+            &pos,
+            &src,
+            &FmmOptions {
+                order: 8,
+                leaf_size: 12,
+                theta,
+                eps: 0.0,
+            },
+        )
+        .unwrap();
         let ef = rel_error(&r.field, &exact);
-        let ep = (r.potential.iter().zip(&pot).map(|(a, b)| (a - b).powi(2)).sum::<f64>() / pot.iter().map(|b| b * b).sum::<f64>()).sqrt();
-        assert!(ef < last && ep < 1e-2, "theta={theta}: field {ef} potential {ep}");
+        let ep = (r
+            .potential
+            .iter()
+            .zip(&pot)
+            .map(|(a, b)| (a - b).powi(2))
+            .sum::<f64>()
+            / pot.iter().map(|b| b * b).sum::<f64>())
+        .sqrt();
+        assert!(
+            ef < last && ep < 1e-2,
+            "theta={theta}: field {ef} potential {ep}"
+        );
         last = ef;
     }
     assert!(last < 1e-6, "theta = 0.3 order 8: {last}");
     // a single leaf (huge leaf size) is exact direct summation
-    let r = fmm3d(&pos, &src, &FmmOptions { order: 3, leaf_size: 10_000, theta: 0.5, eps: 0.0 }).unwrap();
+    let r = fmm3d(
+        &pos,
+        &src,
+        &FmmOptions {
+            order: 3,
+            leaf_size: 10_000,
+            theta: 0.5,
+            eps: 0.0,
+        },
+    )
+    .unwrap();
     assert!(rel_error(&r.field, &exact) < 1e-13);
     assert!(fmm3d(&[], &[], &FmmOptions::default()).is_err());
-    assert!(fmm3d(&pos, &src, &FmmOptions { theta: 1.5, ..FmmOptions::default() }).is_err());
+    assert!(
+        fmm3d(
+            &pos,
+            &src,
+            &FmmOptions {
+                theta: 1.5,
+                ..FmmOptions::default()
+            }
+        )
+        .is_err()
+    );
 }
 
 #[test]

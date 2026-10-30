@@ -416,8 +416,12 @@ const KRONROD_WEIGHTS: [f64; 8] = [
     0.209_482_141_084_727_82,
 ];
 // Gauss weights for the odd-indexed nodes (1, 3, 5, 7).
-const GAUSS_WEIGHTS: [f64; 4] =
-    [0.129_484_966_168_869_7, 0.279_705_391_489_276_64, 0.381_830_050_505_118_9, 0.417_959_183_673_469_4];
+const GAUSS_WEIGHTS: [f64; 4] = [
+    0.129_484_966_168_869_7,
+    0.279_705_391_489_276_64,
+    0.381_830_050_505_118_9,
+    0.417_959_183_673_469_4,
+];
 
 /// One Gauss–Kronrod 7/15 panel on `[a, b]`: `(estimate, error estimate)`.
 fn gk15(
@@ -430,7 +434,11 @@ fn gk15(
     let mut kronrod = 0.0;
     let mut gauss = 0.0;
     for (i, (&node, &weight)) in GK_NODES.iter().zip(&KRONROD_WEIGHTS).enumerate() {
-        let sum = if node == 0.0 { f(centre) } else { f(centre - half * node) + f(centre + half * node) };
+        let sum = if node == 0.0 {
+            f(centre)
+        } else {
+            f(centre - half * node) + f(centre + half * node)
+        };
         kronrod += weight * sum;
         if i % 2 == 1 {
             gauss += GAUSS_WEIGHTS[i / 2] * sum;
@@ -455,7 +463,11 @@ pub fn gauss_kronrod(
     max_panels: usize,
 ) -> Quadrature {
     if a == b {
-        return Quadrature { value: 0.0, error: 0.0, evaluations: 0 };
+        return Quadrature {
+            value: 0.0,
+            error: 0.0,
+            evaluations: 0,
+        };
     }
     let (value, error) = gk15(&f, a, b);
     let mut panels = vec![(a, b, value, error)];
@@ -463,8 +475,15 @@ pub fn gauss_kronrod(
     loop {
         let total_error: f64 = panels.iter().map(|p| p.3).sum();
         let total: f64 = panels.iter().map(|p| p.2).sum();
-        if total_error <= tolerance.max(f64::EPSILON * total.abs()) || panels.len() >= max_panels || !total.is_finite() {
-            return Quadrature { value: total, error: total_error, evaluations };
+        if total_error <= tolerance.max(f64::EPSILON * total.abs())
+            || panels.len() >= max_panels
+            || !total.is_finite()
+        {
+            return Quadrature {
+                value: total,
+                error: total_error,
+                evaluations,
+            };
         }
         let worst = panels
             .iter()
@@ -477,7 +496,11 @@ pub fn gauss_kronrod(
             // The panel cannot be split any further in floating point.
             panels.push((lo, hi, 0.0, 0.0));
             let total: f64 = panels.iter().map(|p| p.2).sum();
-            return Quadrature { value: total, error: f64::INFINITY, evaluations };
+            return Quadrature {
+                value: total,
+                error: f64::INFINITY,
+                evaluations,
+            };
         }
         for (x0, x1) in [(lo, mid), (mid, hi)] {
             let (v, e) = gk15(&f, x0, x1);
@@ -498,7 +521,10 @@ pub fn gauss_kronrod_any(
 ) -> Quadrature {
     if a > b {
         let flipped = gauss_kronrod_any(f, b, a, tolerance, max_panels);
-        return Quadrature { value: -flipped.value, ..flipped };
+        return Quadrature {
+            value: -flipped.value,
+            ..flipped
+        };
     }
     // Guard the transformed integrands against the end points, where the
     // Jacobian is infinite but the product is (for a convergent integral)
@@ -563,19 +589,43 @@ mod gauss_kronrod_tests {
         assert!((q.value - exact).abs() < 1e-8 * exact, "{q:?} vs {exact}");
         let q = gauss_kronrod(f64::sqrt, 0.0, 1.0, 1e-10, 2_000);
         assert!((q.value - 2.0 / 3.0).abs() < 1e-9, "{q:?}");
-        assert!(q.error >= (q.value - 2.0 / 3.0).abs() * 0.1, "the estimate is not wildly optimistic");
+        assert!(
+            q.error >= (q.value - 2.0 / 3.0).abs() * 0.1,
+            "the estimate is not wildly optimistic"
+        );
     }
 
     #[test]
     fn infinite_intervals() {
-        let q = gauss_kronrod_any(|x| (-x * x).exp(), f64::NEG_INFINITY, f64::INFINITY, 1e-12, 2_000);
-        assert!((q.value - std::f64::consts::PI.sqrt()).abs() < 1e-10, "{q:?}");
+        let q = gauss_kronrod_any(
+            |x| (-x * x).exp(),
+            f64::NEG_INFINITY,
+            f64::INFINITY,
+            1e-12,
+            2_000,
+        );
+        assert!(
+            (q.value - std::f64::consts::PI.sqrt()).abs() < 1e-10,
+            "{q:?}"
+        );
         let q = gauss_kronrod_any(|x| (-x).exp(), 0.0, f64::INFINITY, 1e-12, 2_000);
         assert!((q.value - 1.0).abs() < 1e-10, "{q:?}");
-        let q = gauss_kronrod_any(|x| 1.0 / (1.0 + x * x), f64::NEG_INFINITY, 0.0, 1e-12, 2_000);
-        assert!((q.value - std::f64::consts::FRAC_PI_2).abs() < 1e-10, "{q:?}");
+        let q = gauss_kronrod_any(
+            |x| 1.0 / (1.0 + x * x),
+            f64::NEG_INFINITY,
+            0.0,
+            1e-12,
+            2_000,
+        );
+        assert!(
+            (q.value - std::f64::consts::FRAC_PI_2).abs() < 1e-10,
+            "{q:?}"
+        );
         let q = gauss_kronrod_any(|x| x, 1.0, 0.0, 1e-12, 10);
-        assert!((q.value + 0.5).abs() < 1e-14, "reversed limits flip the sign");
+        assert!(
+            (q.value + 0.5).abs() < 1e-14,
+            "reversed limits flip the sign"
+        );
     }
 
     #[test]

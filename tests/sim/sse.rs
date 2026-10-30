@@ -3,7 +3,11 @@
 use rssn::sim::sse::*;
 
 /// Dense XXZ Hamiltonian (`Jxy = 1`, antiferromagnetic) on the given bonds.
-fn xxz_matrix(n: usize, bonds: &[(usize, usize)], jz: f64) -> Vec<Vec<f64>> {
+fn xxz_matrix(
+    n: usize,
+    bonds: &[(usize, usize)],
+    jz: f64,
+) -> Vec<Vec<f64>> {
     let dim = 1usize << n;
     let mut h = vec![vec![0.0; dim]; dim];
     for s in 0..dim {
@@ -59,7 +63,10 @@ fn eigenvalues(mut a: Vec<Vec<f64>>) -> Vec<f64> {
     (0..n).map(|i| a[i][i]).collect()
 }
 
-fn thermal(evs: &[f64], beta: f64) -> (f64, f64) {
+fn thermal(
+    evs: &[f64],
+    beta: f64,
+) -> (f64, f64) {
     let e0 = evs.iter().copied().fold(f64::INFINITY, f64::min);
     let (mut z, mut e1, mut e2) = (0.0, 0.0, 0.0);
     for &e in evs {
@@ -86,8 +93,17 @@ fn sse_reproduces_exact_diagonalisation_of_small_xxz_systems() {
         let (e_ex, cv_ex) = thermal(&evs, beta);
         let mut sim = SseXxz::new(n, bonds, jz, beta, 17).unwrap();
         let r = sim.run(3000, 40_000);
-        assert!((r.energy - e_ex).abs() < 5.0 * r.energy_error + 0.01, "n={n} jz={jz}: E = {} +- {} vs exact {e_ex}", r.energy, r.energy_error);
-        assert!((r.specific_heat - cv_ex).abs() < 0.12 * cv_ex.abs() + 0.08, "Cv {} vs {cv_ex}", r.specific_heat);
+        assert!(
+            (r.energy - e_ex).abs() < 5.0 * r.energy_error + 0.01,
+            "n={n} jz={jz}: E = {} +- {} vs exact {e_ex}",
+            r.energy,
+            r.energy_error
+        );
+        assert!(
+            (r.specific_heat - cv_ex).abs() < 0.12 * cv_ex.abs() + 0.08,
+            "Cv {} vs {cv_ex}",
+            r.specific_heat
+        );
     }
 }
 
@@ -99,7 +115,10 @@ fn heisenberg_chain_ground_state_energy_matches_the_bethe_ansatz() {
     let r = sim.run(2000, 20_000);
     let e_per_site = r.energy / l as f64;
     let expected = 0.25 - 2.0_f64.ln() - std::f64::consts::PI.powi(2) / (12.0 * (l * l) as f64);
-    assert!((e_per_site - expected).abs() < 6e-4, "E/N = {e_per_site} vs {expected}");
+    assert!(
+        (e_per_site - expected).abs() < 6e-4,
+        "E/N = {e_per_site} vs {expected}"
+    );
     // staggered structure factor is large for the critical AF chain
     assert!(r.staggered_sq / l as f64 > 0.2);
 }
@@ -109,7 +128,11 @@ fn square_lattice_heisenberg_matches_the_known_4x4_ground_state_energy() {
     // exact 4x4 periodic cluster: E0 = -11.228483 (-0.701780 per site)
     let mut sim = SseXxz::new(16, square_bonds(4, 4, true), 1.0, 16.0, 9).unwrap();
     let r = sim.run(2000, 10_000);
-    assert!((r.energy / 16.0 + 0.701_780).abs() < 2.5e-3, "E/N = {}", r.energy / 16.0);
+    assert!(
+        (r.energy / 16.0 + 0.701_780).abs() < 2.5e-3,
+        "E/N = {}",
+        r.energy / 16.0
+    );
     assert!(r.magnetisation_sq < 1e-2 * 16.0);
 }
 

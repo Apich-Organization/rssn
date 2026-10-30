@@ -1,13 +1,24 @@
 //! CSR sparse matrices (ported from `numerical_sparse_test.rs`).
 
 use assert_approx_eq::assert_approx_eq;
-use ndarray::{Array1, array};
+use ndarray::Array1;
+use ndarray::array;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::sparse::{
-    SparseMatrixData, csr_from_triplets, frobenius_norm, is_diagonal, is_symmetric, l1_norm,
-    linf_norm, rank, solve_conjugate_gradient, sp_mat_vec_mul, to_csr, to_dense, trace, transpose,
-};
+use rssn::kernels::sparse::SparseMatrixData;
+use rssn::kernels::sparse::csr_from_triplets;
+use rssn::kernels::sparse::frobenius_norm;
+use rssn::kernels::sparse::is_diagonal;
+use rssn::kernels::sparse::is_symmetric;
+use rssn::kernels::sparse::l1_norm;
+use rssn::kernels::sparse::linf_norm;
+use rssn::kernels::sparse::rank;
+use rssn::kernels::sparse::solve_conjugate_gradient;
+use rssn::kernels::sparse::sp_mat_vec_mul;
+use rssn::kernels::sparse::to_csr;
+use rssn::kernels::sparse::to_dense;
+use rssn::kernels::sparse::trace;
+use rssn::kernels::sparse::transpose;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -28,7 +39,10 @@ fn construction() {
 #[test]
 fn matrix_vector_product() {
     let mat = csr_from_triplets(3, 3, &[(0, 0, 1.0), (0, 2, 2.0), (1, 1, 3.0)]);
-    assert_eq!(sp_mat_vec_mul(&mat, &[1.0, 2.0, 3.0]), Ok(vec![7.0, 6.0, 0.0]));
+    assert_eq!(
+        sp_mat_vec_mul(&mat, &[1.0, 2.0, 3.0]),
+        Ok(vec![7.0, 6.0, 0.0])
+    );
     assert!(sp_mat_vec_mul(&mat, &[1.0]).is_err());
 }
 
@@ -92,7 +106,8 @@ fn transpose_moves_entries() {
 #[test]
 fn serde_round_trip() {
     let mat = csr_from_triplets(3, 3, &[(0, 0, 1.0), (1, 2, 2.0)]);
-    let json = serde_json::to_string(&SparseMatrixData::from(&mat)).unwrap_or_else(|e| panic!("{e}"));
+    let json =
+        serde_json::to_string(&SparseMatrixData::from(&mat)).unwrap_or_else(|e| panic!("{e}"));
     let decoded: SparseMatrixData = serde_json::from_str(&json).unwrap_or_else(|e| panic!("{e}"));
     let back = decoded.to_csmat();
     assert_eq!((back.rows(), back.cols(), back.nnz()), (3, 3, 2));

@@ -61,7 +61,11 @@ pub fn to_cartesian_pure(
     point: &[f64],
     from: CoordinateSystem,
 ) -> Vec<f64> {
-    let (a, b, c) = (component(point, 0), component(point, 1), component(point, 2));
+    let (a, b, c) = (
+        component(point, 0),
+        component(point, 1),
+        component(point, 2),
+    );
     match from {
         | CoordinateSystem::Cartesian => point.to_vec(),
         | CoordinateSystem::Polar => vec![a * b.cos(), a * b.sin()],
@@ -80,14 +84,22 @@ pub fn from_cartesian_pure(
     point: &[f64],
     to: CoordinateSystem,
 ) -> Vec<f64> {
-    let (x, y, z) = (component(point, 0), component(point, 1), component(point, 2));
+    let (x, y, z) = (
+        component(point, 0),
+        component(point, 1),
+        component(point, 2),
+    );
     match to {
         | CoordinateSystem::Cartesian => point.to_vec(),
         | CoordinateSystem::Polar => vec![x.hypot(y), y.atan2(x)],
         | CoordinateSystem::Cylindrical => vec![x.hypot(y), y.atan2(x), z],
         | CoordinateSystem::Spherical => {
             let r = x.hypot(y).hypot(z);
-            let theta = if r == 0.0 { 0.0 } else { (z / r).clamp(-1.0, 1.0).acos() };
+            let theta = if r == 0.0 {
+                0.0
+            } else {
+                (z / r).clamp(-1.0, 1.0).acos()
+            };
             vec![r, theta, y.atan2(x)]
         },
     }

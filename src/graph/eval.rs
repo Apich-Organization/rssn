@@ -92,7 +92,10 @@ impl Graph {
                 stack.extend(children.iter().map(|&c| (c, false)));
                 continue;
             }
-            let args: Vec<Complex64> = children.iter().map(|c| values.get(c).copied()).collect::<Option<_>>()?;
+            let args: Vec<Complex64> = children
+                .iter()
+                .map(|c| values.get(c).copied())
+                .collect::<Option<_>>()?;
             let value = if let Some(n) = self.as_number(cur) {
                 Complex64::new(n.to_f64(), 0.0)
             } else if let Some(s) = self.as_symbol(cur) {
@@ -103,7 +106,10 @@ impl Graph {
                     | core::MUL => args.iter().product(),
                     | core::POW => {
                         let (base, exponent) = (*args.first()?, *args.get(1)?);
-                        if exponent.im == 0.0 && exponent.re.fract() == 0.0 && exponent.re.abs() <= 1024.0 {
+                        if exponent.im == 0.0
+                            && exponent.re.fract() == 0.0
+                            && exponent.re.abs() <= 1024.0
+                        {
                             #[allow(clippy::cast_possible_truncation)]
                             base.powi(exponent.re as i32)
                         } else if base.im == 0.0 && base.re > 0.0 && exponent.im == 0.0 {
@@ -127,7 +133,11 @@ impl Graph {
             };
             // A negative zero imaginary part would select the lower side
             // of branch cuts; values on a cut take the principal side.
-            let value = if value.im == 0.0 { Complex64::new(value.re, 0.0) } else { value };
+            let value = if value.im == 0.0 {
+                Complex64::new(value.re, 0.0)
+            } else {
+                value
+            };
             values.insert(cur, value);
         }
         values.get(&node).copied()

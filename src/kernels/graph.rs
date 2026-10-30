@@ -3,9 +3,53 @@
 //! This module provides graph data structures and algorithms tailored for numerical
 //! applications. It includes a weighted graph representation and an implementation
 //! of Dijkstra's algorithm for finding shortest paths.
+//!
+//! # Canonical labelling
+//!
+//! The `canon` layer solves graph isomorphism and computes automorphism
+//! groups. It works on a `ColourGraph`, a vertex-coloured graph with `u32`
+//! edge labels, so it is independent of the weighted `Graph` above:
+//!
+//! * `refine` computes the coarsest equitable partition (1-dimensional
+//!   Weisfeiler–Leman) and returns it with a `RefinementCertificate` that is
+//!   equal for isomorphic graphs — a necessary condition, never a sufficient
+//!   one (every strongly regular pair shares one).
+//! * `canonical_labelling` runs a nauty-style individualisation–refinement
+//!   search over `SearchBudget` search nodes. It returns a
+//!   `CanonicalLabelling`: the canonical vertex order, the canonical code
+//!   (the adjacency matrix in that order, with the colours in front), the
+//!   automorphism group generators, their orbits, and the group order as a
+//!   [`BigInt`](num_bigint::BigInt).
+//! * `isomorphic` is the plain isomorphism test built from the two: the
+//!   certificate rejects almost everything, the canonical codes decide the
+//!   rest, and `None` means the budget ran out.
+//!
+//! The canonical code of a graph is the same for every input ordering, so two
+//! graphs are isomorphic exactly when their exact codes are equal. The
+//! canonical *order* is unique only up to an automorphism, as usual: when the
+//! group is non-trivial several orders reach the same minimum code.
+//!
+//! The search is bounded, and an inexact result says so
+//! (`CanonicalLabelling::is_exact`): the order and code are then the best
+//! found rather than a canonical one, and the group order is the order of the
+//! subgroup found so far.
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+
+mod canon;
+
+pub use canon::CanonicalLabelling;
+pub use canon::CellCertificate;
+pub use canon::ColourGraph;
+pub use canon::Permutation;
+pub use canon::Refinement;
+pub use canon::RefinementCertificate;
+pub use canon::SearchBudget;
+pub use canon::canonical_labelling;
+pub use canon::isomorphic;
+pub use canon::refine;
+pub use canon::wl_equivalent;
 
 /// Represents a graph with weighted edges for numerical algorithms.
 /// The graph is represented by an adjacency list.

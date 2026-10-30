@@ -89,7 +89,6 @@ pub fn solve_linear_system(
         let mut particular = vec![0.0; cols];
 
         #[warn(clippy::collection_is_never_read)]
-
         let mut lead = 0;
 
         for r in 0..rank {

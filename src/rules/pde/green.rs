@@ -97,7 +97,12 @@ pub(super) fn greens_function(
         return None;
     }
     let (a1, a2) = match time {
-        | Some(t) => (p.coefficient(cx.graph, &p.unit(t, 1)), p.coefficient(cx.graph, &p.unit(t, 2))),
+        | Some(t) => {
+            (
+                p.coefficient(cx.graph, &p.unit(t, 1)),
+                p.coefficient(cx.graph, &p.unit(t, 2)),
+            )
+        },
         | None => (cx.graph.int(0), cx.graph.int(0)),
     };
     for (index, c) in &p.linear {
@@ -111,10 +116,25 @@ pub(super) fn greens_function(
     let on_axis = |j: usize| conditions.0.iter().filter(|c| c.on == j).count();
     // A periodic axis carries the single condition `u(a) = u(b)`.
     let periodic = |cx: &Cx<'_>, j: usize| {
-        conditions.0.iter().any(|c| c.on == j && cx.graph.op(c.value) == crate::graph::op::core::APPLY && cx.graph.children(c.value).first() == Some(&p.function))
+        conditions.0.iter().any(|c| {
+            c.on == j
+                && cx.graph.op(c.value) == crate::graph::op::core::APPLY
+                && cx.graph.children(c.value).first() == Some(&p.function)
+        })
     };
-    if space.iter().all(|&j| on_axis(j) == 2 || (on_axis(j) == 1 && periodic(cx, j))) {
-        return box_expansion(cx, p, conditions, &space, &cjj, c0, time.map(|t| (t, a1, a2)));
+    if space
+        .iter()
+        .all(|&j| on_axis(j) == 2 || (on_axis(j) == 1 && periodic(cx, j)))
+    {
+        return box_expansion(
+            cx,
+            p,
+            conditions,
+            &space,
+            &cjj,
+            c0,
+            time.map(|t| (t, a1, a2)),
+        );
     }
     if time.is_none() && space.iter().all(|&j| on_axis(j) <= 1) && cx.is_zero(c0) {
         return fundamental(cx, p, conditions, &space, &cjj);
@@ -189,7 +209,10 @@ fn wave_kernel(
         }
     }
     let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
-    let ss: Vec<NodeId> = xs.iter().map(|&x| source_variable(cx, x)).collect::<Option<_>>()?;
+    let ss: Vec<NodeId> = xs
+        .iter()
+        .map(|&x| source_variable(cx, x))
+        .collect::<Option<_>>()?;
     let mut terms = Vec::new();
     for mask in 0..(1_usize << reflections.len()) {
         let mut sources = ss.clone();
@@ -327,14 +350,17 @@ fn box_expansion(
         let s = source_variable(cx, x)?;
         let stems = ["n", "m", "l"];
         let (n_node, n_symbol) = super::dummy(cx, p, stems.get(position).copied().unwrap_or("q"));
-        cx.graph.assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
+        cx.graph
+            .assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
         let general = interval_families(cx, &iv, n_node, false)?;
         let mut choices = Vec::new();
         for (family_index, family) in general.iter().enumerate() {
             // Literal low modes (zero or negative eigenvalues).
             for m in family.first..family.first + family.forced {
                 let literal = cx.graph.int(m);
-                let fam = interval_families(cx, &iv, literal, true)?.into_iter().nth(family_index)?;
+                let fam = interval_families(cx, &iv, literal, true)?
+                    .into_iter()
+                    .nth(family_index)?;
                 let norm = match fam.norm {
                     | Some(norm) => norm,
                     | None => {
@@ -344,11 +370,23 @@ fn box_expansion(
                     },
                 };
                 let mode_s = cx.graph.substitute(fam.mode, x, s);
-                choices.push(Choice { mode_x: fam.mode, mode_s, norm, eigen: fam.eigen, series: None });
+                choices.push(Choice {
+                    mode_x: fam.mode,
+                    mode_s,
+                    norm,
+                    eigen: fam.eigen,
+                    series: None,
+                });
             }
             let norm = family.norm?;
             let mode_s = cx.graph.substitute(family.mode, x, s);
-            choices.push(Choice { mode_x: family.mode, mode_s, norm, eigen: family.eigen, series: Some((n_node, family.first + family.forced)) });
+            choices.push(Choice {
+                mode_x: family.mode,
+                mode_s,
+                norm,
+                eigen: family.eigen,
+                series: Some((n_node, family.first + family.forced)),
+            });
         }
         axes.push(choices);
     }
@@ -367,7 +405,11 @@ fn box_expansion(
     }
     let mut total = Vec::new();
     for combination in combinations {
-        let picks: Vec<&Choice> = combination.iter().zip(&axes).map(|(&k, choices)| &choices[k]).collect();
+        let picks: Vec<&Choice> = combination
+            .iter()
+            .zip(&axes)
+            .map(|(&k, choices)| &choices[k])
+            .collect();
         // σ = c₀ - Σ c_j λ_j.
         let mut sigma_terms = vec![c0];
         for (pick, &c) in picks.iter().zip(cjj) {
@@ -482,7 +524,10 @@ fn fundamental(
         }
     }
     let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
-    let ss: Vec<NodeId> = xs.iter().map(|&x| source_variable(cx, x)).collect::<Option<_>>()?;
+    let ss: Vec<NodeId> = xs
+        .iter()
+        .map(|&x| source_variable(cx, x))
+        .collect::<Option<_>>()?;
     let mut terms = Vec::new();
     for mask in 0..(1_usize << reflections.len()) {
         let mut sources = ss.clone();

@@ -78,9 +78,10 @@ pub(crate) fn count_sign_changes(
 
         if let Some(s) = sign {
             if let Some(ls) = last_sign
-                && s != ls {
-                    changes += 1;
-                }
+                && s != ls
+            {
+                changes += 1;
+            }
 
             last_sign = Some(s);
         }

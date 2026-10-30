@@ -1,35 +1,61 @@
 //! Tests for Krylov-Schur, block Lanczos, Jacobi-Davidson and generalised eigensolvers.
 
 use num_complex::Complex64;
-use rssn::kernels::dense::{self, Mat};
-use rssn::kernels::eigs::{EigsOptions, Which};
-use rssn::kernels::eigs_ext::{
-    GenEigsOptions, JdOptions, complex_schur, eigs_gen_shift_invert, eigs_gen_sym_shift_invert,
-    eigs_jd, eigs_jd_sym, eigs_krylov_schur, eigs_sym_block, reorder_schur,
+use rssn::kernels::dense::Mat;
+use rssn::kernels::dense::{
+    self,
 };
-use rssn::kernels::krylov::{Csr, SparseOrdering};
+use rssn::kernels::eigs::EigsOptions;
+use rssn::kernels::eigs::Which;
+use rssn::kernels::eigs_ext::GenEigsOptions;
+use rssn::kernels::eigs_ext::JdOptions;
+use rssn::kernels::eigs_ext::complex_schur;
+use rssn::kernels::eigs_ext::eigs_gen_shift_invert;
+use rssn::kernels::eigs_ext::eigs_gen_sym_shift_invert;
+use rssn::kernels::eigs_ext::eigs_jd;
+use rssn::kernels::eigs_ext::eigs_jd_sym;
+use rssn::kernels::eigs_ext::eigs_jd_two_sided;
+use rssn::kernels::eigs_ext::eigs_krylov_schur;
+use rssn::kernels::eigs_ext::eigs_sym_block;
+use rssn::kernels::eigs_ext::reorder_schur;
+use rssn::kernels::krylov::Csr;
+use rssn::kernels::krylov::SparseOrdering;
 
 type C = Complex64;
 
 fn lcg(seed: &mut u64) -> f64 {
-    *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    *seed = seed
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
     ((*seed >> 33) as f64) / f64::from(1u32 << 31) - 0.5
 }
 
-fn cmatmul(a: &[Vec<C>], b: &[Vec<C>]) -> Vec<Vec<C>> {
+fn cmatmul(
+    a: &[Vec<C>],
+    b: &[Vec<C>],
+) -> Vec<Vec<C>> {
     let n = a.len();
     let m = b[0].len();
     (0..n)
-        .map(|i| (0..m).map(|j| (0..b.len()).map(|k| a[i][k] * b[k][j]).sum()).collect())
+        .map(|i| {
+            (0..m)
+                .map(|j| (0..b.len()).map(|k| a[i][k] * b[k][j]).sum())
+                .collect()
+        })
         .collect()
 }
 
 fn adjoint(a: &[Vec<C>]) -> Vec<Vec<C>> {
     let n = a.len();
-    (0..n).map(|i| (0..n).map(|j| a[j][i].conj()).collect()).collect()
+    (0..n)
+        .map(|i| (0..n).map(|j| a[j][i].conj()).collect())
+        .collect()
 }
 
-fn max_diff(a: &[Vec<C>], b: &[Vec<C>]) -> f64 {
+fn max_diff(
+    a: &[Vec<C>],
+    b: &[Vec<C>],
+) -> f64 {
     let mut m = 0.0f64;
     for i in 0..a.len() {
         for j in 0..a[i].len() {
@@ -43,8 +69,13 @@ fn max_diff(a: &[Vec<C>], b: &[Vec<C>]) -> f64 {
 fn complex_schur_reconstructs_and_reorders() {
     let n = 14;
     let mut seed = 42u64;
-    let a: Vec<Vec<C>> =
-        (0..n).map(|_| (0..n).map(|_| C::new(lcg(&mut seed), lcg(&mut seed))).collect()).collect();
+    let a: Vec<Vec<C>> = (0..n)
+        .map(|_| {
+            (0..n)
+                .map(|_| C::new(lcg(&mut seed), lcg(&mut seed)))
+                .collect()
+        })
+        .collect();
     let (mut t, mut q) = complex_schur(&a).unwrap();
     let recon = cmatmul(&cmatmul(&q, &t), &adjoint(&q));
     assert!(max_diff(&recon, &a) < 1e-12);
@@ -54,7 +85,17 @@ fn complex_schur_reconstructs_and_reorders() {
         }
     }
     let eye: Vec<Vec<C>> = (0..n)
-        .map(|i| (0..n).map(|j| if i == j { C::new(1.0, 0.0) } else { C::new(0.0, 0.0) }).collect())
+        .map(|i| {
+            (0..n)
+                .map(|j| {
+                    if i == j {
+                        C::new(1.0, 0.0)
+                    } else {
+                        C::new(0.0, 0.0)
+                    }
+                })
+                .collect()
+        })
         .collect();
     assert!(max_diff(&cmatmul(&adjoint(&q), &q), &eye) < 1e-13);
     // sort by decreasing real part
@@ -82,7 +123,11 @@ fn krylov_schur_non_normal_convection_diffusion() {
         }
     }
     let a = Csr::from_triplets(n, n, &trip);
-    let opts = EigsOptions { tol: 1e-10, max_restarts: 3000, ..EigsOptions::default() };
+    let opts = EigsOptions {
+        tol: 1e-10,
+        max_restarts: 3000,
+        ..EigsOptions::default()
+    };
     let r = eigs_krylov_schur(|x, y| a.matvec(x, y), n, 4, Which::LargestReal, &opts).unwrap();
     assert!(r.converged, "restarts {}", r.restarts);
     let s = 2.0 * (1.0 - c * c).sqrt();
@@ -127,8 +172,19 @@ fn krylov_schur_complex_pairs() {
             m.set(i, j, 0.4 * lcg(&mut seed));
         }
     }
-    let opts = EigsOptions { tol: 1e-10, max_restarts: 2000, ..EigsOptions::default() };
-    let r = eigs_krylov_schur(|x, y| y.copy_from_slice(&m.matvec(x)), n, 6, Which::LargestReal, &opts).unwrap();
+    let opts = EigsOptions {
+        tol: 1e-10,
+        max_restarts: 2000,
+        ..EigsOptions::default()
+    };
+    let r = eigs_krylov_schur(
+        |x, y| y.copy_from_slice(&m.matvec(x)),
+        n,
+        6,
+        Which::LargestReal,
+        &opts,
+    )
+    .unwrap();
     assert!(r.converged);
     // the three largest-real-part pairs: j = 24, 23, 22
     for p in 0..3 {
@@ -169,7 +225,11 @@ fn block_lanczos_finds_multiple_eigenvalues() {
     let nx = 30;
     let a = laplacian2d(nx);
     let n = nx * nx;
-    let opts = EigsOptions { tol: 1e-9, max_restarts: 2000, ..EigsOptions::default() };
+    let opts = EigsOptions {
+        tol: 1e-9,
+        max_restarts: 2000,
+        ..EigsOptions::default()
+    };
     let k = 8;
     let r = eigs_sym_block(|x, y| a.matvec(x, y), n, k, Which::SmallestReal, 2, &opts).unwrap();
     assert!(r.converged, "restarts {}", r.restarts);
@@ -183,7 +243,12 @@ fn block_lanczos_finds_multiple_eigenvalues() {
     }
     exact.sort_by(f64::total_cmp);
     for i in 0..k {
-        assert!((r.values[i].0 - exact[i]).abs() < 1e-8, "{i}: {} vs {}", r.values[i].0, exact[i]);
+        assert!(
+            (r.values[i].0 - exact[i]).abs() < 1e-8,
+            "{i}: {} vs {}",
+            r.values[i].0,
+            exact[i]
+        );
     }
     // both members of every double eigenvalue are present
     assert!((r.values[1].0 - r.values[2].0).abs() < 1e-8);
@@ -202,17 +267,32 @@ fn block_lanczos_tight_cluster() {
     d[40] = 90.0;
     d[50] = 90.0 + 1e-7;
     d[60] = 90.0 + 2e-7;
-    let opts = EigsOptions { tol: 1e-10, max_restarts: 2000, ..EigsOptions::default() };
-    let r = eigs_sym_block(|x, y| {
-        for i in 0..n {
-            y[i] = d[i] * x[i];
-        }
-    }, n, 6, Which::LargestReal, 3, &opts)
+    let opts = EigsOptions {
+        tol: 1e-10,
+        max_restarts: 2000,
+        ..EigsOptions::default()
+    };
+    let r = eigs_sym_block(
+        |x, y| {
+            for i in 0..n {
+                y[i] = d[i] * x[i];
+            }
+        },
+        n,
+        6,
+        Which::LargestReal,
+        3,
+        &opts,
+    )
     .unwrap();
     assert!(r.converged);
     let want = [100.0, 100.0, 100.0, 90.0 + 2e-7, 90.0 + 1e-7, 90.0];
     for i in 0..6 {
-        assert!((r.values[i].0 - want[i]).abs() < 1e-9, "{i}: {}", r.values[i].0);
+        assert!(
+            (r.values[i].0 - want[i]).abs() < 1e-9,
+            "{i}: {}",
+            r.values[i].0
+        );
     }
     // invalid arguments
     assert!(eigs_sym_block(|_, _| {}, n, 0, Which::LargestReal, 3, &opts).is_err());
@@ -253,7 +333,10 @@ fn jacobi_davidson_interior_eigenvalues() {
     }
     let lu = shifted.sparse_lu(SparseOrdering::Rcm).unwrap();
     let pc = |x: &[f64], y: &mut [f64]| y.copy_from_slice(&lu.solve(x));
-    let opts = JdOptions { tol: 1e-9, ..JdOptions::default() };
+    let opts = JdOptions {
+        tol: 1e-9,
+        ..JdOptions::default()
+    };
     let r = eigs_jd_sym(|x, y| a.matvec(x, y), n, 3, target, &opts, Some(&pc)).unwrap();
     assert!(r.converged, "iterations {}", r.restarts);
     let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
@@ -261,7 +344,12 @@ fn jacobi_davidson_interior_eigenvalues() {
     let mut want: Vec<f64> = exact[..3].to_vec();
     want.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
     for i in 0..3 {
-        assert!((got[i] - want[i]).abs() < 1e-8, "{i}: {} vs {}", got[i], want[i]);
+        assert!(
+            (got[i] - want[i]).abs() < 1e-8,
+            "{i}: {} vs {}",
+            got[i],
+            want[i]
+        );
     }
     for i in 0..3 {
         assert!(r.residuals[i] < 1e-8);
@@ -277,7 +365,12 @@ fn jacobi_davidson_without_preconditioner() {
         .map(|j| 2.0 - 2.0 * (j as f64 * std::f64::consts::PI / (n as f64 + 1.0)).cos())
         .collect();
     exact.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
-    let opts = JdOptions { tol: 1e-8, inner_iters: 60, max_iter: 1500, ..JdOptions::default() };
+    let opts = JdOptions {
+        tol: 1e-8,
+        inner_iters: 60,
+        max_iter: 1500,
+        ..JdOptions::default()
+    };
     let r = eigs_jd_sym(|x, y| a.matvec(x, y), n, 2, target, &opts, None).unwrap();
     assert!(r.converged);
     let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
@@ -285,7 +378,12 @@ fn jacobi_davidson_without_preconditioner() {
     let mut want = exact[..2].to_vec();
     want.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
     for i in 0..2 {
-        assert!((got[i] - want[i]).abs() < 1e-7, "{i}: {} vs {}", got[i], want[i]);
+        assert!(
+            (got[i] - want[i]).abs() < 1e-7,
+            "{i}: {} vs {}",
+            got[i],
+            want[i]
+        );
     }
     assert!(eigs_jd_sym(|_, _| {}, n, 0, target, &opts, None).is_err());
 }
@@ -305,7 +403,11 @@ fn fe_matrices(n: usize) -> (Csr, Csr, f64) {
             m.push((i, i + 1, h / 6.0));
         }
     }
-    (Csr::from_triplets(n, n, &k), Csr::from_triplets(n, n, &m), h)
+    (
+        Csr::from_triplets(n, n, &k),
+        Csr::from_triplets(n, n, &m),
+        h,
+    )
 }
 
 #[test]
@@ -330,7 +432,10 @@ fn generalised_symmetric_shift_invert() {
     let opts = GenEigsOptions {
         sigma,
         block: 1,
-        eigs: EigsOptions { tol: 1e-10, ..EigsOptions::default() },
+        eigs: EigsOptions {
+            tol: 1e-10,
+            ..EigsOptions::default()
+        },
     };
     let r = eigs_gen_sym_shift_invert(
         |x, y| k.matvec(x, y),
@@ -346,8 +451,17 @@ fn generalised_symmetric_shift_invert() {
     let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
     got.sort_by(|a, b| (a - sigma).abs().total_cmp(&(b - sigma).abs()));
     for i in 0..4 {
-        assert!((got[i] - all[i]).abs() < 1e-6 * all[i], "{i}: {} vs {}", got[i], all[i]);
-        assert!(r.residuals[i] < 1e-5 * all[i], "residual {}", r.residuals[i]);
+        assert!(
+            (got[i] - all[i]).abs() < 1e-6 * all[i],
+            "{i}: {} vs {}",
+            got[i],
+            all[i]
+        );
+        assert!(
+            r.residuals[i] < 1e-5 * all[i],
+            "residual {}",
+            r.residuals[i]
+        );
     }
     // B-orthonormal eigenvectors
     for i in 0..4 {
@@ -398,7 +512,11 @@ fn generalised_nonsymmetric_matches_dense() {
     let opts = GenEigsOptions {
         sigma,
         block: 1,
-        eigs: EigsOptions { tol: 1e-11, ncv: 30, ..EigsOptions::default() },
+        eigs: EigsOptions {
+            tol: 1e-11,
+            ncv: 30,
+            ..EigsOptions::default()
+        },
     };
     let r = eigs_gen_shift_invert(
         |x, y| y.copy_from_slice(&a.matvec(x)),
@@ -410,11 +528,21 @@ fn generalised_nonsymmetric_matches_dense() {
     )
     .unwrap();
     for v in &r.values {
-        let dmin = ev.iter().map(|e| (e.0 - v.0).hypot(e.1 - v.1)).fold(f64::INFINITY, f64::min);
-        assert!(dmin < 1e-6 * v.0.abs().max(1.0), "{v:?} not in the dense spectrum (dist {dmin})");
+        let dmin = ev
+            .iter()
+            .map(|e| (e.0 - v.0).hypot(e.1 - v.1))
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            dmin < 1e-6 * v.0.abs().max(1.0),
+            "{v:?} not in the dense spectrum (dist {dmin})"
+        );
     }
     for i in 0..3 {
-        assert!(r.residuals[i] < 1e-5 * r.values[i].0.abs().max(1.0), "{}", r.residuals[i]);
+        assert!(
+            r.residuals[i] < 1e-5 * r.values[i].0.abs().max(1.0),
+            "{}",
+            r.residuals[i]
+        );
     }
 }
 
@@ -437,8 +565,9 @@ fn nonsymmetric_jacobi_davidson_interior_real_eigenvalues() {
     let a = Csr::from_triplets(n, n, &trip);
     let s = 2.0 * (1.0 - c * c).sqrt();
     let target = 2.0 + 0.3 * s;
-    let mut exact: Vec<f64> =
-        (1..=n).map(|j| 2.0 + s * (std::f64::consts::PI * j as f64 / (n as f64 + 1.0)).cos()).collect();
+    let mut exact: Vec<f64> = (1..=n)
+        .map(|j| 2.0 + s * (std::f64::consts::PI * j as f64 / (n as f64 + 1.0)).cos())
+        .collect();
     exact.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
     // preconditioner: sparse LU of A - (target + 0.01) I
     let mut shifted = a.clone();
@@ -451,13 +580,21 @@ fn nonsymmetric_jacobi_davidson_interior_real_eigenvalues() {
     }
     let lu = shifted.sparse_lu(SparseOrdering::Natural).unwrap();
     let pc = |x: &[f64], y: &mut [f64]| y.copy_from_slice(&lu.solve(x));
-    let opts = JdOptions { tol: 1e-9, ..JdOptions::default() };
+    let opts = JdOptions {
+        tol: 1e-9,
+        ..JdOptions::default()
+    };
     let r = eigs_jd(|x, y| a.matvec(x, y), n, 3, (target, 0.0), &opts, Some(&pc)).unwrap();
     assert!(r.converged, "iterations {}", r.restarts);
     let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
     got.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
     for i in 0..3 {
-        assert!((got[i] - exact[i]).abs() < 1e-5, "{i}: {} vs {}", got[i], exact[i]);
+        assert!(
+            (got[i] - exact[i]).abs() < 1e-5,
+            "{i}: {} vs {}",
+            got[i],
+            exact[i]
+        );
         assert!(r.values[i].1.abs() < 1e-5);
         assert!(r.residuals[i] < 1e-6, "residual {}", r.residuals[i]);
     }
@@ -483,16 +620,42 @@ fn nonsymmetric_jacobi_davidson_complex_target() {
             m.set(i, j, 0.4 * lcg(&mut seed));
         }
     }
-    let opts = JdOptions { tol: 1e-9, harmonic: true, inner_iters: 40, max_iter: 400, ..JdOptions::default() };
+    let opts = JdOptions {
+        tol: 1e-9,
+        harmonic: true,
+        inner_iters: 40,
+        max_iter: 400,
+        ..JdOptions::default()
+    };
     // target near a_12 + i b_12 = 1.2 + 1.6 i
-    let r = eigs_jd(|x, y| y.copy_from_slice(&m.matvec(x)), n, 1, (1.23, 1.58), &opts, None).unwrap();
+    let r = eigs_jd(
+        |x, y| y.copy_from_slice(&m.matvec(x)),
+        n,
+        1,
+        (1.23, 1.58),
+        &opts,
+        None,
+    )
+    .unwrap();
     assert!(r.converged, "iterations {}", r.restarts);
-    assert!((r.values[0].0 - 1.2).abs() < 1e-6 && (r.values[0].1 - 1.6).abs() < 1e-6, "{:?}", r.values[0]);
+    assert!(
+        (r.values[0].0 - 1.2).abs() < 1e-6 && (r.values[0].1 - 1.6).abs() < 1e-6,
+        "{:?}",
+        r.values[0]
+    );
     assert!(r.residuals[0] < 1e-6);
     // the eigenvector is genuinely complex
     assert!(r.vectors_im[0].iter().any(|v| v.abs() > 1e-3));
     // two eigenvalues around a conjugate target pair on the real axis
-    let r = eigs_jd(|x, y| y.copy_from_slice(&m.matvec(x)), n, 2, (1.2, 0.0), &opts, None).unwrap();
+    let r = eigs_jd(
+        |x, y| y.copy_from_slice(&m.matvec(x)),
+        n,
+        2,
+        (1.2, 0.0),
+        &opts,
+        None,
+    )
+    .unwrap();
     assert!(r.converged);
     for v in &r.values {
         let near = (0..nb).any(|j| {
@@ -501,4 +664,262 @@ fn nonsymmetric_jacobi_davidson_complex_target() {
         });
         assert!(near, "{v:?} is not an eigenvalue");
     }
+}
+
+#[test]
+fn nonsymmetric_jacobi_davidson_on_a_strongly_non_normal_matrix() {
+    // The Grcar matrix (-1 on the subdiagonal, 1 on the diagonal and the
+    // three superdiagonals) is far from normal: its eigenvalues are
+    // sensitive to perturbations of size 1e-10 and the pseudospectra reach far
+    // into the complex plane, the case in which interior eigenvalues are hard to
+    // extract from a Krylov space of a shifted operator.
+    let n = 64;
+    let mut m = Mat::zeros(n, n);
+    for i in 0..n {
+        m.set(i, i, 1.0);
+        if i > 0 {
+            m.set(i, i - 1, -1.0);
+        }
+        for d in 1..=3 {
+            if i + d < n {
+                m.set(i, i + d, 1.0);
+            }
+        }
+    }
+    // Reference eigenvalues from the dense complex Schur decomposition.
+    let dense: Vec<Vec<C>> = (0..n)
+        .map(|i| (0..n).map(|j| C::new(m.at(i, j), 0.0)).collect())
+        .collect();
+    let (t, _) = complex_schur(&dense).unwrap();
+    let all: Vec<C> = (0..n).map(|i| t[i][i]).collect();
+    let target = C::new(2.0, 1.0);
+    let mut nearest = all.clone();
+    nearest.sort_by(|a, b| (a - target).norm().total_cmp(&(b - target).norm()));
+    let opts = JdOptions {
+        tol: 1e-8,
+        harmonic: true,
+        inner_iters: 60,
+        max_iter: 600,
+        max_dim: 30,
+        min_dim: 8,
+        ..JdOptions::default()
+    };
+    let r = eigs_jd(
+        |x, y| y.copy_from_slice(&m.matvec(x)),
+        n,
+        2,
+        (target.re, target.im),
+        &opts,
+        None,
+    )
+    .unwrap();
+    assert!(r.converged, "iterations {}", r.restarts);
+    for i in 0..2 {
+        let value = C::new(r.values[i].0, r.values[i].1);
+        // True residual |A x - lambda x| of the returned pair.
+        assert!(r.residuals[i] < 1e-6, "residual {}", r.residuals[i]);
+        // It is an eigenvalue of the matrix: the nearest dense eigenvalue agrees to the
+        // conditioning of the problem (the Schur values themselves are accurate to ~1e-6 here).
+        let closest = all
+            .iter()
+            .map(|z| (z - value).norm())
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            closest < 1e-4,
+            "{value} is {closest} from every dense eigenvalue"
+        );
+        // And the pair is one of the two nearest to the target (up to the sensitivity).
+        assert!(
+            (value - target).norm() <= (nearest[3] - target).norm() + 1e-3,
+            "{value}"
+        );
+    }
+}
+
+fn cdotc(
+    a: &[f64],
+    ai: &[f64],
+    b: &[f64],
+    bi: &[f64],
+) -> C {
+    // a^H b for complex vectors given by real and imaginary parts
+    (0..a.len())
+        .map(|i| C::new(a[i], -ai[i]) * C::new(b[i], bi[i]))
+        .sum()
+}
+
+#[test]
+fn two_sided_jacobi_davidson_gives_left_and_right_vectors_and_condition_numbers() {
+    // Upper bidiagonal A = diag(1..n) + c * (superdiagonal): eigenvalues 1..n with
+    // closed-form right and left eigenvectors and strongly non-normal (large condition numbers).
+    let (n, c) = (40_usize, 3.0_f64);
+    let apply = |x: &[f64], y: &mut [f64]| {
+        for i in 0..n {
+            y[i] = (i + 1) as f64 * x[i]
+                + if i + 1 < n {
+                    c * x[i + 1]
+                } else {
+                    0.0
+                };
+        }
+    };
+    let apply_t = |x: &[f64], y: &mut [f64]| {
+        for i in 0..n {
+            y[i] = (i + 1) as f64 * x[i] + if i > 0 { c * x[i - 1] } else { 0.0 };
+        }
+    };
+    // right eigenvector of the eigenvalue d_j = j + 1 (0-based j): u_j = 1, u_i = c u_{i+1} / (d_j - d_i)
+    let right = |j: usize| -> Vec<f64> {
+        let mut u = vec![0.0; n];
+        u[j] = 1.0;
+        for i in (0..j).rev() {
+            u[i] = c * u[i + 1] / (j as f64 - i as f64);
+        }
+        u
+    };
+    // left eigenvector: w_j = 1, w_i = c w_{i-1} / (d_j - d_i) for i > j
+    let left = |j: usize| -> Vec<f64> {
+        let mut w = vec![0.0; n];
+        w[j] = 1.0;
+        for i in j + 1..n {
+            w[i] = c * w[i - 1] / (j as f64 - i as f64);
+        }
+        w
+    };
+    let nrm = |v: &[f64]| v.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let opts = JdOptions {
+        tol: 1e-10,
+        max_dim: 24,
+        min_dim: 8,
+        inner_iters: 40,
+        max_iter: 400,
+        ..JdOptions::default()
+    };
+    let r = eigs_jd_two_sided(apply, apply_t, n, 3, (10.2, 0.0), &opts).unwrap();
+    assert!(r.converged, "iterations {}", r.iterations);
+    let mut found: Vec<usize> = r
+        .values
+        .iter()
+        .map(|v| (v.0.round() as i64 - 1) as usize)
+        .collect();
+    for (i, v) in r.values.iter().enumerate() {
+        assert!(
+            (v.0 - v.0.round()).abs() < 1e-7 && v.1.abs() < 1e-7,
+            "eigenvalue {v:?}"
+        );
+        assert!(
+            r.right_residuals[i] < 1e-7 && r.left_residuals[i] < 1e-7,
+            "residuals {} {}",
+            r.right_residuals[i],
+            r.left_residuals[i]
+        );
+        // condition number 1/|w^H u| of the unit vectors against the closed form
+        let j = found[i];
+        let (u, w) = (right(j), left(j));
+        let exact = nrm(&u) * nrm(&w) / (w[j] * u[j]).abs();
+        assert!(
+            (r.condition[i] - exact).abs() < 1e-5 * exact,
+            "condition {} vs {exact} (eigenvalue {})",
+            r.condition[i],
+            j + 1
+        );
+        // the returned vectors are the closed-form ones up to phase and scale
+        let overlap = cdotc(&r.right_re[i], &r.right_im[i], &u, &vec![0.0; n]).norm() / nrm(&u);
+        assert!(
+            (overlap - 1.0).abs() < 1e-7,
+            "right vector overlap {overlap}"
+        );
+        let overlap = cdotc(&r.left_re[i], &r.left_im[i], &w, &vec![0.0; n]).norm() / nrm(&w);
+        assert!(
+            (overlap - 1.0).abs() < 1e-7,
+            "left vector overlap {overlap}"
+        );
+    }
+    found.sort_unstable();
+    // the three eigenvalues nearest to 10.2 are 10, 11 and 9
+    assert_eq!(found, vec![8, 9, 10]);
+    // distinct eigenvalues have biorthogonal left and right vectors (oblique deflation worked)
+    for a in 0..3 {
+        for b in 0..3 {
+            if a != b {
+                let c = cdotc(&r.left_re[a], &r.left_im[a], &r.right_re[b], &r.right_im[b]).norm();
+                assert!(c < 1e-6, "w_{a}^H u_{b} = {c}");
+            }
+        }
+    }
+}
+
+#[test]
+fn two_sided_jacobi_davidson_complex_pair_and_the_two_sided_quotient() {
+    // Block upper triangular matrix with the complex pair 2 +- i, real eigenvalues 5 and 7
+    // and a non-normal coupling; the left/right vectors satisfy w^H A = lambda w^H.
+    let n = 30_usize;
+    let mut m = Mat::zeros(n, n);
+    for i in 0..n {
+        m.set(i, i, 9.0 + i as f64);
+    }
+    m.set(0, 0, 2.0);
+    m.set(0, 1, 1.0);
+    m.set(1, 0, -1.0);
+    m.set(1, 1, 2.0);
+    m.set(2, 2, 5.0);
+    m.set(3, 3, 7.0);
+    let mut state = 11_u64;
+    for i in 0..n {
+        for j in i + 2..n {
+            m.set(i, j, 0.8 * lcg(&mut state));
+        }
+    }
+    let mt = m.transpose();
+    let opts = JdOptions {
+        tol: 1e-10,
+        max_dim: 20,
+        min_dim: 6,
+        inner_iters: 40,
+        max_iter: 400,
+        ..JdOptions::default()
+    };
+    let r = eigs_jd_two_sided(
+        |x, y| y.copy_from_slice(&m.matvec(x)),
+        |x, y| y.copy_from_slice(&mt.matvec(x)),
+        n,
+        2,
+        (2.0, 0.8),
+        &opts,
+    )
+    .unwrap();
+    assert!(r.converged);
+    // the pair 2 +- i: both eigenvalues have the real part 2 and |imaginary part| 1
+    for v in &r.values {
+        assert!(
+            (v.0 - 2.0).abs() < 1e-8 && (v.1.abs() - 1.0).abs() < 1e-8,
+            "{v:?}"
+        );
+    }
+    assert!(
+        r.values[0].1 * r.values[1].1 < 0.0,
+        "conjugates expected: {:?}",
+        r.values
+    );
+    for i in 0..2 {
+        let lam = C::new(r.values[i].0, r.values[i].1);
+        // w^H A = lambda w^H, i.e. A^T w = conj(lambda) w for the real matrix
+        let (wr, wi) = (&r.left_re[i], &r.left_im[i]);
+        let aw_r = mt.matvec(wr);
+        let aw_i = mt.matvec(wi);
+        let res: f64 = (0..n)
+            .map(|k| (C::new(aw_r[k], aw_i[k]) - lam.conj() * C::new(wr[k], wi[k])).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(res < 1e-7, "left residual {res}");
+        // the two-sided Rayleigh quotient w^H A u / w^H u reproduces the eigenvalue to round-off
+        let (ur, ui) = (&r.right_re[i], &r.right_im[i]);
+        let au_r = m.matvec(ur);
+        let au_i = m.matvec(ui);
+        let num = cdotc(wr, wi, &au_r, &au_i);
+        let den = cdotc(wr, wi, ur, ui);
+        assert!((num / den - lam).norm() < 1e-8, "{} vs {lam}", num / den);
+        assert!(r.condition[i] >= 1.0 && r.condition[i].is_finite());
+    }
+    assert!(eigs_jd_two_sided(|_, _| {}, |_, _| {}, n, 0, (0.0, 0.0), &opts).is_err());
 }

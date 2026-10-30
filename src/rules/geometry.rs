@@ -155,8 +155,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("cell", Arity::Fixed(3)))?;
     i.op(OpDescriptor::new("chain", Arity::Fixed(1)))?;
     for (name, arity, request) in table {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("geometry/{name}"), Tier::Reduce, Geometry { op, request });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("geometry/{name}"),
+            Tier::Reduce,
+            Geometry { op, request },
+        );
     }
     ext::install(i)?;
     Ok(())
@@ -181,7 +187,10 @@ impl Tensor {
     ) -> Option<Self> {
         let term = best(graph, node)?;
         if graph.op(term) != core::LIST {
-            return Some(Self { shape: Vec::new(), data: vec![term] });
+            return Some(Self {
+                shape: Vec::new(),
+                data: vec![term],
+            });
         }
         let items = graph.children(term).to_vec();
         let mut parts = Vec::with_capacity(items.len());
@@ -194,7 +203,10 @@ impl Tensor {
         }
         let mut shape = vec![parts.len()];
         shape.extend(inner);
-        Some(Self { shape, data: parts.into_iter().flat_map(|p| p.data).collect() })
+        Some(Self {
+            shape,
+            data: parts.into_iter().flat_map(|p| p.data).collect(),
+        })
     }
 
     fn write(
@@ -210,7 +222,9 @@ impl Tensor {
                 | None => data.first().copied().unwrap_or(NodeId::NONE),
                 | Some((&n, rest)) => {
                     let stride: usize = rest.iter().product();
-                    let items: Vec<NodeId> = (0..n).map(|k| build(graph, rest, &data[k * stride..(k + 1) * stride])).collect();
+                    let items: Vec<NodeId> = (0..n)
+                        .map(|k| build(graph, rest, &data[k * stride..(k + 1) * stride]))
+                        .collect();
                     graph.node(core::LIST, &items)
                 },
             }
@@ -224,14 +238,20 @@ impl Tensor {
     ) -> Self {
         let zero = graph.int(0);
         let len = shape.iter().product();
-        Self { shape, data: vec![zero; len] }
+        Self {
+            shape,
+            data: vec![zero; len],
+        }
     }
 
     fn offset(
         &self,
         index: &[usize],
     ) -> usize {
-        index.iter().zip(&self.shape).fold(0, |acc, (&i, &n)| acc * n + i)
+        index
+            .iter()
+            .zip(&self.shape)
+            .fold(0, |acc, (&i, &n)| acc * n + i)
     }
 
     fn get(
@@ -255,7 +275,10 @@ impl Tensor {
 fn indices(shape: &[usize]) -> Vec<Vec<usize>> {
     let mut out = vec![Vec::new()];
     for &n in shape {
-        out = out.into_iter().flat_map(|prefix| (0..n).map(move |k| [prefix.clone(), vec![k]].concat())).collect();
+        out = out
+            .into_iter()
+            .flat_map(|prefix| (0..n).map(move |k| [prefix.clone(), vec![k]].concat()))
+            .collect();
     }
     out
 }
@@ -298,7 +321,9 @@ fn small_index(
     graph: &Graph,
     node: NodeId,
 ) -> Option<usize> {
-    usize::try_from(graph.number_of(node)?.to_i64()?).ok()?.checked_sub(1)
+    usize::try_from(graph.number_of(node)?.to_i64()?)
+        .ok()?
+        .checked_sub(1)
 }
 
 /// `∂f/∂x`, simplified.
@@ -349,11 +374,14 @@ fn christoffel_first(
     }
     let mut out = Tensor::zeros(cx.graph, vec![n, n, n]);
     let h = half(cx.graph);
-    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+    #[allow(clippy::needless_range_loop)]
+    // index is used for more than one array / arithmetic; iterator form would not be clearer
     for k in 0..n {
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for i in 0..n {
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for j in 0..n {
                 let first = add(cx.graph, &[dg[j][k][i], dg[i][k][j]]);
                 let difference = sub(cx.graph, first, dg[i][j][k]);
@@ -375,11 +403,14 @@ fn christoffel_second(
     let first = christoffel_first(cx, g, vars)?;
     let inverse = invert(cx, g)?;
     let mut out = Tensor::zeros(cx.graph, vec![n, n, n]);
-    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+    #[allow(clippy::needless_range_loop)]
+    // index is used for more than one array / arithmetic; iterator form would not be clearer
     for k in 0..n {
         for i in 0..n {
             for j in 0..n {
-                let terms: Vec<NodeId> = (0..n).map(|l| mul(cx.graph, &[inverse[k][l], first.get(&[l, i, j])])).collect();
+                let terms: Vec<NodeId> = (0..n)
+                    .map(|l| mul(cx.graph, &[inverse[k][l], first.get(&[l, i, j])]))
+                    .collect();
                 let sum = add(cx.graph, &terms);
                 out.set(&[k, i, j], normal_form(cx, sum));
             }
@@ -435,9 +466,11 @@ fn ricci(
     let n = vars.len();
     let r = riemann(cx, g, vars)?;
     let mut out = vec![vec![NodeId::NONE; n]; n];
-    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+    #[allow(clippy::needless_range_loop)]
+    // index is used for more than one array / arithmetic; iterator form would not be clearer
     for s in 0..n {
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..n {
             let terms: Vec<NodeId> = (0..n).map(|k| r.get(&[k, s, k, v])).collect();
             let sum = add(cx.graph, &terms);
@@ -519,7 +552,11 @@ fn to_cartesian(
         | (System::Spherical, &[r, t, p]) => {
             let (ct, st) = (named(graph, "cos", &[t])?, named(graph, "sin", &[t])?);
             let (cp, sp) = (named(graph, "cos", &[p])?, named(graph, "sin", &[p])?);
-            vec![mul(graph, &[r, st, cp]), mul(graph, &[r, st, sp]), mul(graph, &[r, ct])]
+            vec![
+                mul(graph, &[r, st, cp]),
+                mul(graph, &[r, st, sp]),
+                mul(graph, &[r, ct]),
+            ]
         },
         | _ => return None,
     })
@@ -539,12 +576,18 @@ fn from_cartesian(
     Some(match (sys, xyz) {
         | (System::Cartesian, _) => xyz.to_vec(),
         | (System::Polar, &[x, y]) => vec![radius(graph, &[x, y]), named(graph, "atan2", &[y, x])?],
-        | (System::Cylindrical, &[x, y, z]) => vec![radius(graph, &[x, y]), named(graph, "atan2", &[y, x])?, z],
+        | (System::Cylindrical, &[x, y, z]) => {
+            vec![radius(graph, &[x, y]), named(graph, "atan2", &[y, x])?, z]
+        },
         | (System::Spherical, &[x, y, z]) => {
             let r = radius(graph, &[x, y, z]);
             let inverse = powi(graph, r, -1);
             let ratio = mul(graph, &[z, inverse]);
-            vec![r, named(graph, "acos", &[ratio])?, named(graph, "atan2", &[y, x])?]
+            vec![
+                r,
+                named(graph, "acos", &[ratio])?,
+                named(graph, "atan2", &[y, x])?,
+            ]
         },
         | _ => return None,
     })
@@ -578,7 +621,10 @@ fn metric(
     let mut g = vec![vec![NodeId::NONE; n]; n];
     for a in 0..n {
         for b in 0..n {
-            let terms: Vec<NodeId> = j.iter().map(|row| mul(cx.graph, &[row[a], row[b]])).collect();
+            let terms: Vec<NodeId> = j
+                .iter()
+                .map(|row| mul(cx.graph, &[row[a], row[b]]))
+                .collect();
             let sum = add(cx.graph, &terms);
             g[a][b] = cx.simplify(sum);
         }
@@ -642,7 +688,8 @@ impl Change {
         graph: &mut Graph,
         args: &[NodeId],
     ) -> Option<Self> {
-        let (&from, &from_vars, &to, &to_vars) = (args.get(1)?, args.get(2)?, args.get(3)?, args.get(4)?);
+        let (&from, &from_vars, &to, &to_vars) =
+            (args.get(1)?, args.get(2)?, args.get(3)?, args.get(4)?);
         Some(Self {
             from: system(graph, from)?,
             from_vars: vector(graph, from_vars)?,
@@ -690,8 +737,14 @@ impl Change {
     ) -> Option<Vec<Vec<NodeId>>> {
         let j_to = jacobian(cx, self.to, &self.to_vars)?;
         let j_from = jacobian(cx, self.from, &self.from_vars)?;
-        let j_from: Vec<Vec<NodeId>> =
-            j_from.iter().map(|row| row.iter().map(|&e| self.rewrite(cx, e)).collect::<Option<_>>()).collect::<Option<_>>()?;
+        let j_from: Vec<Vec<NodeId>> = j_from
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|&e| self.rewrite(cx, e))
+                    .collect::<Option<_>>()
+            })
+            .collect::<Option<_>>()?;
         let inverse = invert(cx, &j_to)?;
         product(cx, &inverse, &j_from)
     }
@@ -710,9 +763,12 @@ fn product(
     let mut out = Vec::with_capacity(a.len());
     for row in a {
         let mut line = Vec::with_capacity(cols);
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
-            let terms: Vec<NodeId> = (0..inner).map(|k| mul(cx.graph, &[row[k], b[k][c]])).collect();
+            let terms: Vec<NodeId> = (0..inner)
+                .map(|k| mul(cx.graph, &[row[k], b[k][c]]))
+                .collect();
             let sum = add(cx.graph, &terms);
             line.push(normal_form(cx, sum));
         }
@@ -723,7 +779,9 @@ fn product(
 
 fn transpose(m: &[Vec<NodeId>]) -> Vec<Vec<NodeId>> {
     let cols = m.first().map_or(0, Vec::len);
-    (0..cols).map(|c| m.iter().map(|row| row[c]).collect()).collect()
+    (0..cols)
+        .map(|c| m.iter().map(|row| row[c]).collect())
+        .collect()
 }
 
 // ----------------------------------------------------------------------
@@ -743,11 +801,20 @@ fn read_form(
         return None;
     };
     let mut out = Vec::new();
-    for entry in vector(graph, terms).or_else(|| graph.children(terms).first().map(|_| graph.children(terms).to_vec()))? {
+    for entry in vector(graph, terms).or_else(|| {
+        graph
+            .children(terms)
+            .first()
+            .map(|_| graph.children(terms).to_vec())
+    })? {
         let &[c, idx] = graph.children(entry) else {
             return None;
         };
-        let indices: Vec<usize> = graph.children(idx).iter().map(|&i| small_index(graph, i)).collect::<Option<_>>()?;
+        let indices: Vec<usize> = graph
+            .children(idx)
+            .iter()
+            .map(|&i| small_index(graph, i))
+            .collect::<Option<_>>()?;
         out.push((c, indices));
     }
     Some(out)
@@ -794,7 +861,10 @@ fn write_form(
         if cx.graph.number_of(c).is_some_and(Number::is_zero) {
             continue;
         }
-        let index_nodes: Vec<NodeId> = idx.iter().map(|&i| cx.graph.int(i64::try_from(i + 1).unwrap_or(0))).collect();
+        let index_nodes: Vec<NodeId> = idx
+            .iter()
+            .map(|&i| cx.graph.int(i64::try_from(i + 1).unwrap_or(0)))
+            .collect();
         let index_list = list(cx.graph, &index_nodes);
         entries.push(list(cx.graph, &[c, index_list]));
     }
@@ -822,7 +892,8 @@ impl Kernel for Geometry {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -846,16 +917,27 @@ impl Geometry {
             },
             | Request::Component => {
                 let t = Tensor::read(cx.graph, arg(0)?)?;
-                let index: Vec<usize> =
-                    vector(cx.graph, arg(1)?)?.iter().map(|&i| small_index(cx.graph, i)).collect::<Option<_>>()?;
-                (index.len() == t.shape.len() && index.iter().zip(&t.shape).all(|(i, n)| i < n)).then(|| t.get(&index))
+                let index: Vec<usize> = vector(cx.graph, arg(1)?)?
+                    .iter()
+                    .map(|&i| small_index(cx.graph, i))
+                    .collect::<Option<_>>()?;
+                (index.len() == t.shape.len() && index.iter().zip(&t.shape).all(|(i, n)| i < n))
+                    .then(|| t.get(&index))
             },
             | Request::Add => {
-                let (a, b) = (Tensor::read(cx.graph, arg(0)?)?, Tensor::read(cx.graph, arg(1)?)?);
+                let (a, b) = (
+                    Tensor::read(cx.graph, arg(0)?)?,
+                    Tensor::read(cx.graph, arg(1)?)?,
+                );
                 if a.shape != b.shape {
                     return None;
                 }
-                let data = a.data.iter().zip(&b.data).map(|(&x, &y)| add(cx.graph, &[x, y])).collect();
+                let data = a
+                    .data
+                    .iter()
+                    .zip(&b.data)
+                    .map(|(&x, &y)| add(cx.graph, &[x, y]))
+                    .collect();
                 Some(Tensor { shape: a.shape, data }.write(cx.graph))
             },
             | Request::Smul => {
@@ -865,7 +947,10 @@ impl Geometry {
                 Some(Tensor { shape: t.shape, data }.write(cx.graph))
             },
             | Request::Outer => {
-                let (a, b) = (Tensor::read(cx.graph, arg(0)?)?, Tensor::read(cx.graph, arg(1)?)?);
+                let (a, b) = (
+                    Tensor::read(cx.graph, arg(0)?)?,
+                    Tensor::read(cx.graph, arg(1)?)?,
+                );
                 let mut data = Vec::with_capacity(a.data.len() * b.data.len());
                 for &x in &a.data {
                     for &y in &b.data {
@@ -877,12 +962,20 @@ impl Geometry {
             },
             | Request::Contract => {
                 let t = Tensor::read(cx.graph, arg(0)?)?;
-                let (i, j) = (small_index(cx.graph, arg(1)?)?, small_index(cx.graph, arg(2)?)?);
+                let (i, j) = (
+                    small_index(cx.graph, arg(1)?)?,
+                    small_index(cx.graph, arg(2)?)?,
+                );
                 if i == j || i >= t.shape.len() || j >= t.shape.len() || t.shape[i] != t.shape[j] {
                     return None;
                 }
-                let rest: Vec<usize> =
-                    t.shape.iter().enumerate().filter(|&(k, _)| k != i && k != j).map(|(_, &n)| n).collect();
+                let rest: Vec<usize> = t
+                    .shape
+                    .iter()
+                    .enumerate()
+                    .filter(|&(k, _)| k != i && k != j)
+                    .map(|(_, &n)| n)
+                    .collect();
                 let mut out = Tensor::zeros(cx.graph, rest.clone());
                 for index in indices(&rest) {
                     let mut terms = Vec::with_capacity(t.shape[i]);
@@ -890,7 +983,11 @@ impl Geometry {
                         let mut full = Vec::with_capacity(t.shape.len());
                         let mut rest_iter = index.iter();
                         for position in 0..t.shape.len() {
-                            full.push(if position == i || position == j { k } else { *rest_iter.next()? });
+                            full.push(if position == i || position == j {
+                                k
+                            } else {
+                                *rest_iter.next()?
+                            });
                         }
                         terms.push(t.get(&full));
                     }
@@ -902,7 +999,11 @@ impl Geometry {
             | Request::Lower | Request::Raise => {
                 let v = vector(cx.graph, arg(0)?)?;
                 let g = square(cx.graph, arg(1)?)?;
-                let m = if self.request == Request::Lower { g } else { invert(cx, &g)? };
+                let m = if self.request == Request::Lower {
+                    g
+                } else {
+                    invert(cx, &g)?
+                };
                 let column: Vec<Vec<NodeId>> = v.iter().map(|&x| vec![x]).collect();
                 let result = product(cx, &m, &column)?;
                 let flat: Vec<NodeId> = result.into_iter().map(|r| r[0]).collect();
@@ -958,7 +1059,8 @@ impl Geometry {
                 for i in 0..n {
                     for k in 0..n {
                         let mut terms = vec![d(cx, v[i], vars[k])?];
-                        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+                        #[allow(clippy::needless_range_loop)]
+                        // index is used for more than one array / arithmetic; iterator form would not be clearer
                         for j in 0..n {
                             terms.push(mul(cx.graph, &[gamma.get(&[i, k, j]), v[j]]));
                         }
@@ -1008,8 +1110,10 @@ impl Geometry {
                     | Request::TransformVector => {
                         // V'^a = Λ^a_i V^i
                         let v = vector(cx.graph, arg(0)?)?;
-                        let column: Vec<Vec<NodeId>> =
-                            v.iter().map(|&x| change.rewrite(cx, x).map(|y| vec![y])).collect::<Option<_>>()?;
+                        let column: Vec<Vec<NodeId>> = v
+                            .iter()
+                            .map(|&x| change.rewrite(cx, x).map(|y| vec![y]))
+                            .collect::<Option<_>>()?;
                         let result = product(cx, &lambda, &column)?;
                         let flat: Vec<NodeId> = result.into_iter().map(|r| r[0]).collect();
                         Some(list(cx.graph, &flat))
@@ -1018,7 +1122,10 @@ impl Geometry {
                         // W'_a = (Λ^-1)^i_a W_i
                         let w = vector(cx.graph, arg(0)?)?;
                         let inverse = invert(cx, &lambda)?;
-                        let row: Vec<NodeId> = w.iter().map(|&x| change.rewrite(cx, x)).collect::<Option<_>>()?;
+                        let row: Vec<NodeId> = w
+                            .iter()
+                            .map(|&x| change.rewrite(cx, x))
+                            .collect::<Option<_>>()?;
                         let result = product(cx, &[row], &inverse)?;
                         Some(list(cx.graph, &result[0]))
                     },
@@ -1027,7 +1134,11 @@ impl Geometry {
                         let t = square(cx.graph, arg(0)?)?;
                         let t: Vec<Vec<NodeId>> = t
                             .iter()
-                            .map(|row| row.iter().map(|&x| change.rewrite(cx, x)).collect::<Option<_>>())
+                            .map(|row| {
+                                row.iter()
+                                    .map(|&x| change.rewrite(cx, x))
+                                    .collect::<Option<_>>()
+                            })
                             .collect::<Option<_>>()?;
                         let left = product(cx, &lambda, &t)?;
                         let result = product(cx, &left, &transpose(&lambda))?;
@@ -1122,7 +1233,14 @@ impl Geometry {
                         let Some(even) = sort_indices(&mut full) else {
                             continue;
                         };
-                        out.push((if even { dc } else { neg(cx.graph, dc) }, full));
+                        out.push((
+                            if even {
+                                dc
+                            } else {
+                                neg(cx.graph, dc)
+                            },
+                            full,
+                        ));
                     }
                 }
                 write_form(cx, out)
@@ -1137,7 +1255,14 @@ impl Geometry {
                             continue;
                         };
                         let product = mul(cx.graph, &[*c1, *c2]);
-                        out.push((if even { product } else { neg(cx.graph, product) }, full));
+                        out.push((
+                            if even {
+                                product
+                            } else {
+                                neg(cx.graph, product)
+                            },
+                            full,
+                        ));
                     }
                 }
                 write_form(cx, out)
@@ -1166,7 +1291,10 @@ impl Geometry {
                 if field.len() != 3 || surface.len() != 3 {
                     return None;
                 }
-                let xyz: Vec<NodeId> = ["x", "y", "z"].iter().map(|name| cx.graph.sym(name)).collect();
+                let xyz: Vec<NodeId> = ["x", "y", "z"]
+                    .iter()
+                    .map(|name| cx.graph.sym(name))
+                    .collect();
                 let field_node = list(cx.graph, &field);
                 let xyz_node = list(cx.graph, &xyz);
                 let curl = named(cx.graph, "curl", &[field_node, xyz_node])?;
@@ -1279,7 +1407,11 @@ fn read_cell(
         };
         pairs.push((lo, hi));
     }
-    (pairs.len() == params.len()).then_some(Cell { chart, params, bounds: pairs })
+    (pairs.len() == params.len()).then_some(Cell {
+        chart,
+        params,
+        bounds: pairs,
+    })
 }
 
 fn write_cell(
@@ -1288,7 +1420,11 @@ fn write_cell(
 ) -> NodeId {
     let chart = list(graph, &cell.chart);
     let params = list(graph, &cell.params);
-    let bounds: Vec<NodeId> = cell.bounds.iter().map(|&(a, b)| list(graph, &[a, b])).collect();
+    let bounds: Vec<NodeId> = cell
+        .bounds
+        .iter()
+        .map(|&(a, b)| list(graph, &[a, b]))
+        .collect();
     let bounds = list(graph, &bounds);
     named(graph, "cell", &[chart, params, bounds]).unwrap_or(chart)
 }
@@ -1344,7 +1480,8 @@ fn cell_boundary(
             let Some(sym) = cx.graph.as_symbol(u) else {
                 return false;
             };
-            !cx.graph.depends_on(cx.graph.find(a), sym) && !cx.graph.depends_on(cx.graph.find(b), sym)
+            !cx.graph.depends_on(cx.graph.find(a), sym)
+                && !cx.graph.depends_on(cx.graph.find(b), sym)
         })
     });
     if !constant || cell.params.is_empty() {
@@ -1367,7 +1504,14 @@ fn cell_boundary(
             params.remove(i);
             let mut bounds = cell.bounds.clone();
             bounds.remove(i);
-            faces.push((sign, Cell { chart, params, bounds }));
+            faces.push((
+                sign,
+                Cell {
+                    chart,
+                    params,
+                    bounds,
+                },
+            ));
         }
     }
     Some(faces)
@@ -1421,7 +1565,14 @@ fn pullback(
                         continue;
                     };
                     let product = mul(cx.graph, &[*coef, entry]);
-                    next.push((if even { product } else { neg(cx.graph, product) }, full));
+                    next.push((
+                        if even {
+                            product
+                        } else {
+                            neg(cx.graph, product)
+                        },
+                        full,
+                    ));
                 }
             }
             partial = next;
@@ -1440,7 +1591,11 @@ fn integrate_over_cell(
 ) -> Option<NodeId> {
     let pulled = pullback(cx, terms, vars, &cell.chart, &cell.params)?;
     let top: Vec<usize> = (0..cell.params.len()).collect();
-    let coefficients: Vec<NodeId> = pulled.into_iter().filter(|(_, idx)| *idx == top).map(|(c, _)| c).collect();
+    let coefficients: Vec<NodeId> = pulled
+        .into_iter()
+        .filter(|(_, idx)| *idx == top)
+        .map(|(c, _)| c)
+        .collect();
     let mut integrand = add(cx.graph, &coefficients);
     integrand = cx.simplify(integrand);
     for (&u, &(a, b)) in cell.params.iter().zip(&cell.bounds) {
@@ -1489,22 +1644,51 @@ mod tests {
             g.assume(s, Facts::POSITIVE);
         }
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let term = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let term = Extractor::new(&g, &[root], &SizeCost)
+            .build(&mut g, root)
+            .unwrap_or(root);
         g.display(term)
     }
 
     #[test]
     fn tensor_algebra() {
-        assert_eq!(run("tensor_rank(list(list(list(1, 2)), list(list(3, 4))))"), "3");
-        assert_eq!(run("component(list(list(a, b), list(c, d)), list(2, 1))"), "c");
+        assert_eq!(
+            run("tensor_rank(list(list(list(1, 2)), list(list(3, 4))))"),
+            "3"
+        );
+        assert_eq!(
+            run("component(list(list(a, b), list(c, d)), list(2, 1))"),
+            "c"
+        );
         assert_eq!(run("tensor_add(list(1, x), list(2, y))"), "list(3, x + y)");
-        assert_eq!(run("tensor_smul(2, list(list(1, x)))"), "list(list(2, 2*x))");
-        assert_eq!(run("tensor_outer(list(1, 2), list(x, y))"), "list(list(x, y), list(2*x, 2*y))");
+        assert_eq!(
+            run("tensor_smul(2, list(list(1, x)))"),
+            "list(list(2, 2*x))"
+        );
+        assert_eq!(
+            run("tensor_outer(list(1, 2), list(x, y))"),
+            "list(list(x, y), list(2*x, 2*y))"
+        );
         assert_eq!(run("contract(list(list(a, b), list(c, d)), 1, 2)"), "a + d");
-        assert_eq!(run("contract(tensor_outer(list(1, 2), list(3, 4)), 1, 2)"), "11");
-        assert_eq!(run("lower_index(list(1, 2), list(list(1, 0), list(0, r^2)))"), "list(1, 2*r^2)");
-        assert_eq!(run("raise_index(list(1, 2), list(list(1, 0), list(0, r^2)))"), "list(1, 2/r^2)");
+        assert_eq!(
+            run("contract(tensor_outer(list(1, 2), list(3, 4)), 1, 2)"),
+            "11"
+        );
+        assert_eq!(
+            run("lower_index(list(1, 2), list(list(1, 0), list(0, r^2)))"),
+            "list(1, 2*r^2)"
+        );
+        assert_eq!(
+            run("raise_index(list(1, 2), list(list(1, 0), list(0, r^2)))"),
+            "list(1, 2/r^2)"
+        );
     }
 
     #[test]
@@ -1523,76 +1707,162 @@ mod tests {
         let g = "list(list(a^2, 0), list(0, a^2*sin(theta)^2))";
         let vars = "list(theta, phi)";
         assert_eq!(run_positive(&format!("ricci_scalar({g}, {vars})")), "2/a^2");
-        assert_eq!(run_positive(&format!("component(riemann({g}, {vars}), list(1, 2, 1, 2))")), "sin(theta)^2");
-        assert_eq!(run_positive(&format!("ricci({g}, {vars})")), "list(list(1, 0), list(0, sin(theta)^2))");
+        assert_eq!(
+            run_positive(&format!(
+                "component(riemann({g}, {vars}), list(1, 2, 1, 2))"
+            )),
+            "sin(theta)^2"
+        );
+        assert_eq!(
+            run_positive(&format!("ricci({g}, {vars})")),
+            "list(list(1, 0), list(0, sin(theta)^2))"
+        );
         // In two dimensions the Einstein tensor vanishes identically.
-        assert_eq!(run_positive(&format!("einstein({g}, {vars})")), "list(list(0, 0), list(0, 0))");
+        assert_eq!(
+            run_positive(&format!("einstein({g}, {vars})")),
+            "list(list(0, 0), list(0, 0))"
+        );
     }
 
     #[test]
     fn covariant_derivative_of_a_constant_cartesian_field() {
         // The field e_x in polar components: (cos θ, -sin θ / r) is
         // parallel, so its covariant derivative vanishes.
-        let text = run_positive("covariant_derivative(list(cos(theta), -sin(theta)/r), list(list(1, 0), list(0, r^2)), list(r, theta))");
+        let text = run_positive(
+            "covariant_derivative(list(cos(theta), -sin(theta)/r), list(list(1, 0), list(0, r^2)), list(r, theta))",
+        );
         assert_eq!(text, "list(list(0, 0), list(0, 0))");
     }
 
     #[test]
     fn coordinate_systems() {
-        assert_eq!(run("to_cartesian(polar, list(r, t))"), "list(r*cos(t), r*sin(t))");
-        assert_eq!(run_positive("coordinate_metric(spherical, list(r, t, p))"), "list(list(1, 0, 0), list(0, r^2, 0), list(0, 0, r^2*sin(t)^2))");
-        assert_eq!(run_positive("scale_factors(cylindrical, list(r, t, z))"), "list(1, r, 1)");
-        assert_eq!(run("transform_point(cartesian, polar, list(0, 2))"), "list(2, 1/2*pi)");
-        assert_eq!(run("transform_point(polar, cartesian, list(2, pi))"), "list(-2, 0)");
-        let (value, _) = numeric(&[geometry()], "component(transform_point(spherical, cylindrical, list(2, 1, 3)), list(1))", &[], 1e-12);
+        assert_eq!(
+            run("to_cartesian(polar, list(r, t))"),
+            "list(r*cos(t), r*sin(t))"
+        );
+        assert_eq!(
+            run_positive("coordinate_metric(spherical, list(r, t, p))"),
+            "list(list(1, 0, 0), list(0, r^2, 0), list(0, 0, r^2*sin(t)^2))"
+        );
+        assert_eq!(
+            run_positive("scale_factors(cylindrical, list(r, t, z))"),
+            "list(1, r, 1)"
+        );
+        assert_eq!(
+            run("transform_point(cartesian, polar, list(0, 2))"),
+            "list(2, 1/2*pi)"
+        );
+        assert_eq!(
+            run("transform_point(polar, cartesian, list(2, pi))"),
+            "list(-2, 0)"
+        );
+        let (value, _) = numeric(
+            &[geometry()],
+            "component(transform_point(spherical, cylindrical, list(2, 1, 3)), list(1))",
+            &[],
+            1e-12,
+        );
         assert!((value - 2.0 * 1.0_f64.sin()).abs() < 1e-12);
     }
 
     #[test]
     fn transformations_of_fields() {
-        assert_eq!(run_positive("transform_expression(x^2 + y^2, cartesian, list(x, y), polar, list(r, t))"), "r^2");
+        assert_eq!(
+            run_positive(
+                "transform_expression(x^2 + y^2, cartesian, list(x, y), polar, list(r, t))"
+            ),
+            "r^2"
+        );
         // The Cartesian field (x, y) is r e_r: polar components (r, 0).
-        assert_eq!(run_positive("transform_vector(list(x, y), cartesian, list(x, y), polar, list(r, t))"), "list(r, 0)");
+        assert_eq!(
+            run_positive("transform_vector(list(x, y), cartesian, list(x, y), polar, list(r, t))"),
+            "list(r, 0)"
+        );
         // The gradient of x is a covector (1, 0): polar (cos t, -r sin t).
-        assert_eq!(run_positive("transform_covector(list(1, 0), cartesian, list(x, y), polar, list(r, t))"), "list(cos(t), -r*sin(t))");
+        assert_eq!(
+            run_positive(
+                "transform_covector(list(1, 0), cartesian, list(x, y), polar, list(r, t))"
+            ),
+            "list(cos(t), -r*sin(t))"
+        );
         // The Euclidean metric's inverse transforms to diag(1, 1/r^2).
         assert_eq!(
-            run_positive("transform_tensor2(list(list(1, 0), list(0, 1)), cartesian, list(x, y), polar, list(r, t))"),
+            run_positive(
+                "transform_tensor2(list(list(1, 0), list(0, 1)), cartesian, list(x, y), polar, list(r, t))"
+            ),
             "list(list(1, 0), list(0, 1/r^2))"
         );
     }
 
     #[test]
     fn vector_calculus_in_curvilinear_coordinates() {
-        assert_eq!(run_positive("grad_in(r^2*cos(t), polar, list(r, t))"), "list(2*r*cos(t), -r*sin(t))");
-        assert_eq!(run_positive("div_in(list(r, 0, 0), spherical, list(r, t, p))"), "3");
-        assert_eq!(run_positive("laplacian_in(1/r, spherical, list(r, t, p))"), "0");
-        assert_eq!(run_positive("laplacian_in(r^2, cylindrical, list(r, t, z))"), "4");
+        assert_eq!(
+            run_positive("grad_in(r^2*cos(t), polar, list(r, t))"),
+            "list(2*r*cos(t), -r*sin(t))"
+        );
+        assert_eq!(
+            run_positive("div_in(list(r, 0, 0), spherical, list(r, t, p))"),
+            "3"
+        );
+        assert_eq!(
+            run_positive("laplacian_in(1/r, spherical, list(r, t, p))"),
+            "0"
+        );
+        assert_eq!(
+            run_positive("laplacian_in(r^2, cylindrical, list(r, t, z))"),
+            "4"
+        );
         // The field r e_phi in cylindrical coordinates is a rigid rotation:
         // curl = 2 e_z.
-        assert_eq!(run_positive("curl_in(list(0, r, 0), cylindrical, list(r, t, z))"), "list(0, 0, 2)");
+        assert_eq!(
+            run_positive("curl_in(list(0, r, 0), cylindrical, list(r, t, z))"),
+            "list(0, 0, 2)"
+        );
     }
 
     #[test]
     fn differential_forms() {
         // d(x dy) = dx ∧ dy
-        assert_eq!(run("exterior_d(form(list(list(x, list(2)))), list(x, y))"), "form(list(list(1, list(1, 2))))");
+        assert_eq!(
+            run("exterior_d(form(list(list(x, list(2)))), list(x, y))"),
+            "form(list(list(1, list(1, 2))))"
+        );
         // d(df) = 0
         let df = run("exterior_d(form(list(list(x^2*y*z, list()))), list(x, y, z))");
-        assert_eq!(run(&format!("exterior_d({df}, list(x, y, z))")), "form(list())");
+        assert_eq!(
+            run(&format!("exterior_d({df}, list(x, y, z))")),
+            "form(list())"
+        );
         // dx ∧ dy = -dy ∧ dx, dx ∧ dx = 0
-        assert_eq!(run("wedge(form(list(list(1, list(2)))), form(list(list(1, list(1)))))"), "form(list(list(-1, list(1, 2))))");
-        assert_eq!(run("wedge(form(list(list(1, list(1)))), form(list(list(1, list(1)))))"), "form(list())");
+        assert_eq!(
+            run("wedge(form(list(list(1, list(2)))), form(list(list(1, list(1)))))"),
+            "form(list(list(-1, list(1, 2))))"
+        );
+        assert_eq!(
+            run("wedge(form(list(list(1, list(1)))), form(list(list(1, list(1)))))"),
+            "form(list())"
+        );
     }
 
     #[test]
     fn integral_theorems() {
         // Circulation of (-y, x) around the unit square: 2 * area = 2.
-        assert_eq!(run("greens_theorem(-y, x, list(x, y), list(list(0, 1), list(0, 1)))"), "2");
+        assert_eq!(
+            run("greens_theorem(-y, x, list(x, y), list(list(0, 1), list(0, 1)))"),
+            "2"
+        );
         // Flux of (x, y, z) out of the unit cube: 3.
-        assert_eq!(run("gauss_theorem(list(x, y, z), list(x, y, z), list(list(0, 1), list(0, 1), list(0, 1)))"), "3");
+        assert_eq!(
+            run(
+                "gauss_theorem(list(x, y, z), list(x, y, z), list(list(0, 1), list(0, 1), list(0, 1)))"
+            ),
+            "3"
+        );
         // Stokes on the unit disc (z = 0): circulation of (-y, x, 0) = 2 pi.
-        assert_eq!(run("stokes_theorem(list(-y, x, 0), list(u*cos(v), u*sin(v), 0), u, v, 0, 1, 0, 2*pi)"), "2*pi");
+        assert_eq!(
+            run("stokes_theorem(list(-y, x, 0), list(u*cos(v), u*sin(v), 0), u, v, 0, 1, 0, 2*pi)"),
+            "2*pi"
+        );
     }
 
     #[test]
@@ -1603,22 +1873,53 @@ mod tests {
         assert_eq!(edges.matches("cell(").count(), 4, "{edges}");
         // ∫_∂I² x dy = ∫_I² dx∧dy = 1.
         let x_dy = "form(list(list(x, list(2))))";
-        assert_eq!(run(&format!("integrate_form({x_dy}, list(x, y), boundary({square}))")), "1");
-        assert_eq!(run(&format!("generalized_stokes({x_dy}, list(x, y), {square})")), "1 = 1");
+        assert_eq!(
+            run(&format!(
+                "integrate_form({x_dy}, list(x, y), boundary({square}))"
+            )),
+            "1"
+        );
+        assert_eq!(
+            run(&format!("generalized_stokes({x_dy}, list(x, y), {square})")),
+            "1 = 1"
+        );
         // ∂∂ = 0: a 0-form integrates to zero over the boundary of a boundary.
-        assert_eq!(run(&format!("integrate_form(form(list(list(x^2*y + 3, list()))), list(x, y), boundary(boundary({square})))")), "0");
+        assert_eq!(
+            run(&format!(
+                "integrate_form(form(list(list(x^2*y + 3, list()))), list(x, y), boundary(boundary({square})))"
+            )),
+            "0"
+        );
         // The unit disc in polar parameters, ω = -y dx + x dy: both sides 2 pi.
         let disc = "cell(list(r*cos(t), r*sin(t)), list(r, t), list(list(0, 1), list(0, 2*pi)))";
         let omega = "form(list(list(-y, list(1)), list(x, list(2))))";
-        assert_eq!(run(&format!("generalized_stokes({omega}, list(x, y), {disc})")), "2*pi = 2*pi");
+        assert_eq!(
+            run(&format!("generalized_stokes({omega}, list(x, y), {disc})")),
+            "2*pi = 2*pi"
+        );
         // A 3-cell: the unit cube, ω = x dy∧dz (flux of (x, 0, 0)) = 1.
         let cube = "cell(list(x, y, z), list(x, y, z), list(list(0, 1), list(0, 1), list(0, 1)))";
-        assert_eq!(run(&format!("generalized_stokes(form(list(list(x, list(2, 3)))), list(x, y, z), {cube})")), "1 = 1");
+        assert_eq!(
+            run(&format!(
+                "generalized_stokes(form(list(list(x, list(2, 3)))), list(x, y, z), {cube})"
+            )),
+            "1 = 1"
+        );
         // A curved surface in R³: the upper hemisphere, ω = x dy (circulation of (0, x, 0)) = pi.
         let hemisphere = "cell(list(sin(p)*cos(t), sin(p)*sin(t), cos(p)), list(p, t), list(list(0, pi/2), list(0, 2*pi)))";
-        assert_eq!(run(&format!("generalized_stokes(form(list(list(x, list(2)))), list(x, y, z), {hemisphere})")), "pi = pi");
+        assert_eq!(
+            run(&format!(
+                "generalized_stokes(form(list(list(x, list(2)))), list(x, y, z), {hemisphere})"
+            )),
+            "pi = pi"
+        );
         // Pull-back of dx∧dy under polar coordinates: r dr∧dt.
-        assert_eq!(run("pullback(form(list(list(1, list(1, 2)))), list(x, y), list(r*cos(t), r*sin(t)), list(r, t))"), "form(list(list(r, list(1, 2))))");
+        assert_eq!(
+            run(
+                "pullback(form(list(list(1, list(1, 2)))), list(x, y), list(r*cos(t), r*sin(t)), list(r, t))"
+            ),
+            "form(list(list(r, list(1, 2))))"
+        );
     }
 
     #[test]
@@ -1638,7 +1939,13 @@ mod tests {
         let sphere = "list(list(a^2, 0), list(0, a^2*sin(theta)^2))";
         let vars = "list(theta, phi)";
         let value = |i: u8, j: u8, k: u8| {
-            numeric(&[geometry()], &format!("component(christoffel1({sphere}, {vars}), list({i}, {j}, {k}))"), &[("a", 2.0), ("theta", 0.7)], 1e-12).0
+            numeric(
+                &[geometry()],
+                &format!("component(christoffel1({sphere}, {vars}), list({i}, {j}, {k}))"),
+                &[("a", 2.0), ("theta", 0.7)],
+                1e-12,
+            )
+            .0
         };
         let expected = 4.0 * 0.7_f64.sin() * 0.7_f64.cos();
         assert!((value(1, 2, 2) + expected).abs() < 1e-12);
@@ -1646,7 +1953,13 @@ mod tests {
         assert!((value(2, 2, 1) - expected).abs() < 1e-12);
         assert!(value(1, 1, 1).abs() < 1e-12);
         // Γ^φ_θφ = g^{φφ} Γ_{φθφ} = cot θ.
-        let second = numeric(&[geometry()], &format!("component(christoffel({sphere}, {vars}), list(2, 1, 2))"), &[("a", 2.0), ("theta", 0.7)], 1e-12).0;
+        let second = numeric(
+            &[geometry()],
+            &format!("component(christoffel({sphere}, {vars}), list(2, 1, 2))"),
+            &[("a", 2.0), ("theta", 0.7)],
+            1e-12,
+        )
+        .0;
         assert!((second - 1.0 / 0.7_f64.tan()).abs() < 1e-12);
         assert!((second - value(2, 1, 2) / (4.0 * 0.7_f64.sin().powi(2))).abs() < 1e-12);
     }

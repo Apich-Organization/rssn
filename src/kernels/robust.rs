@@ -20,7 +20,11 @@ fn sorted(data: &[f64]) -> Vec<f64> {
 /// definition `kind` (1..=9; 7 is the NumPy/R default). NaNs are ignored.
 /// Returns NaN for empty data or an invalid `p`/`kind`.
 #[must_use]
-pub fn quantile(data: &[f64], p: f64, kind: u8) -> f64 {
+pub fn quantile(
+    data: &[f64],
+    p: f64,
+    kind: u8,
+) -> f64 {
     let x = sorted(data);
     let n = x.len();
     if n == 0 || !(0.0..=1.0).contains(&p) || !(1..=9).contains(&kind) {
@@ -35,25 +39,41 @@ pub fn quantile(data: &[f64], p: f64, kind: u8) -> f64 {
             let g = np - j;
             let ji = j as isize;
             match kind {
-                1 => if g > 0.0 { at(ji + 1) } else { at(ji) },
-                2 => if g > 0.0 { at(ji + 1) } else { f64::midpoint(at(ji), at(ji + 1)) },
-                _ => {
+                | 1 => {
+                    if g > 0.0 {
+                        at(ji + 1)
+                    } else {
+                        at(ji)
+                    }
+                },
+                | 2 => {
+                    if g > 0.0 {
+                        at(ji + 1)
+                    } else {
+                        f64::midpoint(at(ji), at(ji + 1))
+                    }
+                },
+                | _ => {
                     let np = nf * p - 0.5;
                     let j = np.floor();
                     let g = np - j;
-                    if g == 0.0 && (j as isize) % 2 == 0 { at(j as isize) } else { at(j as isize + 1) }
-                }
+                    if g == 0.0 && (j as isize) % 2 == 0 {
+                        at(j as isize)
+                    } else {
+                        at(j as isize + 1)
+                    }
+                },
             }
         }
     } else {
         {
             let (a, b) = match kind {
-                4 => (0.0, 1.0),
-                5 => (0.5, 0.5),
-                6 => (0.0, 0.0),
-                7 => (1.0, 1.0),
-                8 => (1.0 / 3.0, 1.0 / 3.0),
-                _ => (0.375, 0.375),
+                | 4 => (0.0, 1.0),
+                | 5 => (0.5, 0.5),
+                | 6 => (0.0, 0.0),
+                | 7 => (1.0, 1.0),
+                | 8 => (1.0 / 3.0, 1.0 / 3.0),
+                | _ => (0.375, 0.375),
             };
             // plotting position m = a + p (1 - a - b), index h = n p + m
             let m = a + p * (1.0 - a - b);
@@ -75,10 +95,18 @@ pub fn median(data: &[f64]) -> f64 {
 /// Median absolute deviation; multiplied by 1.4826 when `normal` is true so
 /// it estimates the standard deviation for Gaussian data.
 #[must_use]
-pub fn mad(data: &[f64], normal: bool) -> f64 {
+pub fn mad(
+    data: &[f64],
+    normal: bool,
+) -> f64 {
     let m = median(data);
     let dev: Vec<f64> = data.iter().map(|v| (v - m).abs()).collect();
-    median(&dev) * if normal { 1.482_602_218_505_602 } else { 1.0 }
+    median(&dev)
+        * if normal {
+            1.482_602_218_505_602
+        } else {
+            1.0
+        }
 }
 
 /// Interquartile range (type 7 quantiles).
@@ -89,7 +117,10 @@ pub fn iqr(data: &[f64]) -> f64 {
 
 /// Mean after discarding the fraction `trim` from each tail.
 #[must_use]
-pub fn trimmed_mean(data: &[f64], trim: f64) -> f64 {
+pub fn trimmed_mean(
+    data: &[f64],
+    trim: f64,
+) -> f64 {
     let x = sorted(data);
     let k = (x.len() as f64 * trim.clamp(0.0, 0.499)).floor() as usize;
     let core = &x[k..x.len() - k];
@@ -99,7 +130,10 @@ pub fn trimmed_mean(data: &[f64], trim: f64) -> f64 {
 /// Mean after replacing the lowest and highest fraction `trim` by the
 /// nearest retained values.
 #[must_use]
-pub fn winsorized_mean(data: &[f64], trim: f64) -> f64 {
+pub fn winsorized_mean(
+    data: &[f64],
+    trim: f64,
+) -> f64 {
     let mut x = sorted(data);
     let n = x.len();
     let k = (n as f64 * trim.clamp(0.0, 0.499)).floor() as usize;
@@ -116,14 +150,21 @@ pub fn winsorized_mean(data: &[f64], trim: f64) -> f64 {
 /// Huber M-estimator of location with tuning constant `k` (1.345 is the
 /// classical choice), scale fixed to the normalised MAD.
 #[must_use]
-pub fn huber_location(data: &[f64], k: f64) -> f64 {
+pub fn huber_location(
+    data: &[f64],
+    k: f64,
+) -> f64 {
     let mut mu = median(data);
     let s = mad(data, true);
     if s == 0.0 {
         return mu;
     }
     for _ in 0..200 {
-        let step: f64 = data.iter().map(|&v| ((v - mu) / s).clamp(-k, k)).sum::<f64>() / data.len() as f64;
+        let step: f64 = data
+            .iter()
+            .map(|&v| ((v - mu) / s).clamp(-k, k))
+            .sum::<f64>()
+            / data.len() as f64;
         mu += s * step;
         if step.abs() < 1e-13 {
             break;
@@ -134,7 +175,10 @@ pub fn huber_location(data: &[f64], k: f64) -> f64 {
 
 /// Tukey biweight location estimator (tuning constant `c`, 4.685 typical).
 #[must_use]
-pub fn biweight_location(data: &[f64], c: f64) -> f64 {
+pub fn biweight_location(
+    data: &[f64],
+    c: f64,
+) -> f64 {
     let mut mu = median(data);
     let s = mad(data, true);
     if s == 0.0 {
@@ -164,7 +208,10 @@ pub fn biweight_location(data: &[f64], c: f64) -> f64 {
 
 /// Empirical CDF of `data` at `x`.
 #[must_use]
-pub fn ecdf(data: &[f64], x: f64) -> f64 {
+pub fn ecdf(
+    data: &[f64],
+    x: f64,
+) -> f64 {
     let v = sorted(data);
     v.partition_point(|&a| a <= x) as f64 / v.len().max(1) as f64
 }
@@ -201,14 +248,25 @@ pub enum Kernel {
 
 /// Kernel density estimate of `data` evaluated at `x` with bandwidth `h`.
 #[must_use]
-pub fn kde(data: &[f64], x: f64, h: f64, kernel: Kernel) -> f64 {
+pub fn kde(
+    data: &[f64],
+    x: f64,
+    h: f64,
+    kernel: Kernel,
+) -> f64 {
     let s: f64 = data
         .iter()
         .map(|&d| {
             let u = (x - d) / h;
             match kernel {
-                Kernel::Gaussian => (-0.5 * u * u).exp() / (2.0 * PI).sqrt(),
-                Kernel::Epanechnikov => if u.abs() < 1.0 { 0.75 * (1.0 - u * u) } else { 0.0 },
+                | Kernel::Gaussian => (-0.5 * u * u).exp() / (2.0 * PI).sqrt(),
+                | Kernel::Epanechnikov => {
+                    if u.abs() < 1.0 {
+                        0.75 * (1.0 - u * u)
+                    } else {
+                        0.0
+                    }
+                },
             }
         })
         .sum();
@@ -233,5 +291,8 @@ pub fn bootstrap_ci<S: Fn(&[f64]) -> f64>(
         })
         .collect();
     stats.sort_by(f64::total_cmp);
-    (quantile(&stats, alpha / 2.0, 7), quantile(&stats, 1.0 - alpha / 2.0, 7))
+    (
+        quantile(&stats, alpha / 2.0, 7),
+        quantile(&stats, 1.0 - alpha / 2.0, 7),
+    )
 }

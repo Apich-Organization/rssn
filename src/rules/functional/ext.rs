@@ -14,11 +14,9 @@
 //! | `operator_adjoint(A)` | the formal adjoint of an operator term (`op_d(x)* = -op_d(x)`, `op_mul(g)* = op_mul(conj g)`, `(AB)* = B* A*`, the Laplacian and the identity are self-adjoint); `op_int` has no adjoint in this algebra |
 //! | `op_commutator(A, B)` | the operator `A B - B A` |
 
+use super::OpAlgebra;
 use super::op_algebra;
 use super::vector;
-use super::OpAlgebra;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Kernel;
@@ -29,6 +27,8 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::poly::best;
 
 #[derive(Copy, Clone)]
@@ -90,7 +90,10 @@ fn adjoint(
         return Some(a);
     }
     if op == algebra.add {
-        let parts: Option<Vec<NodeId>> = args.iter().map(|&p| adjoint(cx, algebra, p, depth + 1)).collect();
+        let parts: Option<Vec<NodeId>> = args
+            .iter()
+            .map(|&p| adjoint(cx, algebra, p, depth + 1))
+            .collect();
         return Some(cx.graph.node(algebra.add, &parts?));
     }
     if op == algebra.scale {
@@ -100,7 +103,11 @@ fn adjoint(
         return Some(cx.graph.node(algebra.scale, &[conjugate, inner]));
     }
     if op == algebra.compose {
-        let parts: Option<Vec<NodeId>> = args.iter().rev().map(|&p| adjoint(cx, algebra, p, depth + 1)).collect();
+        let parts: Option<Vec<NodeId>> = args
+            .iter()
+            .rev()
+            .map(|&p| adjoint(cx, algebra, p, depth + 1))
+            .collect();
         return Some(cx.graph.node(algebra.compose, &parts?));
     }
     if op == algebra.power {
@@ -164,17 +171,23 @@ impl Extension {
                 let rhs = cx.graph.node(core::LIST, &rhs);
                 let system = request(cx, "linsolve", &[gram, rhs])?;
                 let solved = cx.simplify(system);
-                if cx.graph.op(solved) != core::LIST || cx.graph.children(solved).len() != es.len() {
+                if cx.graph.op(solved) != core::LIST || cx.graph.children(solved).len() != es.len()
+                {
                     return None;
                 }
                 let coefficients = cx.graph.children(solved).to_vec();
-                let terms: Vec<NodeId> =
-                    coefficients.iter().zip(&es).map(|(&c, &e)| cx.graph.node(core::MUL, &[c, e])).collect();
+                let terms: Vec<NodeId> = coefficients
+                    .iter()
+                    .zip(&es)
+                    .map(|(&c, &e)| cx.graph.node(core::MUL, &[c, e]))
+                    .collect();
                 let total = cx.graph.node(core::ADD, &terms);
                 Some(cx.simplify(total))
             },
             | Kind::FredholmEigenvalues => {
-                let &[us, vs, x, t, a, b] = args else { return None };
+                let &[us, vs, x, t, a, b] = args else {
+                    return None;
+                };
                 let (us, vs) = (vector(cx.graph, us)?, vector(cx.graph, vs)?);
                 if us.len() != vs.len() {
                     return None;
@@ -214,7 +227,8 @@ impl Kernel for Extension {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -230,8 +244,14 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("fredholm_eigenvalues", 6, Kind::FredholmEigenvalues),
         ("operator_adjoint", 1, Kind::Adjoint),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("functional/{name}"), Tier::Reduce, Extension { op, kind });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("functional/{name}"),
+            Tier::Reduce,
+            Extension { op, kind },
+        );
     }
     i.define(&[
         "l2_distance(f, g, x, a, b) := l2_norm(f - g, x, a, b)",
@@ -251,23 +271,50 @@ mod tests {
 
     #[test]
     fn gram_matrices_and_projections() {
-        assert_eq!(run("gram_matrix(list(1, x), x, 0, 1)"), "list(list(1, 1/2), list(1/2, 1/3))");
-        assert_eq!(run("orthogonal_coefficients(x, list(1, 2*x - 1), x, 0, 1)"), "list(1/2, 1/2)");
+        assert_eq!(
+            run("gram_matrix(list(1, x), x, 0, 1)"),
+            "list(list(1, 1/2), list(1/2, 1/3))"
+        );
+        assert_eq!(
+            run("orthogonal_coefficients(x, list(1, 2*x - 1), x, 0, 1)"),
+            "list(1/2, 1/2)"
+        );
         // The best linear approximation of x^2 on [0, 1] is x - 1/6.
-        assert_eq!(run("best_approximation(x^2, list(1, x), x, 0, 1)"), "x - 1/6");
+        assert_eq!(
+            run("best_approximation(x^2, list(1, x), x, 0, 1)"),
+            "x - 1/6"
+        );
         // sin on [0, pi] is its own best approximation in span(sin).
-        assert_eq!(run("best_approximation(sin(x), list(sin(x)), x, 0, pi)"), "sin(x)");
+        assert_eq!(
+            run("best_approximation(sin(x), list(sin(x)), x, 0, pi)"),
+            "sin(x)"
+        );
         assert_eq!(run("l2_distance(x, 0, x, 0, 1)"), "1/3^(1/2)");
     }
 
     #[test]
     fn degenerate_kernels_and_adjoints() {
-        assert_eq!(run("fredholm_eigenvalues(list(x), list(t), x, t, 0, 1)"), "list(1/3)");
-        assert_eq!(run("fredholm_eigenvalues(list(sin(x)), list(sin(t)), x, t, 0, pi)"), "list(1/2*pi)");
+        assert_eq!(
+            run("fredholm_eigenvalues(list(x), list(t), x, t, 0, 1)"),
+            "list(1/3)"
+        );
+        assert_eq!(
+            run("fredholm_eigenvalues(list(sin(x)), list(sin(t)), x, t, 0, pi)"),
+            "list(1/2*pi)"
+        );
         assert_eq!(run("operator_adjoint(op_d(x))"), "op_scale(-1, op_d(x))");
-        assert_eq!(run("operator_adjoint(op_compose(op_d(x), op_mul(2)))"), "op_compose(op_mul(2), op_scale(-1, op_d(x)))");
-        assert_eq!(run("operator_adjoint(op_laplacian(list(x, y)))"), "op_laplacian(list(x, y))");
+        assert_eq!(
+            run("operator_adjoint(op_compose(op_d(x), op_mul(2)))"),
+            "op_compose(op_mul(2), op_scale(-1, op_d(x)))"
+        );
+        assert_eq!(
+            run("operator_adjoint(op_laplacian(list(x, y)))"),
+            "op_laplacian(list(x, y))"
+        );
         // [d/dx, x] f = f.
-        assert_eq!(run("op_apply(op_commutator(op_d(x), op_mul(x)), f(x))"), "f(x)");
+        assert_eq!(
+            run("op_apply(op_commutator(op_d(x), op_mul(x)), f(x))"),
+            "f(x)"
+        );
     }
 }

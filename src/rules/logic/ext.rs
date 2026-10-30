@@ -25,15 +25,13 @@ use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Zero;
 
-use super::prime_implicants;
-use super::truth_literal;
 use super::Builder;
 use super::Formula;
+use super::MAX_MINIMISED;
 use super::Ops;
 use super::Reader;
-use super::MAX_MINIMISED;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
+use super::prime_implicants;
+use super::truth_literal;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -45,6 +43,8 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 
 /// Most atoms a diagram is built over.
 const MAX_ATOMS: usize = 64;
@@ -91,7 +91,11 @@ struct Bdd {
 
 impl Bdd {
     fn new() -> Self {
-        Self { nodes: vec![(usize::MAX, 0, 0), (usize::MAX, 1, 1)], unique: HashMap::new(), cache: HashMap::new() }
+        Self {
+            nodes: vec![(usize::MAX, 0, 0), (usize::MAX, 1, 1)],
+            unique: HashMap::new(),
+            cache: HashMap::new(),
+        }
     }
 
     fn variable(
@@ -149,8 +153,16 @@ impl Bdd {
             return Some(hit);
         }
         let variable = self.variable(a).min(self.variable(b));
-        let (a_low, a_high) = if self.variable(a) == variable { (self.low(a), self.high(a)) } else { (a, a) };
-        let (b_low, b_high) = if self.variable(b) == variable { (self.low(b), self.high(b)) } else { (b, b) };
+        let (a_low, a_high) = if self.variable(a) == variable {
+            (self.low(a), self.high(a))
+        } else {
+            (a, a)
+        };
+        let (b_low, b_high) = if self.variable(b) == variable {
+            (self.low(b), self.high(b))
+        } else {
+            (b, b)
+        };
         let low = self.apply(gate, a_low, b_low)?;
         let high = self.apply(gate, a_high, b_high)?;
         let node = self.make(variable, low, high)?;
@@ -219,7 +231,11 @@ impl Bdd {
             return Some(hit);
         }
         let result = if here == variable {
-            if value { self.high(node) } else { self.low(node) }
+            if value {
+                self.high(node)
+            } else {
+                self.low(node)
+            }
         } else {
             let (low, high) = (self.low(node), self.high(node));
             let low = self.restrict(low, variable, value, memo)?;
@@ -238,7 +254,15 @@ impl Bdd {
     ) -> Option<usize> {
         let low = self.restrict(node, variable, false, &mut HashMap::new())?;
         let high = self.restrict(node, variable, true, &mut HashMap::new())?;
-        self.apply(if universal { Gate::And } else { Gate::Or }, low, high)
+        self.apply(
+            if universal {
+                Gate::And
+            } else {
+                Gate::Or
+            },
+            low,
+            high,
+        )
     }
 
     /// Satisfying assignments over `n` variables.
@@ -252,7 +276,11 @@ impl Bdd {
             node: usize,
             n: usize,
         ) -> usize {
-            if node <= TRUE { n } else { bdd.variable(node) }
+            if node <= TRUE {
+                n
+            } else {
+                bdd.variable(node)
+            }
         }
         fn go(
             bdd: &Bdd,
@@ -334,13 +362,21 @@ impl Bdd {
             out.push(partial.clone());
             return Some(());
         }
-        let here = if node == TRUE { usize::MAX } else { self.variable(node) };
+        let here = if node == TRUE {
+            usize::MAX
+        } else {
+            self.variable(node)
+        };
         for value in [false, true] {
             if let Some(slot) = partial.get_mut(level) {
                 *slot = value;
             }
             let next = if here == level {
-                if value { self.high(node) } else { self.low(node) }
+                if value {
+                    self.high(node)
+                } else {
+                    self.low(node)
+                }
             } else {
                 node
             };
@@ -382,11 +418,19 @@ impl Bdd {
         let built = match (low, high) {
             | (FALSE, high) => {
                 let high = self.term(builder, high, memo)?;
-                if high_is_true(high, builder) { positive } else { builder.join(true, &[positive, high]) }
+                if high_is_true(high, builder) {
+                    positive
+                } else {
+                    builder.join(true, &[positive, high])
+                }
             },
             | (low, FALSE) => {
                 let low = self.term(builder, low, memo)?;
-                if high_is_true(low, builder) { negative } else { builder.join(true, &[negative, low]) }
+                if high_is_true(low, builder) {
+                    negative
+                } else {
+                    builder.join(true, &[negative, low])
+                }
             },
             | (TRUE, high) => {
                 let high = self.term(builder, high, memo)?;
@@ -397,7 +441,10 @@ impl Bdd {
                 builder.join(false, &[positive, low])
             },
             | (low, high) => {
-                let (low, high) = (self.term(builder, low, memo)?, self.term(builder, high, memo)?);
+                let (low, high) = (
+                    self.term(builder, low, memo)?,
+                    self.term(builder, high, memo)?,
+                );
                 let then = builder.join(true, &[positive, high]);
                 let otherwise = builder.join(true, &[negative, low]);
                 builder.join(false, &[then, otherwise])
@@ -450,7 +497,12 @@ impl Extension {
         graph: &Graph,
         args: &[NodeId],
     ) -> Option<Problem> {
-        let mut reader = Reader { graph, ops: &self.ops, classes: Vec::new(), nodes: Vec::new() };
+        let mut reader = Reader {
+            graph,
+            ops: &self.ops,
+            classes: Vec::new(),
+            nodes: Vec::new(),
+        };
         let mut formulas = Vec::with_capacity(args.len());
         for &arg in args {
             formulas.push(reader.read(arg, 0)?);
@@ -470,7 +522,10 @@ impl Extension {
         for formula in &mut formulas {
             formula.remap(&rank);
         }
-        let atoms = order.iter().filter_map(|&k| nodes.get(k).copied()).collect();
+        let atoms = order
+            .iter()
+            .filter_map(|&k| nodes.get(k).copied())
+            .collect();
         Some(Problem { formulas, atoms })
     }
 
@@ -484,7 +539,11 @@ impl Extension {
         // A quantifier prefix is a single atom or a list of atoms.
         let flat: Vec<NodeId> = match (kind, args) {
             | (Kind::Exists | Kind::Forall, &[prefix, body]) => {
-                let mut items = if graph.op(prefix) == core::LIST { graph.children(prefix).to_vec() } else { vec![prefix] };
+                let mut items = if graph.op(prefix) == core::LIST {
+                    graph.children(prefix).to_vec()
+                } else {
+                    vec![prefix]
+                };
                 items.push(body);
                 items
             },
@@ -495,7 +554,11 @@ impl Extension {
         let mut bdd = Bdd::new();
         let ops = &self.ops;
         let cube = |graph: &mut Graph, model: &[bool]| -> Option<NodeId> {
-            let mut builder = Builder { graph, ops, atoms: &atoms };
+            let mut builder = Builder {
+                graph,
+                ops,
+                atoms: &atoms,
+            };
             let mut lits = Vec::with_capacity(model.len());
             for (v, &value) in model.iter().enumerate() {
                 lits.push(builder.literal(v, value)?);
@@ -531,7 +594,11 @@ impl Extension {
             },
             | Kind::Diagram => {
                 let root = bdd.build(formulas.first()?)?;
-                let mut builder = Builder { graph, ops, atoms: &atoms };
+                let mut builder = Builder {
+                    graph,
+                    ops,
+                    atoms: &atoms,
+                };
                 let term = bdd.term(&mut builder, root, &mut HashMap::new())?;
                 Some(Outcome::Pinned(term))
             },
@@ -539,25 +606,50 @@ impl Extension {
                 let (body, quantified) = formulas.split_last()?;
                 let mut root = bdd.build(body)?;
                 for formula in quantified {
-                    let Formula::Atom(variable) = formula else { return None };
+                    let Formula::Atom(variable) = formula else {
+                        return None;
+                    };
                     root = bdd.quantify(root, *variable, kind == Kind::Forall)?;
                 }
-                let mut builder = Builder { graph, ops, atoms: &atoms };
-                Some(Outcome::Pinned(bdd.term(&mut builder, root, &mut HashMap::new())?))
+                let mut builder = Builder {
+                    graph,
+                    ops,
+                    atoms: &atoms,
+                };
+                Some(Outcome::Pinned(bdd.term(
+                    &mut builder,
+                    root,
+                    &mut HashMap::new(),
+                )?))
             },
             | Kind::Restrict => {
-                let [body, Formula::Atom(variable), Formula::Const(value)] = formulas.as_slice() else {
+                let [body, Formula::Atom(variable), Formula::Const(value)] = formulas.as_slice()
+                else {
                     return None;
                 };
                 let root = bdd.build(body)?;
                 let restricted = bdd.restrict(root, *variable, *value, &mut HashMap::new())?;
-                let mut builder = Builder { graph, ops, atoms: &atoms };
-                Some(Outcome::Pinned(bdd.term(&mut builder, restricted, &mut HashMap::new())?))
+                let mut builder = Builder {
+                    graph,
+                    ops,
+                    atoms: &atoms,
+                };
+                Some(Outcome::Pinned(bdd.term(
+                    &mut builder,
+                    restricted,
+                    &mut HashMap::new(),
+                )?))
             },
             | Kind::Entails | Kind::Equivalent => {
-                let [a, b] = formulas.as_slice() else { return None };
+                let [a, b] = formulas.as_slice() else {
+                    return None;
+                };
                 let (a, b) = (bdd.build(a)?, bdd.build(b)?);
-                let holds = if kind == Kind::Equivalent { a == b } else { bdd.apply(Gate::Implies, a, b)? == TRUE };
+                let holds = if kind == Kind::Equivalent {
+                    a == b
+                } else {
+                    bdd.apply(Gate::Implies, a, b)? == TRUE
+                };
                 Some(Outcome::Equal(truth_literal(graph, holds)))
             },
             | Kind::Primes => {
@@ -566,7 +658,11 @@ impl Extension {
                     return None;
                 }
                 let minterms: Vec<u32> = (0..1_u32 << n).filter(|&m| formula.holds(m)).collect();
-                let mut builder = Builder { graph, ops, atoms: &atoms };
+                let mut builder = Builder {
+                    graph,
+                    ops,
+                    atoms: &atoms,
+                };
                 let mut items = Vec::new();
                 for implicant in prime_implicants(&minterms, n) {
                     let mut lits = Vec::new();
@@ -621,7 +717,9 @@ pub(super) fn install(
         ("equivalent", 2, Kind::Equivalent),
         ("prime_implicants", 1, Kind::Primes),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
         kinds.push((op, kind));
     }
     i.kernel("logic/diagrams", Tier::Reduce, Extension { ops, kinds });
@@ -643,11 +741,17 @@ mod tests {
         assert_eq!(s("count_models(xor(a, b, c))"), "4");
         assert_eq!(s("count_models(and(a, not(a)))"), "0");
         let parity: Vec<String> = (0..30).map(|k| format!("v{k}")).collect();
-        assert_eq!(s(&format!("count_models(xor({}))", parity.join(", "))), "536870912");
+        assert_eq!(
+            s(&format!("count_models(xor({}))", parity.join(", "))),
+            "536870912"
+        );
         assert_eq!(s("sat_model(and(a, not(b)))"), "and(a, not(b))");
         assert_eq!(s("sat_model(or(a, b))"), "and(b, not(a))");
         assert_eq!(s("sat_model(and(a, not(a)))"), "false");
-        assert_eq!(s("all_models(iff(a, b))"), "list(and(not(a), not(b)), and(a, b))");
+        assert_eq!(
+            s("all_models(iff(a, b))"),
+            "list(and(not(a), not(b)), and(a, b))"
+        );
         assert_eq!(s("bdd_size(xor(a, b, c))"), "5");
         assert_eq!(s("bdd(and(a, b))"), "and(a, b)");
     }
@@ -669,6 +773,9 @@ mod tests {
         assert_eq!(s("entails(a, and(a, b))"), "false");
         assert_eq!(s("equivalent(implies(a, b), or(not(a), b))"), "true");
         assert_eq!(s("equivalent(xor(a, b), iff(a, b))"), "false");
-        assert_eq!(s("prime_implicants(or(and(a, b), and(not(a), c)))"), "list(and(b, c), and(c, not(a)), and(a, b))");
+        assert_eq!(
+            s("prime_implicants(or(and(a, b), and(not(a), c)))"),
+            "list(and(b, c), and(c, not(a)), and(a, b))"
+        );
     }
 }

@@ -821,7 +821,13 @@ impl Graph {
         let mut rest = Vec::with_capacity(buf.len());
         for &c in buf.iter() {
             match self.as_number(c) {
-                | Some(n) => value = if op == core::ADD { value.add(n) } else { value.mul(n) },
+                | Some(n) => {
+                    value = if op == core::ADD {
+                        value.add(n)
+                    } else {
+                        value.mul(n)
+                    }
+                },
                 | None => rest.push(c),
             }
         }
@@ -1177,7 +1183,10 @@ impl Graph {
                     let (fx, fy) = (x.to_f64(), y.to_f64());
                     let close = (fx - fy).abs() <= 1e-6 * (1.0 + fx.abs().max(fy.abs()));
                     let contradiction = (x.is_exact() && y.is_exact()) || !close;
-                    (contradiction.then(|| (x.clone(), y.clone())), !x.is_exact() && y.is_exact())
+                    (
+                        contradiction.then(|| (x.clone(), y.clone())),
+                        !x.is_exact() && y.is_exact(),
+                    )
                 },
                 | (None, Some(_)) => (None, true),
                 | _ => (None, false),
@@ -1198,7 +1207,11 @@ impl Graph {
         // The class's leaf is its literal number if it has one, else
         // whichever childless member was there first.
         if prefer_lost || class.leaf.is_none() {
-            class.leaf = if lost.leaf.is_none() { class.leaf } else { lost.leaf };
+            class.leaf = if lost.leaf.is_none() {
+                class.leaf
+            } else {
+                lost.leaf
+            };
         }
         let before = class.free.len();
         class.free.retain(|s| lost.free.binary_search(s).is_ok());
@@ -1500,7 +1513,7 @@ mod tests {
         g.union(x, two);
         g.rebuild();
         assert_eq!(g.number_of(x), Some(&Number::from(2)));
-        assert!(g.conflicts().is_empty());
+        assert_eq!(g.conflicts(), []);
         let three = g.int(3);
         g.union(x, three);
         g.rebuild();
@@ -1514,8 +1527,12 @@ mod tests {
         let approx = g.float(1.0 / 3.0);
         g.union(approx, third);
         g.rebuild();
-        assert!(g.conflicts().is_empty());
-        assert_eq!(g.number_of(approx).map(Number::is_exact), Some(true), "the exact value is kept");
+        assert_eq!(g.conflicts(), []);
+        assert_eq!(
+            g.number_of(approx).map(Number::is_exact),
+            Some(true),
+            "the exact value is kept"
+        );
         assert_eq!(g.enodes(g.find(approx)).collect::<Vec<_>>(), vec![third]);
         let wrong = g.float(0.34);
         g.union(wrong, third);

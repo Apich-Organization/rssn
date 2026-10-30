@@ -71,7 +71,15 @@ fn polynomial(
     let zero = cx.graph.int(0);
     let mut out = if cx.graph.depends_on(cx.graph.find(f), symbol) {
         let mut gens = Gens::default();
-        let poly = from_term(cx.graph, &mut gens, f, Limits { terms: 256, exponent: 8 })?;
+        let poly = from_term(
+            cx.graph,
+            &mut gens,
+            f,
+            Limits {
+                terms: 256,
+                exponent: 8,
+            },
+        )?;
         let g = gens.find(cx.graph, x)?;
         let mut parts = Vec::new();
         for part in &poly.coefficients_in(g) {
@@ -161,7 +169,11 @@ fn classify(
             return None;
         }
         let x0_node = snapped(cx, x0);
-        let (gap, lo, hi) = if a[1] > 0.0 { (sub(cx.graph, x, x0_node), x0_node, oo) } else { (sub(cx.graph, x0_node, x), minus_oo, x0_node) };
+        let (gap, lo, hi) = if a[1] > 0.0 {
+            (sub(cx.graph, x, x0_node), x0_node, oo)
+        } else {
+            (sub(cx.graph, x0_node, x), minus_oo, x0_node)
+        };
         let alpha_node = snapped(cx, alpha);
         let power = pow(cx.graph, gap, alpha_node);
         let k_node = snapped(cx, k);
@@ -214,14 +226,28 @@ pub(super) fn solve(
     if conditions.0.iter().any(|c| c.on == j) {
         return None;
     }
-    let (ca, cb) = (p.coefficient(cx.graph, &p.unit(j, 2)), p.coefficient(cx.graph, &p.unit(j, 1)));
+    let (ca, cb) = (
+        p.coefficient(cx.graph, &p.unit(j, 2)),
+        p.coefficient(cx.graph, &p.unit(j, 1)),
+    );
     let c0 = p.coefficient(cx.graph, &vec![0; n]);
-    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
-    if cx.is_zero(ca) || !p.constant(cx.graph, c0) || !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) {
+    let (a1, a2) = (
+        p.coefficient(cx.graph, &p.unit(time_index, 1)),
+        p.coefficient(cx.graph, &p.unit(time_index, 2)),
+    );
+    if cx.is_zero(ca)
+        || !p.constant(cx.graph, c0)
+        || !p.constant(cx.graph, a1)
+        || !p.constant(cx.graph, a2)
+    {
         return None;
     }
     for (index, c) in &p.linear {
-        let known = *index == p.unit(j, 1) || *index == p.unit(j, 2) || *index == vec![0; n] || *index == p.unit(time_index, 1) || *index == p.unit(time_index, 2);
+        let known = *index == p.unit(j, 1)
+            || *index == p.unit(j, 2)
+            || *index == vec![0; n]
+            || *index == p.unit(time_index, 1)
+            || *index == p.unit(time_index, 2);
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
@@ -229,15 +255,25 @@ pub(super) fn solve(
     let a_poly = polynomial(cx, ca, x, 2)?;
     let b_poly = polynomial(cx, cb, x, 1)?;
     let value = |cx: &Cx<'_>, node: NodeId| exact_value(cx, node);
-    let af: Vec<f64> = a_poly.iter().map(|&c| value(cx, c)).collect::<Option<_>>()?;
-    let bf: Vec<f64> = b_poly.iter().map(|&c| value(cx, c)).collect::<Option<_>>()?;
+    let af: Vec<f64> = a_poly
+        .iter()
+        .map(|&c| value(cx, c))
+        .collect::<Option<_>>()?;
+    let bf: Vec<f64> = b_poly
+        .iter()
+        .map(|&c| value(cx, c))
+        .collect::<Option<_>>()?;
     // At least one coefficient must depend on x (else the box solvers apply).
     if af[1].abs() < 1e-12 && af[2].abs() < 1e-12 && bf[1].abs() < 1e-12 {
         return None;
     }
     // The evolution is well posed for `κ c₂ / d > 0`-normalised operators:
     // `d u_t = -c₂ u_xx - …` (residual form), so `κ = -sign(d)`.
-    let time_coefficient = if is_zero_number(cx.graph, a2) { a1 } else { a2 };
+    let time_coefficient = if is_zero_number(cx.graph, a2) {
+        a1
+    } else {
+        a2
+    };
     let sign = super::util::sample(cx.graph, time_coefficient, 0)?;
     let kappa = if sign > 0.0 { -1.0_f64 } else { 1.0 };
     let ah = [kappa * af[0], kappa * af[1], kappa * af[2]];
@@ -250,7 +286,11 @@ pub(super) fn solve(
         let m = mul(cx.graph, &[kappa_node, c]);
         cx.simplify(m)
     };
-    let (ah0, ah1, ah2) = (scaled(cx, a_poly[0]), scaled(cx, a_poly[1]), scaled(cx, a_poly[2]));
+    let (ah0, ah1, ah2) = (
+        scaled(cx, a_poly[0]),
+        scaled(cx, a_poly[1]),
+        scaled(cx, a_poly[2]),
+    );
     let (bh0, bh1) = (scaled(cx, b_poly[0]), scaled(cx, b_poly[1]));
     let mut modes = Vec::new();
     for degree in 0..=MAX_DEGREE {
@@ -288,7 +328,11 @@ pub(super) fn solve(
             coefficients[ku] = cx.simplify(c);
         }
         let mut terms = Vec::new();
-        for (power, &c) in coefficients.iter().enumerate().take(usize::try_from(degree).ok()? + 1) {
+        for (power, &c) in coefficients
+            .iter()
+            .enumerate()
+            .take(usize::try_from(degree).ok()? + 1)
+        {
             if cx.is_zero(c) {
                 continue;
             }
@@ -307,14 +351,41 @@ pub(super) fn solve(
         };
         modes.push((mode, eigen, norm));
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = Time { var: p.vars[time_index], order, a2, a1 };
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = Time {
+        var: p.vars[time_index],
+        order,
+        a2,
+        a1,
+    };
     let spatial = vec![(vec![1], kappa_node), (vec![0], c0)];
-    let axes = vec![Axis { var: x, shape: Shape::Orthogonal { start: lo, stop: hi, weight, modes } }];
+    let axes = vec![Axis {
+        var: x,
+        shape: Shape::Orthogonal {
+            start: lo,
+            stop: hi,
+            weight,
+            modes,
+        },
+    }];
     let mut items = time_items(cx, p, conditions, Some(time_index), order, n)?;
     if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: p.source,
+            special: None,
+        });
     }
-    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
+    let engine = Engine {
+        axes,
+        time: Some(time),
+        symbol: Symbol::Cartesian(spatial),
+        face: None,
+        exterior: None,
+    };
     finish(cx, p, conditions, &engine, &items, None, None)
 }

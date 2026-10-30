@@ -23,7 +23,10 @@
 //! `G_cell + gamma e_x e_y^T`, offset advanced and scaled with the cell), and the constraint virial from the exact acceleration-level
 //! constraint forces (including the flexible-cell flow terms) instead of the SHAKE impulse.
 
-use super::{Barostat, MdSimulation, NoseHooverChain, Thermostat};
+use super::Barostat;
+use super::MdSimulation;
+use super::NoseHooverChain;
+use super::Thermostat;
 
 /// Square matrix helper type.
 type Mat<const D: usize> = [[f64; D]; D];
@@ -134,7 +137,10 @@ pub fn mat_inverse<const D: usize>(a: &Mat<D>) -> Option<Mat<D>> {
 /// (so that `x(t) = e^{At} x0 + t phi1(At) b` solves `x' = A x + b`).
 #[must_use]
 pub fn mat_exp_phi1<const D: usize>(a: &Mat<D>) -> (Mat<D>, Mat<D>) {
-    let norm = a.iter().map(|r| r.iter().map(|x| x.abs()).sum::<f64>()).fold(0.0_f64, f64::max);
+    let norm = a
+        .iter()
+        .map(|r| r.iter().map(|x| x.abs()).sum::<f64>())
+        .fold(0.0_f64, f64::max);
     let mut s = 0u32;
     let mut scale = 1.0;
     while norm * scale > 0.25 && s < 60 {
@@ -233,7 +239,16 @@ impl FlexibleBarostat {
         for i in 0..d {
             p[i * d + i] = p0;
         }
-        Self { d, p_ext: p, w, pg: vec![0.0; d * d], mode, chain: None, cell_friction: 0.0, prescribed: None }
+        Self {
+            d,
+            p_ext: p,
+            w,
+            pg: vec![0.0; d * d],
+            mode,
+            chain: None,
+            cell_friction: 0.0,
+            prescribed: None,
+        }
     }
 
     /// Same with a general target pressure tensor (row-major).
@@ -244,7 +259,16 @@ impl FlexibleBarostat {
         w: f64,
         mode: CellMode,
     ) -> Self {
-        Self { d, p_ext, w, pg: vec![0.0; d * d], mode, chain: None, cell_friction: 0.0, prescribed: None }
+        Self {
+            d,
+            p_ext,
+            w,
+            pg: vec![0.0; d * d],
+            mode,
+            chain: None,
+            cell_friction: 0.0,
+            prescribed: None,
+        }
     }
 
     /// SLLOD shear flow on a deforming cell: the velocity gradient `u_x = rate * y` is imposed
@@ -280,9 +304,9 @@ impl FlexibleBarostat {
     #[must_use]
     pub const fn cell_dof(&self) -> usize {
         match self.mode {
-            CellMode::Full => self.d * (self.d + 1) / 2,
-            CellMode::Orthorhombic => self.d,
-            CellMode::Isotropic => 1,
+            | CellMode::Full => self.d * (self.d + 1) / 2,
+            | CellMode::Orthorhombic => self.d,
+            | CellMode::Isotropic => 1,
         }
     }
 
@@ -315,7 +339,10 @@ impl FlexibleBarostat {
         let mut g = [[0.0; D]; D];
         for i in 0..D {
             for j in 0..D {
-                g[i][j] = self.prescribed.as_ref().map_or_else(|| self.pg[i * D + j] / self.w, |p| p[i * D + j]);
+                g[i][j] = self
+                    .prescribed
+                    .as_ref()
+                    .map_or_else(|| self.pg[i * D + j] / self.w, |p| p[i * D + j]);
             }
         }
         g
@@ -362,7 +389,7 @@ impl<const D: usize> MdSimulation<D> {
             g[a][a] += ke2 / nf;
         }
         match b.mode {
-            CellMode::Full => {
+            | CellMode::Full => {
                 for a in 0..D {
                     for c in a + 1..D {
                         let m = f64::midpoint(g[a][c], g[c][a]);
@@ -371,7 +398,7 @@ impl<const D: usize> MdSimulation<D> {
                     }
                 }
             },
-            CellMode::Orthorhombic => {
+            | CellMode::Orthorhombic => {
                 for a in 0..D {
                     for c in 0..D {
                         if a != c {
@@ -380,7 +407,7 @@ impl<const D: usize> MdSimulation<D> {
                     }
                 }
             },
-            CellMode::Isotropic => {
+            | CellMode::Isotropic => {
                 let tr = (0..D).map(|a| g[a][a]).sum::<f64>() / D as f64;
                 for a in 0..D {
                     for c in 0..D {
@@ -431,7 +458,8 @@ impl<const D: usize> MdSimulation<D> {
             for a in 0..D {
                 r[a] = self.sys.pos[i][a] - self.sys.pos[j][a];
                 u[a] = self.sys.vel[i][a] - self.sys.vel[j][a];
-                df[a] = self.forces.f[i][a] / self.sys.mass[i] - self.forces.f[j][a] / self.sys.mass[j];
+                df[a] =
+                    self.forces.f[i][a] / self.sys.mass[i] - self.forces.f[j][a] / self.sys.mass[j];
             }
             self.sys.bx.min_image(&mut r);
             let vg_r = mat_vec(&vg, &r);
@@ -441,7 +469,8 @@ impl<const D: usize> MdSimulation<D> {
             let vg_rdot = mat_vec(&vg, &rdot);
             let mut acc = 0.0;
             for a in 0..D {
-                acc += r[a] * (df[a] - vg_u[a] - alpha * u[a] + vgd_r[a] + vg_rdot[a]) + rdot[a] * rdot[a];
+                acc += r[a] * (df[a] - vg_u[a] - alpha * u[a] + vgd_r[a] + vg_rdot[a])
+                    + rdot[a] * rdot[a];
             }
             rs.push(r);
             base.push(acc);
@@ -506,7 +535,11 @@ impl<const D: usize> MdSimulation<D> {
         let vg: Mat<D> = self.total_gradient(b);
         let alpha = (0..D).map(|a| vg[a][a]).sum::<f64>() / nf;
         let mut vgd = [[0.0; D]; D];
-        for _ in 0..if b.prescribed.is_some() { 1 } else { 4 } {
+        for _ in 0..if b.prescribed.is_some() {
+            1
+        } else {
+            4
+        } {
             self.constraint_virial = self.exact_constraint_virial(Some((&vg, &vgd, alpha)));
             if b.prescribed.is_none() {
                 let g = self.cell_force(b);
@@ -530,7 +563,7 @@ impl<const D: usize> MdSimulation<D> {
         let c2 = (1.0 - c1 * c1).sqrt();
         let kt_w = (b.w * t0).sqrt();
         match b.mode {
-            CellMode::Isotropic => {
+            | CellMode::Isotropic => {
                 let xi = self.rng.normal();
                 for a in 0..D {
                     let i = a * D + a;
@@ -541,16 +574,17 @@ impl<const D: usize> MdSimulation<D> {
                     }
                 }
             },
-            CellMode::Orthorhombic => {
+            | CellMode::Orthorhombic => {
                 for a in 0..D {
                     b.pg[a * D + a] = c1 * b.pg[a * D + a] + c2 * kt_w * self.rng.normal();
                 }
             },
-            CellMode::Full => {
+            | CellMode::Full => {
                 for a in 0..D {
                     b.pg[a * D + a] = c1 * b.pg[a * D + a] + c2 * kt_w * self.rng.normal();
                     for c in a + 1..D {
-                        let v = c1 * b.pg[a * D + c] + c2 * kt_w * std::f64::consts::FRAC_1_SQRT_2 * self.rng.normal();
+                        let v = c1 * b.pg[a * D + c]
+                            + c2 * kt_w * std::f64::consts::FRAC_1_SQRT_2 * self.rng.normal();
                         b.pg[a * D + c] = v;
                         b.pg[c * D + a] = v;
                     }
@@ -563,7 +597,9 @@ impl<const D: usize> MdSimulation<D> {
     /// integer multiples of the rows above it so that the off-diagonal elements stay within half
     /// the corresponding box length. Returns whether the cell changed.
     fn reduce_cell(&mut self) -> Result<bool, String> {
-        let Some(mut cell) = self.sys.bx.cell else { return Ok(false) };
+        let Some(mut cell) = self.sys.bx.cell else {
+            return Ok(false);
+        };
         let mut changed = false;
         for row in 1..D {
             for col in (0..row).rev() {
@@ -590,7 +626,11 @@ impl<const D: usize> MdSimulation<D> {
         let h = self.dt;
         if let Thermostat::NoseHooverChain(_) = &self.thermostat {
             let ke2 = 2.0 * self.sys.kinetic_energy();
-            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat { c.propagate(ke2, h) } else { 1.0 };
+            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat {
+                c.propagate(ke2, h)
+            } else {
+                1.0
+            };
             self.scale_velocities(s);
         }
         if let Thermostat::Langevin { t0, gamma } = self.thermostat {
@@ -620,7 +660,10 @@ impl<const D: usize> MdSimulation<D> {
     }
 
     pub(super) fn step_flexible(&mut self) -> Result<(), String> {
-        let Barostat::Flexible(mut b) = std::mem::replace(&mut self.barostat, Barostat::None) else { return Ok(()) };
+        let Barostat::Flexible(mut b) = std::mem::replace(&mut self.barostat, Barostat::None)
+        else {
+            return Ok(());
+        };
         let r = self.flexible_inner(&mut b);
         self.barostat = Barostat::Flexible(b);
         r
@@ -633,11 +676,22 @@ impl<const D: usize> MdSimulation<D> {
         if b.d != D {
             return Err("flexible barostat built for a different dimension".into());
         }
-        if self.sys.bx.bc.iter().any(|c| *c != super::Boundary::Periodic) {
+        if self
+            .sys
+            .bx
+            .bc
+            .iter()
+            .any(|c| *c != super::Boundary::Periodic)
+        {
             return Err("the flexible-cell barostat needs a fully periodic box".into());
         }
         let shear = self.sys.bx.shear_rate;
-        if shear != 0.0 && (D < 2 || b.mode == CellMode::Full || b.prescribed.is_some() || self.sys.bx.cell.is_some()) {
+        if shear != 0.0
+            && (D < 2
+                || b.mode == CellMode::Full
+                || b.prescribed.is_some()
+                || self.sys.bx.cell.is_some())
+        {
             return Err("sliding-brick Lees-Edwards needs an orthorhombic box and the Orthorhombic or Isotropic cell mode (use FlexibleBarostat::shear_flow for a deforming triclinic cell)".into());
         }
         if b.mode == CellMode::Full && self.sys.bx.cell.is_none() {
@@ -649,7 +703,9 @@ impl<const D: usize> MdSimulation<D> {
         if shear != 0.0 {
             self.shear_profile_shift(-1.0);
         }
-        if !self.constraints.is_empty() && self.constraint_virial.iter().flatten().all(|x| *x == 0.0) {
+        if !self.constraints.is_empty()
+            && self.constraint_virial.iter().flatten().all(|x| *x == 0.0)
+        {
             self.refresh_constraint_virial_flow(b);
         }
         // 1. thermostats, cell kick

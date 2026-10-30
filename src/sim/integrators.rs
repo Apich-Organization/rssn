@@ -199,7 +199,11 @@ where
 {
     let residual = |_: f64, z: &[f64]| -> Vec<f64> {
         let fz = f(t + h, z);
-        z.iter().zip(y).zip(&fz).map(|((zi, yi), fi)| zi - yi - h * fi).collect()
+        z.iter()
+            .zip(y)
+            .zip(&fz)
+            .map(|((zi, yi), fi)| zi - yi - h * fi)
+            .collect()
     };
     newton(&residual, y.to_vec())
 }
@@ -218,7 +222,11 @@ where
     let residual = |_: f64, z: &[f64]| -> Vec<f64> {
         let mid: Vec<f64> = z.iter().zip(y).map(|(zi, yi)| 0.5 * (zi + yi)).collect();
         let fm = f(t + 0.5 * h, &mid);
-        z.iter().zip(y).zip(&fm).map(|((zi, yi), fi)| zi - yi - h * fi).collect()
+        z.iter()
+            .zip(y)
+            .zip(&fm)
+            .map(|((zi, yi), fi)| zi - yi - h * fi)
+            .collect()
     };
     newton(&residual, y.to_vec())
 }
@@ -258,15 +266,25 @@ where
         }
         let jac = jacobian(&f, t, &y);
         // W = I - γ h J
-        let w: Vec<Vec<f64>> =
-            (0..n).map(|i| (0..n).map(|j| f64::from(u8::from(i == j)) - gamma * h * jac[i][j]).collect()).collect();
+        let w: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                (0..n)
+                    .map(|j| f64::from(u8::from(i == j)) - gamma * h * jac[i][j])
+                    .collect()
+            })
+            .collect();
         let f0 = f(t, &y);
         let k1 = solve_dense(w.clone(), f0)?;
         let y_mid: Vec<f64> = y.iter().zip(&k1).map(|(yi, ki)| yi + h * ki).collect();
         let f1 = f(t + h, &y_mid);
         let rhs: Vec<f64> = f1.iter().zip(&k1).map(|(fi, ki)| fi - 2.0 * ki).collect();
         let k2 = solve_dense(w, rhs)?;
-        let next: Vec<f64> = y.iter().zip(&k1).zip(&k2).map(|((yi, a), b)| yi + 1.5 * h * a + 0.5 * h * b).collect();
+        let next: Vec<f64> = y
+            .iter()
+            .zip(&k1)
+            .zip(&k2)
+            .map(|((yi, a), b)| yi + 1.5 * h * a + 0.5 * h * b)
+            .collect();
         // Error against the first-order (linearly implicit Euler) solution.
         let error = next
             .iter()
@@ -281,7 +299,11 @@ where
             y = next;
             out.push((t, y.clone()));
         }
-        let factor = if error.is_finite() { (0.9 / error.max(1e-10).sqrt()).clamp(0.2, 5.0) } else { 0.2 };
+        let factor = if error.is_finite() {
+            (0.9 / error.max(1e-10).sqrt()).clamp(0.2, 5.0)
+        } else {
+            0.2
+        };
         h *= factor;
     }
     Some(out)
@@ -335,7 +357,10 @@ mod tests {
         let path = rosenbrock_solve(robertson, 0.0, &[1.0, 0.0, 0.0], 40.0, 1e-6).unwrap();
         let (_, y) = path.last().unwrap();
         assert!((y.iter().sum::<f64>() - 1.0).abs() < 1e-6, "{y:?}");
-        assert!((y[0] - 0.715_8).abs() < 2e-3 && (y[2] - 0.284_1).abs() < 2e-3, "{y:?}");
+        assert!(
+            (y[0] - 0.715_8).abs() < 2e-3 && (y[2] - 0.284_1).abs() < 2e-3,
+            "{y:?}"
+        );
         assert!(path.len() < 2000, "{} steps", path.len());
         // y' = -1000 (y - cos t): backward Euler and implicit midpoint stay
         // stable with h = 0.1 (explicit Euler would explode).
@@ -346,6 +371,9 @@ mod tests {
             a = backward_euler_step(&f, t, &a, 0.1).unwrap();
             b = implicit_midpoint_step(&f, t, &b, 0.1).unwrap();
         }
-        assert!((a[0] - 5.0_f64.cos()).abs() < 1e-2 && b[0].abs() < 2.0, "{a:?} {b:?}");
+        assert!(
+            (a[0] - 5.0_f64.cos()).abs() < 1e-2 && b[0].abs() < 2.0,
+            "{a:?} {b:?}"
+        );
     }
 }

@@ -158,10 +158,9 @@ fn free_fall_accelerates_with_gravity() {
 fn dam_break_scenario_stays_inside_the_box_and_spreads() {
     let res = simulate_dam_break_2d_scenario();
     assert_eq!(res.len(), 200);
-    assert!(res.iter().all(|&(x, y)| x.is_finite()
-        && y.is_finite()
-        && (0.0..=4.0).contains(&x)
-        && (0.0..=4.0).contains(&y)));
+    assert!(res.iter().all(|&(x, y)| {
+        x.is_finite() && y.is_finite() && (0.0..=4.0).contains(&x) && (0.0..=4.0).contains(&y)
+    }));
     let max_x = res.iter().map(|p| p.0).fold(f64::MIN, f64::max);
     assert!(max_x > 0.72, "fluid did not spread: max x = {max_x}");
 }

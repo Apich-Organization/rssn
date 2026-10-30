@@ -4,10 +4,12 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::integrate::{
-    QuadratureMethod, adaptive_quadrature, gauss_legendre_quadrature, romberg_integration,
-    simpson_rule, trapezoidal_rule,
-};
+use rssn::kernels::integrate::QuadratureMethod;
+use rssn::kernels::integrate::adaptive_quadrature;
+use rssn::kernels::integrate::gauss_legendre_quadrature;
+use rssn::kernels::integrate::romberg_integration;
+use rssn::kernels::integrate::simpson_rule;
+use rssn::kernels::integrate::trapezoidal_rule;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -18,21 +20,35 @@ fn cfg() -> ProptestConfig {
     }
 }
 
-fn poly_2(c: [f64; 3], x: f64) -> f64 {
+fn poly_2(
+    c: [f64; 3],
+    x: f64,
+) -> f64 {
     c[0] + c[1] * x + c[2] * x * x
 }
 
-fn integral_poly_2(c: [f64; 3], a: f64, b: f64) -> f64 {
+fn integral_poly_2(
+    c: [f64; 3],
+    a: f64,
+    b: f64,
+) -> f64 {
     let anti = |x: f64| c[0] * x + 0.5 * c[1] * x * x + c[2] * x * x * x / 3.0;
     anti(b) - anti(a)
 }
 
 /// Cubic `c0 + c1 x + c2 x^2 + c3 x^3` and its exact integral over `[a, b]`.
-fn cubic(c: [f64; 4], x: f64) -> f64 {
+fn cubic(
+    c: [f64; 4],
+    x: f64,
+) -> f64 {
     c[0] + x * (c[1] + x * (c[2] + x * c[3]))
 }
 
-fn integral_cubic(c: [f64; 4], a: f64, b: f64) -> f64 {
+fn integral_cubic(
+    c: [f64; 4],
+    a: f64,
+    b: f64,
+) -> f64 {
     let anti = |x: f64| x * (c[0] + x * (c[1] / 2.0 + x * (c[2] / 3.0 + x * c[3] / 4.0)));
     anti(b) - anti(a)
 }
@@ -46,7 +62,11 @@ fn trapezoidal_x_squared() {
 #[test]
 fn trapezoidal_is_exact_for_linear_functions() {
     // int_0^2 (3x + 1) dx = 6 + 2 = 8, one step suffices.
-    assert_approx_eq!(trapezoidal_rule(|x| 3.0 * x + 1.0, (0.0, 2.0), 1), 8.0, 1e-12);
+    assert_approx_eq!(
+        trapezoidal_rule(|x| 3.0 * x + 1.0, (0.0, 2.0), 1),
+        8.0,
+        1e-12
+    );
 }
 
 #[test]

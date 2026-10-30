@@ -39,13 +39,24 @@
 //! | `graph_bipartite_matching(g, part)`, `graph_hopcroft_karp(g, part)`, `graph_vertex_cover(g, part, matching)`, `graph_blossom(g)` | maximum matchings as `list(u, v)`, minimum vertex cover (Konig), maximum matching of a general graph |
 //! | `graph_toposort(g)`, `graph_toposort_kahn(g)`, `graph_toposort_dfs(g)` | a topological order of a digraph or `false` |
 //! | `spectral_analysis(M)`, `algebraic_connectivity(g)` | `list(eigenvals(M), eigenvects(M))`; second smallest Laplacian eigenvalue (float, numeric weights) |
-//! | `graph_isomorphic_heuristic(g, h)`, `graph_isomorphic(g, h)` | Weisfeiler-Lehman test (necessary condition); exact test by backtracking (up to 64 vertices) |
+//! | `graph_isomorphic_heuristic(g, h)`, `graph_isomorphic(g, h)` | Weisfeiler-Lehman certificate (necessary condition); exact test by canonical labelling, with the exhaustive matcher as the fallback (up to 1024 vertices) |
+//! | `graph_canonical_form(g)`, `graph_automorphisms(g)` | canonical labelling `list(order, adjacency)`; automorphism group `list(order, generators, orbits)` |
 //! | `graph_greedy_coloring(g)`, `graph_chromatic_number(g)` | Welsh-Powell colours `0, 1, ...` per vertex; exact chromatic number (up to 40 vertices, no self-loops) |
 //! | `induced_subgraph(g, vs)`, `graph_union`, `graph_intersection`, `graph_cartesian`, `graph_tensor`, `graph_complement`, `graph_disjoint_union`, `graph_join` | graph operations |
 //!
 //! Shortest-path algorithms order by the numeric value of the weights; a
 //! symbolic weight counts as `oo` for the comparison (an edge with a symbolic
 //! weight is never part of a computed path), as in the legacy code.
+//!
+//! Isomorphism, canonical labelling and automorphisms compare the *shape* of a
+//! graph: weights and hyperedges are ignored and parallel edges count as a
+//! label, so two graphs that differ only in a weight are isomorphic. The
+//! triples are decided by 1-dimensional Weisfeiler-Lehman refinement followed
+//! by an individualisation-refinement search with automorphism pruning
+//! ([`crate::kernels::graph`]); `graph_isomorphic` falls back to the
+//! exhaustive matcher when the search budget runs out, and
+//! `graph_canonical_form` / `graph_automorphisms` answer only when the search
+//! is exact, because a best-effort labelling is not a canonical one.
 
 #[cfg(test)]
 mod tests;
@@ -58,6 +69,7 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::V;
 use super::apply;
 use super::def;
 use super::def_inert;
@@ -70,15 +82,19 @@ use super::neg;
 use super::prod;
 use super::rational;
 use super::sum;
-use super::V;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::RuleError;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
+use crate::kernels::graph::CanonicalLabelling;
+use crate::kernels::graph::ColourGraph;
+use crate::kernels::graph::SearchBudget;
+use crate::kernels::graph::canonical_labelling;
+use crate::kernels::graph::wl_equivalent;
 
 /// One adjacency entry.
 #[derive(Clone, Copy)]
@@ -184,7 +200,9 @@ impl Gr {
         if let Some(&h) = children.get(2) {
             for e in items(g, h)? {
                 let parts = items(g, e)?;
-                let [vs, w] = parts.as_slice() else { return None };
+                let [vs, w] = parts.as_slice() else {
+                    return None;
+                };
                 let vs = idxs(g, *vs)?;
                 if vs.iter().any(|&v| v >= n) {
                     return None;
@@ -227,7 +245,11 @@ impl Gr {
                 .collect();
             args.push(g.node(core::LIST, &hs));
         }
-        let name = if self.directed { "digraph" } else { "graph" };
+        let name = if self.directed {
+            "digraph"
+        } else {
+            "graph"
+        };
         let op = g.ops().lookup(name).unwrap_or(core::LIST);
         g.try_node(op, &args).unwrap_or(edge_list)
     }
@@ -381,7 +403,12 @@ fn graph_hyperedges(
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    Some(V::List(gr.hyper.iter().map(|(vs, w)| V::List(vec![indices(vs), V::Node(*w)])).collect()))
+    Some(V::List(
+        gr.hyper
+            .iter()
+            .map(|(vs, w)| V::List(vec![indices(vs), V::Node(*w)]))
+            .collect(),
+    ))
 }
 
 fn graph_neighbors(
@@ -391,7 +418,12 @@ fn graph_neighbors(
     let [g, u] = a else { return None };
     let gr = read(cx, *g)?;
     let u = vertex(cx, *u, &gr)?;
-    Some(V::List(gr.adj[u].iter().map(|e| V::List(vec![V::uint(e.to), V::Node(e.w)])).collect()))
+    Some(V::List(
+        gr.adj[u]
+            .iter()
+            .map(|e| V::List(vec![V::uint(e.to), V::Node(e.w)]))
+            .collect(),
+    ))
 }
 
 fn graph_degree(
@@ -402,7 +434,11 @@ fn graph_degree(
     let [g, u] = a else { return None };
     let gr = read(cx, *g)?;
     let u = vertex(cx, *u, &gr)?;
-    Some(V::uint(if incoming { gr.radj[u].len() } else { gr.adj[u].len() }))
+    Some(V::uint(if incoming {
+        gr.radj[u].len()
+    } else {
+        gr.adj[u].len()
+    }))
 }
 
 fn graph_edges(
@@ -410,7 +446,9 @@ fn graph_edges(
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    Some(V::List(gr.get_edges().into_iter().map(edge_value).collect()))
+    Some(V::List(
+        gr.get_edges().into_iter().map(edge_value).collect(),
+    ))
 }
 
 /// For each ordered pair the weights of the parallel edges.
@@ -432,7 +470,17 @@ fn graph_adjacency(
     let zero = cx.graph.int(0);
     let rows: Vec<Vec<NodeId>> = cells(&gr)
         .iter()
-        .map(|row| row.iter().map(|c| if c.is_empty() { zero } else { sum(cx.graph, c) }).collect())
+        .map(|row| {
+            row.iter()
+                .map(|c| {
+                    if c.is_empty() {
+                        zero
+                    } else {
+                        sum(cx.graph, c)
+                    }
+                })
+                .collect()
+        })
         .collect();
     Some(V::Node(matrix(cx.graph, &rows)))
 }
@@ -448,7 +496,11 @@ fn graph_incidence(
         m[u][j] = if gr.directed { -1 } else { 1 };
         m[v][j] = 1;
     }
-    Some(V::List(m.into_iter().map(|r| V::List(r.into_iter().map(V::int).collect())).collect()))
+    Some(V::List(
+        m.into_iter()
+            .map(|r| V::List(r.into_iter().map(V::int).collect()))
+            .collect(),
+    ))
 }
 
 fn graph_laplacian(
@@ -459,16 +511,26 @@ fn graph_laplacian(
     let zero = cx.graph.int(0);
     let cells = cells(&gr);
     let mut rows = Vec::with_capacity(gr.n);
-    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+    #[allow(clippy::needless_range_loop)]
+    // index is used for more than one array / arithmetic; iterator form would not be clearer
     for u in 0..gr.n {
         let degree: Vec<NodeId> = gr.adj[u].iter().map(|e| e.w).collect();
         let degree = sum(cx.graph, &degree);
         let mut row = Vec::with_capacity(gr.n);
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..gr.n {
-            let cell = if cells[u][v].is_empty() { zero } else { sum(cx.graph, &cells[u][v]) };
+            let cell = if cells[u][v].is_empty() {
+                zero
+            } else {
+                sum(cx.graph, &cells[u][v])
+            };
             let minus = neg(cx.graph, cell);
-            row.push(if u == v { sum(cx.graph, &[degree, minus]) } else { minus });
+            row.push(if u == v {
+                sum(cx.graph, &[degree, minus])
+            } else {
+                minus
+            });
         }
         rows.push(row);
     }
@@ -554,7 +616,9 @@ fn graph_components(
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    Some(V::List(components(&gr).iter().map(|c| indices(c)).collect()))
+    Some(V::List(
+        components(&gr).iter().map(|c| indices(c)).collect(),
+    ))
 }
 
 fn graph_is_connected(
@@ -743,7 +807,10 @@ fn graph_bridges(
         }
     }
     let aps: Vec<usize> = (0..gr.n).filter(|&u| s.ap[u]).collect();
-    Some(V::List(vec![V::List(s.cuts.iter().map(|&(u, v)| pair(u, v)).collect()), indices(&aps)]))
+    Some(V::List(vec![
+        V::List(s.cuts.iter().map(|&(u, v)| pair(u, v)).collect()),
+        indices(&aps),
+    ]))
 }
 
 // ---------------- spanning trees ----------------
@@ -788,7 +855,11 @@ fn graph_kruskal(
     let mut edges = gr.get_edges();
     edges.sort_by(|x, y| key(cx.graph, x.2).total_cmp(&key(cx.graph, y.2)));
     let mut dsu = Dsu((0..gr.n).collect());
-    let tree: Vec<V> = edges.into_iter().filter(|&(u, v, _)| dsu.union(u, v)).map(edge_value).collect();
+    let tree: Vec<V> = edges
+        .into_iter()
+        .filter(|&(u, v, _)| dsu.union(u, v))
+        .map(edge_value)
+        .collect();
     Some(V::List(tree))
 }
 
@@ -845,7 +916,11 @@ fn number_value(
     r: &BigRational,
     float: bool,
 ) -> V {
-    let number = if float { Number::Float(r.to_f64().unwrap_or(f64::NAN)) } else { Number::rat(r.clone()) };
+    let number = if float {
+        Number::Float(r.to_f64().unwrap_or(f64::NAN))
+    } else {
+        Number::rat(r.clone())
+    };
     V::Node(cx.graph.num(number))
 }
 
@@ -997,14 +1072,24 @@ fn graph_min_cost_flow(
     for (u, list) in gr.adj.iter().enumerate() {
         for e in list {
             let parts = items(cx.graph, e.w)?;
-            let [cap, cost] = parts.as_slice() else { return None };
+            let [cap, cost] = parts.as_slice() else {
+                return None;
+            };
             let (cap, cost) = (cx.graph.number_of(*cap)?, cx.graph.number_of(*cost)?);
             float |= !cap.is_exact() || !cost.is_exact();
             let (cap, cost) = (rational(cap)?, rational(cost)?);
             out[u].push(arcs.len());
-            arcs.push(Arc { to: e.to, cap, cost: cost.clone() });
+            arcs.push(Arc {
+                to: e.to,
+                cap,
+                cost: cost.clone(),
+            });
             out[e.to].push(arcs.len());
-            arcs.push(Arc { to: u, cap: BigRational::zero(), cost: -cost });
+            arcs.push(Arc {
+                to: u,
+                cap: BigRational::zero(),
+                cost: -cost,
+            });
         }
     }
     let (mut flow, mut total) = (BigRational::zero(), BigRational::zero());
@@ -1056,7 +1141,10 @@ fn graph_min_cost_flow(
         flow += &bottleneck;
         total += bottleneck * dt;
     }
-    Some(V::List(vec![number_value(cx, &flow, float), number_value(cx, &total, float)]))
+    Some(V::List(vec![
+        number_value(cx, &flow, float),
+        number_value(cx, &total, float),
+    ]))
 }
 
 // ---------------- shortest paths ----------------
@@ -1068,7 +1156,12 @@ fn dist_list(
     V::List(
         dist.iter()
             .zip(prev)
-            .map(|(d, p)| V::List(vec![V::Node(d.term), V::Int(p.map_or(BigInt::from(-1), BigInt::from))]))
+            .map(|(d, p)| {
+                V::List(vec![
+                    V::Node(d.term),
+                    V::Int(p.map_or(BigInt::from(-1), BigInt::from)),
+                ])
+            })
             .collect(),
     )
 }
@@ -1081,7 +1174,16 @@ fn initial(
     let inf = infinity(cx.graph);
     let zero = cx.graph.int(0);
     (0..n)
-        .map(|v| if v == s { Dist { term: zero, key: 0.0 } } else { Dist { term: inf, key: f64::INFINITY } })
+        .map(|v| {
+            if v == s {
+                Dist { term: zero, key: 0.0 }
+            } else {
+                Dist {
+                    term: inf,
+                    key: f64::INFINITY,
+                }
+            }
+        })
         .collect()
 }
 
@@ -1098,14 +1200,18 @@ fn graph_dijkstra(
     loop {
         let mut pick: Option<usize> = None;
         for v in 0..gr.n {
-            if !done[v] && dist[v].key.is_finite() && pick.is_none_or(|p| dist[v].key < dist[p].key) {
+            if !done[v] && dist[v].key.is_finite() && pick.is_none_or(|p| dist[v].key < dist[p].key)
+            {
                 pick = Some(v);
             }
         }
         let Some(u) = pick else { break };
         done[u] = true;
         for e in &gr.adj[u] {
-            let w = Dist { term: e.w, key: key(cx.graph, e.w) };
+            let w = Dist {
+                term: e.w,
+                key: key(cx.graph, e.w),
+            };
             let candidate = dist_add(cx.graph, dist[u], w);
             if candidate.key.is_finite() && candidate.key < dist[e.to].key {
                 dist[e.to] = candidate;
@@ -1129,7 +1235,10 @@ fn relax_all(
             continue;
         }
         for e in &gr.adj[u] {
-            let w = Dist { term: e.w, key: key(cx.graph, e.w) };
+            let w = Dist {
+                term: e.w,
+                key: key(cx.graph, e.w),
+            };
             if !w.key.is_finite() {
                 continue;
             }
@@ -1173,7 +1282,16 @@ fn graph_floyd_warshall(
     let inf = infinity(cx.graph);
     let zero = cx.graph.int(0);
     let n = gr.n;
-    let mut d = vec![vec![Dist { term: inf, key: f64::INFINITY }; n]; n];
+    let mut d = vec![
+        vec![
+            Dist {
+                term: inf,
+                key: f64::INFINITY
+            };
+            n
+        ];
+        n
+    ];
     // Edges with a symbolic weight are kept as they are (they cannot be
     // compared), a numeric weight replaces a larger one.
     let mut direct = vec![vec![false; n]; n];
@@ -1182,7 +1300,10 @@ fn graph_floyd_warshall(
     }
     for (u, list) in gr.adj.iter().enumerate() {
         for e in list {
-            let w = Dist { term: e.w, key: key(cx.graph, e.w) };
+            let w = Dist {
+                term: e.w,
+                key: key(cx.graph, e.w),
+            };
             if u == e.to {
                 if w.key < 0.0 {
                     d[u][u] = w;
@@ -1203,7 +1324,10 @@ fn graph_floyd_warshall(
             }
         }
     }
-    let rows: Vec<Vec<NodeId>> = d.iter().map(|r| r.iter().map(|x| x.term).collect()).collect();
+    let rows: Vec<Vec<NodeId>> = d
+        .iter()
+        .map(|r| r.iter().map(|x| x.term).collect())
+        .collect();
     Some(V::Node(matrix(cx.graph, &rows)))
 }
 
@@ -1321,7 +1445,12 @@ fn graph_bipartite_matching(
     for u in (0..gr.n).filter(|&u| part[u] == 0) {
         kuhn(&gr, &part, u, &mut vec![false; gr.n], &mut mate);
     }
-    Some(V::List(mate.iter().enumerate().filter_map(|(v, u)| u.map(|u| pair(u, v))).collect()))
+    Some(V::List(
+        mate.iter()
+            .enumerate()
+            .filter_map(|(v, u)| u.map(|u| pair(u, v)))
+            .collect(),
+    ))
 }
 
 struct HopcroftKarp<'a> {
@@ -1400,7 +1529,8 @@ fn graph_hopcroft_karp(
         dist: vec![0; gr.n],
     };
     while hk.bfs() {
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for u in 0..gr.n {
             if part[u] == 0 && hk.mate[u].is_none() {
                 hk.dfs(u);
@@ -1408,7 +1538,10 @@ fn graph_hopcroft_karp(
         }
     }
     Some(V::List(
-        (0..gr.n).filter(|&u| part[u] == 0).filter_map(|u| hk.mate[u].map(|v| pair(u, v))).collect(),
+        (0..gr.n)
+            .filter(|&u| part[u] == 0)
+            .filter_map(|u| hk.mate[u].map(|v| pair(u, v)))
+            .collect(),
     ))
 }
 
@@ -1447,13 +1580,15 @@ fn graph_vertex_cover(
                 }
             }
         } else if let Some(w) = mate[u]
-            && !reached[w] {
-                reached[w] = true;
-                queue.push_back(w);
-            }
+            && !reached[w]
+        {
+            reached[w] = true;
+            queue.push_back(w);
+        }
     }
-    let cover: Vec<usize> =
-        (0..gr.n).filter(|&v| (part[v] == 0 && !reached[v]) || (part[v] == 1 && reached[v])).collect();
+    let cover: Vec<usize> = (0..gr.n)
+        .filter(|&v| (part[v] == 0 && !reached[v]) || (part[v] == 1 && reached[v]))
+        .collect();
     Some(indices(&cover))
 }
 
@@ -1562,7 +1697,11 @@ fn graph_blossom(
     a: &[NodeId],
 ) -> Option<V> {
     let gr = read(cx, *a.first()?)?;
-    let adj: Vec<Vec<usize>> = gr.adj.iter().map(|l| l.iter().map(|e| e.to).collect()).collect();
+    let adj: Vec<Vec<usize>> = gr
+        .adj
+        .iter()
+        .map(|l| l.iter().map(|e| e.to).collect())
+        .collect();
     let mut b = Blossom {
         adj: &adj,
         mate: vec![NONE; gr.n],
@@ -1581,7 +1720,12 @@ fn graph_blossom(
             }
         }
     }
-    Some(V::List((0..gr.n).filter(|&u| b.mate[u] != NONE && u < b.mate[u]).map(|u| pair(u, b.mate[u])).collect()))
+    Some(V::List(
+        (0..gr.n)
+            .filter(|&u| b.mate[u] != NONE && u < b.mate[u])
+            .map(|u| pair(u, b.mate[u]))
+            .collect(),
+    ))
 }
 
 // ---------------- topological order ----------------
@@ -1685,7 +1829,11 @@ fn symmetric_eigenvalues(mut m: Vec<Vec<f64>>) -> Vec<f64> {
                     continue;
                 }
                 let theta = (m[q][q] - m[p][p]) / (2.0 * m[p][q]);
-                let t = if theta == 0.0 { 1.0 } else { theta.signum() / (theta.abs() + theta.hypot(1.0)) };
+                let t = if theta == 0.0 {
+                    1.0
+                } else {
+                    theta.signum() / (theta.abs() + theta.hypot(1.0))
+                };
                 let c = 1.0 / t.hypot(1.0);
                 let s = t * c;
                 for row in &mut m {
@@ -1693,7 +1841,8 @@ fn symmetric_eigenvalues(mut m: Vec<Vec<f64>>) -> Vec<f64> {
                     row[p] = c * kp - s * kq;
                     row[q] = s * kp + c * kq;
                 }
-                #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+                #[allow(clippy::needless_range_loop)]
+                // index is used for more than one array / arithmetic; iterator form would not be clearer
                 for k in 0..n {
                     let (pk, qk) = (m[p][k], m[q][k]);
                     m[p][k] = c * pk - s * qk;
@@ -1729,49 +1878,44 @@ fn algebraic_connectivity(
     Some(V::Float(values[1]))
 }
 
-// ---------------- isomorphism and colouring ----------------
+// ---------------- isomorphism, canonical labelling and colouring ----------------
 
-/// Weisfeiler-Lehman colour refinement of both graphs with shared colour
-/// names; the graphs pass when the colour histograms agree.
-fn wl_equivalent(
-    g1: &Gr,
-    g2: &Gr,
-) -> bool {
-    use std::collections::BTreeMap;
-    if g1.n != g2.n || g1.get_edges().len() != g2.get_edges().len() {
-        return false;
+/// The largest graph the canonical-labelling layer is run on. The kernel
+/// holds an adjacency matrix, so this bounds the memory at 4 MiB; larger
+/// requests stay unreduced.
+const CANONICAL_LIMIT: usize = 1024;
+
+/// The largest graph for which the exhaustive matcher is used as a fallback
+/// when the individualisation–refinement budget runs out.
+const MATCH_LIMIT: usize = 64;
+
+/// The kernel view of a graph term: no vertex colours and one label per
+/// parallel edge, which is the adjacency the legacy matcher compared. Weights
+/// stay ignored, as before, and so do hyperedges.
+fn colour_graph(gr: &Gr) -> Option<ColourGraph> {
+    if gr.n > CANONICAL_LIMIT {
+        return None;
     }
-    let n = g1.n;
-    let mut c1: Vec<usize> = (0..n).map(|i| g1.radj[i].len()).collect();
-    let mut c2: Vec<usize> = (0..n).map(|i| g2.radj[i].len()).collect();
-    for _ in 0..n {
-        let signature = |gr: &Gr, c: &[usize], i: usize| {
-            let mut neighbours: Vec<usize> = gr.adj[i].iter().map(|e| c[e.to]).collect();
-            neighbours.sort_unstable();
-            (c[i], neighbours)
-        };
-        let sigs1: Vec<_> = (0..n).map(|i| signature(g1, &c1, i)).collect();
-        let sigs2: Vec<_> = (0..n).map(|i| signature(g2, &c2, i)).collect();
-        let mut names: BTreeMap<(usize, Vec<usize>), usize> = BTreeMap::new();
-        for s in sigs1.iter().chain(&sigs2) {
-            let next = names.len();
-            names.entry(s.clone()).or_insert(next);
+    let mut cg = ColourGraph::new(gr.n, gr.directed);
+    for (u, row) in multiplicity(gr).iter().enumerate() {
+        for (v, &count) in row.iter().enumerate() {
+            if count > 0 {
+                cg.set_edge(u, v, u32::try_from(count).ok()?);
+            }
         }
-        c1 = sigs1.iter().map(|s| names[s]).collect();
-        c2 = sigs2.iter().map(|s| names[s]).collect();
     }
-    c1.sort_unstable();
-    c2.sort_unstable();
-    c1 == c2
+    Some(cg)
 }
 
-fn graph_isomorphic_heuristic(
-    cx: &mut Cx<'_>,
-    a: &[NodeId],
-) -> Option<V> {
-    let [x, y] = a else { return None };
-    let (g1, g2) = (read(cx, *x)?, read(cx, *y)?);
-    Some(V::Bool(wl_equivalent(&g1, &g2)))
+/// The canonical labelling of a graph term.
+///
+/// `None` when the graph is too large for the kernel or the search budget is
+/// exhausted: the labelling would then not be canonical, and a wrong
+/// canonical form is worse than no answer.
+fn canonical_labelling_of(gr: &Gr) -> Option<CanonicalLabelling> {
+    let cg = colour_graph(gr)?;
+    let form = canonical_labelling(&cg, SearchBudget::for_size(cg.num_nodes()));
+    form.is_exact().then_some(form)
 }
 
 fn multiplicity(gr: &Gr) -> Vec<Vec<usize>> {
@@ -1782,6 +1926,16 @@ fn multiplicity(gr: &Gr) -> Vec<Vec<usize>> {
         }
     }
     m
+}
+
+fn graph_isomorphic_heuristic(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [x, y] = a else { return None };
+    let (g1, g2) = (read(cx, *x)?, read(cx, *y)?);
+    let (c1, c2) = (colour_graph(&g1)?, colour_graph(&g2)?);
+    Some(V::Bool(wl_equivalent(&c1, &c2)))
 }
 
 fn extend(
@@ -1817,14 +1971,83 @@ fn graph_isomorphic(
 ) -> Option<V> {
     let [x, y] = a else { return None };
     let (g1, g2) = (read(cx, *x)?, read(cx, *y)?);
-    if g1.n > 64 || g2.n > 64 {
-        return None;
-    }
-    if g1.n != g2.n || g1.directed != g2.directed || !wl_equivalent(&g1, &g2) {
+    if g1.n != g2.n || g1.directed != g2.directed {
         return Some(V::Bool(false));
     }
-    let (m1, m2) = (multiplicity(&g1), multiplicity(&g2));
-    Some(V::Bool(extend(&m1, &m2, &mut Vec::new(), &mut vec![false; g1.n])))
+    let (Some(c1), Some(c2)) = (colour_graph(&g1), colour_graph(&g2)) else {
+        return None;
+    };
+    // The refinement certificate rejects almost every non-isomorphic pair;
+    // the canonical codes decide the rest.
+    if !wl_equivalent(&c1, &c2) {
+        return Some(V::Bool(false));
+    }
+    let budget = SearchBudget::for_size(g1.n);
+    let (f1, f2) = (
+        canonical_labelling(&c1, budget),
+        canonical_labelling(&c2, budget),
+    );
+    if f1.is_exact() && f2.is_exact() {
+        return Some(V::Bool(f1.code() == f2.code()));
+    }
+    // The budget ran out: the exhaustive matcher still settles the sizes it
+    // can handle, larger requests stay unreduced.
+    if g1.n <= MATCH_LIMIT {
+        let (m1, m2) = (multiplicity(&g1), multiplicity(&g2));
+        return Some(V::Bool(extend(
+            &m1,
+            &m2,
+            &mut Vec::new(),
+            &mut vec![false; g1.n],
+        )));
+    }
+    None
+}
+
+/// `list(canonical_order, canonical_adjacency)`.
+///
+/// The order lists the original vertices from position `0` to `n - 1` of the
+/// canonical form; the adjacency matrix is the graph in that order, with
+/// parallel edges counted, so it is the same term for every numbering of an
+/// isomorphic input.
+fn graph_canonical_form(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let gr = read(cx, *a.first()?)?;
+    let form = canonical_labelling_of(&gr)?;
+    let n = form.num_nodes();
+    let matrix = form.matrix();
+    let rows = (0..n)
+        .map(|i| V::List((0..n).map(|j| V::Int(BigInt::from(matrix[i][j]))).collect()))
+        .collect();
+    Some(V::List(vec![indices(form.order()), V::List(rows)]))
+}
+
+/// `list(group_order, generators, orbits)`.
+///
+/// A generator is the image list of a permutation of the vertices; an orbit is
+/// the sorted list of the vertices the group moves into each other. The order
+/// is exact (a `BigInt`) because the search is exact: the operator has no
+/// result when the search budget is exhausted.
+fn graph_automorphisms(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let gr = read(cx, *a.first()?)?;
+    let form = canonical_labelling_of(&gr)?;
+    let generators = V::List(
+        form.generators()
+            .iter()
+            .map(|p| indices(p.image()))
+            .collect(),
+    );
+    let orbits = V::List(form.orbits().iter().map(|orbit| indices(orbit)).collect());
+    Some(V::List(vec![
+        V::Int(form.group_order().clone()),
+        generators,
+        orbits,
+    ]))
 }
 
 fn has_loop(gr: &Gr) -> bool {
@@ -1855,7 +2078,9 @@ fn graph_greedy_coloring(
         }
         next += 1;
     }
-    Some(V::List(color.into_iter().map(|c| V::uint(c.unwrap_or(0))).collect()))
+    Some(V::List(
+        color.into_iter().map(|c| V::uint(c.unwrap_or(0))).collect(),
+    ))
 }
 
 fn colorable(
@@ -1967,7 +2192,12 @@ fn graph_intersection(
     let n = g1.n.min(g2.n);
     let mut out = Gr::new(n, g1.directed && g2.directed);
     for (u, v, w) in g1.get_edges() {
-        if u < n && v < n && g2.adj[u].iter().any(|e| e.to == v && same_weight(cx.graph, e.w, w)) {
+        if u < n
+            && v < n
+            && g2.adj[u]
+                .iter()
+                .any(|e| e.to == v && same_weight(cx.graph, e.w, w))
+        {
             out.add_edge(u, v, w);
         }
     }
@@ -2081,13 +2311,26 @@ fn graph_join(
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def_inert(i, "graph", Arity::Variadic)?;
     def_inert(i, "digraph", Arity::Variadic)?;
-    def(i, "graph_empty", Arity::Fixed(1), |cx, a| standard(cx, a, |_| Vec::new()))?;
-    def(i, "graph_complete", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |n| (0..n).flat_map(|u| ((u + 1)..n).map(move |v| (u, v))).collect())
+    def(i, "graph_empty", Arity::Fixed(1), |cx, a| {
+        standard(cx, a, |_| Vec::new())
     })?;
-    def(i, "graph_path", Arity::Fixed(1), |cx, a| standard(cx, a, |n| (1..n).map(|v| (v - 1, v)).collect()))?;
+    def(i, "graph_complete", Arity::Fixed(1), |cx, a| {
+        standard(cx, a, |n| {
+            (0..n)
+                .flat_map(|u| ((u + 1)..n).map(move |v| (u, v)))
+                .collect()
+        })
+    })?;
+    def(i, "graph_path", Arity::Fixed(1), |cx, a| {
+        standard(cx, a, |n| (1..n).map(|v| (v - 1, v)).collect())
+    })?;
     def(i, "graph_cycle", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |n| (0..n).filter(|_| n >= 3).map(|u| (u, (u + 1) % n)).collect())
+        standard(cx, a, |n| {
+            (0..n)
+                .filter(|_| n >= 3)
+                .map(|u| (u, (u + 1) % n))
+                .collect()
+        })
     })?;
     def(i, "graph_nodes", Arity::Fixed(1), graph_nodes)?;
     def(i, "graph_node_count", Arity::Fixed(1), |cx, a| {
@@ -2101,11 +2344,20 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "graph_node_id", Arity::Fixed(2), graph_node_id)?;
     def(i, "graph_add_node", Arity::Fixed(1), graph_add_node)?;
     def(i, "graph_add_edge", Arity::Variadic, graph_add_edge)?;
-    def(i, "graph_add_hyperedge", Arity::Fixed(3), graph_add_hyperedge)?;
+    def(
+        i,
+        "graph_add_hyperedge",
+        Arity::Fixed(3),
+        graph_add_hyperedge,
+    )?;
     def(i, "graph_hyperedges", Arity::Fixed(1), graph_hyperedges)?;
     def(i, "graph_neighbors", Arity::Fixed(2), graph_neighbors)?;
-    def(i, "graph_out_degree", Arity::Fixed(2), |cx, a| graph_degree(cx, a, false))?;
-    def(i, "graph_in_degree", Arity::Fixed(2), |cx, a| graph_degree(cx, a, true))?;
+    def(i, "graph_out_degree", Arity::Fixed(2), |cx, a| {
+        graph_degree(cx, a, false)
+    })?;
+    def(i, "graph_in_degree", Arity::Fixed(2), |cx, a| {
+        graph_degree(cx, a, true)
+    })?;
     def(i, "graph_edges", Arity::Fixed(1), graph_edges)?;
     def(i, "graph_adjacency", Arity::Fixed(1), graph_adjacency)?;
     def(i, "graph_incidence", Arity::Fixed(1), graph_incidence)?;
@@ -2120,27 +2372,94 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "graph_bridges", Arity::Fixed(1), graph_bridges)?;
     def(i, "graph_kruskal", Arity::Fixed(1), graph_kruskal)?;
     def(i, "graph_prim", Arity::Fixed(2), graph_prim)?;
-    def(i, "graph_edmonds_karp", Arity::Fixed(3), |cx, a| max_flow(cx, a, edmonds_karp))?;
-    def(i, "graph_dinic", Arity::Fixed(3), |cx, a| max_flow(cx, a, dinic))?;
-    def(i, "graph_min_cost_flow", Arity::Fixed(3), graph_min_cost_flow)?;
+    def(i, "graph_edmonds_karp", Arity::Fixed(3), |cx, a| {
+        max_flow(cx, a, edmonds_karp)
+    })?;
+    def(i, "graph_dinic", Arity::Fixed(3), |cx, a| {
+        max_flow(cx, a, dinic)
+    })?;
+    def(
+        i,
+        "graph_min_cost_flow",
+        Arity::Fixed(3),
+        graph_min_cost_flow,
+    )?;
     def(i, "graph_dijkstra", Arity::Fixed(2), graph_dijkstra)?;
     def(i, "graph_bellman_ford", Arity::Fixed(2), graph_bellman_ford)?;
-    def(i, "graph_floyd_warshall", Arity::Fixed(1), graph_floyd_warshall)?;
-    def(i, "graph_shortest_path_unweighted", Arity::Fixed(2), graph_shortest_path_unweighted)?;
+    def(
+        i,
+        "graph_floyd_warshall",
+        Arity::Fixed(1),
+        graph_floyd_warshall,
+    )?;
+    def(
+        i,
+        "graph_shortest_path_unweighted",
+        Arity::Fixed(2),
+        graph_shortest_path_unweighted,
+    )?;
     def(i, "graph_is_bipartite", Arity::Fixed(1), graph_is_bipartite)?;
-    def(i, "graph_bipartite_matching", Arity::Fixed(2), graph_bipartite_matching)?;
-    def(i, "graph_hopcroft_karp", Arity::Fixed(2), graph_hopcroft_karp)?;
+    def(
+        i,
+        "graph_bipartite_matching",
+        Arity::Fixed(2),
+        graph_bipartite_matching,
+    )?;
+    def(
+        i,
+        "graph_hopcroft_karp",
+        Arity::Fixed(2),
+        graph_hopcroft_karp,
+    )?;
     def(i, "graph_vertex_cover", Arity::Fixed(3), graph_vertex_cover)?;
     def(i, "graph_blossom", Arity::Fixed(1), graph_blossom)?;
-    def(i, "graph_toposort", Arity::Fixed(1), |cx, a| toposort(cx, a, kahn))?;
-    def(i, "graph_toposort_kahn", Arity::Fixed(1), |cx, a| toposort(cx, a, kahn))?;
-    def(i, "graph_toposort_dfs", Arity::Fixed(1), |cx, a| toposort(cx, a, topological_dfs))?;
+    def(i, "graph_toposort", Arity::Fixed(1), |cx, a| {
+        toposort(cx, a, kahn)
+    })?;
+    def(i, "graph_toposort_kahn", Arity::Fixed(1), |cx, a| {
+        toposort(cx, a, kahn)
+    })?;
+    def(i, "graph_toposort_dfs", Arity::Fixed(1), |cx, a| {
+        toposort(cx, a, topological_dfs)
+    })?;
     def_request(i, "spectral_analysis", Arity::Fixed(1), spectral_analysis)?;
-    def(i, "algebraic_connectivity", Arity::Fixed(1), algebraic_connectivity)?;
-    def(i, "graph_isomorphic_heuristic", Arity::Fixed(2), graph_isomorphic_heuristic)?;
+    def(
+        i,
+        "algebraic_connectivity",
+        Arity::Fixed(1),
+        algebraic_connectivity,
+    )?;
+    def(
+        i,
+        "graph_isomorphic_heuristic",
+        Arity::Fixed(2),
+        graph_isomorphic_heuristic,
+    )?;
     def(i, "graph_isomorphic", Arity::Fixed(2), graph_isomorphic)?;
-    def(i, "graph_greedy_coloring", Arity::Fixed(1), graph_greedy_coloring)?;
-    def(i, "graph_chromatic_number", Arity::Fixed(1), graph_chromatic_number)?;
+    def(
+        i,
+        "graph_canonical_form",
+        Arity::Fixed(1),
+        graph_canonical_form,
+    )?;
+    def(
+        i,
+        "graph_automorphisms",
+        Arity::Fixed(1),
+        graph_automorphisms,
+    )?;
+    def(
+        i,
+        "graph_greedy_coloring",
+        Arity::Fixed(1),
+        graph_greedy_coloring,
+    )?;
+    def(
+        i,
+        "graph_chromatic_number",
+        Arity::Fixed(1),
+        graph_chromatic_number,
+    )?;
 
     def(i, "induced_subgraph", Arity::Fixed(2), induced_subgraph)?;
     def(i, "graph_union", Arity::Fixed(2), graph_union)?;
@@ -2148,7 +2467,12 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "graph_cartesian", Arity::Fixed(2), graph_cartesian)?;
     def(i, "graph_tensor", Arity::Fixed(2), graph_tensor)?;
     def(i, "graph_complement", Arity::Fixed(1), graph_complement)?;
-    def(i, "graph_disjoint_union", Arity::Fixed(2), graph_disjoint_union)?;
+    def(
+        i,
+        "graph_disjoint_union",
+        Arity::Fixed(2),
+        graph_disjoint_union,
+    )?;
     def(i, "graph_join", Arity::Fixed(2), graph_join)?;
     Ok(())
 }

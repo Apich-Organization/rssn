@@ -6,6 +6,11 @@
 //! pseudo-inverse, rank, 2-norm condition number) and the eigenvalues of a
 //! general real matrix by Hessenberg reduction and the shifted QR
 //! algorithm.
+//!
+//! Parallelism: [`Mat::matmul`] and [`Mat::matvec`] run row by row concurrently above a size
+//! threshold; every row keeps its sequential accumulation order, so the results are bit-identical
+//! to a one-thread run. [`lu_factor`] stays sequential: the per-step dispatch cost of a parallel
+//! trailing update did not pay at 700 x 700.
 
 use std::fmt;
 
@@ -21,16 +26,22 @@ pub enum DenseError {
 }
 
 impl fmt::Display for DenseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         match self {
-            Self::Shape => write!(f, "incompatible shapes"),
-            Self::Singular => write!(f, "matrix is singular or not positive definite"),
-            Self::NoConvergence => write!(f, "iteration did not converge"),
+            | Self::Shape => write!(f, "incompatible shapes"),
+            | Self::Singular => write!(f, "matrix is singular or not positive definite"),
+            | Self::NoConvergence => write!(f, "iteration did not converge"),
         }
     }
 }
 
 impl std::error::Error for DenseError {}
+
+/// Multiply-adds from which dense products run in parallel.
+const DENSE_PAR_FLOPS: usize = 4_000_000;
 
 /// Row-major dense matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -46,8 +57,15 @@ pub struct Mat {
 impl Mat {
     /// Zero matrix.
     #[must_use]
-    pub fn zeros(rows: usize, cols: usize) -> Self {
-        Self { rows, cols, data: vec![0.0; rows * cols] }
+    pub fn zeros(
+        rows: usize,
+        cols: usize,
+    ) -> Self {
+        Self {
+            rows,
+            cols,
+            data: vec![0.0; rows * cols],
+        }
     }
 
     /// Identity matrix.
@@ -69,17 +87,30 @@ impl Mat {
         if rows.iter().any(|r| r.len() != c) {
             return Err(DenseError::Shape);
         }
-        Ok(Self { rows: rows.len(), cols: c, data: rows.concat() })
+        Ok(Self {
+            rows: rows.len(),
+            cols: c,
+            data: rows.concat(),
+        })
     }
 
     /// Entry `(i, j)`.
     #[must_use]
-    pub fn at(&self, i: usize, j: usize) -> f64 {
+    pub fn at(
+        &self,
+        i: usize,
+        j: usize,
+    ) -> f64 {
         self.data[i * self.cols + j]
     }
 
     /// Sets entry `(i, j)`.
-    pub fn set(&mut self, i: usize, j: usize, v: f64) {
+    pub fn set(
+        &mut self,
+        i: usize,
+        j: usize,
+        v: f64,
+    ) {
         self.data[i * self.cols + j] = v;
     }
 
@@ -97,37 +128,57 @@ impl Mat {
 
     /// Matrix-vector product.
     #[must_use]
-    pub fn matvec(&self, x: &[f64]) -> Vec<f64> {
-        (0..self.rows)
-            .map(|i| {
-                self.data[i * self.cols..(i + 1) * self.cols]
-                    .iter()
-                    .zip(x)
-                    .map(|(a, b)| a * b)
-                    .sum()
-            })
-            .collect()
+    pub fn matvec(
+        &self,
+        x: &[f64],
+    ) -> Vec<f64> {
+        let row = |i: usize| -> f64 {
+            self.data[i * self.cols..(i + 1) * self.cols]
+                .iter()
+                .zip(x)
+                .map(|(a, b)| a * b)
+                .sum()
+        };
+        if self.rows * self.cols >= DENSE_PAR_FLOPS / 8 {
+            super::par::map_indexed(self.rows, 2, row)
+        } else {
+            (0..self.rows).map(row).collect()
+        }
     }
 
     /// Matrix product.
     ///
     /// # Errors
     /// Returns [`DenseError::Shape`] on mismatched inner dimensions.
-    pub fn matmul(&self, other: &Self) -> Result<Self, DenseError> {
+    pub fn matmul(
+        &self,
+        other: &Self,
+    ) -> Result<Self, DenseError> {
         if self.cols != other.rows {
             return Err(DenseError::Shape);
         }
         let mut out = Self::zeros(self.rows, other.cols);
-        for i in 0..self.rows {
-            for k in 0..self.cols {
-                let a = self.data[i * self.cols + k];
+        let (m, oc) = (self.cols, other.cols);
+        if oc == 0 {
+            return Ok(out);
+        }
+        // one output row per task; the row's own accumulation order is the
+        // serial one, so the product is bit-identical
+        let grain = if self.rows * m * oc >= DENSE_PAR_FLOPS {
+            2
+        } else {
+            usize::MAX
+        };
+        super::par::for_chunks_mut(&mut out.data, oc, grain, |i, out_row| {
+            for k in 0..m {
+                let a = self.data[i * m + k];
                 if a != 0.0 {
-                    for j in 0..other.cols {
-                        out.data[i * other.cols + j] += a * other.data[k * other.cols + j];
+                    for j in 0..oc {
+                        out_row[j] += a * other.data[k * oc + j];
                     }
                 }
             }
-        }
+        });
         Ok(out)
     }
 
@@ -187,13 +238,20 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
             }
         }
     }
-    Ok(Lu { factors: lu, piv, sign })
+    Ok(Lu {
+        factors: lu,
+        piv,
+        sign,
+    })
 }
 
 impl Lu {
     /// Solves `A x = b`.
     #[must_use]
-    pub fn solve(&self, b: &[f64]) -> Vec<f64> {
+    pub fn solve(
+        &self,
+        b: &[f64],
+    ) -> Vec<f64> {
         let n = self.factors.rows;
         let mut x: Vec<f64> = self.piv.iter().map(|&p| b[p]).collect();
         for i in 0..n {
@@ -213,7 +271,10 @@ impl Lu {
     /// Determinant of the factored matrix.
     #[must_use]
     pub fn det(&self) -> f64 {
-        (0..self.factors.rows).map(|i| self.factors.at(i, i)).product::<f64>() * self.sign
+        (0..self.factors.rows)
+            .map(|i| self.factors.at(i, i))
+            .product::<f64>()
+            * self.sign
     }
 
     /// Inverse of the factored matrix.
@@ -237,7 +298,10 @@ impl Lu {
 ///
 /// # Errors
 /// Propagates the errors of [`lu_factor`]; [`DenseError::Shape`] if `b` has the wrong length.
-pub fn solve(a: &Mat, b: &[f64]) -> Result<Vec<f64>, DenseError> {
+pub fn solve(
+    a: &Mat,
+    b: &[f64],
+) -> Result<Vec<f64>, DenseError> {
     if b.len() != a.rows {
         return Err(DenseError::Shape);
     }
@@ -277,7 +341,10 @@ pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
 ///
 /// # Errors
 /// As [`cholesky`].
-pub fn cholesky_solve(a: &Mat, b: &[f64]) -> Result<Vec<f64>, DenseError> {
+pub fn cholesky_solve(
+    a: &Mat,
+    b: &[f64],
+) -> Result<Vec<f64>, DenseError> {
     let l = cholesky(a)?;
     let n = a.rows;
     let mut y = b.to_vec();
@@ -311,7 +378,11 @@ pub fn qr(a: &Mat) -> (Mat, Mat) {
         if norm == 0.0 {
             continue;
         }
-        let alpha = if r.at(k, k) > 0.0 { -norm } else { norm };
+        let alpha = if r.at(k, k) > 0.0 {
+            -norm
+        } else {
+            norm
+        };
         let mut v = vec![0.0; m];
         for i in k..m {
             v[i] = r.at(i, k);
@@ -342,7 +413,10 @@ pub fn qr(a: &Mat) -> (Mat, Mat) {
 /// # Errors
 /// [`DenseError::Shape`] if `m < n` or `b` has the wrong length,
 /// [`DenseError::Singular`] if `A` is rank deficient.
-pub fn lstsq(a: &Mat, b: &[f64]) -> Result<Vec<f64>, DenseError> {
+pub fn lstsq(
+    a: &Mat,
+    b: &[f64],
+) -> Result<Vec<f64>, DenseError> {
     let (m, n) = (a.rows, a.cols);
     if m < n || b.len() != m {
         return Err(DenseError::Shape);
@@ -450,7 +524,11 @@ pub struct Svd {
 pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
     if a.rows < a.cols {
         let t = svd(&a.transpose())?;
-        return Ok(Svd { u: t.v, s: t.s, v: t.u });
+        return Ok(Svd {
+            u: t.v,
+            s: t.s,
+            v: t.u,
+        });
     }
     let (m, n) = (a.rows, a.cols);
     let mut u = a.clone();
@@ -508,7 +586,15 @@ pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
     let mut vo = Mat::zeros(n, n);
     for (c, &j) in idx.iter().enumerate() {
         for i in 0..m {
-            uo.set(i, c, if sv[j] > 0.0 { u.at(i, j) / sv[j] } else { 0.0 });
+            uo.set(
+                i,
+                c,
+                if sv[j] > 0.0 {
+                    u.at(i, j) / sv[j]
+                } else {
+                    0.0
+                },
+            );
         }
         for i in 0..n {
             vo.set(i, c, v.at(i, j));
@@ -524,8 +610,15 @@ pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
 /// As [`svd`].
 pub fn cond(a: &Mat) -> Result<f64, DenseError> {
     let s = svd(a)?.s;
-    let (hi, lo) = (s.first().copied().unwrap_or(0.0), s.last().copied().unwrap_or(0.0));
-    Ok(if lo == 0.0 { f64::INFINITY } else { hi / lo })
+    let (hi, lo) = (
+        s.first().copied().unwrap_or(0.0),
+        s.last().copied().unwrap_or(0.0),
+    );
+    Ok(if lo == 0.0 {
+        f64::INFINITY
+    } else {
+        hi / lo
+    })
 }
 
 /// Numerical rank: singular values above `tol` (or the default
@@ -533,7 +626,10 @@ pub fn cond(a: &Mat) -> Result<f64, DenseError> {
 ///
 /// # Errors
 /// As [`svd`].
-pub fn rank(a: &Mat, tol: Option<f64>) -> Result<usize, DenseError> {
+pub fn rank(
+    a: &Mat,
+    tol: Option<f64>,
+) -> Result<usize, DenseError> {
     let s = svd(a)?.s;
     let smax = s.first().copied().unwrap_or(0.0);
     let t = tol.unwrap_or_else(|| a.rows.max(a.cols) as f64 * f64::EPSILON * smax);
@@ -568,7 +664,10 @@ pub fn pinv(a: &Mat) -> Result<Mat, DenseError> {
 ///
 /// # Errors
 /// As [`svd`].
-pub fn lstsq_svd(a: &Mat, b: &[f64]) -> Result<Vec<f64>, DenseError> {
+pub fn lstsq_svd(
+    a: &Mat,
+    b: &[f64],
+) -> Result<Vec<f64>, DenseError> {
     Ok(pinv(a)?.matvec(b))
 }
 
@@ -774,7 +873,11 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 if k != m {
                     p = h[k][k - 1];
                     q = h[k + 1][k - 1];
-                    r = if k == nn - 1 { 0.0 } else { h[k + 2][k - 1] };
+                    r = if k == nn - 1 {
+                        0.0
+                    } else {
+                        h[k + 2][k - 1]
+                    };
                     x = p.abs() + q.abs() + r.abs();
                     if x != 0.0 {
                         p /= x;
@@ -828,5 +931,8 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
 /// # Errors
 /// As [`eigenvalues`].
 pub fn spectral_radius(a: &Mat) -> Result<f64, DenseError> {
-    Ok(eigenvalues(a)?.iter().map(|&(re, im)| re.hypot(im)).fold(0.0, f64::max))
+    Ok(eigenvalues(a)?
+        .iter()
+        .map(|&(re, im)| re.hypot(im))
+        .fold(0.0, f64::max))
 }

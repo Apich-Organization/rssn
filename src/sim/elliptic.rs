@@ -20,7 +20,9 @@
 
 use std::f64::consts::PI;
 
-use crate::kernels::special_ext::{carlson_rf, elliptic_e_inc, elliptic_f};
+use crate::kernels::special_ext::carlson_rf;
+use crate::kernels::special_ext::elliptic_e_inc;
+use crate::kernels::special_ext::elliptic_f;
 
 /// Carlson's degenerate integral `R_C(x, y)` (`x >= 0`, `y != 0`; `y < 0` gives the Cauchy
 /// principal value).

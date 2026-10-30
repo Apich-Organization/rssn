@@ -1,8 +1,19 @@
 //! P1/P2 simplex finite elements in 1D, 2D and 3D.
 
-use rssn::sim::boundary::{BcValue, BoundaryCondition as Bc, MarkerBcs};
-use rssn::sim::fem_simplex::{FemProblem, FemSpace, SimplexMesh, marker, simplex_rule, solve_heat, solve_static};
+use rssn::sim::boundary::BcValue;
+use rssn::sim::boundary::BoundaryCondition as Bc;
+use rssn::sim::boundary::MarkerBcs;
+use rssn::sim::fem_simplex::FemProblem;
+use rssn::sim::fem_simplex::FemSpace;
+use rssn::sim::fem_simplex::SimplexMesh;
+use rssn::sim::fem_simplex::error_indicators;
+use rssn::sim::fem_simplex::marker;
+use rssn::sim::fem_simplex::simplex_rule;
+use rssn::sim::fem_simplex::solve_adaptive;
+use rssn::sim::fem_simplex::solve_heat;
+use rssn::sim::fem_simplex::solve_static;
 use rssn::sim::structured::LinearSolver;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 #[test]
@@ -25,10 +36,21 @@ fn grundmann_moeller_rule_integrates_monomials_exactly() {
                         let q: f64 = pts
                             .iter()
                             .zip(&w)
-                            .map(|(p, wq)| wq * p.iter().zip(a.iter()).map(|(l, &e)| l.powi(e as i32)).product::<f64>())
+                            .map(|(p, wq)| {
+                                wq * p
+                                    .iter()
+                                    .zip(a.iter())
+                                    .map(|(l, &e)| l.powi(e as i32))
+                                    .product::<f64>()
+                            })
                             .sum();
-                        let exact = fact(n) * a.iter().take(n + 1).map(|&e| fact(e)).product::<f64>() / fact(n + deg);
-                        assert!((q - exact).abs() < 1e-12, "n {n} s {s} a {a:?}: {q} vs {exact}");
+                        let exact = fact(n)
+                            * a.iter().take(n + 1).map(|&e| fact(e)).product::<f64>()
+                            / fact(n + deg);
+                        assert!(
+                            (q - exact).abs() < 1e-12,
+                            "n {n} s {s} a {a:?}: {q} vs {exact}"
+                        );
                     }
                 }
             }
@@ -36,7 +58,10 @@ fn grundmann_moeller_rule_integrates_monomials_exactly() {
     }
 }
 
-fn exact(dim: usize, x: [f64; 3]) -> f64 {
+fn exact(
+    dim: usize,
+    x: [f64; 3],
+) -> f64 {
     (0..dim).map(|a| x[a]).sum::<f64>().exp()
 }
 
@@ -45,14 +70,26 @@ fn bcs_for(dim: usize) -> MarkerBcs<Bc> {
     let dir = Bc::Dirichlet(BcValue::space(u));
     let mut b = MarkerBcs::new();
     if dim == 1 {
-        return b
-            .set(marker::XMIN, dir)
-            .set(marker::XMAX, Bc::Robin { alpha: 2.0, beta: 1.0, g: BcValue::space(move |x| 3.0 * u(x)) });
+        return b.set(marker::XMIN, dir).set(
+            marker::XMAX,
+            Bc::Robin {
+                alpha: 2.0,
+                beta: 1.0,
+                g: BcValue::space(move |x| 3.0 * u(x)),
+            },
+        );
     }
     b = b
         .set(marker::XMIN, dir.clone())
         .set(marker::XMAX, Bc::Neumann(BcValue::space(u)))
-        .set(marker::YMIN, Bc::Robin { alpha: 2.0, beta: 1.0, g: BcValue::space(u) })
+        .set(
+            marker::YMIN,
+            Bc::Robin {
+                alpha: 2.0,
+                beta: 1.0,
+                g: BcValue::space(u),
+            },
+        )
         .set(marker::YMAX, dir);
     if dim == 3 {
         b = b
@@ -62,29 +99,47 @@ fn bcs_for(dim: usize) -> MarkerBcs<Bc> {
     b
 }
 
-fn mesh(dim: usize, n: usize) -> SimplexMesh {
+fn mesh(
+    dim: usize,
+    n: usize,
+) -> SimplexMesh {
     match dim {
-        1 => SimplexMesh::interval(n, 0.0, 1.0),
-        2 => SimplexMesh::rectangle(n, n, [0.0; 2], [1.0; 2]),
-        _ => SimplexMesh::boxed([n; 3], [0.0; 3], [1.0; 3]),
+        | 1 => SimplexMesh::interval(n, 0.0, 1.0),
+        | 2 => SimplexMesh::rectangle(n, n, [0.0; 2], [1.0; 2]),
+        | _ => SimplexMesh::boxed([n; 3], [0.0; 3], [1.0; 3]),
     }
 }
 
-fn poisson_l2(dim: usize, degree: usize, n: usize) -> f64 {
+fn poisson_l2(
+    dim: usize,
+    degree: usize,
+    n: usize,
+) -> f64 {
     let space = FemSpace::new(mesh(dim, n), degree).unwrap();
     let bcs = bcs_for(dim);
     // -Δu + c u = f with u = exp(sum x): f = (c - dim) u
     let c = 1.5;
     let f = move |_t: f64, x: [f64; 3]| (c - dim as f64) * exact(dim, x);
-    let prob = FemProblem { k: 1.0, c, f: &f, bcs: &bcs };
+    let prob = FemProblem {
+        k: 1.0,
+        c,
+        f: &f,
+        bcs: &bcs,
+    };
     let u = solve_static(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
     space.l2_error(&u, |x| exact(dim, x))
 }
 
 #[test]
 fn mixed_marker_bcs_converge_with_optimal_order_p1_and_p2_in_1d_2d_3d() {
-    let cases: [(usize, usize, [usize; 2]); 6] =
-        [(1, 1, [8, 16]), (1, 2, [4, 8]), (2, 1, [8, 16]), (2, 2, [4, 8]), (3, 1, [4, 8]), (3, 2, [2, 4])];
+    let cases: [(usize, usize, [usize; 2]); 6] = [
+        (1, 1, [8, 16]),
+        (1, 2, [4, 8]),
+        (2, 1, [8, 16]),
+        (2, 2, [4, 8]),
+        (3, 1, [4, 8]),
+        (3, 2, [2, 4]),
+    ];
     for (dim, deg, ns) in cases {
         let e1 = poisson_l2(dim, deg, ns[0]);
         let e2 = poisson_l2(dim, deg, ns[1]);
@@ -100,10 +155,24 @@ fn bad_inputs_are_rejected() {
     let space = FemSpace::new(SimplexMesh::interval(4, 0.0, 1.0), 1).unwrap();
     let bcs = MarkerBcs::with_default(Bc::Periodic);
     let f = |_t: f64, _x: [f64; 3]| 0.0;
-    let prob = FemProblem { k: 1.0, c: 1.0, f: &f, bcs: &bcs };
+    let prob = FemProblem {
+        k: 1.0,
+        c: 1.0,
+        f: &f,
+        bcs: &bcs,
+    };
     assert!(solve_static(&space, &prob, 0.0, LinearSolver::Auto).is_err());
-    let bcs = MarkerBcs::with_default(Bc::Robin { alpha: 1.0, beta: 0.0, g: BcValue::constant(0.0) });
-    let prob = FemProblem { k: 1.0, c: 1.0, f: &f, bcs: &bcs };
+    let bcs = MarkerBcs::with_default(Bc::Robin {
+        alpha: 1.0,
+        beta: 0.0,
+        g: BcValue::constant(0.0),
+    });
+    let prob = FemProblem {
+        k: 1.0,
+        c: 1.0,
+        f: &f,
+        bcs: &bcs,
+    };
     assert!(solve_static(&space, &prob, 0.0, LinearSolver::Auto).is_err());
 }
 
@@ -119,8 +188,22 @@ fn heat_equation_with_time_dependent_dirichlet_data_2d_p2_and_3d_p1() {
     let bcs = MarkerBcs::with_default(Bc::Dirichlet(BcValue::spacetime(u)));
     let run = |n: usize, steps: usize| {
         let space = FemSpace::new(SimplexMesh::rectangle(n, n, [0.0; 2], [1.0; 2]), 2).unwrap();
-        let prob = FemProblem { k: 1.0, c: 0.0, f: &f, bcs: &bcs };
-        let v = solve_heat(&space, &prob, |x| u(0.0, x), 0.2, steps, 0.5, LinearSolver::Auto).unwrap();
+        let prob = FemProblem {
+            k: 1.0,
+            c: 0.0,
+            f: &f,
+            bcs: &bcs,
+        };
+        let v = solve_heat(
+            &space,
+            &prob,
+            |x| u(0.0, x),
+            0.2,
+            steps,
+            0.5,
+            LinearSolver::Auto,
+        )
+        .unwrap();
         space.l2_error(&v, |x| u(0.2, x))
     };
     let (e1, e2) = (run(4, 8), run(8, 16));
@@ -131,8 +214,605 @@ fn heat_equation_with_time_dependent_dirichlet_data_2d_p2_and_3d_p1() {
     let bcs3 = MarkerBcs::with_default(Bc::neumann(0.0));
     let f3 = |_t: f64, _x: [f64; 3]| 0.0;
     let space = FemSpace::new(SimplexMesh::boxed([16, 2, 2], [0.0; 3], [1.0; 3]), 1).unwrap();
-    let prob = FemProblem { k: 1.0, c: 0.0, f: &f3, bcs: &bcs3 };
-    let v = solve_heat(&space, &prob, |x| u3(0.0, x), 0.05, 20, 0.5, LinearSolver::Auto).unwrap();
+    let prob = FemProblem {
+        k: 1.0,
+        c: 0.0,
+        f: &f3,
+        bcs: &bcs3,
+    };
+    let v = solve_heat(
+        &space,
+        &prob,
+        |x| u3(0.0, x),
+        0.05,
+        20,
+        0.5,
+        LinearSolver::Auto,
+    )
+    .unwrap();
     assert!(space.l2_error(&v, |x| u3(0.05, x)) < 6e-3);
     assert!(space.eval(&v, [0.5, 0.5, 0.5]).is_some());
+}
+
+fn centroid(
+    mesh: &SimplexMesh,
+    cell: &[usize],
+) -> [f64; 3] {
+    let mut x = [0.0; 3];
+    for &v in cell {
+        for a in 0..3 {
+            x[a] += mesh.nodes[v][a] / cell.len() as f64;
+        }
+    }
+    x
+}
+
+fn face_vertices(
+    mesh: &SimplexMesh,
+    cell: usize,
+    face: usize,
+) -> Vec<usize> {
+    let mut v: Vec<usize> = mesh.cells[cell]
+        .iter()
+        .enumerate()
+        .filter(|(j, _)| *j != face)
+        .map(|(_, &q)| q)
+        .collect();
+    v.sort_unstable();
+    v
+}
+
+fn grad_sine(x: [f64; 3]) -> [f64; 3] {
+    [
+        PI * (PI * x[0]).cos() * (PI * x[1]).sin() * (PI * x[2]).sin(),
+        PI * (PI * x[0]).sin() * (PI * x[1]).cos() * (PI * x[2]).sin(),
+        PI * (PI * x[0]).sin() * (PI * x[1]).sin() * (PI * x[2]).cos(),
+    ]
+}
+
+/// P1 `H¹` seminorm error against an exact gradient.
+fn h1_error_p1(
+    space: &FemSpace,
+    u: &[f64],
+    grad_exact: impl Fn([f64; 3]) -> [f64; 3],
+) -> f64 {
+    let dim = space.mesh.dim;
+    let (pts, w) = simplex_rule(dim, 3);
+    let mut s = 0.0;
+    for ci in 0..space.mesh.cells.len() {
+        let vol = space.mesh.measure(ci);
+        let g = space.mesh.bary_gradients(ci);
+        let cd = &space.cell_dofs[ci];
+        let mut grad = [0.0; 3];
+        for m in 0..=dim {
+            for a in 0..3 {
+                grad[a] += u[cd[m]] * g[m][a];
+            }
+        }
+        for (lam, wq) in pts.iter().zip(&w) {
+            let mut x = [0.0; 3];
+            for (m, &l) in lam.iter().enumerate() {
+                for a in 0..3 {
+                    x[a] += l * space.mesh.nodes[space.mesh.cells[ci][m]][a];
+                }
+            }
+            let ge = grad_exact(x);
+            s += vol
+                * wq
+                * ((grad[0] - ge[0]).powi(2)
+                    + (grad[1] - ge[1]).powi(2)
+                    + (grad[2] - ge[2]).powi(2));
+        }
+    }
+    s.sqrt()
+}
+
+fn face_centroid(
+    mesh: &SimplexMesh,
+    cell: usize,
+    face: usize,
+) -> [f64; 3] {
+    let key = face_vertices(mesh, cell, face);
+    let mut c = [0.0; 3];
+    for &v in &key {
+        for a in 0..3 {
+            c[a] += mesh.nodes[v][a] / key.len() as f64;
+        }
+    }
+    c
+}
+
+/// True when `x` lies in the closure of the local face `face` of `cell`.
+fn on_face(
+    mesh: &SimplexMesh,
+    cell: usize,
+    face: usize,
+    x: [f64; 3],
+) -> bool {
+    let g = mesh.bary_gradients(cell);
+    let x0 = mesh.nodes[mesh.cells[cell][0]];
+    (0..=mesh.dim).all(|m| {
+        let l: f64 =
+            (0..3).map(|a| g[m][a] * (x[a] - x0[a])).sum::<f64>() + if m == 0 { 1.0 } else { 0.0 };
+        if m == face {
+            l.abs() < 1e-10
+        } else {
+            l >= -1e-10
+        }
+    })
+}
+
+/// Signed volume (positive for correctly oriented tetrahedra).
+fn signed_volume(
+    mesh: &SimplexMesh,
+    cell: usize,
+) -> f64 {
+    let c = &mesh.cells[cell];
+    let p = |i: usize| mesh.nodes[c[i]];
+    let e1 = [p(1)[0] - p(0)[0], p(1)[1] - p(0)[1], p(1)[2] - p(0)[2]];
+    let e2 = [p(2)[0] - p(0)[0], p(2)[1] - p(0)[1], p(2)[2] - p(0)[2]];
+    let e3 = [p(3)[0] - p(0)[0], p(3)[1] - p(0)[1], p(3)[2] - p(0)[2]];
+    let cr = [
+        e1[1] * e2[2] - e1[2] * e2[1],
+        e1[2] * e2[0] - e1[0] * e2[2],
+        e1[0] * e2[1] - e1[1] * e2[0],
+    ];
+    (cr[0] * e3[0] + cr[1] * e3[1] + cr[2] * e3[2]) / 6.0
+}
+
+/// Volume, positivity, conformity and marker inheritance of a refined mesh.
+///
+/// `coarse` is the mesh the refinement started from: every face used by a
+/// single cell must lie on its boundary, otherwise it is a hanging node.
+fn assert_conforming(
+    mesh: &SimplexMesh,
+    coarse: &SimplexMesh,
+    expected_volume: f64,
+) -> usize {
+    assert_eq!(mesh.level.len(), mesh.cells.len());
+    let volume: f64 = (0..mesh.cells.len()).map(|c| mesh.measure(c)).sum();
+    assert!(
+        (volume - expected_volume).abs() < 1e-12,
+        "volume {volume} vs {expected_volume}"
+    );
+    for c in 0..mesh.cells.len() {
+        assert!(
+            signed_volume(mesh, c) > 0.0,
+            "cell {c} is not positively oriented"
+        );
+    }
+    let mut faces: HashMap<Vec<usize>, usize> = HashMap::new();
+    for ci in 0..mesh.cells.len() {
+        for f in 0..=mesh.dim {
+            *faces.entry(face_vertices(mesh, ci, f)).or_insert(0) += 1;
+        }
+    }
+    let mut interior = 0;
+    for (key, &n) in &faces {
+        assert!(n <= 2, "face {key:?} is shared by {n} cells");
+        if n == 2 {
+            interior += 1;
+        } else {
+            let mut cen = [0.0; 3];
+            for &v in key {
+                for a in 0..3 {
+                    cen[a] += mesh.nodes[v][a] / key.len() as f64;
+                }
+            }
+            assert!(
+                coarse
+                    .facets
+                    .iter()
+                    .any(|&(ci, f, _)| on_face(coarse, ci, f, cen)),
+                "face {key:?} at {cen:?} is used once and is not on the coarse boundary (hanging node)"
+            );
+        }
+    }
+    assert_eq!(interior + mesh.facets.len(), faces.len());
+    for &(ci, f, mk) in &mesh.facets {
+        let cen = face_centroid(mesh, ci, f);
+        assert!(
+            coarse
+                .facets
+                .iter()
+                .any(|&(cci, cf, cmk)| cmk == mk && on_face(coarse, cci, cf, cen)),
+            "refined facet at {cen:?} does not inherit marker {mk}"
+        );
+    }
+    interior
+}
+
+/// A fresh mesh with the given cells, compacted, all boundary facets `marker`.
+fn rebuild(
+    coarse: &SimplexMesh,
+    cells: &[Vec<usize>],
+    marker: i32,
+) -> SimplexMesh {
+    let mut nodes: Vec<[f64; 3]> = Vec::new();
+    let mut map = vec![usize::MAX; coarse.nodes.len()];
+    let mut remapped = Vec::with_capacity(cells.len());
+    for c in cells {
+        let mut nc = Vec::with_capacity(c.len());
+        for &v in c {
+            if map[v] == usize::MAX {
+                map[v] = nodes.len();
+                nodes.push(coarse.nodes[v]);
+            }
+            nc.push(map[v]);
+        }
+        remapped.push(nc);
+    }
+    let mut faces: HashMap<Vec<usize>, Vec<(usize, usize)>> = HashMap::new();
+    for (ci, c) in remapped.iter().enumerate() {
+        for f in 0..=coarse.dim {
+            let mut key: Vec<usize> = c
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != f)
+                .map(|(_, &v)| v)
+                .collect();
+            key.sort_unstable();
+            faces.entry(key).or_default().push((ci, f));
+        }
+    }
+    let mut facets = Vec::new();
+    for list in faces.values() {
+        if let [(ci, f)] = list.as_slice() {
+            facets.push((*ci, *f, marker));
+        }
+    }
+    facets.sort_unstable();
+    let level = vec![0; remapped.len()];
+    SimplexMesh {
+        dim: coarse.dim,
+        nodes,
+        cells: remapped,
+        facets,
+        level,
+    }
+}
+
+/// L-shaped prism `([0, 2]² \ [1, 2]²) × [0, 1]`: its re-entrant edge
+/// `x = y = 1`, `z ∈ [0, 1]` carries a `r^(2/3)` singularity.
+fn l_prism(n: usize) -> SimplexMesh {
+    let base = SimplexMesh::boxed([n, n, 1], [0.0; 3], [2.0, 2.0, 1.0]);
+    let cells: Vec<Vec<usize>> = base
+        .cells
+        .iter()
+        .filter(|c| {
+            let x = centroid(&base, c.as_slice());
+            !(x[0] > 1.0 + 1e-12 && x[1] > 1.0 + 1e-12)
+        })
+        .cloned()
+        .collect();
+    rebuild(&base, &cells, 0)
+}
+
+/// `u = r^(2/3) sin(2φ/3)` in the polar coordinates of the re-entrant edge
+/// (`φ = 0` and `φ = 3π/2` are the two re-entrant faces, where `u` vanishes).
+fn edge_singular(x: [f64; 3]) -> f64 {
+    let (dx, dy) = (x[0] - 1.0, x[1] - 1.0);
+    let r = dx.hypot(dy);
+    if r < 1e-14 {
+        return 0.0;
+    }
+    let mut theta = dy.atan2(dx);
+    if theta < PI / 2.0 {
+        theta += 2.0 * PI;
+    }
+    let phi = theta - PI / 2.0;
+    r.powf(2.0 / 3.0) * (2.0 * phi / 3.0).sin()
+}
+
+/// Gradient of [`edge_singular`] (z-component zero).
+fn grad_edge(x: [f64; 3]) -> [f64; 3] {
+    let (dx, dy) = (x[0] - 1.0, x[1] - 1.0);
+    let r = dx.hypot(dy);
+    if r < 1e-13 {
+        return [0.0; 3];
+    }
+    let mut theta = dy.atan2(dx);
+    if theta < PI / 2.0 {
+        theta += 2.0 * PI;
+    }
+    let phi = theta - PI / 2.0;
+    let c = (2.0 / 3.0) * r.powf(-1.0 / 3.0);
+    let (s, co) = (2.0 * phi / 3.0).sin_cos();
+    let (st, ct) = theta.sin_cos();
+    [c * (s * ct - co * st), c * (s * st + co * ct), 0.0]
+}
+
+fn sine_problem() -> (
+    impl Fn([f64; 3]) -> f64,
+    impl Fn(f64, [f64; 3]) -> f64,
+    MarkerBcs<Bc>,
+) {
+    let exact = |x: [f64; 3]| (PI * x[0]).sin() * (PI * x[1]).sin() * (PI * x[2]).sin();
+    let source = move |_t: f64, x: [f64; 3]| 3.0 * PI * PI * exact(x);
+    let bcs = MarkerBcs::with_default(Bc::Dirichlet(BcValue::space(exact)));
+    (exact, source, bcs)
+}
+
+#[test]
+fn marked_refinement_is_conforming_and_conserves_volume() {
+    let mesh = SimplexMesh::boxed([2, 2, 2], [0.0; 3], [1.0; 3]);
+    let marked: Vec<bool> = mesh
+        .cells
+        .iter()
+        .map(|c| {
+            let x = centroid(&mesh, c);
+            x[0] < 0.5 && x[1] < 0.5
+        })
+        .collect();
+    assert!(marked.iter().any(|&m| m) && marked.iter().any(|&m| !m));
+    let refined = mesh.refine_marked(&marked);
+    assert!(refined.cells.len() > mesh.cells.len());
+    assert!(refined.level.iter().all(|&l| l <= 1));
+    assert!(refined.level.iter().any(|&l| l == 1));
+
+    let interior = assert_conforming(&refined, &mesh, 1.0);
+    assert!(interior > 0);
+
+    // Boundary facets keep the marker of the box face they lie on.
+    let mut seen = [false; 6];
+    for &(ci, f, mk) in &refined.facets {
+        assert!((0..6).contains(&mk), "unexpected marker {mk}");
+        let cen = face_centroid(&refined, ci, f);
+        let axis = (mk / 2) as usize;
+        assert!(
+            (cen[axis] - f64::from(mk % 2)).abs() < 1e-12,
+            "marker {mk} on {cen:?}"
+        );
+        seen[mk as usize] = true;
+    }
+    assert!(seen.iter().all(|&s| s));
+
+    // Every marked parent is covered by exactly eight children.
+    let bary = |p: usize, x: [f64; 3]| -> [f64; 4] {
+        let g = mesh.bary_gradients(p);
+        let x0 = mesh.nodes[mesh.cells[p][0]];
+        core::array::from_fn(|m| {
+            (0..3).map(|a| g[m][a] * (x[a] - x0[a])).sum::<f64>() + if m == 0 { 1.0 } else { 0.0 }
+        })
+    };
+    let mut checked = 0;
+    for (p, &m) in marked.iter().enumerate() {
+        if !m {
+            continue;
+        }
+        let parent_volume = mesh.measure(p);
+        let mut covered = 0.0;
+        let mut children = 0;
+        for ci in 0..refined.cells.len() {
+            let x = centroid(&refined, &refined.cells[ci]);
+            if bary(p, x).iter().all(|&l| l >= -1e-12) {
+                children += 1;
+                let vol = refined.measure(ci);
+                assert!(
+                    vol <= parent_volume + 1e-15,
+                    "child of {p} larger than its parent"
+                );
+                covered += vol;
+            }
+        }
+        assert_eq!(children, 8, "parent {p} has {children} children");
+        assert!(
+            (covered - parent_volume).abs() < 1e-12,
+            "parent {p}: {covered} vs {parent_volume}"
+        );
+        checked += 1;
+    }
+    assert!(checked > 0);
+}
+
+#[test]
+fn repeated_refinement_at_the_boundary_remains_conforming() {
+    let mesh = SimplexMesh::boxed([2, 2, 2], [0.0; 3], [1.0; 3]);
+    let marked: Vec<bool> = mesh
+        .cells
+        .iter()
+        .map(|c| centroid(&mesh, c)[2] < 0.5)
+        .collect();
+    let first = mesh.refine_marked(&marked);
+    assert_conforming(&first, &mesh, 1.0);
+    assert!(first.level.iter().any(|&l| l == 1));
+    assert!(first.level.iter().any(|&l| l == 0));
+
+    // refine every second cell of the first mesh, boundary cells included
+    let marked2: Vec<bool> = (0..first.cells.len()).map(|i| i % 2 == 0).collect();
+    let second = first.refine_marked(&marked2);
+    assert_conforming(&second, &first, 1.0);
+    assert!(second.level.iter().any(|&l| l == 2));
+    assert!(second.level.iter().all(|&l| l <= 2));
+
+    // a uniform pass on a mesh produced by earlier refinements
+    let third = second.refine_marked(&vec![true; second.cells.len()]);
+    assert_conforming(&third, &second, 1.0);
+    assert_eq!(third.level.iter().copied().max(), Some(3));
+
+    // no marks is the identity
+    let unchanged = second.refine_marked(&vec![false; second.cells.len()]);
+    assert_eq!(unchanged.cells.len(), second.cells.len());
+    assert_eq!(unchanged.level, second.level);
+}
+
+#[test]
+fn boundary_markers_are_inherited_from_the_parent_facet() {
+    let mut mesh = SimplexMesh::boxed([2, 2, 1], [0.0; 3], [1.0; 3]);
+    for f in &mut mesh.facets {
+        if f.2 == marker::ZMAX {
+            f.2 = 42;
+        } else if f.2 == marker::XMIN {
+            f.2 = 7;
+        }
+    }
+    let marked: Vec<bool> = mesh
+        .cells
+        .iter()
+        .map(|c| centroid(&mesh, c)[0] < 0.5)
+        .collect();
+    let refined = mesh.refine_marked(&marked);
+    let mut top = false;
+    let mut left = false;
+    for &(ci, f, mk) in &refined.facets {
+        let cen = face_centroid(&refined, ci, f);
+        if mk == 42 {
+            assert!((cen[2] - 1.0).abs() < 1e-12, "marker 42 at {cen:?}");
+            top = true;
+        } else if mk == 7 {
+            assert!(cen[0].abs() < 1e-12, "marker 7 at {cen:?}");
+            left = true;
+        }
+    }
+    assert!(top && left);
+    assert_conforming(&refined, &mesh, 1.0);
+}
+
+#[test]
+fn p1_poisson_sine_on_the_unit_cube_is_second_order() {
+    let (exact, source, bcs) = sine_problem();
+    let error = |n: usize| {
+        let space = FemSpace::new(SimplexMesh::boxed([n; 3], [0.0; 3], [1.0; 3]), 1).unwrap();
+        let prob = FemProblem {
+            k: 1.0,
+            c: 0.0,
+            f: &source,
+            bcs: &bcs,
+        };
+        let u = solve_static(&space, &prob, 0.0, LinearSolver::BiCgStab(1e-11)).unwrap();
+        (
+            space.l2_error(&u, &exact),
+            h1_error_p1(&space, &u, grad_sine),
+        )
+    };
+    let ((l2a, h1a), (l2b, h1b)) = (error(8), error(16));
+    let (order_l2, order_h1) = ((l2a / l2b).log2(), (h1a / h1b).log2());
+    eprintln!(
+        "P1 cube: L2 {l2a:.3e} -> {l2b:.3e} (order {order_l2:.2}), H1 {h1a:.3e} -> {h1b:.3e} (order {order_h1:.2})"
+    );
+    assert!(order_l2 > 1.9, "P1 L2 order {order_l2} ({l2a}, {l2b})");
+    assert!(order_h1 > 0.9, "P1 H1 order {order_h1} ({h1a}, {h1b})");
+}
+
+#[test]
+fn p2_smoke_test_on_the_unit_cube() {
+    let (exact, source, bcs) = sine_problem();
+    let space = FemSpace::new(SimplexMesh::boxed([4, 4, 4], [0.0; 3], [1.0; 3]), 2).unwrap();
+    let prob = FemProblem {
+        k: 1.0,
+        c: 0.0,
+        f: &source,
+        bcs: &bcs,
+    };
+    let u = solve_static(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
+    let err = space.l2_error(&u, exact);
+    assert!(err < 1e-2, "P2 L2 error {err}");
+    let eta = error_indicators(&space, &u, &prob, 0.0);
+    assert_eq!(eta.len(), space.mesh.cells.len());
+    assert!(eta.iter().all(|e| e.is_finite() && *e >= 0.0));
+    assert!(eta.iter().map(|e| e * e).sum::<f64>() > 0.0);
+}
+
+#[test]
+fn residual_estimator_tracks_the_true_error() {
+    let (exact, source, bcs) = sine_problem();
+    let run = |n: usize| {
+        let space = FemSpace::new(SimplexMesh::boxed([n; 3], [0.0; 3], [1.0; 3]), 1).unwrap();
+        let prob = FemProblem {
+            k: 1.0,
+            c: 0.0,
+            f: &source,
+            bcs: &bcs,
+        };
+        let u = solve_static(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
+        let eta = error_indicators(&space, &u, &prob, 0.0);
+        let total: f64 = eta.iter().map(|e| e * e).sum::<f64>().sqrt();
+        (
+            total,
+            h1_error_p1(&space, &u, grad_sine),
+            space.l2_error(&u, &exact),
+        )
+    };
+    let (coarse, mid, fine) = (run(2), run(4), run(8));
+    eprintln!("estimator: {:?} {:?} {:?}", coarse, mid, fine);
+    assert!(
+        mid.0 < coarse.0 && fine.0 < mid.0,
+        "estimator not decreasing: {} {} {}",
+        coarse.0,
+        mid.0,
+        fine.0
+    );
+    assert!(fine.1 < mid.1 && mid.1 < coarse.1);
+    // The indicator is an energy-type quantity: its ratio to the H1 error
+    // must stay bounded when the mesh is refined.
+    let r_coarse = coarse.0 / coarse.1;
+    let r_fine = fine.0 / fine.1;
+    assert!(
+        (0.1..10.0).contains(&r_coarse) && (0.1..10.0).contains(&r_fine),
+        "ratio {r_coarse} {r_fine}"
+    );
+    assert!(
+        r_fine / r_coarse > 0.5 && r_fine / r_coarse < 2.0,
+        "estimator strays from the H1 error: {r_coarse} -> {r_fine}"
+    );
+}
+
+#[test]
+fn adaptive_refinement_beats_uniform_for_an_edge_singularity() {
+    let (exact, source, bcs) = (
+        edge_singular,
+        |_t: f64, _x: [f64; 3]| -> f64 { 0.0 },
+        MarkerBcs::with_default(Bc::Dirichlet(BcValue::space(edge_singular))),
+    );
+    let prob = FemProblem {
+        k: 1.0,
+        c: 0.0,
+        f: &source,
+        bcs: &bcs,
+    };
+    let start = l_prism(8);
+    let solve = |mesh: SimplexMesh| {
+        let space = FemSpace::new(mesh, 1).unwrap();
+        let u = solve_static(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
+        (
+            space.l2_error(&u, exact),
+            h1_error_p1(&space, &u, grad_edge),
+            space.size(),
+        )
+    };
+    // one uniform red refinement of the same start mesh
+    let uniform = start.refine_marked(&vec![true; start.cells.len()]);
+    let (err_u, h1_u, dofs_u) = solve(uniform);
+    // adaptive refinement grades the mesh towards the re-entrant edge
+    let (space_a, u_a, history) =
+        solve_adaptive(&start, &prob, 1, 0.0, 0.5, 0.0, 3, LinearSolver::Auto).unwrap();
+    let err_a = space_a.l2_error(&u_a, exact);
+    let h1_a = h1_error_p1(&space_a, &u_a, grad_edge);
+    let dofs_a = space_a.size();
+    eprintln!(
+        "adaptive: L2 {err_a:.3e} H1 {h1_a:.3e} at {dofs_a} dofs; uniform: L2 {err_u:.3e} H1 {h1_u:.3e} at {dofs_u} dofs"
+    );
+    eprintln!("history: {history:?}");
+    assert!(
+        dofs_a as f64 <= 1.3 * dofs_u as f64,
+        "adaptive {dofs_a} vs uniform {dofs_u} dofs"
+    );
+    assert!(
+        err_a < 0.75 * err_u,
+        "adaptive L2 {err_a} at {dofs_a} dofs vs uniform {err_u} at {dofs_u}"
+    );
+    assert!(
+        h1_a < 0.85 * h1_u,
+        "adaptive H1 {h1_a} at {dofs_a} dofs vs uniform {h1_u} at {dofs_u}"
+    );
+    assert!(
+        history.windows(2).all(|w| w[1].0 > w[0].0),
+        "dofs did not grow"
+    );
+    assert!(
+        history.last().unwrap().1 < history[0].1,
+        "estimator did not decrease"
+    );
+    // repeated adaptive refinement stays conforming in the singular region
+    assert_conforming(&space_a.mesh, &start, 3.0);
 }

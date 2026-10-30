@@ -78,8 +78,15 @@ impl Chebyshev {
         values: Vec<f64>,
     ) -> Self {
         let n = values.len().saturating_sub(1).max(1);
-        let nodes = (0..values.len()).map(|j| (PI * j as f64 / n as f64).cos()).collect();
-        Self { mid: f64::midpoint(a, b), half: 0.5 * (b - a), nodes, values }
+        let nodes = (0..values.len())
+            .map(|j| (PI * j as f64 / n as f64).cos())
+            .collect();
+        Self {
+            mid: f64::midpoint(a, b),
+            half: 0.5 * (b - a),
+            nodes,
+            values,
+        }
     }
 
     fn eval(
@@ -95,7 +102,11 @@ impl Chebyshev {
                 return f;
             }
             let sign = if j % 2 == 0 { 1.0 } else { -1.0 };
-            let weight = if j == 0 || j == last { 0.5 * sign } else { sign };
+            let weight = if j == 0 || j == last {
+                0.5 * sign
+            } else {
+                sign
+            };
             let c = weight / d;
             num += c * f;
             den += c;
@@ -131,7 +142,16 @@ fn parse(args: &[f64]) -> Option<Sl> {
     let (p, rest) = rest.split_at(count);
     let (q, w) = rest.split_at(count);
     let positive = p.iter().all(|&v| v > 0.0) && w.iter().all(|&v| v > 0.0);
-    positive.then(|| Sl { a, b, ends, p: Chebyshev::new(a, b, p.to_vec()), q: Chebyshev::new(a, b, q.to_vec()), w: Chebyshev::new(a, b, w.to_vec()) })
+    positive.then(|| {
+        Sl {
+            a,
+            b,
+            ends,
+            p: Chebyshev::new(a, b, p.to_vec()),
+            q: Chebyshev::new(a, b, q.to_vec()),
+            w: Chebyshev::new(a, b, w.to_vec()),
+        }
+    })
 }
 
 impl Sl {
@@ -161,12 +181,28 @@ impl Sl {
         let mut integral = 0.0;
         for k in 0..=samples {
             let x = self.a + h * k as f64;
-            let weight = if k == 0 || k == samples { 1.0 } else if k % 2 == 1 { 4.0 } else { 2.0 };
+            let weight = if k == 0 || k == samples {
+                1.0
+            } else if k % 2 == 1 {
+                4.0
+            } else {
+                2.0
+            };
             integral += weight * (self.w.eval(x) / self.p.eval(x)).sqrt();
         }
         integral *= h / 3.0;
-        let (pmin, wmin) = (self.p.values.iter().copied().fold(f64::INFINITY, f64::min), self.w.values.iter().copied().fold(f64::INFINITY, f64::min));
-        let (wmax, qmax) = (self.w.values.iter().copied().fold(0.0, f64::max), self.q.values.iter().copied().fold(0.0, |a: f64, v| a.max(v.abs())));
+        let (pmin, wmin) = (
+            self.p.values.iter().copied().fold(f64::INFINITY, f64::min),
+            self.w.values.iter().copied().fold(f64::INFINITY, f64::min),
+        );
+        let (wmax, qmax) = (
+            self.w.values.iter().copied().fold(0.0, f64::max),
+            self.q
+                .values
+                .iter()
+                .copied()
+                .fold(0.0, |a: f64, v| a.max(v.abs())),
+        );
         let estimate = (f64::from(m) * PI / integral).powi(2).max(qmax / wmin);
         let frequency = (4.0 * estimate * wmax / pmin).sqrt() * (self.b - self.a);
         let steps = 3000.0 + 80.0 * frequency.powf(1.25);
@@ -179,7 +215,9 @@ impl Sl {
         steps: usize,
     ) -> Grid {
         let h = (self.b - self.a) / steps as f64;
-        let points: Vec<f64> = (0..=2 * steps).map(|k| self.a + 0.5 * h * k as f64).collect();
+        let points: Vec<f64> = (0..=2 * steps)
+            .map(|k| self.a + 0.5 * h * k as f64)
+            .collect();
         Grid {
             h,
             p: points.iter().map(|&x| self.p.eval(x)).collect(),
@@ -250,7 +288,11 @@ impl Grid {
         &self,
         k: usize,
     ) -> (f64, f64, f64) {
-        (self.p.get(k).copied().unwrap_or(f64::NAN), self.q.get(k).copied().unwrap_or(f64::NAN), self.w.get(k).copied().unwrap_or(f64::NAN))
+        (
+            self.p.get(k).copied().unwrap_or(f64::NAN),
+            self.q.get(k).copied().unwrap_or(f64::NAN),
+            self.w.get(k).copied().unwrap_or(f64::NAN),
+        )
     }
 
     /// `θ(x₁; μ)` for the Prüfer equation `θ' = cos²θ/p + (μ w - q) sin²θ`
@@ -301,7 +343,11 @@ impl Mode {
             let (p, q, w) = grid.at(k);
             (v / p, (q - mu * w) * y)
         };
-        let (mut ys, mut dys, mut ws) = (Vec::with_capacity(steps + 1), Vec::with_capacity(steps + 1), Vec::with_capacity(steps + 1));
+        let (mut ys, mut dys, mut ws) = (
+            Vec::with_capacity(steps + 1),
+            Vec::with_capacity(steps + 1),
+            Vec::with_capacity(steps + 1),
+        );
         for k in 0..=steps {
             let (p, _, w) = grid.at(2 * k);
             ys.push(y);
@@ -319,14 +365,25 @@ impl Mode {
             v += h / 6.0 * (b1 + 2.0 * b2 + 2.0 * b3 + b4);
         }
         // ∫ w y² by Simpson's rule.
-        let square = |k: usize| ws.get(k).copied().unwrap_or(0.0) * ys.get(k).copied().unwrap_or(0.0).powi(2);
+        let square = |k: usize| {
+            ws.get(k).copied().unwrap_or(0.0) * ys.get(k).copied().unwrap_or(0.0).powi(2)
+        };
         let mut total = square(0) + square(steps);
         for k in 1..steps {
             total += square(k) * if k % 2 == 1 { 4.0 } else { 2.0 };
         }
         let norm = (total * h / 3.0).sqrt();
-        let scale = if norm > 0.0 { 1.0 / norm } else { f64::NAN };
-        Self { a: sl.a, h, y: ys.iter().map(|v| v * scale).collect(), dy: dys.iter().map(|v| v * scale).collect() }
+        let scale = if norm > 0.0 {
+            1.0 / norm
+        } else {
+            f64::NAN
+        };
+        Self {
+            a: sl.a,
+            h,
+            y: ys.iter().map(|v| v * scale).collect(),
+            dy: dys.iter().map(|v| v * scale).collect(),
+        }
     }
 
     /// Cubic Hermite interpolation.
@@ -338,11 +395,19 @@ impl Mode {
         let position = ((x - self.a) / self.h).max(0.0);
         let k = (position.floor() as usize).min(last);
         let t = position - k as f64;
-        let (Some(&y0), Some(&y1), Some(&d0), Some(&d1)) = (self.y.get(k), self.y.get(k + 1), self.dy.get(k), self.dy.get(k + 1)) else {
+        let (Some(&y0), Some(&y1), Some(&d0), Some(&d1)) = (
+            self.y.get(k),
+            self.y.get(k + 1),
+            self.dy.get(k),
+            self.dy.get(k + 1),
+        ) else {
             return f64::NAN;
         };
         let (t2, t3) = (t * t, t * t * t);
-        (2.0 * t3 - 3.0 * t2 + 1.0) * y0 + (t3 - 2.0 * t2 + t) * self.h * d0 + (-2.0 * t3 + 3.0 * t2) * y1 + (t3 - t2) * self.h * d1
+        (2.0 * t3 - 3.0 * t2 + 1.0) * y0
+            + (t3 - 2.0 * t2 + t) * self.h * d0
+            + (-2.0 * t3 + 3.0 * t2) * y1
+            + (t3 - t2) * self.h * d1
     }
 }
 
@@ -359,7 +424,12 @@ fn solved(
 ) -> Option<Rc<(f64, Mode)>> {
     let mut key: Vec<u64> = args.iter().map(|v| v.to_bits()).collect();
     key.push(u64::from(m));
-    let cached = CACHE.with(|c| c.borrow().iter().find(|(k, _)| *k == key).map(|(_, v)| Rc::clone(v)));
+    let cached = CACHE.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, v)| Rc::clone(v))
+    });
     if cached.is_some() {
         return cached;
     }
@@ -376,9 +446,17 @@ fn solved(
     Some(value)
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::float_cmp)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
 fn index(m: f64) -> Option<u32> {
-    if (1.0..=1e6).contains(&m) && m.fract() == 0.0 { Some(m as u32) } else { None }
+    if (1.0..=1e6).contains(&m) && m.fract() == 0.0 {
+        Some(m as u32)
+    } else {
+        None
+    }
 }
 
 /// `sl_eigen(m, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`.
@@ -391,7 +469,11 @@ pub(super) fn sl_eigen(args: &[f64]) -> f64 {
 
 /// `sl_mode(m, x, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`.
 pub(super) fn sl_mode(args: &[f64]) -> f64 {
-    let (Some(m), Some(&x), Some(rest)) = (args.first().and_then(|&m| index(m)), args.get(1), args.get(2..)) else {
+    let (Some(m), Some(&x), Some(rest)) = (
+        args.first().and_then(|&m| index(m)),
+        args.get(1),
+        args.get(2..),
+    ) else {
         return f64::NAN;
     };
     solved(m, rest).map_or(f64::NAN, |s| s.1.eval(x))
@@ -462,7 +544,10 @@ pub(super) fn solve(
     if space.is_empty() || space.len() > 3 {
         return None;
     }
-    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
+    let (a1, a2) = (
+        p.coefficient(cx.graph, &p.unit(time_index, 1)),
+        p.coefficient(cx.graph, &p.unit(time_index, 2)),
+    );
     if !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) {
         return None;
     }
@@ -470,7 +555,9 @@ pub(super) fn solve(
         let known = *index == vec![0; n]
             || *index == p.unit(time_index, 1)
             || *index == p.unit(time_index, 2)
-            || space.iter().any(|&j| *index == p.unit(j, 1) || *index == p.unit(j, 2));
+            || space
+                .iter()
+                .any(|&j| *index == p.unit(j, 1) || *index == p.unit(j, 2));
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
@@ -490,7 +577,9 @@ pub(super) fn solve(
                 continue;
             }
             let other = cx.graph.symbol_of(p.vars[k])?;
-            if cx.graph.depends_on(cx.graph.find(ca), other) || cx.graph.depends_on(cx.graph.find(cb), other) {
+            if cx.graph.depends_on(cx.graph.find(ca), other)
+                || cx.graph.depends_on(cx.graph.find(cb), other)
+            {
                 return None;
             }
         }
@@ -499,7 +588,12 @@ pub(super) fn solve(
             return None;
         }
         let (start, stop) = (value(cx, iv.start)?, value(cx, iv.stop)?);
-        let ends = [value(cx, iv.left.p)?, value(cx, iv.left.q)?, value(cx, iv.right.p)?, value(cx, iv.right.q)?];
+        let ends = [
+            value(cx, iv.left.p)?,
+            value(cx, iv.left.q)?,
+            value(cx, iv.right.p)?,
+            value(cx, iv.right.q)?,
+        ];
         if stop <= start || start.is_nan() || ends.iter().any(|v| !v.is_finite()) {
             return None;
         }
@@ -513,8 +607,14 @@ pub(super) fn solve(
             b: cb,
         });
     }
-    let symbols: Vec<crate::graph::SymbolId> = space.iter().map(|&j| cx.graph.symbol_of(p.vars[j])).collect::<Option<_>>()?;
-    let mids: Vec<f64> = data.iter().map(|d| f64::midpoint(d.bounds.0, d.bounds.1)).collect();
+    let symbols: Vec<crate::graph::SymbolId> = space
+        .iter()
+        .map(|&j| cx.graph.symbol_of(p.vars[j]))
+        .collect::<Option<_>>()?;
+    let mids: Vec<f64> = data
+        .iter()
+        .map(|d| f64::midpoint(d.bounds.0, d.bounds.1))
+        .collect();
     let dimension = space.len();
     // The zero-order term: c = C + Σ_j g_j(x_j) with g_j(mid_j) = 0.
     let base = at_point(cx, cc, &symbols, &mids)?;
@@ -522,7 +622,16 @@ pub(super) fn solve(
     let leftover = if single { 0.0 } else { base };
     if !single {
         for trial in 0..3_u32 {
-            let point: Vec<f64> = data.iter().enumerate().map(|(k, d)| d.bounds.0 + (d.bounds.1 - d.bounds.0) * (0.17 + 0.29 * f64::from(trial) + 0.11 * k as f64) % 1.0).collect();
+            let point: Vec<f64> = data
+                .iter()
+                .enumerate()
+                .map(|(k, d)| {
+                    d.bounds.0
+                        + (d.bounds.1 - d.bounds.0)
+                            * (0.17 + 0.29 * f64::from(trial) + 0.11 * k as f64)
+                            % 1.0
+                })
+                .collect();
             let mut predicted = base;
             for k in 0..dimension {
                 let mut shifted = mids.clone();
@@ -541,15 +650,25 @@ pub(super) fn solve(
     for (pos, d) in data.iter().enumerate() {
         let (start, stop) = d.bounds;
         let (mid, half) = (f64::midpoint(start, stop), 0.5 * (stop - start));
-        let xs: Vec<f64> = (0..=SAMPLES).map(|k| mid + half * (PI * k as f64 / SAMPLES as f64).cos()).collect();
+        let xs: Vec<f64> = (0..=SAMPLES)
+            .map(|k| mid + half * (PI * k as f64 / SAMPLES as f64).cos())
+            .collect();
         let along = |x_value: f64| -> Vec<f64> {
             let mut point = mids.clone();
             point[pos] = x_value;
             point
         };
-        let kappa = if at_point(cx, d.a, &symbols, &along(mid))? > 0.0 { 1.0 } else { -1.0 };
-        let a_hat = |cx: &Cx<'_>, x_value: f64| at_point(cx, d.a, &symbols, &along(x_value)).map(|v| kappa * v);
-        let b_hat = |cx: &Cx<'_>, x_value: f64| at_point(cx, d.b, &symbols, &along(x_value)).map(|v| kappa * v);
+        let kappa = if at_point(cx, d.a, &symbols, &along(mid))? > 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
+        let a_hat = |cx: &Cx<'_>, x_value: f64| {
+            at_point(cx, d.a, &symbols, &along(x_value)).map(|v| kappa * v)
+        };
+        let b_hat = |cx: &Cx<'_>, x_value: f64| {
+            at_point(cx, d.b, &symbols, &along(x_value)).map(|v| kappa * v)
+        };
         let c_hat = |cx: &Cx<'_>, x_value: f64| -> Option<f64> {
             let full = at_point(cx, cc, &symbols, &along(x_value))?;
             Some(kappa * if single { full } else { full - base })
@@ -568,7 +687,13 @@ pub(super) fn solve(
                 for k in 0..=steps {
                     let s = start + h * k as f64;
                     let g = b_hat(cx, s)? / a_hat(cx, s)?;
-                    let weight = if k == 0 || k == steps { 1.0 } else if k % 2 == 1 { 4.0 } else { 2.0 };
+                    let weight = if k == 0 || k == steps {
+                        1.0
+                    } else if k % 2 == 1 {
+                        4.0
+                    } else {
+                        2.0
+                    };
                     integral += weight * g;
                 }
                 integral *= h / 3.0;
@@ -578,7 +703,15 @@ pub(super) fn solve(
             ws.push(p_value / a_value);
             qs.push(-p_value * c_hat(cx, xv)? / a_value);
         }
-        let mut params = vec![d.start, d.stop, d.ends[0], d.ends[1], d.ends[2], d.ends[3], cx.graph.int(i64::try_from(SAMPLES).ok()?)];
+        let mut params = vec![
+            d.start,
+            d.stop,
+            d.ends[0],
+            d.ends[1],
+            d.ends[2],
+            d.ends[3],
+            cx.graph.int(i64::try_from(SAMPLES).ok()?),
+        ];
         for list in [&ps, &qs, &ws] {
             for &v in list {
                 params.push(number(cx, v));
@@ -588,17 +721,43 @@ pub(super) fn solve(
         let mut halves = vec![0; dimension];
         halves[pos] = 1;
         spatial.push((halves, kappa_node));
-        axes.push(Axis { var: d.var, shape: Shape::General { start: d.start, stop: d.stop, params } });
+        axes.push(Axis {
+            var: d.var,
+            shape: Shape::General {
+                start: d.start,
+                stop: d.stop,
+                params,
+            },
+        });
     }
     if leftover.abs() > 1e-14 {
         spatial.push((vec![0; dimension], number(cx, leftover)));
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = Time { var: p.vars[time_index], order, a2, a1 };
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = Time {
+        var: p.vars[time_index],
+        order,
+        a2,
+        a1,
+    };
     let mut items = time_items(cx, p, conditions, Some(time_index), order, n)?;
     if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: p.source,
+            special: None,
+        });
     }
-    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
+    let engine = Engine {
+        axes,
+        time: Some(time),
+        symbol: Symbol::Cartesian(spatial),
+        face: None,
+        exterior: None,
+    };
     finish(cx, p, conditions, &engine, &items, None, None)
 }

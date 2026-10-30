@@ -156,9 +156,9 @@ pub fn riemann_tensor(
         for r in 0..dim {
             for s in 0..dim {
                 for n in 0..dim {
-                    d[r][s][n] =
-                        (-p2[r][s][n] + 8.0 * p1[r][s][n] - 8.0 * m1[r][s][n] + m2[r][s][n])
-                            / (12.0 * h);
+                    d[r][s][n] = (-p2[r][s][n] + 8.0 * p1[r][s][n] - 8.0 * m1[r][s][n]
+                        + m2[r][s][n])
+                        / (12.0 * h);
                 }
             }
         }

@@ -1,17 +1,17 @@
 //! Small builders shared by the PDE solvers.
 
 use crate::graph::Cx;
-use crate::graph::SymbolId;
-use num_complex::Complex64;
-use std::collections::HashMap;
 use crate::graph::Env;
 use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::SymbolId;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
+use num_complex::Complex64;
+use std::collections::HashMap;
 
 /// `a / b`.
 pub(super) fn div(
@@ -182,5 +182,8 @@ pub(super) fn sample_abs(
         };
         bindings.insert(s, Complex64::new(value, 0.0));
     }
-    graph.eval_complex(node, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()).map(Complex64::norm)
+    graph
+        .eval_complex(node, &bindings)
+        .filter(|v| v.re.is_finite() && v.im.is_finite())
+        .map(Complex64::norm)
 }

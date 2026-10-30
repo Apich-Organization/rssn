@@ -13,7 +13,10 @@
 
 use std::f64::consts::PI;
 
-use crate::kernels::dense::{self, Mat};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 
 /// Errors of the approximation routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +27,11 @@ pub enum ApproxError {
     Singular,
 }
 
-fn check_grid(x: &[f64], y: &[f64], min: usize) -> Result<(), ApproxError> {
+fn check_grid(
+    x: &[f64],
+    y: &[f64],
+    min: usize,
+) -> Result<(), ApproxError> {
     if x.len() != y.len() || x.len() < min || x.windows(2).any(|w| w[1] <= w[0]) {
         return Err(ApproxError::Invalid);
     }
@@ -58,9 +65,21 @@ impl CubicSpline {
     /// # Errors
     /// [`ApproxError::Invalid`] for fewer than 3 points (4 for not-a-knot)
     /// or non-increasing abscissae.
-    pub fn new(x: &[f64], y: &[f64], bc: SplineBc) -> Result<Self, ApproxError> {
+    pub fn new(
+        x: &[f64],
+        y: &[f64],
+        bc: SplineBc,
+    ) -> Result<Self, ApproxError> {
         let n = x.len();
-        check_grid(x, y, if bc == SplineBc::NotAKnot { 4 } else { 3 })?;
+        check_grid(
+            x,
+            y,
+            if bc == SplineBc::NotAKnot {
+                4
+            } else {
+                3
+            },
+        )?;
         let h: Vec<f64> = x.windows(2).map(|w| w[1] - w[0]).collect();
         // Solve for second-derivative-like coefficients c_i (c = M/2).
         let mut m = Mat::zeros(n, n);
@@ -72,26 +91,26 @@ impl CubicSpline {
             r[i] = 3.0 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1]);
         }
         match bc {
-            SplineBc::Natural => {
+            | SplineBc::Natural => {
                 m.set(0, 0, 1.0);
                 m.set(n - 1, n - 1, 1.0);
-            }
-            SplineBc::Clamped(l, rr) => {
+            },
+            | SplineBc::Clamped(l, rr) => {
                 m.set(0, 0, 2.0 * h[0]);
                 m.set(0, 1, h[0]);
                 r[0] = 3.0 * ((y[1] - y[0]) / h[0] - l);
                 m.set(n - 1, n - 2, h[n - 2]);
                 m.set(n - 1, n - 1, 2.0 * h[n - 2]);
                 r[n - 1] = 3.0 * (rr - (y[n - 1] - y[n - 2]) / h[n - 2]);
-            }
-            SplineBc::NotAKnot => {
+            },
+            | SplineBc::NotAKnot => {
                 m.set(0, 0, h[1]);
                 m.set(0, 1, -(h[0] + h[1]));
                 m.set(0, 2, h[0]);
                 m.set(n - 1, n - 3, h[n - 2]);
                 m.set(n - 1, n - 2, -(h[n - 3] + h[n - 2]));
                 m.set(n - 1, n - 1, h[n - 3]);
-            }
+            },
         }
         let c = dense::solve(&m, &r).map_err(|_| ApproxError::Singular)?;
         let mut b = vec![0.0; n];
@@ -103,16 +122,31 @@ impl CubicSpline {
         // last knot: derivative / third-derivative continuation
         let hl = h[n - 2];
         b[n - 1] = b[n - 2] + 2.0 * c[n - 2] * hl + 3.0 * d[n - 2] * hl * hl;
-        Ok(Self { x: x.to_vec(), a: y.to_vec(), b, c, d })
+        Ok(Self {
+            x: x.to_vec(),
+            a: y.to_vec(),
+            b,
+            c,
+            d,
+        })
     }
 
-    fn seg(&self, x: f64) -> usize {
-        self.x.partition_point(|&v| v <= x).saturating_sub(1).min(self.x.len() - 2)
+    fn seg(
+        &self,
+        x: f64,
+    ) -> usize {
+        self.x
+            .partition_point(|&v| v <= x)
+            .saturating_sub(1)
+            .min(self.x.len() - 2)
     }
 
     /// Spline value at `x` (extrapolates with the end cubics).
     #[must_use]
-    pub fn eval(&self, x: f64) -> f64 {
+    pub fn eval(
+        &self,
+        x: f64,
+    ) -> f64 {
         let i = self.seg(x);
         let t = x - self.x[i];
         self.a[i] + t * (self.b[i] + t * (self.c[i] + t * self.d[i]))
@@ -120,21 +154,29 @@ impl CubicSpline {
 
     /// Derivative of order 1, 2 or 3 at `x` (order 0 is the value).
     #[must_use]
-    pub fn derivative(&self, x: f64, order: u8) -> f64 {
+    pub fn derivative(
+        &self,
+        x: f64,
+        order: u8,
+    ) -> f64 {
         let i = self.seg(x);
         let t = x - self.x[i];
         match order {
-            0 => self.eval(x),
-            1 => self.b[i] + t * (2.0 * self.c[i] + 3.0 * self.d[i] * t),
-            2 => 2.0 * self.c[i] + 6.0 * self.d[i] * t,
-            3 => 6.0 * self.d[i],
-            _ => 0.0,
+            | 0 => self.eval(x),
+            | 1 => self.b[i] + t * (2.0 * self.c[i] + 3.0 * self.d[i] * t),
+            | 2 => 2.0 * self.c[i] + 6.0 * self.d[i] * t,
+            | 3 => 6.0 * self.d[i],
+            | _ => 0.0,
         }
     }
 
     /// Exact integral of the spline over `[lo, hi]`.
     #[must_use]
-    pub fn integrate(&self, lo: f64, hi: f64) -> f64 {
+    pub fn integrate(
+        &self,
+        lo: f64,
+        hi: f64,
+    ) -> f64 {
         if lo > hi {
             return -self.integrate(hi, lo);
         }
@@ -168,7 +210,10 @@ impl Pchip {
     ///
     /// # Errors
     /// [`ApproxError::Invalid`] for fewer than 2 points or non-increasing `x`.
-    pub fn new(x: &[f64], y: &[f64]) -> Result<Self, ApproxError> {
+    pub fn new(
+        x: &[f64],
+        y: &[f64],
+    ) -> Result<Self, ApproxError> {
         check_grid(x, y, 2)?;
         let n = x.len();
         let h: Vec<f64> = x.windows(2).map(|w| w[1] - w[0]).collect();
@@ -196,13 +241,24 @@ impl Pchip {
             d[0] = end(h[0], h[1], del[0], del[1]);
             d[n - 1] = end(h[n - 2], h[n - 3], del[n - 2], del[n - 3]);
         }
-        Ok(Self { x: x.to_vec(), y: y.to_vec(), d })
+        Ok(Self {
+            x: x.to_vec(),
+            y: y.to_vec(),
+            d,
+        })
     }
 
     /// Value at `x`.
     #[must_use]
-    pub fn eval(&self, x: f64) -> f64 {
-        let i = self.x.partition_point(|&v| v <= x).saturating_sub(1).min(self.x.len() - 2);
+    pub fn eval(
+        &self,
+        x: f64,
+    ) -> f64 {
+        let i = self
+            .x
+            .partition_point(|&v| v <= x)
+            .saturating_sub(1)
+            .min(self.x.len() - 2);
         let h = self.x[i + 1] - self.x[i];
         let s = (x - self.x[i]) / h;
         let (h00, h10, h01, h11) = (
@@ -216,8 +272,15 @@ impl Pchip {
 
     /// Derivative at `x`.
     #[must_use]
-    pub fn derivative(&self, x: f64) -> f64 {
-        let i = self.x.partition_point(|&v| v <= x).saturating_sub(1).min(self.x.len() - 2);
+    pub fn derivative(
+        &self,
+        x: f64,
+    ) -> f64 {
+        let i = self
+            .x
+            .partition_point(|&v| v <= x)
+            .saturating_sub(1)
+            .min(self.x.len() - 2);
         let h = self.x[i + 1] - self.x[i];
         let s = (x - self.x[i]) / h;
         let (d00, d10, d01, d11) = (
@@ -234,11 +297,18 @@ impl Pchip {
 /// `knots` at `x` (Cox-de Boor recursion; right-continuous, closed at the
 /// last knot).
 #[must_use]
-pub fn bspline_basis(knots: &[f64], degree: usize, i: usize, x: f64) -> f64 {
+pub fn bspline_basis(
+    knots: &[f64],
+    degree: usize,
+    i: usize,
+    x: f64,
+) -> f64 {
     if degree == 0 {
         let last = knots.len() - 1;
         let inside = knots[i] <= x && x < knots[i + 1];
-        let at_end = crate::kernels::exact_eq(x, knots[last]) && knots[i] < knots[i + 1] && crate::kernels::exact_eq(knots[i + 1], knots[last]);
+        let at_end = crate::kernels::exact_eq(x, knots[last])
+            && knots[i] < knots[i + 1]
+            && crate::kernels::exact_eq(knots[i + 1], knots[last]);
         return if inside || at_end { 1.0 } else { 0.0 };
     }
     let mut v = 0.0;
@@ -258,7 +328,12 @@ pub fn bspline_basis(knots: &[f64], degree: usize, i: usize, x: f64) -> f64 {
 /// Requires `knots.len() == coeffs.len() + degree + 1`; `x` is clamped to
 /// the valid range.
 #[must_use]
-pub fn bspline_eval(knots: &[f64], coeffs: &[f64], degree: usize, x: f64) -> f64 {
+pub fn bspline_eval(
+    knots: &[f64],
+    coeffs: &[f64],
+    degree: usize,
+    x: f64,
+) -> f64 {
     let n = coeffs.len();
     let lo = knots[degree];
     let hi = knots[n];
@@ -272,7 +347,11 @@ pub fn bspline_eval(knots: &[f64], coeffs: &[f64], degree: usize, x: f64) -> f64
         for j in (r..=degree).rev() {
             let i = j + k - degree;
             let den = knots[i + degree + 1 - r] - knots[i];
-            let alpha = if den == 0.0 { 0.0 } else { (x - knots[i]) / den };
+            let alpha = if den == 0.0 {
+                0.0
+            } else {
+                (x - knots[i]) / den
+            };
             d[j] = (1.0 - alpha) * d[j - 1] + alpha * d[j];
         }
     }
@@ -311,8 +390,14 @@ pub fn bspline_interpolate(
 /// Chebyshev points of the second kind (extrema)
 /// `cos(pi k / n)` mapped to `[a, b]`, `k = 0..=n`.
 #[must_use]
-pub fn chebyshev_points(n: usize, a: f64, b: f64) -> Vec<f64> {
-    (0..=n).map(|k| f64::midpoint(a, b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect()
+pub fn chebyshev_points(
+    n: usize,
+    a: f64,
+    b: f64,
+) -> Vec<f64> {
+    (0..=n)
+        .map(|k| f64::midpoint(a, b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos())
+        .collect()
 }
 
 /// A function on `[a, b]` represented by Chebyshev coefficients.
@@ -328,7 +413,10 @@ pub struct ChebSeries {
 
 /// Clenshaw evaluation of `sum c_k T_k(t)` at `t in [-1, 1]`.
 #[must_use]
-pub fn clenshaw(c: &[f64], t: f64) -> f64 {
+pub fn clenshaw(
+    c: &[f64],
+    t: f64,
+) -> f64 {
     let (mut b1, mut b2) = (0.0, 0.0);
     for &ck in c.iter().skip(1).rev() {
         let b0 = ck + 2.0 * t * b1 - b2;
@@ -340,7 +428,12 @@ pub fn clenshaw(c: &[f64], t: f64) -> f64 {
 
 impl ChebSeries {
     /// Interpolates `f` at the `n + 1` Chebyshev extrema.
-    pub fn from_fn<F: Fn(f64) -> f64>(f: F, a: f64, b: f64, n: usize) -> Self {
+    pub fn from_fn<F: Fn(f64) -> f64>(
+        f: F,
+        a: f64,
+        b: f64,
+        n: usize,
+    ) -> Self {
         let pts = chebyshev_points(n, a, b);
         let v: Vec<f64> = pts.iter().map(|&x| f(x)).collect();
         let mut c = vec![0.0; n + 1];
@@ -360,13 +453,24 @@ impl ChebSeries {
     /// Adaptive construction: doubles the degree (up to `max_degree`)
     /// until the trailing coefficients fall below `tol * max|c|`, then
     /// chops the negligible tail.
-    pub fn adaptive<F: Fn(f64) -> f64>(f: F, a: f64, b: f64, tol: f64, max_degree: usize) -> Self {
+    pub fn adaptive<F: Fn(f64) -> f64>(
+        f: F,
+        a: f64,
+        b: f64,
+        tol: f64,
+        max_degree: usize,
+    ) -> Self {
         let mut n = 8;
         loop {
             let mut s = Self::from_fn(&f, a, b, n);
             let big = s.coeffs.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
             let cut = tol * big.max(f64::MIN_POSITIVE);
-            let tail_ok = s.coeffs.iter().rev().take(3.min(s.coeffs.len())).all(|v| v.abs() <= cut);
+            let tail_ok = s
+                .coeffs
+                .iter()
+                .rev()
+                .take(3.min(s.coeffs.len()))
+                .all(|v| v.abs() <= cut);
             if tail_ok || n >= max_degree {
                 while s.coeffs.len() > 1 && s.coeffs.last().is_some_and(|v| v.abs() <= cut) {
                     s.coeffs.pop();
@@ -385,8 +489,14 @@ impl ChebSeries {
 
     /// Value at `x in [a, b]`.
     #[must_use]
-    pub fn eval(&self, x: f64) -> f64 {
-        clenshaw(&self.coeffs, (2.0 * x - self.a - self.b) / (self.b - self.a))
+    pub fn eval(
+        &self,
+        x: f64,
+    ) -> f64 {
+        clenshaw(
+            &self.coeffs,
+            (2.0 * x - self.a - self.b) / (self.b - self.a),
+        )
     }
 
     /// Derivative series.
@@ -400,7 +510,11 @@ impl ChebSeries {
         d.truncate(n.saturating_sub(1).max(1));
         d[0] *= 0.5;
         let s = 2.0 / (self.b - self.a);
-        Self { coeffs: d.iter().map(|v| v * s).collect(), a: self.a, b: self.b }
+        Self {
+            coeffs: d.iter().map(|v| v * s).collect(),
+            a: self.a,
+            b: self.b,
+        }
     }
 
     /// Antiderivative series vanishing at `a`.
@@ -412,13 +526,25 @@ impl ChebSeries {
         let get = |k: usize| self.coeffs.get(k).copied().unwrap_or(0.0);
         for k in 1..=n {
             let hi = get(k + 1);
-            let lo = if k == 1 { 2.0 * get(0) } else { get(k - 1) };
+            let lo = if k == 1 {
+                2.0 * get(0)
+            } else {
+                get(k - 1)
+            };
             c[k] = (lo - hi) / (2.0 * k as f64) * scale;
         }
-        let at_minus_one: f64 =
-            c.iter().enumerate().skip(1).map(|(k, v)| if k % 2 == 0 { *v } else { -*v }).sum();
+        let at_minus_one: f64 = c
+            .iter()
+            .enumerate()
+            .skip(1)
+            .map(|(k, v)| if k % 2 == 0 { *v } else { -*v })
+            .sum();
         c[0] = -at_minus_one;
-        Self { coeffs: c, a: self.a, b: self.b }
+        Self {
+            coeffs: c,
+            a: self.a,
+            b: self.b,
+        }
     }
 
     /// Definite integral over `[a, b]`.
@@ -486,7 +612,10 @@ pub struct Aaa {
 impl Aaa {
     /// Evaluates the rational function at `x`.
     #[must_use]
-    pub fn eval(&self, x: f64) -> f64 {
+    pub fn eval(
+        &self,
+        x: f64,
+    ) -> f64 {
         let (mut num, mut den) = (0.0, 0.0);
         for k in 0..self.z.len() {
             let d = x - self.z[k];
@@ -513,7 +642,12 @@ impl Aaa {
 ///
 /// # Errors
 /// [`ApproxError::Invalid`] for fewer than 3 samples.
-pub fn aaa(z: &[f64], f: &[f64], tol: f64, max_terms: usize) -> Result<Aaa, ApproxError> {
+pub fn aaa(
+    z: &[f64],
+    f: &[f64],
+    tol: f64,
+    max_terms: usize,
+) -> Result<Aaa, ApproxError> {
     let m = z.len();
     if m < 3 || f.len() != m {
         return Err(ApproxError::Invalid);
@@ -561,12 +695,20 @@ pub fn aaa(z: &[f64], f: &[f64], tol: f64, max_terms: usize) -> Result<Aaa, Appr
             }
             r[i] = hit.map_or(num / den, |c| fj[c]);
         }
-        err = rest.iter().map(|&i| (f[i] - r[i]).abs()).fold(0.0, f64::max);
+        err = rest
+            .iter()
+            .map(|&i| (f[i] - r[i]).abs())
+            .fold(0.0, f64::max);
         if err <= tol * fmax {
             break;
         }
     }
-    Ok(Aaa { z: zj, f: fj, w, error: err })
+    Ok(Aaa {
+        z: zj,
+        f: fj,
+        w,
+        error: err,
+    })
 }
 
 /// Pade approximant `[m/n]` from Taylor coefficients `c_0, c_1, ...`
@@ -576,7 +718,11 @@ pub fn aaa(z: &[f64], f: &[f64], tol: f64, max_terms: usize) -> Result<Aaa, Appr
 /// # Errors
 /// [`ApproxError::Invalid`] if too few coefficients, [`ApproxError::Singular`]
 /// if the approximant does not exist.
-pub fn pade(c: &[f64], m: usize, n: usize) -> Result<(Vec<f64>, Vec<f64>), ApproxError> {
+pub fn pade(
+    c: &[f64],
+    m: usize,
+    n: usize,
+) -> Result<(Vec<f64>, Vec<f64>), ApproxError> {
     if c.len() < m + n + 1 {
         return Err(ApproxError::Invalid);
     }
@@ -601,6 +747,9 @@ pub fn pade(c: &[f64], m: usize, n: usize) -> Result<(Vec<f64>, Vec<f64>), Appro
 
 /// Evaluates a polynomial with ascending coefficients by Horner's scheme.
 #[must_use]
-pub fn horner(c: &[f64], x: f64) -> f64 {
+pub fn horner(
+    c: &[f64],
+    x: f64,
+) -> f64 {
     c.iter().rev().fold(0.0, |acc, &v| acc * x + v)
 }

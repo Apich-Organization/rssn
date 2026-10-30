@@ -206,7 +206,10 @@ fn looks_reduced(
     let closed = ClosedForm;
     graph.enodes(graph.find(node)).any(|n| {
         closed.cost(graph, n).is_some()
-            && graph.children(n).iter().all(|&c| looks_reduced(graph, c, depth.saturating_sub(1)))
+            && graph
+                .children(n)
+                .iter()
+                .all(|&c| looks_reduced(graph, c, depth.saturating_sub(1)))
     })
 }
 
@@ -215,7 +218,11 @@ fn reduced_arguments(
     graph: &Graph,
     node: NodeId,
 ) -> usize {
-    graph.children(node).iter().filter(|&&c| looks_reduced(graph, c, 4)).count()
+    graph
+        .children(node)
+        .iter()
+        .filter(|&&c| looks_reduced(graph, c, 4))
+        .count()
 }
 
 /// A program together with the scheduling logic that runs it.
@@ -383,10 +390,15 @@ impl Engine {
                 // Progress is measured on the closed form when there is one
                 // and on the best partially reduced term otherwise.
                 let total = |extractor: &Extractor, graph: &Graph| {
-                    roots.iter().try_fold(0_u64, |acc, &r| extractor.cost(graph, r).map(|c| acc.saturating_add(c)))
+                    roots.iter().try_fold(0_u64, |acc, &r| {
+                        extractor.cost(graph, r).map(|c| acc.saturating_add(c))
+                    })
                 };
                 let cost = total(&Extractor::new(graph, roots, &ClosedForm), graph)
-                    .or_else(|| total(&Extractor::new(graph, roots, &SizeCost), graph).map(|c| c.saturating_add(1 << 40)))
+                    .or_else(|| {
+                        total(&Extractor::new(graph, roots, &SizeCost), graph)
+                            .map(|c| c.saturating_add(1 << 40))
+                    })
                     .unwrap_or(u64::MAX);
                 if cost < best_cost {
                     best_cost = cost;
@@ -426,9 +438,11 @@ impl Engine {
             .rules
             .iter()
             .filter(|r| r.tier == tier)
-            .filter_map(|r| match &r.action {
-                | Action::Rewrite(rw) => Some(rw),
-                | Action::Kernel(_) => None,
+            .filter_map(|r| {
+                match &r.action {
+                    | Action::Rewrite(rw) => Some(rw),
+                    | Action::Kernel(_) => None,
+                }
             })
             .collect()
     }
@@ -486,7 +500,13 @@ impl Engine {
                         if room == 0 {
                             break;
                         }
-                        matches.extend(rewrite.lhs.matches_bounded(graph, node, rewrite.nvars, room, &mut fuel));
+                        matches.extend(rewrite.lhs.matches_bounded(
+                            graph,
+                            node,
+                            rewrite.nvars,
+                            room,
+                            &mut fuel,
+                        ));
                         if fuel == 0 {
                             break;
                         }
@@ -500,10 +520,11 @@ impl Engine {
                     }
                     for m in &matches {
                         if let Some(new) = rewrite.build(graph, m)
-                            && graph.union(m.root, new) {
-                                state.applied = state.applied.saturating_add(1);
-                                changed = true;
-                            }
+                            && graph.union(m.root, new)
+                        {
+                            state.applied = state.applied.saturating_add(1);
+                            changed = true;
+                        }
                     }
                 },
                 | Action::Kernel(kernel) => {
@@ -530,7 +551,14 @@ impl Engine {
                                     },
                                 }
                             }
-                            let outcome = kernel.reduce(&mut Cx { graph, env, engine: self }, node);
+                            let outcome = kernel.reduce(
+                                &mut Cx {
+                                    graph,
+                                    env,
+                                    engine: self,
+                                },
+                                node,
+                            );
                             let fired = match outcome {
                                 | Outcome::Pass => false,
                                 | Outcome::Equal(other) => graph.union(node, other),
@@ -906,7 +934,7 @@ mod tests {
         let report = engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &budget);
         assert!(report.iterations <= 12);
         assert_eq!(g.validate(), Ok(()));
-        assert!(g.conflicts().is_empty());
+        assert_eq!(g.conflicts(), []);
     }
 
     #[test]

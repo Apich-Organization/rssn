@@ -1,7 +1,12 @@
 //! Immersed boundaries in the MAC solver and the Re = 1000 cavity.
 
-use rssn::sim::boundary::{BcValue, Face, FluidBoundary, FluidFaceBcs};
-use rssn::sim::ns_mac::{ImmersedBody, NsConfig, NsSolver};
+use rssn::sim::boundary::BcValue;
+use rssn::sim::boundary::Face;
+use rssn::sim::boundary::FluidBoundary;
+use rssn::sim::boundary::FluidFaceBcs;
+use rssn::sim::ns_mac::ImmersedBody;
+use rssn::sim::ns_mac::NsConfig;
+use rssn::sim::ns_mac::NsSolver;
 
 const R_IN: f64 = 0.5;
 const R_OUT: f64 = 1.0;
@@ -20,7 +25,11 @@ fn couette(n: usize) -> f64 {
         velocity: Box::new(move |x| {
             let (dx, dy) = (x[0] - c, x[1] - c);
             let r = (dx * dx + dy * dy).sqrt();
-            if r < 0.5 * (R_IN + R_OUT) { [-OMEGA * dy, OMEGA * dx, 0.0] } else { [0.0; 3] }
+            if r < 0.5 * (R_IN + R_OUT) {
+                [-OMEGA * dy, OMEGA * dx, 0.0]
+            } else {
+                [0.0; 3]
+            }
         }),
     });
     let dt = 0.4 * (2.0 * half / n as f64);
@@ -32,7 +41,11 @@ fn couette(n: usize) -> f64 {
     let mut worst: f64 = 0.0;
     for ix in 0..60 {
         for iy in 0..60 {
-            let x = [c - 0.95 + 1.9 * ix as f64 / 59.0, c - 0.95 + 1.9 * iy as f64 / 59.0, 0.0];
+            let x = [
+                c - 0.95 + 1.9 * ix as f64 / 59.0,
+                c - 0.95 + 1.9 * iy as f64 / 59.0,
+                0.0,
+            ];
             let (dx, dy) = (x[0] - c, x[1] - c);
             let r = (dx * dx + dy * dy).sqrt();
             if r < R_IN + 0.08 || r > R_OUT - 0.08 {
@@ -40,7 +53,9 @@ fn couette(n: usize) -> f64 {
             }
             let ut = a * r + b / r;
             let (ue, ve) = (-ut * dy / r, ut * dx / r);
-            worst = worst.max((s.sample_velocity(0, x) - ue).abs()).max((s.sample_velocity(1, x) - ve).abs());
+            worst = worst
+                .max((s.sample_velocity(0, x) - ue).abs())
+                .max((s.sample_velocity(1, x) - ve).abs());
         }
     }
     worst
@@ -83,7 +98,8 @@ fn flow_around_a_circular_cylinder_conserves_flux() {
 fn lid_driven_cavity_re1000_matches_ghia() {
     let n = 96;
     let mut cfg = NsConfig::new(&[n, n], &[1.0, 1.0], 1.0e-3).unwrap();
-    cfg.bcs = FluidFaceBcs::uniform(&FluidBoundary::wall()).with(Face::YMax, FluidBoundary::moving_wall([1.0, 0.0, 0.0]));
+    cfg.bcs = FluidFaceBcs::uniform(&FluidBoundary::wall())
+        .with(Face::YMax, FluidBoundary::moving_wall([1.0, 0.0, 0.0]));
     let dt = 0.006;
     let mut s = NsSolver::new(cfg, dt, &|_| [0.0; 3]).unwrap();
     s.run((70.0 / dt) as usize).unwrap();

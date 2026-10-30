@@ -107,52 +107,95 @@ pub(crate) fn one() -> BigInt {
 
 impl Fx {
     pub(crate) fn zero() -> Self {
-        Self { re: BigInt::zero(), im: BigInt::zero() }
+        Self {
+            re: BigInt::zero(),
+            im: BigInt::zero(),
+        }
     }
 
     pub(crate) fn real(re: BigInt) -> Self {
-        Self { re, im: BigInt::zero() }
+        Self {
+            re,
+            im: BigInt::zero(),
+        }
     }
 
     pub(crate) fn integer(n: &BigInt) -> Self {
         Self::real(n << BITS)
     }
 
-    pub(crate) fn add(&self, o: &Self) -> Self {
-        Self { re: &self.re + &o.re, im: &self.im + &o.im }
+    pub(crate) fn add(
+        &self,
+        o: &Self,
+    ) -> Self {
+        Self {
+            re: &self.re + &o.re,
+            im: &self.im + &o.im,
+        }
     }
 
-    pub(crate) fn sub(&self, o: &Self) -> Self {
-        Self { re: &self.re - &o.re, im: &self.im - &o.im }
+    pub(crate) fn sub(
+        &self,
+        o: &Self,
+    ) -> Self {
+        Self {
+            re: &self.re - &o.re,
+            im: &self.im - &o.im,
+        }
     }
 
-    pub(crate) fn mul(&self, o: &Self) -> Self {
-        Self { re: (&self.re * &o.re - &self.im * &o.im) >> BITS, im: (&self.re * &o.im + &self.im * &o.re) >> BITS }
+    pub(crate) fn mul(
+        &self,
+        o: &Self,
+    ) -> Self {
+        Self {
+            re: (&self.re * &o.re - &self.im * &o.im) >> BITS,
+            im: (&self.re * &o.im + &self.im * &o.re) >> BITS,
+        }
     }
 
     pub(crate) fn conj(&self) -> Self {
-        Self { re: self.re.clone(), im: -self.im.clone() }
+        Self {
+            re: self.re.clone(),
+            im: -self.im.clone(),
+        }
     }
 
-    pub(crate) fn div(&self, o: &Self) -> Option<Self> {
+    pub(crate) fn div(
+        &self,
+        o: &Self,
+    ) -> Option<Self> {
         let d = &o.re * &o.re + &o.im * &o.im;
         if d.is_zero() {
             return None;
         }
         let re = (&self.re * &o.re + &self.im * &o.im) << BITS;
         let im = (&self.im * &o.re - &self.re * &o.im) << BITS;
-        Some(Self { re: re / &d, im: im / &d })
+        Some(Self {
+            re: re / &d,
+            im: im / &d,
+        })
     }
 
-    pub(crate) fn close(&self, o: &Self, exponent: usize) -> bool {
+    pub(crate) fn close(
+        &self,
+        o: &Self,
+        exponent: usize,
+    ) -> bool {
         let bound = BigInt::one() << (BITS - exponent);
         (&self.re - &o.re).abs() < bound && (&self.im - &o.im).abs() < bound
     }
 
-    pub(crate) fn from_f64(re: f64, im: f64) -> Option<Self> {
+    pub(crate) fn from_f64(
+        re: f64,
+        im: f64,
+    ) -> Option<Self> {
         let scale = BigRational::from_integer(one());
         let to = |v: f64| BigRational::from_float(v).map(|r| (r * &scale).to_integer());
-        Some(Self { re: to(re)?, im: to(im)? })
+        Some(Self {
+            re: to(re)?,
+            im: to(im)?,
+        })
     }
 }
 
@@ -162,12 +205,21 @@ fn pow5(z: &Fx) -> Fx {
 }
 
 /// Value of the integer polynomial `g` (ascending) at `z`.
-pub(crate) fn horner(g: &[BigInt], z: &Fx) -> Fx {
-    g.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(z).add(&Fx::integer(c)))
+pub(crate) fn horner(
+    g: &[BigInt],
+    z: &Fx,
+) -> Fx {
+    g.iter()
+        .rev()
+        .fold(Fx::zero(), |acc, c| acc.mul(z).add(&Fx::integer(c)))
 }
 
 pub(crate) fn derivative_of(g: &[BigInt]) -> Vec<BigInt> {
-    g.iter().enumerate().skip(1).map(|(i, c)| c * BigInt::from(i)).collect()
+    g.iter()
+        .enumerate()
+        .skip(1)
+        .map(|(i, c)| c * BigInt::from(i))
+        .collect()
 }
 
 /// `p(y + h)` for ascending coefficients.
@@ -244,7 +296,9 @@ pub(crate) fn durand_kerner(raw: &[f64]) -> Option<Vec<(f64, f64)>> {
             break;
         }
     }
-    z.iter().all(|r| r.0.is_finite() && r.1.is_finite()).then_some(z)
+    z.iter()
+        .all(|r| r.0.is_finite() && r.1.is_finite())
+        .then_some(z)
 }
 
 /// Roots refined to `BITS` bits.
@@ -315,8 +369,16 @@ fn identify(
         vec![BigInt::zero(), BigInt::zero(), BigInt::one(), sqrt5.clone()],
     ];
     let reduced = lll(rows)?;
-    let best = reduced.into_iter().find(|r| r.first().is_some_and(|m| !m.is_zero()) && r.get(3).is_some_and(|e| e.abs() < BigInt::one() << (BITS / 2)))?;
-    let (m0, m1, m2) = (best.first()?.clone(), best.get(1)?.clone(), best.get(2)?.clone());
+    let best = reduced.into_iter().find(|r| {
+        r.first().is_some_and(|m| !m.is_zero())
+            && r.get(3)
+                .is_some_and(|e| e.abs() < BigInt::one() << (BITS / 2))
+    })?;
+    let (m0, m1, m2) = (
+        best.first()?.clone(),
+        best.get(1)?.clone(),
+        best.get(2)?.clone(),
+    );
     let u = BigRational::new(-m1, m0.clone());
     let v = BigRational::new(-m2, m0);
     // Verify.
@@ -328,8 +390,12 @@ fn identify(
 /// LLL reduction (δ = 3/4) of integer row vectors.
 pub(crate) fn lll(mut b: Vec<Vec<BigInt>>) -> Option<Vec<Vec<BigInt>>> {
     let n = b.len();
-    let dot = |x: &[BigRational], y: &[BigRational]| -> BigRational { x.iter().zip(y).map(|(p, q)| p * q).sum() };
-    let to_q = |v: &[BigInt]| -> Vec<BigRational> { v.iter().cloned().map(BigRational::from_integer).collect() };
+    let dot = |x: &[BigRational], y: &[BigRational]| -> BigRational {
+        x.iter().zip(y).map(|(p, q)| p * q).sum()
+    };
+    let to_q = |v: &[BigInt]| -> Vec<BigRational> {
+        v.iter().cloned().map(BigRational::from_integer).collect()
+    };
     let delta = BigRational::new(BigInt::from(3), BigInt::from(4));
     let gram_schmidt = |b: &[Vec<BigInt>]| -> (Vec<Vec<BigRational>>, Vec<Vec<BigRational>>) {
         let mut star: Vec<Vec<BigRational>> = Vec::new();
@@ -338,7 +404,11 @@ pub(crate) fn lll(mut b: Vec<Vec<BigInt>>) -> Option<Vec<Vec<BigInt>>> {
             let mut v = to_q(&b[i]);
             for j in 0..i {
                 let denominator = dot(&star[j], &star[j]);
-                let m = if denominator.is_zero() { BigRational::zero() } else { dot(&to_q(&b[i]), &star[j]) / denominator };
+                let m = if denominator.is_zero() {
+                    BigRational::zero()
+                } else {
+                    dot(&to_q(&b[i]), &star[j]) / denominator
+                };
                 for (a, s) in v.iter_mut().zip(&star[j]) {
                     *a -= &m * s;
                 }
@@ -358,7 +428,9 @@ pub(crate) fn lll(mut b: Vec<Vec<BigInt>>) -> Option<Vec<Vec<BigInt>>> {
         let (_, mu) = gram_schmidt(&b);
         for j in (0..k).rev() {
             let (_, mu_now) = gram_schmidt(&b);
-            let q = (&mu_now[k][j] + BigRational::new(BigInt::one(), BigInt::from(2))).floor().to_integer();
+            let q = (&mu_now[k][j] + BigRational::new(BigInt::one(), BigInt::from(2)))
+                .floor()
+                .to_integer();
             if !q.is_zero() {
                 let row = b[j].clone();
                 for (a, r) in b[k].iter_mut().zip(&row) {
@@ -417,7 +489,10 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     for perm in permutations(&[1, 2, 3, 4]) {
         let mut order = vec![0_usize];
         order.extend(perm);
-        let x: Vec<Fx> = order.iter().map(|&i| roots.get(i).cloned()).collect::<Option<_>>()?;
+        let x: Vec<Fx> = order
+            .iter()
+            .map(|&i| roots.get(i).cloned())
+            .collect::<Option<_>>()?;
         let t = theta(&x)?;
         match values.iter_mut().find(|(v, _)| v.close(&t, 300)) {
             | Some((_, orders)) => orders.push(order.iter().fold(0, |acc, &i| acc * 5 + i)),
@@ -442,7 +517,10 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     let mut rational_orders: Vec<usize> = Vec::new();
     for (t, orders) in &values {
         if let Some(n) = round_integer(t) {
-            let value = integer_sextic.iter().rev().fold(BigInt::zero(), |acc, a| acc * &n + a);
+            let value = integer_sextic
+                .iter()
+                .rev()
+                .fold(BigInt::zero(), |acc, a| acc * &n + a);
             if value.is_zero() {
                 rational_theta = Some(t.clone());
                 rational_orders.clone_from(orders);
@@ -461,15 +539,29 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     let disc = round_integer(&disc)?;
     let square = is_square(&disc);
     let Some(rational_theta) = rational_theta else {
-        return Some(Quintic { group: if square { QuinticGroup::A5 } else { QuinticGroup::S5 }, radical: None });
+        return Some(Quintic {
+            group: if square {
+                QuinticGroup::A5
+            } else {
+                QuinticGroup::S5
+            },
+            radical: None,
+        });
     };
-    let group = if square { QuinticGroup::C5OrD5 } else { QuinticGroup::F20 };
+    let group = if square {
+        QuinticGroup::C5OrD5
+    } else {
+        QuinticGroup::F20
+    };
     // Constants for the Lagrange resolvents.
     let sqrt5 = ((BigInt::from(5)) << (2 * BITS)).sqrt();
     let cos = Fx::real((&sqrt5 - one()) >> 2);
     let sin_sq: BigInt = (BigInt::from(10) << BITS) + (&sqrt5 << 1);
     let sin = Fx::real(Roots::sqrt(&(sin_sq << BITS)) >> 2);
-    let zeta = Fx { re: cos.re, im: sin.re };
+    let zeta = Fx {
+        re: cos.re,
+        im: sin.re,
+    };
     let mut zeta_powers = vec![Fx::integer(&BigInt::one())];
     for _ in 1..5 {
         let last = zeta_powers.last()?.clone();
@@ -504,8 +596,18 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
         }
         Some(pairs)
     };
-    let to_f64 = |v: &BigInt| BigRational::new(v.clone(), one()).to_f64().unwrap_or(f64::NAN);
-    let real: Vec<usize> = (0..5).filter(|&i| roots.get(i).is_some_and(|z| z.im.abs() < BigInt::one() << (BITS - 100))).collect();
+    let to_f64 = |v: &BigInt| {
+        BigRational::new(v.clone(), one())
+            .to_f64()
+            .unwrap_or(f64::NAN)
+    };
+    let real: Vec<usize> = (0..5)
+        .filter(|&i| {
+            roots
+                .get(i)
+                .is_some_and(|z| z.im.abs() < BigInt::one() << (BITS - 100))
+        })
+        .collect();
     if real.len() == 5 {
         // Five real roots: any ordering of the class of the rational theta.
         let Some(&code) = rational_orders.first() else {
@@ -518,7 +620,10 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
             rest /= 5;
         }
         digits.reverse();
-        let order: Vec<Fx> = digits.iter().map(|&i| roots.get(i).cloned()).collect::<Option<_>>()?;
+        let order: Vec<Fx> = digits
+            .iter()
+            .map(|&i| roots.get(i).cloned())
+            .collect::<Option<_>>()?;
         let ts = lagrange(&order)?;
         let pairs = phi_pairs(&ts)?;
         let pack = |z: &Fx| (to_f64(&z.re), to_f64(&z.im));
@@ -526,23 +631,40 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
         let r = [pack(&pow5(ts.first()?)), pack(&pow5(ts.get(1)?))];
         return Some(Quintic {
             group,
-            radical: Some(Radical { shift, scale, phi: pairs, trigonometric: Some(Trigonometric { r, t }) }),
+            radical: Some(Radical {
+                shift,
+                scale,
+                phi: pairs,
+                trigonometric: Some(Trigonometric { r, t }),
+            }),
         });
     }
     // One real root.
     let [r] = real.as_slice() else {
         return Some(Quintic { group, radical: None });
     };
-    let upper: Vec<usize> = (0..5).filter(|&i| roots.get(i).is_some_and(|z| z.im.is_positive()) && i != *r).collect();
+    let upper: Vec<usize> = (0..5)
+        .filter(|&i| roots.get(i).is_some_and(|z| z.im.is_positive()) && i != *r)
+        .collect();
     let [a, b] = upper.as_slice() else {
         return Some(Quintic { group, radical: None });
     };
-    let (root_r, root_a, root_b) = (roots.get(*r)?.clone(), roots.get(*a)?.clone(), roots.get(*b)?.clone());
+    let (root_r, root_a, root_b) = (
+        roots.get(*r)?.clone(),
+        roots.get(*a)?.clone(),
+        roots.get(*b)?.clone(),
+    );
     let mut chosen: Option<Vec<Fx>> = None;
     'search: for (alpha, other) in [(&root_a, &root_b), (&root_b, &root_a)] {
         for alpha in [alpha.clone(), alpha.conj()] {
             for beta in [other.clone(), other.conj()] {
-                let order = vec![root_r.clone(), alpha.clone(), beta.clone(), beta.conj(), alpha.conj()];
+                let order = vec![
+                    root_r.clone(),
+                    alpha.clone(),
+                    beta.clone(),
+                    beta.conj(),
+                    alpha.conj(),
+                ];
                 if theta(&order).is_some_and(|t| t.close(&rational_theta, 300)) {
                     chosen = Some(order);
                     break 'search;
@@ -555,11 +677,22 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     };
     let ts = lagrange(&order)?;
     // Real by construction.
-    if ts.iter().any(|t| t.im.abs() > BigInt::one() << (BITS - 200)) {
+    if ts
+        .iter()
+        .any(|t| t.im.abs() > BigInt::one() << (BITS - 200))
+    {
         return Some(Quintic { group, radical: None });
     }
     let pairs = phi_pairs(&ts)?;
-    Some(Quintic { group, radical: Some(Radical { shift, scale, phi: pairs, trigonometric: None }) })
+    Some(Quintic {
+        group,
+        radical: Some(Radical {
+            shift,
+            scale,
+            phi: pairs,
+            trigonometric: None,
+        }),
+    })
 }
 
 #[cfg(test)]
@@ -567,7 +700,9 @@ mod tests {
     use super::*;
 
     fn quintic(c: &[i64]) -> Vec<BigRational> {
-        c.iter().map(|&v| BigRational::from_integer(BigInt::from(v))).collect()
+        c.iter()
+            .map(|&v| BigRational::from_integer(BigInt::from(v)))
+            .collect()
     }
 
     #[test]
@@ -580,14 +715,28 @@ mod tests {
     #[test]
     fn groups_of_known_quintics() {
         // x^5 - x - 1: S5.
-        assert_eq!(analyse_quintic(&quintic(&[-1, -1, 0, 0, 0, 1])).map(|q| q.group), Some(QuinticGroup::S5));
+        assert_eq!(
+            analyse_quintic(&quintic(&[-1, -1, 0, 0, 0, 1])).map(|q| q.group),
+            Some(QuinticGroup::S5)
+        );
         // x^5 - 5x + 12 (D5), x^5 + 15x + 12 (F20): solvable.
         let a = analyse_quintic(&quintic(&[12, -5, 0, 0, 0, 1]));
-        assert!(a.as_ref().is_some_and(|q| q.group.solvable() && q.radical.is_some()), "{a:?}");
+        assert!(
+            a.as_ref()
+                .is_some_and(|q| q.group.solvable() && q.radical.is_some()),
+            "{a:?}"
+        );
         let b = analyse_quintic(&quintic(&[12, 15, 0, 0, 0, 1]));
-        assert!(b.as_ref().is_some_and(|q| q.group.solvable() && q.radical.is_some()), "{b:?}");
+        assert!(
+            b.as_ref()
+                .is_some_and(|q| q.group.solvable() && q.radical.is_some()),
+            "{b:?}"
+        );
         // x^5 - 4x + 2 and x^5 - 5x + 3... are S5 / unsolvable.
-        assert_eq!(analyse_quintic(&quintic(&[2, -4, 0, 0, 0, 1])).map(|q| q.group), Some(QuinticGroup::S5));
+        assert_eq!(
+            analyse_quintic(&quintic(&[2, -4, 0, 0, 0, 1])).map(|q| q.group),
+            Some(QuinticGroup::S5)
+        );
         // The cyclic quintic with three... x^5 + x^4 - 4x^3 - 3x^2 + 3x + 1 (C5, five real roots).
         let c = analyse_quintic(&quintic(&[1, 3, -3, -4, 1, 1]));
         assert_eq!(c.as_ref().map(|q| q.group), Some(QuinticGroup::C5OrD5));

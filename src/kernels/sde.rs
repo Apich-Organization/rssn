@@ -48,12 +48,23 @@ pub enum SdeError {
 /// Generates `steps` Brownian increments (`m` components each, variance
 /// `h`) from `rng`.
 #[must_use]
-pub fn brownian_increments(rng: &mut Rng, m: usize, steps: usize, h: f64) -> Vec<Vec<f64>> {
+pub fn brownian_increments(
+    rng: &mut Rng,
+    m: usize,
+    steps: usize,
+    h: f64,
+) -> Vec<Vec<f64>> {
     let sh = h.abs().sqrt();
-    (0..steps).map(|_| (0..m).map(|_| sh * rng.normal()).collect()).collect()
+    (0..steps)
+        .map(|_| (0..m).map(|_| sh * rng.normal()).collect())
+        .collect()
 }
 
-fn check(y0: &[f64], m: usize, dws: &[Vec<f64>]) -> Result<(), SdeError> {
+fn check(
+    y0: &[f64],
+    m: usize,
+    dws: &[Vec<f64>],
+) -> Result<(), SdeError> {
     if y0.is_empty() || m == 0 || dws.iter().any(|d| d.len() != m) {
         return Err(SdeError::Invalid);
     }
@@ -241,15 +252,25 @@ fn zeta2_tail(p: usize) -> f64 {
 /// remainder error decays like `1 / terms^{3/2}` in distribution; a few
 /// terms suffice for strong order one.
 #[must_use]
-pub fn levy_areas(rng: &mut Rng, m: usize, h: f64, dw: &[f64], terms: usize) -> Vec<f64> {
+pub fn levy_areas(
+    rng: &mut Rng,
+    m: usize,
+    h: f64,
+    dw: &[f64],
+    terms: usize,
+) -> Vec<f64> {
     let p = terms.max(1);
     let xi: Vec<f64> = dw.iter().map(|d| d / h.sqrt()).collect();
     let tail = zeta2_tail(p);
     let rho = tail / (2.0 * std::f64::consts::PI.powi(2));
     let srho = rho.sqrt();
     // Fourier coefficients
-    let zeta: Vec<Vec<f64>> = (0..m).map(|_| (0..p).map(|_| rng.normal()).collect()).collect();
-    let eta: Vec<Vec<f64>> = (0..m).map(|_| (0..p).map(|_| rng.normal()).collect()).collect();
+    let zeta: Vec<Vec<f64>> = (0..m)
+        .map(|_| (0..p).map(|_| rng.normal()).collect())
+        .collect();
+    let eta: Vec<Vec<f64>> = (0..m)
+        .map(|_| (0..p).map(|_| rng.normal()).collect())
+        .collect();
     let mu: Vec<f64> = (0..m).map(|_| rng.normal()).collect();
     let mut areas = vec![0.0; m * m];
     for j in 0..m {
@@ -264,7 +285,8 @@ pub fn levy_areas(rng: &mut Rng, m: usize, h: f64, dw: &[f64], terms: usize) -> 
             }
             a /= 2.0 * std::f64::consts::PI;
             let nu = rng.normal();
-            let ijl = h * (0.5 * xi[j] * xi[l] + a + srho * (mu[j] * xi[l] - mu[l] * xi[j]) + srho * nu);
+            let ijl =
+                h * (0.5 * xi[j] * xi[l] + a + srho * (mu[j] * xi[l] - mu[l] * xi[j]) + srho * nu);
             areas[j * m + l] = ijl;
             areas[l * m + j] = dw[j] * dw[l] - ijl;
         }
@@ -275,9 +297,18 @@ pub fn levy_areas(rng: &mut Rng, m: usize, h: f64, dw: &[f64], terms: usize) -> 
 /// Samples `steps` Brownian increments and their iterated integrals
 /// ([`levy_areas`]) for `m` Wiener processes and step size `h`.
 #[must_use]
-pub fn sample_noise(rng: &mut Rng, m: usize, steps: usize, h: f64, terms: usize) -> NoiseSample {
+pub fn sample_noise(
+    rng: &mut Rng,
+    m: usize,
+    steps: usize,
+    h: f64,
+    terms: usize,
+) -> NoiseSample {
     let dws = brownian_increments(rng, m, steps, h);
-    let areas = dws.iter().map(|dw| levy_areas(rng, m, h, dw, terms)).collect();
+    let areas = dws
+        .iter()
+        .map(|dw| levy_areas(rng, m, h, dw, terms))
+        .collect();
     NoiseSample { dws, areas }
 }
 
@@ -287,7 +318,11 @@ pub fn sample_noise(rng: &mut Rng, m: usize, steps: usize, h: f64, terms: usize)
 /// `I_jl = sum_k I_jl^k + sum_{k<k'} dW_j^k dW_l^{k'}`. Used to compare a
 /// coarse scheme with a fine reference on the same Brownian path.
 #[must_use]
-pub fn aggregate_noise(sample: &NoiseSample, group: usize, m: usize) -> NoiseSample {
+pub fn aggregate_noise(
+    sample: &NoiseSample,
+    group: usize,
+    m: usize,
+) -> NoiseSample {
     let g = group.max(1);
     let mut dws = Vec::new();
     let mut areas = Vec::new();
@@ -390,7 +425,9 @@ where
         diff(t, &y, &mut g);
         let mut corr = vec![0.0; n];
         for j in 0..m {
-            let ups: Vec<f64> = (0..n).map(|i| y[i] + a[i] * h + g[i * m + j] * sh).collect();
+            let ups: Vec<f64> = (0..n)
+                .map(|i| y[i] + a[i] * h + g[i * m + j] * sh)
+                .collect();
             diff(t, &ups, &mut gs);
             for kk in 0..m {
                 let ito = dw[j] * dw[kk] - if j == kk { h } else { 0.0 };
@@ -479,7 +516,12 @@ struct BrownianStack {
 impl BrownianStack {
     /// Increment over the next `want` units of time, assembled from pending
     /// pieces (split by Brownian bridge when too long) and fresh draws.
-    fn take(&mut self, want: f64, m: usize, rng: &mut Rng) -> Vec<f64> {
+    fn take(
+        &mut self,
+        want: f64,
+        m: usize,
+        rng: &mut Rng,
+    ) -> Vec<f64> {
         let mut acc = vec![0.0; m];
         let mut got = 0.0;
         while got < want * (1.0 - 1e-12) {
@@ -494,7 +536,8 @@ impl BrownianStack {
                     // bridge split: first part of length `need`
                     let frac = need / len;
                     let sd = (need * (len - need) / len).sqrt();
-                    let first: Vec<f64> = (0..m).map(|j| frac * inc[j] + sd * rng.normal()).collect();
+                    let first: Vec<f64> =
+                        (0..m).map(|j| frac * inc[j] + sd * rng.normal()).collect();
                     let rest: Vec<f64> = (0..m).map(|j| inc[j] - first[j]).collect();
                     self.pending.push((len - need, rest));
                     for j in 0..m {
@@ -514,7 +557,11 @@ impl BrownianStack {
     }
 
     /// Returns an unused increment of length `len` to the stack.
-    fn give_back(&mut self, len: f64, inc: Vec<f64>) {
+    fn give_back(
+        &mut self,
+        len: f64,
+        inc: Vec<f64>,
+    ) {
         self.pending.push((len, inc));
     }
 }
@@ -562,7 +609,12 @@ where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
-    let SdeAdaptiveOptions { rtol, atol, seed, max_steps } = *opts;
+    let SdeAdaptiveOptions {
+        rtol,
+        atol,
+        seed,
+        max_steps,
+    } = *opts;
     if y0.is_empty() || m == 0 || t1 <= t0 || rtol <= 0.0 || atol < 0.0 {
         return Err(SdeError::Invalid);
     }
@@ -571,7 +623,11 @@ where
     let mut stack = BrownianStack { pending: Vec::new() };
     let mut t = t0;
     let mut y = y0.to_vec();
-    let mut path = SdePath { t: vec![t0], y: vec![y0.to_vec()], rejected: 0 };
+    let mut path = SdePath {
+        t: vec![t0],
+        y: vec![y0.to_vec()],
+        rejected: 0,
+    };
     let mut h = ((t1 - t0) * 1e-3).max(1e-9);
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
     let mut a2 = vec![0.0; n];
@@ -612,7 +668,11 @@ where
             y = ynew;
             path.t.push(t);
             path.y.push(y.clone());
-            let fac = if err == 0.0 { 2.0 } else { (0.9 / err.sqrt()).clamp(0.5, 2.0) };
+            let fac = if err == 0.0 {
+                2.0
+            } else {
+                (0.9 / err.sqrt()).clamp(0.5, 2.0)
+            };
             h *= fac;
         } else {
             path.rejected += 1;
@@ -649,5 +709,18 @@ where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
-    sde_adaptive_with(drift, diff, m, t0, t1, y0, &SdeAdaptiveOptions { rtol, atol, seed, max_steps })
+    sde_adaptive_with(
+        drift,
+        diff,
+        m,
+        t0,
+        t1,
+        y0,
+        &SdeAdaptiveOptions {
+            rtol,
+            atol,
+            seed,
+            max_steps,
+        },
+    )
 }

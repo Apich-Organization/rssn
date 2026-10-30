@@ -14,7 +14,10 @@
 //! * [`dde_rk4`]: constant-delay differential equations by the method of
 //!   steps with Hermite history interpolation.
 
-use crate::kernels::dense::{self, Mat};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::rootfind;
 
 /// Errors of the ODE kernels.
@@ -47,7 +50,13 @@ pub struct OdeOptions {
 
 impl Default for OdeOptions {
     fn default() -> Self {
-        Self { rtol: 1e-8, atol: 1e-10, h0: None, hmax: f64::INFINITY, max_steps: 1_000_000 }
+        Self {
+            rtol: 1e-8,
+            atol: 1e-10,
+            h0: None,
+            hmax: f64::INFINITY,
+            max_steps: 1_000_000,
+        }
     }
 }
 
@@ -79,12 +88,19 @@ pub(crate) enum DenseKind {
     Poly(Vec<Vec<f64>>),
     /// Lagrange interpolation through the nodes `x_j` (in units of the step)
     /// with the given values (the collocation polynomial of Radau IIA).
-    Lagrange { nodes: Vec<f64>, vals: Vec<Vec<f64>> },
+    Lagrange {
+        nodes: Vec<f64>,
+        vals: Vec<Vec<f64>>,
+    },
     /// Newton backward-difference interpolation `sum_k D_k prod_{j<k} (s+j)/(j+1)`
     /// with `s = x - 1` (the BDF interpolant); `D_0 = y(t0 + h)`.
     Backward(Vec<Vec<f64>>),
     /// Cubic Hermite interpolation from the end value and both end derivatives.
-    Hermite { y1: Vec<f64>, f0: Vec<f64>, f1: Vec<f64> },
+    Hermite {
+        y1: Vec<f64>,
+        f0: Vec<f64>,
+        f1: Vec<f64>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -116,7 +132,10 @@ pub struct OdeSolution {
 
 impl OdeSolution {
     /// Creates a solution holding only the initial point.
-    pub(crate) fn start(t0: f64, y0: &[f64]) -> Self {
+    pub(crate) fn start(
+        t0: f64,
+        y0: &[f64],
+    ) -> Self {
         Self {
             t: vec![t0],
             y: vec![y0.to_vec()],
@@ -131,9 +150,16 @@ impl OdeSolution {
     /// Evaluates the continuous extension at `t` (available for
     /// [`dopri5`], [`rosenbrock23`], the Radau and the BDF integrators); `None` outside the integrated range.
     #[must_use]
-    pub fn eval(&self, t: f64) -> Option<Vec<f64>> {
+    pub fn eval(
+        &self,
+        t: f64,
+    ) -> Option<Vec<f64>> {
         let (&first, &last) = (self.t.first()?, self.t.last()?);
-        let (lo, hi) = if first <= last { (first, last) } else { (last, first) };
+        let (lo, hi) = if first <= last {
+            (first, last)
+        } else {
+            (last, first)
+        };
         if t < lo || t > hi || self.dense.is_empty() {
             return None;
         }
@@ -145,19 +171,22 @@ impl OdeSolution {
     }
 }
 
-pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
+pub(crate) fn dense_eval(
+    s: &DenseStep,
+    t: f64,
+) -> Vec<f64> {
     let x = (t - s.t0) / s.h;
     let n = s.y0.len();
     match &s.kind {
-        DenseKind::Poly(d) => {
+        | DenseKind::Poly(d) => {
             let (x1, x2, x3, x4) = (x, x * x, x * x * x, x * x * x * x);
             (0..n)
                 .map(|i| {
                     s.y0[i] + s.h * (d[0][i] * x1 + d[1][i] * x2 + d[2][i] * x3 + d[3][i] * x4)
                 })
                 .collect()
-        }
-        DenseKind::Lagrange { nodes, vals } => {
+        },
+        | DenseKind::Lagrange { nodes, vals } => {
             let mut out = vec![0.0; n];
             for (j, vj) in vals.iter().enumerate() {
                 let mut l = 1.0;
@@ -171,16 +200,20 @@ pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
                 }
             }
             out
-        }
-        DenseKind::Hermite { y1, f0, f1 } => {
+        },
+        | DenseKind::Hermite { y1, f0, f1 } => {
             let (x2, x3) = (x * x, x * x * x);
-            let (h00, h10, h01, h11) =
-                (2.0 * x3 - 3.0 * x2 + 1.0, x3 - 2.0 * x2 + x, -2.0 * x3 + 3.0 * x2, x3 - x2);
+            let (h00, h10, h01, h11) = (
+                2.0 * x3 - 3.0 * x2 + 1.0,
+                x3 - 2.0 * x2 + x,
+                -2.0 * x3 + 3.0 * x2,
+                x3 - x2,
+            );
             (0..n)
                 .map(|i| h00 * s.y0[i] + h10 * s.h * f0[i] + h01 * y1[i] + h11 * s.h * f1[i])
                 .collect()
-        }
-        DenseKind::Backward(dd) => {
+        },
+        | DenseKind::Backward(dd) => {
             let sv = x - 1.0;
             let mut out = dd[0].clone();
             let mut p = 1.0;
@@ -191,7 +224,7 @@ pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
                 }
             }
             out
-        }
+        },
     }
 }
 
@@ -231,9 +264,12 @@ pub(crate) fn process_events(
             || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
         if crossing {
             let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
-            let root =
-                rootfind::brent(gf, t_old, tn, 1e-14 * (1.0 + tn.abs()), 200).unwrap_or(tn);
-            hits.push(EventHit { index: ei, t: root, y: dense_eval(&step, root) });
+            let root = rootfind::brent(gf, t_old, tn, 1e-14 * (1.0 + tn.abs()), 200).unwrap_or(tn);
+            hits.push(EventHit {
+                index: ei,
+                t: root,
+                y: dense_eval(&step, root),
+            });
             if ev.terminal {
                 stop = true;
             }
@@ -268,9 +304,30 @@ const DP_A: [[f64; 6]; 6] = [
     [1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     [3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0],
     [44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0],
-    [19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0, 0.0, 0.0],
-    [9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0, 0.0],
-    [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0],
+    [
+        19372.0 / 6561.0,
+        -25360.0 / 2187.0,
+        64448.0 / 6561.0,
+        -212.0 / 729.0,
+        0.0,
+        0.0,
+    ],
+    [
+        9017.0 / 3168.0,
+        -355.0 / 33.0,
+        46732.0 / 5247.0,
+        49.0 / 176.0,
+        -5103.0 / 18656.0,
+        0.0,
+    ],
+    [
+        35.0 / 384.0,
+        0.0,
+        500.0 / 1113.0,
+        125.0 / 192.0,
+        -2187.0 / 6784.0,
+        11.0 / 84.0,
+    ],
 ];
 const DP_C: [f64; 6] = [0.2, 0.3, 0.8, 8.0 / 9.0, 1.0, 1.0];
 const DP_E: [f64; 7] = [
@@ -283,16 +340,52 @@ const DP_E: [f64; 7] = [
     -1.0 / 40.0,
 ];
 const DP_P: [[f64; 4]; 7] = [
-    [1.0, -8048581381.0 / 2820520608.0, 8663915743.0 / 2820520608.0, -12715105075.0 / 11282082432.0],
+    [
+        1.0,
+        -8048581381.0 / 2820520608.0,
+        8663915743.0 / 2820520608.0,
+        -12715105075.0 / 11282082432.0,
+    ],
     [0.0, 0.0, 0.0, 0.0],
-    [0.0, 131558114200.0 / 32700410799.0, -68118460800.0 / 10900136933.0, 87487479700.0 / 32700410799.0],
-    [0.0, -1754552775.0 / 470086768.0, 14199869525.0 / 1410260304.0, -10690763975.0 / 1880347072.0],
-    [0.0, 127303824393.0 / 49829197408.0, -318862633887.0 / 49829197408.0, 701980252875.0 / 199316789632.0],
-    [0.0, -282668133.0 / 205662961.0, 2019193451.0 / 616988883.0, -1453857185.0 / 822651844.0],
-    [0.0, 40617522.0 / 29380423.0, -110615467.0 / 29380423.0, 69997945.0 / 29380423.0],
+    [
+        0.0,
+        131558114200.0 / 32700410799.0,
+        -68118460800.0 / 10900136933.0,
+        87487479700.0 / 32700410799.0,
+    ],
+    [
+        0.0,
+        -1754552775.0 / 470086768.0,
+        14199869525.0 / 1410260304.0,
+        -10690763975.0 / 1880347072.0,
+    ],
+    [
+        0.0,
+        127303824393.0 / 49829197408.0,
+        -318862633887.0 / 49829197408.0,
+        701980252875.0 / 199316789632.0,
+    ],
+    [
+        0.0,
+        -282668133.0 / 205662961.0,
+        2019193451.0 / 616988883.0,
+        -1453857185.0 / 822651844.0,
+    ],
+    [
+        0.0,
+        40617522.0 / 29380423.0,
+        -110615467.0 / 29380423.0,
+        69997945.0 / 29380423.0,
+    ],
 ];
 
-pub(crate) fn err_norm(err: &[f64], y0: &[f64], y1: &[f64], rtol: f64, atol: f64) -> f64 {
+pub(crate) fn err_norm(
+    err: &[f64],
+    y0: &[f64],
+    y1: &[f64],
+    rtol: f64,
+    atol: f64,
+) -> f64 {
     let n = err.len().max(1) as f64;
     (err.iter()
         .zip(y0.iter().zip(y1))
@@ -317,13 +410,34 @@ pub(crate) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     let Tol { rtol, atol } = tol;
     let n = y0.len();
     let sc: Vec<f64> = y0.iter().map(|v| atol + rtol * v.abs()).collect();
-    let d0 = (y0.iter().zip(&sc).map(|(a, s)| (a / s) * (a / s)).sum::<f64>() / n as f64).sqrt();
-    let d1 = (f0.iter().zip(&sc).map(|(a, s)| (a / s) * (a / s)).sum::<f64>() / n as f64).sqrt();
-    let h0 = if d0 < 1e-5 || d1 < 1e-5 { 1e-6 } else { 0.01 * d0 / d1 };
+    let d0 = (y0
+        .iter()
+        .zip(&sc)
+        .map(|(a, s)| (a / s) * (a / s))
+        .sum::<f64>()
+        / n as f64)
+        .sqrt();
+    let d1 = (f0
+        .iter()
+        .zip(&sc)
+        .map(|(a, s)| (a / s) * (a / s))
+        .sum::<f64>()
+        / n as f64)
+        .sqrt();
+    let h0 = if d0 < 1e-5 || d1 < 1e-5 {
+        1e-6
+    } else {
+        0.01 * d0 / d1
+    };
     let y1: Vec<f64> = y0.iter().zip(f0).map(|(a, b)| a + dir * h0 * b).collect();
     let mut f1 = vec![0.0; n];
     f(t0 + dir * h0, &y1, &mut f1);
-    let d2 = (f1.iter().zip(f0).zip(&sc).map(|((a, b), s)| ((a - b) / s).powi(2)).sum::<f64>()
+    let d2 = (f1
+        .iter()
+        .zip(f0)
+        .zip(&sc)
+        .map(|((a, b), s)| ((a - b) / s).powi(2))
+        .sum::<f64>()
         / n as f64)
         .sqrt()
         / h0;
@@ -364,7 +478,20 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| initial_step(&f, t0, y0, &k[0], dir, 5.0, Tol { rtol: opts.rtol, atol: opts.atol }))
+        .unwrap_or_else(|| {
+            initial_step(
+                &f,
+                t0,
+                y0,
+                &k[0],
+                dir,
+                5.0,
+                Tol {
+                    rtol: opts.rtol,
+                    atol: opts.atol,
+                },
+            )
+        })
         .abs()
         .min(opts.hmax)
         * dir;
@@ -426,11 +553,29 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         if en <= 1.0 {
             // dense coefficients
             let d: [Vec<f64>; 4] = std::array::from_fn(|c| {
-                (0..n).map(|i| (0..7).map(|j| DP_P[j][c] * k[j][i]).sum()).collect()
+                (0..n)
+                    .map(|i| (0..7).map(|j| DP_P[j][c] * k[j][i]).sum())
+                    .collect()
             });
-            let step = DenseStep { t0: t, h, y0: y.clone(), kind: DenseKind::Poly(d.to_vec()) };
+            let step = DenseStep {
+                t0: t,
+                h,
+                y0: y.clone(),
+                kind: DenseKind::Poly(d.to_vec()),
+            };
             let tn = t + h;
-            if process_events(events, &mut gprev, &mut sol, step, &StepWindow { t_old: t, tn, ynew: &ynew, dir }) {
+            if process_events(
+                events,
+                &mut gprev,
+                &mut sol,
+                step,
+                &StepWindow {
+                    t_old: t,
+                    tn,
+                    ynew: &ynew,
+                    dir,
+                },
+            ) {
                 sol.nfev = nfev;
                 return Ok(sol);
             }
@@ -441,7 +586,11 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
             // FSAL
             let last = k[6].clone();
             k[0] = last;
-            let fac = if en == 0.0 { 5.0 } else { (0.9 * en.powf(-0.2)).clamp(0.2, 5.0) };
+            let fac = if en == 0.0 {
+                5.0
+            } else {
+                (0.9 * en.powf(-0.2)).clamp(0.2, 5.0)
+            };
             h *= fac;
             if h.abs() > opts.hmax {
                 h = opts.hmax * dir;
@@ -487,7 +636,20 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| initial_step(&f, t0, y0, &f0, dir, 2.0, Tol { rtol: opts.rtol, atol: opts.atol }))
+        .unwrap_or_else(|| {
+            initial_step(
+                &f,
+                t0,
+                y0,
+                &f0,
+                dir,
+                2.0,
+                Tol {
+                    rtol: opts.rtol,
+                    atol: opts.atol,
+                },
+            )
+        })
         .abs()
         .min(opts.hmax)
         * dir;
@@ -557,7 +719,9 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
             .map(|i| f2[i] - e32 * (k2[i] - f1[i]) - 2.0 * (k1[i] - f0[i]) + h * d * tder[i])
             .collect();
         let k3 = lu.solve(&r3);
-        let err: Vec<f64> = (0..n).map(|i| h / 6.0 * (k1[i] - 2.0 * k2[i] + k3[i])).collect();
+        let err: Vec<f64> = (0..n)
+            .map(|i| h / 6.0 * (k1[i] - 2.0 * k2[i] + k3[i]))
+            .collect();
         if ynew.iter().any(|v| !v.is_finite()) {
             h *= 0.25;
             sol.rejected += 1;
@@ -572,14 +736,22 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
                 t0: t,
                 h,
                 y0: y.clone(),
-                kind: DenseKind::Hermite { y1: ynew.clone(), f0: f0.clone(), f1: f2.clone() },
+                kind: DenseKind::Hermite {
+                    y1: ynew.clone(),
+                    f0: f0.clone(),
+                    f1: f2.clone(),
+                },
             });
             t += h;
             y = ynew;
             f0 = f2;
             sol.t.push(t);
             sol.y.push(y.clone());
-            let fac = if en == 0.0 { 5.0 } else { (0.9 * en.powf(-1.0 / 3.0)).clamp(0.2, 5.0) };
+            let fac = if en == 0.0 {
+                5.0
+            } else {
+                (0.9 * en.powf(-1.0 / 3.0)).clamp(0.2, 5.0)
+            };
             h *= fac;
             if h.abs() > opts.hmax {
                 h = opts.hmax * dir;
@@ -669,7 +841,13 @@ pub fn bvp_fd<F: Fn(f64, f64, f64) -> f64, G: Fn(f64) -> f64>(
     let x: Vec<f64> = (0..n + 2).map(|i| a + h * i as f64).collect();
     let resid = |u: &[f64]| -> Vec<f64> {
         let full = |i: usize| -> f64 {
-            if i == 0 { ya } else if i == n + 1 { yb } else { u[i - 1] }
+            if i == 0 {
+                ya
+            } else if i == n + 1 {
+                yb
+            } else {
+                u[i - 1]
+            }
         };
         (1..=n)
             .map(|i| {
@@ -711,8 +889,8 @@ where
     let shoot = |p: &[f64]| -> Vec<f64> {
         let y0 = init(p);
         match dopri5(&f, t0, t1, &y0, opts, &[]) {
-            Ok(s) => residual(s.y.last().map_or(&[][..], Vec::as_slice)),
-            Err(_) => vec![f64::NAN; p.len()],
+            | Ok(s) => residual(s.y.last().map_or(&[][..], Vec::as_slice)),
+            | Err(_) => vec![f64::NAN; p.len()],
         }
     };
     rootfind::newton_system(shoot, None::<&fn(&[f64]) -> Mat>, p0, 1e-9, 60)
@@ -792,7 +970,10 @@ where
         if t <= t0 {
             return hist(t);
         }
-        let idx = ts.partition_point(|&x| x <= t).saturating_sub(1).min(ts.len() - 2);
+        let idx = ts
+            .partition_point(|&x| x <= t)
+            .saturating_sub(1)
+            .min(ts.len() - 2);
         let (ta, tb) = (ts[idx], ts[idx + 1]);
         let s = (t - ta) / (tb - ta);
         let (h00, h10, h01, h11) = (
@@ -803,7 +984,9 @@ where
         );
         (0..n)
             .map(|i| {
-                h00 * ys[idx][i] + h10 * (tb - ta) * fs[idx][i] + h01 * ys[idx + 1][i]
+                h00 * ys[idx][i]
+                    + h10 * (tb - ta) * fs[idx][i]
+                    + h01 * ys[idx + 1][i]
                     + h11 * (tb - ta) * fs[idx + 1][i]
             })
             .collect()
@@ -817,7 +1000,11 @@ where
         // handled by using the Hermite data of the interval (t-tau, t).
         let dl = |tt: f64, ts: &[f64], ys: &[Vec<f64>], fs: &[Vec<f64>]| {
             let target = tt - tau;
-            if ts.len() < 2 { hist(target) } else { delayed(target, ts, ys, fs) }
+            if ts.len() < 2 {
+                hist(target)
+            } else {
+                delayed(target, ts, ys, fs)
+            }
         };
         let k1 = f(t, &y, &dl(t, &ts, &ys, &fs));
         let y2: Vec<f64> = (0..n).map(|i| y[i] + 0.5 * h * k1[i]).collect();
@@ -826,8 +1013,9 @@ where
         let k3 = f(t + 0.5 * h, &y3, &dl(t + 0.5 * h, &ts, &ys, &fs));
         let y4: Vec<f64> = (0..n).map(|i| y[i] + h * k3[i]).collect();
         let k4 = f(t + h, &y4, &dl(t + h, &ts, &ys, &fs));
-        let yn: Vec<f64> =
-            (0..n).map(|i| y[i] + h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i])).collect();
+        let yn: Vec<f64> = (0..n)
+            .map(|i| y[i] + h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]))
+            .collect();
         let tn = t + h;
         ts.push(tn);
         let fn_ = f(tn, &yn, &dl(tn, &ts, &ys, &fs));

@@ -16,8 +16,6 @@
 //! | `verify_derivative(f, x, g)` | `f' = g` |
 //! | `verify_limit(f, x, a, L)` | `f → L` as `x → a`, by probing near `a` |
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -31,6 +29,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::integrate::gauss_kronrod_any;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
@@ -42,7 +42,9 @@ use super::logic::logic;
 /// The verification rule set.
 #[must_use]
 pub fn verify() -> RuleSet {
-    RuleSet::new("verify", install).needs(linalg()).needs(logic())
+    RuleSet::new("verify", install)
+        .needs(linalg())
+        .needs(logic())
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -66,8 +68,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("verify_derivative", 3, Request::Derivative),
         ("verify_limit", 4, Request::Limit),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("verify/{name}"), Tier::Reduce, Verify { op, request });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("verify/{name}"),
+            Tier::Reduce,
+            Verify { op, request },
+        );
     }
     Ok(())
 }
@@ -136,7 +144,10 @@ fn vanishes(
         let mut env = Env::numeric(0.0);
         for &s in &symbols {
             let k = f64::from(s.raw() % 13);
-            env.bind(s, 0.31 + 0.47 * f64::from(sample) - 0.09 * k + 0.013 * k * k);
+            env.bind(
+                s,
+                0.31 + 0.47 * f64::from(sample) - 0.09 * k + 0.013 * k * k,
+            );
         }
         let Some(value) = cx.graph.eval(simplified, &env) else {
             continue;
@@ -160,9 +171,17 @@ fn solution(
         return None;
     };
     let equations = best(cx.graph, equations)?;
-    let equations = if cx.graph.op(equations) == core::LIST { cx.graph.children(equations).to_vec() } else { vec![equations] };
+    let equations = if cx.graph.op(equations) == core::LIST {
+        cx.graph.children(equations).to_vec()
+    } else {
+        vec![equations]
+    };
     let assignment = best(cx.graph, assignment)?;
-    let pairs = if cx.graph.op(assignment) == core::LIST { cx.graph.children(assignment).to_vec() } else { vec![assignment] };
+    let pairs = if cx.graph.op(assignment) == core::LIST {
+        cx.graph.children(assignment).to_vec()
+    } else {
+        vec![assignment]
+    };
     let mut substitutions = Vec::new();
     for pair in pairs {
         let &[x, value] = cx.graph.children(pair) else {
@@ -259,9 +278,11 @@ fn ode(
     let mut solution = best(cx.graph, solution)?;
     // `y(x) = expression` is accepted as well as the bare expression.
     if let [lhs, rhs] = *cx.graph.children(solution)
-        && cx.graph.op(solution) == core::EQ && cx.graph.same(lhs, unknown) {
-            solution = rhs;
-        }
+        && cx.graph.op(solution) == core::EQ
+        && cx.graph.same(lhs, unknown)
+    {
+        solution = rhs;
+    }
     let r = residual(cx.graph, equation);
     let replaced = cx.graph.replace_subterm(r, unknown, solution);
     Some(vanishes(cx, replaced) == Some(true))
@@ -360,26 +381,56 @@ mod tests {
 
     #[test]
     fn solutions_and_inverses() {
-        assert_eq!(run("verify_solution(x^2 - 5*x + 6 = 0, list(x = 2))"), "true");
-        assert_eq!(run("verify_solution(x^2 - 5*x + 6 = 0, list(x = 4))"), "false");
-        assert_eq!(run("verify_solution(list(x + y = 3, x - y = 1), list(x = 2, y = 1))"), "true");
-        assert_eq!(run("verify_inverse(list(list(2, 1), list(1, 1)), list(list(1, -1), list(-1, 2)))"), "true");
-        assert_eq!(run("verify_inverse(list(list(2, 1), list(1, 1)), list(list(1, 1), list(-1, 2)))"), "false");
+        assert_eq!(
+            run("verify_solution(x^2 - 5*x + 6 = 0, list(x = 2))"),
+            "true"
+        );
+        assert_eq!(
+            run("verify_solution(x^2 - 5*x + 6 = 0, list(x = 4))"),
+            "false"
+        );
+        assert_eq!(
+            run("verify_solution(list(x + y = 3, x - y = 1), list(x = 2, y = 1))"),
+            "true"
+        );
+        assert_eq!(
+            run("verify_inverse(list(list(2, 1), list(1, 1)), list(list(1, -1), list(-1, 2)))"),
+            "true"
+        );
+        assert_eq!(
+            run("verify_inverse(list(list(2, 1), list(1, 1)), list(list(1, 1), list(-1, 2)))"),
+            "false"
+        );
     }
 
     #[test]
     fn calculus_claims() {
-        assert_eq!(run("verify_integral(x*cos(x), x, x*sin(x) + cos(x))"), "true");
+        assert_eq!(
+            run("verify_integral(x*cos(x), x, x*sin(x) + cos(x))"),
+            "true"
+        );
         assert_eq!(run("verify_integral(x*cos(x), x, x*sin(x))"), "false");
         assert_eq!(run("verify_derivative(sin(x)^2, x, sin(2*x))"), "true");
         assert_eq!(run("verify_derivative(sin(x)^2, x, cos(x)^2)"), "false");
-        assert_eq!(run("verify_definite_integral(exp(-x^2), x, -oo, oo, pi^(1/2))"), "true");
+        assert_eq!(
+            run("verify_definite_integral(exp(-x^2), x, -oo, oo, pi^(1/2))"),
+            "true"
+        );
         assert_eq!(run("verify_definite_integral(x, x, 0, 1, 1)"), "false");
         assert_eq!(run("verify_limit(sin(x)/x, x, 0, 1)"), "true");
         assert_eq!(run("verify_limit(sin(x)/x, x, 0, 2)"), "false");
         assert_eq!(run("verify_limit((1 + 1/x)^x, x, oo, E)"), "true");
-        assert_eq!(run("verify_ode_solution(diff(diff(y(x), x), x) + y(x) = 0, y(x), 3*cos(x) - sin(x))"), "true");
-        assert_eq!(run("verify_ode_solution(diff(y(x), x) = y(x), y(x), y(x) = 2*exp(x))"), "true");
-        assert_eq!(run("verify_ode_solution(diff(y(x), x) = y(x), y(x), exp(2*x))"), "false");
+        assert_eq!(
+            run("verify_ode_solution(diff(diff(y(x), x), x) + y(x) = 0, y(x), 3*cos(x) - sin(x))"),
+            "true"
+        );
+        assert_eq!(
+            run("verify_ode_solution(diff(y(x), x) = y(x), y(x), y(x) = 2*exp(x))"),
+            "true"
+        );
+        assert_eq!(
+            run("verify_ode_solution(diff(y(x), x) = y(x), y(x), exp(2*x))"),
+            "false"
+        );
     }
 }

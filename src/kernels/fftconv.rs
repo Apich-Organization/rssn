@@ -9,11 +9,17 @@ use std::f64::consts::PI;
 /// Complex number as `(re, im)`.
 pub type Complex = (f64, f64);
 
-fn cm(a: Complex, b: Complex) -> Complex {
+fn cm(
+    a: Complex,
+    b: Complex,
+) -> Complex {
     (a.0 * b.0 - a.1 * b.1, a.0 * b.1 + a.1 * b.0)
 }
 
-fn fft_pow2(a: &mut [Complex], inverse: bool) {
+fn fft_pow2(
+    a: &mut [Complex],
+    inverse: bool,
+) {
     let n = a.len();
     let mut j = 0;
     for i in 1..n {
@@ -45,7 +51,10 @@ fn fft_pow2(a: &mut [Complex], inverse: bool) {
 
 /// Discrete Fourier transform of any length (`inverse` includes the `1/n` scaling).
 #[must_use]
-pub fn fft(x: &[Complex], inverse: bool) -> Vec<Complex> {
+pub fn fft(
+    x: &[Complex],
+    inverse: bool,
+) -> Vec<Complex> {
     let n = x.len();
     if n <= 1 {
         return x.to_vec();
@@ -90,14 +99,21 @@ pub fn fft(x: &[Complex], inverse: bool) -> Vec<Complex> {
     (0..n)
         .map(|k| {
             let v = cm((a[k].0 / m as f64, a[k].1 / m as f64), chirp[k]);
-            if inverse { (v.0 / n as f64, v.1 / n as f64) } else { v }
+            if inverse {
+                (v.0 / n as f64, v.1 / n as f64)
+            } else {
+                v
+            }
         })
         .collect()
 }
 
 /// Linear convolution of two real sequences (`len = a.len() + b.len() - 1`).
 #[must_use]
-pub fn convolve(a: &[f64], b: &[f64]) -> Vec<f64> {
+pub fn convolve(
+    a: &[f64],
+    b: &[f64],
+) -> Vec<f64> {
     if a.is_empty() || b.is_empty() {
         return Vec::new();
     }
@@ -112,8 +128,12 @@ pub fn convolve(a: &[f64], b: &[f64]) -> Vec<f64> {
         return out;
     }
     let m = n.next_power_of_two();
-    let mut fa: Vec<Complex> = (0..m).map(|i| (a.get(i).copied().unwrap_or(0.0), 0.0)).collect();
-    let mut fb: Vec<Complex> = (0..m).map(|i| (b.get(i).copied().unwrap_or(0.0), 0.0)).collect();
+    let mut fa: Vec<Complex> = (0..m)
+        .map(|i| (a.get(i).copied().unwrap_or(0.0), 0.0))
+        .collect();
+    let mut fb: Vec<Complex> = (0..m)
+        .map(|i| (b.get(i).copied().unwrap_or(0.0), 0.0))
+        .collect();
     fft_pow2(&mut fa, false);
     fft_pow2(&mut fb, false);
     for i in 0..m {
@@ -125,7 +145,10 @@ pub fn convolve(a: &[f64], b: &[f64]) -> Vec<f64> {
 
 /// Circular convolution of two equal-length real sequences.
 #[must_use]
-pub fn circular_convolve(a: &[f64], b: &[f64]) -> Vec<f64> {
+pub fn circular_convolve(
+    a: &[f64],
+    b: &[f64],
+) -> Vec<f64> {
     let n = a.len();
     let fa = fft(&a.iter().map(|&v| (v, 0.0)).collect::<Vec<_>>(), false);
     let fb = fft(&b.iter().map(|&v| (v, 0.0)).collect::<Vec<_>>(), false);
@@ -136,7 +159,10 @@ pub fn circular_convolve(a: &[f64], b: &[f64]) -> Vec<f64> {
 /// Cross-correlation `c[k] = sum_i a[i + k - (len(b) - 1)] * b[i]`
 /// (full mode, length `a.len() + b.len() - 1`).
 #[must_use]
-pub fn correlate(a: &[f64], b: &[f64]) -> Vec<f64> {
+pub fn correlate(
+    a: &[f64],
+    b: &[f64],
+) -> Vec<f64> {
     let rb: Vec<f64> = b.iter().rev().copied().collect();
     convolve(a, &rb)
 }
@@ -145,7 +171,10 @@ pub fn correlate(a: &[f64], b: &[f64]) -> Vec<f64> {
 /// splitting into 15-bit limbs so the floating-point FFT stays exact for
 /// moderate sizes.
 #[must_use]
-pub fn poly_mul_i64(a: &[i64], b: &[i64]) -> Vec<i64> {
+pub fn poly_mul_i64(
+    a: &[i64],
+    b: &[i64],
+) -> Vec<i64> {
     if a.is_empty() || b.is_empty() {
         return Vec::new();
     }

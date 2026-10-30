@@ -14,9 +14,14 @@
 //! [`crate::kernels::krylov`] for the (dense-block) collocation systems, so
 //! they are meant for modest sizes (up to a few thousand unknowns).
 
-use crate::kernels::krylov::{Csr, SparseOrdering};
-use crate::kernels::transforms::{fft_slice, ifft_slice};
-use crate::sim::boundary::{BcValue, BoundaryCondition, Face, FaceBcs};
+use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::SparseOrdering;
+use crate::kernels::transforms::fft_slice;
+use crate::kernels::transforms::ifft_slice;
+use crate::sim::boundary::BcValue;
+use crate::sim::boundary::BoundaryCondition;
+use crate::sim::boundary::Face;
+use crate::sim::boundary::FaceBcs;
 use num_complex::Complex;
 use std::f64::consts::PI;
 
@@ -25,7 +30,11 @@ use std::f64::consts::PI;
 ///
 /// # Errors
 /// If an extent is not a power of two or the length does not match.
-pub fn fft_nd(data: &mut [Complex<f64>], n: &[usize], inverse: bool) -> Result<(), String> {
+pub fn fft_nd(
+    data: &mut [Complex<f64>],
+    n: &[usize],
+    inverse: bool,
+) -> Result<(), String> {
     if n.iter().any(|&m| !m.is_power_of_two()) || data.len() != n.iter().product::<usize>() {
         return Err("fft_nd needs power-of-two extents matching the data".into());
     }
@@ -70,12 +79,22 @@ impl SpectralGrid {
     ///
     /// # Errors
     /// For bad sizes.
-    pub fn new(n: &[usize], len: &[f64]) -> Result<Self, String> {
+    pub fn new(
+        n: &[usize],
+        len: &[f64],
+    ) -> Result<Self, String> {
         let dim = n.len();
-        if !(1..=3).contains(&dim) || len.len() != dim || n.iter().any(|&m| !m.is_power_of_two() || m < 4) {
+        if !(1..=3).contains(&dim)
+            || len.len() != dim
+            || n.iter().any(|&m| !m.is_power_of_two() || m < 4)
+        {
             return Err("spectral grid needs 1-3 power-of-two axes with at least 4 points".into());
         }
-        let mut g = Self { dim, n: [1; 3], len: [1.0; 3] };
+        let mut g = Self {
+            dim,
+            n: [1; 3],
+            len: [1.0; 3],
+        };
         g.n[..dim].copy_from_slice(&n[..dim]);
         g.len[..dim].copy_from_slice(&len[..dim]);
         Ok(g)
@@ -89,14 +108,24 @@ impl SpectralGrid {
 
     /// Grid spacing along an axis.
     #[must_use]
-    pub fn h(&self, a: usize) -> f64 {
+    pub fn h(
+        &self,
+        a: usize,
+    ) -> f64 {
         self.len[a] / self.n[a] as f64
     }
 
     /// Point coordinates (`x = i h`, origin at the corner).
     #[must_use]
-    pub fn coord(&self, p: usize) -> [f64; 3] {
-        let i = [p % self.n[0], (p / self.n[0]) % self.n[1], p / (self.n[0] * self.n[1])];
+    pub fn coord(
+        &self,
+        p: usize,
+    ) -> [f64; 3] {
+        let i = [
+            p % self.n[0],
+            (p / self.n[0]) % self.n[1],
+            p / (self.n[0] * self.n[1]),
+        ];
         let mut x = [0.0; 3];
         for a in 0..self.dim {
             x[a] = i[a] as f64 * self.h(a);
@@ -106,16 +135,31 @@ impl SpectralGrid {
 
     /// Wavenumber of mode index `j` along `axis` (negative frequencies wrapped).
     #[must_use]
-    pub fn wavenumber(&self, axis: usize, j: usize) -> f64 {
+    pub fn wavenumber(
+        &self,
+        axis: usize,
+        j: usize,
+    ) -> f64 {
         let n = self.n[axis];
-        let m = if j <= n / 2 { j as f64 } else { j as f64 - n as f64 };
+        let m = if j <= n / 2 {
+            j as f64
+        } else {
+            j as f64 - n as f64
+        };
         2.0 * PI / self.len[axis] * m
     }
 
     /// Wavenumber vector of flat mode index `p`.
     #[must_use]
-    pub fn kvec(&self, p: usize) -> [f64; 3] {
-        let i = [p % self.n[0], (p / self.n[0]) % self.n[1], p / (self.n[0] * self.n[1])];
+    pub fn kvec(
+        &self,
+        p: usize,
+    ) -> [f64; 3] {
+        let i = [
+            p % self.n[0],
+            (p / self.n[0]) % self.n[1],
+            p / (self.n[0] * self.n[1]),
+        ];
         let mut k = [0.0; 3];
         for a in 0..self.dim {
             k[a] = self.wavenumber(a, i[a]);
@@ -125,13 +169,19 @@ impl SpectralGrid {
 
     /// `|k|²` of flat mode index `p`.
     #[must_use]
-    pub fn k2(&self, p: usize) -> f64 {
+    pub fn k2(
+        &self,
+        p: usize,
+    ) -> f64 {
         self.kvec(p).iter().map(|k| k * k).sum()
     }
 
     /// Transform of real data to the spectral domain.
     #[must_use]
-    pub fn to_spec(&self, u: &[f64]) -> Vec<Complex<f64>> {
+    pub fn to_spec(
+        &self,
+        u: &[f64],
+    ) -> Vec<Complex<f64>> {
         let mut c: Vec<Complex<f64>> = u.iter().map(|&v| Complex::new(v, 0.0)).collect();
         let _ = fft_nd(&mut c, &self.n[..self.dim], false);
         c
@@ -139,7 +189,10 @@ impl SpectralGrid {
 
     /// Transform of complex data to the spectral domain.
     #[must_use]
-    pub fn to_spec_c(&self, u: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    pub fn to_spec_c(
+        &self,
+        u: &[Complex<f64>],
+    ) -> Vec<Complex<f64>> {
         let mut c = u.to_vec();
         let _ = fft_nd(&mut c, &self.n[..self.dim], false);
         c
@@ -147,7 +200,10 @@ impl SpectralGrid {
 
     /// Real part of the inverse transform.
     #[must_use]
-    pub fn to_phys(&self, uh: &[Complex<f64>]) -> Vec<f64> {
+    pub fn to_phys(
+        &self,
+        uh: &[Complex<f64>],
+    ) -> Vec<f64> {
         let mut c = uh.to_vec();
         let _ = fft_nd(&mut c, &self.n[..self.dim], true);
         c.into_iter().map(|v| v.re).collect()
@@ -155,7 +211,10 @@ impl SpectralGrid {
 
     /// Complex inverse transform.
     #[must_use]
-    pub fn to_phys_c(&self, uh: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    pub fn to_phys_c(
+        &self,
+        uh: &[Complex<f64>],
+    ) -> Vec<Complex<f64>> {
         let mut c = uh.to_vec();
         let _ = fft_nd(&mut c, &self.n[..self.dim], true);
         c
@@ -163,11 +222,19 @@ impl SpectralGrid {
 
     /// Spectral derivative `∂/∂x_axis` (the Nyquist mode is dropped).
     #[must_use]
-    pub fn deriv(&self, uh: &[Complex<f64>], axis: usize) -> Vec<Complex<f64>> {
+    pub fn deriv(
+        &self,
+        uh: &[Complex<f64>],
+        axis: usize,
+    ) -> Vec<Complex<f64>> {
         uh.iter()
             .enumerate()
             .map(|(p, v)| {
-                let i = [p % self.n[0], (p / self.n[0]) % self.n[1], p / (self.n[0] * self.n[1])];
+                let i = [
+                    p % self.n[0],
+                    (p / self.n[0]) % self.n[1],
+                    p / (self.n[0] * self.n[1]),
+                ];
                 if self.n[axis] > 1 && i[axis] == self.n[axis] / 2 {
                     Complex::new(0.0, 0.0)
                 } else {
@@ -182,9 +249,17 @@ impl SpectralGrid {
     pub fn dealias_mask(&self) -> Vec<bool> {
         (0..self.size())
             .map(|p| {
-                let i = [p % self.n[0], (p / self.n[0]) % self.n[1], p / (self.n[0] * self.n[1])];
+                let i = [
+                    p % self.n[0],
+                    (p / self.n[0]) % self.n[1],
+                    p / (self.n[0] * self.n[1]),
+                ];
                 (0..self.dim).all(|a| {
-                    let m = if i[a] <= self.n[a] / 2 { i[a] } else { self.n[a] - i[a] };
+                    let m = if i[a] <= self.n[a] / 2 {
+                        i[a]
+                    } else {
+                        self.n[a] - i[a]
+                    };
                     3 * m < self.n[a]
                 })
             })
@@ -196,7 +271,11 @@ impl SpectralGrid {
     ///
     /// # Errors
     /// For a singular mode (`σ = 0` with non-zero mean forcing).
-    pub fn helmholtz(&self, sigma: f64, f: &[f64]) -> Result<Vec<f64>, String> {
+    pub fn helmholtz(
+        &self,
+        sigma: f64,
+        f: &[f64],
+    ) -> Result<Vec<f64>, String> {
         let mut fh = self.to_spec(f);
         for (p, v) in fh.iter_mut().enumerate() {
             let d = self.k2(p) + sigma;
@@ -253,9 +332,15 @@ pub fn etdrk4(
         e[p] = hl.exp();
         e2[p] = (hl * 0.5).exp();
         q[p] = mean(&|z| ((z * 0.5).exp() - 1.0) / z, hl) * h;
-        f1[p] = mean(&|z| (-4.0 - z + z.exp() * (4.0 - 3.0 * z + z * z)) / (z * z * z), hl) * h;
+        f1[p] = mean(
+            &|z| (-4.0 - z + z.exp() * (4.0 - 3.0 * z + z * z)) / (z * z * z),
+            hl,
+        ) * h;
         f2[p] = mean(&|z| (2.0 + z + z.exp() * (-2.0 + z)) / (z * z * z), hl) * h;
-        f3[p] = mean(&|z| (-4.0 - 3.0 * z - z * z + z.exp() * (4.0 - z)) / (z * z * z), hl) * h;
+        f3[p] = mean(
+            &|z| (-4.0 - 3.0 * z - z * z + z.exp() * (4.0 - z)) / (z * z * z),
+            hl,
+        ) * h;
     }
     let mut t = 0.0;
     for _ in 0..steps {
@@ -264,7 +349,9 @@ pub fn etdrk4(
         let na = nonlinear(t + 0.5 * h, &a);
         let b: Vec<_> = (0..n).map(|p| e2[p] * uh[p] + q[p] * na[p]).collect();
         let nb = nonlinear(t + 0.5 * h, &b);
-        let c: Vec<_> = (0..n).map(|p| e2[p] * a[p] + q[p] * (nb[p] * 2.0 - nv[p])).collect();
+        let c: Vec<_> = (0..n)
+            .map(|p| e2[p] * a[p] + q[p] * (nb[p] * 2.0 - nv[p]))
+            .collect();
         let nc = nonlinear(t + h, &c);
         uh = (0..n)
             .map(|p| e[p] * uh[p] + f1[p] * nv[p] + f2[p] * (na[p] + nb[p]) * 2.0 + f3[p] * nc[p])
@@ -289,14 +376,21 @@ pub struct ChebGrid {
 
 /// Chebyshev differentiation matrix on `x_i = -cos(π i / n)` scaled to an interval of length `len`.
 #[must_use]
-pub fn cheb_diff_matrix(n: usize, len: f64) -> Vec<Vec<f64>> {
+pub fn cheb_diff_matrix(
+    n: usize,
+    len: f64,
+) -> Vec<Vec<f64>> {
     let x: Vec<f64> = (0..=n).map(|i| -(PI * i as f64 / n as f64).cos()).collect();
     let c = |i: usize| if i == 0 || i == n { 2.0 } else { 1.0 };
     let mut d = vec![vec![0.0; n + 1]; n + 1];
     for i in 0..=n {
         for j in 0..=n {
             if i != j {
-                let s = if (i + j) % 2 == 0 { 1.0 } else { -1.0 };
+                let s = if (i + j) % 2 == 0 {
+                    1.0
+                } else {
+                    -1.0
+                };
                 d[i][j] = c(i) / c(j) * s / (x[i] - x[j]);
             }
         }
@@ -323,12 +417,25 @@ impl ChebGrid {
     ///
     /// # Errors
     /// For bad dimensions or degrees below 2.
-    pub fn new(deg: &[usize], lo: &[f64], hi: &[f64]) -> Result<Self, String> {
+    pub fn new(
+        deg: &[usize],
+        lo: &[f64],
+        hi: &[f64],
+    ) -> Result<Self, String> {
         let dim = deg.len();
-        if !(1..=3).contains(&dim) || lo.len() != dim || hi.len() != dim || deg.iter().any(|&d| d < 2) {
+        if !(1..=3).contains(&dim)
+            || lo.len() != dim
+            || hi.len() != dim
+            || deg.iter().any(|&d| d < 2)
+        {
             return Err("invalid Chebyshev grid".into());
         }
-        let mut g = Self { dim, deg: [0; 3], lo: [0.0; 3], hi: [1.0; 3] };
+        let mut g = Self {
+            dim,
+            deg: [0; 3],
+            lo: [0.0; 3],
+            hi: [1.0; 3],
+        };
         g.deg[..dim].copy_from_slice(&deg[..dim]);
         g.lo[..dim].copy_from_slice(&lo[..dim]);
         g.hi[..dim].copy_from_slice(&hi[..dim]);
@@ -338,32 +445,60 @@ impl ChebGrid {
     /// Number of unknowns.
     #[must_use]
     pub fn size(&self) -> usize {
-        (0..3).map(|a| if a < self.dim { self.deg[a] + 1 } else { 1 }).product()
+        (0..3)
+            .map(|a| {
+                if a < self.dim {
+                    self.deg[a] + 1
+                } else {
+                    1
+                }
+            })
+            .product()
     }
 
-    const fn ext(&self, a: usize) -> usize {
-        if a < self.dim { self.deg[a] + 1 } else { 1 }
+    const fn ext(
+        &self,
+        a: usize,
+    ) -> usize {
+        if a < self.dim {
+            self.deg[a] + 1
+        } else {
+            1
+        }
     }
 
-    const fn ijk(&self, p: usize) -> [usize; 3] {
+    const fn ijk(
+        &self,
+        p: usize,
+    ) -> [usize; 3] {
         let (n0, n1) = (self.ext(0), self.ext(1));
         [p % n0, (p / n0) % n1, p / (n0 * n1)]
     }
 
-    const fn index(&self, i: [usize; 3]) -> usize {
+    const fn index(
+        &self,
+        i: [usize; 3],
+    ) -> usize {
         i[0] + self.ext(0) * (i[1] + self.ext(1) * i[2])
     }
 
     /// Node coordinate along an axis.
     #[must_use]
-    pub fn node(&self, axis: usize, i: usize) -> f64 {
+    pub fn node(
+        &self,
+        axis: usize,
+        i: usize,
+    ) -> f64 {
         let n = self.deg[axis] as f64;
         self.lo[axis] + 0.5 * (self.hi[axis] - self.lo[axis]) * (1.0 - (PI * i as f64 / n).cos())
     }
 
     /// Coordinates of flat index `p`.
     #[must_use]
-    pub fn coord(&self, p: usize) -> [f64; 3] {
+    pub fn coord(
+        &self,
+        p: usize,
+    ) -> [f64; 3] {
         let i = self.ijk(p);
         let mut x = [0.0; 3];
         for a in 0..self.dim {
@@ -373,24 +508,44 @@ impl ChebGrid {
     }
 
     /// Samples a function at all nodes.
-    pub fn sample(&self, f: impl Fn([f64; 3]) -> f64) -> Vec<f64> {
+    pub fn sample(
+        &self,
+        f: impl Fn([f64; 3]) -> f64,
+    ) -> Vec<f64> {
         (0..self.size()).map(|p| f(self.coord(p))).collect()
     }
 
     /// Largest error against an exact function.
-    pub fn max_error(&self, u: &[f64], exact: impl Fn([f64; 3]) -> f64) -> f64 {
-        u.iter().enumerate().map(|(p, v)| (v - exact(self.coord(p))).abs()).fold(0.0, f64::max)
+    pub fn max_error(
+        &self,
+        u: &[f64],
+        exact: impl Fn([f64; 3]) -> f64,
+    ) -> f64 {
+        u.iter()
+            .enumerate()
+            .map(|(p, v)| (v - exact(self.coord(p))).abs())
+            .fold(0.0, f64::max)
     }
 
-    fn operator(&self, bcs: &FaceBcs) -> Result<ChebOperator, String> {
+    fn operator(
+        &self,
+        bcs: &FaceBcs,
+    ) -> Result<ChebOperator, String> {
         let nn = self.size();
-        let d1: Vec<Vec<Vec<f64>>> =
-            (0..self.dim).map(|a| cheb_diff_matrix(self.deg[a], self.hi[a] - self.lo[a])).collect();
+        let d1: Vec<Vec<Vec<f64>>> = (0..self.dim)
+            .map(|a| cheb_diff_matrix(self.deg[a], self.hi[a] - self.lo[a]))
+            .collect();
         let d2: Vec<Vec<Vec<f64>>> = d1
             .iter()
             .map(|d| {
                 let n = d.len();
-                (0..n).map(|i| (0..n).map(|j| (0..n).map(|k| d[i][k] * d[k][j]).sum()).collect()).collect()
+                (0..n)
+                    .map(|i| {
+                        (0..n)
+                            .map(|j| (0..n).map(|k| d[i][k] * d[k][j]).sum())
+                            .collect()
+                    })
+                    .collect()
             })
             .collect();
         let mut lap = Vec::new();
@@ -427,14 +582,15 @@ impl ChebGrid {
             let a = face.axis();
             let sign = if face.is_max() { 1.0 } else { -1.0 };
             match bcs.get(face) {
-                BoundaryCondition::Dirichlet(g) => {
+                | BoundaryCondition::Dirichlet(g) => {
                     bc.push((p, p, 1.0));
                     boundary[p] = Some((g.clone(), x));
                 },
-                BoundaryCondition::Neumann(g) | BoundaryCondition::Robin { g, alpha: _, beta: _ } => {
+                | BoundaryCondition::Neumann(g)
+                | BoundaryCondition::Robin { g, alpha: _, beta: _ } => {
                     let (al, be) = match bcs.get(face) {
-                        BoundaryCondition::Robin { alpha, beta, .. } => (*alpha, *beta),
-                        _ => (0.0, 1.0),
+                        | BoundaryCondition::Robin { alpha, beta, .. } => (*alpha, *beta),
+                        | _ => (0.0, 1.0),
                     };
                     bc.push((p, p, al));
                     for k in 0..=self.deg[a] {
@@ -444,7 +600,7 @@ impl ChebGrid {
                     }
                     boundary[p] = Some((g.clone(), x));
                 },
-                BoundaryCondition::Symmetry => {
+                | BoundaryCondition::Symmetry => {
                     for k in 0..=self.deg[a] {
                         let mut q = ijk;
                         q[a] = k;
@@ -452,13 +608,26 @@ impl ChebGrid {
                     }
                     boundary[p] = Some((BcValue::constant(0.0), x));
                 },
-                _ => return Err("Chebyshev grids support Dirichlet, Neumann, Robin and symmetry only".into()),
+                | _ => {
+                    return Err(
+                        "Chebyshev grids support Dirichlet, Neumann, Robin and symmetry only"
+                            .into(),
+                    );
+                },
             }
         }
-        Ok(ChebOperator { lap: Csr::from_triplets(nn, nn, &lap), bc_rows: Csr::from_triplets(nn, nn, &bc), boundary })
+        Ok(ChebOperator {
+            lap: Csr::from_triplets(nn, nn, &lap),
+            bc_rows: Csr::from_triplets(nn, nn, &bc),
+            boundary,
+        })
     }
 
-    fn assemble(op: &ChebOperator, shift: f64, scale: f64) -> Csr {
+    fn assemble(
+        op: &ChebOperator,
+        shift: f64,
+        scale: f64,
+    ) -> Csr {
         let nn = op.lap.rows;
         let mut trip = Vec::new();
         for p in 0..nn {
@@ -480,14 +649,23 @@ impl ChebGrid {
     ///
     /// # Errors
     /// For unsupported boundary types or a singular system.
-    pub fn solve_helmholtz(&self, bcs: &FaceBcs, sigma: f64, f: impl Fn([f64; 3]) -> f64) -> Result<Vec<f64>, String> {
+    pub fn solve_helmholtz(
+        &self,
+        bcs: &FaceBcs,
+        sigma: f64,
+        f: impl Fn([f64; 3]) -> f64,
+    ) -> Result<Vec<f64>, String> {
         let op = self.operator(bcs)?;
         let a = Self::assemble(&op, sigma, -1.0);
-        let lu = a.sparse_lu(SparseOrdering::MinDegree).map_err(|e| format!("LU failed: {e:?}"))?;
+        let lu = a
+            .sparse_lu(SparseOrdering::MinDegree)
+            .map_err(|e| format!("LU failed: {e:?}"))?;
         let b: Vec<f64> = (0..self.size())
-            .map(|p| match &op.boundary[p] {
-                Some((g, x)) => g.eval(0.0, *x),
-                None => f(self.coord(p)),
+            .map(|p| {
+                match &op.boundary[p] {
+                    | Some((g, x)) => g.eval(0.0, *x),
+                    | None => f(self.coord(p)),
+                }
             })
             .collect();
         Ok(lu.solve(&b))
@@ -511,7 +689,9 @@ impl ChebGrid {
         let op = self.operator(bcs)?;
         let dt = t_end / steps as f64;
         let a = Self::assemble(&op, 1.0, -dt * theta * alpha);
-        let lu = a.sparse_lu(SparseOrdering::MinDegree).map_err(|e| format!("LU failed: {e:?}"))?;
+        let lu = a
+            .sparse_lu(SparseOrdering::MinDegree)
+            .map_err(|e| format!("LU failed: {e:?}"))?;
         let nn = self.size();
         let mut u = self.sample(init);
         let mut lu_u = vec![0.0; nn];
@@ -519,11 +699,15 @@ impl ChebGrid {
             let t = k as f64 * dt;
             op.lap.matvec(&u, &mut lu_u);
             let b: Vec<f64> = (0..nn)
-                .map(|p| if let Some((g, x)) = &op.boundary[p] { g.eval(t + dt, *x) } else {
-                    let x = self.coord(p);
-                    let s0 = source.map_or(0.0, |s| s(t, x));
-                    let s1 = source.map_or(0.0, |s| s(t + dt, x));
-                    u[p] + dt * (1.0 - theta) * (alpha * lu_u[p] + s0) + dt * theta * s1
+                .map(|p| {
+                    if let Some((g, x)) = &op.boundary[p] {
+                        g.eval(t + dt, *x)
+                    } else {
+                        let x = self.coord(p);
+                        let s0 = source.map_or(0.0, |s| s(t, x));
+                        let s1 = source.map_or(0.0, |s| s(t + dt, x));
+                        u[p] + dt * (1.0 - theta) * (alpha * lu_u[p] + s0) + dt * theta * s1
+                    }
                 })
                 .collect();
             u = lu.solve(&b);

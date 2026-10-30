@@ -26,16 +26,62 @@
 
 // The grid kernels index raw buffers inside parallel loops.
 
+/// Linear acoustics / scalar wave equation with PML (1D-3D).
+pub mod acoustics;
+/// Iterative 3D BEM with ACA-compressed operators and GMRES.
+pub mod bem_aca;
+/// Helmholtz BEM: exterior acoustic scattering with Burton-Miller.
+pub mod bem_helmholtz;
 /// Common boundary-condition description shared by the continuum solvers.
 pub mod boundary;
+/// Chain and algorithmic regularisation for few-body gravity.
+pub mod chain;
 pub mod classical;
+/// Cut-cell geometry (open fractions of segments, faces and cells) from a level set.
+pub mod cutcell;
+/// Nodal discontinuous Galerkin (1D/2D) for conservation laws.
+pub mod dg;
+/// Nodal DG on hexahedra (3D).
+pub mod dg3d;
+/// Dissipative particle dynamics (2D/3D).
+pub mod dpd;
+/// Linear elasticity on triangle/tetrahedron meshes (P1/P2).
+pub mod elasticity_fem;
+/// Elliptic integrals of the third kind and Jacobi-function integrals.
+pub mod elliptic;
+/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D and 2D.
+pub mod euler_amr;
+/// High-order finite volumes for Euler and shallow water in 1D-3D.
+pub mod euler_nd;
+/// Ewald summation and particle-mesh Ewald.
+pub mod ewald;
+/// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
+pub mod fem_simplex;
 /// Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
 pub mod fem_triangles;
+/// Adaptive 2-D and 3-D fast multipole methods.
+pub mod fmm;
 /// Compressible gas dynamics (Euler equations, HLLC, MUSCL).
 pub mod gas_dynamics;
+/// Hermite N-body integrators with block time steps, PN terms and KS binaries.
+pub mod hermite;
+/// Large-deformation hyperelasticity, elastodynamics and penalty contact.
+pub mod hyperelastic;
 /// Symplectic and stiff (implicit, Rosenbrock) integrators.
 pub mod integrators;
+/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
+pub mod kerr;
+/// Dimension-generic molecular dynamics engine.
+pub mod md_engine;
+/// Rigid-molecule molecular dynamics.
+pub mod md_rigid;
 pub mod models;
+/// Geometric multigrid (V/W/FMG) for Poisson/Helmholtz in 1D/2D/3D.
+pub mod multigrid;
+/// Barnes-Hut and fast multipole N-body solvers.
+pub mod nbody;
+/// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
+pub mod ns_mac;
 /// Boundary element method.
 pub mod physics_bem;
 pub mod physics_cfd;
@@ -52,73 +98,27 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
-/// Dissipative particle dynamics (2D/3D).
-pub mod dpd;
-/// Linear acoustics / scalar wave equation with PML (1D-3D).
-pub mod acoustics;
-/// Iterative 3D BEM with ACA-compressed operators and GMRES.
-pub mod bem_aca;
-/// Linear elasticity on triangle/tetrahedron meshes (P1/P2).
-pub mod elasticity_fem;
-/// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
-pub mod fem_simplex;
-/// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
-pub mod ns_mac;
-/// Large-deformation hyperelasticity, elastodynamics and penalty contact.
-pub mod hyperelastic;
-/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D and 2D.
-pub mod euler_amr;
-/// Nodal DG on hexahedra (3D).
-pub mod dg3d;
-/// Helmholtz BEM: exterior acoustic scattering with Burton-Miller.
-pub mod bem_helmholtz;
-/// Cut-cell geometry (open fractions of segments, faces and cells) from a level set.
-pub mod cutcell;
-/// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
-pub mod yee_fdtd;
-/// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).
-pub mod spectral;
-/// Split-step Fourier Schrodinger/GPE solver (1D-3D, imaginary time).
-pub mod split_step;
-/// Nodal discontinuous Galerkin (1D/2D) for conservation laws.
-pub mod dg;
-/// High-order finite volumes for Euler and shallow water in 1D-3D.
-pub mod euler_nd;
-/// Geometric multigrid (V/W/FMG) for Poisson/Helmholtz in 1D/2D/3D.
-pub mod multigrid;
 pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
+/// Kerr-Newman geodesics.
+pub mod relativity;
 pub mod scenario;
 /// Named JSON scenarios of the continuum and particle engines.
 pub mod scenario_engines;
-/// Ewald summation and particle-mesh Ewald.
-pub mod ewald;
-/// Elliptic integrals of the third kind and Jacobi-function integrals.
-pub mod elliptic;
-/// Hermite N-body integrators with block time steps, PN terms and KS binaries.
-pub mod hermite;
-/// Stochastic series expansion (directed loops) for spin-1/2 XXZ models.
-pub mod sse;
-/// Dimension-generic molecular dynamics engine.
-pub mod md_engine;
-/// Rigid-molecule molecular dynamics.
-pub mod md_rigid;
-/// Barnes-Hut and fast multipole N-body solvers.
-pub mod nbody;
-/// Adaptive 2-D and 3-D fast multipole methods.
-pub mod fmm;
-/// Chain and algorithmic regularisation for few-body gravity.
-pub mod chain;
-/// Kerr-Newman geodesics.
-pub mod relativity;
-/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
-pub mod kerr;
+/// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).
+pub mod spectral;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.
 pub mod sph;
 /// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.
 pub mod spin_models;
-/// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
-pub mod symplectic;
+/// Split-step Fourier Schrodinger/GPE solver (1D-3D, imaginary time).
+pub mod split_step;
+/// Stochastic series expansion (directed loops) for spin-1/2 XXZ models.
+pub mod sse;
 /// Dimension-generic structured-grid finite differences (1D/2D/3D).
 pub mod structured;
+/// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
+pub mod symplectic;
+/// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
+pub mod yee_fdtd;

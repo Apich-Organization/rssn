@@ -53,7 +53,10 @@ pub fn apart(
     }
     let (quotient, remainder) = univariate::divrem(&numer, &denom)?;
     if remainder.is_empty() || denom.len() < 2 {
-        return Some(Apart { quotient, pieces: Vec::new() });
+        return Some(Apart {
+            quotient,
+            pieces: Vec::new(),
+        });
     }
     let (_, factors) = univariate::factor(&denom);
     // Unknown numerators: for factor i and power j, a polynomial of degree
@@ -61,8 +64,10 @@ pub fn apart(
     let n = denom.len() - 1;
     let mut columns: Vec<QPoly> = Vec::with_capacity(n);
     let mut labels: Vec<(usize, u32)> = Vec::with_capacity(n);
-    let rational_factors: Vec<QPoly> =
-        factors.iter().map(|(f, _)| f.iter().cloned().map(BigRational::from_integer).collect()).collect();
+    let rational_factors: Vec<QPoly> = factors
+        .iter()
+        .map(|(f, _)| f.iter().cloned().map(BigRational::from_integer).collect())
+        .collect();
     for (i, ((factor, multiplicity), fq)) in factors.iter().zip(&rational_factors).enumerate() {
         let mut power: QPoly = vec![BigRational::one()];
         for j in 1..=*multiplicity {
@@ -83,15 +88,23 @@ pub fn apart(
     let mut pieces = Vec::new();
     for (i, ((_, multiplicity), fq)) in factors.iter().zip(&rational_factors).enumerate() {
         for j in 1..=*multiplicity {
-            let mut numerator: QPoly =
-                labels.iter().zip(&solution).filter(|((fi, fj), _)| *fi == i && *fj == j).map(|(_, v)| v.clone()).collect();
+            let mut numerator: QPoly = labels
+                .iter()
+                .zip(&solution)
+                .filter(|((fi, fj), _)| *fi == i && *fj == j)
+                .map(|(_, v)| v.clone())
+                .collect();
             while numerator.last().is_some_and(Zero::is_zero) {
                 numerator.pop();
             }
             if numerator.is_empty() {
                 continue;
             }
-            pieces.push(Piece { factor: fq.clone(), power: j, numerator });
+            pieces.push(Piece {
+                factor: fq.clone(),
+                power: j,
+                numerator,
+            });
         }
     }
     Some(Apart { quotient, pieces })
@@ -107,8 +120,10 @@ fn solve_columns(
     // Augmented matrix: row = coefficient of x^row.
     let mut m: Vec<Vec<BigRational>> = (0..n)
         .map(|row| {
-            let mut line: Vec<BigRational> =
-                columns.iter().map(|c| c.get(row).cloned().unwrap_or_else(BigRational::zero)).collect();
+            let mut line: Vec<BigRational> = columns
+                .iter()
+                .map(|c| c.get(row).cloned().unwrap_or_else(BigRational::zero))
+                .collect();
             line.push(target.get(row).cloned().unwrap_or_else(BigRational::zero));
             line
         })
@@ -130,7 +145,11 @@ fn solve_columns(
             }
         }
     }
-    Some(m.into_iter().map(|row| row.last().cloned().unwrap_or_else(BigRational::zero)).collect())
+    Some(
+        m.into_iter()
+            .map(|row| row.last().cloned().unwrap_or_else(BigRational::zero))
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -140,7 +159,10 @@ mod tests {
     use super::*;
 
     fn q(values: &[i64]) -> QPoly {
-        values.iter().map(|&v| BigRational::from_integer(BigInt::from(v))).collect()
+        values
+            .iter()
+            .map(|&v| BigRational::from_integer(BigInt::from(v)))
+            .collect()
     }
 
     /// Recombines a decomposition over the original denominator.
@@ -155,7 +177,7 @@ mod tests {
                 power = univariate::mul(&power, &piece.factor);
             }
             let (cofactor, rest) = univariate::divrem(denom, &power).unwrap_or_default();
-            assert!(rest.is_empty());
+            assert_eq!(rest, []);
             total = univariate::add(&total, &univariate::mul(&cofactor, &piece.numerator));
         }
         total
@@ -164,11 +186,11 @@ mod tests {
     #[test]
     fn decompositions_recombine() {
         let cases: [(&[i64], &[i64]); 5] = [
-            (&[1], &[-1, 0, 1]),                 // 1/(x^2 - 1)
-            (&[0, 0, 0, 1], &[-1, 0, 1]),        // x^3/(x^2 - 1)
-            (&[1, 2], &[0, 0, 1, 1]),            // (2x + 1)/(x^2 (x + 1))
-            (&[3, 0, 1], &[1, 0, 2, 0, 1]),      // (x^2 + 3)/(x^2 + 1)^2
-            (&[1], &[-1, 0, 0, 1]),              // 1/(x^3 - 1)
+            (&[1], &[-1, 0, 1]),            // 1/(x^2 - 1)
+            (&[0, 0, 0, 1], &[-1, 0, 1]),   // x^3/(x^2 - 1)
+            (&[1, 2], &[0, 0, 1, 1]),       // (2x + 1)/(x^2 (x + 1))
+            (&[3, 0, 1], &[1, 0, 2, 0, 1]), // (x^2 + 3)/(x^2 + 1)^2
+            (&[1], &[-1, 0, 0, 1]),         // 1/(x^3 - 1)
         ];
         for (n, d) in cases {
             let (n, d) = (q(n), q(d));

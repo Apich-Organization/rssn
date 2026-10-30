@@ -12,8 +12,8 @@ use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
-use crate::graph::OpFlags;
 use crate::graph::Number;
+use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
@@ -327,9 +327,10 @@ fn split_factor(
     if window.atom(factor).is_none() && window.op(factor) == core::POW {
         let mut children = window.children(factor);
         if let (Some(base), Some(exp)) = (children.next(), children.next())
-            && let Some(n) = window.number(graph, exp) {
-                return (base, n.clone());
-            }
+            && let Some(n) = window.number(graph, exp)
+        {
+            return (base, n.clone());
+        }
     }
     (factor, Number::from(1))
 }
@@ -368,18 +369,18 @@ fn product(
     // both sides of a parenthesis can meet: 2*(x + y) - 2*x.
     if let [(base, exp)] = groups.as_slice()
         && let Some(&base) = base.first()
-            && exp.is_one()
-                && !coeff.is_one()
-                && window.atom(base).is_none()
-                && window.op(base) == core::ADD
-            {
-                let terms: Vec<CellId> = window.children(base).collect();
-                let pieces: Vec<CellId> = terms
-                    .iter()
-                    .map(|&t| build_product(graph, window, &coeff, &[t]))
-                    .collect();
-                return window.new_node(core::ADD, &pieces);
-            }
+        && exp.is_one()
+        && !coeff.is_one()
+        && window.atom(base).is_none()
+        && window.op(base) == core::ADD
+    {
+        let terms: Vec<CellId> = window.children(base).collect();
+        let pieces: Vec<CellId> = terms
+            .iter()
+            .map(|&t| build_product(graph, window, &coeff, &[t]))
+            .collect();
+        return window.new_node(core::ADD, &pieces);
+    }
     let mut pieces = Vec::with_capacity(groups.len().saturating_add(1));
     for (base, exp) in &groups {
         let Some(&base) = base.first() else {
@@ -416,9 +417,10 @@ fn power(
     let base_num = window.number(graph, base).cloned();
     let exp_num = window.number(graph, exp).cloned();
     if let (Some(b), Some(e)) = (&base_num, &exp_num)
-        && let Some(folded) = b.pow(e) {
-            return Some(number_atom(graph, window, folded));
-        }
+        && let Some(folded) = b.pow(e)
+    {
+        return Some(number_atom(graph, window, folded));
+    }
     if let Some(e) = &exp_num {
         if e.is_one() {
             return Some(window.clone_subtree(base));
@@ -575,10 +577,7 @@ mod tests {
     fn shared_subterms_are_simplified_once_and_reused() {
         // `x + x` occurs under two different parents, so it is an atom of
         // the outer window and gets a window of its own.
-        assert_eq!(
-            simplify("f(x + x) + g(x + x)"),
-            "f(2*x) + g(2*x)"
-        );
+        assert_eq!(simplify("f(x + x) + g(x + x)"), "f(2*x) + g(2*x)");
     }
 }
 
@@ -628,10 +627,15 @@ fn radical_form(
     let r = &p - &k * num_bigint::BigInt::from(q);
     let (root, rest) = extract_power(n, q)?;
     let r_u32 = r.to_u32()?;
-    let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n)).pow(k.to_i32()?)
+    let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n))
+        .pow(k.to_i32()?)
         * num_rational::BigRational::from_integer(num_bigint::BigInt::from(root).pow(r_u32));
     let rest = if r_u32 == 0 { 1 } else { rest };
-    Some((coefficient, rest, num_rational::BigRational::new(r, num_bigint::BigInt::from(q))))
+    Some((
+        coefficient,
+        rest,
+        num_rational::BigRational::new(r, num_bigint::BigInt::from(q)),
+    ))
 }
 
 impl Radical {
@@ -722,7 +726,10 @@ impl Kernel for Radical {
         let &[base, exponent] = graph.children(node) else {
             return Outcome::Pass;
         };
-        let (Some(b), Some(e)) = (graph.number_of(base).cloned(), graph.number_of(exponent).cloned()) else {
+        let (Some(b), Some(e)) = (
+            graph.number_of(base).cloned(),
+            graph.number_of(exponent).cloned(),
+        ) else {
             return Outcome::Pass;
         };
         let (Some(b), Some(e)) = (b.to_rational(), e.to_rational()) else {
@@ -733,10 +740,18 @@ impl Kernel for Radical {
         }
         // A fraction: numerator and denominator separately.
         if !b.is_integer() {
-            let numer = graph.num(Number::rat(num_rational::BigRational::from_integer(b.numer().clone())));
-            let denom = graph.num(Number::rat(num_rational::BigRational::from_integer(b.denom().clone())));
+            let numer = graph.num(Number::rat(num_rational::BigRational::from_integer(
+                b.numer().clone(),
+            )));
+            let denom = graph.num(Number::rat(num_rational::BigRational::from_integer(
+                b.denom().clone(),
+            )));
             let minus = graph.num(Number::rat(-e));
-            let top = if b.numer() == &num_bigint::BigInt::from(1) { None } else { Some(graph.node(core::POW, &[numer, exponent])) };
+            let top = if b.numer() == &num_bigint::BigInt::from(1) {
+                None
+            } else {
+                Some(graph.node(core::POW, &[numer, exponent]))
+            };
             let bottom = graph.node(core::POW, &[denom, minus]);
             return Outcome::Equal(match top {
                 | Some(t) => graph.node(core::MUL, &[t, bottom]),
@@ -760,14 +775,18 @@ impl Kernel for Radical {
         let Some(r_u32) = r.to_u32() else {
             return Outcome::Pass;
         };
-        let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n)).pow(k.to_i32().unwrap_or(0))
+        let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n))
+            .pow(k.to_i32().unwrap_or(0))
             * num_rational::BigRational::from_integer(num_bigint::BigInt::from(root).pow(r_u32));
         let c = graph.num(Number::rat(coefficient));
         if rest == 1 || r.is_zero() {
             return Outcome::Equal(c);
         }
         let rest_node = graph.int(i64::try_from(rest).unwrap_or(i64::MAX));
-        let fraction = graph.num(Number::rat(num_rational::BigRational::new(r, num_bigint::BigInt::from(q))));
+        let fraction = graph.num(Number::rat(num_rational::BigRational::new(
+            r,
+            num_bigint::BigInt::from(q),
+        )));
         let radical = graph.node(core::POW, &[rest_node, fraction]);
         Outcome::Equal(graph.node(core::MUL, &[c, radical]))
     }

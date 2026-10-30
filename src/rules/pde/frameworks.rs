@@ -45,7 +45,9 @@ fn depends(
     e: NodeId,
     v: NodeId,
 ) -> bool {
-    cx.graph.symbol_of(v).is_some_and(|s| cx.graph.depends_on(cx.graph.find(e), s))
+    cx.graph
+        .symbol_of(v)
+        .is_some_and(|s| cx.graph.depends_on(cx.graph.find(e), s))
 }
 
 /// A complete integral `u = …` with constants `a`, `b` (named `A`, `B`).
@@ -87,14 +89,18 @@ pub(super) fn complete_integral(
         // f = u - x p - y q - F·k for the normalisation with u's coefficient.
         let du_coeff = derivative(cx.graph, f, u)?;
         let du_coeff = cx.simplify(du_coeff);
-        cx.graph.number_of(du_coeff).filter(|n| !n.is_zero()).cloned().map(|k| {
-            let k = cx.graph.num(k);
-            let scaled = {
-                let inverse = powi(cx.graph, k, -1);
-                mul(cx.graph, &[f, inverse])
-            };
-            sub(cx.graph, scaled, rest)
-        })
+        cx.graph
+            .number_of(du_coeff)
+            .filter(|n| !n.is_zero())
+            .cloned()
+            .map(|k| {
+                let k = cx.graph.num(k);
+                let scaled = {
+                    let inverse = powi(cx.graph, k, -1);
+                    mul(cx.graph, &[f, inverse])
+                };
+                sub(cx.graph, scaled, rest)
+            })
     };
     if let Some(remainder) = clairaut {
         let remainder = cx.simplify(remainder);
@@ -235,7 +241,12 @@ pub(super) fn separate(
         let a_side = cx.simplify(a_side);
         let b_side = sub(cx.graph, e, a_side);
         let b_side = cx.simplify(b_side);
-        let solve_side = |cx: &mut Cx<'_>, side: NodeId, var: NodeId, js: &[NodeId], sign: i64| -> Option<NodeId> {
+        let solve_side = |cx: &mut Cx<'_>,
+                          side: NodeId,
+                          var: NodeId,
+                          js: &[NodeId],
+                          sign: i64|
+         -> Option<NodeId> {
             let f = fresh(cx, "F");
             let big = cx.graph.node(core::APPLY, &[f, var]);
             let diff = cx.graph.ops().lookup("diff")?;
@@ -267,7 +278,11 @@ pub(super) fn separate(
         };
         // Distinct constants on the two sides.
         let tsol = rename_constants(cx, tsol, "D");
-        let combined = if multiplicative { mul(cx.graph, &[xsol, tsol]) } else { add(cx.graph, &[xsol, tsol]) };
+        let combined = if multiplicative {
+            mul(cx.graph, &[xsol, tsol])
+        } else {
+            add(cx.graph, &[xsol, tsol])
+        };
         return Some(cx.simplify(combined));
     }
     None
@@ -314,7 +329,10 @@ pub(super) fn fourier_evolution(
     if space.is_empty() || space.len() > 3 {
         return None;
     }
-    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time, 1)), p.coefficient(cx.graph, &p.unit(time, 2)));
+    let (a1, a2) = (
+        p.coefficient(cx.graph, &p.unit(time, 1)),
+        p.coefficient(cx.graph, &p.unit(time, 2)),
+    );
     if !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) {
         return None;
     }
@@ -325,9 +343,15 @@ pub(super) fn fourier_evolution(
     } else {
         return None;
     };
-    let i_unit = cx.graph.ops().lookup("I").map(|op| cx.graph.node(op, &[]))?;
+    let i_unit = cx
+        .graph
+        .ops()
+        .lookup("I")
+        .map(|op| cx.graph.node(op, &[]))?;
     let k_stems = ["k", "kk", "kkk"];
-    let ks: Vec<NodeId> = (0..space.len()).map(|i| dummy(cx, p, k_stems.get(i).copied().unwrap_or("k")).0).collect();
+    let ks: Vec<NodeId> = (0..space.len())
+        .map(|i| dummy(cx, p, k_stems.get(i).copied().unwrap_or("k")).0)
+        .collect();
     let mut symbol_terms = Vec::new();
     for (index, c) in p.linear.clone() {
         if cx.is_zero(c) || index == p.unit(time, 1) || index == p.unit(time, 2) {
@@ -353,8 +377,17 @@ pub(super) fn fourier_evolution(
     let symbol = cx.simplify(symbol);
     let zero_index = vec![0; n];
     let displacement = conditions.find(cx.graph, time, &zero_index, None)?;
-    let velocity = if order == 2 { conditions.find(cx.graph, time, &p.unit(time, 1), None) } else { None };
-    if conditions.0.len() != 1 + usize::from(velocity.is_some()) || !cx.graph.number_of(displacement.point).is_some_and(Number::is_zero) {
+    let velocity = if order == 2 {
+        conditions.find(cx.graph, time, &p.unit(time, 1), None)
+    } else {
+        None
+    };
+    if conditions.0.len() != 1 + usize::from(velocity.is_some())
+        || !cx
+            .graph
+            .number_of(displacement.point)
+            .is_some_and(Number::is_zero)
+    {
         return None;
     }
     if velocity.is_some_and(|v| !cx.graph.number_of(v.point).is_some_and(Number::is_zero)) {
@@ -365,54 +398,63 @@ pub(super) fn fourier_evolution(
     // The multipliers of û₀ and û₁.
     let multipliers = |cx: &mut Cx<'_>, t: NodeId| -> Option<(NodeId, Option<NodeId>)> {
         Some(if order == 1 {
-        let ratio = {
-            let q = super::util::div(cx, symbol, a1);
-            neg(cx.graph, q)
-        };
-        let e = mul(cx.graph, &[ratio, t]);
-        let m0 = exp(cx, e)?;
-        (cx.simplify(m0), None)
-    } else {
-        let half = cx.graph.num(Number::fraction(1, 2)?);
-        let alpha = {
-            let q = super::util::div(cx, a1, a2);
-            let h = mul(cx.graph, &[half, q]);
-            cx.simplify(h)
-        };
-        let beta2 = {
-            let a_sq = powi(cx.graph, alpha, 2);
-            let q = super::util::div(cx, symbol, a2);
-            let nq = neg(cx.graph, q);
-            add(cx.graph, &[a_sq, nq])
-        };
-        let beta2 = cx.simplify(beta2);
-        let beta = super::util::sqrt(cx, beta2)?;
-        let bt = mul(cx.graph, &[beta, t]);
-        let (ch, sh) = (super::util::call(cx, "cosh", &[bt])?, super::util::call(cx, "sinh", &[bt])?);
-        let damp = {
-            let m = mul(cx.graph, &[alpha, t]);
-            let nm = neg(cx.graph, m);
-            exp(cx, nm)?
-        };
-        let ratio = super::util::div(cx, alpha, beta);
-        let lead = {
-            let rs = mul(cx.graph, &[ratio, sh]);
-            add(cx.graph, &[ch, rs])
-        };
-        let m0 = mul(cx.graph, &[damp, lead]);
-        let m1 = {
-            let q = super::util::div(cx, sh, beta);
-            mul(cx.graph, &[damp, q])
-        };
-        (cx.simplify(m0), Some(cx.simplify(m1)))
+            let ratio = {
+                let q = super::util::div(cx, symbol, a1);
+                neg(cx.graph, q)
+            };
+            let e = mul(cx.graph, &[ratio, t]);
+            let m0 = exp(cx, e)?;
+            (cx.simplify(m0), None)
+        } else {
+            let half = cx.graph.num(Number::fraction(1, 2)?);
+            let alpha = {
+                let q = super::util::div(cx, a1, a2);
+                let h = mul(cx.graph, &[half, q]);
+                cx.simplify(h)
+            };
+            let beta2 = {
+                let a_sq = powi(cx.graph, alpha, 2);
+                let q = super::util::div(cx, symbol, a2);
+                let nq = neg(cx.graph, q);
+                add(cx.graph, &[a_sq, nq])
+            };
+            let beta2 = cx.simplify(beta2);
+            let beta = super::util::sqrt(cx, beta2)?;
+            let bt = mul(cx.graph, &[beta, t]);
+            let (ch, sh) = (
+                super::util::call(cx, "cosh", &[bt])?,
+                super::util::call(cx, "sinh", &[bt])?,
+            );
+            let damp = {
+                let m = mul(cx.graph, &[alpha, t]);
+                let nm = neg(cx.graph, m);
+                exp(cx, nm)?
+            };
+            let ratio = super::util::div(cx, alpha, beta);
+            let lead = {
+                let rs = mul(cx.graph, &[ratio, sh]);
+                add(cx.graph, &[ch, rs])
+            };
+            let m0 = mul(cx.graph, &[damp, lead]);
+            let m1 = {
+                let q = super::util::div(cx, sh, beta);
+                mul(cx.graph, &[damp, q])
+            };
+            (cx.simplify(m0), Some(cx.simplify(m1)))
         })
     };
     let (m0, m1) = multipliers(cx, t)?;
-    let (defint, infinity, pi) = (cx.graph.ops().lookup("defint")?, cx.graph.ops().lookup("oo")?, cx.graph.ops().lookup("pi")?);
+    let (defint, infinity, pi) = (
+        cx.graph.ops().lookup("defint")?,
+        cx.graph.ops().lookup("oo")?,
+        cx.graph.ops().lookup("pi")?,
+    );
     let oo = cx.graph.node(infinity, &[]);
     let minus_oo = neg(cx.graph, oo);
     let s_stems = ["s", "ss", "sss"];
-    let ss: Vec<NodeId> = (0..space.len()).map(|i| dummy(cx, p, s_stems.get(i).copied().unwrap_or("s")).0).collect();
+    let ss: Vec<NodeId> = (0..space.len())
+        .map(|i| dummy(cx, p, s_stems.get(i).copied().unwrap_or("s")).0)
+        .collect();
     let mut parts = Vec::new();
     // The transform of a datum in closed form, by the table of the
     // transform module (`None` when it stays inert).
@@ -428,7 +470,10 @@ pub(super) fn fourier_evolution(
         Some(f)
     };
     let mut spectrum = Vec::new();
-    for (data, multiplier) in [(Some(displacement.value), Some(m0)), (velocity.map(|v| v.value), m1)] {
+    for (data, multiplier) in [
+        (Some(displacement.value), Some(m0)),
+        (velocity.map(|v| v.value), m1),
+    ] {
         let (Some(value), Some(multiplier)) = (data, multiplier) else {
             continue;
         };
@@ -471,7 +516,11 @@ pub(super) fn fourier_evolution(
             let transformed = transform(cx, f_tau)?;
             let elapsed = sub(cx.graph, t, tau);
             let (g0, g1) = multipliers(cx, elapsed)?;
-            let green = if order == 1 { super::util::div(cx, g0, a1) } else { super::util::div(cx, g1?, a2) };
+            let green = if order == 1 {
+                super::util::div(cx, g0, a1)
+            } else {
+                super::util::div(cx, g1?, a2)
+            };
             let body = mul(cx.graph, &[green, transformed]);
             let zero = cx.graph.int(0);
             let integral = cx.graph.node(defint, &[body, tau, zero, t]);

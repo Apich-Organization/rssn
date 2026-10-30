@@ -26,8 +26,6 @@
 mod ext;
 mod numeric;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -41,6 +39,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
@@ -52,15 +52,35 @@ use super::logic::logic;
 /// The optimisation rule set.
 #[must_use]
 pub fn optimize() -> RuleSet {
-    RuleSet::new("optimize", install).needs(linalg()).needs(logic())
+    RuleSet::new("optimize", install)
+        .needs(linalg())
+        .needs(logic())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+    let heavy = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     let op = i.op(heavy("find_extrema", 2))?;
-    i.kernel("optimize/find_extrema", Tier::Reduce, Extrema { op, constrained: false });
+    i.kernel(
+        "optimize/find_extrema",
+        Tier::Reduce,
+        Extrema {
+            op,
+            constrained: false,
+        },
+    );
     let op = i.op(heavy("find_constrained_extrema", 3))?;
-    i.kernel("optimize/find_constrained_extrema", Tier::Reduce, Extrema { op, constrained: true });
+    i.kernel(
+        "optimize/find_constrained_extrema",
+        Tier::Reduce,
+        Extrema {
+            op,
+            constrained: true,
+        },
+    );
     ext::install(i)?;
     numeric::install(i)?;
     Ok(())
@@ -82,7 +102,11 @@ impl Kernel for Extrema {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        let result = if self.constrained { constrained(cx, &args) } else { unconstrained(cx, &args) };
+        let result = if self.constrained {
+            constrained(cx, &args)
+        } else {
+            unconstrained(cx, &args)
+        };
         result.map_or(Outcome::Pass, Outcome::Equal)
     }
 }
@@ -92,7 +116,11 @@ fn list_items(
     node: NodeId,
 ) -> Option<Vec<NodeId>> {
     let node = best(graph, node)?;
-    Some(if graph.op(node) == core::LIST { graph.children(node).to_vec() } else { vec![node] })
+    Some(if graph.op(node) == core::LIST {
+        graph.children(node).to_vec()
+    } else {
+        vec![node]
+    })
 }
 
 /// The solutions of `equations = 0` for `unknowns`, each a tuple in the
@@ -104,7 +132,10 @@ fn solve_system(
 ) -> Option<Vec<Vec<NodeId>>> {
     let solve = cx.graph.ops().lookup("solve")?;
     let zero = cx.graph.int(0);
-    let eqs: Vec<NodeId> = equations.iter().map(|&e| cx.graph.node(core::EQ, &[e, zero])).collect();
+    let eqs: Vec<NodeId> = equations
+        .iter()
+        .map(|&e| cx.graph.node(core::EQ, &[e, zero]))
+        .collect();
     let eqs = cx.graph.node(core::LIST, &eqs);
     let vars = cx.graph.node(core::LIST, unknowns);
     let request = cx.graph.node(solve, &[eqs, vars]);
@@ -114,7 +145,11 @@ fn solve_system(
     }
     let mut out = Vec::new();
     for tuple in cx.graph.children(solved).to_vec() {
-        let values = if cx.graph.op(tuple) == core::LIST { cx.graph.children(tuple).to_vec() } else { vec![tuple] };
+        let values = if cx.graph.op(tuple) == core::LIST {
+            cx.graph.children(tuple).to_vec()
+        } else {
+            vec![tuple]
+        };
         if values.len() != unknowns.len() {
             return None;
         }
@@ -129,7 +164,9 @@ fn substitute_point(
     vars: &[NodeId],
     point: &[NodeId],
 ) -> NodeId {
-    vars.iter().zip(point).fold(term, |acc, (&v, &p)| graph.substitute(acc, v, p))
+    vars.iter()
+        .zip(point)
+        .fold(term, |acc, (&v, &p)| graph.substitute(acc, v, p))
 }
 
 /// The value of a closed numeric term (parameters get generic values).
@@ -180,7 +217,8 @@ fn determinant(mut m: Vec<Vec<f64>>) -> f64 {
         det *= m[c][c];
         for r in c + 1..n {
             let f = m[r][c] / m[c][c];
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for k in c..n {
                 m[r][k] -= f * m[c][k];
             }
@@ -234,7 +272,11 @@ fn unconstrained(
             let last = *minors.last()?;
             if minors.iter().all(|&m| m > 0.0 && !tiny(m)) {
                 "local_min"
-            } else if minors.iter().enumerate().all(|(k, &m)| !tiny(m) && (m < 0.0) == (k % 2 == 0)) {
+            } else if minors
+                .iter()
+                .enumerate()
+                .all(|(k, &m)| !tiny(m) && (m < 0.0) == (k % 2 == 0))
+            {
                 "local_max"
             } else if !tiny(last) {
                 "saddle"
@@ -293,9 +335,11 @@ fn constrained(
     let vars = list_items(cx.graph, vars)?;
     let constraints: Vec<NodeId> = list_items(cx.graph, constraints)?
         .into_iter()
-        .map(|g| match *cx.graph.children(g) {
-            | [lhs, rhs] if cx.graph.op(g) == core::EQ => sub(cx.graph, lhs, rhs),
-            | _ => g,
+        .map(|g| {
+            match *cx.graph.children(g) {
+                | [lhs, rhs] if cx.graph.op(g) == core::EQ => sub(cx.graph, lhs, rhs),
+                | _ => g,
+            }
         })
         .collect();
     if vars.iter().any(|&v| cx.graph.symbol_of(v).is_none()) || constraints.is_empty() {
@@ -303,7 +347,10 @@ fn constrained(
     }
     let multipliers: Vec<NodeId> = (0..constraints.len())
         .map(|k| {
-            let s = cx.graph.interner_mut().fresh_symbol(&format!("lambda{}", k + 1));
+            let s = cx
+                .graph
+                .interner_mut()
+                .fresh_symbol(&format!("lambda{}", k + 1));
             cx.graph.symbol_node(s)
         })
         .collect();
@@ -374,7 +421,11 @@ fn bordered_kind(
     if det.abs() < 1e-12 {
         return None;
     }
-    Some(if det > 0.0 { "local_max" } else { "local_min" })
+    Some(if det > 0.0 {
+        "local_max"
+    } else {
+        "local_min"
+    })
 }
 
 #[cfg(test)]
@@ -388,20 +439,42 @@ mod tests {
 
     #[test]
     fn critical_points() {
-        assert_eq!(run("find_extrema(x^2 - 4*x + 1, list(x))"), "list(list(list(2), local_min, -3))");
-        assert_eq!(run("find_extrema(x^3, list(x))"), "list(list(list(0), saddle, 0))");
-        assert_eq!(run("find_extrema(-x^4, list(x))"), "list(list(list(0), local_max, 0))");
-        assert_eq!(run("find_extrema(x^2 + y^2 - 2*x, list(x, y))"), "list(list(list(1, 0), local_min, -1))");
-        assert_eq!(run("find_extrema(x^2 - y^2, list(x, y))"), "list(list(list(0, 0), saddle, 0))");
+        assert_eq!(
+            run("find_extrema(x^2 - 4*x + 1, list(x))"),
+            "list(list(list(2), local_min, -3))"
+        );
+        assert_eq!(
+            run("find_extrema(x^3, list(x))"),
+            "list(list(list(0), saddle, 0))"
+        );
+        assert_eq!(
+            run("find_extrema(-x^4, list(x))"),
+            "list(list(list(0), local_max, 0))"
+        );
+        assert_eq!(
+            run("find_extrema(x^2 + y^2 - 2*x, list(x, y))"),
+            "list(list(list(1, 0), local_min, -1))"
+        );
+        assert_eq!(
+            run("find_extrema(x^2 - y^2, list(x, y))"),
+            "list(list(list(0, 0), saddle, 0))"
+        );
         let two = run("find_extrema(x^3 - 3*x, list(x))");
-        assert!(two.contains("list(list(1), local_min, -2)") && two.contains("list(list(-1), local_max, 2)"), "{two}");
+        assert!(
+            two.contains("list(list(1), local_min, -2)")
+                && two.contains("list(list(-1), local_max, 2)"),
+            "{two}"
+        );
     }
 
     #[test]
     fn lagrange_multipliers() {
         // Extremes of x + y on the unit circle.
         let text = run("find_constrained_extrema(x + y, list(x^2 + y^2 - 1), list(x, y))");
-        assert!(text.contains("local_max, 2^(1/2)") && text.contains("local_min, -2^(1/2)"), "{text}");
+        assert!(
+            text.contains("local_max, 2^(1/2)") && text.contains("local_min, -2^(1/2)"),
+            "{text}"
+        );
         // The closest point of the line x + y = 2 to the origin.
         let text = run("find_constrained_extrema(x^2 + y^2, list(x + y = 2), list(x, y))");
         assert_eq!(text, "list(list(list(1, 1), list(2), local_min, 2))");

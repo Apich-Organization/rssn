@@ -71,7 +71,9 @@ use crate::rules::poly::best;
 /// The units rule set.
 #[must_use]
 pub fn units() -> RuleSet {
-    RuleSet::new("units", install).needs(arith()).needs(elementary())
+    RuleSet::new("units", install)
+        .needs(arith())
+        .needs(elementary())
 }
 
 type Exp = Ratio<i32>;
@@ -80,7 +82,15 @@ type Exp = Ratio<i32>;
 type UnitMap = BTreeMap<String, Exp>;
 
 /// Names of the seven base dimensions, in the order of [`Dim`].
-const DIMENSIONS: [&str; 7] = ["Length", "Mass", "Time", "Current", "Temperature", "Amount", "Luminosity"];
+const DIMENSIONS: [&str; 7] = [
+    "Length",
+    "Mass",
+    "Time",
+    "Current",
+    "Temperature",
+    "Amount",
+    "Luminosity",
+];
 
 /// Exponents of the seven base dimensions.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -119,7 +129,10 @@ struct Scale {
 
 impl Scale {
     fn one() -> Self {
-        Self { rat: BigRational::one(), pi: 0 }
+        Self {
+            rat: BigRational::one(),
+            pi: 0,
+        }
     }
 
     fn is_one(&self) -> bool {
@@ -130,14 +143,20 @@ impl Scale {
         &self,
         other: &Self,
     ) -> Self {
-        Self { rat: &self.rat * &other.rat, pi: self.pi + other.pi }
+        Self {
+            rat: &self.rat * &other.rat,
+            pi: self.pi + other.pi,
+        }
     }
 
     fn powi(
         &self,
         k: i32,
     ) -> Self {
-        Self { rat: self.rat.pow(k), pi: self.pi * k }
+        Self {
+            rat: self.rat.pow(k),
+            pi: self.pi * k,
+        }
     }
 
     fn over(
@@ -169,9 +188,13 @@ fn dec(text: &str) -> BigRational {
     if let Some((n, d)) = text.split_once('/') {
         return dec(n) / dec(d);
     }
-    let (mantissa, exponent) = text.split_once('e').map_or((text, 0_i32), |(m, e)| (m, e.parse().unwrap_or(0)));
+    let (mantissa, exponent) = text
+        .split_once('e')
+        .map_or((text, 0_i32), |(m, e)| (m, e.parse().unwrap_or(0)));
     let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
-    let digits: BigInt = format!("{whole}{fraction}").parse().unwrap_or_else(|_| BigInt::zero());
+    let digits: BigInt = format!("{whole}{fraction}")
+        .parse()
+        .unwrap_or_else(|_| BigInt::zero());
     let places = i32::try_from(fraction.len()).unwrap_or(0) - exponent;
     let ten = BigInt::from(10);
     if places >= 0 {
@@ -186,7 +209,18 @@ fn table() -> &'static HashMap<&'static str, Def> {
     TABLE.get_or_init(|| {
         let mut t = HashMap::new();
         let mut add = |name: &'static str, dim: [i32; 7], scale: &str, prefixable: bool| {
-            t.insert(name, Def { dim: Dim::of(dim), scale: Scale { rat: dec(scale), pi: 0 }, offset: None, prefixable });
+            t.insert(
+                name,
+                Def {
+                    dim: Dim::of(dim),
+                    scale: Scale {
+                        rat: dec(scale),
+                        pi: 0,
+                    },
+                    offset: None,
+                    prefixable,
+                },
+            );
         };
         // (L, M, T, I, Theta, N, J)
         add("m", [1, 0, 0, 0, 0, 0, 0], "1", true);
@@ -248,7 +282,15 @@ fn table() -> &'static HashMap<&'static str, Def> {
         let angle = |name: &'static str, t: &mut HashMap<&'static str, Def>, denominator: &str| {
             t.insert(
                 name,
-                Def { dim: Dim::zero(), scale: Scale { rat: dec(&format!("1/{denominator}")), pi: 1 }, offset: None, prefixable: false },
+                Def {
+                    dim: Dim::zero(),
+                    scale: Scale {
+                        rat: dec(&format!("1/{denominator}")),
+                        pi: 1,
+                    },
+                    offset: None,
+                    prefixable: false,
+                },
             );
         };
         angle("deg", &mut t, "180");
@@ -256,13 +298,21 @@ fn table() -> &'static HashMap<&'static str, Def> {
         angle("arcsec", &mut t, "648000");
         t.insert(
             "degC",
-            Def { dim: Dim::of([0, 0, 0, 0, 1, 0, 0]), scale: Scale::one(), offset: Some(dec("273.15")), prefixable: false },
+            Def {
+                dim: Dim::of([0, 0, 0, 0, 1, 0, 0]),
+                scale: Scale::one(),
+                offset: Some(dec("273.15")),
+                prefixable: false,
+            },
         );
         t.insert(
             "degF",
             Def {
                 dim: Dim::of([0, 0, 0, 0, 1, 0, 0]),
-                scale: Scale { rat: dec("5/9"), pi: 0 },
+                scale: Scale {
+                    rat: dec("5/9"),
+                    pi: 0,
+                },
                 offset: Some(dec("45967/180")),
                 prefixable: false,
             },
@@ -322,20 +372,34 @@ const ALIASES: [(&str, &[(&str, i32)]); 19] = [
 
 fn resolve_symbol(name: &str) -> Option<Resolved> {
     if let Some((_, parts)) = ALIASES.iter().find(|(alias, _)| *alias == name) {
-        let map: UnitMap = parts.iter().map(|&(n, e)| (n.to_owned(), Exp::from_integer(e))).collect();
+        let map: UnitMap = parts
+            .iter()
+            .map(|&(n, e)| (n.to_owned(), Exp::from_integer(e)))
+            .collect();
         return resolve_map(&map);
     }
     let table = table();
     if let Some(d) = table.get(name) {
-        return Some(Resolved { dim: d.dim.clone(), scale: d.scale.clone(), offset: d.offset.clone() });
+        return Some(Resolved {
+            dim: d.dim.clone(),
+            scale: d.scale.clone(),
+            offset: d.offset.clone(),
+        });
     }
     for (prefix, power) in PREFIXES {
         let Some(rest) = name.strip_prefix(prefix) else {
             continue;
         };
         if let Some(d) = table.get(rest).filter(|d| d.prefixable) {
-            let factor = Scale { rat: BigRational::from_integer(BigInt::from(10)).pow(power), pi: 0 };
-            return Some(Resolved { dim: d.dim.clone(), scale: d.scale.times(&factor), offset: None });
+            let factor = Scale {
+                rat: BigRational::from_integer(BigInt::from(10)).pow(power),
+                pi: 0,
+            };
+            return Some(Resolved {
+                dim: d.dim.clone(),
+                scale: d.scale.times(&factor),
+                offset: None,
+            });
         }
     }
     None
@@ -435,7 +499,12 @@ impl Units<'_, '_> {
         if scale.pi == 0 {
             return rat;
         }
-        let pi = self.cx.graph.ops().lookup("pi").map(|p| self.cx.graph.node(p, &[]));
+        let pi = self
+            .cx
+            .graph
+            .ops()
+            .lookup("pi")
+            .map(|p| self.cx.graph.node(p, &[]));
         match pi {
             | Some(pi) => {
                 let e = self.cx.graph.int(i64::from(scale.pi));
@@ -473,7 +542,10 @@ impl Units<'_, '_> {
             factors.push(if e.is_one() {
                 symbol
             } else {
-                let exponent = self.cx.graph.num(Number::fraction(i64::from(*e.numer()), i64::from(*e.denom())).unwrap_or_else(|| Number::from(1)));
+                let exponent = self.cx.graph.num(
+                    Number::fraction(i64::from(*e.numer()), i64::from(*e.denom()))
+                        .unwrap_or_else(|| Number::from(1)),
+                );
                 self.cx.graph.node(core::POW, &[symbol, exponent])
             });
         }
@@ -525,7 +597,10 @@ impl Units<'_, '_> {
             let sum = self.cx.simplify(sum);
             let mut kelvin = UnitMap::new();
             kelvin.insert("K".to_owned(), Exp::one());
-            return Some(Val::Quant { value: sum, unit: kelvin });
+            return Some(Val::Quant {
+                value: sum,
+                unit: kelvin,
+            });
         }
         Some(Val::Quant { value, unit })
     }
@@ -578,12 +653,28 @@ impl Units<'_, '_> {
         }
         match op {
             | core::ADD => {
-                let vals: Vec<Val> = children.iter().map(|&c| self.eval(c, depth + 1).and_then(|v| self.demote(v))).collect::<Option<_>>()?;
+                let vals: Vec<Val> = children
+                    .iter()
+                    .map(|&c| self.eval(c, depth + 1).and_then(|v| self.demote(v)))
+                    .collect::<Option<_>>()?;
                 if vals.iter().all(|v| matches!(v, Val::Scalar(_))) {
-                    let nodes: Vec<NodeId> = vals.iter().map(|v| if let Val::Scalar(n) = v { *n } else { term }).collect();
+                    let nodes: Vec<NodeId> = vals
+                        .iter()
+                        .map(|v| {
+                            if let Val::Scalar(n) = v {
+                                *n
+                            } else {
+                                term
+                            }
+                        })
+                        .collect();
                     return Some(Val::Scalar(self.cx.graph.node(core::ADD, &nodes)));
                 }
-                let Some(Val::Quant { unit: first_unit, .. }) = vals.iter().find(|v| matches!(v, Val::Quant { .. })).cloned() else {
+                let Some(Val::Quant { unit: first_unit, .. }) = vals
+                    .iter()
+                    .find(|v| matches!(v, Val::Quant { .. }))
+                    .cloned()
+                else {
                     return None;
                 };
                 let first = resolve_map(&first_unit)?;
@@ -599,7 +690,10 @@ impl Units<'_, '_> {
                     terms.push(self.scaled(value, &r.scale.over(&first.scale)));
                 }
                 let sum = self.cx.graph.node(core::ADD, &terms);
-                Some(Val::Quant { value: self.cx.simplify(sum), unit: first_unit })
+                Some(Val::Quant {
+                    value: self.cx.simplify(sum),
+                    unit: first_unit,
+                })
             },
             | core::MUL => {
                 let mut values = Vec::new();
@@ -630,12 +724,17 @@ impl Units<'_, '_> {
                 let (b, e) = (self.eval(base, depth + 1)?, self.eval(exponent, depth + 1)?);
                 let e = self.demote(e)?;
                 match (b, e) {
-                    | (Val::Scalar(b), Val::Scalar(e)) => Some(Val::Scalar(self.cx.graph.node(core::POW, &[b, e]))),
+                    | (Val::Scalar(b), Val::Scalar(e)) => {
+                        Some(Val::Scalar(self.cx.graph.node(core::POW, &[b, e])))
+                    },
                     | (Val::Quant { value, unit }, Val::Scalar(e)) => {
                         let r = self.rational(e)?;
                         let k = Exp::new(r.numer().to_i32()?, r.denom().to_i32()?);
                         let value = self.cx.graph.node(core::POW, &[value, e]);
-                        self.collapse(value, clean(unit.into_iter().map(|(n, x)| (n, x * k)).collect()))
+                        self.collapse(
+                            value,
+                            clean(unit.into_iter().map(|(n, x)| (n, x * k)).collect()),
+                        )
                     },
                     | _ => None,
                 }
@@ -731,7 +830,10 @@ impl Units<'_, '_> {
             factors.push(if e.is_one() {
                 symbol
             } else {
-                let exponent = self.cx.graph.num(Number::fraction(i64::from(*e.numer()), i64::from(*e.denom())).unwrap_or_else(|| Number::from(1)));
+                let exponent = self.cx.graph.num(
+                    Number::fraction(i64::from(*e.numer()), i64::from(*e.denom()))
+                        .unwrap_or_else(|| Number::from(1)),
+                );
                 self.cx.graph.node(core::POW, &[symbol, exponent])
             });
         }
@@ -800,7 +902,10 @@ impl Kernel for Request1 {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        let mut units = Units { cx, quantity: self.quantity };
+        let mut units = Units {
+            cx,
+            quantity: self.quantity,
+        };
         let result = match (self.request, args.as_slice()) {
             | (Request::Unify, &[e]) => units.eval(e, 0).map(|v| units.finish(&v)),
             | (Request::Simplify, &[e]) => units.eval(e, 0).and_then(|v| units.coherent(&v)),
@@ -820,8 +925,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("dimension", 1, Request::Dimension),
         ("simplify_units", 1, Request::Simplify),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("units/{name}"), Tier::Reduce, Request1 { op, request, quantity });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("units/{name}"),
+            Tier::Reduce,
+            Request1 {
+                op,
+                request,
+                quantity,
+            },
+        );
     }
     Ok(())
 }
@@ -849,11 +964,26 @@ mod tests {
 
     #[test]
     fn sums_convert_to_the_first_unit() {
-        assert_eq!(run("unify_expression(quantity(5, m) + quantity(3, m))"), "quantity(8, m)");
-        assert_eq!(run("unify_expression(quantity(1, km) + quantity(500, m))"), "quantity(3/2, km)");
-        assert_eq!(run("unify_expression(quantity(500, m) + quantity(1, km))"), "quantity(1500, m)");
-        assert_eq!(run("unify_expression(quantity(2, h) - quantity(30, min))"), "quantity(3/2, h)");
-        assert_eq!(run("unify_expression(quantity(1, ft) + quantity(12, in))"), "quantity(2, ft)");
+        assert_eq!(
+            run("unify_expression(quantity(5, m) + quantity(3, m))"),
+            "quantity(8, m)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(1, km) + quantity(500, m))"),
+            "quantity(3/2, km)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(500, m) + quantity(1, km))"),
+            "quantity(1500, m)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(2, h) - quantity(30, min))"),
+            "quantity(3/2, h)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(1, ft) + quantity(12, in))"),
+            "quantity(2, ft)"
+        );
     }
 
     #[test]
@@ -874,25 +1004,67 @@ mod tests {
 
     #[test]
     fn products_quotients_and_powers() {
-        assert_eq!(run("unify_expression(quantity(10, m) / quantity(2, s))"), "quantity(5, m/s)");
-        assert_eq!(run("unify_expression(quantity(3, m) * quantity(4, m))"), "quantity(12, m^2)");
-        assert_eq!(run("unify_expression(quantity(3, m)^2)"), "quantity(9, m^2)");
-        assert_eq!(run("unify_expression(quantity(9, m^2)^(1/2))"), "quantity(3, m)");
-        assert_eq!(run("unify_expression(2 * quantity(3, kg))"), "quantity(6, kg)");
-        assert_eq!(run("unify_expression(quantity(6, kg) / 3)"), "quantity(2, kg)");
-        assert_eq!(run("unify_expression(1 / quantity(4, s))"), "quantity(1/4, 1/s)");
-        assert_eq!(run("unify_expression(x * quantity(2, m))"), "quantity(2*x, m)");
+        assert_eq!(
+            run("unify_expression(quantity(10, m) / quantity(2, s))"),
+            "quantity(5, m/s)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(3, m) * quantity(4, m))"),
+            "quantity(12, m^2)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(3, m)^2)"),
+            "quantity(9, m^2)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(9, m^2)^(1/2))"),
+            "quantity(3, m)"
+        );
+        assert_eq!(
+            run("unify_expression(2 * quantity(3, kg))"),
+            "quantity(6, kg)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(6, kg) / 3)"),
+            "quantity(2, kg)"
+        );
+        assert_eq!(
+            run("unify_expression(1 / quantity(4, s))"),
+            "quantity(1/4, 1/s)"
+        );
+        assert_eq!(
+            run("unify_expression(x * quantity(2, m))"),
+            "quantity(2*x, m)"
+        );
         // force = mass * acceleration
-        assert_eq!(run("unify_expression(quantity(2, kg) * quantity(3, m/s^2))"), "quantity(6, kg*m/s^2)");
+        assert_eq!(
+            run("unify_expression(quantity(2, kg) * quantity(3, m/s^2))"),
+            "quantity(6, kg*m/s^2)"
+        );
     }
 
     #[test]
     fn dimensionless_results_become_numbers() {
-        assert_eq!(run("unify_expression(quantity(1, m) / quantity(1, cm))"), "100");
-        assert_eq!(run("unify_expression(quantity(6, m) / quantity(2, m))"), "3");
-        assert_eq!(run("unify_expression(quantity(3, s) * quantity(2, Hz))"), "6");
-        assert_eq!(run("unify_expression(sin(quantity(3, m) / quantity(3, m)))"), "sin(1)");
-        assert_eq!(run("unify_expression(quantity(5, m) + quantity(3, m) - quantity(8, m))"), "quantity(0, m)");
+        assert_eq!(
+            run("unify_expression(quantity(1, m) / quantity(1, cm))"),
+            "100"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(6, m) / quantity(2, m))"),
+            "3"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(3, s) * quantity(2, Hz))"),
+            "6"
+        );
+        assert_eq!(
+            run("unify_expression(sin(quantity(3, m) / quantity(3, m)))"),
+            "sin(1)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(5, m) + quantity(3, m) - quantity(8, m))"),
+            "quantity(0, m)"
+        );
     }
 
     #[test]
@@ -902,26 +1074,56 @@ mod tests {
         assert_eq!(run("convert(quantity(1, h), s)"), "quantity(3600, s)");
         assert_eq!(run("convert(quantity(36, km/h), m/s)"), "quantity(10, m/s)");
         assert_eq!(run("convert(quantity(1, mi), ft)"), "quantity(5280, ft)");
-        assert_eq!(run("convert(quantity(1, lb), g)"), "quantity(45359237/100000, g)");
-        assert_eq!(run("convert(quantity(1, N), kg*m/s^2)"), "quantity(1, kg*m/s^2)");
+        assert_eq!(
+            run("convert(quantity(1, lb), g)"),
+            "quantity(45359237/100000, g)"
+        );
+        assert_eq!(
+            run("convert(quantity(1, N), kg*m/s^2)"),
+            "quantity(1, kg*m/s^2)"
+        );
         assert_eq!(run("convert(quantity(1, kWh), J)"), "quantity(3600000, J)");
         assert_eq!(run("convert(quantity(1, L), cm^3)"), "quantity(1000, cm^3)");
         assert_eq!(run("convert(quantity(180, deg), rad)"), "quantity(pi, rad)");
         assert_eq!(run("convert(quantity(x, mm), m)"), "quantity(1/1000*x, m)");
-        assert_eq!(run("convert(quantity(2, GHz), Hz)"), "quantity(2000000000, Hz)");
-        assert_eq!(run("convert(quantity(1, ug), kg)"), "quantity(1/1000000000, kg)");
-        assert_eq!(run("convert(quantity(1, kilogram), gram)"), "quantity(1000, gram)");
+        assert_eq!(
+            run("convert(quantity(2, GHz), Hz)"),
+            "quantity(2000000000, Hz)"
+        );
+        assert_eq!(
+            run("convert(quantity(1, ug), kg)"),
+            "quantity(1/1000000000, kg)"
+        );
+        assert_eq!(
+            run("convert(quantity(1, kilogram), gram)"),
+            "quantity(1000, gram)"
+        );
         // expressions are evaluated first
-        assert_eq!(run("convert(quantity(1, km) + quantity(500, m), m)"), "quantity(1500, m)");
+        assert_eq!(
+            run("convert(quantity(1, km) + quantity(500, m), m)"),
+            "quantity(1500, m)"
+        );
     }
 
     #[test]
     fn temperatures_are_affine() {
         assert_eq!(run("convert(quantity(0, degC), K)"), "quantity(5463/20, K)");
-        assert_eq!(run("convert(quantity(100, degC), degF)"), "quantity(212, degF)");
-        assert_eq!(run("convert(quantity(32, degF), degC)"), "quantity(0, degC)");
-        assert_eq!(run("convert(quantity(20, degC), degC)"), "quantity(20, degC)");
-        assert_eq!(run("convert(quantity(300, K), degC)"), "quantity(537/20, degC)");
+        assert_eq!(
+            run("convert(quantity(100, degC), degF)"),
+            "quantity(212, degF)"
+        );
+        assert_eq!(
+            run("convert(quantity(32, degF), degC)"),
+            "quantity(0, degC)"
+        );
+        assert_eq!(
+            run("convert(quantity(20, degC), degC)"),
+            "quantity(20, degC)"
+        );
+        assert_eq!(
+            run("convert(quantity(300, K), degC)"),
+            "quantity(537/20, degC)"
+        );
         // they cannot be combined multiplicatively
         assert!(!attempt("unify_expression(quantity(1, degC*m))").1);
     }
@@ -936,35 +1138,92 @@ mod tests {
         assert_eq!(run("dimension(quantity(5, mol/L))"), "Amount/Length^3");
         assert_eq!(run("dimension(quantity(5, rad))"), "1");
         assert_eq!(run("dimension(7)"), "1");
-        assert_eq!(run("dimension(quantity(1, kg) * quantity(1, m) / quantity(1, s)^2)"), "Length*Mass/Time^2");
+        assert_eq!(
+            run("dimension(quantity(1, kg) * quantity(1, m) / quantity(1, s)^2)"),
+            "Length*Mass/Time^2"
+        );
         // equal dimensions: N m and J
-        assert_eq!(run("dimension(quantity(1, N*m))"), run("dimension(quantity(1, J))"));
+        assert_eq!(
+            run("dimension(quantity(1, N*m))"),
+            run("dimension(quantity(1, J))")
+        );
     }
 
     #[test]
     fn simplification_to_si() {
-        assert_eq!(run("simplify_units(quantity(36, km/h))"), "quantity(10, m/s)");
-        assert_eq!(run("simplify_units(quantity(2, kg) * quantity(3, m/s^2))"), "quantity(6, N)");
-        assert_eq!(run("simplify_units(quantity(1, N) * quantity(2, m))"), "quantity(2, J)");
-        assert_eq!(run("simplify_units(quantity(1, J) / quantity(2, s))"), "quantity(1/2, W)");
-        assert_eq!(run("simplify_units(quantity(1, V) / quantity(2, A))"), "quantity(1/2, ohm)");
-        assert_eq!(run("simplify_units(quantity(1, cm) + quantity(1, m))"), "quantity(101/100, m)");
-        assert_eq!(run("simplify_units(quantity(90, deg) + quantity(1, m) / quantity(1, m))"), "1/2*pi + 1");
-        assert_eq!(run("simplify_units(quantity(1, kW) * quantity(1, h))"), "quantity(3600000, J)");
-        assert_eq!(run("simplify_units(quantity(4, s) * quantity(5, Hz))"), "20");
+        assert_eq!(
+            run("simplify_units(quantity(36, km/h))"),
+            "quantity(10, m/s)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(2, kg) * quantity(3, m/s^2))"),
+            "quantity(6, N)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(1, N) * quantity(2, m))"),
+            "quantity(2, J)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(1, J) / quantity(2, s))"),
+            "quantity(1/2, W)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(1, V) / quantity(2, A))"),
+            "quantity(1/2, ohm)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(1, cm) + quantity(1, m))"),
+            "quantity(101/100, m)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(90, deg) + quantity(1, m) / quantity(1, m))"),
+            "1/2*pi + 1"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(1, kW) * quantity(1, h))"),
+            "quantity(3600000, J)"
+        );
+        assert_eq!(
+            run("simplify_units(quantity(4, s) * quantity(5, Hz))"),
+            "20"
+        );
         assert_eq!(run("simplify_units(quantity(5, m))"), "quantity(5, m)");
-        assert_eq!(run("simplify_units(quantity(1, ft)^3)"), "quantity(55306341/1953125000, m^3)");
+        assert_eq!(
+            run("simplify_units(quantity(1, ft)^3)"),
+            "quantity(55306341/1953125000, m^3)"
+        );
     }
 
     #[test]
     fn legacy_units_are_accepted() {
-        assert_eq!(run("unify_expression(quantity(5, m) + quantity(300, cm))"), "quantity(8, m)");
-        assert_eq!(run("unify_expression(quantity(1, kg) + quantity(500, g))"), "quantity(3/2, kg)");
-        assert_eq!(run("unify_expression(quantity(60, s) + quantity(1, min))"), "quantity(120, s)");
-        assert_eq!(run("convert(quantity(2, sqm), cm^2)"), "quantity(20000, cm^2)");
-        assert_eq!(run("convert(quantity(3, mps), km/h)"), "quantity(54/5, km/h)");
-        assert_eq!(run("unify_expression(quantity(10, meter) / quantity(2, second))"), "quantity(5, meter/second)");
-        assert_eq!(run("unify_expression(quantity(5, m) * quantity(5, m))"), "quantity(25, m^2)");
+        assert_eq!(
+            run("unify_expression(quantity(5, m) + quantity(300, cm))"),
+            "quantity(8, m)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(1, kg) + quantity(500, g))"),
+            "quantity(3/2, kg)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(60, s) + quantity(1, min))"),
+            "quantity(120, s)"
+        );
+        assert_eq!(
+            run("convert(quantity(2, sqm), cm^2)"),
+            "quantity(20000, cm^2)"
+        );
+        assert_eq!(
+            run("convert(quantity(3, mps), km/h)"),
+            "quantity(54/5, km/h)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(10, meter) / quantity(2, second))"),
+            "quantity(5, meter/second)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(5, m) * quantity(5, m))"),
+            "quantity(25, m^2)"
+        );
     }
 
     #[test]
@@ -976,7 +1235,11 @@ mod tests {
         // prefixes
         for (prefix, power) in PREFIXES {
             let r = resolve_symbol(&format!("{prefix}m")).unwrap_or_else(|| panic!("{prefix}m"));
-            assert_eq!(r.scale.rat, BigRational::from_integer(BigInt::from(10)).pow(power), "{prefix}");
+            assert_eq!(
+                r.scale.rat,
+                BigRational::from_integer(BigInt::from(10)).pow(power),
+                "{prefix}"
+            );
             assert_eq!(r.dim, Dim::of([1, 0, 0, 0, 0, 0, 0]));
         }
         // kg is the base unit of mass
@@ -984,7 +1247,10 @@ mod tests {
         assert!(kg.scale.is_one());
         // derived units are consistent with their definitions
         let check = |name: &str, product: &[(&str, i32)]| {
-            let map: UnitMap = product.iter().map(|&(n, e)| (n.to_owned(), Exp::from_integer(e))).collect();
+            let map: UnitMap = product
+                .iter()
+                .map(|&(n, e)| (n.to_owned(), Exp::from_integer(e)))
+                .collect();
             let a = resolve_symbol(name).unwrap_or_else(|| panic!("{name}"));
             let b = resolve_map(&map).unwrap_or_else(|| panic!("{name}"));
             assert_eq!(a.dim, b.dim, "{name}");
@@ -1003,8 +1269,13 @@ mod tests {
         check("S", &[("ohm", -1)]);
         // hp = 550 ft lbf / s and lbf = lb g0 with g0 = 9.80665 m/s^2
         let hp = resolve_symbol("hp").unwrap_or_else(|| panic!("hp"));
-        let ft_lbf = resolve_symbol("ft").zip(resolve_symbol("lbf")).map(|(a, b)| a.scale.rat * b.scale.rat);
-        assert_eq!(Some(hp.scale.rat), ft_lbf.map(|r| r * BigRational::from_integer(BigInt::from(550))));
+        let ft_lbf = resolve_symbol("ft")
+            .zip(resolve_symbol("lbf"))
+            .map(|(a, b)| a.scale.rat * b.scale.rat);
+        assert_eq!(
+            Some(hp.scale.rat),
+            ft_lbf.map(|r| r * BigRational::from_integer(BigInt::from(550)))
+        );
         let lbf = resolve_symbol("lbf").unwrap_or_else(|| panic!("lbf"));
         assert_eq!(lbf.scale.rat, dec("0.45359237") * dec("9.80665"));
         // non-unit symbols are rejected
@@ -1015,18 +1286,40 @@ mod tests {
     #[test]
     fn unit_names_do_not_collide_with_operators() {
         let mut graph = crate::graph::Graph::new();
-        crate::graph::Engine::install(&mut graph, &crate::rules::standard()).unwrap_or_else(|e| panic!("{e}"));
-        let mut clashes: Vec<&str> = table().keys().copied().filter(|name| graph.ops().lookup(name).is_some()).collect();
-        clashes.extend(ALIASES.iter().map(|(a, _)| *a).filter(|name| graph.ops().lookup(name).is_some()));
+        crate::graph::Engine::install(&mut graph, &crate::rules::standard())
+            .unwrap_or_else(|e| panic!("{e}"));
+        let mut clashes: Vec<&str> = table()
+            .keys()
+            .copied()
+            .filter(|name| graph.ops().lookup(name).is_some())
+            .collect();
+        clashes.extend(
+            ALIASES
+                .iter()
+                .map(|(a, _)| *a)
+                .filter(|name| graph.ops().lookup(name).is_some()),
+        );
         clashes.sort_unstable();
-        assert!(clashes.is_empty(), "unit names that are also operators: {clashes:?}");
+        assert!(
+            clashes.is_empty(),
+            "unit names that are also operators: {clashes:?}"
+        );
     }
 
     #[test]
     fn numeric_values_and_symbolic_mix() {
-        assert_eq!(run("unify_expression(quantity(2.5, m) + quantity(50, cm))"), "quantity(3, m)");
-        assert_eq!(run("unify_expression(quantity(a, m) + quantity(b, m))"), "quantity(a + b, m)");
-        assert_eq!(run("unify_expression(quantity(a, km) + quantity(b, m))"), "quantity(a + 1/1000*b, km)");
+        assert_eq!(
+            run("unify_expression(quantity(2.5, m) + quantity(50, cm))"),
+            "quantity(3, m)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(a, m) + quantity(b, m))"),
+            "quantity(a + b, m)"
+        );
+        assert_eq!(
+            run("unify_expression(quantity(a, km) + quantity(b, m))"),
+            "quantity(a + 1/1000*b, km)"
+        );
         // sums of products
         assert_eq!(
             run("unify_expression(quantity(1, m) * quantity(2, m) + quantity(3, m^2))"),

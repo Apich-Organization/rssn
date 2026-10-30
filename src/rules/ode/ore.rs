@@ -39,7 +39,9 @@ impl Ore {
     /// From polynomial coefficients.
     pub(super) fn from_polynomials(p: &[Vec<Q>]) -> Option<Self> {
         let one = [Q::one()];
-        Some(Self::new(p.iter().map(|a| Rat::new(a, &one)).collect::<Option<_>>()?))
+        Some(Self::new(
+            p.iter().map(|a| Rat::new(a, &one)).collect::<Option<_>>()?,
+        ))
     }
 
     /// The order, `None` for the zero operator.
@@ -82,7 +84,9 @@ impl Ore {
         &self,
         k: &Q,
     ) -> Option<Self> {
-        Some(Self::new(self.c.iter().map(|a| a.scale(k)).collect::<Option<_>>()?))
+        Some(Self::new(
+            self.c.iter().map(|a| a.scale(k)).collect::<Option<_>>()?,
+        ))
     }
 
     /// The composition `self ∘ other`.
@@ -100,7 +104,9 @@ impl Ore {
                 let mut derivative = b.clone();
                 let mut binomial = BigInt::one();
                 for k in 0..=i {
-                    let term = a.mul(&derivative)?.scale(&Q::from_integer(binomial.clone()))?;
+                    let term = a
+                        .mul(&derivative)?
+                        .scale(&Q::from_integer(binomial.clone()))?;
                     let slot = out.get_mut(i - k + j)?;
                     *slot = slot.add(&term)?;
                     derivative = derivative.derivative()?;
@@ -153,7 +159,9 @@ impl Ore {
         }
         let lead = a.c.last()?.clone();
         let inverse = Rat::new(&[Q::one()], &[Q::one()])?.div(&lead)?;
-        Some(Self::new(a.c.iter().map(|x| x.mul(&inverse)).collect::<Option<_>>()?))
+        Some(Self::new(
+            a.c.iter().map(|x| x.mul(&inverse)).collect::<Option<_>>()?,
+        ))
     }
 
     /// Whether the operator is the zero operator.
@@ -171,7 +179,10 @@ mod tests {
     }
 
     fn op(coefficients: &[&[i64]]) -> Ore {
-        let rows: Vec<Vec<Q>> = coefficients.iter().map(|c| c.iter().map(|&v| q(v)).collect()).collect();
+        let rows: Vec<Vec<Q>> = coefficients
+            .iter()
+            .map(|c| c.iter().map(|&v| q(v)).collect())
+            .collect();
         Ore::from_polynomials(&rows).expect("operator")
     }
 

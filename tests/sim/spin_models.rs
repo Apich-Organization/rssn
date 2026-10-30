@@ -41,7 +41,13 @@ fn lattice_geometry_in_one_two_and_three_dimensions() {
     assert_eq!(Lattice::new([10], true).unwrap().bonds(), 10);
     assert!(Lattice::new([2, 5], true).is_err());
     let lat = Lattice::new([3, 3], false).unwrap();
-    assert_eq!(lat.neighbours(0).iter().filter(|&&j| j != usize::MAX).count(), 2);
+    assert_eq!(
+        lat.neighbours(0)
+            .iter()
+            .filter(|&&j| j != usize::MAX)
+            .count(),
+        2
+    );
     let mut m = OnModel::<1, 1>::new([8], false, 1.0, 1).unwrap();
     m.cold_start();
     assert!((m.energy() + 7.0).abs() < 1e-12);
@@ -51,11 +57,19 @@ fn lattice_geometry_in_one_two_and_three_dimensions() {
 fn one_dimensional_chain_matches_exact_energy_for_metropolis_and_heat_bath() {
     let beta = 0.6;
     let exact = ising1d_energy_per_site(beta, 1.0, 64);
-    for (u, seed) in [(Update::Metropolis(0.0), 3), (Update::HeatBath, 4), (Update::Wolff, 5), (Update::SwendsenWang, 6)] {
+    for (u, seed) in [
+        (Update::Metropolis(0.0), 3),
+        (Update::HeatBath, 4),
+        (Update::Wolff, 5),
+        (Update::SwendsenWang, 6),
+    ] {
         let mut m = OnModel::<1, 1>::new([64], true, beta, seed).unwrap();
         let (e, _) = series_on(&mut m, u, 500, 6000);
         let (mean, err) = mean_and_error(&e);
-        assert!((mean - exact).abs() < 5.0 * err + 0.005, "{u:?}: {mean} vs {exact} (err {err})");
+        assert!(
+            (mean - exact).abs() < 5.0 * err + 0.005,
+            "{u:?}: {mean} vs {exact} (err {err})"
+        );
     }
 }
 
@@ -84,8 +98,14 @@ fn wolff_reproduces_onsager_energy_and_magnetisation_in_2d() {
     let (e, mag) = series_on(&mut m, Update::Wolff, 300, 3000);
     let (me, ee) = mean_and_error(&e);
     let (mm, em) = mean_and_error(&mag);
-    assert!((me - onsager_energy_per_site(t, 1.0)).abs() < 5.0 * ee + 0.003, "{me}");
-    assert!((mm - onsager_magnetisation(t, 1.0)).abs() < 5.0 * em + 0.004, "{mm}");
+    assert!(
+        (me - onsager_energy_per_site(t, 1.0)).abs() < 5.0 * ee + 0.003,
+        "{me}"
+    );
+    assert!(
+        (mm - onsager_magnetisation(t, 1.0)).abs() < 5.0 * em + 0.004,
+        "{mm}"
+    );
 }
 
 #[test]
@@ -124,14 +144,18 @@ fn binder_crossing_locates_the_2d_critical_temperature() {
     for (l, seed) in [(8usize, 41u64), (16, 42)] {
         let mut u = Vec::new();
         for &t in &temps {
-            let mut m = OnModel::<2, 1>::new([l, l], true, 1.0 / t, seed + (t * 1000.0) as u64).unwrap();
+            let mut m =
+                OnModel::<2, 1>::new([l, l], true, 1.0 / t, seed + (t * 1000.0) as u64).unwrap();
             let (_, mag) = series_on(&mut m, Update::Wolff, 400, 6000);
             u.push(binder_cumulant(&mag));
         }
         curves.push(u);
     }
     let tc = binder_crossing(&temps, &curves[0], &curves[1]).unwrap();
-    assert!((tc - onsager_tc(1.0)).abs() < 0.08, "Binder crossing at {tc}");
+    assert!(
+        (tc - onsager_tc(1.0)).abs() < 0.08,
+        "Binder crossing at {tc}"
+    );
 }
 
 #[test]
@@ -258,7 +282,10 @@ fn wang_landau_density_of_states_matches_enumeration() {
     for beta in [0.2, 0.44, 0.7] {
         let (_, e1, c1) = canonical_from_dos(&dos_exact, beta);
         let (_, e2, c2) = canonical_from_dos(&dos_wl, beta);
-        assert!((e1 - e2).abs() < 0.03 * e1.abs(), "beta {beta}: <E> {e1} vs {e2}");
+        assert!(
+            (e1 - e2).abs() < 0.03 * e1.abs(),
+            "beta {beta}: <E> {e1} vs {e2}"
+        );
         assert!((c1 - c2).abs() < 0.08 * c1, "beta {beta}: C {c1} vs {c2}");
     }
 }
@@ -281,7 +308,10 @@ fn histogram_reweighting_extrapolates_energy() {
     for b1 in [0.36, 0.40, 0.44] {
         let rw = reweight(&en, &en, b0, b1);
         let (_, ex, _) = canonical_from_dos(&dos, b1);
-        assert!((rw - ex).abs() < 0.01 * ex.abs(), "beta {b1}: reweighted {rw} vs exact {ex}");
+        assert!(
+            (rw - ex).abs() < 0.01 * ex.abs(),
+            "beta {b1}: reweighted {rw} vs exact {ex}"
+        );
     }
 }
 
@@ -297,7 +327,10 @@ fn parallel_tempering_swaps_and_samples_each_temperature() {
     })
     .unwrap();
     for (att, acc) in &pt.swap_stats {
-        assert!(*att > 0 && (*acc as f64) / (*att as f64) > 0.1, "swap {acc}/{att}");
+        assert!(
+            *att > 0 && (*acc as f64) / (*att as f64) > 0.1,
+            "swap {acc}/{att}"
+        );
     }
     let mut w = OnModel::<2, 1>::new([8, 8], true, 0.44, 102).unwrap();
     let (e, _) = series_on(&mut w, Update::Wolff, 500, 20000);
@@ -312,7 +345,10 @@ fn scaling_helpers() {
     assert!((collapse_variable(2.4, 2.269, 1.0, 16.0) - 0.131 * 16.0).abs() < 1e-12);
     assert!((binder_cumulant(&[1.0, -1.0, 1.0, -1.0]) - 2.0 / 3.0).abs() < 1e-12);
     let t = [1.0, 2.0, 3.0];
-    assert!((binder_crossing(&t, &[0.0, 1.0, 2.0], &[2.0, 1.5, 1.0]).unwrap() - 2.0 - 1.0 / 3.0).abs() < 1e-12);
+    assert!(
+        (binder_crossing(&t, &[0.0, 1.0, 2.0], &[2.0, 1.5, 1.0]).unwrap() - 2.0 - 1.0 / 3.0).abs()
+            < 1e-12
+    );
     assert!(binder_crossing(&t, &[0.0, 0.0, 0.0], &[1.0, 1.0, 1.0]).is_none());
 }
 
@@ -347,7 +383,11 @@ fn heat_bath_direction_has_the_exact_conditional_mean() {
             acc += (s[0] * f[0] + s[1] * f[1]) / fm;
         }
         let exact = bessel_i(1, kappa) / bessel_i(0, kappa);
-        assert!((acc / n as f64 - exact).abs() < 5e-3, "XY kappa {kappa}: {} vs {exact}", acc / n as f64);
+        assert!(
+            (acc / n as f64 - exact).abs() < 5e-3,
+            "XY kappa {kappa}: {} vs {exact}",
+            acc / n as f64
+        );
         // Heisenberg: <cos theta> = coth(a) - 1/a, and the perpendicular components are isotropic
         let f3 = [f[0], f[1], 0.2 * a];
         let f3m = (f3[0] * f3[0] + f3[1] * f3[1] + f3[2] * f3[2]).sqrt();
@@ -359,13 +399,20 @@ fn heat_bath_direction_has_the_exact_conditional_mean() {
             norm_err = norm_err.max((s[0] * s[0] + s[1] * s[1] + s[2] * s[2] - 1.0).abs());
         }
         let exact3 = 1.0 / k3.tanh() - 1.0 / k3;
-        assert!((c / n as f64 - exact3).abs() < 5e-3, "Heisenberg a {k3}: {} vs {exact3}", c / n as f64);
+        assert!(
+            (c / n as f64 - exact3).abs() < 5e-3,
+            "Heisenberg a {k3}: {} vs {exact3}",
+            c / n as f64
+        );
         assert!(norm_err < 1e-12);
     }
 }
 
 /// `<cos theta> = I_{N/2}(k) / I_{N/2-1}(k)` for the von Mises-Fisher distribution on `S^(N-1)`.
-fn vmf_mean_cosine(n: usize, k: f64) -> f64 {
+fn vmf_mean_cosine(
+    n: usize,
+    k: f64,
+) -> f64 {
     // modified Bessel functions of half-integer order via the power series
     let iv = |nu: f64| {
         let mut term = (0.5 * k).powf(nu) / rssn::kernels::special::gamma_numerical(nu + 1.0);
@@ -395,14 +442,27 @@ fn heat_bath_for_higher_n_is_von_mises_fisher_and_exact_on_chains() {
                 let (mut c, mut c2, mut worst) = (0.0, 0.0, 0.0_f64);
                 for _ in 0..samples {
                     let s = heat_bath_direction::<$n>(&mut rng, &f, beta).unwrap();
-                    let cs = if fm > 0.0 { s.iter().zip(&f).map(|(x, y)| x * y).sum::<f64>() / fm } else { s[0] };
+                    let cs = if fm > 0.0 {
+                        s.iter().zip(&f).map(|(x, y)| x * y).sum::<f64>() / fm
+                    } else {
+                        s[0]
+                    };
                     c += cs;
                     c2 += cs * cs;
                     worst = worst.max((s.iter().map(|x| x * x).sum::<f64>() - 1.0).abs());
                 }
                 let kappa = beta * fm;
-                let exact = if kappa < 1e-12 { 0.0 } else { vmf_mean_cosine($n, kappa) };
-                assert!((c / samples as f64 - exact).abs() < 6e-3, "N={} kappa {kappa}: {} vs {exact}", $n, c / samples as f64);
+                let exact = if kappa < 1e-12 {
+                    0.0
+                } else {
+                    vmf_mean_cosine($n, kappa)
+                };
+                assert!(
+                    (c / samples as f64 - exact).abs() < 6e-3,
+                    "N={} kappa {kappa}: {} vs {exact}",
+                    $n,
+                    c / samples as f64
+                );
                 if a == 0.0 {
                     // uniform sphere: <cos^2> = 1/N
                     assert!((c2 / samples as f64 - 1.0 / $n as f64).abs() < 5e-3);
@@ -420,7 +480,10 @@ fn heat_bath_for_higher_n_is_von_mises_fisher_and_exact_on_chains() {
     let (e, _) = series_on(&mut chain, Update::HeatBath, 300, 6000);
     let (mean, err) = mean_and_error(&e);
     let exact = -(59.0 / 60.0) * vmf_mean_cosine(4, beta);
-    assert!((mean - exact).abs() < 5.0 * err + 0.005, "{mean} vs {exact}");
+    assert!(
+        (mean - exact).abs() < 5.0 * err + 0.005,
+        "{mean} vs {exact}"
+    );
     // O(4) 2-D: heat bath and Wolff cluster updates sample the same distribution
     let mut hb = OnModel::<2, 4>::new([6, 6], true, 0.8, 71).unwrap();
     let mut wf = OnModel::<2, 4>::new([6, 6], true, 0.8, 72).unwrap();
@@ -471,7 +534,10 @@ fn potts_parallel_tempering_matches_independent_runs() {
         }
     });
     for (att, acc) in &pt.swap_stats {
-        assert!(*att > 0 && (*acc as f64) / (*att as f64) > 0.1, "swap {acc}/{att}");
+        assert!(
+            *att > 0 && (*acc as f64) / (*att as f64) > 0.1,
+            "swap {acc}/{att}"
+        );
     }
     let mut w = Potts::<2>::new([8, 8], true, 3, 0.75, 302).unwrap();
     let mut e = Vec::new();
@@ -489,15 +555,39 @@ fn potts_parallel_tempering_matches_independent_runs() {
 fn wang_landau_for_continuous_spins_reproduces_open_chain_thermodynamics() {
     // open chain of 6 spins: Z ~ (4 pi sinh K / K)^(N-1) (Heisenberg), (2 pi)^N I0(K)^(N-1) (XY)
     let nb = 5.0;
-    let dos_h = wang_landau_on::<1, 3>([6], false, (-nb - 1e-9, nb + 1e-9, 100), 1.0, 1e-4, 0.7, 401).unwrap();
-    let dos_x = wang_landau_on::<1, 2>([6], false, (-nb - 1e-9, nb + 1e-9, 100), 1.0, 1e-4, 0.7, 402).unwrap();
+    let dos_h = wang_landau_on::<1, 3>(
+        [6],
+        false,
+        (-nb - 1e-9, nb + 1e-9, 100),
+        1.0,
+        1e-4,
+        0.7,
+        401,
+    )
+    .unwrap();
+    let dos_x = wang_landau_on::<1, 2>(
+        [6],
+        false,
+        (-nb - 1e-9, nb + 1e-9, 100),
+        1.0,
+        1e-4,
+        0.7,
+        402,
+    )
+    .unwrap();
     for beta in [0.3, 0.8, 1.4] {
         let (_, e_h, _) = canonical_from_dos(&dos_h, beta);
         let exact_h = -nb * (1.0 / beta.tanh() - 1.0 / beta);
-        assert!((e_h - exact_h).abs() < 0.05 * exact_h.abs(), "Heisenberg beta {beta}: {e_h} vs {exact_h}");
+        assert!(
+            (e_h - exact_h).abs() < 0.05 * exact_h.abs(),
+            "Heisenberg beta {beta}: {e_h} vs {exact_h}"
+        );
         let (_, e_x, _) = canonical_from_dos(&dos_x, beta);
         let exact_x = -nb * bessel_i(1, beta) / bessel_i(0, beta);
-        assert!((e_x - exact_x).abs() < 0.05 * exact_x.abs(), "XY beta {beta}: {e_x} vs {exact_x}");
+        assert!(
+            (e_x - exact_x).abs() < 0.05 * exact_x.abs(),
+            "XY beta {beta}: {e_x} vs {exact_x}"
+        );
     }
     assert!(wang_landau_on::<1, 3>([6], false, (1.0, 0.0, 10), 1.0, 1e-3, 0.7, 1).is_err());
 }
@@ -524,11 +614,20 @@ fn replica_exchange_wang_landau_reproduces_the_exact_ising_density_of_states() {
     for ((e, lg), (ee, c)) in dos.iter().zip(&exact) {
         assert!((e - *ee as f64).abs() < 1e-9, "level {e} vs {ee}");
         let ln_exact = (c / total).ln();
-        assert!((lg - ln_exact).abs() < 0.15, "E={e}: ln g {lg} vs {ln_exact}");
+        assert!(
+            (lg - ln_exact).abs() < 0.15,
+            "E={e}: ln g {lg} vs {ln_exact}"
+        );
     }
     // thermodynamics from the joined density of states
     let (_, e_wl, _) = canonical_from_dos(&dos, 0.4);
-    let (_, e_ex, _) = canonical_from_dos(&exact.iter().map(|&(e, c)| (e as f64, (c / total).ln())).collect::<Vec<_>>(), 0.4);
+    let (_, e_ex, _) = canonical_from_dos(
+        &exact
+            .iter()
+            .map(|&(e, c)| (e as f64, (c / total).ln()))
+            .collect::<Vec<_>>(),
+        0.4,
+    );
     assert!((e_wl - e_ex).abs() < 0.05 * e_ex.abs());
 }
 
@@ -551,7 +650,10 @@ fn replica_exchange_wang_landau_for_continuous_spins_matches_open_chain() {
     for beta in [0.3, 0.8, 1.4] {
         let (_, e_h, _) = canonical_from_dos(&dos, beta);
         let exact_h = -nb * (1.0 / beta.tanh() - 1.0 / beta);
-        assert!((e_h - exact_h).abs() < 0.06 * exact_h.abs(), "beta {beta}: {e_h} vs {exact_h}");
+        assert!(
+            (e_h - exact_h).abs() < 0.06 * exact_h.abs(),
+            "beta {beta}: {e_h} vs {exact_h}"
+        );
     }
     let mut bad = opt;
     bad.walkers = 0;
@@ -564,10 +666,25 @@ fn wolff_and_swendsen_wang_with_a_field_reproduce_exact_ising_averages() {
     let (beta, h) = (0.45, 0.3);
     let dims = [4usize, 4];
     let n = 16;
-    let bonds: Vec<(usize, usize)> = (0..n).flat_map(|i| [(i, (i / 4) * 4 + (i % 4 + 1) % 4), (i, ((i / 4 + 1) % 4) * 4 + i % 4)]).collect();
+    let bonds: Vec<(usize, usize)> = (0..n)
+        .flat_map(|i| {
+            [
+                (i, (i / 4) * 4 + (i % 4 + 1) % 4),
+                (i, ((i / 4 + 1) % 4) * 4 + i % 4),
+            ]
+        })
+        .collect();
     let (mut z, mut e_acc, mut m_acc) = (0.0, 0.0, 0.0);
     for state in 0u32..(1 << n) {
-        let s: Vec<f64> = (0..n).map(|i| if (state >> i) & 1 == 1 { 1.0 } else { -1.0 }).collect();
+        let s: Vec<f64> = (0..n)
+            .map(|i| {
+                if (state >> i) & 1 == 1 {
+                    1.0
+                } else {
+                    -1.0
+                }
+            })
+            .collect();
         let mag: f64 = s.iter().sum();
         let e = -bonds.iter().map(|&(i, j)| s[i] * s[j]).sum::<f64>() - h * mag;
         let w = (-beta * e).exp();
@@ -589,8 +706,14 @@ fn wolff_and_swendsen_wang_with_a_field_reproduce_exact_ising_averages() {
         }
         let (e, ee) = mean_and_error(&es);
         let (m, me) = mean_and_error(&ms);
-        assert!((e - e_ex).abs() < 5.0 * ee + 2e-3, "{upd:?}: e = {e} +- {ee} vs {e_ex}");
-        assert!((m - m_ex).abs() < 5.0 * me + 2e-3, "{upd:?}: m = {m} +- {me} vs {m_ex}");
+        assert!(
+            (e - e_ex).abs() < 5.0 * ee + 2e-3,
+            "{upd:?}: e = {e} +- {ee} vs {e_ex}"
+        );
+        assert!(
+            (m - m_ex).abs() < 5.0 * me + 2e-3,
+            "{upd:?}: m = {m} +- {me} vs {m_ex}"
+        );
     }
 }
 

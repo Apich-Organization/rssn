@@ -30,9 +30,18 @@
 //! aligned with the coarse grid and the regridding re-creates the whole fine
 //! hierarchy (data are copied where the old patches overlap the new ones).
 
-use crate::sim::euler_nd::{
-    FvConfig, FvGrid, GasBc, Law, State, admissible, face_states, riemann_flux, sound_speed, swap_dir, to_cons, to_prim,
-};
+use crate::sim::euler_nd::FvConfig;
+use crate::sim::euler_nd::FvGrid;
+use crate::sim::euler_nd::GasBc;
+use crate::sim::euler_nd::Law;
+use crate::sim::euler_nd::State;
+use crate::sim::euler_nd::admissible;
+use crate::sim::euler_nd::face_states;
+use crate::sim::euler_nd::riemann_flux;
+use crate::sim::euler_nd::sound_speed;
+use crate::sim::euler_nd::swap_dir;
+use crate::sim::euler_nd::to_cons;
+use crate::sim::euler_nd::to_prim;
 
 const GH: usize = 3;
 
@@ -57,7 +66,14 @@ impl AmrConfig {
     /// Default AMR parameters around a scheme: two levels, regrid every 4 steps, threshold 0.05.
     #[must_use]
     pub const fn new(fv: FvConfig) -> Self {
-        Self { fv, max_level: 2, regrid_interval: 4, threshold: 0.05, buffer: 2, efficiency: 0.6 }
+        Self {
+            fv,
+            max_level: 2,
+            regrid_interval: 4,
+            threshold: 0.05,
+            buffer: 2,
+            efficiency: 0.6,
+        }
     }
 }
 
@@ -74,16 +90,37 @@ struct Patch {
 }
 
 impl Patch {
-    fn new(lo: [usize; 2], n: [usize; 2], q: Vec<State>) -> Self {
-        Self { lo, n, old: q.clone(), new: q.clone(), q, flux: [Vec::new(), Vec::new()], reg: [[Vec::new(), Vec::new()], [Vec::new(), Vec::new()]] }
+    fn new(
+        lo: [usize; 2],
+        n: [usize; 2],
+        q: Vec<State>,
+    ) -> Self {
+        Self {
+            lo,
+            n,
+            old: q.clone(),
+            new: q.clone(),
+            q,
+            flux: [Vec::new(), Vec::new()],
+            reg: [[Vec::new(), Vec::new()], [Vec::new(), Vec::new()]],
+        }
     }
 
-    const fn flat(&self, i: [usize; 2]) -> usize {
+    const fn flat(
+        &self,
+        i: [usize; 2],
+    ) -> usize {
         (i[0] - self.lo[0]) + self.n[0] * (i[1] - self.lo[1])
     }
 
-    const fn contains(&self, i: [usize; 2]) -> bool {
-        i[0] >= self.lo[0] && i[0] < self.lo[0] + self.n[0] && i[1] >= self.lo[1] && i[1] < self.lo[1] + self.n[1]
+    const fn contains(
+        &self,
+        i: [usize; 2],
+    ) -> bool {
+        i[0] >= self.lo[0]
+            && i[0] < self.lo[0] + self.n[0]
+            && i[1] >= self.lo[1]
+            && i[1] < self.lo[1] + self.n[1]
     }
 }
 
@@ -107,26 +144,62 @@ struct Amr {
     levels: Vec<Level>,
 }
 
-fn minmod(a: f64, b: f64) -> f64 {
-    if a * b <= 0.0 { 0.0 } else if a.abs() < b.abs() { a } else { b }
+fn minmod(
+    a: f64,
+    b: f64,
+) -> f64 {
+    if a * b <= 0.0 {
+        0.0
+    } else if a.abs() < b.abs() {
+        a
+    } else {
+        b
+    }
 }
 
 impl Amr {
-    const fn dom(&self, l: usize) -> [isize; 2] {
+    const fn dom(
+        &self,
+        l: usize,
+    ) -> [isize; 2] {
         let f = 1isize << l;
-        [self.n0[0] as isize * f, if self.dim == 2 { self.n0[1] as isize * f } else { 1 }]
+        [
+            self.n0[0] as isize * f,
+            if self.dim == 2 {
+                self.n0[1] as isize * f
+            } else {
+                1
+            },
+        ]
     }
 
-    fn h(&self, l: usize, a: usize) -> f64 {
+    fn h(
+        &self,
+        l: usize,
+        a: usize,
+    ) -> f64 {
         self.h0[a] / (1u64 << l) as f64
     }
 
-    fn find(&self, l: usize, i: [usize; 2]) -> Option<(usize, usize)> {
-        self.levels[l].patches.iter().enumerate().find(|(_, p)| p.contains(i)).map(|(k, p)| (k, p.flat(i)))
+    fn find(
+        &self,
+        l: usize,
+        i: [usize; 2],
+    ) -> Option<(usize, usize)> {
+        self.levels[l]
+            .patches
+            .iter()
+            .enumerate()
+            .find(|(_, p)| p.contains(i))
+            .map(|(k, p)| (k, p.flat(i)))
     }
 
     /// Maps an index outside the domain through the boundary conditions.
-    fn bc_map(&self, l: usize, idx: [isize; 2]) -> Mapped {
+    fn bc_map(
+        &self,
+        l: usize,
+        idx: [isize; 2],
+    ) -> Mapped {
         let dom = self.dom(l);
         let law = self.cfg.fv.law;
         let mut j = idx;
@@ -137,13 +210,17 @@ impl Amr {
             }
             let hi = j[a] >= dom[a];
             match self.cfg.fv.bcs[2 * a + usize::from(hi)] {
-                GasBc::Periodic => j[a] = j[a].rem_euclid(dom[a]),
-                GasBc::Reflective => {
-                    j[a] = if hi { 2 * dom[a] - 1 - j[a] } else { -1 - j[a] };
+                | GasBc::Periodic => j[a] = j[a].rem_euclid(dom[a]),
+                | GasBc::Reflective => {
+                    j[a] = if hi {
+                        2 * dom[a] - 1 - j[a]
+                    } else {
+                        -1 - j[a]
+                    };
                     flip[a] = !flip[a];
                 },
-                GasBc::Fixed(w) => return Mapped::Fixed(to_cons(law, w)),
-                _ => j[a] = j[a].clamp(0, dom[a] - 1),
+                | GasBc::Fixed(w) => return Mapped::Fixed(to_cons(law, w)),
+                | _ => j[a] = j[a].clamp(0, dom[a] - 1),
             }
         }
         Mapped::Cell([j[0] as usize, j[1].max(0) as usize], flip)
@@ -153,13 +230,19 @@ impl Amr {
     ///
     /// `stage` holds the stage arrays of the level currently being stepped (same-level
     /// neighbours use them instead of the time interpolation between `old` and `new`).
-    fn sample(&self, l: usize, idx: [isize; 2], tau: f64, stage: Option<(usize, &[Vec<State>])>) -> State {
+    fn sample(
+        &self,
+        l: usize,
+        idx: [isize; 2],
+        tau: f64,
+        stage: Option<(usize, &[Vec<State>])>,
+    ) -> State {
         let dom = self.dom(l);
         let inside = (0..2).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
         if !inside {
             return match self.bc_map(l, idx) {
-                Mapped::Fixed(s) => s,
-                Mapped::Cell(j, flip) => {
+                | Mapped::Fixed(s) => s,
+                | Mapped::Cell(j, flip) => {
                     let mut s = self.sample(l, [j[0] as isize, j[1] as isize], tau, stage);
                     for a in 0..2 {
                         if flip[a] {
@@ -179,7 +262,11 @@ impl Amr {
             }
             let lev = &self.levels[l];
             let p = &lev.patches[k];
-            let w = if lev.t_new > lev.t_old { ((tau - lev.t_old) / (lev.t_new - lev.t_old)).clamp(0.0, 1.0) } else { 1.0 };
+            let w = if lev.t_new > lev.t_old {
+                ((tau - lev.t_old) / (lev.t_new - lev.t_old)).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
             let mut s = [0.0; 5];
             for c in 0..5 {
                 s[c] = (1.0 - w) * p.old[flat][c] + w * p.new[flat][c];
@@ -195,8 +282,15 @@ impl Amr {
             ep[a] += 1;
             let mut em = parent;
             em[a] -= 1;
-            let (qp, qm) = (self.sample(l - 1, ep, tau, stage), self.sample(l - 1, em, tau, stage));
-            let off = if idx[a].rem_euclid(2) == 0 { -0.25 } else { 0.25 };
+            let (qp, qm) = (
+                self.sample(l - 1, ep, tau, stage),
+                self.sample(l - 1, em, tau, stage),
+            );
+            let off = if idx[a].rem_euclid(2) == 0 {
+                -0.25
+            } else {
+                0.25
+            };
             for c in 0..5 {
                 out[c] += off * minmod(qp[c] - q0[c], q0[c] - qm[c]);
             }
@@ -205,23 +299,40 @@ impl Amr {
     }
 
     /// Padded copy (with ghost cells) of a patch's stage array.
-    fn padded(&self, l: usize, k: usize, stage: &[Vec<State>], tau: f64) -> Vec<State> {
+    fn padded(
+        &self,
+        l: usize,
+        k: usize,
+        stage: &[Vec<State>],
+        tau: f64,
+    ) -> Vec<State> {
         let p = &self.levels[l].patches[k];
         let g = [GH, if self.dim == 2 { GH } else { 0 }];
         let np = [p.n[0] + 2 * g[0], p.n[1] + 2 * g[1]];
         let mut out = vec![[0.0; 5]; np[0] * np[1]];
         for j in 0..np[1] {
             for i in 0..np[0] {
-                let gi = [p.lo[0] as isize + i as isize - g[0] as isize, p.lo[1] as isize + j as isize - g[1] as isize];
+                let gi = [
+                    p.lo[0] as isize + i as isize - g[0] as isize,
+                    p.lo[1] as isize + j as isize - g[1] as isize,
+                ];
                 let interior = i >= g[0] && i < g[0] + p.n[0] && j >= g[1] && j < g[1] + p.n[1];
-                out[i + np[0] * j] = if interior { stage[k][(i - g[0]) + p.n[0] * (j - g[1])] } else { self.sample(l, gi, tau, Some((l, stage))) };
+                out[i + np[0] * j] = if interior {
+                    stage[k][(i - g[0]) + p.n[0] * (j - g[1])]
+                } else {
+                    self.sample(l, gi, tau, Some((l, stage)))
+                };
             }
         }
         out
     }
 
     /// Numerical fluxes of a patch from its padded state.
-    fn fluxes(&self, padded: &[State], n: [usize; 2]) -> [Vec<State>; 2] {
+    fn fluxes(
+        &self,
+        padded: &[State],
+        n: [usize; 2],
+    ) -> [Vec<State>; 2] {
         let cfg = &self.cfg.fv;
         let law = cfg.law;
         let g = [GH, if self.dim == 2 { GH } else { 0 }];
@@ -252,7 +363,11 @@ impl Amr {
                     let mut fl = riemann_flux(law, cfg.riemann, &l, &r);
                     swap_dir(&mut fl, d);
                     // flux layout: axis 0 -> f + nf t ; axis 1 -> t + n0 f
-                    let at = if d == 0 { f + nf * t } else { t + n[0] * f };
+                    let at = if d == 0 {
+                        f + nf * t
+                    } else {
+                        t + n[0] * f
+                    };
                     flux[at] = fl;
                 }
             }
@@ -261,14 +376,22 @@ impl Amr {
         out
     }
 
-    fn residual(&self, n: [usize; 2], flux: &[Vec<State>; 2], l: usize) -> Vec<State> {
+    fn residual(
+        &self,
+        n: [usize; 2],
+        flux: &[Vec<State>; 2],
+        l: usize,
+    ) -> Vec<State> {
         let mut res = vec![[0.0; 5]; n[0] * n[1]];
         for j in 0..n[1] {
             for i in 0..n[0] {
                 for c in 0..5 {
-                    let mut r = -(flux[0][i + 1 + (n[0] + 1) * j][c] - flux[0][i + (n[0] + 1) * j][c]) / self.h(l, 0);
+                    let mut r = -(flux[0][i + 1 + (n[0] + 1) * j][c]
+                        - flux[0][i + (n[0] + 1) * j][c])
+                        / self.h(l, 0);
                     if self.dim == 2 {
-                        r -= (flux[1][i + n[0] * (j + 1)][c] - flux[1][i + n[0] * j][c]) / self.h(l, 1);
+                        r -= (flux[1][i + n[0] * (j + 1)][c] - flux[1][i + n[0] * j][c])
+                            / self.h(l, 1);
                     }
                     res[i + n[0] * j][c] = r;
                 }
@@ -278,7 +401,12 @@ impl Amr {
     }
 
     /// One SSP-RK3 step of level `l` from `t` over `dt`.
-    fn step_level(&mut self, l: usize, t: f64, dt: f64) -> Result<(), String> {
+    fn step_level(
+        &mut self,
+        l: usize,
+        t: f64,
+        dt: f64,
+    ) -> Result<(), String> {
         let np = self.levels[l].patches.len();
         for p in &mut self.levels[l].patches {
             p.old.clone_from(&p.q);
@@ -303,7 +431,12 @@ impl Amr {
             if s == 0 {
                 eff = fl_all
                     .iter()
-                    .map(|f| [f[0].iter().map(|v| v.map(|x| x * weights[0])).collect(), f[1].iter().map(|v| v.map(|x| x * weights[0])).collect()])
+                    .map(|f| {
+                        [
+                            f[0].iter().map(|v| v.map(|x| x * weights[0])).collect(),
+                            f[1].iter().map(|v| v.map(|x| x * weights[0])).collect(),
+                        ]
+                    })
                     .collect();
             } else {
                 for k in 0..np {
@@ -323,9 +456,15 @@ impl Amr {
                         let mut o = [0.0; 5];
                         for m in 0..5 {
                             o[m] = match s {
-                                0 => q0[k][c][m] + dt * resid[k][c][m],
-                                1 => 0.75 * q0[k][c][m] + 0.25 * (qcur[k][c][m] + dt * resid[k][c][m]),
-                                _ => q0[k][c][m] / 3.0 + 2.0 / 3.0 * (qcur[k][c][m] + dt * resid[k][c][m]),
+                                | 0 => q0[k][c][m] + dt * resid[k][c][m],
+                                | 1 => {
+                                    0.75 * q0[k][c][m]
+                                        + 0.25 * (qcur[k][c][m] + dt * resid[k][c][m])
+                                },
+                                | _ => {
+                                    q0[k][c][m] / 3.0
+                                        + 2.0 / 3.0 * (qcur[k][c][m] + dt * resid[k][c][m])
+                                },
                             };
                         }
                         o
@@ -360,7 +499,11 @@ impl Amr {
                             let mut sum = [0.0; 5];
                             for u in 0..sub {
                                 let t = tc * sub + u;
-                                let at = if a == 0 { face + (p.n[0] + 1) * t } else { t + p.n[0] * face };
+                                let at = if a == 0 {
+                                    face + (p.n[0] + 1) * t
+                                } else {
+                                    t + p.n[0] * face
+                                };
                                 for c in 0..5 {
                                     sum[c] += p.flux[a][at][c];
                                 }
@@ -376,9 +519,17 @@ impl Amr {
         Ok(())
     }
 
-    fn advance(&mut self, l: usize, t: f64, dt: f64) -> Result<(), String> {
+    fn advance(
+        &mut self,
+        l: usize,
+        t: f64,
+        dt: f64,
+    ) -> Result<(), String> {
         self.step_level(l, t, dt)?;
-        if l < self.cfg.max_level && l + 1 < self.levels.len() && !self.levels[l + 1].patches.is_empty() {
+        if l < self.cfg.max_level
+            && l + 1 < self.levels.len()
+            && !self.levels[l + 1].patches.is_empty()
+        {
             for p in &mut self.levels[l + 1].patches {
                 p.reg = [[Vec::new(), Vec::new()], [Vec::new(), Vec::new()]];
             }
@@ -391,11 +542,31 @@ impl Amr {
     }
 
     /// Replaces the coarse cells under the patches of level `lf` by the mean of their children.
-    fn average_down(&mut self, lf: usize) {
+    fn average_down(
+        &mut self,
+        lf: usize,
+    ) {
         let sub = if self.dim == 2 { 4.0 } else { 2.0 };
         let fine = std::mem::take(&mut self.levels[lf].patches);
         for fp in &fine {
-            let (cn, clo) = ([fp.n[0] / 2, if self.dim == 2 { fp.n[1] / 2 } else { 1 }], [fp.lo[0] / 2, if self.dim == 2 { fp.lo[1] / 2 } else { 0 }]);
+            let (cn, clo) = (
+                [
+                    fp.n[0] / 2,
+                    if self.dim == 2 {
+                        fp.n[1] / 2
+                    } else {
+                        1
+                    },
+                ],
+                [
+                    fp.lo[0] / 2,
+                    if self.dim == 2 {
+                        fp.lo[1] / 2
+                    } else {
+                        0
+                    },
+                ],
+            );
             for cj in 0..cn[1] {
                 for ci in 0..cn[0] {
                     let cidx = [clo[0] + ci, clo[1] + cj];
@@ -422,20 +593,39 @@ impl Amr {
     }
 
     /// Flux-register correction of the coarse cells next to the patches of level `lf`.
-    fn reflux(&mut self, lf: usize, dt_c: f64) {
+    fn reflux(
+        &mut self,
+        lf: usize,
+        dt_c: f64,
+    ) {
         let lc = lf - 1;
         let dom = self.dom(lc);
         let fine = std::mem::take(&mut self.levels[lf].patches);
         for fp in &fine {
             for a in 0..self.dim {
                 let o = 1 - a;
-                let ntc = if self.dim == 2 { fp.n[o] / 2 } else { 1 };
-                let clo = [fp.lo[0] / 2, if self.dim == 2 { fp.lo[1] / 2 } else { 0 }];
+                let ntc = if self.dim == 2 {
+                    fp.n[o] / 2
+                } else {
+                    1
+                };
+                let clo = [
+                    fp.lo[0] / 2,
+                    if self.dim == 2 {
+                        fp.lo[1] / 2
+                    } else {
+                        0
+                    },
+                ];
                 for s in 0..2 {
                     if fp.reg[a][s].len() != ntc {
                         continue;
                     }
-                    let mut ca = if s == 0 { clo[a] as isize - 1 } else { (clo[a] + fp.n[a] / 2) as isize };
+                    let mut ca = if s == 0 {
+                        clo[a] as isize - 1
+                    } else {
+                        (clo[a] + fp.n[a] / 2) as isize
+                    };
                     if ca < 0 || ca >= dom[a] {
                         if self.cfg.fv.bcs[2 * a] != GasBc::Periodic {
                             continue;
@@ -445,18 +635,32 @@ impl Amr {
                     for tc in 0..ntc {
                         let mut cidx = [0usize; 2];
                         cidx[a] = ca as usize;
-                        cidx[o] = if self.dim == 2 { clo[o] + tc } else { 0 };
+                        cidx[o] = if self.dim == 2 {
+                            clo[o] + tc
+                        } else {
+                            0
+                        };
                         // skip when the neighbour is itself refined
                         let fidx = [cidx[0] * 2, cidx[1] * 2];
                         if fine.iter().any(|p| p.contains(fidx)) {
                             continue;
                         }
-                        let Some((k, flat)) = self.find(lc, cidx) else { continue };
+                        let Some((k, flat)) = self.find(lc, cidx) else {
+                            continue;
+                        };
                         let hc = self.h(lc, a);
                         let cp = &mut self.levels[lc].patches[k];
                         let local = [cidx[0] - cp.lo[0], cidx[1] - cp.lo[1]];
-                        let face = if s == 0 { local[a] + 1 } else { local[a] };
-                        let at = if a == 0 { face + (cp.n[0] + 1) * local[1] } else { local[0] + cp.n[0] * face };
+                        let face = if s == 0 {
+                            local[a] + 1
+                        } else {
+                            local[a]
+                        };
+                        let at = if a == 0 {
+                            face + (cp.n[0] + 1) * local[1]
+                        } else {
+                            local[0] + cp.n[0] * face
+                        };
                         let sign = if s == 0 { -1.0 } else { 1.0 };
                         for c in 0..5 {
                             let corr = sign * (fp.reg[a][s][tc][c] - dt_c * cp.flux[a][at][c]) / hc;
@@ -470,14 +674,19 @@ impl Amr {
         self.levels[lf].patches = fine;
     }
 
-    fn max_rate(&self, l: usize) -> f64 {
+    fn max_rate(
+        &self,
+        l: usize,
+    ) -> f64 {
         let law = self.cfg.fv.law;
         let mut best: f64 = 0.0;
         for p in &self.levels[l].patches {
             for &c in &p.q {
                 let w = to_prim(law, c);
                 let cs = sound_speed(law, &w);
-                let r: f64 = (0..self.dim).map(|a| (w[1 + a].abs() + cs) / self.h(l, a)).sum();
+                let r: f64 = (0..self.dim)
+                    .map(|a| (w[1 + a].abs() + cs) / self.h(l, a))
+                    .sum();
                 best = best.max(r);
             }
         }
@@ -485,18 +694,26 @@ impl Amr {
     }
 
     /// Conserved state of a cell of level `l` without any time interpolation (current data).
-    fn current(&self, l: usize, idx: [isize; 2]) -> State {
+    fn current(
+        &self,
+        l: usize,
+        idx: [isize; 2],
+    ) -> State {
         self.sample_now(l, idx)
     }
 
-    fn sample_now(&self, l: usize, idx: [isize; 2]) -> State {
+    fn sample_now(
+        &self,
+        l: usize,
+        idx: [isize; 2],
+    ) -> State {
         // the current data of every level equal `new` (= `q`); set the interpolation weight to one
         let dom = self.dom(l);
         let inside = (0..2).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
         if !inside {
             return match self.bc_map(l, idx) {
-                Mapped::Fixed(s) => s,
-                Mapped::Cell(j, flip) => {
+                | Mapped::Fixed(s) => s,
+                | Mapped::Cell(j, flip) => {
                     let mut s = self.sample_now(l, [j[0] as isize, j[1] as isize]);
                     for a in 0..2 {
                         if flip[a] {
@@ -520,7 +737,11 @@ impl Amr {
             let mut em = parent;
             em[a] -= 1;
             let (qp, qm) = (self.sample_now(l - 1, ep), self.sample_now(l - 1, em));
-            let off = if idx[a].rem_euclid(2) == 0 { -0.25 } else { 0.25 };
+            let off = if idx[a].rem_euclid(2) == 0 {
+                -0.25
+            } else {
+                0.25
+            };
             for c in 0..5 {
                 out[c] += off * minmod(qp[c] - q0[c], q0[c] - qm[c]);
             }
@@ -532,7 +753,12 @@ impl Amr {
     fn regrid(&mut self) {
         let t = self.levels[0].t_new;
         let dim = self.dim;
-        let old_levels: Vec<Vec<Patch>> = self.levels.iter_mut().skip(1).map(|lv| std::mem::take(&mut lv.patches)).collect();
+        let old_levels: Vec<Vec<Patch>> = self
+            .levels
+            .iter_mut()
+            .skip(1)
+            .map(|lv| std::mem::take(&mut lv.patches))
+            .collect();
         for l in 0..self.cfg.max_level {
             let dom = self.dom(l);
             let nd = [dom[0] as usize, dom[1] as usize];
@@ -595,7 +821,12 @@ impl Amr {
                     for dj in if dim == 2 { -2..=2 } else { 0..=0 } {
                         for di in -2..=2 {
                             let (ii, jj) = (i as isize + di, j as isize + dj);
-                            if ii >= 0 && ii < dom[0] && jj >= 0 && jj < dom[1] && !covered[ii as usize + nd[0] * jj as usize] {
+                            if ii >= 0
+                                && ii < dom[0]
+                                && jj >= 0
+                                && jj < dom[1]
+                                && !covered[ii as usize + nd[0] * jj as usize]
+                            {
                                 ok = false;
                             }
                         }
@@ -603,7 +834,11 @@ impl Amr {
                     nested[i + nd[0] * j] = ok;
                 }
             }
-            let allowed: Vec<bool> = buffered.iter().zip(&nested).map(|(a, b)| *a && *b).collect();
+            let allowed: Vec<bool> = buffered
+                .iter()
+                .zip(&nested)
+                .map(|(a, b)| *a && *b)
+                .collect();
             let boxes = cluster(&allowed, &nested, nd, self.cfg.efficiency);
             let mut patches = Vec::new();
             for (clo, cn) in boxes {
@@ -614,8 +849,12 @@ impl Amr {
                     for i in 0..fnn[0] {
                         let gi = [flo[0] + i, flo[1] + j];
                         // copy from an old patch of the same level when possible
-                        let from_old = old_levels.get(l).and_then(|ps| ps.iter().find(|p| p.contains(gi)).map(|p| p.q[p.flat(gi)]));
-                        q.push(from_old.unwrap_or_else(|| self.sample_now(l + 1, [gi[0] as isize, gi[1] as isize])));
+                        let from_old = old_levels.get(l).and_then(|ps| {
+                            ps.iter().find(|p| p.contains(gi)).map(|p| p.q[p.flat(gi)])
+                        });
+                        q.push(from_old.unwrap_or_else(|| {
+                            self.sample_now(l + 1, [gi[0] as isize, gi[1] as isize])
+                        }));
                     }
                 }
                 patches.push(Patch::new(flo, fnn, q));
@@ -628,7 +867,12 @@ impl Amr {
 }
 
 /// Recursive bisection of the tagged cells into boxes `(lo, n)`.
-fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usize; 2], [usize; 2])> {
+fn cluster(
+    tags: &[bool],
+    valid: &[bool],
+    nd: [usize; 2],
+    eff: f64,
+) -> Vec<([usize; 2], [usize; 2])> {
     let mut out = Vec::new();
     let tagged = |i: usize, j: usize| tags[i + nd[0] * j];
     // bounding box of a region
@@ -649,7 +893,9 @@ fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usi
     };
     let mut stack = vec![([0usize, 0usize], nd)];
     while let Some((lo, hi)) = stack.pop() {
-        let Some((bl, bh, cnt)) = bbox(lo, hi) else { continue };
+        let Some((bl, bh, cnt)) = bbox(lo, hi) else {
+            continue;
+        };
         let size = [bh[0] - bl[0], bh[1] - bl[1]];
         let fraction = cnt as f64 / (size[0] * size[1]) as f64;
         let axis = usize::from(size[1] > size[0]);
@@ -672,12 +918,18 @@ fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usi
             let mut count = 0;
             let slice = if cut == 0 { 0 } else { cut - 1 };
             for t in bl[1 - axis]..bh[1 - axis] {
-                let (i, j) = if axis == 0 { (slice, t) } else { (t, slice) };
+                let (i, j) = if axis == 0 {
+                    (slice, t)
+                } else {
+                    (t, slice)
+                };
                 if tagged(i, j) {
                     count += 1;
                 }
             }
-            if count < best.0 || (count == best.0 && cut.abs_diff(mid_cut) < best.1.abs_diff(mid_cut)) {
+            if count < best.0
+                || (count == best.0 && cut.abs_diff(mid_cut) < best.1.abs_diff(mid_cut))
+            {
                 best = (count, cut);
             }
         }
@@ -718,11 +970,22 @@ impl AmrSolution {
     /// Number of cells per level.
     #[must_use]
     pub fn cells_per_level(&self) -> Vec<usize> {
-        self.levels.iter().map(|l| l.patches.iter().map(|p| p.1[0] * p.1[1]).sum()).collect()
+        self.levels
+            .iter()
+            .map(|l| l.patches.iter().map(|p| p.1[0] * p.1[1]).sum())
+            .collect()
     }
 
-    fn covered(&self, level: usize, idx: [usize; 2]) -> bool {
-        self.levels.get(level).is_some_and(|l| l.patches.iter().any(|(lo, n, _)| idx[0] >= lo[0] && idx[0] < lo[0] + n[0] && idx[1] >= lo[1] && idx[1] < lo[1] + n[1]))
+    fn covered(
+        &self,
+        level: usize,
+        idx: [usize; 2],
+    ) -> bool {
+        self.levels.get(level).is_some_and(|l| {
+            l.patches.iter().any(|(lo, n, _)| {
+                idx[0] >= lo[0] && idx[0] < lo[0] + n[0] && idx[1] >= lo[1] && idx[1] < lo[1] + n[1]
+            })
+        })
     }
 
     /// Integrals of the conserved variables over the composite grid (every cell counted at its finest level).
@@ -730,7 +993,9 @@ impl AmrSolution {
     pub fn totals(&self) -> State {
         let mut s = [0.0; 5];
         for lv in &self.levels {
-            let vol: f64 = (0..self.grid.dim).map(|a| self.grid.h(a) / (1u64 << lv.level) as f64).product();
+            let vol: f64 = (0..self.grid.dim)
+                .map(|a| self.grid.h(a) / (1u64 << lv.level) as f64)
+                .product();
             for (lo, n, q) in &lv.patches {
                 for j in 0..n[1] {
                     for i in 0..n[0] {
@@ -749,12 +1014,23 @@ impl AmrSolution {
     }
 
     /// `L1` norm of `component(prim) - exact(x)` over the composite grid (every cell counted at its finest level).
-    pub fn composite_l1_error(&self, component: usize, exact: impl Fn([f64; 3]) -> f64) -> f64 {
+    pub fn composite_l1_error(
+        &self,
+        component: usize,
+        exact: impl Fn([f64; 3]) -> f64,
+    ) -> f64 {
         let dim = self.grid.dim;
         let mut sum = 0.0;
         for lv in &self.levels {
             let f = (1u64 << lv.level) as f64;
-            let h = [self.grid.h(0) / f, if dim == 2 { self.grid.h(1) / f } else { 1.0 }];
+            let h = [
+                self.grid.h(0) / f,
+                if dim == 2 {
+                    self.grid.h(1) / f
+                } else {
+                    1.0
+                },
+            ];
             let vol = h[0] * if dim == 2 { h[1] } else { 1.0 };
             for (lo, n, q) in &lv.patches {
                 for j in 0..n[1] {
@@ -765,7 +1041,11 @@ impl AmrSolution {
                         }
                         let x = [
                             self.grid.lo[0] + ((lo[0] + i) as f64 + 0.5) * h[0],
-                            if dim == 2 { self.grid.lo[1] + ((lo[1] + j) as f64 + 0.5) * h[1] } else { 0.0 },
+                            if dim == 2 {
+                                self.grid.lo[1] + ((lo[1] + j) as f64 + 0.5) * h[1]
+                            } else {
+                                0.0
+                            },
                             0.0,
                         ];
                         let w = to_prim(self.law, q[i + n[0] * j]);
@@ -779,9 +1059,19 @@ impl AmrSolution {
 
     /// Primitive variables on the uniform grid of level `level` (coarser data are injected piecewise constantly).
     #[must_use]
-    pub fn primitive_on_level(&self, level: usize) -> Vec<State> {
+    pub fn primitive_on_level(
+        &self,
+        level: usize,
+    ) -> Vec<State> {
         let f = 1usize << level;
-        let n = [self.grid.n[0] * f, if self.grid.dim == 2 { self.grid.n[1] * f } else { 1 }];
+        let n = [
+            self.grid.n[0] * f,
+            if self.grid.dim == 2 {
+                self.grid.n[1] * f
+            } else {
+                1
+            },
+        ];
         let mut out = vec![[0.0; 5]; n[0] * n[1]];
         for j in 0..n[1] {
             for i in 0..n[0] {
@@ -790,7 +1080,12 @@ impl AmrSolution {
                 for l in (0..=level.min(self.levels.len() - 1)).rev() {
                     let sh = level - l;
                     let idx = [i >> sh, j >> sh];
-                    if let Some((lo, nn, q)) = self.levels[l].patches.iter().find(|(lo, nn, _)| idx[0] >= lo[0] && idx[0] < lo[0] + nn[0] && idx[1] >= lo[1] && idx[1] < lo[1] + nn[1]) {
+                    if let Some((lo, nn, q)) = self.levels[l].patches.iter().find(|(lo, nn, _)| {
+                        idx[0] >= lo[0]
+                            && idx[0] < lo[0] + nn[0]
+                            && idx[1] >= lo[1]
+                            && idx[1] < lo[1] + nn[1]
+                    }) {
                         found = Some(q[(idx[0] - lo[0]) + nn[0] * (idx[1] - lo[1])]);
                         break;
                     }
@@ -807,14 +1102,24 @@ impl AmrSolution {
 /// # Errors
 /// For 3D grids, unsupported boundary conditions, a CFL number outside
 /// `(0, 1)`, non-admissible initial data or a blown-up solution.
-pub fn solve_amr(grid: &FvGrid, cfg: &AmrConfig, init: &dyn Fn([f64; 3]) -> State, t_end: f64) -> Result<AmrSolution, String> {
+pub fn solve_amr(
+    grid: &FvGrid,
+    cfg: &AmrConfig,
+    init: &dyn Fn([f64; 3]) -> State,
+    t_end: f64,
+) -> Result<AmrSolution, String> {
     if grid.dim > 2 {
         return Err("AMR is available in 1D and 2D".into());
     }
     if !(cfg.fv.cfl > 0.0 && cfg.fv.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
     }
-    if cfg.fv.bcs.iter().any(|b| matches!(b, GasBc::NonReflecting(_))) {
+    if cfg
+        .fv
+        .bcs
+        .iter()
+        .any(|b| matches!(b, GasBc::NonReflecting(_)))
+    {
         return Err("non-reflecting boundaries are not supported by the AMR solver".into());
     }
     for a in 0..grid.dim {
@@ -826,15 +1131,37 @@ pub fn solve_amr(grid: &FvGrid, cfg: &AmrConfig, init: &dyn Fn([f64; 3]) -> Stat
         return Err("the base grid needs an even number of cells per axis".into());
     }
     let nv = match cfg.fv.law {
-        Law::Euler { .. } => 5,
-        Law::ShallowWater { .. } => 1 + grid.dim,
+        | Law::Euler { .. } => 5,
+        | Law::ShallowWater { .. } => 1 + grid.dim,
     };
-    let n0 = [grid.n[0], if grid.dim == 2 { grid.n[1] } else { 1 }];
-    let h0 = [grid.h(0), if grid.dim == 2 { grid.h(1) } else { 1.0 }];
+    let n0 = [
+        grid.n[0],
+        if grid.dim == 2 {
+            grid.n[1]
+        } else {
+            1
+        },
+    ];
+    let h0 = [
+        grid.h(0),
+        if grid.dim == 2 {
+            grid.h(1)
+        } else {
+            1.0
+        },
+    ];
     let mut q = Vec::with_capacity(n0[0] * n0[1]);
     for j in 0..n0[1] {
         for i in 0..n0[0] {
-            let x = [grid.lo[0] + (i as f64 + 0.5) * h0[0], if grid.dim == 2 { grid.lo[1] + (j as f64 + 0.5) * h0[1] } else { 0.0 }, 0.0];
+            let x = [
+                grid.lo[0] + (i as f64 + 0.5) * h0[0],
+                if grid.dim == 2 {
+                    grid.lo[1] + (j as f64 + 0.5) * h0[1]
+                } else {
+                    0.0
+                },
+                0.0,
+            ];
             let w = init(x);
             if !admissible(cfg.fv.law, &w) {
                 return Err("initial state is not admissible".into());
@@ -842,11 +1169,26 @@ pub fn solve_amr(grid: &FvGrid, cfg: &AmrConfig, init: &dyn Fn([f64; 3]) -> Stat
             q.push(to_cons(cfg.fv.law, w));
         }
     }
-    let mut levels = vec![Level { patches: vec![Patch::new([0, 0], n0, q)], t_old: 0.0, t_new: 0.0 }];
+    let mut levels = vec![Level {
+        patches: vec![Patch::new([0, 0], n0, q)],
+        t_old: 0.0,
+        t_new: 0.0,
+    }];
     for _ in 0..cfg.max_level {
-        levels.push(Level { patches: Vec::new(), t_old: 0.0, t_new: 0.0 });
+        levels.push(Level {
+            patches: Vec::new(),
+            t_old: 0.0,
+            t_new: 0.0,
+        });
     }
-    let mut amr = Amr { cfg: *cfg, dim: grid.dim, n0, h0, nv, levels };
+    let mut amr = Amr {
+        cfg: *cfg,
+        dim: grid.dim,
+        n0,
+        h0,
+        nv,
+        levels,
+    };
     // re-evaluate the initial data on the refined levels from the exact function
     for _ in 0..=cfg.max_level {
         amr.regrid();
@@ -880,14 +1222,33 @@ pub fn solve_amr(grid: &FvGrid, cfg: &AmrConfig, init: &dyn Fn([f64; 3]) -> Stat
         .levels
         .iter()
         .enumerate()
-        .map(|(level, lv)| AmrLevelData { level, patches: lv.patches.iter().map(|p| (p.lo, p.n, p.q.clone())).collect() })
+        .map(|(level, lv)| {
+            AmrLevelData {
+                level,
+                patches: lv
+                    .patches
+                    .iter()
+                    .map(|p| (p.lo, p.n, p.q.clone()))
+                    .collect(),
+            }
+        })
         .collect();
-    Ok(AmrSolution { grid: *grid, levels, t, steps, law: cfg.fv.law })
+    Ok(AmrSolution {
+        grid: *grid,
+        levels,
+        t,
+        steps,
+        law: cfg.fv.law,
+    })
 }
 
 impl Amr {
     /// Overwrites fine patches by the initial function sampled at their own cell centres.
-    fn init_fine(&mut self, init: &dyn Fn([f64; 3]) -> State, grid: &FvGrid) {
+    fn init_fine(
+        &mut self,
+        init: &dyn Fn([f64; 3]) -> State,
+        grid: &FvGrid,
+    ) {
         let law = self.cfg.fv.law;
         let dim = self.dim;
         for l in 1..self.levels.len() {
@@ -897,7 +1258,11 @@ impl Amr {
                     for i in 0..p.n[0] {
                         let x = [
                             grid.lo[0] + ((p.lo[0] + i) as f64 + 0.5) * hs[0],
-                            if dim == 2 { grid.lo[1] + ((p.lo[1] + j) as f64 + 0.5) * hs[1] } else { 0.0 },
+                            if dim == 2 {
+                                grid.lo[1] + ((p.lo[1] + j) as f64 + 0.5) * hs[1]
+                            } else {
+                                0.0
+                            },
                             0.0,
                         ];
                         let w = init(x);

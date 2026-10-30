@@ -43,10 +43,10 @@ impl Scheme {
     #[must_use]
     pub const fn order(self) -> usize {
         match self {
-            Self::Verlet => 2,
-            Self::ForestRuth | Self::Yoshida4 | Self::BlanesMoan4 => 4,
-            Self::Yoshida6 => 6,
-            Self::Yoshida8 => 8,
+            | Self::Verlet => 2,
+            | Self::ForestRuth | Self::Yoshida4 | Self::BlanesMoan4 => 4,
+            | Self::Yoshida6 => 6,
+            | Self::Yoshida8 => 8,
         }
     }
 
@@ -54,17 +54,22 @@ impl Scheme {
     #[must_use]
     pub fn stages(self) -> Vec<(f64, f64)> {
         match self {
-            Self::Verlet => vec![(0.5, 1.0), (0.5, 0.0)],
-            Self::ForestRuth => {
+            | Self::Verlet => vec![(0.5, 1.0), (0.5, 0.0)],
+            | Self::ForestRuth => {
                 let t = 1.0 / (2.0 - 2.0_f64.cbrt());
-                vec![(t / 2.0, t), ((1.0 - t) / 2.0, 1.0 - 2.0 * t), ((1.0 - t) / 2.0, t), (t / 2.0, 0.0)]
+                vec![
+                    (t / 2.0, t),
+                    ((1.0 - t) / 2.0, 1.0 - 2.0 * t),
+                    ((1.0 - t) / 2.0, t),
+                    (t / 2.0, 0.0),
+                ]
             },
-            Self::Yoshida4 => triple_jump(&Self::Verlet.stages(), 2),
-            Self::Yoshida6 => {
+            | Self::Yoshida4 => triple_jump(&Self::Verlet.stages(), 2),
+            | Self::Yoshida6 => {
                 let w = [-1.17767998417887, 0.235573213359357, 0.784513610477560];
                 yoshida_weights(&w)
             },
-            Self::Yoshida8 => {
+            | Self::Yoshida8 => {
                 let w = [
                     -1.61582374150097,
                     -2.44699182370524,
@@ -76,7 +81,7 @@ impl Scheme {
                 ];
                 yoshida_weights(&w)
             },
-            Self::BlanesMoan4 => {
+            | Self::BlanesMoan4 => {
                 let a1 = 0.0792036964311957;
                 let a2 = 0.353172906049774;
                 let a3 = -0.0420650803577195;
@@ -84,7 +89,15 @@ impl Scheme {
                 let b1 = 0.209515106613362;
                 let b2 = -0.143851773179818;
                 let b3 = 0.5 - (b1 + b2);
-                vec![(a1, b1), (a2, b2), (a3, b3), (a4, b3), (a3, b2), (a2, b1), (a1, 0.0)]
+                vec![
+                    (a1, b1),
+                    (a2, b2),
+                    (a3, b3),
+                    (a4, b3),
+                    (a3, b2),
+                    (a2, b1),
+                    (a1, 0.0),
+                ]
             },
         }
     }
@@ -119,11 +132,21 @@ pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
         out
     };
     Ok(match order {
-        2 => vec![1.0],
-        4 => triple(&[1.0], 2),
-        6 => seq(&[-1.17767998417887, 0.235573213359357, 0.784513610477560]),
-        8 => seq(&[-1.61582374150097, -2.44699182370524, -0.00716989419708120, 2.44002732616735, 0.157739928123617, 1.82020630970714, 1.04242620869991]),
-        _ => {
+        | 2 => vec![1.0],
+        | 4 => triple(&[1.0], 2),
+        | 6 => seq(&[-1.17767998417887, 0.235573213359357, 0.784513610477560]),
+        | 8 => {
+            seq(&[
+                -1.61582374150097,
+                -2.44699182370524,
+                -0.00716989419708120,
+                2.44002732616735,
+                0.157739928123617,
+                1.82020630970714,
+                1.04242620869991,
+            ])
+        },
+        | _ => {
             let mut w = composition_weights(8)?;
             let mut p = 8;
             while p < order {
@@ -450,7 +473,12 @@ pub fn ks_propagate<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
             y[i] += ds / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
         }
     }
-    KsState { u: [y[0], y[1], y[2], y[3]], up: [y[4], y[5], y[6], y[7]], t: y[9], energy: y[8] }
+    KsState {
+        u: [y[0], y[1], y[2], y[3]],
+        up: [y[4], y[5], y[6], y[7]],
+        t: y[9],
+        energy: y[8],
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -476,9 +504,21 @@ pub fn quat_mul(
 pub fn quat_to_matrix(q: &[f64; 4]) -> [[f64; 3]; 3] {
     let [w, x, y, z] = *q;
     [
-        [w * w + x * x - y * y - z * z, 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
-        [2.0 * (x * y + w * z), w * w - x * x + y * y - z * z, 2.0 * (y * z - w * x)],
-        [2.0 * (x * z - w * y), 2.0 * (y * z + w * x), w * w - x * x - y * y + z * z],
+        [
+            w * w + x * x - y * y - z * z,
+            2.0 * (x * y - w * z),
+            2.0 * (x * z + w * y),
+        ],
+        [
+            2.0 * (x * y + w * z),
+            w * w - x * x + y * y - z * z,
+            2.0 * (y * z - w * x),
+        ],
+        [
+            2.0 * (x * z - w * y),
+            2.0 * (y * z + w * x),
+            w * w - x * x - y * y + z * z,
+        ],
     ]
 }
 
@@ -497,7 +537,9 @@ impl RigidBody {
     /// Rotational kinetic energy.
     #[must_use]
     pub fn kinetic_energy(&self) -> f64 {
-        (0..3).map(|k| self.l_body[k] * self.l_body[k] / (2.0 * self.inertia[k])).sum()
+        (0..3)
+            .map(|k| self.l_body[k] * self.l_body[k] / (2.0 * self.inertia[k]))
+            .sum()
     }
 
     /// Angular momentum in the space frame.
@@ -555,7 +597,11 @@ impl RigidBody {
         ax: usize,
         h: f64,
     ) {
-        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let inv = [
+            1.0 / self.inertia[0],
+            1.0 / self.inertia[1],
+            1.0 / self.inertia[2],
+        ];
         let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
         let inv_perp = f64::midpoint(inv[a], inv[b]);
         let ls = self.l_space();
@@ -583,7 +629,11 @@ impl RigidBody {
 
     /// Axis whose two partners have the closest inverse moments (best symmetric-top approximation).
     fn symmetry_axis(&self) -> usize {
-        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let inv = [
+            1.0 / self.inertia[0],
+            1.0 / self.inertia[1],
+            1.0 / self.inertia[2],
+        ];
         (0..3)
             .min_by(|&x, &y| {
                 let dx = (inv[(x + 1) % 3] - inv[(x + 2) % 3]).abs();
@@ -602,7 +652,11 @@ impl RigidBody {
         h: f64,
     ) {
         let ax = self.symmetry_axis();
-        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let inv = [
+            1.0 / self.inertia[0],
+            1.0 / self.inertia[1],
+            1.0 / self.inertia[2],
+        ];
         let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
         let inv_perp = f64::midpoint(inv[a], inv[b]);
         for k in [a, b] {
@@ -744,16 +798,36 @@ pub fn matrix_to_quat(r: &[[f64; 3]; 3]) -> [f64; 4] {
     let tr = r[0][0] + r[1][1] + r[2][2];
     let q = if tr > 0.0 {
         let s = 2.0 * (tr + 1.0).sqrt();
-        [0.25 * s, (r[2][1] - r[1][2]) / s, (r[0][2] - r[2][0]) / s, (r[1][0] - r[0][1]) / s]
+        [
+            0.25 * s,
+            (r[2][1] - r[1][2]) / s,
+            (r[0][2] - r[2][0]) / s,
+            (r[1][0] - r[0][1]) / s,
+        ]
     } else if r[0][0] > r[1][1] && r[0][0] > r[2][2] {
         let s = 2.0 * (1.0 + r[0][0] - r[1][1] - r[2][2]).sqrt();
-        [(r[2][1] - r[1][2]) / s, 0.25 * s, (r[0][1] + r[1][0]) / s, (r[0][2] + r[2][0]) / s]
+        [
+            (r[2][1] - r[1][2]) / s,
+            0.25 * s,
+            (r[0][1] + r[1][0]) / s,
+            (r[0][2] + r[2][0]) / s,
+        ]
     } else if r[1][1] > r[2][2] {
         let s = 2.0 * (1.0 + r[1][1] - r[0][0] - r[2][2]).sqrt();
-        [(r[0][2] - r[2][0]) / s, (r[0][1] + r[1][0]) / s, 0.25 * s, (r[1][2] + r[2][1]) / s]
+        [
+            (r[0][2] - r[2][0]) / s,
+            (r[0][1] + r[1][0]) / s,
+            0.25 * s,
+            (r[1][2] + r[2][1]) / s,
+        ]
     } else {
         let s = 2.0 * (1.0 + r[2][2] - r[0][0] - r[1][1]).sqrt();
-        [(r[1][0] - r[0][1]) / s, (r[0][2] + r[2][0]) / s, (r[1][2] + r[2][1]) / s, 0.25 * s]
+        [
+            (r[1][0] - r[0][1]) / s,
+            (r[0][2] + r[2][0]) / s,
+            (r[1][2] + r[2][1]) / s,
+            0.25 * s,
+        ]
     };
     let n = q.iter().map(|x| x * x).sum::<f64>().sqrt();
     [q[0] / n, q[1] / n, q[2] / n, q[3] / n]
@@ -790,7 +864,11 @@ impl RigidBody {
     /// for (near-)symmetric bodies and steady rotations, which are handled separately.
     fn euler_solution(&self) -> Option<EulerSolution> {
         let l = self.l_body;
-        let w = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let w = [
+            1.0 / self.inertia[0],
+            1.0 / self.inertia[1],
+            1.0 / self.inertia[2],
+        ];
         let l2 = l.iter().map(|x| x * x).sum::<f64>();
         let two_t = (0..3).map(|k| w[k] * l[k] * l[k]).sum::<f64>();
         let mut ord = [0usize, 1, 2];
@@ -800,7 +878,11 @@ impl RigidBody {
         if (w[a] - w[b]).abs() < 1e-12 * scale || (w[b] - w[c]).abs() < 1e-12 * scale {
             return None;
         }
-        let d = if l2 >= two_t * self.inertia[b] { c } else { a };
+        let d = if l2 >= two_t * self.inertia[b] {
+            c
+        } else {
+            a
+        };
         let others: [usize; 2] = if d == c { [a, b] } else { [c, b] };
         let mut best: Option<EulerSolution> = None;
         for (p, s) in [(others[0], others[1]), (others[1], others[0])] {
@@ -884,7 +966,11 @@ impl RigidBody {
                 return;
             }
         }
-        let w = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let w = [
+            1.0 / self.inertia[0],
+            1.0 / self.inertia[1],
+            1.0 / self.inertia[2],
+        ];
         let Some(sol) = self.euler_solution() else {
             let ax = self.symmetry_axis();
             self.symmetric_top_flow(ax, t);
@@ -896,7 +982,8 @@ impl RigidBody {
         let (sn, cn, dn) = crate::kernels::special_ext::jacobi_elliptic(tau, m);
         let phi_mod = sn.atan2(cn);
         let kk = crate::kernels::special_ext::elliptic_k(m);
-        let n_wrap = ((tau - crate::kernels::special_ext::elliptic_f(phi_mod, m)) / (4.0 * kk)).round();
+        let n_wrap =
+            ((tau - crate::kernels::special_ext::elliptic_f(phi_mod, m)) / (4.0 * kk)).round();
         let phi_t = phi_mod + 2.0 * std::f64::consts::PI * n_wrap;
         let mut ln = [0.0; 3];
         ln[sol.p] = sol.ap * cn;
@@ -970,7 +1057,11 @@ impl RigidBody {
                     s[a][b] = f[a][b] * jd[b] - jd[a] * f[b][a];
                 }
             }
-            [s[2][1] - h * pi[0], s[0][2] - h * pi[1], s[1][0] - h * pi[2]]
+            [
+                s[2][1] - h * pi[0],
+                s[0][2] - h * pi[1],
+                s[1][0] - h * pi[2],
+            ]
         };
         let mut v = [h * pi[0] / i[0], h * pi[1] / i[1], h * pi[2] / i[2]];
         let scale = (h * (pi[0].abs() + pi[1].abs() + pi[2].abs())).max(1e-300);
@@ -1030,7 +1121,11 @@ impl RigidBody {
         let f = rotation_from_vector(&v);
         let angle = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
         let (s, c) = (0.5 * angle).sin_cos();
-        let k = if angle > 0.0 { s / angle } else { 0.5 };
+        let k = if angle > 0.0 {
+            s / angle
+        } else {
+            0.5
+        };
         let e = [c, k * v[0], k * v[1], k * v[2]];
         let mut q = quat_mul(&self.q, &e);
         let n = q.iter().map(|x| x * x).sum::<f64>().sqrt();
@@ -1154,9 +1249,17 @@ pub fn ks_advance<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
             return Err("ks_advance: collision".into());
         }
         let e = y[8];
-        let omega = if e < -1e-12 * mu / r { (-0.5 * e).sqrt() } else { (0.25 * mu / r).sqrt() };
+        let omega = if e < -1e-12 * mu / r {
+            (-0.5 * e).sqrt()
+        } else {
+            (0.25 * mu / r).sqrt()
+        };
         let ds_nominal = eta / omega;
-        let ds = if remaining.abs() < r * ds_nominal * 1.05 { remaining / r } else { ds_nominal };
+        let ds = if remaining.abs() < r * ds_nominal * 1.05 {
+            remaining / r
+        } else {
+            ds_nominal
+        };
         y = rk4(&y, ds);
     }
     let (x, v) = ks_to_cartesian(&[y[0], y[1], y[2], y[3]], &[y[4], y[5], y[6], y[7]]);

@@ -38,9 +38,12 @@
 //! bounding boxes (use `eta <= 1`); the Helmholtz solver is dense.
 
 use crate::kernels::krylov::gmres;
-use crate::sim::physics_bem::{
-    Bem3dSolution, BoundaryCondition, SurfaceMesh3D, inv_r_integral, inv_r_integral_in_plane, solid_angle,
-};
+use crate::sim::physics_bem::Bem3dSolution;
+use crate::sim::physics_bem::BoundaryCondition;
+use crate::sim::physics_bem::SurfaceMesh3D;
+use crate::sim::physics_bem::inv_r_integral;
+use crate::sim::physics_bem::inv_r_integral_in_plane;
+use crate::sim::physics_bem::solid_angle;
 use rayon::prelude::*;
 use std::f64::consts::PI;
 
@@ -65,7 +68,14 @@ pub struct AcaOptions {
 
 impl Default for AcaOptions {
     fn default() -> Self {
-        Self { leaf_size: 32, eta: 1.0, aca_tol: 1e-6, gmres_tol: 1e-10, restart: 60, max_iter: 600 }
+        Self {
+            leaf_size: 32,
+            eta: 1.0,
+            aca_tol: 1e-6,
+            gmres_tol: 1e-10,
+            restart: 60,
+            max_iter: 600,
+        }
     }
 }
 
@@ -103,22 +113,40 @@ struct Cluster {
 }
 
 enum Block {
-    Dense { r0: usize, c0: usize, m: usize, n: usize, data: Vec<f64> },
-    LowRank { r0: usize, c0: usize, m: usize, n: usize, k: usize, u: Vec<f64>, v: Vec<f64> },
+    Dense {
+        r0: usize,
+        c0: usize,
+        m: usize,
+        n: usize,
+        data: Vec<f64>,
+    },
+    LowRank {
+        r0: usize,
+        c0: usize,
+        m: usize,
+        n: usize,
+        k: usize,
+        u: Vec<f64>,
+        v: Vec<f64>,
+    },
 }
 
 impl Block {
     const fn stored(&self) -> usize {
         match self {
-            Self::Dense { data, .. } => data.len(),
-            Self::LowRank { u, v, .. } => u.len() + v.len(),
+            | Self::Dense { data, .. } => data.len(),
+            | Self::LowRank { u, v, .. } => u.len() + v.len(),
         }
     }
 
     /// `y += B x` in permuted ordering.
-    fn apply(&self, x: &[f64], y: &mut [f64]) {
+    fn apply(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
         match self {
-            Self::Dense { r0, c0, m, n, data } => {
+            | Self::Dense { r0, c0, m, n, data } => {
                 for i in 0..*m {
                     let mut s = 0.0;
                     for j in 0..*n {
@@ -127,7 +155,15 @@ impl Block {
                     y[r0 + i] += s;
                 }
             },
-            Self::LowRank { r0, c0, m, n, k, u, v } => {
+            | Self::LowRank {
+                r0,
+                c0,
+                m,
+                n,
+                k,
+                u,
+                v,
+            } => {
                 let mut t = vec![0.0; *k];
                 for q in 0..*k {
                     t[q] = (0..*n).map(|j| v[q * n + j] * x[c0 + j]).sum();
@@ -145,7 +181,10 @@ struct HMatrix {
 }
 
 impl HMatrix {
-    fn matvec(&self, x: &[f64]) -> Vec<f64> {
+    fn matvec(
+        &self,
+        x: &[f64],
+    ) -> Vec<f64> {
         let n = x.len();
         self.blocks
             .par_chunks(64)
@@ -168,7 +207,14 @@ impl HMatrix {
     }
 }
 
-fn build_tree(cent: &[V3], perm: &mut [usize], lo: usize, hi: usize, leaf: usize, out: &mut Vec<Cluster>) -> usize {
+fn build_tree(
+    cent: &[V3],
+    perm: &mut [usize],
+    lo: usize,
+    hi: usize,
+    leaf: usize,
+    out: &mut Vec<Cluster>,
+) -> usize {
     let mut bmin = [f64::INFINITY; 3];
     let mut bmax = [f64::NEG_INFINITY; 3];
     for &p in &perm[lo..hi] {
@@ -178,9 +224,17 @@ fn build_tree(cent: &[V3], perm: &mut [usize], lo: usize, hi: usize, leaf: usize
         }
     }
     let id = out.len();
-    out.push(Cluster { lo, hi, bmin, bmax, kids: None });
+    out.push(Cluster {
+        lo,
+        hi,
+        bmin,
+        bmax,
+        kids: None,
+    });
     if hi - lo > leaf {
-        let axis = (0..3).max_by(|&a, &b| (bmax[a] - bmin[a]).total_cmp(&(bmax[b] - bmin[b]))).unwrap_or(0);
+        let axis = (0..3)
+            .max_by(|&a, &b| (bmax[a] - bmin[a]).total_cmp(&(bmax[b] - bmin[b])))
+            .unwrap_or(0);
         perm[lo..hi].sort_by(|&p, &q| cent[p][axis].total_cmp(&cent[q][axis]));
         let mid = lo + (hi - lo) / 2;
         let l = build_tree(cent, perm, lo, mid, leaf, out);
@@ -191,10 +245,16 @@ fn build_tree(cent: &[V3], perm: &mut [usize], lo: usize, hi: usize, leaf: usize
 }
 
 fn diam(c: &Cluster) -> f64 {
-    (0..3).map(|a| (c.bmax[a] - c.bmin[a]).powi(2)).sum::<f64>().sqrt()
+    (0..3)
+        .map(|a| (c.bmax[a] - c.bmin[a]).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
-fn dist(a: &Cluster, b: &Cluster) -> f64 {
+fn dist(
+    a: &Cluster,
+    b: &Cluster,
+) -> f64 {
     (0..3)
         .map(|k| {
             let d = (a.bmin[k] - b.bmax[k]).max(b.bmin[k] - a.bmax[k]).max(0.0);
@@ -204,23 +264,30 @@ fn dist(a: &Cluster, b: &Cluster) -> f64 {
         .sqrt()
 }
 
-fn partition(tree: &[Cluster], s: usize, t: usize, eta: f64, near: &mut Vec<(usize, usize)>, far: &mut Vec<(usize, usize)>) {
+fn partition(
+    tree: &[Cluster],
+    s: usize,
+    t: usize,
+    eta: f64,
+    near: &mut Vec<(usize, usize)>,
+    far: &mut Vec<(usize, usize)>,
+) {
     let (cs, ct) = (&tree[s], &tree[t]);
     if s != t && diam(cs).min(diam(ct)) <= eta * dist(cs, ct) {
         far.push((s, t));
         return;
     }
     match (cs.kids, ct.kids) {
-        (None, None) => near.push((s, t)),
-        (Some((a, b)), None) => {
+        | (None, None) => near.push((s, t)),
+        | (Some((a, b)), None) => {
             partition(tree, a, t, eta, near, far);
             partition(tree, b, t, eta, near, far);
         },
-        (None, Some((a, b))) => {
+        | (None, Some((a, b))) => {
             partition(tree, s, a, eta, near, far);
             partition(tree, s, b, eta, near, far);
         },
-        (Some((a, b)), Some((c, d))) => {
+        | (Some((a, b)), Some((c, d))) => {
             if cs.hi - cs.lo >= ct.hi - ct.lo {
                 partition(tree, a, t, eta, near, far);
                 partition(tree, b, t, eta, near, far);
@@ -233,7 +300,12 @@ fn partition(tree: &[Cluster], s: usize, t: usize, eta: f64, near: &mut Vec<(usi
 }
 
 /// ACA with partial pivoting of an `m x n` block given by `entry(i, j)`.
-fn aca(m: usize, n: usize, tol: f64, entry: &dyn Fn(usize, usize) -> f64) -> (usize, Vec<f64>, Vec<f64>) {
+fn aca(
+    m: usize,
+    n: usize,
+    tol: f64,
+    entry: &dyn Fn(usize, usize) -> f64,
+) -> (usize, Vec<f64>, Vec<f64>) {
     let kmax = m.min(n);
     let mut us: Vec<Vec<f64>> = Vec::new();
     let mut vs: Vec<Vec<f64>> = Vec::new();
@@ -248,15 +320,21 @@ fn aca(m: usize, n: usize, tol: f64, entry: &dyn Fn(usize, usize) -> f64) -> (us
                 row[j] -= u[i] * v[j];
             }
         }
-        let (jp, piv) = row.iter().enumerate().fold((0, 0.0_f64), |b, (j, &x)| if x.abs() > b.1.abs() { (j, x) } else { b });
+        let (jp, piv) = row.iter().enumerate().fold((0, 0.0_f64), |b, (j, &x)| {
+            if x.abs() > b.1.abs() {
+                (j, x)
+            } else {
+                b
+            }
+        });
         if piv.abs() < 1e-300 {
             // zero row: pick another unused row
             match (0..m).find(|&r| !used_rows[r]) {
-                Some(r) => {
+                | Some(r) => {
                     i = r;
                     continue;
                 },
-                None => break,
+                | None => break,
             }
         }
         let v: Vec<f64> = row.iter().map(|x| x / piv).collect();
@@ -277,18 +355,22 @@ fn aca(m: usize, n: usize, tol: f64, entry: &dyn Fn(usize, usize) -> f64) -> (us
         }
         norm2 += nu * nu * nv * nv + 2.0 * cross;
         // next row pivot: largest entry of the new column among unused rows
-        let next = (0..m).filter(|&r| !used_rows[r]).fold(None, |b: Option<(usize, f64)>, r| match b {
-            Some((_, x)) if x >= col[r].abs() => b,
-            _ => Some((r, col[r].abs())),
-        });
+        let next = (0..m)
+            .filter(|&r| !used_rows[r])
+            .fold(None, |b: Option<(usize, f64)>, r| {
+                match b {
+                    | Some((_, x)) if x >= col[r].abs() => b,
+                    | _ => Some((r, col[r].abs())),
+                }
+            });
         us.push(col);
         vs.push(v);
         if nu * nv <= tol * norm2.max(0.0).sqrt() {
             break;
         }
         match next {
-            Some((r, _)) => i = r,
-            None => break,
+            | Some((r, _)) => i = r,
+            | None => break,
         }
     }
     let k = us.len();
@@ -322,7 +404,15 @@ fn build_hmatrix(
             if is_far {
                 let (k, u, v) = aca(m, n, tol, &e);
                 if k * (m + n) < m * n {
-                    return Block::LowRank { r0: cs.lo, c0: ct.lo, m, n, k, u, v };
+                    return Block::LowRank {
+                        r0: cs.lo,
+                        c0: ct.lo,
+                        m,
+                        n,
+                        k,
+                        u,
+                        v,
+                    };
                 }
             }
             let mut data = vec![0.0; m * n];
@@ -331,7 +421,13 @@ fn build_hmatrix(
                     data[i * n + j] = e(i, j);
                 }
             }
-            Block::Dense { r0: cs.lo, c0: ct.lo, m, n, data }
+            Block::Dense {
+                r0: cs.lo,
+                c0: ct.lo,
+                m,
+                n,
+                data,
+            }
         })
         .collect();
     HMatrix { blocks }
@@ -379,7 +475,11 @@ pub fn solve_laplace_bem_3d_exterior(
 ///
 /// # Errors
 /// If the solution does not match the mesh.
-pub fn evaluate_potential_3d_exterior(point: [f64; 3], mesh: &SurfaceMesh3D, solution: &Bem3dSolution) -> Result<f64, String> {
+pub fn evaluate_potential_3d_exterior(
+    point: [f64; 3],
+    mesh: &SurfaceMesh3D,
+    solution: &Bem3dSolution,
+) -> Result<f64, String> {
     let n = mesh.triangles.len();
     if solution.u.len() != n || solution.q.len() != n {
         return Err("solution does not match the mesh".into());
@@ -395,7 +495,10 @@ pub fn evaluate_potential_3d_exterior(point: [f64; 3], mesh: &SurfaceMesh3D, sol
 }
 
 fn flipped(mesh: &SurfaceMesh3D) -> SurfaceMesh3D {
-    SurfaceMesh3D { vertices: mesh.vertices.clone(), triangles: mesh.triangles.iter().map(|&[a, b, c]| [a, c, b]).collect() }
+    SurfaceMesh3D {
+        vertices: mesh.vertices.clone(),
+        triangles: mesh.triangles.iter().map(|&[a, b, c]| [a, c, b]).collect(),
+    }
 }
 
 fn solve_impl(
@@ -407,7 +510,10 @@ fn solve_impl(
     mesh_in.validate()?;
     let n = mesh_in.triangles.len();
     if bcs_in.len() != n {
-        return Err(format!("expected {n} boundary conditions, got {}", bcs_in.len()));
+        return Err(format!(
+            "expected {n} boundary conditions, got {}",
+            bcs_in.len()
+        ));
     }
     if bcs_in.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
         return Err("boundary data must be finite".into());
@@ -420,9 +526,11 @@ fn solve_impl(
         mesh = &flipped_mesh;
         owned_bcs = bcs_in
             .iter()
-            .map(|b| match *b {
-                BoundaryCondition::Flux(v) => BoundaryCondition::Flux(-v),
-                BoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+            .map(|b| {
+                match *b {
+                    | BoundaryCondition::Flux(v) => BoundaryCondition::Flux(-v),
+                    | BoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+                }
             })
             .collect::<Vec<_>>();
         &owned_bcs
@@ -430,20 +538,51 @@ fn solve_impl(
         mesh = mesh_in;
         bcs_in
     };
-    let all_flux = bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
+    let all_flux = bcs
+        .iter()
+        .all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
     let augmented = all_flux && !exterior;
     let areas: Vec<f64> = (0..n).filter_map(|t| mesh.area(t)).collect();
     if augmented {
-        let scale: f64 = bcs.iter().zip(&areas).map(|(b, a)| if let BoundaryCondition::Flux(q) = b { (q * a).abs() } else { 0.0 }).sum();
-        let net: f64 = bcs.iter().zip(&areas).map(|(b, a)| if let BoundaryCondition::Flux(q) = b { q * a } else { 0.0 }).sum();
+        let scale: f64 = bcs
+            .iter()
+            .zip(&areas)
+            .map(|(b, a)| {
+                if let BoundaryCondition::Flux(q) = b {
+                    (q * a).abs()
+                } else {
+                    0.0
+                }
+            })
+            .sum();
+        let net: f64 = bcs
+            .iter()
+            .zip(&areas)
+            .map(|(b, a)| {
+                if let BoundaryCondition::Flux(q) = b {
+                    q * a
+                } else {
+                    0.0
+                }
+            })
+            .sum();
         if net.abs() > 1e-6 * scale.max(f64::MIN_POSITIVE) {
-            return Err("pure Neumann data violates the compatibility condition (net flux must vanish)".into());
+            return Err(
+                "pure Neumann data violates the compatibility condition (net flux must vanish)"
+                    .into(),
+            );
         }
     }
     let corners: Vec<[V3; 3]> = (0..n).filter_map(|t| mesh.corners(t)).collect();
     let cent: Vec<V3> = corners
         .iter()
-        .map(|c| [(c[0][0] + c[1][0] + c[2][0]) / 3.0, (c[0][1] + c[1][1] + c[2][1]) / 3.0, (c[0][2] + c[1][2] + c[2][2]) / 3.0])
+        .map(|c| {
+            [
+                (c[0][0] + c[1][0] + c[2][0]) / 3.0,
+                (c[0][1] + c[1][1] + c[2][1]) / 3.0,
+                (c[0][2] + c[1][2] + c[2][2]) / 3.0,
+            ]
+        })
         .collect();
     let g_entry = |i: usize, j: usize| -> f64 {
         if i == j {
@@ -453,7 +592,11 @@ fn solve_impl(
         }
     };
     let h_entry = |i: usize, j: usize| -> f64 {
-        if i == j { 0.5 } else { -solid_angle(cent[i], corners[j]) / (4.0 * PI) }
+        if i == j {
+            0.5
+        } else {
+            -solid_angle(cent[i], corners[j]) / (4.0 * PI)
+        }
     };
     let mut perm: Vec<usize> = (0..n).collect();
     let mut tree = Vec::new();
@@ -466,9 +609,30 @@ fn solve_impl(
     for (new, &old) in perm.iter().enumerate() {
         inv_perm[old] = new;
     }
-    let is_dir: Vec<bool> = perm.iter().map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_))).collect();
-    let u_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Potential(v) = bcs[o] { v } else { 0.0 }).collect();
-    let q_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Flux(v) = bcs[o] { v } else { 0.0 }).collect();
+    let is_dir: Vec<bool> = perm
+        .iter()
+        .map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_)))
+        .collect();
+    let u_known: Vec<f64> = perm
+        .iter()
+        .map(|&o| {
+            if let BoundaryCondition::Potential(v) = bcs[o] {
+                v
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let q_known: Vec<f64> = perm
+        .iter()
+        .map(|&o| {
+            if let BoundaryCondition::Flux(v) = bcs[o] {
+                v
+            } else {
+                0.0
+            }
+        })
+        .collect();
     let hu = hm.matvec(&u_known);
     let gq = gm.matvec(&q_known);
     let mut rhs: Vec<f64> = (0..n).map(|i| gq[i] - hu[i]).collect();
@@ -496,7 +660,11 @@ fn solve_impl(
     let mut diag: Vec<f64> = (0..n)
         .map(|i| {
             let o = perm[i];
-            if is_dir[i] { -g_entry(o, o) } else { 0.5 }
+            if is_dir[i] {
+                -g_entry(o, o)
+            } else {
+                0.5
+            }
         })
         .collect();
     if augmented {
@@ -507,20 +675,31 @@ fn solve_impl(
             z[i] = r[i] / diag[i];
         }
     };
-    let res = gmres(apply, precond, &rhs, None, opts.restart, opts.gmres_tol, opts.max_iter);
+    let res = gmres(
+        apply,
+        precond,
+        &rhs,
+        None,
+        opts.restart,
+        opts.gmres_tol,
+        opts.max_iter,
+    );
     if !res.converged {
-        return Err(format!("GMRES did not converge (residual {})", res.residual));
+        return Err(format!(
+            "GMRES did not converge (residual {})",
+            res.residual
+        ));
     }
     let mut u = vec![0.0; n];
     let mut q = vec![0.0; n];
     for o in 0..n {
         let p = inv_perm[o];
         match bcs[o] {
-            BoundaryCondition::Potential(v) => {
+            | BoundaryCondition::Potential(v) => {
                 u[o] = v;
                 q[o] = res.x[p];
             },
-            BoundaryCondition::Flux(v) => {
+            | BoundaryCondition::Flux(v) => {
                 q[o] = v;
                 u[o] = res.x[p];
             },
@@ -532,7 +711,12 @@ fn solve_impl(
         }
     }
     let stored: usize = gm.blocks.iter().chain(&hm.blocks).map(Block::stored).sum();
-    let lowrank = gm.blocks.iter().chain(&hm.blocks).filter(|b| matches!(b, Block::LowRank { .. })).count();
+    let lowrank = gm
+        .blocks
+        .iter()
+        .chain(&hm.blocks)
+        .filter(|b| matches!(b, Block::LowRank { .. }))
+        .count();
     let stats = AcaStats {
         dense_blocks: gm.blocks.len() + hm.blocks.len() - lowrank,
         lowrank_blocks: lowrank,
@@ -577,7 +761,10 @@ fn radon7() -> [([f64; 3], f64); 7] {
     ]
 }
 
-fn sub3(a: V3, b: V3) -> V3 {
+fn sub3(
+    a: V3,
+    b: V3,
+) -> V3 {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
@@ -587,23 +774,50 @@ fn nrm3(a: V3) -> f64 {
 
 /// Adds `∫_T φ_k (kernel) dS` for k = 0..3 by adaptive subdivision (`single`
 /// selects `1/r`, otherwise `ν·(y - x)/r³`).
-fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut [f64; 3]) {
+fn p1_regular(
+    x: V3,
+    tri: [V3; 3],
+    nu: V3,
+    single: bool,
+    depth: usize,
+    out: &mut [f64; 3],
+) {
     let centre = [
         (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0,
         (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0,
         (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0,
     ];
-    let diam = nrm3(sub3(tri[0], tri[1])).max(nrm3(sub3(tri[1], tri[2]))).max(nrm3(sub3(tri[2], tri[0])));
+    let diam = nrm3(sub3(tri[0], tri[1]))
+        .max(nrm3(sub3(tri[1], tri[2])))
+        .max(nrm3(sub3(tri[2], tri[0])));
     let d = nrm3(sub3(centre, x));
     if d < 1.5 * diam && depth < 5 {
-        let m = |a: V3, b: V3| [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1]), f64::midpoint(a[2], b[2])];
+        let m = |a: V3, b: V3| {
+            [
+                f64::midpoint(a[0], b[0]),
+                f64::midpoint(a[1], b[1]),
+                f64::midpoint(a[2], b[2]),
+            ]
+        };
         let (m01, m12, m20) = (m(tri[0], tri[1]), m(tri[1], tri[2]), m(tri[2], tri[0]));
         // sub-triangle integrals carry the parent's shape functions: evaluate via barycentric lifting
         for (sub, lift) in [
-            ([tri[0], m01, m20], [[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [0.5, 0.0, 0.5]]),
-            ([m01, tri[1], m12], [[0.5, 0.5, 0.0], [0.0, 1.0, 0.0], [0.0, 0.5, 0.5]]),
-            ([m20, m12, tri[2]], [[0.5, 0.0, 0.5], [0.0, 0.5, 0.5], [0.0, 0.0, 1.0]]),
-            ([m12, m20, m01], [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
+            (
+                [tri[0], m01, m20],
+                [[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [0.5, 0.0, 0.5]],
+            ),
+            (
+                [m01, tri[1], m12],
+                [[0.5, 0.5, 0.0], [0.0, 1.0, 0.0], [0.0, 0.5, 0.5]],
+            ),
+            (
+                [m20, m12, tri[2]],
+                [[0.5, 0.0, 0.5], [0.0, 0.5, 0.5], [0.0, 0.0, 1.0]],
+            ),
+            (
+                [m12, m20, m01],
+                [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]],
+            ),
         ] {
             let mut loc = [0.0; 3];
             p1_regular(x, sub, nu, single, depth + 1, &mut loc);
@@ -618,7 +832,11 @@ fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut
     }
     let a2 = {
         let (e1, e2) = (sub3(tri[1], tri[0]), sub3(tri[2], tri[0]));
-        nrm3([e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]]) * 0.5
+        nrm3([
+            e1[1] * e2[2] - e1[2] * e2[1],
+            e1[2] * e2[0] - e1[0] * e2[2],
+            e1[0] * e2[1] - e1[1] * e2[0],
+        ]) * 0.5
     };
     for (bary, w) in radon7() {
         let y = [
@@ -628,7 +846,11 @@ fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut
         ];
         let r = sub3(y, x);
         let rn = nrm3(r);
-        let k = if single { 1.0 / rn } else { (nu[0] * r[0] + nu[1] * r[1] + nu[2] * r[2]) / (rn * rn * rn) };
+        let k = if single {
+            1.0 / rn
+        } else {
+            (nu[0] * r[0] + nu[1] * r[1] + nu[2] * r[2]) / (rn * rn * rn)
+        };
         for j in 0..3 {
             out[j] += a2 * w * bary[j] * k;
         }
@@ -636,18 +858,44 @@ fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut
 }
 
 /// `∫_T φ_j / |y - x| dS` for `x` equal to vertex `k` of `T` (Duffy transformation).
-fn p1_singular(tri: [V3; 3], k: usize, out: &mut [f64; 3]) {
+fn p1_singular(
+    tri: [V3; 3],
+    k: usize,
+    out: &mut [f64; 3],
+) {
     // 6-point Gauss-Legendre on [0,1]
-    const GX: [f64; 6] = [0.033_765_242_898_423_99, 0.169_395_306_766_867_74, 0.380_690_406_958_401_5, 0.619_309_593_041_598_5, 0.830_604_693_233_132_3, 0.966_234_757_101_576];
-    const GW: [f64; 6] = [0.085_662_246_189_585_17, 0.180_380_786_524_069_3, 0.233_956_967_286_345_5, 0.233_956_967_286_345_5, 0.180_380_786_524_069_3, 0.085_662_246_189_585_17];
+    const GX: [f64; 6] = [
+        0.033_765_242_898_423_99,
+        0.169_395_306_766_867_74,
+        0.380_690_406_958_401_5,
+        0.619_309_593_041_598_5,
+        0.830_604_693_233_132_3,
+        0.966_234_757_101_576,
+    ];
+    const GW: [f64; 6] = [
+        0.085_662_246_189_585_17,
+        0.180_380_786_524_069_3,
+        0.233_956_967_286_345_5,
+        0.233_956_967_286_345_5,
+        0.180_380_786_524_069_3,
+        0.085_662_246_189_585_17,
+    ];
     let order = [k, (k + 1) % 3, (k + 2) % 3];
     let (x, b, c) = (tri[order[0]], tri[order[1]], tri[order[2]]);
     let (e1, e2) = (sub3(b, x), sub3(c, x));
-    let area2 = nrm3([e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]]);
+    let area2 = nrm3([
+        e1[1] * e2[2] - e1[2] * e2[1],
+        e1[2] * e2[0] - e1[0] * e2[2],
+        e1[0] * e2[1] - e1[1] * e2[0],
+    ]);
     for (iu, &u) in GX.iter().enumerate() {
         let _ = u;
         for (iw, &w) in GX.iter().enumerate() {
-            let dir = [(1.0 - w) * e1[0] + w * e2[0], (1.0 - w) * e1[1] + w * e2[1], (1.0 - w) * e1[2] + w * e2[2]];
+            let dir = [
+                (1.0 - w) * e1[0] + w * e2[0],
+                (1.0 - w) * e1[1] + w * e2[1],
+                (1.0 - w) * e1[2] + w * e2[2],
+            ];
             let f = area2 / nrm3(dir);
             let weight = GW[iu] * GW[iw] * f;
             let xi = GX[iu] * (1.0 - w);
@@ -675,11 +923,18 @@ fn p1_singular(tri: [V3; 3], k: usize, out: &mut [f64; 3]) {
 /// # Errors
 /// For an invalid mesh, wrong data length, or a singular system (pure Neumann
 /// interior problems are singular).
-pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior: bool) -> Result<BemP1Solution, String> {
+pub fn solve_laplace_bem_3d_p1(
+    mesh: &SurfaceMesh3D,
+    bcs: &[VertexBc],
+    exterior: bool,
+) -> Result<BemP1Solution, String> {
     mesh.validate()?;
     let nv = mesh.vertices.len();
     if bcs.len() != nv {
-        return Err(format!("expected {nv} vertex conditions, got {}", bcs.len()));
+        return Err(format!(
+            "expected {nv} vertex conditions, got {}",
+            bcs.len()
+        ));
     }
     if bcs.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
         return Err("boundary data must be finite".into());
@@ -687,15 +942,33 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
     let tris: Vec<[V3; 3]> = (0..mesh.triangles.len())
         .filter_map(|t| {
             let c = mesh.corners(t)?;
-            Some(if exterior { [c[0], c[2], c[1]] } else { c })
+            Some(if exterior {
+                [c[0], c[2], c[1]]
+            } else {
+                c
+            })
         })
         .collect();
-    let idx: Vec<[usize; 3]> = mesh.triangles.iter().map(|&[a, b, c]| if exterior { [a, c, b] } else { [a, b, c] }).collect();
+    let idx: Vec<[usize; 3]> = mesh
+        .triangles
+        .iter()
+        .map(|&[a, b, c]| {
+            if exterior {
+                [a, c, b]
+            } else {
+                [a, b, c]
+            }
+        })
+        .collect();
     let normals: Vec<V3> = tris
         .iter()
         .map(|t| {
             let (e1, e2) = (sub3(t[1], t[0]), sub3(t[2], t[0]));
-            let c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+            let c = [
+                e1[1] * e2[2] - e1[2] * e2[1],
+                e1[2] * e2[0] - e1[0] * e2[2],
+                e1[0] * e2[1] - e1[1] * e2[0],
+            ];
             let l = nrm3(c);
             [c[0] / l, c[1] / l, c[2] / l]
         })
@@ -709,7 +982,9 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
             for (t, tri) in tris.iter().enumerate() {
                 let own = idx[t].iter().position(|&v| v == i);
                 let mut gl = [0.0; 3];
-                if let Some(k) = own { p1_singular(*tri, k, &mut gl) } else {
+                if let Some(k) = own {
+                    p1_singular(*tri, k, &mut gl)
+                } else {
                     p1_regular(x, *tri, normals[t], true, 0, &mut gl);
                     let mut hl = [0.0; 3];
                     p1_regular(x, *tri, normals[t], false, 0, &mut hl);
@@ -733,18 +1008,19 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
     for (i, (g, h)) in rows.iter().enumerate() {
         for (j, bc) in bcs.iter().enumerate() {
             match *bc {
-                BoundaryCondition::Potential(u) => {
+                | BoundaryCondition::Potential(u) => {
                     a.set(i, j, -g[j]);
                     rhs[i] -= h[j] * u;
                 },
-                BoundaryCondition::Flux(q) => {
+                | BoundaryCondition::Flux(q) => {
                     a.set(i, j, h[j]);
                     rhs[i] += g[j] * sign * q;
                 },
             }
         }
     }
-    let lu = crate::kernels::dense::lu_factor(&a).map_err(|e| format!("BEM system is singular: {e:?}"))?;
+    let lu = crate::kernels::dense::lu_factor(&a)
+        .map_err(|e| format!("BEM system is singular: {e:?}"))?;
     let sol = lu.solve(&rhs);
     if sol.iter().any(|v| !v.is_finite()) {
         return Err("BEM system has no finite solution".into());
@@ -753,11 +1029,11 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
     let mut q = vec![0.0; nv];
     for (j, bc) in bcs.iter().enumerate() {
         match *bc {
-            BoundaryCondition::Potential(v) => {
+            | BoundaryCondition::Potential(v) => {
                 u[j] = v;
                 q[j] = sign * sol[j];
             },
-            BoundaryCondition::Flux(v) => {
+            | BoundaryCondition::Flux(v) => {
                 q[j] = v;
                 u[j] = sol[j];
             },
@@ -788,26 +1064,51 @@ pub fn solve_laplace_bem_3d_p1_aca(
     mesh.validate()?;
     let nv = mesh.vertices.len();
     if bcs.len() != nv {
-        return Err(format!("expected {nv} vertex conditions, got {}", bcs.len()));
+        return Err(format!(
+            "expected {nv} vertex conditions, got {}",
+            bcs.len()
+        ));
     }
     if bcs.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
         return Err("boundary data must be finite".into());
     }
-    if !exterior && bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_))) {
+    if !exterior
+        && bcs
+            .iter()
+            .all(|bc| matches!(bc, BoundaryCondition::Flux(_)))
+    {
         return Err("a pure Neumann interior problem is singular".into());
     }
     let tris: Vec<[V3; 3]> = (0..mesh.triangles.len())
         .filter_map(|t| {
             let c = mesh.corners(t)?;
-            Some(if exterior { [c[0], c[2], c[1]] } else { c })
+            Some(if exterior {
+                [c[0], c[2], c[1]]
+            } else {
+                c
+            })
         })
         .collect();
-    let idx: Vec<[usize; 3]> = mesh.triangles.iter().map(|&[a, b, c]| if exterior { [a, c, b] } else { [a, b, c] }).collect();
+    let idx: Vec<[usize; 3]> = mesh
+        .triangles
+        .iter()
+        .map(|&[a, b, c]| {
+            if exterior {
+                [a, c, b]
+            } else {
+                [a, b, c]
+            }
+        })
+        .collect();
     let normals: Vec<V3> = tris
         .iter()
         .map(|t| {
             let (e1, e2) = (sub3(t[1], t[0]), sub3(t[2], t[0]));
-            let c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+            let c = [
+                e1[1] * e2[2] - e1[2] * e2[1],
+                e1[2] * e2[0] - e1[0] * e2[2],
+                e1[0] * e2[1] - e1[1] * e2[0],
+            ];
             let l = nrm3(c);
             [c[0] / l, c[1] / l, c[2] / l]
         })
@@ -827,8 +1128,8 @@ pub fn solve_laplace_bem_3d_p1_aca(
             if single {
                 let mut gl = [0.0; 3];
                 match own {
-                    Some(ki) => p1_singular(tris[t], ki, &mut gl),
-                    None => p1_regular(x, tris[t], normals[t], true, 0, &mut gl),
+                    | Some(ki) => p1_singular(tris[t], ki, &mut gl),
+                    | None => p1_regular(x, tris[t], normals[t], true, 0, &mut gl),
                 }
                 s += gl[kj] / (4.0 * PI);
             } else if own.is_none() {
@@ -840,7 +1141,13 @@ pub fn solve_laplace_bem_3d_p1_aca(
         s
     };
     let g_entry = |i: usize, j: usize| entry(i, j, true);
-    let h_entry = |i: usize, j: usize| if i == j { 0.0 } else { entry(i, j, false) };
+    let h_entry = |i: usize, j: usize| {
+        if i == j {
+            0.0
+        } else {
+            entry(i, j, false)
+        }
+    };
     let mut perm: Vec<usize> = (0..nv).collect();
     let mut tree = Vec::new();
     build_tree(verts, &mut perm, 0, nv, opts.leaf_size.max(2), &mut tree);
@@ -854,11 +1161,35 @@ pub fn solve_laplace_bem_3d_p1_aca(
     }
     // rigid-body diagonal of H
     let off = hm.matvec(&vec![1.0; nv]);
-    let hdiag: Vec<f64> = off.iter().map(|o| if exterior { 1.0 - o } else { -o }).collect();
+    let hdiag: Vec<f64> = off
+        .iter()
+        .map(|o| if exterior { 1.0 - o } else { -o })
+        .collect();
     let sign = if exterior { -1.0 } else { 1.0 };
-    let is_pot: Vec<bool> = perm.iter().map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_))).collect();
-    let u_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Potential(v) = bcs[o] { v } else { 0.0 }).collect();
-    let q_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Flux(v) = bcs[o] { sign * v } else { 0.0 }).collect();
+    let is_pot: Vec<bool> = perm
+        .iter()
+        .map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_)))
+        .collect();
+    let u_known: Vec<f64> = perm
+        .iter()
+        .map(|&o| {
+            if let BoundaryCondition::Potential(v) = bcs[o] {
+                v
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let q_known: Vec<f64> = perm
+        .iter()
+        .map(|&o| {
+            if let BoundaryCondition::Flux(v) = bcs[o] {
+                sign * v
+            } else {
+                0.0
+            }
+        })
+        .collect();
     let hfull = |x: &[f64]| -> Vec<f64> {
         let mut y = hm.matvec(x);
         for i in 0..nv {
@@ -870,41 +1201,74 @@ pub fn solve_laplace_bem_3d_p1_aca(
     let gq = gm.matvec(&q_known);
     let rhs: Vec<f64> = (0..nv).map(|i| gq[i] - hu[i]).collect();
     let apply = |x: &[f64], y: &mut [f64]| {
-        let xp: Vec<f64> = (0..nv).map(|i| if is_pot[i] { x[i] } else { 0.0 }).collect();
-        let xf: Vec<f64> = (0..nv).map(|i| if is_pot[i] { 0.0 } else { x[i] }).collect();
+        let xp: Vec<f64> = (0..nv)
+            .map(|i| if is_pot[i] { x[i] } else { 0.0 })
+            .collect();
+        let xf: Vec<f64> = (0..nv)
+            .map(|i| if is_pot[i] { 0.0 } else { x[i] })
+            .collect();
         let gx = gm.matvec(&xp);
         let hx = hfull(&xf);
         for i in 0..nv {
             y[i] = hx[i] - gx[i];
         }
     };
-    let diag: Vec<f64> = (0..nv).map(|i| if is_pot[i] { -g_entry(perm[i], perm[i]) } else { hdiag[i] }).collect();
+    let diag: Vec<f64> = (0..nv)
+        .map(|i| {
+            if is_pot[i] {
+                -g_entry(perm[i], perm[i])
+            } else {
+                hdiag[i]
+            }
+        })
+        .collect();
     let precond = |r: &[f64], z: &mut [f64]| {
         for i in 0..nv {
-            z[i] = r[i] / if diag[i].abs() > 1e-300 { diag[i] } else { 1.0 };
+            z[i] = r[i]
+                / if diag[i].abs() > 1e-300 {
+                    diag[i]
+                } else {
+                    1.0
+                };
         }
     };
-    let res = gmres(apply, precond, &rhs, None, opts.restart, opts.gmres_tol, opts.max_iter);
+    let res = gmres(
+        apply,
+        precond,
+        &rhs,
+        None,
+        opts.restart,
+        opts.gmres_tol,
+        opts.max_iter,
+    );
     if !res.converged {
-        return Err(format!("GMRES did not converge (residual {})", res.residual));
+        return Err(format!(
+            "GMRES did not converge (residual {})",
+            res.residual
+        ));
     }
     let mut u = vec![0.0; nv];
     let mut q = vec![0.0; nv];
     for o in 0..nv {
         let p = inv_perm[o];
         match bcs[o] {
-            BoundaryCondition::Potential(v) => {
+            | BoundaryCondition::Potential(v) => {
                 u[o] = v;
                 q[o] = sign * res.x[p];
             },
-            BoundaryCondition::Flux(v) => {
+            | BoundaryCondition::Flux(v) => {
                 q[o] = v;
                 u[o] = res.x[p];
             },
         }
     }
     let stored: usize = gm.blocks.iter().chain(&hm.blocks).map(Block::stored).sum();
-    let lowrank = gm.blocks.iter().chain(&hm.blocks).filter(|b| matches!(b, Block::LowRank { .. })).count();
+    let lowrank = gm
+        .blocks
+        .iter()
+        .chain(&hm.blocks)
+        .filter(|b| matches!(b, Block::LowRank { .. }))
+        .count();
     let stats = AcaStats {
         dense_blocks: gm.blocks.len() + hm.blocks.len() - lowrank,
         lowrank_blocks: lowrank,

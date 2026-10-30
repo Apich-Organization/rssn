@@ -44,7 +44,13 @@ use crate::kernels::special::erfc_numerical;
 #[path = "md_cell.rs"]
 mod cell;
 
-pub use cell::{mat_det, mat_exp_phi1, mat_inverse, mat_mul, mat_vec, CellMode, FlexibleBarostat};
+pub use cell::CellMode;
+pub use cell::FlexibleBarostat;
+pub use cell::mat_det;
+pub use cell::mat_exp_phi1;
+pub use cell::mat_inverse;
+pub use cell::mat_mul;
+pub use cell::mat_vec;
 
 /// Boundary condition of one box axis.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -81,7 +87,14 @@ impl<const D: usize> SimBox<D> {
     /// Fully periodic box.
     #[must_use]
     pub const fn periodic(len: [f64; D]) -> Self {
-        Self { len, bc: [Boundary::Periodic; D], shear_rate: 0.0, offset: 0.0, cell: None, cell_inv: [[0.0; D]; D] }
+        Self {
+            len,
+            bc: [Boundary::Periodic; D],
+            shear_rate: 0.0,
+            offset: 0.0,
+            cell: None,
+            cell_inv: [[0.0; D]; D],
+        }
     }
 
     /// Fully periodic triclinic box with lattice vectors `h[k]` (rows).
@@ -102,7 +115,8 @@ impl<const D: usize> SimBox<D> {
         &mut self,
         h: [[f64; D]; D],
     ) -> Result<(), String> {
-        let inv = crate::sim::md_engine::mat_inverse(&h).ok_or_else(|| "cell matrix is singular".to_string())?;
+        let inv = crate::sim::md_engine::mat_inverse(&h)
+            .ok_or_else(|| "cell matrix is singular".to_string())?;
         self.cell = Some(h);
         self.cell_inv = inv;
         for k in 0..D {
@@ -169,7 +183,10 @@ impl<const D: usize> SimBox<D> {
         a: usize,
     ) -> f64 {
         if self.cell.is_some() {
-            1.0 / (0..D).map(|b| self.cell_inv[b][a].powi(2)).sum::<f64>().sqrt()
+            1.0 / (0..D)
+                .map(|b| self.cell_inv[b][a].powi(2))
+                .sum::<f64>()
+                .sqrt()
         } else {
             self.len[a]
         }
@@ -181,7 +198,14 @@ impl<const D: usize> SimBox<D> {
         len: [f64; D],
         bc: [Boundary; D],
     ) -> Self {
-        Self { len, bc, shear_rate: 0.0, offset: 0.0, cell: None, cell_inv: [[0.0; D]; D] }
+        Self {
+            len,
+            bc,
+            shear_rate: 0.0,
+            offset: 0.0,
+            cell: None,
+            cell_inv: [[0.0; D]; D],
+        }
     }
 
     /// Volume (length in 1-D, area in 2-D).
@@ -271,7 +295,15 @@ impl<const D: usize> MdSystem<D> {
         bx: SimBox<D>,
     ) -> Self {
         let n = pos.len();
-        Self { unwrapped: pos.clone(), vel: vec![[0.0; D]; n], mass: vec![1.0; n], charge: vec![0.0; n], pos, bx, time: 0.0 }
+        Self {
+            unwrapped: pos.clone(),
+            vel: vec![[0.0; D]; n],
+            mass: vec![1.0; n],
+            charge: vec![0.0; n],
+            pos,
+            bx,
+            time: 0.0,
+        }
     }
 
     /// Number of particles.
@@ -339,7 +371,11 @@ impl<const D: usize> MdSystem<D> {
         if self.n() > 1 {
             self.remove_com_velocity();
         }
-        let dof = if self.n() > 1 { (D * (self.n() - 1)) as f64 } else { D as f64 };
+        let dof = if self.n() > 1 {
+            (D * (self.n() - 1)) as f64
+        } else {
+            D as f64
+        };
         let cur = self.temperature(dof);
         if cur > 0.0 {
             let f = (t / cur).sqrt();
@@ -388,19 +424,23 @@ impl<const D: usize> MdSystem<D> {
             }
             for a in 0..D {
                 match self.bx.bc[a] {
-                    Boundary::Open => {},
-                    Boundary::Periodic => {
+                    | Boundary::Open => {},
+                    | Boundary::Periodic => {
                         // the gradient axis was already wrapped above under shear
                         if !(a == 1 && shear) {
                             let w = (self.pos[i][a] / l[a]).floor();
                             self.pos[i][a] -= w * l[a];
                         }
                     },
-                    Boundary::Reflecting | Boundary::Thermal(_) => {
+                    | Boundary::Reflecting | Boundary::Thermal(_) => {
                         let mut guard = 0;
                         while (self.pos[i][a] < 0.0 || self.pos[i][a] > l[a]) && guard < 8 {
                             let low = self.pos[i][a] < 0.0;
-                            self.pos[i][a] = if low { -self.pos[i][a] } else { 2.0 * l[a] - self.pos[i][a] };
+                            self.pos[i][a] = if low {
+                                -self.pos[i][a]
+                            } else {
+                                2.0 * l[a] - self.pos[i][a]
+                            };
                             if let Boundary::Thermal(t) = self.bx.bc[a] {
                                 let s = (t / self.mass[i]).sqrt();
                                 let vn = s * (-2.0 * (1.0 - rng.uniform()).ln()).sqrt();
@@ -453,13 +493,22 @@ pub fn lattice_fcc(
     n: usize,
     a: f64,
 ) -> Vec<[f64; 3]> {
-    let basis = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.0], [0.5, 0.0, 0.5], [0.0, 0.5, 0.5]];
+    let basis = [
+        [0.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.5, 0.0, 0.5],
+        [0.0, 0.5, 0.5],
+    ];
     let mut out = Vec::new();
     for i in 0..n {
         for j in 0..n {
             for k in 0..n {
                 for b in &basis {
-                    out.push([(i as f64 + b[0] + 0.25) * a, (j as f64 + b[1] + 0.25) * a, (k as f64 + b[2] + 0.25) * a]);
+                    out.push([
+                        (i as f64 + b[0] + 0.25) * a,
+                        (j as f64 + b[1] + 0.25) * a,
+                        (k as f64 + b[2] + 0.25) * a,
+                    ]);
                 }
             }
         }
@@ -478,7 +527,10 @@ pub fn lattice_triangular(
     let mut out = Vec::new();
     for j in 0..ny {
         for i in 0..nx {
-            out.push([(i as f64 + 0.5 * (j % 2) as f64 + 0.25) * a, (j as f64 + 0.5) * a * 3.0_f64.sqrt() / 2.0]);
+            out.push([
+                (i as f64 + 0.5 * (j % 2) as f64 + 0.25) * a,
+                (j as f64 + 0.5) * a * 3.0_f64.sqrt() / 2.0,
+            ]);
         }
     }
     out
@@ -559,17 +611,23 @@ impl PairTerm {
         qq: f64,
     ) -> (f64, f64) {
         match *self {
-            Self::LennardJones { eps, sigma } => {
+            | Self::LennardJones { eps, sigma } => {
                 let s2 = sigma * sigma / r2;
                 let s6 = s2 * s2 * s2;
-                (4.0 * eps * (s6 * s6 - s6), 24.0 * eps * (2.0 * s6 * s6 - s6) / r2)
+                (
+                    4.0 * eps * (s6 * s6 - s6),
+                    24.0 * eps * (2.0 * s6 * s6 - s6) / r2,
+                )
             },
-            Self::Morse { d, alpha, r0 } => {
+            | Self::Morse { d, alpha, r0 } => {
                 let r = r2.sqrt();
                 let e = (-alpha * (r - r0)).exp();
-                (d * ((1.0 - e) * (1.0 - e) - 1.0), -2.0 * d * alpha * e * (1.0 - e) / r)
+                (
+                    d * ((1.0 - e) * (1.0 - e) - 1.0),
+                    -2.0 * d * alpha * e * (1.0 - e) / r,
+                )
             },
-            Self::Coulomb { k, alpha } => {
+            | Self::Coulomb { k, alpha } => {
                 let r = r2.sqrt();
                 if alpha == 0.0 {
                     (k * qq / r, k * qq / (r * r2))
@@ -713,7 +771,10 @@ impl<const D: usize> ForceField<D> {
         if !self.shift {
             return 0.0;
         }
-        self.pair.iter().map(|t| t.eval(self.rcut * self.rcut, qq).0).sum()
+        self.pair
+            .iter()
+            .map(|t| t.eval(self.rcut * self.rcut, qq).0)
+            .sum()
     }
 }
 
@@ -732,7 +793,11 @@ impl<const D: usize> Forces<D> {
     /// Zero forces for `n` particles.
     #[must_use]
     pub fn zeros(n: usize) -> Self {
-        Self { f: vec![[0.0; D]; n], epot: 0.0, virial: [[0.0; D]; D] }
+        Self {
+            f: vec![[0.0; D]; n],
+            epot: 0.0,
+            virial: [[0.0; D]; D],
+        }
     }
 }
 
@@ -758,7 +823,14 @@ impl<const D: usize> NeighbourList<D> {
         rcut: f64,
         skin: f64,
     ) -> Self {
-        Self { rcut, skin, pairs: Vec::new(), ref_pos: Vec::new(), ref_cell: [[0.0; D]; D], builds: 0 }
+        Self {
+            rcut,
+            skin,
+            pairs: Vec::new(),
+            ref_pos: Vec::new(),
+            ref_cell: [[0.0; D]; D],
+            builds: 0,
+        }
     }
 
     /// Whether the list is stale: a particle moved (beyond the affine cell deformation) so that
@@ -776,7 +848,9 @@ impl<const D: usize> NeighbourList<D> {
         let affine = now != self.ref_cell;
         let mut map = [[0.0; D]; D];
         if affine {
-            let Some(inv) = mat_inverse(&self.ref_cell) else { return true };
+            let Some(inv) = mat_inverse(&self.ref_cell) else {
+                return true;
+            };
             map = mat_mul(&inv, &now);
             for a in 0..D {
                 for b in 0..D {
@@ -792,7 +866,11 @@ impl<const D: usize> NeighbourList<D> {
         }
         let tol = 0.5 * (self.skin - strain * rl);
         let lim = tol * tol;
-        let ref_inv = if affine { mat_inverse(&self.ref_cell) } else { None };
+        let ref_inv = if affine {
+            mat_inverse(&self.ref_cell)
+        } else {
+            None
+        };
         for i in 0..sys.n() {
             let mut pred = self.ref_pos[i];
             if let Some(inv) = &ref_inv {
@@ -873,14 +951,23 @@ impl<const D: usize> NeighbourList<D> {
         let mut ext = if tri { [1.0; D] } else { sys.bx.len };
         for a in 0..D {
             if sys.bx.bc[a] == Boundary::Open {
-                let (mn, mx) = sys.pos.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(m, x), p| (m.min(p[a]), x.max(p[a])));
+                let (mn, mx) = sys
+                    .pos
+                    .iter()
+                    .fold((f64::INFINITY, f64::NEG_INFINITY), |(m, x), p| {
+                        (m.min(p[a]), x.max(p[a]))
+                    });
                 lo[a] = mn;
                 ext[a] = (mx - mn).max(1e-12);
             }
         }
         let mut nc = [1usize; D];
         for a in 0..D {
-            let width = if tri { sys.bx.height(a) } else { ext[a] };
+            let width = if tri {
+                sys.bx.height(a)
+            } else {
+                ext[a]
+            };
             let c = (width / rl).floor() as usize;
             nc[a] = if c >= 3 { c } else { 1 };
         }
@@ -1112,7 +1199,13 @@ fn bonded_forces<const D: usize>(
         let rij = to3(sep(sys, i, j));
         let rkj = to3(sep(sys, k, j));
         let rkl = to3(sep(sys, k, l));
-        let cross = |a: [f64; 3], b: [f64; 3]| [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+        let cross = |a: [f64; 3], b: [f64; 3]| {
+            [
+                a[1] * b[2] - a[2] * b[1],
+                a[2] * b[0] - a[0] * b[2],
+                a[0] * b[1] - a[1] * b[0],
+            ]
+        };
         let d3 = |a: [f64; 3], b: [f64; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         let m = cross(rij, rkj);
         let nn = cross(rkj, rkl);
@@ -1227,7 +1320,13 @@ impl NoseHooverChain {
     ) -> Self {
         let mut q = vec![t0 * tau * tau; m];
         q[0] *= nf;
-        Self { t0, q, xi: vec![0.0; m], vxi: vec![0.0; m], nf }
+        Self {
+            t0,
+            q,
+            xi: vec![0.0; m],
+            vxi: vec![0.0; m],
+            nf,
+        }
     }
 
     /// Propagates the chain for `h / 2` and returns the velocity scale factor
@@ -1278,7 +1377,11 @@ impl NoseHooverChain {
         let mut e = 0.0;
         for j in 0..self.q.len() {
             e += 0.5 * self.q[j] * self.vxi[j] * self.vxi[j];
-            e += if j == 0 { self.nf * self.t0 * self.xi[0] } else { self.t0 * self.xi[j] };
+            e += if j == 0 {
+                self.nf * self.t0 * self.xi[0]
+            } else {
+                self.t0 * self.xi[j]
+            };
         }
         e
     }
@@ -1362,7 +1465,18 @@ impl<const D: usize> MdSimulation<D> {
         ff.rebuild_exclusions();
         let mut nl = NeighbourList::new(ff.rcut, skin);
         let forces = compute_forces(&sys, &ff, &mut nl)?;
-        Ok(Self { sys, ff, nl, forces, thermostat: Thermostat::None, barostat: Barostat::None, constraints: Vec::new(), dt, rng: Rng::new(seed), constraint_virial: [[0.0; D]; D] })
+        Ok(Self {
+            sys,
+            ff,
+            nl,
+            forces,
+            thermostat: Thermostat::None,
+            barostat: Barostat::None,
+            constraints: Vec::new(),
+            dt,
+            rng: Rng::new(seed),
+            constraint_virial: [[0.0; D]; D],
+        })
     }
 
     /// Degrees of freedom (`D N - D - n_constraints`).
@@ -1459,7 +1573,8 @@ impl<const D: usize> MdSimulation<D> {
         }
         if self.sys.bx.shear_rate != 0.0 {
             self.sys.bx.offset += self.sys.bx.shear_rate * self.sys.bx.len[1] * h;
-            self.sys.bx.offset -= self.sys.bx.len[0] * (self.sys.bx.offset / self.sys.bx.len[0]).floor();
+            self.sys.bx.offset -=
+                self.sys.bx.len[0] * (self.sys.bx.offset / self.sys.bx.len[0]).floor();
         }
         self.sys.apply_boundaries(&mut self.rng);
     }
@@ -1621,13 +1736,19 @@ impl<const D: usize> MdSimulation<D> {
         }
         if matches!(self.barostat, Barostat::Mtk { .. }) {
             if !matches!(self.thermostat, Thermostat::None) {
-                return Err("the MTK barostat is NPH-type and cannot be combined with a thermostat".into());
+                return Err(
+                    "the MTK barostat is NPH-type and cannot be combined with a thermostat".into(),
+                );
             }
             return self.step_mtk();
         }
         if let Thermostat::NoseHooverChain(_) = &self.thermostat {
             let ke2 = 2.0 * self.sys.kinetic_energy();
-            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat { c.propagate(ke2, h) } else { 1.0 };
+            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat {
+                c.propagate(ke2, h)
+            } else {
+                1.0
+            };
             self.scale_velocities(s);
         }
         self.half_kick(h);
@@ -1640,7 +1761,11 @@ impl<const D: usize> MdSimulation<D> {
         }
         if let Thermostat::NoseHooverChain(_) = &self.thermostat {
             let ke2 = 2.0 * self.sys.kinetic_energy();
-            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat { c.propagate(ke2, h) } else { 1.0 };
+            let s = if let Thermostat::NoseHooverChain(c) = &mut self.thermostat {
+                c.propagate(ke2, h)
+            } else {
+                1.0
+            };
             self.scale_velocities(s);
         }
         if let Thermostat::Berendsen { t0, tau } = self.thermostat {
@@ -1652,7 +1777,9 @@ impl<const D: usize> MdSimulation<D> {
         }
         if let Barostat::Berendsen { p0, tau, beta } = self.barostat {
             let p = self.pressure();
-            let mu = (1.0 - beta * h / tau * (p0 - p)).max(0.1).powf(1.0 / D as f64);
+            let mu = (1.0 - beta * h / tau * (p0 - p))
+                .max(0.1)
+                .powf(1.0 / D as f64);
             self.scale_box(mu);
             self.recompute()?;
         }
@@ -1667,7 +1794,9 @@ impl<const D: usize> MdSimulation<D> {
         let h = self.dt;
         let d = D as f64;
         let nf = (D * self.sys.n()) as f64;
-        let Barostat::Mtk { p0, w, .. } = self.barostat else { return Ok(()) };
+        let Barostat::Mtk { p0, w, .. } = self.barostat else {
+            return Ok(());
+        };
         let g_eps = |s: &Self| -> f64 {
             let ke2 = 2.0 * s.sys.kinetic_energy();
             let vir: f64 = (0..D).map(|a| s.forces.virial[a][a]).sum();
@@ -1679,7 +1808,11 @@ impl<const D: usize> MdSimulation<D> {
             }
         };
         let get_p = |s: &Self| -> f64 {
-            if let Barostat::Mtk { p_eps, .. } = &s.barostat { *p_eps } else { 0.0 }
+            if let Barostat::Mtk { p_eps, .. } = &s.barostat {
+                *p_eps
+            } else {
+                0.0
+            }
         };
         // first half
         let g = g_eps(self);
@@ -1691,7 +1824,11 @@ impl<const D: usize> MdSimulation<D> {
         // drift with box scaling
         let ve = get_p(self) / w;
         let x = ve * 0.5 * h;
-        let sinhc = if x.abs() < 1e-8 { 1.0 + x * x / 6.0 } else { x.sinh() / x };
+        let sinhc = if x.abs() < 1e-8 {
+            1.0 + x * x / 6.0
+        } else {
+            x.sinh() / x
+        };
         let (ex, ex2) = ((ve * h).exp(), x.exp());
         for i in 0..self.sys.n() {
             for a in 0..D {
@@ -1737,10 +1874,10 @@ impl<const D: usize> MdSimulation<D> {
 
 fn unit_ball_volume(d: usize) -> f64 {
     match d {
-        1 => 2.0,
-        2 => std::f64::consts::PI,
-        3 => 4.0 / 3.0 * std::f64::consts::PI,
-        _ => {
+        | 1 => 2.0,
+        | 2 => std::f64::consts::PI,
+        | 3 => 4.0 / 3.0 * std::f64::consts::PI,
+        | _ => {
             let g = crate::kernels::special::gamma_numerical(d as f64 / 2.0 + 1.0);
             std::f64::consts::PI.powf(d as f64 / 2.0) / g
         },
@@ -1766,7 +1903,13 @@ impl<const D: usize> Rdf<D> {
         bins: usize,
         rmax: f64,
     ) -> Self {
-        Self { rmax, hist: vec![0.0; bins], frames: 0, n: 0, volume: 0.0 }
+        Self {
+            rmax,
+            hist: vec![0.0; bins],
+            frames: 0,
+            n: 0,
+            volume: 0.0,
+        }
     }
 
     /// Adds one configuration.
@@ -1801,7 +1944,10 @@ impl<const D: usize> Rdf<D> {
             .map(|k| {
                 let (r1, r2) = (k as f64 * dr, (k + 1) as f64 * dr);
                 let shell = vb * (r2.powi(D as i32) - r1.powi(D as i32));
-                (f64::midpoint(r1, r2), self.hist[k] / (self.frames as f64 * self.n as f64 * rho * shell))
+                (
+                    f64::midpoint(r1, r2),
+                    self.hist[k] / (self.frames as f64 * self.n as f64 * rho * shell),
+                )
             })
             .collect()
     }
@@ -1850,8 +1996,15 @@ pub fn energy_drift_slope(
     energies: &[f64],
 ) -> f64 {
     let n = times.len() as f64;
-    let (mt, me) = (times.iter().sum::<f64>() / n, energies.iter().sum::<f64>() / n);
-    let sxy: f64 = times.iter().zip(energies).map(|(t, e)| (t - mt) * (e - me)).sum();
+    let (mt, me) = (
+        times.iter().sum::<f64>() / n,
+        energies.iter().sum::<f64>() / n,
+    );
+    let sxy: f64 = times
+        .iter()
+        .zip(energies)
+        .map(|(t, e)| (t - mt) * (e - me))
+        .sum();
     let sxx: f64 = times.iter().map(|t| (t - mt).powi(2)).sum();
     sxy / sxx
 }

@@ -1,10 +1,26 @@
 //! Tests for MINRES, BiCGSTAB(l), IDR(s), FGMRES and the Lanczos/Arnoldi eigensolvers.
 
-use rssn::kernels::eigs::{EigsOptions, Which, arnoldi, eigs, eigs_shift_invert, eigs_sym, eigs_sym_shift_invert};
-use rssn::kernels::krylov::{Csr, SparseOrdering, gmres, identity_precond};
-use rssn::kernels::krylov_ext::{IdrOptions, bicgstab_l, fgmres, idr_s_with, minres};
+use rssn::kernels::eigs::EigsOptions;
+use rssn::kernels::eigs::Which;
+use rssn::kernels::eigs::arnoldi;
+use rssn::kernels::eigs::eigs;
+use rssn::kernels::eigs::eigs_shift_invert;
+use rssn::kernels::eigs::eigs_sym;
+use rssn::kernels::eigs::eigs_sym_shift_invert;
+use rssn::kernels::krylov::Csr;
+use rssn::kernels::krylov::SparseOrdering;
+use rssn::kernels::krylov::gmres;
+use rssn::kernels::krylov::identity_precond;
+use rssn::kernels::krylov_ext::IdrOptions;
+use rssn::kernels::krylov_ext::bicgstab_l;
+use rssn::kernels::krylov_ext::fgmres;
+use rssn::kernels::krylov_ext::idr_s_with;
+use rssn::kernels::krylov_ext::minres;
 
-fn laplace2d(nx: usize, shift: f64) -> Csr {
+fn laplace2d(
+    nx: usize,
+    shift: f64,
+) -> Csr {
     let n = nx * nx;
     let mut t = Vec::new();
     for j in 0..nx {
@@ -24,7 +40,10 @@ fn laplace2d(nx: usize, shift: f64) -> Csr {
     Csr::from_triplets(n, n, &t)
 }
 
-fn conv_diff(nx: usize, peclet: f64) -> Csr {
+fn conv_diff(
+    nx: usize,
+    peclet: f64,
+) -> Csr {
     let n = nx * nx;
     let mut t = Vec::new();
     for j in 0..nx {
@@ -48,10 +67,19 @@ fn rhs(n: usize) -> Vec<f64> {
     (0..n).map(|i| 1.0 + (i as f64 * 0.31).sin()).collect()
 }
 
-fn true_res(a: &Csr, x: &[f64], b: &[f64]) -> f64 {
+fn true_res(
+    a: &Csr,
+    x: &[f64],
+    b: &[f64],
+) -> f64 {
     let mut ax = vec![0.0; b.len()];
     a.matvec(x, &mut ax);
-    let r: f64 = ax.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>().sqrt();
+    let r: f64 = ax
+        .iter()
+        .zip(b)
+        .map(|(p, q)| (p - q) * (p - q))
+        .sum::<f64>()
+        .sqrt();
     r / b.iter().map(|v| v * v).sum::<f64>().sqrt()
 }
 
@@ -59,11 +87,25 @@ fn true_res(a: &Csr, x: &[f64], b: &[f64]) -> f64 {
 fn minres_spd_and_indefinite() {
     let b = rhs(400);
     let a = laplace2d(20, 0.0);
-    let r = minres(|x, y| a.matvec(x, y), identity_precond, &b, None, 1e-10, 2000);
+    let r = minres(
+        |x, y| a.matvec(x, y),
+        identity_precond,
+        &b,
+        None,
+        1e-10,
+        2000,
+    );
     assert!(r.converged && true_res(&a, &r.x, &b) < 1e-9, "{r:?}");
     // indefinite: shift inside the spectrum
     let a = laplace2d(20, 2.013);
-    let r = minres(|x, y| a.matvec(x, y), identity_precond, &b, None, 1e-10, 4000);
+    let r = minres(
+        |x, y| a.matvec(x, y),
+        identity_precond,
+        &b,
+        None,
+        1e-10,
+        4000,
+    );
     assert!(true_res(&a, &r.x, &b) < 1e-8, "{}", true_res(&a, &r.x, &b));
     // Jacobi preconditioner (SPD) on the SPD matrix
     let a = laplace2d(20, 0.0);
@@ -89,13 +131,33 @@ fn bicgstab_l_variants() {
     let b = rhs(a.rows);
     let mut iters = Vec::new();
     for l in [1usize, 2, 4] {
-        let r = bicgstab_l(|x, y| a.matvec(x, y), identity_precond, l, &b, None, 1e-10, 2000);
-        assert!(true_res(&a, &r.x, &b) < 1e-8, "l={l}: {}", true_res(&a, &r.x, &b));
+        let r = bicgstab_l(
+            |x, y| a.matvec(x, y),
+            identity_precond,
+            l,
+            &b,
+            None,
+            1e-10,
+            2000,
+        );
+        assert!(
+            true_res(&a, &r.x, &b) < 1e-8,
+            "l={l}: {}",
+            true_res(&a, &r.x, &b)
+        );
         iters.push(r.iterations);
     }
     // with ILU(0) preconditioning
     let ilu = a.ilu0().unwrap();
-    let r = bicgstab_l(|x, y| a.matvec(x, y), |r, z| ilu.apply(r, z), 2, &b, None, 1e-12, 500);
+    let r = bicgstab_l(
+        |x, y| a.matvec(x, y),
+        |r, z| ilu.apply(r, z),
+        2,
+        &b,
+        None,
+        1e-12,
+        500,
+    );
     assert!(true_res(&a, &r.x, &b) < 1e-10 && r.iterations < iters[1]);
 }
 
@@ -103,17 +165,56 @@ fn bicgstab_l_variants() {
 fn idr_s_variants() {
     let a = conv_diff(24, 0.4);
     let b = rhs(a.rows);
-    let g = gmres(|x, y| a.matvec(x, y), identity_precond, &b, None, 200, 1e-10, 2000);
+    let g = gmres(
+        |x, y| a.matvec(x, y),
+        identity_precond,
+        &b,
+        None,
+        200,
+        1e-10,
+        2000,
+    );
     assert!(g.converged);
     for s in [1usize, 2, 4, 8] {
-        let r = idr_s_with(|x, y| a.matvec(x, y), identity_precond, &b, None, &IdrOptions { s, tol: 1e-10, max_iter: 3000, seed: 7 });
-        assert!(true_res(&a, &r.x, &b) < 1e-8, "s={s}: {}", true_res(&a, &r.x, &b));
+        let r = idr_s_with(
+            |x, y| a.matvec(x, y),
+            identity_precond,
+            &b,
+            None,
+            &IdrOptions {
+                s,
+                tol: 1e-10,
+                max_iter: 3000,
+                seed: 7,
+            },
+        );
+        assert!(
+            true_res(&a, &r.x, &b) < 1e-8,
+            "s={s}: {}",
+            true_res(&a, &r.x, &b)
+        );
         if s >= 4 {
-            assert!(r.iterations < 3 * g.iterations + 50, "s={s}: {} vs gmres {}", r.iterations, g.iterations);
+            assert!(
+                r.iterations < 3 * g.iterations + 50,
+                "s={s}: {} vs gmres {}",
+                r.iterations,
+                g.iterations
+            );
         }
     }
     let ilu = a.ilu0().unwrap();
-    let r = idr_s_with(|x, y| a.matvec(x, y), |r, z| ilu.apply(r, z), &b, None, &IdrOptions { s: 4, tol: 1e-12, max_iter: 500, seed: 3 });
+    let r = idr_s_with(
+        |x, y| a.matvec(x, y),
+        |r, z| ilu.apply(r, z),
+        &b,
+        None,
+        &IdrOptions {
+            s: 4,
+            tol: 1e-12,
+            max_iter: 500,
+            seed: 3,
+        },
+    );
     assert!(true_res(&a, &r.x, &b) < 1e-10);
 }
 
@@ -140,7 +241,15 @@ fn fgmres_variable_preconditioner() {
     let r = fgmres(|x, y| a.matvec(x, y), pre, &b, None, 30, 1e-11, 300);
     assert!(r.converged && true_res(&a, &r.x, &b) < 1e-9, "{r:?}");
     // identity preconditioner reproduces plain GMRES behaviour
-    let r0 = fgmres(|x, y| a.matvec(x, y), identity_precond, &b, None, 60, 1e-10, 1000);
+    let r0 = fgmres(
+        |x, y| a.matvec(x, y),
+        identity_precond,
+        &b,
+        None,
+        60,
+        1e-10,
+        1000,
+    );
     assert!(true_res(&a, &r0.x, &b) < 1e-8);
 }
 
@@ -157,11 +266,19 @@ fn lanczos_symmetric_laplacian() {
     }
     let a = Csr::from_triplets(n, n, &t);
     let exact = |k: usize| 2.0 - 2.0 * (k as f64 * std::f64::consts::PI / (n as f64 + 1.0)).cos();
-    let opts = EigsOptions { tol: 1e-10, ..EigsOptions::default() };
+    let opts = EigsOptions {
+        tol: 1e-10,
+        ..EigsOptions::default()
+    };
     let r = eigs_sym(|x, y| a.matvec(x, y), n, 4, Which::LargestReal, &opts).unwrap();
     assert!(r.converged, "{r:?}");
     for q in 0..4 {
-        assert!((r.values[q].0 - exact(n - q)).abs() < 1e-8, "{} vs {}", r.values[q].0, exact(n - q));
+        assert!(
+            (r.values[q].0 - exact(n - q)).abs() < 1e-8,
+            "{} vs {}",
+            r.values[q].0,
+            exact(n - q)
+        );
         // residual check with the returned vector
         let mut ax = vec![0.0; n];
         a.matvec(&r.vectors_re[q], &mut ax);
@@ -179,15 +296,34 @@ fn lanczos_symmetric_laplacian() {
     for i in 0..n {
         shifted.push((i, i, -sigma));
     }
-    let lu = Csr::from_triplets(n, n, &shifted).sparse_lu(SparseOrdering::Rcm).unwrap();
-    let r = eigs_sym_shift_invert(|x, y| y.copy_from_slice(&lu.solve(x)), n, 3, sigma, &opts).unwrap();
+    let lu = Csr::from_triplets(n, n, &shifted)
+        .sparse_lu(SparseOrdering::Rcm)
+        .unwrap();
+    let r =
+        eigs_sym_shift_invert(|x, y| y.copy_from_slice(&lu.solve(x)), n, 3, sigma, &opts).unwrap();
     let mut all: Vec<f64> = (1..=n).map(exact).collect();
     all.sort_by(|p, q| (p - sigma).abs().total_cmp(&(q - sigma).abs()));
     for q in 0..3 {
-        assert!((r.values[q].0 - all[q]).abs() < 1e-8, "{} vs {}", r.values[q].0, all[q]);
+        assert!(
+            (r.values[q].0 - all[q]).abs() < 1e-8,
+            "{} vs {}",
+            r.values[q].0,
+            all[q]
+        );
     }
     // smallest algebraic without inversion
-    let r = eigs_sym(|x, y| a.matvec(x, y), n, 2, Which::SmallestReal, &EigsOptions { tol: 1e-8, max_restarts: 2000, ..opts }).unwrap();
+    let r = eigs_sym(
+        |x, y| a.matvec(x, y),
+        n,
+        2,
+        Which::SmallestReal,
+        &EigsOptions {
+            tol: 1e-8,
+            max_restarts: 2000,
+            ..opts
+        },
+    )
+    .unwrap();
     assert!((r.values[0].0 - exact(1)).abs() < 1e-7 && (r.values[1].0 - exact(2)).abs() < 1e-7);
     assert!(eigs_sym(|x, y| a.matvec(x, y), n, 0, Which::LargestReal, &opts).is_err());
 }
@@ -205,12 +341,24 @@ fn arnoldi_nonsymmetric_real_spectrum() {
         }
     }
     let a = Csr::from_triplets(n, n, &t);
-    let exact = |k: usize| 2.0 + 2.0 * 0.3_f64.sqrt() * (k as f64 * std::f64::consts::PI / (n as f64 + 1.0)).cos();
-    let opts = EigsOptions { tol: 1e-9, ncv: 40, max_restarts: 3000, ..EigsOptions::default() };
+    let exact = |k: usize| {
+        2.0 + 2.0 * 0.3_f64.sqrt() * (k as f64 * std::f64::consts::PI / (n as f64 + 1.0)).cos()
+    };
+    let opts = EigsOptions {
+        tol: 1e-9,
+        ncv: 40,
+        max_restarts: 3000,
+        ..EigsOptions::default()
+    };
     let r = eigs(|x, y| a.matvec(x, y), n, 3, Which::LargestReal, &opts).unwrap();
     assert!(r.converged, "restarts {}", r.restarts);
     for q in 0..3 {
-        assert!((r.values[q].0 - exact(1 + q)).abs() < 1e-6, "{:?} vs {}", r.values[q], exact(1 + q));
+        assert!(
+            (r.values[q].0 - exact(1 + q)).abs() < 1e-6,
+            "{:?} vs {}",
+            r.values[q],
+            exact(1 + q)
+        );
         assert!(r.values[q].1.abs() < 1e-8);
     }
     // shift-invert near 2.0
@@ -219,12 +367,19 @@ fn arnoldi_nonsymmetric_real_spectrum() {
     for i in 0..n {
         sh.push((i, i, -sigma));
     }
-    let lu = Csr::from_triplets(n, n, &sh).sparse_lu(SparseOrdering::Rcm).unwrap();
+    let lu = Csr::from_triplets(n, n, &sh)
+        .sparse_lu(SparseOrdering::Rcm)
+        .unwrap();
     let r = eigs_shift_invert(|x, y| y.copy_from_slice(&lu.solve(x)), n, 2, sigma, &opts).unwrap();
     let mut all: Vec<f64> = (1..=n).map(exact).collect();
     all.sort_by(|p, q| (p - sigma).abs().total_cmp(&(q - sigma).abs()));
     for q in 0..2 {
-        assert!((r.values[q].0 - all[q]).abs() < 1e-6, "{:?} vs {}", r.values[q], all[q]);
+        assert!(
+            (r.values[q].0 - all[q]).abs() < 1e-6,
+            "{:?} vs {}",
+            r.values[q],
+            all[q]
+        );
     }
 }
 
@@ -251,15 +406,33 @@ fn arnoldi_complex_pairs() {
         }
     }
     let a = Csr::from_triplets(n, n, &t);
-    want.sort_by(|p, q| q.0.hypot(q.1).total_cmp(&p.0.hypot(p.1)).then(q.1.total_cmp(&p.1)));
-    let opts = EigsOptions { tol: 1e-9, ncv: 40, max_restarts: 2000, ..EigsOptions::default() };
+    want.sort_by(|p, q| {
+        q.0.hypot(q.1)
+            .total_cmp(&p.0.hypot(p.1))
+            .then(q.1.total_cmp(&p.1))
+    });
+    let opts = EigsOptions {
+        tol: 1e-9,
+        ncv: 40,
+        max_restarts: 2000,
+        ..EigsOptions::default()
+    };
     let r = eigs(|x, y| a.matvec(x, y), n, 4, Which::LargestMagnitude, &opts).unwrap();
     assert!(r.converged);
     assert_eq!(r.values.len(), 4);
     let mut got = r.values.clone();
-    got.sort_by(|p, q| q.0.hypot(q.1).total_cmp(&p.0.hypot(p.1)).then(q.1.total_cmp(&p.1)));
+    got.sort_by(|p, q| {
+        q.0.hypot(q.1)
+            .total_cmp(&p.0.hypot(p.1))
+            .then(q.1.total_cmp(&p.1))
+    });
     for q in 0..4 {
-        assert!((got[q].0 - want[q].0).abs() < 1e-6 && (got[q].1 - want[q].1).abs() < 1e-6, "{:?} vs {:?}", got[q], want[q]);
+        assert!(
+            (got[q].0 - want[q].0).abs() < 1e-6 && (got[q].1 - want[q].1).abs() < 1e-6,
+            "{:?} vs {:?}",
+            got[q],
+            want[q]
+        );
     }
     // complex eigenvector residual: A (xr + i xi) = (lr + i li)(xr + i xi)
     for q in 0..4 {
@@ -270,7 +443,8 @@ fn arnoldi_complex_pairs() {
         a.matvec(xi, &mut axi);
         let mut res = 0.0;
         for i in 0..n {
-            res += (axr[i] - (lr * xr[i] - li * xi[i])).powi(2) + (axi[i] - (lr * xi[i] + li * xr[i])).powi(2);
+            res += (axr[i] - (lr * xr[i] - li * xi[i])).powi(2)
+                + (axi[i] - (lr * xi[i] + li * xr[i])).powi(2);
         }
         assert!(res.sqrt() < 1e-6, "residual {}", res.sqrt());
     }

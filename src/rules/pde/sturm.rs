@@ -52,7 +52,13 @@ pub(super) fn solve(
     if p.nonlinear {
         return None;
     }
-    euler(cx, p, conditions).or_else(|| legendre(cx, p, conditions)).or_else(|| super::bochner::solve(cx, p, conditions)).or_else(|| super::sl::solve(cx, p, conditions)).or_else(|| super::hill::solve(cx, p, conditions)).or_else(|| super::coulomb::solve(cx, p, conditions)).or_else(|| super::spheroidal::solve(cx, p, conditions))
+    euler(cx, p, conditions)
+        .or_else(|| legendre(cx, p, conditions))
+        .or_else(|| super::bochner::solve(cx, p, conditions))
+        .or_else(|| super::sl::solve(cx, p, conditions))
+        .or_else(|| super::hill::solve(cx, p, conditions))
+        .or_else(|| super::coulomb::solve(cx, p, conditions))
+        .or_else(|| super::spheroidal::solve(cx, p, conditions))
 }
 
 /// `c / x^k` if it is free of every variable.
@@ -87,7 +93,11 @@ fn euler(
         let x = p.vars[j];
         let a = power_ratio(cx, p, c2, x, 2)?;
         let c1 = p.coefficient(cx.graph, &p.unit(j, 1));
-        let b = if cx.is_zero(c1) { cx.graph.int(0) } else { power_ratio(cx, p, c1, x, 1)? };
+        let b = if cx.is_zero(c1) {
+            cx.graph.int(0)
+        } else {
+            power_ratio(cx, p, c1, x, 1)?
+        };
         chosen = Some((j, a, b));
         break;
     }
@@ -110,7 +120,10 @@ fn euler(
             return None;
         };
         let order = i64::from(index[k]);
-        if Some(k) == time || !(1..=2).contains(&order) || power_ratio(cx, p, *c, p.vars[k], order).is_none() {
+        if Some(k) == time
+            || !(1..=2).contains(&order)
+            || power_ratio(cx, p, *c, p.vars[k], order).is_none()
+        {
             return None;
         }
     }
@@ -160,7 +173,11 @@ fn euler(
     terms.push(first);
     let exp_s = {
         let e = call(cx, "exp", &[s])?;
-        if negative { neg(cx.graph, e) } else { e }
+        if negative {
+            neg(cx.graph, e)
+        } else {
+            e
+        }
     };
     let source = cx.graph.substitute(p.source, x, exp_s);
     terms.push(source);
@@ -174,11 +191,21 @@ fn euler(
         let mut value = c.value;
         if c.on == j {
             let x0 = c.point;
-            let magnitude = if negative { neg(cx.graph, x0) } else { x0 };
+            let magnitude = if negative {
+                neg(cx.graph, x0)
+            } else {
+                x0
+            };
             let point = call(cx, "ln", &[magnitude])?;
             let point = cx.simplify(point);
             if c.derivative.iter().all(|&d| d == 0) {
-                list.push(Condition { on: j, point, derivative: c.derivative.clone(), value, robin: None });
+                list.push(Condition {
+                    on: j,
+                    point,
+                    derivative: c.derivative.clone(),
+                    value,
+                    robin: None,
+                });
             } else if c.derivative == p.unit(j, 1) {
                 // u_x = w_s / x₀, u_x + h u = v becomes w_s + h x₀ w = x₀ v.
                 let scaled = mul(cx.graph, &[x0, value]);
@@ -190,30 +217,52 @@ fn euler(
                     },
                     | None => None,
                 };
-                list.push(Condition { on: j, point, derivative: c.derivative.clone(), value: scaled, robin });
+                list.push(Condition {
+                    on: j,
+                    point,
+                    derivative: c.derivative.clone(),
+                    value: scaled,
+                    robin,
+                });
             } else {
                 return None;
             }
             continue;
         }
         // Conditions on other variables carry x in their values.
-        let uses_unknown = cx.graph.symbol_of(p.function).is_some_and(|f| cx.graph.depends_on(cx.graph.find(value), f));
+        let uses_unknown = cx
+            .graph
+            .symbol_of(p.function)
+            .is_some_and(|f| cx.graph.depends_on(cx.graph.find(value), f));
         if uses_unknown {
             return None;
         }
         value = cx.graph.substitute(value, x, exp_s);
         value = cx.simplify(value);
-        list.push(Condition { on: c.on, point: c.point, derivative: c.derivative.clone(), value, robin: c.robin });
+        list.push(Condition {
+            on: c.on,
+            point: c.point,
+            derivative: c.derivative.clone(),
+            value,
+            robin: c.robin,
+        });
     }
     let found = super::solve(cx, &scalar, &Conditions(list), Method::Any)?;
     let &[_, w] = cx.graph.children(found) else {
         return None;
     };
-    let magnitude = if negative { neg(cx.graph, x) } else { x };
+    let magnitude = if negative {
+        neg(cx.graph, x)
+    } else {
+        x
+    };
     let ln_x = call(cx, "ln", &[magnitude])?;
     let solution = cx.graph.substitute(w, s, ln_x);
     let solution = cx.simplify(solution);
-    if !super::util::contains_op(cx.graph, solution, "sum") && !super::util::contains_op(cx.graph, solution, "defint") && !verified(cx, p, solution) {
+    if !super::util::contains_op(cx.graph, solution, "sum")
+        && !super::util::contains_op(cx.graph, solution, "defint")
+        && !verified(cx, p, solution)
+    {
         return None;
     }
     Some(solution)
@@ -256,27 +305,56 @@ fn legendre(
     if conditions.0.iter().any(|c| c.on == j) {
         return None;
     }
-    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
+    let (a1, a2) = (
+        p.coefficient(cx.graph, &p.unit(time_index, 1)),
+        p.coefficient(cx.graph, &p.unit(time_index, 2)),
+    );
     let c0 = p.coefficient(cx.graph, &vec![0; n]);
     if !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) || !p.constant(cx.graph, c0) {
         return None;
     }
     for (index, c) in &p.linear {
-        let known = *index == p.unit(j, 1) || *index == p.unit(j, 2) || *index == vec![0; n] || *index == p.unit(time_index, 1) || *index == p.unit(time_index, 2);
+        let known = *index == p.unit(j, 1)
+            || *index == p.unit(j, 2)
+            || *index == vec![0; n]
+            || *index == p.unit(time_index, 1)
+            || *index == p.unit(time_index, 2);
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = Time { var: p.vars[time_index], order, a2, a1 };
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = Time {
+        var: p.vars[time_index],
+        order,
+        a2,
+        a1,
+    };
     // The symbol: κ (-n(n+1)) + c₀.
     let spatial = vec![(vec![1], kappa), (vec![0], c0)];
-    let axes = vec![Axis { var: x, shape: Shape::Legendre }];
+    let axes = vec![Axis {
+        var: x,
+        shape: Shape::Legendre,
+    }];
     let mut items = time_items(cx, p, conditions, Some(time_index), order, n)?;
     if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: p.source,
+            special: None,
+        });
     }
-    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
+    let engine = Engine {
+        axes,
+        time: Some(time),
+        symbol: Symbol::Cartesian(spatial),
+        face: None,
+        exterior: None,
+    };
     let solution = finish(cx, p, conditions, &engine, &items, None, None)?;
     Some(solution)
 }

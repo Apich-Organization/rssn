@@ -58,24 +58,24 @@ use std::collections::HashMap;
 use num_complex::Complex64;
 use num_integer::Integer;
 
+use super::V;
 use super::apply;
 use super::def;
-use super::group_theory::tab_of;
 use super::group_theory::Tab;
+use super::group_theory::tab_of;
 use super::groups::lookup;
 use super::idx;
 use super::items;
 use super::prod;
 use super::rows;
 use super::sum;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 // ----------------------------------------------------------------------
 // Modular arithmetic
@@ -106,7 +106,10 @@ const fn minv(
 }
 
 fn is_prime(n: u64) -> bool {
-    n >= 2 && (2..n).take_while(|d| d * d <= n).all(|d| !n.is_multiple_of(d))
+    n >= 2
+        && (2..n)
+            .take_while(|d| d * d <= n)
+            .all(|d| !n.is_multiple_of(d))
 }
 
 /// The null vector of the `k x k` matrix `a` modulo `p`, if the null space is
@@ -119,7 +122,9 @@ fn null_vector(
     let mut pivots = Vec::new();
     let mut row = 0;
     for col in 0..k {
-        let Some(r) = (row..k).find(|&r| a[r][col] != 0) else { continue };
+        let Some(r) = (row..k).find(|&r| a[r][col] != 0) else {
+            continue;
+        };
         a.swap(row, r);
         let inv = minv(a[row][col], p);
         for x in &mut a[row] {
@@ -210,7 +215,9 @@ impl Entry {
         self.v
             .iter()
             .enumerate()
-            .map(|(k, &c)| Complex64::from_polar(1.0, 2.0 * std::f64::consts::PI * k as f64 / m) * c as f64)
+            .map(|(k, &c)| {
+                Complex64::from_polar(1.0, 2.0 * std::f64::consts::PI * k as f64 / m) * c as f64
+            })
             .sum()
     }
 
@@ -296,7 +303,11 @@ fn recognise_quadratic(x: f64) -> Option<(i64, i64, i64, i64)> {
             let sq = (d as f64).sqrt();
             let max_b = if d == 1 { 0 } else { 24 };
             for bb in 0..=max_b {
-                for b in if bb == 0 { vec![0] } else { vec![bb, -bb] } {
+                for b in if bb == 0 {
+                    vec![0]
+                } else {
+                    vec![bb, -bb]
+                } {
                     let a = (x * c as f64 - b as f64 * sq).round();
                     if (a + b as f64 * sq - x * c as f64).abs() < 1e-9 && a.abs() < 1e6 {
                         let a = a as i64;
@@ -329,7 +340,12 @@ pub(crate) fn entry_node(
 ) -> NodeId {
     let e = minimise(e);
     let z = e.value();
-    let nonzero: Vec<(usize, i64)> = e.v.iter().copied().enumerate().filter(|&(_, c)| c != 0).collect();
+    let nonzero: Vec<(usize, i64)> =
+        e.v.iter()
+            .copied()
+            .enumerate()
+            .filter(|&(_, c)| c != 0)
+            .collect();
     if nonzero.is_empty() {
         return g.int(0);
     }
@@ -337,18 +353,19 @@ pub(crate) fn entry_node(
         return g.int(nonzero[0].1);
     }
     if z.im.abs() < 1e-9
-        && let Some((a, b, d, c)) = recognise_quadratic(z.re) {
-            let mut terms = vec![rat_node(g, a, c)];
-            if b != 0 {
-                let dn = g.int(d);
-                let sq = apply(g, "sqrt", &[dn]);
-                if let Some(sq) = sq {
-                    let coef = rat_node(g, b, c);
-                    terms.push(prod(g, &[coef, sq]));
-                }
+        && let Some((a, b, d, c)) = recognise_quadratic(z.re)
+    {
+        let mut terms = vec![rat_node(g, a, c)];
+        if b != 0 {
+            let dn = g.int(d);
+            let sq = apply(g, "sqrt", &[dn]);
+            if let Some(sq) = sq {
+                let coef = rat_node(g, b, c);
+                terms.push(prod(g, &[coef, sq]));
             }
-            return sum(g, &terms);
         }
+        return sum(g, &terms);
+    }
     let pi = apply(g, "pi", &[]);
     let unit = apply(g, "I", &[]);
     let mut terms = Vec::new();
@@ -402,7 +419,9 @@ impl CharTable {
         a: &[Complex64],
         b: &[Complex64],
     ) -> Complex64 {
-        let s: Complex64 = (0..self.classes.len()).map(|i| a[i] * b[i].conj() * self.sizes[i] as f64).sum();
+        let s: Complex64 = (0..self.classes.len())
+            .map(|i| a[i] * b[i].conj() * self.sizes[i] as f64)
+            .sum();
         s / self.n as f64
     }
 
@@ -430,7 +449,10 @@ pub(crate) fn read_class_function(
 ) -> Option<Vec<Complex64>> {
     let list = items(g, n)?;
     let bindings = HashMap::new();
-    let vals: Vec<Complex64> = list.iter().map(|&x| g.eval_complex(x, &bindings)).collect::<Option<_>>()?;
+    let vals: Vec<Complex64> = list
+        .iter()
+        .map(|&x| g.eval_complex(x, &bindings))
+        .collect::<Option<_>>()?;
     if vals.len() == ct.classes.len() {
         Some(vals)
     } else if vals.len() == ct.n {
@@ -491,12 +513,22 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
     // Eigen-decomposition of a random combination of the class matrices.
     let mut seed = 0x9E37_79B9_7F4A_7C15_u64;
     let mut next = || {
-        seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        seed = seed
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (seed >> 33) % p
     };
     let mut omegas: Option<Vec<Vec<u64>>> = None;
     for attempt in 0..60 {
-        let coeffs: Vec<u64> = (0..k).map(|j| if attempt == 0 { j as u64 + 1 } else { next() }).collect();
+        let coeffs: Vec<u64> = (0..k)
+            .map(|j| {
+                if attempt == 0 {
+                    j as u64 + 1
+                } else {
+                    next()
+                }
+            })
+            .collect();
         let mut m = vec![vec![0_u64; k]; k];
         for j in 0..k {
             for i in 0..k {
@@ -516,7 +548,9 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
             for (i, row) in shifted.iter_mut().enumerate() {
                 row[i] = (row[i] + p - lam) % p;
             }
-            let Some(mut w) = null_vector(shifted, p) else { break };
+            let Some(mut w) = null_vector(shifted, p) else {
+                break;
+            };
             if w[id_class] == 0 {
                 break;
             }
@@ -534,10 +568,14 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
     let omegas = omegas?;
 
     // A primitive e-th root of unity modulo p.
-    let primes: Vec<u64> = (2..=e as u64).filter(|&q| (e as u64).is_multiple_of(q) && is_prime(q)).collect();
+    let primes: Vec<u64> = (2..=e as u64)
+        .filter(|&q| (e as u64).is_multiple_of(q) && is_prime(q))
+        .collect();
     let root_e = (2..p)
         .map(|h| mpow(h, (p - 1) / e as u64, p))
-        .find(|&r| mpow(r, e as u64, p) == 1 && primes.iter().all(|&q| mpow(r, e as u64 / q, p) != 1))
+        .find(|&r| {
+            mpow(r, e as u64, p) == 1 && primes.iter().all(|&q| mpow(r, e as u64 / q, p) != 1)
+        })
         .unwrap_or(1);
 
     let mut rows_raw: Vec<(usize, Vec<Entry>)> = Vec::new();
@@ -550,7 +588,9 @@ pub(crate) fn character_table(t: &Tab) -> Option<CharTable> {
         }
         let d2 = n as u64 % p * minv(s, p) % p;
         let d = isqrt_exact(d2)?;
-        let chi_p: Vec<u64> = (0..k).map(|i| d % p * w[i] % p * minv(sizes[i] as u64 % p, p) % p).collect();
+        let chi_p: Vec<u64> = (0..k)
+            .map(|i| d % p * w[i] % p * minv(sizes[i] as u64 % p, p) % p)
+            .collect();
         let mut entries = Vec::with_capacity(k);
         for i in 0..k {
             let g = reps[i];
@@ -635,7 +675,11 @@ impl CharTable {
         for i in 0..k {
             for j in 0..k {
                 let s: Complex64 = self.z.iter().map(|r| r[i] * r[j].conj()).sum();
-                let want = if i == j { self.n as f64 / self.sizes[i] as f64 } else { 0.0 };
+                let want = if i == j {
+                    self.n as f64 / self.sizes[i] as f64
+                } else {
+                    0.0
+                };
                 if (s.re - want).abs() > 1e-8 || s.im.abs() > 1e-8 {
                     return false;
                 }
@@ -650,7 +694,10 @@ impl CharTable {
         t: &Tab,
         k: usize,
     ) -> Vec<usize> {
-        self.reps.iter().map(|&r| self.class_of[t.pow(r, k)]).collect()
+        self.reps
+            .iter()
+            .map(|&r| self.class_of[t.pow(r, k)])
+            .collect()
     }
 }
 
@@ -697,7 +744,9 @@ fn group_class_representatives(
     a: &[NodeId],
 ) -> Option<V> {
     let (grp, _, c) = classes_of(cx, *a.first()?)?;
-    Some(V::List(c.iter().map(|x| V::Node(grp.elems[x[0]])).collect()))
+    Some(V::List(
+        c.iter().map(|x| V::Node(grp.elems[x[0]])).collect(),
+    ))
 }
 
 fn group_class_index(
@@ -832,7 +881,11 @@ fn character_tensor(
     let [g, x, y] = a else { return None };
     let (_, _, ct) = table_of(cx, *g)?;
     let (x, y) = (class_nodes(cx, &ct, *x)?, class_nodes(cx, &ct, *y)?);
-    let prods: Vec<NodeId> = x.iter().zip(&y).map(|(&p, &q)| prod(cx.graph, &[p, q])).collect();
+    let prods: Vec<NodeId> = x
+        .iter()
+        .zip(&y)
+        .map(|(&p, &q)| prod(cx.graph, &[p, q]))
+        .collect();
     Some(simplified_list(cx, prods))
 }
 
@@ -905,7 +958,16 @@ fn character_regular(
 ) -> Option<V> {
     let (_, t, classes) = classes_of(cx, *a.first()?)?;
     Some(V::List(
-        classes.iter().map(|c| if c[0] == t.id { V::uint(t.n) } else { V::int(0) }).collect(),
+        classes
+            .iter()
+            .map(|c| {
+                if c[0] == t.id {
+                    V::uint(t.n)
+                } else {
+                    V::int(0)
+                }
+            })
+            .collect(),
     ))
 }
 
@@ -970,13 +1032,18 @@ fn character_projection(
 ) -> Option<V> {
     let [g, i, m] = a else { return None };
     let (_, _, ct) = table_of(cx, *g)?;
-    let i = idx(cx.graph, *i)?.checked_sub(1).filter(|&i| i < ct.rows.len())?;
+    let i = idx(cx.graph, *i)?
+        .checked_sub(1)
+        .filter(|&i| i < ct.rows.len())?;
     let mats = matrices(cx.graph, *m)?;
     if mats.len() != ct.n {
         return None;
     }
     let dim = mats[0].len();
-    if mats.iter().any(|m| m.len() != dim || m.iter().any(|r| r.len() != dim)) {
+    if mats
+        .iter()
+        .any(|m| m.len() != dim || m.iter().any(|r| r.len() != dim))
+    {
         return None;
     }
     let coeffs: Vec<NodeId> = (0..ct.n)
@@ -985,12 +1052,18 @@ fn character_projection(
             entry_node(cx.graph, &conj)
         })
         .collect();
-    let scale = rat_node(cx.graph, i64::try_from(ct.degrees[i]).ok()?, i64::try_from(ct.n).ok()?);
+    let scale = rat_node(
+        cx.graph,
+        i64::try_from(ct.degrees[i]).ok()?,
+        i64::try_from(ct.n).ok()?,
+    );
     let mut out = Vec::new();
     for r in 0..dim {
         let mut row = Vec::new();
         for c in 0..dim {
-            let terms: Vec<NodeId> = (0..ct.n).map(|x| prod(cx.graph, &[coeffs[x], mats[x][r][c]])).collect();
+            let terms: Vec<NodeId> = (0..ct.n)
+                .map(|x| prod(cx.graph, &[coeffs[x], mats[x][r][c]]))
+                .collect();
             let s = sum(cx.graph, &terms);
             let scaled = prod(cx.graph, &[scale, s]);
             row.push(V::Node(cx.simplify(scaled)));
@@ -1003,23 +1076,88 @@ fn character_projection(
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "group_class_count", Arity::Fixed(1), group_class_count)?;
     def(i, "group_class_sizes", Arity::Fixed(1), group_class_sizes)?;
-    def(i, "group_class_representatives", Arity::Fixed(1), group_class_representatives)?;
+    def(
+        i,
+        "group_class_representatives",
+        Arity::Fixed(1),
+        group_class_representatives,
+    )?;
     def(i, "group_class_index", Arity::Fixed(2), group_class_index)?;
-    def(i, "group_character_table", Arity::Fixed(1), group_character_table)?;
-    def(i, "group_character_degrees", Arity::Fixed(1), group_character_degrees)?;
-    def(i, "character_table_is_orthogonal", Arity::Fixed(1), character_table_is_orthogonal)?;
-    def(i, "character_inner_product", Arity::Fixed(3), character_inner_product)?;
-    def(i, "character_is_irreducible", Arity::Fixed(2), character_is_irreducible)?;
-    def(i, "character_decompose", Arity::Fixed(2), character_decompose)?;
+    def(
+        i,
+        "group_character_table",
+        Arity::Fixed(1),
+        group_character_table,
+    )?;
+    def(
+        i,
+        "group_character_degrees",
+        Arity::Fixed(1),
+        group_character_degrees,
+    )?;
+    def(
+        i,
+        "character_table_is_orthogonal",
+        Arity::Fixed(1),
+        character_table_is_orthogonal,
+    )?;
+    def(
+        i,
+        "character_inner_product",
+        Arity::Fixed(3),
+        character_inner_product,
+    )?;
+    def(
+        i,
+        "character_is_irreducible",
+        Arity::Fixed(2),
+        character_is_irreducible,
+    )?;
+    def(
+        i,
+        "character_decompose",
+        Arity::Fixed(2),
+        character_decompose,
+    )?;
     def(i, "character_tensor", Arity::Fixed(3), character_tensor)?;
-    def(i, "character_sym_square", Arity::Fixed(2), character_sym_square)?;
-    def(i, "character_alt_square", Arity::Fixed(2), character_alt_square)?;
+    def(
+        i,
+        "character_sym_square",
+        Arity::Fixed(2),
+        character_sym_square,
+    )?;
+    def(
+        i,
+        "character_alt_square",
+        Arity::Fixed(2),
+        character_alt_square,
+    )?;
     def(i, "character_adams", Arity::Fixed(3), character_adams)?;
-    def(i, "character_conjugate", Arity::Fixed(2), character_conjugate)?;
+    def(
+        i,
+        "character_conjugate",
+        Arity::Fixed(2),
+        character_conjugate,
+    )?;
     def(i, "character_regular", Arity::Fixed(1), character_regular)?;
-    def(i, "character_of_matrices", Arity::Fixed(2), character_of_matrices)?;
-    def(i, "representation_decompose", Arity::Fixed(2), representation_decompose)?;
-    def(i, "character_projection", Arity::Fixed(3), character_projection)?;
+    def(
+        i,
+        "character_of_matrices",
+        Arity::Fixed(2),
+        character_of_matrices,
+    )?;
+    def(
+        i,
+        "representation_decompose",
+        Arity::Fixed(2),
+        representation_decompose,
+    )?;
+    def(
+        i,
+        "character_projection",
+        Arity::Fixed(3),
+        character_projection,
+    )?;
     Ok(())
 }
 
@@ -1039,7 +1177,9 @@ mod tests {
         table: &[Vec<Complex64>],
         row: &[Complex64],
     ) -> bool {
-        table.iter().any(|r| r.len() == row.len() && r.iter().zip(row).all(|(a, b)| (a - b).norm() < 1e-9))
+        table
+            .iter()
+            .any(|r| r.len() == row.len() && r.iter().zip(row).all(|(a, b)| (a - b).norm() < 1e-9))
     }
 
     fn rows_of(
@@ -1057,13 +1197,28 @@ mod tests {
     fn s3_table() {
         // classes: identity, transpositions, 3-cycles
         let t = num_rows("group_character_table(symmetric_group(3))");
-        rows_of(&[&[1.0, 1.0, 1.0], &[1.0, -1.0, 1.0], &[2.0, 0.0, -1.0]], &t);
-        assert_eq!(s("group_character_table(symmetric_group(3))"), "list(list(1, 1, 1), list(1, -1, 1), list(2, 0, -1))");
-        assert_eq!(s("group_character_degrees(symmetric_group(3))"), "list(1, 1, 2)");
+        rows_of(
+            &[&[1.0, 1.0, 1.0], &[1.0, -1.0, 1.0], &[2.0, 0.0, -1.0]],
+            &t,
+        );
+        assert_eq!(
+            s("group_character_table(symmetric_group(3))"),
+            "list(list(1, 1, 1), list(1, -1, 1), list(2, 0, -1))"
+        );
+        assert_eq!(
+            s("group_character_degrees(symmetric_group(3))"),
+            "list(1, 1, 2)"
+        );
         assert_eq!(s("group_class_sizes(symmetric_group(3))"), "list(1, 3, 2)");
         assert_eq!(s("group_class_count(symmetric_group(3))"), "3");
-        assert_eq!(s("group_class_index(symmetric_group(3), list(2, 3, 1))"), "3");
-        assert_eq!(s("character_table_is_orthogonal(symmetric_group(3))"), "true");
+        assert_eq!(
+            s("group_class_index(symmetric_group(3), list(2, 3, 1))"),
+            "3"
+        );
+        assert_eq!(
+            s("character_table_is_orthogonal(symmetric_group(3))"),
+            "true"
+        );
     }
 
     #[test]
@@ -1088,13 +1243,19 @@ mod tests {
     fn q8_table() {
         assert_eq!(s(&format!("group_order({Q8})")), "8");
         assert_eq!(s(&format!("group_class_count({Q8})")), "5");
-        assert_eq!(s(&format!("group_character_degrees({Q8})")), "list(1, 1, 1, 1, 2)");
+        assert_eq!(
+            s(&format!("group_character_degrees({Q8})")),
+            "list(1, 1, 1, 1, 2)"
+        );
         let t = num_rows(&format!("group_character_table({Q8})"));
         // the two-dimensional character is 2 on the identity, -2 on the
         // centre and 0 on the three classes of elements of order 4
         let two = &t[4];
         assert!((two[0] - c(2.0)).norm() < 1e-9);
-        let centre = two.iter().position(|z| (z - c(-2.0)).norm() < 1e-9).unwrap_or(0);
+        let centre = two
+            .iter()
+            .position(|z| (z - c(-2.0)).norm() < 1e-9)
+            .unwrap_or(0);
         assert!(centre > 0);
         assert_eq!(two.iter().filter(|z| z.norm() < 1e-9).count(), 3);
         // the four linear characters are trivial on the centre
@@ -1102,24 +1263,36 @@ mod tests {
             assert!((row[centre] - c(1.0)).norm() < 1e-9);
         }
         // D4 and Q8 have the same character table but are not isomorphic
-        assert_eq!(s(&format!("group_is_isomorphic({Q8}, dihedral_group(4))")), "false");
+        assert_eq!(
+            s(&format!("group_is_isomorphic({Q8}, dihedral_group(4))")),
+            "false"
+        );
     }
 
     #[test]
     fn a4_table_has_cube_roots_of_unity() {
         let a4 = "group_from_perms(list(list(2,3,1,4), list(1,3,4,2)))";
         assert_eq!(s(&format!("group_order({a4})")), "12");
-        assert_eq!(s(&format!("group_character_degrees({a4})")), "list(1, 1, 1, 3)");
+        assert_eq!(
+            s(&format!("group_character_degrees({a4})")),
+            "list(1, 1, 1, 3)"
+        );
         let t = num_rows(&format!("group_character_table({a4})"));
         let w = Complex64::from_polar(1.0, 2.0 * std::f64::consts::PI / 3.0);
         // classes: identity, two classes of 3-cycles, double transpositions
         assert_eq!(s(&format!("group_class_sizes({a4})")), "list(1, 4, 4, 3)");
-        let complex_rows: Vec<&Vec<Complex64>> = t.iter().filter(|r| r.iter().any(|z| z.im.abs() > 1e-9)).collect();
+        let complex_rows: Vec<&Vec<Complex64>> = t
+            .iter()
+            .filter(|r| r.iter().any(|z| z.im.abs() > 1e-9))
+            .collect();
         assert_eq!(complex_rows.len(), 2);
         for r in complex_rows {
             assert!((r[0] - c(1.0)).norm() < 1e-9 && (r[3] - c(1.0)).norm() < 1e-9);
             let (x, y) = (r[1], r[2]);
-            assert!(((x - w).norm() < 1e-9 && (y - w.conj()).norm() < 1e-9) || ((x - w.conj()).norm() < 1e-9 && (y - w).norm() < 1e-9));
+            assert!(
+                ((x - w).norm() < 1e-9 && (y - w.conj()).norm() < 1e-9)
+                    || ((x - w.conj()).norm() < 1e-9 && (y - w).norm() < 1e-9)
+            );
         }
         rows_of(&[&[3.0, 0.0, 0.0, -1.0]], &t[3..]);
         // the entries are written with exponentials
@@ -1133,24 +1306,48 @@ mod tests {
         assert_eq!(t.len(), 5);
         let deg: Vec<f64> = t.iter().map(|r| r[0].re).collect();
         assert_eq!(deg, vec![1.0, 1.0, 2.0, 3.0, 3.0]);
-        assert_eq!(s("character_table_is_orthogonal(symmetric_group(4))"), "true");
+        assert_eq!(
+            s("character_table_is_orthogonal(symmetric_group(4))"),
+            "true"
+        );
         // classes: identity, transpositions, 3-cycles, double transpositions, 4-cycles
-        assert_eq!(s("group_class_sizes(symmetric_group(4))"), "list(1, 6, 8, 3, 6)");
+        assert_eq!(
+            s("group_class_sizes(symmetric_group(4))"),
+            "list(1, 6, 8, 3, 6)"
+        );
         // the standard representation (3, 1, -1, 0, -1) is a row
-        rows_of(&[&[3.0, 1.0, 0.0, -1.0, -1.0], &[3.0, -1.0, 0.0, -1.0, 1.0], &[2.0, 0.0, -1.0, 2.0, 0.0]], &t[2..]);
+        rows_of(
+            &[
+                &[3.0, 1.0, 0.0, -1.0, -1.0],
+                &[3.0, -1.0, 0.0, -1.0, 1.0],
+                &[2.0, 0.0, -1.0, 2.0, 0.0],
+            ],
+            &t[2..],
+        );
     }
 
     #[test]
     fn a5_table_has_the_golden_ratio() {
         let a5 = "group_from_perms(list(list(2,3,4,5,1), list(2,3,1,4,5)))";
         assert_eq!(s(&format!("group_class_count({a5})")), "5");
-        assert_eq!(s(&format!("group_character_degrees({a5})")), "list(1, 3, 3, 4, 5)");
+        assert_eq!(
+            s(&format!("group_character_degrees({a5})")),
+            "list(1, 3, 3, 4, 5)"
+        );
         let t = num_rows(&format!("group_character_table({a5})"));
         let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
         let psi = (1.0 - 5.0_f64.sqrt()) / 2.0;
         let sizes = s(&format!("group_class_sizes({a5})"));
         assert_eq!(sizes, "list(1, 20, 15, 12, 12)");
-        rows_of(&[&[3.0, 0.0, -1.0, phi, psi], &[3.0, 0.0, -1.0, psi, phi], &[4.0, 1.0, 0.0, -1.0, -1.0], &[5.0, -1.0, 1.0, 0.0, 0.0]], &t[1..]);
+        rows_of(
+            &[
+                &[3.0, 0.0, -1.0, phi, psi],
+                &[3.0, 0.0, -1.0, psi, phi],
+                &[4.0, 1.0, 0.0, -1.0, -1.0],
+                &[5.0, -1.0, 1.0, 0.0, 0.0],
+            ],
+            &t[1..],
+        );
         let text = s(&format!("group_character_table({a5})"));
         assert!(text.contains("sqrt(5)"), "{text}");
         assert_eq!(s(&format!("character_table_is_orthogonal({a5})")), "true");
@@ -1162,55 +1359,146 @@ mod tests {
         assert_eq!(t.len(), 5);
         for (a, ra) in t.iter().enumerate() {
             for (b, rb) in t.iter().enumerate() {
-                let ip: Complex64 = ra.iter().zip(rb).map(|(x, y)| x * y.conj()).sum::<Complex64>() / 5.0;
+                let ip: Complex64 = ra
+                    .iter()
+                    .zip(rb)
+                    .map(|(x, y)| x * y.conj())
+                    .sum::<Complex64>()
+                    / 5.0;
                 assert!((ip - c(if a == b { 1.0 } else { 0.0 })).norm() < 1e-9);
             }
         }
-        assert_eq!(s("group_character_table(cyclic_group(2))"), "list(list(1, 1), list(1, -1))");
+        assert_eq!(
+            s("group_character_table(cyclic_group(2))"),
+            "list(list(1, 1), list(1, -1))"
+        );
     }
 
     #[test]
     fn decomposition_and_products() {
         let g = "symmetric_group(3)";
         // the regular representation contains each irreducible d times
-        assert_eq!(s(&format!("character_decompose({g}, character_regular({g}))")), "list(1, 1, 2)");
+        assert_eq!(
+            s(&format!("character_decompose({g}, character_regular({g}))")),
+            "list(1, 1, 2)"
+        );
         // the permutation representation on three points: 1 + 2
-        assert_eq!(s(&format!("character_decompose({g}, list(3, 1, 0))")), "list(1, 0, 1)");
+        assert_eq!(
+            s(&format!("character_decompose({g}, list(3, 1, 0))")),
+            "list(1, 0, 1)"
+        );
         // 2 x 2 = 1 + sign + 2
-        assert_eq!(s(&format!("character_tensor({g}, list(2, 0, -1), list(2, 0, -1))")), "list(4, 0, 1)");
-        assert_eq!(s(&format!("character_decompose({g}, character_tensor({g}, list(2, 0, -1), list(2, 0, -1)))")), "list(1, 1, 1)");
+        assert_eq!(
+            s(&format!(
+                "character_tensor({g}, list(2, 0, -1), list(2, 0, -1))"
+            )),
+            "list(4, 0, 1)"
+        );
+        assert_eq!(
+            s(&format!(
+                "character_decompose({g}, character_tensor({g}, list(2, 0, -1), list(2, 0, -1)))"
+            )),
+            "list(1, 1, 1)"
+        );
         // Sym^2 of the standard representation is 1 + 2, Alt^2 is the sign
-        assert_eq!(s(&format!("character_decompose({g}, character_sym_square({g}, list(2, 0, -1)))")), "list(1, 0, 1)");
-        assert_eq!(s(&format!("character_decompose({g}, character_alt_square({g}, list(2, 0, -1)))")), "list(0, 1, 0)");
-        assert_eq!(s(&format!("character_alt_square({g}, list(2, 0, -1))")), "list(1, -1, 1)");
-        assert_eq!(s(&format!("character_is_irreducible({g}, list(2, 0, -1))")), "true");
-        assert_eq!(s(&format!("character_is_irreducible({g}, list(3, 1, 0))")), "false");
-        assert_eq!(s(&format!("character_inner_product({g}, list(3, 1, 0), list(3, 1, 0))")), "2");
-        assert_eq!(s(&format!("character_inner_product({g}, list(1, 1, 1), list(1, -1, 1))")), "0");
-        assert_eq!(s(&format!("character_inner_product({g}, list(1, 1, 1), list(1, 1, 0))")), "2/3");
-        assert_eq!(s(&format!("character_adams({g}, list(2, 0, -1), 2)")), "list(2, 2, -1)");
+        assert_eq!(
+            s(&format!(
+                "character_decompose({g}, character_sym_square({g}, list(2, 0, -1)))"
+            )),
+            "list(1, 0, 1)"
+        );
+        assert_eq!(
+            s(&format!(
+                "character_decompose({g}, character_alt_square({g}, list(2, 0, -1)))"
+            )),
+            "list(0, 1, 0)"
+        );
+        assert_eq!(
+            s(&format!("character_alt_square({g}, list(2, 0, -1))")),
+            "list(1, -1, 1)"
+        );
+        assert_eq!(
+            s(&format!("character_is_irreducible({g}, list(2, 0, -1))")),
+            "true"
+        );
+        assert_eq!(
+            s(&format!("character_is_irreducible({g}, list(3, 1, 0))")),
+            "false"
+        );
+        assert_eq!(
+            s(&format!(
+                "character_inner_product({g}, list(3, 1, 0), list(3, 1, 0))"
+            )),
+            "2"
+        );
+        assert_eq!(
+            s(&format!(
+                "character_inner_product({g}, list(1, 1, 1), list(1, -1, 1))"
+            )),
+            "0"
+        );
+        assert_eq!(
+            s(&format!(
+                "character_inner_product({g}, list(1, 1, 1), list(1, 1, 0))"
+            )),
+            "2/3"
+        );
+        assert_eq!(
+            s(&format!("character_adams({g}, list(2, 0, -1), 2)")),
+            "list(2, 2, -1)"
+        );
         // not a character: stays unreduced
-        assert!(s(&format!("character_decompose({g}, list(1, 0, 0))")).starts_with("character_decompose(group("));
+        assert!(
+            s(&format!("character_decompose({g}, list(1, 0, 0))"))
+                .starts_with("character_decompose(group(")
+        );
     }
 
     #[test]
     fn matrix_representations() {
         // the defining permutation representation of S3 on R^3
-        let perms = ["list(1,2,3)", "list(1,3,2)", "list(2,1,3)", "list(2,3,1)", "list(3,1,2)", "list(3,2,1)"];
+        let perms = [
+            "list(1,2,3)",
+            "list(1,3,2)",
+            "list(2,1,3)",
+            "list(2,3,1)",
+            "list(3,1,2)",
+            "list(3,2,1)",
+        ];
         let mat = |p: &str| -> String {
-            let img: Vec<usize> = p[5..p.len() - 1].split(',').map(|x| x.trim().parse::<usize>().unwrap_or(1)).collect();
+            let img: Vec<usize> = p[5..p.len() - 1]
+                .split(',')
+                .map(|x| x.trim().parse::<usize>().unwrap_or(1))
+                .collect();
             let rows: Vec<String> = (0..3)
                 .map(|i| {
-                    let r: Vec<String> = (0..3).map(|j| if img[j] == i + 1 { "1".into() } else { "0".into() }).collect();
+                    let r: Vec<String> = (0..3)
+                        .map(|j| {
+                            if img[j] == i + 1 {
+                                "1".into()
+                            } else {
+                                "0".into()
+                            }
+                        })
+                        .collect();
                     format!("list({})", r.join(", "))
                 })
                 .collect();
             format!("list({})", rows.join(", "))
         };
-        let reps = format!("list({})", perms.iter().map(|p| mat(p)).collect::<Vec<_>>().join(", "));
+        let reps = format!(
+            "list({})",
+            perms.iter().map(|p| mat(p)).collect::<Vec<_>>().join(", ")
+        );
         let g = "symmetric_group(3)";
-        assert_eq!(s(&format!("character_of_matrices({g}, {reps})")), "list(3, 1, 0)");
-        assert_eq!(s(&format!("representation_decompose({g}, {reps})")), "list(1, 0, 1)");
+        assert_eq!(
+            s(&format!("character_of_matrices({g}, {reps})")),
+            "list(3, 1, 0)"
+        );
+        assert_eq!(
+            s(&format!("representation_decompose({g}, {reps})")),
+            "list(1, 0, 1)"
+        );
         // projection onto the trivial isotypic component averages the matrices
         assert_eq!(
             s(&format!("character_projection({g}, 1, {reps})")),
@@ -1221,6 +1509,9 @@ mod tests {
         let p3 = s(&format!("character_projection({g}, 3, {reps})"));
         assert_eq!(p1.matches("1/3").count(), 9);
         assert!(p3.contains("2/3"), "{p3}");
-        assert_eq!(s(&format!("character_projection({g}, 2, {reps})")), "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            s(&format!("character_projection({g}, 2, {reps})")),
+            "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))"
+        );
     }
 }

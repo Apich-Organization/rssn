@@ -70,15 +70,24 @@
 //!   `integral` unless it integrates). Poles may be conjugate algebraic
 //!   numbers (an irreducible factor of the denominator of `r`) when the
 //!   local data are rational (order one, or order two with a rational
-//!   coefficient of the double pole). Case 3 (tetrahedral `n = 4`,
+//!   coefficient of the double pole). Case 2 also runs when
+//!   `sqrt(1 + 4b)` at a double pole is irrational: the exponent sets
+//!   `{2, 2 ± 2 sqrt d}` and the solutions live in `Q(sqrt d)`, the
+//!   polynomial `P` is found by exact linear algebra over the coordinates of
+//!   `P = P_0 + sqrt(d) P_1`, the discriminant is written `sqrt(c) A/B` when
+//!   it is a constant times a square over the field, and the conjugate
+//!   families are enumerated. Case 3 (tetrahedral `n = 4`,
 //!   octahedral `n = 6`, icosahedral `n = 12` monodromy) finds the
 //!   polynomial `P` by Kovacic's recursion and returns `exp(∫ω)` with
 //!   `ω = root_of(j, c_0(x), …, c_n(x))` a root of the minimal polynomial
 //!   (the index counts the roots in the order of `root_of` at the
 //!   evaluation point, so a solution is a branch on a region where that
 //!   order is constant, and the answer is not spot-checked). Not done: poles
-//!   of order three or more at non-rational points, and irrational local
-//!   data.
+//!   of order three or more at non-rational points, an irrational
+//!   double-pole coefficient at a rational pole, and a second quadratic
+//!   extension of the local field. Case 3 keeps rational exponent data: for
+//!   rational coefficients, finite primitive monodromy forces every exponent
+//!   difference to be rational.
 //! * **Hypergeometric matching**: Gauss's equation (`c`, `a + b + 1` and
 //!   `a b` the coefficients of `x(1 - x) y'' + (c - (a + b + 1) x) y' - a b y = 0`)
 //!   as `hyper2f1`, Kummer as `hyper1f1`, and Whittaker
@@ -123,9 +132,16 @@
 //! solution, a first-order *left* factor is found through the adjoint
 //! operator (`L = (D + ω*) N` when `L*` has the hyperexponential solution
 //! `y*`), `N` is solved recursively and a particular solution of `N y = 1/y*`
-//! comes from variation of parameters (inert integrals allowed). Not done:
-//! the eigenring (Beke / van Hoeij) factorisation into factors of order
-//! above one.
+//! comes from variation of parameters (inert integrals allowed). The
+//! eigenring (Beke / van Hoeij) factorisation then supplies right factors of
+//! any order: elements `Σ p_j(x) D^j / d(x)` with `d` a product of powers of
+//! the irreducible factors of the leading coefficient (the exponents start
+//! from the local formal data and never exceed the classical `(n - 1) e_i`
+//! bound), exact right division checks, and a direct-sum decomposition when
+//! two coprime factors' orders add up to the order of the equation (the lclm
+//! of Airy and Bessel, Legendre composed with Chebyshev). Not done: eigenring
+//! elements that need a tower of number fields, and a proven sharp bound for
+//! the numerator degrees of the search.
 //!
 //! | operator | value |
 //! |---|---|
@@ -143,8 +159,6 @@ use num_rational::BigRational;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -161,12 +175,14 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::ode::solve_adaptive;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 use crate::rules::poly::univariate;
 
 use super::calculus::antiderivative;
@@ -177,6 +193,8 @@ use super::solve::solve;
 use super::solve::solve_for;
 use super::solve::solve_linear;
 
+#[cfg(test)]
+mod battery;
 mod classes;
 mod formal;
 mod frobenius;
@@ -186,8 +204,6 @@ mod linear;
 mod nf_hyper;
 mod nonlinear;
 mod ore;
-#[cfg(test)]
-mod battery;
 mod reduce;
 mod resum;
 mod series_method;
@@ -196,25 +212,75 @@ mod systems;
 /// The differential-equation rule set.
 #[must_use]
 pub fn ode() -> RuleSet {
-    RuleSet::new("ode", install).needs(calculus()).needs(solve())
+    RuleSet::new("ode", install)
+        .needs(calculus())
+        .needs(solve())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let dsolve = i.op(OpDescriptor::new("dsolve", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
-    let odeint = i.op(OpDescriptor::new("odeint", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
+    let dsolve = i.op(OpDescriptor::new("dsolve", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let odeint = i.op(OpDescriptor::new("odeint", Arity::Fixed(6))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
     i.kernel("ode/dsolve", Tier::Reduce, Dsolve { dsolve });
-    let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
-    let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
-    let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries, fourier });
-    let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/frobenius", Tier::Reduce, FrobeniusReport { op: frobenius });
-    let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic, borel: false });
-    let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/borel", Tier::Reduce, Asymptotic { op: borel, borel: true });
+    let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "ode/extras",
+        Tier::Reduce,
+        Extras {
+            series,
+            rsolve,
+            classify,
+            symmetries,
+            fourier,
+        },
+    );
+    let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "ode/frobenius",
+        Tier::Reduce,
+        FrobeniusReport { op: frobenius },
+    );
+    let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "ode/asymptotic",
+        Tier::Reduce,
+        Asymptotic {
+            op: asymptotic,
+            borel: false,
+        },
+    );
+    let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "ode/borel",
+        Tier::Reduce,
+        Asymptotic {
+            op: borel,
+            borel: true,
+        },
+    );
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
     i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
     i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
@@ -306,7 +372,12 @@ fn exp_of(
     };
     let terms: Vec<NodeId> = match (cx.graph.op(e), pair) {
         | (op, Some((c, sum))) if op == core::MUL && cx.graph.op(sum) == core::ADD => {
-            cx.graph.children(sum).to_vec().iter().map(|&t| mul(cx.graph, &[c, t])).collect()
+            cx.graph
+                .children(sum)
+                .to_vec()
+                .iter()
+                .map(|&t| mul(cx.graph, &[c, t]))
+                .collect()
         },
         | (op, _) if op == core::ADD => cx.graph.children(e).to_vec(),
         | _ => vec![e],
@@ -314,11 +385,20 @@ fn exp_of(
     let mut factors = Vec::new();
     let mut rest = Vec::new();
     for t in terms {
-        let (coefficient, inner) = match (cx.graph.op(t), cx.graph.children(t).to_vec().as_slice()) {
+        let (coefficient, inner) = match (cx.graph.op(t), cx.graph.children(t).to_vec().as_slice())
+        {
             | (op, &[u]) if op == ln => (cx.graph.int(1), Some(u)),
             | (op, children) if op == core::MUL => {
-                let numbers: Vec<NodeId> = children.iter().copied().filter(|&c| cx.graph.number_of(c).is_some()).collect();
-                let logs: Vec<NodeId> = children.iter().copied().filter(|&c| cx.graph.op(c) == ln).collect();
+                let numbers: Vec<NodeId> = children
+                    .iter()
+                    .copied()
+                    .filter(|&c| cx.graph.number_of(c).is_some())
+                    .collect();
+                let logs: Vec<NodeId> = children
+                    .iter()
+                    .copied()
+                    .filter(|&c| cx.graph.op(c) == ln)
+                    .collect();
                 if numbers.len() == 1 && logs.len() == 1 && children.len() == 2 {
                     (numbers[0], cx.graph.children(logs[0]).first().copied())
                 } else {
@@ -386,7 +466,10 @@ impl Problem {
         graph: &Graph,
         node: NodeId,
     ) -> bool {
-        self.stand.first().and_then(|&y| graph.as_symbol(y)).is_some_and(|s| graph.depends_on(graph.find(node), s))
+        self.stand
+            .first()
+            .and_then(|&y| graph.as_symbol(y))
+            .is_some_and(|s| graph.depends_on(graph.find(node), s))
     }
 }
 
@@ -433,7 +516,15 @@ fn parse(
     if occurs_function(graph, expr, unknown) {
         return None;
     }
-    Some(Problem { x, x_symbol, y_of_x: unknown, stand, expr, constants: 0, trusted: false })
+    Some(Problem {
+        x,
+        x_symbol,
+        y_of_x: unknown,
+        stand,
+        expr,
+        constants: 0,
+        trusted: false,
+    })
 }
 
 fn occurs(
@@ -462,7 +553,10 @@ fn occurs_function(
     term: NodeId,
     unknown: NodeId,
 ) -> bool {
-    graph.children(unknown).first().is_some_and(|&f| occurs(graph, term, f))
+    graph
+        .children(unknown)
+        .first()
+        .is_some_and(|&f| occurs(graph, term, f))
 }
 
 /// `∫ f dx`, simplified.
@@ -487,11 +581,20 @@ fn coefficients_in(
     let gv = gens.index(graph, v);
     let poly = from_term(graph, &mut gens, expr, Limits::default())?;
     for g in poly.support() {
-        if g != gv && gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)) {
+        if g != gv
+            && gens
+                .node(g)
+                .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        {
             return None;
         }
     }
-    Some(poly.coefficients_in(gv).iter().map(|c| to_term(graph, &gens, c)).collect())
+    Some(
+        poly.coefficients_in(gv)
+            .iter()
+            .map(|c| to_term(graph, &gens, c))
+            .collect(),
+    )
 }
 
 /// First-order equations `F(x, y, y') = 0`.
@@ -537,8 +640,14 @@ fn first_order_explicit(
     // Linear: y' = q(x) - p(x) y.
     if let Some(coefficients) = coefficients_in(cx.graph, rhs, y) {
         if coefficients.len() <= 2 {
-            let q = coefficients.first().copied().unwrap_or_else(|| cx.graph.int(0));
-            let minus_p = coefficients.get(1).copied().unwrap_or_else(|| cx.graph.int(0));
+            let q = coefficients
+                .first()
+                .copied()
+                .unwrap_or_else(|| cx.graph.int(0));
+            let minus_p = coefficients
+                .get(1)
+                .copied()
+                .unwrap_or_else(|| cx.graph.int(0));
             // mu = exp(∫p) = exp(-∫(-p))
             let integral = integrate(cx, minus_p, x)?;
             let growth = call(cx.graph, "exp", integral)?;
@@ -560,9 +669,10 @@ fn first_order_explicit(
             .map(|(k, _)| k)
             .collect();
         if let [1, n] | [n] = *nonzero.as_slice()
-            && n >= 2 {
-                return bernoulli(cx, problem, &coefficients, n);
-            }
+            && n >= 2
+        {
+            return bernoulli(cx, problem, &coefficients, n);
+        }
         // Riccati: y' = q0 + q1 y + q2 y^2.
         if coefficients.len() == 3 {
             if let Some(found) = riccati(cx, problem, rhs, &coefficients) {
@@ -591,9 +701,10 @@ fn first_order_explicit(
     // Integrating factors of M + N y' = 0.
     let dy = *problem.stand.get(1)?;
     if let Some(&[m, n]) = coefficients_in(cx.graph, problem.expr, dy).as_deref()
-        && let Some(found) = classes::integrating_factor(cx, problem, m, n) {
-            return Some(found);
-        }
+        && let Some(found) = classes::integrating_factor(cx, problem, m, n)
+    {
+        return Some(found);
+    }
     // Lie point symmetries cover what the classical recipes miss.
     lie::first_order(cx, problem, rhs)
 }
@@ -672,7 +783,10 @@ fn implicit(
     if let Some(solutions) = solve_for(cx.graph, relation, y, 0) {
         // The first branch that really solves the equation (a branch of a
         // multivalued inverse may only hold on part of the domain).
-        let lambert: Vec<OpId> = ["lambertw", "lambertw_m1"].iter().filter_map(|n| cx.graph.ops().lookup(n)).collect();
+        let lambert: Vec<OpId> = ["lambertw", "lambertw_m1"]
+            .iter()
+            .filter_map(|n| cx.graph.ops().lookup(n))
+            .collect();
         for solution in solutions {
             // A Lambert-W branch says less than the relation itself.
             if lambert.iter().any(|&op| occurs_op(cx.graph, solution, op)) {
@@ -695,14 +809,19 @@ fn separable(
     rhs: NodeId,
 ) -> Option<NodeId> {
     let y = *problem.stand.first()?;
-    let raw: Vec<NodeId> =
-        if cx.graph.op(rhs) == core::MUL { cx.graph.children(rhs).to_vec() } else { vec![rhs] };
+    let raw: Vec<NodeId> = if cx.graph.op(rhs) == core::MUL {
+        cx.graph.children(rhs).to_vec()
+    } else {
+        vec![rhs]
+    };
     // exp(a + b) = exp(a) exp(b): lets exp(x - y) separate.
     let exp = cx.graph.ops().lookup("exp");
     let mut factors = Vec::with_capacity(raw.len());
     for factor in raw {
         match *cx.graph.children(factor) {
-            | [argument] if Some(cx.graph.op(factor)) == exp && cx.graph.op(argument) == core::ADD => {
+            | [argument]
+                if Some(cx.graph.op(factor)) == exp && cx.graph.op(argument) == core::ADD =>
+            {
                 for term in cx.graph.children(argument).to_vec() {
                     factors.push(cx.graph.try_node(cx.graph.op(factor), &[term])?);
                 }
@@ -717,7 +836,11 @@ fn separable(
     while let Some(factor) = stack.pop() {
         let children = cx.graph.children(factor).to_vec();
         match (cx.graph.op(factor), children.as_slice()) {
-            | (op, &[base, e]) if op == core::POW && cx.graph.op(base) == core::MUL && cx.graph.number_of(e).is_some_and(Number::is_integer) => {
+            | (op, &[base, e])
+                if op == core::POW
+                    && cx.graph.op(base) == core::MUL
+                    && cx.graph.number_of(e).is_some_and(Number::is_integer) =>
+            {
                 for part in cx.graph.children(base).to_vec().into_iter().rev() {
                     stack.push(cx.graph.node(core::POW, &[part, e]));
                 }
@@ -730,10 +853,16 @@ fn separable(
             | _ => flat.push(factor),
         }
     }
-    let classify = |cx: &mut Cx<'_>, problem: &Problem, factors: &[NodeId]| -> Option<(Vec<NodeId>, Vec<NodeId>)> {
+    let classify = |cx: &mut Cx<'_>,
+                    problem: &Problem,
+                    factors: &[NodeId]|
+     -> Option<(Vec<NodeId>, Vec<NodeId>)> {
         let (mut in_x, mut in_y) = (Vec::new(), Vec::new());
         for &factor in factors {
-            match (problem.depends_on_x(cx.graph, factor), problem.depends_on_y(cx.graph, factor)) {
+            match (
+                problem.depends_on_x(cx.graph, factor),
+                problem.depends_on_y(cx.graph, factor),
+            ) {
                 | (true, true) => return None,
                 | (_, true) => in_y.push(factor),
                 | _ => in_x.push(factor),
@@ -783,7 +912,11 @@ fn factor_quotient(
             crate::rules::poly::multifactor::factor(&poly, &support)?
         };
         let unit = cx.graph.num(unit);
-        out.push(if sign < 0 { inv(cx.graph, unit) } else { unit });
+        out.push(if sign < 0 {
+            inv(cx.graph, unit)
+        } else {
+            unit
+        });
         for (piece, multiplicity) in pieces {
             let base = to_term(cx.graph, &gens, &piece);
             let e = cx.graph.int(sign * i64::from(multiplicity));
@@ -867,7 +1000,11 @@ fn riccati(
             };
             candidates = Some(match candidates {
                 | None => roots,
-                | Some(old) => old.into_iter().filter(|r| roots.iter().any(|s| cx.graph.same(*r, *s) || r == s)).collect(),
+                | Some(old) => {
+                    old.into_iter()
+                        .filter(|r| roots.iter().any(|s| cx.graph.same(*r, *s) || r == s))
+                        .collect()
+                },
             });
         }
         if let Some(&value) = candidates.as_ref().and_then(|c| c.first()) {
@@ -925,7 +1062,18 @@ fn riccati_function_shapes(
         },
     ];
     for shape in shapes {
-        for (num, den) in [(1, 1), (-1, 1), (2, 1), (-2, 1), (1, 2), (-1, 2), (3, 1), (-3, 1), (1, 3), (-1, 3)] {
+        for (num, den) in [
+            (1, 1),
+            (-1, 1),
+            (2, 1),
+            (-2, 1),
+            (1, 2),
+            (-1, 2),
+            (3, 1),
+            (-3, 1),
+            (1, 3),
+            (-1, 3),
+        ] {
             let k = cx.graph.num(Number::fraction(num, den)?);
             let guess = mul(cx.graph, &[k, shape]);
             let slope = derivative(cx.graph, guess, x)?;
@@ -1040,9 +1188,11 @@ fn constant_coefficient_basis(
     // Real roots in ascending order first, so that C1 goes with the
     // smallest rate.
     factors.sort_by(|(a, _), (b, _)| {
-        let root = |f: &[BigInt]| match f {
-            | [c0, c1] => Number::rat(BigRational::new(-c0.clone(), c1.clone())).to_f64(),
-            | _ => f64::INFINITY,
+        let root = |f: &[BigInt]| {
+            match f {
+                | [c0, c1] => Number::rat(BigRational::new(-c0.clone(), c1.clone())).to_f64(),
+                | _ => f64::INFINITY,
+            }
         };
         root(a).total_cmp(&root(b))
     });
@@ -1149,9 +1299,13 @@ fn linear_higher_order(
     let forcing = cx.simplify(forcing);
     let homogeneous = cx.graph.number_of(forcing).is_some_and(Number::is_zero);
 
-    let numeric: Option<Vec<BigRational>> =
-        coefficients.iter().map(|&c| cx.graph.number_of(c).and_then(Number::to_rational)).collect();
-    let symbolic_constant = coefficients.iter().all(|&c| !problem.depends_on_x(cx.graph, c));
+    let numeric: Option<Vec<BigRational>> = coefficients
+        .iter()
+        .map(|&c| cx.graph.number_of(c).and_then(Number::to_rational))
+        .collect();
+    let symbolic_constant = coefficients
+        .iter()
+        .all(|&c| !problem.depends_on_x(cx.graph, c));
     let basis = if let Some(numbers) = numeric {
         constant_coefficient_basis(cx.graph, &numbers, x)?
     } else if symbolic_constant && order <= 2 {
@@ -1168,7 +1322,13 @@ fn linear_higher_order(
         terms.push(mul(cx.graph, &[c, solution]));
     }
     if !homogeneous {
-        terms.push(variation_of_parameters(cx, &basis, *coefficients.last()?, forcing, x)?);
+        terms.push(variation_of_parameters(
+            cx,
+            &basis,
+            *coefficients.last()?,
+            forcing,
+            x,
+        )?);
     }
     let solution = add(cx.graph, &terms);
     Some(explicit(cx, problem, solution))
@@ -1185,9 +1345,18 @@ fn cleared_denominators(
         gens.index(cx.graph, s);
     }
     let term = crate::rules::poly::best(cx.graph, problem.expr)?;
-    let fraction = crate::rules::poly::ratio(cx.graph, &mut gens, term, crate::rules::poly::repr::Limits::default())?;
+    let fraction = crate::rules::poly::ratio(
+        cx.graph,
+        &mut gens,
+        term,
+        crate::rules::poly::repr::Limits::default(),
+    )?;
     let denominator = crate::rules::poly::repr::to_term(cx.graph, &gens, &fraction.denom);
-    if !problem.stand.iter().any(|&s| occurs(cx.graph, denominator, s)) {
+    if !problem
+        .stand
+        .iter()
+        .any(|&s| occurs(cx.graph, denominator, s))
+    {
         return None;
     }
     let numerator = crate::rules::poly::repr::to_term(cx.graph, &gens, &fraction.numer);
@@ -1267,7 +1436,10 @@ fn cauchy_euler_basis(
     for (k, c) in constants.iter().enumerate() {
         let mut falling: Vec<BigRational> = vec![BigRational::from_integer(BigInt::from(1))];
         for j in 0..k {
-            let shift = [BigRational::from_integer(BigInt::from(-i64::try_from(j).ok()?)), BigRational::from_integer(BigInt::from(1))];
+            let shift = [
+                BigRational::from_integer(BigInt::from(-i64::try_from(j).ok()?)),
+                BigRational::from_integer(BigInt::from(1)),
+            ];
             falling = univariate::mul(&falling, &shift);
         }
         let scaled: Vec<BigRational> = falling.iter().map(|v| v * c).collect();
@@ -1399,7 +1571,10 @@ fn variation_core(
             let u1 = cx.simplify(u1);
             let u2 = mul(cx.graph, &[y1, normalised, inverse]);
             let u2 = cx.simplify(u2);
-            let (i1, i2) = (integral_of(cx, u1, x, inert)?, integral_of(cx, u2, x, inert)?);
+            let (i1, i2) = (
+                integral_of(cx, u1, x, inert)?,
+                integral_of(cx, u2, x, inert)?,
+            );
             let left = mul(cx.graph, &[y1, i1]);
             let left = neg(cx.graph, left);
             let right = mul(cx.graph, &[y2, i2]);
@@ -1429,10 +1604,22 @@ fn variation_core(
             let inverse = inv(cx.graph, wronskian);
             let mut terms = Vec::with_capacity(n);
             for (i, &yi) in basis.iter().enumerate() {
-                let minor: Vec<Vec<NodeId>> =
-                    rows[..n - 1].iter().map(|r| r.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, &v)| v).collect()).collect();
+                let minor: Vec<Vec<NodeId>> = rows[..n - 1]
+                    .iter()
+                    .map(|r| {
+                        r.iter()
+                            .enumerate()
+                            .filter(|&(j, _)| j != i)
+                            .map(|(_, &v)| v)
+                            .collect()
+                    })
+                    .collect();
                 let cofactor = determinant_of(cx, &minor)?;
-                let sign = cx.graph.int(if (n - 1 + i).is_multiple_of(2) { 1 } else { -1 });
+                let sign = cx.graph.int(if (n - 1 + i).is_multiple_of(2) {
+                    1
+                } else {
+                    -1
+                });
                 let ui = mul(cx.graph, &[sign, cofactor, normalised, inverse]);
                 let ui = cx.simplify(ui);
                 let ui = crate::rules::poly::expand_form(cx.graph, ui).unwrap_or(ui);
@@ -1469,8 +1656,16 @@ fn determinant_of(
         | n => {
             let mut terms = Vec::with_capacity(n);
             for (j, &entry) in m[0].iter().enumerate() {
-                let minor: Vec<Vec<NodeId>> =
-                    m[1..].iter().map(|r| r.iter().enumerate().filter(|&(k, _)| k != j).map(|(_, &v)| v).collect()).collect();
+                let minor: Vec<Vec<NodeId>> = m[1..]
+                    .iter()
+                    .map(|r| {
+                        r.iter()
+                            .enumerate()
+                            .filter(|&(k, _)| k != j)
+                            .map(|(_, &v)| v)
+                            .collect()
+                    })
+                    .collect();
                 let sub_det = determinant_of(cx, &minor)?;
                 let sign = cx.graph.int(if j.is_multiple_of(2) { 1 } else { -1 });
                 terms.push(mul(cx.graph, &[sign, entry, sub_det]));
@@ -1585,7 +1780,9 @@ fn apply_conditions(
         let at_point = graph.substitute(expression, problem.x, point);
         equations.push(sub(graph, at_point, value));
     }
-    let constants: Vec<NodeId> = (1..=problem.constants).map(|k| graph.sym(&format!("C{k}"))).collect();
+    let constants: Vec<NodeId> = (1..=problem.constants)
+        .map(|k| graph.sym(&format!("C{k}")))
+        .collect();
     if equations.len() != constants.len() {
         return None;
     }
@@ -1697,7 +1894,9 @@ fn dispatch(
     depth: u32,
 ) -> Option<NodeId> {
     // Every candidate is checked; a failed one does not stop the search.
-    let attempt = |cx: &mut Cx<'_>, problem: &mut Problem, method: fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>| {
+    let attempt = |cx: &mut Cx<'_>,
+                   problem: &mut Problem,
+                   method: fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>| {
         let saved = problem.constants;
         let found = method(cx, problem, depth).filter(|&answer| verified(cx, problem, answer));
         if found.is_none() {
@@ -1706,11 +1905,13 @@ fn dispatch(
         found
     };
     if problem.order() == 1
-        && let Some(found) = attempt(cx, problem, first_order) {
-            return Some(found);
-        }
+        && let Some(found) = attempt(cx, problem, first_order)
+    {
+        return Some(found);
+    }
     for method in [
-        (|cx: &mut Cx<'_>, p: &mut Problem, _| linear_higher_order(cx, p)) as fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>,
+        (|cx: &mut Cx<'_>, p: &mut Problem, _| linear_higher_order(cx, p))
+            as fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>,
         reduce::special_function_equation,
         frobenius::hypergeometric,
         reduce::variable_coefficients,
@@ -1759,7 +1960,9 @@ impl Kernel for FrobeniusReport {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n] => frobenius::report(cx, e, u, x0, n).map_or(Outcome::Pass, Outcome::Pinned),
+            | [e, u, x0, n] => {
+                frobenius::report(cx, e, u, x0, n).map_or(Outcome::Pass, Outcome::Pinned)
+            },
             | _ => Outcome::Pass,
         }
     }
@@ -1784,7 +1987,10 @@ impl Kernel for Asymptotic {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel)).map_or(Outcome::Pass, Outcome::Pinned),
+            | [e, u, x0, n, x1, k] => {
+                frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel))
+                    .map_or(Outcome::Pass, Outcome::Pinned)
+            },
             | _ => Outcome::Pass,
         }
     }
@@ -1824,7 +2030,8 @@ impl Kernel for Dsolve {
         match conditions {
             | None => Outcome::Pinned(answer),
             | Some(conditions) => {
-                apply_conditions(cx, &problem, answer, conditions).map_or(Outcome::Pass, Outcome::Pinned)
+                apply_conditions(cx, &problem, answer, conditions)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
             },
         }
     }
@@ -1842,7 +2049,13 @@ struct Extras {
 
 impl Kernel for Extras {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.series, self.rsolve, self.classify, self.symmetries, self.fourier]
+        vec![
+            self.series,
+            self.rsolve,
+            self.classify,
+            self.symmetries,
+            self.fourier,
+        ]
     }
 
     fn reduce(
@@ -1955,7 +2168,8 @@ fn classify(
     }
     if order == 1 {
         let dy = problem.stand[1];
-        if let Some(rhs) = solve_for(cx.graph, problem.expr, dy, 0).and_then(|v| v.first().copied()) {
+        if let Some(rhs) = solve_for(cx.graph, problem.expr, dy, 0).and_then(|v| v.first().copied())
+        {
             let rhs = cx.simplify(rhs);
             if let Some(c) = coefficients_in(cx.graph, rhs, y) {
                 match c.len() {
@@ -2019,7 +2233,11 @@ impl Kernel for Odeint {
             return Outcome::Pass;
         };
         let items = |graph: &Graph, n: NodeId| -> Vec<NodeId> {
-            if graph.op(n) == core::LIST { graph.children(n).to_vec() } else { vec![n] }
+            if graph.op(n) == core::LIST {
+                graph.children(n).to_vec()
+            } else {
+                vec![n]
+            }
         };
         let is_system = graph.op(y) == core::LIST;
         let (rhs, unknowns, initial) = (items(graph, f), items(graph, y), items(graph, y0));
@@ -2029,14 +2247,23 @@ impl Kernel for Odeint {
         let Some(x_symbol) = graph.symbol_of(x) else {
             return Outcome::Pass;
         };
-        let Some(state_symbols) = unknowns.iter().map(|&u| graph.symbol_of(u)).collect::<Option<Vec<_>>>() else {
+        let Some(state_symbols) = unknowns
+            .iter()
+            .map(|&u| graph.symbol_of(u))
+            .collect::<Option<Vec<_>>>()
+        else {
             return Outcome::Pass;
         };
-        let value = |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
+        let value =
+            |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
         let (Some(t0), Some(t1)) = (value(graph, x0), value(graph, x1)) else {
             return Outcome::Pass;
         };
-        let Some(start) = initial.iter().map(|&n| value(graph, n)).collect::<Option<Vec<f64>>>() else {
+        let Some(start) = initial
+            .iter()
+            .map(|&n| value(graph, n))
+            .collect::<Option<Vec<f64>>>()
+        else {
             return Outcome::Pass;
         };
         // Inputs: x, the state, then bound parameters.
@@ -2049,12 +2276,17 @@ impl Kernel for Odeint {
                 parameters.push(v);
             }
         }
-        let Some(terms) = rhs.iter().map(|&e| best(graph, e)).collect::<Option<Vec<NodeId>>>() else {
+        let Some(terms) = rhs
+            .iter()
+            .map(|&e| best(graph, e))
+            .collect::<Option<Vec<NodeId>>>()
+        else {
             return Outcome::Pass;
         };
         // Bound parameters are inputs too (after the state), so the right
         // side compiles once with the current backend.
-        let Ok(compiled) = crate::backend::current().compile_multi(graph, &terms, &inputs, &[]) else {
+        let Ok(compiled) = crate::backend::current().compile_multi(graph, &terms, &inputs, &[])
+        else {
             return Outcome::Pass;
         };
         let n = rhs.len();
@@ -2072,12 +2304,29 @@ impl Kernel for Odeint {
         // An explicit method first; when it exhausts its step budget the
         // problem is stiff, and the L-stable Radau IIA method takes over
         // with the Jacobian differentiated symbolically and compiled.
-        let explicit = solve_adaptive(derivative, &start, (t0, t1), tolerance, tolerance * 1e-2, 200_000);
+        let explicit = solve_adaptive(
+            derivative,
+            &start,
+            (t0, t1),
+            tolerance,
+            tolerance * 1e-2,
+            200_000,
+        );
         let (last, steps) = match explicit {
             | Ok(trajectory) => (trajectory.last().to_vec(), trajectory.t.len()),
             | Err(_) => {
-                let Some(solution) = stiff(graph, &terms, &unknowns, &inputs, &derivative, &arguments, t0, t1, &start, tolerance)
-                else {
+                let Some(solution) = stiff(
+                    graph,
+                    &terms,
+                    &unknowns,
+                    &inputs,
+                    &derivative,
+                    &arguments,
+                    t0,
+                    t1,
+                    &start,
+                    tolerance,
+                ) else {
                     return Outcome::Pass;
                 };
                 solution
@@ -2092,7 +2341,10 @@ impl Kernel for Odeint {
                 // over the steps taken: an estimate, not a bound.
                 | Some(&v) => {
                     let steps = steps as f64;
-                    Outcome::Approx(Ball { mid: v, rad: tolerance * steps.max(1.0) * (1.0 + v.abs()) })
+                    Outcome::Approx(Ball {
+                        mid: v,
+                        rad: tolerance * steps.max(1.0) * (1.0 + v.abs()),
+                    })
                 },
                 | None => Outcome::Pass,
             }
@@ -2134,16 +2386,33 @@ fn stiff(
             entries.push(derivative_of(graph, term, u)?);
         }
     }
-    let jacobian = crate::backend::current().compile_multi(graph, &entries, inputs, &[]).ok()?;
+    let jacobian = crate::backend::current()
+        .compile_multi(graph, &entries, inputs, &[])
+        .ok()?;
     let jac = |t: f64, state: &[f64]| {
         let mut data = vec![0.0; n * n];
         jacobian.eval(&arguments(t, state), &[], &mut data);
-        Mat { rows: n, cols: n, data }
+        Mat {
+            rows: n,
+            cols: n,
+            data,
+        }
     };
-    let options = OdeOptions { rtol: tolerance, atol: tolerance * 1e-2, max_steps: 2_000_000, ..OdeOptions::default() };
-    let solution =
-        crate::kernels::ode_stiff::radau5_jac(|t: f64, y: &[f64], out: &mut [f64]| derivative(t, y, out), jac, t0, t1, start, &options)
-            .ok()?;
+    let options = OdeOptions {
+        rtol: tolerance,
+        atol: tolerance * 1e-2,
+        max_steps: 2_000_000,
+        ..OdeOptions::default()
+    };
+    let solution = crate::kernels::ode_stiff::radau5_jac(
+        |t: f64, y: &[f64], out: &mut [f64]| derivative(t, y, out),
+        jac,
+        t0,
+        t1,
+        start,
+        &options,
+    )
+    .ok()?;
     Some((solution.y.last()?.clone(), solution.t.len()))
 }
 
@@ -2178,7 +2447,9 @@ mod tests {
     ) -> String {
         let (answer, reduced) = reduce_with(&[ode()], &format!("dsolve({equation}, y(x))"), &[]);
         assert!(reduced, "{equation} was not solved: {answer}");
-        let solution = answer.strip_prefix("y(x) = ").unwrap_or_else(|| panic!("implicit answer: {answer}"));
+        let solution = answer
+            .strip_prefix("y(x) = ")
+            .unwrap_or_else(|| panic!("implicit answer: {answer}"));
         let constants = [("C1", 0.8), ("C2", -0.6), ("C3", 0.4)];
         let y = |x: f64| {
             let mut bindings = vec![("x", x)];
@@ -2194,7 +2465,8 @@ mod tests {
             let y0 = y(at);
             let y1 = (y(at + h) - y(at - h)) / (2.0 * h);
             let y2 = (y(at + h) - 2.0 * y0 + y(at - h)) / (h * h);
-            let y3 = (y(at + 2.0 * h) - 2.0 * y(at + h) + 2.0 * y(at - h) - y(at - 2.0 * h)) / (2.0 * h * h * h);
+            let y3 = (y(at + 2.0 * h) - 2.0 * y(at + h) + 2.0 * y(at - h) - y(at - 2.0 * h))
+                / (2.0 * h * h * h);
             // Replace derivatives innermost-last so that the longer
             // spellings go first.
             let substitute = |text: &str| {
@@ -2203,7 +2475,11 @@ mod tests {
                     .replace("diff(y(x), x)", &format!("({y1})"))
                     .replace("y(x)", &format!("({y0})"))
             };
-            let residual = eval(&[ode()], &format!("({}) - ({})", substitute(lhs), substitute(rhs)), &[("x", at)]);
+            let residual = eval(
+                &[ode()],
+                &format!("({}) - ({})", substitute(lhs), substitute(rhs)),
+                &[("x", at)],
+            );
             // Outside the solution's domain (a square root of a negative
             // number for these constants): nothing to check here.
             if !residual.is_finite() {
@@ -2211,15 +2487,24 @@ mod tests {
             }
             checked += 1;
             let tolerance = if order >= 3 { 1e-2 } else { 1e-3 };
-            assert!(residual.abs() < tolerance * (1.0 + y0.abs()), "{equation}: y = {solution} leaves residual {residual} at {at}");
+            assert!(
+                residual.abs() < tolerance * (1.0 + y0.abs()),
+                "{equation}: y = {solution} leaves residual {residual} at {at}"
+            );
         }
-        assert!(checked > 0, "{equation}: y = {solution} could not be evaluated anywhere");
+        assert!(
+            checked > 0,
+            "{equation}: y = {solution} could not be evaluated anywhere"
+        );
         answer
     }
 
     #[test]
     fn first_order_linear_and_separable() {
-        assert_eq!(run("dsolve(diff(y(x), x) = y(x), y(x))"), "y(x) = C1*exp(x)");
+        assert_eq!(
+            run("dsolve(diff(y(x), x) = y(x), y(x))"),
+            "y(x) = C1*exp(x)"
+        );
         check("diff(y(x), x) + 2*y(x) = 0", 1);
         check("diff(y(x), x) + y(x) = x", 1);
         check("diff(y(x), x) = x*y(x)", 1);
@@ -2248,8 +2533,15 @@ mod tests {
         check("diff(y(x), x) = 1 - (y(x) - x)^3", 1);
         // Linear fractional: an implicit solution (log + atan about the
         // centre of the scaling symmetry).
-        let (text, reduced) = reduce_with(&[ode()], "dsolve(diff(y(x), x) = (x + y(x) + 1)/(x - y(x) + 3), y(x))", &[]);
-        assert!(reduced && text.contains("atan") && text.contains("C1"), "{text}");
+        let (text, reduced) = reduce_with(
+            &[ode()],
+            "dsolve(diff(y(x), x) = (x + y(x) + 1)/(x - y(x) + 3), y(x))",
+            &[],
+        );
+        assert!(
+            reduced && text.contains("atan") && text.contains("C1"),
+            "{text}"
+        );
         check("diff(y(x), x) = y(x)/x + x^2/y(x)", 1);
         check("diff(y(x), x) = y(x)/(x + y(x)^2)", 1);
     }
@@ -2264,36 +2556,61 @@ mod tests {
         // Scale invariant in y: u = y'/y.
         check("y(x)*diff(diff(y(x), x), x) - diff(y(x), x)^2 = 0", 2);
         // Equidimensional in x: x = e^t makes it autonomous.
-        let (text, reduced) = reduce_with(&[ode()], "dsolve(x^2*diff(diff(y(x), x), x) = x*y(x)*diff(y(x), x), y(x))", &[]);
+        let (text, reduced) = reduce_with(
+            &[ode()],
+            "dsolve(x^2*diff(diff(y(x), x), x) = x*y(x)*diff(y(x), x), y(x))",
+            &[],
+        );
         assert!(reduced && text.contains("C1"), "{text}");
         // Variable coefficients with a polynomial / exponential solution.
-        check("x*diff(diff(y(x), x), x) - (x + 1)*diff(y(x), x) + y(x) = 0", 2);
-        check("(1 - x^2)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0", 2);
+        check(
+            "x*diff(diff(y(x), x), x) - (x + 1)*diff(y(x), x) + y(x) = 0",
+            2,
+        );
+        check(
+            "(1 - x^2)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0",
+            2,
+        );
     }
 
     #[test]
     fn special_function_equations() {
         let run = |src: &str| simplify(&crate::rules::standard(), src);
-        let solved = run("dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (x^2 - 4)*y(x) = 0, y(x))");
+        let solved =
+            run("dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (x^2 - 4)*y(x) = 0, y(x))");
         assert_eq!(solved, "y(x) = C1*besselj(2, x) + C2*bessely(2, x)");
-        let modified = run("dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (9*x^2 + 1)*y(x) = 0, y(x))");
+        let modified = run(
+            "dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (9*x^2 + 1)*y(x) = 0, y(x))",
+        );
         assert_eq!(modified, "y(x) = C1*besseli(1, 3*x) + C2*besselk(1, 3*x)");
         // exp(x²) by the exp(λx²) family, the second solution through erf.
         let gaussian = run("dsolve(diff(diff(y(x), x), x) - 2*x*diff(y(x), x) - 2*y(x) = 0, y(x))");
-        assert!(gaussian.contains("exp(x^2)") && gaussian.contains("erf(x)"), "{gaussian}");
+        assert!(
+            gaussian.contains("exp(x^2)") && gaussian.contains("erf(x)"),
+            "{gaussian}"
+        );
     }
 
     #[test]
     fn linear_systems() {
-        let rotation = run("dsolve(list(diff(u(t), t) = w(t), diff(w(t), t) = -u(t)), list(u(t), w(t)))");
-        assert!(rotation.contains("cos(t)") && rotation.contains("sin(t)"), "{rotation}");
+        let rotation =
+            run("dsolve(list(diff(u(t), t) = w(t), diff(w(t), t) = -u(t)), list(u(t), w(t)))");
+        assert!(
+            rotation.contains("cos(t)") && rotation.contains("sin(t)"),
+            "{rotation}"
+        );
         let (text, reduced) = reduce_with(
             &crate::rules::standard(),
             "dsolve(list(diff(u(t), t) = u(t) + 2*w(t) + t, diff(w(t), t) = 3*u(t) + 2*w(t)), list(u(t), w(t)))",
             &[],
         );
-        assert!(reduced && text.contains("exp(4*t)") && text.contains("C2"), "{text}");
-        let three = run("dsolve(list(diff(a(t), t) = b(t), diff(b(t), t) = c(t), diff(c(t), t) = a(t)), list(a(t), b(t), c(t)))");
+        assert!(
+            reduced && text.contains("exp(4*t)") && text.contains("C2"),
+            "{text}"
+        );
+        let three = run(
+            "dsolve(list(diff(a(t), t) = b(t), diff(b(t), t) = c(t), diff(c(t), t) = a(t)), list(a(t), b(t), c(t)))",
+        );
         assert!(three.contains("exp(t)") && three.contains("C3"), "{three}");
     }
 
@@ -2307,11 +2624,19 @@ mod tests {
         assert_eq!(count.matches("list(").count() - 1, 8, "{count}");
         // y'' = y'^2/y + y'/x has the scaling x ∂x and y ∂y; Lie reduction
         // through canonical coordinates solves it.
-        let (text, reduced) = reduce_with(&rules, "dsolve(diff(diff(y(x), x), x) = diff(y(x), x)^2/y(x) - diff(y(x), x)/x, y(x))", &[]);
+        let (text, reduced) = reduce_with(
+            &rules,
+            "dsolve(diff(diff(y(x), x), x) = diff(y(x), x)^2/y(x) - diff(y(x), x)/x, y(x))",
+            &[],
+        );
         assert!(reduced && text.contains("C1"), "{text}");
         // Only the symmetry ∂x + ∂y reduces y'' = (y - x)^(-3): canonical
         // coordinates r = y - x, s = x.
-        let (text, reduced) = reduce_with(&rules, "dsolve(diff(diff(y(x), x), x) = (y(x) - x)^(-3), y(x))", &[]);
+        let (text, reduced) = reduce_with(
+            &rules,
+            "dsolve(diff(diff(y(x), x), x) = (y(x) - x)^(-3), y(x))",
+            &[],
+        );
         assert!(reduced && text.contains("C2"), "{text}");
     }
 
@@ -2324,7 +2649,10 @@ mod tests {
             (format!("{d} + y(x)*tan(x) = sec(x)"), "cos(x)"),
             (format!("{dd} - 2*{d} + y(x) = exp(x)/x"), "ln(x)"),
             (format!("{dd} = x*y(x)"), "airyai(x)"),
-            (format!("diff({dd}, x) - 3*{dd} + 3*{d} - y(x) = exp(x)"), "x^3*exp(x)"),
+            (
+                format!("diff({dd}, x) - 3*{dd} + 3*{d} - y(x) = exp(x)"),
+                "x^3*exp(x)",
+            ),
             (format!("x*{d} = y(x) + sqrt(x^2 + y(x)^2)"), "C1"),
             (format!("{dd} = 2*y(x)^3"), "integral("),
             // The pendulum: energy integral, the quadrature left inert.
@@ -2332,7 +2660,10 @@ mod tests {
             (format!("{dd} = lambda*y(x)"), "exp(lambda^(1/2)*x)"),
         ] {
             let got = simplify(&rules, &format!("dsolve({eq}, y(x))"));
-            assert!(got.contains(contains) && !got.starts_with("dsolve"), "{eq}: {got}");
+            assert!(
+                got.contains(contains) && !got.starts_with("dsolve"),
+                "{eq}: {got}"
+            );
         }
     }
 
@@ -2340,7 +2671,10 @@ mod tests {
     fn series_and_transform_methods() {
         let rules = crate::rules::standard();
         // Airy-type y'' = x y about 0: 1 + x^3/6 + … and x + x^4/12 + ….
-        let series = simplify(&rules, "ode_series(diff(diff(y(x), x), x) = x*y(x), y(x), 0, 5)");
+        let series = simplify(
+            &rules,
+            "ode_series(diff(diff(y(x), x), x) = x*y(x), y(x), 0, 5)",
+        );
         assert_eq!(series, "y(x) = 1/12*C2*x^4 + 1/6*C1*x^3 + C2*x + C1");
         // A non-linear equation: y' = 1 + y^2, y = tan(x) + …
         let tangent = simplify(&rules, "ode_series(diff(y(x), x) = 1 + y(x)^2, y(x), 0, 5)");
@@ -2353,33 +2687,57 @@ mod tests {
         );
         assert!(reduced && text.contains("heaviside(t - 1)"), "{text}");
         // Recurrences by the z-transform: Fibonacci and a forced one.
-        let fib = simplify(&rules, "rsolve_z(y(n + 2) = y(n + 1) + y(n), y(n), list(y(0) = 0, y(1) = 1))");
+        let fib = simplify(
+            &rules,
+            "rsolve_z(y(n + 2) = y(n + 1) + y(n), y(n), list(y(0) = 0, y(1) = 1))",
+        );
         for (n, want) in [(5.0, 5.0), (10.0, 55.0)] {
             let got = eval(&rules, fib.trim_start_matches("y(n) = "), &[("n", n)]);
             assert!((got - want).abs() < 1e-6, "{fib}");
         }
-        let geometric = simplify(&rules, "rsolve_z(y(n + 1) = 2*y(n) + 1, y(n), list(y(0) = 0))");
+        let geometric = simplify(
+            &rules,
+            "rsolve_z(y(n + 1) = 2*y(n) + 1, y(n), list(y(0) = 0))",
+        );
         assert_eq!(geometric, "y(n) = 2^n - 1");
         // Classification.
         // Fourier method on the whole line: the solutions decaying at ±∞,
         // checked by central differences away from the kink at 0.
         for (src, order, forcing) in [
-            ("ode_fourier(diff(diff(y(x), x), x) - y(x) = -2*exp(-abs(x)), y(x))", 2, "-2*exp(-abs(x))"),
-            ("ode_fourier(diff(y(x), x) + y(x) = exp(-abs(x)), y(x))", 1, "exp(-abs(x))"),
+            (
+                "ode_fourier(diff(diff(y(x), x), x) - y(x) = -2*exp(-abs(x)), y(x))",
+                2,
+                "-2*exp(-abs(x))",
+            ),
+            (
+                "ode_fourier(diff(y(x), x) + y(x) = exp(-abs(x)), y(x))",
+                1,
+                "exp(-abs(x))",
+            ),
         ] {
             let got = simplify(&rules, src);
-            assert!(got.starts_with("y(x) = ") && !got.contains("fourier"), "{got}");
+            assert!(
+                got.starts_with("y(x) = ") && !got.contains("fourier"),
+                "{got}"
+            );
             let rhs = got.trim_start_matches("y(x) = ");
             let y = |at: f64| crate::rules::testing::eval(&rules, rhs, &[("x", at)]);
             for at in [0.7_f64, 1.9, -1.3, -0.4] {
                 let h = 1e-4;
-                let lhs = if order == 2 { (y(at + h) - 2.0 * y(at) + y(at - h)) / (h * h) - y(at) } else { (y(at + h) - y(at - h)) / (2.0 * h) + y(at) };
+                let lhs = if order == 2 {
+                    (y(at + h) - 2.0 * y(at) + y(at - h)) / (h * h) - y(at)
+                } else {
+                    (y(at + h) - y(at - h)) / (2.0 * h) + y(at)
+                };
                 let want = crate::rules::testing::eval(&rules, forcing, &[("x", at)]);
                 assert!((lhs - want).abs() < 1e-5, "{got}: {lhs} vs {want} at {at}");
             }
         }
         let classes = simplify(&rules, "ode_classify(diff(y(x), x) = x*y(x), y(x))");
-        assert!(classes.contains("linear") && classes.contains("separable"), "{classes}");
+        assert!(
+            classes.contains("linear") && classes.contains("separable"),
+            "{classes}"
+        );
     }
 
     #[test]
@@ -2388,13 +2746,19 @@ mod tests {
             run("dsolve(diff(diff(y(x), x), x) - 3*diff(y(x), x) + 2*y(x) = 0, y(x))"),
             "y(x) = C1*exp(x) + C2*exp(2*x)"
         );
-        assert_eq!(run("dsolve(diff(diff(y(x), x), x) + y(x) = 0, y(x))"), "y(x) = C1*cos(x) + C2*sin(x)");
+        assert_eq!(
+            run("dsolve(diff(diff(y(x), x), x) + y(x) = 0, y(x))"),
+            "y(x) = C1*cos(x) + C2*sin(x)"
+        );
         check("diff(diff(y(x), x), x) + 2*diff(y(x), x) + y(x) = 0", 2);
         check("diff(diff(y(x), x), x) + 2*diff(y(x), x) + 5*y(x) = 0", 2);
         check("diff(diff(y(x), x), x) - y(x) = x", 2);
         check("diff(diff(y(x), x), x) + y(x) = exp(x)", 2);
         check("diff(diff(y(x), x), x) + 4*y(x) = sin(x)", 2);
-        check("diff(diff(diff(y(x), x), x), x) - 6*diff(diff(y(x), x), x) + 11*diff(y(x), x) - 6*y(x) = 0", 3);
+        check(
+            "diff(diff(diff(y(x), x), x), x) - 6*diff(diff(y(x), x), x) + 11*diff(y(x), x) - 6*y(x) = 0",
+            3,
+        );
     }
 
     #[test]
@@ -2402,17 +2766,28 @@ mod tests {
         check("x^2*diff(diff(y(x), x), x) - 2*y(x) = 0", 2);
         check("x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - y(x) = 0", 2);
         check("x^2*diff(diff(y(x), x), x) - x*diff(y(x), x) + y(x) = 0", 2);
-        check("x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + 4*y(x) = 0", 2);
+        check(
+            "x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + 4*y(x) = 0",
+            2,
+        );
     }
 
     #[test]
     fn initial_conditions() {
-        assert_eq!(run("dsolve(diff(y(x), x) = y(x), y(x), list(y(0) = 3))"), "y(x) = 3*exp(x)");
         assert_eq!(
-            run("dsolve(diff(diff(y(x), x), x) + y(x) = 0, y(x), list(y(0) = 1, diff(y(x), x) = 2))"),
+            run("dsolve(diff(y(x), x) = y(x), y(x), list(y(0) = 3))"),
+            "y(x) = 3*exp(x)"
+        );
+        assert_eq!(
+            run(
+                "dsolve(diff(diff(y(x), x), x) + y(x) = 0, y(x), list(y(0) = 1, diff(y(x), x) = 2))"
+            ),
             "y(x) = cos(x) + 2*sin(x)"
         );
-        assert_eq!(run("dsolve(diff(y(x), x) = 2*x, y(x), list(y(1) = 5))"), "y(x) = x^2 + 4");
+        assert_eq!(
+            run("dsolve(diff(y(x), x) = 2*x, y(x), list(y(1) = 5))"),
+            "y(x) = x^2 + 4"
+        );
     }
 
     #[test]
@@ -2432,26 +2807,51 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
         // Clairaut: y = C x + g(C).
-        assert_eq!(run("dsolve(y(x) = x*diff(y(x), x) + diff(y(x), x)^2, y(x))"), "y(x) = C1^2 + C1*x");
-        assert_eq!(run("dsolve(y(x) = x*diff(y(x), x) - diff(y(x), x)^3, y(x))"), "y(x) = C1*x - C1^3");
+        assert_eq!(
+            run("dsolve(y(x) = x*diff(y(x), x) + diff(y(x), x)^2, y(x))"),
+            "y(x) = C1^2 + C1*x"
+        );
+        assert_eq!(
+            run("dsolve(y(x) = x*diff(y(x), x) - diff(y(x), x)^3, y(x))"),
+            "y(x) = C1*x - C1^3"
+        );
         // d'Alembert and x-solved equations: parametric answers in p = y'.
         let lagrange = run("dsolve(y(x) = 2*x*diff(y(x), x) + diff(y(x), x)^2, y(x))");
-        assert!(lagrange.starts_with("list(x = ") && lagrange.contains("p^3") && lagrange.contains("C1"), "{lagrange}");
+        assert!(
+            lagrange.starts_with("list(x = ")
+                && lagrange.contains("p^3")
+                && lagrange.contains("C1"),
+            "{lagrange}"
+        );
         let solved_for_x = run("dsolve(x = diff(y(x), x)^3 + diff(y(x), x), y(x))");
-        assert!(solved_for_x.starts_with("list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1, "), "{solved_for_x}");
+        assert!(
+            solved_for_x.starts_with("list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1, "),
+            "{solved_for_x}"
+        );
         // The third element is the implicit relation with p eliminated by a
         // resultant: it vanishes on the parametric curve.
         let relation = solved_for_x
             .split_once("C1, ")
-            .map_or_else(String::new, |(_, r)| r.trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy"));
+            .map_or_else(String::new, |(_, r)| {
+                r.trim_end_matches(')')
+                    .trim_end_matches(" = 0")
+                    .replace("y(x)", "yy")
+            });
         for p in [0.7_f64, -0.4, 1.3] {
             let (x, y, c) = (p.powi(3) + p, 0.75 * p.powi(4) + 0.5 * p * p + 0.3, 0.3);
-            let value = crate::rules::testing::eval(&rules, &relation, &[("x", x), ("yy", y), ("C1", c)]);
-            assert!(value.abs() < 1e-9, "relation {relation} gives {value} at p = {p}");
+            let value =
+                crate::rules::testing::eval(&rules, &relation, &[("x", x), ("yy", y), ("C1", c)]);
+            assert!(
+                value.abs() < 1e-9,
+                "relation {relation} gives {value} at p = {p}"
+            );
         }
         // A d'Alembert equation whose parameter can be solved for: explicit.
         let explicit = run("dsolve(y(x) = x*diff(y(x), x)^2 + diff(y(x), x)^2, y(x))");
-        assert!(!explicit.starts_with("list(x = ") || explicit.contains("= 0)"), "{explicit}");
+        assert!(
+            !explicit.starts_with("list(x = ") || explicit.contains("= 0)"),
+            "{explicit}"
+        );
         // Integrating factors mu(x), mu(y) and e^x.
         check("(x^2 + y(x)^2 + x) + x*y(x)*diff(y(x), x) = 0", 1);
         check("y(x)^2 + (3*x*y(x) - 1)*diff(y(x), x) = 0", 1);
@@ -2463,12 +2863,21 @@ mod tests {
             "y(x) = exp(x) + 1/(C1 - x)"
         );
         let airy = run("dsolve(diff(y(x), x) = y(x)^2 + x, y(x))");
-        assert!(airy.contains("airyai(-x)") && airy.contains("C1") && !airy.contains("C2"), "{airy}");
+        assert!(
+            airy.contains("airyai(-x)") && airy.contains("C1") && !airy.contains("C2"),
+            "{airy}"
+        );
         // Bernoulli with a square root.
         let bernoulli = run("dsolve(diff(y(x), x) + y(x) = x*sqrt(y(x)), y(x))");
-        assert_eq!(bernoulli, "y(x) = (x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)");
+        assert_eq!(
+            bernoulli,
+            "y(x) = (x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)"
+        );
         // First-order equations quadratic in y' that factor.
-        assert_eq!(run("dsolve(diff(y(x), x)^2 - (x + y(x))*diff(y(x), x) + x*y(x) = 0, y(x))"), "y(x) = 1/2*x^2 + C1");
+        assert_eq!(
+            run("dsolve(diff(y(x), x)^2 - (x + y(x))*diff(y(x), x) + x*y(x) = 0, y(x))"),
+            "y(x) = 1/2*x^2 + C1"
+        );
     }
 
     /// The right-hand side of `y(x) = rhs` evaluated with `x`, `C1`, `C2`.
@@ -2500,7 +2909,10 @@ mod tests {
                 let (a2, a1, a0) = coefficients(x);
                 let residual = a2 * d2 + a1 * d1 + a0 * y;
                 let scale = 1.0 + (a2 * d2).abs() + (a1 * d1).abs() + (a0 * y).abs();
-                assert!(residual.abs() < tolerance * scale, "{answer} basis {basis:?} at {x}: {residual}");
+                assert!(
+                    residual.abs() < tolerance * scale,
+                    "{answer} basis {basis:?} at {x}: {residual}"
+                );
             }
         }
     }
@@ -2509,8 +2921,17 @@ mod tests {
     fn kovacic_case_two() {
         let rules = crate::rules::standard();
         // y'' = (1/x - 3/(16 x^2)) y: solutions x^(1/4) exp(+-2 sqrt x).
-        let answer = simplify(&rules, "dsolve(16*x^2*diff(diff(y(x), x), x) - (16*x - 3)*y(x), y(x))");
-        check_second_order(&rules, &answer, |x| (16.0 * x * x, 0.0, -(16.0 * x - 3.0)), &[0.5, 1.3, 2.2], 1e-3);
+        let answer = simplify(
+            &rules,
+            "dsolve(16*x^2*diff(diff(y(x), x), x) - (16*x - 3)*y(x), y(x))",
+        );
+        check_second_order(
+            &rules,
+            &answer,
+            |x| (16.0 * x * x, 0.0, -(16.0 * x - 3.0)),
+            &[0.5, 1.3, 2.2],
+            1e-3,
+        );
     }
 
     #[test]
@@ -2522,17 +2943,31 @@ mod tests {
         // y'' = (x^2 + 3) y: x exp(x^2/2).
         let hermite = run("dsolve(diff(diff(y(x), x), x) - (x^2 + 3)*y(x), y(x))");
         for (answer, a) in [(coulomb, 0), (hermite, 1)] {
-            let full = answer.strip_prefix("y(x) = ").unwrap_or(&answer).to_string();
+            let full = answer
+                .strip_prefix("y(x) = ")
+                .unwrap_or(&answer)
+                .to_string();
             // The second solution carries an inert quadrature: keep the C1 term.
-            let rhs = full.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&full).to_string();
+            let rhs = full
+                .rsplit(" + ")
+                .find(|t| t.contains("C1"))
+                .unwrap_or(&full)
+                .to_string();
             // The basis solution multiplying C1 satisfies the equation.
             for x in [0.7_f64, 1.3, 2.1] {
                 let h = 1e-3;
                 let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
                 let (y, up, down) = (f(x), f(x + h), f(x - h));
                 let d2 = (up - 2.0 * y + down) / (h * h);
-                let residual = if a == 0 { x * d2 - (x - 2.0) * y } else { d2 - (x * x + 3.0) * y };
-                assert!(residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0), "{answer} at {x}: {residual}");
+                let residual = if a == 0 {
+                    x * d2 - (x - 2.0) * y
+                } else {
+                    d2 - (x * x + 3.0) * y
+                };
+                assert!(
+                    residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0),
+                    "{answer} at {x}: {residual}"
+                );
             }
         }
     }
@@ -2542,11 +2977,18 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
         let rhs_of = |report: &str| -> String {
-            report.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string()
+            report
+                .strip_prefix("list(y(x) = ")
+                .and_then(|t| t.split(", list(").next())
+                .unwrap_or("")
+                .to_string()
         };
         // Airy at infinity: ramified, exp(+-(2/3) x^(3/2)).
         let airy = run("ode_frobenius(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 24)");
-        assert!(airy.contains("^(1/2)") || airy.contains("^(-1/2)"), "{airy}");
+        assert!(
+            airy.contains("^(1/2)") || airy.contains("^(-1/2)"),
+            "{airy}"
+        );
         let rhs = rhs_of(&airy);
         for x in [6.0_f64, 8.0] {
             for basis in [(1.0, 0.0), (0.0, 1.0)] {
@@ -2555,36 +2997,58 @@ mod tests {
                 let (y, up, down) = (f(x), f(x + h), f(x - h));
                 let second = (up - 2.0 * y + down) / (h * h);
                 let residual = second - x * y;
-                assert!(residual.abs() < 1e-4 * (x * y).abs(), "{airy} at {x}: {residual} vs {y}");
+                assert!(
+                    residual.abs() < 1e-4 * (x * y).abs(),
+                    "{airy} at {x}: {residual} vs {y}"
+                );
             }
         }
         // Optimal truncation: Ai(5) = 1.0834e-4 and Bi(5) = 657.79 (up to the
         // normalisations 1/(2 sqrt pi) and 1/sqrt pi of the asymptotic series).
         let mut values = Vec::new();
         for k in 0..2 {
-            let text = run(&format!("ode_asymptotic(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 60, 5, {k})"));
-            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let text = run(&format!(
+                "ode_asymptotic(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 60, 5, {k})"
+            ));
+            let inner = text
+                .strip_prefix("list(")
+                .and_then(|t| t.strip_suffix(')'))
+                .unwrap_or("");
             let numbers: Vec<f64> = inner.split(", ").filter_map(|s| s.parse().ok()).collect();
             assert_eq!(numbers.len(), 3, "{text}");
             values.push(numbers[0]);
         }
         values.sort_by(f64::total_cmp);
         let sqrt_pi = std::f64::consts::PI.sqrt();
-        assert!((values[0] / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-8, "{values:?}");
+        assert!(
+            (values[0] / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-8,
+            "{values:?}"
+        );
         assert!((values[1] / sqrt_pi - 657.793_6).abs() < 2e-2, "{values:?}");
         // Borel-Pade resummation: the same Airy solutions to much higher accuracy for the
         // decaying one, and the median (Stokes) sum, Bi, for the growing one.
         let mut borel = Vec::new();
         for k in 0..2 {
-            let text = run(&format!("ode_borel(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 90, 5, {k})"));
-            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let text = run(&format!(
+                "ode_borel(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 90, 5, {k})"
+            ));
+            let inner = text
+                .strip_prefix("list(")
+                .and_then(|t| t.strip_suffix(')'))
+                .unwrap_or("");
             let numbers: Vec<f64> = inner.split(", ").filter_map(|s| s.parse().ok()).collect();
             assert_eq!(numbers.len(), 4, "{text}");
             borel.push((numbers[0], numbers[2], numbers[3]));
         }
         borel.sort_by(|a, b| a.0.total_cmp(&b.0));
-        assert!((borel[0].0 / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-9, "{borel:?}");
-        assert!((borel[1].0 / sqrt_pi / 657.793_6 - 1.0).abs() < 2e-3, "{borel:?}");
+        assert!(
+            (borel[0].0 / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-9,
+            "{borel:?}"
+        );
+        assert!(
+            (borel[1].0 / sqrt_pi / 657.793_6 - 1.0).abs() < 2e-3,
+            "{borel:?}"
+        );
         // Poincare rank two at 0: x^6 y'' = y, exp(+-1/(2 x^2)) x^(3/2) (1 + ...).
         let rank_two = run("ode_frobenius(x^6*diff(diff(y(x), x), x) - y(x), y(x), 0, 14)");
         let rhs = rhs_of(&rank_two);
@@ -2594,7 +3058,10 @@ mod tests {
                 let f = |t: f64| solution_value(&rules, &rhs, t, basis);
                 let (y, up, down) = (f(x), f(x + h), f(x - h));
                 let residual = x.powi(6) * (up - 2.0 * y + down) / (h * h) - y;
-                assert!(residual.abs() < 2e-3 * y.abs(), "{rank_two} at {x}: {residual} vs {y}");
+                assert!(
+                    residual.abs() < 2e-3 * y.abs(),
+                    "{rank_two} at {x}: {residual} vs {y}"
+                );
             }
         }
     }
@@ -2608,10 +3075,18 @@ mod tests {
             &rules,
             "dsolve(diff(diff(diff(y(x), x), x), x) - diff(diff(y(x), x), x) - x*diff(y(x), x) + x*y(x), y(x))",
         );
-        assert!(answer.contains("exp(x)") && answer.contains("airy"), "{answer}");
+        assert!(
+            answer.contains("exp(x)") && answer.contains("airy"),
+            "{answer}"
+        );
         // The first solution is e^x.
         let rhs = answer.strip_prefix("y(x) = ").unwrap_or(&answer);
-        let first = solution_value(&rules, rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs), 0.7, (1.0, 0.0));
+        let first = solution_value(
+            &rules,
+            rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs),
+            0.7,
+            (1.0, 0.0),
+        );
         assert!((first - 0.7_f64.exp()).abs() < 1e-9, "{answer}");
         // (D - 1)(D^2 - x): no hyperexponential solution, but the left factor D - 1
         // reduces the order; the quotient is Airy's equation.
@@ -2633,9 +3108,21 @@ mod tests {
         let rules = crate::rules::standard();
         // x^2 (y'' - 2 y' + y) = y: x^b e^x with b^2 - b - 1 = 0, b = (1 +- sqrt 5)/2 (Kovacic's
         // case 1 with irrational local data); the two solutions are conjugate.
-        let answer = simplify(&rules, "dsolve(x^2*(diff(diff(y(x), x), x) - 2*diff(y(x), x) + y(x)) - y(x), y(x))");
-        assert!((answer.contains("root_of") || answer.contains("5^(1/2)")) && answer.contains("exp("), "{answer}");
-        check_second_order(&rules, &answer, |x| (x * x, -2.0 * x * x, x * x - 1.0), &[0.7, 1.4, 2.1], 1e-3);
+        let answer = simplify(
+            &rules,
+            "dsolve(x^2*(diff(diff(y(x), x), x) - 2*diff(y(x), x) + y(x)) - y(x), y(x))",
+        );
+        assert!(
+            (answer.contains("root_of") || answer.contains("5^(1/2)")) && answer.contains("exp("),
+            "{answer}"
+        );
+        check_second_order(
+            &rules,
+            &answer,
+            |x| (x * x, -2.0 * x * x, x * x - 1.0),
+            &[0.7, 1.4, 2.1],
+            1e-3,
+        );
     }
 
     #[test]
@@ -2644,8 +3131,14 @@ mod tests {
         // The least common left multiple of Airy's equation and x y'' + y' + x y = 0: order
         // four, no first-order factor, so the eigenring supplies the two second-order
         // right factors; the solutions combine Airy and Bessel functions.
-        let answer = simplify(&rules, "dsolve(((3)*x^0+(2)*x^2+(8)*x^3+(-1)*x^4+(-2)*x^5+(-1)*x^6)*y(x) + ((5)*x^1+(12)*x^2+(-3)*x^3+(-4)*x^4+(-1)*x^5)*diff(y(x), x) + ((6)*x^0+(-3)*x^1+(-7)*x^2+(5)*x^3+(1)*x^4+(-1)*x^5+(-1)*x^6)*diff(diff(y(x), x), x) + ((-3)*x^0+(-6)*x^1+(1)*x^2+(-1)*x^4)*diff(diff(diff(y(x), x), x), x) + ((-1)*x^1+(-3)*x^2+(1)*x^3+(2)*x^4+(1)*x^5)*diff(diff(diff(diff(y(x), x), x), x), x), y(x))");
-        assert!(answer.contains("airy") && answer.contains("bessel"), "{answer}");
+        let answer = simplify(
+            &rules,
+            "dsolve(((3)*x^0+(2)*x^2+(8)*x^3+(-1)*x^4+(-2)*x^5+(-1)*x^6)*y(x) + ((5)*x^1+(12)*x^2+(-3)*x^3+(-4)*x^4+(-1)*x^5)*diff(y(x), x) + ((6)*x^0+(-3)*x^1+(-7)*x^2+(5)*x^3+(1)*x^4+(-1)*x^5+(-1)*x^6)*diff(diff(y(x), x), x) + ((-3)*x^0+(-6)*x^1+(1)*x^2+(-1)*x^4)*diff(diff(diff(y(x), x), x), x) + ((-1)*x^1+(-3)*x^2+(1)*x^3+(2)*x^4+(1)*x^5)*diff(diff(diff(diff(y(x), x), x), x), x), y(x))",
+        );
+        assert!(
+            answer.contains("airy") && answer.contains("bessel"),
+            "{answer}"
+        );
     }
 
     #[test]
@@ -2654,9 +3147,18 @@ mod tests {
         // 4 x (x - 1) y'' + 2 (2x - 1) y' - 5 y = 0: dihedral monodromy with the irrational
         // exponent difference sqrt 5, y = (sqrt x + sqrt(x - 1))^(± sqrt 5). The product of the
         // two solutions is constant, a hyperexponential solution of the symmetric square.
-        let answer = simplify(&rules, "dsolve(4*x*(x - 1)*diff(diff(y(x), x), x) + 2*(2*x - 1)*diff(y(x), x) - 5*y(x), y(x))");
+        let answer = simplify(
+            &rules,
+            "dsolve(4*x*(x - 1)*diff(diff(y(x), x), x) + 2*(2*x - 1)*diff(y(x), x) - 5*y(x), y(x))",
+        );
         assert!(answer.contains("C1") && answer.contains("C2"), "{answer}");
-        check_second_order(&rules, &answer, |x| (4.0 * x * (x - 1.0), 2.0 * (2.0 * x - 1.0), -5.0), &[1.5, 2.2, 3.1], 1e-3);
+        check_second_order(
+            &rules,
+            &answer,
+            |x| (4.0 * x * (x - 1.0), 2.0 * (2.0 * x - 1.0), -5.0),
+            &[1.5, 2.2, 3.1],
+            1e-3,
+        );
     }
 
     #[test]
@@ -2668,7 +3170,10 @@ mod tests {
             &rules,
             "dsolve(x^2*(x - 1)^2*diff(diff(y(x), x), x) + (3/16*(x - 1)^2 + 2/9*x^2 - 3/16*x*(x - 1))*y(x), y(x))",
         );
-        assert!(answer.contains("root_of") && answer.contains("exp(") && answer.contains("integral("), "{answer}");
+        assert!(
+            answer.contains("root_of") && answer.contains("exp(") && answer.contains("integral("),
+            "{answer}"
+        );
     }
 
     #[test]
@@ -2676,39 +3181,78 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
         // Kummer: x y'' + (3/2 - x) y' - y/2 = 0.
-        let kummer = run("dsolve(x*diff(diff(y(x), x), x) + (3/2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
+        let kummer =
+            run("dsolve(x*diff(diff(y(x), x), x) + (3/2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
         assert!(kummer.contains("hyper1f1"), "{kummer}");
-        check_second_order(&rules, &kummer, |x| (x, 1.5 - x, -0.5), &[0.3, 0.8, 1.7], 2e-5);
+        check_second_order(
+            &rules,
+            &kummer,
+            |x| (x, 1.5 - x, -0.5),
+            &[0.3, 0.8, 1.7],
+            2e-5,
+        );
         // Gauss: x (1 - x) y'' + (1/3 - 2 x) y' - y/4 = 0.
-        let gauss = run("dsolve(x*(1 - x)*diff(diff(y(x), x), x) + (1/3 - 2*x)*diff(y(x), x) - 1/4*y(x), y(x))");
+        let gauss = run(
+            "dsolve(x*(1 - x)*diff(diff(y(x), x), x) + (1/3 - 2*x)*diff(y(x), x) - 1/4*y(x), y(x))",
+        );
         assert!(gauss.contains("hyper2f1"), "{gauss}");
-        check_second_order(&rules, &gauss, |x| (x * (1.0 - x), 1.0 / 3.0 - 2.0 * x, -0.25), &[0.2, 0.45], 2e-5);
+        check_second_order(
+            &rules,
+            &gauss,
+            |x| (x * (1.0 - x), 1.0 / 3.0 - 2.0 * x, -0.25),
+            &[0.2, 0.45],
+            2e-5,
+        );
         // Whittaker: 36 x^2 y'' + (-9 x^2 + 54 x + 5) y = 0 (kappa = 3/2, mu = 1/3, s = 1).
-        let whittaker = run("dsolve(36*x^2*diff(diff(y(x), x), x) + (-9*x^2 + 54*x + 5)*y(x), y(x))");
+        let whittaker =
+            run("dsolve(36*x^2*diff(diff(y(x), x), x) + (-9*x^2 + 54*x + 5)*y(x), y(x))");
         assert!(whittaker.contains("hyper1f1"), "{whittaker}");
-        check_second_order(&rules, &whittaker, |x| (36.0 * x * x, 0.0, -9.0 * x * x + 54.0 * x + 5.0), &[0.6, 1.1], 5e-4);
+        check_second_order(
+            &rules,
+            &whittaker,
+            |x| (36.0 * x * x, 0.0, -9.0 * x * x + 54.0 * x + 5.0),
+            &[0.6, 1.1],
+            5e-4,
+        );
         // Kummer with integer b = 2: the regular solution and a quadrature for the second.
-        let integer = run("dsolve(x*diff(diff(y(x), x), x) + (2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
+        let integer =
+            run("dsolve(x*diff(diff(y(x), x), x) + (2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
         assert!(integer.contains("hyper1f1(1/2, 2, x)"), "{integer}");
-        let rhs = integer.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&integer).to_string();
+        let rhs = integer
+            .rsplit(" + ")
+            .find(|t| t.contains("C1"))
+            .unwrap_or(&integer)
+            .to_string();
         for x in [0.4_f64, 1.2] {
             let h = 1e-3;
             let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
             let (y, up, down) = (f(x), f(x + h), f(x - h));
-            let residual = x * (up - 2.0 * y + down) / (h * h) + (2.0 - x) * (up - down) / (2.0 * h) - 0.5 * y;
+            let residual =
+                x * (up - 2.0 * y + down) / (h * h) + (2.0 - x) * (up - down) / (2.0 * h) - 0.5 * y;
             assert!(residual.abs() < 1e-3, "{integer} at {x}: {residual}");
         }
         // An ordinary point without closed form: a truncated series.
         let airy3 = run("dsolve(diff(diff(y(x), x), x) - (x^3 + 1)*y(x), y(x))");
         assert!(airy3.contains("big_o"), "{airy3}");
-        check_second_order(&rules, &airy3, |x| (1.0, 0.0, -(x.powi(3) + 1.0)), &[0.1, 0.25], 1e-5);
+        check_second_order(
+            &rules,
+            &airy3,
+            |x| (1.0, 0.0, -(x.powi(3) + 1.0)),
+            &[0.1, 0.25],
+            1e-5,
+        );
         // Regular singular point, both exponents, logarithm: Bessel of order 0
         // posed so that the closed-form methods are bypassed.
-        let report = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + x^2*y(x), y(x), 0, 14)");
+        let report = run(
+            "ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + x^2*y(x), y(x), 0, 14)",
+        );
         assert!(report.starts_with("list(y(x) = "), "{report}");
         let inner = report.strip_prefix("list(").unwrap_or("");
         let answer = inner.split(", list(0, 0)").next().unwrap_or("");
-        assert!(answer.contains("ln(x)") && inner.contains("list(0, 0)"), "{report}");
+        assert!(
+            answer.contains("ln(x)") && inner.contains("list(0, 0)"),
+            "{report}"
+        );
         let rhs = answer.strip_prefix("y(x) = ").unwrap_or(answer);
         for x in [0.4_f64, 0.9, 1.6] {
             let j0 = crate::rules::testing::eval(&rules, &format!("besselj(0, {x})"), &[]);
@@ -2717,52 +3261,100 @@ mod tests {
             assert!((first - j0).abs() < 1e-9, "J0({x}): {first} vs {j0}");
             // y2 = (pi/2) Y0 - (gamma - ln 2) J0.
             let second = solution_value(&rules, rhs, x, (0.0, 1.0));
-            let gamma = 0.577_215_664_901_532_9_f64;
+            let gamma = std::f64::consts::EULER_GAMMA;
             let expected = std::f64::consts::FRAC_PI_2 * y0 - (gamma - 2.0_f64.ln()) * j0;
-            assert!((second - expected).abs() < 1e-8, "Y0({x}): {second} vs {expected}");
+            assert!(
+                (second - expected).abs() < 1e-8,
+                "Y0({x}): {second} vs {expected}"
+            );
         }
         // Irrational exponents (x^2 y'' + (x^2 - 2 ... ) y): indicial roots (1 +- sqrt 5)/2.
-        let irrational = run("ode_frobenius(x^2*diff(diff(y(x), x), x) - x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 12)");
-        let rhs = irrational.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        let irrational = run(
+            "ode_frobenius(x^2*diff(diff(y(x), x), x) - x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 12)",
+        );
+        let rhs = irrational
+            .strip_prefix("list(y(x) = ")
+            .and_then(|t| t.split(", list(").next())
+            .unwrap_or("")
+            .to_string();
         for x in [0.05_f64, 0.1] {
             for basis in [(1.0, 0.0), (0.0, 1.0)] {
                 let h = 1e-4;
                 let f = |t: f64| solution_value(&rules, &rhs, t, basis);
                 let (y, up, down) = (f(x), f(x + h), f(x - h));
-                let residual = x * x * (up - 2.0 * y + down) / (h * h) - x * (up - down) / (2.0 * h) - (1.0 + x) * y;
-                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{irrational} at {x}: {residual}");
+                let residual = x * x * (up - 2.0 * y + down) / (h * h)
+                    - x * (up - down) / (2.0 * h)
+                    - (1.0 + x) * y;
+                assert!(
+                    residual.abs() < 1e-3 * (1.0 + y.abs()),
+                    "{irrational} at {x}: {residual}"
+                );
             }
         }
         // Complex exponents: x^2 y'' + x y' + (x + 1) y: r^2 + 1 = 0, real solutions cos/sin(ln x) times series.
-        let complex = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (1 + x)*y(x), y(x), 0, 12)");
-        let rhs = complex.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
-        assert!(rhs.contains("cos(ln(x))") || rhs.contains("cos("), "{complex}");
+        let complex = run(
+            "ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (1 + x)*y(x), y(x), 0, 12)",
+        );
+        let rhs = complex
+            .strip_prefix("list(y(x) = ")
+            .and_then(|t| t.split(", list(").next())
+            .unwrap_or("")
+            .to_string();
+        assert!(
+            rhs.contains("cos(ln(x))") || rhs.contains("cos("),
+            "{complex}"
+        );
         for x in [0.05_f64, 0.1] {
             for basis in [(1.0, 0.0), (0.0, 1.0)] {
                 let h = 1e-4;
                 let f = |t: f64| solution_value(&rules, &rhs, t, basis);
                 let (y, up, down) = (f(x), f(x + h), f(x - h));
-                let residual = x * x * (up - 2.0 * y + down) / (h * h) + x * (up - down) / (2.0 * h) + (1.0 + x) * y;
-                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{complex} at {x}: {residual}");
+                let residual = x * x * (up - 2.0 * y + down) / (h * h)
+                    + x * (up - down) / (2.0 * h)
+                    + (1.0 + x) * y;
+                assert!(
+                    residual.abs() < 1e-3 * (1.0 + y.abs()),
+                    "{complex} at {x}: {residual}"
+                );
             }
         }
         // Irregular singular point at 0: exp(+-1/x).
-        let irregular = run("ode_frobenius(x^4*diff(diff(y(x), x), x) + 2*x^3*diff(y(x), x) - y(x), y(x), 0, 5)");
-        assert!(irregular.contains("exp(1/x)") && irregular.contains("exp(-1/x)"), "{irregular}");
+        let irregular = run(
+            "ode_frobenius(x^4*diff(diff(y(x), x), x) + 2*x^3*diff(y(x), x) - y(x), y(x), 0, 5)",
+        );
+        assert!(
+            irregular.contains("exp(1/x)") && irregular.contains("exp(-1/x)"),
+            "{irregular}"
+        );
         // Irregular singular point at infinity: modified Bessel of order 1/2 gives exp(+-x) / sqrt(x).
-        let infinite = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (x^2 + 1/4)*y(x), y(x), oo, 4)");
-        let rhs = infinite.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        let infinite = run(
+            "ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (x^2 + 1/4)*y(x), y(x), oo, 4)",
+        );
+        let rhs = infinite
+            .strip_prefix("list(y(x) = ")
+            .and_then(|t| t.split(", list(").next())
+            .unwrap_or("")
+            .to_string();
         for x in [3.0_f64, 7.5] {
             let first = solution_value(&rules, &rhs, x, (1.0, 0.0));
             let second = solution_value(&rules, &rhs, x, (0.0, 1.0));
             let (plus, minus) = (x.exp() / x.sqrt(), (-x).exp() / x.sqrt());
             let matches = |v: f64, w: f64| (v - w).abs() < 1e-9 * w.abs();
-            assert!((matches(first, plus) && matches(second, minus)) || (matches(first, minus) && matches(second, plus)), "{infinite}: {first} {second}");
+            assert!(
+                (matches(first, plus) && matches(second, minus))
+                    || (matches(first, minus) && matches(second, plus)),
+                "{infinite}: {first} {second}"
+            );
         }
         // Exponents 1/2 and -1 differ by a non-integer: two pure series. The
         // recurrence is returned.
-        let two = run("ode_frobenius(2*x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 10)");
-        assert!(two.contains("list(1, -1/2)") && two.contains("= 0)"), "{two}");
+        let two = run(
+            "ode_frobenius(2*x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 10)",
+        );
+        assert!(
+            two.contains("list(1, -1/2)") && two.contains("= 0)"),
+            "{two}"
+        );
     }
 
     #[test]
@@ -2776,7 +3368,10 @@ mod tests {
         );
         // A polynomial solution and a quadrature for the second (Hermite).
         let hermite = run("dsolve(diff(diff(y(x), x), x) - x*diff(y(x), x) + y(x) = 0, y(x))");
-        assert!(hermite.contains("C1*x") && hermite.contains("integral(exp(1/2*x^2)/x^2, x)"), "{hermite}");
+        assert!(
+            hermite.contains("C1*x") && hermite.contains("integral(exp(1/2*x^2)/x^2, x)"),
+            "{hermite}"
+        );
     }
 
     #[test]
@@ -2784,22 +3379,50 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
         // Triangular: the first equation is solved alone.
-        let triangular = run("dsolve(list(diff(x(t), t) = -x(t)^2, diff(y(t), t) = x(t)*y(t)), list(x(t), y(t)))");
-        assert!(triangular.contains("x(t) = 1/(C1 + t)") && triangular.contains("C2"), "{triangular}");
+        let triangular = run(
+            "dsolve(list(diff(x(t), t) = -x(t)^2, diff(y(t), t) = x(t)*y(t)), list(x(t), y(t)))",
+        );
+        assert!(
+            triangular.contains("x(t) = 1/(C1 + t)") && triangular.contains("C2"),
+            "{triangular}"
+        );
         // Higher order by reduction to first order.
-        let reduced = run("dsolve(list(diff(diff(x(t), t), t) = -x(t) + y(t), diff(diff(y(t), t), t) = x(t) - y(t)), list(x(t), y(t)))");
-        assert!(reduced.contains("C4") && reduced.contains("cos(2^(1/2)*t)"), "{reduced}");
+        let reduced = run(
+            "dsolve(list(diff(diff(x(t), t), t) = -x(t) + y(t), diff(diff(y(t), t), t) = x(t) - y(t)), list(x(t), y(t)))",
+        );
+        assert!(
+            reduced.contains("C4") && reduced.contains("cos(2^(1/2)*t)"),
+            "{reduced}"
+        );
         // Variable coefficients a(t) M: constant system in s = integral of a.
-        let scaled = run("dsolve(list(diff(x(t), t) = t*y(t), diff(y(t), t) = t*x(t)), list(x(t), y(t)))");
-        assert!(scaled.contains("exp(1/2*t^2)") && scaled.contains("exp(-1/2*t^2)"), "{scaled}");
+        let scaled =
+            run("dsolve(list(diff(x(t), t) = t*y(t), diff(y(t), t) = t*x(t)), list(x(t), y(t)))");
+        assert!(
+            scaled.contains("exp(1/2*t^2)") && scaled.contains("exp(-1/2*t^2)"),
+            "{scaled}"
+        );
         // Two autonomous equations: the first integral (energy).
-        let energy = run("dsolve(list(diff(x(t), t) = y(t), diff(y(t), t) = -sin(x(t))), list(x(t), y(t)))");
-        assert!(energy.contains("cos(x(t))") && energy.contains("C1"), "{energy}");
-        let predator_prey = run("dsolve(list(diff(x(t), t) = x(t)*(2 - y(t)), diff(y(t), t) = y(t)*(x(t) - 3)), list(x(t), y(t)))");
-        assert!(predator_prey.contains("ln(x(t))") && predator_prey.contains("ln("), "{predator_prey}");
+        let energy =
+            run("dsolve(list(diff(x(t), t) = y(t), diff(y(t), t) = -sin(x(t))), list(x(t), y(t)))");
+        assert!(
+            energy.contains("cos(x(t))") && energy.contains("C1"),
+            "{energy}"
+        );
+        let predator_prey = run(
+            "dsolve(list(diff(x(t), t) = x(t)*(2 - y(t)), diff(y(t), t) = y(t)*(x(t) - 3)), list(x(t), y(t)))",
+        );
+        assert!(
+            predator_prey.contains("ln(x(t))") && predator_prey.contains("ln("),
+            "{predator_prey}"
+        );
         // Polynomial first integrals of a three-dimensional system.
-        let rigid = run("dsolve(list(diff(x(t), t) = y(t)*z(t), diff(y(t), t) = -x(t)*z(t), diff(z(t), t) = -x(t)*y(t)/2), list(x(t), y(t), z(t)))");
-        assert!(rigid.contains("x(t)^2 + y(t)^2 - C1 = 0") && rigid.contains("C2"), "{rigid}");
+        let rigid = run(
+            "dsolve(list(diff(x(t), t) = y(t)*z(t), diff(y(t), t) = -x(t)*z(t), diff(z(t), t) = -x(t)*y(t)/2), list(x(t), y(t), z(t)))",
+        );
+        assert!(
+            rigid.contains("x(t)^2 + y(t)^2 - C1 = 0") && rigid.contains("C2"),
+            "{rigid}"
+        );
     }
 
     #[test]
@@ -2812,16 +3435,31 @@ mod tests {
         assert!((value - 1.0_f64.exp()).abs() < 1e-7, "{value}");
         // Stiff: y' = -10^6 (y - cos x) would need millions of explicit
         // steps; Radau IIA with the symbolic Jacobian takes over.
-        let (value, error) = numeric(&[ode()], "odeint(-1000000*(y - cos(x)), y, x, 0, 0, 10)", &[], 1e-9);
+        let (value, error) = numeric(
+            &[ode()],
+            "odeint(-1000000*(y - cos(x)), y, x, 0, 0, 10)",
+            &[],
+            1e-9,
+        );
         let k = 1e6_f64;
         let want = (k * k * 10.0_f64.cos() + k * 10.0_f64.sin()) / (k * k + 1.0);
         assert!((value - want).abs() < 1e-7, "{value} ± {error} vs {want}");
         // A system: harmonic oscillator over a quarter period.
         let mut g = Graph::new();
-        let engine = crate::graph::Engine::install(&mut g, &[ode()]).unwrap_or_else(|e| panic!("{e}"));
-        let root = g.parse("odeint(list(v, -u), list(u, v), t, 0, list(1, 0), pi/2)").unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::numeric(1e-10), &crate::graph::Saturate, &crate::graph::Budget::default());
-        let out = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm).build(&mut g, root);
+        let engine =
+            crate::graph::Engine::install(&mut g, &[ode()]).unwrap_or_else(|e| panic!("{e}"));
+        let root = g
+            .parse("odeint(list(v, -u), list(u, v), t, 0, list(1, 0), pi/2)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::numeric(1e-10),
+            &crate::graph::Saturate,
+            &crate::graph::Budget::default(),
+        );
+        let out = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
+            .build(&mut g, root);
         let text = out.map(|n| g.display(n)).unwrap_or_default();
         let values: Vec<f64> = text
             .trim_start_matches("list(")
@@ -2830,6 +3468,9 @@ mod tests {
             .filter_map(|v| v.parse().ok())
             .collect();
         assert_eq!(values.len(), 2, "{text}");
-        assert!(values[0].abs() < 1e-7 && (values[1] + 1.0).abs() < 1e-7, "{text}");
+        assert!(
+            values[0].abs() < 1e-7 && (values[1] + 1.0).abs() < 1e-7,
+            "{text}"
+        );
     }
 }

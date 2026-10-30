@@ -44,8 +44,8 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
-use crate::rules::poly::galois::Fx;
 use crate::rules::poly::galois::BITS;
+use crate::rules::poly::galois::Fx;
 use crate::rules::poly::univariate;
 
 type Q = BigRational;
@@ -75,7 +75,9 @@ impl Field {
     /// The rationals.
     #[must_use]
     pub fn rationals() -> Self {
-        Self { modulus: vec![Q::zero(), Q::one()] }
+        Self {
+            modulus: vec![Q::zero(), Q::one()],
+        }
     }
 
     /// `Q[α]/(m)` for a monic irreducible `m`.
@@ -111,8 +113,14 @@ impl Field {
 
     /// A rational number as an element.
     #[must_use]
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
-    #[allow(clippy::wrong_self_convention, reason = "the field is the context of the element")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
+    #[allow(
+        clippy::wrong_self_convention,
+        reason = "the field is the context of the element"
+    )]
     pub fn from_q(
         &self,
         c: &Q,
@@ -120,7 +128,10 @@ impl Field {
         trim(vec![c.clone()])
     }
 
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
     pub(super) fn add(
         &self,
         a: &[Q],
@@ -129,7 +140,10 @@ impl Field {
         trim(univariate::add(a, b))
     }
 
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
     pub(super) fn sub(
         &self,
         a: &[Q],
@@ -146,7 +160,10 @@ impl Field {
         self.reduce(univariate::mul(a, b))
     }
 
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
     pub(super) fn scale(
         &self,
         a: &[Q],
@@ -175,13 +192,18 @@ impl Field {
             t1 = t2;
         }
         let constant_poly = trim(r0);
-        let [constant] = constant_poly.as_slice() else { return None };
+        let [constant] = constant_poly.as_slice() else {
+            return None;
+        };
         Some(self.reduce(t0.iter().map(|c| c / constant).collect()))
     }
 
     /// The rational number an element equals, if it is one.
     #[must_use]
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
     pub fn as_rational(
         &self,
         a: &[Q],
@@ -195,21 +217,33 @@ impl Field {
 
     /// Numeric value for the embedding `α ↦ alpha`.
     #[must_use]
-    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(
+        clippy::unused_self,
+        reason = "kept as methods for a uniform field interface"
+    )]
     pub fn numeric(
         &self,
         a: &[Q],
         alpha: Complex64,
     ) -> Complex64 {
-        a.iter().rev().fold(Complex64::new(0.0, 0.0), |acc, c| acc * alpha + c.to_f64().unwrap_or(f64::NAN))
+        a.iter().rev().fold(Complex64::new(0.0, 0.0), |acc, c| {
+            acc * alpha + c.to_f64().unwrap_or(f64::NAN)
+        })
     }
 
     /// The complex roots of the modulus (embeddings of `α`).
     #[must_use]
     pub fn embeddings(&self) -> Vec<Complex64> {
-        let coefficients: Vec<f64> = self.modulus.iter().map(|c| c.to_f64().unwrap_or(f64::NAN)).collect();
+        let coefficients: Vec<f64> = self
+            .modulus
+            .iter()
+            .map(|c| c.to_f64().unwrap_or(f64::NAN))
+            .collect();
         if self.degree() == 1 {
-            return vec![Complex64::new(-coefficients.first().copied().unwrap_or(0.0), 0.0)];
+            return vec![Complex64::new(
+                -coefficients.first().copied().unwrap_or(0.0),
+                0.0,
+            )];
         }
         crate::rules::poly::galois::durand_kerner(&coefficients)
             .unwrap_or_default()
@@ -256,7 +290,12 @@ fn poly_add(
 ) -> Vec<Elt> {
     let n = a.len().max(b.len());
     let mut out: Vec<Elt> = (0..n)
-        .map(|i| field.add(a.get(i).map_or(&[][..], Vec::as_slice), b.get(i).map_or(&[][..], Vec::as_slice)))
+        .map(|i| {
+            field.add(
+                a.get(i).map_or(&[][..], Vec::as_slice),
+                b.get(i).map_or(&[][..], Vec::as_slice),
+            )
+        })
         .collect();
     while out.last().is_some_and(Vec::is_empty) {
         out.pop();
@@ -288,7 +327,9 @@ fn poly_mul(
 
 impl Euler {
     const fn empty() -> Self {
-        Self { terms: BTreeMap::new() }
+        Self {
+            terms: BTreeMap::new(),
+        }
     }
 
     fn add_term(
@@ -403,7 +444,9 @@ impl Euler {
             one
         }];
         for _ in 1..max_degree {
-            let next = powers.last().map_or_else(Self::empty, |last| last.compose(field, &lambda));
+            let next = powers
+                .last()
+                .map_or_else(Self::empty, |last| last.compose(field, &lambda));
             powers.push(next);
         }
         let mut out = Self::empty();
@@ -470,7 +513,11 @@ fn euler_form(
                 Field::extension(f.clone())
             };
             // x = α + t.
-            let alpha = if f.len() == 2 { field.from_q(&-f.first().cloned().unwrap_or_else(Q::zero)) } else { field.generator() };
+            let alpha = if f.len() == 2 {
+                field.from_q(&-f.first().cloned().unwrap_or_else(Q::zero))
+            } else {
+                field.generator()
+            };
             for (i, a) in op.iter().enumerate() {
                 // Taylor expansion of a(α + t) in t over K.
                 let mut work: Vec<Elt> = a.iter().map(|c| field.from_q(c)).collect();
@@ -490,7 +537,11 @@ fn euler_form(
                         continue;
                     }
                     let scaled: Vec<Elt> = ff.iter().map(|e| field.mul(e, c)).collect();
-                    out.add_term(&field, i64::try_from(k).unwrap_or(0) - i64::try_from(i).unwrap_or(0), &scaled);
+                    out.add_term(
+                        &field,
+                        i64::try_from(k).unwrap_or(0) - i64::try_from(i).unwrap_or(0),
+                        &scaled,
+                    );
                 }
             }
             (field, out)
@@ -505,7 +556,11 @@ fn euler_form(
                     }
                     let value = field.from_q(c);
                     let scaled: Vec<Elt> = ff.iter().map(|e| field.mul(e, &value)).collect();
-                    out.add_term(&field, i64::try_from(i).unwrap_or(0) - i64::try_from(k).unwrap_or(0), &scaled);
+                    out.add_term(
+                        &field,
+                        i64::try_from(i).unwrap_or(0) - i64::try_from(k).unwrap_or(0),
+                        &scaled,
+                    );
                 }
             }
             (field, out)
@@ -527,7 +582,10 @@ struct Segment {
 
 impl Segment {
     fn slope(&self) -> Q {
-        Q::new(BigInt::from(self.j1 - self.j0), BigInt::from(self.i1 - self.i0))
+        Q::new(
+            BigInt::from(self.j1 - self.j0),
+            BigInt::from(self.i1 - self.i0),
+        )
     }
 }
 
@@ -556,7 +614,16 @@ fn lower_hull(support: &[(i64, i64)]) -> Vec<Segment> {
         }
         hull.push(p);
     }
-    hull.windows(2).map(|w| Segment { i0: w[0].0, j0: w[0].1, i1: w[1].0, j1: w[1].1 }).collect()
+    hull.windows(2)
+        .map(|w| {
+            Segment {
+                i0: w[0].0,
+                j0: w[0].1,
+                i1: w[1].0,
+                j1: w[1].1,
+            }
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------
@@ -626,7 +693,12 @@ fn irreducible_factors(p: &[Q]) -> Vec<(Vec<Q>, usize)> {
         .into_iter()
         .map(|(f, m)| {
             let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
-            (f.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect(), m as usize)
+            (
+                f.iter()
+                    .map(|c| Q::from_integer(c.clone()) / &lead)
+                    .collect(),
+                m as usize,
+            )
         })
         .collect()
 }
@@ -665,7 +737,8 @@ fn expand(
         if r > 1 {
             // Ramify so that the slope is an integer.
             let ramified = op.ramify(field, r);
-            let scaled_exponent: Vec<(i64, Elt)> = exponent.iter().map(|(s, k)| (s * r, k.clone())).collect();
+            let scaled_exponent: Vec<(i64, Elt)> =
+                exponent.iter().map(|(s, k)| (s * r, k.clone())).collect();
             let new_slope = &slope * q(r);
             expand(
                 search,
@@ -683,7 +756,11 @@ fn expand(
         for (j, p) in &op.terms {
             for (i, c) in p.iter().enumerate() {
                 let i_signed = i64::try_from(i).unwrap_or(0);
-                if c.is_empty() || i_signed < segment.i0 || i_signed > segment.i1 || *j - s * i_signed != segment.j0 - s * segment.i0 {
+                if c.is_empty()
+                    || i_signed < segment.i0
+                    || i_signed > segment.i1
+                    || *j - s * i_signed != segment.j0 - s * segment.i0
+                {
                     continue;
                 }
                 while chi.len() <= i {
@@ -724,9 +801,19 @@ fn expand(
             // Roots in a proper extension of the field: one more step of the tower.
             for extension in tower_roots(field, &chi) {
                 let mapped_op = op.map_field(field, &extension.field, &extension.alpha);
-                let mapped_exponent: Vec<(i64, Elt)> =
-                    exponent.iter().map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha))).collect();
-                descend(search, &extension.field, &mapped_op, ramification, &mapped_exponent, s, &extension.root);
+                let mapped_exponent: Vec<(i64, Elt)> = exponent
+                    .iter()
+                    .map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha)))
+                    .collect();
+                descend(
+                    search,
+                    &extension.field,
+                    &mapped_op,
+                    ramification,
+                    &mapped_exponent,
+                    s,
+                    &extension.root,
+                );
             }
         }
     }
@@ -743,7 +830,11 @@ fn refine_root(
         .skip(1)
         .map(|(i, c)| c.mul(&Fx::integer(&BigInt::from(i))))
         .collect();
-    let value = |poly: &[Fx], z: &Fx| poly.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(z).add(c));
+    let value = |poly: &[Fx], z: &Fx| {
+        poly.iter()
+            .rev()
+            .fold(Fx::zero(), |acc, c| acc.mul(z).add(c))
+    };
     let mut z = Fx::from_f64(start.re, start.im)?;
     for _ in 0..14 {
         let step = value(p, &z).div(&value(&derivative, &z))?;
@@ -766,30 +857,55 @@ pub(super) fn roots_in_field(
         return Vec::new();
     }
     if field.is_rational() {
-        let Some(rational): Option<Vec<Q>> = poly.iter().map(|c| field.as_rational(c)).collect() else { return Vec::new() };
-        return irreducible_factors(&rational).into_iter().filter(|(g, _)| g.len() == 2).map(|(g, _)| field.from_q(&-g[0].clone())).collect();
+        let Some(rational): Option<Vec<Q>> = poly.iter().map(|c| field.as_rational(c)).collect()
+        else {
+            return Vec::new();
+        };
+        return irreducible_factors(&rational)
+            .into_iter()
+            .filter(|(g, _)| g.len() == 2)
+            .map(|(g, _)| field.from_q(&-g[0].clone()))
+            .collect();
     }
     let d = field.degree();
     let to_fx = |q: &Q| Fx::real((q.numer() << BITS) / q.denom());
     // The embedding α ≈ alpha0.
     let modulus: Vec<Fx> = field.modulus.iter().map(to_fx).collect();
-    let Some(alpha0) = field.embeddings().first().copied().and_then(|a| refine_root(&modulus, a)) else { return Vec::new() };
+    let Some(alpha0) = field
+        .embeddings()
+        .first()
+        .copied()
+        .and_then(|a| refine_root(&modulus, a))
+    else {
+        return Vec::new();
+    };
     let mut powers = vec![Fx::integer(&BigInt::one())];
     for _ in 1..d {
         let next = powers.last().map_or_else(Fx::zero, |l| l.mul(&alpha0));
         powers.push(next);
     }
-    let evaluate = |e: &[Q]| -> Fx { e.iter().zip(&powers).fold(Fx::zero(), |acc, (c, p)| acc.add(&p.mul(&to_fx(c)))) };
+    let evaluate = |e: &[Q]| -> Fx {
+        e.iter()
+            .zip(&powers)
+            .fold(Fx::zero(), |acc, (c, p)| acc.add(&p.mul(&to_fx(c))))
+    };
     let numeric: Vec<Fx> = poly.iter().map(|e| evaluate(e)).collect();
     let as_complex = |z: &Fx| -> Option<Complex64> {
-        let scale = |v: &BigInt| num_traits::ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()));
+        let scale = |v: &BigInt| {
+            num_traits::ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()))
+        };
         Some(Complex64::new(scale(&z.re)?, scale(&z.im)?))
     };
-    let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect() else { return Vec::new() };
+    let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect()
+    else {
+        return Vec::new();
+    };
     let mut found: Vec<Elt> = Vec::new();
     let shift = BITS - 250;
     for start in super::resum::complex_roots(&coefficients) {
-        let Some(root) = refine_root(&numeric, start) else { continue };
+        let Some(root) = refine_root(&numeric, start) else {
+            continue;
+        };
         // Rows: unit vectors with (Re, Im) of α^i, and of the root.
         let mut rows: Vec<Vec<BigInt>> = Vec::new();
         for (i, p) in powers.iter().chain(std::iter::once(&root)).enumerate() {
@@ -801,21 +917,34 @@ pub(super) fn roots_in_field(
             row.push(p.im.clone() >> shift);
             rows.push(row);
         }
-        let Some(reduced) = crate::rules::poly::galois::lll(rows) else { continue };
+        let Some(reduced) = crate::rules::poly::galois::lll(rows) else {
+            continue;
+        };
         let tolerance = BigInt::one() << 60;
         let Some(relation) = reduced.into_iter().find(|r| {
-            r.get(d).is_some_and(|c| !c.is_zero()) && r.get(d + 1).is_some_and(|v| v.abs() < tolerance) && r.get(d + 2).is_some_and(|v| v.abs() < tolerance)
+            r.get(d).is_some_and(|c| !c.is_zero())
+                && r.get(d + 1).is_some_and(|v| v.abs() < tolerance)
+                && r.get(d + 2).is_some_and(|v| v.abs() < tolerance)
         }) else {
             continue;
         };
-        let Some(denominator) = relation.get(d).cloned() else { continue };
+        let Some(denominator) = relation.get(d).cloned() else {
+            continue;
+        };
         let element: Elt = trim(
             (0..d)
-                .map(|i| Q::new(-relation.get(i).cloned().unwrap_or_default(), denominator.clone()))
+                .map(|i| {
+                    Q::new(
+                        -relation.get(i).cloned().unwrap_or_default(),
+                        denominator.clone(),
+                    )
+                })
                 .collect(),
         );
         // Exact check.
-        let value = poly.iter().rev().fold(Vec::new(), |acc, c| field.add(&field.mul(&acc, &element), c));
+        let value = poly.iter().rev().fold(Vec::new(), |acc, c| {
+            field.add(&field.mul(&acc, &element), c)
+        });
         if value.is_empty() && !found.contains(&element) {
             found.push(element);
         }
@@ -841,7 +970,9 @@ fn map_element(
     element: &[Q],
     h: &[Q],
 ) -> Elt {
-    element.iter().rev().fold(Vec::new(), |acc, c| target.add(&target.mul(&acc, h), &target.from_q(c)))
+    element.iter().rev().fold(Vec::new(), |acc, c| {
+        target.add(&target.mul(&acc, h), &target.from_q(c))
+    })
 }
 
 /// Roots of `poly` (over `K = Q(α)`, `K` not rational) that lie in extensions of `K`
@@ -862,21 +993,36 @@ pub(super) fn tower_roots(
     }
     let to_fx = |q: &Q| Fx::real((q.numer() << BITS) / q.denom());
     let modulus: Vec<Fx> = field.modulus.iter().map(to_fx).collect();
-    let Some(alphas): Option<Vec<Fx>> = field.embeddings().into_iter().map(|a| refine_root(&modulus, a)).collect() else {
+    let Some(alphas): Option<Vec<Fx>> = field
+        .embeddings()
+        .into_iter()
+        .map(|a| refine_root(&modulus, a))
+        .collect()
+    else {
         return Vec::new();
     };
-    let value_at = |e: &[Q], alpha: &Fx| -> Fx { e.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(alpha).add(&to_fx(c))) };
+    let value_at = |e: &[Q], alpha: &Fx| -> Fx {
+        e.iter()
+            .rev()
+            .fold(Fx::zero(), |acc, c| acc.mul(alpha).add(&to_fx(c)))
+    };
     let as_complex = |z: &Fx| -> Option<Complex64> {
-        let scale = |v: &BigInt| ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()));
+        let scale =
+            |v: &BigInt| ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()));
         Some(Complex64::new(scale(&z.re)?, scale(&z.im)?))
     };
     // All roots β of σ(poly) for every embedding σ: (σ index, β).
     let mut betas: Vec<(usize, Fx)> = Vec::new();
     for (index, alpha) in alphas.iter().enumerate() {
         let numeric: Vec<Fx> = poly.iter().map(|e| value_at(e, alpha)).collect();
-        let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect() else { return Vec::new() };
+        let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect()
+        else {
+            return Vec::new();
+        };
         for start in super::resum::complex_roots(&coefficients) {
-            let Some(root) = refine_root(&numeric, start) else { return Vec::new() };
+            let Some(root) = refine_root(&numeric, start) else {
+                return Vec::new();
+            };
             betas.push((index, root));
         }
     }
@@ -887,9 +1033,16 @@ pub(super) fn tower_roots(
     for k in 0..8_i64 {
         let thetas: Vec<Fx> = betas
             .iter()
-            .filter_map(|(i, b)| alphas.get(*i).map(|a| b.add(&a.mul(&Fx::integer(&BigInt::from(k))))))
+            .filter_map(|(i, b)| {
+                alphas
+                    .get(*i)
+                    .map(|a| b.add(&a.mul(&Fx::integer(&BigInt::from(k)))))
+            })
             .collect();
-        let distinct = thetas.iter().enumerate().all(|(i, a)| thetas.iter().skip(i + 1).all(|b| !a.close(b, 80)));
+        let distinct = thetas
+            .iter()
+            .enumerate()
+            .all(|(i, a)| thetas.iter().skip(i + 1).all(|b| !a.close(b, 80)));
         let _ = &gap;
         if !distinct {
             continue;
@@ -908,11 +1061,17 @@ pub(super) fn tower_roots(
             }
             norm = next;
         }
-        let Some(rational): Option<Vec<Q>> = norm.iter().map(crate::rules::poly::galois_high::rationalize).collect() else {
+        let Some(rational): Option<Vec<Q>> = norm
+            .iter()
+            .map(crate::rules::poly::galois_high::rationalize)
+            .collect()
+        else {
             continue;
         };
         let (_, factors) = univariate::factor(&rational);
-        let Some(alpha0) = alphas.first() else { return Vec::new() };
+        let Some(alpha0) = alphas.first() else {
+            return Vec::new();
+        };
         let mut out: Vec<Extension> = Vec::new();
         for (index, beta) in &betas {
             if *index != 0 {
@@ -928,7 +1087,10 @@ pub(super) fn tower_roots(
                     continue;
                 }
                 let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
-                let monic: Vec<Q> = f.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect();
+                let monic: Vec<Q> = f
+                    .iter()
+                    .map(|c| Q::from_integer(c.clone()) / &lead)
+                    .collect();
                 if out.iter().any(|e| e.field.modulus == monic) {
                     continue;
                 }
@@ -960,19 +1122,36 @@ pub(super) fn tower_roots(
                             && r.get(n + 2).is_some_and(|v| v.abs() < tolerance)
                     })?;
                     let denominator = relation.get(n).cloned()?;
-                    Some(trim((0..n).map(|i| Q::new(-relation.get(i).cloned().unwrap_or_default(), denominator.clone())).collect()))
+                    Some(trim(
+                        (0..n)
+                            .map(|i| {
+                                Q::new(
+                                    -relation.get(i).cloned().unwrap_or_default(),
+                                    denominator.clone(),
+                                )
+                            })
+                            .collect(),
+                    ))
                 };
-                let (Some(h), Some(beta_element)) = (recognise(alpha0), recognise(beta)) else { continue };
+                let (Some(h), Some(beta_element)) = (recognise(alpha0), recognise(beta)) else {
+                    continue;
+                };
                 // Exact checks: m(h) = 0 and poly(β) = 0 in K'.
                 if !map_element(&target, &field.modulus, &h).is_empty() {
                     continue;
                 }
                 let mapped: Vec<Elt> = poly.iter().map(|e| map_element(&target, e, &h)).collect();
-                let value = mapped.iter().rev().fold(Vec::new(), |acc, c| target.add(&target.mul(&acc, &beta_element), c));
+                let value = mapped.iter().rev().fold(Vec::new(), |acc, c| {
+                    target.add(&target.mul(&acc, &beta_element), c)
+                });
                 if !value.is_empty() {
                     continue;
                 }
-                out.push(Extension { field: target, root: beta_element, alpha: h });
+                out.push(Extension {
+                    field: target,
+                    root: beta_element,
+                    alpha: h,
+                });
             }
         }
         return out;
@@ -989,11 +1168,22 @@ fn descend(
     s: i64,
     kappa: &[Q],
 ) {
-    let embedded = if field.is_rational() { op.clone() } else { op.embed(field) };
+    let embedded = if field.is_rational() {
+        op.clone()
+    } else {
+        op.embed(field)
+    };
     let conjugated = embedded.conjugate(field, kappa, s);
     let mut extended = exponent.to_vec();
     extended.push((s, kappa.to_vec()));
-    expand(search, field, &conjugated, ramification, &extended, &Selection::Below(q(s)));
+    expand(
+        search,
+        field,
+        &conjugated,
+        ramification,
+        &extended,
+        &Selection::Below(q(s)),
+    );
 }
 
 fn regular(
@@ -1005,7 +1195,9 @@ fn regular(
     ramification: usize,
     exponent: &[(i64, Elt)],
 ) {
-    let Some(indicial) = op.terms.get(&j0) else { return };
+    let Some(indicial) = op.terms.get(&j0) else {
+        return;
+    };
     let full: Vec<Elt> = indicial.iter().skip(skip).cloned().collect();
     // A factor θ^m: the root 0 with multiplicity m.
     let zeros = full.iter().take_while(|c| c.is_empty()).count();
@@ -1041,9 +1233,18 @@ fn regular(
     }
     for extension in towers {
         let mapped = op.map_field(field, &extension.field, &extension.alpha);
-        let mapped_exponent: Vec<(i64, Elt)> =
-            exponent.iter().map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha))).collect();
-        if let Some((coefficients, log_terms)) = log_series(&extension.field, &mapped, j0, &extension.root, 0, search.terms) {
+        let mapped_exponent: Vec<(i64, Elt)> = exponent
+            .iter()
+            .map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha)))
+            .collect();
+        if let Some((coefficients, log_terms)) = log_series(
+            &extension.field,
+            &mapped,
+            j0,
+            &extension.root,
+            0,
+            search.terms,
+        ) {
             search.out.push(FormalSolution {
                 field: extension.field.clone(),
                 ramification,
@@ -1055,9 +1256,15 @@ fn regular(
         }
     }
     for (f, rho, multiplicity) in roots {
-        let embedded = if f == *field { op.clone() } else { op.embed(&f) };
+        let embedded = if f == *field {
+            op.clone()
+        } else {
+            op.embed(&f)
+        };
         for l0 in 0..multiplicity {
-            if let Some((coefficients, log_terms)) = log_series(&f, &embedded, j0, &rho, l0, search.terms) {
+            if let Some((coefficients, log_terms)) =
+                log_series(&f, &embedded, j0, &rho, l0, search.terms)
+            {
                 search.out.push(FormalSolution {
                     field: f.clone(),
                     ramification,
@@ -1167,10 +1374,23 @@ fn log_series(
         }
         c.push(ck);
     }
-    let coefficients: Vec<Elt> = c.iter().map(|ck| ck.first().cloned().unwrap_or_default()).collect();
-    let log_terms: Vec<Vec<Elt>> = c.iter().map(|ck| ck.iter().skip(1).cloned().collect()).collect();
+    let coefficients: Vec<Elt> = c
+        .iter()
+        .map(|ck| ck.first().cloned().unwrap_or_default())
+        .collect();
+    let log_terms: Vec<Vec<Elt>> = c
+        .iter()
+        .map(|ck| ck.iter().skip(1).cloned().collect())
+        .collect();
     let any_log = log_terms.iter().any(|l| l.iter().any(|e| !e.is_empty()));
-    Some((coefficients, if any_log { log_terms } else { Vec::new() }))
+    Some((
+        coefficients,
+        if any_log {
+            log_terms
+        } else {
+            Vec::new()
+        },
+    ))
 }
 
 // ---------------------------------------------------------------------
@@ -1221,7 +1441,8 @@ impl FormalSolution {
         let v = (t.ln() / r).exp();
         let mut exponent_sum = Complex64::new(0.0, 0.0);
         for (s, kappa) in &self.exponent {
-            exponent_sum += self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
+            exponent_sum +=
+                self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
         }
         let rho = self.field.numeric(&self.rho, alpha);
         let coefficients = self.numeric_coefficients(alpha, v);
@@ -1235,7 +1456,9 @@ impl FormalSolution {
     /// Whether the series has logarithmic terms.
     #[must_use]
     pub fn has_logarithms(&self) -> bool {
-        self.log_terms.iter().any(|l| l.iter().any(|e| !e.is_empty()))
+        self.log_terms
+            .iter()
+            .any(|l| l.iter().any(|e| !e.is_empty()))
     }
 
     /// The coefficients `c_k` as complex numbers, the logarithmic parts
@@ -1253,7 +1476,13 @@ impl FormalSolution {
                 let mut value = self.field.numeric(c, alpha);
                 let mut power = Complex64::new(1.0, 0.0);
                 let mut factorial = 1.0_f64;
-                for (i, lc) in self.log_terms.get(k).map_or(&[][..], Vec::as_slice).iter().enumerate() {
+                for (i, lc) in self
+                    .log_terms
+                    .get(k)
+                    .map_or(&[][..], Vec::as_slice)
+                    .iter()
+                    .enumerate()
+                {
                     power *= log;
                     factorial *= (i + 1) as f64;
                     value += self.field.numeric(lc, alpha) * power / factorial;
@@ -1275,13 +1504,18 @@ impl FormalSolution {
         let v = (t.ln() / r).exp();
         let mut exponent_sum = Complex64::new(0.0, 0.0);
         for (s, kappa) in &self.exponent {
-            exponent_sum += self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
+            exponent_sum +=
+                self.field.numeric(kappa, alpha) * v.powi(-i32::try_from(*s).unwrap_or(0));
         }
         let rho = self.field.numeric(&self.rho, alpha);
         let coefficients = self.numeric_coefficients(alpha, v);
         let sum = super::resum::borel_pade(&coefficients, v)?;
         let prefactor = exponent_sum.exp() * (rho * v.ln()).exp();
-        Some((prefactor * sum.value, prefactor.norm() * sum.error, sum.stokes))
+        Some((
+            prefactor * sum.value,
+            prefactor.norm() * sum.error,
+            sum.stokes,
+        ))
     }
 }
 
@@ -1304,28 +1538,51 @@ mod tests {
         assert_eq!(solutions.len(), 2, "{solutions:?}");
         for s in &solutions {
             assert_eq!(s.ramification, 2);
-            let [(power, kappa)] = s.exponent.as_slice() else { panic!("{s:?}") };
+            let [(power, kappa)] = s.exponent.as_slice() else {
+                panic!("{s:?}")
+            };
             assert_eq!(*power, 3);
-            assert_eq!(rational(kappa).abs(), Q::new(BigInt::from(2), BigInt::from(3)));
+            assert_eq!(
+                rational(kappa).abs(),
+                Q::new(BigInt::from(2), BigInt::from(3))
+            );
             // v^(1/2): t^(1/4) = x^(-1/4).
             assert_eq!(rational(&s.rho), Q::new(BigInt::one(), BigInt::from(2)));
         }
         // The decaying solution has Ai's coefficients: c_3 = -5/48 c_0 (ζ = (2/3) x^(3/2)).
-        let decaying = solutions.iter().find(|s| rational(&s.exponent[0].1).is_negative()).expect("decaying");
+        let decaying = solutions
+            .iter()
+            .find(|s| rational(&s.exponent[0].1).is_negative())
+            .expect("decaying");
         assert_eq!(rational(&decaying.coefficients[1]), Q::zero());
-        assert_eq!(rational(&decaying.coefficients[3]), Q::new(BigInt::from(-5), BigInt::from(48)));
+        assert_eq!(
+            rational(&decaying.coefficients[3]),
+            Q::new(BigInt::from(-5), BigInt::from(48))
+        );
         // Optimal truncation reproduces Ai up to the normalisation 1/(2 sqrt(pi)):
         // Ai(5) = 1.0834e-4.
-        let (value, error) = decaying.evaluate(Complex64::new(0.0, 0.0), Complex64::new(1.0 / 5.0, 0.0));
+        let (value, error) =
+            decaying.evaluate(Complex64::new(0.0, 0.0), Complex64::new(1.0 / 5.0, 0.0));
         let ai = value.re / (2.0 * std::f64::consts::PI.sqrt());
-        assert!((ai - 1.083_444_3e-4).abs() < 1e-8, "{ai} (error estimate {error})");
+        assert!(
+            (ai - 1.083_444_3e-4).abs() < 1e-8,
+            "{ai} (error estimate {error})"
+        );
     }
 
     #[test]
     fn bessel_has_complex_exponents() {
         // x^2 y'' + x y' + (x^2 - 1/4) y = 0: exp(±i x) x^(-1/2) (1 + ...).
         let solutions = formal_solutions(
-            &[vec![Q::new(BigInt::from(-1), BigInt::from(4)), Q::zero(), Q::one()], vec![Q::zero(), Q::one()], vec![Q::zero(), Q::zero(), Q::one()]],
+            &[
+                vec![
+                    Q::new(BigInt::from(-1), BigInt::from(4)),
+                    Q::zero(),
+                    Q::one(),
+                ],
+                vec![Q::zero(), Q::one()],
+                vec![Q::zero(), Q::zero(), Q::one()],
+            ],
             &Point::Infinity,
             8,
         );
@@ -1337,7 +1594,11 @@ mod tests {
             assert_eq!(rational(&s.rho), Q::new(BigInt::one(), BigInt::from(2)));
         }
         // For nu = 1/2: J = sin(x)/sqrt(x), so the series terminates (c_k = 0 for k >= 1).
-        assert!(solutions[0].coefficients.iter().skip(1).all(Vec::is_empty), "{:?}", solutions[0].coefficients);
+        assert!(
+            solutions[0].coefficients.iter().skip(1).all(Vec::is_empty),
+            "{:?}",
+            solutions[0].coefficients
+        );
     }
 
     #[test]
@@ -1349,7 +1610,12 @@ mod tests {
         let operator = vec![qs(&[0, 4]), qs(&[]), qs(&[1, -4]), qs(&[]), qs(&[0, 1])];
         let solutions = formal_solutions(&operator, &Point::Infinity, 4);
         eprintln!("{solutions:?}");
-        assert!(solutions.iter().any(|s| s.field.degree() == 4 && s.ramification == 2), "{solutions:?}");
+        assert!(
+            solutions
+                .iter()
+                .any(|s| s.field.degree() == 4 && s.ramification == 2),
+            "{solutions:?}"
+        );
     }
 
     #[test]
@@ -1368,7 +1634,11 @@ mod tests {
     fn irregular_point_of_rank_two_with_subleading_terms() {
         // x^4 y'' = y at 0: y = exp(±1/x)... with sub-leading exponent terms for
         // x^3 y'' + ... : here y'' = y / x^4 has exp(±1/x) x (1 + ...).
-        let solutions = formal_solutions(&[qs(&[-1]), qs(&[]), qs(&[0, 0, 0, 0, 1])], &Point::Finite(qs(&[0, 1])), 6);
+        let solutions = formal_solutions(
+            &[qs(&[-1]), qs(&[]), qs(&[0, 0, 0, 0, 1])],
+            &Point::Finite(qs(&[0, 1])),
+            6,
+        );
         assert_eq!(solutions.len(), 2, "{solutions:?}");
         for s in &solutions {
             assert_eq!(s.exponent.len(), 1);
@@ -1381,9 +1651,18 @@ mod tests {
     #[test]
     fn regular_point_at_an_algebraic_singularity() {
         // (x^2 - 2) y'' + x y' = 0 has y' ∝ (x^2-2)^(-1/2): exponents 0 and 1/2 at sqrt(2).
-        let solutions = formal_solutions(&[qs(&[]), qs(&[0, 1]), qs(&[-2, 0, 1])], &Point::Finite(qs(&[-2, 0, 1])), 6);
+        let solutions = formal_solutions(
+            &[qs(&[]), qs(&[0, 1]), qs(&[-2, 0, 1])],
+            &Point::Finite(qs(&[-2, 0, 1])),
+            6,
+        );
         let half = Some(Q::new(BigInt::one(), BigInt::from(2)));
-        assert!(solutions.iter().any(|s| s.field.as_rational(&s.rho) == half), "{solutions:?}");
+        assert!(
+            solutions
+                .iter()
+                .any(|s| s.field.as_rational(&s.rho) == half),
+            "{solutions:?}"
+        );
     }
 
     #[test]
@@ -1393,27 +1672,59 @@ mod tests {
         let solutions = formal_solutions(&op, &Point::Finite(qs(&[0, 1])), 8);
         assert_eq!(solutions.len(), 2, "{solutions:?}");
         let plain = solutions.iter().find(|s| !s.has_logarithms()).expect("J0");
-        assert_eq!(rational(&plain.coefficients[2]), Q::new(BigInt::from(-1), BigInt::from(4)));
-        assert_eq!(rational(&plain.coefficients[4]), Q::new(BigInt::one(), BigInt::from(64)));
+        assert_eq!(
+            rational(&plain.coefficients[2]),
+            Q::new(BigInt::from(-1), BigInt::from(4))
+        );
+        assert_eq!(
+            rational(&plain.coefficients[4]),
+            Q::new(BigInt::one(), BigInt::from(64))
+        );
         // y2 = J0 ln x + x^2/4 - 3 x^4/128 + ...
-        let logged = solutions.iter().find(|s| s.has_logarithms()).expect("log solution");
+        let logged = solutions
+            .iter()
+            .find(|s| s.has_logarithms())
+            .expect("log solution");
         assert_eq!(rational(&logged.log_terms[0][0]), Q::one());
-        assert_eq!(rational(&logged.log_terms[2][0]), Q::new(BigInt::from(-1), BigInt::from(4)));
-        assert_eq!(rational(&logged.coefficients[2]), Q::new(BigInt::one(), BigInt::from(4)));
-        assert_eq!(rational(&logged.coefficients[4]), Q::new(BigInt::from(-3), BigInt::from(128)));
+        assert_eq!(
+            rational(&logged.log_terms[2][0]),
+            Q::new(BigInt::from(-1), BigInt::from(4))
+        );
+        assert_eq!(
+            rational(&logged.coefficients[2]),
+            Q::new(BigInt::one(), BigInt::from(4))
+        );
+        assert_eq!(
+            rational(&logged.coefficients[4]),
+            Q::new(BigInt::from(-3), BigInt::from(128))
+        );
         // x y'' + y = 0: exponents 0 and 1 differ by an integer, the lower solution has a logarithm
         // 1 - x ln x + ...
-        let solutions = formal_solutions(&[qs(&[1]), qs(&[]), qs(&[0, 1])], &Point::Finite(qs(&[0, 1])), 6);
+        let solutions = formal_solutions(
+            &[qs(&[1]), qs(&[]), qs(&[0, 1])],
+            &Point::Finite(qs(&[0, 1])),
+            6,
+        );
         assert_eq!(solutions.len(), 2, "{solutions:?}");
-        let upper = solutions.iter().find(|s| rational(&s.rho) == q(1)).expect("rho = 1");
+        let upper = solutions
+            .iter()
+            .find(|s| rational(&s.rho) == q(1))
+            .expect("rho = 1");
         assert!(!upper.has_logarithms());
-        assert_eq!(rational(&upper.coefficients[1]), Q::new(BigInt::from(-1), BigInt::from(2)));
-        let lower = solutions.iter().find(|s| s.rho.is_empty()).expect("rho = 0");
+        assert_eq!(
+            rational(&upper.coefficients[1]),
+            Q::new(BigInt::from(-1), BigInt::from(2))
+        );
+        let lower = solutions
+            .iter()
+            .find(|s| s.rho.is_empty())
+            .expect("rho = 0");
         assert_eq!(rational(&lower.log_terms[1][0]), q(-1));
         // Numerically: the log solution of Bessel at x = 0.5 against y2 = J0(x) ln x + (x^2/4 - 3 x^4/128 + ...).
         let (value, _) = logged.evaluate(Complex64::new(0.0, 0.0), Complex64::new(0.5, 0.0));
         let j0 = 0.938_469_807_240_813;
-        let expected = j0 * 0.5_f64.ln() + 0.0625 - 3.0 * 0.5_f64.powi(4) / 128.0 + 11.0 * 0.5_f64.powi(6) / 13824.0;
+        let expected = j0 * 0.5_f64.ln() + 0.0625 - 3.0 * 0.5_f64.powi(4) / 128.0
+            + 11.0 * 0.5_f64.powi(6) / 13824.0;
         assert!((value.re - expected).abs() < 2e-5, "{value} vs {expected}");
     }
 
@@ -1425,7 +1736,10 @@ mod tests {
         roots.sort();
         assert_eq!(roots, vec![qs(&[0, -1]), qs(&[0, 1])]);
         // k^2 - 3 has no root there.
-        assert!(roots_in_field(&field, &[qs(&[-3]), Vec::new(), qs(&[1])]).is_empty());
+        assert!(
+            roots_in_field(&field, &[qs(&[-3]), Vec::new(), qs(&[1])]).is_empty(),
+            "not empty"
+        );
         // (k - 1 - alpha)(k + alpha) = k^2 - k - 2 - alpha.
         let mut roots = roots_in_field(&field, &[qs(&[-2, -1]), qs(&[-1]), qs(&[1])]);
         roots.sort();

@@ -69,6 +69,7 @@ pub mod arith;
 pub mod calculus;
 pub mod combinatorics;
 pub mod complex;
+pub mod cse;
 pub mod discrete;
 pub mod elementary;
 pub mod functional;
@@ -84,24 +85,24 @@ pub mod optimize;
 pub mod pde;
 pub mod physics;
 pub mod physics_quantum;
-pub mod cse;
 pub mod poly;
 pub mod radicals;
 pub mod rewriting;
 pub mod solve;
 pub mod special;
 pub mod stats;
+#[cfg(test)]
+pub(crate) mod testing;
 pub mod transforms;
 pub mod units;
 pub mod variational;
 pub mod verify;
-#[cfg(test)]
-pub(crate) mod testing;
 
 pub use arith::arith;
 pub use calculus::calculus;
 pub use combinatorics::combinatorics;
 pub use complex::complex;
+pub use cse::cse;
 pub use discrete::discrete;
 pub use elementary::elementary;
 pub use functional::functional;
@@ -117,7 +118,6 @@ pub use optimize::optimize;
 pub use pde::pde;
 pub use physics::physics;
 pub use physics_quantum::physics_quantum;
-pub use cse::cse;
 pub use poly::poly;
 pub use radicals::radicals;
 pub use rewriting::rewriting;
@@ -134,15 +134,49 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), physics_quantum(), optimize(), verify(), discrete(), rewriting(), lie(), lie_structure(), geometric_algebra(), units(), radicals(), cse()]
+    vec![
+        arith(),
+        elementary(),
+        calculus(),
+        poly(),
+        solve(),
+        ode(),
+        linalg(),
+        geometry(),
+        complex(),
+        number_theory(),
+        combinatorics(),
+        logic(),
+        special(),
+        stats(),
+        transforms(),
+        variational(),
+        pde(),
+        functional(),
+        physics(),
+        physics_quantum(),
+        optimize(),
+        verify(),
+        discrete(),
+        rewriting(),
+        lie(),
+        lie_structure(),
+        geometric_algebra(),
+        units(),
+        radicals(),
+        cse(),
+    ]
 }
+
+#[cfg(test)]
+mod par_tests;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::soundness::check_program;
     use crate::graph::Engine;
     use crate::graph::Graph;
+    use crate::graph::soundness::check_program;
 
     /// Every declarative rule shipped with rssn is tested against random
     /// numeric samples. Adding a rule to any standard set puts it under
@@ -151,7 +185,8 @@ mod tests {
     fn no_standard_rewrite_is_refuted() {
         let mut graph = Graph::new();
         let engine = Engine::install(&mut graph, &standard()).unwrap_or_else(|e| panic!("{e}"));
-        let verdicts = check_program(&graph, engine.program(), 60).unwrap_or_else(|e| panic!("{e}"));
+        let verdicts =
+            check_program(&graph, engine.program(), 60).unwrap_or_else(|e| panic!("{e}"));
         // Rules about requests (derivatives, integrals) have no numeric
         // value to compare; they are covered by the dual-phase tests of
         // their rule sets and listed here explicitly so that the list
@@ -162,6 +197,9 @@ mod tests {
             .filter(|(name, v)| v.agreed == 0 && !exempt.contains(&name.as_str()))
             .map(|(name, _)| name.as_str())
             .collect();
-        assert!(untested.is_empty(), "rules that were never actually tested: {untested:?}");
+        assert!(
+            untested.is_empty(),
+            "rules that were never actually tested: {untested:?}"
+        );
     }
 }

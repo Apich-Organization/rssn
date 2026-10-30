@@ -1,14 +1,21 @@
 //! Gradient-based optimisation drivers built on `argmin` (ported from
 //! `numerical_optimize_test.rs`).
 
-use argmin::core::{CostFunction, Gradient, State};
-use ndarray::{Array1, Array2};
+use argmin::core::CostFunction;
+use argmin::core::Gradient;
+use argmin::core::State;
+use ndarray::Array1;
+use ndarray::Array2;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::optimize::{
-    EquationOptimizer, LinearRegression, OptimizationConfig, ProblemType, Rastrigin,
-    ResultAnalyzer, Rosenbrock, Sphere,
-};
+use rssn::kernels::optimize::EquationOptimizer;
+use rssn::kernels::optimize::LinearRegression;
+use rssn::kernels::optimize::OptimizationConfig;
+use rssn::kernels::optimize::ProblemType;
+use rssn::kernels::optimize::Rastrigin;
+use rssn::kernels::optimize::ResultAnalyzer;
+use rssn::kernels::optimize::Rosenbrock;
+use rssn::kernels::optimize::Sphere;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -254,8 +261,7 @@ fn auto_solve_conjugate_gradient_improves_rosenbrock() {
     let initial = Rosenbrock::default()
         .cost(&start)
         .unwrap_or_else(|e| panic!("{e}"));
-    let res =
-        EquationOptimizer::auto_solve_conjugate_gradient(Rosenbrock::default(), start, &cfg)
-            .unwrap_or_else(|e| panic!("{e}"));
+    let res = EquationOptimizer::auto_solve_conjugate_gradient(Rosenbrock::default(), start, &cfg)
+        .unwrap_or_else(|e| panic!("{e}"));
     assert!(res.state.get_best_cost() < initial);
 }

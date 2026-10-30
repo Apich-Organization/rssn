@@ -29,8 +29,6 @@ use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -44,15 +42,17 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::matrix::FaerDecompositionResult;
 use crate::kernels::matrix::FaerDecompositionType;
 use crate::kernels::matrix::Matrix;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 use super::calculus::calculus;
 use super::calculus::derivative;
@@ -62,7 +62,9 @@ use super::solve::solve_for;
 /// The linear algebra rule set.
 #[must_use]
 pub fn linalg() -> RuleSet {
-    RuleSet::new("linalg", install).needs(calculus()).needs(solve())
+    RuleSet::new("linalg", install)
+        .needs(calculus())
+        .needs(solve())
 }
 
 /// Which operation a [`LinalgKernel`] performs.
@@ -145,13 +147,27 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("hessian", Arity::Fixed(2), Request::Hessian),
         ("directional", Arity::Fixed(3), Request::Directional),
         ("line_integral", Arity::Fixed(5), Request::LineIntegral),
-        ("line_integral_vec", Arity::Fixed(5), Request::LineIntegralVec),
-        ("surface_integral", Arity::Fixed(8), Request::SurfaceIntegral),
+        (
+            "line_integral_vec",
+            Arity::Fixed(5),
+            Request::LineIntegralVec,
+        ),
+        (
+            "surface_integral",
+            Arity::Fixed(8),
+            Request::SurfaceIntegral,
+        ),
         ("volume_integral", Arity::Fixed(3), Request::VolumeIntegral),
     ];
     for (name, arity, request) in table {
-        let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("linalg/{name}"), Tier::Reduce, LinalgKernel { op, request });
+        let op = i.op(OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("linalg/{name}"),
+            Tier::Reduce,
+            LinalgKernel { op, request },
+        );
     }
     i.kernel("linalg/broadcast", Tier::Normalize, Broadcast);
     ext::install(i)?;
@@ -169,7 +185,9 @@ impl Broadcast {
         graph: &Graph,
         node: NodeId,
     ) -> Option<NodeId> {
-        graph.enodes(graph.find(node)).find(|&n| graph.op(n) == core::LIST)
+        graph
+            .enodes(graph.find(node))
+            .find(|&n| graph.op(n) == core::LIST)
     }
 }
 
@@ -185,7 +203,8 @@ impl Kernel for Broadcast {
     ) -> Outcome {
         let graph = &mut *cx.graph;
         let children = graph.children(node).to_vec();
-        let lists: Vec<Option<NodeId>> = children.iter().map(|&c| Self::as_list(graph, c)).collect();
+        let lists: Vec<Option<NodeId>> =
+            children.iter().map(|&c| Self::as_list(graph, c)).collect();
         if graph.op(node) == core::ADD {
             let Some(lists) = lists.into_iter().collect::<Option<Vec<NodeId>>>() else {
                 return Outcome::Pass;
@@ -202,11 +221,19 @@ impl Kernel for Broadcast {
                 .collect();
             return Outcome::Equal(list(graph, &items));
         }
-        let mut found = lists.iter().enumerate().filter_map(|(k, l)| l.map(|l| (k, l)));
+        let mut found = lists
+            .iter()
+            .enumerate()
+            .filter_map(|(k, l)| l.map(|l| (k, l)));
         let (Some((at, l)), None) = (found.next(), found.next()) else {
             return Outcome::Pass;
         };
-        let others: Vec<NodeId> = children.iter().enumerate().filter(|&(k, _)| k != at).map(|(_, &c)| c).collect();
+        let others: Vec<NodeId> = children
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != at)
+            .map(|(_, &c)| c)
+            .collect();
         let items: Vec<NodeId> = graph
             .children(l)
             .to_vec()
@@ -271,9 +298,10 @@ fn operand(
     node: NodeId,
 ) -> Option<Operand> {
     if let Some(m) = matrix(graph, node)
-        && !m.is_empty() {
-            return Some(Operand::Matrix(m));
-        }
+        && !m.is_empty()
+    {
+        return Some(Operand::Matrix(m));
+    }
     let items = vector(graph, node)?;
     let mut scalars = Vec::with_capacity(items.len());
     for item in items {
@@ -363,9 +391,10 @@ fn has_division(
         }
         if graph.op(n) == core::POW
             && let Some(e) = graph.children(n).get(1).and_then(|&e| graph.number_of(e))
-                && e.to_f64() < 0.0 {
-                    return true;
-                }
+            && e.to_f64() < 0.0
+        {
+            return true;
+        }
         stack.extend_from_slice(graph.children(n));
     }
     false
@@ -400,7 +429,11 @@ fn normal(
     match request(cx.graph, "cancel", &[simplified]) {
         | Some(cancel) => {
             let together = cx.simplify(cancel);
-            if cx.graph.op(together) == cx.graph.op(cancel) { simplified } else { together }
+            if cx.graph.op(together) == cx.graph.op(cancel) {
+                simplified
+            } else {
+                together
+            }
         },
         | None => simplified,
     }
@@ -568,7 +601,8 @@ fn rref<F: Field>(
         }
         let pivot = m[row][col].clone();
         factor = field.mul(&factor, &pivot);
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
             m[row][c] = field.div(&m[row][c], &pivot)?;
         }
@@ -577,7 +611,8 @@ fn rref<F: Field>(
                 continue;
             }
             let scale = m[r][col].clone();
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in 0..cols {
                 let delta = field.mul(&scale, &m[row][c]);
                 m[r][c] = field.sub(&m[r][c], &delta);
@@ -594,7 +629,13 @@ fn rational_matrix(
     graph: &Graph,
     m: &[Vec<NodeId>],
 ) -> Option<Vec<Vec<BigRational>>> {
-    m.iter().map(|row| row.iter().map(|&e| graph.number_of(e).and_then(Number::to_rational)).collect()).collect()
+    m.iter()
+        .map(|row| {
+            row.iter()
+                .map(|&e| graph.number_of(e).and_then(Number::to_rational))
+                .collect()
+        })
+        .collect()
 }
 
 fn rational_node(
@@ -612,11 +653,17 @@ fn reduce(
 ) -> Option<(Vec<Vec<NodeId>>, Vec<usize>, NodeId)> {
     if let Some(mut exact) = rational_matrix(cx.graph, m) {
         let (pivots, factor) = rref(&mut Rationals, &mut exact)?;
-        let reduced = exact.iter().map(|row| row.iter().map(|v| rational_node(cx.graph, v)).collect()).collect();
+        let reduced = exact
+            .iter()
+            .map(|row| row.iter().map(|v| rational_node(cx.graph, v)).collect())
+            .collect();
         let factor = rational_node(cx.graph, &factor);
         return Some((reduced, pivots, factor));
     }
-    let mut work: Vec<Vec<NodeId>> = m.iter().map(|row| row.iter().map(|&e| cx.simplify(e)).collect()).collect();
+    let mut work: Vec<Vec<NodeId>> = m
+        .iter()
+        .map(|row| row.iter().map(|&e| cx.simplify(e)).collect())
+        .collect();
     let mut field = Terms { cx };
     let (pivots, factor) = rref(&mut field, &mut work)?;
     Some((work, pivots, factor))
@@ -640,7 +687,11 @@ fn determinant(
         return Some(normal(cx, value));
     }
     let (_, pivots, factor) = reduce(cx, m)?;
-    Some(if pivots.len() == n { factor } else { cx.graph.int(0) })
+    Some(if pivots.len() == n {
+        factor
+    } else {
+        cx.graph.int(0)
+    })
 }
 
 /// The determinant by expansion along successive rows, memoising the minor
@@ -666,7 +717,11 @@ fn laplace(
             }
             let rest = minors[&(mask & !(1 << col))];
             let term = mul(graph, &[m[row][col], rest]);
-            terms.push(if sign_even { term } else { neg(graph, term) });
+            terms.push(if sign_even {
+                term
+            } else {
+                neg(graph, term)
+            });
             sign_even = !sign_even;
         }
         let value = add(graph, &terms);
@@ -697,7 +752,9 @@ fn identity_rows(
     n: usize,
 ) -> Vec<Vec<NodeId>> {
     let (zero, one) = (graph.int(0), graph.int(1));
-    (0..n).map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect()).collect()
+    (0..n)
+        .map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect())
+        .collect()
 }
 
 fn inverse(
@@ -718,16 +775,27 @@ fn inverse(
         let inverse_det = reciprocal(cx.graph, det);
         let mut out = vec![vec![cx.graph.int(0); n]; n];
         for (i, row) in m.iter().enumerate() {
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for j in 0..row.len() {
                 let minor: Vec<Vec<NodeId>> = m
                     .iter()
                     .enumerate()
                     .filter(|&(r, _)| r != i)
-                    .map(|(_, r)| r.iter().enumerate().filter(|&(c, _)| c != j).map(|(_, &e)| e).collect())
+                    .map(|(_, r)| {
+                        r.iter()
+                            .enumerate()
+                            .filter(|&(c, _)| c != j)
+                            .map(|(_, &e)| e)
+                            .collect()
+                    })
                     .collect();
                 let cofactor = laplace(cx.graph, &minor);
-                let cofactor = if (i + j) % 2 == 0 { cofactor } else { neg(cx.graph, cofactor) };
+                let cofactor = if (i + j) % 2 == 0 {
+                    cofactor
+                } else {
+                    neg(cx.graph, cofactor)
+                };
                 let entry = mul(cx.graph, &[cofactor, inverse_det]);
                 out[j][i] = normal(cx, entry);
             }
@@ -735,7 +803,11 @@ fn inverse(
         return Some(out);
     }
     let id = identity_rows(cx.graph, n);
-    let augmented: Vec<Vec<NodeId>> = m.iter().zip(&id).map(|(r, i)| r.iter().chain(i).copied().collect()).collect();
+    let augmented: Vec<Vec<NodeId>> = m
+        .iter()
+        .zip(&id)
+        .map(|(r, i)| r.iter().chain(i).copied().collect())
+        .collect();
     let (reduced, pivots, _) = reduce(cx, &augmented)?;
     if pivots.len() < n || pivots.iter().take(n).enumerate().any(|(k, &p)| p != k) {
         return None;
@@ -766,7 +838,9 @@ fn nullspace(
 
 fn transpose(m: &[Vec<NodeId>]) -> Vec<Vec<NodeId>> {
     let cols = m.first().map_or(0, Vec::len);
-    (0..cols).map(|c| m.iter().map(|row| row[c]).collect()).collect()
+    (0..cols)
+        .map(|c| m.iter().map(|row| row[c]).collect())
+        .collect()
 }
 
 fn matmul(
@@ -782,7 +856,8 @@ fn matmul(
     let mut out = Vec::with_capacity(a.len());
     for row in a {
         let mut new_row = Vec::with_capacity(cols);
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
             let terms: Vec<NodeId> = (0..inner).map(|k| mul(graph, &[row[k], b[k][c]])).collect();
             new_row.push(add(graph, &terms));
@@ -970,7 +1045,10 @@ fn lu(
     if m.iter().any(|r| r.len() != n) {
         return None;
     }
-    let mut u: Vec<Vec<NodeId>> = m.iter().map(|r| r.iter().map(|&e| cx.simplify(e)).collect()).collect();
+    let mut u: Vec<Vec<NodeId>> = m
+        .iter()
+        .map(|r| r.iter().map(|&e| cx.simplify(e)).collect())
+        .collect();
     let mut l = identity_rows(cx.graph, n);
     let mut perm: Vec<usize> = (0..n).collect();
     let mut field = Terms { cx };
@@ -979,7 +1057,8 @@ fn lu(
         if pivot_row != col {
             u.swap(pivot_row, col);
             perm.swap(pivot_row, col);
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in 0..col {
                 let (a, b) = (l[pivot_row][c], l[col][c]);
                 l[pivot_row][c] = b;
@@ -989,7 +1068,8 @@ fn lu(
         for r in col + 1..n {
             let factor = field.div(&u[r][col], &u[col][col])?;
             l[r][col] = factor;
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in col..n {
                 let delta = field.mul(&factor, &u[col][c]);
                 u[r][c] = field.sub(&u[r][c], &delta);
@@ -998,9 +1078,15 @@ fn lu(
     }
     let graph = &mut *field.cx.graph;
     let (zero, one) = (graph.int(0), graph.int(1));
-    let p: Vec<Vec<NodeId>> =
-        perm.iter().map(|&k| (0..n).map(|j| if j == k { one } else { zero }).collect()).collect();
-    let (p, l, u) = (matrix_term(graph, &p), matrix_term(graph, &l), matrix_term(graph, &u));
+    let p: Vec<Vec<NodeId>> = perm
+        .iter()
+        .map(|&k| (0..n).map(|j| if j == k { one } else { zero }).collect())
+        .collect();
+    let (p, l, u) = (
+        matrix_term(graph, &p),
+        matrix_term(graph, &l),
+        matrix_term(graph, &u),
+    );
     Some(list(graph, &[p, l, u]))
 }
 
@@ -1065,7 +1151,9 @@ fn symbolic_svd(
     let mut ata = vec![vec![NodeId::NONE; cols]; cols];
     for i in 0..cols {
         for j in 0..cols {
-            let terms: Vec<NodeId> = (0..rows).map(|k| cx.graph.node(core::MUL, &[m[k][i], m[k][j]])).collect();
+            let terms: Vec<NodeId> = (0..rows)
+                .map(|k| cx.graph.node(core::MUL, &[m[k][i], m[k][j]]))
+                .collect();
             let sum = cx.graph.node(core::ADD, &terms);
             ata[i][j] = cx.simplify(sum);
         }
@@ -1082,18 +1170,27 @@ fn symbolic_svd(
                 return None;
             }
             // Normalise.
-            let squares: Vec<NodeId> = comps.iter().map(|&c| {
-                let two = cx.graph.int(2);
-                cx.graph.node(core::POW, &[c, two])
-            }).collect();
+            let squares: Vec<NodeId> = comps
+                .iter()
+                .map(|&c| {
+                    let two = cx.graph.int(2);
+                    cx.graph.node(core::POW, &[c, two])
+                })
+                .collect();
             let norm2 = cx.graph.node(core::ADD, &squares);
             let half = cx.graph.num(Number::fraction(-1, 2)?);
             let inv_norm = cx.graph.node(core::POW, &[norm2, half]);
-            let unit: Vec<NodeId> = comps.iter().map(|&c| {
-                let p = cx.graph.node(core::MUL, &[c, inv_norm]);
-                cx.simplify(p)
-            }).collect();
-            let order = cx.graph.eval(value, &crate::graph::Env::numeric(0.0)).unwrap_or(0.0);
+            let unit: Vec<NodeId> = comps
+                .iter()
+                .map(|&c| {
+                    let p = cx.graph.node(core::MUL, &[c, inv_norm]);
+                    cx.simplify(p)
+                })
+                .collect();
+            let order = cx
+                .graph
+                .eval(value, &crate::graph::Env::numeric(0.0))
+                .unwrap_or(0.0);
             triples.push((order, value, unit));
         }
     }
@@ -1112,7 +1209,9 @@ fn symbolic_svd(
             let inv = cx.graph.node(core::POW, &[sigma, minus]);
             let column: Vec<NodeId> = (0..rows)
                 .map(|i| {
-                    let terms: Vec<NodeId> = (0..cols).map(|j| cx.graph.node(core::MUL, &[m[i][j], unit[j]])).collect();
+                    let terms: Vec<NodeId> = (0..cols)
+                        .map(|j| cx.graph.node(core::MUL, &[m[i][j], unit[j]]))
+                        .collect();
                     let sum = cx.graph.node(core::ADD, &terms);
                     let scaled = cx.graph.node(core::MUL, &[sum, inv]);
                     cx.simplify(scaled)
@@ -1123,7 +1222,9 @@ fn symbolic_svd(
     }
     let transpose = |cols: &[Vec<NodeId>]| -> Vec<Vec<NodeId>> {
         let n = cols.first().map_or(0, Vec::len);
-        (0..n).map(|i| cols.iter().map(|c| c[i]).collect()).collect()
+        (0..n)
+            .map(|i| cols.iter().map(|c| c[i]).collect())
+            .collect()
     };
     let u = matrix_term(cx.graph, &transpose(&u_columns));
     let v = matrix_term(cx.graph, &transpose(&v_columns));
@@ -1144,12 +1245,18 @@ fn svd(
         }
     }
     let matrix = Matrix::new(rows, cols, data);
-    let FaerDecompositionResult::Svd { u, s, v } = matrix.decompose(FaerDecompositionType::Svd)? else {
+    let FaerDecompositionResult::Svd { u, s, v } = matrix.decompose(FaerDecompositionType::Svd)?
+    else {
         return None;
     };
     let to_term = |graph: &mut Graph, mat: &Matrix<f64>| {
-        let rows: Vec<Vec<NodeId>> =
-            (0..mat.rows()).map(|i| (0..mat.cols()).map(|j| graph.float(*mat.get(i, j))).collect()).collect();
+        let rows: Vec<Vec<NodeId>> = (0..mat.rows())
+            .map(|i| {
+                (0..mat.cols())
+                    .map(|j| graph.float(*mat.get(i, j)))
+                    .collect()
+            })
+            .collect();
         matrix_term(graph, &rows)
     };
     let (u, v) = (to_term(graph, &u), to_term(graph, &v));
@@ -1163,7 +1270,11 @@ fn dot(
     a: &[NodeId],
     b: &[NodeId],
 ) -> NodeId {
-    let terms: Vec<NodeId> = a.iter().zip(b).map(|(&x, &y)| mul(graph, &[x, y])).collect();
+    let terms: Vec<NodeId> = a
+        .iter()
+        .zip(b)
+        .map(|(&x, &y)| mul(graph, &[x, y]))
+        .collect();
     add(graph, &terms)
 }
 
@@ -1219,7 +1330,8 @@ impl Kernel for LinalgKernel {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -1255,7 +1367,11 @@ impl LinalgKernel {
                             v.into_iter().map(|e| vec![e]).collect()
                         },
                     };
-                    acc = if k == 0 { b } else { matmul(cx.graph, &acc, &b)? };
+                    acc = if k == 0 {
+                        b
+                    } else {
+                        matmul(cx.graph, &acc, &b)?
+                    };
                 }
                 normalise_entries(cx, &mut acc);
                 if flat && (acc.len() == 1 || acc.iter().all(|r| r.len() == 1)) {
@@ -1264,7 +1380,9 @@ impl LinalgKernel {
                 }
                 Some(matrix_term(cx.graph, &acc))
             },
-            | Request::Madd if operand(cx.graph, arg(0)?).is_some_and(|o| matches!(o, Operand::Vector(_))) => {
+            | Request::Madd
+                if operand(cx.graph, arg(0)?).is_some_and(|o| matches!(o, Operand::Vector(_))) =>
+            {
                 let mut acc = vector(cx.graph, arg(0)?)?;
                 for &next in args.get(1..)? {
                     let Operand::Vector(b) = operand(cx.graph, next)? else {
@@ -1281,7 +1399,9 @@ impl LinalgKernel {
                 normalise_entries(cx, &mut rows);
                 Some(list(cx.graph, &rows[0]))
             },
-            | Request::Smul if operand(cx.graph, arg(1)?).is_some_and(|o| matches!(o, Operand::Vector(_))) => {
+            | Request::Smul
+                if operand(cx.graph, arg(1)?).is_some_and(|o| matches!(o, Operand::Vector(_))) =>
+            {
                 let c = arg(0)?;
                 let v = vector(cx.graph, arg(1)?)?;
                 let scaled: Vec<NodeId> = v.iter().map(|&e| mul(cx.graph, &[c, e])).collect();
@@ -1291,7 +1411,8 @@ impl LinalgKernel {
                 let mut acc = matrix(cx.graph, arg(0)?)?;
                 for &next in args.get(1..)? {
                     let b = matrix(cx.graph, next)?;
-                    if b.len() != acc.len() || b.first().map(Vec::len) != acc.first().map(Vec::len) {
+                    if b.len() != acc.len() || b.first().map(Vec::len) != acc.first().map(Vec::len)
+                    {
                         return None;
                     }
                     for (row, other) in acc.iter_mut().zip(&b) {
@@ -1306,8 +1427,10 @@ impl LinalgKernel {
             | Request::Smul => {
                 let c = arg(0)?;
                 let m = matrix(cx.graph, arg(1)?)?;
-                let scaled: Vec<Vec<NodeId>> =
-                    m.iter().map(|row| row.iter().map(|&e| mul(cx.graph, &[c, e])).collect()).collect();
+                let scaled: Vec<Vec<NodeId>> = m
+                    .iter()
+                    .map(|row| row.iter().map(|&e| mul(cx.graph, &[c, e])).collect())
+                    .collect();
                 Some(matrix_term(cx.graph, &scaled))
             },
             | Request::Transpose => {
@@ -1315,12 +1438,18 @@ impl LinalgKernel {
                 Some(matrix_term(cx.graph, &transpose(&m)))
             },
             | Request::Identity => {
-                let n = usize::try_from(cx.graph.number_of(arg(0)?)?.to_i64()?).ok().filter(|&n| n <= 256)?;
+                let n = usize::try_from(cx.graph.number_of(arg(0)?)?.to_i64()?)
+                    .ok()
+                    .filter(|&n| n <= 256)?;
                 let rows = identity_rows(cx.graph, n);
                 Some(matrix_term(cx.graph, &rows))
             },
             | Request::Zeros => {
-                let size = |g: &Graph, n: NodeId| usize::try_from(g.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 256);
+                let size = |g: &Graph, n: NodeId| {
+                    usize::try_from(g.number_of(n)?.to_i64()?)
+                        .ok()
+                        .filter(|&n| n <= 256)
+                };
                 let (r, c) = (size(cx.graph, arg(0)?)?, size(cx.graph, arg(1)?)?);
                 let zero = cx.graph.int(0);
                 Some(matrix_term(cx.graph, &vec![vec![zero; c]; r]))
@@ -1328,7 +1457,9 @@ impl LinalgKernel {
             | Request::Dims => {
                 let m = matrix(cx.graph, arg(0)?)?;
                 let rows = cx.graph.int(i64::try_from(m.len()).ok()?);
-                let cols = cx.graph.int(i64::try_from(m.first().map_or(0, Vec::len)).ok()?);
+                let cols = cx
+                    .graph
+                    .int(i64::try_from(m.first().map_or(0, Vec::len)).ok()?);
                 Some(list(cx.graph, &[rows, cols]))
             },
             | Request::Det => {
@@ -1371,8 +1502,11 @@ impl LinalgKernel {
                     return None;
                 }
                 let cols = a.first().map_or(0, Vec::len);
-                let augmented: Vec<Vec<NodeId>> =
-                    a.iter().zip(&b).map(|(row, &bi)| row.iter().copied().chain([bi]).collect()).collect();
+                let augmented: Vec<Vec<NodeId>> = a
+                    .iter()
+                    .zip(&b)
+                    .map(|(row, &bi)| row.iter().copied().chain([bi]).collect())
+                    .collect();
                 let (reduced, pivots, _) = reduce(cx, &augmented)?;
                 if pivots.contains(&cols) {
                     // A pivot in the right-hand column: inconsistent.
@@ -1483,8 +1617,10 @@ impl LinalgKernel {
             },
             | Request::Outer => {
                 let (a, b) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
-                let rows: Vec<Vec<NodeId>> =
-                    a.iter().map(|&x| b.iter().map(|&y| mul(cx.graph, &[x, y])).collect()).collect();
+                let rows: Vec<Vec<NodeId>> = a
+                    .iter()
+                    .map(|&x| b.iter().map(|&y| mul(cx.graph, &[x, y])).collect())
+                    .collect();
                 Some(matrix_term(cx.graph, &rows))
             },
             | Request::Grad => {
@@ -1578,7 +1714,8 @@ impl LinalgKernel {
             },
             | Request::LineIntegral | Request::LineIntegralVec => {
                 // f(r(t)) |r'(t)| dt, or F(r(t)) . r'(t) dt
-                let (integrand, curve_node, t, a, b) = (arg(0)?, arg(1)?, arg(2)?, arg(3)?, arg(4)?);
+                let (integrand, curve_node, t, a, b) =
+                    (arg(0)?, arg(1)?, arg(2)?, arg(3)?, arg(4)?);
                 let curve = vector(cx.graph, curve_node)?;
                 let (tangent, length) = speed(cx, &curve, t)?;
                 let coordinates = coordinate_symbols(cx.graph, curve.len());
@@ -1593,7 +1730,8 @@ impl LinalgKernel {
                     mul(cx.graph, &[along, length])
                 } else {
                     let field = vector(cx.graph, integrand)?;
-                    let along: Vec<NodeId> = field.iter().map(|&f| substitute(cx.graph, f)).collect();
+                    let along: Vec<NodeId> =
+                        field.iter().map(|&f| substitute(cx.graph, f)).collect();
                     dot(cx.graph, &along, &tangent)
                 };
                 let body = cx.simplify(body);
@@ -1614,7 +1752,11 @@ impl LinalgKernel {
                 }
                 let ru_node = list(cx.graph, &ru);
                 let rv_node = list(cx.graph, &rv);
-                let normal = Self { op: self.op, request: Request::Cross }.compute(cx, &[ru_node, rv_node])?;
+                let normal = Self {
+                    op: self.op,
+                    request: Request::Cross,
+                }
+                .compute(cx, &[ru_node, rv_node])?;
                 let normal = vector(cx.graph, normal)?;
                 let squared = dot(cx.graph, &normal, &normal);
                 let squared = cx.simplify(squared);
@@ -1653,7 +1795,11 @@ fn coordinate_symbols(
     n: usize,
 ) -> Vec<NodeId> {
     if n <= 3 {
-        ["x", "y", "z"].iter().take(n).map(|name| graph.sym(name)).collect()
+        ["x", "y", "z"]
+            .iter()
+            .take(n)
+            .map(|name| graph.sym(name))
+            .collect()
     } else {
         (1..=n).map(|k| graph.sym(&format!("x{k}"))).collect()
     }
@@ -1673,13 +1819,26 @@ mod tests {
 
     #[test]
     fn arithmetic() {
-        assert_eq!(run("matmul(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)))"), "list(list(2, 1), list(4, 3))");
-        assert_eq!(run("madd(list(list(1, 2)), list(list(a, b)))"), "list(list(a + 1, b + 2))");
+        assert_eq!(
+            run("matmul(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)))"),
+            "list(list(2, 1), list(4, 3))"
+        );
+        assert_eq!(
+            run("madd(list(list(1, 2)), list(list(a, b)))"),
+            "list(list(a + 1, b + 2))"
+        );
         assert_eq!(run("smul(2, list(list(1, x)))"), "list(list(2, 2*x))");
-        assert_eq!(run("transpose(list(list(1, 2, 3), list(4, 5, 6)))"), "list(list(1, 4), list(2, 5), list(3, 6))");
+        assert_eq!(
+            run("transpose(list(list(1, 2, 3), list(4, 5, 6)))"),
+            "list(list(1, 4), list(2, 5), list(3, 6))"
+        );
         assert_eq!(run("identity(2)"), "list(list(1, 0), list(0, 1))");
         assert_eq!(run("trace(list(list(a, b), list(c, d)))"), "a + d");
-        let (text, reduced) = reduce_with(&[linalg()], "matmul(list(list(1, 2)), list(list(1, 2)))", &[]);
+        let (text, reduced) = reduce_with(
+            &[linalg()],
+            "matmul(list(list(1, 2)), list(list(1, 2)))",
+            &[],
+        );
         assert!(!reduced, "shapes do not match: {text}");
     }
 
@@ -1687,48 +1846,102 @@ mod tests {
     fn determinants_inverses_and_rank() {
         assert_eq!(run("det(list(list(1, 2), list(3, 4)))"), "-2");
         assert_eq!(run("det(list(list(a, b), list(c, d)))"), "a*d - b*c");
-        assert_eq!(run("det(list(list(2, 0, 1), list(1, 3, 2), list(1, 1, 2)))"), "6");
+        assert_eq!(
+            run("det(list(list(2, 0, 1), list(1, 3, 2), list(1, 1, 2)))"),
+            "6"
+        );
         assert_eq!(run("det(list(list(1, 2), list(2, 4)))"), "0");
-        assert_eq!(run("inverse(list(list(1, 2), list(3, 4)))"), "list(list(-2, 1), list(3/2, -1/2))");
-        assert_eq!(run("inverse(list(list(a, 0), list(0, b)))"), "list(list(1/a, 0), list(0, 1/b))");
-        let (text, reduced) = reduce_with(&[linalg()], "inverse(list(list(1, 2), list(2, 4)))", &[]);
+        assert_eq!(
+            run("inverse(list(list(1, 2), list(3, 4)))"),
+            "list(list(-2, 1), list(3/2, -1/2))"
+        );
+        assert_eq!(
+            run("inverse(list(list(a, 0), list(0, b)))"),
+            "list(list(1/a, 0), list(0, 1/b))"
+        );
+        let (text, reduced) =
+            reduce_with(&[linalg()], "inverse(list(list(1, 2), list(2, 4)))", &[]);
         assert!(!reduced, "a singular matrix has no inverse: {text}");
-        assert_eq!(run("rank(list(list(1, 2, 3), list(2, 4, 6), list(1, 0, 1)))"), "2");
-        assert_eq!(run("rref(list(list(1, 2, 3), list(4, 5, 6)))"), "list(list(1, 0, -1), list(0, 1, 2))");
-        assert_eq!(run("nullspace(list(list(1, 2, 3), list(4, 5, 6)))"), "list(list(1, -2, 1))");
+        assert_eq!(
+            run("rank(list(list(1, 2, 3), list(2, 4, 6), list(1, 0, 1)))"),
+            "2"
+        );
+        assert_eq!(
+            run("rref(list(list(1, 2, 3), list(4, 5, 6)))"),
+            "list(list(1, 0, -1), list(0, 1, 2))"
+        );
+        assert_eq!(
+            run("nullspace(list(list(1, 2, 3), list(4, 5, 6)))"),
+            "list(list(1, -2, 1))"
+        );
     }
 
     #[test]
     fn inverse_times_matrix_is_identity() {
         let a = "list(list(2, 1, 1), list(1, 3, 2), list(1, 0, 0))";
-        assert_eq!(run(&format!("matmul(inverse({a}), {a})")), "list(list(1, 0, 0), list(0, 1, 0), list(0, 0, 1))");
+        assert_eq!(
+            run(&format!("matmul(inverse({a}), {a})")),
+            "list(list(1, 0, 0), list(0, 1, 0), list(0, 0, 1))"
+        );
         let s = "list(list(a, 1), list(1, a))";
-        assert_eq!(run(&format!("matmul({s}, inverse({s}))")), "list(list(1, 0), list(0, 1))");
+        assert_eq!(
+            run(&format!("matmul({s}, inverse({s}))")),
+            "list(list(1, 0), list(0, 1))"
+        );
     }
 
     #[test]
     fn linear_systems() {
-        assert_eq!(run("linsolve(list(list(2, 1), list(1, 3)), list(3, 5))"), "list(4/5, 7/5)");
-        assert_eq!(run("linsolve(list(list(1, 1), list(1, 1)), list(1, 2))"), "list()");
-        assert_eq!(run("linsolve(list(list(a, 0), list(0, b)), list(1, 1))"), "list(1/a, 1/b)");
-        assert_eq!(run("linsolve(list(list(1, 1, 1)), list(3))"), "list(3 - t1 - t2, t1, t2)");
-        assert_eq!(run("dims(list(list(1, 2, 3), list(4, 5, 6)))"), "list(2, 3)");
+        assert_eq!(
+            run("linsolve(list(list(2, 1), list(1, 3)), list(3, 5))"),
+            "list(4/5, 7/5)"
+        );
+        assert_eq!(
+            run("linsolve(list(list(1, 1), list(1, 1)), list(1, 2))"),
+            "list()"
+        );
+        assert_eq!(
+            run("linsolve(list(list(a, 0), list(0, b)), list(1, 1))"),
+            "list(1/a, 1/b)"
+        );
+        assert_eq!(
+            run("linsolve(list(list(1, 1, 1)), list(3))"),
+            "list(3 - t1 - t2, t1, t2)"
+        );
+        assert_eq!(
+            run("dims(list(list(1, 2, 3), list(4, 5, 6)))"),
+            "list(2, 3)"
+        );
     }
 
     #[test]
     fn eigen() {
-        assert_eq!(run("charpoly(list(list(1, 2), list(3, 4)), l)"), "l^2 - 5*l - 2");
+        assert_eq!(
+            run("charpoly(list(list(1, 2), list(3, 4)), l)"),
+            "l^2 - 5*l - 2"
+        );
         assert_eq!(run("eigenvals(list(list(2, 0), list(0, 3)))"), "list(2, 3)");
         assert_eq!(run("eigenvals(list(list(2, 1), list(1, 2)))"), "list(1, 3)");
         assert_eq!(run("eigenvals(list(list(1, 1), list(0, 1)))"), "list(1, 1)");
         // x^5 - x - 1.5 has no closed-form roots: the companion matrix with
         // a float entry falls back to the QR algorithm.
-        let quintic = run("eigenvals(list(list(0, 0, 0, 0, 1.5), list(1, 0, 0, 0, 1), list(0, 1, 0, 0, 0), list(0, 0, 1, 0, 0), list(0, 0, 0, 1, 0)))");
-        assert!(quintic.starts_with("list(") && quintic.contains("1.22171074511"), "{quintic}");
+        let quintic = run(
+            "eigenvals(list(list(0, 0, 0, 0, 1.5), list(1, 0, 0, 0, 1), list(0, 1, 0, 0, 0), list(0, 0, 1, 0, 0), list(0, 0, 0, 1, 0)))",
+        );
+        assert!(
+            quintic.starts_with("list(") && quintic.contains("1.22171074511"),
+            "{quintic}"
+        );
         assert_eq!(quintic.matches("(-1)^(1/2)").count(), 4, "{quintic}");
-        assert_eq!(run("eigenvects(list(list(2, 1), list(1, 2)))"), "list(list(1, 1, list(list(-1, 1))), list(3, 1, list(list(1, 1))))");
+        assert_eq!(
+            run("eigenvects(list(list(2, 1), list(1, 2)))"),
+            "list(list(1, 1, list(list(-1, 1))), list(3, 1, list(list(1, 1))))"
+        );
         // Symbolic entries.
-        assert_eq!(run("charpoly(list(list(a, b), list(b, a)), l)"), "a^2 - 2*a*l - b^2 + l^2");
+        assert_eq!(
+            run("charpoly(list(list(a, b), list(b, a)), l)"),
+            "a^2 - 2*a*l - b^2 + l^2"
+        );
     }
 
     #[test]
@@ -1736,8 +1949,16 @@ mod tests {
         // P A = L U must hold.
         let a = "list(list(0, 2, 1), list(1, 1, 0), list(2, 1, 3))";
         let lu = run(&format!("lu({a})"));
-        let check = run(&format!("madd(matmul(item0, {a}), smul(-1, matmul(item1, item2)))").replace("item0", &part(&lu, 0)).replace("item1", &part(&lu, 1)).replace("item2", &part(&lu, 2)));
-        assert_eq!(check, "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))", "{lu}");
+        let check = run(
+            &format!("madd(matmul(item0, {a}), smul(-1, matmul(item1, item2)))")
+                .replace("item0", &part(&lu, 0))
+                .replace("item1", &part(&lu, 1))
+                .replace("item2", &part(&lu, 2)),
+        );
+        assert_eq!(
+            check, "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))",
+            "{lu}"
+        );
         // A = Q R with orthonormal Q.
         let qr = run("qr(list(list(3, 1), list(4, 2)))");
         let product = run(&format!("matmul({}, {})", part(&qr, 0), part(&qr, 1)));
@@ -1749,7 +1970,10 @@ mod tests {
         // Exact input: the symbolic SVD keeps exact singular values.
         let exact = run("svd(list(list(3, 0), list(0, -2)))");
         let values = part(&exact, 1);
-        assert!(!exact.contains('.') && values.contains('3') && values.contains('2'), "{exact}");
+        assert!(
+            !exact.contains('.') && values.contains('3') && values.contains('2'),
+            "{exact}"
+        );
         assert_eq!(values, "list(3, 2)", "{exact}");
     }
 
@@ -1758,7 +1982,10 @@ mod tests {
         text: &str,
         index: usize,
     ) -> String {
-        let inner = text.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|s| s.strip_suffix(')'))
+            .unwrap_or("");
         let mut depth = 0_i32;
         let mut start = 0;
         let mut items = Vec::new();
@@ -1785,7 +2012,10 @@ mod tests {
         assert_eq!(run("normalize(list(3, 4))"), "list(3/5, 4/5)");
         assert_eq!(run("angle(list(1, 0), list(0, 1))"), "1/2*pi");
         assert_eq!(run("project(list(1, 1), list(2, 0))"), "list(1, 0)");
-        assert_eq!(run("outer(list(1, 2), list(3, 4))"), "list(list(3, 4), list(6, 8))");
+        assert_eq!(
+            run("outer(list(1, 2), list(3, 4))"),
+            "list(list(3, 4), list(6, 8))"
+        );
     }
 
     #[test]
@@ -1794,21 +2024,44 @@ mod tests {
         assert_eq!(run("div(list(x, y^2, z*x), list(x, y, z))"), "x + 2*y + 1");
         assert_eq!(run("curl(list(-y, x, 0), list(x, y, z))"), "list(0, 0, 2)");
         assert_eq!(run("laplacian(x^2 + y^2 + z^2, list(x, y, z))"), "6");
-        assert_eq!(run("jacobian(list(x*y, x + y), list(x, y))"), "list(list(y, x), list(1, 1))");
-        assert_eq!(run("hessian(x^2*y, list(x, y))"), "list(list(2*y, 2*x), list(2*x, 0))");
-        assert_eq!(run("directional(x^2 + y^2, list(x, y), list(3, 4))"), "6/5*x + 8/5*y");
+        assert_eq!(
+            run("jacobian(list(x*y, x + y), list(x, y))"),
+            "list(list(y, x), list(1, 1))"
+        );
+        assert_eq!(
+            run("hessian(x^2*y, list(x, y))"),
+            "list(list(2*y, 2*x), list(2*x, 0))"
+        );
+        assert_eq!(
+            run("directional(x^2 + y^2, list(x, y), list(3, 4))"),
+            "6/5*x + 8/5*y"
+        );
         // div curl = 0 and curl grad = 0 for any field.
-        assert_eq!(run("div(curl(list(x*y*z, sin(x)*y, exp(z)*x), list(x, y, z)), list(x, y, z))"), "0");
-        assert_eq!(run("curl(grad(x^2*sin(y)*z, list(x, y, z)), list(x, y, z))"), "list(0, 0, 0)");
+        assert_eq!(
+            run("div(curl(list(x*y*z, sin(x)*y, exp(z)*x), list(x, y, z)), list(x, y, z))"),
+            "0"
+        );
+        assert_eq!(
+            run("curl(grad(x^2*sin(y)*z, list(x, y, z)), list(x, y, z))"),
+            "list(0, 0, 0)"
+        );
     }
 
     #[test]
     fn integrals_over_curves_surfaces_and_volumes() {
         // Arc length of the unit circle.
-        let (value, _) = numeric(&[linalg()], "line_integral(1, list(cos(t), sin(t)), t, 0, 2*pi)", &[], 1e-10);
+        let (value, _) = numeric(
+            &[linalg()],
+            "line_integral(1, list(cos(t), sin(t)), t, 0, 2*pi)",
+            &[],
+            1e-10,
+        );
         assert!((value - 2.0 * std::f64::consts::PI).abs() < 1e-9, "{value}");
         // Work of F = (-y, x) around the unit circle: 2 pi.
-        assert_eq!(run("line_integral_vec(list(-y, x), list(cos(t), sin(t)), t, 0, 2*pi)"), "2*pi");
+        assert_eq!(
+            run("line_integral_vec(list(-y, x), list(cos(t), sin(t)), t, 0, 2*pi)"),
+            "2*pi"
+        );
         // Area of the unit sphere.
         let (value, _) = numeric(
             &[linalg()],
@@ -1817,7 +2070,10 @@ mod tests {
             1e-8,
         );
         assert!((value - 4.0 * std::f64::consts::PI).abs() < 1e-6, "{value}");
-        assert_eq!(run("volume_integral(x*y*z, list(x, y, z), list(list(0, 1), list(0, 2), list(0, 3)))"), "9/2");
+        assert_eq!(
+            run("volume_integral(x*y*z, list(x, y, z), list(list(0, 1), list(0, 2), list(0, 3)))"),
+            "9/2"
+        );
         let _ = eval;
     }
 }

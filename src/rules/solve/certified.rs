@@ -23,11 +23,10 @@
 //!   them as operators.
 
 use super::as_expression;
-use crate::backend::tape::lower;
 use crate::backend::tape::Interval;
 use crate::backend::tape::Scalar;
 use crate::backend::tape::Tape;
-use crate::graph::op::core;
+use crate::backend::tape::lower;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -36,6 +35,7 @@ use crate::graph::NodeId;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::rules::calculus::derivative;
 use crate::rules::poly::best;
 
@@ -104,7 +104,12 @@ impl System {
             }
         }
         let tape = lower(graph, &roots, unknowns, &params).ok()?;
-        Some(Self { tape, unknowns: unknowns.len(), equations: equations.len(), parameters: values })
+        Some(Self {
+            tape,
+            unknowns: unknowns.len(),
+            equations: equations.len(),
+            parameters: values,
+        })
     }
 
     /// Enclosures of `F(X)` and of the Jacobian (row-major) over `x`.
@@ -131,8 +136,14 @@ fn invert(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
         .collect();
     for col in 0..n {
         let pivot = (col..n).max_by(|&i, &j| {
-            let (x, y) = (m.get(i).and_then(|r| r.get(col)), m.get(j).and_then(|r| r.get(col)));
-            x.copied().unwrap_or(0.0).abs().total_cmp(&y.copied().unwrap_or(0.0).abs())
+            let (x, y) = (
+                m.get(i).and_then(|r| r.get(col)),
+                m.get(j).and_then(|r| r.get(col)),
+            );
+            x.copied()
+                .unwrap_or(0.0)
+                .abs()
+                .total_cmp(&y.copied().unwrap_or(0.0).abs())
         })?;
         m.swap(col, pivot);
         let p = *m.get(col)?.get(col)?;
@@ -153,7 +164,10 @@ fn invert(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
             }
         }
     }
-    let out: Vec<Vec<f64>> = m.into_iter().map(|row| row.into_iter().skip(n).collect()).collect();
+    let out: Vec<Vec<f64>> = m
+        .into_iter()
+        .map(|row| row.into_iter().skip(n).collect())
+        .collect();
     out.iter().flatten().all(|v| v.is_finite()).then_some(out)
 }
 
@@ -172,8 +186,13 @@ fn krawczyk(
     let (fy, _) = system.enclose(&point);
     let (_, jx) = system.enclose(x);
     let at = |r: usize, c: usize| jx.get(r * n + c).copied();
-    let mid_j: Vec<Vec<f64>> =
-        (0..n).map(|r| (0..n).map(|c| at(r, c).map_or(f64::NAN, midpoint)).collect()).collect();
+    let mid_j: Vec<Vec<f64>> = (0..n)
+        .map(|r| {
+            (0..n)
+                .map(|c| at(r, c).map_or(f64::NAN, midpoint))
+                .collect()
+        })
+        .collect();
     let c = invert(&mid_j)?;
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
@@ -206,11 +225,18 @@ fn contract(
 ) -> Vec<Interval> {
     for _ in 0..60 {
         let Some(k) = krawczyk(system, &x) else { break };
-        let next: Option<Vec<Interval>> = k.iter().zip(&x).map(|(&a, &b)| intersect(a, b)).collect();
+        let next: Option<Vec<Interval>> =
+            k.iter().zip(&x).map(|(&a, &b)| intersect(a, b)).collect();
         let Some(next) = next else { break };
-        let progress = next.iter().zip(&x).any(|(a, b)| width(*a) < 0.9 * width(*b));
+        let progress = next
+            .iter()
+            .zip(&x)
+            .any(|(a, b)| width(*a) < 0.9 * width(*b));
         x = next;
-        if !progress || x.iter().all(|i| width(*i) <= relative * (1.0 + i.lo.abs().max(i.hi.abs()))) {
+        if !progress
+            || x.iter()
+                .all(|i| width(*i) <= relative * (1.0 + i.lo.abs().max(i.hi.abs())))
+        {
             break;
         }
     }
@@ -278,7 +304,11 @@ pub(super) fn search(
         }
         let mut current = x;
         if let Some(k) = krawczyk(system, &current) {
-            let clipped: Option<Vec<Interval>> = k.iter().zip(&current).map(|(&a, &b)| intersect(a, b)).collect();
+            let clipped: Option<Vec<Interval>> = k
+                .iter()
+                .zip(&current)
+                .map(|(&a, &b)| intersect(a, b))
+                .collect();
             let Some(clipped) = clipped else { continue };
             if k.iter().zip(&current).all(|(&a, &b)| interior(a, b)) {
                 let refined = contract(system, current, 1e-15);
@@ -297,7 +327,10 @@ pub(super) fn search(
         else {
             continue;
         };
-        let scale = current.iter().map(|i| 1.0 + i.lo.abs().max(i.hi.abs())).fold(1.0_f64, f64::max);
+        let scale = current
+            .iter()
+            .map(|i| 1.0 + i.lo.abs().max(i.hi.abs()))
+            .fold(1.0_f64, f64::max);
         if widest <= tolerance * scale || !widest.is_finite() {
             // A root on the boundary of the bisection can be certified by
             // an inflated box around the midpoint.
@@ -311,15 +344,23 @@ pub(super) fn search(
             }
             continue;
         }
-        let Some(interval) = current.get(axis).copied() else { continue };
+        let Some(interval) = current.get(axis).copied() else {
+            continue;
+        };
         // Off-centre, so that symmetric problems do not put roots on cuts.
         let mid = interval.lo + 0.4142 * (interval.hi - interval.lo);
         let (mut left, mut right) = (current.clone(), current);
         if let Some(slot) = left.get_mut(axis) {
-            *slot = Interval { lo: interval.lo, hi: mid };
+            *slot = Interval {
+                lo: interval.lo,
+                hi: mid,
+            };
         }
         if let Some(slot) = right.get_mut(axis) {
-            *slot = Interval { lo: mid, hi: interval.hi };
+            *slot = Interval {
+                lo: mid,
+                hi: interval.hi,
+            };
         }
         stack.push(right);
         stack.push(left);
@@ -327,14 +368,19 @@ pub(super) fn search(
     // Neighbouring undecided boxes that touch are one region.
     let mut kept: Vec<Vec<Interval>> = Vec::new();
     for u in unresolved {
-        if verified.iter().any(|v| overlap(v, &u)) && u.iter().all(|i| width(*i) <= tolerance * (1.0 + i.lo.abs().max(i.hi.abs())) * 4.0)
+        if verified.iter().any(|v| overlap(v, &u))
+            && u.iter()
+                .all(|i| width(*i) <= tolerance * (1.0 + i.lo.abs().max(i.hi.abs())) * 4.0)
         {
             // A sliver around a verified root: the root is already counted.
             continue;
         }
         kept.push(u);
     }
-    Search { verified, unresolved: kept }
+    Search {
+        verified,
+        unresolved: kept,
+    }
 }
 
 fn pair(
@@ -363,7 +409,11 @@ fn read_box(
     let value = |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx_env));
     let children = graph.children(node).to_vec();
     let pairs: Vec<NodeId> =
-        if dimension == 1 && children.first().is_some_and(|&c| graph.op(c) != core::LIST) { vec![node] } else { children };
+        if dimension == 1 && children.first().is_some_and(|&c| graph.op(c) != core::LIST) {
+            vec![node]
+        } else {
+            children
+        };
     if pairs.len() != dimension {
         return None;
     }
@@ -371,7 +421,9 @@ fn read_box(
         .iter()
         .map(|&p| {
             let ends = graph.children(p).to_vec();
-            let &[a, b] = ends.as_slice() else { return None };
+            let &[a, b] = ends.as_slice() else {
+                return None;
+            };
             let (lo, hi) = (value(graph, a)?, value(graph, b)?);
             (lo <= hi).then_some(Interval { lo, hi })
         })
@@ -398,9 +450,20 @@ fn split_args(
     unknowns: NodeId,
 ) -> Option<(Vec<NodeId>, Vec<SymbolId>, bool)> {
     let scalar = graph.op(unknowns) != core::LIST;
-    let eqs: Vec<NodeId> = if graph.op(equations) == core::LIST { graph.children(equations).to_vec() } else { vec![equations] };
-    let names: Vec<NodeId> = if scalar { vec![unknowns] } else { graph.children(unknowns).to_vec() };
-    let symbols = names.iter().map(|&u| graph.symbol_of(u)).collect::<Option<Vec<_>>>()?;
+    let eqs: Vec<NodeId> = if graph.op(equations) == core::LIST {
+        graph.children(equations).to_vec()
+    } else {
+        vec![equations]
+    };
+    let names: Vec<NodeId> = if scalar {
+        vec![unknowns]
+    } else {
+        graph.children(unknowns).to_vec()
+    };
+    let symbols = names
+        .iter()
+        .map(|&u| graph.symbol_of(u))
+        .collect::<Option<Vec<_>>>()?;
     Some((eqs, symbols, scalar))
 }
 
@@ -416,29 +479,60 @@ impl Kernel for NsolveCertified {
     ) -> Outcome {
         let bindings = cx.env.bindings().to_vec();
         let graph = &mut *cx.graph;
-        let &[equation, unknown, guess] = graph.children(node) else { return Outcome::Pass };
-        let Some((equations, symbols, scalar)) = split_args(graph, equation, unknown) else { return Outcome::Pass };
-        let Some(system) = System::new(graph, &equations, &symbols, &bindings) else { return Outcome::Pass };
-        let guess_nodes: Vec<NodeId> = if scalar { vec![guess] } else { graph.children(guess).to_vec() };
-        let start: Option<Vec<f64>> = guess_nodes.iter().map(|&g| best(graph, g).and_then(|t| graph.eval(t, cx.env))).collect();
-        let Some(mut point) = start.filter(|s| s.len() == symbols.len()) else { return Outcome::Pass };
+        let &[equation, unknown, guess] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some((equations, symbols, scalar)) = split_args(graph, equation, unknown) else {
+            return Outcome::Pass;
+        };
+        let Some(system) = System::new(graph, &equations, &symbols, &bindings) else {
+            return Outcome::Pass;
+        };
+        let guess_nodes: Vec<NodeId> = if scalar {
+            vec![guess]
+        } else {
+            graph.children(guess).to_vec()
+        };
+        let start: Option<Vec<f64>> = guess_nodes
+            .iter()
+            .map(|&g| best(graph, g).and_then(|t| graph.eval(t, cx.env)))
+            .collect();
+        let Some(mut point) = start.filter(|s| s.len() == symbols.len()) else {
+            return Outcome::Pass;
+        };
         // Polish with interval-free Newton steps through the Krawczyk
         // midpoint map: x <- mid(K(x)) converges quadratically.
         for _ in 0..40 {
             let radius = 1e-3;
-            let x: Vec<Interval> = point.iter().map(|&g| Interval { lo: g - radius, hi: g + radius }).collect();
-            let Some(k) = krawczyk(&system, &x) else { break };
+            let x: Vec<Interval> = point
+                .iter()
+                .map(|&g| {
+                    Interval {
+                        lo: g - radius,
+                        hi: g + radius,
+                    }
+                })
+                .collect();
+            let Some(k) = krawczyk(&system, &x) else {
+                break;
+            };
             let next: Vec<f64> = k.iter().map(|i| midpoint(*i)).collect();
             if next.iter().any(|v| !v.is_finite()) {
                 break;
             }
-            let delta: f64 = next.iter().zip(&point).map(|(a, b)| (a - b).abs()).fold(0.0, f64::max);
+            let delta: f64 = next
+                .iter()
+                .zip(&point)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0, f64::max);
             point = next;
             if delta < 1e-15 {
                 break;
             }
         }
-        let Some(enclosure) = verify_near(&system, &point) else { return Outcome::Pass };
+        let Some(enclosure) = verify_near(&system, &point) else {
+            return Outcome::Pass;
+        };
         if scalar {
             return match enclosure.first() {
                 | Some(&i) => Outcome::Equal(pair(graph, i)),
@@ -465,25 +559,39 @@ impl Kernel for SolveBox {
     ) -> Outcome {
         let bindings = cx.env.bindings().to_vec();
         let graph = &mut *cx.graph;
-        let &[equation, unknown, region] = graph.children(node) else { return Outcome::Pass };
-        let Some((equations, symbols, _)) = split_args(graph, equation, unknown) else { return Outcome::Pass };
+        let &[equation, unknown, region] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some((equations, symbols, _)) = split_args(graph, equation, unknown) else {
+            return Outcome::Pass;
+        };
         if equations.len() != symbols.len() {
             return Outcome::Pass;
         }
-        let Some(bounds) = read_box(graph, cx.env, region, symbols.len()) else { return Outcome::Pass };
-        let Some(system) = System::new(graph, &equations, &symbols, &bindings) else { return Outcome::Pass };
+        let Some(bounds) = read_box(graph, cx.env, region, symbols.len()) else {
+            return Outcome::Pass;
+        };
+        let Some(system) = System::new(graph, &equations, &symbols, &bindings) else {
+            return Outcome::Pass;
+        };
         let found = search(&system, &bounds, 1e-10, 200_000);
         let scalar = symbols.len() == 1;
         let render = |graph: &mut Graph, boxes: &[Vec<Interval>]| -> NodeId {
             let mut sorted: Vec<&Vec<Interval>> = boxes.iter().collect();
             sorted.sort_by(|a, b| {
-                a.iter().zip(b.iter()).map(|(x, y)| x.lo.total_cmp(&y.lo)).find(|o| o.is_ne()).unwrap_or(std::cmp::Ordering::Equal)
+                a.iter()
+                    .zip(b.iter())
+                    .map(|(x, y)| x.lo.total_cmp(&y.lo))
+                    .find(|o| o.is_ne())
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
             let items: Vec<NodeId> = sorted
                 .into_iter()
-                .map(|b| match (scalar, b.first()) {
-                    | (true, Some(&i)) => pair(graph, i),
-                    | _ => box_node(graph, b),
+                .map(|b| {
+                    match (scalar, b.first()) {
+                        | (true, Some(&i)) => pair(graph, i),
+                        | _ => box_node(graph, b),
+                    }
                 })
                 .collect();
             graph.node(core::LIST, &items)
@@ -511,7 +619,10 @@ pub(super) fn certified_ball(
     let enclosure = verify_near(&system, &[root])?;
     let i = *enclosure.first()?;
     let mid = midpoint(i);
-    Some(Ball { mid, rad: (i.hi - mid).max(mid - i.lo) })
+    Some(Ball {
+        mid,
+        rad: (i.hi - mid).max(mid - i.lo),
+    })
 }
 
 #[cfg(test)]
@@ -525,7 +636,11 @@ mod tests {
             .filter(|s| !s.is_empty() && *s != "-" && *s != "e")
             .filter_map(|s| s.parse().ok())
             .collect();
-        numbers.chunks(2).filter(|c| c.len() == 2).map(|c| (c[0], c[1])).collect()
+        numbers
+            .chunks(2)
+            .filter(|c| c.len() == 2)
+            .map(|c| (c[0], c[1]))
+            .collect()
     }
 
     #[test]
@@ -535,7 +650,10 @@ mod tests {
         let p = pairs(&text);
         assert_eq!(p.len(), 1, "{text}");
         let (lo, hi) = p[0];
-        assert!(lo <= 2.0_f64.sqrt() && 2.0_f64.sqrt() <= hi && hi - lo < 1e-12, "{text}");
+        assert!(
+            lo <= 2.0_f64.sqrt() && 2.0_f64.sqrt() <= hi && hi - lo < 1e-12,
+            "{text}"
+        );
     }
 
     #[test]

@@ -31,36 +31,168 @@ const fn g(
     solvable: bool,
     generators: &'static [&'static [u8]],
 ) -> TransitiveGroup {
-    TransitiveGroup { degree, label, order, solvable, generators }
+    TransitiveGroup {
+        degree,
+        label,
+        order,
+        solvable,
+        generators,
+    }
 }
 
 static DEGREE_6: [TransitiveGroup; 16] = [
     g(6, "C6", 6, true, &[&[1, 2, 3, 4, 5, 0]]),
-    g(6, "S3(6)", 6, true, &[&[1, 0, 3, 2, 5, 4], &[2, 4, 0, 5, 1, 3]]),
-    g(6, "A4(6)", 12, true, &[&[0, 1, 3, 2, 5, 4], &[2, 3, 4, 5, 0, 1]]),
-    g(6, "D6(6)", 12, true, &[&[0, 1, 3, 2, 5, 4], &[2, 4, 0, 5, 1, 3]]),
-    g(6, "F18(6)=C3xS3", 18, true, &[&[0, 1, 2, 4, 5, 3], &[3, 4, 5, 0, 1, 2]]),
-    g(6, "2A4(6)=C2^3:C3", 24, true, &[&[0, 1, 2, 3, 5, 4], &[1, 4, 3, 5, 0, 2]]),
-    g(6, "S4(6d)", 24, true, &[&[0, 1, 3, 2, 5, 4], &[2, 4, 1, 5, 0, 3]]),
-    g(6, "S4(6c)", 24, true, &[&[0, 1, 3, 4, 5, 2], &[2, 4, 0, 5, 1, 3]]),
-    g(6, "3^2:4", 36, true, &[&[0, 1, 2, 4, 5, 3], &[3, 4, 5, 0, 2, 1]]),
-    g(6, "S3xS3", 36, true, &[&[0, 1, 3, 2, 5, 4], &[1, 2, 4, 5, 3, 0]]),
-    g(6, "2S4(6)=C2wrS3", 48, true, &[&[0, 1, 3, 2, 5, 4], &[2, 4, 1, 3, 0, 5]]),
-    g(6, "A5(6)=PSL(2,5)", 60, false, &[&[0, 1, 3, 2, 5, 4], &[1, 2, 0, 4, 5, 3]]),
-    g(6, "3^2:D4=S3wrC2", 72, true, &[&[0, 1, 2, 3, 5, 4], &[1, 2, 4, 5, 0, 3]]),
-    g(6, "S5(6)=PGL(2,5)", 120, false, &[&[0, 1, 3, 2, 5, 4], &[1, 2, 3, 4, 5, 0]]),
-    g(6, "A6", 360, false, &[&[0, 1, 2, 4, 5, 3], &[1, 2, 3, 0, 5, 4]]),
-    g(6, "S6", 720, false, &[&[0, 1, 2, 3, 5, 4], &[1, 2, 3, 4, 0, 5]]),
+    g(
+        6,
+        "S3(6)",
+        6,
+        true,
+        &[&[1, 0, 3, 2, 5, 4], &[2, 4, 0, 5, 1, 3]],
+    ),
+    g(
+        6,
+        "A4(6)",
+        12,
+        true,
+        &[&[0, 1, 3, 2, 5, 4], &[2, 3, 4, 5, 0, 1]],
+    ),
+    g(
+        6,
+        "D6(6)",
+        12,
+        true,
+        &[&[0, 1, 3, 2, 5, 4], &[2, 4, 0, 5, 1, 3]],
+    ),
+    g(
+        6,
+        "F18(6)=C3xS3",
+        18,
+        true,
+        &[&[0, 1, 2, 4, 5, 3], &[3, 4, 5, 0, 1, 2]],
+    ),
+    g(
+        6,
+        "2A4(6)=C2^3:C3",
+        24,
+        true,
+        &[&[0, 1, 2, 3, 5, 4], &[1, 4, 3, 5, 0, 2]],
+    ),
+    g(
+        6,
+        "S4(6d)",
+        24,
+        true,
+        &[&[0, 1, 3, 2, 5, 4], &[2, 4, 1, 5, 0, 3]],
+    ),
+    g(
+        6,
+        "S4(6c)",
+        24,
+        true,
+        &[&[0, 1, 3, 4, 5, 2], &[2, 4, 0, 5, 1, 3]],
+    ),
+    g(
+        6,
+        "3^2:4",
+        36,
+        true,
+        &[&[0, 1, 2, 4, 5, 3], &[3, 4, 5, 0, 2, 1]],
+    ),
+    g(
+        6,
+        "S3xS3",
+        36,
+        true,
+        &[&[0, 1, 3, 2, 5, 4], &[1, 2, 4, 5, 3, 0]],
+    ),
+    g(
+        6,
+        "2S4(6)=C2wrS3",
+        48,
+        true,
+        &[&[0, 1, 3, 2, 5, 4], &[2, 4, 1, 3, 0, 5]],
+    ),
+    g(
+        6,
+        "A5(6)=PSL(2,5)",
+        60,
+        false,
+        &[&[0, 1, 3, 2, 5, 4], &[1, 2, 0, 4, 5, 3]],
+    ),
+    g(
+        6,
+        "3^2:D4=S3wrC2",
+        72,
+        true,
+        &[&[0, 1, 2, 3, 5, 4], &[1, 2, 4, 5, 0, 3]],
+    ),
+    g(
+        6,
+        "S5(6)=PGL(2,5)",
+        120,
+        false,
+        &[&[0, 1, 3, 2, 5, 4], &[1, 2, 3, 4, 5, 0]],
+    ),
+    g(
+        6,
+        "A6",
+        360,
+        false,
+        &[&[0, 1, 2, 4, 5, 3], &[1, 2, 3, 0, 5, 4]],
+    ),
+    g(
+        6,
+        "S6",
+        720,
+        false,
+        &[&[0, 1, 2, 3, 5, 4], &[1, 2, 3, 4, 0, 5]],
+    ),
 ];
 
 static DEGREE_7: [TransitiveGroup; 7] = [
     g(7, "C7", 7, true, &[&[1, 2, 3, 4, 5, 6, 0]]),
-    g(7, "D7", 14, true, &[&[1, 2, 3, 4, 5, 6, 0], &[0, 6, 5, 4, 3, 2, 1]]),
-    g(7, "F21", 21, true, &[&[1, 2, 3, 4, 5, 6, 0], &[0, 2, 4, 6, 1, 3, 5]]),
-    g(7, "F42", 42, true, &[&[1, 2, 3, 4, 5, 6, 0], &[0, 3, 6, 2, 5, 1, 4]]),
-    g(7, "PSL(3,2)", 168, false, &[&[0, 1, 4, 3, 2, 6, 5], &[1, 2, 0, 4, 6, 5, 3]]),
-    g(7, "A7", 2520, false, &[&[1, 2, 0, 3, 4, 5, 6], &[0, 1, 3, 4, 5, 6, 2]]),
-    g(7, "S7", 5040, false, &[&[1, 0, 2, 3, 4, 5, 6], &[1, 2, 3, 4, 5, 6, 0]]),
+    g(
+        7,
+        "D7",
+        14,
+        true,
+        &[&[1, 2, 3, 4, 5, 6, 0], &[0, 6, 5, 4, 3, 2, 1]],
+    ),
+    g(
+        7,
+        "F21",
+        21,
+        true,
+        &[&[1, 2, 3, 4, 5, 6, 0], &[0, 2, 4, 6, 1, 3, 5]],
+    ),
+    g(
+        7,
+        "F42",
+        42,
+        true,
+        &[&[1, 2, 3, 4, 5, 6, 0], &[0, 3, 6, 2, 5, 1, 4]],
+    ),
+    g(
+        7,
+        "PSL(3,2)",
+        168,
+        false,
+        &[&[0, 1, 4, 3, 2, 6, 5], &[1, 2, 0, 4, 6, 5, 3]],
+    ),
+    g(
+        7,
+        "A7",
+        2520,
+        false,
+        &[&[1, 2, 0, 3, 4, 5, 6], &[0, 1, 3, 4, 5, 6, 2]],
+    ),
+    g(
+        7,
+        "S7",
+        5040,
+        false,
+        &[&[1, 0, 2, 3, 4, 5, 6], &[1, 2, 3, 4, 5, 6, 0]],
+    ),
 ];
 
 /// The transitive groups of degree `n` (6 or 7), smallest first; empty for
@@ -79,14 +211,18 @@ fn compose(
     b: &[u8],
 ) -> Vec<u8> {
     // (a after b)(i) = a[b[i]]
-    b.iter().map(|&i| a.get(usize::from(i)).copied().unwrap_or(0)).collect()
+    b.iter()
+        .map(|&i| a.get(usize::from(i)).copied().unwrap_or(0))
+        .collect()
 }
 
 impl TransitiveGroup {
     /// All elements, as images `[h(0), …, h(n-1)]`.
     #[must_use]
     pub fn elements(&self) -> Vec<Vec<u8>> {
-        let identity: Vec<u8> = (0..self.degree).map(|i| u8::try_from(i).unwrap_or(0)).collect();
+        let identity: Vec<u8> = (0..self.degree)
+            .map(|i| u8::try_from(i).unwrap_or(0))
+            .collect();
         let mut seen = std::collections::HashSet::new();
         seen.insert(identity.clone());
         let mut frontier = vec![identity.clone()];
@@ -117,7 +253,11 @@ impl TransitiveGroup {
     /// Whether the group is abelian.
     #[must_use]
     pub fn is_abelian(&self) -> bool {
-        self.generators.iter().all(|a| self.generators.iter().all(|b| compose(a, b) == compose(b, a)))
+        self.generators.iter().all(|a| {
+            self.generators
+                .iter()
+                .all(|b| compose(a, b) == compose(b, a))
+        })
     }
 
     /// The non-trivial systems of imprimitivity (partitions of `0..n` into
@@ -213,14 +353,35 @@ mod tests {
     #[test]
     fn block_systems_of_sextic_groups() {
         // C6: blocks of size 2 and of size 3. S6 and A5(6): primitive.
-        let c6 = transitive_groups(6).first().map(TransitiveGroup::block_systems).unwrap_or_default();
+        let c6 = transitive_groups(6)
+            .first()
+            .map(TransitiveGroup::block_systems)
+            .unwrap_or_default();
         assert_eq!(c6.len(), 2);
-        let s6 = transitive_groups(6).last().map(TransitiveGroup::block_systems).unwrap_or_default();
-        assert!(s6.is_empty());
+        let s6 = transitive_groups(6)
+            .last()
+            .map(TransitiveGroup::block_systems)
+            .unwrap_or_default();
+        assert!(s6.is_empty(), "not empty");
         for group in transitive_groups(6) {
-            assert_eq!(group.block_systems().is_empty(), !group.solvable, "{}", group.label);
+            assert_eq!(
+                group.block_systems().is_empty(),
+                !group.solvable,
+                "{}",
+                group.label
+            );
         }
-        assert_eq!(transitive_groups(6).iter().filter(|g| g.is_abelian()).count(), 1);
-        assert!(transitive_groups(7).iter().all(|g| g.block_systems().is_empty()));
+        assert_eq!(
+            transitive_groups(6)
+                .iter()
+                .filter(|g| g.is_abelian())
+                .count(),
+            1
+        );
+        assert!(
+            transitive_groups(7)
+                .iter()
+                .all(|g| g.block_systems().is_empty())
+        );
     }
 }

@@ -2,9 +2,9 @@
 //!
 //! Partial sums, and infinite sums with convergence acceleration.
 
+use crate::kernels::convergence::LevinVariant;
 use crate::kernels::convergence::levin_transform;
 use crate::kernels::convergence::richardson_extrapolation_with;
-use crate::kernels::convergence::LevinVariant;
 use crate::kernels::convergence::wynn_epsilon;
 
 /// Result of summing an infinite series numerically.
@@ -27,7 +27,10 @@ pub fn evaluate_power_series(
     x: f64,
 ) -> f64 {
     let dx = x - center;
-    coefficients.iter().rev().fold(0.0, |acc, &c| acc.mul_add(dx, c))
+    coefficients
+        .iter()
+        .rev()
+        .fold(0.0, |acc, &c| acc.mul_add(dx, c))
 }
 
 /// Sum of `term(k)` for `k` from `from` to `to` inclusive, with Kahan
@@ -86,7 +89,11 @@ pub fn sum_to_infinity(
             #[allow(clippy::cast_precision_loss)]
             let t = term(k as f64);
             if !t.is_finite() {
-                return SeriesSum { value: f64::NAN, error: f64::INFINITY, terms: used };
+                return SeriesSum {
+                    value: f64::NAN,
+                    error: f64::INFINITY,
+                    terms: used,
+                };
             }
             sum += t;
             k += 1;
@@ -113,7 +120,11 @@ pub fn sum_to_infinity(
             | [.., before, last] if transforms.len() >= 8 => (*last, (last - before).abs()),
             | _ => (f64::NAN, f64::INFINITY),
         };
-        let candidates = [(wynn, (wynn - previous.0).abs()), (rich, (rich - previous.1).abs()), levin];
+        let candidates = [
+            (wynn, (wynn - previous.0).abs()),
+            (rich, (rich - previous.1).abs()),
+            levin,
+        ];
         previous = (wynn, rich);
         for (value, change) in candidates {
             if value.is_finite() && change.is_finite() && change < best.1 {
@@ -126,7 +137,11 @@ pub fn sum_to_infinity(
         recent.clear();
         target *= 2;
     }
-    SeriesSum { value: best.0, error: best.1, terms: used }
+    SeriesSum {
+        value: best.0,
+        error: best.1,
+        terms: used,
+    }
 }
 
 #[cfg(test)]
@@ -160,7 +175,10 @@ mod tests {
         assert!(s.terms < 200, "acceleration should need few terms: {s:?}");
         // zeta(2) converges logarithmically.
         let s = sum_to_infinity(|k| 1.0 / (k * k), 1, 1e-13, 10_000);
-        assert!((s.value - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-11, "{s:?}");
+        assert!(
+            (s.value - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-11,
+            "{s:?}"
+        );
     }
 
     #[test]
@@ -169,7 +187,10 @@ mod tests {
         let s = sum_to_infinity(|k| 1.0 / (k * k), 1, 1e-10, 200_000);
         let exact = std::f64::consts::PI.powi(2) / 6.0;
         assert!((s.value - exact).abs() < 1e-9, "{s:?}");
-        assert!(s.terms <= 70_000, "Richardson should not need many terms: {s:?}");
+        assert!(
+            s.terms <= 70_000,
+            "Richardson should not need many terms: {s:?}"
+        );
     }
 
     #[test]

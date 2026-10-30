@@ -115,11 +115,12 @@
 //! | heat / wave outside a ball without axial symmetry | exterior of a ball | 3 | Weber transforms per real spherical harmonic `P_l^m cos/sin mφ` (`l ≤ 5`) |
 //! | `pde_kdv_scattering(u0(x), x, t)` | line | 1 | numeric Gelfand–Levitan–Marchenko: Jost solutions, bound states, reflection coefficient, Nyström solution of the Marchenko equation (any decaying `u0`, `abs(t)` moderate) |
 //! | `pde_hodograph(λ(r, s), μ(r, s))` | `r_t + λ r_x = 0`, `s_t + μ s_x = 0` | 1 | the linear hodograph equation `(λ-μ) t_rs + λ_r t_s - μ_s t_r = 0` |
-//! | Coulomb scattering states, `coulomb_wave(Z, ℓ, k, r)` | half-line | 1 | data outside the bound-state span: bound states (`n ≤ 14`) plus `∫_0^{16} c(k) u_k(r) e^{D(e₀-k²)t} dk` with `c(k) = ∫ f u_k dr`, energy-normalised regular solutions by RK4 and the WKB amplitude; accepted when the sum reproduces the data to 3% at `t = 0` |
+//! | Coulomb scattering states, `coulomb_wave(Z, ℓ, k, r)` | half-line | 1 | data outside the bound-state span: bound states (`n ≤ 14`, `Z > 0`) plus `∫_0^{k_max} c(k) u_k(r) e^{D(e₀-k²)t} dk` with `c(k) = ∫ f u_k dr` and `u_k = √(2/π) F_ℓ(-Z/k, k r)` from the analytic Coulomb functions (confluent-hypergeometric series below `ρ = 24`, large-`ρ` asymptotic expansion above, repulsive `Z < 0` included); `k_max` is extended over `16, 32, 64` until the last `k`-panels contribute below `5e-4`, and the expansion is accepted when it reproduces the data to `5e-3` (about `2.5e-3` achieved) and the Wronskian `F'G - FG' = 1` holds to `1e-8` |
 //! | Helmholtz / Laplace in prolate and oblate spheroidal coordinates `(xi\|zeta, eta[, phi])` | inside a spheroid, Dirichlet data | 2, 3 | angular `S_mn` (`spheroidal_mode`), regular radial `R_mn` (`spheroidal_radial`, ODE in `cosh τ` / `sinh σ`), finite expansion verified against the data |
 //! | parabolic equation with a Robin signal `u_x + h u = g(t)`; hyperbolic signals with non-quiet initial data | half-line | 1 | Laplace route with the `erfc` kernel and `τ = t - σ²`; initial data by superposition with the homogeneous-boundary solution |
-//! | `pde_greens_robin(d, h)`, `pde_greens_ball_robin(R, h)` | half-space (Neumann for `h = 0`), interior of a ball | 2, 3 | images plus `-2h ∫ e^{-hw} G₀ dw`; Legendre series with `A_l = -(h-(l+1)/R) R^{-(2l+1)}/(4π(h+l/R))` |
-//! | `pde_crum_kdv(u, list(ψ…))`, `pde_hodograph_solution(F, G)` | line | 1 | Crum determinant `u - 2 ∂² ln W`; `x = r t + F(r) = s t + G(s)` for `λ = r`, `μ = s` |
+//! | `pde_greens_robin(d, h)`, `pde_greens_ball_robin(R, h)`, `pde_greens_ball_neumann(R, d)`, `pde_greens_exterior_robin(R, h, d)` | half-space (Neumann for `h = 0`), interior of a ball, generalised Neumann disk/ball, exterior Robin disk/ball | 2, 3 | images plus `-2h ∫ e^{-hw} G₀ dw`; Legendre series with `A_l = -(h-(l+1)/R) R^{-(2l+1)}/(4π(h+l/R))`; symmetric zero-mean Neumann function (`-ΔG = δ - 1/|B|`, `∂_r G = 0`) as closed forms of the Legendre/cosine series (the auxiliary solution with `∂_r = -1/|∂B|` differs by a zero-mean quadratic); exterior Robin series with `(l+hR)/(4π((l+1)-hR))` in 3D and the Fourier series in 2D |
+//! | `pde_hodograph_riemann(N)` | hodograph plane, any `N` | 1 | Riemann function `((ρ-σ)/(r-s))^N 2F1(N, 1-N; 1; z)` of `(r-s) t_rs + N (t_s - t_r) = 0` in hypergeometric form (`hyperpfq`), `z = (ρ-r)(σ-s)/((r-s)(ρ-σ))`; the Goursat problem is solved by [`riemann::epd_goursat`] (non-integer `N`, e.g. `3/2` for shallow water) |
+//! | `pde_crum_kdv(u, list(ψ…))`, `pde_hodograph_solution(F, G[, λ(r), μ(s)])` | line | 1 | Crum determinant `u - 2 ∂² ln W`; `x = λ(r) t + F(r) = μ(s) t + G(s)` for the decoupled pair (`λ = r`, `μ = s` by default), `t = (G - F)/(λ - μ)` |
 //! | heat / waves outside a disk or ball with sources | exterior | 2, 3 | Duhamel integral of the Weber solution (velocity kernel for waves); real spherical harmonics up to `l ≤ 8` |
 //!
 //! Limitations (what is still not covered):
@@ -134,13 +135,14 @@
 //!   data stay as `defint`s of numeric integrands).
 //! * Sturm-Liouville: smooth regular coefficients (numeric operators),
 //!   polynomial families, Legendre, Euler-Cauchy, Bessel, periodic Hill
-//!   problems, separable products and the Coulomb problem (bound states and
-//!   scattering states, `l` an integer, attractive charge, numeric
-//!   continuum with a cut-off at `k = 16`). Not covered: repulsive Coulomb
-//!   continua, spheroidal exterior (radiation) problems and Neumann/Robin
-//!   data on spheroids, other continuous spectra and Weyl-Titchmarsh
-//!   measures (only the Hankel, Weber and Coulomb instances), zero order
-//!   terms that are not a sum of single-variable functions.
+//!   problems, separable products and the Coulomb problem (bound states for
+//!   `Z > 0`, scattering states for any real `Z` — attractive or repulsive,
+//!   `η = -Z/k` of either sign — with integer `l`, analytic continuum and an
+//!   error-controlled cut-off `k_max ≤ 64`). Not covered: spheroidal exterior
+//!   (radiation) problems and Neumann/Robin data on spheroids, other
+//!   continuous spectra and Weyl-Titchmarsh measures (only the Hankel, Weber
+//!   and Coulomb instances), zero order terms that are not a sum of
+//!   single-variable functions.
 //! * Transform methods: Fourier (with sources) is general; Hankel only for
 //!   radial whole-space evolution and Weber on the exterior disk; the Laplace
 //!   route covers boundary signals on half-lines (hyperbolic Dirichlet and
@@ -148,17 +150,22 @@
 //!   Table inversion of the Fourier solution succeeds only when
 //!   `inverse_fourier` closes the product.
 //! * Green's functions: Dirichlet on disks, balls and exteriors; Neumann and
-//!   Robin on half-spaces and (Robin, `h > 0`) the interior of a ball; no
-//!   Neumann ball (generalised Green's function), exterior Robin or
-//!   curvilinear boxes.
+//!   Robin on half-spaces; Robin (`h > 0`) and the generalised zero-mean
+//!   Neumann function on the interior of a ball (and disk); exterior Robin on
+//!   disks and balls (`h > 0`, `h R` not a positive integer; the 2D kernel is
+//!   bounded rather than decaying). No curvilinear boxes.
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
 //!   problems for a single step; the soliton operators cover `KdV`
 //!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
 //!   ansatz needs a travelling wave; Darboux/Crum determinants for `KdV`
 //!   (given the eigenfunctions); the GLM route is numeric point evaluation
 //!   for `KdV`; the hodograph equation is solved only for `lambda = r`,
-//!   `mu = s`. Not covered: shock interactions, Riemann's method for
-//!   general hodograph equations.
+//!   `mu = s`; two interacting Riemann waves (three-state data: shock and
+//!   rarefaction collisions, `riemann_two_steps`). Not covered: more than
+//!   two interacting waves. (Riemann's method for the hodograph equation of
+//!   non-integer order `N` is `pde_hodograph_riemann` and
+//!   [`riemann::epd_goursat`]; `pde_hodograph_solution` stays symbolic for
+//!   them.)
 //! * Annuli: the Neumann constant is treated separately; modes with a
 //!   negative eigenvalue are found by a numeric scan (at most four); a
 //!   symbolic angular order that could hide a zero or negative mode is
@@ -195,6 +202,8 @@
 //! | `pde_kdv_soliton(list(κ…), list(x₀…))`, `pde_sine_gordon_soliton(list(a…), list(c…))` | the soliton solutions above |
 //! | `annulus_neg_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `κ > 0` of the annulus with `I_ν`/`K_ν` modes (eigenvalue `-κ²`) |
 //! | `pde_greens_function(eq, u(...)[, conditions])` | the Green's function `G(x…; s_x…)` of the operator part of the equation |
+//! | `pde_greens_ball_neumann(R, d)` | the generalised zero-mean Neumann Green's function of the disk (`d = 2`) or ball (`d = 3`) |
+//! | `pde_greens_exterior_robin(R, h, d)` | the exterior Robin Green's function of the disk or ball (`∂_r + h` with the outward normal) |
 //! | `annulus_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `k > 0` for which `A J_ν(kr) - B Y_ν(kr)` meets `p F + q F' = 0` at `r = a` (by construction) and at `r = b` (zeros of the cross-product `J_ν(ka) Y_ν(kb) - J_ν(kb) Y_ν(ka)` for Dirichlet data) |
 //!
 //! # The expansion engine
@@ -213,38 +222,37 @@ use std::collections::HashMap;
 
 mod bochner;
 mod classical;
+#[cfg(test)]
+mod completion_tests;
 mod conservation;
 mod coulomb;
 mod curvilinear;
 mod diffusion;
+#[cfg(test)]
+mod dimension_tests;
 mod elliptic;
+#[cfg(test)]
+mod extension_tests;
 mod frameworks;
 mod green;
 mod hill;
 mod laplace;
 mod modal;
 mod modes;
-mod scattering;
 mod nonlinear;
 mod numeric;
 mod poisson;
+pub mod riemann;
+mod scattering;
 mod sl;
-mod spheroidal;
 mod spectral;
+mod spheroidal;
 mod sturm;
 mod symmetry;
 mod systems;
 mod util;
 mod waves;
-#[cfg(test)]
-mod completion_tests;
-#[cfg(test)]
-mod dimension_tests;
-#[cfg(test)]
-mod extension_tests;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -261,6 +269,8 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
@@ -268,11 +278,11 @@ use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 use super::calculus::antiderivative;
 use super::calculus::derivative;
@@ -286,7 +296,11 @@ use super::special::special;
 /// The partial differential equation rule set.
 #[must_use]
 pub fn pde() -> RuleSet {
-    RuleSet::new("pde", install).needs(ode()).needs(special()).needs(complex()).needs(logic())
+    RuleSet::new("pde", install)
+        .needs(ode())
+        .needs(special())
+        .needs(complex())
+        .needs(logic())
 }
 
 /// Which solver a request asks for.
@@ -328,8 +342,11 @@ enum Request {
     Hodograph,
     CrumKdv,
     HodographSolution,
+    HodographRiemann,
     GreensRobin,
     GreensBallRobin,
+    GreensBallNeumann,
+    GreensExteriorRobin,
     KdvReflectionless,
     DarbouxKdv,
 }
@@ -340,7 +357,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     hill::install(i)?;
     coulomb::install(i)?;
     spheroidal::install(i)?;
-    let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
+    let heavy = |name: &str, arity: Arity| {
+        OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
     let traveling = i.op(heavy("pde_traveling_wave", Arity::Fixed(3)))?;
@@ -349,12 +370,33 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
     let complete = i.op(heavy("pde_complete_integral", Arity::Fixed(2)))?;
     let separate = i.op(heavy("pde_separate", Arity::Fixed(2)))?;
-    i.kernel("pde/frameworks", Tier::Reduce, Frameworks { complete, separate });
+    i.kernel(
+        "pde/frameworks",
+        Tier::Reduce,
+        Frameworks { complete, separate },
+    );
     let disk = i.op(heavy("laplace_disk", Arity::Fixed(4)))?;
     let ball = i.op(heavy("laplace_ball", Arity::Fixed(4)))?;
     i.kernel("pde/harmonic", Tier::Reduce, Harmonic { disk, ball });
-    i.kernel("pde/symmetry", Tier::Reduce, Symmetry { symmetries, traveling, similarity, noether, laws });
-    i.kernel("pde/at", Tier::Reduce, Pde { op: at, request: Request::At });
+    i.kernel(
+        "pde/symmetry",
+        Tier::Reduce,
+        Symmetry {
+            symmetries,
+            traveling,
+            similarity,
+            noether,
+            laws,
+        },
+    );
+    i.kernel(
+        "pde/at",
+        Tier::Reduce,
+        Pde {
+            op: at,
+            request: Request::At,
+        },
+    );
     let table = [
         ("pdsolve", Method::Any),
         ("solve_pde", Method::Any),
@@ -378,36 +420,160 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ];
     for (name, method) in table {
         let op = i.op(heavy(name, Arity::Variadic))?;
-        i.kernel(&format!("pde/{name}"), Tier::Reduce, Pde { op, request: Request::Solve(method) });
+        i.kernel(
+            &format!("pde/{name}"),
+            Tier::Reduce,
+            Pde {
+                op,
+                request: Request::Solve(method),
+            },
+        );
     }
     let op = i.op(heavy("pde_classify", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_classify", Tier::Reduce, Pde { op, request: Request::Classify });
+    i.kernel(
+        "pde/pde_classify",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Classify,
+        },
+    );
     let op = i.op(heavy("pde_order", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
+    i.kernel(
+        "pde/pde_order",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Order,
+        },
+    );
     let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_kdv_soliton", Tier::Reduce, Pde { op, request: Request::KdvSoliton });
+    i.kernel(
+        "pde/pde_kdv_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvSoliton,
+        },
+    );
     let op = i.op(heavy("pde_kdv_reflectionless", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_kdv_reflectionless", Tier::Reduce, Pde { op, request: Request::KdvReflectionless });
+    i.kernel(
+        "pde/pde_kdv_reflectionless",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvReflectionless,
+        },
+    );
     let op = i.op(heavy("pde_darboux_kdv", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_darboux_kdv", Tier::Reduce, Pde { op, request: Request::DarbouxKdv });
+    i.kernel(
+        "pde/pde_darboux_kdv",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::DarbouxKdv,
+        },
+    );
     let op = i.op(heavy("pde_poisson_integral", Arity::Fixed(3)))?;
-    i.kernel("pde/pde_poisson_integral", Tier::Reduce, Pde { op, request: Request::PoissonIntegral });
+    i.kernel(
+        "pde/pde_poisson_integral",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::PoissonIntegral,
+        },
+    );
     let op = i.op(heavy("pde_greens_ball", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_greens_ball", Tier::Reduce, Pde { op, request: Request::GreensBall });
-    for (name, request) in [("pde_crum_kdv", Request::CrumKdv), ("pde_hodograph_solution", Request::HodographSolution), ("pde_greens_robin", Request::GreensRobin), ("pde_greens_ball_robin", Request::GreensBallRobin)] {
+    i.kernel(
+        "pde/pde_greens_ball",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::GreensBall,
+        },
+    );
+    // pde_hodograph_solution(F, G) or pde_hodograph_solution(F, G, lambda, mu).
+    let op = i.op(heavy("pde_hodograph_solution", Arity::Variadic))?;
+    i.kernel(
+        "pde/pde_hodograph_solution",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::HodographSolution,
+        },
+    );
+    for (name, request) in [
+        ("pde_crum_kdv", Request::CrumKdv),
+        ("pde_greens_robin", Request::GreensRobin),
+        ("pde_greens_ball_robin", Request::GreensBallRobin),
+        ("pde_greens_ball_neumann", Request::GreensBallNeumann),
+    ] {
         let op = i.op(heavy(name, Arity::Fixed(2)))?;
         i.kernel(&format!("pde/{name}"), Tier::Reduce, Pde { op, request });
     }
+    let op = i.op(heavy("pde_greens_exterior_robin", Arity::Fixed(3)))?;
+    i.kernel(
+        "pde/pde_greens_exterior_robin",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::GreensExteriorRobin,
+        },
+    );
+    let op = i.op(heavy("pde_hodograph_riemann", Arity::Fixed(1)))?;
+    i.kernel(
+        "pde/pde_hodograph_riemann",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::HodographRiemann,
+        },
+    );
     let op = i.op(heavy("pde_hodograph", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_hodograph", Tier::Reduce, Pde { op, request: Request::Hodograph });
+    i.kernel(
+        "pde/pde_hodograph",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Hodograph,
+        },
+    );
     let op = i.op(heavy("pde_kdv_scattering", Arity::Fixed(3)))?;
-    i.kernel("pde/pde_kdv_scattering", Tier::Reduce, Pde { op, request: Request::KdvScattering });
+    i.kernel(
+        "pde/pde_kdv_scattering",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvScattering,
+        },
+    );
     let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
-    i.kernel("pde/pde_nls_soliton", Tier::Reduce, Pde { op, request: Request::NlsSoliton });
+    i.kernel(
+        "pde/pde_nls_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::NlsSoliton,
+        },
+    );
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
-    i.kernel("pde/pde_sine_gordon_soliton", Tier::Reduce, Pde { op, request: Request::SineGordonSoliton });
+    i.kernel(
+        "pde/pde_sine_gordon_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::SineGordonSoliton,
+        },
+    );
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
-    i.kernel("pde/pde_greens_function", Tier::Reduce, Pde { op, request: Request::Green });
+    i.kernel(
+        "pde/pde_greens_function",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Green,
+        },
+    );
     Ok(())
 }
 
@@ -430,7 +596,8 @@ impl Kernel for Pde {
         match self.request {
             | Request::At => at(cx, &args).map_or(Outcome::Pass, Outcome::Equal),
             | Request::Order => {
-                let Some(problem) = args.get(..2).and_then(|a| Problem::parse(cx, a[0], a[1])) else {
+                let Some(problem) = args.get(..2).and_then(|a| Problem::parse(cx, a[0], a[1]))
+                else {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
@@ -439,26 +606,51 @@ impl Kernel for Pde {
                 let &[first, second] = args.as_slice() else {
                     return Outcome::Pass;
                 };
-                let found = if self.request == Request::KdvReflectionless { nonlinear::kdv_reflectionless(cx, first, second) } else { nonlinear::darboux_kdv(cx, first, second) };
+                let found = if self.request == Request::KdvReflectionless {
+                    nonlinear::kdv_reflectionless(cx, first, second)
+                } else {
+                    nonlinear::darboux_kdv(cx, first, second)
+                };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
             },
-            | Request::CrumKdv | Request::HodographSolution | Request::GreensRobin | Request::GreensBallRobin => {
+            | Request::HodographSolution => {
+                match args.as_slice() {
+                    | &[f, g] => Outcome::Pinned(nonlinear::hodograph_solution(cx, f, g)),
+                    | &[f, g, lambda, mu] => {
+                        nonlinear::hodograph_decoupled(cx, f, g, lambda, mu)
+                            .map_or(Outcome::Pass, Outcome::Pinned)
+                    },
+                    | _ => Outcome::Pass,
+                }
+            },
+            | Request::HodographRiemann => {
+                match args.as_slice() {
+                    | &[n] => {
+                        nonlinear::hodograph_riemann(cx, n).map_or(Outcome::Pass, Outcome::Pinned)
+                    },
+                    | _ => Outcome::Pass,
+                }
+            },
+            | Request::CrumKdv | Request::GreensRobin | Request::GreensBallRobin => {
                 let &[first, second] = args.as_slice() else {
                     return Outcome::Pass;
                 };
                 let found = match self.request {
                     | Request::CrumKdv => {
-                        let Some(list) = best(cx.graph, second).filter(|&l| cx.graph.op(l) == core::LIST) else {
+                        let Some(list) =
+                            best(cx.graph, second).filter(|&l| cx.graph.op(l) == core::LIST)
+                        else {
                             return Outcome::Pass;
                         };
                         let psis = cx.graph.children(list).to_vec();
                         nonlinear::crum_kdv(cx, first, &psis)
                     },
-                    | Request::HodographSolution => Some(nonlinear::hodograph_solution(cx, first, second)),
-                    | Request::GreensRobin => match modes::exact_value(cx, first) {
-                        #[allow(clippy::cast_possible_truncation)]
-                        | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),
-                        | None => None,
+                    | Request::GreensRobin => {
+                        match modes::exact_value(cx, first) {
+                            #[allow(clippy::cast_possible_truncation)]
+                            | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),
+                            | None => None,
+                        }
                     },
                     | _ => poisson::greens_ball_robin(cx, first, second),
                 };
@@ -478,7 +670,30 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 #[allow(clippy::cast_possible_truncation)]
-                poisson::greens_ball(cx, radius, d.round() as i64).map_or(Outcome::Pass, Outcome::Pinned)
+                poisson::greens_ball(cx, radius, d.round() as i64)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::GreensBallNeumann => {
+                let &[radius, dimension] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(d) = modes::exact_value(cx, dimension) else {
+                    return Outcome::Pass;
+                };
+                #[allow(clippy::cast_possible_truncation)]
+                poisson::greens_ball_neumann(cx, radius, d.round() as i64)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::GreensExteriorRobin => {
+                let &[radius, h, dimension] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(d) = modes::exact_value(cx, dimension) else {
+                    return Outcome::Pass;
+                };
+                #[allow(clippy::cast_possible_truncation)]
+                poisson::greens_exterior_robin(cx, radius, h, d.round() as i64)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::KdvScattering => {
                 let &[u0, x, t] = args.as_slice() else {
@@ -494,7 +709,8 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 #[allow(clippy::cast_possible_truncation)]
-                poisson::poisson_integral(cx, g, radius, d.round() as i64).map_or(Outcome::Pass, Outcome::Pinned)
+                poisson::poisson_integral(cx, g, radius, d.round() as i64)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::NlsSoliton => {
                 let &[list] = args.as_slice() else {
@@ -520,7 +736,11 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 }
                 let (a, b) = (cx.graph.children(a).to_vec(), cx.graph.children(b).to_vec());
-                let found = if self.request == Request::KdvSoliton { nonlinear::kdv_soliton(cx, &a, &b) } else { nonlinear::sine_gordon_soliton(cx, &a, &b) };
+                let found = if self.request == Request::KdvSoliton {
+                    nonlinear::kdv_soliton(cx, &a, &b)
+                } else {
+                    nonlinear::sine_gordon_soliton(cx, &a, &b)
+                };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Green => {
@@ -533,16 +753,20 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 let conditions = match conditions {
-                    | Some(c) => match Conditions::parse(cx, &problem, c) {
-                        | Some(c) => c,
-                        | None => return Outcome::Pass,
+                    | Some(c) => {
+                        match Conditions::parse(cx, &problem, c) {
+                            | Some(c) => c,
+                            | None => return Outcome::Pass,
+                        }
                     },
                     | None => Conditions::default(),
                 };
-                green::greens_function(cx, &problem, &conditions).map_or(Outcome::Pass, Outcome::Pinned)
+                green::greens_function(cx, &problem, &conditions)
+                    .map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Classify => {
-                let Some(problem) = args.get(..2).and_then(|a| Problem::parse(cx, a[0], a[1])) else {
+                let Some(problem) = args.get(..2).and_then(|a| Problem::parse(cx, a[0], a[1]))
+                else {
                     return Outcome::Pass;
                 };
                 classify_term(cx, &problem).map_or(Outcome::Pass, Outcome::Equal)
@@ -553,17 +777,22 @@ impl Kernel for Pde {
                     | [e, u, c] => (e, u, Some(c)),
                     | _ => return Outcome::Pass,
                 };
-                let is_list = |cx: &mut Cx<'_>, n: NodeId| best(cx.graph, n).is_some_and(|b| cx.graph.op(b) == core::LIST);
+                let is_list = |cx: &mut Cx<'_>, n: NodeId| {
+                    best(cx.graph, n).is_some_and(|b| cx.graph.op(b) == core::LIST)
+                };
                 if is_list(cx, equation) && is_list(cx, unknown) {
-                    return systems::solve_system(cx, equation, unknown, conditions).map_or(Outcome::Pass, Outcome::Pinned);
+                    return systems::solve_system(cx, equation, unknown, conditions)
+                        .map_or(Outcome::Pass, Outcome::Pinned);
                 }
                 let Some(problem) = Problem::parse(cx, equation, unknown) else {
                     return Outcome::Pass;
                 };
                 let conditions = match conditions {
-                    | Some(c) => match Conditions::parse(cx, &problem, c) {
-                        | Some(c) => c,
-                        | None => return Outcome::Pass,
+                    | Some(c) => {
+                        match Conditions::parse(cx, &problem, c) {
+                            | Some(c) => c,
+                            | None => return Outcome::Pass,
+                        }
                     },
                     | None => Conditions::default(),
                 };
@@ -601,7 +830,9 @@ impl Kernel for Frameworks {
         } else {
             frameworks::separate(cx, &p)
         };
-        found.map_or(Outcome::Pass, |rhs| Outcome::Pinned(cx.graph.node(core::EQ, &[p.unknown, rhs])))
+        found.map_or(Outcome::Pass, |rhs| {
+            Outcome::Pinned(cx.graph.node(core::EQ, &[p.unknown, rhs]))
+        })
     }
 }
 
@@ -645,7 +876,13 @@ struct Symmetry {
 
 impl Kernel for Symmetry {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.symmetries, self.traveling, self.similarity, self.noether, self.laws]
+        vec![
+            self.symmetries,
+            self.traveling,
+            self.similarity,
+            self.noether,
+            self.laws,
+        ]
     }
 
     fn reduce(
@@ -657,7 +894,9 @@ impl Kernel for Symmetry {
         let args = cx.graph.children(node).to_vec();
         let found = (|| {
             if op == self.noether {
-                let &[l, u, g] = args.as_slice() else { return None };
+                let &[l, u, g] = args.as_slice() else {
+                    return None;
+                };
                 return symmetry::noether_current(cx, l, u, g);
             }
             let (&equation, rest) = args.split_first()?;
@@ -668,7 +907,10 @@ impl Kernel for Symmetry {
             }
             if op == self.symmetries {
                 let generators = symmetry::symmetries(cx, &p)?;
-                let items: Vec<NodeId> = generators.iter().map(|g| cx.graph.node(core::LIST, g)).collect();
+                let items: Vec<NodeId> = generators
+                    .iter()
+                    .map(|g| cx.graph.node(core::LIST, g))
+                    .collect();
                 Some(cx.graph.node(core::LIST, &items))
             } else if op == self.traveling {
                 symmetry::traveling_wave(cx, &p, *extra.first()?)
@@ -790,7 +1032,15 @@ impl Problem {
     ) -> Option<()> {
         let graph = &mut *cx.graph;
         let mut gens = Gens::default();
-        let poly = from_term(graph, &mut gens, self.residual, Limits { terms: 512, exponent: 8 })?;
+        let poly = from_term(
+            graph,
+            &mut gens,
+            self.residual,
+            Limits {
+                terms: 512,
+                exponent: 8,
+            },
+        )?;
         // Generators that are jets of u.
         let mut jet_of: HashMap<u32, Index> = HashMap::new();
         for g in 0..u32::try_from(gens.len()).ok()? {
@@ -824,9 +1074,11 @@ impl Problem {
             let term = Poly::monomial(rest, coeff.clone());
             match (jet, degree) {
                 | (None, _) => source = source.add(&term),
-                | (Some(index), 1) => match linear.iter_mut().find(|(i, _)| *i == index) {
-                    | Some((_, c)) => *c = c.add(&term),
-                    | None => linear.push((index, term)),
+                | (Some(index), 1) => {
+                    match linear.iter_mut().find(|(i, _)| *i == index) {
+                        | Some((_, c)) => *c = c.add(&term),
+                        | None => linear.push((index, term)),
+                    }
                 },
                 | _ => self.nonlinear = true,
             }
@@ -842,7 +1094,11 @@ impl Problem {
     }
 
     fn order(&self) -> u32 {
-        self.jets.iter().map(|(i, _)| i.iter().sum::<u32>()).max().unwrap_or(0)
+        self.jets
+            .iter()
+            .map(|(i, _)| i.iter().sum::<u32>())
+            .max()
+            .unwrap_or(0)
     }
 
     const fn dimension(&self) -> usize {
@@ -855,7 +1111,10 @@ impl Problem {
         graph: &mut Graph,
         index: &[u32],
     ) -> NodeId {
-        self.linear.iter().find(|(i, _)| i == index).map_or_else(|| graph.int(0), |&(_, c)| c)
+        self.linear
+            .iter()
+            .find(|(i, _)| i == index)
+            .map_or_else(|| graph.int(0), |&(_, c)| c)
     }
 
     fn unit(
@@ -875,7 +1134,11 @@ impl Problem {
     ) -> usize {
         self.vars
             .iter()
-            .position(|&v| graph.symbol_of(v).is_some_and(|s| graph.interner().symbol_name(s) == "t"))
+            .position(|&v| {
+                graph
+                    .symbol_of(v)
+                    .is_some_and(|s| graph.interner().symbol_name(s) == "t")
+            })
             .unwrap_or_else(|| self.vars.len().saturating_sub(1))
     }
 
@@ -892,7 +1155,9 @@ impl Problem {
         graph: &Graph,
         allowed: &[Index],
     ) -> bool {
-        self.linear.iter().all(|(i, c)| allowed.contains(i) || graph.number_of(*c).is_some_and(Number::is_zero))
+        self.linear
+            .iter()
+            .all(|(i, c)| allowed.contains(i) || graph.number_of(*c).is_some_and(Number::is_zero))
     }
 
     /// Whether `node` is free of every independent variable.
@@ -901,7 +1166,11 @@ impl Problem {
         graph: &Graph,
         node: NodeId,
     ) -> bool {
-        self.vars.iter().all(|&v| graph.symbol_of(v).is_none_or(|s| !graph.depends_on(graph.find(node), s)))
+        self.vars.iter().all(|&v| {
+            graph
+                .symbol_of(v)
+                .is_none_or(|s| !graph.depends_on(graph.find(node), s))
+        })
     }
 }
 
@@ -975,7 +1244,12 @@ fn evolution(
     let potential = mul(cx.graph, &[c, a_inv]);
     let potential = neg(cx.graph, potential);
     let potential = cx.simplify(potential);
-    Some(Evolution { time, order, speed, potential })
+    Some(Evolution {
+        time,
+        order,
+        speed,
+        potential,
+    })
 }
 
 // ----------------------------------------------------------------------
@@ -1028,7 +1302,9 @@ impl Conditions {
             if args.first() != Some(&p.function) || args.len() != p.vars.len() + 1 {
                 return None;
             }
-            let differing: Vec<usize> = (0..p.vars.len()).filter(|&k| !cx.graph.same(args[k + 1], p.vars[k])).collect();
+            let differing: Vec<usize> = (0..p.vars.len())
+                .filter(|&k| !cx.graph.same(args[k + 1], p.vars[k]))
+                .collect();
             let &[on] = differing.as_slice() else {
                 return None;
             };
@@ -1060,9 +1336,16 @@ impl Conditions {
         }
         let u_symbol = cx.graph.symbol_of(p.function)?;
         if let Some((on, point, derivative)) = Self::atom_of(cx, p, target) {
-            let mut c = Condition { on, point, derivative, value, robin: None };
+            let mut c = Condition {
+                on,
+                point,
+                derivative,
+                value,
+                robin: None,
+            };
             // ∂u/∂x = rest - h u(a): a Robin condition.
-            if c.derivative == p.unit(on, 1) && cx.graph.depends_on(cx.graph.find(value), u_symbol) {
+            if c.derivative == p.unit(on, 1) && cx.graph.depends_on(cx.graph.find(value), u_symbol)
+            {
                 let atom = cx.graph.substitute(p.unknown, p.vars[on], point);
                 let k = derivative_by_node(cx, value, atom)?;
                 let ka = mul(cx.graph, &[k, atom]);
@@ -1101,7 +1384,13 @@ impl Conditions {
                 let minus = neg(cx.graph, rest);
                 let v = util::div(cx, minus, k);
                 let v = cx.simplify(v);
-                Some(Condition { on: *on, point: *point, derivative: derivative.clone(), value: v, robin: None })
+                Some(Condition {
+                    on: *on,
+                    point: *point,
+                    derivative: derivative.clone(),
+                    value: v,
+                    robin: None,
+                })
             },
             | [(a, on, point, da), (b, on_b, point_b, db)] => {
                 if on != on_b || !cx.graph.same(*point, *point_b) {
@@ -1123,7 +1412,13 @@ impl Conditions {
                 let minus = neg(cx.graph, rest);
                 let v = util::div(cx, minus, k_d);
                 let v = cx.simplify(v);
-                Some(Condition { on: *on, point: *point, derivative: first, value: v, robin: Some(h) })
+                Some(Condition {
+                    on: *on,
+                    point: *point,
+                    derivative: first,
+                    value: v,
+                    robin: Some(h),
+                })
             },
             | _ => None,
         }
@@ -1141,7 +1436,9 @@ impl Conditions {
         derivative: &[u32],
         point: Option<NodeId>,
     ) -> Option<&Condition> {
-        self.0.iter().find(|c| c.on == on && c.derivative == derivative && point.is_none_or(|p| graph.same(p, c.point)))
+        self.0.iter().find(|c| {
+            c.on == on && c.derivative == derivative && point.is_none_or(|p| graph.same(p, c.point))
+        })
     }
 
     const fn is_empty(&self) -> bool {
@@ -1189,10 +1486,18 @@ fn kind(
         false
     };
     if order == 1 {
-        return if p.nonlinear { "burgers" } else { "transport" };
+        return if p.nonlinear {
+            "burgers"
+        } else {
+            "transport"
+        };
     }
     if order == 4 && !p.nonlinear {
-        return if spectral::evolution_time(cx, p).is_some() { "beam" } else { "biharmonic" };
+        return if spectral::evolution_time(cx, p).is_some() {
+            "beam"
+        } else {
+            "biharmonic"
+        };
     }
     if order != 2 {
         return "unknown";
@@ -1237,7 +1542,13 @@ fn kind(
         let index = p.unit(k, 2);
         let c = p.coefficient(cx.graph, &index);
         let facts = cx.graph.facts(c);
-        signs.push(if facts.has(Facts::POSITIVE) { 1 } else if facts.has(Facts::NEGATIVE) { -1 } else { 0 });
+        signs.push(if facts.has(Facts::POSITIVE) {
+            1
+        } else if facts.has(Facts::NEGATIVE) {
+            -1
+        } else {
+            0
+        });
         allowed.push(index);
     }
     if p.only(cx.graph, &allowed) && signs.iter().all(|&s| s != 0 && s == signs[0]) {
@@ -1328,14 +1639,35 @@ fn classify_term(
     let methods: &[&str] = match kind {
         | "transport" => &["characteristics"],
         | "burgers" => &["characteristics", "hopf_cole"],
-        | "heat" => &["separation_of_variables", "fourier_transform", "heat_kernel", "images"],
-        | "wave" => &["dalembert", "separation_of_variables", "kirchhoff", "descent", "images"],
+        | "heat" => {
+            &[
+                "separation_of_variables",
+                "fourier_transform",
+                "heat_kernel",
+                "images",
+            ]
+        },
+        | "wave" => {
+            &[
+                "dalembert",
+                "separation_of_variables",
+                "kirchhoff",
+                "descent",
+                "images",
+            ]
+        },
         | "laplace" => &["separation_of_variables", "greens_function", "images"],
         | "poisson" | "helmholtz" => &["greens_function", "separation_of_variables", "images"],
         | "schrodinger" => &["fourier_transform", "separation_of_variables"],
         | "klein_gordon" => &["plane_waves", "separation_of_variables", "riemann"],
         | "telegraph" => &["separation_of_variables", "riemann"],
-        | "advection_diffusion" => &["gauge_transformation", "heat_kernel", "separation_of_variables"],
+        | "advection_diffusion" => {
+            &[
+                "gauge_transformation",
+                "heat_kernel",
+                "separation_of_variables",
+            ]
+        },
         | "beam" | "biharmonic" => &["separation_of_variables"],
         | _ => &[],
     };
@@ -1348,7 +1680,18 @@ fn classify_term(
     let character = symbol_term(graph, character);
     let methods: Vec<NodeId> = methods.iter().map(|m| symbol_term(graph, m)).collect();
     let methods = graph.node(core::LIST, &methods);
-    Some(graph.node(core::LIST, &[kind_node, order, dimension, linear, homogeneous, character, methods]))
+    Some(graph.node(
+        core::LIST,
+        &[
+            kind_node,
+            order,
+            dimension,
+            linear,
+            homogeneous,
+            character,
+            methods,
+        ],
+    ))
 }
 
 // ----------------------------------------------------------------------
@@ -1363,12 +1706,25 @@ fn solve(
 ) -> Option<NodeId> {
     let classical = if conditions.has_robin() {
         // Robin conditions on a half-line (heat kernels with the Robin image).
-        if matches!(method, Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier) && kind(cx, p) == "heat" {
+        if matches!(
+            method,
+            Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier
+        ) && kind(cx, p) == "heat"
+        {
             let found = diffusion::parabolic(cx, p, conditions);
-            let found = if found.is_none() && method == Method::Any { laplace::signalling(cx, p, conditions) } else { found };
+            let found = if found.is_none() && method == Method::Any {
+                laplace::signalling(cx, p, conditions)
+            } else {
+                found
+            };
             found.map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
-        } else if matches!(method, Method::Any | Method::Dalembert | Method::SecondOrder) && kind(cx, p) == "wave" {
-            classical::wave_half_line_robin(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
+        } else if matches!(
+            method,
+            Method::Any | Method::Dalembert | Method::SecondOrder
+        ) && kind(cx, p) == "wave"
+        {
+            classical::wave_half_line_robin(cx, p, conditions)
+                .map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
         } else {
             None
         }
@@ -1397,7 +1753,9 @@ fn solve(
     if !general {
         return None;
     }
-    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions)).or_else(|| sturm::solve(cx, p, conditions))?;
+    let solution = spectral::solve_box(cx, p, conditions)
+        .or_else(|| curvilinear::solve(cx, p, conditions))
+        .or_else(|| sturm::solve(cx, p, conditions))?;
     Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
 }
 
@@ -1407,7 +1765,24 @@ fn solve_classical(
     conditions: &Conditions,
     method: Method,
 ) -> Option<NodeId> {
-    use Method::{Any, Characteristics, Burgers, Separation, SecondOrder, Dalembert, Wave3, Heat1, Fourier, Heat3, Schrodinger, KleinGordon, Laplace2, Laplace3, Green, Poisson2, Poisson3, Helmholtz};
+    use Method::Any;
+    use Method::Burgers;
+    use Method::Characteristics;
+    use Method::Dalembert;
+    use Method::Fourier;
+    use Method::Green;
+    use Method::Heat1;
+    use Method::Heat3;
+    use Method::Helmholtz;
+    use Method::KleinGordon;
+    use Method::Laplace2;
+    use Method::Laplace3;
+    use Method::Poisson2;
+    use Method::Poisson3;
+    use Method::Schrodinger;
+    use Method::SecondOrder;
+    use Method::Separation;
+    use Method::Wave3;
     let kind = kind(cx, p);
     let try_method = |m: Method| method == Any || method == m;
     let mut solution = if p.nonlinear && (try_method(Characteristics) || try_method(Burgers)) {
@@ -1416,11 +1791,15 @@ fn solve_classical(
     } else {
         None
     };
-    if solution.is_none() && p.order() == 1 && (try_method(Characteristics) || try_method(Burgers)) {
+    if solution.is_none() && p.order() == 1 && (try_method(Characteristics) || try_method(Burgers))
+    {
         solution = characteristics(cx, p, conditions);
     }
     if solution.is_none() && kind == "wave" {
-        if solution.is_none() && p.dimension() == 2 && (try_method(Dalembert) || try_method(SecondOrder)) {
+        if solution.is_none()
+            && p.dimension() == 2
+            && (try_method(Dalembert) || try_method(SecondOrder))
+        {
             solution = dalembert(cx, p, conditions);
         }
         if solution.is_none() && p.dimension() == 4 && try_method(Wave3) {
@@ -1430,30 +1809,51 @@ fn solve_classical(
             solution = kirchhoff(cx, p, conditions);
         }
     }
-    if solution.is_none() && kind == "heat"
-        && solution.is_none() && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3)) {
-            solution = heat_kernel(cx, p, conditions);
-        }
-    if solution.is_none() && kind == "schrodinger" && (try_method(Fourier) || try_method(Schrodinger)) {
+    if solution.is_none()
+        && kind == "heat"
+        && solution.is_none()
+        && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3))
+    {
+        solution = heat_kernel(cx, p, conditions);
+    }
+    if solution.is_none()
+        && kind == "schrodinger"
+        && (try_method(Fourier) || try_method(Schrodinger))
+    {
         solution = schrodinger(cx, p, conditions);
     }
-    if solution.is_none() && kind == "klein_gordon" && try_method(KleinGordon) && conditions.is_empty() {
+    if solution.is_none()
+        && kind == "klein_gordon"
+        && try_method(KleinGordon)
+        && conditions.is_empty()
+    {
         solution = klein_gordon(cx, p);
     }
-    if solution.is_none() && kind == "laplace"
-        && (try_method(Separation) || try_method(Laplace2) || try_method(Laplace3)) {
-            solution = laplace_box(cx, p, conditions);
-        }
+    if solution.is_none()
+        && kind == "laplace"
+        && (try_method(Separation) || try_method(Laplace2) || try_method(Laplace3))
+    {
+        solution = laplace_box(cx, p, conditions);
+    }
     if solution.is_none() && method == Any && conditions.is_empty() && !p.nonlinear {
         solution = direct_integration(cx, p).or_else(|| polynomial_particular(cx, p));
     }
-    if solution.is_none() && matches!(kind, "poisson" | "laplace" | "helmholtz")
-        && (try_method(Green) || try_method(Poisson2) || try_method(Poisson3) || try_method(Helmholtz))
+    if solution.is_none()
+        && matches!(kind, "poisson" | "laplace" | "helmholtz")
+        && (try_method(Green)
+            || try_method(Poisson2)
+            || try_method(Poisson3)
+            || try_method(Helmholtz))
     {
-        solution = if conditions.is_empty() { green(cx, p) } else { elliptic::half_space(cx, p, conditions) };
+        solution = if conditions.is_empty() {
+            green(cx, p)
+        } else {
+            elliptic::half_space(cx, p, conditions)
+        };
     }
     if solution.is_none() && matches!(method, Any | Heat1 | Heat3 | Fourier | Schrodinger) {
-        solution = diffusion::similarity(cx, p, conditions).or_else(|| diffusion::parabolic(cx, p, conditions));
+        solution = diffusion::similarity(cx, p, conditions)
+            .or_else(|| diffusion::parabolic(cx, p, conditions));
     }
     if solution.is_none() && method == Any {
         solution = classical::wave_half_line(cx, p, conditions);
@@ -1469,7 +1869,8 @@ fn solve_classical(
         // The Fourier-symbol fallback: last resort on whole space.
         solution = frameworks::fourier_evolution(cx, p, conditions);
     }
-    if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear {
+    if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear
+    {
         solution = frameworks::complete_integral(cx, p);
     }
     let solution = solution?;
@@ -1486,8 +1887,14 @@ fn dummy(
     let graph = &mut *cx.graph;
     let candidate = graph.interner_mut().symbol(stem);
     let used = graph.depends_on(graph.find(p.residual), candidate)
-        || p.vars.iter().any(|&v| graph.symbol_of(v) == Some(candidate));
-    let symbol = if used { graph.interner_mut().fresh_symbol(stem) } else { candidate };
+        || p.vars
+            .iter()
+            .any(|&v| graph.symbol_of(v) == Some(candidate));
+    let symbol = if used {
+        graph.interner_mut().fresh_symbol(stem)
+    } else {
+        candidate
+    };
     (graph.symbol_node(symbol), symbol)
 }
 
@@ -1513,7 +1920,11 @@ fn characteristics(
         return None;
     }
     if p.dimension() > 2 {
-        return if p.nonlinear { None } else { transport_n(cx, p, conditions) };
+        return if p.nonlinear {
+            None
+        } else {
+            transport_n(cx, p, conditions)
+        };
     }
     if p.nonlinear {
         return quasilinear(cx, p, conditions);
@@ -1530,7 +1941,11 @@ fn characteristics(
     let zero = |graph: &Graph, n: NodeId| graph.number_of(n).is_some_and(Number::is_zero);
     if p.constant(cx.graph, a) && p.constant(cx.graph, b) && p.constant(cx.graph, c) {
         // Swap the roles of x and y if u_x is absent.
-        let (a, b, x, y) = if zero(cx.graph, a) { (b, a, y, x) } else { (a, b, x, y) };
+        let (a, b, x, y) = if zero(cx.graph, a) {
+            (b, a, y, x)
+        } else {
+            (a, b, x, y)
+        };
         if zero(cx.graph, a) {
             return None;
         }
@@ -1553,7 +1968,11 @@ fn characteristics(
         };
         let integrand = mul(cx.graph, &[f_on, inverse_a, growth]);
         let integrand = cx.simplify(integrand);
-        let particular = if zero(cx.graph, integrand) { cx.graph.int(0) } else { antiderivative(cx, integrand, x)? };
+        let particular = if zero(cx.graph, integrand) {
+            cx.graph.int(0)
+        } else {
+            antiderivative(cx, integrand, x)?
+        };
         // ξ = b x - a y
         let ay = mul(cx.graph, &[a, y]);
         let invariant = sub(cx.graph, bx, ay);
@@ -1614,8 +2033,12 @@ fn direct_integration(
     cx: &mut Cx<'_>,
     p: &Problem,
 ) -> Option<NodeId> {
-    let terms: Vec<(Index, NodeId)> =
-        p.linear.iter().filter(|(_, c)| cx.graph.number_of(*c).is_none_or(|v| !v.is_zero())).cloned().collect();
+    let terms: Vec<(Index, NodeId)> = p
+        .linear
+        .iter()
+        .filter(|(_, c)| cx.graph.number_of(*c).is_none_or(|v| !v.is_zero()))
+        .cloned()
+        .collect();
     let [(index, coefficient)] = terms.as_slice() else {
         return None;
     };
@@ -1628,13 +2051,23 @@ fn direct_integration(
     value = cx.simplify(value);
     for (k, &order) in index.iter().enumerate() {
         for _ in 0..order {
-            value = if cx.graph.number_of(value).is_some_and(Number::is_zero) { value } else { antiderivative(cx, value, p.vars[k])? };
+            value = if cx.graph.number_of(value).is_some_and(Number::is_zero) {
+                value
+            } else {
+                antiderivative(cx, value, p.vars[k])?
+            };
         }
     }
     let mut pieces = vec![value];
     let mut count = 0;
     for (k, &order) in index.iter().enumerate() {
-        let others: Vec<NodeId> = p.vars.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &v)| v).collect();
+        let others: Vec<NodeId> = p
+            .vars
+            .iter()
+            .enumerate()
+            .filter(|&(j, _)| j != k)
+            .map(|(_, &v)| v)
+            .collect();
         for j in 0..order {
             count += 1;
             let name = cx.graph.sym(&format!("F{count}"));
@@ -1659,13 +2092,25 @@ fn polynomial_particular(
     cx: &mut Cx<'_>,
     p: &Problem,
 ) -> Option<NodeId> {
-    if p.homogeneous(cx.graph) || p.linear.iter().any(|(_, c)| cx.graph.number_of(*c).and_then(Number::to_rational).is_none()) {
+    if p.homogeneous(cx.graph)
+        || p.linear.iter().any(|(_, c)| {
+            cx.graph
+                .number_of(*c)
+                .and_then(Number::to_rational)
+                .is_none()
+        })
+    {
         return None;
     }
     let mut gens = crate::rules::poly::repr::Gens::default();
     let indices: Vec<u32> = p.vars.iter().map(|&v| gens.index(cx.graph, v)).collect();
     let source = crate::rules::poly::best(cx.graph, p.source)?;
-    let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, source, crate::rules::poly::repr::Limits::default())?;
+    let poly = crate::rules::poly::repr::from_term(
+        cx.graph,
+        &mut gens,
+        source,
+        crate::rules::poly::repr::Limits::default(),
+    )?;
     if gens.len() != indices.len() || !poly.is_exact() {
         return None;
     }
@@ -1720,7 +2165,9 @@ fn polynomial_particular(
     let identity = add(cx.graph, &terms);
     let identity = cx.simplify(identity);
     let basis = crate::rules::ode::solve_linear_identity(cx.graph, identity, &unknowns)?;
-    let vector = basis.into_iter().find(|v| v.last().is_some_and(|s| !num_traits::Zero::is_zero(s)))?;
+    let vector = basis
+        .into_iter()
+        .find(|v| v.last().is_some_and(|s| !num_traits::Zero::is_zero(s)))?;
     let s_value = vector.last()?.clone();
     let mut solution = ansatz;
     for (k, &a) in unknowns.iter().enumerate().take(exponents.len()) {
@@ -1751,8 +2198,12 @@ fn with_sample_function(
     while let Some(n) = stack.pop() {
         if cx.graph.op(n) == core::APPLY {
             let head = *cx.graph.children(n).first()?;
-            let name = cx.graph.symbol_of(head).map(|s| cx.graph.interner().symbol_name(s).to_owned());
-            if name.is_some_and(|n| n.len() <= 2 && n.starts_with(|c: char| c.is_ascii_uppercase())) {
+            let name = cx
+                .graph
+                .symbol_of(head)
+                .map(|s| cx.graph.interner().symbol_name(s).to_owned());
+            if name.is_some_and(|n| n.len() <= 2 && n.starts_with(|c: char| c.is_ascii_uppercase()))
+            {
                 applications.push(n);
                 continue;
             }
@@ -1797,15 +2248,23 @@ fn transport_n(
     if !p.only(cx.graph, &allowed) {
         return None;
     }
-    let coefficients: Vec<NodeId> = (0..n).map(|k| p.coefficient(cx.graph, &p.unit(k, 1))).collect();
+    let coefficients: Vec<NodeId> = (0..n)
+        .map(|k| p.coefficient(cx.graph, &p.unit(k, 1)))
+        .collect();
     let c = p.coefficient(cx.graph, &vec![0; n]);
-    if !coefficients.iter().chain([&c]).all(|&k| p.constant(cx.graph, k)) {
+    if !coefficients
+        .iter()
+        .chain([&c])
+        .all(|&k| p.constant(cx.graph, k))
+    {
         return None;
     }
     if let Some(data) = conditions.0.first() {
         return transport_with_data(cx, p, data, &coefficients, c);
     }
-    let lead = coefficients.iter().position(|&k| cx.graph.number_of(k).is_none_or(|v| !v.is_zero()))?;
+    let lead = coefficients
+        .iter()
+        .position(|&k| cx.graph.number_of(k).is_none_or(|v| !v.is_zero()))?;
     let (a_l, x_l) = (coefficients[lead], p.vars[lead]);
     let f = neg(cx.graph, p.source);
     let f = cx.simplify(f);
@@ -1836,8 +2295,11 @@ fn transport_n(
     let decay = cx.graph.node(exp, &[minus]);
     let integrand = mul(cx.graph, &[f_on, inverse_a, growth]);
     let integrand = cx.simplify(integrand);
-    let mut particular =
-        if cx.graph.number_of(integrand).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, integrand, x_l)? };
+    let mut particular = if cx.graph.number_of(integrand).is_some_and(Number::is_zero) {
+        cx.graph.int(0)
+    } else {
+        antiderivative(cx, integrand, x_l)?
+    };
     let f_symbol = cx.graph.sym("F");
     let mut args = vec![f_symbol];
     for &(xi, invariant) in &invariants {
@@ -1880,23 +2342,24 @@ fn transport_with_data(
         cx.simplify(q)
     };
     // The data at the foot of the characteristic (all variables at once).
-    let shifted = |cx: &mut Cx<'_>, node: NodeId, distance: NodeId, skip: Option<usize>| -> NodeId {
-        let fresh: Vec<NodeId> = p.vars.iter().map(|_| fresh_symbol(cx, "w")).collect();
-        let mut out = node;
-        for (j, &v) in p.vars.iter().enumerate() {
-            if Some(j) != skip {
-                out = cx.graph.substitute(out, v, fresh[j]);
+    let shifted =
+        |cx: &mut Cx<'_>, node: NodeId, distance: NodeId, skip: Option<usize>| -> NodeId {
+            let fresh: Vec<NodeId> = p.vars.iter().map(|_| fresh_symbol(cx, "w")).collect();
+            let mut out = node;
+            for (j, &v) in p.vars.iter().enumerate() {
+                if Some(j) != skip {
+                    out = cx.graph.substitute(out, v, fresh[j]);
+                }
             }
-        }
-        for (j, &w) in fresh.iter().enumerate() {
-            if Some(j) != skip {
-                let step = mul(cx.graph, &[coefficients[j], distance]);
-                let foot = sub(cx.graph, p.vars[j], step);
-                out = cx.graph.substitute(out, w, foot);
+            for (j, &w) in fresh.iter().enumerate() {
+                if Some(j) != skip {
+                    let step = mul(cx.graph, &[coefficients[j], distance]);
+                    let foot = sub(cx.graph, p.vars[j], step);
+                    out = cx.graph.substitute(out, w, foot);
+                }
             }
-        }
-        out
-    };
+            out
+        };
     let decay = {
         let cl = mul(cx.graph, &[c, lambda]);
         let minus = neg(cx.graph, cl);
@@ -1948,7 +2411,10 @@ fn lagrange_charpit_linear(
         cx.graph.node(core::APPLY, &[function, x])
     };
     let slope_in_y = cx.graph.substitute(slope, y, big_y);
-    let (diff, dsolve) = (cx.graph.ops().lookup("diff")?, cx.graph.ops().lookup("dsolve")?);
+    let (diff, dsolve) = (
+        cx.graph.ops().lookup("diff")?,
+        cx.graph.ops().lookup("dsolve")?,
+    );
     let dy = cx.graph.node(diff, &[big_y, x]);
     let ode = cx.graph.node(core::EQ, &[dy, slope_in_y]);
     let request = cx.graph.node(dsolve, &[ode, big_y]);
@@ -1974,12 +2440,20 @@ fn lagrange_charpit_linear(
     let source = cx.graph.substitute(source, y, curve);
     let source = cx.simplify(source);
     let exp = cx.graph.ops().lookup("exp")?;
-    let integral_rate = if cx.graph.number_of(rate).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, rate, x)? };
+    let integral_rate = if cx.graph.number_of(rate).is_some_and(Number::is_zero) {
+        cx.graph.int(0)
+    } else {
+        antiderivative(cx, rate, x)?
+    };
     let mu = cx.graph.node(exp, &[integral_rate]);
     let mu = cx.simplify(mu);
     let weighted = mul(cx.graph, &[source, mu]);
     let weighted = cx.simplify(weighted);
-    let particular = if cx.graph.number_of(weighted).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, weighted, x)? };
+    let particular = if cx.graph.number_of(weighted).is_some_and(Number::is_zero) {
+        cx.graph.int(0)
+    } else {
+        antiderivative(cx, weighted, x)?
+    };
     let arbitrary = apply_function(cx.graph, "F", k);
     let inside = add(cx.graph, &[particular, arbitrary]);
     let mu_inv = powi(cx.graph, mu, -1);
@@ -2016,7 +2490,9 @@ fn apply_initial_data(
     // ξ = s, found by solving ξ(.., point, ..) = s for the free variable.
     let free = 1 - condition.on;
     let (s, _) = dummy(cx, p, "s");
-    let on_line = cx.graph.substitute(invariant, p.vars[condition.on], condition.point);
+    let on_line = cx
+        .graph
+        .substitute(invariant, p.vars[condition.on], condition.point);
     let equation = sub(cx.graph, on_line, s);
     let where_ = *solve_for(cx.graph, equation, p.vars[free], 0)?.first()?;
     let f_symbol = cx.graph.sym("F");
@@ -2024,7 +2500,9 @@ fn apply_initial_data(
     let marker = cx.graph.sym("F_value");
     let arbitrary = cx.graph.node(core::APPLY, &[f_symbol, invariant]);
     let with_marker = cx.graph.replace_subterm(solution, arbitrary, marker);
-    let line = cx.graph.substitute(with_marker, p.vars[condition.on], condition.point);
+    let line = cx
+        .graph
+        .substitute(with_marker, p.vars[condition.on], condition.point);
     let line = cx.graph.substitute(line, p.vars[free], where_);
     let value = cx.graph.substitute(condition.value, p.vars[free], where_);
     let matched = sub(cx.graph, line, value);
@@ -2070,7 +2548,10 @@ fn quasilinear(
     if !cx.is_zero(check) {
         return None;
     }
-    if p.jets.iter().any(|(i, n)| *i != u_t && *i != u_x && *n != p.unknown && depends_u(cx.graph, speed)) {
+    if p.jets
+        .iter()
+        .any(|(i, n)| *i != u_t && *i != u_x && *n != p.unknown && depends_u(cx.graph, speed))
+    {
         return None;
     }
     let st = mul(cx.graph, &[speed, t]);
@@ -2126,7 +2607,10 @@ fn dalembert(
     conditions: &Conditions,
 ) -> Option<NodeId> {
     let e = evolution(cx, p)?;
-    if e.order != 2 || !p.homogeneous(cx.graph) || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero) {
+    if e.order != 2
+        || !p.homogeneous(cx.graph)
+        || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero)
+    {
         return None;
     }
     let (t, x, time, _) = time_space(p, &e)?;
@@ -2148,7 +2632,11 @@ fn dalembert(
     let zero_index = vec![0; p.dimension()];
     let position = conditions.find(cx.graph, time, &zero_index, None)?;
     let velocity = conditions.find(cx.graph, time, &p.unit(time, 1), None);
-    if !cx.graph.number_of(position.point).is_some_and(Number::is_zero) {
+    if !cx
+        .graph
+        .number_of(position.point)
+        .is_some_and(Number::is_zero)
+    {
         return None;
     }
     let f = position.value;
@@ -2178,12 +2666,20 @@ fn heat_kernel(
     conditions: &Conditions,
 ) -> Option<NodeId> {
     let e = evolution(cx, p)?;
-    if e.order != 1 || !p.homogeneous(cx.graph) || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero) {
+    if e.order != 1
+        || !p.homogeneous(cx.graph)
+        || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero)
+    {
         return None;
     }
     let zero_index = vec![0; p.dimension()];
     let initial = conditions.find(cx.graph, e.time, &zero_index, None)?;
-    if !cx.graph.number_of(initial.point).is_some_and(Number::is_zero) || conditions.0.len() != 1 {
+    if !cx
+        .graph
+        .number_of(initial.point)
+        .is_some_and(Number::is_zero)
+        || conditions.0.len() != 1
+    {
         return None;
     }
     convolve_gaussian(cx, p, e.time, e.speed, initial.value, false)
@@ -2257,13 +2753,20 @@ fn schrodinger(
     conditions: &Conditions,
 ) -> Option<NodeId> {
     let e = evolution(cx, p)?;
-    if e.order != 1 || !p.homogeneous(cx.graph) || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero) {
+    if e.order != 1
+        || !p.homogeneous(cx.graph)
+        || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero)
+    {
         return None;
     }
     let zero_index = vec![0; p.dimension()];
     match conditions.find(cx.graph, e.time, &zero_index, None) {
         | Some(initial) if conditions.0.len() == 1 => {
-            if !cx.graph.number_of(initial.point).is_some_and(Number::is_zero) {
+            if !cx
+                .graph
+                .number_of(initial.point)
+                .is_some_and(Number::is_zero)
+            {
                 return None;
             }
             convolve_gaussian(cx, p, e.time, e.speed, initial.value, true)
@@ -2354,8 +2857,12 @@ fn kirchhoff(
         return None;
     }
     let zero_index = vec![0; p.dimension()];
-    let f = conditions.find(cx.graph, e.time, &zero_index, None).map(|c| c.value);
-    let g = conditions.find(cx.graph, e.time, &p.unit(e.time, 1), None).map(|c| c.value);
+    let f = conditions
+        .find(cx.graph, e.time, &zero_index, None)
+        .map(|c| c.value);
+    let g = conditions
+        .find(cx.graph, e.time, &p.unit(e.time, 1), None)
+        .map(|c| c.value);
     if f.is_none() && g.is_none() {
         return None;
     }
@@ -2394,7 +2901,15 @@ fn kirchhoff(
         }
         // Expanded, the integrand is a sum of trigonometric monomials.
         let mut gens = Gens::default();
-        if let Some(poly) = from_term(cx.graph, &mut gens, shifted, Limits { terms: 4096, exponent: 16 }) {
+        if let Some(poly) = from_term(
+            cx.graph,
+            &mut gens,
+            shifted,
+            Limits {
+                terms: 4096,
+                exponent: 16,
+            },
+        ) {
             shifted = to_term(cx.graph, &gens, &poly);
         }
         let body = mul(cx.graph, &[shifted, st]);
@@ -2460,7 +2975,12 @@ fn assemble(
     let general_vanishes = cx.graph.number_of(general).is_some_and(Number::is_zero);
     let (mut terms, start) = match last_exceptional {
         | None => (Vec::new(), first),
-        | Some(m) => (explicit[..=usize::try_from(m - first).ok()?].to_vec(), m + 1),
+        | Some(m) => {
+            (
+                explicit[..=usize::try_from(m - first).ok()?].to_vec(),
+                m + 1,
+            )
+        },
     };
     if !general_vanishes {
         let start = cx.graph.int(start);
@@ -2485,7 +3005,9 @@ fn agree(
     (0..2_u32).all(|k| {
         let env = util::sample_env(cx.graph, difference, k);
         let scale = cx.graph.eval(b, &env).map_or(1.0, |v| v.abs().max(1.0));
-        cx.graph.eval(difference, &env).is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
+        cx.graph
+            .eval(difference, &env)
+            .is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
     })
 }
 
@@ -2513,9 +3035,16 @@ fn laplace_box(
         let [first, second] = on.as_slice() else {
             return None;
         };
-        let zero_end = |graph: &Graph, c: &Condition| graph.number_of(c.point).is_some_and(Number::is_zero);
-        let (start, end) = if zero_end(cx.graph, first) { (*first, *second) } else { (*second, *first) };
-        if !zero_end(cx.graph, start) || !cx.graph.number_of(start.value).is_some_and(Number::is_zero) {
+        let zero_end =
+            |graph: &Graph, c: &Condition| graph.number_of(c.point).is_some_and(Number::is_zero);
+        let (start, end) = if zero_end(cx.graph, first) {
+            (*first, *second)
+        } else {
+            (*second, *first)
+        };
+        if !zero_end(cx.graph, start)
+            || !cx.graph.number_of(start.value).is_some_and(Number::is_zero)
+        {
             return None;
         }
         lengths.push(end.point);
@@ -2526,7 +3055,10 @@ fn laplace_box(
         }
     }
     let h = data?;
-    let (sin, sinh) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("sinh")?);
+    let (sin, sinh) = (
+        cx.graph.ops().lookup("sin")?,
+        cx.graph.ops().lookup("sinh")?,
+    );
     let pi = cx.graph.ops().lookup("pi")?;
     let pi = cx.graph.node(pi, &[]);
     let defint = cx.graph.ops().lookup("defint")?;
@@ -2551,8 +3083,14 @@ fn laplace_box(
     }
     // The term for given mode numbers: (2/a)(2/b) ∫∫ h modes · sinh(κ y)/sinh(κ c) · modes.
     let term_for = |cx: &mut Cx<'_>, values: &[NodeId]| -> Option<NodeId> {
-        let modes: Vec<NodeId> = modes.iter().map(|&m| substitute_all(cx.graph, m, &indices, values)).collect();
-        let k2: Vec<NodeId> = k2.iter().map(|&k| substitute_all(cx.graph, k, &indices, values)).collect();
+        let modes: Vec<NodeId> = modes
+            .iter()
+            .map(|&m| substitute_all(cx.graph, m, &indices, values))
+            .collect();
+        let k2: Vec<NodeId> = k2
+            .iter()
+            .map(|&k| substitute_all(cx.graph, k, &indices, values))
+            .collect();
         let total = add(cx.graph, &k2);
         let half = cx.graph.num(Number::fraction(1, 2)?);
         let kappa = pow(cx.graph, total, half);
@@ -2561,9 +3099,12 @@ fn laplace_box(
             projection = mul(cx.graph, &[projection, m]);
         }
         let mut factors = Vec::new();
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for j in 0..d - 1 {
-            projection = cx.graph.node(defint, &[projection, p.vars[j], zero, lengths[j]]);
+            projection = cx
+                .graph
+                .node(defint, &[projection, p.vars[j], zero, lengths[j]]);
             let two = cx.graph.int(2);
             let lengths_inv = powi(cx.graph, lengths[j], -1);
             factors.push(mul(cx.graph, &[two, lengths_inv]));
@@ -2610,13 +3151,23 @@ fn laplace_box(
         let finite = cx.simplify(finite);
         let on_face = cx.graph.substitute(finite, last, lengths[d - 1]);
         let difference = sub(cx.graph, on_face, h);
-        let symbols: Vec<SymbolId> = p.vars[..d - 1].iter().filter_map(|&v| cx.graph.symbol_of(v)).collect();
+        let symbols: Vec<SymbolId> = p.vars[..d - 1]
+            .iter()
+            .filter_map(|&v| cx.graph.symbol_of(v))
+            .collect();
         for (k, point) in [0.23, 0.61, 0.87].into_iter().enumerate() {
             let mut env = Env::numeric(0.0);
             for (j, &sym) in symbols.iter().enumerate() {
-                env.bind(sym, point * (1.0 + 0.17 * j as f64) * (1.0 + 0.05 * k as f64));
+                env.bind(
+                    sym,
+                    point * (1.0 + 0.17 * j as f64) * (1.0 + 0.05 * k as f64),
+                );
             }
-            if cx.graph.eval(difference, &env).is_none_or(|v| v.abs() > 1e-9) {
+            if cx
+                .graph
+                .eval(difference, &env)
+                .is_none_or(|v| v.abs() > 1e-9)
+            {
                 return None;
             }
         }
@@ -2636,7 +3187,9 @@ fn substitute_all(
     from: &[NodeId],
     to: &[NodeId],
 ) -> NodeId {
-    from.iter().zip(to).fold(term, |acc, (&f, &t)| graph.substitute(acc, f, t))
+    from.iter()
+        .zip(to)
+        .fold(term, |acc, (&f, &t)| graph.substitute(acc, f, t))
 }
 
 // ----------------------------------------------------------------------
@@ -2793,7 +3346,10 @@ fn verified(
     for sample in 0..4_u32 {
         let mut env = Env::numeric(0.0);
         for &s in &symbols {
-            env.bind(s, 0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7));
+            env.bind(
+                s,
+                0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7),
+            );
         }
         match cx.graph.eval(residual, &env) {
             | Some(v) if v.is_finite() => {
@@ -2804,9 +3360,23 @@ fn verified(
             },
             | _ => {
                 // Complex-valued solutions (Hankel functions, propagators).
-                let bindings: HashMap<SymbolId, num_complex::Complex64> =
-                    symbols.iter().map(|&s| (s, num_complex::Complex64::new(0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7), 0.0))).collect();
-                if let Some(v) = cx.graph.eval_complex(residual, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()) {
+                let bindings: HashMap<SymbolId, num_complex::Complex64> = symbols
+                    .iter()
+                    .map(|&s| {
+                        (
+                            s,
+                            num_complex::Complex64::new(
+                                0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7),
+                                0.0,
+                            ),
+                        )
+                    })
+                    .collect();
+                if let Some(v) = cx
+                    .graph
+                    .eval_complex(residual, &bindings)
+                    .filter(|v| v.re.is_finite() && v.im.is_finite())
+                {
                     if v.norm() > 1e-7 {
                         return false;
                     }
@@ -2877,7 +3447,9 @@ fn satisfies(
         let difference = sub(cx.graph, on, target);
         // Identities of special functions (a zero of J_0, a periodic
         // value) are checked numerically when the simplifier cannot.
-        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample_abs(cx.graph, difference, k).is_some_and(|v| v < 1e-8));
+        let numerically_zero = |cx: &Cx<'_>| {
+            (0..3_u32).all(|k| util::sample_abs(cx.graph, difference, k).is_some_and(|v| v < 1e-8))
+        };
         if !cx.is_zero(difference) && !numerically_zero(cx) {
             return false;
         }
@@ -2891,8 +3463,12 @@ mod tests {
     use crate::rules::testing::numeric;
     use crate::rules::testing::reduce_with;
 
-    const ASSUME: [(&str, Facts); 4] =
-        [("c", Facts::POSITIVE), ("k", Facts::POSITIVE), ("L", Facts::POSITIVE), ("a", Facts::POSITIVE)];
+    const ASSUME: [(&str, Facts); 4] = [
+        ("c", Facts::POSITIVE),
+        ("k", Facts::POSITIVE),
+        ("L", Facts::POSITIVE),
+        ("a", Facts::POSITIVE),
+    ];
 
     fn run(src: &str) -> String {
         let (text, reduced) = reduce_with(&[pde()], src, &ASSUME);
@@ -2908,14 +3484,34 @@ mod tests {
     fn transport_direct_integration_and_polynomial_sources() {
         let rules = crate::rules::standard();
         let run = |src: &str| crate::rules::testing::simplify(&rules, src);
-        assert_eq!(run("pdsolve(x*diff(u(x, y), x) + y*diff(u(x, y), y) = u(x, y), u(x, y))"), "u(x, y) = x*F(y/x)");
-        assert_eq!(run("pdsolve(diff(u(x, y, z), x) + diff(u(x, y, z), y) + diff(u(x, y, z), z) = 0, u(x, y, z))"), "u(x, y, z) = F(x - y, x - z)");
-        assert_eq!(run("pdsolve(diff(diff(u(x, y), x), y) = x*y, u(x, y))"), "u(x, y) = 1/4*x^2*y^2 + F1(y) + F2(x)");
-        assert_eq!(run("pdsolve(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = x^2 + y^2, u(x, y))"), "u(x, y) = 1/2*x^2*y^2");
-        let heat = run("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))");
+        assert_eq!(
+            run("pdsolve(x*diff(u(x, y), x) + y*diff(u(x, y), y) = u(x, y), u(x, y))"),
+            "u(x, y) = x*F(y/x)"
+        );
+        assert_eq!(
+            run(
+                "pdsolve(diff(u(x, y, z), x) + diff(u(x, y, z), y) + diff(u(x, y, z), z) = 0, u(x, y, z))"
+            ),
+            "u(x, y, z) = F(x - y, x - z)"
+        );
+        assert_eq!(
+            run("pdsolve(diff(diff(u(x, y), x), y) = x*y, u(x, y))"),
+            "u(x, y) = 1/4*x^2*y^2 + F1(y) + F2(x)"
+        );
+        assert_eq!(
+            run(
+                "pdsolve(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = x^2 + y^2, u(x, y))"
+            ),
+            "u(x, y) = 1/2*x^2*y^2"
+        );
+        let heat = run(
+            "pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))",
+        );
         assert!(!heat.contains("defint"), "{heat}");
         let lap = "diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) = 0";
-        let modes = run(&format!("pdsolve({lap}, u(x, y, z), list(u(x, y, 0) = 0, u(x, y, 1) = sin(pi*x)*sin(pi*y), u(0, y, z) = 0, u(1, y, z) = 0, u(x, 0, z) = 0, u(x, 1, z) = 0))"));
+        let modes = run(&format!(
+            "pdsolve({lap}, u(x, y, z), list(u(x, y, 0) = 0, u(x, y, 1) = sin(pi*x)*sin(pi*y), u(0, y, z) = 0, u(1, y, z) = 0, u(x, 0, z) = 0, u(x, 1, z) = 0))"
+        ));
         assert!(modes.contains("sinh") && !modes.contains("sum"), "{modes}");
     }
 
@@ -2924,12 +3520,22 @@ mod tests {
         let rules = crate::rules::standard();
         let run = |src: &str| crate::rules::testing::simplify(&rules, src);
         // Complete integrals: F(p, q), Clairaut, separable, F(u, p, q).
-        let eikonal = run("pde_complete_integral(diff(u(x, y), x)^2 + diff(u(x, y), y)^2 = 1, u(x, y))");
-        assert!(eikonal.contains("A*x") && eikonal.contains('C'), "{eikonal}");
-        let clairaut = run("pde_complete_integral(u(x, y) = x*diff(u(x, y), x) + y*diff(u(x, y), y) + diff(u(x, y), x)*diff(u(x, y), y), u(x, y))");
+        let eikonal =
+            run("pde_complete_integral(diff(u(x, y), x)^2 + diff(u(x, y), y)^2 = 1, u(x, y))");
+        assert!(
+            eikonal.contains("A*x") && eikonal.contains('C'),
+            "{eikonal}"
+        );
+        let clairaut = run(
+            "pde_complete_integral(u(x, y) = x*diff(u(x, y), x) + y*diff(u(x, y), y) + diff(u(x, y), x)*diff(u(x, y), y), u(x, y))",
+        );
         assert_eq!(clairaut, "u(x, y) = A*B + A*x + B*y");
-        let separable = run("pde_complete_integral(diff(u(x, y), x)^2 - x = diff(u(x, y), y), u(x, y))");
-        assert!(separable.contains('B') && separable.contains('A'), "{separable}");
+        let separable =
+            run("pde_complete_integral(diff(u(x, y), x)^2 - x = diff(u(x, y), y), u(x, y))");
+        assert!(
+            separable.contains('B') && separable.contains('A'),
+            "{separable}"
+        );
         // Separation: the heat equation (multiplicative) and u_t = u_x^2
         // (additive, Hamilton–Jacobi type).
         let heat = run("pde_separate(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t))");
@@ -2937,7 +3543,9 @@ mod tests {
         let hj = run("pde_separate(diff(u(x, t), t) = diff(u(x, t), x)^2, u(x, t))");
         assert!(hj.contains("lambda"), "{hj}");
         // Fourier framework: the Airy-type dispersive equation u_t = -u_xxx.
-        let airy = run("pdsolve(diff(u(x, t), t) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t), list(u(x, 0) = exp(-x^2)))");
+        let airy = run(
+            "pdsolve(diff(u(x, t), t) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t), list(u(x, 0) = exp(-x^2)))",
+        );
         assert!(airy.contains("defint") || airy.contains("airy"), "{airy}");
     }
 
@@ -2947,15 +3555,22 @@ mod tests {
         let run = |src: &str| crate::rules::testing::simplify(&rules, src);
         let value = |src: &str, at: &[(&str, f64)]| crate::rules::testing::eval(&rules, src, at);
         // Advection–diffusion of a Gaussian: the peak drifts with speed 2.
-        let drift = run("pdsolve(diff(u(x, t), t) + 2*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))");
+        let drift = run(
+            "pdsolve(diff(u(x, t), t) + 2*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))",
+        );
         let rhs = drift.trim_start_matches("u(x, t) = ");
         let exact = "exp(-(x - 2*t)^2/(1 + 4*t))/(1 + 4*t)^(1/2)";
         for (x, t) in [(0.3, 0.2), (1.5, 0.7)] {
-            let (a, b) = (value(rhs, &[("x", x), ("t", t)]), value(exact, &[("x", x), ("t", t)]));
+            let (a, b) = (
+                value(rhs, &[("x", x), ("t", t)]),
+                value(exact, &[("x", x), ("t", t)]),
+            );
             assert!((a - b).abs() < 1e-6, "{drift}: {a} vs {b}");
         }
         // Heat on the half-line with u(0, t) = 0 by an odd image.
-        let half = run("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = x*exp(-x^2), u(0, t) = 0))");
+        let half = run(
+            "pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = x*exp(-x^2), u(0, t) = 0))",
+        );
         let rhs = half.trim_start_matches("u(x, t) = ");
         let exact = "x*exp(-x^2/(1 + 4*t))/(1 + 4*t)^(3/2)";
         for (x, t) in [(0.4, 0.3), (1.1, 1.0)] {
@@ -2964,9 +3579,14 @@ mod tests {
             assert!((a - b).abs() < 1e-6, "{half}: {a} vs {b}");
         }
         // Wave on the half-line with a fixed end: the reflected pulse.
-        let wave = run("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-(x - 3)^2), at(diff(u(x, t), t), t, 0) = 0, u(0, t) = 0))");
+        let wave = run(
+            "pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-(x - 3)^2), at(diff(u(x, t), t), t, 0) = 0, u(0, t) = 0))",
+        );
         let rhs = wave.trim_start_matches("u(x, t) = ");
-        assert!((value(rhs, &[("x", 2.0), ("t", 5.0)]) + 0.5).abs() < 1e-6, "{wave}");
+        assert!(
+            (value(rhs, &[("x", 2.0), ("t", 5.0)]) + 0.5).abs() < 1e-6,
+            "{wave}"
+        );
         // Harmonic functions in a disk and a ball.
         assert_eq!(run("laplace_disk(cos(2*q), 2, r, q)"), "1/4*r^2*cos(2*q)");
         let ball = run("laplace_ball(cos(q)^2, 1, r, q)");
@@ -2996,24 +3616,45 @@ mod tests {
             assert!(heat.contains(generator), "{generator} missing from {heat}");
         }
         // Burgers: the scaling has weight -1 on u.
-        let burgers = run("pde_symmetries(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))");
-        assert!(burgers.contains("list(-x, -2*t, u(x, t))") && burgers.contains("list(t, 0, 1)") && burgers.contains("list(-t*x, -t^2, t*u(x, t) - x)"), "{burgers}");
+        let burgers = run(
+            "pde_symmetries(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))",
+        );
+        assert!(
+            burgers.contains("list(-x, -2*t, u(x, t))")
+                && burgers.contains("list(t, 0, 1)")
+                && burgers.contains("list(-t*x, -t^2, t*u(x, t) - x)"),
+            "{burgers}"
+        );
         // Traveling waves of the advection-diffusion-reaction type.
         let wave = run("pde_traveling_wave(diff(u(x, t), t) + 2*diff(u(x, t), x) = 0, u(x, t), 2)");
         assert!(wave.contains("x - 2*t"), "{wave}");
         // Heat equation similarity solution z = x/√t: error-function profile.
-        let similar = run("pde_similarity(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(x, 2*t, 0))");
+        let similar = run(
+            "pde_similarity(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(x, 2*t, 0))",
+        );
         assert!(similar.contains("erf"), "{similar}");
         // Conservation laws: KdV has mass, momentum, energy and the
         // Galilean law; Burgers its mass.
-        let kdv = run("conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t))");
-        assert!(kdv.contains("list(1, u(x, t), 1/2*u(x, t)^2 + diff(diff(u(x, t), x), x))"), "{kdv}");
+        let kdv = run(
+            "conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t))",
+        );
+        assert!(
+            kdv.contains("list(1, u(x, t), 1/2*u(x, t)^2 + diff(diff(u(x, t), x), x))"),
+            "{kdv}"
+        );
         assert!(kdv.matches("list(").count() >= 5, "{kdv}");
-        let burgers_laws = run("conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))");
+        let burgers_laws = run(
+            "conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))",
+        );
         assert!(burgers_laws.contains("list(1, u(x, t),"), "{burgers_laws}");
         // Noether: time translation of the wave Lagrangian gives the energy.
-        let current = run("noether_current(diff(u(x, t), t)^2/2 - diff(u(x, t), x)^2/2, u(x, t), list(0, 1, 0))");
-        assert!(current.contains("diff(u(x, t), t)*diff(u(x, t), x)"), "{current}");
+        let current = run(
+            "noether_current(diff(u(x, t), t)^2/2 - diff(u(x, t), x)^2/2, u(x, t), list(0, 1, 0))",
+        );
+        assert!(
+            current.contains("diff(u(x, t), t)*diff(u(x, t), x)"),
+            "{current}"
+        );
     }
 
     #[test]
@@ -3022,15 +3663,38 @@ mod tests {
             run("pde_classify(diff(u(x, t), t) - k*diff(diff(u(x, t), x), x), u(x, t))"),
             "list(heat, 2, 2, true, true, parabolic, list(separation_of_variables, fourier_transform, heat_kernel, images))"
         );
-        assert!(run("pde_classify(diff(diff(u(x, t), t), t) - c^2*diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(wave, 2, 2, true, true, hyperbolic"));
-        assert!(run("pde_classify(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y), u(x, y))").starts_with("list(laplace, 2, 2, true, true, elliptic"));
-        assert!(run("pde_classify(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) - x*y, u(x, y))").starts_with("list(poisson, 2, 2, true, false, elliptic"));
-        assert!(run("pde_classify(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x), u(x, t))").starts_with("list(burgers, 1, 2, false"));
-        assert!(run("pde_classify(diff(u(x, y), x) + 2*diff(u(x, y), y), u(x, y))").starts_with("list(transport, 1, 2, true, true, first_order"));
-        assert!(run("pde_classify(I*diff(u(x, t), t) + diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(schrodinger"));
+        assert!(
+            run("pde_classify(diff(diff(u(x, t), t), t) - c^2*diff(diff(u(x, t), x), x), u(x, t))")
+                .starts_with("list(wave, 2, 2, true, true, hyperbolic")
+        );
+        assert!(
+            run("pde_classify(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y), u(x, y))")
+                .starts_with("list(laplace, 2, 2, true, true, elliptic")
+        );
+        assert!(
+            run(
+                "pde_classify(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) - x*y, u(x, y))"
+            )
+            .starts_with("list(poisson, 2, 2, true, false, elliptic")
+        );
+        assert!(
+            run("pde_classify(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x), u(x, t))")
+                .starts_with("list(burgers, 1, 2, false")
+        );
+        assert!(
+            run("pde_classify(diff(u(x, y), x) + 2*diff(u(x, y), y), u(x, y))")
+                .starts_with("list(transport, 1, 2, true, true, first_order")
+        );
+        assert!(
+            run("pde_classify(I*diff(u(x, t), t) + diff(diff(u(x, t), x), x), u(x, t))")
+                .starts_with("list(schrodinger")
+        );
         // Mixed derivatives: u_xx + 3 u_xy + u_yy has discriminant 5.
         assert!(run("pde_classify(diff(diff(u(x, y), x), x) + 3*diff(diff(u(x, y), x), y) + diff(diff(u(x, y), y), y), u(x, y))").contains("hyperbolic"));
-        assert_eq!(run("pde_order(diff(diff(diff(u(x, t), x), x), x) + diff(u(x, t), t), u(x, t))"), "3");
+        assert_eq!(
+            run("pde_order(diff(diff(diff(u(x, t), x), x), x) + diff(u(x, t), t), u(x, t))"),
+            "3"
+        );
         // Telegraph, advection-diffusion, beam and biharmonic equations.
         assert!(run("pde_classify(diff(diff(u(x, t), t), t) + 2*diff(u(x, t), t) - diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(telegraph, 2, 2, true, true, hyperbolic"));
         assert!(run("pde_classify(diff(u(x, t), t) + 2*diff(u(x, t), x) - diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(advection_diffusion, 2, 2, true, true, parabolic"));
@@ -3041,13 +3705,18 @@ mod tests {
     #[test]
     fn first_order_equations() {
         // u_x + 2 u_y = 0: u = F(2x - y).
-        assert_eq!(any("pdsolve(diff(u(x, y), x) + 2*diff(u(x, y), y) = 0, u(x, y))"), "u(x, y) = F(2*x - y)");
+        assert_eq!(
+            any("pdsolve(diff(u(x, y), x) + 2*diff(u(x, y), y) = 0, u(x, y))"),
+            "u(x, y) = F(2*x - y)"
+        );
         // With a source and a decay term, checked by substitution.
         let solution = any("pdsolve(diff(u(x, y), x) + diff(u(x, y), y) + u(x, y) = x, u(x, y))");
         assert!(solution.contains("F(x - y)"), "{solution}");
         // Initial data along y = 0.
         assert_eq!(
-            run("solve_pde_by_characteristics(diff(u(x, y), y) + 3*diff(u(x, y), x) = 0, u(x, y), list(u(x, 0) = sin(x)))"),
+            run(
+                "solve_pde_by_characteristics(diff(u(x, y), y) + 3*diff(u(x, y), x) = 0, u(x, y), list(u(x, 0) = sin(x)))"
+            ),
             "u(x, y) = sin(x - 3*y)"
         );
         // Variable coefficients: x u_x + y u_y = 0 is constant along rays.
@@ -3055,20 +3724,29 @@ mod tests {
         assert!(rays.contains("F(") && rays.contains("y/x"), "{rays}");
         // Burgers' equation: the implicit solution.
         assert_eq!(
-            run("solve_burgers_equation(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 0, u(x, t), list(u(x, 0) = x))"),
+            run(
+                "solve_burgers_equation(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 0, u(x, t), list(u(x, 0) = x))"
+            ),
             "u(x, t) = x - t*u(x, t)"
         );
     }
 
     #[test]
     fn wave_equation_on_the_line() {
-        assert_eq!(any("pdsolve(diff(diff(u(x, t), t), t) = c^2*diff(diff(u(x, t), x), x), u(x, t))"), any("u(x, t) = F(x - c*t) + G(x + c*t)"));
         assert_eq!(
-            run("solve_wave_equation_1d_dalembert(diff(diff(u(x, t), t), t) = 4*diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = x^2, at(diff(u(x, t), t), t, 0) = 0))"),
+            any("pdsolve(diff(diff(u(x, t), t), t) = c^2*diff(diff(u(x, t), x), x), u(x, t))"),
+            any("u(x, t) = F(x - c*t) + G(x + c*t)")
+        );
+        assert_eq!(
+            run(
+                "solve_wave_equation_1d_dalembert(diff(diff(u(x, t), t), t) = 4*diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = x^2, at(diff(u(x, t), t), t, 0) = 0))"
+            ),
             "u(x, t) = 4*t^2 + x^2"
         );
         assert_eq!(
-            run("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = cos(x)))"),
+            run(
+                "pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = cos(x)))"
+            ),
             "u(x, t) = 1/2*(sin(t + x) - sin(x - t))"
         );
     }
@@ -3077,20 +3755,41 @@ mod tests {
     fn heat_equation() {
         // A single mode on [0, pi] decays with rate k.
         assert_eq!(
-            run("pdsolve(diff(u(x, t), t) = k*diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(pi, t) = 0, u(x, 0) = 3*sin(2*x)))"),
+            run(
+                "pdsolve(diff(u(x, t), t) = k*diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(pi, t) = 0, u(x, 0) = 3*sin(2*x)))"
+            ),
             "u(x, t) = 3*exp(-4*k*t)*sin(2*x)"
         );
         // Neumann ends: cos modes, the mean is conserved.
         assert_eq!(
-            run("solve_heat_equation_1d(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(at(diff(u(x, t), x), x, 0) = 0, at(diff(u(x, t), x), x, pi) = 0, u(x, 0) = 1 + cos(x)))"),
+            run(
+                "solve_heat_equation_1d(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(at(diff(u(x, t), x), x, 0) = 0, at(diff(u(x, t), x), x, pi) = 0, u(x, 0) = 1 + cos(x)))"
+            ),
             any("u(x, t) = 1 + exp(-t)*cos(x)")
         );
         // General data: a Fourier series with closed-form coefficients.
-        let series = any("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(1, t) = 0, u(x, 0) = x*(1 - x)))");
-        assert!(series.starts_with("u(x, t) = sum(") && series.contains("exp(") && !series.contains("defint"), "{series}");
+        let series = any(
+            "pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(1, t) = 0, u(x, 0) = x*(1 - x)))",
+        );
+        assert!(
+            series.starts_with("u(x, t) = sum(")
+                && series.contains("exp(")
+                && !series.contains("defint"),
+            "{series}"
+        );
         // On the line: a Gaussian stays Gaussian.
-        let line = run("solve_heat_equation_1d(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))");
-        let (v, _) = numeric(&[pde()], &format!("at(at({}, x, 0.5), t, 0.25)", line.trim_start_matches("u(x, t) = ")), &[], 1e-10);
+        let line = run(
+            "solve_heat_equation_1d(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))",
+        );
+        let (v, _) = numeric(
+            &[pde()],
+            &format!(
+                "at(at({}, x, 0.5), t, 0.25)",
+                line.trim_start_matches("u(x, t) = ")
+            ),
+            &[],
+            1e-10,
+        );
         let expected = (-(0.25_f64) / 2.0).exp() / 2.0_f64.sqrt();
         assert!((v - expected).abs() < 1e-9, "{line}: {v} vs {expected}");
     }
@@ -3104,9 +3803,16 @@ mod tests {
             any("u(x, y) = sinh(pi*y)*sin(pi*x)/sinh(pi)").replace(' ', "")
         );
         // Poisson in 3D: the Newtonian potential.
-        let potential = any("solve_poisson_equation_3d(diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) = f(x, y, z), u(x, y, z))");
-        assert!(potential.contains("defint(") && potential.contains("pi"), "{potential}");
-        let two = any("solve_poisson_equation_2d(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = rho(x, y), u(x, y))");
+        let potential = any(
+            "solve_poisson_equation_3d(diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) = f(x, y, z), u(x, y, z))",
+        );
+        assert!(
+            potential.contains("defint(") && potential.contains("pi"),
+            "{potential}"
+        );
+        let two = any(
+            "solve_poisson_equation_2d(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = rho(x, y), u(x, y))",
+        );
         assert!(two.contains("ln("), "{two}");
     }
 
@@ -3114,20 +3820,36 @@ mod tests {
     fn evolution_in_three_dimensions() {
         // Kirchhoff: data f = x^2 + y^2 + z^2, g = 0 gives r² + 3c²t².
         assert_eq!(
-            run("solve_wave_equation_3d(diff(diff(u(x, y, z, t), t), t) = c^2*(diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z)), u(x, y, z, t), list(u(x, y, z, 0) = x^2 + y^2 + z^2, at(diff(u(x, y, z, t), t), t, 0) = 0))"),
+            run(
+                "solve_wave_equation_3d(diff(diff(u(x, y, z, t), t), t) = c^2*(diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z)), u(x, y, z, t), list(u(x, y, z, 0) = x^2 + y^2 + z^2, at(diff(u(x, y, z, t), t), t, 0) = 0))"
+            ),
             run("u(x, y, z, t) = x^2 + y^2 + z^2 + 3*c^2*t^2")
         );
-        let heat = any("solve_heat_equation_3d(diff(u(x, y, z, t), t) = diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z), u(x, y, z, t), list(u(x, y, z, 0) = f(x, y, z)))");
+        let heat = any(
+            "solve_heat_equation_3d(diff(u(x, y, z, t), t) = diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z), u(x, y, z, t), list(u(x, y, z, 0) = f(x, y, z)))",
+        );
         assert!(heat.matches("defint(").count() == 3, "{heat}");
     }
 
     #[test]
     fn quantum_and_relativistic_waves() {
-        let free = any("solve_schrodinger_equation(I*diff(u(x, t), t) = -diff(diff(u(x, t), x), x), u(x, t))");
+        let free = any(
+            "solve_schrodinger_equation(I*diff(u(x, t), t) = -diff(diff(u(x, t), x), x), u(x, t))",
+        );
         assert!(free.contains("A(k)") && free.contains("exp("), "{free}");
-        let kg = any("solve_klein_gordon_equation(diff(diff(u(x, t), t), t) - diff(diff(u(x, t), x), x) + a^2*u(x, t) = 0, u(x, t))");
-        assert!(kg.contains("(a^2 + k^2)^(1/2)") || kg.contains("(k^2 + a^2)^(1/2)"), "{kg}");
-        let helmholtz = any("solve_helmholtz_equation(diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) + 4*u(x, y, z) = f(x, y, z), u(x, y, z))");
-        assert!(helmholtz.contains("exp(") && helmholtz.contains("defint("), "{helmholtz}");
+        let kg = any(
+            "solve_klein_gordon_equation(diff(diff(u(x, t), t), t) - diff(diff(u(x, t), x), x) + a^2*u(x, t) = 0, u(x, t))",
+        );
+        assert!(
+            kg.contains("(a^2 + k^2)^(1/2)") || kg.contains("(k^2 + a^2)^(1/2)"),
+            "{kg}"
+        );
+        let helmholtz = any(
+            "solve_helmholtz_equation(diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) + 4*u(x, y, z) = f(x, y, z), u(x, y, z))",
+        );
+        assert!(
+            helmholtz.contains("exp(") && helmholtz.contains("defint("),
+            "{helmholtz}"
+        );
     }
 }

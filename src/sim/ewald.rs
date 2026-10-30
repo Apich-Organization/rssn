@@ -16,6 +16,11 @@
 //! Dimensions: 3-D only (the Ewald kernel `1/r` is the 3-D Coulomb law).
 //! Conventions: Gaussian-like units with coupling constant `k_c`; the
 //! neutralising background correction is included for charged cells.
+//!
+//! Parallelism: [`ewald_reciprocal_cell`] cuts the wave vectors into fixed blocks of 32 whose
+//! partial sums are computed concurrently and added in block order, and the orthorhombic real-space
+//! sum of [`ewald_energy_forces`] evaluates one row of pairs per task, both above a work threshold;
+//! the result depends only on the problem size, never on the thread count.
 
 use std::f64::consts::PI;
 
@@ -49,7 +54,11 @@ fn charge_terms(
 
 /// Result used when a cell-based evaluation fails (all entries NaN).
 fn failed_recip(n: usize) -> Recip {
-    Recip { energy: f64::NAN, forces: vec![[f64::NAN; 3]; n], virial: [[f64::NAN; 3]; 3] }
+    Recip {
+        energy: f64::NAN,
+        forces: vec![[f64::NAN; 3]; n],
+        virial: [[f64::NAN; 3]; 3],
+    }
 }
 
 /// Diagonal cell matrix of an orthorhombic box.
@@ -60,7 +69,8 @@ pub const fn diag_cell(len: [f64; 3]) -> [[f64; 3]; 3] {
 
 /// Determinant of a 3x3 matrix.
 fn det3(h: &[[f64; 3]; 3]) -> f64 {
-    h[0][0] * (h[1][1] * h[2][2] - h[1][2] * h[2][1]) - h[0][1] * (h[1][0] * h[2][2] - h[1][2] * h[2][0])
+    h[0][0] * (h[1][1] * h[2][2] - h[1][2] * h[2][1])
+        - h[0][1] * (h[1][0] * h[2][2] - h[1][2] * h[2][0])
         + h[0][2] * (h[1][0] * h[2][1] - h[1][1] * h[2][0])
 }
 
@@ -100,6 +110,13 @@ pub fn reciprocal_basis(h: &[[f64; 3]; 3]) -> Result<[[f64; 3]; 3], String> {
     Ok(b)
 }
 
+/// `wave vectors x particles` from which the reciprocal Ewald sum runs in parallel.
+const RECIPROCAL_PAR_WORK: usize = 200_000;
+/// Wave vectors per block of the parallel reciprocal sum.
+const RECIPROCAL_BLOCK: usize = 32;
+/// `n^2` from which the orthorhombic real-space sum runs in parallel.
+const REAL_SPACE_PAR_PAIRS: usize = 4_000_000;
+
 /// Direct reciprocal-space Ewald sum of an orthorhombic box with all wave vectors `|n_a| <= kmax`,
 /// plus self and background terms. See [`ewald_reciprocal_cell`] for general cells.
 #[must_use]
@@ -111,7 +128,8 @@ pub fn ewald_reciprocal(
     kmax: i32,
     kc: f64,
 ) -> Recip {
-    ewald_reciprocal_cell(pos, q, &diag_cell(len), alpha, kmax, kc).unwrap_or_else(|_| failed_recip(pos.len()))
+    ewald_reciprocal_cell(pos, q, &diag_cell(len), alpha, kmax, kc)
+        .unwrap_or_else(|_| failed_recip(pos.len()))
 }
 
 /// Direct reciprocal-space Ewald sum for a general triclinic cell.
@@ -136,50 +154,98 @@ pub fn ewald_reciprocal_cell(
     let mut forces = vec![[0.0; 3]; n];
     let mut virial = [[0.0; 3]; 3];
     let pref = 2.0 * PI * kc / vol;
+    // The wave vectors in lexicographic order. Each k contributes an energy
+    // term, a virial term and a force on every particle. Small sums use the
+    // plain running accumulation; large ones are cut into fixed blocks of
+    // wave vectors whose partial sums are computed in parallel and added in
+    // block order (a fixed association, independent of the thread count).
+    let mut ks: Vec<(f64, f64, f64)> = Vec::new();
     for nx in -kmax..=kmax {
         for ny in -kmax..=kmax {
             for nz in -kmax..=kmax {
-                if nx == 0 && ny == 0 && nz == 0 {
-                    continue;
-                }
-                let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
-                let k = [
-                    fx * b[0][0] + fy * b[1][0] + fz * b[2][0],
-                    fx * b[0][1] + fy * b[1][1] + fz * b[2][1],
-                    fx * b[0][2] + fy * b[1][2] + fz * b[2][2],
-                ];
-                let k2 = k[0] * k[0] + k[1] * k[1] + k[2] * k[2];
-                let a = (-k2 / (4.0 * alpha * alpha)).exp() / k2;
-                let (mut sc, mut ss) = (0.0, 0.0);
-                let mut cs = Vec::with_capacity(n);
-                for i in 0..n {
-                    let ph = k[0] * pos[i][0] + k[1] * pos[i][1] + k[2] * pos[i][2];
-                    let (s, c) = ph.sin_cos();
-                    sc += q[i] * c;
-                    ss += q[i] * s;
-                    cs.push((c, s));
-                }
-                let s2 = sc * sc + ss * ss;
-                let ek = pref * a * s2;
-                energy += ek;
-                let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
-                for x in 0..3 {
-                    for y in 0..3 {
-                        virial[x][y] += ek * (if x == y { 1.0 } else { 0.0 } + w * k[x] * k[y]);
-                    }
-                }
-                for i in 0..n {
-                    let (c, s) = cs[i];
-                    let im = sc * s - ss * c;
-                    let f = 2.0 * pref * a * q[i] * im;
-                    for x in 0..3 {
-                        forces[i][x] += f * k[x];
-                    }
+                if nx != 0 || ny != 0 || nz != 0 {
+                    ks.push((f64::from(nx), f64::from(ny), f64::from(nz)));
                 }
             }
         }
     }
-    Ok(Recip { energy, forces, virial })
+    let block_sum = |slice: &[(f64, f64, f64)]| -> (f64, [[f64; 3]; 3], Vec<[f64; 3]>) {
+        let (mut e_b, mut v_b) = (0.0, [[0.0; 3]; 3]);
+        let mut f_b = vec![[0.0; 3]; n];
+        let mut cs = Vec::with_capacity(n);
+        for &(fx, fy, fz) in slice {
+            let k = [
+                fx * b[0][0] + fy * b[1][0] + fz * b[2][0],
+                fx * b[0][1] + fy * b[1][1] + fz * b[2][1],
+                fx * b[0][2] + fy * b[1][2] + fz * b[2][2],
+            ];
+            let k2 = k[0] * k[0] + k[1] * k[1] + k[2] * k[2];
+            let a = (-k2 / (4.0 * alpha * alpha)).exp() / k2;
+            let (mut sc, mut ss) = (0.0, 0.0);
+            cs.clear();
+            for i in 0..n {
+                let ph = k[0] * pos[i][0] + k[1] * pos[i][1] + k[2] * pos[i][2];
+                let (s, c) = ph.sin_cos();
+                sc += q[i] * c;
+                ss += q[i] * s;
+                cs.push((c, s));
+            }
+            let s2 = sc * sc + ss * ss;
+            let ek = pref * a * s2;
+            e_b += ek;
+            let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
+            for x in 0..3 {
+                for y in 0..3 {
+                    v_b[x][y] += ek * (if x == y { 1.0 } else { 0.0 } + w * k[x] * k[y]);
+                }
+            }
+            for i in 0..n {
+                let (c, s) = cs[i];
+                let im = sc * s - ss * c;
+                let f = 2.0 * pref * a * q[i] * im;
+                for x in 0..3 {
+                    f_b[i][x] += f * k[x];
+                }
+            }
+        }
+        (e_b, v_b, f_b)
+    };
+    if ks.len().saturating_mul(n) < RECIPROCAL_PAR_WORK {
+        // plain accumulation, as before
+        let (e_b, v_b, f_b) = block_sum(&ks);
+        energy += e_b;
+        for x in 0..3 {
+            for y in 0..3 {
+                virial[x][y] += v_b[x][y];
+            }
+        }
+        for i in 0..n {
+            for x in 0..3 {
+                forces[i][x] += f_b[i][x];
+            }
+        }
+    } else {
+        let blocks: Vec<&[(f64, f64, f64)]> = ks.chunks(RECIPROCAL_BLOCK).collect();
+        let parts = crate::kernels::par::map_slice(&blocks, 2, |blk| block_sum(blk));
+        for (e_b, v_b, f_b) in parts {
+            energy += e_b;
+            for x in 0..3 {
+                for y in 0..3 {
+                    virial[x][y] += v_b[x][y];
+                }
+            }
+            for i in 0..n {
+                for x in 0..3 {
+                    forces[i][x] += f_b[i][x];
+                }
+            }
+        }
+    }
+    Ok(Recip {
+        energy,
+        forces,
+        virial,
+    })
 }
 
 /// Complete Ewald energy and forces for a triclinic cell.
@@ -223,7 +289,8 @@ pub fn ewald_energy_forces_cell(
                         let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
                         let mut d = [0.0; 3];
                         for a in 0..3 {
-                            d[a] = pos[i][a] - pos[j][a] + fx * h[0][a] + fy * h[1][a] + fz * h[2][a];
+                            d[a] =
+                                pos[i][a] - pos[j][a] + fx * h[0][a] + fy * h[1][a] + fz * h[2][a];
                         }
                         let r2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
                         if r2 < rcut * rcut && r2 > 0.0 {
@@ -257,6 +324,43 @@ pub fn ewald_energy_forces(
     let mut e = rec.energy;
     let mut f = rec.forces;
     let term = PairTerm::Coulomb { k: kc, alpha };
+    let n = pos.len();
+    if n * n >= REAL_SPACE_PAR_PAIRS {
+        // One task per particle: row i visits every other particle j and
+        // accumulates only the force on i (each pair is evaluated twice,
+        // the energy counted with weight 1/2), in a fixed j order; the row
+        // energies are added in particle order. Independent of the thread
+        // count.
+        let rows: Vec<(f64, [f64; 3])> = crate::kernels::par::map_indexed(n, 8, |i| {
+            let (mut e_i, mut f_i) = (0.0, [0.0; 3]);
+            for j in 0..n {
+                if j == i {
+                    continue;
+                }
+                let mut d = [0.0; 3];
+                for a in 0..3 {
+                    d[a] = pos[i][a] - pos[j][a];
+                    d[a] -= len[a] * (d[a] / len[a]).round();
+                }
+                let r2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+                if r2 < rcut * rcut {
+                    let (u, fr) = term.eval(r2, q[i] * q[j]);
+                    e_i += 0.5 * u;
+                    for a in 0..3 {
+                        f_i[a] += fr * d[a];
+                    }
+                }
+            }
+            (e_i, f_i)
+        });
+        for (i, (e_i, f_i)) in rows.into_iter().enumerate() {
+            e += e_i;
+            for a in 0..3 {
+                f[i][a] += f_i[a];
+            }
+        }
+        return (e, f);
+    }
     for i in 0..pos.len() {
         for j in i + 1..pos.len() {
             let mut d = [0.0; 3];
@@ -371,7 +475,8 @@ pub fn pme_reciprocal(
     order: usize,
     kc: f64,
 ) -> Recip {
-    pme_reciprocal_cell(pos, q, &diag_cell(len), alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(pos.len()))
+    pme_reciprocal_cell(pos, q, &diag_cell(len), alpha, grid, order, kc)
+        .unwrap_or_else(|_| failed_recip(pos.len()))
 }
 
 /// Smooth particle-mesh Ewald for a general triclinic cell.
@@ -436,7 +541,13 @@ pub fn pme_reciprocal_cell(
     let b2x: Vec<f64> = (0..grid[0]).map(|m| b2(order, grid[0], m)).collect();
     let b2y: Vec<f64> = (0..grid[1]).map(|m| b2(order, grid[1], m)).collect();
     let b2z: Vec<f64> = (0..grid[2]).map(|m| b2(order, grid[2], m)).collect();
-    let signed = |m: usize, k: usize| if m <= k / 2 { m as f64 } else { m as f64 - k as f64 };
+    let signed = |m: usize, k: usize| {
+        if m <= k / 2 {
+            m as f64
+        } else {
+            m as f64 - k as f64
+        }
+    };
     let pref = 2.0 * PI * kc / vol;
     let mut energy = charge_terms(q, vol, alpha, kc);
     let mut virial = [[0.0; 3]; 3];
@@ -482,7 +593,11 @@ pub fn pme_reciprocal_cell(
                     let iz = (s.base[2] - jz as i64).rem_euclid(grid[2] as i64) as usize;
                     let de_dq = 2.0 * pref * conv[idx(ix, iy, iz)].0 * ntot;
                     // gradient with respect to the fractional coordinates, then chain rule via h^-1
-                    let gs = [s.dw[0][jx] * s.w[1][jy] * s.w[2][jz], s.w[0][jx] * s.dw[1][jy] * s.w[2][jz], s.w[0][jx] * s.w[1][jy] * s.dw[2][jz]];
+                    let gs = [
+                        s.dw[0][jx] * s.w[1][jy] * s.w[2][jz],
+                        s.w[0][jx] * s.dw[1][jy] * s.w[2][jz],
+                        s.w[0][jx] * s.w[1][jy] * s.dw[2][jz],
+                    ];
                     for c in 0..3 {
                         let gc = gs[0] * hinv[c][0] + gs[1] * hinv[c][1] + gs[2] * hinv[c][2];
                         forces[i][c] -= q[i] * de_dq * gc;
@@ -491,7 +606,11 @@ pub fn pme_reciprocal_cell(
             }
         }
     }
-    Ok(Recip { energy, forces, virial })
+    Ok(Recip {
+        energy,
+        forces,
+        virial,
+    })
 }
 
 /// P3M reciprocal-space energy, forces and virial with the **optimal (Hockney-Eastwood)
@@ -556,7 +675,13 @@ pub fn p3m_reciprocal_cell(
         spl.push((base, w));
     }
     fft3(&mut qg, grid, false);
-    let signed = |m: usize, k: usize| if m <= k / 2 { m as i64 } else { m as i64 - k as i64 };
+    let signed = |m: usize, k: usize| {
+        if m <= k / 2 {
+            m as i64
+        } else {
+            m as i64 - k as i64
+        }
+    };
     let sinc_pow = |x: f64| -> f64 {
         if x.abs() < 1e-12 {
             1.0
@@ -565,7 +690,9 @@ pub fn p3m_reciprocal_cell(
         }
     };
     let kvec = |m: [i64; 3]| -> [f64; 3] {
-        std::array::from_fn(|c| m[0] as f64 * bvec[0][c] + m[1] as f64 * bvec[1][c] + m[2] as f64 * bvec[2][c])
+        std::array::from_fn(|c| {
+            m[0] as f64 * bvec[0][c] + m[1] as f64 * bvec[1][c] + m[2] as f64 * bvec[2][c]
+        })
     };
     let four_alpha2 = 4.0 * alpha * alpha;
     let pref = kc / (2.0 * vol);
@@ -585,14 +712,23 @@ pub fn p3m_reciprocal_cell(
                 for ax in -N_ALIAS..=N_ALIAS {
                     for ay in -N_ALIAS..=N_ALIAS {
                         for az in -N_ALIAS..=N_ALIAS {
-                            let m = [nn[0] + ax * grid[0] as i64, nn[1] + ay * grid[1] as i64, nn[2] + az * grid[2] as i64];
+                            let m = [
+                                nn[0] + ax * grid[0] as i64,
+                                nn[1] + ay * grid[1] as i64,
+                                nn[2] + az * grid[2] as i64,
+                            ];
                             let km = kvec(m);
                             let km2 = km[0] * km[0] + km[1] * km[1] + km[2] * km[2];
                             let u2 = sinc_pow(std::f64::consts::PI * m[0] as f64 / grid[0] as f64)
                                 * sinc_pow(std::f64::consts::PI * m[1] as f64 / grid[1] as f64)
                                 * sinc_pow(std::f64::consts::PI * m[2] as f64 / grid[2] as f64);
                             den += u2;
-                            num += u2 * (kv[0] * km[0] + kv[1] * km[1] + kv[2] * km[2]) * 4.0 * PI * (-km2 / four_alpha2).exp() / km2;
+                            num += u2
+                                * (kv[0] * km[0] + kv[1] * km[1] + kv[2] * km[2])
+                                * 4.0
+                                * PI
+                                * (-km2 / four_alpha2).exp()
+                                / km2;
                         }
                     }
                 }
@@ -620,7 +756,9 @@ pub fn p3m_reciprocal_cell(
             for j in 0..grid[1] {
                 for k in 0..grid[2] {
                     let nn = [signed(i, grid[0]), signed(j, grid[1]), signed(k, grid[2])];
-                    let nyq = (grid[0].is_multiple_of(2) && i == grid[0] / 2) || (grid[1].is_multiple_of(2) && j == grid[1] / 2) || (grid[2].is_multiple_of(2) && k == grid[2] / 2);
+                    let nyq = (grid[0].is_multiple_of(2) && i == grid[0] / 2)
+                        || (grid[1].is_multiple_of(2) && j == grid[1] / 2)
+                        || (grid[2].is_multiple_of(2) && k == grid[2] / 2);
                     if nyq {
                         continue;
                     }
@@ -651,11 +789,14 @@ pub fn p3m_reciprocal_cell(
             }
         }
     }
-    Ok(Recip { energy, forces, virial })
+    Ok(Recip {
+        energy,
+        forces,
+        virial,
+    })
 }
 
 /// Force callback adding the direct-Ewald reciprocal, self and background terms to an MD force evaluation.
-#[must_use]
 pub fn ewald_extra(
     alpha: f64,
     kmax: i32,
@@ -663,7 +804,8 @@ pub fn ewald_extra(
 ) -> ExtraForce<3> {
     Box::new(move |sys, out| {
         let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
-        let r = ewald_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, kmax, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
+        let r = ewald_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, kmax, kc)
+            .unwrap_or_else(|_| failed_recip(sys.pos.len()));
         out.epot += r.energy;
         for (f, g) in out.f.iter_mut().zip(&r.forces) {
             for a in 0..3 {
@@ -679,7 +821,6 @@ pub fn ewald_extra(
 }
 
 /// Force callback adding the PME reciprocal, self and background terms.
-#[must_use]
 pub fn pme_extra(
     alpha: f64,
     grid: [usize; 3],
@@ -688,7 +829,8 @@ pub fn pme_extra(
 ) -> ExtraForce<3> {
     Box::new(move |sys, out| {
         let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
-        let r = pme_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
+        let r = pme_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc)
+            .unwrap_or_else(|_| failed_recip(sys.pos.len()));
         out.epot += r.energy;
         for (f, g) in out.f.iter_mut().zip(&r.forces) {
             for a in 0..3 {
@@ -715,7 +857,6 @@ pub fn real_space_pair(
 }
 
 /// Force callback adding the P3M reciprocal (optimal influence function), self and background terms.
-#[must_use]
 pub fn p3m_extra(
     alpha: f64,
     grid: [usize; 3],
@@ -724,7 +865,8 @@ pub fn p3m_extra(
 ) -> ExtraForce<3> {
     Box::new(move |sys, out| {
         let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
-        let r = p3m_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
+        let r = p3m_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc)
+            .unwrap_or_else(|_| failed_recip(sys.pos.len()));
         out.epot += r.energy;
         for (f, g) in out.f.iter_mut().zip(&r.forces) {
             for a in 0..3 {

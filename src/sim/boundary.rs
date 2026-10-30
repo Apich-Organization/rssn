@@ -28,7 +28,10 @@ pub type SpaceTimeFn = dyn Fn(f64, [f64; 3]) -> f64 + Send + Sync;
 pub struct BcValue(Arc<SpaceTimeFn>);
 
 impl fmt::Debug for BcValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         f.write_str("BcValue(..)")
     }
 }
@@ -57,7 +60,11 @@ impl BcValue {
 
     /// Evaluates the datum.
     #[must_use]
-    pub fn eval(&self, t: f64, x: [f64; 3]) -> f64 {
+    pub fn eval(
+        &self,
+        t: f64,
+        x: [f64; 3],
+    ) -> f64 {
         (self.0)(t, x)
     }
 }
@@ -102,8 +109,16 @@ impl BoundaryCondition {
 
     /// Robin condition with constant data.
     #[must_use]
-    pub fn robin(alpha: f64, beta: f64, g: f64) -> Self {
-        Self::Robin { alpha, beta, g: BcValue::constant(g) }
+    pub fn robin(
+        alpha: f64,
+        beta: f64,
+        g: f64,
+    ) -> Self {
+        Self::Robin {
+            alpha,
+            beta,
+            g: BcValue::constant(g),
+        }
     }
 
     /// Whether this is a Dirichlet condition.
@@ -138,15 +153,22 @@ pub enum Face {
 
 impl Face {
     /// All faces in storage order.
-    pub const ALL: [Self; 6] = [Self::XMin, Self::XMax, Self::YMin, Self::YMax, Self::ZMin, Self::ZMax];
+    pub const ALL: [Self; 6] = [
+        Self::XMin,
+        Self::XMax,
+        Self::YMin,
+        Self::YMax,
+        Self::ZMin,
+        Self::ZMax,
+    ];
 
     /// Axis index 0, 1 or 2.
     #[must_use]
     pub const fn axis(self) -> usize {
         match self {
-            Self::XMin | Self::XMax => 0,
-            Self::YMin | Self::YMax => 1,
-            Self::ZMin | Self::ZMax => 2,
+            | Self::XMin | Self::XMax => 0,
+            | Self::YMin | Self::YMax => 1,
+            | Self::ZMin | Self::ZMax => 2,
         }
     }
 
@@ -164,7 +186,10 @@ impl Face {
 
     /// Face of `axis` (lower or upper).
     #[must_use]
-    pub const fn of_axis(axis: usize, max: bool) -> Self {
+    pub const fn of_axis(
+        axis: usize,
+        max: bool,
+    ) -> Self {
         Self::ALL[2 * axis + max as usize]
     }
 }
@@ -179,7 +204,9 @@ impl FaceBcs {
     /// The same condition on every face (periodic is allowed).
     #[must_use]
     pub fn uniform(bc: &BoundaryCondition) -> Self {
-        Self { faces: std::array::from_fn(|_| bc.clone()) }
+        Self {
+            faces: std::array::from_fn(|_| bc.clone()),
+        }
     }
 
     /// Homogeneous Dirichlet on every face.
@@ -190,14 +217,22 @@ impl FaceBcs {
 
     /// Sets the condition on one face.
     #[must_use]
-    pub fn with(mut self, face: Face, bc: BoundaryCondition) -> Self {
+    pub fn with(
+        mut self,
+        face: Face,
+        bc: BoundaryCondition,
+    ) -> Self {
         self.faces[face.index()] = bc;
         self
     }
 
     /// Sets the condition on both faces of an axis.
     #[must_use]
-    pub fn with_axis(mut self, axis: usize, bc: &BoundaryCondition) -> Self {
+    pub fn with_axis(
+        mut self,
+        axis: usize,
+        bc: &BoundaryCondition,
+    ) -> Self {
         self.faces[2 * axis.min(2)] = bc.clone();
         self.faces[2 * axis.min(2) + 1] = bc.clone();
         self
@@ -209,20 +244,29 @@ impl FaceBcs {
     pub fn homogeneous(&self) -> Self {
         let z = || BcValue::constant(0.0);
         Self {
-            faces: std::array::from_fn(|i| match &self.faces[i] {
-                BoundaryCondition::Dirichlet(_) => BoundaryCondition::Dirichlet(z()),
-                BoundaryCondition::Neumann(_) => BoundaryCondition::Neumann(z()),
-                BoundaryCondition::Robin { alpha, beta, .. } => {
-                    BoundaryCondition::Robin { alpha: *alpha, beta: *beta, g: z() }
-                },
-                other => other.clone(),
+            faces: std::array::from_fn(|i| {
+                match &self.faces[i] {
+                    | BoundaryCondition::Dirichlet(_) => BoundaryCondition::Dirichlet(z()),
+                    | BoundaryCondition::Neumann(_) => BoundaryCondition::Neumann(z()),
+                    | BoundaryCondition::Robin { alpha, beta, .. } => {
+                        BoundaryCondition::Robin {
+                            alpha: *alpha,
+                            beta: *beta,
+                            g: z(),
+                        }
+                    },
+                    | other => other.clone(),
+                }
             }),
         }
     }
 
     /// Condition on a face.
     #[must_use]
-    pub const fn get(&self, face: Face) -> &BoundaryCondition {
+    pub const fn get(
+        &self,
+        face: Face,
+    ) -> &BoundaryCondition {
         &self.faces[face.index()]
     }
 
@@ -230,7 +274,10 @@ impl FaceBcs {
     ///
     /// # Errors
     /// If only one face of the axis is periodic.
-    pub fn axis_periodic(&self, axis: usize) -> Result<bool, String> {
+    pub fn axis_periodic(
+        &self,
+        axis: usize,
+    ) -> Result<bool, String> {
         let a = self.get(Face::of_axis(axis, false)).is_periodic();
         let b = self.get(Face::of_axis(axis, true)).is_periodic();
         if a == b {
@@ -253,25 +300,38 @@ impl<T: Clone> MarkerBcs<T> {
     /// Empty assignment without default.
     #[must_use]
     pub fn new() -> Self {
-        Self { map: HashMap::new(), default: None }
+        Self {
+            map: HashMap::new(),
+            default: None,
+        }
     }
 
     /// Assignment where unlisted markers use `default`.
     #[must_use]
     pub fn with_default(default: T) -> Self {
-        Self { map: HashMap::new(), default: Some(default) }
+        Self {
+            map: HashMap::new(),
+            default: Some(default),
+        }
     }
 
     /// Assigns a condition to a marker.
     #[must_use]
-    pub fn set(mut self, marker: i32, bc: T) -> Self {
+    pub fn set(
+        mut self,
+        marker: i32,
+        bc: T,
+    ) -> Self {
         self.map.insert(marker, bc);
         self
     }
 
     /// Condition of a marker, or the default.
     #[must_use]
-    pub fn get(&self, marker: i32) -> Option<&T> {
+    pub fn get(
+        &self,
+        marker: i32,
+    ) -> Option<&T> {
         self.map.get(&marker).or(self.default.as_ref())
     }
 }
@@ -295,7 +355,11 @@ impl FluidBoundary {
     /// Fixed no-slip wall.
     #[must_use]
     pub fn wall() -> Self {
-        Self::NoSlip([BcValue::constant(0.0), BcValue::constant(0.0), BcValue::constant(0.0)])
+        Self::NoSlip([
+            BcValue::constant(0.0),
+            BcValue::constant(0.0),
+            BcValue::constant(0.0),
+        ])
     }
 
     /// Wall moving with a constant velocity.
@@ -327,19 +391,29 @@ impl FluidFaceBcs {
     /// The same condition on every face.
     #[must_use]
     pub fn uniform(b: &FluidBoundary) -> Self {
-        Self { faces: std::array::from_fn(|_| b.clone()) }
+        Self {
+            faces: std::array::from_fn(|_| b.clone()),
+        }
     }
 
     /// Sets one face.
     #[must_use]
-    pub fn with(mut self, face: Face, b: FluidBoundary) -> Self {
+    pub fn with(
+        mut self,
+        face: Face,
+        b: FluidBoundary,
+    ) -> Self {
         self.faces[face.index()] = b;
         self
     }
 
     /// Sets both faces of an axis.
     #[must_use]
-    pub fn with_axis(mut self, axis: usize, b: &FluidBoundary) -> Self {
+    pub fn with_axis(
+        mut self,
+        axis: usize,
+        b: &FluidBoundary,
+    ) -> Self {
         self.faces[2 * axis.min(2)] = b.clone();
         self.faces[2 * axis.min(2) + 1] = b.clone();
         self
@@ -347,7 +421,10 @@ impl FluidFaceBcs {
 
     /// Condition of a face.
     #[must_use]
-    pub const fn get(&self, face: Face) -> &FluidBoundary {
+    pub const fn get(
+        &self,
+        face: Face,
+    ) -> &FluidBoundary {
         &self.faces[face.index()]
     }
 }
@@ -368,7 +445,11 @@ impl ElasticBoundary {
     /// Fully clamped boundary.
     #[must_use]
     pub fn clamped() -> Self {
-        Self::Displacement([Some(BcValue::constant(0.0)), Some(BcValue::constant(0.0)), Some(BcValue::constant(0.0))])
+        Self::Displacement([
+            Some(BcValue::constant(0.0)),
+            Some(BcValue::constant(0.0)),
+            Some(BcValue::constant(0.0)),
+        ])
     }
 
     /// Constant traction.

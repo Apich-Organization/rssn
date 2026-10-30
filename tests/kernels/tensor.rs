@@ -1,12 +1,17 @@
 //! N-dimensional tensors (ported from `numerical_tensor_test.rs`).
 
 use assert_approx_eq::assert_approx_eq;
-use ndarray::{ArrayD, array};
+use ndarray::ArrayD;
+use ndarray::array;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::tensor::{
-    TensorData, contract, inner_product, norm, outer_product, tensor_vec_mul, tensordot,
-};
+use rssn::kernels::tensor::TensorData;
+use rssn::kernels::tensor::contract;
+use rssn::kernels::tensor::inner_product;
+use rssn::kernels::tensor::norm;
+use rssn::kernels::tensor::outer_product;
+use rssn::kernels::tensor::tensor_vec_mul;
+use rssn::kernels::tensor::tensordot;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -32,7 +37,10 @@ fn inner_and_outer_products() {
     assert_eq!(outer, array![[3.0, 4.0], [6.0, 8.0]].into_dyn());
     let c = array![1.0, 2.0, 3.0].into_dyn();
     assert!(inner_product(&a, &c).is_err());
-    assert_eq!(outer_product(&a, &c).map(|t| t.shape().to_vec()), Ok(vec![2, 3]));
+    assert_eq!(
+        outer_product(&a, &c).map(|t| t.shape().to_vec()),
+        Ok(vec![2, 3])
+    );
 }
 
 #[test]
@@ -59,7 +67,8 @@ fn contraction_of_a_matrix_is_its_trace() {
 fn contraction_of_higher_rank_tensors() {
     // a[i][j][k] = 100 i + 10 j + k; contracting axes 0 and 2 leaves
     // r[j] = sum_t a[t][j][t].
-    let a = ndarray::Array3::from_shape_fn((3, 2, 3), |(i, j, k)| (100 * i + 10 * j + k) as f64).into_dyn();
+    let a = ndarray::Array3::from_shape_fn((3, 2, 3), |(i, j, k)| (100 * i + 10 * j + k) as f64)
+        .into_dyn();
     let r = contract(&a, 2, 0).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(r.shape(), &[2]);
     for j in 0..2 {
@@ -87,7 +96,10 @@ fn serde_round_trip() {
     let back = decoded.to_arrayd().unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(back.shape(), &[2, 2]);
     assert_eq!(back, a);
-    let bad = TensorData { shape: vec![3, 3], data: vec![1.0] };
+    let bad = TensorData {
+        shape: vec![3, 3],
+        data: vec![1.0],
+    };
     assert!(bad.to_arrayd().is_err());
 }
 

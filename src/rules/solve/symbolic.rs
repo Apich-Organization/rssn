@@ -25,16 +25,16 @@
 
 use super::product;
 use super::reciprocal;
-use crate::graph::op::core;
 use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::poly::multifactor;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::to_term;
 
 const MAX_DEPTH: usize = 4;
 
@@ -84,7 +84,11 @@ pub(super) fn roots(
         return None;
     }
     let vars = poly.support();
-    let factored = if super::factorable(poly) { multifactor::factor(poly, &vars) } else { None };
+    let factored = if super::factorable(poly) {
+        multifactor::factor(poly, &vars)
+    } else {
+        None
+    };
     let pieces: Vec<Poly> = match factored {
         | Some((_, factors)) => factors.into_iter().map(|(f, _)| f).collect(),
         | None => vec![poly.clone()],
@@ -147,7 +151,10 @@ fn irreducible(
         }
         return Some(out);
     }
-    let terms: Vec<NodeId> = coefficients.iter().map(|c| to_term(graph, gens, c)).collect();
+    let terms: Vec<NodeId> = coefficients
+        .iter()
+        .map(|c| to_term(graph, gens, c))
+        .collect();
     match degree {
         | 1 => {
             let minus_one = graph.int(-1);
@@ -178,7 +185,10 @@ fn quadratic(
     let four_ac = a.mul(c0, cap())?.scale(&Number::from(4));
     let discriminant_poly = b.mul(b, cap())?.sub(&four_ac);
     // A negative constant discriminant: no real roots.
-    if discriminant_poly.as_constant().is_some_and(|d| d.to_f64() < 0.0) {
+    if discriminant_poly
+        .as_constant()
+        .is_some_and(|d| d.to_f64() < 0.0)
+    {
         return Some(Vec::new());
     }
     let discriminant = to_term(graph, gens, &discriminant_poly);
@@ -261,7 +271,11 @@ fn cubic(
     let t = graph.node(core::ADD, &[r1, r2]);
     let mut out = vec![graph.node(core::ADD, &[t, shift])];
     // Trigonometric form: t_k = 2 sqrt(-p/3) cos(acos((3q/2p) sqrt(-3/p))/3 - 2 pi k/3).
-    let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+    let (acos, cos, pi) = (
+        graph.ops().lookup("acos")?,
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("pi")?,
+    );
     let minus_p_third = product(graph, &[minus_one, third, p_term]);
     let amplitude_root = graph.node(core::POW, &[minus_p_third, half]);
     let amplitude = product(graph, &[two, amplitude_root]);
@@ -364,9 +378,22 @@ pub(super) fn ferrari_with_pairs(
     let quarter = Number::fraction(1, 4)?;
     let linear = mul(&pn, &pn)?.sub(&rn).scale(&quarter);
     let minus_q2 = mul(&qn, &qn)?.neg();
-    let resolvent = cubic(graph, gens, &[minus_q2, linear, pn.clone(), Poly::constant(Number::from(1))])?;
+    let resolvent = cubic(
+        graph,
+        gens,
+        &[
+            minus_q2,
+            linear,
+            pn.clone(),
+            Poly::constant(Number::from(1)),
+        ],
+    )?;
     let nus: Vec<NodeId> = resolvent.iter().take(2).copied().collect();
-    let (half, minus_one, two) = (graph.num(Number::fraction(1, 2)?), graph.int(-1), graph.int(2));
+    let (half, minus_one, two) = (
+        graph.num(Number::fraction(1, 2)?),
+        graph.int(-1),
+        graph.int(2),
+    );
     let ratio_to = |graph: &mut Graph, top: &Poly, bottom: &Poly| {
         let top = to_term(graph, gens, top);
         let bottom = to_term(graph, gens, bottom);
@@ -446,7 +473,14 @@ fn de_moivre(
     c: &[Poly],
 ) -> Option<Vec<NodeId>> {
     let n = |v: i64| Number::from(v);
-    let (c0, c1, c2, c3, c4, c5) = (c.first()?, c.get(1)?, c.get(2)?, c.get(3)?, c.get(4)?, c.get(5)?);
+    let (c0, c1, c2, c3, c4, c5) = (
+        c.first()?,
+        c.get(1)?,
+        c.get(2)?,
+        c.get(3)?,
+        c.get(4)?,
+        c.get(5)?,
+    );
     if !c2.is_zero() || !c4.is_zero() || c3.is_zero() {
         return None;
     }
@@ -462,7 +496,11 @@ fn de_moivre(
     };
     let alpha = ratio_to(graph, c3, &c5.scale(&n(5)));
     let s = ratio_to(graph, c0, c5);
-    let (half, two, minus_one) = (graph.num(Number::fraction(1, 2)?), graph.int(2), graph.int(-1));
+    let (half, two, minus_one) = (
+        graph.num(Number::fraction(1, 2)?),
+        graph.int(2),
+        graph.int(-1),
+    );
     let four = graph.int(4);
     let five = graph.int(5);
     let s_sq = graph.node(core::POW, &[s, two]);
@@ -472,12 +510,22 @@ fn de_moivre(
     let root = graph.node(core::POW, &[disc, half]);
     let minus_s = product(graph, &[minus_one, s]);
     let neg_root = product(graph, &[minus_one, root]);
-    let (plus, minus) = (graph.node(core::ADD, &[minus_s, root]), graph.node(core::ADD, &[minus_s, neg_root]));
-    let (up, um) = (product(graph, &[half, plus]), product(graph, &[half, minus]));
+    let (plus, minus) = (
+        graph.node(core::ADD, &[minus_s, root]),
+        graph.node(core::ADD, &[minus_s, neg_root]),
+    );
+    let (up, um) = (
+        product(graph, &[half, plus]),
+        product(graph, &[half, minus]),
+    );
     let (r1, r2) = (real_root(graph, up, 5)?, real_root(graph, um, 5)?);
     let mut out = vec![graph.node(core::ADD, &[r1, r2])];
     // Five real roots for a < 0.
-    let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+    let (acos, cos, pi) = (
+        graph.ops().lookup("acos")?,
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("pi")?,
+    );
     let beta = product(graph, &[minus_one, alpha]);
     let amplitude = {
         let root_beta = graph.node(core::POW, &[beta, half]);

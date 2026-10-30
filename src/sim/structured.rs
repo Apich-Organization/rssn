@@ -23,8 +23,17 @@
 //! equation with a PML is in [`crate::sim::acoustics`]; the Mur condition
 //! here is first order.
 
-use crate::kernels::krylov::{Csr, Ilu0, SparseLu, SparseOrdering, bicgstab, gmres, identity_precond};
-use crate::sim::boundary::{BcValue, BoundaryCondition, Face, FaceBcs};
+use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::Ilu0;
+use crate::kernels::krylov::SparseLu;
+use crate::kernels::krylov::SparseOrdering;
+use crate::kernels::krylov::bicgstab;
+use crate::kernels::krylov::gmres;
+use crate::kernels::krylov::identity_precond;
+use crate::sim::boundary::BcValue;
+use crate::sim::boundary::BoundaryCondition;
+use crate::sim::boundary::Face;
+use crate::sim::boundary::FaceBcs;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -48,12 +57,23 @@ impl Grid {
     ///
     /// # Errors
     /// For a bad dimension, too few nodes, `lo >= hi`, or one-sided periodicity.
-    pub fn new(n: &[usize], lo: &[f64], hi: &[f64], bcs: &FaceBcs) -> Result<Self, String> {
+    pub fn new(
+        n: &[usize],
+        lo: &[f64],
+        hi: &[f64],
+        bcs: &FaceBcs,
+    ) -> Result<Self, String> {
         let dim = n.len();
         if !(1..=3).contains(&dim) || lo.len() != dim || hi.len() != dim {
             return Err("grid needs 1 to 3 axes with matching bounds".into());
         }
-        let mut g = Self { dim, n: [1; 3], lo: [0.0; 3], hi: [1.0; 3], periodic: [false; 3] };
+        let mut g = Self {
+            dim,
+            n: [1; 3],
+            lo: [0.0; 3],
+            hi: [1.0; 3],
+            periodic: [false; 3],
+        };
         for a in 0..dim {
             let per = bcs.axis_periodic(a)?;
             if n[a] < if per { 3 } else { 2 } || lo[a] >= hi[a] {
@@ -71,21 +91,34 @@ impl Grid {
     ///
     /// # Errors
     /// See [`Grid::new`].
-    pub fn unit(dim: usize, n: usize, bcs: &FaceBcs) -> Result<Self, String> {
+    pub fn unit(
+        dim: usize,
+        n: usize,
+        bcs: &FaceBcs,
+    ) -> Result<Self, String> {
         Self::new(&vec![n; dim], &vec![0.0; dim], &vec![1.0; dim], bcs)
     }
 
     /// Spacing along `axis`.
     #[must_use]
-    pub fn h(&self, axis: usize) -> f64 {
+    pub fn h(
+        &self,
+        axis: usize,
+    ) -> f64 {
         let span = self.hi[axis] - self.lo[axis];
-        if self.periodic[axis] { span / self.n[axis] as f64 } else { span / (self.n[axis] - 1) as f64 }
+        if self.periodic[axis] {
+            span / self.n[axis] as f64
+        } else {
+            span / (self.n[axis] - 1) as f64
+        }
     }
 
     /// Smallest spacing over the active axes.
     #[must_use]
     pub fn h_min(&self) -> f64 {
-        (0..self.dim).map(|a| self.h(a)).fold(f64::INFINITY, f64::min)
+        (0..self.dim)
+            .map(|a| self.h(a))
+            .fold(f64::INFINITY, f64::min)
     }
 
     /// Number of nodes.
@@ -102,13 +135,19 @@ impl Grid {
 
     /// Flat index of node `(i, j, k)` (x fastest).
     #[must_use]
-    pub const fn index(&self, i: [usize; 3]) -> usize {
+    pub const fn index(
+        &self,
+        i: [usize; 3],
+    ) -> usize {
         i[0] + self.n[0] * (i[1] + self.n[1] * i[2])
     }
 
     /// Node multi-index of a flat index.
     #[must_use]
-    pub const fn ijk(&self, p: usize) -> [usize; 3] {
+    pub const fn ijk(
+        &self,
+        p: usize,
+    ) -> [usize; 3] {
         let i = p % self.n[0];
         let r = p / self.n[0];
         [i, r % self.n[1], r / self.n[1]]
@@ -116,7 +155,10 @@ impl Grid {
 
     /// Coordinates of node `p` (inactive axes are `0`).
     #[must_use]
-    pub fn coord(&self, p: usize) -> [f64; 3] {
+    pub fn coord(
+        &self,
+        p: usize,
+    ) -> [f64; 3] {
         let ijk = self.ijk(p);
         let mut x = [0.0; 3];
         for a in 0..self.dim {
@@ -126,19 +168,38 @@ impl Grid {
     }
 
     /// Samples `f` at every node.
-    pub fn sample(&self, f: impl Fn([f64; 3]) -> f64) -> Vec<f64> {
+    pub fn sample(
+        &self,
+        f: impl Fn([f64; 3]) -> f64,
+    ) -> Vec<f64> {
         (0..self.len()).map(|p| f(self.coord(p))).collect()
     }
 
     /// Largest absolute difference between `u` and `exact` at the nodes.
-    pub fn max_error(&self, u: &[f64], exact: impl Fn([f64; 3]) -> f64) -> f64 {
-        u.iter().enumerate().map(|(p, v)| (v - exact(self.coord(p))).abs()).fold(0.0, f64::max)
+    pub fn max_error(
+        &self,
+        u: &[f64],
+        exact: impl Fn([f64; 3]) -> f64,
+    ) -> f64 {
+        u.iter()
+            .enumerate()
+            .map(|(p, v)| (v - exact(self.coord(p))).abs())
+            .fold(0.0, f64::max)
     }
 
     /// Discrete L2 norm of the error (`sqrt(h^d Σ e²)`).
-    pub fn l2_error(&self, u: &[f64], exact: impl Fn([f64; 3]) -> f64) -> f64 {
+    pub fn l2_error(
+        &self,
+        u: &[f64],
+        exact: impl Fn([f64; 3]) -> f64,
+    ) -> f64 {
         let vol: f64 = (0..self.dim).map(|a| self.h(a)).product();
-        (u.iter().enumerate().map(|(p, v)| (v - exact(self.coord(p))).powi(2)).sum::<f64>() * vol).sqrt()
+        (u.iter()
+            .enumerate()
+            .map(|(p, v)| (v - exact(self.coord(p))).powi(2))
+            .sum::<f64>()
+            * vol)
+            .sqrt()
     }
 }
 
@@ -169,7 +230,10 @@ impl LaplacianOp {
     ///
     /// # Errors
     /// If a Robin condition is degenerate (`alpha = beta = 0`).
-    pub fn new(grid: &Grid, bcs: &FaceBcs) -> Result<Self, String> {
+    pub fn new(
+        grid: &Grid,
+        bcs: &FaceBcs,
+    ) -> Result<Self, String> {
         let nn = grid.len();
         let mut dirichlet: Vec<Option<DirNode>> = vec![None; nn];
         // Pass 1: Dirichlet nodes.
@@ -180,16 +244,23 @@ impl LaplacianOp {
                     continue;
                 }
                 for max in [false, true] {
-                    let on = if max { ijk[a] == grid.n[a] - 1 } else { ijk[a] == 0 };
+                    let on = if max {
+                        ijk[a] == grid.n[a] - 1
+                    } else {
+                        ijk[a] == 0
+                    };
                     if !on || dirichlet[p].is_some() {
                         continue;
                     }
                     let face = Face::of_axis(a, max);
                     match bcs.get(face) {
-                        BoundaryCondition::Dirichlet(g) => {
-                            dirichlet[p] = Some(DirNode { value: g.clone(), x: grid.coord(p) });
+                        | BoundaryCondition::Dirichlet(g) => {
+                            dirichlet[p] = Some(DirNode {
+                                value: g.clone(),
+                                x: grid.coord(p),
+                            });
                         },
-                        BoundaryCondition::Robin { alpha, beta, g } if *beta == 0.0 => {
+                        | BoundaryCondition::Robin { alpha, beta, g } if *beta == 0.0 => {
                             if *alpha == 0.0 {
                                 return Err("degenerate Robin condition".into());
                             }
@@ -199,7 +270,7 @@ impl LaplacianOp {
                                 x: grid.coord(p),
                             });
                         },
-                        _ => {},
+                        | _ => {},
                     }
                 }
             }
@@ -243,20 +314,26 @@ impl LaplacianOp {
                 trip.push((p, inner, 2.0 / h2));
                 trip.push((p, p, -2.0 / h2));
                 match bc {
-                    BoundaryCondition::Neumann(g) => forcing.push((p, 2.0 / h, g.clone(), x)),
-                    BoundaryCondition::Symmetry => {},
-                    BoundaryCondition::Absorbing => absorbing.push((p, a, max)),
-                    BoundaryCondition::Robin { alpha, beta, g } => {
+                    | BoundaryCondition::Neumann(g) => forcing.push((p, 2.0 / h, g.clone(), x)),
+                    | BoundaryCondition::Symmetry => {},
+                    | BoundaryCondition::Absorbing => absorbing.push((p, a, max)),
+                    | BoundaryCondition::Robin { alpha, beta, g } => {
                         trip.push((p, p, -2.0 * alpha / (beta * h)));
                         forcing.push((p, 2.0 / (beta * h), g.clone(), x));
                     },
-                    BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {
+                    | BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {
                         return Err("inconsistent boundary description".into());
                     },
                 }
             }
         }
-        Ok(Self { grid: grid.clone(), l: Csr::from_triplets(nn, nn, &trip), dirichlet, forcing, absorbing })
+        Ok(Self {
+            grid: grid.clone(),
+            l: Csr::from_triplets(nn, nn, &trip),
+            dirichlet,
+            forcing,
+            absorbing,
+        })
     }
 
     /// Whether any face carries an absorbing (wave-only) condition.
@@ -267,7 +344,10 @@ impl LaplacianOp {
 
     /// Whether node `p` is a Dirichlet node.
     #[must_use]
-    pub fn is_dirichlet(&self, p: usize) -> bool {
+    pub fn is_dirichlet(
+        &self,
+        p: usize,
+    ) -> bool {
         self.dirichlet.get(p).is_some_and(Option::is_some)
     }
 
@@ -278,13 +358,20 @@ impl LaplacianOp {
     }
 
     /// `out = L u` at free nodes, `0` at Dirichlet nodes.
-    pub fn apply(&self, u: &[f64], out: &mut [f64]) {
+    pub fn apply(
+        &self,
+        u: &[f64],
+        out: &mut [f64],
+    ) {
         self.l.matvec(u, out);
     }
 
     /// Boundary-datum contribution to `Δu` for Neumann and Robin faces at time `t`.
     #[must_use]
-    pub fn forcing(&self, t: f64) -> Vec<f64> {
+    pub fn forcing(
+        &self,
+        t: f64,
+    ) -> Vec<f64> {
         let mut f = vec![0.0; self.grid.len()];
         for (p, c, g, x) in &self.forcing {
             f[*p] += c * g.eval(t, *x);
@@ -293,7 +380,11 @@ impl LaplacianOp {
     }
 
     /// Overwrites Dirichlet nodes of `u` with `g(t, x)`.
-    pub fn set_dirichlet(&self, u: &mut [f64], t: f64) {
+    pub fn set_dirichlet(
+        &self,
+        u: &mut [f64],
+        t: f64,
+    ) {
         for (p, d) in self.dirichlet.iter().enumerate() {
             if let Some(d) = d {
                 u[p] = d.value.eval(t, d.x);
@@ -303,7 +394,11 @@ impl LaplacianOp {
 
     /// Matrix `shift I + scale L` with identity rows at Dirichlet nodes.
     #[must_use]
-    pub fn system(&self, shift: f64, scale: f64) -> Csr {
+    pub fn system(
+        &self,
+        shift: f64,
+        scale: f64,
+    ) -> Csr {
         let nn = self.grid.len();
         let mut trip = Vec::with_capacity(self.l.values.len() + nn);
         for p in 0..nn {
@@ -347,45 +442,75 @@ impl LinearSystem {
     ///
     /// # Errors
     /// If the matrix is singular (direct solver).
-    pub fn new(a: Csr, solver: LinearSolver) -> Result<Self, String> {
+    pub fn new(
+        a: Csr,
+        solver: LinearSolver,
+    ) -> Result<Self, String> {
         let n = a.rows;
         let direct = match solver {
-            LinearSolver::Direct => true,
-            LinearSolver::Auto => n <= 30_000,
-            _ => false,
+            | LinearSolver::Direct => true,
+            | LinearSolver::Auto => n <= 30_000,
+            | _ => false,
         };
         if direct {
-            let lu = a.sparse_lu(SparseOrdering::MinDegree).map_err(|e| format!("sparse LU failed: {e:?}"))?;
-            return Ok(Self { a, lu: Some(lu), ilu: None, gmres: false, tol: 0.0 });
+            let lu = a
+                .sparse_lu(SparseOrdering::MinDegree)
+                .map_err(|e| format!("sparse LU failed: {e:?}"))?;
+            return Ok(Self {
+                a,
+                lu: Some(lu),
+                ilu: None,
+                gmres: false,
+                tol: 0.0,
+            });
         }
         let (gmres, tol) = match solver {
-            LinearSolver::Gmres(t) => (true, t),
-            LinearSolver::BiCgStab(t) => (false, t),
-            _ => (false, 1e-12),
+            | LinearSolver::Gmres(t) => (true, t),
+            | LinearSolver::BiCgStab(t) => (false, t),
+            | _ => (false, 1e-12),
         };
         let ilu = a.ilu0();
-        Ok(Self { a, lu: None, ilu, gmres, tol })
+        Ok(Self {
+            a,
+            lu: None,
+            ilu,
+            gmres,
+            tol,
+        })
     }
 
     /// Solves `A x = b` (`x0` is the Krylov initial guess).
     ///
     /// # Errors
     /// If an iterative solve does not reach its tolerance.
-    pub fn solve(&self, b: &[f64], x0: Option<&[f64]>) -> Result<Vec<f64>, String> {
+    pub fn solve(
+        &self,
+        b: &[f64],
+        x0: Option<&[f64]>,
+    ) -> Result<Vec<f64>, String> {
         if let Some(lu) = &self.lu {
             return Ok(lu.solve(b));
         }
         let apply = |x: &[f64], y: &mut [f64]| self.a.matvec(x, y);
-        let pre = |r: &[f64], z: &mut [f64]| match &self.ilu {
-            Some(m) => m.apply(r, z),
-            None => identity_precond(r, z),
+        let pre = |r: &[f64], z: &mut [f64]| {
+            match &self.ilu {
+                | Some(m) => m.apply(r, z),
+                | None => identity_precond(r, z),
+            }
         };
         let res = if self.gmres {
             gmres(apply, pre, b, x0, 30, self.tol, 20 * b.len().max(100))
         } else {
             bicgstab(apply, pre, b, x0, self.tol, 20 * b.len().max(100))
         };
-        if res.converged { Ok(res.x) } else { Err(format!("iterative solve stagnated at residual {}", res.residual)) }
+        if res.converged {
+            Ok(res.x)
+        } else {
+            Err(format!(
+                "iterative solve stagnated at residual {}",
+                res.residual
+            ))
+        }
     }
 }
 
@@ -408,7 +533,9 @@ pub fn solve_helmholtz(
     }
     let sys = LinearSystem::new(op.system(sigma, -1.0), solver)?;
     let force = op.forcing(0.0);
-    let mut b: Vec<f64> = (0..grid.len()).map(|p| f(grid.coord(p)) + force[p]).collect();
+    let mut b: Vec<f64> = (0..grid.len())
+        .map(|p| f(grid.coord(p)) + force[p])
+        .collect();
     op.set_dirichlet(&mut b, 0.0);
     sys.solve(&b, None)
 }
@@ -429,8 +556,14 @@ pub struct HeatProblem<'a> {
     pub solver: LinearSolver,
 }
 
-fn source_vec(grid: &Grid, s: Option<&dyn Fn(f64, [f64; 3]) -> f64>, t: f64) -> Vec<f64> {
-    (0..grid.len()).map(|p| s.map_or(0.0, |f| f(t, grid.coord(p)))).collect()
+fn source_vec(
+    grid: &Grid,
+    s: Option<&dyn Fn(f64, [f64; 3]) -> f64>,
+    t: f64,
+) -> Vec<f64> {
+    (0..grid.len())
+        .map(|p| s.map_or(0.0, |f| f(t, grid.coord(p))))
+        .collect()
 }
 
 struct HeatStepper<'a> {
@@ -441,15 +574,28 @@ struct HeatStepper<'a> {
 }
 
 impl<'a> HeatStepper<'a> {
-    fn new(prob: &'a HeatProblem<'a>, theta: f64) -> Result<Self, String> {
+    fn new(
+        prob: &'a HeatProblem<'a>,
+        theta: f64,
+    ) -> Result<Self, String> {
         let op = LaplacianOp::new(prob.grid, prob.bcs)?;
         if op.has_absorbing() {
             return Err("absorbing boundaries are only valid for waves".into());
         }
-        Ok(Self { prob, op, theta, cache: HashMap::new() })
+        Ok(Self {
+            prob,
+            op,
+            theta,
+            cache: HashMap::new(),
+        })
     }
 
-    fn step(&mut self, u: &[f64], t: f64, dt: f64) -> Result<Vec<f64>, String> {
+    fn step(
+        &mut self,
+        u: &[f64],
+        t: f64,
+        dt: f64,
+    ) -> Result<Vec<f64>, String> {
         let nn = u.len();
         let a = self.prob.alpha;
         let th = self.theta;
@@ -460,7 +606,10 @@ impl<'a> HeatStepper<'a> {
             if self.cache.len() > 8 {
                 self.cache.clear();
             }
-            let s = Arc::new(LinearSystem::new(self.op.system(1.0, -dt * th * a), self.prob.solver)?);
+            let s = Arc::new(LinearSystem::new(
+                self.op.system(1.0, -dt * th * a),
+                self.prob.solver,
+            )?);
             self.cache.insert(key, Arc::clone(&s));
             s
         };
@@ -492,7 +641,12 @@ impl<'a> HeatStepper<'a> {
 ///
 /// # Errors
 /// On solver failure or an invalid `theta` / absorbing boundary.
-pub fn heat_fixed(prob: &HeatProblem<'_>, t_end: f64, steps: usize, theta: f64) -> Result<Vec<f64>, String> {
+pub fn heat_fixed(
+    prob: &HeatProblem<'_>,
+    t_end: f64,
+    steps: usize,
+    theta: f64,
+) -> Result<Vec<f64>, String> {
     if !(0.5..=1.0).contains(&theta) || steps == 0 {
         return Err("theta must be in [1/2, 1] and steps > 0".into());
     }
@@ -522,7 +676,13 @@ pub struct AdaptiveOptions {
 
 impl Default for AdaptiveOptions {
     fn default() -> Self {
-        Self { tol: 1e-6, dt0: 1e-3, dt_min: 1e-12, dt_max: f64::INFINITY, max_steps: 100_000 }
+        Self {
+            tol: 1e-6,
+            dt0: 1e-3,
+            dt_min: 1e-12,
+            dt_max: f64::INFINITY,
+            max_steps: 100_000,
+        }
     }
 }
 
@@ -551,7 +711,10 @@ fn adaptive_drive(
 ) -> Result<(Vec<f64>, AdaptiveStats), String> {
     let mut t = 0.0;
     let mut dt = opts.dt0.min(t_end);
-    let mut stats = AdaptiveStats { dt_min_used: f64::INFINITY, ..AdaptiveStats::default() };
+    let mut stats = AdaptiveStats {
+        dt_min_used: f64::INFINITY,
+        ..AdaptiveStats::default()
+    };
     let fac = f64::from(2_i32.pow(order.unsigned_abs()) - 1);
     let mut attempts = 0;
     while t < t_end * (1.0 - 1e-14) {
@@ -564,7 +727,11 @@ fn adaptive_drive(
         let mid = step(&u, t, 0.5 * dt_try)?;
         let small = step(&mid, t + 0.5 * dt_try, 0.5 * dt_try)?;
         let scale = 1.0 + small.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-        let err = big.iter().zip(&small).fold(0.0_f64, |m, (a, b)| m.max((a - b).abs())) / (fac * scale);
+        let err = big
+            .iter()
+            .zip(&small)
+            .fold(0.0_f64, |m, (a, b)| m.max((a - b).abs()))
+            / (fac * scale);
         if err <= opts.tol || dt_try <= opts.dt_min {
             t += dt_try;
             u = small;
@@ -574,7 +741,11 @@ fn adaptive_drive(
         } else {
             stats.rejected += 1;
         }
-        let ratio = if err > 0.0 { 0.9 * (opts.tol / err).powf(1.0 / f64::from(order + 1)) } else { 5.0 };
+        let ratio = if err > 0.0 {
+            0.9 * (opts.tol / err).powf(1.0 / f64::from(order + 1))
+        } else {
+            5.0
+        };
         dt = (dt_try * ratio.clamp(0.2, 5.0)).max(opts.dt_min);
     }
     if stats.accepted == 0 {
@@ -617,7 +788,11 @@ pub struct WaveProblem<'a> {
 ///
 /// # Errors
 /// If the CFL condition `c dt <= h_min / sqrt(dim)` is violated.
-pub fn wave_leapfrog(prob: &WaveProblem<'_>, t_end: f64, steps: usize) -> Result<Vec<f64>, String> {
+pub fn wave_leapfrog(
+    prob: &WaveProblem<'_>,
+    t_end: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
     let op = LaplacianOp::new(prob.grid, prob.bcs)?;
     let g = prob.grid;
     let nn = g.len();
@@ -643,8 +818,9 @@ pub fn wave_leapfrog(prob: &WaveProblem<'_>, t_end: f64, steps: usize) -> Result
         op.apply(&cur, &mut lu);
         let f = op.forcing(t);
         let s = source_vec(g, prob.source, t);
-        let mut next: Vec<f64> =
-            (0..nn).map(|p| 2.0 * cur[p] - prev[p] + dt * dt * (c2 * (lu[p] + f[p]) + s[p])).collect();
+        let mut next: Vec<f64> = (0..nn)
+            .map(|p| 2.0 * cur[p] - prev[p] + dt * dt * (c2 * (lu[p] + f[p]) + s[p]))
+            .collect();
         mur_update(&op, prob.c, dt, &cur, &mut next);
         op.set_dirichlet(&mut next, t + dt);
         prev = cur;
@@ -654,7 +830,13 @@ pub fn wave_leapfrog(prob: &WaveProblem<'_>, t_end: f64, steps: usize) -> Result
 }
 
 /// First-order Mur radiation update of the absorbing boundary nodes.
-fn mur_update(op: &LaplacianOp, c: f64, dt: f64, old: &[f64], new: &mut [f64]) {
+fn mur_update(
+    op: &LaplacianOp,
+    c: f64,
+    dt: f64,
+    old: &[f64],
+    new: &mut [f64],
+) {
     let g = &op.grid;
     for &(p, a, max) in &op.absorbing {
         let mut q = g.ijk(p);
@@ -691,7 +873,7 @@ pub struct NewtonStats {
 struct NlStepper<'a> {
     p: &'a NonlinearDiffusion<'a>,
     op: LaplacianOp,
-    bc: Vec<[Option<(f64, f64, BcValue)>; 2]>, // per axis: (alpha, beta, g) at min / max (Neumann/Robin)
+    bc: Vec<[Option<(f64, f64, BcValue)>; 2]>, /* per axis: (alpha, beta, g) at min / max (Neumann/Robin) */
     stats: NewtonStats,
 }
 
@@ -706,19 +888,30 @@ impl<'a> NlStepper<'a> {
             let mut pair: [Option<(f64, f64, BcValue)>; 2] = [None, None];
             for (m, slot) in pair.iter_mut().enumerate() {
                 *slot = match p.bcs.get(Face::of_axis(a, m == 1)) {
-                    BoundaryCondition::Neumann(g) => Some((0.0, 1.0, g.clone())),
-                    BoundaryCondition::Symmetry => Some((0.0, 1.0, BcValue::constant(0.0))),
-                    BoundaryCondition::Robin { alpha, beta, g } if *beta != 0.0 => Some((*alpha, *beta, g.clone())),
-                    _ => None,
+                    | BoundaryCondition::Neumann(g) => Some((0.0, 1.0, g.clone())),
+                    | BoundaryCondition::Symmetry => Some((0.0, 1.0, BcValue::constant(0.0))),
+                    | BoundaryCondition::Robin { alpha, beta, g } if *beta != 0.0 => {
+                        Some((*alpha, *beta, g.clone()))
+                    },
+                    | _ => None,
                 };
             }
             bc.push(pair);
         }
-        Ok(Self { p, op, bc, stats: NewtonStats::default() })
+        Ok(Self {
+            p,
+            op,
+            bc,
+            stats: NewtonStats::default(),
+        })
     }
 
     /// Spatial right-hand side `R(u, t)` at free nodes (zero at Dirichlet nodes).
-    fn rhs(&self, u: &[f64], t: f64) -> Vec<f64> {
+    fn rhs(
+        &self,
+        u: &[f64],
+        t: f64,
+    ) -> Vec<f64> {
         let g = self.p.grid;
         let nn = g.len();
         let dv: Vec<f64> = u.iter().map(|&v| (self.p.d)(v)).collect();
@@ -749,8 +942,8 @@ impl<'a> NlStepper<'a> {
                     let qi = if max { at(n - 2) } else { at(1) };
                     let din = f64::midpoint(dv[p], dv[qi]);
                     let dudn = match &self.bc[a][usize::from(max)] {
-                        Some((al, be, gv)) => (gv.eval(t, x) - al * u[p]) / be,
-                        None => 0.0,
+                        | Some((al, be, gv)) => (gv.eval(t, x) - al * u[p]) / be,
+                        | None => 0.0,
                     };
                     acc += (din * (u[qi] - u[p]) / h + dv[p] * dudn) / (0.5 * h);
                 }
@@ -764,7 +957,13 @@ impl<'a> NlStepper<'a> {
     }
 
     /// One θ-method step solved by Newton–Krylov.
-    fn step(&mut self, u: &[f64], t: f64, dt: f64, theta: f64) -> Result<Vec<f64>, String> {
+    fn step(
+        &mut self,
+        u: &[f64],
+        t: f64,
+        dt: f64,
+        theta: f64,
+    ) -> Result<Vec<f64>, String> {
         let nn = u.len();
         let r0 = self.rhs(u, t);
         let mut gd = vec![0.0; nn];
@@ -793,7 +992,10 @@ impl<'a> NlStepper<'a> {
             self.stats.newton_iters += 1;
             // frozen-coefficient preconditioner
             let dmean = w.iter().map(|&v| (self.p.d)(v)).sum::<f64>() / nn as f64;
-            let sys = LinearSystem::new(self.op.system(1.0, -theta * dt * dmean), LinearSolver::Direct)?;
+            let sys = LinearSystem::new(
+                self.op.system(1.0, -theta * dt * dmean),
+                LinearSolver::Direct,
+            )?;
             let wn = norm(&w);
             let this: &Self = self;
             let jv = |v: &[f64], out: &mut [f64]| {
@@ -866,7 +1068,9 @@ pub fn nonlinear_diffusion_adaptive(
     let mut st = NlStepper::new(prob)?;
     let u0 = st.initial();
     let cell = std::cell::RefCell::new(&mut st);
-    let (u, stats) = adaptive_drive(u0, t_end, 2, opts, |u, t, dt| cell.borrow_mut().step(u, t, dt, 0.5))?;
+    let (u, stats) = adaptive_drive(u0, t_end, 2, opts, |u, t, dt| {
+        cell.borrow_mut().step(u, t, dt, 0.5)
+    })?;
     let ns = cell.borrow().stats;
     Ok((u, stats, ns))
 }

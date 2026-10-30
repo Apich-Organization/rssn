@@ -70,21 +70,81 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("tanh", unary!(tanh), Some(Parity::Odd), Facts::REAL),
         ("sqrt", unary!(sqrt), None, Facts::NONE),
         ("abs", unary!(abs), Some(Parity::Even), Facts::NONNEGATIVE),
-        ("cot", closure!(|x: &f64| 1.0 / x.tan()), Some(Parity::Odd), Facts::REAL),
-        ("sec", closure!(|x: &f64| 1.0 / x.cos()), Some(Parity::Even), Facts::REAL),
-        ("csc", closure!(|x: &f64| 1.0 / x.sin()), Some(Parity::Odd), Facts::REAL),
-        ("acot", closure!(|x: &f64| (1.0 / x).atan()), Some(Parity::Odd), Facts::REAL),
-        ("asec", closure!(|x: &f64| (1.0 / x).acos()), None, Facts::NONE),
-        ("acsc", closure!(|x: &f64| (1.0 / x).asin()), Some(Parity::Odd), Facts::NONE),
-        ("coth", closure!(|x: &f64| 1.0 / x.tanh()), Some(Parity::Odd), Facts::REAL),
-        ("sech", closure!(|x: &f64| 1.0 / x.cosh()), Some(Parity::Even), Facts::POSITIVE),
-        ("csch", closure!(|x: &f64| 1.0 / x.sinh()), Some(Parity::Odd), Facts::REAL),
+        (
+            "cot",
+            closure!(|x: &f64| 1.0 / x.tan()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
+        (
+            "sec",
+            closure!(|x: &f64| 1.0 / x.cos()),
+            Some(Parity::Even),
+            Facts::REAL,
+        ),
+        (
+            "csc",
+            closure!(|x: &f64| 1.0 / x.sin()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
+        (
+            "acot",
+            closure!(|x: &f64| (1.0 / x).atan()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
+        (
+            "asec",
+            closure!(|x: &f64| (1.0 / x).acos()),
+            None,
+            Facts::NONE,
+        ),
+        (
+            "acsc",
+            closure!(|x: &f64| (1.0 / x).asin()),
+            Some(Parity::Odd),
+            Facts::NONE,
+        ),
+        (
+            "coth",
+            closure!(|x: &f64| 1.0 / x.tanh()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
+        (
+            "sech",
+            closure!(|x: &f64| 1.0 / x.cosh()),
+            Some(Parity::Even),
+            Facts::POSITIVE,
+        ),
+        (
+            "csch",
+            closure!(|x: &f64| 1.0 / x.sinh()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
         ("asinh", unary!(asinh), Some(Parity::Odd), Facts::REAL),
         ("acosh", unary!(acosh), None, Facts::NONE),
         ("atanh", unary!(atanh), Some(Parity::Odd), Facts::NONE),
-        ("acoth", closure!(|x: &f64| (1.0 / x).atanh()), Some(Parity::Odd), Facts::NONE),
-        ("asech", closure!(|x: &f64| (1.0 / x).acosh()), None, Facts::NONE),
-        ("acsch", closure!(|x: &f64| (1.0 / x).asinh()), Some(Parity::Odd), Facts::REAL),
+        (
+            "acoth",
+            closure!(|x: &f64| (1.0 / x).atanh()),
+            Some(Parity::Odd),
+            Facts::NONE,
+        ),
+        (
+            "asech",
+            closure!(|x: &f64| (1.0 / x).acosh()),
+            None,
+            Facts::NONE,
+        ),
+        (
+            "acsch",
+            closure!(|x: &f64| (1.0 / x).asinh()),
+            Some(Parity::Odd),
+            Facts::REAL,
+        ),
     ];
     let mut with_parity = Vec::new();
     for (name, f, parity, on_reals) in functions {
@@ -109,16 +169,24 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let pi = i.op(OpDescriptor::new("pi", Arity::Fixed(0)).eval(|_| std::f64::consts::PI))?;
     i.graph().ops_mut().set_attr(pi, OnReals(Facts::POSITIVE));
     // Cost 3, not 1: `exp(x)` is the preferred spelling of `E^x`.
-    let euler = i.op(OpDescriptor::new("E", Arity::Fixed(0)).cost(3).eval(|_| std::f64::consts::E))?;
-    i.graph().ops_mut().set_attr(euler, OnReals(Facts::POSITIVE));
-    i.op(OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| match a {
-        | [y, x] => y.atan2(*x),
-        | _ => f64::NAN,
+    let euler = i.op(OpDescriptor::new("E", Arity::Fixed(0))
+        .cost(3)
+        .eval(|_| std::f64::consts::E))?;
+    i.graph()
+        .ops_mut()
+        .set_attr(euler, OnReals(Facts::POSITIVE));
+    i.op(OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| {
+        match a {
+            | [y, x] => y.atan2(*x),
+            | _ => f64::NAN,
+        }
     }))?;
     // log(b, x): the logarithm of x to base b.
-    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2)).eval(|a| match a {
-        | [b, x] => x.ln() / b.ln(),
-        | _ => f64::NAN,
+    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2)).eval(|a| {
+        match a {
+            | [b, x] => x.ln() / b.ln(),
+            | _ => f64::NAN,
+        }
     }))?;
     i.kernel("elementary/exact-log", Tier::Normalize, ExactLog { log });
     if let (Some(sin), Some(cos), Some(sinh), Some(cosh)) = (
@@ -127,7 +195,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i.graph().ops().lookup("sinh"),
         i.graph().ops().lookup("cosh"),
     ) {
-        i.kernel("elementary/pythagoras-in-sums", Tier::Normalize, PythagorasInSums { sin, cos, sinh, cosh });
+        i.kernel(
+            "elementary/pythagoras-in-sums",
+            Tier::Normalize,
+            PythagorasInSums { sin, cos, sinh, cosh },
+        );
     }
     i.kernel(
         "elementary/parity",
@@ -276,7 +348,11 @@ fn split_term(
     graph: &crate::graph::Graph,
     term: NodeId,
 ) -> (crate::graph::Number, Vec<NodeId>) {
-    let factors = if graph.op(term) == core::MUL { graph.children(term).to_vec() } else { vec![term] };
+    let factors = if graph.op(term) == core::MUL {
+        graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
     let mut coefficient = crate::graph::Number::from(1);
     let mut rest = Vec::with_capacity(factors.len());
     for f in factors {
@@ -298,14 +374,21 @@ impl PythagorasInSums {
         let &[base, exponent] = graph.children(factor) else {
             return None;
         };
-        if graph.op(factor) != core::POW || graph.number_of(exponent).and_then(crate::graph::Number::to_i64) != Some(2) {
+        if graph.op(factor) != core::POW
+            || graph
+                .number_of(exponent)
+                .and_then(crate::graph::Number::to_i64)
+                != Some(2)
+        {
             return None;
         }
         let op = graph.op(base);
         let &[u] = graph.children(base) else {
             return None;
         };
-        [self.sin, self.cos, self.sinh, self.cosh].contains(&op).then_some((op, u))
+        [self.sin, self.cos, self.sinh, self.cosh]
+            .contains(&op)
+            .then_some((op, u))
     }
 }
 
@@ -330,7 +413,12 @@ impl Kernel for PythagorasInSums {
             let (coefficient, factors) = split_term(graph, term);
             for (j, &f) in factors.iter().enumerate() {
                 if let Some((op, u)) = self.square_of(graph, f) {
-                    let mut others: Vec<NodeId> = factors.iter().enumerate().filter(|&(i, _)| i != j).map(|(_, &g)| g).collect();
+                    let mut others: Vec<NodeId> = factors
+                        .iter()
+                        .enumerate()
+                        .filter(|&(i, _)| i != j)
+                        .map(|(_, &g)| g)
+                        .collect();
                     others.sort_unstable();
                     squares.push((k, op, u, coefficient.clone(), others));
                 }
@@ -349,11 +437,23 @@ impl Kernel for PythagorasInSums {
                 let coefficient = graph.num(a.3.clone());
                 let mut factors = vec![coefficient];
                 factors.extend(&a.4);
-                let replacement = if factors.len() == 1 { factors[0] } else { graph.node(core::MUL, &factors) };
-                let mut rest: Vec<NodeId> =
-                    terms.iter().enumerate().filter(|&(i, _)| i != a.0 && i != b.0).map(|(_, &t)| t).collect();
+                let replacement = if factors.len() == 1 {
+                    factors[0]
+                } else {
+                    graph.node(core::MUL, &factors)
+                };
+                let mut rest: Vec<NodeId> = terms
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| i != a.0 && i != b.0)
+                    .map(|(_, &t)| t)
+                    .collect();
                 rest.push(replacement);
-                let sum = if rest.len() == 1 { rest[0] } else { graph.node(core::ADD, &rest) };
+                let sum = if rest.len() == 1 {
+                    rest[0]
+                } else {
+                    graph.node(core::ADD, &rest)
+                };
                 return Outcome::Equal(sum);
             }
         }
@@ -385,7 +485,9 @@ impl Kernel for ExactLog {
         };
         let (Some(b), Some(x)) = (
             graph.number_of(base).and_then(crate::graph::Number::to_i64),
-            graph.number_of(argument).and_then(crate::graph::Number::to_i64),
+            graph
+                .number_of(argument)
+                .and_then(crate::graph::Number::to_i64),
         ) else {
             return Outcome::Pass;
         };
@@ -400,7 +502,11 @@ impl Kernel for ExactLog {
             power = next;
             exponent += 1;
         }
-        if power == x { Outcome::Equal(graph.int(exponent)) } else { Outcome::Pass }
+        if power == x {
+            Outcome::Equal(graph.int(exponent))
+        } else {
+            Outcome::Pass
+        }
     }
 }
 
@@ -433,10 +539,11 @@ impl Kernel for ParityKernel {
                 graph.num(n.neg())
             } else if graph.op(arg) == core::MUL {
                 let factors = graph.children(arg).to_vec();
-                let Some(index) = factors
-                    .iter()
-                    .position(|&f| graph.as_number(f).is_some_and(super::super::graph::number::Number::is_negative))
-                else {
+                let Some(index) = factors.iter().position(|&f| {
+                    graph
+                        .as_number(f)
+                        .is_some_and(super::super::graph::number::Number::is_negative)
+                }) else {
                     return Outcome::Pass;
                 };
                 let mut flipped = factors.clone();
@@ -576,7 +683,7 @@ mod tests {
                 &Saturate,
                 &Budget::default(),
             );
-            assert!(g.conflicts().is_empty());
+            assert_eq!(g.conflicts(), []);
             let ex = Extractor::new(&g, &[root], &ClosedForm);
             ex.build(&mut g, root)
                 .map_or_else(|| "<none>".to_owned(), |n| g.display(n))

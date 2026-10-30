@@ -22,22 +22,22 @@ use super::store::Graph;
 pub struct Facts(u8);
 
 impl Facts {
+    /// The value is an integer.
+    pub const INTEGER: Self = Self(1 | 1 << 4);
+    /// The value is real and `< 0`.
+    pub const NEGATIVE: Self = Self(1 | 1 << 1 | 1 << 3);
     /// Nothing is known.
     pub const NONE: Self = Self(0);
-    /// The value is a real number.
-    pub const REAL: Self = Self(1);
-    /// The value is not zero.
-    pub const NONZERO: Self = Self(1 << 1);
     /// The value is real and `>= 0`.
     pub const NONNEGATIVE: Self = Self(1 | 1 << 2);
     /// The value is real and `<= 0`.
     pub const NONPOSITIVE: Self = Self(1 | 1 << 3);
+    /// The value is not zero.
+    pub const NONZERO: Self = Self(1 << 1);
     /// The value is real and `> 0`.
     pub const POSITIVE: Self = Self(1 | 1 << 1 | 1 << 2);
-    /// The value is real and `< 0`.
-    pub const NEGATIVE: Self = Self(1 | 1 << 1 | 1 << 3);
-    /// The value is an integer.
-    pub const INTEGER: Self = Self(1 | 1 << 4);
+    /// The value is a real number.
+    pub const REAL: Self = Self(1);
 
     /// The facts encoded by `bits`, as returned by [`Facts::bits`]:
     /// bit 0 real, 1 nonzero, 2 nonnegative, 3 nonpositive, 4 integer.
@@ -46,7 +46,11 @@ impl Facts {
     #[must_use]
     pub const fn from_bits(bits: u8) -> Self {
         let bits = bits & 0x1f;
-        if bits & 0b1_1100 != 0 { Self(bits | 1) } else { Self(bits) }
+        if bits & 0b1_1100 != 0 {
+            Self(bits | 1)
+        } else {
+            Self(bits)
+        }
     }
 
     /// The bit encoding of these facts (see [`Facts::from_bits`]).
@@ -165,16 +169,20 @@ impl Graph {
         // A witness on a class without free symbols holds for every binding.
         let mut facts = Facts::NONE;
         if self.free_symbols(class).is_empty()
-            && let Some(ball) = self.approx(class) {
-                if ball.mid - ball.rad > 0.0 {
-                    facts = facts | Facts::POSITIVE;
-                } else if ball.mid + ball.rad < 0.0 {
-                    facts = facts | Facts::NEGATIVE;
-                }
+            && let Some(ball) = self.approx(class)
+        {
+            if ball.mid - ball.rad > 0.0 {
+                facts = facts | Facts::POSITIVE;
+            } else if ball.mid + ball.rad < 0.0 {
+                facts = facts | Facts::NEGATIVE;
             }
+        }
         // Without a witness, a rigorous interval enclosure of a member (the
         // tape interpreter with outward rounding) can still decide the sign.
-        if !facts.has(Facts::POSITIVE) && !facts.has(Facts::NEGATIVE) && self.free_symbols(class).is_empty() {
+        if !facts.has(Facts::POSITIVE)
+            && !facts.has(Facts::NEGATIVE)
+            && self.free_symbols(class).is_empty()
+        {
             facts = facts | self.enclosure_sign(class);
         }
         // All members denote the same value: what any of them proves
@@ -304,9 +312,10 @@ impl Graph {
             },
             | op => {
                 if let Some(on_reals) = self.ops().attr::<OnReals>(op)
-                    && all(Facts::REAL) {
-                        facts = on_reals.0;
-                    }
+                    && all(Facts::REAL)
+                {
+                    facts = on_reals.0;
+                }
                 if let Some(always) = self.ops().attr::<Always>(op) {
                     facts = facts | always.0;
                 }

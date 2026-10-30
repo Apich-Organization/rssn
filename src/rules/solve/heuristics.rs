@@ -46,7 +46,9 @@ fn value(
     graph: &Graph,
     node: NodeId,
 ) -> Option<f64> {
-    graph.eval(node, &Env::numeric(0.0)).filter(|v| v.is_finite())
+    graph
+        .eval(node, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())
 }
 
 fn power(
@@ -115,7 +117,8 @@ fn cubic(
     let twenty_seven = BigRational::from_integer(BigInt::from(27));
     let nine = BigRational::from_integer(BigInt::from(9));
     let two = BigRational::from_integer(BigInt::from(2));
-    let q = (&two * b * b * b - &nine * a * b * cc + &twenty_seven * a * a * d) / (&twenty_seven * a * a * a);
+    let q = (&two * b * b * b - &nine * a * b * cc + &twenty_seven * a * a * d)
+        / (&twenty_seven * a * a * a);
     let four = BigRational::from_integer(BigInt::from(4));
     let delta = -(&four * &p * &p * &p + &twenty_seven * &q * &q);
     let shift_node = rational(graph, shift.clone());
@@ -123,7 +126,11 @@ fn cubic(
     let mut out = Vec::new();
     if delta.is_positive() {
         // t_k = 2 √(-p/3) cos(acos((3q/2p) √(-3/p))/3 - 2πk/3)
-        let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+        let (acos, cos, pi) = (
+            graph.ops().lookup("acos")?,
+            graph.ops().lookup("cos")?,
+            graph.ops().lookup("pi")?,
+        );
         let minus_p_third = rational(graph, -(&p / &three));
         let m = power(graph, minus_p_third, 1, 2)?;
         let two_node = graph.int(2);
@@ -207,7 +214,9 @@ fn quartic(
     // 8m³ + 8p m² + (2p² - 8r) m - q² = 0
     let two = BigRational::from_integer(BigInt::from(2));
     let resolvent = vec![-(&q * &q), &two * &p * &p - &eight * &r, &eight * &p, eight];
-    let m = univariate::rational_roots(&resolvent).into_iter().find(Signed::is_positive)?;
+    let m = univariate::rational_roots(&resolvent)
+        .into_iter()
+        .find(Signed::is_positive)?;
     let shift = -(&b1 / &four);
     let two_m = rational(graph, &two * &m);
     let s = power(graph, two_m, 1, 2)?;
@@ -318,7 +327,9 @@ fn absolute_values(
 ) -> Option<Vec<NodeId>> {
     let abs = graph.ops().lookup("abs")?;
     let symbol = graph.symbol_of(x)?;
-    let found = nodes_with(graph, term, |g, n| g.op(n) == abs && g.depends_on(g.find(n), symbol));
+    let found = nodes_with(graph, term, |g, n| {
+        g.op(n) == abs && g.depends_on(g.find(n), symbol)
+    });
     let &first = found.first()?;
     let inner = *graph.children(first).first()?;
     let mut out = Vec::new();
@@ -366,7 +377,10 @@ fn weierstrass(
     let trig = nodes_with(graph, expanded, |g, n| {
         (g.op(n) == sin || g.op(n) == cos || g.op(n) == tan) && g.depends_on(g.find(n), symbol)
     });
-    let mut arguments: Vec<NodeId> = trig.iter().filter_map(|&n| graph.children(n).first().copied()).collect();
+    let mut arguments: Vec<NodeId> = trig
+        .iter()
+        .filter_map(|&n| graph.children(n).first().copied())
+        .collect();
     arguments.dedup();
     let &[a] = arguments.as_slice() else {
         return None;
@@ -414,10 +428,16 @@ fn lambert(
     x: NodeId,
     _depth: usize,
 ) -> Option<Vec<NodeId>> {
-    let (exp, w0, wm1) = (graph.ops().lookup("exp")?, graph.ops().lookup("lambertw")?, graph.ops().lookup("lambertw_m1")?);
+    let (exp, w0, wm1) = (
+        graph.ops().lookup("exp")?,
+        graph.ops().lookup("lambertw")?,
+        graph.ops().lookup("lambertw_m1")?,
+    );
     let symbol = graph.symbol_of(x)?;
     let term = super::normalize::powers_to_exp(graph, term, symbol).unwrap_or(term);
-    let exps = nodes_with(graph, term, |g, n| g.op(n) == exp && g.depends_on(g.find(n), symbol));
+    let exps = nodes_with(graph, term, |g, n| {
+        g.op(n) == exp && g.depends_on(g.find(n), symbol)
+    });
     let &[e_node] = exps.as_slice() else {
         return None;
     };
@@ -426,7 +446,14 @@ fn lambert(
     let mut gens = Gens::default();
     let gx = gens.index(graph, x);
     let u_poly = crate::rules::poly::repr::from_term(graph, &mut gens, u, Limits::default())?;
-    if u_poly.degree_in(gx) != 1 || u_poly.support().iter().any(|&g| g != gx && gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol))) {
+    if u_poly.degree_in(gx) != 1
+        || u_poly.support().iter().any(|&g| {
+            g != gx
+                && gens
+                    .node(g)
+                    .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        })
+    {
         return None;
     }
     let coefficients = u_poly.coefficients_in(gx);
@@ -439,7 +466,12 @@ fn lambert(
     let fraction = crate::rules::poly::ratio(graph, &mut gens, term, Limits::default())?;
     let numer = fraction.numer;
     for g in numer.support() {
-        if g != gx && g != ge && gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)) {
+        if g != gx
+            && g != ge
+            && gens
+                .node(g)
+                .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        {
             return None;
         }
     }
@@ -449,7 +481,11 @@ fn lambert(
             let ex = mono.iter().find(|&&(g, _)| g == gx).map_or(0, |&(_, e)| e);
             let ee = mono.iter().find(|&&(g, _)| g == ge).map_or(0, |&(_, e)| e);
             if ex == i && ee == j {
-                let rest: Vec<(u32, u32)> = mono.iter().copied().filter(|&(g, _)| g != gx && g != ge).collect();
+                let rest: Vec<(u32, u32)> = mono
+                    .iter()
+                    .copied()
+                    .filter(|&(g, _)| g != gx && g != ge)
+                    .collect();
                 acc = acc.add(&crate::rules::poly::repr::Poly::monomial(rest, c.clone()));
             }
         }
@@ -467,9 +503,16 @@ fn lambert(
     let allowed = |set: &[(u32, u32)]| pattern.iter().all(|p| set.contains(p));
     let minus_one = graph.int(-1);
     let e_e = graph.node(exp, &[e_shift]);
-    let candidates = if allowed(&[(0, 0), (1, 0), (0, 1)]) && pattern.contains(&(1, 0)) && pattern.contains(&(0, 1)) {
+    let candidates = if allowed(&[(0, 0), (1, 0), (0, 1)])
+        && pattern.contains(&(1, 0))
+        && pattern.contains(&(0, 1))
+    {
         // α + β x + γ e^e e^{dx}: x = -α/β - W(z)/d, z = d γ e^e / β · e^{-dα/β}
-        let (alpha, beta, gamma) = (coefficient(graph, 0, 0), coefficient(graph, 1, 0), coefficient(graph, 0, 1));
+        let (alpha, beta, gamma) = (
+            coefficient(graph, 0, 0),
+            coefficient(graph, 1, 0),
+            coefficient(graph, 0, 1),
+        );
         let inv_beta = reciprocal(graph, beta);
         let ratio = product(graph, &[alpha, inv_beta]);
         let neg_d_ratio = product(graph, &[minus_one, d, ratio]);
@@ -492,7 +535,10 @@ fn lambert(
         let e_inv = graph.node(exp, &[neg_e]);
         let z = product(graph, &[minus_one, d, alpha, e_inv, inv_beta]);
         let inv_d = reciprocal(graph, d);
-        branches(graph, z, w0, wm1).into_iter().map(|w| product(graph, &[w, inv_d])).collect()
+        branches(graph, z, w0, wm1)
+            .into_iter()
+            .map(|w| product(graph, &[w, inv_d]))
+            .collect()
     } else {
         power_exponential(graph, &pattern, &coefficient, d, e_shift, w0, wm1, exp)?
     };
@@ -540,7 +586,10 @@ fn power_exponential(
         let neg = product(graph, &[minus_one, e_over_m]);
         (d_over_m, graph.node(exp, &[neg]))
     } else {
-        (product(graph, &[minus_one, d_over_m]), graph.node(exp, &[e_over_m]))
+        (
+            product(graph, &[minus_one, d_over_m]),
+            graph.node(exp, &[e_over_m]),
+        )
     };
     let root = if m % 2 == 1 {
         vec![super::symbolic::real_root(graph, k, m_i)?]
@@ -584,8 +633,12 @@ fn self_power(
     x: NodeId,
     depth: usize,
 ) -> Option<Vec<NodeId>> {
-    let (exp, ln, w0, wm1) =
-        (graph.ops().lookup("exp")?, graph.ops().lookup("ln")?, graph.ops().lookup("lambertw")?, graph.ops().lookup("lambertw_m1")?);
+    let (exp, ln, w0, wm1) = (
+        graph.ops().lookup("exp")?,
+        graph.ops().lookup("ln")?,
+        graph.ops().lookup("lambertw")?,
+        graph.ops().lookup("lambertw_m1")?,
+    );
     let x_to_x = graph.node(core::POW, &[x, x]);
     if !super::super::ode::occurs_in(graph, term, x_to_x) {
         return None;
@@ -620,7 +673,11 @@ fn logarithm_sum(
 ) -> Option<Vec<NodeId>> {
     let (exp, ln) = (graph.ops().lookup("exp")?, graph.ops().lookup("ln")?);
     let symbol = graph.symbol_of(x)?;
-    let summands = if graph.op(term) == core::ADD { graph.children(term).to_vec() } else { vec![term] };
+    let summands = if graph.op(term) == core::ADD {
+        graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
     let mut logs: Vec<(NodeId, i64)> = Vec::new();
     let mut constants = Vec::new();
     for t in summands {
@@ -630,8 +687,12 @@ fn logarithm_sum(
         }
         let (k, inner) = match (graph.op(t), graph.children(t)) {
             | (op, &[g]) if op == ln => (1, g),
-            | (op, &[c, l]) if op == core::MUL && graph.op(l) == ln => (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?),
-            | (op, &[l, c]) if op == core::MUL && graph.op(l) == ln => (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?),
+            | (op, &[c, l]) if op == core::MUL && graph.op(l) == ln => {
+                (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?)
+            },
+            | (op, &[l, c]) if op == core::MUL && graph.op(l) == ln => {
+                (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?)
+            },
             | _ => return None,
         };
         logs.push((inner, k));
@@ -643,14 +704,26 @@ fn logarithm_sum(
     for &(g, k) in &logs {
         let e = graph.int(k.abs());
         let p = graph.node(core::POW, &[g, e]);
-        if k > 0 { positive.push(p) } else { negative.push(p) }
+        if k > 0 {
+            positive.push(p)
+        } else {
+            negative.push(p)
+        }
     }
-    let constant = if constants.is_empty() { graph.int(0) } else { graph.node(core::ADD, &constants) };
+    let constant = if constants.is_empty() {
+        graph.int(0)
+    } else {
+        graph.node(core::ADD, &constants)
+    };
     let minus_one = graph.int(-1);
     let minus_c = graph.node(core::MUL, &[minus_one, constant]);
     let rhs_scale = graph.node(exp, &[minus_c]);
     let one = graph.int(1);
-    let left = if positive.is_empty() { one } else { product(graph, &positive) };
+    let left = if positive.is_empty() {
+        one
+    } else {
+        product(graph, &positive)
+    };
     let mut right_factors = negative;
     right_factors.push(rhs_scale);
     let right = product(graph, &right_factors);
@@ -703,7 +776,10 @@ fn radicals(
     let symbol = graph.symbol_of(x)?;
     let roots = nodes_with(graph, term, |g, n| {
         g.op(n) == core::POW
-            && g.children(n).get(1).and_then(|&e| g.number_of(e)).is_some_and(|e| !e.is_integer())
+            && g.children(n)
+                .get(1)
+                .and_then(|&e| g.number_of(e))
+                .is_some_and(|e| !e.is_integer())
             && g.depends_on(g.find(n), symbol)
     });
     if roots.is_empty() {
@@ -811,7 +887,10 @@ fn radicals_general(
     let symbol = graph.symbol_of(x)?;
     let roots = nodes_with(graph, term, |g, n| {
         g.op(n) == core::POW
-            && g.children(n).get(1).and_then(|&e| g.number_of(e)).is_some_and(|e| !e.is_integer())
+            && g.children(n)
+                .get(1)
+                .and_then(|&e| g.number_of(e))
+                .is_some_and(|e| !e.is_integer())
             && g.depends_on(g.find(n), symbol)
     });
     if roots.is_empty() || roots.len() > 3 {
@@ -827,7 +906,10 @@ fn radicals_general(
             return None;
         };
         let e = graph.number_of(e)?.to_rational()?;
-        let (p, q) = (i64::try_from(e.numer().clone()).ok()?, i64::try_from(e.denom().clone()).ok()?);
+        let (p, q) = (
+            i64::try_from(e.numer().clone()).ok()?,
+            i64::try_from(e.denom().clone()).ok()?,
+        );
         max_index = max_index.max(q);
         radicals.push((gens.index(graph, r), p, q, base));
     }
@@ -847,7 +929,8 @@ fn radicals_general(
         let relation = if p > 0 {
             g_q.sub(&power)
         } else {
-            g_q.mul(&power, limits.terms)?.sub(&Poly::constant(Number::from(1)))
+            g_q.mul(&power, limits.terms)?
+                .sub(&Poly::constant(Number::from(1)))
         };
         if numer.degree_in(g) == 0 {
             continue;
@@ -870,10 +953,18 @@ fn inverse_trig(
     x: NodeId,
     depth: usize,
 ) -> Option<Vec<NodeId>> {
-    let (asin, acos, atan, tan) =
-        (graph.ops().lookup("asin")?, graph.ops().lookup("acos")?, graph.ops().lookup("atan")?, graph.ops().lookup("tan")?);
+    let (asin, acos, atan, tan) = (
+        graph.ops().lookup("asin")?,
+        graph.ops().lookup("acos")?,
+        graph.ops().lookup("atan")?,
+        graph.ops().lookup("tan")?,
+    );
     let symbol = graph.symbol_of(x)?;
-    let summands = if graph.op(term) == core::ADD { graph.children(term).to_vec() } else { vec![term] };
+    let summands = if graph.op(term) == core::ADD {
+        graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
     let mut inverse: Vec<(i64, NodeId)> = Vec::new();
     let mut constants = Vec::new();
     for t in summands {
@@ -885,7 +976,12 @@ fn inverse_trig(
             | (op, _) if op == asin || op == acos || op == atan => (1, t),
             // `±1 * h` with the factors in either order.
             | (op, &[a, b]) if op == core::MUL => {
-                let unit = |n: NodeId| graph.number_of(n).and_then(Number::to_i64).filter(|v| v.abs() == 1);
+                let unit = |n: NodeId| {
+                    graph
+                        .number_of(n)
+                        .and_then(Number::to_i64)
+                        .filter(|v| v.abs() == 1)
+                };
                 match (unit(a), unit(b)) {
                     | (Some(sign), None) => (sign, b),
                     | (None, Some(sign)) => (sign, a),
@@ -928,7 +1024,11 @@ fn inverse_trig(
     let constant = if constants.is_empty() {
         None
     } else {
-        let sum = if constants.len() == 1 { constants[0] } else { graph.node(core::ADD, &constants) };
+        let sum = if constants.len() == 1 {
+            constants[0]
+        } else {
+            graph.node(core::ADD, &constants)
+        };
         let signed = graph.int(*s1);
         Some(product(graph, &[signed, sum]))
     };
@@ -964,18 +1064,23 @@ fn expand_log(
 ) -> NodeId {
     let children = graph.children(node).to_vec();
     if graph.op(node) == core::MUL {
-        let parts: Vec<NodeId> = children.iter().map(|&c| expand_log(graph, c, ln, exp)).collect();
+        let parts: Vec<NodeId> = children
+            .iter()
+            .map(|&c| expand_log(graph, c, ln, exp))
+            .collect();
         return graph.node(core::ADD, &parts);
     }
     if graph.op(node) == core::POW
-        && let &[base, power] = children.as_slice() {
-            let log = expand_log(graph, base, ln, exp);
-            return product(graph, &[power, log]);
-        }
+        && let &[base, power] = children.as_slice()
+    {
+        let log = expand_log(graph, base, ln, exp);
+        return product(graph, &[power, log]);
+    }
     if graph.op(node) == exp
-        && let Some(&a) = children.first() {
-            return a;
-        }
+        && let Some(&a) = children.first()
+    {
+        return a;
+    }
     graph.node(ln, &[node])
 }
 
@@ -996,7 +1101,10 @@ fn log_both_sides(
         return None;
     };
     let variable_exponent = nodes_with(graph, term, |g, n| {
-        g.op(n) == core::POW && g.children(n).get(1).is_some_and(|&e| g.depends_on(g.find(e), symbol))
+        g.op(n) == core::POW
+            && g.children(n)
+                .get(1)
+                .is_some_and(|&e| g.depends_on(g.find(e), symbol))
     });
     if variable_exponent.is_empty() {
         return None;
@@ -1006,7 +1114,12 @@ fn log_both_sides(
         match graph.number_of(t) {
             | Some(n) => n.to_f64(),
             | None if graph.op(t) == core::MUL => {
-                graph.children(t).iter().filter_map(|&c| graph.number_of(c)).map(Number::to_f64).product()
+                graph
+                    .children(t)
+                    .iter()
+                    .filter_map(|&c| graph.number_of(c))
+                    .map(Number::to_f64)
+                    .product()
             },
             | None => 1.0,
         }
@@ -1019,9 +1132,11 @@ fn log_both_sides(
         let kids = graph.children(t).to_vec();
         let magnitude: Vec<NodeId> = kids
             .iter()
-            .map(|&c| match graph.number_of(c) {
-                | Some(n) if n.to_f64() < 0.0 => graph.num(n.neg()),
-                | _ => c,
+            .map(|&c| {
+                match graph.number_of(c) {
+                    | Some(n) if n.to_f64() < 0.0 => graph.num(n.neg()),
+                    | _ => c,
+                }
             })
             .collect();
         graph.node(core::MUL, &magnitude)
@@ -1068,7 +1183,11 @@ fn substitution(
             continue;
         }
         for &c in graph.children(n) {
-            if c != x && !graph.children(c).is_empty() && graph.depends_on(graph.find(c), symbol) && !candidates.contains(&c) {
+            if c != x
+                && !graph.children(c).is_empty()
+                && graph.depends_on(graph.find(c), symbol)
+                && !candidates.contains(&c)
+            {
                 candidates.push(c);
             }
         }
@@ -1081,22 +1200,27 @@ fn substitution(
         // x^(km) = u^k when f = x^m.
         if let (core::POW, &[base, m]) = (graph.op(f), graph.children(f))
             && base == x
-                && let Some(m) = graph.number_of(m).and_then(Number::to_i64).filter(|&m| m >= 2) {
-                    let mut rewrite = |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
-                        if graph.op(node) != core::POW {
-                            return None;
-                        }
-                        let &[b, e] = children else {
-                            return None;
-                        };
-                        let k = graph.number_of(e).and_then(Number::to_i64)?;
-                        (b == x && k % m == 0).then(|| {
-                            let power = graph.int(k / m);
-                            graph.node(core::POW, &[u, power])
-                        })
+            && let Some(m) = graph
+                .number_of(m)
+                .and_then(Number::to_i64)
+                .filter(|&m| m >= 2)
+        {
+            let mut rewrite =
+                |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
+                    if graph.op(node) != core::POW {
+                        return None;
+                    }
+                    let &[b, e] = children else {
+                        return None;
                     };
-                    replaced = super::normalize::map_term(graph, replaced, &mut rewrite);
-                }
+                    let k = graph.number_of(e).and_then(Number::to_i64)?;
+                    (b == x && k % m == 0).then(|| {
+                        let power = graph.int(k / m);
+                        graph.node(core::POW, &[u, power])
+                    })
+                };
+            replaced = super::normalize::map_term(graph, replaced, &mut rewrite);
+        }
         replaced = graph.replace_subterm(replaced, f, u);
         if graph.depends_on(graph.find(replaced), symbol) {
             continue;

@@ -82,7 +82,14 @@ pub(super) fn constants_in(
     graph
         .free_symbols(graph.find(node))
         .iter()
-        .filter_map(|&s| graph.interner().symbol_name(s).strip_prefix('C')?.parse::<usize>().ok())
+        .filter_map(|&s| {
+            graph
+                .interner()
+                .symbol_name(s)
+                .strip_prefix('C')?
+                .parse::<usize>()
+                .ok()
+        })
         .max()
         .unwrap_or(0)
 }
@@ -115,7 +122,9 @@ pub(super) fn missing_dependent(
     let derivatives = chain(cx.graph, p, x, order - m)?;
     let mut reduced = problem.expr;
     for k in m..=order {
-        reduced = cx.graph.substitute(reduced, problem.stand[k], derivatives[k - m]);
+        reduced = cx
+            .graph
+            .substitute(reduced, problem.stand[k], derivatives[k - m]);
     }
     let zero = cx.graph.int(0);
     let equation = cx.graph.node(core::EQ, &[reduced, zero]);
@@ -225,7 +234,10 @@ pub(super) fn equidimensional_in_x(
     depth: u32,
 ) -> Option<NodeId> {
     let order = problem.order();
-    if order != 2 || !problem.depends_on_x(cx.graph, problem.expr) || !scale_invariant_in_x(cx, problem) {
+    if order != 2
+        || !problem.depends_on_x(cx.graph, problem.expr)
+        || !scale_invariant_in_x(cx, problem)
+    {
         return None;
     }
     let x = problem.x;
@@ -261,7 +273,11 @@ fn scale_invariant_in_x(
     let Some(x_symbol) = cx.graph.symbol_of(problem.x) else {
         return false;
     };
-    let stands: Vec<_> = problem.stand.iter().filter_map(|&s| cx.graph.symbol_of(s)).collect();
+    let stands: Vec<_> = problem
+        .stand
+        .iter()
+        .filter_map(|&s| cx.graph.symbol_of(s))
+        .collect();
     let value = |lambda: f64, point: f64| -> Option<f64> {
         let mut env = Env::numeric(0.0);
         env.bind(x_symbol, lambda * (1.1 + point));
@@ -274,7 +290,9 @@ fn scale_invariant_in_x(
                 env.bind(s, 0.8 + point);
             }
         }
-        cx.graph.eval(problem.expr, &env).filter(|v| v.is_finite() && v.abs() > 1e-12)
+        cx.graph
+            .eval(problem.expr, &env)
+            .filter(|v| v.is_finite() && v.abs() > 1e-12)
     };
     let mut degree = None;
     for point in [0.0, 0.37, 1.2] {
@@ -304,7 +322,11 @@ fn homogeneous_in_y(
     if !occurs(cx.graph, problem.expr, problem.stand[0]) {
         return false;
     }
-    let symbols: Vec<_> = problem.stand.iter().filter_map(|&s| cx.graph.symbol_of(s)).collect();
+    let symbols: Vec<_> = problem
+        .stand
+        .iter()
+        .filter_map(|&s| cx.graph.symbol_of(s))
+        .collect();
     let others: Vec<_> = cx
         .graph
         .free_symbols(cx.graph.find(problem.expr))
@@ -315,12 +337,20 @@ fn homogeneous_in_y(
     let value = |cx: &Cx<'_>, scale: f64, point: f64| -> Option<f64> {
         let mut env = Env::numeric(0.0);
         for (i, &s) in symbols.iter().enumerate() {
-            env.bind(s, scale * (0.7 + 0.37 * f64::from(u32::try_from(i).unwrap_or(0)) + point));
+            env.bind(
+                s,
+                scale * (0.7 + 0.37 * f64::from(u32::try_from(i).unwrap_or(0)) + point),
+            );
         }
         for (i, &s) in others.iter().enumerate() {
-            env.bind(s, 0.9 + 0.23 * f64::from(u32::try_from(i).unwrap_or(0)) + point);
+            env.bind(
+                s,
+                0.9 + 0.23 * f64::from(u32::try_from(i).unwrap_or(0)) + point,
+            );
         }
-        cx.graph.eval(problem.expr, &env).filter(|v| v.is_finite() && v.abs() > 1e-12)
+        cx.graph
+            .eval(problem.expr, &env)
+            .filter(|v| v.is_finite() && v.abs() > 1e-12)
     };
     let mut degree = None;
     for point in [0.0, 0.41, 1.3] {
@@ -369,7 +399,11 @@ pub(super) fn linear_second_order(
         }
     }
     let stands = &problem.stand;
-    if stands.iter().any(|&s| occurs(cx.graph, rest, s) || a.iter().any(|&c| occurs(cx.graph, c, s))) || cx.is_zero(a[2]) {
+    if stands
+        .iter()
+        .any(|&s| occurs(cx.graph, rest, s) || a.iter().any(|&c| occurs(cx.graph, c, s)))
+        || cx.is_zero(a[2])
+    {
         return None;
     }
     let forcing = neg(cx.graph, rest);
@@ -385,7 +419,11 @@ fn residual(
 ) -> Option<NodeId> {
     let d1 = derivative(cx.graph, y, x)?;
     let d2 = derivative(cx.graph, d1, x)?;
-    let terms = [mul(cx.graph, &[a[0], y]), mul(cx.graph, &[a[1], d1]), mul(cx.graph, &[a[2], d2])];
+    let terms = [
+        mul(cx.graph, &[a[0], y]),
+        mul(cx.graph, &[a[1], d1]),
+        mul(cx.graph, &[a[2], d2]),
+    ];
     let sum = add(cx.graph, &terms);
     Some(cx.simplify(sum))
 }
@@ -423,7 +461,11 @@ fn collect_solutions(
         let candidate = add(cx.graph, &terms);
         let d1 = derivative(cx.graph, candidate, x)?;
         let d2 = derivative(cx.graph, d1, x)?;
-        let lhs = [mul(cx.graph, &[a[0], candidate]), mul(cx.graph, &[a[1], d1]), mul(cx.graph, &[a[2], d2])];
+        let lhs = [
+            mul(cx.graph, &[a[0], candidate]),
+            mul(cx.graph, &[a[1], d1]),
+            mul(cx.graph, &[a[2], d2]),
+        ];
         let lhs = add(cx.graph, &lhs);
         if let Some(basis) = super::lie::solve_identity(cx.graph, lhs, &unknowns) {
             for v in &basis {
@@ -468,11 +510,15 @@ fn collect_solutions(
                 mul(cx.graph, &[lambda, inv_x]),
                 mul(cx.graph, &[lambda, l_minus_1, inv_x2]),
             ),
-            (cx.graph.node(exp, &[lx2]), mul(cx.graph, &[two, lambda, x]), {
-                let a = mul(cx.graph, &[four, l2, x2]);
-                let b = mul(cx.graph, &[two, lambda]);
-                add(cx.graph, &[a, b])
-            }),
+            (
+                cx.graph.node(exp, &[lx2]),
+                mul(cx.graph, &[two, lambda, x]),
+                {
+                    let a = mul(cx.graph, &[four, l2, x2]);
+                    let b = mul(cx.graph, &[two, lambda]);
+                    add(cx.graph, &[a, b])
+                },
+            ),
         ]
     };
     let _ = one;
@@ -493,15 +539,20 @@ fn collect_solutions(
             continue;
         };
         for root in roots {
-            if cx.graph.number_of(root).is_none_or(|n| n.to_rational().is_none_or(|r| r.is_zero())) {
+            if cx
+                .graph
+                .number_of(root)
+                .is_none_or(|n| n.to_rational().is_none_or(|r| r.is_zero()))
+            {
                 continue;
             }
             let y = cx.graph.substitute(shape, lambda, root);
             let y = cx.simplify(y);
             if let Some(check) = residual(cx, a, y, x)
-                && cx.is_zero(check) {
-                    found.push(y);
-                }
+                && cx.is_zero(check)
+            {
+                found.push(y);
+            }
         }
     }
     Some(())
@@ -541,7 +592,11 @@ pub(super) fn variable_coefficients(
     let Some(&y1) = solutions.first() else {
         return super::classes::normal_form(cx, problem, &a, forcing, depth);
     };
-    let second = solutions.iter().skip(1).copied().find(|&y| independent(cx, y1, y, x));
+    let second = solutions
+        .iter()
+        .skip(1)
+        .copied()
+        .find(|&y| independent(cx, y1, y, x));
     let y2 = match second {
         | Some(y2) => y2,
         | None => reduction_of_order(cx, &a, y1, x)?,
@@ -621,13 +676,24 @@ pub(super) fn special_function_equation(
         let nu = cx.graph.node(core::POW, &[nu_sq, half]);
         let nu = cx.simplify(nu);
         let (first, second, b) = if b_value > 0.0 {
-            ("besselj", "bessely", cx.graph.node(core::POW, &[b_sq, half]))
+            (
+                "besselj",
+                "bessely",
+                cx.graph.node(core::POW, &[b_sq, half]),
+            )
         } else {
             let minus = neg(cx.graph, b_sq);
-            ("besseli", "besselk", cx.graph.node(core::POW, &[minus, half]))
+            (
+                "besseli",
+                "besselk",
+                cx.graph.node(core::POW, &[minus, half]),
+            )
         };
         let b = cx.simplify(b);
-        let (f1, f2) = (cx.graph.ops().lookup(first)?, cx.graph.ops().lookup(second)?);
+        let (f1, f2) = (
+            cx.graph.ops().lookup(first)?,
+            cx.graph.ops().lookup(second)?,
+        );
         let bx = mul(cx.graph, &[b, x]);
         let (y1, y2) = (cx.graph.node(f1, &[nu, bx]), cx.graph.node(f2, &[nu, bx]));
         let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
@@ -644,11 +710,17 @@ pub(super) fn special_function_equation(
         if !cx.is_zero(*zero) {
             return None;
         }
-        let (ai, bi) = (cx.graph.ops().lookup("airyai")?, cx.graph.ops().lookup("airybi")?);
+        let (ai, bi) = (
+            cx.graph.ops().lookup("airyai")?,
+            cx.graph.ops().lookup("airybi")?,
+        );
         let b = neg(cx.graph, *slope);
         let third = cx.graph.num(Number::fraction(1, 3)?);
         // The real cube root, also for b < 0 (Ai(-|b|^(1/3) x)).
-        let negative = cx.graph.eval(b, &Env::numeric(0.0)).is_some_and(|v| v < 0.0);
+        let negative = cx
+            .graph
+            .eval(b, &Env::numeric(0.0))
+            .is_some_and(|v| v < 0.0);
         let scale = if negative {
             let positive = neg(cx.graph, b);
             let root = cx.graph.node(core::POW, &[positive, third]);
@@ -658,7 +730,10 @@ pub(super) fn special_function_equation(
         };
         let argument = mul(cx.graph, &[scale, x]);
         let argument = cx.simplify(argument);
-        let (y1, y2) = (cx.graph.node(ai, &[argument]), cx.graph.node(bi, &[argument]));
+        let (y1, y2) = (
+            cx.graph.node(ai, &[argument]),
+            cx.graph.node(bi, &[argument]),
+        );
         let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
         let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
         let solution = add(cx.graph, &terms);

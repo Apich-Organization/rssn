@@ -15,20 +15,26 @@ fn kernels_are_normalised_and_differentiable_in_every_dimension() {
             let rmax = 2.0 * h;
             let dr = rmax / n as f64;
             let omega = match d {
-                1 => 2.0,
-                2 => 2.0 * PI,
-                _ => 4.0 * PI,
+                | 1 => 2.0,
+                | 2 => 2.0 * PI,
+                | _ => 4.0 * PI,
             };
             let mut integral = 0.0;
             for k in 0..n {
                 let r = (k as f64 + 0.5) * dr;
                 integral += omega * r.powi(d as i32 - 1) * kind.w(d, r, h) * dr;
             }
-            assert!((integral - 1.0).abs() < 1e-5, "{kind:?} D={d}: integral {integral}");
+            assert!(
+                (integral - 1.0).abs() < 1e-5,
+                "{kind:?} D={d}: integral {integral}"
+            );
             for r in [0.2, 0.7, 1.1, 1.3] {
                 let e = 1e-6;
                 let num = (kind.w(d, r + e, h) - kind.w(d, r - e, h)) / (2.0 * e);
-                assert!((kind.dw(d, r, h) - num).abs() < 1e-5 * num.abs().max(1.0), "{kind:?} D={d} r={r}");
+                assert!(
+                    (kind.dw(d, r, h) - num).abs() < 1e-5 * num.abs().max(1.0),
+                    "{kind:?} D={d} r={r}"
+                );
             }
             assert_eq!(kind.w(d, 2.0 * h, h), 0.0);
         }
@@ -55,7 +61,14 @@ fn uniform_lattices_have_uniform_density_in_two_and_three_dimensions() {
         let n = 16;
         let pos = lattice_2d(n, 1.0);
         let m = 1.0 / (n * n) as f64;
-        let mut s = Sph::<2>::new(pos, vec![m; n * n], vec![1.0; n * n], [0.0; 2], [1.0; 2], [SphBoundary::Periodic; 2]);
+        let mut s = Sph::<2>::new(
+            pos,
+            vec![m; n * n],
+            vec![1.0; n * n],
+            [0.0; 2],
+            [1.0; 2],
+            [SphBoundary::Periodic; 2],
+        );
         s.kernel = kind;
         s.eta = 1.4;
         s.update_density();
@@ -68,12 +81,23 @@ fn uniform_lattices_have_uniform_density_in_two_and_three_dimensions() {
         for i in 0..n3 {
             for j in 0..n3 {
                 for k in 0..n3 {
-                    pos3.push([(i as f64 + 0.5) * dx, (j as f64 + 0.5) * dx, (k as f64 + 0.5) * dx]);
+                    pos3.push([
+                        (i as f64 + 0.5) * dx,
+                        (j as f64 + 0.5) * dx,
+                        (k as f64 + 0.5) * dx,
+                    ]);
                 }
             }
         }
         let cnt = pos3.len();
-        let mut s3 = Sph::<3>::new(pos3, vec![1.0 / cnt as f64; cnt], vec![1.0; cnt], [0.0; 3], [1.0; 3], [SphBoundary::Periodic; 3]);
+        let mut s3 = Sph::<3>::new(
+            pos3,
+            vec![1.0 / cnt as f64; cnt],
+            vec![1.0; cnt],
+            [0.0; 3],
+            [1.0; 3],
+            [SphBoundary::Periodic; 3],
+        );
         s3.kernel = kind;
         s3.eta = 1.4;
         s3.update_density();
@@ -88,7 +112,14 @@ fn periodic_gas_conserves_momentum_and_energy_and_a_uniform_state_stays_at_rest(
     let n = 12;
     let m = 1.0 / (n * n) as f64;
     // uniform state: no motion
-    let mut s = Sph::<2>::new(lattice_2d(n, 1.0), vec![m; n * n], vec![2.5; n * n], [0.0; 2], [1.0; 2], [SphBoundary::Periodic; 2]);
+    let mut s = Sph::<2>::new(
+        lattice_2d(n, 1.0),
+        vec![m; n * n],
+        vec![2.5; n * n],
+        [0.0; 2],
+        [1.0; 2],
+        [SphBoundary::Periodic; 2],
+    );
     s.eta = 1.4;
     s.update_density();
     let dt = s.suggest_dt(0.2);
@@ -104,7 +135,14 @@ fn periodic_gas_conserves_momentum_and_energy_and_a_uniform_state_stays_at_rest(
         p[0] += 0.01 * ((k * 7 % 5) as f64 - 2.0) / 5.0;
         p[1] += 0.01 * ((k * 3 % 7) as f64 - 3.0) / 7.0;
     }
-    let mut s = Sph::<2>::new(pos, vec![m; n * n], vec![2.5; n * n], [0.0; 2], [1.0; 2], [SphBoundary::Periodic; 2]);
+    let mut s = Sph::<2>::new(
+        pos,
+        vec![m; n * n],
+        vec![2.5; n * n],
+        [0.0; 2],
+        [1.0; 2],
+        [SphBoundary::Periodic; 2],
+    );
     s.eta = 1.4;
     for i in 0..n * n {
         s.vel[i][0] = 0.3 * (2.0 * PI * s.pos[i][0]).sin();
@@ -116,8 +154,16 @@ fn periodic_gas_conserves_momentum_and_energy_and_a_uniform_state_stays_at_rest(
         s.step(dt);
     }
     let p1 = s.momentum();
-    assert!((p1[0] - p0[0]).abs() < 1e-6 && (p1[1] - p0[1]).abs() < 1e-6, "{p0:?} -> {p1:?}");
-    assert!((s.total_energy() - e0).abs() < 2e-3 * e0, "energy {} -> {}", e0, s.total_energy());
+    assert!(
+        (p1[0] - p0[0]).abs() < 1e-6 && (p1[1] - p0[1]).abs() < 1e-6,
+        "{p0:?} -> {p1:?}"
+    );
+    assert!(
+        (s.total_energy() - e0).abs() < 2e-3 * e0,
+        "energy {} -> {}",
+        e0,
+        s.total_energy()
+    );
 }
 
 /// Exact Sod solution at time t for the diaphragm at x = 0 (rho, u, p), gamma = 1.4.
@@ -150,7 +196,9 @@ fn sod_exact(
     let ps = 0.5 * (lo + hi);
     let us = 0.5 * (f(ps, rr, pr) - f(ps, rl, pl));
     let rsl = rl * (ps / pl).powf(1.0 / GAMMA);
-    let rsr = rr * ((ps / pr + (GAMMA - 1.0) / (GAMMA + 1.0)) / ((GAMMA - 1.0) / (GAMMA + 1.0) * ps / pr + 1.0));
+    let rsr = rr
+        * ((ps / pr + (GAMMA - 1.0) / (GAMMA + 1.0))
+            / ((GAMMA - 1.0) / (GAMMA + 1.0) * ps / pr + 1.0));
     let csl = (GAMMA * ps / rsl).sqrt();
     let shock = us * rsr / (rsr - rr);
     let s = x / t;
@@ -173,7 +221,10 @@ fn sod_exact(
 #[test]
 fn exact_sod_reference_has_the_textbook_star_state() {
     let (rho, u, p) = sod_exact(0.1, 0.2);
-    assert!((rho - 0.426_32).abs() < 1e-4 && (u - 0.927_45).abs() < 1e-4 && (p - 0.303_13).abs() < 1e-4, "{rho} {u} {p}");
+    assert!(
+        (rho - 0.426_32).abs() < 1e-4 && (u - 0.927_45).abs() < 1e-4 && (p - 0.303_13).abs() < 1e-4,
+        "{rho} {u} {p}"
+    );
     assert!((sod_exact(0.3, 0.2).0 - 0.265_57).abs() < 1e-4);
 }
 
@@ -232,12 +283,29 @@ fn sph_reproduces_the_sod_shock_tube() {
         best
     };
     let i = near(0.1);
-    assert!((s.vel[i][0] - 0.927_45).abs() < 0.04, "star velocity {}", s.vel[i][0]);
-    assert!((s.pressure(i) - 0.303_13).abs() < 0.03, "star pressure {}", s.pressure(i));
+    assert!(
+        (s.vel[i][0] - 0.927_45).abs() < 0.04,
+        "star velocity {}",
+        s.vel[i][0]
+    );
+    assert!(
+        (s.pressure(i) - 0.303_13).abs() < 0.03,
+        "star pressure {}",
+        s.pressure(i)
+    );
     let i = near(0.27);
-    assert!((s.rho[i] - 0.265_57).abs() < 0.04, "post-shock density {}", s.rho[i]);
+    assert!(
+        (s.rho[i] - 0.265_57).abs() < 0.04,
+        "post-shock density {}",
+        s.rho[i]
+    );
     // the closed left wall pushes on the gas with the pressure jump until the waves arrive
-    assert!((s.momentum()[0] - p0 - 0.18).abs() < 0.01, "the left wall has delivered the impulse (P_L - P_R) t = 0.18: momentum {} -> {}", p0, s.momentum()[0]);
+    assert!(
+        (s.momentum()[0] - p0 - 0.18).abs() < 0.01,
+        "the left wall has delivered the impulse (P_L - P_R) t = 0.18: momentum {} -> {}",
+        p0,
+        s.momentum()[0]
+    );
 }
 
 #[test]
@@ -256,7 +324,14 @@ fn fixed_boundary_particles_do_not_move_and_still_push_back() {
         pos.push([0.005 - 0.01 * k as f64]);
     }
     let n = pos.len();
-    let mut s = Sph::<1>::new(pos, vec![m; n], vec![2.5; n], [-1.0], [2.0], [SphBoundary::Open]);
+    let mut s = Sph::<1>::new(
+        pos,
+        vec![m; n],
+        vec![2.5; n],
+        [-1.0],
+        [2.0],
+        [SphBoundary::Open],
+    );
     for i in nf..n {
         s.fixed[i] = true;
     }
@@ -283,8 +358,24 @@ fn two_dimensional_blast_stays_symmetric_and_runs_in_three_dimensions() {
     let n = 14;
     let m = 1.0 / (n * n) as f64;
     let pos = lattice_2d(n, 1.0);
-    let u: Vec<f64> = pos.iter().map(|p| if (p[0] - 0.5).abs() < 0.1 && (p[1] - 0.5).abs() < 0.1 { 10.0 } else { 1.0 }).collect();
-    let mut s = Sph::<2>::new(pos, vec![m; n * n], u, [0.0; 2], [1.0; 2], [SphBoundary::Periodic; 2]);
+    let u: Vec<f64> = pos
+        .iter()
+        .map(|p| {
+            if (p[0] - 0.5).abs() < 0.1 && (p[1] - 0.5).abs() < 0.1 {
+                10.0
+            } else {
+                1.0
+            }
+        })
+        .collect();
+    let mut s = Sph::<2>::new(
+        pos,
+        vec![m; n * n],
+        u,
+        [0.0; 2],
+        [1.0; 2],
+        [SphBoundary::Periodic; 2],
+    );
     s.eta = 1.4;
     s.kernel = KernelKind::WendlandC2;
     s.update_density();
@@ -295,7 +386,12 @@ fn two_dimensional_blast_stays_symmetric_and_runs_in_three_dimensions() {
     // mirror symmetry in x about 0.5: sum of x-velocity ~ 0
     let sum: f64 = s.vel.iter().map(|v| v[0]).sum();
     assert!(sum.abs() < 1e-8, "net x momentum {sum}");
-    let outward = s.vel.iter().zip(&s.pos).map(|(v, p)| v[0] * (p[0] - 0.5) + v[1] * (p[1] - 0.5)).sum::<f64>();
+    let outward = s
+        .vel
+        .iter()
+        .zip(&s.pos)
+        .map(|(v, p)| v[0] * (p[0] - 0.5) + v[1] * (p[1] - 0.5))
+        .sum::<f64>();
     assert!(outward > 0.0, "the blast expands");
     // 3-D smoke run
     let k = 5;
@@ -304,12 +400,23 @@ fn two_dimensional_blast_stays_symmetric_and_runs_in_three_dimensions() {
     for i in 0..k {
         for j in 0..k {
             for l in 0..k {
-                pos3.push([(i as f64 + 0.5) * dx, (j as f64 + 0.5) * dx, (l as f64 + 0.5) * dx]);
+                pos3.push([
+                    (i as f64 + 0.5) * dx,
+                    (j as f64 + 0.5) * dx,
+                    (l as f64 + 0.5) * dx,
+                ]);
             }
         }
     }
     let cnt = pos3.len();
-    let mut s3 = Sph::<3>::new(pos3, vec![1.0 / cnt as f64; cnt], vec![2.5; cnt], [0.0; 3], [1.0; 3], [SphBoundary::Periodic; 3]);
+    let mut s3 = Sph::<3>::new(
+        pos3,
+        vec![1.0 / cnt as f64; cnt],
+        vec![2.5; cnt],
+        [0.0; 3],
+        [1.0; 3],
+        [SphBoundary::Periodic; 3],
+    );
     s3.eta = 1.4;
     s3.vel[0] = [0.1, 0.0, 0.0];
     s3.update_density();

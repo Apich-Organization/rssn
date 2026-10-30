@@ -9,8 +9,11 @@
 //!   out; polynomial, geometric and a few classical infinite summands have
 //!   closed forms; symbolic bounds fall back on the indefinite sum and
 //!   product (`indefinite_sum`, `indefinite_product`, see the
-//!   `indefinite` module); anything else is summed numerically, with
-//!   convergence acceleration, when a number is wanted.
+//!   `indefinite` module); proper hypergeometric terms summed over every
+//!   integer go through Zeilberger's creative telescoping
+//!   (`zeilberger`, `definite_sum`, see the `zeilberger` module); anything
+//!   else is summed numerically, with convergence acceleration, when a
+//!   number is wanted.
 //! * `converges(f, k)`: divergence, ratio, root, alternating, p-series and
 //!   condensation tests for the series with general term `f`.
 
@@ -19,7 +22,6 @@ use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
-use crate::graph::op::core;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -31,18 +33,19 @@ use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::Payload;
+use crate::graph::op::core;
 use crate::kernels::series::sum_range;
 use crate::kernels::series::sum_to_infinity;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 use super::diff::Differentiate;
 use super::integrate::Functions;
-use super::limits::limit_at;
 use super::limits::Side;
+use super::limits::limit_at;
 use super::powerseries::laurent_expansion;
 
 /// Operators shared by the kernels of this module.
@@ -117,15 +120,32 @@ fn taylor_coefficients(
     for k in 0..=n {
         // The value of the k-th derivative at the point, as a limit so
         // that removable singularities (sin(x)/x at 0) are handled.
-        let value = limit_at(cx, ops.functions, ops.infinity, derivative, x, a, Side::Both)?;
-        if cx.graph.eval(value, &Env::numeric(0.0)).is_some_and(f64::is_infinite) {
+        let value = limit_at(
+            cx,
+            ops.functions,
+            ops.infinity,
+            derivative,
+            x,
+            a,
+            Side::Both,
+        )?;
+        if cx
+            .graph
+            .eval(value, &Env::numeric(0.0))
+            .is_some_and(f64::is_infinite)
+        {
             return None;
         }
-        let scale = cx.graph.num(Number::rat(BigRational::new(BigInt::one(), factorial(k))));
+        let scale = cx
+            .graph
+            .num(Number::rat(BigRational::new(BigInt::one(), factorial(k))));
         let coefficient = mul(cx.graph, &[scale, value]);
         out.push(cx.simplify(coefficient));
         if k < n {
-            let raw = Differentiate { diff: ops.functions.diff }.derive(cx.graph, derivative, symbol, x);
+            let raw = Differentiate {
+                diff: ops.functions.diff,
+            }
+            .derive(cx.graph, derivative, symbol, x);
             derivative = cx.simplify(raw);
         }
     }
@@ -140,7 +160,11 @@ fn power_series(
     a: NodeId,
     shift: i64,
 ) -> NodeId {
-    let offset = if is_zero(graph, a) { x } else { sub(graph, x, a) };
+    let offset = if is_zero(graph, a) {
+        x
+    } else {
+        sub(graph, x, a)
+    };
     let mut terms = Vec::new();
     for (k, &c) in coefficients.iter().enumerate() {
         if is_zero(graph, c) {
@@ -170,7 +194,9 @@ fn order(
     graph: &Graph,
     n: NodeId,
 ) -> Option<usize> {
-    usize::try_from(graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 40)
+    usize::try_from(graph.number_of(n)?.to_i64()?)
+        .ok()
+        .filter(|&n| n <= 40)
 }
 
 fn taylor(
@@ -232,12 +258,17 @@ fn laurent(
     if cx.graph.op(a) == ops.infinity {
         return at_infinity(cx, f, x, n);
     }
-    if let Some((valuation, coefficients)) = laurent_expansion(cx, f, x, a, i64::try_from(n).ok()?) {
+    if let Some((valuation, coefficients)) = laurent_expansion(cx, f, x, a, i64::try_from(n).ok()?)
+    {
         return Some(power_series(cx.graph, &coefficients, x, a, valuation));
     }
     // Fallback: the order of the pole by limits, then a Taylor series of
     // the regular part by differentiation.
-    let offset = if is_zero(cx.graph, a) { x } else { sub(cx.graph, x, a) };
+    let offset = if is_zero(cx.graph, a) {
+        x
+    } else {
+        sub(cx.graph, x, a)
+    };
     for m in 0..=8_usize {
         let regular = if m == 0 {
             f
@@ -246,10 +277,15 @@ fn laurent(
             let factor = cx.graph.node(core::POW, &[offset, e]);
             mul(cx.graph, &[factor, f])
         };
-        let Some(value) = limit_at(cx, ops.functions, ops.infinity, regular, x, a, Side::Both) else {
+        let Some(value) = limit_at(cx, ops.functions, ops.infinity, regular, x, a, Side::Both)
+        else {
             continue;
         };
-        if cx.graph.eval(value, &Env::numeric(0.0)).is_some_and(f64::is_infinite) {
+        if cx
+            .graph
+            .eval(value, &Env::numeric(0.0))
+            .is_some_and(f64::is_infinite)
+        {
             continue;
         }
         let coefficients = taylor_coefficients(cx, ops, regular, x, a, n + m)?;
@@ -324,7 +360,10 @@ fn power_sum(
         }
         // (n + 1)(n)(n - 1)...(n - j + 1): j + 1 factors.
         let mut factors = Vec::with_capacity(j + 2);
-        factors.push(graph.num(Number::rat(BigRational::new(s.clone(), BigInt::from(j + 1)))));
+        factors.push(graph.num(Number::rat(BigRational::new(
+            s.clone(),
+            BigInt::from(j + 1),
+        ))));
         for i in 0..=j {
             let shift = graph.int(-i64::try_from(i).unwrap_or(0));
             factors.push(graph.node(core::ADD, &[n_plus_one, shift]));
@@ -345,16 +384,40 @@ fn symbolic_sum(
 ) -> Option<NodeId> {
     let symbol = cx.graph.symbol_of(k)?;
     let term = cx.simplify(f);
+    let infinite_upper = cx
+        .graph
+        .eval(upper, &Env::numeric(0.0))
+        .is_some_and(|v| v == f64::INFINITY);
+    // A sum over every integer: Zeilberger's creative telescoping closes
+    // proper hypergeometric terms, including the binomial identities that
+    // have no Gosper antidifference.
+    if infinite_upper
+        && cx
+            .graph
+            .eval(lower, &Env::numeric(0.0))
+            .is_some_and(|v| v == f64::NEG_INFINITY)
+    {
+        let free = cx.graph.free_symbols(cx.graph.find(term)).to_vec();
+        let mut others = free.iter().filter(|&&s| s != symbol);
+        if let (Some(&n_symbol), None) = (others.next(), others.next()) {
+            let n = cx.graph.symbol_node(n_symbol);
+            if let Some(found) = super::zeilberger::sum_over_integers(cx, term, k, n) {
+                return Some(found);
+            }
+        }
+    }
     let graph = &mut *cx.graph;
     let depends = |graph: &Graph, node: NodeId| graph.depends_on(graph.find(node), symbol);
-    let infinite_upper = graph.eval(upper, &Env::numeric(0.0)).is_some_and(|v| v == f64::INFINITY);
 
     // Polynomial in k: Faulhaber.
     if !infinite_upper {
         let mut gens = Gens::default();
         let gk = gens.index(graph, k);
         if let Some(poly) = from_term(graph, &mut gens, term, Limits::default()) {
-            let pure = poly.support().iter().all(|&g| g == gk || gens.node(g).is_some_and(|n| !depends(graph, n)));
+            let pure = poly
+                .support()
+                .iter()
+                .all(|&g| g == gk || gens.node(g).is_some_and(|n| !depends(graph, n)));
             if pure {
                 let one = graph.int(1);
                 let before = sub(graph, lower, one);
@@ -381,48 +444,54 @@ fn symbolic_sum(
     let graph = &mut *cx.graph;
 
     // c * r^k with c, r free of k.
-    let factors: Vec<NodeId> = if graph.op(term) == core::MUL { graph.children(term).to_vec() } else { vec![term] };
-    let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(graph, n));
+    let factors: Vec<NodeId> = if graph.op(term) == core::MUL {
+        graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
+    let (constant, varying): (Vec<NodeId>, Vec<NodeId>) =
+        factors.iter().partition(|&&n| !depends(graph, n));
     if let &[power] = varying.as_slice()
-        && let (true, &[ratio, exponent]) = (graph.op(power) == core::POW, graph.children(power)) {
-            if exponent == k && !depends(graph, ratio) {
-                let one = graph.int(1);
-                let start = graph.node(core::POW, &[ratio, lower]);
-                let denominator = sub(graph, one, ratio);
-                let minus_one = graph.int(-1);
-                let inverse = graph.node(core::POW, &[denominator, minus_one]);
-                let numerator = if infinite_upper {
-                    // Converges only for |r| < 1, which must be known.
-                    let r = graph.eval(ratio, &Env::numeric(0.0))?;
-                    if r.abs() >= 1.0 {
-                        return None;
-                    }
-                    start
-                } else {
-                    let next = graph.node(core::ADD, &[upper, one]);
-                    let end = graph.node(core::POW, &[ratio, next]);
-                    sub(graph, start, end)
-                };
-                let mut all = constant;
-                all.push(numerator);
-                all.push(inverse);
-                return Some(mul(graph, &all));
-            }
-            // 1/k^s from 1 to infinity is zeta(s).
-            let from_one = graph.number_of(lower).is_some_and(Number::is_one);
-            if infinite_upper && from_one && ratio == k && !depends(graph, exponent) {
-                let zeta = graph.ops().lookup("zeta")?;
-                let s = graph.number_of(exponent)?.neg();
-                if s.to_f64() <= 1.0 {
+        && let (true, &[ratio, exponent]) = (graph.op(power) == core::POW, graph.children(power))
+    {
+        if exponent == k && !depends(graph, ratio) {
+            let one = graph.int(1);
+            let start = graph.node(core::POW, &[ratio, lower]);
+            let denominator = sub(graph, one, ratio);
+            let minus_one = graph.int(-1);
+            let inverse = graph.node(core::POW, &[denominator, minus_one]);
+            let numerator = if infinite_upper {
+                // Converges only for |r| < 1, which must be known.
+                let r = graph.eval(ratio, &Env::numeric(0.0))?;
+                if r.abs() >= 1.0 {
                     return None;
                 }
-                let s = graph.num(s);
-                let value = graph.node(zeta, &[s]);
-                let mut all = constant;
-                all.push(value);
-                return Some(mul(graph, &all));
-            }
+                start
+            } else {
+                let next = graph.node(core::ADD, &[upper, one]);
+                let end = graph.node(core::POW, &[ratio, next]);
+                sub(graph, start, end)
+            };
+            let mut all = constant;
+            all.push(numerator);
+            all.push(inverse);
+            return Some(mul(graph, &all));
         }
+        // 1/k^s from 1 to infinity is zeta(s).
+        let from_one = graph.number_of(lower).is_some_and(Number::is_one);
+        if infinite_upper && from_one && ratio == k && !depends(graph, exponent) {
+            let zeta = graph.ops().lookup("zeta")?;
+            let s = graph.number_of(exponent)?.neg();
+            if s.to_f64() <= 1.0 {
+                return None;
+            }
+            let s = graph.num(s);
+            let value = graph.node(zeta, &[s]);
+            let mut all = constant;
+            all.push(value);
+            return Some(mul(graph, &all));
+        }
+    }
     // Hypergeometric terms: Gosper's antidifference; rational terms that
     // are not Gosper-summable: partial fractions and polygamma.
     if infinite_upper {
@@ -457,12 +526,21 @@ fn special_sum(
 ) -> Option<NodeId> {
     let symbol = cx.graph.symbol_of(k)?;
     let depends = |cx: &Cx<'_>, n: NodeId| cx.graph.depends_on(cx.graph.find(n), symbol);
-    let factors: Vec<NodeId> = if cx.graph.op(term) == core::MUL { cx.graph.children(term).to_vec() } else { vec![term] };
-    let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(cx, n));
+    let factors: Vec<NodeId> = if cx.graph.op(term) == core::MUL {
+        cx.graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
+    let (constant, varying): (Vec<NodeId>, Vec<NodeId>) =
+        factors.iter().partition(|&&n| !depends(cx, n));
     let &[core_term] = varying.as_slice() else {
         return None;
     };
-    let (sin, cos, ln) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?, cx.graph.ops().lookup("ln")?);
+    let (sin, cos, ln) = (
+        cx.graph.ops().lookup("sin")?,
+        cx.graph.ops().lookup("cos")?,
+        cx.graph.ops().lookup("ln")?,
+    );
     let op = cx.graph.op(core_term);
     let children = cx.graph.children(core_term).to_vec();
     let one = cx.graph.int(1);
@@ -470,9 +548,13 @@ fn special_sum(
     let minus_one = cx.graph.int(-1);
     let value = if (op == sin || op == cos) && !infinite_upper {
         // u = a k + b
-        let &[u] = children.as_slice() else { return None };
+        let &[u] = children.as_slice() else {
+            return None;
+        };
         let parts = crate::rules::ode::coefficients_of(cx.graph, u, k)?;
-        let [b, a] = parts.as_slice() else { return None };
+        let [b, a] = parts.as_slice() else {
+            return None;
+        };
         let (a, b) = (*a, *b);
         // Σ_{L}^{U} = sin(a N/2) / sin(a/2) · f(b + a (L + U)/2), N = U - L + 1
         let neg_l = cx.graph.node(core::MUL, &[minus_one, lower]);
@@ -498,7 +580,10 @@ fn special_sum(
         cx.graph.node(core::ADD, &[a, neg_b])
     } else if let (true, &[base, exponent]) = (op == core::POW, children.as_slice()) {
         // k^s with s free of k and not a natural number (Faulhaber's case).
-        if base != k || depends(cx, exponent) || cx.graph.number_of(exponent).is_some_and(Number::is_integer) {
+        if base != k
+            || depends(cx, exponent)
+            || cx.graph.number_of(exponent).is_some_and(Number::is_integer)
+        {
             return None;
         }
         let hurwitz = cx.graph.ops().lookup("hurwitz_zeta")?;
@@ -594,7 +679,11 @@ fn rational_sum(
                 for j in 2..m {
                     factorial *= BigInt::from(j);
                 }
-                let sign = if m % 2 == 0 { BigInt::one() } else { -BigInt::one() };
+                let sign = if m % 2 == 0 {
+                    BigInt::one()
+                } else {
+                    -BigInt::one()
+                };
                 let coefficient = graph.num(Number::rat(BigRational::new(sign, factorial)));
                 graph.node(core::MUL, &[coefficient, value])
             }
@@ -615,19 +704,20 @@ fn rational_sum(
         return None;
     }
     if let Some(b) = upper
-        && !parts.quotient.is_empty() {
-            let before = sub(graph, lower, one);
-            for (p, coefficient) in parts.quotient.iter().enumerate() {
-                if coefficient.is_zero() {
-                    continue;
-                }
-                let c = graph.num(Number::rat(coefficient.clone()));
-                let up_to_upper = power_sum(graph, p, b);
-                let up_to_before = power_sum(graph, p, before);
-                let span = sub(graph, up_to_upper, up_to_before);
-                pieces.push(graph.node(core::MUL, &[c, span]));
+        && !parts.quotient.is_empty()
+    {
+        let before = sub(graph, lower, one);
+        for (p, coefficient) in parts.quotient.iter().enumerate() {
+            if coefficient.is_zero() {
+                continue;
             }
+            let c = graph.num(Number::rat(coefficient.clone()));
+            let up_to_upper = power_sum(graph, p, b);
+            let up_to_before = power_sum(graph, p, before);
+            let span = sub(graph, up_to_upper, up_to_before);
+            pieces.push(graph.node(core::MUL, &[c, span]));
         }
+    }
     let total = add(graph, &pieces);
     Some(cx.simplify(total))
 }
@@ -639,7 +729,10 @@ fn literal_range(
     lower: NodeId,
     upper: NodeId,
 ) -> Option<(i64, i64)> {
-    let (a, b) = (graph.number_of(lower)?.to_i64()?, graph.number_of(upper)?.to_i64()?);
+    let (a, b) = (
+        graph.number_of(lower)?.to_i64()?,
+        graph.number_of(upper)?.to_i64()?,
+    );
     (b.saturating_sub(a) <= 10_000).then_some((a, b))
 }
 
@@ -747,7 +840,10 @@ fn converges(
     };
     // The index is a positive integer, which lets `abs` and `ln` simplify.
     let fresh = cx.graph.interner_mut().fresh_symbol("k");
-    cx.graph.assume(fresh, crate::graph::Facts::POSITIVE | crate::graph::Facts::INTEGER);
+    cx.graph.assume(
+        fresh,
+        crate::graph::Facts::POSITIVE | crate::graph::Facts::INTEGER,
+    );
     let index = cx.graph.symbol_node(fresh);
     let f = cx.graph.substitute(f, k, index);
     let verdict = convergence(cx, ops, f, index, 0)?;
@@ -779,9 +875,10 @@ fn convergence(
 
     // 1. Divergence test.
     if let Some(v) = limit_value(cx, ops, magnitude, k)
-        && (v.is_nan() || v > 1e-12) {
-            return (!v.is_nan()).then_some(false);
-        }
+        && (v.is_nan() || v > 1e-12)
+    {
+        return (!v.is_nan()).then_some(false);
+    }
 
     // 2./3. Ratio and root tests. Both quantities are first estimated
     // numerically far out, which decides clear cases cheaply; the symbolic
@@ -802,16 +899,22 @@ fn convergence(
     let root = cx.simplify(raw_root);
     for test in [ratio, root] {
         if let Some(v) = settled_value(cx, test, k)
-            && (v - 1.0).abs() > 0.05 {
-                return Some(v < 1.0);
-            }
+            && (v - 1.0).abs() > 0.05
+        {
+            return Some(v < 1.0);
+        }
     }
-    let tests = if varying_power(cx.graph, term, k) { [root, ratio] } else { [ratio, root] };
+    let tests = if varying_power(cx.graph, term, k) {
+        [root, ratio]
+    } else {
+        [ratio, root]
+    };
     for test in tests {
         if let Some(v) = limit_value(cx, ops, test, k)
-            && (v - 1.0).abs() > 1e-9 {
-                return Some(v < 1.0);
-            }
+            && (v - 1.0).abs() > 1e-9
+        {
+            return Some(v < 1.0);
+        }
     }
 
     // 4. Alternating series test: the sign alternates and |a_k| decreases
@@ -841,9 +944,11 @@ fn convergence(
     if same_sign {
         let weighted = cx.graph.node(core::MUL, &[k, magnitude]);
         if let Some(v) = limit_value(cx, ops, weighted, k)
-            && v.is_finite() && v > 1e-12 {
-                return Some(false);
-            }
+            && v.is_finite()
+            && v > 1e-12
+        {
+            return Some(false);
+        }
         if depth < 2 {
             let graph = &mut *cx.graph;
             let two = graph.int(2);
@@ -913,9 +1018,11 @@ fn varying_power(
             continue;
         }
         if let (true, &[base, exponent]) = (graph.op(n) == core::POW, graph.children(n))
-            && depends(base) && depends(exponent) {
-                return true;
-            }
+            && depends(base)
+            && depends(exponent)
+        {
+            return true;
+        }
         stack.extend_from_slice(graph.children(n));
     }
     false
@@ -935,7 +1042,8 @@ fn eventually_one_sign(
     term: NodeId,
     k: NodeId,
 ) -> bool {
-    samples(cx, term, k, 50, 200).is_some_and(|v| v.iter().all(|x| *x > 0.0) || v.iter().all(|x| *x < 0.0))
+    samples(cx, term, k, 50, 200)
+        .is_some_and(|v| v.iter().all(|x| *x > 0.0) || v.iter().all(|x| *x < 0.0))
 }
 
 fn alternates_and_decreases(
@@ -960,7 +1068,14 @@ pub(super) struct SeriesKernel {
 impl Kernel for SeriesKernel {
     fn ops(&self) -> Vec<OpId> {
         let o = self.ops;
-        vec![o.taylor, o.laurent, o.fourier, o.sum, o.product, o.converges]
+        vec![
+            o.taylor,
+            o.laurent,
+            o.fourier,
+            o.sum,
+            o.product,
+            o.converges,
+        ]
     }
 
     fn reduce(
@@ -1022,7 +1137,8 @@ impl Kernel for NumericSum {
         let (Some(symbol), Some(term)) = (graph.symbol_of(k), best(graph, f)) else {
             return Outcome::Pass;
         };
-        let bound = |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
+        let bound =
+            |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
         let (Some(a), Some(b)) = (bound(graph, lower), bound(graph, upper)) else {
             return Outcome::Pass;
         };
@@ -1053,7 +1169,10 @@ impl Kernel for NumericSum {
         if b == f64::INFINITY && is_sum {
             let result = sum_to_infinity(at, from, tolerance, 300_000);
             return if result.value.is_finite() && result.error.is_finite() {
-                Outcome::Approx(Ball { mid: result.value, rad: result.error })
+                Outcome::Approx(Ball {
+                    mid: result.value,
+                    rad: result.error,
+                })
             } else {
                 Outcome::Pass
             };
@@ -1070,7 +1189,10 @@ impl Kernel for NumericSum {
             (from..=to).fold(1.0, |acc, index| acc * at(index as f64))
         };
         if value.is_finite() {
-            Outcome::Approx(Ball { mid: value, rad: f64::EPSILON * value.abs() * (b - a + 1.0) })
+            Outcome::Approx(Ball {
+                mid: value,
+                rad: f64::EPSILON * value.abs() * (b - a + 1.0),
+            })
         } else {
             Outcome::Pass
         }

@@ -4,7 +4,8 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::matrix::{Backend, Matrix};
+use rssn::kernels::matrix::Backend;
+use rssn::kernels::matrix::Matrix;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -377,7 +378,8 @@ fn faer_inverse_rejects_singular_matrices() {
 
 #[test]
 fn faer_lu_and_qr_reconstruct_the_matrix() {
-    use rssn::kernels::matrix::{FaerDecompositionResult, FaerDecompositionType};
+    use rssn::kernels::matrix::FaerDecompositionResult;
+    use rssn::kernels::matrix::FaerDecompositionType;
     let mut a = m(3, 3, &[2.0, 1.0, 1.0, 4.0, -6.0, 0.0, -2.0, 7.0, 2.0]);
     a.set_backend(Backend::Faer);
     match a.decompose(FaerDecompositionType::Lu).expect("LU") {

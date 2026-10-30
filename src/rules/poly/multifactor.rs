@@ -87,7 +87,10 @@ fn preimage(
             }
         }
         mono.sort_unstable();
-        out = out.add(&Poly::monomial(mono, Number::rat(BigRational::from_integer(c.clone()))));
+        out = out.add(&Poly::monomial(
+            mono,
+            Number::rat(BigRational::from_integer(c.clone())),
+        ));
     }
     out
 }
@@ -146,8 +149,10 @@ fn split_off(
     let w = weights(f, vars)?;
     let dense = image(f, vars, &w)?;
     let (_, factors) = univariate::factor(&dense);
-    let pieces: Vec<&Vec<BigInt>> =
-        factors.iter().flat_map(|(z, m)| std::iter::repeat_n(z, *m as usize)).collect();
+    let pieces: Vec<&Vec<BigInt>> = factors
+        .iter()
+        .flat_map(|(z, m)| std::iter::repeat_n(z, *m as usize))
+        .collect();
     if pieces.len() <= 1 || pieces.len() > MAX_PIECES {
         return None;
     }
@@ -157,7 +162,9 @@ fn split_off(
     for size in 1..=n / 2 {
         let mut choice: Vec<usize> = (0..size).collect();
         loop {
-            let product = choice.iter().fold(vec![BigInt::from(1)], |acc, &i| z_mul(&acc, pieces[i]));
+            let product = choice
+                .iter()
+                .fold(vec![BigInt::from(1)], |acc, &i| z_mul(&acc, pieces[i]));
             if !seen.contains(&product) {
                 let g = preimage(&product, vars, &w);
                 if g.as_constant().is_none() && f.div_exact(&g, CAP).is_some() {

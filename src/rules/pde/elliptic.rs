@@ -132,7 +132,10 @@ pub(super) fn half_space(
             | [] => parity.push(0_i64),
             | [b] if b.robin.is_none() && is_zero_number(cx.graph, b.point) => {
                 // A value that refers to the unknown itself is not data.
-                if cx.graph.depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?) {
+                if cx
+                    .graph
+                    .depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?)
+                {
                     return None;
                 }
                 let dirichlet = b.derivative == zero_index;
@@ -150,7 +153,9 @@ pub(super) fn half_space(
             | _ => return None,
         }
     }
-    if conditions.0.len() != parity.iter().filter(|&&q| q != 0).count() || parity.iter().all(|&q| q == 0) {
+    if conditions.0.len() != parity.iter().filter(|&&q| q != 0).count()
+        || parity.iter().all(|&q| q == 0)
+    {
         return None;
     }
     if data.is_some() && (helmholtz || d < 2) {
@@ -160,7 +165,11 @@ pub(super) fn half_space(
         // Laplace's equation with homogeneous data on a half-space: zero.
         return None;
     }
-    let k = if helmholtz { Some(sqrt(cx, k2)?) } else { None };
+    let k = if helmholtz {
+        Some(sqrt(cx, k2)?)
+    } else {
+        None
+    };
     let oo = infinity(cx)?;
     let minus_oo = neg(cx.graph, oo);
     let stems = ["s", "r", "q"];
@@ -188,13 +197,23 @@ pub(super) fn half_space(
         let mut squares = Vec::new();
         for (j, &y) in positions.iter().enumerate() {
             let x = p.vars[j];
-            let gap = if Some(j) == skip { x } else { sub(cx.graph, x, y) };
+            let gap = if Some(j) == skip {
+                x
+            } else {
+                sub(cx.graph, x, y)
+            };
             squares.push(powi(cx.graph, gap, 2));
         }
         let r2 = add(cx.graph, &squares);
         sqrt(cx, r2)
     };
-    let domain_lower = |cx: &mut Cx<'_>, j: usize| if parity[j] == 0 { minus_oo } else { cx.graph.int(0) };
+    let domain_lower = |cx: &mut Cx<'_>, j: usize| {
+        if parity[j] == 0 {
+            minus_oo
+        } else {
+            cx.graph.int(0)
+        }
+    };
     let mut parts = Vec::new();
     // Source: images of the free kernel.
     if !cx.is_zero(f) {

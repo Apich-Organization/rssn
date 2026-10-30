@@ -3,9 +3,12 @@
 
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::finite_field::{
-    PrimeFieldElement, gf256_add, gf256_div, gf256_inv, gf256_mul, gf256_pow,
-};
+use rssn::kernels::finite_field::PrimeFieldElement;
+use rssn::kernels::finite_field::gf256_add;
+use rssn::kernels::finite_field::gf256_div;
+use rssn::kernels::finite_field::gf256_inv;
+use rssn::kernels::finite_field::gf256_mul;
+use rssn::kernels::finite_field::gf256_pow;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -37,13 +40,18 @@ fn prime_field_construction_reduces() {
 #[test]
 fn prime_field_inverse() {
     let a = PrimeFieldElement::new(7, 11);
-    let inv = a.inverse().unwrap_or_else(|| panic!("7 is invertible mod 11"));
+    let inv = a
+        .inverse()
+        .unwrap_or_else(|| panic!("7 is invertible mod 11"));
     assert_eq!(inv.value, 8); // 7 * 8 = 56 = 1 mod 11
     assert_eq!((a * inv).value, 1);
     assert!(PrimeFieldElement::new(0, 11).inverse().is_none());
     // Composite modulus: 4 has no inverse mod 8, 3 does.
     assert!(PrimeFieldElement::new(4, 8).inverse().is_none());
-    assert_eq!(PrimeFieldElement::new(3, 8).inverse().map(|e| e.value), Some(3));
+    assert_eq!(
+        PrimeFieldElement::new(3, 8).inverse().map(|e| e.value),
+        Some(3)
+    );
 }
 
 #[test]
@@ -159,13 +167,17 @@ proptest! {
 }
 
 mod modulus_agnostic {
-    use num_traits::{One, Zero};
+    use num_traits::One;
+    use num_traits::Zero;
     use rssn::kernels::finite_field::PrimeFieldElement;
 
     #[test]
     fn zero_and_one_adopt_the_other_operands_modulus() {
         let x = PrimeFieldElement::new(5, 7);
-        for (a, b) in [(x + PrimeFieldElement::zero(), x), (PrimeFieldElement::zero() + x, x)] {
+        for (a, b) in [
+            (x + PrimeFieldElement::zero(), x),
+            (PrimeFieldElement::zero() + x, x),
+        ] {
             assert_eq!(a, b);
         }
         assert_eq!(x * PrimeFieldElement::one(), x);

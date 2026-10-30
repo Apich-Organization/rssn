@@ -93,7 +93,13 @@ fn mean(
     let sp = cx.graph.node(sin, &[phi]);
     let cp = cx.graph.node(cos, &[phi]);
     // Directions, scale factors and measure.
-    let (directions, measure, outer_variable, outer_hi, normalisation): (Vec<NodeId>, NodeId, NodeId, NodeId, NodeId) = if d == 3 {
+    let (directions, measure, outer_variable, outer_hi, normalisation): (
+        Vec<NodeId>,
+        NodeId,
+        NodeId,
+        NodeId,
+        NodeId,
+    ) = if d == 3 {
         let (theta, _) = dummy(cx, p, "theta");
         let st = cx.graph.node(sin, &[theta]);
         let ct = cx.graph.node(cos, &[theta]);
@@ -135,7 +141,15 @@ fn mean(
     }
     // Expanded, the integrand is a sum of trigonometric monomials.
     let mut gens = Gens::default();
-    if let Some(poly) = from_term(cx.graph, &mut gens, shifted, Limits { terms: 4096, exponent: 16 }) {
+    if let Some(poly) = from_term(
+        cx.graph,
+        &mut gens,
+        shifted,
+        Limits {
+            terms: 4096,
+            exponent: 16,
+        },
+    ) {
         shifted = to_term(cx.graph, &gens, &poly);
     }
     let body = mul(cx.graph, &[shifted, measure]);
@@ -181,8 +195,15 @@ fn massive_descent(
     if xs.len() == 2 {
         // `rate`: the time derivative of `t M_w[h]`, taken under the integral.
         let weighted = mean(cx, p, xs, h, ct, Some((t, m, kind)), rate.then_some(t))?;
-        let base = if rate { weighted } else { mul(cx.graph, &[t, weighted]) };
-        return Some(Descent { base: cx.simplify(base), integral: None });
+        let base = if rate {
+            weighted
+        } else {
+            mul(cx.graph, &[t, weighted])
+        };
+        return Some(Descent {
+            base: cx.simplify(base),
+            integral: None,
+        });
     }
     let plain = mean(cx, p, xs, h, ct, None, None)?;
     let base = mul(cx.graph, &[t, plain]);
@@ -197,12 +218,27 @@ fn massive_descent(
         sqrt(cx, gap)?
     };
     let argument = mul(cx.graph, &[m, t, root]);
-    let bessel = call(cx, if kind > 0 { "besselj" } else { "besseli" }, &[one, argument])?;
+    let bessel = call(
+        cx,
+        if kind > 0 {
+            "besselj"
+        } else {
+            "besseli"
+        },
+        &[one, argument],
+    )?;
     let kernel = div(cx, bessel, root);
     let t2 = powi(cx.graph, t, 2);
     let body = mul(cx.graph, &[m, t2, tau2, inner, kernel]);
-    let body = if kind > 0 { neg(cx.graph, body) } else { body };
-    Some(Descent { base, integral: Some((body, tau)) })
+    let body = if kind > 0 {
+        neg(cx.graph, body)
+    } else {
+        body
+    };
+    Some(Descent {
+        base,
+        integral: Some((body, tau)),
+    })
 }
 
 /// Initial-value problems for the wave equation (with damping, mass and
@@ -286,9 +322,13 @@ pub(super) fn wave(
     // kernels for a positive one and `I` kernels for a negative one.
     let kind = if cx.is_zero(m2) {
         0
-    } else if cx.graph.facts(m2).has(Facts::POSITIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0) {
+    } else if cx.graph.facts(m2).has(Facts::POSITIVE)
+        || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0)
+    {
         1
-    } else if cx.graph.facts(m2).has(Facts::NEGATIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v < 0.0) {
+    } else if cx.graph.facts(m2).has(Facts::NEGATIVE)
+        || sample(cx.graph, m2, 0).is_some_and(|v| v < 0.0)
+    {
         -1
     } else {
         return None;
@@ -308,7 +348,10 @@ pub(super) fn wave(
         counted += on.len();
         match on.as_slice() {
             | [] => parity.push(0),
-            | [b] if b.robin.is_none() && is_zero_number(cx.graph, b.point) && cx.is_zero(b.value) => {
+            | [b] if b.robin.is_none()
+                && is_zero_number(cx.graph, b.point)
+                && cx.is_zero(b.value) =>
+            {
                 if b.derivative == zero_index {
                     parity.push(-1);
                 } else if b.derivative == p.unit(j, 1) {
@@ -354,7 +397,11 @@ pub(super) fn wave(
         };
         cx.simplify(e)
     };
-    let (f_e, g_e, forcing_e) = (extend(cx, f, &xs, &parity)?, extend(cx, g, &xs, &parity)?, extend(cx, forcing, &xs, &parity)?);
+    let (f_e, g_e, forcing_e) = (
+        extend(cx, f, &xs, &parity)?,
+        extend(cx, g, &xs, &parity)?,
+        extend(cx, forcing, &xs, &parity)?,
+    );
     let mut terms = Vec::new();
     if d == 1 {
         let x = xs[0];
@@ -362,7 +409,11 @@ pub(super) fn wave(
         let (tau, _) = dummy(cx, p, "tau");
         let right = add(cx.graph, &[x, ct]);
         let left = sub(cx.graph, x, ct);
-        let m_abs = if kind < 0 { neg(cx.graph, m2) } else { m2 };
+        let m_abs = if kind < 0 {
+            neg(cx.graph, m2)
+        } else {
+            m2
+        };
         let m = sqrt(cx, m_abs)?;
         let mu = div(cx, m, c);
         // Radius function R(τ', s) = (c² τ'² - (x - s)²)^(1/2).
@@ -377,7 +428,15 @@ pub(super) fn wave(
         let bessel = |cx: &mut Cx<'_>, order: i64, r: NodeId| -> Option<NodeId> {
             let mur = mul(cx.graph, &[mu, r]);
             let o = cx.graph.int(order);
-            call(cx, if kind > 0 { "besselj" } else { "besseli" }, &[o, mur])
+            call(
+                cx,
+                if kind > 0 {
+                    "besselj"
+                } else {
+                    "besseli"
+                },
+                &[o, mur],
+            )
         };
         let f_right = cx.graph.substitute(f_e, x, right);
         let f_left = cx.graph.substitute(f_e, x, left);
@@ -388,7 +447,11 @@ pub(super) fn wave(
         if !cx.is_zero(g) {
             let g_s = cx.graph.substitute(g_e, x, s);
             let r = radius(cx, t)?;
-            let weight = if kind == 0 { cx.graph.int(1) } else { bessel(cx, 0, r)? };
+            let weight = if kind == 0 {
+                cx.graph.int(1)
+            } else {
+                bessel(cx, 0, r)?
+            };
             let body = mul(cx.graph, &[g_s, weight]);
             let integral = defint(cx, body, s, left, right)?;
             let integral = cx.simplify(integral);
@@ -403,7 +466,11 @@ pub(super) fn wave(
             let integral = defint(cx, body, s, left, right)?;
             let integral = cx.simplify(integral);
             let tm = mul(cx.graph, &[half, t, m, integral]);
-            terms.push(if kind > 0 { neg(cx.graph, tm) } else { tm });
+            terms.push(if kind > 0 {
+                neg(cx.graph, tm)
+            } else {
+                tm
+            });
         }
         if !cx.is_zero(forcing) {
             let elapsed = sub(cx.graph, t, tau);
@@ -413,7 +480,11 @@ pub(super) fn wave(
             let f_s = cx.graph.substitute(forcing_e, x, s);
             let f_s = cx.graph.substitute(f_s, t, tau);
             let r = radius(cx, elapsed)?;
-            let weight = if kind == 0 { cx.graph.int(1) } else { bessel(cx, 0, r)? };
+            let weight = if kind == 0 {
+                cx.graph.int(1)
+            } else {
+                bessel(cx, 0, r)?
+            };
             let body = mul(cx.graph, &[f_s, weight]);
             let inner = defint(cx, body, s, lo, hi)?;
             let inner = cx.simplify(inner);
@@ -446,7 +517,11 @@ pub(super) fn wave(
             // Massive or damped (`w_tt = c² Δw - m2 w`): the Bessel kernel of
             // the descent from the unit ball, `J_1` (`I_1` for a negative
             // mass) in three dimensions and `cos` (`cosh`) in two.
-            let m_abs = if kind < 0 { neg(cx.graph, m2) } else { m2 };
+            let m_abs = if kind < 0 {
+                neg(cx.graph, m2)
+            } else {
+                m2
+            };
             let m = sqrt(cx, m_abs)?;
             for (h, source, is_displacement) in [(f_e, f, true), (g_e, g, false)] {
                 if cx.is_zero(source) {
@@ -454,7 +529,11 @@ pub(super) fn wave(
                 }
                 let descent = massive_descent(cx, p, &xs, h, (t, c, m, kind), is_displacement)?;
                 if is_displacement {
-                    terms.push(if xs.len() == 2 { descent.base } else { derivative(cx.graph, descent.base, t)? });
+                    terms.push(if xs.len() == 2 {
+                        descent.base
+                    } else {
+                        derivative(cx.graph, descent.base, t)?
+                    });
                     if let Some((integrand, tau)) = descent.integral {
                         let rate = derivative(cx.graph, integrand, t)?;
                         let (zero_tau, one_tau) = (cx.graph.int(0), cx.graph.int(1));

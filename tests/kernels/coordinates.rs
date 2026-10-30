@@ -1,9 +1,11 @@
 //! Coordinate transformations and their Jacobians.
 
-use rssn::kernels::coordinates::{
-    CoordinateSystem as C, from_cartesian, numerical_jacobian, to_cartesian, transform_point,
-    transform_point_pure,
-};
+use rssn::kernels::coordinates::CoordinateSystem as C;
+use rssn::kernels::coordinates::from_cartesian;
+use rssn::kernels::coordinates::numerical_jacobian;
+use rssn::kernels::coordinates::to_cartesian;
+use rssn::kernels::coordinates::transform_point;
+use rssn::kernels::coordinates::transform_point_pure;
 
 fn det(m: &[Vec<f64>]) -> f64 {
     match m.len() {
@@ -17,7 +19,11 @@ fn det(m: &[Vec<f64>]) -> f64 {
     }
 }
 
-fn close(a: &[f64], b: &[f64], tol: f64) {
+fn close(
+    a: &[f64],
+    b: &[f64],
+    tol: f64,
+) {
     assert_eq!(a.len(), b.len());
     for (x, y) in a.iter().zip(b) {
         assert!((x - y).abs() < tol, "{a:?} vs {b:?}");
@@ -52,13 +58,18 @@ fn round_trips() {
         let c = to_cartesian(p, system).unwrap_or_else(|e| panic!("{e}"));
         let back = from_cartesian(&c, system).unwrap_or_else(|e| panic!("{e}"));
         close(&back, p, 1e-12);
-        let pure = transform_point_pure(&transform_point_pure(p, system, C::Cartesian), C::Cartesian, system);
+        let pure = transform_point_pure(
+            &transform_point_pure(p, system, C::Cartesian),
+            C::Cartesian,
+            system,
+        );
         close(&pure, p, 1e-12);
     }
     let s = transform_point(&[1.0, 2.0, 3.0], C::Cartesian, C::Spherical)
         .unwrap_or_else(|e| panic!("{e}"));
     let cyl = transform_point(&s, C::Spherical, C::Cylindrical).unwrap_or_else(|e| panic!("{e}"));
-    let cart = transform_point(&cyl, C::Cylindrical, C::Cartesian).unwrap_or_else(|e| panic!("{e}"));
+    let cart =
+        transform_point(&cyl, C::Cylindrical, C::Cartesian).unwrap_or_else(|e| panic!("{e}"));
     close(&cart, &[1.0, 2.0, 3.0], 1e-12);
 }
 
@@ -95,8 +106,10 @@ fn spherical_jacobian_determinant_is_r2_sin_theta() {
 #[test]
 fn jacobian_of_inverse_map_is_inverse() {
     let cart = [0.6, -1.1, 0.9];
-    let fwd = numerical_jacobian(C::Cartesian, C::Spherical, &cart).unwrap_or_else(|e| panic!("{e}"));
+    let fwd =
+        numerical_jacobian(C::Cartesian, C::Spherical, &cart).unwrap_or_else(|e| panic!("{e}"));
     let sph = transform_point(&cart, C::Cartesian, C::Spherical).unwrap_or_else(|e| panic!("{e}"));
-    let back = numerical_jacobian(C::Spherical, C::Cartesian, &sph).unwrap_or_else(|e| panic!("{e}"));
+    let back =
+        numerical_jacobian(C::Spherical, C::Cartesian, &sph).unwrap_or_else(|e| panic!("{e}"));
     assert!((det(&fwd) * det(&back) - 1.0).abs() < 1e-6);
 }

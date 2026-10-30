@@ -14,8 +14,13 @@
 
 
 use crate::kernels::random::Rng;
-use crate::sim::md_engine::{compute_forces, ForceField, Forces, MdSystem, NeighbourList};
-use crate::sim::symplectic::{quat_to_matrix, RigidBody};
+use crate::sim::md_engine::ForceField;
+use crate::sim::md_engine::Forces;
+use crate::sim::md_engine::MdSystem;
+use crate::sim::md_engine::NeighbourList;
+use crate::sim::md_engine::compute_forces;
+use crate::sim::symplectic::RigidBody;
+use crate::sim::symplectic::quat_to_matrix;
 
 type V3 = [f64; 3];
 type M3 = [[f64; 3]; 3];
@@ -65,7 +70,11 @@ fn cross(
     a: V3,
     b: V3,
 ) -> V3 {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
 
 fn sym_eigen(a: M3) -> ([f64; 3], M3) {
@@ -109,16 +118,36 @@ fn mat_to_quat(r: &M3) -> [f64; 4] {
     let tr = r[0][0] + r[1][1] + r[2][2];
     let q = if tr > 0.0 {
         let s = 2.0 * (tr + 1.0).sqrt();
-        [0.25 * s, (r[2][1] - r[1][2]) / s, (r[0][2] - r[2][0]) / s, (r[1][0] - r[0][1]) / s]
+        [
+            0.25 * s,
+            (r[2][1] - r[1][2]) / s,
+            (r[0][2] - r[2][0]) / s,
+            (r[1][0] - r[0][1]) / s,
+        ]
     } else if r[0][0] > r[1][1] && r[0][0] > r[2][2] {
         let s = 2.0 * (1.0 + r[0][0] - r[1][1] - r[2][2]).sqrt();
-        [(r[2][1] - r[1][2]) / s, 0.25 * s, (r[0][1] + r[1][0]) / s, (r[0][2] + r[2][0]) / s]
+        [
+            (r[2][1] - r[1][2]) / s,
+            0.25 * s,
+            (r[0][1] + r[1][0]) / s,
+            (r[0][2] + r[2][0]) / s,
+        ]
     } else if r[1][1] > r[2][2] {
         let s = 2.0 * (1.0 + r[1][1] - r[0][0] - r[2][2]).sqrt();
-        [(r[0][2] - r[2][0]) / s, (r[0][1] + r[1][0]) / s, 0.25 * s, (r[1][2] + r[2][1]) / s]
+        [
+            (r[0][2] - r[2][0]) / s,
+            (r[0][1] + r[1][0]) / s,
+            0.25 * s,
+            (r[1][2] + r[2][1]) / s,
+        ]
     } else {
         let s = 2.0 * (1.0 + r[2][2] - r[0][0] - r[1][1]).sqrt();
-        [(r[1][0] - r[0][1]) / s, (r[0][2] + r[2][0]) / s, (r[1][2] + r[2][1]) / s, 0.25 * s]
+        [
+            (r[1][0] - r[0][1]) / s,
+            (r[0][2] + r[2][0]) / s,
+            (r[1][2] + r[2][1]) / s,
+            0.25 * s,
+        ]
     };
     let n = q.iter().map(|x| x * x).sum::<f64>().sqrt();
     [q[0] / n, q[1] / n, q[2] / n, q[3] / n]
@@ -156,7 +185,13 @@ impl RigidMdSimulation {
         if seen.iter().any(|s| !s) {
             return Err("every site must belong to a molecule".into());
         }
-        if sys.bx.bc.iter().any(|b| *b != crate::sim::md_engine::Boundary::Periodic) || sys.bx.shear_rate != 0.0 {
+        if sys
+            .bx
+            .bc
+            .iter()
+            .any(|b| *b != crate::sim::md_engine::Boundary::Periodic)
+            || sys.bx.shear_rate != 0.0
+        {
             return Err("rigid-molecule MD needs a fully periodic box without shear".into());
         }
         let mut mols = Vec::new();
@@ -165,7 +200,11 @@ impl RigidMdSimulation {
             let r0 = sys.pos[sites[0]];
             let mut x: Vec<V3> = Vec::new();
             for &i in sites {
-                let mut d = [sys.pos[i][0] - r0[0], sys.pos[i][1] - r0[1], sys.pos[i][2] - r0[2]];
+                let mut d = [
+                    sys.pos[i][0] - r0[0],
+                    sys.pos[i][1] - r0[1],
+                    sys.pos[i][2] - r0[2],
+                ];
                 sys.bx.min_image(&mut d);
                 x.push([r0[0] + d[0], r0[1] + d[1], r0[2] + d[2]]);
             }
@@ -178,7 +217,10 @@ impl RigidMdSimulation {
                     vcom[a] += sys.mass[i] * sys.vel[i][a] / mass;
                 }
             }
-            let rel: Vec<V3> = x.iter().map(|p| [p[0] - com[0], p[1] - com[1], p[2] - com[2]]).collect();
+            let rel: Vec<V3> = x
+                .iter()
+                .map(|p| [p[0] - com[0], p[1] - com[1], p[2] - com[2]])
+                .collect();
             let mut inertia = [[0.0; 3]; 3];
             let mut l = [0.0; 3];
             for (k, &i) in sites.iter().enumerate() {
@@ -190,7 +232,11 @@ impl RigidMdSimulation {
                         inertia[a][b] += m * (if a == b { r2 } else { 0.0 } - r[a] * r[b]);
                     }
                 }
-                let v = [sys.vel[i][0] - vcom[0], sys.vel[i][1] - vcom[1], sys.vel[i][2] - vcom[2]];
+                let v = [
+                    sys.vel[i][0] - vcom[0],
+                    sys.vel[i][1] - vcom[1],
+                    sys.vel[i][2] - vcom[2],
+                ];
                 let c = cross(r, v);
                 for a in 0..3 {
                     l[a] += m * c[a];
@@ -200,10 +246,17 @@ impl RigidMdSimulation {
             // sort ascending for reproducibility and make the frame right-handed
             let mut idx = [0usize, 1, 2];
             idx.sort_by(|&a, &b| ev[a].total_cmp(&ev[b]));
-            let cols: Vec<V3> = idx.iter().map(|&c| [vec[0][c], vec[1][c], vec[2][c]]).collect();
+            let cols: Vec<V3> = idx
+                .iter()
+                .map(|&c| [vec[0][c], vec[1][c], vec[2][c]])
+                .collect();
             ev = [ev[idx[0]], ev[idx[1]], ev[idx[2]]];
             let c2 = cross(cols[0], cols[1]);
-            let sign = if c2[0] * cols[2][0] + c2[1] * cols[2][1] + c2[2] * cols[2][2] < 0.0 { -1.0 } else { 1.0 };
+            let sign = if c2[0] * cols[2][0] + c2[1] * cols[2][1] + c2[2] * cols[2][2] < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
             vec = [
                 [cols[0][0], cols[1][0], sign * cols[2][0]],
                 [cols[0][1], cols[1][1], sign * cols[2][1]],
@@ -217,24 +270,35 @@ impl RigidMdSimulation {
                 }
             }
             let body: Vec<V3> = rel
-            .iter()
-            .map(|r| {
-                let mut b = [0.0; 3];
-                for k in 0..3 {
-                    b[k] = vec[0][k] * r[0] + vec[1][k] * r[1] + vec[2][k] * r[2];
-                }
-                b
-            })
-            .collect();
-        let mut l_body = [0.0; 3];
+                .iter()
+                .map(|r| {
+                    let mut b = [0.0; 3];
+                    for k in 0..3 {
+                        b[k] = vec[0][k] * r[0] + vec[1][k] * r[1] + vec[2][k] * r[2];
+                    }
+                    b
+                })
+                .collect();
+            let mut l_body = [0.0; 3];
             for k in 0..3 {
                 l_body[k] = vec[0][k] * l[0] + vec[1][k] * l[1] + vec[2][k] * l[2];
                 if inertia_p[k].is_infinite() {
                     l_body[k] = 0.0;
                 }
             }
-            let rb = RigidBody { inertia: inertia_p, q: mat_to_quat(&vec), l_body };
-            mols.push(RigidMolecule { sites: sites.clone(), body, mass, com, vcom, rb });
+            let rb = RigidBody {
+                inertia: inertia_p,
+                q: mat_to_quat(&vec),
+                l_body,
+            };
+            mols.push(RigidMolecule {
+                sites: sites.clone(),
+                body,
+                mass,
+                com,
+                vcom,
+                rb,
+            });
         }
         for sites in molecules {
             for (a, &i) in sites.iter().enumerate() {
@@ -246,7 +310,18 @@ impl RigidMdSimulation {
         ff.rebuild_exclusions();
         let mut nl = NeighbourList::new(ff.rcut, skin);
         let forces = compute_forces(&sys, &ff, &mut nl)?;
-        let mut s = Self { sys, ff, nl, forces, mols, dt, order: 2, top_split: true, exact_rotor: false, rng: Rng::new(1) };
+        let mut s = Self {
+            sys,
+            ff,
+            nl,
+            forces,
+            mols,
+            dt,
+            order: 2,
+            top_split: true,
+            exact_rotor: false,
+            rng: Rng::new(1),
+        };
         s.sync_sites();
         s.forces = compute_forces(&s.sys, &s.ff, &mut s.nl)?;
         Ok(s)
@@ -256,7 +331,11 @@ impl RigidMdSimulation {
     pub fn sync_sites(&mut self) {
         for m in &self.mols {
             let r = quat_to_matrix(&m.rb.q);
-            let wb = [m.rb.l_body[0] / m.rb.inertia[0], m.rb.l_body[1] / m.rb.inertia[1], m.rb.l_body[2] / m.rb.inertia[2]];
+            let wb = [
+                m.rb.l_body[0] / m.rb.inertia[0],
+                m.rb.l_body[1] / m.rb.inertia[1],
+                m.rb.l_body[2] / m.rb.inertia[2],
+            ];
             let mut ws = [0.0; 3];
             for i in 0..3 {
                 for k in 0..3 {
@@ -376,7 +455,12 @@ impl RigidMdSimulation {
     /// Translational plus rotational kinetic energy.
     #[must_use]
     pub fn kinetic_energy(&self) -> f64 {
-        self.mols.iter().map(|m| 0.5 * m.mass * m.vcom.iter().map(|v| v * v).sum::<f64>() + m.rb.kinetic_energy()).sum()
+        self.mols
+            .iter()
+            .map(|m| {
+                0.5 * m.mass * m.vcom.iter().map(|v| v * v).sum::<f64>() + m.rb.kinetic_energy()
+            })
+            .sum()
     }
 
     /// Total energy.
@@ -388,7 +472,11 @@ impl RigidMdSimulation {
     /// Degrees of freedom: 3 translations plus the non-degenerate rotations, minus the 3 of the total momentum.
     #[must_use]
     pub fn dof(&self) -> f64 {
-        let d: usize = self.mols.iter().map(|m| 3 + m.rb.inertia.iter().filter(|i| i.is_finite()).count()).sum();
+        let d: usize = self
+            .mols
+            .iter()
+            .map(|m| 3 + m.rb.inertia.iter().filter(|i| i.is_finite()).count())
+            .sum();
         d.saturating_sub(3) as f64
     }
 
@@ -449,8 +537,14 @@ impl RigidMdSimulation {
             let arms = self.arms(mi);
             for a in 0..m.sites.len() {
                 for b in a + 1..m.sites.len() {
-                    let d0: f64 = (0..3).map(|k| (m.body[a][k] - m.body[b][k]).powi(2)).sum::<f64>().sqrt();
-                    let d1: f64 = (0..3).map(|k| (arms[a][k] - arms[b][k]).powi(2)).sum::<f64>().sqrt();
+                    let d0: f64 = (0..3)
+                        .map(|k| (m.body[a][k] - m.body[b][k]).powi(2))
+                        .sum::<f64>()
+                        .sqrt();
+                    let d1: f64 = (0..3)
+                        .map(|k| (arms[a][k] - arms[b][k]).powi(2))
+                        .sum::<f64>()
+                        .sqrt();
                     worst = worst.max((d0 - d1).abs());
                 }
             }

@@ -31,7 +31,11 @@ pub(super) fn poisson_integral(
     radius: NodeId,
     dimension: i64,
 ) -> Option<NodeId> {
-    let (r, theta, phi) = (cx.graph.sym("r"), cx.graph.sym("theta"), cx.graph.sym("phi"));
+    let (r, theta, phi) = (
+        cx.graph.sym("r"),
+        cx.graph.sym("theta"),
+        cx.graph.sym("phi"),
+    );
     let (zero, two, pi) = (cx.graph.int(0), cx.graph.int(2), pi(cx)?);
     let two_pi = mul(cx.graph, &[two, pi]);
     let r2 = powi(cx.graph, radius, 2);
@@ -111,7 +115,11 @@ pub(super) fn greens_ball(
     if !(2..=3).contains(&dimension) {
         return None;
     }
-    let names: &[(&str, &str)] = if dimension == 2 { &[("x", "s_x"), ("y", "s_y")] } else { &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")] };
+    let names: &[(&str, &str)] = if dimension == 2 {
+        &[("x", "s_x"), ("y", "s_y")]
+    } else {
+        &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")]
+    };
     let mut x_squared = Vec::new();
     let mut s_squared = Vec::new();
     let mut cross = Vec::new();
@@ -124,7 +132,12 @@ pub(super) fn greens_ball(
         let gap = sub(cx.graph, xa, sa);
         gaps.push(powi(cx.graph, gap, 2));
     }
-    let (xx, ss, xs, gap2) = (add(cx.graph, &x_squared), add(cx.graph, &s_squared), add(cx.graph, &cross), add(cx.graph, &gaps));
+    let (xx, ss, xs, gap2) = (
+        add(cx.graph, &x_squared),
+        add(cx.graph, &s_squared),
+        add(cx.graph, &cross),
+        add(cx.graph, &gaps),
+    );
     let r2 = powi(cx.graph, radius, 2);
     let rho2 = {
         let product = mul(cx.graph, &[xx, ss]);
@@ -191,7 +204,11 @@ pub(super) fn greens_robin(
     if !(2..=3).contains(&dimension) {
         return None;
     }
-    let names: &[(&str, &str)] = if dimension == 2 { &[("x", "s_x"), ("y", "s_y")] } else { &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")] };
+    let names: &[(&str, &str)] = if dimension == 2 {
+        &[("x", "s_x"), ("y", "s_y")]
+    } else {
+        &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")]
+    };
     let last = names.len() - 1;
     let w = cx.graph.sym("w");
     let mut direct = Vec::new();
@@ -214,7 +231,11 @@ pub(super) fn greens_robin(
             integral.push(square);
         }
     }
-    let (q_direct, q_image, q_integral) = (add(cx.graph, &direct), add(cx.graph, &image), add(cx.graph, &integral));
+    let (q_direct, q_image, q_integral) = (
+        add(cx.graph, &direct),
+        add(cx.graph, &image),
+        add(cx.graph, &integral),
+    );
     let first = fundamental_laplace(cx, dimension, q_direct)?;
     let second = fundamental_laplace(cx, dimension, q_image)?;
     let mut terms = vec![first, second];
@@ -257,7 +278,12 @@ pub(super) fn greens_ball_robin(
         ss.push(powi(cx.graph, sa, 2));
         dot.push(mul(cx.graph, &[xa, sa]));
     }
-    let (q, xx, sss, xs) = (add(cx.graph, &gaps), add(cx.graph, &rr), add(cx.graph, &ss), add(cx.graph, &dot));
+    let (q, xx, sss, xs) = (
+        add(cx.graph, &gaps),
+        add(cx.graph, &rr),
+        add(cx.graph, &ss),
+        add(cx.graph, &dot),
+    );
     let free = fundamental_laplace(cx, 3, q)?;
     let (r, s) = (sqrt(cx, xx)?, sqrt(cx, sss)?);
     let rs = mul(cx.graph, &[r, s]);
@@ -302,4 +328,249 @@ pub(super) fn greens_ball_robin(
     let series = call(cx, "sum", &[body, l, zero, oo])?;
     let g = add(cx.graph, &[free, series]);
     Some(g)
+}
+
+/// `pde_greens_ball_neumann(R, d)`: the generalised Neumann Green's function
+/// of `-Δ` in the disk (`d = 2`) or ball (`d = 3`) of radius `R`: the inverse
+/// of `-Δ` on the zero-mean functions with a vanishing normal derivative,
+/// `-ΔG = δ(x - s) - 1/|B|`, `∂_r G = 0` on `r = R` and
+/// `∫_B G(x, s) dx = 0`. It is symmetric, `G(x, s) = G(s, x)`. With
+/// `D = 1 - 2 x·s/R² + |x|²|s|²/R⁴` (so `R√D` is the distance from `x` to
+/// the Kelvin image of `s` scaled by `|s|/R`):
+///
+/// * `d = 3`: `G = 1/(4π|x - s|) + (1/(4πR))(1/√D - 1 + ln(2/(1 - x·s/R² + √D))) + (|x|² + |s|²)/(8πR³) - 9/(20πR)`,
+/// * `d = 2`: `G = -ln|x - s|/(2π) - ln(D)/(4π) + (|x|² + |s|²)/(4πR²) + ln(R)/(2π) - 3/(8π)`.
+///
+/// The first two terms are the symmetric Neumann function `S` of `-Δ` with
+/// `-ΔS = δ` and `∂_r S = -1/|∂B|`, the sum of the Legendre series
+/// `1/(4π|x - s|) + (1/R) Σ_{l≥1} ((l+1)/(4πl)) (r s/R²)^l P_l(cos γ)` and of
+/// the Fourier series `-ln|x - s|/(2π) - Σ_{l≥1} (r s/R²)^l cos(lγ)/(2πl)`.
+/// Adding the symmetrised particular solution `(|x|² + |s|²)/(2d|B|)` of
+/// `-Δh = -1/|B|` (whose normal derivative is `+1/|∂B|`) turns the boundary
+/// derivative into `0` and makes the mean independent of `s`; the last
+/// constant sets the mean to zero. The unsymmetrised convention
+/// `-ΔT = δ`, `∂_r T = -1/|∂B|`, `∫_B T dx = 0` is recovered by
+/// `T = G - (|x|² - ⟨|x|²⟩)/(2d|B|)` with `⟨|x|²⟩ = dR²/(d+2)`; those three
+/// conditions cannot hold together with `T(x, s) = T(s, x)`.
+pub(super) fn greens_ball_neumann(
+    cx: &mut Cx<'_>,
+    radius: NodeId,
+    dimension: i64,
+) -> Option<NodeId> {
+    if !(2..=3).contains(&dimension) {
+        return None;
+    }
+    let names: &[(&str, &str)] = if dimension == 2 {
+        &[("x", "s_x"), ("y", "s_y")]
+    } else {
+        &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")]
+    };
+    let (mut rr, mut ss, mut dot, mut gaps) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for &(a, b) in names {
+        let (xa, sa) = (cx.graph.sym(a), cx.graph.sym(b));
+        rr.push(powi(cx.graph, xa, 2));
+        ss.push(powi(cx.graph, sa, 2));
+        dot.push(mul(cx.graph, &[xa, sa]));
+        let gap = sub(cx.graph, xa, sa);
+        gaps.push(powi(cx.graph, gap, 2));
+    }
+    let (xx, sss, xs, q) = (
+        add(cx.graph, &rr),
+        add(cx.graph, &ss),
+        add(cx.graph, &dot),
+        add(cx.graph, &gaps),
+    );
+    let free = fundamental_laplace(cx, dimension, q)?;
+    let (two, four) = (cx.graph.int(2), cx.graph.int(4));
+    let r2 = powi(cx.graph, radius, 2);
+    let r4 = powi(cx.graph, radius, 4);
+    // D = 1 - 2 x·s/R² + |x|²|s|²/R⁴.
+    let d_value = {
+        let one = cx.graph.int(1);
+        let doubled = mul(cx.graph, &[two, xs]);
+        let scaled_cross = div(cx, doubled, r2);
+        let product = mul(cx.graph, &[xx, sss]);
+        let scaled_product = div(cx, product, r4);
+        let t = sub(cx.graph, one, scaled_cross);
+        add(cx.graph, &[t, scaled_product])
+    };
+    let pi = super::util::pi(cx)?;
+    let four_pi = mul(cx.graph, &[four, pi]);
+    let g = if dimension == 3 {
+        let root = sqrt(cx, d_value)?;
+        let one = cx.graph.int(1);
+        let inverse = div(cx, one, root);
+        let base = sub(cx.graph, inverse, one);
+        // ln(2/(1 - x·s/R² + √D)).
+        let logarithm = {
+            let scaled = div(cx, xs, r2);
+            let t = sub(cx.graph, one, scaled);
+            let denominator = add(cx.graph, &[t, root]);
+            let ratio = div(cx, two, denominator);
+            call(cx, "ln", &[ratio])?
+        };
+        // (|x|² + |s|²)/(8πR³) - 9/(20πR): the mean-zero normalisation.
+        let eight = cx.graph.int(8);
+        let r3 = powi(cx.graph, radius, 3);
+        let h_term = {
+            let sum = add(cx.graph, &[xx, sss]);
+            let denominator = mul(cx.graph, &[eight, pi, r3]);
+            div(cx, sum, denominator)
+        };
+        let constant = {
+            let numerator = cx.graph.int(-9);
+            let twenty = cx.graph.int(20);
+            let denominator = mul(cx.graph, &[twenty, pi, radius]);
+            div(cx, numerator, denominator)
+        };
+        let correction = add(cx.graph, &[base, logarithm]);
+        let denominator = mul(cx.graph, &[four_pi, radius]);
+        let scaled = div(cx, correction, denominator);
+        add(cx.graph, &[free, scaled, h_term, constant])
+    } else {
+        let logarithm = call(cx, "ln", &[d_value])?;
+        // (|x|² + |s|²)/(4πR²) + ln R/(2π) - 3/(8π).
+        let h_term = {
+            let sum = add(cx.graph, &[xx, sss]);
+            let denominator = mul(cx.graph, &[four, pi, r2]);
+            div(cx, sum, denominator)
+        };
+        let constant = {
+            let log_r = call(cx, "ln", &[radius])?;
+            let two_pi = mul(cx.graph, &[two, pi]);
+            let leading = div(cx, log_r, two_pi);
+            let three = cx.graph.int(3);
+            let eight = cx.graph.int(8);
+            let eight_pi = mul(cx.graph, &[eight, pi]);
+            let fraction = div(cx, three, eight_pi);
+            sub(cx.graph, leading, fraction)
+        };
+        let scaled = {
+            let term = div(cx, logarithm, four_pi);
+            neg(cx.graph, term)
+        };
+        add(cx.graph, &[free, scaled, h_term, constant])
+    };
+    Some(cx.simplify(g))
+}
+
+/// `pde_greens_exterior_robin(R, h, d)`: the Green's function of `-Δ` outside
+/// the disk (`d = 2`) or ball (`d = 3`) of radius `R`, with
+/// `∂_r G + h G = 0` on `r = R`, `h > 0`, the outward normal derivative
+/// `∂_r` (the sign convention opposite to the half-space `pde_greens_robin`,
+/// where the normal points into the domain). In 3D the formula at `h = 0` is
+/// the exterior Neumann Green's function; 2D `h = 0` is refused (the exterior
+/// Neumann problem is singular). `h R` must not be a positive
+/// integer: there `r^{-(l+1)}` (3D) or a harmonic `r^{-l}` (2D) satisfies the
+/// boundary condition and the Green's function does not exist. With
+/// `r = |x|`, `s = |s|`, `cos γ = x·s/(r s)`:
+///
+/// * `d = 3`: `G = 1/(4π|x - s|) + Σ_l ((l + hR)/(4π((l+1) - hR))) (R²/(r s))^l R/(r s) P_l(cos γ)`,
+/// * `d = 2`: `G = -ln|x - s|/(2π) + ln(r s)/(2π) - (ln R + 1/(Rh))/(2π) - Σ_{l≥1} ((l + hR)/(2π l(hR - l))) (R²/(r s))^l cos(lγ)`.
+///
+/// The 3D correction decays like `1/r`, so `G → 1/(4π|x - s|)` at infinity;
+/// in 2D the `ln(r s)` term cancels the growth of the fundamental solution
+/// and `G` tends to `(ln(|s|/R) - 1/(Rh))/(2π)` (bounded, not decaying).
+pub(super) fn greens_exterior_robin(
+    cx: &mut Cx<'_>,
+    radius: NodeId,
+    h: NodeId,
+    dimension: i64,
+) -> Option<NodeId> {
+    if !(2..=3).contains(&dimension) {
+        return None;
+    }
+    if dimension == 2 && cx.is_zero(h) {
+        return None;
+    }
+    if let (Some(rv), Some(hv)) = (
+        super::modes::exact_value(cx, radius),
+        super::modes::exact_value(cx, h),
+    ) {
+        let hr = hv * rv;
+        if hr > 0.0 && (hr - hr.round()).abs() < 1e-12 {
+            return None;
+        }
+    }
+    let names: &[(&str, &str)] = if dimension == 2 {
+        &[("x", "s_x"), ("y", "s_y")]
+    } else {
+        &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")]
+    };
+    let (mut rr, mut ss, mut dot, mut gaps) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for &(a, b) in names {
+        let (xa, sa) = (cx.graph.sym(a), cx.graph.sym(b));
+        rr.push(powi(cx.graph, xa, 2));
+        ss.push(powi(cx.graph, sa, 2));
+        dot.push(mul(cx.graph, &[xa, sa]));
+        let gap = sub(cx.graph, xa, sa);
+        gaps.push(powi(cx.graph, gap, 2));
+    }
+    let (xx, sss, xs, q) = (
+        add(cx.graph, &rr),
+        add(cx.graph, &ss),
+        add(cx.graph, &dot),
+        add(cx.graph, &gaps),
+    );
+    let free = fundamental_laplace(cx, dimension, q)?;
+    let (r, s) = (sqrt(cx, xx)?, sqrt(cx, sss)?);
+    let rs = mul(cx.graph, &[r, s]);
+    let (two, four) = (cx.graph.int(2), cx.graph.int(4));
+    let r2 = powi(cx.graph, radius, 2);
+    let pi = super::util::pi(cx)?;
+    let four_pi = mul(cx.graph, &[four, pi]);
+    let hr = mul(cx.graph, &[h, radius]);
+    let one = cx.graph.int(1);
+    let l = cx.graph.sym("l");
+    let cosine = div(cx, xs, rs);
+    let ratio = div(cx, r2, rs);
+    let g = if dimension == 3 {
+        let l1 = add(cx.graph, &[l, one]);
+        // (l + hR)/(4π((l+1) - hR)).
+        let coefficient = {
+            let top = add(cx.graph, &[l, hr]);
+            let gap = sub(cx.graph, l1, hr);
+            let bottom = mul(cx.graph, &[four_pi, gap]);
+            div(cx, top, bottom)
+        };
+        // (R²/(r s))^l R/(r s).
+        let decay = pow(cx.graph, ratio, l);
+        let scale = div(cx, radius, rs);
+        let power = mul(cx.graph, &[decay, scale]);
+        let legendre = call(cx, "legendre", &[l, cosine])?;
+        let body = mul(cx.graph, &[coefficient, power, legendre]);
+        let zero = cx.graph.int(0);
+        let oo = super::util::infinity(cx)?;
+        let series = call(cx, "sum", &[body, l, zero, oo])?;
+        add(cx.graph, &[free, series])
+    } else {
+        // (l + hR)/(2π l(hR - l)).
+        let coefficient = {
+            let top = add(cx.graph, &[l, hr]);
+            let gap = sub(cx.graph, hr, l);
+            let bottom = mul(cx.graph, &[two, pi, l, gap]);
+            div(cx, top, bottom)
+        };
+        let angle = call(cx, "acos", &[cosine])?;
+        let phase = mul(cx.graph, &[l, angle]);
+        let trig = call(cx, "cos", &[phase])?;
+        let decay = pow(cx.graph, ratio, l);
+        let body = mul(cx.graph, &[coefficient, decay, trig]);
+        let oo = super::util::infinity(cx)?;
+        let series = call(cx, "sum", &[body, l, one, oo])?;
+        // ln(r s)/(2π) - (ln R + 1/(Rh))/(2π).
+        let logarithmic = {
+            let ln_rs = call(cx, "ln", &[rs])?;
+            let ln_r = call(cx, "ln", &[radius])?;
+            let t = sub(cx.graph, ln_rs, ln_r);
+            let inverse = div(cx, one, hr);
+            let numerator = sub(cx.graph, t, inverse);
+            let two_pi = mul(cx.graph, &[two, pi]);
+            div(cx, numerator, two_pi)
+        };
+        let minus_one = cx.graph.int(-1);
+        let signed = mul(cx.graph, &[minus_one, series]);
+        add(cx.graph, &[free, logarithmic, signed])
+    };
+    Some(cx.simplify(g))
 }

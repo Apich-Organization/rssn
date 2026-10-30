@@ -112,7 +112,12 @@ impl SseXxz {
         beta: f64,
         seed: u64,
     ) -> Result<Self, String> {
-        if bonds.is_empty() || beta <= 0.0 || bonds.iter().any(|&(i, j)| i >= n_sites || j >= n_sites || i == j) {
+        if bonds.is_empty()
+            || beta <= 0.0
+            || bonds
+                .iter()
+                .any(|&(i, j)| i >= n_sites || j >= n_sites || i == j)
+        {
             return Err("need a non-empty valid bond list and beta > 0".into());
         }
         // bipartite check
@@ -142,7 +147,9 @@ impl SseXxz {
             }
         }
         let mut rng = Rng::new(seed);
-        let spins = (0..n_sites).map(|_| if rng.uniform() < 0.5 { 1 } else { -1 }).collect();
+        let spins = (0..n_sites)
+            .map(|_| if rng.uniform() < 0.5 { 1 } else { -1 })
+            .collect();
         let shift = 0.25 * jz.abs() + 0.05;
         let cap = 16;
         Ok(Self {
@@ -295,7 +302,12 @@ impl SseXxz {
             loop {
                 let p = v / 4;
                 let l_in = v % 4;
-                let mut s = [self.legspin[4 * p], self.legspin[4 * p + 1], self.legspin[4 * p + 2], self.legspin[4 * p + 3]];
+                let mut s = [
+                    self.legspin[4 * p],
+                    self.legspin[4 * p + 1],
+                    self.legspin[4 * p + 2],
+                    self.legspin[4 * p + 3],
+                ];
                 s[l_in] = -s[l_in];
                 let mut w = [0.0; 4];
                 for (l_out, wv) in w.iter_mut().enumerate() {
@@ -365,7 +377,11 @@ impl SseXxz {
             .zip(&self.colour)
             .map(|(&s, &c)| 0.5 * f64::from(s) * if c == 0 { 1.0 } else { -1.0 })
             .sum();
-        SseSample { n_ops: self.n_ops, magnetisation: mag, staggered: stag }
+        SseSample {
+            n_ops: self.n_ops,
+            magnetisation: mag,
+            staggered: stag,
+        }
     }
 
     /// Runs `therm` thermalisation sweeps and `sweeps` measured sweeps and returns the averages
@@ -399,7 +415,9 @@ impl SseXxz {
         // blocked error of <n>
         let blocks = 20.min(series.len().max(1));
         let bl = series.len() / blocks.max(1);
-        let means: Vec<f64> = (0..blocks).map(|k| series[k * bl..(k + 1) * bl].iter().sum::<f64>() / bl.max(1) as f64).collect();
+        let means: Vec<f64> = (0..blocks)
+            .map(|k| series[k * bl..(k + 1) * bl].iter().sum::<f64>() / bl.max(1) as f64)
+            .collect();
         let mm = means.iter().sum::<f64>() / blocks as f64;
         let var = means.iter().map(|x| (x - mm).powi(2)).sum::<f64>() / (blocks.max(2) - 1) as f64;
         SseResult {

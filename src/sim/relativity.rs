@@ -112,7 +112,10 @@ impl KerrNewman {
         let gtt = -((r * r + a * a).powi(2) - del * a * a * s * s) / (sig * del);
         let gtp = -a * w / (sig * del);
         let gpp = (del - a * a * s * s) / (sig * del * s * s);
-        0.5 * (gtt * e * e - 2.0 * gtp * e * l + gpp * l * l + del / sig * pr * pr + pth * pth / sig)
+        0.5 * (gtt * e * e - 2.0 * gtp * e * l
+            + gpp * l * l
+            + del / sig * pr * pr
+            + pth * pth / sig)
     }
 
     /// Hamilton's equations for `(r, theta, p_r, p_theta)` plus `(dt, dphi)`: returns `([4], [2])`.
@@ -134,7 +137,9 @@ impl KerrNewman {
         let ham = |rr: f64, tt: f64| self.hamiltonian(rr, tt, pr, pth, e, l);
         let dr = 3e-4 * r.abs().max(1.0);
         let dt = 1e-3;
-        let d5 = |f: &dyn Fn(f64) -> f64, x: f64, h: f64| (-f(x + 2.0 * h) + 8.0 * f(x + h) - 8.0 * f(x - h) + f(x - 2.0 * h)) / (12.0 * h);
+        let d5 = |f: &dyn Fn(f64) -> f64, x: f64, h: f64| {
+            (-f(x + 2.0 * h) + 8.0 * f(x + h) - 8.0 * f(x - h) + f(x - 2.0 * h)) / (12.0 * h)
+        };
         let dh_dr = d5(&|x| ham(x, th), r, dr);
         let dh_dth = d5(&|x| ham(r, x), th, dt);
         (
@@ -228,7 +233,10 @@ impl KerrNewman {
         prograde: bool,
     ) -> Option<f64> {
         let rp = self.photon_orbit(prograde)?;
-        let e = |r: f64| self.circular_orbit(r, prograde).map_or(f64::INFINITY, |o| o.0);
+        let e = |r: f64| {
+            self.circular_orbit(r, prograde)
+                .map_or(f64::INFINITY, |o| o.0)
+        };
         let mut lo = rp * 1.0001;
         let mut hi = 30.0 * self.m;
         // golden section on a unimodal E(r)
@@ -285,7 +293,19 @@ impl Geodesic {
         radial_sign: f64,
         mu2: f64,
     ) -> Result<Self, String> {
-        Self::from_init(metric, &GeodesicInit { r, theta, phi, energy, lz, ptheta, radial_sign, mu2 })
+        Self::from_init(
+            metric,
+            &GeodesicInit {
+                r,
+                theta,
+                phi,
+                energy,
+                lz,
+                ptheta,
+                radial_sign,
+                mu2,
+            },
+        )
     }
 
     /// As [`Geodesic::new`] with the initial data bundled in a [`GeodesicInit`].
@@ -296,8 +316,29 @@ impl Geodesic {
         metric: KerrNewman,
         init: &GeodesicInit,
     ) -> Result<Self, String> {
-        let GeodesicInit { r, theta, phi, energy, lz, ptheta, radial_sign, mu2 } = *init;
-        let mut g = Self { metric, t: 0.0, r, theta, phi, pr: 0.0, ptheta, energy, lz, lambda: 0.0, mu2 };
+        let GeodesicInit {
+            r,
+            theta,
+            phi,
+            energy,
+            lz,
+            ptheta,
+            radial_sign,
+            mu2,
+        } = *init;
+        let mut g = Self {
+            metric,
+            t: 0.0,
+            r,
+            theta,
+            phi,
+            pr: 0.0,
+            ptheta,
+            energy,
+            lz,
+            lambda: 0.0,
+            mu2,
+        };
         let h0 = metric.hamiltonian(r, theta, 0.0, ptheta, energy, lz);
         let kcoef = metric.hamiltonian(r, theta, 1.0, ptheta, energy, lz) - h0;
         let need = -0.5 * mu2 - h0;
@@ -317,20 +358,48 @@ impl Geodesic {
         r: f64,
         prograde: bool,
     ) -> Result<Self, String> {
-        let (e, l, _) = metric.circular_orbit(r, prograde).ok_or("no circular orbit at this radius")?;
-        Ok(Self { metric, t: 0.0, r, theta: std::f64::consts::FRAC_PI_2, phi: 0.0, pr: 0.0, ptheta: 0.0, energy: e, lz: l, lambda: 0.0, mu2: 1.0 })
+        let (e, l, _) = metric
+            .circular_orbit(r, prograde)
+            .ok_or("no circular orbit at this radius")?;
+        Ok(Self {
+            metric,
+            t: 0.0,
+            r,
+            theta: std::f64::consts::FRAC_PI_2,
+            phi: 0.0,
+            pr: 0.0,
+            ptheta: 0.0,
+            energy: e,
+            lz: l,
+            lambda: 0.0,
+            mu2: 1.0,
+        })
     }
 
     /// Value of the constraint residual `H + mu^2/2` (zero on the mass shell).
     #[must_use]
     pub fn constraint(&self) -> f64 {
-        self.metric.hamiltonian(self.r, self.theta, self.pr, self.ptheta, self.energy, self.lz) + 0.5 * self.mu2
+        self.metric.hamiltonian(
+            self.r,
+            self.theta,
+            self.pr,
+            self.ptheta,
+            self.energy,
+            self.lz,
+        ) + 0.5 * self.mu2
     }
 
     fn project(&mut self) {
         let m = &self.metric;
         let v = m.hamiltonian(self.r, self.theta, 0.0, 0.0, self.energy, self.lz);
-        let kin = m.hamiltonian(self.r, self.theta, self.pr, self.ptheta, self.energy, self.lz) - v;
+        let kin = m.hamiltonian(
+            self.r,
+            self.theta,
+            self.pr,
+            self.ptheta,
+            self.energy,
+            self.lz,
+        ) - v;
         let target = -0.5 * self.mu2 - v;
         if kin > 1e-14 && target > 0.0 {
             let s = (target / kin).sqrt();
@@ -347,12 +416,27 @@ impl Geodesic {
         let m = &self.metric;
         let (e, l) = (self.energy, self.lz);
         let resid = |y1: &[f64; 4]| -> [f64; 4] {
-            let mid = [f64::midpoint(y0[0], y1[0]), f64::midpoint(y0[1], y1[1]), f64::midpoint(y0[2], y1[2]), f64::midpoint(y0[3], y1[3])];
+            let mid = [
+                f64::midpoint(y0[0], y1[0]),
+                f64::midpoint(y0[1], y1[1]),
+                f64::midpoint(y0[2], y1[2]),
+                f64::midpoint(y0[3], y1[3]),
+            ];
             let (f, _) = m.rhs(&mid, e, l);
-            [y1[0] - y0[0] - h * f[0], y1[1] - y0[1] - h * f[1], y1[2] - y0[2] - h * f[2], y1[3] - y0[3] - h * f[3]]
+            [
+                y1[0] - y0[0] - h * f[0],
+                y1[1] - y0[1] - h * f[1],
+                y1[2] - y0[2] - h * f[2],
+                y1[3] - y0[3] - h * f[3],
+            ]
         };
         let (f0, _) = m.rhs(&y0, e, l);
-        let mut y1 = [y0[0] + h * f0[0], y0[1] + h * f0[1], y0[2] + h * f0[2], y0[3] + h * f0[3]];
+        let mut y1 = [
+            y0[0] + h * f0[0],
+            y0[1] + h * f0[1],
+            y0[2] + h * f0[2],
+            y0[3] + h * f0[3],
+        ];
         let mut prev = f64::INFINITY;
         for it in 0..60 {
             let f = resid(&y1);
@@ -360,7 +444,12 @@ impl Geodesic {
             let res = f.iter().map(|v| v.abs()).fold(0.0, f64::max) / scale;
             // the finite-difference gradient limits the attainable residual to ~1e-11
             if res < 1e-10 || (it >= 2 && res < 1e-7 && res >= 0.5 * prev) {
-                let mid = [f64::midpoint(y0[0], y1[0]), f64::midpoint(y0[1], y1[1]), f64::midpoint(y0[2], y1[2]), f64::midpoint(y0[3], y1[3])];
+                let mid = [
+                    f64::midpoint(y0[0], y1[0]),
+                    f64::midpoint(y0[1], y1[1]),
+                    f64::midpoint(y0[2], y1[2]),
+                    f64::midpoint(y0[3], y1[3]),
+                ];
                 let (_, tp) = m.rhs(&mid, e, l);
                 return Ok((y1, tp));
             }

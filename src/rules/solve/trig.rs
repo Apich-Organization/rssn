@@ -44,7 +44,6 @@ use super::polynomial_roots;
 use super::product;
 use super::reciprocal;
 use super::sample_envs;
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Facts;
 use crate::graph::Graph;
@@ -52,12 +51,13 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::OpId;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::rules::poly::ratio;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 /// Largest multiple-angle index `m` in `sin(m theta)` that is expanded
 /// into a polynomial in `sin theta`, `cos theta`; the polynomial-size
@@ -98,7 +98,9 @@ fn value(
     graph: &Graph,
     node: NodeId,
 ) -> Option<f64> {
-    graph.eval(node, &Env::numeric(0.0)).filter(|v| v.is_finite())
+    graph
+        .eval(node, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())
 }
 
 fn rat(
@@ -142,7 +144,11 @@ fn multiple_angle(
         re = new_re;
         im = new_im;
     }
-    Some(if m < 0 { (im.neg(), re) } else { (im, re) })
+    Some(if m < 0 {
+        (im.neg(), re)
+    } else {
+        (im, re)
+    })
 }
 
 /// `p` with every `C^2` replaced by `1 - S^2`: `A(S) + C B(S)`.
@@ -158,8 +164,15 @@ fn reduce_circle(
     let one_minus = Poly::constant(Number::from(1)).sub(&Poly::generator(kept).pow(2, cap)?);
     let mut out = Poly::zero();
     for (mono, coeff) in p.terms() {
-        let e = mono.iter().find(|&&(g, _)| g == eliminated).map_or(0, |&(_, e)| e);
-        let rest: Vec<(u32, u32)> = mono.iter().copied().filter(|&(g, _)| g != eliminated).collect();
+        let e = mono
+            .iter()
+            .find(|&&(g, _)| g == eliminated)
+            .map_or(0, |&(_, e)| e);
+        let rest: Vec<(u32, u32)> = mono
+            .iter()
+            .copied()
+            .filter(|&(g, _)| g != eliminated)
+            .collect();
         let (q, r) = (e / 2, e % 2);
         let mut piece = Poly::monomial(rest, coeff.clone());
         if r == 1 {
@@ -196,7 +209,10 @@ fn recognise(v: f64) -> Option<BigRational> {
         let scaled = v * f64::from(i32::try_from(q).ok()?);
         let nearest = scaled.round();
         if (scaled - nearest).abs() < 1e-9 {
-            return Some(BigRational::new(BigInt::from(nearest as i64), BigInt::from(q)));
+            return Some(BigRational::new(
+                BigInt::from(nearest as i64),
+                BigInt::from(q),
+            ));
         }
     }
     None
@@ -212,7 +228,9 @@ fn families(
     let symbol = graph.symbol_of(x)?;
     let ops: Vec<Option<OpId>> = TRIG_NAMES.iter().map(|n| graph.ops().lookup(n)).collect();
     let is_trig = |g: &Graph, n: NodeId| ops.iter().any(|&o| o == Some(g.op(n)));
-    let trig_nodes = super::heuristics::nodes_with(graph, term, |g, n| is_trig(g, n) && g.depends_on(g.find(n), symbol));
+    let trig_nodes = super::heuristics::nodes_with(graph, term, |g, n| {
+        is_trig(g, n) && g.depends_on(g.find(n), symbol)
+    });
     if trig_nodes.is_empty() {
         return None;
     }
@@ -267,7 +285,10 @@ fn families(
             failed = true;
             return None;
         };
-        let m = (k.clone() / g.clone()).to_integer().to_i64().filter(|m| m.abs() <= MAX_MULTIPLE);
+        let m = (k.clone() / g.clone())
+            .to_integer()
+            .to_i64()
+            .filter(|m| m.abs() <= MAX_MULTIPLE);
         let Some(m) = m else {
             failed = true;
             return None;
@@ -285,17 +306,27 @@ fn families(
             let delta = graph.node(core::ADD, &[c, drift]);
             let mut zero = value(graph, delta).is_some_and(|v| v.abs() < 1e-12);
             if !zero && value(graph, delta).is_none() {
-                zero = sample_envs(graph, &[delta], None).iter().all(|env| graph.eval(delta, env).is_none_or(|v| v.abs() < 1e-9));
+                zero = sample_envs(graph, &[delta], None)
+                    .iter()
+                    .all(|env| graph.eval(delta, env).is_none_or(|v| v.abs() < 1e-9));
             }
             if zero {
                 (sin_t, cos_t)
-            } else if let (Some(sin_op), Some(cos_op)) = (graph.ops().lookup("sin"), graph.ops().lookup("cos")) {
-                let (sd, cd) = (shift_constant(graph, sin_op, delta), shift_constant(graph, cos_op, delta));
+            } else if let (Some(sin_op), Some(cos_op)) =
+                (graph.ops().lookup("sin"), graph.ops().lookup("cos"))
+            {
+                let (sd, cd) = (
+                    shift_constant(graph, sin_op, delta),
+                    shift_constant(graph, cos_op, delta),
+                );
                 let (a, b) = (product(graph, &[sin_t, cd]), product(graph, &[cos_t, sd]));
                 let (c1, c2) = (product(graph, &[cos_t, cd]), product(graph, &[sin_t, sd]));
                 let neg = graph.int(-1);
                 let neg_c2 = product(graph, &[neg, c2]);
-                (graph.node(core::ADD, &[a, b]), graph.node(core::ADD, &[c1, neg_c2]))
+                (
+                    graph.node(core::ADD, &[a, b]),
+                    graph.node(core::ADD, &[c1, neg_c2]),
+                )
             } else {
                 failed = true;
                 return None;
@@ -337,10 +368,15 @@ fn families(
     let (a_s, b_s) = split_parity(&by_s, gc);
     let by_c = reduce_circle(&numer, gs, gc, gs, gc)?;
     let (a_c, b_c) = split_parity(&by_c, gs);
-    let add_theta = |graph: &mut Graph, base: NodeId, period: &BigRational, theta: &mut Vec<Family>| {
-        theta.push(Family { base, rational: None, period: period.clone() });
-        let _ = graph;
-    };
+    let add_theta =
+        |graph: &mut Graph, base: NodeId, period: &BigRational, theta: &mut Vec<Family>| {
+            theta.push(Family {
+                base,
+                rational: None,
+                period: period.clone(),
+            });
+            let _ = graph;
+        };
     if b_s.is_zero() && !a_s.is_zero() {
         // Polynomial in S.
         if a_s.degree_in(gs) == 0 {
@@ -396,7 +432,11 @@ fn families(
         let t_node = graph.symbol_node(t_symbol);
         let gt = gens.index(graph, t_node);
         let cap = Limits::default().terms;
-        let degree = numer.terms().map(|(m, _)| m.iter().map(|&(_, e)| e).sum::<u32>()).max().unwrap_or(0);
+        let degree = numer
+            .terms()
+            .map(|(m, _)| m.iter().map(|&(_, e)| e).sum::<u32>())
+            .max()
+            .unwrap_or(0);
         let tp = Poly::generator(gt);
         let two_t = tp.scale(&Number::from(2));
         let one = Poly::constant(Number::from(1));
@@ -408,7 +448,11 @@ fn families(
         for (mono, coeff) in numer.terms() {
             let a = mono.iter().find(|&&(g, _)| g == gs).map_or(0, |&(_, e)| e);
             let b = mono.iter().find(|&&(g, _)| g == gc).map_or(0, |&(_, e)| e);
-            let rest: Vec<(u32, u32)> = mono.iter().copied().filter(|&(g, _)| g != gs && g != gc).collect();
+            let rest: Vec<(u32, u32)> = mono
+                .iter()
+                .copied()
+                .filter(|&(g, _)| g != gs && g != gc)
+                .collect();
             let mut piece = Poly::monomial(rest.clone(), coeff.clone());
             piece = piece.mul(&two_t.pow(a, cap)?, cap)?;
             piece = piece.mul(&one_minus.pow(b, cap)?, cap)?;
@@ -446,16 +490,17 @@ fn recognise_families(
     let mut out = Vec::with_capacity(theta.len());
     for mut f in theta {
         if let Some(v) = value(graph, f.base)
-            && let Some(r) = recognise(v / std::f64::consts::PI) {
-                let node = if r.is_zero() {
-                    graph.int(0)
-                } else {
-                    let coefficient = rat(graph, &r);
-                    product(graph, &[coefficient, pi_node])
-                };
-                f.base = node;
-                f.rational = Some(r);
-            }
+            && let Some(r) = recognise(v / std::f64::consts::PI)
+        {
+            let node = if r.is_zero() {
+                graph.int(0)
+            } else {
+                let coefficient = rat(graph, &r);
+                product(graph, &[coefficient, pi_node])
+            };
+            f.base = node;
+            f.rational = Some(r);
+        }
         out.push(f);
     }
     out
@@ -477,18 +522,23 @@ fn merge(
         match &f.rational {
             | Some(r) => {
                 let residue = r - (r / &f.period).floor() * &f.period;
-                if !exact.iter().any(|(r0, p0)| *p0 == f.period && *r0 == residue) {
+                if !exact
+                    .iter()
+                    .any(|(r0, p0)| *p0 == f.period && *r0 == residue)
+                {
                     exact.push((residue, f.period.clone()));
                 }
             },
             | None => {
                 let v = value(graph, f.base);
-                let duplicate = other.iter().any(|o| match (value(graph, o.base), v) {
-                    | (Some(a), Some(b)) => {
-                        let step = f.period.to_f64().unwrap_or(2.0) * std::f64::consts::PI;
-                        ((a - b) / step - ((a - b) / step).round()).abs() < 1e-9
-                    },
-                    | _ => graph.same(o.base, f.base),
+                let duplicate = other.iter().any(|o| {
+                    match (value(graph, o.base), v) {
+                        | (Some(a), Some(b)) => {
+                            let step = f.period.to_f64().unwrap_or(2.0) * std::f64::consts::PI;
+                            ((a - b) / step - ((a - b) / step).round()).abs() < 1e-9
+                        },
+                        | _ => graph.same(o.base, f.base),
+                    }
                 });
                 if !duplicate {
                     other.push(f);
@@ -504,11 +554,17 @@ fn merge(
             for i in 0..exact.len() {
                 let (r, p) = exact[i].clone();
                 let step = &p / BigRational::from_integer(BigInt::from(k));
-                let members: Vec<BigRational> = (0..k).map(|j| &r + &step * BigRational::from_integer(BigInt::from(j))).collect();
+                let members: Vec<BigRational> = (0..k)
+                    .map(|j| &r + &step * BigRational::from_integer(BigInt::from(j)))
+                    .collect();
                 let reduce = |v: &BigRational| v - (v / &p).floor() * &p;
                 let positions: Option<Vec<usize>> = members
                     .iter()
-                    .map(|m| exact.iter().position(|(r0, p0)| *p0 == p && *r0 == reduce(m)))
+                    .map(|m| {
+                        exact
+                            .iter()
+                            .position(|(r0, p0)| *p0 == p && *r0 == reduce(m))
+                    })
                     .collect();
                 if let Some(positions) = positions {
                     let mut sorted = positions;
@@ -537,7 +593,11 @@ fn merge(
                 let coefficient = rat(graph, &r);
                 product(graph, &[coefficient, pi_node])
             };
-            Family { base, rational: Some(r), period: p }
+            Family {
+                base,
+                rational: Some(r),
+                period: p,
+            }
         })
         .collect();
     out.extend(other);
@@ -551,9 +611,15 @@ pub(super) fn integer_symbol(
 ) -> NodeId {
     let mut candidate = 0_u32;
     loop {
-        let name = if candidate == 0 { "n".to_string() } else { format!("n{candidate}") };
+        let name = if candidate == 0 {
+            "n".to_string()
+        } else {
+            format!("n{candidate}")
+        };
         let symbol = graph.interner_mut().symbol(&name);
-        let used = taken.iter().any(|&t| graph.depends_on(graph.find(t), symbol));
+        let used = taken
+            .iter()
+            .any(|&t| graph.depends_on(graph.find(t), symbol));
         if !used {
             graph.assume(symbol, Facts::INTEGER);
             return graph.symbol_node(symbol);
@@ -575,7 +641,11 @@ pub(super) fn solve(
     let theta = merge(graph, theta);
     let pi = graph.ops().lookup("pi")?;
     let pi_node = graph.node(pi, &[]);
-    let n_node = if general { Some(integer_symbol(graph, &[term, x, shift])) } else { None };
+    let n_node = if general {
+        Some(integer_symbol(graph, &[term, x, shift]))
+    } else {
+        None
+    };
     let inverse_g = g.recip();
     let minus_one = graph.int(-1);
     let neg_shift = graph.node(core::MUL, &[minus_one, shift]);
@@ -680,7 +750,10 @@ fn valid_residues(
     if flags.iter().all(Option::is_none) {
         // A closed formula that is undefined is no solution; one with
         // parameters may be real elsewhere in the parameter space.
-        let closed = graph.free_symbols(graph.find(member)).iter().all(|&s| s == n_symbol);
+        let closed = graph
+            .free_symbols(graph.find(member))
+            .iter()
+            .all(|&s| s == n_symbol);
         if closed {
             return None;
         }
@@ -694,7 +767,12 @@ fn valid_residues(
     };
     for modulus in moduli {
         let class = |r: i64| -> Vec<Option<bool>> {
-            range.iter().zip(&flags).filter(|&(&k, _)| k.rem_euclid(i64::from(modulus)) == r).map(|(_, &f)| f).collect()
+            range
+                .iter()
+                .zip(&flags)
+                .filter(|&(&k, _)| k.rem_euclid(i64::from(modulus)) == r)
+                .map(|(_, &f)| f)
+                .collect()
         };
         let consistent = (0..i64::from(modulus)).all(|r| {
             let members = class(r);
@@ -705,7 +783,11 @@ fn valid_residues(
             let residues: Vec<u32> = (0..modulus)
                 .filter(|&r| class(i64::from(r)).contains(&Some(true)))
                 .collect();
-            return if residues.is_empty() { None } else { Some((modulus, residues)) };
+            return if residues.is_empty() {
+                None
+            } else {
+                Some((modulus, residues))
+            };
         }
     }
     None
@@ -724,14 +806,20 @@ fn proved_period(
 ) -> Option<u32> {
     let symbol = graph.symbol_of(n)?;
     let pi = graph.ops().lookup("pi")?;
-    let ops: Vec<Option<OpId>> = TRIG_NAMES.iter().map(|name| graph.ops().lookup(name)).collect();
+    let ops: Vec<Option<OpId>> = TRIG_NAMES
+        .iter()
+        .map(|name| graph.ops().lookup(name))
+        .collect();
     let is_trig = |g: &Graph, node: NodeId| ops.iter().any(|&o| o == Some(g.op(node)));
-    let trig = super::heuristics::nodes_with(graph, term, |g, node| is_trig(g, node) && g.depends_on(g.find(node), symbol));
+    let trig = super::heuristics::nodes_with(graph, term, |g, node| {
+        is_trig(g, node) && g.depends_on(g.find(node), symbol)
+    });
     // `n` must not occur outside the arguments of those functions.
     let placeholder = graph.interner_mut().fresh_symbol("w");
     let placeholder_node = graph.symbol_node(placeholder);
     let mut replace = |graph: &mut Graph, node: NodeId, _: &[NodeId]| -> Option<NodeId> {
-        (is_trig(graph, node) && graph.depends_on(graph.find(node), symbol)).then_some(placeholder_node)
+        (is_trig(graph, node) && graph.depends_on(graph.find(node), symbol))
+            .then_some(placeholder_node)
     };
     let outside = map_term(graph, term, &mut replace);
     if graph.depends_on(graph.find(outside), symbol) {

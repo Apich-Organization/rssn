@@ -26,9 +26,18 @@
 //! operators; plain stand-alone cycling ([`AmgGeneral::solve`]) converges for
 //! diffusion-dominated and moderately convective problems.
 
-use crate::kernels::dense::{self, Lu, Mat};
+use crate::kernels::dense::Lu;
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::krylov::Csr;
-use crate::kernels::multigrid::{AmgError, Cycle, MgResult, aggregate, spgemm, transpose};
+use crate::kernels::multigrid::AmgError;
+use crate::kernels::multigrid::Cycle;
+use crate::kernels::multigrid::MgResult;
+use crate::kernels::multigrid::aggregate;
+use crate::kernels::multigrid::spgemm;
+use crate::kernels::multigrid::transpose;
 
 /// Coarsening strategy of [`AmgGeneral`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,7 +105,10 @@ fn norm2(v: &[f64]) -> f64 {
 }
 
 /// Strong dependencies `S_i = {j != i : -a_ij >= theta max_k(-a_ik)}`.
-fn strength(a: &Csr, theta: f64) -> Vec<Vec<usize>> {
+fn strength(
+    a: &Csr,
+    theta: f64,
+) -> Vec<Vec<usize>> {
     (0..a.rows)
         .map(|i| {
             let mut mx = 0.0_f64;
@@ -175,7 +187,11 @@ fn cf_splitting(s: &[Vec<usize>]) -> Vec<Pt> {
         if state[i] != Pt::Fine {
             continue;
         }
-        let ci: Vec<usize> = s[i].iter().copied().filter(|&j| state[j] == Pt::Coarse).collect();
+        let ci: Vec<usize> = s[i]
+            .iter()
+            .copied()
+            .filter(|&j| state[j] == Pt::Coarse)
+            .collect();
         for &j in &s[i] {
             if state[j] != Pt::Fine {
                 continue;
@@ -191,7 +207,13 @@ fn cf_splitting(s: &[Vec<usize>]) -> Vec<Pt> {
 
 /// Direct interpolation for the matrix `a` with the given strength graph and
 /// splitting; returns `P` (`n x nc`) and the coarse index of each `C` point.
-fn direct_interpolation(a: &Csr, s: &[Vec<usize>], state: &[Pt], cidx: &[usize], nc: usize) -> Csr {
+fn direct_interpolation(
+    a: &Csr,
+    s: &[Vec<usize>],
+    state: &[Pt],
+    cidx: &[usize],
+    nc: usize,
+) -> Csr {
     let n = a.rows;
     let mut trip: Vec<(usize, usize, f64)> = Vec::new();
     for i in 0..n {
@@ -199,7 +221,11 @@ fn direct_interpolation(a: &Csr, s: &[Vec<usize>], state: &[Pt], cidx: &[usize],
             trip.push((i, cidx[i], 1.0));
             continue;
         }
-        let ci: Vec<usize> = s[i].iter().copied().filter(|&j| state[j] == Pt::Coarse).collect();
+        let ci: Vec<usize> = s[i]
+            .iter()
+            .copied()
+            .filter(|&j| state[j] == Pt::Coarse)
+            .collect();
         if ci.is_empty() {
             continue;
         }
@@ -223,8 +249,16 @@ fn direct_interpolation(a: &Csr, s: &[Vec<usize>], state: &[Pt], cidx: &[usize],
                 }
             }
         }
-        let alpha = if sum_nc == 0.0 { 0.0 } else { sum_n / sum_nc };
-        let (beta, dd) = if sum_pc == 0.0 { (0.0, aii + sum_p) } else { (sum_p / sum_pc, aii) };
+        let alpha = if sum_nc == 0.0 {
+            0.0
+        } else {
+            sum_n / sum_nc
+        };
+        let (beta, dd) = if sum_pc == 0.0 {
+            (0.0, aii + sum_p)
+        } else {
+            (sum_p / sum_pc, aii)
+        };
         if dd == 0.0 {
             continue;
         }
@@ -234,7 +268,11 @@ fn direct_interpolation(a: &Csr, s: &[Vec<usize>], state: &[Pt], cidx: &[usize],
                 continue;
             }
             let v = a.values[k];
-            let w = if v < 0.0 { -alpha * v / dd } else { -beta * v / dd };
+            let w = if v < 0.0 {
+                -alpha * v / dd
+            } else {
+                -beta * v / dd
+            };
             trip.push((i, cidx[j], w));
         }
     }
@@ -242,7 +280,12 @@ fn direct_interpolation(a: &Csr, s: &[Vec<usize>], state: &[Pt], cidx: &[usize],
 }
 
 /// Tentative prolongator by local QR of the near-null space on aggregates.
-fn tentative(n: usize, agg: &[usize], nagg: usize, b: &[Vec<f64>]) -> (Csr, Vec<Vec<f64>>) {
+fn tentative(
+    n: usize,
+    agg: &[usize],
+    nagg: usize,
+    b: &[Vec<f64>],
+) -> (Csr, Vec<Vec<f64>>) {
     let nb = b.len();
     let mut members: Vec<Vec<usize>> = vec![Vec::new(); nagg];
     for (i, &g) in agg.iter().enumerate() {
@@ -289,7 +332,12 @@ fn tentative(n: usize, agg: &[usize], nagg: usize, b: &[Vec<f64>]) -> (Csr, Vec<
 }
 
 /// `(I - omega D^{-1} A) T`.
-fn smooth(a: &Csr, diag: &[f64], omega: f64, tent: &Csr) -> Csr {
+fn smooth(
+    a: &Csr,
+    diag: &[f64],
+    omega: f64,
+    tent: &Csr,
+) -> Csr {
     let mut tr: Vec<(usize, usize, f64)> = Vec::new();
     for i in 0..a.rows {
         tr.push((i, i, 1.0));
@@ -307,7 +355,10 @@ impl AmgGeneral {
     /// # Errors
     /// [`AmgError::BadMatrix`] for a non-square matrix, a non-positive
     /// diagonal entry, or near-null-space vectors of the wrong length.
-    pub fn build(a: &Csr, opts: &AmgGeneralOptions) -> Result<Self, AmgError> {
+    pub fn build(
+        a: &Csr,
+        opts: &AmgGeneralOptions,
+    ) -> Result<Self, AmgError> {
         if a.rows != a.cols || a.rows == 0 {
             return Err(AmgError::BadMatrix);
         }
@@ -328,7 +379,7 @@ impl AmgGeneral {
             }
             let at = transpose(&cur);
             let (p, r) = match opts.kind {
-                AmgKind::RugeStuben => {
+                | AmgKind::RugeStuben => {
                     let s = strength(&cur, opts.theta);
                     let state = cf_splitting(&s);
                     let mut cidx = vec![usize::MAX; cur.rows];
@@ -346,8 +397,8 @@ impl AmgGeneral {
                     let st_t = strength(&at, opts.theta);
                     let pt = direct_interpolation(&at, &st_t, &state, &cidx, nc);
                     (p, transpose(&pt))
-                }
-                AmgKind::SmoothedAggregation => {
+                },
+                | AmgKind::SmoothedAggregation => {
                     // symmetrised strength graph
                     let mut trip: Vec<(usize, usize, f64)> = Vec::new();
                     for i in 0..cur.rows {
@@ -367,7 +418,9 @@ impl AmgGeneral {
                     let (tent, bc) = tentative(cur.rows, &agg, nagg, &b);
                     let mut rho = 0.0_f64;
                     for i in 0..cur.rows {
-                        let sr: f64 = (cur.indptr[i]..cur.indptr[i + 1]).map(|k| cur.values[k].abs()).sum();
+                        let sr: f64 = (cur.indptr[i]..cur.indptr[i + 1])
+                            .map(|k| cur.values[k].abs())
+                            .sum();
                         rho = rho.max(sr / diag[i]);
                     }
                     let omega = 4.0 / (3.0 * rho);
@@ -376,7 +429,7 @@ impl AmgGeneral {
                     let pt = smooth(&at, &dt, omega, &tent);
                     b = bc;
                     (p, transpose(&pt))
-                }
+                },
             };
             if p.cols == 0 || p.cols >= cur.rows {
                 break;
@@ -397,7 +450,13 @@ impl AmgGeneral {
             }
         }
         let coarse_lu = dense::lu_factor(&dm).ok();
-        Ok(Self { levels, coarse_a: cur, coarse_lu, sweeps: opts.sweeps.max(1), cycle: opts.cycle })
+        Ok(Self {
+            levels,
+            coarse_a: cur,
+            coarse_lu,
+            sweeps: opts.sweeps.max(1),
+            cycle: opts.cycle,
+        })
     }
 
     /// Number of levels including the coarsest.
@@ -409,16 +468,29 @@ impl AmgGeneral {
     /// Sum of the nonzeros of all level operators divided by the fine one.
     #[must_use]
     pub fn operator_complexity(&self) -> f64 {
-        let fine = self.levels.first().map_or(self.coarse_a.values.len(), |l| l.a.values.len());
-        let total: usize =
-            self.levels.iter().map(|l| l.a.values.len()).sum::<usize>() + self.coarse_a.values.len();
+        let fine = self
+            .levels
+            .first()
+            .map_or(self.coarse_a.values.len(), |l| l.a.values.len());
+        let total: usize = self.levels.iter().map(|l| l.a.values.len()).sum::<usize>()
+            + self.coarse_a.values.len();
         total as f64 / fine as f64
     }
 
-    fn gauss_seidel(a: &Csr, x: &mut [f64], b: &[f64], diag: &[f64], sweeps: usize, forward: bool) {
+    fn gauss_seidel(
+        a: &Csr,
+        x: &mut [f64],
+        b: &[f64],
+        diag: &[f64],
+        sweeps: usize,
+        forward: bool,
+    ) {
         for _ in 0..sweeps {
-            let order: Box<dyn Iterator<Item = usize>> =
-                if forward { Box::new(0..a.rows) } else { Box::new((0..a.rows).rev()) };
+            let order: Box<dyn Iterator<Item = usize>> = if forward {
+                Box::new(0..a.rows)
+            } else {
+                Box::new((0..a.rows).rev())
+            };
             for i in order {
                 let mut s = b[i];
                 for k in a.indptr[i]..a.indptr[i + 1] {
@@ -432,7 +504,12 @@ impl AmgGeneral {
         }
     }
 
-    fn cycle_at(&self, l: usize, x: &mut [f64], b: &[f64]) {
+    fn cycle_at(
+        &self,
+        l: usize,
+        x: &mut [f64],
+        b: &[f64],
+    ) {
         if l == self.levels.len() {
             if let Some(lu) = &self.coarse_lu {
                 x.copy_from_slice(&lu.solve(b));
@@ -450,7 +527,11 @@ impl AmgGeneral {
         let mut rc = vec![0.0; lev.r.rows];
         lev.r.matvec(&res, &mut rc);
         let mut ec = vec![0.0; rc.len()];
-        let gamma = if self.cycle == Cycle::W { 2 } else { 1 };
+        let gamma = if self.cycle == Cycle::W {
+            2
+        } else {
+            1
+        };
         for _ in 0..gamma {
             self.cycle_at(l + 1, &mut ec, &rc);
         }
@@ -463,19 +544,33 @@ impl AmgGeneral {
     }
 
     /// One cycle for `A x = b` starting from `x`.
-    pub fn vcycle(&self, b: &[f64], x: &mut [f64]) {
+    pub fn vcycle(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+    ) {
         self.cycle_at(0, x, b);
     }
 
     /// Preconditioner action `z = M^{-1} r` (one cycle from zero).
-    pub fn precondition(&self, r: &[f64], z: &mut [f64]) {
+    pub fn precondition(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
         z.fill(0.0);
         self.cycle_at(0, z, r);
     }
 
     /// Solves `A x = b` by repeated cycles.
     #[must_use]
-    pub fn solve(&self, b: &[f64], x0: Option<&[f64]>, tol: f64, max_cycles: usize) -> MgResult {
+    pub fn solve(
+        &self,
+        b: &[f64],
+        x0: Option<&[f64]>,
+        tol: f64,
+        max_cycles: usize,
+    ) -> MgResult {
         let fine = self.levels.first().map_or(&self.coarse_a, |l| &l.a);
         let mut x = x0.map_or_else(|| vec![0.0; b.len()], <[f64]>::to_vec);
         let bn = norm2(b).max(f64::MIN_POSITIVE);
@@ -492,6 +587,10 @@ impl AmgGeneral {
             history.push(r);
             converged = r <= tol;
         }
-        MgResult { x, history, converged }
+        MgResult {
+            x,
+            history,
+            converged,
+        }
     }
 }

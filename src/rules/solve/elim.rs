@@ -4,12 +4,12 @@
 use super::cap_default;
 use crate::graph::Graph;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::rules::poly::ratio;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
-use crate::graph::Number;
 use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::to_term;
 
 /// Determinant of a square matrix of polynomials by the fraction-free
 /// Bareiss algorithm (every division is exact).
@@ -23,7 +23,11 @@ pub(super) fn determinant(mut m: Vec<Vec<Poly>>) -> Option<Poly> {
     let mut previous = Poly::constant(Number::from(1));
     for k in 0..n.saturating_sub(1) {
         if m.get(k)?.get(k)?.is_zero() {
-            let swap = (k + 1..n).find(|&i| m.get(i).and_then(|r| r.get(k)).is_some_and(|p| !p.is_zero()));
+            let swap = (k + 1..n).find(|&i| {
+                m.get(i)
+                    .and_then(|r| r.get(k))
+                    .is_some_and(|p| !p.is_zero())
+            });
             match swap {
                 | Some(i) => {
                     m.swap(k, i);
@@ -59,7 +63,10 @@ pub(super) fn resultant(
     g: &Poly,
     v: u32,
 ) -> Option<Poly> {
-    let (df, dg) = (usize::try_from(f.degree_in(v)).ok()?, usize::try_from(g.degree_in(v)).ok()?);
+    let (df, dg) = (
+        usize::try_from(f.degree_in(v)).ok()?,
+        usize::try_from(g.degree_in(v)).ok()?,
+    );
     if df == 0 || dg == 0 {
         return None;
     }

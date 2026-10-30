@@ -94,6 +94,7 @@ use crate::kernels::qlinalg as ql;
 use crate::kernels::qlinalg::Q;
 use crate::kernels::qlinalg::QMat;
 
+use super::discrete::V;
 use super::discrete::apply;
 use super::discrete::def;
 use super::discrete::def_inert;
@@ -105,7 +106,6 @@ use super::discrete::rational;
 use super::discrete::rows;
 use super::discrete::small;
 use super::discrete::sum;
-use super::discrete::V;
 use super::lie::lie;
 
 /// The Lie structure rule set.
@@ -128,7 +128,14 @@ fn read_type(
     n: NodeId,
 ) -> Option<ks::Cartan> {
     if let Some(matrix) = rows(g, n) {
-        return matrix.into_iter().map(|r| r.into_iter().map(|x| small(g, x)).collect::<Option<Vec<_>>>()).collect();
+        return matrix
+            .into_iter()
+            .map(|r| {
+                r.into_iter()
+                    .map(|x| small(g, x))
+                    .collect::<Option<Vec<_>>>()
+            })
+            .collect();
     }
     ks::parse_type(g.display(n).trim_matches('"'))
 }
@@ -145,7 +152,10 @@ fn labels(
     n: NodeId,
     rank: usize,
 ) -> Option<Vec<i64>> {
-    let l: Vec<i64> = items(g, n)?.into_iter().map(|x| small(g, x)).collect::<Option<_>>()?;
+    let l: Vec<i64> = items(g, n)?
+        .into_iter()
+        .map(|x| small(g, x))
+        .collect::<Option<_>>()?;
     (l.len() == rank).then_some(l)
 }
 
@@ -167,7 +177,10 @@ fn rat_matrix(
     g: &Graph,
     n: NodeId,
 ) -> Option<QMat> {
-    let m: QMat = rows(g, n)?.into_iter().map(|r| r.into_iter().map(|x| rat(g, x)).collect::<Option<Vec<_>>>()).collect::<Option<_>>()?;
+    let m: QMat = rows(g, n)?
+        .into_iter()
+        .map(|r| r.into_iter().map(|x| rat(g, x)).collect::<Option<Vec<_>>>())
+        .collect::<Option<_>>()?;
     let width = m.first()?.len();
     (width > 0 && m.iter().all(|r| r.len() == width)).then_some(m)
 }
@@ -178,7 +191,12 @@ fn read_constants(
 ) -> Option<Vec<Vec<Vec<Q>>>> {
     items(g, n)?
         .into_iter()
-        .map(|plane| items(g, plane)?.into_iter().map(|r| rat_vec(g, r)).collect::<Option<Vec<_>>>())
+        .map(|plane| {
+            items(g, plane)?
+                .into_iter()
+                .map(|r| rat_vec(g, r))
+                .collect::<Option<Vec<_>>>()
+        })
         .collect()
 }
 
@@ -188,7 +206,11 @@ fn read_lie(
     n: NodeId,
 ) -> Option<(Lie, Option<Vec<QMat>>)> {
     let sc = g.ops().lookup("lie_sc")?;
-    let wrapped = if g.op(n) == sc { Some(n) } else { g.enodes(g.find(n)).find(|&e| g.op(e) == sc) };
+    let wrapped = if g.op(n) == sc {
+        Some(n)
+    } else {
+        g.enodes(g.find(n)).find(|&e| g.op(e) == sc)
+    };
     if let Some(node) = wrapped {
         let [c] = g.children(node) else { return None };
         let c = read_constants(g, *c)?;
@@ -197,8 +219,16 @@ fn read_lie(
         }
         return Some((Lie::from_constants(c)?, None));
     }
-    let basis: Vec<QMat> = items(g, n)?.into_iter().map(|m| rat_matrix(g, m)).collect::<Option<_>>()?;
-    if basis.is_empty() || basis.len() > MAX_BASIS || basis.iter().any(|m| m.len() != m[0].len() || m.len() > MAX_MATRIX) {
+    let basis: Vec<QMat> = items(g, n)?
+        .into_iter()
+        .map(|m| rat_matrix(g, m))
+        .collect::<Option<_>>()?;
+    if basis.is_empty()
+        || basis.len() > MAX_BASIS
+        || basis
+            .iter()
+            .any(|m| m.len() != m[0].len() || m.len() > MAX_MATRIX)
+    {
         return None;
     }
     let lie = Lie::from_matrices(&basis)?;
@@ -233,7 +263,12 @@ fn int_vec_v(v: &[i64]) -> V {
 }
 
 fn pairs_v(pairs: impl IntoIterator<Item = (Vec<i64>, BigInt)>) -> V {
-    V::List(pairs.into_iter().map(|(w, m)| V::List(vec![int_vec_v(&w), V::Int(m)])).collect())
+    V::List(
+        pairs
+            .into_iter()
+            .map(|(w, m)| V::List(vec![int_vec_v(&w), V::Int(m)]))
+            .collect(),
+    )
 }
 
 // ----------------------------------------------------------------------
@@ -254,7 +289,13 @@ fn lie_cartan_type(
     a: &[NodeId],
 ) -> Option<V> {
     let parts = ks::recognize(&read_type(cx.graph, *a.first()?)?)?;
-    Some(V::Str(parts.iter().map(|(l, n)| format!("{l}{n}")).collect::<Vec<_>>().join("+")))
+    Some(V::Str(
+        parts
+            .iter()
+            .map(|(l, n)| format!("{l}{n}"))
+            .collect::<Vec<_>>()
+            .join("+"),
+    ))
 }
 
 fn lie_rank(
@@ -301,7 +342,9 @@ fn lie_highest_root(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
-    Some(int_vec_v(&root_system(cx.graph, *a.first()?)?.highest_root()?))
+    Some(int_vec_v(
+        &root_system(cx.graph, *a.first()?)?.highest_root()?,
+    ))
 }
 
 fn lie_weyl_group_order(
@@ -315,21 +358,30 @@ fn lie_exponents(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
-    Some(V::ints(root_system(cx.graph, *a.first()?)?.exponents().into_iter().map(|e| e as u64)))
+    Some(V::ints(
+        root_system(cx.graph, *a.first()?)?
+            .exponents()
+            .into_iter()
+            .map(|e| e as u64),
+    ))
 }
 
 fn lie_coxeter_number(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
-    Some(V::uint(root_system(cx.graph, *a.first()?)?.coxeter_number()?))
+    Some(V::uint(
+        root_system(cx.graph, *a.first()?)?.coxeter_number()?,
+    ))
 }
 
 fn lie_dual_coxeter_number(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
-    Some(q_v(&root_system(cx.graph, *a.first()?)?.dual_coxeter_number()?))
+    Some(q_v(
+        &root_system(cx.graph, *a.first()?)?.dual_coxeter_number()?
+    ))
 }
 
 fn lie_dynkin_diagram(
@@ -358,7 +410,9 @@ fn lie_fundamental_weights(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
-    Some(mat_v(root_system(cx.graph, *a.first()?)?.fundamental_weights()))
+    Some(mat_v(
+        root_system(cx.graph, *a.first()?)?.fundamental_weights(),
+    ))
 }
 
 fn lie_gram(
@@ -437,7 +491,12 @@ fn lie_sc_of(
     a: &[NodeId],
 ) -> Option<V> {
     let lie = lie_arg(cx, a)?;
-    let planes = V::List(lie.c.iter().map(|plane| V::List(plane.iter().map(|r| vec_v(r)).collect())).collect());
+    let planes = V::List(
+        lie.c
+            .iter()
+            .map(|plane| V::List(plane.iter().map(|r| vec_v(r)).collect()))
+            .collect(),
+    );
     let node = planes.build(cx.graph);
     apply(cx.graph, "lie_sc", &[node]).map(V::Node)
 }
@@ -555,12 +614,20 @@ fn lie_root_decomposition(
 ) -> Option<V> {
     let [l, h] = a else { return None };
     let (lie, _) = read_lie(cx.graph, *l)?;
-    let h: QMat = items(cx.graph, *h)?.into_iter().map(|v| rat_vec(cx.graph, v)).collect::<Option<_>>()?;
+    let h: QMat = items(cx.graph, *h)?
+        .into_iter()
+        .map(|v| rat_vec(cx.graph, v))
+        .collect::<Option<_>>()?;
     if h.iter().any(|v| v.len() != lie.n) {
         return None;
     }
     let (spaces, missing) = lie.root_decomposition(&h)?;
-    let spaces = V::List(spaces.iter().map(|s| V::List(vec![vec_v(&s.root), mat_v(&s.space)])).collect());
+    let spaces = V::List(
+        spaces
+            .iter()
+            .map(|s| V::List(vec![vec_v(&s.root), mat_v(&s.space)]))
+            .collect(),
+    );
     Some(V::List(vec![spaces, V::uint(missing)]))
 }
 
@@ -570,7 +637,10 @@ fn lie_is_subalgebra(
 ) -> Option<V> {
     let [l, v] = a else { return None };
     let (lie, _) = read_lie(cx.graph, *l)?;
-    let vectors: QMat = items(cx.graph, *v)?.into_iter().map(|x| rat_vec(cx.graph, x)).collect::<Option<_>>()?;
+    let vectors: QMat = items(cx.graph, *v)?
+        .into_iter()
+        .map(|x| rat_vec(cx.graph, x))
+        .collect::<Option<_>>()?;
     (vectors.iter().all(|x| x.len() == lie.n)).then(|| V::Bool(lie.is_subalgebra(&vectors)))
 }
 
@@ -608,7 +678,12 @@ fn lie_casimir_operator(
     let (lie, basis) = read_lie(cx.graph, *a.first()?)?;
     let rho: Vec<QMat> = match a {
         | [_] => basis?,
-        | [_, r] => items(cx.graph, *r)?.into_iter().map(|m| rat_matrix(cx.graph, m)).collect::<Option<_>>()?,
+        | [_, r] => {
+            items(cx.graph, *r)?
+                .into_iter()
+                .map(|m| rat_matrix(cx.graph, m))
+                .collect::<Option<_>>()?
+        },
         | _ => return None,
     };
     Some(mat_v(&lie.casimir(&rho)?))
@@ -629,7 +704,11 @@ fn gauss(
     let unit = apply(cx.graph, "I", &[])?;
     let im_node = cx.graph.int(im);
     let imaginary = prod(cx.graph, &[im_node, unit]);
-    let total = if re == 0 { imaginary } else { sum(cx.graph, &[re_node, imaginary]) };
+    let total = if re == 0 {
+        imaginary
+    } else {
+        sum(cx.graph, &[re_node, imaginary])
+    };
     Some(cx.simplify(total))
 }
 
@@ -784,7 +863,11 @@ fn matrix_log(
     if n == 0 || n > MAX_MATRIX || g.iter().any(|r| r.len() != n) {
         return None;
     }
-    let off_diagonal_zero = g.iter().enumerate().all(|(i, r)| r.iter().enumerate().all(|(j, &x)| i == j || literal(cx.graph, x, 0)));
+    let off_diagonal_zero = g.iter().enumerate().all(|(i, r)| {
+        r.iter()
+            .enumerate()
+            .all(|(j, &x)| i == j || literal(cx.graph, x, 0))
+    });
     let zero = cx.graph.int(0);
     if off_diagonal_zero {
         let mut out = Vec::with_capacity(n);
@@ -812,7 +895,11 @@ fn matrix_log(
             row.iter()
                 .enumerate()
                 .map(|(j, &x)| {
-                    let shifted = if i == j { sum(cx.graph, &[x, minus_one]) } else { x };
+                    let shifted = if i == j {
+                        sum(cx.graph, &[x, minus_one])
+                    } else {
+                        x
+                    };
                     cx.simplify(shifted)
                 })
                 .collect()
@@ -826,7 +913,10 @@ fn matrix_log(
             nilpotent = true;
             break;
         }
-        let coefficient = cx.graph.num(Number::fraction(if k % 2 == 1 { 1 } else { -1 }, i64::try_from(k).ok()?)?);
+        let coefficient = cx.graph.num(Number::fraction(
+            if k % 2 == 1 { 1 } else { -1 },
+            i64::try_from(k).ok()?,
+        )?);
         for (i, row) in power_k.iter().enumerate() {
             for (j, &x) in row.iter().enumerate() {
                 total[i][j].push(prod(cx.graph, &[coefficient, x]));
@@ -883,7 +973,10 @@ fn log_two_by_two(
         let t = scaled(cx, inv_sqrt, tr);
         scaled(cx, half, t)
     };
-    let shifted: Vec<Vec<NodeId>> = g.iter().map(|r| r.iter().map(|&x| scaled(cx, inv_sqrt, x)).collect()).collect();
+    let shifted: Vec<Vec<NodeId>> = g
+        .iter()
+        .map(|r| r.iter().map(|&x| scaled(cx, inv_sqrt, x)).collect())
+        .collect();
     let minus_c = {
         let m1 = cx.graph.int(-1);
         scaled(cx, m1, c)
@@ -895,7 +988,11 @@ fn log_two_by_two(
             r.iter()
                 .enumerate()
                 .map(|(j, &x)| {
-                    let s = if i == j { sum(cx.graph, &[x, minus_c]) } else { x };
+                    let s = if i == j {
+                        sum(cx.graph, &[x, minus_c])
+                    } else {
+                        x
+                    };
                     cx.simplify(s)
                 })
                 .collect()
@@ -912,7 +1009,11 @@ fn log_two_by_two(
                 r.iter()
                     .enumerate()
                     .map(|(j, &x)| {
-                        let s = if i == j { sum(cx.graph, &[x, m1]) } else { x };
+                        let s = if i == j {
+                            sum(cx.graph, &[x, m1])
+                        } else {
+                            x
+                        };
                         cx.simplify(s)
                     })
                     .collect()
@@ -1001,49 +1102,124 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "lie_cartan_type", Arity::Fixed(1), lie_cartan_type)?;
     def(i, "lie_rank", Arity::Fixed(1), lie_rank)?;
     def(i, "lie_dimension", Arity::Fixed(1), lie_dimension)?;
-    def(i, "lie_num_positive_roots", Arity::Fixed(1), lie_num_positive_roots)?;
+    def(
+        i,
+        "lie_num_positive_roots",
+        Arity::Fixed(1),
+        lie_num_positive_roots,
+    )?;
     def(i, "lie_simple_roots", Arity::Fixed(1), lie_simple_roots)?;
     def(i, "lie_positive_roots", Arity::Fixed(1), lie_positive_roots)?;
     def(i, "lie_highest_root", Arity::Fixed(1), lie_highest_root)?;
-    def(i, "lie_weyl_group_order", Arity::Fixed(1), lie_weyl_group_order)?;
+    def(
+        i,
+        "lie_weyl_group_order",
+        Arity::Fixed(1),
+        lie_weyl_group_order,
+    )?;
     def(i, "lie_exponents", Arity::Fixed(1), lie_exponents)?;
     def(i, "lie_coxeter_number", Arity::Fixed(1), lie_coxeter_number)?;
-    def(i, "lie_dual_coxeter_number", Arity::Fixed(1), lie_dual_coxeter_number)?;
+    def(
+        i,
+        "lie_dual_coxeter_number",
+        Arity::Fixed(1),
+        lie_dual_coxeter_number,
+    )?;
     def(i, "lie_dynkin_diagram", Arity::Fixed(1), lie_dynkin_diagram)?;
-    def(i, "lie_fundamental_weights", Arity::Fixed(1), lie_fundamental_weights)?;
+    def(
+        i,
+        "lie_fundamental_weights",
+        Arity::Fixed(1),
+        lie_fundamental_weights,
+    )?;
     def(i, "lie_gram", Arity::Fixed(1), lie_gram)?;
     def(i, "dim_irrep", Arity::Fixed(2), dim_irrep)?;
-    def(i, "weight_multiplicity", Arity::Fixed(3), weight_multiplicity)?;
+    def(
+        i,
+        "weight_multiplicity",
+        Arity::Fixed(3),
+        weight_multiplicity,
+    )?;
     def(i, "irrep_weights", Arity::Fixed(2), irrep_weights)?;
-    def(i, "tensor_decomposition", Arity::Fixed(3), tensor_decomposition)?;
+    def(
+        i,
+        "tensor_decomposition",
+        Arity::Fixed(3),
+        tensor_decomposition,
+    )?;
     def(i, "casimir_eigenvalue", Arity::Fixed(2), casimir_eigenvalue)?;
     def(i, "dynkin_index", Arity::Fixed(2), dynkin_index)?;
     def_inert(i, "lie_sc", Arity::Fixed(1))?;
     def(i, "lie_sc_of", Arity::Fixed(1), lie_sc_of)?;
     def(i, "lie_derived_series", Arity::Fixed(1), lie_derived_series)?;
     def(i, "lie_derived_dims", Arity::Fixed(1), lie_derived_dims)?;
-    def(i, "lie_lower_central_series", Arity::Fixed(1), lie_lower_central_series)?;
-    def(i, "lie_lower_central_dims", Arity::Fixed(1), lie_lower_central_dims)?;
-    def(i, "lie_upper_central_series", Arity::Fixed(1), lie_upper_central_series)?;
-    def(i, "lie_upper_central_dims", Arity::Fixed(1), lie_upper_central_dims)?;
+    def(
+        i,
+        "lie_lower_central_series",
+        Arity::Fixed(1),
+        lie_lower_central_series,
+    )?;
+    def(
+        i,
+        "lie_lower_central_dims",
+        Arity::Fixed(1),
+        lie_lower_central_dims,
+    )?;
+    def(
+        i,
+        "lie_upper_central_series",
+        Arity::Fixed(1),
+        lie_upper_central_series,
+    )?;
+    def(
+        i,
+        "lie_upper_central_dims",
+        Arity::Fixed(1),
+        lie_upper_central_dims,
+    )?;
     def(i, "lie_center", Arity::Fixed(1), lie_center)?;
     def(i, "lie_radical", Arity::Fixed(1), lie_radical)?;
     def(i, "lie_is_solvable", Arity::Fixed(1), lie_is_solvable)?;
     def(i, "lie_is_nilpotent", Arity::Fixed(1), lie_is_nilpotent)?;
     def(i, "lie_is_semisimple", Arity::Fixed(1), lie_is_semisimple)?;
-    def(i, "lie_cartan_solvable_test", Arity::Fixed(1), lie_cartan_solvable_test)?;
+    def(
+        i,
+        "lie_cartan_solvable_test",
+        Arity::Fixed(1),
+        lie_cartan_solvable_test,
+    )?;
     def(i, "lie_levi", Arity::Fixed(1), lie_levi)?;
-    def(i, "lie_cartan_subalgebra", Arity::Fixed(1), lie_cartan_subalgebra)?;
-    def(i, "lie_root_decomposition", Arity::Fixed(2), lie_root_decomposition)?;
+    def(
+        i,
+        "lie_cartan_subalgebra",
+        Arity::Fixed(1),
+        lie_cartan_subalgebra,
+    )?;
+    def(
+        i,
+        "lie_root_decomposition",
+        Arity::Fixed(2),
+        lie_root_decomposition,
+    )?;
     def(i, "lie_is_subalgebra", Arity::Fixed(2), lie_is_subalgebra)?;
     def(i, "lie_elements", Arity::Fixed(2), lie_elements)?;
-    def(i, "lie_casimir_operator", Arity::Variadic, lie_casimir_operator)?;
+    def(
+        i,
+        "lie_casimir_operator",
+        Arity::Variadic,
+        lie_casimir_operator,
+    )?;
     def(i, "gl_basis", Arity::Fixed(1), gl_basis)?;
     def(i, "sl_basis", Arity::Fixed(1), sl_basis)?;
     def(i, "so_basis", Arity::Fixed(1), so_basis)?;
     def(i, "sp_basis", Arity::Fixed(1), sp_basis)?;
     def(i, "su_basis", Arity::Fixed(1), su_basis)?;
-    def_request(i, "one_parameter_subgroup", Arity::Fixed(2), one_parameter_subgroup)?;
+    def_request(
+        i,
+        "one_parameter_subgroup",
+        Arity::Fixed(2),
+        one_parameter_subgroup,
+    )?;
     def_request(i, "matrix_log", Arity::Fixed(1), matrix_log)?;
     Ok(())
 }
@@ -1065,11 +1241,20 @@ mod tests {
         assert_eq!(run("dim_irrep(A2, list(1, 1))"), "8");
         assert_eq!(run("dim_irrep(A2, list(3, 0))"), "10");
         assert_eq!(run("dim_irrep(A2, list(2, 2))"), "27");
-        assert_eq!(run("dim_irrep(list(list(2, -1), list(-1, 2)), list(1, 1))"), "8");
+        assert_eq!(
+            run("dim_irrep(list(list(2, -1), list(-1, 2)), list(1, 1))"),
+            "8"
+        );
         assert_eq!(run("dim_irrep(E8, list(0, 0, 0, 0, 0, 0, 0, 1))"), "248");
         assert_eq!(run("dim_irrep(G2, list(0, 1))"), "14");
-        assert_eq!(run("dim_irrep(A2, list(1, 1, 1))"), "dim_irrep(A2, list(1, 1, 1))");
-        assert_eq!(run("dim_irrep(A2, list(-1, 1))"), "dim_irrep(A2, list(-1, 1))");
+        assert_eq!(
+            run("dim_irrep(A2, list(1, 1, 1))"),
+            "dim_irrep(A2, list(1, 1, 1))"
+        );
+        assert_eq!(
+            run("dim_irrep(A2, list(-1, 1))"),
+            "dim_irrep(A2, list(-1, 1))"
+        );
     }
 
     #[test]
@@ -1084,31 +1269,64 @@ mod tests {
         assert_eq!(run("lie_dual_coxeter_number(B3)"), "5");
         assert_eq!(run("lie_highest_root(G2)"), "list(3, 2)");
         assert_eq!(run("lie_highest_root(A3)"), "list(1, 1, 1)");
-        assert_eq!(run("lie_positive_roots(A2)"), "list(list(1, 0), list(0, 1), list(1, 1))");
+        assert_eq!(
+            run("lie_positive_roots(A2)"),
+            "list(list(1, 0), list(0, 1), list(1, 1))"
+        );
         assert_eq!(run("lie_exponents(G2)"), "list(1, 5)");
-        assert_eq!(run("lie_cartan_matrix(G2)"), "list(list(2, -1), list(-3, 2))");
-        assert_eq!(run("lie_cartan_matrix(B3)"), "list(list(2, -1, 0), list(-1, 2, -2), list(0, -1, 2))");
+        assert_eq!(
+            run("lie_cartan_matrix(G2)"),
+            "list(list(2, -1), list(-3, 2))"
+        );
+        assert_eq!(
+            run("lie_cartan_matrix(B3)"),
+            "list(list(2, -1, 0), list(-1, 2, -2), list(0, -1, 2))"
+        );
         assert_eq!(run("lie_dynkin_diagram(G2)"), "list(list(2, 1, 3))");
-        assert_eq!(run("lie_dynkin_diagram(B3)"), "list(list(1, 2, 1), list(2, 3, 2))");
-        assert_eq!(run("lie_fundamental_weights(A2)"), "list(list(2/3, 1/3), list(1/3, 2/3))");
+        assert_eq!(
+            run("lie_dynkin_diagram(B3)"),
+            "list(list(1, 2, 1), list(2, 3, 2))"
+        );
+        assert_eq!(
+            run("lie_fundamental_weights(A2)"),
+            "list(list(2/3, 1/3), list(1/3, 2/3))"
+        );
         assert_eq!(run("lie_gram(B2)"), "list(list(2, -1), list(-1, 1))");
         assert_eq!(run("lie_simple_roots(B2)"), "list(list(1, -1), list(0, 1))");
-        assert_eq!(run("lie_simple_roots(G2)"), "list(list(1, -1, 0), list(-2, 1, 1))");
+        assert_eq!(
+            run("lie_simple_roots(G2)"),
+            "list(list(1, -1, 0), list(-2, 1, 1))"
+        );
     }
 
     #[test]
     fn cartan_matrix_types() {
-        assert_eq!(run("lie_cartan_type(list(list(2, -1), list(-1, 2)))"), "\"A2\"");
-        assert_eq!(run("lie_cartan_type(list(list(2, -1), list(-2, 2)))"), "\"B2\"");
-        assert_eq!(run("lie_cartan_type(list(list(2, -3), list(-1, 2)))"), "\"G2\"");
+        assert_eq!(
+            run("lie_cartan_type(list(list(2, -1), list(-1, 2)))"),
+            "\"A2\""
+        );
+        assert_eq!(
+            run("lie_cartan_type(list(list(2, -1), list(-2, 2)))"),
+            "\"B2\""
+        );
+        assert_eq!(
+            run("lie_cartan_type(list(list(2, -3), list(-1, 2)))"),
+            "\"G2\""
+        );
         assert_eq!(run("lie_cartan_type(lie_cartan_matrix(D5))"), "\"D5\"");
         assert_eq!(run("lie_cartan_type(lie_cartan_matrix(E7))"), "\"E7\"");
         assert_eq!(run("lie_cartan_type(lie_cartan_matrix(F4))"), "\"F4\"");
         assert_eq!(run("lie_cartan_type(lie_cartan_matrix(C4))"), "\"C4\"");
-        assert_eq!(run("lie_cartan_type(list(list(2, 0, -1), list(0, 2, 0), list(-1, 0, 2)))"), "\"A2+A1\"");
+        assert_eq!(
+            run("lie_cartan_type(list(list(2, 0, -1), list(0, 2, 0), list(-1, 0, 2)))"),
+            "\"A2+A1\""
+        );
         // not the Cartan matrix of a semisimple algebra
         let bad = "lie_cartan_type(list(list(2, -2), list(-2, 2)))";
-        assert_eq!(crate::rules::testing::reduce_with(&[lie_structure()], bad, &[]).0, bad);
+        assert_eq!(
+            crate::rules::testing::reduce_with(&[lie_structure()], bad, &[]).0,
+            bad
+        );
     }
 
     #[test]
@@ -1116,11 +1334,23 @@ mod tests {
         assert_eq!(run("weight_multiplicity(A2, list(1, 1), list(0, 0))"), "2");
         assert_eq!(run("weight_multiplicity(A2, list(1, 1), list(2, -1))"), "1");
         assert_eq!(run("weight_multiplicity(A2, list(2, 2), list(0, 0))"), "3");
-        assert_eq!(run("irrep_weights(A2, list(1, 1))"), "list(list(list(1, 1), 1), list(list(0, 0), 2))");
+        assert_eq!(
+            run("irrep_weights(A2, list(1, 1))"),
+            "list(list(list(1, 1), 1), list(list(0, 0), 2))"
+        );
         // 3 x 3bar = 8 + 1
-        assert_eq!(run("tensor_decomposition(A2, list(1, 0), list(0, 1))"), "list(list(list(0, 0), 1), list(list(1, 1), 1))");
-        assert_eq!(run("tensor_decomposition(A2, list(1, 0), list(1, 0))"), "list(list(list(0, 1), 1), list(list(2, 0), 1))");
-        assert_eq!(run("tensor_decomposition(A1, list(2), list(3))"), "list(list(list(1), 1), list(list(3), 1), list(list(5), 1))");
+        assert_eq!(
+            run("tensor_decomposition(A2, list(1, 0), list(0, 1))"),
+            "list(list(list(0, 0), 1), list(list(1, 1), 1))"
+        );
+        assert_eq!(
+            run("tensor_decomposition(A2, list(1, 0), list(1, 0))"),
+            "list(list(list(0, 1), 1), list(list(2, 0), 1))"
+        );
+        assert_eq!(
+            run("tensor_decomposition(A1, list(2), list(3))"),
+            "list(list(list(1), 1), list(list(3), 1), list(list(5), 1))"
+        );
         assert_eq!(run("casimir_eigenvalue(A2, list(1, 0))"), "8/3");
         assert_eq!(run("casimir_eigenvalue(A2, list(1, 1))"), "6");
         assert_eq!(run("dynkin_index(A2, list(1, 0))"), "1");
@@ -1136,25 +1366,59 @@ mod tests {
         assert_eq!(run(&format!("lie_is_nilpotent({UPPER})")), "false");
         assert_eq!(run(&format!("lie_is_semisimple({UPPER})")), "false");
         assert_eq!(run(&format!("lie_cartan_solvable_test({UPPER})")), "true");
-        assert_eq!(run(&format!("lie_derived_dims({UPPER})")), "list(6, 3, 1, 0)");
+        assert_eq!(
+            run(&format!("lie_derived_dims({UPPER})")),
+            "list(6, 3, 1, 0)"
+        );
         assert_eq!(run(&format!("lie_is_nilpotent({HEISENBERG})")), "true");
-        assert_eq!(run(&format!("lie_lower_central_dims({HEISENBERG})")), "list(3, 1, 0)");
-        assert_eq!(run(&format!("lie_upper_central_dims({HEISENBERG})")), "list(1, 3)");
-        assert_eq!(run(&format!("lie_center({HEISENBERG})")), "list(list(0, 0, 1))");
+        assert_eq!(
+            run(&format!("lie_lower_central_dims({HEISENBERG})")),
+            "list(3, 1, 0)"
+        );
+        assert_eq!(
+            run(&format!("lie_upper_central_dims({HEISENBERG})")),
+            "list(1, 3)"
+        );
+        assert_eq!(
+            run(&format!("lie_center({HEISENBERG})")),
+            "list(list(0, 0, 1))"
+        );
         for basis in ["sl_basis(3)", "so_basis(4)", "sp_basis(2)"] {
-            assert_eq!(run(&format!("lie_is_semisimple({basis})")), "true", "{basis}");
-            assert_eq!(run(&format!("lie_is_solvable({basis})")), "false", "{basis}");
-            assert_eq!(run(&format!("lie_cartan_solvable_test({basis})")), "false", "{basis}");
+            assert_eq!(
+                run(&format!("lie_is_semisimple({basis})")),
+                "true",
+                "{basis}"
+            );
+            assert_eq!(
+                run(&format!("lie_is_solvable({basis})")),
+                "false",
+                "{basis}"
+            );
+            assert_eq!(
+                run(&format!("lie_cartan_solvable_test({basis})")),
+                "false",
+                "{basis}"
+            );
             assert_eq!(run(&format!("lie_radical({basis})")), "list()", "{basis}");
         }
         assert_eq!(run("lie_is_semisimple(gl_basis(2))"), "false");
         assert_eq!(run("lie_radical(gl_basis(2))"), "list(list(1, 0, 0, 1))");
         // a list that is not closed is not a Lie algebra
-        let open = "lie_is_solvable(list(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0))))";
-        assert_eq!(crate::rules::testing::reduce_with(&[lie_structure()], open, &[]).0, open);
+        let open =
+            "lie_is_solvable(list(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0))))";
+        assert_eq!(
+            crate::rules::testing::reduce_with(&[lie_structure()], open, &[]).0,
+            open
+        );
         // structure constants of so(3)
-        assert_eq!(run("lie_is_semisimple(lie_sc(structure_constants(so3_basis())))"), "true");
-        assert_eq!(run("lie_is_semisimple(lie_sc(structure_constants(su2_basis())))"), "true");
+        assert_eq!(
+            run("lie_is_semisimple(lie_sc(structure_constants(so3_basis())))"),
+            "true"
+        );
+        assert_eq!(
+            run("lie_is_semisimple(lie_sc(structure_constants(su2_basis())))"),
+            "true"
+        );
         assert_eq!(run("lie_derived_dims(lie_sc_of(so_basis(3)))"), "list(3)");
     }
 
@@ -1164,7 +1428,10 @@ mod tests {
         let basis = "list(list(list(1, 0, 0), list(0, -1, 0), list(0, 0, 0)), list(list(0, 1, 0), list(0, 0, 0), list(0, 0, 0)), list(list(0, 0, 0), list(1, 0, 0), list(0, 0, 0)), list(list(0, 0, 1), list(0, 0, 0), list(0, 0, 0)), list(list(0, 0, 0), list(0, 0, 1), list(0, 0, 0)))";
         let levi = run(&format!("lie_levi({basis})"));
         assert!(levi.starts_with("list(list(list("), "{levi}");
-        assert_eq!(run(&format!("lie_radical({basis})")), "list(list(0, 0, 0, 1, 0), list(0, 0, 0, 0, 1))");
+        assert_eq!(
+            run(&format!("lie_radical({basis})")),
+            "list(list(0, 0, 0, 1, 0), list(0, 0, 0, 0, 1))"
+        );
         let h = run("lie_cartan_subalgebra(sl_basis(3))");
         assert_eq!(h.matches("list(").count(), 3, "{h}");
         let roots = run("lie_root_decomposition(sl_basis(3), lie_cartan_subalgebra(sl_basis(3)))");
@@ -1173,38 +1440,94 @@ mod tests {
         let so3 = run("lie_root_decomposition(sl_basis(2), lie_cartan_subalgebra(sl_basis(2)))");
         assert!(so3.ends_with(", 0)"), "{so3}");
         let elements = run("lie_elements(sl_basis(2), list(list(1, 0, 0), list(0, 0, 1)))");
-        assert_eq!(elements, "list(list(list(0, 1), list(0, 0)), list(list(1, 0), list(0, -1)))");
+        assert_eq!(
+            elements,
+            "list(list(list(0, 1), list(0, 0)), list(list(1, 0), list(0, -1)))"
+        );
     }
 
     #[test]
     fn standard_bases_and_casimir() {
-        assert_eq!(run("sl_basis(2)"), "list(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)), list(list(1, 0), list(0, -1)))");
-        assert_eq!(run("so_basis(3)"), "list(list(list(0, 1, 0), list(-1, 0, 0), list(0, 0, 0)), list(list(0, 0, 1), list(0, 0, 0), list(-1, 0, 0)), list(list(0, 0, 0), list(0, 0, 1), list(0, -1, 0)))");
-        assert_eq!(run("su_basis(2)"), "list(list(list(0, 1), list(-1, 0)), list(list(0, I), list(I, 0)), list(list(I, 0), list(0, -I)))");
+        assert_eq!(
+            run("sl_basis(2)"),
+            "list(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)), list(list(1, 0), list(0, -1)))"
+        );
+        assert_eq!(
+            run("so_basis(3)"),
+            "list(list(list(0, 1, 0), list(-1, 0, 0), list(0, 0, 0)), list(list(0, 0, 1), list(0, 0, 0), list(-1, 0, 0)), list(list(0, 0, 0), list(0, 0, 1), list(0, -1, 0)))"
+        );
+        assert_eq!(
+            run("su_basis(2)"),
+            "list(list(list(0, 1), list(-1, 0)), list(list(0, I), list(I, 0)), list(list(I, 0), list(0, -I)))"
+        );
         assert_eq!(run("lie_dimension(A2)"), "8");
-        for (basis, dim) in [("sl_basis(4)", 15), ("so_basis(5)", 10), ("sp_basis(3)", 21), ("gl_basis(3)", 9), ("su_basis(3)", 8)] {
+        for (basis, dim) in [
+            ("sl_basis(4)", 15),
+            ("so_basis(5)", 10),
+            ("sp_basis(3)", 21),
+            ("gl_basis(3)", 9),
+            ("su_basis(3)", 8),
+        ] {
             let text = run(&format!("is_lie_algebra({basis})"));
             assert_eq!(text, "true", "{basis}");
-            let n = run(&format!("lie_derived_dims(lie_sc(structure_constants({basis})))"));
+            let n = run(&format!(
+                "lie_derived_dims(lie_sc(structure_constants({basis})))"
+            ));
             assert!(n.starts_with(&format!("list({dim}")), "{basis}: {n}");
         }
-        assert_eq!(run("lie_casimir_operator(sl_basis(2))"), "list(list(3/8, 0), list(0, 3/8))");
-        assert_eq!(run("lie_casimir_operator(so_basis(3))"), "list(list(1, 0, 0), list(0, 1, 0), list(0, 0, 1))");
+        assert_eq!(
+            run("lie_casimir_operator(sl_basis(2))"),
+            "list(list(3/8, 0), list(0, 3/8))"
+        );
+        assert_eq!(
+            run("lie_casimir_operator(so_basis(3))"),
+            "list(list(1, 0, 0), list(0, 1, 0), list(0, 0, 1))"
+        );
     }
 
     #[test]
     fn subgroups_and_logarithms() {
-        assert_eq!(run("one_parameter_subgroup(list(list(0, -1), list(1, 0)), t)"), "list(list(cos(t), -sin(t)), list(sin(t), cos(t)))");
-        assert_eq!(run("one_parameter_subgroup(list(list(1, 0), list(0, -1)), t)"), "list(list(exp(t), 0), list(0, exp(-t)))");
-        assert_eq!(run("matrix_log(list(list(1, 0), list(0, 1)))"), "list(list(0, 0), list(0, 0))");
-        assert_eq!(run("matrix_log(list(list(1, 1), list(0, 1)))"), "list(list(0, 1), list(0, 0))");
-        assert_eq!(run("matrix_log(list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1)))"), "list(list(0, 2, -1), list(0, 0, 4), list(0, 0, 0))");
-        assert_eq!(run("matrix_log(list(list(2, 0), list(0, 1)))"), "list(list(ln(2), 0), list(0, 0))");
-        assert_eq!(run("exp_map(matrix_log(list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1))))"), "list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1))");
-        assert_eq!(run("matrix_log(list(list(0, -1), list(1, 0)))"), "list(list(0, -1/2*pi), list(1/2*pi, 0))");
-        assert_eq!(run("matrix_log(list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 1)))"), "list(list(0, -1/2*pi, 0), list(1/2*pi, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            run("one_parameter_subgroup(list(list(0, -1), list(1, 0)), t)"),
+            "list(list(cos(t), -sin(t)), list(sin(t), cos(t)))"
+        );
+        assert_eq!(
+            run("one_parameter_subgroup(list(list(1, 0), list(0, -1)), t)"),
+            "list(list(exp(t), 0), list(0, exp(-t)))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(1, 0), list(0, 1)))"),
+            "list(list(0, 0), list(0, 0))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(1, 1), list(0, 1)))"),
+            "list(list(0, 1), list(0, 0))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1)))"),
+            "list(list(0, 2, -1), list(0, 0, 4), list(0, 0, 0))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(2, 0), list(0, 1)))"),
+            "list(list(ln(2), 0), list(0, 0))"
+        );
+        assert_eq!(
+            run("exp_map(matrix_log(list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1))))"),
+            "list(list(1, 2, 3), list(0, 1, 4), list(0, 0, 1))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(0, -1), list(1, 0)))"),
+            "list(list(0, -1/2*pi), list(1/2*pi, 0))"
+        );
+        assert_eq!(
+            run("matrix_log(list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 1)))"),
+            "list(list(0, -1/2*pi, 0), list(1/2*pi, 0, 0), list(0, 0, 0))"
+        );
         // not covered: unevaluated
         let open = "matrix_log(list(list(-1, 0), list(0, 1)))";
-        assert_eq!(crate::rules::testing::reduce_with(&[lie_structure()], open, &[]).0, open);
+        assert_eq!(
+            crate::rules::testing::reduce_with(&[lie_structure()], open, &[]).0,
+            open
+        );
     }
 }

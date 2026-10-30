@@ -1,16 +1,25 @@
 //! Tests for the interpolation / approximation kernels.
 
-use rssn::kernels::approx::{
-    ChebSeries, CubicSpline, Pchip, SplineBc, aaa, bspline_basis, bspline_eval,
-    bspline_interpolate, chebyshev_points, clenshaw, horner, pade,
-};
+use rssn::kernels::approx::ChebSeries;
+use rssn::kernels::approx::CubicSpline;
+use rssn::kernels::approx::Pchip;
+use rssn::kernels::approx::SplineBc;
+use rssn::kernels::approx::aaa;
+use rssn::kernels::approx::bspline_basis;
+use rssn::kernels::approx::bspline_eval;
+use rssn::kernels::approx::bspline_interpolate;
+use rssn::kernels::approx::chebyshev_points;
+use rssn::kernels::approx::clenshaw;
+use rssn::kernels::approx::horner;
+use rssn::kernels::approx::pade;
 
 #[test]
 fn cubic_spline_variants() {
     let xs: Vec<f64> = (0..=10).map(|i| f64::from(i) * 0.3).collect();
     let ys: Vec<f64> = xs.iter().map(|x| x.sin()).collect();
     let nat = CubicSpline::new(&xs, &ys, SplineBc::Natural).unwrap();
-    let clamped = CubicSpline::new(&xs, &ys, SplineBc::Clamped(0.0_f64.cos(), 3.0_f64.cos())).unwrap();
+    let clamped =
+        CubicSpline::new(&xs, &ys, SplineBc::Clamped(0.0_f64.cos(), 3.0_f64.cos())).unwrap();
     let nak = CubicSpline::new(&xs, &ys, SplineBc::NotAKnot).unwrap();
     for x in [0.5, 1.4, 2.2] {
         assert!((clamped.eval(x) - x.sin()).abs() < 1e-4);
@@ -55,7 +64,9 @@ fn bsplines() {
     }
     let coeffs = [1.0, 2.0, 0.5, -1.0, 3.0, 2.0];
     for x in [0.3, 1.2, 2.5] {
-        let direct: f64 = (0..6).map(|i| coeffs[i] * bspline_basis(&knots, 3, i, x)).sum();
+        let direct: f64 = (0..6)
+            .map(|i| coeffs[i] * bspline_basis(&knots, 3, i, x))
+            .sum();
         assert!((bspline_eval(&knots, &coeffs, 3, x) - direct).abs() < 1e-13);
     }
     let xs: Vec<f64> = (0..9).map(|i| f64::from(i) * 0.5).collect();
@@ -85,8 +96,15 @@ fn chebyshev_approximation() {
     assert!(a.degree() < 40);
     assert!((a.eval(2.2) - 2.2_f64.sin()).abs() < 1e-13);
     // roots of sin on [0, 10]
-    let r = ChebSeries::adaptive(f64::sin, 0.0, 10.0, 1e-14, 256).roots().unwrap();
-    let expect = [0.0, std::f64::consts::PI, 2.0 * std::f64::consts::PI, 3.0 * std::f64::consts::PI];
+    let r = ChebSeries::adaptive(f64::sin, 0.0, 10.0, 1e-14, 256)
+        .roots()
+        .unwrap();
+    let expect = [
+        0.0,
+        std::f64::consts::PI,
+        2.0 * std::f64::consts::PI,
+        3.0 * std::f64::consts::PI,
+    ];
     assert_eq!(r.len(), 4, "{r:?}");
     for (v, e) in r.iter().zip(expect) {
         assert!((v - e).abs() < 1e-9);
@@ -100,7 +118,9 @@ fn chebyshev_approximation() {
 #[test]
 fn aaa_rational_approximation() {
     // recovers a rational function essentially exactly
-    let z: Vec<f64> = (0..200).map(|i| -1.0 + 2.0 * f64::from(i) / 199.0).collect();
+    let z: Vec<f64> = (0..200)
+        .map(|i| -1.0 + 2.0 * f64::from(i) / 199.0)
+        .collect();
     let f: Vec<f64> = z.iter().map(|x| (1.0 + x) / (2.0 + x * x)).collect();
     let r = aaa(&z, &f, 1e-13, 20).unwrap();
     assert!(r.degree() <= 4, "degree {}", r.degree());

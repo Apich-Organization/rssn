@@ -186,4 +186,6 @@ pub fn simulate_bose_einstein_vortex_scenario(output_dir: &Path) -> Result<(), S
 }
 
 /// GPE ground states and dynamics in 1D–3D: see [`crate::sim::split_step`].
-pub use crate::sim::split_step::{GroundState as GpeGroundState, SplitStep as GpeSolver};
+pub use crate::sim::split_step::GroundState as GpeGroundState;
+/// GPE ground states and dynamics in 1D–3D: see [`crate::sim::split_step`].
+pub use crate::sim::split_step::SplitStep as GpeSolver;

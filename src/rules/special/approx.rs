@@ -12,7 +12,6 @@
 //! they can be evaluated, compiled, differentiated or printed like any
 //! other.
 
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Kernel;
@@ -24,9 +23,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::rule::Installer;
+use crate::kernels::approx::ChebSeries;
 use crate::kernels::approx::aaa;
 use crate::kernels::approx::clenshaw;
-use crate::kernels::approx::ChebSeries;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::powi;
@@ -41,15 +41,37 @@ const SAMPLES: usize = 2000;
 const MAX_TERMS: usize = 60;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str| OpDescriptor::new(name, Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100);
-    let series = i.op(OpDescriptor::new("chebyshev_series", Arity::Variadic).cost(4).eval(|a| match a.split_first() {
-        | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
-        | _ => f64::NAN,
-    }))?;
+    let heavy = |name: &str| {
+        OpDescriptor::new(name, Arity::Fixed(4))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
+    let series = i.op(OpDescriptor::new("chebyshev_series", Arity::Variadic)
+        .cost(4)
+        .eval(|a| {
+            match a.split_first() {
+                | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
+                | _ => f64::NAN,
+            }
+        }))?;
     let op = i.op(heavy("chebyshev_approx"))?;
-    i.kernel("special/chebyshev_approx", Tier::Reduce, Approximate { op, kind: Kind::Chebyshev(series) });
+    i.kernel(
+        "special/chebyshev_approx",
+        Tier::Reduce,
+        Approximate {
+            op,
+            kind: Kind::Chebyshev(series),
+        },
+    );
     let op = i.op(heavy("rational_approx"))?;
-    i.kernel("special/rational_approx", Tier::Reduce, Approximate { op, kind: Kind::Rational });
+    i.kernel(
+        "special/rational_approx",
+        Tier::Reduce,
+        Approximate {
+            op,
+            kind: Kind::Rational,
+        },
+    );
     Ok(())
 }
 
@@ -79,7 +101,8 @@ impl Kernel for Approximate {
         };
         // Pinned: combining the barycentric form into one fraction would
         // destroy its stability.
-        self.approximate(cx, f, x, a, b).map_or(Outcome::Pass, Outcome::Pinned)
+        self.approximate(cx, f, x, a, b)
+            .map_or(Outcome::Pass, Outcome::Pinned)
     }
 
     fn revisit(&self) -> bool {
@@ -106,21 +129,35 @@ impl Approximate {
             return None;
         }
         let body = best(cx.graph, f)?;
-        let bindings: Vec<(SymbolId, f64)> =
-            cx.env.bindings().iter().copied().filter(|&(s, _)| s != variable).collect();
+        let bindings: Vec<(SymbolId, f64)> = cx
+            .env
+            .bindings()
+            .iter()
+            .copied()
+            .filter(|&(s, _)| s != variable)
+            .collect();
         let free = cx.graph.free_symbols(cx.graph.find(body)).to_vec();
-        if free.iter().any(|&s| s != variable && !bindings.iter().any(|&(b, _)| b == s)) {
+        if free
+            .iter()
+            .any(|&s| s != variable && !bindings.iter().any(|&(b, _)| b == s))
+        {
             return None;
         }
         let params: Vec<SymbolId> = bindings.iter().map(|&(s, _)| s).collect();
         let values: Vec<f64> = bindings.iter().map(|&(_, v)| v).collect();
-        let compiled = crate::backend::current().compile_multi(cx.graph, &[body], &[variable], &params).ok()?;
+        let compiled = crate::backend::current()
+            .compile_multi(cx.graph, &[body], &[variable], &params)
+            .ok()?;
         let eval = |t: f64| {
             let mut out = [0.0];
             compiled.eval(&[t], &values, &mut out);
             out[0]
         };
-        let tolerance = if cx.env.numeric && cx.env.tolerance > 0.0 { cx.env.tolerance } else { 1e-14 };
+        let tolerance = if cx.env.numeric && cx.env.tolerance > 0.0 {
+            cx.env.tolerance
+        } else {
+            1e-14
+        };
         match self.kind {
             | Kind::Chebyshev(chebyshev_series) => {
                 let series = ChebSeries::adaptive(eval, lo, hi, tolerance, MAX_DEGREE);
@@ -144,7 +181,8 @@ impl Approximate {
                 let half = 0.5 * (hi - lo);
                 let z: Vec<f64> = (0..SAMPLES)
                     .map(|k| {
-                        let angle = std::f64::consts::PI * (2.0 * k as f64 + 1.0) / (2.0 * SAMPLES as f64);
+                        let angle =
+                            std::f64::consts::PI * (2.0 * k as f64 + 1.0) / (2.0 * SAMPLES as f64);
                         f64::midpoint(lo, hi) - half * angle.cos()
                     })
                     .collect();
@@ -191,8 +229,16 @@ mod tests {
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &standard()).unwrap_or_else(|e| panic!("{e}"));
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-        let reduced = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root).unwrap_or_else(|| panic!("{src} not reduced"));
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let reduced = Extractor::new(&g, &[root], &ClosedForm)
+            .build(&mut g, root)
+            .unwrap_or_else(|| panic!("{src} not reduced"));
         let x = g.interner_mut().symbol("x");
         points
             .iter()
@@ -225,10 +271,16 @@ mod tests {
     fn rational_approximants_capture_poles_nearby() {
         // 1/(x^2 + 0.01) is hard for polynomials but rational itself.
         let points = [-1.0, -0.05, 0.0, 0.3, 0.8];
-        let values = approximate_at("rational_approx(tanh(20*x) + 1/(x^2 + 1/100), x, -1, 1)", &points);
+        let values = approximate_at(
+            "rational_approx(tanh(20*x) + 1/(x^2 + 1/100), x, -1, 1)",
+            &points,
+        );
         for (&p, v) in points.iter().zip(values) {
             let want = (20.0 * p).tanh() + 1.0 / (p * p + 0.01);
-            assert!((v - want).abs() < 1e-9 * want.abs().max(1.0), "at {p}: {v} vs {want}");
+            assert!(
+                (v - want).abs() < 1e-9 * want.abs().max(1.0),
+                "at {p}: {v} vs {want}"
+            );
         }
     }
 }

@@ -5,10 +5,12 @@ use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::matrix::Matrix;
-use rssn::kernels::solve::{
-    LinearSolution, solve_linear_system, solve_nonlinear_system, solve_root, solve_root_bisection,
-    solve_root_newton,
-};
+use rssn::kernels::solve::LinearSolution;
+use rssn::kernels::solve::solve_linear_system;
+use rssn::kernels::solve::solve_nonlinear_system;
+use rssn::kernels::solve::solve_root;
+use rssn::kernels::solve::solve_root_bisection;
+use rssn::kernels::solve::solve_root_newton;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -18,7 +20,10 @@ fn cfg() -> ProptestConfig {
     }
 }
 
-fn mat_vec(a: &Matrix<f64>, x: &[f64]) -> Vec<f64> {
+fn mat_vec(
+    a: &Matrix<f64>,
+    x: &[f64],
+) -> Vec<f64> {
     (0..a.rows())
         .map(|i| (0..a.cols()).map(|j| a.get(i, j) * x[j]).sum())
         .collect()
@@ -29,11 +34,11 @@ fn linear_unique() {
     // 2x + y = 5 ; x - y = 1  =>  (2, 1)
     let a = Matrix::new(2, 2, vec![2.0, 1.0, 1.0, -1.0]);
     match solve_linear_system(&a, &[5.0, 1.0]).unwrap_or_else(|e| panic!("{e}")) {
-        LinearSolution::Unique(x) => {
+        | LinearSolution::Unique(x) => {
             assert_approx_eq!(x[0], 2.0);
             assert_approx_eq!(x[1], 1.0);
-        }
-        other => panic!("expected unique solution, got {other:?}"),
+        },
+        | other => panic!("expected unique solution, got {other:?}"),
     }
 }
 
@@ -42,18 +47,25 @@ fn linear_parametric() {
     // x + y + z = 3 twice (rank 1): a plane of solutions.
     let a = Matrix::new(2, 3, vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0]);
     match solve_linear_system(&a, &[3.0, 6.0]).unwrap_or_else(|e| panic!("{e}")) {
-        LinearSolution::Parametric { particular, null_space_basis } => {
+        | LinearSolution::Parametric {
+            particular,
+            null_space_basis,
+        } => {
             let av = mat_vec(&a, &particular);
             assert_approx_eq!(av[0], 3.0);
             assert_approx_eq!(av[1], 6.0);
-            assert_eq!(null_space_basis.cols(), 2, "null space of a rank-1 3-column matrix has dimension 2");
+            assert_eq!(
+                null_space_basis.cols(),
+                2,
+                "null space of a rank-1 3-column matrix has dimension 2"
+            );
             for col in null_space_basis.get_cols() {
                 for v in mat_vec(&a, &col) {
                     assert_approx_eq!(v, 0.0);
                 }
             }
-        }
-        other => panic!("expected parametric solution, got {other:?}"),
+        },
+        | other => panic!("expected parametric solution, got {other:?}"),
     }
 }
 
@@ -78,17 +90,20 @@ fn linear_regression_seed_650() {
     let (a, x) = lcg_system(4, 650);
     let b = mat_vec(&a, &x);
     match solve_linear_system(&a, &b).unwrap_or_else(|e| panic!("{e}")) {
-        LinearSolution::Unique(sol) => {
+        | LinearSolution::Unique(sol) => {
             for (got, want) in mat_vec(&a, &sol).iter().zip(&b) {
                 assert!((got - want).abs() < 1e-6, "A*sol = {got}, b = {want}");
             }
-        }
-        other => panic!("expected unique solution, got {other:?}"),
+        },
+        | other => panic!("expected unique solution, got {other:?}"),
     }
 }
 
 /// Deterministic pseudo-random system used by the old property test.
-fn lcg_system(n: usize, seed: u64) -> (Matrix<f64>, Vec<f64>) {
+fn lcg_system(
+    n: usize,
+    seed: u64,
+) -> (Matrix<f64>, Vec<f64>) {
     let mut rng = seed;
     let mut next = || {
         rng = rng.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
@@ -116,13 +131,19 @@ fn nonlinear_system_circle_and_hyperbola() {
 #[test]
 fn nonlinear_system_singular_jacobian_is_error() {
     // f(x) = x^2 at x = 0 has zero derivative.
-    let r = solve_nonlinear_system(|x: &[f64], out: &mut [f64]| out[0] = x[0] * x[0] + 1.0, &[0.0], 1e-12, 10);
+    let r = solve_nonlinear_system(
+        |x: &[f64], out: &mut [f64]| out[0] = x[0] * x[0] + 1.0,
+        &[0.0],
+        1e-12,
+        10,
+    );
     assert!(r.is_err());
 }
 
 #[test]
 fn newton_sqrt_two() {
-    let r = solve_root_newton(|x| x * x - 2.0, |x| 2.0 * x, 1.0, 1e-14, 50).unwrap_or_else(|e| panic!("{e}"));
+    let r = solve_root_newton(|x| x * x - 2.0, |x| 2.0 * x, 1.0, 1e-14, 50)
+        .unwrap_or_else(|e| panic!("{e}"));
     assert_approx_eq!(r, 2f64.sqrt(), 1e-12);
 }
 
@@ -133,7 +154,8 @@ fn newton_flat_derivative_is_error() {
 
 #[test]
 fn bisection_cos_root() {
-    let r = solve_root_bisection(f64::cos, (1.0, 2.0), 1e-12, 200).unwrap_or_else(|e| panic!("{e}"));
+    let r =
+        solve_root_bisection(f64::cos, (1.0, 2.0), 1e-12, 200).unwrap_or_else(|e| panic!("{e}"));
     assert_approx_eq!(r, std::f64::consts::FRAC_PI_2, 1e-9);
 }
 

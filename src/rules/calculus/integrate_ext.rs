@@ -107,11 +107,16 @@ impl Integrator<'_, '_> {
         let mut gens = Gens::default();
         let x = self.x;
         let gx = gens.index(self.cx.graph, x);
-        let p = crate::rules::poly::repr::from_term(self.cx.graph, &mut gens, f, Limits::default())?;
+        let p =
+            crate::rules::poly::repr::from_term(self.cx.graph, &mut gens, f, Limits::default())?;
         if p.support().iter().any(|&g| g != gx) {
             return None;
         }
-        let mut q: QPoly = p.univariate_in(gx)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+        let mut q: QPoly = p
+            .univariate_in(gx)?
+            .iter()
+            .map(Number::to_rational)
+            .collect::<Option<_>>()?;
         while q.last().is_some_and(Zero::is_zero) {
             q.pop();
         }
@@ -124,13 +129,21 @@ impl Integrator<'_, '_> {
         f: NodeId,
     ) -> Option<NodeId> {
         let graph = &*self.cx.graph;
-        let (sec, csc, cot) = (graph.ops().lookup("sec"), graph.ops().lookup("csc"), graph.ops().lookup("cot"));
+        let (sec, csc, cot) = (
+            graph.ops().lookup("sec"),
+            graph.ops().lookup("csc"),
+            graph.ops().lookup("cot"),
+        );
         let op = graph.op(f);
         let children = graph.children(f).to_vec();
         let (inner_op, squared, u) = match children.as_slice() {
             | &[u] => (op, false, u),
-            | &[base, e] if op == core::POW && self.number(e).is_some_and(|n| n == Number::from(2)) => {
-                let &[u] = self.cx.graph.children(base) else { return None };
+            | &[base, e]
+                if op == core::POW && self.number(e).is_some_and(|n| n == Number::from(2)) =>
+            {
+                let &[u] = self.cx.graph.children(base) else {
+                    return None;
+                };
                 (self.cx.graph.op(base), true, u)
             },
             | _ => return None,
@@ -199,7 +212,9 @@ impl Integrator<'_, '_> {
             }
             let op = self.cx.graph.op(n);
             if ops.contains(&op) {
-                let &[u] = self.cx.graph.children(n) else { return None };
+                let &[u] = self.cx.graph.children(n) else {
+                    return None;
+                };
                 match argument {
                     | None => argument = Some(u),
                     | Some(a) if a == u => {},
@@ -260,7 +275,9 @@ impl Integrator<'_, '_> {
             let op = self.cx.graph.op(n);
             let children = self.cx.graph.children(n).to_vec();
             match children.as_slice() {
-                | &[b] if op == fs.sqrt && b == x => powers.push((n, BigRational::new(BigInt::one(), BigInt::from(2)))),
+                | &[b] if op == fs.sqrt && b == x => {
+                    powers.push((n, BigRational::new(BigInt::one(), BigInt::from(2))))
+                },
                 | &[b, e] if op == core::POW && b == x => {
                     let r = self.number(e)?.to_rational()?;
                     if !r.is_integer() {
@@ -273,7 +290,9 @@ impl Integrator<'_, '_> {
         if powers.is_empty() {
             return None;
         }
-        let l = powers.iter().fold(BigInt::one(), |acc, (_, r)| num_integer::Integer::lcm(&acc, r.denom()));
+        let l = powers.iter().fold(BigInt::one(), |acc, (_, r)| {
+            num_integer::Integer::lcm(&acc, r.denom())
+        });
         let l_i = i64::try_from(&l).ok().filter(|&v| v <= 12)?;
         let t = self.fresh("t");
         let mut g = f;
@@ -334,7 +353,10 @@ impl Integrator<'_, '_> {
             seen.push(n);
             let op = self.cx.graph.op(n);
             let children = self.cx.graph.children(n).to_vec();
-            if let (true, &[u]) = (op == fs.sinh || op == fs.cosh || op == fs.tanh, children.as_slice()) {
+            if let (true, &[u]) = (
+                op == fs.sinh || op == fs.cosh || op == fs.tanh,
+                children.as_slice(),
+            ) {
                 let plus = self.call(fs.exp, u);
                 let minus_u = self.neg(u);
                 let minus = self.call(fs.exp, minus_u);
@@ -383,7 +405,8 @@ impl Integrator<'_, '_> {
         }
         let mut k = graph.number_of(e)?.to_i64()?;
         // (cos u^m)^(-1)
-        if let (true, &[inner, m]) = (graph.op(base) == core::POW && k == -1, graph.children(base)) {
+        if let (true, &[inner, m]) = (graph.op(base) == core::POW && k == -1, graph.children(base))
+        {
             k = -graph.number_of(m)?.to_i64()?;
             base = inner;
         }
@@ -431,7 +454,11 @@ impl Integrator<'_, '_> {
         &mut self,
         f: NodeId,
     ) -> Option<NodeId> {
-        let factors = if self.cx.graph.op(f) == core::MUL { self.cx.graph.children(f).to_vec() } else { vec![f] };
+        let factors = if self.cx.graph.op(f) == core::MUL {
+            self.cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
         let mut constants = Vec::new();
         let mut linear: Option<QPoly> = None;
         let mut radical: Option<(NodeId, i64)> = None;
@@ -440,16 +467,24 @@ impl Integrator<'_, '_> {
                 constants.push(factor);
                 continue;
             }
-            if let (true, &[q, e]) = (self.cx.graph.op(factor) == core::POW, self.cx.graph.children(factor))
-                && let Some(r) = self.number(e).and_then(|v| v.to_rational())
-                    && *r.denom() == BigInt::from(2) && r.is_negative() && radical.is_none() {
-                        // r = -(n + 1/2)
-                        let n = i64::try_from(&(-(r + BigRational::new(BigInt::one(), BigInt::from(2)))).to_integer()).ok()?;
-                        if n >= 1 {
-                            radical = Some((q, n));
-                            continue;
-                        }
-                    }
+            if let (true, &[q, e]) = (
+                self.cx.graph.op(factor) == core::POW,
+                self.cx.graph.children(factor),
+            ) && let Some(r) = self.number(e).and_then(|v| v.to_rational())
+                && *r.denom() == BigInt::from(2)
+                && r.is_negative()
+                && radical.is_none()
+            {
+                // r = -(n + 1/2)
+                let n = i64::try_from(
+                    &(-(r + BigRational::new(BigInt::one(), BigInt::from(2)))).to_integer(),
+                )
+                .ok()?;
+                if n >= 1 {
+                    radical = Some((q, n));
+                    continue;
+                }
+            }
             if linear.is_none() {
                 let p = self.q_poly_of(factor)?;
                 if p.len() <= 2 {
@@ -494,9 +529,13 @@ impl Integrator<'_, '_> {
                 let exponent = BigRational::new(BigInt::from(1 - 2 * k), BigInt::from(2));
                 let e = self.cx.graph.num(Number::rat(exponent));
                 let raised = self.pow(q_node, e);
-                let scale = self.cx.graph.num(Number::rat(&weight * &two / &denominator));
+                let scale = self
+                    .cx
+                    .graph
+                    .num(Number::rat(&weight * &two / &denominator));
                 pieces.push(self.mul(&[scale, lin_node, raised]));
-                weight = weight * BigRational::from_integer(BigInt::from(8 * (k - 1))) * a / &denominator;
+                weight = weight * BigRational::from_integer(BigInt::from(8 * (k - 1))) * a
+                    / &denominator;
                 if weight.is_zero() {
                     break;
                 }
@@ -566,7 +605,15 @@ impl Integrator<'_, '_> {
             let children = self.cx.graph.children(n).to_vec();
             let candidate = match children.as_slice() {
                 | &[q] if op == fs.sqrt => Some(q),
-                | &[q, e] if op == core::POW && self.number(e).and_then(|v| v.to_rational()).is_some_and(|r| *r.denom() == BigInt::from(2)) => Some(q),
+                | &[q, e]
+                    if op == core::POW
+                        && self
+                            .number(e)
+                            .and_then(|v| v.to_rational())
+                            .is_some_and(|r| *r.denom() == BigInt::from(2)) =>
+                {
+                    Some(q)
+                },
                 | _ => None,
             };
             if let Some(q) = candidate.filter(|&q| self.depends(q)) {
@@ -606,7 +653,8 @@ impl Integrator<'_, '_> {
             return None;
         }
         // N = N0 + N1 r with r² = Q.
-        let q_poly = Poly::from_univariate(gx, &q.iter().cloned().map(Number::rat).collect::<Vec<_>>());
+        let q_poly =
+            Poly::from_univariate(gx, &q.iter().cloned().map(Number::rat).collect::<Vec<_>>());
         let split = |p: &Poly| -> Option<(Poly, Poly)> {
             let mut even = Poly::zero();
             let mut odd = Poly::zero();
@@ -624,11 +672,19 @@ impl Integrator<'_, '_> {
         };
         let (n0, n1) = split(&fraction.numer)?;
         let (d0, d1) = split(&fraction.denom)?;
-        let den = d0.mul(&d0, 4096)?.sub(&d1.mul(&d1, 4096)?.mul(&q_poly, 4096)?);
-        let a_num = n0.mul(&d0, 4096)?.sub(&n1.mul(&d1, 4096)?.mul(&q_poly, 4096)?);
+        let den = d0
+            .mul(&d0, 4096)?
+            .sub(&d1.mul(&d1, 4096)?.mul(&q_poly, 4096)?);
+        let a_num = n0
+            .mul(&d0, 4096)?
+            .sub(&n1.mul(&d1, 4096)?.mul(&q_poly, 4096)?);
         let b_num = n1.mul(&d0, 4096)?.sub(&n0.mul(&d1, 4096)?);
         let as_q = |p: &Poly| -> Option<QPoly> {
-            let mut v: QPoly = p.univariate_in(gx)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+            let mut v: QPoly = p
+                .univariate_in(gx)?
+                .iter()
+                .map(Number::to_rational)
+                .collect::<Option<_>>()?;
             while v.last().is_some_and(Zero::is_zero) {
                 v.pop();
             }
@@ -650,7 +706,9 @@ impl Integrator<'_, '_> {
                 pieces.push(self.polynomial_over_root(&parts.quotient, &q)?);
             }
             for piece in &parts.pieces {
-                let ([alpha_den, alpha_num], [c]) = (piece.factor.as_slice(), piece.numerator.as_slice()) else {
+                let ([alpha_den, alpha_num], [c]) =
+                    (piece.factor.as_slice(), piece.numerator.as_slice())
+                else {
                     return None;
                 };
                 // factor = alpha_num x + alpha_den = alpha_num (x - α)
@@ -726,7 +784,10 @@ impl Integrator<'_, '_> {
             mono[i] = BigRational::one();
             let d = univariate::derivative(&mono);
             let term1 = univariate::mul(&d, q);
-            let term2: QPoly = univariate::mul(&mono, &dq).iter().map(|c| c * &half).collect();
+            let term2: QPoly = univariate::mul(&mono, &dq)
+                .iter()
+                .map(|c| c * &half)
+                .collect();
             let total = univariate::add(&term1, &term2);
             for (k, v) in total.iter().enumerate() {
                 if k < rows_count {
@@ -777,7 +838,10 @@ impl Integrator<'_, '_> {
         // -∫ t^(m-1) / √Q*(t) dt (for t > 0)
         let mut gens = Gens::default();
         let gt = gens.index(self.cx.graph, t);
-        let star = Poly::from_univariate(gt, &q_star.iter().cloned().map(Number::rat).collect::<Vec<_>>());
+        let star = Poly::from_univariate(
+            gt,
+            &q_star.iter().cloned().map(Number::rat).collect::<Vec<_>>(),
+        );
         let star = to_term(self.cx.graph, &gens, &star);
         let half = self.frac(-1, 2);
         let root_inv = self.pow(star, half);
@@ -836,18 +900,34 @@ impl Integrator<'_, '_> {
             return None;
         }
         let d_q: QPoly = {
-            let mut v: QPoly = fraction.denom.univariate_in(gx)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+            let mut v: QPoly = fraction
+                .denom
+                .univariate_in(gx)?
+                .iter()
+                .map(Number::to_rational)
+                .collect::<Option<_>>()?;
             while v.last().is_some_and(Zero::is_zero) {
                 v.pop();
             }
             v
         };
         // H = D / squarefree(D): the denominator part that survives.
-        let squarefree = univariate::square_free(&d_q).into_iter().fold(vec![BigRational::one()], |acc, (p, _)| univariate::mul(&acc, &p));
+        let squarefree = univariate::square_free(&d_q)
+            .into_iter()
+            .fold(vec![BigRational::one()], |acc, (p, _)| {
+                univariate::mul(&acc, &p)
+            });
         let (h, _) = univariate::divrem(&d_q, &squarefree)?;
         let deg_x = fraction.numer.degree_in(gx) as usize + 2;
         let theta_degrees: Vec<u32> = if is_exp {
-            let mut v: Vec<u32> = fraction.numer.coefficients_in(gt).iter().enumerate().filter(|(_, c)| !c.is_zero()).map(|(k, _)| u32::try_from(k).unwrap_or(0)).collect();
+            let mut v: Vec<u32> = fraction
+                .numer
+                .coefficients_in(gt)
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| !c.is_zero())
+                .map(|(k, _)| u32::try_from(k).unwrap_or(0))
+                .collect();
             v.sort_unstable();
             v
         } else {
@@ -896,7 +976,9 @@ impl Integrator<'_, '_> {
         let negated = self.neg(scaled);
         let residual = self.add(&[derivative, negated]);
         let basis = crate::rules::ode::solve_linear_identity(self.cx.graph, residual, &unknowns)?;
-        let solution = basis.into_iter().find(|v| v.last().is_some_and(|k| !k.is_zero()))?;
+        let solution = basis
+            .into_iter()
+            .find(|v| v.last().is_some_and(|k| !k.is_zero()))?;
         let k = solution.last()?.clone();
         let mut result = candidate;
         for (u, value) in unknowns.iter().zip(&solution) {
@@ -919,7 +1001,11 @@ impl Integrator<'_, '_> {
             return None;
         }
         let as_q = |p: &Poly| -> Option<QPoly> {
-            let mut v: QPoly = p.univariate_in(gx)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+            let mut v: QPoly = p
+                .univariate_in(gx)?
+                .iter()
+                .map(Number::to_rational)
+                .collect::<Option<_>>()?;
             while v.last().is_some_and(Zero::is_zero) {
                 v.pop();
             }
@@ -944,7 +1030,12 @@ impl Integrator<'_, '_> {
         let neg_c = self.neg(c_node);
         let s2 = self.add(&[two_t, neg_c]);
         let s2 = self.cx.simplify(s2);
-        if self.cx.graph.eval(s2, &Env::numeric(0.0)).is_none_or(|v| v <= 0.0) {
+        if self
+            .cx
+            .graph
+            .eval(s2, &Env::numeric(0.0))
+            .is_none_or(|v| v <= 0.0)
+        {
             return None;
         }
         let s = self.pow(s2, half);
@@ -971,7 +1062,12 @@ impl Integrator<'_, '_> {
         let c_c = self.add(&[n[3], u_s]);
         let b_c = self.add(&[n0_t, neg_vs]);
         let d_c = self.add(&[n0_t, v_s]);
-        let (a_c, b_c, c_c, d_c) = (self.mul(&[half, a_c]), self.mul(&[half, b_c]), self.mul(&[half, c_c]), self.mul(&[half, d_c]));
+        let (a_c, b_c, c_c, d_c) = (
+            self.mul(&[half, a_c]),
+            self.mul(&[half, b_c]),
+            self.mul(&[half, c_c]),
+            self.mul(&[half, d_c]),
+        );
         let x2 = self.pow(x, two);
         let sx = self.mul(&[s, x]);
         let neg_sx = self.neg(sx);
@@ -1014,13 +1110,19 @@ pub(super) fn by_residues(
     let pi = cx.graph.node(pi, &[]);
     let i_unit = cx.graph.node(i_op, &[]);
     // Split off one sin/cos(a x) factor.
-    let factors = if cx.graph.op(integrand) == core::MUL { cx.graph.children(integrand).to_vec() } else { vec![integrand] };
+    let factors = if cx.graph.op(integrand) == core::MUL {
+        cx.graph.children(integrand).to_vec()
+    } else {
+        vec![integrand]
+    };
     let mut wave = None;
     let mut rest = Vec::new();
     for fac in factors {
         let op = cx.graph.op(fac);
         if (op == sin || op == cos) && wave.is_none() {
-            let &[u] = cx.graph.children(fac) else { return None };
+            let &[u] = cx.graph.children(fac) else {
+                return None;
+            };
             wave = Some((op == cos, u));
         } else {
             rest.push(fac);
@@ -1045,21 +1147,26 @@ pub(super) fn by_residues(
     let (numer, denom) = crate::rules::poly::rational_function_in(cx.graph, r, x)?;
     // Dirichlet: sin(a x)/x on (0, ∞) or (-∞, ∞).
     if let (Some((false, _)), Some(a)) = (wave, a)
-        && numer.len() == 1 && denom.len() == 2 && denom[0].is_zero() && hi.is_infinite() && hi > 0.0 {
-            let c = &numer[0] / &denom[1];
-            let sign = cx.graph.ops().lookup("sign")?;
-            let s = cx.graph.node(sign, &[a]);
-            let c = cx.graph.num(Number::rat(c));
-            let factor = if lo == 0.0 {
-                let half = cx.graph.num(Number::fraction(1, 2)?);
-                cx.graph.node(core::MUL, &[half, pi])
-            } else if lo.is_infinite() && lo < 0.0 {
-                pi
-            } else {
-                return None;
-            };
-            return Some(cx.graph.node(core::MUL, &[c, factor, s]));
-        }
+        && numer.len() == 1
+        && denom.len() == 2
+        && denom[0].is_zero()
+        && hi.is_infinite()
+        && hi > 0.0
+    {
+        let c = &numer[0] / &denom[1];
+        let sign = cx.graph.ops().lookup("sign")?;
+        let s = cx.graph.node(sign, &[a]);
+        let c = cx.graph.num(Number::rat(c));
+        let factor = if lo == 0.0 {
+            let half = cx.graph.num(Number::fraction(1, 2)?);
+            cx.graph.node(core::MUL, &[half, pi])
+        } else if lo.is_infinite() && lo < 0.0 {
+            pi
+        } else {
+            return None;
+        };
+        return Some(cx.graph.node(core::MUL, &[c, factor, s]));
+    }
     if !(lo.is_infinite() && lo < 0.0 && hi.is_infinite() && hi > 0.0) {
         return None;
     }
@@ -1098,7 +1205,10 @@ pub(super) fn by_residues(
                 quadratics.push(terms);
             },
             | [e0, z1, c2, z3, lead] if z1.is_zero() && z3.is_zero() => {
-                let (c, e) = (BigRational::new(c2.clone(), lead.clone()), BigRational::new(e0.clone(), lead.clone()));
+                let (c, e) = (
+                    BigRational::new(c2.clone(), lead.clone()),
+                    BigRational::new(e0.clone(), lead.clone()),
+                );
                 if !e.is_positive() {
                     return None;
                 }

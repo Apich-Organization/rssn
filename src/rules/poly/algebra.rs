@@ -67,25 +67,43 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let identity = |a: &[f64]| a.first().copied().unwrap_or(f64::NAN);
     for (name, arity, request) in [
         ("count_real_roots", Arity::Variadic, Request::CountRealRoots),
-        ("real_root_intervals", Arity::Fixed(2), Request::RootIntervals),
+        (
+            "real_root_intervals",
+            Arity::Fixed(2),
+            Request::RootIntervals,
+        ),
         ("sturm_sequence", Arity::Fixed(2), Request::Sturm),
         ("resultant", Arity::Fixed(3), Request::Resultant),
         ("discriminant", Arity::Fixed(2), Request::Discriminant),
         ("leading_term", Arity::Variadic, Request::LeadingTerm),
         ("leading_coeff", Arity::Variadic, Request::LeadingCoeff),
-        ("leading_monomial", Arity::Variadic, Request::LeadingMonomial),
+        (
+            "leading_monomial",
+            Arity::Variadic,
+            Request::LeadingMonomial,
+        ),
         ("normal_form", Arity::Fixed(3), Request::NormalForm),
         ("ideal_member", Arity::Fixed(3), Request::IdealMember),
-        ("simplify_with_relations", Arity::Fixed(3), Request::WithRelations),
+        (
+            "simplify_with_relations",
+            Arity::Fixed(3),
+            Request::WithRelations,
+        ),
         ("cad", Arity::Fixed(2), Request::Cad),
         ("expand_trig", Arity::Fixed(1), Request::ExpandTrig),
     ] {
-        let mut desc = OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
+        let mut desc = OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100);
         if request == Request::ExpandTrig {
             desc = desc.eval(identity);
         }
         let op = i.op(desc)?;
-        i.kernel(&format!("poly/{name}"), Tier::Reduce, Algebra { op, request });
+        i.kernel(
+            &format!("poly/{name}"),
+            Tier::Reduce,
+            Algebra { op, request },
+        );
     }
     Ok(())
 }
@@ -114,19 +132,30 @@ impl Kernel for Algebra {
             | (Request::CountRealRoots, &[p, x, a, b]) => {
                 count_real_roots(graph, p, x, Some((a, b))).map(|n| (graph.int(n), false))
             },
-            | (Request::RootIntervals, &[p, x]) => root_intervals_term(graph, p, x).map(|t| (t, true)),
+            | (Request::RootIntervals, &[p, x]) => {
+                root_intervals_term(graph, p, x).map(|t| (t, true))
+            },
             | (Request::Sturm, &[p, x]) => sturm_term(graph, p, x).map(|t| (t, true)),
-            | (Request::Resultant, &[p, q, x]) => resultant_term(graph, p, q, x).map(|t| (t, false)),
-            | (Request::Discriminant, &[p, x]) => discriminant_term(graph, p, x).map(|t| (t, false)),
-            | (Request::LeadingTerm | Request::LeadingCoeff | Request::LeadingMonomial, &[p, vars, ref rest @ ..])
-                if rest.len() <= 1 =>
-            {
+            | (Request::Resultant, &[p, q, x]) => {
+                resultant_term(graph, p, q, x).map(|t| (t, false))
+            },
+            | (Request::Discriminant, &[p, x]) => {
+                discriminant_term(graph, p, x).map(|t| (t, false))
+            },
+            | (
+                Request::LeadingTerm | Request::LeadingCoeff | Request::LeadingMonomial,
+                &[p, vars, ref rest @ ..],
+            ) if rest.len() <= 1 => {
                 leading(graph, self.request, p, vars, rest.first().copied()).map(|t| (t, false))
             },
-            | (Request::NormalForm, &[p, polys, vars]) => normal_form_term(graph, p, polys, vars).map(|t| (t, false)),
-            | (Request::IdealMember, &[p, polys, vars]) => normal_form_term(graph, p, polys, vars)
-                .map(|t| graph.as_number(t).is_some_and(Number::is_zero))
-                .map(|b| (graph.lit(Payload::Bool(b)), false)),
+            | (Request::NormalForm, &[p, polys, vars]) => {
+                normal_form_term(graph, p, polys, vars).map(|t| (t, false))
+            },
+            | (Request::IdealMember, &[p, polys, vars]) => {
+                normal_form_term(graph, p, polys, vars)
+                    .map(|t| graph.as_number(t).is_some_and(Number::is_zero))
+                    .map(|b| (graph.lit(Payload::Bool(b)), false))
+            },
             | (Request::WithRelations, &[e, relations, vars]) => {
                 with_relations(graph, e, relations, vars).map(|t| (t, false))
             },
@@ -206,7 +235,11 @@ fn sign_at(
         | None => {
             let lead = q.last().map_or(0, sign);
             let odd = q.len().is_multiple_of(2);
-            if positive || !odd { lead } else { -lead }
+            if positive || !odd {
+                lead
+            } else {
+                -lead
+            }
         },
     }
 }
@@ -216,7 +249,11 @@ fn variations(
     at: Option<&BigRational>,
     positive: bool,
 ) -> usize {
-    let signs: Vec<i32> = chain.iter().map(|q| sign_at(q, at, positive)).filter(|&s| s != 0).collect();
+    let signs: Vec<i32> = chain
+        .iter()
+        .map(|q| sign_at(q, at, positive))
+        .filter(|&s| s != 0)
+        .collect();
     signs.windows(2).filter(|w| w[0] != w[1]).count()
 }
 
@@ -281,7 +318,12 @@ pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
     let chain = sturm_chain(q);
     // Cauchy bound.
     let lead = q.last().cloned().unwrap_or_else(BigRational::one);
-    let bound = q.iter().rev().skip(1).map(|c| (c / &lead).abs()).fold(BigRational::zero(), |m, c| if c > m { c } else { m })
+    let bound = q
+        .iter()
+        .rev()
+        .skip(1)
+        .map(|c| (c / &lead).abs())
+        .fold(BigRational::zero(), |m, c| if c > m { c } else { m })
         + BigRational::one();
     let rational = univariate::rational_roots(q);
     let mut out = Vec::new();
@@ -294,9 +336,11 @@ pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
         }
         match sturm_count(&chain, Some(&a), Some(&b)) {
             | 0 => {},
-            | 1 => match rational.iter().find(|r| **r > a && **r <= b) {
-                | Some(r) => out.push((r.clone(), r.clone())),
-                | None => out.push((a, b)),
+            | 1 => {
+                match rational.iter().find(|r| **r > a && **r <= b) {
+                    | Some(r) => out.push((r.clone(), r.clone())),
+                    | None => out.push((a, b)),
+                }
             },
             | _ => {
                 let mid = (&a + &b) / BigRational::from_integer(BigInt::from(2));
@@ -367,7 +411,10 @@ fn sturm_term(
     x: NodeId,
 ) -> Option<NodeId> {
     let q = univariate_q(graph, p, x)?;
-    let items: Vec<NodeId> = sturm_chain(&q).iter().map(|s| qpoly_term(graph, s, x)).collect();
+    let items: Vec<NodeId> = sturm_chain(&q)
+        .iter()
+        .map(|s| qpoly_term(graph, s, x))
+        .collect();
     Some(graph.node(core::LIST, &items))
 }
 
@@ -487,7 +534,11 @@ fn discriminant(
     let r = resultant(p, &derivative)?;
     let lead = p.last()?;
     let d = r.div_exact(lead, CAP)?;
-    Some(if (n * (n - 1) / 2) % 2 == 1 { d.neg() } else { d })
+    Some(if (n * (n - 1) / 2) % 2 == 1 {
+        d.neg()
+    } else {
+        d
+    })
 }
 
 fn discriminant_term(
@@ -599,8 +650,10 @@ fn cad_line(qs: &[QPoly]) -> Vec<Number> {
         product = univariate::mul(&product, &part);
     }
     let width = BigRational::new(BigInt::one(), BigInt::from(10_u64.pow(15)));
-    let roots: Vec<(BigRational, BigRational)> =
-        isolate(&product).into_iter().map(|iv| refine(&product, iv, &width)).collect();
+    let roots: Vec<(BigRational, BigRational)> = isolate(&product)
+        .into_iter()
+        .map(|iv| refine(&product, iv, &width))
+        .collect();
     let one = BigRational::one();
     let two = BigRational::from_integer(BigInt::from(2));
     let mut samples = Vec::new();
@@ -608,7 +661,11 @@ fn cad_line(qs: &[QPoly]) -> Vec<Number> {
         | (Some(first), Some(last)) => {
             samples.push(Number::rat(first.0.floor() - &one));
             for (i, (a, b)) in roots.iter().enumerate() {
-                samples.push(if a == b { Number::rat(a.clone()) } else { Number::Float(Number::rat((a + b) / &two).to_f64()) });
+                samples.push(if a == b {
+                    Number::rat(a.clone())
+                } else {
+                    Number::Float(Number::rat((a + b) / &two).to_f64())
+                });
                 if let Some(next) = roots.get(i + 1) {
                     samples.push(Number::rat((b + &next.0) / &two));
                 }
@@ -632,7 +689,10 @@ fn cad(
     let vs = graph.children(vars).to_vec();
     match vs.as_slice() {
         | &[x] => {
-            let qs = ps.iter().map(|&p| univariate_q(graph, p, x)).collect::<Option<Vec<_>>>()?;
+            let qs = ps
+                .iter()
+                .map(|&p| univariate_q(graph, p, x))
+                .collect::<Option<Vec<_>>>()?;
             let items: Vec<NodeId> = cad_line(&qs).into_iter().map(|n| graph.num(n)).collect();
             Some(graph.node(core::LIST, &items))
         },
@@ -721,7 +781,10 @@ fn cad_samples(
             let mut coefficients: QPoly = if q.is_zero() {
                 Vec::new()
             } else {
-                q.univariate_in(y)?.iter().map(Number::to_rational).collect::<Option<_>>()?
+                q.univariate_in(y)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect::<Option<_>>()?
             };
             while coefficients.last().is_some_and(Zero::is_zero) {
                 coefficients.pop();
@@ -739,7 +802,13 @@ fn cad_samples(
         let point: Vec<(u32, BigRational)> = base
             .iter()
             .zip(&sample)
-            .map(|(&g, v)| Some((g, v.to_rational().or_else(|| BigRational::from_float(v.to_f64()))?)))
+            .map(|(&g, v)| {
+                Some((
+                    g,
+                    v.to_rational()
+                        .or_else(|| BigRational::from_float(v.to_f64()))?,
+                ))
+            })
             .collect::<Option<_>>()?;
         for value in fibre_samples(&point)? {
             let mut cell = sample.clone();
@@ -796,7 +865,12 @@ fn cad_plane(
             return Some(Vec::new());
         }
         match gx {
-            | Some(g) => p.univariate_in(g)?.iter().map(Number::to_rational).collect(),
+            | Some(g) => {
+                p.univariate_in(g)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect()
+            },
             | None => Some(vec![p.as_constant()?.to_rational()?]),
         }
     };
@@ -816,7 +890,9 @@ fn cad_plane(
     }
     let mut cells = Vec::new();
     for xs in cad_line(&projection) {
-        let at = xs.to_rational().or_else(|| BigRational::from_float(xs.to_f64()))?;
+        let at = xs
+            .to_rational()
+            .or_else(|| BigRational::from_float(xs.to_f64()))?;
         // Each polynomial at x = xs, as a univariate polynomial in y.
         let mut fibres = Vec::new();
         for p in &polys {
@@ -867,16 +943,26 @@ fn expand_trig(
     if depth > 40 {
         return None;
     }
-    let ops = (graph.ops().lookup("sin"), graph.ops().lookup("cos"), graph.ops().lookup("tan"));
+    let ops = (
+        graph.ops().lookup("sin"),
+        graph.ops().lookup("cos"),
+        graph.ops().lookup("tan"),
+    );
     let (Some(sin), Some(cos), Some(tan)) = ops else {
         return None;
     };
     let op = graph.op(e);
     let children = graph.children(e).to_vec();
-    let expanded: Vec<NodeId> =
-        children.iter().map(|&c| expand_trig(graph, c, depth + 1)).collect::<Option<Vec<_>>>()?;
+    let expanded: Vec<NodeId> = children
+        .iter()
+        .map(|&c| expand_trig(graph, c, depth + 1))
+        .collect::<Option<Vec<_>>>()?;
     if op != sin && op != cos && op != tan {
-        return Some(if expanded == children { e } else { graph.try_node(op, &expanded)? });
+        return Some(if expanded == children {
+            e
+        } else {
+            graph.try_node(op, &expanded)?
+        });
     }
     let &[arg] = expanded.as_slice() else {
         return Some(e);
@@ -885,14 +971,24 @@ fn expand_trig(
     let split = if graph.op(arg) == core::ADD {
         let parts = graph.children(arg).to_vec();
         let (first, rest) = parts.split_first()?;
-        let rest = if rest.len() == 1 { rest[0] } else { graph.node(core::ADD, rest) };
+        let rest = if rest.len() == 1 {
+            rest[0]
+        } else {
+            graph.node(core::ADD, rest)
+        };
         Some((*first, rest))
     } else if graph.op(arg) == core::MUL {
         let parts = graph.children(arg).to_vec();
-        let n = parts.iter().find_map(|&p| graph.number_of(p).and_then(Number::to_i64));
+        let n = parts
+            .iter()
+            .find_map(|&p| graph.number_of(p).and_then(Number::to_i64));
         match n {
             | Some(n) if (2..=24).contains(&n) => {
-                let others: Vec<NodeId> = parts.iter().copied().filter(|&p| graph.number_of(p).is_none()).collect();
+                let others: Vec<NodeId> = parts
+                    .iter()
+                    .copied()
+                    .filter(|&p| graph.number_of(p).is_none())
+                    .collect();
                 let rest_number: Vec<NodeId> = parts
                     .iter()
                     .copied()
@@ -900,7 +996,11 @@ fn expand_trig(
                     .collect();
                 let mut unit_parts = others;
                 unit_parts.extend(rest_number);
-                let unit = if unit_parts.len() == 1 { unit_parts[0] } else { graph.node(core::MUL, &unit_parts) };
+                let unit = if unit_parts.len() == 1 {
+                    unit_parts[0]
+                } else {
+                    graph.node(core::MUL, &unit_parts)
+                };
                 let m = graph.int(n - 1);
                 let rest = graph.node(core::MUL, &[m, unit]);
                 Some((rest, unit))
@@ -916,7 +1016,10 @@ fn expand_trig(
     let parts = |graph: &mut Graph, t: NodeId| -> Option<(NodeId, NodeId)> {
         let s = graph.node(sin, &[t]);
         let c = graph.node(cos, &[t]);
-        Some((expand_trig(graph, s, depth + 1)?, expand_trig(graph, c, depth + 1)?))
+        Some((
+            expand_trig(graph, s, depth + 1)?,
+            expand_trig(graph, c, depth + 1)?,
+        ))
     };
     let (sa, ca) = parts(graph, a)?;
     let (sb, cb) = parts(graph, b)?;
@@ -957,10 +1060,16 @@ mod tests {
         assert_eq!(run("count_real_roots((x - 1)^2*(x + 2), x)"), "2");
         assert_eq!(run("count_real_roots(x^3 - 2*x, x, 0, 10)"), "1");
         assert_eq!(run("count_real_roots(x^5 - x - 1, x, -oo, oo)"), "1");
-        assert_eq!(run("real_root_intervals(x^2 - 4, x)"), "list(list(-2, -2), list(2, 2))");
+        assert_eq!(
+            run("real_root_intervals(x^2 - 4, x)"),
+            "list(list(-2, -2), list(2, 2))"
+        );
         let intervals = run("real_root_intervals(x^2 - 2, x)");
         assert!(intervals.starts_with("list(list(-"), "{intervals}");
-        assert_eq!(run("sturm_sequence(x^3 - 2*x, x)"), "list(x^3 - 2*x, 3*x^2 - 2, 4/3*x, 2)");
+        assert_eq!(
+            run("sturm_sequence(x^3 - 2*x, x)"),
+            "list(x^3 - 2*x, 3*x^2 - 2, 4/3*x, 2)"
+        );
     }
 
     #[test]
@@ -973,16 +1082,42 @@ mod tests {
 
     #[test]
     fn leading_terms_and_ideals() {
-        assert_eq!(run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y))"), "2*x^2");
-        assert_eq!(run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"), "3*x*y^2");
-        assert_eq!(run("leading_coeff(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"), "3");
-        assert_eq!(run("leading_monomial(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"), "x*y^2");
-        assert_eq!(run("ideal_member(x^3 - x*y^2, list(x^2 - y^2), list(x, y))"), "true");
-        assert_eq!(run("ideal_member(x + y, list(x^2 - y^2), list(x, y))"), "false");
-        assert_eq!(run("normal_form(x^2, list(x^2 + y^2 - 1), list(x, y))"), "1 - y^2");
-        assert_eq!(run("simplify_with_relations(x^2 + y^2 + 3, list(x^2 + y^2 - 1), list(x, y))"), "4");
         assert_eq!(
-            run("simplify_with_relations((x^2 + y^2)/(x^4 + 2*x^2*y^2 + y^4), list(x^2 + y^2 - 1), list(x, y))"),
+            run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y))"),
+            "2*x^2"
+        );
+        assert_eq!(
+            run("leading_term(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "3*x*y^2"
+        );
+        assert_eq!(
+            run("leading_coeff(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "3"
+        );
+        assert_eq!(
+            run("leading_monomial(3*x*y^2 + 2*x^2 + y, list(x, y), grlex)"),
+            "x*y^2"
+        );
+        assert_eq!(
+            run("ideal_member(x^3 - x*y^2, list(x^2 - y^2), list(x, y))"),
+            "true"
+        );
+        assert_eq!(
+            run("ideal_member(x + y, list(x^2 - y^2), list(x, y))"),
+            "false"
+        );
+        assert_eq!(
+            run("normal_form(x^2, list(x^2 + y^2 - 1), list(x, y))"),
+            "1 - y^2"
+        );
+        assert_eq!(
+            run("simplify_with_relations(x^2 + y^2 + 3, list(x^2 + y^2 - 1), list(x, y))"),
+            "4"
+        );
+        assert_eq!(
+            run(
+                "simplify_with_relations((x^2 + y^2)/(x^4 + 2*x^2*y^2 + y^4), list(x^2 + y^2 - 1), list(x, y))"
+            ),
             "1"
         );
     }
@@ -993,9 +1128,17 @@ mod tests {
         assert_eq!(run("cad(list(x^2 - 1), list(x))"), "list(-2, -1, 0, 1, 2)");
         // The unit circle: 3 cylinders over the open intervals and 2 over
         // the sections x = ±1, each split by the circle.
-        let (cells, reduced) = reduce_with(&crate::rules::standard(), "cad(list(x^2 + y^2 - 1), list(x, y))", &[]);
+        let (cells, reduced) = reduce_with(
+            &crate::rules::standard(),
+            "cad(list(x^2 + y^2 - 1), list(x, y))",
+            &[],
+        );
         assert!(reduced, "{cells}");
-        assert_eq!(cells.matches("list(").count() - 1, 1 + 1 + 3 + 1 + 5 + 1 + 3 + 1 + 1 - 4, "{cells}");
+        assert_eq!(
+            cells.matches("list(").count() - 1,
+            1 + 1 + 3 + 1 + 5 + 1 + 3 + 1 + 1 - 4,
+            "{cells}"
+        );
     }
 
     #[test]
@@ -1003,24 +1146,48 @@ mod tests {
         let rules = crate::rules::standard();
         // The unit sphere: every sample is inside, on or outside, and all
         // three occur; the cells over the poles are found.
-        let (cells, reduced) = reduce_with(&rules, "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))", &[]);
+        let (cells, reduced) =
+            reduce_with(&rules, "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))", &[]);
         assert!(reduced, "{cells}");
         let points: Vec<Vec<f64>> = cells
             .trim_start_matches("list(")
             .trim_end_matches(')')
             .split("), list(")
-            .map(|c| c.trim_start_matches("list(").trim_end_matches(')').split(", ").map(|v| v.parse::<f64>().unwrap_or_else(|_| crate::rules::testing::eval(&rules, v, &[]))).collect())
+            .map(|c| {
+                c.trim_start_matches("list(")
+                    .trim_end_matches(')')
+                    .split(", ")
+                    .map(|v| {
+                        v.parse::<f64>()
+                            .unwrap_or_else(|_| crate::rules::testing::eval(&rules, v, &[]))
+                    })
+                    .collect()
+            })
             .collect();
         assert!(points.iter().all(|p| p.len() == 3), "{cells}");
         let signs: Vec<i32> = points
             .iter()
             .map(|p| {
                 let v = p[0] * p[0] + p[1] * p[1] + p[2] * p[2] - 1.0;
-                if v.abs() < 1e-9 { 0 } else if v < 0.0 { -1 } else { 1 }
+                if v.abs() < 1e-9 {
+                    0
+                } else if v < 0.0 {
+                    -1
+                } else {
+                    1
+                }
             })
             .collect();
-        assert!(signs.contains(&-1) && signs.contains(&0) && signs.contains(&1), "{cells}");
-        assert!(points.iter().any(|p| (p[0] - 1.0).abs() < 1e-12 && p[1].abs() < 1e-12 && p[2].abs() < 1e-12), "{cells}");
+        assert!(
+            signs.contains(&-1) && signs.contains(&0) && signs.contains(&1),
+            "{cells}"
+        );
+        assert!(
+            points
+                .iter()
+                .any(|p| (p[0] - 1.0).abs() < 1e-12 && p[1].abs() < 1e-12 && p[2].abs() < 1e-12),
+            "{cells}"
+        );
         // Two planes meeting along a line: every sign combination of
         // (x - z, y + z) is realised.
         let (cells, reduced) = reduce_with(&rules, "cad(list(x - z, y + z), list(x, y, z))", &[]);
@@ -1030,7 +1197,10 @@ mod tests {
 
     #[test]
     fn trig_expansion() {
-        assert_eq!(run("expand_trig(sin(a + b))"), "cos(a)*sin(b) + cos(b)*sin(a)");
+        assert_eq!(
+            run("expand_trig(sin(a + b))"),
+            "cos(a)*sin(b) + cos(b)*sin(a)"
+        );
         assert_eq!(run("expand_trig(cos(2*x))"), "cos(x)^2 - sin(x)^2");
         let triple = run("expand_trig(sin(3*x))");
         let rules = crate::rules::standard();

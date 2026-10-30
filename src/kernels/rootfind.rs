@@ -15,7 +15,10 @@
 //! * polynomial roots by the three-stage Jenkins-Traub algorithm
 //!   ([`polynomial_roots_jenkins_traub`]).
 
-use crate::kernels::dense::{self, Mat};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 
 /// Failure modes of the iterative solvers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,8 +175,16 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
             hi = x;
         }
         let d = df(x);
-        let mut nx = if d == 0.0 { f64::NAN } else { x - fx / d };
-        let (mn, mx) = if lo < hi { (lo, hi) } else { (hi, lo) };
+        let mut nx = if d == 0.0 {
+            f64::NAN
+        } else {
+            x - fx / d
+        };
+        let (mn, mx) = if lo < hi {
+            (lo, hi)
+        } else {
+            (hi, lo)
+        };
         if !nx.is_finite() || nx <= mn || nx >= mx {
             nx = f64::midpoint(lo, hi);
         }
@@ -188,11 +199,17 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
 /// Complex number as `(re, im)` helper operations used by the polynomial solvers.
 type C = (f64, f64);
 
-fn cmul(a: C, b: C) -> C {
+fn cmul(
+    a: C,
+    b: C,
+) -> C {
     (a.0 * b.0 - a.1 * b.1, a.0 * b.1 + a.1 * b.0)
 }
 
-fn cdiv(a: C, b: C) -> C {
+fn cdiv(
+    a: C,
+    b: C,
+) -> C {
     let d = b.0 * b.0 + b.1 * b.1;
     ((a.0 * b.0 + a.1 * b.1) / d, (a.1 * b.0 - a.0 * b.1) / d)
 }
@@ -200,7 +217,10 @@ fn cdiv(a: C, b: C) -> C {
 /// Evaluates a polynomial (coefficients in ascending order) and its
 /// derivative at a complex point with Horner's scheme.
 #[must_use]
-pub fn poly_eval_complex(coeffs: &[f64], z: (f64, f64)) -> ((f64, f64), (f64, f64)) {
+pub fn poly_eval_complex(
+    coeffs: &[f64],
+    z: (f64, f64),
+) -> ((f64, f64), (f64, f64)) {
     let mut p = (0.0, 0.0);
     let mut dp = (0.0, 0.0);
     for &c in coeffs.iter().rev() {
@@ -255,7 +275,10 @@ pub fn polynomial_roots_aberth(coeffs: &[f64]) -> Result<Vec<(f64, f64)>, RootEr
                     s = (s.0 + inv.0, s.1 + inv.1);
                 }
             }
-            let denom = (1.0 - (ratio.0 * s.0 - ratio.1 * s.1), -(ratio.0 * s.1 + ratio.1 * s.0));
+            let denom = (
+                1.0 - (ratio.0 * s.0 - ratio.1 * s.1),
+                -(ratio.0 * s.1 + ratio.1 * s.0),
+            );
             let w = cdiv(ratio, denom);
             if !w.0.is_finite() || !w.1.is_finite() {
                 continue;
@@ -272,7 +295,11 @@ pub fn polynomial_roots_aberth(coeffs: &[f64]) -> Result<Vec<(f64, f64)>, RootEr
         let (p, _) = poly_eval_complex(&cn, zi);
         p.0.hypot(p.1) < 1e-8 * (1.0 + zi.0.hypot(zi.1)).powi(n as i32)
     });
-    if ok { Ok(z) } else { Err(RootError::NoConvergence) }
+    if ok {
+        Ok(z)
+    } else {
+        Err(RootError::NoConvergence)
+    }
 }
 
 /// Roots of a polynomial as eigenvalues of its companion matrix.
@@ -316,7 +343,11 @@ fn norm_inf(v: &[f64]) -> f64 {
 }
 
 /// Forward-difference Jacobian of `f: R^n -> R^m` at `x`.
-pub fn numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(f: &F, x: &[f64], fx: &[f64]) -> Mat {
+pub fn numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(
+    f: &F,
+    x: &[f64],
+    fx: &[f64],
+) -> Mat {
     let n = x.len();
     let m = fx.len();
     let mut j = Mat::zeros(m, n);
@@ -355,7 +386,11 @@ where
     for it in 0..max_iter {
         let r = norm_inf(&fx);
         if r <= tol {
-            return Ok(SystemSolution { x, residual: r, iterations: it });
+            return Ok(SystemSolution {
+                x,
+                residual: r,
+                iterations: it,
+            });
         }
         let j = jac.map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
         let lu = dense::lu_factor(&j).map_err(|_| RootError::Singular)?;
@@ -382,7 +417,11 @@ where
     }
     let r = norm_inf(&fx);
     if r <= tol {
-        Ok(SystemSolution { x, residual: r, iterations: max_iter })
+        Ok(SystemSolution {
+            x,
+            residual: r,
+            iterations: max_iter,
+        })
     } else {
         Err(RootError::NoConvergence)
     }
@@ -408,7 +447,11 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
     for it in 0..max_iter {
         let r = norm_inf(&fx);
         if r <= tol {
-            return Ok(SystemSolution { x, residual: r, iterations: it });
+            return Ok(SystemSolution {
+                x,
+                residual: r,
+                iterations: it,
+            });
         }
         let step: Vec<f64> = b.matvec(&fx).iter().map(|v| -v).collect();
         let xn: Vec<f64> = x.iter().zip(&step).map(|(a, s)| a + s).collect();
@@ -440,7 +483,11 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
     }
     let r = norm_inf(&fx);
     if r <= tol {
-        Ok(SystemSolution { x, residual: r, iterations: max_iter })
+        Ok(SystemSolution {
+            x,
+            residual: r,
+            iterations: max_iter,
+        })
     } else {
         Err(RootError::NoConvergence)
     }
@@ -467,7 +514,11 @@ pub fn levenberg_marquardt<F: Fn(&[f64]) -> Vec<f64>>(
         let jt = j.transpose();
         let g = jt.matvec(&fx);
         if norm_inf(&g) <= tol * 1e-3 || cost.sqrt() <= tol {
-            return Ok(SystemSolution { x, residual: cost.sqrt(), iterations: it });
+            return Ok(SystemSolution {
+                x,
+                residual: cost.sqrt(),
+                iterations: it,
+            });
         }
         let jtj = jt.matmul(&j).map_err(|_| RootError::Invalid)?;
         let mut improved = false;
@@ -493,14 +544,22 @@ pub fn levenberg_marquardt<F: Fn(&[f64]) -> Vec<f64>>(
                 lambda = (lambda * 0.3).max(1e-15);
                 improved = true;
                 if small {
-                    return Ok(SystemSolution { x, residual: cost.sqrt(), iterations: it });
+                    return Ok(SystemSolution {
+                        x,
+                        residual: cost.sqrt(),
+                        iterations: it,
+                    });
                 }
                 break;
             }
             lambda *= 4.0;
         }
         if !improved {
-            return Ok(SystemSolution { x, residual: cost.sqrt(), iterations: it });
+            return Ok(SystemSolution {
+                x,
+                residual: cost.sqrt(),
+                iterations: it,
+            });
         }
     }
     Err(RootError::NoConvergence)
@@ -613,7 +672,10 @@ type Cx = num_complex::Complex64;
 
 /// Horner division of a descending-order polynomial by `(z - s)`:
 /// returns the quotient and the remainder (the value at `s`).
-fn jt_quot(p: &[Cx], s: Cx) -> (Vec<Cx>, Cx) {
+fn jt_quot(
+    p: &[Cx],
+    s: Cx,
+) -> (Vec<Cx>, Cx) {
     let mut q = Vec::with_capacity(p.len().saturating_sub(1));
     let mut acc = Cx::new(0.0, 0.0);
     for (i, &c) in p.iter().enumerate() {
@@ -625,7 +687,10 @@ fn jt_quot(p: &[Cx], s: Cx) -> (Vec<Cx>, Cx) {
     (q, acc)
 }
 
-fn jt_eval(p: &[Cx], s: Cx) -> Cx {
+fn jt_eval(
+    p: &[Cx],
+    s: Cx,
+) -> Cx {
     p.iter().fold(Cx::new(0.0, 0.0), |a, &c| a * s + c)
 }
 
@@ -658,7 +723,12 @@ fn jt_lower_bound(p: &[Cx]) -> f64 {
 
 /// `H_{new}` from `H` at shift `s` (normalised form `qp + t * qh`).
 /// Returns `(H_new, flag)`; `flag` is true when `H(s)` vanishes.
-fn jt_next_h(p_q: &[Cx], pv: Cx, h: &[Cx], s: Cx) -> (Vec<Cx>, bool) {
+fn jt_next_h(
+    p_q: &[Cx],
+    pv: Cx,
+    h: &[Cx],
+    s: Cx,
+) -> (Vec<Cx>, bool) {
     let eta = f64::EPSILON;
     let (qh, hv) = jt_quot(h, s);
     let n = p_q.len(); // = deg P = number of coefficients of H
@@ -677,13 +747,24 @@ fn jt_next_h(p_q: &[Cx], pv: Cx, h: &[Cx], s: Cx) -> (Vec<Cx>, bool) {
 }
 
 /// Newton-like correction `t = -P(s)/H(s)`; returns `(t, vanished)`.
-fn jt_calct(h: &[Cx], s: Cx, pv: Cx) -> (Cx, bool) {
+fn jt_calct(
+    h: &[Cx],
+    s: Cx,
+    pv: Cx,
+) -> (Cx, bool) {
     let hv = jt_eval(h, s);
     let tiny = hv.norm() <= f64::EPSILON * 10.0 * h[h.len() - 1].norm();
-    if tiny { (Cx::new(0.0, 0.0), true) } else { (-pv / hv, false) }
+    if tiny {
+        (Cx::new(0.0, 0.0), true)
+    } else {
+        (-pv / hv, false)
+    }
 }
 
-fn jt_converged(p: &[Cx], s: Cx) -> (bool, f64) {
+fn jt_converged(
+    p: &[Cx],
+    s: Cx,
+) -> (bool, f64) {
     let eta = f64::EPSILON;
     let mre = 2.0 * 2.0_f64.sqrt() * eta;
     let (_, pv) = jt_quot(p, s);
@@ -697,7 +778,11 @@ fn jt_converged(p: &[Cx], s: Cx) -> (bool, f64) {
     (pv.norm() <= 20.0 * errev.max(0.0), pv.norm())
 }
 
-fn jt_variable(p: &[Cx], h: &mut Vec<Cx>, s0: Cx) -> Option<Cx> {
+fn jt_variable(
+    p: &[Cx],
+    h: &mut Vec<Cx>,
+    s0: Cx,
+) -> Option<Cx> {
     let mut s = s0;
     let mut b = false;
     let mut omp = 0.0;
@@ -742,7 +827,12 @@ fn jt_variable(p: &[Cx], h: &mut Vec<Cx>, s0: Cx) -> Option<Cx> {
     if ok { Some(s) } else { None }
 }
 
-fn jt_fixed(p: &[Cx], h: &mut Vec<Cx>, s: Cx, l2: usize) -> Option<Cx> {
+fn jt_fixed(
+    p: &[Cx],
+    h: &mut Vec<Cx>,
+    s: Cx,
+    l2: usize,
+) -> Option<Cx> {
     let (qp, pv) = jt_quot(p, s);
     let (mut t, _) = jt_calct(h, s, pv);
     let mut pasd = false;
@@ -781,7 +871,9 @@ fn jt_fixed(p: &[Cx], h: &mut Vec<Cx>, s: Cx, l2: usize) -> Option<Cx> {
 /// # Errors
 /// [`RootError::Invalid`] for constant polynomials,
 /// [`RootError::NoConvergence`] if the shift iteration fails.
-pub fn polynomial_roots_jenkins_traub_complex(coeffs: &[(f64, f64)]) -> Result<Vec<(f64, f64)>, RootError> {
+pub fn polynomial_roots_jenkins_traub_complex(
+    coeffs: &[(f64, f64)]
+) -> Result<Vec<(f64, f64)>, RootError> {
     let mut asc: Vec<Cx> = coeffs.iter().map(|&(a, b)| Cx::new(a, b)).collect();
     while asc.last().is_some_and(|c| c.norm() == 0.0) {
         asc.pop();
@@ -804,8 +896,9 @@ pub fn polynomial_roots_jenkins_traub_complex(coeffs: &[(f64, f64)]) -> Result<V
         let n = p.len() - 1;
         let bnd = jt_lower_bound(&p);
         // H^(0) = P'
-        let h0: Vec<Cx> =
-            (0..n).map(|i| p[i] * Cx::new((n - i) as f64 / n as f64, 0.0)).collect();
+        let h0: Vec<Cx> = (0..n)
+            .map(|i| p[i] * Cx::new((n - i) as f64 / n as f64, 0.0))
+            .collect();
         let mut h = h0;
         // stage 1: no-shift
         for _ in 0..5 {
@@ -851,7 +944,9 @@ pub fn polynomial_roots_jenkins_traub_complex(coeffs: &[(f64, f64)]) -> Result<V
         roots.push(-p[1] / p[0]);
     }
     // polish against the original polynomial
-    let dorig: Vec<Cx> = (0..orig.len() - 1).map(|i| orig[i] * Cx::new((orig.len() - 1 - i) as f64, 0.0)).collect();
+    let dorig: Vec<Cx> = (0..orig.len() - 1)
+        .map(|i| orig[i] * Cx::new((orig.len() - 1 - i) as f64, 0.0))
+        .collect();
     for r in &mut roots {
         for _ in 0..3 {
             let v = jt_eval(&orig, *r);
@@ -911,7 +1006,10 @@ pub struct PathResult {
     pub finite: bool,
 }
 
-fn cpow(z: Cx, e: u32) -> Cx {
+fn cpow(
+    z: Cx,
+    e: u32,
+) -> Cx {
     let mut r = Cx::new(1.0, 0.0);
     for _ in 0..e {
         r *= z;
@@ -920,7 +1018,10 @@ fn cpow(z: Cx, e: u32) -> Cx {
 }
 
 /// Evaluates a polynomial system and its Jacobian at a complex point.
-fn eval_system(sys: &[Vec<PolyTerm>], x: &[Cx]) -> (Vec<Cx>, Vec<Vec<Cx>>) {
+fn eval_system(
+    sys: &[Vec<PolyTerm>],
+    x: &[Cx],
+) -> (Vec<Cx>, Vec<Vec<Cx>>) {
     let n = x.len();
     let mut f = vec![Cx::new(0.0, 0.0); sys.len()];
     let mut j = vec![vec![Cx::new(0.0, 0.0); n]; sys.len()];
@@ -933,7 +1034,11 @@ fn eval_system(sys: &[Vec<PolyTerm>], x: &[Cx]) -> (Vec<Cx>, Vec<Vec<Cx>>) {
                 if term.exps[k] > 0 {
                     let mut d = Cx::new(term.coef * f64::from(term.exps[k]), 0.0);
                     for m in 0..n {
-                        d *= if m == k { cpow(x[m], term.exps[m] - 1) } else { pw[m] };
+                        d *= if m == k {
+                            cpow(x[m], term.exps[m] - 1)
+                        } else {
+                            pw[m]
+                        };
                     }
                     j[i][k] += d;
                 }
@@ -945,7 +1050,10 @@ fn eval_system(sys: &[Vec<PolyTerm>], x: &[Cx]) -> (Vec<Cx>, Vec<Vec<Cx>>) {
 
 /// Solves the complex linear system `A x = b` by Gaussian elimination
 /// with partial pivoting; `None` if (numerically) singular.
-fn csolve(mut a: Vec<Vec<Cx>>, mut b: Vec<Cx>) -> Option<Vec<Cx>> {
+fn csolve(
+    mut a: Vec<Vec<Cx>>,
+    mut b: Vec<Cx>,
+) -> Option<Vec<Cx>> {
     let n = b.len();
     for k in 0..n {
         let mut p = k;
@@ -979,7 +1087,11 @@ fn csolve(mut a: Vec<Vec<Cx>>, mut b: Vec<Cx>) -> Option<Vec<Cx>> {
         }
         x[i] = s / a[i][i];
     }
-    if x.iter().any(|v| !v.re.is_finite() || !v.im.is_finite()) { None } else { Some(x) }
+    if x.iter().any(|v| !v.re.is_finite() || !v.im.is_finite()) {
+        None
+    } else {
+        Some(x)
+    }
 }
 
 /// `H(x, t) = (1-t) gamma g(x) + t f(x)` with `g_i = x_i^{d_i} - 1`:
@@ -998,7 +1110,11 @@ fn homotopy_h(
     let mut ht = vec![Cx::new(0.0, 0.0); n];
     for i in 0..n {
         let g = cpow(x[i], deg[i]) - 1.0;
-        let dg = if deg[i] == 0 { Cx::new(0.0, 0.0) } else { cpow(x[i], deg[i] - 1) * f64::from(deg[i]) };
+        let dg = if deg[i] == 0 {
+            Cx::new(0.0, 0.0)
+        } else {
+            cpow(x[i], deg[i] - 1) * f64::from(deg[i])
+        };
         h[i] = gamma * g * (1.0 - t) + fv[i] * t;
         ht[i] = fv[i] - gamma * g;
         for k in 0..n {
@@ -1035,10 +1151,12 @@ fn track_path(
     let mut x = start.to_vec();
     let mut t = 0.0_f64;
     let mut dt = 0.01_f64;
-    let fail = |x: &[Cx]| PathResult {
-        x: x.iter().map(|c| (c.re, c.im)).collect(),
-        residual: f64::INFINITY,
-        finite: false,
+    let fail = |x: &[Cx]| {
+        PathResult {
+            x: x.iter().map(|c| (c.re, c.im)).collect(),
+            residual: f64::INFINITY,
+            finite: false,
+        }
     };
     let mut guard = 0usize;
     while t < 1.0 {
@@ -1056,9 +1174,17 @@ fn track_path(
             let k3 = path_tangent(sys, deg, gamma, &xb, t + 0.5 * step)?;
             let xc: Vec<Cx> = (0..n).map(|i| x[i] + k3[i] * step).collect();
             let k4 = path_tangent(sys, deg, gamma, &xc, t + step)?;
-            Some((0..n).map(|i| x[i] + (k1[i] + k2[i] * 2.0 + k3[i] * 2.0 + k4[i]) * (step / 6.0)).collect())
+            Some(
+                (0..n)
+                    .map(|i| x[i] + (k1[i] + k2[i] * 2.0 + k3[i] * 2.0 + k4[i]) * (step / 6.0))
+                    .collect(),
+            )
         };
-        let tn = if step >= 1.0 - t { 1.0 } else { t + step };
+        let tn = if step >= 1.0 - t {
+            1.0
+        } else {
+            t + step
+        };
         let mut ok = false;
         let mut xn = x.clone();
         if let Some(pred) = rk() {
@@ -1082,7 +1208,10 @@ fn track_path(
             }
         }
         let jump = (0..n).map(|i| (xn[i] - x[i]).norm()).fold(0.0, f64::max);
-        if ok && jump <= 0.25 * (1.0 + max_norm(&x)) && xn.iter().all(|c| c.re.is_finite() && c.im.is_finite()) {
+        if ok
+            && jump <= 0.25 * (1.0 + max_norm(&x))
+            && xn.iter().all(|c| c.re.is_finite() && c.im.is_finite())
+        {
             x = xn;
             t = tn;
             dt = (dt * 1.8).min(0.1);
@@ -1155,12 +1284,21 @@ pub fn homotopy_system_with_gamma(
     gamma: (f64, f64),
 ) -> Result<Vec<PathResult>, RootError> {
     let n = system.len();
-    if n == 0 || system.iter().any(|eq| eq.is_empty() || eq.iter().any(|t| t.exps.len() != n)) {
+    if n == 0
+        || system
+            .iter()
+            .any(|eq| eq.is_empty() || eq.iter().any(|t| t.exps.len() != n))
+    {
         return Err(RootError::Invalid);
     }
     let deg: Vec<u32> = system
         .iter()
-        .map(|eq| eq.iter().map(|t| t.exps.iter().sum::<u32>()).max().unwrap_or(0))
+        .map(|eq| {
+            eq.iter()
+                .map(|t| t.exps.iter().sum::<u32>())
+                .max()
+                .unwrap_or(0)
+        })
         .collect();
     if deg.contains(&0) {
         return Err(RootError::Invalid);
@@ -1176,7 +1314,10 @@ pub fn homotopy_system_with_gamma(
         for &d in &deg {
             let k = idx % d as usize;
             idx /= d as usize;
-            start.push(Cx::from_polar(1.0, 2.0 * std::f64::consts::PI * k as f64 / f64::from(d)));
+            start.push(Cx::from_polar(
+                1.0,
+                2.0 * std::f64::consts::PI * k as f64 / f64::from(d),
+            ));
         }
         out.push(track_path(system, &deg, g, &start));
     }

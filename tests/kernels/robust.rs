@@ -1,19 +1,47 @@
 //! Tests for robust statistics, KDE, RNG and FFT convolution.
 
-use rssn::kernels::fftconv::{circular_convolve, convolve, correlate, fft, poly_mul_i64};
+use rssn::kernels::fftconv::circular_convolve;
+use rssn::kernels::fftconv::convolve;
+use rssn::kernels::fftconv::correlate;
+use rssn::kernels::fftconv::fft;
+use rssn::kernels::fftconv::poly_mul_i64;
 use rssn::kernels::random::Rng;
-use rssn::kernels::robust::{
-    Kernel, bandwidth_scott, bandwidth_silverman, biweight_location, bootstrap_ci, ecdf,
-    huber_location, iqr, kde, mad, median, quantile, trimmed_mean, winsorized_mean,
-};
+use rssn::kernels::robust::Kernel;
+use rssn::kernels::robust::bandwidth_scott;
+use rssn::kernels::robust::bandwidth_silverman;
+use rssn::kernels::robust::biweight_location;
+use rssn::kernels::robust::bootstrap_ci;
+use rssn::kernels::robust::ecdf;
+use rssn::kernels::robust::huber_location;
+use rssn::kernels::robust::iqr;
+use rssn::kernels::robust::kde;
+use rssn::kernels::robust::mad;
+use rssn::kernels::robust::median;
+use rssn::kernels::robust::quantile;
+use rssn::kernels::robust::trimmed_mean;
+use rssn::kernels::robust::winsorized_mean;
 
 #[test]
 fn quantile_types() {
     let d = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
     // R: quantile(1:10, 0.25, type=k)
-    let expect = [(1, 3.0), (2, 3.0), (3, 2.0), (4, 2.5), (5, 3.0), (6, 2.75), (7, 3.25), (8, 2.916_666_666_666_667), (9, 2.9375)];
+    let expect = [
+        (1, 3.0),
+        (2, 3.0),
+        (3, 2.0),
+        (4, 2.5),
+        (5, 3.0),
+        (6, 2.75),
+        (7, 3.25),
+        (8, 2.916_666_666_666_667),
+        (9, 2.9375),
+    ];
     for (k, e) in expect {
-        assert!((quantile(&d, 0.25, k) - e).abs() < 1e-12, "type {k}: {}", quantile(&d, 0.25, k));
+        assert!(
+            (quantile(&d, 0.25, k) - e).abs() < 1e-12,
+            "type {k}: {}",
+            quantile(&d, 0.25, k)
+        );
     }
     assert_eq!(median(&d), 5.5);
     assert!((iqr(&d) - 4.5).abs() < 1e-12);
@@ -25,7 +53,9 @@ fn quantile_types() {
 
 #[test]
 fn robust_estimators_resist_outliers() {
-    let mut d: Vec<f64> = (0..99).map(|i| 10.0 + (f64::from(i) - 49.0) * 0.02).collect();
+    let mut d: Vec<f64> = (0..99)
+        .map(|i| 10.0 + (f64::from(i) - 49.0) * 0.02)
+        .collect();
     d.push(1e6);
     let mean = d.iter().sum::<f64>() / d.len() as f64;
     assert!(mean > 1000.0);
@@ -96,7 +126,10 @@ fn rng_reproducible_and_distributed() {
     assert!((bt - 0.4).abs() < 0.01);
     for lambda in [4.0, 100.0] {
         let p: f64 = (0..n).map(|_| r.poisson(lambda) as f64).sum::<f64>() / f64::from(n);
-        assert!((p - lambda).abs() < 0.05 * lambda.sqrt() * 3.0, "{lambda} {p}");
+        assert!(
+            (p - lambda).abs() < 0.05 * lambda.sqrt() * 3.0,
+            "{lambda} {p}"
+        );
     }
     let mut v: Vec<u32> = (0..20).collect();
     r.shuffle(&mut v);
@@ -114,7 +147,9 @@ fn fft_roundtrip_and_known_transform() {
     assert!((f[1].0 + 4.0).abs() < 1e-12 && (f[1].1 - 9.656_854_249_492_381).abs() < 1e-12);
     // non power of two (Bluestein) agrees with the direct DFT
     let n = 7;
-    let y: Vec<(f64, f64)> = (0..n).map(|i| (f64::from(i).sin(), f64::from(i).cos())).collect();
+    let y: Vec<(f64, f64)> = (0..n)
+        .map(|i| (f64::from(i).sin(), f64::from(i).cos()))
+        .collect();
     let fy = fft(&y, false);
     for k in 0..n {
         let (mut re, mut im) = (0.0, 0.0);

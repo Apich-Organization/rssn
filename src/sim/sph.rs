@@ -45,12 +45,12 @@ impl KernelKind {
         h: f64,
     ) -> f64 {
         match self {
-            Self::CubicSpline => {
+            | Self::CubicSpline => {
                 let q = r / h;
                 let sigma = match d {
-                    1 => 2.0 / (3.0 * h),
-                    2 => 10.0 / (7.0 * PI * h * h),
-                    _ => 1.0 / (PI * h * h * h),
+                    | 1 => 2.0 / (3.0 * h),
+                    | 2 => 10.0 / (7.0 * PI * h * h),
+                    | _ => 1.0 / (PI * h * h * h),
                 };
                 sigma
                     * if q < 1.0 {
@@ -61,16 +61,16 @@ impl KernelKind {
                         0.0
                     }
             },
-            Self::WendlandC2 => {
+            | Self::WendlandC2 => {
                 let hh = 2.0 * h;
                 let q = r / hh;
                 if q >= 1.0 {
                     return 0.0;
                 }
                 match d {
-                    1 => 5.0 / (4.0 * hh) * (1.0 - q).powi(3) * (1.0 + 3.0 * q),
-                    2 => 7.0 / (PI * hh * hh) * (1.0 - q).powi(4) * (4.0 * q + 1.0),
-                    _ => 21.0 / (2.0 * PI * hh * hh * hh) * (1.0 - q).powi(4) * (4.0 * q + 1.0),
+                    | 1 => 5.0 / (4.0 * hh) * (1.0 - q).powi(3) * (1.0 + 3.0 * q),
+                    | 2 => 7.0 / (PI * hh * hh) * (1.0 - q).powi(4) * (4.0 * q + 1.0),
+                    | _ => 21.0 / (2.0 * PI * hh * hh * hh) * (1.0 - q).powi(4) * (4.0 * q + 1.0),
                 }
             },
         }
@@ -85,12 +85,12 @@ impl KernelKind {
         h: f64,
     ) -> f64 {
         match self {
-            Self::CubicSpline => {
+            | Self::CubicSpline => {
                 let q = r / h;
                 let sigma = match d {
-                    1 => 2.0 / (3.0 * h),
-                    2 => 10.0 / (7.0 * PI * h * h),
-                    _ => 1.0 / (PI * h * h * h),
+                    | 1 => 2.0 / (3.0 * h),
+                    | 2 => 10.0 / (7.0 * PI * h * h),
+                    | _ => 1.0 / (PI * h * h * h),
                 };
                 sigma
                     * if q < 1.0 {
@@ -102,16 +102,16 @@ impl KernelKind {
                     }
                     / h
             },
-            Self::WendlandC2 => {
+            | Self::WendlandC2 => {
                 let hh = 2.0 * h;
                 let q = r / hh;
                 if q >= 1.0 {
                     return 0.0;
                 }
                 match d {
-                    1 => 5.0 / (4.0 * hh) * (-12.0 * q * (1.0 - q).powi(2)) / hh,
-                    2 => 7.0 / (PI * hh * hh) * (-20.0 * q * (1.0 - q).powi(3)) / hh,
-                    _ => 21.0 / (2.0 * PI * hh * hh * hh) * (-20.0 * q * (1.0 - q).powi(3)) / hh,
+                    | 1 => 5.0 / (4.0 * hh) * (-12.0 * q * (1.0 - q).powi(2)) / hh,
+                    | 2 => 7.0 / (PI * hh * hh) * (-20.0 * q * (1.0 - q).powi(3)) / hh,
+                    | _ => 21.0 / (2.0 * PI * hh * hh * hh) * (-20.0 * q * (1.0 - q).powi(3)) / hh,
                 }
             },
         }
@@ -196,7 +196,10 @@ impl<const D: usize> Grid<D> {
         pts: &[[f64; D]],
         cell: f64,
     ) -> Self {
-        let mut g = Self { cell, map: HashMap::new() };
+        let mut g = Self {
+            cell,
+            map: HashMap::new(),
+        };
         for (i, p) in pts.iter().enumerate() {
             let k = g.key(p);
             g.map.entry(k).or_default().push(i);
@@ -269,7 +272,15 @@ impl<const D: usize> Sph<D> {
         &self,
         reach: f64,
     ) -> Vec<Ghost<D>> {
-        let mut all: Vec<Ghost<D>> = (0..self.pos.len()).map(|i| Ghost { src: i, pos: self.pos[i], flip: [1.0; D] }).collect();
+        let mut all: Vec<Ghost<D>> = (0..self.pos.len())
+            .map(|i| {
+                Ghost {
+                    src: i,
+                    pos: self.pos[i],
+                    flip: [1.0; D],
+                }
+            })
+            .collect();
         for a in 0..D {
             if self.bc[a] == SphBoundary::Open {
                 continue;
@@ -280,7 +291,9 @@ impl<const D: usize> Sph<D> {
                 let x = g.pos[a];
                 if x - self.lo[a] < reach {
                     let mut n = *g;
-                    if self.bc[a] == SphBoundary::Periodic { n.pos[a] = x + len } else {
+                    if self.bc[a] == SphBoundary::Periodic {
+                        n.pos[a] = x + len
+                    } else {
                         n.pos[a] = 2.0 * self.lo[a] - x;
                         n.flip[a] = -g.flip[a];
                     }
@@ -288,7 +301,9 @@ impl<const D: usize> Sph<D> {
                 }
                 if self.hi[a] - x < reach {
                     let mut n = *g;
-                    if self.bc[a] == SphBoundary::Periodic { n.pos[a] = x - len } else {
+                    if self.bc[a] == SphBoundary::Periodic {
+                        n.pos[a] = x - len
+                    } else {
                         n.pos[a] = 2.0 * self.hi[a] - x;
                         n.flip[a] = -g.flip[a];
                     }
@@ -372,7 +387,9 @@ impl<const D: usize> Sph<D> {
         &self,
         i: usize,
     ) -> f64 {
-        (self.gamma * (self.gamma - 1.0) * self.u[i]).max(0.0).sqrt()
+        (self.gamma * (self.gamma - 1.0) * self.u[i])
+            .max(0.0)
+            .sqrt()
     }
 
     /// Accelerations and energy rates for the current `(pos, vel, u)` (densities are refreshed).
@@ -401,7 +418,9 @@ impl<const D: usize> Sph<D> {
                     let r = r2.sqrt();
                     let hi = self.h[i];
                     if r < 2.0 * hi {
-                        let dwdh = -(D as f64 * self.kernel.w(D, r, hi) + r * self.kernel.dw(D, r, hi)) / hi;
+                        let dwdh = -(D as f64 * self.kernel.w(D, r, hi)
+                            + r * self.kernel.dw(D, r, hi))
+                            / hi;
                         sum += self.mass[j] * dwdh;
                     }
                 });
@@ -446,7 +465,8 @@ impl<const D: usize> Sph<D> {
                 });
                 let rho = self.rho[i];
                 let divv = (div / rho).abs();
-                let curlv = (curl[0] * curl[0] + curl[1] * curl[1] + curl[2] * curl[2]).sqrt() / rho;
+                let curlv =
+                    (curl[0] * curl[0] + curl[1] * curl[1] + curl[2] * curl[2]).sqrt() / rho;
                 fbal[i] = divv / (divv + curlv + 1e-4 * c[i] / self.h[i]);
             }
         }
@@ -478,7 +498,8 @@ impl<const D: usize> Sph<D> {
                     let mu = hb * vr / (r2 + 0.01 * hb * hb);
                     let cb = f64::midpoint(c[i], c[j]);
                     let rb = f64::midpoint(self.rho[i], self.rho[j]);
-                    (-self.alpha * cb * mu + self.beta * mu * mu) / rb * f64::midpoint(fbal[i], fbal[j])
+                    (-self.alpha * cb * mu + self.beta * mu * mu) / rb
+                        * f64::midpoint(fbal[i], fbal[j])
                 } else {
                     0.0
                 };
@@ -496,7 +517,8 @@ impl<const D: usize> Sph<D> {
                     du[i] += self.mass[j] * ti * vdot_i + 0.5 * self.mass[j] * pi * vdot_avg;
                     return;
                 }
-                let fac = p[i] / (self.rho[i] * self.rho[i]) + p[j] / (self.rho[j] * self.rho[j]) + pi;
+                let fac =
+                    p[i] / (self.rho[i] * self.rho[i]) + p[j] / (self.rho[j] * self.rho[j]) + pi;
                 let mut vdotg = 0.0;
                 for a in 0..D {
                     let gradw = gw * rij[a] / r;
@@ -554,12 +576,12 @@ impl<const D: usize> Sph<D> {
             for a in 0..D {
                 let len = self.hi[a] - self.lo[a];
                 match self.bc[a] {
-                    SphBoundary::Open => {},
-                    SphBoundary::Periodic => {
+                    | SphBoundary::Open => {},
+                    | SphBoundary::Periodic => {
                         let w = ((self.pos[i][a] - self.lo[a]) / len).floor();
                         self.pos[i][a] -= w * len;
                     },
-                    SphBoundary::Reflecting => {
+                    | SphBoundary::Reflecting => {
                         if self.pos[i][a] < self.lo[a] {
                             self.pos[i][a] = 2.0 * self.lo[a] - self.pos[i][a];
                             self.vel[i][a] = -self.vel[i][a];
@@ -591,7 +613,11 @@ impl<const D: usize> Sph<D> {
     /// Total kinetic plus thermal energy.
     #[must_use]
     pub fn total_energy(&self) -> f64 {
-        (0..self.pos.len()).map(|i| self.mass[i] * (0.5 * self.vel[i].iter().map(|x| x * x).sum::<f64>() + self.u[i])).sum()
+        (0..self.pos.len())
+            .map(|i| {
+                self.mass[i] * (0.5 * self.vel[i].iter().map(|x| x * x).sum::<f64>() + self.u[i])
+            })
+            .sum()
     }
 
     /// Total momentum.

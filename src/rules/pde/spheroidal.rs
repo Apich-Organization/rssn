@@ -68,8 +68,18 @@ fn radial_table(
     n: usize,
     gamma: f64,
 ) -> Option<RadialTable> {
-    let key = [u64::from(prolate), (m * 1000 + n) as u64, gamma.to_bits(), 0];
-    if let Some(found) = RADIAL.with(|c| c.borrow().iter().find(|(k, _)| *k == key).map(|(_, v)| Rc::clone(v))) {
+    let key = [
+        u64::from(prolate),
+        (m * 1000 + n) as u64,
+        gamma.to_bits(),
+        0,
+    ];
+    if let Some(found) = RADIAL.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, v)| Rc::clone(v))
+    }) {
         return Some(found);
     }
     let lambda = *spheroidal_pair(m, gamma).0.get(n.checked_sub(m)?)?;
@@ -91,21 +101,41 @@ fn radial_table(
     } else {
         // The focal disk: parity of the angular function.
         start = 0;
-        (y, p) = if (n - m).is_multiple_of(2) { (1.0, 0.0) } else { (0.0, 1.0) };
+        (y, p) = if (n - m).is_multiple_of(2) {
+            (1.0, 0.0)
+        } else {
+            (0.0, 1.0)
+        };
     }
     table[start] = y;
     let potential = |t: f64| -> f64 {
         let (s, c) = (t.sinh(), t.cosh());
-        if prolate { lambda - gamma * c * c + mf * mf / (s * s) } else { lambda + gamma * s * s - mf * mf / (c * c) }
+        if prolate {
+            lambda - gamma * c * c + mf * mf / (s * s)
+        } else {
+            lambda + gamma * s * s - mf * mf / (c * c)
+        }
     };
-    let damping = |t: f64| -> f64 { if prolate { 1.0 / t.tanh() } else { t.tanh() } };
+    let damping = |t: f64| -> f64 {
+        if prolate {
+            1.0 / t.tanh()
+        } else {
+            t.tanh()
+        }
+    };
     let h = STEP;
     for i in start..steps {
         let t = STEP * i as f64;
         let f = |t: f64, y: f64, p: f64| -> f64 { potential(t) * y - damping(t) * p };
         let (k1y, k1p) = (p, f(t, y, p));
-        let (k2y, k2p) = (p + 0.5 * h * k1p, f(t + 0.5 * h, y + 0.5 * h * k1y, p + 0.5 * h * k1p));
-        let (k3y, k3p) = (p + 0.5 * h * k2p, f(t + 0.5 * h, y + 0.5 * h * k2y, p + 0.5 * h * k2p));
+        let (k2y, k2p) = (
+            p + 0.5 * h * k1p,
+            f(t + 0.5 * h, y + 0.5 * h * k1y, p + 0.5 * h * k1p),
+        );
+        let (k3y, k3p) = (
+            p + 0.5 * h * k2p,
+            f(t + 0.5 * h, y + 0.5 * h * k2y, p + 0.5 * h * k2p),
+        );
         let (k4y, k4p) = (p + h * k3p, f(t + h, y + h * k3y, p + h * k3p));
         y += h / 6.0 * (k1y + 2.0 * k2y + 2.0 * k3y + k4y);
         p += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
@@ -160,7 +190,13 @@ pub(super) fn radial_value(
 
 /// `spheroidal_radial(kind, m, n, γ, x)`, `kind = 1` prolate, `-1` oblate.
 pub(super) fn spheroidal_radial(args: &[f64]) -> f64 {
-    let (Some(&kind), Some(&m), Some(&n), Some(&gamma), Some(&x)) = (args.first(), args.get(1), args.get(2), args.get(3), args.get(4)) else {
+    let (Some(&kind), Some(&m), Some(&n), Some(&gamma), Some(&x)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+    ) else {
         return f64::NAN;
     };
     if m < 0.0 || n < m || m.fract() != 0.0 || n.fract() != 0.0 {
@@ -206,23 +242,42 @@ fn recognise(
     if !(2..=3).contains(&n) || p.nonlinear || !p.homogeneous(cx.graph) {
         return None;
     }
-    let name = |cx: &Cx<'_>, j: usize| cx.graph.symbol_of(p.vars[j]).map(|s| cx.graph.interner().symbol_name(s).to_owned());
-    let find = |cx: &Cx<'_>, wanted: &[&str]| (0..n).find(|&j| name(cx, j).is_some_and(|nm| wanted.contains(&nm.as_str())));
+    let name = |cx: &Cx<'_>, j: usize| {
+        cx.graph
+            .symbol_of(p.vars[j])
+            .map(|s| cx.graph.interner().symbol_name(s).to_owned())
+    };
+    let find = |cx: &Cx<'_>, wanted: &[&str]| {
+        (0..n).find(|&j| name(cx, j).is_some_and(|nm| wanted.contains(&nm.as_str())))
+    };
     let radial = find(cx, &["xi", "zeta"])?;
     let eta = find(cx, &["eta", "nu"])?;
     let azimuth = find(cx, &["phi", "varphi", "ph"]);
     if n == 3 && azimuth.is_none() {
         return None;
     }
-    let symbols: Vec<crate::graph::SymbolId> = p.vars.iter().map(|&v| cx.graph.symbol_of(v)).collect::<Option<_>>()?;
-    let mut allowed = vec![p.unit(radial, 2), p.unit(radial, 1), p.unit(eta, 2), p.unit(eta, 1), vec![0; n]];
+    let symbols: Vec<crate::graph::SymbolId> = p
+        .vars
+        .iter()
+        .map(|&v| cx.graph.symbol_of(v))
+        .collect::<Option<_>>()?;
+    let mut allowed = vec![
+        p.unit(radial, 2),
+        p.unit(radial, 1),
+        p.unit(eta, 2),
+        p.unit(eta, 1),
+        vec![0; n],
+    ];
     if let Some(a) = azimuth {
         allowed.push(p.unit(a, 2));
     }
     if !p.only(cx.graph, &allowed) {
         return None;
     }
-    let coefficients: Vec<(Vec<u32>, NodeId)> = allowed.iter().map(|i| (i.clone(), p.coefficient(cx.graph, i))).collect();
+    let coefficients: Vec<(Vec<u32>, NodeId)> = allowed
+        .iter()
+        .map(|i| (i.clone(), p.coefficient(cx.graph, i)))
+        .collect();
     for prolate in [true, false] {
         let mut scale: Option<f64> = None;
         let mut gamma: Option<f64> = None;
@@ -233,7 +288,11 @@ fn recognise(
                 bindings.push((symbols[a], 0.4));
             }
             let (xx, ee) = (xi * xi, eta_v * eta_v);
-            let radial_factor = if prolate { xx - 1.0 } else { xx + 1.0 };
+            let radial_factor = if prolate {
+                xx - 1.0
+            } else {
+                xx + 1.0
+            };
             let mix = if prolate { xx - ee } else { xx + ee };
             for (index, node) in &coefficients {
                 let Some(value) = evaluate(cx, *node, &bindings) else {
@@ -275,7 +334,13 @@ fn recognise(
             }
         }
         if ok && let (Some(_), Some(g)) = (scale, gamma) {
-            return Some(Structure { prolate, gamma: if prolate { g } else { -g }, radial, eta, azimuth });
+            return Some(Structure {
+                prolate,
+                gamma: if prolate { g } else { -g },
+                radial,
+                eta,
+                azimuth,
+            });
         }
     }
     None
@@ -292,7 +357,10 @@ pub(super) fn solve(
     let [boundary] = conditions.0.as_slice() else {
         return None;
     };
-    if boundary.on != structure.radial || boundary.robin.is_some() || boundary.derivative.iter().any(|&d| d != 0) {
+    if boundary.on != structure.radial
+        || boundary.robin.is_some()
+        || boundary.derivative.iter().any(|&d| d != 0)
+    {
         return None;
     }
     let x0 = super::modes::exact_value(cx, boundary.point)?;
@@ -301,10 +369,15 @@ pub(super) fn solve(
     }
     let (eta_node, radial_node) = (p.vars[structure.eta], p.vars[structure.radial]);
     let eta_symbol = cx.graph.symbol_of(eta_node)?;
-    let phi_symbol = structure.azimuth.and_then(|a| cx.graph.symbol_of(p.vars[a]));
+    let phi_symbol = structure
+        .azimuth
+        .and_then(|a| cx.graph.symbol_of(p.vars[a]));
     let data = boundary.value;
     let free = cx.graph.free_symbols(cx.graph.find(data)).to_vec();
-    if free.iter().any(|&s| s != eta_symbol && Some(s) != phi_symbol) {
+    if free
+        .iter()
+        .any(|&s| s != eta_symbol && Some(s) != phi_symbol)
+    {
         return None;
     }
     let g = |cx: &Cx<'_>, eta_v: f64, phi_v: f64| -> Option<f64> {
@@ -316,8 +389,14 @@ pub(super) fn solve(
     };
     // Quadrature nodes: Gauss–Legendre in η, trapezoid in φ.
     let eta_nodes = super::curvilinear::gauss_legendre(48);
-    let phi_count = if phi_symbol.is_some() { 64 } else { 1 };
-    let phi_values: Vec<f64> = (0..phi_count).map(|k| 2.0 * PI * k as f64 / phi_count as f64).collect();
+    let phi_count = if phi_symbol.is_some() {
+        64
+    } else {
+        1
+    };
+    let phi_values: Vec<f64> = (0..phi_count)
+        .map(|k| 2.0 * PI * k as f64 / phi_count as f64)
+        .collect();
     let mut grid = vec![vec![0.0; phi_count]; eta_nodes.len()];
     let mut scale = 1e-12_f64;
     for (i, &(e, _)) in eta_nodes.iter().enumerate() {
@@ -327,7 +406,11 @@ pub(super) fn solve(
         }
     }
     let gamma = structure.gamma;
-    let m_top = if phi_symbol.is_some() { M_MAX } else { 0 };
+    let m_top = if phi_symbol.is_some() {
+        M_MAX
+    } else {
+        0
+    };
     // (m, n, cos coefficient, sin coefficient)
     let mut coefficients: Vec<(usize, usize, f64, f64)> = Vec::new();
     for m in 0..=m_top {
@@ -348,8 +431,19 @@ pub(super) fn solve(
                     sin_sum += w * s * grid[i][jj] * (m as f64 * ph).sin();
                 }
             }
-            let phi_norm = if m == 0 { phi_count as f64 } else { phi_count as f64 / 2.0 };
-            let (a, b) = (cos_sum / phi_norm, if m == 0 { 0.0 } else { sin_sum / phi_norm });
+            let phi_norm = if m == 0 {
+                phi_count as f64
+            } else {
+                phi_count as f64 / 2.0
+            };
+            let (a, b) = (
+                cos_sum / phi_norm,
+                if m == 0 {
+                    0.0
+                } else {
+                    sin_sum / phi_norm
+                },
+            );
             if a.abs() > 1e-10 * scale || b.abs() > 1e-10 * scale {
                 coefficients.push((m, n, a, b));
             }
@@ -377,10 +471,25 @@ pub(super) fn solve(
     let x0_node = boundary.point;
     let mut terms = Vec::new();
     for &(m, n, a, b) in &coefficients {
-        let (m_node, n_node) = (cx.graph.int(i64::try_from(m).ok()?), cx.graph.int(i64::try_from(n).ok()?));
-        let angular = call(cx, "spheroidal_mode", &[m_node, n_node, gamma_node, p.vars[structure.eta]])?;
-        let at = call(cx, "spheroidal_radial", &[kind, m_node, n_node, gamma_node, radial_node])?;
-        let at0 = call(cx, "spheroidal_radial", &[kind, m_node, n_node, gamma_node, x0_node])?;
+        let (m_node, n_node) = (
+            cx.graph.int(i64::try_from(m).ok()?),
+            cx.graph.int(i64::try_from(n).ok()?),
+        );
+        let angular = call(
+            cx,
+            "spheroidal_mode",
+            &[m_node, n_node, gamma_node, p.vars[structure.eta]],
+        )?;
+        let at = call(
+            cx,
+            "spheroidal_radial",
+            &[kind, m_node, n_node, gamma_node, radial_node],
+        )?;
+        let at0 = call(
+            cx,
+            "spheroidal_radial",
+            &[kind, m_node, n_node, gamma_node, x0_node],
+        )?;
         let ratio = div(cx, at, at0);
         let mut azimuthal = Vec::new();
         if let Some(index) = structure.azimuth {

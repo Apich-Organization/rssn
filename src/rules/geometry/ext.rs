@@ -12,18 +12,16 @@
 //! | `killing_tensor(xi, g, vars)` | the Lie derivative `L_ξ g_ab = ξ^c ∂_c g_ab + g_cb ∂_a ξ^c + g_ac ∂_b ξ^c` (a matrix) |
 //! | `is_killing(xi, g, vars)` | whether `L_ξ g` vanishes: `ξ` generates an isometry |
 
+use super::Tensor;
 use super::add;
 use super::christoffel_second;
 use super::d;
 use super::mul;
 use super::neg;
-use super::riemann;
 use super::ricci_scalar;
+use super::riemann;
 use super::square;
 use super::vector;
-use super::Tensor;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Kernel;
@@ -35,6 +33,8 @@ use crate::graph::Outcome;
 use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::linalg::invert;
 use crate::rules::linalg::normal_form;
 
@@ -91,7 +91,9 @@ fn kretschmann(
         for b in 0..n {
             for c in 0..n {
                 for e in 0..n {
-                    let terms: Vec<NodeId> = (0..n).map(|f| mul(cx.graph, &[g_row[f], r.get(&[f, b, c, e])])).collect();
+                    let terms: Vec<NodeId> = (0..n)
+                        .map(|f| mul(cx.graph, &[g_row[f], r.get(&[f, b, c, e])]))
+                        .collect();
                     let value = simplified_sum(cx, &terms);
                     lower.set(&[a, b, c, e], value);
                 }
@@ -118,7 +120,10 @@ fn kretschmann(
     let mut terms = Vec::new();
     for idx in super::indices(&[n, n, n, n]) {
         let (a, b, c, e) = (idx[0], idx[1], idx[2], idx[3]);
-        terms.push(mul(cx.graph, &[lower.get(&[a, b, c, e]), up.get(&[a, b, c, e])]));
+        terms.push(mul(
+            cx.graph,
+            &[lower.get(&[a, b, c, e]), up.get(&[a, b, c, e])],
+        ));
     }
     Some(simplified_sum(cx, &terms))
 }
@@ -129,7 +134,10 @@ fn derivative_of(
     vars: &[NodeId],
 ) -> Option<Vec<Vec<NodeId>>> {
     // out[i][j] = ∂_j components[i]
-    components.iter().map(|&c| vars.iter().map(|&v| d(cx, c, v)).collect()).collect()
+    components
+        .iter()
+        .map(|&c| vars.iter().map(|&v| d(cx, c, v)).collect())
+        .collect()
 }
 
 impl Extension {
@@ -262,7 +270,8 @@ impl Extension {
                     let zero = rows.iter().flatten().all(|&e| cx.is_zero(e));
                     return Some(cx.graph.lit(Payload::Bool(zero)));
                 }
-                let items: Vec<NodeId> = rows.iter().map(|r| cx.graph.node(core::LIST, r)).collect();
+                let items: Vec<NodeId> =
+                    rows.iter().map(|r| cx.graph.node(core::LIST, r)).collect();
                 Some(cx.graph.node(core::LIST, &items))
             },
         }
@@ -280,7 +289,8 @@ impl Kernel for Extension {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -299,8 +309,14 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("killing_tensor", 3, Kind::KillingTensor),
         ("is_killing", 3, Kind::IsKilling),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("geometry/{name}"), Tier::Reduce, Extension { op, kind });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("geometry/{name}"),
+            Tier::Reduce,
+            Extension { op, kind },
+        );
     }
     Ok(())
 }
@@ -316,7 +332,11 @@ mod tests {
 
     /// With `r` positive.
     fn run_positive(src: &str) -> String {
-        let (text, reduced) = crate::rules::testing::reduce_with(&[geometry()], src, &[("r", crate::graph::Facts::POSITIVE)]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[geometry()],
+            src,
+            &[("r", crate::graph::Facts::POSITIVE)],
+        );
         assert!(reduced, "{text}");
         text
     }
@@ -325,35 +345,76 @@ mod tests {
 
     #[test]
     fn curvature_invariants() {
-        assert_eq!(run(&format!("gaussian_curvature({SPHERE}, list(t, p))")), "1");
+        assert_eq!(
+            run(&format!("gaussian_curvature({SPHERE}, list(t, p))")),
+            "1"
+        );
         assert_eq!(run(&format!("kretschmann({SPHERE}, list(t, p))")), "4");
-        assert_eq!(run("kretschmann(list(list(1, 0), list(0, 1)), list(x, y))"), "0");
+        assert_eq!(
+            run("kretschmann(list(list(1, 0), list(0, 1)), list(x, y))"),
+            "0"
+        );
         // A sphere of radius r has Gaussian curvature 1/r^2 and Kretschmann 4/r^4.
-        assert_eq!(run_positive("gaussian_curvature(list(list(r^2, 0), list(0, r^2*sin(t)^2)), list(t, p))"), "1/r^2");
+        assert_eq!(
+            run_positive(
+                "gaussian_curvature(list(list(r^2, 0), list(0, r^2*sin(t)^2)), list(t, p))"
+            ),
+            "1/r^2"
+        );
     }
 
     #[test]
     fn geodesics_and_operators() {
         // On the sphere a meridian is a geodesic: no acceleration for v = (1, 0).
-        assert_eq!(run(&format!("metric_geodesic_acceleration({SPHERE}, list(t, p), list(1, 0))")), "list(0, 0)");
+        assert_eq!(
+            run(&format!(
+                "metric_geodesic_acceleration({SPHERE}, list(t, p), list(1, 0))"
+            )),
+            "list(0, 0)"
+        );
         // Moving along a latitude needs a centripetal term.
         assert_eq!(
-            run(&format!("metric_geodesic_acceleration({SPHERE}, list(t, p), list(0, 1))")),
+            run(&format!(
+                "metric_geodesic_acceleration({SPHERE}, list(t, p), list(0, 1))"
+            )),
             "list(cos(t)*sin(t), 0)"
         );
-        assert_eq!(run_positive("volume_element(list(list(1, 0), list(0, r^2)), list(r, t))"), "r");
+        assert_eq!(
+            run_positive("volume_element(list(list(1, 0), list(0, r^2)), list(r, t))"),
+            "r"
+        );
         // The Laplace–Beltrami operator in polar coordinates.
-        assert_eq!(run_positive("laplace_beltrami(r^2, list(list(1, 0), list(0, r^2)), list(r, t))"), "4");
-        assert_eq!(run_positive("covariant_divergence(list(r, 0), list(list(1, 0), list(0, r^2)), list(r, t))"), "2");
+        assert_eq!(
+            run_positive("laplace_beltrami(r^2, list(list(1, 0), list(0, r^2)), list(r, t))"),
+            "4"
+        );
+        assert_eq!(
+            run_positive(
+                "covariant_divergence(list(r, 0), list(list(1, 0), list(0, r^2)), list(r, t))"
+            ),
+            "2"
+        );
     }
 
     #[test]
     fn killing_fields() {
         // Rotation is Killing for the flat plane; scaling is not.
-        assert_eq!(run("is_killing(list(-y, x), list(list(1, 0), list(0, 1)), list(x, y))"), "true");
-        assert_eq!(run("is_killing(list(x, y), list(list(1, 0), list(0, 1)), list(x, y))"), "false");
-        assert_eq!(run("killing_tensor(list(x, y), list(list(1, 0), list(0, 1)), list(x, y))"), "list(list(2, 0), list(0, 2))");
+        assert_eq!(
+            run("is_killing(list(-y, x), list(list(1, 0), list(0, 1)), list(x, y))"),
+            "true"
+        );
+        assert_eq!(
+            run("is_killing(list(x, y), list(list(1, 0), list(0, 1)), list(x, y))"),
+            "false"
+        );
+        assert_eq!(
+            run("killing_tensor(list(x, y), list(list(1, 0), list(0, 1)), list(x, y))"),
+            "list(list(2, 0), list(0, 2))"
+        );
         // d/dphi is Killing on the sphere.
-        assert_eq!(run(&format!("is_killing(list(0, 1), {SPHERE}, list(t, p))")), "true");
+        assert_eq!(
+            run(&format!("is_killing(list(0, 1), {SPHERE}, list(t, p))")),
+            "true"
+        );
     }
 }

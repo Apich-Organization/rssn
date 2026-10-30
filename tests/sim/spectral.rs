@@ -1,15 +1,23 @@
 //! Pseudo-spectral (Fourier, Chebyshev) tests.
 
 use num_complex::Complex;
-use rssn::sim::boundary::{BcValue, BoundaryCondition as Bc, Face, FaceBcs};
-use rssn::sim::spectral::{ChebGrid, SpectralGrid, etdrk4, fft_nd};
+use rssn::sim::boundary::BcValue;
+use rssn::sim::boundary::BoundaryCondition as Bc;
+use rssn::sim::boundary::Face;
+use rssn::sim::boundary::FaceBcs;
+use rssn::sim::spectral::ChebGrid;
+use rssn::sim::spectral::SpectralGrid;
+use rssn::sim::spectral::etdrk4;
+use rssn::sim::spectral::fft_nd;
 use std::f64::consts::PI;
 
 #[test]
 fn fft_nd_roundtrip_and_known_transform() {
     let n = [8, 4, 16];
     let total: usize = n.iter().product();
-    let data: Vec<Complex<f64>> = (0..total).map(|i| Complex::new((i as f64 * 0.37).sin(), (i as f64 * 0.11).cos())).collect();
+    let data: Vec<Complex<f64>> = (0..total)
+        .map(|i| Complex::new((i as f64 * 0.37).sin(), (i as f64 * 0.11).cos()))
+        .collect();
     let mut a = data.clone();
     fft_nd(&mut a, &n, false).unwrap();
     fft_nd(&mut a, &n, true).unwrap();
@@ -20,7 +28,11 @@ fn fft_nd_roundtrip_and_known_transform() {
     let mut w: Vec<Complex<f64>> = (0..total)
         .map(|p| {
             let (i, j, k) = (p % 8, (p / 8) % 4, p / 32);
-            Complex::new(0.0, 2.0 * PI * (2.0 * i as f64 / 8.0 + 1.0 * j as f64 / 4.0 + 3.0 * k as f64 / 16.0)).exp()
+            Complex::new(
+                0.0,
+                2.0 * PI * (2.0 * i as f64 / 8.0 + 1.0 * j as f64 / 4.0 + 3.0 * k as f64 / 16.0),
+            )
+            .exp()
         })
         .collect();
     fft_nd(&mut w, &n, false).unwrap();
@@ -50,20 +62,37 @@ fn fourier_derivative_and_helmholtz_converge_spectrally() {
         let g = SpectralGrid::new(&[n, n], &[2.0 * PI; 2]).unwrap();
         let sigma = 1.5;
         let u = |x: [f64; 3]| (x[0].cos() + x[1].cos()).exp();
-        let f = |x: [f64; 3]| u(x) * (-x[0].sin().powi(2) + x[0].cos() - x[1].sin().powi(2) + x[1].cos() + sigma);
+        let f = |x: [f64; 3]| {
+            u(x) * (-x[0].sin().powi(2) + x[0].cos() - x[1].sin().powi(2) + x[1].cos() + sigma)
+        };
         let rhs: Vec<f64> = (0..g.size()).map(|p| f(g.coord(p))).collect();
         let sol = g.helmholtz(sigma, &rhs).unwrap();
-        sol.iter().enumerate().map(|(p, v)| (v - u(g.coord(p))).abs()).fold(0.0, f64::max)
+        sol.iter()
+            .enumerate()
+            .map(|(p, v)| (v - u(g.coord(p))).abs())
+            .fold(0.0, f64::max)
     };
     let (e16, e32) = (err(16), err(32));
     assert!(e16 < 1e-6 && e32 < 1e-13, "{e16} {e32}");
     let g = SpectralGrid::new(&[8], &[1.0]).unwrap();
     assert!(g.helmholtz(0.0, &[1.0; 8]).is_err());
-    assert!(g.helmholtz(0.0, &(0..8).map(|i| (2.0 * PI * i as f64 / 8.0).sin()).collect::<Vec<_>>()).is_ok());
+    assert!(
+        g.helmholtz(
+            0.0,
+            &(0..8)
+                .map(|i| (2.0 * PI * i as f64 / 8.0).sin())
+                .collect::<Vec<_>>()
+        )
+        .is_ok()
+    );
 }
 
 /// ETDRK4 on `u_t = ν Δu - u (∇·1) u + f` with `u = 0.5 sin(Σx - t)` in `dim` dimensions.
-fn etd_error(dim: usize, n: usize, steps: usize) -> f64 {
+fn etd_error(
+    dim: usize,
+    n: usize,
+    steps: usize,
+) -> f64 {
     let nu = 0.1;
     let g = SpectralGrid::new(&vec![n; dim], &vec![2.0 * PI; dim]).unwrap();
     let d = dim as f64;
@@ -73,7 +102,9 @@ fn etd_error(dim: usize, n: usize, steps: usize) -> f64 {
         let ph = phase(x, t);
         -0.5 * ph.cos() + 0.125 * d * (2.0 * ph).sin() + nu * d * 0.5 * ph.sin()
     };
-    let lin: Vec<Complex<f64>> = (0..g.size()).map(|p| Complex::new(-nu * g.k2(p), 0.0)).collect();
+    let lin: Vec<Complex<f64>> = (0..g.size())
+        .map(|p| Complex::new(-nu * g.k2(p), 0.0))
+        .collect();
     let mask = g.dealias_mask();
     let gg = g.clone();
     let nonlinear = move |t: f64, uh: &[Complex<f64>]| -> Vec<Complex<f64>> {
@@ -99,7 +130,10 @@ fn etd_error(dim: usize, n: usize, steps: usize) -> f64 {
     let u0: Vec<f64> = (0..g.size()).map(|p| u_ex(g.coord(p), 0.0)).collect();
     let uh = etdrk4(g.to_spec(&u0), &lin, &nonlinear, 1.0, steps);
     let u = g.to_phys(&uh);
-    u.iter().enumerate().map(|(p, v)| (v - u_ex(g.coord(p), 1.0)).abs()).fold(0.0, f64::max)
+    u.iter()
+        .enumerate()
+        .map(|(p, v)| (v - u_ex(g.coord(p), 1.0)).abs())
+        .fold(0.0, f64::max)
 }
 
 #[test]
@@ -121,19 +155,40 @@ fn chebyshev_helmholtz_exponential_convergence_1d_2d_3d() {
     let u1 = |x: [f64; 3]| x[0].exp();
     let bcs1 = FaceBcs::dirichlet_zero()
         .with(Face::XMin, Bc::Neumann(BcValue::space(move |x| -u1(x))))
-        .with(Face::XMax, Bc::Robin { alpha: 2.0, beta: 1.0, g: BcValue::space(move |x| 3.0 * u1(x)) });
+        .with(
+            Face::XMax,
+            Bc::Robin {
+                alpha: 2.0,
+                beta: 1.0,
+                g: BcValue::space(move |x| 3.0 * u1(x)),
+            },
+        );
     let run1 = |n: usize| {
         let g = ChebGrid::new(&[n], &[0.0], &[1.0]).unwrap();
-        let u = g.solve_helmholtz(&bcs1, 2.0, |x| -u1(x) + 2.0 * u1(x)).unwrap();
+        let u = g
+            .solve_helmholtz(&bcs1, 2.0, |x| -u1(x) + 2.0 * u1(x))
+            .unwrap();
         g.max_error(&u, u1)
     };
-    assert!(run1(6) < 1e-4 && run1(12) < 1e-11, "{} {}", run1(6), run1(12));
+    assert!(
+        run1(6) < 1e-4 && run1(12) < 1e-11,
+        "{} {}",
+        run1(6),
+        run1(12)
+    );
     // 2D mixed
     let bcs2 = FaceBcs::dirichlet_zero()
         .with(Face::XMin, Bc::Dirichlet(BcValue::space(u2)))
         .with(Face::XMax, Bc::Dirichlet(BcValue::space(u2)))
         .with(Face::YMin, Bc::Neumann(BcValue::space(move |x| -u2(x))))
-        .with(Face::YMax, Bc::Robin { alpha: 2.0, beta: 1.0, g: BcValue::space(move |x| 3.0 * u2(x)) });
+        .with(
+            Face::YMax,
+            Bc::Robin {
+                alpha: 2.0,
+                beta: 1.0,
+                g: BcValue::space(move |x| 3.0 * u2(x)),
+            },
+        );
     let run2 = |n: usize| {
         let g = ChebGrid::new(&[n, n], &[0.0; 2], &[1.0; 2]).unwrap();
         let u = g.solve_helmholtz(&bcs2, 0.0, |x| -2.0 * u2(x)).unwrap();
@@ -159,7 +214,9 @@ fn chebyshev_heat_equation_second_order_in_time_with_spectral_space() {
     let exact = |x: [f64; 3], t: f64| (-PI * PI * t).exp() * (PI * x[0]).sin();
     let run = |steps: usize| {
         let g = ChebGrid::new(&[16], &[0.0], &[1.0]).unwrap();
-        let u = g.heat(&bcs, 1.0, |x| exact(x, 0.0), None, 0.2, steps, 0.5).unwrap();
+        let u = g
+            .heat(&bcs, 1.0, |x| exact(x, 0.0), None, 0.2, steps, 0.5)
+            .unwrap();
         g.max_error(&u, |x| exact(x, 0.2))
     };
     let (e1, e2) = (run(20), run(40));
@@ -167,13 +224,18 @@ fn chebyshev_heat_equation_second_order_in_time_with_spectral_space() {
     // 2D Neumann cosine mode
     let bcs = FaceBcs::uniform(&Bc::neumann(0.0));
     let g = ChebGrid::new(&[14, 14], &[0.0; 2], &[1.0; 2]).unwrap();
-    let ex = |x: [f64; 3], t: f64| (-2.0 * PI * PI * t).exp() * (PI * x[0]).cos() * (PI * x[1]).cos();
-    let u = g.heat(&bcs, 1.0, |x| ex(x, 0.0), None, 0.1, 100, 0.5).unwrap();
+    let ex =
+        |x: [f64; 3], t: f64| (-2.0 * PI * PI * t).exp() * (PI * x[0]).cos() * (PI * x[1]).cos();
+    let u = g
+        .heat(&bcs, 1.0, |x| ex(x, 0.0), None, 0.1, 100, 0.5)
+        .unwrap();
     assert!(g.max_error(&u, |x| ex(x, 0.1)) < 1e-4);
     // time dependent Dirichlet data with a source
     let bcs = FaceBcs::uniform(&Bc::Dirichlet(BcValue::spacetime(|t, x| t * x[0])));
     let g = ChebGrid::new(&[8], &[0.0], &[1.0]).unwrap();
     let src = |_t: f64, x: [f64; 3]| x[0];
-    let u = g.heat(&bcs, 1.0, |_| 0.0, Some(&src), 1.0, 50, 0.5).unwrap();
+    let u = g
+        .heat(&bcs, 1.0, |_| 0.0, Some(&src), 1.0, 50, 0.5)
+        .unwrap();
     assert!(g.max_error(&u, |x| x[0]) < 1e-10);
 }

@@ -33,8 +33,12 @@
 
 use std::f64::consts::PI;
 
-use crate::kernels::special_ext::{elliptic_f, elliptic_k, jacobi_elliptic};
-use crate::sim::elliptic::{elliptic_pi, jacobi_int_inv_sq, jacobi_int_sn2};
+use crate::kernels::special_ext::elliptic_f;
+use crate::kernels::special_ext::elliptic_k;
+use crate::kernels::special_ext::jacobi_elliptic;
+use crate::sim::elliptic::elliptic_pi;
+use crate::sim::elliptic::jacobi_int_inv_sq;
+use crate::sim::elliptic::jacobi_int_sn2;
 
 /// Bound Kerr geodesic in closed form.
 #[derive(Clone, Debug)]
@@ -159,7 +163,10 @@ fn lin_over_delta(
     rp: f64,
     rm: f64,
 ) -> [(f64, f64); 2] {
-    [((c1 * rp + c0) / (rp - rm), rp), ((c1 * rm + c0) / (rm - rp), rm)]
+    [
+        ((c1 * rp + c0) / (rp - rm), rp),
+        ((c1 * rm + c0) / (rm - rp), rm),
+    ]
 }
 
 impl KerrOrbit {
@@ -181,11 +188,15 @@ impl KerrOrbit {
             return Err("need 0 < E < 1, Q >= 0, M > 0 and |a| < M".into());
         }
         let c = radial_poly(m, a, energy, lz, carter);
-        let roots = quartic_real_roots(&c).ok_or("radial polynomial has complex roots: not a bound orbit")?;
+        let roots = quartic_real_roots(&c)
+            .ok_or("radial polynomial has complex roots: not a bound orbit")?;
         let [r1, r2, r3, r4] = roots;
         let rh = m + (m * m - a * a).sqrt();
         if !(r1 > r2 && r2 > r3 && r3 >= r4 - 1e-12) || r2 <= rh {
-            return Err("bound orbit needs r1 > r2 > r3 and r2 above the horizon (plunging or circular)".into());
+            return Err(
+                "bound orbit needs r1 > r2 > r3 and r2 above the horizon (plunging or circular)"
+                    .into(),
+            );
         }
         if r0 < r2 * (1.0 - 1e-12) || r0 > r1 * (1.0 + 1e-12) {
             return Err("initial radius outside the radial turning points".into());
@@ -196,7 +207,11 @@ impl KerrOrbit {
         // radial phase
         let s0 = ((r1 - r3) * (r0 - r2) / ((r1 - r2) * (r0 - r3))).clamp(0.0, 1.0);
         let psi0 = s0.sqrt().asin();
-        let amp = if radial_out { psi0 } else { PI - psi0 };
+        let amp = if radial_out {
+            psi0
+        } else {
+            PI - psi0
+        };
         let u0 = elliptic_f(amp, m_r);
         // polar motion
         let beta = a * a * (1.0 - energy * energy);
@@ -221,7 +236,23 @@ impl KerrOrbit {
             let cn0 = if polar_down { -cn0 } else { cn0 };
             elliptic_f(sn0.atan2(cn0), m_th)
         };
-        Ok(Self { m, a, energy, lz, carter, roots, m_r, m_th, z_minus, g_r, rate_r, rate_th, u0, w0, phi0 })
+        Ok(Self {
+            m,
+            a,
+            energy,
+            lz,
+            carter,
+            roots,
+            m_r,
+            m_th,
+            z_minus,
+            g_r,
+            rate_r,
+            rate_th,
+            u0,
+            w0,
+            phi0,
+        })
     }
 
     /// Orbit specified by periapsis `r_p`, apoapsis `r_a` and the turning latitude `z_minus =
@@ -257,7 +288,11 @@ impl KerrOrbit {
         };
         let l_guess = sgn * (m * p).sqrt() * (1.0 + 3.0 * m / p).sqrt();
         let q_guess = l_guess * l_guess * z_minus * z_minus / (1.0 - z_minus * z_minus);
-        let mut x = [(1.0 - (1.0 - e_ecc * e_ecc) * m / p).sqrt(), l_guess / (1.0 + q_guess / (l_guess * l_guess + 1e-300)).sqrt(), q_guess];
+        let mut x = [
+            (1.0 - (1.0 - e_ecc * e_ecc) * m / p).sqrt(),
+            l_guess / (1.0 + q_guess / (l_guess * l_guess + 1e-300)).sqrt(),
+            q_guess,
+        ];
         let scale = [1.0, 1.0 + x[1].abs(), 1.0 + q_guess];
         for _ in 0..80 {
             let f = resid(&x);
@@ -277,13 +312,18 @@ impl KerrOrbit {
                     jac[i][k] = (fp[i] - fm[i]) / (2.0 * eps);
                 }
             }
-            let dx = solve3_sys(&jac, &f).ok_or("singular Jacobian while solving for the constants of motion")?;
+            let dx = solve3_sys(&jac, &f)
+                .ok_or("singular Jacobian while solving for the constants of motion")?;
             // damped update
             let mut lam = 1.0;
             for _ in 0..20 {
                 let trial = [x[0] - lam * dx[0], x[1] - lam * dx[1], x[2] - lam * dx[2]];
                 let ft = resid(&trial);
-                if trial[0] > 0.0 && trial[0] < 1.0 && trial[2] >= 0.0 && ft.iter().map(|v| v.abs()).fold(0.0, f64::max) < fn_ {
+                if trial[0] > 0.0
+                    && trial[0] < 1.0
+                    && trial[2] >= 0.0
+                    && ft.iter().map(|v| v.abs()).fold(0.0, f64::max) < fn_
+                {
                     x = trial;
                     break;
                 }
@@ -293,8 +333,15 @@ impl KerrOrbit {
         if resid(&x).iter().map(|v| v.abs()).fold(0.0, f64::max) > 1e-9 * (1.0 + r_a.powi(4)) {
             return Err("constants of motion did not converge".into());
         }
-        let roots = quartic_real_roots(&radial_poly(m, a, x[0], x[1], x[2])).ok_or("complex radial roots: not a bound orbit")?;
-        Self::new(m, a, (x[0], x[1], x[2]), (roots[1], std::f64::consts::FRAC_PI_2, 0.0), (true, true))
+        let roots = quartic_real_roots(&radial_poly(m, a, x[0], x[1], x[2]))
+            .ok_or("complex radial roots: not a bound orbit")?;
+        Self::new(
+            m,
+            a,
+            (x[0], x[1], x[2]),
+            (roots[1], std::f64::consts::FRAC_PI_2, 0.0),
+            (true, true),
+        )
     }
 
     /// Mino period of the radial motion.
@@ -371,7 +418,9 @@ impl KerrOrbit {
         let n_r = -dd / cc;
         let kap = aa - bb * cc / dd;
         let i_r = (bb / dd) * du + (kap / cc) * pi_n(n_r);
-        let i_r2 = (bb / dd).powi(2) * du + 2.0 * (bb / dd) * kap / cc * pi_n(n_r) + (kap / cc).powi(2) * pi2_n(n_r);
+        let i_r2 = (bb / dd).powi(2) * du
+            + 2.0 * (bb / dd) * kap / cc * pi_n(n_r)
+            + (kap / cc).powi(2) * pi2_n(n_r);
         let i_inv = |rho: f64| {
             let p0 = aa - rho * cc;
             let p1 = bb - rho * dd;
@@ -449,7 +498,10 @@ impl KerrOrbit {
         let ups_r = 2.0 * PI / lam_r;
         let gamma = gam_r + gam_th;
         let ups_phi = phi_r + phi_th;
-        ([ups_r, ups_th, ups_phi, gamma], [ups_r / gamma, ups_th / gamma, ups_phi / gamma])
+        (
+            [ups_r, ups_th, ups_phi, gamma],
+            [ups_r / gamma, ups_th / gamma, ups_phi / gamma],
+        )
     }
 }
 
@@ -457,7 +509,8 @@ fn solve3_sys(
     a: &[[f64; 3]; 3],
     b: &[f64; 3],
 ) -> Option<[f64; 3]> {
-    let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+    let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+        - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
         + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
     if det.abs() < 1e-300 {
         return None;
@@ -468,7 +521,8 @@ fn solve3_sys(
         for r in 0..3 {
             mm[r][c] = b[r];
         }
-        let d = mm[0][0] * (mm[1][1] * mm[2][2] - mm[1][2] * mm[2][1]) - mm[0][1] * (mm[1][0] * mm[2][2] - mm[1][2] * mm[2][0])
+        let d = mm[0][0] * (mm[1][1] * mm[2][2] - mm[1][2] * mm[2][1])
+            - mm[0][1] * (mm[1][0] * mm[2][2] - mm[1][2] * mm[2][0])
             + mm[0][2] * (mm[1][0] * mm[2][1] - mm[1][1] * mm[2][0]);
         x[c] = d / det;
     }
@@ -535,11 +589,22 @@ pub fn shadow_boundary_analytic(
         eta + a * a * co * co - xi * xi * co * co / (so * so)
     };
     // beta^2 >= 0 between the two zeros inside [r_pro, r_retro]
-    let (r_lo, r_hi) = (kerr_photon_orbit_radius(m, a.abs(), true), kerr_photon_orbit_radius(m, a.abs(), false));
+    let (r_lo, r_hi) = (
+        kerr_photon_orbit_radius(m, a.abs(), true),
+        kerr_photon_orbit_radius(m, a.abs(), false),
+    );
     let samples = 20_000;
-    let rs: Vec<f64> = (0..=samples).map(|k| r_lo + (r_hi - r_lo) * f64::from(k) / f64::from(samples)).collect();
-    let first = rs.iter().position(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
-    let last = rs.iter().rposition(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
+    let rs: Vec<f64> = (0..=samples)
+        .map(|k| r_lo + (r_hi - r_lo) * f64::from(k) / f64::from(samples))
+        .collect();
+    let first = rs
+        .iter()
+        .position(|&r| beta2(r) >= 0.0)
+        .ok_or("no photon-orbit window for this observer")?;
+    let last = rs
+        .iter()
+        .rposition(|&r| beta2(r) >= 0.0)
+        .ok_or("no photon-orbit window for this observer")?;
     let refine = |mut lo: f64, mut hi: f64| {
         // beta2(lo) < 0 <= beta2(hi) (or the reverse): bisection on the sign change
         let flo = beta2(lo) >= 0.0;
@@ -553,8 +618,16 @@ pub fn shadow_boundary_analytic(
         }
         f64::midpoint(lo, hi)
     };
-    let ra = if first > 0 { refine(rs[first - 1], rs[first]) } else { rs[first] };
-    let rb = if last + 1 < rs.len() { refine(rs[last], rs[last + 1]) } else { rs[last] };
+    let ra = if first > 0 {
+        refine(rs[first - 1], rs[first])
+    } else {
+        rs[first]
+    };
+    let rb = if last + 1 < rs.len() {
+        refine(rs[last], rs[last + 1])
+    } else {
+        rs[last]
+    };
     let mut upper = Vec::with_capacity(n);
     for k in 0..n {
         let r = ra + (rb - ra) * k as f64 / (n - 1) as f64;
@@ -620,7 +693,13 @@ pub fn trace_ray(
         let phid = a * p / delta - a + xi / (1.0 - z * z).max(1e-12);
         [y[1], rpp, y[3], zpp, phid]
     };
-    let mut y = [r_o, -rpot(r_o).sqrt(), z0, if polar_down { -1.0 } else { 1.0 } * zp2.max(0.0).sqrt(), 0.0];
+    let mut y = [
+        r_o,
+        -rpot(r_o).sqrt(),
+        z0,
+        if polar_down { -1.0 } else { 1.0 } * zp2.max(0.0).sqrt(),
+        0.0,
+    ];
     let mut turned = false;
     for _ in 0..4_000_000 {
         let h = 0.01 * (1.0_f64).min(1.0 / y[0]);
@@ -644,7 +723,10 @@ pub fn trace_ray(
         // project the velocities back onto the first integrals (keeps the large-radius branch stable)
         y[1] = y[1].signum() * rpot(y[0]).max(0.0).sqrt();
         let zz = y[2] * y[2];
-        y[3] = y[3].signum() * (eta - (eta + xi * xi - a * a) * zz - a * a * zz * zz).max(0.0).sqrt();
+        y[3] = y[3].signum()
+            * (eta - (eta + xi * xi - a * a) * zz - a * a * zz * zz)
+                .max(0.0)
+                .sqrt();
         if y[0] <= rh * (1.0 + 1e-9) {
             return Ok(RayOutcome::Captured);
         }
@@ -652,7 +734,10 @@ pub fn trace_ray(
             turned = true;
         }
         if turned && y[0] >= r_o {
-            return Ok(RayOutcome::Escaped { theta: y[2].clamp(-1.0, 1.0).acos(), phi: y[4] });
+            return Ok(RayOutcome::Escaped {
+                theta: y[2].clamp(-1.0, 1.0).acos(),
+                phi: y[4],
+            });
         }
     }
     Err("ray tracing step budget exhausted".into())
@@ -703,7 +788,8 @@ pub fn trace_shadow(
 // Horizon-penetrating geodesics in ingoing Kerr-Schild coordinates
 // ---------------------------------------------------------------------------
 
-use crate::sim::hermite::{Dual, Scalar};
+use crate::sim::hermite::Dual;
+use crate::sim::hermite::Scalar;
 
 /// Kerr radius `r(x, y, z)` of the oblate-spheroidal coordinates of the Kerr-Schild form.
 fn ks_radius<T: Scalar>(
@@ -812,7 +898,11 @@ impl KerrSchildGeodesic {
         let r = ks_radius(a2, &x);
         let r2a2 = r * r + a2;
         let hh = m * r * r * r / (r * r * r * r + a2 * x[2] * x[2]);
-        let l = [(r * x[0] + a * x[1]) / r2a2, (r * x[1] - a * x[0]) / r2a2, x[2] / r];
+        let l = [
+            (r * x[0] + a * x[1]) / r2a2,
+            (r * x[1] - a * x[0]) / r2a2,
+            x[2] / r,
+        ];
         let w = -p[0] + l[0] * p[1] + l[1] * p[2] + l[2] * p[3];
         let mut d = [0.0; 8];
         d[0] = -p[0] + 2.0 * hh * w;
@@ -820,7 +910,12 @@ impl KerrSchildGeodesic {
             d[1 + i] = p[1 + i] - 2.0 * hh * l[i] * w;
         }
         for c in 0..3 {
-            let xd: [Dual; 3] = std::array::from_fn(|k| Dual { v: x[k], d: if k == c { 1.0 } else { 0.0 } });
+            let xd: [Dual; 3] = std::array::from_fn(|k| {
+                Dual {
+                    v: x[k],
+                    d: if k == c { 1.0 } else { 0.0 },
+                }
+            });
             let pd: [Dual; 4] = std::array::from_fn(|k| Dual { v: p[k], d: 0.0 });
             d[5 + c] = -ks_hamiltonian(m, a, &xd, &pd).d;
         }
@@ -840,13 +935,52 @@ impl KerrSchildGeodesic {
             [1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0],
             [44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0],
-            [19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0, 0.0, 0.0],
-            [9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0, 0.0],
-            [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0],
+            [
+                19372.0 / 6561.0,
+                -25360.0 / 2187.0,
+                64448.0 / 6561.0,
+                -212.0 / 729.0,
+                0.0,
+                0.0,
+            ],
+            [
+                9017.0 / 3168.0,
+                -355.0 / 33.0,
+                46732.0 / 5247.0,
+                49.0 / 176.0,
+                -5103.0 / 18656.0,
+                0.0,
+            ],
+            [
+                35.0 / 384.0,
+                0.0,
+                500.0 / 1113.0,
+                125.0 / 192.0,
+                -2187.0 / 6784.0,
+                11.0 / 84.0,
+            ],
         ];
-        let b5 = [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0, 0.0];
-        let b4 = [5179.0 / 57600.0, 0.0, 7571.0 / 16695.0, 393.0 / 640.0, -92097.0 / 339200.0, 187.0 / 2100.0, 1.0 / 40.0];
-        let mut y: [f64; 8] = [self.x[0], self.x[1], self.x[2], self.x[3], self.p[0], self.p[1], self.p[2], self.p[3]];
+        let b5 = [
+            35.0 / 384.0,
+            0.0,
+            500.0 / 1113.0,
+            125.0 / 192.0,
+            -2187.0 / 6784.0,
+            11.0 / 84.0,
+            0.0,
+        ];
+        let b4 = [
+            5179.0 / 57600.0,
+            0.0,
+            7571.0 / 16695.0,
+            393.0 / 640.0,
+            -92097.0 / 339200.0,
+            187.0 / 2100.0,
+            1.0 / 40.0,
+        ];
+        let mut y: [f64; 8] = [
+            self.x[0], self.x[1], self.x[2], self.x[3], self.p[0], self.p[1], self.p[2], self.p[3],
+        ];
         let mut t = 0.0;
         let mut h = dtau_total.signum() * 0.01_f64.min(dtau_total.abs());
         let mut steps = 0usize;
@@ -893,7 +1027,11 @@ impl KerrSchildGeodesic {
                     return false;
                 }
             }
-            let fac = if err == 0.0 { 5.0 } else { (0.9 * err.powf(-0.2)).clamp(0.2, 5.0) };
+            let fac = if err == 0.0 {
+                5.0
+            } else {
+                (0.9 * err.powf(-0.2)).clamp(0.2, 5.0)
+            };
             h *= fac;
         }
         self.x = [y[0], y[1], y[2], y[3]];
@@ -918,15 +1056,26 @@ impl KerrSchildGeodesic {
         let delta = r * r - 2.0 * m * r + a * a;
         let (st, ct) = theta.sin_cos();
         if delta <= 0.0 || st.abs() < 1e-9 {
-            return Err("start outside the horizon and away from the axis (use Cartesian data otherwise)".into());
+            return Err(
+                "start outside the horizon and away from the axis (use Cartesian data otherwise)"
+                    .into(),
+            );
         }
-        let rpot = (energy * (r * r + a * a) - a * lz).powi(2) - delta * (mu2 * r * r + (lz - a * energy).powi(2) + carter);
+        let rpot = (energy * (r * r + a * a) - a * lz).powi(2)
+            - delta * (mu2 * r * r + (lz - a * energy).powi(2) + carter);
         let tpot = carter - ct * ct * (a * a * (mu2 - energy * energy) + lz * lz / (st * st));
         let scale = (energy * (r * r + a * a)).powi(2).max(1.0);
         if rpot < -1e-9 * scale || tpot < -1e-9 {
             return Err("motion is forbidden at the requested position".into());
         }
-        let pr = (if radial_out { 1.0 } else { -1.0 }) * (if rpot < 1e-13 * scale { 0.0 } else { rpot }).sqrt() / delta;
+        let pr = (if radial_out { 1.0 } else { -1.0 })
+            * (if rpot < 1e-13 * scale {
+                0.0
+            } else {
+                rpot
+            })
+            .sqrt()
+            / delta;
         let pth = (if polar_down { 1.0 } else { -1.0 }) * tpot.max(0.0).sqrt();
         let p_bl = [-energy, pr, pth, lz];
         // BL -> ingoing KS Cartesian
@@ -937,13 +1086,24 @@ impl KerrSchildGeodesic {
         let z = r * ct;
         let jac = [
             [1.0, 0.0, 0.0, 0.0],
-            [2.0 * m * r / delta, st * cp - y * a / delta, st * sp + x * a / delta, ct],
+            [
+                2.0 * m * r / delta,
+                st * cp - y * a / delta,
+                st * sp + x * a / delta,
+                ct,
+            ],
             [0.0, ct * (r * cp - a * sp), ct * (r * sp + a * cp), -r * st],
             [0.0, -y, x, 0.0],
         ];
         // p_bl[alpha] = sum_mu jac[alpha][mu] p_ks[mu]
         let p_ks = solve4_lin(&jac, &p_bl).ok_or("singular coordinate transformation")?;
-        Ok(Self { m, a, x: [0.0, x, y, z], p: p_ks, tau: 0.0 })
+        Ok(Self {
+            m,
+            a,
+            x: [0.0, x, y, z],
+            p: p_ks,
+            tau: 0.0,
+        })
     }
 
     /// Carter constant `Q = p_theta^2 + cos^2 theta [a^2 (mu^2 - E^2) + L^2/sin^2 theta]` of the

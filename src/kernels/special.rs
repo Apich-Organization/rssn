@@ -281,7 +281,11 @@ pub fn erfc_numerical(x: f64) -> f64 {
     if x < 0.0 {
         return 2.0 - erfc_numerical(-x);
     }
-    if x < 1.5 { 1.0 - erf_series(x) } else { erfc_tail(x) }
+    if x < 1.5 {
+        1.0 - erf_series(x)
+    } else {
+        erfc_tail(x)
+    }
 }
 
 /// Computes the inverse error function, erf⁻¹(x).
@@ -361,7 +365,7 @@ pub fn inverse_erf_numerical(x: f64) -> f64 {
 // ============================================================================
 
 /// Euler-Mascheroni constant γ.
-const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
+const EULER_GAMMA: f64 = std::f64::consts::EULER_GAMMA;
 
 /// Below this |x| the alternating power series are used for `J` and `Y`
 /// (largest term ~ I₀(5) ≈ 27, so cancellation costs under one digit).
@@ -1135,26 +1139,26 @@ pub fn softplus(x: f64) -> f64 {
 pub fn bernoulli_number(n: u32) -> f64 {
     // Precomputed first few Bernoulli numbers
     let precomputed = [
-        1.0,               // B_0
-        -0.5,              // B_1
-        1.0 / 6.0,         // B_2
-        0.0,               // B_3
-        -1.0 / 30.0,       // B_4
-        0.0,               // B_5
-        1.0 / 42.0,        // B_6
-        0.0,               // B_7
-        -1.0 / 30.0,       // B_8
-        0.0,               // B_9
-        5.0 / 66.0,        // B_10
-        0.0,               // B_11
-        -691.0 / 2730.0,   // B_12
-        0.0,               // B_13
-        7.0 / 6.0,         // B_14
-        0.0,               // B_15
-        -3617.0 / 510.0,   // B_16
-        0.0,               // B_17
-        43867.0 / 798.0,   // B_18
-        0.0,               // B_19
+        1.0,                // B_0
+        -0.5,               // B_1
+        1.0 / 6.0,          // B_2
+        0.0,                // B_3
+        -1.0 / 30.0,        // B_4
+        0.0,                // B_5
+        1.0 / 42.0,         // B_6
+        0.0,                // B_7
+        -1.0 / 30.0,        // B_8
+        0.0,                // B_9
+        5.0 / 66.0,         // B_10
+        0.0,                // B_11
+        -691.0 / 2730.0,    // B_12
+        0.0,                // B_13
+        7.0 / 6.0,          // B_14
+        0.0,                // B_15
+        -3617.0 / 510.0,    // B_16
+        0.0,                // B_17
+        43867.0 / 798.0,    // B_18
+        0.0,                // B_19
         -174_611.0 / 330.0, // B_20
     ];
 
@@ -1178,7 +1182,8 @@ pub fn bernoulli_number(n: u32) -> f64 {
         }
         let mut sum = 0.0;
         let m_plus_1 = (m + 1) as u64;
-        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+        #[allow(clippy::needless_range_loop)]
+        // index is used for more than one array / arithmetic; iterator form would not be clearer
         for k in 0..m {
             sum += binomial(m_plus_1, k as u64) * b[k];
         }
@@ -1257,13 +1262,13 @@ pub fn hurwitz_zeta(
 
     // Sum the Bernoulli number correction terms
     let bernoulli_coeffs = [
-        1.0 / 12.0,                    // B_2 / 2!
-        -1.0 / 720.0,                  // B_4 / 4!
-        1.0 / 30240.0,                 // B_6 / 6!
-        -1.0 / 1_209_600.0,              // B_8 / 8!
-        1.0 / 47_900_160.0,              // B_10 / 10!
-        -691.0 / 1_307_674_368_000.0,      // B_12 / 12!
-        1.0 / 74_724_249_600.0,           // B_14 / 14!
+        1.0 / 12.0,                         // B_2 / 2!
+        -1.0 / 720.0,                       // B_4 / 4!
+        1.0 / 30240.0,                      // B_6 / 6!
+        -1.0 / 1_209_600.0,                 // B_8 / 8!
+        1.0 / 47_900_160.0,                 // B_10 / 10!
+        -691.0 / 1_307_674_368_000.0,       // B_12 / 12!
+        1.0 / 74_724_249_600.0,             // B_14 / 14!
         -3617.0 / 10_670_622_842_880_000.0, // B_16 / 16!
     ];
 
@@ -1307,7 +1312,11 @@ pub fn polygamma_numerical(
         return f64::NAN;
     }
 
-    let factor = if n.is_multiple_of(2) { -1.0 } else { 1.0 };
+    let factor = if n.is_multiple_of(2) {
+        -1.0
+    } else {
+        1.0
+    };
     let n_fact = factorial(u64::from(n));
     factor * n_fact * hurwitz_zeta(f64::from(n + 1), z)
 }
@@ -1364,7 +1373,11 @@ pub fn bessel_j(
         if !is_integer_order(nu) {
             return f64::NAN;
         }
-        let sign = if nu.rem_euclid(2.0) == 0.0 { 1.0 } else { -1.0 };
+        let sign = if nu.rem_euclid(2.0) == 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
         return sign * bessel_j(nu, -x);
     }
     if x == 0.0 {
@@ -1383,7 +1396,11 @@ pub fn bessel_j(
         return bessel_j1(x);
     }
     if is_integer_order(nu) && nu < 0.0 {
-        let sign = if nu.rem_euclid(2.0) == 0.0 { 1.0 } else { -1.0 };
+        let sign = if nu.rem_euclid(2.0) == 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
         return sign * bessel_j(-nu, x);
     }
     let pi = std::f64::consts::PI;
@@ -1415,7 +1432,11 @@ pub fn bessel_y(
     let pi = std::f64::consts::PI;
     let main = quad(|theta| (x * theta.sin() - nu * theta).sin(), 0.0, pi) / pi;
     let c = (nu * pi).cos();
-    let tail = quad(|t| ((nu * t).exp() + (-nu * t).exp() * c) * (-x * t.sinh()).exp(), 0.0, decay_end(x, nu));
+    let tail = quad(
+        |t| ((nu * t).exp() + (-nu * t).exp() * c) * (-x * t.sinh()).exp(),
+        0.0,
+        decay_end(x, nu),
+    );
     main - tail / pi
 }
 
@@ -1435,11 +1456,21 @@ pub fn bessel_i(
         if !is_integer_order(nu) {
             return f64::NAN;
         }
-        let sign = if nu.rem_euclid(2.0) == 0.0 { 1.0 } else { -1.0 };
+        let sign = if nu.rem_euclid(2.0) == 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
         return sign * bessel_i(nu, -x);
     }
     if x == 0.0 {
-        return if nu == 0.0 { 1.0 } else if nu > 0.0 || is_integer_order(nu) { 0.0 } else { f64::INFINITY };
+        return if nu == 0.0 {
+            1.0
+        } else if nu > 0.0 || is_integer_order(nu) {
+            0.0
+        } else {
+            f64::INFINITY
+        };
     }
     if nu == 0.0 {
         return bessel_i0(x);
@@ -1447,13 +1478,25 @@ pub fn bessel_i(
     if nu == 1.0 {
         return bessel_i1(x);
     }
-    let order = if is_integer_order(nu) { nu.abs() } else { nu };
+    let order = if is_integer_order(nu) {
+        nu.abs()
+    } else {
+        nu
+    };
     let pi = std::f64::consts::PI;
-    let main = quad(|theta| (x * theta.cos()).exp() * (order * theta).cos(), 0.0, pi) / pi;
+    let main = quad(
+        |theta| (x * theta.cos()).exp() * (order * theta).cos(),
+        0.0,
+        pi,
+    ) / pi;
     if is_integer_order(order) {
         return main;
     }
-    let tail = quad(|t| (-x * t.cosh() - order * t).exp(), 0.0, decay_end(x, order));
+    let tail = quad(
+        |t| (-x * t.cosh() - order * t).exp(),
+        0.0,
+        decay_end(x, order),
+    );
     (order * pi).sin().mul_add(-tail / pi, main)
 }
 
@@ -1470,7 +1513,11 @@ pub fn bessel_k(
     if x == 0.0 {
         return f64::INFINITY;
     }
-    quad(|t| (-x * t.cosh()).exp() * (nu * t).cosh(), 0.0, decay_end(x, nu))
+    quad(
+        |t| (-x * t.cosh()).exp() * (nu * t).cosh(),
+        0.0,
+        decay_end(x, nu),
+    )
 }
 
 /// `K₀(x)`.
@@ -1568,7 +1615,8 @@ pub fn generalized_laguerre(
     let mut current = 1.0 + alpha - x;
     for k in 1..n {
         let k = f64::from(k);
-        let next = ((2.0f64.mul_add(k, 1.0) + alpha - x) * current - (k + alpha) * previous) / (k + 1.0);
+        let next =
+            ((2.0f64.mul_add(k, 1.0) + alpha - x) * current - (k + alpha) * previous) / (k + 1.0);
         previous = current;
         current = next;
     }
@@ -1594,10 +1642,22 @@ mod arbitrary_order_bessel_tests {
         // K_{ν+1} = K_{ν-1} + (2ν/x) K_ν, I_{ν+1} = I_{ν-1} - (2ν/x) I_ν.
         for &(nu, x) in &[(1.0, 5.0), (2.5, 3.0), (3.0, 0.7)] {
             let r = 2.0 * nu / x;
-            assert!((bessel_y(nu + 1.0, x) - (r * bessel_y(nu, x) - bessel_y(nu - 1.0, x))).abs() < 1e-10 * bessel_y(nu + 1.0, x).abs().max(1.0));
-            assert!((bessel_j(nu + 1.0, x) - (r * bessel_j(nu, x) - bessel_j(nu - 1.0, x))).abs() < 1e-12);
-            assert!((bessel_k(nu + 1.0, x) - (bessel_k(nu - 1.0, x) + r * bessel_k(nu, x))).abs() < 1e-10 * bessel_k(nu + 1.0, x));
-            assert!((bessel_i(nu + 1.0, x) - (bessel_i(nu - 1.0, x) - r * bessel_i(nu, x))).abs() < 1e-12);
+            assert!(
+                (bessel_y(nu + 1.0, x) - (r * bessel_y(nu, x) - bessel_y(nu - 1.0, x))).abs()
+                    < 1e-10 * bessel_y(nu + 1.0, x).abs().max(1.0)
+            );
+            assert!(
+                (bessel_j(nu + 1.0, x) - (r * bessel_j(nu, x) - bessel_j(nu - 1.0, x))).abs()
+                    < 1e-12
+            );
+            assert!(
+                (bessel_k(nu + 1.0, x) - (bessel_k(nu - 1.0, x) + r * bessel_k(nu, x))).abs()
+                    < 1e-10 * bessel_k(nu + 1.0, x)
+            );
+            assert!(
+                (bessel_i(nu + 1.0, x) - (bessel_i(nu - 1.0, x) - r * bessel_i(nu, x))).abs()
+                    < 1e-12
+            );
         }
         // Parity for negative arguments and orders.
         assert!((bessel_j(3.0, -2.0) + bessel_j(3.0, 2.0)).abs() < 1e-15);
@@ -1608,10 +1668,22 @@ mod arbitrary_order_bessel_tests {
     fn half_integer_orders_are_elementary() {
         for &x in &[0.3, 1.0, 4.5, 12.0] {
             let s = (2.0 / (std::f64::consts::PI * x)).sqrt();
-            assert!((bessel_j(0.5, x) - s * x.sin()).abs() < 1e-12, "J(1/2, {x})");
-            assert!((bessel_j(-0.5, x) - s * x.cos()).abs() < 1e-12, "J(-1/2, {x})");
-            assert!((bessel_y(0.5, x) + s * x.cos()).abs() < 1e-12, "Y(1/2, {x})");
-            assert!((bessel_i(0.5, x) - s * x.sinh()).abs() < 1e-11 * x.sinh().max(1.0), "I(1/2, {x})");
+            assert!(
+                (bessel_j(0.5, x) - s * x.sin()).abs() < 1e-12,
+                "J(1/2, {x})"
+            );
+            assert!(
+                (bessel_j(-0.5, x) - s * x.cos()).abs() < 1e-12,
+                "J(-1/2, {x})"
+            );
+            assert!(
+                (bessel_y(0.5, x) + s * x.cos()).abs() < 1e-12,
+                "Y(1/2, {x})"
+            );
+            assert!(
+                (bessel_i(0.5, x) - s * x.sinh()).abs() < 1e-11 * x.sinh().max(1.0),
+                "I(1/2, {x})"
+            );
             let k = (std::f64::consts::PI / (2.0 * x)).sqrt() * (-x).exp();
             assert!((bessel_k(0.5, x) - k).abs() < 1e-13, "K(1/2, {x})");
         }
@@ -1621,8 +1693,12 @@ mod arbitrary_order_bessel_tests {
     fn wronskian() {
         // J_ν Y_ν' - J_ν' Y_ν = 2/(πx) through J_{ν+1} Y_ν - J_ν Y_{ν+1}.
         for &(nu, x) in &[(0.3, 2.0), (2.5, 7.0), (4.0, 1.5)] {
-            let w = bessel_j(nu + 1.0, x) * bessel_y(nu, x) - bessel_j(nu, x) * bessel_y(nu + 1.0, x);
-            assert!((w - 2.0 / (std::f64::consts::PI * x)).abs() < 1e-11, "ν = {nu}, x = {x}: {w}");
+            let w =
+                bessel_j(nu + 1.0, x) * bessel_y(nu, x) - bessel_j(nu, x) * bessel_y(nu + 1.0, x);
+            assert!(
+                (w - 2.0 / (std::f64::consts::PI * x)).abs() < 1e-11,
+                "ν = {nu}, x = {x}: {w}"
+            );
         }
     }
 
@@ -1631,7 +1707,10 @@ mod arbitrary_order_bessel_tests {
         assert!((erfi(1.0) - 1.650_425_758_797_542_8).abs() < 1e-14);
         assert!((erfi(-0.5) + 0.614_952_094_696_510_9).abs() < 1e-14);
         for &p in &[1e-10, 0.01, 0.5, 1.0, 1.7] {
-            assert!((erfc_numerical(inverse_erfc(p)) - p).abs() < 1e-12 * p.max(1e-3), "{p}");
+            assert!(
+                (erfc_numerical(inverse_erfc(p)) - p).abs() < 1e-12 * p.max(1e-3),
+                "{p}"
+            );
         }
         assert!((ln_factorial(10.0) - 3_628_800.0_f64.ln()).abs() < 1e-12);
         // L_2^{(1)}(x) = (x² - 6x + 6)/2.
@@ -1699,12 +1778,18 @@ mod lambert_tests {
     fn lambert_w_branches() {
         for &x in &[-0.3, -0.1, 0.5, 1.0, 10.0, 1e6] {
             let w = lambert_w(x, true);
-            assert!((w * w.exp() - x).abs() < 1e-10 * x.abs().max(1.0), "W0({x}) = {w}");
+            assert!(
+                (w * w.exp() - x).abs() < 1e-10 * x.abs().max(1.0),
+                "W0({x}) = {w}"
+            );
         }
         assert!((lambert_w(1.0, true) - 0.567_143_290_409_784).abs() < 1e-14);
         for &x in &[-0.35, -0.2, -0.01] {
             let w = lambert_w(x, false);
-            assert!(w <= -1.0 && (w * w.exp() - x).abs() < 1e-10, "W-1({x}) = {w}");
+            assert!(
+                w <= -1.0 && (w * w.exp() - x).abs() < 1e-10,
+                "W-1({x}) = {w}"
+            );
         }
         assert!(lambert_w(-1.0, true).is_nan() && lambert_w(0.5, false).is_nan());
     }
@@ -1773,7 +1858,11 @@ pub fn exp_integral_e1(x: f64) -> f64 {
 #[must_use]
 pub fn exp_integral_ei(x: f64) -> f64 {
     if x.is_nan() || x == 0.0 {
-        return if x == 0.0 { f64::NEG_INFINITY } else { f64::NAN };
+        return if x == 0.0 {
+            f64::NEG_INFINITY
+        } else {
+            f64::NAN
+        };
     }
     if x < 0.0 {
         return -exp_integral_e1(-x);
@@ -2048,7 +2137,8 @@ mod airy_tests {
 
     #[test]
     fn reference_values() {
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-11 * (1.0 + b.abs()) || (a / b - 1.0).abs() < 1e-10;
+        let close =
+            |a: f64, b: f64| (a - b).abs() < 1e-11 * (1.0 + b.abs()) || (a / b - 1.0).abs() < 1e-10;
         assert!(close(airy_ai(1.0), 0.135_292_416_312_881_4));
         assert!(close(airy_ai(5.0), 1.083_444_281_360_744e-4));
         assert!(close(airy_ai(-5.0), 0.350_761_009_024_114));

@@ -47,7 +47,11 @@ fn chain_gbs_follows_a_highly_eccentric_kepler_orbit_to_round_off() {
     let err = ((rel[0] + ex[0]).powi(2) + (rel[1] + ex[1]).powi(2)).sqrt();
     // the exact reference starts with velocity -y at -x; rotating by pi maps it to +y at +x: rel = -ex
     assert!(err < 1e-8, "position error {err}");
-    assert!(((sys.energy() - e0) / e0).abs() < 1e-11, "energy {}", (sys.energy() - e0) / e0);
+    assert!(
+        ((sys.energy() - e0) / e0).abs() < 1e-11,
+        "energy {}",
+        (sys.energy() - e0) / e0
+    );
 }
 
 #[test]
@@ -66,15 +70,27 @@ fn pythagorean_three_body_problem_conserves_integrals_through_close_encounters()
         let (p, _) = sys.cartesian();
         for i in 0..3 {
             for j in i + 1..3 {
-                let d = ((p[i][0] - p[j][0]).powi(2) + (p[i][1] - p[j][1]).powi(2) + (p[i][2] - p[j][2]).powi(2)).sqrt();
+                let d = ((p[i][0] - p[j][0]).powi(2)
+                    + (p[i][1] - p[j][1]).powi(2)
+                    + (p[i][2] - p[j][2]).powi(2))
+                .sqrt();
                 min_sep = min_sep.min(d);
             }
         }
     }
     assert!(min_sep < 0.15, "no close encounter sampled: {min_sep}");
-    assert!(((sys.energy() - e0) / e0).abs() < 1e-9, "energy {}", (sys.energy() - e0) / e0);
+    assert!(
+        ((sys.energy() - e0) / e0).abs() < 1e-9,
+        "energy {}",
+        (sys.energy() - e0) / e0
+    );
     let l = sys.angular_momentum();
-    assert!((l[2] - l0[2]).abs() < 1e-9 * l0[2].abs().max(1.0), "L {} vs {}", l[2], l0[2]);
+    assert!(
+        (l[2] - l0[2]).abs() < 1e-9 * l0[2].abs().max(1.0),
+        "L {} vs {}",
+        l[2],
+        l0[2]
+    );
 }
 
 #[test]
@@ -98,7 +114,11 @@ fn kepler_ttl_energy_error(
     let pot = |r: f64| -1.0 / r - 0.02 / (r * r);
     let r0 = 0.4;
     let v0 = 1.1;
-    let mut s = TtlState { q: vec![r0, 0.0, 0.0], p: vec![0.0, v0, 0.0], t: 0.0 };
+    let mut s = TtlState {
+        q: vec![r0, 0.0, 0.0],
+        p: vec![0.0, v0, 0.0],
+        t: 0.0,
+    };
     let e0 = 0.5 * v0 * v0 + pot(r0);
     let b = -e0;
     let mut grad = |q: &[f64], g: &mut [f64]| -> f64 {
@@ -121,10 +141,18 @@ fn kepler_ttl_energy_error(
 #[test]
 fn composed_time_transformed_leapfrog_has_the_requested_order() {
     for (order, min_ratio) in [(2usize, 3.0), (4, 11.0), (6, 40.0)] {
-        let (h1, h2) = match order { 6 => (0.5, 0.25), 4 => (0.2, 0.1), _ => (0.1, 0.05) };
+        let (h1, h2) = match order {
+            | 6 => (0.5, 0.25),
+            | 4 => (0.2, 0.1),
+            | _ => (0.1, 0.05),
+        };
         let e1 = kepler_ttl_energy_error(order, h1);
         let e2 = kepler_ttl_energy_error(order, h2);
-        assert!(e1 / e2 > min_ratio, "order {order}: {e1} / {e2} = {}", e1 / e2);
+        assert!(
+            e1 / e2 > min_ratio,
+            "order {order}: {e1} / {e2} = {}",
+            e1 / e2
+        );
     }
     // the fourth-order scheme is far more accurate than the plain TTL at the same step
     assert!(kepler_ttl_energy_error(4, 0.1) < 0.2 * kepler_ttl_energy_error(2, 0.1));
@@ -139,7 +167,11 @@ fn cartesian_ttl_gbs_extrapolation_reaches_round_off_accuracy() {
     let r0 = 1.0 - e;
     let v0 = ((1.0 + e) / (1.0 - e)).sqrt();
     let e0 = 0.5 * v0 * v0 - 1.0 / r0;
-    let mut s = TtlState { q: vec![r0, 0.0, 0.0], p: vec![0.0, v0, 0.0], t: 0.0 };
+    let mut s = TtlState {
+        q: vec![r0, 0.0, 0.0],
+        p: vec![0.0, v0, 0.0],
+        t: 0.0,
+    };
     let mut grad = |q: &[f64], g: &mut [f64]| -> f64 {
         let r = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt();
         for k in 0..3 {

@@ -127,7 +127,10 @@ fn schwarzschild_engine_path_agrees_with_the_adaptive_rk45_reference() {
     let b = run_geodesic_simulation_rk45(&p);
     let (xa, ya) = a[a.len() - 1];
     let (xb, yb) = b[b.len() - 1];
-    assert!(((xa - xb).powi(2) + (ya - yb).powi(2)).sqrt() < 0.2, "({xa},{ya}) vs ({xb},{yb})");
+    assert!(
+        ((xa - xb).powi(2) + (ya - yb).powi(2)).sqrt() < 0.2,
+        "({xa},{ya}) vs ({xb},{yb})"
+    );
 }
 
 #[test]
@@ -156,7 +159,8 @@ fn kerr_circular_orbit_keeps_its_radius() {
     let w = 2.0 * m / r;
     let (gtt, gtp, gpp) = (-(1.0 - w), -a * w, r * r + a * a + a * a * w);
     let ut = 1.0 / (-(gtt + 2.0 * gtp * omega + gpp * omega * omega)).sqrt();
-    let path = run_kerr_newman_geodesic(&params(m, [r, 0.0, 0.0, omega * ut], 200.0), a, 0.0).unwrap();
+    let path =
+        run_kerr_newman_geodesic(&params(m, [r, 0.0, 0.0, omega * ut], 200.0), a, 0.0).unwrap();
     for (x, y) in &path {
         assert!((x.hypot(*y) - r).abs() < 1e-3, "r = {}", x.hypot(*y));
     }

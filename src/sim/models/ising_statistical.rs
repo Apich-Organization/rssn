@@ -42,7 +42,12 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::io::write_npy_file;
-use crate::sim::spin_models::{binder_cumulant, specific_heat, susceptibility, OnModel, Potts, Update};
+use crate::sim::spin_models::OnModel;
+use crate::sim::spin_models::Potts;
+use crate::sim::spin_models::Update;
+use crate::sim::spin_models::binder_cumulant;
+use crate::sim::spin_models::specific_heat;
+use crate::sim::spin_models::susceptibility;
 
 /// Parameters for the Ising model simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -92,7 +97,11 @@ pub fn run_ising_simulation_seeded(
     params: &IsingParameters,
     seed: u64,
 ) -> (Vec<i8>, f64) {
-    if params.width == 0 || params.height == 0 || params.temperature.is_nan() || params.temperature < 0.0 {
+    if params.width == 0
+        || params.height == 0
+        || params.temperature.is_nan()
+        || params.temperature < 0.0
+    {
         return (Vec::new(), f64::NAN);
     }
 
@@ -329,7 +338,9 @@ pub fn run_wolff_simulation(
         binder: f64::NAN,
         mean_cluster: f64::NAN,
     };
-    let Ok(mut model) = OnModel::<2, 1>::new([width, height], true, 1.0 / temperature, seed) else { return nan };
+    let Ok(mut model) = OnModel::<2, 1>::new([width, height], true, 1.0 / temperature, seed) else {
+        return nan;
+    };
     model.cold_start();
     let nf = (width * height) as f64;
     for _ in 0..thermalisation {
@@ -340,8 +351,8 @@ pub fn run_wolff_simulation(
     let (mut e, mut m, mut cl) = (Vec::new(), Vec::new(), 0.0);
     for _ in 0..sweeps {
         match model.wolff_step() {
-            Ok(size) => cl += size as f64,
-            Err(_) => return nan,
+            | Ok(size) => cl += size as f64,
+            | Err(_) => return nan,
         }
         e.push(model.energy());
         m.push(model.magnetisation()[0].abs());
@@ -354,7 +365,7 @@ pub fn run_wolff_simulation(
     IsingObservables {
         energy: mean(&e) / nf,
         magnetization: m1 / nf,
-        specific_heat: specific_heat(&e, 1.0 / temperature, width * height) ,
+        specific_heat: specific_heat(&e, 1.0 / temperature, width * height),
         susceptibility: (m2 - m1 * m1) / (nf * temperature),
         binder: binder_cumulant(&mps),
         mean_cluster: cl / samples / nf,
@@ -429,10 +440,10 @@ fn run_on<const D: usize, const N: usize>(
     let beta = 1.0 / temperature;
     let mut model = OnModel::<D, N>::new(dims, periodic, beta, seed)?;
     let update = match algo {
-        SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
-        SpinAlgorithm::HeatBath => Update::HeatBath,
-        SpinAlgorithm::Wolff => Update::Wolff,
-        SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
+        | SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
+        | SpinAlgorithm::HeatBath => Update::HeatBath,
+        | SpinAlgorithm::Wolff => Update::Wolff,
+        | SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
     };
     for _ in 0..thermalisation {
         model.update(update)?;
@@ -469,17 +480,17 @@ pub fn run_lattice_simulation<const D: usize>(
         return Err("temperature must be positive".into());
     }
     match model {
-        SpinModel::Ising => run_on::<D, 1>(dims, periodic, algo, temperature, steps, seed),
-        SpinModel::Xy => run_on::<D, 2>(dims, periodic, algo, temperature, steps, seed),
-        SpinModel::Heisenberg => run_on::<D, 3>(dims, periodic, algo, temperature, steps, seed),
-        SpinModel::Potts(q) => {
+        | SpinModel::Ising => run_on::<D, 1>(dims, periodic, algo, temperature, steps, seed),
+        | SpinModel::Xy => run_on::<D, 2>(dims, periodic, algo, temperature, steps, seed),
+        | SpinModel::Heisenberg => run_on::<D, 3>(dims, periodic, algo, temperature, steps, seed),
+        | SpinModel::Potts(q) => {
             let beta = 1.0 / temperature;
             let mut p = Potts::<D>::new(dims, periodic, q, beta, seed)?;
             let update = match algo {
-                SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
-                SpinAlgorithm::HeatBath => Update::HeatBath,
-                SpinAlgorithm::Wolff => Update::Wolff,
-                SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
+                | SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
+                | SpinAlgorithm::HeatBath => Update::HeatBath,
+                | SpinAlgorithm::Wolff => Update::Wolff,
+                | SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
             };
             for _ in 0..steps.0 {
                 p.update(update);
@@ -511,6 +522,9 @@ mod wolff_tests {
         assert!((cold.energy + 1.947).abs() < 0.02, "{cold:?}");
         // The specific heat peaks near T_c.
         let near = run_wolff_simulation(24, 24, 2.27, 200, 3000, 7);
-        assert!(near.specific_heat > cold.specific_heat && near.specific_heat > hot.specific_heat, "{near:?}");
+        assert!(
+            near.specific_heat > cold.specific_heat && near.specific_heat > hot.specific_heat,
+            "{near:?}"
+        );
     }
 }

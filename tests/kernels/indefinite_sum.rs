@@ -1,14 +1,19 @@
 //! Indefinite sums and products at non-integer arguments.
 
-use rssn::kernels::indefinite_sum::{
-    IndefiniteSumConfig, indefinite_product, indefinite_sum, numeric_taylor_coefficients,
-    series_antidiff,
-};
-use rssn::kernels::special::{digamma_numerical, gamma_numerical};
+use rssn::kernels::indefinite_sum::IndefiniteSumConfig;
+use rssn::kernels::indefinite_sum::indefinite_product;
+use rssn::kernels::indefinite_sum::indefinite_sum;
+use rssn::kernels::indefinite_sum::numeric_taylor_coefficients;
+use rssn::kernels::indefinite_sum::series_antidiff;
+use rssn::kernels::special::digamma_numerical;
+use rssn::kernels::special::gamma_numerical;
 
 const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
 
-fn sum(f: impl Fn(f64) -> f64, x: f64) -> f64 {
+fn sum(
+    f: impl Fn(f64) -> f64,
+    x: f64,
+) -> f64 {
     indefinite_sum(f, x, &IndefiniteSumConfig::default()).unwrap_or_else(|e| panic!("{e}"))
 }
 
@@ -37,7 +42,10 @@ fn polynomials_of_higher_degree_use_the_series_strategy() {
     // Faulhaber for k^7 at a non-integer point: B_8(x) - B_8(0) over 8.
     let k7 = sum(|k| k.powi(7), 2.5);
     let via_series = series_antidiff(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], 0.0, 2.5);
-    assert!((k7 - via_series).abs() < 1e-6 * via_series.abs().max(1.0), "{k7} {via_series}");
+    assert!(
+        (k7 - via_series).abs() < 1e-6 * via_series.abs().max(1.0),
+        "{k7} {via_series}"
+    );
 }
 
 #[test]
@@ -53,19 +61,29 @@ fn harmonic_numbers_via_digamma() {
 fn geometric_sum_is_two_to_the_x_minus_one() {
     for x in [0.5, 2.5, 6.7] {
         let exact = 2.0_f64.powf(x) - 1.0;
-        assert!((sum(f64::exp2, x) - exact).abs() < 1e-6 * exact.max(1.0), "x={x}");
+        assert!(
+            (sum(f64::exp2, x) - exact).abs() < 1e-6 * exact.max(1.0),
+            "x={x}"
+        );
     }
 }
 
 #[test]
 fn step_and_normalisation_point() {
     // F(x+S) - F(x) = f(x) with S = 0.5, F(h) = 0, h = 1: sum of k over 1, 1.5, ...
-    let cfg = IndefiniteSumConfig { h: 1.0, step: 0.5, ..IndefiniteSumConfig::default() };
+    let cfg = IndefiniteSumConfig {
+        h: 1.0,
+        step: 0.5,
+        ..IndefiniteSumConfig::default()
+    };
     let value = |x: f64| indefinite_sum(|k| k, x, &cfg).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(value(1.0), 0.0);
     assert!((value(3.0) - (1.0 + 1.5 + 2.0 + 2.5)).abs() < 1e-12);
     assert!((value(3.2) - value(2.7) - 2.7).abs() < 1e-7);
-    let bad = IndefiniteSumConfig { step: 0.0, ..IndefiniteSumConfig::default() };
+    let bad = IndefiniteSumConfig {
+        step: 0.0,
+        ..IndefiniteSumConfig::default()
+    };
     assert!(indefinite_sum(|k| k, 1.5, &bad).is_err());
 }
 

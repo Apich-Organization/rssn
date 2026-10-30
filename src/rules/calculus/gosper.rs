@@ -16,16 +16,17 @@
 //! numerically before it is returned.
 
 use num_bigint::BigInt;
+use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
-use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::poly::best;
 use crate::rules::poly::ratio;
 use crate::rules::poly::repr::Gens;
@@ -50,6 +51,20 @@ fn trim(mut p: QPoly) -> QPoly {
     p
 }
 
+/// The rational content `gcd(numerators) / lcm(denominators)` of a
+/// polynomial with rational coefficients; zero for the zero polynomial.
+fn content_of(p: &[BigRational]) -> BigRational {
+    if p.is_empty() {
+        return BigRational::zero();
+    }
+    let denominator = p.iter().fold(BigInt::one(), |acc, c| acc.lcm(c.denom()));
+    let scale = BigRational::from_integer(denominator.clone());
+    let numerator = p
+        .iter()
+        .fold(BigInt::zero(), |acc, c| acc.gcd(&(c * &scale).to_integer()));
+    BigRational::new(numerator, denominator)
+}
+
 /// `P(k + s)`.
 fn shift(
     p: &[BigRational],
@@ -65,7 +80,8 @@ fn shift(
             let power = num_traits::pow(s.clone(), i - j);
             out[j] += a * &binomial * power;
             if j > 0 {
-                binomial = binomial * q(i64::try_from(j).unwrap_or(0)) / q(i64::try_from(i - j + 1).unwrap_or(1));
+                binomial = binomial * q(i64::try_from(j).unwrap_or(0))
+                    / q(i64::try_from(i - j + 1).unwrap_or(1));
             }
         }
     }
@@ -82,11 +98,17 @@ pub(super) struct Frac {
 
 impl Frac {
     pub(super) fn zero() -> Self {
-        Self { n: Vec::new(), d: vec![BigRational::one()] }
+        Self {
+            n: Vec::new(),
+            d: vec![BigRational::one()],
+        }
     }
 
     pub(super) fn poly(p: QPoly) -> Self {
-        Self { n: trim(p), d: vec![BigRational::one()] }
+        Self {
+            n: trim(p),
+            d: vec![BigRational::one()],
+        }
     }
 
     pub(super) const fn is_zero(&self) -> bool {
@@ -98,27 +120,52 @@ impl Frac {
             return Self::zero();
         }
         let g = univariate::gcd(&self.n, &self.d);
-        let (Some((n, _)), Some((d, _))) = (univariate::divrem(&self.n, &g), univariate::divrem(&self.d, &g)) else {
+        let (Some((n, _)), Some((d, _))) = (
+            univariate::divrem(&self.n, &g),
+            univariate::divrem(&self.d, &g),
+        ) else {
             return self;
         };
         // Make the denominator monic.
         let lead = d.last().cloned().unwrap_or_else(BigRational::one);
-        Self { n: n.iter().map(|c| c / &lead).collect(), d: d.iter().map(|c| c / &lead).collect() }
+        let mut n: QPoly = n.iter().map(|c| c / &lead).collect();
+        let mut d: QPoly = d.iter().map(|c| c / &lead).collect();
+        // Keep the scalar content of the denominator small: exact field
+        // elimination otherwise multiplies the coefficient sizes by the
+        // content of each denominator at every step.
+        let content = content_of(&d);
+        if !content.is_zero() {
+            let inverse = content.recip();
+            n = n.iter().map(|c| c * &inverse).collect();
+            d = d.iter().map(|c| c * &inverse).collect();
+        }
+        Self { n, d }
     }
 
     pub(super) fn sub(
         &self,
         o: &Self,
     ) -> Self {
-        let n = univariate::sub(&univariate::mul(&self.n, &o.d), &univariate::mul(&o.n, &self.d));
-        Self { n, d: univariate::mul(&self.d, &o.d) }.reduce()
+        let n = univariate::sub(
+            &univariate::mul(&self.n, &o.d),
+            &univariate::mul(&o.n, &self.d),
+        );
+        Self {
+            n,
+            d: univariate::mul(&self.d, &o.d),
+        }
+        .reduce()
     }
 
     pub(super) fn mul(
         &self,
         o: &Self,
     ) -> Self {
-        Self { n: univariate::mul(&self.n, &o.n), d: univariate::mul(&self.d, &o.d) }.reduce()
+        Self {
+            n: univariate::mul(&self.n, &o.n),
+            d: univariate::mul(&self.d, &o.d),
+        }
+        .reduce()
     }
 
     pub(super) fn div(
@@ -128,7 +175,13 @@ impl Frac {
         if o.is_zero() {
             return None;
         }
-        Some(Self { n: univariate::mul(&self.n, &o.d), d: univariate::mul(&self.d, &o.n) }.reduce())
+        Some(
+            Self {
+                n: univariate::mul(&self.n, &o.d),
+                d: univariate::mul(&self.d, &o.n),
+            }
+            .reduce(),
+        )
     }
 }
 
@@ -153,7 +206,8 @@ pub(super) fn solve(
                 continue;
             }
             let factor = rows[r][col].div(&rows[row][col])?;
-            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
+            #[allow(clippy::needless_range_loop)]
+            // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in col..n {
                 let delta = factor.mul(&rows[row][c]);
                 rows[r][c] = rows[r][c].sub(&delta);
@@ -195,9 +249,26 @@ fn hypergeometric_ratio(
     let graph = &mut *cx.graph;
     let mut gens = Gens::default();
     let gk = gens.index(graph, k);
-    let fraction = ratio(graph, &mut gens, rho, Limits { terms: 256, exponent: 32 })?;
-    for g in fraction.numer.support().into_iter().chain(fraction.denom.support()) {
-        if g != gk && gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)) {
+    let fraction = ratio(
+        graph,
+        &mut gens,
+        rho,
+        Limits {
+            terms: 256,
+            exponent: 32,
+        },
+    )?;
+    for g in fraction
+        .numer
+        .support()
+        .into_iter()
+        .chain(fraction.denom.support())
+    {
+        if g != gk
+            && gens
+                .node(g)
+                .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        {
             return None;
         }
     }
@@ -265,7 +336,8 @@ fn gosper(
     }
     // A rational c is absorbed into q; a symbolic one becomes γ.
     let c_rational = cx.graph.number_of(c).and_then(Number::to_rational);
-    let (mut qk, mut rk, mut pk): (QPoly, QPoly, QPoly) = (a, shift(&b, -1), vec![BigRational::one()]);
+    let (mut qk, mut rk, mut pk): (QPoly, QPoly, QPoly) =
+        (a, shift(&b, -1), vec![BigRational::one()]);
     // Gosper form: remove common factors of q(k) and r(k + j), j ≥ 1.
     let mut j = 1;
     while j <= MAX_SHIFT {
@@ -311,7 +383,10 @@ fn gosper(
             }
             for (m, coefficient) in right.iter().enumerate() {
                 if m < size {
-                    rows[m][i] = Frac::poly(univariate::sub(&rows[m][i].n, std::slice::from_ref(coefficient)));
+                    rows[m][i] = Frac::poly(univariate::sub(
+                        &rows[m][i].n,
+                        std::slice::from_ref(coefficient),
+                    ));
                 }
             }
         }

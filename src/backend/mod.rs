@@ -56,10 +56,12 @@ impl fmt::Display for BackendError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
-            | Self::UnboundSymbol(name) => write!(
-                f,
-                "symbol `{name}` is not an input of the compiled function"
-            ),
+            | Self::UnboundSymbol(name) => {
+                write!(
+                    f,
+                    "symbol `{name}` is not an input of the compiled function"
+                )
+            },
             | Self::NoSemantics(op) => write!(f, "operator `{op}` has no numeric semantics"),
             | Self::NotNumeric => write!(f, "the term contains a non-numeric literal"),
             | Self::Codegen(reason) => write!(f, "code generation failed: {reason}"),

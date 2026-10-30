@@ -50,8 +50,6 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::Signed;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -65,6 +63,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::poly::best;
 
 use super::calculus::derivative;
@@ -76,7 +76,11 @@ use super::logic::logic;
 /// The Lie algebra rule set.
 #[must_use]
 pub fn lie() -> RuleSet {
-    RuleSet::new("lie", install).needs(linalg()).needs(complex()).needs(elementary()).needs(logic())
+    RuleSet::new("lie", install)
+        .needs(linalg())
+        .needs(complex())
+        .needs(elementary())
+        .needs(logic())
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -99,21 +103,35 @@ enum Request {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, request) in [
         ("lie_bracket", Arity::Variadic, Request::Bracket),
-        ("structure_constants", Arity::Variadic, Request::StructureConstants),
+        (
+            "structure_constants",
+            Arity::Variadic,
+            Request::StructureConstants,
+        ),
         ("adjoint_rep", Arity::Variadic, Request::AdjointRep),
         ("adjoint_group", Arity::Fixed(2), Request::AdjointGroup),
         ("killing_form", Arity::Variadic, Request::Killing),
         ("check_jacobi", Arity::Variadic, Request::Jacobi),
         ("is_lie_algebra", Arity::Variadic, Request::IsLieAlgebra),
-        ("commutator_table", Arity::Variadic, Request::CommutatorTable),
+        (
+            "commutator_table",
+            Arity::Variadic,
+            Request::CommutatorTable,
+        ),
         ("exp_map", Arity::Variadic, Request::ExpMap),
         ("baker_campbell_hausdorff", Arity::Variadic, Request::Bch),
         ("so3_basis", Arity::Fixed(0), Request::So3),
         ("su2_basis", Arity::Fixed(0), Request::Su2),
         ("sl2_basis", Arity::Fixed(0), Request::Sl2),
     ] {
-        let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("lie/{name}"), Tier::Reduce, LieKernel { op, request });
+        let op = i.op(OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("lie/{name}"),
+            Tier::Reduce,
+            LieKernel { op, request },
+        );
     }
     Ok(())
 }
@@ -213,7 +231,10 @@ pub(crate) fn exact_sqrt(
             Some(graph.node(core::POW, &[base, h]))
         },
         | core::MUL => {
-            let roots: Vec<NodeId> = kids.iter().map(|&k| exact_sqrt(graph, k)).collect::<Option<_>>()?;
+            let roots: Vec<NodeId> = kids
+                .iter()
+                .map(|&k| exact_sqrt(graph, k))
+                .collect::<Option<_>>()?;
             Some(mul(graph, &roots))
         },
         | _ => None,
@@ -243,7 +264,11 @@ pub(crate) fn exp_even(
     } else {
         (false, cx.graph.node(core::POW, &[delta, half]))
     };
-    let (cos, sin) = if trig { ("cos", "sin") } else { ("cosh", "sinh") };
+    let (cos, sin) = if trig {
+        ("cos", "sin")
+    } else {
+        ("cosh", "sinh")
+    };
     let c = call(cx.graph, cos, &[w])?;
     let sn = call(cx.graph, sin, &[w])?;
     let w_inv = pow_int(cx.graph, w, -1);
@@ -326,7 +351,12 @@ fn read_elem(
         return (scalar && data.len() == c.len()).then_some(Elem { size: None, data });
     }
     let m = matrix(graph, node)?;
-    (m.len() == m[0].len()).then(|| Elem { size: Some(m.len()), data: m.into_iter().flatten().collect() })
+    (m.len() == m[0].len()).then(|| {
+        Elem {
+            size: Some(m.len()),
+            data: m.into_iter().flatten().collect(),
+        }
+    })
 }
 
 fn read_basis(
@@ -335,9 +365,15 @@ fn read_basis(
     coords: Option<&[NodeId]>,
 ) -> Option<Vec<Elem>> {
     let nodes = items(graph, node)?;
-    let basis: Vec<Elem> = nodes.into_iter().map(|n| read_elem(graph, n, coords)).collect::<Option<_>>()?;
+    let basis: Vec<Elem> = nodes
+        .into_iter()
+        .map(|n| read_elem(graph, n, coords))
+        .collect::<Option<_>>()?;
     let first = basis.first()?;
-    basis.iter().all(|e| e.size == first.size && e.data.len() == first.data.len()).then_some(basis)
+    basis
+        .iter()
+        .all(|e| e.size == first.size && e.data.len() == first.data.len())
+        .then_some(basis)
 }
 
 fn read_coords(
@@ -358,7 +394,10 @@ fn with_coords(
     if args.len() == fixed {
         Some((args.to_vec(), None))
     } else if args.len() == fixed + 1 {
-        Some((args[..fixed].to_vec(), Some(read_coords(graph, args[fixed])?)))
+        Some((
+            args[..fixed].to_vec(),
+            Some(read_coords(graph, args[fixed])?),
+        ))
     } else {
         None
     }
@@ -392,7 +431,9 @@ fn matprod(
     let mut out = Vec::with_capacity(n * n);
     for i in 0..n {
         for j in 0..n {
-            let terms: Vec<NodeId> = (0..n).map(|k| mul(cx.graph, &[a[i * n + k], b[k * n + j]])).collect();
+            let terms: Vec<NodeId> = (0..n)
+                .map(|k| mul(cx.graph, &[a[i * n + k], b[k * n + j]]))
+                .collect();
             let sum = add(cx.graph, &terms);
             out.push(cx.simplify(sum));
         }
@@ -408,11 +449,17 @@ fn combine(
     let first = parts.first()?.1;
     let mut data = Vec::with_capacity(first.data.len());
     for at in 0..first.data.len() {
-        let terms: Vec<NodeId> = parts.iter().map(|&(c, e)| mul(cx.graph, &[c, e.data[at]])).collect();
+        let terms: Vec<NodeId> = parts
+            .iter()
+            .map(|&(c, e)| mul(cx.graph, &[c, e.data[at]]))
+            .collect();
         let sum = add(cx.graph, &terms);
         data.push(cx.simplify(sum));
     }
-    Some(Elem { size: first.size, data })
+    Some(Elem {
+        size: first.size,
+        data,
+    })
 }
 
 fn bracket(
@@ -480,16 +527,26 @@ fn express(
     // collected at several sample points of the coordinates; the result is
     // verified symbolically below.
     let mut m: Mat = Vec::new();
-    for k in 0..if coords.is_some() { SAMPLES } else { 1 } {
+    for k in 0..if coords.is_some() {
+        SAMPLES
+    } else {
+        1
+    } {
         for r in 0..len {
             let mut row = Vec::with_capacity(d + targets.len());
             for e in basis.iter().chain(targets) {
                 let mut t = e.data[r];
                 for (j, &x) in coords.unwrap_or_default().iter().enumerate() {
-                    let v = cx.graph.int(i64::try_from((k * 7 + j * 13 + k * j * 3) % 17).unwrap_or(0) - 8);
+                    let v = cx
+                        .graph
+                        .int(i64::try_from((k * 7 + j * 13 + k * j * 3) % 17).unwrap_or(0) - 8);
                     t = cx.graph.substitute(t, x, v);
                 }
-                row.push(if coords.is_some() { cx.simplify(t) } else { t });
+                row.push(if coords.is_some() {
+                    cx.simplify(t)
+                } else {
+                    t
+                });
             }
             m.push(row);
         }
@@ -568,7 +625,12 @@ fn structure(
     if rank != n {
         return None;
     }
-    Some(coefficients.chunks(n).map(<[Vec<NodeId>]>::to_vec).collect())
+    Some(
+        coefficients
+            .chunks(n)
+            .map(<[Vec<NodeId>]>::to_vec)
+            .collect(),
+    )
 }
 
 /// `ad_X` in the basis: entry `(i, j)` is the `i`th coordinate of `[X, e_j]`.
@@ -578,12 +640,19 @@ fn adjoint(
     basis: &[Elem],
     coords: Option<&[NodeId]>,
 ) -> Option<Mat> {
-    let targets: Vec<Elem> = basis.iter().map(|b| bracket(cx, x, b, coords)).collect::<Option<_>>()?;
+    let targets: Vec<Elem> = basis
+        .iter()
+        .map(|b| bracket(cx, x, b, coords))
+        .collect::<Option<_>>()?;
     let (columns, rank) = express(cx, basis, &targets, coords)?;
     if rank != basis.len() {
         return None;
     }
-    Some((0..basis.len()).map(|i| columns.iter().map(|col| col[i]).collect()).collect())
+    Some(
+        (0..basis.len())
+            .map(|i| columns.iter().map(|col| col[i]).collect())
+            .collect(),
+    )
 }
 
 fn jacobi(
@@ -628,7 +697,9 @@ fn identity(
     cx: &mut Cx<'_>,
     n: usize,
 ) -> Vec<NodeId> {
-    (0..n * n).map(|k| cx.graph.int(i64::from(k / n == k % n))).collect()
+    (0..n * n)
+        .map(|k| cx.graph.int(i64::from(k / n == k % n)))
+        .collect()
 }
 
 /// `sum coef_k * data_k` with `data_k` flattened `n × n` matrices.
@@ -639,7 +710,11 @@ fn series(
 ) -> Vec<NodeId> {
     (0..powers[0].len())
         .map(|at| {
-            let terms: Vec<NodeId> = coefs.iter().zip(powers).map(|(&c, p)| mul(cx.graph, &[c, p[at]])).collect();
+            let terms: Vec<NodeId> = coefs
+                .iter()
+                .zip(powers)
+                .map(|(&c, p)| mul(cx.graph, &[c, p[at]]))
+                .collect();
             let sum = add(cx.graph, &terms);
             cx.simplify(sum)
         })
@@ -665,7 +740,9 @@ fn taylor(
         let last = powers.last().cloned().unwrap_or_default();
         powers.push(matprod(cx, &last, a, n));
     }
-    let coefs: Vec<NodeId> = (0..=order).map(|k| factorial_inverse(cx.graph, k)).collect();
+    let coefs: Vec<NodeId> = (0..=order)
+        .map(|k| factorial_inverse(cx.graph, k))
+        .collect();
     series(cx, &coefs, &powers)
 }
 
@@ -721,7 +798,12 @@ fn two_by_two_exp(
         };
         cx.simplify(t)
     };
-    let b = [shift(cx, a[0], true), shift(cx, a[1], false), shift(cx, a[2], false), shift(cx, a[3], true)];
+    let b = [
+        shift(cx, a[0], true),
+        shift(cx, a[1], false),
+        shift(cx, a[2], false),
+        shift(cx, a[3], true),
+    ];
     let b2 = matprod(cx, &b, &b, 2);
     // B² = delta I for a traceless 2x2 matrix.
     let (c, s) = exp_even(cx, b2[0])?;
@@ -751,7 +833,10 @@ fn rodrigues(
             }
         }
     }
-    let squares: Vec<NodeId> = [a[7], a[2], a[3]].iter().map(|&x| pow_int(cx.graph, x, 2)).collect();
+    let squares: Vec<NodeId> = [a[7], a[2], a[3]]
+        .iter()
+        .map(|&x| pow_int(cx.graph, x, 2))
+        .collect();
     let theta2 = add(cx.graph, &squares);
     let theta2 = cx.simplify(theta2);
     // A³ = -θ² A, hence e^A = I + sin(θ)/θ A + (1 - cos θ)/θ² A².
@@ -798,7 +883,9 @@ fn eigen_exp(
     if columns.len() != n || columns.iter().any(|c| c.len() != n) {
         return None;
     }
-    let p: Mat = (0..n).map(|r| columns.iter().map(|c| c[r]).collect()).collect();
+    let p: Mat = (0..n)
+        .map(|r| columns.iter().map(|c| c[r]).collect())
+        .collect();
     let p_term = matrix_term(cx.graph, &p);
     let inverse = call(cx.graph, "inverse", &[p_term])?;
     let inverse = cx.simplify(inverse);
@@ -829,9 +916,10 @@ fn exp_closed(
         return two_by_two_exp(cx, &a);
     }
     if n == 3
-        && let Some(e) = rodrigues(cx, &a) {
-            return Some(e);
-        }
+        && let Some(e) = rodrigues(cx, &a)
+    {
+        return Some(e);
+    }
     eigen_exp(cx, rows)
 }
 
@@ -885,7 +973,8 @@ impl Kernel for LieKernel {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -989,7 +1078,11 @@ impl LieKernel {
                 let m = adjoint(cx, &x, &basis, coords.as_deref())?;
                 Some(matrix_term(cx.graph, &m))
             },
-            | Request::StructureConstants | Request::Killing | Request::CommutatorTable | Request::Jacobi | Request::IsLieAlgebra => {
+            | Request::StructureConstants
+            | Request::Killing
+            | Request::CommutatorTable
+            | Request::Jacobi
+            | Request::IsLieAlgebra => {
                 let (head, coords) = with_coords(cx.graph, args, 1)?;
                 let coords = coords.as_deref();
                 let basis = read_basis(cx.graph, head[0], coords)?;
@@ -1085,37 +1178,80 @@ mod tests {
 
     #[test]
     fn standard_bases() {
-        assert_eq!(run("so3_basis()"), "list(list(list(0, 0, 0), list(0, 0, -1), list(0, 1, 0)), list(list(0, 0, 1), list(0, 0, 0), list(-1, 0, 0)), list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 0)))");
-        assert_eq!(run("su2_basis()"), "list(list(list(0, -1/2*I), list(-1/2*I, 0)), list(list(0, -1/2), list(1/2, 0)), list(list(-1/2*I, 0), list(0, 1/2*I)))");
-        assert_eq!(run("sl2_basis()"), "list(list(list(1, 0), list(0, -1)), list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)))");
+        assert_eq!(
+            run("so3_basis()"),
+            "list(list(list(0, 0, 0), list(0, 0, -1), list(0, 1, 0)), list(list(0, 0, 1), list(0, 0, 0), list(-1, 0, 0)), list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 0)))"
+        );
+        assert_eq!(
+            run("su2_basis()"),
+            "list(list(list(0, -1/2*I), list(-1/2*I, 0)), list(list(0, -1/2), list(1/2, 0)), list(list(-1/2*I, 0), list(0, 1/2*I)))"
+        );
+        assert_eq!(
+            run("sl2_basis()"),
+            "list(list(list(1, 0), list(0, -1)), list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)))"
+        );
     }
 
     #[test]
     fn matrix_bracket() {
-        assert_eq!(run(&format!("lie_bracket({E}, {F})")), "list(list(1, 0), list(0, -1))");
-        assert_eq!(run("lie_bracket(list(list(a, b), list(c, d)), list(list(a, b), list(c, d)))"), "list(list(0, 0), list(0, 0))");
-        assert_eq!(run("lie_bracket(list(list(0, x), list(0, 0)), list(list(0, 0), list(y, 0)))"), "list(list(x*y, 0), list(0, -x*y))");
+        assert_eq!(
+            run(&format!("lie_bracket({E}, {F})")),
+            "list(list(1, 0), list(0, -1))"
+        );
+        assert_eq!(
+            run("lie_bracket(list(list(a, b), list(c, d)), list(list(a, b), list(c, d)))"),
+            "list(list(0, 0), list(0, 0))"
+        );
+        assert_eq!(
+            run("lie_bracket(list(list(0, x), list(0, 0)), list(list(0, 0), list(y, 0)))"),
+            "list(list(x*y, 0), list(0, -x*y))"
+        );
         // not square: left alone
-        assert!(!reduce_with(&[lie()], "lie_bracket(list(list(1, 2)), list(list(1, 2)))", &[]).1);
+        assert!(
+            !reduce_with(
+                &[lie()],
+                "lie_bracket(list(list(1, 2)), list(list(1, 2)))",
+                &[]
+            )
+            .1
+        );
     }
 
     #[test]
     fn vector_field_bracket() {
         // [-y d_x + x d_y... ] rotation field against d_y
-        assert_eq!(run("lie_bracket(list(y, -x), list(0, 1), list(x, y))"), "list(-1, 0)");
+        assert_eq!(
+            run("lie_bracket(list(y, -x), list(0, 1), list(x, y))"),
+            "list(-1, 0)"
+        );
         // [x d_x, d_x] = -d_x
-        assert_eq!(run("lie_bracket(list(x, 0), list(1, 0), list(x, y))"), "list(-1, 0)");
+        assert_eq!(
+            run("lie_bracket(list(x, 0), list(1, 0), list(x, y))"),
+            "list(-1, 0)"
+        );
         // rotations of R^3 close into so(3)
         let basis = "list(list(0, -z, y), list(z, 0, -x), list(-y, x, 0))";
-        assert_eq!(run(&format!("is_lie_algebra({basis}, list(x, y, z))")), "true");
-        assert_eq!(run(&format!("check_jacobi({basis}, list(x, y, z))")), "true");
+        assert_eq!(
+            run(&format!("is_lie_algebra({basis}, list(x, y, z))")),
+            "true"
+        );
+        assert_eq!(
+            run(&format!("check_jacobi({basis}, list(x, y, z))")),
+            "true"
+        );
         // [Lx, Ly] = -Lz for these fields, so the constants are minus those of so3_basis().
         let c = run(&format!("structure_constants({basis}, list(x, y, z))"));
         assert_eq!(entry(&c, &[0, 1]), "list(0, 0, -1)");
         assert_eq!(entry(&c, &[1, 2]), "list(-1, 0, 0)");
         // d_x, x d_x, x^2 d_x close (sl(2) acting on the line); x d_x, x^2 d_x, x^3 d_x do not
-        assert_eq!(run("is_lie_algebra(list(list(1), list(x), list(x^2)), list(x))"), "true");
-        assert_eq!(run("is_lie_algebra(list(list(x), list(x^2), list(x^3)), list(x))"), "false");
+        assert_eq!(
+            run("is_lie_algebra(list(list(1), list(x), list(x^2)), list(x))"),
+            "true"
+        );
+        assert_eq!(
+            run("is_lie_algebra(list(list(x), list(x^2), list(x^3)), list(x))"),
+            "false"
+        );
     }
 
     #[test]
@@ -1132,7 +1268,10 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     let v = eval(&[lie()], &format!("1*{}", entry(&c, &[i, j, k])), &[]);
-                    assert!((v - f64::from(epsilon(i, j, k))).abs() < 1e-12, "c[{i}][{j}][{k}] = {v}");
+                    assert!(
+                        (v - f64::from(epsilon(i, j, k))).abs() < 1e-12,
+                        "c[{i}][{j}][{k}] = {v}"
+                    );
                 }
             }
         }
@@ -1141,10 +1280,16 @@ mod tests {
     }
 
     /// The entry at `path` of a printed nested `list(...)`.
-    fn entry(text: &str, path: &[usize]) -> String {
+    fn entry(
+        text: &str,
+        path: &[usize],
+    ) -> String {
         let mut cur = text.to_owned();
         for &p in path {
-            let inner = cur.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or(&cur);
+            let inner = cur
+                .strip_prefix("list(")
+                .and_then(|s| s.strip_suffix(')'))
+                .unwrap_or(&cur);
             let mut depth = 0;
             let mut parts = vec![String::new()];
             for ch in inner.chars() {
@@ -1166,13 +1311,28 @@ mod tests {
 
     #[test]
     fn sl2_constants_killing_and_adjoint() {
-        assert_eq!(run("structure_constants(sl2_basis())"), "list(list(list(0, 0, 0), list(0, 2, 0), list(0, 0, -2)), list(list(0, -2, 0), list(0, 0, 0), list(1, 0, 0)), list(list(0, 0, 2), list(-1, 0, 0), list(0, 0, 0)))");
-        assert_eq!(run("killing_form(so3_basis())"), "list(list(-2, 0, 0), list(0, -2, 0), list(0, 0, -2))");
-        assert_eq!(run("killing_form(sl2_basis())"), "list(list(8, 0, 0), list(0, 0, 4), list(0, 4, 0))");
+        assert_eq!(
+            run("structure_constants(sl2_basis())"),
+            "list(list(list(0, 0, 0), list(0, 2, 0), list(0, 0, -2)), list(list(0, -2, 0), list(0, 0, 0), list(1, 0, 0)), list(list(0, 0, 2), list(-1, 0, 0), list(0, 0, 0)))"
+        );
+        assert_eq!(
+            run("killing_form(so3_basis())"),
+            "list(list(-2, 0, 0), list(0, -2, 0), list(0, 0, -2))"
+        );
+        assert_eq!(
+            run("killing_form(sl2_basis())"),
+            "list(list(8, 0, 0), list(0, 0, 4), list(0, 4, 0))"
+        );
         // ad_h = diag(0, 2, -2) in the basis (h, e, f)
-        assert_eq!(run("adjoint_rep(list(list(1, 0), list(0, -1)), sl2_basis())"), "list(list(0, 0, 0), list(0, 2, 0), list(0, 0, -2))");
+        assert_eq!(
+            run("adjoint_rep(list(list(1, 0), list(0, -1)), sl2_basis())"),
+            "list(list(0, 0, 0), list(0, 2, 0), list(0, 0, -2))"
+        );
         // ad_e: [e, h] = -2e, [e, e] = 0, [e, f] = h
-        assert_eq!(run(&format!("adjoint_rep({E}, sl2_basis())")), "list(list(0, 0, 1), list(-2, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            run(&format!("adjoint_rep({E}, sl2_basis())")),
+            "list(list(0, 0, 1), list(-2, 0, 0), list(0, 0, 0))"
+        );
     }
 
     #[test]
@@ -1186,35 +1346,67 @@ mod tests {
         // e, f alone do not close ([e, f] = h)
         assert_eq!(run(&format!("is_lie_algebra(list({E}, {F}))")), "false");
         // strictly upper triangular 3x3 (Heisenberg) closes
-        assert_eq!(run("is_lie_algebra(list(list(list(0,1,0),list(0,0,0),list(0,0,0)), list(list(0,0,0),list(0,0,1),list(0,0,0)), list(list(0,0,1),list(0,0,0),list(0,0,0))))"), "true");
+        assert_eq!(
+            run(
+                "is_lie_algebra(list(list(list(0,1,0),list(0,0,0),list(0,0,0)), list(list(0,0,0),list(0,0,1),list(0,0,0)), list(list(0,0,1),list(0,0,0),list(0,0,0))))"
+            ),
+            "true"
+        );
         // a symbolic algebra: span of diagonal matrices is abelian
-        assert_eq!(run("check_jacobi(list(list(list(a, 0), list(0, b)), list(list(c, 0), list(0, d))))"), "true");
+        assert_eq!(
+            run("check_jacobi(list(list(list(a, 0), list(0, b)), list(list(c, 0), list(0, d))))"),
+            "true"
+        );
     }
 
     #[test]
     fn commutator_table_of_so3() {
         let t = run("commutator_table(so3_basis())");
-        assert_eq!(entry(&t, &[0, 0]), "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            entry(&t, &[0, 0]),
+            "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))"
+        );
         // [Lx, Ly] = Lz
-        assert_eq!(entry(&t, &[0, 1]), "list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 0))");
-        assert_eq!(entry(&t, &[1, 0]), "list(list(0, 1, 0), list(-1, 0, 0), list(0, 0, 0))");
+        assert_eq!(
+            entry(&t, &[0, 1]),
+            "list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 0))"
+        );
+        assert_eq!(
+            entry(&t, &[1, 0]),
+            "list(list(0, 1, 0), list(-1, 0, 0), list(0, 0, 0))"
+        );
     }
 
     #[test]
     fn adjoint_of_the_group() {
         // g E g^-1 for g = [[1, 1], [0, 1]]
-        assert_eq!(run("adjoint_group(list(list(1, 1), list(0, 1)), list(list(0, 0), list(1, 0)))"), "list(list(1, -1), list(1, -1))");
-        assert_eq!(run("adjoint_group(list(list(2, 0), list(0, 1)), list(list(0, 1), list(0, 0)))"), "list(list(0, 2), list(0, 0))");
+        assert_eq!(
+            run("adjoint_group(list(list(1, 1), list(0, 1)), list(list(0, 0), list(1, 0)))"),
+            "list(list(1, -1), list(1, -1))"
+        );
+        assert_eq!(
+            run("adjoint_group(list(list(2, 0), list(0, 1)), list(list(0, 1), list(0, 0)))"),
+            "list(list(0, 2), list(0, 0))"
+        );
     }
 
     #[test]
     fn exponential_of_so3_generators_is_a_rotation() {
-        assert_eq!(run("exp_map(list(list(0, 0, 0), list(0, 0, -t), list(0, t, 0)))"), "list(list(1, 0, 0), list(0, cos(t), -sin(t)), list(0, sin(t), cos(t)))");
-        assert_eq!(run("exp_map(list(list(0, -t), list(t, 0)))"), "list(list(cos(t), -sin(t)), list(sin(t), cos(t)))");
+        assert_eq!(
+            run("exp_map(list(list(0, 0, 0), list(0, 0, -t), list(0, t, 0)))"),
+            "list(list(1, 0, 0), list(0, cos(t), -sin(t)), list(0, sin(t), cos(t)))"
+        );
+        assert_eq!(
+            run("exp_map(list(list(0, -t), list(t, 0)))"),
+            "list(list(cos(t), -sin(t)), list(sin(t), cos(t)))"
+        );
         // rotation about the axis (1, 2, 2) by angle 3: trace 1 + 2 cos 3, R R^T = I
         let a = "list(list(0, -2, 2), list(2, 0, -1), list(-2, 1, 0))";
         let tr = run(&format!("trace(exp_map({a}))"));
-        assert!((eval(&[lie()], &tr, &[]) - (1.0 + 2.0 * 3.0_f64.cos())).abs() < 1e-12, "{tr}");
+        assert!(
+            (eval(&[lie()], &tr, &[]) - (1.0 + 2.0 * 3.0_f64.cos())).abs() < 1e-12,
+            "{tr}"
+        );
         let rrt = run(&format!("matmul(exp_map({a}), transpose(exp_map({a})))"));
         for (i, j) in [(0, 0), (1, 1), (2, 2), (0, 1), (1, 2), (0, 2)] {
             let v = eval(&[lie()], &entry(&rrt, &[i, j]), &[]);
@@ -1226,20 +1418,44 @@ mod tests {
 
     #[test]
     fn exponential_closed_forms() {
-        assert_eq!(run(&format!("exp_map({E})")), "list(list(1, 1), list(0, 1))");
-        assert_eq!(run("exp_map(list(list(0, a, b), list(0, 0, c), list(0, 0, 0)))"), run("exp_map(list(list(0, a, b), list(0, 0, c), list(0, 0, 0)))"));
-        assert_eq!(run("exp_map(list(list(a, 0), list(0, b)))"), "list(list(exp(a), 0), list(0, exp(b)))");
-        assert_eq!(run("exp_map(list(list(0, 0), list(0, 0)))"), "list(list(1, 0), list(0, 1))");
+        assert_eq!(
+            run(&format!("exp_map({E})")),
+            "list(list(1, 1), list(0, 1))"
+        );
+        assert_eq!(
+            run("exp_map(list(list(0, a, b), list(0, 0, c), list(0, 0, 0)))"),
+            run("exp_map(list(list(0, a, b), list(0, 0, c), list(0, 0, 0)))")
+        );
+        assert_eq!(
+            run("exp_map(list(list(a, 0), list(0, b)))"),
+            "list(list(exp(a), 0), list(0, exp(b)))"
+        );
+        assert_eq!(
+            run("exp_map(list(list(0, 0), list(0, 0)))"),
+            "list(list(1, 0), list(0, 1))"
+        );
         // hyperbolic: exp of [[0, t], [t, 0]]
-        assert_eq!(run("exp_map(list(list(0, t), list(t, 0)))"), "list(list(cosh(t), sinh(t)), list(sinh(t), cosh(t)))");
+        assert_eq!(
+            run("exp_map(list(list(0, t), list(t, 0)))"),
+            "list(list(cosh(t), sinh(t)), list(sinh(t), cosh(t)))"
+        );
         // a 2x2 with a double eigenvalue: exp([[1, 1], [0, 1]]) = e [[1, 1], [0, 1]]
-        assert_eq!(run("exp_map(list(list(1, 1), list(0, 1)))"), "list(list(E, E), list(0, E))");
+        assert_eq!(
+            run("exp_map(list(list(1, 1), list(0, 1)))"),
+            "list(list(E, E), list(0, E))"
+        );
         // diagonalizable 3x3 (triangular, distinct eigenvalues)
         let m = run("exp_map(list(list(1, 2, 0), list(0, 3, 0), list(0, 0, 5)))");
         assert_eq!(entry(&m, &[2, 2]), "exp(5)");
         // the Taylor polynomial
-        assert_eq!(run("exp_map(list(list(0, 1), list(0, 0)), 3)"), "list(list(1, 1), list(0, 1))");
-        assert_eq!(run("exp_map(list(list(0, -1), list(1, 0)), 2)"), "list(list(1/2, -1), list(1, 1/2))");
+        assert_eq!(
+            run("exp_map(list(list(0, 1), list(0, 0)), 3)"),
+            "list(list(1, 1), list(0, 1))"
+        );
+        assert_eq!(
+            run("exp_map(list(list(0, -1), list(1, 0)), 2)"),
+            "list(list(1/2, -1), list(1, 1/2))"
+        );
         // trace of exp = exp of the trace for su(2) elements -> det = 1
         let d = run("det(exp_map(list(list(a, b), list(c, -a))))");
         let v = eval(&[lie()], &d, &[("a", 0.3), ("b", 0.2), ("c", -0.4)]);
@@ -1253,21 +1469,54 @@ mod tests {
         // so(3): X = Lx, Y = Ly: order 1 = X + Y, order 2 adds Lz / 2
         let x = "list(list(0, 0, 0), list(0, 0, -1), list(0, 1, 0))";
         let y = "list(list(0, 0, 1), list(0, 0, 0), list(-1, 0, 0))";
-        assert_eq!(run(&format!("baker_campbell_hausdorff({x}, {y}, 1)")), "list(list(0, 0, 1), list(0, 0, -1), list(-1, 1, 0))");
-        assert_eq!(run(&format!("baker_campbell_hausdorff({x}, {y}, 2)")), "list(list(0, -1/2, 1), list(1/2, 0, -1), list(-1, 1, 0))");
+        assert_eq!(
+            run(&format!("baker_campbell_hausdorff({x}, {y}, 1)")),
+            "list(list(0, 0, 1), list(0, 0, -1), list(-1, 1, 0))"
+        );
+        assert_eq!(
+            run(&format!("baker_campbell_hausdorff({x}, {y}, 2)")),
+            "list(list(0, -1/2, 1), list(1/2, 0, -1), list(-1, 1, 0))"
+        );
         // sl(2): X = e, Y = f
-        assert_eq!(run(&format!("baker_campbell_hausdorff({E}, {F}, 2)")), "list(list(1/2, 1), list(1, -1/2))");
-        assert_eq!(run(&format!("baker_campbell_hausdorff({E}, {F}, 3)")), "list(list(1/2, 5/6), list(5/6, -1/2))");
-        assert_eq!(run(&format!("baker_campbell_hausdorff({E}, {F}, 4)")), "list(list(5/12, 5/6), list(5/6, -5/12))");
+        assert_eq!(
+            run(&format!("baker_campbell_hausdorff({E}, {F}, 2)")),
+            "list(list(1/2, 1), list(1, -1/2))"
+        );
+        assert_eq!(
+            run(&format!("baker_campbell_hausdorff({E}, {F}, 3)")),
+            "list(list(1/2, 5/6), list(5/6, -1/2))"
+        );
+        assert_eq!(
+            run(&format!("baker_campbell_hausdorff({E}, {F}, 4)")),
+            "list(list(5/12, 5/6), list(5/6, -5/12))"
+        );
         // commuting elements: X + Y at every order
-        assert_eq!(run("baker_campbell_hausdorff(list(list(a, 0), list(0, b)), list(list(c, 0), list(0, d)), 4)"), "list(list(a + c, 0), list(0, b + d))");
+        assert_eq!(
+            run(
+                "baker_campbell_hausdorff(list(list(a, 0), list(0, b)), list(list(c, 0), list(0, d)), 4)"
+            ),
+            "list(list(a + c, 0), list(0, b + d))"
+        );
         // Heisenberg group: the series stops after order 2
         let hx = "list(list(0, 1, 0), list(0, 0, 0), list(0, 0, 0))";
         let hy = "list(list(0, 0, 0), list(0, 0, 1), list(0, 0, 0))";
-        assert_eq!(run(&format!("matmul(exp_map({hx}), exp_map({hy}))")), run(&format!("exp_map(baker_campbell_hausdorff({hx}, {hy}, 3))")));
+        assert_eq!(
+            run(&format!("matmul(exp_map({hx}), exp_map({hy}))")),
+            run(&format!("exp_map(baker_campbell_hausdorff({hx}, {hy}, 3))"))
+        );
         // fields: [d_x, x d_y] = d_y, so X + Y + [X, Y] / 2
-        assert_eq!(run("baker_campbell_hausdorff(list(1, 0), list(0, x), 2, list(x, y))"), "list(1, x + 1/2)");
+        assert_eq!(
+            run("baker_campbell_hausdorff(list(1, 0), list(0, x), 2, list(x, y))"),
+            "list(1, x + 1/2)"
+        );
         // order outside 1..=4 is not handled
-        assert!(!reduce_with(&[lie()], &format!("baker_campbell_hausdorff({E}, {F}, 5)"), &[]).1);
+        assert!(
+            !reduce_with(
+                &[lie()],
+                &format!("baker_campbell_hausdorff({E}, {F}, 5)"),
+                &[]
+            )
+            .1
+        );
     }
 }

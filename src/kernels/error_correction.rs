@@ -1112,7 +1112,9 @@ impl Bch {
         t: usize,
     ) -> Result<Self, String> {
         if !(2..=BCH_MAX_M).contains(&m) {
-            return Err(format!("BCH field degree m must be in 2..={BCH_MAX_M}, got {m}"));
+            return Err(format!(
+                "BCH field degree m must be in 2..={BCH_MAX_M}, got {m}"
+            ));
         }
 
         if t == 0 {
@@ -1149,12 +1151,21 @@ impl Bch {
             exp[i] = exp[i - n];
         }
 
-        let mut code = Self { m, n, t, exp, log, genpoly: Vec::new() };
+        let mut code = Self {
+            m,
+            n,
+            t,
+            exp,
+            log,
+            genpoly: Vec::new(),
+        };
 
         code.genpoly = code.build_generator()?;
 
         if code.genpoly.len() > n {
-            return Err(format!("t = {t} too large for length {n}: no information bits"));
+            return Err(format!(
+                "t = {t} too large for length {n}: no information bits"
+            ));
         }
 
         Ok(code)
@@ -1177,7 +1188,9 @@ impl Bch {
             }
         }
 
-        Err(format!("no BCH code with t = {t} carries {data_bits} data bits"))
+        Err(format!(
+            "no BCH code with t = {t} carries {data_bits} data bits"
+        ))
     }
 
     /// Field degree `m` (the block length is `2^m - 1`).
@@ -1287,10 +1300,12 @@ impl Bch {
         }
 
         g.iter()
-            .map(|&c| match c {
-                0 => Ok(0u8),
-                1 => Ok(1u8),
-                _ => Err("generator polynomial is not binary".to_string()),
+            .map(|&c| {
+                match c {
+                    | 0 => Ok(0u8),
+                    | 1 => Ok(1u8),
+                    | _ => Err("generator polynomial is not binary".to_string()),
+                }
             })
             .collect()
     }
@@ -1310,7 +1325,11 @@ impl Bch {
         }
 
         if data.len() > self.k() {
-            return Err(format!("message of {} bits exceeds k = {}", data.len(), self.k()));
+            return Err(format!(
+                "message of {} bits exceeds k = {}",
+                data.len(),
+                self.k()
+            ));
         }
 
         if data.iter().any(|&b| b > 1) {
@@ -1370,7 +1389,9 @@ impl Bch {
         &self,
         word: &[u8],
     ) -> bool {
-        word.len() <= self.n && word.iter().all(|&b| b <= 1) && self.syndromes(word).iter().all(|&s| s == 0)
+        word.len() <= self.n
+            && word.iter().all(|&b| b <= 1)
+            && self.syndromes(word).iter().all(|&s| s == 0)
     }
 
     /// Berlekamp-Massey: the error locator polynomial `Lambda(x)` (lowest

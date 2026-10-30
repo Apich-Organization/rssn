@@ -33,17 +33,17 @@ use std::collections::HashSet;
 
 use num_integer::Integer;
 
+use super::V;
 use super::def;
 use super::groups::build_group;
 use super::groups::read_group;
 use super::idx;
 use super::items;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 /// A multiplication table with cached identity and inverses.
 pub(crate) struct Tab {
@@ -58,8 +58,9 @@ impl Tab {
         let n = table.len();
         let mul: Vec<usize> = table.iter().flatten().copied().collect();
         let id = (0..n).find(|&e| (0..n).all(|j| mul[e * n + j] == j && mul[j * n + e] == j))?;
-        let inv: Vec<usize> =
-            (0..n).map(|a| (0..n).find(|&j| mul[a * n + j] == id && mul[j * n + a] == id)).collect::<Option<_>>()?;
+        let inv: Vec<usize> = (0..n)
+            .map(|a| (0..n).find(|&j| mul[a * n + j] == id && mul[j * n + a] == id))
+            .collect::<Option<_>>()?;
         Some(Self { n, mul, id, inv })
     }
 
@@ -151,7 +152,9 @@ impl Tab {
     }
 
     fn center(&self) -> Vec<usize> {
-        (0..self.n).filter(|&z| (0..self.n).all(|g| self.m(z, g) == self.m(g, z))).collect()
+        (0..self.n)
+            .filter(|&z| (0..self.n).all(|g| self.m(z, g) == self.m(g, z)))
+            .collect()
     }
 
     fn is_normal(
@@ -221,7 +224,9 @@ impl Tab {
         p_gens: &[usize],
         p: &[bool],
     ) -> Vec<usize> {
-        (0..self.n).filter(|&g| p_gens.iter().all(|&x| p[self.conj(x, g)])).collect()
+        (0..self.n)
+            .filter(|&g| p_gens.iter().all(|&x| p[self.conj(x, g)]))
+            .collect()
     }
 
     fn sylow(
@@ -246,7 +251,10 @@ impl Tab {
                 return Some((p, norm));
             }
             let norm = self.normalizer(&gens, &member);
-            let x = norm.iter().copied().find(|&x| !member[x] && member[self.pow(x, prime)])?;
+            let x = norm
+                .iter()
+                .copied()
+                .find(|&x| !member[x] && member[self.pow(x, prime)])?;
             gens.push(x);
             p = self.closure(&gens);
         }
@@ -316,8 +324,14 @@ fn sub_term(
     h: &[usize],
 ) -> Option<V> {
     let pos = |x: usize| h.iter().position(|&y| y == x);
-    let table: Vec<Vec<usize>> =
-        h.iter().map(|&a| h.iter().map(|&b| pos(t.m(a, b))).collect::<Option<Vec<_>>>()).collect::<Option<_>>()?;
+    let table: Vec<Vec<usize>> = h
+        .iter()
+        .map(|&a| {
+            h.iter()
+                .map(|&b| pos(t.m(a, b)))
+                .collect::<Option<Vec<_>>>()
+        })
+        .collect::<Option<_>>()?;
     let elems: Vec<NodeId> = h.iter().map(|&x| grp.elems[x]).collect();
     build_group(cx.graph, &elems, &table)
 }
@@ -389,7 +403,9 @@ fn group_is_solvable(
     a: &[NodeId],
 ) -> Option<V> {
     let (_, t) = tab_of(cx, *a.first()?)?;
-    Some(V::Bool(derived_chain(&t).last().is_some_and(|h| h.len() == 1)))
+    Some(V::Bool(
+        derived_chain(&t).last().is_some_and(|h| h.len() == 1),
+    ))
 }
 
 fn group_lower_central_series(
@@ -405,7 +421,9 @@ fn group_is_nilpotent(
     a: &[NodeId],
 ) -> Option<V> {
     let (_, t) = tab_of(cx, *a.first()?)?;
-    Some(V::Bool(lower_central_chain(&t).last().is_some_and(|h| h.len() == 1)))
+    Some(V::Bool(
+        lower_central_chain(&t).last().is_some_and(|h| h.len() == 1),
+    ))
 }
 
 fn group_nilpotency_class(
@@ -467,7 +485,11 @@ fn group_is_simple(
     if t.n == 1 {
         return Some(V::Bool(false));
     }
-    Some(V::Bool((0..t.n).filter(|&x| x != t.id).all(|x| t.normal_closure(&[x]).len() == t.n)))
+    Some(V::Bool(
+        (0..t.n)
+            .filter(|&x| x != t.id)
+            .all(|x| t.normal_closure(&[x]).len() == t.n),
+    ))
 }
 
 // ----------------------------------------------------------------------
@@ -549,8 +571,13 @@ fn group_quotient(
         cosets.push(c);
     }
     let k = cosets.len();
-    let table: Vec<Vec<usize>> =
-        (0..k).map(|i| (0..k).map(|j| coset_of[t.m(cosets[i][0], cosets[j][0])]).collect()).collect();
+    let table: Vec<Vec<usize>> = (0..k)
+        .map(|i| {
+            (0..k)
+                .map(|j| coset_of[t.m(cosets[i][0], cosets[j][0])])
+                .collect()
+        })
+        .collect();
     let elems: Vec<NodeId> = cosets
         .iter()
         .map(|c| {
@@ -699,8 +726,22 @@ fn isomorphisms(
         return Some((None, 0));
     }
     let gens = ta.generators();
-    let cands: Vec<Vec<usize>> = gens.iter().map(|&g| (0..tb.n).filter(|&y| kb[y] == ka[g]).collect()).collect();
-    let mut s = Search { ta, tb, gens, cands, first: None, count: 0, nodes: 0, limit: 3_000_000, all, aborted: false };
+    let cands: Vec<Vec<usize>> = gens
+        .iter()
+        .map(|&g| (0..tb.n).filter(|&y| kb[y] == ka[g]).collect())
+        .collect();
+    let mut s = Search {
+        ta,
+        tb,
+        gens,
+        cands,
+        first: None,
+        count: 0,
+        nodes: 0,
+        limit: 3_000_000,
+        all,
+        aborted: false,
+    };
     s.run(0, &mut Vec::new());
     if s.aborted && (all || s.first.is_none()) {
         return None;
@@ -785,33 +826,108 @@ fn group_order_statistics(
     for x in 0..t.n {
         *counts.entry(t.order(x)).or_insert(0) += 1;
     }
-    Some(V::List(counts.into_iter().map(|(o, c)| V::List(vec![V::uint(o), V::uint(c)])).collect()))
+    Some(V::List(
+        counts
+            .into_iter()
+            .map(|(o, c)| V::List(vec![V::uint(o), V::uint(c)]))
+            .collect(),
+    ))
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "group_generate", Arity::Fixed(2), group_generate)?;
     def(i, "group_subgroup", Arity::Fixed(2), group_subgroup)?;
-    def(i, "group_derived_subgroup", Arity::Fixed(1), group_derived_subgroup)?;
-    def(i, "group_derived_series", Arity::Fixed(1), group_derived_series)?;
+    def(
+        i,
+        "group_derived_subgroup",
+        Arity::Fixed(1),
+        group_derived_subgroup,
+    )?;
+    def(
+        i,
+        "group_derived_series",
+        Arity::Fixed(1),
+        group_derived_series,
+    )?;
     def(i, "group_is_solvable", Arity::Fixed(1), group_is_solvable)?;
-    def(i, "group_lower_central_series", Arity::Fixed(1), group_lower_central_series)?;
+    def(
+        i,
+        "group_lower_central_series",
+        Arity::Fixed(1),
+        group_lower_central_series,
+    )?;
     def(i, "group_is_nilpotent", Arity::Fixed(1), group_is_nilpotent)?;
-    def(i, "group_nilpotency_class", Arity::Fixed(1), group_nilpotency_class)?;
-    def(i, "group_normal_subgroups", Arity::Fixed(1), group_normal_subgroups)?;
+    def(
+        i,
+        "group_nilpotency_class",
+        Arity::Fixed(1),
+        group_nilpotency_class,
+    )?;
+    def(
+        i,
+        "group_normal_subgroups",
+        Arity::Fixed(1),
+        group_normal_subgroups,
+    )?;
     def(i, "group_is_simple", Arity::Fixed(1), group_is_simple)?;
-    def(i, "group_sylow_subgroup", Arity::Fixed(2), group_sylow_subgroup)?;
+    def(
+        i,
+        "group_sylow_subgroup",
+        Arity::Fixed(2),
+        group_sylow_subgroup,
+    )?;
     def(i, "group_sylow_count", Arity::Fixed(2), group_sylow_count)?;
-    def(i, "group_sylow_subgroups", Arity::Fixed(2), group_sylow_subgroups)?;
+    def(
+        i,
+        "group_sylow_subgroups",
+        Arity::Fixed(2),
+        group_sylow_subgroups,
+    )?;
     def(i, "group_quotient", Arity::Fixed(2), group_quotient)?;
-    def(i, "group_direct_product", Arity::Fixed(2), group_direct_product)?;
+    def(
+        i,
+        "group_direct_product",
+        Arity::Fixed(2),
+        group_direct_product,
+    )?;
     def(i, "group_isomorphism", Arity::Fixed(2), group_isomorphism)?;
-    def(i, "group_is_isomorphic", Arity::Fixed(2), group_is_isomorphic)?;
-    def(i, "group_automorphism_count", Arity::Fixed(1), group_automorphism_count)?;
-    def(i, "group_inner_automorphism_count", Arity::Fixed(1), group_inner_automorphism_count)?;
-    def(i, "group_outer_automorphism_count", Arity::Fixed(1), group_outer_automorphism_count)?;
+    def(
+        i,
+        "group_is_isomorphic",
+        Arity::Fixed(2),
+        group_is_isomorphic,
+    )?;
+    def(
+        i,
+        "group_automorphism_count",
+        Arity::Fixed(1),
+        group_automorphism_count,
+    )?;
+    def(
+        i,
+        "group_inner_automorphism_count",
+        Arity::Fixed(1),
+        group_inner_automorphism_count,
+    )?;
+    def(
+        i,
+        "group_outer_automorphism_count",
+        Arity::Fixed(1),
+        group_outer_automorphism_count,
+    )?;
     def(i, "group_exponent", Arity::Fixed(1), group_exponent)?;
-    def(i, "group_element_orders", Arity::Fixed(1), group_element_orders)?;
-    def(i, "group_order_statistics", Arity::Fixed(1), group_order_statistics)?;
+    def(
+        i,
+        "group_element_orders",
+        Arity::Fixed(1),
+        group_element_orders,
+    )?;
+    def(
+        i,
+        "group_order_statistics",
+        Arity::Fixed(1),
+        group_order_statistics,
+    )?;
     Ok(())
 }
 
@@ -821,8 +937,14 @@ mod tests {
 
     #[test]
     fn derived_and_central_series() {
-        assert_eq!(s("group_order(group_subgroup(symmetric_group(4), list(list(2,1,3,4))))"), "2");
-        assert_eq!(s("group_derived_subgroup(dihedral_group(4))"), "list(r0, r2)");
+        assert_eq!(
+            s("group_order(group_subgroup(symmetric_group(4), list(list(2,1,3,4))))"),
+            "2"
+        );
+        assert_eq!(
+            s("group_derived_subgroup(dihedral_group(4))"),
+            "list(r0, r2)"
+        );
         let ser = s("group_derived_series(symmetric_group(4))");
         assert_eq!(ser.matches("list(list(").count(), 4, "{ser}");
         assert_eq!(s("group_is_solvable(symmetric_group(4))"), "true");
@@ -834,7 +956,10 @@ mod tests {
         assert_eq!(s("group_nilpotency_class(cyclic_group(5))"), "1");
         assert_eq!(s("group_nilpotency_class(symmetric_group(4))"), "false");
         assert_eq!(s("group_is_solvable(dihedral_group(7))"), "true");
-        assert_eq!(s("group_lower_central_series(dihedral_group(4))"), s("list(group_elements(dihedral_group(4)), list(r0, r2), list(r0))"));
+        assert_eq!(
+            s("group_lower_central_series(dihedral_group(4))"),
+            s("list(group_elements(dihedral_group(4)), list(r0, r2), list(r0))")
+        );
     }
 
     #[test]
@@ -846,11 +971,19 @@ mod tests {
         assert_eq!(p2.matches("list(").count(), 9, "{p2}");
         let p3 = s("group_sylow_subgroup(symmetric_group(4), 3)");
         assert_eq!(p3.matches("list(").count(), 4, "{p3}");
-        assert_eq!(s("group_order(group_subgroup(symmetric_group(4), group_sylow_subgroup(symmetric_group(4), 2)))"), "8");
+        assert_eq!(
+            s(
+                "group_order(group_subgroup(symmetric_group(4), group_sylow_subgroup(symmetric_group(4), 2)))"
+            ),
+            "8"
+        );
         // all of them
         let all = s("group_sylow_subgroups(symmetric_group(4), 3)");
         assert_eq!(all.matches("list(list(").count(), 4, "{all}");
-        assert_eq!(s("group_sylow_subgroups(dihedral_group(3), 3)"), "list(list(r0, r1, r2))");
+        assert_eq!(
+            s("group_sylow_subgroups(dihedral_group(3), 3)"),
+            "list(list(r0, r1, r2))"
+        );
         // S5: n_5 = 6, n_3 = 10, n_2 = 15
         assert_eq!(s("group_sylow_count(symmetric_group(5), 5)"), "6");
         assert_eq!(s("group_sylow_count(symmetric_group(5), 3)"), "10");
@@ -866,37 +999,100 @@ mod tests {
         // Z6 / <3> = Z3
         let q = "group_quotient(cyclic_group(6), list(0, 3))";
         assert_eq!(s(&format!("group_order({q})")), "3");
-        assert_eq!(s(&format!("group_elements({q})")), "list(list(0, 3), list(1, 4), list(2, 5))");
-        assert_eq!(s(&format!("group_is_isomorphic({q}, cyclic_group(3))")), "true");
+        assert_eq!(
+            s(&format!("group_elements({q})")),
+            "list(list(0, 3), list(1, 4), list(2, 5))"
+        );
+        assert_eq!(
+            s(&format!("group_is_isomorphic({q}, cyclic_group(3))")),
+            "true"
+        );
         // D4 / Z(D4) = Klein four
-        assert_eq!(s("group_is_isomorphic(group_quotient(dihedral_group(4), list(r0, r2)), klein_four_group())"), "true");
+        assert_eq!(
+            s(
+                "group_is_isomorphic(group_quotient(dihedral_group(4), list(r0, r2)), klein_four_group())"
+            ),
+            "true"
+        );
         // S4 / V4 = S3
         let v4 = "list(list(1,2,3,4), list(2,1,4,3), list(3,4,1,2), list(4,3,2,1))";
-        assert_eq!(s(&format!("group_is_isomorphic(group_quotient(symmetric_group(4), {v4}), symmetric_group(3))")), "true");
+        assert_eq!(
+            s(&format!(
+                "group_is_isomorphic(group_quotient(symmetric_group(4), {v4}), symmetric_group(3))"
+            )),
+            "true"
+        );
         // not normal
-        assert!(s("group_quotient(symmetric_group(3), list(list(1,2,3), list(2,1,3)))").starts_with("group_quotient(group("));
+        assert!(
+            s("group_quotient(symmetric_group(3), list(list(1,2,3), list(2,1,3)))")
+                .starts_with("group_quotient(group(")
+        );
         // products
-        assert_eq!(s("group_order(group_direct_product(cyclic_group(2), cyclic_group(3)))"), "6");
-        assert_eq!(s("group_is_isomorphic(group_direct_product(cyclic_group(2), cyclic_group(3)), cyclic_group(6))"), "true");
-        assert_eq!(s("group_is_isomorphic(group_direct_product(cyclic_group(2), cyclic_group(2)), klein_four_group())"), "true");
-        assert_eq!(s("group_is_valid(group_direct_product(symmetric_group(3), cyclic_group(2)))"), "true");
-        assert_eq!(s("group_is_isomorphic(group_direct_product(symmetric_group(3), cyclic_group(2)), dihedral_group(6))"), "true");
+        assert_eq!(
+            s("group_order(group_direct_product(cyclic_group(2), cyclic_group(3)))"),
+            "6"
+        );
+        assert_eq!(
+            s(
+                "group_is_isomorphic(group_direct_product(cyclic_group(2), cyclic_group(3)), cyclic_group(6))"
+            ),
+            "true"
+        );
+        assert_eq!(
+            s(
+                "group_is_isomorphic(group_direct_product(cyclic_group(2), cyclic_group(2)), klein_four_group())"
+            ),
+            "true"
+        );
+        assert_eq!(
+            s("group_is_valid(group_direct_product(symmetric_group(3), cyclic_group(2)))"),
+            "true"
+        );
+        assert_eq!(
+            s(
+                "group_is_isomorphic(group_direct_product(symmetric_group(3), cyclic_group(2)), dihedral_group(6))"
+            ),
+            "true"
+        );
     }
 
     #[test]
     fn isomorphism_testing() {
-        assert_eq!(s("group_is_isomorphic(symmetric_group(3), dihedral_group(3))"), "true");
-        assert_eq!(s("group_is_isomorphic(cyclic_group(4), klein_four_group())"), "false");
-        assert_eq!(s("group_is_isomorphic(cyclic_group(8), dihedral_group(4))"), "false");
-        assert_eq!(s("group_is_isomorphic(dihedral_group(4), cyclic_group(8))"), "false");
-        assert_eq!(s("group_is_isomorphic(cyclic_group(6), dihedral_group(3))"), "false");
-        assert_eq!(s("group_is_isomorphic(cyclic_group(6), cyclic_group(7))"), "false");
+        assert_eq!(
+            s("group_is_isomorphic(symmetric_group(3), dihedral_group(3))"),
+            "true"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(cyclic_group(4), klein_four_group())"),
+            "false"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(cyclic_group(8), dihedral_group(4))"),
+            "false"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(dihedral_group(4), cyclic_group(8))"),
+            "false"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(cyclic_group(6), dihedral_group(3))"),
+            "false"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(cyclic_group(6), cyclic_group(7))"),
+            "false"
+        );
         // D4 and Q8 have the same order but are not isomorphic
         let q8 = "group_from_perms(list(list(2,4,6,8,3,5,7,1)))";
         let _ = q8;
-        let iso = s("group_isomorphism(cyclic_group(3), group_subgroup(symmetric_group(3), list(list(2,3,1))))");
+        let iso = s(
+            "group_isomorphism(cyclic_group(3), group_subgroup(symmetric_group(3), list(list(2,3,1))))",
+        );
         assert_eq!(iso, "list(list(1, 2, 3), list(2, 3, 1), list(3, 1, 2))");
-        assert_eq!(s("group_isomorphism(cyclic_group(2), cyclic_group(3))"), "false");
+        assert_eq!(
+            s("group_isomorphism(cyclic_group(2), cyclic_group(3))"),
+            "false"
+        );
     }
 
     #[test]
@@ -912,7 +1108,12 @@ mod tests {
         assert_eq!(s("group_outer_automorphism_count(symmetric_group(4))"), "1");
         assert_eq!(s("group_inner_automorphism_count(cyclic_group(7))"), "1");
         assert_eq!(s("group_automorphism_count(dihedral_group(5))"), "20");
-        assert_eq!(s("group_automorphism_count(group_direct_product(klein_four_group(), klein_four_group()))"), "20160");
+        assert_eq!(
+            s(
+                "group_automorphism_count(group_direct_product(klein_four_group(), klein_four_group()))"
+            ),
+            "20160"
+        );
     }
 
     #[test]
@@ -923,9 +1124,20 @@ mod tests {
         let a5 = "group_from_perms(list(list(2,3,4,5,1), list(2,3,1,4,5)))";
         assert_eq!(s(&format!("group_order({a5})")), "60");
         assert_eq!(s(&format!("group_is_simple({a5})")), "true");
-        assert_eq!(s("group_normal_subgroups(symmetric_group(3))").matches("list(list(").count(), 3);
+        assert_eq!(
+            s("group_normal_subgroups(symmetric_group(3))")
+                .matches("list(list(")
+                .count(),
+            3
+        );
         assert_eq!(s("group_exponent(symmetric_group(4))"), "12");
-        assert_eq!(s("group_order_statistics(symmetric_group(3))"), "list(list(1, 1), list(2, 3), list(3, 2))");
-        assert_eq!(s("group_element_orders(cyclic_group(4))"), "list(1, 4, 2, 4)");
+        assert_eq!(
+            s("group_order_statistics(symmetric_group(3))"),
+            "list(list(1, 1), list(2, 3), list(3, 2))"
+        );
+        assert_eq!(
+            s("group_element_orders(cyclic_group(4))"),
+            "list(1, 4, 2, 4)"
+        );
     }
 }

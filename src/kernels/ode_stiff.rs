@@ -15,7 +15,8 @@
 //!   differentiation formulas (fixed-leading-coefficient form, NDF
 //!   modification, adaptive order/step, Jacobian/LU reuse); [`bdf_with`]
 //!   (options in [`BdfOptions`]) adds dense output (backward-difference
-//!   interpolant), event detection and structured Jacobians.
+//!   interpolant), event detection, structured Jacobians and a mass matrix
+//!   (`M y' = f`, index-1 differential-algebraic systems, see below).
 //!
 //! ## Structured Jacobians
 //!
@@ -41,21 +42,55 @@
 //! amplification of the error estimator and restores step-size control.
 //! Initial values must be consistent.
 //!
-//! Limitations: BDF has no mass-matrix/DAE support (use Radau); Radau's
+//! [`bdf_with`] accepts the same mass matrices ([`BdfOptions::mass`],
+//! [`BdfOptions::sparse_mass`]) for index-1 systems: the corrector equation
+//! `M (d + psi) = (h / alpha) f(t, y_pred + d)` is solved by the simplified
+//! Newton iteration with the matrix `M - (h / alpha) J`, the error estimate
+//! covers the algebraic components as well (as in `ode15s`), and the initial
+//! derivative needed to start the backward-difference array is
+//! `M^-1 f(t0, y0)` when `M` is invertible and `f_q / M_qq` for the
+//! differential variables with a diagonal row otherwise (zero for the
+//! algebraic ones); the first step is `1e-5 (t1 - t0)` unless
+//! [`OdeOptions::h0`] is given. The initial values must be consistent.
+//!
+//! Limitations: BDF handles index 1 only (use Radau for higher-index
+//! Hessenberg systems, whose error estimate needs the `h` and `h^2`
+//! weights); the mass matrix must be constant; Radau's
 //! algebraic-variable error estimate is the plain collocation estimate for
 //! index 1 (no extra scaling needed there).
+//!
+//! The classical index-3 mechanical benchmark with position-level constraints,
+//! Andrews' squeezer (Haug's seven-body planar mechanism), is validated in
+//! `tests/kernels/andrews_squeezer.rs` against the reference solution of the
+//! Test Set for IVP Solvers (`andrews.f`, computed with PSIDE at
+//! `rtol = atol = 1e-14`, `t = 0.03`), using the Hessenberg blocks
+//! `n2 = 7`, `n3 = 13`; the test module records the mechanism data, the
+//! reference values and the formulation.
 
-use crate::kernels::dense::{self, Mat};
-use crate::kernels::jacobian::{
-    Factor, Jac, JacStructure, JacobianProvider, Mass, SolverKind, SparseJacobianFn,
-    fd_jacobian_dense,
-    block_triplets,
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
 };
+use crate::kernels::jacobian::Factor;
+use crate::kernels::jacobian::Jac;
+use crate::kernels::jacobian::JacStructure;
+use crate::kernels::jacobian::JacobianProvider;
+use crate::kernels::jacobian::Mass;
+use crate::kernels::jacobian::SolverKind;
+use crate::kernels::jacobian::SparseJacobianFn;
+use crate::kernels::jacobian::block_triplets;
+use crate::kernels::jacobian::fd_jacobian_dense;
 use crate::kernels::krylov::Csr;
-use crate::kernels::ode_adaptive::{
-    DenseKind, DenseStep, Event, OdeError, OdeOptions, OdeSolution, StepWindow, Tol, initial_step,
-    process_events,
-};
+use crate::kernels::ode_adaptive::DenseKind;
+use crate::kernels::ode_adaptive::DenseStep;
+use crate::kernels::ode_adaptive::Event;
+use crate::kernels::ode_adaptive::OdeError;
+use crate::kernels::ode_adaptive::OdeOptions;
+use crate::kernels::ode_adaptive::OdeSolution;
+use crate::kernels::ode_adaptive::StepWindow;
+use crate::kernels::ode_adaptive::Tol;
+use crate::kernels::ode_adaptive::initial_step;
+use crate::kernels::ode_adaptive::process_events;
 
 /// User-supplied Jacobian `J(t, y)` of the right-hand side.
 pub type JacobianFn<'a> = dyn Fn(f64, &[f64]) -> Mat + 'a;
@@ -79,16 +114,26 @@ struct NewtonCtx<'a> {
     maxit: usize,
 }
 
-fn rms(v: &[f64], scale: &[f64]) -> f64 {
+fn rms(
+    v: &[f64],
+    scale: &[f64],
+) -> f64 {
     let n = scale.len().max(1);
-    let s: f64 = v.iter().enumerate().map(|(i, x)| (x / scale[i % n]).powi(2)).sum();
+    let s: f64 = v
+        .iter()
+        .enumerate()
+        .map(|(i, x)| (x / scale[i % n]).powi(2))
+        .sum();
     (s / v.len().max(1) as f64).sqrt()
 }
 
 // ------------------------------------------------------------ Radau IIA
 
 /// Legendre polynomial `P_k(x)` by the three-term recurrence.
-fn legendre(k: usize, x: f64) -> f64 {
+fn legendre(
+    k: usize,
+    x: f64,
+) -> f64 {
     let (mut p0, mut p1) = (1.0, x);
     if k == 0 {
         return 1.0;
@@ -187,7 +232,11 @@ impl RadauTab {
             for j in 0..s {
                 v.set(k, j, c[j].powi(k as i32));
             }
-            rhs[k] = if k == 0 { 1.0 - gamma0 } else { 1.0 / (k as f64 + 1.0) };
+            rhs[k] = if k == 0 {
+                1.0 - gamma0
+            } else {
+                1.0 / (k as f64 + 1.0)
+            };
         }
         let bh = dense::solve(&v, &rhs).ok()?;
         let w: Vec<f64> = (0..s)
@@ -238,7 +287,14 @@ fn radau_newton<F: Fn(f64, &[f64], &mut [f64])>(
     mut z: Vec<f64>,
     nfev: &mut usize,
 ) -> Option<(Vec<f64>, usize, f64)> {
-    let NewtonCtx { tab, mass, lu, scale, tol, maxit } = *ctx;
+    let NewtonCtx {
+        tab,
+        mass,
+        lu,
+        scale,
+        tol,
+        maxit,
+    } = *ctx;
     let n = y.len();
     let s = tab.s;
     let mut fv = vec![0.0; s * n];
@@ -302,7 +358,11 @@ pub struct RadauConfig<'a> {
 
 impl Default for RadauConfig<'_> {
     fn default() -> Self {
-        Self { mass: None, min_stages: 3, max_stages: 7 }
+        Self {
+            mass: None,
+            min_stages: 3,
+            max_stages: 7,
+        }
     }
 }
 
@@ -374,7 +434,11 @@ pub fn radau5<F: Fn(f64, &[f64], &mut [f64])>(
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
-    let ro = RadauOptions { min_stages: 3, max_stages: 3, ..RadauOptions::default() };
+    let ro = RadauOptions {
+        min_stages: 3,
+        max_stages: 3,
+        ..RadauOptions::default()
+    };
     radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro)
 }
 
@@ -487,30 +551,39 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     if ro.index.n2 + ro.index.n3 > n {
         return Err(OdeError::Invalid);
     }
-    let mass: Option<Mass<'_>> = ro.mass.map(Mass::Dense).or_else(|| ro.sparse_mass.map(Mass::Sparse));
+    let mass: Option<Mass<'_>> = ro
+        .mass
+        .map(Mass::Dense)
+        .or_else(|| ro.sparse_mass.map(Mass::Sparse));
     if let Some(m) = mass
         && (m.rows() != n || m.cols() != n)
     {
         return Err(OdeError::Invalid);
     }
-    let provider = JacobianProvider::new(n, ro.structure, ro.jac, ro.sparse_jac)
-        .ok_or(OdeError::Invalid)?;
+    let provider =
+        JacobianProvider::new(n, ro.structure, ro.jac, ro.sparse_jac).ok_or(OdeError::Invalid)?;
     let mut band = provider.band;
     if let Some(m) = mass {
         let (ml, mu) = m.band();
         band = (band.0.max(ml), band.1.max(mu));
     }
-    let setup = SolverSetup { n, kind: provider.kind, band };
+    let setup = SolverSetup {
+        n,
+        kind: provider.kind,
+        band,
+    };
     let events = ro.events;
     let mut tabs: Vec<RadauTab> = Vec::new();
     for s in [3usize, 5, 7] {
         tabs.push(RadauTab::new(s).ok_or(OdeError::SolveFailed)?);
     }
     let tab_index = |s: usize| (s - 3) / 2;
-    let maxit_of = |s: usize| match s {
-        3 => 7,
-        5 => 10,
-        _ => 12,
+    let maxit_of = |s: usize| {
+        match s {
+            | 3 => 7,
+            | 5 => 10,
+            | _ => 12,
+        }
     };
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
@@ -523,9 +596,9 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     f(t, &y, &mut f0);
     let mut nfev = 1;
     let mut h_abs = match (opts.h0, mass) {
-        (Some(h), _) => h.abs(),
-        (None, None) => initial_step(f, t0, y0, &f0, dir, 5.0, Tol { rtol, atol }),
-        (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
+        | (Some(h), _) => h.abs(),
+        | (None, None) => initial_step(f, t0, y0, &f0, dir, 5.0, Tol { rtol, atol }),
+        | (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
     }
     .min(opts.hmax);
     let mut jac = provider.eval(f, t, &y, &f0, &mut nfev);
@@ -608,8 +681,16 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 z.iter().all(|v| v.is_finite()).then_some(z)
             };
             let maxit = maxit_of(s);
-            let ctx = NewtonCtx { tab, mass, lu: lu_full, scale: &scale0, tol: newton_tol, maxit };
-            let mut newton = extrap_guess().and_then(|z| radau_newton(f, t, &y, h, &ctx, z, &mut nfev));
+            let ctx = NewtonCtx {
+                tab,
+                mass,
+                lu: lu_full,
+                scale: &scale0,
+                tol: newton_tol,
+                maxit,
+            };
+            let mut newton =
+                extrap_guess().and_then(|z| radau_newton(f, t, &y, h, &ctx, z, &mut nfev));
             if newton.is_none() {
                 newton = radau_newton(f, t, &y, h, &ctx, default_guess(), &mut nfev);
             }
@@ -681,7 +762,12 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             };
             prev_dense = Some(step.clone());
             let t_old = t;
-            let window = StepWindow { t_old, tn: t_new, ynew: &y_new, dir };
+            let window = StepWindow {
+                t_old,
+                tn: t_new,
+                ynew: &y_new,
+                dir,
+            };
             if process_events(events, &mut gprev, &mut sol, step, &window) {
                 sol.orders.push(2 * s - 1);
                 sol.nfev = nfev;
@@ -766,7 +852,11 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
         let t = t0 + s as f64 * h;
         f(t, &y, &mut f0);
         let jac = Jac::Dense(fd_jacobian_dense(&f, t, &y, &f0));
-        let setup = SolverSetup { n, kind: SolverKind::Dense, band: (0, 0) };
+        let setup = SolverSetup {
+            n,
+            kind: SolverKind::Dense,
+            band: (0, 0),
+        };
         let (lu, _) = radau_factors(&tab, None, &jac, h, setup).ok_or(OdeError::SolveFailed)?;
         let mut z0 = vec![0.0; stages * n];
         for i in 0..stages {
@@ -779,11 +869,18 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
             t,
             &y,
             h,
-            &NewtonCtx { tab: &tab, mass: None, lu: &lu, scale: &scale, tol: 1e-13, maxit: 60 },
+            &NewtonCtx {
+                tab: &tab,
+                mass: None,
+                lu: &lu,
+                scale: &scale,
+                tol: 1e-13,
+                maxit: 60,
+            },
             z0,
             &mut nfev,
         )
-            .ok_or(OdeError::SolveFailed)?;
+        .ok_or(OdeError::SolveFailed)?;
         for q in 0..n {
             y[q] += z[(stages - 1) * n + q];
         }
@@ -818,7 +915,10 @@ fn bdf_consts() -> ([f64; 6], [f64; 6], [f64; 7]) {
     (gamma, alpha, errc)
 }
 
-fn bdf_r(order: usize, factor: f64) -> Vec<Vec<f64>> {
+fn bdf_r(
+    order: usize,
+    factor: f64,
+) -> Vec<Vec<f64>> {
     let m = order + 1;
     let mut r = vec![vec![0.0; m]; m];
     for j in 0..m {
@@ -837,7 +937,11 @@ fn bdf_r(order: usize, factor: f64) -> Vec<Vec<f64>> {
     r
 }
 
-fn bdf_change_d(d: &mut [Vec<f64>], order: usize, factor: f64) {
+fn bdf_change_d(
+    d: &mut [Vec<f64>],
+    order: usize,
+    factor: f64,
+) {
     let m = order + 1;
     let r = bdf_r(order, factor);
     let u = bdf_r(order, 1.0);
@@ -870,7 +974,10 @@ pub fn bdf<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     max_order: usize,
 ) -> Result<OdeSolution, OdeError> {
-    let bo = BdfOptions { max_order, ..BdfOptions::default() };
+    let bo = BdfOptions {
+        max_order,
+        ..BdfOptions::default()
+    };
     bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
@@ -899,7 +1006,11 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    let bo = BdfOptions { jac: Some(&jac), max_order, ..BdfOptions::default() };
+    let bo = BdfOptions {
+        jac: Some(&jac),
+        max_order,
+        ..BdfOptions::default()
+    };
     bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
@@ -918,6 +1029,12 @@ pub struct BdfOptions<'a> {
     pub max_order: usize,
     /// Event functions.
     pub events: &'a [Event<'a>],
+    /// Dense mass matrix `M` of `M y' = f(t, y)` (`None` is the identity).
+    /// `M` may be singular: index-1 differential-algebraic systems with
+    /// consistent initial values.
+    pub mass: Option<&'a Mat>,
+    /// Sparse mass matrix (used when `mass` is `None`).
+    pub sparse_mass: Option<&'a Csr>,
 }
 
 impl Default for BdfOptions<'_> {
@@ -928,8 +1045,46 @@ impl Default for BdfOptions<'_> {
             structure: JacStructure::Dense,
             max_order: BDF_MAX_ORDER,
             events: &[],
+            mass: None,
+            sparse_mass: None,
         }
     }
+}
+
+/// The derivative `y'(t0)` that starts the backward-difference array of a
+/// system `M y' = f0`: `M^-1 f0` for an invertible dense `M`; otherwise the
+/// differential variables whose row of `M` is a single diagonal entry get
+/// `f_q / M_qq` and the algebraic ones zero.
+fn initial_derivative(
+    mass: Mass<'_>,
+    f0: &[f64],
+) -> Vec<f64> {
+    let n = f0.len();
+    if let Mass::Dense(m) = mass
+        && let Ok(lu) = dense::lu_factor(m)
+    {
+        return lu.solve(f0);
+    }
+    let mut diagonal = vec![0.0; n];
+    let mut off_diagonal = vec![false; n];
+    mass.for_each(|p, q, v| {
+        if v != 0.0 {
+            if p == q {
+                diagonal[p] = v;
+            } else {
+                off_diagonal[p] = true;
+            }
+        }
+    });
+    (0..n)
+        .map(|q| {
+            if diagonal[q] != 0.0 && !off_diagonal[q] {
+                f0[q] / diagonal[q]
+            } else {
+                0.0
+            }
+        })
+        .collect()
 }
 
 /// Variable-order BDF with dense output, event detection and structured
@@ -972,7 +1127,12 @@ pub fn bdf_ex<F: Fn(f64, &[f64], &mut [f64])>(
     max_order: usize,
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
-    let bo = BdfOptions { jac, max_order, events, ..BdfOptions::default() };
+    let bo = BdfOptions {
+        jac,
+        max_order,
+        events,
+        ..BdfOptions::default()
+    };
     bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
@@ -990,8 +1150,22 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         return Err(OdeError::Invalid);
     }
     let max_order = max_order.min(BDF_MAX_ORDER);
-    let provider = JacobianProvider::new(n, bo.structure, bo.jac, bo.sparse_jac)
-        .ok_or(OdeError::Invalid)?;
+    let mass: Option<Mass<'_>> = bo
+        .mass
+        .map(Mass::Dense)
+        .or_else(|| bo.sparse_mass.map(Mass::Sparse));
+    if let Some(m) = mass
+        && (m.rows() != n || m.cols() != n)
+    {
+        return Err(OdeError::Invalid);
+    }
+    let provider =
+        JacobianProvider::new(n, bo.structure, bo.jac, bo.sparse_jac).ok_or(OdeError::Invalid)?;
+    let mut band = provider.band;
+    if let Some(m) = mass {
+        let (ml, mu) = m.band();
+        band = (band.0.max(ml), band.1.max(mu));
+    }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let (gamma, alpha, errc) = bdf_consts();
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
@@ -1002,15 +1176,18 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
     let mut nfev = 1;
-    let mut h_abs = opts
-        .h0
-        .unwrap_or_else(|| initial_step(f, t0, y0, &f0, dir, 1.0, Tol { rtol, atol }))
-        .abs()
-        .min(opts.hmax);
+    let mut h_abs = match (opts.h0, mass) {
+        | (Some(h), _) => h,
+        | (None, None) => initial_step(f, t0, y0, &f0, dir, 1.0, Tol { rtol, atol }),
+        | (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
+    }
+    .abs()
+    .min(opts.hmax);
+    let ydot0 = mass.map_or_else(|| f0.clone(), |m| initial_derivative(m, &f0));
     let mut d = vec![vec![0.0; n]; BDF_MAX_ORDER + 3];
     d[0].clone_from(&y);
     for q in 0..n {
-        d[1][q] = f0[q] * h_abs * dir;
+        d[1][q] = ydot0[q] * h_abs * dir;
     }
     let mut jac = provider.eval(f, t, &y, &f0, &mut nfev);
     let mut order = 1usize;
@@ -1066,10 +1243,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             let mut n_iter = 0;
             while !converged {
                 if lu.is_none() {
-                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, None, &jac);
-                    match Factor::from_triplets(n, 1, &trip, provider.kind, provider.band) {
-                        Some(l) => lu = Some(l),
-                        None => break,
+                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, mass, &jac);
+                    match Factor::from_triplets(n, 1, &trip, provider.kind, band) {
+                        | Some(l) => lu = Some(l),
+                        | None => break,
                     }
                 }
                 let Some(l) = lu.as_ref() else { break };
@@ -1086,14 +1263,18 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     if fv.iter().any(|v| !v.is_finite()) {
                         break;
                     }
-                    let rhs: Vec<f64> = (0..n).map(|q| cc * fv[q] - psi[q] - dd[q]).collect();
+                    // `c f - M (psi + d)`.
+                    let shifted: Vec<f64> = (0..n).map(|q| psi[q] + dd[q]).collect();
+                    let m_shifted = mass.map_or_else(|| shifted.clone(), |m| m.matvec(&shifted));
+                    let rhs: Vec<f64> = (0..n).map(|q| cc * fv[q] - m_shifted[q]).collect();
                     let dy = l.solve(&rhs);
                     let dn = rms(&dy, &sc);
                     let rate = dn_old.map(|o| dn / o);
                     if let Some(r) = rate
-                        && (r >= 1.0 || r.powi((MAXIT - k) as i32) / (1.0 - r) * dn > newton_tol) {
-                            break;
-                        }
+                        && (r >= 1.0 || r.powi((MAXIT - k) as i32) / (1.0 - r) * dn > newton_tol)
+                    {
+                        break;
+                    }
                     for q in 0..n {
                         yy[q] += dy[q];
                         dd[q] += dy[q];
@@ -1164,7 +1345,18 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             y0: y_old,
             kind: DenseKind::Backward(d[..=order].to_vec()),
         };
-        if process_events(events, &mut gprev, &mut sol, step, &StepWindow { t_old, tn: t, ynew: &y, dir }) {
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step,
+            &StepWindow {
+                t_old,
+                tn: t,
+                ynew: &y,
+                dir,
+            },
+        ) {
             sol.nfev = nfev;
             return Ok(sol);
         }
@@ -1207,4 +1399,3 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     sol.nfev = nfev;
     Ok(sol)
 }
-

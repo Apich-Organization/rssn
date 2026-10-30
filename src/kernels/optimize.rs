@@ -409,8 +409,7 @@ impl EquationOptimizer {
         options: &OptimizationConfig,
     ) -> AutoSolveResult<C, P, G, F, Error>
     where
-        C: CostFunction<Param = P, Output = F>
-            + Gradient<Param = P, Gradient = G>,
+        C: CostFunction<Param = P, Output = F> + Gradient<Param = P, Gradient = G>,
         P: ArgminDot<P, F>
             + ArgminScaledAdd<P, F, P>
             + ArgminSub<P, P>
@@ -551,13 +550,14 @@ impl ResultAnalyzer {
         );
 
         if let Some(grad_counts) = func_counts.get("gradient")
-            && *grad_counts > 0 {
-                println!(
-                    "  Gradient \
+            && *grad_counts > 0
+        {
+            println!(
+                "  Gradient \
                      evaluations: \
                      {grad_counts}"
-                );
-            }
+            );
+        }
     }
 
     /// Analyzes the convergence state and returns a summary string.

@@ -28,6 +28,7 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::V;
 use super::big;
 use super::def;
 use super::finite_field::Poly;
@@ -46,9 +47,6 @@ use super::modulo;
 use super::pow;
 use super::prod;
 use super::sum;
-use super::V;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -61,6 +59,8 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::number_theory::is_prime;
 use crate::rules::poly::best;
 use crate::rules::poly::repr::Gens;
@@ -100,7 +100,12 @@ fn derivative(
     p: &BigInt,
 ) -> Poly {
     let n = f.len();
-    norm((0..n.saturating_sub(1)).map(|j| &f[j] * BigInt::from(n - 1 - j)).collect(), p)
+    norm(
+        (0..n.saturating_sub(1))
+            .map(|j| &f[j] * BigInt::from(n - 1 - j))
+            .collect(),
+        p,
+    )
 }
 
 /// The monic gcd.
@@ -151,7 +156,10 @@ fn p_th_root(
     p: usize,
 ) -> Poly {
     let degree = c.len() - 1;
-    (0..=degree / p).rev().map(|k| c[degree - k * p].clone()).collect()
+    (0..=degree / p)
+        .rev()
+        .map(|k| c[degree - k * p].clone())
+        .collect()
 }
 
 /// Yun's squarefree decomposition of a monic polynomial: pairs (factor,
@@ -230,7 +238,10 @@ struct Rng(u64);
 
 impl Rng {
     const fn word(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         let mut z = self.0;
         z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
@@ -351,7 +362,12 @@ fn factor(
             }
         }
     }
-    out.sort_by(|a, b| a.0.len().cmp(&b.0.len()).then_with(|| a.0.cmp(&b.0)).then(a.1.cmp(&b.1)));
+    out.sort_by(|a, b| {
+        a.0.len()
+            .cmp(&b.0.len())
+            .then_with(|| a.0.cmp(&b.0))
+            .then(a.1.cmp(&b.1))
+    });
     Some((lead, out))
 }
 
@@ -445,7 +461,11 @@ fn berlekamp_split(
     let mut system = vec![vec![BigInt::zero(); n]; n];
     for i in 0..n {
         for j in 0..n {
-            let delta = if i == j { BigInt::one() } else { BigInt::zero() };
+            let delta = if i == j {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            };
             system[j][i] = modulo(&(&q[i][j] - delta), p);
         }
     }
@@ -496,12 +516,21 @@ fn factorisation_value(
     factors: Vec<(Poly, usize)>,
 ) -> V {
     let mut items = vec![V::Int(lead)];
-    items.extend(factors.into_iter().map(|(g, m)| V::List(vec![poly_value(g), V::uint(m)])));
+    items.extend(
+        factors
+            .into_iter()
+            .map(|(g, m)| V::List(vec![poly_value(g), V::uint(m)])),
+    );
     V::List(items)
 }
 
 fn pairs_value(pairs: Vec<(Poly, usize)>) -> V {
-    V::List(pairs.into_iter().map(|(g, m)| V::List(vec![poly_value(g), V::uint(m)])).collect())
+    V::List(
+        pairs
+            .into_iter()
+            .map(|(g, m)| V::List(vec![poly_value(g), V::uint(m)]))
+            .collect(),
+    )
 }
 
 fn read_prime_poly(
@@ -588,15 +617,21 @@ fn gfp_edf_op(
 ) -> Option<V> {
     let [f, d, p] = a else { return None };
     let (f, p) = read_prime_poly(cx, *f, *p)?;
-    let d = usize::try_from(big(cx.graph, *d)?).ok().filter(|&d| d >= 1)?;
+    let d = usize::try_from(big(cx.graph, *d)?)
+        .ok()
+        .filter(|&d| d >= 1)?;
     let f = monic(&f, &p)?;
-    if is_constant(&f) || (f.len() - 1) % d != 0 || !is_constant(&gcd(&f, &derivative(&f, &p), &p)?) {
+    if is_constant(&f) || (f.len() - 1) % d != 0 || !is_constant(&gcd(&f, &derivative(&f, &p), &p)?)
+    {
         return None;
     }
     let mut parts = Vec::new();
     edf(&f, d, &p, &mut Rng(0x5eed_1234_abcd_9876), &mut parts)?;
     // Verify the premise: every part must be irreducible of degree d.
-    if parts.iter().any(|q| q.len() - 1 != d || is_irreducible(q, &p) != Some(true)) {
+    if parts
+        .iter()
+        .any(|q| q.len() - 1 != d || is_irreducible(q, &p) != Some(true))
+    {
         return None;
     }
     parts.sort_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
@@ -721,7 +756,9 @@ impl Kernel for ModRequest {
             return Outcome::Pass;
         };
         if self.request == Request::IsIrreducibleMod {
-            return is_irreducible(&poly, &p).map_or(Outcome::Pass, |b| Outcome::Equal(V::Bool(b).build(cx.graph)));
+            return is_irreducible(&poly, &p).map_or(Outcome::Pass, |b| {
+                Outcome::Equal(V::Bool(b).build(cx.graph))
+            });
         }
         let Some((lead, factors)) = factor(&poly, &p, split_cantor_zassenhaus) else {
             return Outcome::Pass;
@@ -757,9 +794,18 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "gfp_edf", Arity::Fixed(3), gfp_edf_op)?;
     def(i, "gfp_factor", Arity::Fixed(2), gfp_factor_op)?;
     def(i, "gfp_berlekamp", Arity::Fixed(2), gfp_berlekamp_op)?;
-    for (name, request) in [("factor_mod", Request::FactorMod), ("is_irreducible_mod", Request::IsIrreducibleMod)] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("discrete/{name}"), Tier::Reduce, ModRequest { op, request });
+    for (name, request) in [
+        ("factor_mod", Request::FactorMod),
+        ("is_irreducible_mod", Request::IsIrreducibleMod),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(3))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("discrete/{name}"),
+            Tier::Reduce,
+            ModRequest { op, request },
+        );
     }
     Ok(())
 }
@@ -777,7 +823,10 @@ mod tests {
     }
 
     fn parse(text: &str) -> Tree {
-        fn go(chars: &[char], at: &mut usize) -> Tree {
+        fn go(
+            chars: &[char],
+            at: &mut usize,
+        ) -> Tree {
             let rest: String = chars[*at..].iter().collect();
             if rest.starts_with("list(") {
                 *at += 5;
@@ -798,20 +847,41 @@ mod tests {
                 *at += 1;
             }
             let number: String = chars[start..*at].iter().collect();
-            Tree::Num(number.parse().unwrap_or_else(|_| panic!("cannot parse `{number}`")))
+            Tree::Num(
+                number
+                    .parse()
+                    .unwrap_or_else(|_| panic!("cannot parse `{number}`")),
+            )
         }
         go(&text.chars().collect::<Vec<_>>(), &mut 0)
     }
 
     fn coefficients(tree: &Tree) -> Vec<i64> {
         match tree {
-            | Tree::List(items) => items.iter().map(|t| if let Tree::Num(n) = t { *n } else { panic!("nested") }).collect(),
+            | Tree::List(items) => {
+                items
+                    .iter()
+                    .map(|t| {
+                        if let Tree::Num(n) = t {
+                            *n
+                        } else {
+                            panic!("nested")
+                        }
+                    })
+                    .collect()
+            },
             | Tree::Num(_) => panic!("not a polynomial"),
         }
     }
 
     fn poly(c: &[i64]) -> String {
-        format!("list({})", c.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+        format!(
+            "list({})",
+            c.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     fn mul(
@@ -819,18 +889,30 @@ mod tests {
         g: &[i64],
         p: i64,
     ) -> Vec<i64> {
-        coefficients(&parse(&s(&format!("gfp_mul({}, {}, {p})", poly(f), poly(g)))))
+        coefficients(&parse(&s(&format!(
+            "gfp_mul({}, {}, {p})",
+            poly(f),
+            poly(g)
+        ))))
     }
 
     /// `(lead, [(factor, multiplicity)])` from a `gfp_factor` answer.
     fn factorisation(text: &str) -> (i64, Vec<(Vec<i64>, usize)>) {
-        let Tree::List(items) = parse(text) else { panic!("{text}") };
-        let Tree::Num(lead) = items[0] else { panic!("{text}") };
+        let Tree::List(items) = parse(text) else {
+            panic!("{text}")
+        };
+        let Tree::Num(lead) = items[0] else {
+            panic!("{text}")
+        };
         let factors = items[1..]
             .iter()
             .map(|t| {
-                let Tree::List(pair) = t else { panic!("{text}") };
-                let Tree::Num(m) = pair[1] else { panic!("{text}") };
+                let Tree::List(pair) = t else {
+                    panic!("{text}")
+                };
+                let Tree::Num(m) = pair[1] else {
+                    panic!("{text}")
+                };
                 (coefficients(&pair[0]), usize::try_from(m).unwrap_or(0))
             })
             .collect();
@@ -898,16 +980,32 @@ mod tests {
     fn squarefree_decomposition() {
         // (x + 1)^2 (x^2 + x + 1) over GF(2)
         let f = mul(&mul(&[1, 1], &[1, 1], 2), &[1, 1, 1], 2);
-        assert_eq!(s(&format!("gfp_squarefree({}, 2)", poly(&f))), "list(list(list(1, 1, 1), 1), list(list(1, 1), 2))");
+        assert_eq!(
+            s(&format!("gfp_squarefree({}, 2)", poly(&f))),
+            "list(list(list(1, 1, 1), 1), list(list(1, 1), 2))"
+        );
         // x^p - x^0 in characteristic p: x^3 + 2 = (x + 2)^3 over GF(3)
-        assert_eq!(s("gfp_squarefree(list(1, 0, 0, 2), 3)"), "list(list(list(1, 2), 3))");
+        assert_eq!(
+            s("gfp_squarefree(list(1, 0, 0, 2), 3)"),
+            "list(list(list(1, 2), 3))"
+        );
         // x^6 + 1 = (x^2 + 1)^3 over GF(3)
-        assert_eq!(s("gfp_squarefree(list(1, 0, 0, 0, 0, 0, 1), 3)"), "list(list(list(1, 0, 1), 3))");
+        assert_eq!(
+            s("gfp_squarefree(list(1, 0, 0, 0, 0, 0, 1), 3)"),
+            "list(list(list(1, 0, 1), 3))"
+        );
         // squarefree input is its own decomposition (made monic)
-        assert_eq!(s("gfp_squarefree(list(2, 0, 2), 5)"), "list(list(list(1, 0, 1), 1))");
+        assert_eq!(
+            s("gfp_squarefree(list(2, 0, 2), 5)"),
+            "list(list(list(1, 0, 1), 1))"
+        );
         assert_eq!(s("gfp_squarefree(list(3), 5)"), "list()");
         // mixed multiplicities 1, 2, 3 and p-th powers
-        let f = mul(&mul(&[1, 2], &mul(&[1, 3], &[1, 3], 7), 7), &mul(&[1, 5], &mul(&[1, 5], &[1, 5], 7), 7), 7);
+        let f = mul(
+            &mul(&[1, 2], &mul(&[1, 3], &[1, 3], 7), 7),
+            &mul(&[1, 5], &mul(&[1, 5], &[1, 5], 7), 7),
+            7,
+        );
         assert_eq!(
             s(&format!("gfp_squarefree({}, 7)", poly(&f))),
             "list(list(list(1, 2), 1), list(list(1, 3), 2), list(list(1, 5), 3))"
@@ -918,11 +1016,20 @@ mod tests {
     fn distinct_degree_factorisation() {
         // x^8 - x = x^8 + x over GF(2): all irreducibles of degree 1 and 3
         // x (x+1) (x^3 + x + 1)(x^3 + x^2 + 1)
-        assert_eq!(s("gfp_ddf(list(1, 0, 0, 0, 0, 0, 0, 1, 0), 2)"), "list(list(list(1, 1, 0), 1), list(list(1, 1, 1, 1, 1, 1, 1), 3))");
+        assert_eq!(
+            s("gfp_ddf(list(1, 0, 0, 0, 0, 0, 0, 1, 0), 2)"),
+            "list(list(list(1, 1, 0), 1), list(list(1, 1, 1, 1, 1, 1, 1), 3))"
+        );
         // x^2 + 1 over GF(5) = (x + 2)(x + 3): one class of degree one
-        assert_eq!(s("gfp_ddf(list(1, 0, 1), 5)"), "list(list(list(1, 0, 1), 1))");
+        assert_eq!(
+            s("gfp_ddf(list(1, 0, 1), 5)"),
+            "list(list(list(1, 0, 1), 1))"
+        );
         // x^2 + 1 over GF(3) is irreducible
-        assert_eq!(s("gfp_ddf(list(1, 0, 1), 3)"), "list(list(list(1, 0, 1), 2))");
+        assert_eq!(
+            s("gfp_ddf(list(1, 0, 1), 3)"),
+            "list(list(list(1, 0, 1), 2))"
+        );
         // not squarefree: stays unreduced
         assert_eq!(s("gfp_ddf(list(1, 2, 1), 5)"), "gfp_ddf(list(1, 2, 1), 5)");
     }
@@ -930,31 +1037,60 @@ mod tests {
     #[test]
     fn equal_degree_factorisation() {
         // the two cubics of GF(2)
-        assert_eq!(s("gfp_edf(list(1, 1, 1, 1, 1, 1, 1), 3, 2)"), "list(list(1, 0, 1, 1), list(1, 1, 0, 1))");
+        assert_eq!(
+            s("gfp_edf(list(1, 1, 1, 1, 1, 1, 1), 3, 2)"),
+            "list(list(1, 0, 1, 1), list(1, 1, 0, 1))"
+        );
         // x^2 + 1 over GF(5): (x + 2)(x + 3)
-        assert_eq!(s("gfp_edf(list(1, 0, 1), 1, 5)"), "list(list(1, 2), list(1, 3))");
+        assert_eq!(
+            s("gfp_edf(list(1, 0, 1), 1, 5)"),
+            "list(list(1, 2), list(1, 3))"
+        );
         // wrong premise: x^2 + 1 over GF(3) has no factor of degree 1
-        assert_eq!(s("gfp_edf(list(1, 0, 1), 1, 3)"), "gfp_edf(list(1, 0, 1), 1, 3)");
+        assert_eq!(
+            s("gfp_edf(list(1, 0, 1), 1, 3)"),
+            "gfp_edf(list(1, 0, 1), 1, 3)"
+        );
         // large prime: (x - 3)(x - 5)(x - 11) mod 1000003
         let p = 1_000_003_i64;
         let f = mul(&mul(&[1, p - 3], &[1, p - 5], p), &[1, p - 11], p);
         assert_eq!(
             s(&format!("gfp_edf({}, 1, {p})", poly(&f))),
-            format!("list(list(1, {}), list(1, {}), list(1, {}))", p - 11, p - 5, p - 3)
+            format!(
+                "list(list(1, {}), list(1, {}), list(1, {}))",
+                p - 11,
+                p - 5,
+                p - 3
+            )
         );
     }
 
     #[test]
     fn complete_factorisation() {
-        assert_eq!(s("gfp_factor(list(1, 0, 0, 0, 1), 2)"), "list(1, list(list(1, 1), 4))");
-        assert_eq!(s("gfp_factor(list(3, 0, 3), 5)"), "list(3, list(list(1, 2), 1), list(list(1, 3), 1))");
+        assert_eq!(
+            s("gfp_factor(list(1, 0, 0, 0, 1), 2)"),
+            "list(1, list(list(1, 1), 4))"
+        );
+        assert_eq!(
+            s("gfp_factor(list(3, 0, 3), 5)"),
+            "list(3, list(list(1, 2), 1), list(list(1, 3), 1))"
+        );
         assert_eq!(s("gfp_factor(list(4), 7)"), "list(4)");
         assert_eq!(s("gfp_factor(list(), 7)"), "gfp_factor(list(), 7)");
         // composite modulus is rejected
-        assert_eq!(s("gfp_factor(list(1, 0, 1), 4)"), "gfp_factor(list(1, 0, 1), 4)");
+        assert_eq!(
+            s("gfp_factor(list(1, 0, 1), 4)"),
+            "gfp_factor(list(1, 0, 1), 4)"
+        );
         // x^4 + 1 over GF(3) = (x^2 + x + 2)(x^2 + 2x + 2)
-        assert_eq!(s("gfp_factor(list(1, 0, 0, 0, 1), 3)"), "list(1, list(list(1, 1, 2), 1), list(list(1, 2, 2), 1))");
-        assert_eq!(s("gfp_berlekamp(list(1, 0, 0, 0, 1), 3)"), "list(1, list(list(1, 1, 2), 1), list(list(1, 2, 2), 1))");
+        assert_eq!(
+            s("gfp_factor(list(1, 0, 0, 0, 1), 3)"),
+            "list(1, list(list(1, 1, 2), 1), list(list(1, 2, 2), 1))"
+        );
+        assert_eq!(
+            s("gfp_berlekamp(list(1, 0, 0, 0, 1), 3)"),
+            "list(1, list(list(1, 1, 2), 1), list(list(1, 2, 2), 1))"
+        );
         // x^8 - 1 over GF(17) splits completely into 8 linear factors
         let (lead, factors) = factorisation(&s("gfp_factor(list(1, 0, 0, 0, 0, 0, 0, 0, 16), 17)"));
         assert_eq!((lead, factors.len()), (1, 8));
@@ -969,7 +1105,9 @@ mod tests {
         for p in [2_i64, 3, 5, 7, 11] {
             for _ in 0..6 {
                 let degree = 2 + usize::try_from(rng.next(9)).unwrap_or(0);
-                let mut f: Vec<i64> = (0..=degree).map(|_| i64::try_from(rng.next(u64::try_from(p).unwrap_or(2))).unwrap_or(0)).collect();
+                let mut f: Vec<i64> = (0..=degree)
+                    .map(|_| i64::try_from(rng.next(u64::try_from(p).unwrap_or(2))).unwrap_or(0))
+                    .collect();
                 if f[0] == 0 {
                     f[0] = 1;
                 }
@@ -977,10 +1115,14 @@ mod tests {
                 let (lead, factors) = factorisation(&s(&format!("gfp_factor({}, {p})", poly(&f))));
                 assert_eq!(rebuild(lead, &factors, p), want, "{f:?} mod {p}");
                 for (g, _) in &factors {
-                    assert!(brute_irreducible(g, p), "{g:?} reducible mod {p} (from {f:?})");
+                    assert!(
+                        brute_irreducible(g, p),
+                        "{g:?} reducible mod {p} (from {f:?})"
+                    );
                     assert_eq!(s(&format!("gfp_isirreducible({}, {p})", poly(g))), "true");
                 }
-                let (lead2, factors2) = factorisation(&s(&format!("gfp_berlekamp({}, {p})", poly(&f))));
+                let (lead2, factors2) =
+                    factorisation(&s(&format!("gfp_berlekamp({}, {p})", poly(&f))));
                 assert_eq!((lead, &factors), (lead2, &factors2), "{f:?} mod {p}");
             }
         }
@@ -1001,14 +1143,21 @@ mod tests {
                     }
                     tail.reverse();
                     f.extend(tail);
-                    assert_eq!(s(&format!("gfp_isirreducible({}, {p})", poly(&f))), brute_irreducible(&f, p).to_string(), "{f:?} mod {p}");
+                    assert_eq!(
+                        s(&format!("gfp_isirreducible({}, {p})", poly(&f))),
+                        brute_irreducible(&f, p).to_string(),
+                        "{f:?} mod {p}"
+                    );
                 }
             }
         }
         assert_eq!(s("gfp_isirreducible(list(3), 5)"), "false");
         assert_eq!(s("gfp_isirreducible(list(2, 1), 5)"), "true");
         // a degree-12 irreducible over GF(2): x^12 + x^6 + x^4 + x + 1
-        assert_eq!(s("gfp_isirreducible(list(1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1), 2)"), "true");
+        assert_eq!(
+            s("gfp_isirreducible(list(1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1), 2)"),
+            "true"
+        );
     }
 
     #[test]
@@ -1017,17 +1166,35 @@ mod tests {
         assert_eq!(s("gfp_powmod(list(1, 0), 10, list(1, 0, 1), 5)"), "list(4)");
         assert_eq!(s("gfp_powmod(list(1, 1), 0, list(1, 0, 1), 5)"), "list(1)");
         // Frobenius: (x + 1)^7 = x^7 + 1 over GF(7)
-        assert_eq!(s("gfp_powmod(list(1, 1), 7, list(1, 0, 0, 0, 0, 0, 0, 0, 0, 1), 7)"), "list(1, 0, 0, 0, 0, 0, 0, 1)");
-        assert_eq!(s("gfp_powmod(list(1, 1), -1, list(1, 0, 1), 5)"), "gfp_powmod(list(1, 1), -1, list(1, 0, 1), 5)");
+        assert_eq!(
+            s("gfp_powmod(list(1, 1), 7, list(1, 0, 0, 0, 0, 0, 0, 0, 0, 1), 7)"),
+            "list(1, 0, 0, 0, 0, 0, 0, 1)"
+        );
+        assert_eq!(
+            s("gfp_powmod(list(1, 1), -1, list(1, 0, 1), 5)"),
+            "gfp_powmod(list(1, 1), -1, list(1, 0, 1), 5)"
+        );
         // x (x + 1) = x^2 + x = 1 + x - 1... check f * f^-1 = 1 mod m
         let m = "list(1, 0, 1, 1)"; // x^3 + x + 1 over GF(2): a field
         for f in ["list(1, 0)", "list(1, 1)", "list(1, 0, 1)", "list(1, 1, 1)"] {
             let inv = s(&format!("gfp_invmod({f}, {m}, 2)"));
             let product = s(&format!("gfp_mul({f}, {inv}, 2)"));
-            assert_eq!(s(&format!("gfp_divmod({product}, {m}, 2)")).rsplit_once(", ").map(|(_, r)| r.to_string()), Some("list(1))".to_string()), "{f}");
+            assert_eq!(
+                s(&format!("gfp_divmod({product}, {m}, 2)"))
+                    .rsplit_once(", ")
+                    .map(|(_, r)| r.to_string()),
+                Some("list(1))".to_string()),
+                "{f}"
+            );
         }
-        assert_eq!(s("gfp_invmod(list(1, 1), list(1, 0, 1), 2)"), "gfp_invmod(list(1, 1), list(1, 0, 1), 2)");
-        assert_eq!(s("gfp_derivative(list(1, 0, 0, 5, 3), 7)"), "list(4, 0, 0, 5)");
+        assert_eq!(
+            s("gfp_invmod(list(1, 1), list(1, 0, 1), 2)"),
+            "gfp_invmod(list(1, 1), list(1, 0, 1), 2)"
+        );
+        assert_eq!(
+            s("gfp_derivative(list(1, 0, 0, 5, 3), 7)"),
+            "list(4, 0, 0, 5)"
+        );
         assert_eq!(s("gfp_derivative(list(1, 0, 0), 2)"), "list()");
         assert_eq!(s("gfp_monic(list(2, 3), 5)"), "list(1, 4)");
     }
@@ -1044,14 +1211,18 @@ mod tests {
         // rational coefficients with denominators prime to p
         assert_eq!(s("factor_mod(x^2/2 + 1/2, x, 5)"), "3*(x + 2)*(x + 3)");
         // the list form
-        assert_eq!(s("factor_mod(list(1, 0, 0, 0, 1), x, 2)"), "list(1, list(list(1, 1), 4))");
+        assert_eq!(
+            s("factor_mod(list(1, 0, 0, 0, 1), x, 2)"),
+            "list(1, list(list(1, 1), 4))"
+        );
         // irreducibility
         assert_eq!(s("is_irreducible_mod(x^2 + x + 1, x, 2)"), "true");
         assert_eq!(s("is_irreducible_mod(x^2 + 1, x, 2)"), "false");
         assert_eq!(s("is_irreducible_mod(list(1, 1, 1), x, 2)"), "true");
         // other variables or non-prime moduli stay unreduced
         for src in ["factor_mod(x^2 + y, x, 5)", "factor_mod(x^2 + 1, x, 6)"] {
-            let (text, reduced) = crate::rules::testing::reduce_with(&[crate::rules::discrete::discrete()], src, &[]);
+            let (text, reduced) =
+                crate::rules::testing::reduce_with(&[crate::rules::discrete::discrete()], src, &[]);
             assert_eq!((text.as_str(), reduced), (src, false));
         }
     }

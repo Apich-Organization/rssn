@@ -40,6 +40,7 @@ use crate::rules::calculus::derivative;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
+use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 use crate::rules::solve::solve_for;
@@ -67,7 +68,10 @@ fn decompose(
     let jet = |index: &Vec<u32>| p.jets.iter().find(|(i, _)| i == index).map(|(_, n)| *n);
     let (t_node, x_node) = (jet(&u_t)?, jet(&u_x)?);
     let xx_node = jet(&u_xx);
-    if p.jets.iter().any(|(i, _)| *i != u_t && *i != u_x && *i != u_xx && i.iter().any(|&d| d != 0)) {
+    if p.jets
+        .iter()
+        .any(|(i, _)| *i != u_t && *i != u_x && *i != u_xx && i.iter().any(|&d| d != 0))
+    {
         return None;
     }
     let a = derivative_by_node(cx, p.residual, t_node)?;
@@ -78,7 +82,12 @@ fn decompose(
     };
     let u_symbol = cx.graph.symbol_of(p.function)?;
     let free_of_u = |cx: &Cx<'_>, n: NodeId| !cx.graph.depends_on(cx.graph.find(n), u_symbol);
-    if cx.is_zero(a) || !p.constant(cx.graph, a) || !free_of_u(cx, a) || !p.constant(cx.graph, c) || !free_of_u(cx, c) {
+    if cx.is_zero(a)
+        || !p.constant(cx.graph, a)
+        || !free_of_u(cx, a)
+        || !p.constant(cx.graph, c)
+        || !free_of_u(cx, c)
+    {
         return None;
     }
     // The residual is exactly A u_t + B u_x + C u_xx.
@@ -100,7 +109,12 @@ fn decompose(
         let q = neg(cx.graph, q);
         Some(cx.simplify(q))
     };
-    Some(Law { speed, viscosity, x: p.vars[space], t: p.vars[time] })
+    Some(Law {
+        speed,
+        viscosity,
+        x: p.vars[space],
+        t: p.vars[time],
+    })
 }
 
 /// The nonlinear solvers of this module.
@@ -138,7 +152,8 @@ fn hopf_cole(
     let u_symbol = cx.graph.symbol_of(p.function)?;
     // speed = a u + b.
     let a = derivative_by_node(cx, law.speed, p.unknown)?;
-    if cx.graph.depends_on(cx.graph.find(a), u_symbol) || cx.is_zero(a) || !p.constant(cx.graph, a) {
+    if cx.graph.depends_on(cx.graph.find(a), u_symbol) || cx.is_zero(a) || !p.constant(cx.graph, a)
+    {
         return None;
     }
     let au = mul(cx.graph, &[a, p.unknown]);
@@ -214,6 +229,9 @@ fn riemann(
 ) -> Option<NodeId> {
     let (x, t) = (law.x, law.t);
     let steps = heavisides(cx, data);
+    if steps.len() == 2 {
+        return riemann_two_steps(cx, p, law, data, &steps);
+    }
     let [step] = steps.as_slice() else {
         return None;
     };
@@ -234,7 +252,11 @@ fn riemann(
     let low = cx.graph.replace_subterm(data, *step, zero_value);
     let high = cx.graph.replace_subterm(data, *step, one_value);
     let (low, high) = (cx.simplify(low), cx.simplify(high));
-    let (ul, ur) = if slope_value > 0.0 { (low, high) } else { (high, low) };
+    let (ul, ur) = if slope_value > 0.0 {
+        (low, high)
+    } else {
+        (high, low)
+    };
     let (vl, vr) = (exact_value(cx, ul)?, exact_value(cx, ur)?);
     if (vl - vr).abs() < 1e-14 {
         return Some(ul);
@@ -284,7 +306,10 @@ fn riemann(
         return Some(cx.simplify(u));
     }
     // Rarefaction fan: f'(w) = (x - x₀)/t.
-    let (a_speed, b_speed) = (cx.graph.substitute(speed_w, w, ul), cx.graph.substitute(speed_w, w, ur));
+    let (a_speed, b_speed) = (
+        cx.graph.substitute(speed_w, w, ul),
+        cx.graph.substitute(speed_w, w, ur),
+    );
     let xi = div(cx, shifted, t);
     let equation = sub(cx.graph, speed_w, xi);
     let roots = solve_for(cx.graph, equation, w, 0)?;
@@ -296,7 +321,10 @@ fn riemann(
         sub(cx.graph, shifted, ct)
     };
     let (left_edge, right_edge) = (edge(cx, a_speed), edge(cx, b_speed));
-    let (h_left, h_right) = (call(cx, "heaviside", &[left_edge])?, call(cx, "heaviside", &[right_edge])?);
+    let (h_left, h_right) = (
+        call(cx, "heaviside", &[left_edge])?,
+        call(cx, "heaviside", &[right_edge])?,
+    );
     let one = cx.graph.int(1);
     let not_left = sub(cx.graph, one, h_left);
     let not_right = sub(cx.graph, one, h_right);
@@ -305,6 +333,252 @@ fn riemann(
     let t3 = mul(cx.graph, &[ur, h_right]);
     let u = add(cx.graph, &[t1, t2, t3]);
     Some(cx.simplify(u))
+}
+
+// ----------------------------------------------------------------------
+// Shock interactions: three constant states
+// ----------------------------------------------------------------------
+
+/// One wave of a three-state Riemann problem, as an additive contribution
+/// to the solution, with the characteristic speeds at its two edges.
+struct ThreeWave {
+    /// The added node (`0` left of the wave, the state jump across it).
+    contribution: NodeId,
+    /// Speed of the characteristic at the left edge.
+    slow: f64,
+    /// Speed of the characteristic at the right edge.
+    fast: f64,
+}
+
+/// The additive contribution of the wave that connects `u` (nodes and values
+/// for the left and right states) in the shifted variables `(x - x_j,
+/// t - t_j)`.
+///
+/// A shock contributes `(u_r - u_l) H(x - x_j - s (t - t_j))`; a rarefaction
+/// contributes its fan between the two edge characteristics
+/// `f'(u_l) (t - t_j)` and `f'(u_r) (t - t_j)`.
+fn wave_contribution(
+    cx: &mut Cx<'_>,
+    u: (NodeId, NodeId),
+    v: (f64, f64),
+    (shifted, time): (NodeId, NodeId),
+    convex: bool,
+    speed_w: NodeId,
+    w: NodeId,
+) -> Option<ThreeWave> {
+    let (ul, ur) = u;
+    let (vl, vr) = v;
+    let speed_at = |cx: &mut Cx<'_>, at: NodeId| -> Option<f64> {
+        let node = cx.graph.substitute(speed_w, w, at);
+        exact_value(cx, node)
+    };
+    let (slow_speed, fast_speed) = (speed_at(cx, ul)?, speed_at(cx, ur)?);
+    if (vl - vr).abs() < 1e-13 {
+        return Some(ThreeWave {
+            contribution: cx.graph.int(0),
+            slow: slow_speed,
+            fast: fast_speed,
+        });
+    }
+    if convex == (vl > vr) {
+        // Rankine-Hugoniot shock.
+        let flux = antiderivative(cx, speed_w, w)?;
+        let (fl, fr) = (
+            cx.graph.substitute(flux, w, ul),
+            cx.graph.substitute(flux, w, ur),
+        );
+        let jump_f = sub(cx.graph, fr, fl);
+        let jump_u = sub(cx.graph, ur, ul);
+        let speed = div(cx, jump_f, jump_u);
+        let front = {
+            let at = mul(cx.graph, &[speed, time]);
+            sub(cx.graph, shifted, at)
+        };
+        let step = call(cx, "heaviside", &[front])?;
+        let contribution = mul(cx.graph, &[jump_u, step]);
+        let value = exact_value(cx, speed)?;
+        return Some(ThreeWave {
+            contribution,
+            slow: value,
+            fast: value,
+        });
+    }
+    // Rarefaction fan f'(w) = (x - x_j)/(t - t_j).
+    let left_speed = cx.graph.substitute(speed_w, w, ul);
+    let right_speed = cx.graph.substitute(speed_w, w, ur);
+    let xi = div(cx, shifted, time);
+    let equation = sub(cx.graph, speed_w, xi);
+    let roots = solve_for(cx.graph, equation, w, 0)?;
+    let &[fan] = roots.as_slice() else {
+        return None;
+    };
+    let edge = |cx: &mut Cx<'_>, c: NodeId| {
+        let at = mul(cx.graph, &[c, time]);
+        sub(cx.graph, shifted, at)
+    };
+    let (left_edge, right_edge) = (edge(cx, left_speed), edge(cx, right_speed));
+    let (h_left, h_right) = (
+        call(cx, "heaviside", &[left_edge])?,
+        call(cx, "heaviside", &[right_edge])?,
+    );
+    let one = cx.graph.int(1);
+    let interior = sub(cx.graph, one, h_right);
+    let band = {
+        let gap = sub(cx.graph, fan, ul);
+        mul(cx.graph, &[gap, h_left, interior])
+    };
+    let jump = sub(cx.graph, ur, ul);
+    let step = mul(cx.graph, &[jump, h_right]);
+    let contribution = add(cx.graph, &[band, step]);
+    Some(ThreeWave {
+        contribution,
+        slow: exact_value(cx, left_speed)?,
+        fast: exact_value(cx, right_speed)?,
+    })
+}
+
+/// The three-state Riemann problem: the initial datum is `u_l` for
+/// `x < x₁`, `u_m` for `x₁ < x < x₂` and `u_r` for `x > x₂` (two
+/// heavisides of positive slope). The two outgoing waves interact when the
+/// right characteristic of the left wave is faster than the left
+/// characteristic of the right one; they then merge at the collision point
+/// and the solution after it is the single wave between `u_l` and `u_r`.
+#[allow(clippy::too_many_lines)]
+fn riemann_two_steps(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    law: &Law,
+    data: NodeId,
+    steps: &[NodeId],
+) -> Option<NodeId> {
+    let x = law.x;
+    let [first, second] = steps else {
+        return None;
+    };
+    let mut parsed: Vec<(f64, NodeId)> = Vec::new();
+    let zero_node = cx.graph.int(0);
+    for &step in &[*first, *second] {
+        let argument = *cx.graph.children(step).first()?;
+        let slope = derivative(cx.graph, argument, x)?;
+        let slope_value = exact_value(cx, slope)?;
+        if slope_value <= 0.0 {
+            // Only increasing jumps are supported (the data can always be
+            // written with increasing heavisides).
+            return None;
+        }
+        let at_zero = cx.graph.substitute(argument, x, zero_node);
+        let position = {
+            let q = div(cx, at_zero, slope);
+            let q = neg(cx.graph, q);
+            cx.simplify(q)
+        };
+        parsed.push((exact_value(cx, position)?, step));
+    }
+    parsed.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let (first_position, first_step) = *parsed.first()?;
+    let (second_position, second_step) = *parsed.get(1)?;
+    if (second_position - first_position).abs() < 1e-14 {
+        return None;
+    }
+    let states = |cx: &mut Cx<'_>, (left, right): (i64, i64)| -> NodeId {
+        let low = cx.graph.int(left);
+        let high = cx.graph.int(right);
+        let a = cx.graph.replace_subterm(data, first_step, low);
+        let b = cx.graph.replace_subterm(a, second_step, high);
+        cx.simplify(b)
+    };
+    let (ul, um, ur) = (states(cx, (0, 0)), states(cx, (1, 0)), states(cx, (1, 1)));
+    let (vl, vm, vr) = (
+        exact_value(cx, ul)?,
+        exact_value(cx, um)?,
+        exact_value(cx, ur)?,
+    );
+    // Convexity of the flux over the three states.
+    let (w, _) = dummy(cx, p, "w");
+    let speed_w = cx.graph.replace_subterm(law.speed, p.unknown, w);
+    let curvature = derivative(cx.graph, speed_w, w)?;
+    let w_symbol = cx.graph.symbol_of(w)?;
+    let (low, high) = (vl.min(vm).min(vr), vl.max(vm).max(vr));
+    let mut convex: Option<bool> = None;
+    let mut mixed = false;
+    for k in 0..=8_u32 {
+        let value = low + (high - low) * f64::from(k) / 8.0;
+        let mut env = crate::graph::Env::numeric(0.0);
+        env.bind(w_symbol, value);
+        let c = cx.graph.eval(curvature, &env).filter(|v| v.is_finite())?;
+        if c.abs() < 1e-12 {
+            mixed = true;
+            continue;
+        }
+        match convex {
+            | None => convex = Some(c > 0.0),
+            | Some(known) if known != (c > 0.0) => mixed = true,
+            | Some(_) => {},
+        }
+    }
+    if mixed {
+        return None;
+    }
+    let convex = convex?;
+    let shifted = |cx: &mut Cx<'_>, position: f64| {
+        let node = snapped_value(cx, position);
+        sub(cx.graph, x, node)
+    };
+    let (first_shifted, second_shifted) =
+        (shifted(cx, first_position), shifted(cx, second_position));
+    let left_wave = wave_contribution(
+        cx,
+        (ul, um),
+        (vl, vm),
+        (first_shifted, law.t),
+        convex,
+        speed_w,
+        w,
+    )?;
+    let right_wave = wave_contribution(
+        cx,
+        (um, ur),
+        (vm, vr),
+        (second_shifted, law.t),
+        convex,
+        speed_w,
+        w,
+    )?;
+    let base = add(
+        cx.graph,
+        &[ul, left_wave.contribution, right_wave.contribution],
+    );
+    if left_wave.fast <= right_wave.slow + 1e-12 {
+        // The waves separate (rarefactions touch and leave a constant
+        // state between them): the two-wave expression is valid for all t.
+        return Some(cx.simplify(base));
+    }
+    // Collision at X = x₁ + v₁⁻ T, T = (x₂ - x₁)/(v₁⁻ - v₂⁺).
+    let closing = left_wave.fast - right_wave.slow;
+    let collision_time = (second_position - first_position) / closing;
+    let collision_position = first_position + left_wave.fast * collision_time;
+    let time_node = snapped_value(cx, collision_time);
+    let position_node = snapped_value(cx, collision_position);
+    let time_shift = sub(cx.graph, law.t, time_node);
+    let position_shift = sub(cx.graph, x, position_node);
+    let merged = wave_contribution(
+        cx,
+        (ul, ur),
+        (vl, vr),
+        (position_shift, time_shift),
+        convex,
+        speed_w,
+        w,
+    )?;
+    let before_front = sub(cx.graph, time_node, law.t);
+    let after_front = sub(cx.graph, law.t, time_node);
+    let before = call(cx, "heaviside", &[before_front])?;
+    let after = call(cx, "heaviside", &[after_front])?;
+    let merged_solution = add(cx.graph, &[ul, merged.contribution]);
+    let upper = mul(cx.graph, &[before, base]);
+    let lower = mul(cx.graph, &[after, merged_solution]);
+    let total = add(cx.graph, &[upper, lower]);
+    Some(cx.simplify(total))
 }
 
 // ----------------------------------------------------------------------
@@ -322,10 +596,24 @@ fn determinant(
     }
     let mut terms = Vec::new();
     for j in 0..n {
-        let minor: Vec<Vec<NodeId>> = m.iter().skip(1).map(|row| row.iter().enumerate().filter(|(k, _)| *k != j).map(|(_, &e)| e).collect()).collect();
+        let minor: Vec<Vec<NodeId>> = m
+            .iter()
+            .skip(1)
+            .map(|row| {
+                row.iter()
+                    .enumerate()
+                    .filter(|(k, _)| *k != j)
+                    .map(|(_, &e)| e)
+                    .collect()
+            })
+            .collect();
         let d = determinant(cx, &minor);
         let term = mul(cx.graph, &[m[0][j], d]);
-        terms.push(if j % 2 == 0 { term } else { neg(cx.graph, term) });
+        terms.push(if j % 2 == 0 {
+            term
+        } else {
+            neg(cx.graph, term)
+        });
     }
     add(cx.graph, &terms)
 }
@@ -367,7 +655,11 @@ pub(super) fn kdv_soliton(
             let e = call(cx, "exp", &[exponent])?;
             let entry = mul(cx.graph, &[amplitude, e]);
             let one = cx.graph.int(1);
-            row.push(if m == k { add(cx.graph, &[one, entry]) } else { entry });
+            row.push(if m == k {
+                add(cx.graph, &[one, entry])
+            } else {
+                entry
+            });
         }
         matrix.push(row);
     }
@@ -535,7 +827,9 @@ fn hull_riemann(
     };
     let (lo, hi) = (vl.min(vr), vl.max(vr));
     let sign = if vl < vr { 1.0 } else { -1.0 };
-    let us: Vec<f64> = (0..=CELLS).map(|k| lo + (hi - lo) * k as f64 / CELLS as f64).collect();
+    let us: Vec<f64> = (0..=CELLS)
+        .map(|k| lo + (hi - lo) * k as f64 / CELLS as f64)
+        .collect();
     let fs: Vec<f64> = us.iter().map(|&u| at(cx, flux, u)).collect::<Option<_>>()?;
     // The lower hull of (u, sign f).
     let g = |k: usize| sign * fs.get(k).copied().unwrap_or(0.0);
@@ -685,7 +979,11 @@ fn hull_riemann(
 
 /// Polynomials in `T` as coefficient vectors.
 fn poly_derivative(p: &[f64]) -> Vec<f64> {
-    p.iter().enumerate().skip(1).map(|(k, c)| c * k as f64).collect()
+    p.iter()
+        .enumerate()
+        .skip(1)
+        .map(|(k, c)| c * k as f64)
+        .collect()
 }
 
 fn poly_eval(
@@ -774,7 +1072,11 @@ fn sech_eval(
     t: f64,
 ) -> f64 {
     let s = (1.0 - t * t).max(0.0).sqrt();
-    p.iter().map(|(&(i, j), &c)| c * s.powi(i32::try_from(i).unwrap_or(0)) * t.powi(i32::try_from(j).unwrap_or(0))).sum()
+    p.iter()
+        .map(|(&(i, j), &c)| {
+            c * s.powi(i32::try_from(i).unwrap_or(0)) * t.powi(i32::try_from(j).unwrap_or(0))
+        })
+        .sum()
 }
 
 /// Travelling-wave solutions `u = Σ_{j=0}^{m} a_j tanh^j(μ (x - c t))` of a
@@ -813,18 +1115,25 @@ fn tanh_method(
     let u_marker = cx.graph.symbol_node(u_symbol);
     residual = cx.graph.replace_subterm(residual, p.unknown, u_marker);
     let free = cx.graph.free_symbols(cx.graph.find(residual)).to_vec();
-    let known: Vec<crate::graph::SymbolId> = bindings.iter().map(|(s, _)| *s).chain(std::iter::once(u_symbol)).collect();
+    let known: Vec<crate::graph::SymbolId> = bindings
+        .iter()
+        .map(|(s, _)| *s)
+        .chain(std::iter::once(u_symbol))
+        .collect();
     if free.iter().any(|s| !known.contains(s)) {
         return None;
     }
-    let samples: Vec<f64> = (0..28).map(|k| -0.93 + 1.86 * f64::from(k) / 27.0).collect();
+    let samples: Vec<f64> = (0..28)
+        .map(|k| -0.93 + 1.86 * f64::from(k) / 27.0)
+        .collect();
     let unknown_index = p.unit(space, 1);
     let _ = unknown_index;
     let evaluate = |cx: &Cx<'_>, z: &[f64], degree: usize, sech: bool| -> Option<Vec<f64>> {
         let (a, mu, c) = (&z[..=degree], z[degree + 1], z[degree + 2]);
         // Derivatives in x: P, D P, D² P, …
         let mut by_order: Vec<Vec<f64>> = vec![a.to_vec()];
-        let mut by_order_sech: Vec<SechPoly> = vec![a.iter().enumerate().map(|(k, &v)| ((k, 0), v)).collect()];
+        let mut by_order_sech: Vec<SechPoly> =
+            vec![a.iter().enumerate().map(|(k, &v)| ((k, 0), v)).collect()];
         for _ in 0..4 {
             if sech {
                 let last = by_order_sech.last()?;
@@ -838,7 +1147,13 @@ fn tanh_method(
         let mut out = Vec::new();
         for &tv in &samples {
             let mut env = crate::graph::Env::numeric(0.0);
-            let evaluated = |order: usize| -> Option<f64> { if sech { Some(sech_eval(by_order_sech.get(order)?, tv)) } else { Some(poly_eval(by_order.get(order)?, tv)) } };
+            let evaluated = |order: usize| -> Option<f64> {
+                if sech {
+                    Some(sech_eval(by_order_sech.get(order)?, tv))
+                } else {
+                    Some(poly_eval(by_order.get(order)?, tv))
+                }
+            };
             env.bind(u_symbol, evaluated(0)?);
             for (symbol, index) in &bindings {
                 let (nx, nt) = (index[space] as usize, index[time] as usize);
@@ -857,7 +1172,17 @@ fn tanh_method(
         seed ^= seed << 17;
         (seed >> 11) as f64 / (1_u64 << 53) as f64 * 4.0 - 2.0
     };
-    for (sech, degree) in [(false, 1_usize), (true, 1), (false, 2), (true, 2), (false, 3), (true, 3), (false, 4), (true, 4), (false, 5)] {
+    for (sech, degree) in [
+        (false, 1_usize),
+        (true, 1),
+        (false, 2),
+        (true, 2),
+        (false, 3),
+        (true, 3),
+        (false, 4),
+        (true, 4),
+        (false, 5),
+    ] {
         let dimension = degree + 3;
         for _start in 0..80 {
             let mut z: Vec<f64> = (0..dimension).map(|_| random()).collect();
@@ -959,12 +1284,18 @@ fn tanh_method(
                     #[allow(clippy::cast_precision_loss)]
                     if (v * q as f64 - scaled).abs() < 1e-12 {
                         #[allow(clippy::cast_possible_truncation)]
-                        return Some(cx.graph.num(crate::graph::Number::fraction(scaled as i64, q)?));
+                        return Some(
+                            cx.graph
+                                .num(crate::graph::Number::fraction(scaled as i64, q)?),
+                        );
                     }
                 }
                 Some(cx.graph.num(crate::graph::Number::from(v)))
             };
-            let (mu_node, c_node) = (number(cx, chosen[degree + 1])?, number(cx, chosen[degree + 2])?);
+            let (mu_node, c_node) = (
+                number(cx, chosen[degree + 1])?,
+                number(cx, chosen[degree + 2])?,
+            );
             let ct = mul(cx.graph, &[c_node, t]);
             let xi = sub(cx.graph, x, ct);
             let argument = mul(cx.graph, &[mu_node, xi]);
@@ -1014,12 +1345,18 @@ pub(super) fn kdv_reflectionless(
         let mut logs = Vec::new();
         for m in 1..=count {
             if m != k {
-                let ratio = cx.graph.num(crate::graph::Number::fraction(i64::try_from(k + m).ok()?, i64::try_from(k.abs_diff(m)).ok()?)?);
+                let ratio = cx.graph.num(crate::graph::Number::fraction(
+                    i64::try_from(k + m).ok()?,
+                    i64::try_from(k.abs_diff(m)).ok()?,
+                )?);
                 logs.push(call(cx, "ln", &[ratio])?);
             }
         }
         let total = add(cx.graph, &logs);
-        let denominator = cx.graph.num(crate::graph::Number::fraction(1, i64::try_from(2 * k).ok()?)?);
+        let denominator = cx.graph.num(crate::graph::Number::fraction(
+            1,
+            i64::try_from(2 * k).ok()?,
+        )?);
         let scaled = mul(cx.graph, &[denominator, total]);
         let inverse = div(cx, scaled, kappa);
         shifts.push(inverse);
@@ -1080,6 +1417,36 @@ pub(super) fn hodograph(
     Some(cx.graph.node(crate::graph::op::core::EQ, &[left, zero]))
 }
 
+/// `pde_hodograph_riemann(N)`: the Riemann function of the Euler-Poisson-Darboux
+/// hodograph equation `(r - s) t_rs + N (t_s - t_r) = 0` for the field point
+/// `(r, s)`, as a function of the integration point `(rho, sigma)`:
+/// `((rho - sigma)/(r - s))^N 2F1(N, 1 - N; 1; z)` with
+/// `z = (rho - r)(sigma - s)/((r - s)(rho - sigma))` (see [`super::riemann`]).
+/// Valid for every `N`, in particular the non-integer values (`N = 3/2` for
+/// shallow water) that have no elementary general solution.
+pub(super) fn hodograph_riemann(
+    cx: &mut Cx<'_>,
+    n: NodeId,
+) -> Option<NodeId> {
+    let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
+    let (rho, sigma) = (cx.graph.sym("rho"), cx.graph.sym("sigma"));
+    let field_gap = sub(cx.graph, r, s);
+    let point_gap = sub(cx.graph, rho, sigma);
+    let ratio = div(cx, point_gap, field_gap);
+    let scale = pow(cx.graph, ratio, n);
+    let one = cx.graph.int(1);
+    let two = cx.graph.int(2);
+    let one_minus_n = sub(cx.graph, one, n);
+    let left = sub(cx.graph, rho, r);
+    let right = sub(cx.graph, sigma, s);
+    let numerator = mul(cx.graph, &[left, right]);
+    let denominator = mul(cx.graph, &[field_gap, point_gap]);
+    let z = div(cx, numerator, denominator);
+    let series = call(cx, "hyperpfq", &[two, n, one_minus_n, one, z])?;
+    let value = mul(cx.graph, &[scale, series]);
+    Some(cx.simplify(value))
+}
+
 /// `pde_crum_kdv(u, list(ψ₁, …, ψ_n))`: the `n`-fold Darboux (Crum)
 /// transformation of a solution `u(x, t)` of `u_t - 6 u u_x + u_xxx = 0` by
 /// Lax eigenfunctions `ψ_j` (`-ψ_xx + u ψ = λ_j ψ` with the time part of the
@@ -1115,6 +1482,132 @@ pub(super) fn crum_kdv(
     let correction = mul(cx.graph, &[two, second]);
     let result = sub(cx.graph, u, correction);
     Some(cx.simplify(result))
+}
+
+/// `pde_hodograph_solution(F(r), G(s), λ, μ)`: the hodograph solution of
+/// `r_t + λ r_x = 0`, `s_t + μ s_x = 0`.
+///
+/// * *Decoupled* `λ(r)`, `μ(s)` (for example the affine `λ = a r + c`,
+///   `μ = e s + f`): each invariant is carried along its own characteristic,
+///   `x = λ(r) t + F(r) = μ(s) t + G(s)`, so that
+///   `t = (G(s) - F(r))/(λ(r) - μ(s))` and `x = λ t + F`.
+/// * *Coupled affine* `λ = a r + b s + c`, `μ = b r + a s + c` with
+///   `κ = a - b` and `N = a/κ` an integer `≥ 2` (the Riemann invariants of
+///   a polytropic gas with `γ = (2N + 1)/(2N - 1)` give `N = 2` for
+///   `γ = 5/3`; the hodograph equation is then of Euler–Poisson–Darboux type
+///   `E(N, N)`): the hodograph equation
+///   `(r - s) t_rs + N (t_s - t_r) = 0` has the general solution (Darboux)
+///   `t = ∂_r^{N-1} ∂_s^{N-1} W`, `W = (F(r) + G(s))/(r - s)` with two
+///   arbitrary functions, and `x = λ t - κ (N - 1) ∂_r^{N-1} ∂_s^{N-2} W`
+///   follows from `x_s = λ t_s`, `x_r = μ t_r` (the integration constant in
+///   `r` vanishes identically).
+///
+/// The result is `list(x(r, s), t(r, s))`, and `x`, `t` satisfy both linear
+/// hodograph equations `x_s = λ t_s`, `x_r = μ t_r`. `None` for any other
+/// coupled system (a non-integer `N`, as for shallow water with `N = 3/2`,
+/// needs Riemann's method: `pde_hodograph_riemann(N)` gives the Riemann
+/// function in hypergeometric form and
+/// [`super::riemann::epd_goursat`] the solution of the Goursat problem).
+pub(super) fn hodograph_decoupled(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    g: NodeId,
+    lambda: NodeId,
+    mu: NodeId,
+) -> Option<NodeId> {
+    let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
+    let (r_symbol, s_symbol) = (cx.graph.symbol_of(r)?, cx.graph.symbol_of(s)?);
+    let depends =
+        |cx: &Cx<'_>, node: NodeId, symbol| cx.graph.depends_on(cx.graph.find(node), symbol);
+    if depends(cx, f, s_symbol) || depends(cx, g, r_symbol) {
+        return None;
+    }
+    if depends(cx, lambda, s_symbol) || depends(cx, mu, r_symbol) {
+        return hodograph_coupled(cx, f, g, lambda, mu);
+    }
+    let numerator = sub(cx.graph, g, f);
+    let denominator = sub(cx.graph, lambda, mu);
+    let t = div(cx, numerator, denominator);
+    let speed_time = mul(cx.graph, &[lambda, t]);
+    let x = add(cx.graph, &[speed_time, f]);
+    let (x, t) = (cx.simplify(x), cx.simplify(t));
+    Some(cx.graph.node(crate::graph::op::core::LIST, &[x, t]))
+}
+
+/// The coupled affine case of [`hodograph_decoupled`].
+fn hodograph_coupled(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    g: NodeId,
+    lambda: NodeId,
+    mu: NodeId,
+) -> Option<NodeId> {
+    let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
+    let zero = cx.graph.int(0);
+    let coefficient = |cx: &mut Cx<'_>, node: NodeId, wrt: NodeId| -> Option<NodeId> {
+        let d = derivative(cx.graph, node, wrt)?;
+        let d = cx.simplify(d);
+        super::modes::exact_value(cx, d)?;
+        Some(d)
+    };
+    let (a, b) = (coefficient(cx, lambda, r)?, coefficient(cx, lambda, s)?);
+    let (d, e) = (coefficient(cx, mu, r)?, coefficient(cx, mu, s)?);
+    // mu = b r + a s + c with the same constant as lambda.
+    let same = |cx: &mut Cx<'_>, x: NodeId, y: NodeId| {
+        let gap = sub(cx.graph, x, y);
+        let gap = cx.simplify(gap);
+        cx.is_zero(gap)
+    };
+    if !same(cx, a, e) || !same(cx, b, d) {
+        return None;
+    }
+    let constant = |cx: &mut Cx<'_>, node: NodeId| {
+        let at_r = cx.graph.substitute(node, r, zero);
+        let at_s = cx.graph.substitute(at_r, s, zero);
+        cx.simplify(at_s)
+    };
+    let (c_lambda, c_mu) = (constant(cx, lambda), constant(cx, mu));
+    if !same(cx, c_lambda, c_mu) {
+        return None;
+    }
+    let kappa = sub(cx.graph, a, b);
+    let kappa = cx.simplify(kappa);
+    if cx.is_zero(kappa) {
+        return None;
+    }
+    let ratio = div(cx, a, kappa);
+    let order = super::modes::exact_value(cx, ratio)?;
+    if (order - order.round()).abs() > 1e-9 || !(2.0..=5.0).contains(&order.round()) {
+        return None;
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    let order = order.round() as usize;
+    // W = (F + G)/(r - s) and its mixed derivatives.
+    let total = add(cx.graph, &[f, g]);
+    let gap = sub(cx.graph, r, s);
+    let w = div(cx, total, gap);
+    let w = cx.simplify(w);
+    let differentiate =
+        |cx: &mut Cx<'_>, node: NodeId, wrt: NodeId, times: usize| -> Option<NodeId> {
+            let mut current = node;
+            for _ in 0..times {
+                let next = derivative(cx.graph, current, wrt)?;
+                current = cx.simplify(next);
+            }
+            Some(current)
+        };
+    let in_s = differentiate(cx, w, s, order - 2)?;
+    let y_part = differentiate(cx, in_s, r, order - 1)?;
+    let in_s_more = differentiate(cx, in_s, s, 1)?;
+    let t = differentiate(cx, in_s_more, r, order - 1)?;
+    let speed_time = mul(cx.graph, &[lambda, t]);
+    let scale = {
+        let n_minus_one = cx.graph.int(i64::try_from(order - 1).ok()?);
+        mul(cx.graph, &[kappa, n_minus_one, y_part])
+    };
+    let x = sub(cx.graph, speed_time, scale);
+    let (x, t) = (cx.simplify(x), cx.simplify(t));
+    Some(cx.graph.node(crate::graph::op::core::LIST, &[x, t]))
 }
 
 /// `pde_hodograph_solution(F(r), G(s))`: the solution of the hodograph

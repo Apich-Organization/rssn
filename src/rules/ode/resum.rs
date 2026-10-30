@@ -16,8 +16,8 @@
 use num_bigint::BigInt;
 use num_complex::Complex64;
 
-use crate::rules::poly::galois::Fx;
 use crate::rules::poly::galois::BITS;
+use crate::rules::poly::galois::Fx;
 use crate::rules::poly::galois_high::solve_system;
 
 /// The result of a resummation.
@@ -56,13 +56,21 @@ fn pade(
     }
     let l = m - 1;
     // Σ_{j=0}^{M} q_j b_{L+i-j} = 0, i = 1..M, q_0 = 1.
-    let get = |index: i64| -> Complex64 { usize::try_from(index).ok().and_then(|i| b.get(i)).copied().unwrap_or_else(|| Complex64::new(0.0, 0.0)) };
+    let get = |index: i64| -> Complex64 {
+        usize::try_from(index)
+            .ok()
+            .and_then(|i| b.get(i))
+            .copied()
+            .unwrap_or_else(|| Complex64::new(0.0, 0.0))
+    };
     let mut matrix: Vec<Vec<Fx>> = Vec::new();
     let mut rhs: Vec<Vec<Fx>> = Vec::new();
     for i in 1..=m {
         let mut row = Vec::new();
         for j in 1..=m {
-            row.push(to_fx(get(i64::try_from(l + i).ok()? - i64::try_from(j).ok()?))?);
+            row.push(to_fx(get(
+                i64::try_from(l + i).ok()? - i64::try_from(j).ok()?
+            ))?);
         }
         matrix.push(row);
         rhs.push(vec![to_fx(-get(i64::try_from(l + i).ok()?))?]);
@@ -89,19 +97,36 @@ fn horner(
     coefficients: &[Complex64],
     s: Complex64,
 ) -> Complex64 {
-    coefficients.iter().rev().fold(Complex64::new(0.0, 0.0), |acc, c| acc * s + c)
+    coefficients
+        .iter()
+        .rev()
+        .fold(Complex64::new(0.0, 0.0), |acc, c| acc * s + c)
 }
 
 /// Complex roots by the Durand–Kerner iteration.
 pub(super) fn complex_roots(coefficients: &[Complex64]) -> Vec<Complex64> {
     let n = coefficients.len().saturating_sub(1);
-    let Some(lead) = coefficients.last().copied().filter(|l| l.norm() > 0.0) else { return Vec::new() };
+    let Some(lead) = coefficients.last().copied().filter(|l| l.norm() > 0.0) else {
+        return Vec::new();
+    };
     if n == 0 {
         return Vec::new();
     }
     let monic: Vec<Complex64> = coefficients.iter().map(|c| c / lead).collect();
-    let bound = 1.0 + monic.iter().take(n).map(|c| c.norm()).fold(0.0_f64, f64::max);
-    let mut z: Vec<Complex64> = (0..n).map(|k| Complex64::from_polar(bound, 2.0 * std::f64::consts::PI * k as f64 / n as f64 + 0.4)).collect();
+    let bound = 1.0
+        + monic
+            .iter()
+            .take(n)
+            .map(|c| c.norm())
+            .fold(0.0_f64, f64::max);
+    let mut z: Vec<Complex64> = (0..n)
+        .map(|k| {
+            Complex64::from_polar(
+                bound,
+                2.0 * std::f64::consts::PI * k as f64 / n as f64 + 0.4,
+            )
+        })
+        .collect();
     for _ in 0..500 {
         let mut moved = 0.0_f64;
         for i in 0..n {
@@ -171,7 +196,10 @@ fn laplace_along(
     let mut total = Complex64::new(0.0, 0.0);
     for panel in 0..panels {
         // Finer near the origin.
-        let (a, b) = (r_max * (f64::from(panel) / f64::from(panels)).powi(2), r_max * (f64::from(panel + 1) / f64::from(panels)).powi(2));
+        let (a, b) = (
+            r_max * (f64::from(panel) / f64::from(panels)).powi(2),
+            r_max * (f64::from(panel + 1) / f64::from(panels)).powi(2),
+        );
         for (x, w) in &rule {
             let r = 0.5 * (b - a) * x + f64::midpoint(a, b);
             let s = direction * r;
@@ -227,11 +255,16 @@ pub fn borel_pade(
     let mut previous: Option<BorelSum> = None;
     let mut best: Option<BorelSum> = None;
     for order in orders {
-        let Some(current) = sum_at_order(&b, order, c0, v) else { continue };
+        let Some(current) = sum_at_order(&b, order, c0, v) else {
+            continue;
+        };
         if let Some(before) = previous {
             let change = (current.value - before.value).norm().max(current.error);
             if best.is_none_or(|b| change < b.error) {
-                best = Some(BorelSum { error: change, ..current });
+                best = Some(BorelSum {
+                    error: change,
+                    ..current
+                });
             }
         }
         previous = Some(current);
@@ -261,14 +294,28 @@ fn sum_at_order(
     let (p, q) = (1..=order).rev().find_map(|m| pade(b, m))?;
     let poles = complex_roots(&q);
     let arg_v = v.arg();
-    let relative: Vec<f64> = poles.iter().filter(|z| z.norm() > 0.0).map(|z| wrap_angle(z.arg() - arg_v)).collect();
-    let nearest = relative.iter().copied().min_by(|a, b| a.abs().total_cmp(&b.abs()));
+    let relative: Vec<f64> = poles
+        .iter()
+        .filter(|z| z.norm() > 0.0)
+        .map(|z| wrap_angle(z.arg() - arg_v))
+        .collect();
+    let nearest = relative
+        .iter()
+        .copied()
+        .min_by(|a, b| a.abs().total_cmp(&b.abs()));
     let (value, jump, stokes) = match nearest {
         | Some(delta) if delta.abs() < 1e-3 => {
             // Poles on the ray: lateral sums, offset up to half the gap to the others.
-            let gap = relative.iter().map(|d| d.abs()).filter(|d| *d > 1e-3).fold(f64::INFINITY, f64::min);
+            let gap = relative
+                .iter()
+                .map(|d| d.abs())
+                .filter(|d| *d > 1e-3)
+                .fold(f64::INFINITY, f64::min);
             let offset = (0.5 * gap).clamp(0.05, 0.25);
-            let (up, down) = (laplace_along(&p, &q, v, arg_v + offset), laplace_along(&p, &q, v, arg_v - offset));
+            let (up, down) = (
+                laplace_along(&p, &q, v, arg_v + offset),
+                laplace_along(&p, &q, v, arg_v - offset),
+            );
             ((up + down) / 2.0, (up - down).norm() / 2.0, true)
         },
         | Some(delta) if delta.abs() < 0.15 => {
@@ -284,7 +331,11 @@ fn sum_at_order(
         },
         | _ => (laplace_along(&p, &q, v, arg_v), 0.0, false),
     };
-    Some(BorelSum { value: c0 + value, error: jump, stokes })
+    Some(BorelSum {
+        value: c0 + value,
+        error: jump,
+        stokes,
+    })
 }
 
 #[cfg(test)]
@@ -310,10 +361,15 @@ mod tests {
     fn alternating_euler_series() {
         // Σ (-1)^k k! x^k = (1/x) e^{1/x} E1(1/x); at x = 0.1: 0.915633339...
         let sum = borel_pade(&euler(40, -1.0), Complex64::new(0.1, 0.0)).expect("sum");
-        assert!((sum.value.re - 0.915_633_339_397_88).abs() < 1e-8, "{sum:?}");
+        assert!(
+            (sum.value.re - 0.915_633_339_397_88).abs() < 1e-8,
+            "{sum:?}"
+        );
         assert!(!sum.stokes);
         // The plain partial sum cannot do better than the smallest term, 10! 10^-10 ~ 4e-4.
-        let truncated: f64 = (0..10).map(|k| (-1.0_f64).powi(k) * (1..=k).map(f64::from).product::<f64>() * 0.1_f64.powi(k)).sum();
+        let truncated: f64 = (0..10)
+            .map(|k| (-1.0_f64).powi(k) * (1..=k).map(f64::from).product::<f64>() * 0.1_f64.powi(k))
+            .sum();
         assert!((truncated - 0.915_633_339_397_88).abs() > 1e-5);
     }
 
@@ -336,7 +392,11 @@ mod tests {
         // so the Borel sum is the integral ∫_0^∞ e^{-t}/(1 - z t) dt with z = v e^{-iδ}
         // along the real axis (the pole at 1/z lies above it).
         let delta = 0.1_f64;
-        let coefficients: Vec<Complex64> = euler(40, 1.0).iter().enumerate().map(|(k, c)| c * Complex64::from_polar(1.0, -(k as f64) * delta)).collect();
+        let coefficients: Vec<Complex64> = euler(40, 1.0)
+            .iter()
+            .enumerate()
+            .map(|(k, c)| c * Complex64::from_polar(1.0, -(k as f64) * delta))
+            .collect();
         let sum = borel_pade(&coefficients, Complex64::new(0.05, 0.0)).expect("sum");
         assert!(!sum.stokes, "{sum:?}");
         // Reference by composite Gauss-Legendre of the Euler integral.
@@ -350,6 +410,9 @@ mod tests {
                 reference += (-t).exp() / (Complex64::new(1.0, 0.0) - z * t) * (0.5 * (b - a) * w);
             }
         }
-        assert!((sum.value - reference).norm() < 1e-6, "{sum:?} vs {reference}");
+        assert!(
+            (sum.value - reference).norm() < 1e-6,
+            "{sum:?} vs {reference}"
+        );
     }
 }

@@ -64,7 +64,10 @@ impl Svg {
         points: &[(f64, f64)],
         stroke: &str,
     ) {
-        let list: Vec<String> = points.iter().map(|p| format!("{:.2},{:.2}", p.0, p.1)).collect();
+        let list: Vec<String> = points
+            .iter()
+            .map(|p| format!("{:.2},{:.2}", p.0, p.1))
+            .collect();
         self.push(&format!(
             r#"<polyline fill="none" stroke="{stroke}" stroke-width="1.5" points="{}"/>"#,
             list.join(" ")
@@ -77,7 +80,10 @@ impl Svg {
         fill: &str,
         stroke: &str,
     ) {
-        let list: Vec<String> = points.iter().map(|p| format!("{:.2},{:.2}", p.0, p.1)).collect();
+        let list: Vec<String> = points
+            .iter()
+            .map(|p| format!("{:.2},{:.2}", p.0, p.1))
+            .collect();
         self.push(&format!(
             r#"<polygon points="{}" fill="{fill}" stroke="{stroke}" stroke-width="0.4"/>"#,
             list.join(" ")
@@ -119,7 +125,9 @@ impl Svg {
 }
 
 fn escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn write_svg(
@@ -181,7 +189,9 @@ fn check_range(
 fn extent(values: impl Iterator<Item = f64>) -> Option<(f64, f64)> {
     let (lo, hi) = values
         .filter(|v| v.is_finite())
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), v| (a.min(v), b.max(v)));
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), v| {
+            (a.min(v), b.max(v))
+        });
     if lo > hi {
         None
     } else if lo == hi {
@@ -206,20 +216,33 @@ fn colormap(t: f64) -> String {
         (94.0, 201.0, 98.0),
         (253.0, 231.0, 37.0),
     ];
-    let t = if t.is_finite() { t.clamp(0.0, 1.0) } else { 0.0 };
+    let t = if t.is_finite() {
+        t.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     let scaled = t * 4.0;
     let i = (scaled.floor() as usize).min(3);
     let f = scaled - i as f64;
     let (a, b) = (STOPS[i], STOPS[i + 1]);
     let mix = |x: f64, y: f64| (x + (y - x) * f).round() as u8;
-    format!("#{:02x}{:02x}{:02x}", mix(a.0, b.0), mix(a.1, b.1), mix(a.2, b.2))
+    format!(
+        "#{:02x}{:02x}{:02x}",
+        mix(a.0, b.0),
+        mix(a.1, b.1),
+        mix(a.2, b.2)
+    )
 }
 
 fn unit(
     v: f64,
     range: (f64, f64),
 ) -> f64 {
-    if range.1 > range.0 { (v - range.0) / (range.1 - range.0) } else { 0.5 }
+    if range.1 > range.0 {
+        (v - range.0) / (range.1 - range.0)
+    } else {
+        0.5
+    }
 }
 
 /// Axes, ticks and grid of a 2D plot.
@@ -322,7 +345,10 @@ pub fn plot_function_2d(
     if samples < 2 {
         return Err("at least two samples are required".to_owned());
     }
-    let points: Vec<(f64, f64)> = linspace(range, samples).into_iter().map(|x| (x, f(x))).collect();
+    let points: Vec<(f64, f64)> = linspace(range, samples)
+        .into_iter()
+        .map(|x| (x, f(x)))
+        .collect();
     plot_series_2d(&[("f(x)".to_owned(), points)], path)
 }
 
@@ -397,7 +423,11 @@ fn arrow(
     let head = (len * 0.3).min(7.0);
     let base = (to.0 - ux * head, to.1 - uy * head);
     svg.polygon(
-        &[to, (base.0 - uy * head * 0.4, base.1 + ux * head * 0.4), (base.0 + uy * head * 0.4, base.1 - ux * head * 0.4)],
+        &[
+            to,
+            (base.0 - uy * head * 0.4, base.1 + ux * head * 0.4),
+            (base.0 + uy * head * 0.4, base.1 - ux * head * 0.4),
+        ],
         color,
         color,
     );
@@ -431,8 +461,14 @@ pub fn plot_vector_field_2d(
         })
         .filter(|&(_, _, u, v)| u.is_finite() && v.is_finite())
         .collect();
-    let max = field.iter().map(|&(_, _, u, v)| u.hypot(v)).fold(0.0, f64::max);
-    let frame = Frame { x: x_range, y: y_range };
+    let max = field
+        .iter()
+        .map(|&(_, _, u, v)| u.hypot(v))
+        .fold(0.0, f64::max);
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
     let mut svg = Svg::new();
     frame.draw(&mut svg);
     let cell_x = (WIDTH - MARGIN_LEFT - MARGIN_RIGHT) / (grid - 1) as f64;
@@ -485,7 +521,10 @@ impl Scene {
         Self {
             ranges,
             scale,
-            offset: (WIDTH / 2.0 - scale * (x0 + x1) / 2.0, HEIGHT / 2.0 + scale * (y0 + y1) / 2.0),
+            offset: (
+                WIDTH / 2.0 - scale * (x0 + x1) / 2.0,
+                HEIGHT / 2.0 + scale * (y0 + y1) / 2.0,
+            ),
         }
     }
 
@@ -506,7 +545,11 @@ impl Scene {
         p: [f64; 3],
     ) -> (f64, f64, f64) {
         let (x, y, d) = project(self.cube(p));
-        (self.offset.0 + self.scale * x, self.offset.1 - self.scale * y, d)
+        (
+            self.offset.0 + self.scale * x,
+            self.offset.1 - self.scale * y,
+            d,
+        )
     }
 
     fn draw_box(
@@ -514,7 +557,13 @@ impl Scene {
         svg: &mut Svg,
     ) {
         let corner = |i: usize| {
-            let pick = |axis: usize| if i >> axis & 1 == 0 { self.ranges[axis].0 } else { self.ranges[axis].1 };
+            let pick = |axis: usize| {
+                if i >> axis & 1 == 0 {
+                    self.ranges[axis].0
+                } else {
+                    self.ranges[axis].1
+                }
+            };
             let (x, y, _) = self.at([pick(0), pick(1), pick(2)]);
             (x, y)
         };
@@ -522,14 +571,27 @@ impl Scene {
             for axis in 0..3 {
                 let j = i | (1 << axis);
                 if j != i {
-                    svg.line(corner(i), corner(j), if i == 0 { "#222" } else { "#bbb" }, if i == 0 { 1.5 } else { 0.8 });
+                    svg.line(
+                        corner(i),
+                        corner(j),
+                        if i == 0 { "#222" } else { "#bbb" },
+                        if i == 0 { 1.5 } else { 0.8 },
+                    );
                 }
             }
         }
         for (axis, name) in ["x", "y", "z"].iter().enumerate() {
             let (lo, hi) = (corner(0), corner(1 << axis));
-            svg.text((lo.0, lo.1 + 16.0), "middle", &format_tick(self.ranges[axis].0));
-            svg.text((hi.0, hi.1 + 16.0), "middle", &format!("{name} = {}", format_tick(self.ranges[axis].1)));
+            svg.text(
+                (lo.0, lo.1 + 16.0),
+                "middle",
+                &format_tick(self.ranges[axis].0),
+            );
+            svg.text(
+                (hi.0, hi.1 + 16.0),
+                "middle",
+                &format!("{name} = {}", format_tick(self.ranges[axis].1)),
+            );
         }
     }
 }
@@ -545,8 +607,14 @@ fn draw_surface(
     z: &[Vec<f64>],
 ) -> Result<(), String> {
     let zr = extent(z.iter().flatten().copied()).ok_or("no finite surface values")?;
-    let xr = (xs.first().copied().unwrap_or(0.0), xs.last().copied().unwrap_or(1.0));
-    let yr = (ys.first().copied().unwrap_or(0.0), ys.last().copied().unwrap_or(1.0));
+    let xr = (
+        xs.first().copied().unwrap_or(0.0),
+        xs.last().copied().unwrap_or(1.0),
+    );
+    let yr = (
+        ys.first().copied().unwrap_or(0.0),
+        ys.last().copied().unwrap_or(1.0),
+    );
     let scene = Scene::new([xr, yr, zr]);
     scene.draw_box(svg);
     let mut quads: Vec<Quad> = Vec::new();
@@ -556,7 +624,11 @@ fn draw_surface(
             let pts: Vec<(f64, f64, f64, f64)> = corners
                 .iter()
                 .filter_map(|&(i, j)| {
-                    let v = if i == r { pair[0][j] } else { pair[1][j] };
+                    let v = if i == r {
+                        pair[0][j]
+                    } else {
+                        pair[1][j]
+                    };
                     v.is_finite().then(|| {
                         let (px, py, d) = scene.at([xs[j], ys[i], v]);
                         (px, py, d, v)
@@ -566,7 +638,11 @@ fn draw_surface(
             if pts.len() == 4 {
                 let depth = pts.iter().map(|p| p.2).sum::<f64>() / 4.0;
                 let mean = pts.iter().map(|p| p.3).sum::<f64>() / 4.0;
-                quads.push((depth, pts.iter().map(|p| (p.0, p.1)).collect(), unit(mean, zr)));
+                quads.push((
+                    depth,
+                    pts.iter().map(|p| (p.0, p.1)).collect(),
+                    unit(mean, zr),
+                ));
             }
         }
     }
@@ -586,7 +662,11 @@ fn colorbar(
     let steps = 40;
     for i in 0..steps {
         let t = 1.0 - (f64::from(i) + 0.5) / f64::from(steps);
-        svg.rect((x, top + h * f64::from(i) / f64::from(steps)), (10.0, h / f64::from(steps) + 0.5), &colormap(t));
+        svg.rect(
+            (x, top + h * f64::from(i) / f64::from(steps)),
+            (10.0, h / f64::from(steps) + 0.5),
+            &colormap(t),
+        );
     }
     svg.text((x + 5.0, top - 6.0), "middle", &format_tick(range.1));
     svg.text((x + 5.0, top + h + 14.0), "middle", &format_tick(range.0));
@@ -612,7 +692,10 @@ pub fn plot_surface_3d(
         return Err("the grid needs at least two points per axis".to_owned());
     }
     let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
-    let z: Vec<Vec<f64>> = ys.iter().map(|&y| xs.iter().map(|&x| f(x, y)).collect()).collect();
+    let z: Vec<Vec<f64>> = ys
+        .iter()
+        .map(|&y| xs.iter().map(|&x| f(x, y)).collect())
+        .collect();
     let mut svg = Svg::new();
     draw_surface(&mut svg, &xs, &ys, &z)?;
     write_svg(svg, path)
@@ -664,7 +747,9 @@ fn draw_path_3d(
 }
 
 fn bounds_3d(points: &[[f64; 3]]) -> Result<[(f64, f64); 3], String> {
-    let axis = |k: usize| extent(points.iter().map(move |p| p[k])).ok_or_else(|| "no finite points".to_owned());
+    let axis = |k: usize| {
+        extent(points.iter().map(move |p| p[k])).ok_or_else(|| "no finite points".to_owned())
+    };
     Ok([axis(0)?, axis(1)?, axis(2)?])
 }
 
@@ -747,11 +832,19 @@ pub fn plot_vector_field_3d(
             }
         }
     }
-    let max = field.iter().map(|(_, d)| d[0].hypot(d[1]).hypot(d[2])).fold(0.0, f64::max);
+    let max = field
+        .iter()
+        .map(|(_, d)| d[0].hypot(d[1]).hypot(d[2]))
+        .fold(0.0, f64::max);
     let scene = Scene::new(ranges);
     let mut svg = Svg::new();
     scene.draw_box(&mut svg);
-    let reach = 0.8 * ranges.iter().map(|r| r.1 - r.0).fold(f64::INFINITY, f64::min) / (grid - 1) as f64;
+    let reach = 0.8
+        * ranges
+            .iter()
+            .map(|r| r.1 - r.0)
+            .fold(f64::INFINITY, f64::min)
+        / (grid - 1) as f64;
     let mut arrows: Vec<Arrow> = field
         .iter()
         .filter_map(|(p, d)| {
@@ -759,7 +852,11 @@ pub fn plot_vector_field_3d(
             if m == 0.0 || max == 0.0 {
                 return None;
             }
-            let tip = [p[0] + d[0] / max * reach, p[1] + d[1] / max * reach, p[2] + d[2] / max * reach];
+            let tip = [
+                p[0] + d[0] / max * reach,
+                p[1] + d[1] / max * reach,
+                p[2] + d[2] / max * reach,
+            ];
             let (x0, y0, depth) = scene.at(*p);
             let (x1, y1, _) = scene.at(tip);
             Some((depth, (x0, y0), (x1, y1), m / max))
@@ -788,21 +885,60 @@ pub fn plot_heatmap_2d(
         return Err("the array is empty".to_owned());
     }
     let range = extent(data.iter().copied()).ok_or("no finite values")?;
-    let (w, h) = (WIDTH - MARGIN_LEFT - MARGIN_RIGHT - 40.0, HEIGHT - MARGIN_TOP - MARGIN_BOTTOM);
+    let (w, h) = (
+        WIDTH - MARGIN_LEFT - MARGIN_RIGHT - 40.0,
+        HEIGHT - MARGIN_TOP - MARGIN_BOTTOM,
+    );
     let (cw, ch) = (w / cols as f64, h / rows as f64);
     let mut svg = Svg::new();
     for ((r, c), &v) in data.indexed_iter() {
-        let fill = if v.is_finite() { colormap(unit(v, range)) } else { "#dddddd".to_owned() };
-        svg.rect((MARGIN_LEFT + c as f64 * cw, MARGIN_TOP + r as f64 * ch), (cw, ch), &fill);
+        let fill = if v.is_finite() {
+            colormap(unit(v, range))
+        } else {
+            "#dddddd".to_owned()
+        };
+        svg.rect(
+            (MARGIN_LEFT + c as f64 * cw, MARGIN_TOP + r as f64 * ch),
+            (cw, ch),
+            &fill,
+        );
     }
-    svg.line((MARGIN_LEFT, MARGIN_TOP), (MARGIN_LEFT + w, MARGIN_TOP), "#222", 1.0);
-    svg.line((MARGIN_LEFT, MARGIN_TOP + h), (MARGIN_LEFT + w, MARGIN_TOP + h), "#222", 1.0);
-    svg.line((MARGIN_LEFT, MARGIN_TOP), (MARGIN_LEFT, MARGIN_TOP + h), "#222", 1.0);
-    svg.line((MARGIN_LEFT + w, MARGIN_TOP), (MARGIN_LEFT + w, MARGIN_TOP + h), "#222", 1.0);
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP),
+        (MARGIN_LEFT + w, MARGIN_TOP),
+        "#222",
+        1.0,
+    );
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        (MARGIN_LEFT + w, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    svg.line(
+        (MARGIN_LEFT, MARGIN_TOP),
+        (MARGIN_LEFT, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
+    svg.line(
+        (MARGIN_LEFT + w, MARGIN_TOP),
+        (MARGIN_LEFT + w, MARGIN_TOP + h),
+        "#222",
+        1.0,
+    );
     svg.text((MARGIN_LEFT, MARGIN_TOP + h + 16.0), "middle", "0");
-    svg.text((MARGIN_LEFT + w, MARGIN_TOP + h + 16.0), "middle", &cols.to_string());
+    svg.text(
+        (MARGIN_LEFT + w, MARGIN_TOP + h + 16.0),
+        "middle",
+        &cols.to_string(),
+    );
     svg.text((MARGIN_LEFT - 8.0, MARGIN_TOP + 4.0), "end", "0");
-    svg.text((MARGIN_LEFT - 8.0, MARGIN_TOP + h + 4.0), "end", &rows.to_string());
+    svg.text(
+        (MARGIN_LEFT - 8.0, MARGIN_TOP + h + 4.0),
+        "end",
+        &rows.to_string(),
+    );
     colorbar(&mut svg, range);
     write_svg(svg, path)
 }
@@ -839,7 +975,12 @@ mod tests {
     fn series_polyline_count_matches() {
         let p = out("series");
         let series: Vec<(String, Vec<(f64, f64)>)> = (0..3)
-            .map(|k| (format!("s{k}"), (0..10).map(|i| (f64::from(i), f64::from(i * k))).collect()))
+            .map(|k| {
+                (
+                    format!("s{k}"),
+                    (0..10).map(|i| (f64::from(i), f64::from(i * k))).collect(),
+                )
+            })
             .collect();
         plot_series_2d(&series, &p).unwrap();
         let svg = read_and_remove(&p);
@@ -872,12 +1013,27 @@ mod tests {
     fn other_plots_write_svg() {
         let m = Array2::from_shape_fn((4, 5), |(r, c)| (r * c) as f64);
         let cases: Vec<(&str, Result<(), String>)> = vec![
-            ("vf2", plot_vector_field_2d(|x, y| (-y, x), (-1.0, 1.0), (-1.0, 1.0), 5, &out("vf2"))),
-            ("s3", plot_surface_3d(|x, y| x * y, (-1.0, 1.0), (-1.0, 1.0), 6, &out("s3"))),
+            (
+                "vf2",
+                plot_vector_field_2d(|x, y| (-y, x), (-1.0, 1.0), (-1.0, 1.0), 5, &out("vf2")),
+            ),
+            (
+                "s3",
+                plot_surface_3d(|x, y| x * y, (-1.0, 1.0), (-1.0, 1.0), 6, &out("s3")),
+            ),
             ("s2", plot_surface_2d(&m, &out("s2"))),
-            ("curve", plot_parametric_curve_3d(|t| (t.cos(), t.sin(), t), (0.0, 6.0), 40, &out("curve"))),
-            ("path", plot_3d_path_from_points(&[[0.0, 0.0, 0.0], [1.0, 2.0, 3.0]], &out("path"))),
-            ("vf3", plot_vector_field_3d(|x, y, z| (y, z, x), [(-1.0, 1.0); 3], 3, &out("vf3"))),
+            (
+                "curve",
+                plot_parametric_curve_3d(|t| (t.cos(), t.sin(), t), (0.0, 6.0), 40, &out("curve")),
+            ),
+            (
+                "path",
+                plot_3d_path_from_points(&[[0.0, 0.0, 0.0], [1.0, 2.0, 3.0]], &out("path")),
+            ),
+            (
+                "vf3",
+                plot_vector_field_3d(|x, y, z| (y, z, x), [(-1.0, 1.0); 3], 3, &out("vf3")),
+            ),
             ("heat", plot_heatmap_2d(&m, &out("heat"))),
         ];
         for (name, r) in cases {

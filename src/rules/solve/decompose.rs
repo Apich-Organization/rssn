@@ -22,11 +22,11 @@ use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 
 type Q = BigRational;
 
@@ -182,7 +182,9 @@ fn value_of(
     graph: &Graph,
     node: NodeId,
 ) -> Option<f64> {
-    graph.eval(node, &Env::numeric(0.0)).filter(|v| v.is_finite())
+    graph
+        .eval(node, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())
 }
 
 /// The real roots of the integer polynomial `f` (ascending) in radicals
@@ -225,7 +227,11 @@ pub(super) fn roots(
                 }
                 let coefficient = graph.num(Number::rat(c.clone()));
                 let exponent = graph.int(i64::try_from(i).ok()?);
-                let power = if i == 0 { graph.int(1) } else { graph.node(core::POW, &[x, exponent]) };
+                let power = if i == 0 {
+                    graph.int(1)
+                } else {
+                    graph.node(core::POW, &[x, exponent])
+                };
                 terms.push(graph.node(core::MUL, &[coefficient, power]));
             }
             let minus_one = graph.int(-1);
@@ -249,7 +255,9 @@ mod tests {
     use super::*;
 
     fn q(v: &[i64]) -> Vec<Q> {
-        v.iter().map(|&c| Q::from_integer(BigInt::from(c))).collect()
+        v.iter()
+            .map(|&c| Q::from_integer(BigInt::from(c)))
+            .collect()
     }
 
     #[test]
@@ -267,9 +275,13 @@ mod tests {
         assert_eq!(g, q(&[3, 3, 3, 1]));
         assert!(decompose_with_degree(&q(&[1, 1, 0, 0, 0, 0, 1]), 2).is_none());
         // x^6 + x^5 + x^4 + x^3 + x^2 + x + 1 is self-reciprocal: u^3 + u^2 - 2u - 1.
-        let g = reciprocal_reduction(&q(&[1, 1, 1, 1, 1, 1, 1])).unwrap_or_else(|| panic!("reciprocal"));
+        let g = reciprocal_reduction(&q(&[1, 1, 1, 1, 1, 1, 1]))
+            .unwrap_or_else(|| panic!("reciprocal"));
         assert_eq!(g, q(&[-1, -2, 1, 1]));
         // x^4 + 3x^2 + 1: u^2 + 1.
-        assert_eq!(reciprocal_reduction(&q(&[1, 0, 3, 0, 1])).unwrap_or_else(|| panic!("reciprocal")), q(&[1, 0, 1]));
+        assert_eq!(
+            reciprocal_reduction(&q(&[1, 0, 3, 0, 1])).unwrap_or_else(|| panic!("reciprocal")),
+            q(&[1, 0, 1])
+        );
     }
 }

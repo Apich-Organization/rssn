@@ -39,7 +39,9 @@ pub fn simplex_positive_fraction(f: &[f64]) -> f64 {
         return 0.0;
     }
     // fraction of the simplex cut off at the vertex `v` against the opposite-sign vertices `others`
-    let corner = |v: usize, others: &[usize]| -> f64 { others.iter().map(|&o| f[v] / (f[v] - f[o])).product() };
+    let corner = |v: usize, others: &[usize]| -> f64 {
+        others.iter().map(|&o| f[v] / (f[v] - f[o])).product()
+    };
     if pos.len() == 1 {
         return corner(pos[0], &neg);
     }
@@ -67,7 +69,8 @@ pub fn simplex_positive_fraction(f: &[f64]) -> f64 {
     let det4 = |r: [[f64; 4]; 4]| -> f64 {
         // determinant by cofactor expansion
         let det3 = |m: [[f64; 3]; 3]| {
-            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+                - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
                 + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
         };
         let mut s = 0.0;
@@ -91,7 +94,12 @@ pub fn simplex_positive_fraction(f: &[f64]) -> f64 {
 
 /// Open fraction of a segment `x0 + t e_axis len`, `t in [0, 1]`.
 #[must_use]
-pub fn open_length_fraction(phi: LevelSet<'_>, x0: [f64; 3], axis: usize, len: f64) -> f64 {
+pub fn open_length_fraction(
+    phi: LevelSet<'_>,
+    x0: [f64; 3],
+    axis: usize,
+    len: f64,
+) -> f64 {
     const N: usize = 16;
     let at = |t: f64| {
         let mut x = x0;
@@ -124,7 +132,11 @@ pub fn open_length_fraction(phi: LevelSet<'_>, x0: [f64; 3], axis: usize, len: f
     open
 }
 
-fn corners(lo: [f64; 3], len: [f64; 3], axes: &[usize]) -> Vec<[f64; 3]> {
+fn corners(
+    lo: [f64; 3],
+    len: [f64; 3],
+    axes: &[usize],
+) -> Vec<[f64; 3]> {
     let nc = 1usize << axes.len();
     (0..nc)
         .map(|m| {
@@ -139,7 +151,13 @@ fn corners(lo: [f64; 3], len: [f64; 3], axes: &[usize]) -> Vec<[f64; 3]> {
         .collect()
 }
 
-fn recurse(phi: LevelSet<'_>, lo: [f64; 3], len: [f64; 3], axes: &[usize], depth: usize) -> f64 {
+fn recurse(
+    phi: LevelSet<'_>,
+    lo: [f64; 3],
+    len: [f64; 3],
+    axes: &[usize],
+    depth: usize,
+) -> f64 {
     let cs = corners(lo, len, axes);
     let f: Vec<f64> = cs.iter().map(|&x| phi(x)).collect();
     // a smooth body can sit entirely inside a box (all corners open): probe the centre
@@ -174,17 +192,30 @@ fn recurse(phi: LevelSet<'_>, lo: [f64; 3], len: [f64; 3], axes: &[usize], depth
     }
     // leaf: exact clipping of the piecewise-linear interpolant
     match axes.len() {
-        1 => simplex_positive_fraction(&[f[0], f[1]]),
-        2 => {
+        | 1 => simplex_positive_fraction(&[f[0], f[1]]),
+        | 2 => {
             // corners: 0=(0,0) 1=(1,0) 2=(0,1) 3=(1,1); fan around the centre
             let tris = [[0, 1], [1, 3], [3, 2], [2, 0]];
-            tris.iter().map(|t| simplex_positive_fraction(&[f[t[0]], f[t[1]], fc])).sum::<f64>() / 4.0
+            tris.iter()
+                .map(|t| simplex_positive_fraction(&[f[t[0]], f[t[1]], fc]))
+                .sum::<f64>()
+                / 4.0
         },
-        _ => {
+        | _ => {
             // Kuhn decomposition along the diagonal 0 -> 7
-            const PATHS: [[usize; 4]; 6] =
-                [[0, 1, 3, 7], [0, 1, 5, 7], [0, 2, 3, 7], [0, 2, 6, 7], [0, 4, 5, 7], [0, 4, 6, 7]];
-            PATHS.iter().map(|p| simplex_positive_fraction(&[f[p[0]], f[p[1]], f[p[2]], f[p[3]]])).sum::<f64>() / 6.0
+            const PATHS: [[usize; 4]; 6] = [
+                [0, 1, 3, 7],
+                [0, 1, 5, 7],
+                [0, 2, 3, 7],
+                [0, 2, 6, 7],
+                [0, 4, 5, 7],
+                [0, 4, 6, 7],
+            ];
+            PATHS
+                .iter()
+                .map(|p| simplex_positive_fraction(&[f[p[0]], f[p[1]], f[p[2]], f[p[3]]]))
+                .sum::<f64>()
+                / 6.0
         },
     }
 }
@@ -198,11 +229,17 @@ fn recurse(phi: LevelSet<'_>, lo: [f64; 3], len: [f64; 3], axes: &[usize], depth
 /// a 3D cell. Boxes whose corners and centre are all open (or all closed) are
 /// returned immediately.
 #[must_use]
-pub fn open_fraction(phi: LevelSet<'_>, lo: [f64; 3], len: [f64; 3], axes: &[usize], depth: usize) -> f64 {
+pub fn open_fraction(
+    phi: LevelSet<'_>,
+    lo: [f64; 3],
+    len: [f64; 3],
+    axes: &[usize],
+    depth: usize,
+) -> f64 {
     match axes.len() {
-        0 => f64::from(u8::from(phi(lo) > 0.0)),
-        1 => open_length_fraction(phi, lo, axes[0], len[axes[0]]),
-        _ => recurse(phi, lo, len, axes, depth),
+        | 0 => f64::from(u8::from(phi(lo) > 0.0)),
+        | 1 => open_length_fraction(phi, lo, axes[0], len[axes[0]]),
+        | _ => recurse(phi, lo, len, axes, depth),
     }
 }
 

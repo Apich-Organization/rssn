@@ -42,7 +42,9 @@ fn depends(
     e: NodeId,
     k: NodeId,
 ) -> bool {
-    graph.symbol_of(k).is_some_and(|s| graph.depends_on(graph.find(e), s))
+    graph
+        .symbol_of(k)
+        .is_some_and(|s| graph.depends_on(graph.find(e), s))
 }
 
 fn call(
@@ -84,7 +86,11 @@ fn holds(
     for point in [3.0, 4.0, 7.0, 5.37] {
         let mut env = Env::numeric(0.0);
         for (j, &s) in symbols.iter().enumerate() {
-            let value = if s == ks { point } else { 0.43 + 0.29 * f64::from(u32::try_from(j % 7).unwrap_or(0)) };
+            let value = if s == ks {
+                point
+            } else {
+                0.43 + 0.29 * f64::from(u32::try_from(j % 7).unwrap_or(0))
+            };
             env.bind(s, value);
         }
         if let Some(v) = graph.eval(difference, &env) {
@@ -107,7 +113,8 @@ fn gosper(
     f: NodeId,
     k: NodeId,
 ) -> Option<NodeId> {
-    super::gosper::antidifference(cx, f, k, false).or_else(|| super::gosper::antidifference(cx, f, k, true))
+    super::gosper::antidifference(cx, f, k, false)
+        .or_else(|| super::gosper::antidifference(cx, f, k, true))
 }
 
 /// `T(k)` with `T(k + 1) - T(k) = f(k)`, checked.
@@ -169,9 +176,14 @@ fn single_term(
     // Constant factors out.
     if cx.graph.op(term) == core::MUL {
         let factors = cx.graph.children(term).to_vec();
-        let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(cx.graph, n, k));
+        let (constant, varying): (Vec<NodeId>, Vec<NodeId>) =
+            factors.iter().partition(|&&n| !depends(cx.graph, n, k));
         if !constant.is_empty() {
-            let rest = if varying.len() == 1 { varying[0] } else { cx.graph.node(core::MUL, &varying) };
+            let rest = if varying.len() == 1 {
+                varying[0]
+            } else {
+                cx.graph.node(core::MUL, &varying)
+            };
             let inner = single_term(cx, rest, k)?;
             let mut all = constant;
             all.push(inner);
@@ -270,7 +282,11 @@ fn polygamma_tail(
     let order = graph.int(i64::from(m) - 1);
     let value = call(graph, "polygamma", &[order, z])?;
     let factorial: BigInt = (1..m).fold(BigInt::one(), |a, j| a * BigInt::from(j));
-    let sign = if m.is_multiple_of(2) { -BigInt::one() } else { BigInt::one() };
+    let sign = if m.is_multiple_of(2) {
+        -BigInt::one()
+    } else {
+        BigInt::one()
+    };
     let c = rat(graph, BigRational::new(sign, factorial));
     Some(graph.node(core::MUL, &[c, value]))
 }
@@ -290,7 +306,11 @@ fn poly_term(
         let power = graph.node(core::POW, &[k, e]);
         terms.push(graph.node(core::MUL, &[c, power]));
     }
-    if terms.is_empty() { graph.int(0) } else { graph.node(core::ADD, &terms) }
+    if terms.is_empty() {
+        graph.int(0)
+    } else {
+        graph.node(core::ADD, &terms)
+    }
 }
 
 /// `(a, b)` with `u = a k + b`, `a` free of `k` and non-zero.
@@ -316,7 +336,11 @@ fn special(
     term: NodeId,
     k: NodeId,
 ) -> Option<NodeId> {
-    let (sin, cos, ln) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?, cx.graph.ops().lookup("ln")?);
+    let (sin, cos, ln) = (
+        cx.graph.ops().lookup("sin")?,
+        cx.graph.ops().lookup("cos")?,
+        cx.graph.ops().lookup("ln")?,
+    );
     let op = cx.graph.op(term);
     let children = cx.graph.children(term).to_vec();
     match children.as_slice() {
@@ -442,13 +466,22 @@ fn rational_product(
             return None;
         }
         let (unit, parts) = univariate::factor(poly);
-        lead = if sign > 0 { lead * unit } else { lead / unit };
+        lead = if sign > 0 {
+            lead * unit
+        } else {
+            lead / unit
+        };
         for (z, m) in parts {
-            let coefficients: Vec<BigRational> = z.iter().cloned().map(BigRational::from_integer).collect();
+            let coefficients: Vec<BigRational> =
+                z.iter().cloned().map(BigRational::from_integer).collect();
             let leading = coefficients.last()?.clone();
             let multiplicity = i64::from(m) * sign;
             for _ in 0..m {
-                lead = if sign > 0 { lead * &leading } else { lead / &leading };
+                lead = if sign > 0 {
+                    lead * &leading
+                } else {
+                    lead / &leading
+                };
             }
             factors.push((coefficients, multiplicity));
         }
@@ -471,7 +504,10 @@ fn rational_product(
                 let inv = g.node(core::POW, &[two_a, minus]);
                 let plus = g.node(core::ADD, &[minus_b, root]);
                 let less = g.node(core::ADD, &[minus_b, neg_root]);
-                vec![g.node(core::MUL, &[plus, inv]), g.node(core::MUL, &[less, inv])]
+                vec![
+                    g.node(core::MUL, &[plus, inv]),
+                    g.node(core::MUL, &[less, inv]),
+                ]
             },
             | _ => return None,
         };
@@ -549,7 +585,11 @@ impl crate::graph::Kernel for Indefinite {
         let Some(f) = best(cx.graph, f) else {
             return crate::graph::Outcome::Pass;
         };
-        let found = if cx.graph.op(node) == self.sum { indefinite_sum(cx, f, k) } else { indefinite_product(cx, f, k) };
+        let found = if cx.graph.op(node) == self.sum {
+            indefinite_sum(cx, f, k)
+        } else {
+            indefinite_product(cx, f, k)
+        };
         found.map_or(crate::graph::Outcome::Pass, crate::graph::Outcome::Equal)
     }
 }

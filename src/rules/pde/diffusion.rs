@@ -107,7 +107,9 @@ fn coefficients(
     for (index, c) in &p.linear {
         let known = *index == p.unit(time, 1)
             || *index == vec![0; n]
-            || space.iter().any(|&j| *index == p.unit(j, 1) || *index == p.unit(j, 2));
+            || space
+                .iter()
+                .any(|&j| *index == p.unit(j, 1) || *index == p.unit(j, 2));
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
@@ -117,7 +119,14 @@ fn coefficients(
         let q = neg(cx.graph, q);
         cx.simplify(q)
     };
-    Some(Coefficients { time, space, diffusivity, drift, reaction, forcing })
+    Some(Coefficients {
+        time,
+        space,
+        diffusivity,
+        drift,
+        reaction,
+        forcing,
+    })
 }
 
 /// The Gauss–Weierstrass factor of one axis: `K(x - s)`, plus the image
@@ -180,7 +189,11 @@ fn integrate_axes(
         if Some(j) == skip {
             continue;
         }
-        let lower = if domain == Domain::Whole { minus_oo } else { cx.graph.int(0) };
+        let lower = if domain == Domain::Whole {
+            minus_oo
+        } else {
+            cx.graph.int(0)
+        };
         body = defint(cx, body, s, lower, oo)?;
         body = cx.simplify(body);
     }
@@ -210,14 +223,21 @@ pub(super) fn parabolic(
         counted += on.len();
         match on.as_slice() {
             | [] => domains.push(Domain::Whole),
-            | [b] if b.robin.is_some() && is_zero_number(cx.graph, b.point) && b.derivative == p.unit(j, 1) && cx.is_zero(b.value) => {
+            | [b] if b.robin.is_some()
+                && is_zero_number(cx.graph, b.point)
+                && b.derivative == p.unit(j, 1)
+                && cx.is_zero(b.value) =>
+            {
                 // u_x + h u = 0: u_x = κ u with κ = -h.
                 let h = b.robin?;
                 domains.push(Domain::Robin(neg(cx.graph, h)));
             },
             | [b] if b.robin.is_none() && is_zero_number(cx.graph, b.point) => {
                 // A value that refers to the unknown itself is not data.
-                if cx.graph.depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?) {
+                if cx
+                    .graph
+                    .depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?)
+                {
                     return None;
                 }
                 let dirichlet = b.derivative == zero_index;
@@ -271,29 +291,43 @@ pub(super) fn parabolic(
         dummies.push(dummy(cx, p, stem).0);
     }
     let phase_at = |cx: &mut Cx<'_>, coords: &[NodeId], skip: Option<usize>| -> NodeId {
-        let terms: Vec<NodeId> =
-            coords.iter().zip(&alphas).enumerate().filter(|(j, _)| Some(*j) != skip).map(|(_, (&x, &a))| mul(cx.graph, &[a, x])).collect();
+        let terms: Vec<NodeId> = coords
+            .iter()
+            .zip(&alphas)
+            .enumerate()
+            .filter(|(j, _)| Some(*j) != skip)
+            .map(|(_, (&x, &a))| mul(cx.graph, &[a, x]))
+            .collect();
         add(cx.graph, &terms)
     };
     let xs: Vec<NodeId> = c.space.iter().map(|&j| p.vars[j]).collect();
-    let substitute_space = |cx: &mut Cx<'_>, mut node: NodeId, to: &[NodeId], skip: Option<usize>| -> NodeId {
-        for (j, (&x, &s)) in xs.iter().zip(to).enumerate() {
-            if Some(j) != skip {
-                node = cx.graph.substitute(node, x, s);
+    let substitute_space =
+        |cx: &mut Cx<'_>, mut node: NodeId, to: &[NodeId], skip: Option<usize>| -> NodeId {
+            for (j, (&x, &s)) in xs.iter().zip(to).enumerate() {
+                if Some(j) != skip {
+                    node = cx.graph.substitute(node, x, s);
+                }
             }
-        }
-        node
-    };
-    let product = |cx: &mut Cx<'_>, d: &[NodeId], tau: NodeId, skip: Option<usize>| -> Option<NodeId> {
-        let mut factors = Vec::new();
-        for (axis, &x) in xs.iter().enumerate() {
-            if Some(axis) == skip {
-                continue;
+            node
+        };
+    let product =
+        |cx: &mut Cx<'_>, d: &[NodeId], tau: NodeId, skip: Option<usize>| -> Option<NodeId> {
+            let mut factors = Vec::new();
+            for (axis, &x) in xs.iter().enumerate() {
+                if Some(axis) == skip {
+                    continue;
+                }
+                factors.push(axis_kernel(
+                    cx,
+                    c.diffusivity[axis],
+                    x,
+                    d[axis],
+                    tau,
+                    domains[axis],
+                )?);
             }
-            factors.push(axis_kernel(cx, c.diffusivity[axis], x, d[axis], tau, domains[axis])?);
-        }
-        Some(mul(cx.graph, &factors))
-    };
+            Some(mul(cx.graph, &factors))
+        };
     let minus_one = cx.graph.int(-1);
     // Initial data.
     let f_at = substitute_space(cx, initial.value, &dummies, None);
@@ -378,7 +412,11 @@ pub(super) fn similarity(
     conditions: &Conditions,
 ) -> Option<NodeId> {
     let c = coefficients(cx, p)?;
-    if c.space.len() != 1 || !cx.is_zero(c.forcing) || !cx.is_zero(c.reaction) || !cx.is_zero(c.drift[0]) {
+    if c.space.len() != 1
+        || !cx.is_zero(c.forcing)
+        || !cx.is_zero(c.reaction)
+        || !cx.is_zero(c.drift[0])
+    {
         return None;
     }
     let n = p.dimension();
@@ -389,9 +427,19 @@ pub(super) fn similarity(
     if conditions.0.len() != 2 || !is_zero_number(cx.graph, initial.point) {
         return None;
     }
-    let free = |cx: &Cx<'_>, v: NodeId| p.vars.iter().all(|&q| cx.graph.symbol_of(q).is_none_or(|s| !cx.graph.depends_on(cx.graph.find(v), s)));
+    let free = |cx: &Cx<'_>, v: NodeId| {
+        p.vars.iter().all(|&q| {
+            cx.graph
+                .symbol_of(q)
+                .is_none_or(|s| !cx.graph.depends_on(cx.graph.find(v), s))
+        })
+    };
     let boundary = conditions.0.iter().find(|q| q.on == space)?;
-    if !free(cx, initial.value) || !free(cx, boundary.value) || boundary.robin.is_some() || !is_zero_number(cx.graph, boundary.point) {
+    if !free(cx, initial.value)
+        || !free(cx, boundary.value)
+        || boundary.robin.is_some()
+        || !is_zero_number(cx.graph, boundary.point)
+    {
         return None;
     }
     let u0 = initial.value;

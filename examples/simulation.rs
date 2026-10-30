@@ -12,7 +12,10 @@ fn main() -> Result<(), String> {
         r#"{"width": 32, "height": 32, "temperature": 1.8, "mc_steps": 200, "seed": 42}"#,
     )?;
     let value: serde_json::Value = serde_json::from_str(&ising).map_err(|e| e.to_string())?;
-    println!("Ising 32x32 at T = 1.8: magnetization {}", value["magnetization"]);
+    println!(
+        "Ising 32x32 at T = 1.8: magnetization {}",
+        value["magnetization"]
+    );
 
     let orbit = scenario::run(
         "geodesic",

@@ -233,8 +233,16 @@ mod channel_boundaries {
         inflow: InflowProfile,
         walls: WallCondition,
     ) -> (Array2<f64>, Array2<f64>, Array2<f64>) {
-        run_channel_flow_with(&ChannelFlowConfig { n, re, dt, n_iter: iters, obstacle_mask: mask, inflow, walls })
-            .unwrap_or_else(|e| panic!("{e}"))
+        run_channel_flow_with(&ChannelFlowConfig {
+            n,
+            re,
+            dt,
+            n_iter: iters,
+            obstacle_mask: mask,
+            inflow,
+            walls,
+        })
+        .unwrap_or_else(|e| panic!("{e}"))
     }
 
     #[test]
@@ -242,7 +250,15 @@ mod channel_boundaries {
         let n = 33;
         let re = 10.0;
         let mask = Array2::<bool>::from_elem((n, n), false);
-        let (u, v, p) = flow(n, re, 1e-3, 4000, &mask, InflowProfile::Parabolic(1.0), WallCondition::NoSlip);
+        let (u, v, p) = flow(
+            n,
+            re,
+            1e-3,
+            4000,
+            &mask,
+            InflowProfile::Parabolic(1.0),
+            WallCondition::NoSlip,
+        );
         let h = 1.0 / (n - 1) as f64;
         // no-slip walls
         for i in 0..n {
@@ -252,7 +268,11 @@ mod channel_boundaries {
         for i in [n / 2, 3 * n / 4] {
             for j in 0..n {
                 let y = j as f64 * h;
-                assert!((u[[j, i]] - 4.0 * y * (1.0 - y)).abs() < 0.04, "u[{j},{i}] = {}", u[[j, i]]);
+                assert!(
+                    (u[[j, i]] - 4.0 * y * (1.0 - y)).abs() < 0.04,
+                    "u[{j},{i}] = {}",
+                    u[[j, i]]
+                );
                 assert!(v[[j, i]].abs() < 0.02, "v[{j},{i}] = {}", v[[j, i]]);
             }
         }
@@ -271,27 +291,58 @@ mod channel_boundaries {
                 mask[[j, i]] = true;
             }
         }
-        let (u, v, p) = flow(n, 50.0, 1e-3, 600, &mask, InflowProfile::Uniform(1.0), WallCondition::Slip);
+        let (u, v, p) = flow(
+            n,
+            50.0,
+            1e-3,
+            600,
+            &mask,
+            InflowProfile::Uniform(1.0),
+            WallCondition::Slip,
+        );
         for j in 0..n {
             for i in 0..n {
                 let m = n - 1 - j;
-                assert!((u[[j, i]] - u[[m, i]]).abs() < 1e-8, "u symmetry at ({j},{i})");
-                assert!((v[[j, i]] + v[[m, i]]).abs() < 1e-8, "v antisymmetry at ({j},{i})");
-                assert!((p[[j, i]] - p[[m, i]]).abs() < 1e-8, "p symmetry at ({j},{i})");
+                assert!(
+                    (u[[j, i]] - u[[m, i]]).abs() < 1e-8,
+                    "u symmetry at ({j},{i})"
+                );
+                assert!(
+                    (v[[j, i]] + v[[m, i]]).abs() < 1e-8,
+                    "v antisymmetry at ({j},{i})"
+                );
+                assert!(
+                    (p[[j, i]] - p[[m, i]]).abs() < 1e-8,
+                    "p symmetry at ({j},{i})"
+                );
                 if mask[[j, i]] {
                     assert_eq!((u[[j, i]], v[[j, i]]), (0.0, 0.0));
                 }
             }
         }
         // mass is conserved between inlet and outlet (trapezoid rule)
-        let flux = |i: usize| -> f64 { (1..n - 1).map(|j| u[[j, i]]).sum::<f64>() + 0.5 * (u[[0, i]] + u[[n - 1, i]]) };
-        assert!((flux(0) - flux(n - 1)).abs() < 0.08 * flux(0), "inlet {} outlet {}", flux(0), flux(n - 1));
+        let flux = |i: usize| -> f64 {
+            (1..n - 1).map(|j| u[[j, i]]).sum::<f64>() + 0.5 * (u[[0, i]] + u[[n - 1, i]])
+        };
+        assert!(
+            (flux(0) - flux(n - 1)).abs() < 0.08 * flux(0),
+            "inlet {} outlet {}",
+            flux(0),
+            flux(n - 1)
+        );
         // the block decelerates the fluid in front of it and in its wake,
         // and deflects the flow around it (positive v above the centreline upstream)
         assert!(u[[16, 8]] < 0.6, "stagnation u = {}", u[[16, 8]]);
         assert!(u[[16, 15]] < 0.5, "wake u = {}", u[[16, 15]]);
-        assert!(u[[8, 12]] > 1.0, "flow accelerates above the block: {}", u[[8, 12]]);
-        assert!(v[[20, 9]] > 0.0 && v[[12, 9]] < 0.0, "flow splits around the block");
+        assert!(
+            u[[8, 12]] > 1.0,
+            "flow accelerates above the block: {}",
+            u[[8, 12]]
+        );
+        assert!(
+            v[[20, 9]] > 0.0 && v[[12, 9]] < 0.0,
+            "flow splits around the block"
+        );
     }
 
     #[test]
@@ -299,9 +350,22 @@ mod channel_boundaries {
         let n = 17;
         let mut mask = Array2::<bool>::from_elem((n, n), false);
         mask[[8, 8]] = true;
-        let (u, v, p) = flow(n, 20.0, 1e-3, 50, &mask, InflowProfile::Uniform(1.0), WallCondition::NoSlip);
+        let (u, v, p) = flow(
+            n,
+            20.0,
+            1e-3,
+            50,
+            &mask,
+            InflowProfile::Uniform(1.0),
+            WallCondition::NoSlip,
+        );
         assert_eq!(p[[8, 8]], 0.0);
-        assert!(u.iter().chain(v.iter()).chain(p.iter()).all(|x| x.is_finite()));
+        assert!(
+            u.iter()
+                .chain(v.iter())
+                .chain(p.iter())
+                .all(|x| x.is_finite())
+        );
         // no-slip: the point just upstream of the obstacle is slowed down
         assert!(u[[8, 7]] < 0.9);
     }

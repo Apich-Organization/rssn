@@ -22,14 +22,26 @@
 
 use num_complex::Complex64;
 
-use crate::kernels::dense::{self, Mat};
-use crate::kernels::matfun::{expm, phi_matrices};
-use crate::kernels::ode_adaptive::{OdeError, OdeOptions, OdeSolution, err_norm};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
+use crate::kernels::matfun::expm;
+use crate::kernels::matfun::phi_matrices;
+use crate::kernels::ode_adaptive::OdeError;
+use crate::kernels::ode_adaptive::OdeOptions;
+use crate::kernels::ode_adaptive::OdeSolution;
+use crate::kernels::ode_adaptive::err_norm;
 use crate::kernels::ode_stiff::JacobianFn;
 
 // --------------------------------------------------------------- ETDRK4
 
-fn mat_add_scaled(acc: &mut [f64], m: &Mat, v: &[f64], c: f64) {
+fn mat_add_scaled(
+    acc: &mut [f64],
+    m: &Mat,
+    v: &[f64],
+    c: f64,
+) {
     let r = m.matvec(v);
     for (a, x) in acc.iter_mut().zip(&r) {
         *a += c * x;
@@ -130,8 +142,14 @@ pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
     }
     let h = (t1 - t0) / steps as f64;
     let m = 64usize;
-    let (mut e, mut e2, mut q, mut f1, mut f2, mut f3) =
-        (vec![0.0; n], vec![0.0; n], vec![0.0; n], vec![0.0; n], vec![0.0; n], vec![0.0; n]);
+    let (mut e, mut e2, mut q, mut f1, mut f2, mut f3) = (
+        vec![0.0; n],
+        vec![0.0; n],
+        vec![0.0; n],
+        vec![0.0; n],
+        vec![0.0; n],
+        vec![0.0; n],
+    );
     for i in 0..n {
         let z = h * lambda[i];
         e[i] = z.exp();
@@ -163,7 +181,9 @@ pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
         nl(t + 0.5 * h, &a, &mut na);
         let b: Vec<f64> = (0..n).map(|i| e2[i] * u[i] + q[i] * na[i]).collect();
         nl(t + 0.5 * h, &b, &mut nb);
-        let c: Vec<f64> = (0..n).map(|i| e2[i] * a[i] + q[i] * (2.0 * nb[i] - nu[i])).collect();
+        let c: Vec<f64> = (0..n)
+            .map(|i| e2[i] * a[i] + q[i] * (2.0 * nb[i] - nu[i]))
+            .collect();
         nl(t + h, &c, &mut nc);
         let un: Vec<f64> = (0..n)
             .map(|i| e[i] * u[i] + f1[i] * nu[i] + 2.0 * f2[i] * (na[i] + nb[i]) + f3[i] * nc[i])
@@ -219,7 +239,20 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1usize;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| crate::kernels::ode_adaptive::initial_step(&f, t0, y0, &f0, dir, 3.0, crate::kernels::ode_adaptive::Tol { rtol: opts.rtol, atol: opts.atol }))
+        .unwrap_or_else(|| {
+            crate::kernels::ode_adaptive::initial_step(
+                &f,
+                t0,
+                y0,
+                &f0,
+                dir,
+                3.0,
+                crate::kernels::ode_adaptive::Tol {
+                    rtol: opts.rtol,
+                    atol: opts.atol,
+                },
+            )
+        })
         .abs()
         .min(opts.hmax)
         * dir;
@@ -302,7 +335,11 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
             nfev += 1;
             sol.t.push(t);
             sol.y.push(y.clone());
-            let fac = if en == 0.0 { 5.0 } else { (0.9 * en.powf(-1.0 / 3.0)).clamp(0.2, 5.0) };
+            let fac = if en == 0.0 {
+                5.0
+            } else {
+                (0.9 * en.powf(-1.0 / 3.0)).clamp(0.2, 5.0)
+            };
             h *= fac;
             if h.abs() > opts.hmax {
                 h = opts.hmax * dir;
@@ -342,25 +379,35 @@ struct ImexTableau {
 
 fn imex_tableau(s: ImexScheme) -> ImexTableau {
     match s {
-        ImexScheme::Euler => ImexTableau {
-            ae: vec![vec![0.0, 0.0], vec![1.0, 0.0]],
-            ai: vec![vec![0.0, 0.0], vec![0.0, 1.0]],
-            be: vec![1.0, 0.0],
-            bi: vec![0.0, 1.0],
-            c: vec![0.0, 1.0],
+        | ImexScheme::Euler => {
+            ImexTableau {
+                ae: vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+                ai: vec![vec![0.0, 0.0], vec![0.0, 1.0]],
+                be: vec![1.0, 0.0],
+                bi: vec![0.0, 1.0],
+                c: vec![0.0, 1.0],
+            }
         },
-        ImexScheme::Ars222 => {
+        | ImexScheme::Ars222 => {
             let g = 1.0 - 1.0 / 2f64.sqrt();
             let d = 1.0 - 1.0 / (2.0 * g);
             ImexTableau {
-                ae: vec![vec![0.0, 0.0, 0.0], vec![g, 0.0, 0.0], vec![d, 1.0 - d, 0.0]],
-                ai: vec![vec![0.0, 0.0, 0.0], vec![0.0, g, 0.0], vec![0.0, 1.0 - g, g]],
+                ae: vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![g, 0.0, 0.0],
+                    vec![d, 1.0 - d, 0.0],
+                ],
+                ai: vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, g, 0.0],
+                    vec![0.0, 1.0 - g, g],
+                ],
                 be: vec![d, 1.0 - d, 0.0],
                 bi: vec![0.0, 1.0 - g, g],
                 c: vec![0.0, g, 1.0],
             }
-        }
-        ImexScheme::Ars343 => {
+        },
+        | ImexScheme::Ars343 => {
             let g = 0.435_866_521_508_459_0;
             let b1 = -1.5 * g * g + 4.0 * g - 0.25;
             let b2 = 1.5 * g * g - 5.0 * g + 1.25;
@@ -369,7 +416,12 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
                     vec![0.0, 0.0, 0.0, 0.0],
                     vec![g, 0.0, 0.0, 0.0],
                     vec![0.321_278_886_028_627_8, 0.396_654_374_725_601_7, 0.0, 0.0],
-                    vec![-0.105_858_296_071_880, 0.552_929_148_035_939_8, 0.552_929_148_035_939_8, 0.0],
+                    vec![
+                        -0.105_858_296_071_880,
+                        0.552_929_148_035_939_8,
+                        0.552_929_148_035_939_8,
+                        0.0,
+                    ],
                 ],
                 ai: vec![
                     vec![0.0, 0.0, 0.0, 0.0],
@@ -381,7 +433,7 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
                 bi: vec![0.0, b1, b2, g],
                 c: vec![0.0, g, f64::midpoint(1.0, g), 1.0],
             }
-        }
+        },
     }
 }
 
@@ -420,7 +472,11 @@ where
     E: Fn(f64, &[f64], &mut [f64]),
     I: Fn(f64, &[f64], &mut [f64]),
 {
-    let ImexOptions { jac_im, steps, scheme } = *opts;
+    let ImexOptions {
+        jac_im,
+        steps,
+        scheme,
+    } = *opts;
     let n = y0.len();
     if n == 0 || steps == 0 {
         return Err(OdeError::Invalid);
@@ -453,7 +509,12 @@ where
             |jf| jf(t, &y),
         );
         // factor I - h gamma J for the (common) diagonal coefficient
-        let gamma = tab.ai.iter().enumerate().map(|(i, r)| r[i]).fold(0.0, f64::max);
+        let gamma = tab
+            .ai
+            .iter()
+            .enumerate()
+            .map(|(i, r)| r[i])
+            .fold(0.0, f64::max);
         let mut w = Mat::identity(n);
         for i in 0..n {
             for j in 0..n {
@@ -482,7 +543,9 @@ where
                 let mut conv = false;
                 for _ in 0..30 {
                     f_im(ti, &yv, &mut fv);
-                    let res: Vec<f64> = (0..n).map(|q| -(yv[q] - rhs[q] - h * aii * fv[q])).collect();
+                    let res: Vec<f64> = (0..n)
+                        .map(|q| -(yv[q] - rhs[q] - h * aii * fv[q]))
+                        .collect();
                     let dy = lu.solve(&res);
                     // the factorisation uses the largest diagonal coefficient: scale the step
                     let scale = 1.0;
@@ -539,7 +602,18 @@ where
     E: Fn(f64, &[f64], &mut [f64]),
     I: Fn(f64, &[f64], &mut [f64]),
 {
-    imex_rk_with(f_ex, f_im, t0, t1, y0, &ImexOptions { jac_im, steps, scheme })
+    imex_rk_with(
+        f_ex,
+        f_im,
+        t0,
+        t1,
+        y0,
+        &ImexOptions {
+            jac_im,
+            steps,
+            scheme,
+        },
+    )
 }
 
 // ------------------------------------------------------------ Symplectic
@@ -559,8 +633,8 @@ pub enum SplitMethod {
 
 fn composition_weights(m: SplitMethod) -> Vec<f64> {
     match m {
-        SplitMethod::Verlet => vec![1.0],
-        SplitMethod::TripleJump(order) => {
+        | SplitMethod::Verlet => vec![1.0],
+        | SplitMethod::TripleJump(order) => {
             // recursive: S_{k+2}(h) = S_k(g h) S_k((1 - 2g) h) S_k(g h), g = 1 / (2 - 2^{1/(k+1)})
             let mut w = vec![1.0];
             let mut k = 2usize;
@@ -574,13 +648,17 @@ fn composition_weights(m: SplitMethod) -> Vec<f64> {
                 k += 2;
             }
             w
-        }
-        SplitMethod::Yoshida6 => {
-            let (w1, w2, w3) = (-1.177_679_984_178_87, 0.235_573_213_359_357, 0.784_513_610_477_560);
+        },
+        | SplitMethod::Yoshida6 => {
+            let (w1, w2, w3) = (
+                -1.177_679_984_178_87,
+                0.235_573_213_359_357,
+                0.784_513_610_477_560,
+            );
             let w0 = 1.0 - 2.0 * (w1 + w2 + w3);
             vec![w3, w2, w1, w0, w1, w2, w3]
-        }
-        SplitMethod::Yoshida8 => {
+        },
+        | SplitMethod::Yoshida8 => {
             let ws = [
                 0.102_799_849_391_985,
                 -1.960_610_232_975_49,
@@ -595,7 +673,7 @@ fn composition_weights(m: SplitMethod) -> Vec<f64> {
             v.push(w0);
             v.extend(ws.iter().copied());
             v
-        }
+        },
     }
 }
 
@@ -695,7 +773,10 @@ fn lobatto_nodes(s: usize) -> (Vec<f64>, Vec<f64>) {
             2.0 / (s as f64 * (s as f64 - 1.0) * pm * pm)
         })
         .collect();
-    (x.iter().map(|z| 0.5 * (z + 1.0)).collect(), w.iter().map(|v| 0.5 * v).collect())
+    (
+        x.iter().map(|z| 0.5 * (z + 1.0)).collect(),
+        w.iter().map(|v| 0.5 * v).collect(),
+    )
 }
 
 /// Step count and Gauss-Lobatto node count of [`variational_lobatto_with`].
@@ -868,7 +949,15 @@ pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
     steps: usize,
     stages: usize,
 ) -> Result<(Vec<f64>, Vec<f64>), OdeError> {
-    variational_lobatto_with(mass, grad_v, q0, p0, t0, t1, &VariationalOptions { steps, stages })
+    variational_lobatto_with(
+        mass,
+        grad_v,
+        q0,
+        p0,
+        t0,
+        t1,
+        &VariationalOptions { steps, stages },
+    )
 }
 
 /// Matrix exponential helper re-exported for the exponential integrators.

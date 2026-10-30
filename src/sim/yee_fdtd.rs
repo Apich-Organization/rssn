@@ -54,7 +54,9 @@
 //! faces, the auxiliary-grid plane wave and the analytic oblique wave assume
 //! a vacuum incident medium, PMC boundaries not available.
 
-use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
+use crate::sim::boundary::BoundaryCondition;
+use crate::sim::boundary::Face;
+use crate::sim::boundary::FaceBcs;
 
 /// Field component.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -145,20 +147,41 @@ pub struct Pole {
 impl Pole {
     /// Lorentz pole with static contribution `Δε`: `χ = Δε ω0² / (ω0² - ω² - i γ ω)`.
     #[must_use]
-    pub fn lorentz(delta_eps: f64, omega0: f64, gamma: f64) -> Self {
-        Self { omega0, gamma, strength: delta_eps * omega0 * omega0 }
+    pub fn lorentz(
+        delta_eps: f64,
+        omega0: f64,
+        gamma: f64,
+    ) -> Self {
+        Self {
+            omega0,
+            gamma,
+            strength: delta_eps * omega0 * omega0,
+        }
     }
 
     /// Drude pole with plasma frequency `ω_p`: `χ = -ω_p² / (ω² + i γ ω)`.
     #[must_use]
-    pub const fn drude(omega_p: f64, gamma: f64) -> Self {
-        Self { omega0: 0.0, gamma, strength: omega_p * omega_p }
+    pub const fn drude(
+        omega_p: f64,
+        gamma: f64,
+    ) -> Self {
+        Self {
+            omega0: 0.0,
+            gamma,
+            strength: omega_p * omega_p,
+        }
     }
 
     /// Susceptibility `χ(ω)` (time dependence `e^{-iωt}`) as `(re, im)`.
     #[must_use]
-    pub fn susceptibility(&self, omega: f64) -> (f64, f64) {
-        let (re, im) = (self.omega0 * self.omega0 - omega * omega, -self.gamma * omega);
+    pub fn susceptibility(
+        &self,
+        omega: f64,
+    ) -> (f64, f64) {
+        let (re, im) = (
+            self.omega0 * self.omega0 - omega * omega,
+            -self.gamma * omega,
+        );
         let den = re * re + im * im;
         (self.strength * re / den, -self.strength * im / den)
     }
@@ -203,7 +226,10 @@ impl YeeConfig {
     ///
     /// # Errors
     /// For a bad dimension or sizes.
-    pub fn new(n: &[usize], h: &[f64]) -> Result<Self, String> {
+    pub fn new(
+        n: &[usize],
+        h: &[f64],
+    ) -> Result<Self, String> {
         let dim = n.len();
         if !(1..=3).contains(&dim) || h.len() != dim || n.iter().any(|&m| m < 4) {
             return Err("invalid Yee grid".into());
@@ -277,12 +303,12 @@ struct PlaneWaveState {
 
 const fn comp_index(c: Comp) -> usize {
     match c {
-        Comp::Ex => 0,
-        Comp::Ey => 1,
-        Comp::Ez => 2,
-        Comp::Hx => 3,
-        Comp::Hy => 4,
-        Comp::Hz => 5,
+        | Comp::Ex => 0,
+        | Comp::Ey => 1,
+        | Comp::Ez => 2,
+        | Comp::Hx => 3,
+        | Comp::Hy => 4,
+        | Comp::Hz => 5,
     }
 }
 
@@ -310,16 +336,18 @@ impl Yee {
         let mut periodic = [false; 3];
         let mut pec_lo = [false; 3];
         let mut use_pml = false;
-        let mut pml_int: [Vec<(f64, f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
-        let mut pml_half: [Vec<(f64, f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
+        let mut pml_int: [Vec<(f64, f64, f64)>; 3] =
+            std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
+        let mut pml_half: [Vec<(f64, f64, f64)>; 3] =
+            std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
         for a in 0..cfg.dim {
             periodic[a] = cfg.bcs.axis_periodic(a)?;
             pec_lo[a] = !periodic[a];
             for max in [false, true] {
                 let bc = cfg.bcs.get(Face::of_axis(a, max));
                 match bc {
-                    BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {},
-                    BoundaryCondition::Absorbing => {
+                    | BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {},
+                    | BoundaryCondition::Absorbing => {
                         let d = cfg.pml_cells;
                         if 2 * d >= cfg.n[a] {
                             return Err("PML too thick for the grid".into());
@@ -331,7 +359,11 @@ impl Yee {
                         for i in 0..n {
                             for half in [false, true] {
                                 let pos = i as f64 + if half { 0.5 } else { 0.0 };
-                                let depth = if max { pos - (n - d) as f64 } else { d as f64 - pos };
+                                let depth = if max {
+                                    pos - (n - d) as f64
+                                } else {
+                                    d as f64 - pos
+                                };
                                 if depth > 0.0 {
                                     let frac = (depth / d as f64).min(1.0);
                                     let sigma = smax * frac.powf(m);
@@ -339,7 +371,15 @@ impl Yee {
                                     let alpha = cfg.pml_alpha_max * (1.0 - frac);
                                     let b = (-(sigma / kappa + alpha) * dt).exp();
                                     let den = sigma * kappa + kappa * kappa * alpha;
-                                    let coef = (b, if den > 0.0 { sigma / den * (b - 1.0) } else { 0.0 }, kappa);
+                                    let coef = (
+                                        b,
+                                        if den > 0.0 {
+                                            sigma / den * (b - 1.0)
+                                        } else {
+                                            0.0
+                                        },
+                                        kappa,
+                                    );
                                     if half {
                                         pml_half[a][i] = coef;
                                     } else {
@@ -349,24 +389,47 @@ impl Yee {
                             }
                         }
                     },
-                    _ => return Err("YeeConfig supports PEC (Dirichlet), periodic and PML (Absorbing) faces".into()),
+                    | _ => return Err(
+                        "YeeConfig supports PEC (Dirichlet), periodic and PML (Absorbing) faces"
+                            .into(),
+                    ),
                 }
             }
         }
         let eps_inv: Vec<f64> = (0..nn)
             .map(|p| {
-                let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
-                let x = [i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]];
+                let i = [
+                    p % cfg.n[0],
+                    (p / cfg.n[0]) % cfg.n[1],
+                    p / (cfg.n[0] * cfg.n[1]),
+                ];
+                let x = [
+                    i[0] as f64 * cfg.h[0],
+                    i[1] as f64 * cfg.h[1],
+                    i[2] as f64 * cfg.h[2],
+                ];
                 1.0 / cfg.eps_r.as_ref().map_or(1.0, |f| f(x))
             })
             .collect();
-        let psi = if use_pml { vec![vec![0.0; nn]; 12] } else { Vec::new() };
+        let psi = if use_pml {
+            vec![vec![0.0; nn]; 12]
+        } else {
+            Vec::new()
+        };
         let mut layers: Vec<PoleLayer> = Vec::new();
         if let Some(pf) = &cfg.dispersive {
             let per_cell: Vec<Vec<Pole>> = (0..nn)
                 .map(|p| {
-                    let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
-                    pf([i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]])
+                    let i = [
+                        p % cfg.n[0],
+                        (p / cfg.n[0]) % cfg.n[1],
+                        p / (cfg.n[0] * cfg.n[1]),
+                    ];
+                    pf([
+                        i[0] as f64 * cfg.h[0],
+                        i[1] as f64 * cfg.h[1],
+                        i[2] as f64 * cfg.h[2],
+                    ])
                 })
                 .collect();
             let kmax = per_cell.iter().map(Vec::len).max().unwrap_or(0);
@@ -398,8 +461,16 @@ impl Yee {
             let mut area_inv: [Vec<f64>; 3] = std::array::from_fn(|_| vec![1.0; nn]);
             let mut min_area: f64 = 1.0;
             for p in 0..nn {
-                let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
-                let x0 = [i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]];
+                let i = [
+                    p % cfg.n[0],
+                    (p / cfg.n[0]) % cfg.n[1],
+                    p / (cfg.n[0] * cfg.n[1]),
+                ];
+                let x0 = [
+                    i[0] as f64 * cfg.h[0],
+                    i[1] as f64 * cfg.h[1],
+                    i[2] as f64 * cfg.h[2],
+                ];
                 for c in 0..3 {
                     len[c][p] = if c < cfg.dim {
                         crate::sim::cutcell::open_length_fraction(&outside, x0, c, cfg.h[c])
@@ -415,7 +486,13 @@ impl Yee {
                     let a = if axes.is_empty() {
                         1.0
                     } else {
-                        crate::sim::cutcell::open_fraction(&outside, x0, hl, &axes, crate::sim::cutcell::default_depth(axes.len()))
+                        crate::sim::cutcell::open_fraction(
+                            &outside,
+                            x0,
+                            hl,
+                            &axes,
+                            crate::sim::cutcell::default_depth(axes.len()),
+                        )
                     };
                     if a >= cfg.dm_min_area {
                         area_inv[c][p] = 1.0 / a;
@@ -428,7 +505,11 @@ impl Yee {
                 }
             }
             dt *= min_area.sqrt();
-            Some(DeyMittra { len, area_inv, scratch: std::array::from_fn(|_| vec![0.0; nn]) })
+            Some(DeyMittra {
+                len,
+                area_inv,
+                scratch: std::array::from_fn(|_| vec![0.0; nn]),
+            })
         } else {
             None
         };
@@ -453,7 +534,10 @@ impl Yee {
     }
 
     /// Adds a soft current source.
-    pub fn add_source(&mut self, s: CurrentSource) {
+    pub fn add_source(
+        &mut self,
+        s: CurrentSource,
+    ) {
         self.sources.push(s);
     }
 
@@ -461,13 +545,21 @@ impl Yee {
     ///
     /// # Errors
     /// If the slab is outside the grid or touches the PML.
-    pub fn set_plane_wave(&mut self, pw: PlaneWave, total_steps: usize) -> Result<(), String> {
+    pub fn set_plane_wave(
+        &mut self,
+        pw: PlaneWave,
+        total_steps: usize,
+    ) -> Result<(), String> {
         let nx = self.cfg.n[0];
         if pw.ia < 2 || pw.ib + 2 >= nx || pw.ia >= pw.ib {
             return Err("TF/SF slab must lie inside the grid".into());
         }
         let n_aux = nx + (total_steps as f64 * self.cfg.cfl).ceil() as usize + 20;
-        self.pw = Some(PlaneWaveState { spec: pw, e: vec![0.0; n_aux], h: vec![0.0; n_aux] });
+        self.pw = Some(PlaneWaveState {
+            spec: pw,
+            e: vec![0.0; n_aux],
+            h: vec![0.0; n_aux],
+        });
         Ok(())
     }
 
@@ -476,15 +568,26 @@ impl Yee {
     /// # Errors
     /// For a zero direction or polarisation, a polarisation parallel to the
     /// direction, or components along inactive axes.
-    pub fn set_oblique_plane_wave(&mut self, w: ObliquePlaneWave) -> Result<(), String> {
+    pub fn set_oblique_plane_wave(
+        &mut self,
+        w: ObliquePlaneWave,
+    ) -> Result<(), String> {
         let norm = |v: [f64; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
         let nn = norm(w.direction);
         if nn == 0.0 {
             return Err("direction must be non-zero".into());
         }
-        let n = [w.direction[0] / nn, w.direction[1] / nn, w.direction[2] / nn];
+        let n = [
+            w.direction[0] / nn,
+            w.direction[1] / nn,
+            w.direction[2] / nn,
+        ];
         let dotp = n[0] * w.polarization[0] + n[1] * w.polarization[1] + n[2] * w.polarization[2];
-        let mut e = [w.polarization[0] - dotp * n[0], w.polarization[1] - dotp * n[1], w.polarization[2] - dotp * n[2]];
+        let mut e = [
+            w.polarization[0] - dotp * n[0],
+            w.polarization[1] - dotp * n[1],
+            w.polarization[2] - dotp * n[2],
+        ];
         let en = norm(e);
         if en < 1e-12 {
             return Err("polarisation must not be parallel to the direction".into());
@@ -497,8 +600,21 @@ impl Yee {
                 return Err("direction has a component along an inactive axis".into());
             }
         }
-        let h = [n[1] * e[2] - n[2] * e[1], n[2] * e[0] - n[0] * e[2], n[0] * e[1] - n[1] * e[0]];
-        self.obl = Some(ObliqueState { rot: None, lo: w.lo, hi: w.hi, n, e, h, origin: w.origin, waveform: w.waveform });
+        let h = [
+            n[1] * e[2] - n[2] * e[1],
+            n[2] * e[0] - n[0] * e[2],
+            n[0] * e[1] - n[1] * e[0],
+        ];
+        self.obl = Some(ObliqueState {
+            rot: None,
+            lo: w.lo,
+            hi: w.hi,
+            n,
+            e,
+            h,
+            origin: w.origin,
+            waveform: w.waveform,
+        });
         Ok(())
     }
 
@@ -510,7 +626,11 @@ impl Yee {
     /// # Errors
     /// As [`Yee::set_oblique_plane_wave`], and for a matrix that is not
     /// orthonormal or that mixes in an inactive axis.
-    pub fn set_oblique_plane_wave_rotated(&mut self, w: ObliquePlaneWave, rotation: [[f64; 3]; 3]) -> Result<(), String> {
+    pub fn set_oblique_plane_wave_rotated(
+        &mut self,
+        w: ObliquePlaneWave,
+        rotation: [[f64; 3]; 3],
+    ) -> Result<(), String> {
         for i in 0..3 {
             for j in 0..3 {
                 let dot: f64 = (0..3).map(|k| rotation[k][i] * rotation[k][j]).sum();
@@ -520,7 +640,9 @@ impl Yee {
             }
         }
         for a in self.cfg.dim..3 {
-            if (0..3).any(|b| b != a && (rotation[a][b].abs() > 1e-12 || rotation[b][a].abs() > 1e-12)) {
+            if (0..3)
+                .any(|b| b != a && (rotation[a][b].abs() > 1e-12 || rotation[b][a].abs() > 1e-12))
+            {
                 return Err("the rotation must not mix in inactive axes".into());
             }
         }
@@ -532,16 +654,27 @@ impl Yee {
     }
 
     /// Physical position of a field component at (possibly out-of-range) cell indices.
-    fn pos_of(&self, comp: usize, ijk: [isize; 3]) -> [f64; 3] {
+    fn pos_of(
+        &self,
+        comp: usize,
+        ijk: [isize; 3],
+    ) -> [f64; 3] {
         let mut x = [0.0; 3];
         for a in 0..self.cfg.dim {
-            let off = if comp < 3 { f64::from(u8::from(a == comp)) } else { f64::from(u8::from(a != comp - 3)) };
+            let off = if comp < 3 {
+                f64::from(u8::from(a == comp))
+            } else {
+                f64::from(u8::from(a != comp - 3))
+            };
             x[a] = (ijk[a] as f64 + 0.5 * off) * self.cfg.h[a];
         }
         x
     }
 
-    fn in_box(&self, pos: [f64; 3]) -> f64 {
+    fn in_box(
+        &self,
+        pos: [f64; 3],
+    ) -> f64 {
         let Some(o) = &self.obl else { return 0.0 };
         let mut pos = pos;
         if let Some(r) = &o.rot {
@@ -559,16 +692,32 @@ impl Yee {
         1.0
     }
 
-    fn incident(&self, comp: usize, pos: [f64; 3], t: f64) -> f64 {
+    fn incident(
+        &self,
+        comp: usize,
+        pos: [f64; 3],
+        t: f64,
+    ) -> f64 {
         let Some(o) = &self.obl else { return 0.0 };
         let s: f64 = (0..3).map(|a| o.n[a] * (pos[a] - o.origin[a])).sum();
         let f = (o.waveform)(t - s);
-        if comp < 3 { o.e[comp] * f } else { o.h[comp - 3] * f }
+        if comp < 3 {
+            o.e[comp] * f
+        } else {
+            o.h[comp - 3] * f
+        }
     }
 
     /// Correction of the difference quotient `∂_a G` used to update component
     /// `fc` so that total and scattered fields are mixed consistently.
-    fn tf_corr(&self, fc: usize, g: usize, ijk: [usize; 3], a: usize, forward: bool) -> f64 {
+    fn tf_corr(
+        &self,
+        fc: usize,
+        g: usize,
+        ijk: [usize; 3],
+        a: usize,
+        forward: bool,
+    ) -> f64 {
         if self.obl.is_none() || self.cfg.n[a] == 1 {
             return 0.0;
         }
@@ -592,11 +741,27 @@ impl Yee {
         if crate::kernels::exact_eq(mf, mc) && crate::kernels::exact_eq(mf, mn) {
             return 0.0;
         }
-        let tg = if g < 3 { self.t } else { self.t + 0.5 * self.dt };
-        let dcur = if crate::kernels::exact_eq(mf, mc) { 0.0 } else { (mf - mc) * self.incident(g, pc, tg) };
-        let dnb = if crate::kernels::exact_eq(mf, mn) { 0.0 } else { (mf - mn) * self.incident(g, pn, tg) };
+        let tg = if g < 3 {
+            self.t
+        } else {
+            self.t + 0.5 * self.dt
+        };
+        let dcur = if crate::kernels::exact_eq(mf, mc) {
+            0.0
+        } else {
+            (mf - mc) * self.incident(g, pc, tg)
+        };
+        let dnb = if crate::kernels::exact_eq(mf, mn) {
+            0.0
+        } else {
+            (mf - mn) * self.incident(g, pn, tg)
+        };
         let h = self.cfg.h[a];
-        if forward { (dnb - dcur) / h } else { (dcur - dnb) / h }
+        if forward {
+            (dnb - dcur) / h
+        } else {
+            (dcur - dnb) / h
+        }
     }
 
     /// Number of cells.
@@ -607,24 +772,38 @@ impl Yee {
 
     /// Flat index of cell `(i, j, k)`.
     #[must_use]
-    pub const fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+    pub const fn idx(
+        &self,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> usize {
         i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
     }
 
     /// Field values of one component.
     #[must_use]
-    pub fn field(&self, c: Comp) -> &[f64] {
+    pub fn field(
+        &self,
+        c: Comp,
+    ) -> &[f64] {
         &self.f[comp_index(c)]
     }
 
     /// Mutable field values of one component (for initial conditions).
-    pub fn field_mut(&mut self, c: Comp) -> &mut [f64] {
+    pub fn field_mut(
+        &mut self,
+        c: Comp,
+    ) -> &mut [f64] {
         &mut self.f[comp_index(c)]
     }
 
     /// Cell size along an axis.
     #[must_use]
-    pub const fn h(&self, a: usize) -> f64 {
+    pub const fn h(
+        &self,
+        a: usize,
+    ) -> f64 {
         self.cfg.h[a]
     }
 
@@ -641,14 +820,20 @@ impl Yee {
         let mut s = 0.0;
         for p in 0..self.size() {
             for c in 0..3 {
-                s += self.f[c][p] * self.f[c][p] / self.eps_inv[p] + self.f[3 + c][p] * self.f[3 + c][p];
+                s += self.f[c][p] * self.f[c][p] / self.eps_inv[p]
+                    + self.f[3 + c][p] * self.f[3 + c][p];
             }
         }
         0.5 * s * dv
     }
 
     /// Forward difference `(f[i+1] - f[i]) / h` along `a` (zero beyond a PEC wall).
-    fn dfw(&self, f: &[f64], ijk: [usize; 3], a: usize) -> f64 {
+    fn dfw(
+        &self,
+        f: &[f64],
+        ijk: [usize; 3],
+        a: usize,
+    ) -> f64 {
         let n = self.cfg.n[a];
         if n == 1 {
             return 0.0;
@@ -667,7 +852,12 @@ impl Yee {
     }
 
     /// Backward difference `(f[i] - f[i-1]) / h` along `a`.
-    fn dbw(&self, f: &[f64], ijk: [usize; 3], a: usize) -> f64 {
+    fn dbw(
+        &self,
+        f: &[f64],
+        ijk: [usize; 3],
+        a: usize,
+    ) -> f64 {
         let n = self.cfg.n[a];
         if n == 1 {
             return 0.0;
@@ -686,9 +876,24 @@ impl Yee {
     }
 
     /// Curl-difference `∂_a1 F1 - ∂_a2 F2` for the H update (forward differences) with PML memory.
-    fn curl_h(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
-        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
-        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
+    fn curl_h(
+        &mut self,
+        fc: usize,
+        p: usize,
+        ijk: [usize; 3],
+        t1: CurlTerm,
+        t2: CurlTerm,
+    ) -> f64 {
+        let CurlTerm {
+            f: f1,
+            axis: a1,
+            psi: m1,
+        } = t1;
+        let CurlTerm {
+            f: f2,
+            axis: a2,
+            psi: m2,
+        } = t2;
         let mut d1 = self.dfw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, true);
         let mut d2 = self.dfw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, true);
         if self.use_pml {
@@ -702,9 +907,24 @@ impl Yee {
         d1 - d2
     }
 
-    fn curl_e(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
-        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
-        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
+    fn curl_e(
+        &mut self,
+        fc: usize,
+        p: usize,
+        ijk: [usize; 3],
+        t1: CurlTerm,
+        t2: CurlTerm,
+    ) -> f64 {
+        let CurlTerm {
+            f: f1,
+            axis: a1,
+            psi: m1,
+        } = t1;
+        let CurlTerm {
+            f: f2,
+            axis: a2,
+            psi: m2,
+        } = t2;
         let mut d1 = self.dbw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
         let mut d2 = self.dbw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
         if self.use_pml {
@@ -719,7 +939,10 @@ impl Yee {
     }
 
     /// Advances `H` by `dt_h` using the current `E`.
-    fn update_h(&mut self, dt_h: f64) {
+    fn update_h(
+        &mut self,
+        dt_h: f64,
+    ) {
         let n = self.cfg.n;
         if let Some(dm) = &mut self.dm {
             // the Faraday circulation uses the free parts of the edges: E -> L E
@@ -736,10 +959,54 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Hx: dy Ez - dz Ey ; Hy: dz Ex - dx Ez ; Hz: dx Ey - dy Ex
-                    let cx = self.curl_h(3, p, ijk, CurlTerm { f: 2, axis: 1, psi: 0 }, CurlTerm { f: 1, axis: 2, psi: 1 });
-                    let cy = self.curl_h(4, p, ijk, CurlTerm { f: 0, axis: 2, psi: 2 }, CurlTerm { f: 2, axis: 0, psi: 3 });
-                    let cz = self.curl_h(5, p, ijk, CurlTerm { f: 1, axis: 0, psi: 4 }, CurlTerm { f: 0, axis: 1, psi: 5 });
-                    let (sx, sy, sz) = self.dm.as_ref().map_or((1.0, 1.0, 1.0), |d| (d.area_inv[0][p], d.area_inv[1][p], d.area_inv[2][p]));
+                    let cx = self.curl_h(
+                        3,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 2,
+                            axis: 1,
+                            psi: 0,
+                        },
+                        CurlTerm {
+                            f: 1,
+                            axis: 2,
+                            psi: 1,
+                        },
+                    );
+                    let cy = self.curl_h(
+                        4,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 0,
+                            axis: 2,
+                            psi: 2,
+                        },
+                        CurlTerm {
+                            f: 2,
+                            axis: 0,
+                            psi: 3,
+                        },
+                    );
+                    let cz = self.curl_h(
+                        5,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 1,
+                            axis: 0,
+                            psi: 4,
+                        },
+                        CurlTerm {
+                            f: 0,
+                            axis: 1,
+                            psi: 5,
+                        },
+                    );
+                    let (sx, sy, sz) = self.dm.as_ref().map_or((1.0, 1.0, 1.0), |d| {
+                        (d.area_inv[0][p], d.area_inv[1][p], d.area_inv[2][p])
+                    });
                     self.f[3][p] -= dt_h * cx * sx;
                     self.f[4][p] -= dt_h * cy * sy;
                     self.f[5][p] -= dt_h * cz * sz;
@@ -762,19 +1029,66 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Ex: dy Hz - dz Hy ; Ey: dz Hx - dx Hz ; Ez: dx Hy - dy Hx
-                    let cx = self.curl_e(0, p, ijk, CurlTerm { f: 5, axis: 1, psi: 6 }, CurlTerm { f: 4, axis: 2, psi: 7 });
-                    let cy = self.curl_e(1, p, ijk, CurlTerm { f: 3, axis: 2, psi: 8 }, CurlTerm { f: 5, axis: 0, psi: 9 });
-                    let cz = self.curl_e(2, p, ijk, CurlTerm { f: 4, axis: 0, psi: 10 }, CurlTerm { f: 3, axis: 1, psi: 11 });
+                    let cx = self.curl_e(
+                        0,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 5,
+                            axis: 1,
+                            psi: 6,
+                        },
+                        CurlTerm {
+                            f: 4,
+                            axis: 2,
+                            psi: 7,
+                        },
+                    );
+                    let cy = self.curl_e(
+                        1,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 3,
+                            axis: 2,
+                            psi: 8,
+                        },
+                        CurlTerm {
+                            f: 5,
+                            axis: 0,
+                            psi: 9,
+                        },
+                    );
+                    let cz = self.curl_e(
+                        2,
+                        p,
+                        ijk,
+                        CurlTerm {
+                            f: 4,
+                            axis: 0,
+                            psi: 10,
+                        },
+                        CurlTerm {
+                            f: 3,
+                            axis: 1,
+                            psi: 11,
+                        },
+                    );
                     let ei = self.eps_inv[p];
                     let mut dp = [0.0; 3];
                     for layer in &mut self.layers {
-                        if layer.strength[p] == 0.0 && layer.omega2[p] == 0.0 && layer.gamma[p] == 0.0 {
+                        if layer.strength[p] == 0.0
+                            && layer.omega2[p] == 0.0
+                            && layer.gamma[p] == 0.0
+                        {
                             continue;
                         }
                         let (g, o2, a) = (layer.gamma[p], layer.omega2[p], layer.strength[p]);
                         for c in 0..3 {
                             let (pn, pnm) = (layer.p[c][p], layer.pm[c][p]);
-                            let pnew = ((2.0 - o2 * dt * dt) * pn - (1.0 - 0.5 * g * dt) * pnm + a * dt * dt * self.f[c][p]) / (1.0 + 0.5 * g * dt);
+                            let pnew = ((2.0 - o2 * dt * dt) * pn - (1.0 - 0.5 * g * dt) * pnm
+                                + a * dt * dt * self.f[c][p])
+                                / (1.0 + 0.5 * g * dt);
                             dp[c] += pnew - pn;
                             layer.pm[c][p] = pn;
                             layer.p[c][p] = pnew;
@@ -814,7 +1128,10 @@ impl Yee {
     }
 
     /// Applies the TF/SF corrections of the H update (call after `update_h`).
-    fn tfsf_h(&mut self, dt_h: f64) {
+    fn tfsf_h(
+        &mut self,
+        dt_h: f64,
+    ) {
         let Some(pw) = &self.pw else { return };
         let (ia, ib) = (pw.spec.ia, pw.spec.ib);
         let (s, c) = pw.spec.psi.sin_cos();
@@ -834,7 +1151,10 @@ impl Yee {
         }
     }
 
-    fn tfsf_e(&mut self, hinc_at: &dyn Fn(usize) -> f64) {
+    fn tfsf_e(
+        &mut self,
+        hinc_at: &dyn Fn(usize) -> f64,
+    ) {
         let Some(pw) = &self.pw else { return };
         let (ia, ib) = (pw.spec.ia, pw.spec.ib);
         let (s, c) = pw.spec.psi.sin_cos();
@@ -898,7 +1218,10 @@ impl Yee {
     }
 
     /// Runs `steps` steps.
-    pub fn run(&mut self, steps: usize) {
+    pub fn run(
+        &mut self,
+        steps: usize,
+    ) {
         for _ in 0..steps {
             self.step();
         }

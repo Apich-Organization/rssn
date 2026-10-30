@@ -23,10 +23,10 @@ use num_traits::Zero;
 
 use super::qlinalg as ql;
 use super::qlinalg::Q;
+use super::topology::Simplex;
 use super::topology::boundary_matrix;
 use super::topology::close_complex;
 use super::topology::simplices_of_dim;
-use super::topology::Simplex;
 
 // ----------------------------------------------------------------------
 // Smith normal form
@@ -36,7 +36,10 @@ use super::topology::Simplex;
 /// (its Smith normal form), exactly. Their number is the rank.
 #[must_use]
 pub fn smith_invariants(m: &[Vec<i64>]) -> Vec<BigInt> {
-    let mut a: Vec<Vec<BigInt>> = m.iter().map(|r| r.iter().map(|&x| BigInt::from(x)).collect()).collect();
+    let mut a: Vec<Vec<BigInt>> = m
+        .iter()
+        .map(|r| r.iter().map(|&x| BigInt::from(x)).collect())
+        .collect();
     let nr = a.len();
     let nc = a.first().map_or(0, Vec::len);
     let mut row_alive = vec![true; nr];
@@ -66,7 +69,12 @@ pub fn smith_invariants(m: &[Vec<i64>]) -> Vec<BigInt> {
     }
     let rest: Vec<Vec<BigInt>> = (0..nr)
         .filter(|&r| row_alive[r])
-        .map(|r| (0..nc).filter(|&c| col_alive[c]).map(|c| a[r][c].clone()).collect())
+        .map(|r| {
+            (0..nc)
+                .filter(|&c| col_alive[c])
+                .map(|c| a[r][c].clone())
+                .collect()
+        })
         .collect();
     let mut out = vec![BigInt::one(); units];
     out.extend(smith_dense(rest));
@@ -82,7 +90,8 @@ fn smith_dense(mut b: Vec<Vec<BigInt>>) -> Vec<BigInt> {
         let mut best: Option<(usize, usize)> = None;
         for i in t..nr {
             for j in t..nc {
-                if !b[i][j].is_zero() && best.is_none_or(|(bi, bj)| b[i][j].abs() < b[bi][bj].abs()) {
+                if !b[i][j].is_zero() && best.is_none_or(|(bi, bj)| b[i][j].abs() < b[bi][bj].abs())
+                {
                     best = Some((i, j));
                 }
             }
@@ -146,12 +155,18 @@ pub fn rank_mod_p(
     let pm = i128::from(p);
     let mut a: Vec<Vec<u64>> = m
         .iter()
-        .map(|r| r.iter().map(|&x| u64::try_from(i128::from(x).rem_euclid(pm)).unwrap_or(0)).collect())
+        .map(|r| {
+            r.iter()
+                .map(|&x| u64::try_from(i128::from(x).rem_euclid(pm)).unwrap_or(0))
+                .collect()
+        })
         .collect();
     let cols = a.first().map_or(0, Vec::len);
     let mut rank = 0;
     for c in 0..cols {
-        let Some(piv) = (rank..a.len()).find(|&r| a[r][c] != 0) else { continue };
+        let Some(piv) = (rank..a.len()).find(|&r| a[r][c] != 0) else {
+            continue;
+        };
         a.swap(rank, piv);
         let inv = mod_pow(a[rank][c], p - 2, p);
         let pivot_row: Vec<u64> = a[rank].iter().map(|&x| mul_mod(x, inv, p)).collect();
@@ -233,7 +248,17 @@ pub struct Group {
 #[must_use]
 pub fn chain_complex(basis: &[Vec<Simplex>]) -> ChainComplex {
     let dims = basis.iter().map(Vec::len).collect();
-    let d = basis.iter().enumerate().map(|(k, cols)| if k == 0 { Vec::new() } else { boundary_matrix(&basis[k - 1], cols) }).collect();
+    let d = basis
+        .iter()
+        .enumerate()
+        .map(|(k, cols)| {
+            if k == 0 {
+                Vec::new()
+            } else {
+                boundary_matrix(&basis[k - 1], cols)
+            }
+        })
+        .collect();
     ChainComplex { dims, d }
 }
 
@@ -253,7 +278,14 @@ pub fn relative_chains(
 ) -> ChainComplex {
     let in_sub: HashSet<&Simplex> = sub.iter().collect();
     let top = complex.iter().map(Vec::len).max().unwrap_or(0);
-    let basis: Vec<Vec<Simplex>> = (0..top).map(|k| simplices_of_dim(complex, k).into_iter().filter(|s| !in_sub.contains(s)).collect()).collect();
+    let basis: Vec<Vec<Simplex>> = (0..top)
+        .map(|k| {
+            simplices_of_dim(complex, k)
+                .into_iter()
+                .filter(|s| !in_sub.contains(s))
+                .collect()
+        })
+        .collect();
     chain_complex(&basis)
 }
 
@@ -283,8 +315,14 @@ impl ChainComplex {
     ) -> Group {
         let below = self.invariants(k).len();
         let above = self.invariants(k + 1);
-        let rank = self.dim_at(k).saturating_sub(below).saturating_sub(above.len());
-        Group { rank, torsion: above.into_iter().filter(|t| !t.is_one()).collect() }
+        let rank = self
+            .dim_at(k)
+            .saturating_sub(below)
+            .saturating_sub(above.len());
+        Group {
+            rank,
+            torsion: above.into_iter().filter(|t| !t.is_one()).collect(),
+        }
     }
 
     /// `H^k(C; Z)` by the universal coefficient theorem: the free part of
@@ -295,7 +333,11 @@ impl ChainComplex {
         k: usize,
     ) -> Group {
         let rank = self.homology(k).rank;
-        let torsion = if k == 0 { Vec::new() } else { self.homology(k - 1).torsion };
+        let torsion = if k == 0 {
+            Vec::new()
+        } else {
+            self.homology(k - 1).torsion
+        };
         Group { rank, torsion }
     }
 
@@ -306,8 +348,16 @@ impl ChainComplex {
         k: usize,
         p: u64,
     ) -> usize {
-        let rk = |j: usize| if j == 0 || self.dim_at(j) == 0 || self.dim_at(j - 1) == 0 { 0 } else { rank_mod_p(&self.d[j], p) };
-        self.dim_at(k).saturating_sub(rk(k)).saturating_sub(rk(k + 1))
+        let rk = |j: usize| {
+            if j == 0 || self.dim_at(j) == 0 || self.dim_at(j - 1) == 0 {
+                0
+            } else {
+                rank_mod_p(&self.d[j], p)
+            }
+        };
+        self.dim_at(k)
+            .saturating_sub(rk(k))
+            .saturating_sub(rk(k + 1))
     }
 
     /// The degree of the highest nonzero chain group, if any.
@@ -359,7 +409,12 @@ pub fn intersection(
     b: &[Simplex],
 ) -> Vec<Simplex> {
     let in_b: HashSet<&Simplex> = b.iter().collect();
-    close_complex(&a.iter().filter(|s| in_b.contains(s)).cloned().collect::<Vec<_>>())
+    close_complex(
+        &a.iter()
+            .filter(|s| in_b.contains(s))
+            .cloned()
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// The Betti numbers `b_0 ..= b_top` of a complex.
@@ -405,7 +460,11 @@ pub fn mayer_vietoris(
     if connecting.last().copied() != Some(0) {
         return None;
     }
-    connecting.into_iter().skip(1).map(|d| usize::try_from(d).ok()).collect()
+    connecting
+        .into_iter()
+        .skip(1)
+        .map(|d| usize::try_from(d).ok())
+        .collect()
 }
 
 // ----------------------------------------------------------------------
@@ -421,7 +480,9 @@ pub fn full_simplex(n: usize) -> Vec<Simplex> {
 /// The `n`-sphere: the boundary of the `(n+1)`-simplex.
 #[must_use]
 pub fn sphere(n: usize) -> Vec<Simplex> {
-    let facets: Vec<Simplex> = (0..=n + 1).map(|skip| (0..=n + 1).filter(|&v| v != skip).collect()).collect();
+    let facets: Vec<Simplex> = (0..=n + 1)
+        .map(|skip| (0..=n + 1).filter(|&v| v != skip).collect())
+        .collect();
     close_complex(&facets)
 }
 
@@ -467,7 +528,10 @@ pub fn join(
     l: &[Simplex],
 ) -> Vec<Simplex> {
     let shift = next_vertex(k);
-    let l: Vec<Simplex> = l.iter().map(|s| s.iter().map(|v| v + shift).collect()).collect();
+    let l: Vec<Simplex> = l
+        .iter()
+        .map(|s| s.iter().map(|v| v + shift).collect())
+        .collect();
     let mut all = k.to_vec();
     all.extend(l.iter().cloned());
     for s in k {
@@ -491,7 +555,10 @@ pub fn wedge(
     let shift = next_vertex(k);
     let map = |v: usize| if v == vl { vk } else { v + shift };
     let mut all = k.to_vec();
-    all.extend(l.iter().map(|s| s.iter().map(|&v| map(v)).collect::<Simplex>()));
+    all.extend(
+        l.iter()
+            .map(|s| s.iter().map(|&v| map(v)).collect::<Simplex>()),
+    );
     close_complex(&all)
 }
 
@@ -555,7 +622,11 @@ pub fn klein_bottle(
     n: usize,
 ) -> Vec<Simplex> {
     let id = |i: usize, j: usize| -> usize {
-        let (i, j) = if j >= n { ((m - i % m) % m, j - n) } else { (i % m, j) };
+        let (i, j) = if j >= n {
+            ((m - i % m) % m, j - n)
+        } else {
+            (i % m, j)
+        };
         i * n + j
     };
     let mut triangles = Vec::new();
@@ -647,7 +718,10 @@ pub struct Presentation {
 /// tree, the relators the boundaries of the triangles.
 #[must_use]
 pub fn pi1_presentation(complex: &[Simplex]) -> Option<Presentation> {
-    let vertices: Vec<usize> = simplices_of_dim(complex, 0).into_iter().map(|s| s[0]).collect();
+    let vertices: Vec<usize> = simplices_of_dim(complex, 0)
+        .into_iter()
+        .map(|s| s[0])
+        .collect();
     let base = *vertices.first()?;
     let edges = simplices_of_dim(complex, 1);
     let mut adj: HashMap<usize, Vec<usize>> = HashMap::new();
@@ -675,20 +749,31 @@ pub fn pi1_presentation(complex: &[Simplex]) -> Option<Presentation> {
         }
     }
     let letter = |u: usize, v: usize| -> Option<i64> {
-        if u < v { generator.get(&(u, v)).copied() } else { generator.get(&(v, u)).map(|g| -g) }
+        if u < v {
+            generator.get(&(u, v)).copied()
+        } else {
+            generator.get(&(v, u)).map(|g| -g)
+        }
     };
     let mut relators = Vec::new();
     for t in simplices_of_dim(complex, 2) {
         if !seen.contains(&t[0]) {
             continue;
         }
-        let word: Vec<i64> = [letter(t[0], t[1]), letter(t[1], t[2]), letter(t[2], t[0])].into_iter().flatten().collect();
+        let word: Vec<i64> = [letter(t[0], t[1]), letter(t[1], t[2]), letter(t[2], t[0])]
+            .into_iter()
+            .flatten()
+            .collect();
         let word = cyclic_reduce(word);
         if !word.is_empty() {
             relators.push(word);
         }
     }
-    Some(Presentation { count: gens.len(), relators, edges: gens })
+    Some(Presentation {
+        count: gens.len(),
+        relators,
+        edges: gens,
+    })
 }
 
 fn free_reduce(word: Vec<i64>) -> Vec<i64> {
@@ -723,7 +808,13 @@ fn invert_word(word: &[i64]) -> Vec<i64> {
 pub fn simplify_presentation(p: &Presentation) -> Presentation {
     const LIMIT: usize = 4000;
     let mut alive: Vec<bool> = vec![true; p.count + 1];
-    let mut rels: Vec<Vec<i64>> = p.relators.iter().cloned().map(cyclic_reduce).filter(|r| !r.is_empty()).collect();
+    let mut rels: Vec<Vec<i64>> = p
+        .relators
+        .iter()
+        .cloned()
+        .map(cyclic_reduce)
+        .filter(|r| !r.is_empty())
+        .collect();
     loop {
         rels.sort();
         rels.dedup();
@@ -732,7 +823,11 @@ pub fn simplify_presentation(p: &Presentation) -> Presentation {
             let g = rels[pos][0].abs();
             rels.remove(pos);
             alive[usize::try_from(g).unwrap_or(0)] = false;
-            rels = rels.into_iter().map(|r| cyclic_reduce(r.into_iter().filter(|x| x.abs() != g).collect())).filter(|r| !r.is_empty()).collect();
+            rels = rels
+                .into_iter()
+                .map(|r| cyclic_reduce(r.into_iter().filter(|x| x.abs() != g).collect()))
+                .filter(|r| !r.is_empty())
+                .collect();
             continue;
         }
         // a generator occurring once in a relator is expressed by the rest
@@ -753,7 +848,11 @@ pub fn simplify_presentation(p: &Presentation) -> Presentation {
         let mut rest: Vec<i64> = invert_word(u);
         rest.extend(invert_word(v));
         // `rest` is x (if x > 0) or x^-1.
-        let image = if x > 0 { rest } else { invert_word(&rest) };
+        let image = if x > 0 {
+            rest
+        } else {
+            invert_word(&rest)
+        };
         let g = x.abs();
         let substituted: Vec<Vec<i64>> = rels
             .iter()
@@ -790,9 +889,17 @@ pub fn simplify_presentation(p: &Presentation) -> Presentation {
     }
     let relators = rels
         .into_iter()
-        .map(|r| r.into_iter().map(|x| x.signum() * renumber[usize::try_from(x.abs()).unwrap_or(0)]).collect())
+        .map(|r| {
+            r.into_iter()
+                .map(|x| x.signum() * renumber[usize::try_from(x.abs()).unwrap_or(0)])
+                .collect()
+        })
         .collect();
-    Presentation { count, relators, edges: Vec::new() }
+    Presentation {
+        count,
+        relators,
+        edges: Vec::new(),
+    }
 }
 
 /// The abelianisation of a presented group: `Z^rank + torsion`.
@@ -804,15 +911,23 @@ pub fn abelianization(p: &Presentation) -> Group {
         .map(|r| {
             let mut row = vec![0_i64; p.count];
             for &x in r {
-                if let Some(c) = row.get_mut(usize::try_from(x.abs()).unwrap_or(0).wrapping_sub(1)) {
+                if let Some(c) = row.get_mut(usize::try_from(x.abs()).unwrap_or(0).wrapping_sub(1))
+                {
                     *c += x.signum();
                 }
             }
             row
         })
         .collect();
-    let inv = if p.count == 0 || rows.is_empty() { Vec::new() } else { smith_invariants(&rows) };
-    Group { rank: p.count - inv.len(), torsion: inv.into_iter().filter(|t| !t.is_one()).collect() }
+    let inv = if p.count == 0 || rows.is_empty() {
+        Vec::new()
+    } else {
+        smith_invariants(&rows)
+    };
+    Group {
+        rank: p.count - inv.len(),
+        torsion: inv.into_iter().filter(|t| !t.is_one()).collect(),
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -828,7 +943,13 @@ pub fn is_simplicial_map<S: std::hash::BuildHasher>(
 ) -> bool {
     let in_l: HashSet<&Simplex> = l.iter().collect();
     k.iter().all(|s| {
-        let Some(mut image) = s.iter().map(|v| f.get(v).copied()).collect::<Option<Simplex>>() else { return false };
+        let Some(mut image) = s
+            .iter()
+            .map(|v| f.get(v).copied())
+            .collect::<Option<Simplex>>()
+        else {
+            return false;
+        };
         image.sort_unstable();
         image.dedup();
         in_l.contains(&image)
@@ -854,7 +975,10 @@ pub fn induced_chain_map<S: std::hash::BuildHasher>(
         if sorted.windows(2).any(|w| w[0] == w[1]) {
             continue;
         }
-        let inversions = (0..image.len()).flat_map(|a| (a + 1..image.len()).map(move |b| (a, b))).filter(|&(a, b)| image[a] > image[b]).count();
+        let inversions = (0..image.len())
+            .flat_map(|a| (a + 1..image.len()).map(move |b| (a, b)))
+            .filter(|&(a, b)| image[a] > image[b])
+            .count();
         let i = *index.get(&sorted)?;
         m[i][j] = if inversions % 2 == 0 { 1 } else { -1 };
     }
@@ -862,7 +986,9 @@ pub fn induced_chain_map<S: std::hash::BuildHasher>(
 }
 
 fn to_q(m: &[Vec<i64>]) -> ql::QMat {
-    m.iter().map(|r| r.iter().map(|&x| ql::q(x)).collect()).collect()
+    m.iter()
+        .map(|r| r.iter().map(|&x| ql::q(x)).collect())
+        .collect()
 }
 
 /// Cycle representatives forming, together with a basis of the boundaries,
@@ -873,7 +999,11 @@ fn homology_basis(
     k: usize,
 ) -> (ql::QMat, ql::QMat) {
     let n = cc.dim_at(k);
-    let cycles = if k == 0 || cc.dim_at(k - 1) == 0 { ql::identity(n) } else { ql::nullspace(&to_q(&cc.d[k]), n) };
+    let cycles = if k == 0 || cc.dim_at(k - 1) == 0 {
+        ql::identity(n)
+    } else {
+        ql::nullspace(&to_q(&cc.d[k]), n)
+    };
     let boundaries: ql::QMat = if cc.dim_at(k + 1) == 0 || n == 0 {
         Vec::new()
     } else {
@@ -918,7 +1048,11 @@ pub fn induced_homology<S: std::hash::BuildHasher>(
     let mut out = vec![Vec::new(); reps_l.len()];
     for z in &reps_k {
         let image = ql::matvec(&map, z);
-        let x = if cols.is_empty() { Vec::new() } else { ql::solve(&system, cols.len(), &image)? };
+        let x = if cols.is_empty() {
+            Vec::new()
+        } else {
+            ql::solve(&system, cols.len(), &image)?
+        };
         for (row, value) in out.iter_mut().zip(x.into_iter().skip(nb)) {
             row.push(value);
         }
@@ -973,16 +1107,29 @@ pub fn persistence_bars(
         })
         .filter(|(_, s)| !s.is_empty())
         .collect();
-    items.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.len().cmp(&b.1.len())).then_with(|| a.1.cmp(&b.1)));
+    items.sort_by(|a, b| {
+        a.0.total_cmp(&b.0)
+            .then(a.1.len().cmp(&b.1.len()))
+            .then_with(|| a.1.cmp(&b.1))
+    });
     items.dedup_by(|a, b| a.1 == b.1);
-    let index: HashMap<Simplex, usize> = items.iter().enumerate().map(|(i, (_, s))| (s.clone(), i)).collect();
+    let index: HashMap<Simplex, usize> = items
+        .iter()
+        .enumerate()
+        .map(|(i, (_, s))| (s.clone(), i))
+        .collect();
     let m = items.len();
     let mut columns: Vec<Vec<usize>> = Vec::with_capacity(m);
     for (j, (_, s)) in items.iter().enumerate() {
         let mut col = Vec::new();
         if s.len() > 1 {
             for skip in 0..s.len() {
-                let face: Simplex = s.iter().enumerate().filter(|&(i, _)| i != skip).map(|(_, &v)| v).collect();
+                let face: Simplex = s
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| i != skip)
+                    .map(|(_, &v)| v)
+                    .collect();
                 let i = *index.get(&face)?;
                 if i >= j {
                     return None;
@@ -1004,7 +1151,11 @@ pub fn persistence_bars(
                 paired[j] = true;
                 let (birth, death) = (items[low].0, items[j].0);
                 if death > birth && items[low].1.len() <= max_dim + 1 {
-                    bars.push(Bar { dim: items[low].1.len() - 1, birth, death });
+                    bars.push(Bar {
+                        dim: items[low].1.len() - 1,
+                        birth,
+                        death,
+                    });
                 }
                 break;
             };
@@ -1013,10 +1164,19 @@ pub fn persistence_bars(
     }
     for (i, (value, s)) in items.iter().enumerate() {
         if !paired[i] && s.len() <= max_dim + 1 {
-            bars.push(Bar { dim: s.len() - 1, birth: *value, death: f64::INFINITY });
+            bars.push(Bar {
+                dim: s.len() - 1,
+                birth: *value,
+                death: f64::INFINITY,
+            });
         }
     }
-    bars.sort_by(|a, b| a.dim.cmp(&b.dim).then(a.birth.total_cmp(&b.birth)).then(a.death.total_cmp(&b.death)));
+    bars.sort_by(|a, b| {
+        a.dim
+            .cmp(&b.dim)
+            .then(a.birth.total_cmp(&b.birth))
+            .then(a.death.total_cmp(&b.death))
+    });
     Some(bars)
 }
 
@@ -1066,7 +1226,13 @@ pub fn rips_filtration(
     let n = dist.len();
     let mut out: Vec<(f64, Simplex)> = (0..n).map(|v| (0.0, vec![v])).collect();
     let mut stack: Vec<(Simplex, f64, Vec<usize>)> = (0..n)
-        .map(|v| (vec![v], 0.0, (v + 1..n).filter(|&w| dist[v][w] <= max_eps).collect()))
+        .map(|v| {
+            (
+                vec![v],
+                0.0,
+                (v + 1..n).filter(|&w| dist[v][w] <= max_eps).collect(),
+            )
+        })
         .collect();
     while let Some((simplex, diameter, candidates)) = stack.pop() {
         if simplex.len() > max_simplex_dim {
@@ -1080,7 +1246,11 @@ pub fn rips_filtration(
             if out.len() > limit {
                 return None;
             }
-            let rest: Vec<usize> = candidates[pos + 1..].iter().copied().filter(|&x| dist[w][x] <= max_eps).collect();
+            let rest: Vec<usize> = candidates[pos + 1..]
+                .iter()
+                .copied()
+                .filter(|&x| dist[w][x] <= max_eps)
+                .collect();
             stack.push((next, d, rest));
         }
     }
@@ -1090,7 +1260,15 @@ pub fn rips_filtration(
 /// The distance matrix of a point cloud.
 #[must_use]
 pub fn distance_matrix(points: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    points.iter().map(|p| points.iter().map(|q| super::topology::euclidean_distance(p, q)).collect()).collect()
+    points
+        .iter()
+        .map(|p| {
+            points
+                .iter()
+                .map(|q| super::topology::euclidean_distance(p, q))
+                .collect()
+        })
+        .collect()
 }
 
 /// The bottleneck distance of two persistence diagrams (lists of
@@ -1102,7 +1280,10 @@ pub fn bottleneck_distance(
     b: &[(f64, f64)],
 ) -> f64 {
     let split = |d: &[(f64, f64)]| -> (Vec<(f64, f64)>, Vec<f64>) {
-        (d.iter().copied().filter(|p| p.1.is_finite()).collect(), d.iter().filter(|p| !p.1.is_finite()).map(|p| p.0).collect())
+        (
+            d.iter().copied().filter(|p| p.1.is_finite()).collect(),
+            d.iter().filter(|p| !p.1.is_finite()).map(|p| p.0).collect(),
+        )
     };
     let ((fa, mut ia), (fb, mut ib)) = (split(a), split(b));
     if ia.len() != ib.len() {
@@ -1110,7 +1291,11 @@ pub fn bottleneck_distance(
     }
     ia.sort_by(f64::total_cmp);
     ib.sort_by(f64::total_cmp);
-    let infinite = ia.iter().zip(&ib).map(|(x, y)| (x - y).abs()).fold(0.0, f64::max);
+    let infinite = ia
+        .iter()
+        .zip(&ib)
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0, f64::max);
     infinite.max(finite_bottleneck(&fa, &fb))
 }
 
@@ -1201,16 +1386,31 @@ fn augment(
 /// pixel squares (8-connected foreground, 4-connected background);
 /// otherwise vertices are pixels, edges join orthogonal neighbours and
 /// squares are full 2x2 blocks (4-connected foreground).
-type Cells = (BTreeSet<(i64, i64)>, BTreeSet<(i64, i64)>, BTreeSet<(i64, i64)>, BTreeSet<(i64, i64)>);
+type Cells = (
+    BTreeSet<(i64, i64)>,
+    BTreeSet<(i64, i64)>,
+    BTreeSet<(i64, i64)>,
+    BTreeSet<(i64, i64)>,
+);
 
 fn cubical_cells(
     image: &[Vec<bool>],
     eight: bool,
 ) -> Cells {
     let on = |x: i64, y: i64| -> bool {
-        usize::try_from(y).ok().and_then(|y| image.get(y)).and_then(|row| usize::try_from(x).ok().and_then(|x| row.get(x))).copied().unwrap_or(false)
+        usize::try_from(y)
+            .ok()
+            .and_then(|y| image.get(y))
+            .and_then(|row| usize::try_from(x).ok().and_then(|x| row.get(x)))
+            .copied()
+            .unwrap_or(false)
     };
-    let (mut vs, mut hs, mut ws, mut sq) = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
+    let (mut vs, mut hs, mut ws, mut sq) = (
+        BTreeSet::new(),
+        BTreeSet::new(),
+        BTreeSet::new(),
+        BTreeSet::new(),
+    );
     for (y, row) in image.iter().enumerate() {
         for x in 0..row.len() {
             let (xi, yi) = (i64::try_from(x).unwrap_or(0), i64::try_from(y).unwrap_or(0));
@@ -1260,7 +1460,8 @@ pub fn cubical_betti(
 ) -> (usize, usize) {
     let (vs, hs, ws, sq) = cubical_cells(image, eight);
     let vertices: Vec<(i64, i64)> = vs.iter().copied().collect();
-    let position: HashMap<(i64, i64), usize> = vertices.iter().enumerate().map(|(i, &v)| (v, i)).collect();
+    let position: HashMap<(i64, i64), usize> =
+        vertices.iter().enumerate().map(|(i, &v)| (v, i)).collect();
     let mut parent: Vec<usize> = (0..vertices.len()).collect();
     let mut unite = |a: (i64, i64), b: (i64, i64)| {
         if let (Some(&i), Some(&j)) = (position.get(&a), position.get(&b)) {
@@ -1274,8 +1475,11 @@ pub fn cubical_betti(
     for &(x, y) in &ws {
         unite((x, y), (x, y + 1));
     }
-    let components = (0..vertices.len()).filter(|&i| find(&mut parent, i) == i).count();
-    let chi = i64::try_from(vs.len() + sq.len()).unwrap_or(0) - i64::try_from(hs.len() + ws.len()).unwrap_or(0);
+    let components = (0..vertices.len())
+        .filter(|&i| find(&mut parent, i) == i)
+        .count();
+    let chi = i64::try_from(vs.len() + sq.len()).unwrap_or(0)
+        - i64::try_from(hs.len() + ws.len()).unwrap_or(0);
     let b1 = i64::try_from(components).unwrap_or(0) - chi;
     (components, usize::try_from(b1).unwrap_or(0))
 }
@@ -1289,11 +1493,20 @@ pub fn cubical_chains(
 ) -> ChainComplex {
     let (vs, hs, ws, sq) = cubical_cells(image, eight);
     let vpos: HashMap<(i64, i64), usize> = vs.iter().enumerate().map(|(i, &v)| (v, i)).collect();
-    let edges: Vec<((i64, i64), bool)> = hs.iter().map(|&p| (p, true)).chain(ws.iter().map(|&p| (p, false))).collect();
-    let epos: HashMap<((i64, i64), bool), usize> = edges.iter().enumerate().map(|(i, &e)| (e, i)).collect();
+    let edges: Vec<((i64, i64), bool)> = hs
+        .iter()
+        .map(|&p| (p, true))
+        .chain(ws.iter().map(|&p| (p, false)))
+        .collect();
+    let epos: HashMap<((i64, i64), bool), usize> =
+        edges.iter().enumerate().map(|(i, &e)| (e, i)).collect();
     let mut d1 = vec![vec![0_i64; edges.len()]; vs.len()];
     for (j, &((x, y), horizontal)) in edges.iter().enumerate() {
-        let end = if horizontal { (x + 1, y) } else { (x, y + 1) };
+        let end = if horizontal {
+            (x + 1, y)
+        } else {
+            (x, y + 1)
+        };
         d1[vpos[&end]][j] += 1;
         d1[vpos[&(x, y)]][j] -= 1;
     }
@@ -1305,7 +1518,10 @@ pub fn cubical_chains(
         d2[epos[&((x, y + 1), true)]][j] -= 1;
         d2[epos[&((x, y), false)]][j] -= 1;
     }
-    ChainComplex { dims: vec![vs.len(), edges.len(), squares.len()], d: vec![Vec::new(), d1, d2] }
+    ChainComplex {
+        dims: vec![vs.len(), edges.len(), squares.len()],
+        d: vec![Vec::new(), d1, d2],
+    }
 }
 
 #[cfg(test)]
@@ -1320,7 +1536,10 @@ mod tests {
     #[test]
     fn smith_form() {
         let m = vec![vec![2, 4, 4], vec![-6, 6, 12], vec![10, -4, -16]];
-        let inv: Vec<i64> = smith_invariants(&m).iter().map(|x| i64::try_from(x.clone()).unwrap_or(0)).collect();
+        let inv: Vec<i64> = smith_invariants(&m)
+            .iter()
+            .map(|x| i64::try_from(x.clone()).unwrap_or(0))
+            .collect();
         assert_eq!(inv, vec![2, 6, 12]);
         assert_eq!(smith_invariants(&[vec![0, 0], vec![0, 0]]).len(), 0);
         assert_eq!(rank_mod_p(&[vec![2, 0], vec![0, 1]], 2), 1);
@@ -1331,7 +1550,16 @@ mod tests {
     fn integer_homology_of_standard_spaces() {
         let rp2 = complex_chains(&projective_plane(0));
         assert_eq!(rp2.dims, vec![6, 15, 10]);
-        assert_eq!((rp2.homology(0), rp2.homology(2).rank), (Group { rank: 1, torsion: vec![] }, 0));
+        assert_eq!(
+            (rp2.homology(0), rp2.homology(2).rank),
+            (
+                Group {
+                    rank: 1,
+                    torsion: vec![]
+                },
+                0
+            )
+        );
         assert_eq!((rp2.homology(1).rank, tors(&rp2.homology(1))), (0, vec![2]));
         assert_eq!(tors(&rp2.cohomology(2)), vec![2]);
         assert_eq!(rp2.cohomology(1).torsion.len(), 0);
@@ -1342,11 +1570,34 @@ mod tests {
         assert_eq!((torus.homology(1).rank, torus.homology(2).rank), (2, 1));
         assert!(torus.homology(1).torsion.is_empty() && torus.homology(2).torsion.is_empty());
         let klein = complex_chains(&klein_bottle(4, 4));
-        assert_eq!((klein.homology(0).rank, klein.homology(1).rank, klein.homology(2).rank), (1, 1, 0));
+        assert_eq!(
+            (
+                klein.homology(0).rank,
+                klein.homology(1).rank,
+                klein.homology(2).rank
+            ),
+            (1, 1, 0)
+        );
         assert_eq!(tors(&klein.homology(1)), vec![2]);
-        assert_eq!(super::super::topology::euler_characteristic(&klein_bottle(4, 4)), 0);
+        assert_eq!(
+            super::super::topology::euler_characteristic(&klein_bottle(4, 4)),
+            0
+        );
         let dunce = complex_chains(&dunce_cap(3));
-        assert_eq!((dunce.homology(0).rank, dunce.homology(1), dunce.homology(2)), (1, Group { rank: 0, torsion: vec![] }, Group { rank: 0, torsion: vec![] }));
+        assert_eq!(
+            (dunce.homology(0).rank, dunce.homology(1), dunce.homology(2)),
+            (
+                1,
+                Group {
+                    rank: 0,
+                    torsion: vec![]
+                },
+                Group {
+                    rank: 0,
+                    torsion: vec![]
+                }
+            )
+        );
     }
 
     #[test]
@@ -1358,15 +1609,21 @@ mod tests {
         }
         let s1 = sphere(1);
         let c = complex_chains(&cone(&s1));
-        assert_eq!((c.homology(0).rank, c.homology(1).rank, c.homology(2).rank), (1, 0, 0));
+        assert_eq!(
+            (c.homology(0).rank, c.homology(1).rank, c.homology(2).rank),
+            (1, 0, 0)
+        );
         assert_eq!(betti_list(&suspension(&s1)), vec![1, 0, 1]);
         assert_eq!(betti_list(&join(&sphere(1), &sphere(1))), vec![1, 0, 0, 1]);
         assert_eq!(betti_list(&wedge(&s1, &s1, 0, 0)), vec![1, 2]);
         let t = product(&s1, &s1, 100_000).expect("small");
         assert_eq!(betti_list(&t), vec![1, 2, 1]);
         let h = complex_chains(&t);
-        assert!(h.homology(1).torsion.is_empty());
-        assert_eq!(betti_list(&product(&full_simplex(2), &full_simplex(1), 100_000).expect("small")), vec![1, 0, 0, 0]);
+        assert_eq!(h.homology(1).torsion, []);
+        assert_eq!(
+            betti_list(&product(&full_simplex(2), &full_simplex(1), 100_000).expect("small")),
+            vec![1, 0, 0, 0]
+        );
         // Z/2 homology of RP^2 x S^1 has the right Euler characteristic
         let p = product(&projective_plane(0), &s1, 1_000_000).expect("fits");
         assert_eq!(super::super::topology::euler_characteristic(&p), 0);
@@ -1377,7 +1634,14 @@ mod tests {
         let disc = full_simplex(2);
         let boundary = sphere(1);
         let rel = relative_chains(&disc, &boundary);
-        assert_eq!((rel.homology(2).rank, rel.homology(1).rank, rel.homology(0).rank), (1, 0, 0));
+        assert_eq!(
+            (
+                rel.homology(2).rank,
+                rel.homology(1).rank,
+                rel.homology(0).rank
+            ),
+            (1, 0, 0)
+        );
         assert_eq!(reduced_homology(&complex_chains(&disc), 0).rank, 0);
         // S^2 as two discs glued along the equator
         let a = close_complex(&[vec![0, 1, 3], vec![1, 2, 3], vec![0, 2, 3]]);
@@ -1407,7 +1671,8 @@ mod tests {
         let rp2 = simplify_presentation(&pi1_presentation(&projective_plane(0)).expect("nonempty"));
         assert_eq!((rp2.count, rp2.relators.clone()), (1, vec![vec![1, 1]]));
         assert_eq!(tors(&abelianization(&rp2)), vec![2]);
-        let klein = simplify_presentation(&pi1_presentation(&klein_bottle(4, 4)).expect("nonempty"));
+        let klein =
+            simplify_presentation(&pi1_presentation(&klein_bottle(4, 4)).expect("nonempty"));
         let ab = abelianization(&klein);
         assert_eq!((ab.rank, tors(&ab)), (1, vec![2]));
         let dunce = simplify_presentation(&pi1_presentation(&dunce_cap(3)).expect("nonempty"));
@@ -1421,7 +1686,7 @@ mod tests {
         let id: HashMap<usize, usize> = (0..3).map(|v| (v, v)).collect();
         assert!(is_simplicial_map(&circle, &disc, &id));
         let m = induced_homology(&circle, &disc, &id, 1).expect("simplicial");
-        assert!(m.is_empty());
+        assert!(m.is_empty(), "not empty");
         let m0 = induced_homology(&circle, &disc, &id, 0).expect("simplicial");
         assert_eq!(m0, vec![vec![ql::q(1)]]);
         let swap: HashMap<usize, usize> = [(0, 1), (1, 0), (2, 2)].into_iter().collect();
@@ -1434,10 +1699,12 @@ mod tests {
 
     #[test]
     fn persistent_homology_of_a_circle() {
-        let points: Vec<Vec<f64>> = (0..12).map(|i| {
-            let t = std::f64::consts::TAU * f64::from(i) / 12.0;
-            vec![t.cos(), t.sin()]
-        }).collect();
+        let points: Vec<Vec<f64>> = (0..12)
+            .map(|i| {
+                let t = std::f64::consts::TAU * f64::from(i) / 12.0;
+                vec![t.cos(), t.sin()]
+            })
+            .collect();
         let f = rips_filtration(&distance_matrix(&points), 3.0, 2, 1_000_000).expect("small");
         let bars = persistence_bars(&f, 1).expect("valid");
         let h0: Vec<&Bar> = bars.iter().filter(|b| b.dim == 0).collect();
@@ -1457,27 +1724,58 @@ mod tests {
         assert!((bottleneck_distance(&a, &[]) - 1.5).abs() < 1e-12);
         assert!(bottleneck_distance(&a, &a).abs() < 1e-12);
         assert!(bottleneck_distance(&[(0.0, f64::INFINITY)], &[]).is_infinite());
-        assert!((bottleneck_distance(&[(0.0, f64::INFINITY), (1.0, 2.0)], &[(0.5, f64::INFINITY), (1.0, 2.0)]) - 0.5).abs() < 1e-12);
+        assert!(
+            (bottleneck_distance(
+                &[(0.0, f64::INFINITY), (1.0, 2.0)],
+                &[(0.5, f64::INFINITY), (1.0, 2.0)]
+            ) - 0.5)
+                .abs()
+                < 1e-12
+        );
     }
 
     #[test]
     fn cubical() {
-        let ring: Vec<Vec<bool>> = ["###", "#.#", "###"].iter().map(|r| r.chars().map(|c| c == '#').collect()).collect();
+        let ring: Vec<Vec<bool>> = ["###", "#.#", "###"]
+            .iter()
+            .map(|r| r.chars().map(|c| c == '#').collect())
+            .collect();
         assert_eq!(cubical_betti(&ring, true), (1, 1));
         assert_eq!(cubical_betti(&ring, false), (1, 1));
-        let diag: Vec<Vec<bool>> = ["#.", ".#"].iter().map(|r| r.chars().map(|c| c == '#').collect()).collect();
+        let diag: Vec<Vec<bool>> = ["#.", ".#"]
+            .iter()
+            .map(|r| r.chars().map(|c| c == '#').collect())
+            .collect();
         assert_eq!(cubical_betti(&diag, true), (1, 0));
         assert_eq!(cubical_betti(&diag, false), (2, 0));
-        let two: Vec<Vec<bool>> = ["#.#", "..."].iter().map(|r| r.chars().map(|c| c == '#').collect()).collect();
+        let two: Vec<Vec<bool>> = ["#.#", "..."]
+            .iter()
+            .map(|r| r.chars().map(|c| c == '#').collect())
+            .collect();
         assert_eq!(cubical_betti(&two, true), (2, 0));
         // a checkerboard ring closed only diagonally
-        let diag_ring: Vec<Vec<bool>> = [".#.", "#.#", ".#."].iter().map(|r| r.chars().map(|c| c == '#').collect()).collect();
+        let diag_ring: Vec<Vec<bool>> = [".#.", "#.#", ".#."]
+            .iter()
+            .map(|r| r.chars().map(|c| c == '#').collect())
+            .collect();
         assert_eq!(cubical_betti(&diag_ring, true), (1, 1));
         assert_eq!(cubical_betti(&diag_ring, false), (4, 0));
-        for (img, eight) in [(&ring, true), (&ring, false), (&diag_ring, true), (&two, true)] {
+        for (img, eight) in [
+            (&ring, true),
+            (&ring, false),
+            (&diag_ring, true),
+            (&two, true),
+        ] {
             let cc = cubical_chains(img, eight);
             let (b0, b1) = cubical_betti(img, eight);
-            assert_eq!((cc.homology(0).rank, cc.homology(1).rank, cc.homology(2).rank), (b0, b1, 0));
+            assert_eq!(
+                (
+                    cc.homology(0).rank,
+                    cc.homology(1).rank,
+                    cc.homology(2).rank
+                ),
+                (b0, b1, 0)
+            );
         }
     }
 }

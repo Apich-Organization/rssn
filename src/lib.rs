@@ -28,7 +28,9 @@
 //! // One request, two phases.
 //! let request = diff(x.pow(3) * sin(x), x);
 //! let closed_form = s.compute(request, &Config::new())?.term;
-//! let at_two = s.compute(request, &Config::new().numeric(1e-10).bind("x", 2.0))?.value;
+//! let at_two = s
+//!     .compute(request, &Config::new().numeric(1e-10).bind("x", 2.0))?
+//!     .value;
 //!
 //! assert_eq!(closed_form.eval(&[("x", 2.0)]), at_two);
 //! # Ok::<(), ComputeError>(())
@@ -59,7 +61,7 @@
     clippy::pedantic,
     missing_docs,
     clippy::nursery,
-    clippy::single_call_fn,
+    clippy::single_call_fn
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)

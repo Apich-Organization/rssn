@@ -72,7 +72,9 @@
 //!   block invariant `θ`, then a quadratic or cubic over `Q(θ)` with
 //!   coefficients found numerically and recognised as rationals) is solved
 //!   with the radical/trigonometric formulas, taking only the real values of
-//!   `θ`. The metacyclic septic groups `D7`, `F21`, `F42` use the Lagrange
+//!   `θ`. (The `3^2:4` norm `x^6 - 8 x^3 - 18 x^2 + 16` has `θ = ±6√2` and
+//!   block polynomial `z^3 - 3√2 z - 4`, so its tower is the factorization
+//!   itself.) The metacyclic septic groups `D7`, `F21`, `F42` use the Lagrange
 //!   resolvents `t_j = Σ ζ_7^{jk} z_k`: with one real root the real
 //!   resolvents `R_j = t_j^7` are the roots of an integer sextic `Φ` (cyclic,
 //!   solved recursively by the Gauss periods) and the real root is
@@ -178,8 +180,6 @@ use num_rational::BigRational;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -199,6 +199,8 @@ use crate::graph::RuleSet;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
 use crate::graph::VarNames;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::polynomial::Polynomial;
 use crate::kernels::real_roots;
 use crate::kernels::solve::solve_root;
@@ -207,28 +209,28 @@ use super::elementary::elementary;
 use super::poly::best;
 use super::poly::poly;
 use super::poly::ratio;
-use super::poly::repr::from_term;
-use super::poly::repr::to_term;
 use super::poly::repr::Gens;
 use super::poly::repr::Limits;
 use super::poly::repr::Poly;
+use super::poly::repr::from_term;
+use super::poly::repr::to_term;
 use super::poly::univariate;
 
+#[cfg(test)]
+mod battery;
 mod certified;
 mod complex_roots;
 mod decompose;
 pub(crate) mod elim;
 mod heuristics;
 mod inequality;
+mod normalize;
 mod numeric;
 mod quintic;
-mod tower;
-mod normalize;
 mod symbolic;
 mod system;
+mod tower;
 mod trig;
-#[cfg(test)]
-mod battery;
 
 /// Operator attribute: the solutions `u` of `op(u) = ?a`, one pattern per
 /// branch that is returned.
@@ -238,7 +240,10 @@ pub struct Inverse(pub Vec<Pat>);
 /// The equation-solving rule set.
 #[must_use]
 pub fn solve() -> RuleSet {
-    RuleSet::new("solve", install).needs(poly()).needs(elementary()).needs(super::calculus::calculus())
+    RuleSet::new("solve", install)
+        .needs(poly())
+        .needs(elementary())
+        .needs(super::calculus::calculus())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -252,37 +257,95 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("acos", &["cos(?a)"]),
         ("atan", &["tan(?a)"]),
         ("sinh", &["ln(?a + (?a^2 + 1)^(1/2))"]),
-        ("cosh", &["ln(?a + (?a^2 - 1)^(1/2))", "-ln(?a + (?a^2 - 1)^(1/2))"]),
+        (
+            "cosh",
+            &["ln(?a + (?a^2 - 1)^(1/2))", "-ln(?a + (?a^2 - 1)^(1/2))"],
+        ),
         ("tanh", &["1/2 * ln((1 + ?a)/(1 - ?a))"]),
         ("sqrt", &["?a^2"]),
         ("abs", &["?a", "-?a"]),
     ];
     for (name, branches) in inverses {
-        let invalid = |reason: &'static str| RuleError::Invalid { rule: format!("inverse/{name}"), reason };
-        let op = i.graph().ops().lookup(name).ok_or_else(|| invalid("unknown operator"))?;
+        let invalid = |reason: &'static str| {
+            RuleError::Invalid {
+                rule: format!("inverse/{name}"),
+                reason,
+            }
+        };
+        let op = i
+            .graph()
+            .ops()
+            .lookup(name)
+            .ok_or_else(|| invalid("unknown operator"))?;
         let mut patterns = Vec::with_capacity(branches.len());
         for text in branches {
             let mut vars = VarNames::default();
             vars.index("a");
-            let pat = Pat::parse(text, i.graph(), &mut vars)
-                .map_err(|error| RuleError::Parse { rule: format!("inverse/{name}: {text}"), error })?;
+            let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| {
+                RuleError::Parse {
+                    rule: format!("inverse/{name}: {text}"),
+                    error,
+                }
+            })?;
             patterns.push(pat);
         }
         i.graph().ops_mut().set_attr(op, Inverse(patterns));
     }
-    let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("solve/complex", Tier::Reduce, complex_roots::SolveComplex { op: complex_op });
-    i.kernel("solve/nsolve-certified", Tier::Reduce, certified::NsolveCertified { op: certified_op });
-    i.kernel("solve/box", Tier::Reduce, certified::SolveBox { op: box_op });
-    i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
-    i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
+    let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "solve/complex",
+        Tier::Reduce,
+        complex_roots::SolveComplex { op: complex_op },
+    );
+    i.kernel(
+        "solve/nsolve-certified",
+        Tier::Reduce,
+        certified::NsolveCertified { op: certified_op },
+    );
+    i.kernel(
+        "solve/box",
+        Tier::Reduce,
+        certified::SolveBox { op: box_op },
+    );
+    i.kernel(
+        "solve/symbolic",
+        Tier::Reduce,
+        Symbolic {
+            solve: solve_op,
+            general: general_op,
+        },
+    );
+    i.kernel(
+        "solve/polynomial-numeric",
+        Tier::Reduce,
+        PolynomialNumeric { solve: solve_op },
+    );
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
-    i.kernel("solve/numeric", Tier::Reduce, numeric::NumericSolve { solve: solve_op, nsolve: nsolve_op });
+    i.kernel(
+        "solve/numeric",
+        Tier::Reduce,
+        numeric::NumericSolve {
+            solve: solve_op,
+            nsolve: nsolve_op,
+        },
+    );
     Ok(())
 }
 
@@ -397,7 +460,11 @@ pub(crate) fn solve_for(
     let term = sqrt_as_power(graph, term);
     if !graph.depends_on(graph.find(term), symbol) {
         // `0 = 0` is solved by everything, which a list cannot express.
-        return if graph.number_of(term).is_some_and(Number::is_zero) { None } else { Some(Vec::new()) };
+        return if graph.number_of(term).is_some_and(Number::is_zero) {
+            None
+        } else {
+            Some(Vec::new())
+        };
     }
     // Write exp(n*u) as exp(u)^n so that `exp(2*x) - 3*exp(x) + 2` is a
     // polynomial in the single generator exp(x).
@@ -409,9 +476,16 @@ pub(crate) fn solve_for(
         .numer
         .support()
         .into_iter()
-        .filter(|&g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)))
+        .filter(|&g| {
+            gens.node(g)
+                .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        })
         .collect();
-    let split = if dependent.len() >= 2 { split_by_factors(graph, &gens, &fraction.numer, x, depth) } else { None };
+    let split = if dependent.len() >= 2 {
+        split_by_factors(graph, &gens, &fraction.numer, x, depth)
+    } else {
+        None
+    };
     let candidates = match dependent.as_slice() {
         | _ if split.is_some() => split.unwrap_or_default(),
         | [] => Vec::new(),
@@ -442,7 +516,10 @@ pub(crate) fn solve_for(
     // wherever that can be checked numerically.
     let mut solutions = filter_candidates(graph, term, x, candidates);
     // Ascending order when every solution is a number.
-    let values: Option<Vec<f64>> = solutions.iter().map(|&s| graph.eval(s, &Env::numeric(0.0))).collect();
+    let values: Option<Vec<f64>> = solutions
+        .iter()
+        .map(|&s| graph.eval(s, &Env::numeric(0.0)))
+        .collect();
     if let Some(values) = values {
         let mut keyed: Vec<(f64, NodeId)> = values.into_iter().zip(solutions).collect();
         keyed.sort_by(|a, b| a.0.total_cmp(&b.0));
@@ -477,7 +554,12 @@ fn split_by_factors(
     let pieces: Vec<Poly> = factors
         .into_iter()
         .map(|(f, _)| f)
-        .filter(|f| f.support().into_iter().any(|g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol))))
+        .filter(|f| {
+            f.support().into_iter().any(|g| {
+                gens.node(g)
+                    .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+            })
+        })
         .collect();
     if pieces.len() < 2 {
         return None;
@@ -517,8 +599,13 @@ pub(crate) fn sample_envs(
                     env.bind(s, INTEGERS.get((k + i) % 4).copied().unwrap_or(0.0));
                     continue;
                 }
-                let magnitude = BASE.get((2 * i + k) % 6).copied().unwrap_or(1.0) * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
-                let sign = if k > 0 && (i + k) % 3 == 0 { -1.0 } else { 1.0 };
+                let magnitude = BASE.get((2 * i + k) % 6).copied().unwrap_or(1.0)
+                    * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
+                let sign = if k > 0 && (i + k) % 3 == 0 {
+                    -1.0
+                } else {
+                    1.0
+                };
                 env.bind(s, sign * magnitude);
             }
             env
@@ -546,7 +633,10 @@ pub(crate) fn filter_candidates(
                 // The tolerance grows with the size of the candidate: the residual of a
                 // high-degree polynomial at a large root carries rounding of that order.
                 | Some(v) => {
-                    let at = graph.eval(candidate, &Env::numeric(0.0)).filter(|a| a.is_finite()).unwrap_or(0.0);
+                    let at = graph
+                        .eval(candidate, &Env::numeric(0.0))
+                        .filter(|a| a.is_finite())
+                        .unwrap_or(0.0);
                     v.abs() <= 1e-7_f64.max(1e-12 * at.abs().powi(8))
                 },
                 | None => true,
@@ -557,7 +647,9 @@ pub(crate) fn filter_candidates(
             // of the parameters), but not everywhere it is defined.
             let (mut right, mut wrong) = (0_u32, 0_u32);
             for env in sample_envs(graph, &[substituted, candidate], symbol) {
-                let (Some(residual), Some(at)) = (graph.eval(substituted, &env), graph.eval(candidate, &env)) else {
+                let (Some(residual), Some(at)) =
+                    (graph.eval(substituted, &env), graph.eval(candidate, &env))
+                else {
                     continue;
                 };
                 if residual.is_finite() && at.is_finite() {
@@ -570,7 +662,11 @@ pub(crate) fn filter_candidates(
             }
             right > 0 || wrong == 0
         };
-        if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
+        if keep
+            && !solutions
+                .iter()
+                .any(|&s| graph.same(s, candidate) || s == candidate)
+        {
             solutions.push(candidate);
         }
     }
@@ -646,7 +742,10 @@ fn invert(
                 let inverse_exp = reciprocal(graph, exp);
                 let root = graph.node(core::POW, &[value, inverse_exp]);
                 targets.push((base, root));
-                let even = graph.number_of(exp).and_then(Number::to_i64).is_some_and(|n| n % 2 == 0);
+                let even = graph
+                    .number_of(exp)
+                    .and_then(Number::to_i64)
+                    .is_some_and(|n| n % 2 == 0);
                 if even {
                     let minus_one = graph.int(-1);
                     targets.push((base, graph.node(core::MUL, &[minus_one, root])));
@@ -662,7 +761,11 @@ fn invert(
             | _ => return None,
         }
     } else if let &[arg] = args.as_slice() {
-        let periodic = if general_mode() { periodic_targets(graph, op, arg, value, inner, x) } else { None };
+        let periodic = if general_mode() {
+            periodic_targets(graph, op, arg, value, inner, x)
+        } else {
+            None
+        };
         match periodic {
             | Some(found) => targets.extend(found),
             | None => {
@@ -694,8 +797,13 @@ fn periodic_targets(
     x: NodeId,
 ) -> Option<Vec<(NodeId, NodeId)>> {
     let names = ["sin", "cos", "tan"];
-    let which = names.iter().position(|n| graph.ops().lookup(n) == Some(op))?;
-    let (pi_op, inverse) = (graph.ops().lookup("pi")?, graph.ops().lookup(["asin", "acos", "atan"][which])?);
+    let which = names
+        .iter()
+        .position(|n| graph.ops().lookup(n) == Some(op))?;
+    let (pi_op, inverse) = (
+        graph.ops().lookup("pi")?,
+        graph.ops().lookup(["asin", "acos", "atan"][which])?,
+    );
     let n = trig::integer_symbol(graph, &[value, inner, x]);
     let pi = graph.node(pi_op, &[]);
     let principal = graph.node(inverse, &[value]);
@@ -741,8 +849,10 @@ fn polynomial_roots(
     if coefficients.len() == 1 {
         return Some(roots);
     }
-    let exact: Option<Vec<BigRational>> =
-        coefficients.iter().map(|c| c.as_constant().and_then(|n| n.to_rational())).collect();
+    let exact: Option<Vec<BigRational>> = coefficients
+        .iter()
+        .map(|c| c.as_constant().and_then(|n| n.to_rational()))
+        .collect();
     if let Some(numbers) = exact {
         roots.extend(rational_polynomial_roots(graph, &numbers)?);
         return Some(roots);
@@ -781,11 +891,17 @@ fn rational_polynomial_roots(
                 let radicand = graph.num(Number::Int(inside.clone()));
                 let radical = graph.node(core::POW, &[radicand, half]);
                 for sign in [-1, 1] {
-                    let coefficient = rational(graph, &scale * BigRational::from_integer(BigInt::from(sign)));
+                    let coefficient = rational(
+                        graph,
+                        &scale * BigRational::from_integer(BigInt::from(sign)),
+                    );
                     let offset = product(graph, &[coefficient, radical]);
                     let centre_node = rational(graph, centre.clone());
-                    let root =
-                        if centre.is_zero() { offset } else { graph.node(core::ADD, &[centre_node, offset]) };
+                    let root = if centre.is_zero() {
+                        offset
+                    } else {
+                        graph.node(core::ADD, &[centre_node, offset])
+                    };
                     let approx = Number::rat(centre.clone()).to_f64()
                         + f64::from(sign)
                             * Number::rat(scale.clone()).to_f64()
@@ -805,7 +921,11 @@ fn rational_polynomial_roots(
                         continue;
                     }
                     // Cubic and quartic formulas.
-                    let rational: Vec<BigRational> = higher.iter().cloned().map(BigRational::from_integer).collect();
+                    let rational: Vec<BigRational> = higher
+                        .iter()
+                        .cloned()
+                        .map(BigRational::from_integer)
+                        .collect();
                     roots.extend(heuristics::higher_degree(graph, &rational)?);
                     continue;
                 }
@@ -876,11 +996,19 @@ fn determinant(
                     .get(1..)?
                     .iter()
                     .map(|row| {
-                        row.iter().enumerate().filter(|&(c, _)| c != column).map(|(_, p)| p.clone()).collect()
+                        row.iter()
+                            .enumerate()
+                            .filter(|&(c, _)| c != column)
+                            .map(|(_, p)| p.clone())
+                            .collect()
                     })
                     .collect();
                 let term = entry.mul(&determinant(&minor, cap)?, cap)?;
-                total = if column % 2 == 0 { total.add(&term) } else { total.sub(&term) };
+                total = if column % 2 == 0 {
+                    total.add(&term)
+                } else {
+                    total.sub(&term)
+                };
             }
             Some(total)
         },
@@ -899,7 +1027,10 @@ pub(crate) fn solve_linear(
     if equations.len() != n || n == 0 || n > 6 {
         return None;
     }
-    let symbols: Vec<SymbolId> = unknowns.iter().map(|&u| graph.symbol_of(u)).collect::<Option<_>>()?;
+    let symbols: Vec<SymbolId> = unknowns
+        .iter()
+        .map(|&u| graph.symbol_of(u))
+        .collect::<Option<_>>()?;
     let mut gens = Gens::default();
     let indices: Vec<u32> = unknowns.iter().map(|&u| gens.index(graph, u)).collect();
     let limits = Limits::default();
@@ -915,15 +1046,26 @@ pub(crate) fn solve_linear(
                 continue;
             }
             let node = gens.node(g)?;
-            if symbols.iter().any(|&s| graph.depends_on(graph.find(node), s)) {
+            if symbols
+                .iter()
+                .any(|&s| graph.depends_on(graph.find(node), s))
+            {
                 return None;
             }
         }
         let mut row = vec![Poly::zero(); n];
         let mut constant = Poly::zero();
         for (mono, coeff) in poly.terms() {
-            let unknown_part: Vec<(u32, u32)> = mono.iter().copied().filter(|(g, _)| indices.contains(g)).collect();
-            let parameters: Vec<(u32, u32)> = mono.iter().copied().filter(|(g, _)| !indices.contains(g)).collect();
+            let unknown_part: Vec<(u32, u32)> = mono
+                .iter()
+                .copied()
+                .filter(|(g, _)| indices.contains(g))
+                .collect();
+            let parameters: Vec<(u32, u32)> = mono
+                .iter()
+                .copied()
+                .filter(|(g, _)| !indices.contains(g))
+                .collect();
             let piece = Poly::monomial(parameters, coeff.clone());
             match unknown_part.as_slice() {
                 | [] => constant = constant.add(&piece),
@@ -976,20 +1118,33 @@ pub(super) fn back_substitute(
 ) -> Option<Vec<Vec<NodeId>>> {
     // A non-zero constant in the basis means the ideal is everything: the
     // system is inconsistent.
-    if basis.iter().any(|&b| graph.number_of(b).is_some_and(|n| !n.is_zero())) {
+    if basis
+        .iter()
+        .any(|&b| graph.number_of(b).is_some_and(|n| !n.is_zero()))
+    {
         return Some(Vec::new());
     }
     let Some((&last, earlier)) = variables.split_last() else {
         // Nothing left to determine: consistent unless a non-zero constant
         // remains.
-        let contradiction = basis.iter().any(|&b| graph.number_of(b).is_some_and(|n| !n.is_zero()));
-        return Some(if contradiction { Vec::new() } else { vec![Vec::new()] });
+        let contradiction = basis
+            .iter()
+            .any(|&b| graph.number_of(b).is_some_and(|n| !n.is_zero()));
+        return Some(if contradiction {
+            Vec::new()
+        } else {
+            vec![Vec::new()]
+        });
     };
-    let earlier_symbols: Vec<SymbolId> = earlier.iter().map(|&v| graph.symbol_of(v)).collect::<Option<_>>()?;
+    let earlier_symbols: Vec<SymbolId> = earlier
+        .iter()
+        .map(|&v| graph.symbol_of(v))
+        .collect::<Option<_>>()?;
     let last_symbol = graph.symbol_of(last)?;
     let only_last = |graph: &Graph, node: NodeId| {
         let class = graph.find(node);
-        graph.depends_on(class, last_symbol) && !earlier_symbols.iter().any(|&s| graph.depends_on(class, s))
+        graph.depends_on(class, last_symbol)
+            && !earlier_symbols.iter().any(|&s| graph.depends_on(class, s))
     };
     let univariate = basis.iter().copied().find(|&b| only_last(graph, b))?;
     let mut out = Vec::new();
@@ -1044,12 +1199,22 @@ impl Kernel for Symbolic {
             let equations = graph.children(equation).to_vec();
             let unknowns = graph.children(unknown).to_vec();
             let tuples = system::solve_system(graph, &equations, &unknowns);
-            tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
+            tuples.map(|tuples| {
+                tuples
+                    .iter()
+                    .map(|t| graph.node(core::LIST, t))
+                    .collect::<Vec<_>>()
+            })
         } else if inequality::is_condition(graph, equation) {
-            return inequality::solve_condition(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
+            return inequality::solve_condition(graph, equation, unknown)
+                .map_or(Outcome::Pass, Outcome::Equal);
         } else {
             let expr = as_expression(graph, equation);
-            if general { solve_general_for(graph, expr, unknown) } else { solve_for(graph, expr, unknown, 0) }
+            if general {
+                solve_general_for(graph, expr, unknown)
+            } else {
+                solve_for(graph, expr, unknown, 0)
+            }
         };
         // Not pinned: the solutions are ordinary terms and should be
         // simplified like any others.
@@ -1116,7 +1281,9 @@ impl Kernel for PolynomialNumeric {
             return Outcome::Pass;
         };
         let heavy = |g: &Graph, n: NodeId| g.ops().get(g.op(n)).flags.has(OpFlags::HEAVY);
-        if graph.enodes(graph.find(node)).any(|n| !heavy(graph, n)) || graph.op(unknown) == core::LIST {
+        if graph.enodes(graph.find(node)).any(|n| !heavy(graph, n))
+            || graph.op(unknown) == core::LIST
+        {
             return Outcome::Pass;
         }
         let expr = as_expression(graph, equation);
@@ -1182,7 +1349,10 @@ impl Kernel for RootNear {
                 // error estimate when one exists.
                 let bindings = cx.env.bindings().to_vec();
                 let ball = certified::certified_ball(graph, equation, x, &bindings, root)
-                    .unwrap_or(Ball { mid: root, rad: tolerance });
+                    .unwrap_or(Ball {
+                        mid: root,
+                        rad: tolerance,
+                    });
                 Outcome::Approx(ball)
             },
             | Err(_) => Outcome::Pass,
@@ -1212,7 +1382,10 @@ mod tests {
         solutions: &str,
         expected_count: usize,
     ) {
-        let inner = solutions.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
+        let inner = solutions
+            .strip_prefix("list(")
+            .and_then(|s| s.strip_suffix(')'))
+            .unwrap_or("");
         let mut items = Vec::new();
         let (mut depth, mut start) = (0_i32, 0_usize);
         for (i, ch) in inner.char_indices() {
@@ -1248,13 +1421,19 @@ mod tests {
                 }
             }
             let value = eval(&[solve()], &residual, &[]);
-            assert!(value.abs() < 1e-9, "{item} does not solve {equation}: residual {value}");
+            assert!(
+                value.abs() < 1e-9,
+                "{item} does not solve {equation}: residual {value}"
+            );
         }
     }
 
     /// Splits `list(a, b, ...)` at top-level commas.
     fn list_items(text: &str) -> Vec<String> {
-        let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|t| t.strip_suffix(')'))
+            .unwrap_or("");
         let (mut depth, mut current, mut parts) = (0_i32, String::new(), Vec::new());
         for ch in inner.chars() {
             match ch {
@@ -1292,10 +1471,16 @@ mod tests {
                 }
                 defined += 1;
                 let residual = at.powi(4) + a * at.powi(3) + b * at + c;
-                assert!(residual.abs() < 1e-7 * (1.0 + at.abs().powi(4)), "{item} at ({a},{b},{c}) gives {residual}");
+                assert!(
+                    residual.abs() < 1e-7 * (1.0 + at.abs().powi(4)),
+                    "{item} at ({a},{b},{c}) gives {residual}"
+                );
                 found.push(at);
             }
-            assert!(defined >= 2, "too few defined roots at ({a},{b},{c}): {text}");
+            assert!(
+                defined >= 2,
+                "too few defined roots at ({a},{b},{c}): {text}"
+            );
         }
         assert!(found.len() >= 6);
     }
@@ -1314,7 +1499,10 @@ mod tests {
         for item in &items {
             for n in -20..=20 {
                 let x = eval(&rules, item, &[("n", f64::from(n))]);
-                assert!(f(x).abs() < 1e-8, "{item} at n = {n} (x = {x}) is not a solution of {src}: {text}");
+                assert!(
+                    f(x).abs() < 1e-8,
+                    "{item} at n = {n} (x = {x}) is not a solution of {src}: {text}"
+                );
             }
         }
     }
@@ -1322,33 +1510,77 @@ mod tests {
     #[test]
     fn trigonometric_generalisations() {
         // Different shifts in one equation.
-        check_families("solve_general(sin(x) = sin(2*x + 1), x)", |x| x.sin() - (2.0 * x + 1.0).sin(), 2);
-        check_families("solve_general(sin(x + 1) = cos(2*x), x)", |x| (x + 1.0).sin() - (2.0 * x).cos(), 2);
+        check_families(
+            "solve_general(sin(x) = sin(2*x + 1), x)",
+            |x| x.sin() - (2.0 * x + 1.0).sin(),
+            2,
+        );
+        check_families(
+            "solve_general(sin(x + 1) = cos(2*x), x)",
+            |x| (x + 1.0).sin() - (2.0 * x).cos(),
+            2,
+        );
         // Large multipliers.
-        check_families("solve_general(sin(30*x) = sin(2*x), x)", |x| (30.0 * x).sin() - (2.0 * x).sin(), 2);
-        check_families("solve_general(cos(27*x) = 1, x)", |x| (27.0 * x).cos() - 1.0, 1);
+        check_families(
+            "solve_general(sin(30*x) = sin(2*x), x)",
+            |x| (30.0 * x).sin() - (2.0 * x).sin(),
+            2,
+        );
+        check_families(
+            "solve_general(cos(27*x) = 1, x)",
+            |x| (27.0 * x).cos() - 1.0,
+            1,
+        );
         // Rational multipliers with different denominators.
-        check_families("solve_general(sin(x/3) = sin(x/2), x)", |x| (x / 3.0).sin() - (x / 2.0).sin(), 2);
+        check_families(
+            "solve_general(sin(x/3) = sin(x/2), x)",
+            |x| (x / 3.0).sin() - (x / 2.0).sin(),
+            2,
+        );
     }
 
     #[test]
     fn sextics_and_septics_by_galois_group() {
         let rules = crate::rules::standard();
         // (equation, ascending coefficients, number of real roots)
-        let cases: [(&str, Vec<f64>, usize); 10] = [
+        let cases: [(&str, Vec<f64>, usize); 11] = [
             // Cyclic septic (Gauss periods, conductor 29): seven real roots.
-            ("solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)", vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0], 7),
+            (
+                "solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)",
+                vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0],
+                7,
+            ),
             // 2 cos(2 pi / 13): cyclic sextic, six real roots.
-            ("solve(x^6 + x^5 - 5*x^4 - 4*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, -4.0, -5.0, 1.0, 1.0], 6),
+            (
+                "solve(x^6 + x^5 - 5*x^4 - 4*x^3 + 6*x^2 + 3*x - 1, x)",
+                vec![-1.0, 3.0, 6.0, -4.0, -5.0, 1.0, 1.0],
+                6,
+            ),
             // Cyclic sextic of composite conductor 91 = 7 * 13.
-            ("solve(x^6 - x^5 - 14*x^4 + 9*x^3 + 35*x^2 - 16*x - 1, x)", vec![-1.0, -16.0, 35.0, 9.0, -14.0, -1.0, 1.0], 6),
+            (
+                "solve(x^6 - x^5 - 14*x^4 + 9*x^3 + 35*x^2 - 16*x - 1, x)",
+                vec![-1.0, -16.0, 35.0, 9.0, -14.0, -1.0, 1.0],
+                6,
+            ),
             // D7(x) - 3: group F42, one real root through Lagrange resolvents.
-            ("solve(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)", vec![-3.0, -7.0, 0.0, 14.0, 0.0, -7.0, 0.0, 1.0], 1),
+            (
+                "solve(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)",
+                vec![-3.0, -7.0, 0.0, 14.0, 0.0, -7.0, 0.0, 1.0],
+                1,
+            ),
             // Class-field septic of Q(sqrt(-71)): group D7, one real root, through the
             // invariants t_j t_{-j} (the sextic resolvent itself is out of range).
-            ("solve(x^7 - x^6 - x^5 + x^4 - x^3 - x^2 + 2*x + 1, x)", vec![1.0, 2.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0], 1),
+            (
+                "solve(x^7 - x^6 - x^5 + x^4 - x^3 - x^2 + 2*x + 1, x)",
+                vec![1.0, 2.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0],
+                1,
+            ),
             // D7(x) - 1/4: group F21, seven real roots (trigonometric form).
-            ("solve(4*x^7 - 28*x^5 + 56*x^3 - 28*x - 1, x)", vec![-1.0, -28.0, 0.0, 56.0, 0.0, -28.0, 0.0, 4.0], 7),
+            (
+                "solve(4*x^7 - 28*x^5 + 56*x^3 - 28*x - 1, x)",
+                vec![-1.0, -28.0, 0.0, 56.0, 0.0, -28.0, 0.0, 4.0],
+                7,
+            ),
             // x + x^2 + x^3 of a root of D7(x) - 3 (group F42): all six resolvents non-zero.
             (
                 "solve(x^7 - 14*x^6 - 42*x^5 + 539*x^4 + 462*x^3 - 7105*x^2 - 4522*x - 921, x)",
@@ -1358,13 +1590,32 @@ mod tests {
             // The same for D7(x) - 1/4 (group F21): three conjugate pairs, seven real roots.
             (
                 "solve(64*x^7 - 896*x^6 - 2688*x^5 + 40656*x^4 + 60368*x^3 - 241276*x^2 - 198548*x - 6573, x)",
-                vec![-6573.0, -198_548.0, -241_276.0, 60368.0, 40656.0, -2688.0, -896.0, 64.0],
+                vec![
+                    -6573.0, -198_548.0, -241_276.0, 60368.0, 40656.0, -2688.0, -896.0, 64.0,
+                ],
                 7,
             ),
             // Sextic with group A4 on six points (block tower).
-            ("solve(x^6 - 12*x^4 - 64*x^3 - 144*x^2 + 1728, x)", vec![1728.0, 0.0, -144.0, -64.0, -12.0, 0.0, 1.0], 0),
+            (
+                "solve(x^6 - 12*x^4 - 64*x^3 - 144*x^2 + 1728, x)",
+                vec![1728.0, 0.0, -144.0, -64.0, -12.0, 0.0, 1.0],
+                0,
+            ),
             // S4 on the six directed 4-cycles (block tower).
-            ("solve(x^6 + 6*x^5 + 24*x^4 + 56*x^3 + 160*x^2 + 224*x + 384, x)", vec![384.0, 224.0, 160.0, 56.0, 24.0, 6.0, 1.0], 0),
+            (
+                "solve(x^6 + 6*x^5 + 24*x^4 + 56*x^3 + 160*x^2 + 224*x + 384, x)",
+                vec![384.0, 224.0, 160.0, 56.0, 24.0, 6.0, 1.0],
+                0,
+            ),
+            // The norm of x^3 - 3 sqrt(2) x - 4 over Z[sqrt 2]: group 3^2:4.
+            // The block tower is the factorization itself (theta = 6 sqrt 2,
+            // block polynomial z^3 - 3 sqrt(2) z - 4), so both real roots
+            // come out in radicals.
+            (
+                "solve(x^6 - 8*x^3 - 18*x^2 + 16, x)",
+                vec![16.0, 0.0, -18.0, -8.0, 0.0, 0.0, 1.0],
+                2,
+            ),
         ];
         for (src, poly, count) in cases {
             let (text, reduced) = reduce_with(&rules, src, &[]);
@@ -1378,8 +1629,33 @@ mod tests {
             for item in &items {
                 let x = eval(&rules, item, &[]);
                 let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
-                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(7)), "{src}: {item} -> {x} gives {residual}");
+                assert!(
+                    residual.abs() < 1e-7 * (1.0 + x.abs().powi(7)),
+                    "{src}: {item} -> {x} gives {residual}"
+                );
             }
+        }
+        // The 3^2:4 sextic has two real roots and four non-real ones; the
+        // tower produces the real pair in radicals, while solve_complex
+        // returns all six as canonical root_of objects (the non-real roots
+        // of a sextic tower are not written in radicals here).
+        let (complex, reduced) =
+            reduce_with(&rules, "solve_complex(x^6 - 8*x^3 - 18*x^2 + 16, x)", &[]);
+        assert!(reduced, "{complex}");
+        let complex_items = list_items(&complex);
+        assert_eq!(complex_items.len(), 6, "{complex}");
+        let (real_text, _) = reduce_with(&rules, "solve(x^6 - 8*x^3 - 18*x^2 + 16, x)", &[]);
+        let real_values: Vec<f64> = list_items(&real_text)
+            .iter()
+            .map(|item| eval(&rules, item, &[]))
+            .collect();
+        assert_eq!(real_values.len(), 2, "{real_text}");
+        for (item, value) in complex_items.iter().zip(&real_values) {
+            let complex_value = eval(&rules, item, &[]);
+            assert!(
+                (complex_value - value).abs() < 1e-7,
+                "{item} -> {complex_value}, solve gave {value}"
+            );
         }
     }
 
@@ -1388,48 +1664,91 @@ mod tests {
         let rules = crate::rules::standard();
         // Solvable: radicals, verified by substitution.
         for (src, poly) in [
-            ("solve(x^5 - 5*x + 12, x)", (vec![12.0, -5.0, 0.0, 0.0, 0.0, 1.0])),
-            ("solve(x^5 + 15*x + 12, x)", (vec![12.0, 15.0, 0.0, 0.0, 0.0, 1.0])),
-            ("solve(x^5 + 5*x^3 + 5*x + 3, x)", (vec![3.0, 5.0, 0.0, 5.0, 0.0, 1.0])),
+            (
+                "solve(x^5 - 5*x + 12, x)",
+                (vec![12.0, -5.0, 0.0, 0.0, 0.0, 1.0]),
+            ),
+            (
+                "solve(x^5 + 15*x + 12, x)",
+                (vec![12.0, 15.0, 0.0, 0.0, 0.0, 1.0]),
+            ),
+            (
+                "solve(x^5 + 5*x^3 + 5*x + 3, x)",
+                (vec![3.0, 5.0, 0.0, 5.0, 0.0, 1.0]),
+            ),
         ] {
             let (text, reduced) = reduce_with(&rules, src, &[]);
             assert!(reduced, "{src}: {text}");
-            assert!(!text.contains("root_of"), "{src} should be in radicals: {text}");
+            assert!(
+                !text.contains("root_of"),
+                "{src} should be in radicals: {text}"
+            );
             let items = list_items(&text);
             assert_eq!(items.len(), 1, "{src}: {text}");
             let x = eval(&rules, &items[0], &[]);
             let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
-            assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{src}: {x} gives {residual}");
+            assert!(
+                residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)),
+                "{src}: {x} gives {residual}"
+            );
         }
         // Five real roots (cyclic group): cosines, all five roots.
-        let (text, reduced) = reduce_with(&rules, "solve(x^5 + x^4 - 4*x^3 - 3*x^2 + 3*x + 1, x)", &[]);
-        assert!(reduced && !text.contains("root_of") && text.contains("cos("), "{text}");
+        let (text, reduced) =
+            reduce_with(&rules, "solve(x^5 + x^4 - 4*x^3 - 3*x^2 + 3*x + 1, x)", &[]);
+        assert!(
+            reduced && !text.contains("root_of") && text.contains("cos("),
+            "{text}"
+        );
         let items = list_items(&text);
         assert_eq!(items.len(), 5, "{text}");
         let mut values: Vec<f64> = items.iter().map(|i| eval(&rules, i, &[])).collect();
         values.sort_by(f64::total_cmp);
-        for (v, want) in values.iter().zip([-1.918_985_947_228_994_7_f64, -1.309_721_467_890_570_2, -0.284_629_676_546_570_3, 0.830_830_026_003_772_9, 1.682_507_065_662_362_4]) {
+        for (v, want) in values.iter().zip([
+            -1.918_985_947_228_994_7_f64,
+            -1.309_721_467_890_570_2,
+            -0.284_629_676_546_570_3,
+            0.830_830_026_003_772_9,
+            1.682_507_065_662_362_4,
+        ]) {
             assert!((v - want).abs() < 1e-8, "{values:?}");
         }
         // Decomposable and self-reciprocal polynomials of higher degree.
         for (src, poly) in [
-            ("solve(x^6 + 3*x^5 + 6*x^4 + 7*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, 7.0, 6.0, 3.0, 1.0]),
-            ("solve(x^6 - 2*x^3 - 1, x)", vec![-1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 1.0]),
-            ("solve(x^6 - x^4 - x^3 - x^2 + 1, x)", vec![1.0, 0.0, -1.0, -1.0, -1.0, 0.0, 1.0]),
+            (
+                "solve(x^6 + 3*x^5 + 6*x^4 + 7*x^3 + 6*x^2 + 3*x - 1, x)",
+                vec![-1.0, 3.0, 6.0, 7.0, 6.0, 3.0, 1.0],
+            ),
+            (
+                "solve(x^6 - 2*x^3 - 1, x)",
+                vec![-1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 1.0],
+            ),
+            (
+                "solve(x^6 - x^4 - x^3 - x^2 + 1, x)",
+                vec![1.0, 0.0, -1.0, -1.0, -1.0, 0.0, 1.0],
+            ),
         ] {
             let (text, reduced) = reduce_with(&rules, src, &[]);
             assert!(reduced, "{src}: {text}");
             let items = list_items(&text);
-            assert!(!items.is_empty() && !text.contains("root_of"), "{src}: {text}");
+            assert!(
+                !items.is_empty() && !text.contains("root_of"),
+                "{src}: {text}"
+            );
             for item in &items {
                 let x = eval(&rules, item, &[]);
                 let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
-                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(6)), "{src}: {item} -> {x} gives {residual}");
+                assert!(
+                    residual.abs() < 1e-7 * (1.0 + x.abs().powi(6)),
+                    "{src}: {item} -> {x} gives {residual}"
+                );
             }
         }
         // Unsolvable: exact root objects, canonical and numerically evaluable.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
-        assert!(reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))", "{text}");
+        assert!(
+            reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))",
+            "{text}"
+        );
         let (text, _) = reduce_with(&rules, "solve(x^7 - 7*x + 3, x)", &[]);
         assert!(text.matches("root_of").count() == 3, "{text}");
         // A reducible polynomial: the object lives in the irreducible factor.
@@ -1437,8 +1756,12 @@ mod tests {
         assert_eq!(text, "root_of(0, -1, -1, 0, 0, 0, 1)");
         let (text, _) = reduce_with(&rules, "root_of(1, -2, 0, 1)", &[]);
         assert_eq!(text, "2^(1/2)");
-        let (value, radius) = crate::rules::testing::numeric(&rules, "root_of(0, -1, -1, 0, 0, 0, 1)", &[], 1e-12);
-        assert!((value - 1.167_303_978_261_418_7).abs() < 1e-12 && radius < 1e-12, "{value} {radius}");
+        let (value, radius) =
+            crate::rules::testing::numeric(&rules, "root_of(0, -1, -1, 0, 0, 0, 1)", &[], 1e-12);
+        assert!(
+            (value - 1.167_303_978_261_418_7).abs() < 1e-12 && radius < 1e-12,
+            "{value} {radius}"
+        );
         // The de Moivre family with parameters.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 + 5*a*x^3 + 5*a^2*x + b, x)", &[]);
         assert!(reduced, "{text}");
@@ -1449,7 +1772,10 @@ mod tests {
                 let x = eval(&rules, item, &[("a", a), ("b", b)]);
                 if x.is_finite() {
                     let residual = x.powi(5) + 5.0 * a * x.powi(3) + 5.0 * a * a * x + b;
-                    assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{item} at a={a}, b={b}: {residual}");
+                    assert!(
+                        residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)),
+                        "{item} at a={a}, b={b}: {residual}"
+                    );
                     checked += 1;
                 }
             }
@@ -1463,7 +1789,10 @@ mod tests {
         let roots = |src: &str| -> Vec<f64> {
             let (text, reduced) = crate::rules::testing::reduce_with(&rules, src, &[]);
             assert!(reduced, "{src} not solved: {text}");
-            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let inner = text
+                .strip_prefix("list(")
+                .and_then(|t| t.strip_suffix(')'))
+                .unwrap_or("");
             if inner.is_empty() {
                 return Vec::new();
             }
@@ -1483,7 +1812,10 @@ mod tests {
                 current.push(ch);
             }
             parts.push(current);
-            let mut values: Vec<f64> = parts.iter().map(|p| crate::rules::testing::eval(&rules, p.trim(), &[])).collect();
+            let mut values: Vec<f64> = parts
+                .iter()
+                .map(|p| crate::rules::testing::eval(&rules, p.trim(), &[]))
+                .collect();
             values.sort_by(f64::total_cmp);
             values
         };
@@ -1494,7 +1826,17 @@ mod tests {
         let cube = roots("solve(x^3 - 2*x - 5, x)");
         assert!(close(&cube, &[2.094_551_481_542_327]), "{cube:?}");
         let three = roots("solve(x^3 - 3*x + 1, x)");
-        assert!(close(&three, &[-1.879_385_241_571_816_6, 0.347_296_355_333_860_7, 1.532_088_886_237_956]), "{three:?}");
+        assert!(
+            close(
+                &three,
+                &[
+                    -1.879_385_241_571_816_6,
+                    0.347_296_355_333_860_7,
+                    1.532_088_886_237_956
+                ]
+            ),
+            "{three:?}"
+        );
         // Biquadratic and Ferrari quartics, and a quintic numerically.
         let bi = roots("solve(x^4 - 10*x^2 + 1, x)");
         let s = (2.0_f64).sqrt() + (3.0_f64).sqrt();
@@ -1505,7 +1847,10 @@ mod tests {
         // Absolute values, trigonometric and Lambert-type equations.
         assert!(close(&roots("solve(abs(x - 1) - 2, x)"), &[-1.0, 3.0]));
         let trig = roots("solve(sin(x) + cos(x) - 1, x)");
-        assert!(close(&trig, &[0.0, std::f64::consts::FRAC_PI_2]), "{trig:?}");
+        assert!(
+            close(&trig, &[0.0, std::f64::consts::FRAC_PI_2]),
+            "{trig:?}"
+        );
         let double = roots("solve(sin(2*x) - cos(x), x)");
         assert!(double.len() >= 3, "{double:?}");
         let w = roots("solve(x*exp(x) - 1, x)");
@@ -1518,7 +1863,11 @@ mod tests {
         assert!(close(&roots("solve(x - 3*x^(1/2) + 2, x)"), &[1.0, 4.0]));
         assert!(close(&roots("solve((x + 7)^(1/2) - x - 1, x)"), &[2.0]));
         // A non-polynomial system by elimination.
-        let (system, reduced) = crate::rules::testing::reduce_with(&rules, "solve(list(y - exp(x), y - 2), list(x, y))", &[]);
+        let (system, reduced) = crate::rules::testing::reduce_with(
+            &rules,
+            "solve(list(y - exp(x), y - 2), list(x, y))",
+            &[],
+        );
         assert!(reduced && system.contains("ln(2)"), "{system}");
     }
 
@@ -1529,8 +1878,14 @@ mod tests {
         assert_eq!(run("solve(x^2 - 5*x + 6, x)"), "list(2, 3)");
         assert_eq!(run("solve(x^2 + 1 = 0, x)"), "list()", "no real solutions");
         assert_eq!(run("solve(x^2 = 2, x)"), "list(-2^(1/2), 2^(1/2))");
-        assert_eq!(run("solve(x^2 - 2*x - 1 = 0, x)"), "list(1 - 2^(1/2), 1 + 2^(1/2))");
-        assert_eq!(run("solve(x^2 + x - 1 = 0, x)"), "list(-1/2 - 1/2*5^(1/2), 1/2*5^(1/2) - 1/2)");
+        assert_eq!(
+            run("solve(x^2 - 2*x - 1 = 0, x)"),
+            "list(1 - 2^(1/2), 1 + 2^(1/2))"
+        );
+        assert_eq!(
+            run("solve(x^2 + x - 1 = 0, x)"),
+            "list(-1/2 - 1/2*5^(1/2), 1/2*5^(1/2) - 1/2)"
+        );
     }
 
     #[test]
@@ -1541,7 +1896,11 @@ mod tests {
         assert_eq!(run("solve(x^3 = 2, x)"), "list(2^(1/3))");
         assert_eq!(run("solve(x^4 = 5, x)"), "list(-5^(1/4), 5^(1/4))");
         assert_eq!(run("solve(x^3 - x = 0, x)"), "list(-1, 0, 1)");
-        assert_eq!(run("solve((x - 1)^2 * (x + 2) = 0, x)"), "list(-2, 1)", "repeated roots once");
+        assert_eq!(
+            run("solve((x - 1)^2 * (x + 2) = 0, x)"),
+            "list(-2, 1)",
+            "repeated roots once"
+        );
     }
 
     #[test]
@@ -1551,18 +1910,28 @@ mod tests {
         let (text, reduced) = reduce_with(&[solve()], "solve(a*x^2 + b*x + c = 0, x)", &[]);
         assert!(reduced, "{text}");
         // Check the quadratic formula numerically for a = 1, b = -3, c = 2.
-        let inner = text.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|s| s.strip_suffix(')'))
+            .unwrap_or("");
         let middle = inner.find(", ").unwrap_or(0);
         let (first, second) = (&inner[..middle], &inner[middle + 2..]);
         let at = [("a", 1.0), ("b", -3.0), ("c", 2.0)];
         let mut values = [eval(&[solve()], first, &at), eval(&[solve()], second, &at)];
         values.sort_by(f64::total_cmp);
-        assert!((values[0] - 1.0).abs() < 1e-12 && (values[1] - 2.0).abs() < 1e-12, "{values:?}");
+        assert!(
+            (values[0] - 1.0).abs() < 1e-12 && (values[1] - 2.0).abs() < 1e-12,
+            "{values:?}"
+        );
     }
 
     #[test]
     fn rational_equations_drop_poles() {
-        assert_eq!(run("solve((x^2 - 1)/(x - 1) = 0, x)"), "list(-1)", "x = 1 is a pole, not a root");
+        assert_eq!(
+            run("solve((x^2 - 1)/(x - 1) = 0, x)"),
+            "list(-1)",
+            "x = 1 is a pole, not a root"
+        );
         assert_eq!(run("solve(1/x = 2, x)"), "list(1/2)");
         assert_eq!(run("solve(1/(x - 1) + 1/(x + 1) = 0, x)"), "list(0)");
     }
@@ -1572,15 +1941,26 @@ mod tests {
         assert_eq!(run("solve(exp(x) = 3, x)"), "list(ln(3))");
         assert_eq!(run("solve(ln(x) = 2, x)"), "list(exp(2))");
         assert_eq!(run("solve(2^x = 8, x)"), "list(ln(8)/ln(2))");
-        assert_eq!(run("solve(exp(2*x) - 3*exp(x) + 2 = 0, x)"), "list(0, ln(2))");
+        assert_eq!(
+            run("solve(exp(2*x) - 3*exp(x) + 2 = 0, x)"),
+            "list(0, ln(2))"
+        );
         assert_eq!(run("solve(sin(x) = 0, x)"), "list(0)", "principal branch");
         assert_eq!(run("solve(sqrt(x) = 3, x)"), "list(9)");
-        assert_eq!(run("solve(sqrt(x) = -3, x)"), "list()", "squaring introduced a false root");
+        assert_eq!(
+            run("solve(sqrt(x) = -3, x)"),
+            "list()",
+            "squaring introduced a false root"
+        );
         assert_eq!(run("solve(abs(x - 1) = 2, x)"), "list(-1, 3)");
         assert_eq!(run("solve((x - 1)^3 = 8, x)"), "list(3)");
         check_solutions("cosh(x) = 2", &run("solve(cosh(x) = 2, x)"), 2);
         check_solutions("tanh(x) = 1/2", &run("solve(tanh(x) = 1/2, x)"), 1);
-        check_solutions("exp(x)^2 + exp(x) = 6", &run("solve(exp(x)^2 + exp(x) = 6, x)"), 1);
+        check_solutions(
+            "exp(x)^2 + exp(x) = 6",
+            &run("solve(exp(x)^2 + exp(x) = 6, x)"),
+            1,
+        );
     }
 
     #[test]
@@ -1594,14 +1974,23 @@ mod tests {
 
     #[test]
     fn linear_systems() {
-        assert_eq!(run("solve(list(x + y = 3, x - y = 1), list(x, y))"), "list(list(2, 1))");
+        assert_eq!(
+            run("solve(list(x + y = 3, x - y = 1), list(x, y))"),
+            "list(list(2, 1))"
+        );
         assert_eq!(
             run("solve(list(2*x + 3*y - z = 1, x - y + z = 2, 3*x + y + 2*z = 7), list(x, y, z))"),
             "list(list(3/7, 6/7, 17/7))"
         );
-        assert_eq!(run("solve(list(a*x + y = 1, x - y = 0), list(x, y))"), "list(list(1/(a + 1), 1/(a + 1)))");
+        assert_eq!(
+            run("solve(list(a*x + y = 1, x - y = 0), list(x, y))"),
+            "list(list(1/(a + 1), 1/(a + 1)))"
+        );
         // A singular system has a line of solutions, given with a free unknown.
-        assert_eq!(run("solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))"), "list(list(-(y - 1), y))");
+        assert_eq!(
+            run("solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))"),
+            "list(list(-(y - 1), y))"
+        );
     }
 
     #[test]
@@ -1610,7 +1999,11 @@ mod tests {
             run("solve(list(x^2 + y^2 = 5, x - y = 1), list(x, y))"),
             "list(list(-1, -2), list(2, 1))"
         );
-        assert_eq!(run("solve(list(x*y = 1, x = 0), list(x, y))"), "list()", "inconsistent");
+        assert_eq!(
+            run("solve(list(x*y = 1, x = 0), list(x, y))"),
+            "list()",
+            "inconsistent"
+        );
         assert_eq!(
             run("solve(list(x^2 + y^2 = 1, x = y), list(x, y))"),
             "list(list(-1/2*2^(1/2), -1/2*2^(1/2)), list(1/2*2^(1/2), 1/2*2^(1/2)))"
@@ -1621,13 +2014,27 @@ mod tests {
     fn numeric_phase() {
         // All real roots of an unsolvable quintic, via Sturm sequences.
         let mut g = Graph::new();
-        let engine = crate::graph::Engine::install(&mut g, &[solve()]).unwrap_or_else(|e| panic!("{e}"));
-        let root = g.parse("solve(x^5 - x + 1 = 0, x)").unwrap_or_else(|e| panic!("{e}"));
+        let engine =
+            crate::graph::Engine::install(&mut g, &[solve()]).unwrap_or_else(|e| panic!("{e}"));
+        let root = g
+            .parse("solve(x^5 - x + 1 = 0, x)")
+            .unwrap_or_else(|e| panic!("{e}"));
         let env = Env::numeric(1e-12);
-        engine.run(&mut g, &[root], &env, &crate::graph::Saturate, &crate::graph::Budget::default());
-        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm).build(&mut g, root);
+        engine.run(
+            &mut g,
+            &[root],
+            &env,
+            &crate::graph::Saturate,
+            &crate::graph::Budget::default(),
+        );
+        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
+            .build(&mut g, root);
         let text = answer.map(|n| g.display(n)).unwrap_or_default();
-        let value: f64 = text.trim_start_matches("list(").trim_end_matches(')').parse().unwrap_or(f64::NAN);
+        let value: f64 = text
+            .trim_start_matches("list(")
+            .trim_end_matches(')')
+            .parse()
+            .unwrap_or(f64::NAN);
         assert!((value.powi(5) - value + 1.0).abs() < 1e-9, "{text}");
 
         // One root near a guess.
@@ -1646,10 +2053,16 @@ mod tests {
         assert_eq!(run("solve(sqrt(x) + sqrt(x - 5) = 5, x)"), "list(9)");
         assert_eq!(run("solve(ln(x) + ln(x - 1) = ln(6), x)"), "list(3)");
         assert_eq!(run("solve(x^x = 4, x)"), "list(exp(lambertw(ln(4))))");
-        assert_eq!(run("solve(gt(x^3 - 6*x^2 + 11*x - 6, 0), x)"), "or(and(lt(1, x), lt(x, 2)), lt(3, x))");
+        assert_eq!(
+            run("solve(gt(x^3 - 6*x^2 + 11*x - 6, 0), x)"),
+            "or(and(lt(1, x), lt(x, 2)), lt(3, x))"
+        );
         assert_eq!(run("solve(lt(x^2 - 4, 0), x)"), "and(lt(-2, x), lt(x, 2))");
         assert_eq!(run("solve(lt(abs(x), 2), x)"), "and(lt(-2, x), lt(x, 2))");
-        assert_eq!(run("solve(ge((x - 1)/(x + 2), 0), x)"), "or(le(1, x), lt(x, -2))");
+        assert_eq!(
+            run("solve(ge((x - 1)/(x + 2), 0), x)"),
+            "or(le(1, x), lt(x, -2))"
+        );
         assert_eq!(run("solve(le(x^2, 0), x)"), "x = 0");
         assert_eq!(run("solve(gt(x^2 + 1, 0), x)"), "true");
         assert_eq!(run("solve(lt(x^2 + 1, 0), x)"), "false");
@@ -1659,10 +2072,18 @@ mod tests {
     fn numeric_text(src: &str) -> String {
         let rules = crate::rules::standard();
         let mut g = Graph::new();
-        let engine = crate::graph::Engine::install(&mut g, &rules).unwrap_or_else(|e| panic!("{e}"));
+        let engine =
+            crate::graph::Engine::install(&mut g, &rules).unwrap_or_else(|e| panic!("{e}"));
         let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[root], &Env::numeric(1e-12), &crate::graph::Saturate, &crate::graph::Budget::default());
-        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm).build(&mut g, root);
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::numeric(1e-12),
+            &crate::graph::Saturate,
+            &crate::graph::Budget::default(),
+        );
+        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
+            .build(&mut g, root);
         answer.map(|n| g.display(n)).unwrap_or_default()
     }
 
@@ -1680,9 +2101,18 @@ mod tests {
         assert_eq!(run("solve_general(sin(x) = 0, x)"), "list(n*pi)");
         assert_eq!(run("solve_general(cos(x) = 0, x)"), "list(n*pi + 1/2*pi)");
         assert_eq!(run("solve_general(tan(x) = 1, x)"), "list(n*pi + 1/4*pi)");
-        assert_eq!(run("solve_general(sin(x) = 1/2, x)"), "list(2*n*pi + 1/6*pi, 2*n*pi + 5/6*pi)");
-        assert_eq!(run("solve_general(sin(x)^2 = cos(x)^2, x)"), "list(1/2*n*pi + 1/4*pi)");
-        assert_eq!(run("solve_general(sin(x) = a, x)"), "list(2*n*pi + asin(a), 2*n*pi - asin(a) + pi)");
+        assert_eq!(
+            run("solve_general(sin(x) = 1/2, x)"),
+            "list(2*n*pi + 1/6*pi, 2*n*pi + 5/6*pi)"
+        );
+        assert_eq!(
+            run("solve_general(sin(x)^2 = cos(x)^2, x)"),
+            "list(1/2*n*pi + 1/4*pi)"
+        );
+        assert_eq!(
+            run("solve_general(sin(x) = a, x)"),
+            "list(2*n*pi + asin(a), 2*n*pi - asin(a) + pi)"
+        );
         // Not periodic: the same as `solve`.
         assert_eq!(run("solve_general(exp(x) = 3, x)"), "list(ln(3))");
         // Through an inner function.
@@ -1698,9 +2128,15 @@ mod tests {
         let run = |src: &str| simplify(&rules, src);
         assert_eq!(run("solve(exp(x)*(x - 1) = 0, x)"), "list(1)");
         assert_eq!(run("solve(4^x - 3*2^x - 4 = 0, x)"), "list(ln(4)/ln(2))");
-        assert_eq!(run("solve(exp(x) + exp(-x) = 4, x)"), "list(ln(2 - 3^(1/2)), ln(2 + 3^(1/2)))");
+        assert_eq!(
+            run("solve(exp(x) + exp(-x) = 4, x)"),
+            "list(ln(2 - 3^(1/2)), ln(2 + 3^(1/2)))"
+        );
         assert_eq!(run("solve(sinh(x) + cosh(x) = 2, x)"), "list(ln(2))");
-        assert_eq!(run("solve(2^x = 3^(x - 1), x)"), "list(-ln(3)/(ln(2) - ln(3)))");
+        assert_eq!(
+            run("solve(2^x = 3^(x - 1), x)"),
+            "list(-ln(3)/(ln(2) - ln(3)))"
+        );
         assert_eq!(run("solve(x^3*ln(x) = 0, x)"), "list(1)");
         assert_eq!(run("solve(atan(2*x) + atan(3*x) = pi/4, x)"), "list(1/6)");
         assert_eq!(run("solve(asin(x) - acos(x) = 0, x)"), "list(1/2*2^(1/2))");
@@ -1708,24 +2144,52 @@ mod tests {
         let text = run("solve((x^2 - a)*(x - b) = 0, x)");
         assert!(text.contains('b') && text.contains("a^(1/2)"), "{text}");
         let text = run("solve(x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0, x)");
-        assert!(text.contains('a') && text.contains('b') && text.contains('c'), "{text}");
+        assert!(
+            text.contains('a') && text.contains('b') && text.contains('c'),
+            "{text}"
+        );
     }
 
     #[test]
     fn systems_with_free_parameters_and_conditions() {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
-        assert_eq!(run("solve(list(x + y = 1), list(x, y))"), "list(list(-(y - 1), y))");
-        assert_eq!(run("solve(list(x + y + z = 1, x - y = 0), list(x, y, z))"), "list(list(1/2 - 1/2*z, 1/2 - 1/2*z, z))");
-        assert_eq!(run("solve(list(x + y = 1, x + y = 2), list(x, y))"), "list()");
-        assert_eq!(run("solve(list(x^2 - y = 1, x + y = 3), list(x, y))").matches("list(").count(), 3);
-        assert_eq!(run("solve(list(gt(x, 1), lt(x, 5)), x)"), "and(lt(1, x), lt(x, 5))");
+        assert_eq!(
+            run("solve(list(x + y = 1), list(x, y))"),
+            "list(list(-(y - 1), y))"
+        );
+        assert_eq!(
+            run("solve(list(x + y + z = 1, x - y = 0), list(x, y, z))"),
+            "list(list(1/2 - 1/2*z, 1/2 - 1/2*z, z))"
+        );
+        assert_eq!(
+            run("solve(list(x + y = 1, x + y = 2), list(x, y))"),
+            "list()"
+        );
+        assert_eq!(
+            run("solve(list(x^2 - y = 1, x + y = 3), list(x, y))")
+                .matches("list(")
+                .count(),
+            3
+        );
+        assert_eq!(
+            run("solve(list(gt(x, 1), lt(x, 5)), x)"),
+            "and(lt(1, x), lt(x, 5))"
+        );
         assert_eq!(run("solve(list(gt(x^2, 1), lt(x, 0)), x)"), "lt(x, -1)");
         assert_eq!(run("solve(list(gt(x, 3), lt(x, 1)), x)"), "false");
         assert_eq!(run("solve(gt(exp(x), 2), x)"), "lt(ln(2), x)");
         assert_eq!(run("solve(lt(ln(x), 1), x)"), "and(lt(0, x), lt(x, E))");
-        assert_eq!(run("solve(list(le(x, 2), x^2 = 4), x)"), "or(x = -2, x = 2)");
-        assert_eq!(run("solve(list(gt(x, 0), lt(x^2, 9), ne(x, 1)), x)").matches("and").count(), 2);
+        assert_eq!(
+            run("solve(list(le(x, 2), x^2 = 4), x)"),
+            "or(x = -2, x = 2)"
+        );
+        assert_eq!(
+            run("solve(list(gt(x, 0), lt(x^2, 9), ne(x, 1)), x)")
+                .matches("and")
+                .count(),
+            2
+        );
     }
 
     #[test]
@@ -1737,8 +2201,14 @@ mod tests {
         assert_eq!(run("solve(floor(x) = 1/2, x)"), "false");
         assert_eq!(run("solve(lt(floor(x), 3), x)"), "lt(x, 3)");
         assert_eq!(run("solve(ge(floor(x), 3), x)"), "le(3, x)");
-        assert_eq!(run("solve(floor(2*x + 1) = 3, x)"), "and(le(1, x), lt(x, 3/2))");
-        assert_eq!(run("solve(list(floor(x) = 2, gt(x, 2.5)), x)"), "and(lt(2.5, x), lt(x, 3))");
+        assert_eq!(
+            run("solve(floor(2*x + 1) = 3, x)"),
+            "and(le(1, x), lt(x, 3/2))"
+        );
+        assert_eq!(
+            run("solve(list(floor(x) = 2, gt(x, 2.5)), x)"),
+            "and(lt(2.5, x), lt(x, 3))"
+        );
     }
 
     #[test]
@@ -1747,13 +2217,22 @@ mod tests {
         let roots = numbers(&numeric_text("solve(sin(x) = x/3, x)"));
         assert_eq!(roots.len(), 3, "{roots:?}");
         assert!(roots.iter().any(|r| r.abs() < 1e-9));
-        assert!(roots.iter().any(|r| (r - 2.278_862_660_075_828_3).abs() < 1e-8));
+        assert!(
+            roots
+                .iter()
+                .any(|r| (r - 2.278_862_660_075_828_3).abs() < 1e-8)
+        );
         // The circle meets exp(x) + y = 1 twice.
-        let tuples = numbers(&numeric_text("solve(list(x^2 + y^2 = 4, exp(x) + y = 1), list(x, y))"));
+        let tuples = numbers(&numeric_text(
+            "solve(list(x^2 + y^2 = 4, exp(x) + y = 1), list(x, y))",
+        ));
         assert_eq!(tuples.len(), 4, "{tuples:?}");
         for pair in tuples.chunks(2) {
             let (x, y) = (pair[0], pair[1]);
-            assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
+            assert!(
+                (x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8,
+                "{pair:?}"
+            );
         }
         // Roots of even multiplicity: no sign change, found through f'.
         let text = numeric_text("solve(cosh(x) = 1 + x^2/2 + x^4/24, x)");
@@ -1761,7 +2240,9 @@ mod tests {
         assert_eq!(roots.len(), 1, "{text}");
         assert!(roots[0].abs() < 5e-2, "{roots:?}");
         // Newton from a guess.
-        let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
+        let root = numbers(&numeric_text(
+            "nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))",
+        ));
         assert_eq!(root.len(), 2);
         assert!((root[0] * root[1] - 1.0).abs() < 1e-9);
     }

@@ -275,4 +275,8 @@ pub fn simulate_double_slit_scenario(output_dir: &Path) -> Result<(), String> {
 }
 
 /// Split-step Fourier solver in 1D–3D with real- and imaginary-time propagation: see [`crate::sim::split_step`].
-pub use crate::sim::split_step::{GroundState, SplitOrder, SplitStep};
+pub use crate::sim::split_step::GroundState;
+/// Split-step Fourier solver in 1D–3D with real- and imaginary-time propagation: see [`crate::sim::split_step`].
+pub use crate::sim::split_step::SplitOrder;
+/// Split-step Fourier solver in 1D–3D with real- and imaginary-time propagation: see [`crate::sim::split_step`].
+pub use crate::sim::split_step::SplitStep;

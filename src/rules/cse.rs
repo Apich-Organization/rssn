@@ -46,8 +46,12 @@ pub fn cse() -> RuleSet {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let op = i.op(OpDescriptor::new("cse", Arity::Fixed(1)).flags(OpFlags::HEAVY).cost(100))?;
-    let cost = i.op(OpDescriptor::new("cse_cost", Arity::Fixed(1)).flags(OpFlags::HEAVY).cost(100))?;
+    let op = i.op(OpDescriptor::new("cse", Arity::Fixed(1))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let cost = i.op(OpDescriptor::new("cse_cost", Arity::Fixed(1))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
     i.kernel("cse/cse", Tier::Reduce, Cse { op, cost });
     Ok(())
 }
@@ -102,10 +106,18 @@ impl Dag {
             }
             if !expanded {
                 stack.push((n, true));
-                stack.extend(children.iter().filter(|c| !seen.contains_key(c)).map(|&c| (c, false)));
+                stack.extend(
+                    children
+                        .iter()
+                        .filter(|c| !seen.contains_key(c))
+                        .map(|&c| (c, false)),
+                );
                 continue;
             }
-            let kids: Vec<usize> = children.iter().filter_map(|c| seen.get(c).copied()).collect();
+            let kids: Vec<usize> = children
+                .iter()
+                .filter_map(|c| seen.get(c).copied())
+                .collect();
             let mut kids = kids;
             let op = graph.op(n);
             if op == core::ADD || op == core::MUL {
@@ -129,19 +141,25 @@ impl Dag {
             let mut counts: HashMap<(OpId, usize, usize), usize> = HashMap::new();
             for &i in &live {
                 if let Some(Local::Op(op, kids)) = self.nodes.get(i)
-                    && (*op == core::ADD || *op == core::MUL) && kids.len() >= 3 {
-                        let mut distinct = kids.clone();
-                        distinct.dedup();
-                        for a in 0..distinct.len() {
-                            for b in a + 1..distinct.len() {
-                                if let (Some(&x), Some(&y)) = (distinct.get(a), distinct.get(b)) {
-                                    *counts.entry((*op, x, y)).or_insert(0) += 1;
-                                }
+                    && (*op == core::ADD || *op == core::MUL)
+                    && kids.len() >= 3
+                {
+                    let mut distinct = kids.clone();
+                    distinct.dedup();
+                    for a in 0..distinct.len() {
+                        for b in a + 1..distinct.len() {
+                            if let (Some(&x), Some(&y)) = (distinct.get(a), distinct.get(b)) {
+                                *counts.entry((*op, x, y)).or_insert(0) += 1;
                             }
                         }
                     }
+                }
             }
-            let Some((&(op, x, y), _)) = counts.iter().filter(|&(_, &c)| c >= 2).max_by_key(|&(k, &c)| (c, std::cmp::Reverse(*k))) else {
+            let Some((&(op, x, y), _)) = counts
+                .iter()
+                .filter(|&(_, &c)| c >= 2)
+                .max_by_key(|&(k, &c)| (c, std::cmp::Reverse(*k)))
+            else {
                 return rounds;
             };
             let pair = self.intern(Local::Op(op, vec![x, y]));
@@ -188,7 +206,10 @@ impl Dag {
             let Some(Local::Op(op, kids)) = self.nodes.get(i).cloned() else {
                 continue;
             };
-            let renamed: Vec<usize> = kids.iter().map(|k| map.get(k).copied().unwrap_or(*k)).collect();
+            let renamed: Vec<usize> = kids
+                .iter()
+                .map(|k| map.get(k).copied().unwrap_or(*k))
+                .collect();
             if renamed != kids {
                 let mut renamed = renamed;
                 if op == core::ADD || op == core::MUL {
@@ -269,7 +290,10 @@ impl Dag {
             return c;
         }
         let c = match self.nodes.get(i) {
-            | Some(Local::Op(_, kids)) => kids.len().saturating_sub(1).max(1) + kids.iter().map(|&k| self.tree_cost(k, memo)).sum::<usize>(),
+            | Some(Local::Op(_, kids)) => {
+                kids.len().saturating_sub(1).max(1)
+                    + kids.iter().map(|&k| self.tree_cost(k, memo)).sum::<usize>()
+            },
             | _ => 0,
         };
         memo.insert(i, c);
@@ -289,7 +313,11 @@ fn worth_naming(
     };
     let leaf = |k: usize| matches!(dag.nodes.get(k), Some(Local::Leaf(_)));
     let number = |k: usize| matches!(dag.nodes.get(k), Some(Local::Leaf(n)) if graph.number_of(*n).is_some());
-    if *op == core::MUL && kids.len() == 2 && kids.iter().any(|&k| number(k)) && kids.iter().all(|&k| leaf(k)) {
+    if *op == core::MUL
+        && kids.len() == 2
+        && kids.iter().any(|&k| number(k))
+        && kids.iter().all(|&k| leaf(k))
+    {
         return false;
     }
     true
@@ -308,7 +336,10 @@ fn plan(
 ) -> Option<Plan> {
     let mut dag = Dag::default();
     let mut seen = HashMap::new();
-    let mut roots: Vec<usize> = exprs.iter().map(|&e| dag.import(graph, e, &mut seen)).collect();
+    let mut roots: Vec<usize> = exprs
+        .iter()
+        .map(|&e| dag.import(graph, e, &mut seen))
+        .collect();
     let before = {
         let mut memo = HashMap::new();
         roots.iter().map(|&r| dag.tree_cost(r, &mut memo)).sum()
@@ -318,8 +349,15 @@ fn plan(
     // Live nodes in creation order (children before parents).
     let mut live = dag.live(&roots);
     live.sort_unstable();
-    let named: Vec<usize> =
-        live.iter().copied().filter(|&i| uses.get(i).copied().unwrap_or(0) >= 2 && worth_naming(&dag, graph, i) && !roots.contains(&i)).collect();
+    let named: Vec<usize> = live
+        .iter()
+        .copied()
+        .filter(|&i| {
+            uses.get(i).copied().unwrap_or(0) >= 2
+                && worth_naming(&dag, graph, i)
+                && !roots.contains(&i)
+        })
+        .collect();
     // Fresh names t1, t2, ... not used by the expressions.
     let mut taken: Vec<String> = Vec::new();
     for &e in exprs {
@@ -343,7 +381,8 @@ fn plan(
         let node = match dag.nodes.get(i)? {
             | Local::Leaf(n) => *n,
             | Local::Op(op, kids) => {
-                let children: Vec<NodeId> = kids.iter().filter_map(|k| built.get(k).copied()).collect();
+                let children: Vec<NodeId> =
+                    kids.iter().filter_map(|k| built.get(k).copied()).collect();
                 graph.node(*op, &children)
             },
         };
@@ -362,18 +401,24 @@ fn plan(
         let mut total = 0;
         for &i in &live {
             if (named.contains(&i) || roots.contains(&i))
-                && let Some(Local::Op(_, kids)) = dag.nodes.get(i) {
-                    total += kids.len().saturating_sub(1).max(1);
-                    for &k in kids {
-                        if !named.contains(&k) {
-                            total += dag.tree_cost(k, &mut memo);
-                        }
+                && let Some(Local::Op(_, kids)) = dag.nodes.get(i)
+            {
+                total += kids.len().saturating_sub(1).max(1);
+                for &k in kids {
+                    if !named.contains(&k) {
+                        total += dag.tree_cost(k, &mut memo);
                     }
                 }
+            }
         }
         total
     };
-    Some(Plan { temporaries, results, before, after })
+    Some(Plan {
+        temporaries,
+        results,
+        before,
+        after,
+    })
 }
 
 struct Cse {
@@ -410,7 +455,10 @@ impl Kernel for Cse {
             let Some(concrete) = best(cx.graph, simplified) else {
                 return Outcome::Pass;
             };
-            match (cx.graph.op(concrete) == core::EQ, cx.graph.children(concrete)) {
+            match (
+                cx.graph.op(concrete) == core::EQ,
+                cx.graph.children(concrete),
+            ) {
                 | (true, &[l, r]) => {
                     lhs.push(Some(l));
                     exprs.push(r);
@@ -426,17 +474,26 @@ impl Kernel for Cse {
         };
         let g = &mut *cx.graph;
         if op == self.cost {
-            let (b, a) = (g.int(i64::try_from(plan.before).unwrap_or(i64::MAX)), g.int(i64::try_from(plan.after).unwrap_or(i64::MAX)));
+            let (b, a) = (
+                g.int(i64::try_from(plan.before).unwrap_or(i64::MAX)),
+                g.int(i64::try_from(plan.after).unwrap_or(i64::MAX)),
+            );
             return Outcome::Pinned(g.node(core::LIST, &[b, a]));
         }
-        let definitions: Vec<NodeId> = plan.temporaries.iter().map(|&(t, d)| g.node(core::EQ, &[t, d])).collect();
+        let definitions: Vec<NodeId> = plan
+            .temporaries
+            .iter()
+            .map(|&(t, d)| g.node(core::EQ, &[t, d]))
+            .collect();
         let results: Vec<NodeId> = plan
             .results
             .iter()
             .zip(&lhs)
-            .map(|(&r, l)| match l {
-                | Some(l) => g.node(core::EQ, &[*l, r]),
-                | None => r,
+            .map(|(&r, l)| {
+                match l {
+                    | Some(l) => g.node(core::EQ, &[*l, r]),
+                    | None => r,
+                }
             })
             .collect();
         let definitions = g.node(core::LIST, &definitions);
@@ -453,12 +510,23 @@ mod tests {
     #[test]
     fn shared_subterms_become_temporaries() {
         let rules = crate::rules::standard();
-        let out = simplify(&rules, "cse(list(sin(x + y)*exp(x + y), cos(x + y) + exp(x + y)))");
+        let out = simplify(
+            &rules,
+            "cse(list(sin(x + y)*exp(x + y), cos(x + y) + exp(x + y)))",
+        );
         assert!(out.starts_with("list(list(t1 = "), "{out}");
         assert!(out.matches("x + y").count() == 1, "{out}");
         // Values are preserved: substitute the temporaries back.
-        let cost = simplify(&rules, "cse_cost(list(sin(x + y)*exp(x + y), cos(x + y) + exp(x + y)))");
-        let numbers: Vec<i64> = cost.trim_start_matches("list(").trim_end_matches(')').split(", ").filter_map(|v| v.parse().ok()).collect();
+        let cost = simplify(
+            &rules,
+            "cse_cost(list(sin(x + y)*exp(x + y), cos(x + y) + exp(x + y)))",
+        );
+        let numbers: Vec<i64> = cost
+            .trim_start_matches("list(")
+            .trim_end_matches(')')
+            .split(", ")
+            .filter_map(|v| v.parse().ok())
+            .collect();
         assert!(numbers.len() == 2 && numbers[1] < numbers[0], "{cost}");
     }
 
@@ -468,14 +536,21 @@ mod tests {
         let out = simplify(&rules, "cse(list(u = a*b*c + 1, v = a*b*d, w = a*b + c))");
         // a*b is shared by three products/sums.
         assert!(out.contains("t1 = a*b"), "{out}");
-        assert!(out.contains("u = ") && out.contains("v = ") && out.contains("w = "), "{out}");
+        assert!(
+            out.contains("u = ") && out.contains("v = ") && out.contains("w = "),
+            "{out}"
+        );
         // Check that the rewritten system evaluates like the original.
         let at = [("a", 1.3), ("b", -0.7), ("c", 2.1), ("d", 0.4)];
         let t1 = 1.3 * -0.7;
         let want = [t1 * 2.1 + 1.0, t1 * 0.4, t1 + 2.1];
         let inner = out.split("list(u = ").nth(1).unwrap_or_default();
         let _ = inner;
-        for (expr, w) in [("a*b*c + 1", want[0]), ("a*b*d", want[1]), ("a*b + c", want[2])] {
+        for (expr, w) in [
+            ("a*b*c + 1", want[0]),
+            ("a*b*d", want[1]),
+            ("a*b + c", want[2]),
+        ] {
             assert!((eval(&rules, expr, &at) - w).abs() < 1e-12);
         }
     }

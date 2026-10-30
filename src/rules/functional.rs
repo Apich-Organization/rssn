@@ -45,8 +45,6 @@
 
 mod ext;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -60,15 +58,17 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
 
 use super::calculus::derivative;
 use super::complex::complex;
@@ -80,7 +80,11 @@ use super::transforms::transforms;
 /// The functional-analysis rule set.
 #[must_use]
 pub fn functional() -> RuleSet {
-    RuleSet::new("functional", install).needs(linalg()).needs(complex()).needs(logic()).needs(transforms())
+    RuleSet::new("functional", install)
+        .needs(linalg())
+        .needs(complex())
+        .needs(logic())
+        .needs(transforms())
 }
 
 /// The operator-algebra constructors of one graph.
@@ -145,16 +149,26 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ] {
         i.op(plain(name, arity))?;
     }
-    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
-        rule: "functional".to_owned(),
-        reason: "needs the linear algebra and calculus rule sets",
+    let algebra = op_algebra(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "functional".to_owned(),
+            reason: "needs the linear algebra and calculus rule sets",
+        }
     })?;
-    let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+    let heavy = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     for (name, arity, request) in [
         ("op_apply", 2, Request::Apply),
         ("are_orthogonal", 5, Request::Orthogonal),
         ("gram_schmidt", 4, Request::GramSchmidt { normalise: false }),
-        ("gram_schmidt_orthonormal", 4, Request::GramSchmidt { normalise: true }),
+        (
+            "gram_schmidt_orthonormal",
+            4,
+            Request::GramSchmidt { normalise: true },
+        ),
         ("fredholm_neumann", 8, Request::NeumannSeries),
         ("fredholm_separable", 8, Request::Separable),
         ("fredholm_solve", 7, Request::FredholmSolve),
@@ -163,7 +177,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("volterra_solve", 6, Request::VolterraSolve),
     ] {
         let op = i.op(heavy(name, arity))?;
-        i.kernel(&format!("functional/{name}"), Tier::Reduce, Functional { op, request, algebra });
+        i.kernel(
+            &format!("functional/{name}"),
+            Tier::Reduce,
+            Functional { op, request, algebra },
+        );
     }
     i.define(&[
         "inner_product(f, g, x, a, b) := defint(conj(f) * g, x, a, b)",
@@ -195,7 +213,9 @@ impl Kernel for Functional {
         let result = match self.request {
             | Request::Apply => apply(cx, self.algebra, args[0], args[1], 0),
             | Request::Orthogonal => orthogonal(cx, self.algebra, &args),
-            | Request::GramSchmidt { normalise } => gram_schmidt(cx, self.algebra, &args, normalise),
+            | Request::GramSchmidt { normalise } => {
+                gram_schmidt(cx, self.algebra, &args, normalise)
+            },
             | Request::NeumannSeries => neumann(cx, self.algebra, &args),
             | Request::Separable => separable(cx, self.algebra, &args),
             | Request::FredholmSolve => fredholm_solve(cx, self.algebra, &args),
@@ -302,7 +322,10 @@ pub(crate) fn apply(
         return Some(state);
     }
     if op == algebra.power {
-        let n = graph.number_of(args[1]).and_then(Number::to_i64).filter(|n| (0..=16).contains(n))?;
+        let n = graph
+            .number_of(args[1])
+            .and_then(Number::to_i64)
+            .filter(|n| (0..=16).contains(n))?;
         let mut state = f;
         for _ in 0..n {
             state = apply(cx, algebra, args[0], state, depth + 1)?;
@@ -360,7 +383,10 @@ fn orthogonal(
     };
     let product = inner(cx, algebra, f, g, x, a, b)?;
     let zero = cx.is_zero(product);
-    if !zero && cx.graph.number_of(product).is_none() && !cx.graph.free_symbols(cx.graph.find(product)).is_empty() {
+    if !zero
+        && cx.graph.number_of(product).is_none()
+        && !cx.graph.free_symbols(cx.graph.find(product)).is_empty()
+    {
         // A parameter-dependent product that does not simplify to zero.
         return truth(cx.graph, false);
     }
@@ -445,7 +471,11 @@ fn neumann(
     let &[f, lambda, kernel, x, t, a, b, n] = args else {
         return None;
     };
-    let n = cx.graph.number_of(n).and_then(Number::to_i64).filter(|n| (0..=12).contains(n))?;
+    let n = cx
+        .graph
+        .number_of(n)
+        .and_then(Number::to_i64)
+        .filter(|n| (0..=12).contains(n))?;
     let mut y = f;
     for _ in 0..n {
         y = iterate(cx, algebra, f, lambda, kernel, x, t, a, b, y)?;
@@ -461,7 +491,11 @@ fn successive(
     let &[f, lambda, kernel, x, t, a, n] = args else {
         return None;
     };
-    let n = cx.graph.number_of(n).and_then(Number::to_i64).filter(|n| (0..=12).contains(n))?;
+    let n = cx
+        .graph
+        .number_of(n)
+        .and_then(Number::to_i64)
+        .filter(|n| (0..=12).contains(n))?;
     let mut y = f;
     for _ in 0..n {
         y = iterate(cx, algebra, f, lambda, kernel, x, t, a, x, y)?;
@@ -552,14 +586,25 @@ fn split_kernel(
     let (xs, ts) = (graph.symbol_of(x)?, graph.symbol_of(t)?);
     let kernel = best(graph, kernel)?;
     let mut gens = Gens::default();
-    let poly = from_term(graph, &mut gens, kernel, Limits { terms: 64, exponent: 16 })?;
+    let poly = from_term(
+        graph,
+        &mut gens,
+        kernel,
+        Limits {
+            terms: 64,
+            exponent: 16,
+        },
+    )?;
     let (mut a_funcs, mut b_funcs) = (Vec::new(), Vec::new());
     for (mono, coeff) in poly.terms() {
         let (mut in_x, mut in_t) = (vec![graph.num(coeff.clone())], Vec::new());
         for &(g, e) in mono {
             let node = gens.node(g)?;
             let factor = powi(graph, node, i64::from(e));
-            let (dx, dt) = (graph.depends_on(graph.find(node), xs), graph.depends_on(graph.find(node), ts));
+            let (dx, dt) = (
+                graph.depends_on(graph.find(node), xs),
+                graph.depends_on(graph.find(node), ts),
+            );
             match (dx, dt) {
                 | (true, true) => return None,
                 | (false, true) => in_t.push(factor),
@@ -635,7 +680,10 @@ fn volterra_solve(
     if cx.graph.depends_on(cx.graph.find(k_u), x_symbol) {
         return None;
     }
-    let (laplace, inverse) = (cx.graph.ops().lookup("laplace")?, cx.graph.ops().lookup("inverse_laplace")?);
+    let (laplace, inverse) = (
+        cx.graph.ops().lookup("laplace")?,
+        cx.graph.ops().lookup("inverse_laplace")?,
+    );
     let s_symbol = cx.graph.interner_mut().fresh_symbol("s");
     let s = cx.graph.symbol_node(s_symbol);
     let k_hat = cx.graph.node(laplace, &[k_u, u, s]);
@@ -658,16 +706,26 @@ mod tests {
     use crate::rules::testing::reduce_with;
 
     fn run(src: &str) -> String {
-        let (text, reduced) = reduce_with(&[functional()], src, &[("x", Facts::REAL), ("t", Facts::REAL)]);
+        let (text, reduced) = reduce_with(
+            &[functional()],
+            src,
+            &[("x", Facts::REAL), ("t", Facts::REAL)],
+        );
         assert!(reduced, "`{src}` was not fully reduced: {text}");
         text
     }
 
     #[test]
     fn operators() {
-        assert_eq!(run("op_apply(op_compose(op_d(x), op_mul(x)), x^2)"), "3*x^2");
+        assert_eq!(
+            run("op_apply(op_compose(op_d(x), op_mul(x)), x^2)"),
+            "3*x^2"
+        );
         assert_eq!(run("op_apply(op_int(0, x), cos(x))"), "sin(x)");
-        assert_eq!(run("op_apply(op_add(op_identity, op_scale(2, op_d(x))), exp(x))"), "3*exp(x)");
+        assert_eq!(
+            run("op_apply(op_add(op_identity, op_scale(2, op_d(x))), exp(x))"),
+            "3*exp(x)"
+        );
         assert_eq!(run("op_apply(op_power(op_d(x), 3), x^4)"), "24*x");
     }
 
@@ -680,10 +738,16 @@ mod tests {
         assert_eq!(run("lp_norm(x, 1, x, 0, 2)"), "2");
         assert_eq!(run("project_onto(x, 1, x, 0, 1)"), "1/2");
         // Gram–Schmidt on 1, x, x² over [-1, 1]: Legendre polynomials.
-        assert_eq!(run("gram_schmidt(list(1, x, x^2), x, -1, 1)"), run("list(1, x, x^2 - 1/3)"));
+        assert_eq!(
+            run("gram_schmidt(list(1, x, x^2), x, -1, 1)"),
+            run("list(1, x, x^2 - 1/3)")
+        );
         let orthonormal = run("gram_schmidt_orthonormal(list(1, x), x, -1, 1)");
         let difference = run(&format!("{orthonormal} - list(2^(-1/2), x*(3/2)^(1/2))"));
-        assert!(difference == "0" || difference == "list(0, 0)", "{orthonormal}");
+        assert!(
+            difference == "0" || difference == "list(0, 0)",
+            "{orthonormal}"
+        );
         // A dependent member is dropped.
         assert_eq!(run("gram_schmidt(list(x, 2*x), x, 0, 1)"), "list(x)");
     }
@@ -691,21 +755,33 @@ mod tests {
     #[test]
     fn integral_equations() {
         // y = x + ∫_0^1 x t y dt  has the solution y = 3x/2.
-        assert_eq!(run("fredholm_separable(x, 1, list(x), list(t), x, t, 0, 1)"), "3/2*x");
+        assert_eq!(
+            run("fredholm_separable(x, 1, list(x), list(t), x, t, 0, 1)"),
+            "3/2*x"
+        );
         assert_eq!(run("fredholm_solve(x, 1, x*t, x, t, 0, 1)"), "3/2*x");
         // Two-term kernel: y = 1 + λ ∫_0^1 (x + t) y dt with λ = 1.
         let two = run("fredholm_solve(1, 1, x + t, x, t, 0, 1)");
         assert_eq!(two, run("-12*x - 6"));
         // Neumann iterates converge to the same answer for a small λ.
         assert_eq!(run("fredholm_neumann(x, 0, x*t, x, t, 0, 1, 3)"), "x");
-        assert_eq!(run("fredholm_neumann(x, 1, x*t, x, t, 0, 1, 2)"), run("x + 1/3*x + 1/9*x"));
+        assert_eq!(
+            run("fredholm_neumann(x, 1, x*t, x, t, 0, 1, 2)"),
+            run("x + 1/3*x + 1/9*x")
+        );
         // y = 1 + ∫_0^x y dt  is solved by exp(x).
-        assert_eq!(run("volterra_successive(1, 1, 1, x, t, 0, 3)"), run("1 + x + x^2/2 + x^3/6"));
+        assert_eq!(
+            run("volterra_successive(1, 1, 1, x, t, 0, 3)"),
+            run("1 + x + x^2/2 + x^3/6")
+        );
         assert_eq!(run("volterra_solve(1, 1, 1, x, t, 0)"), "exp(x)");
         // y = sin(x) - ∫_0^x (x - t) y dt  (Laplace: Y = s/(s² + 1)² · ...)
         let conv = run("volterra_solve(x, -1, x - t, x, t, 0)");
         assert_eq!(conv, "sin(x)");
-        assert_eq!(run("volterra_to_ode(1, 1, 1, x, t, 0, y(x))"), "diff(y(x), x) = y(x)");
+        assert_eq!(
+            run("volterra_to_ode(1, 1, 1, x, t, 0, y(x))"),
+            "diff(y(x), x) = y(x)"
+        );
     }
 
     #[test]
@@ -715,12 +791,21 @@ mod tests {
         // The principal-value integral is not elementary, so the operator stays symbolic; check that it
         // is exactly the Tricomi formula by putting both forms in one e-class.
         let mut g = crate::graph::Graph::new();
-        let engine = crate::graph::Engine::install(&mut g, &[functional()]).unwrap_or_else(|e| panic!("{e}"));
-        let named = g.parse("airfoil_equation(1, x, t)").unwrap_or_else(|e| panic!("{e}"));
+        let engine = crate::graph::Engine::install(&mut g, &[functional()])
+            .unwrap_or_else(|e| panic!("{e}"));
+        let named = g
+            .parse("airfoil_equation(1, x, t)")
+            .unwrap_or_else(|e| panic!("{e}"));
         let written = g
             .parse("-1/(pi*(1 - x^2)^(1/2)) * defint((1 - t^2)^(1/2) * 1/(t - x), t, -1, 1) + C/(1 - x^2)^(1/2)")
             .unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[named, written], &crate::graph::Env::symbolic(), &crate::graph::Saturate, &crate::graph::Budget::default());
+        engine.run(
+            &mut g,
+            &[named, written],
+            &crate::graph::Env::symbolic(),
+            &crate::graph::Saturate,
+            &crate::graph::Budget::default(),
+        );
         assert_eq!(g.find(named), g.find(written));
         // For f = 1 the formula gives y = (x + C)/sqrt(1 - x²): PV ∫ sqrt(1 - t²)/(t - x) dt = -π x.
         // Evaluate the principal value by subtracting the pole: ∫ (s(t) - s(x))/(t - x) dt + s(x) ln((1 - x)/(1 + x)).
@@ -734,7 +819,11 @@ mod tests {
         for k in 0..steps {
             let u = lo + (f64::from(k) + 0.5) * h;
             let t = u.sin();
-            let slope = if (t - x).abs() < 1e-9 { -x / s(x) } else { (s(t) - s(x)) / (t - x) };
+            let slope = if (t - x).abs() < 1e-9 {
+                -x / s(x)
+            } else {
+                (s(t) - s(x)) / (t - x)
+            };
             smooth += slope * u.cos() * h;
         }
         let pv = smooth + s(x) * ((1.0 - x) / (1.0 + x)).ln();

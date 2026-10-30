@@ -46,9 +46,9 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
 use crate::rules::calculus::derivative;
-use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::to_term;
 use crate::rules::solve::elim::eliminate;
 use crate::rules::solve::solve_for;
@@ -100,7 +100,9 @@ pub(super) fn bernoulli_rational(
         if !cx.graph.depends_on(cx.graph.find(node), y_symbol) {
             continue;
         }
-        let e = if cx.graph.ops().lookup("sqrt") == Some(cx.graph.op(node)) && cx.graph.children(node) == [y] {
+        let e = if cx.graph.ops().lookup("sqrt") == Some(cx.graph.op(node))
+            && cx.graph.children(node) == [y]
+        {
             BigRational::new(1.into(), 2.into())
         } else {
             let &[base, e] = cx.graph.children(node) else {
@@ -117,11 +119,18 @@ pub(super) fn bernoulli_rational(
         power = Some((g, e));
     }
     let (gn, n) = power?;
-    let (mut a, mut b) = (crate::rules::poly::repr::Poly::zero(), crate::rules::poly::repr::Poly::zero());
+    let (mut a, mut b) = (
+        crate::rules::poly::repr::Poly::zero(),
+        crate::rules::poly::repr::Poly::zero(),
+    );
     for (mono, coeff) in poly.terms() {
         let ey = mono.iter().find(|&&(g, _)| g == gy).map_or(0, |&(_, e)| e);
         let en = mono.iter().find(|&&(g, _)| g == gn).map_or(0, |&(_, e)| e);
-        let rest: Vec<(u32, u32)> = mono.iter().copied().filter(|&(g, _)| g != gy && g != gn).collect();
+        let rest: Vec<(u32, u32)> = mono
+            .iter()
+            .copied()
+            .filter(|&(g, _)| g != gy && g != gn)
+            .collect();
         let piece = crate::rules::poly::repr::Poly::monomial(rest, coeff.clone());
         match (ey, en) {
             | (1, 0) => a = a.add(&piece),
@@ -236,10 +245,17 @@ pub(super) fn integrating_factor(
         let Some(mu) = exp_of(cx, integral) else {
             continue;
         };
-        let mu = if kind >= 2 { cx.graph.substitute(mu, z, g) } else { mu };
+        let mu = if kind >= 2 {
+            cx.graph.substitute(mu, z, g)
+        } else {
+            mu
+        };
         let (new_m, new_n) = (mul(cx.graph, &[mu, m]), mul(cx.graph, &[mu, n]));
         let (new_m, new_n) = (cx.simplify(new_m), cx.simplify(new_n));
-        let (a, b) = (derivative(cx.graph, new_m, y)?, derivative(cx.graph, new_n, x)?);
+        let (a, b) = (
+            derivative(cx.graph, new_m, y)?,
+            derivative(cx.graph, new_n, x)?,
+        );
         let check = sub(cx.graph, a, b);
         if !cx.is_zero(check) {
             continue;
@@ -249,7 +265,10 @@ pub(super) fn integrating_factor(
             continue;
         };
         // The potential must reproduce both parts.
-        let (px, py) = (derivative(cx.graph, potential, x)?, derivative(cx.graph, potential, y)?);
+        let (px, py) = (
+            derivative(cx.graph, potential, x)?,
+            derivative(cx.graph, potential, y)?,
+        );
         let (dx, dy) = (sub(cx.graph, px, new_m), sub(cx.graph, py, new_n));
         if !(cx.is_zero(dx) && cx.is_zero(dy)) {
             problem.constants = saved;
@@ -277,7 +296,9 @@ pub(super) fn implicit_first_order(
         let candidates = solve_for(cx.graph, problem.expr, y, 0).unwrap_or_default();
         for g in candidates {
             let g = cx.simplify(g);
-            if cx.graph.depends_on(cx.graph.find(g), y_symbol) || !cx.graph.depends_on(cx.graph.find(g), p_symbol) {
+            if cx.graph.depends_on(cx.graph.find(g), y_symbol)
+                || !cx.graph.depends_on(cx.graph.find(g), p_symbol)
+            {
                 continue;
             }
             let g_x = derivative(cx.graph, g, x)?;
@@ -303,11 +324,13 @@ pub(super) fn implicit_first_order(
             // d'Alembert: dx/dp = G_p / (p - G_x).
             let g_p = derivative(cx.graph, g, p)?;
             let slope = div(cx.graph, g_p, gap);
-            if let Some(found) = parametric(cx, problem, p, x, slope, depth, |cx, x_of_p, p_node| {
-                let y_of_p = cx.graph.substitute(g, x, x_of_p);
-                let y_of_p = cx.graph.substitute(y_of_p, p, p_node);
-                Some(cx.simplify(y_of_p))
-            }) {
+            if let Some(found) =
+                parametric(cx, problem, p, x, slope, depth, |cx, x_of_p, p_node| {
+                    let y_of_p = cx.graph.substitute(g, x, x_of_p);
+                    let y_of_p = cx.graph.substitute(y_of_p, p, p_node);
+                    Some(cx.simplify(y_of_p))
+                })
+            {
                 return Some(found);
             }
         }
@@ -349,7 +372,9 @@ pub(super) fn implicit_first_order(
         let first = cx.graph.node(core::EQ, &[x, x_param]);
         let second = cx.graph.node(core::EQ, &[problem.y_of_x, y_param]);
         let parametric = cx.graph.node(core::LIST, &[first, second]);
-        return Some(with_elimination(cx, problem, parametric, x_param, y_param, parameter));
+        return Some(with_elimination(
+            cx, problem, parametric, x_param, y_param, parameter,
+        ));
     }
     None
 }
@@ -370,7 +395,9 @@ fn with_elimination(
     parameter: NodeId,
 ) -> NodeId {
     let x = problem.x;
-    let Some(p_symbol) = cx.graph.symbol_of(parameter) else { return parametric };
+    let Some(p_symbol) = cx.graph.symbol_of(parameter) else {
+        return parametric;
+    };
     // Explicit: p = P(x).
     let x_minus = sub(cx.graph, x_param, x);
     if let Some(branches) = solve_for(cx.graph, x_minus, parameter, 0)
@@ -382,7 +409,9 @@ fn with_elimination(
             let branch = cx.simplify(branch);
             let y_of_x = cx.graph.substitute(y_param, parameter, branch);
             let y_of_x = cx.simplify(y_of_x);
-            if cx.graph.depends_on(cx.graph.find(y_of_x), p_symbol) || cx.graph.display(y_of_x).len() > 240 {
+            if cx.graph.depends_on(cx.graph.find(y_of_x), p_symbol)
+                || cx.graph.display(y_of_x).len() > 240
+            {
                 answers.clear();
                 break;
             }
@@ -428,14 +457,18 @@ fn parametric(
     let equation = cx.graph.node(core::EQ, &[jets[1], in_function]);
     let (inner, answer) = solve_equation(cx, equation, function, depth + 2)?;
     let x_of_p = explicit_rhs(cx.graph, answer, function)?;
-    problem.constants = problem.constants.max(inner.constants.max(constants_in(cx.graph, x_of_p)));
+    problem.constants = problem
+        .constants
+        .max(inner.constants.max(constants_in(cx.graph, x_of_p)));
     let parameter = cx.graph.sym("p");
     let y_of_p = y_of(cx, x_of_p, parameter)?;
     let x_param = cx.graph.substitute(x_of_p, p, parameter);
     let first = cx.graph.node(core::EQ, &[x, x_param]);
     let second = cx.graph.node(core::EQ, &[problem.y_of_x, y_of_p]);
     let parametric = cx.graph.node(core::LIST, &[first, second]);
-    Some(with_elimination(cx, problem, parametric, x_param, y_of_p, parameter))
+    Some(with_elimination(
+        cx, problem, parametric, x_param, y_of_p, parameter,
+    ))
 }
 
 /// A linear second-order equation with a first-derivative term, through

@@ -46,13 +46,13 @@ use num_traits::Zero;
 use super::Problem;
 use super::add;
 use super::explicit;
+use super::formal::FormalSolution;
+use super::formal::Point as FormalPoint;
+use super::formal::formal_solutions as formal_solutions_newton;
 use super::mul;
 use super::neg;
 use super::reduce::fresh_function;
 use super::reduce::linear_second_order;
-use super::formal::FormalSolution;
-use super::formal::Point as FormalPoint;
-use super::formal::formal_solutions as formal_solutions_newton;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
@@ -202,10 +202,19 @@ fn hypergeometric_with(
         let exponent = node_of(cx.graph, e);
         cx.graph.node(core::POW, &[x, exponent])
     };
-    let (first, second): (NodeId, Option<NodeId>) = if p2.len() == 3 && coefficient(&p2, 0).is_zero() && coefficient(&p2, 1).is_zero() && p1.is_empty() && p0.len() <= 3 {
+    let (first, second): (NodeId, Option<NodeId>) = if p2.len() == 3
+        && coefficient(&p2, 0).is_zero()
+        && coefficient(&p2, 1).is_zero()
+        && p1.is_empty()
+        && p0.len() <= 3
+    {
         // Whittaker: y'' + (-s²/4 + κ s/x + (1/4 - μ²)/x²) y = 0, z = s x.
         let alpha = coefficient(&p2, 2);
-        let (big_a, big_b, big_c) = (coefficient(&p0, 2) / &alpha, coefficient(&p0, 1) / &alpha, coefficient(&p0, 0) / &alpha);
+        let (big_a, big_b, big_c) = (
+            coefficient(&p0, 2) / &alpha,
+            coefficient(&p0, 1) / &alpha,
+            coefficient(&p0, 0) / &alpha,
+        );
         if !big_a.is_negative() || big_a.is_zero() {
             return None;
         }
@@ -223,7 +232,13 @@ fn hypergeometric_with(
             let envelope = cx.graph.node(exp, &[exponent]);
             let e = node_of(cx.graph, &(mu + Q::new(BigInt::one(), BigInt::from(2))));
             let power = cx.graph.node(core::POW, &[z, e]);
-            let (na, nb) = (node_of(cx.graph, &(mu - &kappa + Q::new(BigInt::one(), BigInt::from(2)))), node_of(cx.graph, &(q(1) + q(2) * mu)));
+            let (na, nb) = (
+                node_of(
+                    cx.graph,
+                    &(mu - &kappa + Q::new(BigInt::one(), BigInt::from(2))),
+                ),
+                node_of(cx.graph, &(q(1) + q(2) * mu)),
+            );
             let h = cx.graph.node(f, &[na, nb, z]);
             Some(mul(cx.graph, &[envelope, power, h]))
         };
@@ -241,7 +256,11 @@ fn hypergeometric_with(
             return None;
         }
         let alpha = coefficient(&p2, 1);
-        let (beta, gamma, delta) = (coefficient(&p1, 0), coefficient(&p1, 1), coefficient(&p0, 0));
+        let (beta, gamma, delta) = (
+            coefficient(&p1, 0),
+            coefficient(&p1, 1),
+            coefficient(&p0, 0),
+        );
         if p2.len() == 3 && coefficient(&p2, 2) == -alpha.clone() {
             // Gauss.
             let c = &beta / &alpha;
@@ -253,19 +272,34 @@ fn hypergeometric_with(
             let (pa, pb) = ((&s + &disc) / q(2), (&s - &disc) / q(2));
             let f = cx.graph.ops().lookup("hyper2f1")?;
             let regular = |cx: &mut Cx<'_>| {
-                let (na, nb, nc) = (node_of(cx.graph, &pa), node_of(cx.graph, &pb), node_of(cx.graph, &c));
+                let (na, nb, nc) = (
+                    node_of(cx.graph, &pa),
+                    node_of(cx.graph, &pb),
+                    node_of(cx.graph, &c),
+                );
                 cx.graph.node(f, &[na, nb, nc, x])
             };
             let singular = |cx: &mut Cx<'_>| {
                 let (a2, b2, c2n) = (&pa - &c + q(1), &pb - &c + q(1), q(2) - &c);
-                let (na2, nb2, nc2) = (node_of(cx.graph, &a2), node_of(cx.graph, &b2), node_of(cx.graph, &c2n));
+                let (na2, nb2, nc2) = (
+                    node_of(cx.graph, &a2),
+                    node_of(cx.graph, &b2),
+                    node_of(cx.graph, &c2n),
+                );
                 let h = cx.graph.node(f, &[na2, nb2, nc2, x]);
                 let power = power_of(cx, &(q(1) - &c));
                 mul(cx.graph, &[power, h])
             };
             if is_integer(&c) {
                 // 2F1(a, b; c; x) exists for c >= 1, the other form for c <= 0.
-                (if c >= q(1) { regular(cx) } else { singular(cx) }, None)
+                (
+                    if c >= q(1) {
+                        regular(cx)
+                    } else {
+                        singular(cx)
+                    },
+                    None,
+                )
             } else {
                 (regular(cx), Some(singular(cx)))
             }
@@ -292,7 +326,14 @@ fn hypergeometric_with(
                 mul(cx.graph, &[power, h])
             };
             if is_integer(&b) {
-                (if b >= q(1) { regular(cx) } else { singular(cx) }, None)
+                (
+                    if b >= q(1) {
+                        regular(cx)
+                    } else {
+                        singular(cx)
+                    },
+                    None,
+                )
             } else {
                 (regular(cx), Some(singular(cx)))
             }
@@ -368,16 +409,31 @@ fn normal_form_series(
     let shifted = |v: &[Q], by: i64| -> Vec<Q> {
         let by = usize::try_from(by).ok();
         match by {
-            | Some(b) => std::iter::repeat_n(Q::zero(), b).chain(v.iter().cloned()).collect(),
+            | Some(b) => {
+                std::iter::repeat_n(Q::zero(), b)
+                    .chain(v.iter().cloned())
+                    .collect()
+            },
             | None => Vec::new(),
         }
     };
     let drop_low = |v: &[Q], count: usize| -> Vec<Q> { v.iter().skip(count).cloned().collect() };
     let m_i = i64::try_from(m).ok()?;
-    let p_num = if m_i >= 1 { drop_low(p1, usize::try_from(m_i - 1).ok()?) } else { shifted(p1, 1 - m_i) };
-    let q_num = if m_i >= 2 { drop_low(p0, usize::try_from(m_i - 2).ok()?) } else { shifted(p0, 2 - m_i) };
+    let p_num = if m_i >= 1 {
+        drop_low(p1, usize::try_from(m_i - 1).ok()?)
+    } else {
+        shifted(p1, 1 - m_i)
+    };
+    let q_num = if m_i >= 2 {
+        drop_low(p0, usize::try_from(m_i - 2).ok()?)
+    } else {
+        shifted(p0, 2 - m_i)
+    };
     let terms = n + 2;
-    Some((series_quotient(&p_num, &s, terms)?, series_quotient(&q_num, &s, terms)?))
+    Some((
+        series_quotient(&p_num, &s, terms)?,
+        series_quotient(&q_num, &s, terms)?,
+    ))
 }
 
 /// An element `a + b √D` of a quadratic field (the field's `D` is kept by
@@ -393,26 +449,52 @@ impl Quad {
         Self { a, b: Q::zero() }
     }
 
-    fn add(&self, o: &Self) -> Self {
-        Self { a: &self.a + &o.a, b: &self.b + &o.b }
+    fn add(
+        &self,
+        o: &Self,
+    ) -> Self {
+        Self {
+            a: &self.a + &o.a,
+            b: &self.b + &o.b,
+        }
     }
 
-    fn mul(&self, o: &Self, d: &Q) -> Self {
-        Self { a: &self.a * &o.a + &self.b * &o.b * d, b: &self.a * &o.b + &self.b * &o.a }
+    fn mul(
+        &self,
+        o: &Self,
+        d: &Q,
+    ) -> Self {
+        Self {
+            a: &self.a * &o.a + &self.b * &o.b * d,
+            b: &self.a * &o.b + &self.b * &o.a,
+        }
     }
 
     fn neg(&self) -> Self {
-        Self { a: -self.a.clone(), b: -self.b.clone() }
+        Self {
+            a: -self.a.clone(),
+            b: -self.b.clone(),
+        }
     }
 
-    fn div(&self, o: &Self, d: &Q) -> Option<Self> {
+    fn div(
+        &self,
+        o: &Self,
+        d: &Q,
+    ) -> Option<Self> {
         let norm = &o.a * &o.a - &o.b * &o.b * d;
         if norm.is_zero() {
             return None;
         }
-        let conjugate = Self { a: o.a.clone(), b: -o.b.clone() };
+        let conjugate = Self {
+            a: o.a.clone(),
+            b: -o.b.clone(),
+        };
         let numerator = self.mul(&conjugate, d);
-        Some(Self { a: numerator.a / &norm, b: numerator.b / &norm })
+        Some(Self {
+            a: numerator.a / &norm,
+            b: numerator.b / &norm,
+        })
     }
 }
 
@@ -438,22 +520,40 @@ fn frobenius_quadratic(
         return None;
     }
     let (sigma, tau) = (-&b / q(2), Q::new(BigInt::one(), BigInt::from(2)));
-    let root = Quad { a: sigma.clone(), b: tau.clone() };
+    let root = Quad {
+        a: sigma.clone(),
+        b: tau.clone(),
+    };
     let f = |r: &Quad| -> Quad {
-        r.mul(r, &disc).add(&r.mul(&Quad::rational(b.clone()), &disc)).add(&Quad::rational(q_0.clone()))
+        r.mul(r, &disc)
+            .add(&r.mul(&Quad::rational(b.clone()), &disc))
+            .add(&Quad::rational(q_0.clone()))
     };
     let mut series: Vec<Quad> = vec![Quad::rational(q(1))];
     for k in 1..=n {
         let mut sum = Quad::rational(Q::zero());
         for j in 1..=k {
-            let shift_by = Quad { a: &sigma + Q::from_integer(BigInt::from(k - j)), b: tau.clone() };
-            let weight = shift_by.mul(&Quad::rational(pp.get(j)?.clone()), &disc).add(&Quad::rational(qq.get(j)?.clone()));
+            let shift_by = Quad {
+                a: &sigma + Q::from_integer(BigInt::from(k - j)),
+                b: tau.clone(),
+            };
+            let weight = shift_by
+                .mul(&Quad::rational(pp.get(j)?.clone()), &disc)
+                .add(&Quad::rational(qq.get(j)?.clone()));
             sum = sum.add(&weight.mul(series.get(k - j)?, &disc));
         }
-        let at = Quad { a: &root.a + Q::from_integer(BigInt::from(k)), b: root.b.clone() };
+        let at = Quad {
+            a: &root.a + Q::from_integer(BigInt::from(k)),
+            b: root.b.clone(),
+        };
         series.push(sum.neg().div(&f(&at), &disc)?);
     }
-    Some(QuadraticData { d: disc, sigma, tau, series: series.into_iter().map(|c| (c.a, c.b)).collect() })
+    Some(QuadraticData {
+        d: disc,
+        sigma,
+        tau,
+        series: series.into_iter().map(|c| (c.a, c.b)).collect(),
+    })
 }
 
 /// Frobenius data at `t = 0` of `p2 y'' + p1 y' + p0 y = 0` (polynomials in
@@ -523,8 +623,16 @@ pub(super) fn frobenius_at_zero(
             }
             Some(sum)
         };
-        let mut series = vec![if big_n == 0 { Q::zero() } else { q(1) }];
-        let mut c = if big_n == 0 { q(1) } else { Q::zero() };
+        let mut series = vec![if big_n == 0 {
+            Q::zero()
+        } else {
+            q(1)
+        }];
+        let mut c = if big_n == 0 {
+            q(1)
+        } else {
+            Q::zero()
+        };
         for k in 1..=n {
             if big_n > 0 && k == big_n {
                 // F(r1) = 0: the logarithmic coefficient absorbs the residue.
@@ -540,12 +648,25 @@ pub(super) fn frobenius_at_zero(
         second = series;
     }
     // The explicit recurrence for r1: Σ_d c_d(k) a_{k-d} = 0.
-    let lowest = [order(p2).unwrap_or(usize::MAX), order(p1).map_or(usize::MAX, |o| o + 1), order(p0).map_or(usize::MAX, |o| o + 2)]
-        .into_iter()
-        .min()?;
-    let depth = p2.len().max(p1.len() + 1).max(p0.len() + 2).saturating_sub(lowest);
+    let lowest = [
+        order(p2).unwrap_or(usize::MAX),
+        order(p1).map_or(usize::MAX, |o| o + 1),
+        order(p0).map_or(usize::MAX, |o| o + 2),
+    ]
+    .into_iter()
+    .min()?;
+    let depth = p2
+        .len()
+        .max(p1.len() + 1)
+        .max(p0.len() + 2)
+        .saturating_sub(lowest);
     let mut recurrence = Vec::new();
-    let at = |v: &[Q], i: i64| -> Q { usize::try_from(i).ok().and_then(|i| v.get(i).cloned()).unwrap_or_else(Q::zero) };
+    let at = |v: &[Q], i: i64| -> Q {
+        usize::try_from(i)
+            .ok()
+            .and_then(|i| v.get(i).cloned())
+            .unwrap_or_else(Q::zero)
+    };
     for d in 0..depth {
         let d_i = i64::try_from(d).ok()?;
         let mu = i64::try_from(lowest).ok()?;
@@ -565,7 +686,13 @@ pub(super) fn frobenius_at_zero(
     while recurrence.last().is_some_and(Vec::is_empty) {
         recurrence.pop();
     }
-    Some(Frobenius { roots: (r1, r2), first, log_coefficient, second, recurrence })
+    Some(Frobenius {
+        roots: (r1, r2),
+        first,
+        log_coefficient,
+        second,
+        recurrence,
+    })
 }
 
 /// Where to expand.
@@ -593,13 +720,22 @@ pub(super) enum Local {
     /// Ordinary or regular singular: Frobenius.
     Regular { centre: Option<Q>, data: Frobenius },
     /// Regular singular with irrational or complex exponents.
-    Quadratic { centre: Option<Q>, data: QuadraticData },
+    Quadratic {
+        centre: Option<Q>,
+        data: QuadraticData,
+    },
     /// Irregular singular: two formal solutions with exponential factors.
-    Formal { centre: Option<Q>, items: Vec<Formal> },
+    Formal {
+        centre: Option<Q>,
+        items: Vec<Formal>,
+    },
     /// Newton-polygon expansion (any Poincaré rank, ramified, irrational or
     /// complex exponential parts, algebraic singular points): the
     /// formal solutions with the index of the embedding of their field.
-    Newton { point: NewtonPoint, items: Vec<(FormalSolution, usize)> },
+    Newton {
+        point: NewtonPoint,
+        items: Vec<(FormalSolution, usize)>,
+    },
 }
 
 /// The expansion point of a Newton-polygon expansion.
@@ -624,7 +760,12 @@ fn newton(
     let mut candidates: Vec<(NewtonPoint, FormalPoint)> = Vec::new();
     match point {
         | Point::Infinity => candidates.push((NewtonPoint::Infinity, FormalPoint::Infinity)),
-        | Point::Finite(Some(x0)) => candidates.push((NewtonPoint::Rational(x0.clone()), FormalPoint::Finite(vec![-x0.clone(), Q::one()]))),
+        | Point::Finite(Some(x0)) => {
+            candidates.push((
+                NewtonPoint::Rational(x0.clone()),
+                FormalPoint::Finite(vec![-x0.clone(), Q::one()]),
+            ))
+        },
         | Point::Finite(None) => {
             let mut rational = vec![Q::zero()];
             for r in univariate::rational_roots(&p[2]) {
@@ -633,14 +774,23 @@ fn newton(
                 }
             }
             for x0 in rational {
-                candidates.push((NewtonPoint::Rational(x0.clone()), FormalPoint::Finite(vec![-x0, Q::one()])));
+                candidates.push((
+                    NewtonPoint::Rational(x0.clone()),
+                    FormalPoint::Finite(vec![-x0, Q::one()]),
+                ));
             }
             let (_, factors) = univariate::factor(&p[2]);
             for (factor, _) in factors {
                 if factor.len() > 2 {
                     let lead = Q::from_integer(factor.last().cloned().unwrap_or_else(BigInt::one));
-                    let monic: Vec<Q> = factor.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect();
-                    candidates.push((NewtonPoint::Algebraic(monic.clone()), FormalPoint::Finite(monic)));
+                    let monic: Vec<Q> = factor
+                        .iter()
+                        .map(|c| Q::from_integer(c.clone()) / &lead)
+                        .collect();
+                    candidates.push((
+                        NewtonPoint::Algebraic(monic.clone()),
+                        FormalPoint::Finite(monic),
+                    ));
                 }
             }
         },
@@ -654,7 +804,10 @@ fn newton(
             }
         }
         if items.len() >= 2 {
-            return Some(Local::Newton { point: new_point, items });
+            return Some(Local::Newton {
+                point: new_point,
+                items,
+            });
         }
     }
     None
@@ -714,7 +867,10 @@ fn newton_parts(
         },
     };
     let v = if solution.ramification > 1 {
-        let exponent = cx.graph.num(Number::fraction(1, i64::try_from(solution.ramification).ok()?)?);
+        let exponent = cx.graph.num(Number::fraction(
+            1,
+            i64::try_from(solution.ramification).ok()?,
+        )?);
         cx.graph.node(core::POW, &[t, exponent])
     } else {
         t
@@ -782,7 +938,11 @@ fn at_infinity(p: &[Vec<Q>; 3]) -> [Vec<Q>; 3] {
         }
         out
     };
-    let times = |v: &[Q], k: usize| -> Vec<Q> { std::iter::repeat_n(Q::zero(), k).chain(v.iter().cloned()).collect() };
+    let times = |v: &[Q], k: usize| -> Vec<Q> {
+        std::iter::repeat_n(Q::zero(), k)
+            .chain(v.iter().cloned())
+            .collect()
+    };
     let (r0, r1, r2) = (reversed(&p[0]), reversed(&p[1]), reversed(&p[2]));
     let b2 = times(&r2, 4);
     let b1 = univariate::sub(&univariate::mul(&[q(2)], &times(&r2, 3)), &times(&r1, 2));
@@ -798,24 +958,46 @@ fn formal_series(
     b: &[Vec<Q>; 3],
     n: usize,
 ) -> Vec<(Q, Vec<Q>, Vec<Vec<Q>>)> {
-    let coefficient = |d: usize, j: i64| -> Q { usize::try_from(j).ok().and_then(|j| b[d].get(j).cloned()).unwrap_or_else(Q::zero) };
+    let coefficient = |d: usize, j: i64| -> Q {
+        usize::try_from(j)
+            .ok()
+            .and_then(|j| b[d].get(j).cloned())
+            .unwrap_or_else(Q::zero)
+    };
     // Q_e(σ) = B0[e] + B1[e + 1] σ + B2[e + 2] (σ² - σ), ascending in σ.
     let q_e = |e: i64| -> Vec<Q> {
-        let (c0, c1, c2) = (coefficient(0, e), coefficient(1, e + 1), coefficient(2, e + 2));
+        let (c0, c1, c2) = (
+            coefficient(0, e),
+            coefficient(1, e + 1),
+            coefficient(2, e + 2),
+        );
         trim_poly(vec![c0, &c1 - &c2, c2])
     };
-    let top = b.iter().enumerate().map(|(d, v)| v.len() as i64 - 1 - d as i64).max().unwrap_or(0);
-    let Some(e_min) = (-2..=top).find(|&e| !q_e(e).is_empty()) else { return Vec::new() };
+    let top = b
+        .iter()
+        .enumerate()
+        .map(|(d, v)| v.len() as i64 - 1 - d as i64)
+        .max()
+        .unwrap_or(0);
+    let Some(e_min) = (-2..=top).find(|&e| !q_e(e).is_empty()) else {
+        return Vec::new();
+    };
     let leading = q_e(e_min);
     // Rational roots of the leading polynomial.
     let roots: Vec<Q> = match leading.as_slice() {
         | [c0, c1] => vec![-c0 / c1],
-        | [c0, c1, c2] => match rational_sqrt(&(c1 * c1 - q(4) * c0 * c2)) {
-            | Some(s) => {
-                let (r1, r2) = ((-c1 + &s) / (q(2) * c2), (-c1 - &s) / (q(2) * c2));
-                if r1 == r2 { vec![r1] } else { vec![r1, r2] }
-            },
-            | None => Vec::new(),
+        | [c0, c1, c2] => {
+            match rational_sqrt(&(c1 * c1 - q(4) * c0 * c2)) {
+                | Some(s) => {
+                    let (r1, r2) = ((-c1 + &s) / (q(2) * c2), (-c1 - &s) / (q(2) * c2));
+                    if r1 == r2 {
+                        vec![r1]
+                    } else {
+                        vec![r1, r2]
+                    }
+                },
+                | None => Vec::new(),
+            }
         },
         | _ => Vec::new(),
     };
@@ -871,11 +1053,22 @@ fn formal_solutions(
     let [p0, p1, p2] = p;
     let m = p2.iter().position(|c| !c.is_zero())?;
     let s0 = p2.get(m)?.clone();
-    let at = |v: &[Q], index: i64| -> Q { usize::try_from(index).ok().and_then(|i| v.get(i).cloned()).unwrap_or_else(Q::zero) };
+    let at = |v: &[Q], index: i64| -> Q {
+        usize::try_from(index)
+            .ok()
+            .and_then(|i| v.get(i).cloned())
+            .unwrap_or_else(Q::zero)
+    };
     let m_i = i64::try_from(m).ok()?;
     // Rank one: ord p1 >= m - 2 and ord p0 >= m - 4.
-    if p1.iter().position(|c| !c.is_zero()).is_some_and(|o| (o as i64) < m_i - 2)
-        || p0.iter().position(|c| !c.is_zero()).is_some_and(|o| (o as i64) < m_i - 4)
+    if p1
+        .iter()
+        .position(|c| !c.is_zero())
+        .is_some_and(|o| (o as i64) < m_i - 2)
+        || p0
+            .iter()
+            .position(|c| !c.is_zero())
+            .is_some_and(|o| (o as i64) < m_i - 4)
     {
         return None;
     }
@@ -885,7 +1078,11 @@ fn formal_solutions(
     if l1 == l2 {
         return None;
     }
-    let times = |v: &[Q], k: usize| -> Vec<Q> { std::iter::repeat_n(Q::zero(), k).chain(v.iter().cloned()).collect() };
+    let times = |v: &[Q], k: usize| -> Vec<Q> {
+        std::iter::repeat_n(Q::zero(), k)
+            .chain(v.iter().cloned())
+            .collect()
+    };
     let scaled = |v: &[Q], c: &Q| -> Vec<Q> { v.iter().map(|x| x * c).collect() };
     let mut out = Vec::new();
     for lambda in [l1, l2] {
@@ -894,10 +1091,18 @@ fn formal_solutions(
         let b1 = univariate::sub(&times(p1, 4), &scaled(&times(p2, 2), &(q(2) * &lambda)));
         let b0 = univariate::add(
             &univariate::sub(&times(p0, 4), &scaled(&times(p1, 2), &lambda)),
-            &univariate::add(&scaled(&times(p2, 1), &(q(2) * &lambda)), &scaled(p2, &(&lambda * &lambda))),
+            &univariate::add(
+                &scaled(&times(p2, 1), &(q(2) * &lambda)),
+                &scaled(p2, &(&lambda * &lambda)),
+            ),
         );
         let (rho, coefficients, recurrence) = formal_series(&[b0, b1, b2], n).into_iter().next()?;
-        out.push(Formal { lambda, rho, coefficients, recurrence });
+        out.push(Formal {
+            lambda,
+            rho,
+            coefficients,
+            recurrence,
+        });
     }
     Some(out)
 }
@@ -936,17 +1141,26 @@ fn local(
             let shifted_at = |x0: &Q| [shift(&p[0], x0), shift(&p[1], x0), shift(&p[2], x0)];
             for x0 in &points {
                 if let Some(data) = frobenius_at_zero(&shifted_at(x0), n) {
-                    return Some(Local::Regular { centre: Some(x0.clone()), data });
+                    return Some(Local::Regular {
+                        centre: Some(x0.clone()),
+                        data,
+                    });
                 }
             }
             for x0 in &points {
                 if let Some(data) = frobenius_quadratic(&shifted_at(x0), n) {
-                    return Some(Local::Quadratic { centre: Some(x0.clone()), data });
+                    return Some(Local::Quadratic {
+                        centre: Some(x0.clone()),
+                        data,
+                    });
                 }
             }
             for x0 in &points {
                 if let Some(items) = formal_solutions(&shifted_at(x0), n) {
-                    return Some(Local::Formal { centre: Some(x0.clone()), items });
+                    return Some(Local::Formal {
+                        centre: Some(x0.clone()),
+                        items,
+                    });
                 }
             }
             newton(p, n, point)
@@ -1031,7 +1245,11 @@ fn solutions(
         | Local::Quadratic { centre, data } => {
             let t = local_variable(cx, x, centre.as_ref());
             let negative = data.d.is_negative();
-            let magnitude = if negative { -data.d.clone() } else { data.d.clone() };
+            let magnitude = if negative {
+                -data.d.clone()
+            } else {
+                data.d.clone()
+            };
             let half = cx.graph.num(Number::fraction(1, 2)?);
             let magnitude_node = node_of(cx.graph, &magnitude);
             let root = cx.graph.node(core::POW, &[magnitude_node, half]);
@@ -1058,7 +1276,11 @@ fn solutions(
                 // r = σ + i τ √m; y = t^σ e^{iθ} (A + i B), θ = τ √m ln t.
                 let ln = cx.graph.ops().lookup("ln")?;
                 let (sin, cos) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?);
-                let a_coefficients: Vec<NodeId> = data.series.iter().map(|(u, _)| node_of(cx.graph, u)).collect();
+                let a_coefficients: Vec<NodeId> = data
+                    .series
+                    .iter()
+                    .map(|(u, _)| node_of(cx.graph, u))
+                    .collect();
                 let b_coefficients: Vec<NodeId> = data
                     .series
                     .iter()
@@ -1085,7 +1307,10 @@ fn solutions(
                     let second = mul(cx.graph, &[c_node, big_b]);
                     add(cx.graph, &[first, second])
                 };
-                return Some((mul(cx.graph, &[sigma_power, real_inner]), mul(cx.graph, &[sigma_power, imaginary_inner])));
+                return Some((
+                    mul(cx.graph, &[sigma_power, real_inner]),
+                    mul(cx.graph, &[sigma_power, imaginary_inner]),
+                ));
             }
             // Real irrational exponents σ ± τ √D.
             let mut pair = Vec::new();
@@ -1218,22 +1443,40 @@ pub(super) fn asymptotic(
     n: NodeId,
     (x1, which, borel): (NodeId, NodeId, bool),
 ) -> Option<NodeId> {
-    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 400)?;
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?)
+        .ok()
+        .filter(|&n| n <= 400)?;
     let which = usize::try_from(cx.graph.number_of(which)?.to_i64()?).ok()?;
     let at = cx.graph.number_of(x1)?.to_f64();
-    let infinity = cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(x0) == op);
-    let centre = if infinity { None } else { Some(cx.graph.number_of(x0)?.to_rational()?) };
-    let point = centre.clone().map_or(Point::Infinity, |c| Point::Finite(Some(c)));
+    let infinity = cx
+        .graph
+        .ops()
+        .lookup("oo")
+        .is_some_and(|op| cx.graph.op(x0) == op);
+    let centre = if infinity {
+        None
+    } else {
+        Some(cx.graph.number_of(x0)?.to_rational()?)
+    };
+    let point = centre
+        .clone()
+        .map_or(Point::Infinity, |c| Point::Finite(Some(c)));
     let problem = super::parse(cx.graph, equation, unknown)?;
     let (a, forcing) = linear_second_order(cx, &problem)?;
     if !cx.is_zero(forcing) {
         return None;
     }
     let p = polynomials(cx, &a, problem.x)?;
-    let Local::Newton { items, .. } = newton(&p, n, &point)? else { return None };
+    let Local::Newton { items, .. } = newton(&p, n, &point)? else {
+        return None;
+    };
     let (solution, k) = items.get(which)?;
     let embeddings = solution.field.embeddings();
-    let alpha = if solution.field.is_rational() { num_complex::Complex64::new(0.0, 0.0) } else { *embeddings.get(*k)? };
+    let alpha = if solution.field.is_rational() {
+        num_complex::Complex64::new(0.0, 0.0)
+    } else {
+        *embeddings.get(*k)?
+    };
     let t = match &centre {
         | None => 1.0 / at,
         | Some(c) => at - c.to_f64()?,
@@ -1241,11 +1484,20 @@ pub(super) fn asymptotic(
     let t = num_complex::Complex64::new(t, 0.0);
     if borel {
         let (value, error, stokes) = solution.evaluate_borel(alpha, t)?;
-        let parts = [cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error), cx.graph.int(i64::from(stokes))];
+        let parts = [
+            cx.graph.float(value.re),
+            cx.graph.float(value.im),
+            cx.graph.float(error),
+            cx.graph.int(i64::from(stokes)),
+        ];
         return Some(cx.graph.node(core::LIST, &parts));
     }
     let (value, error) = solution.evaluate(alpha, t);
-    let (re, im, err) = (cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error));
+    let (re, im, err) = (
+        cx.graph.float(value.re),
+        cx.graph.float(value.im),
+        cx.graph.float(error),
+    );
     Some(cx.graph.node(core::LIST, &[re, im, err]))
 }
 
@@ -1257,9 +1509,19 @@ pub(super) fn report(
     x0: NodeId,
     n: NodeId,
 ) -> Option<NodeId> {
-    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 60)?;
-    let infinity = cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(x0) == op);
-    let point = if infinity { Point::Infinity } else { Point::Finite(Some(cx.graph.number_of(x0)?.to_rational()?)) };
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?)
+        .ok()
+        .filter(|&n| n <= 60)?;
+    let infinity = cx
+        .graph
+        .ops()
+        .lookup("oo")
+        .is_some_and(|op| cx.graph.op(x0) == op);
+    let point = if infinity {
+        Point::Infinity
+    } else {
+        Point::Finite(Some(cx.graph.number_of(x0)?.to_rational()?))
+    };
     let mut problem = super::parse(cx.graph, equation, unknown)?;
     let (a, forcing) = linear_second_order(cx, &problem)?;
     if !cx.is_zero(forcing) {
@@ -1275,13 +1537,23 @@ pub(super) fn report(
     let answer = explicit(cx, &problem, solution);
     let (exponents, recurrence) = match &found {
         | Local::Regular { data, .. } => {
-            let (r1, r2) = (node_of(cx.graph, &data.roots.0), node_of(cx.graph, &data.roots.1));
-            (cx.graph.node(core::LIST, &[r1, r2]), recurrence_node(cx, &data.recurrence)?)
+            let (r1, r2) = (
+                node_of(cx.graph, &data.roots.0),
+                node_of(cx.graph, &data.roots.1),
+            );
+            (
+                cx.graph.node(core::LIST, &[r1, r2]),
+                recurrence_node(cx, &data.recurrence)?,
+            )
         },
         | Local::Quadratic { data, .. } => {
             let half = cx.graph.num(Number::fraction(1, 2)?);
             let negative = data.d.is_negative();
-            let magnitude = if negative { -data.d.clone() } else { data.d.clone() };
+            let magnitude = if negative {
+                -data.d.clone()
+            } else {
+                data.d.clone()
+            };
             let magnitude_node = node_of(cx.graph, &magnitude);
             let root = cx.graph.node(core::POW, &[magnitude_node, half]);
             let mut factors = vec![node_of(cx.graph, &data.tau), root];
@@ -1291,8 +1563,14 @@ pub(super) fn report(
             let offset = mul(cx.graph, &factors);
             let sigma = node_of(cx.graph, &data.sigma);
             let minus_offset = neg(cx.graph, offset);
-            let (r1, r2) = (add(cx.graph, &[sigma, offset]), add(cx.graph, &[sigma, minus_offset]));
-            (cx.graph.node(core::LIST, &[r1, r2]), cx.graph.node(core::LIST, &[]))
+            let (r1, r2) = (
+                add(cx.graph, &[sigma, offset]),
+                add(cx.graph, &[sigma, minus_offset]),
+            );
+            (
+                cx.graph.node(core::LIST, &[r1, r2]),
+                cx.graph.node(core::LIST, &[]),
+            )
         },
         | Local::Newton { point, items } => {
             let mut pairs = Vec::new();
@@ -1300,16 +1578,25 @@ pub(super) fn report(
                 let (exponent, rho, _, _) = newton_parts(cx, x, point, solution, *k, n)?;
                 pairs.push(cx.graph.node(core::LIST, &[exponent, rho]));
             }
-            (cx.graph.node(core::LIST, &pairs), cx.graph.node(core::LIST, &[]))
+            (
+                cx.graph.node(core::LIST, &pairs),
+                cx.graph.node(core::LIST, &[]),
+            )
         },
         | Local::Formal { items, .. } => {
             let mut pairs = Vec::new();
             for item in items {
-                let (l, r) = (node_of(cx.graph, &item.lambda), node_of(cx.graph, &item.rho));
+                let (l, r) = (
+                    node_of(cx.graph, &item.lambda),
+                    node_of(cx.graph, &item.rho),
+                );
                 pairs.push(cx.graph.node(core::LIST, &[l, r]));
             }
             let first = items.first()?;
-            (cx.graph.node(core::LIST, &pairs), recurrence_node(cx, &first.recurrence)?)
+            (
+                cx.graph.node(core::LIST, &pairs),
+                recurrence_node(cx, &first.recurrence)?,
+            )
         },
     };
     let _ = (neg, fresh_function);
@@ -1321,7 +1608,9 @@ pub(super) fn report(
 
 /// `1F1(a; b; z)` by its series.
 pub(super) fn hyper1f1(args: &[f64]) -> f64 {
-    let (Some(&a), Some(&b), Some(&z)) = (args.first(), args.get(1), args.get(2)) else { return f64::NAN };
+    let (Some(&a), Some(&b), Some(&z)) = (args.first(), args.get(1), args.get(2)) else {
+        return f64::NAN;
+    };
     let (mut term, mut sum) = (1.0_f64, 1.0_f64);
     for n in 0..5000_u32 {
         let n = f64::from(n);
@@ -1340,7 +1629,9 @@ pub(super) fn hyper1f1(args: &[f64]) -> f64 {
 /// `2F1(a, b; c; z)` for `z < 1` (series, with Pfaff's transformation for
 /// `z < -1/2`).
 pub(super) fn hyper2f1(args: &[f64]) -> f64 {
-    let (Some(&a), Some(&b), Some(&c), Some(&z)) = (args.first(), args.get(1), args.get(2), args.get(3)) else {
+    let (Some(&a), Some(&b), Some(&c), Some(&z)) =
+        (args.first(), args.get(1), args.get(2), args.get(3))
+    else {
         return f64::NAN;
     };
     if z >= 1.0 {

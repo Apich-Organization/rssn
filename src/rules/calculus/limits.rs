@@ -7,13 +7,17 @@
 //! The symbolic kernel substitutes where the function is continuous and
 //! otherwise resolves the indeterminate form: leading terms for rational
 //! functions at infinity, l'Hôpital's rule for `0/0` and `∞/∞`, products
-//! `0·∞` rewritten as quotients, and powers through `exp(g·ln f)`. Every
-//! candidate is compared with a numeric probe of the function near the
-//! point before it is accepted, so a misapplied rule cannot produce a
-//! wrong limit. The numeric kernel returns that probe, extrapolated, when
-//! a number is what was asked for.
+//! `0·∞` rewritten as quotients, and powers through `exp(g·ln f)`. A
+//! Gruntz-style kernel (`super::gruntz`) first compares the growth rates of
+//! nested exponentials and logarithms and expands in the most rapidly
+//! varying exponential, which decides limits such as
+//! `(exp(exp(x)) + 1)/(exp(exp(x)) - 1)` or `ln(ln(x))/ln(x)`; the
+//! heuristics here handle everything it leaves undecided. Every candidate
+//! is compared with a numeric probe of the function near the point before
+//! it is accepted, so a misapplied rule cannot produce a wrong limit. The
+//! numeric kernel returns that probe, extrapolated, when a number is what
+//! was asked for.
 
-use crate::graph::op::core;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -25,11 +29,12 @@ use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::rules::poly::best;
 use crate::rules::poly::ratio;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::to_term;
 
 use super::diff::Differentiate;
 use super::integrate::Functions;
@@ -64,7 +69,10 @@ fn generic_env(
     for &symbol in graph.free_symbols(graph.find(term)) {
         if symbol != x && env.value(symbol).is_none() {
             let id = symbol.raw();
-            env.bind(symbol, 0.7 + 0.13 * f64::from(id % 7) + 0.017 * f64::from(id % 13));
+            env.bind(
+                symbol,
+                0.7 + 0.13 * f64::from(id % 7) + 0.017 * f64::from(id % 13),
+            );
         }
     }
     env
@@ -103,8 +111,14 @@ fn probe_one_side(
     }
     let tail = &values[n - 6..];
     let last = tail[5];
-    if tail.iter().all(|v| v.is_infinite()) || (last.abs() > 1e6 && tail.windows(2).all(|w| w[1].abs() >= w[0].abs())) {
-        return if last > 0.0 { Probe::PlusInfinity } else { Probe::MinusInfinity };
+    if tail.iter().all(|v| v.is_infinite())
+        || (last.abs() > 1e6 && tail.windows(2).all(|w| w[1].abs() >= w[0].abs()))
+    {
+        return if last > 0.0 {
+            Probe::PlusInfinity
+        } else {
+            Probe::MinusInfinity
+        };
     }
     if !last.is_finite() {
         return Probe::Unknown;
@@ -114,8 +128,13 @@ fn probe_one_side(
     let steps: Vec<f64> = values.windows(2).map(|w| w[1] - w[0]).collect();
     let recent = &steps[steps.len().saturating_sub(10)..];
     let one_way = recent.iter().all(|d| *d > 0.0) || recent.iter().all(|d| *d < 0.0);
-    if one_way && recent.len() == 10 && recent[9].abs() >= 0.5 * recent[0].abs() && last.abs() > 5.0 {
-        return if recent[9] > 0.0 { Probe::PlusInfinity } else { Probe::MinusInfinity };
+    if one_way && recent.len() == 10 && recent[9].abs() >= 0.5 * recent[0].abs() && last.abs() > 5.0
+    {
+        return if recent[9] > 0.0 {
+            Probe::PlusInfinity
+        } else {
+            Probe::MinusInfinity
+        };
     }
     // Converging: successive differences must shrink.
     let d1 = (tail[5] - tail[4]).abs();
@@ -124,7 +143,11 @@ fn probe_one_side(
     let settled = d1 <= 1e-9 * (1.0 + last.abs());
     if settled || (d1 <= d2 && d2 <= d3 * 1.0001 && d1 <= 1e-3 * (1.0 + last.abs())) {
         // One Richardson step on the last three values (first-order error).
-        let extrapolated = if settled { last } else { 2.0 * tail[5] - tail[4] };
+        let extrapolated = if settled {
+            last
+        } else {
+            2.0 * tail[5] - tail[4]
+        };
         Probe::Finite(extrapolated)
     } else {
         Probe::Unknown
@@ -148,15 +171,17 @@ pub(super) fn probe(
     match side {
         | Side::Above => above,
         | Side::Below => below,
-        | Side::Both => match (above, below) {
-            | (Probe::Finite(a), Probe::Finite(b)) if (a - b).abs() <= 1e-5 * (1.0 + a.abs()) => {
-                Probe::Finite(f64::midpoint(a, b))
-            },
-            | (a, b) if a == b => a,
-            // Defined on one side only (sqrt, ln): that side decides.
-            | (a, Probe::Unknown) => a,
-            | (Probe::Unknown, b) => b,
-            | _ => Probe::Unknown,
+        | Side::Both => {
+            match (above, below) {
+                | (Probe::Finite(a), Probe::Finite(b)) if (a - b).abs() <= 1e-5 * (1.0 + a.abs()) => {
+                    Probe::Finite(f64::midpoint(a, b))
+                },
+                | (a, b) if a == b => a,
+                // Defined on one side only (sqrt, ln): that side decides.
+                | (a, Probe::Unknown) => a,
+                | (Probe::Unknown, b) => b,
+                | _ => Probe::Unknown,
+            }
         },
     }
 }
@@ -179,7 +204,9 @@ impl Limiter<'_, '_> {
         &self,
         node: NodeId,
     ) -> bool {
-        self.cx.graph.depends_on(self.cx.graph.find(node), self.symbol)
+        self.cx
+            .graph
+            .depends_on(self.cx.graph.find(node), self.symbol)
     }
 
     fn probe(
@@ -187,7 +214,14 @@ impl Limiter<'_, '_> {
         term: NodeId,
     ) -> Probe {
         let env = generic_env(self.cx.graph, term, self.symbol, &Env::numeric(0.0));
-        probe(self.cx.graph, term, self.symbol, self.target, self.side, &env)
+        probe(
+            self.cx.graph,
+            term,
+            self.symbol,
+            self.target,
+            self.side,
+            &env,
+        )
     }
 
     fn infinite(
@@ -207,7 +241,8 @@ impl Limiter<'_, '_> {
         &mut self,
         term: NodeId,
     ) -> NodeId {
-        let raw = Differentiate { diff: self.f.diff }.derive(self.cx.graph, term, self.symbol, self.x);
+        let raw =
+            Differentiate { diff: self.f.diff }.derive(self.cx.graph, term, self.symbol, self.x);
         self.cx.simplify(raw)
     }
 
@@ -238,7 +273,9 @@ impl Limiter<'_, '_> {
         }
         match self.probe(f) {
             | Probe::PlusInfinity if self.simple_divergence(f) => return Some(self.infinite(true)),
-            | Probe::MinusInfinity if self.simple_divergence(f) => return Some(self.infinite(false)),
+            | Probe::MinusInfinity if self.simple_divergence(f) => {
+                return Some(self.infinite(false));
+            },
             | _ => {},
         }
         if let Some(found) = self.rational_at_infinity(f) {
@@ -273,7 +310,10 @@ impl Limiter<'_, '_> {
         &self,
         term: NodeId,
     ) -> bool {
-        self.cx.graph.eval(term, &Env::numeric(0.0)).is_some_and(f64::is_infinite)
+        self.cx
+            .graph
+            .eval(term, &Env::numeric(0.0))
+            .is_some_and(f64::is_infinite)
     }
 
     /// Whether `f` is a single elementary building block (a power, a
@@ -300,7 +340,12 @@ impl Limiter<'_, '_> {
         let x = self.x;
         let gx = gens.index(self.cx.graph, x);
         let fraction = ratio(self.cx.graph, &mut gens, f, Limits::default())?;
-        for g in fraction.numer.support().into_iter().chain(fraction.denom.support()) {
+        for g in fraction
+            .numer
+            .support()
+            .into_iter()
+            .chain(fraction.denom.support())
+        {
             if g != gx && gens.node(g).is_some_and(|n| self.depends(n)) {
                 return None;
             }
@@ -379,13 +424,19 @@ impl Limiter<'_, '_> {
             | "tanh" | "coth" => Some(sign),
             | "exp" if up => Some(self.infinite(true)),
             | "acot" | "sech" | "csch" | "exp" => Some(graph.int(0)),
-            | "ln" | "sqrt" | "cosh" | "abs" | "asinh" | "acosh" if up || name == "cosh" || name == "abs" => {
+            | "ln" | "sqrt" | "cosh" | "abs" | "asinh" | "acosh"
+                if up || name == "cosh" || name == "abs" =>
+            {
                 Some(self.infinite(true))
             },
             | "sinh" | "asinh" => Some(self.infinite(up)),
             | _ => {
                 let known = graph.ops().attr::<super::AtInfinity>(op)?;
-                let pattern = if up { known.plus.clone() } else { known.minus.clone() }?;
+                let pattern = if up {
+                    known.plus.clone()
+                } else {
+                    known.minus.clone()
+                }?;
                 pattern.instantiate(graph, &[])
             },
         }
@@ -408,7 +459,11 @@ impl Limiter<'_, '_> {
         let inner = self.limit(product, depth + 1)?;
         if self.is_infinite(inner) {
             let positive = self.cx.graph.eval(inner, &Env::numeric(0.0))? > 0.0;
-            return Some(if positive { self.infinite(true) } else { self.cx.graph.int(0) });
+            return Some(if positive {
+                self.infinite(true)
+            } else {
+                self.cx.graph.int(0)
+            });
         }
         let result = self.cx.graph.node(self.f.exp, &[inner]);
         Some(self.cx.simplify(result))
@@ -420,13 +475,20 @@ impl Limiter<'_, '_> {
         f: NodeId,
     ) -> Option<(NodeId, NodeId)> {
         let graph = &mut *self.cx.graph;
-        let factors: Vec<NodeId> = if graph.op(f) == core::MUL { graph.children(f).to_vec() } else { vec![f] };
+        let factors: Vec<NodeId> = if graph.op(f) == core::MUL {
+            graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
         let mut numer = Vec::new();
         let mut denom = Vec::new();
         for factor in &factors {
             let reciprocal = match *graph.children(*factor) {
                 | [base, exp] if graph.op(*factor) == core::POW => {
-                    graph.number_of(exp).filter(|n| n.is_negative()).map(|n| (base, n.neg()))
+                    graph
+                        .number_of(exp)
+                        .filter(|n| n.is_negative())
+                        .map(|n| (base, n.neg()))
                 },
                 | _ => None,
             };
@@ -442,10 +504,12 @@ impl Limiter<'_, '_> {
                 | None => numer.push(*factor),
             }
         }
-        let build = |graph: &mut Graph, parts: &[NodeId]| match parts {
-            | [] => graph.int(1),
-            | [only] => *only,
-            | _ => graph.node(core::MUL, parts),
+        let build = |graph: &mut Graph, parts: &[NodeId]| {
+            match parts {
+                | [] => graph.int(1),
+                | [only] => *only,
+                | _ => graph.node(core::MUL, parts),
+            }
         };
         if !denom.is_empty() {
             return Some((build(graph, &numer), build(graph, &denom)));
@@ -469,16 +533,28 @@ impl Limiter<'_, '_> {
         // (x·exp(-x²) becomes x / exp(x²)): differentiating the exponential
         // never makes it simpler, so it must end up where it only grows.
         let exp = self.f.exp;
-        let decaying = numer
-            .iter()
-            .position(|&n| self.cx.graph.op(n) == exp && matches!(self.probe(n), Probe::Finite(v) if v.abs() < 1e-6));
+        let decaying = numer.iter().position(|&n| {
+            self.cx.graph.op(n) == exp
+                && matches!(self.probe(n), Probe::Finite(v) if v.abs() < 1e-6)
+        });
         let graph = &mut *self.cx.graph;
         let (index, _) = match decaying {
             | Some(k) => (k, 0),
-            | None => numer.iter().enumerate().map(|(k, &n)| (k, size(graph, n))).min_by_key(|&(_, s)| s)?,
+            | None => {
+                numer
+                    .iter()
+                    .enumerate()
+                    .map(|(k, &n)| (k, size(graph, n)))
+                    .min_by_key(|&(_, s)| s)?
+            },
         };
         let simplest = *numer.get(index)?;
-        let rest: Vec<NodeId> = numer.iter().enumerate().filter(|&(i, _)| i != index).map(|(_, &n)| n).collect();
+        let rest: Vec<NodeId> = numer
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != index)
+            .map(|(_, &n)| n)
+            .collect();
         let minus_one = graph.int(-1);
         let reciprocal = graph.node(core::POW, &[simplest, minus_one]);
         let top = build(graph, &rest);
@@ -508,10 +584,12 @@ impl Limiter<'_, '_> {
                     Some(self.cx.simplify(quotient))
                 },
                 | (Probe::Finite(_), p) if diverging(p) => Some(self.cx.graph.int(0)),
-                | _ => match self.probe(f) {
-                    | Probe::PlusInfinity => Some(self.infinite(true)),
-                    | Probe::MinusInfinity => Some(self.infinite(false)),
-                    | _ => None,
+                | _ => {
+                    match self.probe(f) {
+                        | Probe::PlusInfinity => Some(self.infinite(true)),
+                        | Probe::MinusInfinity => Some(self.infinite(false)),
+                        | _ => None,
+                    }
                 },
             };
         }
@@ -534,7 +612,11 @@ impl Limiter<'_, '_> {
         f: NodeId,
     ) -> Option<NodeId> {
         let graph = &*self.cx.graph;
-        if graph.free_symbols(graph.find(f)).iter().any(|&s| s != self.symbol) {
+        if graph
+            .free_symbols(graph.find(f))
+            .iter()
+            .any(|&s| s != self.symbol)
+        {
             return None;
         }
         let Probe::Finite(value) = self.probe(f) else {
@@ -566,7 +648,9 @@ impl Limiter<'_, '_> {
             return true;
         };
         match observed {
-            | Probe::Finite(v) => claimed.is_finite() && (claimed - v).abs() <= 1e-4 * (1.0 + v.abs()),
+            | Probe::Finite(v) => {
+                claimed.is_finite() && (claimed - v).abs() <= 1e-4 * (1.0 + v.abs())
+            },
             | Probe::PlusInfinity => claimed == f64::INFINITY,
             | Probe::MinusInfinity => claimed == f64::NEG_INFINITY,
             | Probe::Unknown => claimed.is_finite(),
@@ -582,7 +666,9 @@ fn arguments(
     match *graph.children(node) {
         | [f, x, a] => Some((f, x, a, Side::Both)),
         | [f, x, a, direction] => {
-            let name = graph.symbol_of(direction).map(|s| graph.interner().symbol_name(s).to_owned())?;
+            let name = graph
+                .symbol_of(direction)
+                .map(|s| graph.interner().symbol_name(s).to_owned())?;
             let side = match name.as_str() {
                 | "plus" => Side::Above,
                 | "minus" => Side::Below,
@@ -614,7 +700,8 @@ impl Kernel for SymbolicLimit {
         let Some((f, x, a, side)) = arguments(cx.graph, node) else {
             return Outcome::Pass;
         };
-        limit_at(cx, self.functions, self.infinity, f, x, a, side).map_or(Outcome::Pass, Outcome::Equal)
+        limit_at(cx, self.functions, self.infinity, f, x, a, side)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 }
 
@@ -635,7 +722,24 @@ pub(super) fn limit_at(
     let env = generic_env(cx.graph, point, symbol, &Env::numeric(0.0));
     let target = cx.graph.eval(point, &env)?;
     let term = cx.simplify(f);
-    let mut limiter = Limiter { cx, f: functions, infinity, x, symbol, point, target, side };
+    // Gruntz's growth comparison decides the limits of nested exp-log
+    // expressions that the heuristics below cannot see.
+    let gruntz = super::gruntz::limit(cx, infinity, term, x, point, target, side);
+    let mut limiter = Limiter {
+        cx,
+        f: functions,
+        infinity,
+        x,
+        symbol,
+        point,
+        target,
+        side,
+    };
+    if let Some(candidate) = gruntz
+        && limiter.verified(term, candidate)
+    {
+        return Some(candidate);
+    }
     let candidate = limiter.limit(term, 0)?;
     limiter.verified(term, candidate).then_some(candidate)
 }
@@ -670,14 +774,21 @@ impl Kernel for NumericLimit {
         let Some((f, x, a, side)) = arguments(graph, node) else {
             return Outcome::Pass;
         };
-        let (Some(symbol), Some(term), Some(point)) = (graph.symbol_of(x), best(graph, f), best(graph, a)) else {
+        let (Some(symbol), Some(term), Some(point)) =
+            (graph.symbol_of(x), best(graph, f), best(graph, a))
+        else {
             return Outcome::Pass;
         };
         let Some(target) = graph.eval(point, cx.env) else {
             return Outcome::Pass;
         };
         match probe(graph, term, symbol, target, side, cx.env) {
-            | Probe::Finite(value) => Outcome::Approx(Ball { mid: value, rad: 1e-6 * (1.0 + value.abs()) }),
+            | Probe::Finite(value) => {
+                Outcome::Approx(Ball {
+                    mid: value,
+                    rad: 1e-6 * (1.0 + value.abs()),
+                })
+            },
             | _ => Outcome::Pass,
         }
     }

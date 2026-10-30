@@ -37,9 +37,13 @@
 //! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
 //! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
 
-use crate::kernels::krylov::{Csr, SparseOrdering, cg};
-use crate::kernels::ode_adaptive::{OdeError, OdeOptions};
-use crate::kernels::ode_stiff::{bdf, radau5};
+use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::SparseOrdering;
+use crate::kernels::krylov::cg;
+use crate::kernels::ode_adaptive::OdeError;
+use crate::kernels::ode_adaptive::OdeOptions;
+use crate::kernels::ode_stiff::bdf;
+use crate::kernels::ode_stiff::radau5;
 use std::fmt;
 use std::sync::Arc;
 
@@ -56,10 +60,13 @@ pub enum Boundary {
 }
 
 impl fmt::Debug for Boundary {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         match self {
-            Self::Dirichlet(_) => f.write_str("Boundary::Dirichlet(..)"),
-            Self::Neumann(_) => f.write_str("Boundary::Neumann(..)"),
+            | Self::Dirichlet(_) => f.write_str("Boundary::Dirichlet(..)"),
+            | Self::Neumann(_) => f.write_str("Boundary::Neumann(..)"),
         }
     }
 }
@@ -91,9 +98,13 @@ impl Boundary {
         matches!(self, Self::Dirichlet(_))
     }
 
-    fn value(&self, x: f64, y: f64) -> f64 {
+    fn value(
+        &self,
+        x: f64,
+        y: f64,
+    ) -> f64 {
         match self {
-            Self::Dirichlet(g) | Self::Neumann(g) => g(x, y),
+            | Self::Dirichlet(g) | Self::Neumann(g) => g(x, y),
         }
     }
 }
@@ -122,16 +133,22 @@ pub enum PdeError {
 }
 
 impl fmt::Display for PdeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         match self {
-            Self::InvalidInput(m) => write!(f, "invalid input: {m}"),
-            Self::Unstable { courant, limit } => {
-                write!(f, "unstable: Courant number {courant} exceeds the limit {limit}")
-            }
-            Self::Unsupported(m) => write!(f, "unsupported: {m}"),
-            Self::SolveFailed => f.write_str("linear solve failed"),
-            Self::Ode(e) => write!(f, "ODE integration failed: {e:?}"),
-            Self::NonFinite => f.write_str("solution became non-finite"),
+            | Self::InvalidInput(m) => write!(f, "invalid input: {m}"),
+            | Self::Unstable { courant, limit } => {
+                write!(
+                    f,
+                    "unstable: Courant number {courant} exceeds the limit {limit}"
+                )
+            },
+            | Self::Unsupported(m) => write!(f, "unsupported: {m}"),
+            | Self::SolveFailed => f.write_str("linear solve failed"),
+            | Self::Ode(e) => write!(f, "ODE integration failed: {e:?}"),
+            | Self::NonFinite => f.write_str("solution became non-finite"),
         }
     }
 }
@@ -170,9 +187,18 @@ impl Grid1D {
         (0..self.n).map(|i| self.x0 + i as f64 * h).collect()
     }
 
-    fn validate(&self, min_n: usize) -> Result<(), PdeError> {
-        if self.n < min_n || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0) || !self.x0.is_finite() || !self.x1.is_finite() {
-            return Err(PdeError::InvalidInput("grid needs enough nodes and x1 > x0"));
+    fn validate(
+        &self,
+        min_n: usize,
+    ) -> Result<(), PdeError> {
+        if self.n < min_n
+            || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0)
+            || !self.x0.is_finite()
+            || !self.x1.is_finite()
+        {
+            return Err(PdeError::InvalidInput(
+                "grid needs enough nodes and x1 > x0",
+            ));
         }
         Ok(())
     }
@@ -199,7 +225,14 @@ impl Grid2D {
     /// Unit square with `n x n` nodes.
     #[must_use]
     pub const fn unit_square(n: usize) -> Self {
-        Self { x0: 0.0, x1: 1.0, y0: 0.0, y1: 1.0, nx: n, ny: n }
+        Self {
+            x0: 0.0,
+            x1: 1.0,
+            y0: 0.0,
+            y1: 1.0,
+            nx: n,
+            ny: n,
+        }
     }
 
     /// Spacing in `x`.
@@ -215,8 +248,14 @@ impl Grid2D {
     }
 
     fn validate(&self) -> Result<(), PdeError> {
-        if self.nx < 3 || self.ny < 3 || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0) || (self.y1.is_nan() || self.y0.is_nan() || self.y1 <= self.y0) {
-            return Err(PdeError::InvalidInput("2D grid needs >= 3 nodes per axis and positive extents"));
+        if self.nx < 3
+            || self.ny < 3
+            || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0)
+            || (self.y1.is_nan() || self.y0.is_nan() || self.y1 <= self.y0)
+        {
+            return Err(PdeError::InvalidInput(
+                "2D grid needs >= 3 nodes per axis and positive extents",
+            ));
         }
         Ok(())
     }
@@ -257,18 +296,29 @@ pub struct Field2D {
 impl Field2D {
     /// Value at node `(i, j)`.
     #[must_use]
-    pub fn at(&self, i: usize, j: usize) -> f64 {
+    pub fn at(
+        &self,
+        i: usize,
+        j: usize,
+    ) -> f64 {
         self.u[j * self.nx + i]
     }
 
     /// Coordinates of node `(i, j)`.
     #[must_use]
-    pub fn point(&self, i: usize, j: usize) -> (f64, f64) {
+    pub fn point(
+        &self,
+        i: usize,
+        j: usize,
+    ) -> (f64, f64) {
         (self.x0 + i as f64 * self.dx, self.y0 + j as f64 * self.dy)
     }
 
     /// Maximum absolute difference to `exact(x, y)` over all nodes.
-    pub fn max_error(&self, exact: impl Fn(f64, f64) -> f64) -> f64 {
+    pub fn max_error(
+        &self,
+        exact: impl Fn(f64, f64) -> f64,
+    ) -> f64 {
         let mut m = 0.0_f64;
         for j in 0..self.ny {
             for i in 0..self.nx {
@@ -282,8 +332,15 @@ impl Field2D {
 
 impl Field1D {
     /// Maximum absolute difference to `exact(x)` over all nodes.
-    pub fn max_error(&self, exact: impl Fn(f64) -> f64) -> f64 {
-        self.x.iter().zip(&self.u).map(|(&x, &u)| (u - exact(x)).abs()).fold(0.0, f64::max)
+    pub fn max_error(
+        &self,
+        exact: impl Fn(f64) -> f64,
+    ) -> f64 {
+        self.x
+            .iter()
+            .zip(&self.u)
+            .map(|(&x, &u)| (u - exact(x)).abs())
+            .fold(0.0, f64::max)
     }
 }
 
@@ -301,7 +358,15 @@ struct Laplacian {
 
 /// Coefficients `(prev, centre, next, rhs)` of the second difference along one
 /// axis at node `i` of `n`, using a ghost node at Neumann ends.
-fn axis_stencil(i: usize, n: usize, h: f64, lo: &Boundary, hi: &Boundary, glo: f64, ghi: f64) -> (f64, f64, f64, f64) {
+fn axis_stencil(
+    i: usize,
+    n: usize,
+    h: f64,
+    lo: &Boundary,
+    hi: &Boundary,
+    glo: f64,
+    ghi: f64,
+) -> (f64, f64, f64, f64) {
     let h2 = h * h;
     let (mut prev, mut next, mut rhs) = (1.0 / h2, 1.0 / h2, 0.0);
     if i == 0 && !lo.is_dirichlet() {
@@ -332,7 +397,15 @@ fn build_laplacian(
     g: &LapGrid,
     bcs: &[Boundary; 4],
 ) -> Laplacian {
-    let LapGrid { nx, ny, x0, y0, hx, hy, two_d } = *g;
+    let LapGrid {
+        nx,
+        ny,
+        x0,
+        y0,
+        hx,
+        hy,
+        two_d,
+    } = *g;
     let n = nx * ny;
     let mut trip = Vec::with_capacity(5 * n);
     let mut b = vec![0.0; n];
@@ -356,8 +429,16 @@ fn build_laplacian(
                 dirichlet[k] = dval;
                 continue;
             }
-            let glo = if i == 0 { bcs[0].value(x, y) } else { 0.0 };
-            let ghi = if i == nx - 1 { bcs[1].value(x, y) } else { 0.0 };
+            let glo = if i == 0 {
+                bcs[0].value(x, y)
+            } else {
+                0.0
+            };
+            let ghi = if i == nx - 1 {
+                bcs[1].value(x, y)
+            } else {
+                0.0
+            };
             let (p, c, nn, r) = axis_stencil(i, nx, hx, &bcs[0], &bcs[1], glo, ghi);
             let mut centre = c;
             if i > 0 {
@@ -368,8 +449,16 @@ fn build_laplacian(
             }
             b[k] += r;
             if two_d {
-                let glo = if j == 0 { bcs[2].value(x, y) } else { 0.0 };
-                let ghi = if j == ny - 1 { bcs[3].value(x, y) } else { 0.0 };
+                let glo = if j == 0 {
+                    bcs[2].value(x, y)
+                } else {
+                    0.0
+                };
+                let ghi = if j == ny - 1 {
+                    bcs[3].value(x, y)
+                } else {
+                    0.0
+                };
                 let (p, c, nn, r) = axis_stencil(j, ny, hy, &bcs[2], &bcs[3], glo, ghi);
                 centre += c;
                 if j > 0 {
@@ -383,32 +472,56 @@ fn build_laplacian(
             trip.push((k, k, centre));
         }
     }
-    Laplacian { a: Csr::from_triplets(n, n, &trip), b, dirichlet }
+    Laplacian {
+        a: Csr::from_triplets(n, n, &trip),
+        b,
+        dirichlet,
+    }
 }
 
-fn check_steps(t_end: f64, steps: usize) -> Result<f64, PdeError> {
+fn check_steps(
+    t_end: f64,
+    steps: usize,
+) -> Result<f64, PdeError> {
     if steps == 0 || (t_end.is_nan() || t_end <= 0.0) || !t_end.is_finite() {
-        return Err(PdeError::InvalidInput("need t_end > 0 and at least one time step"));
+        return Err(PdeError::InvalidInput(
+            "need t_end > 0 and at least one time step",
+        ));
     }
     Ok(t_end / steps as f64)
 }
 
 fn check_finite(u: &[f64]) -> Result<(), PdeError> {
-    if u.iter().all(|v| v.is_finite()) { Ok(()) } else { Err(PdeError::NonFinite) }
+    if u.iter().all(|v| v.is_finite()) {
+        Ok(())
+    } else {
+        Err(PdeError::NonFinite)
+    }
 }
 
-fn initial_1d(grid: &Grid1D, u0: &dyn Fn(f64) -> f64, lap: &Laplacian) -> Vec<f64> {
+fn initial_1d(
+    grid: &Grid1D,
+    u0: &dyn Fn(f64) -> f64,
+    lap: &Laplacian,
+) -> Vec<f64> {
     let h = grid.dx();
-    (0..grid.n).map(|i| lap.dirichlet[i].unwrap_or_else(|| u0(grid.x0 + i as f64 * h))).collect()
+    (0..grid.n)
+        .map(|i| lap.dirichlet[i].unwrap_or_else(|| u0(grid.x0 + i as f64 * h)))
+        .collect()
 }
 
-fn initial_2d(g: &Grid2D, u0: &dyn Fn(f64, f64) -> f64, lap: &Laplacian) -> Vec<f64> {
+fn initial_2d(
+    g: &Grid2D,
+    u0: &dyn Fn(f64, f64) -> f64,
+    lap: &Laplacian,
+) -> Vec<f64> {
     let (hx, hy) = (g.dx(), g.dy());
     let mut u = vec![0.0; g.nx * g.ny];
     for j in 0..g.ny {
         for i in 0..g.nx {
             let k = j * g.nx + i;
-            u[k] = lap.dirichlet[k].unwrap_or_else(|| u0(g.x0 + i as f64 * hx, g.y0 + j as f64 * hy));
+            u[k] =
+                lap.dirichlet[k].unwrap_or_else(|| u0(g.x0 + i as f64 * hx, g.y0 + j as f64 * hy));
         }
     }
     u
@@ -418,19 +531,42 @@ fn bcs_1d(bc: &[Boundary; 2]) -> [Boundary; 4] {
     [bc[0].clone(), bc[1].clone(), bc[0].clone(), bc[1].clone()]
 }
 
-fn field_1d(g: &Grid1D, u: Vec<f64>, t: f64) -> Field1D {
+fn field_1d(
+    g: &Grid1D,
+    u: Vec<f64>,
+    t: f64,
+) -> Field1D {
     Field1D { x: g.nodes(), u, t }
 }
 
-fn field_2d(g: &Grid2D, u: Vec<f64>, t: f64) -> Field2D {
-    Field2D { nx: g.nx, ny: g.ny, x0: g.x0, y0: g.y0, dx: g.dx(), dy: g.dy(), u, t }
+fn field_2d(
+    g: &Grid2D,
+    u: Vec<f64>,
+    t: f64,
+) -> Field2D {
+    Field2D {
+        nx: g.nx,
+        ny: g.ny,
+        x0: g.x0,
+        y0: g.y0,
+        dx: g.dx(),
+        dy: g.dy(),
+        u,
+        t,
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Heat equation (Crank-Nicolson)
 // ---------------------------------------------------------------------------
 
-fn crank_nicolson(lap: &Laplacian, alpha: f64, dt: f64, steps: usize, mut u: Vec<f64>) -> Result<Vec<f64>, PdeError> {
+fn crank_nicolson(
+    lap: &Laplacian,
+    alpha: f64,
+    dt: f64,
+    steps: usize,
+    mut u: Vec<f64>,
+) -> Result<Vec<f64>, PdeError> {
     let n = u.len();
     let mut lhs = Vec::with_capacity(lap.a.values.len() + n);
     let mut rhs_op = Vec::with_capacity(lap.a.values.len() + n);
@@ -445,7 +581,9 @@ fn crank_nicolson(lap: &Laplacian, alpha: f64, dt: f64, steps: usize, mut u: Vec
     }
     let m1 = Csr::from_triplets(n, n, &lhs);
     let m2 = Csr::from_triplets(n, n, &rhs_op);
-    let lu = m1.sparse_lu(SparseOrdering::Rcm).map_err(|_| PdeError::SolveFailed)?;
+    let lu = m1
+        .sparse_lu(SparseOrdering::Rcm)
+        .map_err(|_| PdeError::SolveFailed)?;
     let mut rhs = vec![0.0; n];
     for _ in 0..steps {
         m2.matvec(&u, &mut rhs);
@@ -479,7 +617,18 @@ pub fn heat_1d(
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
-    let lap = build_laplacian(&LapGrid { nx: grid.n, ny: 1, x0: grid.x0, y0: 0.0, hx: grid.dx(), hy: 1.0, two_d: false }, &bcs_1d(bc));
+    let lap = build_laplacian(
+        &LapGrid {
+            nx: grid.n,
+            ny: 1,
+            x0: grid.x0,
+            y0: 0.0,
+            hx: grid.dx(),
+            hy: 1.0,
+            two_d: false,
+        },
+        &bcs_1d(bc),
+    );
     let u = crank_nicolson(&lap, alpha, dt, steps, initial_1d(grid, u0, &lap))?;
     Ok(field_1d(grid, u, t_end))
 }
@@ -502,7 +651,18 @@ pub fn heat_2d(
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
-    let lap = build_laplacian(&LapGrid { nx: grid.nx, ny: grid.ny, x0: grid.x0, y0: grid.y0, hx: grid.dx(), hy: grid.dy(), two_d: true }, bc);
+    let lap = build_laplacian(
+        &LapGrid {
+            nx: grid.nx,
+            ny: grid.ny,
+            x0: grid.x0,
+            y0: grid.y0,
+            hx: grid.dx(),
+            hy: grid.dy(),
+            two_d: true,
+        },
+        bc,
+    );
     let u = crank_nicolson(&lap, alpha, dt, steps, initial_2d(grid, u0, &lap))?;
     Ok(field_2d(grid, u, t_end))
 }
@@ -511,7 +671,14 @@ pub fn heat_2d(
 // Wave equation (leapfrog)
 // ---------------------------------------------------------------------------
 
-fn leapfrog(lap: &Laplacian, c: f64, dt: f64, steps: usize, u0: &[f64], v0: &[f64]) -> Result<Vec<f64>, PdeError> {
+fn leapfrog(
+    lap: &Laplacian,
+    c: f64,
+    dt: f64,
+    steps: usize,
+    u0: &[f64],
+    v0: &[f64],
+) -> Result<Vec<f64>, PdeError> {
     let n = u0.len();
     let c2dt2 = c * c * dt * dt;
     let mut lu = vec![0.0; n];
@@ -526,7 +693,8 @@ fn leapfrog(lap: &Laplacian, c: f64, dt: f64, steps: usize, u0: &[f64], v0: &[f6
         lap.a.matvec(&cur, &mut lu);
         let mut next = vec![0.0; n];
         for i in 0..n {
-            next[i] = lap.dirichlet[i].unwrap_or(2.0 * cur[i] - prev[i] + c2dt2 * (lu[i] + lap.b[i]));
+            next[i] =
+                lap.dirichlet[i].unwrap_or(2.0 * cur[i] - prev[i] + c2dt2 * (lu[i] + lap.b[i]));
         }
         prev = cur;
         cur = next;
@@ -535,8 +703,15 @@ fn leapfrog(lap: &Laplacian, c: f64, dt: f64, steps: usize, u0: &[f64], v0: &[f6
     Ok(cur)
 }
 
-fn cfl_check(courant: f64, limit: f64) -> Result<(), PdeError> {
-    if courant > limit * (1.0 + 1e-12) { Err(PdeError::Unstable { courant, limit }) } else { Ok(()) }
+fn cfl_check(
+    courant: f64,
+    limit: f64,
+) -> Result<(), PdeError> {
+    if courant > limit * (1.0 + 1e-12) {
+        Err(PdeError::Unstable { courant, limit })
+    } else {
+        Ok(())
+    }
 }
 
 /// Solves `u_tt = c^2 u_xx` with the explicit leapfrog scheme; `v0` is the
@@ -563,7 +738,18 @@ pub fn wave_1d(
     }
     let dt = check_steps(t_end, steps)?;
     cfl_check(c * dt / grid.dx(), 1.0)?;
-    let lap = build_laplacian(&LapGrid { nx: grid.n, ny: 1, x0: grid.x0, y0: 0.0, hx: grid.dx(), hy: 1.0, two_d: false }, &bcs_1d(bc));
+    let lap = build_laplacian(
+        &LapGrid {
+            nx: grid.n,
+            ny: 1,
+            x0: grid.x0,
+            y0: 0.0,
+            hx: grid.dx(),
+            hy: 1.0,
+            two_d: false,
+        },
+        &bcs_1d(bc),
+    );
     let h = grid.dx();
     let vel: Vec<f64> = (0..grid.n).map(|i| v0(grid.x0 + i as f64 * h)).collect();
     let u = leapfrog(&lap, c, dt, steps, &initial_1d(grid, u0, &lap), &vel)?;
@@ -591,7 +777,18 @@ pub fn wave_2d(
     let dt = check_steps(t_end, steps)?;
     let (hx, hy) = (grid.dx(), grid.dy());
     cfl_check(c * dt * (1.0 / (hx * hx) + 1.0 / (hy * hy)).sqrt(), 1.0)?;
-    let lap = build_laplacian(&LapGrid { nx: grid.nx, ny: grid.ny, x0: grid.x0, y0: grid.y0, hx, hy, two_d: true }, bc);
+    let lap = build_laplacian(
+        &LapGrid {
+            nx: grid.nx,
+            ny: grid.ny,
+            x0: grid.x0,
+            y0: grid.y0,
+            hx,
+            hy,
+            two_d: true,
+        },
+        bc,
+    );
     let mut vel = vec![0.0; grid.nx * grid.ny];
     for j in 0..grid.ny {
         for i in 0..grid.nx {
@@ -639,11 +836,24 @@ pub fn poisson_2d(
     grid.validate()?;
     let n_dir = bc.iter().filter(|b| b.is_dirichlet()).count();
     if n_dir == 0 {
-        return Err(PdeError::Unsupported("pure Neumann Poisson problem is singular"));
+        return Err(PdeError::Unsupported(
+            "pure Neumann Poisson problem is singular",
+        ));
     }
     let (nx, ny) = (grid.nx, grid.ny);
     let (hx, hy) = (grid.dx(), grid.dy());
-    let lap = build_laplacian(&LapGrid { nx, ny, x0: grid.x0, y0: grid.y0, hx, hy, two_d: true }, bc);
+    let lap = build_laplacian(
+        &LapGrid {
+            nx,
+            ny,
+            x0: grid.x0,
+            y0: grid.y0,
+            hx,
+            hy,
+            two_d: true,
+        },
+        bc,
+    );
     let n = nx * ny;
     // rhs of -L u = f + b for free nodes, g for Dirichlet nodes
     let rhs: Vec<f64> = (0..n)
@@ -655,7 +865,7 @@ pub fn poisson_2d(
         })
         .collect();
     let u = match solver {
-        PoissonSolver::SparseLu => {
+        | PoissonSolver::SparseLu => {
             let mut trip = Vec::with_capacity(lap.a.values.len() + n);
             for i in 0..n {
                 if lap.dirichlet[i].is_some() {
@@ -667,15 +877,19 @@ pub fn poisson_2d(
                 }
             }
             let m = Csr::from_triplets(n, n, &trip);
-            let lu = m.sparse_lu(SparseOrdering::Rcm).map_err(|_| PdeError::SolveFailed)?;
+            let lu = m
+                .sparse_lu(SparseOrdering::Rcm)
+                .map_err(|_| PdeError::SolveFailed)?;
             lu.solve(&rhs)
-        }
-        PoissonSolver::Cg { tol } => {
+        },
+        | PoissonSolver::Cg { tol } => {
             if n_dir != 4 {
-                return Err(PdeError::Unsupported("CG needs Dirichlet conditions on all sides"));
+                return Err(PdeError::Unsupported(
+                    "CG needs Dirichlet conditions on all sides",
+                ));
             }
             solve_poisson_cg(&lap, &rhs, tol)?
-        }
+        },
     };
     check_finite(&u)?;
     Ok(field_2d(grid, u, 0.0))
@@ -685,11 +899,19 @@ pub fn poisson_2d(
 ///
 /// # Errors
 /// As [`poisson_2d`].
-pub fn laplace_2d(grid: &Grid2D, bc: &[Boundary; 4], solver: PoissonSolver) -> Result<Field2D, PdeError> {
+pub fn laplace_2d(
+    grid: &Grid2D,
+    bc: &[Boundary; 4],
+    solver: PoissonSolver,
+) -> Result<Field2D, PdeError> {
     poisson_2d(grid, bc, &|_, _| 0.0, solver)
 }
 
-fn solve_poisson_cg(lap: &Laplacian, rhs: &[f64], tol: f64) -> Result<Vec<f64>, PdeError> {
+fn solve_poisson_cg(
+    lap: &Laplacian,
+    rhs: &[f64],
+    tol: f64,
+) -> Result<Vec<f64>, PdeError> {
     let n = rhs.len();
     let free: Vec<usize> = (0..n).filter(|&k| lap.dirichlet[k].is_none()).collect();
     let mut idx = vec![usize::MAX; n];
@@ -704,8 +926,8 @@ fn solve_poisson_cg(lap: &Laplacian, rhs: &[f64], tol: f64) -> Result<Vec<f64>, 
             let c = lap.a.indices[q];
             let v = -lap.a.values[q];
             match lap.dirichlet[c] {
-                Some(g) => b[m] -= v * g,
-                None => trip.push((m, idx[c], v)),
+                | Some(g) => b[m] -= v * g,
+                | None => trip.push((m, idx[c], v)),
             }
         }
     }
@@ -729,8 +951,8 @@ fn solve_poisson_cg(lap: &Laplacian, rhs: &[f64], tol: f64) -> Result<Vec<f64>, 
     let mut u = vec![0.0; n];
     for k in 0..n {
         u[k] = match lap.dirichlet[k] {
-            Some(g) => g,
-            None => res.x[idx[k]],
+            | Some(g) => g,
+            | None => res.x[idx[k]],
         };
     }
     Ok(u)
@@ -777,10 +999,16 @@ pub fn advection_1d(
             let um = u[(i + n - 1) % n];
             let up = u[(i + 1) % n];
             w[i] = match scheme {
-                AdvectionScheme::Upwind => {
-                    if nu >= 0.0 { u[i] - nu * (u[i] - um) } else { u[i] - nu * (up - u[i]) }
-                }
-                AdvectionScheme::LaxWendroff => u[i] - 0.5 * nu * (up - um) + 0.5 * nu * nu * (up - 2.0 * u[i] + um),
+                | AdvectionScheme::Upwind => {
+                    if nu >= 0.0 {
+                        u[i] - nu * (u[i] - um)
+                    } else {
+                        u[i] - nu * (up - u[i])
+                    }
+                },
+                | AdvectionScheme::LaxWendroff => {
+                    u[i] - 0.5 * nu * (up - um) + 0.5 * nu * nu * (up - 2.0 * u[i] + um)
+                },
             };
         }
         std::mem::swap(&mut u, &mut w);
@@ -840,15 +1068,23 @@ pub fn method_of_lines_1d(
     let h = grid.dx();
     let x = grid.nodes();
     let dl = match &bc[0] {
-        Boundary::Dirichlet(g) => Some(g(x[0], 0.0)),
-        Boundary::Neumann(_) => None,
+        | Boundary::Dirichlet(g) => Some(g(x[0], 0.0)),
+        | Boundary::Neumann(_) => None,
     };
     let dr = match &bc[1] {
-        Boundary::Dirichlet(g) => Some(g(x[n - 1], 0.0)),
-        Boundary::Neumann(_) => None,
+        | Boundary::Dirichlet(g) => Some(g(x[n - 1], 0.0)),
+        | Boundary::Neumann(_) => None,
     };
-    let gl = if dl.is_none() { bc[0].value(x[0], 0.0) } else { 0.0 };
-    let gr = if dr.is_none() { bc[1].value(x[n - 1], 0.0) } else { 0.0 };
+    let gl = if dl.is_none() {
+        bc[0].value(x[0], 0.0)
+    } else {
+        0.0
+    };
+    let gr = if dr.is_none() {
+        bc[1].value(x[n - 1], 0.0)
+    } else {
+        0.0
+    };
     let first = usize::from(dl.is_some());
     let last = if dr.is_some() { n - 1 } else { n };
     let m = last - first;
@@ -866,8 +1102,16 @@ pub fn method_of_lines_1d(
     let rhs = |t: f64, y: &[f64], dy: &mut [f64]| {
         let u = expand(y);
         for i in first..last {
-            let um = if i == 0 { u[1] + 2.0 * h * gl } else { u[i - 1] };
-            let up = if i == n - 1 { u[n - 2] + 2.0 * h * gr } else { u[i + 1] };
+            let um = if i == 0 {
+                u[1] + 2.0 * h * gl
+            } else {
+                u[i - 1]
+            };
+            let up = if i == n - 1 {
+                u[n - 2] + 2.0 * h * gr
+            } else {
+                u[i + 1]
+            };
             let ux = (up - um) / (2.0 * h);
             let uxx = (up - 2.0 * u[i] + um) / (h * h);
             dy[i - first] = f(t, x[i], u[i], ux, uxx);
@@ -875,8 +1119,8 @@ pub fn method_of_lines_1d(
     };
     let y0: Vec<f64> = (first..last).map(|i| u0(x[i])).collect();
     let sol = match method {
-        StiffMethod::Radau5 => radau5(rhs, 0.0, t_end, &y0, opts)?,
-        StiffMethod::Bdf(order) => bdf(rhs, 0.0, t_end, &y0, opts, order.clamp(1, 5))?,
+        | StiffMethod::Radau5 => radau5(rhs, 0.0, t_end, &y0, opts)?,
+        | StiffMethod::Bdf(order) => bdf(rhs, 0.0, t_end, &y0, opts, order.clamp(1, 5))?,
     };
     let yl = sol.y.last().ok_or(PdeError::SolveFailed)?;
     if yl.len() != m {
@@ -884,7 +1128,11 @@ pub fn method_of_lines_1d(
     }
     let u = expand(yl);
     check_finite(&u)?;
-    Ok(MolSolution { field: Field1D { x, u, t: t_end }, steps: sol.t.len().saturating_sub(1), nfev: sol.nfev })
+    Ok(MolSolution {
+        field: Field1D { x, u, t: t_end },
+        steps: sol.t.len().saturating_sub(1),
+        nfev: sol.nfev,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -1000,21 +1248,50 @@ pub enum PdeSolution {
 /// Any [`PdeError`] of the underlying solver.
 pub fn pde_solver(problem: &PdeProblem<'_>) -> Result<PdeSolution, PdeError> {
     match problem {
-        PdeProblem::Heat1D { alpha, grid, bc, u0, t_end, steps } => {
-            heat_1d(*alpha, grid, bc, *u0, *t_end, *steps).map(PdeSolution::D1)
-        }
-        PdeProblem::Heat2D { alpha, grid, bc, u0, t_end, steps } => {
-            heat_2d(*alpha, grid, bc, *u0, *t_end, *steps).map(PdeSolution::D2)
-        }
-        PdeProblem::Wave1D { c, grid, bc, u0, v0, t_end, steps } => {
-            wave_1d(*c, grid, bc, *u0, *v0, *t_end, *steps).map(PdeSolution::D1)
-        }
-        PdeProblem::Wave2D { c, grid, bc, u0, v0, t_end, steps } => {
-            wave_2d(*c, grid, bc, *u0, *v0, *t_end, *steps).map(PdeSolution::D2)
-        }
-        PdeProblem::Poisson2D { grid, bc, f, solver } => poisson_2d(grid, bc, *f, *solver).map(PdeSolution::D2),
-        PdeProblem::Advection1D { a, grid, scheme, u0, t_end, steps } => {
-            advection_1d(*a, grid, *scheme, *u0, *t_end, *steps).map(PdeSolution::D1)
-        }
+        | PdeProblem::Heat1D {
+            alpha,
+            grid,
+            bc,
+            u0,
+            t_end,
+            steps,
+        } => heat_1d(*alpha, grid, bc, *u0, *t_end, *steps).map(PdeSolution::D1),
+        | PdeProblem::Heat2D {
+            alpha,
+            grid,
+            bc,
+            u0,
+            t_end,
+            steps,
+        } => heat_2d(*alpha, grid, bc, *u0, *t_end, *steps).map(PdeSolution::D2),
+        | PdeProblem::Wave1D {
+            c,
+            grid,
+            bc,
+            u0,
+            v0,
+            t_end,
+            steps,
+        } => wave_1d(*c, grid, bc, *u0, *v0, *t_end, *steps).map(PdeSolution::D1),
+        | PdeProblem::Wave2D {
+            c,
+            grid,
+            bc,
+            u0,
+            v0,
+            t_end,
+            steps,
+        } => wave_2d(*c, grid, bc, *u0, *v0, *t_end, *steps).map(PdeSolution::D2),
+        | PdeProblem::Poisson2D { grid, bc, f, solver } => {
+            poisson_2d(grid, bc, *f, *solver).map(PdeSolution::D2)
+        },
+        | PdeProblem::Advection1D {
+            a,
+            grid,
+            scheme,
+            u0,
+            t_end,
+            steps,
+        } => advection_1d(*a, grid, *scheme, *u0, *t_end, *steps).map(PdeSolution::D1),
     }
 }

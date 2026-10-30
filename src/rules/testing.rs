@@ -28,9 +28,21 @@ pub fn reduce_with(
         let symbol = g.interner_mut().symbol(name);
         g.assume(symbol, *facts);
     }
-    let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
-    engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-    assert!(g.conflicts().is_empty(), "unsound derivation for `{src}`: {:?}", g.conflicts());
+    let root = g
+        .parse(src)
+        .unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+    engine.run(
+        &mut g,
+        &[root],
+        &Env::symbolic(),
+        &Saturate,
+        &Budget::default(),
+    );
+    assert!(
+        g.conflicts().is_empty(),
+        "unsound derivation for `{src}`: {:?}",
+        g.conflicts()
+    );
     // The invariant check is quadratic; keep it to graphs where that is
     // affordable.
     if g.len() < 3_000 {
@@ -39,7 +51,9 @@ pub fn reduce_with(
     match Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root) {
         | Some(node) => (g.display(node), true),
         | None => {
-            let node = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
+            let node = Extractor::new(&g, &[root], &SizeCost)
+                .build(&mut g, root)
+                .unwrap_or(root);
             (g.display(node), false)
         },
     }
@@ -65,14 +79,21 @@ pub fn numeric(
 ) -> (f64, f64) {
     let mut g = Graph::new();
     let engine = Engine::install(&mut g, sets).unwrap_or_else(|e| panic!("{e}"));
-    let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+    let root = g
+        .parse(src)
+        .unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
     let mut env = Env::numeric(tolerance);
     for (name, value) in bindings {
         env.bind(g.interner_mut().symbol(name), *value);
     }
     engine.run(&mut g, &[root], &env, &Evaluated, &Budget::default());
-    assert!(g.conflicts().is_empty(), "unsound derivation for `{src}`: {:?}", g.conflicts());
-    g.approx(g.find(root)).map_or((f64::NAN, f64::NAN), |b| (b.mid, b.rad))
+    assert!(
+        g.conflicts().is_empty(),
+        "unsound derivation for `{src}`: {:?}",
+        g.conflicts()
+    );
+    g.approx(g.find(root))
+        .map_or((f64::NAN, f64::NAN), |b| (b.mid, b.rad))
 }
 
 /// Evaluates the term `src` directly (no rules) under `bindings`.
@@ -83,7 +104,9 @@ pub fn eval(
 ) -> f64 {
     let mut g = Graph::new();
     assert!(Engine::install(&mut g, sets).is_ok());
-    let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+    let root = g
+        .parse(src)
+        .unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
     let mut env = Env::numeric(0.0);
     for (name, value) in bindings {
         env.bind(g.interner_mut().symbol(name), *value);

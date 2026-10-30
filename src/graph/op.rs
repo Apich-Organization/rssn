@@ -41,16 +41,23 @@ impl Arity {
 pub struct OpFlags(u16);
 
 impl OpFlags {
-    /// Children may be reordered freely.
-    pub const COMMUTATIVE: Self = Self(1);
     /// Nested applications may be flattened: `f(f(a, b), c) = f(a, b, c)`.
     pub const ASSOCIATIVE: Self = Self(1 << 1);
+    /// Children may be reordered freely.
+    pub const COMMUTATIVE: Self = Self(1);
     /// A *heavy* operator: an unevaluated identity-transformation request
     /// (derivative, integral, solve, ...) that the scheduler tries to reduce
     /// before anything else and that closed-form extraction refuses.
     pub const HEAVY: Self = Self(1 << 2);
     /// The node is a leaf carrying a payload.
     pub const LEAF: Self = Self(1 << 3);
+    /// No flags.
+    pub const NONE: Self = Self(0);
+    /// A heavy operator that is irreducible — and so a closed form — when
+    /// its first argument is an undetermined function `f(x, ...)` or
+    /// another such application: `diff(y(x), x)` cannot be computed any
+    /// further, it *is* the answer.
+    pub const OPAQUE_ON_APPLY: Self = Self(1 << 6);
     /// The operator's value is a truth value. Its scalar semantics encode
     /// true and false as 1 and 0 for evaluation, but numeric folding must
     /// not replace the term by that number.
@@ -59,13 +66,6 @@ impl OpFlags {
     /// is shared. Local normalisation of arithmetic needs to see the
     /// structure of `x * x^(-1)` whether or not `x^(-1)` is used elsewhere.
     pub const TRANSPARENT: Self = Self(1 << 4);
-    /// A heavy operator that is irreducible — and so a closed form — when
-    /// its first argument is an undetermined function `f(x, ...)` or
-    /// another such application: `diff(y(x), x)` cannot be computed any
-    /// further, it *is* the answer.
-    pub const OPAQUE_ON_APPLY: Self = Self(1 << 6);
-    /// No flags.
-    pub const NONE: Self = Self(0);
 
     /// Union of two flag sets.
     #[must_use]
@@ -139,7 +139,11 @@ impl OpDescriptor {
             arity,
             flags: OpFlags::NONE,
             // A named constant (`pi`, `hbar`) is as simple as a symbol.
-            cost: if matches!(arity, Arity::Fixed(0)) { 1 } else { 3 },
+            cost: if matches!(arity, Arity::Fixed(0)) {
+                1
+            } else {
+                3
+            },
             binder: None,
             eval: None,
         }
@@ -297,9 +301,11 @@ impl OpTable {
             OpDescriptor::new("pow", Arity::Fixed(2))
                 .flags(OpFlags::TRANSPARENT)
                 .cost(1)
-                .eval(|a| match a {
-                    | [b, e] => b.powf(*e),
-                    | _ => f64::NAN,
+                .eval(|a| {
+                    match a {
+                        | [b, e] => b.powf(*e),
+                        | _ => f64::NAN,
+                    }
                 }),
             OpDescriptor::new("apply", Arity::Variadic).cost(2),
             OpDescriptor::new("list", Arity::Variadic).cost(1),

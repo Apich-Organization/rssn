@@ -12,8 +12,6 @@
 //! so the minimiser never evaluates finite differences. Symbols other than
 //! the variables take their values from the bindings of the run.
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Kernel;
@@ -25,6 +23,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::optim;
 use crate::rules::poly::best;
 
@@ -36,7 +36,11 @@ const TOLERANCE: f64 = 1e-12;
 const MAX_ITERATIONS: usize = 2_000;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str| OpDescriptor::new(name, Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100);
+    let heavy = |name: &str| {
+        OpDescriptor::new(name, Arity::Fixed(3))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     for (name, sign, global) in [
         ("nminimize", 1.0, false),
         ("nmaximize", -1.0, false),
@@ -44,7 +48,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("nmaximize_global", -1.0, true),
     ] {
         let op = i.op(heavy(name))?;
-        i.kernel(&format!("optimize/{name}"), Tier::Reduce, Minimize { op, sign, global });
+        i.kernel(
+            &format!("optimize/{name}"),
+            Tier::Reduce,
+            Minimize { op, sign, global },
+        );
     }
     Ok(())
 }
@@ -69,7 +77,8 @@ impl Kernel for Minimize {
         let &[f, vars, start] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
-        self.minimize(cx, f, vars, start).map_or(Outcome::Pass, Outcome::Equal)
+        self.minimize(cx, f, vars, start)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -121,13 +130,24 @@ impl Minimize {
         start: NodeId,
     ) -> Option<NodeId> {
         let vars = list_items(cx.graph, vars)?;
-        let symbols: Vec<SymbolId> = vars.iter().map(|&v| cx.graph.symbol_of(v)).collect::<Option<_>>()?;
+        let symbols: Vec<SymbolId> = vars
+            .iter()
+            .map(|&v| cx.graph.symbol_of(v))
+            .collect::<Option<_>>()?;
         let objective = best(cx.graph, f)?;
         // Every other free symbol must be bound.
-        let bindings: Vec<(SymbolId, f64)> =
-            cx.env.bindings().iter().copied().filter(|(s, _)| !symbols.contains(s)).collect();
+        let bindings: Vec<(SymbolId, f64)> = cx
+            .env
+            .bindings()
+            .iter()
+            .copied()
+            .filter(|(s, _)| !symbols.contains(s))
+            .collect();
         let free = cx.graph.free_symbols(cx.graph.find(objective)).to_vec();
-        if free.iter().any(|s| !symbols.contains(s) && !bindings.iter().any(|(b, _)| b == s)) {
+        if free
+            .iter()
+            .any(|s| !symbols.contains(s) && !bindings.iter().any(|(b, _)| b == s))
+        {
             return None;
         }
         let mut roots = vec![objective];
@@ -138,7 +158,9 @@ impl Minimize {
         }
         let params: Vec<SymbolId> = bindings.iter().map(|(s, _)| *s).collect();
         let values: Vec<f64> = bindings.iter().map(|(_, v)| *v).collect();
-        let compiled = crate::backend::current().compile_multi(cx.graph, &roots, &symbols, &params).ok()?;
+        let compiled = crate::backend::current()
+            .compile_multi(cx.graph, &roots, &symbols, &params)
+            .ok()?;
         let n = symbols.len();
         let sign = self.sign;
         let run = |x: &[f64]| {
@@ -147,12 +169,22 @@ impl Minimize {
             out
         };
         let objective = |x: &[f64]| run(x).first().map_or(f64::NAN, |v| sign * v);
-        let gradient = |x: &[f64]| run(x).iter().skip(1).map(|g| sign * g).collect::<Vec<f64>>();
+        let gradient = |x: &[f64]| {
+            run(x)
+                .iter()
+                .skip(1)
+                .map(|g| sign * g)
+                .collect::<Vec<f64>>()
+        };
         let x0 = if self.global {
             let bounds = bounds(cx, start, n)?;
             let guarded = |x: &[f64]| {
                 let v = objective(x);
-                if v.is_finite() { v } else { f64::INFINITY }
+                if v.is_finite() {
+                    v
+                } else {
+                    f64::INFINITY
+                }
             };
             let population = (15 * n).max(20);
             optim::differential_evolution(guarded, &bounds, population, 300, 0x5eed).x
@@ -161,7 +193,10 @@ impl Minimize {
             if items.len() != n {
                 return None;
             }
-            items.into_iter().map(|e| value(cx, e)).collect::<Option<Vec<f64>>>()?
+            items
+                .into_iter()
+                .map(|e| value(cx, e))
+                .collect::<Option<Vec<f64>>>()?
         };
         let result = optim::bfgs(objective, Some(&gradient), &x0, TOLERANCE, MAX_ITERATIONS);
         let fx = sign * result.fx;
@@ -191,10 +226,16 @@ mod tests {
 
     #[test]
     fn local_minimum_of_rosenbrock() {
-        let out = simplify(&[optimize()], "nminimize((1 - x)^2 + 100*(y - x^2)^2, list(x, y), list(-1.2, 1))");
+        let out = simplify(
+            &[optimize()],
+            "nminimize((1 - x)^2 + 100*(y - x^2)^2, list(x, y), list(-1.2, 1))",
+        );
         let v = numbers(&out);
         assert!(v.len() == 3, "{out}");
-        assert!((v[0] - 1.0).abs() < 1e-6 && (v[1] - 1.0).abs() < 1e-6 && v[2].abs() < 1e-10, "{out}");
+        assert!(
+            (v[0] - 1.0).abs() < 1e-6 && (v[1] - 1.0).abs() < 1e-6 && v[2].abs() < 1e-10,
+            "{out}"
+        );
     }
 
     #[test]
@@ -202,7 +243,10 @@ mod tests {
         // x*exp(-x^2) peaks at 1/sqrt(2).
         let out = simplify(&standard(), "nmaximize(x*exp(-x^2), list(x), list(0.3))");
         let v = numbers(&out);
-        assert!((v[0] - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-8, "{out}");
+        assert!(
+            (v[0] - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-8,
+            "{out}"
+        );
         // lgamma has its minimum at x = 1.4616321449683623.
         let out = simplify(&standard(), "nminimize(lgamma(x), list(x), list(2))");
         let v = numbers(&out);
@@ -218,12 +262,16 @@ mod tests {
             "nminimize_global(20 + x^2 + y^2 - 10*cos(2*pi*x) - 10*cos(2*pi*y), list(x, y), list(list(-5, 5), list(-5, 5)))",
         );
         let v = numbers(&out);
-        assert!(v.len() == 3 && v[0].abs() < 1e-6 && v[1].abs() < 1e-6 && v[2].abs() < 1e-9, "{out}");
+        assert!(
+            v.len() == 3 && v[0].abs() < 1e-6 && v[1].abs() < 1e-6 && v[2].abs() < 1e-9,
+            "{out}"
+        );
     }
 
     #[test]
     fn unbound_parameters_leave_the_request() {
-        let (out, reduced) = reduce_with(&[optimize()], "nminimize((x - a)^2, list(x), list(0))", &[]);
+        let (out, reduced) =
+            reduce_with(&[optimize()], "nminimize((x - a)^2, list(x), list(0))", &[]);
         assert!(!reduced && out.starts_with("nminimize("), "{out}");
     }
 }

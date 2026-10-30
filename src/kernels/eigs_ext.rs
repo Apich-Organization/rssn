@@ -35,13 +35,30 @@
 //! [`eigs_jd`] extends Jacobi-Davidson to non-symmetric operators (complex
 //! targets, partial Schur deflation, complex harmonic extraction).
 //!
+//! [`eigs_jd_two_sided`] is the *two-sided* variant: it expands a right and a
+//! left search space together, extracts Petrov-Galerkin pairs of the projected
+//! pencil, returns left and right eigenvectors with the eigenvalue condition
+//! numbers `1/|w^H u|`, uses the (stationary) two-sided Rayleigh quotient, solves
+//! two oblique correction equations and deflates converged pairs obliquely
+//! (`I - Q (P^H Q)^{-1} P^H`). Its extraction is the standard one (no harmonic
+//! variant), so the target should be near the wanted eigenvalues.
+//!
 //! Limitations: [`eigs_jd_sym`] is for symmetric operators only; `B` must be
-//! positive definite in the symmetric generalised solver.
+//! positive definite in the symmetric generalised solver; the two-sided solver
+//! needs the transpose action `A^T` and assumes diagonalisable (non-defective)
+//! wanted eigenvalues.
 
 use num_complex::Complex64;
 
-use crate::kernels::dense::{self, Mat};
-use crate::kernels::eigs::{EigsError, EigsOptions, EigsResult, Which, key_of};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
+use crate::kernels::eigs::EigsError;
+use crate::kernels::eigs::EigsOptions;
+use crate::kernels::eigs::EigsResult;
+use crate::kernels::eigs::Which;
+use crate::kernels::eigs::key_of;
 use crate::kernels::krylov::gmres;
 use crate::kernels::random::Rng;
 
@@ -49,7 +66,10 @@ type C = Complex64;
 type Schur = (Vec<Vec<C>>, Vec<Vec<C>>);
 type OpFn<'a> = dyn Fn(&[f64], &mut [f64]) + 'a;
 
-fn rdot(a: &[f64], b: &[f64]) -> f64 {
+fn rdot(
+    a: &[f64],
+    b: &[f64],
+) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
@@ -57,7 +77,10 @@ fn rnrm(a: &[f64]) -> f64 {
     rdot(a, a).sqrt()
 }
 
-fn cdot(a: &[C], b: &[C]) -> C {
+fn cdot(
+    a: &[C],
+    b: &[C],
+) -> C {
     a.iter().zip(b).map(|(x, y)| x.conj() * y).sum()
 }
 
@@ -65,7 +88,10 @@ fn cnrm(a: &[C]) -> f64 {
     a.iter().map(Complex64::norm_sqr).sum::<f64>().sqrt()
 }
 
-fn random_vec(n: usize, rng: &mut Rng) -> Vec<f64> {
+fn random_vec(
+    n: usize,
+    rng: &mut Rng,
+) -> Vec<f64> {
     (0..n).map(|_| rng.normal()).collect()
 }
 
@@ -73,7 +99,10 @@ fn random_vec(n: usize, rng: &mut Rng) -> Vec<f64> {
 
 /// Complex Givens rotation `[[c, s], [-conj(s), c]]` (`c` real) mapping
 /// `(a, b)` to `(r, 0)`.
-fn givens(a: C, b: C) -> (f64, C) {
+fn givens(
+    a: C,
+    b: C,
+) -> (f64, C) {
     let (na, nb) = (a.norm(), b.norm());
     if nb == 0.0 {
         return (1.0, C::new(0.0, 0.0));
@@ -86,7 +115,13 @@ fn givens(a: C, b: C) -> (f64, C) {
 }
 
 /// `rows k, k+1 <- G rows`, columns `c0..ncols`.
-fn rot_rows(h: &mut [Vec<C>], k: usize, c: f64, s: C, c0: usize) {
+fn rot_rows(
+    h: &mut [Vec<C>],
+    k: usize,
+    c: f64,
+    s: C,
+    c0: usize,
+) {
     let ncols = h[k].len();
     for j in c0..ncols {
         let (x, y) = (h[k][j], h[k + 1][j]);
@@ -96,7 +131,13 @@ fn rot_rows(h: &mut [Vec<C>], k: usize, c: f64, s: C, c0: usize) {
 }
 
 /// `columns k, k+1 <- columns * G^H`, rows `0..r1`.
-fn rot_cols(h: &mut [Vec<C>], k: usize, c: f64, s: C, r1: usize) {
+fn rot_cols(
+    h: &mut [Vec<C>],
+    k: usize,
+    c: f64,
+    s: C,
+    r1: usize,
+) {
     for row in h.iter_mut().take(r1) {
         let (x, y) = (row[k], row[k + 1]);
         row[k] = x * c + y * s.conj();
@@ -113,8 +154,19 @@ fn rot_cols(h: &mut [Vec<C>], k: usize, c: f64, s: C, r1: usize) {
 pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
     let n = a.len();
     let mut h: Vec<Vec<C>> = a.to_vec();
-    let mut q: Vec<Vec<C>> =
-        (0..n).map(|i| (0..n).map(|j| if i == j { C::new(1.0, 0.0) } else { C::new(0.0, 0.0) }).collect()).collect();
+    let mut q: Vec<Vec<C>> = (0..n)
+        .map(|i| {
+            (0..n)
+                .map(|j| {
+                    if i == j {
+                        C::new(1.0, 0.0)
+                    } else {
+                        C::new(0.0, 0.0)
+                    }
+                })
+                .collect()
+        })
+        .collect();
     // Householder reduction to Hessenberg form
     for k in 0..n.saturating_sub(2) {
         let mut x: Vec<C> = (k + 1..n).map(|i| h[i][k]).collect();
@@ -122,7 +174,11 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
         if xn == 0.0 {
             continue;
         }
-        let phase = if x[0].norm() == 0.0 { C::new(1.0, 0.0) } else { x[0] / x[0].norm() };
+        let phase = if x[0].norm() == 0.0 {
+            C::new(1.0, 0.0)
+        } else {
+            x[0] / x[0].norm()
+        };
         x[0] += phase * xn;
         let vn = cnrm(&x);
         if vn == 0.0 {
@@ -189,7 +245,11 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
             let det = a11 * a22 - a12 * a21;
             let disc = (tr_half * tr_half - det).sqrt();
             let (l1, l2) = (tr_half + disc, tr_half - disc);
-            if (l1 - a22).norm() < (l2 - a22).norm() { l1 } else { l2 }
+            if (l1 - a22).norm() < (l2 - a22).norm() {
+                l1
+            } else {
+                l2
+            }
         };
         for i in l..=hi {
             h[i][i] -= mu;
@@ -220,7 +280,11 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
 
 /// Swaps the adjacent diagonal entries `i, i+1` of a Schur form by a Givens
 /// rotation, updating `Q` accordingly.
-fn swap_schur(t: &mut [Vec<C>], q: &mut [Vec<C>], i: usize) {
+fn swap_schur(
+    t: &mut [Vec<C>],
+    q: &mut [Vec<C>],
+    i: usize,
+) {
     let n = t.len();
     let (a, b, x) = (t[i][i], t[i + 1][i + 1], t[i][i + 1]);
     let (c, s) = givens(x, b - a);
@@ -233,7 +297,12 @@ fn swap_schur(t: &mut [Vec<C>], q: &mut [Vec<C>], i: usize) {
 /// Reorders a complex Schur form so that its diagonal is sorted by `key`
 /// (smallest first) for the first `count` positions; `Q` is updated so that
 /// `A = Q T Q^H` still holds.
-pub fn reorder_schur(t: &mut [Vec<C>], q: &mut [Vec<C>], count: usize, key: &dyn Fn(C) -> f64) {
+pub fn reorder_schur(
+    t: &mut [Vec<C>],
+    q: &mut [Vec<C>],
+    count: usize,
+    key: &dyn Fn(C) -> f64,
+) {
     let n = t.len();
     for p in 0..count.min(n) {
         let mut best = p;
@@ -250,7 +319,13 @@ pub fn reorder_schur(t: &mut [Vec<C>], q: &mut [Vec<C>], count: usize, key: &dyn
 
 // ----------------------------------------------------------- Krylov-Schur
 
-fn apply_complex<A: Fn(&[f64], &mut [f64])>(apply: &A, v: &[C], out: &mut [C], re: &mut [f64], im: &mut [f64]) {
+fn apply_complex<A: Fn(&[f64], &mut [f64])>(
+    apply: &A,
+    v: &[C],
+    out: &mut [C],
+    re: &mut [f64],
+    im: &mut [f64],
+) {
     let n = v.len();
     let (mut xr, mut xi) = (vec![0.0; n], vec![0.0; n]);
     for i in 0..n {
@@ -268,7 +343,11 @@ fn apply_complex<A: Fn(&[f64], &mut [f64])>(apply: &A, v: &[C], out: &mut [C], r
     }
 }
 
-fn orth_complex(w: &mut [C], v: &[Vec<C>], cnt: usize) -> Vec<C> {
+fn orth_complex(
+    w: &mut [C],
+    v: &[Vec<C>],
+    cnt: usize,
+) -> Vec<C> {
     let mut h = vec![C::new(0.0, 0.0); cnt];
     for _ in 0..2 {
         for i in 0..cnt {
@@ -282,7 +361,12 @@ fn orth_complex(w: &mut [C], v: &[Vec<C>], cnt: usize) -> Vec<C> {
     h
 }
 
-fn random_complex_orth(n: usize, v: &[Vec<C>], cnt: usize, seed: u64) -> Vec<C> {
+fn random_complex_orth(
+    n: usize,
+    v: &[Vec<C>],
+    cnt: usize,
+    seed: u64,
+) -> Vec<C> {
     let mut rng = Rng::new(seed);
     let mut r: Vec<C> = (0..n).map(|_| C::new(rng.normal(), 0.0)).collect();
     let _ = orth_complex(&mut r, v, cnt);
@@ -316,14 +400,20 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
     if k == 0 || k > n {
         return Err(EigsError::Invalid);
     }
-    let m = (if opts.ncv == 0 { (2 * k + 1).max(20) } else { opts.ncv }).max(k + 2).min(n);
+    let m = (if opts.ncv == 0 {
+        (2 * k + 1).max(20)
+    } else {
+        opts.ncv
+    })
+    .max(k + 2)
+    .min(n);
     let zero = C::new(0.0, 0.0);
     let mut rng = Rng::new(opts.seed);
     let mut v0: Vec<C> = (0..n).map(|_| C::new(rng.normal(), 0.0)).collect();
     let s0 = cnrm(&v0);
     for e in &mut v0 {
-            *e /= s0;
-        }
+        *e /= s0;
+    }
     let mut v: Vec<Vec<C>> = vec![v0];
     let mut b: Vec<Vec<C>> = vec![vec![zero; m]; m];
     let mut kept = 0usize;
@@ -351,7 +441,8 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
                 beta = 0.0;
                 if j + 1 < m {
                     b[j + 1][j] = zero;
-                    let r = random_complex_orth(n, &v, j + 1, opts.seed.wrapping_add(j as u64 + 31));
+                    let r =
+                        random_complex_orth(n, &v, j + 1, opts.seed.wrapping_add(j as u64 + 31));
                     v.push(r);
                 } else {
                     v.push(vec![zero; n]);
@@ -374,7 +465,11 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
                     s += t[r][c] * y[c];
                 }
                 let d = t[r][r] - lam;
-                let d = if d.norm() < 1e-14 * lam.norm().max(1.0) { C::new(1e-14 * lam.norm().max(1.0), 0.0) } else { d };
+                let d = if d.norm() < 1e-14 * lam.norm().max(1.0) {
+                    C::new(1e-14 * lam.norm().max(1.0), 0.0)
+                } else {
+                    d
+                };
                 y[r] = -s / d;
             }
             let yn = cnrm(&y);
@@ -417,11 +512,21 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
                     }
                 }
                 let xn = cnrm(&x);
-                let big = x.iter().copied().max_by(|p, r| p.norm().total_cmp(&r.norm())).unwrap_or(zero);
-                let phase = if big.norm() == 0.0 { C::new(1.0, 0.0) } else { big.conj() / big.norm() };
+                let big = x
+                    .iter()
+                    .copied()
+                    .max_by(|p, r| p.norm().total_cmp(&r.norm()))
+                    .unwrap_or(zero);
+                let phase = if big.norm() == 0.0 {
+                    C::new(1.0, 0.0)
+                } else {
+                    big.conj() / big.norm()
+                };
                 out.values.push((t[i][i].re, t[i][i].im));
-                out.vectors_re.push(x.iter().map(|e| (e * phase / xn).re).collect());
-                out.vectors_im.push(x.iter().map(|e| (e * phase / xn).im).collect());
+                out.vectors_re
+                    .push(x.iter().map(|e| (e * phase / xn).re).collect());
+                out.vectors_im
+                    .push(x.iter().map(|e| (e * phase / xn).im).collect());
                 out.residuals.push(if m >= n { 0.0 } else { res[i] });
             }
             return Ok(out);
@@ -430,7 +535,8 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
         let mut keep = (k + (m - k) / 2).clamp(k + 1, m - 1);
         if keep < m
             && t[keep - 1][keep - 1].im.abs() > 1e-12 * t[keep - 1][keep - 1].norm().max(1.0)
-            && (t[keep - 1][keep - 1] - t[keep][keep].conj()).norm() < 1e-8 * t[keep][keep].norm().max(1.0)
+            && (t[keep - 1][keep - 1] - t[keep][keep].conj()).norm()
+                < 1e-8 * t[keep][keep].norm().max(1.0)
         {
             keep += 1;
         }
@@ -492,7 +598,10 @@ struct BlockOut {
 }
 
 impl BlockEngine<'_> {
-    fn b_apply(&self, x: &[f64]) -> Vec<f64> {
+    fn b_apply(
+        &self,
+        x: &[f64],
+    ) -> Vec<f64> {
         self.bmul.map_or_else(
             || x.to_vec(),
             |bm| {
@@ -505,7 +614,12 @@ impl BlockEngine<'_> {
 
     /// Adds the B-orthonormalised candidates to the basis (dependent ones
     /// are replaced by random directions); returns the number added.
-    fn extend(&self, st: &mut BlockState, cands: Vec<Vec<f64>>, limit: usize) -> usize {
+    fn extend(
+        &self,
+        st: &mut BlockState,
+        cands: Vec<Vec<f64>>,
+        limit: usize,
+    ) -> usize {
         let mut added = 0;
         for mut c in cands {
             if st.v.len() >= limit.min(self.n) {
@@ -529,8 +643,8 @@ impl BlockEngine<'_> {
                 let after = rdot(&c, &bw).max(0.0).sqrt();
                 if after > 1e-9 * before.max(1e-300) && after > 1e-14 {
                     for e in &mut c {
-            *e /= after;
-        }
+                        *e /= after;
+                    }
                     let bnew: Vec<f64> = bw.iter().map(|e| e / after).collect();
                     let mut a = vec![0.0; self.n];
                     (self.op)(&c, &mut a);
@@ -552,7 +666,12 @@ impl BlockEngine<'_> {
 
     /// Replaces the basis by the Ritz combinations `cols` of the first `m`
     /// vectors (columns of `s`).
-    fn contract(&self, st: &mut BlockState, s: &Mat, cols: &[usize]) {
+    fn contract(
+        &self,
+        st: &mut BlockState,
+        s: &Mat,
+        cols: &[usize],
+    ) {
         let n = self.n;
         let m = st.v.len();
         let (mut nv, mut nb, mut na) = (Vec::new(), Vec::new(), Vec::new());
@@ -575,12 +694,21 @@ impl BlockEngine<'_> {
         st.av = na;
     }
 
-    fn run(&self, k: usize, which: Which, opts: &EigsOptions) -> Result<BlockOut, EigsError> {
+    fn run(
+        &self,
+        k: usize,
+        which: Which,
+        opts: &EigsOptions,
+    ) -> Result<BlockOut, EigsError> {
         let n = self.n;
         let bs = self.block.max(1);
-        let m_max = (if opts.ncv == 0 { (2 * k + 2 * bs).max(24).max(4 * bs) } else { opts.ncv })
-            .max(k + 2 * bs)
-            .min(n);
+        let m_max = (if opts.ncv == 0 {
+            (2 * k + 2 * bs).max(24).max(4 * bs)
+        } else {
+            opts.ncv
+        })
+        .max(k + 2 * bs)
+        .min(n);
         let mut st = BlockState {
             v: Vec::new(),
             bv: Vec::new(),
@@ -595,7 +723,9 @@ impl BlockEngine<'_> {
         loop {
             // Krylov expansion by blocks until the basis is full
             while st.v.len() < m_max && added > 0 {
-                let cands: Vec<Vec<f64>> = (last_block_start..st.v.len()).map(|i| st.av[i].clone()).collect();
+                let cands: Vec<Vec<f64>> = (last_block_start..st.v.len())
+                    .map(|i| st.av[i].clone())
+                    .collect();
                 last_block_start = st.v.len();
                 added = self.extend(&mut st, cands, m_max);
             }
@@ -615,7 +745,9 @@ impl BlockEngine<'_> {
             }
             let (theta, s) = dense::eigen_symmetric(&t).map_err(|_| EigsError::Dense)?;
             let mut idx: Vec<usize> = (0..m).collect();
-            idx.sort_by(|&a, &b| key_of(which, (theta[a], 0.0)).total_cmp(&key_of(which, (theta[b], 0.0))));
+            idx.sort_by(|&a, &b| {
+                key_of(which, (theta[a], 0.0)).total_cmp(&key_of(which, (theta[b], 0.0)))
+            });
             let kk = k.min(m);
             let nres = (kk + bs).min(m);
             let mut xs: Vec<Vec<f64>> = Vec::with_capacity(nres);
@@ -642,14 +774,21 @@ impl BlockEngine<'_> {
                 return Ok(BlockOut {
                     theta: idx.iter().take(kk).map(|&i| theta[i]).collect(),
                     vectors: xs.into_iter().take(kk).collect(),
-                    residuals: if m >= n { vec![0.0; kk] } else { res.into_iter().take(kk).collect() },
+                    residuals: if m >= n {
+                        vec![0.0; kk]
+                    } else {
+                        res.into_iter().take(kk).collect()
+                    },
                     converged: all_conv || m >= n,
                     restarts,
                     matvecs: st.matvecs,
                 });
             }
             // thick restart: keep Ritz vectors, continue with the residual block
-            let keep = (k + (m_max - k) / 2).min(m_max.saturating_sub(bs + 1)).max(k).min(m - 1);
+            let keep = (k + (m_max - k) / 2)
+                .min(m_max.saturating_sub(bs + 1))
+                .max(k)
+                .min(m - 1);
             self.contract(&mut st, &s, &idx[..keep]);
             let mut cands: Vec<Vec<f64>> = Vec::new();
             for i in 0..kk {
@@ -674,7 +813,11 @@ impl BlockEngine<'_> {
     }
 }
 
-fn pack(out: BlockOut, map: &dyn Fn(f64) -> f64, n: usize) -> EigsResult {
+fn pack(
+    out: BlockOut,
+    map: &dyn Fn(f64) -> f64,
+    n: usize,
+) -> EigsResult {
     EigsResult {
         values: out.theta.iter().map(|&t| (map(t), 0.0)).collect(),
         vectors_re: out.vectors,
@@ -708,7 +851,12 @@ pub fn eigs_sym_block<A: Fn(&[f64], &mut [f64])>(
     if k == 0 || k > n || block == 0 {
         return Err(EigsError::Invalid);
     }
-    let eng = BlockEngine { n, op: &apply, bmul: None, block };
+    let eng = BlockEngine {
+        n,
+        op: &apply,
+        bmul: None,
+        block,
+    };
     let out = eng.run(k, which, opts)?;
     Ok(pack(out, &|t| t, n))
 }
@@ -792,7 +940,12 @@ where
         apply_b(x, &mut bx);
         solve(&bx, y);
     };
-    let eng = BlockEngine { n, op: &op, bmul: Some(&apply_b), block: opts.block };
+    let eng = BlockEngine {
+        n,
+        op: &op,
+        bmul: Some(&apply_b),
+        block: opts.block,
+    };
     let out = eng.run(k, Which::LargestMagnitude, &opts.eigs)?;
     let sigma = opts.sigma;
     let mut r = pack(out, &|t| sigma + 1.0 / t, n);
@@ -874,7 +1027,10 @@ impl Default for JdOptions {
 }
 
 /// Gram-Schmidt on the columns of `v`, applying the same combinations to `w`.
-fn orthonormalise_pair(v: &mut Vec<Vec<f64>>, w: &mut Vec<Vec<f64>>) {
+fn orthonormalise_pair(
+    v: &mut Vec<Vec<f64>>,
+    w: &mut Vec<Vec<f64>>,
+) {
     let mut keep_v: Vec<Vec<f64>> = Vec::new();
     let mut keep_w: Vec<Vec<f64>> = Vec::new();
     for (mut x, mut y) in v.drain(..).zip(w.drain(..)) {
@@ -892,11 +1048,11 @@ fn orthonormalise_pair(v: &mut Vec<Vec<f64>>, w: &mut Vec<Vec<f64>>) {
         let nx = rnrm(&x);
         if nx > 1e-10 {
             for e in &mut x {
-            *e /= nx;
-        }
+                *e /= nx;
+            }
             for e in &mut y {
-            *e /= nx;
-        }
+                *e /= nx;
+            }
             keep_v.push(x);
             keep_w.push(y);
         }
@@ -964,8 +1120,8 @@ where
     project(&mut t0, &q);
     let tn = rnrm(&t0);
     for e in &mut t0 {
-            *e /= tn;
-        }
+        *e /= tn;
+    }
     let mut wt = vec![0.0; n];
     shifted(&t0, &mut wt);
     matvecs += 1;
@@ -1002,7 +1158,9 @@ where
                 let mut mm = Mat::zeros(m, m);
                 for j in 0..m {
                     // solve L y = H2[:, j]
-                    let mut y: Vec<f64> = (0..m).map(|i| f64::midpoint(h2.at(i, j), h2.at(j, i))).collect();
+                    let mut y: Vec<f64> = (0..m)
+                        .map(|i| f64::midpoint(h2.at(i, j), h2.at(j, i)))
+                        .collect();
                     for i in 0..m {
                         for c in 0..i {
                             y[i] -= l.at(i, c) * y[c];
@@ -1082,7 +1240,11 @@ where
         }
         // A u = wu + target u; Rayleigh quotient
         let theta = target + rdot(&u, &wu);
-        let r: Vec<f64> = wu.iter().zip(&u).map(|(a, b)| a - (theta - target) * b).collect();
+        let r: Vec<f64> = wu
+            .iter()
+            .zip(&u)
+            .map(|(a, b)| a - (theta - target) * b)
+            .collect();
         let rn = rnrm(&r);
         if q.len() >= k {
             // verification phase: stop once the best remaining candidate is
@@ -1131,8 +1293,8 @@ where
                 project(&mut t, &q);
                 let tn = rnrm(&t);
                 for e in &mut t {
-            *e /= tn;
-        }
+                    *e /= tn;
+                }
                 let mut wt = vec![0.0; n];
                 shifted(&t, &mut wt);
                 matvecs += 1;
@@ -1158,24 +1320,27 @@ where
             project(&mut ay, &qt);
             y.copy_from_slice(&ay);
         };
-        let (kinv_q, small): (Vec<Vec<f64>>, Option<Mat>) = precond.map_or_else(|| (Vec::new(), None), |pc| {
-            let kq: Vec<Vec<f64>> = qt
-                .iter()
-                .map(|x| {
-                    let mut y = vec![0.0; n];
-                    pc(x, &mut y);
-                    y
-                })
-                .collect();
-            let nq = qt.len();
-            let mut sm = Mat::zeros(nq, nq);
-            for i in 0..nq {
-                for j in 0..nq {
-                    sm.set(i, j, rdot(&qt[i], &kq[j]));
+        let (kinv_q, small): (Vec<Vec<f64>>, Option<Mat>) = precond.map_or_else(
+            || (Vec::new(), None),
+            |pc| {
+                let kq: Vec<Vec<f64>> = qt
+                    .iter()
+                    .map(|x| {
+                        let mut y = vec![0.0; n];
+                        pc(x, &mut y);
+                        y
+                    })
+                    .collect();
+                let nq = qt.len();
+                let mut sm = Mat::zeros(nq, nq);
+                for i in 0..nq {
+                    for j in 0..nq {
+                        sm.set(i, j, rdot(&qt[i], &kq[j]));
+                    }
                 }
-            }
-            (kq, Some(sm))
-        });
+                (kq, Some(sm))
+            },
+        );
         let precond_apply = |x: &[f64], y: &mut [f64]| {
             if let (Some(pc), Some(sm)) = (precond, small.as_ref()) {
                 let mut z = vec![0.0; n];
@@ -1196,7 +1361,15 @@ where
         };
         let mut rhs: Vec<f64> = r.iter().map(|e| -e).collect();
         project(&mut rhs, &qt);
-        let sol = gmres(proj_apply, precond_apply, &rhs, None, opts.inner_iters, opts.inner_tol, opts.inner_iters);
+        let sol = gmres(
+            proj_apply,
+            precond_apply,
+            &rhs,
+            None,
+            opts.inner_iters,
+            opts.inner_tol,
+            opts.inner_iters,
+        );
         matvecs += sol.iterations;
         let mut t = sol.x;
         project(&mut t, &qt);
@@ -1255,7 +1428,11 @@ where
     }
     // order by distance to the target
     let mut order: Vec<usize> = (0..q.len()).collect();
-    order.sort_by(|&a, &b| (evals[a] - target).abs().total_cmp(&(evals[b] - target).abs()));
+    order.sort_by(|&a, &b| {
+        (evals[a] - target)
+            .abs()
+            .total_cmp(&(evals[b] - target).abs())
+    });
     let converged = q.len() >= k;
     order.truncate(k);
     Ok(EigsResult {
@@ -1271,7 +1448,10 @@ where
 
 // ------------------------------------------- non-symmetric Jacobi-Davidson
 
-fn proj_c(x: &mut [C], qs: &[Vec<C>]) {
+fn proj_c(
+    x: &mut [C],
+    qs: &[Vec<C>],
+) {
     for _ in 0..2 {
         for p in qs {
             let c = cdot(p, x);
@@ -1306,7 +1486,10 @@ fn cholesky_c(h: &[Vec<C>]) -> Option<Vec<Vec<C>>> {
 }
 
 /// Solves `L y = b` for lower triangular `L`.
-fn forward_c(l: &[Vec<C>], b: &[C]) -> Vec<C> {
+fn forward_c(
+    l: &[Vec<C>],
+    b: &[C],
+) -> Vec<C> {
     let m = b.len();
     let mut y = b.to_vec();
     for i in 0..m {
@@ -1320,7 +1503,10 @@ fn forward_c(l: &[Vec<C>], b: &[C]) -> Vec<C> {
 }
 
 /// Solves `L^H x = b` for lower triangular `L`.
-fn backward_h_c(l: &[Vec<C>], b: &[C]) -> Vec<C> {
+fn backward_h_c(
+    l: &[Vec<C>],
+    b: &[C],
+) -> Vec<C> {
     let m = b.len();
     let mut x = b.to_vec();
     for i in (0..m).rev() {
@@ -1335,7 +1521,10 @@ fn backward_h_c(l: &[Vec<C>], b: &[C]) -> Vec<C> {
 
 /// Unit eigenvector `y` of the leading `(i + 1)` block of an upper triangular
 /// `t` for the eigenvalue `t[i][i]`.
-fn triangular_eigvec(t: &[Vec<C>], i: usize) -> Vec<C> {
+fn triangular_eigvec(
+    t: &[Vec<C>],
+    i: usize,
+) -> Vec<C> {
     let mut y = vec![C::new(0.0, 0.0); i + 1];
     y[i] = C::new(1.0, 0.0);
     let lam = t[i][i];
@@ -1429,7 +1618,10 @@ fn gmres_c(
 }
 
 /// Gram-Schmidt on the columns of `v` applying the same combinations to `w`.
-fn orthonormalise_pair_c(v: &mut Vec<Vec<C>>, w: &mut Vec<Vec<C>>) {
+fn orthonormalise_pair_c(
+    v: &mut Vec<Vec<C>>,
+    w: &mut Vec<Vec<C>>,
+) {
     let mut keep_v: Vec<Vec<C>> = Vec::new();
     let mut keep_w: Vec<Vec<C>> = Vec::new();
     for (mut x, mut y) in v.drain(..).zip(w.drain(..)) {
@@ -1461,7 +1653,10 @@ fn orthonormalise_pair_c(v: &mut Vec<Vec<C>>, w: &mut Vec<Vec<C>>) {
 }
 
 /// Gaussian elimination with partial pivoting for a small complex system.
-fn csolve_small(a: &[Vec<C>], b: &[C]) -> Option<Vec<C>> {
+fn csolve_small(
+    a: &[Vec<C>],
+    b: &[C],
+) -> Option<Vec<C>> {
     let n = b.len();
     let mut a: Vec<Vec<C>> = a.to_vec();
     let mut b = b.to_vec();
@@ -1495,7 +1690,12 @@ fn csolve_small(a: &[Vec<C>], b: &[C]) -> Option<Vec<C>> {
 
 /// Harmonic (or standard) Ritz candidates of the search space: coefficient
 /// vectors `c` (so that `u = V c`) of the `count` best pairs, best first.
-fn jd_candidates(v: &[Vec<C>], w: &[Vec<C>], harmonic: bool, count: usize) -> Result<Vec<Vec<C>>, EigsError> {
+fn jd_candidates(
+    v: &[Vec<C>],
+    w: &[Vec<C>],
+    harmonic: bool,
+    count: usize,
+) -> Result<Vec<Vec<C>>, EigsError> {
     let zero = C::new(0.0, 0.0);
     let m = v.len();
     let ncand = count.min(m);
@@ -1536,12 +1736,16 @@ fn jd_candidates(v: &[Vec<C>], w: &[Vec<C>], harmonic: bool, count: usize) -> Re
             }
             if let Some((mut t, mut u)) = complex_schur(&mm) {
                 reorder_schur(&mut t, &mut u, ncand, &|z: C| -z.norm());
-                return Ok((0..ncand).map(|i| backward_h_c(&l, &lift(&t, &u, i))).collect());
+                return Ok((0..ncand)
+                    .map(|i| backward_h_c(&l, &lift(&t, &u, i)))
+                    .collect());
             }
         }
     }
     // standard Rayleigh-Ritz: V^H (A - tau) V = V^H W
-    let hm: Vec<Vec<C>> = (0..m).map(|i| (0..m).map(|j| cdot(&v[i], &w[j])).collect()).collect();
+    let hm: Vec<Vec<C>> = (0..m)
+        .map(|i| (0..m).map(|j| cdot(&v[i], &w[j])).collect())
+        .collect();
     let (mut t, mut u) = complex_schur(&hm).ok_or(EigsError::Dense)?;
     reorder_schur(&mut t, &mut u, ncand, &|z: C| z.norm());
     Ok((0..ncand).map(|i| lift(&t, &u, i)).collect())
@@ -1646,7 +1850,11 @@ where
             *e /= un;
         }
         let theta = tau + cdot(&u, &wu);
-        let r: Vec<C> = wu.iter().zip(&u).map(|(a, b)| a - (theta - tau) * b).collect();
+        let r: Vec<C> = wu
+            .iter()
+            .zip(&u)
+            .map(|(a, b)| a - (theta - tau) * b)
+            .collect();
         let rn = cnrm(&r);
         if q.len() >= k {
             let mut ds: Vec<f64> = (0..q.len()).map(|i| (rmat[i][i] - tau).norm()).collect();
@@ -1716,8 +1924,9 @@ where
             |pc| {
                 let kq: Vec<Vec<C>> = qt.iter().map(|x| real_pc(pc, x)).collect();
                 let nq = qt.len();
-                let sm: Vec<Vec<C>> =
-                    (0..nq).map(|i| (0..nq).map(|j| cdot(&qt[i], &kq[j])).collect()).collect();
+                let sm: Vec<Vec<C>> = (0..nq)
+                    .map(|i| (0..nq).map(|j| cdot(&qt[i], &kq[j])).collect())
+                    .collect();
                 (kq, Some(sm))
             },
         );
@@ -1741,7 +1950,13 @@ where
         };
         let mut rhs: Vec<C> = r.iter().map(|e| -e).collect();
         proj_c(&mut rhs, &qt);
-        let mut t = gmres_c(&proj_op, &precond_apply, &rhs, opts.inner_iters, opts.inner_tol);
+        let mut t = gmres_c(
+            &proj_op,
+            &precond_apply,
+            &rhs,
+            opts.inner_iters,
+            opts.inner_tol,
+        );
         matvecs += opts.inner_iters;
         proj_c(&mut t, &qt);
         proj_c(&mut t, &v);
@@ -1779,7 +1994,11 @@ where
     // eigenpairs from the partial Schur form A Q = Q R
     let kq = q.len();
     let mut order: Vec<usize> = (0..kq).collect();
-    order.sort_by(|&a, &b| (rmat[a][a] - tau).norm().total_cmp(&(rmat[b][b] - tau).norm()));
+    order.sort_by(|&a, &b| {
+        (rmat[a][a] - tau)
+            .norm()
+            .total_cmp(&(rmat[b][b] - tau).norm())
+    });
     order.truncate(k);
     let mut out = EigsResult {
         values: Vec::new(),
@@ -1799,17 +2018,553 @@ where
             }
         }
         let xn = cnrm(&x);
-        let big = x.iter().copied().max_by(|p, r| p.norm().total_cmp(&r.norm())).unwrap_or(zero);
-        let phase = if big.norm() == 0.0 { C::new(1.0, 0.0) } else { big.conj() / big.norm() };
+        let big = x
+            .iter()
+            .copied()
+            .max_by(|p, r| p.norm().total_cmp(&r.norm()))
+            .unwrap_or(zero);
+        let phase = if big.norm() == 0.0 {
+            C::new(1.0, 0.0)
+        } else {
+            big.conj() / big.norm()
+        };
         let xs: Vec<C> = x.iter().map(|e| e * phase / xn).collect();
         let lam = rmat[i][i];
         let mut mv = 0usize;
         let ax = a_plain(&xs, &mut mv);
-        let res: f64 = ax.iter().zip(&xs).map(|(a, b)| (a - lam * b).norm_sqr()).sum::<f64>().sqrt();
+        let res: f64 = ax
+            .iter()
+            .zip(&xs)
+            .map(|(a, b)| (a - lam * b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
         out.values.push((lam.re, lam.im));
         out.vectors_re.push(xs.iter().map(|e| e.re).collect());
         out.vectors_im.push(xs.iter().map(|e| e.im).collect());
         out.residuals.push(res);
+    }
+    Ok(out)
+}
+
+// ------------------------------------------------- two-sided Jacobi-Davidson
+
+/// Result of [`eigs_jd_two_sided`]: eigenvalues with right and left
+/// eigenvectors and the condition numbers read off their angle.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TwoSidedResult {
+    /// Eigenvalues `(re, im)`, nearest to the target first.
+    pub values: Vec<(f64, f64)>,
+    /// Real parts of the right eigenvectors `A u = lambda u` (unit 2-norm).
+    pub right_re: Vec<Vec<f64>>,
+    /// Imaginary parts of the right eigenvectors.
+    pub right_im: Vec<Vec<f64>>,
+    /// Real parts of the left eigenvectors `w^H A = lambda w^H` (unit 2-norm,
+    /// phase chosen so that `w^H u > 0`).
+    pub left_re: Vec<Vec<f64>>,
+    /// Imaginary parts of the left eigenvectors.
+    pub left_im: Vec<Vec<f64>>,
+    /// True residuals `|A u - lambda u|`.
+    pub right_residuals: Vec<f64>,
+    /// True residuals `|A^T w - conj(lambda) w|` (for a real operator).
+    pub left_residuals: Vec<f64>,
+    /// Eigenvalue condition numbers `1 / |w^H u|` of the unit vectors: the
+    /// first-order sensitivity of the eigenvalue to a perturbation of `A`.
+    pub condition: Vec<f64>,
+    /// Whether `k` pairs were locked.
+    pub converged: bool,
+    /// Outer iterations.
+    pub iterations: usize,
+    /// Operator applications (of `A` and `A^T` together).
+    pub matvecs: usize,
+}
+
+/// Oblique projector `x - Q D^{-1} (P^H x)` with `D = P^H Q`.
+fn oblique(
+    x: &[C],
+    q: &[Vec<C>],
+    p: &[Vec<C>],
+    d: &[Vec<C>],
+) -> Vec<C> {
+    let mut out = x.to_vec();
+    if q.is_empty() {
+        return out;
+    }
+    let rhs: Vec<C> = p.iter().map(|pi| cdot(pi, x)).collect();
+    if let Some(c) = csolve_small(d, &rhs) {
+        for (ci, qi) in c.iter().zip(q) {
+            for (a, b) in out.iter_mut().zip(qi) {
+                *a -= ci * b;
+            }
+        }
+    }
+    out
+}
+
+/// The Gram matrix `P^H Q`.
+fn gram_pq(
+    p: &[Vec<C>],
+    q: &[Vec<C>],
+) -> Vec<Vec<C>> {
+    p.iter()
+        .map(|pi| q.iter().map(|qj| cdot(pi, qj)).collect())
+        .collect()
+}
+
+/// The conjugate transpose of a small matrix.
+fn adjoint_small(a: &[Vec<C>]) -> Vec<Vec<C>> {
+    let rows = a.len();
+    let cols = a.first().map_or(0, Vec::len);
+    (0..cols)
+        .map(|j| (0..rows).map(|i| a[i][j].conj()).collect())
+        .collect()
+}
+
+/// The Petrov-Galerkin data of the current search spaces.
+struct PetrovData {
+    /// Eigenvalue indices of the small matrix, nearest to zero first.
+    order: Vec<usize>,
+    /// Schur form and vectors of `G = S^{-1} H`.
+    t: Vec<Vec<C>>,
+    u: Vec<Vec<C>>,
+    /// Matrix whose columns are the right eigenvectors of `G`.
+    y_mat: Vec<Vec<C>>,
+    /// `S = W^H V`.
+    s_mat: Vec<Vec<C>>,
+}
+
+impl PetrovData {
+    /// Right coefficient vector `y` of the eigenvalue `idx`.
+    fn right(
+        &self,
+        idx: usize,
+    ) -> Vec<C> {
+        let yy = triangular_eigvec(&self.t, idx);
+        let m = self.u.len();
+        (0..m)
+            .map(|r| (0..yy.len()).map(|j| self.u[r][j] * yy[j]).sum::<C>())
+            .collect()
+    }
+
+    /// Left coefficient vector `z` of the eigenvalue `idx` (`z^H H = theta z^H S`).
+    fn left(
+        &self,
+        idx: usize,
+    ) -> Option<Vec<C>> {
+        let m = self.u.len();
+        let mut e = vec![C::new(0.0, 0.0); m];
+        e[idx] = C::new(1.0, 0.0);
+        let zeta = csolve_small(&adjoint_small(&self.y_mat), &e)?;
+        csolve_small(&adjoint_small(&self.s_mat), &zeta)
+    }
+}
+
+/// Two-sided Jacobi-Davidson for the `k` eigenvalues of a general real
+/// operator nearest to the (complex) `target`, with **left and right**
+/// eigenvectors.
+///
+/// Two search spaces `V` (right) and `W` (left), each orthonormal, are
+/// expanded together. The projected pencil `(W^H (A - tau) V, W^H V)` gives
+/// Petrov-Galerkin pairs: the Ritz value `theta`, the right Ritz vector
+/// `u = V y` with residual `r = (A - tau - theta) u` orthogonal to `W`, and the
+/// left Ritz vector `w = W z` with residual `s = (A - tau - theta)^H w`
+/// orthogonal to `V`; the left vectors of the small pencil come from the
+/// inverse of its right-eigenvector matrix, so the *two-sided Rayleigh
+/// quotient* `theta = w^H A u / w^H u` is stationary (its error is quadratic in
+/// the residuals, unlike the one-sided quotient for a non-normal `A`). The two
+/// oblique correction equations
+/// `(I - u w^H / w^H u)(A - theta)(I - u w^H / w^H u) t = -r` and the adjoint
+/// one for `s` are solved by GMRES. Converged pairs are deflated *obliquely*:
+/// locked right vectors `Q` and left vectors `P` (scaled so that
+/// `p_j^H q_j = 1`, mutually biorthogonal for distinct eigenvalues) define the
+/// projector `I - Q (P^H Q)^{-1} P^H` that keeps both spaces away from them.
+///
+/// `apply` is `x -> A x`, `apply_t` is `x -> A^T x` (the adjoint of the real
+/// operator). A pair is accepted when both residuals are below
+/// `opts.tol * max(|lambda|, 1)`. The standard (not harmonic) extraction is
+/// used, so `target` should lie near the wanted eigenvalues.
+///
+/// # Errors
+/// [`EigsError::Invalid`] for `k == 0` or `k > n`; [`EigsError::Dense`] if a
+/// projected problem fails.
+#[allow(clippy::too_many_lines, clippy::similar_names)]
+pub fn eigs_jd_two_sided<A, AT>(
+    apply: A,
+    apply_t: AT,
+    n: usize,
+    k: usize,
+    target: (f64, f64),
+    opts: &JdOptions,
+) -> Result<TwoSidedResult, EigsError>
+where
+    A: Fn(&[f64], &mut [f64]),
+    AT: Fn(&[f64], &mut [f64]),
+{
+    if k == 0 || k > n {
+        return Err(EigsError::Invalid);
+    }
+    let zero = C::new(0.0, 0.0);
+    let tau = C::new(target.0, target.1);
+    let max_dim = opts.max_dim.max(opts.min_dim + 2).min(n);
+    let min_dim = opts.min_dim.min(max_dim - 1).max(1);
+    let mut rng = Rng::new(opts.seed);
+    let mut matvecs = 0_usize;
+    let run_a = |x: &[C], mv: &mut usize| -> Vec<C> {
+        let mut out = vec![zero; n];
+        let (mut re, mut im) = (vec![0.0; n], vec![0.0; n]);
+        apply_complex(&apply, x, &mut out, &mut re, &mut im);
+        *mv += 1;
+        out
+    };
+    let run_t = |x: &[C], mv: &mut usize| -> Vec<C> {
+        let mut out = vec![zero; n];
+        let (mut re, mut im) = (vec![0.0; n], vec![0.0; n]);
+        apply_complex(&apply_t, x, &mut out, &mut re, &mut im);
+        *mv += 1;
+        out
+    };
+    // locked right (q) / left (p) vectors, scaled so that p_j^H q_j = 1
+    let mut q: Vec<Vec<C>> = Vec::new();
+    let mut p: Vec<Vec<C>> = Vec::new();
+    let mut lam: Vec<C> = Vec::new();
+    let mut unit_pairs: Vec<(Vec<C>, Vec<C>)> = Vec::new();
+    let deflate_r =
+        |x: &[C], q: &[Vec<C>], p: &[Vec<C>]| -> Vec<C> { oblique(x, q, p, &gram_pq(p, q)) };
+    let deflate_l = |x: &[C], q: &[Vec<C>], p: &[Vec<C>]| -> Vec<C> {
+        oblique(x, p, q, &adjoint_small(&gram_pq(p, q)))
+    };
+    // (A - tau) x with the oblique deflation applied to the result
+    let op_r = |x: &[C], q: &[Vec<C>], p: &[Vec<C>], mv: &mut usize| -> Vec<C> {
+        let mut y = run_a(x, mv);
+        for (a, b) in y.iter_mut().zip(x) {
+            *a -= tau * b;
+        }
+        deflate_r(&y, q, p)
+    };
+    // (A - tau)^H x with the adjoint deflation I - P D^{-H} Q^H
+    let op_l = |x: &[C], q: &[Vec<C>], p: &[Vec<C>], mv: &mut usize| -> Vec<C> {
+        let mut y = run_t(x, mv);
+        for (a, b) in y.iter_mut().zip(x) {
+            *a -= tau.conj() * b;
+        }
+        deflate_l(&y, q, p)
+    };
+    let random_vec =
+        |rng: &mut Rng| -> Vec<C> { (0..n).map(|_| C::new(rng.normal(), 0.0)).collect() };
+    let orthonormal_against = |x: &mut Vec<C>, basis: &[Vec<C>]| -> bool {
+        for _ in 0..2 {
+            for b in basis {
+                let c = cdot(b, x);
+                for (a, bb) in x.iter_mut().zip(b) {
+                    *a -= c * bb;
+                }
+            }
+        }
+        let nx = cnrm(x);
+        if nx <= 1e-10 || nx.is_nan() {
+            return false;
+        }
+        for e in x.iter_mut() {
+            *e /= nx;
+        }
+        true
+    };
+    let mut v: Vec<Vec<C>> = Vec::new();
+    let mut w: Vec<Vec<C>> = Vec::new();
+    let mut av: Vec<Vec<C>> = Vec::new();
+    let mut aw: Vec<Vec<C>> = Vec::new();
+    {
+        let mut x = random_vec(&mut rng);
+        let mut y = random_vec(&mut rng);
+        let _ = orthonormal_against(&mut x, &[]);
+        let _ = orthonormal_against(&mut y, &[]);
+        av.push(op_r(&x, &q, &p, &mut matvecs));
+        aw.push(op_l(&y, &q, &p, &mut matvecs));
+        v.push(x);
+        w.push(y);
+    }
+    // combination `sum_i c_i b_i` of basis vectors
+    let combine = |c: &[C], basis: &[Vec<C>]| -> Vec<C> {
+        let mut out = vec![zero; n];
+        for (ci, b) in c.iter().zip(basis) {
+            for (a, bb) in out.iter_mut().zip(b) {
+                *a += ci * bb;
+            }
+        }
+        out
+    };
+    let mut iter = 0_usize;
+    let mut verify = 0_usize;
+    while iter < opts.max_iter {
+        iter += 1;
+        if q.len() >= k {
+            verify += 1;
+            if verify > 150 {
+                break;
+            }
+        }
+        let m = v.len();
+        let s_mat: Vec<Vec<C>> = (0..m)
+            .map(|i| (0..m).map(|j| cdot(&w[i], &v[j])).collect())
+            .collect();
+        let h_mat: Vec<Vec<C>> = (0..m)
+            .map(|i| (0..m).map(|j| cdot(&w[i], &av[j])).collect())
+            .collect();
+        // G = S^{-1} H, column by column
+        let mut g_cols: Vec<Vec<C>> = Vec::with_capacity(m);
+        for j in 0..m {
+            let col: Vec<C> = (0..m).map(|i| h_mat[i][j]).collect();
+            if let Some(c) = csolve_small(&s_mat, &col) {
+                g_cols.push(c);
+            } else {
+                break;
+            }
+        }
+        let petrov = if g_cols.len() == m {
+            let g: Vec<Vec<C>> = (0..m)
+                .map(|i| (0..m).map(|j| g_cols[j][i]).collect())
+                .collect();
+            let (t, uu) = complex_schur(&g).ok_or(EigsError::Dense)?;
+            let mut order: Vec<usize> = (0..m).collect();
+            order.sort_by(|&a, &b| t[a][a].norm().total_cmp(&t[b][b].norm()));
+            let mut data = PetrovData {
+                order,
+                t,
+                u: uu,
+                y_mat: Vec::new(),
+                s_mat,
+            };
+            let cols: Vec<Vec<C>> = (0..m).map(|i| data.right(i)).collect();
+            data.y_mat = (0..m)
+                .map(|i| (0..m).map(|j| cols[j][i]).collect())
+                .collect();
+            Some(data)
+        } else {
+            None
+        };
+        // the best Ritz triplet, when the small problem is regular
+        let best = petrov.as_ref().and_then(|d| {
+            let idx = d.order[0];
+            let y = d.right(idx);
+            let z = d.left(idx)?;
+            let theta_p = d.t[idx][idx];
+            let (mut u, mut au) = (combine(&y, &v), combine(&y, &av));
+            let (mut wv, mut aw_z) = (combine(&z, &w), combine(&z, &aw));
+            let (nu, nw) = (cnrm(&u), cnrm(&wv));
+            if nu == 0.0 || nw == 0.0 || nu.is_nan() || nw.is_nan() {
+                return None;
+            }
+            for e in u.iter_mut().chain(au.iter_mut()) {
+                *e /= nu;
+            }
+            for e in wv.iter_mut().chain(aw_z.iter_mut()) {
+                *e /= nw;
+            }
+            let ru: Vec<C> = au.iter().zip(&u).map(|(a, b)| a - theta_p * b).collect();
+            let rl: Vec<C> = aw_z
+                .iter()
+                .zip(&wv)
+                .map(|(a, b)| a - theta_p.conj() * b)
+                .collect();
+            Some((theta_p, u, wv, ru, rl))
+        });
+        let (Some(petrov), Some((theta_p, u, wv, ru, rl))) = (petrov, best) else {
+            // singular small pencil: add random directions
+            let mut x = deflate_r(&random_vec(&mut rng), &q, &p);
+            let mut y = deflate_l(&random_vec(&mut rng), &q, &p);
+            if orthonormal_against(&mut x, &v) && orthonormal_against(&mut y, &w) {
+                av.push(op_r(&x, &q, &p, &mut matvecs));
+                aw.push(op_l(&y, &q, &p, &mut matvecs));
+                v.push(x);
+                w.push(y);
+            }
+            continue;
+        };
+        let theta = tau + theta_p;
+        let (rn, sn) = (cnrm(&ru), cnrm(&rl));
+        if q.len() >= k {
+            let mut ds: Vec<f64> = lam.iter().map(|l| (l - tau).norm()).collect();
+            ds.sort_by(f64::total_cmp);
+            if theta_p.norm() >= ds[k - 1] {
+                break;
+            }
+        }
+        // restart bases from the Ritz pairs `skip..skip + count` of the current spaces
+        let restart = |petrov: &PetrovData,
+                       skip: usize,
+                       count: usize,
+                       q: &[Vec<C>],
+                       p: &[Vec<C>],
+                       v: &[Vec<C>],
+                       w: &[Vec<C>]| {
+            let mut nv: Vec<Vec<C>> = Vec::new();
+            let mut nw: Vec<Vec<C>> = Vec::new();
+            for &idx in petrov.order.iter().skip(skip).take(count) {
+                let Some(z) = petrov.left(idx) else { continue };
+                let mut x = deflate_r(&combine(&petrov.right(idx), v), q, p);
+                let mut yv = deflate_l(&combine(&z, w), q, p);
+                if orthonormal_against(&mut x, &nv) && orthonormal_against(&mut yv, &nw) {
+                    nv.push(x);
+                    nw.push(yv);
+                }
+            }
+            (nv, nw)
+        };
+        let bound = opts.tol * theta.norm().max(1.0);
+        let rho = cdot(&wv, &u);
+        if rn <= bound && sn <= bound && rho.norm() > 1e-12 {
+            // lock: scale the left vector so that p^H q = 1
+            q.push(u.clone());
+            p.push(wv.iter().map(|e| e / rho.conj()).collect());
+            lam.push(theta);
+            unit_pairs.push((u.clone(), wv.clone()));
+            let (mut nv, mut nw) = restart(&petrov, 1, min_dim, &q, &p, &v, &w);
+            if nv.is_empty() {
+                let mut x = deflate_r(&random_vec(&mut rng), &q, &p);
+                let mut yv = deflate_l(&random_vec(&mut rng), &q, &p);
+                let _ = orthonormal_against(&mut x, &[]);
+                let _ = orthonormal_against(&mut yv, &[]);
+                nv.push(x);
+                nw.push(yv);
+            }
+            av = nv.iter().map(|x| op_r(x, &q, &p, &mut matvecs)).collect();
+            aw = nw.iter().map(|x| op_l(x, &q, &p, &mut matvecs)).collect();
+            v = nv;
+            w = nw;
+            continue;
+        }
+        // correction equations with the transient pair added to the deflation
+        let mut qt = q.clone();
+        let mut pt = p.clone();
+        qt.push(u.clone());
+        pt.push(if rho.norm() > 1e-12 {
+            wv.iter().map(|e| e / rho.conj()).collect()
+        } else {
+            wv.clone()
+        });
+        let d_t = gram_pq(&pt, &qt);
+        let d_th = adjoint_small(&d_t);
+        let pi_r = |x: &[C]| oblique(x, &qt, &pt, &d_t);
+        let pi_l = |x: &[C]| oblique(x, &pt, &qt, &d_th);
+        let right_op = |x: &[C]| -> Vec<C> {
+            let px = pi_r(x);
+            let mut mv = 0_usize;
+            let mut y = run_a(&px, &mut mv);
+            for (a, b) in y.iter_mut().zip(&px) {
+                *a -= theta * b;
+            }
+            pi_r(&y)
+        };
+        let left_op = |x: &[C]| -> Vec<C> {
+            let px = pi_l(x);
+            let mut mv = 0_usize;
+            let mut y = run_t(&px, &mut mv);
+            for (a, b) in y.iter_mut().zip(&px) {
+                *a -= theta.conj() * b;
+            }
+            pi_l(&y)
+        };
+        let ident = |x: &[C]| -> Vec<C> { x.to_vec() };
+        let rhs_r = pi_r(&ru.iter().map(|e| -e).collect::<Vec<_>>());
+        let rhs_l = pi_l(&rl.iter().map(|e| -e).collect::<Vec<_>>());
+        let mut t_r = gmres_c(&right_op, &ident, &rhs_r, opts.inner_iters, opts.inner_tol);
+        let mut t_l = gmres_c(&left_op, &ident, &rhs_l, opts.inner_iters, opts.inner_tol);
+        matvecs += 2 * opts.inner_iters;
+        t_r = deflate_r(&pi_r(&t_r), &q, &p);
+        t_l = deflate_l(&pi_l(&t_l), &q, &p);
+        let ok_r = orthonormal_against(&mut t_r, &v);
+        let ok_l = orthonormal_against(&mut t_l, &w);
+        if !(ok_r && ok_l) {
+            let mut x = deflate_r(&random_vec(&mut rng), &q, &p);
+            let mut y = deflate_l(&random_vec(&mut rng), &q, &p);
+            if orthonormal_against(&mut x, &v) && orthonormal_against(&mut y, &w) {
+                t_r = x;
+                t_l = y;
+            } else {
+                continue;
+            }
+        }
+        av.push(op_r(&t_r, &q, &p, &mut matvecs));
+        aw.push(op_l(&t_l, &q, &p, &mut matvecs));
+        v.push(t_r);
+        w.push(t_l);
+        if v.len() > max_dim {
+            // thick restart onto the best Ritz pairs plus the newest directions
+            let (mut nv, mut nw) = restart(&petrov, 0, min_dim, &q, &p, &v, &w);
+            let (mut x, mut yv) = (v[v.len() - 1].clone(), w[w.len() - 1].clone());
+            if orthonormal_against(&mut x, &nv) && orthonormal_against(&mut yv, &nw) {
+                nv.push(x);
+                nw.push(yv);
+            }
+            if !nv.is_empty() {
+                av = nv.iter().map(|x| op_r(x, &q, &p, &mut matvecs)).collect();
+                aw = nw.iter().map(|x| op_l(x, &q, &p, &mut matvecs)).collect();
+                v = nv;
+                w = nw;
+            }
+        }
+    }
+    // output: nearest first, true residuals
+    let kq = q.len();
+    let mut order: Vec<usize> = (0..kq).collect();
+    order.sort_by(|&a, &b| (lam[a] - tau).norm().total_cmp(&(lam[b] - tau).norm()));
+    order.truncate(k);
+    let mut out = TwoSidedResult {
+        values: Vec::new(),
+        right_re: Vec::new(),
+        right_im: Vec::new(),
+        left_re: Vec::new(),
+        left_im: Vec::new(),
+        right_residuals: Vec::new(),
+        left_residuals: Vec::new(),
+        condition: Vec::new(),
+        converged: kq >= k,
+        iterations: iter,
+        matvecs,
+    };
+    for &i in &order {
+        let (u, wv) = &unit_pairs[i];
+        let big = u
+            .iter()
+            .copied()
+            .max_by(|a, b| a.norm().total_cmp(&b.norm()))
+            .unwrap_or(zero);
+        let phase = if big.norm() == 0.0 {
+            C::new(1.0, 0.0)
+        } else {
+            big.conj() / big.norm()
+        };
+        let us: Vec<C> = u.iter().map(|e| e * phase).collect();
+        let c = cdot(wv, &us);
+        let wphase = if c.norm() == 0.0 {
+            C::new(1.0, 0.0)
+        } else {
+            c / c.norm()
+        };
+        let ws: Vec<C> = wv.iter().map(|e| e * wphase).collect();
+        let l = lam[i];
+        let mut mv = 0_usize;
+        let au = run_a(&us, &mut mv);
+        let aws = run_t(&ws, &mut mv);
+        let res_r = au
+            .iter()
+            .zip(&us)
+            .map(|(a, b)| (a - l * b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        let res_l = aws
+            .iter()
+            .zip(&ws)
+            .map(|(a, b)| (a - l.conj() * b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        out.values.push((l.re, l.im));
+        out.right_re.push(us.iter().map(|e| e.re).collect());
+        out.right_im.push(us.iter().map(|e| e.im).collect());
+        out.left_re.push(ws.iter().map(|e| e.re).collect());
+        out.left_im.push(ws.iter().map(|e| e.im).collect());
+        out.right_residuals.push(res_r);
+        out.left_residuals.push(res_l);
+        out.condition.push(1.0 / cdot(&ws, &us).norm().max(1e-300));
     }
     Ok(out)
 }

@@ -3,7 +3,10 @@
 use num_complex::Complex;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::transforms::{fft, fft_slice, ifft, ifft_slice};
+use rssn::kernels::transforms::fft;
+use rssn::kernels::transforms::fft_slice;
+use rssn::kernels::transforms::ifft;
+use rssn::kernels::transforms::ifft_slice;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -13,7 +16,10 @@ fn cfg() -> ProptestConfig {
     }
 }
 
-fn close(a: Complex<f64>, b: Complex<f64>) -> bool {
+fn close(
+    a: Complex<f64>,
+    b: Complex<f64>,
+) -> bool {
     (a - b).norm() < 1e-9
 }
 
@@ -27,7 +33,12 @@ fn fft_known_spectrum() {
     ];
     fft(&mut data);
     // [2, 1 - i, 0, 1 + i]
-    let want = [Complex::new(2.0, 0.0), Complex::new(1.0, -1.0), Complex::new(0.0, 0.0), Complex::new(1.0, 1.0)];
+    let want = [
+        Complex::new(2.0, 0.0),
+        Complex::new(1.0, -1.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 1.0),
+    ];
     for (g, w) in data.iter().zip(want) {
         assert!(close(*g, w), "{g} vs {w}");
     }
@@ -50,7 +61,9 @@ fn ifft_known_signal() {
 
 #[test]
 fn round_trip() {
-    let mut data: Vec<Complex<f64>> = (1..=4).map(|i| Complex::new(2.0 * i as f64 - 1.0, 2.0 * i as f64)).collect();
+    let mut data: Vec<Complex<f64>> = (1..=4)
+        .map(|i| Complex::new(2.0 * i as f64 - 1.0, 2.0 * i as f64))
+        .collect();
     let original = data.clone();
     fft(&mut data);
     ifft(&mut data);
@@ -70,7 +83,9 @@ fn non_power_of_two_input_is_zero_padded() {
 
 #[test]
 fn slice_variants_match_vec_variants() {
-    let src: Vec<Complex<f64>> = (0..8).map(|i| Complex::new(i as f64, (i * i) as f64 * 0.1)).collect();
+    let src: Vec<Complex<f64>> = (0..8)
+        .map(|i| Complex::new(i as f64, (i * i) as f64 * 0.1))
+        .collect();
     let mut a = src.clone();
     let mut b = src.clone();
     fft(&mut a);

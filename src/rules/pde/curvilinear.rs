@@ -43,13 +43,13 @@ use super::util::div;
 use super::util::is_zero_number;
 use super::util::sqrt;
 use crate::graph::Cx;
-use crate::graph::op::core;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::calculus::derivative;
 use crate::rules::complex::build::add;
-use crate::rules::complex::build::neg;
 use crate::rules::complex::build::mul;
+use crate::rules::complex::build::neg;
 use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
@@ -69,7 +69,9 @@ fn name_of(
     cx: &Cx<'_>,
     node: NodeId,
 ) -> Option<String> {
-    cx.graph.symbol_of(node).map(|s| cx.graph.interner().symbol_name(s).to_owned())
+    cx.graph
+        .symbol_of(node)
+        .map(|s| cx.graph.interner().symbol_name(s).to_owned())
 }
 
 /// Names of polar (or sole) angles and of azimuths.
@@ -84,7 +86,10 @@ fn radial_by_structure(
     candidates: &[usize],
 ) -> Option<usize> {
     for &j in candidates {
-        let (b, c1) = (p.coefficient(cx.graph, &p.unit(j, 2)), p.coefficient(cx.graph, &p.unit(j, 1)));
+        let (b, c1) = (
+            p.coefficient(cx.graph, &p.unit(j, 2)),
+            p.coefficient(cx.graph, &p.unit(j, 1)),
+        );
         if cx.is_zero(b) || cx.is_zero(c1) || !p.constant(cx.graph, b) {
             continue;
         }
@@ -109,18 +114,38 @@ fn layouts(
     p: &Problem,
     space: &[usize],
 ) -> Vec<Layout> {
-    let names: Vec<(usize, String)> = space.iter().filter_map(|&j| name_of(cx, p.vars[j]).map(|n| (j, n))).collect();
-    let find = |wanted: &[&str]| names.iter().find(|(_, n)| wanted.contains(&n.as_str())).map(|(j, _)| *j);
+    let names: Vec<(usize, String)> = space
+        .iter()
+        .filter_map(|&j| name_of(cx, p.vars[j]).map(|n| (j, n)))
+        .collect();
+    let find = |wanted: &[&str]| {
+        names
+            .iter()
+            .find(|(_, n)| wanted.contains(&n.as_str()))
+            .map(|(j, _)| *j)
+    };
     let z = find(&["z"]);
     let r = find(&["r", "rho"]).or_else(|| {
         let candidates: Vec<usize> = space.iter().copied().filter(|&j| Some(j) != z).collect();
-        if candidates.len() == 1 { radial_by_structure(cx, p, &candidates) } else { None }
+        if candidates.len() == 1 {
+            radial_by_structure(cx, p, &candidates)
+        } else {
+            None
+        }
     });
     let Some(r) = r else {
         return Vec::new();
     };
-    let others: Vec<usize> = space.iter().copied().filter(|&j| j != r && Some(j) != z).collect();
-    let is = |j: usize, list: &[&str]| names.iter().any(|(k, n)| *k == j && list.contains(&n.as_str()));
+    let others: Vec<usize> = space
+        .iter()
+        .copied()
+        .filter(|&j| j != r && Some(j) != z)
+        .collect();
+    let is = |j: usize, list: &[&str]| {
+        names
+            .iter()
+            .any(|(k, n)| *k == j && list.contains(&n.as_str()))
+    };
     let (theta, phi) = match others.as_slice() {
         | [] => (None, None),
         | [j] if is(*j, &POLAR_NAMES) || is(*j, &AZIMUTH_NAMES) => (Some(*j), None),
@@ -136,10 +161,22 @@ fn layouts(
     };
     let mut out = Vec::new();
     if phi.is_none() {
-        out.push(Layout { r, theta, phi, z, sphere: false });
+        out.push(Layout {
+            r,
+            theta,
+            phi,
+            z,
+            sphere: false,
+        });
     }
     if z.is_none() {
-        out.push(Layout { r, theta, phi, z, sphere: true });
+        out.push(Layout {
+            r,
+            theta,
+            phi,
+            z,
+            sphere: true,
+        });
     }
     out
 }
@@ -226,7 +263,9 @@ pub(super) fn solve(
         return None;
     }
     let time_index = evolution_time(cx, p);
-    let space: Vec<usize> = (0..p.dimension()).filter(|&j| Some(j) != time_index).collect();
+    let space: Vec<usize> = (0..p.dimension())
+        .filter(|&j| Some(j) != time_index)
+        .collect();
     for layout in layouts(cx, p, &space) {
         let Some((b, a0)) = laplacian(cx, p, layout, time_index) else {
             continue;
@@ -240,8 +279,15 @@ pub(super) fn solve(
             return Some(solution);
         }
         if let (Some(t_index), None) = (time_index, layout.z) {
-            let geometry = super::modal::Geometry { r: layout.r, theta: layout.theta, phi: layout.phi, sphere: layout.sphere };
-            if let Some(solution) = super::modal::solve(cx, p, conditions, geometry, t_index, (b, a0)) {
+            let geometry = super::modal::Geometry {
+                r: layout.r,
+                theta: layout.theta,
+                phi: layout.phi,
+                sphere: layout.sphere,
+            };
+            if let Some(solution) =
+                super::modal::solve(cx, p, conditions, geometry, t_index, (b, a0))
+            {
                 return Some(solution);
             }
         }
@@ -276,17 +322,27 @@ fn hankel_whole_space(
     (b, a0): (NodeId, NodeId),
 ) -> Option<NodeId> {
     let t_index = time_index?;
-    if layout.theta.is_some() || layout.phi.is_some() || layout.z.is_some() || !cx.is_zero(a0) || !p.homogeneous(cx.graph) {
+    if layout.theta.is_some()
+        || layout.phi.is_some()
+        || layout.z.is_some()
+        || !cx.is_zero(a0)
+        || !p.homogeneous(cx.graph)
+    {
         return None;
     }
     for c in &conditions.0 {
-        if c.on != t_index && !(c.on == layout.r && is_infinity(cx, c.point) && cx.is_zero(c.value)) {
+        if c.on != t_index && !(c.on == layout.r && is_infinity(cx, c.point) && cx.is_zero(c.value))
+        {
             return None;
         }
     }
     let n = p.dimension();
     let c_second = p.coefficient(cx.graph, &p.unit(t_index, 2));
-    let order = if is_zero_number(cx.graph, c_second) { 1 } else { 2 };
+    let order = if is_zero_number(cx.graph, c_second) {
+        1
+    } else {
+        2
+    };
     let c_time = p.coefficient(cx.graph, &p.unit(t_index, order));
     let diffusivity = {
         let q = div(cx, b, c_time);
@@ -296,7 +352,11 @@ fn hankel_whole_space(
     let (r, t) = (p.vars[layout.r], p.vars[t_index]);
     let zero_index = vec![0; n];
     let displacement = conditions.find(cx.graph, t_index, &zero_index, None)?;
-    let velocity = if order == 2 { conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None) } else { None };
+    let velocity = if order == 2 {
+        conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None)
+    } else {
+        None
+    };
     let expected = 1 + usize::from(velocity.is_some());
     if conditions.0.iter().filter(|c| c.on == t_index).count() != expected {
         return None;
@@ -412,7 +472,8 @@ pub(super) fn associated_values(
         }
         let (mut previous, mut current) = (pmm, first);
         for l in (m + 2)..=lmax {
-            let next = ((2 * l - 1) as f64 * x * current - (l + m - 1) as f64 * previous) / (l - m) as f64;
+            let next =
+                ((2 * l - 1) as f64 * x * current - (l + m - 1) as f64 * previous) / (l - m) as f64;
             if let Some(slot) = out.get_mut(l) {
                 *slot = next;
             }
@@ -446,7 +507,8 @@ fn numeric_sphere(
     if conditions.0.iter().any(|c| c.on != layout.r) {
         return None;
     }
-    let (far, near): (Vec<&Condition>, Vec<&Condition>) = conditions.0.iter().partition(|c| is_infinity(cx, c.point));
+    let (far, near): (Vec<&Condition>, Vec<&Condition>) =
+        conditions.0.iter().partition(|c| is_infinity(cx, c.point));
     let [boundary] = near.as_slice() else {
         return None;
     };
@@ -474,7 +536,10 @@ fn numeric_sphere(
         for k in 0..azimuthal {
             let mut env = crate::graph::Env::numeric(0.0);
             env.bind(theta_symbol, angle);
-            env.bind(phi_symbol, 2.0 * std::f64::consts::PI * k as f64 / azimuthal as f64);
+            env.bind(
+                phi_symbol,
+                2.0 * std::f64::consts::PI * k as f64 / azimuthal as f64,
+            );
             let value = cx.graph.eval(data, &env).filter(|v| v.is_finite())?;
             *table.get_mut(i)?.get_mut(k)? = value;
         }
@@ -501,8 +566,14 @@ fn numeric_sphere(
             let mm = cx.graph.int(i64::try_from(m).ok()?);
             mul(cx.graph, &[mm, phi])
         };
-        let (cos_node, sin_node) = (super::util::call(cx, "cos", &[m_phi])?, super::util::call(cx, "sin", &[m_phi])?);
-        let values: Vec<Vec<f64>> = nodes.iter().map(|&(x, _)| associated_values(x, m, DEGREE)).collect();
+        let (cos_node, sin_node) = (
+            super::util::call(cx, "cos", &[m_phi])?,
+            super::util::call(cx, "sin", &[m_phi])?,
+        );
+        let values: Vec<Vec<f64>> = nodes
+            .iter()
+            .map(|&(x, _)| associated_values(x, m, DEGREE))
+            .collect();
         for l in m..=DEGREE {
             // N_lm = 2/(2l+1) (l+m)!/(l-m)!
             let mut norm = 2.0 / (2 * l + 1) as f64;
@@ -519,9 +590,18 @@ fn numeric_sphere(
             if a.abs() < 1e-13 && b.abs() < 1e-13 {
                 continue;
             }
-            let angular = super::modes::associated_mode(cx, theta, i64::try_from(l).ok()?, i64::try_from(m).ok()?)?;
+            let angular = super::modes::associated_mode(
+                cx,
+                theta,
+                i64::try_from(l).ok()?,
+                i64::try_from(m).ok()?,
+            )?;
             let l_signed = i64::try_from(l).ok()?;
-            let radial = if exterior { powi(cx.graph, ratio, -l_signed - 1) } else { powi(cx.graph, ratio, l_signed) };
+            let radial = if exterior {
+                powi(cx.graph, ratio, -l_signed - 1)
+            } else {
+                powi(cx.graph, ratio, l_signed)
+            };
             if a.abs() >= 1e-13 {
                 let c = cx.graph.num(Number::from(a));
                 terms.push(mul(cx.graph, &[c, radial, angular, cos_node]));
@@ -540,7 +620,10 @@ fn is_infinity(
     cx: &Cx<'_>,
     node: NodeId,
 ) -> bool {
-    cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(node) == op)
+    cx.graph
+        .ops()
+        .lookup("oo")
+        .is_some_and(|op| cx.graph.op(node) == op)
 }
 
 #[allow(clippy::too_many_lines)]
@@ -555,10 +638,18 @@ fn solve_layout(
 ) -> Option<NodeId> {
     let n = p.dimension();
     // The conditions at the radii; nothing else on the angles.
-    if conditions.0.iter().any(|c| Some(c.on) == layout.theta || Some(c.on) == layout.phi) {
+    if conditions
+        .0
+        .iter()
+        .any(|c| Some(c.on) == layout.theta || Some(c.on) == layout.phi)
+    {
         return None;
     }
-    let (at_infinity, finite): (Vec<&Condition>, Vec<&Condition>) = conditions.0.iter().filter(|c| c.on == layout.r).partition(|c| is_infinity(cx, c.point));
+    let (at_infinity, finite): (Vec<&Condition>, Vec<&Condition>) = conditions
+        .0
+        .iter()
+        .filter(|c| c.on == layout.r)
+        .partition(|c| is_infinity(cx, c.point));
     if let [far] = at_infinity.as_slice() {
         return exterior(cx, p, conditions, layout, time_index, (b, a0), &finite, far);
     }
@@ -567,11 +658,26 @@ fn solve_layout(
     }
     let (inner, outer) = match finite.as_slice() {
         | [first, second] => {
-            if let Some(found) = annulus(cx, p, conditions, layout, time_index, (b, a0), [*first, *second]) {
+            if let Some(found) = annulus(
+                cx,
+                p,
+                conditions,
+                layout,
+                time_index,
+                (b, a0),
+                [*first, *second],
+            ) {
                 return Some(found);
             }
-            let (va, vb) = (super::util::sample(cx.graph, first.point, 0)?, super::util::sample(cx.graph, second.point, 0)?);
-            if va <= vb { (Some(*first), *second) } else { (Some(*second), *first) }
+            let (va, vb) = (
+                super::util::sample(cx.graph, first.point, 0)?,
+                super::util::sample(cx.graph, second.point, 0)?,
+            );
+            if va <= vb {
+                (Some(*first), *second)
+            } else {
+                (Some(*second), *first)
+            }
         },
         | [outer] => (None, *outer),
         | _ => return None,
@@ -583,28 +689,49 @@ fn solve_layout(
         | None => None,
     };
     // Harmonic functions with Dirichlet data: the closed series.
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet && cx.graph.number_of(end.p).is_some()
-        && let Some(theta) = layout.theta {
-            let r = p.vars[layout.r];
-            let found = if layout.sphere {
-                classical::laplace_ball(cx, end.value, radius, r, p.vars[theta])
-            } else {
-                classical::laplace_disk(cx, end.value, radius, r, p.vars[theta])
-            };
-            if let Some(f) = found {
-                return Some(f);
-            }
+    if inner.is_none()
+        && time_index.is_none()
+        && layout.z.is_none()
+        && layout.phi.is_none()
+        && p.homogeneous(cx.graph)
+        && is_zero_number(cx.graph, a0)
+        && end.kind == Kind::Dirichlet
+        && cx.graph.number_of(end.p).is_some()
+        && let Some(theta) = layout.theta
+    {
+        let r = p.vars[layout.r];
+        let found = if layout.sphere {
+            classical::laplace_ball(cx, end.value, radius, r, p.vars[theta])
+        } else {
+            classical::laplace_disk(cx, end.value, radius, r, p.vars[theta])
+        };
+        if let Some(f) = found {
+            return Some(f);
         }
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && !p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet
-        && let Some(found) = radial_poisson(cx, p, layout, b, end, radius) {
-            return Some(found);
-        }
+    }
+    if inner.is_none()
+        && time_index.is_none()
+        && layout.z.is_none()
+        && layout.phi.is_none()
+        && !p.homogeneous(cx.graph)
+        && is_zero_number(cx.graph, a0)
+        && end.kind == Kind::Dirichlet
+        && let Some(found) = radial_poisson(cx, p, layout, b, end, radius)
+    {
+        return Some(found);
+    }
     // Harmonic functions with Robin or Neumann data, or without axial
     // symmetry: each harmonic times its power of r.
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && p.homogeneous(cx.graph) && cx.is_zero(a0) && layout.theta.is_some()
-        && let Some(found) = harmonic_interior(cx, p, conditions, layout, (b, a0), end, radius) {
-            return Some(found);
-        }
+    if inner.is_none()
+        && time_index.is_none()
+        && layout.z.is_none()
+        && p.homogeneous(cx.graph)
+        && cx.is_zero(a0)
+        && layout.theta.is_some()
+        && let Some(found) = harmonic_interior(cx, p, conditions, layout, (b, a0), end, radius)
+    {
+        return Some(found);
+    }
     // Time structure.
     let (mut a2, mut a1) = (cx.graph.int(0), cx.graph.int(0));
     if let Some(t) = time_index {
@@ -614,25 +741,57 @@ fn solve_layout(
             return None;
         }
     }
-    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
-    let time = time_index.map(|t| Time { var: p.vars[t], order, a2, a1 });
+    let order = if is_zero_number(cx.graph, a2) {
+        u32::from(!is_zero_number(cx.graph, a1))
+    } else {
+        2
+    };
+    let time = time_index.map(|t| {
+        Time {
+            var: p.vars[t],
+            order,
+            a2,
+            a1,
+        }
+    });
     // Axes in the order azimuth, angle, radius, axis.
     let mut axes = Vec::new();
     if let Some(j) = layout.phi {
-        axes.push(Axis { var: p.vars[j], shape: Shape::Angle });
+        axes.push(Axis {
+            var: p.vars[j],
+            shape: Shape::Angle,
+        });
     }
     if let Some(j) = layout.theta {
-        axes.push(Axis { var: p.vars[j], shape: if layout.sphere { Shape::Polar { azimuth: layout.phi.is_some() } } else { Shape::Angle } });
+        axes.push(Axis {
+            var: p.vars[j],
+            shape: if layout.sphere {
+                Shape::Polar {
+                    azimuth: layout.phi.is_some(),
+                }
+            } else {
+                Shape::Angle
+            },
+        });
     }
     let radial_level = axes.len();
     axes.push(Axis {
         var: p.vars[layout.r],
-        shape: Shape::Radial { radius, inner: inner_end, end, sphere: layout.sphere, has_angle: layout.theta.is_some() },
+        shape: Shape::Radial {
+            radius,
+            inner: inner_end,
+            end,
+            sphere: layout.sphere,
+            has_angle: layout.theta.is_some(),
+        },
     });
     let z_interval = match layout.z {
         | Some(j) => {
             let iv = interval(cx, p, conditions, j)?;
-            axes.push(Axis { var: p.vars[j], shape: Shape::Interval(iv.clone()) });
+            axes.push(Axis {
+                var: p.vars[j],
+                shape: Shape::Interval(iv.clone()),
+            });
             Some((axes.len() - 1, iv))
         },
         | None => None,
@@ -646,7 +805,11 @@ fn solve_layout(
     }
     let mut items: Vec<Item> = time_items(cx, p, conditions, time_index, order, n)?;
     if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+        items.push(Item {
+            role: Role::Source,
+            h: p.source,
+            special: None,
+        });
     }
     // Boundary data at the radii: Green's identity with weight r^(d-1)
     // (opposite outward normals on the inner and the outer circle).
@@ -658,18 +821,37 @@ fn solve_layout(
         if cx.is_zero(e.value) {
             continue;
         }
-        let divisor = if e.kind == Kind::Dirichlet { e.p } else { e.q };
+        let divisor = if e.kind == Kind::Dirichlet {
+            e.p
+        } else {
+            e.q
+        };
         let sign = cx.graph.int(side);
         let scaled = mul(cx.graph, &[sign, b, e.value]);
         let scaled = div(cx, scaled, divisor);
         let scaled = cx.simplify(scaled);
         let weight = powi(cx.graph, point, if layout.sphere { 2 } else { 1 });
-        items.push(Item { role: Role::Source, h: scaled, special: Some(Special { axis: radial_level, kind: e.kind, point, weight }) });
+        items.push(Item {
+            role: Role::Source,
+            h: scaled,
+            special: Some(Special {
+                axis: radial_level,
+                kind: e.kind,
+                point,
+                weight,
+            }),
+        });
     }
     if let Some((level, iv)) = &z_interval {
         items.extend(boundary_items(cx, iv, *level, b));
     }
-    let engine = Engine { axes, time, symbol: Symbol::Laplacian { b, a0 }, face: None, exterior: None };
+    let engine = Engine {
+        axes,
+        time,
+        symbol: Symbol::Laplacian { b, a0 },
+        face: None,
+        exterior: None,
+    };
     finish(cx, p, conditions, &engine, &items, None, None)
 }
 
@@ -707,7 +889,11 @@ fn exterior(
         return None;
     }
     let laplace = cx.is_zero(a0);
-    let c_inf = if laplace { far.value } else { cx.graph.int(0) };
+    let c_inf = if laplace {
+        far.value
+    } else {
+        cx.graph.int(0)
+    };
     if !laplace && !cx.is_zero(far.value) {
         return None;
     }
@@ -723,10 +909,22 @@ fn exterior(
     };
     let mut axes = Vec::new();
     if let Some(j) = layout.phi {
-        axes.push(Axis { var: p.vars[j], shape: Shape::Angle });
+        axes.push(Axis {
+            var: p.vars[j],
+            shape: Shape::Angle,
+        });
     }
     if let Some(j) = layout.theta {
-        axes.push(Axis { var: p.vars[j], shape: if layout.sphere { Shape::Polar { azimuth: layout.phi.is_some() } } else { Shape::Angle } });
+        axes.push(Axis {
+            var: p.vars[j],
+            shape: if layout.sphere {
+                Shape::Polar {
+                    azimuth: layout.phi.is_some(),
+                }
+            } else {
+                Shape::Angle
+            },
+        });
     }
     // In a plane the bounded harmonic has the limit a₀ (the mean of the
     // data): the value given at infinity must agree with it.
@@ -744,16 +942,46 @@ fn exterior(
             },
             | None => data,
         };
-        let cleared = cx.is_zero(mean) || (0..3_u32).all(|k| super::util::sample(cx.graph, mean, k).is_some_and(|v| v.abs() < 1e-9));
+        let cleared = cx.is_zero(mean)
+            || (0..3_u32)
+                .all(|k| super::util::sample(cx.graph, mean, k).is_some_and(|v| v.abs() < 1e-9));
         if !cleared {
             return None;
         }
     }
-    let exterior = Exterior { var: p.vars[layout.r], radius, end, sphere: layout.sphere, interior: false, wavenumber2 };
-    let engine = Engine { axes, time: None, symbol: Symbol::Laplacian { b, a0 }, face: None, exterior: Some(exterior) };
-    let items = [Item { role: Role::Displacement, h: data, special: None }];
-    let kept = Conditions(conditions.0.iter().filter(|c| c.on != layout.r || !is_infinity(cx, c.point)).cloned().collect());
-    let offset = if cx.is_zero(c_inf) { None } else { Some(c_inf) };
+    let exterior = Exterior {
+        var: p.vars[layout.r],
+        radius,
+        end,
+        sphere: layout.sphere,
+        interior: false,
+        wavenumber2,
+    };
+    let engine = Engine {
+        axes,
+        time: None,
+        symbol: Symbol::Laplacian { b, a0 },
+        face: None,
+        exterior: Some(exterior),
+    };
+    let items = [Item {
+        role: Role::Displacement,
+        h: data,
+        special: None,
+    }];
+    let kept = Conditions(
+        conditions
+            .0
+            .iter()
+            .filter(|c| c.on != layout.r || !is_infinity(cx, c.point))
+            .cloned()
+            .collect(),
+    );
+    let offset = if cx.is_zero(c_inf) {
+        None
+    } else {
+        Some(c_inf)
+    };
     finish(cx, p, &kept, &engine, &items, None, offset)
 }
 
@@ -772,14 +1000,43 @@ fn harmonic_interior(
     let (b, a0) = coefficients;
     let mut axes = Vec::new();
     if let Some(j) = layout.phi {
-        axes.push(Axis { var: p.vars[j], shape: Shape::Angle });
+        axes.push(Axis {
+            var: p.vars[j],
+            shape: Shape::Angle,
+        });
     }
     let j = layout.theta?;
-    axes.push(Axis { var: p.vars[j], shape: if layout.sphere { Shape::Polar { azimuth: layout.phi.is_some() } } else { Shape::Angle } });
+    axes.push(Axis {
+        var: p.vars[j],
+        shape: if layout.sphere {
+            Shape::Polar {
+                azimuth: layout.phi.is_some(),
+            }
+        } else {
+            Shape::Angle
+        },
+    });
     let wavenumber2 = cx.graph.int(0);
-    let interior = Exterior { var: p.vars[layout.r], radius, end, sphere: layout.sphere, interior: true, wavenumber2 };
-    let engine = Engine { axes, time: None, symbol: Symbol::Laplacian { b, a0 }, face: None, exterior: Some(interior) };
-    let items = [Item { role: Role::Displacement, h: end.value, special: None }];
+    let interior = Exterior {
+        var: p.vars[layout.r],
+        radius,
+        end,
+        sphere: layout.sphere,
+        interior: true,
+        wavenumber2,
+    };
+    let engine = Engine {
+        axes,
+        time: None,
+        symbol: Symbol::Laplacian { b, a0 },
+        face: None,
+        exterior: Some(interior),
+    };
+    let items = [Item {
+        role: Role::Displacement,
+        h: end.value,
+        special: None,
+    }];
     finish(cx, p, conditions, &engine, &items, None, None)
 }
 
@@ -806,7 +1063,11 @@ fn exterior_evolution(
     }
     let n = p.dimension();
     let c_second = p.coefficient(cx.graph, &p.unit(t_index, 2));
-    let order = if is_zero_number(cx.graph, c_second) { 1 } else { 2 };
+    let order = if is_zero_number(cx.graph, c_second) {
+        1
+    } else {
+        2
+    };
     let c_time = p.coefficient(cx.graph, &p.unit(t_index, order));
     let diffusivity = {
         let q = div(cx, b, c_time);
@@ -830,13 +1091,19 @@ fn exterior_evolution(
         let zero_index = vec![0; n];
         let mut data = Vec::new();
         for derivative in [zero_index.clone(), p.unit(t_index, 1)] {
-            data.push(conditions.find(cx.graph, t_index, &derivative, None).map(|c| {
-                let f = cx.graph.substitute(c.value, r, shifted);
-                let value = mul(cx.graph, &[shifted, f]);
-                cx.simplify(value)
-            }));
+            data.push(
+                conditions
+                    .find(cx.graph, t_index, &derivative, None)
+                    .map(|c| {
+                        let f = cx.graph.substitute(c.value, r, shifted);
+                        let value = mul(cx.graph, &[shifted, f]);
+                        cx.simplify(value)
+                    }),
+            );
         }
-        if conditions.0.iter().any(|c| c.on == t_index && c.derivative != zero_index && c.derivative != p.unit(t_index, 1)) {
+        if conditions.0.iter().any(|c| {
+            c.on == t_index && c.derivative != zero_index && c.derivative != p.unit(t_index, 1)
+        }) {
             return None;
         }
         let f = data.first().copied().flatten()?;
@@ -849,7 +1116,15 @@ fn exterior_evolution(
         return Some(cx.simplify(u));
     }
     if !layout.sphere || layout.theta.is_some() {
-        return weber_exterior(cx, p, conditions, layout, (t_index, order), diffusivity, &end);
+        return weber_exterior(
+            cx,
+            p,
+            conditions,
+            layout,
+            (t_index, order),
+            diffusivity,
+            &end,
+        );
     }
     let _ = (r, t);
     // The scalar problem for w(x, t) = (x + R) u(x + R, t).
@@ -873,7 +1148,13 @@ fn exterior_evolution(
         cx.simplify(q)
     };
     if end.kind == Kind::Dirichlet {
-        list.push(Condition { on: 0, point: zero, derivative: vec![0, 0], value: boundary, robin: None });
+        list.push(Condition {
+            on: 0,
+            point: zero,
+            derivative: vec![0, 0],
+            value: boundary,
+            robin: None,
+        });
     } else {
         // p u + q u_r = g at r = R with v = r u: v' + (p/q - 1/R) v = R g / q.
         let ratio = div(cx, end.p, end.q);
@@ -885,19 +1166,40 @@ fn exterior_evolution(
             let q = mul(cx.graph, &[radius, q]);
             cx.simplify(q)
         };
-        let robin = if cx.is_zero(rho) { None } else { Some(rho) };
-        list.push(Condition { on: 0, point: zero, derivative: vec![1, 0], value, robin });
+        let robin = if cx.is_zero(rho) {
+            None
+        } else {
+            Some(rho)
+        };
+        list.push(Condition {
+            on: 0,
+            point: zero,
+            derivative: vec![1, 0],
+            value,
+            robin,
+        });
     }
     let zero_index = vec![0; n];
-    for (derivative, vector) in [(zero_index.clone(), vec![0, 0]), (p.unit(t_index, 1), vec![0, 1])] {
+    for (derivative, vector) in [
+        (zero_index.clone(), vec![0, 0]),
+        (p.unit(t_index, 1), vec![0, 1]),
+    ] {
         if let Some(c) = conditions.find(cx.graph, t_index, &derivative, None) {
             let f = cx.graph.substitute(c.value, r, shifted);
             let value = mul(cx.graph, &[shifted, f]);
             let value = cx.simplify(value);
-            list.push(Condition { on: 1, point: zero, derivative: vector, value, robin: None });
+            list.push(Condition {
+                on: 1,
+                point: zero,
+                derivative: vector,
+                value,
+                robin: None,
+            });
         }
     }
-    if conditions.0.iter().any(|c| c.on == t_index && c.derivative != zero_index && c.derivative != p.unit(t_index, 1)) {
+    if conditions.0.iter().any(|c| {
+        c.on == t_index && c.derivative != zero_index && c.derivative != p.unit(t_index, 1)
+    }) {
         return None;
     }
     let found = super::solve(cx, &scalar, &Conditions(list), Method::Any)?;
@@ -938,7 +1240,11 @@ fn spherical_harmonics(
     let mut out = Vec::new();
     for l in 0..=TOP {
         for m in 0..=l {
-            let kinds: &[&str] = if m == 0 { &["cos"] } else { &["cos", "sin"] };
+            let kinds: &[&str] = if m == 0 {
+                &["cos"]
+            } else {
+                &["cos", "sin"]
+            };
             for &name in kinds {
                 let m_node = cx.graph.int(m);
                 let m_phi = mul(cx.graph, &[m_node, phi]);
@@ -956,7 +1262,10 @@ fn spherical_harmonics(
                 let weighted = mul(cx.graph, &[around, mode]);
                 let integral = super::modes::legendre_integral(cx, weighted, c, Some(s), theta)?;
                 let phi_norm = if m == 0 { two_pi } else { pi };
-                let scale = cx.graph.num(Number::fraction((2 * l + 1) * factorial(l - m), 2 * factorial(l + m))?);
+                let scale = cx.graph.num(Number::fraction(
+                    (2 * l + 1) * factorial(l - m),
+                    2 * factorial(l + m),
+                )?);
                 let scaled = mul(cx.graph, &[scale, integral]);
                 let coefficient = div(cx, scaled, phi_norm);
                 let coefficient = cx.simplify(coefficient);
@@ -970,7 +1279,11 @@ fn spherical_harmonics(
                     return None;
                 }
                 let angular = mul(cx.graph, &[mode, wave]);
-                out.push(Harmonic { index: l, angular, radial: coefficient });
+                out.push(Harmonic {
+                    index: l,
+                    angular,
+                    radial: coefficient,
+                });
             }
         }
     }
@@ -989,7 +1302,11 @@ fn harmonics(
 ) -> Option<Vec<Harmonic>> {
     let Some(theta) = theta else {
         let one = cx.graph.int(1);
-        return Some(vec![Harmonic { index: 0, angular: one, radial: data }]);
+        return Some(vec![Harmonic {
+            index: 0,
+            angular: one,
+            radial: data,
+        }]);
     };
     let mut out = Vec::new();
     let pi = super::util::pi(cx)?;
@@ -1014,7 +1331,11 @@ fn harmonics(
                 }
                 let l_node = cx.graph.int(l);
                 let leg = call(cx, "legendre", &[l_node, c])?;
-                out.push(Harmonic { index: l, angular: leg, radial: coefficient });
+                out.push(Harmonic {
+                    index: l,
+                    angular: leg,
+                    radial: coefficient,
+                });
             }
         }
         return Some(out);
@@ -1027,7 +1348,11 @@ fn harmonics(
     for k in 0..=12_i64 {
         let k_node = cx.graph.int(k);
         let k_theta = mul(cx.graph, &[k_node, theta]);
-        let kinds: Vec<(&str, bool)> = if k == 0 { vec![("cos", true)] } else { vec![("cos", true), ("sin", false)] };
+        let kinds: Vec<(&str, bool)> = if k == 0 {
+            vec![("cos", true)]
+        } else {
+            vec![("cos", true), ("sin", false)]
+        };
         for (name, _) in kinds {
             let wave = call(cx, name, &[k_theta])?;
             let body = mul(cx.graph, &[data, wave]);
@@ -1042,7 +1367,11 @@ fn harmonics(
                 if k > 10 {
                     return None;
                 }
-                out.push(Harmonic { index: k, angular: wave, radial: coefficient });
+                out.push(Harmonic {
+                    index: k,
+                    angular: wave,
+                    radial: coefficient,
+                });
             }
         }
     }
@@ -1060,6 +1389,13 @@ fn harmonics(
 /// `B = p J_ν(kR) + q k J_ν'(kR)` so that `p Φ + q Φ' = 0` at `r = R`
 /// (`p - q/(2R)` for a ball); `M` is `e^{-D k² t}` (first order in time) or
 /// `cos(√D k t)` and `sin(√D k t)/(√D k)` for displacement and velocity.
+///
+/// A source that is a sum of separable terms `g_i(t) s_i(x)` (see
+/// [`separate`]) is treated per term by Duhamel's principle: the Weber
+/// coefficient of `s_i` is formed once per mode and the time kernel is
+/// integrated against `g_i` alone (`∫_0^t M(t - τ) g_i(τ) dτ`, resolved on
+/// that small integrand), instead of a triple `ρ, k, τ` integral per mode; a
+/// non-separable source falls back to the nested form.
 #[allow(clippy::too_many_lines)]
 fn weber_exterior(
     cx: &mut Cx<'_>,
@@ -1076,8 +1412,14 @@ fn weber_exterior(
     let n = p.dimension();
     let zero_index = vec![0; n];
     let displacement = conditions.find(cx.graph, t_index, &zero_index, None)?;
-    let velocity = if order == 2 { conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None) } else { None };
-    if conditions.0.iter().filter(|c| c.on == t_index).count() != 1 + usize::from(velocity.is_some()) {
+    let velocity = if order == 2 {
+        conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None)
+    } else {
+        None
+    };
+    if conditions.0.iter().filter(|c| c.on == t_index).count()
+        != 1 + usize::from(velocity.is_some())
+    {
         return None;
     }
     let (r, t) = (p.vars[layout.r], p.vars[t_index]);
@@ -1091,9 +1433,9 @@ fn weber_exterior(
     // Data: displacement (0), velocity (1) and the source, whose response is
     // the Duhamel integral of the velocity kernel (second order) or of the
     // initial-value solution (first order) (2).
-    let mut pairs = vec![(displacement.value, 0_u8)];
+    let mut pairs = vec![(displacement.value, 0_u8, one)];
     if let Some(v) = velocity {
-        pairs.push((v.value, 1));
+        pairs.push((v.value, 1, one));
     }
     let (tau, _) = super::dummy(cx, p, "tau");
     let elapsed = sub(cx.graph, t, tau);
@@ -1106,21 +1448,45 @@ fn weber_exterior(
             cx.simplify(q)
         };
         // A steady source integrates its kernel in closed form.
-        let steady = !cx.graph.symbol_of(t).is_some_and(|s| cx.graph.depends_on(cx.graph.find(forcing), s));
+        let steady = !cx
+            .graph
+            .symbol_of(t)
+            .is_some_and(|s| cx.graph.depends_on(cx.graph.find(forcing), s));
+        let space: Vec<NodeId> = [Some(r), theta, layout.phi.map(|j| p.vars[j])]
+            .into_iter()
+            .flatten()
+            .collect();
         if steady {
-            pairs.push((forcing, 3));
+            pairs.push((forcing, 3, one));
+        } else if let Some(parts) = separate(cx, forcing, t, &space) {
+            // A source `Σ g_i(t) s_i(x)`: the Weber coefficient of `s_i` is
+            // computed once per mode and only the time kernel is integrated
+            // against `g_i`, instead of a triple integral per mode.
+            for (time_factor, spatial) in parts {
+                pairs.push((spatial, 4, cx.graph.substitute(time_factor, t, tau)));
+            }
         } else {
-            pairs.push((cx.graph.substitute(forcing, t, tau), 2));
+            pairs.push((cx.graph.substitute(forcing, t, tau), 2, one));
         }
     }
     let mut terms = Vec::new();
-    for (value, kind) in pairs {
+    for (value, kind, time_factor) in pairs {
         let is_displacement = kind == 0;
-        let time_arg = if kind == 2 { elapsed } else { t };
+        let time_arg = if kind == 2 || kind == 4 {
+            elapsed
+        } else {
+            t
+        };
         if cx.is_zero(value) {
             continue;
         }
-        for harmonic in harmonics(cx, value, theta, layout.phi.map(|j| p.vars[j]), layout.sphere)? {
+        for harmonic in harmonics(
+            cx,
+            value,
+            theta,
+            layout.phi.map(|j| p.vars[j]),
+            layout.sphere,
+        )? {
             let nu = if layout.sphere {
                 cx.graph.num(Number::fraction(2 * harmonic.index + 1, 2)?)
             } else {
@@ -1137,7 +1503,17 @@ fn weber_exterior(
                 end.p
             };
             let kr0 = mul(cx.graph, &[k, radius]);
-            let z = |cx: &mut Cx<'_>, second: bool, order_node: NodeId, arg: NodeId| call(cx, if second { "bessely" } else { "besselj" }, &[order_node, arg]);
+            let z = |cx: &mut Cx<'_>, second: bool, order_node: NodeId, arg: NodeId| {
+                call(
+                    cx,
+                    if second {
+                        "bessely"
+                    } else {
+                        "besselj"
+                    },
+                    &[order_node, arg],
+                )
+            };
             // p Z + q k Z' with Z' = -Z_{ν+1} + (ν/z) Z_ν at z = kR.
             let coefficient = |cx: &mut Cx<'_>, second: bool| -> Option<NodeId> {
                 let (z_nu, z_up) = (z(cx, second, nu, kr0)?, z(cx, second, nu_up, kr0)?);
@@ -1198,6 +1574,18 @@ fn weber_exterior(
                     let ck2 = powi(cx.graph, ck, 2);
                     div(cx, gap, ck2)
                 }
+            } else if kind == 4 {
+                // `∫_0^t M(t - τ) g(τ) dτ`, one-dimensional in τ.
+                // Resolved here, on the small integrand, so that the engine
+                // does not have to attack it inside the k-integral.
+                let body = mul(cx.graph, &[multiplier, time_factor]);
+                let integral = defint(cx, body, tau, zero, t)?;
+                let closed = cx.simplify(integral);
+                if super::util::contains_op(cx.graph, closed, "defint") {
+                    integral
+                } else {
+                    closed
+                }
             } else {
                 multiplier
             };
@@ -1208,7 +1596,11 @@ fn weber_exterior(
             };
             let outer_body = mul(cx.graph, &[k, multiplier, phi_r, inner, norm]);
             let radial = defint(cx, outer_body, k, zero, oo)?;
-            let radial = if kind == 2 { defint(cx, radial, tau, zero, t)? } else { radial };
+            let radial = if kind == 2 {
+                defint(cx, radial, tau, zero, t)?
+            } else {
+                radial
+            };
             let radial = if layout.sphere {
                 let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
                 let root = pow(cx.graph, r, minus_half);
@@ -1223,6 +1615,60 @@ fn weber_exterior(
         return None;
     }
     Some(add(cx.graph, &terms))
+}
+
+/// Splits a source into separable terms `Σ g_i(t) s_i(x)` (`g_i` free of the
+/// space variables, `s_i` free of `t`), or `None` when a factor couples
+/// time and space (`exp(t r)`, `(t + r)^2`) or there are too many terms.
+fn separate(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    time: NodeId,
+    space: &[NodeId],
+) -> Option<Vec<(NodeId, NodeId)>> {
+    const MAX_TERMS: usize = 8;
+    let depends = |cx: &Cx<'_>, node: NodeId, var: NodeId| {
+        cx.graph
+            .symbol_of(var)
+            .is_some_and(|s| cx.graph.depends_on(cx.graph.find(node), s))
+    };
+    let one = cx.graph.int(1);
+    if !depends(cx, f, time) {
+        return Some(vec![(one, f)]);
+    }
+    if !space.iter().any(|&v| depends(cx, f, v)) {
+        return Some(vec![(f, one)]);
+    }
+    let op = cx.graph.op(f);
+    let children = cx.graph.children(f).to_vec();
+    if op == core::ADD {
+        let mut out = Vec::new();
+        for child in children {
+            out.extend(separate(cx, child, time, space)?);
+            if out.len() > MAX_TERMS {
+                return None;
+            }
+        }
+        return Some(out);
+    }
+    if op == core::MUL {
+        let mut acc = vec![(one, one)];
+        for child in children {
+            let parts = separate(cx, child, time, space)?;
+            let mut next = Vec::with_capacity(acc.len().saturating_mul(parts.len()));
+            for &(g1, s1) in &acc {
+                for &(g2, s2) in &parts {
+                    next.push((mul(cx.graph, &[g1, g2]), mul(cx.graph, &[s1, s2])));
+                }
+            }
+            if next.len() > MAX_TERMS {
+                return None;
+            }
+            acc = next;
+        }
+        return Some(acc);
+    }
+    None
 }
 
 /// `Δu = f(r)` with a polynomial `f` and Dirichlet data on `r = R`: the
@@ -1247,7 +1693,10 @@ fn radial_poisson(
         cx.simplify(q)
     };
     for (j, &v) in p.vars.iter().enumerate() {
-        let depends = cx.graph.symbol_of(v).is_some_and(|s| cx.graph.depends_on(cx.graph.find(f), s));
+        let depends = cx
+            .graph
+            .symbol_of(v)
+            .is_some_and(|s| cx.graph.depends_on(cx.graph.find(f), s));
         if depends && j != layout.r {
             return None;
         }
@@ -1274,7 +1723,11 @@ fn radial_poisson(
         let power = powi(cx.graph, r, k);
         polynomial.push(mul(cx.graph, &[coefficient, power]));
         let raised = powi(cx.graph, r, k + 2);
-        let denominator = if layout.sphere { (k + 2) * (k + 3) } else { (k + 2) * (k + 2) };
+        let denominator = if layout.sphere {
+            (k + 2) * (k + 3)
+        } else {
+            (k + 2) * (k + 2)
+        };
         let den = cx.graph.int(denominator);
         let scaled = div(cx, coefficient, den);
         particular.push(mul(cx.graph, &[scaled, raised]));
@@ -1294,7 +1747,10 @@ fn radial_poisson(
         | Some(j) if layout.sphere => classical::laplace_ball(cx, data, radius, r, p.vars[j])?,
         | Some(j) => classical::laplace_disk(cx, data, radius, r, p.vars[j])?,
         | None => {
-            if cx.graph.depends_on(cx.graph.find(data), cx.graph.symbol_of(r)?) {
+            if cx
+                .graph
+                .depends_on(cx.graph.find(data), cx.graph.symbol_of(r)?)
+            {
                 return None;
             }
             data
@@ -1320,14 +1776,26 @@ fn annulus(
 ) -> Option<NodeId> {
     let (_, a0) = coefficients;
     let theta = p.vars[layout.theta?];
-    if time_index.is_some() || layout.z.is_some() || !p.homogeneous(cx.graph) || !is_zero_number(cx.graph, a0) || conditions.0.len() != 2 {
+    if time_index.is_some()
+        || layout.z.is_some()
+        || !p.homogeneous(cx.graph)
+        || !is_zero_number(cx.graph, a0)
+        || conditions.0.len() != 2
+    {
         return None;
     }
     let r = p.vars[layout.r];
     let [first, second] = ends;
     let (inner, outer) = {
-        let (va, vb) = (super::util::sample(cx.graph, first.point, 0)?, super::util::sample(cx.graph, second.point, 0)?);
-        if va <= vb { (first, second) } else { (second, first) }
+        let (va, vb) = (
+            super::util::sample(cx.graph, first.point, 0)?,
+            super::util::sample(cx.graph, second.point, 0)?,
+        );
+        if va <= vb {
+            (first, second)
+        } else {
+            (second, first)
+        }
     };
     for c in [inner, outer] {
         if c.robin.is_some() || c.derivative != vec![0; p.dimension()] {
@@ -1352,7 +1820,12 @@ fn annulus(
     let mut last = 0;
     // The pair (a, b) for the radial factors `u_a(r)`, `u_b(r)` matching
     // the data (F1, F2) on the two circles.
-    let solve_pair = |cx: &mut Cx<'_>, ra: [NodeId; 2], rb: [NodeId; 2], f1n: NodeId, f2n: NodeId| -> (NodeId, NodeId) {
+    let solve_pair = |cx: &mut Cx<'_>,
+                      ra: [NodeId; 2],
+                      rb: [NodeId; 2],
+                      f1n: NodeId,
+                      f2n: NodeId|
+     -> (NodeId, NodeId) {
         // a ra1 + b rb1 = f1n, a ra2 + b rb2 = f2n.
         let det = {
             let x = mul(cx.graph, &[ra[0], rb[1]]);

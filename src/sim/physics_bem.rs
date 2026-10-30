@@ -500,7 +500,11 @@ impl SurfaceMesh3D {
     ) -> Option<[V3; 3]> {
         let [a, b, c] = *self.triangles.get(t)?;
 
-        Some([*self.vertices.get(a)?, *self.vertices.get(b)?, *self.vertices.get(c)?])
+        Some([
+            *self.vertices.get(a)?,
+            *self.vertices.get(b)?,
+            *self.vertices.get(c)?,
+        ])
     }
 
     /// Centroid of triangle `t` (the collocation point), if it exists.
@@ -567,7 +571,8 @@ impl SurfaceMesh3D {
 
         let nv = self.vertices.len();
 
-        let mut edges: std::collections::HashMap<(usize, usize), usize> = std::collections::HashMap::new();
+        let mut edges: std::collections::HashMap<(usize, usize), usize> =
+            std::collections::HashMap::new();
 
         for (t, tri) in self.triangles.iter().enumerate() {
             if tri.iter().any(|&v| v >= nv) {
@@ -587,7 +592,9 @@ impl SurfaceMesh3D {
 
         for (&(a, b), &count) in &edges {
             if count != 1 || edges.get(&(b, a)) != Some(&1) {
-                return Err(format!("edge ({a}, {b}) is not shared by exactly two oppositely oriented triangles"));
+                return Err(format!(
+                    "edge ({a}, {b}) is not shared by exactly two oppositely oriented triangles"
+                ));
             }
         }
 
@@ -650,7 +657,8 @@ impl SurfaceMesh3D {
         ];
 
         for _ in 0..subdivisions {
-            let mut cache: std::collections::HashMap<(usize, usize), usize> = std::collections::HashMap::new();
+            let mut cache: std::collections::HashMap<(usize, usize), usize> =
+                std::collections::HashMap::new();
 
             let mut next = Vec::with_capacity(triangles.len() * 4);
 
@@ -679,7 +687,10 @@ impl SurfaceMesh3D {
             triangles = next;
         }
 
-        let vertices = vertices.iter().map(|&v| v_add(v_scale(v, radius), center)).collect();
+        let vertices = vertices
+            .iter()
+            .map(|&v| v_add(v_scale(v, radius), center))
+            .collect();
 
         let mut mesh = Self { vertices, triangles };
 
@@ -703,7 +714,8 @@ impl SurfaceMesh3D {
     ) -> Self {
         let n = n.max(1);
 
-        let mut index: std::collections::HashMap<[usize; 3], usize> = std::collections::HashMap::new();
+        let mut index: std::collections::HashMap<[usize; 3], usize> =
+            std::collections::HashMap::new();
 
         let mut vertices: Vec<V3> = Vec::new();
 
@@ -741,7 +753,8 @@ impl SurfaceMesh3D {
                             vertex(ijk)
                         };
 
-                        let (p00, p10, p11, p01) = (corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1));
+                        let (p00, p10, p11, p01) =
+                            (corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1));
 
                         if outward {
                             triangles.push([p00, p10, p11]);
@@ -801,7 +814,9 @@ pub(crate) fn inv_r_integral(
 
     let centroid = v_scale(v_add(v_add(a, b), c), 1.0 / 3.0);
 
-    let diameter = v_norm(v_sub(a, b)).max(v_norm(v_sub(b, c))).max(v_norm(v_sub(c, a)));
+    let diameter = v_norm(v_sub(a, b))
+        .max(v_norm(v_sub(b, c)))
+        .max(v_norm(v_sub(c, a)));
 
     if depth < 7 && v_norm(v_sub(x, centroid)) < 3.0 * diameter {
         let (ab, bc, ca) = (v_mid(a, b), v_mid(b, c), v_mid(c, a));
@@ -923,7 +938,10 @@ pub fn solve_laplace_bem_3d_mesh(
     let n = mesh.triangles.len();
 
     if bcs.len() != n {
-        return Err(format!("expected {n} boundary conditions, got {}", bcs.len()));
+        return Err(format!(
+            "expected {n} boundary conditions, got {}",
+            bcs.len()
+        ));
     }
 
     if bcs
@@ -954,7 +972,8 @@ pub fn solve_laplace_bem_3d_mesh(
 
             for j in 0..n {
                 if i == j {
-                    g_row[j] = inv_r_integral_in_plane(x, corners[j]) / (4.0 * std::f64::consts::PI);
+                    g_row[j] =
+                        inv_r_integral_in_plane(x, corners[j]) / (4.0 * std::f64::consts::PI);
                 } else {
                     g_row[j] = inv_r_integral(x, corners[j], 0) / (4.0 * std::f64::consts::PI);
 
@@ -972,7 +991,9 @@ pub fn solve_laplace_bem_3d_mesh(
         })
         .collect();
 
-    let all_flux = bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
+    let all_flux = bcs
+        .iter()
+        .all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
 
     let areas: Vec<f64> = (0..n).filter_map(|t| mesh.area(t)).collect();
 
@@ -980,17 +1001,32 @@ pub fn solve_laplace_bem_3d_mesh(
         let scale: f64 = bcs
             .iter()
             .zip(&areas)
-            .map(|(bc, a)| if let BoundaryCondition::Flux(q) = bc { (q * a).abs() } else { 0.0 })
+            .map(|(bc, a)| {
+                if let BoundaryCondition::Flux(q) = bc {
+                    (q * a).abs()
+                } else {
+                    0.0
+                }
+            })
             .sum();
 
         let net: f64 = bcs
             .iter()
             .zip(&areas)
-            .map(|(bc, a)| if let BoundaryCondition::Flux(q) = bc { q * a } else { 0.0 })
+            .map(|(bc, a)| {
+                if let BoundaryCondition::Flux(q) = bc {
+                    q * a
+                } else {
+                    0.0
+                }
+            })
             .sum();
 
         if net.abs() > 1e-6 * scale.max(f64::MIN_POSITIVE) {
-            return Err("pure Neumann data violates the compatibility condition (net flux must vanish)".to_string());
+            return Err(
+                "pure Neumann data violates the compatibility condition (net flux must vanish)"
+                    .to_string(),
+            );
         }
     }
 
@@ -1004,12 +1040,12 @@ pub fn solve_laplace_bem_3d_mesh(
     for (i, (g_row, h_row)) in rows.iter().enumerate() {
         for (j, bc) in bcs.iter().enumerate() {
             match *bc {
-                BoundaryCondition::Potential(u_val) => {
+                | BoundaryCondition::Potential(u_val) => {
                     a_mat.set(i, j, -g_row[j]);
 
                     rhs[i] -= h_row[j] * u_val;
                 },
-                BoundaryCondition::Flux(q_val) => {
+                | BoundaryCondition::Flux(q_val) => {
                     a_mat.set(i, j, h_row[j]);
 
                     rhs[i] += g_row[j] * q_val;
@@ -1043,12 +1079,12 @@ pub fn solve_laplace_bem_3d_mesh(
 
     for (j, bc) in bcs.iter().enumerate() {
         match *bc {
-            BoundaryCondition::Potential(u_val) => {
+            | BoundaryCondition::Potential(u_val) => {
                 u[j] = u_val;
 
                 q[j] = solution[j];
             },
-            BoundaryCondition::Flux(q_val) => {
+            | BoundaryCondition::Flux(q_val) => {
                 q[j] = q_val;
 
                 u[j] = solution[j];
@@ -1124,4 +1160,10 @@ pub fn solve_laplace_bem_3d() -> Result<(), String> {
 
 /// Iterative / compressed (ACA + GMRES), exterior, pure-Neumann and
 /// linear-element variants of the 3D solver live in [`crate::sim::bem_aca`].
-pub use crate::sim::bem_aca::{solve_laplace_bem_3d_aca, solve_laplace_bem_3d_exterior, solve_laplace_bem_3d_p1};
+pub use crate::sim::bem_aca::solve_laplace_bem_3d_aca;
+/// Iterative / compressed (ACA + GMRES), exterior, pure-Neumann and
+/// linear-element variants of the 3D solver live in [`crate::sim::bem_aca`].
+pub use crate::sim::bem_aca::solve_laplace_bem_3d_exterior;
+/// Iterative / compressed (ACA + GMRES), exterior, pure-Neumann and
+/// linear-element variants of the 3D solver live in [`crate::sim::bem_aca`].
+pub use crate::sim::bem_aca::solve_laplace_bem_3d_p1;

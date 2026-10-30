@@ -16,7 +16,11 @@
 //!   definite operator and so an ideal preconditioner for CG
 //!   ([`Amg::precondition`]).
 
-use crate::kernels::dense::{self, Lu, Mat};
+use crate::kernels::dense::Lu;
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::krylov::Csr;
 
 /// Multigrid cycle shape.
@@ -109,12 +113,21 @@ impl GeometricMg {
     /// Returns `None` when `dim` is not 1, 2 or 3, when `n` is not of the
     /// form `2^k - 1` (`k >= 1`) or when `shift < 0`.
     #[must_use]
-    pub fn new(dim: usize, n: usize, shift: f64) -> Option<Self> {
+    pub fn new(
+        dim: usize,
+        n: usize,
+        shift: f64,
+    ) -> Option<Self> {
         if !(1..=3).contains(&dim) || n == 0 || (n + 1) & n != 0 || shift < 0.0 {
             return None;
         }
         let levels = (n + 1).trailing_zeros() as usize;
-        Some(Self { dim, n, shift, levels })
+        Some(Self {
+            dim,
+            n,
+            shift,
+            levels,
+        })
     }
 
     /// Number of unknowns on the fine grid.
@@ -129,16 +142,27 @@ impl GeometricMg {
         self.levels
     }
 
-    const fn n_at(&self, level: usize) -> usize {
+    const fn n_at(
+        &self,
+        level: usize,
+    ) -> usize {
         ((self.n + 1) >> level) - 1
     }
 
-    fn h_at(&self, level: usize) -> f64 {
+    fn h_at(
+        &self,
+        level: usize,
+    ) -> f64 {
         1.0 / ((self.n_at(level) + 1) as f64)
     }
 
     /// Applies the discrete operator on `level` (0 is the finest grid).
-    pub fn apply(&self, level: usize, u: &[f64], out: &mut [f64]) {
+    pub fn apply(
+        &self,
+        level: usize,
+        u: &[f64],
+        out: &mut [f64],
+    ) {
         let n = self.n_at(level);
         let ih2 = 1.0 / (self.h_at(level) * self.h_at(level));
         let diag = 2.0 * self.dim as f64 * ih2 + self.shift;
@@ -158,17 +182,24 @@ impl GeometricMg {
         }
     }
 
-    fn smooth(&self, level: usize, u: &mut [f64], f: &[f64], sweeps: usize, sm: Smoother) {
+    fn smooth(
+        &self,
+        level: usize,
+        u: &mut [f64],
+        f: &[f64],
+        sweeps: usize,
+        sm: Smoother,
+    ) {
         let n = self.n_at(level);
         let ih2 = 1.0 / (self.h_at(level) * self.h_at(level));
         let diag = 2.0 * self.dim as f64 * ih2 + self.shift;
         let strides: Vec<usize> = (0..self.dim).map(|d| n.pow(d as u32)).collect();
         match sm {
-            Smoother::Jacobi => {
+            | Smoother::Jacobi => {
                 let omega = match self.dim {
-                    1 => 2.0 / 3.0,
-                    2 => 4.0 / 5.0,
-                    _ => 6.0 / 7.0,
+                    | 1 => 2.0 / 3.0,
+                    | 2 => 4.0 / 5.0,
+                    | _ => 6.0 / 7.0,
                 };
                 let mut au = vec![0.0; u.len()];
                 for _ in 0..sweeps {
@@ -177,8 +208,8 @@ impl GeometricMg {
                         u[i] += omega * (f[i] - au[i]) / diag;
                     }
                 }
-            }
-            Smoother::RedBlackGaussSeidel => {
+            },
+            | Smoother::RedBlackGaussSeidel => {
                 for _ in 0..sweeps {
                     for color in 0..2 {
                         for idx in 0..u.len() {
@@ -200,12 +231,16 @@ impl GeometricMg {
                         }
                     }
                 }
-            }
+            },
         }
     }
 
     /// Full-weighting restriction from `level` to `level + 1`.
-    fn restrict(&self, level: usize, r: &[f64]) -> Vec<f64> {
+    fn restrict(
+        &self,
+        level: usize,
+        r: &[f64],
+    ) -> Vec<f64> {
         let mut cur = r.to_vec();
         let mut dims = vec![self.n_at(level); self.dim];
         let nc = self.n_at(level + 1);
@@ -236,7 +271,11 @@ impl GeometricMg {
     }
 
     /// Multilinear interpolation from `level + 1` to `level`.
-    fn prolong(&self, level: usize, e: &[f64]) -> Vec<f64> {
+    fn prolong(
+        &self,
+        level: usize,
+        e: &[f64],
+    ) -> Vec<f64> {
         let mut cur = e.to_vec();
         let nc = self.n_at(level + 1);
         let nf = self.n_at(level);
@@ -251,8 +290,16 @@ impl GeometricMg {
                         let v = if i % 2 == 1 {
                             cur[k + inner * (i / 2 + nc * o)]
                         } else {
-                            let left = if i >= 2 { cur[k + inner * (i / 2 - 1 + nc * o)] } else { 0.0 };
-                            let right = if i / 2 < nc { cur[k + inner * (i / 2 + nc * o)] } else { 0.0 };
+                            let left = if i >= 2 {
+                                cur[k + inner * (i / 2 - 1 + nc * o)]
+                            } else {
+                                0.0
+                            };
+                            let right = if i / 2 < nc {
+                                cur[k + inner * (i / 2 + nc * o)]
+                            } else {
+                                0.0
+                            };
                             f64::midpoint(left, right)
                         };
                         next[k + inner * (i + nf * o)] = v;
@@ -265,7 +312,13 @@ impl GeometricMg {
         cur
     }
 
-    fn cycle(&self, level: usize, u: &mut [f64], f: &[f64], opts: &MgOptions) {
+    fn cycle(
+        &self,
+        level: usize,
+        u: &mut [f64],
+        f: &[f64],
+        opts: &MgOptions,
+    ) {
         if level + 1 == self.levels {
             // single unknown
             let ih2 = 1.0 / (self.h_at(level) * self.h_at(level));
@@ -278,7 +331,11 @@ impl GeometricMg {
         let r: Vec<f64> = f.iter().zip(&au).map(|(a, b)| a - b).collect();
         let rc = self.restrict(level, &r);
         let mut ec = vec![0.0; rc.len()];
-        let gamma = if opts.cycle == Cycle::W { 2 } else { 1 };
+        let gamma = if opts.cycle == Cycle::W {
+            2
+        } else {
+            1
+        };
         for _ in 0..gamma {
             self.cycle(level + 1, &mut ec, &rc, opts);
         }
@@ -290,13 +347,22 @@ impl GeometricMg {
     }
 
     /// One multigrid cycle for `A u = f` starting from the current `u`.
-    pub fn cycle_once(&self, u: &mut [f64], f: &[f64], opts: &MgOptions) {
+    pub fn cycle_once(
+        &self,
+        u: &mut [f64],
+        f: &[f64],
+        opts: &MgOptions,
+    ) {
         self.cycle(0, u, f, opts);
     }
 
     /// Residual 2-norm `|f - A u|` on the fine grid.
     #[must_use]
-    pub fn residual_norm(&self, u: &[f64], f: &[f64]) -> f64 {
+    pub fn residual_norm(
+        &self,
+        u: &[f64],
+        f: &[f64],
+    ) -> f64 {
         let mut au = vec![0.0; u.len()];
         self.apply(0, u, &mut au);
         norm2(&f.iter().zip(&au).map(|(a, b)| a - b).collect::<Vec<_>>())
@@ -304,7 +370,12 @@ impl GeometricMg {
 
     /// Solves `A u = f` by repeated cycles from `u = 0` (or `x0`).
     #[must_use]
-    pub fn solve(&self, f: &[f64], x0: Option<&[f64]>, opts: &MgOptions) -> MgResult {
+    pub fn solve(
+        &self,
+        f: &[f64],
+        x0: Option<&[f64]>,
+        opts: &MgOptions,
+    ) -> MgResult {
         let mut u = x0.map_or_else(|| vec![0.0; f.len()], <[f64]>::to_vec);
         let bn = norm2(f).max(f64::MIN_POSITIVE);
         let mut history = vec![self.residual_norm(&u, f) / bn];
@@ -315,7 +386,11 @@ impl GeometricMg {
             history.push(r);
             converged = r <= opts.tol;
         }
-        MgResult { x: u, history, converged }
+        MgResult {
+            x: u,
+            history,
+            converged,
+        }
     }
 
     /// Full multigrid: nested iteration from the coarsest grid upwards with
@@ -323,7 +398,12 @@ impl GeometricMg {
     /// grid until the tolerance is met. One FMG sweep with one V-cycle per
     /// level already reaches discretisation accuracy.
     #[must_use]
-    pub fn fmg(&self, f: &[f64], cycles: usize, opts: &MgOptions) -> MgResult {
+    pub fn fmg(
+        &self,
+        f: &[f64],
+        cycles: usize,
+        opts: &MgOptions,
+    ) -> MgResult {
         let mut fs: Vec<Vec<f64>> = vec![f.to_vec()];
         for l in 0..self.levels - 1 {
             let rc = self.restrict(l, &fs[l]);
@@ -347,7 +427,11 @@ impl GeometricMg {
             history.push(r);
             converged = r <= opts.tol;
         }
-        MgResult { x: u, history, converged }
+        MgResult {
+            x: u,
+            history,
+            converged,
+        }
     }
 }
 
@@ -435,10 +519,19 @@ pub(crate) fn transpose(a: &Csr) -> Csr {
             pos[c] += 1;
         }
     }
-    Csr { rows: a.cols, cols: a.rows, indptr: cnt, indices, values }
+    Csr {
+        rows: a.cols,
+        cols: a.rows,
+        indptr: cnt,
+        indices,
+        values,
+    }
 }
 
-pub(crate) fn spgemm(a: &Csr, b: &Csr) -> Csr {
+pub(crate) fn spgemm(
+    a: &Csr,
+    b: &Csr,
+) -> Csr {
     let mut indptr = vec![0usize; a.rows + 1];
     let mut indices: Vec<usize> = Vec::new();
     let mut values: Vec<f64> = Vec::new();
@@ -466,12 +559,22 @@ pub(crate) fn spgemm(a: &Csr, b: &Csr) -> Csr {
         }
         indptr[i + 1] = indices.len();
     }
-    Csr { rows: a.rows, cols: b.cols, indptr, indices, values }
+    Csr {
+        rows: a.rows,
+        cols: b.cols,
+        indptr,
+        indices,
+        values,
+    }
 }
 
 /// Greedy aggregation on the strength graph; returns `(aggregate id per
 /// node, number of aggregates)`.
-pub(crate) fn aggregate(a: &Csr, theta: f64, diag: &[f64]) -> (Vec<usize>, usize) {
+pub(crate) fn aggregate(
+    a: &Csr,
+    theta: f64,
+    diag: &[f64],
+) -> (Vec<usize>, usize) {
     let n = a.rows;
     let strong = |i: usize, k: usize| -> bool {
         let j = a.indices[k];
@@ -537,7 +640,10 @@ impl Amg {
     /// # Errors
     /// [`AmgError::BadMatrix`] for a non-square matrix or a non-positive
     /// diagonal entry.
-    pub fn build(a: &Csr, opts: &AmgOptions) -> Result<Self, AmgError> {
+    pub fn build(
+        a: &Csr,
+        opts: &AmgOptions,
+    ) -> Result<Self, AmgError> {
         if a.rows != a.cols || a.rows == 0 {
             return Err(AmgError::BadMatrix);
         }
@@ -609,7 +715,9 @@ impl Amg {
                 // P = (I - omega D^{-1} A) T with omega = 4 / (3 rho), rho by Gershgorin
                 let mut rho = 0.0_f64;
                 for i in 0..cur.rows {
-                    let s: f64 = (cur.indptr[i]..cur.indptr[i + 1]).map(|k| cur.values[k].abs()).sum();
+                    let s: f64 = (cur.indptr[i]..cur.indptr[i + 1])
+                        .map(|k| cur.values[k].abs())
+                        .sum();
                     rho = rho.max(s / diag[i]);
                 }
                 let omega = 4.0 / (3.0 * rho);
@@ -647,7 +755,13 @@ impl Amg {
             }
         }
         let coarse_lu = dense::lu_factor(&dm).ok();
-        Ok(Self { levels, coarse_a: cur, coarse_lu, sweeps: opts.sweeps.max(1), cycle: opts.cycle })
+        Ok(Self {
+            levels,
+            coarse_a: cur,
+            coarse_lu,
+            sweeps: opts.sweeps.max(1),
+            cycle: opts.cycle,
+        })
     }
 
     /// Number of levels including the coarsest.
@@ -659,18 +773,31 @@ impl Amg {
     /// Sum of the nonzeros of all level operators divided by the fine one.
     #[must_use]
     pub fn operator_complexity(&self) -> f64 {
-        let fine = self.levels.first().map_or(self.coarse_a.values.len(), |l| l.a.values.len());
-        let total: usize =
-            self.levels.iter().map(|l| l.a.values.len()).sum::<usize>() + self.coarse_a.values.len();
+        let fine = self
+            .levels
+            .first()
+            .map_or(self.coarse_a.values.len(), |l| l.a.values.len());
+        let total: usize = self.levels.iter().map(|l| l.a.values.len()).sum::<usize>()
+            + self.coarse_a.values.len();
         total as f64 / fine as f64
     }
 
-    fn gauss_seidel_sym(a: &Csr, x: &mut [f64], b: &[f64], diag: &[f64], sweeps: usize, forward_first: bool) {
+    fn gauss_seidel_sym(
+        a: &Csr,
+        x: &mut [f64],
+        b: &[f64],
+        diag: &[f64],
+        sweeps: usize,
+        forward_first: bool,
+    ) {
         for _ in 0..sweeps {
             for pass in 0..2 {
                 let forward = (pass == 0) == forward_first;
-                let order: Box<dyn Iterator<Item = usize>> =
-                    if forward { Box::new(0..a.rows) } else { Box::new((0..a.rows).rev()) };
+                let order: Box<dyn Iterator<Item = usize>> = if forward {
+                    Box::new(0..a.rows)
+                } else {
+                    Box::new((0..a.rows).rev())
+                };
                 for i in order {
                     let mut s = b[i];
                     for k in a.indptr[i]..a.indptr[i + 1] {
@@ -685,7 +812,12 @@ impl Amg {
         }
     }
 
-    fn cycle(&self, l: usize, x: &mut [f64], b: &[f64]) {
+    fn cycle(
+        &self,
+        l: usize,
+        x: &mut [f64],
+        b: &[f64],
+    ) {
         if l == self.levels.len() {
             if let Some(lu) = &self.coarse_lu {
                 x.copy_from_slice(&lu.solve(b));
@@ -703,7 +835,11 @@ impl Amg {
         let mut rc = vec![0.0; lev.r.rows];
         lev.r.matvec(&r, &mut rc);
         let mut ec = vec![0.0; rc.len()];
-        let gamma = if self.cycle == Cycle::W { 2 } else { 1 };
+        let gamma = if self.cycle == Cycle::W {
+            2
+        } else {
+            1
+        };
         for _ in 0..gamma {
             self.cycle(l + 1, &mut ec, &rc);
         }
@@ -716,13 +852,21 @@ impl Amg {
     }
 
     /// One cycle for `A x = b` starting from `x`.
-    pub fn vcycle(&self, b: &[f64], x: &mut [f64]) {
+    pub fn vcycle(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+    ) {
         self.cycle(0, x, b);
     }
 
     /// Preconditioner action `z = M^{-1} r` (one cycle from zero), symmetric
     /// positive definite for symmetric `A`.
-    pub fn precondition(&self, r: &[f64], z: &mut [f64]) {
+    pub fn precondition(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
         z.fill(0.0);
         self.cycle(0, z, r);
     }
@@ -730,7 +874,13 @@ impl Amg {
     /// Solves `A x = b` by repeated cycles; returns the solution, the
     /// relative residual history and whether `tol` was reached.
     #[must_use]
-    pub fn solve(&self, b: &[f64], x0: Option<&[f64]>, tol: f64, max_cycles: usize) -> MgResult {
+    pub fn solve(
+        &self,
+        b: &[f64],
+        x0: Option<&[f64]>,
+        tol: f64,
+        max_cycles: usize,
+    ) -> MgResult {
         let fine = self.levels.first().map_or(&self.coarse_a, |l| &l.a);
         let mut x = x0.map_or_else(|| vec![0.0; b.len()], <[f64]>::to_vec);
         let bn = norm2(b).max(f64::MIN_POSITIVE);
@@ -747,6 +897,10 @@ impl Amg {
             history.push(r);
             converged = r <= tol;
         }
-        MgResult { x, history, converged }
+        MgResult {
+            x,
+            history,
+            converged,
+        }
     }
 }

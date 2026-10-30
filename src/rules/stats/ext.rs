@@ -53,6 +53,8 @@ use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
+use super::FAMILIES as CORE_FAMILIES;
+use super::Family;
 use super::call;
 use super::difference;
 use super::f64_of;
@@ -60,10 +62,6 @@ use super::items_of;
 use super::list_node;
 use super::negate;
 use super::sum_node;
-use super::Family;
-use super::FAMILIES as CORE_FAMILIES;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -78,6 +76,8 @@ use crate::graph::Pat;
 use crate::graph::RuleError;
 use crate::graph::Tier;
 use crate::graph::VarNames;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
 use crate::rules::combinatorics::choose;
 use crate::rules::poly::best;
@@ -255,7 +255,15 @@ const fn extra(
     mode: Option<&'static str>,
     quantile: Option<&'static str>,
 ) -> Extra {
-    Extra { name, charfn, skewness, kurtosis, median, mode, quantile }
+    Extra {
+        name,
+        charfn,
+        skewness,
+        kurtosis,
+        median,
+        mode,
+        quantile,
+    }
 }
 
 const EXTRAS: [Extra; 21] = [
@@ -326,12 +334,22 @@ const EXTRAS: [Extra; 21] = [
         "beta_dist",
         None,
         Some("2 * (?b - ?a) * (?a + ?b + 1)^(1/2) / ((?a + ?b + 2) * (?a * ?b)^(1/2))"),
-        Some("6 * ((?a - ?b)^2 * (?a + ?b + 1) - ?a * ?b * (?a + ?b + 2)) / (?a * ?b * (?a + ?b + 2) * (?a + ?b + 3))"),
+        Some(
+            "6 * ((?a - ?b)^2 * (?a + ?b + 1) - ?a * ?b * (?a + ?b + 2)) / (?a * ?b * (?a + ?b + 2) * (?a + ?b + 3))",
+        ),
         None,
         Some("(?a - 1) / (?a + ?b - 2)"),
         None,
     ),
-    extra("student_t", None, Some("0"), Some("6 / (?a - 4)"), Some("0"), Some("0"), None),
+    extra(
+        "student_t",
+        None,
+        Some("0"),
+        Some("6 / (?a - 4)"),
+        Some("0"),
+        Some("0"),
+        None,
+    ),
     extra(
         "chi_squared",
         Some("(1 - 2 * I * ?x)^(-?a / 2)"),
@@ -444,7 +462,10 @@ fn parameter_count(name: &str) -> Option<usize> {
 }
 
 fn family_of(name: &str) -> Option<&'static Family> {
-    CORE_FAMILIES.iter().chain(FAMILIES.iter()).find(|f| f.name == name)
+    CORE_FAMILIES
+        .iter()
+        .chain(FAMILIES.iter())
+        .find(|f| f.name == name)
 }
 
 /// Instantiates pattern text over named variables.
@@ -506,7 +527,10 @@ fn heaviside_free(text: &str) -> String {
         }
         let before = out[..start].trim_end_matches(' ');
         let after = &out[end..];
-        let mut head = before.strip_suffix('*').map_or(before, str::trim_end).to_owned();
+        let mut head = before
+            .strip_suffix('*')
+            .map_or(before, str::trim_end)
+            .to_owned();
         let mut tail = after.to_owned();
         if head.is_empty() {
             if let Some(rest) = tail.trim_start().strip_prefix("* ") {
@@ -515,7 +539,11 @@ fn heaviside_free(text: &str) -> String {
                 "1".clone_into(&mut head);
             }
         }
-        let joined = if tail.starts_with(' ') || tail.is_empty() || head.is_empty() { format!("{head}{tail}") } else { format!("{head} {tail}") };
+        let joined = if tail.starts_with(' ') || tail.is_empty() || head.is_empty() {
+            format!("{head}{tail}")
+        } else {
+            format!("{head} {tail}")
+        };
         out = joined;
     }
     out
@@ -574,7 +602,11 @@ fn property(
 ) -> Option<NodeId> {
     let (name, params) = distribution(graph, *args.first()?)?;
     let text = pick(extras_of(&name)?)?;
-    let x = if with_argument { *args.get(1)? } else { *params.first()? };
+    let x = if with_argument {
+        *args.get(1)?
+    } else {
+        *params.first()?
+    };
     if text.contains('I') && graph.ops().lookup("I").is_none() {
         return None;
     }
@@ -649,11 +681,12 @@ fn support(
     let zero = graph.int(0);
     let one = graph.int(1);
     Some(match name {
-        | "normal" | "cauchy" | "laplace_dist" | "logistic" | "gumbel" | "student_t" => (minus_infinity, infinity, false),
-        | "uniform" => (*params.first()?, *params.get(1)?, false),
-        | "exponential" | "gamma_dist" | "chi_squared" | "weibull" | "rayleigh" | "f_dist" | "lognormal" => {
-            (zero, infinity, false)
+        | "normal" | "cauchy" | "laplace_dist" | "logistic" | "gumbel" | "student_t" => {
+            (minus_infinity, infinity, false)
         },
+        | "uniform" => (*params.first()?, *params.get(1)?, false),
+        | "exponential" | "gamma_dist" | "chi_squared" | "weibull" | "rayleigh" | "f_dist"
+        | "lognormal" => (zero, infinity, false),
         | "beta_dist" => (zero, one, false),
         | "pareto" => (*params.first()?, infinity, false),
         | "bernoulli" => (zero, one, true),
@@ -698,7 +731,10 @@ fn sum_dist(
     args: &[NodeId],
 ) -> Option<NodeId> {
     let &[first, second] = args else { return None };
-    let ((n1, p1), (n2, p2)) = (distribution(cx.graph, first)?, distribution(cx.graph, second)?);
+    let ((n1, p1), (n2, p2)) = (
+        distribution(cx.graph, first)?,
+        distribution(cx.graph, second)?,
+    );
     let same = |cx: &mut Cx<'_>, a: NodeId, b: NodeId| is_equal(cx, a, b);
     let text = match (n1.as_str(), n2.as_str()) {
         | ("normal", "normal") => "normal(?a + ?c, (?b^2 + ?d^2)^(1/2))",
@@ -709,11 +745,15 @@ fn sum_dist(
         | ("gamma_dist", "gamma_dist") if same(cx, p1[1], p2[1]) => "gamma_dist(?a + ?c, ?b)",
         | ("exponential", "gamma_dist") if same(cx, p1[0], p2[1]) => "gamma_dist(?c + 1, ?a)",
         | ("gamma_dist", "exponential") if same(cx, p1[1], p2[0]) => "gamma_dist(?a + 1, ?b)",
-        | ("binomial_dist", "binomial_dist") if same(cx, p1[1], p2[1]) => "binomial_dist(?a + ?c, ?b)",
+        | ("binomial_dist", "binomial_dist") if same(cx, p1[1], p2[1]) => {
+            "binomial_dist(?a + ?c, ?b)"
+        },
         | ("bernoulli", "bernoulli") if same(cx, p1[0], p2[0]) => "binomial_dist(2, ?a)",
         | ("bernoulli", "binomial_dist") if same(cx, p1[0], p2[1]) => "binomial_dist(?c + 1, ?a)",
         | ("binomial_dist", "bernoulli") if same(cx, p1[1], p2[0]) => "binomial_dist(?a + 1, ?b)",
-        | ("negative_binomial", "negative_binomial") if same(cx, p1[1], p2[1]) => "negative_binomial(?a + ?c, ?b)",
+        | ("negative_binomial", "negative_binomial") if same(cx, p1[1], p2[1]) => {
+            "negative_binomial(?a + ?c, ?b)"
+        },
         | _ => return None,
     };
     pair_template(cx.graph, text, &p1, &p2)
@@ -798,7 +838,9 @@ fn bayes(
     cx: &mut Cx<'_>,
     args: &[NodeId],
 ) -> Option<NodeId> {
-    let &[prior, model, data] = args else { return None };
+    let &[prior, model, data] = args else {
+        return None;
+    };
     let (name, params) = distribution(cx.graph, prior)?;
     let model = best(cx.graph, model)?;
     let model_name = cx.graph.ops().get(cx.graph.op(model)).name.to_string();
@@ -818,7 +860,10 @@ fn bayes(
     let numbers: Option<Vec<f64>> = items.iter().map(|&v| f64_of(cx.graph, v)).collect();
     let text = match (name.as_str(), model_name.as_str()) {
         | ("beta_dist", "bernoulli") => {
-            if numbers.is_some_and(|v| v.iter().any(|&x| x.abs() > 1e-12 && (x - 1.0).abs() > 1e-12)) {
+            if numbers.is_some_and(|v| {
+                v.iter()
+                    .any(|&x| x.abs() > 1e-12 && (x - 1.0).abs() > 1e-12)
+            }) {
                 return None;
             }
             "beta_dist(?a + ?s, ?b + ?n - ?s)"
@@ -835,7 +880,12 @@ fn bayes(
     let a = *params.first()?;
     let b = params.get(1).copied().unwrap_or(a);
     let m = model_args.first().copied().unwrap_or(a);
-    instantiate(cx.graph, text, &["a", "b", "s", "n", "m"], &[a, b, total, n, m])
+    instantiate(
+        cx.graph,
+        text,
+        &["a", "b", "s", "n", "m"],
+        &[a, b, total, n, m],
+    )
 }
 
 // ----------------------------------------------------------------------
@@ -847,7 +897,10 @@ fn integer(
     node: NodeId,
     cap: i64,
 ) -> Option<u64> {
-    let v = graph.number_of(node).and_then(Number::to_i64).filter(|&v| (0..=cap).contains(&v))?;
+    let v = graph
+        .number_of(node)
+        .and_then(Number::to_i64)
+        .filter(|&v| (0..=cap).contains(&v))?;
     u64::try_from(v).ok()
 }
 
@@ -867,7 +920,11 @@ fn binomial_test(
     let q = BigRational::one() - &p;
     let pmf = |i: u64| -> Option<BigRational> {
         let c = choose(&BigInt::from(n), i)?;
-        Some(BigRational::from_integer(c) * num_traits::pow::pow(p.clone(), usize::try_from(i).ok()?) * num_traits::pow::pow(q.clone(), usize::try_from(n - i).ok()?))
+        Some(
+            BigRational::from_integer(c)
+                * num_traits::pow::pow(p.clone(), usize::try_from(i).ok()?)
+                * num_traits::pow::pow(q.clone(), usize::try_from(n - i).ok()?),
+        )
     };
     let observed = pmf(k)?;
     let mut total = BigRational::zero();
@@ -885,10 +942,17 @@ fn fisher_exact(
     args: &[NodeId],
 ) -> Option<NodeId> {
     let &[a, b, c, d] = args else { return None };
-    let (a, b, c, d) = (integer(cx.graph, a, 1000)?, integer(cx.graph, b, 1000)?, integer(cx.graph, c, 1000)?, integer(cx.graph, d, 1000)?);
+    let (a, b, c, d) = (
+        integer(cx.graph, a, 1000)?,
+        integer(cx.graph, b, 1000)?,
+        integer(cx.graph, c, 1000)?,
+        integer(cx.graph, d, 1000)?,
+    );
     let (row1, row2, col1) = (a + b, c + d, a + c);
     let total = row1 + row2;
-    let weight = |x: u64| -> Option<BigInt> { Some(choose(&BigInt::from(row1), x)? * choose(&BigInt::from(row2), col1 - x)?) };
+    let weight = |x: u64| -> Option<BigInt> {
+        Some(choose(&BigInt::from(row1), x)? * choose(&BigInt::from(row2), col1 - x)?)
+    };
     let observed = weight(a)?;
     let mut sum = BigInt::zero();
     for x in col1.saturating_sub(row2)..=col1.min(row1) {
@@ -898,7 +962,10 @@ fn fisher_exact(
         }
     }
     let denominator = choose(&BigInt::from(total), col1)?;
-    Some(cx.graph.num(Number::rat(BigRational::new(sum, denominator))))
+    Some(
+        cx.graph
+            .num(Number::rat(BigRational::new(sum, denominator))),
+    )
 }
 
 fn template_over(
@@ -918,7 +985,9 @@ fn regression_coefficients(
     let request = call(cx.graph, "linear_regression", &[xs, ys])?;
     let result = cx.simplify(request);
     let items = items_of(cx.graph, result)?;
-    let &[intercept, slope] = items.as_slice() else { return None };
+    let &[intercept, slope] = items.as_slice() else {
+        return None;
+    };
     Some((intercept, slope))
 }
 
@@ -979,8 +1048,10 @@ impl Extension {
             | Kind::MeanInterval => {
                 let &[m, s, n, z] = args else { return None };
                 let names = ["m", "s", "n", "z"];
-                let lower = template_over(cx.graph, "?m - ?z * ?s / ?n^(1/2)", &names, &[m, s, n, z])?;
-                let upper = template_over(cx.graph, "?m + ?z * ?s / ?n^(1/2)", &names, &[m, s, n, z])?;
+                let lower =
+                    template_over(cx.graph, "?m - ?z * ?s / ?n^(1/2)", &names, &[m, s, n, z])?;
+                let upper =
+                    template_over(cx.graph, "?m + ?z * ?s / ?n^(1/2)", &names, &[m, s, n, z])?;
                 Some(list_node(cx.graph, &[lower, upper]))
             },
             | Kind::ProportionZ => {
@@ -1007,7 +1078,12 @@ impl Extension {
                 let (xs, ys) = (items_of(cx.graph, bx)?, items_of(cx.graph, by)?);
                 let mut out = Vec::with_capacity(xs.len());
                 for (&x, &y) in xs.iter().zip(&ys) {
-                    let fitted = template_over(cx.graph, "?a + ?b * ?x", &["a", "b", "x"], &[intercept, slope, x])?;
+                    let fitted = template_over(
+                        cx.graph,
+                        "?a + ?b * ?x",
+                        &["a", "b", "x"],
+                        &[intercept, slope, x],
+                    )?;
                     let residual = difference(cx.graph, y, fitted);
                     out.push(cx.simplify(residual));
                 }
@@ -1028,7 +1104,8 @@ impl Kernel for Extension {
         node: NodeId,
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
-        self.compute(cx, &args).map_or(Outcome::Pass, Outcome::Equal)
+        self.compute(cx, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 
     fn revisit(&self) -> bool {
@@ -1068,15 +1145,21 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("r_squared", 2, Kind::RSquared),
         ("residuals", 2, Kind::Residuals),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("stats/{name}"), Tier::Reduce, Extension { op, kind });
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("stats/{name}"),
+            Tier::Reduce,
+            Extension { op, kind },
+        );
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-        use crate::rules::testing::simplify;
+    use crate::rules::testing::simplify;
 
     fn run(src: &str) -> String {
         simplify(&[crate::rules::stats::stats()], src)
@@ -1110,16 +1193,33 @@ mod tests {
         assert_eq!(run("expectation(pareto(1, 3))"), "3/2");
         assert_eq!(run("expectation(f_dist(3, 6))"), "3/2");
         // The Cauchy mean and a Pareto variance with alpha <= 2 do not exist.
-        let (text, reduced) = crate::rules::testing::reduce_with(&[crate::rules::stats::stats()], "expectation(cauchy(0, 1))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[crate::rules::stats::stats()],
+            "expectation(cauchy(0, 1))",
+            &[],
+        );
         assert!(!reduced, "{text}");
-        let (text, reduced) = crate::rules::testing::reduce_with(&[crate::rules::stats::stats()], "variance_of(pareto(1, 2))", &[]);
+        let (text, reduced) = crate::rules::testing::reduce_with(
+            &[crate::rules::stats::stats()],
+            "variance_of(pareto(1, 2))",
+            &[],
+        );
         assert!(!reduced, "{text}");
     }
 
     #[test]
     fn densities_integrate_to_the_cdf() {
         // Weibull and lognormal cdf against the pdf at a point via a symmetric difference quotient.
-        for (dist, x) in [("weibull(2, 3)", 2.0), ("lognormal(0, 1/2)", 1.5), ("gumbel(1, 2)", 0.5), ("logistic(0, 1)", 0.7), ("f_dist(3, 5)", 1.2), ("pareto(1, 2)", 2.0), ("rayleigh(2)", 1.0), ("laplace_dist(0, 2)", 0.3)] {
+        for (dist, x) in [
+            ("weibull(2, 3)", 2.0),
+            ("lognormal(0, 1/2)", 1.5),
+            ("gumbel(1, 2)", 0.5),
+            ("logistic(0, 1)", 0.7),
+            ("f_dist(3, 5)", 1.2),
+            ("pareto(1, 2)", 2.0),
+            ("rayleigh(2)", 1.0),
+            ("laplace_dist(0, 2)", 0.3),
+        ] {
             let h = 1e-5;
             let upper = value(&format!("cdf({dist}, x)"), &[("x", x + h)]);
             let lower = value(&format!("cdf({dist}, x)"), &[("x", x - h)]);
@@ -1130,7 +1230,19 @@ mod tests {
 
     #[test]
     fn quantiles_invert_the_cdf() {
-        for dist in ["normal(1, 2)", "exponential(3)", "weibull(2, 3)", "logistic(0, 1)", "gumbel(0, 1)", "laplace_dist(0, 1)", "rayleigh(2)", "pareto(1, 2)", "lognormal(0, 1)", "cauchy(0, 1)", "uniform(1, 4)"] {
+        for dist in [
+            "normal(1, 2)",
+            "exponential(3)",
+            "weibull(2, 3)",
+            "logistic(0, 1)",
+            "gumbel(0, 1)",
+            "laplace_dist(0, 1)",
+            "rayleigh(2)",
+            "pareto(1, 2)",
+            "lognormal(0, 1)",
+            "cauchy(0, 1)",
+            "uniform(1, 4)",
+        ] {
             let p = 0.3;
             let q = value(&format!("quantile_of({dist}, p)"), &[("p", p)]);
             let back = value(&format!("cdf({dist}, x)"), &[("x", q)]);
@@ -1152,7 +1264,10 @@ mod tests {
 
     #[test]
     fn characteristic_functions() {
-        let sets = [crate::rules::stats::stats(), crate::rules::complex::complex()];
+        let sets = [
+            crate::rules::stats::stats(),
+            crate::rules::complex::complex(),
+        ];
         let text = crate::rules::testing::simplify(&sets, "charfn(exponential(2), t)");
         assert!(text.contains('I'), "{text}");
         let text = crate::rules::testing::simplify(&sets, "charfn(cauchy(0, 1), t)");
@@ -1174,9 +1289,18 @@ mod tests {
     fn sums_and_affine_maps() {
         assert_eq!(run("sum_dist(normal(1, 3), normal(2, 4))"), "normal(3, 5)");
         assert_eq!(run("sum_dist(poisson(2), poisson(3))"), "poisson(5)");
-        assert_eq!(run("sum_dist(exponential(2), exponential(2))"), "gamma_dist(2, 2)");
-        assert_eq!(run("sum_dist(binomial_dist(3, 1/2), binomial_dist(4, 1/2))"), "binomial_dist(7, 1/2)");
-        assert_eq!(run("sum_dist(bernoulli(1/3), bernoulli(1/3))"), "binomial_dist(2, 1/3)");
+        assert_eq!(
+            run("sum_dist(exponential(2), exponential(2))"),
+            "gamma_dist(2, 2)"
+        );
+        assert_eq!(
+            run("sum_dist(binomial_dist(3, 1/2), binomial_dist(4, 1/2))"),
+            "binomial_dist(7, 1/2)"
+        );
+        assert_eq!(
+            run("sum_dist(bernoulli(1/3), bernoulli(1/3))"),
+            "binomial_dist(2, 1/3)"
+        );
         assert_eq!(run("iid_sum(normal(1, 2), n)"), "normal(n, 2*n^(1/2))");
         assert_eq!(run("iid_mean(normal(1, 2), 16)"), "normal(1, 1/2)");
         assert_eq!(run("iid_sum(exponential(2), 5)"), "gamma_dist(5, 2)");
@@ -1184,17 +1308,38 @@ mod tests {
         assert_eq!(run("scale_dist(2, exponential(1))"), "exponential(1/2)");
         assert_eq!(run("shift_dist(5, normal(0, 1))"), "normal(5, 1)");
         // The sum of two independent normals has the variance of the parts added.
-        assert_eq!(run("variance_of(sum_dist(normal(0, 1), normal(0, 2)))"), "5");
+        assert_eq!(
+            run("variance_of(sum_dist(normal(0, 1), normal(0, 2)))"),
+            "5"
+        );
     }
 
     #[test]
     fn conjugate_updates() {
-        assert_eq!(run("bayes_update(beta_dist(1, 1), bernoulli, list(1, 0, 1, 1))"), "beta_dist(4, 2)");
-        assert_eq!(run("bayes_update(beta_dist(2, 3), binomial_trials(10), list(4, 6))"), "beta_dist(12, 13)");
-        assert_eq!(run("bayes_update(gamma_dist(2, 1), poisson, list(3, 1, 2))"), "gamma_dist(8, 4)");
-        assert_eq!(run("bayes_update(gamma_dist(1, 1), exponential, list(2, 3))"), "gamma_dist(3, 6)");
-        assert_eq!(run("bayes_update(normal(0, 1), normal_known_sd(1), list(2, 4))"), "normal(2, 1/3^(1/2))");
-        assert_eq!(run("expectation(bayes_update(beta_dist(1, 1), bernoulli, list(1, 0, 1, 1)))"), "2/3");
+        assert_eq!(
+            run("bayes_update(beta_dist(1, 1), bernoulli, list(1, 0, 1, 1))"),
+            "beta_dist(4, 2)"
+        );
+        assert_eq!(
+            run("bayes_update(beta_dist(2, 3), binomial_trials(10), list(4, 6))"),
+            "beta_dist(12, 13)"
+        );
+        assert_eq!(
+            run("bayes_update(gamma_dist(2, 1), poisson, list(3, 1, 2))"),
+            "gamma_dist(8, 4)"
+        );
+        assert_eq!(
+            run("bayes_update(gamma_dist(1, 1), exponential, list(2, 3))"),
+            "gamma_dist(3, 6)"
+        );
+        assert_eq!(
+            run("bayes_update(normal(0, 1), normal_known_sd(1), list(2, 4))"),
+            "normal(2, 1/3^(1/2))"
+        );
+        assert_eq!(
+            run("expectation(bayes_update(beta_dist(1, 1), bernoulli, list(1, 0, 1, 1)))"),
+            "2/3"
+        );
     }
 
     #[test]
@@ -1209,6 +1354,9 @@ mod tests {
         let text = run("wilson_interval(5, 10, 2)");
         assert!(text.starts_with("list("), "{text}");
         assert_eq!(run("r_squared(list(1, 2, 3, 4), list(2, 4, 6, 8))"), "1");
-        assert_eq!(run("residuals(list(0, 1, 2), list(1, 2, 2))"), "list(-1/6, 1/3, -1/6)");
+        assert_eq!(
+            run("residuals(list(0, 1, 2), list(1, 2, 2))"),
+            "list(-1/6, 1/3, -1/6)"
+        );
     }
 }

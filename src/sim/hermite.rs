@@ -17,7 +17,11 @@
 //! supports the 4th-order scheme and treats other binaries as point masses in the
 //! perturbation of a binary.
 
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
 
 type V3 = [f64; 3];
 
@@ -167,7 +171,12 @@ fn norm(a: V3) -> f64 {
 
 /// Scalar field used by the generic EIH acceleration (plain reals or dual numbers).
 pub(crate) trait Scalar:
-    Copy + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Neg<Output = Self>
+    Copy
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + Neg<Output = Self>
 {
     fn from_f64(x: f64) -> Self;
     fn sqrt(self) -> Self;
@@ -197,7 +206,10 @@ impl Add for Dual {
         self,
         o: Self,
     ) -> Self {
-        Self { v: self.v + o.v, d: self.d + o.d }
+        Self {
+            v: self.v + o.v,
+            d: self.d + o.d,
+        }
     }
 }
 
@@ -208,7 +220,10 @@ impl Sub for Dual {
         self,
         o: Self,
     ) -> Self {
-        Self { v: self.v - o.v, d: self.d - o.d }
+        Self {
+            v: self.v - o.v,
+            d: self.d - o.d,
+        }
     }
 }
 
@@ -219,7 +234,10 @@ impl Mul for Dual {
         self,
         o: Self,
     ) -> Self {
-        Self { v: self.v * o.v, d: self.v * o.d + self.d * o.v }
+        Self {
+            v: self.v * o.v,
+            d: self.v * o.d + self.d * o.v,
+        }
     }
 }
 
@@ -230,7 +248,10 @@ impl Div for Dual {
         self,
         o: Self,
     ) -> Self {
-        Self { v: self.v / o.v, d: (self.d * o.v - self.v * o.d) / (o.v * o.v) }
+        Self {
+            v: self.v / o.v,
+            d: (self.d * o.v - self.v * o.d) / (o.v * o.v),
+        }
     }
 }
 
@@ -238,7 +259,10 @@ impl Neg for Dual {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Self { v: -self.v, d: -self.d }
+        Self {
+            v: -self.v,
+            d: -self.d,
+        }
     }
 }
 
@@ -249,7 +273,10 @@ impl Scalar for Dual {
 
     fn sqrt(self) -> Self {
         let s = self.v.sqrt();
-        Self { v: s, d: 0.5 * self.d / s }
+        Self {
+            v: s,
+            d: 0.5 * self.d / s,
+        }
     }
 }
 
@@ -339,7 +366,9 @@ pub fn eih_accelerations(
     g: f64,
     c: f64,
 ) -> Vec<V3> {
-    (0..mass.len()).map(|i| eih_correction::<f64>(i, pos, vel, acc_newton, mass, g, c)).collect()
+    (0..mass.len())
+        .map(|i| eih_correction::<f64>(i, pos, vel, acc_newton, mass, g, c))
+        .collect()
 }
 
 /// Conserved 1PN energy of the EIH N-body Lagrangian (Landau-Lifshitz section 106).
@@ -365,7 +394,9 @@ pub fn eih_energy(
             let r = norm(d);
             let nn = scale(d, 1.0 / r);
             let (va2, vb2) = (v2, dot(vel[b], vel[b]));
-            let vel_term = 1.5 * (va2 + vb2) - 3.5 * dot(vel[a], vel[b]) - 0.5 * dot(nn, vel[a]) * dot(nn, vel[b]);
+            let vel_term = 1.5 * (va2 + vb2)
+                - 3.5 * dot(vel[a], vel[b])
+                - 0.5 * dot(nn, vel[a]) * dot(nn, vel[b]);
             e -= 0.5 * g * mass[a] * mass[b] / r * (1.0 - vel_term / c2);
             for cc in 0..n {
                 if cc != a {
@@ -444,17 +475,27 @@ impl HermiteSystem {
         vel: Vec<V3>,
         cfg: &HermiteConfig,
     ) -> Result<Self, String> {
-        let HermiteConfig { g, eps, order, policy, t0 } = *cfg;
+        let HermiteConfig {
+            g,
+            eps,
+            order,
+            policy,
+            t0,
+        } = *cfg;
         let n = mass.len();
         if n < 2 || pos.len() != n || vel.len() != n {
             return Err("need at least two particles with matching arrays".into());
         }
         match policy {
-            StepPolicy::Shared(h) if h <= 0.0 => return Err("shared step must be positive".into()),
-            StepPolicy::Block { eta, dt_max, dt_min } if eta <= 0.0 || dt_max <= 0.0 || dt_min <= 0.0 || dt_min > dt_max => {
+            | StepPolicy::Shared(h) if h <= 0.0 => {
+                return Err("shared step must be positive".into());
+            },
+            | StepPolicy::Block { eta, dt_max, dt_min }
+                if eta <= 0.0 || dt_max <= 0.0 || dt_min <= 0.0 || dt_min > dt_max =>
+            {
                 return Err("invalid block step parameters".into());
             },
-            _ => {},
+            | _ => {},
         }
         let z = vec![[0.0; 3]; n];
         let mut s = Self {
@@ -493,8 +534,15 @@ impl HermiteSystem {
         &mut self,
         c: f64,
     ) -> Result<(), String> {
-        if self.order != HermiteOrder::Fourth || self.eps != 0.0 || !self.binaries.is_empty() || c <= 0.0 {
-            return Err("post-Newtonian terms need the 4th-order scheme, eps = 0, no binaries and c > 0".into());
+        if self.order != HermiteOrder::Fourth
+            || self.eps != 0.0
+            || !self.binaries.is_empty()
+            || c <= 0.0
+        {
+            return Err(
+                "post-Newtonian terms need the 4th-order scheme, eps = 0, no binaries and c > 0"
+                    .into(),
+            );
         }
         self.pn_c = Some(c);
         self.initialise()
@@ -504,7 +552,15 @@ impl HermiteSystem {
         let n = self.mass.len();
         let t = self.time;
         let pred: Vec<Predicted> = (0..n)
-            .map(|i| Predicted { x: self.pos[i], v: self.vel[i], a: [0.0; 3], j: [0.0; 3], s: [0.0; 3] })
+            .map(|i| {
+                Predicted {
+                    x: self.pos[i],
+                    v: self.vel[i],
+                    a: [0.0; 3],
+                    j: [0.0; 3],
+                    s: [0.0; 3],
+                }
+            })
             .collect();
         let all: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i)).collect();
         let out = self.forces(&pred, &all, t)?;
@@ -520,10 +576,14 @@ impl HermiteSystem {
         let live: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i)).collect();
         for i in live {
             self.dt[i] = match self.policy {
-                StepPolicy::Shared(h) => h,
-                StepPolicy::Block { eta, dt_max, dt_min } => {
+                | StepPolicy::Shared(h) => h,
+                | StepPolicy::Block { eta, dt_max, dt_min } => {
                     let (a, j) = (norm(self.acc[i]), norm(self.jerk[i]));
-                    let guess = if j > 0.0 { 0.01 * eta.sqrt() * a / j } else { dt_max };
+                    let guess = if j > 0.0 {
+                        0.01 * eta.sqrt() * a / j
+                    } else {
+                        dt_max
+                    };
                     Self::quantise(guess.min(dt_max), dt_max, dt_min)
                 },
             };
@@ -550,9 +610,22 @@ impl HermiteSystem {
         t: f64,
     ) -> Predicted {
         let h = t - self.t_last[i];
-        let (x0, v0, a0, j0, s0, c0) = (self.pos[i], self.vel[i], self.acc[i], self.jerk[i], self.snap[i], self.crackle[i]);
+        let (x0, v0, a0, j0, s0, c0) = (
+            self.pos[i],
+            self.vel[i],
+            self.acc[i],
+            self.jerk[i],
+            self.snap[i],
+            self.crackle[i],
+        );
         let sixth = self.order == HermiteOrder::Sixth;
-        let mut p = Predicted { x: [0.0; 3], v: [0.0; 3], a: [0.0; 3], j: [0.0; 3], s: [0.0; 3] };
+        let mut p = Predicted {
+            x: [0.0; 3],
+            v: [0.0; 3],
+            a: [0.0; 3],
+            j: [0.0; 3],
+            s: [0.0; 3],
+        };
         for k in 0..3 {
             p.x[k] = x0[k] + h * (v0[k] + h * (a0[k] / 2.0 + h * (j0[k] / 6.0)));
             p.v[k] = v0[k] + h * (a0[k] + h * (j0[k] / 2.0));
@@ -614,7 +687,10 @@ impl HermiteSystem {
             if let Some(b) = is_cm[i] {
                 let (x1, v1, x2, v2) = self.binary_components(b, &pred[i], t)?;
                 let bin = &self.binaries[b];
-                let (m1, m2) = (self.comp_mass[bin.members[0]], self.comp_mass[bin.members[1]]);
+                let (m1, m2) = (
+                    self.comp_mass[bin.members[0]],
+                    self.comp_mass[bin.members[1]],
+                );
                 Ok(vec![(x1, v1, m1 / (m1 + m2)), (x2, v2, m2 / (m1 + m2))])
             } else {
                 Ok(vec![(pred[i].x, pred[i].v, 1.0)])
@@ -650,20 +726,42 @@ impl HermiteSystem {
                         continue;
                     }
                     let da = sub(an_all[owner], an_all[i]);
-                    snap = add(snap, pair_snap(sub(xs, t0.0), sub(vs, t0.1), da, self.g * ms, eps2));
+                    snap = add(
+                        snap,
+                        pair_snap(sub(xs, t0.0), sub(vs, t0.1), da, self.g * ms, eps2),
+                    );
                 }
             }
             res.push((an_all[i], jn_all[i], snap));
         }
         // post-Newtonian corrections on top
         if let Some(c) = self.pn_c {
-            let x: Vec<[Dual; 3]> = pred.iter().map(|p| std::array::from_fn(|k| Dual { v: p.x[k], d: p.v[k] })).collect();
+            let x: Vec<[Dual; 3]> = pred
+                .iter()
+                .map(|p| std::array::from_fn(|k| Dual { v: p.x[k], d: p.v[k] }))
+                .collect();
             let v: Vec<[Dual; 3]> = pred
                 .iter()
                 .enumerate()
-                .map(|(i, p)| std::array::from_fn(|k| Dual { v: p.v[k], d: an_all[i][k] }))
+                .map(|(i, p)| {
+                    std::array::from_fn(|k| {
+                        Dual {
+                            v: p.v[k],
+                            d: an_all[i][k],
+                        }
+                    })
+                })
                 .collect();
-            let an: Vec<[Dual; 3]> = (0..pred.len()).map(|i| std::array::from_fn(|k| Dual { v: an_all[i][k], d: jn_all[i][k] })).collect();
+            let an: Vec<[Dual; 3]> = (0..pred.len())
+                .map(|i| {
+                    std::array::from_fn(|k| {
+                        Dual {
+                            v: an_all[i][k],
+                            d: jn_all[i][k],
+                        }
+                    })
+                })
+                .collect();
             for (idx, &i) in active.iter().enumerate() {
                 let pn = eih_correction::<Dual>(i, &x, &v, &an, &self.mass, self.g, c);
                 let (a_n, j_n, s_n) = res[idx];
@@ -690,7 +788,10 @@ impl HermiteSystem {
         t: f64,
     ) -> Result<(V3, V3, V3, V3), String> {
         let bin = &self.binaries[b];
-        let (m1, m2) = (self.comp_mass[bin.members[0]], self.comp_mass[bin.members[1]]);
+        let (m1, m2) = (
+            self.comp_mass[bin.members[0]],
+            self.comp_mass[bin.members[1]],
+        );
         let (rel, rel_vel) = self.advance_binary(b, t)?;
         let mt = m1 + m2;
         let x1 = sub(cm.x, scale(rel, m2 / mt));
@@ -713,33 +814,46 @@ impl HermiteSystem {
         if dt == 0.0 {
             return Ok((bin.rel, bin.rel_vel));
         }
-        let (m1, m2) = (self.comp_mass[bin.members[0]], self.comp_mass[bin.members[1]]);
+        let (m1, m2) = (
+            self.comp_mass[bin.members[0]],
+            self.comp_mass[bin.members[1]],
+        );
         let mt = m1 + m2;
         let mu = self.g * mt;
         let cm_idx = bin.cm;
-        let others: Vec<usize> = (0..self.mass.len()).filter(|&k| k != cm_idx && !self.is_dead(k)).collect();
+        let others: Vec<usize> = (0..self.mass.len())
+            .filter(|&k| k != cm_idx && !self.is_dead(k))
+            .collect();
         let pert = |rel: &V3, _v: &V3, tau: f64| -> V3 {
             let tt = t0 + tau;
             let hc = tt - self.t_last[cm_idx];
             let cm_x: V3 = std::array::from_fn(|k| {
-                self.pos[cm_idx][k] + hc * (self.vel[cm_idx][k] + hc * (self.acc[cm_idx][k] / 2.0 + hc * self.jerk[cm_idx][k] / 6.0))
+                self.pos[cm_idx][k]
+                    + hc * (self.vel[cm_idx][k]
+                        + hc * (self.acc[cm_idx][k] / 2.0 + hc * self.jerk[cm_idx][k] / 6.0))
             });
             let x1 = sub(cm_x, scale(*rel, m2 / mt));
             let x2 = add(cm_x, scale(*rel, m1 / mt));
             let mut p = [0.0; 3];
             for &k in &others {
                 let h = tt - self.t_last[k];
-                let xk: V3 = std::array::from_fn(|c| self.pos[k][c] + h * (self.vel[k][c] + h * (self.acc[k][c] / 2.0 + h * self.jerk[k][c] / 6.0)));
+                let xk: V3 = std::array::from_fn(|c| {
+                    self.pos[k][c]
+                        + h * (self.vel[k][c]
+                            + h * (self.acc[k][c] / 2.0 + h * self.jerk[k][c] / 6.0))
+                });
                 let d1 = sub(xk, x1);
                 let d2 = sub(xk, x2);
                 let (r1, r2) = (norm(d1), norm(d2));
                 for c in 0..3 {
-                    p[c] += self.g * self.mass[k] * (d2[c] / (r2 * r2 * r2) - d1[c] / (r1 * r1 * r1));
+                    p[c] +=
+                        self.g * self.mass[k] * (d2[c] / (r2 * r2 * r2) - d1[c] / (r1 * r1 * r1));
                 }
             }
             p
         };
-        let (x, v) = crate::sim::symplectic::ks_advance(&bin.rel, &bin.rel_vel, mu, &pert, dt, bin.ks_eta)?;
+        let (x, v) =
+            crate::sim::symplectic::ks_advance(&bin.rel, &bin.rel_vel, mu, &pert, dt, bin.ks_eta)?;
         Ok((x, v))
     }
 
@@ -757,21 +871,36 @@ impl HermiteSystem {
     ) -> Result<(), String> {
         let n = self.mass.len();
         if a == b || a >= n || b >= n || self.order != HermiteOrder::Fourth || self.pn_c.is_some() {
-            return Err("binaries need two distinct particles, the 4th-order scheme and no PN".into());
+            return Err(
+                "binaries need two distinct particles, the 4th-order scheme and no PN".into(),
+            );
         }
         if (self.t_last[a] - self.t_last[b]).abs() > 1e-12 * (1.0 + self.t_last[a].abs()) {
             return Err("binary components must be synchronised".into());
         }
         let (m1, m2) = (self.mass[a], self.mass[b]);
         let mt = m1 + m2;
-        let cm_x = scale(add(scale(self.pos[a], m1), scale(self.pos[b], m2)), 1.0 / mt);
-        let cm_v = scale(add(scale(self.vel[a], m1), scale(self.vel[b], m2)), 1.0 / mt);
+        let cm_x = scale(
+            add(scale(self.pos[a], m1), scale(self.pos[b], m2)),
+            1.0 / mt,
+        );
+        let cm_v = scale(
+            add(scale(self.vel[a], m1), scale(self.vel[b], m2)),
+            1.0 / mt,
+        );
         let rel = sub(self.pos[b], self.pos[a]);
         let rel_vel = sub(self.vel[b], self.vel[a]);
         let ia = self.comp_mass.len();
         self.comp_mass.push(m1);
         self.comp_mass.push(m2);
-        self.binaries.push(Binary { members: [ia, ia + 1], cm: a, partner: b, rel, rel_vel, ks_eta });
+        self.binaries.push(Binary {
+            members: [ia, ia + 1],
+            cm: a,
+            partner: b,
+            rel,
+            rel_vel,
+            ks_eta,
+        });
         // `b` is removed from the dynamics: zero mass at the centre of mass, never active
         self.mass[a] = mt;
         self.mass[b] = 0.0;
@@ -783,7 +912,10 @@ impl HermiteSystem {
         self.initialise()
     }
 
-    fn is_dead(&self, i: usize) -> bool {
+    fn is_dead(
+        &self,
+        i: usize,
+    ) -> bool {
         self.t_last[i].is_infinite()
     }
 
@@ -830,7 +962,15 @@ impl HermiteSystem {
     /// Propagates binary propagation errors.
     pub fn total_energy(&self) -> Result<f64, String> {
         let t = self.time;
-        let pred: Vec<Predicted> = (0..self.mass.len()).map(|i| if self.is_dead(i) { self.predict_dead(i) } else { self.predict(i, t) }).collect();
+        let pred: Vec<Predicted> = (0..self.mass.len())
+            .map(|i| {
+                if self.is_dead(i) {
+                    self.predict_dead(i)
+                } else {
+                    self.predict(i, t)
+                }
+            })
+            .collect();
         let src = self.sources(&pred, t)?;
         let masses: Vec<f64> = src.iter().map(|s| s.2).collect();
         let pos: Vec<V3> = src.iter().map(|s| s.0).collect();
@@ -854,13 +994,22 @@ impl HermiteSystem {
         &self,
         i: usize,
     ) -> Predicted {
-        Predicted { x: self.pos[i], v: self.vel[i], a: [0.0; 3], j: [0.0; 3], s: [0.0; 3] }
+        Predicted {
+            x: self.pos[i],
+            v: self.vel[i],
+            a: [0.0; 3],
+            j: [0.0; 3],
+            s: [0.0; 3],
+        }
     }
 
     /// Time at which the next block ends.
     #[must_use]
     pub fn next_time(&self) -> f64 {
-        (0..self.mass.len()).filter(|&i| !self.is_dead(i)).map(|i| self.t_last[i] + self.dt[i]).fold(f64::INFINITY, f64::min)
+        (0..self.mass.len())
+            .filter(|&i| !self.is_dead(i))
+            .map(|i| self.t_last[i] + self.dt[i])
+            .fold(f64::INFINITY, f64::min)
     }
 
     /// Advances the system by one block: the particles that are due at the earliest end time.
@@ -870,11 +1019,28 @@ impl HermiteSystem {
     pub fn step(&mut self) -> Result<(), String> {
         let n = self.mass.len();
         let t_new = self.next_time();
-        let active: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i) && (self.t_last[i] + self.dt[i] - t_new).abs() <= 1e-12 * self.dt[i]).collect();
-        let mut pred: Vec<Predicted> = (0..n).map(|i| if self.is_dead(i) { self.predict_dead(i) } else { self.predict(i, t_new) }).collect();
+        let active: Vec<usize> = (0..n)
+            .filter(|&i| {
+                !self.is_dead(i)
+                    && (self.t_last[i] + self.dt[i] - t_new).abs() <= 1e-12 * self.dt[i]
+            })
+            .collect();
+        let mut pred: Vec<Predicted> = (0..n)
+            .map(|i| {
+                if self.is_dead(i) {
+                    self.predict_dead(i)
+                } else {
+                    self.predict(i, t_new)
+                }
+            })
+            .collect();
         let base: Vec<Predicted> = pred.clone();
         let sixth = self.order == HermiteOrder::Sixth;
-        let iters = if sixth { 1 } else { self.iterations.max(1) };
+        let iters = if sixth {
+            1
+        } else {
+            self.iterations.max(1)
+        };
         let mut results = Vec::new();
         for _ in 0..iters {
             let out = self.forces(&pred, &active, t_new)?;
@@ -889,8 +1055,12 @@ impl HermiteSystem {
                 let mut crackle1 = [0.0; 3];
                 for c in 0..3 {
                     if sixth {
-                        v[c] = self.vel[i][c] + h / 2.0 * (a0[c] + a1[c]) - h * h / 10.0 * (j1[c] - j0[c]) + h * h * h / 120.0 * (s0[c] + s1[c]);
-                        x[c] = self.pos[i][c] + h / 2.0 * (self.vel[i][c] + v[c]) - h * h / 10.0 * (a1[c] - a0[c]) + h * h * h / 120.0 * (j0[c] + j1[c]);
+                        v[c] = self.vel[i][c] + h / 2.0 * (a0[c] + a1[c])
+                            - h * h / 10.0 * (j1[c] - j0[c])
+                            + h * h * h / 120.0 * (s0[c] + s1[c]);
+                        x[c] = self.pos[i][c] + h / 2.0 * (self.vel[i][c] + v[c])
+                            - h * h / 10.0 * (a1[c] - a0[c])
+                            + h * h * h / 120.0 * (j0[c] + j1[c]);
                         let r1 = (a1[c] - a0[c] - j0[c] * h - s0[c] * h * h / 2.0) / (h * h * h);
                         let r2 = (j1[c] - j0[c] - s0[c] * h) / (h * h);
                         let r3 = (s1[c] - s0[c]) / h;
@@ -898,9 +1068,12 @@ impl HermiteSystem {
                         snap1[c] = s1[c];
                         crackle1[c] = 18.0 * acoef - 120.0 * r1 + 36.0 * r2;
                     } else {
-                        let snap0 = (-6.0 * (a0[c] - a1[c]) - h * (4.0 * j0[c] + 2.0 * j1[c])) / (h * h);
-                        let crackle = (12.0 * (a0[c] - a1[c]) + 6.0 * h * (j0[c] + j1[c])) / (h * h * h);
-                        x[c] = base[i].x[c] + h.powi(4) / 24.0 * snap0 + h.powi(5) / 120.0 * crackle;
+                        let snap0 =
+                            (-6.0 * (a0[c] - a1[c]) - h * (4.0 * j0[c] + 2.0 * j1[c])) / (h * h);
+                        let crackle =
+                            (12.0 * (a0[c] - a1[c]) + 6.0 * h * (j0[c] + j1[c])) / (h * h * h);
+                        x[c] =
+                            base[i].x[c] + h.powi(4) / 24.0 * snap0 + h.powi(5) / 120.0 * crackle;
                         v[c] = base[i].v[c] + h.powi(3) / 6.0 * snap0 + h.powi(4) / 24.0 * crackle;
                         snap1[c] = snap0 + h * crackle;
                         crackle1[c] = crackle;
@@ -949,21 +1122,33 @@ impl HermiteSystem {
         t_new: f64,
     ) -> f64 {
         match self.policy {
-            StepPolicy::Shared(h) => h,
-            StepPolicy::Block { eta, dt_max, dt_min } => {
-                let (a, j, s, c) = (norm(self.acc[i]), norm(self.jerk[i]), norm(self.snap[i]), norm(self.crackle[i]));
+            | StepPolicy::Shared(h) => h,
+            | StepPolicy::Block { eta, dt_max, dt_min } => {
+                let (a, j, s, c) = (
+                    norm(self.acc[i]),
+                    norm(self.jerk[i]),
+                    norm(self.snap[i]),
+                    norm(self.crackle[i]),
+                );
                 let ss = s * s;
                 let denom = j * c + ss;
                 let jj = j * j;
                 let aj = a * s + jj;
-                let proposed = if denom > 0.0 { (eta * aj / denom).sqrt() } else { dt_max };
+                let proposed = if denom > 0.0 {
+                    (eta * aj / denom).sqrt()
+                } else {
+                    dt_max
+                };
                 let old = self.dt[i];
                 let mut dt = old;
                 if proposed < old {
                     while dt > proposed && dt > dt_min {
                         dt *= 0.5;
                     }
-                } else if proposed >= 2.0 * old && 2.0 * old <= pow2_floor(dt_max) && (t_new / (2.0 * old)).fract() == 0.0 {
+                } else if proposed >= 2.0 * old
+                    && 2.0 * old <= pow2_floor(dt_max)
+                    && (t_new / (2.0 * old)).fract() == 0.0
+                {
                     dt = 2.0 * old;
                 }
                 dt.max(dt_min)

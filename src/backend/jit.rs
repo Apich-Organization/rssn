@@ -97,7 +97,8 @@ mod abi {
         x: f64,
     ) -> f64 {
         // SAFETY: the address comes from a `Lowering::Extern1`.
-        let function: extern "C" fn(f64) -> f64 = unsafe { std::mem::transmute::<usize, extern "C" fn(f64) -> f64>(f) };
+        let function: extern "C" fn(f64) -> f64 =
+            unsafe { std::mem::transmute::<usize, extern "C" fn(f64) -> f64>(f) };
         function(x)
     }
 
@@ -111,7 +112,8 @@ mod abi {
         y: f64,
     ) -> f64 {
         // SAFETY: the address comes from a `Lowering::Extern2`.
-        let function: extern "C" fn(f64, f64) -> f64 = unsafe { std::mem::transmute::<usize, extern "C" fn(f64, f64) -> f64>(f) };
+        let function: extern "C" fn(f64, f64) -> f64 =
+            unsafe { std::mem::transmute::<usize, extern "C" fn(f64, f64) -> f64>(f) };
         function(x, y)
     }
 
@@ -272,10 +274,15 @@ impl JitFunction {
     /// host is unsupported.
     pub fn compile(tape: &Tape) -> Result<Self, BackendError> {
         let mut flags = settings::builder();
-        flags.set("use_colocated_libcalls", "false").map_err(error)?;
+        flags
+            .set("use_colocated_libcalls", "false")
+            .map_err(error)?;
         flags.set("is_pic", "false").map_err(error)?;
         flags.set("opt_level", "speed").map_err(error)?;
-        let isa = cranelift_native::builder().map_err(error)?.finish(settings::Flags::new(flags)).map_err(error)?;
+        let isa = cranelift_native::builder()
+            .map_err(error)?
+            .finish(settings::Flags::new(flags))
+            .map_err(error)?;
         let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
         for f in UNARY_SHIMS {
             if let Some((name, shim)) = library(f) {
@@ -297,28 +304,70 @@ impl JitFunction {
         let mut sig_binary = sig_unary.clone();
         sig_binary.params.push(AbiParam::new(types::F64));
         let mut sig_eval = module.make_signature();
-        sig_eval.params.extend([AbiParam::new(pointer), AbiParam::new(pointer), AbiParam::new(pointer)]);
+        sig_eval.params.extend([
+            AbiParam::new(pointer),
+            AbiParam::new(pointer),
+            AbiParam::new(pointer),
+        ]);
         sig_eval.returns.push(AbiParam::new(types::F64));
         let mut sig_ext1 = module.make_signature();
-        sig_ext1.params.extend([AbiParam::new(pointer), AbiParam::new(types::F64)]);
+        sig_ext1
+            .params
+            .extend([AbiParam::new(pointer), AbiParam::new(types::F64)]);
         sig_ext1.returns.push(AbiParam::new(types::F64));
         let mut sig_ext2 = sig_ext1.clone();
         sig_ext2.params.push(AbiParam::new(types::F64));
         let mut imports: HashMap<&'static str, FuncId> = HashMap::new();
         for f in UNARY_SHIMS {
             if let Some((name, _)) = library(f) {
-                imports.insert(name, module.declare_function(name, Linkage::Import, &sig_unary).map_err(error)?);
+                imports.insert(
+                    name,
+                    module
+                        .declare_function(name, Linkage::Import, &sig_unary)
+                        .map_err(error)?,
+                );
             }
         }
-        imports.insert("rssn_pow", module.declare_function("rssn_pow", Linkage::Import, &sig_binary).map_err(error)?);
-        imports.insert("rssn_atan2", module.declare_function("rssn_atan2", Linkage::Import, &sig_binary).map_err(error)?);
-        imports.insert("rssn_eval", module.declare_function("rssn_eval", Linkage::Import, &sig_eval).map_err(error)?);
-        imports.insert("rssn_extern1", module.declare_function("rssn_extern1", Linkage::Import, &sig_ext1).map_err(error)?);
-        imports.insert("rssn_extern2", module.declare_function("rssn_extern2", Linkage::Import, &sig_ext2).map_err(error)?);
+        imports.insert(
+            "rssn_pow",
+            module
+                .declare_function("rssn_pow", Linkage::Import, &sig_binary)
+                .map_err(error)?,
+        );
+        imports.insert(
+            "rssn_atan2",
+            module
+                .declare_function("rssn_atan2", Linkage::Import, &sig_binary)
+                .map_err(error)?,
+        );
+        imports.insert(
+            "rssn_eval",
+            module
+                .declare_function("rssn_eval", Linkage::Import, &sig_eval)
+                .map_err(error)?,
+        );
+        imports.insert(
+            "rssn_extern1",
+            module
+                .declare_function("rssn_extern1", Linkage::Import, &sig_ext1)
+                .map_err(error)?,
+        );
+        imports.insert(
+            "rssn_extern2",
+            module
+                .declare_function("rssn_extern2", Linkage::Import, &sig_ext2)
+                .map_err(error)?,
+        );
 
         let mut sig = module.make_signature();
-        sig.params.extend([AbiParam::new(pointer), AbiParam::new(pointer), AbiParam::new(pointer)]);
-        let id = module.declare_function("rssn_program", Linkage::Local, &sig).map_err(error)?;
+        sig.params.extend([
+            AbiParam::new(pointer),
+            AbiParam::new(pointer),
+            AbiParam::new(pointer),
+        ]);
+        let id = module
+            .declare_function("rssn_program", Linkage::Local, &sig)
+            .map_err(error)?;
         let mut ctx = module.make_context();
         ctx.func.signature = sig;
         let mut fctx = FunctionBuilderContext::new();
@@ -337,18 +386,45 @@ impl JitFunction {
             for (&name, &fid) in &imports {
                 refs.insert(name, module.declare_func_in_func(fid, b.func));
             }
-            let call1 = |b: &mut FunctionBuilder<'_>, name: &str, args: &[Value]| -> Result<Value, BackendError> {
-                let f = *refs.get(name).ok_or_else(|| BackendError::Codegen(name.to_owned()))?;
+            let call1 = |b: &mut FunctionBuilder<'_>,
+                         name: &str,
+                         args: &[Value]|
+             -> Result<Value, BackendError> {
+                let f = *refs
+                    .get(name)
+                    .ok_or_else(|| BackendError::Codegen(name.to_owned()))?;
                 let call = b.ins().call(f, args);
-                b.inst_results(call).first().copied().ok_or_else(|| BackendError::Codegen(name.to_owned()))
+                b.inst_results(call)
+                    .first()
+                    .copied()
+                    .ok_or_else(|| BackendError::Codegen(name.to_owned()))
             };
             let mut values: Vec<Value> = Vec::with_capacity(tape.insts.len());
-            let get = |values: &[Value], r: u32| values.get(r as usize).copied().ok_or_else(|| BackendError::Codegen("register".to_owned()));
+            let get = |values: &[Value], r: u32| {
+                values
+                    .get(r as usize)
+                    .copied()
+                    .ok_or_else(|| BackendError::Codegen("register".to_owned()))
+            };
             for inst in &tape.insts {
                 let v = match *inst {
                     | Inst::Const(c) => b.ins().f64const(c),
-                    | Inst::Input(i) => b.ins().load(types::F64, flags, in_ptr, i32::try_from(i).map_err(error)?.saturating_mul(8)),
-                    | Inst::Param(i) => b.ins().load(types::F64, flags, par_ptr, i32::try_from(i).map_err(error)?.saturating_mul(8)),
+                    | Inst::Input(i) => {
+                        b.ins().load(
+                            types::F64,
+                            flags,
+                            in_ptr,
+                            i32::try_from(i).map_err(error)?.saturating_mul(8),
+                        )
+                    },
+                    | Inst::Param(i) => {
+                        b.ins().load(
+                            types::F64,
+                            flags,
+                            par_ptr,
+                            i32::try_from(i).map_err(error)?.saturating_mul(8),
+                        )
+                    },
                     | Inst::Add(x, y) => {
                         let (x, y) = (get(&values, x)?, get(&values, y)?);
                         b.ins().fadd(x, y)
@@ -389,7 +465,8 @@ impl JitFunction {
                             | Intrinsic::Floor => b.ins().floor(x),
                             | Intrinsic::Ceil => b.ins().ceil(x),
                             | other => {
-                                let (name, _) = library(other).ok_or_else(|| BackendError::Codegen("intrinsic".to_owned()))?;
+                                let (name, _) = library(other)
+                                    .ok_or_else(|| BackendError::Codegen("intrinsic".to_owned()))?;
                                 call1(&mut b, name, &[x])?
                             },
                         }
@@ -416,26 +493,46 @@ impl JitFunction {
                     },
                     | Inst::Call(f, start, len) => {
                         let range = start as usize..(start as usize).saturating_add(len as usize);
-                        let regs = tape.args.get(range).ok_or_else(|| BackendError::Codegen("arguments".to_owned()))?;
-                        let size = u32::try_from(regs.len().saturating_mul(8).max(8)).map_err(error)?;
-                        let slot = b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, 3));
+                        let regs = tape
+                            .args
+                            .get(range)
+                            .ok_or_else(|| BackendError::Codegen("arguments".to_owned()))?;
+                        let size =
+                            u32::try_from(regs.len().saturating_mul(8).max(8)).map_err(error)?;
+                        let slot = b.create_sized_stack_slot(StackSlotData::new(
+                            StackSlotKind::ExplicitSlot,
+                            size,
+                            3,
+                        ));
                         for (k, &r) in regs.iter().enumerate() {
                             let v = get(&values, r)?;
-                            b.ins().stack_store(v, slot, i32::try_from(k.saturating_mul(8)).map_err(error)?);
+                            b.ins().stack_store(
+                                v,
+                                slot,
+                                i32::try_from(k.saturating_mul(8)).map_err(error)?,
+                            );
                         }
                         let address = b.ins().stack_addr(pointer, slot, 0);
-                        let fptr = b.ins().iconst(pointer, i64::try_from(f as usize).map_err(error)?);
-                        let n = b.ins().iconst(pointer, i64::try_from(regs.len()).map_err(error)?);
+                        let fptr = b
+                            .ins()
+                            .iconst(pointer, i64::try_from(f as usize).map_err(error)?);
+                        let n = b
+                            .ins()
+                            .iconst(pointer, i64::try_from(regs.len()).map_err(error)?);
                         call1(&mut b, "rssn_eval", &[fptr, address, n])?
                     },
                     | Inst::Extern1(f, x) => {
                         let x = get(&values, x)?;
-                        let fptr = b.ins().iconst(pointer, i64::try_from(f as usize).map_err(error)?);
+                        let fptr = b
+                            .ins()
+                            .iconst(pointer, i64::try_from(f as usize).map_err(error)?);
                         call1(&mut b, "rssn_extern1", &[fptr, x])?
                     },
                     | Inst::Extern2(f, x, y) => {
                         let (x, y) = (get(&values, x)?, get(&values, y)?);
-                        let fptr = b.ins().iconst(pointer, i64::try_from(f as usize).map_err(error)?);
+                        let fptr = b
+                            .ins()
+                            .iconst(pointer, i64::try_from(f as usize).map_err(error)?);
                         call1(&mut b, "rssn_extern2", &[fptr, x, y])?
                     },
                 };
@@ -443,7 +540,12 @@ impl JitFunction {
             }
             for (k, &r) in tape.outputs.iter().enumerate() {
                 let v = get(&values, r)?;
-                b.ins().store(flags, v, out_ptr, i32::try_from(k.saturating_mul(8)).map_err(error)?);
+                b.ins().store(
+                    flags,
+                    v,
+                    out_ptr,
+                    i32::try_from(k.saturating_mul(8)).map_err(error)?,
+                );
             }
             b.ins().return_(&[]);
             b.finalize();
@@ -456,7 +558,13 @@ impl JitFunction {
         // entry signature, and the module is kept alive by `_owner`.
         #[allow(unsafe_code)]
         let entry = unsafe { abi::entry(code) };
-        Ok(Self { _owner: Arc::new(abi::Owner(Some(module))), entry, inputs: tape.inputs, params: tape.params, outputs: tape.outputs.len() })
+        Ok(Self {
+            _owner: Arc::new(abi::Owner(Some(module))),
+            entry,
+            inputs: tape.inputs,
+            params: tape.params,
+            outputs: tape.outputs.len(),
+        })
     }
 
     fn run(
@@ -473,7 +581,10 @@ impl JitFunction {
                 v
             })
         };
-        let (padded_in, padded_par) = (pad(inputs, self.inputs.max(1)), pad(params, self.params.max(1)));
+        let (padded_in, padded_par) = (
+            pad(inputs, self.inputs.max(1)),
+            pad(params, self.params.max(1)),
+        );
         let inputs = padded_in.as_deref().unwrap_or(inputs);
         let params = padded_par.as_deref().unwrap_or(params);
         let mut scratch;
@@ -715,7 +826,8 @@ impl Tiered {
         n: usize,
     ) {
         let before = self.calls.fetch_add(n, Ordering::Relaxed);
-        if before.saturating_add(n) >= self.threshold && !self.started.swap(true, Ordering::AcqRel) {
+        if before.saturating_add(n) >= self.threshold && !self.started.swap(true, Ordering::AcqRel)
+        {
             let (tape, slot) = (Arc::clone(&self.tape), Arc::clone(&self.jit));
             std::thread::spawn(move || {
                 if let Ok(f) = JitFunction::compile(&tape) {
@@ -829,7 +941,13 @@ mod tests {
     #[test]
     fn agrees_with_the_interpreter() {
         let backend = CraneliftBackend::new();
-        let points = [(0.3, -1.2), (1.7, 0.4), (-2.5, 3.1), (0.0, 0.0), (1e-3, 7.0)];
+        let points = [
+            (0.3, -1.2),
+            (1.7, 0.4),
+            (-2.5, 3.1),
+            (0.0, 0.0),
+            (1e-3, 7.0),
+        ];
         for src in [
             "x^2 + 3*x*y - y/7",
             "sin(x)^2*exp(-y) + (x - y)/(1 + x^2) + pi",
@@ -842,11 +960,16 @@ mod tests {
             "1/(x - 1)^2",
         ] {
             let (g, root, inputs) = setup(src);
-            let reference = Interpreter.compile(&g, root, &inputs).unwrap_or_else(|e| panic!("{e}"));
-            let jit = backend.compile(&g, root, &inputs).unwrap_or_else(|e| panic!("{src}: {e}"));
+            let reference = Interpreter
+                .compile(&g, root, &inputs)
+                .unwrap_or_else(|e| panic!("{e}"));
+            let jit = backend
+                .compile(&g, root, &inputs)
+                .unwrap_or_else(|e| panic!("{src}: {e}"));
             for &(x, y) in &points {
                 let (want, got) = (reference.call(&[x, y]), jit.call(&[x, y]));
-                let close = ulps(want, got) <= 8 || (want - got).abs() <= 1e-14 * want.abs().max(1.0);
+                let close =
+                    ulps(want, got) <= 8 || (want - got).abs() <= 1e-14 * want.abs().max(1.0);
                 assert!(close, "{src} at ({x}, {y}): interpreter {want}, jit {got}");
             }
         }
@@ -857,8 +980,12 @@ mod tests {
         // The JIT executes exactly the tape's operations.
         let backend = CraneliftBackend::new();
         let (g, root, inputs) = setup("x^9*y - 3*x/(y^2 + 1) + sqrt(x*x + 1) - exp(sin(y))");
-        let tape = crate::backend::tape::lower(&g, &[root], &inputs, &[]).unwrap_or_else(|e| panic!("{e}")).optimise();
-        let jit = backend.compile(&g, root, &inputs).unwrap_or_else(|e| panic!("{e}"));
+        let tape = crate::backend::tape::lower(&g, &[root], &inputs, &[])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise();
+        let jit = backend
+            .compile(&g, root, &inputs)
+            .unwrap_or_else(|e| panic!("{e}"));
         for (x, y) in [(0.1, 0.2), (-3.7, 1.9), (12.0, -0.003)] {
             let mut out = [0.0];
             tape.eval(&[x, y], &[], &mut out);
@@ -871,13 +998,26 @@ mod tests {
         let backend = CraneliftBackend::new();
         let mut g = Graph::new();
         assert!(Engine::install(&mut g, &rules::standard()).is_ok());
-        let roots: Vec<NodeId> = ["a*x + y", "x*y*a", "sin(a*x + y)"].iter().map(|s| g.parse(s).unwrap_or_else(|e| panic!("{e}"))).collect();
-        let (x, y, a) = (g.interner_mut().symbol("x"), g.interner_mut().symbol("y"), g.interner_mut().symbol("a"));
-        let f = backend.compile_multi(&g, &roots, &[x, y], &[a]).unwrap_or_else(|e| panic!("{e}"));
+        let roots: Vec<NodeId> = ["a*x + y", "x*y*a", "sin(a*x + y)"]
+            .iter()
+            .map(|s| g.parse(s).unwrap_or_else(|e| panic!("{e}")))
+            .collect();
+        let (x, y, a) = (
+            g.interner_mut().symbol("x"),
+            g.interner_mut().symbol("y"),
+            g.interner_mut().symbol("a"),
+        );
+        let f = backend
+            .compile_multi(&g, &roots, &[x, y], &[a])
+            .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!((f.inputs(), f.params(), f.outputs()), (2, 1, 3));
         let mut out = [0.0; 3];
         f.eval(&[2.0, 3.0], &[0.5], &mut out);
-        assert!((out[0] - 4.0).abs() < 1e-15 && (out[1] - 3.0).abs() < 1e-15 && (out[2] - 4.0_f64.sin()).abs() < 1e-15);
+        assert!(
+            (out[0] - 4.0).abs() < 1e-15
+                && (out[1] - 3.0).abs() < 1e-15
+                && (out[2] - 4.0_f64.sin()).abs() < 1e-15
+        );
         // Batch evaluation with a hoisted parameter.
         let xs = [1.0, 2.0];
         let ys = [0.0, 1.0];
@@ -896,7 +1036,9 @@ mod tests {
     fn tiered_execution_switches_to_machine_code() {
         let (g, root, inputs) = setup("x^3 - y");
         let tiered = TieredBackend { threshold: 10 };
-        let f = tiered.compile(&g, root, &inputs).unwrap_or_else(|e| panic!("{e}"));
+        let f = tiered
+            .compile(&g, root, &inputs)
+            .unwrap_or_else(|e| panic!("{e}"));
         for _ in 0..50 {
             assert!((f.call(&[2.0, 1.0]) - 7.0).abs() < 1e-15);
         }
@@ -911,10 +1053,24 @@ mod tests {
         // The numeric quadrature fallback and the rest of the engine work
         // with the JIT as the current backend.
         let rules = [crate::rules::calculus()];
-        let (value, error) = crate::backend::with_backend(Arc::new(CraneliftBackend::new()), || {
-            crate::rules::testing::numeric(&rules, "defint(exp(-x^2)*cos(x^3), x, 0, 2)", &[], 1e-12)
-        });
-        let (reference, _) = crate::rules::testing::numeric(&rules, "defint(exp(-x^2)*cos(x^3), x, 0, 2)", &[], 1e-12);
-        assert!((value - reference).abs() < 1e-12 && error < 1e-10, "{value} vs {reference} ± {error}");
+        let (value, error) =
+            crate::backend::with_backend(Arc::new(CraneliftBackend::new()), || {
+                crate::rules::testing::numeric(
+                    &rules,
+                    "defint(exp(-x^2)*cos(x^3), x, 0, 2)",
+                    &[],
+                    1e-12,
+                )
+            });
+        let (reference, _) = crate::rules::testing::numeric(
+            &rules,
+            "defint(exp(-x^2)*cos(x^3), x, 0, 2)",
+            &[],
+            1e-12,
+        );
+        assert!(
+            (value - reference).abs() < 1e-12 && error < 1e-10,
+            "{value} vs {reference} ± {error}"
+        );
     }
 }

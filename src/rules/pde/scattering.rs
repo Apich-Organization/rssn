@@ -43,7 +43,9 @@ fn integrate(
     // `potential` samples V at x = HALF - j STEP / 2.
     let steps = potential.len() / 2;
     let (mut y, mut p) = start;
-    let deriv = |v: f64, y: Complex64, p: Complex64| -> (Complex64, Complex64) { (p, (Complex64::new(v, 0.0) - shift) * y) };
+    let deriv = |v: f64, y: Complex64, p: Complex64| -> (Complex64, Complex64) {
+        (p, (Complex64::new(v, 0.0) - shift) * y)
+    };
     for j in 0..steps {
         let (v0, v1, v2) = (potential[2 * j], potential[2 * j + 1], potential[2 * j + 2]);
         let h = -STEP;
@@ -71,7 +73,12 @@ fn scattering_data(potential: &[f64]) -> Data {
     let growing = |kappa: f64| -> f64 {
         let k = Complex64::new(0.0, kappa);
         let shift = k * k;
-        let (f, p) = integrate(potential, shift, (Complex64::new(1.0, 0.0), Complex64::new(-kappa, 0.0)), |_, _| {});
+        let (f, p) = integrate(
+            potential,
+            shift,
+            (Complex64::new(1.0, 0.0), Complex64::new(-kappa, 0.0)),
+            |_, _| {},
+        );
         kappa * f.re - p.re
     };
     let mut bound = Vec::new();
@@ -97,7 +104,12 @@ fn scattering_data(potential: &[f64]) -> Data {
             // Norming constant: ∫ f² by Simpson over the stored samples.
             let k = Complex64::new(0.0, kappa);
             let mut samples = vec![1.0_f64];
-            integrate(potential, k * k, (Complex64::new(1.0, 0.0), Complex64::new(-kappa, 0.0)), |_, y| samples.push(y.re));
+            integrate(
+                potential,
+                k * k,
+                (Complex64::new(1.0, 0.0), Complex64::new(-kappa, 0.0)),
+                |_, y| samples.push(y.re),
+            );
             let n = samples.len() - 1;
             let mut total = samples[0] * samples[0] + samples[n] * samples[n];
             for (i, v) in samples.iter().enumerate().take(n).skip(1) {
@@ -118,13 +130,25 @@ fn scattering_data(potential: &[f64]) -> Data {
     let coarse = (0..((KMAX - 0.4) / DK) as usize).map(|j| (0.4 + (j as f64 + 0.5) * DK, DK));
     for (k, weight) in fine.chain(coarse) {
         let kc = Complex64::new(k, 0.0);
-        let (f, p) = integrate(potential, kc * kc, (Complex64::new(0.0, k * HALF).exp(), Complex64::new(0.0, k) * Complex64::new(0.0, k * HALF).exp()), |_, _| {});
+        let (f, p) = integrate(
+            potential,
+            kc * kc,
+            (
+                Complex64::new(0.0, k * HALF).exp(),
+                Complex64::new(0.0, k) * Complex64::new(0.0, k * HALF).exp(),
+            ),
+            |_, _| {},
+        );
         let i_k = Complex64::new(0.0, k);
         let x = -HALF;
         let a = (f + p / i_k) * Complex64::new(0.0, -k * x).exp() * 0.5;
         let b = (f - p / i_k) * Complex64::new(0.0, k * x).exp() * 0.5;
         let r = -b.conj() / a;
-        quiet = if r.norm() < 1e-13 { quiet + 1 } else { 0 };
+        quiet = if r.norm() < 1e-13 {
+            quiet + 1
+        } else {
+            0
+        };
         reflection.push((k, weight, r));
         if quiet > 20 {
             break;
@@ -139,7 +163,11 @@ fn marchenko_kernel(
     s: f64,
     t: f64,
 ) -> f64 {
-    let mut total: f64 = data.bound.iter().map(|&(kappa, c2)| c2 * (8.0 * kappa.powi(3) * t - kappa * s).exp()).sum();
+    let mut total: f64 = data
+        .bound
+        .iter()
+        .map(|&(kappa, c2)| c2 * (8.0 * kappa.powi(3) * t - kappa * s).exp())
+        .sum();
     let mut integral = 0.0;
     for (k, weight, r) in &data.reflection {
         integral += weight * (r * Complex64::new(0.0, k * s + 8.0 * k.powi(3) * t).exp()).re;
@@ -196,11 +224,21 @@ pub(super) fn kdv_value(
     let data = scattering_data(&potential);
     // The kernel table on a uniform grid with cubic interpolation.
     let h = 0.01;
-    let kappa_min = data.bound.iter().map(|&(k, _)| k).fold(f64::INFINITY, f64::min);
-    let span = if kappa_min.is_finite() { (30.0 / kappa_min).clamp(14.0, 60.0) } else { 14.0 };
+    let kappa_min = data
+        .bound
+        .iter()
+        .map(|&(k, _)| k)
+        .fold(f64::INFINITY, f64::min);
+    let span = if kappa_min.is_finite() {
+        (30.0 / kappa_min).clamp(14.0, 60.0)
+    } else {
+        14.0
+    };
     let lo = 2.0 * (x - 0.05) - 0.2;
     let count = ((2.0 * (x + 0.05) + 2.0 * span - lo) / h) as usize + 4;
-    let table: Vec<f64> = (0..count).map(|i| marchenko_kernel(&data, lo + h * i as f64, t)).collect();
+    let table: Vec<f64> = (0..count)
+        .map(|i| marchenko_kernel(&data, lo + h * i as f64, t))
+        .collect();
     let kernel = |s: f64| -> f64 {
         let position = (s - lo) / h;
         let i = (position.floor() as usize).clamp(1, count - 3);
@@ -241,7 +279,12 @@ pub(super) fn kdv_value(
         Some(-kernel(2.0 * x0) - tail)
     };
     let step = 0.01;
-    let (m2, m1, p1, p2) = (kxx(x - 2.0 * step)?, kxx(x - step)?, kxx(x + step)?, kxx(x + 2.0 * step)?);
+    let (m2, m1, p1, p2) = (
+        kxx(x - 2.0 * step)?,
+        kxx(x - step)?,
+        kxx(x + step)?,
+        kxx(x + 2.0 * step)?,
+    );
     let derivative = (-p2 + 8.0 * p1 - 8.0 * m1 + m2) / (12.0 * step);
     Some(-2.0 * derivative)
 }
@@ -253,7 +296,10 @@ pub(super) fn kdv_scattering(
     x: NodeId,
     t: NodeId,
 ) -> Option<NodeId> {
-    let (x_value, t_value) = (super::modes::exact_value(cx, x)?, super::modes::exact_value(cx, t)?);
+    let (x_value, t_value) = (
+        super::modes::exact_value(cx, x)?,
+        super::modes::exact_value(cx, t)?,
+    );
     let x_node = cx.graph.sym("x");
     let symbol = cx.graph.symbol_of(x_node)?;
     let free = cx.graph.free_symbols(cx.graph.find(u0)).to_vec();

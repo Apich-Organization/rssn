@@ -272,7 +272,10 @@ fn solve_channel_pressure(
 
         let mut list = [None; 4];
 
-        for (slot, (dj, di)) in [(0isize, -1isize), (0, 1), (-1, 0), (1, 0)].into_iter().enumerate() {
+        for (slot, (dj, di)) in [(0isize, -1isize), (0, 1), (-1, 0), (1, 0)]
+            .into_iter()
+            .enumerate()
+        {
             let jj = j as isize + dj;
 
             let ii = i as isize + di;
@@ -294,7 +297,8 @@ fn solve_channel_pressure(
         (count, list)
     };
 
-    let stencils: Vec<(f64, [Option<usize>; 4])> = nodes.iter().map(|&(j, i)| neighbours(j, i)).collect();
+    let stencils: Vec<(f64, [Option<usize>; 4])> =
+        nodes.iter().map(|&(j, i)| neighbours(j, i)).collect();
 
     let apply = |x: &[f64], y: &mut [f64]| {
         for (k, (count, list)) in stencils.iter().enumerate() {
@@ -308,7 +312,10 @@ fn solve_channel_pressure(
         }
     };
 
-    let diag: Vec<f64> = stencils.iter().map(|(c, _)| (c * inv_h2).max(f64::MIN_POSITIVE)).collect();
+    let diag: Vec<f64> = stencils
+        .iter()
+        .map(|(c, _)| (c * inv_h2).max(f64::MIN_POSITIVE))
+        .collect();
 
     let precond = |r: &[f64], z: &mut [f64]| {
         for k in 0..r.len() {
@@ -471,13 +478,15 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
                 } / h;
 
                 // Diffusion (Central Difference); solid neighbours hold zero velocity.
-                let lap_u = (u_old[[j, i + 1]] + u_old[[j, i - 1]] + u_old[[j + 1, i]] + u_old[[j - 1, i]]
-                    - 4.0 * u_curr)
-                    / (h * h);
+                let lap_u =
+                    (u_old[[j, i + 1]] + u_old[[j, i - 1]] + u_old[[j + 1, i]] + u_old[[j - 1, i]]
+                        - 4.0 * u_curr)
+                        / (h * h);
 
-                let lap_v = (v_old[[j, i + 1]] + v_old[[j, i - 1]] + v_old[[j + 1, i]] + v_old[[j - 1, i]]
-                    - 4.0 * v_curr)
-                    / (h * h);
+                let lap_v =
+                    (v_old[[j, i + 1]] + v_old[[j, i - 1]] + v_old[[j + 1, i]] + v_old[[j - 1, i]]
+                        - 4.0 * v_curr)
+                        / (h * h);
 
                 *u_val = dt.mul_add(-u_curr.mul_add(du_dx, v_curr * du_dy) + nu * lap_u, u_curr);
                 *v_val = dt.mul_add(-u_curr.mul_add(dv_dx, v_curr * dv_dy) + nu * lap_v, v_curr);
@@ -506,7 +515,11 @@ pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput 
 
         // 4. Velocity correction with Neumann-mirrored pressure at solid faces.
         let pressure_at = |j: usize, i: usize, jc: usize, ic: usize| -> f64 {
-            if obstacle_mask[[j, i]] { p[[jc, ic]] } else { p[[j, i]] }
+            if obstacle_mask[[j, i]] {
+                p[[jc, ic]]
+            } else {
+                p[[j, i]]
+            }
         };
 
         for j in 1..n - 1 {
@@ -775,4 +788,8 @@ pub fn simulate_lid_driven_cavity_scenario(output_dir: &Path) {
 }
 
 /// Second-order 2D/3D MAC solver with obstacles and immersed bodies: see [`crate::sim::ns_mac`].
-pub use crate::sim::ns_mac::{ImmersedBody, NsConfig, NsSolver};
+pub use crate::sim::ns_mac::ImmersedBody;
+/// Second-order 2D/3D MAC solver with obstacles and immersed bodies: see [`crate::sim::ns_mac`].
+pub use crate::sim::ns_mac::NsConfig;
+/// Second-order 2D/3D MAC solver with obstacles and immersed bodies: see [`crate::sim::ns_mac`].
+pub use crate::sim::ns_mac::NsSolver;

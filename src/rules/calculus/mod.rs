@@ -6,6 +6,18 @@
 //! when every operator in `f` has known partial derivatives, numerically by
 //! finite differences when a numeric answer is wanted and the structural
 //! route is blocked.
+//!
+//! | operator | value |
+//! |---|---|
+//! | `diff(f, x)`, `diffn(f, x, n)` | the derivative, and the `n`-th derivative for a literal `n` |
+//! | `integral(f, x)` | an antiderivative (table, substitution, parts, Risch–Norman) |
+//! | `defint(f, x, a, b)`, `real_integral(f, x)` | the definite integral (closed form, residues or quadrature) and the real antiderivative with `ln|u|` |
+//! | `limit(f, x, a)`, `limit(f, x, a, plus\|minus)` | the limit by continuity, l'Hôpital, Gruntz growth comparison and the numeric probe |
+//! | `taylor(f, x, a, n)`, `laurent(f, x, a, n)`, `fourier_series(f, x, L, n)` | expansions about `a` (also `asymptotic(f, x, n)`, the expansion in `1/x`) |
+//! | `sum(f, k, a, b)`, `product(f, k, a, b)`, `converges(f, k)` | finite and closed-form sums and products, and convergence tests |
+//! | `antidifference(t, k)`, `indefinite_sum(f, k)`, `indefinite_product(f, k)` | Gosper's indefinite sum and the indefinite product |
+//! | `zeilberger(F, k, n)` | `list(list(p_0, …, p_J), G/F)`: Zeilberger's recurrence `Σ_j p_j(n) S(n+j) = 0` for `S(n) = Σ_k F(n, k)` and the telescoping certificate |
+//! | `definite_sum(F, k, n)` | the closed form of `Σ_{k=-oo}^{oo} F(n, k)` from the first-order Zeilberger recurrence |
 
 mod diff;
 mod gosper;
@@ -15,15 +27,17 @@ mod limits;
 mod powerseries;
 mod recurrence;
 pub(crate) use powerseries::laurent_expansion;
+mod gruntz;
 mod series;
 #[cfg(test)]
 mod tests;
+mod zeilberger;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::NodeId;
-use crate::graph::Facts;
 use crate::graph::OnReals;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
@@ -63,14 +77,20 @@ pub(crate) fn at_infinity(
     plus: Option<&str>,
     minus: Option<&str>,
 ) -> Result<(), RuleError> {
-    let op = i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid {
-        rule: format!("limits of {name}"),
-        reason: "unknown operator",
+    let op = i.graph().ops().lookup(name).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: format!("limits of {name}"),
+            reason: "unknown operator",
+        }
     })?;
     let mut parse = |text: Option<&str>| -> Result<Option<Pat>, RuleError> {
         text.map(|t| {
-            Pat::parse(t, i.graph(), &mut VarNames::default())
-                .map_err(|error| RuleError::Parse { rule: format!("limits of {name}: {t}"), error })
+            Pat::parse(t, i.graph(), &mut VarNames::default()).map_err(|error| {
+                RuleError::Parse {
+                    rule: format!("limits of {name}: {t}"),
+                    error,
+                }
+            })
         })
         .transpose()
     };
@@ -86,7 +106,12 @@ pub(crate) fn integral_rule(
     rule: TableFn,
 ) {
     if let Some(op) = i.graph().ops().lookup("integral") {
-        let mut table = i.graph().ops().attr::<IntegralTable>(op).cloned().unwrap_or_default();
+        let mut table = i
+            .graph()
+            .ops()
+            .attr::<IntegralTable>(op)
+            .cloned()
+            .unwrap_or_default();
         table.0.push(rule);
         i.graph().ops_mut().set_attr(op, table);
     }
@@ -95,7 +120,9 @@ pub(crate) fn integral_rule(
 /// The calculus rule set.
 #[must_use]
 pub fn calculus() -> RuleSet {
-    RuleSet::new("calculus", install).needs(elementary()).needs(poly())
+    RuleSet::new("calculus", install)
+        .needs(elementary())
+        .needs(poly())
 }
 
 /// Attaches the partial derivatives of operator `name`, one pattern per
@@ -111,9 +138,11 @@ pub(crate) fn partials(
     name: &str,
     texts: &[&str],
 ) -> Result<(), RuleError> {
-    let invalid = |reason: &'static str| RuleError::Invalid {
-        rule: format!("d/{name}"),
-        reason,
+    let invalid = |reason: &'static str| {
+        RuleError::Invalid {
+            rule: format!("d/{name}"),
+            reason,
+        }
     };
     let op = i
         .graph()
@@ -130,9 +159,11 @@ pub(crate) fn partials(
         for v in ["a", "b", "c", "d"] {
             vars.index(v);
         }
-        let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| RuleError::Parse {
-            rule: format!("d/{name}: {text}"),
-            error,
+        let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| {
+            RuleError::Parse {
+                rule: format!("d/{name}: {text}"),
+                error,
+            }
         })?;
         if vars.len() > 4 {
             return Err(invalid("partial derivatives may only use ?a, ?b, ?c, ?d"));
@@ -186,8 +217,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         diff::Differentiate { diff: diff_op },
     );
     // diffn(f, x, n): the n-th derivative for a literal n.
-    let diffn = i.op(OpDescriptor::new("diffn", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("calculus/diffn", Tier::Reduce, diff::Repeated { diffn, diff: diff_op });
+    let diffn = i.op(OpDescriptor::new("diffn", Arity::Fixed(3))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    i.kernel(
+        "calculus/diffn",
+        Tier::Reduce,
+        diff::Repeated { diffn, diff: diff_op },
+    );
     i.kernel(
         "calculus/diff-numeric",
         Tier::Reduce,
@@ -196,15 +233,23 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 
     // Integration. `integral(f, x)` is an antiderivative (x stays free);
     // `defint(f, x, a, b)` binds x inside f.
-    let integral = i.op(OpDescriptor::new("integral", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    let defint =
-        i.op(OpDescriptor::new("defint", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100).binder(1, 0b1))?;
+    let integral = i.op(OpDescriptor::new("integral", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    let defint = i.op(OpDescriptor::new("defint", Arity::Fixed(4))
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .binder(1, 0b1))?;
     let infinity = i.op(OpDescriptor::new("oo", Arity::Fixed(0)).eval(|_| f64::INFINITY))?;
-    i.graph().ops_mut().set_attr(infinity, OnReals(Facts::POSITIVE));
+    i.graph()
+        .ops_mut()
+        .set_attr(infinity, OnReals(Facts::POSITIVE));
     let lookup = |i: &mut Installer<'_>, name: &'static str| {
-        i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid {
-            rule: format!("calculus needs `{name}`"),
-            reason: "operator of the elementary rule set is missing",
+        i.graph().ops().lookup(name).ok_or_else(|| {
+            RuleError::Invalid {
+                rule: format!("calculus needs `{name}`"),
+                reason: "operator of the elementary rule set is missing",
+            }
         })
     };
     let functions = integrate::Functions {
@@ -223,16 +268,46 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         sqrt: lookup(i, "sqrt")?,
     };
     i.graph().ops_mut().set_attr(integral, functions);
-    i.kernel("calculus/integral", Tier::Reduce, integrate::Antiderivative { integral, functions });
-    i.kernel("calculus/defint", Tier::Reduce, integrate::Definite { defint, functions });
-    i.kernel("calculus/quadrature", Tier::Reduce, integrate::Quadrature { defint });
+    i.kernel(
+        "calculus/integral",
+        Tier::Reduce,
+        integrate::Antiderivative { integral, functions },
+    );
+    i.kernel(
+        "calculus/defint",
+        Tier::Reduce,
+        integrate::Definite { defint, functions },
+    );
+    i.kernel(
+        "calculus/quadrature",
+        Tier::Reduce,
+        integrate::Quadrature { defint },
+    );
     // limit(f, x, a) and limit(f, x, a, plus|minus); x is bound in f.
-    let limit =
-        i.op(OpDescriptor::new("limit", Arity::Variadic).flags(OpFlags::HEAVY).cost(100).binder(1, 0b1))?;
-    i.kernel("calculus/limit", Tier::Reduce, limits::SymbolicLimit { limit, infinity, functions });
-    i.kernel("calculus/limit-numeric", Tier::Reduce, limits::NumericLimit { limit });
+    let limit = i.op(OpDescriptor::new("limit", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .binder(1, 0b1))?;
+    i.kernel(
+        "calculus/limit",
+        Tier::Reduce,
+        limits::SymbolicLimit {
+            limit,
+            infinity,
+            functions,
+        },
+    );
+    i.kernel(
+        "calculus/limit-numeric",
+        Tier::Reduce,
+        limits::NumericLimit { limit },
+    );
     // Series, sums and products. The index of a sum or product is bound.
-    let request = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+    let request = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     let ops = series::SeriesOps {
         functions,
         infinity,
@@ -244,18 +319,59 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         product: i.op(request("product", 4).binder(1, 0b1))?,
         converges: i.op(request("converges", 2).binder(1, 0b1))?,
     };
-    i.kernel("calculus/series", Tier::Reduce, series::SeriesKernel { ops });
+    i.kernel(
+        "calculus/series",
+        Tier::Reduce,
+        series::SeriesKernel { ops },
+    );
     // antidifference(t, k): T with T(k+1) - T(k) = t(k).
     let antidifference = i.op(request("antidifference", 2))?;
-    i.kernel("calculus/antidifference", Tier::Reduce, Antidifference { op: antidifference });
+    i.kernel(
+        "calculus/antidifference",
+        Tier::Reduce,
+        Antidifference { op: antidifference },
+    );
     // real_integral(f, x): the antiderivative with ln|u|.
     let real_integral = i.op(request("real_integral", 2))?;
-    i.kernel("calculus/real-integral", Tier::Reduce, RealIntegral { op: real_integral });
+    i.kernel(
+        "calculus/real-integral",
+        Tier::Reduce,
+        RealIntegral { op: real_integral },
+    );
     // indefinite_sum(f, k), indefinite_product(f, k).
     let indefinite_sum = i.op(request("indefinite_sum", 2))?;
     let indefinite_product = i.op(request("indefinite_product", 2))?;
-    i.kernel("calculus/indefinite", Tier::Reduce, indefinite::Indefinite { sum: indefinite_sum, product: indefinite_product });
-    i.kernel("calculus/sum-numeric", Tier::Reduce, series::NumericSum { sum: ops.sum, product: ops.product });
+    i.kernel(
+        "calculus/indefinite",
+        Tier::Reduce,
+        indefinite::Indefinite {
+            sum: indefinite_sum,
+            product: indefinite_product,
+        },
+    );
+    // Zeilberger's creative telescoping and definite hypergeometric sums:
+    // the index `k` is bound in the summand, the recurrence variable `n`
+    // stays free.
+    let zeilberger = i.op(request("zeilberger", 3).binder(1, 0b1))?;
+    let definite_sum = i.op(request("definite_sum", 3).binder(1, 0b1))?;
+    i.kernel(
+        "calculus/zeilberger",
+        Tier::Reduce,
+        zeilberger::Zeilberger { op: zeilberger },
+    );
+    i.kernel(
+        "calculus/definite-sum",
+        Tier::Reduce,
+        zeilberger::DefiniteSum { op: definite_sum },
+    );
+    i.kernel(
+        "calculus/sum-numeric",
+        Tier::Reduce,
+        series::NumericSum {
+            sum: ops.sum,
+            product: ops.product,
+        },
+    );
     i.rewrites(
         Tier::Reduce,
         &[
@@ -319,7 +435,8 @@ impl crate::graph::Kernel for RealIntegral {
         let Some(primitive) = antiderivative(cx, f, x) else {
             return crate::graph::Outcome::Pass;
         };
-        let (Some(ln), Some(abs)) = (cx.graph.ops().lookup("ln"), cx.graph.ops().lookup("abs")) else {
+        let (Some(ln), Some(abs)) = (cx.graph.ops().lookup("ln"), cx.graph.ops().lookup("abs"))
+        else {
             return crate::graph::Outcome::Pass;
         };
         let Some(term) = crate::rules::poly::best(cx.graph, primitive) else {
@@ -330,9 +447,11 @@ impl crate::graph::Kernel for RealIntegral {
         while let Some(n) = stack.pop() {
             if cx.graph.op(n) == ln
                 && let Some(&u) = cx.graph.children(n).first()
-                    && !cx.graph.facts(u).has(crate::graph::Facts::POSITIVE) && cx.graph.op(u) != abs {
-                        logs.push((n, u));
-                    }
+                && !cx.graph.facts(u).has(crate::graph::Facts::POSITIVE)
+                && cx.graph.op(u) != abs
+            {
+                logs.push((n, u));
+            }
             stack.extend_from_slice(cx.graph.children(n));
         }
         let mut out = term;
@@ -352,7 +471,13 @@ impl crate::graph::Kernel for RealIntegral {
         let Some(symbol) = cx.graph.symbol_of(x) else {
             return crate::graph::Outcome::Pass;
         };
-        let others: Vec<crate::graph::SymbolId> = cx.graph.free_symbols(cx.graph.find(residual)).iter().copied().filter(|&s| s != symbol).collect();
+        let others: Vec<crate::graph::SymbolId> = cx
+            .graph
+            .free_symbols(cx.graph.find(residual))
+            .iter()
+            .copied()
+            .filter(|&s| s != symbol)
+            .collect();
         for point in [-2.3, -0.7, 0.45, 1.9, 3.3] {
             let mut env = crate::graph::Env::numeric(0.0);
             env.bind(symbol, point);
@@ -360,9 +485,11 @@ impl crate::graph::Kernel for RealIntegral {
                 env.bind(s, 0.6 + 0.2 * f64::from(u32::try_from(j % 5).unwrap_or(0)));
             }
             if let Some(v) = cx.graph.eval(residual, &env)
-                && v.is_finite() && v.abs() > 1e-7 {
-                    return crate::graph::Outcome::Pass;
-                }
+                && v.is_finite()
+                && v.abs() > 1e-7
+            {
+                return crate::graph::Outcome::Pass;
+            }
         }
         crate::graph::Outcome::Equal(out)
     }
@@ -386,6 +513,7 @@ impl crate::graph::Kernel for Antidifference {
         let &[t, k] = cx.graph.children(node) else {
             return crate::graph::Outcome::Pass;
         };
-        gosper::antidifference(cx, t, k, true).map_or(crate::graph::Outcome::Pass, crate::graph::Outcome::Equal)
+        gosper::antidifference(cx, t, k, true)
+            .map_or(crate::graph::Outcome::Pass, crate::graph::Outcome::Equal)
     }
 }

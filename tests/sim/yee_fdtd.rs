@@ -1,10 +1,18 @@
 //! Yee FDTD tests: cavities (convergence), PML reflection, TF/SF, Fresnel.
 
-use rssn::sim::boundary::{BoundaryCondition as Bc, FaceBcs};
-use rssn::sim::yee_fdtd::{Comp, CurrentSource, PlaneWave, Yee, YeeConfig};
+use rssn::sim::boundary::BoundaryCondition as Bc;
+use rssn::sim::boundary::FaceBcs;
+use rssn::sim::yee_fdtd::Comp;
+use rssn::sim::yee_fdtd::CurrentSource;
+use rssn::sim::yee_fdtd::PlaneWave;
+use rssn::sim::yee_fdtd::Yee;
+use rssn::sim::yee_fdtd::YeeConfig;
 use std::f64::consts::PI;
 
-fn cavity_1d_error(n: usize, eps: f64) -> f64 {
+fn cavity_1d_error(
+    n: usize,
+    eps: f64,
+) -> f64 {
     let h = 1.0 / n as f64;
     let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
     cfg.cfl = 0.9;
@@ -17,7 +25,9 @@ fn cavity_1d_error(n: usize, eps: f64) -> f64 {
     let steps = (1.0 / y.dt).round() as usize;
     y.run(steps);
     let w = PI / eps.sqrt();
-    (0..n).map(|i| (y.field(Comp::Ey)[i] - (PI * i as f64 * h).sin() * (w * y.t).cos()).abs()).fold(0.0, f64::max)
+    (0..n)
+        .map(|i| (y.field(Comp::Ey)[i] - (PI * i as f64 * h).sin() * (w * y.t).cos()).abs())
+        .fold(0.0, f64::max)
 }
 
 #[test]
@@ -37,7 +47,8 @@ fn cavity_2d_error(n: usize) -> f64 {
     for j in 0..ny {
         for i in 0..nx {
             let p = y.idx(i, j, 0);
-            y.field_mut(Comp::Ez)[p] = (PI * i as f64 * h / a).sin() * (PI * j as f64 * h / b).sin();
+            y.field_mut(Comp::Ez)[p] =
+                (PI * i as f64 * h / a).sin() * (PI * j as f64 * h / b).sin();
         }
     }
     y.half_step_h();
@@ -47,7 +58,8 @@ fn cavity_2d_error(n: usize) -> f64 {
     let mut worst: f64 = 0.0;
     for j in 0..ny {
         for i in 0..nx {
-            let ex = (PI * i as f64 * h / a).sin() * (PI * j as f64 * h / b).sin() * (w * y.t).cos();
+            let ex =
+                (PI * i as f64 * h / a).sin() * (PI * j as f64 * h / b).sin() * (w * y.t).cos();
             worst = worst.max((y.field(Comp::Ez)[y.idx(i, j, 0)] - ex).abs());
         }
     }
@@ -102,7 +114,11 @@ fn pulse(t: f64) -> f64 {
 
 /// Returns (max |Ey| in the scattered-field region before the reflection can
 /// arrive, max |Ey| in the scattered-field region overall).
-fn tfsf_1d(eps: Option<f64>, total_time: f64, ib: usize) -> (f64, f64, f64) {
+fn tfsf_1d(
+    eps: Option<f64>,
+    total_time: f64,
+    ib: usize,
+) -> (f64, f64, f64) {
     let (n, h) = (600, 0.02);
     let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
     cfg.cfl = 0.9;
@@ -113,14 +129,29 @@ fn tfsf_1d(eps: Option<f64>, total_time: f64, ib: usize) -> (f64, f64, f64) {
     }
     let mut y = Yee::new(cfg).unwrap();
     let steps = (total_time / y.dt) as usize;
-    y.set_plane_wave(PlaneWave { ia: 60, ib, psi: 0.0, waveform: Box::new(pulse) }, steps).unwrap();
+    y.set_plane_wave(
+        PlaneWave {
+            ia: 60,
+            ib,
+            psi: 0.0,
+            waveform: Box::new(pulse),
+        },
+        steps,
+    )
+    .unwrap();
     let (mut early, mut all, mut tf_peak): (f64, f64, f64) = (0.0, 0.0, 0.0);
     // round trip to the interface at x = 6 and back to ia = x 1.2
     let arrive = 8.0;
     for _ in 0..steps {
         y.step();
-        let sf = y.field(Comp::Ey)[22..57].iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-        tf_peak = tf_peak.max(y.field(Comp::Ey)[70..190].iter().fold(0.0_f64, |m, v| m.max(v.abs())));
+        let sf = y.field(Comp::Ey)[22..57]
+            .iter()
+            .fold(0.0_f64, |m, v| m.max(v.abs()));
+        tf_peak = tf_peak.max(
+            y.field(Comp::Ey)[70..190]
+                .iter()
+                .fold(0.0_f64, |m, v| m.max(v.abs())),
+        );
         all = all.max(sf);
         if y.t < arrive {
             early = early.max(sf);
@@ -152,14 +183,23 @@ fn gauss_wave(t: f64) -> f64 {
     -2.0 * z * (-z * z).exp()
 }
 
-fn decay_ratio(dim: usize, n: usize, pml: usize, steps: usize) -> f64 {
+fn decay_ratio(
+    dim: usize,
+    n: usize,
+    pml: usize,
+    steps: usize,
+) -> f64 {
     let h = 1.0 / n as f64;
     let mut cfg = YeeConfig::new(&vec![n; dim], &vec![h; dim]).unwrap();
     cfg.bcs = FaceBcs::uniform(&Bc::Absorbing);
     cfg.pml_cells = pml;
     let mut y = Yee::new(cfg).unwrap();
     let c = n / 2;
-    y.add_source(CurrentSource { cell: [c, if dim > 1 { c } else { 0 }, if dim > 2 { c } else { 0 }], comp: Comp::Ez, waveform: Box::new(gauss_wave) });
+    y.add_source(CurrentSource {
+        cell: [c, if dim > 1 { c } else { 0 }, if dim > 2 { c } else { 0 }],
+        comp: Comp::Ez,
+        waveform: Box::new(gauss_wave),
+    });
     let mut peak: f64 = 0.0;
     for _ in 0..steps {
         y.step();
@@ -198,13 +238,17 @@ fn pec_cavity_conserves_energy_and_rejects_unsupported_faces() {
         lo = lo.min(y.energy());
         hi = hi.max(y.energy());
     }
-    assert!(hi / lo < 1.2 && (hi - e0).abs() < 0.1 * e0 && (lo - e0).abs() < 0.1 * e0, "energy range {lo} {hi} vs {e0}");
+    assert!(
+        hi / lo < 1.2 && (hi - e0).abs() < 0.1 * e0 && (lo - e0).abs() < 0.1 * e0,
+        "energy range {lo} {hi} vs {e0}"
+    );
 
     let mut cfg = YeeConfig::new(&[10], &[0.1]).unwrap();
     cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0));
     assert!(Yee::new(cfg).is_err());
     let mut cfg = YeeConfig::new(&[10], &[0.1]).unwrap();
-    cfg.bcs = FaceBcs::uniform(&Bc::Periodic).with(rssn::sim::boundary::Face::XMax, Bc::dirichlet(0.0));
+    cfg.bcs =
+        FaceBcs::uniform(&Bc::Periodic).with(rssn::sim::boundary::Face::XMax, Bc::dirichlet(0.0));
     assert!(Yee::new(cfg).is_err());
 }
 
@@ -220,7 +264,9 @@ fn periodic_plane_wave_in_2d_travels_one_period_with_tfsf_free_initial_data() {
     for j in 0..ny {
         for i in 0..nx {
             let p = y.idx(i, j, 0);
-            y.field_mut(Comp::Ez)[p] = (PI * i as f64 * h).cos().powi(0) * (2.0 * PI * i as f64 * h / (nx as f64 * h)).cos() * (PI * j as f64 * h / ly).sin();
+            y.field_mut(Comp::Ez)[p] = (PI * i as f64 * h).cos().powi(0)
+                * (2.0 * PI * i as f64 * h / (nx as f64 * h)).cos()
+                * (PI * j as f64 * h / ly).sin();
         }
     }
     y.half_step_h();
@@ -231,7 +277,9 @@ fn periodic_plane_wave_in_2d_travels_one_period_with_tfsf_free_initial_data() {
     let mut worst: f64 = 0.0;
     for j in 0..ny {
         for i in 0..nx {
-            let ex = (2.0 * PI * i as f64 * h / lx).cos() * (PI * j as f64 * h / ly).sin() * (w * y.t).cos();
+            let ex = (2.0 * PI * i as f64 * h / lx).cos()
+                * (PI * j as f64 * h / ly).sin()
+                * (w * y.t).cos();
             worst = worst.max((y.field(Comp::Ez)[y.idx(i, j, 0)] - ex).abs());
         }
     }

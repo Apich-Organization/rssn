@@ -65,7 +65,9 @@ const MAX_BITS: u64 = 60_000;
 /// The combinatorics rule set.
 #[must_use]
 pub fn combinatorics() -> RuleSet {
-    RuleSet::new("combinatorics", install).needs(arith()).needs(super::calculus::calculus())
+    RuleSet::new("combinatorics", install)
+        .needs(arith())
+        .needs(super::calculus::calculus())
 }
 
 /// The value of `v` if it is a natural number not above `cap`.
@@ -500,10 +502,12 @@ fn characteristic_roots(c: &[BigRational]) -> Option<(Vec<Root>, BigRational)> {
     let mut radicand = BigRational::zero();
     for (factor, multiplicity) in univariate::factor(c).1 {
         match factor.as_slice() {
-            | [c0, c1] => roots.push(Root {
-                value: Surd::rational(BigRational::new(-c0.clone(), c1.clone())),
-                multiplicity,
-            }),
+            | [c0, c1] => {
+                roots.push(Root {
+                    value: Surd::rational(BigRational::new(-c0.clone(), c1.clone())),
+                    multiplicity,
+                })
+            },
             | [c0, c1, c2] => {
                 let discriminant = c1 * c1 - BigInt::from(4) * c2 * c0;
                 if !discriminant.is_positive() {
@@ -1065,116 +1069,146 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let set = "combinatorics";
 
-    exact(
-        i,
-        set,
-        unary("factorial").eval(factorial_eval),
-        |a| match a {
+    exact(i, set, unary("factorial").eval(factorial_eval), |a| {
+        match a {
             | [n] => Some(Value::Int(factorial(nat(n, MAX_FACTORIAL)?))),
             | _ => None,
-        },
-    )?;
-    exact(i, set, unary("double_factorial"), |a| match a {
-        | [n] => Some(Value::Int(double_factorial(nat(n, 2 * MAX_FACTORIAL)?))),
-        | _ => None,
+        }
     })?;
-    exact(
-        i,
-        set,
-        binary("binomial").eval(binomial_eval),
-        |a| match a {
+    exact(i, set, unary("double_factorial"), |a| {
+        match a {
+            | [n] => Some(Value::Int(double_factorial(nat(n, 2 * MAX_FACTORIAL)?))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, binary("binomial").eval(binomial_eval), |a| {
+        match a {
             | [n, k] => binomial(n, k).map(Value::Int),
             | _ => None,
-        },
-    )?;
+        }
+    })?;
     exact_lists(i, set, unary("multinomial"), multinomial)?;
     ext::install(i)?;
     exact(
         i,
         set,
         binary("permutations").eval(permutations_eval),
-        |a| match a {
-            | [n, k] if !n.is_negative() && !k.is_negative() => {
-                if k > n {
-                    Some(Value::Int(BigInt::zero()))
-                } else {
-                    product_run(n, k, -1).map(Value::Int)
-                }
-            },
-            | _ => None,
+        |a| {
+            match a {
+                | [n, k] if !n.is_negative() && !k.is_negative() => {
+                    if k > n {
+                        Some(Value::Int(BigInt::zero()))
+                    } else {
+                        product_run(n, k, -1).map(Value::Int)
+                    }
+                },
+                | _ => None,
+            }
         },
     )?;
-    exact(i, set, binary("rising"), |a| match a {
-        | [x, k] => product_run(x, k, 1).map(Value::Int),
-        | _ => None,
+    exact(i, set, binary("rising"), |a| {
+        match a {
+            | [x, k] => product_run(x, k, 1).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, set, binary("falling"), |a| match a {
-        | [x, k] => product_run(x, k, -1).map(Value::Int),
-        | _ => None,
+    exact(i, set, binary("falling"), |a| {
+        match a {
+            | [x, k] => product_run(x, k, -1).map(Value::Int),
+            | _ => None,
+        }
     })?;
-    exact(i, set, unary("catalan"), |a| match a {
-        | [n] => {
-            let n = nat(n, MAX_FACTORIAL / 2)?;
-            let c = choose(&BigInt::from(2 * n), n)?;
-            Some(Value::Int(c / (n + 1)))
+    exact(i, set, unary("catalan"), |a| {
+        match a {
+            | [n] => {
+                let n = nat(n, MAX_FACTORIAL / 2)?;
+                let c = choose(&BigInt::from(2 * n), n)?;
+                Some(Value::Int(c / (n + 1)))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("fibonacci"), |a| {
+        match a {
+            | [n] => Some(Value::Int(fibonacci_pair(nat(n, 100_000)?).0)),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("lucas"), |a| {
+        match a {
+            | [n] => {
+                let (f, next) = fibonacci_pair(nat(n, 100_000)?);
+                Some(Value::Int(next * 2 - f))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("bell"), |a| {
+        match a {
+            | [n] => Some(Value::Int(bell(nat(n, 1000)?))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, binary("stirling1"), |a| {
+        match a {
+            | [n, k] => {
+                let (n, k) = (nat(n, 1000)?, k.to_u64()?);
+                let row = stirling_row(n, |m, _| m - 1);
+                Some(Value::Int(
+                    row.get(usize::try_from(k).ok()?)
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, binary("stirling2"), |a| {
+        match a {
+            | [n, k] => {
+                let (n, k) = (nat(n, 1000)?, k.to_u64()?);
+                let row = stirling_row(n, |_, j| j);
+                Some(Value::Int(
+                    row.get(usize::try_from(k).ok()?)
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("partitions"), |a| {
+        match a {
+            | [n] => Some(Value::Int(partitions(usize::try_from(nat(n, 5000)?).ok()?))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("derangements"), |a| {
+        match a {
+            | [n] => Some(Value::Int(derangements(nat(n, MAX_FACTORIAL)?))),
+            | _ => None,
+        }
+    })?;
+    exact(
+        i,
+        set,
+        unary("harmonic").eval(|a| {
+            match a {
+                // H(x) = ψ(x + 1) + γ, the analytic continuation.
+                | [x] => {
+                    crate::kernels::special::digamma_numerical(x + 1.0)
+                        + std::f64::consts::EULER_GAMMA
+                },
+                | _ => f64::NAN,
+            }
+        }),
+        |a| {
+            match a {
+                | [n] => Some(Value::Rat(harmonic(nat(n, 1000)?))),
+                | _ => None,
+            }
         },
-        | _ => None,
-    })?;
-    exact(i, set, unary("fibonacci"), |a| match a {
-        | [n] => Some(Value::Int(fibonacci_pair(nat(n, 100_000)?).0)),
-        | _ => None,
-    })?;
-    exact(i, set, unary("lucas"), |a| match a {
-        | [n] => {
-            let (f, next) = fibonacci_pair(nat(n, 100_000)?);
-            Some(Value::Int(next * 2 - f))
-        },
-        | _ => None,
-    })?;
-    exact(i, set, unary("bell"), |a| match a {
-        | [n] => Some(Value::Int(bell(nat(n, 1000)?))),
-        | _ => None,
-    })?;
-    exact(i, set, binary("stirling1"), |a| match a {
-        | [n, k] => {
-            let (n, k) = (nat(n, 1000)?, k.to_u64()?);
-            let row = stirling_row(n, |m, _| m - 1);
-            Some(Value::Int(
-                row.get(usize::try_from(k).ok()?)
-                    .cloned()
-                    .unwrap_or_default(),
-            ))
-        },
-        | _ => None,
-    })?;
-    exact(i, set, binary("stirling2"), |a| match a {
-        | [n, k] => {
-            let (n, k) = (nat(n, 1000)?, k.to_u64()?);
-            let row = stirling_row(n, |_, j| j);
-            Some(Value::Int(
-                row.get(usize::try_from(k).ok()?)
-                    .cloned()
-                    .unwrap_or_default(),
-            ))
-        },
-        | _ => None,
-    })?;
-    exact(i, set, unary("partitions"), |a| match a {
-        | [n] => Some(Value::Int(partitions(usize::try_from(nat(n, 5000)?).ok()?))),
-        | _ => None,
-    })?;
-    exact(i, set, unary("derangements"), |a| match a {
-        | [n] => Some(Value::Int(derangements(nat(n, MAX_FACTORIAL)?))),
-        | _ => None,
-    })?;
-    exact(i, set, unary("harmonic").eval(|a| match a {
-        // H(x) = ψ(x + 1) + γ, the analytic continuation.
-        | [x] => crate::kernels::special::digamma_numerical(x + 1.0) + 0.577_215_664_901_532_9,
-        | _ => f64::NAN,
-    }), |a| match a {
-        | [n] => Some(Value::Rat(harmonic(nat(n, 1000)?))),
-        | _ => None,
-    })?;
+    )?;
 
     procedure(
         i,
@@ -1854,11 +1888,20 @@ mod tests {
     fn symbolic_binomial_expansion() {
         let rules = crate::rules::standard();
         assert_eq!(simplify(&rules, "expand_binomial(1, 1, n)"), "2^n");
-        assert_eq!(simplify(&rules, "expand_binomial(x, 1, 3)"), "x^3 + 3*x^2 + 3*x + 1");
-        assert_eq!(simplify(&rules, "expand_binomial(x, y, 2)"), "x^2 + 2*x*y + y^2");
+        assert_eq!(
+            simplify(&rules, "expand_binomial(x, 1, 3)"),
+            "x^3 + 3*x^2 + 3*x + 1"
+        );
+        assert_eq!(
+            simplify(&rules, "expand_binomial(x, y, 2)"),
+            "x^2 + 2*x*y + y^2"
+        );
         assert_eq!(simplify(&rules, "expand_binomial(2, 1, n)"), "3^n");
         // Inside a form request the definition is unfolded first.
-        assert_eq!(simplify(&rules, "expand(expand_binomial(x, 1, 3))"), "x^3 + 3*x^2 + 3*x + 1");
+        assert_eq!(
+            simplify(&rules, "expand(expand_binomial(x, 1, 3))"),
+            "x^3 + 3*x^2 + 3*x + 1"
+        );
     }
 
     #[test]

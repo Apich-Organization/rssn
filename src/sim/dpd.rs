@@ -74,7 +74,11 @@ impl Dpd {
     ///
     /// # Errors
     /// For a bad dimension, a box smaller than three cut-offs, or fewer than two particles.
-    pub fn new(n: usize, params: DpdParams, seed: u64) -> Result<Self, String> {
+    pub fn new(
+        n: usize,
+        params: DpdParams,
+        seed: u64,
+    ) -> Result<Self, String> {
         if !(2..=3).contains(&params.dim) || n < 2 {
             return Err("DPD needs dimension 2 or 3 and at least two particles".into());
         }
@@ -91,7 +95,15 @@ impl Dpd {
                 vel[i][a] = rng.normal() * sd;
             }
         }
-        let mut s = Self { params, pos, vel, force: vec![[0.0; 3]; n], rng, virial: 0.0, t: 0.0 };
+        let mut s = Self {
+            params,
+            pos,
+            vel,
+            force: vec![[0.0; 3]; n],
+            rng,
+            virial: 0.0,
+            t: 0.0,
+        };
         let mom = s.momentum();
         for v in &mut s.vel {
             for a in 0..params.dim {
@@ -117,7 +129,9 @@ impl Dpd {
     /// Number density.
     #[must_use]
     pub fn density(&self) -> f64 {
-        let vol: f64 = (0..self.params.dim).map(|a| self.params.box_len[a]).product();
+        let vol: f64 = (0..self.params.dim)
+            .map(|a| self.params.box_len[a])
+            .product();
         self.len() as f64 / vol
     }
 
@@ -136,14 +150,20 @@ impl Dpd {
     /// Kinetic temperature `m Σ v² / (d (N - 1))`.
     #[must_use]
     pub fn temperature(&self) -> f64 {
-        let ke: f64 = self.vel.iter().map(|v| v.iter().map(|x| x * x).sum::<f64>()).sum();
+        let ke: f64 = self
+            .vel
+            .iter()
+            .map(|v| v.iter().map(|x| x * x).sum::<f64>())
+            .sum();
         self.params.mass * ke / (self.params.dim as f64 * (self.len() - 1) as f64)
     }
 
     /// Pressure `ρ k_B T_kin + virial / (d V)` from the last force evaluation.
     #[must_use]
     pub fn pressure(&self) -> f64 {
-        let vol: f64 = (0..self.params.dim).map(|a| self.params.box_len[a]).product();
+        let vol: f64 = (0..self.params.dim)
+            .map(|a| self.params.box_len[a])
+            .product();
         self.density() * self.temperature() + self.virial / (self.params.dim as f64 * vol)
     }
 
@@ -155,16 +175,23 @@ impl Dpd {
         }
     }
 
-    fn compute_forces(&mut self, dt: f64, rebuild: bool) {
+    fn compute_forces(
+        &mut self,
+        dt: f64,
+        rebuild: bool,
+    ) {
         let _ = rebuild;
         let p = self.params;
         let n = self.len();
-        let ncell: Vec<i64> = (0..p.dim).map(|a| ((p.box_len[a] / p.rc).floor() as i64).max(1)).collect();
+        let ncell: Vec<i64> = (0..p.dim)
+            .map(|a| ((p.box_len[a] / p.rc).floor() as i64).max(1))
+            .collect();
         let mut cells: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
         let key = |x: &[f64; 3]| -> [i64; 3] {
             let mut k = [0i64; 3];
             for a in 0..p.dim {
-                k[a] = (((x[a] / p.box_len[a]) * ncell[a] as f64).floor() as i64).rem_euclid(ncell[a]);
+                k[a] =
+                    (((x[a] / p.box_len[a]) * ncell[a] as f64).floor() as i64).rem_euclid(ncell[a]);
             }
             k
         };
@@ -175,8 +202,16 @@ impl Dpd {
         let mut f = vec![[0.0; 3]; n];
         let mut virial = 0.0;
         let ox: Vec<i64> = vec![-1, 0, 1];
-        let oy: Vec<i64> = if p.dim >= 2 { vec![-1, 0, 1] } else { vec![0] };
-        let oz: Vec<i64> = if p.dim >= 3 { vec![-1, 0, 1] } else { vec![0] };
+        let oy: Vec<i64> = if p.dim >= 2 {
+            vec![-1, 0, 1]
+        } else {
+            vec![0]
+        };
+        let oz: Vec<i64> = if p.dim >= 3 {
+            vec![-1, 0, 1]
+        } else {
+            vec![0]
+        };
         for i in 0..n {
             let ki = key(&self.pos[i]);
             let mut seen: Vec<[i64; 3]> = Vec::new();
@@ -186,7 +221,11 @@ impl Dpd {
                         let off = [dx, dy, dz];
                         let mut kk = [0i64; 3];
                         for a in 0..3 {
-                            kk[a] = if a < p.dim { (ki[a] + off[a]).rem_euclid(ncell[a]) } else { 0 };
+                            kk[a] = if a < p.dim {
+                                (ki[a] + off[a]).rem_euclid(ncell[a])
+                            } else {
+                                0
+                            };
                         }
                         if seen.contains(&kk) {
                             continue;
@@ -232,7 +271,10 @@ impl Dpd {
     }
 
     /// One modified velocity-Verlet step (Groot–Warren, `λ = 0.65`).
-    pub fn step(&mut self, dt: f64) {
+    pub fn step(
+        &mut self,
+        dt: f64,
+    ) {
         let lambda = 0.65;
         let m = self.params.mass;
         let dim = self.params.dim;
@@ -255,7 +297,11 @@ impl Dpd {
     }
 
     /// Runs `steps` steps.
-    pub fn run(&mut self, dt: f64, steps: usize) {
+    pub fn run(
+        &mut self,
+        dt: f64,
+        steps: usize,
+    ) {
         for _ in 0..steps {
             self.step(dt);
         }

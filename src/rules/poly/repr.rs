@@ -10,10 +10,10 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use crate::graph::op::core;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 
 /// A power product: `(generator, exponent)` pairs sorted by generator, all
 /// exponents positive. The empty monomial is `1`.
@@ -33,10 +33,14 @@ impl Gens {
         graph: &Graph,
         node: NodeId,
     ) -> u32 {
-        let position = self.nodes.iter().position(|&n| graph.same(n, node)).unwrap_or_else(|| {
-            self.nodes.push(node);
-            self.nodes.len().saturating_sub(1)
-        });
+        let position = self
+            .nodes
+            .iter()
+            .position(|&n| graph.same(n, node))
+            .unwrap_or_else(|| {
+                self.nodes.push(node);
+                self.nodes.len().saturating_sub(1)
+            });
         u32::try_from(position).unwrap_or(u32::MAX)
     }
 
@@ -47,7 +51,10 @@ impl Gens {
         graph: &Graph,
         node: NodeId,
     ) -> Option<u32> {
-        self.nodes.iter().position(|&n| graph.same(n, node)).and_then(|i| u32::try_from(i).ok())
+        self.nodes
+            .iter()
+            .position(|&n| graph.same(n, node))
+            .and_then(|i| u32::try_from(i).ok())
     }
 
     /// The term generator `index` stands for.
@@ -293,7 +300,13 @@ impl Poly {
         if factor.is_zero() {
             return Self::zero();
         }
-        Self { terms: self.terms.iter().map(|(m, c)| (m.clone(), c.mul(factor))).collect() }
+        Self {
+            terms: self
+                .terms
+                .iter()
+                .map(|(m, c)| (m.clone(), c.mul(factor)))
+                .collect(),
+        }
     }
 
     /// Product. `None` when the result would exceed `cap` terms.
@@ -352,12 +365,14 @@ impl Poly {
         };
         let mut content = first.clone();
         for m in iter {
-            content.retain_mut(|(g, e)| match m.iter().find(|(h, _)| h == g) {
-                | Some(&(_, f)) => {
-                    *e = (*e).min(f);
-                    true
-                },
-                | None => false,
+            content.retain_mut(|(g, e)| {
+                match m.iter().find(|(h, _)| h == g) {
+                    | Some(&(_, f)) => {
+                        *e = (*e).min(f);
+                        true
+                    },
+                    | None => false,
+                }
             });
         }
         content
@@ -369,7 +384,13 @@ impl Poly {
         &self,
         m: &Mono,
     ) -> Self {
-        Self { terms: self.terms.iter().filter_map(|(k, c)| Some((mono_div(k, m)?, c.clone()))).collect() }
+        Self {
+            terms: self
+                .terms
+                .iter()
+                .filter_map(|(k, c)| Some((mono_div(k, m)?, c.clone())))
+                .collect(),
+        }
     }
 
     /// The exact quotient `self / d`, or `None` if `d` does not divide
@@ -413,13 +434,21 @@ impl Poly {
     /// Total degree; zero for the zero polynomial.
     #[must_use]
     pub fn total_degree(&self) -> u32 {
-        self.terms.keys().map(|m| m.iter().map(|&(_, e)| e).sum()).max().unwrap_or(0)
+        self.terms
+            .keys()
+            .map(|m| m.iter().map(|&(_, e)| e).sum())
+            .max()
+            .unwrap_or(0)
     }
 
     /// The generators that actually occur.
     #[must_use]
     pub fn support(&self) -> Vec<u32> {
-        let mut gens: Vec<u32> = self.terms.keys().flat_map(|m| m.iter().map(|&(g, _)| g)).collect();
+        let mut gens: Vec<u32> = self
+            .terms
+            .keys()
+            .flat_map(|m| m.iter().map(|&(g, _)| g))
+            .collect();
         gens.sort_unstable();
         gens.dedup();
         gens
@@ -434,8 +463,15 @@ impl Poly {
     ) -> Vec<Self> {
         let mut out = vec![Self::zero(); self.degree_in(generator) as usize + 1];
         for (mono, coeff) in &self.terms {
-            let power = mono.iter().find(|&&(g, _)| g == generator).map_or(0, |&(_, e)| e);
-            let rest: Mono = mono.iter().copied().filter(|&(g, _)| g != generator).collect();
+            let power = mono
+                .iter()
+                .find(|&&(g, _)| g == generator)
+                .map_or(0, |&(_, e)| e);
+            let rest: Mono = mono
+                .iter()
+                .copied()
+                .filter(|&(g, _)| g != generator)
+                .collect();
             if let Some(slot) = out.get_mut(power as usize) {
                 slot.add_term(rest, coeff);
             }
@@ -450,7 +486,10 @@ impl Poly {
         &self,
         generator: u32,
     ) -> Option<Vec<Number>> {
-        self.coefficients_in(generator).iter().map(Self::as_constant).collect()
+        self.coefficients_in(generator)
+            .iter()
+            .map(Self::as_constant)
+            .collect()
     }
 
     /// Builds a univariate polynomial in `gen` from coefficients by degree.
@@ -462,7 +501,11 @@ impl Poly {
         let mut out = Self::zero();
         for (power, coeff) in coeffs.iter().enumerate() {
             let power = u32::try_from(power).unwrap_or(u32::MAX);
-            let mono = if power == 0 { Vec::new() } else { vec![(generator, power)] };
+            let mono = if power == 0 {
+                Vec::new()
+            } else {
+                vec![(generator, power)]
+            };
             out.add_term(mono, coeff);
         }
         out
@@ -482,7 +525,13 @@ impl Poly {
             };
             let lowered: Mono = mono
                 .iter()
-                .filter_map(|&(g, e)| if g == generator { (e > 1).then_some((g, e - 1)) } else { Some((g, e)) })
+                .filter_map(|&(g, e)| {
+                    if g == generator {
+                        (e > 1).then_some((g, e - 1))
+                    } else {
+                        Some((g, e))
+                    }
+                })
                 .collect();
             out.add_term(lowered, &coeff.mul(&Number::from(i64::from(power))));
         }
@@ -501,7 +550,10 @@ pub struct Limits {
 
 impl Default for Limits {
     fn default() -> Self {
-        Self { terms: 20_000, exponent: 256 }
+        Self {
+            terms: 20_000,
+            exponent: 256,
+        }
     }
 }
 
@@ -552,17 +604,22 @@ fn convert(
     } else if graph.op(node) == core::MUL {
         let mut product = Poly::constant(Number::from(1));
         for child in children {
-            product = product.mul(&convert(graph, gens, child, limits, memo, depth + 1)?, limits.terms)?;
+            product = product.mul(
+                &convert(graph, gens, child, limits, memo, depth + 1)?,
+                limits.terms,
+            )?;
         }
         product
     } else {
         let power = match children.as_slice() {
-            | [base, exp] if graph.op(node) == core::POW => graph
-                .number_of(*exp)
-                .and_then(Number::to_i64)
-                .and_then(|e| u32::try_from(e).ok())
-                .filter(|&e| e <= limits.exponent)
-                .map(|e| (*base, e)),
+            | [base, exp] if graph.op(node) == core::POW => {
+                graph
+                    .number_of(*exp)
+                    .and_then(Number::to_i64)
+                    .and_then(|e| u32::try_from(e).ok())
+                    .filter(|&e| e <= limits.exponent)
+                    .map(|e| (*base, e))
+            },
             | _ => None,
         };
         match power {
@@ -578,7 +635,11 @@ fn convert(
                     let inner = from_term(graph, &mut inner_gens, *child, limits)?;
                     expanded.push(to_term(graph, &inner_gens, &inner));
                 }
-                let atom = if expanded == children { node } else { graph.try_node(graph.op(node), &expanded)? };
+                let atom = if expanded == children {
+                    node
+                } else {
+                    graph.try_node(graph.op(node), &expanded)?
+                };
                 Poly::generator(gens.index(graph, atom))
             },
         }
@@ -619,7 +680,10 @@ pub fn to_term(
     gens: &Gens,
     poly: &Poly,
 ) -> NodeId {
-    let terms: Vec<NodeId> = poly.terms().map(|(m, c)| (m.clone(), c.clone())).collect::<Vec<_>>()
+    let terms: Vec<NodeId> = poly
+        .terms()
+        .map(|(m, c)| (m.clone(), c.clone()))
+        .collect::<Vec<_>>()
         .iter()
         .map(|(mono, coeff)| term_of(graph, gens, mono, coeff))
         .collect();
@@ -638,7 +702,8 @@ mod tests {
         let mut g = Graph::new();
         let node = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
         let mut gens = Gens::default();
-        let poly = from_term(&mut g, &mut gens, node, Limits::default()).unwrap_or_else(|| panic!("limit"));
+        let poly = from_term(&mut g, &mut gens, node, Limits::default())
+            .unwrap_or_else(|| panic!("limit"));
         let out = to_term(&mut g, &gens, &poly);
         g.display(out)
     }
@@ -648,7 +713,10 @@ mod tests {
         assert_eq!(expand("(x + 1)^2"), "x^2 + 2*x + 1");
         assert_eq!(expand("(x + y) * (x - y)"), "x^2 - y^2");
         assert_eq!(expand("(a + b)^3"), "a^3 + 3*a^2*b + 3*a*b^2 + b^3");
-        assert_eq!(expand("(x + 1) * (x + 2) * (x + 3)"), "x^3 + 6*x^2 + 11*x + 6");
+        assert_eq!(
+            expand("(x + 1) * (x + 2) * (x + 3)"),
+            "x^3 + 6*x^2 + 11*x + 6"
+        );
         assert_eq!(expand("(x - 1)^2 - (x^2 - 2*x + 1)"), "0");
         assert_eq!(expand("(x/2 + 1/3)^2"), "1/4*x^2 + 1/3*x + 1/9");
     }
@@ -658,24 +726,46 @@ mod tests {
         assert_eq!(expand("(f(x) + 1)^2"), "f(x)^2 + 2*f(x) + 1");
         assert_eq!(expand("(x^(1/2) + 1)^2"), "(x^(1/2))^2 + 2*x^(1/2) + 1");
         assert_eq!(expand("(x + 1)^n * (x + 1)"), "x*(x + 1)^n + (x + 1)^n");
-        assert_eq!(expand("f((x + 1)^2)"), "f(x^2 + 2*x + 1)", "expansion is deep");
+        assert_eq!(
+            expand("f((x + 1)^2)"),
+            "f(x^2 + 2*x + 1)",
+            "expansion is deep"
+        );
     }
 
     #[test]
     fn limits_are_enforced() {
         let mut g = Graph::new();
-        let node = g.parse("(a + b + c + d + e)^40").unwrap_or_else(|e| panic!("{e}"));
+        let node = g
+            .parse("(a + b + c + d + e)^40")
+            .unwrap_or_else(|e| panic!("{e}"));
         let mut gens = Gens::default();
-        assert!(from_term(&mut g, &mut gens, node, Limits { terms: 1_000, exponent: 256 }).is_none());
+        assert!(
+            from_term(
+                &mut g,
+                &mut gens,
+                node,
+                Limits {
+                    terms: 1_000,
+                    exponent: 256
+                }
+            )
+            .is_none()
+        );
         let node = g.parse("(a + b)^1000").unwrap_or_else(|e| panic!("{e}"));
         let poly = from_term(&mut g, &mut gens, node, Limits::default());
-        assert!(poly.is_some_and(|p| p.len() == 1), "beyond the exponent limit the power is a generator");
+        assert!(
+            poly.is_some_and(|p| p.len() == 1),
+            "beyond the exponent limit the power is a generator"
+        );
     }
 
     #[test]
     fn univariate_views() {
         let mut g = Graph::new();
-        let node = g.parse("3*x^2*y + x*y^2 + 5*x + 7").unwrap_or_else(|e| panic!("{e}"));
+        let node = g
+            .parse("3*x^2*y + x*y^2 + 5*x + 7")
+            .unwrap_or_else(|e| panic!("{e}"));
         let mut gens = Gens::default();
         let poly = from_term(&mut g, &mut gens, node, Limits::default()).unwrap_or_default();
         let x_node = g.sym("x");
@@ -711,6 +801,9 @@ mod tests {
         assert!(a.sub(&a).is_zero());
         assert_eq!(a.pow(0, cap), Some(one));
         assert_eq!(a.scale(&Number::from(0)), Poly::zero());
-        assert_eq!(Poly::from_univariate(0, &[Number::from(1), Number::from(1)]), a);
+        assert_eq!(
+            Poly::from_univariate(0, &[Number::from(1), Number::from(1)]),
+            a
+        );
     }
 }

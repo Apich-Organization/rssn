@@ -125,7 +125,9 @@ pub unsafe extern "C" fn rssn_config_assume(
     facts: u8,
 ) -> RssnStatus {
     // SAFETY: caller contract.
-    edit(config, |c| Ok(c.assume(unsafe { text(name) }?, Facts::from_bits(facts))))
+    edit(config, |c| {
+        Ok(c.assume(unsafe { text(name) }?, Facts::from_bits(facts)))
+    })
 }
 
 /// Limits the search: at most `max_iterations` outer iterations and

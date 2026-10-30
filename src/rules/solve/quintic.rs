@@ -18,14 +18,14 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::symbolic;
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
-use crate::rules::poly::galois::analyse_quintic;
+use crate::graph::op::core;
 use crate::rules::poly::galois::Radical;
 use crate::rules::poly::galois::Trigonometric;
+use crate::rules::poly::galois::analyse_quintic;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Poly;
 use crate::rules::poly::rootof::real_roots_as_objects;
@@ -44,10 +44,19 @@ pub(super) fn roots(
     }
     let objects = real_roots_as_objects(graph, factor)?;
     if super::numeric_run() {
-        return Some(objects.into_iter().map(|(value, _)| (value, graph.float(value))).collect());
+        return Some(
+            objects
+                .into_iter()
+                .map(|(value, _)| (value, graph.float(value)))
+                .collect(),
+        );
     }
     if factor.len() == 6 {
-        let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+        let rational: Vec<BigRational> = factor
+            .iter()
+            .cloned()
+            .map(BigRational::from_integer)
+            .collect();
         if let Some(analysis) = analyse_quintic(&rational)
             && let Some(radical) = &analysis.radical
         {
@@ -76,7 +85,8 @@ fn pair_poly(
     index: u32,
     (u, v): &(BigRational, BigRational),
 ) -> Poly {
-    Poly::constant(Number::rat(u.clone())).add(&Poly::generator(index).scale(&Number::rat(v.clone())))
+    Poly::constant(Number::rat(u.clone()))
+        .add(&Poly::generator(index).scale(&Number::rat(v.clone())))
 }
 
 fn radical_root(
@@ -95,7 +105,9 @@ fn radical_root(
     let numeric: Vec<f64> = radical
         .phi
         .iter()
-        .map(|(u, v)| u.to_f64().unwrap_or(f64::NAN) + v.to_f64().unwrap_or(f64::NAN) * 5.0_f64.sqrt())
+        .map(|(u, v)| {
+            u.to_f64().unwrap_or(f64::NAN) + v.to_f64().unwrap_or(f64::NAN) * 5.0_f64.sqrt()
+        })
         .collect();
     let phi = |w: f64| -> (f64, f64) {
         let mut value = w.powi(4);
@@ -109,18 +121,26 @@ fn radical_root(
     };
     let mut distinct: Vec<(f64, NodeId)> = Vec::new();
     for candidate in candidates {
-        let Some(w) = graph.eval(candidate, &env).filter(|w| w.is_finite()) else { continue };
+        let Some(w) = graph.eval(candidate, &env).filter(|w| w.is_finite()) else {
+            continue;
+        };
         let (value, scale) = phi(w);
         if value.abs() > 1e-7 * scale {
             continue;
         }
-        if !distinct.iter().any(|(v, _)| (v - w).abs() <= 1e-9 * (1.0 + w.abs())) {
+        if !distinct
+            .iter()
+            .any(|(v, _)| (v - w).abs() <= 1e-9 * (1.0 + w.abs()))
+        {
             distinct.push((w, candidate));
         }
     }
     // A zero root of Φ (exactly representable) can fall in a degenerate
     // case of the quartic formula.
-    if radical.phi.first().is_some_and(|(u, v)| u.is_zero() && v.is_zero())
+    if radical
+        .phi
+        .first()
+        .is_some_and(|(u, v)| u.is_zero() && v.is_zero())
         && !distinct.iter().any(|(w, _)| w.abs() < 1e-9)
     {
         distinct.push((0.0, graph.int(0)));
@@ -131,7 +151,12 @@ fn radical_root(
     let derivative_at = |w: f64, order: usize| -> (f64, f64) {
         let mut coefficients = full.clone();
         for _ in 0..order {
-            coefficients = coefficients.iter().enumerate().skip(1).map(|(i, c)| c * i as f64).collect();
+            coefficients = coefficients
+                .iter()
+                .enumerate()
+                .skip(1)
+                .map(|(i, c)| c * i as f64)
+                .collect();
         }
         let mut value = 0.0;
         let mut scale = 0.0;
@@ -167,7 +192,10 @@ fn radical_root(
         return None;
     }
     let sum = graph.node(core::ADD, &terms);
-    let factor = graph.num(Number::rat(BigRational::new(BigInt::one(), BigInt::from(5) * &radical.scale)));
+    let factor = graph.num(Number::rat(BigRational::new(
+        BigInt::one(),
+        BigInt::from(5) * &radical.scale,
+    )));
     let scaled = graph.node(core::MUL, &[factor, sum]);
     let total = if radical.shift.is_zero() {
         scaled
@@ -201,7 +229,11 @@ fn trigonometric_roots(
     let mut pairs = Vec::new();
     symbolic::ferrari_with_pairs(graph, &gens, &coefficients, &mut pairs)?;
     let env = Env::numeric(0.0);
-    let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+    let (acos, cos, pi) = (
+        graph.ops().lookup("acos")?,
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("pi")?,
+    );
     let pi_node = graph.node(pi, &[]);
     let tau = std::f64::consts::TAU;
     // For each of R_1, R_2: the pair of nodes whose values match.
@@ -210,8 +242,12 @@ fn trigonometric_roots(
         let target = (r.0, r.1.abs());
         let mut found = None;
         for &(a_node, b_node) in &pairs {
-            let (Some(a), Some(b)) = (graph.eval(a_node, &env), graph.eval(b_node, &env)) else { continue };
-            if (a - target.0).abs() <= 1e-7 * (1.0 + target.0.abs()) && (b - target.1).abs() <= 1e-7 * (1.0 + target.1.abs()) {
+            let (Some(a), Some(b)) = (graph.eval(a_node, &env), graph.eval(b_node, &env)) else {
+                continue;
+            };
+            if (a - target.0).abs() <= 1e-7 * (1.0 + target.0.abs())
+                && (b - target.1).abs() <= 1e-7 * (1.0 + target.1.abs())
+            {
                 found = Some((a_node, b_node));
                 break;
             }
@@ -222,7 +258,11 @@ fn trigonometric_roots(
         let phi = target.1.atan2(target.0);
         let m = ((5.0 * u.1.atan2(u.0) - phi) / tau).round();
         // Conjugating t_j turns ζ^{-jk} into ζ^{jk}.
-        let weight = if r.1 > 0.0 { i64::try_from(j + 1).ok()? } else { -i64::try_from(j + 1).ok()? };
+        let weight = if r.1 > 0.0 {
+            i64::try_from(j + 1).ok()?
+        } else {
+            -i64::try_from(j + 1).ok()?
+        };
         parts.push((a_node, b_node, phi, m as i64, weight));
     }
     let mut out = Vec::new();
@@ -248,7 +288,10 @@ fn trigonometric_roots(
             terms.push(graph.node(core::MUL, &[amplitude, wave]));
         }
         let sum = graph.node(core::ADD, &terms);
-        let factor = graph.num(Number::rat(BigRational::new(BigInt::from(2), BigInt::from(5) * &radical.scale)));
+        let factor = graph.num(Number::rat(BigRational::new(
+            BigInt::from(2),
+            BigInt::from(5) * &radical.scale,
+        )));
         let scaled = graph.node(core::MUL, &[factor, sum]);
         let total = if radical.shift.is_zero() {
             scaled
@@ -261,7 +304,9 @@ fn trigonometric_roots(
     // Every computed root must match one of the real roots.
     let mut used = vec![false; objects.len()];
     for (value, _) in &out {
-        let slot = objects.iter().position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
+        let slot = objects
+            .iter()
+            .position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
         if std::mem::replace(used.get_mut(slot)?, true) {
             return None;
         }

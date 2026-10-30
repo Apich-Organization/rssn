@@ -19,6 +19,9 @@
 //! (triclinic cells). Hermite integrators with block time steps, 1PN terms and KS binaries are in
 //! [`crate::sim::hermite`]. Limitations: Barnes-Hut and the 2-D FMM are open-boundary only;
 //! the periodic FMM softens the far lattice consistently (Plummer form factor).
+//!
+//! Parallelism: [`direct_field`] and the Barnes-Hut traversals of [`gravity_accelerations`] /
+//! [`coulomb_forces`] evaluate the bodies concurrently (bit-identical).
 
 const NONE: u32 = u32::MAX;
 const MAX_DEPTH: usize = 48;
@@ -92,8 +95,23 @@ impl<const D: usize> BhTree<D> {
             half = half.max(0.5 * (hi[a] - lo[a]));
         }
         half = half * 1.000_001 + 1e-12;
-        let root = Node { center, half, s: 0.0, sabs: 0.0, com: center, dip: [0.0; D], children: [NONE; 8], bodies: Vec::new() };
-        let mut t = Self { nodes: vec![root], pos: pos.to_vec(), src: src.to_vec(), theta, eps };
+        let root = Node {
+            center,
+            half,
+            s: 0.0,
+            sabs: 0.0,
+            com: center,
+            dip: [0.0; D],
+            children: [NONE; 8],
+            bodies: Vec::new(),
+        };
+        let mut t = Self {
+            nodes: vec![root],
+            pos: pos.to_vec(),
+            src: src.to_vec(),
+            theta,
+            eps,
+        };
         for i in 0..pos.len() {
             t.insert(0, i as u32, 0);
         }
@@ -150,7 +168,16 @@ impl<const D: usize> BhTree<D> {
             for a in 0..D {
                 c[a] += if (o >> a) & 1 == 1 { h } else { -h };
             }
-            self.nodes.push(Node { center: c, half: h, s: 0.0, sabs: 0.0, com: c, dip: [0.0; D], children: [NONE; 8], bodies: Vec::new() });
+            self.nodes.push(Node {
+                center: c,
+                half: h,
+                s: 0.0,
+                sabs: 0.0,
+                com: c,
+                dip: [0.0; D],
+                children: [NONE; 8],
+                bodies: Vec::new(),
+            });
             let id = (self.nodes.len() - 1) as u32;
             self.nodes[node].children[o] = id;
         }
@@ -286,6 +313,11 @@ impl<const D: usize> BhTree<D> {
     }
 }
 
+/// Bodies from which the direct `O(N^2)` field is evaluated in parallel.
+const DIRECT_PAR_BODIES: usize = 256;
+/// Bodies from which the Barnes-Hut traversals run in parallel.
+const TREE_PAR_BODIES: usize = 512;
+
 /// Exact `O(N^2)` field of all sources at every body (self excluded).
 #[must_use]
 pub fn direct_field<const D: usize>(
@@ -294,8 +326,10 @@ pub fn direct_field<const D: usize>(
     eps: f64,
 ) -> Vec<[f64; D]> {
     let n = pos.len();
-    let mut out = vec![[0.0; D]; n];
-    for i in 0..n {
+    // Row i is an independent sequential sum over j: rows run in parallel,
+    // the result is bit-identical to the serial double loop.
+    crate::kernels::par::map_indexed(n, DIRECT_PAR_BODIES, |i| {
+        let mut row = [0.0; D];
         for j in 0..n {
             if i == j {
                 continue;
@@ -306,11 +340,11 @@ pub fn direct_field<const D: usize>(
             }
             let k = kernel(&d, eps);
             for a in 0..D {
-                out[i][a] += src[j] * k[a];
+                row[a] += src[j] * k[a];
             }
         }
-    }
-    out
+        row
+    })
 }
 
 /// Barnes-Hut gravitational accelerations `a_i = G sum_j m_j K(x_j - x_i)`.
@@ -325,15 +359,17 @@ pub fn gravity_accelerations<const D: usize>(
     theta: f64,
 ) -> Result<Vec<[f64; D]>, String> {
     let t = BhTree::new(pos, mass, theta, eps)?;
-    Ok((0..pos.len())
-        .map(|i| {
+    Ok(crate::kernels::par::map_indexed(
+        pos.len(),
+        TREE_PAR_BODIES,
+        |i| {
             let mut f = t.field(&pos[i], i);
             for c in &mut f {
                 *c *= g;
             }
             f
-        })
-        .collect())
+        },
+    ))
 }
 
 /// Barnes-Hut Coulomb forces `F_i = -k q_i sum_j q_j K(x_j - x_i)` (like charges repel).
@@ -348,15 +384,17 @@ pub fn coulomb_forces<const D: usize>(
     theta: f64,
 ) -> Result<Vec<[f64; D]>, String> {
     let t = BhTree::new(pos, charge, theta, eps)?;
-    Ok((0..pos.len())
-        .map(|i| {
+    Ok(crate::kernels::par::map_indexed(
+        pos.len(),
+        TREE_PAR_BODIES,
+        |i| {
             let mut f = t.field(&pos[i], i);
             for c in &mut f {
                 *c *= -k * charge[i];
             }
             f
-        })
-        .collect())
+        },
+    ))
 }
 
 
@@ -375,7 +413,16 @@ pub fn fmm2d_field(
     p: usize,
     ppb: usize,
 ) -> Result<Vec<[f64; 2]>, String> {
-    crate::sim::fmm::fmm2d(pos, src, &crate::sim::fmm::FmmOptions { order: p, leaf_size: ppb, theta: 0.4, eps: 0.0 })
+    crate::sim::fmm::fmm2d(
+        pos,
+        src,
+        &crate::sim::fmm::FmmOptions {
+            order: p,
+            leaf_size: ppb,
+            theta: 0.4,
+            eps: 0.0,
+        },
+    )
 }
 
 /// Field `sum_j s_j (x_j - x_i) / |x_j - x_i|^3` at every point (self excluded) by the
@@ -389,6 +436,15 @@ pub fn fmm3d_field(
     p: usize,
     ppb: usize,
 ) -> Result<Vec<[f64; 3]>, String> {
-    let r = crate::sim::fmm::fmm3d(pos, src, &crate::sim::fmm::FmmOptions { order: p, leaf_size: ppb, theta: 0.5, eps: 0.0 })?;
+    let r = crate::sim::fmm::fmm3d(
+        pos,
+        src,
+        &crate::sim::fmm::FmmOptions {
+            order: p,
+            leaf_size: ppb,
+            theta: 0.5,
+            eps: 0.0,
+        },
+    )?;
     Ok(r.field)
 }

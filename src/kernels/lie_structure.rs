@@ -124,7 +124,9 @@ pub fn euclidean_simple_roots(
     };
     let one = ql::q(1);
     let chain = |dim: usize, count: usize| -> Vec<Vec<Q>> {
-        (0..count).map(|i| vec_of(dim, &[(i, ql::q(1)), (i + 1, ql::q(-1))])).collect()
+        (0..count)
+            .map(|i| vec_of(dim, &[(i, ql::q(1)), (i + 1, ql::q(-1))]))
+            .collect()
     };
     match letter.to_ascii_uppercase() {
         | 'A' if n >= 1 => Some(chain(n + 1, n)),
@@ -145,7 +147,16 @@ pub fn euclidean_simple_roots(
         },
         | 'E' if (6..=8).contains(&n) => {
             let mut all = vec![
-                vec![half.clone(), -half.clone(), -half.clone(), -half.clone(), -half.clone(), -half.clone(), -half.clone(), half],
+                vec![
+                    half.clone(),
+                    -half.clone(),
+                    -half.clone(),
+                    -half.clone(),
+                    -half.clone(),
+                    -half.clone(),
+                    -half.clone(),
+                    half,
+                ],
                 vec_of(8, &[(0, ql::q(1)), (1, ql::q(1))]),
             ];
             all.push(vec_of(8, &[(1, ql::q(1)), (0, ql::q(-1))]));
@@ -155,13 +166,28 @@ pub fn euclidean_simple_roots(
             all.truncate(n);
             Some(all)
         },
-        | 'F' if n == 4 => Some(vec![
-            vec_of(4, &[(1, ql::q(1)), (2, ql::q(-1))]),
-            vec_of(4, &[(2, ql::q(1)), (3, ql::q(-1))]),
-            vec_of(4, &[(3, ql::q(1))]),
-            vec_of(4, &[(0, half.clone()), (1, -half.clone()), (2, -half.clone()), (3, -half)]),
-        ]),
-        | 'G' if n == 2 => Some(vec![vec_of(3, &[(0, ql::q(1)), (1, ql::q(-1))]), vec_of(3, &[(0, ql::q(-2)), (1, ql::q(1)), (2, ql::q(1))])]),
+        | 'F' if n == 4 => {
+            Some(vec![
+                vec_of(4, &[(1, ql::q(1)), (2, ql::q(-1))]),
+                vec_of(4, &[(2, ql::q(1)), (3, ql::q(-1))]),
+                vec_of(4, &[(3, ql::q(1))]),
+                vec_of(
+                    4,
+                    &[
+                        (0, half.clone()),
+                        (1, -half.clone()),
+                        (2, -half.clone()),
+                        (3, -half),
+                    ],
+                ),
+            ])
+        },
+        | 'G' if n == 2 => {
+            Some(vec![
+                vec_of(3, &[(0, ql::q(1)), (1, ql::q(-1))]),
+                vec_of(3, &[(0, ql::q(-2)), (1, ql::q(1)), (2, ql::q(1))]),
+            ])
+        },
         | _ => None,
     }
 }
@@ -173,7 +199,12 @@ fn is_cartan_shape(a: &Cartan) -> bool {
         && a.iter().all(|r| r.len() == n)
         && (0..n).all(|i| {
             a[i][i] == 2
-                && (0..n).all(|j| i == j || (a[i][j] <= 0 && (a[i][j] == 0) == (a[j][i] == 0) && a[i][j] * a[j][i] <= 3))
+                && (0..n).all(|j| {
+                    i == j
+                        || (a[i][j] <= 0
+                            && (a[i][j] == 0) == (a[j][i] == 0)
+                            && a[i][j] * a[j][i] <= 3)
+                })
         })
 }
 
@@ -227,10 +258,14 @@ fn go(
         (0..n).collect()
     } else {
         let anchor = s.image[s.parent[v]];
-        (0..n).filter(|&w| !s.used[w] && s.b[anchor][w] != 0).collect()
+        (0..n)
+            .filter(|&w| !s.used[w] && s.b[anchor][w] != 0)
+            .collect()
     };
     for w in candidates {
-        let consistent = s.order[..k].iter().all(|&u| s.a[v][u] == s.b[w][s.image[u]] && s.a[u][v] == s.b[s.image[u]][w]);
+        let consistent = s.order[..k]
+            .iter()
+            .all(|&u| s.a[v][u] == s.b[w][s.image[u]] && s.a[u][v] == s.b[s.image[u]][w]);
         if consistent {
             s.image[v] = w;
             s.used[w] = true;
@@ -270,7 +305,14 @@ fn isomorphic(
     if order.len() != n {
         return false;
     }
-    let mut s = Search { a, b, order, parent, image: vec![usize::MAX; n], used: vec![false; n] };
+    let mut s = Search {
+        a,
+        b,
+        order,
+        parent,
+        image: vec![usize::MAX; n],
+        used: vec![false; n],
+    };
     go(&mut s, 0)
 }
 
@@ -278,7 +320,9 @@ fn sub_matrix(
     a: &Cartan,
     idx: &[usize],
 ) -> Cartan {
-    idx.iter().map(|&i| idx.iter().map(|&j| a[i][j]).collect()).collect()
+    idx.iter()
+        .map(|&i| idx.iter().map(|&j| a[i][j]).collect())
+        .collect()
 }
 
 /// The simple factors of the algebra with Cartan matrix `a` as
@@ -294,7 +338,9 @@ pub fn recognize(a: &Cartan) -> Option<Vec<(char, usize)>> {
         let sub = sub_matrix(a, &comp);
         let n = comp.len();
         let letters: &[char] = &['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-        let found = letters.iter().find(|&&l| cartan_matrix(l, n).is_some_and(|c| isomorphic(&sub, &c)))?;
+        let found = letters
+            .iter()
+            .find(|&&l| cartan_matrix(l, n).is_some_and(|c| isomorphic(&sub, &c)))?;
         out.push((*found, n));
     }
     Some(out)
@@ -326,9 +372,20 @@ impl RootSystem {
         recognize(&cartan)?;
         let n = cartan.len();
         let positive = positive_roots(&cartan);
-        let inverse = ql::inverse(&cartan.iter().map(|r| r.iter().map(|&x| ql::q(x)).collect()).collect::<Vec<Vec<Q>>>())?;
+        let inverse = ql::inverse(
+            &cartan
+                .iter()
+                .map(|r| r.iter().map(|&x| ql::q(x)).collect())
+                .collect::<Vec<Vec<Q>>>(),
+        )?;
         let lengths = root_lengths(&cartan);
-        Some(Self { n, cartan, positive, lengths, inverse })
+        Some(Self {
+            n,
+            cartan,
+            positive,
+            lengths,
+            inverse,
+        })
     }
 
     /// The number of positive roots.
@@ -353,7 +410,11 @@ impl RootSystem {
     #[must_use]
     pub fn gram(&self) -> QMat {
         (0..self.n)
-            .map(|i| (0..self.n).map(|j| ql::q(self.cartan[i][j]) * &self.lengths[j] / ql::q(2)).collect())
+            .map(|i| {
+                (0..self.n)
+                    .map(|j| ql::q(self.cartan[i][j]) * &self.lengths[j] / ql::q(2))
+                    .collect()
+            })
             .collect()
     }
 
@@ -369,8 +430,12 @@ impl RootSystem {
     pub fn exponents(&self) -> Vec<usize> {
         let heights: Vec<i64> = self.positive.iter().map(|r| r.iter().sum()).collect();
         let top = heights.iter().copied().max().unwrap_or(0);
-        let counts: Vec<usize> = (1..=top).map(|h| heights.iter().filter(|&&x| x == h).count()).collect();
-        let mut out: Vec<usize> = (1..=self.n).map(|j| counts.iter().filter(|&&c| c >= j).count()).collect();
+        let counts: Vec<usize> = (1..=top)
+            .map(|h| heights.iter().filter(|&&x| x == h).count())
+            .collect();
+        let mut out: Vec<usize> = (1..=self.n)
+            .map(|j| counts.iter().filter(|&&c| c >= j).count())
+            .collect();
         out.sort_unstable();
         out
     }
@@ -378,26 +443,39 @@ impl RootSystem {
     /// The order of the Weyl group, `prod (e_i + 1)`.
     #[must_use]
     pub fn weyl_order(&self) -> BigInt {
-        self.exponents().iter().fold(BigInt::one(), |acc, &e| acc * BigInt::from(e + 1))
+        self.exponents()
+            .iter()
+            .fold(BigInt::one(), |acc, &e| acc * BigInt::from(e + 1))
     }
 
     /// The highest root (irreducible systems only).
     #[must_use]
     pub fn highest_root(&self) -> Option<Vec<i64>> {
-        self.is_irreducible().then(|| self.positive.iter().max_by_key(|r| r.iter().sum::<i64>()).cloned()).flatten()
+        self.is_irreducible()
+            .then(|| {
+                self.positive
+                    .iter()
+                    .max_by_key(|r| r.iter().sum::<i64>())
+                    .cloned()
+            })
+            .flatten()
     }
 
     /// The Coxeter number `2 N / n` (irreducible systems only).
     #[must_use]
     pub fn coxeter_number(&self) -> Option<usize> {
-        self.is_irreducible().then(|| 2 * self.positive.len() / self.n)
+        self.is_irreducible()
+            .then(|| 2 * self.positive.len() / self.n)
     }
 
     /// The dual Coxeter number `1 + (theta, rho)` (irreducible systems only).
     #[must_use]
     pub fn dual_coxeter_number(&self) -> Option<Q> {
         let theta = self.highest_root()?;
-        let sum = theta.iter().zip(&self.lengths).fold(Q::zero(), |acc, (&c, s)| acc + ql::q(c) * s / ql::q(2));
+        let sum = theta
+            .iter()
+            .zip(&self.lengths)
+            .fold(Q::zero(), |acc, (&c, s)| acc + ql::q(c) * s / ql::q(2));
         Some(sum + ql::q(1))
     }
 
@@ -432,7 +510,8 @@ impl RootSystem {
     ) -> Q {
         let mut total = Q::zero();
         for (k, (&ak, length)) in a.iter().zip(&self.lengths).enumerate() {
-            let x: Q = (0..self.n).fold(Q::zero(), |acc, i| acc + ql::q(b[i]) * &self.inverse[i][k]);
+            let x: Q =
+                (0..self.n).fold(Q::zero(), |acc, i| acc + ql::q(b[i]) * &self.inverse[i][k]);
             total += x * ql::q(ak) * length / ql::q(2);
         }
         total
@@ -484,7 +563,9 @@ impl RootSystem {
         self.positive
             .iter()
             .map(|c| {
-                let labels: Vec<i64> = (0..self.n).map(|i| (0..self.n).map(|j| c[j] * self.cartan[j][i]).sum()).collect();
+                let labels: Vec<i64> = (0..self.n)
+                    .map(|i| (0..self.n).map(|j| c[j] * self.cartan[j][i]).sum())
+                    .collect();
                 let mut norm = Q::zero();
                 for i in 0..self.n {
                     for j in 0..self.n {
@@ -538,7 +619,10 @@ impl RootSystem {
                 }
             }
         }
-        let mut order: Vec<(i64, Vec<i64>)> = seen.into_iter().map(|w| (self.height_below(top, &w), w)).collect();
+        let mut order: Vec<(i64, Vec<i64>)> = seen
+            .into_iter()
+            .map(|w| (self.height_below(top, &w), w))
+            .collect();
         order.sort();
         let two_rho: Vec<i64> = vec![2; self.n];
         let casimir = |w: &[i64]| -> Q {
@@ -554,7 +638,13 @@ impl RootSystem {
             }
             let mut num = Q::zero();
             for (c, labels, norm) in &data {
-                let pairing: Q = c.iter().zip(&mu).zip(&self.lengths).fold(Q::zero(), |acc, ((&ci, &li), s)| acc + ql::q(ci * li) * s / ql::q(2));
+                let pairing: Q = c
+                    .iter()
+                    .zip(&mu)
+                    .zip(&self.lengths)
+                    .fold(Q::zero(), |acc, ((&ci, &li), s)| {
+                        acc + ql::q(ci * li) * s / ql::q(2)
+                    });
                 for k in 1_i64.. {
                     let moved: Vec<i64> = mu.iter().zip(labels).map(|(a, b)| a + k * b).collect();
                     let (dominant, _) = self.reflect_dominant(&moved);
@@ -590,7 +680,11 @@ impl RootSystem {
                     if f == 0 {
                         continue;
                     }
-                    let next: Vec<i64> = w.iter().zip(&self.cartan[i]).map(|(x, a)| x - f * a).collect();
+                    let next: Vec<i64> = w
+                        .iter()
+                        .zip(&self.cartan[i])
+                        .map(|(x, a)| x - f * a)
+                        .collect();
                     if orbit.insert(next.clone()) {
                         if out.len() + orbit.len() > cap {
                             return None;
@@ -658,7 +752,9 @@ impl RootSystem {
 #[must_use]
 pub fn positive_roots(a: &Cartan) -> Vec<Vec<i64>> {
     let n = a.len();
-    let simple: Vec<Vec<i64>> = (0..n).map(|i| (0..n).map(|j| i64::from(i == j)).collect()).collect();
+    let simple: Vec<Vec<i64>> = (0..n)
+        .map(|i| (0..n).map(|j| i64::from(i == j)).collect())
+        .collect();
     let mut all: HashSet<Vec<i64>> = simple.iter().cloned().collect();
     let mut level = simple;
     let mut out: Vec<Vec<i64>> = Vec::new();
@@ -710,7 +806,11 @@ fn root_lengths(a: &Cartan) -> Vec<Q> {
                 }
             }
         }
-        let longest = comp.iter().map(|&i| s[i].clone()).max().unwrap_or_else(Q::one);
+        let longest = comp
+            .iter()
+            .map(|&i| s[i].clone())
+            .max()
+            .unwrap_or_else(Q::one);
         for &i in &comp {
             s[i] = s[i].clone() * ql::q(2) / &longest;
         }
@@ -745,7 +845,15 @@ fn add_g(
     a: &GMat,
     b: &GMat,
 ) -> GMat {
-    a.iter().zip(b).map(|(r, s)| r.iter().zip(s).map(|(x, y)| (x.0 + y.0, x.1 + y.1)).collect()).collect()
+    a.iter()
+        .zip(b)
+        .map(|(r, s)| {
+            r.iter()
+                .zip(s)
+                .map(|(x, y)| (x.0 + y.0, x.1 + y.1))
+                .collect()
+        })
+        .collect()
 }
 
 /// The matrix algebras whose standard bases are available.
@@ -812,7 +920,13 @@ pub fn standard_basis(
             }
             for k in 0..n - 1 {
                 let h = add_g(&unit(n, k, k, one), &unit(n, k + 1, k + 1, (-1, 0)));
-                out.push(if su { h.iter().map(|r| r.iter().map(|x| (-x.1, x.0)).collect()).collect() } else { h });
+                out.push(if su {
+                    h.iter()
+                        .map(|r| r.iter().map(|x| (-x.1, x.0)).collect())
+                        .collect()
+                } else {
+                    h
+                });
             }
         },
         | Family::So => {
@@ -900,7 +1014,11 @@ impl Lie {
             for j in 0..n {
                 let ab = ql::matmul(&basis[i], &basis[j]);
                 let ba = ql::matmul(&basis[j], &basis[i]);
-                let diff: Vec<Q> = flatten(&ab).into_iter().zip(flatten(&ba)).map(|(x, y)| x - y).collect();
+                let diff: Vec<Q> = flatten(&ab)
+                    .into_iter()
+                    .zip(flatten(&ba))
+                    .map(|(x, y)| x - y)
+                    .collect();
                 c[i][j] = ql::solve(&system, n, &diff)?;
                 // the solution must reproduce the commutator exactly
                 let back = ql::matvec(&system, &c[i][j]);
@@ -917,7 +1035,10 @@ impl Lie {
     #[must_use]
     pub fn from_constants(c: Vec<Vec<Vec<Q>>>) -> Option<Self> {
         let n = c.len();
-        if n == 0 || c.iter().any(|p| p.len() != n || p.iter().any(|r| r.len() != n)) {
+        if n == 0
+            || c.iter()
+                .any(|p| p.len() != n || p.iter().any(|r| r.len() != n))
+        {
             return None;
         }
         let lie = Self { n, c };
@@ -1015,7 +1136,11 @@ impl Lie {
         a: &[Vec<Q>],
         b: &[Vec<Q>],
     ) -> QMat {
-        let all: Vec<Vec<Q>> = a.iter().flat_map(|x| b.iter().map(move |y| (x, y))).map(|(x, y)| self.bracket(x, y)).collect();
+        let all: Vec<Vec<Q>> = a
+            .iter()
+            .flat_map(|x| b.iter().map(move |y| (x, y)))
+            .map(|(x, y)| self.bracket(x, y))
+            .collect();
         ql::span_basis(&all, self.n)
     }
 
@@ -1096,7 +1221,9 @@ impl Lie {
     /// Whether the lower central series reaches zero.
     #[must_use]
     pub fn is_nilpotent(&self) -> bool {
-        self.lower_central_series().last().is_some_and(Vec::is_empty)
+        self.lower_central_series()
+            .last()
+            .is_some_and(Vec::is_empty)
     }
 
     /// Cartan's first criterion: `g` is solvable iff `K(g, [g, g]) = 0`.
@@ -1116,7 +1243,10 @@ impl Lie {
     /// The center.
     #[must_use]
     pub fn center(&self) -> QMat {
-        self.upper_central_series().into_iter().next().unwrap_or_default()
+        self.upper_central_series()
+            .into_iter()
+            .next()
+            .unwrap_or_default()
     }
 
     /// The radical (largest solvable ideal) `= [g, g]^⊥` for the Killing form.
@@ -1136,7 +1266,11 @@ impl Lie {
     ) -> bool {
         let mut echelon = vectors.to_vec();
         let pivots = ql::rref(&mut echelon, self.n);
-        vectors.iter().all(|x| vectors.iter().all(|y| ql::is_zero_vec(&ql::reduce_mod(&self.bracket(x, y), &echelon, &pivots))))
+        vectors.iter().all(|x| {
+            vectors
+                .iter()
+                .all(|y| ql::is_zero_vec(&ql::reduce_mod(&self.bracket(x, y), &echelon, &pivots)))
+        })
     }
 
     /// A Levi decomposition `g = s ⋉ r`: a semisimple subalgebra `s`
@@ -1151,17 +1285,25 @@ impl Lie {
         let mut echelon = radical.clone();
         let pivots = ql::rref(&mut echelon, n);
         let unit = ql::identity(n);
-        let mut s: Vec<Vec<Q>> = (0..n).filter(|c| !pivots.contains(c)).map(|c| unit[c].clone()).collect();
+        let mut s: Vec<Vec<Q>> = (0..n)
+            .filter(|c| !pivots.contains(c))
+            .map(|c| unit[c].clone())
+            .collect();
         let p = s.len();
         if p == 0 {
             return Some((Vec::new(), radical));
         }
         // the structure constants of g / r in the basis s
-        let complement_system = ql::transpose(&s.iter().chain(&radical).cloned().collect::<Vec<_>>(), n);
+        let complement_system =
+            ql::transpose(&s.iter().chain(&radical).cloned().collect::<Vec<_>>(), n);
         let mut quotient = vec![vec![Vec::new(); p]; p];
         for i in 0..p {
             for j in 0..p {
-                let x = ql::solve(&complement_system, p + radical.len(), &self.bracket(&s[i], &s[j]))?;
+                let x = ql::solve(
+                    &complement_system,
+                    p + radical.len(),
+                    &self.bracket(&s[i], &s[j]),
+                )?;
                 quotient[i][j] = x[..p].to_vec();
             }
         }
@@ -1178,7 +1320,10 @@ impl Lie {
             let (upper, lower) = (&level[0], &level[1]);
             let mut lower_ech = lower.clone();
             let lower_piv = ql::rref(&mut lower_ech, n);
-            let mut reduced: Vec<Vec<Q>> = upper.iter().map(|v| ql::reduce_mod(v, &lower_ech, &lower_piv)).collect();
+            let mut reduced: Vec<Vec<Q>> = upper
+                .iter()
+                .map(|v| ql::reduce_mod(v, &lower_ech, &lower_piv))
+                .collect();
             ql::rref(&mut reduced, n);
             let w = reduced;
             let d = w.len();
@@ -1241,7 +1386,10 @@ impl Lie {
         // verify: [s_i, s_j] = sum c_ij^l s_l exactly
         let mut echelon_s = s.clone();
         let piv_s = ql::rref(&mut echelon_s, n);
-        let closed = s.iter().all(|x| s.iter().all(|y| ql::is_zero_vec(&ql::reduce_mod(&self.bracket(x, y), &echelon_s, &piv_s))));
+        let closed = s.iter().all(|x| {
+            s.iter()
+                .all(|y| ql::is_zero_vec(&ql::reduce_mod(&self.bracket(x, y), &echelon_s, &piv_s)))
+        });
         let radical = self.radical();
         closed.then_some((s, radical))
     }
@@ -1269,7 +1417,9 @@ impl Lie {
     pub fn cartan_subalgebra(&self) -> QMat {
         let mut state: u64 = 0x2545_f491_4f6c_dd1d;
         let mut next = move |bound: u64| {
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             (state >> 33) % bound
         };
         let mut best: Option<(QMat, usize)> = None;
@@ -1290,7 +1440,10 @@ impl Lie {
                 continue;
             }
             let missing = self.root_decomposition(&h).map_or(self.n, |(_, m)| m);
-            if best.as_ref().is_none_or(|(b, m)| h.len() < b.len() || missing < *m) {
+            if best
+                .as_ref()
+                .is_none_or(|(b, m)| h.len() < b.len() || missing < *m)
+            {
                 best = Some((h, missing));
             }
         }
@@ -1307,7 +1460,10 @@ impl Lie {
         h: &[Vec<Q>],
     ) -> Option<(Vec<RootSpace>, usize)> {
         let n = self.n;
-        if !h.iter().all(|x| h.iter().all(|y| ql::is_zero_vec(&self.bracket(x, y)))) {
+        if !h
+            .iter()
+            .all(|x| h.iter().all(|y| ql::is_zero_vec(&self.bracket(x, y))))
+        {
             return None;
         }
         let mut parts: Vec<(Vec<Q>, QMat)> = vec![(Vec::new(), ql::identity(n))];
@@ -1316,7 +1472,10 @@ impl Lie {
             for (root, space) in parts {
                 let d = space.len();
                 let system = ql::transpose(&space, n);
-                let columns: Vec<Vec<Q>> = space.iter().map(|e| ql::solve(&system, d, &self.bracket(hi, e))).collect::<Option<_>>()?;
+                let columns: Vec<Vec<Q>> = space
+                    .iter()
+                    .map(|e| ql::solve(&system, d, &self.bracket(hi, e)))
+                    .collect::<Option<_>>()?;
                 let m = ql::transpose(&columns, d);
                 for lambda in rational_roots(&charpoly(&m)).unwrap_or_default() {
                     let mut shifted = m.clone();
@@ -1350,7 +1509,10 @@ impl Lie {
             parts = refined;
         }
         let found: usize = parts.iter().map(|(_, s)| s.len()).sum();
-        let spaces = parts.into_iter().map(|(root, space)| RootSpace { root, space }).collect();
+        let spaces = parts
+            .into_iter()
+            .map(|(root, space)| RootSpace { root, space })
+            .collect();
         Some((spaces, n - found))
     }
 
@@ -1428,8 +1590,13 @@ fn divisors(n: &BigInt) -> Option<Vec<BigInt>> {
 /// too large to factor.
 #[must_use]
 pub fn rational_roots(p: &[Q]) -> Option<Vec<Q>> {
-    let denominator = p.iter().fold(BigInt::one(), |acc, c| num_integer::lcm(acc, c.denom().clone()));
-    let ints: Vec<BigInt> = p.iter().map(|c| (c * Q::from_integer(denominator.clone())).to_integer()).collect();
+    let denominator = p.iter().fold(BigInt::one(), |acc, c| {
+        num_integer::lcm(acc, c.denom().clone())
+    });
+    let ints: Vec<BigInt> = p
+        .iter()
+        .map(|c| (c * Q::from_integer(denominator.clone())).to_integer())
+        .collect();
     let low = ints.iter().position(|c| !c.is_zero())?;
     let mut roots = Vec::new();
     if low > 0 {
@@ -1447,7 +1614,9 @@ pub fn rational_roots(p: &[Q]) -> Option<Vec<Q>> {
                     if !seen.insert(candidate.clone()) {
                         continue;
                     }
-                    let value = trimmed.iter().rev().fold(Q::zero(), |acc, c| acc * &candidate + Q::from_integer(c.clone()));
+                    let value = trimmed.iter().rev().fold(Q::zero(), |acc, c| {
+                        acc * &candidate + Q::from_integer(c.clone())
+                    });
                     if value.is_zero() {
                         roots.push(candidate);
                     }
@@ -1470,7 +1639,10 @@ mod tests {
         name: &str,
         labels: &[i64],
     ) -> i64 {
-        rs(name).weyl_dim(labels).and_then(|d| d.to_i64()).expect("dimension")
+        rs(name)
+            .weyl_dim(labels)
+            .and_then(|d| d.to_i64())
+            .expect("dimension")
     }
 
     #[test]
@@ -1508,9 +1680,27 @@ mod tests {
 
     #[test]
     fn recognition() {
-        for (letter, n) in [('A', 1), ('A', 5), ('B', 2), ('B', 4), ('C', 3), ('C', 5), ('D', 4), ('D', 6), ('E', 6), ('E', 7), ('E', 8), ('F', 4), ('G', 2)] {
+        for (letter, n) in [
+            ('A', 1),
+            ('A', 5),
+            ('B', 2),
+            ('B', 4),
+            ('C', 3),
+            ('C', 5),
+            ('D', 4),
+            ('D', 6),
+            ('E', 6),
+            ('E', 7),
+            ('E', 8),
+            ('F', 4),
+            ('G', 2),
+        ] {
             let c = cartan_matrix(letter, n).expect("cartan");
-            let expected = if (letter, n) == ('C', 2) { ('B', 2) } else { (letter, n) };
+            let expected = if (letter, n) == ('C', 2) {
+                ('B', 2)
+            } else {
+                (letter, n)
+            };
             assert_eq!(recognize(&c), Some(vec![expected]));
         }
         // permuted and reducible
@@ -1519,19 +1709,37 @@ mod tests {
         let c = vec![vec![2, -1], vec![-2, 2]];
         assert_eq!(recognize(&c), Some(vec![('B', 2)]));
         let b3 = cartan_matrix('B', 3).expect("cartan");
-        let reversed: Cartan = (0..3).rev().map(|i| (0..3).rev().map(|j| b3[i][j]).collect()).collect();
+        let reversed: Cartan = (0..3)
+            .rev()
+            .map(|i| (0..3).rev().map(|j| b3[i][j]).collect())
+            .collect();
         assert_eq!(recognize(&reversed), Some(vec![('B', 3)]));
         // affine A1 and a non-Cartan matrix are rejected
         assert!(recognize(&vec![vec![2, -2], vec![-2, 2]]).is_none());
         assert!(recognize(&vec![vec![2, -1], vec![0, 2]]).is_none());
         // A4 relabelled
-        let a4 = vec![vec![2, 0, 0, -1], vec![0, 2, -1, 0], vec![0, -1, 2, -1], vec![-1, 0, -1, 2]];
+        let a4 = vec![
+            vec![2, 0, 0, -1],
+            vec![0, 2, -1, 0],
+            vec![0, -1, 2, -1],
+            vec![-1, 0, -1, 2],
+        ];
         assert_eq!(recognize(&a4), Some(vec![('A', 4)]));
     }
 
     #[test]
     fn euclidean_roots_reproduce_the_cartan_matrices() {
-        for (letter, n) in [('A', 3), ('B', 3), ('C', 3), ('D', 5), ('E', 6), ('E', 7), ('E', 8), ('F', 4), ('G', 2)] {
+        for (letter, n) in [
+            ('A', 3),
+            ('B', 3),
+            ('C', 3),
+            ('D', 5),
+            ('E', 6),
+            ('E', 7),
+            ('E', 8),
+            ('F', 4),
+            ('G', 2),
+        ] {
             let roots = euclidean_simple_roots(letter, n).expect("roots");
             let cartan = cartan_matrix(letter, n).expect("cartan");
             let dot = |a: &[Q], b: &[Q]| a.iter().zip(b).fold(Q::zero(), |acc, (x, y)| acc + x * y);
@@ -1569,15 +1777,24 @@ mod tests {
         for name in ["A4", "B3", "C4", "D5", "E6", "E7", "E8", "F4", "G2"] {
             let r = rs(name);
             let theta = r.highest_root().expect("irreducible");
-            let labels: Vec<i64> = (0..r.n).map(|i| (0..r.n).map(|j| theta[j] * r.cartan[j][i]).sum()).collect();
-            assert_eq!(r.weyl_dim(&labels), Some(BigInt::from(r.dimension())), "{name}");
+            let labels: Vec<i64> = (0..r.n)
+                .map(|i| (0..r.n).map(|j| theta[j] * r.cartan[j][i]).sum())
+                .collect();
+            assert_eq!(
+                r.weyl_dim(&labels),
+                Some(BigInt::from(r.dimension())),
+                "{name}"
+            );
         }
     }
 
     #[test]
     fn casimir_and_index() {
         let su3 = rs("A2");
-        assert_eq!(su3.casimir(&[1, 0]), Some(Q::new(BigInt::from(8), BigInt::from(3))));
+        assert_eq!(
+            su3.casimir(&[1, 0]),
+            Some(Q::new(BigInt::from(8), BigInt::from(3)))
+        );
         assert_eq!(su3.casimir(&[1, 1]), Some(ql::q(6)));
         assert_eq!(su3.dynkin_index(&[1, 0]), Some(ql::q(1)));
         assert_eq!(su3.dynkin_index(&[1, 1]), Some(ql::q(6)));
@@ -1590,14 +1807,41 @@ mod tests {
     #[test]
     fn freudenthal() {
         let su3 = rs("A2");
-        assert_eq!(su3.weight_multiplicity(&[1, 1], &[0, 0]), Some(BigInt::from(2)));
-        assert_eq!(su3.weight_multiplicity(&[1, 1], &[1, 1]), Some(BigInt::one()));
-        assert_eq!(su3.weight_multiplicity(&[1, 1], &[-1, 2]), Some(BigInt::one()));
-        assert_eq!(su3.weight_multiplicity(&[2, 2], &[0, 0]), Some(BigInt::from(3)));
-        assert_eq!(su3.weight_multiplicity(&[1, 0], &[0, 0]), Some(BigInt::zero()));
-        for (name, top) in [("A2", vec![2, 1]), ("A3", vec![1, 1, 1]), ("B3", vec![1, 0, 1]), ("G2", vec![1, 1]), ("D4", vec![0, 1, 1, 0]), ("F4", vec![1, 0, 0, 0]), ("E6", vec![0, 0, 0, 0, 0, 1])] {
+        assert_eq!(
+            su3.weight_multiplicity(&[1, 1], &[0, 0]),
+            Some(BigInt::from(2))
+        );
+        assert_eq!(
+            su3.weight_multiplicity(&[1, 1], &[1, 1]),
+            Some(BigInt::one())
+        );
+        assert_eq!(
+            su3.weight_multiplicity(&[1, 1], &[-1, 2]),
+            Some(BigInt::one())
+        );
+        assert_eq!(
+            su3.weight_multiplicity(&[2, 2], &[0, 0]),
+            Some(BigInt::from(3))
+        );
+        assert_eq!(
+            su3.weight_multiplicity(&[1, 0], &[0, 0]),
+            Some(BigInt::zero())
+        );
+        for (name, top) in [
+            ("A2", vec![2, 1]),
+            ("A3", vec![1, 1, 1]),
+            ("B3", vec![1, 0, 1]),
+            ("G2", vec![1, 1]),
+            ("D4", vec![0, 1, 1, 0]),
+            ("F4", vec![1, 0, 0, 0]),
+            ("E6", vec![0, 0, 0, 0, 0, 1]),
+        ] {
             let r = rs(name);
-            let total: BigInt = r.all_weights(&top, 300_000).expect("weights").values().sum();
+            let total: BigInt = r
+                .all_weights(&top, 300_000)
+                .expect("weights")
+                .values()
+                .sum();
             assert_eq!(Some(total), r.weyl_dim(&top), "{name}");
         }
     }
@@ -1605,42 +1849,89 @@ mod tests {
     #[test]
     fn tensor_products() {
         let su3 = rs("A2");
-        let as_pairs = |v: Vec<(Vec<i64>, BigInt)>| -> Vec<(Vec<i64>, i64)> { v.into_iter().map(|(w, m)| (w, m.to_i64().expect("small"))).collect() };
-        assert_eq!(as_pairs(su3.tensor(&[1, 0], &[0, 1]).expect("tensor")), vec![(vec![0, 0], 1), (vec![1, 1], 1)]);
-        assert_eq!(as_pairs(su3.tensor(&[1, 0], &[1, 0]).expect("tensor")), vec![(vec![0, 1], 1), (vec![2, 0], 1)]);
+        let as_pairs = |v: Vec<(Vec<i64>, BigInt)>| -> Vec<(Vec<i64>, i64)> {
+            v.into_iter()
+                .map(|(w, m)| (w, m.to_i64().expect("small")))
+                .collect()
+        };
+        assert_eq!(
+            as_pairs(su3.tensor(&[1, 0], &[0, 1]).expect("tensor")),
+            vec![(vec![0, 0], 1), (vec![1, 1], 1)]
+        );
+        assert_eq!(
+            as_pairs(su3.tensor(&[1, 0], &[1, 0]).expect("tensor")),
+            vec![(vec![0, 1], 1), (vec![2, 0], 1)]
+        );
         assert_eq!(
             as_pairs(su3.tensor(&[1, 1], &[1, 1]).expect("tensor")),
-            vec![(vec![0, 0], 1), (vec![0, 3], 1), (vec![1, 1], 2), (vec![2, 2], 1), (vec![3, 0], 1)]
+            vec![
+                (vec![0, 0], 1),
+                (vec![0, 3], 1),
+                (vec![1, 1], 2),
+                (vec![2, 2], 1),
+                (vec![3, 0], 1)
+            ]
         );
-        for (name, a, b) in [("A2", vec![2, 1], vec![1, 1]), ("B2", vec![1, 1], vec![0, 1]), ("G2", vec![1, 0], vec![1, 0]), ("A3", vec![1, 0, 1], vec![0, 1, 0]), ("D4", vec![1, 0, 0, 0], vec![0, 0, 1, 0])] {
+        for (name, a, b) in [
+            ("A2", vec![2, 1], vec![1, 1]),
+            ("B2", vec![1, 1], vec![0, 1]),
+            ("G2", vec![1, 0], vec![1, 0]),
+            ("A3", vec![1, 0, 1], vec![0, 1, 0]),
+            ("D4", vec![1, 0, 0, 0], vec![0, 0, 1, 0]),
+        ] {
             let r = rs(name);
             let parts = r.tensor(&a, &b).expect("tensor");
-            let total: BigInt = parts.iter().map(|(w, m)| r.weyl_dim(w).expect("dim") * m).sum();
-            assert_eq!(total, r.weyl_dim(&a).expect("dim") * r.weyl_dim(&b).expect("dim"), "{name}");
+            let total: BigInt = parts
+                .iter()
+                .map(|(w, m)| r.weyl_dim(w).expect("dim") * m)
+                .sum();
+            assert_eq!(
+                total,
+                r.weyl_dim(&a).expect("dim") * r.weyl_dim(&b).expect("dim"),
+                "{name}"
+            );
         }
         // 7 x 7 of G2 = 1 + 7 + 14 + 27
         let g2 = rs("G2");
         let parts = g2.tensor(&[1, 0], &[1, 0]).expect("tensor");
-        let dims: Vec<i64> = parts.iter().map(|(w, _)| g2.weyl_dim(w).and_then(|d| d.to_i64()).expect("dim")).collect();
+        let dims: Vec<i64> = parts
+            .iter()
+            .map(|(w, _)| g2.weyl_dim(w).and_then(|d| d.to_i64()).expect("dim"))
+            .collect();
         let mut dims = dims;
         dims.sort_unstable();
         assert_eq!(dims, vec![1, 7, 14, 27]);
     }
 
     fn matrices(basis: &[GMat]) -> Vec<QMat> {
-        basis.iter().map(|m| m.iter().map(|r| r.iter().map(|x| ql::q(x.0)).collect()).collect()).collect()
+        basis
+            .iter()
+            .map(|m| {
+                m.iter()
+                    .map(|r| r.iter().map(|x| ql::q(x.0)).collect())
+                    .collect()
+            })
+            .collect()
     }
 
     fn real_algebra(
         family: Family,
         n: usize,
     ) -> Lie {
-        Lie::from_matrices(&matrices(&standard_basis(family, n).expect("basis"))).expect("a Lie algebra")
+        Lie::from_matrices(&matrices(&standard_basis(family, n).expect("basis")))
+            .expect("a Lie algebra")
     }
 
     #[test]
     fn standard_bases_are_lie_algebras() {
-        for (family, n, dim) in [(Family::Sl, 3, 8), (Family::So, 4, 6), (Family::So, 5, 10), (Family::Sp, 2, 10), (Family::Sp, 3, 21), (Family::Gl, 3, 9)] {
+        for (family, n, dim) in [
+            (Family::Sl, 3, 8),
+            (Family::So, 4, 6),
+            (Family::So, 5, 10),
+            (Family::Sp, 2, 10),
+            (Family::Sp, 3, 21),
+            (Family::Gl, 3, 9),
+        ] {
             assert_eq!(real_algebra(family, n).n, dim);
         }
         assert_eq!(standard_basis(Family::Su, 3).expect("su3").len(), 8);
@@ -1660,8 +1951,13 @@ mod tests {
             v
         };
         let b = Lie::from_matrices(&upper).expect("closed");
-        assert!(b.is_solvable() && !b.is_nilpotent() && !b.is_semisimple() && b.cartan_solvable_test());
-        assert_eq!(b.derived_series().iter().map(Vec::len).collect::<Vec<_>>(), vec![6, 3, 1, 0]);
+        assert!(
+            b.is_solvable() && !b.is_nilpotent() && !b.is_semisimple() && b.cartan_solvable_test()
+        );
+        assert_eq!(
+            b.derived_series().iter().map(Vec::len).collect::<Vec<_>>(),
+            vec![6, 3, 1, 0]
+        );
         assert_eq!(b.radical().len(), 6);
         let heisenberg: Vec<QMat> = [(0, 1), (1, 2), (0, 2)]
             .iter()
@@ -1673,12 +1969,35 @@ mod tests {
             .collect();
         let h = Lie::from_matrices(&heisenberg).expect("closed");
         assert!(h.is_nilpotent() && h.is_solvable());
-        assert_eq!(h.lower_central_series().iter().map(Vec::len).collect::<Vec<_>>(), vec![3, 1, 0]);
-        assert_eq!(h.upper_central_series().iter().map(Vec::len).collect::<Vec<_>>(), vec![1, 3]);
+        assert_eq!(
+            h.lower_central_series()
+                .iter()
+                .map(Vec::len)
+                .collect::<Vec<_>>(),
+            vec![3, 1, 0]
+        );
+        assert_eq!(
+            h.upper_central_series()
+                .iter()
+                .map(Vec::len)
+                .collect::<Vec<_>>(),
+            vec![1, 3]
+        );
         assert_eq!(h.center().len(), 1);
-        for (family, n) in [(Family::Sl, 2), (Family::Sl, 3), (Family::So, 4), (Family::Sp, 2)] {
+        for (family, n) in [
+            (Family::Sl, 2),
+            (Family::Sl, 3),
+            (Family::So, 4),
+            (Family::Sp, 2),
+        ] {
             let g = real_algebra(family, n);
-            assert!(g.is_semisimple() && !g.is_solvable() && !g.cartan_solvable_test() && g.radical().is_empty(), "{family:?}{n}");
+            assert!(
+                g.is_semisimple()
+                    && !g.is_solvable()
+                    && !g.cartan_solvable_test()
+                    && g.radical().is_empty(),
+                "{family:?}{n}"
+            );
         }
         assert!(!real_algebra(Family::So, 3).is_solvable());
         let gl2 = real_algebra(Family::Gl, 2);
@@ -1706,9 +2025,19 @@ mod tests {
         // the Levi factor is semisimple: its Killing form is nondegenerate
         let structure: Vec<Vec<Vec<Q>>> = {
             let system = ql::transpose(&levi, 5);
-            levi.iter().map(|x| levi.iter().map(|y| ql::solve(&system, 3, &g.bracket(x, y)).expect("closed")).collect()).collect()
+            levi.iter()
+                .map(|x| {
+                    levi.iter()
+                        .map(|y| ql::solve(&system, 3, &g.bracket(x, y)).expect("closed"))
+                        .collect()
+                })
+                .collect()
         };
-        assert!(Lie::from_constants(structure).expect("Lie algebra").is_semisimple());
+        assert!(
+            Lie::from_constants(structure)
+                .expect("Lie algebra")
+                .is_semisimple()
+        );
         // a solvable algebra has zero Levi factor, a semisimple one is its own
         let (l, r) = real_algebra(Family::Sl, 2).levi().expect("levi");
         assert_eq!((l.len(), r.len()), (3, 0));
@@ -1724,8 +2053,20 @@ mod tests {
         let (spaces, missing) = sl3.root_decomposition(&h).expect("abelian");
         assert_eq!(missing, 0);
         assert_eq!(spaces.len(), 7);
-        assert_eq!(spaces.iter().filter(|s| s.root.iter().all(Zero::is_zero)).map(|s| s.space.len()).sum::<usize>(), 2);
-        assert!(spaces.iter().filter(|s| s.root.iter().any(|r| !r.is_zero())).all(|s| s.space.len() == 1));
+        assert_eq!(
+            spaces
+                .iter()
+                .filter(|s| s.root.iter().all(Zero::is_zero))
+                .map(|s| s.space.len())
+                .sum::<usize>(),
+            2
+        );
+        assert!(
+            spaces
+                .iter()
+                .filter(|s| s.root.iter().any(|r| !r.is_zero()))
+                .all(|s| s.space.len() == 1)
+        );
         let sp4 = real_algebra(Family::Sp, 2);
         let h = sp4.cartan_subalgebra();
         assert_eq!(h.len(), 2);
@@ -1739,8 +2080,16 @@ mod tests {
         assert_eq!((spaces.len(), missing), (1, 2));
         // a nilpotent algebra is its own Cartan subalgebra
         let upper_unit = Lie::from_constants(vec![
-            vec![vec![ql::q(0), ql::q(0), ql::q(0)], vec![ql::q(0), ql::q(0), ql::q(1)], vec![ql::q(0), ql::q(0), ql::q(0)]],
-            vec![vec![ql::q(0), ql::q(0), ql::q(-1)], vec![ql::q(0), ql::q(0), ql::q(0)], vec![ql::q(0), ql::q(0), ql::q(0)]],
+            vec![
+                vec![ql::q(0), ql::q(0), ql::q(0)],
+                vec![ql::q(0), ql::q(0), ql::q(1)],
+                vec![ql::q(0), ql::q(0), ql::q(0)],
+            ],
+            vec![
+                vec![ql::q(0), ql::q(0), ql::q(-1)],
+                vec![ql::q(0), ql::q(0), ql::q(0)],
+                vec![ql::q(0), ql::q(0), ql::q(0)],
+            ],
             vec![vec![ql::q(0); 3]; 3],
         ]);
         assert_eq!(upper_unit.expect("heisenberg").cartan_subalgebra().len(), 3);
@@ -1768,6 +2117,9 @@ mod tests {
         let mut roots = rational_roots(&charpoly(&m)).expect("small");
         roots.sort();
         assert_eq!(roots, vec![ql::q(-2), ql::q(3)]);
-        assert_eq!(rational_roots(&[ql::q(1), ql::q(0), ql::q(1)]), Some(Vec::new()));
+        assert_eq!(
+            rational_roots(&[ql::q(1), ql::q(0), ql::q(1)]),
+            Some(Vec::new())
+        );
     }
 }

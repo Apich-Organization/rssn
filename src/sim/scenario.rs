@@ -156,7 +156,9 @@ pub fn run(
         | "ising" => {
             let request: IsingRequest = parse(params)?;
             let (spins, magnetization) = match request.seed {
-                | Some(seed) => ising_statistical::run_ising_simulation_seeded(&request.params, seed),
+                | Some(seed) => {
+                    ising_statistical::run_ising_simulation_seeded(&request.params, seed)
+                },
                 | None => ising_statistical::run_ising_simulation(&request.params),
             };
             json!({ "spins": spins, "magnetization": magnetization })
@@ -168,11 +170,25 @@ pub fn run(
         | "lid_driven_cavity" => flow(navier_stokes_fluid::run_lid_driven_cavity(&parse(params)?))?,
         | "channel_flow" => {
             let r: ChannelRequest = parse(params)?;
-            flow(navier_stokes_fluid::run_channel_flow(r.nx, r.ny, r.re, r.dt, r.n_iter, &r.obstacle_mask))?
+            flow(navier_stokes_fluid::run_channel_flow(
+                r.nx,
+                r.ny,
+                r.re,
+                r.dt,
+                r.n_iter,
+                &r.obstacle_mask,
+            ))?
         },
         | "ising_wolff" => {
             let r: WolffRequest = parse(params)?;
-            let stats = ising_statistical::run_wolff_simulation(r.width, r.height, r.temperature, r.thermalisation, r.sweeps, r.seed.unwrap_or(ising_statistical::DEFAULT_ISING_SEED));
+            let stats = ising_statistical::run_wolff_simulation(
+                r.width,
+                r.height,
+                r.temperature,
+                r.thermalisation,
+                r.sweeps,
+                r.seed.unwrap_or(ising_statistical::DEFAULT_ISING_SEED),
+            );
             encode(&stats)?
         },
         | "sod_shock_tube" => {
@@ -191,10 +207,18 @@ pub fn run(
             if r.q.len() != r.p.len() {
                 return Err("q and p must have the same length".to_owned());
             }
-            let path = super::integrators::symplectic_trajectory(&r.q, &r.p, 1.0, r.dt, r.steps, r.order.unwrap_or(4), |q: &[f64]| {
-                let r3 = q.iter().map(|x| x * x).sum::<f64>().powf(1.5);
-                q.iter().map(|x| -x / r3).collect()
-            });
+            let path = super::integrators::symplectic_trajectory(
+                &r.q,
+                &r.p,
+                1.0,
+                r.dt,
+                r.steps,
+                r.order.unwrap_or(4),
+                |q: &[f64]| {
+                    let r3 = q.iter().map(|x| x * x).sum::<f64>().powf(1.5);
+                    q.iter().map(|x| -x / r3).collect()
+                },
+            );
             json!({ "trajectory": path })
         },
         | "schrodinger" => {
@@ -202,17 +226,20 @@ pub fn run(
             if r.initial_psi.len() != r.params.nx.saturating_mul(r.params.ny) {
                 return Err("initial_psi must have nx * ny entries".to_owned());
             }
-            let frames = schrodinger_quantum::run_schrodinger_simulation(&r.params, &mut r.initial_psi)?;
+            let frames =
+                schrodinger_quantum::run_schrodinger_simulation(&r.params, &mut r.initial_psi)?;
             json!({ "frames": encode(&frames)? })
         },
-        | other => match super::scenario_engines::run(other, params) {
-            | Some(result) => result?,
-            | None => {
-                return Err(format!(
-                    "unknown scenario `{name}`; known: {}",
-                    SCENARIOS.join(", ")
-                ));
-            },
+        | other => {
+            match super::scenario_engines::run(other, params) {
+                | Some(result) => result?,
+                | None => {
+                    return Err(format!(
+                        "unknown scenario `{name}`; known: {}",
+                        SCENARIOS.join(", ")
+                    ));
+                },
+            }
         },
     };
     serde_json::to_string(&value).map_err(|e| e.to_string())
@@ -224,18 +251,37 @@ mod tests {
 
     #[test]
     fn scenarios_run_from_json() {
-        let out = run("ising", r#"{"width": 8, "height": 8, "temperature": 1.5, "mc_steps": 20, "seed": 7}"#).unwrap();
+        let out = run(
+            "ising",
+            r#"{"width": 8, "height": 8, "temperature": 1.5, "mc_steps": 20, "seed": 7}"#,
+        )
+        .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["spins"].as_array().unwrap().len(), 64);
-        assert_eq!(out, run("ising", r#"{"width": 8, "height": 8, "temperature": 1.5, "mc_steps": 20, "seed": 7}"#).unwrap());
+        assert_eq!(
+            out,
+            run(
+                "ising",
+                r#"{"width": 8, "height": 8, "temperature": 1.5, "mc_steps": 20, "seed": 7}"#
+            )
+            .unwrap()
+        );
 
         let out = run("ising_wolff", r#"{"width": 16, "height": 16, "temperature": 1.5, "thermalisation": 50, "sweeps": 200, "seed": 3}"#).unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert!(v["magnetization"].as_f64().unwrap() > 0.9, "{out}");
-        let out = run("sod_shock_tube", r#"{"cells": 50, "t": 0.2, "limiter": "minmod"}"#).unwrap();
+        let out = run(
+            "sod_shock_tube",
+            r#"{"cells": 50, "t": 0.2, "limiter": "minmod"}"#,
+        )
+        .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["density"].as_array().unwrap().len(), 50);
-        let out = run("kepler_symplectic", r#"{"q": [1.0, 0.0], "p": [0.0, 1.0], "dt": 0.01, "steps": 10}"#).unwrap();
+        let out = run(
+            "kepler_symplectic",
+            r#"{"q": [1.0, 0.0], "p": [0.0, 1.0], "dt": 0.01, "steps": 10}"#,
+        )
+        .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["trajectory"].as_array().unwrap().len(), 11);
 
@@ -245,16 +291,28 @@ mod tests {
         )
         .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
-        assert!(!v["orbit"].as_array().unwrap().is_empty());
+        assert!(!v["orbit"].as_array().unwrap().is_empty(), "empty");
 
-        let out = run("lid_driven_cavity", r#"{"nx": 8, "ny": 8, "re": 10.0, "dt": 0.001, "n_iter": 5, "lid_velocity": 1.0}"#).unwrap();
+        let out = run(
+            "lid_driven_cavity",
+            r#"{"nx": 8, "ny": 8, "re": 10.0, "dt": 0.001, "n_iter": 5, "lid_velocity": 1.0}"#,
+        )
+        .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["u"]["dim"], json!([8, 8]));
     }
 
     #[test]
     fn bad_requests_are_errors() {
-        assert!(run("warp_drive", "{}").unwrap_err().contains("unknown scenario"));
-        assert!(run("ising", "{\"width\": 1}").unwrap_err().contains("invalid parameters"));
+        assert!(
+            run("warp_drive", "{}")
+                .unwrap_err()
+                .contains("unknown scenario")
+        );
+        assert!(
+            run("ising", "{\"width\": 1}")
+                .unwrap_err()
+                .contains("invalid parameters")
+        );
     }
 }

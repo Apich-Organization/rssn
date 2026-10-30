@@ -273,9 +273,11 @@ fn richardson(
     let (d1, d2, d3) = (central(h0)?, central(h0 / 2.0)?, central(h0 / 4.0)?);
     let (e1, e2) = ((4.0 * d2 - d1) / 3.0, (4.0 * d3 - d2) / 3.0);
     let best = (16.0 * e2 - e1) / 15.0;
-    best.is_finite().then(|| Ball {
-        mid: best,
-        rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
+    best.is_finite().then(|| {
+        Ball {
+            mid: best,
+            rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
+        }
     })
 }
 
@@ -299,7 +301,11 @@ impl Kernel for Repeated {
         let &[f, x, n] = graph.children(node) else {
             return Outcome::Pass;
         };
-        let Some(n) = graph.number_of(n).and_then(crate::graph::Number::to_i64).filter(|n| (0..=64).contains(n)) else {
+        let Some(n) = graph
+            .number_of(n)
+            .and_then(crate::graph::Number::to_i64)
+            .filter(|n| (0..=64).contains(n))
+        else {
             return Outcome::Pass;
         };
         let mut term = f;

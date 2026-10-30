@@ -529,9 +529,19 @@ pub fn simulate_3d_poisson_scenario() -> Result<Vec<f64>, String> {
 pub fn solve_poisson_simplex(
     space: &crate::sim::fem_simplex::FemSpace,
     c: f64,
-    source: &dyn Fn(f64, [f64; 3]) -> f64,
+    source: &(dyn Fn(f64, [f64; 3]) -> f64 + Sync),
     bcs: &crate::sim::boundary::MarkerBcs<crate::sim::boundary::BoundaryCondition>,
 ) -> Result<Vec<f64>, String> {
-    let prob = crate::sim::fem_simplex::FemProblem { k: 1.0, c, f: source, bcs };
-    crate::sim::fem_simplex::solve_static(space, &prob, 0.0, crate::sim::structured::LinearSolver::Auto)
+    let prob = crate::sim::fem_simplex::FemProblem {
+        k: 1.0,
+        c,
+        f: source,
+        bcs,
+    };
+    crate::sim::fem_simplex::solve_static(
+        space,
+        &prob,
+        0.0,
+        crate::sim::structured::LinearSolver::Auto,
+    )
 }

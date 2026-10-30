@@ -1,6 +1,8 @@
 //! Power series, partial sums and accelerated infinite sums.
 
-use rssn::kernels::series::{evaluate_power_series, sum_range, sum_to_infinity};
+use rssn::kernels::series::evaluate_power_series;
+use rssn::kernels::series::sum_range;
+use rssn::kernels::series::sum_to_infinity;
 
 #[test]
 fn power_series_matches_exponential_taylor_polynomial() {
@@ -28,7 +30,10 @@ fn power_series_edge_cases() {
 #[test]
 fn infinite_sums_still_accelerate() {
     let leibniz = sum_to_infinity(|k| (-1.0_f64).powf(k) / (2.0 * k + 1.0), 0, 1e-12, 10_000);
-    assert!((leibniz.value - std::f64::consts::FRAC_PI_4).abs() < 1e-10, "{leibniz:?}");
+    assert!(
+        (leibniz.value - std::f64::consts::FRAC_PI_4).abs() < 1e-10,
+        "{leibniz:?}"
+    );
     let basel = sum_to_infinity(|k| 1.0 / (k * k), 1, 1e-10, 200_000);
     assert!((basel.value - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-9);
     assert_eq!(sum_range(|k| k, 1, 10), 55.0);

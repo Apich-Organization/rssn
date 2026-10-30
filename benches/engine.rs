@@ -30,9 +30,13 @@ fn symbolic(c: &mut Criterion) {
 
 fn numeric(c: &mut Criterion) {
     let s = Session::new();
-    let term = s.parse("defint(exp(-x^2)*cos(x), x, 0, 2)").expect("parses");
+    let term = s
+        .parse("defint(exp(-x^2)*cos(x), x, 0, 2)")
+        .expect("parses");
     let config = Config::new().numeric(1e-10);
-    c.bench_function("numeric/quadrature", |b| b.iter(|| s.compute(black_box(term), &config)));
+    c.bench_function("numeric/quadrature", |b| {
+        b.iter(|| s.compute(black_box(term), &config))
+    });
 }
 
 fn compiled(c: &mut Criterion) {
@@ -52,10 +56,14 @@ fn compiled(c: &mut Criterion) {
 fn jit(c: &mut Criterion) {
     use rssn::backend::jit::CraneliftBackend;
     let s = Session::new();
-    let f = s.parse("sin(x)*exp(-x^2/2) + x^3 - 2*x/(1 + x^2) + sqrt(x + 1)").expect("parses");
+    let f = s
+        .parse("sin(x)*exp(-x^2/2) + x^3 - 2*x/(1 + x^2) + sqrt(x + 1)")
+        .expect("parses");
     let xs: Vec<f64> = (0..10_000).map(|i| f64::from(i) * 1e-3).collect();
     let mut out = vec![0.0; xs.len()];
-    let interpreted = f.compile_with(&rssn::backend::Interpreter, &["x"]).expect("compiles");
+    let interpreted = f
+        .compile_with(&rssn::backend::Interpreter, &["x"])
+        .expect("compiles");
     c.bench_function("jit/interpreter_batch_10k", |b| {
         b.iter(|| interpreted.call_batch(&[black_box(&xs)], &mut out));
     });
@@ -65,7 +73,10 @@ fn jit(c: &mut Criterion) {
         b.iter(|| compiled.call_batch(&[black_box(&xs)], &mut out));
     });
     c.bench_function("jit/compile_latency", |b| {
-        b.iter(|| f.compile_with(&CraneliftBackend::new(), &["x"]).expect("compiles"));
+        b.iter(|| {
+            f.compile_with(&CraneliftBackend::new(), &["x"])
+                .expect("compiles")
+        });
     });
 }
 

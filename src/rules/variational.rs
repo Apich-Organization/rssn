@@ -29,8 +29,6 @@
 //! undetermined function, so the chain rule produces `y''` and higher
 //! derivatives on its own.
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -43,6 +41,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
@@ -71,14 +71,22 @@ enum Request {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
-    let diff = i.graph().ops().lookup("diff").ok_or_else(|| RuleError::Invalid {
-        rule: "variational".to_owned(),
-        reason: "needs the calculus rule set",
+    let heavy = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
+    let diff = i.graph().ops().lookup("diff").ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "variational".to_owned(),
+            reason: "needs the calculus rule set",
+        }
     })?;
-    let defint = i.graph().ops().lookup("defint").ok_or_else(|| RuleError::Invalid {
-        rule: "variational".to_owned(),
-        reason: "needs the calculus rule set",
+    let defint = i.graph().ops().lookup("defint").ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "variational".to_owned(),
+            reason: "needs the calculus rule set",
+        }
     })?;
     for (name, arity, request) in [
         ("euler_lagrange", 3, Request::EulerLagrange),
@@ -91,7 +99,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("weierstrass_e", 4, Request::Weierstrass),
     ] {
         let op = i.op(heavy(name, arity))?;
-        i.kernel(&format!("variational/{name}"), Tier::Reduce, Variational { op, request, diff, defint });
+        i.kernel(
+            &format!("variational/{name}"),
+            Tier::Reduce,
+            Variational {
+                op,
+                request,
+                diff,
+                defint,
+            },
+        );
     }
     i.define(&[
         "solve_euler_lagrange(L, y, x) := dsolve(euler_lagrange(L, y, x) = 0, y)",
@@ -149,7 +166,10 @@ impl Variational {
         term: NodeId,
         f: NodeId,
     ) -> Vec<Jet> {
-        let mut found: Vec<Jet> = vec![Jet { term: f, by: Vec::new() }];
+        let mut found: Vec<Jet> = vec![Jet {
+            term: f,
+            by: Vec::new(),
+        }];
         let mut stack = vec![term];
         let mut seen = std::collections::HashSet::new();
         while let Some(n) = stack.pop() {
@@ -283,7 +303,19 @@ impl Variational {
         x: NodeId,
     ) -> (NodeId, Vec<Jet>) {
         let prime = cx.graph.node(self.diff, &[f, x]);
-        (prime, vec![Jet { term: prime, by: vec![x] }, Jet { term: f, by: Vec::new() }])
+        (
+            prime,
+            vec![
+                Jet {
+                    term: prime,
+                    by: vec![x],
+                },
+                Jet {
+                    term: f,
+                    by: Vec::new(),
+                },
+            ],
+        )
     }
 
     fn momentum(
@@ -320,7 +352,11 @@ impl Variational {
         };
         let l = best(cx.graph, l)?;
         let f = best(cx.graph, f)?;
-        let functions = if cx.graph.op(f) == core::LIST { cx.graph.children(f).to_vec() } else { vec![f] };
+        let functions = if cx.graph.op(f) == core::LIST {
+            cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
         let mut terms = Vec::with_capacity(functions.len() + 1);
         for g in functions {
             let (prime, jets) = self.first_order(cx, g, x);
@@ -410,7 +446,16 @@ impl Variational {
         let l = best(cx.graph, l)?;
         let f = best(cx.graph, f)?;
         let prime = cx.graph.node(self.diff, &[f, x]);
-        let jets = vec![Jet { term: prime, by: vec![x] }, Jet { term: f, by: Vec::new() }];
+        let jets = vec![
+            Jet {
+                term: prime,
+                by: vec![x],
+            },
+            Jet {
+                term: f,
+                by: Vec::new(),
+            },
+        ];
         let p = Self::partial(cx, l, &jets, 0)?;
         let term = mul(cx.graph, &[prime, p]);
         let value = sub(cx.graph, l, term);
@@ -446,7 +491,9 @@ mod tests {
     #[test]
     fn several_coordinates_and_higher_derivatives() {
         assert_eq!(
-            run("euler_lagrange(diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t), list(x(t), y(t)), t)"),
+            run(
+                "euler_lagrange(diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t), list(x(t), y(t)), t)"
+            ),
             run("list(y(t) + diff(diff(x(t), t), t), x(t) + diff(diff(y(t), t), t))")
         );
         // Euler–Poisson: L = y''^2 gives 2 y'''' = 0.
@@ -470,19 +517,34 @@ mod tests {
         let solution = run("solve_euler_lagrange(diff(y(x), x)^2, y(x), x)");
         assert_eq!(solution, run("y(x) = C1 + C2*x"));
         assert_eq!(run("action(diff(y(t), t)^2/2, y(t), t, t, 0, 1)"), "1/2");
-        assert_eq!(run("first_integral(diff(y(x), x)^2 - y(x)^2, y(x), x)"), run("-diff(y(x), x)^2 - y(x)^2"));
+        assert_eq!(
+            run("first_integral(diff(y(x), x)^2 - y(x)^2, y(x), x)"),
+            run("-diff(y(x), x)^2 - y(x)^2")
+        );
     }
 
     #[test]
     fn momentum_hamiltonian_and_second_variation() {
-        assert_eq!(run("canonical_momentum(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"), run("m*diff(q(t), t)"));
-        assert_eq!(run("natural_boundary(diff(y(x), x)^2, y(x), x)"), run("2*diff(y(x), x)"));
-        assert_eq!(run("canonical_momentum(diff(x(t), t)^2 + diff(y(t), t)^3, list(x(t), y(t)), t)"), run("list(2*diff(x(t), t), 3*diff(y(t), t)^2)"));
+        assert_eq!(
+            run("canonical_momentum(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"),
+            run("m*diff(q(t), t)")
+        );
+        assert_eq!(
+            run("natural_boundary(diff(y(x), x)^2, y(x), x)"),
+            run("2*diff(y(x), x)")
+        );
+        assert_eq!(
+            run("canonical_momentum(diff(x(t), t)^2 + diff(y(t), t)^3, list(x(t), y(t)), t)"),
+            run("list(2*diff(x(t), t), 3*diff(y(t), t)^2)")
+        );
         assert_eq!(
             run("hamiltonian_of(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x)"),
             run("diff(y(x), x)^2/2 + y(x)^2/2")
         );
-        assert_eq!(run("legendre_condition((1 + diff(y(x), x)^2)^(1/2), y(x), x)"), run("1/(1 + diff(y(x), x)^2)^(1/2) - diff(y(x), x)^2/(1 + diff(y(x), x)^2)^(3/2)"));
+        assert_eq!(
+            run("legendre_condition((1 + diff(y(x), x)^2)^(1/2), y(x), x)"),
+            run("1/(1 + diff(y(x), x)^2)^(1/2) - diff(y(x), x)^2/(1 + diff(y(x), x)^2)^(3/2)")
+        );
         // Jacobi equation of the oscillator action: h'' + h.
         assert_eq!(
             run("jacobi_equation(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x, h(x))"),
@@ -521,12 +583,19 @@ mod tests {
             run("m*g + m*diff(diff(x(t), t), t)")
         );
         // No dependence on q: the momentum is conserved, so only q'' remains.
-        assert_eq!(run("hamiltons_principle(m*diff(x(t), t)^2/2, x(t), t)"), run("m*diff(diff(x(t), t), t)"));
+        assert_eq!(
+            run("hamiltons_principle(m*diff(x(t), t)^2/2, x(t), t)"),
+            run("m*diff(diff(x(t), t), t)")
+        );
         // It is the same operator as the Euler–Lagrange one.
         let lagrangian = "diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t)";
         assert_eq!(
-            run(&format!("hamiltons_principle({lagrangian}, list(x(t), y(t)), t)")),
-            run(&format!("euler_lagrange({lagrangian}, list(x(t), y(t)), t)"))
+            run(&format!(
+                "hamiltons_principle({lagrangian}, list(x(t), y(t)), t)"
+            )),
+            run(&format!(
+                "euler_lagrange({lagrangian}, list(x(t), y(t)), t)"
+            ))
         );
     }
 }

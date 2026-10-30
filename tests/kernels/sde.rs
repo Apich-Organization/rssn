@@ -1,22 +1,42 @@
 //! Tests for the SDE integrators.
 
 use rssn::kernels::random::Rng;
-use rssn::kernels::sde::{
-    SdeAdaptiveOptions, aggregate_noise, brownian_increments, euler_maruyama, heun_stratonovich, levy_areas, milstein,
-    milstein_noncommutative, sample_noise, sde_adaptive_with, srk_platen,
-};
+use rssn::kernels::sde::SdeAdaptiveOptions;
+use rssn::kernels::sde::aggregate_noise;
+use rssn::kernels::sde::brownian_increments;
+use rssn::kernels::sde::euler_maruyama;
+use rssn::kernels::sde::heun_stratonovich;
+use rssn::kernels::sde::levy_areas;
+use rssn::kernels::sde::milstein;
+use rssn::kernels::sde::milstein_noncommutative;
+use rssn::kernels::sde::sample_noise;
+use rssn::kernels::sde::sde_adaptive_with;
+use rssn::kernels::sde::srk_platen;
 
 const MU: f64 = 0.8;
 const SIGMA: f64 = 0.6;
 
-fn gbm_a(_t: f64, y: &[f64], o: &mut [f64]) {
+fn gbm_a(
+    _t: f64,
+    y: &[f64],
+    o: &mut [f64],
+) {
     o[0] = MU * y[0];
 }
-fn gbm_g(_t: f64, y: &[f64], o: &mut [f64]) {
+fn gbm_g(
+    _t: f64,
+    y: &[f64],
+    o: &mut [f64],
+) {
     o[0] = SIGMA * y[0];
 }
-fn coarsen(dws: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
-    dws.chunks(k).map(|c| vec![c.iter().map(|d| d[0]).sum::<f64>()]).collect()
+fn coarsen(
+    dws: &[Vec<f64>],
+    k: usize,
+) -> Vec<Vec<f64>> {
+    dws.chunks(k)
+        .map(|c| vec![c.iter().map(|d| d[0]).sum::<f64>()])
+        .collect()
 }
 
 type Scheme = fn(
@@ -29,7 +49,12 @@ type Scheme = fn(
     &[Vec<f64>],
 ) -> Result<Vec<Vec<f64>>, rssn::kernels::sde::SdeError>;
 
-fn strong_error(scheme: Scheme, drift: fn(f64, &[f64], &mut [f64]), stratonovich: bool, k: usize) -> f64 {
+fn strong_error(
+    scheme: Scheme,
+    drift: fn(f64, &[f64], &mut [f64]),
+    stratonovich: bool,
+    k: usize,
+) -> f64 {
     let fine = 1024usize;
     let tf = 1.0;
     let hf = tf / fine as f64;
@@ -57,7 +82,8 @@ fn strong_convergence_rates() {
     let em: Scheme = euler_maruyama::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
     let mil: Scheme = milstein::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
     let srk: Scheme = srk_platen::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
-    let heun: Scheme = heun_stratonovich::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
+    let heun: Scheme =
+        heun_stratonovich::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
     // k = 64 -> h = 1/16, k = 16 -> h = 1/64
     let r = |s: Scheme, a: fn(f64, &[f64], &mut [f64]), strat: bool| {
         let e1 = strong_error(s, a, strat, 64);
@@ -80,10 +106,14 @@ fn strong_convergence_rates() {
 fn additive_and_multidimensional_noise() {
     // dX = (0, 0) dt + B dW with constant B: every scheme is exact
     let a = |_t: f64, _y: &[f64], o: &mut [f64]| o.fill(0.0);
-    let g = |_t: f64, _y: &[f64], o: &mut [f64]| o.copy_from_slice(&[1.0, 0.5, -2.0, 0.25, 0.0, 3.0]);
+    let g =
+        |_t: f64, _y: &[f64], o: &mut [f64]| o.copy_from_slice(&[1.0, 0.5, -2.0, 0.25, 0.0, 3.0]);
     let mut rng = Rng::new(5);
     let dws = brownian_increments(&mut rng, 2, 50, 0.02);
-    let (w1, w2) = (dws.iter().map(|d| d[0]).sum::<f64>(), dws.iter().map(|d| d[1]).sum::<f64>());
+    let (w1, w2) = (
+        dws.iter().map(|d| d[0]).sum::<f64>(),
+        dws.iter().map(|d| d[1]).sum::<f64>(),
+    );
     for path in [
         euler_maruyama(a, g, 2, 0.0, 0.02, &[1.0, 2.0, 3.0], &dws).unwrap(),
         milstein(a, g, 2, 0.0, 0.02, &[1.0, 2.0, 3.0], &dws).unwrap(),
@@ -108,7 +138,10 @@ fn additive_and_multidimensional_noise() {
     let n = 2048;
     let h = 1.0 / n as f64;
     let dws = brownian_increments(&mut rng, 2, n, h);
-    let (w1, w2) = (dws.iter().map(|d| d[0]).sum::<f64>(), dws.iter().map(|d| d[1]).sum::<f64>());
+    let (w1, w2) = (
+        dws.iter().map(|d| d[0]).sum::<f64>(),
+        dws.iter().map(|d| d[1]).sum::<f64>(),
+    );
     let y = milstein(a2, g2, 2, 0.0, h, &[1.0, 1.0], &dws).unwrap();
     let last = y.last().unwrap();
     assert!((last[0] - ((0.1 - 0.125) + 0.5 * w1).exp()).abs() < 5e-3);
@@ -129,7 +162,21 @@ fn adaptive_steps_reproduce_ou_statistics() {
     let mut rejected = 0;
     let mut steps = 0;
     for p in 0..paths {
-        let r = sde_adaptive_with(a, g, 1, 0.0, tf, &[1.5], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-3, seed: 1000 + p, max_steps: 100_000 }).unwrap();
+        let r = sde_adaptive_with(
+            a,
+            g,
+            1,
+            0.0,
+            tf,
+            &[1.5],
+            &SdeAdaptiveOptions {
+                rtol: 1e-3,
+                atol: 1e-3,
+                seed: 1000 + p,
+                max_steps: 100_000,
+            },
+        )
+        .unwrap();
         assert!((r.t.last().unwrap() - tf).abs() < 1e-12);
         let x = r.y.last().unwrap()[0];
         sum += x;
@@ -142,21 +189,57 @@ fn adaptive_steps_reproduce_ou_statistics() {
     let mean_exact = 1.5 * (-theta * tf).exp();
     let var_exact = s * s * (1.0 - (-2.0 * theta * tf).exp()) / (2.0 * theta);
     let se_mean = (var_exact / paths as f64).sqrt();
-    assert!((mean - mean_exact).abs() < 5.0 * se_mean, "mean {mean} vs {mean_exact}");
-    assert!((var / var_exact - 1.0).abs() < 0.15, "var {var} vs {var_exact}");
+    assert!(
+        (mean - mean_exact).abs() < 5.0 * se_mean,
+        "mean {mean} vs {mean_exact}"
+    );
+    assert!(
+        (var / var_exact - 1.0).abs() < 0.15,
+        "var {var} vs {var_exact}"
+    );
     assert!(steps > 0 && rejected < steps);
     // multiplicative noise: GBM mean E X_T = x0 e^{mu T}; the controller adapts to the state
     let paths = 1500;
     let mut sum = 0.0;
     for p in 0..paths {
-        let r = sde_adaptive_with(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-4, seed: 77 + p, max_steps: 100_000 }).unwrap();
+        let r = sde_adaptive_with(
+            gbm_a,
+            gbm_g,
+            1,
+            0.0,
+            1.0,
+            &[1.0],
+            &SdeAdaptiveOptions {
+                rtol: 1e-3,
+                atol: 1e-4,
+                seed: 77 + p,
+                max_steps: 100_000,
+            },
+        )
+        .unwrap();
         sum += r.y.last().unwrap()[0];
     }
     let mean = sum / paths as f64;
     let ex = (MU * 1.0f64).exp();
     let se = ex * ((SIGMA * SIGMA).exp() - 1.0).sqrt() / (paths as f64).sqrt();
     assert!((mean - ex).abs() < 5.0 * se, "{mean} vs {ex}");
-    assert!(sde_adaptive_with(gbm_a, gbm_g, 1, 1.0, 0.0, &[1.0], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-4, seed: 1, max_steps: 100 }).is_err());
+    assert!(
+        sde_adaptive_with(
+            gbm_a,
+            gbm_g,
+            1,
+            1.0,
+            0.0,
+            &[1.0],
+            &SdeAdaptiveOptions {
+                rtol: 1e-3,
+                atol: 1e-4,
+                seed: 1,
+                max_steps: 100
+            }
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -182,10 +265,22 @@ fn levy_area_statistics() {
         }
         let nf = f64::from(n);
         assert!(sym < 1e-9 * nf, "identities, terms {terms}");
-        assert!((v / nf - 0.25).abs() < 0.006, "terms {terms}: variance {}", v / nf);
-        assert!((w / nf - 5.0 / 12.0).abs() < 0.015, "terms {terms}: weighted {}", w / nf);
+        assert!(
+            (v / nf - 0.25).abs() < 0.006,
+            "terms {terms}: variance {}",
+            v / nf
+        );
+        assert!(
+            (w / nf - 5.0 / 12.0).abs() < 0.015,
+            "terms {terms}: weighted {}",
+            w / nf
+        );
         // Cov(A12, A13) = E[xi_2 xi_3 ...] = 0 by symmetry
-        assert!((cross / nf).abs() < 0.006, "terms {terms}: cross {}", cross / nf);
+        assert!(
+            (cross / nf).abs() < 0.006,
+            "terms {terms}: cross {}",
+            cross / nf
+        );
     }
     // total variance of I_12 is h^2 / 2
     let mut rng = Rng::new(5);
@@ -199,13 +294,21 @@ fn levy_area_statistics() {
     assert!((v / f64::from(n) / (h * h) - 0.5).abs() < 0.008);
 }
 
-fn nc_drift(_t: f64, y: &[f64], o: &mut [f64]) {
+fn nc_drift(
+    _t: f64,
+    y: &[f64],
+    o: &mut [f64],
+) {
     o[0] = -0.5 * y[0];
     o[1] = -0.3 * y[1] + 0.1;
 }
 
 /// Two non-commuting noise fields: the Lie bracket `[g1, g2]` is `(-0.09 y1, 0.09 y2)`-ish and nonzero.
-fn nc_diff(_t: f64, y: &[f64], o: &mut [f64]) {
+fn nc_diff(
+    _t: f64,
+    y: &[f64],
+    o: &mut [f64],
+) {
     // row-major n x m: g1 = (0.3 y2, 0.2), g2 = (0.1, 0.3 y1)
     o[0] = 0.3 * y[1];
     o[1] = 0.1;
@@ -226,24 +329,40 @@ fn milstein_with_levy_areas_has_strong_order_one_for_noncommutative_noise() {
     for _ in 0..paths {
         let fine_noise = sample_noise(&mut rng, m, fine, hf, 8);
         let reference =
-            milstein_noncommutative(nc_drift, nc_diff, m, 0.0, hf, &[1.0, 0.5], &fine_noise).unwrap();
+            milstein_noncommutative(nc_drift, nc_diff, m, 0.0, hf, &[1.0, 0.5], &fine_noise)
+                .unwrap();
         let yref = reference.last().unwrap().clone();
         for (gi, &gsz) in groups.iter().enumerate() {
             let coarse = aggregate_noise(&fine_noise, gsz, m);
             let h = hf * gsz as f64;
-            let y = milstein_noncommutative(nc_drift, nc_diff, m, 0.0, h, &[1.0, 0.5], &coarse).unwrap();
+            let y = milstein_noncommutative(nc_drift, nc_diff, m, 0.0, h, &[1.0, 0.5], &coarse)
+                .unwrap();
             let e = euler_maruyama(nc_drift, nc_diff, m, 0.0, h, &[1.0, 0.5], &coarse.dws).unwrap();
             let (yl, el) = (y.last().unwrap(), e.last().unwrap());
-            err_mil[gi] += ((yl[0] - yref[0]).powi(2) + (yl[1] - yref[1]).powi(2)) / f64::from(paths);
-            err_em[gi] += ((el[0] - yref[0]).powi(2) + (el[1] - yref[1]).powi(2)) / f64::from(paths);
+            err_mil[gi] +=
+                ((yl[0] - yref[0]).powi(2) + (yl[1] - yref[1]).powi(2)) / f64::from(paths);
+            err_em[gi] +=
+                ((el[0] - yref[0]).powi(2) + (el[1] - yref[1]).powi(2)) / f64::from(paths);
         }
     }
     let rms = |v: [f64; 3]| [v[0].sqrt(), v[1].sqrt(), v[2].sqrt()];
     let (em, ee) = (rms(err_mil), rms(err_em));
     let slope = |e: [f64; 3]| (e[2] / e[0]).ln() / ((groups[2] as f64) / (groups[0] as f64)).ln();
-    eprintln!("milstein errors {em:?} slope {}, euler errors {ee:?} slope {}", slope(em), slope(ee));
-    assert!(slope(em) > 0.8, "Milstein with Levy areas: observed order {}", slope(em));
-    assert!(slope(ee) < 0.7, "Euler-Maruyama: observed order {}", slope(ee));
+    eprintln!(
+        "milstein errors {em:?} slope {}, euler errors {ee:?} slope {}",
+        slope(em),
+        slope(ee)
+    );
+    assert!(
+        slope(em) > 0.8,
+        "Milstein with Levy areas: observed order {}",
+        slope(em)
+    );
+    assert!(
+        slope(ee) < 0.7,
+        "Euler-Maruyama: observed order {}",
+        slope(ee)
+    );
     assert!(em[2] * 2.0 < ee[2], "Milstein {} vs Euler {}", em[2], ee[2]);
     // invalid shapes
     let mut bad = sample_noise(&mut rng, m, 4, 0.1, 3);

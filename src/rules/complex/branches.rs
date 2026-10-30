@@ -52,36 +52,76 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("atanh_branch", 2),
     ] {
         // Requests: the definitions below must win extraction.
-        i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
+        i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
     }
     // Independent numeric definitions, so that the rewrites below are
     // checked against something other than themselves.
     let evals: [(&str, ComplexEval); 10] = [
-        ("log_branch", ComplexEval(|a| Some(a.first()?.ln() + I * TAU * *a.get(1)?))),
-        ("sqrt_branch", ComplexEval(|a| Some(root(*a.first()?, 2.0, a.get(1)?.re)))),
-        ("root_branch", ComplexEval(|a| Some(root(*a.first()?, a.get(1)?.re, a.get(2)?.re)))),
-        ("power_branch", ComplexEval(|a| Some((*a.get(1)? * (a.first()?.ln() + I * TAU * *a.get(2)?)).exp()))),
-        ("asin_branch", ComplexEval(|a| {
-            let k = a.get(1)?.re;
-            Some(k * PI + (-1_f64).powf(k) * a.first()?.asin())
-        })),
-        ("acos_branch", ComplexEval(|a| Some(2.0 * a.get(1)?.re * PI + *a.get(2)? * a.first()?.acos()))),
-        ("atan_branch", ComplexEval(|a| Some(a.get(1)?.re * PI + a.first()?.atan()))),
-        ("asinh_branch", ComplexEval(|a| Some(a.first()?.asinh() + I * TAU * *a.get(1)?))),
-        ("acosh_branch", ComplexEval(|a| {
-            let z = *a.first()?;
-            let w = z * z - 1.0;
-            let w = if w.im == 0.0 { Complex64::new(w.re, 0.0) } else { w };
-            Some((z + w.sqrt()).ln() + I * TAU * *a.get(1)?)
-        })),
-        ("atanh_branch", ComplexEval(|a| {
-            // The logarithmic form fixes the side of the cuts (num-complex's
-            // atanh takes the other one for real |z| > 1).
-            let z = *a.first()?;
-            let w = (1.0 + z) / (1.0 - z);
-            let w = if w.im == 0.0 { Complex64::new(w.re, 0.0) } else { w };
-            Some(0.5 * w.ln() + I * PI * *a.get(1)?)
-        })),
+        (
+            "log_branch",
+            ComplexEval(|a| Some(a.first()?.ln() + I * TAU * *a.get(1)?)),
+        ),
+        (
+            "sqrt_branch",
+            ComplexEval(|a| Some(root(*a.first()?, 2.0, a.get(1)?.re))),
+        ),
+        (
+            "root_branch",
+            ComplexEval(|a| Some(root(*a.first()?, a.get(1)?.re, a.get(2)?.re))),
+        ),
+        (
+            "power_branch",
+            ComplexEval(|a| Some((*a.get(1)? * (a.first()?.ln() + I * TAU * *a.get(2)?)).exp())),
+        ),
+        (
+            "asin_branch",
+            ComplexEval(|a| {
+                let k = a.get(1)?.re;
+                Some(k * PI + (-1_f64).powf(k) * a.first()?.asin())
+            }),
+        ),
+        (
+            "acos_branch",
+            ComplexEval(|a| Some(2.0 * a.get(1)?.re * PI + *a.get(2)? * a.first()?.acos())),
+        ),
+        (
+            "atan_branch",
+            ComplexEval(|a| Some(a.get(1)?.re * PI + a.first()?.atan())),
+        ),
+        (
+            "asinh_branch",
+            ComplexEval(|a| Some(a.first()?.asinh() + I * TAU * *a.get(1)?)),
+        ),
+        (
+            "acosh_branch",
+            ComplexEval(|a| {
+                let z = *a.first()?;
+                let w = z * z - 1.0;
+                let w = if w.im == 0.0 {
+                    Complex64::new(w.re, 0.0)
+                } else {
+                    w
+                };
+                Some((z + w.sqrt()).ln() + I * TAU * *a.get(1)?)
+            }),
+        ),
+        (
+            "atanh_branch",
+            ComplexEval(|a| {
+                // The logarithmic form fixes the side of the cuts (num-complex's
+                // atanh takes the other one for real |z| > 1).
+                let z = *a.first()?;
+                let w = (1.0 + z) / (1.0 - z);
+                let w = if w.im == 0.0 {
+                    Complex64::new(w.re, 0.0)
+                } else {
+                    w
+                };
+                Some(0.5 * w.ln() + I * PI * *a.get(1)?)
+            }),
+        ),
     ];
     for (name, eval) in evals {
         if let Some(op) = i.graph().ops().lookup(name) {
@@ -161,9 +201,18 @@ mod tests {
             ];
             for (src, want) in cases {
                 let root = g.parse(&src).unwrap_or_else(|e| panic!("{e}"));
-                engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
-                let term = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
-                let got = eval_complex(&g, term, &bindings).unwrap_or_else(|| panic!("cannot evaluate {}", g.display(term)));
+                engine.run(
+                    &mut g,
+                    &[root],
+                    &Env::symbolic(),
+                    &Saturate,
+                    &Budget::default(),
+                );
+                let term = Extractor::new(&g, &[root], &SizeCost)
+                    .build(&mut g, root)
+                    .unwrap_or(root);
+                let got = eval_complex(&g, term, &bindings)
+                    .unwrap_or_else(|| panic!("cannot evaluate {}", g.display(term)));
                 assert!((got - want).norm() < 1e-9, "{src}: {got} vs {want}");
             }
         }

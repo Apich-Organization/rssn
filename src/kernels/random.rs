@@ -26,13 +26,24 @@ impl Rng {
     #[must_use]
     pub const fn new(seed: u64) -> Self {
         let mut st = seed;
-        let s = [splitmix(&mut st), splitmix(&mut st), splitmix(&mut st), splitmix(&mut st)];
-        Self { s, spare_normal: None }
+        let s = [
+            splitmix(&mut st),
+            splitmix(&mut st),
+            splitmix(&mut st),
+            splitmix(&mut st),
+        ];
+        Self {
+            s,
+            spare_normal: None,
+        }
     }
 
     /// Next raw 64-bit output.
     pub const fn next_u64(&mut self) -> u64 {
-        let r = self.s[0].wrapping_add(self.s[3]).rotate_left(23).wrapping_add(self.s[0]);
+        let r = self.s[0]
+            .wrapping_add(self.s[3])
+            .rotate_left(23)
+            .wrapping_add(self.s[0]);
         let t = self.s[1] << 17;
         self.s[2] ^= self.s[0];
         self.s[3] ^= self.s[1];
@@ -49,12 +60,19 @@ impl Rng {
     }
 
     /// Uniform sample in `[a, b)`.
-    pub fn uniform_range(&mut self, a: f64, b: f64) -> f64 {
+    pub fn uniform_range(
+        &mut self,
+        a: f64,
+        b: f64,
+    ) -> f64 {
         a + (b - a) * self.uniform()
     }
 
     /// Uniform integer in `0..n` (`n > 0`), without modulo bias.
-    pub const fn below(&mut self, n: u64) -> u64 {
+    pub const fn below(
+        &mut self,
+        n: u64,
+    ) -> u64 {
         if n <= 1 {
             return 0;
         }
@@ -80,17 +98,28 @@ impl Rng {
     }
 
     /// Normal sample with the given mean and standard deviation.
-    pub fn normal_with(&mut self, mean: f64, sd: f64) -> f64 {
+    pub fn normal_with(
+        &mut self,
+        mean: f64,
+        sd: f64,
+    ) -> f64 {
         mean + sd * self.normal()
     }
 
     /// Exponential sample with the given rate.
-    pub fn exponential(&mut self, rate: f64) -> f64 {
+    pub fn exponential(
+        &mut self,
+        rate: f64,
+    ) -> f64 {
         -(1.0 - self.uniform()).ln() / rate
     }
 
     /// Gamma sample (shape `k > 0`, scale `theta`), Marsaglia-Tsang.
-    pub fn gamma(&mut self, k: f64, theta: f64) -> f64 {
+    pub fn gamma(
+        &mut self,
+        k: f64,
+        theta: f64,
+    ) -> f64 {
         if k < 1.0 {
             let u = 1.0 - self.uniform();
             return self.gamma(k + 1.0, theta) * u.powf(1.0 / k);
@@ -111,7 +140,11 @@ impl Rng {
     }
 
     /// Beta(`a`, `b`) sample.
-    pub fn beta(&mut self, a: f64, b: f64) -> f64 {
+    pub fn beta(
+        &mut self,
+        a: f64,
+        b: f64,
+    ) -> f64 {
         let x = self.gamma(a, 1.0);
         let y = self.gamma(b, 1.0);
         x / (x + y)
@@ -119,7 +152,10 @@ impl Rng {
 
     /// Poisson sample (Knuth for small means, normal-corrected rejection
     /// via gamma splitting for large ones).
-    pub fn poisson(&mut self, lambda: f64) -> u64 {
+    pub fn poisson(
+        &mut self,
+        lambda: f64,
+    ) -> u64 {
         if lambda < 30.0 {
             let l = (-lambda).exp();
             let (mut k, mut p) = (0u64, 1.0);
@@ -141,17 +177,28 @@ impl Rng {
         }
     }
 
-    fn binomial_count(&mut self, n: u64, p: f64) -> u64 {
+    fn binomial_count(
+        &mut self,
+        n: u64,
+        p: f64,
+    ) -> u64 {
         (0..n).filter(|_| self.uniform() < p).count() as u64
     }
 
     /// Binomial(`n`, `p`) sample.
-    pub fn binomial(&mut self, n: u64, p: f64) -> u64 {
+    pub fn binomial(
+        &mut self,
+        n: u64,
+        p: f64,
+    ) -> u64 {
         self.binomial_count(n, p)
     }
 
     /// Fisher-Yates shuffle in place.
-    pub fn shuffle<T>(&mut self, v: &mut [T]) {
+    pub fn shuffle<T>(
+        &mut self,
+        v: &mut [T],
+    ) {
         for i in (1..v.len()).rev() {
             let j = self.below(i as u64 + 1) as usize;
             v.swap(i, j);
@@ -159,7 +206,10 @@ impl Rng {
     }
 
     /// Fills `out` with standard normal samples.
-    pub fn fill_normal(&mut self, out: &mut [f64]) {
+    pub fn fill_normal(
+        &mut self,
+        out: &mut [f64],
+    ) {
         for o in out {
             *o = self.normal();
         }

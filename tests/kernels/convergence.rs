@@ -1,11 +1,17 @@
 //! Sequence acceleration on classical slowly converging series.
 
-use std::f64::consts::{LN_2, PI};
+use std::f64::consts::LN_2;
+use std::f64::consts::PI;
 
-use rssn::kernels::convergence::{
-    LevinVariant, aitken_acceleration, find_sequence_limit, levin_sum, levin_transform, richardson_extrapolation,
-    richardson_extrapolation_with, sum_series_numerical, wynn_epsilon,
-};
+use rssn::kernels::convergence::LevinVariant;
+use rssn::kernels::convergence::aitken_acceleration;
+use rssn::kernels::convergence::find_sequence_limit;
+use rssn::kernels::convergence::levin_sum;
+use rssn::kernels::convergence::levin_transform;
+use rssn::kernels::convergence::richardson_extrapolation;
+use rssn::kernels::convergence::richardson_extrapolation_with;
+use rssn::kernels::convergence::sum_series_numerical;
+use rssn::kernels::convergence::wynn_epsilon;
 
 fn partial_sums(
     term: impl Fn(f64) -> f64,
@@ -65,7 +71,11 @@ fn richardson_on_basel_partial_sums_at_doubling_counts() {
         .map(|&n| (1..=n).map(|k| 1.0 / f64::from(k * k)).sum())
         .collect();
     let rich = richardson_extrapolation_with(&sums, 2.0);
-    assert!((last(&rich) - PI * PI / 6.0).abs() < 1e-8, "{}", last(&rich));
+    assert!(
+        (last(&rich) - PI * PI / 6.0).abs() < 1e-8,
+        "{}",
+        last(&rich)
+    );
     assert!((last(&rich) - PI * PI / 6.0).abs() < (sums[6] - PI * PI / 6.0).abs() * 1e-5);
 }
 
@@ -86,13 +96,13 @@ fn richardson_removes_h_squared_errors() {
 
 #[test]
 fn find_sequence_limit_finds_known_limits() {
-    let l = find_sequence_limit(|n| 2.0 + 0.5_f64.powf(n), 20, 1e-8)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let l =
+        find_sequence_limit(|n| 2.0 + 0.5_f64.powf(n), 20, 1e-8).unwrap_or_else(|e| panic!("{e}"));
     assert!((l - 2.0).abs() < 1e-8);
     // Partial sums of the Leibniz series.
     let leibniz = partial_sums(|k| (-1.0_f64).powf(k) / (2.0 * k + 1.0), 0.0, 40);
-    let l = find_sequence_limit(|n| leibniz[n as usize], 40, 1e-6)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let l =
+        find_sequence_limit(|n| leibniz[n as usize], 40, 1e-6).unwrap_or_else(|e| panic!("{e}"));
     assert!((l - PI / 4.0).abs() < 1e-5, "{l}");
     assert!(find_sequence_limit(|_| f64::NAN, 10, 1e-8).is_err());
     assert!(find_sequence_limit(|n| n, 10, 1e-8).is_err());
@@ -106,7 +116,10 @@ fn sum_series_numerical_stops_at_small_terms() {
     assert_eq!(s, 55.0);
 }
 
-fn ps(term: impl Fn(usize) -> f64, count: usize) -> Vec<f64> {
+fn ps(
+    term: impl Fn(usize) -> f64,
+    count: usize,
+) -> Vec<f64> {
     let mut s = 0.0;
     (0..count)
         .map(|i| {
@@ -123,7 +136,10 @@ fn levin_alternating_ln2() {
     let sums = ps(t, 16);
     for variant in [LevinVariant::T, LevinVariant::U, LevinVariant::V] {
         let est = levin_transform(&sums, variant, 1.0);
-        let best = est.iter().map(|e| (e - LN_2).abs()).fold(f64::INFINITY, f64::min);
+        let best = est
+            .iter()
+            .map(|e| (e - LN_2).abs())
+            .fold(f64::INFINITY, f64::min);
         assert!(best < 1e-10, "{variant:?}: {best}");
         // far better than the raw partial sum
         assert!((sums[15] - LN_2).abs() > 1e-2);
@@ -139,7 +155,11 @@ fn levin_logarithmic_zeta2() {
     let t = |k: usize| 1.0 / ((k + 1) as f64).powi(2);
     let target = PI * PI / 6.0;
     let (v, err) = levin_sum(t, 24, LevinVariant::U).unwrap();
-    assert!((v - target).abs() < 1e-10, "u: {} err {err}", (v - target).abs());
+    assert!(
+        (v - target).abs() < 1e-10,
+        "u: {} err {err}",
+        (v - target).abs()
+    );
     // zeta(3) (Apery) with the u transform
     let (v, _) = levin_sum(|k| 1.0 / ((k + 1) as f64).powi(3), 24, LevinVariant::U).unwrap();
     assert!((v - 1.202_056_903_159_594_2).abs() < 1e-10);

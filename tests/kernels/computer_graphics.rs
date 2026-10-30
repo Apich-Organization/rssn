@@ -786,7 +786,9 @@ mod proptests {
 // ============================================================================
 
 mod strengthened {
-    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+    use std::f64::consts::FRAC_PI_2;
+    use std::f64::consts::FRAC_PI_4;
+    use std::f64::consts::PI;
 
     use proptest::prelude::*;
     use proptest::test_runner::RngSeed;

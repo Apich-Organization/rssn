@@ -49,11 +49,21 @@ fn schemes_have_their_nominal_order() {
 
 #[test]
 fn stage_tables_are_consistent() {
-    for s in [Scheme::Verlet, Scheme::ForestRuth, Scheme::Yoshida4, Scheme::Yoshida6, Scheme::Yoshida8, Scheme::BlanesMoan4] {
+    for s in [
+        Scheme::Verlet,
+        Scheme::ForestRuth,
+        Scheme::Yoshida4,
+        Scheme::Yoshida6,
+        Scheme::Yoshida8,
+        Scheme::BlanesMoan4,
+    ] {
         let st = s.stages();
         let drift: f64 = st.iter().map(|x| x.0).sum();
         let kick: f64 = st.iter().map(|x| x.1).sum();
-        assert!((drift - 1.0).abs() < 1e-13 && (kick - 1.0).abs() < 1e-13, "{s:?}");
+        assert!(
+            (drift - 1.0).abs() < 1e-13 && (kick - 1.0).abs() < 1e-13,
+            "{s:?}"
+        );
     }
     // the triple jump lifts order 2 to 4 with the same table as Yoshida4
     let lifted = triple_jump(&Scheme::Verlet.stages(), 2);
@@ -98,7 +108,10 @@ fn kepler_period_and_energy_with_symplectic_scheme() {
         let en = 0.5 * (p[0] * p[0] + p[1] * p[1]) - 1.0 / (q[0] * q[0] + q[1] * q[1]).sqrt();
         emax = emax.max((en - e0).abs());
     }
-    assert!((q[0] - (1.0 - e)).abs() < 1e-6 && q[1].abs() < 1e-6, "period error {q:?}");
+    assert!(
+        (q[0] - (1.0 - e)).abs() < 1e-6 && q[1].abs() < 1e-6,
+        "period error {q:?}"
+    );
     assert!(emax < 1e-6, "energy error {emax}");
 }
 
@@ -119,7 +132,11 @@ fn ttl_beats_fixed_step_on_an_eccentric_orbit() {
     let ex = exact_at(h * n as f64);
     let err_fixed = ((q[0] - ex[0]).powi(2) + (q[1] - ex[1]).powi(2)).sqrt();
     // TTL
-    let mut s = TtlState { q: apo.to_vec(), p: vapo.to_vec(), t: 0.0 };
+    let mut s = TtlState {
+        q: apo.to_vec(),
+        p: vapo.to_vec(),
+        t: 0.0,
+    };
     let b = 0.5;
     let mass = [1.0, 1.0];
     let mut pot = |q: &[f64], g: &mut [f64]| {
@@ -134,7 +151,10 @@ fn ttl_beats_fixed_step_on_an_eccentric_orbit() {
     let ex = exact_at(s.t);
     let err_ttl = ((s.q[0] - ex[0]).powi(2) + (s.q[1] - ex[1]).powi(2)).sqrt();
     assert!(err_ttl < 0.02, "TTL error {err_ttl}");
-    assert!(err_fixed > 10.0 * err_ttl, "fixed {err_fixed} vs ttl {err_ttl}");
+    assert!(
+        err_fixed > 10.0 * err_ttl,
+        "fixed {err_fixed} vs ttl {err_ttl}"
+    );
     assert!((s.t - period).abs() < 0.1, "physical time {}", s.t);
 }
 
@@ -148,7 +168,11 @@ fn ks_regularisation_recovers_a_near_collision_orbit_exactly() {
     let ds = 2.0 * std::f64::consts::PI / n as f64;
     let none = |_: &[f64; 3], _: &[f64; 3], _: f64| [0.0; 3];
     let r = ks_propagate(&x0, &v0, &none, ds, n);
-    assert!((r.t - 2.0 * std::f64::consts::PI).abs() < 1e-6, "period {}", r.t);
+    assert!(
+        (r.t - 2.0 * std::f64::consts::PI).abs() < 1e-6,
+        "period {}",
+        r.t
+    );
     let (x, v) = ks_to_cartesian(&r.u, &r.up);
     for k in 0..3 {
         assert!((x[k] - x0[k]).abs() < 1e-6, "x {x:?}");
@@ -173,7 +197,14 @@ fn ks_roundtrip_and_perturbed_orbit_matches_cartesian_integration() {
     let f = |y: &[f64; 6]| {
         let r3 = (y[0] * y[0] + y[1] * y[1] + y[2] * y[2]).powf(1.5);
         let p = pert(&[y[0], y[1], y[2]], &[y[3], y[4], y[5]], 0.0);
-        [y[3], y[4], y[5], -y[0] / r3 + p[0], -y[1] / r3 + p[1], -y[2] / r3 + p[2]]
+        [
+            y[3],
+            y[4],
+            y[5],
+            -y[0] / r3 + p[0],
+            -y[1] / r3 + p[1],
+            -y[2] / r3 + p[2],
+        ]
     };
     let mut y = [x0[0], x0[1], x0[2], v0[0], v0[1], v0[2]];
     let nstep = 40_000;
@@ -208,7 +239,11 @@ fn ks_roundtrip_and_perturbed_orbit_matches_cartesian_integration() {
 }
 
 fn top_energy_error(h: f64) -> f64 {
-    let mut b = RigidBody { inertia: [1.0, 2.0, 3.0], q: [1.0, 0.0, 0.0, 0.0], l_body: [0.3, 1.0, 0.4] };
+    let mut b = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [1.0, 0.0, 0.0, 0.0],
+        l_body: [0.3, 1.0, 0.4],
+    };
     let e0 = b.kinetic_energy();
     let mut worst = 0.0_f64;
     let n = (5.0 / h).round() as usize;
@@ -221,7 +256,11 @@ fn top_energy_error(h: f64) -> f64 {
 
 #[test]
 fn rigid_top_conserves_angular_momentum_and_has_second_order_energy_error() {
-    let mut b = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.5, 0.5, 0.5, 0.5], l_body: [0.3, 1.0, 0.4] };
+    let mut b = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [0.5, 0.5, 0.5, 0.5],
+        l_body: [0.3, 1.0, 0.4],
+    };
     let l0 = b.l_space();
     for _ in 0..2000 {
         b.free_step(0.01);
@@ -241,7 +280,11 @@ fn rigid_top_conserves_angular_momentum_and_has_second_order_energy_error() {
 #[test]
 fn symmetric_top_precession_matches_analytic_rate() {
     let i = [1.0, 1.0, 2.0];
-    let mut b = RigidBody { inertia: i, q: [1.0, 0.0, 0.0, 0.0], l_body: [0.3, 0.0, 0.5] };
+    let mut b = RigidBody {
+        inertia: i,
+        q: [1.0, 0.0, 0.0, 0.0],
+        l_body: [0.3, 0.0, 0.5],
+    };
     let t = 3.0;
     let n = 3000;
     for _ in 0..n {
@@ -249,7 +292,11 @@ fn symmetric_top_precession_matches_analytic_rate() {
     }
     let omega_b = 0.5 * (1.0 / i[0] - 1.0 / i[2]);
     let exact = [0.3 * (omega_b * t).cos(), 0.3 * (omega_b * t).sin()];
-    assert!((b.l_body[0] - exact[0]).abs() < 1e-5 && (b.l_body[1] - exact[1]).abs() < 1e-5, "{:?} vs {exact:?}", b.l_body);
+    assert!(
+        (b.l_body[0] - exact[0]).abs() < 1e-5 && (b.l_body[1] - exact[1]).abs() < 1e-5,
+        "{:?} vs {exact:?}",
+        b.l_body
+    );
     assert!((b.l_body[2] - 0.5).abs() < 1e-6);
 }
 
@@ -259,7 +306,11 @@ fn rigid_body_step_is_time_reversible_under_torque() {
         let r = quat_to_matrix(q);
         [0.2 * r[2][1], -0.3 * r[2][0], 0.1]
     };
-    let mut b = RigidBody { inertia: [1.0, 1.5, 2.5], q: [0.9, 0.1, -0.3, 0.3], l_body: [0.1, -0.2, 0.3] };
+    let mut b = RigidBody {
+        inertia: [1.0, 1.5, 2.5],
+        q: [0.9, 0.1, -0.3, 0.3],
+        l_body: [0.1, -0.2, 0.3],
+    };
     let n0 = b.q.iter().map(|v| v * v).sum::<f64>().sqrt();
     for v in &mut b.q {
         *v /= n0;
@@ -272,7 +323,12 @@ fn rigid_body_step_is_time_reversible_under_torque() {
         b.step(-0.02, &torque);
     }
     for k in 0..4 {
-        assert!((b.q[k] - start.q[k]).abs() < 1e-10, "{:?} vs {:?}", b.q, start.q);
+        assert!(
+            (b.q[k] - start.q[k]).abs() < 1e-10,
+            "{:?} vs {:?}",
+            b.q,
+            start.q
+        );
     }
     for k in 0..3 {
         assert!((b.l_body[k] - start.l_body[k]).abs() < 1e-10);
@@ -289,7 +345,11 @@ fn rigid_reference(
     let rhs = |q: &[f64; 4], l: &[f64; 3]| -> ([f64; 4], [f64; 3]) {
         let w = [l[0] / inertia[0], l[1] / inertia[1], l[2] / inertia[2]];
         let dq = quat_mul(q, &[0.0, w[0], w[1], w[2]]);
-        let dl = [l[1] * w[2] - l[2] * w[1], l[2] * w[0] - l[0] * w[2], l[0] * w[1] - l[1] * w[0]];
+        let dl = [
+            l[1] * w[2] - l[2] * w[1],
+            l[2] * w[0] - l[0] * w[2],
+            l[0] * w[1] - l[1] * w[0],
+        ];
         ([0.5 * dq[0], 0.5 * dq[1], 0.5 * dq[2], 0.5 * dq[3]], dl)
     };
     let n = 40_000;
@@ -298,7 +358,15 @@ fn rigid_reference(
     for _ in 0..n {
         let (k1q, k1l) = rhs(&q, &l);
         let adv = |c: f64, kq: &[f64; 4], kl: &[f64; 3]| -> ([f64; 4], [f64; 3]) {
-            ([q[0] + c * kq[0], q[1] + c * kq[1], q[2] + c * kq[2], q[3] + c * kq[3]], [l[0] + c * kl[0], l[1] + c * kl[1], l[2] + c * kl[2]])
+            (
+                [
+                    q[0] + c * kq[0],
+                    q[1] + c * kq[1],
+                    q[2] + c * kq[2],
+                    q[3] + c * kq[3],
+                ],
+                [l[0] + c * kl[0], l[1] + c * kl[1], l[2] + c * kl[2]],
+            )
         };
         let (q2, l2) = adv(0.5 * h, &k1q, &k1l);
         let (k2q, k2l) = rhs(&q2, &l2);
@@ -325,13 +393,20 @@ fn rigid_error(
     let q0 = [0.5, 0.5, 0.5, 0.5];
     let l0 = [0.7, 0.4, 1.1];
     let t = 2.0;
-    let mut b = RigidBody { inertia, q: q0, l_body: l0 };
+    let mut b = RigidBody {
+        inertia,
+        q: q0,
+        l_body: l0,
+    };
     for _ in 0..(t / h).round() as usize {
         b.free_step_composed(h, top, order).unwrap();
     }
     let (qr, lr) = rigid_reference(inertia, q0, l0, t);
     let dq: f64 = (0..4).map(|i| (b.q[i] - qr[i]).powi(2)).sum::<f64>().sqrt();
-    let dl: f64 = (0..3).map(|i| (b.l_body[i] - lr[i]).powi(2)).sum::<f64>().sqrt();
+    let dl: f64 = (0..3)
+        .map(|i| (b.l_body[i] - lr[i]).powi(2))
+        .sum::<f64>()
+        .sqrt();
     dq + dl
 }
 
@@ -358,7 +433,11 @@ fn symmetric_top_splitting_is_second_order_and_composes_to_higher_order() {
     assert!(f1 / f2 > 12.0, "fourth order: {}", f1 / f2);
     // for a nearly symmetric body it beats the three-axis splitting at the same step
     assert!(e1 < 0.2 * rigid_error(inertia, false, 2, 0.1));
-    let mut b = RigidBody { inertia, q: [1.0, 0.0, 0.0, 0.0], l_body: [0.4, 0.5, 0.6] };
+    let mut b = RigidBody {
+        inertia,
+        q: [1.0, 0.0, 0.0, 0.0],
+        l_body: [0.4, 0.5, 0.6],
+    };
     let (l0, k0) = (b.l_space(), b.kinetic_energy());
     for _ in 0..200 {
         b.free_step_top(0.1);
@@ -372,7 +451,11 @@ fn symmetric_top_splitting_is_second_order_and_composes_to_higher_order() {
 
 #[test]
 fn space_torque_kick_matches_the_body_frame_torque() {
-    let mut b = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.5, 0.5, 0.5, 0.5], l_body: [0.0; 3] };
+    let mut b = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [0.5, 0.5, 0.5, 0.5],
+        l_body: [0.0; 3],
+    };
     b.kick_space(0.5, &[1.0, 0.0, 0.0]);
     // a unit-torque kick along space x: L_space = (0.5, 0, 0)
     let l = b.l_space();
@@ -380,13 +463,25 @@ fn space_torque_kick_matches_the_body_frame_torque() {
 }
 
 /// Reference integration of the free rigid body by classical RK4 with a tiny step.
-fn rk4_free_body(b: &RigidBody, t_end: f64, n: usize) -> RigidBody {
+fn rk4_free_body(
+    b: &RigidBody,
+    t_end: f64,
+    n: usize,
+) -> RigidBody {
     let f = |q: &[f64; 4], l: &[f64; 3]| {
-        let w = [l[0] / b.inertia[0], l[1] / b.inertia[1], l[2] / b.inertia[2]];
+        let w = [
+            l[0] / b.inertia[0],
+            l[1] / b.inertia[1],
+            l[2] / b.inertia[2],
+        ];
         let dq = quat_mul(q, &[0.0, w[0], w[1], w[2]]);
         (
             [0.5 * dq[0], 0.5 * dq[1], 0.5 * dq[2], 0.5 * dq[3]],
-            [l[1] * w[2] - l[2] * w[1], l[2] * w[0] - l[0] * w[2], l[0] * w[1] - l[1] * w[0]],
+            [
+                l[1] * w[2] - l[2] * w[1],
+                l[2] * w[0] - l[0] * w[2],
+                l[0] * w[1] - l[1] * w[0],
+            ],
         )
     };
     let h = t_end / n as f64;
@@ -394,7 +489,15 @@ fn rk4_free_body(b: &RigidBody, t_end: f64, n: usize) -> RigidBody {
     for _ in 0..n {
         let (k1q, k1l) = f(&q, &l);
         let adv = |q: &[f64; 4], l: &[f64; 3], kq: &[f64; 4], kl: &[f64; 3], s: f64| {
-            ([q[0] + s * kq[0], q[1] + s * kq[1], q[2] + s * kq[2], q[3] + s * kq[3]], [l[0] + s * kl[0], l[1] + s * kl[1], l[2] + s * kl[2]])
+            (
+                [
+                    q[0] + s * kq[0],
+                    q[1] + s * kq[1],
+                    q[2] + s * kq[2],
+                    q[3] + s * kq[3],
+                ],
+                [l[0] + s * kl[0], l[1] + s * kl[1], l[2] + s * kl[2]],
+            )
         };
         let (q2, l2) = adv(&q, &l, &k1q, &k1l, 0.5 * h);
         let (k2q, k2l) = f(&q2, &l2);
@@ -410,10 +513,17 @@ fn rk4_free_body(b: &RigidBody, t_end: f64, n: usize) -> RigidBody {
         }
     }
     let nrm = q.iter().map(|x| x * x).sum::<f64>().sqrt();
-    RigidBody { inertia: b.inertia, q: q.map(|x| x / nrm), l_body: l }
+    RigidBody {
+        inertia: b.inertia,
+        q: q.map(|x| x / nrm),
+        l_body: l,
+    }
 }
 
-fn quat_dist(a: &[f64; 4], b: &[f64; 4]) -> f64 {
+fn quat_dist(
+    a: &[f64; 4],
+    b: &[f64; 4],
+) -> f64 {
     let d: f64 = a.iter().zip(b).map(|(x, y)| x * y).sum();
     1.0 - d.abs()
 }
@@ -429,22 +539,37 @@ fn exact_asymmetric_top_matches_high_accuracy_reference() {
         ([1.0, 2.0, 3.0], [(1.0f64 / 3.0).sqrt() * 0.99, 1.0, 0.43]),
     ];
     for (inertia, l_body) in cases {
-        let b0 = RigidBody { inertia, q: [0.5, 0.5, -0.5, 0.5], l_body };
+        let b0 = RigidBody {
+            inertia,
+            q: [0.5, 0.5, -0.5, 0.5],
+            l_body,
+        };
         for &t in &[0.37, 3.0, 12.0, -5.0] {
             let reference = rk4_free_body(&b0, t, (t.abs() * 20_000.0) as usize);
             let mut b = b0.clone();
             b.free_flow_exact(t);
             for k in 0..3 {
-                assert!((b.l_body[k] - reference.l_body[k]).abs() < 1e-8, "L {inertia:?} {l_body:?} t={t}");
+                assert!(
+                    (b.l_body[k] - reference.l_body[k]).abs() < 1e-8,
+                    "L {inertia:?} {l_body:?} t={t}"
+                );
             }
-            assert!(quat_dist(&b.q, &reference.q) < 1e-9, "q {inertia:?} {l_body:?} t={t}: {}", quat_dist(&b.q, &reference.q));
+            assert!(
+                quat_dist(&b.q, &reference.q) < 1e-9,
+                "q {inertia:?} {l_body:?} t={t}: {}",
+                quat_dist(&b.q, &reference.q)
+            );
         }
     }
 }
 
 #[test]
 fn exact_flow_is_a_group_and_conserves_invariants() {
-    let b0 = RigidBody { inertia: [1.0, 2.0, 3.5], q: [1.0, 0.0, 0.0, 0.0], l_body: [0.5, 1.2, 0.7] };
+    let b0 = RigidBody {
+        inertia: [1.0, 2.0, 3.5],
+        q: [1.0, 0.0, 0.0, 0.0],
+        l_body: [0.5, 1.2, 0.7],
+    };
     let mut a = b0.clone();
     a.free_flow_exact(1.3);
     a.free_flow_exact(2.9);
@@ -467,17 +592,29 @@ fn exact_flow_is_a_group_and_conserves_invariants() {
 
 #[test]
 fn exact_flow_reduces_to_symmetric_top_and_steady_rotation() {
-    let b0 = RigidBody { inertia: [1.0, 1.0, 2.0], q: [0.5, 0.5, 0.5, 0.5], l_body: [0.3, 0.2, 0.9] };
+    let b0 = RigidBody {
+        inertia: [1.0, 1.0, 2.0],
+        q: [0.5, 0.5, 0.5, 0.5],
+        l_body: [0.3, 0.2, 0.9],
+    };
     let mut a = b0.clone();
     let mut c = b0.clone();
     a.free_flow_exact(3.1);
     c.symmetric_top_flow(2, 3.1);
     assert!(quat_dist(&a.q, &c.q) < 1e-13);
-    let nb = RigidBody { inertia: [1.0, 1.0 + 1e-6, 2.0], q: [0.5, 0.5, 0.5, 0.5], l_body: [0.3, 0.2, 0.9] };
+    let nb = RigidBody {
+        inertia: [1.0, 1.0 + 1e-6, 2.0],
+        q: [0.5, 0.5, 0.5, 0.5],
+        l_body: [0.3, 0.2, 0.9],
+    };
     let mut e = nb.clone();
     e.free_flow_exact(3.1);
     assert!(quat_dist(&e.q, &a.q) < 1e-4);
-    let s = RigidBody { inertia: [1.0, 2.0, 3.0], q: [1.0, 0.0, 0.0, 0.0], l_body: [0.0, 1.0, 0.0] };
+    let s = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [1.0, 0.0, 0.0, 0.0],
+        l_body: [0.0, 1.0, 0.0],
+    };
     let mut s1 = s.clone();
     s1.free_flow_exact(2.0);
     let reference = rk4_free_body(&s, 2.0, 2000);
@@ -492,10 +629,18 @@ fn exact_split_step_with_torque_is_second_order() {
         let a0 = [r[0][0], r[1][0], r[2][0]];
         let c = a0[2];
         let ez = [0.0, 0.0, 1.0];
-        let cr = [a0[1] * ez[2] - a0[2] * ez[1], a0[2] * ez[0] - a0[0] * ez[2], a0[0] * ez[1] - a0[1] * ez[0]];
+        let cr = [
+            a0[1] * ez[2] - a0[2] * ez[1],
+            a0[2] * ez[0] - a0[0] * ez[2],
+            a0[0] * ez[1] - a0[1] * ez[0],
+        ];
         [0.8 * c * cr[0], 0.8 * c * cr[1], 0.8 * c * cr[2]]
     };
-    let b0 = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.9, 0.1, 0.3, 0.3], l_body: [0.3, 1.0, 0.4] };
+    let b0 = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [0.9, 0.1, 0.3, 0.3],
+        l_body: [0.3, 1.0, 0.4],
+    };
     let run = |h: f64| {
         let mut b = b0.clone();
         let n = (2.0 / h).round() as usize;
@@ -514,7 +659,11 @@ fn exact_split_step_with_torque_is_second_order() {
 
 #[test]
 fn rattle_step_is_second_order_to_the_exact_free_flow() {
-    let b0 = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.9, 0.1, 0.3, 0.3], l_body: [0.3, 1.0, 0.4] };
+    let b0 = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [0.9, 0.1, 0.3, 0.3],
+        l_body: [0.3, 1.0, 0.4],
+    };
     let none = |_: &[f64; 4]| [0.0; 3];
     let mut exact = b0.clone();
     exact.free_flow_exact(3.0);
@@ -547,7 +696,11 @@ fn rattle_step_with_torque_is_second_order_and_reversible() {
         let c = a0[2];
         [0.8 * c * a0[1], -0.8 * c * a0[0], 0.0]
     };
-    let b0 = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.9, 0.1, 0.3, 0.3], l_body: [0.3, 1.0, 0.4] };
+    let b0 = RigidBody {
+        inertia: [1.0, 2.0, 3.0],
+        q: [0.9, 0.1, 0.3, 0.3],
+        l_body: [0.3, 1.0, 0.4],
+    };
     let run = |h: f64| {
         let mut b = b0.clone();
         for _ in 0..(2.0 / h).round() as usize {

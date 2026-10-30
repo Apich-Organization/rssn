@@ -12,9 +12,20 @@
 //!   (LAPACK `gbtrf`/`gbtrs` layout);
 //! * [`Factor`]: a dense, banded or sparse ([`Csr::sparse_lu`]) factorisation
 //!   behind one `solve` interface.
+//!
+//! Parallelism: [`fd_jacobian_dense_par`] and [`fd_jacobian_colored_par`] evaluate the columns
+//! (colours) of the finite-difference Jacobian concurrently for a `Sync` right-hand side; the stiff
+//! solvers keep the sequential [`fd_jacobian_dense`] because their right-hand sides are not
+//! required to be `Sync`.
 
-use crate::kernels::dense::{self, Lu, Mat};
-use crate::kernels::krylov::{Csr, SparseLu, SparseOrdering};
+use crate::kernels::dense::Lu;
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
+use crate::kernels::krylov::Csr;
+use crate::kernels::krylov::SparseLu;
+use crate::kernels::krylov::SparseOrdering;
 use crate::kernels::ode_stiff::JacobianFn;
 
 /// User-supplied sparse Jacobian `J(t, y)` of the right-hand side.
@@ -60,22 +71,25 @@ pub enum Jac {
 
 impl Jac {
     /// Calls `g(i, j, value)` for every stored entry.
-    pub fn for_each(&self, mut g: impl FnMut(usize, usize, f64)) {
+    pub fn for_each(
+        &self,
+        mut g: impl FnMut(usize, usize, f64),
+    ) {
         match self {
-            Self::Dense(m) => {
+            | Self::Dense(m) => {
                 for i in 0..m.rows {
                     for j in 0..m.cols {
                         g(i, j, m.at(i, j));
                     }
                 }
-            }
-            Self::Sparse(c) => {
+            },
+            | Self::Sparse(c) => {
                 for i in 0..c.rows {
                     for k in c.indptr[i]..c.indptr[i + 1] {
                         g(i, c.indices[k], c.values[k]);
                     }
                 }
-            }
+            },
         }
     }
 }
@@ -92,14 +106,17 @@ pub enum Mass<'a> {
 impl Mass<'_> {
     /// Matrix-vector product `M x`.
     #[must_use]
-    pub fn matvec(&self, x: &[f64]) -> Vec<f64> {
+    pub fn matvec(
+        &self,
+        x: &[f64],
+    ) -> Vec<f64> {
         match self {
-            Mass::Dense(m) => m.matvec(x),
-            Mass::Sparse(c) => {
+            | Mass::Dense(m) => m.matvec(x),
+            | Mass::Sparse(c) => {
                 let mut y = vec![0.0; c.rows];
                 c.matvec(x, &mut y);
                 y
-            }
+            },
         }
     }
 
@@ -118,8 +135,8 @@ impl Mass<'_> {
     #[must_use]
     pub const fn rows(&self) -> usize {
         match self {
-            Mass::Dense(m) => m.rows,
-            Mass::Sparse(c) => c.rows,
+            | Mass::Dense(m) => m.rows,
+            | Mass::Sparse(c) => c.rows,
         }
     }
 
@@ -127,15 +144,18 @@ impl Mass<'_> {
     #[must_use]
     pub const fn cols(&self) -> usize {
         match self {
-            Mass::Dense(m) => m.cols,
-            Mass::Sparse(c) => c.cols,
+            | Mass::Dense(m) => m.cols,
+            | Mass::Sparse(c) => c.cols,
         }
     }
 
     /// Calls `g(i, j, value)` for every nonzero entry.
-    pub fn for_each(&self, mut g: impl FnMut(usize, usize, f64)) {
+    pub fn for_each(
+        &self,
+        mut g: impl FnMut(usize, usize, f64),
+    ) {
         match self {
-            Mass::Dense(m) => {
+            | Mass::Dense(m) => {
                 for i in 0..m.rows {
                     for j in 0..m.cols {
                         let v = m.at(i, j);
@@ -144,21 +164,25 @@ impl Mass<'_> {
                         }
                     }
                 }
-            }
-            Mass::Sparse(c) => {
+            },
+            | Mass::Sparse(c) => {
                 for i in 0..c.rows {
                     for k in c.indptr[i]..c.indptr[i + 1] {
                         g(i, c.indices[k], c.values[k]);
                     }
                 }
-            }
+            },
         }
     }
 }
 
 /// Pattern of the band `-kl <= j - i <= ku` of an `n x n` matrix.
 #[must_use]
-pub fn band_pattern(n: usize, kl: usize, ku: usize) -> Csr {
+pub fn band_pattern(
+    n: usize,
+    kl: usize,
+    ku: usize,
+) -> Csr {
     let mut trip = Vec::new();
     for i in 0..n {
         let lo = i.saturating_sub(kl);
@@ -222,7 +246,10 @@ pub fn fd_jacobian_colored<F: Fn(f64, &[f64], &mut [f64])>(
 ) -> Csr {
     let n = y.len();
     let (color, ncolors) = colors;
-    let delta: Vec<f64> = y.iter().map(|v| f64::EPSILON.sqrt() * v.abs().max(1e-5)).collect();
+    let delta: Vec<f64> = y
+        .iter()
+        .map(|v| f64::EPSILON.sqrt() * v.abs().max(1e-5))
+        .collect();
     let mut cols_of: Vec<Vec<usize>> = vec![Vec::new(); *ncolors];
     for (j, &c) in color.iter().enumerate() {
         cols_of[c].push(j);
@@ -269,7 +296,12 @@ impl BandLu {
     /// outside the band are an error). Returns `None` when singular or when
     /// an entry lies outside the band.
     #[must_use]
-    pub fn factor(n: usize, kl: usize, ku: usize, trip: &[(usize, usize, f64)]) -> Option<Self> {
+    pub fn factor(
+        n: usize,
+        kl: usize,
+        ku: usize,
+        trip: &[(usize, usize, f64)],
+    ) -> Option<Self> {
         let w = 2 * kl + ku + 1;
         let mut a = vec![vec![0.0; w]; n];
         for &(i, j, v) in trip {
@@ -319,7 +351,10 @@ impl BandLu {
 
     /// Solves `A x = b`.
     #[must_use]
-    pub fn solve(&self, b: &[f64]) -> Vec<f64> {
+    pub fn solve(
+        &self,
+        b: &[f64],
+    ) -> Vec<f64> {
         let (n, kl, ku) = (self.n, self.kl, self.ku);
         let mut x = b.to_vec();
         for k in 0..n {
@@ -368,11 +403,14 @@ pub enum Factor {
 impl Factor {
     /// Solves the factored system.
     #[must_use]
-    pub fn solve(&self, b: &[f64]) -> Vec<f64> {
+    pub fn solve(
+        &self,
+        b: &[f64],
+    ) -> Vec<f64> {
         match self {
-            Self::Dense(l) => l.solve(b),
-            Self::Sparse(l) => l.solve(b),
-            Self::Band { lu, n, stages } => {
+            | Self::Dense(l) => l.solve(b),
+            | Self::Sparse(l) => l.solve(b),
+            | Self::Band { lu, n, stages } => {
                 if *stages <= 1 {
                     return lu.solve(b);
                 }
@@ -391,7 +429,7 @@ impl Factor {
                     }
                 }
                 x
-            }
+            },
         }
     }
 
@@ -407,15 +445,15 @@ impl Factor {
         band: (usize, usize),
     ) -> Option<Self> {
         match kind {
-            SolverKind::Dense => {
+            | SolverKind::Dense => {
                 let mut m = Mat::zeros(n * stages, n * stages);
                 for &(i, j, v) in trip {
                     let x = m.at(i, j);
                     m.set(i, j, x + v);
                 }
                 dense::lu_factor(&m).ok().map(Self::Dense)
-            }
-            SolverKind::Banded => {
+            },
+            | SolverKind::Banded => {
                 let (kl, ku) = band;
                 let s = stages;
                 let (kl2, ku2) = if s > 1 {
@@ -436,11 +474,11 @@ impl Factor {
                 };
                 let lu = BandLu::factor(n * s, kl2, ku2, &mapped)?;
                 Some(Self::Band { lu, n, stages })
-            }
-            SolverKind::Sparse => {
+            },
+            | SolverKind::Sparse => {
                 let c = Csr::from_triplets(n * stages, n * stages, trip);
                 c.sparse_lu(SparseOrdering::Amd).ok().map(Self::Sparse)
-            }
+            },
         }
     }
 }
@@ -470,20 +508,27 @@ impl<'a> JacobianProvider<'a> {
         sparse: Option<&'a SparseJacobianFn<'a>>,
     ) -> Option<Self> {
         let (kind, pattern, band) = match structure {
-            JacStructure::Dense if sparse.is_some() => (SolverKind::Sparse, None, (0, 0)),
-            JacStructure::Dense => (SolverKind::Dense, None, (0, 0)),
-            JacStructure::Banded { kl, ku } => {
+            | JacStructure::Dense if sparse.is_some() => (SolverKind::Sparse, None, (0, 0)),
+            | JacStructure::Dense => (SolverKind::Dense, None, (0, 0)),
+            | JacStructure::Banded { kl, ku } => {
                 (SolverKind::Banded, Some(band_pattern(n, kl, ku)), (kl, ku))
-            }
-            JacStructure::Sparse(p) => {
+            },
+            | JacStructure::Sparse(p) => {
                 if p.rows != n || p.cols != n {
                     return None;
                 }
                 (SolverKind::Sparse, Some(p.clone()), (0, 0))
-            }
+            },
         };
         let colors = pattern.as_ref().map(color_columns);
-        Some(Self { dense, sparse, kind, pattern, colors, band })
+        Some(Self {
+            dense,
+            sparse,
+            kind,
+            pattern,
+            colors,
+            band,
+        })
     }
 
     /// Evaluates the Jacobian at `(t, y)` with `f0 = f(t, y)`.
@@ -545,6 +590,79 @@ pub fn fd_jacobian_dense<F: Fn(f64, &[f64], &mut [f64])>(
     jac
 }
 
+/// Parallel [`fd_jacobian_dense`]: the columns are independent right-hand side evaluations, so they
+/// are computed concurrently (collected in column order; the result is bit-identical to the serial
+/// function).
+///
+/// Needs a `Sync` right-hand side and is worthwhile when `f` is expensive (a column costs one
+/// evaluation); below `n = 16` it runs sequentially.
+#[must_use]
+pub fn fd_jacobian_dense_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
+    f: &F,
+    t: f64,
+    y: &[f64],
+    f0: &[f64],
+) -> Mat {
+    let n = y.len();
+    let columns: Vec<Vec<f64>> = super::par::map_indexed(n, 16, |j| {
+        let dj = f64::EPSILON.sqrt() * y[j].abs().max(1e-5);
+        let mut yp = y.to_vec();
+        yp[j] = y[j] + dj;
+        let mut fp = vec![0.0; n];
+        f(t, &yp, &mut fp);
+        (0..n).map(|i| (fp[i] - f0[i]) / dj).collect()
+    });
+    let mut jac = Mat::zeros(n, n);
+    for (j, col) in columns.iter().enumerate() {
+        for (i, v) in col.iter().enumerate() {
+            jac.set(i, j, *v);
+        }
+    }
+    jac
+}
+
+/// Parallel [`fd_jacobian_colored`]: one evaluation per colour, the colours
+/// computed concurrently; identical to the serial result.
+#[must_use]
+pub fn fd_jacobian_colored_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
+    f: &F,
+    t: f64,
+    y: &[f64],
+    f0: &[f64],
+    pattern: &Csr,
+    colors: &(Vec<usize>, usize),
+    nfev: &mut usize,
+) -> Csr {
+    let n = y.len();
+    let (color, ncolors) = colors;
+    let delta: Vec<f64> = y
+        .iter()
+        .map(|v| f64::EPSILON.sqrt() * v.abs().max(1e-5))
+        .collect();
+    let mut cols_of: Vec<Vec<usize>> = vec![Vec::new(); *ncolors];
+    for (j, &c) in color.iter().enumerate() {
+        cols_of[c].push(j);
+    }
+    let diffs: Vec<Vec<f64>> = super::par::map_slice(&cols_of, 4, |cols| {
+        let mut yp = y.to_vec();
+        for &j in cols {
+            yp[j] = y[j] + delta[j];
+        }
+        let mut fp = vec![0.0; n];
+        f(t, &yp, &mut fp);
+        (0..n).map(|i| fp[i] - f0[i]).collect()
+    });
+    *nfev += *ncolors;
+    let mut out = pattern.clone();
+    for i in 0..pattern.rows {
+        for k in pattern.indptr[i]..pattern.indptr[i + 1] {
+            let j = pattern.indices[k];
+            out.values[k] = diffs[color[j]][i] / delta[j];
+        }
+    }
+    out
+}
+
 /// Assembles the triplets of the block system
 /// `sum over blocks (bi, bj) of  cm(bi, bj) M + cj(bi, bj) J` in stage-major
 /// numbering for `stages` blocks of size `n`.
@@ -567,12 +685,12 @@ pub fn block_triplets(
             let m = cm(bi, bj);
             if m != 0.0 {
                 match mass {
-                    Some(mm) => mm.for_each(|p, q, v| trip.push((bi * n + p, bj * n + q, m * v))),
-                    None => {
+                    | Some(mm) => mm.for_each(|p, q, v| trip.push((bi * n + p, bj * n + q, m * v))),
+                    | None => {
                         for p in 0..n {
                             trip.push((bi * n + p, bj * n + p, m));
                         }
-                    }
+                    },
                 }
             }
         }

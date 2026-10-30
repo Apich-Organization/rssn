@@ -43,8 +43,6 @@
 //! theory uses natural units. The Schwarzschild metric uses the signature
 //! `(-, +, +, +)` and coordinates `list(t, r, theta, phi)`.
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Facts;
@@ -59,23 +57,25 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 use super::calculus::derivative;
 use super::complex::complex;
+use super::functional::OpAlgebra;
 use super::functional::apply;
 use super::functional::functional;
 use super::functional::op_algebra;
-use super::functional::OpAlgebra;
 use super::geometry::geometry;
 use super::special::special;
 use super::variational::variational;
@@ -111,7 +111,10 @@ const CONSTANTS: [(&str, f64); 14] = [
 
 /// The value of a physical constant by name.
 fn constant_value(name: &str) -> f64 {
-    CONSTANTS.iter().find(|c| c.0 == name).map_or(f64::NAN, |c| c.1)
+    CONSTANTS
+        .iter()
+        .find(|c| c.0 == name)
+        .map_or(f64::NAN, |c| c.1)
 }
 
 macro_rules! constant_eval {
@@ -140,16 +143,35 @@ enum Request {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, eval) in constant_eval!(
-        "c_0", "hbar", "h_planck", "k_B", "epsilon_0", "mu_0", "G_N", "q_e", "m_e", "m_p", "N_A", "R_gas", "sigma_SB", "a_0"
+        "c_0",
+        "hbar",
+        "h_planck",
+        "k_B",
+        "epsilon_0",
+        "mu_0",
+        "G_N",
+        "q_e",
+        "m_e",
+        "m_p",
+        "N_A",
+        "R_gas",
+        "sigma_SB",
+        "a_0"
     ) {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
-        rule: "physics".to_owned(),
-        reason: "needs the functional analysis rule set",
+    let algebra = op_algebra(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "physics".to_owned(),
+            reason: "needs the functional analysis rule set",
+        }
     })?;
-    let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+    let heavy = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
     for (name, arity, request) in [
         ("energy_eigenvalue", 3, Request::Eigenvalue),
         ("poisson_bracket", 4, Request::PoissonBracket),
@@ -166,7 +188,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("partition_function", 2, Request::PartitionFunction),
     ] {
         let op = i.op(heavy(name, arity))?;
-        i.kernel(&format!("physics/{name}"), Tier::Reduce, Physics { op, request, algebra });
+        i.kernel(
+            &format!("physics/{name}"),
+            Tier::Reduce,
+            Physics { op, request, algebra },
+        );
     }
     i.define(&CLASSICAL)?;
     i.define(&ELECTROMAGNETISM)?;
@@ -332,12 +358,20 @@ impl Kernel for Physics {
             | Request::GeodesicAcceleration => geodesic_acceleration(cx, &args),
             | Request::Schwarzschild => schwarzschild(cx, &args),
             | Request::DiracGamma => {
-                let mu = cx.graph.number_of(*args.first().unwrap_or(&NodeId::NONE)).and_then(crate::graph::Number::to_i64);
-                mu.and_then(|mu| gamma_matrix(cx.graph, mu)).map(|g| matrix_term(cx.graph, &g))
+                let mu = cx
+                    .graph
+                    .number_of(*args.first().unwrap_or(&NodeId::NONE))
+                    .and_then(crate::graph::Number::to_i64);
+                mu.and_then(|mu| gamma_matrix(cx.graph, mu))
+                    .map(|g| matrix_term(cx.graph, &g))
             },
             | Request::DiracEquation => dirac_equation(cx, &args),
             | Request::KleinGordon => klein_gordon(cx, &args),
-            | Request::Slash => vector(cx.graph, args[0]).and_then(|p| slash(cx.graph, &p)).map(|m| matrix_term(cx.graph, &m)),
+            | Request::Slash => {
+                vector(cx.graph, args[0])
+                    .and_then(|p| slash(cx.graph, &p))
+                    .map(|m| matrix_term(cx.graph, &m))
+            },
             | Request::DiracAdjoint => dirac_adjoint(cx, args[0]),
             | Request::MinkowskiDot => minkowski_dot(cx.graph, args[0], args[1]),
             | Request::ScalarLagrangian => scalar_lagrangian(cx, &args),
@@ -409,10 +443,22 @@ fn eigenvalue(
     // Divide term by term after expanding, so that the wave function
     // cancels from every term on its own.
     let mut gens = Gens::default();
-    let terms = match from_term(cx.graph, &mut gens, h_psi, Limits { terms: 256, exponent: 8 }) {
+    let terms = match from_term(
+        cx.graph,
+        &mut gens,
+        h_psi,
+        Limits {
+            terms: 256,
+            exponent: 8,
+        },
+    ) {
         | Some(p) => {
             let expanded = to_term(cx.graph, &gens, &p);
-            if cx.graph.op(expanded) == core::ADD { cx.graph.children(expanded).to_vec() } else { vec![expanded] }
+            if cx.graph.op(expanded) == core::ADD {
+                cx.graph.children(expanded).to_vec()
+            } else {
+                vec![expanded]
+            }
         },
         | None => vec![h_psi],
     };
@@ -561,7 +607,11 @@ fn gamma_matrix(
     let (zero, one, minus_one) = (graph.int(0), graph.int(1), graph.int(-1));
     let minus_i = neg(graph, i);
     // Pauli blocks.
-    let sigma: [[NodeId; 4]; 3] = [[zero, one, one, zero], [zero, minus_i, i, zero], [one, zero, zero, minus_one]];
+    let sigma: [[NodeId; 4]; 3] = [
+        [zero, one, one, zero],
+        [zero, minus_i, i, zero],
+        [one, zero, zero, minus_one],
+    ];
     let negate = |graph: &mut Graph, n: NodeId| {
         if n == zero {
             zero
@@ -571,15 +621,22 @@ fn gamma_matrix(
         }
     };
     let rows = match mu {
-        | 0 => vec![
-            vec![one, zero, zero, zero],
-            vec![zero, one, zero, zero],
-            vec![zero, zero, minus_one, zero],
-            vec![zero, zero, zero, minus_one],
-        ],
+        | 0 => {
+            vec![
+                vec![one, zero, zero, zero],
+                vec![zero, one, zero, zero],
+                vec![zero, zero, minus_one, zero],
+                vec![zero, zero, zero, minus_one],
+            ]
+        },
         | 1..=3 => {
             let s = sigma[usize::try_from(mu - 1).ok()?];
-            let (n0, n1, n2, n3) = (negate(graph, s[0]), negate(graph, s[1]), negate(graph, s[2]), negate(graph, s[3]));
+            let (n0, n1, n2, n3) = (
+                negate(graph, s[0]),
+                negate(graph, s[1]),
+                negate(graph, s[2]),
+                negate(graph, s[3]),
+            );
             vec![
                 vec![zero, zero, s[0], s[1]],
                 vec![zero, zero, s[2], s[3]],
@@ -587,12 +644,14 @@ fn gamma_matrix(
                 vec![n2, n3, zero, zero],
             ]
         },
-        | 5 => vec![
-            vec![zero, zero, one, zero],
-            vec![zero, zero, zero, one],
-            vec![one, zero, zero, zero],
-            vec![zero, one, zero, zero],
-        ],
+        | 5 => {
+            vec![
+                vec![zero, zero, one, zero],
+                vec![zero, zero, zero, one],
+                vec![one, zero, zero, zero],
+                vec![zero, one, zero, zero],
+            ]
+        },
         | _ => return None,
     };
     Some(rows)
@@ -606,14 +665,18 @@ fn mat_vec(
 ) -> Vec<NodeId> {
     m.iter()
         .map(|row| {
-            #[allow(clippy::needless_collect)] // collect ends the shared borrow of `graph` before `mul` needs it mutably
+            #[allow(clippy::needless_collect)]
+            // collect ends the shared borrow of `graph` before `mul` needs it mutably
             let nonzero: Vec<(NodeId, NodeId)> = row
                 .iter()
                 .zip(v)
                 .filter(|&(&e, _)| graph.number_of(e).is_none_or(|n| !n.is_zero()))
                 .map(|(&e, &x)| (e, x))
                 .collect();
-            let terms: Vec<NodeId> = nonzero.into_iter().map(|(e, x)| mul(graph, &[e, x])).collect();
+            let terms: Vec<NodeId> = nonzero
+                .into_iter()
+                .map(|(e, x)| mul(graph, &[e, x]))
+                .collect();
             add(graph, &terms)
         })
         .collect()
@@ -631,7 +694,16 @@ fn slash(
     for (mu, &component) in p.iter().enumerate() {
         let gamma = gamma_matrix(graph, i64::try_from(mu).ok()?)?;
         let sign = graph.int(if mu == 0 { 1 } else { -1 });
-        sum.push(gamma.iter().map(|row| row.iter().map(|&e| mul(graph, &[sign, component, e])).collect()).collect());
+        sum.push(
+            gamma
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|&e| mul(graph, &[sign, component, e]))
+                        .collect()
+                })
+                .collect(),
+        );
     }
     let mut out = vec![vec![NodeId::NONE; 4]; 4];
     for (a, row) in out.iter_mut().enumerate() {
@@ -657,7 +729,11 @@ fn dirac_equation(
         return None;
     }
     let graph = &mut *cx.graph;
-    let (hbar, c, i) = (constant(graph, "hbar")?, constant(graph, "c_0")?, imaginary_unit(graph)?);
+    let (hbar, c, i) = (
+        constant(graph, "hbar")?,
+        constant(graph, "c_0")?,
+        imaginary_unit(graph)?,
+    );
     let mut total: Vec<NodeId> = Vec::new();
     for (mu, &x) in vars.iter().enumerate() {
         graph.symbol_of(x)?;
@@ -762,7 +838,11 @@ fn minkowski_dot(
         .enumerate()
         .map(|(k, (&x, &y))| {
             let product = mul(graph, &[x, y]);
-            if k == 0 { product } else { neg(graph, product) }
+            if k == 0 {
+                product
+            } else {
+                neg(graph, product)
+            }
         })
         .collect();
     Some(add(graph, &terms))
@@ -784,7 +864,11 @@ fn scalar_lagrangian(
         graph.symbol_of(x)?;
         let d = derivative(graph, phi, x)?;
         let square = powi(graph, d, 2);
-        terms.push(if k == 0 { square } else { neg(graph, square) });
+        terms.push(if k == 0 {
+            square
+        } else {
+            neg(graph, square)
+        });
     }
     let m2 = powi(graph, m, 2);
     let phi2 = powi(graph, phi, 2);
@@ -893,7 +977,11 @@ mod tests {
     ) {
         let (left, right) = (run(a), run(b));
         if left != right {
-            assert_eq!(run(&format!("({left}) - ({right})")), "0", "{a} = {left} != {b} = {right}");
+            assert_eq!(
+                run(&format!("({left}) - ({right})")),
+                "0",
+                "{a} = {left} != {b} = {right}"
+            );
         }
     }
 
@@ -912,34 +1000,64 @@ mod tests {
     #[test]
     fn classical_mechanics() {
         same("kinetic_energy(m, v)", "m*v^2/2");
-        same("potential_energy_gravity_universal(m1, m2, r, G_N)", "-G_N*m1*m2/r");
-        same("lagrangian(kinetic_energy(m, v), potential_energy_spring(k, x))", "m*v^2/2 - k*x^2/2");
+        same(
+            "potential_energy_gravity_universal(m1, m2, r, G_N)",
+            "-G_N*m1*m2/r",
+        );
+        same(
+            "lagrangian(kinetic_energy(m, v), potential_energy_spring(k, x))",
+            "m*v^2/2 - k*x^2/2",
+        );
         same("torque(list(1, 0, 0), list(0, 1, 0))", "list(0, 0, 1)");
         same("work_constant_force(list(F, 0, 0), list(d, 0, 0))", "F*d");
-        same("kinematics(list(t^2, 3*t, 0), t)", "list(list(t^2, 3*t, 0), list(2*t, 3, 0), list(2, 0, 0))");
+        same(
+            "kinematics(list(t^2, 3*t, 0), t)",
+            "list(list(t^2, 3*t, 0), list(2*t, 3, 0), list(2, 0, 0))",
+        );
         same(
             "euler_lagrange_equation(lagrangian(kinetic_energy(m, diff(q(t), t)), potential_energy_spring(k, q(t))), q(t), t)",
             "k*q(t) + m*diff(diff(q(t), t), t)",
         );
         same("poisson_bracket(x, p, x, p)", "1");
         same("poisson_bracket(x^2*p, p^2, x, p)", "4*x*p^2");
-        same("poisson_bracket(x1*p2, x2*p1, list(x1, x2), list(p1, p2))", "x2*p2 - x1*p1");
-        same("hamilton_equations(p^2/(2*m) + k*x^2/2, x, p)", "list(p/m, -k*x)");
+        same(
+            "poisson_bracket(x1*p2, x2*p1, list(x1, x2), list(p1, p2))",
+            "x2*p2 - x1*p1",
+        );
+        same(
+            "hamilton_equations(p^2/(2*m) + k*x^2/2, x, p)",
+            "list(p/m, -k*x)",
+        );
     }
 
     #[test]
     fn electromagnetism() {
         // A uniform field: E = -grad(-E0 x) = (E0, 0, 0).
-        same("electric_field_from_potential(-E0*x, list(x, y, z))", "list(E0, 0, 0)");
-        same("magnetic_field_from_vector_potential(list(-y/2, x/2, 0), list(x, y, z))", "list(0, 0, 1)");
-        same("lorentz_force(q, list(0, 0, 0), list(v, 0, 0), list(0, 0, B))", "list(0, -B*q*v, 0)");
+        same(
+            "electric_field_from_potential(-E0*x, list(x, y, z))",
+            "list(E0, 0, 0)",
+        );
+        same(
+            "magnetic_field_from_vector_potential(list(-y/2, x/2, 0), list(x, y, z))",
+            "list(0, 0, 1)",
+        );
+        same(
+            "lorentz_force(q, list(0, 0, 0), list(v, 0, 0), list(0, 0, B))",
+            "list(0, -B*q*v, 0)",
+        );
         // A plane wave in vacuum satisfies the source-free equations
         // when its speed is 1/sqrt(epsilon_0 mu_0).
         let maxwell = run(
             "maxwell_equations(list(0, cos(z - w*t), 0), list(-cos(z - w*t)/w, 0, 0), 0, list(0, 0, 0), list(x, y, z), t)",
         );
-        assert!(maxwell.starts_with("list(0, 0, list(0, 0, 0), list(0, "), "{maxwell}");
-        same("poynting_vector(list(Ex, 0, 0), list(0, B, 0))", "list(0, 0, B*Ex/mu_0)");
+        assert!(
+            maxwell.starts_with("list(0, 0, list(0, 0, 0), list(0, "),
+            "{maxwell}"
+        );
+        same(
+            "poynting_vector(list(Ex, 0, 0), list(0, B, 0))",
+            "list(0, 0, B*Ex/mu_0)",
+        );
         same("coulomb_force(q, q, r)", "q^2/(4*pi*epsilon_0*r^2)");
     }
 
@@ -953,7 +1071,10 @@ mod tests {
         same("schwarzschild_radius(M)", "2*G_N*M/c_0^2");
         // The flat limit of the Schwarzschild metric.
         let g = run("schwarzschild_metric(0, list(t, r, theta, phi))");
-        assert_eq!(g, "list(list(-c_0^2, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, r^2, 0), list(0, 0, 0, r^2*sin(theta)^2))");
+        assert_eq!(
+            g,
+            "list(list(-c_0^2, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, r^2, 0), list(0, 0, 0, r^2*sin(theta)^2))"
+        );
         // Geodesics of the plane in polar coordinates: a_r = r θ'^2.
         same(
             "geodesic_acceleration(christoffel(list(list(1, 0), list(0, r^2)), list(r, theta)), list(u, v))",
@@ -963,41 +1084,97 @@ mod tests {
 
     #[test]
     fn quantum_operators() {
-        same("qm_apply(momentum_operator(x), exp(I*k*x))", "hbar*k*exp(k*x*I)");
-        same("commutator(position_operator(x), momentum_operator(x), f(x))", "hbar*f(x)*I");
-        same("matrix_commutator(pauli_x, pauli_y)", "list(list(2*I, 0), list(0, -2*I))");
+        same(
+            "qm_apply(momentum_operator(x), exp(I*k*x))",
+            "hbar*k*exp(k*x*I)",
+        );
+        same(
+            "commutator(position_operator(x), momentum_operator(x), f(x))",
+            "hbar*f(x)*I",
+        );
+        same(
+            "matrix_commutator(pauli_x, pauli_y)",
+            "list(list(2*I, 0), list(0, -2*I))",
+        );
         same("probability_density(exp(I*k*x))", "1");
         // The ground state of the harmonic oscillator.
         let psi = "exp(-m*w*x^2/(2*hbar))";
-        same(&format!("energy_eigenvalue(hamiltonian_harmonic_oscillator(m, w, x), {psi}, x)"), "hbar*w/2");
-        same(&format!("time_independent_schrodinger_equation(hamiltonian_harmonic_oscillator(m, w, x), {psi}, hbar*w/2)"), "0");
+        same(
+            &format!("energy_eigenvalue(hamiltonian_harmonic_oscillator(m, w, x), {psi}, x)"),
+            "hbar*w/2",
+        );
+        same(
+            &format!(
+                "time_independent_schrodinger_equation(hamiltonian_harmonic_oscillator(m, w, x), {psi}, hbar*w/2)"
+            ),
+            "0",
+        );
         // Expectation values with a normalised Gaussian.
-        same("expectation_value(position_operator(x^2), exp(-a*x^2), x)", "1/(4*a)");
-        same("expectation_value(momentum_operator(x), exp(-a*x^2), x)", "0");
-        same("uncertainty(position_operator(x), exp(-a*x^2), x)", "1/(2*a^(1/2))");
+        same(
+            "expectation_value(position_operator(x^2), exp(-a*x^2), x)",
+            "1/(4*a)",
+        );
+        same(
+            "expectation_value(momentum_operator(x), exp(-a*x^2), x)",
+            "0",
+        );
+        same(
+            "uncertainty(position_operator(x), exp(-a*x^2), x)",
+            "1/(2*a^(1/2))",
+        );
         same("braket(exp(-x^2/2), exp(-x^2/2), x)", "pi^(1/2)");
     }
 
     #[test]
     fn spin_and_dirac_algebra() {
-        same("spin_operator(pauli_z)", "list(list(hbar/2, 0), list(0, -hbar/2))");
+        same(
+            "spin_operator(pauli_z)",
+            "list(list(hbar/2, 0), list(0, -hbar/2))",
+        );
         // γ⁰γ⁰ = 1, {γ¹, γ¹} = -2.
         same("matmul(dirac_gamma(0), dirac_gamma(0))", "identity(4)");
-        same("matrix_anticommutator(dirac_gamma(1), dirac_gamma(1))", "smul(-2, identity(4))");
-        same("matrix_anticommutator(dirac_gamma(0), dirac_gamma(2))", "zeros(4, 4)");
-        same("feynman_slash(list(en, 0, 0, 0))", "smul(en, dirac_gamma(0))");
-        same("minkowski_dot(list(en, p, 0, 0), list(en, p, 0, 0))", "en^2 - p^2");
+        same(
+            "matrix_anticommutator(dirac_gamma(1), dirac_gamma(1))",
+            "smul(-2, identity(4))",
+        );
+        same(
+            "matrix_anticommutator(dirac_gamma(0), dirac_gamma(2))",
+            "zeros(4, 4)",
+        );
+        same(
+            "feynman_slash(list(en, 0, 0, 0))",
+            "smul(en, dirac_gamma(0))",
+        );
+        same(
+            "minkowski_dot(list(en, p, 0, 0), list(en, p, 0, 0))",
+            "en^2 - p^2",
+        );
         // A spinor at rest: (iħ/c ∂_t - m c) e^(-i m c² t / ħ) (1, 0, 0, 0) = 0.
-        same("dirac_equation(list(exp(-I*m*c_0^2*t/hbar), 0, 0, 0), m, list(t, x))", "list(0, 0, 0, 0)");
+        same(
+            "dirac_equation(list(exp(-I*m*c_0^2*t/hbar), 0, 0, 0), m, list(t, x))",
+            "list(0, 0, 0, 0)",
+        );
         // A plane wave with the relativistic dispersion relation.
-        same("klein_gordon_equation(exp(I*(k*x - (c_0^2*k^2 + m^2*c_0^4/hbar^2)^(1/2)*t)), m, list(t, x))", "0");
-        same("dirac_adjoint(list(a1, a2, a3, a4))", "list(conj(a1), conj(a2), -conj(a3), -conj(a4))");
-        same("scalar_field_lagrangian(f(t, x), m, list(t, x))", "(diff(f(t, x), t)^2 - diff(f(t, x), x)^2 - m^2*f(t, x)^2)/2");
+        same(
+            "klein_gordon_equation(exp(I*(k*x - (c_0^2*k^2 + m^2*c_0^4/hbar^2)^(1/2)*t)), m, list(t, x))",
+            "0",
+        );
+        same(
+            "dirac_adjoint(list(a1, a2, a3, a4))",
+            "list(conj(a1), conj(a2), -conj(a3), -conj(a4))",
+        );
+        same(
+            "scalar_field_lagrangian(f(t, x), m, list(t, x))",
+            "(diff(f(t, x), t)^2 - diff(f(t, x), x)^2 - m^2*f(t, x)^2)/2",
+        );
     }
 
     #[test]
     fn solid_state() {
-        same("lattice_volume(list(a, 0, 0), list(0, a, 0), list(0, 0, a))", "a^3");
+        same(
+            "lattice_volume(list(a, 0, 0), list(0, a, 0), list(0, 0, a))",
+            "a^3",
+        );
         same(
             "reciprocal_lattice_vectors(list(a, 0, 0), list(0, a, 0), list(0, 0, a))",
             "list(list(2*pi/a, 0, 0), list(0, 2*pi/a, 0), list(0, 0, 2*pi/a))",
@@ -1014,7 +1191,10 @@ mod tests {
     #[test]
     fn thermodynamics() {
         same("carnot_efficiency(300, 600)", "1/2");
-        same("gibbs_free_energy(enthalpy(U, P, V), T, S)", "U + P*V - T*S");
+        same(
+            "gibbs_free_energy(enthalpy(U, P, V), T, S)",
+            "U + P*V - T*S",
+        );
         same("verify_maxwell_relation_helmholtz(T^2*ln(V), T, V)", "0");
         same("partition_function(list(0, en), T)", "1 + exp(-en/(k_B*T))");
         // Two-level system: U = k T² ∂ ln Z / ∂T.
@@ -1041,56 +1221,113 @@ mod tests {
         relative: f64,
         what: &str,
     ) {
-        assert!((got - want).abs() <= relative * want.abs().max(1e-300), "{what}: {got} vs {want}");
+        assert!(
+            (got - want).abs() <= relative * want.abs().max(1e-300),
+            "{what}: {got} vs {want}"
+        );
     }
 
     #[test]
     fn newtonian_formula_library() {
         same("newtons_second_law(m, a)", "m*a");
         // F = -dV/dh for V = m g h.
-        same("-diff(potential_energy_gravity_uniform(m, h, g), h)", "-m*g");
+        same(
+            "-diff(potential_energy_gravity_uniform(m, h, g), h)",
+            "-m*g",
+        );
         // Newton's law with the centripetal acceleration of a circular orbit.
-        same("newtons_second_law(m, centripetal_acceleration(v, r))", "m*v^2/r");
+        same(
+            "newtons_second_law(m, centripetal_acceleration(v, r))",
+            "m*v^2/r",
+        );
         close(
-            value_at("centripetal_acceleration((G_N*M/r)^(1/2), r)", &[("M", 5.972e24), ("r", 7.0e6)]),
-            value_at("gravitational_force(1, M, r)", &[("M", 5.972e24), ("r", 7.0e6)]),
+            value_at(
+                "centripetal_acceleration((G_N*M/r)^(1/2), r)",
+                &[("M", 5.972e24), ("r", 7.0e6)],
+            ),
+            value_at(
+                "gravitational_force(1, M, r)",
+                &[("M", 5.972e24), ("r", 7.0e6)],
+            ),
             1e-12,
             "circular orbit",
         );
         // I = m r², T = I w²/2 equals the translational energy of v = r w.
         same("moment_of_inertia_point_mass(m, r)", "m*r^2");
-        same("rotational_kinetic_energy(moment_of_inertia_point_mass(m, r), w)", "m*r^2*w^2/2");
-        same("rotational_kinetic_energy(moment_of_inertia_point_mass(m, r), w)", "kinetic_energy(m, r*w)");
+        same(
+            "rotational_kinetic_energy(moment_of_inertia_point_mass(m, r), w)",
+            "m*r^2*w^2/2",
+        );
+        same(
+            "rotational_kinetic_energy(moment_of_inertia_point_mass(m, r), w)",
+            "kinetic_energy(m, r*w)",
+        );
         // L = r × p; for a circular path of radius r and speed v, |L| = m r v and L = I w.
-        same("angular_momentum(list(r, 0, 0), list(0, p, 0))", "list(0, 0, p*r)");
-        same("angular_momentum(list(r, 0, 0), list(0, m*r*w, 0))", "list(0, 0, moment_of_inertia_point_mass(m, r)*w)");
+        same(
+            "angular_momentum(list(r, 0, 0), list(0, p, 0))",
+            "list(0, 0, p*r)",
+        );
+        same(
+            "angular_momentum(list(r, 0, 0), list(0, m*r*w, 0))",
+            "list(0, 0, moment_of_inertia_point_mass(m, r)*w)",
+        );
         // A central momentum has no angular momentum.
-        same("angular_momentum(list(r, 0, 0), list(p, 0, 0))", "list(0, 0, 0)");
+        same(
+            "angular_momentum(list(r, 0, 0), list(p, 0, 0))",
+            "list(0, 0, 0)",
+        );
         // H = T + V and Hamilton's equations for the spring.
-        same("hamiltonian(kinetic_energy(m, p/m), potential_energy_spring(k, x))", "p^2/(2*m) + k*x^2/2");
-        same("hamilton_equations(hamiltonian(kinetic_energy(m, p/m), potential_energy_spring(k, x)), x, p)", "list(p/m, -k*x)");
+        same(
+            "hamiltonian(kinetic_energy(m, p/m), potential_energy_spring(k, x))",
+            "p^2/(2*m) + k*x^2/2",
+        );
+        same(
+            "hamilton_equations(hamiltonian(kinetic_energy(m, p/m), potential_energy_spring(k, x)), x, p)",
+            "list(p/m, -k*x)",
+        );
     }
 
     #[test]
     fn work_along_a_curve() {
         // The circulation of (-y, x) around the unit circle is 2π.
-        same("work_line_integral(list(-y, x), list(cos(t), sin(t)), t, 0, 2*pi)", "2*pi");
+        same(
+            "work_line_integral(list(-y, x), list(cos(t), sin(t)), t, 0, 2*pi)",
+            "2*pi",
+        );
         // A constant force along a straight segment is F d.
         same("work_line_integral(list(F, 0), list(t, 0), t, 0, d)", "F*d");
         // Gravity raising a mass by h does -m g h, minus the potential gained.
-        same("work_line_integral(list(0, -m*g), list(0, t), t, 0, h)", "-potential_energy_gravity_uniform(m, h, g)");
+        same(
+            "work_line_integral(list(0, -m*g), list(0, t), t, 0, h)",
+            "-potential_energy_gravity_uniform(m, h, g)",
+        );
     }
 
     #[test]
     fn electromagnetic_formula_library() {
         // Static: E = -grad V.
-        same("electric_field_from_potentials(-E0*x, list(0, 0, 0), list(x, y, z), t)", "list(E0, 0, 0)");
+        same(
+            "electric_field_from_potentials(-E0*x, list(0, 0, 0), list(x, y, z), t)",
+            "list(E0, 0, 0)",
+        );
         // Induction: E = -dA/dt.
-        same("electric_field_from_potentials(0, list(-E0*t, 0, 0), list(x, y, z), t)", "list(E0, 0, 0)");
-        same("electric_field_from_potentials(-E0*x, list(-E0*t, 0, 0), list(x, y, z), t)", "list(2*E0, 0, 0)");
+        same(
+            "electric_field_from_potentials(0, list(-E0*t, 0, 0), list(x, y, z), t)",
+            "list(E0, 0, 0)",
+        );
+        same(
+            "electric_field_from_potentials(-E0*x, list(-E0*t, 0, 0), list(x, y, z), t)",
+            "list(2*E0, 0, 0)",
+        );
         // Energy density of a pure electric and a pure magnetic field.
-        same("em_energy_density(list(Ex, 0, 0), list(0, 0, 0))", "epsilon_0*Ex^2/2");
-        same("em_energy_density(list(0, 0, 0), list(0, B, 0))", "B^2/(2*mu_0)");
+        same(
+            "em_energy_density(list(Ex, 0, 0), list(0, 0, 0))",
+            "epsilon_0*Ex^2/2",
+        );
+        same(
+            "em_energy_density(list(0, 0, 0), list(0, B, 0))",
+            "B^2/(2*mu_0)",
+        );
         // In a vacuum plane wave (|E| = c |B|) the electric and magnetic halves are equal
         // and u c = |S|, which gives u c² μ₀ = 1 for |E| = 1.
         close(
@@ -1099,16 +1336,32 @@ mod tests {
             1e-9,
             "equipartition",
         );
-        close(value("em_energy_density(list(1, 0, 0), list(0, 1/c_0, 0)) * c_0^2 * mu_0"), 1.0, 1e-12, "u c^2 mu_0");
+        close(
+            value("em_energy_density(list(1, 0, 0), list(0, 1/c_0, 0)) * c_0^2 * mu_0"),
+            1.0,
+            1e-12,
+            "u c^2 mu_0",
+        );
         // Coulomb's law on the x axis, and the radial field of a point charge.
-        same("coulombs_law(q, list(r, 0, 0))", "list(q/(4*pi*epsilon_0*r^2), 0, 0)");
-        same("coulombs_law(q, list(0, 0, r))", "list(0, 0, q/(4*pi*epsilon_0*r^2))");
+        same(
+            "coulombs_law(q, list(r, 0, 0))",
+            "list(q/(4*pi*epsilon_0*r^2), 0, 0)",
+        );
+        same(
+            "coulombs_law(q, list(0, 0, r))",
+            "list(0, 0, q/(4*pi*epsilon_0*r^2))",
+        );
         let at = [("q", 1.0e-9), ("x", 0.3), ("y", -0.4), ("z", 1.2)];
         let direction = "list(2, 3, 5)";
         // E = -grad V of the point-charge potential.
-        let coulomb = value_at(&format!("dot(coulombs_law(q, list(x, y, z)), {direction})"), &at);
+        let coulomb = value_at(
+            &format!("dot(coulombs_law(q, list(x, y, z)), {direction})"),
+            &at,
+        );
         let from_potential = value_at(
-            &format!("dot(electric_field_from_potential(point_charge_potential(q, (x^2 + y^2 + z^2)^(1/2)), list(x, y, z)), {direction})"),
+            &format!(
+                "dot(electric_field_from_potential(point_charge_potential(q, (x^2 + y^2 + z^2)^(1/2)), list(x, y, z)), {direction})"
+            ),
             &at,
         );
         close(coulomb, from_potential, 1e-9, "E = -grad V");
@@ -1125,24 +1378,50 @@ mod tests {
         same("qcd_lagrangian(0, psi, G, m, gs)", "-G_mu_nu_a^2/4");
         // The mass term is -m ψ̄ψ, the coupling is ∓ e ψ̄ γ^μ A_μ ψ for QED, + g_s for QCD.
         same("diff(qed_lagrangian(pb, p, A, m, e), m)", "-pb*p");
-        same("diff(qed_lagrangian(pb, p, A, m, e), e)", "-pb*gamma_mu*A*p");
+        same(
+            "diff(qed_lagrangian(pb, p, A, m, e), e)",
+            "-pb*gamma_mu*A*p",
+        );
         same("diff(qcd_lagrangian(pb, p, G, m, gs), m)", "-pb*p");
-        same("diff(qcd_lagrangian(pb, p, G, m, gs), gs)", "pb*gamma_mu*G*p");
+        same(
+            "diff(qcd_lagrangian(pb, p, G, m, gs), gs)",
+            "pb*gamma_mu*G*p",
+        );
         // The propagator is the inverse of (p² - m² + iε) times i.
         same("propagator(p, m)*(p^2 - m^2 + I*epsilon)", "I");
         // It has the pole at p² = m²: the real part of the denominator vanishes there.
         same("propagator(m, m)*(I*epsilon)", "I");
         // σ = |M|² dΦ / flux.
-        close(value("scattering_cross_section(3, 2, 5)"), 22.5, 1e-12, "real amplitude");
-        close(value("scattering_cross_section(2*I, 1, 1)"), 4.0, 1e-12, "|2i|^2");
+        close(
+            value("scattering_cross_section(3, 2, 5)"),
+            22.5,
+            1e-12,
+            "real amplitude",
+        );
+        close(
+            value("scattering_cross_section(2*I, 1, 1)"),
+            4.0,
+            1e-12,
+            "|2i|^2",
+        );
         same("scattering_cross_section(M, F, d)", "abs(M)^2*d/F");
         // The position-space propagator is the Fourier integral of the momentum-space one.
         // The integral itself is not elementary, so check that the two terms are one e-class.
         let mut g = Graph::new();
         let engine = Engine::install(&mut g, &[physics()]).unwrap_or_else(|e| panic!("{e}"));
-        let named = g.parse("feynman_propagator_position_space(x, y, m)").unwrap_or_else(|e| panic!("{e}"));
-        let written = g.parse("defint(propagator(p, m)*exp(-I*p*(x - y)), p, -oo, oo)").unwrap_or_else(|e| panic!("{e}"));
-        engine.run(&mut g, &[named, written], &Env::symbolic(), &Saturate, &Budget::default());
+        let named = g
+            .parse("feynman_propagator_position_space(x, y, m)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let written = g
+            .parse("defint(propagator(p, m)*exp(-I*p*(x - y)), p, -oo, oo)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        engine.run(
+            &mut g,
+            &[named, written],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
         assert_eq!(g.find(named), g.find(written));
     }
 
@@ -1153,15 +1432,33 @@ mod tests {
         same("braket_on(sin(x), sin(x), x, 0, pi)", "pi/2");
         same("braket_on(sin(x), cos(x), x, 0, pi)", "0");
         same("braket_on(exp(I*k*x), exp(I*k*x), x, 0, a)", "a");
-        same("braket_on(exp(-x^2/2), exp(-x^2/2), x, -oo, oo)", "braket(exp(-x^2/2), exp(-x^2/2), x)");
+        same(
+            "braket_on(exp(-x^2/2), exp(-x^2/2), x, -oo, oo)",
+            "braket(exp(-x^2/2), exp(-x^2/2), x)",
+        );
         // A plane wave is an eigenfunction of the free Hamiltonian, E = ħ²k²/2m.
-        same("qm_apply(hamiltonian_free_particle(m, x), exp(I*k*x))", "hbar^2*k^2*exp(I*k*x)/(2*m)");
-        same("energy_eigenvalue(hamiltonian_free_particle(m, x), exp(I*k*x), x)", "hbar^2*k^2/(2*m)");
+        same(
+            "qm_apply(hamiltonian_free_particle(m, x), exp(I*k*x))",
+            "hbar^2*k^2*exp(I*k*x)/(2*m)",
+        );
+        same(
+            "energy_eigenvalue(hamiltonian_free_particle(m, x), exp(I*k*x), x)",
+            "hbar^2*k^2/(2*m)",
+        );
         // L_z e^{inφ} = n ħ e^{inφ}.
-        same("qm_apply(angular_momentum_z(phi), exp(I*k*phi))", "hbar*k*exp(I*k*phi)");
-        same("energy_eigenvalue(angular_momentum_z(phi), exp(I*k*phi), phi)", "hbar*k");
+        same(
+            "qm_apply(angular_momentum_z(phi), exp(I*k*phi))",
+            "hbar*k*exp(I*k*phi)",
+        );
+        same(
+            "energy_eigenvalue(angular_momentum_z(phi), exp(I*k*phi), phi)",
+            "hbar*k",
+        );
         // The Pauli matrices and their algebra.
-        same("pauli_matrices", "list(list(list(0, 1), list(1, 0)), list(list(0, -I), list(I, 0)), list(list(1, 0), list(0, -1)))");
+        same(
+            "pauli_matrices",
+            "list(list(list(0, 1), list(1, 0)), list(list(0, -I), list(I, 0)), list(list(1, 0), list(0, -1)))",
+        );
         same("matmul(pauli_x, pauli_y)", "smul(I, pauli_z)");
         same("matmul(pauli_y, pauli_z)", "smul(I, pauli_x)");
         same("matmul(pauli_z, pauli_x)", "smul(I, pauli_y)");
@@ -1170,30 +1467,68 @@ mod tests {
         }
         // The ground state of the oscillator: (E, psi).
         let psi = "exp(-m*w*x^2/(2*hbar))";
-        same(&format!("solve_time_independent_schrodinger(hamiltonian_harmonic_oscillator(m, w, x), {psi}, x)"), &format!("list(hbar*w/2, {psi})"));
+        same(
+            &format!(
+                "solve_time_independent_schrodinger(hamiltonian_harmonic_oscillator(m, w, x), {psi}, x)"
+            ),
+            &format!("list(hbar*w/2, {psi})"),
+        );
         // The free-particle plane wave solves the time-dependent equation.
-        same("time_dependent_schrodinger_equation(hamiltonian_free_particle(m, x), exp(I*(k*x - hbar*k^2*t/(2*m))), t)", "0");
+        same(
+            "time_dependent_schrodinger_equation(hamiltonian_free_particle(m, x), exp(I*(k*x - hbar*k^2*t/(2*m))), t)",
+            "0",
+        );
         // A wave that does not have the dispersion relation does not.
-        let wrong = run("time_dependent_schrodinger_equation(hamiltonian_free_particle(m, x), exp(I*(k*x - w*t)), t)");
+        let wrong = run(
+            "time_dependent_schrodinger_equation(hamiltonian_free_particle(m, x), exp(I*(k*x - w*t)), t)",
+        );
         assert_ne!(wrong, "0");
         // A stationary state picks up exp(-iEt/ħ).
-        same("time_dependent_schrodinger_equation(hamiltonian_harmonic_oscillator(m, w, x), exp(-m*w*x^2/(2*hbar) - I*w*t/2), t)", "0");
+        same(
+            "time_dependent_schrodinger_equation(hamiltonian_harmonic_oscillator(m, w, x), exp(-m*w*x^2/(2*hbar) - I*w*t/2), t)",
+            "0",
+        );
         // First-order perturbation theory: <x²> = 1/4a, <x⁴> = 3/16a² for exp(-a x²), and odd perturbations vanish.
-        same("first_order_energy_correction(op_mul(x^2), exp(-a*x^2), x)", "1/(4*a)");
-        same("first_order_energy_correction(op_mul(c*x^4), exp(-a*x^2), x)", "3*c/(16*a^2)");
-        same("first_order_energy_correction(op_mul(c*x), exp(-a*x^2), x)", "0");
+        same(
+            "first_order_energy_correction(op_mul(x^2), exp(-a*x^2), x)",
+            "1/(4*a)",
+        );
+        same(
+            "first_order_energy_correction(op_mul(c*x^4), exp(-a*x^2), x)",
+            "3*c/(16*a^2)",
+        );
+        same(
+            "first_order_energy_correction(op_mul(c*x), exp(-a*x^2), x)",
+            "0",
+        );
         // The Born matrix element <f|V|i>.
-        same("scattering_amplitude(exp(-x^2/2), x*exp(-x^2/2), op_mul(x), x)", "pi^(1/2)/2");
-        same("scattering_amplitude(exp(-x^2/2), x*exp(-x^2/2), op_identity, x)", "0");
+        same(
+            "scattering_amplitude(exp(-x^2/2), x*exp(-x^2/2), op_mul(x), x)",
+            "pi^(1/2)/2",
+        );
+        same(
+            "scattering_amplitude(exp(-x^2/2), x*exp(-x^2/2), op_identity, x)",
+            "0",
+        );
     }
 
     #[test]
     fn relativistic_formula_library() {
         // The Doppler shift of a receding source: f sqrt((1 - β)/(1 + β)), 1/2 at β = 3/5.
         same("doppler_effect(f, 0)", "f");
-        close(value("doppler_effect(1, 0.6*c_0)"), 0.5, 1e-12, "beta = 0.6");
+        close(
+            value("doppler_effect(1, 0.6*c_0)"),
+            0.5,
+            1e-12,
+            "beta = 0.6",
+        );
         // An approaching source is the inverse shift.
-        close(value("doppler_effect(1, 0.6*c_0) * doppler_effect(1, -0.6*c_0)"), 1.0, 1e-12, "recede x approach");
+        close(
+            value("doppler_effect(1, 0.6*c_0) * doppler_effect(1, -0.6*c_0)"),
+            1.0,
+            1e-12,
+            "recede x approach",
+        );
         // Two successive shifts compose through the relativistic velocity addition.
         close(
             value("doppler_effect(doppler_effect(1, 0.3*c_0), 0.4*c_0)"),
@@ -1203,31 +1538,58 @@ mod tests {
         );
         // Gravitational time dilation: sqrt(1 - r_s/r).
         same("gravitational_time_dilation(t, r, 0)", "t");
-        close(value("gravitational_time_dilation(1, 2*schwarzschild_radius(5), 5)"), 0.5_f64.sqrt(), 1e-12, "r = 2 r_s");
+        close(
+            value("gravitational_time_dilation(1, 2*schwarzschild_radius(5), 5)"),
+            0.5_f64.sqrt(),
+            1e-12,
+            "r = 2 r_s",
+        );
         assert!(value("gravitational_time_dilation(1, schwarzschild_radius(5), 5)").abs() < 1e-12);
         // Weak field, Earth's surface: 1 - GM/(c² r).
         let weak = value("gravitational_time_dilation(1, 6.371e6, 5.972e24)");
         let first_order = 1.0 - 6.674_30e-11 * 5.972e24 / (299_792_458.0_f64.powi(2) * 6.371e6);
-        assert!((weak - first_order).abs() < 1e-12, "{weak} vs {first_order}");
+        assert!(
+            (weak - first_order).abs() < 1e-12,
+            "{weak} vs {first_order}"
+        );
         // G = Ric - R g / 2 with R = tr Ric; in two dimensions tr G = 0.
-        same("einstein_tensor_from(list(list(2, 0), list(0, 3)), 5, identity(2))", "list(list(-1/2, 0), list(0, 1/2))");
+        same(
+            "einstein_tensor_from(list(list(2, 0), list(0, 3)), 5, identity(2))",
+            "list(list(-1/2, 0), list(0, 1/2))",
+        );
         // On a 2-sphere the Einstein tensor vanishes identically.
         let sphere = "list(list(a^2, 0), list(0, a^2*sin(theta)^2))";
         let vars = "list(theta, phi)";
-        let g = run(&format!("einstein_tensor_from(ricci({sphere}, {vars}), ricci_scalar({sphere}, {vars}), {sphere})"));
+        let g = run(&format!(
+            "einstein_tensor_from(ricci({sphere}, {vars}), ricci_scalar({sphere}, {vars}), {sphere})"
+        ));
         assert_eq!(g, "list(list(0, 0), list(0, 0))");
-        same(&format!("einstein_tensor_from(ricci({sphere}, {vars}), ricci_scalar({sphere}, {vars}), {sphere})"), &format!("einstein({sphere}, {vars})"));
+        same(
+            &format!(
+                "einstein_tensor_from(ricci({sphere}, {vars}), ricci_scalar({sphere}, {vars}), {sphere})"
+            ),
+            &format!("einstein({sphere}, {vars})"),
+        );
     }
 
     #[test]
     fn solid_state_formula_library() {
         // Bloch's theorem: ψ(r + R) = e^{ik·R} ψ(r) for a lattice-periodic u.
-        same("bloch_wave(list(k), list(x + a), 2)/bloch_wave(list(k), list(x), 2)", "exp(I*k*a)");
+        same(
+            "bloch_wave(list(k), list(x + a), 2)/bloch_wave(list(k), list(x), 2)",
+            "exp(I*k*a)",
+        );
         same("bloch_wave(list(kx, ky, kz), list(0, 0, 0), u0)", "u0");
         // The modulus is that of u: |ψ|² = u².
-        same("probability_density(bloch_wave(list(k), list(x), cos(x)))", "cos(x)^2");
+        same(
+            "probability_density(bloch_wave(list(k), list(x), cos(x)))",
+            "cos(x)^2",
+        );
         // The density of states doubles when the energy quadruples (g ~ sqrt(E)).
-        let ratio = value_at("density_of_states_3d(4*en, m_e, 1)/density_of_states_3d(en, m_e, 1)", &[("en", 1.0e-19)]);
+        let ratio = value_at(
+            "density_of_states_3d(4*en, m_e, 1)/density_of_states_3d(en, m_e, 1)",
+            &[("en", 1.0e-19)],
+        );
         close(ratio, 2.0, 1e-12, "g(4E)/g(E)");
         // Filling the states up to the Fermi energy holds n V electrons.
         let n = 8.49e28;
@@ -1239,7 +1601,12 @@ mod tests {
         );
         close(count, n * volume, 1e-6, "N(E_F)");
         // Copper: E_F ≈ 7.0 eV, and E_F = ħ²k_F²/2m.
-        close(fermi / crate::constant::ELEMENTARY_CHARGE, 7.0, 0.01, "E_F of copper in eV");
+        close(
+            fermi / crate::constant::ELEMENTARY_CHARGE,
+            7.0,
+            0.01,
+            "E_F of copper in eV",
+        );
         close(
             fermi,
             value_at("energy_band(fermi_wavevector_3d(n), m_e, 0)", &[("n", n)]),
@@ -1254,14 +1621,34 @@ mod tests {
         // Plasma frequency ≈ 1.64e16 rad/s, and σ = ε₀ ω_p² τ.
         let plasma = value("plasma_frequency(8.49e28, q_e, epsilon_0, m_e)");
         close(plasma, 1.6435e16, 1e-3, "plasma frequency");
-        close(value("epsilon_0 * plasma_frequency(8.49e28, q_e, epsilon_0, m_e)^2 * 2.5e-14"), sigma, 1e-12, "sigma = eps0 wp^2 tau");
+        close(
+            value("epsilon_0 * plasma_frequency(8.49e28, q_e, epsilon_0, m_e)^2 * 2.5e-14"),
+            sigma,
+            1e-12,
+            "sigma = eps0 wp^2 tau",
+        );
         // The Debye frequency is v k_D with k_D³ = 6π² n = 3π² (2 n).
-        close(value("debye_frequency(5000, 8.49e28)"), value("5000*fermi_wavevector_3d(2*8.49e28)"), 1e-12, "omega_D");
+        close(
+            value("debye_frequency(5000, 8.49e28)"),
+            value("5000*fermi_wavevector_3d(2*8.49e28)"),
+            1e-12,
+            "omega_D",
+        );
         same("debye_frequency(v, n)", "v*(6*pi^2*n)^(1/3)");
         // London depth: λ = c/ω_p when μ = μ₀ and the carriers are the plasma electrons.
         let london = value("london_penetration_depth(m_e, mu_0, 8.49e28, q_e)");
-        close(london, 299_792_458.0 / plasma, 1e-12, "lambda_L = c / omega_p");
-        close(value("london_penetration_depth(m_e, mu_0, 1e28, q_e)"), 5.31e-8, 0.01, "lambda_L");
+        close(
+            london,
+            299_792_458.0 / plasma,
+            1e-12,
+            "lambda_L = c / omega_p",
+        );
+        close(
+            value("london_penetration_depth(m_e, mu_0, 1e28, q_e)"),
+            5.31e-8,
+            0.01,
+            "lambda_L",
+        );
     }
 
     #[test]
@@ -1270,10 +1657,16 @@ mod tests {
         same("first_law_thermodynamics(Q - W, Q, W)", "0");
         same("first_law_thermodynamics(dU, Q, W)", "dU - Q + W");
         // An isothermal ideal-gas expansion has dU = 0, so Q = W.
-        same("first_law_thermodynamics(0, work_isothermal_expansion(n, R, T, V1, V2), work_isothermal_expansion(n, R, T, V1, V2))", "0");
+        same(
+            "first_law_thermodynamics(0, work_isothermal_expansion(n, R, T, V1, V2), work_isothermal_expansion(n, R, T, V1, V2))",
+            "0",
+        );
         // PV = nRT.
         same("ideal_gas_law(n*R*T/V, V, n, R, T)", "0");
-        same("ideal_gas_law(ideal_gas_pressure(n, T, V), V, n, R_gas, T)", "0");
+        same(
+            "ideal_gas_law(ideal_gas_pressure(n, T, V), V, n, R_gas, T)",
+            "0",
+        );
         // A = U - TS agrees with A = -kT ln Z for Z ~ T³.
         same(
             "helmholtz_free_energy(internal_energy_from_partition(T^3, T), T, entropy_from_helmholtz(helmholtz_from_partition(T^3, T), T)) - helmholtz_from_partition(T^3, T)",
@@ -1282,35 +1675,72 @@ mod tests {
         same("helmholtz_free_energy(U, T, S)", "U - T*S");
         // S = k ln Ω, additive over independent systems.
         same("boltzmann_entropy(1)", "0");
-        close(value("boltzmann_entropy(6*7)"), value("boltzmann_entropy(6) + boltzmann_entropy(7)"), 1e-12, "additivity");
-        close(value("boltzmann_entropy(2)"), crate::constant::BOLTZMANN_CONSTANT * std::f64::consts::LN_2, 1e-12, "k ln 2");
+        close(
+            value("boltzmann_entropy(6*7)"),
+            value("boltzmann_entropy(6) + boltzmann_entropy(7)"),
+            1e-12,
+            "additivity",
+        );
+        close(
+            value("boltzmann_entropy(2)"),
+            crate::constant::BOLTZMANN_CONSTANT * std::f64::consts::LN_2,
+            1e-12,
+            "k ln 2",
+        );
         // Boltzmann populations of a two-level system add up to 1 and have the Boltzmann ratio.
         let at = [("en", 2.0e-21), ("T", 300.0)];
         let z = "partition_function(list(0, en), T)";
         close(
-            value_at(&format!("boltzmann_distribution(0, T, {z}) + boltzmann_distribution(en, T, {z})"), &at),
+            value_at(
+                &format!("boltzmann_distribution(0, T, {z}) + boltzmann_distribution(en, T, {z})"),
+                &at,
+            ),
             1.0,
             1e-12,
             "normalisation",
         );
         close(
-            value_at(&format!("boltzmann_distribution(en, T, {z}) / boltzmann_distribution(0, T, {z})"), &at),
+            value_at(
+                &format!("boltzmann_distribution(en, T, {z}) / boltzmann_distribution(0, T, {z})"),
+                &at,
+            ),
             value_at("exp(-en/(k_B*T))", &at),
             1e-12,
             "ratio",
         );
         // Bose–Einstein: 1/(e - 1) at E - μ = kT, and BE - FD = 2/(e^{2x} - 1).
-        close(value("bose_einstein_distribution(k_B*300, 0, 300)"), 1.0 / 1.0_f64.exp_m1(), 1e-12, "x = 1");
+        close(
+            value("bose_einstein_distribution(k_B*300, 0, 300)"),
+            1.0 / 1.0_f64.exp_m1(),
+            1e-12,
+            "x = 1",
+        );
         let x = 0.7;
         let bose = value_at("bose_einstein_distribution(x*k_B*300, 0, 300)", &[("x", x)]);
         let fermi = value_at("fermi_dirac_distribution(x*k_B*300, 0, 300)", &[("x", x)]);
         close(bose - fermi, 2.0 / (2.0 * x).exp_m1(), 1e-12, "BE - FD");
         // Far above μ both reduce to the Boltzmann factor.
-        close(value("bose_einstein_distribution(40*k_B*300, 0, 300)"), (-40.0_f64).exp(), 1e-12, "classical limit");
+        close(
+            value("bose_einstein_distribution(40*k_B*300, 0, 300)"),
+            (-40.0_f64).exp(),
+            1e-12,
+            "classical limit",
+        );
         // W = ∫ P dV = n R T ln(V2/V1).
         same("work_isothermal_expansion(n, R, T, 1, 2)", "n*R*T*ln(2)");
-        same("work_isothermal_expansion(n, R, T, V1, V2)", "n*R*T*ln(V2/V1)");
-        same("defint(n*R*T/V, V, 1, 2)", "work_isothermal_expansion(n, R, T, 1, 2)");
-        close(value("work_isothermal_expansion(1, R_gas, 300, 1, 2)"), 8.314_462_618 * 300.0 * std::f64::consts::LN_2, 1e-9, "1 mol at 300 K");
+        same(
+            "work_isothermal_expansion(n, R, T, V1, V2)",
+            "n*R*T*ln(V2/V1)",
+        );
+        same(
+            "defint(n*R*T/V, V, 1, 2)",
+            "work_isothermal_expansion(n, R, T, 1, 2)",
+        );
+        close(
+            value("work_isothermal_expansion(1, R_gas, 300, 1, 2)"),
+            8.314_462_618 * 300.0 * std::f64::consts::LN_2,
+            1e-9,
+            "1 mol at 300 K",
+        );
     }
 }

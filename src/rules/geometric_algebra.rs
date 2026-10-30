@@ -41,8 +41,6 @@
 
 use std::collections::BTreeMap;
 
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -56,6 +54,8 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::rules::poly::best;
 
 use super::elementary::elementary;
@@ -132,13 +132,41 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("mv_scale", Arity::Fixed(2), Request::Scale),
         ("mv_coeff", Arity::Fixed(2), Request::Coeff),
         ("mv_scalar_part", Arity::Fixed(1), Request::ScalarPart),
-        ("ga_gp", Arity::Fixed(2), Request::Product(Product::Geometric)),
-        ("ga_wedge", Arity::Fixed(2), Request::Product(Product::Outer)),
-        ("ga_lcontract", Arity::Fixed(2), Request::Product(Product::Left)),
-        ("ga_rcontract", Arity::Fixed(2), Request::Product(Product::Right)),
-        ("ga_inner", Arity::Fixed(2), Request::Product(Product::Inner)),
-        ("ga_scalar_product", Arity::Fixed(2), Request::Product(Product::Scalar)),
-        ("ga_commutator", Arity::Fixed(2), Request::Product(Product::Commutator)),
+        (
+            "ga_gp",
+            Arity::Fixed(2),
+            Request::Product(Product::Geometric),
+        ),
+        (
+            "ga_wedge",
+            Arity::Fixed(2),
+            Request::Product(Product::Outer),
+        ),
+        (
+            "ga_lcontract",
+            Arity::Fixed(2),
+            Request::Product(Product::Left),
+        ),
+        (
+            "ga_rcontract",
+            Arity::Fixed(2),
+            Request::Product(Product::Right),
+        ),
+        (
+            "ga_inner",
+            Arity::Fixed(2),
+            Request::Product(Product::Inner),
+        ),
+        (
+            "ga_scalar_product",
+            Arity::Fixed(2),
+            Request::Product(Product::Scalar),
+        ),
+        (
+            "ga_commutator",
+            Arity::Fixed(2),
+            Request::Product(Product::Commutator),
+        ),
         ("ga_grade", Arity::Fixed(2), Request::Grade),
         ("ga_reverse", Arity::Fixed(1), Request::Reverse),
         ("ga_involute", Arity::Fixed(1), Request::Involute),
@@ -153,8 +181,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("ga_rotor", Arity::Fixed(2), Request::Rotor),
         ("ga_apply_versor", Arity::Fixed(2), Request::Apply),
     ] {
-        let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
-        i.kernel(&format!("geometric_algebra/{name}"), Tier::Reduce, Ga { op, mv, request });
+        let op = i.op(OpDescriptor::new(name, arity)
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        i.kernel(
+            &format!("geometric_algebra/{name}"),
+            Tier::Reduce,
+            Ga { op, mv, request },
+        );
     }
     Ok(())
 }
@@ -209,7 +243,11 @@ fn read_sig(
     let &[p, q, r] = kids.as_slice() else {
         return None;
     };
-    let get = |g: &Graph, n: NodeId| g.number_of(n).and_then(Number::to_i64).and_then(|v| u32::try_from(v).ok());
+    let get = |g: &Graph, n: NodeId| {
+        g.number_of(n)
+            .and_then(Number::to_i64)
+            .and_then(|v| u32::try_from(v).ok())
+    };
     let sig = (get(graph, p)?, get(graph, q)?, get(graph, r)?);
     (sig.0 + sig.1 + sig.2 <= MAX_DIM).then_some(sig)
 }
@@ -218,7 +256,10 @@ fn sig_term(
     graph: &mut Graph,
     sig: Sig,
 ) -> NodeId {
-    let parts: Vec<NodeId> = [sig.0, sig.1, sig.2].iter().map(|&v| graph.int(i64::from(v))).collect();
+    let parts: Vec<NodeId> = [sig.0, sig.1, sig.2]
+        .iter()
+        .map(|&v| graph.int(i64::from(v)))
+        .collect();
     graph.node(core::LIST, &parts)
 }
 
@@ -294,7 +335,10 @@ fn scalar_mv(
     sig: Sig,
     c: NodeId,
 ) -> Mv {
-    Mv { sig, terms: BTreeMap::from([(0, c)]) }
+    Mv {
+        sig,
+        terms: BTreeMap::from([(0, c)]),
+    }
 }
 
 /// Scales every coefficient of `m` by `factor`.
@@ -303,7 +347,11 @@ fn scaled(
     m: &Mv,
     factor: NodeId,
 ) -> Mv {
-    let acc = m.terms.iter().map(|(&b, &c)| (b, vec![mul(cx.graph, &[factor, c])])).collect();
+    let acc = m
+        .terms
+        .iter()
+        .map(|(&b, &c)| (b, vec![mul(cx.graph, &[factor, c])]))
+        .collect();
     finish(cx, m.sig, acc)
 }
 
@@ -341,7 +389,9 @@ fn product(
                 continue;
             }
             let s = cx.graph.int(sign);
-            acc.entry(blade).or_default().push(mul(cx.graph, &[s, ca, cb]));
+            acc.entry(blade)
+                .or_default()
+                .push(mul(cx.graph, &[s, ca, cb]));
         }
     }
     Some(finish(cx, a.sig, acc))
@@ -376,7 +426,13 @@ fn reverse(
     cx: &mut Cx<'_>,
     m: &Mv,
 ) -> Mv {
-    map_grades(cx, m, |k| if (k * k.saturating_sub(1) / 2) % 2 == 0 { 1 } else { -1 })
+    map_grades(cx, m, |k| {
+        if (k * k.saturating_sub(1) / 2) % 2 == 0 {
+            1
+        } else {
+            -1
+        }
+    })
 }
 
 fn involute(
@@ -454,25 +510,30 @@ fn rotor(
     let t = cx.simplify(t);
     let euclidean = b.sig.1 == 0 && b.sig.2 == 0;
     let sign_known = cx.graph.number_of(s).map(Number::is_negative);
-    let (trig, w) = if let Some(w) = exact_sqrt(cx.graph, neg_s).filter(|_| sign_known != Some(false)) {
-        (true, w)
-    } else if let Some(w) = exact_sqrt(cx.graph, s) {
-        (false, w)
-    } else if euclidean || sign_known == Some(true) {
-        (true, half_power(cx, neg_s)?)
-    } else if sign_known == Some(false) && !is_zero_literal(cx.graph, s) {
-        (false, half_power(cx, s)?)
-    } else if is_zero_literal(cx.graph, s) {
-        let c = cx.graph.int(1);
-        let k = mul(cx.graph, &[minus_one, t]);
-        let k = cx.simplify(k);
-        let scalar = scalar_mv(b.sig, c);
-        let rest = scaled(cx, b, k);
-        return sum(cx, &[&scalar, &rest]);
+    let (trig, w) =
+        if let Some(w) = exact_sqrt(cx.graph, neg_s).filter(|_| sign_known != Some(false)) {
+            (true, w)
+        } else if let Some(w) = exact_sqrt(cx.graph, s) {
+            (false, w)
+        } else if euclidean || sign_known == Some(true) {
+            (true, half_power(cx, neg_s)?)
+        } else if sign_known == Some(false) && !is_zero_literal(cx.graph, s) {
+            (false, half_power(cx, s)?)
+        } else if is_zero_literal(cx.graph, s) {
+            let c = cx.graph.int(1);
+            let k = mul(cx.graph, &[minus_one, t]);
+            let k = cx.simplify(k);
+            let scalar = scalar_mv(b.sig, c);
+            let rest = scaled(cx, b, k);
+            return sum(cx, &[&scalar, &rest]);
+        } else {
+            return None;
+        };
+    let (cos, sin) = if trig {
+        ("cos", "sin")
     } else {
-        return None;
+        ("cosh", "sinh")
     };
-    let (cos, sin) = if trig { ("cos", "sin") } else { ("cosh", "sinh") };
     let c = call(cx.graph, cos, &[t])?;
     let sn = call(cx.graph, sin, &[t])?;
     let w_inv = pow_int(cx.graph, w, -1);
@@ -494,7 +555,10 @@ fn dual(
 ) -> Option<Mv> {
     let blade = pseudoscalar(a.sig);
     let one = cx.graph.int(1);
-    let i = Mv { sig: a.sig, terms: BTreeMap::from([(blade, one)]) };
+    let i = Mv {
+        sig: a.sig,
+        terms: BTreeMap::from([(blade, one)]),
+    };
     let r = gp(cx, a, &i)?;
     if !inverse || a.sig.2 > 0 {
         return Some(r);
@@ -554,10 +618,12 @@ impl Kernel for Ga {
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
         match self.compute(cx, &args) {
-            | Some(m) => Outcome::Equal(match m {
-                | Out::Mv(m) => mv_term(cx, self.mv, &m),
-                | Out::Term(t) => t,
-            }),
+            | Some(m) => {
+                Outcome::Equal(match m {
+                    | Out::Mv(m) => mv_term(cx, self.mv, &m),
+                    | Out::Term(t) => t,
+                })
+            },
             | None => Outcome::Pass,
         }
     }
@@ -608,7 +674,9 @@ impl Ga {
             if t == c && op == core::LIST {
                 return None;
             }
-            if cx.graph.ops().get(op).name.starts_with("mv") || cx.graph.ops().get(op).name.starts_with("ga_") {
+            if cx.graph.ops().get(op).name.starts_with("mv")
+                || cx.graph.ops().get(op).name.starts_with("ga_")
+            {
                 return None;
             }
             stack.extend_from_slice(cx.graph.children(t));
@@ -652,10 +720,19 @@ impl Ga {
             | Request::Vector => {
                 let sig = read_sig(cx.graph, args[0])?;
                 let v = best(cx.graph, args[1])?;
-                if cx.graph.op(v) != core::LIST || cx.graph.children(v).len() > (sig.0 + sig.1 + sig.2) as usize {
+                if cx.graph.op(v) != core::LIST
+                    || cx.graph.children(v).len() > (sig.0 + sig.1 + sig.2) as usize
+                {
                     return None;
                 }
-                let acc = cx.graph.children(v).to_vec().into_iter().enumerate().map(|(k, c)| (1_u32 << k, vec![c])).collect();
+                let acc = cx
+                    .graph
+                    .children(v)
+                    .to_vec()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(k, c)| (1_u32 << k, vec![c]))
+                    .collect();
                 Some(Out::Mv(finish(cx, sig, acc)))
             },
             | Request::Blade => {
@@ -664,7 +741,11 @@ impl Ga {
                 if mask >> (sig.0 + sig.1 + sig.2) != 0 {
                     return None;
                 }
-                Some(Out::Mv(finish(cx, sig, BTreeMap::from([(mask, vec![args[2]])]))))
+                Some(Out::Mv(finish(
+                    cx,
+                    sig,
+                    BTreeMap::from([(mask, vec![args[2]])]),
+                )))
             },
             | Request::Basis => {
                 let sig = read_sig(cx.graph, args[0])?;
@@ -673,12 +754,20 @@ impl Ga {
                     return None;
                 }
                 let c = cx.graph.int(1);
-                Some(Out::Mv(finish(cx, sig, BTreeMap::from([(1 << (i - 1), vec![c])]))))
+                Some(Out::Mv(finish(
+                    cx,
+                    sig,
+                    BTreeMap::from([(1 << (i - 1), vec![c])]),
+                )))
             },
             | Request::Pseudoscalar => {
                 let sig = read_sig(cx.graph, args[0])?;
                 let c = cx.graph.int(1);
-                Some(Out::Mv(finish(cx, sig, BTreeMap::from([(pseudoscalar(sig), vec![c])]))))
+                Some(Out::Mv(finish(
+                    cx,
+                    sig,
+                    BTreeMap::from([(pseudoscalar(sig), vec![c])]),
+                )))
             },
             | Request::Add | Request::Sub => {
                 let first = args.iter().find_map(|&a| read_mv(cx, self.mv, a))?;
@@ -702,8 +791,17 @@ impl Ga {
             },
             | Request::Coeff | Request::ScalarPart => {
                 let m = one(cx)?;
-                let mask = if self.request == Request::Coeff { int_arg(cx.graph, args[1])? } else { 0 };
-                Some(Out::Term(m.terms.get(&mask).copied().unwrap_or_else(|| cx.graph.int(0))))
+                let mask = if self.request == Request::Coeff {
+                    int_arg(cx.graph, args[1])?
+                } else {
+                    0
+                };
+                Some(Out::Term(
+                    m.terms
+                        .get(&mask)
+                        .copied()
+                        .unwrap_or_else(|| cx.graph.int(0)),
+                ))
             },
             | Request::Product(kind) => {
                 let (a, b) = self.pair(cx, args[0], args[1])?;
@@ -711,8 +809,14 @@ impl Ga {
                     | Product::Geometric => gp(cx, &a, &b)?,
                     | Product::Outer => product(cx, &a, &b, |ga, gb, gr| gr == ga + gb)?,
                     | Product::Left => product(cx, &a, &b, |ga, gb, gr| gb >= ga && gr == gb - ga)?,
-                    | Product::Right => product(cx, &a, &b, |ga, gb, gr| ga >= gb && gr == ga - gb)?,
-                    | Product::Inner => product(cx, &a, &b, |ga, gb, gr| ga > 0 && gb > 0 && gr == ga.abs_diff(gb))?,
+                    | Product::Right => {
+                        product(cx, &a, &b, |ga, gb, gr| ga >= gb && gr == ga - gb)?
+                    },
+                    | Product::Inner => {
+                        product(cx, &a, &b, |ga, gb, gr| {
+                            ga > 0 && gb > 0 && gr == ga.abs_diff(gb)
+                        })?
+                    },
                     | Product::Scalar => product(cx, &a, &b, |_, _, gr| gr == 0)?,
                     | Product::Commutator => {
                         let ab = gp(cx, &a, &b)?;
@@ -729,7 +833,12 @@ impl Ga {
             | Request::Grade => {
                 let m = read_mv(cx, self.mv, args[0])?;
                 let k = int_arg(cx.graph, args[1])?;
-                let terms = m.terms.iter().filter(|(b, _)| b.count_ones() == k).map(|(&b, &c)| (b, c)).collect();
+                let terms = m
+                    .terms
+                    .iter()
+                    .filter(|(b, _)| b.count_ones() == k)
+                    .map(|(&b, &c)| (b, c))
+                    .collect();
                 Some(Out::Mv(Mv { sig: m.sig, terms }))
             },
             | Request::Reverse => {
@@ -742,7 +851,13 @@ impl Ga {
             },
             | Request::Conjugate => {
                 let m = one(cx)?;
-                Some(Out::Mv(map_grades(cx, &m, |k| if (k * (k + 1) / 2) % 2 == 0 { 1 } else { -1 })))
+                Some(Out::Mv(map_grades(cx, &m, |k| {
+                    if (k * (k + 1) / 2) % 2 == 0 {
+                        1
+                    } else {
+                        -1
+                    }
+                })))
             },
             | Request::Dual | Request::Undual => {
                 let m = one(cx)?;
@@ -786,7 +901,11 @@ impl Ga {
             | Request::Apply => {
                 let v = read_mv(cx, self.mv, args[0])?;
                 let x = read_mv(cx, self.mv, args[1])?;
-                let x = if parity(&v)? { involute(cx, &x) } else { x };
+                let x = if parity(&v)? {
+                    involute(cx, &x)
+                } else {
+                    x
+                };
                 let inv = inverse(cx, &v)?;
                 let vx = gp(cx, &v, &x)?;
                 gp(cx, &vx, &inv).map(Out::Mv)
@@ -810,7 +929,11 @@ mod tests {
         format!("mv_basis(list(3, 0, 0), {i})")
     }
 
-    fn v(x: &str, y: &str, z: &str) -> String {
+    fn v(
+        x: &str,
+        y: &str,
+        z: &str,
+    ) -> String {
         format!("mv_vector(list(3, 0, 0), list({x}, {y}, {z}))")
     }
 
@@ -826,22 +949,46 @@ mod tests {
         assert_eq!(run("mv_blade(list(3, 0, 0), 5, a)"), mv3("list(5, a)"));
         assert_eq!(run("mv_pseudoscalar(list(3, 0, 0))"), mv3("list(7, 1)"));
         // user-built terms are merged, sorted and stripped of zeros
-        assert_eq!(run("mv(list(3, 0, 0), list(list(2, y), list(1, x), list(2, -y), list(0, 0)))"), mv3("list(1, x)"));
-        assert_eq!(run("mv(list(3, 0, 0), list(list(1, x), list(1, y)))"), mv3("list(1, x + y)"));
+        assert_eq!(
+            run("mv(list(3, 0, 0), list(list(2, y), list(1, x), list(2, -y), list(0, 0)))"),
+            mv3("list(1, x)")
+        );
+        assert_eq!(
+            run("mv(list(3, 0, 0), list(list(1, x), list(1, y)))"),
+            mv3("list(1, x + y)")
+        );
         // out of range blades are left alone
         assert!(!reduce_with(&[geometric_algebra()], "mv_blade(list(3, 0, 0), 8, 1)", &[]).1);
     }
 
     #[test]
     fn basis_products_follow_the_metric() {
-        assert_eq!(run(&format!("ga_gp({}, {})", e(1), e(2))), mv3("list(3, 1)"));
-        assert_eq!(run(&format!("ga_gp({}, {})", e(2), e(1))), mv3("list(3, -1)"));
-        assert_eq!(run(&format!("ga_gp({}, {})", e(3), e(3))), mv3("list(0, 1)"));
+        assert_eq!(
+            run(&format!("ga_gp({}, {})", e(1), e(2))),
+            mv3("list(3, 1)")
+        );
+        assert_eq!(
+            run(&format!("ga_gp({}, {})", e(2), e(1))),
+            mv3("list(3, -1)")
+        );
+        assert_eq!(
+            run(&format!("ga_gp({}, {})", e(3), e(3))),
+            mv3("list(0, 1)")
+        );
         // e1 e2 e3 squares to -1 in Euclidean 3-space
-        assert_eq!(run("ga_gp(mv_pseudoscalar(list(3, 0, 0)), mv_pseudoscalar(list(3, 0, 0)))"), mv3("list(0, -1)"));
+        assert_eq!(
+            run("ga_gp(mv_pseudoscalar(list(3, 0, 0)), mv_pseudoscalar(list(3, 0, 0)))"),
+            mv3("list(0, -1)")
+        );
         // Minkowski plane: e2^2 = -1; degenerate: e2^2 = 0
-        assert_eq!(run("ga_gp(mv_basis(list(1, 1, 0), 2), mv_basis(list(1, 1, 0), 2))"), "mv(list(1, 1, 0), list(list(0, -1)))");
-        assert_eq!(run("ga_gp(mv_basis(list(1, 0, 1), 2), mv_basis(list(1, 0, 1), 2))"), "mv(list(1, 0, 1), list())");
+        assert_eq!(
+            run("ga_gp(mv_basis(list(1, 1, 0), 2), mv_basis(list(1, 1, 0), 2))"),
+            "mv(list(1, 1, 0), list(list(0, -1)))"
+        );
+        assert_eq!(
+            run("ga_gp(mv_basis(list(1, 0, 1), 2), mv_basis(list(1, 0, 1), 2))"),
+            "mv(list(1, 0, 1), list())"
+        );
         // scalars promote
         assert_eq!(run(&format!("ga_gp(3, {})", e(2))), mv3("list(2, 3)"));
     }
@@ -855,7 +1002,14 @@ mod tests {
         let wedge = run(&format!("ga_wedge({a}, {b})"));
         assert_eq!(dot, mv3("list(0, a1*b1 + a2*b2 + a3*b3)"));
         assert_eq!(run(&format!("mv_add({dot}, {wedge})")), gp);
-        assert_eq!(run(&format!("ga_wedge({}, {})", v("a", "b", "0"), v("c", "d", "0"))), mv3("list(3, a*d - b*c)"));
+        assert_eq!(
+            run(&format!(
+                "ga_wedge({}, {})",
+                v("a", "b", "0"),
+                v("c", "d", "0")
+            )),
+            mv3("list(3, a*d - b*c)")
+        );
         // a ^ a = 0
         assert_eq!(run(&format!("ga_wedge({a}, {a})")), mv3(""));
     }
@@ -874,16 +1028,31 @@ mod tests {
     fn contractions() {
         let e12 = "mv_blade(list(3, 0, 0), 3, 1)";
         // e1 | e12 = e2, e12 |_ e2 = e1, e2 | e1 = 0 (grade would be negative)
-        assert_eq!(run(&format!("ga_lcontract({}, {e12})", e(1))), mv3("list(2, 1)"));
-        assert_eq!(run(&format!("ga_rcontract({e12}, {})", e(2))), mv3("list(1, 1)"));
+        assert_eq!(
+            run(&format!("ga_lcontract({}, {e12})", e(1))),
+            mv3("list(2, 1)")
+        );
+        assert_eq!(
+            run(&format!("ga_rcontract({e12}, {})", e(2))),
+            mv3("list(1, 1)")
+        );
         assert_eq!(run(&format!("ga_lcontract({e12}, {})", e(1))), mv3(""));
-        assert_eq!(run(&format!("ga_lcontract({}, {})", e(1), e(1))), mv3("list(0, 1)"));
+        assert_eq!(
+            run(&format!("ga_lcontract({}, {})", e(1), e(1))),
+            mv3("list(0, 1)")
+        );
         // Hestenes inner product of a scalar vanishes, of two bivectors is a scalar
         assert_eq!(run(&format!("ga_inner(2, {})", e(1))), mv3(""));
         assert_eq!(run(&format!("ga_inner({e12}, {e12})")), mv3("list(0, -1)"));
-        assert_eq!(run(&format!("ga_scalar_product({e12}, {e12})")), mv3("list(0, -1)"));
+        assert_eq!(
+            run(&format!("ga_scalar_product({e12}, {e12})")),
+            mv3("list(0, -1)")
+        );
         // commutator of e1, e2 is e12
-        assert_eq!(run(&format!("ga_commutator({}, {})", e(1), e(2))), mv3("list(3, 1)"));
+        assert_eq!(
+            run(&format!("ga_commutator({}, {})", e(1), e(2))),
+            mv3("list(3, 1)")
+        );
     }
 
     #[test]
@@ -892,15 +1061,30 @@ mod tests {
         assert_eq!(run(&format!("ga_grade({m}, 0)")), mv3("list(0, s)"));
         assert_eq!(run(&format!("ga_grade({m}, 2)")), mv3("list(3, b)"));
         assert_eq!(run(&format!("ga_grade({m}, 3)")), mv3("list(7, c)"));
-        assert_eq!(run(&format!("ga_grade({m}, 1)")), run("mv_blade(list(3, 0, 0), 1, a)"));
-        assert_eq!(run(&format!("ga_reverse({m})")), mv3("list(0, s), list(1, a), list(3, -b), list(7, -c)"));
-        assert_eq!(run(&format!("ga_involute({m})")), mv3("list(0, s), list(1, -a), list(3, b), list(7, -c)"));
-        assert_eq!(run(&format!("ga_conjugate({m})")), mv3("list(0, s), list(1, -a), list(3, -b), list(7, c)"));
+        assert_eq!(
+            run(&format!("ga_grade({m}, 1)")),
+            run("mv_blade(list(3, 0, 0), 1, a)")
+        );
+        assert_eq!(
+            run(&format!("ga_reverse({m})")),
+            mv3("list(0, s), list(1, a), list(3, -b), list(7, -c)")
+        );
+        assert_eq!(
+            run(&format!("ga_involute({m})")),
+            mv3("list(0, s), list(1, -a), list(3, b), list(7, -c)")
+        );
+        assert_eq!(
+            run(&format!("ga_conjugate({m})")),
+            mv3("list(0, s), list(1, -a), list(3, -b), list(7, c)")
+        );
         assert_eq!(run(&format!("mv_scalar_part({m})")), "s");
         assert_eq!(run(&format!("mv_coeff({m}, 3)")), "b");
         assert_eq!(run(&format!("mv_coeff({m}, 2)")), "0");
         // (AB)~ = B~ A~
-        let (a, b) = (v("a1", "a2", "a3"), "mv_blade(list(3, 0, 0), 6, k)".to_owned());
+        let (a, b) = (
+            v("a1", "a2", "a3"),
+            "mv_blade(list(3, 0, 0), 6, k)".to_owned(),
+        );
         let lhs = run(&format!("ga_reverse(ga_gp({a}, {b}))"));
         let rhs = run(&format!("ga_gp(ga_reverse({b}), ga_reverse({a}))"));
         assert_eq!(lhs, rhs);
@@ -908,11 +1092,24 @@ mod tests {
 
     #[test]
     fn linear_structure() {
-        assert_eq!(run(&format!("mv_add({}, {}, 2)", e(1), e(2))), mv3("list(0, 2), list(1, 1), list(2, 1)"));
+        assert_eq!(
+            run(&format!("mv_add({}, {}, 2)", e(1), e(2))),
+            mv3("list(0, 2), list(1, 1), list(2, 1)")
+        );
         assert_eq!(run(&format!("mv_sub({}, {})", e(1), e(1))), mv3(""));
-        assert_eq!(run(&format!("mv_scale(k, {})", v("x", "y", "z"))), mv3("list(1, k*x), list(2, k*y), list(4, k*z)"));
+        assert_eq!(
+            run(&format!("mv_scale(k, {})", v("x", "y", "z"))),
+            mv3("list(1, k*x), list(2, k*y), list(4, k*z)")
+        );
         // different algebras do not mix
-        assert!(!reduce_with(&[geometric_algebra()], "mv_add(mv_basis(list(3, 0, 0), 1), mv_basis(list(2, 0, 0), 1))", &[]).1);
+        assert!(
+            !reduce_with(
+                &[geometric_algebra()],
+                "mv_add(mv_basis(list(3, 0, 0), 1), mv_basis(list(2, 0, 0), 1))",
+                &[]
+            )
+            .1
+        );
     }
 
     #[test]
@@ -920,14 +1117,26 @@ mod tests {
         // A* = A I^-1 with I^-1 = -e123
         assert_eq!(run(&format!("ga_dual({})", e(1))), mv3("list(6, -1)"));
         assert_eq!(run(&format!("ga_dual({})", e(3))), mv3("list(3, -1)"));
-        assert_eq!(run("ga_dual(mv_scalar(list(3, 0, 0), 1))"), mv3("list(7, -1)"));
-        assert_eq!(run("ga_dual(mv_pseudoscalar(list(3, 0, 0)))"), mv3("list(0, 1)"));
+        assert_eq!(
+            run("ga_dual(mv_scalar(list(3, 0, 0), 1))"),
+            mv3("list(7, -1)")
+        );
+        assert_eq!(
+            run("ga_dual(mv_pseudoscalar(list(3, 0, 0)))"),
+            mv3("list(0, 1)")
+        );
         let m = "mv(list(3, 0, 0), list(list(0, s), list(1, a), list(3, b), list(7, c)))";
         assert_eq!(run(&format!("ga_undual(ga_dual({m}))")), run(m));
         // x ^ x* is the volume element up to sign: e1 ^ (-e23) = -e123
-        assert_eq!(run(&format!("ga_wedge({}, ga_dual({}))", e(1), e(1))), mv3("list(7, -1)"));
+        assert_eq!(
+            run(&format!("ga_wedge({}, ga_dual({}))", e(1), e(1))),
+            mv3("list(7, -1)")
+        );
         // degenerate metric: M I
-        assert_eq!(run("ga_dual(mv_basis(list(1, 0, 1), 1))"), "mv(list(1, 0, 1), list(list(2, 1)))");
+        assert_eq!(
+            run("ga_dual(mv_basis(list(1, 0, 1), 1))"),
+            "mv(list(1, 0, 1), list(list(2, 1)))"
+        );
     }
 
     #[test]
@@ -936,46 +1145,112 @@ mod tests {
         assert_eq!(run(&format!("ga_norm_squared({x})")), "x^2 + y^2 + z^2");
         assert_eq!(run(&format!("ga_norm({x})")), "(x^2 + y^2 + z^2)^(1/2)");
         assert_eq!(run(&format!("ga_norm({})", v("3", "4", "0"))), "5");
-        assert_eq!(run(&format!("ga_normalize({})", v("3", "0", "4"))), mv3("list(1, 3/5), list(4, 4/5)"));
-        assert_eq!(run(&format!("ga_inverse({})", v("2", "0", "0"))), mv3("list(1, 1/2)"));
+        assert_eq!(
+            run(&format!("ga_normalize({})", v("3", "0", "4"))),
+            mv3("list(1, 3/5), list(4, 4/5)")
+        );
+        assert_eq!(
+            run(&format!("ga_inverse({})", v("2", "0", "0"))),
+            mv3("list(1, 1/2)")
+        );
         // v v^-1 = 1 for a symbolic vector
         let one = run(&format!("mv_scalar_part(ga_gp({x}, ga_inverse({x})))"));
-        assert!((eval(&[geometric_algebra()], &one, &[("x", 1.0), ("y", 2.0), ("z", 3.0)]) - 1.0).abs() < 1e-12, "{one}");
+        assert!(
+            (eval(
+                &[geometric_algebra()],
+                &one,
+                &[("x", 1.0), ("y", 2.0), ("z", 3.0)]
+            ) - 1.0)
+                .abs()
+                < 1e-12,
+            "{one}"
+        );
         // a bivector squares to -|B|^2
         assert_eq!(run("ga_norm_squared(mv_blade(list(3, 0, 0), 6, 3))"), "9");
         // a null vector has no inverse
-        assert!(!reduce_with(&[geometric_algebra()], "ga_inverse(mv_basis(list(1, 0, 1), 2))", &[]).1);
+        assert!(
+            !reduce_with(
+                &[geometric_algebra()],
+                "ga_inverse(mv_basis(list(1, 0, 1), 2))",
+                &[]
+            )
+            .1
+        );
     }
 
     #[test]
     fn exponential_and_rotor() {
-        assert_eq!(run("ga_exp(mv_blade(list(3, 0, 0), 3, t))"), mv3("list(0, cos(t)), list(3, sin(t))"));
-        assert_eq!(run("ga_exp(mv_blade(list(1, 1, 0), 3, t))"), "mv(list(1, 1, 0), list(list(0, cosh(t)), list(list(3, sinh(t)))))".replace("list(list(3, sinh(t)))", "list(3, sinh(t))"));
+        assert_eq!(
+            run("ga_exp(mv_blade(list(3, 0, 0), 3, t))"),
+            mv3("list(0, cos(t)), list(3, sin(t))")
+        );
+        assert_eq!(
+            run("ga_exp(mv_blade(list(1, 1, 0), 3, t))"),
+            "mv(list(1, 1, 0), list(list(0, cosh(t)), list(list(3, sinh(t)))))"
+                .replace("list(list(3, sinh(t)))", "list(3, sinh(t))")
+        );
         // rotor of the e12 plane
-        assert_eq!(run("ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t)"), mv3("list(0, cos(1/2*t)), list(3, -sin(1/2*t))"));
+        assert_eq!(
+            run("ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t)"),
+            mv3("list(0, cos(1/2*t)), list(3, -sin(1/2*t))")
+        );
         // the rotor of a non-unit bivector is normalised
-        assert_eq!(run("ga_rotor(mv_blade(list(3, 0, 0), 3, 2), t)"), run("ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t)"));
+        assert_eq!(
+            run("ga_rotor(mv_blade(list(3, 0, 0), 3, 2), t)"),
+            run("ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t)")
+        );
         // R rotates e1 to cos t e1 + sin t e2
-        assert_eq!(run(&format!("ga_apply_versor(ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t), {})", e(1))), mv3("list(1, cos(t)), list(2, sin(t))"));
+        assert_eq!(
+            run(&format!(
+                "ga_apply_versor(ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t), {})",
+                e(1)
+            )),
+            mv3("list(1, cos(t)), list(2, sin(t))")
+        );
         // by a quarter turn e1 goes to e2
         let r = "ga_rotor(mv_blade(list(3, 0, 0), 3, 1), pi/2)";
         let x = run(&format!("mv_coeff(ga_apply_versor({r}, {}), 1)", e(1)));
         let y = run(&format!("mv_coeff(ga_apply_versor({r}, {}), 2)", e(1)));
         assert!(eval(&[geometric_algebra()], &x, &[]).abs() < 1e-12, "{x}");
-        assert!((eval(&[geometric_algebra()], &y, &[]) - 1.0).abs() < 1e-12, "{y}");
+        assert!(
+            (eval(&[geometric_algebra()], &y, &[]) - 1.0).abs() < 1e-12,
+            "{y}"
+        );
         // e3 is untouched, and a rotor is a unit versor
-        assert_eq!(run(&format!("ga_apply_versor(ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t), {})", e(3))), mv3("list(4, 1)"));
-        assert_eq!(run("ga_norm_squared(ga_rotor(mv_blade(list(3, 0, 0), 5, 1), t))"), "1");
+        assert_eq!(
+            run(&format!(
+                "ga_apply_versor(ga_rotor(mv_blade(list(3, 0, 0), 3, 1), t), {})",
+                e(3)
+            )),
+            mv3("list(4, 1)")
+        );
+        assert_eq!(
+            run("ga_norm_squared(ga_rotor(mv_blade(list(3, 0, 0), 5, 1), t))"),
+            "1"
+        );
         // not a bivector: refused
-        assert!(!reduce_with(&[geometric_algebra()], &format!("ga_rotor({}, t)", e(1)), &[]).1);
+        assert!(
+            !reduce_with(
+                &[geometric_algebra()],
+                &format!("ga_rotor({}, t)", e(1)),
+                &[]
+            )
+            .1
+        );
     }
 
     #[test]
     fn versor_sandwich() {
         // reflection in the plane orthogonal to e1 (odd versor)
-        assert_eq!(run(&format!("ga_apply_versor({}, {})", e(1), v("1", "1", "0"))), mv3("list(1, -1), list(2, 1)"));
+        assert_eq!(
+            run(&format!("ga_apply_versor({}, {})", e(1), v("1", "1", "0"))),
+            mv3("list(1, -1), list(2, 1)")
+        );
         // a rotor times its inverse is one
         let r = "ga_rotor(mv_blade(list(3, 0, 0), 6, 1), a)";
-        assert_eq!(run(&format!("ga_gp({r}, ga_inverse({r}))")), mv3("list(0, 1)"));
+        assert_eq!(
+            run(&format!("ga_gp({r}, ga_inverse({r}))")),
+            mv3("list(0, 1)")
+        );
     }
 }

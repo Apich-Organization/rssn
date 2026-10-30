@@ -11,10 +11,17 @@ fn main() -> Result<(), ComputeError> {
 
     // Symbolic: a closed form.
     let d = s.compute(diff(sin(x) * cos(x), x), &Config::new())?;
-    println!("d/dx sin(x)cos(x) = {}    LaTeX: {}", d.term, d.term.to_latex());
+    println!(
+        "d/dx sin(x)cos(x) = {}    LaTeX: {}",
+        d.term,
+        d.term.to_latex()
+    );
 
     // Numeric: the same request evaluated at a point, with an error bound.
-    let n = s.compute(diff(sin(x) * cos(x), x), &Config::new().numeric(1e-12).bind("x", 0.3))?;
+    let n = s.compute(
+        diff(sin(x) * cos(x), x),
+        &Config::new().numeric(1e-12).bind("x", 0.3),
+    )?;
     println!("  at x = 0.3: {:?} ± {:?}", n.value, n.error);
 
     // Everything else is a request term too, parsed or built.

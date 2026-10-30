@@ -1,12 +1,19 @@
 //! Tests for the AMD and nested dissection orderings.
 
-use rssn::kernels::krylov::{Csr, SparseOrdering};
-use rssn::kernels::ordering::{amd_order, cholesky_fill, nested_dissection_order};
-use rssn::kernels::ordering_ml::{
-    hybrid_nested_dissection_order, multilevel_nested_dissection_order, vertex_separator_bisection, NdOptions,
-};
+use rssn::kernels::krylov::Csr;
+use rssn::kernels::krylov::SparseOrdering;
+use rssn::kernels::ordering::amd_order;
+use rssn::kernels::ordering::cholesky_fill;
+use rssn::kernels::ordering::nested_dissection_order;
+use rssn::kernels::ordering_ml::NdOptions;
+use rssn::kernels::ordering_ml::hybrid_nested_dissection_order;
+use rssn::kernels::ordering_ml::multilevel_nested_dissection_order;
+use rssn::kernels::ordering_ml::vertex_separator_bisection;
 
-fn grid_adj(nx: usize, ny: usize) -> Vec<Vec<usize>> {
+fn grid_adj(
+    nx: usize,
+    ny: usize,
+) -> Vec<Vec<usize>> {
     let mut adj = vec![Vec::new(); nx * ny];
     for j in 0..ny {
         for i in 0..nx {
@@ -24,7 +31,10 @@ fn grid_adj(nx: usize, ny: usize) -> Vec<Vec<usize>> {
     adj
 }
 
-fn is_perm(p: &[usize], n: usize) -> bool {
+fn is_perm(
+    p: &[usize],
+    n: usize,
+) -> bool {
     let mut seen = vec![false; n];
     p.len() == n
         && p.iter().all(|&v| {
@@ -36,7 +46,10 @@ fn is_perm(p: &[usize], n: usize) -> bool {
         })
 }
 
-fn grid_csr(nx: usize, ny: usize) -> Csr {
+fn grid_csr(
+    nx: usize,
+    ny: usize,
+) -> Csr {
     let mut t = Vec::new();
     for j in 0..ny {
         for i in 0..nx {
@@ -68,7 +81,10 @@ fn amd_reduces_fill_on_grids() {
     let a = grid_csr(60, 60);
     let md = a.min_degree_ordering();
     let f_md = cholesky_fill(&adj, &md);
-    assert!((f_amd as f64) < 1.35 * f_md as f64, "amd {f_amd} vs exact md {f_md}");
+    assert!(
+        (f_amd as f64) < 1.35 * f_md as f64,
+        "amd {f_amd} vs exact md {f_md}"
+    );
 }
 
 #[test]
@@ -81,7 +97,10 @@ fn nested_dissection_on_grids() {
     let (f_nat, f_nd) = (cholesky_fill(&adj, &nat), cholesky_fill(&adj, &nd));
     let f_amd = cholesky_fill(&adj, &amd_order(&adj));
     assert!(f_nd * 2 < f_nat, "nd {f_nd} vs natural {f_nat}");
-    assert!((f_nd as f64) < 2.5 * f_amd as f64, "nd {f_nd} vs amd {f_amd}");
+    assert!(
+        (f_nd as f64) < 2.5 * f_amd as f64,
+        "nd {f_nd} vs amd {f_amd}"
+    );
 }
 
 #[test]
@@ -149,10 +168,18 @@ fn sparse_lu_with_new_orderings() {
     let mut b = vec![0.0; n];
     a.matvec(&xs, &mut b);
     let mut nnz = Vec::new();
-    for ord in [SparseOrdering::Natural, SparseOrdering::Amd, SparseOrdering::NestedDissection] {
+    for ord in [
+        SparseOrdering::Natural,
+        SparseOrdering::Amd,
+        SparseOrdering::NestedDissection,
+    ] {
         let lu = a.sparse_lu(ord).unwrap();
         let x = lu.solve(&b);
-        let err = x.iter().zip(&xs).map(|(u, v)| (u - v).abs()).fold(0.0, f64::max);
+        let err = x
+            .iter()
+            .zip(&xs)
+            .map(|(u, v)| (u - v).abs())
+            .fold(0.0, f64::max);
         assert!(err < 1e-10, "{ord:?}: {err}");
         nnz.push(lu.nnz());
     }
@@ -190,8 +217,14 @@ fn multilevel_nd_fill_matches_amd_on_grids() {
     let f_amd = cholesky_fill(&adj, &amd_order(&adj));
     let f_nd = cholesky_fill(&adj, &nested_dissection_order(&adj));
     eprintln!("2D 150x150: multilevel {f_ml}, amd {f_amd}, level-structure nd {f_nd}");
-    assert!((f_ml as f64) < 1.15 * f_amd as f64, "multilevel {f_ml} vs amd {f_amd}");
-    assert!(f_ml * 2 < f_nd, "multilevel {f_ml} vs level-structure {f_nd}");
+    assert!(
+        (f_ml as f64) < 1.15 * f_amd as f64,
+        "multilevel {f_ml} vs amd {f_amd}"
+    );
+    assert!(
+        f_ml * 2 < f_nd,
+        "multilevel {f_ml} vs level-structure {f_nd}"
+    );
     let f_h = cholesky_fill(&adj, &hybrid_nested_dissection_order(&adj));
     assert!(f_h <= f_amd);
     // optimal top-level separator of a k x k mesh
@@ -206,7 +239,10 @@ fn multilevel_nd_fill_matches_amd_on_grids() {
     let f_ml = cholesky_fill(&adj, &ml);
     let f_amd = cholesky_fill(&adj, &amd_order(&adj));
     eprintln!("3D 22^3: multilevel {f_ml}, amd {f_amd}");
-    assert!((f_ml as f64) < 1.15 * f_amd as f64, "multilevel {f_ml} vs amd {f_amd}");
+    assert!(
+        (f_ml as f64) < 1.15 * f_amd as f64,
+        "multilevel {f_ml} vs amd {f_amd}"
+    );
     let f_h = cholesky_fill(&adj, &hybrid_nested_dissection_order(&adj));
     assert!(f_h <= f_amd);
     let (_, _, sp) = vertex_separator_bisection(&adj, &NdOptions::default());

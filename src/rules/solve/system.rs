@@ -22,20 +22,20 @@ use super::back_substitute;
 use super::sample_envs;
 use super::solve_for;
 use super::solve_linear;
-use crate::graph::op::core;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::rules::poly::best;
 use crate::rules::poly::from_groebner;
-use crate::rules::poly::groebner::groebner;
 use crate::rules::poly::groebner::GroebnerLimits;
 use crate::rules::poly::groebner::Order;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
+use crate::rules::poly::groebner::groebner_via;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 use crate::rules::poly::to_groebner;
 
 /// Solution tuples of `equations = 0` for `unknowns`, verified.
@@ -48,9 +48,10 @@ pub(super) fn solve_system(
         return None;
     }
     if equations.len() == unknowns.len()
-        && let Some(single) = solve_linear(graph, equations, unknowns) {
-            return Some(vec![single]);
-        }
+        && let Some(single) = solve_linear(graph, equations, unknowns)
+    {
+        return Some(vec![single]);
+    }
     let exprs: Vec<NodeId> = equations
         .iter()
         .map(|&e| {
@@ -66,7 +67,11 @@ pub(super) fn solve_system(
         if !holds(graph, &exprs, unknowns, &tuple) {
             continue;
         }
-        if !out.iter().any(|o| o.iter().zip(&tuple).all(|(&a, &b)| a == b || graph.same(a, b))) {
+        if !out.iter().any(|o| {
+            o.iter()
+                .zip(&tuple)
+                .all(|(&a, &b)| a == b || graph.same(a, b))
+        }) {
             out.push(tuple);
         }
     }
@@ -91,20 +96,41 @@ fn holds(
     }
     let mut all = substituted.clone();
     all.extend_from_slice(tuple);
-    let has_free = substituted.iter().any(|&t| !graph.free_symbols(graph.find(t)).is_empty());
+    let has_free = substituted
+        .iter()
+        .any(|&t| !graph.free_symbols(graph.find(t)).is_empty());
     if !has_free {
-        return substituted.iter().all(|&t| match graph.eval(t, &Env::numeric(0.0)) {
-            | Some(v) => v.abs() <= 1e-7 * (1.0 + tuple.iter().filter_map(|&n| graph.eval(n, &Env::numeric(0.0))).map(f64::abs).fold(0.0, f64::max).powi(3)),
-            | None => true,
+        return substituted.iter().all(|&t| {
+            match graph.eval(t, &Env::numeric(0.0)) {
+                | Some(v) => {
+                    v.abs()
+                        <= 1e-7
+                            * (1.0
+                                + tuple
+                                    .iter()
+                                    .filter_map(|&n| graph.eval(n, &Env::numeric(0.0)))
+                                    .map(f64::abs)
+                                    .fold(0.0, f64::max)
+                                    .powi(3))
+                },
+                | None => true,
+            }
         });
     }
     for env in sample_envs(graph, &all, None) {
-        let magnitude = tuple.iter().filter_map(|&n| graph.eval(n, &env)).filter(|v| v.is_finite()).map(f64::abs).fold(0.0, f64::max);
+        let magnitude = tuple
+            .iter()
+            .filter_map(|&n| graph.eval(n, &env))
+            .filter(|v| v.is_finite())
+            .map(f64::abs)
+            .fold(0.0, f64::max);
         for &t in &substituted {
             if let Some(v) = graph.eval(t, &env)
-                && v.is_finite() && v.abs() > 1e-7 * (1.0 + magnitude.powi(3)) {
-                    return false;
-                }
+                && v.is_finite()
+                && v.abs() > 1e-7 * (1.0 + magnitude.powi(3))
+            {
+                return false;
+            }
         }
     }
     true
@@ -171,24 +197,37 @@ fn polynomial(
             variables.extend_from_slice(&params);
             let vars = graph.node(core::LIST, &variables);
             let (generators, gens) = to_groebner(graph, list, vars, Order::Lex)?;
-            let basis = groebner(&generators, Order::Lex, GroebnerLimits::default())?;
+            let basis = groebner_via(&generators, Order::Lex, GroebnerLimits::default())?;
             // An inconsistent system.
-            if basis.iter().any(|g| g.leading().is_some_and(|(m, _)| m.iter().all(|&e| e == 0))) {
+            if basis
+                .iter()
+                .any(|g| g.leading().is_some_and(|(m, _)| m.iter().all(|&e| e == 0)))
+            {
                 return Some(Vec::new());
             }
             let nd = dependent.len();
             let finite = (0..nd).all(|d| {
                 basis.iter().any(|g| {
                     g.leading().is_some_and(|(m, _)| {
-                        m.get(d).is_some_and(|&e| e > 0) && m.iter().take(nd).enumerate().all(|(j, &e)| j == d || e == 0)
+                        m.get(d).is_some_and(|&e| e > 0)
+                            && m.iter()
+                                .take(nd)
+                                .enumerate()
+                                .all(|(j, &e)| j == d || e == 0)
                     })
                 })
             });
-            let constrained = basis.iter().any(|g| g.leading().is_some_and(|(m, _)| m.iter().take(nd).all(|&e| e == 0)));
+            let constrained = basis.iter().any(|g| {
+                g.leading()
+                    .is_some_and(|(m, _)| m.iter().take(nd).all(|&e| e == 0))
+            });
             if !finite || constrained {
                 continue;
             }
-            let terms: Vec<NodeId> = basis.iter().map(|g| from_groebner(graph, &gens, g)).collect();
+            let terms: Vec<NodeId> = basis
+                .iter()
+                .map(|g| from_groebner(graph, &gens, g))
+                .collect();
             let dep_nodes: Vec<NodeId> = dependent.iter().map(|&i| unknowns[i]).collect();
             let Some(solutions) = back_substitute(graph, &terms, &dep_nodes) else {
                 continue;
@@ -228,7 +267,11 @@ fn resultant_pair(
         let p = from_term(graph, &mut gens, e, limits)?;
         for g in p.support() {
             let node = gens.node(g)?;
-            if g != gx && g != gy && (graph.depends_on(graph.find(node), symbol_x) || graph.depends_on(graph.find(node), symbol_y)) {
+            if g != gx
+                && g != gy
+                && (graph.depends_on(graph.find(node), symbol_x)
+                    || graph.depends_on(graph.find(node), symbol_y))
+            {
                 return None;
             }
         }
@@ -281,12 +324,19 @@ fn linear_value(
         return None;
     }
     for g in poly.support() {
-        if g != gu && gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)) {
+        if g != gu
+            && gens
+                .node(g)
+                .is_some_and(|n| graph.depends_on(graph.find(n), symbol))
+        {
             return None;
         }
     }
     let parts = poly.coefficients_in(gu);
-    let (c0, c1) = (to_term(graph, &gens, parts.first()?), to_term(graph, &gens, parts.get(1)?));
+    let (c0, c1) = (
+        to_term(graph, &gens, parts.first()?),
+        to_term(graph, &gens, parts.get(1)?),
+    );
     let minus_one = graph.int(-1);
     let inverse = super::reciprocal(graph, c1);
     Some(super::product(graph, &[minus_one, c0, inverse]))
@@ -312,18 +362,25 @@ pub(super) fn eliminate(
             let v = graph.eval(e, &Env::numeric(0.0));
             v.is_none_or(|v| v.abs() < 1e-9)
         });
-        return Some(if ok { vec![Vec::new()] } else { Vec::new() });
+        return Some(if ok {
+            vec![Vec::new()]
+        } else {
+            Vec::new()
+        });
     }
     // (linear?, size, equation, unknown)
     let mut options: Vec<(bool, usize, usize, usize, Option<NodeId>)> = Vec::new();
     for (i, &e) in exprs.iter().enumerate() {
-        let involved: Vec<usize> = (0..unknowns.len()).filter(|&j| graph.depends_on(graph.find(e), symbols[j])).collect();
+        let involved: Vec<usize> = (0..unknowns.len())
+            .filter(|&j| graph.depends_on(graph.find(e), symbols[j]))
+            .collect();
         if involved.is_empty() {
             // A condition without unknowns.
             if let Some(v) = graph.eval(e, &Env::numeric(0.0))
-                && v.abs() > 1e-9 {
-                    return Some(Vec::new());
-                }
+                && v.abs() > 1e-9
+            {
+                return Some(Vec::new());
+            }
             continue;
         }
         for &j in &involved {
@@ -336,18 +393,36 @@ pub(super) fn eliminate(
         let (e, u) = (exprs[i], unknowns[j]);
         let values = match linear {
             | Some(v) => vec![v],
-            | None => match solve_for(graph, e, u, 0) {
-                | Some(values) => values,
-                | None => continue,
+            | None => {
+                match solve_for(graph, e, u, 0) {
+                    | Some(values) => values,
+                    | None => continue,
+                }
             },
         };
-        let rest_exprs: Vec<NodeId> = exprs.iter().enumerate().filter(|&(k, _)| k != i).map(|(_, &x)| x).collect();
-        let rest_unknowns: Vec<NodeId> = unknowns.iter().enumerate().filter(|&(k, _)| k != j).map(|(_, &x)| x).collect();
+        let rest_exprs: Vec<NodeId> = exprs
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != i)
+            .map(|(_, &x)| x)
+            .collect();
+        let rest_unknowns: Vec<NodeId> = unknowns
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != j)
+            .map(|(_, &x)| x)
+            .collect();
         let mut out = Vec::new();
         let mut complete = true;
         for value in values {
-            let substituted: Vec<NodeId> = rest_exprs.iter().map(|&r| graph.substitute(r, u, value)).collect();
-            let substituted: Vec<NodeId> = substituted.iter().map(|&s| best(graph, s).unwrap_or(s)).collect();
+            let substituted: Vec<NodeId> = rest_exprs
+                .iter()
+                .map(|&r| graph.substitute(r, u, value))
+                .collect();
+            let substituted: Vec<NodeId> = substituted
+                .iter()
+                .map(|&s| best(graph, s).unwrap_or(s))
+                .collect();
             let Some(tails) = eliminate(graph, &substituted, &rest_unknowns, depth + 1) else {
                 complete = false;
                 break;

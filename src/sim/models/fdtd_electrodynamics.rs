@@ -66,13 +66,14 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
 
     for t in 0..params.time_steps {
         // Update Hx and Hy (Magnetic field): row `i` only reads Ez and writes its own H row.
-        hx.par_chunks_mut(row_len).zip(ez.par_chunks(row_len)).take(nx.saturating_sub(1)).for_each(
-            |(hx_row, ez_row)| {
+        hx.par_chunks_mut(row_len)
+            .zip(ez.par_chunks(row_len))
+            .take(nx.saturating_sub(1))
+            .for_each(|(hx_row, ez_row)| {
                 for j in 0..ny - 1 {
                     hx_row[j] -= 0.5 * (ez_row[j + 1] - ez_row[j]);
                 }
-            },
-        );
+            });
 
         let ez_next_rows = ez.par_chunks(row_len).skip(1);
 
@@ -109,17 +110,19 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
         ez[params.source_pos.0 * ny + params.source_pos.1] += pulse;
 
         // Apply PML/Boundary Damping in parallel
-        ez.par_chunks_mut(row_len).enumerate().for_each(|(i, ez_row)| {
-            for (j, v) in ez_row.iter_mut().enumerate() {
-                if i < pml_thickness
-                    || i >= nx - pml_thickness
-                    || j < pml_thickness
-                    || j >= ny - pml_thickness
-                {
-                    *v *= 0.95;
+        ez.par_chunks_mut(row_len)
+            .enumerate()
+            .for_each(|(i, ez_row)| {
+                for (j, v) in ez_row.iter_mut().enumerate() {
+                    if i < pml_thickness
+                        || i >= nx - pml_thickness
+                        || j < pml_thickness
+                        || j >= ny - pml_thickness
+                    {
+                        *v *= 0.95;
+                    }
                 }
-            }
-        });
+            });
 
         if t % 5 == 0 {
             snapshots.push(
@@ -167,4 +170,6 @@ pub fn simulate_and_save_final_state(
 }
 
 /// General Yee solver (1D–3D, PEC/periodic/PML faces, TF/SF): see [`crate::sim::yee_fdtd`].
-pub use crate::sim::yee_fdtd::{Yee, YeeConfig};
+pub use crate::sim::yee_fdtd::Yee;
+/// General Yee solver (1D–3D, PEC/periodic/PML faces, TF/SF): see [`crate::sim::yee_fdtd`].
+pub use crate::sim::yee_fdtd::YeeConfig;

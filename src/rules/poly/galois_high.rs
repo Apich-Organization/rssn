@@ -33,6 +33,9 @@
 //! multiplication) give the periods `η_k = Σ_{χ(u) = k} ζ_m^u`; the roots are
 //! `Σ_t c_t η_{e(k+t)}` with rational `c`, found as the solution of a
 //! circulant system and checked to 2^-250.
+//!
+//! Parallelism: the coset-representative search over the 5040 permutations and the resolvent values
+//! of the representatives are computed concurrently (in index order).
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -42,14 +45,14 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::galois::BITS;
+use super::galois::Fx;
 use super::galois::one;
 use super::galois::refined_roots;
 use super::galois::round_integer;
 use super::galois::taylor_shift;
-use super::galois::Fx;
-use super::galois::BITS;
-use super::transitive::transitive_groups;
 use super::transitive::TransitiveGroup;
+use super::transitive::transitive_groups;
 
 /// The Galois group of an irreducible polynomial together with the data
 /// needed to work with its roots.
@@ -153,7 +156,12 @@ fn integral_form(c: &[BigRational]) -> Option<(BigRational, BigInt, Vec<BigInt>)
 pub fn discriminant(g: &[BigInt]) -> Option<BigInt> {
     let n = g.len().checked_sub(1).filter(|&n| n >= 2)?;
     let lead = g.last()?.clone();
-    let derivative: Vec<BigInt> = g.iter().enumerate().skip(1).map(|(i, c)| c * BigInt::from(i)).collect();
+    let derivative: Vec<BigInt> = g
+        .iter()
+        .enumerate()
+        .skip(1)
+        .map(|(i, c)| c * BigInt::from(i))
+        .collect();
     let size = 2 * n - 1;
     let mut matrix = vec![vec![BigInt::zero(); size]; size];
     // n-1 rows of g (descending coefficients), n rows of g'.
@@ -168,7 +176,11 @@ pub fn discriminant(g: &[BigInt]) -> Option<BigInt> {
         }
     }
     let resultant = bareiss(matrix)?;
-    let sign = if (n * (n - 1) / 2) % 2 == 0 { BigInt::one() } else { -BigInt::one() };
+    let sign = if (n * (n - 1) / 2) % 2 == 0 {
+        BigInt::one()
+    } else {
+        -BigInt::one()
+    };
     Some(sign * resultant / lead)
 }
 
@@ -178,13 +190,19 @@ fn bareiss(mut m: Vec<Vec<BigInt>>) -> Option<BigInt> {
     let mut previous = BigInt::one();
     for k in 0..n.saturating_sub(1) {
         if m.get(k)?.get(k)?.is_zero() {
-            let swap = (k + 1..n).find(|&r| m.get(r).and_then(|row| row.get(k)).is_some_and(|v| !v.is_zero()))?;
+            let swap = (k + 1..n).find(|&r| {
+                m.get(r)
+                    .and_then(|row| row.get(k))
+                    .is_some_and(|v| !v.is_zero())
+            })?;
             m.swap(k, swap);
             sign = -sign;
         }
         for i in k + 1..n {
             for j in k + 1..n {
-                let value = (m.get(i)?.get(j)? * m.get(k)?.get(k)? - m.get(i)?.get(k)? * m.get(k)?.get(j)?) / &previous;
+                let value = (m.get(i)?.get(j)? * m.get(k)?.get(k)?
+                    - m.get(i)?.get(k)? * m.get(k)?.get(j)?)
+                    / &previous;
                 *m.get_mut(i)?.get_mut(j)? = value;
             }
         }
@@ -228,7 +246,9 @@ fn exponent_choices(n: usize) -> Vec<Vec<usize>> {
 /// roots (to keep the resolvent values within the working precision).
 fn small_enough(roots: &[Fx]) -> bool {
     let limit = u64::try_from(BITS).unwrap_or(0) + 12;
-    roots.iter().all(|r| r.re.bits() < limit && r.im.bits() < limit)
+    roots
+        .iter()
+        .all(|r| r.re.bits() < limit && r.im.bits() < limit)
 }
 
 /// The orbit sum of `h`-images of the monomial with exponents `e`, for the
@@ -254,6 +274,9 @@ fn orbit_sum(
     }
     Some(total)
 }
+
+/// Number of permutations / cosets from which the resolvent loops run in parallel.
+const RESOLVENT_PAR_GRAIN: usize = 64;
 
 /// The Galois group of the irreducible polynomial `c` and a labelling of
 /// its roots.
@@ -298,31 +321,50 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
     for group in groups {
         let elements = group.elements();
         // Coset representatives: sigma minimal in its coset sigma.H.
+        // (one membership test per permutation, in parallel, kept in order)
+        let minimal = crate::kernels::par::map_slice(&permutations, RESOLVENT_PAR_GRAIN, |sigma| {
+            elements.iter().all(|h| {
+                let image: Vec<u8> = h
+                    .iter()
+                    .map(|&i| sigma.get(usize::from(i)).copied().unwrap_or(0))
+                    .collect();
+                image.as_slice() >= sigma.as_slice()
+            })
+        });
         let representatives: Vec<&Vec<u8>> = permutations
             .iter()
-            .filter(|sigma| {
-                elements.iter().all(|h| {
-                    let image: Vec<u8> = h.iter().map(|&i| sigma.get(usize::from(i)).copied().unwrap_or(0)).collect();
-                    image.as_slice() >= sigma.as_slice()
-                })
-            })
+            .zip(&minimal)
+            .filter(|&(_, &m)| m)
+            .map(|(sigma, _)| sigma)
             .collect();
         let mut ambiguous = false;
         let mut conclusive = false;
-        let choices: Vec<(usize, Vec<usize>)> =
-            (0..powers_by_transform.len()).flat_map(|t| exponent_choices(n).into_iter().map(move |e| (t, e))).collect();
+        let choices: Vec<(usize, Vec<usize>)> = (0..powers_by_transform.len())
+            .flat_map(|t| exponent_choices(n).into_iter().map(move |e| (t, e)))
+            .collect();
         for (transform, e) in choices {
             let powers = powers_by_transform.get(transform)?;
-            let mut values: Vec<Fx> = Vec::with_capacity(representatives.len());
-            for sigma in &representatives {
-                values.push(orbit_sum(&elements, sigma, powers, &e)?);
-            }
-            if values.iter().any(|v| v.re.bits() > magnitude_limit || v.im.bits() > magnitude_limit) {
+            // the coset resolvent values are independent fixed-point sums
+            let values: Vec<Fx> =
+                crate::kernels::par::map_slice(&representatives, RESOLVENT_PAR_GRAIN, |sigma| {
+                    orbit_sum(&elements, sigma, powers, &e)
+                })
+                .into_iter()
+                .collect::<Option<Vec<Fx>>>()?;
+            if values
+                .iter()
+                .any(|v| v.re.bits() > magnitude_limit || v.im.bits() > magnitude_limit)
+            {
                 // Out of the working precision for this choice: try another.
                 ambiguous = true;
                 continue;
             }
-                    let hits: Vec<usize> = values.iter().enumerate().filter(|(_, v)| round_integer(v).is_some()).map(|(i, _)| i).collect();
+            let hits: Vec<usize> = values
+                .iter()
+                .enumerate()
+                .filter(|(_, v)| round_integer(v).is_some())
+                .map(|(i, _)| i)
+                .collect();
             if hits.is_empty() {
                 conclusive = true;
                 break;
@@ -330,9 +372,14 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
             // Several cosets are integral when the normaliser is larger
             // than the group; take one whose value no other coset shares.
             let unique = hits.iter().copied().find(|&hit| {
-                values.get(hit).is_some_and(|reference| values.iter().enumerate().all(|(i, v)| i == hit || !v.close(reference, 300)))
+                values.get(hit).is_some_and(|reference| {
+                    values
+                        .iter()
+                        .enumerate()
+                        .all(|(i, v)| i == hit || !v.close(reference, 300))
+                })
             });
-                    let Some(hit) = unique else {
+            let Some(hit) = unique else {
                 ambiguous = true;
                 continue;
             };
@@ -364,11 +411,18 @@ pub(crate) fn solve_system(
     let n = a.len();
     // A pivot below 2^-300 of the largest entry is a rounding residue of a
     // singular system.
-    let largest = a.iter().flatten().map(|v| v.re.abs() + v.im.abs()).max().unwrap_or_else(BigInt::zero);
+    let largest = a
+        .iter()
+        .flatten()
+        .map(|v| v.re.abs() + v.im.abs())
+        .max()
+        .unwrap_or_else(BigInt::zero);
     let negligible = largest >> 300_u32;
     for k in 0..n {
         let pivot = (k..n).max_by_key(|&r| {
-            a.get(r).and_then(|row| row.get(k)).map_or_else(BigInt::zero, |v| v.re.abs() + v.im.abs())
+            a.get(r)
+                .and_then(|row| row.get(k))
+                .map_or_else(BigInt::zero, |v| v.re.abs() + v.im.abs())
         })?;
         a.swap(k, pivot);
         b.swap(k, pivot);
@@ -479,20 +533,45 @@ fn build_tower(
     let b = system.first()?.len();
     let blocks: Vec<Vec<&Fx>> = system
         .iter()
-        .map(|block| block.iter().map(|&p| analysis.ordering.get(p).and_then(|&i| analysis.roots.get(i))).collect::<Option<Vec<_>>>())
+        .map(|block| {
+            block
+                .iter()
+                .map(|&p| {
+                    analysis
+                        .ordering
+                        .get(p)
+                        .and_then(|&i| analysis.roots.get(i))
+                })
+                .collect::<Option<Vec<_>>>()
+        })
         .collect::<Option<_>>()?;
     let mut best: Option<(u64, Vec<Fx>, Vec<BigInt>)> = None;
-    for (alpha, beta) in [(1_i64, 0_i64), (0, 1), (1, 1), (1, 2), (2, 1), (1, -1), (1, 3), (3, 1), (1, 4)] {
+    for (alpha, beta) in [
+        (1_i64, 0_i64),
+        (0, 1),
+        (1, 1),
+        (1, 2),
+        (2, 1),
+        (1, -1),
+        (1, 3),
+        (3, 1),
+        (1, 4),
+    ] {
         let theta: Vec<Fx> = blocks
             .iter()
             .map(|block| {
                 block.iter().fold(Fx::zero(), |acc, r| {
-                    let term = r.mul(&Fx::integer(&BigInt::from(alpha))).add(&r.mul(r).mul(&Fx::integer(&BigInt::from(beta))));
+                    let term = r
+                        .mul(&Fx::integer(&BigInt::from(alpha)))
+                        .add(&r.mul(r).mul(&Fx::integer(&BigInt::from(beta))));
                     acc.add(&term)
                 })
             })
             .collect();
-        let distinct = theta.iter().enumerate().all(|(i, a)| theta.iter().skip(i + 1).all(|c| !a.close(c, 300)));
+        let distinct = theta
+            .iter()
+            .enumerate()
+            .all(|(i, a)| theta.iter().skip(i + 1).all(|c| !a.close(c, 300)));
         if !distinct {
             continue;
         }
@@ -510,7 +589,13 @@ fn build_tower(
             }
             poly = next;
         }
-        let Some(integers) = poly.iter().map(round_integer).collect::<Option<Vec<BigInt>>>() else { continue };
+        let Some(integers) = poly
+            .iter()
+            .map(round_integer)
+            .collect::<Option<Vec<BigInt>>>()
+        else {
+            continue;
+        };
         let height = integers.iter().map(|c| c.abs().bits()).max().unwrap_or(0);
         if best.as_ref().is_none_or(|(h, _, _)| height < *h) {
             best = Some((height, theta, integers));
@@ -572,7 +657,11 @@ fn build_tower(
             }
         }
     }
-    Some(Tower { block_size: b, theta: integers, block })
+    Some(Tower {
+        block_size: b,
+        theta: integers,
+        block,
+    })
 }
 
 // ---------------------------------------------------------------------
@@ -648,7 +737,11 @@ fn gcd_u64(
     a: u64,
     b: u64,
 ) -> u64 {
-    if b == 0 { a } else { gcd_u64(b, a % b) }
+    if b == 0 {
+        a
+    } else {
+        gcd_u64(b, a % b)
+    }
 }
 
 /// The distinct prime factors of `n` below `limit` (trial division).
@@ -712,11 +805,13 @@ fn real_characters(
     let mut seen: std::collections::HashSet<Vec<u64>> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for code in 0..total {
-        let images: Vec<usize> = (0..generators.len()).scan(code, |c, _| {
-            let digit = *c % n;
-            *c /= n;
-            Some(digit)
-        }).collect();
+        let images: Vec<usize> = (0..generators.len())
+            .scan(code, |c, _| {
+                let digit = *c % n;
+                *c /= n;
+                Some(digit)
+            })
+            .collect();
         let mut chi: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
         chi.insert(1, 0);
         let mut frontier = vec![1_u64];
@@ -746,7 +841,11 @@ fn real_characters(
         if image.len() != n {
             continue;
         }
-        let mut kernel: Vec<u64> = chi.iter().filter(|(_, v)| **v == 0).map(|(u, _)| *u).collect();
+        let mut kernel: Vec<u64> = chi
+            .iter()
+            .filter(|(_, v)| **v == 0)
+            .map(|(u, _)| *u)
+            .collect();
         kernel.sort_unstable();
         if seen.insert(kernel) {
             out.push(chi);
@@ -830,10 +929,16 @@ fn cyclotomic_search(
         }
         let cos_table: Vec<BigInt> = (0..m).map(|j| cos_fixed(j, m, &pi, 64)).collect();
         // sin(2πu/m) = cos(2π (4u - m) / 4m)
-        let sin_table: Vec<BigInt> = (0..m).map(|u| cos_fixed((4 * u + 3 * m) % (4 * m), 4 * m, &pi, 64)).collect();
+        let sin_table: Vec<BigInt> = (0..m)
+            .map(|u| cos_fixed((4 * u + 3 * m) % (4 * m), 4 * m, &pi, 64))
+            .collect();
         for chi in &characters {
             let coset = |k: usize| -> Vec<u64> {
-                let mut elements: Vec<u64> = chi.iter().filter(|(_, v)| **v == k).map(|(u, _)| *u).collect();
+                let mut elements: Vec<u64> = chi
+                    .iter()
+                    .filter(|(_, v)| **v == k)
+                    .map(|(u, _)| *u)
+                    .collect();
                 elements.sort_unstable();
                 elements
             };
@@ -844,14 +949,22 @@ fn cyclotomic_search(
                         for j in coset(k) {
                             let index = usize::try_from(j).unwrap_or(0);
                             let re = cos_table.get(index).cloned().unwrap_or_default();
-                            let im = if real { BigInt::zero() } else { sin_table.get(index).cloned().unwrap_or_default() };
+                            let im = if real {
+                                BigInt::zero()
+                            } else {
+                                sin_table.get(index).cloned().unwrap_or_default()
+                            };
                             sum = sum.add(&Fx { re, im });
                         }
                         sum
                     })
                     .collect();
                 let matrix: Vec<Vec<Fx>> = (0..n)
-                    .map(|k| (0..n).map(|t| eta.get(e * (k + t) % n).cloned().unwrap_or_else(Fx::zero)).collect())
+                    .map(|k| {
+                        (0..n)
+                            .map(|t| eta.get(e * (k + t) % n).cloned().unwrap_or_else(Fx::zero))
+                            .collect()
+                    })
                     .collect();
                 let rhs: Vec<Vec<Fx>> = (0..n)
                     .map(|k| {
@@ -859,11 +972,23 @@ fn cyclotomic_search(
                             .ordering
                             .get(k)
                             .and_then(|&i| analysis.roots.get(i))
-                            .map(|r| vec![if real { Fx::real(r.re.clone()) } else { r.clone() }])
+                            .map(|r| {
+                                vec![if real {
+                                    Fx::real(r.re.clone())
+                                } else {
+                                    r.clone()
+                                }]
+                            })
                     })
                     .collect::<Option<_>>()?;
-                let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else { continue };
-                let Some(c) = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<Vec<BigRational>>>() else {
+                let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else {
+                    continue;
+                };
+                let Some(c) = solution
+                    .iter()
+                    .map(|row| row.first().and_then(rationalize))
+                    .collect::<Option<Vec<BigRational>>>()
+                else {
                     continue;
                 };
                 let ok = (0..n).all(|k| {
@@ -873,7 +998,9 @@ fn cyclotomic_search(
                             value = value.add(&from_rational(q).mul(entry));
                         }
                     }
-                    rhs.get(k).and_then(|r| r.first()).is_some_and(|target| value.close(target, 250))
+                    rhs.get(k)
+                        .and_then(|r| r.first())
+                        .is_some_and(|target| value.close(target, 250))
                 });
                 if !ok {
                     continue;
@@ -896,7 +1023,11 @@ fn cyclotomic_search(
                     terms.sort_by_key(|(j, _)| *j);
                     roots.push((k, terms));
                 }
-                return Some(Cyclotomic { conductor: m, roots, complex: !real });
+                return Some(Cyclotomic {
+                    conductor: m,
+                    roots,
+                    complex: !real,
+                });
             }
         }
     }
@@ -976,7 +1107,9 @@ fn paired_form(
     trace: &BigInt,
     integer_poly: &dyn Fn(&[Fx]) -> Option<Vec<BigInt>>,
 ) -> Option<Lagrange> {
-    let u: Vec<Fx> = (1..=3).map(|j| t.get(j).and_then(|a| t.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    let u: Vec<Fx> = (1..=3)
+        .map(|j| t.get(j).and_then(|a| t.get(7 - j).map(|b| a.mul(b))))
+        .collect::<Option<_>>()?;
     let gap = BigInt::one() << (BITS - 100);
     for (a, b) in [(0, 1), (0, 2), (1, 2)] {
         let d = u.get(a)?.sub(u.get(b)?);
@@ -985,10 +1118,18 @@ fn paired_form(
         }
     }
     let u_poly = integer_poly(&u)?;
-    let vandermonde: Vec<Vec<Fx>> = u.iter().map(|v| vec![Fx::integer(&BigInt::one()), v.clone(), v.mul(v)]).collect();
-    let rhs: Vec<Vec<Fx>> = (1..=3).map(|j| Some(vec![r.get(j)?.add(r.get(7 - j)?)])).collect::<Option<_>>()?;
+    let vandermonde: Vec<Vec<Fx>> = u
+        .iter()
+        .map(|v| vec![Fx::integer(&BigInt::one()), v.clone(), v.mul(v)])
+        .collect();
+    let rhs: Vec<Vec<Fx>> = (1..=3)
+        .map(|j| Some(vec![r.get(j)?.add(r.get(7 - j)?)]))
+        .collect::<Option<_>>()?;
     let solution = solve_system(vandermonde, rhs)?;
-    let s_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
+    let s_poly: Vec<BigRational> = solution
+        .iter()
+        .map(|row| row.first().and_then(rationalize))
+        .collect::<Option<_>>()?;
     let mut terms = Vec::new();
     for (index, j) in (1..=3_usize).enumerate() {
         terms.push((
@@ -997,7 +1138,12 @@ fn paired_form(
             fx_to_f64(&r.get(7 - j)?.re)?,
         ));
     }
-    Some(Lagrange::Paired { u_poly, s_poly, terms, trace: trace.clone() })
+    Some(Lagrange::Paired {
+        u_poly,
+        s_poly,
+        terms,
+        trace: trace.clone(),
+    })
 }
 
 /// The Lagrange-resolvent data of a septic with group `D7`, `F21` or `F42`.
@@ -1009,18 +1155,37 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
     let pi = pi_fixed(BITS + 64);
     // ζ^m = cos(2πm/7) + i sin(2πm/7); sin(x) = cos(x - π/2).
     let zeta: Vec<Fx> = (0..7_u64)
-        .map(|m| Fx { re: cos_fixed(m, 7, &pi, 64), im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64) })
+        .map(|m| {
+            Fx {
+                re: cos_fixed(m, 7, &pi, 64),
+                im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64),
+            }
+        })
         .collect();
     let real_tolerance = BigInt::one() << (BITS - 100);
     let real_positions: Vec<usize> = (0..7)
-        .filter(|&p| analysis.ordering.get(p).and_then(|&i| analysis.roots.get(i)).is_some_and(|r| r.im.abs() < real_tolerance))
+        .filter(|&p| {
+            analysis
+                .ordering
+                .get(p)
+                .and_then(|&i| analysis.roots.get(i))
+                .is_some_and(|r| r.im.abs() < real_tolerance)
+        })
         .collect();
     let (shift, all_real) = match real_positions.as_slice() {
         | [p] => (*p, false),
         | list if list.len() == 7 => (0, true),
         | _ => return None,
     };
-    let z: Vec<Fx> = (0..7).map(|k| analysis.ordering.get((k + shift) % 7).and_then(|&i| analysis.roots.get(i)).cloned()).collect::<Option<_>>()?;
+    let z: Vec<Fx> = (0..7)
+        .map(|k| {
+            analysis
+                .ordering
+                .get((k + shift) % 7)
+                .and_then(|&i| analysis.roots.get(i))
+                .cloned()
+        })
+        .collect::<Option<_>>()?;
     if !all_real {
         for k in 0..7 {
             if !z.get((7 - k) % 7)?.close(&z.get(k)?.conj(), 300) {
@@ -1064,20 +1229,36 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
         }
         let values: Vec<Fx> = r.iter().skip(1).cloned().collect();
         let phi = integer_poly(&values)?;
-        let resolvents: Vec<f64> = values.iter().map(|v| fx_to_f64(&v.re)).collect::<Option<_>>()?;
-        return Some(Lagrange::OneReal { phi, resolvents, trace });
+        let resolvents: Vec<f64> = values
+            .iter()
+            .map(|v| fx_to_f64(&v.re))
+            .collect::<Option<_>>()?;
+        return Some(Lagrange::OneReal {
+            phi,
+            resolvents,
+            trace,
+        });
     }
     // All real: pair R_j with R_{7-j}. Pairs with R_j = 0 (the Dickson case has
     // only j = ±1) are dropped; one or three pairs remain.
     let negligible = BigInt::one() << (BITS - 300);
     let pairs: Vec<usize> = (1..=3)
-        .filter(|&j| r.get(j).is_some_and(|a| a.re.abs() > negligible || a.im.abs() > negligible))
+        .filter(|&j| {
+            r.get(j)
+                .is_some_and(|a| a.re.abs() > negligible || a.im.abs() > negligible)
+        })
         .collect();
     if pairs.len() != 1 && pairs.len() != 3 {
         return None;
     }
-    let s: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b)))).collect::<Option<_>>()?;
-    let n: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    let s: Vec<Fx> = pairs
+        .iter()
+        .map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b))))
+        .collect::<Option<_>>()?;
+    let n: Vec<Fx> = pairs
+        .iter()
+        .map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b))))
+        .collect::<Option<_>>()?;
     let s_poly = integer_poly(&s)?;
     // n_j = c0 + c1 s_j + c2 s_j^2 (constant when there is one pair).
     let size = pairs.len();
@@ -1094,11 +1275,18 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
         .collect();
     let rhs: Vec<Vec<Fx>> = n.iter().map(|v| vec![v.clone()]).collect();
     let solution = solve_system(vandermonde, rhs)?;
-    let n_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
+    let n_poly: Vec<BigRational> = solution
+        .iter()
+        .map(|row| row.first().and_then(rationalize))
+        .collect::<Option<_>>()?;
     let mut terms = Vec::new();
     for (index, &j) in pairs.iter().enumerate() {
         let rj = r.get(j)?;
-        let (representative, value) = if rj.im.is_positive() { (j, rj.clone()) } else { (7 - j, r.get(7 - j)?.clone()) };
+        let (representative, value) = if rj.im.is_positive() {
+            (j, rj.clone())
+        } else {
+            (7 - j, r.get(7 - j)?.clone())
+        };
         let s_value = fx_to_f64(&s.get(index)?.re)?;
         let rho = (fx_to_f64(&n.get(index)?.re)?).sqrt();
         let phi = (s_value / (2.0 * rho)).clamp(-1.0, 1.0).acos();
@@ -1108,7 +1296,12 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
         let m = ((7.0 * angle - phi) / std::f64::consts::TAU).round() as i64;
         terms.push((representative, s_value, m.rem_euclid(7)));
     }
-    Some(Lagrange::AllReal { s_poly, n_poly, terms, trace })
+    Some(Lagrange::AllReal {
+        s_poly,
+        n_poly,
+        terms,
+        trace,
+    })
 }
 
 #[cfg(test)]
@@ -1116,7 +1309,9 @@ mod tests {
     use super::*;
 
     fn poly(c: &[i64]) -> Vec<BigRational> {
-        c.iter().map(|&v| BigRational::from_integer(BigInt::from(v))).collect()
+        c.iter()
+            .map(|&v| BigRational::from_integer(BigInt::from(v)))
+            .collect()
     }
 
     fn group_of(c: &[i64]) -> Option<(&'static str, usize)> {
@@ -1127,10 +1322,16 @@ mod tests {
     fn discriminants() {
         // x^3 - 2: -108; x^2 + 1 is not covered (degree >= 2 only): -4.
         let ints = |v: &[i64]| -> Vec<BigInt> { v.iter().map(|&c| BigInt::from(c)).collect() };
-        assert_eq!(discriminant(&ints(&[-2, 0, 0, 1])), Some(BigInt::from(-108)));
+        assert_eq!(
+            discriminant(&ints(&[-2, 0, 0, 1])),
+            Some(BigInt::from(-108))
+        );
         assert_eq!(discriminant(&ints(&[1, 0, 1])), Some(BigInt::from(-4)));
         // x^5 - x - 1: 2869.
-        assert_eq!(discriminant(&ints(&[-1, -1, 0, 0, 0, 1])), Some(BigInt::from(2869)));
+        assert_eq!(
+            discriminant(&ints(&[-1, -1, 0, 0, 0, 1])),
+            Some(BigInt::from(2869))
+        );
     }
 
     #[test]
@@ -1155,7 +1356,11 @@ mod tests {
             // Σ a_i b_π(i) over the roots of x^3 - x - 1 and x^3 - 2: S3 x S3.
             (&[108, 0, 0, -54, 0, 0, 1], "S3xS3", 36),
             // Sextic resolvent of x^5 - x - 1.
-            (&[102400, -3091456, 44800, 8960, 880, 40, 1], "S5(6)=PGL(2,5)", 120),
+            (
+                &[102400, -3091456, 44800, 8960, 880, 40, 1],
+                "S5(6)=PGL(2,5)",
+                120,
+            ),
             (&[-1, -1, 0, 0, 0, 0, 1], "S6", 720),
             // Found by systematic search and checked against the cycle types
             // of Frobenius elements (all observed types occur in the group; the
@@ -1164,11 +1369,34 @@ mod tests {
             (&[9, 18, 6, -6, -6, 0, 1], "2S4(6)=C2wrS3", 48),
             // ... over Z[sqrt 2] (S3 wr C2) ...
             (&[-8, -8, -1, 0, -2, 0, 1], "3^2:D4=S3wrC2", 72),
+            // The even subgroup of 3^2:D4: the norm over Z[sqrt 2] of
+            // f = x^3 - 3 sqrt(2) x - 4, namely f f^sigma =
+            // x^6 - 8 x^3 - 18 x^2 + 16.  Its quadratic resolvent
+            // K(sqrt(disc f)), K = Q(sqrt 2), is the cyclic quartic field
+            // K(sqrt(-3(2 + sqrt 2))): sigma(sqrt(disc f)) = (1 + sqrt 2)
+            // sqrt(disc f) with 1 + sqrt 2 of norm -1.  The splitting fields
+            // of f and f^sigma therefore meet in that quartic field, giving
+            // 6 * 6 / 4 = 36, and the square discriminant 864^4 puts the
+            // group in A6: this is 3^2:4, not the full S3 wr C2.  See
+            // `sextic_3_2_4` for the tower and Frobenius checks.
+            (&[16, 0, -18, -8, 0, 0, 1], "3^2:4", 36),
             // ... the norm of a cubic over Z[sqrt 3] with S3 x S3.
             (&[-3, 0, 0, 6, 0, 0, 1], "S3xS3", 36),
             // The sextic resolvent of x^5 + 20 x - 16 (square discriminant, 3-cycles
             // and 5-cycles among the Frobenius elements: A5): PSL(2,5) on six points.
-            (&[6_553_600_000_000, -557_056_000_000, 7_168_000_000, -71_680_000, 352_000, -800, 1], "A5(6)=PSL(2,5)", 60),
+            (
+                &[
+                    6_553_600_000_000,
+                    -557_056_000_000,
+                    7_168_000_000,
+                    -71_680_000,
+                    352_000,
+                    -800,
+                    1,
+                ],
+                "A5(6)=PSL(2,5)",
+                60,
+            ),
             // x^6 - 24 x - 20: square discriminant, Frobenius elements of types (5,1)
             // and (4,2): only A6 contains both and only even permutations.
             (&[-20, -24, 0, 0, 0, 0, 1], "A6", 360),
@@ -1178,16 +1406,31 @@ mod tests {
         }
         // S4 acting on six points in two ways.
         for c in [&[-1, 0, 4, 0, 0, 0, 1][..], &[384, 224, 160, 56, 24, 6, 1]] {
-            assert!(group_of(c).is_some_and(|(label, order)| order == 24 && label.starts_with("S4")), "{c:?}: {:?}", group_of(c));
+            assert!(
+                group_of(c).is_some_and(|(label, order)| order == 24 && label.starts_with("S4")),
+                "{c:?}: {:?}",
+                group_of(c)
+            );
         }
     }
 
     #[test]
     fn parity_matches_discriminant() {
-        for c in [&[9, 9, 0, 3, 6, 3, 1][..], &[-2, 0, 0, 0, 0, 0, 1], &[-1, -1, 0, 0, 0, 0, 1], &[1, 1, 1, 1, 1, 1, 1], &[1728, 0, -144, -64, -12, 0, 1]] {
+        for c in [
+            &[9, 9, 0, 3, 6, 3, 1][..],
+            &[-2, 0, 0, 0, 0, 0, 1],
+            &[-1, -1, 0, 0, 0, 0, 1],
+            &[1, 1, 1, 1, 1, 1, 1],
+            &[1728, 0, -144, -64, -12, 0, 1],
+        ] {
             let a = analyse(&poly(c)).expect("group");
             let disc = discriminant(&a.monic).expect("disc");
-            assert_eq!(a.group.is_even(), super::super::galois::is_square(&disc), "{c:?} {}", a.group.label);
+            assert_eq!(
+                a.group.is_even(),
+                super::super::galois::is_square(&disc),
+                "{c:?} {}",
+                a.group.label
+            );
         }
     }
 
@@ -1195,7 +1438,10 @@ mod tests {
     fn septic_groups() {
         // x^7 - 2: the affine group F42; Trinks' x^7 - 7x + 3: PSL(3,2); x^7 - x - 1: S7.
         assert_eq!(group_of(&[-2, 0, 0, 0, 0, 0, 0, 1]), Some(("F42", 42)));
-        assert_eq!(group_of(&[3, -7, 0, 0, 0, 0, 0, 1]), Some(("PSL(3,2)", 168)));
+        assert_eq!(
+            group_of(&[3, -7, 0, 0, 0, 0, 0, 1]),
+            Some(("PSL(3,2)", 168))
+        );
         assert_eq!(group_of(&[-1, -1, 0, 0, 0, 0, 0, 1]), Some(("S7", 5040)));
         // The Dickson polynomial D7(x) - 1/4 (times 4): t^2 - 4 = -7 (3/4)^2 puts
         // sqrt(-7) in Q(zeta7), which cuts the multipliers down to the squares: F21.
@@ -1204,8 +1450,14 @@ mod tests {
         assert_eq!(group_of(&[-3, -7, 0, 14, 0, -7, 0, 1]), Some(("F42", 42)));
         // Tschirnhaus transforms y = x + x^2 + x^3 of the two Dickson polynomials: the same
         // groups with all six Lagrange resolvents non-zero.
-        assert_eq!(group_of(&[-6573, -198_548, -241_276, 60_368, 40_656, -2688, -896, 64]), Some(("F21", 21)));
-        assert_eq!(group_of(&[-921, -4522, -7105, 462, 539, -42, -14, 1]), Some(("F42", 42)));
+        assert_eq!(
+            group_of(&[-6573, -198_548, -241_276, 60_368, 40_656, -2688, -896, 64]),
+            Some(("F21", 21))
+        );
+        assert_eq!(
+            group_of(&[-921, -4522, -7105, 462, 539, -42, -14, 1]),
+            Some(("F42", 42))
+        );
         // The Weber-type septic of the Hilbert class field of Q(sqrt(-71)) (class number 7,
         // discriminant -71^3): the dihedral group D7.
         assert_eq!(group_of(&[1, 2, -1, -1, 1, -1, -1, 1]), Some(("D7", 14)));
@@ -1220,7 +1472,10 @@ mod tests {
         assert_eq!(cyclo.conductor, 91);
         assert_eq!(cyclo.roots.len(), 6);
         // The degree-7 field of conductor 29 * 43 (product of two order-7 characters).
-        let a = analyse(&poly(&[7_143_424, -1_426_432, -332_064, 73_224, 1196, -534, -1, 1])).expect("group");
+        let a = analyse(&poly(&[
+            7_143_424, -1_426_432, -332_064, 73_224, 1196, -534, -1, 1,
+        ]))
+        .expect("group");
         assert_eq!(a.group.label, "C7");
         let cyclo = cyclotomic(&a).expect("periods");
         assert_eq!(cyclo.conductor, 1247);
@@ -1234,5 +1489,256 @@ mod tests {
         let cyclo = cyclotomic(&a).expect("periods");
         assert_eq!(cyclo.conductor, 29);
         assert_eq!(cyclo.roots.len(), 7);
+    }
+
+    /// Cycle type (descending) of a permutation given by its images.
+    fn cycle_type(p: &[u8]) -> Vec<usize> {
+        let mut seen = vec![false; p.len()];
+        let mut lengths = Vec::new();
+        for start in 0..p.len() {
+            if seen[start] {
+                continue;
+            }
+            let (mut j, mut len) = (start, 0_usize);
+            while !seen[j] {
+                seen[j] = true;
+                j = usize::from(p[j]);
+                len += 1;
+            }
+            lengths.push(len);
+        }
+        lengths.sort_unstable_by(|a, b| b.cmp(a));
+        lengths
+    }
+
+    fn fp_trim(mut a: Vec<i64>) -> Vec<i64> {
+        while a.last().is_some_and(|&c| c == 0) {
+            a.pop();
+        }
+        a
+    }
+
+    fn fp_reduce(
+        a: &[i64],
+        p: i64,
+    ) -> Vec<i64> {
+        fp_trim(a.iter().map(|&c| c.rem_euclid(p)).collect())
+    }
+
+    fn fp_mul(
+        a: &[i64],
+        b: &[i64],
+        p: i64,
+    ) -> Vec<i64> {
+        if a.is_empty() || b.is_empty() {
+            return Vec::new();
+        }
+        let mut out = vec![0_i64; a.len() + b.len() - 1];
+        for (i, &x) in a.iter().enumerate() {
+            for (j, &y) in b.iter().enumerate() {
+                if let Some(slot) = out.get_mut(i + j) {
+                    *slot = (*slot + x * y).rem_euclid(p);
+                }
+            }
+        }
+        fp_trim(out)
+    }
+
+    fn fp_sub(
+        a: &[i64],
+        b: &[i64],
+        p: i64,
+    ) -> Vec<i64> {
+        let mut out = vec![0_i64; a.len().max(b.len())];
+        for (i, slot) in out.iter_mut().enumerate() {
+            let x = a.get(i).copied().unwrap_or(0);
+            let y = b.get(i).copied().unwrap_or(0);
+            *slot = (x - y).rem_euclid(p);
+        }
+        fp_trim(out)
+    }
+
+    /// Quotient and remainder in `F_p[x]` (ascending); `b` is non-zero.
+    fn fp_div_rem(
+        a: &[i64],
+        b: &[i64],
+        p: i64,
+    ) -> Option<(Vec<i64>, Vec<i64>)> {
+        let mut remainder = fp_trim(a.to_vec());
+        let degree = b.len().checked_sub(1)?;
+        let lead = *b.last()?;
+        let inverse = (1..p).find(|&x| (x * lead).rem_euclid(p) == 1)?;
+        let mut quotient = vec![0_i64; remainder.len().saturating_sub(degree)];
+        while remainder.len() > degree {
+            let shift = remainder.len() - 1 - degree;
+            let factor = (*remainder.last()? * inverse).rem_euclid(p);
+            *quotient.get_mut(shift)? = factor;
+            for (i, &c) in b.iter().enumerate() {
+                let slot = remainder.get_mut(shift + i)?;
+                *slot = (*slot - factor * c).rem_euclid(p);
+            }
+            remainder = fp_trim(remainder);
+        }
+        Some((fp_trim(quotient), remainder))
+    }
+
+    /// The monic gcd in `F_p[x]`.
+    fn fp_gcd(
+        a: &[i64],
+        b: &[i64],
+        p: i64,
+    ) -> Vec<i64> {
+        let (mut a, mut b) = (fp_reduce(a, p), fp_reduce(b, p));
+        while !b.is_empty() {
+            let (_, remainder) = fp_div_rem(&a, &b, p).unwrap_or_default();
+            a = std::mem::replace(&mut b, remainder);
+        }
+        if let Some(&lead) = a.last() {
+            let inverse = (1..p).find(|&x| (x * lead).rem_euclid(p) == 1).unwrap_or(1);
+            for c in &mut a {
+                *c = (*c * inverse).rem_euclid(p);
+            }
+        }
+        a
+    }
+
+    /// `x^exponent mod modulus` in `F_p[x]`.
+    fn fp_pow_x(
+        mut exponent: u64,
+        modulus: &[i64],
+        p: i64,
+    ) -> Vec<i64> {
+        let mut result = vec![1_i64];
+        let mut base = vec![0_i64, 1_i64];
+        while exponent > 0 {
+            if exponent & 1 == 1 {
+                let product = fp_mul(&result, &base, p);
+                result = fp_div_rem(&product, modulus, p).map_or_else(Vec::new, |(_, r)| r);
+            }
+            let square = fp_mul(&base, &base, p);
+            base = fp_div_rem(&square, modulus, p).map_or_else(Vec::new, |(_, r)| r);
+            exponent >>= 1;
+        }
+        result
+    }
+
+    /// Cycle type of the Frobenius at `p` from the degrees of the
+    /// irreducible factors of the sextic modulo `p`, by the distinct-degree
+    /// decomposition for factors of degree at most three.
+    fn fp_cycle_type(
+        coeffs: &[i64],
+        p: i64,
+    ) -> Option<Vec<usize>> {
+        let g = fp_reduce(coeffs, p);
+        let degree = g.len().checked_sub(1)?;
+        let x = vec![0_i64, 1_i64];
+        let p_u64 = u64::try_from(p).ok()?;
+        let h1 = fp_gcd(&fp_sub(&fp_pow_x(p_u64, &g, p), &x, p), &g, p);
+        let h2 = fp_gcd(&fp_sub(&fp_pow_x(p_u64 * p_u64, &g, p), &x, p), &g, p);
+        let h3 = fp_gcd(
+            &fp_sub(&fp_pow_x(p_u64 * p_u64 * p_u64, &g, p), &x, p),
+            &g,
+            p,
+        );
+        let linear = h1.len().checked_sub(1)?;
+        let quadratic = (h2.len().checked_sub(1)? - linear) / 2;
+        let cubic = (h3.len().checked_sub(1)? - linear) / 3;
+        let mut cycle = Vec::new();
+        cycle.extend(std::iter::repeat_n(1, linear));
+        cycle.extend(std::iter::repeat_n(2, quadratic));
+        cycle.extend(std::iter::repeat_n(3, cubic));
+        let remainder = degree - linear - 2 * quadratic - 3 * cubic;
+        if remainder > 0 {
+            cycle.push(remainder);
+        }
+        cycle.sort_unstable_by(|a, b| b.cmp(a));
+        Some(cycle)
+    }
+
+    #[test]
+    fn sextic_3_2_4() {
+        // Norm over Z[sqrt 2] of f = x^3 - 3 sqrt(2) x - 4:
+        // f f^sigma = x^6 - 8 x^3 - 18 x^2 + 16.
+        let c = &[16, 0, -18, -8, 0, 0, 1];
+        let a = analyse(&poly(c)).expect("group");
+        assert_eq!((a.group.label, a.group.order), ("3^2:4", 36));
+        let d = discriminant(&a.monic).expect("disc");
+        assert_eq!(d, BigInt::from(557_256_278_016_i64));
+        assert!(super::super::galois::is_square(&d));
+        // The unique block system is the pair of cubics of the norm.
+        assert_eq!(
+            a.group.block_systems(),
+            vec![vec![vec![0, 1, 2], vec![3, 4, 5]]]
+        );
+        let towers = towers(&a);
+        assert_eq!(towers.len(), 1);
+        let tower = towers.first().expect("tower");
+        assert_eq!(tower.block_size, 3);
+        // theta = sum of the squares of the roots of a block = +/- 6 sqrt 2.
+        assert_eq!(
+            tower.theta,
+            vec![BigInt::from(-72), BigInt::from(0), BigInt::from(1)]
+        );
+        // z^3 - (theta/2) z - 4 = f (respectively f^sigma).
+        let integer = BigRational::from_integer;
+        assert_eq!(
+            tower.block,
+            vec![
+                vec![integer(BigInt::from(-4)), BigRational::zero()],
+                vec![
+                    BigRational::zero(),
+                    BigRational::new(BigInt::from(-1), BigInt::from(2)),
+                ],
+                vec![BigRational::zero(), BigRational::zero()],
+            ]
+        );
+        // The Frobenius cycle types at these primes are all in the group;
+        // among the solvable even sextic groups only 3^2:4 contains them all.
+        let observed = [
+            (5_i64, vec![4, 2]),
+            (7, vec![2, 2, 1, 1]),
+            (23, vec![3, 1, 1, 1]),
+            (31, vec![3, 3]),
+        ];
+        let group_types: std::collections::BTreeSet<Vec<usize>> =
+            a.group.elements().iter().map(|e| cycle_type(e)).collect();
+        for (p, wanted) in &observed {
+            assert_eq!(fp_cycle_type(c, *p).as_ref(), Some(wanted), "p = {p}");
+            assert!(
+                group_types.contains(wanted),
+                "Frobenius type {wanted:?} is not in 3^2:4"
+            );
+        }
+        let mut matching = Vec::new();
+        for group in transitive_groups(6) {
+            if !group.solvable || !group.is_even() {
+                continue;
+            }
+            let types: std::collections::BTreeSet<Vec<usize>> =
+                group.elements().iter().map(|e| cycle_type(e)).collect();
+            if observed.iter().all(|(_, wanted)| types.contains(wanted)) {
+                matching.push(group.label);
+            }
+        }
+        assert_eq!(matching, vec!["3^2:4"]);
+    }
+
+    #[test]
+    fn sextic_3_2_4_neighbours() {
+        // The sibling norm with q = -(4 + sqrt 2) instead of -4: the same
+        // block system, but the quadratic resolvent is biquadratic, so the
+        // group is S3 x S3 (order 36) and the discriminant is not a square.
+        let ints = |v: &[i64]| v.iter().map(|&c| BigInt::from(c)).collect::<Vec<_>>();
+        let sibling = &[14, -12, -18, -8, 0, 0, 1];
+        assert_eq!(group_of(sibling), Some(("S3xS3", 36)));
+        assert!(!super::super::galois::is_square(
+            &discriminant(&ints(sibling)).expect("disc")
+        ));
+        // c2 - 1 drops the square discriminant and gives the full S3 wr C2.
+        let parent = &[16, 0, -19, -8, 0, 0, 1];
+        assert_eq!(group_of(parent), Some(("3^2:D4=S3wrC2", 72)));
+        assert!(!super::super::galois::is_square(
+            &discriminant(&ints(parent)).expect("disc")
+        ));
     }
 }

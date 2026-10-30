@@ -25,9 +25,11 @@
 //! values of the new displacement.
 
 use crate::kernels::krylov::Csr;
-use crate::sim::boundary::{ElasticBoundary, MarkerBcs};
+use crate::sim::boundary::ElasticBoundary;
+use crate::sim::boundary::MarkerBcs;
 use crate::sim::fem_simplex::SimplexMesh;
-use crate::sim::structured::{LinearSolver, LinearSystem};
+use crate::sim::structured::LinearSolver;
+use crate::sim::structured::LinearSystem;
 
 type M3 = [[f64; 3]; 3];
 type Triplets = Vec<(usize, usize, f64)>;
@@ -59,12 +61,16 @@ impl HyperMaterial {
     #[must_use]
     pub fn lame(&self) -> (f64, f64) {
         let (e, nu) = (self.young, self.poisson);
-        (e * nu / ((1.0 + nu) * (1.0 - 2.0 * nu)), e / (2.0 * (1.0 + nu)))
+        (
+            e * nu / ((1.0 + nu) * (1.0 - 2.0 * nu)),
+            e / (2.0 * (1.0 + nu)),
+        )
     }
 }
 
 fn det3(m: &M3) -> f64 {
-    m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+    m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+        - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
         + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
 }
 
@@ -84,7 +90,10 @@ fn inv3(m: &M3) -> M3 {
     inv
 }
 
-fn matmul(a: &M3, b: &M3) -> M3 {
+fn matmul(
+    a: &M3,
+    b: &M3,
+) -> M3 {
     let mut c = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
@@ -108,7 +117,10 @@ fn transpose(a: &M3) -> M3 {
 ///
 /// # Errors
 /// If `det F <= 0` (inverted element).
-pub fn first_piola(mat: &HyperMaterial, f: &M3) -> Result<M3, String> {
+pub fn first_piola(
+    mat: &HyperMaterial,
+    f: &M3,
+) -> Result<M3, String> {
     let (lam, mu) = mat.lame();
     let j = det3(f);
     if j <= 1e-12 {
@@ -116,7 +128,7 @@ pub fn first_piola(mat: &HyperMaterial, f: &M3) -> Result<M3, String> {
     }
     let mut p = [[0.0; 3]; 3];
     match mat.model {
-        HyperModel::StVenantKirchhoff => {
+        | HyperModel::StVenantKirchhoff => {
             let c = matmul(&transpose(f), f);
             let mut e = [[0.0; 3]; 3];
             for a in 0..3 {
@@ -133,7 +145,7 @@ pub fn first_piola(mat: &HyperMaterial, f: &M3) -> Result<M3, String> {
             }
             p = matmul(f, &s);
         },
-        HyperModel::NeoHookean => {
+        | HyperModel::NeoHookean => {
             let fit = transpose(&inv3(f));
             let lnj = j.ln();
             for a in 0..3 {
@@ -150,7 +162,10 @@ pub fn first_piola(mat: &HyperMaterial, f: &M3) -> Result<M3, String> {
 ///
 /// # Errors
 /// If `det F <= 0`.
-pub fn tangent_moduli(mat: &HyperMaterial, f: &M3) -> Result<[[M3; 3]; 3], String> {
+pub fn tangent_moduli(
+    mat: &HyperMaterial,
+    f: &M3,
+) -> Result<[[M3; 3]; 3], String> {
     let (lam, mu) = mat.lame();
     let j = det3(f);
     if j <= 1e-12 {
@@ -159,7 +174,7 @@ pub fn tangent_moduli(mat: &HyperMaterial, f: &M3) -> Result<[[M3; 3]; 3], Strin
     let mut a = [[[[0.0; 3]; 3]; 3]; 3];
     let delta = |x: usize, y: usize| f64::from(u8::from(x == y));
     match mat.model {
-        HyperModel::StVenantKirchhoff => {
+        | HyperModel::StVenantKirchhoff => {
             let c = matmul(&transpose(f), f);
             let mut e = [[0.0; 3]; 3];
             for p in 0..3 {
@@ -179,20 +194,24 @@ pub fn tangent_moduli(mat: &HyperMaterial, f: &M3) -> Result<[[M3; 3]; 3], Strin
                 for jj in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            a[i][jj][k][l] = delta(i, k) * s[jj][l] + lam * f[i][jj] * f[k][l] + mu * (fft[i][k] * delta(jj, l) + f[i][l] * f[k][jj]);
+                            a[i][jj][k][l] = delta(i, k) * s[jj][l]
+                                + lam * f[i][jj] * f[k][l]
+                                + mu * (fft[i][k] * delta(jj, l) + f[i][l] * f[k][jj]);
                         }
                     }
                 }
             }
         },
-        HyperModel::NeoHookean => {
+        | HyperModel::NeoHookean => {
             let fi = inv3(f);
             let lnj = j.ln();
             for i in 0..3 {
                 for jj in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            a[i][jj][k][l] = mu * delta(i, k) * delta(jj, l) + (mu - lam * lnj) * fi[jj][k] * fi[l][i] + lam * fi[jj][i] * fi[l][k];
+                            a[i][jj][k][l] = mu * delta(i, k) * delta(jj, l)
+                                + (mu - lam * lnj) * fi[jj][k] * fi[l][i]
+                                + lam * fi[jj][i] * fi[l][k];
                         }
                     }
                 }
@@ -242,16 +261,27 @@ impl<'a> Assembler<'a> {
         if !(2..=3).contains(&mesh.dim) {
             return Err("the mesh must be 2D (plane strain) or 3D".into());
         }
-        let grads = (0..mesh.cells.len()).map(|c| mesh.bary_gradients(c)).collect();
+        let grads = (0..mesh.cells.len())
+            .map(|c| mesh.bary_gradients(c))
+            .collect();
         let volumes = (0..mesh.cells.len()).map(|c| mesh.measure(c)).collect();
-        Ok(Self { prob, dim: mesh.dim, grads, volumes })
+        Ok(Self {
+            prob,
+            dim: mesh.dim,
+            grads,
+            volumes,
+        })
     }
 
     const fn ndof(&self) -> usize {
         self.prob.mesh.nodes.len() * self.dim
     }
 
-    fn deformation_gradient(&self, cell: usize, u: &[f64]) -> M3 {
+    fn deformation_gradient(
+        &self,
+        cell: usize,
+        u: &[f64],
+    ) -> M3 {
         let mut f = [[0.0; 3]; 3];
         for d in 0..3 {
             f[d][d] = 1.0;
@@ -267,7 +297,11 @@ impl<'a> Assembler<'a> {
     }
 
     /// Internal force vector and (optionally) the tangent triplets.
-    fn internal(&self, u: &[f64], want_tangent: bool) -> Result<(Vec<f64>, Triplets), String> {
+    fn internal(
+        &self,
+        u: &[f64],
+        want_tangent: bool,
+    ) -> Result<(Vec<f64>, Triplets), String> {
         let (dim, mat) = (self.dim, &self.prob.material);
         let mut fint = vec![0.0; self.ndof()];
         let mut trip = Vec::new();
@@ -290,7 +324,9 @@ impl<'a> Assembler<'a> {
                                 let mut s = 0.0;
                                 for j in 0..dim {
                                     for l in 0..dim {
-                                        s += at[i][j][k][l] * self.grads[c][a][j] * self.grads[c][b][l];
+                                        s += at[i][j][k][l]
+                                            * self.grads[c][a][j]
+                                            * self.grads[c][b][l];
                                     }
                                 }
                                 trip.push((na * dim + i, nb * dim + k, v * s));
@@ -323,7 +359,11 @@ impl<'a> Assembler<'a> {
     }
 
     /// External load (body force and nominal tractions) scaled by `factor`.
-    fn external(&self, factor: f64, t: f64) -> Vec<f64> {
+    fn external(
+        &self,
+        factor: f64,
+        t: f64,
+    ) -> Vec<f64> {
         let (mesh, dim) = (self.prob.mesh, self.dim);
         let mut load = vec![0.0; self.ndof()];
         let n1 = (dim + 1) as f64;
@@ -342,7 +382,9 @@ impl<'a> Assembler<'a> {
             }
         }
         for &(ci, face, mk) in &mesh.facets {
-            let Some(ElasticBoundary::Traction(tv)) = self.prob.bcs.get(mk) else { continue };
+            let Some(ElasticBoundary::Traction(tv)) = self.prob.bcs.get(mk) else {
+                continue;
+            };
             let meas = mesh.facet_measure(ci, face);
             let cell = &mesh.cells[ci];
             let mut x = [0.0; 3];
@@ -370,7 +412,10 @@ impl<'a> Assembler<'a> {
     }
 
     /// Nodal tributary areas of the facets of a marker.
-    fn contact_areas(&self, marker: i32) -> Vec<(usize, f64)> {
+    fn contact_areas(
+        &self,
+        marker: i32,
+    ) -> Vec<(usize, f64)> {
         let mesh = self.prob.mesh;
         let mut area = vec![0.0; mesh.nodes.len()];
         for &(ci, face, mk) in &mesh.facets {
@@ -384,11 +429,19 @@ impl<'a> Assembler<'a> {
                 }
             }
         }
-        area.into_iter().enumerate().filter(|(_, a)| *a > 0.0).collect()
+        area.into_iter()
+            .enumerate()
+            .filter(|(_, a)| *a > 0.0)
+            .collect()
     }
 
     /// Contact force (acting on the body) and tangent for the current displacement.
-    fn contact(&self, u: &[f64], force: &mut [f64], trip: Option<&mut Vec<(usize, usize, f64)>>) {
+    fn contact(
+        &self,
+        u: &[f64],
+        force: &mut [f64],
+        trip: Option<&mut Vec<(usize, usize, f64)>>,
+    ) {
         let dim = self.dim;
         let mut trip = trip;
         for ct in &self.prob.contacts {
@@ -418,11 +471,17 @@ impl<'a> Assembler<'a> {
     }
 
     /// Prescribed displacement values (`None` = free) at the load factor / time.
-    fn prescribed(&self, factor: f64, t: f64) -> Vec<Option<f64>> {
+    fn prescribed(
+        &self,
+        factor: f64,
+        t: f64,
+    ) -> Vec<Option<f64>> {
         let (mesh, dim) = (self.prob.mesh, self.dim);
         let mut out = vec![None; self.ndof()];
         for &(ci, face, mk) in &mesh.facets {
-            let Some(ElasticBoundary::Displacement(vals)) = self.prob.bcs.get(mk) else { continue };
+            let Some(ElasticBoundary::Displacement(vals)) = self.prob.bcs.get(mk) else {
+                continue;
+            };
             for (j, &n) in mesh.cells[ci].iter().enumerate() {
                 if j == face {
                     continue;
@@ -438,9 +497,19 @@ impl<'a> Assembler<'a> {
     }
 }
 
-fn solve_system(trip: &[(usize, usize, f64)], fixed: &[Option<f64>], rhs: &[f64], u: &[f64], solver: LinearSolver) -> Result<Vec<f64>, String> {
+fn solve_system(
+    trip: &[(usize, usize, f64)],
+    fixed: &[Option<f64>],
+    rhs: &[f64],
+    u: &[f64],
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
     let n = rhs.len();
-    let mut t2: Vec<(usize, usize, f64)> = trip.iter().filter(|(r, _, _)| fixed[*r].is_none()).copied().collect();
+    let mut t2: Vec<(usize, usize, f64)> = trip
+        .iter()
+        .filter(|(r, _, _)| fixed[*r].is_none())
+        .copied()
+        .collect();
     let mut b = rhs.to_vec();
     for r in 0..n {
         if let Some(v) = fixed[r] {
@@ -470,7 +539,13 @@ pub struct HyperSolution {
 ///
 /// # Errors
 /// If an element inverts, Newton fails to converge or the system is singular.
-pub fn solve_static(prob: &HyperProblem<'_>, steps: usize, tol: f64, max_iter: usize, solver: LinearSolver) -> Result<HyperSolution, String> {
+pub fn solve_static(
+    prob: &HyperProblem<'_>,
+    steps: usize,
+    tol: f64,
+    max_iter: usize,
+    solver: LinearSolver,
+) -> Result<HyperSolution, String> {
     let asm = Assembler::new(prob)?;
     let n = asm.ndof();
     let mut u = vec![0.0; n];
@@ -492,9 +567,23 @@ pub fn solve_static(prob: &HyperProblem<'_>, steps: usize, tol: f64, max_iter: u
             let (fint, mut trip) = asm.internal(&u, true)?;
             let mut fcon = vec![0.0; n];
             asm.contact(&u, &mut fcon, Some(&mut trip));
-            let res: Vec<f64> = (0..n).map(|d| if fixed[d].is_some() { 0.0 } else { ext[d] + fcon[d] - fint[d] }).collect();
+            let res: Vec<f64> = (0..n)
+                .map(|d| {
+                    if fixed[d].is_some() {
+                        0.0
+                    } else {
+                        ext[d] + fcon[d] - fint[d]
+                    }
+                })
+                .collect();
             let rn = res.iter().map(|x| x * x).sum::<f64>().sqrt();
-            let scale = fint.iter().chain(&ext).map(|x| x * x).sum::<f64>().sqrt().max(1e-300);
+            let scale = fint
+                .iter()
+                .chain(&ext)
+                .map(|x| x * x)
+                .sum::<f64>()
+                .sqrt()
+                .max(1e-300);
             residuals.push(rn);
             if rn <= tol.max(1e-10) * scale || rn < 1e-14 {
                 converged = true;
@@ -510,7 +599,16 @@ pub fn solve_static(prob: &HyperProblem<'_>, steps: usize, tol: f64, max_iter: u
                 if let Ok((fi, _)) = asm.internal(&trial, false) {
                     let mut fc = vec![0.0; n];
                     asm.contact(&trial, &mut fc, None);
-                    let rt: f64 = (0..n).map(|d| if fixed[d].is_some() { 0.0 } else { (ext[d] + fc[d] - fi[d]).powi(2) }).sum::<f64>().sqrt();
+                    let rt: f64 = (0..n)
+                        .map(|d| {
+                            if fixed[d].is_some() {
+                                0.0
+                            } else {
+                                (ext[d] + fc[d] - fi[d]).powi(2)
+                            }
+                        })
+                        .sum::<f64>()
+                        .sqrt();
                     if rt < rn * (1.0 - 1e-4 * alpha) || rt <= tol.max(1e-10) * scale {
                         u = trial;
                         accepted = true;
@@ -533,7 +631,11 @@ pub fn solve_static(prob: &HyperProblem<'_>, steps: usize, tol: f64, max_iter: u
         }
         iterations.push(count);
     }
-    Ok(HyperSolution { u, residuals, iterations })
+    Ok(HyperSolution {
+        u,
+        residuals,
+        iterations,
+    })
 }
 
 /// Time integration scheme.
@@ -557,8 +659,8 @@ impl TimeScheme {
     /// `(α_m, α_f, β, γ)`.
     fn parameters(self) -> (f64, f64, f64, f64) {
         match self {
-            Self::Newmark { beta, gamma } => (0.0, 0.0, beta, gamma),
-            Self::GeneralizedAlpha { rho_inf } => {
+            | Self::Newmark { beta, gamma } => (0.0, 0.0, beta, gamma),
+            | Self::GeneralizedAlpha { rho_inf } => {
                 let am = (2.0 * rho_inf - 1.0) / (rho_inf + 1.0);
                 let af = rho_inf / (rho_inf + 1.0);
                 (am, af, 0.25 * (1.0 - am + af).powi(2), 0.5 - am + af)
@@ -582,8 +684,13 @@ pub struct DynamicState {
 
 /// Kinetic energy `½ vᵀ M v` with the consistent mass matrix.
 #[must_use]
-pub fn kinetic_energy(prob: &HyperProblem<'_>, v: &[f64]) -> f64 {
-    let Ok(asm) = Assembler::new(prob) else { return 0.0 };
+pub fn kinetic_energy(
+    prob: &HyperProblem<'_>,
+    v: &[f64],
+) -> f64 {
+    let Ok(asm) = Assembler::new(prob) else {
+        return 0.0;
+    };
     let n = asm.ndof();
     let m = Csr::from_triplets(n, n, &asm.mass());
     let mut mv = vec![0.0; n];
@@ -595,7 +702,10 @@ pub fn kinetic_energy(prob: &HyperProblem<'_>, v: &[f64]) -> f64 {
 ///
 /// # Errors
 /// If an element is inverted.
-pub fn strain_energy(prob: &HyperProblem<'_>, u: &[f64]) -> Result<f64, String> {
+pub fn strain_energy(
+    prob: &HyperProblem<'_>,
+    u: &[f64],
+) -> Result<f64, String> {
     let asm = Assembler::new(prob)?;
     let (lam, mu) = prob.material.lame();
     let mut w = 0.0;
@@ -607,7 +717,7 @@ pub fn strain_energy(prob: &HyperProblem<'_>, u: &[f64]) -> Result<f64, String> 
         }
         let ct = matmul(&transpose(&f), &f);
         let density = match prob.material.model {
-            HyperModel::StVenantKirchhoff => {
+            | HyperModel::StVenantKirchhoff => {
                 let mut e2 = 0.0;
                 let mut tr = 0.0;
                 for a in 0..3 {
@@ -619,7 +729,7 @@ pub fn strain_energy(prob: &HyperProblem<'_>, u: &[f64]) -> Result<f64, String> 
                 }
                 0.5 * lam * tr * tr + mu * e2
             },
-            HyperModel::NeoHookean => {
+            | HyperModel::NeoHookean => {
                 let i1 = ct[0][0] + ct[1][1] + ct[2][2];
                 0.5 * mu * (i1 - 3.0) - mu * j.ln() + 0.5 * lam * j.ln().powi(2)
             },
@@ -664,7 +774,9 @@ pub fn solve_dynamic(
     for _ in 0..steps {
         let t_new = st.t + dt;
         let fixed = asm.prescribed(1.0, t_new);
-        let utilde: Vec<f64> = (0..n).map(|i| st.u[i] + dt * st.v[i] + dt * dt * (0.5 - beta) * st.a[i]).collect();
+        let utilde: Vec<f64> = (0..n)
+            .map(|i| st.u[i] + dt * st.v[i] + dt * dt * (0.5 - beta) * st.a[i])
+            .collect();
         let mut u = st.u.clone();
         for (d, v) in fixed.iter().enumerate() {
             if let Some(v) = v {
@@ -678,19 +790,46 @@ pub fn solve_dynamic(
             let mut fcon = vec![0.0; n];
             let mut ctrip = Vec::new();
             asm.contact(&ua, &mut fcon, Some(&mut ctrip));
-            let a_new: Vec<f64> = (0..n).map(|i| (u[i] - utilde[i]) / (beta * dt * dt)).collect();
-            let a_mix: Vec<f64> = (0..n).map(|i| (1.0 - am) * a_new[i] + am * st.a[i]).collect();
+            let a_new: Vec<f64> = (0..n)
+                .map(|i| (u[i] - utilde[i]) / (beta * dt * dt))
+                .collect();
+            let a_mix: Vec<f64> = (0..n)
+                .map(|i| (1.0 - am) * a_new[i] + am * st.a[i])
+                .collect();
             let mut ma = vec![0.0; n];
             mass.matvec(&a_mix, &mut ma);
-            let res: Vec<f64> = (0..n).map(|i| if fixed[i].is_some() { 0.0 } else { ext[i] + fcon[i] - fint[i] - ma[i] }).collect();
+            let res: Vec<f64> = (0..n)
+                .map(|i| {
+                    if fixed[i].is_some() {
+                        0.0
+                    } else {
+                        ext[i] + fcon[i] - fint[i] - ma[i]
+                    }
+                })
+                .collect();
             let rn = res.iter().map(|x| x * x).sum::<f64>().sqrt();
-            let scale = fint.iter().chain(&ext).chain(&ma).map(|x| x * x).sum::<f64>().sqrt().max(1e-300);
+            let scale = fint
+                .iter()
+                .chain(&ext)
+                .chain(&ma)
+                .map(|x| x * x)
+                .sum::<f64>()
+                .sqrt()
+                .max(1e-300);
             if rn <= tol.max(1e-10) * scale || rn < 1e-14 {
                 converged = true;
                 break;
             }
-            let mut trip: Vec<(usize, usize, f64)> = ktrip.iter().chain(&ctrip).map(|&(r, c, v)| (r, c, (1.0 - af) * v)).collect();
-            trip.extend(mass_trip.iter().map(|&(r, c, v)| (r, c, v * (1.0 - am) / (beta * dt * dt))));
+            let mut trip: Vec<(usize, usize, f64)> = ktrip
+                .iter()
+                .chain(&ctrip)
+                .map(|&(r, c, v)| (r, c, (1.0 - af) * v))
+                .collect();
+            trip.extend(
+                mass_trip
+                    .iter()
+                    .map(|&(r, c, v)| (r, c, v * (1.0 - am) / (beta * dt * dt))),
+            );
             let du = solve_system(&trip, &fixed, &res, &u, solver)?;
             for i in 0..n {
                 u[i] += du[i];
@@ -699,9 +838,18 @@ pub fn solve_dynamic(
         if !converged {
             return Err("Newton did not converge in a time step".into());
         }
-        let a_new: Vec<f64> = (0..n).map(|i| (u[i] - utilde[i]) / (beta * dt * dt)).collect();
-        let v_new: Vec<f64> = (0..n).map(|i| st.v[i] + dt * ((1.0 - gamma) * st.a[i] + gamma * a_new[i])).collect();
-        st = DynamicState { u, v: v_new, a: a_new, t: t_new };
+        let a_new: Vec<f64> = (0..n)
+            .map(|i| (u[i] - utilde[i]) / (beta * dt * dt))
+            .collect();
+        let v_new: Vec<f64> = (0..n)
+            .map(|i| st.v[i] + dt * ((1.0 - gamma) * st.a[i] + gamma * a_new[i]))
+            .collect();
+        st = DynamicState {
+            u,
+            v: v_new,
+            a: a_new,
+            t: t_new,
+        };
         observer(&st);
     }
     Ok(st)
@@ -711,14 +859,31 @@ pub fn solve_dynamic(
 ///
 /// # Errors
 /// If the mass matrix is singular or an element is inverted.
-pub fn rest_state(prob: &HyperProblem<'_>, u0: &[f64], solver: LinearSolver) -> Result<DynamicState, String> {
+pub fn rest_state(
+    prob: &HyperProblem<'_>,
+    u0: &[f64],
+    solver: LinearSolver,
+) -> Result<DynamicState, String> {
     let asm = Assembler::new(prob)?;
     let n = asm.ndof();
     let (fint, _) = asm.internal(u0, false)?;
     let ext = asm.external(1.0, 0.0);
     let fixed = asm.prescribed(1.0, 0.0);
-    let rhs: Vec<f64> = (0..n).map(|i| if fixed[i].is_some() { 0.0 } else { ext[i] - fint[i] }).collect();
+    let rhs: Vec<f64> = (0..n)
+        .map(|i| {
+            if fixed[i].is_some() {
+                0.0
+            } else {
+                ext[i] - fint[i]
+            }
+        })
+        .collect();
     let uref: Vec<f64> = fixed.iter().map(|v| v.unwrap_or(0.0)).collect();
     let a = solve_system(&asm.mass(), &fixed, &rhs, &uref, solver)?;
-    Ok(DynamicState { u: u0.to_vec(), v: vec![0.0; n], a, t: 0.0 })
+    Ok(DynamicState {
+        u: u0.to_vec(),
+        v: vec![0.0; n],
+        a,
+        t: 0.0,
+    })
 }

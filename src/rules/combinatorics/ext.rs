@@ -37,13 +37,13 @@ use super::choose;
 use super::factorial;
 use super::nat;
 use super::stirling_row;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
+use crate::rules::number_theory::Value;
 use crate::rules::number_theory::exact;
 use crate::rules::number_theory::exact_lists;
-use crate::rules::number_theory::Value;
 
 const SET: &str = "combinatorics";
 const MAX_N: u64 = 2000;
@@ -72,12 +72,19 @@ fn eulerian(
         for (j, slot) in next.iter_mut().enumerate() {
             let j64 = u64::try_from(j).unwrap_or(0);
             let above = row.get(j).cloned().unwrap_or_default();
-            let left = if j == 0 { BigInt::zero() } else { row.get(j - 1).cloned().unwrap_or_default() };
+            let left = if j == 0 {
+                BigInt::zero()
+            } else {
+                row.get(j - 1).cloned().unwrap_or_default()
+            };
             *slot = above * (j64 + 1) + left * (m - j64);
         }
         row = next;
     }
-    usize::try_from(k).ok().and_then(|k| row.get(k).cloned()).unwrap_or_default()
+    usize::try_from(k)
+        .ok()
+        .and_then(|k| row.get(k).cloned())
+        .unwrap_or_default()
 }
 
 fn motzkin(n: u64) -> BigInt {
@@ -108,7 +115,10 @@ fn schroeder(n: u64) -> BigInt {
 
 fn fubini(n: u64) -> BigInt {
     let row = stirling_row(n, |_, j| j);
-    row.iter().enumerate().map(|(k, s)| s * factorial(u64::try_from(k).unwrap_or(0))).sum()
+    row.iter()
+        .enumerate()
+        .map(|(k, s)| s * factorial(u64::try_from(k).unwrap_or(0)))
+        .sum()
 }
 
 /// Partitions of `n` into exactly `k` parts, by `p(n, k) = p(n-1, k-1) + p(n-k, k)`.
@@ -121,7 +131,11 @@ fn partitions_exact(
     for m in 1..=n {
         for j in 1..=k.min(m) {
             let a = table[m - 1][j - 1].clone();
-            let b = if m >= j { table[m - j][j].clone() } else { BigInt::zero() };
+            let b = if m >= j {
+                table[m - j][j].clone()
+            } else {
+                BigInt::zero()
+            };
             table[m][j] = a + b;
         }
     }
@@ -173,7 +187,8 @@ fn necklaces(
     for d in 1..=n {
         if n.is_multiple_of(d) {
             let phi = (1..=d).filter(|&x| gcd_u64(x, d) == 1).count();
-            total += BigInt::from(phi) * num_traits::pow::pow(k.clone(), usize::try_from(n / d).ok()?);
+            total +=
+                BigInt::from(phi) * num_traits::pow::pow(k.clone(), usize::try_from(n / d).ok()?);
         }
     }
     Some(total / n)
@@ -213,7 +228,8 @@ fn bernoulli(n: usize) -> BigRational {
     for m in 0..=n {
         a.push(BigRational::new(BigInt::one(), BigInt::from(m + 1)));
         for j in (1..=m).rev() {
-            let value = (a[j - 1].clone() - a[j].clone()) * BigRational::from_integer(BigInt::from(j));
+            let value =
+                (a[j - 1].clone() - a[j].clone()) * BigRational::from_integer(BigInt::from(j));
             a[j - 1] = value;
         }
     }
@@ -279,7 +295,10 @@ fn inversions(perm: &[usize]) -> u64 {
 }
 
 fn partition_shape(items: &[BigInt]) -> Option<Vec<usize>> {
-    let shape: Vec<usize> = items.iter().map(|v| v.to_u64().and_then(|v| usize::try_from(v).ok())).collect::<Option<_>>()?;
+    let shape: Vec<usize> = items
+        .iter()
+        .map(|v| v.to_u64().and_then(|v| usize::try_from(v).ok()))
+        .collect::<Option<_>>()?;
     let valid = shape.windows(2).all(|w| w[0] >= w[1]) && shape.iter().all(|&p| p > 0);
     (valid && shape.len() <= 60 && shape.iter().sum::<usize>() <= 400).then_some(shape)
 }
@@ -292,7 +311,10 @@ fn hooks(shape: &[usize]) -> Vec<Vec<u64>> {
             (0..length)
                 .map(|col| {
                     let arm = length - col - 1;
-                    let leg = shape[row + 1..].iter().filter(|&&below| below > col).count();
+                    let leg = shape[row + 1..]
+                        .iter()
+                        .filter(|&&below| below > col)
+                        .count();
                     u64::try_from(arm + leg + 1).unwrap_or(0)
                 })
                 .collect()
@@ -309,15 +331,25 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let [n, k] = a else { return None };
         let (n, k) = (nat(n, MAX_N)?, nat(k, MAX_N)?);
         if n == 0 || k == 0 || k > n {
-            return Some(Value::Int(if n == 0 && k == 0 { BigInt::one() } else { BigInt::zero() }));
+            return Some(Value::Int(if n == 0 && k == 0 {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            }));
         }
-        Some(Value::Int(binom(n - 1, k - 1) * factorial(n) / factorial(k)))
+        Some(Value::Int(
+            binom(n - 1, k - 1) * factorial(n) / factorial(k),
+        ))
     })?;
     exact(i, SET, binary("eulerian"), |a| {
         let [n, k] = a else { return None };
         let (n, k) = (nat(n, 500)?, nat(k, 500)?);
         if n == 0 {
-            return Some(Value::Int(if k == 0 { BigInt::one() } else { BigInt::zero() }));
+            return Some(Value::Int(if k == 0 {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            }));
         }
         Some(Value::Int(eulerian(n, k)))
     })?;
@@ -329,21 +361,29 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
         Some(Value::Int(binom(n, k) * binom(n, k - 1) / n))
     })?;
-    exact(i, SET, unary("motzkin"), |a| match a {
-        | [n] => Some(Value::Int(motzkin(nat(n, MAX_N)?))),
-        | _ => None,
+    exact(i, SET, unary("motzkin"), |a| {
+        match a {
+            | [n] => Some(Value::Int(motzkin(nat(n, MAX_N)?))),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("schroeder"), |a| match a {
-        | [n] => Some(Value::Int(schroeder(nat(n, MAX_N)?))),
-        | _ => None,
+    exact(i, SET, unary("schroeder"), |a| {
+        match a {
+            | [n] => Some(Value::Int(schroeder(nat(n, MAX_N)?))),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("fubini"), |a| match a {
-        | [n] => Some(Value::Int(fubini(nat(n, 400)?))),
-        | _ => None,
+    exact(i, SET, unary("fubini"), |a| {
+        match a {
+            | [n] => Some(Value::Int(fubini(nat(n, 400)?))),
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("central_binomial"), |a| match a {
-        | [n] => Some(Value::Int(binom(2 * nat(n, MAX_N)?, nat(n, MAX_N)?))),
-        | _ => None,
+    exact(i, SET, unary("central_binomial"), |a| {
+        match a {
+            | [n] => Some(Value::Int(binom(2 * nat(n, MAX_N)?, nat(n, MAX_N)?))),
+            | _ => None,
+        }
     })?;
     exact(i, SET, binary("ballot"), |a| {
         let [up, down] = a else { return None };
@@ -351,7 +391,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         if down > up {
             return Some(Value::Int(BigInt::zero()));
         }
-        Some(Value::Int(binom(up + down, down) * (up - down + 1) / (up + 1)))
+        Some(Value::Int(
+            binom(up + down, down) * (up - down + 1) / (up + 1),
+        ))
     })?;
     exact(i, SET, unary("involutions"), |a| {
         let [n] = a else { return None };
@@ -388,7 +430,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     exact(i, SET, binary("partitions_k"), |a| {
         let [n, k] = a else { return None };
         let (n, k) = (nat(n, 600)?, nat(k, 600)?);
-        Some(Value::Int(partitions_exact(usize::try_from(n).ok()?, usize::try_from(k).ok()?)))
+        Some(Value::Int(partitions_exact(
+            usize::try_from(n).ok()?,
+            usize::try_from(k).ok()?,
+        )))
     })?;
     exact(i, SET, binary("partitions_max"), |a| {
         let [n, k] = a else { return None };
@@ -398,19 +443,31 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let total: BigInt = (0..=k).map(|j| partitions_exact(n, j)).sum();
         Some(Value::Int(total))
     })?;
-    exact(i, SET, unary("partitions_distinct"), |a| match a {
-        | [n] => Some(Value::Int(partitions_distinct(usize::try_from(nat(n, 2000)?).ok()?))),
-        | _ => None,
+    exact(i, SET, unary("partitions_distinct"), |a| {
+        match a {
+            | [n] => {
+                Some(Value::Int(partitions_distinct(
+                    usize::try_from(nat(n, 2000)?).ok()?,
+                )))
+            },
+            | _ => None,
+        }
     })?;
-    exact(i, SET, unary("partition_list"), |a| match a {
-        | [n] => Some(Value::Nested(partition_list(nat(n, 40)?))),
-        | _ => None,
+    exact(i, SET, unary("partition_list"), |a| {
+        match a {
+            | [n] => Some(Value::Nested(partition_list(nat(n, 40)?))),
+            | _ => None,
+        }
     })?;
     exact(i, SET, binary("compositions"), |a| {
         let [n, k] = a else { return None };
         let (n, k) = (nat(n, MAX_N)?, nat(k, MAX_N)?);
         Some(Value::Int(if n == 0 || k == 0 {
-            if n == 0 && k == 0 { BigInt::one() } else { BigInt::zero() }
+            if n == 0 && k == 0 {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            }
         } else {
             binom(n - 1, k - 1)
         }))
@@ -419,7 +476,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let [n, k] = a else { return None };
         let (n, k) = (nat(n, MAX_N)?, nat(k, MAX_N)?);
         Some(Value::Int(if k == 0 {
-            if n == 0 { BigInt::one() } else { BigInt::zero() }
+            if n == 0 {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            }
         } else {
             binom(n + k - 1, k - 1)
         }))
@@ -455,7 +516,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let n = perm.len();
         let mut rank = BigInt::zero();
         for (idx, &value) in perm.iter().enumerate() {
-            let smaller = perm[idx + 1..].iter().filter(|&&later| later < value).count();
+            let smaller = perm[idx + 1..]
+                .iter()
+                .filter(|&&later| later < value)
+                .count();
             rank += BigInt::from(smaller) * factorial(u64::try_from(n - idx - 1).ok()?);
         }
         Some(Value::Int(rank))
@@ -488,26 +552,44 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     })?;
     exact_lists(i, SET, unary("cycle_type"), |a| {
         let [items] = a else { return None };
-        Some(Value::Flat(cycle_lengths(&permutation(items)?).into_iter().map(BigInt::from).collect()))
+        Some(Value::Flat(
+            cycle_lengths(&permutation(items)?)
+                .into_iter()
+                .map(BigInt::from)
+                .collect(),
+        ))
     })?;
     exact_lists(i, SET, unary("permutation_order"), |a| {
         let [items] = a else { return None };
         let lcm = cycle_lengths(&permutation(items)?)
             .into_iter()
-            .fold(BigInt::one(), |acc, l| &acc / num_integer::gcd(acc.clone(), BigInt::from(l)) * l);
+            .fold(BigInt::one(), |acc, l| {
+                &acc / num_integer::gcd(acc.clone(), BigInt::from(l)) * l
+            });
         Some(Value::Int(lcm))
     })?;
     exact_lists(i, SET, unary("hook_lengths"), |a| {
         let [items] = a else { return None };
         let shape = partition_shape(items)?;
-        Some(Value::Nested(hooks(&shape).into_iter().map(|row| row.into_iter().map(BigInt::from).collect()).collect()))
+        Some(Value::Nested(
+            hooks(&shape)
+                .into_iter()
+                .map(|row| row.into_iter().map(BigInt::from).collect())
+                .collect(),
+        ))
     })?;
     exact_lists(i, SET, unary("syt_count"), |a| {
         let [items] = a else { return None };
         let shape = partition_shape(items)?;
         let cells: usize = shape.iter().sum();
-        let denominator: BigInt = hooks(&shape).into_iter().flatten().map(BigInt::from).product();
-        Some(Value::Int(factorial(u64::try_from(cells).ok()?) / denominator))
+        let denominator: BigInt = hooks(&shape)
+            .into_iter()
+            .flatten()
+            .map(BigInt::from)
+            .product();
+        Some(Value::Int(
+            factorial(u64::try_from(cells).ok()?) / denominator,
+        ))
     })?;
     Ok(())
 }
@@ -542,7 +624,10 @@ mod tests {
         assert_eq!(s("partitions_k(7, 3)"), "4");
         assert_eq!(s("partitions_max(7, 3)"), "8");
         assert_eq!(s("partitions_distinct(10)"), "10");
-        assert_eq!(s("partition_list(4)"), "list(list(4), list(3, 1), list(2, 2), list(2, 1, 1), list(1, 1, 1, 1))");
+        assert_eq!(
+            s("partition_list(4)"),
+            "list(list(4), list(3, 1), list(2, 2), list(2, 1, 1), list(1, 1, 1, 1))"
+        );
         assert_eq!(s("compositions(5, 3)"), "6");
         assert_eq!(s("weak_compositions(5, 3)"), "21");
         assert_eq!(s("necklaces(6, 2)"), "14");
@@ -569,7 +654,10 @@ mod tests {
         assert_eq!(s("permutation_sign(list(2, 1, 3))"), "-1");
         assert_eq!(s("cycle_type(list(2, 1, 4, 5, 3))"), "list(3, 2)");
         assert_eq!(s("permutation_order(list(2, 1, 4, 5, 3))"), "6");
-        assert_eq!(s("hook_lengths(list(3, 2))"), "list(list(4, 3, 1), list(2, 1))");
+        assert_eq!(
+            s("hook_lengths(list(3, 2))"),
+            "list(list(4, 3, 1), list(2, 1))"
+        );
         assert_eq!(s("syt_count(list(3, 2))"), "5");
         assert_eq!(s("syt_count(list(3, 2, 1))"), "16");
     }

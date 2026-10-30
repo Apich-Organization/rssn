@@ -18,8 +18,8 @@
 //! for the time-transformed leapfrog.
 
 
-
-use crate::sim::symplectic::{ttl_step, TtlState};
+use crate::sim::symplectic::TtlState;
+use crate::sim::symplectic::ttl_step;
 
 /// Gragg-Bulirsch-Stoer extrapolation of a symmetric one-step method.
 ///
@@ -40,7 +40,9 @@ fn gbs<F: FnMut(usize) -> Vec<f64>>(
             let ratio = (seq[k] as f64 / seq[k - j] as f64).powi(2) - 1.0;
             let prev = &row[j - 1];
             let up = &t[k - 1][j - 1];
-            let next: Vec<f64> = (0..prev.len()).map(|i| prev[i] + (prev[i] - up[i]) / ratio).collect();
+            let next: Vec<f64> = (0..prev.len())
+                .map(|i| prev[i] + (prev[i] - up[i]) / ratio)
+                .collect();
             row.push(next);
         }
         t.push(row);
@@ -50,7 +52,10 @@ fn gbs<F: FnMut(usize) -> Vec<f64>>(
     let err = if kmax >= 2 {
         let other = &last[kmax - 2];
         let scale = best.iter().fold(0.0_f64, |m, x| m.max(x.abs())).max(1e-300);
-        best.iter().zip(other).fold(0.0_f64, |m, (a, b)| m.max((a - b).abs())) / scale
+        best.iter()
+            .zip(other)
+            .fold(0.0_f64, |m, (a, b)| m.max((a - b).abs()))
+            / scale
     } else {
         0.0
     };
@@ -166,9 +171,23 @@ impl ChainSystem {
         }
         let rel: Vec<V3> = pos.iter().map(|p| sub3(*p, com_pos)).collect();
         let order = greedy_chain(&rel);
-        let xc: Vec<V3> = (0..n - 1).map(|k| sub3(pos[order[k + 1]], pos[order[k]])).collect();
-        let vc: Vec<V3> = (0..n - 1).map(|k| sub3(vel[order[k + 1]], vel[order[k]])).collect();
-        let mut s = Self { g, mass: mass.to_vec(), order, xc, vc, com_pos, com_vel, t: 0.0, b: 0.0 };
+        let xc: Vec<V3> = (0..n - 1)
+            .map(|k| sub3(pos[order[k + 1]], pos[order[k]]))
+            .collect();
+        let vc: Vec<V3> = (0..n - 1)
+            .map(|k| sub3(vel[order[k + 1]], vel[order[k]]))
+            .collect();
+        let mut s = Self {
+            g,
+            mass: mass.to_vec(),
+            order,
+            xc,
+            vc,
+            com_pos,
+            com_vel,
+            t: 0.0,
+            b: 0.0,
+        };
         s.b = -s.energy();
         Ok(s)
     }
@@ -206,7 +225,9 @@ impl ChainSystem {
     pub fn kinetic(&self) -> f64 {
         let mc = self.masses_in_chain();
         let w = self.chain_velocities(&self.vc);
-        (0..mc.len()).map(|k| 0.5 * mc[k] * w[k].iter().map(|x| x * x).sum::<f64>()).sum()
+        (0..mc.len())
+            .map(|k| 0.5 * mc[k] * w[k].iter().map(|x| x * x).sum::<f64>())
+            .sum()
     }
 
     /// Accelerations per chain position and the positive potential `U = -V`.
@@ -267,7 +288,8 @@ impl ChainSystem {
         let mut vel = vec![[0.0; 3]; n];
         for k in 0..n {
             for a in 0..3 {
-                pos[self.order[k]][a] = y[k][a] - mean[a] + self.com_pos[a] + self.com_vel[a] * self.t;
+                pos[self.order[k]][a] =
+                    y[k][a] - mean[a] + self.com_pos[a] + self.com_vel[a] * self.t;
                 vel[self.order[k]][a] = w[k][a] + self.com_vel[a];
             }
         }
@@ -320,7 +342,11 @@ impl ChainSystem {
             return;
         }
         let range_sum = |v: &[V3], from: usize, to: usize| -> V3 {
-            let (lo, hi, sign) = if from <= to { (from, to, 1.0) } else { (to, from, -1.0) };
+            let (lo, hi, sign) = if from <= to {
+                (from, to, 1.0)
+            } else {
+                (to, from, -1.0)
+            };
             let mut s = [0.0; 3];
             for item in &v[lo..hi] {
                 s = add3(s, *item);

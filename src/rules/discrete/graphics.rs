@@ -34,6 +34,7 @@
 //! | `refract(d, n, eta)` | numeric Snell refraction, `false` on total internal reflection |
 //! | `barycentric(p, a, b, c)` | numeric barycentric coordinates `list(u, v, w)` |
 
+use super::V;
 use super::apply;
 use super::def;
 use super::def_request;
@@ -47,13 +48,12 @@ use super::neg;
 use super::prod;
 use super::rows;
 use super::sum;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 use crate::kernels::computer_graphics as cg;
 
 type Row = Vec<NodeId>;
@@ -160,7 +160,10 @@ fn cross(
     a: &[NodeId],
     b: &[NodeId],
 ) -> Option<Row> {
-    let ([a0, a1, a2], [b0, b1, b2]) = (<[NodeId; 3]>::try_from(a).ok()?, <[NodeId; 3]>::try_from(b).ok()?);
+    let ([a0, a1, a2], [b0, b1, b2]) = (
+        <[NodeId; 3]>::try_from(a).ok()?,
+        <[NodeId; 3]>::try_from(b).ok()?,
+    );
     Some(vec![
         combine(cx, &[(1, a1, b2), (-1, a2, b1)]),
         combine(cx, &[(1, a2, b0), (-1, a0, b2)]),
@@ -191,7 +194,9 @@ fn identity(
 ) -> Vec<Row> {
     let zero = int(cx, 0);
     let one = int(cx, 1);
-    (0..n).map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect()).collect()
+    (0..n)
+        .map(|i| (0..n).map(|j| if i == j { one } else { zero }).collect())
+        .collect()
 }
 
 fn done(
@@ -309,7 +314,11 @@ fn rotation_axis_angle(
                 let k = 3 - i - j;
                 let positive = (j + 1) % 3 == i;
                 let us = mul(cx, u[k], s);
-                if positive { add(cx, first, us) } else { sub(cx, first, us) }
+                if positive {
+                    add(cx, first, us)
+                } else {
+                    sub(cx, first, us)
+                }
             };
         }
     }
@@ -398,7 +407,11 @@ fn orthographic(
         let scale = quot(cx, two, span);
         let shift = quot(cx, total, span);
         // The z axis looks down -z: scale -2/(f-n), shift -(f+n)/(f-n).
-        m[k][k] = if k == 2 { negate(cx, scale) } else { scale };
+        m[k][k] = if k == 2 {
+            negate(cx, scale)
+        } else {
+            scale
+        };
         m[k][3] = negate(cx, shift);
     }
     Some(done(cx, &m))
@@ -464,10 +477,19 @@ fn transformed(
         return Some(out);
     }
     let (coords, w) = out.split_at(n - 1);
-    if !is_point || cx.graph.number_of(w[0]).is_some_and(crate::graph::Number::is_one) {
+    if !is_point
+        || cx
+            .graph
+            .number_of(w[0])
+            .is_some_and(crate::graph::Number::is_one)
+    {
         return Some(coords.to_vec());
     }
-    if cx.graph.number_of(w[0]).is_some_and(crate::graph::Number::is_zero) {
+    if cx
+        .graph
+        .number_of(w[0])
+        .is_some_and(crate::graph::Number::is_zero)
+    {
         return None;
     }
     Some(coords.iter().map(|&x| quot(cx, x, w[0])).collect())
@@ -538,7 +560,11 @@ fn mesh_triangulate(
             out.push(V::List(f.into_iter().map(V::uint).collect()));
         } else {
             for i in 1..f.len() - 1 {
-                out.push(V::List(vec![V::uint(f[0]), V::uint(f[i]), V::uint(f[i + 1])]));
+                out.push(V::List(vec![
+                    V::uint(f[0]),
+                    V::uint(f[i]),
+                    V::uint(f[i + 1]),
+                ]));
             }
         }
     }
@@ -587,7 +613,12 @@ fn pyramid(
     let mut levels = vec![pts.to_vec()];
     for k in 1..pts.len() {
         let prev = &levels[k - 1];
-        let next: Vec<Row> = (0..pts.len() - k).map(|i| (i, prev[i].clone(), prev[i + 1].clone())).collect::<Vec<_>>().into_iter().map(|(_, a, b)| lerp(cx, &a, &b, t)).collect();
+        let next: Vec<Row> = (0..pts.len() - k)
+            .map(|i| (i, prev[i].clone(), prev[i + 1].clone()))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|(_, a, b)| lerp(cx, &a, &b, t))
+            .collect();
         levels.push(next);
     }
     levels
@@ -647,7 +678,10 @@ fn bspline(
     let pts = polygon(cx.graph, cps)?;
     let p = idx(cx.graph, degree)?;
     let knot_nodes = items(cx.graph, knots)?;
-    let ks: Vec<f64> = knot_nodes.iter().map(|&k| float(cx.graph, k)).collect::<Option<_>>()?;
+    let ks: Vec<f64> = knot_nodes
+        .iter()
+        .map(|&k| float(cx.graph, k))
+        .collect::<Option<_>>()?;
     let tv = float(cx.graph, t)?;
     let n = pts.len();
     if ks.len() != n + p + 1 || n <= p || ks.windows(2).any(|w| w[0] > w[1]) {
@@ -680,8 +714,16 @@ fn catmull_rom(
     a: &[NodeId],
 ) -> Option<V> {
     let [p0, p1, p2, p3, t] = arg(a)?;
-    let (p0, p1, p2, p3) = (point(cx.graph, p0)?, point(cx.graph, p1)?, point(cx.graph, p2)?, point(cx.graph, p3)?);
-    if [p1.len(), p2.len(), p3.len()].iter().any(|&l| l != p0.len()) {
+    let (p0, p1, p2, p3) = (
+        point(cx.graph, p0)?,
+        point(cx.graph, p1)?,
+        point(cx.graph, p2)?,
+        point(cx.graph, p3)?,
+    );
+    if [p1.len(), p2.len(), p3.len()]
+        .iter()
+        .any(|&l| l != p0.len())
+    {
         return None;
     }
     let t2 = mul(cx, t, t);
@@ -695,8 +737,14 @@ fn catmull_rom(
         let (a0, a1, a2, a3) = (p0[k], p1[k], p2[k], p3[k]);
         let one = int(cx, 1);
         let c1 = combine(cx, &[(-1, a0, one), (1, a2, one)]);
-        let c2 = combine(cx, &[(2, a0, one), (-5, a1, one), (4, a2, one), (-1, a3, one)]);
-        let c3 = combine(cx, &[(-1, a0, one), (3, a1, one), (-3, a2, one), (1, a3, one)]);
+        let c2 = combine(
+            cx,
+            &[(2, a0, one), (-5, a1, one), (4, a2, one), (-1, a3, one)],
+        );
+        let c3 = combine(
+            cx,
+            &[(-1, a0, one), (3, a1, one), (-3, a2, one), (1, a3, one)],
+        );
         let two_a1 = combine(cx, &[(2, a1, one)]);
         let t1 = mul(cx, c1, t);
         let tt2 = mul(cx, c2, t2);
@@ -763,7 +811,9 @@ fn quat_inverse(
     let q = quat(cx.graph, *a.first()?)?;
     let n2 = dot(cx, &q, &q);
     let c = qconj(cx, q);
-    Some(V::nodes(&c.iter().map(|&x| quot(cx, x, n2)).collect::<Vec<_>>()))
+    Some(V::nodes(
+        &c.iter().map(|&x| quot(cx, x, n2)).collect::<Vec<_>>(),
+    ))
 }
 
 fn quat_norm(
@@ -852,7 +902,10 @@ fn vec3(
     g: &Graph,
     n: NodeId,
 ) -> Option<(f64, f64, f64)> {
-    let v: Vec<f64> = items(g, n)?.into_iter().map(|c| float(g, c)).collect::<Option<_>>()?;
+    let v: Vec<f64> = items(g, n)?
+        .into_iter()
+        .map(|c| float(g, c))
+        .collect::<Option<_>>()?;
     match v.as_slice() {
         | [x, y] => Some((*x, *y, 0.0)),
         | [x, y, z] => Some((*x, *y, *z)),
@@ -887,7 +940,10 @@ fn ray(
     origin: NodeId,
     dir: NodeId,
 ) -> Option<cg::Ray> {
-    Some(cg::Ray::new(point3(vec3(g, origin)?), vector3(vec3(g, dir)?)))
+    Some(cg::Ray::new(
+        point3(vec3(g, origin)?),
+        vector3(vec3(g, dir)?),
+    ))
 }
 
 fn ray_sphere(
@@ -916,8 +972,17 @@ fn ray_triangle(
 ) -> Option<V> {
     let [o, d, v0, v1, v2] = arg(a)?;
     let g = &*cx.graph;
-    let (v0, v1, v2) = (point3(vec3(g, v0)?), point3(vec3(g, v1)?), point3(vec3(g, v2)?));
-    Some(hit(cg::ray_triangle_intersection(&ray(g, o, d)?, &v0, &v1, &v2)))
+    let (v0, v1, v2) = (
+        point3(vec3(g, v0)?),
+        point3(vec3(g, v1)?),
+        point3(vec3(g, v2)?),
+    );
+    Some(hit(cg::ray_triangle_intersection(
+        &ray(g, o, d)?,
+        &v0,
+        &v1,
+        &v2,
+    )))
 }
 
 fn refract(
@@ -936,7 +1001,12 @@ fn barycentric(
 ) -> Option<V> {
     let [p, v0, v1, v2] = arg(a)?;
     let g = &*cx.graph;
-    let (u, v, w) = cg::barycentric_coordinates(&point3(vec3(g, p)?), &point3(vec3(g, v0)?), &point3(vec3(g, v1)?), &point3(vec3(g, v2)?));
+    let (u, v, w) = cg::barycentric_coordinates(
+        &point3(vec3(g, p)?),
+        &point3(vec3(g, v0)?),
+        &point3(vec3(g, v1)?),
+        &point3(vec3(g, v2)?),
+    );
     Some(V::List(vec![V::Float(u), V::Float(v), V::Float(w)]))
 }
 
@@ -947,12 +1017,20 @@ fn quat_slerp(
     let [p, q, t] = arg(a)?;
     let g = &*cx.graph;
     let read = |n: NodeId| -> Option<cg::Quaternion> {
-        let v: Vec<f64> = items(g, n)?.into_iter().map(|c| float(g, c)).collect::<Option<_>>()?;
+        let v: Vec<f64> = items(g, n)?
+            .into_iter()
+            .map(|c| float(g, c))
+            .collect::<Option<_>>()?;
         let [w, x, y, z] = <[f64; 4]>::try_from(v).ok()?;
         Some(cg::Quaternion::new(w, x, y, z))
     };
     let r = read(p)?.slerp(&read(q)?, float(g, t)?);
-    Some(V::List(vec![V::Float(r.w), V::Float(r.x), V::Float(r.y), V::Float(r.z)]))
+    Some(V::List(vec![
+        V::Float(r.w),
+        V::Float(r.x),
+        V::Float(r.y),
+        V::Float(r.z),
+    ]))
 }
 
 /// `d - 2 (d . n) n`.
@@ -998,14 +1076,23 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let [t] = arg(a)?;
         plane_rotation(cx, 4, t, (0, 1), false)
     })?;
-    def(i, "rotation_axis_angle", Arity::Fixed(2), rotation_axis_angle)?;
+    def(
+        i,
+        "rotation_axis_angle",
+        Arity::Fixed(2),
+        rotation_axis_angle,
+    )?;
     def(i, "reflection_2d", Arity::Fixed(1), reflection_2d)?;
     def(i, "reflection_3d", Arity::Fixed(1), reflection_3d)?;
     def(i, "perspective", Arity::Fixed(4), perspective)?;
     def(i, "orthographic", Arity::Fixed(6), orthographic)?;
     def(i, "look_at", Arity::Fixed(3), look_at)?;
-    def(i, "apply_transform", Arity::Fixed(2), |cx, a| transform(cx, a, true))?;
-    def(i, "apply_transform_vector", Arity::Fixed(2), |cx, a| transform(cx, a, false))?;
+    def(i, "apply_transform", Arity::Fixed(2), |cx, a| {
+        transform(cx, a, true)
+    })?;
+    def(i, "apply_transform_vector", Arity::Fixed(2), |cx, a| {
+        transform(cx, a, false)
+    })?;
     def(i, "bezier", Arity::Fixed(2), bezier)?;
     def(i, "bezier_derivative", Arity::Fixed(2), bezier_derivative)?;
     def(i, "bezier_split", Arity::Fixed(2), bezier_split)?;
@@ -1016,7 +1103,12 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "quat_inverse", Arity::Fixed(1), quat_inverse)?;
     def_request(i, "quat_norm", Arity::Fixed(1), quat_norm)?;
     def(i, "quat_normalize", Arity::Fixed(1), quat_normalize)?;
-    def(i, "quat_from_axis_angle", Arity::Fixed(2), quat_from_axis_angle)?;
+    def(
+        i,
+        "quat_from_axis_angle",
+        Arity::Fixed(2),
+        quat_from_axis_angle,
+    )?;
     def(i, "quat_rotate", Arity::Fixed(2), quat_rotate)?;
     def(i, "quat_to_matrix", Arity::Fixed(1), quat_to_matrix)?;
     def(i, "quat_slerp", Arity::Fixed(3), quat_slerp)?;
@@ -1056,81 +1148,207 @@ mod tests {
 
     #[test]
     fn translation_scaling_and_shear() {
-        assert_eq!(s("translation_2d(a, b)"), "list(list(1, 0, a), list(0, 1, b), list(0, 0, 1))");
-        assert_eq!(s("translation_3d(1, 2, 3)"), "list(list(1, 0, 0, 1), list(0, 1, 0, 2), list(0, 0, 1, 3), list(0, 0, 0, 1))");
-        assert_eq!(s("scaling_2d(2, 3)"), "list(list(2, 0, 0), list(0, 3, 0), list(0, 0, 1))");
-        assert_eq!(s("scaling_3d(2, 3, 4)"), "list(list(2, 0, 0, 0), list(0, 3, 0, 0), list(0, 0, 4, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("shear_2d(a, b)"), "list(list(1, a, 0), list(b, 1, 0), list(0, 0, 1))");
-        assert_eq!(s("apply_transform(translation_2d(1, 2), list(3, 4))"), "list(4, 6)");
-        assert_eq!(s("apply_transform_vector(translation_2d(1, 2), list(3, 4))"), "list(3, 4)");
+        assert_eq!(
+            s("translation_2d(a, b)"),
+            "list(list(1, 0, a), list(0, 1, b), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("translation_3d(1, 2, 3)"),
+            "list(list(1, 0, 0, 1), list(0, 1, 0, 2), list(0, 0, 1, 3), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("scaling_2d(2, 3)"),
+            "list(list(2, 0, 0), list(0, 3, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("scaling_3d(2, 3, 4)"),
+            "list(list(2, 0, 0, 0), list(0, 3, 0, 0), list(0, 0, 4, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("shear_2d(a, b)"),
+            "list(list(1, a, 0), list(b, 1, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("apply_transform(translation_2d(1, 2), list(3, 4))"),
+            "list(4, 6)"
+        );
+        assert_eq!(
+            s("apply_transform_vector(translation_2d(1, 2), list(3, 4))"),
+            "list(3, 4)"
+        );
     }
 
     #[test]
     fn rotations_stay_symbolic_and_fold_for_numbers() {
-        assert_eq!(s("rotation_2d(t)"), "list(list(cos(t), -sin(t), 0), list(sin(t), cos(t), 0), list(0, 0, 1))");
-        assert_eq!(s("rotation_2d(pi/2)"), "list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 1))");
-        assert_eq!(s("apply_transform(rotation_2d(pi/2), list(1, 0, 1))"), "list(0, 1, 1)");
-        assert_eq!(s("apply_transform(rotation_2d(pi/2), list(1, 0))"), "list(0, 1)");
-        assert_eq!(s("rotation_3d_x(t)"), "list(list(1, 0, 0, 0), list(0, cos(t), -sin(t), 0), list(0, sin(t), cos(t), 0), list(0, 0, 0, 1))");
-        assert_eq!(s("rotation_3d_y(pi/2)"), "list(list(0, 0, 1, 0), list(0, 1, 0, 0), list(-1, 0, 0, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("rotation_3d_z(pi/2)"), "list(list(0, -1, 0, 0), list(1, 0, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("rotation_3d_z(0)"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))");
+        assert_eq!(
+            s("rotation_2d(t)"),
+            "list(list(cos(t), -sin(t), 0), list(sin(t), cos(t), 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("rotation_2d(pi/2)"),
+            "list(list(0, -1, 0), list(1, 0, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("apply_transform(rotation_2d(pi/2), list(1, 0, 1))"),
+            "list(0, 1, 1)"
+        );
+        assert_eq!(
+            s("apply_transform(rotation_2d(pi/2), list(1, 0))"),
+            "list(0, 1)"
+        );
+        assert_eq!(
+            s("rotation_3d_x(t)"),
+            "list(list(1, 0, 0, 0), list(0, cos(t), -sin(t), 0), list(0, sin(t), cos(t), 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("rotation_3d_y(pi/2)"),
+            "list(list(0, 0, 1, 0), list(0, 1, 0, 0), list(-1, 0, 0, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("rotation_3d_z(pi/2)"),
+            "list(list(0, -1, 0, 0), list(1, 0, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("rotation_3d_z(0)"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))"
+        );
     }
 
     #[test]
     fn rodrigues_matches_the_axis_rotations() {
-        assert_eq!(s("rotation_axis_angle(list(0, 0, 1), pi/2)"), s("rotation_3d_z(pi/2)"));
-        assert_eq!(s("rotation_axis_angle(list(0, 1, 0), t)"), s("rotation_3d_y(t)"));
-        assert_eq!(s("rotation_axis_angle(list(2, 0, 0), t)"), s("rotation_3d_x(t)"), "the axis is normalised");
-        assert_eq!(s("apply_transform(rotation_axis_angle(list(0, 0, 1), pi), list(1, 2, 3))"), "list(-1, -2, 3)");
+        assert_eq!(
+            s("rotation_axis_angle(list(0, 0, 1), pi/2)"),
+            s("rotation_3d_z(pi/2)")
+        );
+        assert_eq!(
+            s("rotation_axis_angle(list(0, 1, 0), t)"),
+            s("rotation_3d_y(t)")
+        );
+        assert_eq!(
+            s("rotation_axis_angle(list(2, 0, 0), t)"),
+            s("rotation_3d_x(t)"),
+            "the axis is normalised"
+        );
+        assert_eq!(
+            s("apply_transform(rotation_axis_angle(list(0, 0, 1), pi), list(1, 2, 3))"),
+            "list(-1, -2, 3)"
+        );
     }
 
     #[test]
     fn reflections() {
-        assert_eq!(s("reflection_2d(pi/4)"), "list(list(0, 1, 0), list(1, 0, 0), list(0, 0, 1))");
-        assert_eq!(s("reflection_2d(0)"), "list(list(1, 0, 0), list(0, -1, 0), list(0, 0, 1))");
-        assert_eq!(s("reflection_3d(list(0, 0, 1))"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -1, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("reflection_3d(list(0, 0, 2))"), s("reflection_3d(list(0, 0, 1))"), "non-unit normals are normalised");
-        assert_eq!(s("reflection_3d(list(1, 1, 0))"), "list(list(0, -1, 0, 0), list(-1, 0, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("apply_transform(reflection_3d(list(1, 0, 0)), list(2, 3, 4))"), "list(-2, 3, 4)");
+        assert_eq!(
+            s("reflection_2d(pi/4)"),
+            "list(list(0, 1, 0), list(1, 0, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("reflection_2d(0)"),
+            "list(list(1, 0, 0), list(0, -1, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("reflection_3d(list(0, 0, 1))"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -1, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("reflection_3d(list(0, 0, 2))"),
+            s("reflection_3d(list(0, 0, 1))"),
+            "non-unit normals are normalised"
+        );
+        assert_eq!(
+            s("reflection_3d(list(1, 1, 0))"),
+            "list(list(0, -1, 0, 0), list(-1, 0, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("apply_transform(reflection_3d(list(1, 0, 0)), list(2, 3, 4))"),
+            "list(-2, 3, 4)"
+        );
         assert_eq!(s("reflect(list(1, -1, 0), list(0, 1, 0))"), "list(1, 1, 0)");
         assert_eq!(s("reflect(list(a, b), list(0, 1))"), "list(a, -b)");
     }
 
     #[test]
     fn projections_and_the_camera() {
-        assert_eq!(s("perspective(pi/2, 1, 1, 3)"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -2, -3), list(0, 0, -1, 0))");
+        assert_eq!(
+            s("perspective(pi/2, 1, 1, 3)"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -2, -3), list(0, 0, -1, 0))"
+        );
         let wide = s("perspective(pi/2, a, 1, 3)");
         assert!(wide.starts_with("list(list(1/a, 0, 0, 0)"), "{wide}");
-        assert_eq!(s("orthographic(-1, 1, -1, 1, 1, 3)"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -1, -2), list(0, 0, 0, 1))");
-        assert_eq!(s("look_at(list(0, 0, 5), list(0, 0, 0), list(0, 1, 0))"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, -5), list(0, 0, 0, 1))");
+        assert_eq!(
+            s("orthographic(-1, 1, -1, 1, 1, 3)"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, -1, -2), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("look_at(list(0, 0, 5), list(0, 0, 0), list(0, 1, 0))"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, -5), list(0, 0, 0, 1))"
+        );
         // The eye maps to the origin, the centre to the negative z axis.
-        assert_eq!(s("apply_transform(look_at(list(1, 2, 3), list(1, 2, 0), list(0, 1, 0)), list(1, 2, 3))"), "list(0, 0, 0)");
-        assert_eq!(s("apply_transform(look_at(list(1, 2, 3), list(1, 2, 0), list(0, 1, 0)), list(1, 2, 0))"), "list(0, 0, -3)");
+        assert_eq!(
+            s(
+                "apply_transform(look_at(list(1, 2, 3), list(1, 2, 0), list(0, 1, 0)), list(1, 2, 3))"
+            ),
+            "list(0, 0, 0)"
+        );
+        assert_eq!(
+            s(
+                "apply_transform(look_at(list(1, 2, 3), list(1, 2, 0), list(0, 1, 0)), list(1, 2, 0))"
+            ),
+            "list(0, 0, -3)"
+        );
         // Perspective divide.
-        assert_eq!(s("apply_transform(perspective(pi/2, 1, 1, 3), list(0, 0, -2))"), "list(0, 0, 1/2)");
+        assert_eq!(
+            s("apply_transform(perspective(pi/2, 1, 1, 3), list(0, 0, -2))"),
+            "list(0, 0, 1/2)"
+        );
     }
 
     #[test]
     fn matrices_compose_with_matmul() {
-        assert_eq!(s("matmul(translation_2d(1, 0), rotation_2d(pi/2))"), "list(list(0, -1, 1), list(1, 0, 0), list(0, 0, 1))");
+        assert_eq!(
+            s("matmul(translation_2d(1, 0), rotation_2d(pi/2))"),
+            "list(list(0, -1, 1), list(1, 0, 0), list(0, 0, 1))"
+        );
     }
 
     #[test]
     fn bezier_curves() {
-        assert_eq!(s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 1/2)"), "list(1, 1)");
-        assert_eq!(s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 0)"), "list(0, 0)");
-        assert_eq!(s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 1)"), "list(2, 0)");
+        assert_eq!(
+            s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 1/2)"),
+            "list(1, 1)"
+        );
+        assert_eq!(
+            s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 0)"),
+            "list(0, 0)"
+        );
+        assert_eq!(
+            s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), 1)"),
+            "list(2, 0)"
+        );
         assert_eq!(s("bezier(list(list(0), list(1)), t)"), "list(t)");
-        assert_eq!(s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), t)"), "list(2*t, 4*t - 4*t^2)");
+        assert_eq!(
+            s("bezier(list(list(0, 0), list(1, 2), list(2, 0)), t)"),
+            "list(2*t, 4*t - 4*t^2)"
+        );
         assert_eq!(s("bezier(list(list(5, 5)), t)"), "list(5, 5)");
-        assert_eq!(s("bezier_derivative(list(list(0, 0), list(1, 2), list(2, 0)), 0)"), "list(2, 4)");
-        assert_eq!(s("bezier_derivative(list(list(0, 0), list(1, 2), list(2, 0)), t)"), "list(2, 4 - 8*t)");
+        assert_eq!(
+            s("bezier_derivative(list(list(0, 0), list(1, 2), list(2, 0)), 0)"),
+            "list(2, 4)"
+        );
+        assert_eq!(
+            s("bezier_derivative(list(list(0, 0), list(1, 2), list(2, 0)), t)"),
+            "list(2, 4 - 8*t)"
+        );
         assert_eq!(s("bezier_derivative(list(list(1, 1)), t)"), "list(0, 0)");
         let split = "bezier_split(list(list(0, 0), list(2, 2), list(4, 0)), 1/2)";
-        assert_eq!(s(split), "list(list(list(0, 0), list(1, 1), list(2, 1)), list(list(2, 1), list(3, 1), list(4, 0)))");
+        assert_eq!(
+            s(split),
+            "list(list(list(0, 0), list(1, 1), list(2, 1)), list(list(2, 1), list(3, 1), list(4, 0)))"
+        );
         // The halves reproduce the curve.
-        assert_eq!(s("bezier(list(list(0, 0), list(1, 1), list(2, 1)), 1)"), s("bezier(list(list(0, 0), list(2, 2), list(4, 0)), 1/2)"));
+        assert_eq!(
+            s("bezier(list(list(0, 0), list(1, 1), list(2, 1)), 1)"),
+            s("bezier(list(list(0, 0), list(2, 2), list(4, 0)), 1/2)")
+        );
     }
 
     #[test]
@@ -1139,82 +1357,209 @@ mod tests {
         let knots = "list(0, 0, 0, 1, 2, 2, 2)";
         assert_eq!(s(&format!("bspline({cps}, 2, {knots}, 0)")), "list(0, 0)");
         assert_eq!(s(&format!("bspline({cps}, 2, {knots}, 2)")), "list(3, 1)");
-        assert_eq!(s(&format!("bspline({cps}, 2, {knots}, 1)")), "list(3/2, 1/2)");
+        assert_eq!(
+            s(&format!("bspline({cps}, 2, {knots}, 1)")),
+            "list(3/2, 1/2)"
+        );
         // Degree 1 interpolates linearly.
-        assert_eq!(s("bspline(list(list(0), list(2), list(2)), 1, list(0, 0, 1, 2, 2), 1/2)"), "list(1)");
+        assert_eq!(
+            s("bspline(list(list(0), list(2), list(2)), 1, list(0, 0, 1, 2, 2), 1/2)"),
+            "list(1)"
+        );
         // Outside the domain, or with the wrong number of knots: unreduced.
         assert!(s(&format!("bspline({cps}, 2, {knots}, 3)")).starts_with("bspline("));
         assert!(s(&format!("bspline({cps}, 2, list(0, 1), 1)")).starts_with("bspline("));
-        assert_eq!(s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 0)"), "list(1, 0)");
-        assert_eq!(s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 1)"), "list(2, 1)");
-        assert_eq!(s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 1/2)"), "list(3/2, 1/2)");
-        assert_eq!(s("catmull_rom(list(0), list(1), list(2), list(3), t)"), "list(t + 1)");
+        assert_eq!(
+            s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 0)"),
+            "list(1, 0)"
+        );
+        assert_eq!(
+            s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 1)"),
+            "list(2, 1)"
+        );
+        assert_eq!(
+            s("catmull_rom(list(0, 0), list(1, 0), list(2, 1), list(3, 1), 1/2)"),
+            "list(3/2, 1/2)"
+        );
+        assert_eq!(
+            s("catmull_rom(list(0), list(1), list(2), list(3), t)"),
+            "list(t + 1)"
+        );
     }
 
     #[test]
     fn quaternion_algebra() {
-        assert_eq!(s("quat_mul(list(1, 2, 3, 4), list(5, 6, 7, 8))"), "list(-60, 12, 30, 24)");
-        assert_eq!(s("quat_mul(list(0, 1, 0, 0), list(0, 0, 1, 0))"), "list(0, 0, 0, 1)", "i j = k");
+        assert_eq!(
+            s("quat_mul(list(1, 2, 3, 4), list(5, 6, 7, 8))"),
+            "list(-60, 12, 30, 24)"
+        );
+        assert_eq!(
+            s("quat_mul(list(0, 1, 0, 0), list(0, 0, 1, 0))"),
+            "list(0, 0, 0, 1)",
+            "i j = k"
+        );
         assert_eq!(s("quat_conj(list(1, 2, 3, 4))"), "list(1, -2, -3, -4)");
         assert_eq!(s("quat_norm(list(1, 2, 2, 4))"), "5");
         assert_eq!(s("quat_norm(list(a, 0, 0, 0))"), "sqrt(a^2)");
-        assert_eq!(s("quat_normalize(list(0, 3, 0, 4))"), "list(0, 3/5, 0, 4/5)");
+        assert_eq!(
+            s("quat_normalize(list(0, 3, 0, 4))"),
+            "list(0, 3/5, 0, 4/5)"
+        );
         assert_eq!(s("quat_inverse(list(0, 0, 0, 2))"), "list(0, 0, 0, -1/2)");
-        assert_eq!(s("quat_mul(list(1, 2, 2, 4), quat_inverse(list(1, 2, 2, 4)))"), "list(1, 0, 0, 0)");
-        assert_eq!(s("quat_mul(list(w, x, y, z), quat_conj(list(w, x, y, z)))"), "list(w^2 + x^2 + y^2 + z^2, 0, 0, 0)");
+        assert_eq!(
+            s("quat_mul(list(1, 2, 2, 4), quat_inverse(list(1, 2, 2, 4)))"),
+            "list(1, 0, 0, 0)"
+        );
+        assert_eq!(
+            s("quat_mul(list(w, x, y, z), quat_conj(list(w, x, y, z)))"),
+            "list(w^2 + x^2 + y^2 + z^2, 0, 0, 0)"
+        );
     }
 
     #[test]
     fn quaternion_rotations() {
-        assert_eq!(s("quat_from_axis_angle(list(0, 0, 1), pi)"), "list(0, 0, 0, 1)");
-        assert_eq!(s("quat_from_axis_angle(list(0, 0, 3), 0)"), "list(1, 0, 0, 0)");
-        assert_eq!(s("quat_rotate(quat_from_axis_angle(list(0, 0, 1), pi/2), list(1, 0, 0))"), "list(0, 1, 0)");
-        assert_eq!(s("quat_to_matrix(list(1, 0, 0, 0))"), "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))");
-        assert_eq!(s("quat_to_matrix(quat_from_axis_angle(list(0, 0, 1), pi))"), "list(list(-1, 0, 0, 0), list(0, -1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))");
+        assert_eq!(
+            s("quat_from_axis_angle(list(0, 0, 1), pi)"),
+            "list(0, 0, 0, 1)"
+        );
+        assert_eq!(
+            s("quat_from_axis_angle(list(0, 0, 3), 0)"),
+            "list(1, 0, 0, 0)"
+        );
+        assert_eq!(
+            s("quat_rotate(quat_from_axis_angle(list(0, 0, 1), pi/2), list(1, 0, 0))"),
+            "list(0, 1, 0)"
+        );
+        assert_eq!(
+            s("quat_to_matrix(list(1, 0, 0, 0))"),
+            "list(list(1, 0, 0, 0), list(0, 1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))"
+        );
+        assert_eq!(
+            s("quat_to_matrix(quat_from_axis_angle(list(0, 0, 1), pi))"),
+            "list(list(-1, 0, 0, 0), list(0, -1, 0, 0), list(0, 0, 1, 0), list(0, 0, 0, 1))"
+        );
         // Non-unit quaternions are normalised by the matrix.
-        assert_eq!(s("quat_to_matrix(list(0, 0, 0, 5))"), s("quat_to_matrix(list(0, 0, 0, 1))"));
-        close(&s("quat_slerp(list(1, 0, 0, 0), list(0, 1, 0, 0), 0.5)"), &[0.5_f64.sqrt(), 0.5_f64.sqrt(), 0.0, 0.0]);
-        close(&s("quat_slerp(list(1, 0, 0, 0), list(0, 1, 0, 0), 0)"), &[1.0, 0.0, 0.0, 0.0]);
+        assert_eq!(
+            s("quat_to_matrix(list(0, 0, 0, 5))"),
+            s("quat_to_matrix(list(0, 0, 0, 1))")
+        );
+        close(
+            &s("quat_slerp(list(1, 0, 0, 0), list(0, 1, 0, 0), 0.5)"),
+            &[0.5_f64.sqrt(), 0.5_f64.sqrt(), 0.0, 0.0],
+        );
+        close(
+            &s("quat_slerp(list(1, 0, 0, 0), list(0, 1, 0, 0), 0)"),
+            &[1.0, 0.0, 0.0, 0.0],
+        );
         assert!(s("quat_slerp(list(1, 0, 0, 0), list(0, 1, 0, 0), t)").starts_with("quat_slerp("));
     }
 
     #[test]
     fn meshes() {
-        assert_eq!(s("mesh_transform(list(list(1, 0, 0), list(0, 1, 0)), translation_3d(1, 2, 3))"), "list(list(2, 2, 3), list(1, 3, 3))");
-        assert_eq!(s("mesh_transform(list(list(1, 0, 0)), rotation_3d_z(pi/2))"), "list(list(0, 1, 0))");
+        assert_eq!(
+            s("mesh_transform(list(list(1, 0, 0), list(0, 1, 0)), translation_3d(1, 2, 3))"),
+            "list(list(2, 2, 3), list(1, 3, 3))"
+        );
+        assert_eq!(
+            s("mesh_transform(list(list(1, 0, 0)), rotation_3d_z(pi/2))"),
+            "list(list(0, 1, 0))"
+        );
         let tri = "list(list(0, 0, 0), list(1, 0, 0), list(0, 1, 0))";
-        assert_eq!(s(&format!("mesh_normals({tri}, list(list(0, 1, 2)))")), "list(list(0, 0, 1))");
-        assert_eq!(s(&format!("mesh_normals({tri}, list(list(0, 2, 1), list(0, 1)))")), "list(list(0, 0, -1))", "short faces are skipped");
-        assert_eq!(s("mesh_triangulate(list(list(0, 1, 2, 3), list(4, 5, 6)))"), "list(list(0, 1, 2), list(0, 2, 3), list(4, 5, 6))");
-        assert_eq!(s("mesh_triangulate(list(list(0, 1, 2, 3, 4)))"), "list(list(0, 1, 2), list(0, 2, 3), list(0, 3, 4))");
+        assert_eq!(
+            s(&format!("mesh_normals({tri}, list(list(0, 1, 2)))")),
+            "list(list(0, 0, 1))"
+        );
+        assert_eq!(
+            s(&format!(
+                "mesh_normals({tri}, list(list(0, 2, 1), list(0, 1)))"
+            )),
+            "list(list(0, 0, -1))",
+            "short faces are skipped"
+        );
+        assert_eq!(
+            s("mesh_triangulate(list(list(0, 1, 2, 3), list(4, 5, 6)))"),
+            "list(list(0, 1, 2), list(0, 2, 3), list(4, 5, 6))"
+        );
+        assert_eq!(
+            s("mesh_triangulate(list(list(0, 1, 2, 3, 4)))"),
+            "list(list(0, 1, 2), list(0, 2, 3), list(0, 3, 4))"
+        );
     }
 
     #[test]
     fn ray_queries() {
-        assert_eq!(s("ray_sphere(list(0, 0, -5), list(0, 0, 1), list(0, 0, 0), 1)"), "list(4, list(0, 0, -1), list(0, 0, -1))");
-        assert_eq!(s("ray_sphere(list(0, 5, -5), list(0, 0, 1), list(0, 0, 0), 1)"), "false");
-        assert_eq!(s("ray_sphere(list(0, 0, 5), list(0, 0, 1), list(0, 0, 0), 1)"), "false", "the sphere is behind the ray");
-        assert_eq!(s("ray_plane(list(0, 0, 5), list(0, 0, -1), list(0, 0, 0), list(0, 0, 1))"), "list(5, list(0, 0, 0), list(0, 0, 1))");
-        assert_eq!(s("ray_plane(list(0, 0, 5), list(1, 0, 0), list(0, 0, 0), list(0, 0, 1))"), "false", "parallel");
+        assert_eq!(
+            s("ray_sphere(list(0, 0, -5), list(0, 0, 1), list(0, 0, 0), 1)"),
+            "list(4, list(0, 0, -1), list(0, 0, -1))"
+        );
+        assert_eq!(
+            s("ray_sphere(list(0, 5, -5), list(0, 0, 1), list(0, 0, 0), 1)"),
+            "false"
+        );
+        assert_eq!(
+            s("ray_sphere(list(0, 0, 5), list(0, 0, 1), list(0, 0, 0), 1)"),
+            "false",
+            "the sphere is behind the ray"
+        );
+        assert_eq!(
+            s("ray_plane(list(0, 0, 5), list(0, 0, -1), list(0, 0, 0), list(0, 0, 1))"),
+            "list(5, list(0, 0, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s("ray_plane(list(0, 0, 5), list(1, 0, 0), list(0, 0, 0), list(0, 0, 1))"),
+            "false",
+            "parallel"
+        );
         let tri = "list(0, 0, 0), list(1, 0, 0), list(0, 1, 0)";
-        assert_eq!(s(&format!("ray_triangle(list(0.25, 0.25, 1), list(0, 0, -1), {tri})")), "list(1, list(0.25, 0.25, 0), list(0, 0, 1))");
-        assert_eq!(s(&format!("ray_triangle(list(2, 2, 1), list(0, 0, -1), {tri})")), "false");
-        assert!(s("ray_sphere(list(a, 0, 0), list(0, 0, 1), list(0, 0, 0), 1)").starts_with("ray_sphere("));
+        assert_eq!(
+            s(&format!(
+                "ray_triangle(list(0.25, 0.25, 1), list(0, 0, -1), {tri})"
+            )),
+            "list(1, list(0.25, 0.25, 0), list(0, 0, 1))"
+        );
+        assert_eq!(
+            s(&format!(
+                "ray_triangle(list(2, 2, 1), list(0, 0, -1), {tri})"
+            )),
+            "false"
+        );
+        assert!(
+            s("ray_sphere(list(a, 0, 0), list(0, 0, 1), list(0, 0, 0), 1)")
+                .starts_with("ray_sphere(")
+        );
     }
 
     #[test]
     fn refraction_and_barycentric_coordinates() {
-        close(&s("refract(list(0, -1, 0), list(0, 1, 0), 0.5)"), &[0.0, -1.0, 0.0]);
-        close(&s("refract(list(1, -1, 0), list(0, 1, 0), 1)"), &[0.5_f64.sqrt(), -0.5_f64.sqrt(), 0.0]);
-        assert_eq!(s("refract(list(1, -0.1, 0), list(0, 1, 0), 1.5)"), "false", "total internal reflection");
-        close(&s("barycentric(list(0.25, 0.25), list(0, 0), list(1, 0), list(0, 1))"), &[0.5, 0.25, 0.25]);
-        close(&s("barycentric(list(1, 0, 0), list(0, 0, 0), list(1, 0, 0), list(0, 1, 0))"), &[0.0, 1.0, 0.0]);
+        close(
+            &s("refract(list(0, -1, 0), list(0, 1, 0), 0.5)"),
+            &[0.0, -1.0, 0.0],
+        );
+        close(
+            &s("refract(list(1, -1, 0), list(0, 1, 0), 1)"),
+            &[0.5_f64.sqrt(), -0.5_f64.sqrt(), 0.0],
+        );
+        assert_eq!(
+            s("refract(list(1, -0.1, 0), list(0, 1, 0), 1.5)"),
+            "false",
+            "total internal reflection"
+        );
+        close(
+            &s("barycentric(list(0.25, 0.25), list(0, 0), list(1, 0), list(0, 1))"),
+            &[0.5, 0.25, 0.25],
+        );
+        close(
+            &s("barycentric(list(1, 0, 0), list(0, 0, 0), list(1, 0, 0), list(0, 1, 0))"),
+            &[0.0, 1.0, 0.0],
+        );
     }
 
     #[test]
     fn malformed_arguments_stay_unreduced() {
         assert!(s("rotation_2d(t)").starts_with("list("));
-        assert!(s("apply_transform(rotation_2d(t), list(1, 2, 3, 4))").starts_with("apply_transform("));
+        assert!(
+            s("apply_transform(rotation_2d(t), list(1, 2, 3, 4))").starts_with("apply_transform(")
+        );
         assert!(s("quat_inverse(list(1, 2, 3))").starts_with("quat_inverse("));
         assert!(s("bezier(list(list(0, 0), list(1)), t)").starts_with("bezier("));
         assert!(s("look_at(list(0, 0), list(0, 0, 0), list(0, 1, 0))").starts_with("look_at("));

@@ -192,11 +192,15 @@ proptest! {
 }
 
 mod bem_3d {
-    use rssn::sim::physics_bem::{
-        BoundaryCondition, SurfaceMesh3D, evaluate_potential_3d, solve_laplace_bem_3d_mesh,
-    };
+    use rssn::sim::physics_bem::BoundaryCondition;
+    use rssn::sim::physics_bem::SurfaceMesh3D;
+    use rssn::sim::physics_bem::evaluate_potential_3d;
+    use rssn::sim::physics_bem::solve_laplace_bem_3d_mesh;
 
-    fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    fn dot(
+        a: [f64; 3],
+        b: [f64; 3],
+    ) -> f64 {
         a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     }
 
@@ -250,13 +254,21 @@ mod bem_3d {
         assert!(degenerate.validate().is_err());
     }
 
-    fn solve_dirichlet(mesh: &SurfaceMesh3D, f: impl Fn([f64; 3]) -> f64) -> Vec<f64> {
-        let bcs: Vec<_> =
-            (0..mesh.triangles.len()).map(|t| BoundaryCondition::Potential(f(mesh.centroid(t).unwrap()))).collect();
+    fn solve_dirichlet(
+        mesh: &SurfaceMesh3D,
+        f: impl Fn([f64; 3]) -> f64,
+    ) -> Vec<f64> {
+        let bcs: Vec<_> = (0..mesh.triangles.len())
+            .map(|t| BoundaryCondition::Potential(f(mesh.centroid(t).unwrap())))
+            .collect();
         solve_laplace_bem_3d_mesh(mesh, &bcs).unwrap().q
     }
 
-    fn flux_error(mesh: &SurfaceMesh3D, q: &[f64], grad: impl Fn([f64; 3]) -> [f64; 3]) -> f64 {
+    fn flux_error(
+        mesh: &SurfaceMesh3D,
+        q: &[f64],
+        grad: impl Fn([f64; 3]) -> [f64; 3],
+    ) -> f64 {
         // relative RMS error of q against grad(u) . n at the centroids
         let (mut num, mut den) = (0.0, 0.0);
         for (t, &qt) in q.iter().enumerate() {
@@ -293,14 +305,24 @@ mod bem_3d {
             [-d[0] / r3, -d[1] / r3, -d[2] / r3]
         };
         let mesh = SurfaceMesh3D::icosphere(1.0, [0.0; 3], 3);
-        let bcs: Vec<_> =
-            (0..mesh.triangles.len()).map(|t| BoundaryCondition::Potential(u(mesh.centroid(t).unwrap()))).collect();
+        let bcs: Vec<_> = (0..mesh.triangles.len())
+            .map(|t| BoundaryCondition::Potential(u(mesh.centroid(t).unwrap())))
+            .collect();
         let sol = solve_laplace_bem_3d_mesh(&mesh, &bcs).unwrap();
         assert!(flux_error(&mesh, &sol.q, grad) < 0.03);
         // interior evaluation against the exact harmonic function
-        for p in [[0.0, 0.0, 0.0], [0.3, -0.2, 0.1], [-0.4, 0.4, 0.3], [0.5, 0.0, 0.0]] {
+        for p in [
+            [0.0, 0.0, 0.0],
+            [0.3, -0.2, 0.1],
+            [-0.4, 0.4, 0.3],
+            [0.5, 0.0, 0.0],
+        ] {
             let v = evaluate_potential_3d(p, &mesh, &sol).unwrap();
-            assert!((v - u(p)).abs() < 0.01 * u(p).abs() + 2e-3, "u({p:?}) = {v}, exact {}", u(p));
+            assert!(
+                (v - u(p)).abs() < 0.01 * u(p).abs() + 2e-3,
+                "u({p:?}) = {v}, exact {}",
+                u(p)
+            );
         }
     }
 
@@ -345,8 +367,9 @@ mod bem_3d {
     #[test]
     fn pure_neumann_problem_is_solved_up_to_a_constant() {
         let mesh = SurfaceMesh3D::icosphere(1.0, [0.0; 3], 3);
-        let bcs: Vec<_> =
-            (0..mesh.triangles.len()).map(|t| BoundaryCondition::Flux(mesh.normal(t).unwrap()[0])).collect();
+        let bcs: Vec<_> = (0..mesh.triangles.len())
+            .map(|t| BoundaryCondition::Flux(mesh.normal(t).unwrap()[0]))
+            .collect();
         let sol = solve_laplace_bem_3d_mesh(&mesh, &bcs).unwrap();
         // u = x + c with area-weighted mean zero: x itself up to symmetry error
         let (mut num, mut den) = (0.0, 0.0);
@@ -368,8 +391,14 @@ mod bem_3d {
         let mut checked = 0;
         for (t, &qt) in q.iter().enumerate() {
             let (c, n) = (mesh.centroid(t).unwrap(), mesh.normal(t).unwrap());
-            if c.iter().all(|v| v.abs() < 0.6 || v.abs() > 0.99) && c.iter().filter(|v| v.abs() > 0.99).count() == 1 {
-                assert!((qt - n[0]).abs() < 0.12, "face centre flux {qt} vs {}", n[0]);
+            if c.iter().all(|v| v.abs() < 0.6 || v.abs() > 0.99)
+                && c.iter().filter(|v| v.abs() > 0.99).count() == 1
+            {
+                assert!(
+                    (qt - n[0]).abs() < 0.12,
+                    "face centre flux {qt} vs {}",
+                    n[0]
+                );
                 checked += 1;
             }
         }
@@ -391,7 +420,8 @@ mod bem_3d {
         assert!(solve_laplace_bem_3d_mesh(&mesh, &[]).is_err());
         let nan = vec![BoundaryCondition::Potential(f64::NAN); mesh.triangles.len()];
         assert!(solve_laplace_bem_3d_mesh(&mesh, &nan).is_err());
-        let sol = solve_laplace_bem_3d_mesh(&mesh, &vec![BoundaryCondition::Potential(1.0); 20]).unwrap();
+        let sol =
+            solve_laplace_bem_3d_mesh(&mesh, &vec![BoundaryCondition::Potential(1.0); 20]).unwrap();
         let other = SurfaceMesh3D::icosphere(1.0, [0.0; 3], 1);
         assert!(evaluate_potential_3d([0.0; 3], &other, &sol).is_err());
     }

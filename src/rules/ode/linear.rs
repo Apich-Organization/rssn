@@ -25,14 +25,26 @@
 //!   `L = (D + y*'/y*) N`, and `N y = 1/y*` is solved by variation of
 //!   parameters over a basis of `N y = 0` (found by the full solver).
 //!
-//! * **Eigenring.** Elements `Σ p_j(x)/lc(L)^m D^j` (m ≤ 2, growing degree bounds) of
-//!   the eigenring give right factors of any order; two coprime factors whose orders
-//!   add up to the order of `L` give the solution space as a direct sum (for example
-//!   the lclm of Airy's and Bessel's equations).
+//! * **Eigenring.** Elements `R = Σ p_j(x) D^j / d(x)` of the eigenring
+//!   `{R : L R ≡ 0 (mod L)}` give right factors of any order: the denominator
+//!   `d = Π q_i^{m_i}` is a product of powers of the irreducible factors
+//!   `q_i` of the leading coefficient, the exponent `m_i` starts at the local
+//!   exponent spread at the roots of `q_i` and never exceeds the classical
+//!   `(n - 1) e_i` bound (`e_i` the multiplicity of `q_i`), and the numerators
+//!   have degree at most `3 deg(lc) + 2`, raised by eight on a second pass.
+//!   The linear system for the coefficients is solved over `Q`. For a factor
+//!   `g` of the minimal polynomial of `R` modulo `L`, `gcrd(L, g(R))` is a
+//!   right factor; two coprime factors whose orders add up to the order of `L`
+//!   give the solution space as a direct sum (for example the lclm of Airy's
+//!   and Bessel's equations, Legendre composed with Chebyshev, or a product of
+//!   two second-order operators, whose eigenring contains the projectors).
 //!
-//! Not done: eigenrings with denominators other than powers of the leading
-//! coefficient, and towers over number fields when the characteristic polynomial does
-//! not split.
+//! Not done: eigenring elements whose coefficients need a tower of number
+//! fields (the search is over `Q`, as the rest of the file), and the numerator
+//! degree bound is a fixed function of `deg(lc)` rather than a proven sharp
+//! bound, so an element with much larger numerators could be missed. Towers
+//! over number fields when the characteristic polynomial does not split are
+//! still not produced by the hyperexponential search either.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -45,21 +57,21 @@ use super::Problem;
 use super::add;
 use super::coefficients_in;
 use super::explicit;
-use super::formal::formal_solutions;
 use super::formal::Point as FormalPoint;
+use super::formal::formal_solutions;
 use super::integrate;
-use super::kovacic::polynomial_node;
 use super::kovacic::Rat;
-use super::ore::Ore;
+use super::kovacic::polynomial_node;
 use super::mul;
 use super::occurs;
+use super::ore::Ore;
 use super::reduce::chain;
 use super::reduce::fresh_function;
 use super::solve_equation;
-use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::poly::rational_function_in;
 use crate::rules::poly::univariate;
 
@@ -116,7 +128,11 @@ fn operator(
             | _ => return None,
         }
     }
-    if !cx.is_zero(rest) || problem.stand.iter().any(|&s| occurs(cx.graph, rest, s) || coefficients.iter().any(|&c| occurs(cx.graph, c, s))) {
+    if !cx.is_zero(rest)
+        || problem.stand.iter().any(|&s| {
+            occurs(cx.graph, rest, s) || coefficients.iter().any(|&c| occurs(cx.graph, c, s))
+        })
+    {
         return None;
     }
     let mut fractions = Vec::new();
@@ -216,7 +232,11 @@ pub fn hypergeometric_solutions(op: &[Vec<Q>]) -> Option<Vec<Pfq>> {
     let mut out = Vec::new();
     for (index, rho) in roots0.iter().enumerate() {
         // The same root twice would need logarithms.
-        if roots0.iter().enumerate().any(|(i, r)| i != index && r == rho) {
+        if roots0
+            .iter()
+            .enumerate()
+            .any(|(i, r)| i != index && r == rho)
+        {
             return None;
         }
         let a: Vec<Q> = roots1.iter().map(|s| (rho - s) / &dq).collect();
@@ -231,7 +251,13 @@ pub fn hypergeometric_solutions(op: &[Vec<Q>]) -> Option<Vec<Pfq>> {
             }
             b.push(value);
         }
-        out.push(Pfq { rho: rho.clone(), a, b, c: c.clone(), d });
+        out.push(Pfq {
+            rho: rho.clone(),
+            a,
+            b,
+            c: c.clone(),
+            d,
+        });
     }
     Some(out)
 }
@@ -268,9 +294,13 @@ fn hypergeometric_node(
 /// for `ops` registration. Arguments: `p, a_1 … a_p, b_1 … b_q, z`.
 #[must_use]
 pub fn hyper_pfq(args: &[f64]) -> f64 {
-    let Some(&p_f) = args.first() else { return f64::NAN };
+    let Some(&p_f) = args.first() else {
+        return f64::NAN;
+    };
     let p = p_f as usize;
-    let Some(&z) = args.last() else { return f64::NAN };
+    let Some(&z) = args.last() else {
+        return f64::NAN;
+    };
     if args.len() < p + 2 {
         return f64::NAN;
     }
@@ -318,21 +348,60 @@ impl Hyper {
     }
 }
 
+/// Removes the common integer factor of a row of integers (a no-op otherwise).
+fn primitive_row(row: &mut [Q]) {
+    let mut common = BigInt::zero();
+    for v in row.iter() {
+        if v.is_zero() {
+            continue;
+        }
+        common = num_integer::Integer::gcd(&common, v.numer());
+    }
+    if common > BigInt::one() {
+        let scale = Q::from_integer(common);
+        for v in row.iter_mut() {
+            *v /= &scale;
+        }
+    }
+}
+
+/// A basis of the nullspace of `rows` (exact, fraction-free elimination: the
+/// rows are made integral, combined with integer pivots and primitivised, so
+/// the rational entries do not grow during the elimination).
 pub(super) fn nullspace(
     mut rows: Vec<Vec<Q>>,
     columns: usize,
 ) -> Vec<Vec<Q>> {
+    for row in &mut rows {
+        let mut common = BigInt::one();
+        for v in row.iter() {
+            let denominator = v.denom();
+            let g = num_integer::Integer::gcd(&common, denominator);
+            common = common / g * denominator;
+        }
+        if common > BigInt::one() {
+            let scale = Q::from_integer(common);
+            for v in row.iter_mut() {
+                *v *= &scale;
+            }
+        }
+    }
     let mut pivots: Vec<usize> = Vec::new();
     let mut r = 0;
     for c in 0..columns {
-        let Some(found) = (r..rows.len()).find(|&i| rows.get(i).and_then(|row| row.get(c)).is_some_and(|v| !v.is_zero())) else { continue };
+        let Some(found) = (r..rows.len()).find(|&i| {
+            rows.get(i)
+                .and_then(|row| row.get(c))
+                .is_some_and(|v| !v.is_zero())
+        }) else {
+            continue;
+        };
         rows.swap(r, found);
-        let pivot = rows.get(r).and_then(|row| row.get(c)).cloned().unwrap_or_else(Q::one);
-        if let Some(row) = rows.get_mut(r) {
-            for v in row.iter_mut() {
-                *v /= &pivot;
-            }
-        }
+        let pivot = rows
+            .get(r)
+            .and_then(|row| row.get(c))
+            .cloned()
+            .unwrap_or_else(Q::one);
         let pivot_row = rows.get(r).cloned().unwrap_or_default();
         for (i, row) in rows.iter_mut().enumerate() {
             if i == r {
@@ -343,8 +412,12 @@ pub(super) fn nullspace(
                 continue;
             }
             for (v, p) in row.iter_mut().zip(&pivot_row) {
-                *v -= &factor * p;
+                *v = &*v * &pivot - &factor * p;
             }
+            primitive_row(row);
+        }
+        if let Some(row) = rows.get_mut(r) {
+            primitive_row(row);
         }
         pivots.push(c);
         r += 1;
@@ -356,9 +429,20 @@ pub(super) fn nullspace(
             *slot = Q::one();
         }
         for (row, &pivot) in pivots.iter().enumerate() {
-            let value = rows.get(row).and_then(|r| r.get(free)).cloned().unwrap_or_else(Q::zero);
-            if let Some(slot) = vector.get_mut(pivot) {
-                *slot = -value;
+            let value = rows
+                .get(row)
+                .and_then(|r| r.get(free))
+                .cloned()
+                .unwrap_or_else(Q::zero);
+            let scale = rows
+                .get(row)
+                .and_then(|r| r.get(pivot))
+                .cloned()
+                .unwrap_or_else(Q::one);
+            if let Some(slot) = vector.get_mut(pivot)
+                && !scale.is_zero()
+            {
+                *slot = -value / scale;
             }
         }
         basis.push(vector);
@@ -410,7 +494,12 @@ fn polynomial_solutions(
     }
     let height = numerators.iter().map(Vec::len).max().unwrap_or(0);
     let rows: Vec<Vec<Q>> = (0..height)
-        .map(|m| numerators.iter().map(|n| n.get(m).cloned().unwrap_or_else(Q::zero)).collect())
+        .map(|m| {
+            numerators
+                .iter()
+                .map(|n| n.get(m).cloned().unwrap_or_else(Q::zero))
+                .collect()
+        })
         .collect();
     Some(nullspace(rows, d + 1))
 }
@@ -423,7 +512,10 @@ fn finite_candidates(
     let mut out: Vec<(Rat, Q)> = Vec::new();
     let zero = zero_rat();
     let push = |out: &mut Vec<(Rat, Q)>, e: Rat, rho: Q| {
-        if !out.iter().any(|(e2, r2)| *r2 == rho && e2.num == e.num && e2.den == e.den) {
+        if !out
+            .iter()
+            .any(|(e2, r2)| *r2 == rho && e2.num == e.num && e2.den == e.den)
+        {
             out.push((e, rho));
         }
     };
@@ -434,7 +526,9 @@ fn finite_candidates(
         if solution.ramification != 1 || solution.has_logarithms() {
             continue;
         }
-        let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };
+        let Some(rho) = solution.field.as_rational(&solution.rho) else {
+            continue;
+        };
         let mut exponent = zero_rat();
         let linear = f.len() == 2;
         let mut valid = true;
@@ -469,7 +563,9 @@ fn infinity_candidates(op: &[Vec<Q>]) -> Vec<(Rat, Q)> {
         if solution.ramification != 1 || solution.has_logarithms() {
             continue;
         }
-        let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };
+        let Some(rho) = solution.field.as_rational(&solution.rho) else {
+            continue;
+        };
         let mut coefficients: Vec<Q> = Vec::new();
         let mut valid = true;
         for (s, kappa) in &solution.exponent {
@@ -487,7 +583,9 @@ fn infinity_candidates(op: &[Vec<Q>]) -> Vec<(Rat, Q)> {
         if !valid {
             continue;
         }
-        let Some(e) = rat(&coefficients, &[Q::one()]) else { continue };
+        let Some(e) = rat(&coefficients, &[Q::one()]) else {
+            continue;
+        };
         if !out.iter().any(|(e2, r2)| *r2 == rho && e2.num == e.num) {
             out.push((e, rho));
         }
@@ -505,7 +603,11 @@ pub fn hyperexponential_solutions(op: &[Vec<Q>]) -> Vec<Hyper> {
         let l = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
         f.iter().map(|c| Q::from_integer(c.clone()) / &l).collect()
     };
-    let singular: Vec<Vec<Q>> = factors.iter().filter(|(f, _)| f.len() > 1).map(|(f, _)| monic(f)).collect();
+    let singular: Vec<Vec<Q>> = factors
+        .iter()
+        .filter(|(f, _)| f.len() > 1)
+        .map(|(f, _)| monic(f))
+        .collect();
     let local: Vec<Vec<(Rat, Q)>> = singular.iter().map(|f| finite_candidates(op, f)).collect();
     let infinity = infinity_candidates(op);
     if infinity.is_empty() {
@@ -536,7 +638,11 @@ pub fn hyperexponential_solutions(op: &[Vec<Q>]) -> Vec<Hyper> {
                 selected.push((f.clone(), rho.clone()));
             }
             let degree = -rho_inf - shift;
-            if ok && degree.is_integer() && !degree.is_negative() && degree.to_integer() <= BigInt::from(40) {
+            if ok
+                && degree.is_integer()
+                && !degree.is_negative()
+                && degree.to_integer() <= BigInt::from(40)
+            {
                 let d = usize::try_from(degree.to_integer().to_i64().unwrap_or(0)).unwrap_or(0);
                 if let Some(omega) = hyper_omega(&selected, &exponent)
                     && let Some(basis) = polynomial_solutions(op, &omega, d)
@@ -544,7 +650,11 @@ pub fn hyperexponential_solutions(op: &[Vec<Q>]) -> Vec<Hyper> {
                     for p in basis {
                         let poly = trim(p);
                         if !poly.is_empty() {
-                            out.push(Hyper { poly, factors: selected.clone(), exponent: exponent.clone() });
+                            out.push(Hyper {
+                                poly,
+                                factors: selected.clone(),
+                                exponent: exponent.clone(),
+                            });
                         }
                     }
                 }
@@ -555,7 +665,9 @@ pub fn hyperexponential_solutions(op: &[Vec<Q>]) -> Vec<Hyper> {
                     break;
                 }
                 let count = local.get(position).map_or(0, Vec::len);
-                let Some(slot) = chosen.get_mut(position) else { break };
+                let Some(slot) = chosen.get_mut(position) else {
+                    break;
+                };
                 *slot += 1;
                 if *slot < count {
                     break;
@@ -596,7 +708,10 @@ fn right_quotient(
     omega: &Rat,
 ) -> Option<Vec<Rat>> {
     let n = op.len().checked_sub(1)?;
-    let mut remainder: Vec<Rat> = op.iter().map(|a| rat(a, &[Q::one()])).collect::<Option<_>>()?;
+    let mut remainder: Vec<Rat> = op
+        .iter()
+        .map(|a| rat(a, &[Q::one()]))
+        .collect::<Option<_>>()?;
     // ω, ω', … for the binomial expansion of D^{i-1} ∘ ω.
     let mut derivatives = vec![omega.clone()];
     for _ in 1..n {
@@ -611,7 +726,9 @@ fn right_quotient(
         // r_{i-1-k} += lead * C(i-1, k) ω^(k).
         let mut binomial = BigInt::one();
         for k in 0..i {
-            let term = lead.mul(derivatives.get(k)?)?.scale(&Q::from_integer(binomial.clone()))?;
+            let term = lead
+                .mul(derivatives.get(k)?)?
+                .scale(&Q::from_integer(binomial.clone()))?;
             let slot = remainder.get_mut(i - 1 - k)?;
             *slot = slot.add(&term)?;
             binomial = binomial * BigInt::from(i - 1 - k) / BigInt::from(k + 1);
@@ -635,7 +752,10 @@ fn hyper_node(
         factors.push(cx.graph.node(core::POW, &[base, exponent]));
     }
     if !hyper.exponent.num.is_empty() {
-        let (n, d) = (polynomial_node(cx, x, &hyper.exponent.num), polynomial_node(cx, x, &hyper.exponent.den));
+        let (n, d) = (
+            polynomial_node(cx, x, &hyper.exponent.num),
+            polynomial_node(cx, x, &hyper.exponent.den),
+        );
         let ratio = super::div(cx.graph, n, d);
         factors.push(super::exp_of(cx, ratio)?);
     }
@@ -669,7 +789,8 @@ pub(super) fn high_order(
     // Hyperexponential solution and reduction of order.
     let found = hyperexponential_solutions(&op);
     let Some(hyper) = found.first() else {
-        return left_factor(cx, problem, &op, depth).or_else(|| eigenring_reduction(cx, problem, &op, depth));
+        return left_factor(cx, problem, &op, depth)
+            .or_else(|| eigenring_reduction(cx, problem, &op, depth));
     };
     let y1 = hyper_node(cx, x, hyper)?;
     let omega = hyper.log_derivative()?;
@@ -764,8 +885,15 @@ fn adjoint(op: &[Vec<Q>]) -> Vec<Vec<Q>> {
         let mut derivative = a.clone();
         let mut binomial = BigInt::one();
         for k in 0..=i {
-            let sign = if i % 2 == 0 { Q::one() } else { -Q::one() };
-            let term: Vec<Q> = derivative.iter().map(|c| c * &sign * Q::from_integer(binomial.clone())).collect();
+            let sign = if i % 2 == 0 {
+                Q::one()
+            } else {
+                -Q::one()
+            };
+            let term: Vec<Q> = derivative
+                .iter()
+                .map(|c| c * &sign * Q::from_integer(binomial.clone()))
+                .collect();
             if let Some(slot) = out.get_mut(i - k) {
                 *slot = trim(univariate::add(slot, &term));
             }
@@ -784,7 +912,11 @@ fn adjoint_rational(op: &[Rat]) -> Option<Vec<Rat>> {
         let mut derivative = a.clone();
         let mut binomial = BigInt::one();
         for k in 0..=i {
-            let sign = if i % 2 == 0 { Q::one() } else { -Q::one() };
+            let sign = if i % 2 == 0 {
+                Q::one()
+            } else {
+                -Q::one()
+            };
             let term = derivative.scale(&(sign * Q::from_integer(binomial.clone())))?;
             let slot = out.get_mut(i - k)?;
             *slot = slot.add(&term)?;
@@ -869,75 +1001,340 @@ fn operator_rows(
         let common = common_denominator(&present)?;
         let numerators: Vec<Vec<Q>> = entries
             .iter()
-            .map(|e| match e {
-                | Some(r) => Some(univariate::mul(&r.num, &univariate::divrem(&common, &r.den)?.0)),
-                | None => Some(Vec::new()),
+            .map(|e| {
+                match e {
+                    | Some(r) => {
+                        Some(univariate::mul(
+                            &r.num,
+                            &univariate::divrem(&common, &r.den)?.0,
+                        ))
+                    },
+                    | None => Some(Vec::new()),
+                }
             })
             .collect::<Option<_>>()?;
         let height = numerators.iter().map(Vec::len).max().unwrap_or(0);
         for m in 0..height {
-            rows.push(numerators.iter().map(|v| v.get(m).cloned().unwrap_or_else(Q::zero)).collect());
+            rows.push(
+                numerators
+                    .iter()
+                    .map(|v| v.get(m).cloned().unwrap_or_else(Q::zero))
+                    .collect(),
+            );
         }
     }
     Some(rows)
 }
 
-/// Proper right factors of `L` from its eigenring: elements `R = Σ r_j(x) D^j`
-/// with polynomial `r_j` of degree up to a small bound and `L ∘ R ≡ 0 (mod L)`;
-/// for a factor `g` of the minimal polynomial of `R` modulo `L`,
-/// `gcrd(L, g(R))` is a right factor.
-fn eigenring_right_factors(op: &[Vec<Q>]) -> Vec<Ore> {
+/// The monic irreducible factors of `p` with their multiplicities.
+fn monic_factors(p: &[Q]) -> Vec<(Vec<Q>, usize)> {
+    let (_, factors) = univariate::factor(p);
     let mut out = Vec::new();
-    let Some(l) = Ore::from_polynomials(op) else { return out };
-    let n = op.len().saturating_sub(1);
-    let Some(lc) = op.last() else { return out };
-    let degree = lc.len().saturating_sub(1);
-    // Elements Σ p_j(x) / lc^m D^j with deg p_j ≤ bound: first the polynomial
-    // ones, then the denominators lc and lc², with the degree bound growing
-    // with the degree of lc (the Beke / van Hoeij search space).
-    let schedule: Vec<(usize, usize)> =
-        vec![(0, 0), (0, 1), (0, 2), (1, degree + 2), (1, 2 * degree + 2), (2, 3 * degree + 2)];
-    for (power, bound) in schedule {
+    for (f, multiplicity) in factors {
+        if f.len() < 2 {
+            continue;
+        }
+        let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
+        out.push((
+            f.iter()
+                .map(|c| Q::from_integer(c.clone()) / &lead)
+                .collect(),
+            usize::try_from(multiplicity).unwrap_or(1),
+        ));
+    }
+    out
+}
+
+/// An upper bound for the pole order of the coefficients of an eigenring
+/// element at the conjugate singular points of the irreducible `f`, from the
+/// local exponents: the gauge `y_i / y_j` between two local solutions has a
+/// pole (or a zero) of order at most the spread of the exponents.
+fn local_exponent_bound(
+    op: &[Vec<Q>],
+    f: &[Q],
+    n: usize,
+) -> usize {
+    let mut low = f64::INFINITY;
+    let mut high = f64::NEG_INFINITY;
+    let mut found = false;
+    for solution in formal_solutions(op, &FormalPoint::Finite(f.to_vec()), 2) {
+        if solution.ramification != 1 || solution.has_logarithms() {
+            continue;
+        }
+        for alpha in solution.field.embeddings() {
+            let value = solution.field.numeric(&solution.rho, alpha).re;
+            if value.is_finite() {
+                low = low.min(value);
+                high = high.max(value);
+                found = true;
+            }
+        }
+    }
+    if !found {
+        return n;
+    }
+    let spread = (high - low).max(0.0).ceil();
+    if !spread.is_finite() {
+        return n;
+    }
+    // One more pole than the spread: the difference of two series, not a
+    // single solution, is what bounds the gauge.
+    (spread as usize).saturating_add(1).min(n.max(1))
+}
+
+/// The denominator lattice of the eigenring: the products `Π q_i^{m_i}` over
+/// the irreducible factors `q_i` of the leading coefficient, with `m_i` up to
+/// the classical `(n - 1) e_i` bound. The local exponent spread at the roots
+/// of `q_i` gives the exponent tried first.
+struct Denominators {
+    /// The monic irreducible factors of the leading coefficient, with their
+    /// multiplicities.
+    factors: Vec<(Vec<Q>, usize)>,
+    /// The largest exponent of `q_i` in a denominator.
+    caps: Vec<usize>,
+    /// The exponent of `q_i` suggested by the local exponents.
+    preferred: Vec<usize>,
+    /// The degree of the leading coefficient.
+    degree: usize,
+}
+
+impl Denominators {
+    fn new(
+        op: &[Vec<Q>],
+        n: usize,
+    ) -> Self {
+        let lc = op.last().cloned().unwrap_or_default();
+        let factors = monic_factors(&lc);
+        let caps: Vec<usize> = factors
+            .iter()
+            .map(|(_, e)| (n.saturating_sub(1).max(1)).saturating_mul(*e))
+            .collect();
+        let preferred: Vec<usize> = factors
+            .iter()
+            .zip(&caps)
+            .map(|((q, _), &cap)| local_exponent_bound(op, q, n).min(cap).clamp(1, 2))
+            .collect();
+        Self {
+            factors,
+            caps,
+            preferred,
+            degree: lc.len().saturating_sub(1),
+        }
+    }
+
+    /// The candidate exponent vectors, the local one first and then by
+    /// increasing distance from it; the zero vector (no denominator) and the
+    /// largest vector are always included. The list is bounded so that a
+    /// leading coefficient with many factors cannot explode the search.
+    fn candidates(&self) -> Vec<Vec<usize>> {
+        let mut all = vec![self.preferred.clone()];
+        let mut frontier = all.clone();
+        while all.len() < 64 {
+            let mut next: Vec<Vec<usize>> = Vec::new();
+            for v in &frontier {
+                for i in 0..self.factors.len() {
+                    let cap = self.caps.get(i).copied().unwrap_or(0);
+                    let Some(&m) = v.get(i) else { continue };
+                    for delta in [-1_i64, 1] {
+                        let Ok(m) = i64::try_from(m) else { continue };
+                        let Some(m) = m.checked_add(delta) else {
+                            continue;
+                        };
+                        let Ok(m) = usize::try_from(m) else { continue };
+                        if m > cap {
+                            continue;
+                        }
+                        let mut w = v.clone();
+                        if let Some(slot) = w.get_mut(i) {
+                            *slot = m;
+                        }
+                        if !all.contains(&w) && !next.contains(&w) {
+                            next.push(w);
+                        }
+                    }
+                }
+            }
+            if next.is_empty() {
+                break;
+            }
+            all.extend(next.iter().cloned());
+            frontier = next;
+        }
+        for v in [vec![0_usize; self.factors.len()], self.caps.clone()] {
+            if !all.contains(&v) {
+                all.push(v);
+            }
+        }
+        // The local exponents first (their pole orders keep the systems
+        // small), then the smaller denominators.
+        let distance = |v: &[usize]| -> usize {
+            v.iter()
+                .zip(&self.preferred)
+                .map(|(&m, &p)| m.abs_diff(p))
+                .sum::<usize>()
+        };
+        all.sort_by_key(|v| (distance(v), v.iter().sum::<usize>(), v.clone()));
+        all
+    }
+
+    /// `Π q_i^{m_i}`.
+    fn polynomial(
+        &self,
+        exponents: &[usize],
+    ) -> Vec<Q> {
         let mut denominator = vec![Q::one()];
-        for _ in 0..power {
-            denominator = poly_mul(&denominator, lc);
-        }
-        let mut basis: Vec<Ore> = Vec::new();
-        let mut images: Vec<Ore> = Vec::new();
-        for s in 0..=bound {
-            for j in 0..n {
-                let mut monomial = vec![Q::zero(); s];
-                monomial.push(Q::one());
-                let Some(mut coefficients) = (0..j).map(|_| zero_rat()).collect::<Option<Vec<Rat>>>() else { continue };
-                let Some(top) = rat(&monomial, &denominator) else { continue };
-                coefficients.push(top);
-                let e = Ore::new(coefficients);
-                let Some(image) = l.mul(&e).and_then(|p| p.right_divide(&l)).map(|(_, r)| r) else { continue };
-                basis.push(e);
-                images.push(image);
+        for ((q, _), &m) in self.factors.iter().zip(exponents) {
+            for _ in 0..m {
+                denominator = poly_mul(&denominator, q);
             }
         }
-        let Some(rows) = operator_rows(&images, n) else { continue };
-        for u in nullspace(rows, images.len()) {
-            let mut r = Ore::new(Vec::new());
-            let mut ok = true;
-            for (c, e) in u.iter().zip(&basis) {
-                if c.is_zero() {
-                    continue;
-                }
-                match e.scale(c).and_then(|t| r.add(&t)) {
-                    | Some(sum) => r = sum,
-                    | None => ok = false,
-                }
-            }
-            // Skip the scalars: an element of order zero in the eigenring is constant.
-            if !ok || r.order().is_none_or(|o| o == 0) {
+        denominator
+    }
+}
+
+/// Right factors from the eigenring elements whose denominator divides the
+/// polynomial `denominator` and whose numerators have degree at most `bound`.
+fn eigenring_factors_with(
+    op: &[Vec<Q>],
+    l: &Ore,
+    denominator: &[Q],
+    bound: usize,
+) -> Vec<Ore> {
+    let n = op.len().saturating_sub(1);
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut basis: Vec<Ore> = Vec::new();
+    let mut images: Vec<Ore> = Vec::new();
+    for s in 0..=bound {
+        for j in 0..n {
+            let mut monomial = vec![Q::zero(); s];
+            monomial.push(Q::one());
+            let Some(mut coefficients) = (0..j).map(|_| zero_rat()).collect::<Option<Vec<Rat>>>()
+            else {
+                continue;
+            };
+            let Some(top) = rat(&monomial, denominator) else {
+                continue;
+            };
+            coefficients.push(top);
+            let e = Ore::new(coefficients);
+            let Some(image) = l.mul(&e).and_then(|p| p.right_divide(l)).map(|(_, r)| r) else {
+                continue;
+            };
+            basis.push(e);
+            images.push(image);
+        }
+    }
+    if basis.is_empty() {
+        return Vec::new();
+    }
+    let Some(rows) = operator_rows(&images, n) else {
+        return Vec::new();
+    };
+    if rows.is_empty() {
+        return Vec::new();
+    }
+    let mut elements: Vec<Ore> = Vec::new();
+    for u in nullspace(rows, basis.len()).into_iter().take(12) {
+        let mut r = Ore::new(Vec::new());
+        let mut ok = true;
+        for (c, e) in u.iter().zip(&basis) {
+            if c.is_zero() {
                 continue;
             }
-            out.extend(factors_from_eigenvalue_element(&l, &r, n));
-            if !out.is_empty() {
-                return out;
+            match e.scale(c).and_then(|t| r.add(&t)) {
+                | Some(sum) => r = sum,
+                | None => ok = false,
             }
+        }
+        // Skip the scalars: an element of order zero in the eigenring is constant.
+        if ok && r.order().is_some_and(|o| o > 0) {
+            elements.push(r);
+        }
+    }
+    let mut found = distinct_factors(
+        elements
+            .iter()
+            .flat_map(|r| factors_from_eigenvalue_element(l, r, n))
+            .collect(),
+    );
+    // Factor extraction from a single element only gives the factors of its
+    // minimal polynomial. A combination with another element can have a
+    // repeated eigenvalue where the single ones have none, and then its
+    // minimal polynomial has a factor of degree above one, i.e. a right
+    // factor of order above one.
+    let proper = |f: &Ore| f.order().is_some_and(|o| o >= 2 && o < n);
+    if !found.iter().any(proper) && elements.len() >= 2 {
+        let half = Q::new(BigInt::one(), BigInt::from(2));
+        let shifts = [Q::one(), -Q::one(), q(2), q(-2), half.clone(), -half];
+        'search: for (i, a) in elements.iter().enumerate() {
+            for b in elements.iter().skip(i + 1) {
+                for c in &shifts {
+                    let Some(scaled) = b.scale(c) else { continue };
+                    let Some(sum) = a.add(&scaled) else { continue };
+                    let more = factors_from_eigenvalue_element(l, &sum, n);
+                    if more.is_empty() {
+                        continue;
+                    }
+                    found = distinct_factors(found.into_iter().chain(more).collect());
+                    if found.iter().any(proper) {
+                        break 'search;
+                    }
+                }
+            }
+        }
+    }
+    found
+}
+
+/// Proper right factors of `L` from its eigenring: elements
+/// `R = Σ p_j(x) D^j / d(x)` with `d` a product of powers of the irreducible
+/// factors of the leading coefficient and `L ∘ R ≡ 0 (mod L)`; for a factor
+/// `g` of the minimal polynomial of `R` modulo `L`, `gcrd(L, g(R))` is a
+/// right factor of any order.
+fn eigenring_right_factors(op: &[Vec<Q>]) -> Vec<Ore> {
+    let Some(l) = Ore::from_polynomials(op) else {
+        return Vec::new();
+    };
+    let n = op.len().saturating_sub(1);
+    let lattice = Denominators::new(op, n);
+    let candidates = lattice.candidates();
+    // The degree bound of the numerators: three times the degree of the
+    // leading coefficient plus two (the Beke bound), raised by eight when the
+    // first pass finds nothing (operators with a constant leading coefficient
+    // have larger eigenring elements). The local exponents choose the
+    // denominator first.
+    let base = (3 * lattice.degree).saturating_add(2);
+    for extra in [0_usize, 8] {
+        let bound = base.saturating_add(extra);
+        if n.saturating_mul(bound.saturating_add(1)) > 600 {
+            continue;
+        }
+        for exponents in candidates.iter().take(12) {
+            // A polynomial eigenring element is also represented over the
+            // leading coefficient (its numerator gains `deg(lc)`), which the
+            // bound above allows for; the zero denominator is skipped when the
+            // leading coefficient is not constant.
+            if lattice.degree > 0 && exponents.iter().all(|&m| m == 0) {
+                continue;
+            }
+            let denominator = lattice.polynomial(exponents);
+            let found = eigenring_factors_with(op, &l, &denominator, bound);
+            if !found.is_empty() {
+                return found;
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// The same monic factor once: distinct right factors of an eigenring.
+fn distinct_factors(factors: Vec<Ore>) -> Vec<Ore> {
+    let mut out: Vec<Ore> = Vec::new();
+    for f in factors {
+        if !out.iter().any(|g| f.sub(g).is_some_and(|d| d.is_zero())) {
+            out.push(f);
         }
     }
     out
@@ -964,14 +1361,23 @@ fn factors_from_eigenvalue_element(
     n: usize,
 ) -> Vec<Ore> {
     let mut out = Vec::new();
-    let Some(identity) = Ore::from_polynomials(&[vec![Q::one()]]) else { return out };
+    let Some(identity) = Ore::from_polynomials(&[vec![Q::one()]]) else {
+        return out;
+    };
     let mut powers: Vec<Ore> = vec![identity];
-    let Some((_, r_reduced)) = r.right_divide(l) else { return out };
+    let Some((_, r_reduced)) = r.right_divide(l) else {
+        return out;
+    };
     powers.push(r_reduced);
     for k in 1..=n + 1 {
-        let Some(rows) = operator_rows(&powers, n) else { return out };
+        let Some(rows) = operator_rows(&powers, n) else {
+            return out;
+        };
         let dependencies = nullspace(rows, powers.len());
-        if let Some(mu) = dependencies.into_iter().find(|v| v.get(k).is_some_and(|c| !c.is_zero())) {
+        if let Some(mu) = dependencies
+            .into_iter()
+            .find(|v| v.get(k).is_some_and(|c| !c.is_zero()))
+        {
             let (_, factors) = univariate::factor(&mu);
             if factors.len() == 1 && factors.first().is_some_and(|(_, e)| *e == 1) {
                 return out;
@@ -980,7 +1386,10 @@ fn factors_from_eigenvalue_element(
                 let mut g_of_r = Ore::new(Vec::new());
                 let mut ok = true;
                 for (c, p) in g.iter().zip(&powers) {
-                    match p.scale(&Q::from_integer(c.clone())).and_then(|t| g_of_r.add(&t)) {
+                    match p
+                        .scale(&Q::from_integer(c.clone()))
+                        .and_then(|t| g_of_r.add(&t))
+                    {
                         | Some(sum) => g_of_r = sum,
                         | None => ok = false,
                     }
@@ -996,8 +1405,16 @@ fn factors_from_eigenvalue_element(
             }
             return out;
         }
-        let Some(last) = powers.last() else { return out };
-        let Some(next) = r.mul(last).and_then(|p| p.right_divide(l)).map(|(_, rem)| rem) else { return out };
+        let Some(last) = powers.last() else {
+            return out;
+        };
+        let Some(next) = r
+            .mul(last)
+            .and_then(|p| p.right_divide(l))
+            .map(|(_, rem)| rem)
+        else {
+            return out;
+        };
         powers.push(next);
     }
     out
@@ -1021,17 +1438,31 @@ fn eigenring_reduction(
     // solution space of L is the direct sum of theirs.
     for (i, f1) in factors.iter().enumerate() {
         for f2 in factors.iter().skip(i + 1) {
-            if f1.order().zip(f2.order()).is_none_or(|(a, b)| a + b != order) {
+            if f1
+                .order()
+                .zip(f2.order())
+                .is_none_or(|(a, b)| a + b != order)
+            {
                 continue;
             }
-            if !l.right_divide(f1).is_some_and(|(_, r)| r.is_zero()) || !l.right_divide(f2).is_some_and(|(_, r)| r.is_zero()) {
+            if !l.right_divide(f1).is_some_and(|(_, r)| r.is_zero())
+                || !l.right_divide(f2).is_some_and(|(_, r)| r.is_zero())
+            {
                 continue;
             }
             if f1.right_gcd(f2).is_none_or(|g| g.order() != Some(0)) {
                 continue;
             }
-            let (Some(p1), Some(p2)) = (clear_denominators(&f1.c), clear_denominators(&f2.c)) else { continue };
-            let (Some(b1), Some(b2)) = (reduced_basis(cx, x, &p1, depth), reduced_basis(cx, x, &p2, depth)) else { continue };
+            let (Some(p1), Some(p2)) = (clear_denominators(&f1.c), clear_denominators(&f2.c))
+            else {
+                continue;
+            };
+            let (Some(b1), Some(b2)) = (
+                reduced_basis(cx, x, &p1, depth),
+                reduced_basis(cx, x, &p2, depth),
+            ) else {
+                continue;
+            };
             let mut terms = Vec::new();
             for y in b1.iter().chain(&b2) {
                 let c = problem.constant(cx.graph);
@@ -1044,14 +1475,19 @@ fn eigenring_reduction(
         }
     }
     for f in factors {
-        let Some((m, remainder)) = l.right_divide(&f) else { continue };
+        let Some((m, remainder)) = l.right_divide(&f) else {
+            continue;
+        };
         if !remainder.is_zero() {
             continue;
         }
         let f_polys = clear_denominators(&f.c)?;
         let m_polys = clear_denominators(&m.c)?;
         let f_den = common_denominator(&f.c.iter().collect::<Vec<_>>())?;
-        let (Some(basis_f), Some(basis_m)) = (reduced_basis(cx, x, &f_polys, depth), reduced_basis(cx, x, &m_polys, depth)) else {
+        let (Some(basis_f), Some(basis_m)) = (
+            reduced_basis(cx, x, &f_polys, depth),
+            reduced_basis(cx, x, &m_polys, depth),
+        ) else {
             continue;
         };
         let leading = polynomial_node(cx, x, f_polys.last()?);
@@ -1064,7 +1500,8 @@ fn eigenring_reduction(
         for z in &basis_m {
             let forcing = mul(cx.graph, &[d_node, *z]);
             let forcing = cx.simplify(forcing);
-            let particular = super::variation_of_parameters_inert(cx, &basis_f, leading, forcing, x)?;
+            let particular =
+                super::variation_of_parameters_inert(cx, &basis_f, leading, forcing, x)?;
             let c = problem.constant(cx.graph);
             terms.push(mul(cx.graph, &[c, particular]));
         }
@@ -1134,8 +1571,14 @@ mod tests {
         // θ (θ - 1/2)(θ - 2/3) - x (θ + 1)(θ + 1/4)(θ + 1/5): 3F2 with
         // numerator parameters 1, 1/4, 1/5 and (b) = 1/2, 1/3 (for ρ = 0).
         let times = |a: &[Q], b: &[Q]| univariate::mul(a, b);
-        let p0 = times(&times(&[Q::zero(), Q::one()], &[-frac(1, 2), Q::one()]), &[-frac(2, 3), Q::one()]);
-        let p1 = times(&times(&[q(1), Q::one()], &[frac(1, 4), Q::one()]), &[frac(1, 5), Q::one()]);
+        let p0 = times(
+            &times(&[Q::zero(), Q::one()], &[-frac(1, 2), Q::one()]),
+            &[-frac(2, 3), Q::one()],
+        );
+        let p1 = times(
+            &times(&[q(1), Q::one()], &[frac(1, 4), Q::one()]),
+            &[frac(1, 5), Q::one()],
+        );
         let p1 = p1.iter().map(|c| -c).collect::<Vec<_>>();
         let mut op = Vec::new();
         theta_polynomial(&p0, 0, &mut op);
@@ -1165,10 +1608,20 @@ mod tests {
         let h = 1e-2;
         let samples: Vec<f64> = (-2..=2).map(|k| numeric(x + f64::from(k) * h)).collect();
         let d1 = (samples[0] - 8.0 * samples[1] + 8.0 * samples[3] - samples[4]) / (12.0 * h);
-        let d2 = (-samples[0] + 16.0 * samples[1] - 30.0 * samples[2] + 16.0 * samples[3] - samples[4]) / (12.0 * h * h);
-        let d3 = (-samples[0] + 2.0 * samples[1] - 2.0 * samples[3] + samples[4]) / (2.0 * h * h * h);
-        let value = |c: &[Q]| c.iter().rev().fold(0.0, |acc, v| acc * x + v.to_f64().unwrap_or(f64::NAN));
-        let residual = value(&op[0]) * samples[2] + value(&op[1]) * d1 + value(&op[2]) * d2 + value(&op[3]) * d3;
+        let d2 = (-samples[0] + 16.0 * samples[1] - 30.0 * samples[2] + 16.0 * samples[3]
+            - samples[4])
+            / (12.0 * h * h);
+        let d3 =
+            (-samples[0] + 2.0 * samples[1] - 2.0 * samples[3] + samples[4]) / (2.0 * h * h * h);
+        let value = |c: &[Q]| {
+            c.iter()
+                .rev()
+                .fold(0.0, |acc, v| acc * x + v.to_f64().unwrap_or(f64::NAN))
+        };
+        let residual = value(&op[0]) * samples[2]
+            + value(&op[1]) * d1
+            + value(&op[2]) * d2
+            + value(&op[3]) * d3;
         assert!(residual.abs() < 2e-4, "residual {residual}");
     }
 
@@ -1177,14 +1630,16 @@ mod tests {
         // (D^2 - x)(D - 1) = D^3 - D^2 - x D + x: the solution e^x.
         let op = vec![qs(&[0, 1]), qs(&[0, -1]), qs(&[-1]), qs(&[1])];
         let found = hyperexponential_solutions(&op);
-        let exp = found.iter().find(|h| h.exponent.num == qs(&[0, 1]) && h.poly == qs(&[1]));
+        let exp = found
+            .iter()
+            .find(|h| h.exponent.num == qs(&[0, 1]) && h.poly == qs(&[1]));
         assert!(exp.is_some(), "e^x not found");
         // Right division by D - 1 leaves D^2 - x.
         let omega = rat(&qs(&[1]), &qs(&[1])).expect("omega");
         let quotient = right_quotient(&op, &omega).expect("exact");
         assert_eq!(quotient.len(), 3);
         assert_eq!(quotient[0].num, qs(&[0, -1]));
-        assert!(quotient[1].num.is_empty());
+        assert_eq!(quotient[1].num, []);
         assert_eq!(quotient[2].num, qs(&[1]));
     }
 
@@ -1204,7 +1659,10 @@ mod tests {
     fn adjoint_of_the_adjoint_is_the_operator_and_left_factors_reduce() {
         // L = (D - 1)(D^2 - x) = D^3 - D^2 ... : adjoint twice gives L back.
         let op = vec![qs(&[0, 1]), qs(&[0, -1]), qs(&[-1]), qs(&[1])];
-        assert_eq!(adjoint(&adjoint(&op)), op.iter().map(|c| trim(c.clone())).collect::<Vec<_>>());
+        assert_eq!(
+            adjoint(&adjoint(&op)),
+            op.iter().map(|c| trim(c.clone())).collect::<Vec<_>>()
+        );
         // (D - 1)(D^2 - x) = D^3 - D^2 - x D + (1 - 1)... has the left factor D - 1, so its
         // adjoint has the hyperexponential solution exp(-x).
         let left = {
@@ -1214,7 +1672,12 @@ mod tests {
         };
         let star = adjoint(&left);
         let found = hyperexponential_solutions(&star);
-        assert!(found.iter().any(|h| h.exponent.num == qs(&[0, -1]) && h.poly == qs(&[1])), "exp(-x) not a solution of the adjoint");
+        assert!(
+            found
+                .iter()
+                .any(|h| h.exponent.num == qs(&[0, -1]) && h.poly == qs(&[1])),
+            "exp(-x) not a solution of the adjoint"
+        );
     }
 
     #[test]
@@ -1227,7 +1690,12 @@ mod tests {
         let orders: Vec<usize> = factors.iter().filter_map(Ore::order).collect();
         assert!(orders.iter().all(|&o| (1..3).contains(&o)), "{orders:?}");
         let linear = Ore::from_polynomials(&[qs(&[-1]), qs(&[1])]).expect("D - 1");
-        assert!(factors.iter().any(|f| f.sub(&linear).is_some_and(|d| d.is_zero())), "D - 1 not found");
+        assert!(
+            factors
+                .iter()
+                .any(|f| f.sub(&linear).is_some_and(|d| d.is_zero())),
+            "D - 1 not found"
+        );
     }
 
     #[test]
@@ -1245,7 +1713,283 @@ mod tests {
         .iter()
         .map(|c| qs(c))
         .collect();
+        let order = op.len() - 1;
+        let l = Ore::from_polynomials(&op).expect("L");
         let factors = eigenring_right_factors(&op);
-        assert!(factors.iter().any(|f| f.order() == Some(2)), "no second-order right factor");
+        assert!(
+            factors.iter().any(|f| f.order() == Some(2)),
+            "no second-order right factor"
+        );
+        let mut second: Vec<&Ore> = Vec::new();
+        for f in &factors {
+            let found = f.order().expect("non-zero");
+            assert!(
+                (1..order).contains(&found),
+                "improper factor of order {found}"
+            );
+            let (_, remainder) = l.right_divide(f).expect("division");
+            assert!(
+                remainder.is_zero(),
+                "a factor of order {found} does not divide L exactly"
+            );
+            if found == 2 {
+                second.push(f);
+            }
+        }
+        // Two coprime factors of order two recover the four-dimensional
+        // solution space (the direct sum).
+        assert!(second.len() >= 2, "fewer than two second-order factors");
+        for (i, a) in second.iter().enumerate() {
+            for b in second.iter().skip(i + 1) {
+                assert!(
+                    a.right_gcd(b).is_some_and(|g| g.order() == Some(0)),
+                    "the second-order factors are not coprime"
+                );
+            }
+        }
+    }
+
+    /// The product `a ∘ b` as polynomial coefficients.
+    fn compose(
+        a: &[Vec<Q>],
+        b: &[Vec<Q>],
+    ) -> Vec<Vec<Q>> {
+        let oa = Ore::from_polynomials(a).expect("operator");
+        let ob = Ore::from_polynomials(b).expect("operator");
+        let product = oa.mul(&ob).expect("product");
+        clear_denominators(&product.c).expect("polynomial coefficients")
+    }
+
+    /// `Σ a_i y^(i)` for a polynomial `y`.
+    fn apply_polynomial(
+        op: &[Vec<Q>],
+        y: &[Q],
+    ) -> Vec<Q> {
+        let mut total = Vec::new();
+        let mut current = y.to_vec();
+        for a in op {
+            total = univariate::add(&total, &univariate::mul(a, &current));
+            current = univariate::derivative(&current);
+        }
+        trim(total)
+    }
+
+    /// Whether the operator `f` annihilates the polynomial `y` exactly.
+    fn annihilates_polynomial(
+        f: &Ore,
+        y: &[Q],
+    ) -> bool {
+        // `total / common` is the running sum, `common` the lcm of the
+        // denominators met so far.
+        let mut total: Vec<Q> = Vec::new();
+        let mut common = vec![Q::one()];
+        let mut current = y.to_vec();
+        for a in &f.c {
+            let product = univariate::mul(&a.num, &current);
+            let g = univariate::gcd(&common, &a.den);
+            let common_cofactor =
+                univariate::divrem(&common, &g).map_or_else(|| common.clone(), |(q, _)| q);
+            let other_cofactor =
+                univariate::divrem(&a.den, &g).map_or_else(|| a.den.clone(), |(q, _)| q);
+            total = univariate::add(
+                &univariate::mul(&total, &other_cofactor),
+                &univariate::mul(&product, &common_cofactor),
+            );
+            common = univariate::mul(&common, &other_cofactor);
+            current = univariate::derivative(&current);
+        }
+        trim(total).is_empty()
+    }
+
+    /// Whether `f` annihilates `exp(λ x)` exactly.
+    fn annihilates_exp(
+        f: &Ore,
+        lambda: &Q,
+    ) -> bool {
+        let mut total = Q::zero();
+        let mut power = Q::one();
+        for a in &f.c {
+            let Some(value) = a.eval(lambda) else {
+                return false;
+            };
+            total += value * &power;
+            power *= lambda;
+        }
+        total.is_zero()
+    }
+
+    /// The value of a rational function at `x`.
+    fn value_at(
+        r: &Rat,
+        x: f64,
+    ) -> f64 {
+        let poly = |p: &[Q]| {
+            p.iter()
+                .rev()
+                .fold(0.0, |acc, c| acc * x + c.to_f64().unwrap_or(f64::NAN))
+        };
+        poly(&r.num) / poly(&r.den)
+    }
+
+    /// The residual of the second-order operator `f` on `y` at `x`, by central
+    /// differences.
+    fn second_order_residual(
+        f: &Ore,
+        y: &dyn Fn(f64) -> f64,
+        x: f64,
+    ) -> f64 {
+        let h = 1e-3;
+        let derivatives = [
+            y(x),
+            (y(x + h) - y(x - h)) / (2.0 * h),
+            (y(x + h) - 2.0 * y(x) + y(x - h)) / (h * h),
+        ];
+        f.c.iter()
+            .enumerate()
+            .map(|(i, a)| value_at(a, x) * derivatives.get(i).copied().unwrap_or(0.0))
+            .sum()
+    }
+
+    #[test]
+    fn eigenring_splits_a_product_of_second_order_operators() {
+        // (D² - x)(D² - x - 1): both factors are irreducible as D-modules
+        // (Airy-type, no first-order right factor), so the solution space is
+        // the direct sum of two simple pieces and every eigenring element acts
+        // as a scalar there. An element with two distinct scalars has minimal
+        // polynomial (t - a)(t - b), and the two gcrd's are the second-order
+        // factors.
+        let outer = vec![qs(&[0, -1]), Vec::new(), qs(&[1])];
+        let inner = vec![qs(&[-1, -1]), Vec::new(), qs(&[1])];
+        let op = compose(&outer, &inner);
+        assert_eq!(op.len(), 5);
+        let l = Ore::from_polynomials(&op).expect("L");
+        let factors = eigenring_right_factors(&op);
+        assert!(!factors.is_empty(), "no right factors");
+        for f in &factors {
+            let order = f.order().expect("non-zero");
+            assert!((1..4).contains(&order), "improper factor of order {order}");
+            let (_, remainder) = l.right_divide(f).expect("division");
+            assert!(
+                remainder.is_zero(),
+                "a factor of order {order} does not divide L exactly"
+            );
+        }
+        // Two coprime factors of order two, whose orders add up to four.
+        let second: Vec<&Ore> = factors.iter().filter(|f| f.order() == Some(2)).collect();
+        assert!(second.len() >= 2, "fewer than two second-order factors");
+        for (i, a) in second.iter().enumerate() {
+            for b in second.iter().skip(i + 1) {
+                assert!(
+                    a.right_gcd(b).is_some_and(|g| g.order() == Some(0)),
+                    "the factors are not coprime"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn eigenring_extraction_returns_higher_order_factors() {
+        // (D² - 4)(D² - 1): the known basis is e^{±x}, e^{±2x}. D² lies in the
+        // eigenring, its minimal polynomial modulo L is t² - 5 t + 4 =
+        // (t - 1)(t - 4), and the two factors give D² - 1 and D² - 4.
+        let outer = vec![qs(&[-4]), Vec::new(), qs(&[1])];
+        let inner = vec![qs(&[-1]), Vec::new(), qs(&[1])];
+        let op = compose(&outer, &inner);
+        let l = Ore::from_polynomials(&op).expect("L");
+        let square = Ore::from_polynomials(&[Vec::new(), Vec::new(), qs(&[1])]).expect("D²");
+        let factors = factors_from_eigenvalue_element(&l, &square, 4);
+        for expected in [
+            vec![qs(&[-1]), Vec::new(), qs(&[1])],
+            vec![qs(&[-4]), Vec::new(), qs(&[1])],
+        ] {
+            let target = Ore::from_polynomials(&expected).expect("factor");
+            let found = factors
+                .iter()
+                .find(|f| f.sub(&target).is_some_and(|d| d.is_zero()));
+            assert!(found.is_some(), "a second-order factor of D² is missing");
+            let (_, remainder) = l.right_divide(&target).expect("division");
+            assert!(remainder.is_zero(), "the factor does not divide L exactly");
+            // Each annihilates exactly its pair of exponentials: the constant
+            // term is -λ².
+            let constant = expected
+                .first()
+                .and_then(|coefficients| coefficients.first())
+                .cloned()
+                .unwrap_or_else(Q::one);
+            for lambda in [q(1), q(-1), q(2), q(-2)] {
+                let belongs = constant == -(&lambda * &lambda);
+                assert_eq!(annihilates_exp(&target, &lambda), belongs, "λ = {lambda}");
+            }
+        }
+        // The same two factors come out of the eigenring search as well.
+        let searched = eigenring_right_factors(&op);
+        assert!(
+            searched.iter().any(|f| f.order() == Some(2)),
+            "no second-order factor from the search"
+        );
+    }
+
+    #[test]
+    fn eigenring_uses_factored_denominators_for_legendre_and_chebyshev() {
+        // Legendre ((1 - x²) y'' - 2 x y' + 6 y: P_2 and Q_2) composed with
+        // Chebyshev ((1 - x²) y'' - x y' + y: x and sqrt(1 - x²)): order four
+        // with leading coefficient (1 - x²)² and no first-order factor. The
+        // local exponent spread at ±1 is 1/2, so the first denominator tried
+        // is 1 - x² — a product of the two irreducible factors of the leading
+        // coefficient, not a power of it.
+        let legendre = vec![qs(&[6]), qs(&[0, -2]), qs(&[1, 0, -1])];
+        let chebyshev = vec![qs(&[1]), qs(&[0, -1]), qs(&[1, 0, -1])];
+        let op = compose(&legendre, &chebyshev);
+        assert_eq!(op.len(), 5);
+        let l = Ore::from_polynomials(&op).expect("L");
+        let lattice = Denominators::new(&op, 4);
+        assert_eq!(lattice.factors.len(), 2);
+        // The product 1 - x² of the two irreducible factors is in the lattice
+        // (it is not a power of the leading coefficient); the local data
+        // suggests the full leading coefficient, 1 - x² squared.
+        assert_eq!(lattice.preferred, vec![2, 2]);
+        let candidates = lattice.candidates();
+        let factored = candidates
+            .iter()
+            .find(|v| lattice.polynomial(v) == qs(&[-1, 0, 1]));
+        assert!(
+            factored.is_some(),
+            "the factored denominator 1 - x² is not in the lattice"
+        );
+        let factors = eigenring_factors_with(&op, &l, &qs(&[-1, 0, 1]), 20);
+        assert!(
+            factors.iter().any(|f| f.order() == Some(2)),
+            "no second-order factor from the factored denominator"
+        );
+        for f in &factors {
+            let (_, remainder) = l.right_divide(f).expect("division");
+            assert!(remainder.is_zero(), "a factor does not divide L exactly");
+        }
+        // The known solutions of L = Legendre ∘ Chebyshev are the Chebyshev
+        // ones, x and sqrt(1 - x²); the Legendre polynomial P_2 solves the
+        // left factor but not L. The factors found must annihilate them.
+        let p2 = vec![frac(-1, 2), q(0), frac(3, 2)];
+        let identity = vec![q(0), q(1)];
+        assert!(
+            apply_polynomial(&op, &identity).is_empty(),
+            "x does not solve L"
+        );
+        let Some(x_factor) = factors
+            .iter()
+            .find(|f| annihilates_polynomial(f, &identity))
+        else {
+            panic!("no factor annihilates the Chebyshev solution x");
+        };
+        assert!(
+            !annihilates_polynomial(x_factor, &p2),
+            "the Legendre polynomial P_2 is not a solution of L"
+        );
+        let x0 = 0.3_f64;
+        let sqrt_solution =
+            |f: &Ore| second_order_residual(f, &|t: f64| (1.0 - t * t).sqrt(), x0).abs() < 1e-6;
+        assert!(
+            factors.iter().any(sqrt_solution),
+            "no factor annihilates sqrt(1 - x²)"
+        );
     }
 }

@@ -19,19 +19,19 @@ use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
-use super::formal::formal_solutions;
-use super::formal::roots_in_field;
+use super::add;
+use super::exp_of;
 use super::formal::Elt;
 use super::formal::Field;
 use super::formal::FormalSolution;
 use super::formal::Point as FormalPoint;
-use super::add;
-use super::exp_of;
+use super::formal::formal_solutions;
+use super::formal::roots_in_field;
 use super::mul;
-use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::op::core;
 use crate::rules::poly::rational_function_in;
 use crate::rules::poly::univariate;
 
@@ -63,7 +63,16 @@ fn padd(
     b: &[Elt],
 ) -> Poly {
     let n = a.len().max(b.len());
-    trim_poly((0..n).map(|i| f.add(a.get(i).map_or(&[][..], Vec::as_slice), b.get(i).map_or(&[][..], Vec::as_slice))).collect())
+    trim_poly(
+        (0..n)
+            .map(|i| {
+                f.add(
+                    a.get(i).map_or(&[][..], Vec::as_slice),
+                    b.get(i).map_or(&[][..], Vec::as_slice),
+                )
+            })
+            .collect(),
+    )
 }
 
 fn pscale(
@@ -97,7 +106,13 @@ fn pderiv(
     f: &Field,
     a: &[Elt],
 ) -> Poly {
-    trim_poly(a.iter().enumerate().skip(1).map(|(i, c)| f.mul(c, &[q(i64::try_from(i).unwrap_or(0))])).collect())
+    trim_poly(
+        a.iter()
+            .enumerate()
+            .skip(1)
+            .map(|(i, c)| f.mul(c, &[q(i64::try_from(i).unwrap_or(0))]))
+            .collect(),
+    )
 }
 
 /// A polynomial with rational coefficients as a polynomial over the field.
@@ -182,7 +197,10 @@ fn conjugate(
         return e.to_vec();
     }
     // The other root of x^2 + b x + c is -b - α.
-    let other = field.sub(&field.from_q(&-field.modulus.get(1).cloned().unwrap_or_else(Q::zero)), &field.generator());
+    let other = field.sub(
+        &field.from_q(&-field.modulus.get(1).cloned().unwrap_or_else(Q::zero)),
+        &field.generator(),
+    );
     map_element(field, field, &other, e)
 }
 
@@ -202,13 +220,17 @@ fn local_candidates(
         if solution.ramification != 1 || solution.has_logarithms() {
             continue;
         }
-        let FormalSolution { field, exponent, rho, .. } = &solution;
+        let FormalSolution {
+            field, exponent, rho, ..
+        } = &solution;
         // Fix the global field at the first extension met.
         if !field.is_rational() && target.is_none() {
             *target = Some(field.clone());
         }
         let l = target.clone().unwrap_or_else(Field::rationals);
-        let Some(image) = field_matches(&l, field) else { continue };
+        let Some(image) = field_matches(&l, field) else {
+            continue;
+        };
         let map = |e: &[Q]| map_element(&l, field, &image, e);
         let mut series: Vec<Elt> = Vec::new();
         for (s, kappa) in exponent {
@@ -223,7 +245,13 @@ fn local_candidates(
         let rho_l = map(rho);
         // Every conjugate under the quadratic field's automorphism.
         let variants: Vec<(Vec<Elt>, Elt)> = if l.degree() == 2 && !l.is_rational() {
-            vec![(series.clone(), rho_l.clone()), (series.iter().map(|e| conjugate(&l, e)).collect(), conjugate(&l, &rho_l))]
+            vec![
+                (series.clone(), rho_l.clone()),
+                (
+                    series.iter().map(|e| conjugate(&l, e)).collect(),
+                    conjugate(&l, &rho_l),
+                ),
+            ]
         } else {
             vec![(series, rho_l)]
         };
@@ -231,8 +259,21 @@ fn local_candidates(
             if infinity {
                 far.push(AtInfinity { e, rho });
             } else {
-                let polys: Vec<Poly> = e.into_iter().map(|k| if k.is_empty() { Vec::new() } else { vec![k] }).collect();
-                near.push(Local { f: vec![-c.clone(), Q::one()], e: polys, rho });
+                let polys: Vec<Poly> = e
+                    .into_iter()
+                    .map(|k| {
+                        if k.is_empty() {
+                            Vec::new()
+                        } else {
+                            vec![k]
+                        }
+                    })
+                    .collect();
+                near.push(Local {
+                    f: vec![-c.clone(), Q::one()],
+                    e: polys,
+                    rho,
+                });
             }
         }
     }
@@ -261,7 +302,11 @@ fn trace_poly(
 ) -> Vec<Q> {
     let sums = power_sums(f);
     p.iter()
-        .map(|e| e.iter().zip(&sums).fold(Q::zero(), |acc, (r, s)| acc + r * s))
+        .map(|e| {
+            e.iter()
+                .zip(&sums)
+                .fold(Q::zero(), |acc, (r, s)| acc + r * s)
+        })
         .collect()
 }
 
@@ -283,7 +328,10 @@ fn algebraic_candidates(
         *top = k.from_q(&Q::one());
     }
     for i in (1..d).rev() {
-        let next = k.add(&k.from_q(&f.get(i).cloned().unwrap_or_else(Q::zero)), &k.mul(&c, quotient.get(i).map_or(&[][..], Vec::as_slice)));
+        let next = k.add(
+            &k.from_q(&f.get(i).cloned().unwrap_or_else(Q::zero)),
+            &k.mul(&c, quotient.get(i).map_or(&[][..], Vec::as_slice)),
+        );
         if let Some(slot) = quotient.get_mut(i - 1) {
             *slot = next;
         }
@@ -296,7 +344,9 @@ fn algebraic_candidates(
         if !(same || solution.field.is_rational()) {
             continue;
         }
-        let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };
+        let Some(rho) = solution.field.as_rational(&solution.rho) else {
+            continue;
+        };
         let mut e: Vec<Poly> = Vec::new();
         let mut ok = true;
         for (s, kappa) in &solution.exponent {
@@ -319,7 +369,11 @@ fn algebraic_candidates(
             }
         }
         if ok {
-            out.push(Local { f: f.to_vec(), e, rho: l.from_q(&rho) });
+            out.push(Local {
+                f: f.to_vec(),
+                e,
+                rho: l.from_q(&rho),
+            });
         }
     }
     out
@@ -353,11 +407,19 @@ fn solve_polynomial(
         let mut total: Poly = Vec::new();
         for (i, a) in op.iter().enumerate() {
             let term = pmul(field, &embed(field, a), &current);
-            let scaled = pmul(field, &term, d_powers.get(n - i).map_or(&[][..], Vec::as_slice));
+            let scaled = pmul(
+                field,
+                &term,
+                d_powers.get(n - i).map_or(&[][..], Vec::as_slice),
+            );
             total = padd(field, &total, &scaled);
             if i < n {
                 let first = pmul(field, &pderiv(field, &current), omega_d);
-                let second = pscale(field, &pmul(field, &current, &pderiv(field, omega_d)), &[q(-i64::try_from(i).unwrap_or(0))]);
+                let second = pscale(
+                    field,
+                    &pmul(field, &current, &pderiv(field, omega_d)),
+                    &[q(-i64::try_from(i).unwrap_or(0))],
+                );
                 let third = pmul(field, omega_n, &current);
                 current = padd(field, &padd(field, &first, &second), &third);
             }
@@ -418,7 +480,11 @@ pub(super) fn hyperexponential_over_field(op: &[Vec<Q>]) -> Vec<HyperK> {
             continue;
         }
         let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
-        monic_factors.push(f.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect());
+        monic_factors.push(
+            f.iter()
+                .map(|c| Q::from_integer(c.clone()) / &lead)
+                .collect(),
+        );
     }
     // First pass: the global field is the first extension met at a rational point or at infinity.
     let mut target: Option<Field> = None;
@@ -432,14 +498,19 @@ pub(super) fn hyperexponential_over_field(op: &[Vec<Q>]) -> Vec<HyperK> {
     let mut fixed = Some(field.clone());
     for f in &monic_factors {
         if f.len() == 2 {
-            let (near, _) = local_candidates(op, &FormalPoint::Finite(f.clone()), &mut fixed, false);
+            let (near, _) =
+                local_candidates(op, &FormalPoint::Finite(f.clone()), &mut fixed, false);
             local2.push(near);
         } else {
             local2.push(algebraic_candidates(op, f, &field));
         }
     }
     let (_, infinity) = local_candidates(op, &FormalPoint::Infinity, &mut fixed, true);
-    let total: usize = local2.iter().map(Vec::len).product::<usize>().saturating_mul(infinity.len());
+    let total: usize = local2
+        .iter()
+        .map(Vec::len)
+        .product::<usize>()
+        .saturating_mul(infinity.len());
     if total == 0 || total > 4000 {
         return out;
     }
@@ -447,7 +518,11 @@ pub(super) fn hyperexponential_over_field(op: &[Vec<Q>]) -> Vec<HyperK> {
     for far in &infinity {
         chosen.fill(0);
         loop {
-            let selected: Vec<&Local> = local2.iter().zip(&chosen).filter_map(|(options, &i)| options.get(i)).collect();
+            let selected: Vec<&Local> = local2
+                .iter()
+                .zip(&chosen)
+                .filter_map(|(options, &i)| options.get(i))
+                .collect();
             if selected.len() == local2.len()
                 && let Some(found) = try_combination(&field, op, &selected, far)
             {
@@ -459,7 +534,9 @@ pub(super) fn hyperexponential_over_field(op: &[Vec<Q>]) -> Vec<HyperK> {
                     break;
                 }
                 let count = local2.get(position).map_or(0, Vec::len);
-                let Some(slot) = chosen.get_mut(position) else { break };
+                let Some(slot) = chosen.get_mut(position) else {
+                    break;
+                };
                 *slot += 1;
                 if *slot < count {
                     break;
@@ -484,7 +561,10 @@ fn try_combination(
     // Degree of P: -ρ_∞ - Σ ρ_f deg f.
     let mut sum = far.rho.clone();
     for l in selected {
-        sum = field.add(&sum, &field.mul(&l.rho, &[q(i64::try_from(l.f.len() - 1).unwrap_or(0))]));
+        sum = field.add(
+            &sum,
+            &field.mul(&l.rho, &[q(i64::try_from(l.f.len() - 1).unwrap_or(0))]),
+        );
     }
     let sum = field.scale(&sum, &q(-1));
     let degree = field.as_rational(&sum)?;
@@ -559,11 +639,16 @@ fn try_combination(
     Some(
         solutions
             .into_iter()
-            .map(|poly| HyperK {
-                field: field.clone(),
-                poly,
-                factors: selected.iter().map(|l| (l.f.clone(), l.rho.clone())).collect(),
-                exponent: (en.clone(), ed.clone()),
+            .map(|poly| {
+                HyperK {
+                    field: field.clone(),
+                    poly,
+                    factors: selected
+                        .iter()
+                        .map(|l| (l.f.clone(), l.rho.clone()))
+                        .collect(),
+                    exponent: (en.clone(), ed.clone()),
+                }
             })
             .collect(),
     )
@@ -626,7 +711,8 @@ fn poly_node(
 pub(super) fn log_derivative(hyper: &HyperK) -> Option<super::kovacic::Rat> {
     use super::kovacic::Rat;
     let field = &hyper.field;
-    let rational = |p: &[Elt]| -> Option<Vec<Q>> { p.iter().map(|c| field.as_rational(c)).collect() };
+    let rational =
+        |p: &[Elt]| -> Option<Vec<Q>> { p.iter().map(|c| field.as_rational(c)).collect() };
     let one = [Q::one()];
     let mut total = Rat::new(&[], &one)?;
     let p = rational(&hyper.poly)?;
@@ -700,7 +786,9 @@ pub(super) fn second_order_solutions(
 ) -> Vec<NodeId> {
     let mut fractions = Vec::new();
     for &c in a {
-        let Some(f) = rational_function_in(cx.graph, c, x) else { return Vec::new() };
+        let Some(f) = rational_function_in(cx.graph, c, x) else {
+            return Vec::new();
+        };
         fractions.push(f);
     }
     let mut op: Vec<Vec<Q>> = Vec::new();
@@ -757,9 +845,18 @@ mod tests {
     fn essential_singularity_at_conjugate_points() {
         // D(D - w) with w = (1/(x^2+1))': solution exp(1/(x^2+1)), the pole at ±i of order 2
         // in the exponent: (x^2+1)^3 y'' + 2x (x^2+1) y' + (2 - 6 x^2) y = 0.
-        let op = vec![qs(&[2, 0, -6]), qs(&[0, 2, 0, 2]), qs(&[1, 0, 3, 0, 3, 0, 1])];
+        let op = vec![
+            qs(&[2, 0, -6]),
+            qs(&[0, 2, 0, 2]),
+            qs(&[1, 0, 3, 0, 3, 0, 1]),
+        ];
         let found = hyperexponential_over_field(&op);
         assert!(!found.is_empty(), "no solution");
-        assert!(found.iter().any(|h| h.field.is_rational() && h.poly.len() == 1 && !h.exponent.0.is_empty()), "exp(1/(x^2+1)) not found");
+        assert!(
+            found
+                .iter()
+                .any(|h| h.field.is_rational() && h.poly.len() == 1 && !h.exponent.0.is_empty()),
+            "exp(1/(x^2+1)) not found"
+        );
     }
 }

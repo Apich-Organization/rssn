@@ -27,7 +27,8 @@
 //! tree of the nested-dissection orderings is balanced, which suits parallel
 //! factorisation.
 
-use crate::kernels::ordering::{amd_order, cholesky_fill};
+use crate::kernels::ordering::amd_order;
+use crate::kernels::ordering::cholesky_fill;
 
 /// Tuning parameters of [`multilevel_nested_dissection_with`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,7 +44,11 @@ pub struct NdOptions {
 
 impl Default for NdOptions {
     fn default() -> Self {
-        Self { leaf: 2000, imbalance: 0.1, fm_passes: 8 }
+        Self {
+            leaf: 2000,
+            imbalance: 0.1,
+            fm_passes: 8,
+        }
     }
 }
 
@@ -68,7 +73,12 @@ impl WGraph {
             xadj.push(adj.len());
         }
         let ew = vec![1; adj.len()];
-        Self { xadj, adj, ew, vw: vec![1; lists.len()] }
+        Self {
+            xadj,
+            adj,
+            ew,
+            vw: vec![1; lists.len()],
+        }
     }
 }
 
@@ -76,17 +86,26 @@ struct Lcg(u64);
 
 impl Lcg {
     const fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         self.0 >> 33
     }
 
-    fn below(&mut self, n: usize) -> usize {
+    fn below(
+        &mut self,
+        n: usize,
+    ) -> usize {
         (self.next() % n.max(1) as u64) as usize
     }
 }
 
 /// Heavy-edge matching; returns the coarse graph and `cmap` (fine -> coarse).
-fn coarsen(g: &WGraph, rng: &mut Lcg) -> (WGraph, Vec<usize>) {
+fn coarsen(
+    g: &WGraph,
+    rng: &mut Lcg,
+) -> (WGraph, Vec<usize>) {
     let n = g.n();
     let mut order: Vec<usize> = (0..n).collect();
     for i in (1..n).rev() {
@@ -164,7 +183,10 @@ fn coarsen(g: &WGraph, rng: &mut Lcg) -> (WGraph, Vec<usize>) {
     (WGraph { xadj, adj, ew, vw }, cmap)
 }
 
-fn edge_cut(g: &WGraph, part: &[u8]) -> i64 {
+fn edge_cut(
+    g: &WGraph,
+    part: &[u8],
+) -> i64 {
     let mut cut = 0;
     for v in 0..g.n() {
         for k in g.xadj[v]..g.xadj[v + 1] {
@@ -177,7 +199,12 @@ fn edge_cut(g: &WGraph, part: &[u8]) -> i64 {
 }
 
 /// Boundary Fiduccia-Mattheyses refinement of a bisection (in place).
-fn fm_refine(g: &WGraph, part: &mut [u8], passes: usize, max_imbalance: f64) {
+fn fm_refine(
+    g: &WGraph,
+    part: &mut [u8],
+    passes: usize,
+    max_imbalance: f64,
+) {
     let n = g.n();
     let total: i64 = g.vw.iter().sum();
     let limit = (f64::midpoint(1.0, max_imbalance) * total as f64).ceil() as i64;
@@ -189,7 +216,11 @@ fn fm_refine(g: &WGraph, part: &mut [u8], passes: usize, max_imbalance: f64) {
         let mut gain = vec![0i64; n];
         for v in 0..n {
             for k in g.xadj[v]..g.xadj[v + 1] {
-                gain[v] += if part[g.adj[k]] == part[v] { -g.ew[k] } else { g.ew[k] };
+                gain[v] += if part[g.adj[k]] == part[v] {
+                    -g.ew[k]
+                } else {
+                    g.ew[k]
+                };
             }
         }
         let mut heap = std::collections::BinaryHeap::new();
@@ -274,7 +305,10 @@ fn fm_refine(g: &WGraph, part: &mut [u8], passes: usize, max_imbalance: f64) {
 }
 
 /// Greedy graph growing from a random seed until half of the weight.
-fn grow_partition(g: &WGraph, rng: &mut Lcg) -> Vec<u8> {
+fn grow_partition(
+    g: &WGraph,
+    rng: &mut Lcg,
+) -> Vec<u8> {
     let n = g.n();
     let total: i64 = g.vw.iter().sum();
     let mut part = vec![1u8; n];
@@ -290,11 +324,11 @@ fn grow_partition(g: &WGraph, rng: &mut Lcg) -> Vec<u8> {
         } else {
             // disconnected: jump to an unvisited vertex
             match (0..n).find(|&u| !visited[u]) {
-                Some(u) => {
+                | Some(u) => {
                     visited[u] = true;
                     u
-                }
-                None => break,
+                },
+                | None => break,
             }
         };
         part[v] = 0;
@@ -311,7 +345,11 @@ fn grow_partition(g: &WGraph, rng: &mut Lcg) -> Vec<u8> {
 }
 
 /// Multilevel edge bisection; returns the part (0/1) of every vertex.
-fn bisect(g: &WGraph, rng: &mut Lcg, o: &NdOptions) -> Vec<u8> {
+fn bisect(
+    g: &WGraph,
+    rng: &mut Lcg,
+    o: &NdOptions,
+) -> Vec<u8> {
     let n = g.n();
     if n <= 60 {
         let mut best: Option<(i64, Vec<u8>)> = None;
@@ -340,7 +378,10 @@ fn bisect(g: &WGraph, rng: &mut Lcg, o: &NdOptions) -> Vec<u8> {
 }
 
 /// Minimum vertex cover of the bipartite boundary graph (Koenig).
-fn vertex_separator(g: &WGraph, part: &[u8]) -> Vec<usize> {
+fn vertex_separator(
+    g: &WGraph,
+    part: &[u8],
+) -> Vec<usize> {
     let n = g.n();
     let boundary: Vec<usize> = (0..n)
         .filter(|&v| (g.xadj[v]..g.xadj[v + 1]).any(|k| part[g.adj[k]] != part[v]))
@@ -401,7 +442,9 @@ fn vertex_separator(g: &WGraph, part: &[u8]) -> Vec<usize> {
     // Koenig: Z = vertices reachable from unmatched left vertices by alternating paths
     let mut zl = vec![false; left.len()];
     let mut zr = vec![false; right.len()];
-    let mut stack: Vec<usize> = (0..left.len()).filter(|&u| match_l[u] == usize::MAX).collect();
+    let mut stack: Vec<usize> = (0..left.len())
+        .filter(|&u| match_l[u] == usize::MAX)
+        .collect();
     for &u in &stack {
         zl[u] = true;
     }
@@ -436,7 +479,12 @@ fn vertex_separator(g: &WGraph, part: &[u8]) -> Vec<usize> {
 /// its neighbours on the other side into the separator; moves are applied
 /// greedily with hill climbing and rollback to the best state, and
 /// separator vertices without neighbours on one side are released.
-fn refine_separator(g: &WGraph, st: &mut [u8], passes: usize, imbalance: f64) {
+fn refine_separator(
+    g: &WGraph,
+    st: &mut [u8],
+    passes: usize,
+    imbalance: f64,
+) {
     let n = g.n();
     let total: i64 = g.vw.iter().sum();
     let limit = (f64::midpoint(1.0, imbalance) * total as f64).ceil() as i64;
@@ -526,9 +574,9 @@ fn refine_separator(g: &WGraph, st: &mut [u8], passes: usize, imbalance: f64) {
         let (mut n0, mut n1) = (false, false);
         for k in g.xadj[v]..g.xadj[v + 1] {
             match st[g.adj[k]] {
-                0 => n0 = true,
-                1 => n1 = true,
-                _ => {}
+                | 0 => n0 = true,
+                | 1 => n1 = true,
+                | _ => {},
             }
         }
         if !n0 {
@@ -539,13 +587,23 @@ fn refine_separator(g: &WGraph, st: &mut [u8], passes: usize, imbalance: f64) {
     }
 }
 
-fn induced_lists(adj: &[Vec<usize>], verts: &[usize], local: &mut [usize]) -> Vec<Vec<usize>> {
+fn induced_lists(
+    adj: &[Vec<usize>],
+    verts: &[usize],
+    local: &mut [usize],
+) -> Vec<Vec<usize>> {
     for (i, &v) in verts.iter().enumerate() {
         local[v] = i;
     }
     let lists = verts
         .iter()
-        .map(|&v| adj[v].iter().filter(|&&u| local[u] != usize::MAX).map(|&u| local[u]).collect())
+        .map(|&v| {
+            adj[v]
+                .iter()
+                .filter(|&&u| local[u] != usize::MAX)
+                .map(|&u| local[u])
+                .collect()
+        })
         .collect();
     for &v in verts {
         local[v] = usize::MAX;
@@ -588,7 +646,10 @@ pub fn multilevel_nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
 
 /// As [`multilevel_nested_dissection_order`] with explicit parameters.
 #[must_use]
-pub fn multilevel_nested_dissection_with(adj: &[Vec<usize>], opts: &NdOptions) -> Vec<usize> {
+pub fn multilevel_nested_dissection_with(
+    adj: &[Vec<usize>],
+    opts: &NdOptions,
+) -> Vec<usize> {
     let n = adj.len();
     let mut perm = Vec::with_capacity(n);
     let mut local = vec![usize::MAX; n];
@@ -631,7 +692,12 @@ fn order_piece(
     }
     refine_separator(&g, &mut st, o.fm_passes, o.imbalance);
     let sep: Vec<usize> = (0..verts.len()).filter(|&i| st[i] == 2).collect();
-    let side = |p: u8| -> Vec<usize> { (0..verts.len()).filter(|&i| st[i] == p).map(|i| verts[i]).collect() };
+    let side = |p: u8| -> Vec<usize> {
+        (0..verts.len())
+            .filter(|&i| st[i] == p)
+            .map(|i| verts[i])
+            .collect()
+    };
     let (a, b) = (side(0), side(1));
     if a.is_empty() || b.is_empty() || sep.len() * 2 > verts.len() {
         // degenerate split: fall back to minimum degree for this piece
@@ -655,7 +721,12 @@ fn order_piece(
 /// halo vertices make the boundary vertices of the piece look as expensive as
 /// they are, and are dropped from the resulting order (the usual substitute
 /// for constrained minimum degree).
-fn order_leaf_with_halo(adj: &[Vec<usize>], verts: &[usize], local: &mut [usize], perm: &mut Vec<usize>) {
+fn order_leaf_with_halo(
+    adj: &[Vec<usize>],
+    verts: &[usize],
+    local: &mut [usize],
+    perm: &mut Vec<usize>,
+) {
     for (i, &v) in verts.iter().enumerate() {
         local[v] = i;
     }
@@ -683,7 +754,10 @@ fn order_leaf_with_halo(adj: &[Vec<usize>], verts: &[usize], local: &mut [usize]
 /// One multilevel vertex-separator bisection of a connected pattern:
 /// returns `(left, right, separator)`; no edge joins `left` and `right`.
 #[must_use]
-pub fn vertex_separator_bisection(adj: &[Vec<usize>], opts: &NdOptions) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
+pub fn vertex_separator_bisection(
+    adj: &[Vec<usize>],
+    opts: &NdOptions,
+) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
     let g = WGraph::from_lists(adj);
     let mut rng = Lcg(0x9e37_79b9_7f4a_7c15);
     let part = bisect(&g, &mut rng, opts);
@@ -707,7 +781,13 @@ pub fn hybrid_nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let mut best = amd_order(adj);
     let mut best_fill = cholesky_fill(adj, &best);
     for leaf in [2000usize, 400] {
-        let cand = multilevel_nested_dissection_with(adj, &NdOptions { leaf, ..NdOptions::default() });
+        let cand = multilevel_nested_dissection_with(
+            adj,
+            &NdOptions {
+                leaf,
+                ..NdOptions::default()
+            },
+        );
         let f = cholesky_fill(adj, &cand);
         if f < best_fill {
             best_fill = f;

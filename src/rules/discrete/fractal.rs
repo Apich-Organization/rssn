@@ -31,6 +31,7 @@
 
 use num_complex::Complex;
 
+use super::V;
 use super::apply;
 use super::def;
 use super::def_request;
@@ -43,15 +44,14 @@ use super::pow;
 use super::prod;
 use super::rows;
 use super::sum;
-use super::V;
-use crate::graph::op::core;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
 use crate::kernels::fractal_geometry_and_chaos as fg;
 
 fn arg<const N: usize>(a: &[NodeId]) -> Option<[NodeId; N]> {
@@ -82,9 +82,11 @@ fn pairs(
 ) -> Option<Vec<(f64, f64)>> {
     rows(g, n)?
         .into_iter()
-        .map(|r| match r.as_slice() {
-            | [x, y] => Some((float(g, *x)?, float(g, *y)?)),
-            | _ => None,
+        .map(|r| {
+            match r.as_slice() {
+                | [x, y] => Some((float(g, *x)?, float(g, *y)?)),
+                | _ => None,
+            }
         })
         .collect()
 }
@@ -110,11 +112,21 @@ fn pair(
 }
 
 fn point_list(points: &[(f64, f64)]) -> V {
-    V::List(points.iter().map(|&(x, y)| V::List(vec![V::Float(x), V::Float(y)])).collect())
+    V::List(
+        points
+            .iter()
+            .map(|&(x, y)| V::List(vec![V::Float(x), V::Float(y)]))
+            .collect(),
+    )
 }
 
 fn triple_list(points: &[(f64, f64, f64)]) -> V {
-    V::List(points.iter().map(|&(x, y, z)| V::List(vec![V::Float(x), V::Float(y), V::Float(z)])).collect())
+    V::List(
+        points
+            .iter()
+            .map(|&(x, y, z)| V::List(vec![V::Float(x), V::Float(y), V::Float(z)]))
+            .collect(),
+    )
 }
 
 // ----------------------------------------------------------------------
@@ -127,7 +139,9 @@ fn mandelbrot_escape(
 ) -> Option<V> {
     let [cr, ci, n] = arg(a)?;
     let g = &*cx.graph;
-    Some(V::Int(fg::mandelbrot_escape_time(float(g, cr)?, float(g, ci)?, iter_count(g, n)?).into()))
+    Some(V::Int(
+        fg::mandelbrot_escape_time(float(g, cr)?, float(g, ci)?, iter_count(g, n)?).into(),
+    ))
 }
 
 fn julia_escape(
@@ -137,7 +151,9 @@ fn julia_escape(
     let [zr, zi, cr, ci, n] = arg(a)?;
     let g = &*cx.graph;
     let [zr, zi, cr, ci] = f64s(g, [zr, zi, cr, ci])?;
-    Some(V::Int(fg::julia_escape_time(zr, zi, cr, ci, iter_count(g, n)?).into()))
+    Some(V::Int(
+        fg::julia_escape_time(zr, zi, cr, ci, iter_count(g, n)?).into(),
+    ))
 }
 
 fn burning_ship_escape(
@@ -185,7 +201,10 @@ fn newton_fractal_root(
 ) -> Option<V> {
     let [coeffs, zr, zi, n] = arg(a)?;
     let g = &*cx.graph;
-    let p: Vec<f64> = items(g, coeffs)?.into_iter().map(|c| float(g, c)).collect::<Option<_>>()?;
+    let p: Vec<f64> = items(g, coeffs)?
+        .into_iter()
+        .map(|c| float(g, c))
+        .collect::<Option<_>>()?;
     if p.len() < 2 || p[0] == 0.0 {
         return None;
     }
@@ -207,7 +226,11 @@ fn newton_fractal_root(
         z -= step;
         if step.norm() < 1e-12 * (1.0 + z.norm()) {
             let _ = degree;
-            return Some(V::List(vec![V::Float(z.re), V::Float(z.im), V::Int((k + 1).into())]));
+            return Some(V::List(vec![
+                V::Float(z.re),
+                V::Float(z.im),
+                V::Int((k + 1).into()),
+            ]));
         }
     }
     Some(V::Bool(false))
@@ -382,9 +405,10 @@ fn lyapunov_exponent(
     }
     let df = derivative(cx, f, x)?;
     if let Some(start) = float(cx.graph, x0)
-        && let Some(v) = numeric_lyapunov(cx, f, df, x, start, n) {
-            return Some(V::Float(v));
-        }
+        && let Some(v) = numeric_lyapunov(cx, f, df, x, start, n)
+    {
+        return Some(V::Float(v));
+    }
     // Symbolic average of ln|f'| along the orbit.
     let mut cur = x0;
     let mut terms = Vec::new();
@@ -406,7 +430,13 @@ fn lorenz(
     a: &[NodeId],
 ) -> Option<V> {
     let (sigma, rho, beta) = match a {
-        | [] => (cx.graph.sym("sigma"), cx.graph.sym("rho"), cx.graph.sym("beta")),
+        | [] => {
+            (
+                cx.graph.sym("sigma"),
+                cx.graph.sym("rho"),
+                cx.graph.sym("beta"),
+            )
+        },
         | [s, r, b] => (*s, *r, *b),
         | _ => return None,
     };
@@ -452,7 +482,13 @@ fn logistic_bifurcation(
     if steps < 2 {
         return None;
     }
-    let data = fg::logistic_bifurcation((float(g, lo)?, float(g, hi)?), steps, idx(g, transient)?, idx(g, keep)?, 0.5);
+    let data = fg::logistic_bifurcation(
+        (float(g, lo)?, float(g, hi)?),
+        steps,
+        idx(g, transient)?,
+        idx(g, keep)?,
+        0.5,
+    );
     Some(point_list(&data))
 }
 
@@ -463,7 +499,15 @@ fn logistic_lyapunov(
     let [r, x0, n] = arg(a)?;
     let g = &*cx.graph;
     let n = idx(g, n)?;
-    (n > 0).then(|| V::Float(fg::lyapunov_exponent_logistic(float(g, r).unwrap_or(f64::NAN), float(g, x0).unwrap_or(f64::NAN), 100, n)))
+    (n > 0)
+        .then(|| {
+            V::Float(fg::lyapunov_exponent_logistic(
+                float(g, r).unwrap_or(f64::NAN),
+                float(g, x0).unwrap_or(f64::NAN),
+                100,
+                n,
+            ))
+        })
         .filter(|v| matches!(v, V::Float(x) if x.is_finite()))
 }
 
@@ -472,7 +516,11 @@ fn lorenz_orbit(
     a: &[NodeId],
 ) -> Option<V> {
     let g = &*cx.graph;
-    let (p0, dt, n) = (triple(g, *a.first()?)?, float(g, *a.get(1)?)?, idx(g, *a.get(2)?)?);
+    let (p0, dt, n) = (
+        triple(g, *a.first()?)?,
+        float(g, *a.get(1)?)?,
+        idx(g, *a.get(2)?)?,
+    );
     let orbit = match a.len() {
         | 3 => fg::generate_lorenz_attractor(p0, dt, n),
         | 6 => {
@@ -489,7 +537,11 @@ fn lorenz_lyapunov(
     a: &[NodeId],
 ) -> Option<V> {
     let g = &*cx.graph;
-    let (p0, dt, n) = (triple(g, *a.first()?)?, float(g, *a.get(1)?)?, idx(g, *a.get(2)?)?);
+    let (p0, dt, n) = (
+        triple(g, *a.first()?)?,
+        float(g, *a.get(1)?)?,
+        idx(g, *a.get(2)?)?,
+    );
     let [s, r, b] = match a.len() {
         | 3 => [10.0, 28.0, 8.0 / 3.0],
         | 6 => f64s(g, [a[3], a[4], a[5]])?,
@@ -506,7 +558,14 @@ fn rossler_orbit(
     let [p0, dt, n, pa, pb, pc] = arg(a)?;
     let g = &*cx.graph;
     let [pa, pb, pc] = f64s(g, [pa, pb, pc])?;
-    Some(triple_list(&fg::generate_rossler_attractor(triple(g, p0)?, float(g, dt)?, idx(g, n)?, pa, pb, pc)))
+    Some(triple_list(&fg::generate_rossler_attractor(
+        triple(g, p0)?,
+        float(g, dt)?,
+        idx(g, n)?,
+        pa,
+        pb,
+        pc,
+    )))
 }
 
 fn henon_orbit(
@@ -516,7 +575,12 @@ fn henon_orbit(
     let [p0, n, pa, pb] = arg(a)?;
     let g = &*cx.graph;
     let [pa, pb] = f64s(g, [pa, pb])?;
-    Some(point_list(&fg::generate_henon_map(pair(g, p0)?, idx(g, n)?, pa, pb)))
+    Some(point_list(&fg::generate_henon_map(
+        pair(g, p0)?,
+        idx(g, n)?,
+        pa,
+        pb,
+    )))
 }
 
 fn tinkerbell_orbit(
@@ -526,7 +590,14 @@ fn tinkerbell_orbit(
     let [p0, n, pa, pb, pc, pd] = arg(a)?;
     let g = &*cx.graph;
     let [pa, pb, pc, pd] = f64s(g, [pa, pb, pc, pd])?;
-    Some(point_list(&fg::generate_tinkerbell_map(pair(g, p0)?, idx(g, n)?, pa, pb, pc, pd)))
+    Some(point_list(&fg::generate_tinkerbell_map(
+        pair(g, p0)?,
+        idx(g, n)?,
+        pa,
+        pb,
+        pc,
+        pd,
+    )))
 }
 
 // ----------------------------------------------------------------------
@@ -545,7 +616,9 @@ fn ifs_apply(
     }
     // Substitute through fresh placeholders so that a point that mentions
     // the variables is not substituted twice.
-    let holders: Vec<NodeId> = (0..vars.len()).map(|k| cx.graph.sym(&format!("$ifs{k}"))).collect();
+    let holders: Vec<NodeId> = (0..vars.len())
+        .map(|k| cx.graph.sym(&format!("$ifs{k}")))
+        .collect();
     let mut images = Vec::new();
     for map in items(cx.graph, maps)? {
         let coords = items(cx.graph, map).unwrap_or_else(|| vec![map]);
@@ -576,7 +649,10 @@ fn read_ifs(
         let maps: Maps = l
             .into_iter()
             .map(|m| {
-                let v: Vec<f64> = items(g, m)?.into_iter().map(|c| float(g, c)).collect::<Option<_>>()?;
+                let v: Vec<f64> = items(g, m)?
+                    .into_iter()
+                    .map(|c| float(g, c))
+                    .collect::<Option<_>>()?;
                 let [a, b, c, d, e, f] = <[f64; 6]>::try_from(v).ok()?;
                 Some(fg::AffineTransform2D::new(a, b, c, d, e, f))
             })
@@ -604,7 +680,9 @@ fn ifs_generate(
     let n = idx(g, n)?;
     let mut state = super::small(g, seed)?.unsigned_abs() ^ 0x9e37_79b9_7f4a_7c15;
     let mut next = move || {
-        state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (state >> 11) as f64 / (1_u64 << 53) as f64
     };
     let total: f64 = probs.iter().sum();
@@ -664,7 +742,10 @@ fn moran_dimension(
 ) -> Option<V> {
     let [ratios] = arg(a)?;
     let g = &*cx.graph;
-    let r: Vec<f64> = items(g, ratios)?.into_iter().map(|x| float(g, x)).collect::<Option<_>>()?;
+    let r: Vec<f64> = items(g, ratios)?
+        .into_iter()
+        .map(|x| float(g, x))
+        .collect::<Option<_>>()?;
     if r.is_empty() || r.iter().any(|&x| x <= 0.0 || x >= 1.0 || !x.is_finite()) {
         return None;
     }
@@ -679,7 +760,11 @@ fn moran_dimension(
     }
     for _ in 0..200 {
         let mid = f64::midpoint(lo, hi);
-        if f(mid) > 0.0 { lo = mid } else { hi = mid }
+        if f(mid) > 0.0 {
+            lo = mid
+        } else {
+            hi = mid
+        }
     }
     Some(V::Float(f64::midpoint(lo, hi)))
 }
@@ -713,13 +798,19 @@ fn box_counting(
         let d = fg::box_counting_dimension(&pts, k);
         return d.is_finite().then_some(V::Float(d));
     }
-    let sizes: Vec<f64> = items(g, scales)?.into_iter().map(|s| float(g, s)).collect::<Option<_>>()?;
+    let sizes: Vec<f64> = items(g, scales)?
+        .into_iter()
+        .map(|s| float(g, s))
+        .collect::<Option<_>>()?;
     if sizes.iter().any(|&s| s <= 0.0) {
         return None;
     }
     let (mut xs, mut ys) = (Vec::new(), Vec::new());
     for s in sizes {
-        let mut boxes: Vec<(i64, i64)> = pts.iter().map(|&(x, y)| ((x / s).floor() as i64, (y / s).floor() as i64)).collect();
+        let mut boxes: Vec<(i64, i64)> = pts
+            .iter()
+            .map(|&(x, y)| ((x / s).floor() as i64, (y / s).floor() as i64))
+            .collect();
         boxes.sort_unstable();
         boxes.dedup();
         xs.push((1.0 / s).ln());
@@ -742,7 +833,10 @@ fn correlation_dimension(
         let d = fg::correlation_dimension(&pts, k);
         return d.is_finite().then_some(V::Float(d));
     }
-    let radii: Vec<f64> = items(g, radii)?.into_iter().map(|s| float(g, s)).collect::<Option<_>>()?;
+    let radii: Vec<f64> = items(g, radii)?
+        .into_iter()
+        .map(|s| float(g, s))
+        .collect::<Option<_>>()?;
     let total = (pts.len() * (pts.len() - 1) / 2) as f64;
     let (mut xs, mut ys) = (Vec::new(), Vec::new());
     for r in radii {
@@ -751,7 +845,10 @@ fn correlation_dimension(
         }
         let mut close = 0_usize;
         for (i, p) in pts.iter().enumerate() {
-            close += pts[i + 1..].iter().filter(|q| (p.0 - q.0).hypot(p.1 - q.1) < r).count();
+            close += pts[i + 1..]
+                .iter()
+                .filter(|q| (p.0 - q.0).hypot(p.1 - q.1) < r)
+                .count();
         }
         if close > 0 {
             xs.push(r.ln());
@@ -773,7 +870,11 @@ fn orbit_density(
         return None;
     }
     let d = fg::orbit_density(&pairs(g, points)?, nx, ny, (x0, x1), (y0, y1));
-    Some(V::List(d.into_iter().map(|row| V::List(row.into_iter().map(V::uint).collect())).collect()))
+    Some(V::List(
+        d.into_iter()
+            .map(|row| V::List(row.into_iter().map(V::uint).collect()))
+            .collect(),
+    ))
 }
 
 fn orbit_entropy(
@@ -793,20 +894,49 @@ fn orbit_entropy(
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "mandelbrot_escape", Arity::Fixed(3), mandelbrot_escape)?;
     def(i, "julia_escape", Arity::Fixed(5), julia_escape)?;
-    def(i, "burning_ship_escape", Arity::Fixed(3), burning_ship_escape)?;
+    def(
+        i,
+        "burning_ship_escape",
+        Arity::Fixed(3),
+        burning_ship_escape,
+    )?;
     def(i, "multibrot_escape", Arity::Fixed(4), multibrot_escape)?;
-    def(i, "newton_fractal_root", Arity::Fixed(4), newton_fractal_root)?;
+    def(
+        i,
+        "newton_fractal_root",
+        Arity::Fixed(4),
+        newton_fractal_root,
+    )?;
     def_request(i, "mandelbrot_iterate", Arity::Fixed(2), mandelbrot_iterate)?;
     def(i, "mandelbrot_orbit", Arity::Fixed(2), mandelbrot_orbit)?;
-    def(i, "mandelbrot_fixed_points", Arity::Fixed(1), mandelbrot_fixed_points)?;
-    def_request(i, "mandelbrot_stability", Arity::Fixed(1), mandelbrot_stability)?;
+    def(
+        i,
+        "mandelbrot_fixed_points",
+        Arity::Fixed(1),
+        mandelbrot_fixed_points,
+    )?;
+    def_request(
+        i,
+        "mandelbrot_stability",
+        Arity::Fixed(1),
+        mandelbrot_stability,
+    )?;
     def_request(i, "complex_map_fixed_points", Arity::Fixed(2), fixed_points)?;
-    def_request(i, "complex_map_stability", Arity::Fixed(3), |cx, a| stability(cx, a, true))?;
+    def_request(i, "complex_map_stability", Arity::Fixed(3), |cx, a| {
+        stability(cx, a, true)
+    })?;
     def_request(i, "map_fixed_points", Arity::Fixed(2), fixed_points)?;
-    def_request(i, "map_stability", Arity::Fixed(3), |cx, a| stability(cx, a, false))?;
+    def_request(i, "map_stability", Arity::Fixed(3), |cx, a| {
+        stability(cx, a, false)
+    })?;
     def_request(i, "lyapunov_exponent", Arity::Fixed(4), lyapunov_exponent)?;
     def(i, "logistic_iterate", Arity::Fixed(3), logistic_iterate)?;
-    def(i, "logistic_bifurcation", Arity::Fixed(5), logistic_bifurcation)?;
+    def(
+        i,
+        "logistic_bifurcation",
+        Arity::Fixed(5),
+        logistic_bifurcation,
+    )?;
     def(i, "logistic_lyapunov", Arity::Fixed(3), logistic_lyapunov)?;
     def(i, "lorenz", Arity::Variadic, lorenz)?;
     def(i, "lorenz_orbit", Arity::Variadic, lorenz_orbit)?;
@@ -816,10 +946,20 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "tinkerbell_orbit", Arity::Fixed(6), tinkerbell_orbit)?;
     def(i, "ifs_apply", Arity::Fixed(3), ifs_apply)?;
     def(i, "ifs_generate", Arity::Fixed(3), ifs_generate)?;
-    def_request(i, "similarity_dimension", Arity::Fixed(1), similarity_dimension)?;
+    def_request(
+        i,
+        "similarity_dimension",
+        Arity::Fixed(1),
+        similarity_dimension,
+    )?;
     def(i, "moran_dimension", Arity::Fixed(1), moran_dimension)?;
     def(i, "box_counting", Arity::Fixed(2), box_counting)?;
-    def(i, "correlation_dimension", Arity::Fixed(2), correlation_dimension)?;
+    def(
+        i,
+        "correlation_dimension",
+        Arity::Fixed(2),
+        correlation_dimension,
+    )?;
     def(i, "orbit_density", Arity::Fixed(7), orbit_density)?;
     def(i, "orbit_entropy", Arity::Fixed(1), orbit_entropy)?;
     Ok(())
@@ -856,12 +996,22 @@ mod tests {
     #[test]
     fn escape_times() {
         assert_eq!(s("mandelbrot_escape(0, 0, 50)"), "50");
-        assert_eq!(s("mandelbrot_escape(-1, 0, 30)"), "30", "period-2 cycle stays bounded");
+        assert_eq!(
+            s("mandelbrot_escape(-1, 0, 30)"),
+            "30",
+            "period-2 cycle stays bounded"
+        );
         assert_eq!(s("mandelbrot_escape(1, 1, 50)"), "2");
         assert_eq!(s("mandelbrot_escape(2, 0, 50)"), "2");
         assert_eq!(s("mandelbrot_escape(1/4, 0, 100)"), "100");
-        assert_eq!(s("mandelbrot_escape(0, 0, -1)"), "mandelbrot_escape(0, 0, -1)");
-        assert_eq!(s("mandelbrot_escape(c, 0, 5)"), "mandelbrot_escape(c, 0, 5)");
+        assert_eq!(
+            s("mandelbrot_escape(0, 0, -1)"),
+            "mandelbrot_escape(0, 0, -1)"
+        );
+        assert_eq!(
+            s("mandelbrot_escape(c, 0, 5)"),
+            "mandelbrot_escape(c, 0, 5)"
+        );
         assert_eq!(s("julia_escape(0, 0, -0.4, 0.6, 50)"), "26");
         assert_eq!(s("julia_escape(2, 2, 0, 0, 50)"), "0");
         assert_eq!(s("julia_escape(0, 0, 0, 0, 20)"), "20");
@@ -869,18 +1019,44 @@ mod tests {
         assert_eq!(s("burning_ship_escape(2, 2, 40)"), "1");
         assert_eq!(s("multibrot_escape(3, 0, 0, 40)"), "40");
         assert_eq!(s("multibrot_escape(3, 2, 2, 40)"), "1");
-        assert_eq!(s("multibrot_escape(2, 1, 1, 50)"), s("mandelbrot_escape(1, 1, 50)"));
-        assert_eq!(s("multibrot_escape(1, 0, 0, 5)"), "multibrot_escape(1, 0, 0, 5)");
+        assert_eq!(
+            s("multibrot_escape(2, 1, 1, 50)"),
+            s("mandelbrot_escape(1, 1, 50)")
+        );
+        assert_eq!(
+            s("multibrot_escape(1, 0, 0, 5)"),
+            "multibrot_escape(1, 0, 0, 5)"
+        );
     }
 
     #[test]
     fn newton_fractal_finds_roots() {
-        close("newton_fractal_root(list(1, 0, 0, -1), 2, 0, 50)", &[1.0, 0.0, 7.0]);
-        close("newton_fractal_root(list(1, 0, 1), 1, 1, 50)", &[0.0, 1.0, 7.0]);
-        close("newton_fractal_root(list(1, 0, 1), 1, -1, 50)", &[0.0, -1.0, 7.0]);
-        assert_eq!(s("newton_fractal_root(list(1, 0, 1), 1, 0, 50)"), "false", "p'(1) is fine but the real line never reaches a root");
-        assert_eq!(s("newton_fractal_root(list(1, 0, -1), 0, 0, 50)"), "false", "p'(0) = 0");
-        assert_eq!(s("newton_fractal_root(list(0, 1), 1, 0, 50)"), "newton_fractal_root(list(0, 1), 1, 0, 50)");
+        close(
+            "newton_fractal_root(list(1, 0, 0, -1), 2, 0, 50)",
+            &[1.0, 0.0, 7.0],
+        );
+        close(
+            "newton_fractal_root(list(1, 0, 1), 1, 1, 50)",
+            &[0.0, 1.0, 7.0],
+        );
+        close(
+            "newton_fractal_root(list(1, 0, 1), 1, -1, 50)",
+            &[0.0, -1.0, 7.0],
+        );
+        assert_eq!(
+            s("newton_fractal_root(list(1, 0, 1), 1, 0, 50)"),
+            "false",
+            "p'(1) is fine but the real line never reaches a root"
+        );
+        assert_eq!(
+            s("newton_fractal_root(list(1, 0, -1), 0, 0, 50)"),
+            "false",
+            "p'(0) = 0"
+        );
+        assert_eq!(
+            s("newton_fractal_root(list(0, 1), 1, 0, 50)"),
+            "newton_fractal_root(list(0, 1), 1, 0, 50)"
+        );
     }
 
     #[test]
@@ -888,7 +1064,10 @@ mod tests {
         assert_eq!(s("mandelbrot_orbit(1, 4)"), "list(0, 1, 2, 5, 26)");
         assert_eq!(s("mandelbrot_orbit(-1, 5)"), "list(0, -1, 0, -1, 0, -1)");
         assert_eq!(s("mandelbrot_orbit(c, 0)"), "list(0)");
-        assert_eq!(s("mandelbrot_orbit(c, 3)"), "list(0, c, c^2 + c, (c^2 + c)^2 + c)");
+        assert_eq!(
+            s("mandelbrot_orbit(c, 3)"),
+            "list(0, c, c^2 + c, (c^2 + c)^2 + c)"
+        );
         assert_eq!(s("mandelbrot_iterate(z, c)"), "z^2 + c");
         assert_eq!(s("mandelbrot_iterate(3, 1)"), "10");
     }
@@ -897,7 +1076,10 @@ mod tests {
     fn mandelbrot_fixed_points_and_stability() {
         assert_eq!(s("mandelbrot_fixed_points(0)"), "list(0, 1)");
         assert_eq!(s("mandelbrot_fixed_points(-2)"), "list(-1, 2)");
-        assert_eq!(s("mandelbrot_fixed_points(c)"), "list(1/2 - 1/2*sqrt(1 - 4*c), 1/2*(sqrt(1 - 4*c) + 1))");
+        assert_eq!(
+            s("mandelbrot_fixed_points(c)"),
+            "list(1/2 - 1/2*sqrt(1 - 4*c), 1/2*(sqrt(1 - 4*c) + 1))"
+        );
         assert_eq!(s("mandelbrot_stability(1/2)"), "1");
         assert_eq!(s("mandelbrot_stability(z)"), "abs(2*z)");
     }
@@ -929,7 +1111,10 @@ mod tests {
     #[test]
     fn logistic_map() {
         assert_eq!(s("logistic_iterate(2, 0.5, 3)"), "list(0.5, 0.5, 0.5, 0.5)");
-        close("logistic_iterate(2.5, 0.25, 2)", &[0.25, 0.46875, 0.622_558_593_75]);
+        close(
+            "logistic_iterate(2.5, 0.25, 2)",
+            &[0.25, 0.46875, 0.622_558_593_75],
+        );
         assert_eq!(floats(&s("logistic_iterate(3.7, 0.2, 10)")).len(), 11);
         // Below r = 3 every start settles on the fixed point 1 - 1/r.
         let b = floats(&s("logistic_bifurcation(2.5, 2.5001, 2, 200, 3)"));
@@ -942,35 +1127,90 @@ mod tests {
 
     #[test]
     fn lorenz_system_and_attractors() {
-        assert_eq!(s("lorenz()"), "list(sigma*(y - x), x*(rho - z) - y, x*y - beta*z)");
-        assert_eq!(s("lorenz(10, 28, 8/3)"), "list(10*y - 10*x, x*(28 - z) - y, x*y - 8/3*z)");
+        assert_eq!(
+            s("lorenz()"),
+            "list(sigma*(y - x), x*(rho - z) - y, x*y - beta*z)"
+        );
+        assert_eq!(
+            s("lorenz(10, 28, 8/3)"),
+            "list(10*y - 10*x, x*(28 - z) - y, x*y - 8/3*z)"
+        );
         let std = s("lorenz_orbit(list(1, 1, 1), 0.01, 2)");
         assert_eq!(std, s("lorenz_orbit(list(1, 1, 1), 0.01, 2, 10, 28, 8/3)"));
-        close("lorenz_orbit(list(1, 1, 1), 0.01, 2)", &[1.0, 1.26, 0.983_333_333_333_333_3, 1.026, 1.517_566_666_666_666_7, 0.969_711_111_111_111_1]);
-        close("rossler_orbit(list(1, 1, 1), 0.01, 1, 0.2, 0.2, 5.7)", &[0.98, 1.012, 0.955]);
-        close("henon_orbit(list(0, 0), 2, 1.4, 0.3)", &[1.0, 0.0, -0.4, 0.3]);
-        assert_eq!(floats(&s("tinkerbell_orbit(list(-0.72, -0.64), 5, 0.9, -0.6013, 2, 0.5)")).len(), 10);
+        close(
+            "lorenz_orbit(list(1, 1, 1), 0.01, 2)",
+            &[
+                1.0,
+                1.26,
+                0.983_333_333_333_333_3,
+                1.026,
+                1.517_566_666_666_666_7,
+                0.969_711_111_111_111_1,
+            ],
+        );
+        close(
+            "rossler_orbit(list(1, 1, 1), 0.01, 1, 0.2, 0.2, 5.7)",
+            &[0.98, 1.012, 0.955],
+        );
+        close(
+            "henon_orbit(list(0, 0), 2, 1.4, 0.3)",
+            &[1.0, 0.0, -0.4, 0.3],
+        );
+        assert_eq!(
+            floats(&s(
+                "tinkerbell_orbit(list(-0.72, -0.64), 5, 0.9, -0.6013, 2, 0.5)"
+            ))
+            .len(),
+            10
+        );
         let l = value("lorenz_lyapunov(list(1, 1, 1), 0.01, 5000)");
         assert!(l > 0.3 && l < 2.0, "{l}");
-        assert_eq!(s("lorenz_lyapunov(list(1, 1, 1), 0.01, 100)"), s("lorenz_lyapunov(list(1, 1, 1), 0.01, 100, 10, 28, 8/3)"));
+        assert_eq!(
+            s("lorenz_lyapunov(list(1, 1, 1), 0.01, 100)"),
+            s("lorenz_lyapunov(list(1, 1, 1), 0.01, 100, 10, 28, 8/3)")
+        );
         assert!(s("lorenz_orbit(list(1, 1), 0.01, 2)").starts_with("lorenz_orbit("));
     }
 
     #[test]
     fn ifs_application_and_chaos_game() {
-        assert_eq!(s("ifs_apply(list(list(x/2, y/2), list(x/2 + 1/2, y/2)), list(x, y), list(1, 1))"), "list(list(1/2, 1/2), list(1, 1/2))");
-        assert_eq!(s("ifs_apply(list(list(x/2, y/2), list(x/2 + 1/2, y/2)), list(x, y), list(y, x))"), "list(list(1/2*y, 1/2*x), list(1/2*y + 1/2, 1/2*x))");
-        assert_eq!(s("ifs_apply(list(2*x, x + 1), list(x), list(3))"), "list(list(6), list(4))");
+        assert_eq!(
+            s("ifs_apply(list(list(x/2, y/2), list(x/2 + 1/2, y/2)), list(x, y), list(1, 1))"),
+            "list(list(1/2, 1/2), list(1, 1/2))"
+        );
+        assert_eq!(
+            s("ifs_apply(list(list(x/2, y/2), list(x/2 + 1/2, y/2)), list(x, y), list(y, x))"),
+            "list(list(1/2*y, 1/2*x), list(1/2*y + 1/2, 1/2*x))"
+        );
+        assert_eq!(
+            s("ifs_apply(list(2*x, x + 1), list(x), list(3))"),
+            "list(list(6), list(4))"
+        );
         assert!(s("ifs_apply(list(list(x, y)), list(x, y), list(1))").starts_with("ifs_apply("));
         // Chaos game points stay inside the attractor's bounding box.
         let tri = floats(&s("ifs_generate(sierpinski, 200, 7)"));
         assert_eq!(tri.len(), 400);
-        assert!(tri.chunks(2).all(|p| (0.0..=1.0).contains(&p[0]) && (0.0..=1.0).contains(&p[1]) && p[1] <= 2.0 * p[0].min(1.0 - p[0]) + 1e-9));
-        assert_eq!(s("ifs_generate(sierpinski, 10, 7)"), s("ifs_generate(sierpinski, 10, 7)"));
-        assert_ne!(s("ifs_generate(sierpinski, 10, 7)"), s("ifs_generate(sierpinski, 10, 8)"));
+        assert!(tri.chunks(2).all(|p| {
+            (0.0..=1.0).contains(&p[0])
+                && (0.0..=1.0).contains(&p[1])
+                && p[1] <= 2.0 * p[0].min(1.0 - p[0]) + 1e-9
+        }));
+        assert_eq!(
+            s("ifs_generate(sierpinski, 10, 7)"),
+            s("ifs_generate(sierpinski, 10, 7)")
+        );
+        assert_ne!(
+            s("ifs_generate(sierpinski, 10, 7)"),
+            s("ifs_generate(sierpinski, 10, 8)")
+        );
         let fern = floats(&s("ifs_generate(barnsley, 100, 1)"));
-        assert!(fern.chunks(2).all(|p| p[0].abs() < 3.0 && (0.0..10.5).contains(&p[1])));
-        let custom = floats(&s("ifs_generate(list(list(0.5, 0, 0, 0.5, 0, 0), list(0.5, 0, 0, 0.5, 0.5, 0.5)), 50, 3)"));
+        assert!(
+            fern.chunks(2)
+                .all(|p| p[0].abs() < 3.0 && (0.0..10.5).contains(&p[1]))
+        );
+        let custom = floats(&s(
+            "ifs_generate(list(list(0.5, 0, 0, 0.5, 0, 0), list(0.5, 0, 0, 0.5, 0.5, 0.5)), 50, 3)",
+        ));
         assert_eq!(custom.len(), 100);
         assert!(s("ifs_generate(unknown, 3, 1)").starts_with("ifs_generate("));
     }
@@ -978,16 +1218,33 @@ mod tests {
     #[test]
     fn similarity_dimensions() {
         assert_eq!(s("similarity_dimension(list(1/3, 1/3))"), "ln(2)/ln(3)");
-        assert_eq!(s("similarity_dimension(list(1/2, 1/2, 1/2))"), "ln(3)/ln(2)");
-        assert_eq!(s("similarity_dimension(list(1/2, 1/2, 1/2, 1/2))"), "ln(4)/ln(2)");
-        assert_eq!(s("similarity_dimension(list(1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3))"), "ln(8)/ln(3)");
+        assert_eq!(
+            s("similarity_dimension(list(1/2, 1/2, 1/2))"),
+            "ln(3)/ln(2)"
+        );
+        assert_eq!(
+            s("similarity_dimension(list(1/2, 1/2, 1/2, 1/2))"),
+            "ln(4)/ln(2)"
+        );
+        assert_eq!(
+            s("similarity_dimension(list(1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3))"),
+            "ln(8)/ln(3)"
+        );
         let eq = s("similarity_dimension(list(1/2, 1/3))");
         assert!(eq.contains('D') && eq.contains('='), "{eq}");
-        assert!((value("moran_dimension(list(1/3, 1/3))") - 2.0_f64.ln() / 3.0_f64.ln()).abs() < 1e-12);
-        assert!((value("moran_dimension(list(1/2, 1/2, 1/2))") - 3.0_f64.ln() / 2.0_f64.ln()).abs() < 1e-12);
+        assert!(
+            (value("moran_dimension(list(1/3, 1/3))") - 2.0_f64.ln() / 3.0_f64.ln()).abs() < 1e-12
+        );
+        assert!(
+            (value("moran_dimension(list(1/2, 1/2, 1/2))") - 3.0_f64.ln() / 2.0_f64.ln()).abs()
+                < 1e-12
+        );
         let d = value("moran_dimension(list(1/2, 1/4))");
         assert!((0.5_f64.powf(d) + 0.25_f64.powf(d) - 1.0).abs() < 1e-12);
-        assert_eq!(s("moran_dimension(list(2, 1/2))"), "moran_dimension(list(2, 1/2))");
+        assert_eq!(
+            s("moran_dimension(list(2, 1/2))"),
+            "moran_dimension(list(2, 1/2))"
+        );
     }
 
     fn line(n: usize) -> String {
@@ -996,30 +1253,53 @@ mod tests {
     }
 
     fn grid(n: usize) -> String {
-        let pts: Vec<String> = (0..n).flat_map(|i| (0..n).map(move |j| format!("list({i}/{n}, {j}/{n})"))).collect();
+        let pts: Vec<String> = (0..n)
+            .flat_map(|i| (0..n).map(move |j| format!("list({i}/{n}, {j}/{n})")))
+            .collect();
         format!("list({})", pts.join(", "))
     }
 
     #[test]
     fn box_counting_and_correlation_dimensions() {
         let l = line(64);
-        assert!((value(&format!("box_counting({l}, list(0.5, 0.25, 0.125, 0.0625))")) - 1.0).abs() < 0.1);
+        assert!(
+            (value(&format!(
+                "box_counting({l}, list(0.5, 0.25, 0.125, 0.0625))"
+            )) - 1.0)
+                .abs()
+                < 0.1
+        );
         let g = grid(16);
         assert!((value(&format!("box_counting({g}, list(0.5, 0.25, 0.125))")) - 2.0).abs() < 0.2);
-        assert!((value(&format!("correlation_dimension({l}, list(0.1, 0.2, 0.4))")) - 1.0).abs() < 0.3);
-        assert!((value(&format!("correlation_dimension({g}, list(0.1, 0.2, 0.3))")) - 2.0).abs() < 0.5);
+        assert!(
+            (value(&format!("correlation_dimension({l}, list(0.1, 0.2, 0.4))")) - 1.0).abs() < 0.3
+        );
+        assert!(
+            (value(&format!("correlation_dimension({g}, list(0.1, 0.2, 0.3))")) - 2.0).abs() < 0.5
+        );
         // Automatic scales (kernel).
         assert!((value(&format!("box_counting({l}, 4)")) - 1.0).abs() < 0.5);
         assert!(value(&format!("correlation_dimension({g}, 5)")) > 1.0);
         assert!(s("box_counting(list(list(0, 0)), list(1))").starts_with("box_counting("));
-        assert!(s("box_counting(list(list(0, 0), list(1, 1)), list(0))").starts_with("box_counting("));
+        assert!(
+            s("box_counting(list(list(0, 0), list(1, 1)), list(0))").starts_with("box_counting(")
+        );
     }
 
     #[test]
     fn orbit_density_and_entropy() {
-        assert_eq!(s("orbit_density(list(list(0.1, 0.1), list(0.9, 0.9), list(0.2, 0.1)), 2, 2, 0, 1, 0, 1)"), "list(list(2, 0), list(0, 1))");
-        assert!((value("orbit_entropy(list(list(1, 1), list(1, 1)))") - 4.0_f64.ln()).abs() < 1e-12);
+        assert_eq!(
+            s(
+                "orbit_density(list(list(0.1, 0.1), list(0.9, 0.9), list(0.2, 0.1)), 2, 2, 0, 1, 0, 1)"
+            ),
+            "list(list(2, 0), list(0, 1))"
+        );
+        assert!(
+            (value("orbit_entropy(list(list(1, 1), list(1, 1)))") - 4.0_f64.ln()).abs() < 1e-12
+        );
         assert!((value("orbit_entropy(list(list(5, 0), list(0, 0)))") - 0.0).abs() < 1e-9);
-        assert!(s("orbit_density(list(list(0, 0)), 0, 2, 0, 1, 0, 1)").starts_with("orbit_density("));
+        assert!(
+            s("orbit_density(list(list(0, 0)), 0, 2, 0, 1, 0, 1)").starts_with("orbit_density(")
+        );
     }
 }

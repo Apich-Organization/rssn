@@ -33,19 +33,19 @@
 //!   `L_ν` (needed by the Fourier–Bessel moments of odd powers).
 
 use crate::graph::Arity;
-use crate::graph::rule::Installer;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 use crate::kernels::special::bessel_i;
 use crate::kernels::special::bessel_i0;
 use crate::kernels::special::bessel_i1;
-use crate::kernels::special::bessel_k0;
-use crate::kernels::special::bessel_k1;
 use crate::kernels::special::bessel_j;
 use crate::kernels::special::bessel_k;
-use crate::kernels::special::gamma_numerical;
+use crate::kernels::special::bessel_k0;
+use crate::kernels::special::bessel_k1;
 use crate::kernels::special::bessel_y;
 use crate::kernels::special::bessel_y1;
+use crate::kernels::special::gamma_numerical;
 
 const BISECTIONS: u32 = 80;
 
@@ -113,9 +113,17 @@ fn nth_sign_change(
     f64::NAN
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::float_cmp)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
 fn index(m: f64) -> Option<u32> {
-    if (0.0..=1e6).contains(&m) && m.fract() == 0.0 { Some(m as u32) } else { None }
+    if (0.0..=1e6).contains(&m) && m.fract() == 0.0 {
+        Some(m as u32)
+    } else {
+        None
+    }
 }
 
 /// `bessel_zero(nu, m)`.
@@ -127,34 +135,50 @@ pub(super) fn bessel_zero(args: &[f64]) -> f64 {
         return f64::NAN;
     }
     let g = |x: f64| bessel_j(nu, x);
-    cached(3, args, || nth_sign_change(&g, 0.5_f64.mul_add(nu, 0.01), 0.1, m))
+    cached(3, args, || {
+        nth_sign_change(&g, 0.5_f64.mul_add(nu, 0.01), 0.1, m)
+    })
 }
 
 /// `bessel_root(nu, h, m)`.
 pub(super) fn bessel_root(args: &[f64]) -> f64 {
-    let (Some(&nu), Some(&h), Some(m)) = (args.first(), args.get(1), args.get(2).and_then(|&m| index(m))) else {
+    let (Some(&nu), Some(&h), Some(m)) = (
+        args.first(),
+        args.get(1),
+        args.get(2).and_then(|&m| index(m)),
+    ) else {
         return f64::NAN;
     };
     if m == 0 {
         return 0.0;
     }
-    let g = |x: f64| 0.5 * x * (bessel_j(nu - 1.0, x) - bessel_j(nu + 1.0, x)) + h * bessel_j(nu, x);
+    let g =
+        |x: f64| 0.5 * x * (bessel_j(nu - 1.0, x) - bessel_j(nu + 1.0, x)) + h * bessel_j(nu, x);
     cached(4, args, || nth_sign_change(&g, 0.05, 0.05, m))
 }
 
 /// `sl_root(p0, q0, p1, q1, L, m)`.
 pub(super) fn sl_root(args: &[f64]) -> f64 {
-    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l), Some(m)) =
-        (args.first(), args.get(1), args.get(2), args.get(3), args.get(4), args.get(5).and_then(|&m| index(m)))
-    else {
+    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l), Some(m)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+        args.get(5).and_then(|&m| index(m)),
+    ) else {
         return f64::NAN;
     };
     if m == 0 || l <= 0.0 {
         return f64::NAN;
     }
-    let g = |k: f64| (p1 * q0 - q1 * p0) * k * (k * l).cos() - (p1 * p0 + q1 * q0 * k * k) * (k * l).sin();
+    let g = |k: f64| {
+        (p1 * q0 - q1 * p0) * k * (k * l).cos() - (p1 * p0 + q1 * q0 * k * k) * (k * l).sin()
+    };
     let scale = std::f64::consts::PI / l;
-    cached(5, args, || nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m))
+    cached(5, args, || {
+        nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m)
+    })
 }
 
 /// `(p0 q0 p1 q1 L)` scanned for the root `κ` of
@@ -176,18 +200,34 @@ fn negative_condition(
 
 /// `sl_neg_root(p0, q0, p1, q1, L)`.
 pub(super) fn sl_neg_root(args: &[f64]) -> f64 {
-    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l)) = (args.first(), args.get(1), args.get(2), args.get(3), args.get(4)) else {
+    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+    ) else {
         return f64::NAN;
     };
     if l <= 0.0 {
         return f64::NAN;
     }
-    let ratio = |p: f64, q: f64| if q == 0.0 { 0.0 } else { (p / q).abs() };
+    let ratio = |p: f64, q: f64| {
+        if q == 0.0 {
+            0.0
+        } else {
+            (p / q).abs()
+        }
+    };
     let top = 8.0 / l + 4.0 * ratio(p0, q0).max(ratio(p1, q1));
     let g = |k: f64| negative_condition(p0, q0, p1, q1, l, k);
     let step = top / 4000.0;
     let found = nth_sign_change(&g, step * 0.05, step, 1);
-    if found.is_finite() && found < top { found } else { f64::NAN }
+    if found.is_finite() && found < top {
+        found
+    } else {
+        f64::NAN
+    }
 }
 
 /// The `m`-th root `κ > 0` of the negative-eigenvalue condition.
@@ -202,12 +242,22 @@ fn negative_root_index(
     if l <= 0.0 || m == 0 {
         return f64::NAN;
     }
-    let ratio = |p: f64, q: f64| if q == 0.0 { 0.0 } else { (p / q).abs() };
+    let ratio = |p: f64, q: f64| {
+        if q == 0.0 {
+            0.0
+        } else {
+            (p / q).abs()
+        }
+    };
     let top = 8.0 / l + 4.0 * ratio(p0, q0).max(ratio(p1, q1));
     let g = |k: f64| negative_condition(p0, q0, p1, q1, l, k);
     let step = top / 8000.0;
     let found = nth_sign_change(&g, step * 0.05, step, m);
-    if found.is_finite() && found < top { found } else { f64::NAN }
+    if found.is_finite() && found < top {
+        found
+    } else {
+        f64::NAN
+    }
 }
 
 /// The number of negative eigenvalues of the Robin problem (0, 1 or 2).
@@ -230,9 +280,14 @@ pub(super) fn negative_count(
 
 /// `sl_neg_root_n(p0, q0, p1, q1, L, m)`.
 pub(super) fn sl_neg_root_n(args: &[f64]) -> f64 {
-    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l), Some(m)) =
-        (args.first(), args.get(1), args.get(2), args.get(3), args.get(4), args.get(5).and_then(|&m| index(m)))
-    else {
+    let (Some(&p0), Some(&q0), Some(&p1), Some(&q1), Some(&l), Some(m)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+        args.get(5).and_then(|&m| index(m)),
+    ) else {
         return f64::NAN;
     };
     negative_root_index(p0, q0, p1, q1, l, m)
@@ -310,7 +365,11 @@ pub(super) fn struve_h(args: &[f64]) -> f64 {
         if nu.fract() != 0.0 {
             return f64::NAN;
         }
-        let sign = if nu.rem_euclid(2.0) == 0.0 { -1.0 } else { 1.0 };
+        let sign = if nu.rem_euclid(2.0) == 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
         return sign * struve_h(&[nu, -x]);
     }
     if x < 8.0 {
@@ -336,7 +395,11 @@ pub(super) fn struve_l(args: &[f64]) -> f64 {
         if nu.fract() != 0.0 {
             return f64::NAN;
         }
-        let sign = if nu.rem_euclid(2.0) == 0.0 { -1.0 } else { 1.0 };
+        let sign = if nu.rem_euclid(2.0) == 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
         return sign * struve_l(&[nu, -x]);
     }
     struve_series(nu, x, 1.0)
@@ -426,16 +489,33 @@ fn annulus_negative_index(
     if m == 0 || a <= 0.0 || b <= a || nu < 0.0 {
         return f64::NAN;
     }
-    let ratio = |p: f64, q: f64| if q == 0.0 { 0.0 } else { (p / q).abs() };
-    let top = (8.0 / (b - a) + 4.0 * ratio(pa, qa).max(ratio(pb, qb)) + 2.0 * nu / a).min(600.0 / b);
+    let ratio = |p: f64, q: f64| {
+        if q == 0.0 {
+            0.0
+        } else {
+            (p / q).abs()
+        }
+    };
+    let top =
+        (8.0 / (b - a) + 4.0 * ratio(pa, qa).max(ratio(pb, qb)) + 2.0 * nu / a).min(600.0 / b);
     let g = |k: f64| {
-        let (ia, ka) = (modified_condition(nu, pa, qa, k, a, false), modified_condition(nu, pa, qa, k, a, true));
-        let (ib, kb) = (modified_condition(nu, pb, qb, k, b, false), modified_condition(nu, pb, qb, k, b, true));
+        let (ia, ka) = (
+            modified_condition(nu, pa, qa, k, a, false),
+            modified_condition(nu, pa, qa, k, a, true),
+        );
+        let (ib, kb) = (
+            modified_condition(nu, pb, qb, k, b, false),
+            modified_condition(nu, pb, qb, k, b, true),
+        );
         ka * ib - ia * kb
     };
     let step = top / 8000.0;
     let found = nth_sign_change(&g, step * 0.05, step, m);
-    if found.is_finite() && found < top { found } else { f64::NAN }
+    if found.is_finite() && found < top {
+        found
+    } else {
+        f64::NAN
+    }
 }
 
 /// The number of negative eigenvalues of the annulus problem.
@@ -464,12 +544,18 @@ pub(super) fn annulus_has_zero(v: [f64; 7]) -> bool {
         if nu == 0.0 {
             [(1.0, 0.0), (r.ln(), 1.0 / r)]
         } else {
-            [(r.powf(nu), nu * r.powf(nu - 1.0)), (r.powf(-nu), -nu * r.powf(-nu - 1.0))]
+            [
+                (r.powf(nu), nu * r.powf(nu - 1.0)),
+                (r.powf(-nu), -nu * r.powf(-nu - 1.0)),
+            ]
         }
     };
     let (fa, fb) = (basis(a), basis(b));
     let condition = |p: f64, q: f64, f: (f64, f64)| p * f.0 + q * f.1;
-    let m = [[condition(pa, qa, fa[0]), condition(pa, qa, fa[1])], [condition(pb, qb, fb[0]), condition(pb, qb, fb[1])]];
+    let m = [
+        [condition(pa, qa, fa[0]), condition(pa, qa, fa[1])],
+        [condition(pb, qb, fb[0]), condition(pb, qb, fb[1])],
+    ];
     let determinant = m[0][0] * m[1][1] - m[0][1] * m[1][0];
     let scale = (m[0][0] * m[1][1]).abs() + (m[0][1] * m[1][0]).abs();
     scale > 0.0 && determinant.abs() <= 1e-9 * scale
@@ -477,19 +563,35 @@ pub(super) fn annulus_has_zero(v: [f64; 7]) -> bool {
 
 /// `annulus_neg_root(nu, pa, qa, a, pb, qb, b, m)`.
 pub(super) fn annulus_neg_root(args: &[f64]) -> f64 {
-    let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) =
-        (args.first(), args.get(1), args.get(2), args.get(3), args.get(4), args.get(5), args.get(6), args.get(7).and_then(|&m| index(m)))
-    else {
+    let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+        args.get(5),
+        args.get(6),
+        args.get(7).and_then(|&m| index(m)),
+    ) else {
         return f64::NAN;
     };
-    cached(1, args, || annulus_negative_index([nu, pa, qa, a, pb, qb, b], m))
+    cached(1, args, || {
+        annulus_negative_index([nu, pa, qa, a, pb, qb, b], m)
+    })
 }
 
 /// `annulus_root(nu, pa, qa, a, pb, qb, b, m)`.
 pub(super) fn annulus_root(args: &[f64]) -> f64 {
-    let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) =
-        (args.first(), args.get(1), args.get(2), args.get(3), args.get(4), args.get(5), args.get(6), args.get(7).and_then(|&m| index(m)))
-    else {
+    let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+        args.get(5),
+        args.get(6),
+        args.get(7).and_then(|&m| index(m)),
+    ) else {
         return f64::NAN;
     };
     if m == 0 || a <= 0.0 || b <= a || nu < 0.0 {
@@ -503,7 +605,9 @@ pub(super) fn annulus_root(args: &[f64]) -> f64 {
         ya.mul_add(jb, -(ja * yb))
     };
     let scale = std::f64::consts::PI / (b - a);
-    cached(2, args, || nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m))
+    cached(2, args, || {
+        nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m)
+    })
 }
 
 /// Registers the operators.

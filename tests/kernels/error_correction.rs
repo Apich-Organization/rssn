@@ -1249,7 +1249,9 @@ mod ledger_rs_extra {
 }
 
 mod bch_codes {
-    use rssn::kernels::error_correction::{Bch, bch_decode, bch_encode};
+    use rssn::kernels::error_correction::Bch;
+    use rssn::kernels::error_correction::bch_decode;
+    use rssn::kernels::error_correction::bch_encode;
 
     struct Rng(u64);
 
@@ -1261,16 +1263,26 @@ mod bch_codes {
             self.0
         }
 
-        fn below(&mut self, n: usize) -> usize {
+        fn below(
+            &mut self,
+            n: usize,
+        ) -> usize {
             (self.next() % n as u64) as usize
         }
 
-        fn bits(&mut self, n: usize) -> Vec<u8> {
+        fn bits(
+            &mut self,
+            n: usize,
+        ) -> Vec<u8> {
             (0..n).map(|_| (self.next() & 1) as u8).collect()
         }
 
         /// `count` distinct positions in `0..n`.
-        fn positions(&mut self, n: usize, count: usize) -> Vec<usize> {
+        fn positions(
+            &mut self,
+            n: usize,
+            count: usize,
+        ) -> Vec<usize> {
             let mut v = Vec::new();
             while v.len() < count {
                 let p = self.below(n);
@@ -1283,7 +1295,11 @@ mod bch_codes {
     }
 
     fn gen_as_int(code: &Bch) -> u64 {
-        code.generator().iter().enumerate().map(|(i, &b)| u64::from(b) << i).sum()
+        code.generator()
+            .iter()
+            .enumerate()
+            .map(|(i, &b)| u64::from(b) << i)
+            .sum()
     }
 
     #[test]
@@ -1303,7 +1319,11 @@ mod bch_codes {
             (8, 4, 255, 223),
         ] {
             let c = Bch::new(m, t).unwrap();
-            assert_eq!((c.n(), c.k(), c.t(), c.m()), (n, k, t, m), "BCH({n},{k},{t})");
+            assert_eq!(
+                (c.n(), c.k(), c.t(), c.m()),
+                (n, k, t, m),
+                "BCH({n},{k},{t})"
+            );
             assert_eq!(c.parity_len(), n - k);
         }
     }
@@ -1364,7 +1384,11 @@ mod bch_codes {
             for j in i + 1..15 {
                 let mut two = one.clone();
                 two[j] ^= 1;
-                assert_eq!(c.correct(&two).unwrap(), (cw.clone(), 2), "errors at {i},{j}");
+                assert_eq!(
+                    c.correct(&two).unwrap(),
+                    (cw.clone(), 2),
+                    "errors at {i},{j}"
+                );
                 assert_eq!(c.decode(&two).unwrap(), msg);
                 patterns += 1;
             }
@@ -1375,7 +1399,14 @@ mod bch_codes {
     #[test]
     fn corrects_random_errors_up_to_t() {
         let mut rng = Rng(0xDEAD_BEEF_CAFE_F00D);
-        for &(m, t, k) in &[(4, 2, 7), (5, 3, 16), (6, 3, 45), (6, 5, 36), (7, 5, 92), (8, 4, 223)] {
+        for &(m, t, k) in &[
+            (4, 2, 7),
+            (5, 3, 16),
+            (6, 3, 45),
+            (6, 5, 36),
+            (7, 5, 92),
+            (8, 4, 223),
+        ] {
             let c = Bch::new(m, t).unwrap();
             assert_eq!(c.k(), k);
             for trial in 0..60 {
@@ -1387,7 +1418,12 @@ mod bch_codes {
                 }
                 let (fixed, fixed_count) = c.correct(&cw).unwrap();
                 assert_eq!(fixed_count, errors);
-                assert_eq!(c.decode(&cw).unwrap(), msg, "BCH({},{k},{t}) with {errors} errors", c.n());
+                assert_eq!(
+                    c.decode(&cw).unwrap(),
+                    msg,
+                    "BCH({},{k},{t}) with {errors} errors",
+                    c.n()
+                );
                 assert!(c.is_codeword(&fixed));
             }
         }
@@ -1405,8 +1441,8 @@ mod bch_codes {
                 cw[p] ^= 1;
             }
             match c.correct(&cw) {
-                Err(_) => detected += 1,
-                Ok((fixed, _)) => assert!(c.is_codeword(&fixed)),
+                | Err(_) => detected += 1,
+                | Ok((fixed, _)) => assert!(c.is_codeword(&fixed)),
             }
         }
         // bounded-distance decoding detects the majority of weight-(t+1) patterns

@@ -348,7 +348,11 @@ fn test_box_counting_dimension_line() {
     let dim = box_counting_dimension(&points, 8);
 
     // Box-counting dimension estimation has some variance
-    assert!((0.7..=1.5).contains(&dim), "Box counting dimension: {}", dim);
+    assert!(
+        (0.7..=1.5).contains(&dim),
+        "Box counting dimension: {}",
+        dim
+    );
 }
 
 #[test]

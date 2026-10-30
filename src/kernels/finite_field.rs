@@ -55,7 +55,11 @@ impl PrimeFieldElement {
         modulus: u64,
     ) -> Self {
         Self {
-            value: if modulus == 0 { value } else { value % modulus },
+            value: if modulus == 0 {
+                value
+            } else {
+                value % modulus
+            },
             modulus,
         }
     }
@@ -72,7 +76,11 @@ impl PrimeFieldElement {
         &self,
         rhs: &Self,
     ) -> u64 {
-        if self.modulus == 0 { rhs.modulus } else { self.modulus }
+        if self.modulus == 0 {
+            rhs.modulus
+        } else {
+            self.modulus
+        }
     }
 
     /// The value reduced modulo `m` (unchanged for `m == 0`).
@@ -80,7 +88,11 @@ impl PrimeFieldElement {
         &self,
         m: u64,
     ) -> u64 {
-        if m == 0 { self.value } else { self.value % m }
+        if m == 0 {
+            self.value
+        } else {
+            self.value % m
+        }
     }
 
     /// Computes the multiplicative inverse of the element.
@@ -124,7 +136,11 @@ impl PrimeFieldElement {
     ) -> Self {
         if self.modulus == 0 {
             // Agnostic integers: saturating power.
-            return Self::new(self.value.saturating_pow(u32::try_from(exp).unwrap_or(u32::MAX)), 0);
+            return Self::new(
+                self.value
+                    .saturating_pow(u32::try_from(exp).unwrap_or(u32::MAX)),
+                0,
+            );
         }
 
         let mut res = 1u128 % u128::from(self.modulus);

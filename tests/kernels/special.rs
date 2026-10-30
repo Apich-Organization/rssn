@@ -983,7 +983,12 @@ fn riemann_zeta_analytic_continuation() {
     }
     assert_eq!(riemann_zeta(0.0), -0.5);
     for k in 1..40 {
-        assert_eq!(riemann_zeta(-2.0 * f64::from(k)), 0.0, "trivial zero -{}", 2 * k);
+        assert_eq!(
+            riemann_zeta(-2.0 * f64::from(k)),
+            0.0,
+            "trivial zero -{}",
+            2 * k
+        );
     }
     assert_eq!(riemann_zeta(1.0), f64::INFINITY);
 }
@@ -1005,7 +1010,11 @@ fn riemann_zeta_continuous_across_one_and_zero() {
 fn riemann_zeta_functional_equation_holds() {
     // zeta(s) = 2^s pi^(s-1) sin(pi s / 2) Gamma(1-s) zeta(1-s) for 0 < s < 1 too
     for &s in &[0.1, 0.3, 0.5, 0.7, 0.95] {
-        let rhs = 2f64.powf(s) * PI.powf(s - 1.0) * (PI * s / 2.0).sin() * gamma_numerical(1.0 - s) * riemann_zeta(1.0 - s);
+        let rhs = 2f64.powf(s)
+            * PI.powf(s - 1.0)
+            * (PI * s / 2.0).sin()
+            * gamma_numerical(1.0 - s)
+            * riemann_zeta(1.0 - s);
         assert!((riemann_zeta(s) - rhs).abs() < 1e-11 * rhs.abs(), "s = {s}");
     }
     assert!(riemann_zeta(-200.0) == 0.0);

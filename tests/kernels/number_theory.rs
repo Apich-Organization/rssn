@@ -2,9 +2,14 @@
 
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::number_theory::{
-    factorize, gcd, is_prime_miller_rabin, lcm, mod_inverse, mod_pow, phi, primes_sieve,
-};
+use rssn::kernels::number_theory::factorize;
+use rssn::kernels::number_theory::gcd;
+use rssn::kernels::number_theory::is_prime_miller_rabin;
+use rssn::kernels::number_theory::lcm;
+use rssn::kernels::number_theory::mod_inverse;
+use rssn::kernels::number_theory::mod_pow;
+use rssn::kernels::number_theory::phi;
+use rssn::kernels::number_theory::primes_sieve;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {

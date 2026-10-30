@@ -468,9 +468,11 @@ impl Session {
         let reduced = closed.is_some();
         let best = match closed {
             | Some(node) => node,
-            | None => Extractor::new(&graph, &roots, &SizeCost)
-                .build(&mut graph, root)
-                .unwrap_or(root),
+            | None => {
+                Extractor::new(&graph, &roots, &SizeCost)
+                    .build(&mut graph, root)
+                    .unwrap_or(root)
+            },
         };
         match config.target {
             | Target::Symbolic => {
@@ -1077,10 +1079,7 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         // `diff(f(x), x)` cannot be computed any further: it is the answer.
         assert!(answer.reduced);
-        assert_eq!(
-            answer.term.to_string(),
-            "x*diff(f(x), x) + f(x)"
-        );
+        assert_eq!(answer.term.to_string(), "x*diff(f(x), x) + f(x)");
     }
 
     #[test]

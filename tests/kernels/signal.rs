@@ -2,7 +2,11 @@
 
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::signal::{convolve, cross_correlation, fft, hamming_window, hann_window};
+use rssn::kernels::signal::convolve;
+use rssn::kernels::signal::cross_correlation;
+use rssn::kernels::signal::fft;
+use rssn::kernels::signal::hamming_window;
+use rssn::kernels::signal::hann_window;
 use rustfft::num_complex::Complex;
 
 fn cfg() -> ProptestConfig {
@@ -27,12 +31,24 @@ fn fft_of_constant_signal_is_a_dc_spike() {
 fn fft_of_cosine_has_two_symmetric_bins() {
     let n = 8;
     let mut x: Vec<Complex<f64>> = (0..n)
-        .map(|i| Complex::new((2.0 * std::f64::consts::PI * i as f64 / n as f64).cos(), 0.0))
+        .map(|i| {
+            Complex::new(
+                (2.0 * std::f64::consts::PI * i as f64 / n as f64).cos(),
+                0.0,
+            )
+        })
         .collect();
     let out = fft(&mut x);
     for (k, v) in out.iter().enumerate() {
-        let want = if k == 1 || k == n - 1 { n as f64 / 2.0 } else { 0.0 };
-        assert!((v.re - want).abs() < 1e-9 && v.im.abs() < 1e-9, "bin {k}: {v}");
+        let want = if k == 1 || k == n - 1 {
+            n as f64 / 2.0
+        } else {
+            0.0
+        };
+        assert!(
+            (v.re - want).abs() < 1e-9 && v.im.abs() < 1e-9,
+            "bin {k}: {v}"
+        );
     }
 }
 

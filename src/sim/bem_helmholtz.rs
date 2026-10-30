@@ -66,16 +66,29 @@ pub struct HelmholtzSolution {
     dir: V3,
 }
 
-fn sub(a: V3, b: V3) -> V3 {
+fn sub(
+    a: V3,
+    b: V3,
+) -> V3 {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
-fn dot(a: V3, b: V3) -> f64 {
+fn dot(
+    a: V3,
+    b: V3,
+) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-fn cross(a: V3, b: V3) -> V3 {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+fn cross(
+    a: V3,
+    b: V3,
+) -> V3 {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
 
 fn norm(a: V3) -> f64 {
@@ -107,22 +120,31 @@ fn radon7() -> [([f64; 3], f64); 7] {
 }
 
 /// Value of a kernel for source point `y` (normal `ny`) and field point `x` (normal `nx`).
-fn kernel_value(kind: Kernel, k: f64, x: V3, nx: V3, y: V3, ny: V3) -> Complex64 {
+fn kernel_value(
+    kind: Kernel,
+    k: f64,
+    x: V3,
+    nx: V3,
+    y: V3,
+    ny: V3,
+) -> Complex64 {
     let d = sub(y, x);
     let r = norm(d);
     let ikr = Complex64::new(0.0, k * r);
     let g = ikr.exp() / (4.0 * PI * r);
     match kind {
-        Kernel::Single => g,
-        Kernel::Double | Kernel::Adjoint | Kernel::Hyper => {
+        | Kernel::Single => g,
+        | Kernel::Double | Kernel::Adjoint | Kernel::Hyper => {
             let gp = g * (Complex64::new(0.0, k) - 1.0 / r);
             let dny = dot(d, ny) / r;
             let dnx = -dot(d, nx) / r;
             match kind {
-                Kernel::Double => gp * dny,
-                Kernel::Adjoint => gp * dnx,
-                _ => {
-                    let gpp = g * (Complex64::new(-k * k, 0.0) - Complex64::new(0.0, 2.0 * k) / r + 2.0 / (r * r));
+                | Kernel::Double => gp * dny,
+                | Kernel::Adjoint => gp * dnx,
+                | _ => {
+                    let gpp = g
+                        * (Complex64::new(-k * k, 0.0) - Complex64::new(0.0, 2.0 * k) / r
+                            + 2.0 / (r * r));
                     let d2r = -dot(nx, ny) / r + dot(d, ny) * dot(d, nx) / (r * r * r);
                     gpp * dnx * dny + gp * d2r
                 },
@@ -132,25 +154,54 @@ fn kernel_value(kind: Kernel, k: f64, x: V3, nx: V3, y: V3, ny: V3) -> Complex64
 }
 
 /// Integral of a kernel over triangle `tri` by 7-point rules with recursive subdivision.
-fn integrate(kind: Kernel, k: f64, x: V3, nx: V3, tri: [V3; 3], ny: V3, depth: usize) -> Complex64 {
-    let centre = [(tri[0][0] + tri[1][0] + tri[2][0]) / 3.0, (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0, (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0];
-    let diam = norm(sub(tri[0], tri[1])).max(norm(sub(tri[1], tri[2]))).max(norm(sub(tri[2], tri[0])));
+fn integrate(
+    kind: Kernel,
+    k: f64,
+    x: V3,
+    nx: V3,
+    tri: [V3; 3],
+    ny: V3,
+    depth: usize,
+) -> Complex64 {
+    let centre = [
+        (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0,
+        (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0,
+        (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0,
+    ];
+    let diam = norm(sub(tri[0], tri[1]))
+        .max(norm(sub(tri[1], tri[2])))
+        .max(norm(sub(tri[2], tri[0])));
     let dist = norm(sub(centre, x));
     let limit = match kind {
-        Kernel::Hyper => 3.0,
-        _ => 2.0,
+        | Kernel::Hyper => 3.0,
+        | _ => 2.0,
     };
     let max_depth = match kind {
-        Kernel::Hyper => 5,
-        _ => 4,
+        | Kernel::Hyper => 5,
+        | _ => 4,
     };
     if dist < limit * diam && depth < max_depth {
-        let mid = |a: V3, b: V3| [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1]), f64::midpoint(a[2], b[2])];
-        let (m01, m12, m20) = (mid(tri[0], tri[1]), mid(tri[1], tri[2]), mid(tri[2], tri[0]));
-        return [[tri[0], m01, m20], [m01, tri[1], m12], [m20, m12, tri[2]], [m12, m20, m01]]
-            .iter()
-            .map(|t| integrate(kind, k, x, nx, *t, ny, depth + 1))
-            .sum();
+        let mid = |a: V3, b: V3| {
+            [
+                f64::midpoint(a[0], b[0]),
+                f64::midpoint(a[1], b[1]),
+                f64::midpoint(a[2], b[2]),
+            ]
+        };
+        let (m01, m12, m20) = (
+            mid(tri[0], tri[1]),
+            mid(tri[1], tri[2]),
+            mid(tri[2], tri[0]),
+        );
+        return [
+            [tri[0], m01, m20],
+            [m01, tri[1], m12],
+            [m20, m12, tri[2]],
+            [m12, m20, m01],
+        ]
+        .iter()
+        .map(|t| integrate(kind, k, x, nx, *t, ny, depth + 1))
+        .sum();
     }
     let area = 0.5 * norm(cross(sub(tri[1], tri[0]), sub(tri[2], tri[0])));
     let mut s = Complex64::new(0.0, 0.0);
@@ -162,12 +213,33 @@ fn integrate(kind: Kernel, k: f64, x: V3, nx: V3, tri: [V3; 3], ny: V3, depth: u
 }
 
 /// Gauss–Legendre nodes and weights on `[-1, 1]` (8 points).
-const GL8_X: [f64; 8] = [-0.960_289_856_497_536_3, -0.796_666_477_413_626_7, -0.525_532_409_916_329, -0.183_434_642_495_649_8, 0.183_434_642_495_649_8, 0.525_532_409_916_329, 0.796_666_477_413_626_7, 0.960_289_856_497_536_3];
-const GL8_W: [f64; 8] = [0.101_228_536_290_376_26, 0.222_381_034_453_374_5, 0.313_706_645_877_887_3, 0.362_683_783_378_362, 0.362_683_783_378_362, 0.313_706_645_877_887_3, 0.222_381_034_453_374_5, 0.101_228_536_290_376_26];
+const GL8_X: [f64; 8] = [
+    -0.960_289_856_497_536_3,
+    -0.796_666_477_413_626_7,
+    -0.525_532_409_916_329,
+    -0.183_434_642_495_649_8,
+    0.183_434_642_495_649_8,
+    0.525_532_409_916_329,
+    0.796_666_477_413_626_7,
+    0.960_289_856_497_536_3,
+];
+const GL8_W: [f64; 8] = [
+    0.101_228_536_290_376_26,
+    0.222_381_034_453_374_5,
+    0.313_706_645_877_887_3,
+    0.362_683_783_378_362,
+    0.362_683_783_378_362,
+    0.313_706_645_877_887_3,
+    0.222_381_034_453_374_5,
+    0.101_228_536_290_376_26,
+];
 
 /// Self terms for the flat triangle `tri` with the collocation point at its centroid:
 /// `(∫ G dS, FP ∫ ∂²G/∂n∂n' dS)`.
-fn self_terms(k: f64, tri: [V3; 3]) -> (Complex64, Complex64) {
+fn self_terms(
+    k: f64,
+    tri: [V3; 3],
+) -> (Complex64, Complex64) {
     let c: V3 = std::array::from_fn(|a| (tri[0][a] + tri[1][a] + tri[2][a]) / 3.0);
     let mut s_int = Complex64::new(0.0, 0.0);
     let mut n_static = 0.0;
@@ -190,7 +262,11 @@ fn self_terms(k: f64, tri: [V3; 3]) -> (Complex64, Complex64) {
             let wth = half * GL8_W[q];
             let rmax = dperp / th.cos();
             // ∫_0^R e^{ikr}/(4π) dr
-            let int_s = if k * rmax < 1e-8 { Complex64::new(rmax, 0.0) } else { ((ik * rmax).exp() - 1.0) / ik };
+            let int_s = if k * rmax < 1e-8 {
+                Complex64::new(rmax, 0.0)
+            } else {
+                ((ik * rmax).exp() - 1.0) / ik
+            };
             s_int += int_s * (wth / (4.0 * PI));
             n_static += wth / rmax;
             // ∫_0^R [e^{ikr}(1 - ikr) - 1] / (4π r²) dr by Gauss-Legendre in r
@@ -219,12 +295,20 @@ fn self_terms(k: f64, tri: [V3; 3]) -> (Complex64, Complex64) {
     (s_int, n_diff - Complex64::new(n_static / (4.0 * PI), 0.0))
 }
 
-fn plane_wave(k: f64, dir: V3, x: V3) -> Complex64 {
+fn plane_wave(
+    k: f64,
+    dir: V3,
+    x: V3,
+) -> Complex64 {
     Complex64::new(0.0, k * dot(dir, x)).exp()
 }
 
 /// Dense complex linear solve (LU with partial pivoting).
-fn solve_dense(mut a: Vec<Complex64>, mut b: Vec<Complex64>, n: usize) -> Result<Vec<Complex64>, String> {
+fn solve_dense(
+    mut a: Vec<Complex64>,
+    mut b: Vec<Complex64>,
+    n: usize,
+) -> Result<Vec<Complex64>, String> {
     for c in 0..n {
         let mut piv = c;
         let mut best = a[c * n + c].norm();
@@ -297,7 +381,11 @@ pub fn solve_helmholtz_exterior(
     if dn == 0.0 {
         return Err("the incident direction must be non-zero".into());
     }
-    let dir = [wave.direction[0] / dn, wave.direction[1] / dn, wave.direction[2] / dn];
+    let dir = [
+        wave.direction[0] / dn,
+        wave.direction[1] / dn,
+        wave.direction[2] / dn,
+    ];
     let alpha = coupling.unwrap_or_else(|| Complex64::new(0.0, 1.0 / k));
     let nt = mesh.triangles.len();
     let tris: Vec<[V3; 3]> = (0..nt).filter_map(|t| mesh.corners(t)).collect();
@@ -319,15 +407,33 @@ pub fn solve_helmholtz_exterior(
                         (Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0))
                     };
                     match kind {
-                        Scatterer::SoundHard => {
-                            let kk = if own { Complex64::new(0.0, 0.0) } else { integrate(Kernel::Double, k, x, nx, tris[j], normals[j], 0) };
-                            let nn = if own { n_ij } else if alpha.norm() > 0.0 { integrate(Kernel::Hyper, k, x, nx, tris[j], normals[j], 0) } else { Complex64::new(0.0, 0.0) };
+                        | Scatterer::SoundHard => {
+                            let kk = if own {
+                                Complex64::new(0.0, 0.0)
+                            } else {
+                                integrate(Kernel::Double, k, x, nx, tris[j], normals[j], 0)
+                            };
+                            let nn = if own {
+                                n_ij
+                            } else if alpha.norm() > 0.0 {
+                                integrate(Kernel::Hyper, k, x, nx, tris[j], normals[j], 0)
+                            } else {
+                                Complex64::new(0.0, 0.0)
+                            };
                             let half = if own { 0.5 } else { 0.0 };
                             Complex64::new(half, 0.0) - kk + alpha * nn
                         },
-                        Scatterer::SoundSoft => {
-                            let ss = if own { s_ij } else { integrate(Kernel::Single, k, x, nx, tris[j], normals[j], 0) };
-                            let kp = if own { Complex64::new(0.0, 0.0) } else { integrate(Kernel::Adjoint, k, x, nx, tris[j], normals[j], 0) };
+                        | Scatterer::SoundSoft => {
+                            let ss = if own {
+                                s_ij
+                            } else {
+                                integrate(Kernel::Single, k, x, nx, tris[j], normals[j], 0)
+                            };
+                            let kp = if own {
+                                Complex64::new(0.0, 0.0)
+                            } else {
+                                integrate(Kernel::Adjoint, k, x, nx, tris[j], normals[j], 0)
+                            };
                             let half = if own { 0.5 } else { 0.0 };
                             ss + alpha * (Complex64::new(half, 0.0) + kp)
                         },
@@ -342,26 +448,41 @@ pub fn solve_helmholtz_exterior(
             let pinc = plane_wave(k, dir, cents[i]);
             let dpinc = pinc * Complex64::new(0.0, k * dot(dir, normals[i]));
             match kind {
-                Scatterer::SoundHard => pinc - alpha * dpinc,
-                Scatterer::SoundSoft => pinc + alpha * dpinc,
+                | Scatterer::SoundHard => pinc - alpha * dpinc,
+                | Scatterer::SoundSoft => pinc + alpha * dpinc,
             }
         })
         .collect();
     let density = solve_dense(a, rhs, nt)?;
-    Ok(HelmholtzSolution { k, kind, density, dir })
+    Ok(HelmholtzSolution {
+        k,
+        kind,
+        density,
+        dir,
+    })
 }
 
 impl HelmholtzSolution {
     /// Scattered pressure at a point away from the surface.
     #[must_use]
-    pub fn scattered_field(&self, mesh: &SurfaceMesh3D, x: V3) -> Complex64 {
+    pub fn scattered_field(
+        &self,
+        mesh: &SurfaceMesh3D,
+        x: V3,
+    ) -> Complex64 {
         let mut s = Complex64::new(0.0, 0.0);
         for (j, &dens) in self.density.iter().enumerate() {
-            let (Some(tri), Some(ny)) = (mesh.corners(j), mesh.normal(j)) else { continue };
+            let (Some(tri), Some(ny)) = (mesh.corners(j), mesh.normal(j)) else {
+                continue;
+            };
             let nx = [0.0; 3];
             match self.kind {
-                Scatterer::SoundHard => s += integrate(Kernel::Double, self.k, x, nx, tri, ny, 0) * dens,
-                Scatterer::SoundSoft => s -= integrate(Kernel::Single, self.k, x, nx, tri, ny, 0) * dens,
+                | Scatterer::SoundHard => {
+                    s += integrate(Kernel::Double, self.k, x, nx, tri, ny, 0) * dens
+                },
+                | Scatterer::SoundSoft => {
+                    s -= integrate(Kernel::Single, self.k, x, nx, tri, ny, 0) * dens
+                },
             }
         }
         s
@@ -369,7 +490,10 @@ impl HelmholtzSolution {
 
     /// Incident field at a point.
     #[must_use]
-    pub fn incident_field(&self, x: V3) -> Complex64 {
+    pub fn incident_field(
+        &self,
+        x: V3,
+    ) -> Complex64 {
         plane_wave(self.k, self.dir, x)
     }
 }

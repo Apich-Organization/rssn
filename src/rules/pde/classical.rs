@@ -90,7 +90,10 @@ pub(super) fn wave_half_line(
     if conditions.0.len() != 2 + usize::from(velocity.is_some()) {
         return None;
     }
-    let (sign, abs) = (cx.graph.ops().lookup("sign")?, cx.graph.ops().lookup("abs")?);
+    let (sign, abs) = (
+        cx.graph.ops().lookup("sign")?,
+        cx.graph.ops().lookup("abs")?,
+    );
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let speed = pow(cx.graph, e.speed, half);
     let speed = cx.simplify(speed);
@@ -108,27 +111,31 @@ pub(super) fn wave_half_line(
     };
     let plus = add(cx.graph, &[x, ct]);
     let minus = sub(cx.graph, x, ct);
-    let (g_plus, g_minus) = (extend(cx, displacement.value, plus), extend(cx, displacement.value, minus));
+    let (g_plus, g_minus) = (
+        extend(cx, displacement.value, plus),
+        extend(cx, displacement.value, minus),
+    );
     let sum = add(cx.graph, &[g_plus, g_minus]);
     let mut u = mul(cx.graph, &[half, sum]);
     if let Some(v) = velocity
-        && !cx.is_zero(v.value) {
-            // (1/2c) ∫_{x-ct}^{x+ct} h_ext(s) ds
-            let defint = cx.graph.ops().lookup("defint")?;
-            let (s, _) = dummy(cx, p, "s");
-            let h_at = cx.graph.substitute(v.value, x, s);
-            let h_ext = {
-                let h = cx.graph.substitute(h_at, s, x);
-                extend(cx, h, s)
-            };
-            let integral = cx.graph.node(defint, &[h_ext, s, minus, plus]);
-            let two_c = {
-                let two = cx.graph.int(2);
-                mul(cx.graph, &[two, speed])
-            };
-            let part = div(cx, integral, two_c);
-            u = add(cx.graph, &[u, part]);
-        }
+        && !cx.is_zero(v.value)
+    {
+        // (1/2c) ∫_{x-ct}^{x+ct} h_ext(s) ds
+        let defint = cx.graph.ops().lookup("defint")?;
+        let (s, _) = dummy(cx, p, "s");
+        let h_at = cx.graph.substitute(v.value, x, s);
+        let h_ext = {
+            let h = cx.graph.substitute(h_at, s, x);
+            extend(cx, h, s)
+        };
+        let integral = cx.graph.node(defint, &[h_ext, s, minus, plus]);
+        let two_c = {
+            let two = cx.graph.int(2);
+            mul(cx.graph, &[two, speed])
+        };
+        let part = div(cx, integral, two_c);
+        u = add(cx.graph, &[u, part]);
+    }
     Some(cx.simplify(u))
 }
 
@@ -149,7 +156,10 @@ pub(super) fn robin_wave_half_line(
     f: NodeId,
     g: Option<NodeId>,
 ) -> Option<NodeId> {
-    let (sign, abs) = (cx.graph.ops().lookup("sign")?, cx.graph.ops().lookup("abs")?);
+    let (sign, abs) = (
+        cx.graph.ops().lookup("sign")?,
+        cx.graph.ops().lookup("abs")?,
+    );
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let (s, _) = dummy(cx, p, "s");
     let (xi, _) = dummy(cx, p, "xi");
@@ -174,17 +184,18 @@ pub(super) fn robin_wave_half_line(
     let sum = add(cx.graph, &[a, b]);
     let mut w = mul(cx.graph, &[half, sum]);
     if let Some(g) = g
-        && !cx.is_zero(g) {
-            let w1 = transformed(cx, g)?;
-            let body = odd(cx, w1, xi);
-            let integral = defint(cx, body, xi, minus, plus)?;
-            let two_c = {
-                let two = cx.graph.int(2);
-                mul(cx.graph, &[two, speed])
-            };
-            let part = div(cx, integral, two_c);
-            w = add(cx.graph, &[w, part]);
-        }
+        && !cx.is_zero(g)
+    {
+        let w1 = transformed(cx, g)?;
+        let body = odd(cx, w1, xi);
+        let integral = defint(cx, body, xi, minus, plus)?;
+        let two_c = {
+            let two = cx.graph.int(2);
+            mul(cx.graph, &[two, speed])
+        };
+        let part = div(cx, integral, two_c);
+        w = add(cx.graph, &[w, part]);
+    }
     let shift = sub(cx.graph, s, x);
     let exponent = mul(cx.graph, &[rho, shift]);
     let kernel = call(cx, "exp", &[exponent])?;
@@ -214,7 +225,10 @@ pub(super) fn wave_half_line_robin(
     let velocity = conditions.find(cx.graph, time, &p.unit(time, 1), None);
     let boundary = conditions.0.iter().find(|c| c.on == space)?;
     let rho = boundary.robin?;
-    if boundary.derivative != p.unit(space, 1) || !cx.is_zero(boundary.value) || !cx.is_zero(boundary.point) {
+    if boundary.derivative != p.unit(space, 1)
+        || !cx.is_zero(boundary.value)
+        || !cx.is_zero(boundary.point)
+    {
         return None;
     }
     if conditions.0.len() != 2 + usize::from(velocity.is_some()) {
@@ -223,7 +237,15 @@ pub(super) fn wave_half_line_robin(
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let speed = pow(cx.graph, e.speed, half);
     let speed = cx.simplify(speed);
-    robin_wave_half_line(cx, p, (x, t), speed, rho, displacement.value, velocity.map(|v| v.value))
+    robin_wave_half_line(
+        cx,
+        p,
+        (x, t),
+        speed,
+        rho,
+        displacement.value,
+        velocity.map(|v| v.value),
+    )
 }
 
 /// `laplace_disk(f(θ), R, r, θ)`: the harmonic function in the disk of
@@ -264,7 +286,12 @@ pub(super) fn laplace_disk(
         let scaled = div(cx, integral, two_pi);
         cx.simplify(scaled)
     };
-    let symbolic = |cx: &Cx<'_>, e: NodeId| cx.graph.ops().lookup("defint").is_some_and(|d| crate::rules::ode::occurs_op(cx.graph, e, d));
+    let symbolic = |cx: &Cx<'_>, e: NodeId| {
+        cx.graph
+            .ops()
+            .lookup("defint")
+            .is_some_and(|d| crate::rules::ode::occurs_op(cx.graph, e, d))
+    };
     if symbolic(cx, a0) {
         return None;
     }
@@ -277,7 +304,10 @@ pub(super) fn laplace_disk(
             return None;
         }
         let n_theta = mul(cx.graph, &[n, theta]);
-        let (c, s) = (cx.graph.node(cos, &[n_theta]), cx.graph.node(sin, &[n_theta]));
+        let (c, s) = (
+            cx.graph.node(cos, &[n_theta]),
+            cx.graph.node(sin, &[n_theta]),
+        );
         let rn = powi(cx.graph, ratio, k);
         let part = {
             let ac = mul(cx.graph, &[a, c]);
@@ -298,10 +328,16 @@ pub(super) fn laplace_disk(
     // An infinite series with symbolic coefficients.
     let n_symbol = cx.graph.interner_mut().fresh_symbol("n");
     let n = cx.graph.symbol_node(n_symbol);
-    cx.graph.assume(n_symbol, crate::graph::Facts::POSITIVE | crate::graph::Facts::INTEGER);
+    cx.graph.assume(
+        n_symbol,
+        crate::graph::Facts::POSITIVE | crate::graph::Facts::INTEGER,
+    );
     let (a, b) = (coefficient(cx, cos, n), coefficient(cx, sin, n));
     let n_theta = mul(cx.graph, &[n, theta]);
-    let (c, s) = (cx.graph.node(cos, &[n_theta]), cx.graph.node(sin, &[n_theta]));
+    let (c, s) = (
+        cx.graph.node(cos, &[n_theta]),
+        cx.graph.node(sin, &[n_theta]),
+    );
     let rn = pow(cx.graph, ratio, n);
     let general = {
         let ac = mul(cx.graph, &[a, c]);

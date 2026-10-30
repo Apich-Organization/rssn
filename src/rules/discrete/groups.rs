@@ -35,6 +35,7 @@ use std::collections::HashMap;
 use num_bigint::BigInt;
 use num_integer::Integer;
 
+use super::V;
 use super::apply;
 use super::def;
 use super::def_inert;
@@ -45,14 +46,13 @@ use super::matmul;
 use super::neg;
 use super::rows;
 use super::sum;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::ClassId;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 /// The largest group order for which all subgroups are enumerated.
 const SUBGROUP_LIMIT: usize = 48;
@@ -101,7 +101,12 @@ fn raw_from(
         .iter()
         .map(|row| row.iter().map(|&e| lookup(cx, &index, e)).collect())
         .collect();
-    Raw { elems, index, distinct, table }
+    Raw {
+        elems,
+        index,
+        distinct,
+        table,
+    }
 }
 
 fn find_group(
@@ -121,7 +126,9 @@ fn read_raw(
 ) -> Option<Raw> {
     let gn = find_group(cx.graph, node)?;
     let children = cx.graph.children(gn).to_vec();
-    let [el, tb] = children.as_slice() else { return None };
+    let [el, tb] = children.as_slice() else {
+        return None;
+    };
     let elems = items(cx.graph, *el)?;
     let table = rows(cx.graph, *tb)?;
     Some(raw_from(cx, elems, &table))
@@ -142,7 +149,11 @@ impl Raw {
             }
             table.push(row.into_iter().collect::<Option<Vec<usize>>>()?);
         }
-        Some(Grp { elems: self.elems, index: self.index, table })
+        Some(Grp {
+            elems: self.elems,
+            index: self.index,
+            table,
+        })
     }
 }
 
@@ -159,7 +170,8 @@ impl Grp {
     }
 
     pub(crate) fn identity(&self) -> Option<usize> {
-        (0..self.n()).find(|&e| (0..self.n()).all(|j| self.table[e][j] == j && self.table[j][e] == j))
+        (0..self.n())
+            .find(|&e| (0..self.n()).all(|j| self.table[e][j] == j && self.table[j][e] == j))
     }
 
     pub(crate) fn inverse(
@@ -181,7 +193,9 @@ impl Grp {
     }
 
     pub(crate) fn is_valid(&self) -> bool {
-        self.identity().is_some() && (0..self.n()).all(|a| self.inverse(a).is_some()) && self.is_associative()
+        self.identity().is_some()
+            && (0..self.n()).all(|a| self.inverse(a).is_some())
+            && self.is_associative()
     }
 
     /// The order of `a` (smallest `k >= 1` with `a^k = e`).
@@ -226,8 +240,12 @@ impl Grp {
         &self,
         h: &[usize],
     ) -> bool {
-        let Some(e) = self.identity() else { return false };
-        h.contains(&e) && h.iter().all(|&a| h.iter().all(|&b| h.contains(&self.table[a][b])))
+        let Some(e) = self.identity() else {
+            return false;
+        };
+        h.contains(&e)
+            && h.iter()
+                .all(|&a| h.iter().all(|&b| h.contains(&self.table[a][b])))
     }
 
     pub(crate) fn elems_v(
@@ -258,7 +276,10 @@ pub(crate) fn build_group(
     table: &[Vec<usize>],
 ) -> Option<V> {
     let el = super::list(g, elems);
-    let rows: Vec<Vec<NodeId>> = table.iter().map(|r| r.iter().map(|&i| elems[i]).collect()).collect();
+    let rows: Vec<Vec<NodeId>> = table
+        .iter()
+        .map(|r| r.iter().map(|&i| elems[i]).collect())
+        .collect();
     let tb = super::matrix(g, &rows);
     apply(g, "group", &[el, tb]).map(V::Node)
 }
@@ -282,8 +303,12 @@ fn cyclic_group(
     a: &[NodeId],
 ) -> Option<V> {
     let n = size(cx, a, 256)?;
-    let elems: Vec<NodeId> = (0..n).map(|i| cx.graph.int(i64::try_from(i).unwrap_or(0))).collect();
-    let table: Vec<Vec<usize>> = (0..n).map(|i| (0..n).map(|j| (i + j) % n).collect()).collect();
+    let elems: Vec<NodeId> = (0..n)
+        .map(|i| cx.graph.int(i64::try_from(i).unwrap_or(0)))
+        .collect();
+    let table: Vec<Vec<usize>> = (0..n)
+        .map(|i| (0..n).map(|j| (i + j) % n).collect())
+        .collect();
     build_group(cx.graph, &elems, &table)
 }
 
@@ -313,7 +338,9 @@ fn permutations(n: usize) -> Vec<Vec<usize>> {
     let mut p: Vec<usize> = (0..n).collect();
     loop {
         out.push(p.clone());
-        let Some(i) = (1..n).rev().find(|&i| p[i - 1] < p[i]) else { break };
+        let Some(i) = (1..n).rev().find(|&i| p[i - 1] < p[i]) else {
+            break;
+        };
         let j = (i..n).rev().find(|&j| p[j] > p[i - 1]).unwrap_or(i);
         p.swap(i - 1, j);
         p[i..].reverse();
@@ -330,7 +357,10 @@ fn symmetric_group(
     let pos: HashMap<&Vec<usize>, usize> = perms.iter().enumerate().map(|(i, p)| (p, i)).collect();
     let mut elems = Vec::with_capacity(perms.len());
     for p in &perms {
-        let images: Vec<NodeId> = p.iter().map(|&x| cx.graph.int(i64::try_from(x + 1).unwrap_or(0))).collect();
+        let images: Vec<NodeId> = p
+            .iter()
+            .map(|&x| cx.graph.int(i64::try_from(x + 1).unwrap_or(0)))
+            .collect();
         elems.push(super::list(cx.graph, &images));
     }
     let mut table = Vec::with_capacity(perms.len());
@@ -349,7 +379,10 @@ fn klein_four_group(
     cx: &mut Cx<'_>,
     _a: &[NodeId],
 ) -> Option<V> {
-    let elems: Vec<NodeId> = ["e", "a", "b", "c"].iter().map(|s| cx.graph.sym(s)).collect();
+    let elems: Vec<NodeId> = ["e", "a", "b", "c"]
+        .iter()
+        .map(|s| cx.graph.sym(s))
+        .collect();
     // The Klein group is Z2 x Z2: position bits xor.
     let table: Vec<Vec<usize>> = (0..4).map(|i| (0..4).map(|j| i ^ j).collect()).collect();
     build_group(cx.graph, &elems, &table)
@@ -439,14 +472,18 @@ fn group_conjugacy_classes(
     a: &[NodeId],
 ) -> Option<V> {
     let grp = read_group(cx, *a.first()?)?;
-    let inv: Vec<usize> = (0..grp.n()).map(|x| grp.inverse(x)).collect::<Option<_>>()?;
+    let inv: Vec<usize> = (0..grp.n())
+        .map(|x| grp.inverse(x))
+        .collect::<Option<_>>()?;
     let mut done = vec![false; grp.n()];
     let mut classes = Vec::new();
     for x in 0..grp.n() {
         if done[x] {
             continue;
         }
-        let class: BTreeSet<usize> = (0..grp.n()).map(|g| grp.table[grp.table[g][x]][inv[g]]).collect();
+        let class: BTreeSet<usize> = (0..grp.n())
+            .map(|g| grp.table[grp.table[g][x]][inv[g]])
+            .collect();
         for &c in &class {
             done[c] = true;
         }
@@ -461,8 +498,9 @@ fn group_center(
     a: &[NodeId],
 ) -> Option<V> {
     let grp = read_group(cx, *a.first()?)?;
-    let center: Vec<usize> =
-        (0..grp.n()).filter(|&z| (0..grp.n()).all(|g| grp.table[z][g] == grp.table[g][z])).collect();
+    let center: Vec<usize> = (0..grp.n())
+        .filter(|&z| (0..grp.n()).all(|g| grp.table[z][g] == grp.table[g][z]))
+        .collect();
     Some(grp.elems_v(&center))
 }
 
@@ -538,8 +576,13 @@ fn group_is_normal(
     if !grp.is_subgroup(&h) {
         return None;
     }
-    let inv: Vec<usize> = (0..grp.n()).map(|x| grp.inverse(x)).collect::<Option<_>>()?;
-    let normal = (0..grp.n()).all(|x| h.iter().all(|&y| h.contains(&grp.table[grp.table[x][y]][inv[x]])));
+    let inv: Vec<usize> = (0..grp.n())
+        .map(|x| grp.inverse(x))
+        .collect::<Option<_>>()?;
+    let normal = (0..grp.n()).all(|x| {
+        h.iter()
+            .all(|&y| h.contains(&grp.table[grp.table[x][y]][inv[x]]))
+    });
     Some(V::Bool(normal))
 }
 
@@ -581,7 +624,9 @@ fn representation_is_valid(
     for i in 0..grp.n() {
         for j in 0..grp.n() {
             let target = &mats[grp.table[i][j]];
-            let Some(product) = matmul(cx, &mats[i], &mats[j]) else { return Some(V::Bool(false)) };
+            let Some(product) = matmul(cx, &mats[i], &mats[j]) else {
+                return Some(V::Bool(false));
+            };
             if product.len() != target.len() {
                 return Some(V::Bool(false));
             }
@@ -695,7 +740,9 @@ fn perm_order(
     a: &[NodeId],
 ) -> Option<V> {
     let p = read_perm(cx.graph, *a.first()?)?;
-    let order = cycles(&p).iter().fold(BigInt::from(1), |acc, c| acc.lcm(&BigInt::from(c.len())));
+    let order = cycles(&p)
+        .iter()
+        .fold(BigInt::from(1), |acc, c| acc.lcm(&BigInt::from(c.len())));
     Some(V::Int(order))
 }
 
@@ -704,7 +751,13 @@ fn perm_cycles(
     a: &[NodeId],
 ) -> Option<V> {
     let p = read_perm(cx.graph, *a.first()?)?;
-    Some(V::List(cycles(&p).iter().filter(|c| c.len() > 1).map(|c| perm_v(c)).collect()))
+    Some(V::List(
+        cycles(&p)
+            .iter()
+            .filter(|c| c.len() > 1)
+            .map(|c| perm_v(c))
+            .collect(),
+    ))
 }
 
 fn perm_sign(
@@ -712,7 +765,11 @@ fn perm_sign(
     a: &[NodeId],
 ) -> Option<V> {
     let p = read_perm(cx.graph, *a.first()?)?;
-    Some(V::int(if (p.len() - cycles(&p).len()).is_multiple_of(2) { 1 } else { -1 }))
+    Some(V::int(if (p.len() - cycles(&p).len()).is_multiple_of(2) {
+        1
+    } else {
+        -1
+    }))
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -728,14 +785,29 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "group_mul", Arity::Fixed(3), group_mul)?;
     def(i, "group_inverse", Arity::Fixed(2), group_inverse)?;
     def(i, "group_is_abelian", Arity::Fixed(1), group_is_abelian)?;
-    def(i, "group_element_order", Arity::Fixed(2), group_element_order)?;
-    def(i, "group_conjugacy_classes", Arity::Fixed(1), group_conjugacy_classes)?;
+    def(
+        i,
+        "group_element_order",
+        Arity::Fixed(2),
+        group_element_order,
+    )?;
+    def(
+        i,
+        "group_conjugacy_classes",
+        Arity::Fixed(1),
+        group_conjugacy_classes,
+    )?;
     def(i, "group_center", Arity::Fixed(1), group_center)?;
     def(i, "group_is_valid", Arity::Fixed(1), group_is_valid)?;
     def(i, "group_subgroups", Arity::Fixed(1), group_subgroups)?;
     def(i, "group_cosets", Arity::Fixed(2), group_cosets)?;
     def(i, "group_is_normal", Arity::Fixed(2), group_is_normal)?;
-    def(i, "representation_is_valid", Arity::Fixed(2), representation_is_valid)?;
+    def(
+        i,
+        "representation_is_valid",
+        Arity::Fixed(2),
+        representation_is_valid,
+    )?;
     def(i, "group_character", Arity::Fixed(1), group_character)?;
     def(i, "perm_compose", Arity::Fixed(2), perm_compose)?;
     def(i, "perm_inverse", Arity::Fixed(1), perm_inverse)?;
@@ -764,7 +836,10 @@ mod tests {
         assert_eq!(s("group_mul(dihedral_group(5), s1, s3)"), "r2");
         assert_eq!(s("group_identity(symmetric_group(3))"), "list(1, 2, 3)");
         // refused sizes stay unreduced
-        assert_eq!(s("group_order(symmetric_group(7))"), "group_order(symmetric_group(7))");
+        assert_eq!(
+            s("group_order(symmetric_group(7))"),
+            "group_order(symmetric_group(7))"
+        );
         assert_eq!(s("cyclic_group(0)"), "cyclic_group(0)");
     }
 
@@ -781,7 +856,13 @@ mod tests {
         // not associative / no identity: stays unreduced
         let bad = "group_from_table(list(a, b), list(list(b, a), list(a, a)))";
         assert_eq!(s(bad), bad);
-        assert_eq!(s(&format!("group_is_valid(group({}))", &bad["group_from_table(".len()..bad.len() - 1])), "false");
+        assert_eq!(
+            s(&format!(
+                "group_is_valid(group({}))",
+                &bad["group_from_table(".len()..bad.len() - 1]
+            )),
+            "false"
+        );
         // entries are simplified
         assert_eq!(
             s("group_order(group_from_table(list(0, 1), list(list(0, 1), list(1, 1 + 1 - 2))))"),
@@ -797,7 +878,10 @@ mod tests {
         assert_eq!(s("group_element_order(cyclic_group(6), 2)"), "3");
         assert_eq!(s("group_element_order(dihedral_group(4), r1)"), "4");
         assert_eq!(s("group_element_order(dihedral_group(4), s2)"), "2");
-        assert_eq!(s("group_element_order(symmetric_group(3), list(2, 3, 1))"), "3");
+        assert_eq!(
+            s("group_element_order(symmetric_group(3), list(2, 3, 1))"),
+            "3"
+        );
         assert_eq!(s("group_is_abelian(cyclic_group(6))"), "true");
         assert_eq!(s("group_is_abelian(klein_four_group())"), "true");
         assert_eq!(s("group_is_abelian(dihedral_group(3))"), "false");
@@ -812,7 +896,10 @@ mod tests {
             s("group_conjugacy_classes(dihedral_group(3))"),
             "list(list(r0), list(r1, r2), list(s0, s1, s2))"
         );
-        assert_eq!(s("group_conjugacy_classes(klein_four_group())"), "list(list(e), list(a), list(b), list(c))");
+        assert_eq!(
+            s("group_conjugacy_classes(klein_four_group())"),
+            "list(list(e), list(a), list(b), list(c))"
+        );
         assert_eq!(s("group_center(dihedral_group(4))"), "list(r0, r2)");
         assert_eq!(s("group_center(dihedral_group(3))"), "list(r0)");
         assert_eq!(s("group_center(cyclic_group(3))"), "list(0, 1, 2)");
@@ -827,19 +914,37 @@ mod tests {
         // S4 has 30 subgroups
         let subs = s("group_subgroups(symmetric_group(4))");
         assert!(subs.starts_with("list(list(list(1, 2, 3, 4))"), "{subs}");
-        assert_eq!(s("group_subgroups(cyclic_group(6))"), "list(list(0), list(0, 3), list(0, 2, 4), list(0, 1, 2, 3, 4, 5))");
-        assert_eq!(s("group_cosets(cyclic_group(6), list(0, 3))"), "list(list(0, 3), list(1, 4), list(2, 5))");
-        assert_eq!(s("group_cosets(dihedral_group(3), list(r0, s0))"), "list(list(r0, s0), list(r1, s2), list(r2, s1))");
+        assert_eq!(
+            s("group_subgroups(cyclic_group(6))"),
+            "list(list(0), list(0, 3), list(0, 2, 4), list(0, 1, 2, 3, 4, 5))"
+        );
+        assert_eq!(
+            s("group_cosets(cyclic_group(6), list(0, 3))"),
+            "list(list(0, 3), list(1, 4), list(2, 5))"
+        );
+        assert_eq!(
+            s("group_cosets(dihedral_group(3), list(r0, s0))"),
+            "list(list(r0, s0), list(r1, s2), list(r2, s1))"
+        );
         // not a subgroup: unreduced
         assert!(s("group_cosets(cyclic_group(6), list(0, 1))").starts_with("group_cosets(group("));
     }
 
     #[test]
     fn normality() {
-        assert_eq!(s("group_is_normal(dihedral_group(3), list(r0, r1, r2))"), "true");
-        assert_eq!(s("group_is_normal(dihedral_group(3), list(r0, s0))"), "false");
+        assert_eq!(
+            s("group_is_normal(dihedral_group(3), list(r0, r1, r2))"),
+            "true"
+        );
+        assert_eq!(
+            s("group_is_normal(dihedral_group(3), list(r0, s0))"),
+            "false"
+        );
         assert_eq!(s("group_is_normal(cyclic_group(6), list(0, 2, 4))"), "true");
-        assert_eq!(s("group_is_normal(dihedral_group(4), list(r0, r2))"), "true");
+        assert_eq!(
+            s("group_is_normal(dihedral_group(4), list(r0, r2))"),
+            "true"
+        );
     }
 
     #[test]
@@ -849,13 +954,29 @@ mod tests {
         // lexicographic order: 123, 132, 213, 231, 312, 321
         let sign = sign.replace("list(list(1)), list(list(-1)), list(list(-1)), list(list(-1)), list(list(1)), list(list(1))",
             "list(list(1)), list(list(-1)), list(list(-1)), list(list(1)), list(list(1)), list(list(-1))");
-        assert_eq!(s(&format!("representation_is_valid(symmetric_group(3), {sign})")), "true");
-        assert_eq!(s(&format!("group_character({sign})")), "list(1, -1, -1, 1, 1, -1)");
+        assert_eq!(
+            s(&format!(
+                "representation_is_valid(symmetric_group(3), {sign})"
+            )),
+            "true"
+        );
+        assert_eq!(
+            s(&format!("group_character({sign})")),
+            "list(1, -1, -1, 1, 1, -1)"
+        );
         let wrong = "list(list(list(1)), list(list(-1)), list(list(-1)), list(list(-1)), list(list(1)), list(list(1)))";
-        assert_eq!(s(&format!("representation_is_valid(symmetric_group(3), {wrong})")), "false");
+        assert_eq!(
+            s(&format!(
+                "representation_is_valid(symmetric_group(3), {wrong})"
+            )),
+            "false"
+        );
         // the regular representation of Z2 by 2x2 matrices, with a symbolic entry
         let rep = "list(list(list(1, 0), list(0, 1)), list(list(0, 1), list(1, 0)))";
-        assert_eq!(s(&format!("representation_is_valid(cyclic_group(2), {rep})")), "true");
+        assert_eq!(
+            s(&format!("representation_is_valid(cyclic_group(2), {rep})")),
+            "true"
+        );
         assert_eq!(s(&format!("group_character({rep})")), "list(2, 0)");
         let sym = "list(list(list(x, 0), list(0, x)), list(list(1, 0), list(0, 1)))";
         assert_eq!(s(&format!("group_character({sym})")), "list(2*x, 2)");
@@ -863,16 +984,24 @@ mod tests {
 
     #[test]
     fn permutations() {
-        assert_eq!(s("perm_compose(list(2, 3, 1), list(1, 3, 2))"), "list(2, 1, 3)");
+        assert_eq!(
+            s("perm_compose(list(2, 3, 1), list(1, 3, 2))"),
+            "list(2, 1, 3)"
+        );
         assert_eq!(s("perm_inverse(list(2, 3, 1))"), "list(3, 1, 2)");
         assert_eq!(s("perm_order(list(2, 1, 4, 5, 3))"), "6");
-        assert_eq!(s("perm_cycles(list(2, 1, 4, 5, 3, 6))"), "list(list(1, 2), list(3, 4, 5))");
+        assert_eq!(
+            s("perm_cycles(list(2, 1, 4, 5, 3, 6))"),
+            "list(list(1, 2), list(3, 4, 5))"
+        );
         assert_eq!(s("perm_cycles(list(1, 2))"), "list()");
         assert_eq!(s("perm_sign(list(2, 3, 1))"), "1");
         assert_eq!(s("perm_sign(list(2, 1, 3))"), "-1");
         // not permutations
         assert_eq!(s("perm_order(list(1, 1))"), "perm_order(list(1, 1))");
-        assert_eq!(s("perm_compose(list(1, 2), list(1, 2, 3))"), "perm_compose(list(1, 2), list(1, 2, 3))");
+        assert_eq!(
+            s("perm_compose(list(1, 2), list(1, 2, 3))"),
+            "perm_compose(list(1, 2), list(1, 2, 3))"
+        );
     }
 }
-

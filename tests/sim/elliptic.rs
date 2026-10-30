@@ -1,12 +1,27 @@
 //! Carlson `R_C`/`R_J`, elliptic integrals of the third kind, Jacobi-function integrals.
 
-use rssn::kernels::special_ext::{carlson_rd, elliptic_k};
+use rssn::kernels::special_ext::carlson_rd;
+use rssn::kernels::special_ext::elliptic_k;
 use rssn::sim::elliptic::*;
 
 /// Composite Gauss-Legendre (8 nodes) quadrature of `f` on `[0, b]` with `n` panels.
-fn quad<F: Fn(f64) -> f64>(f: F, b: f64, n: usize) -> f64 {
-    const X: [f64; 4] = [0.183_434_642_495_649_8, 0.525_532_409_916_329, 0.796_666_477_413_626_7, 0.960_289_856_497_536_3];
-    const W: [f64; 4] = [0.362_683_783_378_362, 0.313_706_645_877_887_3, 0.222_381_034_453_374_5, 0.101_228_536_290_376_26];
+fn quad<F: Fn(f64) -> f64>(
+    f: F,
+    b: f64,
+    n: usize,
+) -> f64 {
+    const X: [f64; 4] = [
+        0.183_434_642_495_649_8,
+        0.525_532_409_916_329,
+        0.796_666_477_413_626_7,
+        0.960_289_856_497_536_3,
+    ];
+    const W: [f64; 4] = [
+        0.362_683_783_378_362,
+        0.313_706_645_877_887_3,
+        0.222_381_034_453_374_5,
+        0.101_228_536_290_376_26,
+    ];
     let h = b / n as f64;
     let mut s = 0.0;
     for i in 0..n {
@@ -20,7 +35,12 @@ fn quad<F: Fn(f64) -> f64>(f: F, b: f64, n: usize) -> f64 {
 
 #[test]
 fn carlson_rj_reduces_to_rd_and_rc() {
-    for &(x, y, z) in &[(0.3_f64, 1.2, 2.5), (1.0, 2.0, 3.0), (0.0, 1.0, 4.0), (5.0, 0.1, 0.7)] {
+    for &(x, y, z) in &[
+        (0.3_f64, 1.2, 2.5),
+        (1.0, 2.0, 3.0),
+        (0.0, 1.0, 4.0),
+        (5.0, 0.1, 0.7),
+    ] {
         let rj = carlson_rj(x, y, z, z);
         let rd = carlson_rd(x, y, z);
         assert!((rj - rd).abs() < 1e-13 * rd.abs(), "{rj} {rd}");
@@ -39,10 +59,15 @@ fn incomplete_third_kind_matches_quadrature() {
     for &m in &[0.0_f64, 0.3, 0.9, 0.999] {
         for &n in &[-3.0_f64, -0.5, 0.0, 0.4, 0.8] {
             for &phi in &[0.2_f64, 1.0, 1.5, 2.5, 4.0, 7.5, -3.3] {
-                let f = |t: f64| 1.0 / ((1.0 - n * t.sin().powi(2)) * (1.0 - m * t.sin().powi(2)).sqrt());
+                let f = |t: f64| {
+                    1.0 / ((1.0 - n * t.sin().powi(2)) * (1.0 - m * t.sin().powi(2)).sqrt())
+                };
                 let exact = phi.signum() * quad(f, phi.abs(), 4000);
                 let v = elliptic_pi(n, phi, m);
-                assert!((v - exact).abs() < 1e-11 * (1.0 + exact.abs()), "n={n} m={m} phi={phi}: {v} vs {exact}");
+                assert!(
+                    (v - exact).abs() < 1e-11 * (1.0 + exact.abs()),
+                    "n={n} m={m} phi={phi}: {v} vs {exact}"
+                );
             }
         }
     }
@@ -68,10 +93,15 @@ fn jacobi_integrals_match_quadrature() {
     for &m in &[0.2_f64, 0.7, 0.95] {
         for &n in &[-1.5_f64, 0.3, 0.9] {
             for &phi in &[0.7_f64, 2.0, 4.5, 8.0] {
-                let g = |t: f64| 1.0 / ((1.0 - n * t.sin().powi(2)).powi(2) * (1.0 - m * t.sin().powi(2)).sqrt());
+                let g = |t: f64| {
+                    1.0 / ((1.0 - n * t.sin().powi(2)).powi(2) * (1.0 - m * t.sin().powi(2)).sqrt())
+                };
                 let exact = quad(g, phi, 6000);
                 let v = jacobi_int_inv_sq(n, phi, m);
-                assert!((v - exact).abs() < 1e-10 * (1.0 + exact.abs()), "n={n} m={m} phi={phi}: {v} vs {exact}");
+                assert!(
+                    (v - exact).abs() < 1e-10 * (1.0 + exact.abs()),
+                    "n={n} m={m} phi={phi}: {v} vs {exact}"
+                );
             }
         }
         for &phi in &[0.7_f64, 2.0, 4.5] {

@@ -43,7 +43,11 @@ fn euler_operator(
         }
         let d = jets.total_multi(cx, partial, &index)?;
         let order: u32 = index.iter().sum();
-        let sign = cx.graph.int(if order.is_multiple_of(2) { 1 } else { -1 });
+        let sign = cx.graph.int(if order.is_multiple_of(2) {
+            1
+        } else {
+            -1
+        });
         terms.push(mul(cx.graph, &[sign, d]));
     }
     let sum = add(cx.graph, &terms);
@@ -121,10 +125,18 @@ fn invert_dx(
     let inv_lambda = cx.graph.node(core::POW, &[lambda, minus_one]);
     let scaled = mul(cx.graph, &[scaled, inv_lambda]);
     let scaled = cx.simplify(scaled);
-    let homotopy = if cx.is_zero(scaled) { cx.graph.int(0) } else { integrate_unit(cx, scaled, lambda)? };
+    let homotopy = if cx.is_zero(scaled) {
+        cx.graph.int(0)
+    } else {
+        integrate_unit(cx, scaled, lambda)?
+    };
     let at_zero = cx.simplify(at_zero);
     let x = jets.vars[x_index];
-    let base = if cx.is_zero(at_zero) { cx.graph.int(0) } else { antiderivative(cx, at_zero, x)? };
+    let base = if cx.is_zero(at_zero) {
+        cx.graph.int(0)
+    } else {
+        antiderivative(cx, at_zero, x)?
+    };
     let flux = add(cx.graph, &[homotopy, base]);
     let flux = cx.simplify(flux);
     // Verify D_x X = R.
@@ -183,15 +195,17 @@ pub(super) fn conservation_laws(
     let mut e_t = vec![0; n];
     e_t[t_index] = 1;
     let ut = jets.get(cx, &e_t);
-    let evolution = crate::rules::ode::coefficients_of(cx.graph, delta, ut).and_then(|parts| match parts.as_slice() {
-        | [c0, c1] if cx.graph.number_of(*c1).is_some_and(|v| !v.is_zero()) => {
-            let minus = cx.graph.int(-1);
-            let inverse = cx.graph.node(core::POW, &[*c1, minus]);
-            let g = mul(cx.graph, &[minus, *c0, inverse]);
-            let g = cx.simplify(g);
-            (!crate::rules::ode::occurs_in(cx.graph, g, ut)).then_some(g)
-        },
-        | _ => None,
+    let evolution = crate::rules::ode::coefficients_of(cx.graph, delta, ut).and_then(|parts| {
+        match parts.as_slice() {
+            | [c0, c1] if cx.graph.number_of(*c1).is_some_and(|v| !v.is_zero()) => {
+                let minus = cx.graph.int(-1);
+                let inverse = cx.graph.node(core::POW, &[*c1, minus]);
+                let g = mul(cx.graph, &[minus, *c0, inverse]);
+                let g = cx.simplify(g);
+                (!crate::rules::ode::occurs_in(cx.graph, g, ut)).then_some(g)
+            },
+            | _ => None,
+        }
     });
     let mut laws = Vec::new();
     for v in solutions {
@@ -207,23 +221,28 @@ pub(super) fn conservation_laws(
         let zeroth = !crate::rules::ode::occurs_in(cx.graph, multiplier, ux)
             && !crate::rules::ode::occurs_in(cx.graph, multiplier, uxx);
         let law = match (evolution, zeroth) {
-            | (Some(g), true) => (|| {
-                let density = antiderivative(cx, multiplier, u0)?;
-                let density = cx.simplify(density);
-                let dt = derivative(cx.graph, density, t)?;
-                let product = mul(cx.graph, &[multiplier, g]);
-                let r = add(cx.graph, &[product, dt]);
-                let minus = cx.graph.int(-1);
-                let r = mul(cx.graph, &[minus, r]);
-                let r = cx.simplify(r);
-                let flux = invert_dx(cx, &mut jets, r, x_index)?;
-                Some(vec![multiplier, density, flux])
-            })()
-            .unwrap_or_else(|| vec![multiplier]),
+            | (Some(g), true) => {
+                (|| {
+                    let density = antiderivative(cx, multiplier, u0)?;
+                    let density = cx.simplify(density);
+                    let dt = derivative(cx.graph, density, t)?;
+                    let product = mul(cx.graph, &[multiplier, g]);
+                    let r = add(cx.graph, &[product, dt]);
+                    let minus = cx.graph.int(-1);
+                    let r = mul(cx.graph, &[minus, r]);
+                    let r = cx.simplify(r);
+                    let flux = invert_dx(cx, &mut jets, r, x_index)?;
+                    Some(vec![multiplier, density, flux])
+                })()
+                .unwrap_or_else(|| vec![multiplier])
+            },
             | _ => vec![multiplier],
         };
         // Back from jets to derivatives of u.
-        let restored: Vec<NodeId> = law.into_iter().map(|e| from_jets(cx, p, &jets, e)).collect();
+        let restored: Vec<NodeId> = law
+            .into_iter()
+            .map(|e| from_jets(cx, p, &jets, e))
+            .collect();
         laws.push(cx.graph.node(core::LIST, &restored));
     }
     Some(cx.graph.node(core::LIST, &laws))

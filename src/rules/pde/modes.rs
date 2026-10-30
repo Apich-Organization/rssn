@@ -81,7 +81,14 @@ impl Family {
         forced: i64,
         norm: Option<NodeId>,
     ) -> Self {
-        Self { mode, eigen, first, forced, norm, cylinder: None }
+        Self {
+            mode,
+            eigen,
+            first,
+            forced,
+            norm,
+            cylinder: None,
+        }
     }
 }
 
@@ -93,7 +100,9 @@ pub(super) fn exact_value(
     if !cx.graph.free_symbols(cx.graph.find(node)).is_empty() {
         return None;
     }
-    cx.graph.eval(node, &Env::numeric(0.0)).filter(|v| v.is_finite())
+    cx.graph
+        .eval(node, &Env::numeric(0.0))
+        .filter(|v| v.is_finite())
 }
 
 /// The kind of condition `p u + q u'`.
@@ -129,7 +138,10 @@ fn special_modes(
     cx: &Cx<'_>,
     ends: [NodeId; 5],
 ) -> Option<(bool, u32)> {
-    let v: Vec<f64> = ends.iter().map(|&e| exact_value(cx, e)).collect::<Option<_>>()?;
+    let v: Vec<f64> = ends
+        .iter()
+        .map(|&e| exact_value(cx, e))
+        .collect::<Option<_>>()?;
     let (p0, q0, p1, q1, l) = (v[0], v[1], v[2], v[3], v[4]);
     let determinant = p0 * (p1 * l + q1) - q0 * p1;
     let scale = (p0.abs() + q0.abs()) * (p1.abs() * l + q1.abs()) + (q0 * p1).abs();
@@ -151,7 +163,11 @@ pub(super) fn robin_families(
     let specials = special_modes(cx, [p0, q0, p1, q1, l]);
     let (zero_mode, negatives) = specials.unwrap_or((false, 0));
     let total = i64::from(zero_mode) + i64::from(negatives);
-    let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+    let literal = if numeric {
+        cx.graph.number_of(n).and_then(Number::to_i64)
+    } else {
+        None
+    };
     let chosen = literal.filter(|&m| m < total).map(|m| {
         if zero_mode && m == 0 {
             Special::Zero
@@ -166,7 +182,12 @@ pub(super) fn robin_families(
                 // X = q₀ - p₀ ξ.
                 let pxi = mul(cx.graph, &[p0, xi]);
                 let mode = sub(cx.graph, q0, pxi);
-                let (q2, p2, l2, l3) = (powi(cx.graph, q0, 2), powi(cx.graph, p0, 2), powi(cx.graph, l, 2), powi(cx.graph, l, 3));
+                let (q2, p2, l2, l3) = (
+                    powi(cx.graph, q0, 2),
+                    powi(cx.graph, p0, 2),
+                    powi(cx.graph, l, 2),
+                    powi(cx.graph, l, 3),
+                );
                 let third = fraction(cx, 1, 3)?;
                 let a = mul(cx.graph, &[q2, l]);
                 let b = mul(cx.graph, &[q0, p0, l2]);
@@ -258,7 +279,11 @@ pub(super) fn robin_families(
     let e = cx.simplify(e);
     // ∫_0^L X² = (q₀²k² + p₀²) L/2 + (q₀²k² - p₀²) sin(2kL)/(4k) - q₀ p₀ sin²(kL).
     let norm = {
-        let (q2, p2, k2) = (powi(cx.graph, q0, 2), powi(cx.graph, p0, 2), powi(cx.graph, k, 2));
+        let (q2, p2, k2) = (
+            powi(cx.graph, q0, 2),
+            powi(cx.graph, p0, 2),
+            powi(cx.graph, k, 2),
+        );
         let q2k2 = mul(cx.graph, &[q2, k2]);
         let plus = add(cx.graph, &[q2k2, p2]);
         let minus = {
@@ -288,7 +313,11 @@ pub(super) fn robin_families(
         let third_term = neg(cx.graph, cross);
         add(cx.graph, &[first_term, second_term, third_term])
     };
-    let (first, forced) = if total > 0 { (0, total) } else { (1, 0) };
+    let (first, forced) = if total > 0 {
+        (0, total)
+    } else {
+        (1, 0)
+    };
     Some(vec![Family::new(mode, e, first, forced, Some(norm))])
 }
 
@@ -325,7 +354,13 @@ pub(super) fn radial_non_positive(
         let e = add(cx.graph, &[two_nu, two]);
         let top = pow(cx.graph, radius, e);
         let norm = div(cx, top, e);
-        return Some(Family::new(cx.simplify(mode), zero, 0, 1, Some(cx.simplify(norm))));
+        return Some(Family::new(
+            cx.simplify(mode),
+            zero,
+            0,
+            1,
+            Some(cx.simplify(norm)),
+        ));
     }
     let root = call(cx, "bessel_neg_root", &[nu, shifted])?;
     let inverse_radius = powi(cx.graph, radius, -1);
@@ -337,7 +372,10 @@ pub(super) fn radial_non_positive(
     let eigen = neg(cx.graph, k2);
     // ∫ r I_ν(κ r)² dr = R²/2 [(1 + ν²/z²) I_ν(z)² - I_ν'(z)²], z = κ R.
     let up = add(cx.graph, &[nu, one]);
-    let (i_z, i_up) = (call(cx, "besseli", &[nu, root])?, call(cx, "besseli", &[up, root])?);
+    let (i_z, i_up) = (
+        call(cx, "besseli", &[nu, root])?,
+        call(cx, "besseli", &[up, root])?,
+    );
     let ratio = div(cx, nu, root);
     let slope = {
         let t = mul(cx.graph, &[ratio, i_z]);
@@ -357,7 +395,13 @@ pub(super) fn radial_non_positive(
     let half = fraction(cx, 1, 2)?;
     let r2 = powi(cx.graph, radius, 2);
     let norm = mul(cx.graph, &[half, r2, bracket]);
-    Some(Family::new(cx.simplify(mode), cx.simplify(eigen), 0, 1, Some(norm)))
+    Some(Family::new(
+        cx.simplify(mode),
+        cx.simplify(eigen),
+        0,
+        1,
+        Some(norm),
+    ))
 }
 
 // ----------------------------------------------------------------------
@@ -388,7 +432,15 @@ fn bessel(
     order: NodeId,
     z: NodeId,
 ) -> Option<NodeId> {
-    call(cx, if second { "bessely" } else { "besselj" }, &[order, z])
+    call(
+        cx,
+        if second {
+            "bessely"
+        } else {
+            "besselj"
+        },
+        &[order, z],
+    )
 }
 
 /// `Z_ν'(z) = -Z_{ν+1}(z) + (ν/z) Z_ν(z)`.
@@ -429,7 +481,10 @@ fn annulus_special_modes(
     let [pa, qa, a, pb, qb, b] = <[f64; 6]>::try_from(v).ok()?;
     let probe = |order: f64| {
         let all = [order, pa, qa, a, pb, qb, b];
-        (super::numeric::annulus_has_zero(all), super::numeric::annulus_neg_count(all))
+        (
+            super::numeric::annulus_has_zero(all),
+            super::numeric::annulus_neg_count(all),
+        )
     };
     match exact_value(cx, nu) {
         | Some(order) => Some(probe(order)),
@@ -524,13 +579,30 @@ fn annulus_negative_mode(
     let kappa = call(cx, "annulus_neg_root", &[nu, pa, qa, a, pb, qb, b, index])?;
     let one = cx.graph.int(1);
     let nu_up = add(cx.graph, &[nu, one]);
-    let modified = |cx: &mut Cx<'_>, second: bool, order: NodeId, z: NodeId| call(cx, if second { "besselk" } else { "besseli" }, &[order, z]);
+    let modified = |cx: &mut Cx<'_>, second: bool, order: NodeId, z: NodeId| {
+        call(
+            cx,
+            if second {
+                "besselk"
+            } else {
+                "besseli"
+            },
+            &[order, z],
+        )
+    };
     // `Z'(z)`: `I_ν' = I_{ν+1} + (ν/z) I_ν`, `K_ν' = -K_{ν+1} + (ν/z) K_ν`.
     let slope = |cx: &mut Cx<'_>, second: bool, z: NodeId| -> Option<NodeId> {
-        let (z_nu, z_up) = (modified(cx, second, nu, z)?, modified(cx, second, nu_up, z)?);
+        let (z_nu, z_up) = (
+            modified(cx, second, nu, z)?,
+            modified(cx, second, nu_up, z)?,
+        );
         let ratio = div(cx, nu, z);
         let a_term = mul(cx.graph, &[ratio, z_nu]);
-        let b_term = if second { neg(cx.graph, z_up) } else { z_up };
+        let b_term = if second {
+            neg(cx.graph, z_up)
+        } else {
+            z_up
+        };
         Some(add(cx.graph, &[a_term, b_term]))
     };
     // `p Z(κ a) + q κ Z'(κ a)`.
@@ -586,7 +658,13 @@ fn annulus_negative_mode(
     let norm = sub(cx.graph, at_b, at_a);
     let k2 = powi(cx.graph, kappa, 2);
     let eigen = neg(cx.graph, k2);
-    Some(Family::new(cx.simplify(mode), cx.simplify(eigen), 0, m, Some(norm)))
+    Some(Family::new(
+        cx.simplify(mode),
+        cx.simplify(eigen),
+        0,
+        m,
+        Some(norm),
+    ))
 }
 
 /// The modes of an annulus `a < r < b` for the Bessel order `nu` (the
@@ -616,12 +694,28 @@ pub(super) fn annulus_families(
             cx.simplify(p)
         };
         let (pa, pb) = (shift(cx, end_a, a), shift(cx, end_b, b));
-        let make = |cx: &mut Cx<'_>, end: &End, point: NodeId, p: NodeId| End { kind: kind_of(cx, p, end.q), point, p, q: end.q, value: zero };
+        let make = |cx: &mut Cx<'_>, end: &End, point: NodeId, p: NodeId| {
+            End {
+                kind: kind_of(cx, p, end.q),
+                point,
+                p,
+                q: end.q,
+                value: zero,
+            }
+        };
         let left = make(cx, end_a, a, pa);
         let right = make(cx, end_b, b, pb);
         let length = sub(cx.graph, b, a);
         let length = cx.simplify(length);
-        let iv = Interval { var: r, start: a, stop: b, length, left, right, periodic: false };
+        let iv = Interval {
+            var: r,
+            start: a,
+            stop: b,
+            length,
+            left,
+            right,
+            periodic: false,
+        };
         let families = interval_families(cx, &iv, n, numeric)?;
         let mut out = Vec::new();
         for f in families {
@@ -631,7 +725,11 @@ pub(super) fn annulus_families(
         return Some(out);
     }
     let half = fraction(cx, 1, 2)?;
-    let nu = if sphere { add(cx.graph, &[order, half]) } else { order };
+    let nu = if sphere {
+        add(cx.graph, &[order, half])
+    } else {
+        order
+    };
     let nu = cx.simplify(nu);
     let neumann_like = is_zero_number(cx.graph, end_a.p) && is_zero_number(cx.graph, end_b.p);
     let constant_mode = neumann_like && !sphere && order_value.is_some_and(|v| v.abs() < 1e-12);
@@ -642,17 +740,25 @@ pub(super) fn annulus_families(
         let norm = mul(cx.graph, &[half, gap]);
         return Some(vec![Family::new(one, zero, 0, 1, Some(cx.simplify(norm)))]);
     }
-    let (pa, pb) = (shifted_p(cx, end_a, a, sphere), shifted_p(cx, end_b, b, sphere));
+    let (pa, pb) = (
+        shifted_p(cx, end_a, a, sphere),
+        shifted_p(cx, end_b, b, sphere),
+    );
     let ends = [pa, end_a.q, a, pb, end_b.q, b];
     let robin = end_a.kind == Kind::Robin || end_b.kind == Kind::Robin;
     let (zero_mode, negatives) = annulus_special_modes(cx, nu, ends, robin, sphere)?;
     let specials = i64::from(negatives) + i64::from(zero_mode);
-    let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+    let literal = if numeric {
+        cx.graph.number_of(n).and_then(Number::to_i64)
+    } else {
+        None
+    };
     if let Some(m) = literal.filter(|&m| m < specials) {
         if zero_mode && m == 0 {
             return annulus_zero_mode(cx, r, nu, ends, sphere).map(|f| vec![f]);
         }
-        return annulus_negative_mode(cx, r, nu, ends, sphere, m + 1 - i64::from(zero_mode)).map(|f| vec![f]);
+        return annulus_negative_mode(cx, r, nu, ends, sphere, m + 1 - i64::from(zero_mode))
+            .map(|f| vec![f]);
     }
     // Positive roots are numbered from 1; the indices below `specials` are
     // the modes with a zero or negative eigenvalue.
@@ -663,7 +769,11 @@ pub(super) fn annulus_families(
     } else {
         n
     };
-    let k = call(cx, "annulus_root", &[nu, pa, end_a.q, a, pb, end_b.q, b, root_index])?;
+    let k = call(
+        cx,
+        "annulus_root",
+        &[nu, pa, end_a.q, a, pb, end_b.q, b, root_index],
+    )?;
     let eigen = powi(cx.graph, k, 2);
     let ka = mul(cx.graph, &[k, a]);
     // A = (p + q ν/a) Y_ν(ka) - q k Y_{ν+1}(ka), B likewise with J.
@@ -699,7 +809,10 @@ pub(super) fn annulus_families(
     let at = |cx: &mut Cx<'_>, point: NodeId| -> Option<NodeId> {
         let z = mul(cx.graph, &[k, point]);
         let (j, y) = (bessel(cx, false, nu, z)?, bessel(cx, true, nu, z)?);
-        let (jp, yp) = (bessel_slope(cx, false, nu, z)?, bessel_slope(cx, true, nu, z)?);
+        let (jp, yp) = (
+            bessel_slope(cx, false, nu, z)?,
+            bessel_slope(cx, true, nu, z)?,
+        );
         let f = {
             let (x1, x2) = (mul(cx.graph, &[coef_a, j]), mul(cx.graph, &[coef_b, y]));
             sub(cx.graph, x1, x2)
@@ -724,9 +837,25 @@ pub(super) fn annulus_families(
     let gap = sub(cx.graph, at_b, at_a);
     let norm = mul(cx.graph, &[half, gap]);
     let first = i64::from(!constant_mode && specials == 0);
-    let forced = if specials > 0 { specials } else { i64::from(constant_mode) };
-    let cylinder = Cylinder { nu, kappa: k, power2, parts: vec![(coef_a, false), (minus_b, true)] };
-    Some(vec![Family { mode, eigen, first, forced, norm: Some(norm), cylinder: Some(cylinder) }])
+    let forced = if specials > 0 {
+        specials
+    } else {
+        i64::from(constant_mode)
+    };
+    let cylinder = Cylinder {
+        nu,
+        kappa: k,
+        power2,
+        parts: vec![(coef_a, false), (minus_b, true)],
+    };
+    Some(vec![Family {
+        mode,
+        eigen,
+        first,
+        forced,
+        norm: Some(norm),
+        cylinder: Some(cylinder),
+    }])
 }
 
 // ----------------------------------------------------------------------
@@ -814,17 +943,32 @@ pub(super) fn legendre_integral(
     var: NodeId,
 ) -> Option<NodeId> {
     let mut gens = Gens::default();
-    let poly = from_term(cx.graph, &mut gens, integrand, Limits { terms: 4096, exponent: 40 })?;
+    let poly = from_term(
+        cx.graph,
+        &mut gens,
+        integrand,
+        Limits {
+            terms: 4096,
+            exponent: 40,
+        },
+    )?;
     let gc = gens.find(cx.graph, c);
     let gs = s.and_then(|s| gens.find(cx.graph, s));
     let mut result = Poly::zero();
     for (mono, coeff) in poly.terms() {
-        let exponent_of = |g: Option<u32>| g.and_then(|g| mono.iter().find(|&&(h, _)| h == g)).map_or(0, |&(_, e)| e);
+        let exponent_of = |g: Option<u32>| {
+            g.and_then(|g| mono.iter().find(|&&(h, _)| h == g))
+                .map_or(0, |&(_, e)| e)
+        };
         let (ec, es) = (exponent_of(gc), exponent_of(gs));
         if es % 2 != 0 {
             return None;
         }
-        let rest: Vec<(u32, u32)> = mono.iter().copied().filter(|&(h, _)| Some(h) != gc && Some(h) != gs).collect();
+        let rest: Vec<(u32, u32)> = mono
+            .iter()
+            .copied()
+            .filter(|&(h, _)| Some(h) != gc && Some(h) != gs)
+            .collect();
         let half = es / 2;
         let mut number = Number::from(0);
         for j in 0..=half {
@@ -855,7 +999,11 @@ fn halves(
     cx: &mut Cx<'_>,
     v2: i64,
 ) -> Option<NodeId> {
-    if v2 % 2 == 0 { Some(cx.graph.int(v2 / 2)) } else { fraction(cx, v2, 2) }
+    if v2 % 2 == 0 {
+        Some(cx.graph.int(v2 / 2))
+    } else {
+        fraction(cx, v2, 2)
+    }
 }
 
 /// An antiderivative `G(z)` of `z^μ Z_ν(z)` (`μ = mu2/2`, `ν = nu2/2`) in
@@ -897,7 +1045,10 @@ fn struve_antiderivative(
         if mu == 0 {
             let (z0, z1) = (order(cx, 0)?, order(cx, 1)?);
             let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
-            let (h0, h1) = (call(cx, "struve_h", &[zero, z])?, call(cx, "struve_h", &[one, z])?);
+            let (h0, h1) = (
+                call(cx, "struve_h", &[zero, z])?,
+                call(cx, "struve_h", &[one, z])?,
+            );
             let pi = super::util::pi(cx)?;
             let half = fraction(cx, 1, 2)?;
             let a = mul(cx.graph, &[z, z0]);
@@ -1015,7 +1166,15 @@ pub(super) fn cylinder_integral(
     // h as a polynomial in r.
     let coefficients: Vec<NodeId> = if cx.graph.depends_on(cx.graph.find(h), r_symbol) {
         let mut gens = Gens::default();
-        let poly = from_term(cx.graph, &mut gens, h, Limits { terms: 4096, exponent: 40 })?;
+        let poly = from_term(
+            cx.graph,
+            &mut gens,
+            h,
+            Limits {
+                terms: 4096,
+                exponent: 40,
+            },
+        )?;
         let g = gens.find(cx.graph, r)?;
         let parts = poly.coefficients_in(g);
         let mut out = Vec::new();
@@ -1108,7 +1267,11 @@ pub(super) fn exterior_profile(
             pow(cx.graph, r, e)
         },
         | (_, false) => {
-            let kk = if sign > 0 { wavenumber2 } else { neg(cx.graph, wavenumber2) };
+            let kk = if sign > 0 {
+                wavenumber2
+            } else {
+                neg(cx.graph, wavenumber2)
+            };
             let k = sqrt(cx, kk)?;
             let kr = mul(cx.graph, &[k, r]);
             if sign > 0 {
@@ -1123,7 +1286,11 @@ pub(super) fn exterior_profile(
         | (_, true) => {
             let l = literal?;
             let l = i64::from(l as i32);
-            let kk = if sign > 0 { wavenumber2 } else { neg(cx.graph, wavenumber2) };
+            let kk = if sign > 0 {
+                wavenumber2
+            } else {
+                neg(cx.graph, wavenumber2)
+            };
             let k = sqrt(cx, kk)?;
             let kr = mul(cx.graph, &[k, r]);
             let two_kr = {
@@ -1136,11 +1303,17 @@ pub(super) fn exterior_profile(
             for m in 0..=l {
                 let mut ratio = Number::from(1);
                 for q in 1..=m {
-                    ratio = ratio.mul(&Number::fraction(l + q, q)?).mul(&Number::fraction(l - q + 1, 1)?);
+                    ratio = ratio
+                        .mul(&Number::fraction(l + q, q)?)
+                        .mul(&Number::fraction(l - q + 1, 1)?);
                 }
                 let coefficient = cx.graph.num(ratio);
                 let inverse = powi(cx.graph, two_kr, -m);
-                let phase = if sign > 0 { powi(cx.graph, i, m) } else { cx.graph.int(1) };
+                let phase = if sign > 0 {
+                    powi(cx.graph, i, m)
+                } else {
+                    cx.graph.int(1)
+                };
                 series.push(mul(cx.graph, &[coefficient, phase, inverse]));
             }
             let sum = add(cx.graph, &series);

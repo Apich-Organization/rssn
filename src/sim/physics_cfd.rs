@@ -1034,9 +1034,12 @@ pub fn lid_driven_cavity_mac(
     t_end: f64,
     dt: f64,
 ) -> Result<crate::sim::ns_mac::NsSolver, String> {
-    use crate::sim::boundary::{Face, FluidBoundary, FluidFaceBcs};
+    use crate::sim::boundary::Face;
+    use crate::sim::boundary::FluidBoundary;
+    use crate::sim::boundary::FluidFaceBcs;
     let mut cfg = crate::sim::ns_mac::NsConfig::new(&vec![n; dim], &vec![1.0; dim], 1.0 / re)?;
-    cfg.bcs = FluidFaceBcs::uniform(&FluidBoundary::wall()).with(Face::YMax, FluidBoundary::moving_wall([1.0, 0.0, 0.0]));
+    cfg.bcs = FluidFaceBcs::uniform(&FluidBoundary::wall())
+        .with(Face::YMax, FluidBoundary::moving_wall([1.0, 0.0, 0.0]));
     let mut s = crate::sim::ns_mac::NsSolver::new(cfg, dt, &|_| [0.0; 3])?;
     s.run((t_end / dt).round() as usize)?;
     Ok(s)

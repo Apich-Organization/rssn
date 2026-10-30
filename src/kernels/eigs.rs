@@ -22,7 +22,10 @@
 
 use num_complex::Complex64;
 
-use crate::kernels::dense::{self, Mat};
+use crate::kernels::dense::Mat;
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::random::Rng;
 
 /// Which part of the spectrum is wanted.
@@ -55,7 +58,12 @@ pub struct EigsOptions {
 
 impl Default for EigsOptions {
     fn default() -> Self {
-        Self { ncv: 0, tol: 1e-10, max_restarts: 500, seed: 0x5eed }
+        Self {
+            ncv: 0,
+            tol: 1e-10,
+            max_restarts: 500,
+            seed: 0x5eed,
+        }
     }
 }
 
@@ -87,7 +95,10 @@ pub struct EigsResult {
     pub matvecs: usize,
 }
 
-fn dot(a: &[f64], b: &[f64]) -> f64 {
+fn dot(
+    a: &[f64],
+    b: &[f64],
+) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
 
@@ -97,7 +108,11 @@ fn nrm(a: &[f64]) -> f64 {
 
 /// Orthogonalises `w` against `v[..cnt]` (classical Gram-Schmidt twice) and
 /// returns the coefficients.
-fn orthogonalise(w: &mut [f64], v: &[Vec<f64>], cnt: usize) -> Vec<f64> {
+fn orthogonalise(
+    w: &mut [f64],
+    v: &[Vec<f64>],
+    cnt: usize,
+) -> Vec<f64> {
     let mut h = vec![0.0; cnt];
     for _ in 0..2 {
         for i in 0..cnt {
@@ -111,7 +126,10 @@ fn orthogonalise(w: &mut [f64], v: &[Vec<f64>], cnt: usize) -> Vec<f64> {
     h
 }
 
-fn random_unit(n: usize, seed: u64) -> Vec<f64> {
+fn random_unit(
+    n: usize,
+    seed: u64,
+) -> Vec<f64> {
     let mut rng = Rng::new(seed);
     let mut v: Vec<f64> = (0..n).map(|_| rng.normal()).collect();
     let s = nrm(&v);
@@ -174,20 +192,26 @@ pub fn arnoldi<A: Fn(&[f64], &mut [f64])>(
     (v, h, beta)
 }
 
-pub(crate) fn key_of(which: Which, v: (f64, f64)) -> f64 {
+pub(crate) fn key_of(
+    which: Which,
+    v: (f64, f64),
+) -> f64 {
     // smaller key = more wanted
     match which {
-        Which::LargestMagnitude => -v.0.hypot(v.1),
-        Which::SmallestMagnitude => v.0.hypot(v.1),
-        Which::LargestReal => -v.0,
-        Which::SmallestReal => v.0,
-        Which::LargestImag => -v.1.abs(),
+        | Which::LargestMagnitude => -v.0.hypot(v.1),
+        | Which::SmallestMagnitude => v.0.hypot(v.1),
+        | Which::LargestReal => -v.0,
+        | Which::SmallestReal => v.0,
+        | Which::LargestImag => -v.1.abs(),
     }
 }
 
 /// Unit-norm eigenvector of the small matrix `h` for eigenvalue `theta` by
 /// complex inverse iteration.
-fn small_eigvec(h: &Mat, theta: (f64, f64)) -> Vec<Complex64> {
+fn small_eigvec(
+    h: &Mat,
+    theta: (f64, f64),
+) -> Vec<Complex64> {
     let n = h.rows;
     let scale = 1.0 + theta.0.hypot(theta.1);
     let shift = Complex64::new(theta.0 + 1e-10 * scale, theta.1 + 1e-10 * scale * 0.0);
@@ -221,7 +245,9 @@ fn small_eigvec(h: &Mat, theta: (f64, f64)) -> Vec<Complex64> {
             }
         }
     }
-    let mut x: Vec<Complex64> = (0..n).map(|i| Complex64::new(1.0 + 0.1 * i as f64, 0.3)).collect();
+    let mut x: Vec<Complex64> = (0..n)
+        .map(|i| Complex64::new(1.0 + 0.1 * i as f64, 0.3))
+        .collect();
     for _ in 0..3 {
         let mut y: Vec<Complex64> = piv.iter().map(|&p| x[p]).collect();
         for i in 0..n {
@@ -259,7 +285,13 @@ pub fn eigs_sym<A: Fn(&[f64], &mut [f64])>(
     if k == 0 || k > n {
         return Err(EigsError::Invalid);
     }
-    let m = (if opts.ncv == 0 { (2 * k + 1).max(20) } else { opts.ncv }).max(k + 1).min(n);
+    let m = (if opts.ncv == 0 {
+        (2 * k + 1).max(20)
+    } else {
+        opts.ncv
+    })
+    .max(k + 1)
+    .min(n);
     let mut v: Vec<Vec<f64>> = vec![random_unit(n, opts.seed)];
     // projected matrix T = V^T A V (symmetric), entries filled column by column
     let mut t = Mat::zeros(m, m);
@@ -382,7 +414,13 @@ pub fn eigs<A: Fn(&[f64], &mut [f64])>(
     if k == 0 || k > n {
         return Err(EigsError::Invalid);
     }
-    let m = (if opts.ncv == 0 { (2 * k + 2).max(24) } else { opts.ncv }).max(k + 2).min(n);
+    let m = (if opts.ncv == 0 {
+        (2 * k + 2).max(24)
+    } else {
+        opts.ncv
+    })
+    .max(k + 2)
+    .min(n);
     let mut matvecs = 0;
     let mut restarts = 0;
     let mut w = vec![0.0; n];
@@ -443,8 +481,9 @@ pub fn eigs<A: Fn(&[f64], &mut [f64])>(
             res.push(beta * y[m - 1].norm());
             vecs.push(y);
         }
-        let conv_count =
-            (0..k).filter(|&q| res[q] <= opts.tol * ritz[order[q]].0.hypot(ritz[order[q]].1).max(1e-12)).count();
+        let conv_count = (0..k)
+            .filter(|&q| res[q] <= opts.tol * ritz[order[q]].0.hypot(ritz[order[q]].1).max(1e-12))
+            .count();
         let all_conv = conv_count == k;
         if all_conv || restarts >= opts.max_restarts || m >= n {
             let mut out = EigsResult {
@@ -527,7 +566,12 @@ pub fn eigs<A: Fn(&[f64], &mut [f64])>(
                 for a in 0..m {
                     for b in 0..m {
                         let id = if a == b { 1.0 } else { 0.0 };
-                        mm.set(a, b, h2.at(a, b) - 2.0 * mu_re * hh.at(a, b) + (mu_re * mu_re + mu_im * mu_im) * id);
+                        mm.set(
+                            a,
+                            b,
+                            h2.at(a, b) - 2.0 * mu_re * hh.at(a, b)
+                                + (mu_re * mu_re + mu_im * mu_im) * id,
+                        );
                     }
                 }
             } else {
@@ -538,7 +582,10 @@ pub fn eigs<A: Fn(&[f64], &mut [f64])>(
             }
             let (q, _) = dense::qr(&mm);
             let qt = q.transpose();
-            hh = qt.matmul(&hh).and_then(|x| x.matmul(&q)).map_err(|_| EigsError::Dense)?;
+            hh = qt
+                .matmul(&hh)
+                .and_then(|x| x.matmul(&q))
+                .map_err(|_| EigsError::Dense)?;
             q_tot = q_tot.matmul(&q).map_err(|_| EigsError::Dense)?;
             for a in 2..m {
                 for b in 0..a - 1 {

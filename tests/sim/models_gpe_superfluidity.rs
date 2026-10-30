@@ -116,8 +116,8 @@ fn vortex_scenario_writes_the_density_file() {
     // The .npy output needs the `npy` feature; without it the call reports an error.
     if cfg!(feature = "npy") {
         res.unwrap_or_else(|e| panic!("{e}"));
-        let meta = std::fs::metadata(dir.join("gpe_vortex_state.npy"))
-            .unwrap_or_else(|e| panic!("{e}"));
+        let meta =
+            std::fs::metadata(dir.join("gpe_vortex_state.npy")).unwrap_or_else(|e| panic!("{e}"));
         assert!(meta.len() > 128 * 128 * 8);
     } else {
         assert!(res.is_err());

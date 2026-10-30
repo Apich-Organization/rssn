@@ -78,17 +78,16 @@ use std::collections::HashMap;
 
 use num_complex::Complex64;
 
+use super::V;
 use super::apply;
 use super::def;
-use super::groups::build_group;
 use super::group_theory::Tab;
+use super::groups::build_group;
 use super::items;
 use super::matrix;
 use super::prod;
 use super::representations::character_table;
 use super::sum;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::ClassId;
 use crate::graph::Cx;
@@ -96,6 +95,7 @@ use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 pub(crate) type M3 = [[f64; 3]; 3];
 
@@ -131,7 +131,8 @@ fn trace(a: &M3) -> f64 {
 }
 
 fn det(a: &M3) -> f64 {
-    a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+    a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+        - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
         + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
 }
 
@@ -162,7 +163,11 @@ fn cross(
     a: [f64; 3],
     b: [f64; 3],
 ) -> [f64; 3] {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
 
 /// The rotation by `theta` about the axis `u` (Rodrigues).
@@ -395,12 +400,26 @@ fn classify(m: &M3) -> Kind {
     }
     let axis = if PI - theta < 1e-6 {
         // r = 2 u u^T - I
-        let diag = [(r[0][0] + 1.0) / 2.0, (r[1][1] + 1.0) / 2.0, (r[2][2] + 1.0) / 2.0];
-        let i = (0..3).max_by(|&a, &b| diag[a].total_cmp(&diag[b])).unwrap_or(0);
-        let col = [(r[0][i] + ID3[0][i]) / 2.0, (r[1][i] + ID3[1][i]) / 2.0, (r[2][i] + ID3[2][i]) / 2.0];
+        let diag = [
+            (r[0][0] + 1.0) / 2.0,
+            (r[1][1] + 1.0) / 2.0,
+            (r[2][2] + 1.0) / 2.0,
+        ];
+        let i = (0..3)
+            .max_by(|&a, &b| diag[a].total_cmp(&diag[b]))
+            .unwrap_or(0);
+        let col = [
+            (r[0][i] + ID3[0][i]) / 2.0,
+            (r[1][i] + ID3[1][i]) / 2.0,
+            (r[2][i] + ID3[2][i]) / 2.0,
+        ];
         canonical_axis(unit(col))
     } else {
-        canonical_axis(unit([r[2][1] - r[1][2], r[0][2] - r[2][0], r[1][0] - r[0][1]]))
+        canonical_axis(unit([
+            r[2][1] - r[1][2],
+            r[0][2] - r[2][0],
+            r[1][0] - r[0][1],
+        ]))
     };
     if proper {
         let (n, k) = fraction(theta);
@@ -480,9 +499,11 @@ impl Geo {
         let mut axes: Vec<[f64; 3]> = Vec::new();
         for k in kinds {
             if let Kind::Rot { axis, n, .. } = k
-                && *n == nmax && !axes.iter().any(|&a| parallel(a, *axis)) {
-                    axes.push(*axis);
-                }
+                && *n == nmax
+                && !axes.iter().any(|&a| parallel(a, *axis))
+            {
+                axes.push(*axis);
+            }
         }
         let polyhedral = nmax >= 3 && axes.len() > 1;
         let principal = if nmax == 1 || polyhedral {
@@ -491,12 +512,19 @@ impl Geo {
             Some(axes[0])
         } else {
             // several C2 axes: D2d has an S4 axis, D2 and D2h have none
-            kinds.iter().find_map(|k| match k {
-                | Kind::Imp { axis, n: 4, .. } => Some(*axis),
-                | _ => None,
+            kinds.iter().find_map(|k| {
+                match k {
+                    | Kind::Imp { axis, n: 4, .. } => Some(*axis),
+                    | _ => None,
+                }
             })
         };
-        Self { principal, polyhedral, inversion, nmax }
+        Self {
+            principal,
+            polyhedral,
+            inversion,
+            nmax,
+        }
     }
 
     fn perpendicular(
@@ -554,12 +582,20 @@ fn merged_rows(ct: &super::representations::CharTable) -> Vec<(usize, f64, Vec<f
             out.push((ct.degrees[r], 1.0, ct.z[r].iter().map(|z| z.re).collect()));
         } else {
             let partner = (0..m).find(|&j| {
-                !used[j] && ct.z[j].iter().zip(&ct.z[r]).all(|(a, b)| (a - b.conj()).norm() < 1e-8)
+                !used[j]
+                    && ct.z[j]
+                        .iter()
+                        .zip(&ct.z[r])
+                        .all(|(a, b)| (a - b.conj()).norm() < 1e-8)
             });
             if let Some(j) = partner {
                 used[j] = true;
             }
-            out.push((2 * ct.degrees[r], 2.0, ct.z[r].iter().map(|z| 2.0 * z.re).collect()));
+            out.push((
+                2 * ct.degrees[r],
+                2.0,
+                ct.z[r].iter().map(|z| 2.0 * z.re).collect(),
+            ));
         }
     }
     out
@@ -588,7 +624,8 @@ impl PointGroup {
         });
         let n = mats.len();
         let find = |m: &M3| {
-            mats.iter().position(|x| (0..3).all(|r| (0..3).all(|c| (x[r][c] - m[r][c]).abs() < 2e-2)))
+            mats.iter()
+                .position(|x| (0..3).all(|r| (0..3).all(|c| (x[r][c] - m[r][c]).abs() < 2e-2)))
         };
         let mut table = vec![vec![0; n]; n];
         for i in 0..n {
@@ -610,14 +647,19 @@ impl PointGroup {
             |c: usize| matches!(rep_kind[c], Kind::Mirror { normal } if geo.perpendicular(*normal));
         let perp_classes: Vec<usize> = (0..nclass).filter(|&c| is_perp_c2(c)).collect();
         let vert_classes: Vec<usize> = (0..nclass).filter(|&c| is_vert_mirror(c)).collect();
-        let has_s2n = kinds.iter().any(|k| matches!(k, Kind::Imp { n, .. } if *n == 2 * geo.nmax));
+        let has_s2n = kinds
+            .iter()
+            .any(|k| matches!(k, Kind::Imp { n, .. } if *n == 2 * geo.nmax));
         let has_c4 = kinds.iter().any(|k| matches!(k, Kind::Rot { n: 4, .. }));
-        let class_has = |c: usize, pred: &dyn Fn(&Kind) -> bool| ct.classes[c].iter().any(|&e| pred(&kinds[e]));
+        let class_has =
+            |c: usize, pred: &dyn Fn(&Kind) -> bool| ct.classes[c].iter().any(|&e| pred(&kinds[e]));
         let contains_axis = |c: usize, ax: [f64; 3]| {
-            class_has(c, &|k| match k {
-                | Kind::Rot { axis, .. } => parallel(*axis, ax),
-                | Kind::Mirror { normal } => parallel(*normal, ax),
-                | _ => false,
+            class_has(c, &|k| {
+                match k {
+                    | Kind::Rot { axis, .. } => parallel(*axis, ax),
+                    | Kind::Mirror { normal } => parallel(*normal, ax),
+                    | _ => false,
+                }
             })
         };
 
@@ -625,7 +667,11 @@ impl PointGroup {
         // class is not closed under inversion and comes second.
         let label_power = |n: usize, k: usize, c: usize| {
             let inv = ct.inv_class[c];
-            if inv == c || c < inv { k } else { n - k }
+            if inv == c || c < inv {
+                k
+            } else {
+                n - k
+            }
         };
         // Base labels of the classes.
         let mut base = vec![String::new(); nclass];
@@ -647,7 +693,11 @@ impl PointGroup {
                                 .copied()
                                 .find(|&p| contains_axis(p, [1.0, 0.0, 0.0]))
                                 .unwrap_or(perp_classes[0]);
-                            if c == first { "C2'".into() } else { "C2''".into() }
+                            if c == first {
+                                "C2'".into()
+                            } else {
+                                "C2''".into()
+                            }
                         } else if has_s2n {
                             "C2'".into()
                         } else {
@@ -675,11 +725,16 @@ impl PointGroup {
                     } else if geo.principal.is_none() {
                         match (axis_name(*normal), nclass) {
                             | (_, 2) => "σh".into(),
-                            | (Some(a), _) => format!("σ({})", match a {
-                                | "x" => "yz",
-                                | "y" => "xz",
-                                | _ => "xy",
-                            }),
+                            | (Some(a), _) => {
+                                format!(
+                                    "σ({})",
+                                    match a {
+                                        | "x" => "yz",
+                                        | "y" => "xz",
+                                        | _ => "xy",
+                                    }
+                                )
+                            },
                             | (None, _) => "σ".into(),
                         }
                     } else if geo.along(*normal) {
@@ -693,12 +748,20 @@ impl PointGroup {
                             .copied()
                             .find(|&v| class_has(v, &|k| matches!(k, Kind::Mirror { normal } if axis_name(*normal) == Some("y"))))
                             .unwrap_or(vert_classes[0]);
-                        if c == first { "σv(xz)".into() } else { "σv'(yz)".into() }
+                        if c == first {
+                            "σv(xz)".into()
+                        } else {
+                            "σv'(yz)".into()
+                        }
                     } else if vert_classes.len() >= 2 {
                         let contains_x = ct.classes[c]
                             .iter()
                             .any(|&e| matches!(&kinds[e], Kind::Mirror { normal } if normal[0].abs() < 1e-6));
-                        if contains_x { "σv".into() } else { "σd".into() }
+                        if contains_x {
+                            "σv".into()
+                        } else {
+                            "σd".into()
+                        }
                     } else {
                         "σv".into()
                     }
@@ -715,24 +778,32 @@ impl PointGroup {
         }
 
         // Display order of the classes.
-        let rank = |c: usize| match rep_kind[c] {
-            | Kind::E => 0,
-            | Kind::Rot { .. } => 1,
-            | Kind::Inv => 2,
-            | Kind::Imp { .. } => 3,
-            | Kind::Mirror { .. } => 4,
+        let rank = |c: usize| {
+            match rep_kind[c] {
+                | Kind::E => 0,
+                | Kind::Rot { .. } => 1,
+                | Kind::Inv => 2,
+                | Kind::Imp { .. } => 3,
+                | Kind::Mirror { .. } => 4,
+            }
         };
-        let sort_n = |c: usize| match rep_kind[c] {
-            | Kind::Rot { n, .. } | Kind::Imp { n, .. } => *n,
-            | _ => 0,
+        let sort_n = |c: usize| {
+            match rep_kind[c] {
+                | Kind::Rot { n, .. } | Kind::Imp { n, .. } => *n,
+                | _ => 0,
+            }
         };
-        let sort_k = |c: usize| match rep_kind[c] {
-            | Kind::Rot { k, .. } | Kind::Imp { k, .. } => *k,
-            | _ => 0,
+        let sort_k = |c: usize| {
+            match rep_kind[c] {
+                | Kind::Rot { k, .. } | Kind::Imp { k, .. } => *k,
+                | _ => 0,
+            }
         };
-        let perp = |c: usize| match rep_kind[c] {
-            | Kind::Rot { axis, .. } => !geo.along(*axis),
-            | _ => false,
+        let perp = |c: usize| {
+            match rep_kind[c] {
+                | Kind::Rot { axis, .. } => !geo.along(*axis),
+                | _ => false,
+            }
         };
         let mut order: Vec<usize> = (0..nclass).collect();
         order.sort_by(|&a, &b| {
@@ -748,7 +819,11 @@ impl PointGroup {
             .iter()
             .map(|&c| {
                 let size = ct.classes[c].len();
-                if size > 1 { format!("{size}{}", base[c]) } else { base[c].clone() }
+                if size > 1 {
+                    format!("{size}{}", base[c])
+                } else {
+                    base[c].clone()
+                }
             })
             .collect();
         let mut class_of = vec![0; n];
@@ -770,13 +845,23 @@ impl PointGroup {
         // the smallest proper rotation.
         let s2n_gen = has_s2n && geo.nmax.is_multiple_of(2);
         let gen_class = geo.principal.and_then(|p| {
-            (0..nclass).find(|&c| match rep_kind[c] {
-                | Kind::Imp { axis, n, k } if s2n_gen => parallel(*axis, p) && *n == 2 * geo.nmax && *k == 1,
-                | Kind::Rot { axis, n, k } if !s2n_gen => parallel(*axis, p) && *n == geo.nmax && *k == 1,
-                | _ => false,
+            (0..nclass).find(|&c| {
+                match rep_kind[c] {
+                    | Kind::Imp { axis, n, k } if s2n_gen => {
+                        parallel(*axis, p) && *n == 2 * geo.nmax && *k == 1
+                    },
+                    | Kind::Rot { axis, n, k } if !s2n_gen => {
+                        parallel(*axis, p) && *n == geo.nmax && *k == 1
+                    },
+                    | _ => false,
+                }
             })
         });
-        let gen_order = if s2n_gen { 2 * geo.nmax } else { geo.nmax };
+        let gen_order = if s2n_gen {
+            2 * geo.nmax
+        } else {
+            geo.nmax
+        };
         let c4_class = (0..nclass).find(|&c| matches!(rep_kind[c], Kind::Rot { n: 4, k: 1, .. }));
         let s4_class = (0..nclass).find(|&c| matches!(rep_kind[c], Kind::Imp { n: 4, k: 1, .. }));
         let c5_class = (0..nclass).find(|&c| matches!(rep_kind[c], Kind::Rot { n: 5, k: 1, .. }));
@@ -803,16 +888,19 @@ impl PointGroup {
         } else {
             None
         };
-        let d2_classes: Vec<(usize, &str)> = if geo.principal.is_none() && !geo.polyhedral && geo.nmax == 2 {
-            (0..nclass)
-                .filter_map(|c| match rep_kind[c] {
-                    | Kind::Rot { axis, n: 2, .. } => axis_name(*axis).map(|a| (c, a)),
-                    | _ => None,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let d2_classes: Vec<(usize, &str)> =
+            if geo.principal.is_none() && !geo.polyhedral && geo.nmax == 2 {
+                (0..nclass)
+                    .filter_map(|c| {
+                        match rep_kind[c] {
+                            | Kind::Rot { axis, n: 2, .. } => axis_name(*axis).map(|a| (c, a)),
+                            | _ => None,
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
         // Preliminary labels of the merged rows.
         let rows = merged_rows(&ct);
@@ -821,12 +909,27 @@ impl PointGroup {
             let d = dim as f64;
             let sign = |c: Option<usize>| c.map(|c| chi[c] / d > 0.0);
             let suffix = if geo.inversion {
-                if sign(inv_class).unwrap_or(true) { "g" } else { "u" }.to_string()
+                if sign(inv_class).unwrap_or(true) {
+                    "g"
+                } else {
+                    "u"
+                }
+                .to_string()
             } else if sign(sigma_h).is_some() && !geo.polyhedral && geo.principal.is_some() {
-                if sign(sigma_h).unwrap_or(true) { "'" } else { "''" }.to_string()
+                if sign(sigma_h).unwrap_or(true) {
+                    "'"
+                } else {
+                    "''"
+                }
+                .to_string()
             } else if sigma_h.is_some() && geo.principal.is_none() && nclass == 2 {
                 // C_s
-                if sign(sigma_h).unwrap_or(true) { "'" } else { "''" }.to_string()
+                if sign(sigma_h).unwrap_or(true) {
+                    "'"
+                } else {
+                    "''"
+                }
+                .to_string()
             } else {
                 String::new()
             };
@@ -849,10 +952,18 @@ impl PointGroup {
                 | 5 => 'H',
                 | _ => 'I',
             };
-            pre.push(Pre { dim, norm: nm, chi, letter, suffix, sub: None });
+            pre.push(Pre {
+                dim,
+                norm: nm,
+                chi,
+                letter,
+                suffix,
+                sub: None,
+            });
         }
         // Subscripts where the letter and parity do not identify the row.
-        let groups: Vec<(char, String)> = pre.iter().map(|p| (p.letter, p.suffix.clone())).collect();
+        let groups: Vec<(char, String)> =
+            pre.iter().map(|p| (p.letter, p.suffix.clone())).collect();
         for i in 0..pre.len() {
             let same = groups.iter().filter(|g| **g == groups[i]).count();
             if same < 2 {
@@ -862,11 +973,16 @@ impl PointGroup {
             let sub = match p.letter {
                 | 'A' | 'B' => {
                     if !d2_classes.is_empty() && p.letter == 'B' {
-                        d2_classes.iter().find(|&&(c, _)| p.chi[c] > 0.0).map(|&(_, a)| match a {
-                            | "z" => 1,
-                            | "y" => 2,
-                            | _ => 3,
-                        })
+                        d2_classes
+                            .iter()
+                            .find(|&&(c, _)| p.chi[c] > 0.0)
+                            .map(|&(_, a)| {
+                                match a {
+                                    | "z" => 1,
+                                    | "y" => 2,
+                                    | _ => 3,
+                                }
+                            })
                     } else {
                         ref_class.map(|r| if p.chi[r] > 0.0 { 1 } else { 2 })
                     }
@@ -876,13 +992,18 @@ impl PointGroup {
                         None
                     } else {
                         gen_class.and_then(|g| {
-                            (1..=gen_order / 2)
-                                .find(|&m| (p.chi[g] - 2.0 * (2.0 * PI * m as f64 / gen_order as f64).cos()).abs() < 1e-6)
+                            (1..=gen_order / 2).find(|&m| {
+                                (p.chi[g] - 2.0 * (2.0 * PI * m as f64 / gen_order as f64).cos())
+                                    .abs()
+                                    < 1e-6
+                            })
                         })
                     }
                 },
                 | 'T' => {
-                    let r = c4_class.or(if has_c4 { None } else { s4_class }).or(c5_class);
+                    let r = c4_class
+                        .or(if has_c4 { None } else { s4_class })
+                        .or(c5_class);
                     r.map(|r| if p.chi[r] > 0.0 { 1 } else { 2 })
                 },
                 | _ => None,
@@ -906,7 +1027,12 @@ impl PointGroup {
             let l = ir.label.chars().next().unwrap_or('A');
             let letter = "ABETGHI".find(l).unwrap_or(9);
             let tail: String = ir.label.chars().skip(1).collect();
-            let sub: usize = tail.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap_or(0);
+            let sub: usize = tail
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect::<String>()
+                .parse()
+                .unwrap_or(0);
             let suffix: String = tail.chars().skip_while(char::is_ascii_digit).collect();
             let parity = match suffix.as_str() {
                 | "g" | "'" | "" => 0,
@@ -917,13 +1043,23 @@ impl PointGroup {
         irreps.sort_by_key(|ir| sort_key(ir));
         // Unique labels.
         for i in 0..irreps.len() {
-            let dup: Vec<usize> = (0..irreps.len()).filter(|&j| irreps[j].label == irreps[i].label).collect();
+            let dup: Vec<usize> = (0..irreps.len())
+                .filter(|&j| irreps[j].label == irreps[i].label)
+                .collect();
             if dup.len() > 1 {
                 let pos = dup.iter().position(|&d| d == i).unwrap_or(0);
                 irreps[i].label = format!("{}_{}", irreps[i].label, pos + 1);
             }
         }
-        Some(Self { name: name.to_string(), mats, tab, class_elems, class_labels, irreps, class_of })
+        Some(Self {
+            name: name.to_string(),
+            mats,
+            tab,
+            class_elems,
+            class_labels,
+            irreps,
+            class_of,
+        })
     }
 
     pub(crate) fn class_sizes(&self) -> Vec<usize> {
@@ -939,7 +1075,10 @@ impl PointGroup {
         let sizes = self.class_sizes();
         let mut out = Vec::new();
         for ir in &self.irreps {
-            let ip: f64 = (0..sizes.len()).map(|c| sizes[c] as f64 * chi[c] * ir.chi[c]).sum::<f64>() / n;
+            let ip: f64 = (0..sizes.len())
+                .map(|c| sizes[c] as f64 * chi[c] * ir.chi[c])
+                .sum::<f64>()
+                / n;
             let m = ip / ir.norm;
             if (m - m.round()).abs() > 1e-6 {
                 return None;
@@ -954,7 +1093,10 @@ impl PointGroup {
         &self,
         f: impl Fn(&M3) -> f64,
     ) -> Vec<f64> {
-        self.class_elems.iter().map(|c| f(&self.mats[c[0]])).collect()
+        self.class_elems
+            .iter()
+            .map(|c| f(&self.mats[c[0]]))
+            .collect()
     }
 
     pub(crate) fn vector_character(&self) -> Vec<f64> {
@@ -973,12 +1115,16 @@ impl PointGroup {
     }
 
     pub(crate) fn ir_active(&self) -> Vec<bool> {
-        let m = self.multiplicities(&self.vector_character()).unwrap_or_default();
+        let m = self
+            .multiplicities(&self.vector_character())
+            .unwrap_or_default();
         m.iter().map(|&x| x > 0).collect()
     }
 
     pub(crate) fn raman_active(&self) -> Vec<bool> {
-        let m = self.multiplicities(&self.quadratic_character()).unwrap_or_default();
+        let m = self
+            .multiplicities(&self.quadratic_character())
+            .unwrap_or_default();
         m.iter().map(|&x| x > 0).collect()
     }
 }
@@ -994,7 +1140,11 @@ fn recognise_quadratic(x: f64) -> Option<(i64, i64, i64, i64)> {
             let sq = (d as f64).sqrt();
             let max_b = if d == 1 { 0 } else { 24 };
             for bb in 0..=max_b {
-                for b in if bb == 0 { vec![0] } else { vec![bb, -bb] } {
+                for b in if bb == 0 {
+                    vec![0]
+                } else {
+                    vec![bb, -bb]
+                } {
                     let a = (x * c as f64 - b as f64 * sq).round();
                     if (a + b as f64 * sq - x * c as f64).abs() < 1e-9 && a.abs() < 1e6 {
                         let a = a as i64;
@@ -1042,7 +1192,10 @@ pub(crate) fn real_node(
     }
     for n in 3..=24_i64 {
         for k in 1..n {
-            for (name, val) in [("cos", (2.0 * PI * k as f64 / n as f64).cos()), ("sin", (2.0 * PI * k as f64 / n as f64).sin())] {
+            for (name, val) in [
+                ("cos", (2.0 * PI * k as f64 / n as f64).cos()),
+                ("sin", (2.0 * PI * k as f64 / n as f64).sin()),
+            ] {
                 for sign in [1.0, -1.0] {
                     if (x - sign * val).abs() < 1e-9 {
                         let q = rat(g, 2 * k, n);
@@ -1065,7 +1218,10 @@ fn matrix_nodes(
     g: &mut Graph,
     m: &M3,
 ) -> NodeId {
-    let rows: Vec<Vec<NodeId>> = m.iter().map(|r| r.iter().map(|&x| real_node(g, x)).collect()).collect();
+    let rows: Vec<Vec<NodeId>> = m
+        .iter()
+        .map(|r| r.iter().map(|&x| real_node(g, x)).collect())
+        .collect();
     matrix(g, &rows)
 }
 
@@ -1127,11 +1283,23 @@ const BRAVAIS: [(&str, &str, &str, &str); 14] = [
     ("cF", "cubic", "F", "Oh"),
 ];
 
-const SYSTEMS: [&str; 7] = ["triclinic", "monoclinic", "orthorhombic", "tetragonal", "trigonal", "hexagonal", "cubic"];
+const SYSTEMS: [&str; 7] = [
+    "triclinic",
+    "monoclinic",
+    "orthorhombic",
+    "tetragonal",
+    "trigonal",
+    "hexagonal",
+    "cubic",
+];
 
 /// The key of a Hermann–Mauguin name: bars as `b`, no slashes or underscores.
 fn hm_key(s: &str) -> String {
-    s.trim_start_matches("hm_").chars().filter(|&c| c != '_' && c != '/').map(|c| if c == '-' { 'b' } else { c }).collect()
+    s.trim_start_matches("hm_")
+        .chars()
+        .filter(|&c| c != '_' && c != '/')
+        .map(|c| if c == '-' { 'b' } else { c })
+        .collect()
 }
 
 /// `phi`-based least dimension of a lattice with an `n`-fold rotation.
@@ -1206,9 +1374,13 @@ fn read_atoms(
     if rows.is_empty() || rows.len() > 80 {
         return None;
     }
-    let centroid: [f64; 3] = [0, 1, 2].map(|i| rows.iter().map(|r| r.1[i]).sum::<f64>() / rows.len() as f64);
+    let centroid: [f64; 3] =
+        [0, 1, 2].map(|i| rows.iter().map(|r| r.1[i]).sum::<f64>() / rows.len() as f64);
     Some(Atoms {
-        pos: rows.iter().map(|r| [0, 1, 2].map(|i| r.1[i] - centroid[i])).collect(),
+        pos: rows
+            .iter()
+            .map(|r| [0, 1, 2].map(|i| r.1[i] - centroid[i]))
+            .collect(),
         label: rows.iter().map(|r| r.0).collect(),
     })
 }
@@ -1218,12 +1390,19 @@ impl Atoms {
         &self,
         tol: f64,
     ) -> Option<[f64; 3]> {
-        let dir = self.pos.iter().copied().max_by(|a, b| norm(*a).total_cmp(&norm(*b)))?;
+        let dir = self
+            .pos
+            .iter()
+            .copied()
+            .max_by(|a, b| norm(*a).total_cmp(&norm(*b)))?;
         if norm(dir) < tol {
             return None;
         }
         let u = unit(dir);
-        self.pos.iter().all(|&p| norm(cross(p, u)) < tol).then_some(u)
+        self.pos
+            .iter()
+            .all(|&p| norm(cross(p, u)) < tol)
+            .then_some(u)
     }
 
     fn preserved_by(
@@ -1235,7 +1414,13 @@ impl Atoms {
         for (i, &p) in self.pos.iter().enumerate() {
             let q = apply_m(m, p);
             let found = (0..self.pos.len()).find(|&j| {
-                !used[j] && self.label[j] == self.label[i] && norm([q[0] - self.pos[j][0], q[1] - self.pos[j][1], q[2] - self.pos[j][2]]) < tol
+                !used[j]
+                    && self.label[j] == self.label[i]
+                    && norm([
+                        q[0] - self.pos[j][0],
+                        q[1] - self.pos[j][1],
+                        q[2] - self.pos[j][2],
+                    ]) < tol
             });
             match found {
                 | Some(j) => used[j] = true,
@@ -1315,7 +1500,12 @@ impl Atoms {
         if found.len() > ORDER_LIMIT {
             return None;
         }
-        Some(found.into_iter().map(|m| m.map(|row| row.map(snap))).collect())
+        Some(
+            found
+                .into_iter()
+                .map(|m| m.map(|row| row.map(snap)))
+                .collect(),
+        )
     }
 }
 
@@ -1341,8 +1531,15 @@ fn snap(x: f64) -> f64 {
 
 /// Fingerprint of a matrix group: sorted `(det sign, trace)` pairs.
 fn fingerprint(mats: &[M3]) -> Vec<(i32, i64)> {
-    let mut f: Vec<(i32, i64)> =
-        mats.iter().map(|m| (if det(m) > 0.0 { 1 } else { -1 }, (trace(m) * 1e3).round() as i64)).collect();
+    let mut f: Vec<(i32, i64)> = mats
+        .iter()
+        .map(|m| {
+            (
+                if det(m) > 0.0 { 1 } else { -1 },
+                (trace(m) * 1e3).round() as i64,
+            )
+        })
+        .collect();
     f.sort_unstable();
     f
 }
@@ -1350,7 +1547,15 @@ fn fingerprint(mats: &[M3]) -> Vec<(i32, i64)> {
 /// The Schoenflies name of a group of matrices.
 fn identify(mats: &[M3]) -> Option<String> {
     let fp = fingerprint(mats);
-    let mut families = vec![Family::T, Family::Td, Family::Th, Family::O, Family::Oh, Family::I, Family::Ih];
+    let mut families = vec![
+        Family::T,
+        Family::Td,
+        Family::Th,
+        Family::O,
+        Family::Oh,
+        Family::I,
+        Family::Ih,
+    ];
     for n in 1..=12 {
         families.push(Family::C(n));
         families.push(Family::Ch(n));
@@ -1388,7 +1593,9 @@ fn molecule_group(
     }
     let ops = atoms.operations(tol)?;
     let name = identify(&ops)?;
-    Some(MoleculeGroup::Group(Box::new(PointGroup::from_matrices(&name, ops)?)))
+    Some(MoleculeGroup::Group(Box::new(PointGroup::from_matrices(
+        &name, ops,
+    )?)))
 }
 
 fn tolerance(
@@ -1421,7 +1628,12 @@ fn vibrational(
     let trans = pg.vector_character();
     let rot = pg.rotation_character();
     let vib: Vec<f64> = (0..g3n.len()).map(|i| g3n[i] - trans[i] - rot[i]).collect();
-    Some([pg.multiplicities(&g3n)?, pg.multiplicities(&trans)?, pg.multiplicities(&rot)?, pg.multiplicities(&vib)?])
+    Some([
+        pg.multiplicities(&g3n)?,
+        pg.multiplicities(&trans)?,
+        pg.multiplicities(&rot)?,
+        pg.multiplicities(&vib)?,
+    ])
 }
 
 fn molecule_decomposition(
@@ -1496,7 +1708,12 @@ fn molecule_spectroscopy(
     for (i, irrep) in pg.irreps.iter().enumerate() {
         if vib[i] != 0 {
             let s = cx.graph.sym(&irrep.label);
-            rows.push(V::List(vec![V::Node(s), V::int(vib[i]), V::Bool(ir[i]), V::Bool(raman[i])]));
+            rows.push(V::List(vec![
+                V::Node(s),
+                V::int(vib[i]),
+                V::Bool(ir[i]),
+                V::Bool(raman[i]),
+            ]));
         }
     }
     Some(V::List(rows))
@@ -1510,7 +1727,11 @@ fn molecule_symmetry_operations(
     let atoms = read_atoms(cx.graph, *a.first()?)?;
     let ops = atoms.operations(tol)?;
     let pg = PointGroup::from_matrices("", ops).map(|p| p.mats)?;
-    Some(V::List(pg.iter().map(|m| V::Node(matrix_nodes(cx.graph, m))).collect()))
+    Some(V::List(
+        pg.iter()
+            .map(|m| V::Node(matrix_nodes(cx.graph, m)))
+            .collect(),
+    ))
 }
 
 fn molecule_point_group(
@@ -1563,7 +1784,9 @@ fn chi_arg(
     let vals: Vec<f64> = items(cx.graph, n)?
         .into_iter()
         .map(|x| {
-            cx.graph.eval_complex(x, &bindings).and_then(|z: Complex64| (z.im.abs() < 1e-9).then_some(z.re))
+            cx.graph
+                .eval_complex(x, &bindings)
+                .and_then(|z: Complex64| (z.im.abs() < 1e-9).then_some(z.re))
         })
         .collect::<Option<_>>()?;
     if vals.len() == pg.class_elems.len() {
@@ -1582,7 +1805,9 @@ fn point_group(
     let pg = group_arg(cx, a)?;
     let n = pg.mats.len();
     let elems: Vec<NodeId> = pg.mats.iter().map(|m| matrix_nodes(cx.graph, m)).collect();
-    let table: Vec<Vec<usize>> = (0..n).map(|i| (0..n).map(|j| pg.tab.m(i, j)).collect()).collect();
+    let table: Vec<Vec<usize>> = (0..n)
+        .map(|i| (0..n).map(|j| pg.tab.m(i, j)).collect())
+        .collect();
     build_group(cx.graph, &elems, &table)
 }
 
@@ -1598,7 +1823,9 @@ fn point_group_is_crystallographic(
     a: &[NodeId],
 ) -> Option<V> {
     let pg = group_arg(cx, a)?;
-    Some(V::Bool((0..pg.mats.len()).all(|x| matches!(pg.tab.order(x), 1 | 2 | 3 | 4 | 6))))
+    Some(V::Bool(
+        (0..pg.mats.len()).all(|x| matches!(pg.tab.order(x), 1 | 2 | 3 | 4 | 6)),
+    ))
 }
 
 fn point_group_classes(
@@ -1606,7 +1833,12 @@ fn point_group_classes(
     a: &[NodeId],
 ) -> Option<V> {
     let pg = group_arg(cx, a)?;
-    Some(V::List(pg.class_labels.iter().map(|l| V::Node(cx.graph.sym(l))).collect()))
+    Some(V::List(
+        pg.class_labels
+            .iter()
+            .map(|l| V::Node(cx.graph.sym(l)))
+            .collect(),
+    ))
 }
 
 fn point_group_class_sizes(
@@ -1622,7 +1854,12 @@ fn point_group_irreps(
     a: &[NodeId],
 ) -> Option<V> {
     let pg = group_arg(cx, a)?;
-    Some(V::List(pg.irreps.iter().map(|i| V::Node(cx.graph.sym(&i.label))).collect()))
+    Some(V::List(
+        pg.irreps
+            .iter()
+            .map(|i| V::Node(cx.graph.sym(&i.label)))
+            .collect(),
+    ))
 }
 
 fn point_group_irrep_dimensions(
@@ -1637,7 +1874,11 @@ fn character_rows(
     g: &mut Graph,
     rows: &[Vec<f64>],
 ) -> V {
-    V::List(rows.iter().map(|r| V::List(r.iter().map(|&x| V::Node(real_node(g, x))).collect())).collect())
+    V::List(
+        rows.iter()
+            .map(|r| V::List(r.iter().map(|&x| V::Node(real_node(g, x))).collect()))
+            .collect(),
+    )
 }
 
 fn point_group_character_table(
@@ -1806,7 +2047,11 @@ fn point_group_from_hm(
 ) -> Option<V> {
     let n = *a.first()?;
     let key = if let Some(v) = super::small(cx.graph, n) {
-        if v < 0 { format!("b{}", -v) } else { v.to_string() }
+        if v < 0 {
+            format!("b{}", -v)
+        } else {
+            v.to_string()
+        }
     } else {
         hm_key(&read_name(cx.graph, n)?)
     };
@@ -1829,7 +2074,12 @@ fn crystallographic_point_groups(
     cx: &mut Cx<'_>,
     _a: &[NodeId],
 ) -> Option<V> {
-    Some(V::List(CRYSTAL_CLASSES.iter().map(|c| V::Node(cx.graph.sym(c.0))).collect()))
+    Some(V::List(
+        CRYSTAL_CLASSES
+            .iter()
+            .map(|c| V::Node(cx.graph.sym(c.0)))
+            .collect(),
+    ))
 }
 
 #[allow(clippy::unnecessary_wraps)] // kernel signature
@@ -1840,10 +2090,16 @@ fn crystal_systems(
     let mut rows = Vec::new();
     for system in SYSTEMS {
         let holohedry = BRAVAIS.iter().find(|b| b.1 == system).map_or("Ci", |b| b.3);
-        let groups: Vec<V> =
-            CRYSTAL_CLASSES.iter().filter(|c| c.2 == system).map(|c| V::Node(cx.graph.sym(c.0))).collect();
-        let lattices: Vec<V> =
-            BRAVAIS.iter().filter(|b| b.1 == system).map(|b| V::Node(cx.graph.sym(b.0))).collect();
+        let groups: Vec<V> = CRYSTAL_CLASSES
+            .iter()
+            .filter(|c| c.2 == system)
+            .map(|c| V::Node(cx.graph.sym(c.0)))
+            .collect();
+        let lattices: Vec<V> = BRAVAIS
+            .iter()
+            .filter(|b| b.1 == system)
+            .map(|b| V::Node(cx.graph.sym(b.0)))
+            .collect();
         rows.push(V::List(vec![
             V::Node(cx.graph.sym(system)),
             V::Node(cx.graph.sym(holohedry)),
@@ -1862,7 +2118,14 @@ fn bravais_lattices(
     Some(V::List(
         BRAVAIS
             .iter()
-            .map(|b| V::List([b.0, b.1, b.2, b.3].iter().map(|s| V::Node(cx.graph.sym(s))).collect()))
+            .map(|b| {
+                V::List(
+                    [b.0, b.1, b.2, b.3]
+                        .iter()
+                        .map(|s| V::Node(cx.graph.sym(s)))
+                        .collect(),
+                )
+            })
             .collect(),
     ))
 }
@@ -1902,28 +2165,117 @@ fn def_molecule(
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "point_group", Arity::Fixed(1), point_group)?;
     def(i, "point_group_order", Arity::Fixed(1), point_group_order)?;
-    def(i, "point_group_is_crystallographic", Arity::Fixed(1), point_group_is_crystallographic)?;
-    def(i, "point_group_classes", Arity::Fixed(1), point_group_classes)?;
-    def(i, "point_group_class_sizes", Arity::Fixed(1), point_group_class_sizes)?;
+    def(
+        i,
+        "point_group_is_crystallographic",
+        Arity::Fixed(1),
+        point_group_is_crystallographic,
+    )?;
+    def(
+        i,
+        "point_group_classes",
+        Arity::Fixed(1),
+        point_group_classes,
+    )?;
+    def(
+        i,
+        "point_group_class_sizes",
+        Arity::Fixed(1),
+        point_group_class_sizes,
+    )?;
     def(i, "point_group_irreps", Arity::Fixed(1), point_group_irreps)?;
-    def(i, "point_group_irrep_dimensions", Arity::Fixed(1), point_group_irrep_dimensions)?;
-    def(i, "point_group_character_table", Arity::Fixed(1), point_group_character_table)?;
-    def(i, "point_group_decompose", Arity::Fixed(2), point_group_decompose)?;
-    def(i, "point_group_multiplicities", Arity::Fixed(2), point_group_multiplicities)?;
-    def(i, "point_group_vector_character", Arity::Fixed(1), point_group_vector_character)?;
-    def(i, "point_group_rotation_character", Arity::Fixed(1), point_group_rotation_character)?;
-    def(i, "point_group_ir_active", Arity::Fixed(1), point_group_ir_active)?;
-    def(i, "point_group_raman_active", Arity::Fixed(1), point_group_raman_active)?;
-    def(i, "point_group_function_irreps", Arity::Fixed(1), point_group_function_irreps)?;
+    def(
+        i,
+        "point_group_irrep_dimensions",
+        Arity::Fixed(1),
+        point_group_irrep_dimensions,
+    )?;
+    def(
+        i,
+        "point_group_character_table",
+        Arity::Fixed(1),
+        point_group_character_table,
+    )?;
+    def(
+        i,
+        "point_group_decompose",
+        Arity::Fixed(2),
+        point_group_decompose,
+    )?;
+    def(
+        i,
+        "point_group_multiplicities",
+        Arity::Fixed(2),
+        point_group_multiplicities,
+    )?;
+    def(
+        i,
+        "point_group_vector_character",
+        Arity::Fixed(1),
+        point_group_vector_character,
+    )?;
+    def(
+        i,
+        "point_group_rotation_character",
+        Arity::Fixed(1),
+        point_group_rotation_character,
+    )?;
+    def(
+        i,
+        "point_group_ir_active",
+        Arity::Fixed(1),
+        point_group_ir_active,
+    )?;
+    def(
+        i,
+        "point_group_raman_active",
+        Arity::Fixed(1),
+        point_group_raman_active,
+    )?;
+    def(
+        i,
+        "point_group_function_irreps",
+        Arity::Fixed(1),
+        point_group_function_irreps,
+    )?;
     def(i, "point_group_hm", Arity::Fixed(1), point_group_hm)?;
-    def(i, "point_group_from_hm", Arity::Fixed(1), point_group_from_hm)?;
-    def(i, "point_group_crystal_system", Arity::Fixed(1), point_group_crystal_system)?;
-    def(i, "crystallographic_point_groups", Arity::Fixed(0), crystallographic_point_groups)?;
+    def(
+        i,
+        "point_group_from_hm",
+        Arity::Fixed(1),
+        point_group_from_hm,
+    )?;
+    def(
+        i,
+        "point_group_crystal_system",
+        Arity::Fixed(1),
+        point_group_crystal_system,
+    )?;
+    def(
+        i,
+        "crystallographic_point_groups",
+        Arity::Fixed(0),
+        crystallographic_point_groups,
+    )?;
     def(i, "crystal_systems", Arity::Fixed(0), crystal_systems)?;
     def(i, "bravais_lattices", Arity::Fixed(0), bravais_lattices)?;
-    def(i, "crystallographic_restriction", Arity::Variadic, crystallographic_restriction)?;
-    def(i, "crystallographic_min_dimension", Arity::Fixed(1), crystallographic_min_dimension)?;
-    def_molecule(i, "molecule_symmetry_operations", molecule_symmetry_operations)?;
+    def(
+        i,
+        "crystallographic_restriction",
+        Arity::Variadic,
+        crystallographic_restriction,
+    )?;
+    def(
+        i,
+        "crystallographic_min_dimension",
+        Arity::Fixed(1),
+        crystallographic_min_dimension,
+    )?;
+    def_molecule(
+        i,
+        "molecule_symmetry_operations",
+        molecule_symmetry_operations,
+    )?;
     def_molecule(i, "molecule_point_group", molecule_point_group)?;
     def_molecule(i, "molecule_decomposition", molecule_decomposition)?;
     def_molecule(i, "molecule_vibrations", molecule_vibrations)?;
@@ -1943,8 +2295,16 @@ mod tests {
         irrep: &str,
         class: &str,
     ) -> f64 {
-        let ir = pg.irreps.iter().find(|i| i.label == irrep).unwrap_or_else(|| panic!("no irrep {irrep}: {:?}", labels(pg)));
-        let c = pg.class_labels.iter().position(|l| l == class).unwrap_or_else(|| panic!("no class {class}: {:?}", pg.class_labels));
+        let ir = pg
+            .irreps
+            .iter()
+            .find(|i| i.label == irrep)
+            .unwrap_or_else(|| panic!("no irrep {irrep}: {:?}", labels(pg)));
+        let c = pg
+            .class_labels
+            .iter()
+            .position(|l| l == class)
+            .unwrap_or_else(|| panic!("no class {class}: {:?}", pg.class_labels));
         ir.chi[c]
     }
 
@@ -1961,7 +2321,12 @@ mod tests {
         assert_eq!(pg.irreps.len(), rows.len(), "{:?}", labels(pg));
         for (label, vals) in rows {
             for (c, v) in classes.iter().zip(*vals) {
-                assert!((chi(pg, label, c) - v).abs() < 1e-9, "{} {label} {c}: {} vs {v}", pg.name, chi(pg, label, c));
+                assert!(
+                    (chi(pg, label, c) - v).abs() < 1e-9,
+                    "{} {label} {c}: {} vs {v}",
+                    pg.name,
+                    chi(pg, label, c)
+                );
             }
         }
     }
@@ -1988,19 +2353,47 @@ mod tests {
     fn oh_matches_the_textbook() {
         let pg = PointGroup::named("Oh").expect("Oh");
         assert_eq!(pg.mats.len(), 48);
-        assert_eq!(labels(&pg), ["A1g", "A2g", "Eg", "T1g", "T2g", "A1u", "A2u", "Eu", "T1u", "T2u"]);
-        let classes = ["E", "8C3", "6C4", "3C2", "6C2'", "i", "6S4", "8S6", "3σh", "6σd"];
+        assert_eq!(
+            labels(&pg),
+            [
+                "A1g", "A2g", "Eg", "T1g", "T2g", "A1u", "A2u", "Eu", "T1u", "T2u"
+            ]
+        );
+        let classes = [
+            "E", "8C3", "6C4", "3C2", "6C2'", "i", "6S4", "8S6", "3σh", "6σd",
+        ];
         let rows: [(&str, [f64; 10]); 10] = [
             ("A1g", [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
-            ("A2g", [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0]),
+            (
+                "A2g",
+                [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0],
+            ),
             ("Eg", [2.0, -1.0, 0.0, 2.0, 0.0, 2.0, 0.0, -1.0, 2.0, 0.0]),
-            ("T1g", [3.0, 0.0, 1.0, -1.0, -1.0, 3.0, 1.0, 0.0, -1.0, -1.0]),
-            ("T2g", [3.0, 0.0, -1.0, -1.0, 1.0, 3.0, -1.0, 0.0, -1.0, 1.0]),
-            ("A1u", [1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0]),
-            ("A2u", [1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0]),
+            (
+                "T1g",
+                [3.0, 0.0, 1.0, -1.0, -1.0, 3.0, 1.0, 0.0, -1.0, -1.0],
+            ),
+            (
+                "T2g",
+                [3.0, 0.0, -1.0, -1.0, 1.0, 3.0, -1.0, 0.0, -1.0, 1.0],
+            ),
+            (
+                "A1u",
+                [1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0],
+            ),
+            (
+                "A2u",
+                [1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0],
+            ),
             ("Eu", [2.0, -1.0, 0.0, 2.0, 0.0, -2.0, 0.0, 1.0, -2.0, 0.0]),
-            ("T1u", [3.0, 0.0, 1.0, -1.0, -1.0, -3.0, -1.0, 0.0, 1.0, 1.0]),
-            ("T2u", [3.0, 0.0, -1.0, -1.0, 1.0, -3.0, 1.0, 0.0, 1.0, -1.0]),
+            (
+                "T1u",
+                [3.0, 0.0, 1.0, -1.0, -1.0, -3.0, -1.0, 0.0, 1.0, 1.0],
+            ),
+            (
+                "T2u",
+                [3.0, 0.0, -1.0, -1.0, 1.0, -3.0, 1.0, 0.0, 1.0, -1.0],
+            ),
         ];
         let rows: Vec<(&str, &[f64])> = rows.iter().map(|(l, v)| (*l, &v[..])).collect();
         let mut sizes = pg.class_sizes();
@@ -2021,13 +2414,20 @@ mod tests {
         assert_eq!(labels(&c2v), ["A1", "A2", "B1", "B2"]);
         assert!((chi(&c2v, "B1", "σv(xz)") - 1.0).abs() < 1e-9);
         assert!((chi(&c2v, "B2", "σv'(yz)") - 1.0).abs() < 1e-9);
-        assert!((chi(&c2v, "A2", "C2") - 1.0).abs() < 1e-9 && (chi(&c2v, "A2", "σv(xz)") + 1.0).abs() < 1e-9);
+        assert!(
+            (chi(&c2v, "A2", "C2") - 1.0).abs() < 1e-9
+                && (chi(&c2v, "A2", "σv(xz)") + 1.0).abs() < 1e-9
+        );
 
         let c3v = PointGroup::named("C3v").expect("C3v");
         check_table(
             &c3v,
             &["E", "2C3", "3σv"],
-            &[("A1", &[1.0, 1.0, 1.0]), ("A2", &[1.0, 1.0, -1.0]), ("E", &[2.0, -1.0, 0.0])],
+            &[
+                ("A1", &[1.0, 1.0, 1.0]),
+                ("A2", &[1.0, 1.0, -1.0]),
+                ("E", &[2.0, -1.0, 0.0]),
+            ],
         );
         let d3h = PointGroup::named("D3h").expect("D3h");
         assert_eq!(labels(&d3h), ["A1'", "A2'", "E'", "A1''", "A2''", "E''"]);
@@ -2035,13 +2435,24 @@ mod tests {
         assert!((chi(&d3h, "A1''", "σh") + 1.0).abs() < 1e-9);
 
         let d4h = PointGroup::named("D4h").expect("D4h");
-        assert_eq!(labels(&d4h), ["A1g", "A2g", "B1g", "B2g", "Eg", "A1u", "A2u", "B1u", "B2u", "Eu"]);
+        assert_eq!(
+            labels(&d4h),
+            [
+                "A1g", "A2g", "B1g", "B2g", "Eg", "A1u", "A2u", "B1u", "B2u", "Eu"
+            ]
+        );
         assert_eq!(pg_len(&d4h), 16);
-        assert!((chi(&d4h, "B1g", "2C2'") - 1.0).abs() < 1e-9 && (chi(&d4h, "B1g", "2C2''") + 1.0).abs() < 1e-9);
+        assert!(
+            (chi(&d4h, "B1g", "2C2'") - 1.0).abs() < 1e-9
+                && (chi(&d4h, "B1g", "2C2''") + 1.0).abs() < 1e-9
+        );
         assert!((chi(&d4h, "B2g", "2C2'") + 1.0).abs() < 1e-9);
 
         let d2h = PointGroup::named("D2h").expect("D2h");
-        assert_eq!(labels(&d2h), ["Ag", "B1g", "B2g", "B3g", "Au", "B1u", "B2u", "B3u"]);
+        assert_eq!(
+            labels(&d2h),
+            ["Ag", "B1g", "B2g", "B3g", "Au", "B1u", "B2u", "B3u"]
+        );
         assert!((chi(&d2h, "B1g", "C2(z)") - 1.0).abs() < 1e-9);
         let d2d = PointGroup::named("D2d").expect("D2d");
         assert_eq!(labels(&d2d), ["A1", "A2", "B1", "B2", "E"]);
@@ -2063,21 +2474,54 @@ mod tests {
     fn cyclic_groups_combine_conjugate_pairs() {
         assert_eq!(labels(&PointGroup::named("C2").expect("C2")), ["A", "B"]);
         assert_eq!(labels(&PointGroup::named("C3").expect("C3")), ["A", "E"]);
-        assert_eq!(labels(&PointGroup::named("C4").expect("C4")), ["A", "B", "E"]);
-        assert_eq!(labels(&PointGroup::named("C6").expect("C6")), ["A", "B", "E1", "E2"]);
-        assert_eq!(labels(&PointGroup::named("C5").expect("C5")), ["A", "E1", "E2"]);
-        assert_eq!(labels(&PointGroup::named("S4").expect("S4")), ["A", "B", "E"]);
-        assert_eq!(labels(&PointGroup::named("S6").expect("S6")), ["Ag", "Eg", "Au", "Eu"]);
+        assert_eq!(
+            labels(&PointGroup::named("C4").expect("C4")),
+            ["A", "B", "E"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("C6").expect("C6")),
+            ["A", "B", "E1", "E2"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("C5").expect("C5")),
+            ["A", "E1", "E2"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("S4").expect("S4")),
+            ["A", "B", "E"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("S6").expect("S6")),
+            ["Ag", "Eg", "Au", "Eu"]
+        );
         assert_eq!(labels(&PointGroup::named("Cs").expect("Cs")), ["A'", "A''"]);
         assert_eq!(labels(&PointGroup::named("Ci").expect("Ci")), ["Ag", "Au"]);
-        assert_eq!(labels(&PointGroup::named("C2h").expect("C2h")), ["Ag", "Bg", "Au", "Bu"]);
-        assert_eq!(labels(&PointGroup::named("C3h").expect("C3h")), ["A'", "E'", "A''", "E''"]);
+        assert_eq!(
+            labels(&PointGroup::named("C2h").expect("C2h")),
+            ["Ag", "Bg", "Au", "Bu"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("C3h").expect("C3h")),
+            ["A'", "E'", "A''", "E''"]
+        );
         assert_eq!(labels(&PointGroup::named("T").expect("T")), ["A", "E", "T"]);
-        assert_eq!(labels(&PointGroup::named("Th").expect("Th")), ["Ag", "Eg", "Tg", "Au", "Eu", "Tu"]);
-        assert_eq!(labels(&PointGroup::named("O").expect("O")), ["A1", "A2", "E", "T1", "T2"]);
+        assert_eq!(
+            labels(&PointGroup::named("Th").expect("Th")),
+            ["Ag", "Eg", "Tg", "Au", "Eu", "Tu"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("O").expect("O")),
+            ["A1", "A2", "E", "T1", "T2"]
+        );
         assert_eq!(labels(&PointGroup::named("C1").expect("C1")), ["A"]);
-        assert_eq!(labels(&PointGroup::named("D2").expect("D2")), ["A", "B1", "B2", "B3"]);
-        assert_eq!(labels(&PointGroup::named("D3").expect("D3")), ["A1", "A2", "E"]);
+        assert_eq!(
+            labels(&PointGroup::named("D2").expect("D2")),
+            ["A", "B1", "B2", "B3"]
+        );
+        assert_eq!(
+            labels(&PointGroup::named("D3").expect("D3")),
+            ["A1", "A2", "E"]
+        );
     }
 
     #[test]
@@ -2086,31 +2530,75 @@ mod tests {
         assert_eq!(i.mats.len(), 60);
         assert_eq!(labels(&i), ["A", "T1", "T2", "G", "H"]);
         let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
-        assert!((chi(&i, "T1", "12C5") - phi).abs() < 1e-9, "{:?}", i.class_labels);
+        assert!(
+            (chi(&i, "T1", "12C5") - phi).abs() < 1e-9,
+            "{:?}",
+            i.class_labels
+        );
         assert!((chi(&i, "T2", "12C5") - (1.0 - phi)).abs() < 1e-9);
         assert!((chi(&i, "H", "20C3")).abs() < 1e-9 || (chi(&i, "H", "20C3") + 1.0).abs() < 1e-9);
         let ih = PointGroup::named("Ih").expect("Ih");
         assert_eq!(ih.mats.len(), 120);
         assert_eq!(ih.irreps.len(), 10);
-        assert_eq!(labels(&ih), ["Ag", "T1g", "T2g", "Gg", "Hg", "Au", "T1u", "T2u", "Gu", "Hu"]);
+        assert_eq!(
+            labels(&ih),
+            [
+                "Ag", "T1g", "T2g", "Gg", "Hg", "Au", "T1u", "T2u", "Gu", "Hu"
+            ]
+        );
     }
 
     #[test]
     fn crystallographic_groups_have_the_right_orders() {
         let orders = [
-            ("C1", 1), ("Ci", 2), ("C2", 2), ("Cs", 2), ("C2h", 4), ("D2", 4), ("C2v", 4), ("D2h", 8), ("C4", 4), ("S4", 4),
-            ("C4h", 8), ("D4", 8), ("C4v", 8), ("D2d", 8), ("D4h", 16), ("C3", 3), ("S6", 6), ("D3", 6), ("C3v", 6),
-            ("D3d", 12), ("C6", 6), ("C3h", 6), ("C6h", 12), ("D6", 12), ("C6v", 12), ("D3h", 12), ("D6h", 24), ("T", 12),
-            ("Th", 24), ("O", 24), ("Td", 24), ("Oh", 48),
+            ("C1", 1),
+            ("Ci", 2),
+            ("C2", 2),
+            ("Cs", 2),
+            ("C2h", 4),
+            ("D2", 4),
+            ("C2v", 4),
+            ("D2h", 8),
+            ("C4", 4),
+            ("S4", 4),
+            ("C4h", 8),
+            ("D4", 8),
+            ("C4v", 8),
+            ("D2d", 8),
+            ("D4h", 16),
+            ("C3", 3),
+            ("S6", 6),
+            ("D3", 6),
+            ("C3v", 6),
+            ("D3d", 12),
+            ("C6", 6),
+            ("C3h", 6),
+            ("C6h", 12),
+            ("D6", 12),
+            ("C6v", 12),
+            ("D3h", 12),
+            ("D6h", 24),
+            ("T", 12),
+            ("Th", 24),
+            ("O", 24),
+            ("Td", 24),
+            ("Oh", 48),
         ];
         assert_eq!(orders.len(), 32);
         for (name, order) in orders {
             let pg = PointGroup::named(name).unwrap_or_else(|| panic!("{name}"));
             assert_eq!(pg.mats.len(), order, "{name}");
             // sum of squares of the dimensions (counting combined pairs once)
-            let total: f64 = pg.irreps.iter().map(|i| (i.dim * i.dim) as f64 / i.norm).sum();
+            let total: f64 = pg
+                .irreps
+                .iter()
+                .map(|i| (i.dim * i.dim) as f64 / i.norm)
+                .sum();
             assert!((total - order as f64).abs() < 1e-9, "{name}");
-            assert_eq!(s(&format!("point_group_is_crystallographic({name})")), "true");
+            assert_eq!(
+                s(&format!("point_group_is_crystallographic({name})")),
+                "true"
+            );
         }
         assert_eq!(s("point_group_is_crystallographic(C5)"), "false");
         assert_eq!(s("point_group_is_crystallographic(Ih)"), "false");
@@ -2139,10 +2627,16 @@ mod tests {
         // every HM name round-trips
         for (sch, hm, _) in CRYSTAL_CLASSES {
             let key = hm_key(hm);
-            let back = CRYSTAL_CLASSES.iter().find(|c| hm_key(c.1) == key).map(|c| c.0);
+            let back = CRYSTAL_CLASSES
+                .iter()
+                .find(|c| hm_key(c.1) == key)
+                .map(|c| c.0);
             assert_eq!(back, Some(sch));
         }
-        assert_eq!(s("crystallographic_point_groups()").matches(',').count(), 31);
+        assert_eq!(
+            s("crystallographic_point_groups()").matches(',').count(),
+            31
+        );
         let sys = s("crystal_systems()");
         assert!(sys.contains("cubic") && sys.contains("hP"), "{sys}");
         assert_eq!(s("bravais_lattices()").matches("list(").count(), 15);
@@ -2160,7 +2654,11 @@ mod tests {
                 .filter(|c| c.2 == system)
                 .map(|c| PointGroup::named(c.0).map_or(0, |p| p.mats.len()))
                 .max();
-            assert_eq!(PointGroup::named(holo).map(|p| p.mats.len()), max, "{system}");
+            assert_eq!(
+                PointGroup::named(holo).map(|p| p.mats.len()),
+                max,
+                "{system}"
+            );
         }
     }
 
@@ -2168,8 +2666,16 @@ mod tests {
     fn crystallographic_restriction_theorem() {
         for n in 1..=12 {
             let allowed = matches!(n, 1 | 2 | 3 | 4 | 6);
-            assert_eq!(s(&format!("crystallographic_restriction({n})")), allowed.to_string(), "n = {n}");
-            assert_eq!(s(&format!("crystallographic_restriction({n}, 2)")), allowed.to_string(), "n = {n} in the plane");
+            assert_eq!(
+                s(&format!("crystallographic_restriction({n})")),
+                allowed.to_string(),
+                "n = {n}"
+            );
+            assert_eq!(
+                s(&format!("crystallographic_restriction({n}, 2)")),
+                allowed.to_string(),
+                "n = {n} in the plane"
+            );
         }
         assert_eq!(s("crystallographic_min_dimension(5)"), "4");
         assert_eq!(s("crystallographic_min_dimension(8)"), "4");
@@ -2183,10 +2689,21 @@ mod tests {
     #[test]
     fn spectroscopic_activity() {
         let pg = PointGroup::named("Td").expect("Td");
-        let ir: Vec<&str> = pg.irreps.iter().zip(pg.ir_active()).filter(|(_, a)| *a).map(|(i, _)| i.label.as_str()).collect();
+        let ir: Vec<&str> = pg
+            .irreps
+            .iter()
+            .zip(pg.ir_active())
+            .filter(|(_, a)| *a)
+            .map(|(i, _)| i.label.as_str())
+            .collect();
         assert_eq!(ir, ["T2"]);
-        let raman: Vec<&str> =
-            pg.irreps.iter().zip(pg.raman_active()).filter(|(_, a)| *a).map(|(i, _)| i.label.as_str()).collect();
+        let raman: Vec<&str> = pg
+            .irreps
+            .iter()
+            .zip(pg.raman_active())
+            .filter(|(_, a)| *a)
+            .map(|(i, _)| i.label.as_str())
+            .collect();
         assert_eq!(raman, ["A1", "E", "T2"]);
         assert_eq!(s("point_group_ir_active(C2v)"), "list(A1, B1, B2)");
         assert_eq!(s("point_group_raman_active(C2v)"), "list(A1, A2, B1, B2)");
@@ -2202,7 +2719,9 @@ mod tests {
         assert!(td.contains("list(x*y, list(T2))"), "{td}");
         let c2v = PointGroup::named("C2v").expect("C2v");
         // the regular representation of C2v contains each irrep once
-        let regular: Vec<f64> = (0..c2v.class_elems.len()).map(|c| if c == 0 { 4.0 } else { 0.0 }).collect();
+        let regular: Vec<f64> = (0..c2v.class_elems.len())
+            .map(|c| if c == 0 { 4.0 } else { 0.0 })
+            .collect();
         assert_eq!(c2v.multiplicities(&regular), Some(vec![1, 1, 1, 1]));
     }
 
@@ -2211,12 +2730,31 @@ mod tests {
         assert_eq!(s("group_order(point_group(C2v))"), "4");
         assert_eq!(s("group_is_valid(point_group(Td))"), "true");
         assert_eq!(s("group_order(point_group(Ih))"), "120");
-        assert_eq!(s("group_is_isomorphic(point_group(D3), symmetric_group(3))"), "true");
-        assert_eq!(s("group_is_isomorphic(point_group(Td), symmetric_group(4))"), "true");
-        assert_eq!(s("group_is_isomorphic(point_group(O), symmetric_group(4))"), "true");
-        assert_eq!(s("group_is_isomorphic(point_group(Oh), group_direct_product(symmetric_group(4), cyclic_group(2)))"), "true");
+        assert_eq!(
+            s("group_is_isomorphic(point_group(D3), symmetric_group(3))"),
+            "true"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(point_group(Td), symmetric_group(4))"),
+            "true"
+        );
+        assert_eq!(
+            s("group_is_isomorphic(point_group(O), symmetric_group(4))"),
+            "true"
+        );
+        assert_eq!(
+            s(
+                "group_is_isomorphic(point_group(Oh), group_direct_product(symmetric_group(4), cyclic_group(2)))"
+            ),
+            "true"
+        );
         // the icosahedral rotation group is perfect
-        assert_eq!(s("group_order(group_subgroup(point_group(I), group_derived_subgroup(point_group(I))))"), "60");
+        assert_eq!(
+            s(
+                "group_order(group_subgroup(point_group(I), group_derived_subgroup(point_group(I))))"
+            ),
+            "60"
+        );
         assert_eq!(s("point_group_irreps(Td)"), "list(A1, A2, E, T1, T2)");
         let table = s("point_group_character_table(C3v)");
         assert_eq!(table, "list(list(1, 1, 1), list(1, 1, -1), list(2, -1, 0))");
@@ -2244,18 +2782,36 @@ mod tests {
         let vib = s(&format!("molecule_vibrations({})", water()));
         assert!(vib.contains("2*A1") && vib.contains("B2"), "{vib}");
         let spec = s(&format!("molecule_spectroscopy({})", water()));
-        assert_eq!(spec, "list(list(A1, 2, true, true), list(B2, 1, true, true))");
+        assert_eq!(
+            spec,
+            "list(list(A1, 2, true, true), list(B2, 1, true, true))"
+        );
         let dec = s(&format!("molecule_decomposition({})", water()));
         assert!(dec.starts_with("list(list(A1, 3, 1, 0, 2)"), "{dec}");
         // the same molecule in the xz plane gives B1
         let xz = "list(list(O, 0, 0, 0.1173), list(H, 0.7572, 0, -0.4692), list(H, -0.7572, 0, -0.4692))";
-        assert_eq!(s(&format!("molecule_vibrations_table({xz})")), "list(list(A1, 2), list(B1, 1))");
+        assert_eq!(
+            s(&format!("molecule_vibrations_table({xz})")),
+            "list(list(A1, 2), list(B1, 1))"
+        );
         // CH4: A1 + E + 2 T2
         assert_eq!(s(&format!("molecule_point_group({})", methane())), "Td");
-        assert_eq!(s(&format!("molecule_vibrations_table({})", methane())), "list(list(A1, 1), list(E, 1), list(T2, 2))");
+        assert_eq!(
+            s(&format!("molecule_vibrations_table({})", methane())),
+            "list(list(A1, 1), list(E, 1), list(T2, 2))"
+        );
         let spec = s(&format!("molecule_spectroscopy({})", methane()));
-        assert_eq!(spec, "list(list(A1, 1, false, true), list(E, 1, false, true), list(T2, 2, true, true))");
-        assert_eq!(s(&format!("group_order(point_group(molecule_point_group({})))", methane())), "24");
+        assert_eq!(
+            spec,
+            "list(list(A1, 1, false, true), list(E, 1, false, true), list(T2, 2, true, true))"
+        );
+        assert_eq!(
+            s(&format!(
+                "group_order(point_group(molecule_point_group({})))",
+                methane()
+            )),
+            "24"
+        );
     }
 
     #[test]
@@ -2278,14 +2834,23 @@ mod tests {
         let benzene = format!("list({}, {})", ring(1.4, "C"), ring(2.48, "H"));
         assert_eq!(s(&format!("molecule_point_group({benzene})")), "D6h");
         let _ = h;
-        assert_eq!(s("molecule_point_group(list(list(O, 0, 0, 1.16), list(C, 0, 0, 0), list(O, 0, 0, -1.16)))"), "Dinfh");
-        assert_eq!(s("molecule_point_group(list(list(H, 0, 0, 0), list(Cl, 0, 0, 1.27)))"), "Cinfv");
+        assert_eq!(
+            s(
+                "molecule_point_group(list(list(O, 0, 0, 1.16), list(C, 0, 0, 0), list(O, 0, 0, -1.16)))"
+            ),
+            "Dinfh"
+        );
+        assert_eq!(
+            s("molecule_point_group(list(list(H, 0, 0, 0), list(Cl, 0, 0, 1.27)))"),
+            "Cinfv"
+        );
         let ethylene = "list(list(C, 0, 0, 0.667), list(C, 0, 0, -0.667), list(H, 0, 0.92, 1.24), list(H, 0, -0.92, 1.24), list(H, 0, 0.92, -1.24), list(H, 0, -0.92, -1.24))";
         assert_eq!(s(&format!("molecule_point_group({ethylene})")), "D2h");
         // a perturbed water molecule is only Cs within a small tolerance
         let skew = "list(list(O, 0, 0, 0.1173), list(H, 0, 0.7572, -0.4692), list(H, 0, -0.7572, -0.4692))";
         assert_eq!(s(&format!("molecule_point_group({skew}, 0.0001)")), "C2v");
-        let bent = "list(list(O, 0, 0, 0.1173), list(H, 0, 0.7572, -0.4692), list(H, 0, -0.7, -0.4692))";
+        let bent =
+            "list(list(O, 0, 0, 0.1173), list(H, 0, 0.7572, -0.4692), list(H, 0, -0.7, -0.4692))";
         assert_eq!(s(&format!("molecule_point_group({bent}, 0.0001)")), "Cs");
         // symmetry operations of water: E, C2, two mirrors
         let ops = s(&format!("molecule_symmetry_operations({})", water()));
@@ -2295,14 +2860,31 @@ mod tests {
     #[test]
     fn decompose_reducible_representations() {
         // the permutation representation of the four H atoms of CH4 in Td
-        assert_eq!(s("point_group_decompose(Td, list(4, 1, 0, 0, 2))"), s("A1 + T2"));
-        assert_eq!(s("point_group_multiplicities(Td, list(4, 1, 0, 0, 2))"), "list(1, 0, 0, 0, 1)");
+        assert_eq!(
+            s("point_group_decompose(Td, list(4, 1, 0, 0, 2))"),
+            s("A1 + T2")
+        );
+        assert_eq!(
+            s("point_group_multiplicities(Td, list(4, 1, 0, 0, 2))"),
+            "list(1, 0, 0, 0, 1)"
+        );
         // a non-character stays unreduced
-        assert_eq!(s("point_group_decompose(Td, list(1, 0, 0, 0, 0))"), "point_group_decompose(Td, list(1, 0, 0, 0, 0))");
+        assert_eq!(
+            s("point_group_decompose(Td, list(1, 0, 0, 0, 0))"),
+            "point_group_decompose(Td, list(1, 0, 0, 0, 0))"
+        );
         // the regular representation of C3v, one value per element
-        assert_eq!(s("point_group_multiplicities(C3v, list(1, 1, 1))"), "list(1, 0, 0)");
-        assert_eq!(s("point_group_decompose(Oh, point_group_vector_character(Oh))"), "T1u");
-        assert_eq!(s("point_group_decompose(Oh, point_group_rotation_character(Oh))"), "T1g");
+        assert_eq!(
+            s("point_group_multiplicities(C3v, list(1, 1, 1))"),
+            "list(1, 0, 0)"
+        );
+        assert_eq!(
+            s("point_group_decompose(Oh, point_group_vector_character(Oh))"),
+            "T1u"
+        );
+        assert_eq!(
+            s("point_group_decompose(Oh, point_group_rotation_character(Oh))"),
+            "T1g"
+        );
     }
 }
-
