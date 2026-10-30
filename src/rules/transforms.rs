@@ -101,6 +101,10 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::integrate::gauss_kronrod_any;
@@ -183,8 +187,48 @@ struct Ops {
     sum: OpId,
 }
 
+/// The dimension signature of an integral transform.
+///
+/// Laplace, Fourier and the inverse transforms integrate `f(x)` against a
+/// kernel in the dual variable, so the result is `dim(f) * dim(x)`. The
+/// `z` transform is a sum over its index, so it keeps `dim(f)`. The
+/// initial/final-value theorems return a limit of the transform, which has
+/// the same dimension as the function itself.
+fn transform_rule(request: Request) -> DimRule {
+    match request {
+        | Request::Laplace
+        | Request::InverseLaplace
+        | Request::Fourier
+        | Request::InverseFourier => DimRule::Integral { f: 0, x: 1 },
+        | Request::Z | Request::InverseZ => DimRule::SumOver { f: 0, index: 1 },
+        | Request::Convolve | Request::Convolution => DimRule::Custom(convolution_dimension),
+        // `lim_{s->oo} s F(s)` multiplies the transform by the dual variable;
+        // the z-transform limit is already in the dimension of the sequence.
+        | Request::DiscreteConvolution | Request::InitialLaplace | Request::FinalLaplace => {
+            DimRule::Product
+        },
+        | Request::InitialZ | Request::FinalZ => DimRule::Same(0),
+    }
+}
+
+/// A continuous convolution integrates one function against the other over
+/// the shared variable: `dim(f) * dim(g) * dim(t)`.
+#[allow(clippy::unnecessary_wraps)]
+fn convolution_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let mut result = ctx.dimensionless();
+    for arg in args.iter().take(3) {
+        result = result.mul(arg);
+    }
+    Ok(result)
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dirac = i.op(OpDescriptor::new("dirac", Arity::Fixed(1)))?;
+    // A delta is a density in its argument: `1 / dim(x)`.
+    i.dim(dirac, DimRule::Inverse);
     let kronecker = i.op(
         OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| match a {
             | [n] if *n == 0.0 => 1.0,
@@ -192,6 +236,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             | _ => f64::NAN,
         }),
     )?;
+    i.dim(kronecker, DimRule::Dimensionless);
     i.rewrites(
         Tier::Normalize,
         &["transforms/kronecker: kronecker(?n) => 0 if integer(?n), nonzero(?n)"],
@@ -247,7 +292,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ];
     let mut registered = Vec::new();
     for (name, kind, arity, binder) in table {
-        registered.push((i.op(request(name, arity, binder))?, kind));
+        let op = i.op(request(name, arity, binder))?;
+        i.dim(op, transform_rule(kind));
+        registered.push((op, kind));
     }
     let get = |i: &mut Installer<'_>, name: &str| {
         i.graph()

@@ -801,6 +801,16 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(3))
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        // Factoring rewrites the polynomial expression, so it keeps the
+        // dimension of the polynomial; irreducibility is a predicate.
+        i.dim(
+            op,
+            if name == "factor_mod" {
+                crate::graph::dim::DimRule::Same(0)
+            } else {
+                crate::graph::dim::DimRule::NonMetric
+            },
+        );
         i.kernel(
             &format!("discrete/{name}"),
             Tier::Reduce,

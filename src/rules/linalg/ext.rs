@@ -71,6 +71,7 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
@@ -1463,6 +1464,44 @@ impl Kernel for Extension {
     }
 }
 
+/// The dimension signature of a matrix extension.
+fn extension_rule(kind: Kind) -> DimRule {
+    match kind {
+        | Kind::Kron => DimRule::Product,
+        | Kind::Diag
+        | Kind::Hilbert
+        | Kind::Adjugate
+        | Kind::Cofactors
+        | Kind::Colspace
+        | Kind::Rowspace
+        | Kind::LeftNullspace
+        | Kind::Jordan
+        | Kind::JordanBlocks
+        | Kind::Matfun
+        | Kind::Matexp
+        | Kind::Mpow
+        | Kind::Matsqrt
+        | Kind::Spectral
+        | Kind::Ldl
+        | Kind::Cholesky
+        | Kind::Orthogonalize
+        | Kind::Orthonormalize
+        | Kind::Smith
+        | Kind::InvariantFactors
+        | Kind::Hermite => DimRule::List,
+        | Kind::Vandermonde
+        | Kind::Companion
+        | Kind::Matpoly
+        | Kind::Minpoly
+        | Kind::CayleyHamilton
+        | Kind::IsSymmetric
+        | Kind::IsOrthogonal
+        | Kind::IsPositiveDefinite => DimRule::NonMetric,
+        | Kind::Pinv => DimRule::Inverse,
+        | Kind::Lstsq => DimRule::Custom(super::quotient_dimension),
+    }
+}
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
         ("kron", 2, Kind::Kron),
@@ -1501,6 +1540,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, extension_rule(kind));
         i.kernel(
             &format!("linalg/{name}"),
             Tier::Reduce,

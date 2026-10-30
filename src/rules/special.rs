@@ -49,6 +49,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -271,6 +272,32 @@ extern "C" fn c_besselj(
     x: f64,
 ) -> f64 {
     order_and_point(&[n, x], num::bessel_j)
+}
+
+/// A step or sign is a pure number whatever the dimension of its argument.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn dimensionless_result(
+    _ctx: &crate::graph::dim::DimCtx<'_>,
+    _args: &[crate::graph::dim::DimTerm],
+) -> Result<crate::graph::dim::DimTerm, crate::graph::dim::DimError> {
+    Ok(crate::graph::dim::DimTerm::dimensionless())
+}
+
+/// The dimension signature of a special function.
+///
+/// Practical special functions take and return pure numbers: they are
+/// transcendental, and their defining series and integrals are only
+/// dimensionally coherent for dimensionless arguments. `floor`, `ceil` and
+/// `round` preserve the dimension instead, because they round in the units
+/// of their argument; `sign` and `heaviside` reduce any argument to a pure
+/// number.
+#[allow(clippy::missing_const_for_fn)]
+fn special_rule(name: &str) -> DimRule {
+    match name {
+        | "floor" | "ceil" | "round" => DimRule::Same(0),
+        | "sign" | "heaviside" => DimRule::Custom(dimensionless_result),
+        | _ => DimRule::Dimensionless,
+    }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -621,6 +648,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             descriptor
         };
         let op = i.op(descriptor)?;
+        i.dim(op, special_rule(name));
         if on_reals != Facts::NONE {
             i.graph().ops_mut().set_attr(op, OnReals(on_reals));
         }
@@ -910,7 +938,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "laguerre_differential_equation(y, x, n) := x * diff(diff(y, x), x) + (1 - x) * diff(y, x) + n * y = 0",
         "hermite_differential_equation(y, x, n) := diff(diff(y, x), x) - 2 * x * diff(y, x) + 2 * n * y = 0",
         "chebyshev_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - x * diff(y, x) + n^2 * y = 0",
-    ])
+    ])?;
+
+    // Operators registered by the definitions above. The Rodrigues
+    // polynomials are polynomials in their variable, so they keep its
+    // dimension; the differential equations are equation objects.
+    super::number_theory::attach_dimensions(
+        i,
+        &[
+            ("frac", DimRule::Same(0)),
+            ("ln_factorial", DimRule::Dimensionless),
+            ("bessel_k0", DimRule::Dimensionless),
+            ("bessel_k1", DimRule::Dimensionless),
+            ("inverse_erfc", DimRule::Dimensionless),
+            ("legendre_rodrigues", DimRule::Same(1)),
+            ("hermite_rodrigues", DimRule::Same(1)),
+            ("laguerre_rodrigues", DimRule::Same(1)),
+            ("bessel_differential_equation", DimRule::NonMetric),
+            ("legendre_differential_equation", DimRule::NonMetric),
+            ("laguerre_differential_equation", DimRule::NonMetric),
+            ("hermite_differential_equation", DimRule::NonMetric),
+            ("chebyshev_differential_equation", DimRule::NonMetric),
+        ],
+    )?;
+    Ok(())
 }
 
 /// `L_n^{(α)}(x) = Σ_k (-1)^k C(n + α, n - k) x^k / k!` for a literal

@@ -50,6 +50,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::calculus::derivative;
@@ -111,6 +115,121 @@ enum Request {
     GeneralizedStokes,
 }
 
+/// `x^2` without constructing a rational exponent.
+fn squared(x: &DimTerm) -> DimTerm {
+    x.mul(x)
+}
+
+/// The dimension signature of a geometry request.
+///
+/// Tensor fields are unresolved containers whose entry dimensions differ
+/// across components (`NonMetric`); the derivative, flux and curvature
+/// requests carry the coordinate dimension through explicitly.
+fn request_rule(request: Request) -> DimRule {
+    match request {
+        | Request::Rank => DimRule::Custom(count_dimension),
+        | Request::Component
+        | Request::Contract
+        | Request::Lower
+        | Request::Raise
+        | Request::TransformPoint
+        | Request::TransformExpression
+        | Request::TransformVector
+        | Request::TransformCovector
+        | Request::Boundary
+        | Request::Pullback
+        | Request::ToCartesian
+        | Request::FromCartesian => DimRule::Same(0),
+        | Request::Add => DimRule::Sum,
+        | Request::Smul | Request::Outer | Request::Wedge => DimRule::Product,
+        | Request::Christoffel1
+        | Request::Christoffel2
+        | Request::Riemann
+        | Request::Ricci
+        | Request::Einstein
+        | Request::Covariant
+        | Request::TransformTensor2 => DimRule::NonMetric,
+        | Request::RicciScalar => DimRule::Custom(curvature_dimension),
+        | Request::Metric | Request::ScaleFactors => DimRule::List,
+        | Request::GradIn | Request::DivIn | Request::CurlIn => DimRule::Diff { f: 0, x: 2 },
+        | Request::ExteriorD => DimRule::Diff { f: 0, x: 1 },
+        | Request::LaplacianIn => DimRule::Custom(laplacian_dimension),
+        | Request::Greens => DimRule::Integral { f: 0, x: 2 },
+        | Request::Gauss => DimRule::Custom(flux_dimension),
+        | Request::Stokes => DimRule::Custom(surface_flux_dimension),
+        | Request::IntegrateForm | Request::GeneralizedStokes => DimRule::Integral { f: 0, x: 1 },
+    }
+}
+
+/// `tensor_rank` is a count, whatever the entries are.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn count_dimension(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
+/// Curvature is a second derivative of a dimensionless metric, so it is
+/// `1 / length^2` for coordinates of dimension length.
+#[allow(clippy::unnecessary_wraps)]
+fn curvature_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(args
+        .get(1)
+        .map_or_else(DimTerm::dimensionless, |coordinates| {
+            squared(coordinates).inverse()
+        }))
+}
+
+/// `laplacian(f)` is `f / coordinate^2`.
+#[allow(clippy::unnecessary_wraps)]
+fn laplacian_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let field = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let coordinates = args.last().cloned().unwrap_or_else(DimTerm::dimensionless);
+    Ok(field.mul(&squared(&coordinates).inverse()))
+}
+
+/// A flux `∫ F · dA` is `field * coordinate^2`.
+#[allow(clippy::unnecessary_wraps)]
+fn flux_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let field = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let coordinates = args.get(1).cloned().unwrap_or_else(DimTerm::dimensionless);
+    Ok(field.mul(&squared(&coordinates)))
+}
+
+/// The flux of a curl through a parametrised surface:
+/// `field * dim(u) * dim(v)`.
+#[allow(clippy::unnecessary_wraps)]
+fn surface_flux_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let field = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let first = args.get(2).cloned().unwrap_or_else(DimTerm::dimensionless);
+    let second = args.get(3).cloned().unwrap_or_else(DimTerm::dimensionless);
+    Ok(field.mul(&first).mul(&second))
+}
+
+/// A volume element `sqrt(det g) du dv dw` is `coordinate^3` when the
+/// metric is dimensionless and the coordinates share a dimension.
+#[allow(clippy::unnecessary_wraps)]
+fn volume_element_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let coordinates = args.last().cloned().unwrap_or_else(DimTerm::dimensionless);
+    Ok(coordinates.mul(&coordinates).mul(&coordinates))
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let table: [(&str, u8, Request); 37] = [
         ("tensor_rank", 1, Request::Rank),
@@ -151,13 +270,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("integrate_form", 3, Request::IntegrateForm),
         ("generalized_stokes", 3, Request::GeneralizedStokes),
     ];
-    i.op(OpDescriptor::new("form", Arity::Fixed(1)))?;
-    i.op(OpDescriptor::new("cell", Arity::Fixed(3)))?;
-    i.op(OpDescriptor::new("chain", Arity::Fixed(1)))?;
+    let form = i.op(OpDescriptor::new("form", Arity::Fixed(1)))?;
+    let cell = i.op(OpDescriptor::new("cell", Arity::Fixed(3)))?;
+    let chain = i.op(OpDescriptor::new("chain", Arity::Fixed(1)))?;
+    // Forms, cells and chains are containers, not scalars.
+    i.dim(form, DimRule::NonMetric);
+    i.dim(cell, DimRule::NonMetric);
+    i.dim(chain, DimRule::NonMetric);
     for (name, arity, request) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, request_rule(request));
         i.kernel(
             &format!("geometry/{name}"),
             Tier::Reduce,

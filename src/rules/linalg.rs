@@ -25,6 +25,7 @@
 
 mod ext;
 
+use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
@@ -42,6 +43,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::matrix::FaerDecompositionResult;
@@ -110,6 +115,124 @@ enum Request {
     VolumeIntegral,
 }
 
+/// The dimension signature of a linear-algebra request.
+///
+/// Matrix and vector arguments have the dimension of their entries (the
+/// `List` rule unifies the leaves), so `matmul`/`dot`/`kron` multiply while
+/// `madd` adds. `det` is `entry^n`, `inverse` is `1/entry`, `linsolve` is
+/// `rhs / matrix`, and the vector-calculus requests differentiate with
+/// respect to their variable argument.
+fn request_rule(request: Request) -> DimRule {
+    match request {
+        | Request::Matmul | Request::Smul | Request::Dot | Request::Cross | Request::Outer => {
+            DimRule::Product
+        },
+        | Request::Madd => DimRule::Sum,
+        | Request::Transpose
+        | Request::Trace
+        | Request::Rref
+        | Request::Norm
+        | Request::Project => DimRule::Same(0),
+        | Request::Identity
+        | Request::Zeros
+        | Request::Nullspace
+        | Request::Eigenvals
+        | Request::Eigenvects
+        | Request::Lu
+        | Request::Qr
+        | Request::Svd => DimRule::List,
+        | Request::Dims | Request::Rank | Request::Normalize => {
+            DimRule::Custom(dimensionless_result)
+        },
+        | Request::Det => DimRule::Custom(det_dimension),
+        | Request::Inverse => DimRule::Inverse,
+        | Request::Linsolve => DimRule::Custom(quotient_dimension),
+        | Request::Charpoly => DimRule::NonMetric,
+        | Request::Angle => DimRule::Angle,
+        | Request::Grad
+        | Request::Div
+        | Request::Curl
+        | Request::Jacobian
+        | Request::Directional => DimRule::Diff { f: 0, x: 1 },
+        | Request::Laplacian | Request::Hessian => DimRule::DiffN { f: 0, x: 1, n: 2 },
+        | Request::LineIntegral | Request::LineIntegralVec => DimRule::Integral { f: 0, x: 2 },
+        | Request::SurfaceIntegral => DimRule::Custom(surface_integral_dimension),
+        | Request::VolumeIntegral => DimRule::Custom(volume_integral_dimension),
+    }
+}
+
+/// `dims`, `rank` and `normalize` are pure numbers or directions: the
+/// result is dimensionless whatever the entries are.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn dimensionless_result(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
+/// `det(A)` for an `n x n` matrix is `entry^n`; an unknown shape (a symbolic
+/// matrix argument) falls back to `entry`.
+#[allow(clippy::unnecessary_wraps)]
+fn det_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let Some(entry) = args.first() else {
+        return Ok(ctx.any());
+    };
+    let order = matrix_order(ctx).unwrap_or(1);
+    Ok(entry.pow(&BigRational::from_integer(BigInt::from(order))))
+}
+
+/// `linsolve(A, b)` is `b / A`, not `A / b`: `Quotient` would be backwards.
+#[allow(clippy::unnecessary_wraps)]
+fn quotient_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(match (args.first(), args.get(1)) {
+        | (Some(matrix), Some(rhs)) => rhs.mul(&matrix.inverse()),
+        | _ => DimTerm::dimensionless(),
+    })
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn surface_integral_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let field = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let first = args.get(2).cloned().unwrap_or_else(DimTerm::dimensionless);
+    let second = args.get(3).cloned().unwrap_or_else(DimTerm::dimensionless);
+    Ok(field.mul(&first).mul(&second))
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn volume_integral_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let field = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let volume = args
+        .get(1)
+        .map_or_else(DimTerm::dimensionless, |variables| {
+            variables.pow(&BigRational::from_integer(BigInt::from(3)))
+        });
+    Ok(field.mul(&volume))
+}
+
+/// The order of the literal matrix argument of a `det`, when it is one.
+fn matrix_order(ctx: &DimCtx<'_>) -> Option<usize> {
+    let matrix = ctx.graph.children(ctx.node).first().copied()?;
+    if ctx.graph.op(matrix) != core::LIST {
+        return None;
+    }
+    let rows = ctx.graph.children(matrix);
+    let first_row = rows.first().copied()?;
+    (ctx.graph.op(first_row) == core::LIST).then_some(rows.len())
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let table: [(&str, Arity, Request); 38] = [
         ("matmul", Arity::Variadic, Request::Matmul),
@@ -163,6 +286,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, request_rule(request));
         i.kernel(
             &format!("linalg/{name}"),
             Tier::Reduce,

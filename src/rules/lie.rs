@@ -63,6 +63,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::poly::best;
@@ -100,6 +101,29 @@ enum Request {
     Sl2,
 }
 
+/// The dimension signature of a Lie-theory request.
+///
+/// A bracket is bilinear in its arguments, so it multiplies dimensions; the
+/// structural tables, bases and adjoint representations are lists of
+/// numbers; the group and algebra objects themselves are not scalars.
+#[allow(clippy::missing_const_for_fn)]
+fn request_rule(request: Request) -> DimRule {
+    match request {
+        | Request::Bracket => DimRule::Product,
+        | Request::Bch => DimRule::Dimensionless,
+        | Request::StructureConstants
+        | Request::AdjointRep
+        | Request::Killing
+        | Request::CommutatorTable
+        | Request::So3
+        | Request::Su2
+        | Request::Sl2 => DimRule::List,
+        | Request::AdjointGroup | Request::ExpMap | Request::Jacobi | Request::IsLieAlgebra => {
+            DimRule::NonMetric
+        },
+    }
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, request) in [
         ("lie_bracket", Arity::Variadic, Request::Bracket),
@@ -127,6 +151,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, request_rule(request));
         i.kernel(
             &format!("lie/{name}"),
             Tier::Reduce,

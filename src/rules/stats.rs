@@ -89,6 +89,10 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
 use crate::graph::VarNames;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::stats as num;
@@ -99,6 +103,7 @@ use super::calculus::calculus;
 use super::calculus::partials;
 use super::combinatorics::choose;
 use super::elementary::elementary;
+use super::number_theory::attach_dimensions;
 use super::number_theory::factor as prime_factors;
 use super::number_theory::procedure;
 use super::poly::best;
@@ -2109,6 +2114,45 @@ fn matrix_op(
 // Installation
 // ---------------------------------------------------------------------
 
+/// A probability, entropy, test statistic or correlation: dimensionless by
+/// construction, whatever the dimension of the data it was computed from.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn dimensionless_result(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
+/// A density is a value per unit of its variable: `1 / dim(x)`.
+#[allow(clippy::unnecessary_wraps)]
+fn density_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(args
+        .get(1)
+        .map_or_else(DimTerm::dimensionless, DimTerm::inverse))
+}
+
+/// The raw or central moment of order `k` of data with dimension `d` is
+/// `d^k`.
+#[allow(clippy::unnecessary_wraps)]
+fn moment_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let base = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let order = ctx
+        .graph
+        .children(ctx.node)
+        .get(1)
+        .and_then(|&node| ctx.graph.number_of(node))
+        .and_then(Number::to_rational)
+        .filter(|order| !order.is_negative() && order.denom().is_one());
+    Ok(order.map_or_else(|| base.clone(), |order| base.pow(&order)))
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let set = "stats";
     let unary = |name: &str| OpDescriptor::new(name, Arity::Fixed(1));
@@ -2290,6 +2334,114 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         request(OpDescriptor::new("nonlinear_regression", Arity::Fixed(5))),
         Tier::Reduce,
         nonlinear_regression,
+    )?;
+
+    // Distributions are model descriptors whose dimension is the dimension
+    // of their location/scale parameter, so that `mean`, `variance` and
+    // `std` of a distribution compose with the ordinary descriptive rules.
+    attach_dimensions(
+        i,
+        &[
+            ("normal", DimRule::Same(0)),
+            ("uniform", DimRule::Sum),
+            ("exponential", DimRule::Inverse),
+            ("bernoulli", DimRule::Dimensionless),
+            ("binomial_dist", DimRule::Dimensionless),
+            ("poisson", DimRule::Dimensionless),
+            ("gamma_dist", DimRule::Same(1)),
+            ("beta_dist", DimRule::Dimensionless),
+            ("student_t", DimRule::Dimensionless),
+            ("chi_squared", DimRule::Dimensionless),
+            ("cauchy", DimRule::Same(0)),
+            ("laplace_dist", DimRule::Same(0)),
+            ("lognormal", DimRule::Same(0)),
+            ("weibull", DimRule::Same(1)),
+            ("geometric", DimRule::Dimensionless),
+            ("negative_binomial", DimRule::Dimensionless),
+            ("f_dist", DimRule::Dimensionless),
+            ("pareto", DimRule::Same(0)),
+            ("rayleigh", DimRule::Same(0)),
+            ("logistic", DimRule::Same(0)),
+            ("gumbel", DimRule::Same(0)),
+            ("binomial_trials", DimRule::Dimensionless),
+            ("normal_known_sd", DimRule::Same(0)),
+            ("pdf", DimRule::Custom(density_dimension)),
+            ("cdf", DimRule::Custom(dimensionless_result)),
+            ("expectation", DimRule::Same(0)),
+            ("variance_of", DimRule::Square),
+            ("mgf", DimRule::Custom(dimensionless_result)),
+            ("entropy_of", DimRule::Custom(dimensionless_result)),
+            ("charfn", DimRule::Custom(dimensionless_result)),
+            ("skewness_of", DimRule::Custom(dimensionless_result)),
+            ("kurtosis_of", DimRule::Custom(dimensionless_result)),
+            ("median_of", DimRule::Same(0)),
+            ("mode_of", DimRule::Same(0)),
+            ("quantile_of", DimRule::Same(0)),
+            ("std_of", DimRule::Same(0)),
+            ("moment_of", DimRule::Custom(moment_dimension)),
+            ("central_moment_of", DimRule::Custom(moment_dimension)),
+            ("expect_of", DimRule::Same(0)),
+            ("sum_dist", DimRule::Sum),
+            ("iid_sum", DimRule::Same(0)),
+            ("iid_mean", DimRule::Same(0)),
+            ("scale_dist", DimRule::Product),
+            ("shift_dist", DimRule::Sum),
+            ("bayes_update", DimRule::Same(0)),
+            ("binomial_test", DimRule::Dimensionless),
+            ("fisher_exact", DimRule::Dimensionless),
+            ("wilson_interval", DimRule::Dimensionless),
+            ("mean_interval", DimRule::Same(0)),
+            ("proportion_z_test", DimRule::Dimensionless),
+            ("r_squared", DimRule::Dimensionless),
+            ("residuals", DimRule::Same(1)),
+            ("gamma_lr", DimRule::Dimensionless),
+            ("beta_reg", DimRule::Dimensionless),
+            ("mean", DimRule::Same(0)),
+            ("variance", DimRule::Square),
+            ("sample_variance", DimRule::Square),
+            ("std", DimRule::Same(0)),
+            ("sample_std", DimRule::Same(0)),
+            ("median", DimRule::Same(0)),
+            ("mode", DimRule::Same(0)),
+            ("skewness", DimRule::Dimensionless),
+            ("kurtosis", DimRule::Dimensionless),
+            ("min_of", DimRule::Same(0)),
+            ("max_of", DimRule::Same(0)),
+            ("range_of", DimRule::Same(0)),
+            ("geometric_mean", DimRule::Same(0)),
+            ("harmonic_mean", DimRule::Same(0)),
+            ("iqr", DimRule::Same(0)),
+            ("zscores", DimRule::Custom(dimensionless_result)),
+            (
+                "coefficient_of_variation",
+                DimRule::Custom(dimensionless_result),
+            ),
+            ("standard_error", DimRule::Same(0)),
+            ("entropy", DimRule::Dimensionless),
+            ("entropy_bits", DimRule::Dimensionless),
+            ("gini", DimRule::Dimensionless),
+            ("covariance", DimRule::Product),
+            ("correlation", DimRule::Dimensionless),
+            ("kl_divergence", DimRule::Dimensionless),
+            ("cross_entropy", DimRule::Dimensionless),
+            ("moment", DimRule::Custom(moment_dimension)),
+            ("quantile", DimRule::Same(0)),
+            ("percentile", DimRule::Same(0)),
+            ("joint_entropy", DimRule::Dimensionless),
+            ("conditional_entropy", DimRule::Dimensionless),
+            ("mutual_information", DimRule::Dimensionless),
+            ("z_test", DimRule::Custom(dimensionless_result)),
+            ("t_test", DimRule::Custom(dimensionless_result)),
+            ("welch_test", DimRule::Custom(dimensionless_result)),
+            ("pooled_t_test", DimRule::Custom(dimensionless_result)),
+            ("chi_squared_test", DimRule::Custom(dimensionless_result)),
+            ("anova", DimRule::Custom(dimensionless_result)),
+            ("confidence_interval", DimRule::Same(0)),
+            ("z_interval", DimRule::Same(0)),
+            ("linear_regression", DimRule::NonMetric),
+            ("polynomial_regression", DimRule::NonMetric),
+            ("nonlinear_regression", DimRule::NonMetric),
+        ],
     )?;
     Ok(())
 }

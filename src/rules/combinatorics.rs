@@ -39,6 +39,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -46,6 +50,7 @@ mod ext;
 
 use super::arith::arith;
 use super::number_theory::Value;
+use super::number_theory::attach_dimensions;
 use super::number_theory::exact;
 use super::number_theory::exact_lists;
 use super::number_theory::procedure;
@@ -1064,6 +1069,26 @@ fn period(
     }
 }
 
+/// `expand_binomial(a, b, n)`: for a literal `n`, every term of the
+/// expansion has dimension `a^n`; for a symbolic `n` the expansion is only
+/// dimensionally coherent when `a` and `b` are dimensionless, but the
+/// identity itself has the dimension of `a`.
+#[allow(clippy::unnecessary_wraps)]
+fn binomial_expansion_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let base = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let exponent = ctx
+        .graph
+        .children(ctx.node)
+        .get(2)
+        .and_then(|&node| ctx.graph.number_of(node))
+        .and_then(Number::to_rational)
+        .filter(|exponent| !exponent.is_negative() && exponent.denom().is_one());
+    Ok(exponent.map_or_else(|| base.clone(), |exponent| base.pow(&exponent)))
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let unary = |name: &str| OpDescriptor::new(name, Arity::Fixed(1));
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
@@ -1217,6 +1242,64 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     )?;
     procedure(i, set, unary("period"), Tier::Normalize, period)?;
 
+    // Combinatorial numbers count configurations: they are pure numbers,
+    // their multi-part results are lists of integers, and the expansion
+    // identity is homogeneous in its base.
+    attach_dimensions(
+        i,
+        &[
+            ("factorial", DimRule::Dimensionless),
+            ("double_factorial", DimRule::Dimensionless),
+            ("binomial", DimRule::Dimensionless),
+            ("multinomial", DimRule::Dimensionless),
+            ("lah", DimRule::Dimensionless),
+            ("eulerian", DimRule::Dimensionless),
+            ("narayana", DimRule::Dimensionless),
+            ("motzkin", DimRule::Dimensionless),
+            ("schroeder", DimRule::Dimensionless),
+            ("fubini", DimRule::Dimensionless),
+            ("central_binomial", DimRule::Dimensionless),
+            ("ballot", DimRule::Dimensionless),
+            ("involutions", DimRule::Dimensionless),
+            ("rencontres", DimRule::Dimensionless),
+            ("partitions_k", DimRule::Dimensionless),
+            ("partitions_max", DimRule::Dimensionless),
+            ("partitions_distinct", DimRule::Dimensionless),
+            ("partition_list", DimRule::List),
+            ("compositions", DimRule::Dimensionless),
+            ("weak_compositions", DimRule::Dimensionless),
+            ("necklaces", DimRule::Dimensionless),
+            ("bracelets", DimRule::Dimensionless),
+            ("bernoulli_number", DimRule::Dimensionless),
+            ("zigzag", DimRule::Dimensionless),
+            ("euler_number", DimRule::Dimensionless),
+            ("permutation_rank", DimRule::Dimensionless),
+            ("permutation_unrank", DimRule::Dimensionless),
+            ("inversions", DimRule::Dimensionless),
+            ("permutation_sign", DimRule::Dimensionless),
+            ("cycle_type", DimRule::List),
+            ("permutation_order", DimRule::Dimensionless),
+            ("hook_lengths", DimRule::List),
+            ("syt_count", DimRule::Dimensionless),
+            ("permutations", DimRule::Dimensionless),
+            ("rising", DimRule::Dimensionless),
+            ("falling", DimRule::Dimensionless),
+            ("catalan", DimRule::Dimensionless),
+            ("fibonacci", DimRule::Dimensionless),
+            ("lucas", DimRule::Dimensionless),
+            ("bell", DimRule::Dimensionless),
+            ("stirling1", DimRule::Dimensionless),
+            ("stirling2", DimRule::Dimensionless),
+            ("partitions", DimRule::Dimensionless),
+            ("derangements", DimRule::Dimensionless),
+            ("harmonic", DimRule::Dimensionless),
+            ("rsolve", DimRule::NonMetric),
+            ("gf_coeffs", DimRule::List),
+            ("inclusion_exclusion", DimRule::Dimensionless),
+            ("period", DimRule::Dimensionless),
+        ],
+    )?;
+
     // All rules hold for the continuous extensions used as numeric
     // semantics, hence for every real argument satisfying the guards.
     i.rewrites(
@@ -1241,7 +1324,17 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
              if integer(?k), nonnegative(?k), nonnegative(?n)",
         ],
     )?;
-    i.define(&["expand_binomial(a, b, n) := sum(binomial(n, j)*a^(n - j)*b^j, j, 0, n)"])
+    i.define(&["expand_binomial(a, b, n) := sum(binomial(n, j)*a^(n - j)*b^j, j, 0, n)"])?;
+    let expand = i
+        .graph()
+        .ops()
+        .lookup("expand_binomial")
+        .ok_or_else(|| RuleError::Invalid {
+            rule: "dimensions/expand_binomial".to_owned(),
+            reason: "operator is not registered",
+        })?;
+    i.dim(expand, DimRule::Custom(binomial_expansion_dimension));
+    Ok(())
 }
 
 #[cfg(test)]

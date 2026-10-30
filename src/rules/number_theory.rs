@@ -64,6 +64,7 @@ use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -1083,6 +1084,30 @@ pub(crate) fn procedure(
     Ok(op)
 }
 
+/// Attaches dimension rules by operator name.
+///
+/// The operators of a rule set are registered from descriptors that do not
+/// carry a dimension rule, so the set states its signatures once, after
+/// registration. A name that is not registered is a bug in the table (or the
+/// rule set), not a silent coverage gap.
+pub(crate) fn attach_dimensions(
+    i: &mut Installer<'_>,
+    table: &[(&str, DimRule)],
+) -> Result<(), RuleError> {
+    for &(name, rule) in table {
+        let op = i
+            .graph()
+            .ops()
+            .lookup(name)
+            .ok_or_else(|| RuleError::Invalid {
+                rule: format!("dimensions/{name}"),
+                reason: "operator is not registered",
+            })?;
+        i.dim(op, rule);
+    }
+    Ok(())
+}
+
 /// `lhs - rhs` for an equation, the term itself otherwise.
 pub(crate) fn residual(
     graph: &mut Graph,
@@ -1652,6 +1677,61 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     )?;
 
     ext::install(i)?;
+
+    // Number theory is arithmetic on pure integers: its values are
+    // dimensionless, its decisions non-metric, and its multi-part results
+    // homogeneous lists of integers.
+    attach_dimensions(
+        i,
+        &[
+            ("gcd", DimRule::Dimensionless),
+            ("lcm", DimRule::Dimensionless),
+            ("mod", DimRule::Dimensionless),
+            ("powmod", DimRule::Dimensionless),
+            ("invmod", DimRule::Dimensionless),
+            ("isprime", DimRule::NonMetric),
+            ("nextprime", DimRule::Dimensionless),
+            ("totient", DimRule::Dimensionless),
+            ("divisor_count", DimRule::Dimensionless),
+            ("divisor_sum", DimRule::Dimensionless),
+            ("factorint", DimRule::List),
+            ("jacobi", DimRule::Dimensionless),
+            ("egcd", DimRule::List),
+            ("crt", DimRule::Dimensionless),
+            ("pell", DimRule::List),
+            ("primes", DimRule::List),
+            ("cfrac", DimRule::List),
+            ("convergents", DimRule::List),
+            ("diophantine", DimRule::NonMetric),
+            ("legendre_symbol", DimRule::Dimensionless),
+            ("kronecker_symbol", DimRule::Dimensionless),
+            ("sqrtmod", DimRule::Dimensionless),
+            ("quadratic_residues", DimRule::List),
+            ("mult_order", DimRule::Dimensionless),
+            ("carmichael", DimRule::Dimensionless),
+            ("primitive_root", DimRule::Dimensionless),
+            ("dlog", DimRule::Dimensionless),
+            ("mobius", DimRule::Dimensionless),
+            ("liouville", DimRule::Dimensionless),
+            ("omega", DimRule::Dimensionless),
+            ("bigomega", DimRule::Dimensionless),
+            ("radical", DimRule::Dimensionless),
+            ("sigma", DimRule::Dimensionless),
+            ("divisors", DimRule::List),
+            ("is_squarefree", DimRule::NonMetric),
+            ("is_square", DimRule::NonMetric),
+            ("isqrt", DimRule::Dimensionless),
+            ("iroot", DimRule::Dimensionless),
+            ("perfect_power", DimRule::List),
+            ("prevprime", DimRule::Dimensionless),
+            ("prime_pi", DimRule::Dimensionless),
+            ("nth_prime", DimRule::Dimensionless),
+            ("two_squares", DimRule::List),
+            ("lincong", DimRule::List),
+            ("binomial_mod", DimRule::Dimensionless),
+            ("farey", DimRule::List),
+        ],
+    )?;
 
     // Values on floats are rounded integers, so only identities that hold
     // for every rounding are stated for symbolic arguments. The others are

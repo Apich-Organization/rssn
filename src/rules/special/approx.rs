@@ -23,6 +23,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::rule::Installer;
 use crate::kernels::approx::ChebSeries;
 use crate::kernels::approx::aaa;
@@ -52,7 +53,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
             | _ => f64::NAN,
         }))?;
+    // A Chebyshev series is a polynomial in its dimensionless variable.
+    i.dim(series, DimRule::Dimensionless);
     let op = i.op(heavy("chebyshev_approx"))?;
+    // The approximant of `f` on an interval has the dimension of `f`.
+    i.dim(op, DimRule::Same(0));
     i.kernel(
         "special/chebyshev_approx",
         Tier::Reduce,
@@ -62,6 +67,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("rational_approx"))?;
+    i.dim(op, DimRule::Same(0));
     i.kernel(
         "special/rational_approx",
         Tier::Reduce,

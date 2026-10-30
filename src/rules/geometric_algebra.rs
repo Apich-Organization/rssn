@@ -54,6 +54,7 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::poly::best;
@@ -118,8 +119,41 @@ enum Product {
     Commutator,
 }
 
+/// The dimension signature of a geometric-algebra request.
+///
+/// The algebra is bilinear, so products multiply dimensions and sums keep
+/// them; grades, reverses and duals preserve the dimension of the
+/// multivector, while `ga_exp` is a power series and `ga_apply_versor`
+/// returns the dimension of the acted-on multivector.
+#[allow(clippy::missing_const_for_fn)]
+fn request_rule(request: Request) -> DimRule {
+    match request {
+        | Request::Scalar
+        | Request::Vector
+        | Request::Coeff
+        | Request::ScalarPart
+        | Request::Grade
+        | Request::Reverse
+        | Request::Involute
+        | Request::Conjugate
+        | Request::Dual
+        | Request::Undual
+        | Request::Norm
+        | Request::Normalize
+        | Request::Rotor => DimRule::Same(0),
+        | Request::Add | Request::Sub => DimRule::Sum,
+        | Request::Scale | Request::Product(_) => DimRule::Product,
+        | Request::NormSquared => DimRule::Square,
+        | Request::Inverse => DimRule::Inverse,
+        | Request::Exp => DimRule::Dimensionless,
+        | Request::Blade | Request::Basis | Request::Pseudoscalar => DimRule::NonMetric,
+        | Request::Apply => DimRule::Same(1),
+    }
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let mv = i.op(OpDescriptor::new("mv", Arity::Fixed(2)))?;
+    i.dim(mv, DimRule::NonMetric);
     i.kernel("geometric_algebra/mv", Tier::Normalize, Normalise { mv });
     for (name, arity, request) in [
         ("mv_scalar", Arity::Fixed(2), Request::Scalar),
@@ -184,6 +218,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, request_rule(request));
         i.kernel(
             &format!("geometric_algebra/{name}"),
             Tier::Reduce,

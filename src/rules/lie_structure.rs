@@ -85,6 +85,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
+use crate::graph::dim::DimRule;
 use crate::graph::rule::Installer;
 use crate::kernels::lie_structure as ks;
 use crate::kernels::lie_structure::Family;
@@ -107,6 +108,7 @@ use super::discrete::rows;
 use super::discrete::small;
 use super::discrete::sum;
 use super::lie::lie;
+use super::number_theory::attach_dimensions;
 
 /// The Lie structure rule set.
 #[must_use]
@@ -1219,6 +1221,63 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         one_parameter_subgroup,
     )?;
     def_request(i, "matrix_log", Arity::Fixed(1), matrix_log)?;
+
+    // Root data, weights, bases and structural tables are lists of
+    // integers; dimensions, ranks, orders and multiplicities are counts;
+    // subalgebras, isomorphisms and predicates are opaque objects.
+    attach_dimensions(
+        i,
+        &[
+            ("lie_cartan_matrix", DimRule::List),
+            ("lie_cartan_type", DimRule::NonMetric),
+            ("lie_rank", DimRule::Dimensionless),
+            ("lie_dimension", DimRule::Dimensionless),
+            ("lie_num_positive_roots", DimRule::Dimensionless),
+            ("lie_simple_roots", DimRule::List),
+            ("lie_positive_roots", DimRule::List),
+            ("lie_highest_root", DimRule::List),
+            ("lie_weyl_group_order", DimRule::Dimensionless),
+            ("lie_exponents", DimRule::List),
+            ("lie_coxeter_number", DimRule::Dimensionless),
+            ("lie_dual_coxeter_number", DimRule::Dimensionless),
+            ("lie_dynkin_diagram", DimRule::List),
+            ("lie_fundamental_weights", DimRule::List),
+            ("lie_gram", DimRule::List),
+            ("dim_irrep", DimRule::Dimensionless),
+            ("weight_multiplicity", DimRule::Dimensionless),
+            ("irrep_weights", DimRule::List),
+            ("tensor_decomposition", DimRule::List),
+            ("casimir_eigenvalue", DimRule::Dimensionless),
+            ("dynkin_index", DimRule::Dimensionless),
+            ("lie_sc", DimRule::NonMetric),
+            ("lie_sc_of", DimRule::List),
+            ("lie_derived_series", DimRule::List),
+            ("lie_derived_dims", DimRule::List),
+            ("lie_lower_central_series", DimRule::List),
+            ("lie_lower_central_dims", DimRule::List),
+            ("lie_upper_central_series", DimRule::List),
+            ("lie_upper_central_dims", DimRule::List),
+            ("lie_center", DimRule::NonMetric),
+            ("lie_radical", DimRule::NonMetric),
+            ("lie_is_solvable", DimRule::NonMetric),
+            ("lie_is_nilpotent", DimRule::NonMetric),
+            ("lie_is_semisimple", DimRule::NonMetric),
+            ("lie_cartan_solvable_test", DimRule::NonMetric),
+            ("lie_levi", DimRule::NonMetric),
+            ("lie_cartan_subalgebra", DimRule::NonMetric),
+            ("lie_root_decomposition", DimRule::List),
+            ("lie_is_subalgebra", DimRule::NonMetric),
+            ("lie_elements", DimRule::List),
+            ("lie_casimir_operator", DimRule::List),
+            ("gl_basis", DimRule::List),
+            ("sl_basis", DimRule::List),
+            ("so_basis", DimRule::List),
+            ("sp_basis", DimRule::List),
+            ("su_basis", DimRule::List),
+            ("one_parameter_subgroup", DimRule::NonMetric),
+            ("matrix_log", DimRule::List),
+        ],
+    )?;
     Ok(())
 }
 

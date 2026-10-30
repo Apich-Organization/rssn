@@ -79,6 +79,10 @@ use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -95,6 +99,312 @@ pub fn discrete() -> RuleSet {
         .needs(number_theory())
         .needs(linalg())
         .needs(complex())
+}
+
+/// A count, a field element or a coordinate ratio: dimensionless whatever
+/// the dimensions of the objects it queries.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn dimensionless_result(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
+/// The dimension signature of a discrete operator.
+///
+/// Discrete mathematics mostly produces integers, truth values, labels and
+/// opaque structures: counts and finite-field elements are dimensionless,
+/// homogeneous integer lists are `List`, and graphs, groups, simplicial
+/// complexes, permutations and predicates are `NonMetric` containers. The
+/// graphics/fractal operators that act on geometric points keep the point
+/// dimension (`Same`) or multiply dimensions (`Product`).
+#[allow(clippy::too_many_lines)]
+fn dim_rule(name: &str) -> DimRule {
+    use DimRule::Custom;
+    use DimRule::Inverse;
+    use DimRule::List;
+    use DimRule::NonMetric;
+    use DimRule::Product;
+    use DimRule::Same;
+    // Counts, invariants and finite-field elements.
+    if matches!(
+        name,
+        "graph_node_count"
+            | "graph_chromatic_number"
+            | "algebraic_connectivity"
+            | "ec_x"
+            | "ec_y"
+            | "ec_order"
+            | "rsa_encrypt"
+            | "rsa_decrypt"
+            | "gf_add"
+            | "gf_sub"
+            | "gf_mul"
+            | "gf_div"
+            | "gf_neg"
+            | "gf_inv"
+            | "gf_pow"
+            | "gfp_norm"
+            | "gfp_degree"
+            | "gfp_eval"
+            | "gf256_add"
+            | "gf256_mul"
+            | "gf256_div"
+            | "gf256_inv"
+            | "gf256_pow"
+            | "gf256_exp"
+            | "gf256_log"
+            | "gf256_poly_eval"
+            | "hamming_distance"
+            | "hamming_weight"
+            | "rs_error_count"
+            | "code_min_distance"
+            | "code_rate"
+            | "crc32"
+            | "crc32_update"
+            | "crc32_finalize"
+            | "crc16"
+            | "crc8"
+            | "group_order"
+            | "group_element_order"
+            | "group_sylow_count"
+            | "group_class_count"
+            | "group_class_index"
+            | "group_automorphism_count"
+            | "group_inner_automorphism_count"
+            | "group_outer_automorphism_count"
+            | "group_exponent"
+            | "group_nilpotency_class"
+            | "perm_order"
+            | "perm_sign"
+            | "perm_group_order"
+            | "perm_group_stabilizer_order"
+            | "todd_coxeter_index"
+            | "fp_group_order"
+            | "character_inner_product"
+            | "point_group_order"
+            | "crystallographic_min_dimension"
+            | "sc_dimension"
+            | "sc_simplex_dimension"
+            | "sc_euler_characteristic"
+            | "sc_betti"
+            | "sc_cohomology_betti"
+            | "sc_components"
+            | "sc_euler_from_betti"
+            | "sc_induced_homology_rank"
+            | "betti_at_radius"
+            | "bottleneck_distance"
+            | "cubical_euler_characteristic"
+            | "mandelbrot_escape"
+            | "julia_escape"
+            | "burning_ship_escape"
+            | "multibrot_escape"
+            | "mandelbrot_stability"
+            | "complex_map_stability"
+            | "map_stability"
+            | "lyapunov_exponent"
+            | "logistic_lyapunov"
+            | "lorenz_lyapunov"
+            | "similarity_dimension"
+            | "moran_dimension"
+            | "box_counting"
+            | "correlation_dimension"
+            | "orbit_density"
+            | "orbit_entropy"
+    ) {
+        return Custom(dimensionless_result);
+    }
+    // Homogeneous integer lists, tables and matrices.
+    if matches!(
+        name,
+        "graph_adjacency"
+            | "graph_incidence"
+            | "graph_laplacian"
+            | "spectral_analysis"
+            | "graph_greedy_coloring"
+            | "gfp_add"
+            | "gfp_sub"
+            | "gfp_mul"
+            | "gfp_divmod"
+            | "gfp_gcd"
+            | "gfp_egcd"
+            | "gfp_monic"
+            | "gfp_derivative"
+            | "gfp_powmod"
+            | "gfp_invmod"
+            | "gfp_squarefree"
+            | "gfp_ddf"
+            | "gfp_edf"
+            | "gfp_factor"
+            | "gfp_berlekamp"
+            | "gfx_reduce"
+            | "gfx_add"
+            | "gfx_sub"
+            | "gfx_mul"
+            | "gfx_div"
+            | "gfx_neg"
+            | "gfx_inv"
+            | "gfx_pow"
+            | "hamming_encode"
+            | "hamming_check"
+            | "hamming_decode"
+            | "rs_encode"
+            | "rs_check"
+            | "rs_decode"
+            | "bch_encode"
+            | "bch_decode"
+            | "interleave"
+            | "deinterleave"
+            | "conv_encode"
+            | "gf256_poly_add"
+            | "gf256_poly_mul"
+            | "gf256_poly_scale"
+            | "gf256_poly_derivative"
+            | "gf256_poly_mod"
+            | "gf256_poly_divmod"
+            | "gf256_poly_gcd"
+            | "group_character"
+            | "group_character_table"
+            | "group_character_degrees"
+            | "group_element_orders"
+            | "group_order_statistics"
+            | "group_class_sizes"
+            | "perm_compose"
+            | "perm_inverse"
+            | "perm_group_base"
+            | "perm_group_strong_generators"
+            | "perm_group_basic_orbits"
+            | "perm_group_orbits"
+            | "character_tensor"
+            | "character_sym_square"
+            | "character_alt_square"
+            | "character_adams"
+            | "character_conjugate"
+            | "character_regular"
+            | "character_of_matrices"
+            | "character_projection"
+            | "point_group_class_sizes"
+            | "point_group_irrep_dimensions"
+            | "point_group_character_table"
+            | "point_group_multiplicities"
+            | "point_group_vector_character"
+            | "point_group_rotation_character"
+            | "molecule_symmetry_operations"
+            | "molecule_vibrations"
+            | "molecule_vibrations_table"
+            | "molecule_spectroscopy"
+            | "sc_simplices"
+            | "sc_boundary"
+            | "sc_boundary_matrix"
+            | "sc_coboundary_matrix"
+            | "sc_chain_boundary"
+            | "sc_homology"
+            | "sc_homology_all"
+            | "sc_reduced_homology"
+            | "sc_cohomology"
+            | "sc_homology_mod"
+            | "sc_relative_homology"
+            | "sc_mayer_vietoris_ranks"
+            | "sc_induced_homology"
+            | "persistence"
+            | "persistent_homology"
+            | "rips_persistence"
+            | "rips_persistence_diagram"
+            | "vietoris_rips_filtration"
+            | "cubical_betti"
+            | "mandelbrot_iterate"
+            | "mandelbrot_orbit"
+            | "mandelbrot_fixed_points"
+            | "complex_map_fixed_points"
+            | "map_fixed_points"
+            | "logistic_iterate"
+            | "logistic_bifurcation"
+            | "lorenz"
+            | "lorenz_orbit"
+            | "rossler_orbit"
+            | "henon_orbit"
+            | "tinkerbell_orbit"
+            | "ifs_generate"
+            | "translation_2d"
+            | "translation_3d"
+            | "scaling_2d"
+            | "scaling_3d"
+            | "shear_2d"
+            | "rotation_2d"
+            | "rotation_3d_x"
+            | "rotation_3d_y"
+            | "rotation_3d_z"
+            | "rotation_axis_angle"
+            | "reflection_2d"
+            | "reflection_3d"
+            | "perspective"
+            | "orthographic"
+            | "look_at"
+            | "quat_from_axis_angle"
+            | "quat_to_matrix"
+            | "mesh_triangulate"
+    ) {
+        return List;
+    }
+    // Geometric values that keep or combine point dimensions.
+    match name {
+        | "euclidean_distance"
+        | "newton_fractal_root"
+        | "ifs_apply"
+        | "apply_transform"
+        | "apply_transform_vector"
+        | "bezier"
+        | "bezier_derivative"
+        | "bezier_split"
+        | "bspline"
+        | "catmull_rom"
+        | "quat_conj"
+        | "quat_norm"
+        | "quat_normalize"
+        | "quat_slerp"
+        | "mesh_transform"
+        | "mesh_normals"
+        | "reflect"
+        | "refract" => return Same(0),
+        | "quat_rotate" => return Same(1),
+        | "quat_mul" => return Product,
+        | "quat_inverse" => return Inverse,
+        | "barycentric" => return Custom(dimensionless_result),
+        | _ => {},
+    }
+    // Graphs, groups, complexes, permutations and predicates are opaque
+    // containers of labels, not scalars.
+    if name == "graph"
+        || name == "digraph"
+        || name == "sc"
+        || name == "group"
+        || name.starts_with("graph_")
+        || name.starts_with("sc_")
+        || name.starts_with("group_")
+        || name.starts_with("perm_group_")
+        || name.starts_with("point_group_")
+        || name.starts_with("molecule_")
+        || name.starts_with("character_")
+        || name.starts_with("ec_")
+        || name.starts_with("lie_")
+        || matches!(
+            name,
+            "ecdh_public"
+                | "ecdh_shared"
+                | "ec_compress"
+                | "ec_decompress"
+                | "ecdsa_sign"
+                | "ecdsa_verify"
+                | "rsa_keygen"
+                | "gate"
+        )
+    {
+        return NonMetric;
+    }
+    // The remaining discrete operators are predicates, field objects and
+    // symbolic factorisations: not scalars.
+    NonMetric
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -225,6 +535,7 @@ pub(crate) fn def(
     run: Run,
 ) -> Result<OpId, RuleError> {
     let op = i.op(OpDescriptor::new(name, arity))?;
+    i.dim(op, dim_rule(name));
     i.kernel(
         &format!("discrete/{name}"),
         Tier::Normalize,
@@ -245,6 +556,7 @@ pub(crate) fn def_request(
     let op = i.op(OpDescriptor::new(name, arity)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    i.dim(op, dim_rule(name));
     i.kernel(
         &format!("discrete/{name}"),
         Tier::Reduce,
@@ -259,7 +571,9 @@ pub(crate) fn def_inert(
     name: &str,
     arity: Arity,
 ) -> Result<OpId, RuleError> {
-    i.op(OpDescriptor::new(name, arity))
+    let op = i.op(OpDescriptor::new(name, arity))?;
+    i.dim(op, dim_rule(name));
+    Ok(op)
 }
 
 // ----------------------------------------------------------------------

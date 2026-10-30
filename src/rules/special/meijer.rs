@@ -97,6 +97,7 @@
 use std::collections::HashMap;
 
 use num_complex::Complex64;
+use num_rational::BigRational;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -112,6 +113,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::SymbolId;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::meijer as numeric;
@@ -144,6 +149,38 @@ struct Ops {
     oo: Option<OpId>,
 }
 
+/// The dimension of a Meijer G value: `z^b` when every `b` parameter is the
+/// same rational, dimensionless otherwise (the branch structure does not
+/// single out a power of `z`).
+fn meijer_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let z = args.get(4).cloned().unwrap_or_else(DimTerm::dimensionless);
+    common_b_exponent(ctx).map_or_else(
+        || Ok(DimTerm::dimensionless()),
+        |exponent| Ok(z.pow(&exponent)),
+    )
+}
+
+/// The common rational value of the `b` parameters, if there is one.
+fn common_b_exponent(ctx: &DimCtx<'_>) -> Option<BigRational> {
+    let parameters = ctx.graph.children(ctx.node).get(3).copied()?;
+    if ctx.graph.op(parameters) != core::LIST {
+        return None;
+    }
+    let mut common: Option<BigRational> = None;
+    for &parameter in ctx.graph.children(parameters) {
+        let value = ctx.graph.number_of(parameter)?.to_rational()?;
+        match &common {
+            | None => common = Some(value),
+            | Some(first) if *first == value => {},
+            | Some(_) => return None,
+        }
+    }
+    common
+}
+
 /// Installs the Meijer G operators and kernels.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let meijerg = i.op(OpDescriptor::new("meijerg", Arity::Fixed(5))
@@ -155,6 +192,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let series = i.op(OpDescriptor::new("meijer_series", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    i.dim(meijerg, DimRule::Custom(meijer_dimension));
+    // The Mellin transform is a gamma product in the Mellin variable; its
+    // value is a pure number when the parameters are.
+    i.dim(mellin, DimRule::Dimensionless);
+    i.dim(series, DimRule::Custom(meijer_dimension));
     let invalid = |reason: &'static str| RuleError::Invalid {
         rule: "special/meijer".to_owned(),
         reason,

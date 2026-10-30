@@ -33,6 +33,7 @@ use crate::graph::Outcome;
 use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::linalg::invert;
@@ -298,6 +299,17 @@ impl Kernel for Extension {
     }
 }
 
+/// The dimension signature of a curvature or tensor extension.
+fn extension_rule(kind: Kind) -> DimRule {
+    match kind {
+        | Kind::Geodesic | Kind::KillingTensor | Kind::IsKilling => DimRule::NonMetric,
+        | Kind::Kretschmann | Kind::Gaussian => DimRule::Custom(super::curvature_dimension),
+        | Kind::Volume => DimRule::Custom(super::volume_element_dimension),
+        | Kind::Beltrami => DimRule::Custom(super::laplacian_dimension),
+        | Kind::Divergence => DimRule::Diff { f: 0, x: 2 },
+    }
+}
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
         ("metric_geodesic_acceleration", 3, Kind::Geodesic),
@@ -312,6 +324,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        i.dim(op, extension_rule(kind));
         i.kernel(
             &format!("geometry/{name}"),
             Tier::Reduce,
