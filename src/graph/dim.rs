@@ -1056,6 +1056,7 @@ fn base_alias(name: &str) -> &str {
 /// A name missing here is a coverage gap: the inference engine treats the
 /// operator as dimensionally unknown and the coverage scanner reports it.
 #[must_use]
+#[allow(clippy::match_same_arms)] // grouped by domain; identical bodies document families
 pub fn default_rule(name: &str) -> Option<DimRule> {
     let rule = match name {
         | "add" | "sub" | "min" | "max" | "piecewise" => DimRule::Sum,
