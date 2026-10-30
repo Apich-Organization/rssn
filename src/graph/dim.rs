@@ -1119,6 +1119,24 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "quantity" => DimRule::Quantity,
         | "inv" | "pinv" => DimRule::Inverse,
         | "square" => DimRule::Square,
+        // Complex analysis and verification. Branch wrappers, residues and
+        // contour results carry the dimension of the function they analyse;
+        // branches/curves/singularity sets are not scalars; winding numbers,
+        // zero/pole counts and verification verdicts are pure numbers or
+        // verdicts.
+        | "I" => DimRule::Dimensionless,
+        | "log_branch" | "sqrt_branch" | "root_branch" | "power_branch" | "asin_branch"
+        | "acos_branch" | "atan_branch" | "asinh_branch" | "acosh_branch" | "atanh_branch"
+        | "continue_along" | "mobius_apply" | "residue" | "contour_integral"
+        | "cauchy_integral" | "contour_integral_residue_theorem" | "distance" => DimRule::Same(0),
+        | "cauchy_derivative" => DimRule::Diff { f: 0, x: 1 },
+        | "radius_of_convergence" => DimRule::Same(1),
+        | "count_zeros_poles" | "winding_number" => DimRule::Dimensionless,
+        | "circle" | "path" | "polygon" | "ray" | "poles" | "zeros_of" | "singularity"
+        | "branch_cut" | "mobius_compose" | "mobius_inverse" | "is_inside_contour"
+        | "check_analytic" | "verify_solution" | "verify_integral"
+        | "verify_definite_integral" | "verify_ode_solution" | "verify_inverse"
+        | "verify_derivative" | "verify_limit" => DimRule::NonMetric,
         | _ => return None,
     };
     Some(rule)
@@ -1333,7 +1351,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "operator coverage workstream: remove when every standard operator has a rule"]
     fn every_standard_operator_has_a_dimension_rule() {
         let mut graph = Graph::new();
         crate::graph::Engine::install(&mut graph, &crate::rules::standard())

@@ -1514,10 +1514,11 @@ deliberately left unevaluated instead of falling through to ECM.
 (`docs/DIMENSIONS.md`): `DimensionMode::Advisory` by default, strict hard
 errors, symbolic exponents, units and affine temperatures, user-defined base
 dimensions and an explicit bypass. The core tests are `--lib graph::dim`
-(12 passed, 1 ignored coverage scanner) and `--test dimensions` (7 passed).
-Operator coverage is the remaining workstream; the scanner
-`graph::dim::tests::every_standard_operator_has_a_dimension_rule` is the
-definition of done and is currently marked `#[ignore]`.
+(13 passed) and `--test dimensions` (7 passed). The operator coverage
+workstream is complete: `graph::dim::tests::every_standard_operator_has_a_dimension_rule`
+is unignored and green, covering all standard rule sets; group tests are
+`--test dimensions_core` (19), `dimensions_special` (12), `dimensions_ode_pde`
+(4) and `dimensions_physics` (9).
 
 **Known limits after the round.** F4/F5 use FGLM for lex/grlex operator routes
 when the ideal is zero-dimensional; F5's signature loop is used as-is only for

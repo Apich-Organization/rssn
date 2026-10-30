@@ -315,23 +315,28 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 - [x] `Installer::dim`, core rule table.
 - [x] `Config`/`Answer`/`Term`/`ComputeError` integration.
 - [x] Tests 1–6 for the core (`graph::dim` unit tests and `tests/dimensions.rs`).
-- [ ] Operator coverage workstream (delegated): every standard rule set,
-      scanner green, `#[ignore]` removed.
-- [ ] Docs (`ARCHITECTURE.md`, README example) and FFI fields.
+- [x] Operator coverage workstream: every standard operator has a rule,
+      scanner green (test unignored).
+- [x] Docs (`ARCHITECTURE.md`, README, `rssn.h`/`rssn.hpp` status code).
 
 ## 13. Landing status
 
 The core landed before the six algorithm branches were merged; the coverage
-workstream runs on the merged tree. Test commands for the core:
+workstream ran on the merged tree. Test commands for the core:
 
 ```
 cargo test --lib graph::dim
 cargo test --test dimensions
+cargo test --test dimensions_core
+cargo test --test dimensions_special
+cargo test --test dimensions_ode_pde
+cargo test --test dimensions_physics
 ```
 
-The coverage scanner is
-`graph::dim::tests::every_standard_operator_has_a_dimension_rule`, currently
-marked `#[ignore = "operator coverage workstream: remove when every standard
-operator has a rule"]`. Running it with `--ignored` prints the full list of
-operators that still need a rule; its last step is to remove the attribute.
+`graph::dim::tests::every_standard_operator_has_a_dimension_rule` installs
+`rules::standard()` and asserts that no operator has `Unspecified`; it is no
+longer ignored. The four coverage workstreams (core, special/math, ODE/PDE and
+physics/misc) annotated the remaining operators; the complex-analysis and
+verify operators were completed centrally in the core signature table.
+
 
