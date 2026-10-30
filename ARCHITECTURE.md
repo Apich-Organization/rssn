@@ -32,7 +32,7 @@ number.
 
 | Module | Role |
 |---|---|
-| `graph` | The kernel. `store` holds hash-consed nodes, union-find classes and literal folding. `op` is an **open** operator registry with descriptors: arity, flags such as `HEAVY`, `OPAQUE_ON_APPLY` and `COMMUTATIVE`, cost, and binders. `pattern`/`subst` handle text patterns with guards; `rule` holds `RuleSet`, `Installer`, kernels and definitions. `schedule` runs the tiered fixpoint engine (Reduce → Normalize → Explore, with budgets and bans). `extract` provides `ClosedForm` and `SizeCost`. `facts` stores assumptions and sign/integer analysis. `eval` evaluates interval-ball numerics. `soundness` checks every rewrite numerically. |
+| `graph` | The kernel. `store` holds hash-consed nodes, union-find classes and literal folding. `op` is an **open** operator registry with descriptors: arity, flags such as `HEAVY`, `OPAQUE_ON_APPLY` and `COMMUTATIVE`, cost, and binders. `pattern`/`subst` handle text patterns with guards; `rule` holds `RuleSet`, `Installer`, kernels and definitions. `schedule` runs the tiered fixpoint engine (Reduce → Normalize → Explore, with budgets and bans). `extract` provides `ClosedForm` and `SizeCost`. `facts` stores assumptions and sign/integer analysis. `dim` is the dimensional typing layer (see `docs/DIMENSIONS.md`). `eval` evaluates interval-ball numerics. `soundness` checks every rewrite numerically. |
 | `rules` | One `RuleSet` per mathematical domain. See the list below. |
 | `kernels` | Plain numerical algorithms on `f64`, slices and `ndarray`, with no terms involved: quadrature, ODE/PDE solvers, special functions, linear algebra, FFT, optimisation, finite fields and more. Rules call them to produce numeric witnesses, and users can call them directly. |
 | `api` | `Session`, `Term<'s>` (a `Copy` handle with overloaded operators), `Config` (rule sets, target phase, bindings, assumptions, budget), `Session::compute -> Answer`, and `ComputeError`. |
@@ -54,7 +54,7 @@ A rule set declares the sets it depends on. Its contents are:
 - **definitions**: `name(a, b) := body`, expanded by a kernel;
 - **kernels**: Rust functions over e-classes that return `Equal(term)`, `Pinned(term)`, `Approx(ball)` or `Pass`.
 
-Heavy algorithms are kernels. Examples are Risch–Norman integration and the substitution/reduction-formula integrator, Gosper summation and recurrence guessing, univariate (Zassenhaus) and multivariate (Kronecker) factorisation, Gröbner bases, CAD in any dimension, the equation and inequality solver with its heuristic sub-solvers, the ODE solver (classification, variation of parameters of any order, Lie point symmetries, reductions, Fourier and Laplace methods), the PDE solver (characteristics in any dimension, separation of variables, Green's functions, conservation laws and symmetries), and Schreier–Sims / Todd–Coxeter for groups. Each kernel writes its result back as an equality.
+Heavy algorithms are kernels. Examples are Risch–Norman integration and the substitution/reduction-formula integrator, Hermite reduction for algebraic integrands in `Q(x)(√D)`, Meijer G evaluation and symbolic reduction, Gosper summation and recurrence guessing, univariate (Zassenhaus) and multivariate (Kronecker) factorisation, Gröbner bases (Buchberger, F4, F5), FGLM, CAD and real quantifier elimination, the equation and inequality solver with its heuristic sub-solvers, the ODE solver (classification, variation of parameters of any order, Lie point symmetries, reductions, Fourier and Laplace methods), the PDE solver (characteristics in any dimension, separation of variables, Green's functions, conservation laws and symmetries), multivariate Taylor/Laurent series, the quadratic sieve, and Schreier–Sims / Todd–Coxeter for groups. Each kernel writes its result back as an equality.
 
 ### Phases
 
@@ -100,6 +100,26 @@ No call unwinds: a panic becomes `RSSN_STATUS_PANIC`. See `examples/c/smoke.c` f
 - **New integral forms.** Register extra antiderivative functions in the `rules::calculus::IntegralTable` attribute of the `integral` operator.
 - **New backend.** Implement `backend::Backend` and pass it to `Term::compile_with`, or install it with `backend::set_default`.
 - **Faster special functions.** Attach a `backend::Lowering` attribute to an operator so compiled code calls it directly.
+
+## Dimensions
+
+Dimensions are a typing layer over the term graph (`graph::dim`): every scalar
+term has a dimension, every operator states how the dimensions of its
+arguments determine its value's dimension, and `Session::compute` reports the
+dimension of the answer. Base dimensions are interned and extensible, exponents
+are exact rationals or rational functions over atoms (so `x^n`,
+`x^(a+b)` and `x^(1/n)` are supported), and unknown symbols get dimension
+variables that are solved by unification.
+
+A `DimRule` is attached to an operator like `Partials`
+(`i.dim(op, DimRule::Same(0))`); the core table covers the arithmetic,
+elementary and calculus operators. The default mode is `Advisory`: dimensions
+are inferred and conflicts reported in `Answer::diagnostics` without changing
+the answer. `DimensionMode::Strict` turns a conflict into
+`ComputeError::Dimension`; `Config::bypass_dimension_checks` is the explicit
+escape hatch. Unit expressions are resolved by the `units` rule set through a
+resolver installed on `quantity`, so the kernel does not depend on the rules.
+`docs/DIMENSIONS.md` is the design document and the coverage checklist.
 
 ## Compiled evaluation and the JIT
 

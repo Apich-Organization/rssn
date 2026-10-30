@@ -25,7 +25,7 @@ struct Monomial {
 }
 
 impl Monomial {
-    fn one() -> Self {
+    const fn one() -> Self {
         Self { powers: Vec::new() }
     }
 
@@ -35,7 +35,7 @@ impl Monomial {
         }
     }
 
-    fn is_one(&self) -> bool {
+    const fn is_one(&self) -> bool {
         self.powers.is_empty()
     }
 

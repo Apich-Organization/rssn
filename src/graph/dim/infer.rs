@@ -84,9 +84,9 @@ impl Unifier {
     fn bind(
         &mut self,
         id: DimVarId,
-        term: DimTerm,
+        term: &DimTerm,
     ) -> Result<(), UnifyError> {
-        let term = self.resolve(&term);
+        let term = self.resolve(term);
         if term_has_var(&term, id, 0) {
             return Err(UnifyError::Constraint(term));
         }
@@ -116,8 +116,9 @@ impl Unifier {
         for _ in 0..64 {
             match (&left.repr, &right.repr) {
                 | (DimRepr::Any, _) => return Ok(right),
-                | (_, DimRepr::Any) => return Ok(left),
-                | (DimRepr::NonMetric, DimRepr::NonMetric) => return Ok(left),
+                | (_, DimRepr::Any) | (DimRepr::NonMetric, DimRepr::NonMetric) => {
+                    return Ok(left);
+                },
                 | (DimRepr::NonMetric, _) | (_, DimRepr::NonMetric) => {
                     return Err(UnifyError::Mismatch(left, right));
                 },
@@ -131,7 +132,7 @@ impl Unifier {
                         let rest = without_var(bases, vars, id);
                         let inverse = BigRational::one() / exponent;
                         let solution = rest.pow(&-inverse);
-                        self.bind(id, solution)?;
+                        self.bind(id, &solution)?;
                         left = self.resolve(&left);
                         right = self.resolve(&right);
                         continue;
@@ -352,7 +353,7 @@ impl<'a> DimInfer<'a> {
     }
 
     fn symbol_dimension(
-        &mut self,
+        &self,
         symbol: SymbolId,
     ) -> DimTerm {
         if let Some(known) = self.assumptions.get(&symbol) {
@@ -661,7 +662,7 @@ impl<'a> DimInfer<'a> {
     }
 
     fn quantity(
-        &mut self,
+        &self,
         node: NodeId,
     ) -> DimTerm {
         let Some(op) = self.graph.ops().lookup("quantity") else {
@@ -737,7 +738,7 @@ impl<'a> DimInfer<'a> {
     }
 
     fn atom_of(
-        &mut self,
+        &self,
         node: NodeId,
     ) -> Expo {
         let label = self.graph.display(node);

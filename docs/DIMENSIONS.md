@@ -310,11 +310,28 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 
 ## 12. Checklist
 
-- [ ] `graph::dim` core (algebra, arena, unification, rules, errors).
-- [ ] `Graph` integration, assumptions, base dimensions, unit resolver.
-- [ ] `Installer::dim`, core rule table.
-- [ ] `Config`/`Answer`/`Term`/`ComputeError` integration.
-- [ ] Tests 1–6 for the core.
+- [x] `graph::dim` core (algebra, arena, unification, rules, errors).
+- [x] `Graph` integration, assumptions, base dimensions, unit resolver.
+- [x] `Installer::dim`, core rule table.
+- [x] `Config`/`Answer`/`Term`/`ComputeError` integration.
+- [x] Tests 1–6 for the core (`graph::dim` unit tests and `tests/dimensions.rs`).
 - [ ] Operator coverage workstream (delegated): every standard rule set,
       scanner green, `#[ignore]` removed.
 - [ ] Docs (`ARCHITECTURE.md`, README example) and FFI fields.
+
+## 13. Landing status
+
+The core landed before the six algorithm branches were merged; the coverage
+workstream runs on the merged tree. Test commands for the core:
+
+```
+cargo test --lib graph::dim
+cargo test --test dimensions
+```
+
+The coverage scanner is
+`graph::dim::tests::every_standard_operator_has_a_dimension_rule`, currently
+marked `#[ignore = "operator coverage workstream: remove when every standard
+operator has a rule"]`. Running it with `--ignored` prints the full list of
+operators that still need a rule; its last step is to remove the attribute.
+

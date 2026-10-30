@@ -13,8 +13,14 @@
 //!
 //! The design is documented in `docs/DIMENSIONS.md`.
 
-mod expr;
-mod infer;
+// The exponent field and the inference engine are implementation details of
+// this module; `pub(crate)` is already the widest visibility reachable from
+// their private submodules, so the lint's suggested `pub(super)` would force
+// re-exports at every use site.
+#![allow(clippy::redundant_pub_crate)]
+
+pub(crate) mod expr;
+pub(crate) mod infer;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -68,19 +74,24 @@ pub struct Dimension {
 impl Dimension {
     /// The dimensionless value `1`.
     #[must_use]
-    pub fn dimensionless() -> Self {
-        Self::default()
+    pub const fn dimensionless() -> Self {
+        Self {
+            any: false,
+            non_metric: false,
+            factors: Vec::new(),
+            unknown: Vec::new(),
+        }
     }
 
     /// Whether this is exactly the dimensionless value.
     #[must_use]
-    pub fn is_dimensionless(&self) -> bool {
+    pub const fn is_dimensionless(&self) -> bool {
         !self.any && !self.non_metric && self.factors.is_empty() && self.unknown.is_empty()
     }
 
     /// Whether no dimension information is available.
     #[must_use]
-    pub fn is_unknown(&self) -> bool {
+    pub const fn is_unknown(&self) -> bool {
         !self.any && !self.non_metric && self.factors.is_empty() && !self.unknown.is_empty()
     }
 }
@@ -224,7 +235,7 @@ impl DimError {
     /// Whether this error is a real conflict that strict mode rejects. A
     /// missing operator rule is a coverage gap, not a conflict.
     #[must_use]
-    pub fn is_blocking(&self) -> bool {
+    pub const fn is_blocking(&self) -> bool {
         !matches!(
             self,
             Self::Unannotated { .. } | Self::MixedList { .. }
@@ -319,13 +330,13 @@ pub struct DimCtx<'a> {
 impl DimCtx<'_> {
     /// A dimensionless value.
     #[must_use]
-    pub fn dimensionless(&self) -> DimTerm {
+    pub const fn dimensionless(&self) -> DimTerm {
         DimTerm::dimensionless()
     }
 
     /// The polymorphic value.
     #[must_use]
-    pub fn any(&self) -> DimTerm {
+    pub const fn any(&self) -> DimTerm {
         DimTerm::any()
     }
 
@@ -648,7 +659,7 @@ impl DimTerm {
 
     /// The dimensionless value.
     #[must_use]
-    pub fn dimensionless() -> Self {
+    pub const fn dimensionless() -> Self {
         Self {
             repr: DimRepr::Scalar {
                 bases: Vec::new(),
@@ -697,7 +708,7 @@ impl DimTerm {
 
     /// Whether this is exactly dimensionless.
     #[must_use]
-    pub fn is_dimensionless(&self) -> bool {
+    pub const fn is_dimensionless(&self) -> bool {
         match &self.repr {
             | DimRepr::Scalar { bases, vars } => bases.is_empty() && vars.is_empty(),
             | _ => false,
@@ -706,7 +717,7 @@ impl DimTerm {
 
     /// Whether the value contains unresolved dimension variables.
     #[must_use]
-    pub fn has_unknown(&self) -> bool {
+    pub const fn has_unknown(&self) -> bool {
         match &self.repr {
             | DimRepr::Scalar { vars, .. } => !vars.is_empty(),
             | _ => false,
@@ -902,7 +913,6 @@ fn add_factor_var(
 
 impl Graph {
     /// The dimension arena of this graph (base dimensions and atoms).
-    #[must_use]
     pub fn dim_arena(&self) -> std::sync::RwLockReadGuard<'_, DimArena> {
         match self.dims.read() {
             | Ok(guard) => guard,
@@ -1083,14 +1093,17 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "pow" => DimRule::Power,
         | "sqrt" => DimRule::Root(2),
         | "cbrt" => DimRule::Root(3),
-        | "abs" | "re" | "im" | "conj" | "floor" | "ceil" | "round" | "trunc" => DimRule::Same(0),
-        | "sign" | "arg" => DimRule::Dimensionless,
-        | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec" | "csc" | "asin" | "acos"
-        | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh" | "tanh" | "coth" | "sech"
-        | "csch" | "asinh" | "acosh" | "atanh" | "acoth" | "asech" | "acsch" | "erf" | "erfc"
-        | "erfi" | "erfcinv" | "gamma" | "lgamma" | "digamma" | "polygamma" | "zeta"
-        | "hurwitz_zeta" | "beta" | "lambertw" | "sinc" | "besselj" | "bessely" | "besseli"
-        | "besselk" | "airy_ai" | "airy_bi" | "airy_aip" | "airy_bip" => DimRule::Dimensionless,
+        | "abs" | "re" | "im" | "conj" | "floor" | "ceil" | "round" | "trunc"
+        | "limit" | "taylor" | "laurent" | "fourier_series" | "convert" | "unify_expression"
+        | "simplify_units" => DimRule::Same(0),
+        | "sign" | "arg" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec"
+        | "csc" | "asin" | "acos" | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh"
+        | "tanh" | "coth" | "sech" | "csch" | "asinh" | "acosh" | "atanh" | "acoth"
+        | "asech" | "acsch" | "erf" | "erfc" | "erfi" | "erfcinv" | "gamma" | "lgamma"
+        | "digamma" | "polygamma" | "zeta" | "hurwitz_zeta" | "beta" | "lambertw" | "sinc"
+        | "besselj" | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi"
+        | "airy_aip" | "airy_bip" | "pi" | "e" | "true_pi" | "euler_gamma" | "i"
+        | "golden_ratio" => DimRule::Dimensionless,
         | "atan2" => DimRule::Angle,
         | "list" | "tensor" | "vector" | "matrix" => DimRule::List,
         | "eq" | "lt" | "le" | "gt" | "ge" | "ne" => DimRule::Compare,
@@ -1098,16 +1111,12 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "dimension" => DimRule::NonMetric,
         | "oo" | "infinity" | "big_o" => DimRule::Any,
         | "apply" => DimRule::UnknownFunction,
-        | "pi" | "e" | "true_pi" | "euler_gamma" | "i" | "golden_ratio" => DimRule::Dimensionless,
         | "diff" => DimRule::Diff { f: 0, x: 1 },
         | "diffn" => DimRule::DiffN { f: 0, x: 1, n: 2 },
-        | "integral" | "real_integral" => DimRule::Integral { f: 0, x: 1 },
-        | "defint" => DimRule::Integral { f: 0, x: 1 },
+        | "integral" | "real_integral" | "defint" => DimRule::Integral { f: 0, x: 1 },
         | "sum" => DimRule::SumOver { f: 0, index: 1 },
         | "product" => DimRule::ProductOver { f: 0, index: 1 },
-        | "limit" | "taylor" | "laurent" | "fourier_series" => DimRule::Same(0),
         | "quantity" => DimRule::Quantity,
-        | "convert" | "unify_expression" | "simplify_units" => DimRule::Same(0),
         | "inv" | "pinv" => DimRule::Inverse,
         | "square" => DimRule::Square,
         | _ => return None,
