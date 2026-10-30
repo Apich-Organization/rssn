@@ -194,12 +194,15 @@ pub struct QsStats {
 /// Finds a non-trivial divisor of the odd composite `n`.
 ///
 /// Returns `Some(d)` with `1 < d < n` and `d | n`, or `None` for invalid
-/// input, for a prime, for an even number (callers handle 2) and when the
-/// work bound [`QsLimits::polynomials`] is exhausted.
+/// input, for a prime, when `n` has more than [`QsLimits::MAX_DIGITS`]
+/// decimal digits, and when the work bound [`QsLimits::polynomials`] is
+/// exhausted. An even `n > 2` returns `2` directly.
 ///
 /// The input may contain small factors: trial division by the primes
-/// below 1000 runs first and returns a factor directly. Perfect powers,
-/// prime input and even input are handled before the sieve.
+/// below 1000 runs first and returns a factor directly. The digit limit is
+/// checked before that trial division, so an oversized request never does
+/// any sieving work. Perfect powers, prime input and even input are
+/// otherwise handled before the sieve.
 #[must_use]
 pub fn qs_factor(
     n: &BigInt,
@@ -240,6 +243,9 @@ fn qs_core(
     if !n.is_positive() || *n < BigInt::from(2) {
         return None;
     }
+    if decimal_digits(n) > MAX_DIGITS {
+        return None;
+    }
     if !n.bit(0) {
         return (*n > BigInt::from(2)).then_some(BigInt::from(2));
     }
@@ -251,10 +257,6 @@ fn qs_core(
     }
     if let Some(root) = perfect_power_root(n) {
         return Some(root);
-    }
-    let digits = decimal_digits(n);
-    if digits > MAX_DIGITS {
-        return None;
     }
     let bound = config.limits.bound.clamp(30, 500_000);
     let interval = usize::try_from(config.limits.interval.clamp(100, 2_000_000)).ok()?;
@@ -458,47 +460,142 @@ fn decimal_digits(n: &BigInt) -> u32 {
     u32::try_from(n.to_str_radix(10).len()).unwrap_or(u32::MAX)
 }
 
-/// A strong probable-prime test.
+/// A Baillie-PSW probable-prime test.
 ///
 /// Deterministic Miller-Rabin with the first twelve prime bases for
-/// machine words, and the same bases for larger integers. No composite
-/// is known to pass the latter; primes always do.
+/// machine words (which is a proof for all of `u64`), and a base-2 strong
+/// probable-prime test plus a strong Lucas test with Selfridge's
+/// parameters for larger integers. No composite is known to pass the
+/// latter, in particular the smallest strong pseudoprime to those twelve
+/// Miller-Rabin bases (318665857834031151167461) does not.
 fn is_probable_prime(n: &BigInt) -> bool {
     if let Some(value) = n.to_u64() {
         return is_probable_prime_u64(value);
     }
-    if !n.is_positive() {
+    if !n.is_positive() || !n.bit(0) {
         return false;
     }
-    if !n.bit(0) {
-        return false;
+    for prime in [
+        3_u64, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83,
+        89, 97,
+    ] {
+        let prime = BigInt::from(prime);
+        if (n % &prime).is_zero() {
+            return false;
+        }
     }
+    strong_probable_prime(n, &BigInt::from(2)) && strong_lucas(n)
+}
+
+/// Strong probable-prime test of the odd `n > 2` to the base `a`.
+fn strong_probable_prime(
+    n: &BigInt,
+    a: &BigInt,
+) -> bool {
     let one = BigInt::one();
     let minus_one = n - &one;
     let shift = minus_one.trailing_zeros().unwrap_or(0);
     let odd = &minus_one >> shift;
-    for base in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        let base = BigInt::from(base);
-        if base >= *n {
-            continue;
-        }
-        let mut power = base.modpow(&odd, n);
-        if power == one || power == minus_one {
-            continue;
-        }
-        let mut composite = true;
-        for _ in 1..shift {
-            power = &power * &power % n;
-            if power == minus_one {
-                composite = false;
-                break;
-            }
-        }
-        if composite {
-            return false;
+    let mut power = a.modpow(&odd, n);
+    if power == one || power == minus_one {
+        return true;
+    }
+    for _ in 1..shift {
+        power = &power * &power % n;
+        if power == minus_one {
+            return true;
         }
     }
-    true
+    false
+}
+
+/// Strong Lucas probable-prime test of the odd `n > 2` with Selfridge's
+/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol
+/// `-1`, `P = 1`, `Q = (1 - D)/4`): `U_d = 0` or `V_{d 2^r} = 0` for some
+/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+fn strong_lucas(n: &BigInt) -> bool {
+    let root = n.sqrt();
+    if &root * &root == *n {
+        return false;
+    }
+    let mut d: i64 = 5;
+    loop {
+        match jacobi_big(&BigInt::from(d), n) {
+            | -1 => break,
+            // A common factor with D: composite unless n is D itself.
+            | 0 if BigInt::from(d.abs()) != *n => return false,
+            | _ => {},
+        }
+        d = if d > 0 { -(d + 2) } else { -d + 2 };
+    }
+    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
+    let n1: BigInt = n + 1;
+    let shift = n1.trailing_zeros().unwrap_or(0);
+    let odd = &n1 >> shift;
+    // Halving modulo the odd n.
+    let half = |x: BigInt| -> BigInt {
+        let x = mod_pos(&x, n);
+        if x.bit(0) {
+            (x + n) >> 1
+        } else {
+            x >> 1
+        }
+    };
+    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos(&q, n));
+    for i in (0..odd.bits().saturating_sub(1)).rev() {
+        u = &u * &v % n;
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if odd.bit(i) {
+            let next_u = half(&u + &v);
+            let next_v = half(&d_big * &u + &v);
+            u = next_u;
+            v = next_v;
+            qk = mod_pos(&(&qk * &q), n);
+        }
+    }
+    if u.is_zero() || v.is_zero() {
+        return true;
+    }
+    for _ in 1..shift {
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if v.is_zero() {
+            return true;
+        }
+    }
+    false
+}
+
+/// The Jacobi symbol `(a/n)` for odd positive `n`, on arbitrary-precision
+/// integers (used only by the strong Lucas test above).
+fn jacobi_big(
+    a: &BigInt,
+    n: &BigInt,
+) -> i32 {
+    if !n.is_positive() || !n.bit(0) {
+        return 0;
+    }
+    let mut a = mod_pos(a, n);
+    let mut n = n.clone();
+    let mut result = 1_i32;
+    while !a.is_zero() {
+        while !a.bit(0) {
+            a >>= 1;
+            let residue = (&n % 8_u32).to_u32().unwrap_or(0);
+            if residue == 3 || residue == 5 {
+                result = -result;
+            }
+        }
+        std::mem::swap(&mut a, &mut n);
+        let a_mod4 = (&a % 4_u32).to_u32().unwrap_or(0);
+        let n_mod4 = (&n % 4_u32).to_u32().unwrap_or(0);
+        if a_mod4 == 3 && n_mod4 == 3 {
+            result = -result;
+        }
+        a = mod_pos(&a, &n);
+    }
+    if n.is_one() { result } else { 0 }
 }
 
 /// Deterministic Miller-Rabin for a machine word.
@@ -1137,6 +1234,82 @@ mod tests {
                 assert_eq!(mulmod(a, inverse, p), 1, "1/{a} mod {p}");
             }
         }
+    }
+
+    #[test]
+    fn baillie_psw_rejects_the_twelve_base_pseudoprime() {
+        // The smallest strong pseudoprime to the first twelve prime bases;
+        // the old twelve-base Miller-Rabin test accepted it as prime.
+        let pseudoprime = n("318665857834031151167461");
+        assert!(!is_probable_prime(&pseudoprime));
+        assert!(is_probable_prime(&n(
+            "170141183460469231731687303715884105727"
+        )));
+        assert!(is_probable_prime(&n("1000003")));
+        assert!(!is_probable_prime(&(n("1000003") * n("1000033"))));
+        assert!(!is_probable_prime(&(n("1000003") * n("1000003"))));
+    }
+
+    #[test]
+    fn polynomial_and_roots_satisfy_the_defining_congruences() {
+        let n = n("1000003") * n("1000033");
+        let base = build_factor_base(&n, 500).expect("no factor in the base");
+        let divisors: Vec<BigInt> = base.iter().map(|p| BigInt::from(p.prime)).collect();
+        let q = next_polynomial_prime(&n, polynomial_prime_start(&n, 1_000)).expect("a prime");
+        let polynomial = build_polynomial(&n, q).expect("a polynomial");
+        // a = q^2, b^2 = n (mod a), c = (b^2 - n)/a.
+        assert_eq!(polynomial.a, BigInt::from(q) * BigInt::from(q));
+        let b_squared = &polynomial.b * &polynomial.b;
+        assert!((&b_squared - &n).is_multiple_of(&polynomial.a));
+        assert_eq!(&polynomial.c * &polynomial.a, &b_squared - &n);
+        assert_eq!(polynomial.two_b, &polynomial.b * 2);
+        // (a x + b)^2 - n = a g(x) for the sieved x values.
+        for x in -200_i64..=200 {
+            let ax_b = &polynomial.a * BigInt::from(x) + &polynomial.b;
+            assert_eq!(
+                &ax_b * &ax_b - &n,
+                &polynomial.a * evaluate_g(&polynomial, x)
+            );
+        }
+        // Every stored root is a root of g modulo its factor-base prime.
+        let skip = base.iter().position(|entry| entry.prime == q);
+        let (roots1, roots2) = sieve_roots(&polynomial, &base, skip, &divisors);
+        for (index, entry) in base.iter().enumerate().skip(1) {
+            if Some(index) == skip {
+                continue;
+            }
+            let modulus = BigInt::from(entry.prime);
+            for root in [roots1[index], roots2[index]] {
+                let value = evaluate_g(&polynomial, i64::from(root));
+                assert!(
+                    mod_pos(&value, &modulus).is_zero(),
+                    "p = {}, root = {root}",
+                    entry.prime
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn combining_partials_squares_the_shared_cofactor() {
+        let n = BigInt::from(1_000_003_u64);
+        let first = Relation {
+            x: BigInt::from(11),
+            known: BigInt::from(3),
+            negative: true,
+            exponents: vec![(0, 1), (2, 3)],
+        };
+        let second = Relation {
+            x: BigInt::from(13),
+            known: BigInt::from(7),
+            negative: true,
+            exponents: vec![(2, 1), (5, 2)],
+        };
+        let combined = combine(&first, &second, 15, &n);
+        assert_eq!(combined.x, BigInt::from(11 * 13));
+        assert_eq!(combined.known, BigInt::from(3 * 7 * 15));
+        assert!(!combined.negative);
+        assert_eq!(combined.exponents, vec![(0, 1), (2, 4), (5, 2)]);
     }
 
     #[test]

@@ -406,6 +406,28 @@ fn deterministic_across_runs_and_thread_counts() {
     assert_eq!(four, Some(first));
 }
 
+#[test]
+fn oversized_composites_are_left_unevaluated() {
+    // Above the sieve's documented 50-digit range the public kernel returns
+    // `None` immediately, and `factorint` must not fall through to ECM.
+    let oversized: BigInt = BigInt::one() << 200;
+    assert!(oversized.to_str_radix(10).len() > 50);
+    let start = Instant::now();
+    assert!(qs_factor(&oversized, QsLimits::for_digits(50)).is_none());
+    assert!(start.elapsed().as_secs() < 1);
+
+    let semiprime: BigInt = "165602890612805810791919541180692229701175534849187"
+        .parse()
+        .expect("51-digit semiprime");
+    let session = Session::new();
+    let start = Instant::now();
+    assert_eq!(
+        factorint(&session, &semiprime.to_string()),
+        format!("factorint({semiprime})")
+    );
+    assert!(start.elapsed().as_secs() < 2);
+}
+
 /// The `factorint` text for a request.
 fn factorint(
     session: &Session,

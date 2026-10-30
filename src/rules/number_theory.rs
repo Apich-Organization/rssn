@@ -19,8 +19,10 @@
 //! help, is attacked by the quadratic sieve / MPQS instead (a factor base
 //! with `(n/p) = 1`, log sieving, a single-large-prime variation and a GF(2)
 //! dependency solve); smaller cofactors fall back to it when the curves are
-//! exhausted. The sieve handles the 40-50 digit range; a cofactor that
-//! resists both leaves the request unevaluated. The other operators of `ext`
+//! exhausted. The sieve handles the 40-50 digit range; a composite cofactor
+//! above 50 digits is left unevaluated after trial division, perfect-power
+//! detection and BPSW, so it cannot trigger an unbounded ECM attempt. The
+//! other operators of `ext`
 //! that need a prime as a machine word (`sqrtmod`, `primitive_root`,
 //! `mult_order`, ...) still stop at 64-bit factors.
 //!
@@ -894,8 +896,12 @@ fn qs_stage(m: &BigInt) -> Option<BigInt> {
 ///
 /// Cofactors of at least [`QS_FIRST_DIGITS`] digits go to the sieve first
 /// (the curves rarely reach their prime factors); smaller ones go to the
-/// curves first and fall back to the sieve. `None` for `n <= 0` and when a
-/// composite cofactor survives both stages.
+/// curves first and fall back to the sieve. A composite cofactor above
+/// [`QsLimits::MAX_DIGITS`](crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS)
+/// digits is refused before ECM, so an oversized request returns `None`
+/// instead of running curves over a number outside the documented range.
+/// `None` for `n <= 0` and when a composite cofactor survives the allowed
+/// stages.
 pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
     if !n.is_positive() {
         return None;
@@ -947,6 +953,9 @@ pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
             continue;
         }
         let digits = decimal_digits(&m);
+        if digits > crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS {
+            return None;
+        }
         let divisor = if digits >= QS_FIRST_DIGITS {
             qs_stage(&m).or_else(|| ecm(&m))
         } else {
