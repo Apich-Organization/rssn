@@ -36,6 +36,7 @@ use super::util::is_zero_number;
 use super::util::sqrt;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -277,12 +278,25 @@ pub(super) fn spheroidal_mode(args: &[f64]) -> f64 {
 }
 
 /// Registers the operators.
+///
+/// The Coulomb and spheroidal operators are numeric and orthonormalised
+/// (`f64` in, `f64` out), so they are dimensionless; a dimensionful charge or
+/// coordinate belongs to a symbolic wrapper, not to these maps.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("coulomb_eigen", Arity::Fixed(3)).eval(coulomb_eigen))?;
-    i.op(OpDescriptor::new("coulomb_mode", Arity::Fixed(4)).eval(coulomb_mode))?;
-    i.op(OpDescriptor::new("coulomb_wave", Arity::Fixed(4)).eval(coulomb_wave))?;
-    i.op(OpDescriptor::new("spheroidal_eigen", Arity::Fixed(3)).eval(spheroidal_eigen))?;
-    i.op(OpDescriptor::new("spheroidal_mode", Arity::Fixed(4)).eval(spheroidal_mode))?;
+    for (name, arity, eval) in [
+        (
+            "coulomb_eigen",
+            Arity::Fixed(3),
+            coulomb_eigen as fn(&[f64]) -> f64,
+        ),
+        ("coulomb_mode", Arity::Fixed(4), coulomb_mode),
+        ("coulomb_wave", Arity::Fixed(4), coulomb_wave),
+        ("spheroidal_eigen", Arity::Fixed(3), spheroidal_eigen),
+        ("spheroidal_mode", Arity::Fixed(4), spheroidal_mode),
+    ] {
+        let op = i.op(OpDescriptor::new(name, arity).eval(eval))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
     Ok(())
 }
 

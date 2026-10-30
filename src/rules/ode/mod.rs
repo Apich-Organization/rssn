@@ -162,6 +162,7 @@ use num_traits::Zero;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -196,6 +197,7 @@ use super::solve::solve_linear;
 #[cfg(test)]
 mod battery;
 mod classes;
+pub(crate) mod dim;
 mod formal;
 mod frobenius;
 mod kovacic;
@@ -221,25 +223,40 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dsolve = i.op(OpDescriptor::new("dsolve", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // The answer is an equation `y(x) = ...` (or a list of equations).
+    i.dim(dsolve, DimRule::NonMetric);
     let odeint = i.op(OpDescriptor::new("odeint", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `odeint(f, y, x, x0, y0, x1)` returns values of the solution: their
+    // dimension is that of the initial data `y0`.
+    i.dim(odeint, DimRule::Same(4));
     i.kernel("ode/dsolve", Tier::Reduce, Dsolve { dsolve });
     let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `ode_series` returns the equation `y(x) = series`.
+    i.dim(series, DimRule::NonMetric);
     let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `rsolve_z` returns the equation `y(n) = ...`.
+    i.dim(rsolve, DimRule::NonMetric);
     let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A list of class names.
+    i.dim(classify, DimRule::NonMetric);
     let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A list of generator pairs.
+    i.dim(symmetries, DimRule::NonMetric);
     let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `ode_fourier` returns the equation `y(x) = ...`.
+    i.dim(fourier, DimRule::NonMetric);
     i.kernel(
         "ode/extras",
         Tier::Reduce,
@@ -254,6 +271,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A list of the solution equation, the indicial roots and the recurrence.
+    i.dim(frobenius, DimRule::NonMetric);
     i.kernel(
         "ode/frobenius",
         Tier::Reduce,
@@ -262,6 +281,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `list(re, im, error)` are the components of the solution at the sample
+    // point, so they carry the dependent variable's dimension.
+    i.dim(asymptotic, DimRule::Custom(dim::rule));
     i.kernel(
         "ode/asymptotic",
         Tier::Reduce,
@@ -273,6 +295,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // The Borel-Pade sum of the same formal solution.
+    i.dim(borel, DimRule::Custom(dim::rule));
     i.kernel(
         "ode/borel",
         Tier::Reduce,
@@ -282,9 +306,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
-    i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
-    i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
-    i.op(OpDescriptor::new("hyperpfq", Arity::Variadic).eval(linear::hyper_pfq))?;
+    let hyper1f1 = i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
+    let hyper2f1 = i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
+    let hyperpfq = i.op(OpDescriptor::new("hyperpfq", Arity::Variadic).eval(linear::hyper_pfq))?;
+    // Hypergeometric functions are dimensionless, like `besselj` in the core
+    // table: their parameters and argument are pure numbers.
+    i.dim(hyper1f1, DimRule::Dimensionless);
+    i.dim(hyper2f1, DimRule::Dimensionless);
+    i.dim(hyperpfq, DimRule::Dimensionless);
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }

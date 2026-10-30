@@ -34,6 +34,7 @@ use super::spectral::time_items;
 use super::util::is_zero_number;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -221,9 +222,17 @@ pub(super) fn hill_mode(args: &[f64]) -> f64 {
 }
 
 /// Registers the operators.
+///
+/// Hill's method is a numeric Fourier-Galerkin solve: the eigenvalue `μ` and
+/// the eigenfunction are pure numbers, so both operators are dimensionless.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("hill_eigen", Arity::Variadic).eval(hill_eigen))?;
-    i.op(OpDescriptor::new("hill_mode", Arity::Variadic).eval(hill_mode))?;
+    for (name, eval) in [
+        ("hill_eigen", hill_eigen as fn(&[f64]) -> f64),
+        ("hill_mode", hill_mode),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
     Ok(())
 }
 

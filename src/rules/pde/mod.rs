@@ -255,6 +255,7 @@ mod waves;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::Facts;
 use crate::graph::Graph;
@@ -288,6 +289,7 @@ use super::calculus::antiderivative;
 use super::calculus::derivative;
 use super::complex::complex;
 use super::logic::logic;
+use super::ode::dim;
 use super::ode::ode;
 use super::solve::as_expression;
 use super::solve::solve_for;
@@ -363,13 +365,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .cost(100)
     };
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
+    // `at(f, x, a)` is the value of `f` at `x = a`: same dimension as `f`.
+    i.dim(at, DimRule::Same(0));
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
+    // A list of infinitesimal generators.
+    i.dim(symmetries, DimRule::NonMetric);
     let traveling = i.op(heavy("pde_traveling_wave", Arity::Fixed(3)))?;
+    // `u = F(x - c t)` or `list(ansatz, ODE)`: an equation object.
+    i.dim(traveling, DimRule::NonMetric);
     let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
+    // `list(u = g F(z), ODE)` or the closed-form equation.
+    i.dim(similarity, DimRule::NonMetric);
     let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
+    // The current density `list(J^x, J^t)` carries the Lagrangian's
+    // dimension.
+    i.dim(noether, DimRule::Custom(dim::rule));
     let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
+    // Conservation-law densities are functions of the field `u`.
+    i.dim(laws, DimRule::Custom(dim::rule));
     let complete = i.op(heavy("pde_complete_integral", Arity::Fixed(2)))?;
+    // `u(x, y) = ...`: an equation object.
+    i.dim(complete, DimRule::NonMetric);
     let separate = i.op(heavy("pde_separate", Arity::Fixed(2)))?;
+    // `X(x) T(t)` (or the additive split) is an expression in `u`.
+    i.dim(separate, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/frameworks",
         Tier::Reduce,
@@ -377,6 +396,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     let disk = i.op(heavy("laplace_disk", Arity::Fixed(4)))?;
     let ball = i.op(heavy("laplace_ball", Arity::Fixed(4)))?;
+    // The harmonic function inherits the boundary data's dimension.
+    i.dim(disk, DimRule::Same(0));
+    i.dim(ball, DimRule::Same(0));
     i.kernel("pde/harmonic", Tier::Reduce, Harmonic { disk, ball });
     i.kernel(
         "pde/symmetry",
@@ -420,6 +442,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ];
     for (name, method) in table {
         let op = i.op(heavy(name, Arity::Variadic))?;
+        // Every solver in the table returns the equation `u(...) = ...` (or a
+        // list of them for a system).
+        i.dim(op, DimRule::NonMetric);
         i.kernel(
             &format!("pde/{name}"),
             Tier::Reduce,
@@ -430,6 +455,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         );
     }
     let op = i.op(heavy("pde_classify", Arity::Fixed(2)))?;
+    // A list of labels (`type`, order, dimension, linear, ...).
+    i.dim(op, DimRule::NonMetric);
     i.kernel(
         "pde/pde_classify",
         Tier::Reduce,
@@ -439,6 +466,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_order", Arity::Fixed(2)))?;
+    // The derivative order is a count.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_order",
         Tier::Reduce,
@@ -448,6 +477,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
+    // `u = -2 ∂² ln det(I + A)` of a soliton: `u` scales as `κ²`.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_kdv_soliton",
         Tier::Reduce,
@@ -457,6 +488,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_kdv_reflectionless", Arity::Fixed(2)))?;
+    // The reflectionless datum `-N(N + 1) κ² sech²(κ x)` and its evolution:
+    // `u` scales as `κ²`.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_kdv_reflectionless",
         Tier::Reduce,
@@ -466,6 +500,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_darboux_kdv", Arity::Fixed(2)))?;
+    // `ũ = u - 2 ∂² ln ψ` has the dimension of the seed solution `u`.
+    i.dim(op, DimRule::Same(0));
     i.kernel(
         "pde/pde_darboux_kdv",
         Tier::Reduce,
@@ -475,6 +511,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_poisson_integral", Arity::Fixed(3)))?;
+    // The Poisson integral of boundary data `g` has the dimension of `g`.
+    i.dim(op, DimRule::Same(0));
     i.kernel(
         "pde/pde_poisson_integral",
         Tier::Reduce,
@@ -484,6 +522,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_greens_ball", Arity::Fixed(2)))?;
+    // `1/(4π|x - s|)` in 3D (`1/R`), a logarithm in 2D.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_greens_ball",
         Tier::Reduce,
@@ -494,6 +534,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     // pde_hodograph_solution(F, G) or pde_hodograph_solution(F, G, lambda, mu).
     let op = i.op(heavy("pde_hodograph_solution", Arity::Variadic))?;
+    // `list(x(r, s), t(r, s))`; the first component has the dimension of
+    // `F(r)` (mixed lists collapse to an unknown dimension).
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_hodograph_solution",
         Tier::Reduce,
@@ -502,16 +545,36 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::HodographSolution,
         },
     );
-    for (name, request) in [
-        ("pde_crum_kdv", Request::CrumKdv),
-        ("pde_greens_robin", Request::GreensRobin),
-        ("pde_greens_ball_robin", Request::GreensBallRobin),
-        ("pde_greens_ball_neumann", Request::GreensBallNeumann),
+    for (name, request, rule) in [
+        // Crum's determinant is the seed solution minus a second derivative of
+        // a logarithm: same dimension as `u`.
+        ("pde_crum_kdv", Request::CrumKdv, DimRule::Same(0)),
+        // Half-space Robin: `G` carries the dimension of `h` in 3D.
+        (
+            "pde_greens_robin",
+            Request::GreensRobin,
+            DimRule::Custom(dim::rule),
+        ),
+        // Interior ball Robin: every term scales as `1/R`.
+        (
+            "pde_greens_ball_robin",
+            Request::GreensBallRobin,
+            DimRule::Custom(dim::rule),
+        ),
+        // Zero-mean Neumann Green's function: `1/R` in 3D, a logarithm in 2D.
+        (
+            "pde_greens_ball_neumann",
+            Request::GreensBallNeumann,
+            DimRule::Custom(dim::rule),
+        ),
     ] {
         let op = i.op(heavy(name, Arity::Fixed(2)))?;
+        i.dim(op, rule);
         i.kernel(&format!("pde/{name}"), Tier::Reduce, Pde { op, request });
     }
     let op = i.op(heavy("pde_greens_exterior_robin", Arity::Fixed(3)))?;
+    // Exterior Robin: a logarithm in 2D and `1/R` in 3D.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_greens_exterior_robin",
         Tier::Reduce,
@@ -521,6 +584,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_hodograph_riemann", Arity::Fixed(1)))?;
+    // A Riemann function of dimensionless characteristic coordinates.
+    i.dim(op, DimRule::Dimensionless);
     i.kernel(
         "pde/pde_hodograph_riemann",
         Tier::Reduce,
@@ -530,6 +595,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_hodograph", Arity::Fixed(2)))?;
+    // The hodograph equation `(λ - μ) t_rs + λ_r t_s - μ_s t_r = 0`.
+    i.dim(op, DimRule::NonMetric);
     i.kernel(
         "pde/pde_hodograph",
         Tier::Reduce,
@@ -539,6 +606,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_kdv_scattering", Arity::Fixed(3)))?;
+    // A numeric point value of the Gelfand-Levitan-Marchenko solver.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_kdv_scattering",
         Tier::Reduce,
@@ -548,6 +617,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
+    // `ψ = η sech(...) exp(...)`: the amplitude `η` carries the dimension.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_nls_soliton",
         Tier::Reduce,
@@ -557,6 +628,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
+    // The kink is a phase: dimensionless.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_sine_gordon_soliton",
         Tier::Reduce,
@@ -566,6 +639,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     );
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
+    // The Green's function's dimension is fixed by the operator and the
+    // domain; its expression is analysed directly, so the rule only has to
+    // stay consistent with the dependent variable.
+    i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
         "pde/pde_greens_function",
         Tier::Reduce,

@@ -33,6 +33,7 @@
 //!   `L_ν` (needed by the Fourier–Bessel moments of odd powers).
 
 use crate::graph::Arity;
+use crate::graph::DimRule;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::graph::rule::Installer;
@@ -48,6 +49,9 @@ use crate::kernels::special::bessel_y1;
 use crate::kernels::special::gamma_numerical;
 
 const BISECTIONS: u32 = 80;
+
+/// Name, arity and numeric kernel of a root operator.
+type RootOperator = (&'static str, Arity, fn(&[f64]) -> f64);
 
 thread_local! {
     static ROOTS: std::cell::RefCell<std::collections::HashMap<Vec<u64>, f64>> = std::cell::RefCell::new(std::collections::HashMap::new());
@@ -611,16 +615,28 @@ pub(super) fn annulus_root(args: &[f64]) -> f64 {
 }
 
 /// Registers the operators.
+///
+/// These are pure-number maps (`f64` in, `f64` out): the root of
+/// `z J_ν'(z) + h J_ν(z) = 0` is a dimensionless number even when the
+/// physical eigenvalue it represents is `z/R`. They are therefore annotated
+/// `Dimensionless`, like the core Bessel functions; the physical dimension is
+/// supplied by the symbolic solver that embeds them.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("bessel_zero", Arity::Fixed(2)).eval(bessel_zero))?;
-    i.op(OpDescriptor::new("bessel_root", Arity::Fixed(3)).eval(bessel_root))?;
-    i.op(OpDescriptor::new("sl_root", Arity::Fixed(6)).eval(sl_root))?;
-    i.op(OpDescriptor::new("sl_neg_root", Arity::Fixed(5)).eval(sl_neg_root))?;
-    i.op(OpDescriptor::new("sl_neg_root_n", Arity::Fixed(6)).eval(sl_neg_root_n))?;
-    i.op(OpDescriptor::new("bessel_neg_root", Arity::Fixed(2)).eval(bessel_neg_root))?;
-    i.op(OpDescriptor::new("struve_h", Arity::Fixed(2)).eval(struve_h))?;
-    i.op(OpDescriptor::new("struve_l", Arity::Fixed(2)).eval(struve_l))?;
-    i.op(OpDescriptor::new("annulus_neg_root", Arity::Fixed(8)).eval(annulus_neg_root))?;
-    i.op(OpDescriptor::new("annulus_root", Arity::Fixed(8)).eval(annulus_root))?;
+    let roots: [RootOperator; 10] = [
+        ("bessel_zero", Arity::Fixed(2), bessel_zero),
+        ("bessel_root", Arity::Fixed(3), bessel_root),
+        ("sl_root", Arity::Fixed(6), sl_root),
+        ("sl_neg_root", Arity::Fixed(5), sl_neg_root),
+        ("sl_neg_root_n", Arity::Fixed(6), sl_neg_root_n),
+        ("bessel_neg_root", Arity::Fixed(2), bessel_neg_root),
+        ("struve_h", Arity::Fixed(2), struve_h),
+        ("struve_l", Arity::Fixed(2), struve_l),
+        ("annulus_neg_root", Arity::Fixed(8), annulus_neg_root),
+        ("annulus_root", Arity::Fixed(8), annulus_root),
+    ];
+    for (name, arity, eval) in roots {
+        let op = i.op(OpDescriptor::new(name, arity).eval(eval))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
     Ok(())
 }

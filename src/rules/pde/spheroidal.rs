@@ -37,6 +37,7 @@ use super::util::call;
 use super::util::div;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -206,8 +207,13 @@ pub(super) fn spheroidal_radial(args: &[f64]) -> f64 {
 }
 
 /// Registers the operator.
+///
+/// The radial spheroidal function is a normalised numeric value in the
+/// dimensionless spheroidal coordinates `(ξ, ζ)`, so it is dimensionless.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("spheroidal_radial", Arity::Fixed(5)).eval(spheroidal_radial))?;
+    let op =
+        i.op(OpDescriptor::new("spheroidal_radial", Arity::Fixed(5)).eval(spheroidal_radial))?;
+    i.dim(op, DimRule::Dimensionless);
     Ok(())
 }
 

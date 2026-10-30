@@ -46,6 +46,7 @@ use super::spectral::time_items;
 use super::util::is_zero_number;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -486,10 +487,20 @@ pub(super) fn sl_weight(args: &[f64]) -> f64 {
 }
 
 /// Registers the operators.
+///
+/// The Sturm-Liouville maps are numeric (`f64` coefficients at Chebyshev
+/// points in, `f64` out), so they are dimensionless; the physical eigenvalue
+/// `μ` of `-(p y')' + q y = μ w y` belongs to the symbolic expansion around
+/// them.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("sl_eigen", Arity::Variadic).eval(sl_eigen))?;
-    i.op(OpDescriptor::new("sl_mode", Arity::Variadic).eval(sl_mode))?;
-    i.op(OpDescriptor::new("sl_weight", Arity::Variadic).eval(sl_weight))?;
+    for (name, eval) in [
+        ("sl_eigen", sl_eigen as fn(&[f64]) -> f64),
+        ("sl_mode", sl_mode),
+        ("sl_weight", sl_weight),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
     Ok(())
 }
 
