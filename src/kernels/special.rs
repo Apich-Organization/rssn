@@ -26,6 +26,14 @@ pub fn gamma_numerical(x: f64) -> f64 {
 /// Computes the natural logarithm of the gamma function, ln(Γ(x)).
 #[must_use]
 pub fn ln_gamma_numerical(x: f64) -> f64 {
+    if x < 0.0 && x.is_finite() {
+        // ln |Gamma(x)| for negative x by the reflection formula (+inf at the poles)
+        let s = (std::f64::consts::PI * x).sin().abs();
+        if crate::kernels::exact_eq(x, x.floor()) || crate::kernels::exact_eq(s, 0.0) {
+            return f64::INFINITY;
+        }
+        return (std::f64::consts::PI / s).ln() - ln_gamma(1.0 - x);
+    }
     ln_gamma(x)
 }
 
@@ -780,6 +788,9 @@ fn bessel_i_asymptotic(
 /// accuracy about 1e-15.
 #[must_use]
 pub fn bessel_i0(x: f64) -> f64 {
+    if x.is_infinite() {
+        return f64::INFINITY;
+    }
     let ax = x.abs();
 
     if ax <= BESSEL_I_SERIES_MAX {
@@ -794,6 +805,9 @@ pub fn bessel_i0(x: f64) -> f64 {
 /// Same method and accuracy as [`bessel_i0`].
 #[must_use]
 pub fn bessel_i1(x: f64) -> f64 {
+    if x.is_infinite() {
+        return x;
+    }
     let ax = x.abs();
 
     let v = if ax <= BESSEL_I_SERIES_MAX {
@@ -1097,6 +1111,9 @@ fn zeta_via_eta(s: f64) -> f64 {
 /// Computes the sinc function sinc(x) = sin(πx) / (πx).
 #[must_use]
 pub fn sinc(x: f64) -> f64 {
+    if x.is_infinite() {
+        return 0.0;
+    }
     if x.abs() < 1e-10 {
         return 1.0;
     }
@@ -1817,6 +1834,12 @@ mod hurwitz_tests {
 /// `x <= 1`, Lentz's continued fraction beyond.
 #[must_use]
 pub fn exp_integral_e1(x: f64) -> f64 {
+    if x == 0.0 {
+        return f64::INFINITY;
+    }
+    if x == f64::INFINITY {
+        return 0.0;
+    }
     if x.is_nan() || x <= 0.0 {
         return f64::NAN;
     }
@@ -1857,6 +1880,12 @@ pub fn exp_integral_e1(x: f64) -> f64 {
 /// The exponential integral `Ei(x) = -PV ∫_(-x)^∞ e^(-t)/t dt`.
 #[must_use]
 pub fn exp_integral_ei(x: f64) -> f64 {
+    if x == f64::INFINITY {
+        return f64::INFINITY;
+    }
+    if x == f64::NEG_INFINITY {
+        return 0.0;
+    }
     if x.is_nan() || x == 0.0 {
         return if x == 0.0 {
             f64::NEG_INFINITY
@@ -1899,6 +1928,9 @@ pub fn exp_integral_ei(x: f64) -> f64 {
 /// The logarithmic integral `li(x) = Ei(ln x)` for `x > 0`.
 #[must_use]
 pub fn log_integral(x: f64) -> f64 {
+    if x == f64::INFINITY {
+        return f64::INFINITY;
+    }
     if x.is_nan() || x < 0.0 {
         return f64::NAN;
     }
@@ -1954,6 +1986,9 @@ fn si_ci(x: f64) -> (f64, f64) {
 /// The sine integral `Si(x) = ∫_0^x sin(t)/t dt` (odd).
 #[must_use]
 pub fn sine_integral(x: f64) -> f64 {
+    if x.is_infinite() {
+        return x.signum() * std::f64::consts::FRAC_PI_2;
+    }
     if x.is_nan() {
         return f64::NAN;
     }
@@ -1968,6 +2003,12 @@ pub fn sine_integral(x: f64) -> f64 {
 /// `x > 0`.
 #[must_use]
 pub fn cosine_integral(x: f64) -> f64 {
+    if x == 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    if x == f64::INFINITY {
+        return 0.0;
+    }
     if x.is_nan() || x <= 0.0 {
         return f64::NAN;
     }
@@ -1977,6 +2018,9 @@ pub fn cosine_integral(x: f64) -> f64 {
 /// The hyperbolic sine integral `Shi(x) = ∫_0^x sinh(t)/t dt` (odd).
 #[must_use]
 pub fn sinh_integral(x: f64) -> f64 {
+    if x.is_infinite() {
+        return x;
+    }
     if x.is_nan() {
         return f64::NAN;
     }
@@ -2001,6 +2045,12 @@ pub fn sinh_integral(x: f64) -> f64 {
 /// for `x > 0`.
 #[must_use]
 pub fn cosh_integral(x: f64) -> f64 {
+    if x == 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    if x == f64::INFINITY {
+        return f64::INFINITY;
+    }
     if x.is_nan() || x <= 0.0 {
         return f64::NAN;
     }
@@ -2091,42 +2141,130 @@ fn airy_taylor(
     (y, dy)
 }
 
+/// Smallest `-x` from which the oscillatory asymptotic expansions of the Airy functions are used
+/// (`zeta = 2/3 |x|^(3/2) >= 21`; the optimal truncation error is about `e^(-2 zeta)`).
+const AIRY_ASYMPTOTIC_FROM: f64 = 10.0;
+
+/// `x` above which `Bi(x)` overflows (`exp(2/3 x^(3/2)) > 1.8e308`).
+const AIRY_BI_OVERFLOW: f64 = 105.0;
+
+/// `(Ai, Ai', Bi, Bi')` at `x <= -10` from the expansions of DLMF 9.7.9-9.7.12.
+fn airy_negative_asymptotic(x: f64) -> (f64, f64, f64, f64) {
+    let z = -x;
+    let zeta = 2.0 / 3.0 * z.powf(1.5);
+    let phase = zeta - std::f64::consts::FRAC_PI_4;
+    let (sn, cs) = phase.sin_cos();
+    // u_k and v_k = -(6k+1)/(6k-1) u_k; the series are asymptotic: stop at the smallest term
+    let (mut p, mut q, mut pd, mut qd) = (1.0_f64, 0.0_f64, 1.0_f64, 0.0_f64);
+    let mut u = 1.0_f64;
+    let mut last = f64::INFINITY;
+    for k in 1..=60_u32 {
+        let kf = f64::from(k);
+        u *= (6.0 * kf - 5.0) * (6.0 * kf - 3.0) * (6.0 * kf - 1.0)
+            / ((2.0 * kf - 1.0) * 216.0 * kf);
+        let v = -(6.0 * kf + 1.0) / (6.0 * kf - 1.0) * u;
+        let t = u / zeta.powi(k as i32);
+        if t.abs() >= last {
+            break;
+        }
+        last = t.abs();
+        let sign = if (k / 2) % 2 == 0 {
+            1.0
+        } else {
+            -1.0
+        };
+        if k % 2 == 0 {
+            p += sign * t;
+            pd += sign * v / zeta.powi(k as i32);
+        } else {
+            q += sign * t;
+            qd += sign * v / zeta.powi(k as i32);
+        }
+        if t.abs() < 1e-17 {
+            break;
+        }
+    }
+    let amp = 1.0 / (std::f64::consts::PI.sqrt() * z.powf(0.25));
+    let damp = z.powf(0.25) / std::f64::consts::PI.sqrt();
+    let ai = amp * (cs * p + sn * q);
+    let bi = amp * (-sn * p + cs * q);
+    let aip = damp * (sn * pd - cs * qd);
+    let bip = damp * (cs * pd + sn * qd);
+    (ai, aip, bi, bip)
+}
+
 /// The Airy function `Ai(x)`.
+///
+/// `Ai(x) -> 0` as `x -> +-inf`; for `x <= -10` the oscillatory asymptotic expansion is used
+/// (the Taylor continuation from the origin is only used on `(-10, 0]`).
 #[must_use]
 pub fn airy_ai(x: f64) -> f64 {
     if x.is_nan() {
         return f64::NAN;
     }
+    if x.is_infinite() {
+        return 0.0;
+    }
     if x > 0.0 {
         let zeta = 2.0 / 3.0 * x.powf(1.5);
         return (x / 3.0).sqrt() * bessel_k_fractional(1.0 / 3.0, zeta) / std::f64::consts::PI;
     }
+    if x <= -AIRY_ASYMPTOTIC_FROM {
+        return airy_negative_asymptotic(x).0;
+    }
     airy_taylor(x, AIRY_AI0, -AIRY_AIP0).0
 }
 
-/// `Ai'(x)`.
+/// `Ai'(x)` (no limit at `-inf`: NaN there).
 #[must_use]
 pub fn airy_ai_prime(x: f64) -> f64 {
-    if x.is_nan() {
+    if x.is_nan() || x == f64::NEG_INFINITY {
         return f64::NAN;
+    }
+    if x == f64::INFINITY {
+        return 0.0;
     }
     if x > 0.0 {
         let zeta = 2.0 / 3.0 * x.powf(1.5);
         return -x / (std::f64::consts::PI * 3.0_f64.sqrt()) * bessel_k_fractional(2.0 / 3.0, zeta);
     }
+    if x <= -AIRY_ASYMPTOTIC_FROM {
+        return airy_negative_asymptotic(x).1;
+    }
     airy_taylor(x, AIRY_AI0, -AIRY_AIP0).1
 }
 
-/// The Airy function `Bi(x)`.
+/// The Airy function `Bi(x)`: `+inf` from `x > 105` (overflow) and at `+inf`, `0` at `-inf`.
 #[must_use]
 pub fn airy_bi(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x > AIRY_BI_OVERFLOW {
+        return f64::INFINITY;
+    }
+    if x == f64::NEG_INFINITY {
+        return 0.0;
+    }
+    if x <= -AIRY_ASYMPTOTIC_FROM {
+        return airy_negative_asymptotic(x).2;
+    }
     let r3 = 3.0_f64.sqrt();
     airy_taylor(x, r3 * AIRY_AI0, r3 * AIRY_AIP0).0
 }
 
-/// `Bi'(x)`.
+/// `Bi'(x)` (`+inf` from `x > 105`; no limit at `-inf`: NaN there).
 #[must_use]
 pub fn airy_bi_prime(x: f64) -> f64 {
+    if x.is_nan() || x == f64::NEG_INFINITY {
+        return f64::NAN;
+    }
+    if x > AIRY_BI_OVERFLOW {
+        return f64::INFINITY;
+    }
+    if x <= -AIRY_ASYMPTOTIC_FROM {
+        return airy_negative_asymptotic(x).3;
+    }
     let r3 = 3.0_f64.sqrt();
     airy_taylor(x, r3 * AIRY_AI0, r3 * AIRY_AIP0).1
 }

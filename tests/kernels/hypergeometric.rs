@@ -4,8 +4,10 @@
 #![allow(clippy::excessive_precision)]
 
 use num_complex::Complex64;
+use rssn::kernels::hypergeometric::HypError;
 use rssn::kernels::hypergeometric::gamma_c;
 use rssn::kernels::hypergeometric::hyp_pfq;
+use rssn::kernels::hypergeometric::hyp_pfq_checked;
 use rssn::kernels::hypergeometric::hyp_u_cplx;
 use rssn::kernels::hypergeometric::hyp1f1_cplx;
 use rssn::kernels::hypergeometric::hyp2f1_cplx;
@@ -290,6 +292,7 @@ fn convergence_acceleration_at_unit_argument() {
     assert!(hyp2f1_cplx(b, b, c(-2.0, 0.0), c(0.3, 0.0)).is_nan());
 }
 
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
 fn e1_series(z: C) -> C {
     // E1(z) = -gamma - ln z - sum_{k>=1} (-z)^k / (k k!)
     let mut s = c(0.0, 0.0);
@@ -1420,4 +1423,41 @@ fn tricomi_u_with_large_complex_parameters_in_the_left_half_plane_matches_mpmath
         );
     }
     println!("worst relative error {worst:.2e}");
+}
+
+#[test]
+fn undefined_cases_have_a_reason_and_the_origin_is_always_one() {
+    let c = |re: f64| Complex64::new(re, 0.0);
+    let z = c(0.3);
+    // divergent: p = q + 2
+    assert_eq!(
+        hyp_pfq_checked(&[c(1.0), c(2.0), c(3.0)], &[c(4.0)], z),
+        Err(HypError::Divergent)
+    );
+    assert!(hyp_pfq(&[c(1.0), c(2.0), c(3.0)], &[c(4.0)], z).is_nan());
+    // a denominator parameter at a non-positive integer
+    assert_eq!(
+        hyp_pfq_checked(&[c(1.0), c(2.0)], &[c(-2.0)], z),
+        Err(HypError::DenominatorPole)
+    );
+    // unless a numerator terminates the series first
+    let v = hyp_pfq_checked(&[c(-1.0), c(2.0)], &[c(-2.0)], z);
+    assert!(v.is_ok(), "{v:?}");
+    // NaN input
+    assert_eq!(
+        hyp_pfq_checked(&[Complex64::new(f64::NAN, 0.0)], &[c(1.0)], z),
+        Err(HypError::NotANumber)
+    );
+    // a regular case equals hyp_pfq
+    let (a, b) = ([c(0.5), c(1.5)], [c(2.5)]);
+    assert_eq!(hyp_pfq_checked(&a, &b, z).unwrap(), hyp_pfq(&a, &b, z));
+    // the value at z = 0 is the first term of the series, also for the cases above
+    for (a, b) in [
+        (vec![c(1.0), c(2.0), c(3.0)], vec![c(4.0)]),
+        (vec![c(1.0), c(2.0)], vec![c(-2.0)]),
+        (vec![c(1.0)], vec![c(0.0)]),
+    ] {
+        assert_eq!(hyp_pfq_checked(&a, &b, c(0.0)), Ok(c(1.0)));
+    }
+    assert!(HypError::Divergent.to_string().contains("diverges"));
 }

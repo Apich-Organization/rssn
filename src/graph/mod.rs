@@ -59,6 +59,8 @@ pub use rule::Guard;
 pub use rule::Installer;
 pub use rule::Kernel;
 pub use rule::Outcome;
+pub use rule::Prepared;
+pub use rule::PreparedWork;
 pub use rule::Program;
 pub use rule::Rewrite;
 pub use rule::Rule;

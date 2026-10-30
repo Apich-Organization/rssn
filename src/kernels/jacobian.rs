@@ -15,8 +15,9 @@
 //!
 //! Parallelism: [`fd_jacobian_dense_par`] and [`fd_jacobian_colored_par`] evaluate the columns
 //! (colours) of the finite-difference Jacobian concurrently for a `Sync` right-hand side; the stiff
-//! solvers keep the sequential [`fd_jacobian_dense`] because their right-hand sides are not
-//! required to be `Sync`.
+//! solvers use them through [`FdMode::parallel`] in `radau_with_par` / `bdf_with_par` (for a `Sync`
+//! right-hand side); `radau_with` / `bdf_with` keep the sequential [`fd_jacobian_dense`] because their
+//! right-hand sides are not required to be `Sync`.
 
 use crate::kernels::dense::Lu;
 use crate::kernels::dense::Mat;
@@ -540,12 +541,25 @@ impl<'a> JacobianProvider<'a> {
         f0: &[f64],
         nfev: &mut usize,
     ) -> Jac {
+        self.eval_with(f, t, y, f0, nfev, &FdMode::serial())
+    }
+
+    /// As [`JacobianProvider::eval`] with the finite-difference routines of `fd`.
+    pub fn eval_with<F: Fn(f64, &[f64], &mut [f64])>(
+        &self,
+        f: &F,
+        t: f64,
+        y: &[f64],
+        f0: &[f64],
+        nfev: &mut usize,
+        fd: &FdMode<F>,
+    ) -> Jac {
         if let Some(sj) = self.sparse {
             return Jac::Sparse(sj(t, y));
         }
         if let (Some(pat), Some(col)) = (&self.pattern, &self.colors) {
             self.dense.map_or_else(
-                || Jac::Sparse(fd_jacobian_colored(f, t, y, f0, pat, col, nfev)),
+                || Jac::Sparse((fd.colored)(f, t, y, f0, pat, col, nfev)),
                 |dj| {
                     let m = dj(t, y);
                     let mut c = pat.clone();
@@ -561,7 +575,42 @@ impl<'a> JacobianProvider<'a> {
             Jac::Dense(dj(t, y))
         } else {
             *nfev += y.len();
-            Jac::Dense(fd_jacobian_dense(f, t, y, f0))
+            Jac::Dense((fd.dense)(f, t, y, f0))
+        }
+    }
+}
+
+/// Dense finite-difference Jacobian routine of a right-hand side type.
+type DenseFd<F> = fn(&F, f64, &[f64], &[f64]) -> Mat;
+/// Colour-compressed finite-difference Jacobian routine of a right-hand side type.
+type ColoredFd<F> = fn(&F, f64, &[f64], &[f64], &Csr, &(Vec<usize>, usize), &mut usize) -> Csr;
+
+/// The finite-difference Jacobian routines a stiff solver uses: the sequential ones, or (for a
+/// `Sync` right-hand side) the parallel ones. Both give bit-identical matrices.
+pub struct FdMode<F> {
+    dense: DenseFd<F>,
+    colored: ColoredFd<F>,
+}
+
+impl<F: Fn(f64, &[f64], &mut [f64])> FdMode<F> {
+    /// Sequential evaluation (any right-hand side).
+    #[must_use]
+    pub fn serial() -> Self {
+        Self {
+            dense: fd_jacobian_dense::<F>,
+            colored: fd_jacobian_colored::<F>,
+        }
+    }
+}
+
+impl<F: Fn(f64, &[f64], &mut [f64]) + Sync> FdMode<F> {
+    /// Columns / colours evaluated concurrently ([`fd_jacobian_dense_par`],
+    /// [`fd_jacobian_colored_par`]).
+    #[must_use]
+    pub fn parallel() -> Self {
+        Self {
+            dense: fd_jacobian_dense_par::<F>,
+            colored: fd_jacobian_colored_par::<F>,
         }
     }
 }

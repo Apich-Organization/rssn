@@ -216,3 +216,92 @@ fn par_fmm_nbody_ewald() {
         || ewald_energy_forces(&pq[..2500], &q, len, 0.8, 2, 4.9, 1.0),
     );
 }
+
+#[test]
+fn par_tempering_and_scenarios() {
+    use rssn::sim::scenario::run;
+    use rssn::sim::scenario::run_many;
+    use rssn::sim::spin_models::ParallelTempering;
+    use rssn::sim::spin_models::PottsTempering;
+    use rssn::sim::spin_models::Update;
+    let betas = [0.30, 0.34, 0.38, 0.42, 0.44, 0.46, 0.5, 0.55];
+    compare(
+        "A4/A6 ParallelTempering (XY)",
+        "8 replicas, 64x64, 40 rounds",
+        || {
+            let mut pt = ParallelTempering::<2, 2>::new([64, 64], true, &betas, 11).unwrap();
+            pt.run(40, Update::Metropolis(0.5), |_, _| {}).unwrap();
+            (
+                pt.swap_stats.clone(),
+                pt.replicas.iter().map(|r| r.energy()).collect::<Vec<_>>(),
+            )
+        },
+    );
+    compare(
+        "A4/A6 PottsTempering",
+        "8 replicas, 64x64, 40 rounds",
+        || {
+            let mut pt = PottsTempering::<2>::new([64, 64], true, 3, &betas, 12).unwrap();
+            pt.run(40, Update::Metropolis(0.0), |_, _| {});
+            (
+                pt.swap_stats.clone(),
+                pt.replicas.iter().map(|r| r.energy()).collect::<Vec<_>>(),
+            )
+        },
+    );
+    let requests: Vec<(String, String)> = (0..8)
+        .map(|k| {
+            (
+                "ising".to_owned(),
+                format!(
+                    r#"{{"width": 96, "height": 96, "temperature": 2.{k}, "mc_steps": 60, "seed": {}}}"#,
+                    100 + k
+                ),
+            )
+        })
+        .collect();
+    let refs: Vec<(&str, &str)> = requests
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
+    // run_many equals a loop of run
+    let looped: Vec<_> = refs.iter().map(|&(n, p)| run(n, p)).collect();
+    assert_eq!(run_many(&refs), looped);
+    compare("A4 scenario::run_many", "8 ising 96x96 scenarios", || {
+        run_many(&refs)
+    });
+}
+
+#[test]
+fn par_md_compute_forces() {
+    use rssn::kernels::random::Rng;
+    use rssn::sim::md_engine::ForceField;
+    use rssn::sim::md_engine::MdSystem;
+    use rssn::sim::md_engine::NeighbourList;
+    use rssn::sim::md_engine::PairTerm;
+    use rssn::sim::md_engine::SimBox;
+    use rssn::sim::md_engine::compute_forces;
+    use rssn::sim::md_engine::lattice_fcc;
+    for cells in [8usize, 14] {
+        let n = 4 * cells * cells * cells;
+        let l = (n as f64 / 0.8).cbrt();
+        let mut sys = MdSystem::new(
+            lattice_fcc(cells, l / cells as f64),
+            SimBox::periodic([l; 3]),
+        );
+        sys.maxwell_boltzmann(1.0, &mut Rng::new(3));
+        let mut ff = ForceField::new(vec![PairTerm::LennardJones { eps: 1.0, sigma: 1.0 }], 2.5);
+        ff.shift_force = true;
+        let mut nl = NeighbourList::new(2.5, 0.3);
+        compare(
+            "A6 md_engine::compute_forces",
+            &format!("{n} atoms, LJ rc 2.5"),
+            || {
+                let mut nl = nl.clone();
+                let f = compute_forces(&sys, &ff, &mut nl).unwrap();
+                (f.epot, f.virial, f.f)
+            },
+        );
+        let _ = compute_forces(&sys, &ff, &mut nl);
+    }
+}

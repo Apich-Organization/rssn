@@ -71,7 +71,11 @@ A `Session` owns a plain term store. Each `compute` call works as follows:
 3. Run the engine on the clone.
 4. Import only the answer back into the store.
 
-Requests therefore never interfere with each other. A session is single-threaded; use one per thread.
+Requests therefore never interfere with each other. A session itself is single-threaded (its store is a `RefCell`); use one per thread.
+
+`Session::compute_all(&terms, &config)` runs several requests of one configuration at once. `compute` is split into `prepare` (clone the template and import the request, sequential because the store is borrowed), `run_job` (engine run and choice of the answer on the private graph; this is the parallel part, one rayon task per request) and `finish` (import the answer into the store, sequential and in input order). The result, including the store contents, equals a loop of `compute` calls and does not depend on the thread count; the engine, graphs and `Config` are `Send`/`Sync` (checked by compile-time assertions).
+
+Inside one run, `Engine::apply_tier` searches each maximal run of consecutive rewrite rules of a tier against the frozen graph (in parallel from 512 candidate nodes, each rule keeping its own match limit, fuel and ban decision) and applies the builds and unions serially in rule order, then match order (egg's scheme); the batched semantics are used on both paths, so results do not depend on the cut-off or the thread count. Kernels keep their position and run sequentially, except kernels that opt in to **two-phase** execution (`Kernel::two_phase`, `prepare`, `commit`): the scheduler prepares every eligible node first, runs the returned `PreparedWork` items (plain data, no graph) in parallel and commits in node order. `groebner(..)` requests use it. Window optimisation stays sequential: it mutates the graph. Parallel e-matching and two-phase kernels follow a keep threshold of about 1.1 (Part 7 of `docs/ALGORITHM_COMPLETION_CHECKLIST.md`).
 
 ## C interface
 
@@ -82,7 +86,7 @@ The C interface lives in `src/ffi`, under 1000 lines. Terms are `uint32_t` handl
 | Sessions | `rssn_session_new`, `rssn_session_free` |
 | Building terms | `rssn_term_sym`, `rssn_term_int`, `rssn_term_rational`, `rssn_term_float`, `rssn_term_parse`, `rssn_term_apply(op_name, args, n)` |
 | Configuration | `rssn_config_new`, `rssn_config_free`, `rssn_config_symbolic`, `rssn_config_numeric`, `rssn_config_bind`, `rssn_config_assume`, `rssn_config_budget` |
-| Computing | `rssn_compute` (fills `RssnAnswer`), `rssn_simplify` |
+| Computing | `rssn_compute` (fills `RssnAnswer`), `rssn_compute_all` (n requests in parallel; per-request answers and status codes in caller arrays), `rssn_simplify` |
 | Reading results | `rssn_term_to_f64`, `rssn_term_eval`, `rssn_term_tensor_data` / `rssn_tensor_free` |
 | Output | `rssn_term_to_string`, `rssn_term_to_latex`, `rssn_term_to_typst`, `rssn_term_to_pretty`, `rssn_string_free` |
 | Simulations | `rssn_sim_run(name, json, &out)` |

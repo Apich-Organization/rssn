@@ -366,7 +366,7 @@ fn cylinder_run(
             samples.push((s.t, cd, cl));
         }
         prev_cl = Some(cl);
-        if verbose && steps % 50 == 0 {
+        if verbose && steps.is_multiple_of(50) {
             println!(
                 "  cpd={cpd} t={:.2} cd={cd:.3} cl={cl:.3} maxu={:.3} wall={:.1}s",
                 s.t,

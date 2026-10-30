@@ -1,16 +1,22 @@
 //! Tests for the SDE integrators.
 
 use rssn::kernels::random::Rng;
+use rssn::kernels::sde::EnsembleScheme;
 use rssn::kernels::sde::SdeAdaptiveOptions;
+use rssn::kernels::sde::SdeNoncommutativeOptions;
 use rssn::kernels::sde::aggregate_noise;
 use rssn::kernels::sde::brownian_increments;
+use rssn::kernels::sde::ensemble_seed;
 use rssn::kernels::sde::euler_maruyama;
 use rssn::kernels::sde::heun_stratonovich;
 use rssn::kernels::sde::levy_areas;
 use rssn::kernels::sde::milstein;
 use rssn::kernels::sde::milstein_noncommutative;
+use rssn::kernels::sde::noncommutative_noise_grid;
 use rssn::kernels::sde::sample_noise;
+use rssn::kernels::sde::sde_adaptive_noncommutative_with;
 use rssn::kernels::sde::sde_adaptive_with;
+use rssn::kernels::sde::sde_ensemble;
 use rssn::kernels::sde::srk_platen;
 
 const MU: f64 = 0.8;
@@ -368,4 +374,194 @@ fn milstein_with_levy_areas_has_strong_order_one_for_noncommutative_noise() {
     let mut bad = sample_noise(&mut rng, m, 4, 0.1, 3);
     bad.areas[0].pop();
     assert!(milstein_noncommutative(nc_drift, nc_diff, m, 0.0, 0.1, &[1.0, 0.5], &bad).is_err());
+}
+
+fn nc_options(
+    rtol: f64,
+    seed: u64,
+    cells: usize,
+) -> SdeNoncommutativeOptions {
+    SdeNoncommutativeOptions {
+        base: SdeAdaptiveOptions {
+            rtol,
+            atol: rtol,
+            seed,
+            max_steps: 1_000_000,
+        },
+        cells,
+        terms: 8,
+    }
+}
+
+#[test]
+fn adaptive_solver_handles_noncommutative_noise_on_one_brownian_path() {
+    let m = 2;
+    let cells = 1024;
+    let tolerances = [1e-1, 1e-2, 1e-3];
+    let paths = 40;
+    let mut rms = [0.0; 3];
+    let mut mean_steps = [0.0; 3];
+    for seed in 0..paths {
+        // The fine fixed-step reference sees exactly the path the adaptive solver used.
+        let opts0 = nc_options(tolerances[0], 9000 + seed, cells);
+        let noise = noncommutative_noise_grid(m, 0.0, 1.0, &opts0);
+        let reference = milstein_noncommutative(
+            nc_drift,
+            nc_diff,
+            m,
+            0.0,
+            1.0 / cells as f64,
+            &[1.0, 0.5],
+            &noise,
+        )
+        .unwrap();
+        let yref = reference.last().unwrap();
+        for (i, &tol) in tolerances.iter().enumerate() {
+            let opts = nc_options(tol, 9000 + seed, cells);
+            let path = sde_adaptive_noncommutative_with(
+                nc_drift,
+                nc_diff,
+                m,
+                0.0,
+                1.0,
+                &[1.0, 0.5],
+                &opts,
+            )
+            .unwrap();
+            assert!((path.t.last().unwrap() - 1.0).abs() < 1e-12);
+            let y = path.y.last().unwrap();
+            rms[i] +=
+                ((y[0] - yref[0]).powi(2) + (y[1] - yref[1]).powi(2)) / f64::from(paths as u32);
+            mean_steps[i] += (path.t.len() - 1) as f64 / f64::from(paths as u32);
+        }
+    }
+    let rms = rms.map(f64::sqrt);
+    eprintln!("adaptive nc: rms {rms:?}, mean steps {mean_steps:?}");
+    // tighter tolerance: more steps, smaller error, and strong order about one in the step size
+    assert!(mean_steps[0] < mean_steps[1] && mean_steps[1] < mean_steps[2]);
+    assert!(rms[0] > rms[1] && rms[1] > rms[2], "{rms:?}");
+    let order = (rms[2] / rms[0]).ln() / (mean_steps[0] / mean_steps[2]).ln();
+    assert!(order > 0.8, "observed strong order {order}");
+    assert!(rms[2] < 6e-3, "{rms:?}");
+}
+
+#[test]
+fn noncommutative_adaptive_path_does_not_depend_on_the_step_sequence() {
+    // Two tolerances take different steps but must see the same Brownian path: with
+    // additive-free noise g = 0 the state is the drift flow, so instead compare the
+    // *sum of the area-free part*: the endpoint of X1 for g1 = const is W1(T).
+    let m = 2;
+    let cells = 512;
+    let diff = |_t: f64, _y: &[f64], o: &mut [f64]| {
+        o.copy_from_slice(&[1.0, 0.0, 0.0, 1.0]);
+    };
+    let drift = |_t: f64, _y: &[f64], o: &mut [f64]| o.fill(0.0);
+    let mut endpoints = Vec::new();
+    for tol in [1e-1, 1e-4] {
+        let opts = nc_options(tol, 77, cells);
+        let path =
+            sde_adaptive_noncommutative_with(drift, diff, m, 0.0, 1.0, &[0.0, 0.0], &opts).unwrap();
+        endpoints.push(path.y.last().unwrap().clone());
+    }
+    assert!((endpoints[0][0] - endpoints[1][0]).abs() < 1e-12);
+    assert!((endpoints[0][1] - endpoints[1][1]).abs() < 1e-12);
+    let noise = noncommutative_noise_grid(m, 0.0, 1.0, &nc_options(1e-1, 77, cells));
+    let w1: f64 = noise.dws.iter().map(|d| d[0]).sum();
+    assert!((w1 - endpoints[0][0]).abs() < 1e-12);
+    // Chen: merging all cells reproduces I_01 + I_10 = W0 W1.
+    let all = aggregate_noise(&noise, cells, m);
+    let (ar, dw) = (&all.areas[0], &all.dws[0]);
+    assert!((ar[1] + ar[2] - dw[0] * dw[1]).abs() < 1e-10);
+    // invalid
+    assert!(
+        sde_adaptive_noncommutative_with(
+            drift,
+            diff,
+            m,
+            0.0,
+            1.0,
+            &[0.0, 0.0],
+            &nc_options(1e-2, 1, 0)
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn commutative_adaptive_results_are_unchanged() {
+    // The original adaptive solver is untouched: same seed, same path.
+    let opts = SdeAdaptiveOptions {
+        rtol: 1e-3,
+        atol: 1e-6,
+        seed: 5,
+        max_steps: 100_000,
+    };
+    let a = sde_adaptive_with(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], &opts).unwrap();
+    let b = sde_adaptive_with(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], &opts).unwrap();
+    assert_eq!(a, b);
+    assert!(a.t.len() > 2);
+}
+
+#[test]
+fn ensemble_members_depend_only_on_seed_and_index() {
+    let (t0, h, steps) = (0.0, 0.01, 100);
+    let run = |scheme, paths| {
+        sde_ensemble(gbm_a, gbm_g, 1, (t0, h, steps), &[1.0], paths, 42, scheme).unwrap()
+    };
+    let one = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    for scheme in [
+        EnsembleScheme::EulerMaruyama,
+        EnsembleScheme::Milstein,
+        EnsembleScheme::SrkPlaten,
+        EnsembleScheme::HeunStratonovich,
+    ] {
+        let parallel = run(scheme, 64);
+        let serial = one.install(|| run(scheme, 64));
+        assert_eq!(parallel, serial, "{scheme:?}");
+        // a prefix of a larger ensemble is the smaller ensemble
+        assert_eq!(run(scheme, 9), parallel[..9].to_vec(), "{scheme:?}");
+        // and equals the explicit single-path computation with the derived seed
+        let mut rng = Rng::new(ensemble_seed(42, 5));
+        let dws = brownian_increments(&mut rng, 1, steps, h);
+        let path = match scheme {
+            | EnsembleScheme::EulerMaruyama => euler_maruyama(gbm_a, gbm_g, 1, t0, h, &[1.0], &dws),
+            | EnsembleScheme::Milstein => milstein(gbm_a, gbm_g, 1, t0, h, &[1.0], &dws),
+            | EnsembleScheme::SrkPlaten => srk_platen(gbm_a, gbm_g, 1, t0, h, &[1.0], &dws),
+            | _ => heun_stratonovich(gbm_a, gbm_g, 1, t0, h, &[1.0], &dws),
+        }
+        .unwrap();
+        assert_eq!(path.last().unwrap(), &parallel[5]);
+    }
+    // Euler-Maruyama ensemble mean of geometric Brownian motion: E X_T = exp(mu T)
+    let ends = sde_ensemble(
+        gbm_a,
+        gbm_g,
+        1,
+        (t0, 0.01, 100),
+        &[1.0],
+        4000,
+        7,
+        EnsembleScheme::Milstein,
+    )
+    .unwrap();
+    let mean = ends.iter().map(|v| v[0]).sum::<f64>() / ends.len() as f64;
+    assert!((mean - (MU * 1.0f64).exp()).abs() < 0.05, "mean {mean}");
+    // non-commutative scheme runs and is reproducible
+    let nc = |paths| {
+        sde_ensemble(
+            nc_drift,
+            nc_diff,
+            2,
+            (0.0, 0.02, 50),
+            &[1.0, 0.5],
+            paths,
+            3,
+            EnsembleScheme::MilsteinNoncommutative { terms: 4 },
+        )
+        .unwrap()
+    };
+    assert_eq!(nc(16), one.install(|| nc(16)));
 }

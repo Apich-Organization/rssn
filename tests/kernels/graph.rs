@@ -1145,7 +1145,7 @@ fn directed_canonical_forms_and_groups() {
     let mut arcs = Vec::new();
     for u in 0..20 {
         for v in (u + 1)..20 {
-            if rng.next() % 6 == 0 {
+            if rng.next().is_multiple_of(6) {
                 arcs.push((u, v));
             }
         }
@@ -1274,21 +1274,21 @@ fn isomorphism_agrees_with_brute_force() {
         let mut a = ColourGraph::new(n, false);
         for u in 0..n {
             for v in (u + 1)..n {
-                if rng.next() % 3 == 0 {
+                if rng.next().is_multiple_of(3) {
                     assert!(a.set_edge(u, v, 1));
                 }
             }
         }
         // half of the cases compare against a relabelling, half against an
         // independent random graph
-        let other = if rng.next() % 2 == 0 {
+        let other = if rng.next().is_multiple_of(2) {
             let perm = random_permutation(n, rng.next());
             relabel(&a, &perm)
         } else {
             let mut b = ColourGraph::new(n, false);
             for u in 0..n {
                 for v in (u + 1)..n {
-                    if rng.next() % 3 == 0 {
+                    if rng.next().is_multiple_of(3) {
                         assert!(b.set_edge(u, v, 1));
                     }
                 }

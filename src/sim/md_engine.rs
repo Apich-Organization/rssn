@@ -1069,7 +1069,19 @@ fn add_virial<const D: usize>(
     }
 }
 
+/// Pairs from which the non-bonded sum is evaluated in blocks (in parallel).
+const MD_PAR_MIN_PAIRS: usize = 20_000;
+/// Smallest block of pairs.
+const MD_PAIR_BLOCK: usize = 8_192;
+/// Largest number of blocks (each holds a force buffer of the system size).
+const MD_MAX_BLOCKS: usize = 64;
+
 /// Evaluates all forces, rebuilding the neighbour list when needed.
+///
+/// Above `MD_PAR_MIN_PAIRS` candidate pairs the pair sum is split into blocks of a size that depends
+/// only on the list length; the blocks run concurrently and are added in block order, so the result
+/// is independent of the thread count (it differs from the single-accumulator sum of shorter lists
+/// in the last bits).
 ///
 /// # Errors
 /// Propagates [`ForceField::validate`] errors.
@@ -1082,45 +1094,74 @@ pub fn compute_forces<const D: usize>(
     if nl.needs_rebuild(sys) {
         nl.build(sys);
     }
-    let mut out = Forces::zeros(sys.n());
     let rc2 = ff.rcut * ff.rcut;
-    for &(i, j) in &nl.pairs {
-        if !ff.excl.is_empty() && ff.excl.contains(&(i, j)) {
-            continue;
+    // The non-bonded pair sum of one slice of the pair list, accumulated in list order.
+    let pair_sum = |pairs: &[(usize, usize)]| -> Forces<D> {
+        let mut out = Forces::zeros(sys.n());
+        for &(i, j) in pairs {
+            if !ff.excl.is_empty() && ff.excl.contains(&(i, j)) {
+                continue;
+            }
+            let mut d = [0.0; D];
+            for a in 0..D {
+                d[a] = sys.pos[i][a] - sys.pos[j][a];
+            }
+            sys.bx.min_image(&mut d);
+            let r2 = dot(&d, &d);
+            if r2 >= rc2 || r2 == 0.0 {
+                continue;
+            }
+            let qq = sys.charge[i] * sys.charge[j];
+            let mut fr = 0.0;
+            let mut u = -ff.pair_energy_shift(qq);
+            for t in &ff.pair {
+                let (e, f) = t.eval(r2, qq);
+                u += e;
+                fr += f;
+                if ff.shift_force {
+                    let (ec, fc) = t.eval(rc2, qq);
+                    let big_fc = fc * ff.rcut;
+                    let r = r2.sqrt();
+                    u += -ec + big_fc * (r - ff.rcut);
+                    fr -= big_fc / r;
+                }
+            }
+            out.epot += u;
+            let mut fv = [0.0; D];
+            for a in 0..D {
+                fv[a] = fr * d[a];
+                out.f[i][a] += fv[a];
+                out.f[j][a] -= fv[a];
+            }
+            add_virial(&mut out, &d, &fv);
         }
-        let mut d = [0.0; D];
-        for a in 0..D {
-            d[a] = sys.pos[i][a] - sys.pos[j][a];
-        }
-        sys.bx.min_image(&mut d);
-        let r2 = dot(&d, &d);
-        if r2 >= rc2 || r2 == 0.0 {
-            continue;
-        }
-        let qq = sys.charge[i] * sys.charge[j];
-        let mut fr = 0.0;
-        let mut u = -ff.pair_energy_shift(qq);
-        for t in &ff.pair {
-            let (e, f) = t.eval(r2, qq);
-            u += e;
-            fr += f;
-            if ff.shift_force {
-                let (ec, fc) = t.eval(rc2, qq);
-                let big_fc = fc * ff.rcut;
-                let r = r2.sqrt();
-                u += -ec + big_fc * (r - ff.rcut);
-                fr -= big_fc / r;
+        out
+    };
+    // Large lists are summed in blocks whose number and boundaries depend only on the length of
+    // the list (never on the thread count); the block results are added in block order. The
+    // small-list path is the plain sequential sum.
+    let mut out = if nl.pairs.len() < MD_PAR_MIN_PAIRS {
+        pair_sum(&nl.pairs)
+    } else {
+        let block = MD_PAIR_BLOCK.max(nl.pairs.len().div_ceil(MD_MAX_BLOCKS));
+        let chunks: Vec<&[(usize, usize)]> = nl.pairs.chunks(block).collect();
+        let parts = crate::kernels::par::map_slice(&chunks, 2, |c| pair_sum(c));
+        let mut total = Forces::zeros(sys.n());
+        for part in &parts {
+            total.epot += part.epot;
+            for (t, q) in total.f.iter_mut().zip(&part.f) {
+                for a in 0..D {
+                    t[a] += q[a];
+                }
+            }
+            for a in 0..D {
+                for c in 0..D {
+                    total.virial[a][c] += part.virial[a][c];
+                }
             }
         }
-        out.epot += u;
-        let mut fv = [0.0; D];
-        for a in 0..D {
-            fv[a] = fr * d[a];
-            out.f[i][a] += fv[a];
-            out.f[j][a] -= fv[a];
-        }
-        add_virial(&mut out, &d, &fv);
-    }
+        total
+    };
     bonded_forces(sys, ff, &mut out);
     for e in &ff.extra {
         e(sys, &mut out);

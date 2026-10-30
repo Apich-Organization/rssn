@@ -96,7 +96,8 @@
 //! loses digits (up to all of them) for `b = 30` and for `a = -70 + 20i`
 //! around `z = -8 - 6i`, where `U` is no longer the dominant solution of the
 //! recurrence throughout. `b_j` equal to a non-positive integer (without
-//! termination) and divergent cases (`p > q + 1`) give NaN.
+//! termination) and divergent cases (`p > q + 1`) give NaN from [`hyp_pfq`] (the value at `z = 0` is
+//! `1`); [`hyp_pfq_checked`] returns the reason as a [`HypError`] instead.
 
 use num_complex::Complex64;
 
@@ -619,12 +620,68 @@ fn pfq_at_one(
     best
 }
 
+/// Why `pFq` has no value ([`hyp_pfq_checked`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HypError {
+    /// A parameter or the argument is NaN.
+    NotANumber,
+    /// A denominator parameter is a non-positive integer and no numerator parameter terminates
+    /// the series first: the coefficients have a pole.
+    DenominatorPole,
+    /// `p > q + 1` without termination and `z != 0`: the series diverges for every `z != 0` (it is
+    /// only a formal / asymptotic series).
+    Divergent,
+}
+
+impl core::fmt::Display for HypError {
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        match self {
+            | Self::NotANumber => write!(f, "a parameter or the argument is NaN"),
+            | Self::DenominatorPole => {
+                write!(f, "a denominator parameter is a non-positive integer")
+            },
+            | Self::Divergent => write!(f, "the series diverges (p > q + 1)"),
+        }
+    }
+}
+
+impl std::error::Error for HypError {}
+
+/// [`hyp_pfq`] with the reason when there is no value.
+///
+/// # Errors
+/// [`HypError`]: NaN input, a denominator parameter at a non-positive integer (without earlier
+/// termination), or a divergent series (`p > q + 1`, `z != 0`). `z = 0` gives `1` in every case.
+pub fn hyp_pfq_checked(
+    a: &[C],
+    b: &[C],
+    z: C,
+) -> Result<C, HypError> {
+    if a.iter().chain(b).any(|x| x.re.is_nan() || x.im.is_nan()) || z.re.is_nan() || z.im.is_nan() {
+        return Err(HypError::NotANumber);
+    }
+    let v = hyp_pfq(a, b, z);
+    if !(v.re.is_nan() || v.im.is_nan()) {
+        return Ok(v);
+    }
+    if b.iter().any(|x| is_nonpos_int_c(*x).is_some()) {
+        Err(HypError::DenominatorPole)
+    } else if a.len() > b.len() + 1 {
+        Err(HypError::Divergent)
+    } else {
+        Err(HypError::NotANumber)
+    }
+}
+
 /// The generalised hypergeometric function `pFq(a; b; z)`.
 ///
-/// See the module documentation for the algorithm. Returns NaN for
-/// divergent series (`p > q + 1` without termination), a denominator
-/// parameter at a non-positive integer, and `+inf` at `z = 1` when
-/// `Re(sum b - sum a) <= 0`.
+/// See the module documentation for the algorithm. `z = 0` gives `1`. Returns NaN for
+/// divergent series (`p > q + 1` without termination, `z != 0`), a denominator
+/// parameter at a non-positive integer (without earlier termination), and `+inf` at `z = 1` when
+/// `Re(sum b - sum a) <= 0`; [`hyp_pfq_checked`] tells which.
 #[must_use]
 pub fn hyp_pfq(
     a: &[C],
@@ -636,6 +693,10 @@ pub fn hyp_pfq(
     }
     if let Some(v) = pfq_polynomial(a, b, z) {
         return v;
+    }
+    if z.norm() == 0.0 {
+        // the first term of the series, whatever the parameters
+        return ONE;
     }
     if b.iter().any(|x| is_nonpos_int_c(*x).is_some()) {
         return nan();

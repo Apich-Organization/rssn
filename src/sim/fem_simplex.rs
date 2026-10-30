@@ -25,7 +25,14 @@
 //! ILU-`BiCGStab`). See [`crate::sim::fem_triangles`] for the adaptive 2D
 //! solver on triangle meshes.
 //!
-//! Limitations: constant `k` and `c`; no curved boundaries or higher-order
+//! Coefficients: [`FemProblem`] has constant `k`, `c`; [`FemProblemVar`] with
+//! [`solve_static_var`] / [`solve_heat_var`] takes closures `k(x)`, `c(x)` evaluated at the
+//! quadrature points of the cells (and of Neumann / Robin facets), bit-identical to the constant
+//! case when the closures are constant. The residual estimator
+//! ([`error_indicators_var`], [`solve_adaptive_var`]) includes `∇k · ∇u_h` in the element
+//! residual and `k(x)` in the facet jump.
+//!
+//! Limitations: no curved boundaries or higher-order
 //! geometry; only refinement, no coarsening; no goal-oriented adaptivity and
 //! no multigrid. The residual estimator's face terms need an interior face,
 //! so in 1D it reduces to the element residual. In 3D,
@@ -764,6 +771,84 @@ pub struct FemProblem<'a> {
     pub bcs: &'a MarkerBcs<BoundaryCondition>,
 }
 
+/// Problem data `-∇·(k(x) ∇u) + c(x) u = f(t, x)` with coefficients that vary in space.
+///
+/// `k` and `c` are evaluated at every quadrature point of the cells (and `k` at the quadrature
+/// points of Neumann / Robin facets); [`FemProblem`] is the constant-coefficient special case with
+/// bit-identical results.
+pub struct FemProblemVar<'a> {
+    /// Diffusivity `k(x)`; it must be positive.
+    pub k: &'a (dyn Fn([f64; 3]) -> f64 + Sync),
+    /// Reaction coefficient `c(x)`.
+    pub c: &'a (dyn Fn([f64; 3]) -> f64 + Sync),
+    /// Source `f(t, x)`.
+    pub f: &'a (dyn Fn(f64, [f64; 3]) -> f64 + Sync),
+    /// Boundary conditions per marker (unmarked facets use the default).
+    pub bcs: &'a MarkerBcs<BoundaryCondition>,
+}
+
+/// The coefficients the assembly sees.
+#[derive(Clone, Copy)]
+enum Coefficients<'a> {
+    Constant {
+        k: f64,
+        c: f64,
+    },
+    Field {
+        k: &'a (dyn Fn([f64; 3]) -> f64 + Sync),
+        c: &'a (dyn Fn([f64; 3]) -> f64 + Sync),
+    },
+}
+
+impl Coefficients<'_> {
+    fn k(
+        &self,
+        x: [f64; 3],
+    ) -> f64 {
+        match self {
+            | Self::Constant { k, .. } => *k,
+            | Self::Field { k, .. } => k(x),
+        }
+    }
+
+    fn c(
+        &self,
+        x: [f64; 3],
+    ) -> f64 {
+        match self {
+            | Self::Constant { c, .. } => *c,
+            | Self::Field { c, .. } => c(x),
+        }
+    }
+}
+
+/// Source, boundary data and coefficients of one assembly.
+struct Data<'a> {
+    f: &'a (dyn Fn(f64, [f64; 3]) -> f64 + Sync),
+    bcs: &'a MarkerBcs<BoundaryCondition>,
+    coef: Coefficients<'a>,
+}
+
+impl<'a> From<&FemProblem<'a>> for Data<'a> {
+    fn from(p: &FemProblem<'a>) -> Self {
+        Self {
+            f: p.f,
+            bcs: p.bcs,
+            coef: Coefficients::Constant { k: p.k, c: p.c },
+        }
+    }
+}
+
+impl<'a> From<&FemProblemVar<'a>> for Data<'a> {
+    fn from(p: &FemProblemVar<'a>) -> Self {
+        Self {
+            f: p.f,
+            bcs: p.bcs,
+            coef: Coefficients::Field { k: p.k, c: p.c },
+        }
+    }
+}
+
 /// A facet key with the (cell, local facet) pairs sharing it.
 type FacetEntry<'a> = (&'a Vec<usize>, &'a Vec<(usize, usize)>);
 
@@ -779,7 +864,7 @@ struct Assembled {
 
 fn assemble(
     space: &FemSpace,
-    prob: &FemProblem<'_>,
+    prob: &Data<'_>,
     t: f64,
     want_mass: bool,
 ) -> Result<Assembled, String> {
@@ -822,11 +907,12 @@ fn assemble(
                     }
                 }
                 let fv = (prob.f)(t, x);
+                let (kq, cq) = (prob.coef.k(x), prob.coef.c(x));
                 for i in 0..nl {
                     fe[i] += vol * wq * fv * b[i];
                     for j in 0..nl {
                         let gg: f64 = (0..3).map(|a| grads[i][a] * grads[j][a]).sum();
-                        ke[i * nl + j] += vol * wq * (prob.k * gg + prob.c * b[i] * b[j]);
+                        ke[i * nl + j] += vol * wq * (kq * gg + cq * b[i] * b[j]);
                         me[i * nl + j] += vol * wq * b[i] * b[j];
                     }
                 }
@@ -892,17 +978,18 @@ fn assemble(
                         }
                     }
                     let gval = gv.map_or(0.0, |g| g.eval(t, x));
+                    let kq = prob.coef.k(x);
                     for i in 0..b.len() {
                         if b[i] == 0.0 {
                             continue;
                         }
-                        load[cd[i]] += meas * wq * prob.k * gval / beta * b[i];
+                        load[cd[i]] += meas * wq * kq * gval / beta * b[i];
                         if alpha != 0.0 {
                             for j in 0..b.len() {
                                 ktrip.push((
                                     cd[i],
                                     cd[j],
-                                    meas * wq * prob.k * alpha / beta * b[i] * b[j],
+                                    meas * wq * kq * alpha / beta * b[i] * b[j],
                                 ));
                             }
                         }
@@ -965,6 +1052,28 @@ pub fn solve_static(
     t: f64,
     solver: LinearSolver,
 ) -> Result<Vec<f64>, String> {
+    solve_static_data(space, &prob.into(), t, solver)
+}
+
+/// [`solve_static`] with spatially varying `k(x)` and `c(x)`.
+///
+/// # Errors
+/// For unsupported boundary conditions or a singular system.
+pub fn solve_static_var(
+    space: &FemSpace,
+    prob: &FemProblemVar<'_>,
+    t: f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
+    solve_static_data(space, &prob.into(), t, solver)
+}
+
+fn solve_static_data(
+    space: &FemSpace,
+    prob: &Data<'_>,
+    t: f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
     let asm = assemble(space, prob, t, false)?;
     let a = with_dirichlet(&asm.k, &asm.dirichlet);
     let mut b = asm.load.clone();
@@ -983,6 +1092,34 @@ pub fn solve_static(
 pub fn solve_heat(
     space: &FemSpace,
     prob: &FemProblem<'_>,
+    init: impl Fn([f64; 3]) -> f64,
+    t_end: f64,
+    steps: usize,
+    theta: f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
+    solve_heat_data(space, &prob.into(), init, t_end, steps, theta, solver)
+}
+
+/// [`solve_heat`] with spatially varying `k(x)` and `c(x)`.
+///
+/// # Errors
+/// For unsupported boundary conditions, a singular system or an invalid `theta`.
+pub fn solve_heat_var(
+    space: &FemSpace,
+    prob: &FemProblemVar<'_>,
+    init: impl Fn([f64; 3]) -> f64,
+    t_end: f64,
+    steps: usize,
+    theta: f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
+    solve_heat_data(space, &prob.into(), init, t_end, steps, theta, solver)
+}
+
+fn solve_heat_data(
+    space: &FemSpace,
+    prob: &Data<'_>,
     init: impl Fn([f64; 3]) -> f64,
     t_end: f64,
     steps: usize,
@@ -1150,6 +1287,32 @@ pub fn error_indicators(
     prob: &FemProblem<'_>,
     t: f64,
 ) -> Vec<f64> {
+    error_indicators_data(space, u, &prob.into(), t)
+}
+
+/// [`error_indicators`] for spatially varying `k(x)`, `c(x)`:
+///
+/// `η_T² = h_T² ∫_T (f - c(x) u_h + ∇·(k ∇u_h))² + Σ_e ½ h_e ∫_e [k(x) ∂_n u_h]²`,
+///
+/// with `∇·(k ∇u_h) = k Δu_h + ∇k · ∇u_h` (the gradient of `k` by central differences of
+/// the closure at the quadrature points, step `10⁻⁶ h_T`) and `k` evaluated at the quadrature
+/// points of the face in the jump.
+#[must_use]
+pub fn error_indicators_var(
+    space: &FemSpace,
+    u: &[f64],
+    prob: &FemProblemVar<'_>,
+    t: f64,
+) -> Vec<f64> {
+    error_indicators_data(space, u, &prob.into(), t)
+}
+
+fn error_indicators_data(
+    space: &FemSpace,
+    u: &[f64],
+    prob: &Data<'_>,
+    t: f64,
+) -> Vec<f64> {
     let dim = space.mesh.dim;
     let n = space.mesh.cells.len();
     let (pts, w) = simplex_rule(dim, 2);
@@ -1172,7 +1335,18 @@ pub fn error_indicators(
                     x[a] += l * space.mesh.nodes[space.mesh.cells[ci][m]][a];
                 }
             }
-            let r = (prob.f)(t, x) - prob.c * uh + prob.k * lap;
+            let mut r = (prob.f)(t, x) - prob.coef.c(x) * uh + prob.coef.k(x) * lap;
+            if let Coefficients::Field { k, .. } = prob.coef {
+                // div(k grad u_h) = k lap + grad k . grad u_h
+                let step = 1e-6 * h2.sqrt();
+                let gu = gradient_at(space, u, ci, lam);
+                for a in 0..dim {
+                    let (mut xp, mut xm) = (x, x);
+                    xp[a] += step;
+                    xm[a] -= step;
+                    r += (k(xp) - k(xm)) / (2.0 * step) * gu[a];
+                }
+            }
             res2 += wq * r * r;
         }
         h2 * vol * res2
@@ -1223,7 +1397,7 @@ pub fn error_indicators(
             }
             let g1 = gradient_at(space, u, *c1, &barycentric(space, *c1, x));
             let g2 = gradient_at(space, u, *c2, &barycentric(space, *c2, x));
-            let jn: f64 = prob.k * (0..3).map(|a| (g2[a] - g1[a]) * normal[a]).sum::<f64>();
+            let jn: f64 = prob.coef.k(x) * (0..3).map(|a| (g2[a] - g1[a]) * normal[a]).sum::<f64>();
             jump2 += wq * jn * jn;
         }
         // the factor ½ is split over the two neighbouring cells
@@ -1264,6 +1438,56 @@ pub fn solve_adaptive(
     max_steps: usize,
     solver: LinearSolver,
 ) -> Result<Adaptive, String> {
+    solve_adaptive_data(
+        mesh,
+        &prob.into(),
+        degree,
+        t,
+        theta,
+        tolerance,
+        max_steps,
+        solver,
+    )
+}
+
+/// [`solve_adaptive`] with spatially varying `k(x)`, `c(x)` ([`error_indicators_var`]).
+///
+/// # Errors
+/// As [`solve_adaptive`].
+#[allow(clippy::too_many_arguments)] // same controls as `solve_adaptive`
+pub fn solve_adaptive_var(
+    mesh: &SimplexMesh,
+    prob: &FemProblemVar<'_>,
+    degree: usize,
+    t: f64,
+    theta: f64,
+    tolerance: f64,
+    max_steps: usize,
+    solver: LinearSolver,
+) -> Result<Adaptive, String> {
+    solve_adaptive_data(
+        mesh,
+        &prob.into(),
+        degree,
+        t,
+        theta,
+        tolerance,
+        max_steps,
+        solver,
+    )
+}
+
+#[allow(clippy::too_many_arguments)] // same controls as `solve_adaptive`
+fn solve_adaptive_data(
+    mesh: &SimplexMesh,
+    prob: &Data<'_>,
+    degree: usize,
+    t: f64,
+    theta: f64,
+    tolerance: f64,
+    max_steps: usize,
+    solver: LinearSolver,
+) -> Result<Adaptive, String> {
     if max_steps == 0 {
         return Err("max_steps must be positive".into());
     }
@@ -1274,8 +1498,8 @@ pub fn solve_adaptive(
     let mut history = Vec::with_capacity(max_steps + 1);
     loop {
         let space = FemSpace::new(mesh, degree)?;
-        let u = solve_static(&space, prob, t, solver)?;
-        let eta = error_indicators(&space, &u, prob, t);
+        let u = solve_static_data(&space, prob, t, solver)?;
+        let eta = error_indicators_data(&space, &u, prob, t);
         let energy: f64 = eta.iter().map(|e| e * e).sum();
         let total = energy.sqrt();
         history.push((space.size(), total));

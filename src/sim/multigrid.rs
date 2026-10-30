@@ -349,7 +349,7 @@ impl MultigridSolver {
             if fine.coarsen[ax] {
                 let per = fine.grid.periodic[ax];
                 cur = along_axis(&cur, ext, ax, fine.grid.n[ax], &|c, f| {
-                    prolong_line(c, f, per)
+                    prolong_line(c, f, per);
                 });
                 ext[ax] = fine.grid.n[ax];
             }

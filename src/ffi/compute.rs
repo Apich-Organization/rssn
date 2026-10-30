@@ -202,6 +202,104 @@ pub unsafe extern "C" fn rssn_compute(
     })
 }
 
+/// Computes `n` requests at once (in parallel inside the library) with one configuration.
+///
+/// `terms` holds the `n` request handles; `answers` and `statuses` are caller-provided arrays of
+/// `n` entries that receive, for each request, its `RssnAnswer` and its `RssnStatus` (an entry
+/// whose status is not `Ok` has `term == RSSN_NO_TERM`). The answers equal `n` calls of
+/// `rssn_compute`. The return value is `Ok` when the call itself was well formed, even if some
+/// requests failed; the message of the first failing request is kept for `rssn_last_error`.
+/// `config` may be null for the defaults.
+///
+/// # Safety
+/// `session` must be a live session, `config` null or a live configuration, and `terms`,
+/// `answers`, `statuses` valid for `n` elements (they may be null only when `n` is 0).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_compute_all(
+    session: *const RssnSession,
+    terms: *const u32,
+    n: usize,
+    config: *const RssnConfig,
+    answers: *mut RssnAnswer,
+    statuses: *mut RssnStatus,
+) -> RssnStatus {
+    guard(|| {
+        if n > 0 && (terms.is_null() || answers.is_null() || statuses.is_null()) {
+            return fail(RssnStatus::NullArgument, "null array argument");
+        }
+        // SAFETY: caller contract.
+        let session = match unsafe { borrow_session(session) } {
+            | Ok(s) => s,
+            | Err(e) => return e,
+        };
+        let default;
+        // SAFETY: caller contract.
+        let config = match unsafe { config.as_ref() } {
+            | Some(c) => &c.0,
+            | None => {
+                default = Config::new();
+                &default
+            },
+        };
+        let empty = RssnAnswer {
+            term: RSSN_NO_TERM,
+            has_value: false,
+            value: f64::NAN,
+            error: f64::NAN,
+            reduced: false,
+            iterations: 0,
+        };
+        // SAFETY: the arrays hold `n` elements by contract.
+        let (ids, answers, statuses) = unsafe {
+            if n == 0 {
+                (&[][..], &mut [][..], &mut [][..])
+            } else {
+                (
+                    std::slice::from_raw_parts(terms, n),
+                    std::slice::from_raw_parts_mut(answers, n),
+                    std::slice::from_raw_parts_mut(statuses, n),
+                )
+            }
+        };
+        let mut live = Vec::new();
+        let mut slots = Vec::new();
+        for (k, &id) in ids.iter().enumerate() {
+            answers[k] = empty;
+            match resolve(session, id) {
+                | Ok(t) => {
+                    live.push(t);
+                    slots.push(k);
+                },
+                | Err(status) => statuses[k] = status,
+            }
+        }
+        let mut first_error: Option<String> = None;
+        for (&k, result) in slots.iter().zip(session.compute_all(&live, config)) {
+            match result {
+                | Ok(answer) => {
+                    statuses[k] = RssnStatus::Ok;
+                    answers[k] = RssnAnswer {
+                        term: answer.term.id(),
+                        has_value: answer.value.is_some(),
+                        value: answer.value.unwrap_or(f64::NAN),
+                        error: answer.error.unwrap_or(f64::NAN),
+                        reduced: answer.reduced,
+                        iterations: answer.report.iterations,
+                    };
+                },
+                | Err(e) => {
+                    statuses[k] = super::status_of(&e);
+                    first_error.get_or_insert_with(|| e.to_string());
+                },
+            }
+        }
+        if let Some(message) = first_error {
+            let _ = fail(RssnStatus::Ok, &message);
+        }
+        RssnStatus::Ok
+    })
+}
+
 /// Shorthand: parses `source`, computes it with the defaults and returns
 /// the answer term, or `RSSN_NO_TERM` (see `rssn_last_error`).
 ///

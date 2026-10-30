@@ -506,3 +506,154 @@ mod numeric_sites {
         assert!((a.value - b.value).abs() < 1e-12, "{a:?} {b:?}");
     }
 }
+
+#[test]
+fn par_sde_ensemble() {
+    use rssn::kernels::sde::EnsembleScheme;
+    use rssn::kernels::sde::sde_ensemble;
+    let drift = |_t: f64, y: &[f64], o: &mut [f64]| {
+        o[0] = 0.8 * y[0];
+        o[1] = -y[1];
+    };
+    let diff = |_t: f64, y: &[f64], o: &mut [f64]| {
+        o[0] = 0.6 * y[0];
+        o[1] = 0.0;
+        o[2] = 0.0;
+        o[3] = 0.3 * y[1].abs().sqrt();
+    };
+    compare(
+        "A4 sde_ensemble (Milstein)",
+        "20000 paths x 200 steps, n=2",
+        || {
+            sde_ensemble(
+                drift,
+                diff,
+                2,
+                (0.0, 0.005, 200),
+                &[1.0, 1.0],
+                20_000,
+                5,
+                EnsembleScheme::EulerMaruyama,
+            )
+            .unwrap()
+            .iter()
+            .map(|v| v[0] + v[1])
+            .sum::<f64>()
+        },
+    );
+}
+
+#[test]
+fn par_stiff_solvers_with_parallel_jacobians() {
+    use rssn::kernels::ode_adaptive::OdeOptions;
+    use rssn::kernels::ode_stiff::BdfOptions;
+    use rssn::kernels::ode_stiff::bdf_with;
+    use rssn::kernels::ode_stiff::bdf_with_par;
+    // Stiff reaction-diffusion chain; every component runs a short sine series.
+    let make = |n: usize| {
+        move |_t: f64, y: &[f64], out: &mut [f64]| {
+            for i in 0..n {
+                let left = if i == 0 { y[i] } else { y[i - 1] };
+                let right = if i + 1 == n { y[i] } else { y[i + 1] };
+                let mut react = 0.0;
+                for k in 1..=40 {
+                    react += (f64::from(k) * y[i]).sin() / f64::from(k * k);
+                }
+                out[i] = 400.0 * (left - 2.0 * y[i] + right) - 0.5 * react * y[i];
+            }
+        }
+    };
+    let opts = OdeOptions {
+        rtol: 1e-6,
+        atol: 1e-9,
+        ..OdeOptions::default()
+    };
+    let summary =
+        |s: rssn::kernels::ode_adaptive::OdeSolution| (s.t.len(), s.nfev, s.y.last().cloned());
+    for n in [100usize, 200, 400] {
+        let rhs = make(n);
+        let y0: Vec<f64> = (0..n).map(|i| 1.0 + 0.1 * (i as f64 * 0.3).sin()).collect();
+        let t1 = if n > 200 { 0.05 } else { 0.1 };
+        let a = bdf_with(rhs, 0.0, t1, &y0, &opts, &BdfOptions::default()).unwrap();
+        let b = bdf_with_par(rhs, 0.0, t1, &y0, &opts, &BdfOptions::default()).unwrap();
+        assert_eq!(format!("{:?}", summary(a)), format!("{:?}", summary(b)));
+        let size = format!("n = {n}, expensive f");
+        compare("A5 bdf_with_par", &size, || {
+            summary(bdf_with_par(rhs, 0.0, t1, &y0, &opts, &BdfOptions::default()).unwrap())
+        });
+    }
+}
+
+// ---------------------------------------------------------------- A2: several heavy kernels
+
+mod job_level {
+    use std::time::Instant;
+
+    use num_rational::BigRational;
+    use rayon::prelude::*;
+    use rssn::rules::poly::groebner::GroebnerLimits;
+    use rssn::rules::poly::groebner::Order;
+    use rssn::rules::poly::groebner::groebner;
+    use rssn::rules::poly::univariate::factor;
+
+    /// What a two-phase kernel would do: the heavy parts of several nodes of one request run as
+    /// parallel jobs (each of which is itself parallel inside) instead of one after the other.
+    fn jobs_row<T: std::fmt::Debug + Send + Sync>(
+        site: &str,
+        size: &str,
+        inputs: &[T],
+        job: impl Fn(&T) -> String + Sync,
+    ) {
+        let t0 = Instant::now();
+        let a: Vec<String> = inputs.iter().map(&job).collect();
+        let ts = t0.elapsed().as_secs_f64();
+        let t1 = Instant::now();
+        let b: Vec<String> = inputs.par_iter().map(&job).collect();
+        let tp = t1.elapsed().as_secs_f64();
+        assert_eq!(a, b, "{site}");
+        println!(
+            "PAR | {site} | {size} | one after the other {:.1} ms | as parallel jobs {:.1} ms | x{:.2} | threads {}",
+            ts * 1e3,
+            tp * 1e3,
+            ts / tp.max(1e-12),
+            rayon::current_num_threads()
+        );
+    }
+
+    #[test]
+    fn par_two_phase_candidates() {
+        let sets: Vec<Vec<BigRational>> = [
+            &[2, 3, 5, 7, 11][..],
+            &[2, 3, 5, 7, 13],
+            &[2, 3, 5, 11, 13],
+            &[2, 3, 7, 11, 13],
+        ]
+        .iter()
+        .map(|p| {
+            super::factor_sites::swinnerton_dyer(p)
+                .iter()
+                .map(|c| BigRational::from_integer(c.clone()))
+                .collect()
+        })
+        .collect();
+        jobs_row(
+            "A2 factor jobs",
+            "4 Swinnerton-Dyer deg 32 in one request",
+            &sets,
+            |q| format!("{:?}", factor(q)),
+        );
+        let lim = GroebnerLimits {
+            reductions: 200_000,
+            basis: 2000,
+        };
+        let systems: Vec<_> = (0..4)
+            .map(|k| super::groebner_sites::katsura(4 + (k % 2), Order::GradedRevLex))
+            .collect();
+        jobs_row(
+            "A2 groebner jobs",
+            "4 Katsura-4/5 systems in one request",
+            &systems,
+            |g| format!("{:?}", groebner(g, Order::GradedRevLex, lim)),
+        );
+    }
+}

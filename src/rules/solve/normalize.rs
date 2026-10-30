@@ -194,9 +194,9 @@ pub(super) fn exponentials(
             let (mut dependent, mut free) = (Vec::new(), Vec::new());
             for &t in graph.children(argument) {
                 if graph.depends_on(graph.find(t), symbol) {
-                    dependent.push(t)
+                    dependent.push(t);
                 } else {
-                    free.push(t)
+                    free.push(t);
                 }
             }
             if !dependent.is_empty() && !free.is_empty() {

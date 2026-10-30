@@ -383,6 +383,59 @@ pub trait Kernel: Send + Sync {
     fn revisit(&self) -> bool {
         false
     }
+
+    /// Whether this kernel splits its work into [`Kernel::prepare`] and
+    /// [`Kernel::commit`] (two-phase execution).
+    ///
+    /// The scheduler then prepares *all* eligible nodes of an iteration
+    /// first (sequentially, with graph access), runs the returned
+    /// [`PreparedWork`] items in parallel on the rayon pool, and commits the
+    /// results in node order. Because every node is prepared before any is
+    /// committed, a two-phase kernel does not see the unions its own earlier
+    /// commits made during the same iteration; the semantics are the same
+    /// whether the work runs on one thread or many. The default is `false`
+    /// and the sequential [`Kernel::reduce`] is used.
+    fn two_phase(&self) -> bool {
+        false
+    }
+
+    /// First phase: extracts the pure data the heavy computation needs.
+    ///
+    /// Called only for kernels with [`Kernel::two_phase`]. May add nodes to the
+    /// graph (like `reduce`) but must not union. Return
+    /// [`Prepared::Done`] when the node needs no heavy work.
+    fn prepare(
+        &self,
+        _cx: &mut Cx<'_>,
+        _node: NodeId,
+    ) -> Prepared {
+        Prepared::Done(Outcome::Pass)
+    }
+
+    /// Second phase: turns the result of the [`PreparedWork`] of `node` into an
+    /// outcome (runs sequentially, in node order, with graph access).
+    fn commit(
+        &self,
+        _cx: &mut Cx<'_>,
+        _node: NodeId,
+        _result: Box<dyn std::any::Any + Send>,
+    ) -> Outcome {
+        Outcome::Pass
+    }
+}
+
+/// Heavy computation of a two-phase [`Kernel`] that no longer needs the graph.
+pub trait PreparedWork: Send {
+    /// Runs the computation; the result is handed to [`Kernel::commit`].
+    fn run(self: Box<Self>) -> Box<dyn std::any::Any + Send>;
+}
+
+/// Result of [`Kernel::prepare`].
+pub enum Prepared {
+    /// The node is decided without heavy work.
+    Done(Outcome),
+    /// Heavy work to run (possibly in parallel) before `commit`.
+    Work(Box<dyn PreparedWork>),
 }
 
 /// The executable part of a rule.

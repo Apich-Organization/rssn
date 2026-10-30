@@ -24,7 +24,7 @@ after_includes = """
 [export]
 include = []
 # Rust-only types that are public but never cross the C boundary.
-exclude = ["Color", "Facts", "OpFlags"]
+exclude = ["Color", "Facts", "OpFlags", "Dd", "Face", "Interval"]
 item_types = ["enums", "structs", "typedefs", "opaque", "functions"]
 
 [export.rename]

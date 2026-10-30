@@ -185,3 +185,139 @@ fn gpe_thomas_fermi_chemical_potential_in_1d() {
     );
     assert!((s.norm2(&gs.psi) - 1.0).abs() < 1e-12);
 }
+
+mod rotating_frame {
+    use super::*;
+
+    fn packet(
+        s: &SplitStep,
+        centre: [f64; 2],
+        widths: [f64; 2],
+    ) -> Vec<Complex<f64>> {
+        s.sample(|x| {
+            Complex::new(
+                (-((x[0] - centre[0]).powi(2) / (2.0 * widths[0].powi(2))
+                    + (x[1] - centre[1]).powi(2) / (2.0 * widths[1].powi(2))))
+                .exp(),
+                0.0,
+            )
+        })
+    }
+
+    fn mean(
+        s: &SplitStep,
+        psi: &[Complex<f64>],
+    ) -> [f64; 2] {
+        let n = s.norm2(psi);
+        let mut c = [0.0; 2];
+        let cell = s.grid.h(0) * s.grid.h(1);
+        for (p, v) in psi.iter().enumerate() {
+            let x = s.x(p);
+            c[0] += x[0] * v.norm_sqr() * cell / n;
+            c[1] += x[1] * v.norm_sqr() * cell / n;
+        }
+        c
+    }
+
+    fn diff(
+        a: &[Complex<f64>],
+        b: &[Complex<f64>],
+    ) -> f64 {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| (x - y).norm())
+            .fold(0.0, f64::max)
+    }
+
+    #[test]
+    fn a_rotation_by_shears_moves_the_pattern_and_conserves_the_norm() {
+        let s = SplitStep::centered(&[64, 64], &[16.0, 16.0], 1.0).unwrap();
+        let mut psi = packet(&s, [3.0, 0.0], [0.9, 0.9]);
+        let n0 = s.norm2(&psi);
+        let angle = 0.9_f64;
+        s.rotate(&mut psi, angle);
+        assert!((s.norm2(&psi) - n0).abs() < 1e-12 * n0);
+        let c = mean(&s, &psi);
+        assert!((c[0] - 3.0 * angle.cos()).abs() < 1e-6, "{c:?}");
+        assert!((c[1] - 3.0 * angle.sin()).abs() < 1e-6, "{c:?}");
+        // against the exact rotated Gaussian
+        let exact = packet(&s, [3.0 * angle.cos(), 3.0 * angle.sin()], [0.9, 0.9]);
+        assert!(diff(&psi, &exact) < 1e-5, "{}", diff(&psi, &exact));
+        // rotating forth and back restores the data
+        let mut back = psi.clone();
+        s.rotate(&mut back, -angle);
+        assert!(diff(&back, &packet(&s, [3.0, 0.0], [0.9, 0.9])) < 1e-5);
+    }
+
+    fn free_packet_difference(n: usize) -> f64 {
+        // [L_z, Laplacian] = 0, so in a rotating frame the free evolution is the lab evolution
+        // rotated clockwise by Omega t.
+        let s = SplitStep::centered(&[n, n], &[24.0, 24.0], 1.0).unwrap();
+        let psi0 = packet(&s, [1.5, -1.0], [1.0, 0.6]);
+        let zero = |_t: f64, _x: [f64; 3]| 0.0;
+        let (omega, dt, steps) = (0.7, 0.02, 50);
+        let t = dt * steps as f64;
+        let rot = s.evolve_rotating(&psi0, &zero, 0.0, omega, 0.0, dt, steps, SplitOrder::Strang);
+        let mut lab = s.evolve(&psi0, &zero, 0.0, 0.0, dt, steps, SplitOrder::Strang);
+        s.rotate(&mut lab, -omega * t);
+        let n0 = s.norm2(&psi0);
+        assert!(
+            (s.norm2(&rot) - n0).abs() < 1e-10 * n0,
+            "norm drift {}",
+            (s.norm2(&rot) - n0).abs() / n0
+        );
+        diff(&rot, &lab)
+    }
+
+    #[test]
+    fn a_free_anisotropic_packet_is_the_rotated_lab_solution() {
+        let (d64, d128) = (free_packet_difference(64), free_packet_difference(128));
+        println!("free packet, rotating vs rotated lab: n = 64 {d64:.2e}, n = 128 {d128:.2e}");
+        assert!(d64 < 5e-3, "difference {d64}");
+        assert!(
+            d128 < 0.5 * d64,
+            "no convergence with the grid: {d64} -> {d128}"
+        );
+    }
+
+    #[test]
+    fn a_packet_in_an_isotropic_trap_follows_the_rotated_oscillation() {
+        // lab: <x> = x0 cos(t); rotating frame: that vector turned clockwise by Omega t
+        let s = SplitStep::centered(&[64, 64], &[20.0, 20.0], 1.0).unwrap();
+        let v = harmonic(2);
+        let x0 = 2.0;
+        let psi0 = packet(&s, [x0, 0.0], [1.0, 1.0]); // the ground state of the trap, displaced
+        let (omega, dt, steps) = (0.35, 0.01, 300);
+        let t = dt * steps as f64;
+        let psi = s.evolve_rotating(&psi0, &v, 0.0, omega, 0.0, dt, steps, SplitOrder::Yoshida4);
+        let c = mean(&s, &psi);
+        let amp = x0 * t.cos();
+        let want = [amp * (omega * t).cos(), -amp * (omega * t).sin()];
+        assert!(
+            (c[0] - want[0]).abs() < 2e-3 && (c[1] - want[1]).abs() < 2e-3,
+            "{c:?} vs {want:?}"
+        );
+        let n0 = s.norm2(&psi0);
+        assert!((s.norm2(&psi) - n0).abs() < 1e-11 * n0);
+    }
+
+    #[test]
+    fn zero_rate_is_exactly_the_plain_evolution() {
+        let s = SplitStep::centered(&[32, 32], &[12.0, 12.0], 1.0).unwrap();
+        let v = harmonic(2);
+        let psi0 = packet(&s, [1.0, 0.5], [1.0, 1.0]);
+        let a = s.evolve_rotating(&psi0, &v, 0.0, 0.0, 0.0, 0.02, 20, SplitOrder::Strang);
+        let b = s.evolve(&psi0, &v, 0.0, 0.0, 0.02, 20, SplitOrder::Strang);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn a_trap_with_gpe_nonlinearity_keeps_the_norm_in_a_rotating_frame() {
+        let s = SplitStep::centered(&[32, 32], &[14.0, 14.0], 1.0).unwrap();
+        let v = harmonic(2);
+        let psi0 = packet(&s, [0.8, 0.0], [1.2, 0.9]);
+        let n0 = s.norm2(&psi0);
+        let psi = s.evolve_rotating(&psi0, &v, 2.0, 0.6, 0.0, 0.02, 200, SplitOrder::Strang);
+        assert!((s.norm2(&psi) - n0).abs() < 1e-11 * n0);
+    }
+}

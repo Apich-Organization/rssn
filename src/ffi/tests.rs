@@ -161,3 +161,67 @@ fn simulation_by_name() {
     let version = unsafe { CStr::from_ptr(rssn_version()) };
     assert_eq!(version.to_str().unwrap(), env!("CARGO_PKG_VERSION"));
 }
+
+#[test]
+fn compute_all_matches_compute_and_reports_per_request_codes() {
+    let s = rssn_session_new();
+    unsafe {
+        let x = rssn_term_sym(s, c("x").as_ptr());
+        let sin = rssn_term_apply(s, c("sin").as_ptr(), &raw const x, 1);
+        let d1 = rssn_term_apply(s, c("diff").as_ptr(), [sin, x].as_ptr(), 2);
+        let cos = rssn_term_apply(s, c("cos").as_ptr(), &raw const x, 1);
+        let d2 = rssn_term_apply(s, c("diff").as_ptr(), [cos, x].as_ptr(), 2);
+        let handles = [d1, 999_999, d2];
+        let mut answers = [std::mem::zeroed::<RssnAnswer>(); 3];
+        let mut statuses = [RssnStatus::Panic; 3];
+        assert_eq!(
+            rssn_compute_all(
+                s,
+                handles.as_ptr(),
+                3,
+                std::ptr::null(),
+                answers.as_mut_ptr(),
+                statuses.as_mut_ptr()
+            ),
+            RssnStatus::Ok
+        );
+        assert_eq!(
+            statuses,
+            [RssnStatus::Ok, RssnStatus::NoSuchTerm, RssnStatus::Ok]
+        );
+        assert_eq!(answers[1].term, RSSN_NO_TERM);
+        for k in [0, 2] {
+            let mut single = std::mem::zeroed::<RssnAnswer>();
+            assert_eq!(
+                rssn_compute(s, handles[k], std::ptr::null(), &raw mut single),
+                RssnStatus::Ok
+            );
+            assert_eq!(answers[k].term, single.term);
+            assert_eq!(answers[k].reduced, single.reduced);
+        }
+        // null arrays are only accepted for n = 0
+        assert_eq!(
+            rssn_compute_all(
+                s,
+                std::ptr::null(),
+                0,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut()
+            ),
+            RssnStatus::Ok
+        );
+        assert_eq!(
+            rssn_compute_all(
+                s,
+                std::ptr::null(),
+                1,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut()
+            ),
+            RssnStatus::NullArgument
+        );
+        rssn_session_free(s);
+    }
+}

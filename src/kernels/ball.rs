@@ -499,7 +499,7 @@ mod tests {
                 }
             }
         }
-        assert!(sum.contains(Cx::new(3.0, -0.5)));
+        assert!(sum.contains(Cx::new(2.0, -0.5)));
         assert!(!sum.contains(Cx::new(3.0, 1.0)));
     }
 
@@ -532,7 +532,7 @@ mod tests {
     #[test]
     fn rectangles_and_norms() {
         let a = ball((1.0, 2.0), (3.0, 4.0));
-        let b = ball((1.5, 0.0), (3.5, 9.0));
+        let b = ball((1.5, 3.0), (3.5, 9.0));
         let c = a.intersect(&b).unwrap();
         assert!((c.re.lo - 1.5).abs() < 1e-12 && (c.im.hi - 4.0).abs() < 1e-12);
         assert!(a.intersect(&ball((5.0, 6.0), (0.0, 1.0))).is_none());

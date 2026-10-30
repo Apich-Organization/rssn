@@ -29,7 +29,15 @@
 //! (`p = 25.7`), so that single number should not be used as a reference
 //! for `a = 25`, `ρ = 3` (the fit is accurate for larger `a ρ`).
 //!
-//! Limitations: single species, no bonds (polymers) and no walls.
+//! **Walls.** [`Dpd::set_walls`] replaces the periodic boundary along one axis by two walls with an
+//! effective soft repulsion `a_wall (1 - d/r_c)` ([`DpdWall`]) and specular (free-slip) or
+//! bounce-back (no-slip) reflection of particles that cross them; the wall layer has no structure
+//! of its own (no frozen particles, no density matching), so the fluid density next to a wall
+//! deviates from the bulk within about `r_c`.
+//!
+//! Limitations: single species and no bonds (polymers); walls are a single pair of planes, the
+//! virial pressure ignores the wall force, and the wall exerts no tangential friction beyond the
+//! reflection rule.
 
 use crate::kernels::random::Rng;
 use std::collections::HashMap;
@@ -53,6 +61,28 @@ pub struct DpdParams {
     pub mass: f64,
 }
 
+/// How a particle that reaches a wall is reflected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WallKind {
+    /// Specular reflection: the normal velocity changes sign (free slip).
+    Specular,
+    /// Bounce-back: the whole velocity changes sign (no slip at the wall).
+    BounceBack,
+}
+
+/// A pair of parallel walls at `0` and `box_len[axis]` normal to `axis` (see [`Dpd::set_walls`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DpdWall {
+    /// Axis the walls are normal to (the box is not periodic along it).
+    pub axis: usize,
+    /// Effective wall repulsion: a particle at distance `d < r_c` from a wall feels the normal
+    /// force `a_wall (1 - d / r_c)` (the soft DPD potential integrated over a frozen wall
+    /// layer, up to the wall density); `0` gives a purely reflecting wall.
+    pub a_wall: f64,
+    /// Reflection rule for particles that cross a wall.
+    pub kind: WallKind,
+}
+
 /// DPD particle system.
 pub struct Dpd {
     /// Parameters.
@@ -67,6 +97,9 @@ pub struct Dpd {
     virial: f64,
     /// Elapsed time.
     pub t: f64,
+    wall: Option<DpdWall>,
+    /// Particles that crossed a wall (an odd number of times) in the last position update.
+    crossed: Vec<bool>,
 }
 
 impl Dpd {
@@ -103,6 +136,8 @@ impl Dpd {
             rng,
             virial: 0.0,
             t: 0.0,
+            wall: None,
+            crossed: vec![false; n],
         };
         let mom = s.momentum();
         for v in &mut s.vel {
@@ -112,6 +147,35 @@ impl Dpd {
         }
         s.compute_forces(1.0, true);
         Ok(s)
+    }
+
+    /// Replaces the periodic boundary along `wall.axis` by two walls at `0` and `L`. Particles
+    /// outside are folded back and reflected; the wall force acts on later steps. Pair forces
+    /// along that axis use the plain (not minimum-image) distance, and the pressure does not
+    /// include the wall force.
+    ///
+    /// # Errors
+    /// For an axis outside the dimension or a negative `a_wall`.
+    pub fn set_walls(
+        &mut self,
+        wall: DpdWall,
+    ) -> Result<(), String> {
+        if wall.axis >= self.params.dim || wall.a_wall < 0.0 {
+            return Err("invalid wall".into());
+        }
+        self.wall = Some(wall);
+        self.reflect();
+        self.compute_forces(1.0, true);
+        Ok(())
+    }
+
+    /// Mean velocity component `axis` over all particles.
+    #[must_use]
+    pub fn mean_velocity(
+        &self,
+        axis: usize,
+    ) -> f64 {
+        self.vel.iter().map(|v| v[axis]).sum::<f64>() / self.len() as f64
     }
 
     /// Number of particles.
@@ -168,9 +232,47 @@ impl Dpd {
     }
 
     fn wrap(&mut self) {
+        let wall_axis = self.wall.map(|w| w.axis);
         for p in &mut self.pos {
             for a in 0..self.params.dim {
-                p[a] = p[a].rem_euclid(self.params.box_len[a]);
+                if Some(a) != wall_axis {
+                    p[a] = p[a].rem_euclid(self.params.box_len[a]);
+                }
+            }
+        }
+        self.reflect();
+    }
+
+    /// Applies the reflection rule of the wall to one velocity.
+    fn reflect_velocity(
+        &self,
+        v: &mut [f64; 3],
+    ) {
+        let Some(w) = self.wall else { return };
+        v[w.axis] = -v[w.axis];
+        if w.kind == WallKind::BounceBack {
+            for a in (0..self.params.dim).filter(|&a| a != w.axis) {
+                v[a] = -v[a];
+            }
+        }
+    }
+
+    /// Folds particles that left the wall slab back inside and reflects their velocity; records
+    /// which particles crossed an odd number of times (the final velocity of the step is
+    /// reflected for those as well).
+    fn reflect(&mut self) {
+        let Some(w) = self.wall else { return };
+        let len = self.params.box_len[w.axis];
+        self.crossed = vec![false; self.pos.len()];
+        for i in 0..self.pos.len() {
+            // every crossing folds the position and reflects the velocity once
+            while self.pos[i][w.axis] < 0.0 || self.pos[i][w.axis] > len {
+                let z = self.pos[i][w.axis];
+                self.pos[i][w.axis] = if z < 0.0 { -z } else { 2.0 * len - z };
+                let mut v = self.vel[i];
+                self.reflect_velocity(&mut v);
+                self.vel[i] = v;
+                self.crossed[i] = !self.crossed[i];
             }
         }
     }
@@ -187,11 +289,16 @@ impl Dpd {
             .map(|a| ((p.box_len[a] / p.rc).floor() as i64).max(1))
             .collect();
         let mut cells: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
+        let wall_axis = self.wall.map(|w| w.axis);
         let key = |x: &[f64; 3]| -> [i64; 3] {
             let mut k = [0i64; 3];
             for a in 0..p.dim {
-                k[a] =
-                    (((x[a] / p.box_len[a]) * ncell[a] as f64).floor() as i64).rem_euclid(ncell[a]);
+                let c = ((x[a] / p.box_len[a]) * ncell[a] as f64).floor() as i64;
+                k[a] = if Some(a) == wall_axis {
+                    c.clamp(0, ncell[a] - 1)
+                } else {
+                    c.rem_euclid(ncell[a])
+                };
             }
             k
         };
@@ -220,14 +327,21 @@ impl Dpd {
                     for &dz in &oz {
                         let off = [dx, dy, dz];
                         let mut kk = [0i64; 3];
+                        let mut outside = false;
                         for a in 0..3 {
                             kk[a] = if a < p.dim {
-                                (ki[a] + off[a]).rem_euclid(ncell[a])
+                                if Some(a) == wall_axis {
+                                    let c = ki[a] + off[a];
+                                    outside |= c < 0 || c >= ncell[a];
+                                    c.clamp(0, ncell[a] - 1)
+                                } else {
+                                    (ki[a] + off[a]).rem_euclid(ncell[a])
+                                }
                             } else {
                                 0
                             };
                         }
-                        if seen.contains(&kk) {
+                        if outside || seen.contains(&kk) {
                             continue;
                         }
                         seen.push(kk);
@@ -240,7 +354,9 @@ impl Dpd {
                             let mut r2 = 0.0;
                             for a in 0..p.dim {
                                 let mut x = self.pos[i][a] - self.pos[j][a];
-                                x -= p.box_len[a] * (x / p.box_len[a]).round();
+                                if Some(a) != wall_axis {
+                                    x -= p.box_len[a] * (x / p.box_len[a]).round();
+                                }
                                 d[a] = x;
                                 r2 += x * x;
                             }
@@ -263,6 +379,20 @@ impl Dpd {
                             }
                         }
                     }
+                }
+            }
+        }
+        if let Some(w) = self.wall
+            && w.a_wall > 0.0
+        {
+            let len = p.box_len[w.axis];
+            for (i, fi) in f.iter_mut().enumerate() {
+                let z = self.pos[i][w.axis];
+                if z < p.rc {
+                    fi[w.axis] += w.a_wall * (1.0 - z / p.rc);
+                }
+                if len - z < p.rc {
+                    fi[w.axis] -= w.a_wall * (1.0 - (len - z) / p.rc);
                 }
             }
         }
@@ -291,6 +421,11 @@ impl Dpd {
         for i in 0..self.len() {
             for a in 0..dim {
                 self.vel[i][a] = v_old[i][a] + 0.5 * dt * (f_old[i][a] + self.force[i][a]) / m;
+            }
+            if self.wall.is_some() && self.crossed[i] {
+                let mut v = self.vel[i];
+                self.reflect_velocity(&mut v);
+                self.vel[i] = v;
             }
         }
         self.t += dt;

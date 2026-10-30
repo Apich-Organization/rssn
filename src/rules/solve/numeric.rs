@@ -347,7 +347,7 @@ pub(super) fn scalar_roots(
                             .last()
                             .is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) =>
                     {
-                        cluster.push(r)
+                        cluster.push(r);
                     },
                     | _ => clusters.push(vec![r]),
                 }
@@ -375,7 +375,7 @@ pub(super) fn scalar_roots(
                     .last()
                     .is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) =>
             {
-                chain.push(r)
+                chain.push(r);
             },
             | _ => chains.push(vec![r]),
         }

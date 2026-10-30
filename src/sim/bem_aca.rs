@@ -733,6 +733,8 @@ fn solve_impl(
 // ---------------------------------------------------------------------------
 
 /// Boundary data at a mesh vertex for the linear-element BEM.
+///
+/// cbindgen:ignore
 pub type VertexBc = BoundaryCondition<f64>;
 
 /// Solution of the linear-element BEM: nodal potential and normal derivative.
@@ -983,7 +985,7 @@ pub fn solve_laplace_bem_3d_p1(
                 let own = idx[t].iter().position(|&v| v == i);
                 let mut gl = [0.0; 3];
                 if let Some(k) = own {
-                    p1_singular(*tri, k, &mut gl)
+                    p1_singular(*tri, k, &mut gl);
                 } else {
                     p1_regular(x, *tri, normals[t], true, 0, &mut gl);
                     let mut hl = [0.0; 3];

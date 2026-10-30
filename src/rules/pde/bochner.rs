@@ -8,7 +8,7 @@
 //! | `a` | domain | weight `w = p/a`, `p = exp ∫ b/a` |
 //! |---|---|---|
 //! | constant, `b` linear | the line | `exp((b₁x²/2 + b₀x)/a)` (Hermite) |
-//! | linear `a₁(x - x₀)` | `(x₀, ∞)` or `(-∞, x₀)` | `|x - x₀|^α e^{(b₁/a₁) x}` (Laguerre) |
+//! | linear `a₁(x - x₀)` | `(x₀, ∞)` or `(-∞, x₀)` | `\|x - x₀\|^α e^{(b₁/a₁) x}` (Laguerre) |
 //! | quadratic with real roots | between them | `(x - r₁)^α (r₂ - x)^β` (Jacobi) |
 //!
 //! The endpoint classification is the usual one: the endpoint is

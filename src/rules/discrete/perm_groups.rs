@@ -27,7 +27,7 @@
 //! | `perm_group_lower_central_series(gens)` | orders of `G = g1 > g2 > ...` with `g(i+1) = [gi, G]` |
 //! | `perm_group_is_nilpotent(gens)` | the lower central series reaches the trivial group |
 //! | `perm_group_derived_subgroup(gens)` | generators of `G'` |
-//! | `todd_coxeter(gens, relators, subgroup_gens)` | `list(index, list(perm per generator))`: the coset enumeration of `<gens | relators>` over the subgroup, by the HLT strategy with coincidences |
+//! | `todd_coxeter(gens, relators, subgroup_gens)` | `list(index, list(perm per generator))`: the coset enumeration of `<gens \| relators>` over the subgroup, by the HLT strategy with coincidences |
 //! | `todd_coxeter_index(gens, relators, subgroup_gens)` | only the index |
 //! | `fp_group_order(gens, relators)` | the order of a presented group (index of the trivial subgroup) |
 //! | `fp_group(gens, relators)` | the presented group as a `group` term (order at most 720) |

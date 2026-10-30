@@ -245,6 +245,25 @@ pub fn run(
     serde_json::to_string(&value).map_err(|e| e.to_string())
 }
 
+/// Scenario requests (at least this many) from which [`run_many`] uses the
+/// thread pool; fewer run in a plain loop.
+const SCENARIO_PAR_MIN_REQUESTS: usize = 2;
+
+/// Runs independent scenarios `(name, params)` and returns their results in
+/// request order.
+///
+/// Every request is evaluated exactly as by [`run`]; the requests share
+/// nothing, so the result is the same as `requests.iter().map(run)` for any
+/// thread count (scenarios that take an explicit `seed` are reproducible;
+/// unseeded stochastic ones are as random as in [`run`]). Nested parallelism
+/// inside a scenario runs on the same rayon pool (work stealing).
+#[must_use]
+pub fn run_many(requests: &[(&str, &str)]) -> Vec<Result<String, String>> {
+    crate::kernels::par::map_slice(requests, SCENARIO_PAR_MIN_REQUESTS, |&(name, params)| {
+        run(name, params)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,6 +319,33 @@ mod tests {
         .unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["u"]["dim"], json!([8, 8]));
+    }
+
+    #[test]
+    fn run_many_equals_a_loop_of_run_in_request_order() {
+        let requests = [
+            (
+                "ising",
+                r#"{"width": 12, "height": 12, "temperature": 2.0, "mc_steps": 10, "seed": 5}"#,
+            ),
+            ("warp_drive", "{}"),
+            ("kepler_symplectic", "{}"),
+            (
+                "ising",
+                r#"{"width": 12, "height": 12, "temperature": 3.0, "mc_steps": 10, "seed": 6}"#,
+            ),
+            ("ising", "{\"width\": 1}"),
+        ];
+        let looped: Vec<_> = requests.iter().map(|&(n, p)| run(n, p)).collect();
+        let many = run_many(&requests);
+        assert_eq!(many, looped);
+        assert!(many[0].is_ok() && many[1].is_err() && many[3].is_ok() && many[4].is_err());
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        assert_eq!(one.install(|| run_many(&requests)), looped);
+        assert_eq!(run_many(&[]).len(), 0);
     }
 
     #[test]

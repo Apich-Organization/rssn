@@ -8,9 +8,11 @@
 //! the irregular frequencies.
 
 use num_complex::Complex64;
+use rssn::sim::bem_helmholtz::HelmholtzAcaOptions;
 use rssn::sim::bem_helmholtz::PlaneWave;
 use rssn::sim::bem_helmholtz::Scatterer;
 use rssn::sim::bem_helmholtz::solve_helmholtz_exterior;
+use rssn::sim::bem_helmholtz::solve_helmholtz_exterior_aca;
 use rssn::sim::physics_bem::SurfaceMesh3D;
 
 const Z: PlaneWave = PlaneWave {
@@ -225,4 +227,75 @@ fn burton_miller_and_the_conventional_equation_agree_away_from_irregular_frequen
             "{kind:?}: formulations differ by {worst} of {scale}"
         );
     }
+}
+
+fn compare_with_dense(
+    sub: usize,
+    kind: Scatterer,
+    k: f64,
+    opts: &HelmholtzAcaOptions,
+) -> rssn::sim::bem_helmholtz::HelmholtzAcaStats {
+    let mesh = unit_sphere(sub);
+    let dense = solve_helmholtz_exterior(&mesh, k, kind, Z, None).unwrap();
+    let (aca, stats) = solve_helmholtz_exterior_aca(&mesh, k, kind, Z, None, opts).unwrap();
+    let scale = dense.density.iter().map(|d| d.norm()).fold(0.0, f64::max);
+    let err = dense
+        .density
+        .iter()
+        .zip(&aca.density)
+        .map(|(a, b)| (a - b).norm())
+        .fold(0.0, f64::max);
+    println!(
+        "{kind:?} k = {k}, {} triangles: max density error {err:.2e} (scale {scale:.2}), {} low-rank + {} dense blocks, storage {:.2} of dense, {} GMRES iterations",
+        mesh.triangles.len(),
+        stats.low_rank_blocks,
+        stats.dense_blocks,
+        stats.compression,
+        stats.iterations
+    );
+    assert!(err < 1e-4 * scale.max(1.0), "{kind:?}: {err}");
+    let x = [0.4, 0.3, -2.5];
+    let (fd, fa) = (
+        dense.scattered_field(&mesh, x),
+        aca.scattered_field(&mesh, x),
+    );
+    assert!((fd - fa).norm() < 1e-4, "{fd} vs {fa}");
+    stats
+}
+
+#[test]
+fn compressed_solver_matches_the_dense_one_with_low_rank_blocks() {
+    // 1280 triangles, a looser admissibility so that blocks are compressed
+    let opts = HelmholtzAcaOptions {
+        eta: 2.0,
+        aca_tol: 1e-7,
+        gmres_tol: 1e-9,
+        ..HelmholtzAcaOptions::default()
+    };
+    let stats = compare_with_dense(3, Scatterer::SoundSoft, 1.5, &opts);
+    // a 1280-triangle sphere compresses only modestly; the point is the agreement above
+    assert!(
+        stats.low_rank_blocks > 0 && stats.compression < 0.99,
+        "{stats:?}"
+    );
+    // the hypersingular (sound-hard) formulation through the same code
+    let stats = compare_with_dense(3, Scatterer::SoundHard, 2.0, &opts);
+    assert!(stats.low_rank_blocks > 0, "{stats:?}");
+}
+
+#[test]
+fn compressed_solver_with_only_dense_blocks_is_the_dense_solver() {
+    let opts = HelmholtzAcaOptions {
+        leaf_size: 8,
+        aca_tol: 1e-9,
+        gmres_tol: 1e-11,
+        ..HelmholtzAcaOptions::default()
+    };
+    let stats = compare_with_dense(2, Scatterer::SoundHard, 2.0, &opts);
+    assert_eq!(stats.low_rank_blocks, 0);
+    // input validation is shared with the dense solver
+    let mesh = unit_sphere(1);
+    assert!(
+        solve_helmholtz_exterior_aca(&mesh, 0.0, Scatterer::SoundSoft, Z, None, &opts).is_err()
+    );
 }

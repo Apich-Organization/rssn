@@ -34,6 +34,11 @@
 //! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
 //! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
 //! walkers).
+//!
+//! Parallelism: the replicas of [`ParallelTempering`] and [`PottsTempering`] own their random
+//! number generators, so the per-round updates of the replicas run concurrently (from 1024 sites
+//! per replica) with exactly the results of the sequential loop; the exchange sweep stays
+//! sequential (it uses the tempering generator in a fixed pair order).
 
 use crate::kernels::random::Rng;
 
@@ -903,6 +908,27 @@ impl<const D: usize> Potts<D> {
 // Parallel tempering
 // ---------------------------------------------------------------------------
 
+/// Lattice sites per replica from which the replicas of a tempering run are updated
+/// concurrently (below it the loop is sequential).
+const TEMPERING_PAR_MIN_SITES: usize = 1024;
+
+/// Applies `step` to every replica. The replicas own their random number generators and share
+/// nothing, so the result does not depend on the scheduling; with a failing replica the first
+/// error in replica order is returned.
+fn update_replicas<M: Send>(
+    replicas: &mut [M],
+    sites: usize,
+    step: impl Fn(&mut M) -> Result<(), String> + Sync + Send,
+) -> Result<(), String> {
+    use rayon::prelude::*;
+    if replicas.len() >= 2 && sites >= TEMPERING_PAR_MIN_SITES {
+        let results: Vec<Result<(), String>> = replicas.par_iter_mut().map(step).collect();
+        results.into_iter().collect()
+    } else {
+        replicas.iter_mut().try_for_each(step)
+    }
+}
+
 /// Replica exchange over a ladder of inverse temperatures for O(N) models.
 #[derive(Clone, Debug)]
 pub struct ParallelTempering<const D: usize, const N: usize> {
@@ -957,9 +983,8 @@ impl<const D: usize, const N: usize> ParallelTempering<D, N> {
         mut measure: impl FnMut(usize, &[OnModel<D, N>]),
     ) -> Result<(), String> {
         for round in 0..rounds {
-            for r in &mut self.replicas {
-                r.update(update)?;
-            }
+            let sites = self.replicas.first().map_or(0, |r| r.lattice.sites());
+            update_replicas(&mut self.replicas, sites, |r| r.update(update))?;
             let start = round % 2;
             let mut k = start;
             while k + 1 < self.replicas.len() {
@@ -1034,9 +1059,12 @@ impl<const D: usize> PottsTempering<D> {
         mut measure: impl FnMut(usize, &[Potts<D>]),
     ) {
         for round in 0..rounds {
-            for r in &mut self.replicas {
+            let sites = self.replicas.first().map_or(0, |r| r.lattice.sites());
+            update_replicas(&mut self.replicas, sites, |r| {
                 r.update(update);
-            }
+                Ok(())
+            })
+            .unwrap_or(());
             let mut k = round % 2;
             while k + 1 < self.replicas.len() {
                 let (e1, e2) = (self.replicas[k].energy(), self.replicas[k + 1].energy());

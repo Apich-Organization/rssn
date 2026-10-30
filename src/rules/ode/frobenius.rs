@@ -764,7 +764,7 @@ fn newton(
             candidates.push((
                 NewtonPoint::Rational(x0.clone()),
                 FormalPoint::Finite(vec![-x0.clone(), Q::one()]),
-            ))
+            ));
         },
         | Point::Finite(None) => {
             let mut rational = vec![Q::zero()];

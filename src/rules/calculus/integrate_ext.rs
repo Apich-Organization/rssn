@@ -276,7 +276,7 @@ impl Integrator<'_, '_> {
             let children = self.cx.graph.children(n).to_vec();
             match children.as_slice() {
                 | &[b] if op == fs.sqrt && b == x => {
-                    powers.push((n, BigRational::new(BigInt::one(), BigInt::from(2))))
+                    powers.push((n, BigRational::new(BigInt::one(), BigInt::from(2))));
                 },
                 | &[b, e] if op == core::POW && b == x => {
                     let r = self.number(e)?.to_rational()?;

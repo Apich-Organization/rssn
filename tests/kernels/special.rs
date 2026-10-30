@@ -44,7 +44,7 @@ fn test_ln_gamma() {
 }
 
 #[test]
-
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
 fn test_digamma() {
     // ψ(1) = -γ where γ is Euler's constant ≈ -0.5772
     let psi1 = digamma_numerical(1.0);
@@ -994,6 +994,7 @@ fn riemann_zeta_analytic_continuation() {
 }
 
 #[test]
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
 fn riemann_zeta_continuous_across_one_and_zero() {
     // zeta(s) ~ 1/(s-1) + gamma_E near the pole, from both sides
     let gamma_e = 0.577_215_664_901_532_9;

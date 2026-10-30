@@ -5,9 +5,9 @@
 //!
 //! | operator | value |
 //! |---|---|
-//! | `log_branch(z, k)` | `ln|z| + I (arg z + 2 pi k)` |
-//! | `sqrt_branch(z, k)` | `|z|^(1/2) exp(I (arg z + 2 pi k) / 2)` |
-//! | `root_branch(z, n, k)` | `|z|^(1/n) exp(I (arg z + 2 pi k) / n)` |
+//! | `log_branch(z, k)` | `ln\|z\| + I (arg z + 2 pi k)` |
+//! | `sqrt_branch(z, k)` | `\|z\|^(1/2) exp(I (arg z + 2 pi k) / 2)` |
+//! | `root_branch(z, n, k)` | `\|z\|^(1/n) exp(I (arg z + 2 pi k) / n)` |
 //! | `power_branch(z, w, k)` | `exp(w log_branch(z, k))` |
 //! | `asin_branch(z, k)` | `k pi + (-1)^k asin z` |
 //! | `acos_branch(z, k, s)` | `2 k pi + s acos z`, `s = ±1` |

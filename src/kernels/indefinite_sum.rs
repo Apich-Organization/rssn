@@ -8,9 +8,9 @@
 //! 1. **Euler–Maclaurin** after shifting by a large integer `N`, which
 //!    turns the problem into a smooth one far from the start:
 //!    `F(x) = Σ_{j<N} [f(j) - f(x+j)] + F(x+N) - F(N)` with the difference
-//!    `F(b) - F(a) = ∫_a^b f - ½ (f(b) - f(a)) + Σ B_{2j}/(2j)! (f^{(2j-1)}(b)
-//!    - f^{(2j-1)}(a))` evaluated at `a = N`, `b = x + N`. It is accepted
-//!    when two different shifts agree.
+//!    `F(b) - F(a) = ∫_a^b f - ½ (f(b) - f(a)) +
+//!    Σ B_{2j}/(2j)! (f^{(2j-1)}(b) - f^{(2j-1)}(a))` evaluated at `a = N`,
+//!    `b = x + N`. It is accepted when two different shifts agree.
 //! 2. **Taylor series**: `f` is expanded about the middle of the unit
 //!    interval after `h`, and the antidifference of each power is a Bernoulli
 //!    polynomial, `Δ⁻¹ u^m = (B_{m+1}(u) - B_{m+1}(0)) / (m + 1)`. It is exact

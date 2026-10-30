@@ -393,3 +393,65 @@ fn dg3d_euler_characteristic_transform_diagonalises_the_jacobian() {
         }
     }
 }
+
+#[test]
+fn moment_limiters_use_mirror_ghosts_at_a_wall() {
+    // A gas streaming into a wall at x = 1 (reflected shock) equals the left half of the
+    // doubled box with the antisymmetric velocity: the wall's ghost element is the mirror
+    // image the doubled box provides.
+    let law = Euler3d { gamma: GAMMA };
+    // A smooth antisymmetric velocity profile: u(2 - x) = -u(x), u(1) = 0 exactly.
+    let state = |x: f64| {
+        let (rho, p) = (1.0, 1.0);
+        let u = -((x - 1.0) / 0.04).tanh();
+        vec![
+            rho,
+            rho * u,
+            0.0,
+            0.0,
+            p / (GAMMA - 1.0) + 0.5 * rho * u * u,
+        ]
+    };
+    let run = |nx: usize, hi: f64, right: Dg3Bc, limiter: Dg3Limiter| {
+        let mesh = Dg3Mesh {
+            ne: [nx, 2, 2],
+            lo: [0.0; 3],
+            hi: [hi, 0.1, 0.1],
+            p: 1,
+        };
+        let mut bcs: [Dg3Bc; 6] = std::array::from_fn(|_| Dg3Bc::Periodic);
+        bcs[0] = Dg3Bc::Outflow;
+        bcs[1] = right;
+        let opt = Dg3Options {
+            limiter,
+            positivity: true,
+            ..Dg3Options::default()
+        };
+        solve_dg3d(&mesh, &law, &bcs, &|x| state(x[0]), 0.2, 0.2, &opt).unwrap()
+    };
+    // Both boxes have 16 elements per unit length.
+    for limiter in [Dg3Limiter::Hierarchical, Dg3Limiter::Characteristic] {
+        let wall = run(16, 1.0, Dg3Bc::Wall, limiter);
+        let doubled = run(32, 2.0, Dg3Bc::Outflow, limiter);
+        let np = wall.mesh.nodes_per_element();
+        let ne = wall.mesh.elements();
+        let (mut worst, mut rho_max) = (0.0_f64, 0.0_f64);
+        for e in 0..ne {
+            // element e of the wall box = element with the same (ix, iy, iz) in the doubled box
+            let (ix, rest) = (e % 16, e / 16);
+            let e2 = ix + 32 * rest;
+            for nd in 0..np {
+                for c in 0..5 {
+                    worst = worst.max((wall.value(e, nd, c) - doubled.value(e2, nd, c)).abs());
+                }
+                rho_max = rho_max.max(wall.value(e, nd, 0));
+            }
+        }
+        println!("{limiter:?}: wall vs doubled box {worst:e}, max density {rho_max}");
+        assert!(
+            rho_max > 1.3,
+            "the reflected shock must have formed: {rho_max}"
+        );
+        assert!(worst < 1e-8, "{limiter:?}: difference {worst}");
+    }
+}

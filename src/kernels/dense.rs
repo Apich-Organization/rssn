@@ -5,7 +5,8 @@
 //! for symmetric matrices, a one-sided Jacobi SVD (singular values,
 //! pseudo-inverse, rank, 2-norm condition number) and the eigenvalues of a
 //! general real matrix by Hessenberg reduction and the shifted QR
-//! algorithm.
+//! algorithm. [`eigen_generalized_symmetric`] solves `A x = lambda B x` (Cholesky reduction for
+//! positive definite `B`; `B^{-1} A` with possibly complex eigenvalues for indefinite `B`).
 //!
 //! Parallelism: [`Mat::matmul`] and [`Mat::matvec`] run row by row concurrently above a size
 //! threshold; every row keeps its sequential accumulation order, so the results are bit-identical
@@ -669,6 +670,108 @@ pub fn lstsq_svd(
     b: &[f64],
 ) -> Result<Vec<f64>, DenseError> {
     Ok(pinv(a)?.matvec(b))
+}
+
+/// Result of [`eigen_generalized_symmetric`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct GeneralizedEigen {
+    /// Eigenvalues `(re, im)`: real and ascending when `b_positive_definite`; otherwise in the
+    /// order of [`eigenvalues`] of `B^{-1} A` (complex conjugate pairs may occur).
+    pub values: Vec<(f64, f64)>,
+    /// Eigenvectors as columns (`B`-orthonormal, `X^T B X = I`), only when `B` is positive
+    /// definite.
+    pub vectors: Option<Mat>,
+    /// Whether the Cholesky factorisation of `B` succeeded (the symmetric-definite reduction was
+    /// used).
+    pub b_positive_definite: bool,
+}
+
+/// Dense symmetric generalised eigenproblem `A x = lambda B x` (`A`, `B` symmetric).
+///
+/// For positive definite `B` (Cholesky `B = L L^T` succeeds) the problem is reduced to the
+/// symmetric `L^{-1} A L^{-T}`; the eigenvalues are real and the eigenvectors `B`-orthonormal.
+/// For **indefinite** `B` the Cholesky reduction does not exist, and the eigenvalues are those of
+/// `B^{-1} A` (LU solve, then the general QR algorithm), which may be complex pairs; no
+/// eigenvectors are returned then.
+///
+/// # Errors
+/// [`DenseError::Shape`] for mismatched or non-square input, [`DenseError::Singular`] when `B`
+/// is indefinite and singular, [`DenseError::NoConvergence`] from the QR iteration.
+pub fn eigen_generalized_symmetric(
+    a: &Mat,
+    b: &Mat,
+) -> Result<GeneralizedEigen, DenseError> {
+    if a.rows != a.cols || b.rows != b.cols || a.rows != b.rows {
+        return Err(DenseError::Shape);
+    }
+    let n = a.rows;
+    if let Ok(l) = cholesky(b) {
+        // C = L^{-1} A L^{-T}: solve L W = A, then C^T = L^{-1} W^T.
+        let mut w = a.clone();
+        for c in 0..n {
+            for i in 0..n {
+                let mut s = w.at(i, c);
+                for k in 0..i {
+                    s -= l.at(i, k) * w.at(k, c);
+                }
+                w.set(i, c, s / l.at(i, i));
+            }
+        }
+        let mut cmat = w.transpose();
+        for c in 0..n {
+            for i in 0..n {
+                let mut s = cmat.at(i, c);
+                for k in 0..i {
+                    s -= l.at(i, k) * cmat.at(k, c);
+                }
+                cmat.set(i, c, s / l.at(i, i));
+            }
+        }
+        for i in 0..n {
+            for j in 0..i {
+                let s = f64::midpoint(cmat.at(i, j), cmat.at(j, i));
+                cmat.set(i, j, s);
+                cmat.set(j, i, s);
+            }
+        }
+        let (theta, y) = eigen_symmetric(&cmat)?;
+        let mut order: Vec<usize> = (0..n).collect();
+        order.sort_by(|&p, &q| theta[p].total_cmp(&theta[q]));
+        // x = L^{-T} y
+        let mut x = Mat::zeros(n, n);
+        for (col, &src) in order.iter().enumerate() {
+            let mut v: Vec<f64> = (0..n).map(|i| y.at(i, src)).collect();
+            for i in (0..n).rev() {
+                for k in i + 1..n {
+                    v[i] -= l.at(k, i) * v[k];
+                }
+                v[i] /= l.at(i, i);
+            }
+            for (i, e) in v.iter().enumerate() {
+                x.set(i, col, *e);
+            }
+        }
+        return Ok(GeneralizedEigen {
+            values: order.iter().map(|&i| (theta[i], 0.0)).collect(),
+            vectors: Some(x),
+            b_positive_definite: true,
+        });
+    }
+    // Indefinite B: B^{-1} A.
+    let lu = lu_factor(b)?;
+    let mut m = Mat::zeros(n, n);
+    for c in 0..n {
+        let col: Vec<f64> = (0..n).map(|i| a.at(i, c)).collect();
+        let sol = lu.solve(&col);
+        for (i, e) in sol.iter().enumerate() {
+            m.set(i, c, *e);
+        }
+    }
+    Ok(GeneralizedEigen {
+        values: eigenvalues(&m)?,
+        vectors: None,
+        b_positive_definite: false,
+    })
 }
 
 /// Eigenvalues `(re, im)` of a general real square matrix (Hessenberg

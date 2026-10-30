@@ -114,6 +114,8 @@ mod special;
 mod special_ext;
 #[path = "kernels/special_hyp.rs"]
 mod special_hyp;
+#[path = "kernels/special_limits.rs"]
+mod special_limits;
 #[path = "kernels/stats.rs"]
 mod stats;
 #[path = "kernels/tensor.rs"]
@@ -124,6 +126,8 @@ mod topology;
 mod transforms;
 #[path = "kernels/vector.rs"]
 mod vector;
+#[path = "kernels/wavelets.rs"]
+mod wavelets;
 
 #[path = "kernels/par_sites.rs"]
 mod par_sites;

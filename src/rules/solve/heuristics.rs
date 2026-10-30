@@ -705,9 +705,9 @@ fn logarithm_sum(
         let e = graph.int(k.abs());
         let p = graph.node(core::POW, &[g, e]);
         if k > 0 {
-            positive.push(p)
+            positive.push(p);
         } else {
-            negative.push(p)
+            negative.push(p);
         }
     }
     let constant = if constants.is_empty() {

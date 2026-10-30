@@ -44,7 +44,10 @@
 //! variant), so the target should be near the wanted eigenvalues.
 //!
 //! Limitations: [`eigs_jd_sym`] is for symmetric operators only; `B` must be
-//! positive definite in the symmetric generalised solver; the two-sided solver
+//! positive definite for the Lanczos path of the symmetric generalised solver (an indefinite `B` is
+//! detected and routed to Krylov-Schur on `(A - sigma B)^{-1} B`, giving possibly complex
+//! eigenvalues but 2-normalised, not `B`-orthonormal, vectors; `B` must still be
+//! nonsingular, and the definiteness test is a Lanczos estimate); the two-sided solver
 //! needs the transpose action `A^T` and assumes diagonalisable (non-defective)
 //! wanted eigenvalues.
 
@@ -907,8 +910,29 @@ fn gen_residuals(
     }
 }
 
+/// Whether the symmetric operator `apply_b` is numerically positive definite: its smallest
+/// eigenvalue (Lanczos) exceeds `1e-10` times its spectral radius. A failed estimate counts as
+/// not positive definite.
+#[must_use]
+pub fn b_is_positive_definite<B: Fn(&[f64], &mut [f64])>(
+    apply_b: &B,
+    n: usize,
+    opts: &EigsOptions,
+) -> bool {
+    use crate::kernels::eigs::eigs_sym;
+    let low = eigs_sym(apply_b, n, 1, Which::SmallestReal, opts);
+    let high = eigs_sym(apply_b, n, 1, Which::LargestReal, opts);
+    match (low, high) {
+        | (Ok(l), Ok(h)) => {
+            let (lo, hi) = (l.values[0].0, h.values[0].0);
+            lo > 1e-10 * lo.abs().max(hi.abs())
+        },
+        | _ => false,
+    }
+}
+
 /// Symmetric generalised eigenproblem `A x = lambda B x` (`A` symmetric,
-/// `B` symmetric positive definite): the `k` eigenvalues closest to
+/// `B` symmetric, positive definite for the Lanczos path): the `k` eigenvalues closest to
 /// `opts.sigma`.
 ///
 /// `solve(x, y)` writes `(A - sigma B)^{-1} x` into `y`. Block Lanczos runs
@@ -916,6 +940,13 @@ fn gen_residuals(
 /// there; `theta` maps back to `lambda = sigma + 1/theta`. The returned
 /// eigenvectors are `B`-orthonormal and `residuals` are the true norms
 /// `|A x - lambda B x|`.
+///
+/// **Indefinite `B`.** The `B` inner product only exists for positive definite `B`. The
+/// solver first estimates the extreme eigenvalues of `B` by Lanczos
+/// ([`b_is_positive_definite`]); when `B` is not (numerically) positive definite it falls
+/// back to [`eigs_gen_shift_invert`] (Krylov-Schur on `(A - sigma B)^{-1} B`, any nonsingular
+/// `B`), whose eigenvalues may be complex pairs and whose eigenvectors are 2-normalised, not
+/// `B`-orthonormal.
 ///
 /// # Errors
 /// As [`eigs_sym_block`].
@@ -934,6 +965,9 @@ where
 {
     if k == 0 || k > n || opts.block == 0 {
         return Err(EigsError::Invalid);
+    }
+    if !b_is_positive_definite(&apply_b, n, &opts.eigs) {
+        return eigs_gen_shift_invert(apply_a, apply_b, solve, n, k, opts);
     }
     let op = |x: &[f64], y: &mut [f64]| {
         let mut bx = vec![0.0; x.len()];

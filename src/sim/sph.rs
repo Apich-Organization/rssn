@@ -21,7 +21,15 @@
 //! momentum with variable smoothing lengths. Dissipative particle dynamics
 //! lives in [`crate::sim::dpd`].
 //!
-//! Limitations: no self-gravity.
+//! Self-gravity: set [`Sph::gravity`] to a [`SphGravity`]; the accelerations of the Barnes-Hut
+//! tree code [`crate::sim::nbody::gravity_accelerations`] (Plummer-softened, parallel) are added
+//! to the hydrodynamic ones. [`Sph::gravitational_energy`] gives the matching 3D pair energy.
+//! The gravitational softening is a fixed `eps`, independent of the smoothing lengths, so the
+//! force is not the variationally consistent adaptive-softening one (Price & Monaghan 2007):
+//! energy is conserved to the tree's accuracy and the time integration, not to round-off.
+//!
+//! Limitations: gravity is the free-space (non-periodic) tree force, with no ghost images for
+//! periodic or reflecting boundaries.
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -129,6 +137,17 @@ pub enum SphBoundary {
     Reflecting,
 }
 
+/// Self-gravity parameters of [`Sph`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SphGravity {
+    /// Gravitational constant `G`.
+    pub g: f64,
+    /// Plummer softening length.
+    pub eps: f64,
+    /// Barnes-Hut opening angle.
+    pub theta: f64,
+}
+
 /// SPH particle system in `D` dimensions.
 #[derive(Clone, Debug)]
 pub struct Sph<const D: usize> {
@@ -166,6 +185,8 @@ pub struct Sph<const D: usize> {
     pub grad_h: bool,
     /// Balsara (1995) shear switch `f = |∇·v| / (|∇·v| + |∇×v| + 10⁻⁴ c / h)` on the artificial viscosity.
     pub balsara: bool,
+    /// Self-gravity (`None`: pure hydrodynamics).
+    pub gravity: Option<SphGravity>,
 }
 
 #[derive(Clone, Copy)]
@@ -259,6 +280,7 @@ impl<const D: usize> Sph<D> {
             bc,
             grad_h: false,
             balsara: false,
+            gravity: None,
         };
         // initial h guess from the bounding volume
         let vol: f64 = (0..D).map(|a| (hi[a] - lo[a]).max(1e-12)).product();
@@ -292,7 +314,7 @@ impl<const D: usize> Sph<D> {
                 if x - self.lo[a] < reach {
                     let mut n = *g;
                     if self.bc[a] == SphBoundary::Periodic {
-                        n.pos[a] = x + len
+                        n.pos[a] = x + len;
                     } else {
                         n.pos[a] = 2.0 * self.lo[a] - x;
                         n.flip[a] = -g.flip[a];
@@ -302,7 +324,7 @@ impl<const D: usize> Sph<D> {
                 if self.hi[a] - x < reach {
                     let mut n = *g;
                     if self.bc[a] == SphBoundary::Periodic {
-                        n.pos[a] = x - len
+                        n.pos[a] = x - len;
                     } else {
                         n.pos[a] = 2.0 * self.hi[a] - x;
                         n.flip[a] = -g.flip[a];
@@ -528,6 +550,17 @@ impl<const D: usize> Sph<D> {
                 du[i] += 0.5 * self.mass[j] * fac * vdotg;
             });
         }
+        if let Some(gr) = self.gravity
+            && let Ok(ag) = crate::sim::nbody::gravity_accelerations(
+                &self.pos, &self.mass, gr.g, gr.eps, gr.theta,
+            )
+        {
+            for (a, g) in acc.iter_mut().zip(&ag) {
+                for k in 0..D {
+                    a[k] += g[k];
+                }
+            }
+        }
         for i in 0..n {
             if self.fixed[i] {
                 acc[i] = [0.0; D];
@@ -618,6 +651,27 @@ impl<const D: usize> Sph<D> {
                 self.mass[i] * (0.5 * self.vel[i].iter().map(|x| x * x).sum::<f64>() + self.u[i])
             })
             .sum()
+    }
+
+    /// Plummer-softened pair energy `-G sum_{i<j} m_i m_j / sqrt(r^2 + eps^2)` of the self-gravity
+    /// (`O(N^2)`; three dimensions only; `None` without gravity or for `D != 3`).
+    #[must_use]
+    pub fn gravitational_energy(&self) -> Option<f64> {
+        let gr = self.gravity?;
+        if D != 3 {
+            return None;
+        }
+        let n = self.pos.len();
+        let mut e = 0.0;
+        for i in 0..n {
+            for j in i + 1..n {
+                let r2: f64 = (0..D)
+                    .map(|a| (self.pos[i][a] - self.pos[j][a]).powi(2))
+                    .sum();
+                e -= gr.g * self.mass[i] * self.mass[j] / (r2 + gr.eps * gr.eps).sqrt();
+            }
+        }
+        Some(e)
     }
 
     /// Total momentum.

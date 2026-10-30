@@ -427,3 +427,84 @@ fn two_dimensional_blast_stays_symmetric_and_runs_in_three_dimensions() {
     }
     assert!((s3.total_energy() - e0).abs() < 1e-2 * e0);
 }
+
+#[test]
+fn self_gravity_of_a_uniform_ball_is_linear_in_radius_and_conserves_momentum() {
+    // Cold uniform ball (cubic lattice cut at radius R): a(r) = -(4 pi / 3) G rho r inside.
+    let (n, big_r) = (15usize, 1.0_f64);
+    let d = 2.0 * big_r / n as f64;
+    let mut pos = Vec::new();
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                let x = [
+                    -big_r + (i as f64 + 0.5) * d,
+                    -big_r + (j as f64 + 0.5) * d,
+                    -big_r + (k as f64 + 0.5) * d,
+                ];
+                if x.iter().map(|v| v * v).sum::<f64>() < big_r * big_r {
+                    pos.push(x);
+                }
+            }
+        }
+    }
+    let count = pos.len();
+    let total_mass = 1.0;
+    let m = total_mass / count as f64;
+    let mut s = Sph::<3>::new(
+        pos.clone(),
+        vec![m; count],
+        vec![1e-10; count],
+        [-1.5; 3],
+        [1.5; 3],
+        [SphBoundary::Open; 3],
+    );
+    s.alpha = 0.0;
+    s.beta = 0.0;
+    let g = 1.0;
+    let rho = total_mass / (4.0 / 3.0 * PI * big_r.powi(3));
+    let (a0, _) = s.derivatives();
+    s.gravity = Some(SphGravity {
+        g,
+        eps: 0.05,
+        theta: 0.3,
+    });
+    let (a1, _) = s.derivatives();
+    // gravity only: difference of the two evaluations
+    let (mut num, mut den, mut used) = (0.0, 0.0, 0);
+    let (mut px, mut scale) = ([0.0; 3], 0.0);
+    for i in 0..count {
+        let ag: Vec<f64> = (0..3).map(|a| a1[i][a] - a0[i][a]).collect();
+        for a in 0..3 {
+            px[a] += m * ag[a];
+        }
+        scale += m * ag.iter().map(|v| v * v).sum::<f64>().sqrt();
+        let r = pos[i].iter().map(|v| v * v).sum::<f64>().sqrt();
+        if (0.3..0.7).contains(&r) {
+            // radial component divided by r
+            let ar: f64 = (0..3).map(|a| ag[a] * pos[i][a]).sum::<f64>() / r;
+            num += ar / r;
+            den += 1.0;
+            used += 1;
+        }
+    }
+    let slope = num / den;
+    let expected = -4.0 * PI / 3.0 * g * rho;
+    println!("slope {slope} expected {expected} ({used} particles)");
+    assert!(used > 100);
+    assert!(
+        (slope / expected - 1.0).abs() < 0.08,
+        "a/r = {slope}, expected {expected}"
+    );
+    let pnorm = px.iter().map(|v| v * v).sum::<f64>().sqrt();
+    assert!(pnorm < 0.02 * scale, "net force {pnorm} vs {scale}");
+    // the pair energy is negative and of the order -3/5 G M^2 / R
+    let e = s.gravitational_energy().unwrap();
+    assert!(
+        e < 0.0 && (e / (-0.6 * g / big_r) - 1.0).abs() < 0.15,
+        "energy {e}"
+    );
+    // without gravity nothing changes
+    s.gravity = None;
+    assert!(s.gravitational_energy().is_none());
+}

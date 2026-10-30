@@ -313,7 +313,7 @@ pub(super) fn rsolve(
             };
             match *cx.graph.children(target) {
                 | [f, k] if cx.graph.op(target) == core::APPLY && f == function => {
-                    given.push((k, value))
+                    given.push((k, value));
                 },
                 | _ => return None,
             }

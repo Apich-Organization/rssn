@@ -34,6 +34,8 @@ use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
+use crate::graph::Prepared;
+use crate::graph::PreparedWork;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SizeCost;
@@ -335,9 +337,97 @@ pub(crate) fn best(
     Extractor::new(graph, &[node], &SizeCost).build(graph, node)
 }
 
+/// A Gröbner basis computation detached from the graph (see [`Kernel::two_phase`]).
+struct GroebnerWork {
+    generators: Vec<GPoly>,
+    order: Order,
+    gens: Gens,
+}
+
+impl PreparedWork for GroebnerWork {
+    fn run(self: Box<Self>) -> Box<dyn std::any::Any + Send> {
+        let basis = groebner::groebner_via(&self.generators, self.order, GroebnerLimits::default());
+        Box::new((basis, self.gens))
+    }
+}
+
+/// The monomial order named by the optional third argument of `groebner(polys, vars[, order])`.
+fn groebner_order(
+    graph: &Graph,
+    args: &[NodeId],
+) -> Option<Order> {
+    match args {
+        | [_, _] => Some(Order::Lex),
+        | [_, _, order] => {
+            match graph.interner().symbol_name(graph.symbol_of(*order)?) {
+                | "lex" => Some(Order::Lex),
+                | "grlex" => Some(Order::GradedLex),
+                | "grevlex" => Some(Order::GradedRevLex),
+                | _ => None,
+            }
+        },
+        | _ => None,
+    }
+}
+
 impl Kernel for PolyKernel {
     fn ops(&self) -> Vec<OpId> {
         vec![self.op]
+    }
+
+    /// Gröbner requests are two-phase: the graph is only read to extract the polynomials and
+    /// written to build the basis, the elimination itself runs on plain data, so several
+    /// requests in one expression are computed concurrently.
+    fn two_phase(&self) -> bool {
+        self.request == Request::Groebner
+    }
+
+    fn prepare(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Prepared {
+        let args = cx.graph.children(node).to_vec();
+        let pass = Prepared::Done(Outcome::Pass);
+        if self.request != Request::Groebner {
+            return Prepared::Done(self.reduce(cx, node));
+        }
+        let Some(order) = groebner_order(cx.graph, &args) else {
+            return pass;
+        };
+        let (Some(&polys), Some(&vars)) = (args.first(), args.get(1)) else {
+            return pass;
+        };
+        match to_groebner(cx.graph, polys, vars, order) {
+            | Some((generators, gens)) => {
+                Prepared::Work(Box::new(GroebnerWork {
+                    generators,
+                    order,
+                    gens,
+                }))
+            },
+            | None => pass,
+        }
+    }
+
+    fn commit(
+        &self,
+        cx: &mut Cx<'_>,
+        _node: NodeId,
+        result: Box<dyn std::any::Any + Send>,
+    ) -> Outcome {
+        let Ok(result) = result.downcast::<(Option<Vec<GPoly>>, Gens)>() else {
+            return Outcome::Pass;
+        };
+        let (basis, gens) = *result;
+        let Some(basis) = basis else {
+            return Outcome::Pass;
+        };
+        let terms: Vec<NodeId> = basis
+            .iter()
+            .map(|g| from_groebner(cx.graph, &gens, g))
+            .collect();
+        Outcome::Pinned(cx.graph.node(core::LIST, &terms))
     }
 
     fn reduce(
@@ -879,7 +969,7 @@ fn rational_gcd(
 }
 
 /// A quotient of two polynomials over a shared generator table.
-pub(crate) struct Ratio {
+pub(crate) struct PolyRatio {
     /// Numerator.
     pub(crate) numer: Poly,
     /// Denominator; never the zero polynomial for a well-formed term.
@@ -893,23 +983,23 @@ pub(crate) fn ratio(
     gens: &mut Gens,
     node: NodeId,
     limits: Limits,
-) -> Option<Ratio> {
+) -> Option<PolyRatio> {
     let one = || Poly::constant(Number::from(1));
     let children = graph.children(node).to_vec();
     if graph.op(node) == core::ADD {
-        let mut acc = Ratio {
+        let mut acc = PolyRatio {
             numer: Poly::zero(),
             denom: one(),
         };
         for child in children {
             let r = ratio(graph, gens, child, limits)?;
             acc = if acc.denom == r.denom {
-                Ratio {
+                PolyRatio {
                     numer: acc.numer.add(&r.numer),
                     denom: acc.denom,
                 }
             } else {
-                Ratio {
+                PolyRatio {
                     numer: acc
                         .numer
                         .mul(&r.denom, limits.terms)?
@@ -921,13 +1011,13 @@ pub(crate) fn ratio(
         return Some(acc);
     }
     if graph.op(node) == core::MUL {
-        let mut acc = Ratio {
+        let mut acc = PolyRatio {
             numer: one(),
             denom: one(),
         };
         for child in children {
             let r = ratio(graph, gens, child, limits)?;
-            acc = Ratio {
+            acc = PolyRatio {
                 numer: acc.numer.mul(&r.numer, limits.terms)?,
                 denom: acc.denom.mul(&r.denom, limits.terms)?,
             };
@@ -946,15 +1036,15 @@ pub(crate) fn ratio(
             r.denom.pow(magnitude, limits.terms)?,
         );
         return Some(if e < 0 {
-            Ratio {
+            PolyRatio {
                 numer: denom,
                 denom: numer,
             }
         } else {
-            Ratio { numer, denom }
+            PolyRatio { numer, denom }
         });
     }
-    Some(Ratio {
+    Some(PolyRatio {
         numer: from_term_shared(graph, gens, node, limits)?,
         denom: one(),
     })
@@ -1007,7 +1097,7 @@ fn together(
                         let numbers: Vec<Number> = q.iter().cloned().map(Number::rat).collect();
                         Poly::from_univariate(only, &numbers)
                     };
-                    r = Ratio {
+                    r = PolyRatio {
                         numer: back(&nq),
                         denom: back(&dq),
                     };

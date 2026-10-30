@@ -30,9 +30,10 @@
 //! Smooth problems converge with order `p + 1` (advection) and `p`–`p + 1`
 //! (Euler vortex). Limitations: elements are axis-aligned boxes of one
 //! uniform size (no curved or unstructured hexahedra, no hanging nodes); the
-//! hierarchical limiter does not limit modes at non-periodic domain
-//! boundaries (it skips a direction when a neighbour is missing), the
-//! characteristic limiter needs the law's eigenvectors for the full benefit
+//! moment limiters use ghost elements built from the boundary condition at
+//! non-periodic faces (mirror image for walls, the exterior state for fixed
+//! states, even mirror image for outflow (the flux's exterior state is the interior trace); a direction is skipped only on an
+//! axis with a single element), the characteristic limiter needs the law's eigenvectors for the full benefit
 //! (it falls back to the componentwise moment limiter otherwise), and the
 //! WENO limiter is componentwise (its directional reconstructions are
 //! averaged, not a full multidimensional WENO reconstruction).
@@ -562,7 +563,7 @@ impl Ctx<'_> {
                             let mut qo = vec![0.0; nv];
                             match self.neighbour(e, a, max) {
                                 | Some(en) => {
-                                    qo.copy_from_slice(at(en, idx(n1 - 1 - edge, t1, t2)))
+                                    qo.copy_from_slice(at(en, idx(n1 - 1 - edge, t1, t2)));
                                 },
                                 | None => {
                                     match &self.bcs[2 * a + usize::from(max)] {
@@ -595,10 +596,10 @@ impl Ctx<'_> {
                                 | (true, false) => self.law.numerical_flux(qi, &qo, a, &mut fstar),
                                 | (false, false) => self.law.numerical_flux(&qo, qi, a, &mut fstar),
                                 | (true, true) => {
-                                    self.law.entropy_stable_flux(qi, &qo, a, &mut fstar)
+                                    self.law.entropy_stable_flux(qi, &qo, a, &mut fstar);
                                 },
                                 | (false, true) => {
-                                    self.law.entropy_stable_flux(&qo, qi, a, &mut fstar)
+                                    self.law.entropy_stable_flux(&qo, qi, a, &mut fstar);
                                 },
                             }
                             self.law.flux(qi, a, &mut fbuf);
@@ -866,6 +867,7 @@ impl Ctx<'_> {
         q: &[f64],
         mt: f64,
         characteristic: bool,
+        t: f64,
     ) -> Vec<bool> {
         let (nv, ne) = (self.nv, self.mesh.elements());
         let m = &self.mesh;
@@ -898,15 +900,18 @@ impl Ctx<'_> {
                         }
                     },
                     | (Some(p), None) => {
+                        // the missing neighbour is the ghost element of the boundary condition
+                        let ghost = self.ghost_modal(e, axis, false, q, t);
                         for v in 0..nv {
                             dp[v] = means[p * nv + v] - mean[v];
-                            dm[v] = dp[v];
+                            dm[v] = ghost.as_ref().map_or(dp[v], |g| mean[v] - g[v * self.np]);
                         }
                     },
                     | (None, Some(mi)) => {
+                        let ghost = self.ghost_modal(e, axis, true, q, t);
                         for v in 0..nv {
                             dm[v] = mean[v] - means[mi * nv + v];
-                            dp[v] = dm[v];
+                            dp[v] = ghost.as_ref().map_or(dm[v], |g| g[v * self.np] - mean[v]);
                         }
                     },
                     | (None, None) => {},
@@ -955,13 +960,15 @@ impl Ctx<'_> {
     /// coefficient vectors are transformed with the eigenvectors of the normal
     /// Jacobian at the element mean first. Modes are limited along each axis
     /// using the left and right neighbour of that axis (periodic wrap-around
-    /// for periodic faces, skipped at a non-periodic boundary). The element
+    /// for periodic faces, the ghost element of `Ctx::ghost_modal` at a
+    /// non-periodic boundary). The element
     /// average (mode zero) is never touched, so the scheme stays conservative.
     fn limit_moment(
         &self,
         q: &mut [f64],
         trouble: &[bool],
         characteristic: bool,
+        t: f64,
     ) {
         if !trouble.iter().any(|&t| t) {
             return;
@@ -984,6 +991,20 @@ impl Ctx<'_> {
         }
         let old = modal.clone();
         let means = self.means(q);
+        // Ghost elements behind non-periodic faces of the troubled elements.
+        let mut ghosts: std::collections::HashMap<(usize, usize, bool), Vec<f64>> =
+            std::collections::HashMap::new();
+        for e in (0..ne).filter(|&e| trouble[e]) {
+            for axis in 0..3 {
+                for max in [false, true] {
+                    if self.neighbour(e, axis, max).is_none()
+                        && let Some(g) = self.ghost_modal(e, axis, max, q, t)
+                    {
+                        ghosts.insert((e, axis, max), g);
+                    }
+                }
+            }
+        }
         let mut raw_deg = vec![0.0; nv];
         let mut raw_low = vec![0.0; nv];
         let mut raw_plus = vec![0.0; nv];
@@ -1013,19 +1034,30 @@ impl Ctx<'_> {
                                 if order == 0 {
                                     continue;
                                 }
-                                let (Some(ep), Some(em)) = (
-                                    self.neighbour(e, axis, true),
-                                    self.neighbour(e, axis, false),
-                                ) else {
-                                    continue;
+                                let has = |max: bool| {
+                                    self.neighbour(e, axis, max).is_some()
+                                        || ghosts.contains_key(&(e, axis, max))
                                 };
+                                if !(has(true) && has(false)) {
+                                    continue;
+                                }
                                 let idx = k + n1 * (l + n1 * mm);
                                 let lidx = idx - stride[axis];
+                                let fetch = |max: bool, v: usize| -> f64 {
+                                    match self.neighbour(e, axis, max) {
+                                        | Some(en) => old[(en * nv + v) * np + lidx],
+                                        | None => {
+                                            ghosts
+                                                .get(&(e, axis, max))
+                                                .map_or(0.0, |g| g[v * np + lidx])
+                                        },
+                                    }
+                                };
                                 for v in 0..nv {
                                     raw_deg[v] = old[(e * nv + v) * np + idx];
                                     raw_low[v] = old[(e * nv + v) * np + lidx];
-                                    raw_plus[v] = old[(ep * nv + v) * np + lidx];
-                                    raw_minus[v] = old[(em * nv + v) * np + lidx];
+                                    raw_plus[v] = fetch(true, v);
+                                    raw_minus[v] = fetch(false, v);
                                 }
                                 if has_char {
                                     self.law.to_characteristic(mean, axis, &raw_deg, &mut w_deg);
@@ -1090,6 +1122,75 @@ impl Ctx<'_> {
         }
     }
 
+    /// Modal coefficients (`nv * np`, variable-major) of the ghost element behind the
+    /// non-periodic face `(axis, max)` of element `e`: the mirror image with the law's wall state
+    /// for walls, the exterior state evaluated at the nodes of the virtual element for fixed
+    /// states, and the even mirror image for outflow.
+    fn ghost_modal(
+        &self,
+        e: usize,
+        axis: usize,
+        max: bool,
+        q: &[f64],
+        t: f64,
+    ) -> Option<Vec<f64>> {
+        let (nv, np, n1) = (self.nv, self.np, self.n1);
+        let m = &self.mesh;
+        let own = |nd: usize| &q[(e * np + nd) * nv..(e * np + nd + 1) * nv];
+        let ijk = |nd: usize| [nd % n1, (nd / n1) % n1, nd / (n1 * n1)];
+        let mirror = |nd: usize| {
+            let mut c = ijk(nd);
+            c[axis] = n1 - 1 - c[axis];
+            c[0] + n1 * (c[1] + n1 * c[2])
+        };
+        let mut vals = vec![0.0; np * nv];
+        match &self.bcs[2 * axis + usize::from(max)] {
+            | Dg3Bc::Periodic => return None,
+            | Dg3Bc::Wall => {
+                for nd in 0..np {
+                    self.law
+                        .wall_state(own(mirror(nd)), axis, &mut vals[nd * nv..(nd + 1) * nv]);
+                }
+            },
+            | Dg3Bc::Fixed(f) => {
+                let ex = [
+                    e % m.ne[0],
+                    (e / m.ne[0]) % m.ne[1],
+                    e / (m.ne[0] * m.ne[1]),
+                ];
+                for nd in 0..np {
+                    let c = ijk(nd);
+                    let x: [f64; 3] = std::array::from_fn(|b| {
+                        let cell = if b == axis {
+                            if max {
+                                m.ne[axis] as f64
+                            } else {
+                                -1.0
+                            }
+                        } else {
+                            ex[b] as f64
+                        };
+                        m.lo[b] + (cell + f64::midpoint(1.0, self.xi[c[b]])) * m.h(b)
+                    });
+                    vals[nd * nv..(nd + 1) * nv].copy_from_slice(&f(t, x));
+                }
+            },
+            | Dg3Bc::Outflow => {
+                // The outflow flux uses the interior trace as exterior state, so the ghost
+                // element is the even mirror image of the element.
+                for nd in 0..np {
+                    vals[nd * nv..(nd + 1) * nv].copy_from_slice(own(mirror(nd)));
+                }
+            },
+        }
+        let mut out = vec![0.0; nv * np];
+        for v in 0..nv {
+            let nodal: Vec<f64> = (0..np).map(|nd| vals[nd * nv + v]).collect();
+            out[v * np..(v + 1) * np].copy_from_slice(&self.to_modal(&nodal));
+        }
+        Some(out)
+    }
+
     /// WENO combination of `ncand` nodal candidate vectors of `n1` values,
     /// stored at `cands[k * stride ..]`, using the 1D Zhong–Shu oscillation
     /// indicator. `out` receives the reconstructed values; `shifts`, `d1`,
@@ -1144,12 +1245,13 @@ impl Ctx<'_> {
     fn limit_weno(
         &self,
         q: &mut [f64],
+        time: f64,
     ) {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
         let ne = m.elements();
         let src = q.to_vec();
-        let trouble = self.troubled_elements(&src, self.tvd, false);
+        let trouble = self.troubled_elements(&src, self.tvd, false, time);
         if !trouble.iter().any(|&t| t) {
             return;
         }
@@ -1244,18 +1346,19 @@ impl Ctx<'_> {
     fn limit_all(
         &self,
         q: &mut [f64],
+        t: f64,
     ) {
         match self.limiter {
             | Dg3Limiter::None => {},
             | Dg3Limiter::Characteristic => {
-                let trouble = self.troubled_elements(q, self.tvd, true);
-                self.limit_moment(q, &trouble, true);
+                let trouble = self.troubled_elements(q, self.tvd, true, t);
+                self.limit_moment(q, &trouble, true, t);
             },
             | Dg3Limiter::Hierarchical => {
-                let trouble = self.troubled_elements(q, self.tvd, false);
-                self.limit_moment(q, &trouble, false);
+                let trouble = self.troubled_elements(q, self.tvd, false, t);
+                self.limit_moment(q, &trouble, false, t);
             },
-            | Dg3Limiter::Weno => self.limit_weno(q),
+            | Dg3Limiter::Weno => self.limit_weno(q, t),
         }
         if self.positivity {
             self.positivity(q);
@@ -1342,21 +1445,21 @@ pub fn solve_dg3d(
         let l0 = ctx.rhs(&q, t);
         let mut q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
         if limiting {
-            ctx.limit_all(&mut q1);
+            ctx.limit_all(&mut q1, t + dt);
         }
         let l1 = ctx.rhs(&q1, t + dt);
         let mut q2: Vec<f64> = (0..q.len())
             .map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q2);
+            ctx.limit_all(&mut q2, t + 0.5 * dt);
         }
         let l2 = ctx.rhs(&q2, t + 0.5 * dt);
         q = (0..q.len())
             .map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q);
+            ctx.limit_all(&mut q, t + dt);
         }
         t += dt;
         steps += 1;

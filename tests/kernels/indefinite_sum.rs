@@ -8,6 +8,7 @@ use rssn::kernels::indefinite_sum::series_antidiff;
 use rssn::kernels::special::digamma_numerical;
 use rssn::kernels::special::gamma_numerical;
 
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
 const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
 
 fn sum(

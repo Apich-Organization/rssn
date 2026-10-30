@@ -18,7 +18,7 @@
 //! | operator | value |
 //! |---|---|
 //! | `inner_product(f, g, x, a, b)` | `∫_a^b conj(f) g dx` |
-//! | `l2_norm(f, x, a, b)`, `lp_norm(f, p, x, a, b)` | `‖f‖₂`, `(∫ |f|^p)^(1/p)` |
+//! | `l2_norm(f, x, a, b)`, `lp_norm(f, p, x, a, b)` | `‖f‖₂`, `(∫ \|f\|^p)^(1/p)` |
 //! | `are_orthogonal(f, g, x, a, b)` | `true` when the inner product vanishes |
 //! | `project_onto(f, g, x, a, b)` | the component of `f` along `g` |
 //! | `gram_schmidt(list(f1, ...), x, a, b)`, `gram_schmidt_orthonormal(...)` | an orthogonal (orthonormal) basis of the span, dependent members dropped |

@@ -327,3 +327,138 @@ fn runs_are_deterministic_in_the_seed() {
     assert_eq!(run(5), run(5));
     assert_ne!(run(5).0, run(6).0);
 }
+
+mod walls {
+    use rssn::sim::dpd::DpdWall;
+    use rssn::sim::dpd::WallKind;
+
+    use super::*;
+
+    fn fluid(
+        wall: Option<DpdWall>,
+        seed: u64,
+    ) -> Dpd {
+        let mut s = Dpd::new(375, params(3, 5.0, 25.0, 4.5, 1.0), seed).unwrap();
+        if let Some(w) = wall {
+            s.set_walls(w).unwrap();
+        }
+        s
+    }
+
+    #[test]
+    fn particles_stay_between_the_walls_and_tangential_momentum_survives_specular_walls() {
+        let wall = DpdWall {
+            axis: 2,
+            a_wall: 10.0,
+            kind: WallKind::Specular,
+        };
+        let mut s = fluid(Some(wall), 7);
+        for v in &mut s.vel {
+            v[0] += 0.8;
+        }
+        let m0 = s.momentum();
+        s.run(0.02, 1000);
+        assert!(
+            s.pos.iter().all(|p| (0.0..=5.0).contains(&p[2])),
+            "left the slab"
+        );
+        let m1 = s.momentum();
+        // the wall force and the reflection act along z only: x and y momentum are conserved
+        assert!(
+            (m1[0] - m0[0]).abs() < 1e-8 * 375.0,
+            "{} vs {}",
+            m1[0],
+            m0[0]
+        );
+        assert!((m1[1] - m0[1]).abs() < 1e-8 * 375.0);
+        // temperature stays near the thermostat value plus the kinetic energy of the drift 0.8
+        let expected = 1.0 + 0.8 * 0.8 / 3.0;
+        assert!(
+            (s.temperature() - expected).abs() < 0.1,
+            "T = {}",
+            s.temperature()
+        );
+    }
+
+    #[test]
+    fn bounce_back_walls_remove_the_flow_and_specular_walls_keep_it() {
+        let run = |kind: WallKind| {
+            let mut s = fluid(
+                Some(DpdWall {
+                    axis: 2,
+                    a_wall: 0.0,
+                    kind,
+                }),
+                11,
+            );
+            for v in &mut s.vel {
+                v[0] += 0.8;
+            }
+            let start = s.mean_velocity(0);
+            s.run(0.02, 1500);
+            (start, s.mean_velocity(0))
+        };
+        let (start, specular) = run(WallKind::Specular);
+        let (_, bounce) = run(WallKind::BounceBack);
+        println!("mean vx: start {start:.3}, specular {specular:.3}, bounce-back {bounce:.3}");
+        assert!((specular - start).abs() < 1e-8 * 10.0);
+        assert!(
+            bounce.abs() < 0.6 * start,
+            "bounce-back kept {bounce} of {start}"
+        );
+    }
+
+    #[test]
+    fn a_wall_leaves_the_bulk_density_and_depletes_next_to_it() {
+        let wall = DpdWall {
+            axis: 2,
+            a_wall: 25.0,
+            kind: WallKind::Specular,
+        };
+        let mut s = fluid(Some(wall), 3);
+        s.run(0.02, 800);
+        let (mut mid, mut edge, mut samples) = (0.0, 0.0, 0.0);
+        for _ in 0..600 {
+            s.step(0.02);
+            mid += s.pos.iter().filter(|p| (1.5..3.5).contains(&p[2])).count() as f64;
+            edge += s.pos.iter().filter(|p| p[2] < 0.25).count() as f64;
+            samples += 1.0;
+        }
+        // densities per unit slab thickness
+        let (rho_mid, rho_edge) = (mid / samples / 2.0, edge / samples / 0.25);
+        println!("slab density: middle {rho_mid:.1}, wall layer {rho_edge:.1}");
+        assert!(
+            (rho_mid / (375.0 / 5.0) - 1.0).abs() < 0.15,
+            "bulk {rho_mid}"
+        );
+        assert!(
+            rho_edge < 0.8 * rho_mid,
+            "no depletion at the wall: {rho_edge} vs {rho_mid}"
+        );
+    }
+
+    #[test]
+    fn invalid_walls_are_rejected_and_no_wall_is_unchanged() {
+        let mut s = fluid(None, 2);
+        assert!(
+            s.set_walls(DpdWall {
+                axis: 3,
+                a_wall: 1.0,
+                kind: WallKind::Specular
+            })
+            .is_err()
+        );
+        assert!(
+            s.set_walls(DpdWall {
+                axis: 2,
+                a_wall: -1.0,
+                kind: WallKind::Specular
+            })
+            .is_err()
+        );
+        let (mut a, mut b) = (fluid(None, 5), fluid(None, 5));
+        a.run(0.02, 20);
+        b.run(0.02, 20);
+        assert_eq!(a.pos, b.pos);
+    }
+}

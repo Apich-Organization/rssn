@@ -31,6 +31,8 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use crate::graph::Budget;
 use crate::graph::ClosedForm;
 use crate::graph::Engine;
@@ -419,93 +421,62 @@ impl Session {
     ) -> Result<Answer<'s>, ComputeError> {
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
-        let key: Vec<Arc<str>> = config.sets.iter().map(|s| Arc::from(s.name())).collect();
-        let index = match inner.templates.iter().position(|t| t.sets == key) {
-            | Some(i) => i,
-            | None => {
-                inner.templates.push(Template::new(&config.sets)?);
-                inner.templates.len().saturating_sub(1)
-            },
-        };
+        let index = template_index(inner, config)?;
+        let job = prepare(inner, index, term.node, config);
         let Some(template) = inner.templates.get(index) else {
             return Err(ComputeError::UnknownOperator("engine".to_owned()));
         };
-        let store = &mut inner.graph;
+        let done = run_job(&template.engine, job, config);
+        finish(self, &mut inner.graph, done)
+    }
 
-        // Work in a private copy; only the answer goes back to the store.
-        let mut graph = template.graph.clone();
-        let root = graph.import(store, term.node);
-        let mut env = match config.target {
-            | Target::Symbolic => Env::symbolic(),
-            | Target::Numeric { tolerance } => Env::numeric(tolerance),
+    /// Reduces every term of `terms` under the same `config`, running the
+    /// searches in parallel.
+    ///
+    /// The result equals `terms.iter().map(|&t| self.compute(t, config))`:
+    /// each request is copied into its own private clone of the template
+    /// (sequentially, because the store is borrowed), the engines run
+    /// concurrently on the rayon pool, and the answers are extracted and
+    /// copied back into the store in input order. The answers do not depend
+    /// on the thread count. A failure in one request does not affect the
+    /// others.
+    ///
+    /// # Errors
+    /// One entry per term; see [`Session::compute`].
+    pub fn compute_all<'s>(
+        &'s self,
+        terms: &[Term<'s>],
+        config: &Config,
+    ) -> Vec<Result<Answer<'s>, ComputeError>> {
+        let mut guard = self.inner.borrow_mut();
+        let inner = &mut *guard;
+        let index = match template_index(inner, config) {
+            | Ok(i) => i,
+            | Err(e) => return terms.iter().map(|_| Err(e.clone())).collect(),
         };
-        for (name, value) in &config.bindings {
-            env.bind(graph.interner_mut().symbol(name), *value);
-        }
-        for (name, facts) in &config.assumptions {
-            let symbol = graph.interner_mut().symbol(name);
-            graph.assume(symbol, *facts);
-        }
-        let roots = [root];
-        let report = match config.target {
-            | Target::Symbolic => {
-                template
-                    .engine
-                    .run(&mut graph, &roots, &env, &Saturate, &config.budget)
-            },
-            | Target::Numeric { .. } => {
-                template
-                    .engine
-                    .run(&mut graph, &roots, &env, &Evaluated, &config.budget)
-            },
+        let jobs: Vec<Job> = terms
+            .iter()
+            .map(|t| prepare(inner, index, t.node, config))
+            .collect();
+        let Some(template) = inner.templates.get(index) else {
+            return terms
+                .iter()
+                .map(|_| Err(ComputeError::UnknownOperator("engine".to_owned())))
+                .collect();
         };
-        if let Some((a, b)) = graph.conflicts().first() {
-            return Err(ComputeError::Inconsistent(format!("{a} = {b}")));
-        }
-
-        let witness = graph.approx(graph.find(root));
-        let closed = Extractor::new(&graph, &roots, &ClosedForm).build(&mut graph, root);
-        let reduced = closed.is_some();
-        let best = match closed {
-            | Some(node) => node,
-            | None => {
-                Extractor::new(&graph, &roots, &SizeCost)
-                    .build(&mut graph, root)
-                    .unwrap_or(root)
-            },
+        let engine = &template.engine;
+        let done: Vec<Done> = if jobs.len() >= COMPUTE_ALL_PAR_MIN {
+            jobs.into_par_iter()
+                .map(|job| run_job(engine, job, config))
+                .collect()
+        } else {
+            jobs.into_iter()
+                .map(|job| run_job(engine, job, config))
+                .collect()
         };
-        match config.target {
-            | Target::Symbolic => {
-                let exact = graph.as_number(best).map(Number::to_f64);
-                let node = store.import(&graph, best);
-                Ok(Answer {
-                    term: self.term(node),
-                    value: exact,
-                    error: exact.map(|_| 0.0),
-                    reduced,
-                    report,
-                })
-            },
-            | Target::Numeric { .. } => {
-                // Prefer evaluating the closed form; fall back to the
-                // witness numeric kernels produced.
-                let ball = graph
-                    .eval(best, &env)
-                    .map(crate::graph::Ball::exact)
-                    .or(witness);
-                let Some(ball) = ball else {
-                    return Err(ComputeError::NotNumeric(graph.display(best)));
-                };
-                let node = store.float(ball.mid);
-                Ok(Answer {
-                    term: self.term(node),
-                    value: Some(ball.mid),
-                    error: Some(ball.rad),
-                    reduced,
-                    report,
-                })
-            },
-        }
+        done.into_iter()
+            .map(|d| finish(self, &mut inner.graph, d))
+            .collect()
     }
 
     /// Shorthand for a symbolic [`Session::compute`] with the standard
@@ -518,6 +489,178 @@ impl Session {
         term: Term<'s>,
     ) -> Result<Term<'s>, ComputeError> {
         Ok(self.compute(term, &Config::new())?.term)
+    }
+}
+
+/// Number of requests from which [`Session::compute_all`] uses the pool.
+const COMPUTE_ALL_PAR_MIN: usize = 2;
+
+/// A request copied into its private graph, ready to run.
+struct Job {
+    graph: Graph,
+    root: NodeId,
+    env: Env,
+}
+
+/// A request after the search: the answer is chosen but not yet copied back
+/// into the store.
+struct Done {
+    graph: Graph,
+    env: Env,
+    report: Report,
+    target: Target,
+    failure: Option<ComputeError>,
+    best: NodeId,
+    reduced: bool,
+    witness: Option<crate::graph::Ball>,
+}
+
+const _: fn() = || {
+    const fn send<T: Send>() {}
+    const fn sync<T: Sync>() {}
+    send::<Job>();
+    send::<Done>();
+    sync::<Engine>();
+    sync::<Config>();
+};
+
+/// Index of the template for `config`'s rule sets, installing it on first use.
+fn template_index(
+    inner: &mut Inner,
+    config: &Config,
+) -> Result<usize, ComputeError> {
+    let key: Vec<Arc<str>> = config.sets.iter().map(|s| Arc::from(s.name())).collect();
+    match inner.templates.iter().position(|t| t.sets == key) {
+        | Some(i) => Ok(i),
+        | None => {
+            inner.templates.push(Template::new(&config.sets)?);
+            Ok(inner.templates.len().saturating_sub(1))
+        },
+    }
+}
+
+/// Copies the request into a private clone of the template.
+fn prepare(
+    inner: &Inner,
+    index: usize,
+    node: NodeId,
+    config: &Config,
+) -> Job {
+    let mut graph = inner
+        .templates
+        .get(index)
+        .map_or_else(Graph::new, |t| t.graph.clone());
+    let root = graph.import(&inner.graph, node);
+    let mut env = match config.target {
+        | Target::Symbolic => Env::symbolic(),
+        | Target::Numeric { tolerance } => Env::numeric(tolerance),
+    };
+    for (name, value) in &config.bindings {
+        env.bind(graph.interner_mut().symbol(name), *value);
+    }
+    for (name, facts) in &config.assumptions {
+        let symbol = graph.interner_mut().symbol(name);
+        graph.assume(symbol, *facts);
+    }
+    Job { graph, root, env }
+}
+
+/// Runs the engine on the private graph and chooses the answer in it.
+fn run_job(
+    engine: &Engine,
+    job: Job,
+    config: &Config,
+) -> Done {
+    let Job { mut graph, root, env } = job;
+    let roots = [root];
+    let report = match config.target {
+        | Target::Symbolic => engine.run(&mut graph, &roots, &env, &Saturate, &config.budget),
+        | Target::Numeric { .. } => {
+            engine.run(&mut graph, &roots, &env, &Evaluated, &config.budget)
+        },
+    };
+    let failure = graph
+        .conflicts()
+        .first()
+        .map(|(a, b)| ComputeError::Inconsistent(format!("{a} = {b}")));
+    let witness = graph.approx(graph.find(root));
+    let (best, reduced) = if failure.is_some() {
+        (root, false)
+    } else {
+        let closed = Extractor::new(&graph, &roots, &ClosedForm).build(&mut graph, root);
+        let reduced = closed.is_some();
+        let best = match closed {
+            | Some(node) => node,
+            | None => {
+                Extractor::new(&graph, &roots, &SizeCost)
+                    .build(&mut graph, root)
+                    .unwrap_or(root)
+            },
+        };
+        (best, reduced)
+    };
+    Done {
+        graph,
+        env,
+        report,
+        target: config.target,
+        failure,
+        best,
+        reduced,
+        witness,
+    }
+}
+
+/// Copies the chosen answer back into the store.
+fn finish<'s>(
+    session: &'s Session,
+    store: &mut Graph,
+    done: Done,
+) -> Result<Answer<'s>, ComputeError> {
+    let Done {
+        graph,
+        env,
+        report,
+        target,
+        failure,
+        best,
+        reduced,
+        witness,
+    } = done;
+    if let Some(error) = failure {
+        return Err(error);
+    }
+    match target {
+        | Target::Symbolic => {
+            let exact = graph.as_number(best).map(Number::to_f64);
+            let node = store.import(&graph, best);
+            Ok(Answer {
+                term: session.term(node),
+                value: exact,
+                error: exact.map(|_| 0.0),
+                reduced,
+                report,
+            })
+        },
+        | Target::Numeric { .. } => {
+            // Prefer evaluating the closed form; fall back to the
+            // witness numeric kernels produced.
+            let ball = graph
+                .eval(best, &env)
+                .map(crate::graph::Ball::exact)
+                .or(witness);
+            let Some(ball) = ball else {
+                return Err(ComputeError::NotNumeric(graph.display(best)));
+            };
+            let node = store.float(ball.mid);
+            Ok(Answer {
+                term: session.term(node),
+                value: Some(ball.mid),
+                error: Some(ball.rad),
+                reduced,
+                report,
+            })
+        },
     }
 }
 
@@ -929,6 +1072,58 @@ pub fn diff_n<'s>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `compute_all` equals a loop of `compute` (same answers, same store
+    /// state), also with a failing request in the middle, and does not
+    /// depend on the thread count.
+    #[test]
+    fn compute_all_equals_a_loop_of_compute() {
+        let texts = [
+            "diff(sin(x)^2*exp(x^2), x)",
+            "(x + 1)^4 - (x - 1)^4",
+            "diff(x^3 + 2*x, x)",
+            "integral(x*exp(x), x)",
+        ];
+        let run = |batch: bool| -> Vec<String> {
+            let s = Session::new();
+            let terms: Vec<_> = texts.iter().map(|t| s.parse(t).unwrap()).collect();
+            let config = Config::new();
+            let answers: Vec<_> = if batch {
+                s.compute_all(&terms, &config)
+            } else {
+                terms.iter().map(|&t| s.compute(t, &config)).collect()
+            };
+            let mut out: Vec<String> = answers
+                .into_iter()
+                .map(|a| {
+                    let a = a.unwrap();
+                    format!("{} {:?} {:?} {}", a.term, a.value, a.error, a.reduced)
+                })
+                .collect();
+            out.push(format!("{s:?} id {}", s.sym("zz").id()));
+            out
+        };
+        let looped = run(false);
+        assert_eq!(run(true), looped);
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        assert_eq!(one.install(|| run(true)), looped);
+    }
+
+    #[test]
+    fn compute_all_reports_errors_per_request() {
+        let s = Session::new();
+        let t = s.parse("x + 1").unwrap();
+        let u = s.parse("sin(x)").unwrap();
+        // A numeric target without a binding for x has no value.
+        let config = Config::new().numeric(1e-9);
+        let batch = s.compute_all(&[t, u], &config);
+        assert!(matches!(batch[0], Err(ComputeError::NotNumeric(_))));
+        assert!(matches!(batch[1], Err(ComputeError::NotNumeric(_))));
+        assert!(s.compute_all(&[], &config).is_empty());
+    }
 
     fn symbolic(
         s: &Session,

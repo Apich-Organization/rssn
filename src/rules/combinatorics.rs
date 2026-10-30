@@ -506,7 +506,7 @@ fn characteristic_roots(c: &[BigRational]) -> Option<(Vec<Root>, BigRational)> {
                 roots.push(Root {
                     value: Surd::rational(BigRational::new(-c0.clone(), c1.clone())),
                     multiplicity,
-                })
+                });
             },
             | [c0, c1, c2] => {
                 let discriminant = c1 * c1 - BigInt::from(4) * c2 * c0;

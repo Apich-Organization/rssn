@@ -27,7 +27,7 @@
 //! | `ga_gp(A, B)` | geometric product |
 //! | `ga_wedge(A, B)` | outer product, `<A_r B_s>_{r+s}` |
 //! | `ga_lcontract(A, B)`, `ga_rcontract(A, B)` | left contraction `<A_r B_s>_{s-r}`, right contraction `<A_r B_s>_{r-s}` |
-//! | `ga_inner(A, B)` | Hestenes inner product `<A_r B_s>_{|r-s|}` (zero for scalar operands) |
+//! | `ga_inner(A, B)` | Hestenes inner product `<A_r B_s>_{\|r-s\|}` (zero for scalar operands) |
 //! | `ga_scalar_product(A, B)`, `ga_commutator(A, B)` | `<AB>_0` and `(AB - BA)/2` |
 //! | `ga_grade(A, k)` | grade projection |
 //! | `ga_reverse`, `ga_involute`, `ga_conjugate` | reverse `(-1)^{k(k-1)/2}`, grade involution `(-1)^k`, Clifford conjugate `(-1)^{k(k+1)/2}` |

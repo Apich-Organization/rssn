@@ -21,8 +21,20 @@
 //! wave function near the box edges, so outgoing waves in scattering and
 //! expansion problems are absorbed instead of wrapping around the periodic box.
 //!
-//! Limitations: periodic boundaries (use the absorbing potential for open
-//! problems), no rotating frame, no dipolar interactions.
+//! A **rotating frame** `H - Ω L_z` (`L_z = x p_y - y p_x`, rotation in the `x`-`y` plane about the
+//! box centre, 2D and 3D) is available through [`SplitStep::evolve_rotating`]: the operator
+//! `exp(i Ω dt L_z)` is a rotation of the wave function, applied exactly (to the grid's spectral
+//! accuracy) as three alternating *shears* (Paeth): each shear is a shift of every grid line by
+//! an amount proportional to the other coordinate, i.e. a multiplication by
+//! `exp(i k a y)` in the 1D Fourier space of the line. All three are unitary, so the norm is
+//! conserved to round-off, and the rotation commutes with the kinetic term, so a free packet
+//! or an isotropic trap is rotated exactly. The rotation is sandwiched symmetrically around the
+//! Strang step (second order; Yoshida weights for fourth order of the non-rotating part).
+//!
+//! Limitations: periodic boundaries (use the absorbing potential for open problems); the rotating
+//! frame needs a wave function that vanishes near the box edges (the shears wrap around the
+//! periodic box, and a rotated corner would leave it) and each sub-step rotates by at most
+//! `π/2`; no dipolar interactions.
 
 use crate::sim::spectral::SpectralGrid;
 use num_complex::Complex;
@@ -254,6 +266,120 @@ impl SplitStep {
                     .map(|p| v(tt + 0.5 * w * dt, self.x(p)))
                     .collect();
                 self.strang(&mut psi, &vv, g, w * dt, false, kin, None);
+                tt += w * dt;
+            }
+            t += dt;
+        }
+        psi
+    }
+
+    /// Applies the shear `ψ(x_a) -> ψ(x_a + shift * x_b)` along axis `a` (physical coordinates
+    /// relative to the box centre): every line along `a` is shifted by a Fourier phase.
+    fn shear(
+        &self,
+        psi: &mut [Complex<f64>],
+        a: usize,
+        b: usize,
+        shift: f64,
+    ) {
+        use crate::kernels::transforms::fft_slice;
+        use crate::kernels::transforms::ifft_slice;
+        let n = self.grid.n;
+        let stride = [1, n[0], n[0] * n[1]];
+        let len = n[a];
+        let mut line = vec![Complex::new(0.0, 0.0); len];
+        let phases_k: Vec<f64> = (0..len).map(|j| self.grid.wavenumber(a, j)).collect();
+        for p in 0..psi.len() {
+            let idx = [p % n[0], (p / n[0]) % n[1], p / (n[0] * n[1])];
+            if idx[a] != 0 {
+                continue;
+            }
+            let xb = self.origin[b] + idx[b] as f64 * self.grid.h(b);
+            for (j, l) in line.iter_mut().enumerate() {
+                *l = psi[p + j * stride[a]];
+            }
+            fft_slice(&mut line);
+            for (l, k) in line.iter_mut().zip(&phases_k) {
+                *l *= Complex::new(0.0, k * shift * xb).exp();
+            }
+            ifft_slice(&mut line);
+            for (j, l) in line.iter().enumerate() {
+                psi[p + j * stride[a]] = *l;
+            }
+        }
+    }
+
+    /// Rotates the pattern of `psi` counterclockwise by `angle` (`|angle| <= π/2`) in the
+    /// `x`-`y` plane about the box centre, as three shears.
+    ///
+    /// # Panics
+    /// For a one-dimensional grid.
+    pub fn rotate(
+        &self,
+        psi: &mut [Complex<f64>],
+        angle: f64,
+    ) {
+        assert!(
+            self.grid.dim >= 2,
+            "a rotation needs at least two dimensions"
+        );
+        let a = (0.5 * angle).tan();
+        let b = -angle.sin();
+        self.shear(psi, 0, 1, a);
+        self.shear(psi, 1, 0, b);
+        self.shear(psi, 0, 1, a);
+    }
+
+    /// Real-time evolution in a frame rotating with angular velocity `omega` about the `z` axis:
+    /// `i ψ_t = (-Δ/2m + V + g|ψ|² - Ω L_z) ψ`. With `omega = 0` it is exactly [`SplitStep::evolve`].
+    ///
+    /// # Panics
+    /// For a one-dimensional grid, or when a sub-step would rotate by more than `π/2`.
+    #[allow(clippy::too_many_arguments)] // same controls as `evolve` plus the rotation rate
+    pub fn evolve_rotating(
+        &self,
+        psi0: &[Complex<f64>],
+        v: &dyn Fn(f64, [f64; 3]) -> f64,
+        g: f64,
+        omega: f64,
+        t0: f64,
+        dt: f64,
+        steps: usize,
+        order: SplitOrder,
+    ) -> Vec<Complex<f64>> {
+        if omega == 0.0 {
+            return self.evolve(psi0, v, g, t0, dt, steps, order);
+        }
+        assert!(
+            self.grid.dim >= 2,
+            "a rotating frame needs at least two dimensions"
+        );
+        assert!(
+            (omega * dt).abs() < std::f64::consts::FRAC_PI_2,
+            "Omega dt must be below pi/2"
+        );
+        let mut psi = psi0.to_vec();
+        let c3 = 2.0_f64.cbrt();
+        let (w1, w0) = (1.0 / (2.0 - c3), -c3 / (2.0 - c3));
+        let weights: Vec<f64> = match order {
+            | SplitOrder::Strang => vec![1.0],
+            | SplitOrder::Yoshida4 => vec![w1, w0, w1],
+        };
+        let kins: Vec<Vec<Complex<f64>>> = weights
+            .iter()
+            .map(|w| self.kinetic_factors(w * dt, false))
+            .collect();
+        let mut t = t0;
+        for _ in 0..steps {
+            let mut tt = t;
+            for (w, kin) in weights.iter().zip(&kins) {
+                // exp(i Omega dt L_z) turns the pattern clockwise by Omega dt
+                self.rotate(&mut psi, -0.5 * omega * w * dt);
+                let vv: Vec<f64> = (0..psi.len())
+                    .map(|p| v(tt + 0.5 * w * dt, self.x(p)))
+                    .collect();
+                self.strang(&mut psi, &vv, g, w * dt, false, kin, None);
+                self.rotate(&mut psi, -0.5 * omega * w * dt);
                 tt += w * dt;
             }
             t += dt;

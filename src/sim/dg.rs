@@ -39,7 +39,10 @@
 //!
 //! Limitations: the characteristic limiter needs a law with eigenvectors
 //! (Euler 1D/2D); the WENO limiter is one-dimensional; the hierarchical limiter
-//! does not limit modes at non-periodic domain boundaries.
+//! uses ghost elements built from the boundary condition at non-periodic
+//! faces (mirror image for walls, the exterior state for fixed / custom
+//! states, even mirror image for outflow (the flux's exterior state is the interior trace); none on an axis with a single
+//! element), and limits against a missing neighbour only through them.
 
 use std::sync::Arc;
 
@@ -402,7 +405,6 @@ impl DgLaw for Euler2d {
         Some((q[0], self.pressure(q)))
     }
 }
-
 
 /// Logarithmic mean `(a - b) / (ln a - ln b)` with a series for close arguments.
 #[must_use]
@@ -1524,10 +1526,105 @@ impl Ctx<'_> {
         out
     }
 
+    /// Modal coefficients (`nv * np`, variable-major) of the ghost element
+    /// behind the non-periodic face `(axis, max)` of element `e`, built from
+    /// the boundary condition so that the hierarchical limiter has a
+    /// neighbour there:
+    ///
+    /// * wall: the mirror image of the element with the law's wall state;
+    /// * fixed / custom exterior state: that state evaluated at the nodes of
+    ///   the virtual element behind the face (custom ones see the mirrored
+    ///   interior node);
+    /// * outflow: the even mirror image (the flux's exterior state is the interior trace).
+    #[allow(clippy::too_many_arguments)]
+    fn ghost_modal(
+        &self,
+        e: usize,
+        axis: usize,
+        max: bool,
+        q: &[f64],
+        t: f64,
+        xi: &[f64],
+    ) -> Option<Vec<f64>> {
+        let (nv, np, n1) = (self.nv, self.np, self.n1);
+        let m = &self.mesh;
+        let bc = &self.bcs[2 * axis + usize::from(max)];
+        let own = |nd: usize| &q[(e * np + nd) * nv..(e * np + nd + 1) * nv];
+        let mirror = |nd: usize| {
+            let (i, j) = (nd % n1, nd / n1);
+            if axis == 0 {
+                (n1 - 1 - i) + n1 * j
+            } else {
+                i + n1 * (n1 - 1 - j)
+            }
+        };
+        let position = |nd: usize| {
+            let ij = [nd % n1, nd / n1];
+            let ex = [e % m.ne[0], e / m.ne[0]];
+            let mut x = [0.0; 2];
+            for b in 0..m.dim {
+                let cell = if b == axis {
+                    if max {
+                        m.ne[axis] as f64
+                    } else {
+                        -1.0
+                    }
+                } else {
+                    ex[b] as f64
+                };
+                x[b] = m.lo[b] + (cell + f64::midpoint(1.0, xi[ij[b]])) * m.h(b);
+            }
+            x
+        };
+        let mut vals = vec![0.0; np * nv];
+        match bc {
+            | DgBc::Periodic => return None,
+            | DgBc::Wall => {
+                for nd in 0..np {
+                    self.law
+                        .wall_state(own(mirror(nd)), axis, &mut vals[nd * nv..(nd + 1) * nv]);
+                }
+            },
+            | DgBc::Fixed(f) => {
+                for nd in 0..np {
+                    vals[nd * nv..(nd + 1) * nv].copy_from_slice(&f(t, position(nd)));
+                }
+            },
+            | DgBc::Custom(f) => {
+                for nd in 0..np {
+                    vals[nd * nv..(nd + 1) * nv].copy_from_slice(&f(
+                        t,
+                        position(nd),
+                        own(mirror(nd)),
+                    ));
+                }
+            },
+            | DgBc::Outflow => {
+                // The outflow flux uses the interior trace as exterior state, so the ghost
+                // element is the even mirror image of the element.
+                for nd in 0..np {
+                    vals[nd * nv..(nd + 1) * nv].copy_from_slice(own(mirror(nd)));
+                }
+            },
+        }
+        let mut out = vec![0.0; nv * np];
+        for v in 0..nv {
+            let nodal: Vec<f64> = (0..np).map(|nd| vals[nd * nv + v]).collect();
+            out[v * np..(v + 1) * np].copy_from_slice(&self.to_modal(&nodal));
+        }
+        Some(out)
+    }
+
     /// Krivodonova's hierarchical moment limiter.
+    ///
+    /// Elements at a non-periodic boundary use the ghost element of
+    /// [`Ctx::ghost_modal`] as the missing neighbour, so they are limited like
+    /// interior ones (at time `t`, the stage time of the state `q`).
     fn limit_hierarchical(
         &self,
         q: &mut [f64],
+        t: f64,
+        xi: &[f64],
     ) {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
@@ -1542,6 +1639,19 @@ impl Ctx<'_> {
             }
         }
         let old = modal.clone();
+        let mut ghosts: std::collections::HashMap<(usize, usize, bool), Vec<f64>> =
+            std::collections::HashMap::new();
+        for e in 0..ne {
+            for a in 0..m.dim {
+                for max in [false, true] {
+                    if self.neighbour(e, a, max).is_none()
+                        && let Some(g) = self.ghost_modal(e, a, max, q, t, xi)
+                    {
+                        ghosts.insert((e, a, max), g);
+                    }
+                }
+            }
+        }
         let mm3 = |a: f64, b: f64, c: f64| minmod3(a, b, c);
         for e in 0..ne {
             for v in 0..nv {
@@ -1569,13 +1679,17 @@ impl Ctx<'_> {
                                     k + n1 * (l - 1)
                                 };
                                 let own = old[base + lower];
-                                let (np_, nm_) =
-                                    (self.neighbour(e, a, true), self.neighbour(e, a, false));
-                                let (Some(ep), Some(em)) = (np_, nm_) else {
+                                let fetch = |max: bool| -> Option<f64> {
+                                    match self.neighbour(e, a, max) {
+                                        | Some(en) => Some(old[(en * nv + v) * np + lower]),
+                                        | None => {
+                                            ghosts.get(&(e, a, max)).map(|g| g[v * np + lower])
+                                        },
+                                    }
+                                };
+                                let (Some(plus), Some(minus)) = (fetch(true), fetch(false)) else {
                                     continue;
                                 };
-                                let plus = old[(ep * nv + v) * np + lower];
-                                let minus = old[(em * nv + v) * np + lower];
                                 let f = (2 * order - 1) as f64;
                                 cands.push(mm3(f * c, plus - own, own - minus) / f);
                             }
@@ -1713,6 +1827,7 @@ impl Ctx<'_> {
         q: &mut [f64],
         opt: &DgOptions,
         xi: &[f64],
+        t: f64,
     ) {
         match opt.shock {
             | ShockLimiter::None => {},
@@ -1724,7 +1839,7 @@ impl Ctx<'_> {
                         positivity: false,
                     },
                     xi,
-                )
+                );
             },
             | ShockLimiter::TvbCharacteristic { m } => {
                 if self.law.has_characteristics() {
@@ -1740,7 +1855,7 @@ impl Ctx<'_> {
                     );
                 }
             },
-            | ShockLimiter::Hierarchical => self.limit_hierarchical(q),
+            | ShockLimiter::Hierarchical => self.limit_hierarchical(q, t, xi),
             | ShockLimiter::Weno { m } => {
                 if self.mesh.dim == 1 {
                     self.limit_weno(q, m, xi);
@@ -1887,21 +2002,21 @@ pub fn solve_dg_with(
         let l0 = ctx.rhs(&q, t, &xi);
         let mut q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
         if limiting {
-            ctx.limit_all(&mut q1, opt, &xi);
+            ctx.limit_all(&mut q1, opt, &xi, t + dt);
         }
         let l1 = ctx.rhs(&q1, t + dt, &xi);
         let mut q2: Vec<f64> = (0..q.len())
             .map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q2, opt, &xi);
+            ctx.limit_all(&mut q2, opt, &xi, t + 0.5 * dt);
         }
         let l2 = ctx.rhs(&q2, t + 0.5 * dt, &xi);
         q = (0..q.len())
             .map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q, opt, &xi);
+            ctx.limit_all(&mut q, opt, &xi, t + dt);
         }
         if fmat.is_some() {
             apply_filter(&mut q);

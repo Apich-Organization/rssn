@@ -775,32 +775,32 @@ in the modules):
 - `kernels/hypergeometric.rs` *(update 2026-10-30: complex `U` with large `|a|` is done to `1e-13` for `Re a >= 0`, see R8b in 5.5)*: `M` with large parameters is done (R8);
   complex `M` in the transition regions and complex `U` with `a` of
   modulus > 100 keep the Taylor-stepping accuracy; `p > q + 1` and
-  non-terminating `b_j ∈ Z≤0` give NaN. **P2**
+  non-terminating `b_j ∈ Z≤0` give NaN. **P2** *(update 2026-10-30: `hyp_pfq_checked` returns the reason as a `HypError`, `pFq(..; 0) = 1`, see Round 3 in Part 7)*
 - `kernels/sde.rs`: Milstein/SRK/adaptive need commutative noise; the
-  adaptive solver has no Lévy-area path. **P2**
+  adaptive solver has no Lévy-area path. **P2** *(update 2026-10-30: `sde_adaptive_noncommutative_with` on a Chen-consistent Brownian grid, B2 in Part 7; the commutative adaptive solver is unchanged)*
 - `kernels/eigs_ext.rs`: *(correction, R11)* the non-symmetric
   Jacobi–Davidson `eigs_jd` (complex targets, partial Schur deflation,
   complex harmonic extraction) already exists since commit 1b2530a4; the
   symmetric generalised solver still needs SPD `B`, and a two-sided JD is
-  not implemented. **P2** *(two-sided JD done, R11b in 5.5)*
+  not implemented. **P2** *(two-sided JD done, R11b in 5.5; indefinite `B` detected and routed to Krylov-Schur, dense `eigen_generalized_symmetric`, B1 in Part 7)*
 - `kernels/pde.rs`: no 3D, Robin/periodic faces, time-dependent BCs or
   adaptive stepping in the simple kernels (routed to `sim`). **P3**
 - `sim/bem_aca.rs`: Helmholtz path is dense; no cluster-tree rebalancing.
-  **P2**
+  **P2** *(update 2026-10-30: `bem_helmholtz::solve_helmholtz_exterior_aca`, complex ACA + GMRES, B7 in Part 7)*
 - `sim/dg.rs`: WENO limiter 1D only; hierarchical limiter skips
-  non-periodic boundaries (same as 3D). **P2**
+  non-periodic boundaries (same as 3D). **P2** *(update 2026-10-30: ghost elements from the boundary condition in `dg.rs` and `dg3d.rs`, B3 in Part 7; WENO is still 1D)*
 - `sim/dg3d.rs`: uniform axis-aligned boxes only (no curved/unstructured
   hexahedra, no hanging nodes). **P2**
-- `sim/dpd.rs`: single species, no bonds, no walls. **P2**
+- `sim/dpd.rs`: single species, no bonds, no walls. **P2** *(update 2026-10-30: `Dpd::set_walls`, B6 in Part 7)*
 - `sim/elasticity_fem.rs`: isotropic, homogeneous, small strain, static.
   **P2**
 - `sim/euler_amr.rs`: 1D/2D only, ratio 2, no non-reflecting BCs. **P2**
 - `sim/fem_simplex.rs`: constant `k`, `c`; no coarsening, no
-  goal-oriented adaptivity, no multigrid. **P2**
+  goal-oriented adaptivity, no multigrid. **P2** *(update 2026-10-30: `FemProblemVar` / `solve_static_var` / `solve_heat_var` with `k(x)`, `c(x)`, B4 in Part 7; the error estimator still assumes constant coefficients)*
 - `sim/ns_mac.rs`: uniform grids, Boussinesq only, no free surface. **P3**
-- `sim/sph.rs`: no self-gravity. **P3**
+- `sim/sph.rs`: no self-gravity. **P3** *(update 2026-10-30: `Sph::gravity` with the Barnes-Hut tree force, B5 in Part 7)*
 - `sim/split_step.rs`: periodic only, no rotating frame, no dipolar terms.
-  **P3**
+  **P3** *(update 2026-10-30: `evolve_rotating`, B8 in Part 7)*
 - `sim/spin_models.rs`: nearest-neighbour hypercubic lattices only. **P3**
 - `sim/kerr.rs`: no separatrix/circular/extremal closed forms. **P3**
 - Not present anywhere (grep 2026-10-29; FGLM, BPSW and ECM since added, R5/R6): F4/F5, quadratic
@@ -1172,10 +1172,7 @@ Items marked here were closed after 5.4; each has tests next to its neighbours a
 | B4 | `coulomb_f`/`coulomb_f_prime` returned `None` at `rho = 0`, so three rules (`coulomb-f-zero`, `coulomb-fp-zero*`) were never numerically tested | **fixed** (`F_l(η,0)=0`, `F'_0(η,0)=C_0(η)`) | `kernels/special_ext.rs` |
 | B3 | **Bug found**: `fem_simplex::error_indicators` summed the edge-jump terms in the randomised order of a `HashMap` (two calls of the same function gave results differing in the last bits) | **fixed**: facets taken in sorted key order | `sim/fem_simplex.rs` |
 
-Not reached from the "own search" list (still open): symmetric generalised
-eigenproblem with indefinite `B` (documented), SDE adaptive step without
-commutative noise, DG hierarchical limiter at non-periodic faces, variable
-`k, c` in `fem_simplex`, the other `Limitations:` paragraphs of Part 5.2.
+Not reached from the "own search" list (still open): the other `Limitations:` paragraphs of Part 5.2. *(Update 2026-10-30, Part 7: the symmetric generalised eigenproblem with indefinite `B`, the SDE adaptive step without commutative noise, the DG hierarchical limiter at non-periodic faces, variable `k, c` in `fem_simplex` and SPH self-gravity are closed. Round 2 of Part 7 closed DPD walls, complex Helmholtz ACA, the rotating frame in `split_step` and the variable-coefficient FEM estimator; what remains is listed at the end of Part 7.)*
 
 ---
 
@@ -1281,3 +1278,147 @@ to the sequential code.
 - `cargo test --test sim`: 812 passed, 2 ignored (modules touched by Part 6 with one thread: 68 passed, 2 ignored);
 - `cargo test --lib -- rules::calculus rules::pde rules::poly rules::solve rules::number_theory rules::special rules::ode rules::discrete rules::tests graph::soundness rules::par_tests`: 482 of 483 passed in 693 s including `rules::ode::linear`; the one failure (`rules::tests::no_standard_rewrite_is_refuted`, three Coulomb rules at `rho = 0`) was fixed afterwards (B4) and the test passes (it had been failing before this round because of B2); the poly/number theory/calculus/lie/kovacic/soundness subset also passed with `RAYON_NUM_THREADS=1` (132/132) before the Phase B changes;
 - `cargo clippy --all-targets`: only the span-less `doc_markdown` "backticks are unbalanced"; with `--cap-lints warn` no new warnings in touched files.
+
+---
+
+## Part 7 — Engine- and session-level parallelisation (done 2026-10-30, round 2 same day)
+
+Part 6 parallelised *inside* algorithms. Part 7 looks one level up: the engine, the session,
+simulation scenarios and ensembles, and a few leaf utilities. The rules of Part 6 apply (deterministic
+results, named `*_PAR_*` cut-offs, no manual threads, every site measured one thread vs 16 threads in
+the same process with the `Debug` text asserted equal, `PAR |` row printed). No dependency was added.
+
+**Keep threshold (round 2): about 1.1.** Round 1 used 1.3. A site that clears ~1.1 on realistic input is
+kept; a site that is slower than serial on small input gets a grain cut-off so that small inputs take the
+sequential path, and the *semantics* never depend on the path taken (only the execution strategy).
+Sites that stay dropped are listed. Timings on this machine are noisy by about ±10 % between runs
+(the table gives the range of the runs of the day).
+
+### Architecture
+
+| ID | Level | What runs in parallel | What stays sequential, and why | Determinism argument |
+|---|---|---|---|---|
+| A1 | `Engine::apply_tier` | The e-matching of each maximal run of consecutive `Action::Rewrite` rules of a tier against the **frozen** graph (`&Graph`; `Graph`, `Rewrite`, `Pat`, `Engine` are `Sync`, asserted at compile time); each rule keeps its own `match_limit`, `match_fuel` and ban decision, computed from its own search result. Parallel from `ENGINE_PAR_MIN_CANDIDATES = 512` candidate nodes in the run | Kernels keep their position and run one after the other (they mutate the graph and call the engine); builds and unions are applied in rule order, then match order. `windows(..)`: not parallelisable, `TreeWindow::optimize` / `beam` take `&mut Graph` (rewrites and window passes create nodes) | The searches only read the graph and are collected in rule order; the batched semantics (a later rule of the run does not see the unions of an earlier one in the same pass) apply on **both** paths, so results do not depend on the cut-off or on the thread count |
+| A2 | Two-phase kernels | `Kernel::{two_phase, prepare, commit}` with `PreparedWork: Send`: the scheduler prepares every eligible node (sequential, graph access), runs the returned jobs in parallel when there are at least two, and commits in node order. Implemented for **`groebner(...)` requests** of `PolyKernel` (extract polynomials, `groebner_via` on plain data, build the basis terms) | Everything else; univariate factorisation was tried as a job and dropped (below) | Prepare-all-then-commit is the semantics on both paths, jobs are independent pure functions of their data, results are committed in node order |
+| A3 | `Session::compute_all` | One engine run (and the choice of the answer) per request, on its private clone of the template | Cloning the template and importing a request (store borrowed) and importing the answers back (input order) | The answers and the final store equal a loop of `compute` calls (tested also in a one-thread pool) |
+| A4 | Scenarios and ensembles | `sim::scenario::run_many`, `kernels::sde::sde_ensemble` (member `i` seeded by `ensemble_seed(seed, i)`), replica updates of `ParallelTempering` / `PottsTempering` | Replica exchange and its generator | Collected in index order; members depend only on `(seed, index)`; replicas own their generators |
+| A5 | `bdf_with_par` | The finite-difference Jacobian columns (`FdMode::parallel()` = `fd_jacobian_dense_par`), from `STIFF_PAR_MIN_N = 64` unknowns | Newton iterations, LU, Radau (no gain) | Bit-identical to `bdf_with` (asserted) |
+| A6 | `md_engine::compute_forces` | The pair sum above `MD_PAR_MIN_PAIRS = 20 000` pairs, in blocks of `max(8192, pairs/64)` pairs with one force buffer per block, added in block order | The bonded / extra terms; the single-accumulator sum of short lists | Block boundaries depend only on the list length; results differ from the single-accumulator sum only in the last bits and are independent of the thread count |
+| A6 | `backend::call_batch_par` | Rows of a compiled batch in fixed blocks of 4096 | – | Pointwise evaluation: identical to `call_batch` |
+| A6 | `io::plot_function_2d_par`, `plot_surface_3d_par`, `plot_term_2d` | Sample evaluation from 256 samples (rows for the surface) | SVG assembly | Samples collected in order, identical picture |
+| A6 | `rules/verify.rs` `vanishes` | The 12 sample points, when the simplified term has at least `VERIFY_PAR_NODES = 40` reachable classes | – | The verdict (some sample refutes / some sample is finite) does not depend on the order |
+
+### Timing table (serial = 1-thread pool, parallel = 16 threads)
+
+| ID | Site | Size | Serial | Parallel | Speed-up | Notes |
+|---|---|---|---|---|---|---|
+| A1 | batched e-matching, kept (threshold 512) | `diff(sin²x e^{x²} ln(1+x²))`, `(x+1)^6 - ...`, integral | 12–27 ms | 11–28 ms | 0.98–1.14 | small: mostly under the cut-off, so the sequential path |
+| A1 | | `diff(((x²+1)^5 sin³x eˣ ln(x²+2))², x)` (285 ms) | 281–286 ms | 164–322 ms | 0.89–1.74 (runs: 1.15, 0.89, earlier 1.74) | noisy: runs 1.15, 1.12, 0.89 (1.74 with the cut-off at 0) |
+| A1 | | `diff(diff(sin x cos x eˣ ln x atan x sinh x, x), x)` (10–13 s) | 10.7–13.0 s | 7.3–10.2 s | 1.27–1.40 | the clear gain |
+| A1 | | polynomial identity in x, y, z; two `diff` products (24–90 ms) | 19–90 ms | 19–98 ms | 0.91–1.08 | at the noise level; not slower on average |
+| A2 | `groebner` as parallel jobs | 4 Katsura-4/5 systems, jobs side by side vs one after the other, both with the parallel Gröbner inside | 385 ms | 270 ms | 1.43 | kept |
+| A2 | two-phase kernel in the engine | request holding 4 `groebner(katsura-4)` / 4 `groebner(katsura-5)` | 1.20 s / 11.8 s | 0.67 s / 6.96 s | 1.79 / 1.70 | one thread vs 16 (includes the parallelism inside each Gröbner run); outputs equal |
+| A2 | `univariate::factor` as parallel jobs | 4 Swinnerton-Dyer deg 32 in one request | 7.89 s | 7.48 s | 1.06 | **dropped** (each factorisation already fills the pool, P4) |
+| A3 | `Session::compute_all` | 8 requests, standard rules (loop of `compute`: 49–125 ms) | 54–65 ms | 17–31 ms | 2.0–3.9 | limited by the longest request |
+| A4 | `sim::scenario::run_many` | 8 Ising 96×96 scenarios | 251–359 ms | 39–95 ms | 3.8–6.5 | |
+| A4 | `sde_ensemble` (Euler–Maruyama) | 20 000 paths × 200 steps, n = 2 | 1.06–1.19 s | 0.20–0.24 s | 4.9–5.3 | |
+| A4/A6 | `ParallelTempering<2,2>` | 8 replicas, 64×64, 40 rounds | 161–222 ms | 62–84 ms | 2.6–2.7 | bit-identical |
+| A4/A6 | `PottsTempering` | same | 108–139 ms | 53–95 ms | 1.45–2.04 | |
+| A5 | `bdf_with_par` | n = 100 / 200 / 400, expensive `f` | 18.5 / 55 / 217 ms | 13.7 / 36 / 139 ms | 1.35 / 1.52 / 1.56 | kept, cut-off 64 |
+| A5 | `radau_with_par` | n = 100 / 200 / 400 | 0.88 / 6.5 / 39.2 s | 0.82 / 6.6 / 42.4 s | 1.08 / 0.99 / 0.92 | **dropped** (Newton and LU dominate); the n = 160 anomaly of round 1 (0.74 vs the BDF 1.55) was noise of two different solvers, not an inconsistency of the Jacobian |
+| A6 | `md_engine::compute_forces` | 2048 / 10 976 atoms, LJ rc 2.5 | 28.7 / 109 ms | 24.5 / 85 ms | 1.17 / 1.29 | kept |
+| A6 | `backend::call_batch_par` | 1M rows, 2 inputs | 317–372 ms | 72 ms | 4.4–5.2 | |
+| A6 | `io::plot_term_2d` | 20 000 samples (evaluation + SVG) | 142–146 ms | 44–53 ms | 2.7–3.3 | |
+| A6 | `rules/verify.rs` `vanishes` | 12 samples of a large term (60–85 µs per call) | 57–85 µs | 41–66 µs | 1.29–1.40 | kept, only above 40 classes |
+
+Still dropped from Part 6 (unchanged): `ns_mac` stencils (1.04–1.10), eigenring search, FGLM, Zeilberger,
+`lie` null spaces, LU update, graph canonical refinement.
+
+### FFI
+
+`rssn_compute_all(session, terms, n, config, answers, statuses)` (`src/ffi/compute.rs`): caller-provided arrays
+of `n` handles, `RssnAnswer`s and `RssnStatus` codes; a handle that is not a term of the session gets
+`NoSuchTerm` in its slot, the others are computed together by `Session::compute_all`; the return value is `Ok`
+when the call was well formed and the message of the first failing request stays available through
+`rssn_last_error`. Test: equal to `rssn_compute` per request, per-request codes, null-array handling.
+`rssn.h` / `rssn.hpp` were **not regenerated** (cbindgen runs only with `DEV=1`; skipped, the new
+declaration has to be generated before the header is published).
+
+### Part B — closed limitations
+
+| ID | Item | Status | Where |
+|---|---|---|---|
+| B1 | Symmetric generalised eigenproblem with indefinite `B` | **done**. Dense: `dense::eigen_generalized_symmetric` (Cholesky reduction and `B`-orthonormal eigenvectors for SPD `B`; eigenvalues of `B⁻¹A`, complex pairs included, otherwise). Iterative: `eigs_gen_sym_shift_invert` estimates `λ_min(B)`, `λ_max(B)` by Lanczos (`b_is_positive_definite`) and falls back to `eigs_gen_shift_invert` (Krylov–Schur on `(A − σB)⁻¹B`) for indefinite `B` (2-normalised vectors; `B` must be nonsingular). Tests: SPD pencil, real indefinite spectrum {2, −3}, complex pair ±i (dense and iterative), 40-dimensional indefinite diagonal pencil | `kernels/dense.rs`, `kernels/eigs_ext.rs` |
+| B2 | SDE adaptive solver with non-commutative noise | **done**: `sde_adaptive_noncommutative_with` on a fixed Brownian grid of cells, each with Lévy areas; a step is a union of cells combined exactly by Chen's relation, so rejecting or splitting a step re-uses the same cells (finest step `(t1 − t0)/cells`); `noncommutative_noise_grid` returns the path for a fixed-step reference. Tests: rms error against the fine `milstein_noncommutative` reference on the same path 4.8e-2, 1.9e-2, 2.7e-3 for 11, 13, 46 mean steps, Chen's relation, invalid input; `sde_adaptive_with` untouched | `kernels/sde.rs` |
+| B3 | DG hierarchical limiter at non-periodic boundaries | **done** in `dg.rs` and `dg3d.rs` (moment limiters and troubled-element test): ghost elements from the boundary condition (mirror with `wall_state` for walls; exterior state at the virtual nodes for fixed / custom states; even mirror for outflow). Wall equals the left half of the doubled domain to 1.3e-13 (1D), 1.2e-16 / 5.3e-15 (3D hierarchical / characteristic); a Burgers shock at an outflow boundary no longer undershoots (−0.26 → 0.16 ≤ u ≤ 1); periodic runs create no ghosts. Cost: the limited modes of an outflow boundary element are cut to the (zero) mean difference, i.e. first order there whenever the limiter engages | `sim/dg.rs`, `sim/dg3d.rs` |
+| B4 | Variable `k(x)`, `c(x)` in `fem_simplex` | **done**: `FemProblemVar`, `solve_static_var`, `solve_heat_var` (bit-identical to the constant API). **Round 2:** `error_indicators_var` (element residual with `∇k · ∇u_h` by central differences of `k`, `k(x)` in the facet jump) and `solve_adaptive_var`. Tests: manufactured solution `k = 1 + xy + y²/2` (L² rates 1.99 for P1, 2.9–2.97 for P2), layered conductivity, estimator equal to the constant one for constant closures, estimator 460× larger near a Gaussian layer of `k` than far from it, adaptive loop (estimator falls monotonically 66 → 5.4 over 7 refinements, L² error 0.039 vs 0.112 on the coarse mesh) | `sim/fem_simplex.rs` |
+| B5 | SPH self-gravity | **done**: `Sph::gravity` (`SphGravity { g, eps, theta }`, Barnes–Hut tree force), `Sph::gravitational_energy`; test: uniform cold ball, radial acceleration linear in `r` within 8 %, vanishing net force, pair energy near `−3GM²/5R` | `sim/sph.rs` |
+| B6 | DPD walls | **done (round 2)**: `Dpd::set_walls(DpdWall { axis, a_wall, kind })`: two walls normal to one axis with the effective soft repulsion `a_wall (1 − d/r_c)` and specular (free slip) or bounce-back (no slip) reflection; the neighbour search stops wrapping along that axis. Reflected velocities are also applied to the final velocity of the modified Verlet step. Tests: particles stay in the slab and `x`, `y` momentum is conserved with specular walls (to 1e-8), temperature stays at the thermostat value plus the drift energy, a drift of 0.8 survives specular walls (exactly) and decays to 0.02 with bounce-back walls, density depletes within `r_c` of a wall (wall layer 30 vs bulk 81 per unit thickness), no-wall runs unchanged. Limits: a single pair of planes, no frozen wall particles, the virial pressure ignores the wall force | `sim/dpd.rs` |
+| B7 | Complex Helmholtz ACA | **done (round 2)**: `solve_helmholtz_exterior_aca` with `HelmholtzAcaOptions` / `HelmholtzAcaStats`: cluster tree by recursive bisection, admissible blocks compressed by complex ACA with partial pivoting (falls back to dense storage when the rank passes `min(m, n)/2`), complex GMRES with Jacobi preconditioner, block-parallel assembly and products; the dense and compressed solvers share the matrix entries (`Setup::entry`). Tests against the dense path: 1280 triangles, sound-soft `k = 1.5`: density error 2.2e-8, 449 low-rank + 1529 dense blocks, 10 GMRES iterations; sound-hard (Burton–Miller, hypersingular) `k = 2`: 7.1e-9; all-dense case 1.4e-11. Compression at this size is modest (0.96 of dense storage); it pays from a few thousand elements and only while `k·diam` is moderate (no directional compression) | `sim/bem_helmholtz.rs` |
+| B8 | Rotating frame in `split_step` | **done (round 2)**: `SplitStep::evolve_rotating` (and `rotate`): `exp(iΩ dt L_z)` as three alternating spectral shears (Paeth), sandwiched around the Strang step; norm conserved to round-off. Tests: rotation of a Gaussian against the exact one (3.7e-6 at 64², n = 64), forth-and-back, free anisotropic packet equals the rotated lab solution with spectral convergence (7.8e-7 at n = 64, 1.0e-9 at n = 128), a displaced packet in an isotropic trap follows `x₀ cos t` rotated clockwise by `Ω t` (to 2e-3 in the mean position, Yoshida), `Ω = 0` bit-identical to `evolve`, norm with a GPE nonlinearity. Limits: the wave function must vanish near the box edges (the shears wrap; a free packet that had spread to the edge gave a grid-independent 2e-3 error), each sub-step rotates by at most π/2 | `sim/split_step.rs` |
+
+### Results that changed
+
+- `Engine::apply_tier`: within a run of consecutive rewrite rules a later rule no longer sees the unions
+  of an earlier one in the same pass (it did before). The engine-heavy subset (below) passes.
+- `groebner(...)` requests are computed two-phase: all `groebner` nodes of an iteration are prepared before
+  any is committed. The values are the same bases.
+- `md_engine::compute_forces` with at least 20 000 candidate pairs sums in blocks (last-bit differences from the
+  old single accumulator; independent of the thread count).
+- The hierarchical DG limiters now limit boundary elements (monotone results at walls / fixed states).
+- Otherwise results are unchanged.
+
+### Final suite counts (2026-10-30)
+
+Only the touched modules were run (never the full suites), on the final tree after `cargo +nightly fmt`:
+
+- engine-heavy subset (A1 and A2 change engine semantics): `cargo test --lib -- rules::tests graph:: rules::calculus rules::poly rules::solve rules::par_tests api:: sim::scenario ffi::`: **252 passed**, and with `RAYON_NUM_THREADS=1`: **252 passed** (includes `rules::tests::no_standard_rewrite_is_refuted`, `graph::soundness`, the new `compute_all`, `run_many` and FFI tests);
+- `cargo test --test kernels --test sim -- sde:: eigs_ext:: dense:: dg:: dg3d:: dg_research:: fem_simplex:: sph:: spin_models:: dpd:: bem_helmholtz:: bem_aca:: split_step:: md_engine:: par_sites`: kernels **41 passed**, sim **151 passed**, 0 failed;
+- timing rows: `cargo test --lib par_tests -- --nocapture --test-threads=1` and `cargo test --test kernels --test sim -- par_sites --nocapture --test-threads=1` (all `PAR |` rows above);
+- `cargo +nightly fmt` (the repository's `rustfmt.toml` needs nightly; stable `cargo fmt` reformats 145 files and must not be used); `cargo clippy --all-targets` reports no error in the code added in Parts 7 (the remaining errors are in untouched code or in the older `scattered_field` / `ghosts` code).
+
+**Still open from 5.2 after Part 7:** WENO limiter in more than one dimension, `ns_mac` non-uniform grids / free surface, `spin_models` beyond nearest-neighbour hypercubic lattices, `kerr` closed forms, unstructured / curved DG hexahedra, a directional (FMM-type) compression for the high-frequency Helmholtz BEM, frozen-particle DPD walls, and the "not present anywhere" list of 5.2 (F4/F5, quadratic sieve, Meijer G, wavelets, ...).
+
+### Round 3 — triage of the remaining limitations, header, full suite, clippy (2026-10-30)
+
+Triage of every `Limitations:` paragraph in `src/` (30), Part 5.2 including the "not present anywhere" list, and 5.5.
+Classes: **(a)** silently wrong results, NaN, panics or hangs on reasonable inputs; **(b)** a gap that blocks a common
+CAS / scientific-library workflow; **(c)** niche or research level.
+
+| Class | Item | Result |
+|---|---|---|
+| (a) | `airy_ai`, `airy_bi` and the derivatives: NaN for `x` below about `-1000` (Taylor continuation overflowed), **hangs** at `+-inf` and for `Bi(x)`, `x >~ 1e5` (`2e10` Taylor steps) | **fixed**: DLMF 9.7.9-9.7.12 oscillatory expansions for `x <= -10` (Wronskian `Ai Bi' - Ai' Bi = 1/pi` to `1e-6` up to `x = -1e8`; `Ai(-10)`, `Bi(-10)` against mpmath values), `Bi` is `+inf` from `x > 105`, the limits at `+-inf` are returned (`Ai' / Bi'` have none at `-inf`: NaN) |
+| (a) | `ln_gamma_numerical` NaN for negative non-integers; `elliptic_e(-inf)` hang; `I0, I1, sinc, E1, Ei, li, Si, Ci, Shi, Chi` NaN at `+-inf`, `E1(0)`, `Ci(0)`, `Chi(0)` NaN instead of `+-inf` | **fixed**: `ln|Gamma(x)|` by reflection (`+inf` at the poles), `E(m)` for `m < -1` by `E(m) = sqrt(1-m) E(m/(m-1))`, explicit limits. `Y0, Y1, K0, K1, E1, li, Ci, Chi` stay NaN for negative arguments (their values are complex) and `K(m)`, `E(m)` for `m > 1` |
+| (a) | the same class in `hyp_pfq`: NaN for `p > q + 1` and for `b_j` at a non-positive integer, indistinguishable from a NaN input; `pFq(...; 0)` was NaN in those cases | **fixed**: `hyp_pfq_checked` returns `Err(HypError::{NotANumber, DenominatorPole, Divergent})`; `z = 0` is `1` in every case; `hyp_pfq` keeps NaN (documented). The Tricomi `U` results below `1e-270` are the IEEE underflow to zero, as documented (not NaN) |
+| (a) | two unit tests of `kernels::ball` failed with the code that was committed (wrong expected values in the tests: a point outside the sum rectangle, a reversed interval) | **fixed** in the tests |
+| (a) | **header generation was broken**: `DEV=1 cargo build` panicked in cbindgen (`Ratio` of `rules::poly` clashing with `num_rational::Ratio<T>`, the generic `BoundaryCondition<T>` of `physics_bem` clashing with `sim::boundary::BoundaryCondition`) | **fixed**: `rules::poly::Ratio` renamed `PolyRatio`, `VertexBc` marked `cbindgen:ignore`, three Rust-only types (`Dd`, `Face`, `Interval`) excluded in `cbindgen.toml` |
+| (a) | clippy: a doc table with `\|` inside code spans and a list-like continuation line inside a code span (`indefinite_sum.rs`) made `doc_markdown` report "backticks are unbalanced" (25 table rows fixed) | **fixed** |
+| (b) | wavelets (SciPy / PyWavelets workflows) | **done (core)**: `kernels::wavelets` — Haar, `db2`, `db3`, `db4` orthogonal filters, periodised `dwt` / `idwt`, `wavedec` / `waverec`; tests: orthonormality and vanishing moments of the filters, Parseval, exact reconstruction, multilevel round trip, error cases. Not done: biorthogonal / symmetric families, 2-D transform, other boundary extensions |
+| (b) | fractional Fourier transform | **done (core)**: `kernels::wavelets::{frft_matrix, frft}`, the discrete (Candan / Pei) transform from the Hermite-like eigenvectors of the matrix commuting with the DFT (degenerate eigenvalue pairs, which occur for even lengths, are rotated to pure DFT eigenvectors); tests: `a = 0` identity, `a = 1` unitary DFT, `a = 2` reversal, `a = 4`, index additivity, unitarity (lengths 8, 15, 16, 24). `O(N^3)` |
+| (b) | F4 / F5 Gröbner | skipped: Buchberger with the standard criteria, FGLM and the parallel batching of Part 6 solve the same problems; F4 is a speed-up, not a capability |
+| (b) | quadratic sieve | skipped: `factorint` has trial division, Pollard rho, ECM (parallel) and BPSW; QS only helps for 60-90 digit semiprimes |
+| (b) | Meijer G, Hermite reduction for algebraic integrands, real quantifier elimination, multivariate series | skipped: each is a multi-week algorithm (G-function integration needs a full table of the Mellin-Barnes contour cases; Hermite reduction needs the algebraic-function Risch machinery); the integrator returns "unevaluated" for these, not a wrong answer. CAD (any dimension) already decides the real quantifier-free cases |
+| (c) | Guruswami–Sudan / LDPC decoding, Darboux polynomials / Jacobi last multiplier | documented, not done |
+| (c) | all simulation `Limitations:` (`ns_mac` free surface / variable density, DG curved hexahedra, WENO in more than one dimension, `kerr` closed forms, `spin_models` beyond nearest neighbour, `euler_amr` 3-D, `yee_fdtd` media, `hyperelastic` P1 locking, `sse` winding numbers, DPD frozen walls, directional Helmholtz compression, ...) | documented, not done |
+
+Header: `rssn.h` / `rssn.hpp` regenerated with `DEV=1 cargo build`; the diff is exactly the new declaration
+`rssn_compute_all` (21 lines in each file).
+
+**Final suite (one run of `cargo test --all-targets --no-fail-fast`, then `cargo test --doc`, log in the scratch directory), after all Round 3 changes:**
+
+| Target | Passed | Failed | Ignored |
+|---|---|---|---|
+| lib (`rssn`) | 976 | 0 | 0 |
+| `tests/io.rs` | 13 | 0 | 0 |
+| `tests/kernels.rs` | 1052 | 0 | 0 |
+| `tests/sim.rs` | 835 | 0 | 2 |
+| `benches/engine.rs`, examples | (no tests) | 0 | 0 |
+| doc tests | 45 | 0 | 0 |
+
+The first full run (before the fixes) had two failures, both in `kernels::ball::tests` (wrong expectations in the tests, see the table);
+the two ignored sim tests carry their own `#[ignore = "..."]` reasons from earlier rounds and were not changed.
+`cargo clippy --all-targets` and `cargo clippy --all-targets --all-features` (cranelift `jit` and `npy` build on this machine): no errors, no warnings.
+The crate-level lint configuration and `clippy.toml` are unchanged; the 25 `;` / `is_multiple_of` fixes came from `cargo clippy --fix`; the only `#[allow]`s added are
+`clippy::approx_constant` (with the reason that `f64::consts::EULER_GAMMA` is unstable) on seven test items and `clippy::type_complexity` on one test helper.
+`cargo +nightly fmt` was run last.
+

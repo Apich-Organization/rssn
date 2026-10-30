@@ -522,6 +522,7 @@ fn grad_edge(x: [f64; 3]) -> [f64; 3] {
     [c * (s * ct - co * st), c * (s * st + co * ct), 0.0]
 }
 
+#[allow(clippy::type_complexity)] // a tuple of closures is the natural return value here
 fn sine_problem() -> (
     impl Fn([f64; 3]) -> f64,
     impl Fn(f64, [f64; 3]) -> f64,
@@ -548,7 +549,7 @@ fn marked_refinement_is_conforming_and_conserves_volume() {
     let refined = mesh.refine_marked(&marked);
     assert!(refined.cells.len() > mesh.cells.len());
     assert!(refined.level.iter().all(|&l| l <= 1));
-    assert!(refined.level.iter().any(|&l| l == 1));
+    assert!(refined.level.contains(&1));
 
     let interior = assert_conforming(&refined, &mesh, 1.0);
     assert!(interior > 0);
@@ -615,14 +616,14 @@ fn repeated_refinement_at_the_boundary_remains_conforming() {
         .collect();
     let first = mesh.refine_marked(&marked);
     assert_conforming(&first, &mesh, 1.0);
-    assert!(first.level.iter().any(|&l| l == 1));
-    assert!(first.level.iter().any(|&l| l == 0));
+    assert!(first.level.contains(&1));
+    assert!(first.level.contains(&0));
 
     // refine every second cell of the first mesh, boundary cells included
     let marked2: Vec<bool> = (0..first.cells.len()).map(|i| i % 2 == 0).collect();
     let second = first.refine_marked(&marked2);
     assert_conforming(&second, &first, 1.0);
-    assert!(second.level.iter().any(|&l| l == 2));
+    assert!(second.level.contains(&2));
     assert!(second.level.iter().all(|&l| l <= 2));
 
     // a uniform pass on a mesh produced by earlier refinements
@@ -815,4 +816,275 @@ fn adaptive_refinement_beats_uniform_for_an_edge_singularity() {
     );
     // repeated adaptive refinement stays conforming in the singular region
     assert_conforming(&space_a.mesh, &start, 3.0);
+}
+
+mod variable_coefficients {
+    use super::*;
+    use rssn::sim::fem_simplex::FemProblemVar;
+    use rssn::sim::fem_simplex::solve_heat_var;
+    use rssn::sim::fem_simplex::solve_static_var;
+
+    fn all_dirichlet_zero() -> MarkerBcs<Bc> {
+        let mut b = MarkerBcs::new();
+        for m in [marker::XMIN, marker::XMAX, marker::YMIN, marker::YMAX] {
+            b = b.set(m, Bc::Dirichlet(BcValue::constant(0.0)));
+        }
+        b
+    }
+
+    fn k_of(x: [f64; 3]) -> f64 {
+        1.0 + x[0] * x[1] + 0.5 * x[1] * x[1]
+    }
+
+    fn c_of(x: [f64; 3]) -> f64 {
+        1.0 + x[0] + x[1] * x[1]
+    }
+
+    /// `u = sin(pi x) sin(pi y)`, `f = -div(k grad u) + c u`.
+    fn manufactured_error(
+        degree: usize,
+        n: usize,
+    ) -> f64 {
+        let space =
+            FemSpace::new(SimplexMesh::rectangle(n, n, [0.0; 2], [1.0; 2]), degree).unwrap();
+        let u = |x: [f64; 3]| (PI * x[0]).sin() * (PI * x[1]).sin();
+        let f = |_t: f64, x: [f64; 3]| {
+            let (sx, cx) = ((PI * x[0]).sin(), (PI * x[0]).cos());
+            let (sy, cy) = ((PI * x[1]).sin(), (PI * x[1]).cos());
+            let (ux, uy) = (PI * cx * sy, PI * sx * cy);
+            let lap = -2.0 * PI * PI * sx * sy;
+            // grad k = (y, x + y)
+            let div = x[1] * ux + (x[0] + x[1]) * uy + k_of(x) * lap;
+            -div + c_of(x) * u(x)
+        };
+        let bcs = all_dirichlet_zero();
+        let prob = FemProblemVar {
+            k: &k_of,
+            c: &c_of,
+            f: &f,
+            bcs: &bcs,
+        };
+        let sol = solve_static_var(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
+        space.l2_error(&sol, u)
+    }
+
+    #[test]
+    fn manufactured_solution_converges_with_optimal_order_for_p1_and_p2() {
+        for (degree, ns, min) in [(1, [8, 16, 32], 1.85), (2, [4, 8, 16], 2.8)] {
+            let e: Vec<f64> = ns.iter().map(|&n| manufactured_error(degree, n)).collect();
+            let rates = [(e[0] / e[1]).log2(), (e[1] / e[2]).log2()];
+            println!("P{degree} variable k, c: errors {e:?} rates {rates:?}");
+            assert!(rates[1] > min, "P{degree}: {rates:?}");
+            assert!(rates[0] > min - 0.3, "P{degree}: {rates:?}");
+        }
+    }
+
+    #[test]
+    fn constant_closures_reproduce_the_constant_api_bit_for_bit() {
+        for degree in [1, 2] {
+            let space =
+                FemSpace::new(SimplexMesh::rectangle(6, 5, [0.0; 2], [1.0; 2]), degree).unwrap();
+            let f = |_t: f64, x: [f64; 3]| 1.0 + x[0] * x[1];
+            let mut bcs = all_dirichlet_zero();
+            bcs = bcs.set(
+                marker::XMAX,
+                Bc::Robin {
+                    alpha: 2.0,
+                    beta: 1.0,
+                    g: BcValue::constant(0.5),
+                },
+            );
+            let constant = FemProblem {
+                k: 2.5,
+                c: 0.75,
+                f: &f,
+                bcs: &bcs,
+            };
+            let (k, c) = (|_: [f64; 3]| 2.5, |_: [f64; 3]| 0.75);
+            let var = FemProblemVar {
+                k: &k,
+                c: &c,
+                f: &f,
+                bcs: &bcs,
+            };
+            let a = solve_static(&space, &constant, 0.0, LinearSolver::Auto).unwrap();
+            let b = solve_static_var(&space, &var, 0.0, LinearSolver::Auto).unwrap();
+            assert_eq!(a, b);
+            let h1 =
+                solve_heat(&space, &constant, |x| x[0], 0.1, 4, 0.5, LinearSolver::Auto).unwrap();
+            let h2 =
+                solve_heat_var(&space, &var, |x| x[0], 0.1, 4, 0.5, LinearSolver::Auto).unwrap();
+            assert_eq!(h1, h2);
+        }
+    }
+
+    #[test]
+    fn layered_conductivity_gives_the_flux_continuous_solution() {
+        // -(k u')' = 0 on (0,1), k = 1 on x < 1/2 and 4 beyond, u(0) = 0, u(1) = 1:
+        // the flux q is constant, q (1/2 + 1/8) = 1, so u(1/2) = q/2 = 0.8.
+        let space = FemSpace::new(SimplexMesh::interval(64, 0.0, 1.0), 1).unwrap();
+        let bcs = MarkerBcs::new()
+            .set(marker::XMIN, Bc::Dirichlet(BcValue::constant(0.0)))
+            .set(marker::XMAX, Bc::Dirichlet(BcValue::constant(1.0)));
+        let f = |_t: f64, _x: [f64; 3]| 0.0;
+        let k = |x: [f64; 3]| if x[0] < 0.5 { 1.0 } else { 4.0 };
+        let c = |_x: [f64; 3]| 0.0;
+        let prob = FemProblemVar {
+            k: &k,
+            c: &c,
+            f: &f,
+            bcs: &bcs,
+        };
+        let u = solve_static_var(&space, &prob, 0.0, LinearSolver::Auto).unwrap();
+        let mid = space.eval(&u, [0.5, 0.0, 0.0]).unwrap();
+        assert!((mid - 0.8).abs() < 1e-10, "u(1/2) = {mid}");
+    }
+}
+
+mod variable_estimator {
+    use rssn::sim::fem_simplex::FemProblemVar;
+    use rssn::sim::fem_simplex::error_indicators_var;
+    use rssn::sim::fem_simplex::solve_adaptive_var;
+    use rssn::sim::fem_simplex::solve_static_var;
+
+    use super::*;
+
+    /// Re-entrant corner-free test problem with a sharp interior layer in the diffusivity:
+    /// `k = 1 + 40 exp(-80 ((x - .5)^2 + (y - .5)^2))` and the source of the exact solution
+    /// `u = sin(pi x) sin(pi y)`.
+    fn k_of(x: [f64; 3]) -> f64 {
+        1.0 + 40.0 * (-80.0 * ((x[0] - 0.5).powi(2) + (x[1] - 0.5).powi(2))).exp()
+    }
+
+    fn dk_of(x: [f64; 3]) -> [f64; 2] {
+        let e = -80.0 * ((x[0] - 0.5).powi(2) + (x[1] - 0.5).powi(2));
+        let g = 40.0 * e.exp() * -160.0;
+        [g * (x[0] - 0.5), g * (x[1] - 0.5)]
+    }
+
+    fn c_of(_x: [f64; 3]) -> f64 {
+        0.5
+    }
+
+    fn exact(x: [f64; 3]) -> f64 {
+        (PI * x[0]).sin() * (PI * x[1]).sin()
+    }
+
+    fn source(
+        _t: f64,
+        x: [f64; 3],
+    ) -> f64 {
+        let (sx, cx) = ((PI * x[0]).sin(), (PI * x[0]).cos());
+        let (sy, cy) = ((PI * x[1]).sin(), (PI * x[1]).cos());
+        let (ux, uy) = (PI * cx * sy, PI * sx * cy);
+        let lap = -2.0 * PI * PI * sx * sy;
+        let dk = dk_of(x);
+        -(dk[0] * ux + dk[1] * uy + k_of(x) * lap) + c_of(x) * exact(x)
+    }
+
+    fn zero_boundary() -> MarkerBcs<Bc> {
+        let mut b = MarkerBcs::new();
+        for m in [marker::XMIN, marker::XMAX, marker::YMIN, marker::YMAX] {
+            b = b.set(m, Bc::Dirichlet(BcValue::constant(0.0)));
+        }
+        b
+    }
+
+    #[test]
+    fn the_estimator_matches_the_constant_one_and_sees_the_layer() {
+        let bcs = zero_boundary();
+        // constant closures: bit-identical to the constant estimator
+        let space = FemSpace::new(SimplexMesh::rectangle(6, 6, [0.0; 2], [1.0; 2]), 2).unwrap();
+        let f = |_t: f64, x: [f64; 3]| 1.0 + x[0] * x[1];
+        let constant = FemProblem {
+            k: 2.5,
+            c: 0.75,
+            f: &f,
+            bcs: &bcs,
+        };
+        let (k, c) = (|_: [f64; 3]| 2.5, |_: [f64; 3]| 0.75);
+        let var = FemProblemVar {
+            k: &k,
+            c: &c,
+            f: &f,
+            bcs: &bcs,
+        };
+        let u = solve_static(&space, &constant, 0.0, LinearSolver::Auto).unwrap();
+        assert_eq!(
+            error_indicators(&space, &u, &constant, 0.0),
+            error_indicators_var(&space, &u, &var, 0.0)
+        );
+        // the variable problem: the indicators are largest where k varies fast
+        let (kf, cf) = (&k_of, &c_of);
+        let layer = FemProblemVar {
+            k: kf,
+            c: cf,
+            f: &source,
+            bcs: &bcs,
+        };
+        let space = FemSpace::new(SimplexMesh::rectangle(16, 16, [0.0; 2], [1.0; 2]), 1).unwrap();
+        let u = solve_static_var(&space, &layer, 0.0, LinearSolver::Auto).unwrap();
+        let eta = error_indicators_var(&space, &u, &layer, 0.0);
+        let total: f64 = eta.iter().map(|e| e * e).sum::<f64>().sqrt();
+        let (mut near, mut far, mut nn, mut nf) = (0.0, 0.0, 0, 0);
+        for (ci, e) in eta.iter().enumerate() {
+            let cell = &space.mesh.cells[ci];
+            let mut m = [0.0; 3];
+            for &v in cell {
+                for a in 0..3 {
+                    m[a] += space.mesh.nodes[v][a] / cell.len() as f64;
+                }
+            }
+            let r = ((m[0] - 0.5).powi(2) + (m[1] - 0.5).powi(2)).sqrt();
+            if r < 0.3 {
+                near += e * e;
+                nn += 1;
+            } else {
+                far += e * e;
+                nf += 1;
+            }
+        }
+        println!(
+            "estimator: total {total:.3e}, mean eta^2 near the layer {:.2e}, far {:.2e}",
+            near / nn as f64,
+            far / nf as f64
+        );
+        assert!(near / nn as f64 > 2.0 * far / nf as f64);
+    }
+
+    #[test]
+    fn adaptive_refinement_converges_for_a_variable_diffusivity() {
+        let bcs = zero_boundary();
+        let (kf, cf) = (&k_of, &c_of);
+        let prob = FemProblemVar {
+            k: kf,
+            c: cf,
+            f: &source,
+            bcs: &bcs,
+        };
+        let mesh = SimplexMesh::rectangle(4, 4, [0.0; 2], [1.0; 2]);
+        let (space, u, history) =
+            solve_adaptive_var(&mesh, &prob, 1, 0.0, 0.5, 0.0, 6, LinearSolver::Auto).unwrap();
+        println!("history (dofs, estimator): {history:?}");
+        // the estimator and the true error both decrease
+        assert!(history.windows(2).all(|w| w[1].1 < w[0].1), "{history:?}");
+        let err = space.l2_error(&u, exact);
+        let coarse = {
+            let s0 = FemSpace::new(mesh.clone(), 1).unwrap();
+            let u0 = solve_static_var(&s0, &prob, 0.0, LinearSolver::Auto).unwrap();
+            s0.l2_error(&u0, exact)
+        };
+        assert!(err < 0.5 * coarse, "L2 error {err} vs coarse {coarse}");
+        // the estimator tracks the error: the ratio stays within a factor ~20 from first to last
+        let ratio = |e: f64, est: f64| est / e;
+        let r_last = ratio(err, history.last().unwrap().1);
+        let r_first = ratio(coarse, history[0].1);
+        assert!(
+            r_last / r_first < 20.0 && r_first / r_last < 20.0,
+            "{r_first} vs {r_last}"
+        );
+        // invalid controls are rejected
+        assert!(solve_adaptive_var(&mesh, &prob, 1, 0.0, 0.5, 0.0, 0, LinearSolver::Auto).is_err());
+        assert!(solve_adaptive_var(&mesh, &prob, 1, 0.0, 0.0, 0.0, 3, LinearSolver::Auto).is_err());
+    }
 }

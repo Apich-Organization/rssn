@@ -214,3 +214,130 @@ fn fixed_inflow_and_outflow_boundaries() {
     bad[0] = DgBc::Periodic;
     assert!(solve_dg(&mesh, &law, &bad, &|_| vec![0.0], 0.1, 0.3, None).is_err());
 }
+
+mod hierarchical_boundaries {
+    use rssn::sim::dg::DgOptions;
+    use rssn::sim::dg::ShockLimiter;
+    use rssn::sim::dg::solve_dg_with;
+
+    use super::*;
+
+    fn burgers_step_max_min(
+        bc_right: DgBc,
+        t_end: f64,
+    ) -> (f64, f64) {
+        // A shock (u: 1 -> 0, speed 1/2) runs into the right boundary, which it reaches
+        // at t = 1.4; at t = 1.36 it sits in the last element.
+        let mesh = DgMesh::line(40, 0.0, 1.0, 2);
+        let bcs = [
+            DgBc::Fixed(Arc::new(|_, _| vec![1.0])),
+            bc_right,
+            DgBc::Outflow,
+            DgBc::Outflow,
+        ];
+        let opt = DgOptions {
+            shock: ShockLimiter::Hierarchical,
+            ..DgOptions::default()
+        };
+        let s = solve_dg_with(
+            &mesh,
+            &Burgers,
+            &bcs,
+            &|x| vec![if x[0] < 0.3 { 1.0 } else { 0.0 }],
+            t_end,
+            0.2,
+            &opt,
+        )
+        .unwrap();
+        let (mut hi, mut lo) = (f64::MIN, f64::MAX);
+        for e in 0..mesh.elements() {
+            for nd in 0..mesh.nodes_per_element() {
+                let v = s.value(e, nd, 0);
+                hi = hi.max(v);
+                lo = lo.min(v);
+            }
+        }
+        (hi, lo)
+    }
+
+    #[test]
+    fn no_overshoot_when_a_shock_reaches_an_outflow_boundary() {
+        // The same shock in the middle of the domain is the reference: the boundary
+        // element must be limited as well as an interior one.
+        let (hi_ref, lo_ref) = burgers_step_max_min(DgBc::Outflow, 0.6);
+        let (hi, lo) = burgers_step_max_min(DgBc::Outflow, 1.36);
+        println!(
+            "burgers: interior shock max {hi_ref} min {lo_ref}; at the outflow max {hi} min {lo}"
+        );
+        assert!(
+            hi < hi_ref + 0.02 && lo > lo_ref - 0.02,
+            "interior ({hi_ref}, {lo_ref}) vs boundary ({hi}, {lo})"
+        );
+    }
+
+    #[test]
+    fn a_wall_equals_the_mirrored_domain() {
+        // Euler gas with velocity 1 towards a wall at x = 1 (reflected shock) must equal the left
+        // half of the doubled domain with the antisymmetric velocity: the ghost element of the
+        // wall is exactly the mirror image the doubled domain provides.
+        let law = Euler1d { gamma: 1.4 };
+        // A smooth antisymmetric velocity profile: u(2 - x) = -u(x), u(1) = 0 exactly.
+        let state = |x: f64| {
+            let (rho, p) = (1.0, 1.0);
+            let u = -((x - 1.0) / 0.04).tanh();
+            vec![rho, rho * u, p / 0.4 + 0.5 * rho * u * u]
+        };
+        let run = |ne: usize, hi: f64, right: DgBc| {
+            let mesh = DgMesh::line(ne, 0.0, hi, 2);
+            let bcs = [DgBc::Outflow, right, DgBc::Outflow, DgBc::Outflow];
+            let opt = DgOptions {
+                shock: ShockLimiter::Hierarchical,
+                positivity: true,
+                ..DgOptions::default()
+            };
+            solve_dg_with(&mesh, &law, &bcs, &|x| state(x[0]), 0.35, 0.2, &opt).unwrap()
+        };
+        let wall = run(40, 1.0, DgBc::Wall);
+        let doubled = run(80, 2.0, DgBc::Outflow);
+        let np = wall.mesh.nodes_per_element();
+        let mut worst: f64 = 0.0;
+        let mut rho_max: f64 = 0.0;
+        for e in 0..wall.mesh.elements() {
+            for nd in 0..np {
+                for c in 0..3 {
+                    worst = worst.max((wall.value(e, nd, c) - doubled.value(e, nd, c)).abs());
+                }
+                rho_max = rho_max.max(wall.value(e, nd, 0));
+            }
+        }
+        println!("wall vs doubled: {worst:e}, max density {rho_max}");
+        assert!(
+            rho_max > 1.5,
+            "the reflected shock must have formed: {rho_max}"
+        );
+        assert!(worst < 1e-8, "difference {worst}");
+    }
+
+    #[test]
+    fn periodic_results_do_not_change() {
+        // No boundary, no ghost element: the hierarchical solution on a periodic domain is
+        // the same function of the data as before (no ghost is ever created).
+        let mesh = DgMesh::line(32, 0.0, 1.0, 2);
+        let opt = DgOptions {
+            shock: ShockLimiter::Hierarchical,
+            ..DgOptions::default()
+        };
+        let init = |x: [f64; 2]| {
+            vec![if (0.25..0.5).contains(&x[0]) {
+                1.0
+            } else {
+                0.0
+            }]
+        };
+        let a = solve_dg_with(&mesh, &Burgers, &periodic(), &init, 0.2, 0.2, &opt).unwrap();
+        let b = solve_dg_with(&mesh, &Burgers, &periodic(), &init, 0.2, 0.2, &opt).unwrap();
+        assert_eq!(a.q, b.q);
+        let total: f64 = a.integral(0);
+        assert!((total - 0.25).abs() < 1e-12, "conservation {total}");
+    }
+}

@@ -205,6 +205,27 @@ RssnStatus rssn_compute(const RssnSession *session,
                         RssnAnswer *out);
 
 /**
+ * Computes `n` requests at once (in parallel inside the library) with one configuration.
+ *
+ * `terms` holds the `n` request handles; `answers` and `statuses` are caller-provided arrays of
+ * `n` entries that receive, for each request, its `RssnAnswer` and its `RssnStatus` (an entry
+ * whose status is not `Ok` has `term == RSSN_NO_TERM`). The answers equal `n` calls of
+ * `rssn_compute`. The return value is `Ok` when the call itself was well formed, even if some
+ * requests failed; the message of the first failing request is kept for `rssn_last_error`.
+ * `config` may be null for the defaults.
+ *
+ * # Safety
+ * `session` must be a live session, `config` null or a live configuration, and `terms`,
+ * `answers`, `statuses` valid for `n` elements (they may be null only when `n` is 0).
+ */
+RssnStatus rssn_compute_all(const RssnSession *session,
+                            const uint32_t *terms,
+                            size_t n,
+                            const RssnConfig *config,
+                            RssnAnswer *answers,
+                            RssnStatus *statuses);
+
+/**
  * Declares facts about the symbol `name`. `facts` is a bit set: 1 real,
  * 2 nonzero, 4 nonnegative, 8 nonpositive, 16 integer (so 7 is
  * "positive").

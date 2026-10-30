@@ -7,7 +7,7 @@
 //!
 //! | Solver | Dimensions | Accuracy |
 //! |---|---|---|
-//! | [`BhTree`] Barnes-Hut (monopole + dipole about the `|s|`-weighted centre, so signed Coulomb charges work) | 1, 2, 3 | `O(theta^2)` |
+//! | [`BhTree`] Barnes-Hut (monopole + dipole about the `\|s\|`-weighted centre, so signed Coulomb charges work) | 1, 2, 3 | `O(theta^2)` |
 //! | [`direct_field`] | any | exact reference, `O(N^2)` |
 //! | [`fmm2d_field`] adaptive fast multipole method (quadtree, dual-tree traversal, M2M/M2L/L2L, order `p`) | 2 | geometric in `p` (about `1e-10` for `p = 24`) |
 //! | [`fmm3d_field`] / [`crate::sim::fmm::fmm3d`] adaptive octree FMM (Cartesian Taylor expansions, M2M/M2L/L2L, potential and field) | 3 | geometric in `p` and the acceptance `theta` |

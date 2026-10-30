@@ -352,6 +352,54 @@ pub fn plot_function_2d(
     plot_series_2d(&[("f(x)".to_owned(), points)], path)
 }
 
+/// Samples from which [`plot_function_2d_par`] / [`plot_term_2d`] evaluate concurrently.
+const PLOT_PAR_SAMPLES: usize = 256;
+
+/// [`plot_function_2d`] for a `Sync` function: the samples are evaluated concurrently (collected in
+/// order, so the picture is identical) from `PLOT_PAR_SAMPLES` points on.
+///
+/// # Errors
+/// As [`plot_function_2d`].
+pub fn plot_function_2d_par(
+    f: impl Fn(f64) -> f64 + Sync + Send,
+    range: (f64, f64),
+    samples: usize,
+    path: &Path,
+) -> Result<(), String> {
+    check_range(range, "x")?;
+    if samples < 2 {
+        return Err("at least two samples are required".to_owned());
+    }
+    let xs = linspace(range, samples);
+    let ys = crate::kernels::par::map_slice(&xs, PLOT_PAR_SAMPLES, |&x| f(x));
+    let points: Vec<(f64, f64)> = xs.into_iter().zip(ys).collect();
+    plot_series_2d(&[("f(x)".to_owned(), points)], path)
+}
+
+/// [`plot_surface_3d`] for a `Sync` function: the rows of the grid are evaluated concurrently.
+///
+/// # Errors
+/// As [`plot_surface_3d`].
+pub fn plot_surface_3d_par(
+    f: impl Fn(f64, f64) -> f64 + Sync + Send,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    path: &Path,
+) -> Result<(), String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
+    let z: Vec<Vec<f64>> =
+        crate::kernels::par::map_slice(&ys, 16, |&y| xs.iter().map(|&x| f(x, y)).collect());
+    let mut svg = Svg::new();
+    draw_surface(&mut svg, &xs, &ys, &z)?;
+    write_svg(svg, path)
+}
+
 /// Plots the term `node` as a function of the symbol `var`, evaluating it
 /// with [`Graph::eval`]. Points where the term does not evaluate to a
 /// number are left out.
@@ -374,7 +422,7 @@ pub fn plot_term_2d(
         graph.eval(node, &env).unwrap_or(f64::NAN)
     };
     let graph: &Graph = graph;
-    plot_function_2d(|x| value_at(graph, x), range, samples, path)
+    plot_function_2d_par(|x| value_at(graph, x), range, samples, path)
 }
 
 /// Plots several named point series on common axes, with a legend.

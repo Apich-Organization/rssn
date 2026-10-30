@@ -113,6 +113,7 @@ pub mod tensor;
 pub mod topology;
 pub mod transforms;
 pub mod vector;
+pub mod wavelets;
 
 /// Exact IEEE-754 equality (`-0.0 == 0.0`, NaN never equal).
 ///

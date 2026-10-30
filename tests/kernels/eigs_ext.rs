@@ -923,3 +923,103 @@ fn two_sided_jacobi_davidson_complex_pair_and_the_two_sided_quotient() {
     }
     assert!(eigs_jd_two_sided(|_, _| {}, |_, _| {}, n, 0, (0.0, 0.0), &opts).is_err());
 }
+
+#[test]
+fn symmetric_generalised_solver_handles_indefinite_b() {
+    // Diagonal pencil with B indefinite: eigenvalues a_i / b_i, A = diag(1..=n), B = diag(+-1..).
+    let n = 40;
+    let bdiag: Vec<f64> = (0..n)
+        .map(|i| {
+            if i % 5 == 4 {
+                -(1.0 + 0.1 * i as f64)
+            } else {
+                1.0 + 0.1 * i as f64
+            }
+        })
+        .collect();
+    let adiag: Vec<f64> = (0..n).map(|i| 1.0 + i as f64).collect();
+    let sigma = 6.2;
+    let opts = GenEigsOptions {
+        sigma,
+        block: 1,
+        eigs: EigsOptions {
+            tol: 1e-10,
+            ..EigsOptions::default()
+        },
+    };
+    let apply_a = |x: &[f64], y: &mut [f64]| {
+        for i in 0..n {
+            y[i] = adiag[i] * x[i];
+        }
+    };
+    let apply_b = |x: &[f64], y: &mut [f64]| {
+        for i in 0..n {
+            y[i] = bdiag[i] * x[i];
+        }
+    };
+    let solve = |x: &[f64], y: &mut [f64]| {
+        for i in 0..n {
+            y[i] = x[i] / (adiag[i] - sigma * bdiag[i]);
+        }
+    };
+    let r = eigs_gen_sym_shift_invert(apply_a, apply_b, solve, n, 4, &opts).unwrap();
+    let mut exact: Vec<f64> = (0..n).map(|i| adiag[i] / bdiag[i]).collect();
+    exact.sort_by(|a, b| (a - sigma).abs().total_cmp(&(b - sigma).abs()));
+    let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
+    got.sort_by(|a, b| (a - sigma).abs().total_cmp(&(b - sigma).abs()));
+    for i in 0..4 {
+        assert!(
+            (got[i] - exact[i]).abs() < 1e-6 * exact[i].abs().max(1.0),
+            "{i}: {} vs {}",
+            got[i],
+            exact[i]
+        );
+        assert!(r.values[i].1.abs() < 1e-8);
+        assert!(
+            r.residuals[i] < 1e-5 * exact[i].abs().max(1.0),
+            "res {}",
+            r.residuals[i]
+        );
+    }
+
+    // A complex pair: the 2 x 2 block A = [[0, 1], [1, 0]], B = diag(1, -1) has eigenvalues +-i,
+    // embedded in a diagonal pencil with real eigenvalues far from sigma.
+    let m = 20;
+    let a_of = |x: &[f64], y: &mut [f64]| {
+        y[0] = x[1];
+        y[1] = x[0];
+        for i in 2..m {
+            y[i] = (10.0 + i as f64) * x[i];
+        }
+    };
+    let b_of = |x: &[f64], y: &mut [f64]| {
+        y[0] = x[0];
+        y[1] = -x[1];
+        y[2..m].copy_from_slice(&x[2..m]);
+    };
+    // (A - 0.5 B)^{-1}: the block [[-0.5, 1], [1, 0.5]] has inverse [[-0.5, 1], [1, 0.5]] / (-1.25)
+    let solve2 = |x: &[f64], y: &mut [f64]| {
+        let det = -0.5 * 0.5 - 1.0;
+        y[0] = (0.5 * x[0] - x[1]) / det;
+        y[1] = (-x[0] - 0.5 * x[1]) / det;
+        for i in 2..m {
+            y[i] = x[i] / (10.0 + i as f64 - 0.5);
+        }
+    };
+    let opts = GenEigsOptions {
+        sigma: 0.5,
+        block: 1,
+        eigs: EigsOptions {
+            tol: 1e-10,
+            ..EigsOptions::default()
+        },
+    };
+    let r = eigs_gen_sym_shift_invert(a_of, b_of, solve2, m, 2, &opts).unwrap();
+    let mut im: Vec<f64> = r.values.iter().map(|v| v.1).collect();
+    im.sort_by(f64::total_cmp);
+    assert!(r.values.iter().all(|v| v.0.abs() < 1e-6), "{:?}", r.values);
+    assert!(
+        (im[0] + 1.0).abs() < 1e-6 && (im[1] - 1.0).abs() < 1e-6,
+        "{im:?}"
+    );
+}

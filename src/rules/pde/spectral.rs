@@ -2151,7 +2151,7 @@ pub(super) fn time_items(
                 role: Role::Displacement,
                 h: d.value,
                 special: None,
-            })
+            });
         },
         | (2, d, v) if d.is_some() || v.is_some() => {
             if let Some(d) = d {

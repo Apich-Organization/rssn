@@ -148,3 +148,55 @@ fn solve_shape_error() {
     let a = m(&[&[1.0, 0.0], &[0.0, 1.0]]);
     assert!(solve(&a, &[1.0]).is_err());
 }
+
+#[test]
+fn generalized_symmetric_eigenproblem_with_positive_and_indefinite_b() {
+    use rssn::kernels::dense::eigen_generalized_symmetric;
+    // SPD B: pencil (A, B) with A = diag(2, 3, 5) in B-coordinates, A = S^T D S, B = S^T S.
+    let s = Mat::from_rows(&[
+        vec![1.0, 0.5, 0.0],
+        vec![0.0, 1.0, 0.25],
+        vec![0.3, 0.0, 1.0],
+    ])
+    .unwrap();
+    let d = [2.0, 3.0, 5.0];
+    let (st, mut dm) = (s.transpose(), Mat::zeros(3, 3));
+    for i in 0..3 {
+        dm.set(i, i, d[i]);
+    }
+    let b = st.matmul(&s).unwrap();
+    let a = st.matmul(&dm).unwrap().matmul(&s).unwrap();
+    let r = eigen_generalized_symmetric(&a, &b).unwrap();
+    assert!(r.b_positive_definite);
+    for (got, want) in r.values.iter().zip(d) {
+        assert!(
+            (got.0 - want).abs() < 1e-10 && got.1 == 0.0,
+            "{got:?} {want}"
+        );
+    }
+    let x = r.vectors.unwrap();
+    let xtbx = x.transpose().matmul(&b).unwrap().matmul(&x).unwrap();
+    for i in 0..3 {
+        for j in 0..3 {
+            let want = if i == j { 1.0 } else { 0.0 };
+            assert!((xtbx.at(i, j) - want).abs() < 1e-10);
+        }
+    }
+    // indefinite B, real spectrum: A = diag(2, 3), B = diag(1, -1) -> {2, -3}
+    let a = Mat::from_rows(&[vec![2.0, 0.0], vec![0.0, 3.0]]).unwrap();
+    let b = Mat::from_rows(&[vec![1.0, 0.0], vec![0.0, -1.0]]).unwrap();
+    let r = eigen_generalized_symmetric(&a, &b).unwrap();
+    assert!(!r.b_positive_definite && r.vectors.is_none());
+    let mut v: Vec<f64> = r.values.iter().map(|e| e.0).collect();
+    v.sort_by(f64::total_cmp);
+    assert!((v[0] + 3.0).abs() < 1e-12 && (v[1] - 2.0).abs() < 1e-12);
+    // indefinite B, complex pair: A = [[0, 1], [1, 0]], B = diag(1, -1): B^-1 A = [[0, 1], [-1, 0]]
+    let a = Mat::from_rows(&[vec![0.0, 1.0], vec![1.0, 0.0]]).unwrap();
+    let r = eigen_generalized_symmetric(&a, &b).unwrap();
+    let mut im: Vec<f64> = r.values.iter().map(|e| e.1).collect();
+    im.sort_by(f64::total_cmp);
+    assert!(r.values.iter().all(|e| e.0.abs() < 1e-12));
+    assert!((im[0] + 1.0).abs() < 1e-12 && (im[1] - 1.0).abs() < 1e-12);
+    // shapes
+    assert!(eigen_generalized_symmetric(&a, &Mat::identity(3)).is_err());
+}

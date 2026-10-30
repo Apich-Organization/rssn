@@ -21,9 +21,9 @@
 //! | `group_direct_product(G, H)` | `G x H`, elements `list(g, h)` |
 //! | `group_is_isomorphic(G, H)` | invariants, then a backtracking search for generator images |
 //! | `group_isomorphism(G, H)` | the images (elements of `H`) of the elements of `G`, or `false` |
-//! | `group_automorphism_count(G)` | `|Aut G|` by counting generator images that extend |
-//! | `group_inner_automorphism_count(G)` | `|G / Z(G)|` |
-//! | `group_outer_automorphism_count(G)` | `|Aut G| / |Inn G|` |
+//! | `group_automorphism_count(G)` | `\|Aut G\|` by counting generator images that extend |
+//! | `group_inner_automorphism_count(G)` | `\|G / Z(G)\|` |
+//! | `group_outer_automorphism_count(G)` | `\|Aut G\| / \|Inn G\|` |
 //! | `group_exponent(G)` | lcm of the element orders |
 //! | `group_element_orders(G)` | the list of element orders |
 //! | `group_order_statistics(G)` | `list(list(order, count), ...)` |

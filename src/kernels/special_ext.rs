@@ -142,6 +142,13 @@ pub fn elliptic_e(m: f64) -> f64 {
     if m > 1.0 || m.is_nan() {
         return f64::NAN;
     }
+    if m == f64::NEG_INFINITY {
+        return f64::INFINITY;
+    }
+    if m < -1.0 {
+        // imaginary-modulus transformation: E(m) = sqrt(1 - m) E(m / (m - 1)), m / (m - 1) in (1/2, 1)
+        return (1.0 - m).sqrt() * elliptic_e(m / (m - 1.0));
+    }
     carlson_rf(0.0, 1.0 - m, 1.0) - m / 3.0 * carlson_rd(0.0, 1.0 - m, 1.0)
 }
 

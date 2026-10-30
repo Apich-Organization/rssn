@@ -3,15 +3,15 @@
 //!
 //! | operator | value |
 //! |---|---|
-//! | `clebsch_gordan(j1, m1, j2, m2, J, M)` | `⟨j1 m1; j2 m2 | J M⟩` exactly (Racah's formula; half-integers allowed), as `± √q` |
+//! | `clebsch_gordan(j1, m1, j2, m2, J, M)` | `⟨j1 m1; j2 m2 \| J M⟩` exactly (Racah's formula; half-integers allowed), as `± √q` |
 //! | `wigner_3j(j1, j2, j3, m1, m2, m3)` | the Wigner 3j symbol, from the Clebsch–Gordan coefficient |
 //! | `spherical_harmonic(l, m, theta, phi)` | `Y_l^m` with the Condon–Shortley phase, as an explicit trigonometric expression |
 //! | `hydrogen_radial(n, l, r)` | the normalised radial function `R_nl(r)` (Bohr radius `a_0`) |
 //! | `hydrogen_wavefunction(n, l, m, r, theta, phi)` | `R_nl(r) Y_l^m(θ, φ)` |
 //! | `hydrogen_energy(n)` | `-ħ²/(2 m_e a_0² n²)` |
-//! | `second_order_energy_correction(V, states, energies, n, x)` | `Σ_(m≠n) |⟨m|V|n⟩|² / (E_n - E_m)` over a basis `states` (index `n` from 1) |
-//! | `variational_ground_state(H, trial, x, a)` | `list(a*, E(a*))`: the Rayleigh–Ritz bound `E(a) = ⟨ψ_a|H|ψ_a⟩/⟨ψ_a|ψ_a⟩` minimised over `a > 0` |
-//! | `wkb_energy(c, nu, m, n)` | Bohr–Sommerfeld level `n` of `V = c |x|^ν`: `∮ p dx = 2πħ(n + 1/2)`, in closed form with the beta function |
+//! | `second_order_energy_correction(V, states, energies, n, x)` | `Σ_(m≠n) \|⟨m\|V\|n⟩\|² / (E_n - E_m)` over a basis `states` (index `n` from 1) |
+//! | `variational_ground_state(H, trial, x, a)` | `list(a*, E(a*))`: the Rayleigh–Ritz bound `E(a) = ⟨ψ_a\|H\|ψ_a⟩/⟨ψ_a\|ψ_a⟩` minimised over `a > 0` |
+//! | `wkb_energy(c, nu, m, n)` | Bohr–Sommerfeld level `n` of `V = c \|x\|^ν`: `∮ p dx = 2πħ(n + 1/2)`, in closed form with the beta function |
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -230,9 +230,9 @@ fn clebsch_gordan(
             }
             let term = BigRational::one() / denominator;
             if k.to_integer().to_i64()? % 2 == 0 {
-                sum += term
+                sum += term;
             } else {
-                sum -= term
+                sum -= term;
             }
         }
         k += &one;

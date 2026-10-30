@@ -7,7 +7,7 @@
 //! |---|---|
 //! | 4th-order Hermite (acceleration and jerk, Makino-Aarseth) | corrector with snap and crackle from the two end points, optional `P(EC)^n` iteration |
 //! | 6th-order Hermite (Nitadori-Makino: acceleration, jerk and snap, analytic pairwise snap) | predictor to crackle order, 6th-order corrector |
-//! | Individual **block time steps** | power-of-two hierarchy, Aarseth criterion `dt = sqrt(eta (|a||s| + |j|^2)/(|j||c| + |s|^2))`, only commensurable doubling, only active particles are updated |
+//! | Individual **block time steps** | power-of-two hierarchy, Aarseth criterion `dt = sqrt(eta (\|a\|\|s\| + \|j\|^2)/(\|j\|\|c\| + \|s\|^2))`, only commensurable doubling, only active particles are updated |
 //! | Shared time step | for convergence studies ([`StepPolicy::Shared`]) |
 //! | 1PN Einstein-Infeld-Hoffmann (EIH) corrections ([`HermiteSystem::pn_c`]) | acceleration and **jerk** of the PN terms by forward-mode (dual-number) differentiation; 4th-order Hermite only; [`eih_energy`] is the conserved 1PN energy |
 //! | Hierarchical hybrid ([`Binary`]) | tight binaries advanced by Kustaanheimo-Stiefel regularisation inside the block-step loop, see [`HermiteSystem::add_binary`] |

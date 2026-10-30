@@ -28,9 +28,24 @@
 //!   [`sample_noise`] draws increments and areas, [`aggregate_noise`] merges
 //!   steps exactly so that coarse and fine schemes see the same path.
 //!
+//! * [`sde_adaptive_noncommutative_with`]: the adaptive Milstein solver for
+//!   **non-commutative** noise. The Brownian path lives on a fixed fine grid of
+//!   cells, each with its Levy areas; a step is a union of cells combined by
+//!   Chen's relation, so rejecting or splitting a step keeps the path (and its
+//!   areas) consistent. [`noncommutative_noise_grid`] returns the same path for
+//!   a fixed-step reference.
+//!
+//! * [`sde_ensemble`]: many independent sample paths of a fixed-step scheme, run on the rayon
+//!   pool; member `i` is seeded by [`ensemble_seed`]`(seed, i)`, so the ensemble does not depend on
+//!   the thread count.
+//!
 //! Limitation: [`milstein`], [`srk_platen`] and [`sde_adaptive_with`] need
-//! commutative noise; use [`milstein_noncommutative`] otherwise (the adaptive
-//! solver has no Levy-area support).
+//! commutative noise; use [`milstein_noncommutative`] or
+//! [`sde_adaptive_noncommutative_with`] otherwise. The non-commutative adaptive
+//! solver cannot take a step shorter than its grid cell (it reports
+//! [`SdeError::StepLimit`]; use more cells) and, being a pathwise Milstein
+//! scheme with the Levy areas of [`levy_areas`], inherits their finite-mode
+//! accuracy.
 
 use crate::kernels::random::Rng;
 
@@ -685,6 +700,306 @@ where
         }
     }
     Ok(path)
+}
+
+/// Options of [`sde_adaptive_noncommutative_with`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SdeNoncommutativeOptions {
+    /// Tolerances, seed and step limit (as for [`sde_adaptive_with`]).
+    pub base: SdeAdaptiveOptions,
+    /// Number of cells of the Brownian grid on `[t0, t1]`. Steps are unions of
+    /// whole cells, so this is the finest step `(t1 - t0) / cells`.
+    pub cells: usize,
+    /// Fourier modes of the Levy-area simulation ([`levy_areas`]).
+    pub terms: usize,
+}
+
+/// The Brownian path of [`sde_adaptive_noncommutative_with`]: increments and
+/// iterated integrals of the fine cells, drawn lazily in cell order, so cell `k`
+/// depends only on the seed and `k` and never on the step sequence.
+struct NoiseGrid {
+    rng: Rng,
+    m: usize,
+    hc: f64,
+    terms: usize,
+    cells: NoiseSample,
+}
+
+impl NoiseGrid {
+    #[allow(clippy::missing_const_for_fn)] // `Rng::new` is not `const`
+    fn new(
+        seed: u64,
+        m: usize,
+        hc: f64,
+        terms: usize,
+    ) -> Self {
+        Self {
+            rng: Rng::new(seed),
+            m,
+            hc,
+            terms,
+            cells: NoiseSample {
+                dws: Vec::new(),
+                areas: Vec::new(),
+            },
+        }
+    }
+
+    /// Draws cells until `upto` of them exist.
+    fn ensure(
+        &mut self,
+        upto: usize,
+    ) {
+        while self.cells.dws.len() < upto {
+            let dw = brownian_increments(&mut self.rng, self.m, 1, self.hc)
+                .pop()
+                .unwrap_or_default();
+            let areas = levy_areas(&mut self.rng, self.m, self.hc, &dw, self.terms);
+            self.cells.dws.push(dw);
+            self.cells.areas.push(areas);
+        }
+    }
+
+    /// Increment and iterated integrals over the `count` cells from `first`,
+    /// combined exactly by Chen's relation
+    /// `I_jl = I_jl^1 + I_jl^2 + dW_j^1 dW_l^2` (as [`aggregate_noise`]).
+    fn span(
+        &mut self,
+        first: usize,
+        count: usize,
+    ) -> (Vec<f64>, Vec<f64>) {
+        self.ensure(first + count);
+        let m = self.m;
+        let mut dw = vec![0.0; m];
+        let mut ar = vec![0.0; m * m];
+        for k in first..first + count {
+            let (d, a) = (&self.cells.dws[k], &self.cells.areas[k]);
+            for j in 0..m {
+                for l in 0..m {
+                    ar[j * m + l] += a[j * m + l] + dw[j] * d[l];
+                }
+            }
+            for j in 0..m {
+                dw[j] += d[j];
+            }
+        }
+        (dw, ar)
+    }
+}
+
+/// The fine-cell Brownian path of [`sde_adaptive_noncommutative_with`] as a [`NoiseSample`].
+///
+/// Step `h = (t1 - t0) / cells` on `[t0, t1]`; use it to compare the adaptive solution with a
+/// fine fixed-step [`milstein_noncommutative`] reference on the *same* path.
+#[must_use]
+pub fn noncommutative_noise_grid(
+    m: usize,
+    t0: f64,
+    t1: f64,
+    opts: &SdeNoncommutativeOptions,
+) -> NoiseSample {
+    let hc = (t1 - t0) / opts.cells.max(1) as f64;
+    let mut grid = NoiseGrid::new(opts.base.seed, m, hc, opts.terms);
+    grid.ensure(opts.cells);
+    grid.cells
+}
+
+/// Adaptive-step Milstein integration of an Ito SDE with **non-commutative**
+/// noise on `[t0, t1]`.
+///
+/// The Brownian path is fixed in advance on a grid of `opts.cells` cells, each
+/// with its increment and its Levy areas ([`levy_areas`]); a step is a union of
+/// cells, whose increment and areas are combined *exactly* by Chen's relation
+/// `A_{0,2h} = A_1 + A_2 + (W_1 x W_2 - W_2 x W_1) / 2`. Splitting a rejected
+/// step is therefore merging fewer of the same cells: the realised path is the
+/// same for every step sequence, the errors of the controller cannot bias the
+/// noise, and a fixed-step reference on the cells sees exactly the path the
+/// adaptive solver used ([`noncommutative_noise_grid`]).
+///
+/// The error control is that of [`sde_adaptive_with`], with the Milstein
+/// correction built from the areas (for commutative noise the correction is the
+/// same function of the increments, so the estimate and the controller agree
+/// with it in law). A step of a single cell that is still rejected ends the run
+/// with [`SdeError::StepLimit`]: use more cells.
+///
+/// # Errors
+/// [`SdeError::Invalid`], [`SdeError::NonFinite`] or [`SdeError::StepLimit`].
+pub fn sde_adaptive_noncommutative_with<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdeNoncommutativeOptions,
+) -> Result<SdePath, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    let SdeAdaptiveOptions {
+        rtol,
+        atol,
+        seed,
+        max_steps,
+    } = opts.base;
+    if y0.is_empty() || m == 0 || t1 <= t0 || rtol <= 0.0 || atol < 0.0 || opts.cells == 0 {
+        return Err(SdeError::Invalid);
+    }
+    let n = y0.len();
+    let hc = (t1 - t0) / opts.cells as f64;
+    let mut grid = NoiseGrid::new(seed, m, hc, opts.terms);
+    let mut cell = 0_usize;
+    let mut y = y0.to_vec();
+    let mut path = SdePath {
+        t: vec![t0],
+        y: vec![y0.to_vec()],
+        rejected: 0,
+    };
+    let mut size = (opts.cells / 1000).max(1);
+    let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    let mut a2 = vec![0.0; n];
+    let mut count = 0;
+    while cell < opts.cells {
+        count += 1;
+        if count > max_steps {
+            return Err(SdeError::StepLimit);
+        }
+        let k = size.clamp(1, opts.cells - cell);
+        let h = k as f64 * hc;
+        let t = t0 + cell as f64 * hc;
+        let (dw, ar) = grid.span(cell, k);
+        drift(t, &y, &mut a);
+        diff(t, &y, &mut g);
+        let corr = milstein_term_areas(&diff, t, &y, &g, m, &ar);
+        let mut ynew = vec![0.0; n];
+        let mut em_pred = vec![0.0; n];
+        for i in 0..n {
+            let mut em = a[i] * h;
+            for j in 0..m {
+                em += g[i * m + j] * dw[j];
+            }
+            ynew[i] = y[i] + em + corr[i];
+            em_pred[i] = y[i] + em;
+        }
+        drift(t + h, &em_pred, &mut a2);
+        let mut err = 0.0_f64;
+        for i in 0..n {
+            let sc = atol + rtol * y[i].abs().max(ynew[i].abs());
+            let drift_err = 0.5 * h * (a2[i] - a[i]).abs();
+            err = err.max((corr[i].abs() + drift_err) / sc.max(1e-300));
+        }
+        if !err.is_finite() || ynew.iter().any(|v| !v.is_finite()) {
+            return Err(SdeError::NonFinite);
+        }
+        if err <= 1.0 {
+            cell += k;
+            y = ynew;
+            path.t.push(t0 + cell as f64 * hc);
+            path.y.push(y.clone());
+            let fac = if err == 0.0 {
+                2.0
+            } else {
+                (0.9 / err.sqrt()).clamp(0.5, 2.0)
+            };
+            size = ((k as f64 * fac).round() as usize).max(1);
+        } else {
+            if k == 1 {
+                return Err(SdeError::StepLimit);
+            }
+            path.rejected += 1;
+            let fac = (0.9 / err.sqrt()).clamp(0.1, 0.9);
+            size = ((k as f64 * fac).floor() as usize).clamp(1, k - 1);
+        }
+    }
+    Ok(path)
+}
+
+/// The fixed-step scheme used by [`sde_ensemble`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnsembleScheme {
+    /// [`euler_maruyama`].
+    EulerMaruyama,
+    /// [`milstein`] (commutative noise).
+    Milstein,
+    /// [`srk_platen`] (commutative noise).
+    SrkPlaten,
+    /// [`heun_stratonovich`].
+    HeunStratonovich,
+    /// [`milstein_noncommutative`] with [`sample_noise`] (`terms` Fourier modes).
+    MilsteinNoncommutative {
+        /// Fourier modes of the Levy areas.
+        terms: usize,
+    },
+}
+
+/// Seed of member `index` of an ensemble with base `seed`: a function of the pair only, so the
+/// members do not depend on how many threads run them or in which order.
+#[must_use]
+pub const fn ensemble_seed(
+    seed: u64,
+    index: usize,
+) -> u64 {
+    let mut z = seed
+        ^ (index as u64)
+            .wrapping_add(1)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+/// Paths from which [`sde_ensemble`] runs its members concurrently.
+const SDE_ENSEMBLE_PAR_PATHS: usize = 4;
+
+/// Simulates `paths` independent sample paths of `dX = a dt + g dW` with `steps` fixed steps of
+/// size `h` and returns the end state of each, in path order.
+///
+/// Path `i` draws its Brownian increments from `Rng::new(ensemble_seed(seed, i))`, so the result
+/// is independent of the thread count and equals running the paths one after the other. The
+/// first error (in path order) is returned.
+///
+/// # Errors
+/// [`SdeError::Invalid`] or [`SdeError::NonFinite`] from a member.
+#[allow(clippy::too_many_arguments)]
+pub fn sde_ensemble<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    (t0, h, steps): (f64, f64, usize),
+    y0: &[f64],
+    paths: usize,
+    seed: u64,
+    scheme: EnsembleScheme,
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]) + Sync,
+    G: Fn(f64, &[f64], &mut [f64]) + Sync,
+{
+    let member = |i: usize| -> Result<Vec<f64>, SdeError> {
+        let mut rng = Rng::new(ensemble_seed(seed, i));
+        let path = match scheme {
+            | EnsembleScheme::MilsteinNoncommutative { terms } => {
+                let noise = sample_noise(&mut rng, m, steps, h, terms);
+                milstein_noncommutative(&drift, &diff, m, t0, h, y0, &noise)?
+            },
+            | _ => {
+                let dws = brownian_increments(&mut rng, m, steps, h);
+                match scheme {
+                    | EnsembleScheme::EulerMaruyama => {
+                        euler_maruyama(&drift, &diff, m, t0, h, y0, &dws)?
+                    },
+                    | EnsembleScheme::Milstein => milstein(&drift, &diff, m, t0, h, y0, &dws)?,
+                    | EnsembleScheme::SrkPlaten => srk_platen(&drift, &diff, m, t0, h, y0, &dws)?,
+                    | _ => heun_stratonovich(&drift, &diff, m, t0, h, y0, &dws)?,
+                }
+            },
+        };
+        path.last().cloned().ok_or(SdeError::Invalid)
+    };
+    crate::kernels::par::map_indexed(paths, SDE_ENSEMBLE_PAR_PATHS, member)
+        .into_iter()
+        .collect()
 }
 
 /// [`sde_adaptive_with`] with the options passed as separate arguments.

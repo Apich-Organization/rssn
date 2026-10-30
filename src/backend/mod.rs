@@ -100,6 +100,36 @@ pub trait Compiled: Send + Sync {
     }
 }
 
+/// Rows from which [`call_batch_par`] splits a batch over the thread pool.
+const BATCH_PAR_ROWS: usize = 4096;
+
+/// [`Compiled::call_batch`] split into fixed blocks of `BATCH_PAR_ROWS` rows.
+///
+/// The blocks are
+/// evaluated concurrently. Every row is an independent evaluation, so the output is identical to
+/// `call_batch`; batches of at most two blocks take the sequential call.
+pub fn call_batch_par(
+    f: &dyn Compiled,
+    columns: &[&[f64]],
+    out: &mut [f64],
+) {
+    use rayon::prelude::*;
+    if out.len() <= 2 * BATCH_PAR_ROWS {
+        f.call_batch(columns, out);
+        return;
+    }
+    out.par_chunks_mut(BATCH_PAR_ROWS)
+        .enumerate()
+        .for_each(|(k, chunk)| {
+            let lo = k * BATCH_PAR_ROWS;
+            let cols: Vec<&[f64]> = columns
+                .iter()
+                .map(|c| &c[lo.min(c.len())..(lo + chunk.len()).min(c.len())])
+                .collect();
+            f.call_batch(&cols, chunk);
+        });
+}
+
 /// A compiled program with several inputs, parameters and outputs (an ODE
 /// right-hand side, a gradient, a set of expressions sharing
 /// subexpressions).

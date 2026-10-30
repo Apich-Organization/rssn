@@ -13,7 +13,7 @@
 //! | `burning_ship_escape(cr, ci, max_iter)`, `multibrot_escape(d, cr, ci, max_iter)` | escape times of the burning ship and of `z^d + c` |
 //! | `newton_fractal_root(coeffs, zr, zi, max_iter)` | Newton's method for the polynomial with coefficients (highest degree first) from `zr + i zi`: `list(re, im, iterations)` of the root reached, `false` without convergence |
 //! | `mandelbrot_iterate(z, c)`, `mandelbrot_orbit(c, n)` | `z^2 + c`; the symbolic orbit `0, c, c^2 + c, ...` of length `n + 1` (`c` may be symbolic) |
-//! | `mandelbrot_fixed_points(c)`, `mandelbrot_stability(z)` | the two (complex) fixed points `(1 -+ sqrt(1 - 4 c)) / 2`; `|2 z|`, the multiplier of `z^2 + c` |
+//! | `mandelbrot_fixed_points(c)`, `mandelbrot_stability(z)` | the two (complex) fixed points `(1 -+ sqrt(1 - 4 c)) / 2`; `\|2 z\|`, the multiplier of `z^2 + c` |
 //! | `complex_map_fixed_points(f, z)`, `complex_map_stability(f, z, z0)` | real solutions of `f(z) = z`; `abs(f'(z0))` |
 //! | `map_fixed_points(f, x)`, `map_stability(f, x, x0)` | solutions of `f(x) = x`; `f'(x0)` |
 //! | `lyapunov_exponent(f, x, x0, n)` | `(1/n) sum ln abs(f'(x_k))` along the orbit of `x0`: a float when `x0` and the map are numeric, else the symbolic average |
@@ -761,9 +761,9 @@ fn moran_dimension(
     for _ in 0..200 {
         let mid = f64::midpoint(lo, hi);
         if f(mid) > 0.0 {
-            lo = mid
+            lo = mid;
         } else {
-            hi = mid
+            hi = mid;
         }
     }
     Some(V::Float(f64::midpoint(lo, hi)))

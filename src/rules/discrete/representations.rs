@@ -31,7 +31,7 @@
 //! | `group_character_table(G)` | list of the irreducible characters, one list of class values each |
 //! | `group_character_degrees(G)` | their degrees |
 //! | `character_table_is_orthogonal(G)` | row and column orthogonality of the computed table |
-//! | `character_inner_product(G, chi, psi)` | `(1/|G|) sum chi(g) conj(psi(g))` |
+//! | `character_inner_product(G, chi, psi)` | `(1/\|G\|) sum chi(g) conj(psi(g))` |
 //! | `character_is_irreducible(G, chi)` | `<chi, chi> = 1` |
 //! | `character_decompose(G, chi)` | the multiplicities of the irreducibles (rows of the table) |
 //! | `character_tensor(G, chi, psi)` | the pointwise product (tensor product) |
@@ -41,7 +41,7 @@
 //! | `character_regular(G)` | the character of the regular representation |
 //! | `character_of_matrices(G, mats)` | the class function of a matrix representation (traces at class representatives) |
 //! | `representation_decompose(G, mats)` | its multiplicities of the irreducibles |
-//! | `character_projection(G, i, mats)` | the projection `(d_i/|G|) sum conj(chi_i(g)) M(g)` onto the `i`-th isotypic component |
+//! | `character_projection(G, i, mats)` | the projection `(d_i/\|G\|) sum conj(chi_i(g)) M(g)` onto the `i`-th isotypic component |
 
 // Index loops over several parallel tables and float comparisons with explicit
 // tolerances read better than the iterator forms; `as` casts convert small,

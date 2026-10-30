@@ -84,15 +84,19 @@ pub(crate) fn fail(
     status
 }
 
-pub(crate) fn compute_error(e: &ComputeError) -> RssnStatus {
-    let status = match e {
+/// The status code of a computation error.
+pub(crate) const fn status_of(e: &ComputeError) -> RssnStatus {
+    match e {
         | ComputeError::Rule(_) => RssnStatus::Rule,
         | ComputeError::Parse(_) => RssnStatus::Parse,
         | ComputeError::UnknownOperator(_) => RssnStatus::UnknownOperator,
         | ComputeError::NotNumeric(_) => RssnStatus::NotNumeric,
         | ComputeError::Inconsistent(_) => RssnStatus::Inconsistent,
-    };
-    fail(status, &e.to_string())
+    }
+}
+
+pub(crate) fn compute_error(e: &ComputeError) -> RssnStatus {
+    fail(status_of(e), &e.to_string())
 }
 
 /// Runs `body`, turning a panic into [`RssnStatus::Panic`].

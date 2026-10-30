@@ -29,7 +29,7 @@
 //! | `stokes_theorem(F, surface, u, v, u0, u1, v0, v1)` | the circulation around the boundary of a parametrised surface, as the flux of `curl F` |
 //! | `cell(φ, params, bounds)` | an oriented `k`-cell: the image of the box `bounds = list(list(a1, b1), ...)` of the parameters `params` under the chart `φ = list(x1(u), ..., xn(u))` (inert) |
 //! | `chain(list(list(s, cell), ...))` | a formal sum of cells with integer multiplicities (inert) |
-//! | `boundary(M)` | `∂M` of a cell (constant bounds) or chain: `Σ_i Σ_α (-1)^(i+α) M|_{u_i = a_i / b_i}` as a chain of `(k-1)`-cells; `boundary(boundary(M))` integrates to zero |
+//! | `boundary(M)` | `∂M` of a cell (constant bounds) or chain: `Σ_i Σ_α (-1)^(i+α) M\|_{u_i = a_i / b_i}` as a chain of `(k-1)`-cells; `boundary(boundary(M))` integrates to zero |
 //! | `pullback(ω, vars, φ, params)` | `φ*ω`: the form in the parameters (`dx_i = Σ_j ∂φ_i/∂u_j du_j`) |
 //! | `integrate_form(ω, vars, M)` | `∫_M ω` over a cell or chain: the pull-back's top-degree coefficient integrated over the box (iterated `defint`, first parameter innermost); a 0-form over a 0-cell is its value there |
 //! | `metric_geodesic_acceleration(g, vars, v)`, `kretschmann(g, vars)`, `gaussian_curvature(g, vars)`, `volume_element(g, vars)`, `laplace_beltrami(f, g, vars)`, `covariant_divergence(V, g, vars)`, `killing_tensor(xi, g, vars)`, `is_killing(xi, g, vars)` | geodesics, curvature invariants, Beltrami operators, Lie brackets and Killing fields (see the `ext` submodule's table) |

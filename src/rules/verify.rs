@@ -127,6 +127,9 @@ fn residual(
     }
 }
 
+/// Reachable classes of a term from which [`vanishes`] evaluates its sample points concurrently.
+const VERIFY_PAR_NODES: usize = 40;
+
 /// Whether `term` is identically zero: `Some(true)` when it simplifies to
 /// zero or vanishes at every sample, `Some(false)` when a sample refutes
 /// it, `None` when there is no evidence either way.
@@ -139,8 +142,11 @@ fn vanishes(
         return Some(n.is_zero() || n.to_f64().abs() < 1e-12);
     }
     let symbols = cx.graph.free_symbols(cx.graph.find(simplified)).to_vec();
-    let mut evidence = false;
-    for sample in 0..12_u32 {
+    // The twelve sample points are independent evaluations of an immutable graph. The verdict
+    // (some sample refutes / some sample is finite) does not depend on their order, so a large
+    // term is evaluated at the samples concurrently and a small one sequentially.
+    let graph: &Graph = cx.graph;
+    let sample_value = |sample: u32| -> Option<f64> {
         let mut env = Env::numeric(0.0);
         for &s in &symbols {
             let k = f64::from(s.raw() % 13);
@@ -149,12 +155,16 @@ fn vanishes(
                 0.31 + 0.47 * f64::from(sample) - 0.09 * k + 0.013 * k * k,
             );
         }
-        let Some(value) = cx.graph.eval(simplified, &env) else {
-            continue;
+        graph.eval(simplified, &env).filter(|v| v.is_finite())
+    };
+    let values: Vec<Option<f64>> =
+        if crate::graph::extract::reachable(graph, &[simplified]).len() >= VERIFY_PAR_NODES {
+            crate::kernels::par::map_indexed(12, 2, |s| sample_value(s as u32))
+        } else {
+            (0..12_u32).map(sample_value).collect()
         };
-        if !value.is_finite() {
-            continue;
-        }
+    let mut evidence = false;
+    for value in values.into_iter().flatten() {
         if value.abs() > 1e-8 {
             return Some(false);
         }
