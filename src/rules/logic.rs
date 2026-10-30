@@ -22,6 +22,7 @@ use std::collections::BTreeSet;
 use crate::graph::Arity;
 use crate::graph::ClassId;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -35,6 +36,9 @@ use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -151,6 +155,17 @@ impl Cmp {
     }
 }
 
+/// A count (`count_models`, `bdd_size`) is a pure number. The argument is a
+/// formula or a diagram and keeps whatever dimension its Boolean structure
+/// has, so it is deliberately unconstrained.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dimensionless_value(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let ac = OpFlags::COMMUTATIVE
         .with(OpFlags::ASSOCIATIVE)
@@ -229,14 +244,20 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("nnf", Form::Nnf),
         ("simplify_logic", Form::Minimal),
     ] {
-        forms.push((i.op(request(name).eval(identity))?, form));
+        let op = i.op(request(name).eval(identity))?;
+        // A formula in another normal form is still a formula.
+        i.dim(op, DimRule::NonMetric);
+        forms.push((op, form));
     }
     for (name, form) in [
         ("satisfiable", Form::Satisfiable),
         ("tautology", Form::Tautology),
         ("truth_table", Form::Table),
     ] {
-        forms.push((i.op(request(name))?, form));
+        let op = i.op(request(name))?;
+        // A decision, a table of truth values or a model is not a scalar.
+        i.dim(op, DimRule::NonMetric);
+        forms.push((op, form));
     }
 
     i.kernel("logic/constants", Tier::Normalize, Constants { ops });

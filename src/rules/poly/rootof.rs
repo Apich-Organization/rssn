@@ -46,6 +46,7 @@ use super::univariate;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -55,6 +56,9 @@ use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -65,8 +69,69 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.graph()
         .ops_mut()
         .set_attr(op, crate::graph::ComplexEval(evaluate_complex));
+    i.dim(op, DimRule::Custom(dim_root_of));
     i.kernel("poly/root_of", Tier::Normalize, RootOf { op });
     Ok(())
+}
+
+/// The dimension of a root of `c0 + c1 x + ... + cn x^n`.
+///
+/// Every term of the polynomial has the same dimension `D`, so
+/// `dim(c_k) = D / dim(x)^k`. Two known coefficients determine `dim(x)`:
+/// `dim(x) = (dim(c_i) / dim(c_j))^(1/(j-i))`. The remaining coefficients
+/// only check that the polynomial is homogeneous; a coefficient that
+/// contradicts the others is reported. If fewer than two coefficients have a
+/// known dimension (all zero or all unknown values), the result is unknown.
+fn dim_root_of(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let coefficients = args.get(1..).unwrap_or_default();
+    let mut known: Vec<(usize, &DimTerm)> = Vec::new();
+    for (power, coefficient) in coefficients.iter().enumerate() {
+        if coefficient.is_non_metric() {
+            return Err(DimError::Mismatch {
+                left: coefficient.describe(ctx.arena),
+                right: "a scalar coefficient".to_owned(),
+                context: ctx.graph.display(ctx.node),
+            });
+        }
+        if !coefficient.is_any() {
+            known.push((power, coefficient));
+        }
+    }
+    let (Some(&(i, ci)), Some(&(j, cj))) = (known.first(), known.get(1)) else {
+        return Ok(ctx.any());
+    };
+    let exponent = BigRational::new(
+        BigInt::one(),
+        BigInt::from(i64::try_from(j - i).unwrap_or(i64::MAX)),
+    );
+    let x = ci.mul(&cj.inverse()).pow(&exponent);
+    // D = dim(c_i) * dim(x)^i, and dim(c_k) must equal D / dim(x)^k.
+    let leading = ci.mul(&integer_power(&x, i64::try_from(i).unwrap_or(i64::MAX)));
+    for (power, coefficient) in known {
+        let expected = leading.mul(&integer_power(
+            &x,
+            -i64::try_from(power).unwrap_or(i64::MAX),
+        ));
+        if coefficient != &expected {
+            return Err(DimError::Mismatch {
+                left: coefficient.describe(ctx.arena),
+                right: expected.describe(ctx.arena),
+                context: ctx.graph.display(ctx.node),
+            });
+        }
+    }
+    Ok(x)
+}
+
+/// `dimension^exponent` for an integer exponent.
+fn integer_power(
+    dimension: &DimTerm,
+    exponent: i64,
+) -> DimTerm {
+    dimension.pow(&BigRational::from_integer(BigInt::from(exponent)))
 }
 
 struct RootOf {

@@ -7,6 +7,7 @@
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Facts;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -175,6 +176,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.graph()
         .ops_mut()
         .set_attr(euler, OnReals(Facts::POSITIVE));
+    // `E` is a pure number: no unit is attached to a transcendental constant.
+    i.dim(euler, DimRule::Dimensionless);
     i.op(
         OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| match a {
             | [y, x] => y.atan2(*x),

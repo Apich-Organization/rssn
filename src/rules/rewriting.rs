@@ -24,6 +24,7 @@ use std::collections::HashMap;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -59,6 +60,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        let rule = match request {
+            // A normal form is equal to the term it rewrites.
+            | Request::Rewrite => DimRule::Same(0),
+            // A completion result and a set of critical pairs are lists of
+            // equations: structural objects, not scalars.
+            | Request::Complete | Request::CriticalPairs => DimRule::NonMetric,
+        };
+        i.dim(op, rule);
         i.kernel(
             &format!("rewriting/{name}"),
             Tier::Reduce,

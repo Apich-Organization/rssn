@@ -25,6 +25,7 @@ use std::collections::HashMap;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -35,6 +36,9 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::poly::best;
@@ -52,8 +56,23 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let cost = i.op(OpDescriptor::new("cse_cost", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `cse` returns a pair of lists (temporaries, rewritten expressions); the
+    // rewritten expressions keep the common dimension of the input list.
+    // `cse_cost` returns a pair of operation counts, i.e. pure numbers,
+    // whatever the dimension of the expressions is.
+    i.dim(op, DimRule::Same(0));
+    i.dim(cost, DimRule::Custom(dimensionless_value));
     i.kernel("cse/cse", Tier::Reduce, Cse { op, cost });
     Ok(())
+}
+
+/// `cse_cost` reports operation counts; its argument is not constrained.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dimensionless_value(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
 }
 
 /// A node of the local DAG.

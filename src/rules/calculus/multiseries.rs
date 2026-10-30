@@ -130,6 +130,7 @@
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -990,6 +991,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let mtaylor = i.op(OpDescriptor::new("mtaylor", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A series is a way of writing the function it expands, so both requests
+    // keep the dimension of their first argument.
+    i.dim(mseries, DimRule::Same(0));
+    i.dim(mtaylor, DimRule::Same(0));
     let infinity = i.graph().ops().lookup("oo");
     i.kernel(
         "calculus/multiseries",

@@ -72,6 +72,7 @@
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
 use crate::graph::OpDescriptor;
@@ -107,6 +108,10 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let cells_op = i.op(OpDescriptor::new("cad_cells", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // `real_qe` returns an equivalent formula; `cad_cells` describes cells of
+    // the space of the listed variables, so it carries their dimension.
+    i.dim(qe_op, DimRule::NonMetric);
+    i.dim(cells_op, DimRule::Same(1));
     i.kernel("solve/real-qe", Tier::Reduce, RealQe { op: qe_op });
     i.kernel("solve/cad-cells", Tier::Reduce, CadCells { op: cells_op });
     Ok(())

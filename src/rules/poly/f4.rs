@@ -57,6 +57,7 @@ use std::collections::HashSet;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
 use crate::graph::OpDescriptor;
@@ -428,6 +429,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("groebner_f4", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A basis is a list of polynomials with the common dimension of the
+    // generators (the first argument), matching the reduced `list(...)`.
+    i.dim(op, DimRule::Same(0));
     i.kernel("poly/groebner_f4", Tier::Reduce, F4Kernel { op });
     Ok(())
 }

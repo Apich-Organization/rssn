@@ -37,6 +37,7 @@ mod zeilberger;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::NodeId;
@@ -48,6 +49,9 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
 use crate::graph::VarNames;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::rule::Installer;
 
 use super::elementary::elementary;
@@ -170,6 +174,16 @@ pub(crate) fn partials(
     }
     i.graph().ops_mut().set_attr(op, Partials(patterns));
     Ok(())
+}
+
+/// The recurrence produced by `zeilberger` has dimensionless coefficients and
+/// certificate; its arguments (the summand) are deliberately unconstrained.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dimensionless_value(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -325,6 +339,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     // antidifference(t, k): T with T(k+1) - T(k) = t(k).
     let antidifference = i.op(request("antidifference", 2))?;
+    // Sums and differences leave the dimension of the summand unchanged.
+    i.dim(antidifference, DimRule::Same(0));
     i.kernel(
         "calculus/antidifference",
         Tier::Reduce,
@@ -340,6 +356,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // indefinite_sum(f, k), indefinite_product(f, k).
     let indefinite_sum = i.op(request("indefinite_sum", 2))?;
     let indefinite_product = i.op(request("indefinite_product", 2))?;
+    // T(k+1) - T(k) = f(k) fixes dim(T) = dim(f). A product P(k+1)/P(k) = f(k)
+    // only has a constant dimension when dim(f) = 1; the layer reports the
+    // factor's dimension (`ProductOver` with an unbounded count), which is the
+    // value at one step of the recurrence.
+    i.dim(indefinite_sum, DimRule::Same(0));
+    i.dim(indefinite_product, DimRule::ProductOver { f: 0, index: 1 });
     i.kernel(
         "calculus/indefinite",
         Tier::Reduce,
@@ -353,6 +375,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // stays free.
     let zeilberger = i.op(request("zeilberger", 3).binder(1, 0b1))?;
     let definite_sum = i.op(request("definite_sum", 3).binder(1, 0b1))?;
+    // The recurrence and its certificate are a list of equations, not a
+    // scalar. The closed form of a definite sum is a sum of summands, so it
+    // keeps the summand's dimension. The recurrence coefficients and the
+    // certificate are dimensionless, matching the reduced `list(...)`.
+    i.dim(zeilberger, DimRule::Custom(dimensionless_value));
+    i.dim(definite_sum, DimRule::SumOver { f: 0, index: 1 });
     i.kernel(
         "calculus/zeilberger",
         Tier::Reduce,
@@ -383,6 +411,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     algebraic::install(i)?;
     multiseries::install(i)?;
     i.define(&["asymptotic(f, x, n) := laurent(f, x, oo, n)"])?;
+    // `asymptotic` is the `laurent` request at infinity, so it expands `f`
+    // and keeps its dimension.
+    if let Some(op) = i.graph().ops().lookup("asymptotic") {
+        i.dim(op, DimRule::Same(0));
+    }
     Ok(())
 }
 

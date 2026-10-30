@@ -14,6 +14,7 @@ use num_traits::Zero;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -44,6 +45,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .flags(OpFlags::HEAVY)
         .cost(100)
         .eval(identity))?;
+    // Both requests rewrite the expression into an equal one.
+    i.dim(denest, DimRule::Same(0));
+    i.dim(simplify, DimRule::Same(0));
     i.kernel(
         "radicals/requests",
         Tier::Reduce,

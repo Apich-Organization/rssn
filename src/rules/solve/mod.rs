@@ -183,6 +183,7 @@ use num_traits::Zero;
 use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Env;
 use crate::graph::Facts;
 use crate::graph::Graph;
@@ -306,6 +307,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // The solutions, boxes and complex roots are values of the solved
+    // variable (argument 1), so they carry its dimension — as does the
+    // reduced `list(...)` answer.
+    i.dim(solve_op, DimRule::Same(1));
+    i.dim(general_op, DimRule::Same(1));
+    i.dim(box_op, DimRule::Same(1));
+    i.dim(complex_op, DimRule::Same(1));
+    // A numeric root is a value of the solved variable (argument 1).
+    i.dim(nsolve_op, DimRule::Same(1));
+    i.dim(certified_op, DimRule::Same(1));
     i.kernel(
         "solve/complex",
         Tier::Reduce,

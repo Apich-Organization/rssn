@@ -32,6 +32,7 @@ use super::univariate;
 use super::univariate::QPoly;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -43,6 +44,9 @@ use crate::graph::Outcome;
 use crate::graph::Payload;
 use crate::graph::RuleError;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -99,6 +103,35 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             desc = desc.eval(identity);
         }
         let op = i.op(desc)?;
+        let rule = match request {
+            // A count is a pure number and does not constrain the polynomial.
+            | Request::CountRealRoots => DimRule::Custom(super::dimensionless_value),
+            // Isolating intervals and Sturm chains are lists of numbers and
+            // rational polynomials: the kernel only reduces when the
+            // coefficients are rational, which forces a dimensionless
+            // polynomial.
+            | Request::RootIntervals | Request::Sturm => {
+                DimRule::Custom(super::dimensionless_value)
+            },
+            // The cells live in the space of the listed variables.
+            | Request::Cad => DimRule::Same(1),
+            // Res_x(p, q) = lc(p)^n lc(q)^m up to a unit; the coefficient
+            // dimensions follow from dim(p), dim(q) and dim(x).
+            | Request::Resultant => DimRule::Custom(dim_resultant),
+            | Request::Discriminant => DimRule::Custom(dim_discriminant),
+            // The leading term is one of the terms of p, so it has p's
+            // dimension; a monic gcd or a normal-form remainder is equal to a
+            // combination of its arguments and keeps the first one's dimension.
+            | Request::LeadingTerm
+            | Request::NormalForm
+            | Request::WithRelations
+            | Request::ExpandTrig => DimRule::Same(0),
+            | Request::LeadingCoeff => DimRule::Custom(dim_leading_coeff),
+            | Request::LeadingMonomial => DimRule::Custom(dim_leading_monomial),
+            // `ideal_member` is a predicate.
+            | Request::IdealMember => DimRule::NonMetric,
+        };
+        i.dim(op, rule);
         i.kernel(
             &format!("poly/{name}"),
             Tier::Reduce,
@@ -106,6 +139,175 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         );
     }
     Ok(())
+}
+
+/// Highest power of the symbol `x` in `node`, when `node` is a polynomial
+/// expression in `x`; `None` when `x` occurs in a non-polynomial position
+/// (inside a function, or under a negative or symbolic power).
+fn degree_in(
+    graph: &Graph,
+    node: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<u32> {
+    if depth > 256 {
+        return None;
+    }
+    if graph.find(node) == graph.find(x) {
+        return Some(1);
+    }
+    if graph.number_of(node).is_some() {
+        return Some(0);
+    }
+    let op = graph.op(node);
+    if op == core::ADD {
+        let mut best = 0_u32;
+        for &child in graph.children(node) {
+            best = best.max(degree_in(graph, child, x, depth + 1)?);
+        }
+        return Some(best);
+    }
+    if op == core::MUL {
+        let mut total = 0_u32;
+        for &child in graph.children(node) {
+            total = total.checked_add(degree_in(graph, child, x, depth + 1)?)?;
+        }
+        return Some(total);
+    }
+    if op == core::POW {
+        let &[base, exponent] = graph.children(node) else {
+            return None;
+        };
+        let exponent = graph
+            .number_of(exponent)
+            .and_then(Number::to_i64)
+            .and_then(|e| u32::try_from(e).ok())?;
+        return degree_in(graph, base, x, depth + 1)?.checked_mul(exponent);
+    }
+    // Any other expression is a coefficient when it does not involve `x`.
+    let symbol = graph.symbol_of(x)?;
+    (!graph.depends_on(graph.find(node), symbol)).then_some(0)
+}
+
+/// `d^exponent` for an integer exponent.
+fn integer_power(
+    dimension: &DimTerm,
+    exponent: i64,
+) -> DimTerm {
+    dimension.pow(&BigRational::from_integer(BigInt::from(exponent)))
+}
+
+/// `resultant(p, q, x)`: `dim(p)^deg(q) * dim(q)^deg(p) / dim(x)^(deg(p) deg(q))`.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_resultant(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, q, x] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dq), Some(dx)) = (args.first(), args.get(1), args.get(2)) else {
+        return Ok(ctx.any());
+    };
+    let (Some(m), Some(n)) = (degree_in(ctx.graph, p, x, 0), degree_in(ctx.graph, q, x, 0)) else {
+        return Ok(ctx.any());
+    };
+    let mut result = integer_power(dp, i64::from(n)).mul(&integer_power(dq, i64::from(m)));
+    if m != 0 && n != 0 {
+        let exponent = -i64::from(m) * i64::from(n);
+        result = result.mul(&integer_power(dx, exponent));
+    }
+    Ok(result)
+}
+
+/// `discriminant(p, x)`: `dim(p)^(2n-2) / dim(x)^(n(n-1))` for degree `n`.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_discriminant(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, x] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dx)) = (args.first(), args.get(1)) else {
+        return Ok(ctx.any());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    if n == 0 {
+        return Ok(ctx.any());
+    }
+    let n = i64::from(n);
+    Ok(integer_power(dp, 2 * n - 2).mul(&integer_power(dx, -n * (n - 1))))
+}
+
+/// The single symbol `vars` denotes, if `vars` is a symbol or a one-element
+/// list of symbols.
+fn univariate_variable(
+    graph: &Graph,
+    vars: NodeId,
+) -> Option<NodeId> {
+    if graph.symbol_of(vars).is_some() {
+        return Some(vars);
+    }
+    if graph.op(vars) == core::LIST
+        && let [only] = graph.children(vars)
+        && graph.symbol_of(*only).is_some()
+    {
+        return Some(*only);
+    }
+    None
+}
+
+/// `leading_coeff(p, x)`: `dim(p) / dim(x)^deg(p)`.
+///
+/// For a multivariate order the monomial is not known from the term alone;
+/// the coefficient is reported with the polynomial's dimension, which is
+/// exact when the variables are dimensionless (the setting of a Gröbner
+/// basis computation).
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_leading_coeff(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, vars, ..] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let (Some(dp), Some(dx)) = (args.first(), args.get(1)) else {
+        return Ok(ctx.any());
+    };
+    let Some(x) = univariate_variable(ctx.graph, vars) else {
+        return Ok(dp.clone());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    Ok(dp.mul(&integer_power(dx, -i64::from(n))))
+}
+
+/// `leading_monomial(p, x)`: `dim(x)^deg(p)`.
+///
+/// For a multivariate order the monomial is reported as dimensionless, which
+/// is exact when the variables are dimensionless.
+#[allow(clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dim_leading_monomial(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let &[p, vars, ..] = ctx.graph.children(ctx.node) else {
+        return Ok(ctx.any());
+    };
+    let Some(dx) = args.get(1) else {
+        return Ok(ctx.any());
+    };
+    let Some(x) = univariate_variable(ctx.graph, vars) else {
+        return Ok(DimTerm::dimensionless());
+    };
+    let Some(n) = degree_in(ctx.graph, p, x, 0) else {
+        return Ok(ctx.any());
+    };
+    Ok(integer_power(dx, i64::from(n)))
 }
 
 struct Algebra {

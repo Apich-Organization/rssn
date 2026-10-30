@@ -34,6 +34,7 @@ use super::prime_implicants;
 use super::truth_literal;
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -740,6 +741,13 @@ pub(super) fn install(
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100))?;
+        // Counting is a pure number; every other extension returns a formula,
+        // a model or a list of them.
+        let rule = match kind {
+            | Kind::Count | Kind::Size => DimRule::Custom(super::dimensionless_value),
+            | _ => DimRule::NonMetric,
+        };
+        i.dim(op, rule);
         kinds.push((op, kind));
     }
     i.kernel("logic/diagrams", Tier::Reduce, Extension { ops, kinds });

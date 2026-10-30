@@ -27,6 +27,7 @@ use num_traits::One;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::DimRule;
 use crate::graph::Extractor;
 use crate::graph::Graph;
 use crate::graph::Kernel;
@@ -42,6 +43,9 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::SizeCost;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -79,6 +83,17 @@ enum Request {
     Groebner,
 }
 
+/// A count-like request (`degree`, `count_real_roots`) returns a pure number.
+/// Unlike [`DimRule::Dimensionless`], the arguments stay unconstrained: they
+/// are free to have any dimension.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)] // `DimRule::Custom` signature
+fn dimensionless_value(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // A form request has the value of its first argument.
     let identity = |a: &[f64]| a.first().copied().unwrap_or(f64::NAN);
@@ -103,6 +118,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             desc = desc.eval(identity);
         }
         let op = i.op(desc)?;
+        // Form requests are equal to their argument; the division requests
+        // divide the values of their polynomial arguments; the count is a
+        // pure number and the coefficient of `x^n` carries
+        // `dim(p) / dim(x)^n`.
+        let rule = match request {
+            // Form requests are equal to their argument; `rem` and `gcd` keep
+            // the first polynomial's dimension (`gcd` is normalised and only
+            // reduces over rational, dimensionless coefficients). A Gröbner
+            // basis (registered below) is a combination of the generators and
+            // keeps their common dimension.
+            | Request::Expand
+            | Request::Collect
+            | Request::Factor
+            | Request::Together
+            | Request::Cancel
+            | Request::Apart
+            | Request::Rem
+            | Request::Gcd
+            | Request::Groebner => DimRule::Same(0),
+            | Request::Degree => DimRule::Custom(dimensionless_value),
+            | Request::Coeff => DimRule::DiffN { f: 0, x: 1, n: 2 },
+            | Request::Quo => DimRule::Quotient,
+        };
+        i.dim(op, rule);
         i.kernel(
             &format!("poly/{name}"),
             Tier::Reduce,
@@ -114,6 +153,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("groebner", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100))?;
+    // A basis is a list of polynomials; every element is a combination of the
+    // generators, so it has the common dimension of the generator list (the
+    // first argument). This also matches the reduced `list(...)` answer.
+    i.dim(op, DimRule::Same(0));
     i.kernel(
         "poly/groebner",
         Tier::Reduce,
