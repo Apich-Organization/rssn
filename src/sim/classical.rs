@@ -32,6 +32,22 @@
 //!
 //! ## Physical Constants (SI units)
 //! All constants are provided in standard SI units.
+//!
+//! ## Dimension and boundary/initial-condition coverage
+//!
+//! | Capability | 1-D | 2-D | 3-D | Boundaries | Initial data |
+//! |---|---|---|---|---|---|
+//! | `Particle3D` N-body / `simulate_n_body` | no | no | yes | open | user particles |
+//! | Schroedinger solvers | `solve_1d_schrodinger` | `solve_2d_schrodinger` | `solve_3d_schrodinger` | Dirichlet | user wavefunction |
+//! | Heat / wave 1-D | yes | no | no | Dirichlet / fixed ends | user profile |
+//! | Projectile, oscillators | yes (ODEs) | planar | no | open | user |
+//!
+//! These functions are fixed-dimension convenience routines. For
+//! dimension-generic, boundary-aware work use [`crate::sim::md_engine`]
+//! (particles, periodic / reflecting / thermal / Lees-Edwards boundaries),
+//! [`crate::sim::nbody`] (Barnes-Hut in 1-3 D, 2-D FMM),
+//! [`crate::sim::symplectic`] (order 2-8 symplectic schemes, KS
+//! regularisation, rigid bodies) and [`crate::sim::spin_models`].
 
 use rand_v10::RngExt;
 use rand_v10::rng;
@@ -829,7 +845,7 @@ pub struct ProjectileParams {
 /// Simulates projectile motion with air resistance (drag).
 ///
 /// Uses Euler integration to solve equations of motion:
-/// F_drag = -0.5 * ρ * A * Cd * v² * v_hat
+/// `F_drag` = -0.5 * ρ * A * Cd * v² * `v_hat`
 ///
 /// # Arguments
 /// * `params` - Simulation parameters

@@ -122,7 +122,6 @@ fn test_inverse() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use assert_approx_eq::assert_approx_eq;
@@ -216,11 +215,19 @@ mod proptests {
 // Added: algebraic identities with independently known results
 // ============================================================================
 
-fn vec3(x: f64, y: f64, z: f64) -> Multivector3D {
+fn vec3(
+    x: f64,
+    y: f64,
+    z: f64,
+) -> Multivector3D {
     Multivector3D::new(0.0, x, y, z, 0.0, 0.0, 0.0, 0.0)
 }
 
-fn close(a: Multivector3D, b: Multivector3D, tol: f64) -> bool {
+fn close(
+    a: Multivector3D,
+    b: Multivector3D,
+    tol: f64,
+) -> bool {
     (a - b).norm() < tol
 }
 
@@ -235,8 +242,17 @@ fn basis_bivectors_square_to_minus_one_and_pss_is_central() {
     }
     let i = e1 * e2 * e3;
     assert_eq!(i.pss, 1.0);
-    for x in [e1, e2, e3, e1 * e2, Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)] {
-        assert!(close(i * x, x * i, 1e-12), "pseudoscalar must commute with everything in G3");
+    for x in [
+        e1,
+        e2,
+        e3,
+        e1 * e2,
+        Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0),
+    ] {
+        assert!(
+            close(i * x, x * i, 1e-12),
+            "pseudoscalar must commute with everything in G3"
+        );
     }
     // e2 e3 = I e1, e3 e1 = I e2 (duality)
     assert!(close(e2 * e3, i * e1, 1e-12));
@@ -279,10 +295,17 @@ fn rotor_rotates_a_vector_in_the_e12_plane() {
     let r = Multivector3D::new(c, 0.0, 0.0, 0.0, -s, 0.0, 0.0, 0.0);
     let e1 = vec3(1.0, 0.0, 0.0);
     let rotated = r * e1 * r.reverse();
-    assert!(close(rotated, vec3(theta.cos(), theta.sin(), 0.0), 1e-12), "{rotated:?}");
+    assert!(
+        close(rotated, vec3(theta.cos(), theta.sin(), 0.0), 1e-12),
+        "{rotated:?}"
+    );
     // The rotor has unit norm and R * reverse(R) = 1.
     assert!((r.norm() - 1.0).abs() < 1e-12);
-    assert!(close(r * r.reverse(), Multivector3D::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 1e-12));
+    assert!(close(
+        r * r.reverse(),
+        Multivector3D::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        1e-12
+    ));
 }
 
 #[test]
@@ -290,9 +313,21 @@ fn norm_negation_subtraction_and_zero_inverse() {
     let a = Multivector3D::new(1.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     assert_eq!(a.norm_sq(), 9.0);
     assert_eq!(a.norm(), 3.0);
-    assert!(close(-a + a, Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 1e-15));
-    assert!(close(a - a, Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 1e-15));
-    assert!(Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0).inv().is_none());
+    assert!(close(
+        -a + a,
+        Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        1e-15
+    ));
+    assert!(close(
+        a - a,
+        Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        1e-15
+    ));
+    assert!(
+        Multivector3D::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+            .inv()
+            .is_none()
+    );
 }
 
 #[test]

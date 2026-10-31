@@ -89,8 +89,6 @@ pub fn solve_linear_system(
         let mut particular = vec![0.0; cols];
 
         #[warn(clippy::collection_is_never_read)]
-        let mut _pivot_cols = Vec::new();
-
         let mut lead = 0;
 
         for r in 0..rank {
@@ -101,8 +99,6 @@ pub fn solve_linear_system(
             }
 
             if i < cols {
-                _pivot_cols.push(i);
-
                 particular[i] = *augmented.get(r, cols);
 
                 lead = i + 1;
@@ -220,7 +216,7 @@ pub fn solve_root_bisection(
     if fb.abs() < tolerance {
         return Ok(b);
     }
-    if !(fa * fb < 0.0) {
+    if (fa * fb).partial_cmp(&0.0) != Some(std::cmp::Ordering::Less) {
         return Err(format!("Interval [{a}, {b}] does not bracket a root"));
     }
     for _ in 0..max_iter {

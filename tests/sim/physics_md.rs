@@ -980,3 +980,164 @@ mod strengthened {
         }
     }
 }
+
+// ============================================================================
+// Engine bridge
+// ============================================================================
+
+fn lattice_particles(
+    dim: usize,
+    per_side: usize,
+    spacing: f64,
+    temp: f64,
+) -> (Vec<Particle>, Vec<f64>) {
+    let n = per_side.pow(dim as u32);
+    let mut state = 99u64;
+    let mut gauss = move || {
+        let mut next = || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            ((state >> 11) as f64 + 0.5) / (1u64 << 53) as f64
+        };
+        (-2.0 * next().ln()).sqrt() * (2.0 * std::f64::consts::PI * next()).cos()
+    };
+    let particles = (0..n)
+        .map(|i| {
+            let mut r = i;
+            let pos: Vec<f64> = (0..dim)
+                .map(|_| {
+                    let c = (r % per_side) as f64;
+                    r /= per_side;
+                    (c + 0.5) * spacing
+                })
+                .collect();
+            let vel: Vec<f64> = (0..dim).map(|_| temp.sqrt() * gauss()).collect();
+            Particle::new(i, 1.0, pos, vel)
+        })
+        .collect();
+    (particles, vec![spacing * per_side as f64; dim])
+}
+
+#[test]
+fn engine_bridge_runs_lennard_jones_md_in_one_two_and_three_dimensions() {
+    for (dim, per_side) in [(1usize, 20usize), (2, 8), (3, 4)] {
+        let (mut ps, bx) = lattice_particles(dim, per_side, 1.3, 0.3);
+        let com: Vec<f64> = (0..dim)
+            .map(|k| ps.iter().map(|p| p.velocity[k]).sum::<f64>() / ps.len() as f64)
+            .collect();
+        for p in &mut ps {
+            for k in 0..dim {
+                p.velocity[k] -= com[k];
+            }
+        }
+        let ke0: f64 = ps.iter().map(Particle::kinetic_energy).sum();
+        let e1 = run_engine_md(
+            &mut ps,
+            &bx,
+            (1.0, 1.0, 2.5),
+            0.002,
+            200,
+            EngineThermostat::None,
+        )
+        .unwrap();
+        let e2 = run_engine_md(
+            &mut ps,
+            &bx,
+            (1.0, 1.0, 2.5),
+            0.002,
+            200,
+            EngineThermostat::None,
+        )
+        .unwrap();
+        assert!(
+            (e1 - e2).abs() < 2e-3 * (1.0 + e1.abs()),
+            "dim {dim}: {e1} vs {e2}"
+        );
+        assert!(ke0 > 0.0 && ps.iter().all(|p| p.position.iter().all(|x| x.is_finite())));
+    }
+    // a Nose-Hoover chain pulls a hot 3-D system towards the target temperature
+    let (mut ps, bx) = lattice_particles(3, 5, 1.4, 4.0);
+    run_engine_md(
+        &mut ps,
+        &bx,
+        (1.0, 1.0, 2.5),
+        0.003,
+        2500,
+        EngineThermostat::NoseHooverChain(1.0, 0.3, 3),
+    )
+    .unwrap();
+    let t = temperature(&ps);
+    assert!(t < 2.0, "temperature {t}");
+    assert!(
+        run_engine_md(
+            &mut ps,
+            &[5.0; 4],
+            (1.0, 1.0, 2.5),
+            0.003,
+            1,
+            EngineThermostat::None
+        )
+        .is_err()
+    );
+    assert!(
+        run_engine_md(
+            &mut ps,
+            &[5.0; 2],
+            (1.0, 1.0, 2.5),
+            0.003,
+            1,
+            EngineThermostat::None
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn radial_distribution_uses_the_right_shell_volume_in_two_dimensions() {
+    let mut state = 4242u64;
+    let mut next = || {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (state >> 11) as f64 / (1u64 << 53) as f64 * 10.0
+    };
+    let gas: Vec<Particle> = (0..500)
+        .map(|i| Particle::new(i, 1.0, vec![next(), next()], vec![0.0, 0.0]))
+        .collect();
+    let (_, g) = radial_distribution_function(&gas, &[10.0, 10.0], 10, 5.0);
+    for &v in &g[2..] {
+        assert!((v - 1.0).abs() < 0.2, "2-D ideal gas g = {v}");
+    }
+}
+
+#[test]
+fn neighbour_pairs_via_the_engine_cell_list_agree_with_brute_force_in_two_dimensions() {
+    let mut state = 77u64;
+    let mut next = || {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (state >> 11) as f64 / (1u64 << 53) as f64 * 12.0
+    };
+    let ps: Vec<Particle> = (0..200)
+        .map(|i| Particle::new(i, 1.0, vec![next(), next()], vec![0.0; 2]))
+        .collect();
+    let fast = neighbour_pairs(&ps, 12.0, 2.0);
+    let mut brute = Vec::new();
+    for i in 0..ps.len() {
+        for j in i + 1..ps.len() {
+            let d2: f64 = (0..2)
+                .map(|k| {
+                    let mut d = ps[i].position[k] - ps[j].position[k];
+                    d -= 12.0 * (d / 12.0).round();
+                    d * d
+                })
+                .sum();
+            if d2 < 4.0 {
+                brute.push((i, j));
+            }
+        }
+    }
+    assert_eq!(fast, brute);
+}

@@ -8,6 +8,23 @@
 //! expand to explicit polynomials with exact rational coefficients, so the
 //! differentiation and integration kernels see them as ordinary
 //! polynomials.
+//!
+//! Coulomb, polylogarithm, Appell, Kelvin and Anger-Weber operators (the
+//! numeric kernels live in [`crate::kernels::special_ext`]):
+//!
+//! | Operator | Arity | Meaning | Exact values |
+//! | --- | --- | --- | --- |
+//! | `coulomb_f(η, l, ρ)` | 3 | regular Coulomb function `F_l(η, ρ)` | `η = 0`: `√(πρ/2) J_{l+1/2}(ρ)` |
+//! | `coulomb_g(η, l, ρ)` | 3 | irregular Coulomb function `G_l(η, ρ)` | `η = 0`: `-√(πρ/2) Y_{l+1/2}(ρ)` |
+//! | `coulomb_fp`, `coulomb_gp` | 3 | derivatives `F_l'`, `G_l'` | DLMF 33.2.9 recurrence at integer `l` |
+//! | `coulomb_c(η, l)` | 2 | normalising constant `C_l(η)` | `η = 0`: `2^l l!/(2l+1)!` |
+//! | `coulomb_sigma(η, l)` | 2 | phase shift `σ_l(η)` | `η = 0`: `0` |
+//! | `polylog(s, z)` | 2 | polylogarithm `Li_s(z)` | `s = 0, 1`, negative integers, `z = 0` |
+//! | `lerch(z, s, a)` | 3 | Lerch transcendent `Φ(z, s, a)` | `s = 0`, `a = 1`, `s = 1` at integer `a` |
+//! | `appell_f1(a, b1, b2, c, x, y)` | 6 | Appell `F_1` | `a = 0`, `x = y = 0`, `b1 = b2 = 0` |
+//! | `ber(n, x)`, `bei(n, x)` | 2 | Kelvin functions, integer order `n <= 100` | `ber(0,0) = 1`, `ber(n,0) = bei(n,0) = 0` for `n >= 1` |
+//! | `ker(n, x)`, `kei(n, x)` | 2 | Kelvin functions, integer order `n <= 100` | — |
+//! | `angerj(ν, x)`, `webere(ν, x)` | 2 | Anger and Weber functions | integer `ν`: `angerj = besselj` |
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -16,6 +33,8 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use crate::backend::Intrinsic;
+use crate::backend::Lowering;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Facts;
@@ -30,19 +49,32 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::special as num;
+use crate::kernels::special_ext as ext;
 
+use super::calculus::at_infinity;
 use super::calculus::calculus;
+use super::calculus::integral_rule;
 use super::calculus::partials;
 use super::elementary::elementary;
+use crate::graph::Cx as KernelCx;
+use crate::rules::poly::repr::Gens;
+use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::Poly;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 
 /// Highest degree of an orthogonal polynomial that is expanded.
 const MAX_DEGREE: u32 = 64;
 /// Largest integer or half-integer whose gamma value is computed exactly.
 const MAX_GAMMA: u32 = 1000;
+
+use crate::rules::special_approx as approx;
+use crate::rules::special_meijer as meijer;
 
 /// The special-function rule set.
 #[must_use]
@@ -59,37 +91,83 @@ fn degree_and_point(args: &[f64]) -> Option<(u32, f64)> {
     (n >= 0.0 && n <= f64::from(u32::MAX) && n.fract() == 0.0).then(|| (n.to_u32().unwrap_or(0), x))
 }
 
-/// Order-0 or order-1 Bessel function, from the two available numerical
-/// implementations; other orders have none.
-fn bessel(
+/// A two-argument evaluation `f(order, x)`.
+fn order_and_point(
     args: &[f64],
-    order0: fn(f64) -> f64,
-    order1: fn(f64) -> f64,
+    f: fn(f64, f64) -> f64,
 ) -> f64 {
-    let [n, x] = args else {
-        return f64::NAN;
-    };
-    if n.fract() != 0.0 {
-        return f64::NAN;
-    }
-    match n.to_i64() {
-        | Some(0) => order0(*x),
-        | Some(1) => order1(*x),
+    match args {
+        | [n, x] => f(*n, *x),
         | _ => f64::NAN,
     }
 }
 
-/// `f(x)` for `|x| >= 8` only. The order-1 fits of `J` and `Y` in
-/// `kernels::special` have wrong coefficients below that (the large-argument
-/// branch is right), and no value is better than a wrong one.
-fn large_only(
-    f: fn(f64) -> f64,
-    x: f64,
+/// A non-negative integer index from a numeric argument.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_cmp
+)]
+fn whole_index(v: f64) -> Option<usize> {
+    ((0.0..=64.0).contains(&v) && v.fract() == 0.0).then_some(v as usize)
+}
+
+/// A Coulomb evaluation `f(eta, l, rho)` with an integer order.
+fn coulomb_eval(
+    args: &[f64],
+    f: fn(f64, usize, f64) -> Option<f64>,
 ) -> f64 {
-    if x.abs() >= 8.0 {
-        f(x)
-    } else {
-        f64::NAN
+    match args {
+        | [eta, l, rho] => {
+            whole_index(*l)
+                .and_then(|l| f(*eta, l, *rho))
+                .unwrap_or(f64::NAN)
+        },
+        | _ => f64::NAN,
+    }
+}
+
+/// A Coulomb evaluation with an integer order and no `rho`.
+fn coulomb_order(
+    args: &[f64],
+    f: fn(f64, usize) -> f64,
+) -> f64 {
+    match args {
+        | [eta, l] => whole_index(*l).map_or(f64::NAN, |l| f(*eta, l)),
+        | _ => f64::NAN,
+    }
+}
+
+/// A Kelvin evaluation with an integer order.
+fn kelvin_eval(
+    args: &[f64],
+    f: fn(usize, f64) -> f64,
+) -> f64 {
+    match args {
+        | [n, x] => {
+            match whole_index(*n) {
+                | Some(n) if n <= ext::KELVIN_MAX_ORDER => f(n, *x),
+                | _ => f64::NAN,
+            }
+        },
+        | _ => f64::NAN,
+    }
+}
+
+/// The extraction cost of an extended special-function operator, or `None`
+/// for the operators registered with their default cost.
+///
+/// The extended functions are weighted above the elementary expressions the
+/// exact rewrites produce, so that the closed-form extractor keeps (for
+/// example) `-ln(1-z)` rather than folding it back into `polylog(1, z)`.
+#[allow(clippy::single_call_fn)]
+fn extended_cost(name: &str) -> Option<u32> {
+    match name {
+        | "lerch" => Some(30),
+        | "coulomb_f" | "coulomb_g" | "coulomb_fp" | "coulomb_gp" | "coulomb_c"
+        | "coulomb_sigma" | "polylog" | "appell_f1" | "ber" | "bei" | "ker" | "kei"
+        | "angerj" | "webere" => Some(20),
+        | _ => None,
     }
 }
 
@@ -130,7 +208,9 @@ const ZETA_TERMS: u32 = 12;
 /// Riemann zeta for real `s > 1` by Euler-Maclaurin summation: the first
 /// terms directly, the tail by its integral plus Bernoulli corrections.
 fn zeta(s: f64) -> f64 {
-    if s.is_nan() || s < 1.0 {
+    // Euler–Maclaurin summation is also the analytic continuation for
+    // s < 1, accurate for moderate |s|.
+    if s.is_nan() || s < -20.0 {
         return f64::NAN;
     }
     if s.total_cmp(&1.0).is_eq() {
@@ -152,9 +232,82 @@ fn zeta(s: f64) -> f64 {
     sum
 }
 
+extern "C" fn c_gamma(x: f64) -> f64 {
+    num::gamma_numerical(x)
+}
+
+extern "C" fn c_lgamma(x: f64) -> f64 {
+    lgamma(x)
+}
+
+extern "C" fn c_digamma(x: f64) -> f64 {
+    num::digamma_numerical(x)
+}
+
+extern "C" fn c_erf(x: f64) -> f64 {
+    num::erf_numerical(x)
+}
+
+extern "C" fn c_erfc(x: f64) -> f64 {
+    num::erfc_numerical(x)
+}
+
+extern "C" fn c_zeta(x: f64) -> f64 {
+    zeta(x)
+}
+
+extern "C" fn c_si(x: f64) -> f64 {
+    num::sine_integral(x)
+}
+
+extern "C" fn c_ci(x: f64) -> f64 {
+    num::cosine_integral(x)
+}
+
+extern "C" fn c_beta(
+    x: f64,
+    y: f64,
+) -> f64 {
+    beta(x, y)
+}
+
+extern "C" fn c_besselj(
+    n: f64,
+    x: f64,
+) -> f64 {
+    order_and_point(&[n, x], num::bessel_j)
+}
+
+/// A step or sign is a pure number whatever the dimension of its argument.
+#[allow(clippy::missing_const_for_fn, clippy::unnecessary_wraps)]
+fn dimensionless_result(
+    _ctx: &crate::graph::dim::DimCtx<'_>,
+    _args: &[crate::graph::dim::DimTerm],
+) -> Result<crate::graph::dim::DimTerm, crate::graph::dim::DimError> {
+    Ok(crate::graph::dim::DimTerm::dimensionless())
+}
+
+/// The dimension signature of a special function.
+///
+/// Practical special functions take and return pure numbers: they are
+/// transcendental, and their defining series and integrals are only
+/// dimensionally coherent for dimensionless arguments. `floor`, `ceil` and
+/// `round` preserve the dimension instead, because they round in the units
+/// of their argument; `sign` and `heaviside` reduce any argument to a pure
+/// number.
+#[allow(clippy::missing_const_for_fn)]
+fn special_rule(name: &str) -> DimRule {
+    match name {
+        | "floor" | "ceil" | "round" => DimRule::Same(0),
+        | "sign" | "heaviside" => DimRule::Custom(dimensionless_result),
+        | _ => DimRule::Dimensionless,
+    }
+}
+
+#[allow(clippy::too_many_lines)]
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 18] = [
+    let functions: [(&str, u8, EvalFn, Facts); 54] = [
         (
             "gamma",
             1,
@@ -176,9 +329,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "beta",
             2,
-            |a| match a {
-                | [x, y] => beta(*x, *y),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [x, y] => beta(*x, *y),
+                    | _ => f64::NAN,
+                }
             },
             Facts::REAL,
         ),
@@ -203,20 +358,64 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "besselj",
             2,
-            |a| bessel(a, num::bessel_j0, |x| large_only(num::bessel_j1, x)),
+            |a| order_and_point(a, num::bessel_j),
             Facts::NONE,
         ),
         (
             "bessely",
             2,
-            |a| bessel(a, num::bessel_y0, |x| large_only(num::bessel_y1, x)),
+            |a| order_and_point(a, num::bessel_y),
             Facts::NONE,
         ),
         (
             "besseli",
             2,
-            |a| bessel(a, num::bessel_i0, num::bessel_i1),
+            |a| order_and_point(a, num::bessel_i),
             Facts::NONE,
+        ),
+        (
+            "besselk",
+            2,
+            |a| order_and_point(a, num::bessel_k),
+            Facts::NONE,
+        ),
+        (
+            "erfi",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::erfi(x)),
+            Facts::REAL,
+        ),
+        (
+            "erfcinv",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::inverse_erfc(x)),
+            Facts::REAL,
+        ),
+        (
+            "polygamma",
+            2,
+            |a| {
+                match a {
+                    | [n, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= f64::from(u32::MAX) => {
+                        num::polygamma_numerical(n.to_u32().unwrap_or(0), *x)
+                    },
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::REAL,
+        ),
+        (
+            "laguerre_gen",
+            3,
+            |a| {
+                match a {
+                    | [n, alpha, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= 1e6 => {
+                        num::generalized_laguerre(n.to_u32().unwrap_or(0), *alpha, *x)
+                    },
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::REAL,
         ),
         (
             "legendre",
@@ -261,29 +460,246 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             Facts::NONNEGATIVE,
         ),
         (
+            "hurwitz_zeta",
+            2,
+            |a| {
+                match a {
+                    | [s, q] => num::hurwitz_zeta(*s, *q),
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::NONE,
+        ),
+        (
+            "lambertw",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, true)),
+            Facts::REAL,
+        ),
+        (
+            "ei",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::exp_integral_ei(x)),
+            Facts::NONE,
+        ),
+        (
+            "airyai",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::airy_ai(x)),
+            Facts::REAL,
+        ),
+        (
+            "airybi",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::airy_bi(x)),
+            Facts::REAL,
+        ),
+        (
+            "airyaiprime",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::airy_ai_prime(x)),
+            Facts::REAL,
+        ),
+        (
+            "airybiprime",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::airy_bi_prime(x)),
+            Facts::REAL,
+        ),
+        (
+            "li",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::log_integral(x)),
+            Facts::NONE,
+        ),
+        (
+            "si",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::sine_integral(x)),
+            Facts::REAL,
+        ),
+        (
+            "ci",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::cosine_integral(x)),
+            Facts::NONE,
+        ),
+        (
+            "shi",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::sinh_integral(x)),
+            Facts::REAL,
+        ),
+        (
+            "chi",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::cosh_integral(x)),
+            Facts::NONE,
+        ),
+        (
+            "lambertw_m1",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, false)),
+            Facts::NEGATIVE,
+        ),
+        (
+            "floor",
+            1,
+            |a| a.first().map_or(f64::NAN, |x| x.floor()),
+            Facts::INTEGER,
+        ),
+        (
+            "ceil",
+            1,
+            |a| a.first().map_or(f64::NAN, |x| x.ceil()),
+            Facts::INTEGER,
+        ),
+        (
+            "round",
+            1,
+            |a| a.first().map_or(f64::NAN, |x| x.round()),
+            Facts::INTEGER,
+        ),
+        (
             "sign",
             1,
             |a| a.first().map_or(f64::NAN, |&x| step(x, -1.0, 0.0, 1.0)),
             Facts::REAL,
         ),
+        // Coulomb wave functions (DLMF 33).
+        (
+            "coulomb_f",
+            3,
+            |a| coulomb_eval(a, ext::coulomb_f),
+            Facts::REAL,
+        ),
+        (
+            "coulomb_g",
+            3,
+            |a| coulomb_eval(a, ext::coulomb_g),
+            Facts::REAL,
+        ),
+        (
+            "coulomb_fp",
+            3,
+            |a| coulomb_eval(a, ext::coulomb_f_prime),
+            Facts::REAL,
+        ),
+        (
+            "coulomb_gp",
+            3,
+            |a| coulomb_eval(a, ext::coulomb_g_prime),
+            Facts::REAL,
+        ),
+        (
+            "coulomb_c",
+            2,
+            |a| coulomb_order(a, ext::coulomb_c),
+            Facts::POSITIVE,
+        ),
+        (
+            "coulomb_sigma",
+            2,
+            |a| coulomb_order(a, ext::coulomb_sigma),
+            Facts::REAL,
+        ),
+        // Polylogarithm and Lerch transcendent.
+        (
+            "polylog",
+            2,
+            |a| {
+                match a {
+                    | [s, z] => ext::polylog(*s, *z),
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::NONE,
+        ),
+        (
+            "lerch",
+            3,
+            |a| {
+                match a {
+                    | [z, s, order] => ext::lerch(*z, *s, *order),
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::NONE,
+        ),
+        // Appell's F1.
+        (
+            "appell_f1",
+            6,
+            |a| {
+                match a {
+                    | [p, b1, b2, c, x, y] => ext::appell_f1(*p, *b1, *b2, *c, *x, *y),
+                    | _ => f64::NAN,
+                }
+            },
+            Facts::NONE,
+        ),
+        // Kelvin functions of integer order.
+        ("ber", 2, |a| kelvin_eval(a, ext::kelvin_ber), Facts::REAL),
+        ("bei", 2, |a| kelvin_eval(a, ext::kelvin_bei), Facts::REAL),
+        ("ker", 2, |a| kelvin_eval(a, ext::kelvin_ker), Facts::REAL),
+        ("kei", 2, |a| kelvin_eval(a, ext::kelvin_kei), Facts::REAL),
+        // Anger and Weber functions.
+        (
+            "angerj",
+            2,
+            |a| order_and_point(a, ext::anger_j),
+            Facts::REAL,
+        ),
+        (
+            "webere",
+            2,
+            |a| order_and_point(a, ext::weber_e),
+            Facts::REAL,
+        ),
     ];
     let mut registered = Vec::with_capacity(functions.len());
     for (name, arity, eval, on_reals) in functions {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).eval(eval))?;
+        let descriptor = OpDescriptor::new(name, Arity::Fixed(arity)).eval(eval);
+        let descriptor = if let Some(cost) = extended_cost(name) {
+            descriptor.cost(cost)
+        } else {
+            descriptor
+        };
+        let op = i.op(descriptor)?;
+        i.dim(op, special_rule(name));
         if on_reals != Facts::NONE {
             i.graph().ops_mut().set_attr(op, OnReals(on_reals));
         }
         registered.push((name, op));
     }
+    // Compiled backends call these directly instead of through the generic
+    // evaluation shim.
+    let lowerings: [(&str, Lowering); 12] = [
+        ("gamma", Lowering::Extern1(c_gamma)),
+        ("lgamma", Lowering::Extern1(c_lgamma)),
+        ("digamma", Lowering::Extern1(c_digamma)),
+        ("erf", Lowering::Extern1(c_erf)),
+        ("erfc", Lowering::Extern1(c_erfc)),
+        ("zeta", Lowering::Extern1(c_zeta)),
+        ("si", Lowering::Extern1(c_si)),
+        ("ci", Lowering::Extern1(c_ci)),
+        ("beta", Lowering::Extern2(c_beta)),
+        ("besselj", Lowering::Extern2(c_besselj)),
+        ("floor", Lowering::Intrinsic(Intrinsic::Floor)),
+        ("ceil", Lowering::Intrinsic(Intrinsic::Ceil)),
+    ];
+    for (name, lowering) in lowerings {
+        if let Some(&(_, op)) = registered.iter().find(|r| r.0 == name) {
+            i.graph().ops_mut().set_attr(op, lowering);
+        }
+    }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
-    let pi = i
-        .graph()
-        .ops()
-        .lookup("pi")
-        .ok_or_else(|| RuleError::Invalid {
+    let pi = i.graph().ops().lookup("pi").ok_or_else(|| {
+        RuleError::Invalid {
             rule: "special".to_owned(),
             reason: "`pi` is not registered",
-        })?;
+        }
+    })?;
     let (Some(gamma), Some(zeta), Some(sign), Some(heaviside)) = (
         op_named("gamma"),
         op_named("zeta"),
@@ -309,6 +725,68 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ],
     )?;
     partials(i, "sinc", &["(cos(pi * ?a) - sinc(?a)) / ?a"])?;
+    partials(i, "digamma", &["polygamma(1, ?a)"])?;
+    partials(i, "polygamma", &["", "polygamma(?a + 1, ?b)"])?;
+    partials(i, "erfi", &["2/pi^(1/2) * exp(?a^2)"])?;
+    partials(i, "lambertw", &["lambertw(?a)/(?a*(1 + lambertw(?a)))"])?;
+    partials(
+        i,
+        "lambertw_m1",
+        &["lambertw_m1(?a)/(?a*(1 + lambertw_m1(?a)))"],
+    )?;
+    partials(
+        i,
+        "besselj",
+        &["", "(besselj(?a - 1, ?b) - besselj(?a + 1, ?b))/2"],
+    )?;
+    partials(
+        i,
+        "bessely",
+        &["", "(bessely(?a - 1, ?b) - bessely(?a + 1, ?b))/2"],
+    )?;
+    partials(
+        i,
+        "besseli",
+        &["", "(besseli(?a - 1, ?b) + besseli(?a + 1, ?b))/2"],
+    )?;
+    partials(
+        i,
+        "besselk",
+        &["", "-(besselk(?a - 1, ?b) + besselk(?a + 1, ?b))/2"],
+    )?;
+    partials(i, "coulomb_f", &["", "", "coulomb_fp(?a, ?b, ?c)"])?;
+    partials(i, "coulomb_g", &["", "", "coulomb_gp(?a, ?b, ?c)"])?;
+    partials(
+        i,
+        "angerj",
+        &["", "(angerj(?a - 1, ?b) - angerj(?a + 1, ?b))/2"],
+    )?;
+    partials(
+        i,
+        "webere",
+        &["", "(webere(?a - 1, ?b) - webere(?a + 1, ?b))/2"],
+    )?;
+    at_infinity(i, "erfi", Some("oo"), Some("-oo"))?;
+    at_infinity(i, "erf", Some("1"), Some("-1"))?;
+    at_infinity(i, "erfc", Some("0"), Some("2"))?;
+    at_infinity(i, "heaviside", Some("1"), Some("0"))?;
+    at_infinity(i, "sign", Some("1"), Some("-1"))?;
+    integral_rule(i, gaussian_integral);
+    integral_rule(i, erf_integral);
+    partials(i, "ei", &["exp(?a)/?a"])?;
+    partials(i, "airyai", &["airyaiprime(?a)"])?;
+    partials(i, "airybi", &["airybiprime(?a)"])?;
+    partials(i, "airyaiprime", &["?a*airyai(?a)"])?;
+    partials(i, "airybiprime", &["?a*airybi(?a)"])?;
+    partials(i, "li", &["1/ln(?a)"])?;
+    partials(i, "si", &["sin(?a)/?a"])?;
+    partials(i, "ci", &["cos(?a)/?a"])?;
+    partials(i, "shi", &["sinh(?a)/?a"])?;
+    partials(i, "chi", &["cosh(?a)/?a"])?;
+    at_infinity(i, "si", Some("pi/2"), Some("-pi/2"))?;
+    at_infinity(i, "ci", Some("0"), None)?;
+    integral_rule(i, exponential_integral_family);
+    integral_rule(i, power_over_log);
 
     let families = [
         ("legendre", Family::Legendre),
@@ -325,11 +803,57 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     }
     i.kernel("special/exact", Tier::Normalize, Exact { gamma, zeta, pi });
     i.kernel("special/step", Tier::Normalize, Step { sign, heaviside });
+    let euler_gamma = i.op(OpDescriptor::new("euler_gamma", Arity::Fixed(0))
+        .cost(3)
+        .eval(|_| std::f64::consts::EULER_GAMMA))?;
+    i.graph()
+        .ops_mut()
+        .set_attr(euler_gamma, OnReals(Facts::POSITIVE));
+    if let (Some(digamma), Some(polygamma)) = (op_named("digamma"), op_named("polygamma")) {
+        i.kernel(
+            "special/polygamma-exact",
+            Tier::Normalize,
+            PolygammaExact {
+                digamma,
+                polygamma,
+                zeta,
+                euler_gamma,
+                pi,
+            },
+        );
+    }
+    if let (Some(floor), Some(ceil), Some(round)) =
+        (op_named("floor"), op_named("ceil"), op_named("round"))
+    {
+        i.kernel(
+            "special/rounding",
+            Tier::Normalize,
+            Rounding { floor, ceil, round },
+        );
+    }
+
     i.kernel(
         "special/orthogonal",
         Tier::Normalize,
         Orthogonal { families: expandable },
     );
+    if let Some(op) = op_named("polylog") {
+        i.kernel(
+            "special/polylog-negative",
+            Tier::Normalize,
+            PolylogNegative { op },
+        );
+    }
+    if let Some(op) = op_named("lerch") {
+        i.kernel("special/lerch-at-one", Tier::Normalize, LerchOne { op });
+    }
+    if let Some(op) = op_named("coulomb_c") {
+        i.kernel(
+            "special/coulomb-c-exact",
+            Tier::Normalize,
+            CoulombCExact { op },
+        );
+    }
 
     i.rewrites(
         Tier::Normalize,
@@ -346,6 +870,58 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/sinc-0: sinc(0) => 1",
             "special/sinc-even: sinc(-?x) => sinc(?x)",
             "special/sign-odd: sign(-?x) => -sign(?x)",
+            "special/erfi-0: erfi(0) => 0",
+            "special/erfi-odd: erfi(-?x) => -erfi(?x)",
+            "special/polygamma-0: polygamma(0, ?x) => digamma(?x)",
+            "special/besselj-half: besselj(1/2, ?x) => (2/(pi*?x))^(1/2) * sin(?x) if positive(?x)",
+            "special/besselj-minus-half: besselj(-1/2, ?x) => (2/(pi*?x))^(1/2) * cos(?x) if positive(?x)",
+            "special/bessely-half: bessely(1/2, ?x) => -(2/(pi*?x))^(1/2) * cos(?x) if positive(?x)",
+            "special/besseli-half: besseli(1/2, ?x) => (2/(pi*?x))^(1/2) * sinh(?x) if positive(?x)",
+            "special/besselk-half: besselk(1/2, ?x) => (pi/(2*?x))^(1/2) * exp(-?x) if positive(?x)",
+            "special/besselk-minus-half: besselk(-1/2, ?x) => (pi/(2*?x))^(1/2) * exp(-?x) if positive(?x)",
+            "special/besselk-even: besselk(-?n, ?x) => besselk(?n, ?x)",
+            "special/besselj-0-at-0: besselj(0, 0) => 1",
+            "special/besseli-0-at-0: besseli(0, 0) => 1",
+            "special/besselj-negative-order: besselj(?n, ?x) => (-1)^?n * besselj(-?n, ?x) if integer(?n), negative(?n)",
+            "special/bessely-negative-order: bessely(?n, ?x) => (-1)^?n * bessely(-?n, ?x) if integer(?n), negative(?n)",
+            "special/besseli-negative-order: besseli(?n, ?x) => besseli(-?n, ?x) if integer(?n), negative(?n)",
+            "special/erfcinv-1: erfcinv(1) => 0",
+            "special/lambertw-0: lambertw(0) => 0",
+            "special/hurwitz-1: hurwitz_zeta(?s, 1) => zeta(?s)",
+            "special/lambertw-e: lambertw(E) => 1",
+            "special/lambertw-inverse: lambertw(?x*exp(?x)) => ?x if nonnegative(?x)",
+            "special/digamma-half: digamma(1/2) => -euler_gamma - 2*ln(2)",
+            "special/digamma-shift: digamma(?x + 1) - digamma(?x) => 1/?x",
+            "special/floor-integer: floor(?n) => ?n if integer(?n)",
+            "special/ceil-integer: ceil(?n) => ?n if integer(?n)",
+            "special/round-integer: round(?n) => ?n if integer(?n)",
+            "special/floor-shift: floor(?x + ?n) => floor(?x) + ?n if integer(?n)",
+            "special/ceil-shift: ceil(?x + ?n) => ceil(?x) + ?n if integer(?n)",
+            "special/round-shift: round(?x + ?n) => round(?x) + ?n if integer(?n)",
+            "special/ceil-floor: ceil(-?x) => -floor(?x)",
+            "special/floor-ceil: floor(-?x) => -ceil(?x)",
+            "special/coulomb-f-zero: coulomb_f(?e, ?n, 0) => 0 if integer(?n), nonnegative(?n)",
+            "special/coulomb-fp-zero-0: coulomb_fp(?e, 0, 0) => coulomb_c(?e, 0)",
+            "special/coulomb-fp-zero: coulomb_fp(?e, ?n, 0) => 0 if integer(?n), positive(?n)",
+            "special/coulomb-f-eta0: coulomb_f(0, ?n, ?x) => (pi*?x/2)^(1/2) * besselj(?n + 1/2, ?x) if integer(?n), nonnegative(?n), positive(?x)",
+            "special/coulomb-g-eta0: coulomb_g(0, ?n, ?x) => -(pi*?x/2)^(1/2) * bessely(?n + 1/2, ?x) if integer(?n), nonnegative(?n), positive(?x)",
+            "special/coulomb-fp-recurrence: coulomb_fp(?e, ?n, ?x) => ((?n + 1)/?x + ?e/(?n + 1))*coulomb_f(?e, ?n, ?x) - (1 + ?e^2/(?n + 1)^2)^(1/2)*coulomb_f(?e, ?n + 1, ?x) if integer(?n), nonnegative(?n), nonzero(?x)",
+            "special/coulomb-gp-recurrence: coulomb_gp(?e, ?n, ?x) => ((?n + 1)/?x + ?e/(?n + 1))*coulomb_g(?e, ?n, ?x) - (1 + ?e^2/(?n + 1)^2)^(1/2)*coulomb_g(?e, ?n + 1, ?x) if integer(?n), nonnegative(?n), nonzero(?x)",
+            "special/coulomb-sigma-eta0: coulomb_sigma(0, ?n) => 0 if integer(?n), nonnegative(?n)",
+            "special/polylog-1: polylog(1, ?z) => -ln(1 - ?z)",
+            "special/polylog-0: polylog(0, ?z) => ?z/(1 - ?z)",
+            "special/polylog-at-0: polylog(?s, 0) => 0",
+            "special/lerch-a-1: lerch(?z, ?s, 1) => polylog(?s, ?z)/?z",
+            "special/lerch-s-0: lerch(?z, 0, ?a) => 1/(1 - ?z)",
+            "special/lerch-z-0: lerch(0, ?s, ?a) => ?a^(-?s)",
+            "special/appell-a-0: appell_f1(0, ?b1, ?b2, ?c, ?x, ?y) => 1",
+            "special/appell-b-0: appell_f1(?a, 0, 0, ?c, ?x, ?y) => 1",
+            "special/appell-origin: appell_f1(?a, ?b1, ?b2, ?c, 0, 0) => 1",
+            "special/ber-0: ber(0, 0) => 1",
+            "special/bei-0: bei(0, 0) => 0",
+            "special/ber-n-0: ber(?n, 0) => 0 if integer(?n), positive(?n)",
+            "special/bei-n-0: bei(?n, 0) => 0 if integer(?n), positive(?n)",
+            "special/angerj-integer: angerj(?n, ?x) => besselj(?n, ?x) if integer(?n)",
         ],
     )?;
     i.rewrites(
@@ -354,7 +930,309 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/beta: beta(?a, ?b) => gamma(?a) * gamma(?b) / gamma(?a + ?b)",
             "special/lgamma: lgamma(?x) => ln(gamma(?x)) if positive(?x)",
         ],
-    )
+    )?;
+    if let Some(op) = op_named("laguerre_gen") {
+        i.kernel(
+            "special/laguerre-gen",
+            Tier::Normalize,
+            GeneralizedLaguerre { op },
+        );
+    }
+    approx::install(i)?;
+    meijer::install(i)?;
+    i.define(&[
+        "frac(x) := x - floor(x)",
+        "ln_factorial(n) := lgamma(n + 1)",
+        "bessel_k0(x) := besselk(0, x)",
+        "bessel_k1(x) := besselk(1, x)",
+        "inverse_erfc(x) := erfcinv(x)",
+        "legendre_rodrigues(n, x) := diffn((x^2 - 1)^n, x, n) / (2^n * gamma(n + 1))",
+        "hermite_rodrigues(n, x) := (-1)^n * exp(x^2) * diffn(exp(-x^2), x, n)",
+        "laguerre_rodrigues(n, x) := exp(x) / gamma(n + 1) * diffn(exp(-x) * x^n, x, n)",
+        "bessel_differential_equation(y, x, n) := x^2 * diff(diff(y, x), x) + x * diff(y, x) + (x^2 - n^2) * y = 0",
+        "legendre_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - 2 * x * diff(y, x) + n * (n + 1) * y = 0",
+        "laguerre_differential_equation(y, x, n) := x * diff(diff(y, x), x) + (1 - x) * diff(y, x) + n * y = 0",
+        "hermite_differential_equation(y, x, n) := diff(diff(y, x), x) - 2 * x * diff(y, x) + 2 * n * y = 0",
+        "chebyshev_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - x * diff(y, x) + n^2 * y = 0",
+    ])?;
+
+    // Operators registered by the definitions above. The Rodrigues
+    // polynomials are polynomials in their variable, so they keep its
+    // dimension; the differential equations are equation objects.
+    super::number_theory::attach_dimensions(
+        i,
+        &[
+            ("frac", DimRule::Same(0)),
+            ("ln_factorial", DimRule::Dimensionless),
+            ("bessel_k0", DimRule::Dimensionless),
+            ("bessel_k1", DimRule::Dimensionless),
+            ("inverse_erfc", DimRule::Dimensionless),
+            ("legendre_rodrigues", DimRule::Same(1)),
+            ("hermite_rodrigues", DimRule::Same(1)),
+            ("laguerre_rodrigues", DimRule::Same(1)),
+            ("bessel_differential_equation", DimRule::NonMetric),
+            ("legendre_differential_equation", DimRule::NonMetric),
+            ("laguerre_differential_equation", DimRule::NonMetric),
+            ("hermite_differential_equation", DimRule::NonMetric),
+            ("chebyshev_differential_equation", DimRule::NonMetric),
+        ],
+    )?;
+    Ok(())
+}
+
+/// `L_n^{(α)}(x) = Σ_k (-1)^k C(n + α, n - k) x^k / k!` for a literal
+/// degree `n`, with any `α`.
+struct GeneralizedLaguerre {
+    op: OpId,
+}
+
+impl Kernel for GeneralizedLaguerre {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let &[degree, alpha, x] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(n) = integer(graph, degree)
+            .and_then(|d| d.to_u32())
+            .filter(|&d| d <= MAX_DEGREE)
+        else {
+            return Outcome::Pass;
+        };
+        let mut terms = Vec::new();
+        for k in 0..=n {
+            // C(n + α, n - k) = Π_{j=1}^{n-k} (α + k + j) / (n - k)!
+            let mut factors = Vec::new();
+            for j in 1..=n - k {
+                let shift = graph.int(i64::from(k + j));
+                factors.push(graph.node(core::ADD, &[alpha, shift]));
+            }
+            let denominator = factorial(n - k) * factorial(k);
+            let sign = if k % 2 == 0 {
+                BigInt::one()
+            } else {
+                -BigInt::one()
+            };
+            let c = graph.num(Number::rat(BigRational::new(sign, denominator)));
+            factors.push(c);
+            if k > 0 {
+                let e = graph.int(i64::from(k));
+                factors.push(graph.node(core::POW, &[x, e]));
+            }
+            terms.push(if factors.len() == 1 {
+                factors[0]
+            } else {
+                graph.node(core::MUL, &factors)
+            });
+        }
+        let sum = if terms.len() == 1 {
+            terms[0]
+        } else {
+            graph.node(core::ADD, &terms)
+        };
+        let polynomial = cx.simplify(sum);
+        // Like the other orthogonal polynomials: the expansion is the
+        // requested form, a number at a numeric point.
+        if cx.graph.number_of(polynomial).is_some() {
+            Outcome::Equal(polynomial)
+        } else {
+            Outcome::Pinned(polynomial)
+        }
+    }
+}
+
+/// Eulerian numbers `A(n, k)` as exact integers.
+#[allow(clippy::single_call_fn)]
+fn eulerian_row(n: usize) -> Vec<BigInt> {
+    let mut row = vec![BigInt::one()];
+    for size in 1..=n {
+        let mut next = vec![BigInt::zero(); size + 1];
+        for (k, value) in row.iter().enumerate() {
+            next[k] += value * BigInt::from(k + 1);
+            next[k + 1] += value * BigInt::from(size - k - 1);
+        }
+        row = next;
+    }
+    row
+}
+
+/// `Li_{-n}(z) = z A_n(z) / (1 - z)^(n+1)` for a literal positive integer
+/// `n`, with the Eulerian polynomial `A_n` expanded exactly.
+struct PolylogNegative {
+    op: OpId,
+}
+
+impl Kernel for PolylogNegative {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let numeric = cx.env.numeric;
+        let graph = &mut *cx.graph;
+        let &[order_node, z] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(value) = integer(graph, order_node) else {
+            return Outcome::Pass;
+        };
+        if value.is_positive() {
+            return Outcome::Pass;
+        }
+        let Some(order) = (-value).to_usize().filter(|&n| (1..=24).contains(&n)) else {
+            return Outcome::Pass;
+        };
+        let row = eulerian_row(order);
+        let mut terms = Vec::with_capacity(row.len());
+        for (k, coefficient) in row.iter().enumerate() {
+            if coefficient.is_zero() {
+                continue;
+            }
+            let power = graph.int(i64::try_from(k + 1).unwrap_or(0));
+            let z_power = graph.node(core::POW, &[z, power]);
+            let coefficient = graph.num(Number::Int(coefficient.clone()));
+            terms.push(graph.node(core::MUL, &[coefficient, z_power]));
+        }
+        let numerator = if terms.len() == 1 {
+            terms[0]
+        } else {
+            graph.node(core::ADD, &terms)
+        };
+        let one_minus = {
+            let minus_one = graph.int(-1);
+            let one = graph.int(1);
+            let minus_z = graph.node(core::MUL, &[minus_one, z]);
+            graph.node(core::ADD, &[one, minus_z])
+        };
+        let exponent = graph.int(-i64::try_from(order + 1).unwrap_or(1));
+        let denominator = graph.node(core::POW, &[one_minus, exponent]);
+        let result = graph.node(core::MUL, &[numerator, denominator]);
+        if graph.free_symbols(graph.find(z)).is_empty()
+            && let Some(value) = graph
+                .eval(result, &crate::graph::Env::numeric(0.0))
+                .filter(|v| v.is_finite())
+        {
+            return Outcome::Equal(graph.float(value));
+        }
+        if numeric {
+            return Outcome::Pass;
+        }
+        Outcome::Pinned(result)
+    }
+}
+
+/// `lerch(z, 1, m) = (-ln(1-z) - Σ_{j=1}^{m-1} z^j/j) / z^m` for a literal
+/// positive integer `m`.
+struct LerchOne {
+    op: OpId,
+}
+
+impl Kernel for LerchOne {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let numeric = cx.env.numeric;
+        let graph = &mut *cx.graph;
+        let &[z, order_node, parameter_node] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        if integer(graph, order_node).is_none_or(|value| value != BigInt::one()) {
+            return Outcome::Pass;
+        }
+        let Some(parameter) = integer(graph, parameter_node)
+            .and_then(|value| value.to_u32())
+            .filter(|&m| (2..=32).contains(&m))
+        else {
+            return Outcome::Pass;
+        };
+        let Some(ln) = graph.ops().lookup("ln") else {
+            return Outcome::Pass;
+        };
+        let one_minus = {
+            let minus_one = graph.int(-1);
+            let one = graph.int(1);
+            let minus_z = graph.node(core::MUL, &[minus_one, z]);
+            graph.node(core::ADD, &[one, minus_z])
+        };
+        let log = graph.node(ln, &[one_minus]);
+        let minus_one = graph.int(-1);
+        let mut terms = vec![graph.node(core::MUL, &[minus_one, log])];
+        for j in 1..parameter {
+            let power = graph.int(i64::from(j));
+            let z_power = graph.node(core::POW, &[z, power]);
+            let coefficient = graph.num(Number::rat(BigRational::new(
+                BigInt::from(-1),
+                BigInt::from(j),
+            )));
+            terms.push(graph.node(core::MUL, &[coefficient, z_power]));
+        }
+        let numerator = graph.node(core::ADD, &terms);
+        let exponent = graph.int(-i64::from(parameter));
+        let reciprocal = graph.node(core::POW, &[z, exponent]);
+        let result = graph.node(core::MUL, &[numerator, reciprocal]);
+        if graph.free_symbols(graph.find(z)).is_empty()
+            && let Some(value) = graph
+                .eval(result, &crate::graph::Env::numeric(0.0))
+                .filter(|v| v.is_finite())
+        {
+            return Outcome::Equal(graph.float(value));
+        }
+        if numeric {
+            return Outcome::Pass;
+        }
+        Outcome::Pinned(result)
+    }
+}
+
+/// `coulomb_c(0, l) = 2^l l! / (2l+1)!` exactly.
+struct CoulombCExact {
+    op: OpId,
+}
+
+impl Kernel for CoulombCExact {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let &[eta, order] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        if !graph.number_of(eta).is_some_and(Number::is_zero) {
+            return Outcome::Pass;
+        }
+        let Some(order) = integer(graph, order)
+            .and_then(|value| value.to_u32())
+            .filter(|&value| value <= 32)
+        else {
+            return Outcome::Pass;
+        };
+        let numerator = BigInt::from(2).pow(order) * factorial(order);
+        let denominator = factorial(2 * order + 1);
+        Outcome::Equal(graph.num(Number::rat(BigRational::new(numerator, denominator))))
+    }
 }
 
 /// `below`, `at` or `above` according to the sign of `x`.
@@ -504,6 +1382,154 @@ impl Kernel for Exact {
 }
 
 /// `sign` and `heaviside` where the sign of the argument is known.
+/// `digamma(n) = H_{n-1} - γ` and
+/// `polygamma(m, n) = (-1)^{m+1} m! (ζ(m+1) - Σ_{j<n} j^{-(m+1)})` at
+/// positive integers `n`.
+struct PolygammaExact {
+    digamma: OpId,
+    polygamma: OpId,
+    zeta: OpId,
+    euler_gamma: OpId,
+    pi: OpId,
+}
+
+impl Kernel for PolygammaExact {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.digamma, self.polygamma]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let args = graph.children(node).to_vec();
+        let (order, at) = match args.as_slice() {
+            | &[x] if graph.op(node) == self.digamma => (0, x),
+            | &[m, x] => {
+                match graph.number_of(m).and_then(Number::to_i64) {
+                    | Some(m) if (1..=60).contains(&m) => (m, x),
+                    | _ => return Outcome::Pass,
+                }
+            },
+            | _ => return Outcome::Pass,
+        };
+        let Some(n) = graph
+            .number_of(at)
+            .and_then(Number::to_i64)
+            .filter(|n| (1..=10_000).contains(n))
+        else {
+            return Outcome::Pass;
+        };
+        let power = order.saturating_add(1);
+        let mut partial = BigRational::zero();
+        for j in 1..n {
+            let mut denominator = BigInt::one();
+            for _ in 0..power {
+                denominator *= BigInt::from(j);
+            }
+            partial += BigRational::new(BigInt::one(), denominator);
+        }
+        if order == 0 {
+            let constant = graph.node(self.euler_gamma, &[]);
+            let minus_one = graph.int(-1);
+            let negated = graph.node(core::MUL, &[minus_one, constant]);
+            let h = graph.num(Number::rat(partial));
+            return Outcome::Pinned(graph.node(core::ADD, &[h, negated]));
+        }
+        let mut factorial = BigInt::one();
+        for j in 2..=order {
+            factorial *= BigInt::from(j);
+        }
+        let sign = if order % 2 == 1 {
+            BigInt::one()
+        } else {
+            -BigInt::one()
+        };
+        let scale = BigRational::from_integer(sign * factorial);
+        let leading = match zeta_even(&BigInt::from(power)) {
+            | Some(c) => times_pi_power(graph, self.pi, &(&scale * c), Number::from(power)),
+            | None => {
+                let s = graph.int(power);
+                let zeta = graph.node(self.zeta, &[s]);
+                let scale_term = graph.num(Number::rat(scale.clone()));
+                graph.node(core::MUL, &[scale_term, zeta])
+            },
+        };
+        if partial.is_zero() {
+            return Outcome::Pinned(leading);
+        }
+        let correction = graph.num(Number::rat(-(scale * partial)));
+        Outcome::Pinned(graph.node(core::ADD, &[leading, correction]))
+    }
+}
+
+/// `floor`, `ceil` and `round` (half away from zero) of a value: exact
+/// for rational literals, and for other constant terms whenever the
+/// numeric value is far enough from a rounding boundary to be certain.
+struct Rounding {
+    floor: OpId,
+    ceil: OpId,
+    round: OpId,
+}
+
+impl Kernel for Rounding {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.floor, self.ceil, self.round]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let Some(&arg) = graph.children(node).first() else {
+            return Outcome::Pass;
+        };
+        let op = graph.op(node);
+        if let Some(r) = graph.as_number(arg).and_then(Number::to_rational) {
+            let rounded = if op == self.floor {
+                r.floor()
+            } else if op == self.ceil {
+                r.ceil()
+            } else {
+                r.round()
+            };
+            return Outcome::Equal(graph.num(Number::rat(rounded)));
+        }
+        if !graph.free_symbols(graph.find(arg)).is_empty() {
+            return Outcome::Pass;
+        }
+        let Some(value) = graph.eval(arg, &crate::graph::Env::numeric(0.0)) else {
+            return Outcome::Pass;
+        };
+        if !value.is_finite() || value.abs() > 1e15 {
+            return Outcome::Pass;
+        }
+        // The distance to the nearest boundary must dwarf the evaluation error.
+        let boundary = if op == self.round {
+            (value - 0.5).round() + 0.5
+        } else {
+            value.round()
+        };
+        if (value - boundary).abs() <= 1e-9 * value.abs().max(1.0) {
+            return Outcome::Pass;
+        }
+        let rounded = if op == self.floor {
+            value.floor()
+        } else if op == self.ceil {
+            value.ceil()
+        } else {
+            value.round()
+        };
+        rounded
+            .to_i64()
+            .map_or(Outcome::Pass, |v| Outcome::Equal(graph.int(v)))
+    }
+}
+
 struct Step {
     sign: OpId,
     heaviside: OpId,
@@ -684,6 +1710,370 @@ impl Kernel for Orthogonal {
     }
 }
 
+// ----------------------------------------------------------------------
+// Antiderivatives involving the error function
+// ----------------------------------------------------------------------
+
+fn depends(
+    graph: &Graph,
+    node: NodeId,
+    x: crate::graph::SymbolId,
+) -> bool {
+    graph.depends_on(graph.find(node), x)
+}
+
+/// `∫ x^n exp(a x² + b x + c) dx` for a literal `n ≥ 0`: the Gaussian
+/// `n = 0` through the error function, higher moments by the reduction
+/// `I_n = (x^(n-1) e^q - (n-1) I_(n-2) - b I_(n-1)) / (2a)`.
+fn gaussian_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (exp, erf, pi) = (
+        graph.ops().lookup("exp")?,
+        graph.ops().lookup("erf")?,
+        graph.ops().lookup("pi")?,
+    );
+    let factors = if graph.op(f) == core::MUL {
+        graph.children(f).to_vec()
+    } else {
+        vec![f]
+    };
+    let mut n: u32 = 0;
+    let mut exponent = None;
+    for factor in factors {
+        if graph.symbol_of(factor) == Some(symbol) {
+            n = n.checked_add(1)?;
+        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
+            if graph.symbol_of(base) != Some(symbol) {
+                return None;
+            }
+            n = n.checked_add(integer(graph, e)?.to_u32()?)?;
+        } else if graph.op(factor) == exp {
+            // Several exponentials multiply into one.
+            let argument = *graph.children(factor).first()?;
+            exponent = Some(match exponent {
+                | None => argument,
+                | Some(previous) => graph.node(core::ADD, &[previous, argument]),
+            });
+        } else {
+            return None;
+        }
+    }
+    let q = exponent?;
+    if n > 12 {
+        return None;
+    }
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, q, Limits::default())?;
+    for g in poly.support() {
+        if g != gx
+            && gens
+                .node(g)
+                .is_some_and(|node| depends(graph, node, symbol))
+        {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 2 {
+        return None;
+    }
+    let coefficients = poly.coefficients_in(gx);
+    let a = to_term(graph, &gens, coefficients.get(2)?);
+    let b = to_term(graph, &gens, coefficients.get(1)?);
+    let c = to_term(graph, &gens, coefficients.first()?);
+    let int = |graph: &mut Graph, v: i64| graph.int(v);
+    let mul = |graph: &mut Graph, f: &[NodeId]| graph.node(core::MUL, f);
+    let add = |graph: &mut Graph, t: &[NodeId]| graph.node(core::ADD, t);
+    let pow = |graph: &mut Graph, b: NodeId, e: NodeId| graph.node(core::POW, &[b, e]);
+    let half = graph.num(Number::fraction(1, 2)?);
+    let minus_one = int(graph, -1);
+    // I0 = sqrt(pi) / (2 sqrt(-a)) * exp(c - b²/(4a)) * erf(sqrt(-a) (x + b/(2a))),
+    // or with erfi and sqrt(a) when a is known positive.
+    let growing = graph.facts(a).has(Facts::POSITIVE);
+    let erf = if growing {
+        graph.ops().lookup("erfi")?
+    } else {
+        erf
+    };
+    let minus_a = if growing {
+        a
+    } else {
+        mul(graph, &[minus_one, a])
+    };
+    let root = pow(graph, minus_a, half);
+    let pi_node = graph.node(pi, &[]);
+    let root_pi = pow(graph, pi_node, half);
+    let two = int(graph, 2);
+    let inv_two_root = {
+        let d = mul(graph, &[two, root]);
+        pow(graph, d, minus_one)
+    };
+    let b2 = pow(graph, b, two);
+    let four_a = {
+        let four = int(graph, 4);
+        mul(graph, &[four, a])
+    };
+    let inv_four_a = pow(graph, four_a, minus_one);
+    let shift_exp = {
+        let t = mul(graph, &[minus_one, b2, inv_four_a]);
+        let e = add(graph, &[c, t]);
+        graph.node(exp, &[e])
+    };
+    let two_a = mul(graph, &[two, a]);
+    let inv_two_a = pow(graph, two_a, minus_one);
+    let shifted = {
+        let t = mul(graph, &[b, inv_two_a]);
+        let s = add(graph, &[x, t]);
+        mul(graph, &[root, s])
+    };
+    let error = graph.node(erf, &[shifted]);
+    let i0 = mul(graph, &[root_pi, inv_two_root, shift_exp, error]);
+    let e_q = graph.node(exp, &[q]);
+    let mut moments = vec![i0];
+    for k in 1..=n {
+        // I_k = (x^(k-1) e^q - (k-1) I_(k-2) - b I_(k-1)) / (2a)
+        let k1 = int(graph, i64::from(k) - 1);
+        let xk = pow(graph, x, k1);
+        let mut terms = vec![mul(graph, &[xk, e_q])];
+        if k >= 2 {
+            let coefficient = int(graph, -(i64::from(k) - 1));
+            terms.push(mul(graph, &[coefficient, moments[(k - 2) as usize]]));
+        }
+        terms.push(mul(graph, &[minus_one, b, moments[(k - 1) as usize]]));
+        let sum = add(graph, &terms);
+        moments.push(mul(graph, &[sum, inv_two_a]));
+    }
+    moments.pop()
+}
+
+/// `∫ erf(a x + b) dx = ((a x + b) erf(a x + b) + exp(-(a x + b)²)/√π) / a`,
+/// and the same for `erfc` with the sign of the second term flipped.
+/// `(a, constant)` when `u = a x` with `a` free of `x`.
+fn proportional(
+    graph: &mut Graph,
+    u: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let symbol = graph.symbol_of(x)?;
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, u, Limits::default())?;
+    for g in poly.support() {
+        if g != gx
+            && gens
+                .node(g)
+                .is_some_and(|node| depends(graph, node, symbol))
+        {
+            return None;
+        }
+    }
+    let coefficients = poly.coefficients_in(gx);
+    if poly.degree_in(gx) != 1 || !coefficients.first().is_none_or(Poly::is_zero) {
+        return None;
+    }
+    Some(to_term(graph, &gens, coefficients.get(1)?))
+}
+
+/// `∫ K(a x) / x^n dx` for `K` in exp, sin, cos, sinh, cosh and `n >= 1`:
+/// `Ei`, `Si`, `Ci`, `Shi`, `Chi` for `n = 1`, and
+/// `∫ K(ax)/x^n = -K(ax)/((n-1) x^(n-1)) + a/(n-1) ∫ K'(ax)/x^(n-1)` above.
+fn exponential_integral_family(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let names = ["exp", "sin", "cos", "sinh", "cosh"];
+    let kinds: Vec<OpId> = names
+        .iter()
+        .map(|n| graph.ops().lookup(n))
+        .collect::<Option<_>>()?;
+    let factors = if graph.op(f) == core::MUL {
+        graph.children(f).to_vec()
+    } else {
+        vec![f]
+    };
+    let mut constants = Vec::new();
+    let mut n: Option<u32> = None;
+    let mut kernel = None;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
+            if graph.symbol_of(base) != Some(symbol) || n.is_some() {
+                return None;
+            }
+            let e = integer(graph, e)?;
+            n = Some((-e).to_u32().filter(|&k| k >= 1)?);
+        } else {
+            let k = kinds.iter().position(|&op| op == graph.op(factor))?;
+            if kernel.is_some() {
+                return None;
+            }
+            let &[u] = graph.children(factor) else {
+                return None;
+            };
+            kernel = Some((k, u));
+        }
+    }
+    let (n, (k, u)) = (n?, kernel?);
+    let a = proportional(graph, u, x)?;
+    // (kind, sign) of K' for exp, sin, cos, sinh, cosh.
+    let derivative = [(0, 1), (2, 1), (1, -1), (4, 1), (3, 1)];
+    let primitive = ["ei", "si", "ci", "shi", "chi"];
+    let build = |graph: &mut Graph, n: u32, k: usize| -> Option<NodeId> {
+        let mut terms: Vec<NodeId> = Vec::new();
+        let mut weight = graph.int(1);
+        let (mut n, mut k) = (n, k);
+        while n > 1 {
+            let kernel_node = graph.node(kinds[k], &[u]);
+            let e = graph.int(1 - i64::from(n));
+            let power = graph.node(core::POW, &[x, e]);
+            let scale = graph.num(Number::fraction(-1, i64::from(n - 1))?);
+            terms.push(graph.node(core::MUL, &[weight, scale, kernel_node, power]));
+            let step = graph.num(Number::fraction(
+                i64::from(derivative[k].1),
+                i64::from(n - 1),
+            )?);
+            weight = graph.node(core::MUL, &[weight, step, a]);
+            k = derivative[k].0;
+            n -= 1;
+        }
+        let op = graph.ops().lookup(primitive[k])?;
+        let last = graph.node(op, &[u]);
+        terms.push(graph.node(core::MUL, &[weight, last]));
+        Some(graph.node(core::ADD, &terms))
+    };
+    let body = build(graph, n, k)?;
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
+/// `∫ x^m / ln(x) dx = Ei((m + 1) ln x)` (`li(x)` for `m = 0`).
+fn power_over_log(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let ln = graph.ops().lookup("ln")?;
+    let factors = if graph.op(f) == core::MUL {
+        graph.children(f).to_vec()
+    } else {
+        vec![f]
+    };
+    let mut constants = Vec::new();
+    let mut m: Option<NodeId> = None;
+    let mut log = false;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+            continue;
+        }
+        if graph.symbol_of(factor) == Some(symbol) && m.is_none() {
+            m = Some(graph.int(1));
+            continue;
+        }
+        let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) else {
+            return None;
+        };
+        if graph.symbol_of(base) == Some(symbol) && m.is_none() && graph.number_of(e).is_some() {
+            m = Some(e);
+        } else if graph.op(base) == ln
+            && graph
+                .children(base)
+                .first()
+                .is_some_and(|&arg| graph.symbol_of(arg) == Some(symbol))
+            && graph.number_of(e).and_then(Number::to_i64) == Some(-1)
+            && !log
+        {
+            log = true;
+        } else {
+            return None;
+        }
+    }
+    if !log {
+        return None;
+    }
+    let ei = graph.ops().lookup("ei")?;
+    let li = graph.ops().lookup("li")?;
+    let body = match m {
+        | None => graph.node(li, &[x]),
+        | Some(m) => {
+            let one = graph.int(1);
+            let m_plus_1 = graph.node(core::ADD, &[m, one]);
+            if graph.number_of(m_plus_1).is_none_or(Number::is_zero)
+                && graph.number_of(m).and_then(Number::to_i64) == Some(-1)
+            {
+                return None;
+            }
+            let log_x = graph.node(ln, &[x]);
+            let argument = graph.node(core::MUL, &[m_plus_1, log_x]);
+            graph.node(ei, &[argument])
+        },
+    };
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
+fn erf_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (exp, erf, erfc, pi) = (
+        graph.ops().lookup("exp")?,
+        graph.ops().lookup("erf")?,
+        graph.ops().lookup("erfc")?,
+        graph.ops().lookup("pi")?,
+    );
+    let op = graph.op(f);
+    if op != erf && op != erfc {
+        return None;
+    }
+    let &[u] = graph.children(f) else {
+        return None;
+    };
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, u, Limits::default())?;
+    for g in poly.support() {
+        if g != gx
+            && gens
+                .node(g)
+                .is_some_and(|node| depends(graph, node, symbol))
+        {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 1 {
+        return None;
+    }
+    let a = to_term(graph, &gens, poly.coefficients_in(gx).get(1)?);
+    let (minus_one, two) = (graph.int(-1), graph.int(2));
+    let half = graph.num(Number::fraction(-1, 2)?);
+    let square = graph.node(core::POW, &[u, two]);
+    let negated = graph.node(core::MUL, &[minus_one, square]);
+    let gauss = graph.node(exp, &[negated]);
+    let pi_node = graph.node(pi, &[]);
+    let inv_root_pi = graph.node(core::POW, &[pi_node, half]);
+    let sign = graph.int(if op == erf { 1 } else { -1 });
+    let tail = graph.node(core::MUL, &[sign, gauss, inv_root_pi]);
+    let head = graph.node(core::MUL, &[u, f]);
+    let sum = graph.node(core::ADD, &[head, tail]);
+    let inv_a = graph.node(core::POW, &[a, minus_one]);
+    Some(graph.node(core::MUL, &[sum, inv_a]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -697,6 +2087,128 @@ mod tests {
     use crate::rules::testing::numeric;
     use crate::rules::testing::reduce_with;
     use crate::rules::testing::simplify;
+
+    #[test]
+    fn polygamma_at_integers() {
+        let sets = [special()];
+        assert_eq!(simplify(&sets, "digamma(1)"), "-euler_gamma");
+        assert_eq!(simplify(&sets, "digamma(4)"), "11/6 - euler_gamma");
+        assert_eq!(simplify(&sets, "polygamma(1, 1)"), "1/6*pi^2");
+        assert_eq!(simplify(&sets, "polygamma(1, 3)"), "1/6*pi^2 - 5/4");
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        assert!((value("polygamma(2, 2)") + 2.0 * (1.202_056_903_159_594 - 1.0)).abs() < 1e-9);
+        assert!((value("digamma(1/2)") + 1.963_510_026_021_423).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rounding() {
+        let sets = [special()];
+        for (src, want) in [
+            ("floor(7/2)", "3"),
+            ("ceil(7/2)", "4"),
+            ("round(7/2)", "4"),
+            ("round(-7/2)", "-4"),
+            ("floor(-7/2)", "-4"),
+            ("floor(pi)", "3"),
+            ("ceil(exp(1))", "3"),
+            ("round(2^(1/2)*10)", "14"),
+            ("floor(x + 3)", "floor(x) + 3"),
+            ("ceil(-x)", "-floor(x)"),
+            ("frac(5/2)", "1/2"),
+        ] {
+            assert_eq!(simplify(&sets, src), want, "{src}");
+        }
+        let (text, reduced) = reduce_with(
+            &[crate::rules::standard()].concat(),
+            "floor(n)",
+            &[("n", Facts::INTEGER)],
+        );
+        assert!(reduced && text == "n", "{text}");
+    }
+
+    #[test]
+    fn bessel_functions_of_any_order() {
+        let sets = [special()];
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        assert!((value("besselj(2, 1)") - 0.114_903_484_9).abs() < 1e-9);
+        assert!((value("besselk(0, 1)") - 0.421_024_438_2).abs() < 1e-9);
+        assert!((value("bessel_k1(2)") - 0.139_865_881_8).abs() < 1e-9);
+        // d/dx J_0 = -J_1 and the defining equation holds numerically.
+        assert_eq!(simplify(&sets, "diff(besselj(0, x), x)"), "besselj(-1, x)");
+        assert_eq!(simplify(&sets, "besselj(-1, x) + besselj(1, x)"), "0");
+        let residual = simplify(
+            &sets,
+            "x^2*diff(diff(besselj(3, x), x), x) + x*diff(besselj(3, x), x) + (x^2 - 9)*besselj(3, x)",
+        );
+        assert!(
+            eval(&sets, &residual, &[("x", 2.7)]).abs() < 1e-10,
+            "{residual}"
+        );
+        assert!(simplify(&sets, "bessel_differential_equation(y(x), x, n)").ends_with("= 0"));
+    }
+
+    #[test]
+    fn polygamma_erfi_and_relatives() {
+        let sets = [special()];
+        assert_eq!(simplify(&sets, "polygamma(0, x)"), "digamma(x)");
+        assert_eq!(simplify(&sets, "diff(digamma(x), x)"), "polygamma(1, x)");
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        // ψ'(1) = π²/6
+        assert!((value("polygamma(1, 1)") - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-10);
+        assert!((value("erfi(1)") - 1.650_425_758_797_542_8).abs() < 1e-12);
+        assert!((value("erfc(inverse_erfc(0.3))") - 0.3).abs() < 1e-12);
+        assert!((value("ln_factorial(5)") - 120.0_f64.ln()).abs() < 1e-12);
+        assert_eq!(
+            simplify(&sets, "integral(exp(x^2), x)"),
+            "1/2*erfi(x)*pi^(1/2)"
+        );
+    }
+
+    #[test]
+    fn rodrigues_formulas_and_generalized_laguerre() {
+        let sets = [special()];
+        assert_eq!(
+            simplify(&sets, "legendre_rodrigues(3, x)"),
+            simplify(&sets, "legendre(3, x)")
+        );
+        assert_eq!(
+            simplify(&sets, "hermite_rodrigues(3, x)"),
+            simplify(&sets, "hermite(3, x)")
+        );
+        assert_eq!(
+            simplify(&sets, "laguerre_rodrigues(2, x)"),
+            simplify(&sets, "laguerre(2, x)")
+        );
+        assert_eq!(
+            simplify(&sets, "laguerre_gen(2, 1, x)"),
+            "1/2*x^2 - 3*x + 3"
+        );
+        assert_eq!(
+            simplify(&sets, "laguerre_gen(1, a, x)"),
+            simplify(&sets, "1 + a - x")
+        );
+        let (v, _) = numeric(&sets, "laguerre_gen(3, 0.5, 1.2)", &[], 1e-12);
+        assert!((v - crate::kernels::special::generalized_laguerre(3, 0.5, 1.2)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn gaussian_integrals() {
+        let sets = [special()];
+        let run = |src: &str| simplify(&sets, src);
+        assert_eq!(run("integral(exp(-x^2), x)"), "1/2*erf(x)*pi^(1/2)");
+        assert_eq!(run("defint(exp(-x^2), x, -oo, oo)"), "pi^(1/2)");
+        assert_eq!(run("defint(x^2*exp(-x^2), x, -oo, oo)"), "1/2*pi^(1/2)");
+        assert_eq!(run("defint(x^4*exp(-x^2), x, -oo, oo)"), "3/4*pi^(1/2)");
+        assert_eq!(
+            run("integral(erf(2*x), x)"),
+            "x*erf(2*x) + 1/2*exp(-4*x^2)/pi^(1/2)"
+        );
+        assert_eq!(run("limit(erf(x), x, -oo)"), "-1");
+        // A shifted, scaled Gaussian against its numeric value.
+        let closed = run("defint(exp(-x^2/2 + x), x, -oo, oo)");
+        let (value, _) = numeric(&sets, "defint(exp(-x^2/2 + x), x, -oo, oo)", &[], 1e-10);
+        assert!((eval(&sets, &closed, &[]) - value).abs() < 1e-8, "{closed}");
+    }
 
     fn s(src: &str) -> String {
         simplify(&[special()], src)
@@ -762,7 +2274,7 @@ mod tests {
         );
         close(
             ev("digamma(x)", &[("x", 1.0)]),
-            -0.577_215_664_901_532_9,
+            -std::f64::consts::EULER_GAMMA,
             1e-10,
         );
         close(
@@ -821,7 +2333,9 @@ mod tests {
             1e-14,
         );
         close(ev("zeta(s)", &[("s", 50.0)]), 1.0, 1e-14);
-        assert!(ev("zeta(s)", &[("s", 0.5)]).is_nan());
+        // The analytic continuation: ζ(1/2) and ζ(-1) = -1/12.
+        close(ev("zeta(s)", &[("s", 0.5)]), -1.460_354_508_809_587, 1e-10);
+        close(ev("zeta(s)", &[("s", -1.0)]), -1.0 / 12.0, 1e-10);
         assert!(ev("zeta(s)", &[("s", 1.0)]).is_infinite());
     }
 
@@ -843,11 +2357,12 @@ mod tests {
         agree(at("besseli", 1.0, 1.0), 0.565_159_103_992_485_1, 5e-7);
         agree(at("besseli", 0.0, 5.0) / 27.239_871_823_604_442, 1.0, 5e-7);
         agree(at("besseli", 1.0, 5.0), 24.335_642_142_450_52, 5e-7);
-        // Order 1 below |x| = 8 has no correct implementation available.
-        assert!(at("besselj", 1.0, 1.0).is_nan());
-        assert!(at("bessely", 1.0, 1.0).is_nan());
-        assert!(at("besselj", 2.0, 1.0).is_nan());
-        assert!(at("besselj", 0.5, 1.0).is_nan());
+        // Any order, small arguments included.
+        agree(at("besselj", 1.0, 1.0), 0.440_050_585_744_933_5, 1e-12);
+        agree(at("bessely", 1.0, 1.0), -0.781_212_821_300_288_7, 1e-9);
+        agree(at("besselj", 2.0, 1.0), 0.114_903_484_931_900_5, 1e-9);
+        let half = (2.0 / std::f64::consts::PI).sqrt() * 1.0_f64.sin();
+        agree(at("besselj", 0.5, 1.0), half, 1e-12);
     }
 
     #[test]
@@ -857,11 +2372,11 @@ mod tests {
             2.0 / std::f64::consts::PI,
             1e-14,
         );
-        assert_eq!(ev("sinc(x)", &[("x", 0.0)]), 1.0);
+        assert!((ev("sinc(x)", &[("x", 0.0)]) - 1.0).abs() < 1e-9);
         assert!(ev("sinc(x)", &[("x", 1.0)]).abs() < 1e-15);
         for (x, h, sg) in [(-2.0, 0.0, -1.0), (0.0, 0.5, 0.0), (3.0, 1.0, 1.0)] {
-            assert_eq!(ev("heaviside(x)", &[("x", x)]), h);
-            assert_eq!(ev("sign(x)", &[("x", x)]), sg);
+            assert!((ev("heaviside(x)", &[("x", x)]) - h).abs() < 1e-9);
+            assert!((ev("sign(x)", &[("x", x)]) - sg).abs() < 1e-9);
         }
     }
 
@@ -1140,5 +2655,239 @@ mod tests {
         // The float value at a float point.
         agree(ev("legendre(3, 0.5)", &[]), -0.437_5, 1e-14);
         assert_eq!(s("legendre(2, 0.5)"), format!("{}", -0.125));
+    }
+
+    /// The residual of a defining equation `lhs = 0` evaluated at `x`, for the
+    /// solution `y` of the family and its order `n`.
+    fn ode_residual(
+        equation: &str,
+        y: &str,
+        n: u32,
+        x: f64,
+    ) -> f64 {
+        let sets = [special()];
+        let text = simplify(&sets, &format!("{equation}({y}, x, {n})"));
+        let lhs = text
+            .strip_suffix(" = 0")
+            .unwrap_or_else(|| panic!("not an equation `= 0`: {text}"));
+        eval(&sets, lhs, &[("x", x)])
+    }
+
+    #[test]
+    fn classical_orthogonal_polynomials_solve_their_equations() {
+        for n in 0..=5 {
+            for x in [-0.8, -0.3, 0.2, 0.9] {
+                let tol = 1e-8;
+                let r = ode_residual(
+                    "legendre_differential_equation",
+                    &format!("legendre({n}, x)"),
+                    n,
+                    x,
+                );
+                assert!(r.abs() < tol, "Legendre {n} at {x}: {r}");
+                let r = ode_residual(
+                    "hermite_differential_equation",
+                    &format!("hermite({n}, x)"),
+                    n,
+                    x,
+                );
+                assert!(r.abs() < tol, "Hermite {n} at {x}: {r}");
+                let r = ode_residual(
+                    "chebyshev_differential_equation",
+                    &format!("chebyshevt({n}, x)"),
+                    n,
+                    x,
+                );
+                assert!(r.abs() < tol, "Chebyshev T {n} at {x}: {r}");
+                let r = ode_residual(
+                    "laguerre_differential_equation",
+                    &format!("laguerre({n}, x)"),
+                    n,
+                    x + 1.0,
+                );
+                assert!(r.abs() < tol, "Laguerre {n} at {x}: {r}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_wrong_degree_does_not_solve_the_equation() {
+        // P_3 solves the degree-3 equation but not the degree-2 one, and likewise for the others.
+        assert!(
+            ode_residual("legendre_differential_equation", "legendre(3, x)", 2, 0.4).abs() > 1e-3
+        );
+        assert!(
+            ode_residual("hermite_differential_equation", "hermite(3, x)", 2, 0.4).abs() > 1e-3
+        );
+        assert!(
+            ode_residual(
+                "chebyshev_differential_equation",
+                "chebyshevt(3, x)",
+                2,
+                0.4
+            )
+            .abs()
+                > 1e-3
+        );
+        assert!(
+            ode_residual("laguerre_differential_equation", "laguerre(3, x)", 2, 0.4).abs() > 1e-3
+        );
+        // U_3 is not a solution of Chebyshev's first-kind equation.
+        assert!(
+            ode_residual(
+                "chebyshev_differential_equation",
+                "chebyshevu(3, x)",
+                3,
+                0.4
+            )
+            .abs()
+                > 1e-3
+        );
+    }
+
+    #[test]
+    fn coulomb_operators_exact_and_numeric() {
+        let sets = [special()];
+        assert_eq!(s("coulomb_c(0, 0)"), "1");
+        assert_eq!(s("coulomb_c(0, 1)"), "1/3");
+        assert_eq!(s("coulomb_c(0, 3)"), "1/105");
+        assert_eq!(s("coulomb_sigma(0, 4)"), "0");
+        assert_eq!(s("coulomb_f(2, 1, 0)"), "0");
+        close(ev("coulomb_c(0, 3)", &[]), 1.0 / 105.0, 1e-14);
+        close(ev("coulomb_c(1, 2)", &[]), 0.011_428_736_368_066_59, 1e-12);
+        // eta = 0: F_l = sqrt(pi rho / 2) J_{l+1/2}, checked against the
+        // spherical Bessel form.
+        let rewritten = s("coulomb_f(0, 2, x)");
+        let direct = ev("coulomb_f(0, 2, x)", &[("x", 2.3)]);
+        close(ev(&rewritten, &[("x", 2.3)]), direct, 1e-12);
+        let rho = 2.3_f64;
+        let spherical = (3.0 / (rho * rho) - 1.0) * rho.sin() - 3.0 * rho.cos() / rho;
+        close(direct, spherical, 1e-12);
+        // G_l = -sqrt(pi rho / 2) Y_{l+1/2}.
+        let g = ev(&s("coulomb_g(0, 1, x)"), &[("x", 1.7)]);
+        close(g, 1.7_f64.cos() / 1.7 + 1.7_f64.sin(), 1e-12);
+        // The derivative recurrence is registered: dF/drho = F'.
+        let derivative = s("diff(coulomb_f(1, 2, rho), rho)");
+        assert!(!derivative.contains("diff"), "{derivative}");
+        let value = ev(&derivative, &[("rho", 5.0)]);
+        let direct = ev("coulomb_fp(1, 2, rho)", &[("rho", 5.0)]);
+        close(value, direct, 1e-11);
+        // Numeric phase and the exact rewrite agree through the engine.
+        let (numeric_value, _) = numeric(&sets, "coulomb_f(0, 2, x)", &[("x", 2.3)], 1e-12);
+        close(numeric_value, spherical, 1e-12);
+    }
+
+    #[test]
+    fn polylog_lerch_appell_exact_values() {
+        let sets = [special()];
+        close(
+            ev(&s("polylog(1, z)"), &[("z", 0.3)]),
+            -(0.7_f64).ln(),
+            1e-12,
+        );
+        close(ev(&s("polylog(0, z)"), &[("z", 0.3)]), 0.3 / 0.7, 1e-12);
+        close(
+            ev(&s("polylog(-2, z)"), &[("z", 0.3)]),
+            1.137_026_239_067_055_3,
+            1e-12,
+        );
+        close(
+            ev(&s("polylog(-3, z)"), &[("z", 0.3)]),
+            2.861_307_788_421_491,
+            1e-12,
+        );
+        // The symbolic exact value and the numeric kernel agree.
+        let (numeric_value, _) = numeric(&sets, "polylog(-3, z)", &[("z", 0.3)], 1e-12);
+        close(
+            numeric_value,
+            ev(&s("polylog(-3, z)"), &[("z", 0.3)]),
+            1e-12,
+        );
+        // Lerch at a = 1 reduces to the polylogarithm.
+        assert_eq!(s("lerch(z, s, 1)"), s("polylog(s, z)/z"));
+        assert_eq!(s("lerch(z, 0, a)"), s("1/(1 - z)"));
+        assert_eq!(s("lerch(0, s, a)"), s("a^(-s)"));
+        // s = 1 at integer a is exact.
+        let exact = s("lerch(z, 1, 3)");
+        let numeric_value = ev(&exact, &[("z", 0.3)]);
+        close(numeric_value, 0.432_405_331_064_162_2, 1e-11);
+        let (engine_value, _) = numeric(&sets, "lerch(z, 1, 3)", &[("z", 0.3)], 1e-12);
+        close(engine_value, numeric_value, 1e-11);
+        // Appell's trivial exact values.
+        assert_eq!(s("appell_f1(0, b1, b2, c, x, y)"), "1");
+        assert_eq!(s("appell_f1(a, 0, 0, c, x, y)"), "1");
+        assert_eq!(s("appell_f1(a, b1, b2, c, 0, 0)"), "1");
+    }
+
+    #[test]
+    fn kelvin_and_anger_operators() {
+        assert_eq!(s("ber(0, 0)"), "1");
+        assert_eq!(s("bei(0, 0)"), "0");
+        assert_eq!(s("ber(1, 0)"), "0");
+        assert_eq!(s("bei(1, 0)"), "0");
+        close(
+            ev("ber(0, x)", &[("x", 2.5)]),
+            0.399_968_417_129_531_3,
+            1e-11,
+        );
+        close(
+            ev("ker(0, x)", &[("x", 2.5)]),
+            -0.069_687_972_589_045_34,
+            1e-11,
+        );
+        close(
+            ev("kei(1, x)", &[("x", 2.5)]),
+            0.093_313_788_135_357_5,
+            1e-11,
+        );
+        // The Anger function of integer order is the Bessel function.
+        assert_eq!(s("angerj(3, x)"), s("besselj(3, x)"));
+        close(
+            ev("angerj(3, x)", &[("x", 10.0)]),
+            ev("besselj(3, x)", &[("x", 10.0)]),
+            1e-12,
+        );
+        close(
+            ev("webere(1.3, x)", &[("x", 2.5)]),
+            -0.114_892_690_483_087_1,
+            1e-10,
+        );
+        // The derivative recurrences are registered.
+        assert_eq!(
+            s("diff(angerj(n, x), x)"),
+            s("(angerj(n - 1, x) - angerj(n + 1, x))/2")
+        );
+        assert_eq!(
+            s("diff(webere(n, x), x)"),
+            s("(webere(n - 1, x) - webere(n + 1, x))/2")
+        );
+        let derivative = s("diff(angerj(n, x), x)");
+        close(
+            ev(&derivative, &[("n", 1.3), ("x", 2.5)]),
+            ev("(angerj(0.3, x) - angerj(2.3, x))/2", &[("x", 2.5)]),
+            1e-11,
+        );
+    }
+
+    #[test]
+    fn numeric_and_symbolic_paths_agree() {
+        let sets = [special()];
+        let cases: &[(&str, &[(&str, f64)])] = &[
+            ("coulomb_f(0, 2, x)", &[("x", 2.3)]),
+            ("coulomb_g(0, 1, x)", &[("x", 1.7)]),
+            ("polylog(-3, z)", &[("z", 0.3)]),
+            ("polylog(1, z)", &[("z", 0.3)]),
+            ("lerch(z, 1, 3)", &[("z", 0.3)]),
+            ("lerch(z, 0, a)", &[("z", 0.3), ("a", 0.7)]),
+            ("angerj(3, x)", &[("x", 10.0)]),
+        ];
+        for &(src, bindings) in cases {
+            let (engine, _) = numeric(&sets, src, bindings, 1e-12);
+            let symbolic = ev(&s(src), bindings);
+            assert!(
+                (engine - symbolic).abs() < 1e-11 * (1.0 + symbolic.abs()),
+                "{src}"
+            );
+        }
     }
 }

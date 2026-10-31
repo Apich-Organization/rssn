@@ -10,18 +10,18 @@ use std::fmt::Write;
 
 use super::id::NodeId;
 use super::number::Number;
+use super::op::Arity;
 use super::op::OpFlags;
 use super::op::core;
-use super::op::Arity;
 use super::payload::Payload;
 use super::store::Graph;
 
-const PREC_EQ: u8 = 0;
-const PREC_ADD: u8 = 1;
-const PREC_MUL: u8 = 2;
-const PREC_NEG: u8 = 3;
-const PREC_POW: u8 = 4;
-const PREC_ATOM: u8 = 5;
+pub(crate) const PREC_EQ: u8 = 0;
+pub(crate) const PREC_ADD: u8 = 1;
+pub(crate) const PREC_MUL: u8 = 2;
+pub(crate) const PREC_NEG: u8 = 3;
+pub(crate) const PREC_POW: u8 = 4;
+pub(crate) const PREC_ATOM: u8 = 5;
 
 impl Graph {
     /// A total order on concrete terms that is independent of node ids:
@@ -36,24 +36,26 @@ impl Graph {
         if a == b {
             return Ordering::Equal;
         }
-        let rank = |n: NodeId| match self.payload(n) {
-            | Some(Payload::Num(_)) => 0_u8,
-            | Some(Payload::Bool(_)) => 1,
-            | Some(Payload::Str(_)) => 2,
-            | Some(Payload::Sym(_)) => 3,
-            | Some(Payload::Blob(_)) => 4,
-            | None => 5,
+        let rank = |n: NodeId| {
+            match self.payload(n) {
+                | Some(Payload::Num(_)) => 0_u8,
+                | Some(Payload::Bool(_)) => 1,
+                | Some(Payload::Str(_)) => 2,
+                | Some(Payload::Sym(_)) => 3,
+                | Some(Payload::Blob(_)) => 4,
+                | None => 5,
+            }
         };
-        rank(a)
-            .cmp(&rank(b))
-            .then_with(|| match (self.payload(a), self.payload(b)) {
+        rank(a).cmp(&rank(b)).then_with(|| {
+            match (self.payload(a), self.payload(b)) {
                 | (Some(Payload::Num(x)), Some(Payload::Num(y))) => x.total_cmp(y),
                 | (Some(Payload::Bool(x)), Some(Payload::Bool(y))) => x.cmp(y),
                 | (Some(Payload::Str(x)), Some(Payload::Str(y))) => x.cmp(y),
-                | (Some(Payload::Sym(x)), Some(Payload::Sym(y))) => self
-                    .interner()
-                    .symbol_name(*x)
-                    .cmp(self.interner().symbol_name(*y)),
+                | (Some(Payload::Sym(x)), Some(Payload::Sym(y))) => {
+                    self.interner()
+                        .symbol_name(*x)
+                        .cmp(self.interner().symbol_name(*y))
+                },
                 | (Some(_), Some(_)) => a.cmp(&b),
                 | _ => {
                     let (ca, cb) = (self.ordered_children(a), self.ordered_children(b));
@@ -70,11 +72,12 @@ impl Graph {
                         })
                         .then_with(|| ca.len().cmp(&cb.len()))
                 },
-            })
+            }
+        })
     }
 
     /// Children of `node` in canonical print order.
-    fn ordered_children(
+    pub(crate) fn ordered_children(
         &self,
         node: NodeId,
     ) -> Vec<NodeId> {
@@ -104,14 +107,16 @@ impl Graph {
 
     /// Splits `b^e` with a literal exponent into `(b, e)`; anything else is
     /// its own base with exponent one.
-    fn base_and_exponent(
+    pub(crate) fn base_and_exponent(
         &self,
         node: NodeId,
     ) -> (NodeId, f64) {
         match *self.children(node) {
-            | [base, exp] if self.op(node) == core::POW => match self.as_number(exp) {
-                | Some(n) => (base, n.to_f64()),
-                | None => (node, 1.0),
+            | [base, exp] if self.op(node) == core::POW => {
+                match self.as_number(exp) {
+                    | Some(n) => (base, n.to_f64()),
+                    | None => (node, 1.0),
+                }
             },
             | _ => (node, 1.0),
         }
@@ -130,7 +135,7 @@ impl Graph {
 
     /// Splits a product into `(coefficient, other factors)` when it has a
     /// literal numeric factor.
-    fn split_coefficient(
+    pub(crate) fn split_coefficient(
         &self,
         node: NodeId,
     ) -> Option<(Number, Vec<NodeId>)> {
@@ -173,7 +178,12 @@ impl Graph {
                     self.write_term(exp, PREC_ATOM, out);
                 }
             },
-            | core::APPLY if self.children(node).first().is_some_and(|&f| self.as_symbol(f).is_some()) => {
+            | core::APPLY
+                if self
+                    .children(node)
+                    .first()
+                    .is_some_and(|&f| self.as_symbol(f).is_some()) =>
+            {
                 // An unknown function applied: `y(t)`, as it is parsed.
                 let children = self.children(node);
                 self.write_leaf(children[0], out);
@@ -206,26 +216,32 @@ impl Graph {
         }
     }
 
-    fn precedence(
+    pub(crate) fn precedence(
         &self,
         node: NodeId,
     ) -> u8 {
         match self.op(node) {
             | core::EQ => PREC_EQ,
             | core::ADD => PREC_ADD,
-            | core::MUL => match self.split_coefficient(node) {
-                | Some((c, _)) if c.is_negative() => PREC_ADD,
-                | _ => PREC_MUL,
+            | core::MUL => {
+                match self.split_coefficient(node) {
+                    | Some((c, _)) if c.is_negative() => PREC_ADD,
+                    | _ => PREC_MUL,
+                }
             },
-            | core::POW => match self.children(node).get(1).and_then(|&e| self.as_number(e)) {
-                // Printed as a quotient: `1/x^2`.
-                | Some(e) if e.is_negative() => PREC_MUL,
-                | _ => PREC_POW,
+            | core::POW => {
+                match self.children(node).get(1).and_then(|&e| self.as_number(e)) {
+                    // Printed as a quotient: `1/x^2`.
+                    | Some(e) if e.is_negative() => PREC_MUL,
+                    | _ => PREC_POW,
+                }
             },
-            | core::LIT => match self.as_number(node) {
-                | Some(n) if n.is_negative() => PREC_ADD,
-                | Some(Number::Rat(_)) => PREC_MUL,
-                | _ => PREC_ATOM,
+            | core::LIT => {
+                match self.as_number(node) {
+                    | Some(n) if n.is_negative() => PREC_ADD,
+                    | Some(Number::Rat(_)) => PREC_MUL,
+                    | _ => PREC_ATOM,
+                }
             },
             | _ => PREC_ATOM,
         }
@@ -252,6 +268,33 @@ impl Graph {
         node: NodeId,
         out: &mut String,
     ) {
+        let terms = self.ordered_terms(node);
+        for (i, &term) in terms.iter().enumerate() {
+            let negated = self.negated(term);
+            match (i, &negated) {
+                | (0, Some(_)) => out.push('-'),
+                | (0, None) => {},
+                | (_, Some(_)) => out.push_str(" - "),
+                | (_, None) => out.push_str(" + "),
+            }
+            match negated {
+                | Some(Negated::Number(n)) => {
+                    let _ = write!(out, "{n}");
+                },
+                | Some(Negated::Product(coeff, factors)) => {
+                    self.write_factors(&coeff, &factors, out);
+                },
+                | None => self.write_term(term, PREC_MUL, out),
+            }
+        }
+    }
+
+    /// The terms of a sum in canonical print order: descending degree,
+    /// leading with a positive term when there is one.
+    pub(crate) fn ordered_terms(
+        &self,
+        node: NodeId,
+    ) -> Vec<NodeId> {
         // Descending degree, the constant term last: `x^2 + x + 1`.
         let mut terms = self.children(node).to_vec();
         terms.sort_by(|&a, &b| {
@@ -274,30 +317,13 @@ impl Graph {
                 .then_with(|| self.term_cmp(a, b))
         });
         // Lead with a positive term when there is one: `1 - x^2`.
-        if terms.first().is_some_and(|&t| self.negated(t).is_some()) {
-            if let Some(i) = terms.iter().position(|&t| self.negated(t).is_none()) {
-                let positive = terms.remove(i);
-                terms.insert(0, positive);
-            }
+        if terms.first().is_some_and(|&t| self.negated(t).is_some())
+            && let Some(i) = terms.iter().position(|&t| self.negated(t).is_none())
+        {
+            let positive = terms.remove(i);
+            terms.insert(0, positive);
         }
-        for (i, &term) in terms.iter().enumerate() {
-            let negated = self.negated(term);
-            match (i, &negated) {
-                | (0, Some(_)) => out.push('-'),
-                | (0, None) => {},
-                | (_, Some(_)) => out.push_str(" - "),
-                | (_, None) => out.push_str(" + "),
-            }
-            match negated {
-                | Some(Negated::Number(n)) => {
-                    let _ = write!(out, "{n}");
-                },
-                | Some(Negated::Product(coeff, factors)) => {
-                    self.write_factors(&coeff, &factors, out);
-                },
-                | None => self.write_term(term, PREC_MUL, out),
-            }
-        }
+        terms
     }
 
     /// A rough polynomial degree used only to order the terms of a sum.
@@ -311,9 +337,11 @@ impl Graph {
         match (self.op(node), self.children(node)) {
             | (core::MUL, factors) => factors.iter().map(|&f| self.degree(f)).sum(),
             | (core::ADD, terms) => terms.iter().map(|&t| self.degree(t)).fold(0.0, f64::max),
-            | (core::POW, &[base, exp]) => match self.as_number(exp) {
-                | Some(n) => self.degree(base) * n.to_f64(),
-                | None => 1.0,
+            | (core::POW, &[base, exp]) => {
+                match self.as_number(exp) {
+                    | Some(n) => self.degree(base) * n.to_f64(),
+                    | None => 1.0,
+                }
             },
             | _ => 1.0,
         }
@@ -336,7 +364,7 @@ impl Graph {
 
     /// If `term` is a negative number or has a negative coefficient, returns
     /// its negation in a printable form.
-    fn negated(
+    pub(crate) fn negated(
         &self,
         term: NodeId,
     ) -> Option<Negated> {
@@ -376,10 +404,11 @@ impl Graph {
         let mut denom: Vec<(NodeId, Number)> = Vec::new();
         for &factor in factors {
             let inverse = match *self.children(factor) {
-                | [base, exp] if self.op(factor) == core::POW => self
-                    .as_number(exp)
-                    .filter(|e| e.is_negative())
-                    .map(|e| (base, e.neg())),
+                | [base, exp] if self.op(factor) == core::POW => {
+                    self.as_number(exp)
+                        .filter(|e| e.is_negative())
+                        .map(|e| (base, e.neg()))
+                },
                 | _ => None,
             };
             match inverse {
@@ -428,7 +457,8 @@ impl Graph {
     }
 }
 
-enum Negated {
+/// A negative term in printable form.
+pub(crate) enum Negated {
     Number(Number),
     Product(Number, Vec<NodeId>),
 }

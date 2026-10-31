@@ -611,7 +611,7 @@ mod strengthened {
             let dt = 0.9 / (c.abs() / dx + 2.0 * d / (dx * dx) + 1e-12);
             let dt = dt.min(0.4);
             let res = solve_advection_diffusion_1d(&vals, dx, c, d, dt, 20);
-            prop_assert!(res.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12));
+            prop_assert!(res.iter().all(|&v| (-1e-12..=1.0 + 1e-12).contains(&v)));
         }
     }
 }

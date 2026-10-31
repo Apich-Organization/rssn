@@ -189,6 +189,10 @@ pub struct Graph {
     conflicts: Vec<(Number, Number)>,
     scratch: Vec<u32>,
     assumptions: HashMap<SymbolId, Facts>,
+    /// Interned base dimensions, exponent atoms and dimension variables.
+    pub(crate) dims: std::sync::Arc<std::sync::RwLock<crate::graph::dim::DimArena>>,
+    /// Declared dimensions of symbols.
+    pub(crate) dim_assumptions: HashMap<SymbolId, crate::graph::dim::DimTerm>,
 }
 
 impl Default for Graph {
@@ -225,6 +229,8 @@ impl Graph {
             conflicts: Vec::new(),
             scratch: Vec::new(),
             assumptions: HashMap::new(),
+            dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
+            dim_assumptions: HashMap::new(),
         }
     }
 
@@ -786,6 +792,9 @@ impl Graph {
                     buf.push(c);
                 }
             }
+            if op == core::ADD || op == core::MUL {
+                self.merge_literals(op, &mut buf);
+            }
             if let [only] = buf.as_slice() {
                 return Some(*only);
             }
@@ -796,6 +805,43 @@ impl Graph {
             buf.sort_unstable();
         }
         Some(self.intern(op, PayloadId::NONE, &buf))
+    }
+
+    /// Combines the literal operands of a sum or product into one and
+    /// drops it when it is the identity element: `2 * x * 3` is built as
+    /// `6 * x`, `(-1) * (-1) * x` as `x`. An identity of the operator, and
+    /// without it repeated negation piles up ever longer products of `-1`
+    /// in one class.
+    fn merge_literals(
+        &mut self,
+        op: OpId,
+        buf: &mut Vec<NodeId>,
+    ) {
+        let literals = buf.iter().filter(|&&c| self.as_number(c).is_some()).count();
+        let identity = Number::from(i64::from(op == core::MUL));
+        let has_identity = buf.iter().any(|&c| self.as_number(c) == Some(&identity));
+        if literals < 2 && !has_identity {
+            return;
+        }
+        let mut value = identity.clone();
+        let mut rest = Vec::with_capacity(buf.len());
+        for &c in buf.iter() {
+            match self.as_number(c) {
+                | Some(n) => {
+                    value = if op == core::ADD {
+                        value.add(n)
+                    } else {
+                        value.mul(n)
+                    }
+                },
+                | None => rest.push(c),
+            }
+        }
+        if value != identity || rest.is_empty() {
+            let literal = self.num(value);
+            rest.insert(0, literal);
+        }
+        *buf = rest;
     }
 
     fn intern(
@@ -993,7 +1039,9 @@ impl Graph {
             free: Vec::new(),
             approx: None,
             pin: NodeId::NONE,
-            leaf: if node.child_len == 0 {
+            // A nullary *request* (a defined constant such as a matrix)
+            // is not a final answer and must not hide what it reduces to.
+            leaf: if node.child_len == 0 && !self.ops.get(node.op).flags.has(OpFlags::HEAVY) {
                 id
             } else {
                 NodeId::NONE
@@ -1141,7 +1189,10 @@ impl Graph {
                     let (fx, fy) = (x.to_f64(), y.to_f64());
                     let close = (fx - fy).abs() <= 1e-6 * (1.0 + fx.abs().max(fy.abs()));
                     let contradiction = (x.is_exact() && y.is_exact()) || !close;
-                    (contradiction.then(|| (x.clone(), y.clone())), !x.is_exact() && y.is_exact())
+                    (
+                        contradiction.then(|| (x.clone(), y.clone())),
+                        !x.is_exact() && y.is_exact(),
+                    )
                 },
                 | (None, Some(_)) => (None, true),
                 | _ => (None, false),
@@ -1162,7 +1213,11 @@ impl Graph {
         // The class's leaf is its literal number if it has one, else
         // whichever childless member was there first.
         if prefer_lost || class.leaf.is_none() {
-            class.leaf = if lost.leaf.is_none() { class.leaf } else { lost.leaf };
+            class.leaf = if lost.leaf.is_none() {
+                class.leaf
+            } else {
+                lost.leaf
+            };
         }
         let before = class.free.len();
         class.free.retain(|s| lost.free.binary_search(s).is_ok());
@@ -1464,7 +1519,7 @@ mod tests {
         g.union(x, two);
         g.rebuild();
         assert_eq!(g.number_of(x), Some(&Number::from(2)));
-        assert!(g.conflicts().is_empty());
+        assert_eq!(g.conflicts(), []);
         let three = g.int(3);
         g.union(x, three);
         g.rebuild();
@@ -1478,8 +1533,12 @@ mod tests {
         let approx = g.float(1.0 / 3.0);
         g.union(approx, third);
         g.rebuild();
-        assert!(g.conflicts().is_empty());
-        assert_eq!(g.number_of(approx).map(Number::is_exact), Some(true), "the exact value is kept");
+        assert_eq!(g.conflicts(), []);
+        assert_eq!(
+            g.number_of(approx).map(Number::is_exact),
+            Some(true),
+            "the exact value is kept"
+        );
         assert_eq!(g.enodes(g.find(approx)).collect::<Vec<_>>(), vec![third]);
         let wrong = g.float(0.34);
         g.union(wrong, third);

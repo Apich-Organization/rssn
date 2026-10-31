@@ -54,7 +54,9 @@ use super::elementary::elementary;
 /// The complex-number rule set.
 #[must_use]
 pub fn complex() -> RuleSet {
-    RuleSet::new("complex", install).needs(elementary()).needs(calculus())
+    RuleSet::new("complex", install)
+        .needs(elementary())
+        .needs(calculus())
 }
 
 pub use crate::graph::ComplexEval;
@@ -76,7 +78,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ops.set_attr(arg, Always(Facts::REAL));
     }
     if let Some(abs) = i.graph().ops().lookup("abs") {
-        i.graph().ops_mut().set_attr(abs, Always(Facts::NONNEGATIVE));
+        i.graph()
+            .ops_mut()
+            .set_attr(abs, Always(Facts::NONNEGATIVE));
     }
     register_complex_evals(i.graph());
     i.rewrites(
@@ -86,21 +90,44 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/im-real: im(?x) => 0 if real(?x)",
             "complex/conj-real: conj(?x) => ?x if real(?x)",
             "complex/conj-conj: conj(conj(?x)) => ?x",
+            // Conjugation is a field automorphism and commutes with every
+            // function whose power series has real coefficients.
+            "complex/conj-add: conj(?a + ?b) => conj(?a) + conj(?b)",
+            "complex/conj-mul: conj(?a * ?b) => conj(?a) * conj(?b)",
+            "complex/conj-pow: conj(?a ^ ?n) => conj(?a) ^ ?n if integer(?n)",
+            "complex/conj-exp: conj(exp(?a)) => exp(conj(?a))",
+            "complex/conj-sin: conj(sin(?a)) => sin(conj(?a))",
+            "complex/conj-cos: conj(cos(?a)) => cos(conj(?a))",
+            "complex/conj-sinh: conj(sinh(?a)) => sinh(conj(?a))",
+            "complex/conj-cosh: conj(cosh(?a)) => cosh(conj(?a))",
             "complex/arg-positive: arg(?x) => 0 if positive(?x)",
             "complex/arg-negative: arg(?x) => pi if negative(?x)",
         ],
     )?;
     i.rewrites(
         Tier::Explore,
-        &[
-            "complex/euler: exp(I * ?x) <=> cos(?x) + I * sin(?x)",
-        ],
+        &["complex/euler: exp(I * ?x) <=> cos(?x) + I * sin(?x)"],
     )?;
-    let ops = Ops::of(i.graph()).ok_or(RuleError::Invalid { rule: "complex".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "complex".into(),
+            reason: "needs elementary",
+        }
+    })?;
     branches::install(i)?;
     analysis::install(i)?;
     i.kernel("complex/unit-power", Tier::Normalize, UnitPower { unit });
-    i.kernel("complex/parts", Tier::Normalize, Parts { ops, re, im, conj, arg });
+    i.kernel(
+        "complex/parts",
+        Tier::Normalize,
+        Parts {
+            ops,
+            re,
+            im,
+            conj,
+            arg,
+        },
+    );
     i.kernel("complex/exp-i", Tier::Normalize, ExpI { ops });
     Ok(())
 }
@@ -119,6 +146,8 @@ pub(crate) struct Ops {
     pub(crate) cosh: OpId,
     pub(crate) atan2: OpId,
     pub(crate) abs: OpId,
+    pub(crate) conj: OpId,
+    pub(crate) arg: OpId,
 }
 
 impl Ops {
@@ -136,15 +165,20 @@ impl Ops {
             cosh: get("cosh")?,
             atan2: get("atan2")?,
             abs: get("abs")?,
+            conj: get("conj")?,
+            arg: get("arg")?,
         })
     }
 }
 
 /// Term builders shared by the complex kernels.
 pub(crate) mod build {
-    use super::*;
+    use super::Graph;
+    use super::NodeId;
+    use super::OpId;
+    use super::core;
 
-    pub(crate) fn add(
+    pub fn add(
         graph: &mut Graph,
         terms: &[NodeId],
     ) -> NodeId {
@@ -155,7 +189,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn mul(
+    pub fn mul(
         graph: &mut Graph,
         factors: &[NodeId],
     ) -> NodeId {
@@ -166,7 +200,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn neg(
+    pub fn neg(
         graph: &mut Graph,
         x: NodeId,
     ) -> NodeId {
@@ -174,7 +208,7 @@ pub(crate) mod build {
         mul(graph, &[minus_one, x])
     }
 
-    pub(crate) fn sub(
+    pub fn sub(
         graph: &mut Graph,
         a: NodeId,
         b: NodeId,
@@ -183,7 +217,7 @@ pub(crate) mod build {
         add(graph, &[a, negated])
     }
 
-    pub(crate) fn pow(
+    pub fn pow(
         graph: &mut Graph,
         base: NodeId,
         exponent: NodeId,
@@ -191,7 +225,7 @@ pub(crate) mod build {
         graph.node(core::POW, &[base, exponent])
     }
 
-    pub(crate) fn powi(
+    pub fn powi(
         graph: &mut Graph,
         base: NodeId,
         exponent: i64,
@@ -200,7 +234,7 @@ pub(crate) mod build {
         pow(graph, base, e)
     }
 
-    pub(crate) fn call(
+    pub fn call(
         graph: &mut Graph,
         op: OpId,
         args: &[NodeId],
@@ -209,7 +243,7 @@ pub(crate) mod build {
     }
 
     /// `a + b*I`.
-    pub(crate) fn complex(
+    pub fn complex(
         graph: &mut Graph,
         unit: OpId,
         re: NodeId,
@@ -344,6 +378,34 @@ fn split_term(
                     (mul(graph, &[cosh_a, cos_b]), mul(graph, &[sinh_a, sin_b]))
                 })
             },
+            | (op, &[y, x]) if op == ops.atan2 => {
+                // real for real arguments
+                let (_, by) = part(graph, y)?;
+                let (_, bx) = part(graph, x)?;
+                let zero_part =
+                    |graph: &Graph, n: NodeId| graph.number_of(n).is_some_and(Number::is_zero);
+                (zero_part(graph, by) && zero_part(graph, bx)).then_some((term, zero))
+            },
+            | (op, &[w]) if op == ops.re => {
+                let (a, _) = part(graph, w)?;
+                Some((a, zero))
+            },
+            | (op, &[w]) if op == ops.im => {
+                let (_, b) = part(graph, w)?;
+                Some((b, zero))
+            },
+            | (op, &[w]) if op == ops.conj => {
+                let (a, b) = part(graph, w)?;
+                Some((a, neg(graph, b)))
+            },
+            | (op, &[w]) if op == ops.abs => {
+                let (a, b) = part(graph, w)?;
+                Some((modulus(graph, a, b), zero))
+            },
+            | (op, &[w]) if op == ops.arg => {
+                let (a, b) = part(graph, w)?;
+                Some((call(graph, ops.atan2, &[b, a]), zero))
+            },
             | _ => None,
         }
     };
@@ -428,7 +490,10 @@ impl Kernel for UnitPower {
         let &[base, exponent] = graph.children(node) else {
             return Outcome::Pass;
         };
-        if !graph.enodes(graph.find(base)).any(|n| graph.op(n) == self.unit) {
+        if !graph
+            .enodes(graph.find(base))
+            .any(|n| graph.op(n) == self.unit)
+        {
             return Outcome::Pass;
         }
         let Some(n) = graph.number_of(exponent).and_then(Number::to_i64) else {
@@ -498,13 +563,27 @@ impl Kernel for Parts {
             // On the imaginary axis atan2 has no closed form here.
             let a_zero = graph.number_of(a).is_some_and(Number::is_zero);
             let b_sign = graph.facts(b);
-            match (a_zero, b_sign.has(Facts::POSITIVE), b_sign.has(Facts::NEGATIVE)) {
+            match (
+                a_zero,
+                b_sign.has(Facts::POSITIVE),
+                b_sign.has(Facts::NEGATIVE),
+            ) {
                 | (true, true, _) | (true, _, true) => {
                     let pi = graph.ops().lookup("pi").map(|p| graph.node(p, &[]));
                     let Some(pi) = pi else {
                         return Outcome::Pass;
                     };
-                    let half = graph.num(Number::fraction(if b_sign.has(Facts::POSITIVE) { 1 } else { -1 }, 2).unwrap_or_else(|| Number::from(0)));
+                    let half = graph.num(
+                        Number::fraction(
+                            if b_sign.has(Facts::POSITIVE) {
+                                1
+                            } else {
+                                -1
+                            },
+                            2,
+                        )
+                        .unwrap_or_else(|| Number::from(0)),
+                    );
                     mul(graph, &[half, pi])
                 },
                 | _ => call(graph, self.ops.atan2, &[b, a]),
@@ -553,7 +632,8 @@ impl Kernel for ExpI {
         let cos = call(cx.graph, self.ops.cos, &[b]);
         let sin = call(cx.graph, self.ops.sin, &[b]);
         let (cos, sin) = (cx.simplify(cos), cx.simplify(sin));
-        if mentions(cx.graph, cos, &[self.ops.cos, self.ops.sin]) || mentions(cx.graph, sin, &[self.ops.cos, self.ops.sin])
+        if mentions(cx.graph, cos, &[self.ops.cos, self.ops.sin])
+            || mentions(cx.graph, sin, &[self.ops.cos, self.ops.sin])
         {
             return Outcome::Pass;
         }
@@ -601,8 +681,14 @@ fn register_complex_evals(graph: &mut Graph) {
         ("im", unary!(|z: &Complex64| Complex64::new(z.im, 0.0))),
         ("conj", unary!(|z: &Complex64| z.conj())),
         ("arg", unary!(|z: &Complex64| Complex64::new(z.arg(), 0.0))),
-        ("pi", ComplexEval(|_| Some(Complex64::new(std::f64::consts::PI, 0.0)))),
-        ("E", ComplexEval(|_| Some(Complex64::new(std::f64::consts::E, 0.0)))),
+        (
+            "pi",
+            ComplexEval(|_| Some(Complex64::new(std::f64::consts::PI, 0.0))),
+        ),
+        (
+            "E",
+            ComplexEval(|_| Some(Complex64::new(std::f64::consts::E, 0.0))),
+        ),
     ];
     for (name, eval) in table {
         if let Some(op) = graph.ops().lookup(name) {
@@ -614,6 +700,7 @@ fn register_complex_evals(graph: &mut Graph) {
 /// Evaluates the concrete term `node` over the complex numbers; see
 /// [`Graph::eval_complex`].
 #[must_use]
+#[allow(clippy::implicit_hasher)] // delegates to `Graph::eval_complex`, which fixes the default hasher
 pub fn eval_complex(
     graph: &Graph,
     node: NodeId,
@@ -673,8 +760,16 @@ mod tests {
         ];
         for (src, want) in cases {
             let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
-            engine.run(&mut g, &[root], &crate::graph::Env::symbolic(), &crate::graph::Saturate, &crate::graph::Budget::default());
-            let got = crate::graph::Extractor::new(&g, &[root], &crate::graph::SizeCost).build(&mut g, root).map(|n| g.display(n));
+            engine.run(
+                &mut g,
+                &[root],
+                &crate::graph::Env::symbolic(),
+                &crate::graph::Saturate,
+                &crate::graph::Budget::default(),
+            );
+            let got = crate::graph::Extractor::new(&g, &[root], &crate::graph::SizeCost)
+                .build(&mut g, root)
+                .map(|n| g.display(n));
             assert_eq!(got.as_deref(), Some(want), "{src}");
         }
     }
@@ -683,10 +778,12 @@ mod tests {
     fn complex_evaluation() {
         let mut g = Graph::new();
         assert!(Engine::install(&mut g, &[complex()]).is_ok());
-        let root = g.parse("exp(I*z) * (1 + I)^2 + ln(z)").unwrap_or_else(|e| panic!("{e}"));
+        let root = g
+            .parse("exp(I*z) * (1 + I)^2 + ln(z)")
+            .unwrap_or_else(|e| panic!("{e}"));
         let z = g.interner_mut().symbol("z");
         let at = Complex64::new(0.3, -0.4);
-        let bindings: HashMap<SymbolId, Complex64> = [(z, at)].into_iter().collect();
+        let bindings: HashMap<SymbolId, Complex64> = std::iter::once((z, at)).collect();
         let got = eval_complex(&g, root, &bindings).unwrap_or_default();
         let i = Complex64::new(0.0, 1.0);
         let want = (i * at).exp() * (1.0 + i) * (1.0 + i) + at.ln();
@@ -700,7 +797,15 @@ mod tests {
         let mut g = Graph::new();
         assert!(Engine::install(&mut g, &[complex()]).is_ok());
         let ops = Ops::of(&g).unwrap_or_else(|| panic!("ops"));
-        for src in ["exp(2 + 3*I)", "sin(1 - 2*I)", "cosh(0.5 + I)", "ln(-1 + I)", "(2 + I)^-3", "2^(1 + I)", "cos(I)*sinh(1 + I)"] {
+        for src in [
+            "exp(2 + 3*I)",
+            "sin(1 - 2*I)",
+            "cosh(0.5 + I)",
+            "ln(-1 + I)",
+            "(2 + I)^-3",
+            "2^(1 + I)",
+            "cos(I)*sinh(1 + I)",
+        ] {
             let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
             let (a, b) = split(&mut g, ops, root).unwrap_or_else(|| panic!("no split for {src}"));
             let none = HashMap::new();
@@ -708,7 +813,10 @@ mod tests {
             let a = eval_complex(&g, a, &none).unwrap_or_default();
             let b = eval_complex(&g, b, &none).unwrap_or_default();
             assert!(a.im.abs() < 1e-12 && b.im.abs() < 1e-12, "{src}");
-            assert!((Complex64::new(a.re, b.re) - whole).norm() < 1e-12, "{src}: {whole} vs {a} + i{b}");
+            assert!(
+                (Complex64::new(a.re, b.re) - whole).norm() < 1e-12,
+                "{src}: {whole} vs {a} + i{b}"
+            );
         }
     }
 }

@@ -2,6 +2,11 @@
 //!
 //! Partial sums, and infinite sums with convergence acceleration.
 
+use crate::kernels::convergence::LevinVariant;
+use crate::kernels::convergence::levin_transform;
+use crate::kernels::convergence::richardson_extrapolation_with;
+use crate::kernels::convergence::wynn_epsilon;
+
 /// Result of summing an infinite series numerically.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeriesSum {
@@ -11,6 +16,21 @@ pub struct SeriesSum {
     pub error: f64,
     /// Number of terms evaluated.
     pub terms: usize,
+}
+
+/// Evaluates the power series `sum_n coefficients[n] * (x - center)^n` by
+/// Horner's scheme. An empty coefficient list gives 0.
+#[must_use]
+pub fn evaluate_power_series(
+    coefficients: &[f64],
+    center: f64,
+    x: f64,
+) -> f64 {
+    let dx = x - center;
+    coefficients
+        .iter()
+        .rev()
+        .fold(0.0, |acc, &c| acc.mul_add(dx, c))
 }
 
 /// Sum of `term(k)` for `k` from `from` to `to` inclusive, with Kahan
@@ -33,70 +53,18 @@ pub fn sum_range(
     sum
 }
 
-/// Wynn's epsilon algorithm on a sequence of partial sums: returns the
-/// accelerated limit estimate.
-fn wynn_epsilon(partial: &[f64]) -> f64 {
-    let n = partial.len();
-    let mut previous = vec![0.0_f64; n + 1];
-    let mut current: Vec<f64> = partial.to_vec();
-    let mut best = partial.last().copied().unwrap_or(0.0);
-    let mut column = 1;
-    while current.len() > 1 {
-        let mut next = Vec::with_capacity(current.len() - 1);
-        for i in 0..current.len() - 1 {
-            let delta = current[i + 1] - current[i];
-            if delta == 0.0 {
-                // The sequence has converged exactly at this point.
-                return if column % 2 == 1 { current[i + 1] } else { best };
-            }
-            next.push(previous[i + 1] + 1.0 / delta);
-        }
-        previous = current;
-        current = next;
-        column += 1;
-        if column % 2 == 1 {
-            // Odd columns (counting the partial sums as column 1) hold
-            // the accelerated estimates.
-            if let Some(&last) = current.last() {
-                if last.is_finite() {
-                    best = last;
-                }
-            }
-        }
-    }
-    best
-}
-
-/// Richardson extrapolation of partial sums taken at `n, 2n, 4n, ...`
-/// terms, for series whose remainder has an expansion in powers of `1/n`
-/// (`1/k^2`, rational summands). Returns the estimate and the difference
-/// between the last two extrapolants.
-fn richardson(partial_at_doublings: &[f64]) -> (f64, f64) {
-    let mut row: Vec<f64> = partial_at_doublings.to_vec();
-    let mut diagonal = vec![row.first().copied().unwrap_or(0.0)];
-    let mut power = 2.0_f64;
-    while row.len() > 1 {
-        row = row.windows(2).map(|w| (power * w[1] - w[0]) / (power - 1.0)).collect();
-        if let Some(&first) = row.first() {
-            diagonal.push(first);
-        }
-        power *= 2.0;
-    }
-    match diagonal.as_slice() {
-        | [.., previous, last] => (*last, (last - previous).abs()),
-        | [only] => (*only, f64::INFINITY),
-        | [] => (0.0, f64::INFINITY),
-    }
-}
+/// Partial sums kept for the Levin transform.
+const LEVIN_TERMS: usize = 40;
 
 /// Sum of `term(k)` for `k = from, from + 1, ...` to infinity.
 ///
 /// Partial sums are accumulated up to doubling checkpoints. At each one
-/// two extrapolations are tried — Wynn's epsilon algorithm on the recent
-/// partial sums (geometric and alternating convergence) and Richardson
+/// three extrapolations are tried — Wynn's epsilon algorithm on the recent
+/// partial sums (geometric and alternating convergence), Richardson
 /// extrapolation over the checkpoints (algebraic convergence such as
-/// `1/k^2`) — and the process stops when the better of the two changes by
-/// less than `tolerance`, or `max_terms` have been used. The error
+/// `1/k^2`) and the Levin u transform of the first partial sums
+/// (logarithmic and alternating convergence) — and the process stops when
+/// the best of them changes by less than `tolerance`, or `max_terms` have been used. The error
 /// estimate is that last change, so a series that does not converge shows
 /// up as a large error rather than as a confident wrong number.
 pub fn sum_to_infinity(
@@ -113,12 +81,19 @@ pub fn sum_to_infinity(
     let mut best = (f64::NAN, f64::INFINITY);
     let mut previous = (f64::NAN, f64::NAN);
     let mut target = 16_usize;
+    // The first partial sums, for the Levin u transform (which needs the
+    // early terms and is best on logarithmically convergent series).
+    let mut head: Vec<f64> = Vec::new();
     while used < max_terms {
         while used < target {
             #[allow(clippy::cast_precision_loss)]
             let t = term(k as f64);
             if !t.is_finite() {
-                return SeriesSum { value: f64::NAN, error: f64::INFINITY, terms: used };
+                return SeriesSum {
+                    value: f64::NAN,
+                    error: f64::INFINITY,
+                    terms: used,
+                };
             }
             sum += t;
             k += 1;
@@ -126,13 +101,30 @@ pub fn sum_to_infinity(
             if target - used < 24 {
                 recent.push(sum);
             }
+            if head.len() < LEVIN_TERMS {
+                head.push(sum);
+            }
         }
         checkpoints.push(sum);
-        let wynn = wynn_epsilon(&recent);
-        let (rich, _) = richardson(&checkpoints);
+        let wynn = wynn_epsilon(&recent).last().copied().unwrap_or(0.0);
+        let rich = richardson_extrapolation_with(&checkpoints, 2.0)
+            .last()
+            .copied()
+            .unwrap_or(0.0);
         // Each extrapolation is judged by how much it moved since the
         // previous checkpoint.
-        let candidates = [(wynn, (wynn - previous.0).abs()), (rich, (rich - previous.1).abs())];
+        // The Levin estimate is judged by its last two orders: the head
+        // stops growing, so its change between checkpoints would vanish.
+        let transforms = levin_transform(&head, LevinVariant::U, 1.0);
+        let levin = match transforms.as_slice() {
+            | [.., before, last] if transforms.len() >= 8 => (*last, (last - before).abs()),
+            | _ => (f64::NAN, f64::INFINITY),
+        };
+        let candidates = [
+            (wynn, (wynn - previous.0).abs()),
+            (rich, (rich - previous.1).abs()),
+            levin,
+        ];
         previous = (wynn, rich);
         for (value, change) in candidates {
             if value.is_finite() && change.is_finite() && change < best.1 {
@@ -145,7 +137,11 @@ pub fn sum_to_infinity(
         recent.clear();
         target *= 2;
     }
-    SeriesSum { value: best.0, error: best.1, terms: used }
+    SeriesSum {
+        value: best.0,
+        error: best.1,
+        terms: used,
+    }
 }
 
 #[cfg(test)]
@@ -153,9 +149,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn power_series_evaluation() {
+        // 1 + x + x^2/2 at x = 1 around 0.
+        assert!((evaluate_power_series(&[1.0, 1.0, 0.5], 0.0, 1.0) - 2.5).abs() < 1e-15);
+        // (x - 2)^2 expanded around 2: 0 + 0 x + 1 x^2 at x = 5.
+        assert!((evaluate_power_series(&[0.0, 0.0, 1.0], 2.0, 5.0) - 9.0).abs() < 1e-9);
+        assert!((evaluate_power_series(&[], 1.0, 3.0) - 0.0).abs() < 1e-9);
+        assert!((evaluate_power_series(&[4.0], 1.0, 3.0) - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
     fn finite_sums() {
-        assert_eq!(sum_range(|k| k, 1, 100), 5050.0);
-        assert_eq!(sum_range(|k| k, 5, 4), 0.0);
+        assert!((sum_range(|k| k, 1, 100) - 5050.0).abs() < 1e-9);
+        assert!((sum_range(|k| k, 5, 4) - 0.0).abs() < 1e-9);
         assert!((sum_range(|k| 0.1 * k.powi(0), 1, 10) - 1.0).abs() < 1e-15);
     }
 
@@ -167,6 +173,12 @@ mod tests {
         let s = sum_to_infinity(|k| (-1.0_f64).powf(k + 1.0) / k, 1, 1e-12, 10_000);
         assert!((s.value - std::f64::consts::LN_2).abs() < 1e-10, "{s:?}");
         assert!(s.terms < 200, "acceleration should need few terms: {s:?}");
+        // zeta(2) converges logarithmically.
+        let s = sum_to_infinity(|k| 1.0 / (k * k), 1, 1e-13, 10_000);
+        assert!(
+            (s.value - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-11,
+            "{s:?}"
+        );
     }
 
     #[test]
@@ -175,7 +187,10 @@ mod tests {
         let s = sum_to_infinity(|k| 1.0 / (k * k), 1, 1e-10, 200_000);
         let exact = std::f64::consts::PI.powi(2) / 6.0;
         assert!((s.value - exact).abs() < 1e-9, "{s:?}");
-        assert!(s.terms <= 70_000, "Richardson should not need many terms: {s:?}");
+        assert!(
+            s.terms <= 70_000,
+            "Richardson should not need many terms: {s:?}"
+        );
     }
 
     #[test]

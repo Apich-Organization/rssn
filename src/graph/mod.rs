@@ -10,6 +10,14 @@
 //! [`crate::rules`] and talk to the kernel only through operators registered
 //! in the [`OpTable`] and rules grouped into rule sets.
 
+pub mod dim;
+// `pub(crate)` is the intended visibility: these are internal modules, so
+// `pub` items inside them are exactly as crate-private. Keep the explicit
+// `pub(crate)`: no extra visibility attribute is needed on the modules.
+
+
+pub(crate) mod dim_expr;
+pub(crate) mod dim_infer;
 pub mod eval;
 pub mod extract;
 pub mod facts;
@@ -28,13 +36,25 @@ pub mod store;
 pub mod subst;
 pub mod window;
 
+pub use dim::BaseId;
+pub use dim::DimError;
+pub use dim::DimOutcome;
+pub use dim::DimRule;
+pub use dim::DimTerm;
+pub use dim::DimVarId;
+pub use dim::Dimension;
+pub use dim::DimensionMode;
+pub use dim::FamilySource;
+pub use dim::UnitInfo;
+pub use dim::UnitResolver;
+pub use dim::UnitTextResolver;
+pub use eval::ComplexEval;
 pub use extract::ClosedForm;
 pub use extract::CostModel;
 pub use extract::Extractor;
 pub use extract::SizeCost;
-pub use facts::Facts;
-pub use eval::ComplexEval;
 pub use facts::Always;
+pub use facts::Facts;
 pub use facts::OnReals;
 pub use id::ClassId;
 pub use id::NodeId;
@@ -59,6 +79,8 @@ pub use rule::Guard;
 pub use rule::Installer;
 pub use rule::Kernel;
 pub use rule::Outcome;
+pub use rule::Prepared;
+pub use rule::PreparedWork;
 pub use rule::Program;
 pub use rule::Rewrite;
 pub use rule::Rule;

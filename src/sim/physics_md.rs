@@ -37,6 +37,27 @@
 //!
 //! let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
 //! ```
+//!
+//! ## Coverage
+//!
+//! | Capability | Support in this module |
+//! |---|---|
+//! | Dimension | runtime dimension (`Vec<f64>`), 1-3 D |
+//! | Boundaries | periodic with minimum image (`apply_pbc`, `minimum_image_distance`); open |
+//! | Initial conditions | cubic/fcc lattices, Maxwell-Boltzmann velocities |
+//! | Thermostats | rescaling, Berendsen, Langevin BAOAB, Nose-Hoover |
+//! | Neighbours | `neighbour_pairs`: cell list of the engine ([`crate::sim::md_engine::NeighbourList`]) for 1-3 D |
+//! | Radial distribution | `radial_distribution_function`: engine [`crate::sim::md_engine::Rdf`] for 1-3 D (correct shell volume per dimension) |
+//! | Nose-Hoover | `integrate_nose_hoover` uses the engine [`crate::sim::md_engine::NoseHooverChain`] (single thermostat, Suzuki-Yoshida) |
+//! | Engine bridge | [`run_engine_md`] runs Lennard-Jones MD for a runtime dimension 1-3 on the const-generic [`crate::sim::md_engine::MdSimulation`] (cell lists, Nose-Hoover chain / Langevin / Berendsen) and writes the state back into the `Particle` vector |
+//!
+//! The legacy `Vec<f64>` force-callback integrators remain for arbitrary user
+//! forces; everything with a built-in force field goes through the const-generic
+//! engine [`crate::sim::md_engine`], which adds reflecting / thermal walls,
+//! Lees-Edwards shear, triclinic flexible cells with Parrinello-Rahman /
+//! MTK barostats, SHAKE/RATTLE, rigid molecules ([`crate::sim::md_rigid`]) and
+//! more observables; [`crate::sim::ewald`] provides Ewald and PME. Runtime
+//! dimensions above 3 are only available through the callback API.
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -45,6 +66,15 @@ use crate::kernels::vector::norm;
 use crate::kernels::vector::scalar_mul;
 use crate::kernels::vector::vec_add;
 use crate::kernels::vector::vec_sub;
+use crate::sim::md_engine::ForceField;
+use crate::sim::md_engine::MdSimulation;
+use crate::sim::md_engine::MdSystem;
+use crate::sim::md_engine::NeighbourList;
+use crate::sim::md_engine::NoseHooverChain;
+use crate::sim::md_engine::PairTerm;
+use crate::sim::md_engine::Rdf;
+use crate::sim::md_engine::SimBox;
+use crate::sim::md_engine::Thermostat;
 
 // ============================================================================
 // Physical Constants (Reduced Units)
@@ -702,6 +732,16 @@ pub fn radial_distribution_function(
         return (vec![], vec![]);
     }
 
+    let engine = match particles[0].position.len() {
+        | 1 => engine_rdf::<1>(particles, box_size, num_bins, r_max),
+        | 2 => engine_rdf::<2>(particles, box_size, num_bins, r_max),
+        | 3 => engine_rdf::<3>(particles, box_size, num_bins, r_max),
+        | _ => None,
+    };
+    if let Some(r) = engine {
+        return r;
+    }
+
     let dr = r_max / num_bins as f64;
 
     let mut histogram = vec![0usize; num_bins];
@@ -739,8 +779,6 @@ pub fn radial_distribution_function(
         .iter()
         .enumerate()
         .map(|(i, &count)| {
-            let _r = (i as f64 + 0.5) * dr;
-
             let shell_volume =
                 (4.0 / 3.0) * pi * (((i + 1) as f64 * dr).powi(3) - (i as f64 * dr).powi(3));
 
@@ -791,17 +829,10 @@ pub fn initialize_velocities_maxwell_boltzmann(
     // Simple pseudo-random generator (LCG)
     let mut rng_state = rng_seed;
 
-    let _next_random = || {
-        rng_state = rng_state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-
-        (rng_state >> 33) as f64 / (1u64 << 31) as f64
-    };
-
     // Box-Muller transform for Gaussian random numbers
     let gaussian = |rng: &mut dyn FnMut() -> f64| -> f64 {
-        let u1 = rng();
+        // In (0, 1], so the logarithm stays finite.
+        let u1 = 1.0 - rng();
 
         let u2 = rng();
 
@@ -904,4 +935,500 @@ pub fn create_fcc_lattice(
     }
 
     particles
+}
+
+// ============================================================================
+// Stochastic and extended-system thermostats, neighbour lists
+// ============================================================================
+
+/// A deterministic Gaussian sampler (`SplitMix64` + Box–Muller), so that
+/// Langevin runs are reproducible from a seed.
+#[derive(Clone, Debug)]
+pub struct GaussianStream {
+    state: u64,
+    spare: Option<f64>,
+}
+
+impl GaussianStream {
+    /// A stream seeded with `seed`.
+    #[must_use]
+    pub const fn new(seed: u64) -> Self {
+        Self {
+            state: seed,
+            spare: None,
+        }
+    }
+
+    fn uniform(&mut self) -> f64 {
+        self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
+        ((z >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+    }
+
+    /// A standard normal deviate.
+    pub fn next_normal(&mut self) -> f64 {
+        if let Some(s) = self.spare.take() {
+            return s;
+        }
+        let (u1, u2) = (self.uniform(), self.uniform());
+        let r = (-2.0 * u1.ln()).sqrt();
+        let theta = 2.0 * std::f64::consts::PI * u2;
+        self.spare = Some(r * theta.sin());
+        r * theta.cos()
+    }
+}
+
+/// Langevin dynamics with the BAOAB splitting (Leimkuhler–Matthews):
+///
+/// half kick (B), half drift (A), exact Ornstein–Uhlenbeck velocity update
+/// with friction `gamma` at temperature `kt` (O), half drift, half kick.
+/// Samples the canonical ensemble with configurational error `O(dt²)`.
+///
+/// # Errors
+/// Propagates errors of the force calculation.
+pub fn integrate_langevin_baoab<F>(
+    particles: &mut [Particle],
+    dt: f64,
+    num_steps: usize,
+    gamma: f64,
+    kt: f64,
+    noise: &mut GaussianStream,
+    mut force_calculator: F,
+) -> Result<(), String>
+where
+    F: FnMut(&mut [Particle]) -> Result<(), String>,
+{
+    let c1 = (-gamma * dt).exp();
+    force_calculator(particles)?;
+    for _ in 0..num_steps {
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+                p.position[k] += 0.5 * dt * p.velocity[k];
+            }
+            let c2 = ((1.0 - c1 * c1) * kt / p.mass).sqrt();
+            for v in &mut p.velocity {
+                *v = c1 * *v + c2 * noise.next_normal();
+            }
+            for k in 0..p.position.len() {
+                p.position[k] += 0.5 * dt * p.velocity[k];
+            }
+        }
+        force_calculator(particles)?;
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The Nosé–Hoover thermostat:
+///
+/// the friction `ξ` obeys `Q dξ/dt = Σ m v² - N_f kT`, a deterministic
+/// extended system whose invariant `H + Q ξ²/2 + N_f kT s` (with `ds/dt =
+/// ξ`) is conserved. Velocity-Verlet with the friction applied as an exact
+/// exponential scaling in half steps. Returns the final `(ξ, s)`.
+///
+/// # Errors
+/// Propagates errors of the force calculation.
+#[allow(clippy::too_many_arguments)]
+pub fn integrate_nose_hoover<F>(
+    particles: &mut [Particle],
+    dt: f64,
+    num_steps: usize,
+    kt: f64,
+    q_mass: f64,
+    xi0: f64,
+    mut force_calculator: F,
+) -> Result<(f64, f64), String>
+where
+    F: FnMut(&mut [Particle]) -> Result<(), String>,
+{
+    let degrees: f64 = particles.iter().map(|p| p.velocity.len() as f64).sum();
+    let mut chain = NoseHooverChain {
+        t0: kt,
+        q: vec![q_mass],
+        xi: vec![0.0],
+        vxi: vec![xi0],
+        nf: degrees,
+    };
+    let kinetic2 = |ps: &[Particle]| -> f64 {
+        ps.iter()
+            .map(|p| p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>())
+            .sum()
+    };
+    force_calculator(particles)?;
+    for _ in 0..num_steps {
+        let scale = chain.propagate(kinetic2(particles), dt);
+        for p in particles.iter_mut() {
+            p.velocity.iter_mut().for_each(|v| *v *= scale);
+        }
+        // Velocity Verlet.
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+                p.position[k] += dt * p.velocity[k];
+            }
+        }
+        force_calculator(particles)?;
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+            }
+        }
+        let scale = chain.propagate(kinetic2(particles), dt);
+        for p in particles.iter_mut() {
+            p.velocity.iter_mut().for_each(|v| *v *= scale);
+        }
+    }
+    let (xi, s) = (chain.vxi[0], chain.xi[0]);
+    Ok((xi, s))
+}
+
+/// Pairs `(i, j)`, `i < j`, closer than `cutoff` under periodic
+/// boundaries in a box of side `box_length`.
+///
+/// They are found with a linked-cell list in `O(N)` time (cells of side at
+/// least `cutoff`; a plain double loop when the box holds fewer than three
+/// cells per side).
+#[must_use]
+#[allow(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss
+)]
+pub fn neighbour_pairs(
+    particles: &[Particle],
+    box_length: f64,
+    cutoff: f64,
+) -> Vec<(usize, usize)> {
+    let dim = particles.first().map_or(0, |p| p.position.len());
+    let side = [box_length; 3];
+    match dim {
+        | 1 => {
+            if let Some(p) = engine_pairs::<1>(particles, &side[..1], cutoff) {
+                return p;
+            }
+        },
+        | 2 => {
+            if let Some(p) = engine_pairs::<2>(particles, &side[..2], cutoff) {
+                return p;
+            }
+        },
+        | 3 => {
+            if let Some(p) = engine_pairs::<3>(particles, &side[..3], cutoff) {
+                return p;
+            }
+        },
+        | _ => {},
+    }
+    let distance2 = |a: &[f64], b: &[f64]| -> f64 {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| {
+                let mut d = x - y;
+                d -= box_length * (d / box_length).round();
+                d * d
+            })
+            .sum()
+    };
+    let cells_per_side = (box_length / cutoff).floor() as usize;
+    let mut pairs = Vec::new();
+    if cells_per_side < 3 || dim == 0 || dim > 3 {
+        for i in 0..particles.len() {
+            for j in i + 1..particles.len() {
+                if distance2(&particles[i].position, &particles[j].position) < cutoff * cutoff {
+                    pairs.push((i, j));
+                }
+            }
+        }
+        return pairs;
+    }
+    let side = box_length / cells_per_side as f64;
+    let cell_of = |pos: &[f64]| -> Vec<usize> {
+        pos.iter()
+            .map(|&x| {
+                let wrapped = x.rem_euclid(box_length);
+                ((wrapped / side) as usize).min(cells_per_side - 1)
+            })
+            .collect()
+    };
+    let flat = |c: &[usize]| c.iter().fold(0, |acc, &k| acc * cells_per_side + k);
+    let mut cells: Vec<Vec<usize>> = vec![Vec::new(); cells_per_side.pow(dim as u32)];
+    for (i, p) in particles.iter().enumerate() {
+        cells[flat(&cell_of(&p.position))].push(i);
+    }
+    // Neighbouring cell offsets in {-1, 0, 1}^dim.
+    let offsets: Vec<Vec<isize>> = (0..3_usize.pow(dim as u32))
+        .map(|mut code| {
+            (0..dim)
+                .map(|_| {
+                    let o = (code % 3) as isize - 1;
+                    code /= 3;
+                    o
+                })
+                .collect()
+        })
+        .collect();
+    for (i, p) in particles.iter().enumerate() {
+        let home = cell_of(&p.position);
+        for offset in &offsets {
+            let neighbour: Vec<usize> = home
+                .iter()
+                .zip(offset)
+                .map(|(&c, &o)| (c as isize + o).rem_euclid(cells_per_side as isize) as usize)
+                .collect();
+            for &j in &cells[flat(&neighbour)] {
+                if j > i && distance2(&p.position, &particles[j].position) < cutoff * cutoff {
+                    pairs.push((i, j));
+                }
+            }
+        }
+    }
+    pairs.sort_unstable();
+    pairs.dedup();
+    pairs
+}
+
+// ============================================================================
+// Bridge to the const-generic engine
+// ============================================================================
+
+/// Builds an engine system from runtime-dimension particles in a periodic box
+/// (`None` if the dimensions do not match `D`).
+fn engine_system<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+) -> Option<MdSystem<D>> {
+    if box_size.len() != D
+        || particles
+            .iter()
+            .any(|p| p.position.len() != D || p.velocity.len() != D)
+    {
+        return None;
+    }
+    let mut len = [0.0; D];
+    len.copy_from_slice(box_size);
+    let to_arr = |v: &[f64]| -> [f64; D] {
+        let mut a = [0.0; D];
+        a.copy_from_slice(v);
+        a
+    };
+    let pos = particles.iter().map(|p| to_arr(&p.position)).collect();
+    let mut sys = MdSystem::new(pos, SimBox::periodic(len));
+    for (i, p) in particles.iter().enumerate() {
+        sys.vel[i] = to_arr(&p.velocity);
+        sys.mass[i] = p.mass;
+        sys.charge[i] = p.charge;
+    }
+    Some(sys)
+}
+
+fn engine_rdf<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+    bins: usize,
+    r_max: f64,
+) -> Option<(Vec<f64>, Vec<f64>)> {
+    let sys = engine_system::<D>(particles, box_size)?;
+    let mut rdf = Rdf::<D>::new(bins, r_max);
+    rdf.add_frame(&sys);
+    let res = rdf.result();
+    Some((
+        res.iter().map(|x| x.0).collect(),
+        res.iter().map(|x| x.1).collect(),
+    ))
+}
+
+fn engine_pairs<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+    cutoff: f64,
+) -> Option<Vec<(usize, usize)>> {
+    let sys = engine_system::<D>(particles, box_size)?;
+    let mut nl = NeighbourList::new(cutoff, 0.0);
+    nl.build(&sys);
+    let mut pairs = nl.pairs;
+    pairs.sort_unstable();
+    pairs.dedup();
+    Some(pairs)
+}
+
+/// Thermostat choice of [`run_engine_md`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EngineThermostat {
+    /// Microcanonical.
+    None,
+    /// Nose-Hoover chain (`t0`, relaxation time, chain length).
+    NoseHooverChain(f64, f64, usize),
+    /// Langevin BAOAB (`t0`, friction).
+    Langevin(f64, f64),
+    /// Berendsen weak coupling (`t0`, relaxation time).
+    Berendsen(f64, f64),
+}
+
+fn run_engine_md_dim<const D: usize>(
+    particles: &mut [Particle],
+    box_size: &[f64],
+    (epsilon, sigma, r_cut): (f64, f64, f64),
+    dt: f64,
+    steps: usize,
+    thermostat: EngineThermostat,
+) -> Result<f64, String> {
+    let sys = engine_system::<D>(particles, box_size)
+        .ok_or("dimension mismatch between particles and box")?;
+    let mut ff = ForceField::<D>::new(vec![PairTerm::LennardJones { eps: epsilon, sigma }], r_cut);
+    ff.shift_force = true;
+    let mut sim = MdSimulation::new(sys, ff, 0.3 * sigma, dt, 12345)?;
+    let dof = sim.dof();
+    sim.thermostat = match thermostat {
+        | EngineThermostat::None => Thermostat::None,
+        | EngineThermostat::NoseHooverChain(t0, tau, m) => {
+            Thermostat::NoseHooverChain(NoseHooverChain::new(t0, tau, m.max(1), dof))
+        },
+        | EngineThermostat::Langevin(t0, gamma) => Thermostat::Langevin { t0, gamma },
+        | EngineThermostat::Berendsen(t0, tau) => Thermostat::Berendsen { t0, tau },
+    };
+    sim.run(steps)?;
+    for (i, p) in particles.iter_mut().enumerate() {
+        p.position.copy_from_slice(&sim.sys.pos[i]);
+        p.velocity.copy_from_slice(&sim.sys.vel[i]);
+        p.force.copy_from_slice(&sim.forces.f[i]);
+    }
+    Ok(sim.total_energy())
+}
+
+/// Runs Lennard-Jones MD for a runtime dimension on the const-generic engine.
+///
+/// Parameters `(epsilon, sigma, r_cut)` give a shifted-force potential in a
+/// periodic box on the const-generic engine ([`crate::sim::md_engine::MdSimulation`]) for a **runtime**
+/// dimension of 1, 2 or 3, and writes positions, velocities and forces back into `particles`.
+/// Returns the final total energy.
+///
+/// # Errors
+/// Fails for dimensions other than 1-3, mismatching vector lengths or engine errors.
+pub fn run_engine_md(
+    particles: &mut [Particle],
+    box_size: &[f64],
+    lj: (f64, f64, f64),
+    dt: f64,
+    steps: usize,
+    thermostat: EngineThermostat,
+) -> Result<f64, String> {
+    match box_size.len() {
+        | 1 => run_engine_md_dim::<1>(particles, box_size, lj, dt, steps, thermostat),
+        | 2 => run_engine_md_dim::<2>(particles, box_size, lj, dt, steps, thermostat),
+        | 3 => run_engine_md_dim::<3>(particles, box_size, lj, dt, steps, thermostat),
+        | _ => Err("the engine bridge supports dimensions 1 to 3".into()),
+    }
+}
+
+#[cfg(test)]
+mod thermostat_tests {
+    use super::*;
+
+    #[allow(clippy::unnecessary_wraps)] // the force-callback signature
+    fn harmonic(ps: &mut [Particle]) -> Result<(), String> {
+        for p in ps.iter_mut() {
+            p.force = p.position.iter().map(|x| -x).collect();
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn langevin_samples_the_canonical_distribution() {
+        // Harmonic oscillators: <v²> = <x²> = kT (m = k = 1).
+        let mut ps: Vec<Particle> = (0..200)
+            .map(|i| Particle::new(i, 1.0, vec![0.0], vec![0.0]))
+            .collect();
+        let mut noise = GaussianStream::new(42);
+        integrate_langevin_baoab(&mut ps, 0.05, 2000, 1.0, 0.7, &mut noise, harmonic).unwrap();
+        let (mut v2, mut x2) = (0.0, 0.0);
+        let mut samples = 0.0;
+        for _ in 0..200 {
+            integrate_langevin_baoab(&mut ps, 0.05, 10, 1.0, 0.7, &mut noise, harmonic).unwrap();
+            for p in &ps {
+                v2 += p.velocity[0] * p.velocity[0];
+                x2 += p.position[0] * p.position[0];
+                samples += 1.0;
+            }
+        }
+        assert!(
+            (v2 / samples - 0.7).abs() < 0.03 && (x2 / samples - 0.7).abs() < 0.03,
+            "{} {}",
+            v2 / samples,
+            x2 / samples
+        );
+    }
+
+    #[test]
+    fn nose_hoover_conserves_its_extended_energy() {
+        let mut ps: Vec<Particle> = (0..5)
+            .map(|i| {
+                Particle::new(
+                    i,
+                    1.0,
+                    vec![0.1 * i as f64, -0.2],
+                    vec![0.3, 0.1 * i as f64 - 0.2],
+                )
+            })
+            .collect();
+        let (kt, q) = (0.5, 2.0);
+        let energy = |ps: &[Particle]| -> f64 {
+            ps.iter()
+                .map(|p| {
+                    0.5 * p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>()
+                        + 0.5 * p.position.iter().map(|x| x * x).sum::<f64>()
+                })
+                .sum()
+        };
+        let e0 = energy(&ps);
+        let (xi, s) = integrate_nose_hoover(&mut ps, 0.01, 5000, kt, q, 0.0, harmonic).unwrap();
+        let degrees = 10.0;
+        let invariant = energy(&ps) + 0.5 * q * xi * xi + degrees * kt * s;
+        assert!(
+            (invariant - e0).abs() < 1e-3 * (1.0 + e0),
+            "{invariant} vs {e0}"
+        );
+    }
+
+    #[test]
+    fn cell_lists_find_every_close_pair() {
+        let mut noise = GaussianStream::new(3);
+        let box_length = 10.0;
+        let ps: Vec<Particle> = (0..300)
+            .map(|i| {
+                let pos: Vec<f64> = (0..3)
+                    .map(|_| (noise.next_normal() * 3.0).rem_euclid(box_length))
+                    .collect();
+                Particle::new(i, 1.0, pos, vec![0.0; 3])
+            })
+            .collect();
+        let fast = neighbour_pairs(&ps, box_length, 2.5);
+        let slow = neighbour_pairs(&ps, box_length, 6.0); // brute force path
+        let brute: Vec<(usize, usize)> = slow
+            .into_iter()
+            .filter(|&(i, j)| {
+                let d2: f64 = ps[i]
+                    .position
+                    .iter()
+                    .zip(&ps[j].position)
+                    .map(|(a, b)| {
+                        let mut d = a - b;
+                        d -= box_length * (d / box_length).round();
+                        d * d
+                    })
+                    .sum();
+                d2 < 2.5 * 2.5
+            })
+            .collect();
+        assert_eq!(fast, brute);
+        assert_ne!(fast, []);
+    }
 }

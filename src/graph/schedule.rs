@@ -23,24 +23,29 @@
 //! numeric witnesses bottom-up through every operator that declares scalar
 //! semantics, so numeric kernels higher up find their inputs evaluated.
 
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
 use super::extract::ClosedForm;
+use super::extract::CostModel;
 use super::extract::Extractor;
 use super::extract::SizeCost;
 use super::extract::reachable;
 use super::id::NodeId;
 use super::id::OpId;
 use super::op::OpFlags;
+use super::op::core;
+use super::pattern::Match;
 use super::rule::Action;
 use super::rule::Cx;
 use super::rule::Env;
 use super::rule::Outcome;
+use super::rule::Prepared;
+use super::rule::PreparedWork;
 use super::rule::Program;
 use super::rule::Rewrite;
 use super::rule::RuleError;
@@ -183,8 +188,123 @@ pub struct Report {
 struct RuleState {
     banned_until: usize,
     times_banned: u32,
-    visited: HashSet<NodeId>,
+    /// Nodes a non-revisiting kernel has seen, with how many of their
+    /// arguments looked fully reduced at the time. A node is shown to the
+    /// kernel again when that number grows: a request whose argument was
+    /// itself an unreduced request gets a second chance once the inner one
+    /// is resolved.
+    visited: HashMap<NodeId, usize>,
     applied: usize,
+}
+
+/// Applies what a kernel found out about `node`; whether the graph changed.
+#[allow(clippy::needless_pass_by_value)] // `Outcome` is a small value type
+fn apply_outcome(
+    graph: &mut Graph,
+    node: NodeId,
+    outcome: Outcome,
+) -> bool {
+    match outcome {
+        | Outcome::Pass => false,
+        | Outcome::Equal(other) => graph.union(node, other),
+        | Outcome::Pinned(other) => {
+            let merged = graph.union(node, other);
+            graph.pin(other);
+            merged
+        },
+        | Outcome::Approx(ball) => graph.set_approx(graph.find(node), ball),
+    }
+}
+
+/// A node of a two-phase kernel: its immediate outcome, or the work still to run.
+type Staged = (NodeId, Option<Outcome>, Option<Box<dyn PreparedWork>>);
+
+/// Outcome of searching one rewrite against the frozen graph.
+enum Search {
+    /// Too many matches or out of fuel: the rule is banned.
+    Banned,
+    /// The matches, in candidate order.
+    Found(Vec<Match>),
+}
+
+/// Candidate nodes (summed over the batch) from which the batch search runs
+/// in parallel; below it the same search runs sequentially.
+const ENGINE_PAR_MIN_CANDIDATES: usize = 512;
+
+/// Searches `rewrite` over `nodes`, honouring its (ban-scaled) match limit
+/// and fuel. Pure in `graph`.
+fn search_rewrite(
+    graph: &Graph,
+    rewrite: &Rewrite,
+    nodes: &[NodeId],
+    times_banned: u32,
+    budget: &Budget,
+) -> Search {
+    let shift = times_banned.min(16);
+    let limit = budget.match_limit.saturating_mul(1_usize << shift);
+    let mut matches = Vec::new();
+    let mut fuel = budget.match_fuel;
+    for &node in nodes {
+        let room = limit.saturating_add(1).saturating_sub(matches.len());
+        if room == 0 {
+            break;
+        }
+        matches.extend(
+            rewrite
+                .lhs
+                .matches_bounded(graph, node, rewrite.nvars, room, &mut fuel),
+        );
+        if fuel == 0 {
+            break;
+        }
+    }
+    if matches.len() > limit || fuel == 0 {
+        Search::Banned
+    } else {
+        Search::Found(matches)
+    }
+}
+
+const _: fn() = || {
+    const fn sync<T: Sync>() {}
+    const fn send<T: Send>() {}
+    sync::<Graph>();
+    send::<Graph>();
+    sync::<Rewrite>();
+    sync::<crate::graph::pattern::Pat>();
+    sync::<Engine>();
+};
+
+/// Whether the class of `node` has a member free of heavy operators,
+/// looking at most `depth` levels down (deeper levels are assumed fine).
+fn looks_reduced(
+    graph: &Graph,
+    node: NodeId,
+    depth: u8,
+) -> bool {
+    if depth == 0 {
+        return true;
+    }
+    let closed = ClosedForm;
+    graph.enodes(graph.find(node)).any(|n| {
+        closed.cost(graph, n).is_some()
+            && graph
+                .children(n)
+                .iter()
+                .all(|&c| looks_reduced(graph, c, depth.saturating_sub(1)))
+    })
+}
+
+/// How many arguments of `node` look fully reduced.
+fn reduced_arguments(
+    graph: &Graph,
+    node: NodeId,
+) -> usize {
+    graph
+        .children(node)
+        .iter()
+        .filter(|&&c| looks_reduced(graph, c, 4))
+        .count()
 }
 
 /// A program together with the scheduling logic that runs it.
@@ -352,10 +472,15 @@ impl Engine {
                 // Progress is measured on the closed form when there is one
                 // and on the best partially reduced term otherwise.
                 let total = |extractor: &Extractor, graph: &Graph| {
-                    roots.iter().try_fold(0_u64, |acc, &r| extractor.cost(graph, r).map(|c| acc.saturating_add(c)))
+                    roots.iter().try_fold(0_u64, |acc, &r| {
+                        extractor.cost(graph, r).map(|c| acc.saturating_add(c))
+                    })
                 };
                 let cost = total(&Extractor::new(graph, roots, &ClosedForm), graph)
-                    .or_else(|| total(&Extractor::new(graph, roots, &SizeCost), graph).map(|c| c.saturating_add(1 << 40)))
+                    .or_else(|| {
+                        total(&Extractor::new(graph, roots, &SizeCost), graph)
+                            .map(|c| c.saturating_add(1 << 40))
+                    })
                     .unwrap_or(u64::MAX);
                 if cost < best_cost {
                     best_cost = cost;
@@ -395,9 +520,11 @@ impl Engine {
             .rules
             .iter()
             .filter(|r| r.tier == tier)
-            .filter_map(|r| match &r.action {
-                | Action::Rewrite(rw) => Some(rw),
-                | Action::Kernel(_) => None,
+            .filter_map(|r| {
+                match &r.action {
+                    | Action::Rewrite(rw) => Some(rw),
+                    | Action::Kernel(_) => None,
+                }
             })
             .collect()
     }
@@ -427,50 +554,101 @@ impl Engine {
             if tier == Tier::Reduce && graph.enodes(class).any(|n| !heavy(graph, n)) {
                 continue;
             }
+            // Rules have nothing to gain on a class already equal to a
+            // literal (see `reachable`).
+            if graph.enodes(class).any(|n| graph.op(n) == core::LIT) {
+                continue;
+            }
             for enode in graph.enodes(class) {
                 candidates.entry(graph.op(enode)).or_default().push(enode);
             }
         }
         let mut changed = false;
-        for (rule, state) in self.program.rules.iter().zip(states.iter_mut()) {
-            if rule.tier != tier || state.banned_until > iteration {
+        let rules = &self.program.rules;
+        let mut at = 0;
+        while at < rules.len() {
+            let Some(rule) = rules.get(at) else { break };
+            if rule.tier != tier {
+                at += 1;
+                continue;
+            }
+            // A maximal run of consecutive rewrites of this tier is searched
+            // in one batch against the frozen graph (egg's scheme) and then
+            // applied in program order; kernels keep their place.
+            if matches!(rule.action, Action::Rewrite(_)) {
+                let mut end = at;
+                while rules
+                    .get(end)
+                    .is_some_and(|r| r.tier == tier && matches!(r.action, Action::Rewrite(_)))
+                {
+                    end += 1;
+                }
+                let run: Vec<(usize, &Rewrite)> = (at..end)
+                    .filter_map(|i| {
+                        let rule = rules.get(i)?;
+                        let state = states.get(i)?;
+                        match &rule.action {
+                            | Action::Rewrite(rw) if state.banned_until <= iteration => {
+                                Some((i, rw))
+                            },
+                            | _ => None,
+                        }
+                    })
+                    .collect();
+                at = end;
+                let work: usize = run
+                    .iter()
+                    .map(|(_, rw)| candidates.get(&rw.trigger()).map_or(0, Vec::len))
+                    .sum();
+                let found = {
+                    let frozen: &Graph = graph;
+                    let states_ro: &[RuleState] = states;
+                    let search = |&(i, rw): &(usize, &Rewrite)| -> Option<Search> {
+                        let nodes = candidates.get(&rw.trigger())?;
+                        let times = states_ro.get(i).map_or(0, |s| s.times_banned);
+                        Some(search_rewrite(frozen, rw, nodes, times, budget))
+                    };
+                    if run.len() >= 2 && work >= ENGINE_PAR_MIN_CANDIDATES {
+                        run.par_iter().map(search).collect::<Vec<_>>()
+                    } else {
+                        run.iter().map(search).collect::<Vec<_>>()
+                    }
+                };
+                for (&(i, rewrite), result) in run.iter().zip(found) {
+                    let (Some(result), Some(state)) = (result, states.get_mut(i)) else {
+                        continue;
+                    };
+                    match result {
+                        | Search::Banned => {
+                            let shift = state.times_banned.min(16);
+                            state.banned_until = iteration
+                                .saturating_add(budget.ban_length.saturating_mul(1_usize << shift))
+                                .saturating_add(1);
+                            state.times_banned = state.times_banned.saturating_add(1);
+                        },
+                        | Search::Found(matches) => {
+                            for m in &matches {
+                                if let Some(new) = rewrite.build(graph, m)
+                                    && graph.union(m.root, new)
+                                {
+                                    state.applied = state.applied.saturating_add(1);
+                                    changed = true;
+                                }
+                            }
+                        },
+                    }
+                }
+                continue;
+            }
+            let Some(state) = states.get_mut(at) else {
+                break;
+            };
+            at += 1;
+            if state.banned_until > iteration {
                 continue;
             }
             match &rule.action {
-                | Action::Rewrite(rewrite) => {
-                    let Some(nodes) = candidates.get(&rewrite.trigger()) else {
-                        continue;
-                    };
-                    let shift = state.times_banned.min(16);
-                    let limit = budget.match_limit.saturating_mul(1_usize << shift);
-                    let mut matches = Vec::new();
-                    let mut fuel = budget.match_fuel;
-                    for &node in nodes {
-                        let room = limit.saturating_add(1).saturating_sub(matches.len());
-                        if room == 0 {
-                            break;
-                        }
-                        matches.extend(rewrite.lhs.matches_bounded(graph, node, rewrite.nvars, room, &mut fuel));
-                        if fuel == 0 {
-                            break;
-                        }
-                    }
-                    if matches.len() > limit || fuel == 0 {
-                        state.banned_until = iteration
-                            .saturating_add(budget.ban_length.saturating_mul(1_usize << shift))
-                            .saturating_add(1);
-                        state.times_banned = state.times_banned.saturating_add(1);
-                        continue;
-                    }
-                    for m in &matches {
-                        if let Some(new) = rewrite.build(graph, m) {
-                            if graph.union(m.root, new) {
-                                state.applied = state.applied.saturating_add(1);
-                                changed = true;
-                            }
-                        }
-                    }
-                },
+                | Action::Rewrite(_) => {},
                 | Action::Kernel(kernel) => {
                     let revisit = kernel.revisit();
                     let wanted = kernel.ops();
@@ -484,23 +662,75 @@ impl Engine {
                             .copied()
                             .collect()
                     };
-                    {
-                        for node in nodes {
-                            if !revisit && !state.visited.insert(node) {
-                                continue;
-                            }
-                            let outcome = kernel.reduce(&mut Cx { graph, env, engine: self }, node);
-                            let fired = match outcome {
-                                | Outcome::Pass => false,
-                                | Outcome::Equal(other) => graph.union(node, other),
-                                | Outcome::Pinned(other) => {
-                                    let merged = graph.union(node, other);
-                                    graph.pin(other);
-                                    merged
+                    let two_phase = kernel.two_phase();
+                    // Two-phase kernels: prepare every eligible node, run the
+                    // heavy parts in parallel, commit in node order.
+                    let mut staged: Vec<Staged> = Vec::new();
+                    for node in nodes {
+                        if !revisit {
+                            let ready = reduced_arguments(graph, node);
+                            match state.visited.get(&node) {
+                                | Some(&seen) if seen >= ready => continue,
+                                | _ => {
+                                    state.visited.insert(node, ready);
                                 },
-                                | Outcome::Approx(ball) => graph.set_approx(graph.find(node), ball),
+                            }
+                        }
+                        let mut cx = Cx {
+                            graph,
+                            env,
+                            engine: self,
+                        };
+                        if two_phase {
+                            match kernel.prepare(&mut cx, node) {
+                                | Prepared::Done(outcome) => {
+                                    staged.push((node, Some(outcome), None));
+                                },
+                                | Prepared::Work(work) => {
+                                    staged.push((node, None, Some(work)));
+                                },
+                            }
+                            continue;
+                        }
+                        let outcome = kernel.reduce(&mut cx, node);
+                        if apply_outcome(graph, node, outcome) {
+                            state.applied = state.applied.saturating_add(1);
+                            changed = true;
+                        }
+                    }
+                    if two_phase {
+                        let works: Vec<Option<Box<dyn PreparedWork>>> =
+                            staged.iter_mut().map(|(_, _, w)| w.take()).collect();
+                        let heavy_jobs = works.iter().filter(|w| w.is_some()).count();
+                        let results: Vec<Option<Box<dyn std::any::Any + Send>>> = if heavy_jobs >= 2
+                        {
+                            works
+                                .into_par_iter()
+                                .map(|w| w.map(PreparedWork::run))
+                                .collect()
+                        } else {
+                            works
+                                .into_iter()
+                                .map(|w| w.map(PreparedWork::run))
+                                .collect()
+                        };
+                        for ((node, done, _), result) in staged.into_iter().zip(results) {
+                            let outcome = match (done, result) {
+                                | (Some(outcome), _) => outcome,
+                                | (None, Some(result)) => {
+                                    kernel.commit(
+                                        &mut Cx {
+                                            graph,
+                                            env,
+                                            engine: self,
+                                        },
+                                        node,
+                                        result,
+                                    )
+                                },
+                                | (None, None) => Outcome::Pass,
                             };
-                            if fired {
+                            if apply_outcome(graph, node, outcome) {
                                 state.applied = state.applied.saturating_add(1);
                                 changed = true;
                             }
@@ -865,7 +1095,7 @@ mod tests {
         let report = engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &budget);
         assert!(report.iterations <= 12);
         assert_eq!(g.validate(), Ok(()));
-        assert!(g.conflicts().is_empty());
+        assert_eq!(g.conflicts(), []);
     }
 
     #[test]

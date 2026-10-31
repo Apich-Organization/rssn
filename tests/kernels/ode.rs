@@ -4,7 +4,9 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::ode::{OdeSolverMethod, solve_adaptive, solve_fixed};
+use rssn::kernels::ode::OdeSolverMethod;
+use rssn::kernels::ode::solve_adaptive;
+use rssn::kernels::ode::solve_fixed;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -14,16 +16,30 @@ fn cfg() -> ProptestConfig {
     }
 }
 
-fn grow(_t: f64, y: &[f64], dy: &mut [f64]) {
+fn grow(
+    _t: f64,
+    y: &[f64],
+    dy: &mut [f64],
+) {
     dy[0] = y[0];
 }
 
-fn oscillator(_t: f64, y: &[f64], dy: &mut [f64]) {
+fn oscillator(
+    _t: f64,
+    y: &[f64],
+    dy: &mut [f64],
+) {
     dy[0] = y[1];
     dy[1] = -y[0];
 }
 
-fn last(f: impl Fn(f64, &[f64], &mut [f64]), y0: &[f64], span: (f64, f64), steps: usize, m: OdeSolverMethod) -> Vec<f64> {
+fn last(
+    f: impl Fn(f64, &[f64], &mut [f64]),
+    y0: &[f64],
+    span: (f64, f64),
+    steps: usize,
+    m: OdeSolverMethod,
+) -> Vec<f64> {
     solve_fixed(f, y0, span, steps, m)
         .unwrap_or_else(|e| panic!("{e}"))
         .last()
@@ -53,15 +69,27 @@ fn heun_exponential() {
 #[test]
 fn rk4_harmonic_oscillator_half_period() {
     // y0 = cos t, y1 = -sin t; at t = pi: (-1, 0)
-    let y = last(oscillator, &[1.0, 0.0], (0.0, std::f64::consts::PI), 100, OdeSolverMethod::RungeKutta4);
+    let y = last(
+        oscillator,
+        &[1.0, 0.0],
+        (0.0, std::f64::consts::PI),
+        100,
+        OdeSolverMethod::RungeKutta4,
+    );
     assert_approx_eq!(y[0], -1.0, 1e-5);
     assert_approx_eq!(y[1], 0.0, 1e-5);
 }
 
 #[test]
 fn rk4_conserves_oscillator_energy() {
-    let tr = solve_fixed(oscillator, &[1.0, 0.0], (0.0, 10.0), 1000, OdeSolverMethod::RungeKutta4)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let tr = solve_fixed(
+        oscillator,
+        &[1.0, 0.0],
+        (0.0, 10.0),
+        1000,
+        OdeSolverMethod::RungeKutta4,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
     for y in &tr.y {
         let energy = 0.5 * (y[0] * y[0] + y[1] * y[1]);
         assert!((energy - 0.5).abs() < 1e-8, "energy drifted to {energy}");
@@ -82,7 +110,13 @@ fn trajectory_grid_is_uniform_and_hits_endpoints() {
 #[test]
 fn rk4_reports_overflow_of_finite_time_blowup() {
     // y' = y^2, y(0) = 1 blows up at t = 1; integrating to t = 2 must fail.
-    let r = solve_fixed(|_t, y, dy| dy[0] = y[0] * y[0], &[1.0], (0.0, 2.0), 100, OdeSolverMethod::RungeKutta4);
+    let r = solve_fixed(
+        |_t, y, dy| dy[0] = y[0] * y[0],
+        &[1.0],
+        (0.0, 2.0),
+        100,
+        OdeSolverMethod::RungeKutta4,
+    );
     assert_eq!(
         r.err().as_deref(),
         Some("Overflow or invalid value encountered during ODE solving.")
@@ -105,8 +139,15 @@ fn adaptive_matches_exponential() {
 #[test]
 fn adaptive_oscillator_backwards_in_time() {
     // Integrate from pi to 0 starting at (-1, 0): ends at (1, 0).
-    let tr = solve_adaptive(oscillator, &[-1.0, 0.0], (std::f64::consts::PI, 0.0), 1e-10, 1e-12, 10_000)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let tr = solve_adaptive(
+        oscillator,
+        &[-1.0, 0.0],
+        (std::f64::consts::PI, 0.0),
+        1e-10,
+        1e-12,
+        10_000,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
     assert_approx_eq!(tr.last()[0], 1.0, 1e-7);
     assert_approx_eq!(tr.last()[1], 0.0, 1e-7);
 }
@@ -136,7 +177,7 @@ proptest! {
     #[test]
     fn prop_adaptive_matches_exp(a in -3.0..3.0f64) {
         let tr = solve_adaptive(move |_t, y, dy| dy[0] = a * y[0], &[1.0], (0.0, 1.0), 1e-9, 1e-12, 100_000)
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         prop_assert!((tr.last()[0] - a.exp()).abs() < 1e-6 * a.exp().max(1.0));
     }
 

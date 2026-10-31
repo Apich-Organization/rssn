@@ -17,6 +17,17 @@
 //! - **Simulation Scenarios**: Ready-to-run examples demonstrating the application of the solvers to standard test problems.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fem_bridge_3d_disp.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Elements | Boundary conditions |
+//! |---|---|---|---|---|---|
+//! | Poisson | yes | yes (quads) | yes (hexahedra) | linear / bilinear / trilinear | zero Dirichlet |
+//!
+//! Unstructured simplex meshes (intervals, triangles, tetrahedra) with P1/P2
+//! elements, marker-based Dirichlet/Neumann/Robin conditions, time-dependent data
+//! and the θ-method heat equation are in [`crate::sim::fem_simplex`]; elasticity is
+//! in [`crate::sim::elasticity_fem`].
 
 use ndarray::Array1;
 use rayon::prelude::*;
@@ -508,4 +519,29 @@ pub fn simulate_3d_poisson_scenario() -> Result<Vec<f64>, String> {
     };
 
     solve_poisson_3d(N_ELEMENTS, force)
+}
+
+/// Poisson/reaction–diffusion `-Δu + c u = f` on interval, triangle or
+/// tetrahedron meshes with P1/P2 elements and marker boundary conditions.
+///
+/// # Errors
+/// For unsupported boundary conditions or a singular system.
+pub fn solve_poisson_simplex(
+    space: &crate::sim::fem_simplex::FemSpace,
+    c: f64,
+    source: &(dyn Fn(f64, [f64; 3]) -> f64 + Sync),
+    bcs: &crate::sim::boundary::MarkerBcs<crate::sim::boundary::BoundaryCondition>,
+) -> Result<Vec<f64>, String> {
+    let prob = crate::sim::fem_simplex::FemProblem {
+        k: 1.0,
+        c,
+        f: source,
+        bcs,
+    };
+    crate::sim::fem_simplex::solve_static(
+        space,
+        &prob,
+        0.0,
+        crate::sim::structured::LinearSolver::Auto,
+    )
 }

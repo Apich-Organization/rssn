@@ -100,7 +100,6 @@ fn test_gram_schmidt_orthonormal() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use proptest::prelude::*;
@@ -191,11 +190,18 @@ mod proptests {
 // Added: analytic reference values
 // ============================================================================
 
-fn sample(f: impl Fn(f64) -> f64, a: f64, b: f64, n: usize) -> Vec<(f64, f64)> {
-    (0..=n).map(|i| {
-        let x = a + (b - a) * i as f64 / n as f64;
-        (x, f(x))
-    }).collect()
+fn sample(
+    f: impl Fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    n: usize,
+) -> Vec<(f64, f64)> {
+    (0..=n)
+        .map(|i| {
+            let x = a + (b - a) * i as f64 / n as f64;
+            (x, f(x))
+        })
+        .collect()
 }
 
 #[test]
@@ -258,7 +264,11 @@ fn normalize_gives_unit_norm_and_leaves_zero_alone() {
 #[test]
 fn gram_schmidt_three_polynomials_is_orthonormal() {
     let n = 400;
-    let basis = vec![sample(|_| 1.0, -1.0, 1.0, n), sample(|x| x, -1.0, 1.0, n), sample(|x| x * x, -1.0, 1.0, n)];
+    let basis = vec![
+        sample(|_| 1.0, -1.0, 1.0, n),
+        sample(|x| x, -1.0, 1.0, n),
+        sample(|x| x * x, -1.0, 1.0, n),
+    ];
     let q = gram_schmidt_orthonormal(&basis).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(q.len(), 3);
     for i in 0..3 {
@@ -270,5 +280,8 @@ fn gram_schmidt_three_polynomials_is_orthonormal() {
     }
     // Legendre P2 shape: the third vector is even and proportional to x^2 - 1/3.
     let mid = n / 2;
-    assert!(q[2][mid].1 * q[2][0].1 < 0.0, "P2 changes sign between centre and ends");
+    assert!(
+        q[2][mid].1 * q[2][0].1 < 0.0,
+        "P2 changes sign between centre and ends"
+    );
 }

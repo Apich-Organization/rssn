@@ -23,22 +23,21 @@
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Signed;
-use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::V;
 use super::big;
 use super::bigs;
 use super::def;
 use super::items;
 use super::mod_inverse;
 use super::modulo;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
 struct Curve {
     a: BigInt,
@@ -140,7 +139,10 @@ fn add(
                 }
                 return double(c, p);
             }
-            let m = modulo(&((y2 - y1) * mod_inverse(&modulo(&(x2 - x1), &c.p), &c.p)?), &c.p);
+            let m = modulo(
+                &((y2 - y1) * mod_inverse(&modulo(&(x2 - x1), &c.p), &c.p)?),
+                &c.p,
+            );
             let x3 = modulo(&(&m * &m - x1 - x2), &c.p);
             let y3 = modulo(&(&m * (x1 - &x3) - y1), &c.p);
             Some(Pt::Aff(x3, y3))
@@ -153,7 +155,11 @@ fn mul(
     k: &BigInt,
     p: &Pt,
 ) -> Option<Pt> {
-    let base = if k.is_negative() { neg(c, p) } else { p.clone() };
+    let base = if k.is_negative() {
+        neg(c, p)
+    } else {
+        p.clone()
+    };
     let mut k = k.abs();
     let mut acc = Pt::Inf;
     let mut step = base;
@@ -218,7 +224,9 @@ fn ec_curve(
     a: &[NodeId],
 ) -> Option<V> {
     let [ca, cb, cp] = a else { return None };
-    let term = cx.graph.node(crate::graph::op::core::LIST, &[*ca, *cb, *cp]);
+    let term = cx
+        .graph
+        .node(crate::graph::op::core::LIST, &[*ca, *cb, *cp]);
     let c = curve(cx.graph, term)?;
     Some(V::ints([c.a, c.b, c.p]))
 }
@@ -306,6 +314,7 @@ fn ec_is_infinity(
     Some(V::Bool(list.is_empty()))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn ec_coord(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -342,7 +351,9 @@ fn ec_compress(
     a: &[NodeId],
 ) -> Option<V> {
     let coords = bigs(cx.graph, *a.first()?)?;
-    let [x, y] = coords.as_slice() else { return None };
+    let [x, y] = coords.as_slice() else {
+        return None;
+    };
     Some(V::ints([x.clone(), BigInt::from(u8::from(y.bit(0)))]))
 }
 
@@ -351,7 +362,9 @@ fn ec_decompress(
     a: &[NodeId],
 ) -> Option<V> {
     let (c, rest) = with_curve(cx, a)?;
-    let [x, odd] = rest.as_slice() else { return None };
+    let [x, odd] = rest.as_slice() else {
+        return None;
+    };
     let x = modulo(&big(cx.graph, *x)?, &c.p);
     let odd = big(cx.graph, *odd)?;
     let odd = if odd.is_zero() {
@@ -363,7 +376,11 @@ fn ec_decompress(
     };
     let rhs = &x * &x * &x + &c.a * &x + &c.b;
     let y = sqrt_mod(&rhs, &c.p)?;
-    let y = if y.bit(0) == odd { y } else { modulo(&-y, &c.p) };
+    let y = if y.bit(0) == odd {
+        y
+    } else {
+        modulo(&-y, &c.p)
+    };
     Some(V::ints([x, y]))
 }
 
@@ -372,7 +389,9 @@ fn ecdsa_sign(
     a: &[NodeId],
 ) -> Option<V> {
     let (c, rest) = with_curve(cx, a)?;
-    let [g, n, d, h, k] = rest.as_slice() else { return None };
+    let [g, n, d, h, k] = rest.as_slice() else {
+        return None;
+    };
     let g = point(cx.graph, *g, &c)?;
     let (n, d, h, k) = (
         big(cx.graph, *n)?,
@@ -402,7 +421,9 @@ fn ecdsa_verify(
     a: &[NodeId],
 ) -> Option<V> {
     let (c, rest) = with_curve(cx, a)?;
-    let [g, n, q, h, sig] = rest.as_slice() else { return None };
+    let [g, n, q, h, sig] = rest.as_slice() else {
+        return None;
+    };
     let g = point(cx.graph, *g, &c)?;
     let n = big(cx.graph, *n)?;
     let q = point(cx.graph, *q, &c)?;
@@ -479,7 +500,6 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 #[cfg(test)]
 mod tests {
     use super::super::discrete;
-    use super::*;
     use crate::rules::testing::reduce_with;
     use crate::rules::testing::simplify;
 
@@ -511,7 +531,7 @@ mod tests {
     }
 
     fn pt(p: Option<(i64, i64)>) -> String {
-        p.map_or("list()".to_string(), |(x, y)| format!("list({x}, {y})"))
+        p.map_or_else(|| "list()".to_string(), |(x, y)| format!("list({x}, {y})"))
     }
 
     #[test]
@@ -524,16 +544,25 @@ mod tests {
         assert!(points.len() > 50);
         let c = format!("list({a}, {b}, {p})");
         for (n, &p1) in points.iter().enumerate().step_by(7) {
-            assert_eq!(s(&format!("ec_on_curve({c}, list({}, {}))", p1.0, p1.1)), "true");
+            assert_eq!(
+                s(&format!("ec_on_curve({c}, list({}, {}))", p1.0, p1.1)),
+                "true"
+            );
             for &p2 in points.iter().skip(n % 5).step_by(11) {
                 let want = pt(naive_add((a, p), Some(p1), Some(p2)));
                 assert_eq!(
-                    s(&format!("ec_add({c}, list({}, {}), list({}, {}))", p1.0, p1.1, p2.0, p2.1)),
+                    s(&format!(
+                        "ec_add({c}, list({}, {}), list({}, {}))",
+                        p1.0, p1.1, p2.0, p2.1
+                    )),
                     want
                 );
             }
             let want = pt(naive_add((a, p), Some(p1), Some(p1)));
-            assert_eq!(s(&format!("ec_double({c}, list({}, {}))", p1.0, p1.1)), want);
+            assert_eq!(
+                s(&format!("ec_double({c}, list({}, {}))", p1.0, p1.1)),
+                want
+            );
         }
         // off the curve
         assert_eq!(s(&format!("ec_on_curve({c}, list(1, 1))")), "false");
@@ -544,8 +573,14 @@ mod tests {
     fn negation_infinity_and_coordinates() {
         assert_eq!(s("ec_neg(list(2, 3, 97), list(3, 6))"), "list(3, 91)");
         assert_eq!(s("ec_neg(list(2, 3, 97), list())"), "list()");
-        assert_eq!(s("ec_add(list(2, 3, 97), list(3, 6), list(3, 91))"), "list()");
-        assert_eq!(s("ec_add(list(2, 3, 97), list(), list(3, 6))"), "list(3, 6)");
+        assert_eq!(
+            s("ec_add(list(2, 3, 97), list(3, 6), list(3, 91))"),
+            "list()"
+        );
+        assert_eq!(
+            s("ec_add(list(2, 3, 97), list(), list(3, 6))"),
+            "list(3, 6)"
+        );
         // a point with y = 0 has order two
         assert_eq!(s("ec_double(list(2, 3, 97), list(0, 0))"), "list()");
         assert_eq!(s("ec_is_infinity(list())"), "true");
@@ -568,7 +603,10 @@ mod tests {
             acc = s(&format!("ec_add({c}, {acc}, {g})"));
         }
         // negative scalars
-        assert_eq!(s(&format!("ec_mul({c}, -3, {g})")), s(&format!("ec_neg({c}, ec_mul({c}, 3, {g}))")));
+        assert_eq!(
+            s(&format!("ec_mul({c}, -3, {g})")),
+            s(&format!("ec_neg({c}, ec_mul({c}, 3, {g}))"))
+        );
         // the textbook order is 19
         assert_eq!(s(&format!("ec_order({c}, {g})")), "19");
         assert_eq!(s(&format!("ec_mul({c}, 19, {g})")), "list()");
@@ -612,8 +650,15 @@ mod tests {
                     let pt = s(&format!("ec_decompress({c}, {x}, {odd})"));
                     assert_eq!(s(&format!("ec_on_curve({c}, {pt})")), "true");
                     // a point with y = 0 is its own negative, both parities give it
-                    let expected = if pt.ends_with(", 0)") { 0 } else { odd };
-                    assert_eq!(s(&format!("ec_compress({pt})")), format!("list({x}, {expected})"));
+                    let expected = if pt.ends_with(", 0)") {
+                        0
+                    } else {
+                        odd
+                    };
+                    assert_eq!(
+                        s(&format!("ec_compress({pt})")),
+                        format!("list({x}, {expected})")
+                    );
                 }
             }
             assert!(found > 0);
@@ -632,7 +677,11 @@ mod tests {
             if sig.starts_with("ecdsa_sign") {
                 continue;
             }
-            assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, {h}, {sig})")), "true", "h={h} k={k}");
+            assert_eq!(
+                s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, {h}, {sig})")),
+                "true",
+                "h={h} k={k}"
+            );
             // a different message, a different key and a mangled signature fail
             let wrong_h = (h + 1) % n;
             let _ = wrong_h;
@@ -646,13 +695,31 @@ mod tests {
             .collect();
         assert_eq!(rs.len(), 2);
         let bad_s = rs[1] % 18 + 1;
-        assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 5, list({}, {bad_s}))", rs[0])), "false");
+        assert_eq!(
+            s(&format!(
+                "ecdsa_verify({c}, {g}, {n}, {q}, 5, list({}, {bad_s}))",
+                rs[0]
+            )),
+            "false"
+        );
         let other = s(&format!("ecdh_public({c}, {g}, 5)"));
-        assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {other}, 5, {sig})")), "false");
-        assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 6, {sig})")), "false");
+        assert_eq!(
+            s(&format!("ecdsa_verify({c}, {g}, {n}, {other}, 5, {sig})")),
+            "false"
+        );
+        assert_eq!(
+            s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 6, {sig})")),
+            "false"
+        );
         // out-of-range components
-        assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 5, list(0, 3))")), "false");
-        assert_eq!(s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 5, list(3, 19))")), "false");
+        assert_eq!(
+            s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 5, list(0, 3))")),
+            "false"
+        );
+        assert_eq!(
+            s(&format!("ecdsa_verify({c}, {g}, {n}, {q}, 5, list(3, 19))")),
+            "false"
+        );
     }
 
     #[test]
@@ -668,8 +735,10 @@ mod tests {
         assert_eq!(s("rsa_keygen(61, 53, 4)"), "rsa_keygen(61, 53, 4)");
         // big primes use exact integers
         assert_eq!(
-            s("rsa_decrypt(rsa_encrypt(123456789, 65537, 1000000007 * 998244353), \
-               invmod(65537, 1000000006 * 998244352), 1000000007 * 998244353)"),
+            s(
+                "rsa_decrypt(rsa_encrypt(123456789, 65537, 1000000007 * 998244353), \
+               invmod(65537, 1000000006 * 998244352), 1000000007 * 998244353)"
+            ),
             "123456789"
         );
     }
@@ -677,7 +746,11 @@ mod tests {
     #[test]
     fn symbolic_arguments_stay() {
         let sets = [discrete()];
-        for src in ["ec_add(list(2, 3, 97), list(x, 6), list(3, 6))", "ec_mul(list(2, 3, p), 3, list(3, 6))", "rsa_encrypt(m, 17, 3233)"] {
+        for src in [
+            "ec_add(list(2, 3, 97), list(x, 6), list(3, 6))",
+            "ec_mul(list(2, 3, p), 3, list(3, 6))",
+            "rsa_encrypt(m, 17, 3233)",
+        ] {
             let (text, reduced) = reduce_with(&sets, src, &[]);
             assert!(reduced);
             assert_eq!(text, src);

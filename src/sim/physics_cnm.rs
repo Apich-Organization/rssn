@@ -1,3 +1,14 @@
+//! # Crank–Nicolson solvers
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions |
+//! |---|---|---|---|---|
+//! | Schrödinger | yes | no | no | vanishing wavefunction |
+//! | heat | yes | yes (ADI) | no | Dirichlet |
+//!
+//! The θ-method on 1D/2D/3D grids with Robin, Neumann, periodic faces,
+//! time-dependent data and adaptive step control is in
+//! [`crate::sim::structured`].
+
 use num_complex::Complex;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -148,6 +159,40 @@ pub fn solve_schrodinger_1d_cn(
 /// The final temperature distribution.
 #[must_use]
 pub fn solve_heat_equation_1d_cn(
+    initial_condition: &[f64],
+    dx: f64,
+    dt: f64,
+    d_coeff: f64,
+    steps: usize,
+) -> Vec<f64> {
+    let n = initial_condition.len();
+    if n >= 3 && dx > 0.0 && dt > 0.0 && steps > 0 {
+        // delegate to the dimension-generic θ-method (θ = 1/2, zero Dirichlet ends)
+        let bcs = crate::sim::boundary::FaceBcs::dirichlet_zero();
+        if let Ok(grid) =
+            crate::sim::structured::Grid::new(&[n], &[0.0], &[dx * (n - 1) as f64], &bcs)
+        {
+            let init = |x: [f64; 3]| initial_condition[((x[0] / dx).round() as usize).min(n - 1)];
+            let prob = crate::sim::structured::HeatProblem {
+                grid: &grid,
+                bcs: &bcs,
+                alpha: d_coeff,
+                init: &init,
+                source: None,
+                solver: crate::sim::structured::LinearSolver::Direct,
+            };
+            if let Ok(u) = crate::sim::structured::heat_fixed(&prob, dt * steps as f64, steps, 0.5)
+            {
+                return u;
+            }
+        }
+    }
+    solve_heat_equation_1d_cn_tridiagonal(initial_condition, dx, dt, d_coeff, steps)
+}
+
+/// Direct tridiagonal Crank–Nicolson reference (zero Dirichlet ends).
+#[must_use]
+pub fn solve_heat_equation_1d_cn_tridiagonal(
     initial_condition: &[f64],
     dx: f64,
     dt: f64,
@@ -400,4 +445,60 @@ pub fn simulate_2d_heat_conduction_cn_adi_scenario() -> Vec<f64> {
     }
 
     solve_heat_equation_2d_cn_adi(&u0, &config)
+}
+
+/// Crank–Nicolson (θ = 1/2) heat equation on a 1D, 2D or 3D grid.
+///
+/// Any face conditions of [`crate::sim::boundary`] are allowed (Dirichlet,
+/// Neumann, Robin, periodic, time-dependent data); data are stored with `x` fastest.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_heat_equation_nd_cn(
+    dims: &[usize],
+    spacing: &[f64],
+    initial_condition: &[f64],
+    d_coeff: f64,
+    dt: f64,
+    steps: usize,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<Vec<f64>, String> {
+    use crate::sim::structured::Grid;
+    use crate::sim::structured::HeatProblem;
+    use crate::sim::structured::LinearSolver;
+    use crate::sim::structured::heat_fixed;
+    if dims.len() != spacing.len()
+        || initial_condition.len() != dims.iter().product::<usize>()
+        || steps == 0
+    {
+        return Err("inconsistent grid description".into());
+    }
+    let hi: Vec<f64> = (0..dims.len())
+        .map(|a| {
+            let periodic = bcs.axis_periodic(a).unwrap_or(false);
+            spacing[a]
+                * if periodic {
+                    dims[a]
+                } else {
+                    dims[a] - 1
+                } as f64
+        })
+        .collect();
+    let grid = Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)?;
+    let init = |x: [f64; 3]| {
+        let mut idx = [0usize; 3];
+        for a in 0..dims.len() {
+            idx[a] = ((x[a] / spacing[a]).round() as usize).min(dims[a] - 1);
+        }
+        initial_condition[grid.index(idx)]
+    };
+    let prob = HeatProblem {
+        grid: &grid,
+        bcs,
+        alpha: d_coeff,
+        init: &init,
+        source: None,
+        solver: LinearSolver::Auto,
+    };
+    heat_fixed(&prob, dt * steps as f64, steps, 0.5)
 }

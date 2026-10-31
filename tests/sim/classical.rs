@@ -21,25 +21,25 @@ fn test_speed_of_light() {
 #[test]
 
 fn test_planck_constant() {
-    assert!(PLANCK_CONSTANT > 6.62e-34 && PLANCK_CONSTANT < 6.63e-34);
+    const { assert!(PLANCK_CONSTANT > 6.62e-34 && PLANCK_CONSTANT < 6.63e-34) };
 }
 
 #[test]
 
 fn test_gravitational_constant() {
-    assert!(GRAVITATIONAL_CONSTANT > 6.67e-11 && GRAVITATIONAL_CONSTANT < 6.68e-11);
+    const { assert!(GRAVITATIONAL_CONSTANT > 6.67e-11 && GRAVITATIONAL_CONSTANT < 6.68e-11) };
 }
 
 #[test]
 
 fn test_boltzmann_constant() {
-    assert!(BOLTZMANN_CONSTANT > 1.38e-23 && BOLTZMANN_CONSTANT < 1.39e-23);
+    const { assert!(BOLTZMANN_CONSTANT > 1.38e-23 && BOLTZMANN_CONSTANT < 1.39e-23) };
 }
 
 #[test]
 
 fn test_elementary_charge() {
-    assert!(ELEMENTARY_CHARGE > 1.60e-19 && ELEMENTARY_CHARGE < 1.61e-19);
+    const { assert!(ELEMENTARY_CHARGE > 1.60e-19 && ELEMENTARY_CHARGE < 1.61e-19) };
 }
 
 // ============================================================================
@@ -842,7 +842,7 @@ mod strengthened {
         let (t_end, x_end, y_end, ..) =
             *traj.last().unwrap_or(&(0.0, f64::NAN, f64::NAN, 0.0, 0.0));
         assert!((x_end - range).abs() < 0.05, "range {x_end} vs {range}");
-        assert!(y_end >= 0.0 && y_end < 0.01);
+        assert!((0.0..0.01).contains(&y_end));
         // Flight time 2 v0 sin(theta) / g
         assert!((t_end - 2.0 * 20.0 * (PI / 4.0).sin() / STANDARD_GRAVITY).abs() < 0.01);
         // Peak height v0^2 sin^2 / (2 g)
@@ -1123,7 +1123,7 @@ mod strengthened {
     #[test]
     fn wave_equation_validates_arguments() {
         let u = vec![0.0; 10];
-        assert!(solve_wave_equation_1d(&u, &vec![0.0; 9], 1.0, 0.1, 0.05, 5).is_err());
+        assert!(solve_wave_equation_1d(&u, &[0.0; 9], 1.0, 0.1, 0.05, 5).is_err());
         assert!(solve_wave_equation_1d(&[0.0, 0.0], &[0.0, 0.0], 1.0, 0.1, 0.05, 5).is_err());
         // CFL number 2 is rejected, 1 is accepted.
         assert!(solve_wave_equation_1d(&u, &u, 1.0, 0.1, 0.2, 5).is_err());

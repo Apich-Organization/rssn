@@ -56,7 +56,7 @@ impl CostModel for SizeCost {
         graph: &Graph,
         node: NodeId,
     ) -> Option<u64> {
-        Some(u64::from(graph.ops().get(graph.op(node)).cost))
+        Some(base_cost(graph, node))
     }
 
     fn scale(
@@ -72,6 +72,35 @@ impl CostModel for SizeCost {
     }
 }
 
+/// Penalty for arithmetic applied to a list: `2 * list(a, b)` equals
+/// `list(2*a, 2*b)`, and a vector should read as one.
+const LIST_ARITHMETIC: u64 = 1_000;
+
+/// The declared cost of `node`'s operator, plus [`LIST_ARITHMETIC`] for a
+/// sum or product with a list operand.
+fn base_cost(
+    graph: &Graph,
+    node: NodeId,
+) -> u64 {
+    let op = graph.op(node);
+    let mut cost = u64::from(graph.ops().get(op).cost);
+    // A fraction is a little more complex than an integer: between two
+    // spellings of one size, `-2^(1/2)` beats `-1/2*2^(3/2)`.
+    if op == super::op::core::LIT && graph.as_number(node).is_some_and(|n| !n.is_integer()) {
+        cost = cost.saturating_add(1);
+    }
+    if (op == super::op::core::ADD || op == super::op::core::MUL)
+        && graph.children(node).iter().any(|&c| {
+            graph
+                .enodes(graph.find(c))
+                .any(|n| graph.op(n) == super::op::core::LIST)
+        })
+    {
+        cost = cost.saturating_add(LIST_ARITHMETIC);
+    }
+    cost
+}
+
 /// Like [`SizeCost`] but refuses heavy operators: only fully reduced terms
 /// can be extracted.
 #[derive(Copy, Clone, Debug, Default)]
@@ -84,8 +113,33 @@ impl CostModel for ClosedForm {
         node: NodeId,
     ) -> Option<u64> {
         let desc = graph.ops().get(graph.op(node));
-        (!desc.flags.has(OpFlags::HEAVY)).then_some(u64::from(desc.cost))
+        (!desc.flags.has(OpFlags::HEAVY) || opaque_on_apply(graph, node, 8))
+            .then(|| base_cost(graph, node))
     }
+}
+
+/// Whether `node` is an [`OpFlags::OPAQUE_ON_APPLY`] request applied to an
+/// undetermined function (directly or through a chain of such requests).
+fn opaque_on_apply(
+    graph: &Graph,
+    node: NodeId,
+    depth: u8,
+) -> bool {
+    if depth == 0
+        || !graph
+            .ops()
+            .get(graph.op(node))
+            .flags
+            .has(OpFlags::OPAQUE_ON_APPLY)
+    {
+        return false;
+    }
+    let Some(&first) = graph.children(node).first() else {
+        return false;
+    };
+    graph.enodes(graph.find(first)).any(|n| {
+        graph.op(n) == super::op::core::APPLY || opaque_on_apply(graph, n, depth.saturating_sub(1))
+    })
 }
 
 /// Classes reachable from `roots` through e-node children, in discovery
@@ -103,6 +157,16 @@ pub fn reachable(
             continue;
         }
         order.push(class);
+        // A class holding a literal is fully known: its other members
+        // (`sin(pi)`, `x - x`, a reduced request ...) lead nowhere useful,
+        // and following them would turn every constant into a hub that
+        // makes the whole graph reachable from any term mentioning it.
+        if graph
+            .enodes(class)
+            .any(|n| graph.op(n) == super::op::core::LIT)
+        {
+            continue;
+        }
         for enode in graph.enodes(class) {
             for &child in graph.children(enode) {
                 let child_class = graph.find(child);

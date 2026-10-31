@@ -155,11 +155,12 @@ impl Field for f64 {
         // with the same relative tolerance as the generic path.
         let scale = matrix.data.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
 
-        let tol = n as f64 * f64::EPSILON * scale;
+        let tol = n as Self * Self::EPSILON * scale;
 
         let u = lu.U();
 
-        if (0..n).any(|i| !(u.get(i, i).abs() > tol)) {
+        if (0..n).any(|i| u.get(i, i).abs().partial_cmp(&tol) != Some(std::cmp::Ordering::Greater))
+        {
             return None;
         }
 
@@ -290,7 +291,7 @@ impl Field for f64 {
             },
             | FaerDecompositionType::Lu => {
                 // Row-major input: build an owned faer matrix element-wise.
-                let mat = faer::Mat::<f64>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
+                let mat = faer::Mat::<Self>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
                 let lu = mat.as_ref().partial_piv_lu();
                 let (l_ref, u_ref) = (lu.L(), lu.U());
                 let k = rows.min(cols);
@@ -316,7 +317,7 @@ impl Field for f64 {
                 })
             },
             | FaerDecompositionType::Qr => {
-                let mat = faer::Mat::<f64>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
+                let mat = faer::Mat::<Self>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
                 let qr = mat.as_ref().qr();
                 // Thin factors: Q is rows x k, R is k x cols, k = min(rows, cols).
                 let q_mat = qr.compute_thin_Q();
@@ -1087,10 +1088,10 @@ impl<T: Field> Matrix<T> {
     /// * `None` if the matrix is not square or is singular (not invertible).
     #[must_use]
     pub fn inverse(&self) -> Option<Self> {
-        if self.backend == Backend::Faer {
-            if let Some(res) = T::faer_inverse(self) {
-                return Some(res);
-            }
+        if self.backend == Backend::Faer
+            && let Some(res) = T::faer_inverse(self)
+        {
+            return Some(res);
         }
 
         if self.rows != self.cols {
@@ -1665,10 +1666,10 @@ impl<T: Field> Mul for Matrix<T> {
         assert_eq!(self.cols, rhs.rows);
 
         // Try Faer backend
-        if self.backend == Backend::Faer || rhs.backend == Backend::Faer {
-            if let Some(res) = T::faer_mul(&self, &rhs) {
-                return res.with_backend(self.backend); // Propagate lhs backend preference
-            }
+        if (self.backend == Backend::Faer || rhs.backend == Backend::Faer)
+            && let Some(res) = T::faer_mul(&self, &rhs)
+        {
+            return res.with_backend(self.backend); // Propagate lhs backend preference
         }
 
         let mut data = vec![T::zero(); self.rows * rhs.cols];

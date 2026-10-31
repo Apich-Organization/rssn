@@ -77,10 +77,10 @@ pub(crate) fn count_sign_changes(
         };
 
         if let Some(s) = sign {
-            if let Some(ls) = last_sign {
-                if s != ls {
-                    changes += 1;
-                }
+            if let Some(ls) = last_sign
+                && s != ls
+            {
+                changes += 1;
             }
 
             last_sign = Some(s);
@@ -143,7 +143,8 @@ pub fn isolate_real_roots(
 
         if num_roots == 0 {
             continue;
-        } else if num_roots == 1 {
+        }
+        if num_roots == 1 {
             roots.push((a, b));
         } else {
             let mid = f64::midpoint(a, b);

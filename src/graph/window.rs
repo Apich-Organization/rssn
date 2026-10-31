@@ -92,7 +92,11 @@ impl TreeWindow {
         let mut stack = vec![(root, NIL)];
         while let Some((node, parent)) = stack.pop() {
             let children = graph.children(node);
-            let transparent = graph.ops().get(graph.op(node)).flags.has(OpFlags::TRANSPARENT);
+            let transparent = graph
+                .ops()
+                .get(graph.op(node))
+                .flags
+                .has(OpFlags::TRANSPARENT);
             let inline = !children.is_empty()
                 && (parent == NIL
                     || (window.live < max_cells
@@ -712,14 +716,16 @@ impl TreeWindow {
         found: &WindowMatch,
     ) -> Option<CellId> {
         match pat {
-            | Pat::Var(v) => match found.subst.get(*v as usize)?.as_slice() {
-                | [] => None,
-                | [only] => Some(self.clone_subtree(*only)),
-                | several => {
-                    let copies: Vec<CellId> =
-                        several.iter().map(|&c| self.clone_subtree(c)).collect();
-                    Some(self.new_node(*found.ops.get(*v as usize)?, &copies))
-                },
+            | Pat::Var(v) => {
+                match found.subst.get(*v as usize)?.as_slice() {
+                    | [] => None,
+                    | [only] => Some(self.clone_subtree(*only)),
+                    | several => {
+                        let copies: Vec<CellId> =
+                            several.iter().map(|&c| self.clone_subtree(c)).collect();
+                        Some(self.new_node(*found.ops.get(*v as usize)?, &copies))
+                    },
+                }
             },
             | Pat::Num(n) => {
                 let node = graph.num(n.clone());
@@ -795,13 +801,13 @@ impl TreeWindow {
                     if !self.cell(cell).live {
                         continue 'cells;
                     }
-                    if let Some(found) = self.find_match(graph, rewrite, cell) {
-                        if self.apply(graph, rewrite, cell, &found).is_some() {
-                            changed = true;
-                            steps = steps.saturating_add(1);
-                            // The cell list is stale now; restart the sweep.
-                            break 'cells;
-                        }
+                    if let Some(found) = self.find_match(graph, rewrite, cell)
+                        && self.apply(graph, rewrite, cell, &found).is_some()
+                    {
+                        changed = true;
+                        steps = steps.saturating_add(1);
+                        // The cell list is stale now; restart the sweep.
+                        break 'cells;
                     }
                 }
             }
@@ -860,11 +866,11 @@ impl TreeWindow {
             }
             next.sort_by_key(|(cost, _)| *cost);
             next.truncate(width.max(1));
-            if let Some((cost, state)) = next.first() {
-                if *cost < best_cost {
-                    best_cost = *cost;
-                    best = state.clone();
-                }
+            if let Some((cost, state)) = next.first()
+                && *cost < best_cost
+            {
+                best_cost = *cost;
+                best = state.clone();
             }
             frontier = next.into_iter().map(|(_, s)| s).collect();
         }
@@ -940,10 +946,8 @@ impl Search<'_> {
                         *slot = op;
                     }
                     let ok = self.solve(&mut pending, subst);
-                    if !ok {
-                        if let Some(slot) = subst.get_mut(index) {
-                            slot.clear();
-                        }
+                    if !ok && let Some(slot) = subst.get_mut(index) {
+                        slot.clear();
                     }
                     ok
                 },
@@ -1138,9 +1142,11 @@ mod tests {
         program
             .rules
             .into_iter()
-            .filter_map(|r| match r.action {
-                | Action::Rewrite(rw) => Some(rw),
-                | Action::Kernel(_) => None,
+            .filter_map(|r| {
+                match r.action {
+                    | Action::Rewrite(rw) => Some(rw),
+                    | Action::Kernel(_) => None,
+                }
             })
             .collect()
     }
@@ -1176,7 +1182,10 @@ mod tests {
         // Arithmetic is transparent: shared or not, the window sees it.
         let node = g.parse("sin(a + b) * cos(a + b)").unwrap_or(NodeId::NONE);
         let w = TreeWindow::carve(&g, node, 64);
-        assert_eq!(shape(&g, &w, w.root()), "mul(sin(add([a] [b])) cos(add([a] [b])))");
+        assert_eq!(
+            shape(&g, &w, w.root()),
+            "mul(sin(add([a] [b])) cos(add([a] [b])))"
+        );
         // Used once: inlined.
         let node = g.parse("sin(p + q)").unwrap_or(NodeId::NONE);
         let w = TreeWindow::carve(&g, node, 64);
@@ -1276,6 +1285,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn fingerprint_ignores_commutative_order() {
         let mut g = graph();
         let (a, b) = (g.sym("a"), g.sym("b"));

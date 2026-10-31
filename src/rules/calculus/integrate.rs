@@ -21,9 +21,6 @@ use num_rational::BigRational;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use crate::backend::Backend;
-use crate::backend::Interpreter;
-use crate::graph::op::core;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -35,18 +32,22 @@ use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::SymbolId;
+use crate::graph::op::core;
 use crate::kernels::integrate::gauss_kronrod_any;
+use crate::rules::poly::apart::apart;
 use crate::rules::poly::best;
 use crate::rules::poly::ratio;
-use crate::rules::poly::repr::from_term;
-use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
-use crate::rules::poly::apart::apart;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 use crate::rules::poly::univariate::QPoly;
 
 use super::diff::Differentiate;
+
+#[path = "integrate_ext.rs"]
+mod integrate_ext;
 
 /// Operators the integrator builds results from.
 #[derive(Copy, Clone, Debug)]
@@ -67,6 +68,63 @@ pub struct Functions {
 }
 
 const MAX_DEPTH: usize = 6;
+/// How deeply substitutions may nest new integration variables.
+const MAX_NESTING: usize = 3;
+
+/// An antiderivative rule contributed by another rule set: given the
+/// integrand and the variable, a candidate antiderivative (which the
+/// integrator verifies like its own).
+pub type TableFn = fn(&mut Cx<'_>, NodeId, NodeId) -> Option<NodeId>;
+
+/// Operator attribute on `integral`: the antiderivative rules other rule
+/// sets have taught the integrator (Gaussians and the error function,
+/// for instance, belong to the special functions).
+#[derive(Clone, Debug, Default)]
+pub struct IntegralTable(pub Vec<TableFn>);
+
+/// The square root of a polynomial that is a perfect square with a
+/// positive leading coefficient, by the schoolbook algorithm on the
+/// polynomial's term order.
+fn poly_sqrt(p: &Poly) -> Option<Poly> {
+    let rational_sqrt = |c: &BigRational| -> Option<BigRational> {
+        if c.numer().sign() == num_bigint::Sign::Minus {
+            return None;
+        }
+        let (n, d) = (c.numer().sqrt(), c.denom().sqrt());
+        (&n * &n == *c.numer() && &d * &d == *c.denom()).then(|| BigRational::new(n, d))
+    };
+    let (mono, coeff) = p.leading()?;
+    if mono.iter().any(|&(_, e)| e % 2 != 0) {
+        return None;
+    }
+    let half: Vec<(u32, u32)> = mono.iter().map(|&(g, e)| (g, e / 2)).collect();
+    let lead_root = Poly::monomial(half, Number::rat(rational_sqrt(&coeff.to_rational()?)?));
+    let twice_lead = lead_root.scale(&Number::from(2));
+    let mut root = lead_root;
+    for _ in 0..64 {
+        let rest = p.sub(&root.mul(&root, 4096)?);
+        let Some((m, c)) = rest.leading() else {
+            return Some(root);
+        };
+        let (tm, tc) = twice_lead.leading()?;
+        let mut exponents = Vec::new();
+        for &(g, e) in m {
+            let lower = tm.iter().find(|&&(h, _)| h == g).map_or(0, |&(_, f)| f);
+            if e < lower {
+                return None;
+            }
+            if e > lower {
+                exponents.push((g, e - lower));
+            }
+        }
+        if tm.iter().any(|&(g, _)| !m.iter().any(|&(h, _)| h == g)) {
+            return None;
+        }
+        let term = Poly::monomial(exponents, c.mul(&tc.recip()?));
+        root = root.add(&term);
+    }
+    None
+}
 
 /// One integration problem: the variable and the tools.
 struct Integrator<'c, 'a> {
@@ -74,14 +132,35 @@ struct Integrator<'c, 'a> {
     f: Functions,
     x: NodeId,
     symbol: SymbolId,
+    /// Remaining work: every attempt and every nested simplification
+    /// spends one unit. The heuristic search is exponential in the worst
+    /// case; a failed search must give up in bounded time and leave the
+    /// integral to the numeric kernels.
+    fuel: usize,
 }
 
+/// Work units an antiderivative search may spend.
+const FUEL: usize = 600;
+
 impl Integrator<'_, '_> {
+    /// Spends one unit of work; `false` once the search is out of fuel.
+    const fn spend(&mut self) -> bool {
+        match self.fuel.checked_sub(1) {
+            | Some(rest) => {
+                self.fuel = rest;
+                true
+            },
+            | None => false,
+        }
+    }
+
     fn depends(
         &self,
         node: NodeId,
     ) -> bool {
-        self.cx.graph.depends_on(self.cx.graph.find(node), self.symbol)
+        self.cx
+            .graph
+            .depends_on(self.cx.graph.find(node), self.symbol)
     }
 
     fn int(
@@ -208,7 +287,7 @@ impl Integrator<'_, '_> {
         f: NodeId,
         depth: usize,
     ) -> Option<NodeId> {
-        if depth > MAX_DEPTH {
+        if depth > MAX_DEPTH || !self.spend() {
             return None;
         }
         if !self.depends(f) {
@@ -238,10 +317,35 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.table(f) {
             return Some(found);
         }
+        if let Some(found) = self.reciprocal_trig(f) {
+            return Some(found);
+        }
+        let extensions = self
+            .cx
+            .graph
+            .ops()
+            .lookup("integral")
+            .and_then(|op| self.cx.graph.ops().attr::<IntegralTable>(op))
+            .map(|t| t.0.clone())
+            .unwrap_or_default();
+        for rule in extensions {
+            if let Some(found) = rule(self.cx, f, self.x) {
+                return Some(found);
+            }
+        }
         if let Some(found) = self.exponential_times_trig(f) {
             return Some(found);
         }
         if let Some(found) = self.rational(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.rational_parametric(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.biquadratic(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.distribute(f, depth) {
             return Some(found);
         }
         if let Some(found) = self.trig_powers(f, depth) {
@@ -253,7 +357,37 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.substitution(f, depth) {
             return Some(found);
         }
-        self.by_parts(f, depth)
+        if let Some(found) = self.radicand_monomial_denominator(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.quadratic_radical_power(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.quadratic_radical(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.secant_power(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.fractional_power_substitution(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.hyperbolic_as_exponentials(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.exp_substitution(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.risch_norman(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.weierstrass(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.by_parts(f, depth) {
+            return Some(found);
+        }
+        self.log_substitution(f)
     }
 
     /// Standard forms whose argument is linear in the variable.
@@ -343,7 +477,11 @@ impl Integrator<'_, '_> {
             let radicand = self.add(&[one, minus_square]);
             let half = self.frac(1, 2);
             let root = self.pow(radicand, half);
-            let tail = if op == fs.asin { root } else { self.neg(root) };
+            let tail = if op == fs.asin {
+                root
+            } else {
+                self.neg(root)
+            };
             let head = self.mul(&[u, f]);
             self.add(&[head, tail])
         } else if op == fs.sqrt {
@@ -400,6 +538,7 @@ impl Integrator<'_, '_> {
     }
 
     /// `exp(u) * sin(v)` and `exp(u) * cos(v)` with linear `u`, `v`.
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn exponential_times_trig(
         &mut self,
         f: NodeId,
@@ -412,7 +551,11 @@ impl Integrator<'_, '_> {
         };
         let fs = self.f;
         let op_of = |graph: &Graph, n: NodeId| graph.op(n);
-        let (e, t) = if op_of(self.cx.graph, p) == fs.exp { (p, q) } else { (q, p) };
+        let (e, t) = if op_of(self.cx.graph, p) == fs.exp {
+            (p, q)
+        } else {
+            (q, p)
+        };
         let trig = op_of(self.cx.graph, t);
         if op_of(self.cx.graph, e) != fs.exp || (trig != fs.sin && trig != fs.cos) {
             return None;
@@ -472,7 +615,11 @@ impl Integrator<'_, '_> {
             return None;
         }
         let as_q = |p: &Poly| -> Option<QPoly> {
-            let mut q: QPoly = p.univariate_in(gx)?.iter().map(Number::to_rational).collect::<Option<_>>()?;
+            let mut q: QPoly = p
+                .univariate_in(gx)?
+                .iter()
+                .map(Number::to_rational)
+                .collect::<Option<_>>()?;
             while q.last().is_some_and(Zero::is_zero) {
                 q.pop();
             }
@@ -480,21 +627,332 @@ impl Integrator<'_, '_> {
         };
         let (numer, denom) = (as_q(&fraction.numer)?, as_q(&fraction.denom)?);
         if denom.len() < 2 {
-            return None;
+            // A polynomial, (x^2 - 1)^2 say: integrate its coefficients.
+            let scale = denom.first()?.clone();
+            if scale.is_zero() || numer.len() < 2 {
+                return None;
+            }
+            let integrated: QPoly =
+                std::iter::once(BigRational::zero())
+                    .chain(numer.iter().enumerate().map(|(k, c)| {
+                        c / (&scale * BigRational::from_integer(BigInt::from(k + 1)))
+                    }))
+                    .collect();
+            return Some(self.polynomial(&integrated));
         }
         let parts = apart(&numer, &denom)?;
         let mut pieces = Vec::new();
         if !parts.quotient.is_empty() {
             let integrated: QPoly = std::iter::once(BigRational::zero())
-                .chain(parts.quotient.iter().enumerate().map(|(k, c)| c / BigRational::from_integer(BigInt::from(k + 1))))
+                .chain(
+                    parts
+                        .quotient
+                        .iter()
+                        .enumerate()
+                        .map(|(k, c)| c / BigRational::from_integer(BigInt::from(k + 1))),
+                )
                 .collect();
             pieces.push(self.polynomial(&integrated));
         }
         for piece in &parts.pieces {
             let base = self.polynomial(&piece.factor);
-            pieces.push(self.partial_fraction(&piece.factor, base, piece.power, &piece.numerator)?);
+            pieces.push(self.partial_fraction(
+                &piece.factor,
+                base,
+                piece.power,
+                &piece.numerator,
+            )?);
         }
         Some(self.add(&pieces))
+    }
+
+    /// `(N / (c x^m))^q` rewritten as `N^q c^(-q) x^(-m q)` (for `x > 0`;
+    /// the result is verified like every other): radicands such as
+    /// `a - 1/x²` hide a substitution behind a monomial denominator.
+    fn radicand_monomial_denominator(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let x = self.x;
+        let mut changed = false;
+        let mut rewritten = f;
+        let mut stack = vec![f];
+        let mut seen = Vec::new();
+        while let Some(node) = stack.pop() {
+            if seen.contains(&node) {
+                continue;
+            }
+            seen.push(node);
+            stack.extend_from_slice(self.cx.graph.children(node));
+            let (true, &[base, exponent]) = (
+                self.cx.graph.op(node) == core::POW,
+                self.cx.graph.children(node),
+            ) else {
+                continue;
+            };
+            let Some(q) = self.number(exponent).and_then(|n| n.to_rational()) else {
+                continue;
+            };
+            if q.is_integer() || self.cx.graph.op(base) != core::ADD || !self.depends(base) {
+                continue;
+            }
+            let mut gens = Gens::default();
+            let gx = gens.index(self.cx.graph, x);
+            let Some(fraction) = ratio(self.cx.graph, &mut gens, base, Limits::default()) else {
+                continue;
+            };
+            let Some((mono, coeff)) = fraction
+                .denom
+                .leading()
+                .map(|(m, c)| (m.clone(), c.clone()))
+            else {
+                continue;
+            };
+            if fraction.denom.len() != 1 || mono.iter().any(|&(g, _)| g != gx) {
+                continue;
+            }
+            let m = mono.iter().find(|&&(g, _)| g == gx).map_or(0, |&(_, e)| e);
+            if m == 0 {
+                continue;
+            }
+            let numer = to_term(self.cx.graph, &gens, &fraction.numer);
+            let c = self.cx.graph.num(coeff);
+            let minus_q = self.cx.graph.num(Number::rat(-q.clone()));
+            let x_power = self.cx.graph.num(Number::rat(
+                -(q.clone() * BigRational::from_integer(BigInt::from(m))),
+            ));
+            let n_q = self.pow(numer, exponent);
+            let c_q = self.pow(c, minus_q);
+            let x_q = self.pow(x, x_power);
+            let replacement = self.mul(&[n_q, c_q, x_q]);
+            rewritten = self.cx.graph.replace_subterm(rewritten, node, replacement);
+            changed = true;
+        }
+        if !changed {
+            return None;
+        }
+        let rewritten = self.cx.simplify(rewritten);
+        self.integrate(rewritten, depth + 1)
+    }
+
+    /// Rational functions whose coefficients involve parameters, with a
+    /// denominator of degree one or two in `x`: long division, then a
+    /// logarithm for a linear denominator, and completing the square for
+    /// a quadratic one (`atan` or a logarithm by the sign of the
+    /// discriminant, decided exactly when it is a number and at generic
+    /// parameter values otherwise).
+    fn rational_parametric(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let mut gens = Gens::default();
+        let x = self.x;
+        let gx = gens.index(self.cx.graph, x);
+        let fraction = ratio(self.cx.graph, &mut gens, f, Limits::default())?;
+        for g in fraction
+            .numer
+            .support()
+            .into_iter()
+            .chain(fraction.denom.support())
+        {
+            if g != gx && gens.node(g).is_some_and(|n| self.depends(n)) {
+                return None;
+            }
+        }
+        let terms_of = |this: &mut Self, p: &Poly| -> Vec<NodeId> {
+            let mut c = p.coefficients_in(gx);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            c.iter().map(|q| to_term(this.cx.graph, &gens, q)).collect()
+        };
+        let mut numer = terms_of(self, &fraction.numer);
+        let denom = terms_of(self, &fraction.denom);
+        // √Δ as a polynomial when the discriminant is a perfect square (the
+        // forms below are invariant under the sign of the root).
+        let exact_root = {
+            let mut c = fraction.denom.coefficients_in(gx);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            match c.as_slice() {
+                | [c0, b, a] => {
+                    (|| {
+                        let four_ac = a.mul(c0, 4096)?.scale(&Number::from(4));
+                        let delta = four_ac.sub(&b.mul(b, 4096)?);
+                        if let Some(r) = poly_sqrt(&delta) {
+                            return Some((1, to_term(self.cx.graph, &gens, &r)));
+                        }
+                        poly_sqrt(&delta.neg()).map(|r| (-1, to_term(self.cx.graph, &gens, &r)))
+                    })()
+                },
+                | _ => None,
+            }
+        };
+        if !(2..=3).contains(&denom.len()) || numer.is_empty() {
+            return None;
+        }
+        // Long division by the denominator over the field of expressions.
+        let lead = *denom.last()?;
+        let mut quotient = vec![self.int(0); numer.len().saturating_sub(denom.len() - 1).max(1)];
+        while numer.len() >= denom.len() {
+            let shift = numer.len() - denom.len();
+            let top = *numer.last()?;
+            let c = self.div(top, lead);
+            let c = self.cx.simplify(c);
+            quotient[shift] = c;
+            for (i, &d) in denom.iter().enumerate() {
+                let product = self.mul(&[c, d]);
+                let difference = {
+                    let negated = self.neg(product);
+                    self.add(&[numer[shift + i], negated])
+                };
+                numer[shift + i] = self.cx.simplify(difference);
+            }
+            numer.pop();
+        }
+        while numer.last().is_some_and(|&c| self.cx.is_zero(c)) {
+            numer.pop();
+        }
+        let mut pieces = Vec::new();
+        for (k, &c) in quotient.iter().enumerate() {
+            if self.cx.is_zero(c) {
+                continue;
+            }
+            let e = self.int(i64::try_from(k + 1).ok()?);
+            let power = self.pow(x, e);
+            let scale = self.frac(1, i64::try_from(k + 1).ok()?);
+            pieces.push(self.mul(&[scale, c, power]));
+        }
+        let ln = self.f.ln;
+        let denominator = {
+            let mut terms = Vec::new();
+            for (k, &c) in denom.iter().enumerate() {
+                let e = self.int(i64::try_from(k).ok()?);
+                let power = self.pow(x, e);
+                terms.push(self.mul(&[c, power]));
+            }
+            self.add(&terms)
+        };
+        match (denom.as_slice(), numer.as_slice()) {
+            | (_, []) => {},
+            | (&[_, a], &[r]) => {
+                // ∫ r / (a x + b) = r/a ln(a x + b)
+                let log = self.call(ln, denominator);
+                let scale = self.div(r, a);
+                pieces.push(self.mul(&[scale, log]));
+            },
+            | (&[c, b, a], numer) => {
+                let q = *numer.first()?;
+                let p = numer.get(1).copied().unwrap_or_else(|| self.int(0));
+                // (p x + q)/(a x² + b x + c) = p/(2a) D'/D + (q - p b/(2a))/D
+                let two = self.int(2);
+                let two_a = self.mul(&[two, a]);
+                let half_slope = self.div(p, two_a);
+                let log = self.call(ln, denominator);
+                pieces.push(self.mul(&[half_slope, log]));
+                let pb = self.mul(&[half_slope, b]);
+                let neg_pb = self.neg(pb);
+                let rest = self.add(&[q, neg_pb]);
+                let rest = self.cx.simplify(rest);
+                if !self.cx.is_zero(rest) {
+                    let four = self.int(4);
+                    let four_ac = self.mul(&[four, a, c]);
+                    let b_sq = self.pow(b, two);
+                    let neg_b_sq = self.neg(b_sq);
+                    let delta = self.add(&[four_ac, neg_b_sq]);
+                    let delta = self.cx.simplify(delta);
+                    let sign = match exact_root {
+                        | Some((sign, _)) => sign,
+                        | None => self.sign_of(delta)?,
+                    };
+                    let slope = self.mul(&[two_a, x]);
+                    let linear = self.add(&[slope, b]);
+                    let half = self.frac(1, 2);
+                    let piece = match sign {
+                        | 1 => {
+                            // 2/√Δ atan((2ax + b)/√Δ)
+                            let root = match exact_root {
+                                | Some((_, r)) => r,
+                                | None => self.pow(delta, half),
+                            };
+                            let argument = self.div(linear, root);
+                            let atan = self.call(self.f.atan, argument);
+                            let factor = self.div(two, root);
+                            self.mul(&[factor, atan])
+                        },
+                        | -1 => {
+                            // 1/√(-Δ) ln((2ax + b - √(-Δ))/(2ax + b + √(-Δ)))
+                            let minus_delta = self.neg(delta);
+                            let root = match exact_root {
+                                | Some((_, r)) => r,
+                                | None => self.pow(minus_delta, half),
+                            };
+                            let neg_root = self.neg(root);
+                            let low = self.add(&[linear, neg_root]);
+                            let high = self.add(&[linear, root]);
+                            let quotient = self.div(low, high);
+                            let log = self.call(ln, quotient);
+                            self.div(log, root)
+                        },
+                        | _ => {
+                            // A perfect square: -2/(2ax + b)
+                            let minus_two = self.int(-2);
+                            self.div(minus_two, linear)
+                        },
+                    };
+                    pieces.push(self.mul(&[rest, piece]));
+                }
+            },
+            | _ => return None,
+        }
+        Some(self.add(&pieces))
+    }
+
+    /// The sign of a term free of `x`: exact for a number, otherwise at a
+    /// few generic parameter values (which must agree).
+    fn sign_of(
+        &self,
+        t: NodeId,
+    ) -> Option<i32> {
+        if let Some(n) = self.number(t) {
+            return Some(if n.is_zero() {
+                0
+            } else if n.is_negative() {
+                -1
+            } else {
+                1
+            });
+        }
+        let symbols = self.cx.graph.free_symbols(self.cx.graph.find(t)).to_vec();
+        let mut seen = None;
+        for shift in [0.0, 0.37, 1.9] {
+            let mut env = crate::graph::Env::numeric(0.0);
+            for (i, &s) in symbols.iter().enumerate() {
+                let facts = self.cx.graph.assumption(s);
+                let base = 0.7 + 0.31 * f64::from(u32::try_from(i).unwrap_or(0)) + shift;
+                let value = if facts.has(crate::graph::Facts::NONPOSITIVE) {
+                    -base
+                } else {
+                    base
+                };
+                env.bind(s, value);
+            }
+            let v = self.cx.graph.eval(t, &env)?;
+            let sign = if v.abs() < 1e-12 {
+                0
+            } else if v < 0.0 {
+                -1
+            } else {
+                1
+            };
+            if seen.is_some_and(|s| s != sign) {
+                return None;
+            }
+            seen = Some(sign);
+        }
+        seen
     }
 
     /// `∫ numerator / factor^power dx` for a linear or irreducible
@@ -517,7 +975,8 @@ impl Integrator<'_, '_> {
                     let exponent = 1 - i64::from(power);
                     let e = self.int(exponent);
                     let raised = self.pow(base, e);
-                    let scale = self.rat(a / (c1 * BigRational::from_integer(BigInt::from(exponent))));
+                    let scale =
+                        self.rat(a / (c1 * BigRational::from_integer(BigInt::from(exponent))));
                     Some(self.mul(&[scale, raised]))
                 }
             },
@@ -552,6 +1011,58 @@ impl Integrator<'_, '_> {
                 }
                 Some(self.add(&pieces))
             },
+            | ([c, b, a], _) => {
+                // (B x + C)/q^n, n >= 2: B/(2a) q'/q^n plus the rest times
+                // I_n = ∫ dx/q^n, reduced to I_1 by
+                // I_n = (2a x + b)/((n-1) Δ q^(n-1)) + 2(2n-3) a/((n-1) Δ) I_(n-1).
+                let big_c = numerator.first().cloned().unwrap_or_else(BigRational::zero);
+                let big_b = numerator.get(1).cloned().unwrap_or_else(BigRational::zero);
+                let two = BigRational::from_integer(BigInt::from(2));
+                let four = BigRational::from_integer(BigInt::from(4));
+                let discriminant = &four * a * c - b * b;
+                if !discriminant.is_positive() {
+                    return None;
+                }
+                let mut pieces = Vec::new();
+                let derivative_scale = &big_b / (&two * a);
+                if !derivative_scale.is_zero() {
+                    let exponent = 1 - i64::from(power);
+                    let e = self.int(exponent);
+                    let raised = self.pow(base, e);
+                    let scale = self
+                        .rat(&derivative_scale / BigRational::from_integer(BigInt::from(exponent)));
+                    pieces.push(self.mul(&[scale, raised]));
+                }
+                let rest = &big_c - &derivative_scale * b;
+                if !rest.is_zero() {
+                    // Coefficients of I_n as (rational term, multiple of I_1).
+                    let linear = self.polynomial(&[b.clone(), &two * a]);
+                    let mut weight = rest;
+                    let mut n = power;
+                    while n >= 2 {
+                        let n_minus_1 = BigRational::from_integer(BigInt::from(n - 1));
+                        let e = self.int(-i64::from(n - 1));
+                        let raised = self.pow(base, e);
+                        let scale = self.rat(&weight / (&n_minus_1 * &discriminant));
+                        pieces.push(self.mul(&[scale, linear, raised]));
+                        let factor = &two
+                            * BigRational::from_integer(BigInt::from(2 * i64::from(n) - 3))
+                            * a
+                            / (&n_minus_1 * &discriminant);
+                        weight *= factor;
+                        n -= 1;
+                    }
+                    let d = self.rat(discriminant);
+                    let half = self.frac(1, 2);
+                    let root = self.pow(d, half);
+                    let argument = self.div(linear, root);
+                    let arc = self.call(fs.atan, argument);
+                    let scale = self.rat(&weight * &two);
+                    let scaled = self.mul(&[scale, arc]);
+                    pieces.push(self.div(scaled, root));
+                }
+                Some(self.add(&pieces))
+            },
             | _ => None,
         }
     }
@@ -564,8 +1075,11 @@ impl Integrator<'_, '_> {
         depth: usize,
     ) -> Option<NodeId> {
         let fs = self.f;
-        let factors: Vec<NodeId> =
-            if self.cx.graph.op(f) == core::MUL { self.cx.graph.children(f).to_vec() } else { vec![f] };
+        let factors: Vec<NodeId> = if self.cx.graph.op(f) == core::MUL {
+            self.cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
         let (mut m, mut n, mut argument) = (0_u32, 0_u32, None);
         for factor in factors {
             let (base, power) = match *self.cx.graph.children(factor) {
@@ -603,7 +1117,11 @@ impl Integrator<'_, '_> {
             // An odd power: substitute the other function.
             //   m odd: t = cos u, integrand -(1 - t^2)^((m-1)/2) t^n / a
             //   n odd: t = sin u, integrand  (1 - t^2)^((n-1)/2) t^m / a
-            let (odd, other, target, sign) = if m % 2 == 1 { (m, n, c, -1) } else { (n, m, s, 1) };
+            let (odd, other, target, sign) = if m % 2 == 1 {
+                (m, n, c, -1)
+            } else {
+                (n, m, s, 1)
+            };
             let t2 = self.pow(t, two);
             let minus_t2 = self.neg(t2);
             let bracket = self.add(&[one, minus_t2]);
@@ -693,7 +1211,11 @@ impl Integrator<'_, '_> {
             self.add(&[first, second])
         } else {
             // sin(s) cos(c) with s the sine's argument.
-            let (s, c) = if op_p == fs.sin { (a, b) } else { (b, a) };
+            let (s, c) = if op_p == fs.sin {
+                (a, b)
+            } else {
+                (b, a)
+            };
             let minus_c = self.neg(c);
             let d = self.add(&[s, minus_c]);
             let t = self.add(&[s, c]);
@@ -701,8 +1223,12 @@ impl Integrator<'_, '_> {
             let second = self.call(fs.sin, d);
             self.add(&[first, second])
         };
-        let rest: Vec<NodeId> =
-            factors.iter().enumerate().filter(|&(k, _)| k != i && k != j).map(|(_, &n)| n).collect();
+        let rest: Vec<NodeId> = factors
+            .iter()
+            .enumerate()
+            .filter(|&(k, _)| k != i && k != j)
+            .map(|(_, &n)| n)
+            .collect();
         let mut all = rest;
         all.push(half);
         all.push(combined);
@@ -710,6 +1236,50 @@ impl Integrator<'_, '_> {
         let expanded = self.cx.simplify(product);
         let expanded = self.expand(expanded)?;
         if expanded == f {
+            return None;
+        }
+        self.integrate(expanded, depth + 1)
+    }
+
+    /// A product with a sum among its factors, `x (1 - x) sin(a x)`:
+    /// multiplied out and integrated term by term.
+    fn distribute(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let graph = &*self.cx.graph;
+        let has_sum = |n: NodeId| {
+            graph.op(n) == core::ADD
+                || (graph.op(n) == core::POW
+                    && graph
+                        .children(n)
+                        .first()
+                        .is_some_and(|&b| graph.op(b) == core::ADD)
+                    && graph
+                        .children(n)
+                        .get(1)
+                        .and_then(|&e| graph.number_of(e))
+                        .is_some_and(|e| e.is_integer() && !e.is_negative()))
+        };
+        if graph.op(f) != core::MUL || !graph.children(f).iter().any(|&c| has_sum(c)) {
+            return None;
+        }
+        let mut gens = Gens::default();
+        let poly = from_term(
+            self.cx.graph,
+            &mut gens,
+            f,
+            Limits {
+                terms: 64,
+                exponent: 12,
+            },
+        )?;
+        if poly.len() < 2 {
+            return None;
+        }
+        let expanded = to_term(self.cx.graph, &gens, &poly);
+        if self.cx.graph.op(expanded) != core::ADD {
             return None;
         }
         self.integrate(expanded, depth + 1)
@@ -732,8 +1302,16 @@ impl Integrator<'_, '_> {
         integrand: NodeId,
         depth: usize,
     ) -> Option<NodeId> {
-        let mut inner = Integrator { cx: &mut *self.cx, f: self.f, x: variable, symbol };
-        inner.integrate(integrand, depth)
+        let mut inner = Integrator {
+            cx: &mut *self.cx,
+            f: self.f,
+            x: variable,
+            symbol,
+            fuel: self.fuel,
+        };
+        let result = inner.integrate(integrand, depth);
+        self.fuel = inner.fuel;
+        result
     }
 
     /// Candidate inner functions for a substitution: arguments of
@@ -762,7 +1340,12 @@ impl Integrator<'_, '_> {
                     out.push(child);
                 }
             }
-            if !arithmetic && op != core::POW && node != f && !children.is_empty() && self.depends(node) && !out.contains(&node)
+            if !arithmetic
+                && op != core::POW
+                && node != f
+                && !children.is_empty()
+                && self.depends(node)
+                && !out.contains(&node)
             {
                 out.push(node);
             }
@@ -778,6 +1361,9 @@ impl Integrator<'_, '_> {
         depth: usize,
     ) -> Option<NodeId> {
         for u in self.candidates(f) {
+            if !self.spend() {
+                return None;
+            }
             let du = self.derivative(u);
             let du = self.cx.simplify(du);
             if self.number(du).is_some_and(|n| n.is_zero()) || self.cx.graph.op(du) == self.f.diff {
@@ -816,7 +1402,11 @@ impl Integrator<'_, '_> {
         }
         match *graph.children(factor) {
             | [base, exp] if op == core::POW && base == self.x => {
-                graph.number_of(exp).and_then(Number::to_i64).filter(|&n| n > 0).map(|_| 1)
+                graph
+                    .number_of(exp)
+                    .and_then(Number::to_i64)
+                    .filter(|&n| n > 0)
+                    .map(|_| 1)
             },
             | _ => None,
         }
@@ -829,7 +1419,18 @@ impl Integrator<'_, '_> {
         depth: usize,
     ) -> Option<NodeId> {
         if self.cx.graph.op(f) != core::MUL {
-            return None;
+            // A lone ln, atan, asin or acos: u = f, dv = dx.
+            if self.parts_priority(f) != Some(0) {
+                return None;
+            }
+            let x = self.x;
+            let du = self.derivative(f);
+            let remaining = self.mul(&[x, du]);
+            let remaining = self.cx.simplify(remaining);
+            let tail = self.integrate(remaining, depth + 1)?;
+            let head = self.mul(&[f, x]);
+            let minus_tail = self.neg(tail);
+            return Some(self.add(&[head, minus_tail]));
         }
         let factors = self.cx.graph.children(f).to_vec();
         let (index, _) = factors
@@ -838,7 +1439,12 @@ impl Integrator<'_, '_> {
             .filter_map(|(i, &factor)| self.parts_priority(factor).map(|p| (i, p)))
             .min_by_key(|&(_, p)| p)?;
         let u = *factors.get(index)?;
-        let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(i, _)| i != index).map(|(_, &n)| n).collect();
+        let rest: Vec<NodeId> = factors
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != index)
+            .map(|(_, &n)| n)
+            .collect();
         let dv = self.mul(&rest);
         let v = self.integrate(dv, depth + 1)?;
         let du = self.derivative(u);
@@ -867,19 +1473,343 @@ impl Integrator<'_, '_> {
             let mut env = Env::numeric(0.0);
             for (k, &symbol) in symbols.iter().enumerate() {
                 #[allow(clippy::cast_precision_loss)]
-                let value = if symbol == self.symbol { point } else { 0.7 + 0.13 * k as f64 };
+                let value = if symbol == self.symbol {
+                    point
+                } else {
+                    0.7 + 0.13 * k as f64
+                };
                 env.bind(symbol, value);
             }
             // Points where either side cannot be evaluated (undetermined
             // functions, a pole, outside the domain) say nothing.
-            let (Some(want), Some(got)) = (graph.eval(integrand, &env), graph.eval(derivative, &env)) else {
+            let (Some(want), Some(got)) =
+                (graph.eval(integrand, &env), graph.eval(derivative, &env))
+            else {
                 continue;
             };
-            if want.is_finite() && got.is_finite() && (want - got).abs() > 1e-6 * (1.0 + want.abs().max(got.abs())) {
+            if want.is_finite()
+                && got.is_finite()
+                && (want - got).abs() > 1e-6 * (1.0 + want.abs().max(got.abs()))
+            {
                 return false;
             }
         }
         true
+    }
+}
+
+/// `sec`, `csc`, `cot` written through `cos` and `sin` when they occur
+/// mixed with `cos` or `sin`, so that one form is integrated.
+fn reciprocal_trig_as_cos_sin(
+    cx: &mut Cx<'_>,
+    functions: Functions,
+    term: NodeId,
+) -> NodeId {
+    let graph = &*cx.graph;
+    let names: Vec<Option<OpId>> = ["sec", "csc", "cot"]
+        .iter()
+        .map(|n| graph.ops().lookup(n))
+        .collect();
+    let mut found = Vec::new();
+    let mut plain = false;
+    let mut stack = vec![term];
+    while let Some(n) = stack.pop() {
+        let op = graph.op(n);
+        if names.contains(&Some(op)) {
+            found.push(n);
+        } else if op == functions.cos || op == functions.sin {
+            plain = true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    if found.is_empty() || !plain {
+        return term;
+    }
+    let mut out = term;
+    for n in found {
+        let op = cx.graph.op(n);
+        let &[u] = cx.graph.children(n) else {
+            continue;
+        };
+        let minus_one = cx.graph.int(-1);
+        let replacement = if Some(op) == names[0] {
+            let c = cx.graph.node(functions.cos, &[u]);
+            cx.graph.node(core::POW, &[c, minus_one])
+        } else if Some(op) == names[1] {
+            let s = cx.graph.node(functions.sin, &[u]);
+            cx.graph.node(core::POW, &[s, minus_one])
+        } else {
+            let c = cx.graph.node(functions.cos, &[u]);
+            let s = cx.graph.node(functions.sin, &[u]);
+            let inv = cx.graph.node(core::POW, &[s, minus_one]);
+            cx.graph.node(core::MUL, &[c, inv])
+        };
+        out = cx.graph.replace_subterm(out, n, replacement);
+    }
+    cx.simplify(out)
+}
+
+/// The Bessel family an antiderivative table entry is about.
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum BesselKind {
+    J,
+    Y,
+    I,
+    K,
+}
+
+impl BesselKind {
+    const fn name(self) -> &'static str {
+        match self {
+            | Self::J => "besselj",
+            | Self::Y => "bessely",
+            | Self::I => "besseli",
+            | Self::K => "besselk",
+        }
+    }
+
+    /// `+1` when `d/dx [x^nu Z_nu(x)] = +x^nu Z_(nu-1)(x)` (J, Y, I) and `-1`
+    /// for K (`d/dx [x^nu K_nu] = -x^nu K_(nu-1)`).
+    const fn up_sign(self) -> i64 {
+        match self {
+            | Self::K => -1,
+            | _ => 1,
+        }
+    }
+
+    /// `+1` when `d/dx [x^-nu Z_nu(x)] = +x^-nu Z_(nu+1)(x)` (only I) and `-1`
+    /// for J, Y, K (`d/dx [x^-nu J_nu] = -x^-nu J_(nu+1)`).
+    const fn down_sign(self) -> i64 {
+        match self {
+            | Self::I => 1,
+            | _ => -1,
+        }
+    }
+}
+
+/// A Bessel factor `Z_m(c x)` of an integrand: kind, integer order, the
+/// argument `c x` and the slope `c` (free of `x`).
+struct BesselFactor {
+    kind: BesselKind,
+    order: i64,
+    argument: NodeId,
+    slope: NodeId,
+}
+
+impl Integrator<'_, '_> {
+    /// Antiderivatives of the standard Bessel forms, by linearity: `∫ Z_1 = ∓Z_0`
+    /// (and the odd orders of `J`, `Y` by `Z_(n+2) = Z_n - 2 Z_(n+1)'`),
+    /// `∫ x^(m+1) Z_m = x^(m+1) Z_(m+1)`, `∫ x^(1-m) Z_m = ∓ x^(1-m) Z_(m-1)`
+    /// and `∫ Z_0 Z_1 = ∓ Z_0^2 / 2`, all with the argument `c x`.
+    fn bessel_integrate(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        if depth > MAX_DEPTH || !self.spend() {
+            return None;
+        }
+        if !self.depends(f) {
+            let x = self.x;
+            return Some(self.mul(&[f, x]));
+        }
+        let children = self.cx.graph.children(f).to_vec();
+        let op = self.cx.graph.op(f);
+        if op == core::ADD {
+            let mut parts = Vec::with_capacity(children.len());
+            for child in children {
+                parts.push(self.bessel_integrate(child, depth + 1)?);
+            }
+            return Some(self.add(&parts));
+        }
+        if op == core::MUL {
+            let (constant, dependent): (Vec<NodeId>, Vec<NodeId>) =
+                children.iter().partition(|&&c| !self.depends(c));
+            if !constant.is_empty() {
+                let rest = self.mul(&dependent);
+                let inner = self.bessel_integrate(rest, depth + 1)?;
+                let mut factors = constant;
+                factors.push(inner);
+                return Some(self.mul(&factors));
+            }
+        }
+        self.bessel_table(f)
+    }
+
+    /// Reads `Z_m(c x)` (a Bessel function of integer order whose argument is
+    /// a constant multiple of `x`).
+    fn bessel_factor(
+        &mut self,
+        node: NodeId,
+    ) -> Option<BesselFactor> {
+        let op = self.cx.graph.op(node);
+        let kind = [BesselKind::J, BesselKind::Y, BesselKind::I, BesselKind::K]
+            .into_iter()
+            .find(|k| self.cx.graph.ops().lookup(k.name()) == Some(op))?;
+        let children = self.cx.graph.children(node).to_vec();
+        let [order, argument] = children.as_slice() else {
+            return None;
+        };
+        let order = self.number(*order)?.to_i64()?;
+        let x = self.x;
+        let slope = if *argument == x {
+            self.int(1)
+        } else if self.cx.graph.op(*argument) == core::MUL {
+            let parts = self.cx.graph.children(*argument).to_vec();
+            if parts.iter().filter(|&&p| p == x).count() != 1 {
+                return None;
+            }
+            let constants: Vec<NodeId> = parts.iter().copied().filter(|&p| p != x).collect();
+            if constants.iter().any(|&c| self.depends(c)) {
+                return None;
+            }
+            self.mul(&constants)
+        } else {
+            return None;
+        };
+        Some(BesselFactor {
+            kind,
+            order,
+            argument: *argument,
+            slope,
+        })
+    }
+
+    fn bessel_node(
+        &mut self,
+        kind: BesselKind,
+        order: i64,
+        argument: NodeId,
+    ) -> Option<NodeId> {
+        let op = self.cx.graph.ops().lookup(kind.name())?;
+        let order = self.int(order);
+        Some(self.cx.graph.node(op, &[order, argument]))
+    }
+
+    /// `x^p` as a node (`p = 0` gives `1`).
+    fn x_power(
+        &mut self,
+        p: i64,
+    ) -> NodeId {
+        let x = self.x;
+        match p {
+            | 0 => self.int(1),
+            | 1 => x,
+            | _ => {
+                let e = self.int(p);
+                self.pow(x, e)
+            },
+        }
+    }
+
+    fn bessel_table(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let x = self.x;
+        // split into x^p and Bessel factors
+        let mut power = 0_i64;
+        let mut factors: Vec<BesselFactor> = Vec::new();
+        let parts: Vec<NodeId> = if self.cx.graph.op(f) == core::MUL {
+            self.cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
+        for part in parts {
+            if part == x {
+                power += 1;
+            } else if self.cx.graph.op(part) == core::POW {
+                let kids = self.cx.graph.children(part).to_vec();
+                let [base, exponent] = kids.as_slice() else {
+                    return None;
+                };
+                if *base == x {
+                    power += self.number(*exponent)?.to_i64()?;
+                } else {
+                    return None;
+                }
+            } else {
+                factors.push(self.bessel_factor(part)?);
+            }
+        }
+        match factors.as_slice() {
+            | [z] => {
+                let (kind, m) = (z.kind, z.order);
+                let (slope, argument) = (z.slope, z.argument);
+                if power == 0 {
+                    // ∫ Z_m(c x): odd positive orders of J, Y, and order 1 of I, K
+                    if m >= 1 && m % 2 == 1 && matches!(kind, BesselKind::J | BesselKind::Y) {
+                        let mut terms = vec![self.bessel_node(kind, 0, argument)?];
+                        let mut k = 2;
+                        while k < m {
+                            let z_k = self.bessel_node(kind, k, argument)?;
+                            let two = self.int(2);
+                            terms.push(self.mul(&[two, z_k]));
+                            k += 2;
+                        }
+                        let sum = self.add(&terms);
+                        let minus = self.int(-1);
+                        let value = self.mul(&[minus, sum]);
+                        return Some(self.div(value, slope));
+                    }
+                    if m == 1 && matches!(kind, BesselKind::I | BesselKind::K) {
+                        // ∫ I_1 = I_0 and ∫ K_1 = -K_0
+                        let z0 = self.bessel_node(kind, 0, argument)?;
+                        let value = if kind == BesselKind::I {
+                            z0
+                        } else {
+                            let minus = self.int(-1);
+                            self.mul(&[minus, z0])
+                        };
+                        return Some(self.div(value, slope));
+                    }
+                    return None;
+                }
+                if m >= 0 && power == m + 1 {
+                    // ∫ x^(m+1) Z_m(c x) = ± x^(m+1) Z_(m+1)(c x) / c
+                    let next = self.bessel_node(kind, m + 1, argument)?;
+                    let xp = self.x_power(power);
+                    let sign = self.int(kind.up_sign());
+                    let value = self.mul(&[sign, xp, next]);
+                    return Some(self.div(value, slope));
+                }
+                if m >= 1 && power == 1 - m {
+                    // ∫ x^(1-m) Z_m(c x) = ± x^(1-m) Z_(m-1)(c x) / c
+                    let prev = self.bessel_node(kind, m - 1, argument)?;
+                    let xp = self.x_power(power);
+                    let sign = self.int(kind.down_sign());
+                    let value = self.mul(&[sign, xp, prev]);
+                    return Some(self.div(value, slope));
+                }
+                None
+            },
+            | [a, b] if power == 0 && a.kind == b.kind && a.argument == b.argument => {
+                // ∫ Z_0 Z_1 = ∓ Z_0^2 / (2 c)
+                let ((lo, hi), kind) = (
+                    if a.order <= b.order {
+                        (a, b)
+                    } else {
+                        (b, a)
+                    },
+                    a.kind,
+                );
+                if (lo.order, hi.order) != (0, 1) {
+                    return None;
+                }
+                let z0 = self.bessel_node(kind, 0, a.argument)?;
+                let two = self.int(2);
+                let square = self.pow(z0, two);
+                let sign = self.int(if kind == BesselKind::I {
+                    1
+                } else {
+                    -1
+                });
+                let denominator = self.mul(&[two, a.slope]);
+                let value = self.mul(&[sign, square]);
+                Some(self.div(value, denominator))
+            },
+            | _ => None,
+        }
     }
 }
 
@@ -890,11 +1820,116 @@ pub(super) fn antiderivative(
     integrand: NodeId,
     variable: NodeId,
 ) -> Option<NodeId> {
+    thread_local! {
+        /// Nesting of substitutions that integrate in a new variable.
+        static NESTING: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+    /// Restores the nesting level when the attempt ends.
+    struct Level;
+    impl Drop for Level {
+        fn drop(&mut self) {
+            NESTING.with(|n| n.set(n.get().saturating_sub(1)));
+        }
+    }
+    if NESTING.with(|n| {
+        let level = n.get();
+        n.set(level + 1);
+        level >= MAX_NESTING
+    }) {
+        NESTING.with(|n| n.set(n.get().saturating_sub(1)));
+        return None;
+    }
+    let _level = Level;
     let symbol = cx.graph.symbol_of(variable)?;
+    // The tables and the by-parts / substitution search know no
+    // antiderivative of a Bessel or Hankel function of the variable, and
+    // the search for one is expensive on the nested Weber integrands of
+    // the exterior PDE solutions (seconds per attempt): decline at once.
+    if special_in(cx.graph, integrand, symbol) {
+        // ... except the table forms (∫ J_1 = -J_0, ∫ x J_0 = x J_1, ...),
+        // which are found by a direct pattern match and checked like every
+        // other antiderivative.
+        let term = cx.simplify(integrand);
+        let mut integrator = Integrator {
+            cx,
+            f: functions,
+            x: variable,
+            symbol,
+            fuel: FUEL,
+        };
+        let candidate = integrator.bessel_integrate(term, 0)?;
+        return integrator.verified(term, candidate).then_some(candidate);
+    }
     let term = cx.simplify(integrand);
-    let mut integrator = Integrator { cx, f: functions, x: variable, symbol };
+    let term = reciprocal_trig_as_cos_sin(cx, functions, term);
+    if opaque_in(cx.graph, term, symbol, functions.diff) {
+        return None;
+    }
+    let mut integrator = Integrator {
+        cx,
+        f: functions,
+        x: variable,
+        symbol,
+        fuel: FUEL,
+    };
     let candidate = integrator.integrate(term, 0)?;
     integrator.verified(term, candidate).then_some(candidate)
+}
+
+/// Whether `term` contains an undetermined function of `x` (`A(x)`) but
+/// no derivative of one: such an integrand has no antiderivative the
+/// heuristics could find, and searching for one is expensive. (With a
+/// derivative present, `∫ f(x) f'(x) dx`, substitution may succeed.)
+fn opaque_in(
+    graph: &Graph,
+    term: NodeId,
+    x: SymbolId,
+    diff: OpId,
+) -> bool {
+    let mut stack = vec![term];
+    let mut seen = std::collections::HashSet::new();
+    let mut found = false;
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        let op = graph.op(n);
+        if op == diff {
+            return false;
+        }
+        if op == core::APPLY && graph.depends_on(graph.find(n), x) {
+            found = true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    found
+}
+
+/// Whether `term` contains a Bessel or Hankel function whose argument or
+/// order depends on `x`.
+fn special_in(
+    graph: &Graph,
+    term: NodeId,
+    x: SymbolId,
+) -> bool {
+    let specials: Vec<OpId> = [
+        "besselj", "bessely", "besseli", "besselk", "hankel1", "hankel2",
+    ]
+    .iter()
+    .filter_map(|name| graph.ops().lookup(name))
+    .collect();
+    let mut stack = vec![term];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        if specials.contains(&graph.op(n)) && graph.depends_on(graph.find(n), x) {
+            return true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    false
 }
 
 /// Symbolic kernel for `integral(f, x)`.
@@ -916,11 +1951,13 @@ impl Kernel for Antiderivative {
         let &[integrand, variable] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
-        antiderivative(cx, self.functions, integrand, variable).map_or(Outcome::Pass, Outcome::Equal)
+        antiderivative(cx, self.functions, integrand, variable)
+            .map_or(Outcome::Pass, Outcome::Equal)
     }
 }
 
-/// Symbolic kernel for `defint(f, x, a, b)` with finite limits.
+/// Symbolic kernel for `defint(f, x, a, b)`: the antiderivative at the
+/// limits, or its limits at infinite ends.
 pub(super) struct Definite {
     pub(super) defint: OpId,
     pub(super) functions: Functions,
@@ -941,17 +1978,67 @@ impl Kernel for Definite {
         };
         // An infinite limit needs a limit, not a substitution.
         let infinite = |graph: &Graph, n: NodeId| {
-            graph.eval(n, &Env::numeric(0.0)).is_some_and(f64::is_infinite)
+            graph
+                .eval(n, &Env::numeric(0.0))
+                .is_some_and(f64::is_infinite)
         };
-        if infinite(cx.graph, lower) || infinite(cx.graph, upper) {
-            return Outcome::Pass;
+        let (lower_infinite, upper_infinite) =
+            (infinite(cx.graph, lower), infinite(cx.graph, upper));
+        // Inside the integral the variable ranges over the interval: a
+        // fresh symbol carries what is known about it (real, and its sign
+        // when the interval lies on one side of zero), so that |x| or
+        // sqrt(x^2) can be resolved.
+        let (variable, integrand) = match (
+            cx.graph.eval(lower, &Env::numeric(0.0)),
+            cx.graph.eval(upper, &Env::numeric(0.0)),
+        ) {
+            | (Some(lo), Some(hi)) if lo <= hi && cx.graph.symbol_of(variable).is_some() => {
+                // The end points are a null set: the open interval is
+                // what matters to the value of the integral.
+                let mut facts = crate::graph::Facts::REAL;
+                if lo >= 0.0 && hi > lo {
+                    facts = facts | crate::graph::Facts::POSITIVE;
+                }
+                if hi <= 0.0 && hi > lo {
+                    facts = facts | crate::graph::Facts::NEGATIVE;
+                }
+                let fresh = cx.graph.interner_mut().fresh_symbol("x");
+                cx.graph.assume(fresh, facts);
+                let local = cx.graph.symbol_node(fresh);
+                let body = best(cx.graph, integrand).unwrap_or(integrand);
+                (local, cx.graph.substitute(body, variable, local))
+            },
+            | _ => (variable, integrand),
+        };
+        // Rational and Fourier-type integrals over the whole line: residues.
+        if lower_infinite
+            && upper_infinite
+            && let Some(value) = integrate_ext::by_residues(cx, integrand, variable, lower, upper)
+        {
+            return Outcome::Equal(value);
         }
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
-            return Outcome::Pass;
+            // No antiderivative: residues and classical tables.
+            return integrate_ext::by_residues(cx, integrand, variable, lower, upper)
+                .map_or(Outcome::Pass, Outcome::Equal);
         };
         let graph = &mut *cx.graph;
-        let at_upper = graph.substitute(primitive, variable, upper);
-        let at_lower = graph.substitute(primitive, variable, lower);
+        // An improper integral is the difference of the antiderivative's
+        // limits at the infinite ends.
+        let limit = graph.ops().lookup("limit");
+        let at = |graph: &mut Graph, bound: NodeId, is_infinite: bool| {
+            match (is_infinite, limit) {
+                | (true, Some(limit)) => Some(graph.node(limit, &[primitive, variable, bound])),
+                | (true, None) => None,
+                | (false, _) => Some(graph.substitute(primitive, variable, bound)),
+            }
+        };
+        let (Some(at_upper), Some(at_lower)) = (
+            at(graph, upper, upper_infinite),
+            at(graph, lower, lower_infinite),
+        ) else {
+            return Outcome::Pass;
+        };
         let minus_one = graph.int(-1);
         let negated = graph.node(core::MUL, &[minus_one, at_lower]);
         Outcome::Equal(graph.node(core::ADD, &[at_upper, negated]))
@@ -999,11 +2086,71 @@ fn compile_nested(
                 }
                 body(&point)
             };
-            gauss_kronrod_any(f, a, b, tolerance, 200).value
+            robust_quadrature(f, a, b, tolerance, 200).0
         }));
     }
-    let compiled = Interpreter.compile(graph, term, inputs).ok()?;
+    let compiled = crate::backend::compile(graph, term, inputs).ok()?;
     Some(Box::new(move |args: &[f64]| compiled.call(args)))
+}
+
+/// Numeric integral over `[a, b]` (either end may be infinite) with an
+/// error estimate.
+///
+/// Plain adaptive Gauss-Kronrod is tried first; when it does not reach the
+/// tolerance (endpoint singularities, slow algebraic decay) the integral is
+/// redone with Wynn-extrapolated Gauss-Kronrod (QAGS) and the
+/// double-exponential rule matching the range, and the estimate with the
+/// smallest error is kept.
+fn robust_quadrature(
+    f: impl Fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    tolerance: f64,
+    max_panels: usize,
+) -> (f64, f64) {
+    use crate::kernels::quadrature as q;
+    if a > b {
+        let (value, error) = robust_quadrature(f, b, a, tolerance, max_panels);
+        return (-value, error);
+    }
+    let first = gauss_kronrod_any(&f, a, b, tolerance, max_panels);
+    let target = |value: f64| tolerance * value.abs().max(1e-3);
+    if first.value.is_finite() && first.error <= target(first.value) {
+        return (first.value, first.error);
+    }
+    let mut candidates = vec![(first.value, first.error)];
+    let mut push = |r: q::Integral| candidates.push((r.value, r.error));
+    match (a.is_finite(), b.is_finite()) {
+        | (true, true) => {
+            push(q::integrate_gk(
+                &f,
+                a,
+                b,
+                q::GkRule::G10K21,
+                tolerance * 1e-3,
+                tolerance,
+                max_panels,
+            ));
+            push(q::tanh_sinh(&f, a, b, tolerance));
+        },
+        | (true, false) => {
+            push(q::integrate_semi_infinite(&f, a, tolerance));
+            push(q::exp_sinh(&f, a, tolerance));
+        },
+        | (false, true) => {
+            push(q::integrate_semi_infinite(|t| f(-t), -b, tolerance));
+            push(q::exp_sinh(|t| f(-t), -b, tolerance));
+        },
+        | (false, false) => {
+            push(q::integrate_infinite(&f, tolerance));
+            push(q::sinh_sinh(&f, tolerance));
+        },
+    }
+    candidates
+        .into_iter()
+        .filter(|(v, e)| v.is_finite() && e.is_finite())
+        .min_by(|x, y| x.1.total_cmp(&y.1))
+        .unwrap_or((first.value, first.error))
 }
 
 pub(super) struct Quadrature {
@@ -1039,7 +2186,8 @@ impl Kernel for Quadrature {
         let Some(x) = graph.symbol_of(variable) else {
             return Outcome::Pass;
         };
-        let limit = |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
+        let limit =
+            |graph: &mut Graph, n: NodeId| best(graph, n).and_then(|t| graph.eval(t, cx.env));
         let (Some(a), Some(b)) = (limit(graph, lower), limit(graph, upper)) else {
             return Outcome::Pass;
         };
@@ -1066,9 +2214,12 @@ impl Kernel for Quadrature {
             }
             compiled(&args)
         };
-        let result = gauss_kronrod_any(f, a, b, tolerance, 4_000);
-        if result.value.is_finite() && result.error.is_finite() {
-            Outcome::Approx(Ball { mid: result.value, rad: result.error })
+        let (value, error) = robust_quadrature(f, a, b, tolerance, 4_000);
+        if value.is_finite() && error.is_finite() {
+            Outcome::Approx(Ball {
+                mid: value,
+                rad: error,
+            })
         } else {
             Outcome::Pass
         }

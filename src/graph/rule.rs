@@ -131,9 +131,11 @@ impl Guard {
     ) -> bool {
         let get = |v: u32| subst.get(v as usize).copied().filter(|n| !n.is_none());
         match self {
-            | Self::FreeOf(a, x) => match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
-                | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
-                | _ => false,
+            | Self::FreeOf(a, x) => {
+                match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
+                    | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
+                    | _ => false,
+                }
             },
             | Self::IsNumber(a) => get(*a).is_some_and(|a| graph.number_of(a).is_some()),
             | Self::IsInteger(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::INTEGER)),
@@ -145,9 +147,11 @@ impl Guard {
                 get(*a).is_some_and(|a| graph.facts(a).has(Facts::NONNEGATIVE))
             },
             | Self::Real(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::REAL)),
-            | Self::Same(a, b) => match (get(*a), get(*b)) {
-                | (Some(a), Some(b)) => graph.same(a, b),
-                | _ => false,
+            | Self::Same(a, b) => {
+                match (get(*a), get(*b)) {
+                    | (Some(a), Some(b)) => graph.same(a, b),
+                    | _ => false,
+                }
             },
             | Self::Not(inner) => !inner.holds(graph, subst),
             | Self::Custom(f) => f(graph, subst),
@@ -329,9 +333,17 @@ impl Cx<'_> {
         env.depth = self.env.depth.saturating_add(1);
         // No exploring rules (`max_nodes: 0`): a nested run is asked for a
         // normal form, quickly, not for a search.
-        let budget = Budget { max_iterations: 6, max_nodes: 0, patience: 2, ..Budget::default() };
-        self.engine.run(self.graph, &[term], &env, &Saturate, &budget);
-        Extractor::new(self.graph, &[term], &SizeCost).build(self.graph, term).unwrap_or(term)
+        let budget = Budget {
+            max_iterations: 6,
+            max_nodes: 0,
+            patience: 2,
+            ..Budget::default()
+        };
+        self.engine
+            .run(self.graph, &[term], &env, &Saturate, &budget);
+        Extractor::new(self.graph, &[term], &SizeCost)
+            .build(self.graph, term)
+            .unwrap_or(term)
     }
 
     /// Whether `term` simplifies to the literal zero.
@@ -340,7 +352,9 @@ impl Cx<'_> {
         term: NodeId,
     ) -> bool {
         let simplified = self.simplify(term);
-        self.graph.number_of(simplified).is_some_and(super::number::Number::is_zero)
+        self.graph
+            .number_of(simplified)
+            .is_some_and(super::number::Number::is_zero)
     }
 }
 
@@ -369,6 +383,59 @@ pub trait Kernel: Send + Sync {
     fn revisit(&self) -> bool {
         false
     }
+
+    /// Whether this kernel splits its work into [`Kernel::prepare`] and
+    /// [`Kernel::commit`] (two-phase execution).
+    ///
+    /// The scheduler then prepares *all* eligible nodes of an iteration
+    /// first (sequentially, with graph access), runs the returned
+    /// [`PreparedWork`] items in parallel on the rayon pool, and commits the
+    /// results in node order. Because every node is prepared before any is
+    /// committed, a two-phase kernel does not see the unions its own earlier
+    /// commits made during the same iteration; the semantics are the same
+    /// whether the work runs on one thread or many. The default is `false`
+    /// and the sequential [`Kernel::reduce`] is used.
+    fn two_phase(&self) -> bool {
+        false
+    }
+
+    /// First phase: extracts the pure data the heavy computation needs.
+    ///
+    /// Called only for kernels with [`Kernel::two_phase`]. May add nodes to the
+    /// graph (like `reduce`) but must not union. Return
+    /// [`Prepared::Done`] when the node needs no heavy work.
+    fn prepare(
+        &self,
+        _cx: &mut Cx<'_>,
+        _node: NodeId,
+    ) -> Prepared {
+        Prepared::Done(Outcome::Pass)
+    }
+
+    /// Second phase: turns the result of the [`PreparedWork`] of `node` into an
+    /// outcome (runs sequentially, in node order, with graph access).
+    fn commit(
+        &self,
+        _cx: &mut Cx<'_>,
+        _node: NodeId,
+        _result: Box<dyn std::any::Any + Send>,
+    ) -> Outcome {
+        Outcome::Pass
+    }
+}
+
+/// Heavy computation of a two-phase [`Kernel`] that no longer needs the graph.
+pub trait PreparedWork: Send {
+    /// Runs the computation; the result is handed to [`Kernel::commit`].
+    fn run(self: Box<Self>) -> Box<dyn std::any::Any + Send>;
+}
+
+/// Result of [`Kernel::prepare`].
+pub enum Prepared {
+    /// The node is decided without heavy work.
+    Done(Outcome),
+    /// Heavy work to run (possibly in parallel) before `commit`.
+    Work(Box<dyn PreparedWork>),
 }
 
 /// The executable part of a rule.
@@ -505,7 +572,27 @@ impl<'g> Installer<'g> {
         &mut self,
         desc: OpDescriptor,
     ) -> Result<OpId, RuleError> {
-        Ok(self.graph.ops_mut().register(desc)?)
+        let name = desc.name.to_string();
+        let op = self.graph.ops_mut().register(desc)?;
+        if self
+            .graph
+            .ops()
+            .attr::<crate::graph::dim::DimRule>(op)
+            .is_none()
+            && let Some(rule) = crate::graph::dim::default_rule(&name)
+        {
+            self.graph.ops_mut().set_attr(op, rule);
+        }
+        Ok(op)
+    }
+
+    /// Attaches a dimension rule to an operator (see `docs/DIMENSIONS.md`).
+    pub fn dim(
+        &mut self,
+        op: OpId,
+        rule: crate::graph::dim::DimRule,
+    ) {
+        self.graph.ops_mut().set_attr(op, rule);
     }
 
     /// Adds rewrites written as text, one per entry:
@@ -536,13 +623,17 @@ impl<'g> Installer<'g> {
         tier: Tier,
         text: &str,
     ) -> Result<(), RuleError> {
-        let parse_err = |error: ParseError| RuleError::Parse {
-            rule: text.to_owned(),
-            error,
+        let parse_err = |error: ParseError| {
+            RuleError::Parse {
+                rule: text.to_owned(),
+                error,
+            }
         };
-        let invalid = |reason: &'static str| RuleError::Invalid {
-            rule: text.to_owned(),
-            reason,
+        let invalid = |reason: &'static str| {
+            RuleError::Invalid {
+                rule: text.to_owned(),
+                reason,
+            }
         };
         let (name, body) = text
             .split_once(':')
@@ -613,6 +704,107 @@ impl<'g> Installer<'g> {
         Ok(())
     }
 
+    /// Adds *definitions*: operators whose meaning is a formula in their
+    /// arguments, one per entry:
+    ///
+    /// ```text
+    /// kinetic_energy(m, v) := m * v^2 / 2
+    /// lorentz_factor(v) := (1 - v^2 / c_0^2)^(-1/2)
+    /// ```
+    ///
+    /// Each name is registered as a heavy operator of the given arity and
+    /// reduced by instantiating its body, so a definition may use any
+    /// operator installed before it — including requests such as `diff`,
+    /// which are then reduced in turn. Identifiers in the body that are
+    /// not parameters are ordinary symbols (or nullary operators).
+    ///
+    /// # Errors
+    /// Fails when an entry is malformed, its body does not parse, or the
+    /// name clashes with an operator of a different signature.
+    pub fn define(
+        &mut self,
+        texts: &[&str],
+    ) -> Result<(), RuleError> {
+        for text in texts {
+            self.definition(text)?;
+        }
+        Ok(())
+    }
+
+    fn definition(
+        &mut self,
+        text: &str,
+    ) -> Result<(), RuleError> {
+        let invalid = |reason: &'static str| {
+            RuleError::Invalid {
+                rule: text.to_owned(),
+                reason,
+            }
+        };
+        let (head, body) = text
+            .split_once(":=")
+            .ok_or_else(|| invalid("missing `:=`"))?;
+        let head = head.trim();
+        let (name, params) = match head.split_once('(') {
+            | Some((name, rest)) => {
+                let inner = rest
+                    .trim_end()
+                    .strip_suffix(')')
+                    .ok_or_else(|| invalid("missing `)` in the head"))?;
+                let params: Vec<&str> = inner
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|p| !p.is_empty())
+                    .collect();
+                (name.trim(), params)
+            },
+            | None => (head, Vec::new()),
+        };
+        let is_ident = |s: &str| {
+            s.chars()
+                .next()
+                .is_some_and(|c| c.is_alphabetic() || c == '_')
+                && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+        };
+        if !is_ident(name) || !params.iter().all(|p| is_ident(p)) {
+            return Err(invalid("the head must be `name(param, ...)`"));
+        }
+        let arity = u8::try_from(params.len()).map_err(|_| invalid("too many parameters"))?;
+        let op = self.op(OpDescriptor::new(name, super::op::Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100))?;
+        let mut vars = VarNames::default();
+        for p in &params {
+            vars.index(p);
+        }
+        let marked = mark_parameters(body, &params);
+        let mut parser = Parser::new(&marked, self.graph, &mut vars, false);
+        let parse_err = |error: ParseError| {
+            RuleError::Parse {
+                rule: text.to_owned(),
+                error,
+            }
+        };
+        let pat = parser.expr().map_err(parse_err)?;
+        if !parser.at_end() {
+            return Err(parse_err(ParseError {
+                message: "unexpected trailing input".to_owned(),
+                offset: parser.offset(),
+            }));
+        }
+        if vars.len() != params.len() {
+            return Err(invalid(
+                "the body uses a pattern variable that is not a parameter",
+            ));
+        }
+        self.kernel(
+            &format!("define/{name}"),
+            Tier::Reduce,
+            Definition { op, body: pat },
+        );
+        Ok(())
+    }
+
     /// Adds a procedural kernel.
     pub fn kernel(
         &mut self,
@@ -636,10 +828,70 @@ impl<'g> Installer<'g> {
     }
 }
 
+/// Prefixes every parameter name occurring as an identifier in `body`
+/// with `?`, turning it into a pattern variable. An identifier directly
+/// followed by `(` is a function name and left alone.
+fn mark_parameters(
+    body: &str,
+    params: &[&str],
+) -> String {
+    let mut out = String::with_capacity(body.len().saturating_add(8));
+    let chars: Vec<char> = body.chars().collect();
+    let mut k = 0;
+    while k < chars.len() {
+        let c = chars[k];
+        let starts_ident = (c.is_alphabetic() || c == '_')
+            && (k == 0
+                || !(chars[k - 1].is_alphanumeric() || chars[k - 1] == '_' || chars[k - 1] == '?'))
+            && (k == 0 || !chars[k - 1].is_ascii_digit());
+        if !starts_ident {
+            out.push(c);
+            k += 1;
+            continue;
+        }
+        let start = k;
+        while k < chars.len() && (chars[k].is_alphanumeric() || chars[k] == '_') {
+            k += 1;
+        }
+        let ident: String = chars[start..k].iter().collect();
+        let next = chars[k..].iter().find(|c| !c.is_whitespace());
+        if params.contains(&ident.as_str()) && next != Some(&'(') {
+            out.push('?');
+        }
+        out.push_str(&ident);
+    }
+    out
+}
+
+/// The kernel behind [`Installer::define`].
+struct Definition {
+    op: OpId,
+    body: Pat,
+}
+
+impl Kernel for Definition {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        self.body
+            .instantiate(cx.graph, &args)
+            .map_or(Outcome::Pass, Outcome::Equal)
+    }
+}
+
 fn parse_guard(parser: &mut Parser<'_>) -> Result<Guard, ParseError> {
-    let fail = |parser: &Parser<'_>, message: &str| ParseError {
-        message: message.to_owned(),
-        offset: parser.offset(),
+    let fail = |parser: &Parser<'_>, message: &str| {
+        ParseError {
+            message: message.to_owned(),
+            offset: parser.offset(),
+        }
     };
     if parser.eat("!") {
         return Ok(Guard::Not(Box::new(parse_guard(parser)?)));
@@ -842,6 +1094,35 @@ mod tests {
             !rw.admits(&g, &[two, two]),
             "2 is not a symbol, so free_of cannot be established"
         );
+    }
+
+    #[test]
+    fn definitions_expand() {
+        let set = RuleSet::new("s", |i| {
+            i.op(OpDescriptor::new("sin", Arity::Fixed(1)))?;
+            i.define(&[
+                "sq(x) := x * x",
+                "wave(a, x) := list(a, sin(x), x_0)",
+                "two := 2",
+            ])
+        })
+        .needs(RuleSet::new("arith", |_| Ok(())));
+        let mut g = Graph::new();
+        let engine = Engine::install(&mut g, &[set]).unwrap_or_else(|e| panic!("{e}"));
+        let root = g.parse("wave(sq(y), two)").unwrap_or(NodeId::NONE);
+        engine.run(
+            &mut g,
+            &[root],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        let expected = g.parse("list(y * y, sin(2), x_0)").unwrap_or(NodeId::NONE);
+        assert!(g.same(root, expected));
+        for bad in ["nohead x", "f(x := x", "f(1) := 1", "f(x) := ?y"] {
+            let set = RuleSet::new("s", move |i| i.define(&[bad]));
+            assert!(install(&set).is_err(), "`{bad}` should be rejected");
+        }
     }
 
     #[test]

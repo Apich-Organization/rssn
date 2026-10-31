@@ -327,16 +327,18 @@ impl<'a> Parser<'a> {
             // Rule patterns are left exactly as written.
             let identity = Number::from(i64::from(op == core::MUL));
             let mut literal = identity.clone();
-            flat.retain(|child| match child {
-                | Pat::Num(n) => {
-                    literal = if op == core::ADD {
-                        literal.add(n)
-                    } else {
-                        literal.mul(n)
-                    };
-                    false
-                },
-                | _ => true,
+            flat.retain(|child| {
+                match child {
+                    | Pat::Num(n) => {
+                        literal = if op == core::ADD {
+                            literal.add(n)
+                        } else {
+                            literal.mul(n)
+                        };
+                        false
+                    },
+                    | _ => true,
+                }
             });
             if literal != identity || flat.is_empty() {
                 flat.insert(0, Pat::Num(literal));
@@ -491,10 +493,12 @@ impl<'a> Parser<'a> {
                 children.extend(args);
                 Ok(Pat::Node(core::APPLY, children))
             },
-            | None => Err(ParseError {
-                message: format!("unknown operator `{name}`"),
-                offset: start,
-            }),
+            | None => {
+                Err(ParseError {
+                    message: format!("unknown operator `{name}`"),
+                    offset: start,
+                })
+            },
         }
     }
 }
@@ -931,9 +935,11 @@ impl Graph {
                 offset: 0,
             });
         }
-        pat.instantiate(self, &[]).ok_or_else(|| ParseError {
-            message: "term could not be built".to_owned(),
-            offset: 0,
+        pat.instantiate(self, &[]).ok_or_else(|| {
+            ParseError {
+                message: "term could not be built".to_owned(),
+                offset: 0,
+            }
         })
     }
 }
@@ -1018,7 +1024,7 @@ mod tests {
         let m = p.matches(&g, good, vars.len(), 16);
         assert_eq!(m.len(), 1);
         assert_eq!(m.first().map(|m| m.subst.clone()), Some(vec![a]));
-        assert!(p.matches(&g, bad, vars.len(), 16).is_empty());
+        assert_eq!(p.matches(&g, bad, vars.len(), 16), []);
     }
 
     #[test]
@@ -1027,7 +1033,7 @@ mod tests {
         let mut vars = VarNames::default();
         let p = pat(&mut g, &mut vars, "sin(?x)^2 + cos(?x)^2");
         let node = g.parse("sin(a)^2 + cos(b)^2").unwrap_or(NodeId::NONE);
-        assert!(p.matches(&g, node, vars.len(), 16).is_empty());
+        assert_eq!(p.matches(&g, node, vars.len(), 16), []);
         let (a, b) = (g.sym("a"), g.sym("b"));
         g.union(a, b);
         g.rebuild();
@@ -1072,7 +1078,7 @@ mod tests {
         let mut vars = VarNames::default();
         let p = pat(&mut g, &mut vars, "?x ^ 2");
         let node = g.parse("y ^ k").unwrap_or(NodeId::NONE);
-        assert!(p.matches(&g, node, vars.len(), 4).is_empty());
+        assert_eq!(p.matches(&g, node, vars.len(), 4), []);
         let (k, two) = (g.sym("k"), g.int(2));
         g.union(k, two);
         g.rebuild();
@@ -1102,7 +1108,7 @@ mod tests {
         let mut vars = VarNames::default();
         let strict = pat(&mut g, &mut vars, "sin(?c * cos(?r))");
         let node = g.parse("sin(2 * x * cos(y))").unwrap_or(NodeId::NONE);
-        assert!(strict.matches(&g, node, vars.len(), 16).is_empty());
+        assert_eq!(strict.matches(&g, node, vars.len(), 16), []);
     }
 
     #[test]
@@ -1118,7 +1124,7 @@ mod tests {
             .parse("sin(2 * x * y) ^ cos(x * z)")
             .unwrap_or(NodeId::NONE);
         assert_eq!(p.matches(&g, good, vars.len(), 16).len(), 1);
-        assert!(p.matches(&g, bad, vars.len(), 16).is_empty());
+        assert_eq!(p.matches(&g, bad, vars.len(), 16), []);
     }
 
     #[test]

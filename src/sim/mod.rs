@@ -1,15 +1,94 @@
 //! # Simulation
 //!
-//! Time stepping, discretised fields and particle systems: the part of
+//! Time stepping, discretised fields and particle systems.
+//!
+//! This is the part of
 //! scientific computing that is not an identity transformation. A
 //! simulation consumes closed-form terms (compiled through a
 //! [`Backend`](crate::backend::Backend)) and produces data, not terms.
+//!
+//! ## Coverage of the particle / ODE modules
+//!
+//! | Module | Dimensions | Boundaries | Highlights |
+//! |---|---|---|---|
+//! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK and flexible-cell Parrinello-Rahman/MTTK barostats on triclinic cells, SHAKE/RATTLE (also with barostat and Langevin), RDF/MSD/VACF |
+//! | [`md_rigid`] | 3 | periodic | rigid molecules: COM + quaternion, symmetric-top / NO_SQUISH rotor splitting, molecular virial |
+//! | [`ewald`] | 3 | periodic (orthorhombic and triclinic) | Ewald, smooth PME |
+//! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open (3-D FMM also periodic) | Barnes-Hut, adaptive 2-D/3-D FMM with softened far field, periodic triclinic FMM |
+//! | [`sse`] | any bipartite graph | periodic / open | spin-1/2 XXZ quantum Monte Carlo: stochastic series expansion with directed loops |
+//! | [`hermite`] | 3 | open | 4th/6th-order Hermite with block time steps, 1PN EIH terms, KS-regularised binaries |
+//! | [`symplectic`] | any | - | order 2-8 schemes, TTL (composed to order 8), KS, rigid body (exact symmetric-top flows) |
+//! | [`chain`] | 3 | open | Mikkola-Aarseth chain regularisation, algorithmic regularisation + GBS extrapolation |
+//! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath (also XY/Heisenberg), Wolff, SW, PT (O(N) and Potts), WL (Ising and continuous spins) |
+//! | [`relativity`], [`kerr`], [`elliptic`] | 3+1 | horizon / escape events | Kerr-Newman geodesics; exact bound Kerr orbits in Mino time, shadows; third-kind elliptic integrals |
+//! | [`sph`] | any | open, periodic, reflecting, fixed particles | cubic / Wendland kernels |
+//! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
 
 // The grid kernels index raw buffers inside parallel loops.
-#![allow(unsafe_code)]
 
+/// Linear acoustics / scalar wave equation with PML (1D-3D).
+pub mod acoustics;
+/// Iterative 3D BEM with ACA-compressed operators and GMRES.
+pub mod bem_aca;
+/// Helmholtz BEM: exterior acoustic scattering with Burton-Miller.
+pub mod bem_helmholtz;
+/// Common boundary-condition description shared by the continuum solvers.
+pub mod boundary;
+/// Chain and algorithmic regularisation for few-body gravity.
+pub mod chain;
 pub mod classical;
+/// Cut-cell geometry (open fractions of segments, faces and cells) from a level set.
+pub mod cutcell;
+/// Nodal discontinuous Galerkin (1D/2D) for conservation laws.
+pub mod dg;
+/// Nodal DG on hexahedra (3D).
+pub mod dg3d;
+/// Dissipative particle dynamics (2D/3D).
+pub mod dpd;
+/// Linear elasticity on triangle/tetrahedron meshes (P1/P2).
+pub mod elasticity_fem;
+/// Elliptic integrals of the third kind and Jacobi-function integrals.
+pub mod elliptic;
+/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D and 2D.
+pub mod euler_amr;
+/// High-order finite volumes for Euler and shallow water in 1D-3D.
+pub mod euler_nd;
+/// Ewald summation and particle-mesh Ewald.
+pub mod ewald;
+/// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
+pub mod fem_simplex;
+/// Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
+pub mod fem_triangles;
+/// Adaptive 2-D and 3-D fast multipole methods.
+pub mod fmm;
+/// Compressible gas dynamics (Euler equations, HLLC, MUSCL).
+pub mod gas_dynamics;
+/// Hermite N-body integrators with block time steps, PN terms and KS binaries.
+pub mod hermite;
+/// Large-deformation hyperelasticity, elastodynamics and penalty contact.
+pub mod hyperelastic;
+/// Symplectic and stiff (implicit, Rosenbrock) integrators.
+pub mod integrators;
+/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
+pub mod kerr;
+/// Dimension-generic molecular dynamics engine.
+pub mod md_engine;
+/// Rigid-molecule molecular dynamics.
+pub mod md_rigid;
 pub mod models;
+pub mod models_fdtd_electrodynamics;
+pub mod models_geodesic_relativity;
+pub mod models_gpe_superfluidity;
+pub mod models_ising_statistical;
+pub mod models_linear_elasticity;
+pub mod models_navier_stokes_fluid;
+pub mod models_schrodinger_quantum;
+/// Geometric multigrid (V/W/FMG) for Poisson/Helmholtz in 1D/2D/3D.
+pub mod multigrid;
+/// Barnes-Hut and fast multipole N-body solvers.
+pub mod nbody;
+/// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
+pub mod ns_mac;
 /// Boundary element method.
 pub mod physics_bem;
 pub mod physics_cfd;
@@ -29,3 +108,24 @@ pub mod physics_mtm;
 pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
+/// Kerr-Newman geodesics.
+pub mod relativity;
+pub mod scenario;
+/// Named JSON scenarios of the continuum and particle engines.
+pub mod scenario_engines;
+/// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).
+pub mod spectral;
+/// Smoothed-particle hydrodynamics in 1-3 dimensions.
+pub mod sph;
+/// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.
+pub mod spin_models;
+/// Split-step Fourier Schrodinger/GPE solver (1D-3D, imaginary time).
+pub mod split_step;
+/// Stochastic series expansion (directed loops) for spin-1/2 XXZ models.
+pub mod sse;
+/// Dimension-generic structured-grid finite differences (1D/2D/3D).
+pub mod structured;
+/// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
+pub mod symplectic;
+/// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
+pub mod yee_fdtd;

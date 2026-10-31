@@ -29,6 +29,19 @@
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_18.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_19.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_20.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Scheme | Boundary conditions |
+//! |---|---|---|---|---|---|
+//! | linear advection | yes | yes | yes | first-order upwind | callback-selected fixed value |
+//! | Burgers | yes | no | no | Lax–Friedrichs | fixed |
+//! | shallow water | yes | no | no | Lax–Friedrichs | fixed |
+//!
+//! High-order finite volumes (MUSCL with four limiters, WENO5; HLLC, Roe and
+//! Rusanov solvers; Euler in 1D–3D and shallow water in 1D–2D; transmissive,
+//! reflective, periodic and fixed-state faces) are in [`crate::sim::euler_nd`];
+//! nodal discontinuous Galerkin (1D/2D) is in [`crate::sim::dg`].
 
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -722,3 +735,36 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
 
     solve_advection_3d(&mut mesh, velocity, dt, steps, boundary_conditions)
 }
+
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::FvConfig;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::FvGrid;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::GasBc;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::Law;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::Reconstruction;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::RiemannSolver;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::SlopeLimiter;
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::solve as solve_conservation_law_nd;

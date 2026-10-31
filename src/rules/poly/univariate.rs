@@ -8,6 +8,11 @@
 //! Cantor–Zassenhaus equal-degree splitting), Hensel-lift the modular
 //! factors past the Landau–Mignotte bound, and recombine them into true
 //! factors by trial division.
+//!
+//! Parallelism: for polynomials of degree 24 and more the modular images (the first five admissible
+//! primes) are factored concurrently, and with 12 or more modular factors the Zassenhaus
+//! recombination tests consecutive subsets in batches of 128, taking the first hit in subset order,
+//! so the factorisation is identical to the sequential one.
 
 use num_bigint::BigInt;
 use num_bigint::BigUint;
@@ -32,7 +37,7 @@ fn trim<T: Zero>(mut p: Vec<T>) -> Vec<T> {
 
 /// Degree, or `None` for the zero polynomial.
 #[must_use]
-pub fn degree<T>(p: &[T]) -> Option<usize> {
+pub const fn degree<T>(p: &[T]) -> Option<usize> {
     p.len().checked_sub(1)
 }
 
@@ -144,7 +149,9 @@ pub fn eval(
     p: &[BigRational],
     x: &BigRational,
 ) -> BigRational {
-    p.iter().rev().fold(BigRational::zero(), |acc, c| acc * x + c)
+    p.iter()
+        .rev()
+        .fold(BigRational::zero(), |acc, c| acc * x + c)
 }
 
 /// Square-free decomposition (Yun): `p = c * prod f_i^i` with the `f_i`
@@ -159,7 +166,8 @@ pub fn square_free(p: &[BigRational]) -> Vec<(QPoly, u32)> {
     }
     let df = derivative(&f);
     let g = gcd(&f, &df);
-    let exact = |a: &[BigRational], b: &[BigRational]| divrem(a, b).map(|(q, _)| q).unwrap_or_default();
+    let exact =
+        |a: &[BigRational], b: &[BigRational]| divrem(a, b).map(|(q, _)| q).unwrap_or_default();
     let mut c = exact(&f, &g);
     let mut d = sub(&exact(&df, &g), &derivative(&c));
     let mut multiplicity = 1_u32;
@@ -246,7 +254,7 @@ type PPoly = Vec<u64>;
 struct Fp(u64);
 
 impl Fp {
-    fn pow(
+    const fn pow(
         self,
         mut base: u64,
         mut exp: u64,
@@ -263,7 +271,7 @@ impl Fp {
         acc
     }
 
-    fn inv(
+    const fn inv(
         self,
         x: u64,
     ) -> u64 {
@@ -275,7 +283,11 @@ impl Fp {
         p: &[BigInt],
     ) -> PPoly {
         let modulus = BigInt::from(self.0);
-        trim(p.iter().map(|c| c.mod_floor(&modulus).to_u64().unwrap_or(0)).collect())
+        trim(
+            p.iter()
+                .map(|c| c.mod_floor(&modulus).to_u64().unwrap_or(0))
+                .collect(),
+        )
     }
 
     fn sub(
@@ -402,7 +414,13 @@ impl Fp {
         self,
         p: &[u64],
     ) -> PPoly {
-        trim(p.iter().enumerate().skip(1).map(|(i, &c)| c * (i as u64 % self.0) % self.0).collect())
+        trim(
+            p.iter()
+                .enumerate()
+                .skip(1)
+                .map(|(i, &c)| c * (i as u64 % self.0) % self.0)
+                .collect(),
+        )
     }
 
     /// `base^exp mod modulus`.
@@ -467,12 +485,15 @@ impl Fp {
             }
             return;
         }
-        let exponent = (BigUint::from(self.0).pow(u32::try_from(d).unwrap_or(u32::MAX)) - 1_u32) >> 1;
+        let exponent =
+            (BigUint::from(self.0).pow(u32::try_from(d).unwrap_or(u32::MAX)) - 1_u32) >> 1;
         loop {
             let trial: PPoly = trim(
                 (0..n)
                     .map(|_| {
-                        *seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                        *seed = seed
+                            .wrapping_mul(6_364_136_223_846_793_005)
+                            .wrapping_add(1_442_695_040_888_963_407);
                         (*seed >> 33) % self.0
                     })
                     .collect(),
@@ -519,7 +540,11 @@ fn symmetric(
     modulus: &BigInt,
 ) -> BigInt {
     let r = c.mod_floor(modulus);
-    if &r * 2 > *modulus { r - modulus } else { r }
+    if &r * 2 > *modulus {
+        r - modulus
+    } else {
+        r
+    }
 }
 
 fn lift_coeffs(p: &[u64]) -> ZPoly {
@@ -542,7 +567,7 @@ fn hensel_pair(
     // Pin the leading coefficient of h to that of f so that f - g*h has
     // lower degree than f at every step.
     if let (Some(slot), Some(lead)) = (big_h.last_mut(), f.last()) {
-        *slot = lead.clone();
+        slot.clone_from(lead);
     }
     let mut modulus = p.clone();
     while modulus < *target {
@@ -594,7 +619,12 @@ fn hensel_all(
             // The last factor is what is left, made monic.
             let lead = remaining.last()?.clone();
             let inverse = lead.extended_gcd(&modulus).x.mod_floor(&modulus);
-            lifted.push(remaining.iter().map(|c| symmetric(&(c * &inverse), &modulus)).collect());
+            lifted.push(
+                remaining
+                    .iter()
+                    .map(|c| symmetric(&(c * &inverse), &modulus))
+                    .collect(),
+            );
             break;
         }
         let lead = fp.reduce(&[remaining.last()?.clone()]);
@@ -620,15 +650,27 @@ fn z_primitive(p: &[BigInt]) -> ZPoly {
     p.iter().map(|c| c / &content).collect()
 }
 
-const PRIMES: [u64; 24] =
-    [3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97];
+/// Degree from which the modular images are factored in parallel.
+const MODULAR_PAR_DEGREE: usize = 24;
+/// Smallest number of modular factors for which recombination tests subsets in parallel.
+const RECOMBINE_PAR_POOL: usize = 12;
+/// Consecutive subsets tested together by the parallel recombination.
+const RECOMBINE_BATCH: usize = 128;
+
+const PRIMES: [u64; 24] = [
+    3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
+];
 
 /// Irreducible factors over `Z` of a primitive square-free polynomial with
 /// positive leading coefficient.
 fn factor_square_free(f: &[BigInt]) -> Vec<ZPoly> {
     let n = degree(f).unwrap_or(0);
     if n <= 1 {
-        return if n == 1 { vec![f.to_vec()] } else { Vec::new() };
+        return if n == 1 {
+            vec![f.to_vec()]
+        } else {
+            Vec::new()
+        };
     }
     let Some(lead) = f.last() else {
         return Vec::new();
@@ -636,24 +678,54 @@ fn factor_square_free(f: &[BigInt]) -> Vec<ZPoly> {
     // Choose the prime giving the fewest modular factors among a few
     // admissible ones: fewer factors, fewer recombinations.
     let mut best: Option<(Fp, Vec<PPoly>)> = None;
-    let mut tried = 0;
-    for &p in &PRIMES {
+    let admissible = |p: u64| -> bool {
         let fp = Fp(p);
         if (lead % p).is_zero() {
-            continue;
+            return false;
         }
         let reduced = fp.reduce(f);
         let shared = fp.gcd(&reduced, &fp.derivative(&reduced));
-        if degree(&shared) != Some(0) {
-            continue;
+        degree(&shared) == Some(0)
+    };
+    if n >= MODULAR_PAR_DEGREE && rayon::current_num_threads() > 1 {
+        // factor modulo the first five admissible primes in parallel; the
+        // earliest minimum wins, exactly as in the sequential scan below
+        let chosen: Vec<u64> = PRIMES
+            .iter()
+            .copied()
+            .filter(|&p| admissible(p))
+            .take(5)
+            .collect();
+        let images = crate::kernels::par::map_slice(&chosen, 2, |&p| {
+            let fp = Fp(p);
+            (fp, fp.factor(&fp.monic(&fp.reduce(f))))
+        });
+        for (fp, factors) in images {
+            if best
+                .as_ref()
+                .is_none_or(|(_, old)| factors.len() < old.len())
+            {
+                best = Some((fp, factors));
+            }
         }
-        let factors = fp.factor(&fp.monic(&reduced));
-        if best.as_ref().is_none_or(|(_, old)| factors.len() < old.len()) {
-            best = Some((fp, factors));
-        }
-        tried += 1;
-        if tried == 5 || best.as_ref().is_some_and(|(_, fs)| fs.len() == 1) {
-            break;
+    } else {
+        let mut tried = 0;
+        for &p in &PRIMES {
+            if !admissible(p) {
+                continue;
+            }
+            let fp = Fp(p);
+            let factors = fp.factor(&fp.monic(&fp.reduce(f)));
+            if best
+                .as_ref()
+                .is_none_or(|(_, old)| factors.len() < old.len())
+            {
+                best = Some((fp, factors));
+            }
+            tried += 1;
+            if tried == 5 || best.as_ref().is_some_and(|(_, fs)| fs.len() == 1) {
+                break;
+            }
         }
     }
     let Some((fp, modular)) = best else {
@@ -677,32 +749,64 @@ fn factor_square_free(f: &[BigInt]) -> Vec<ZPoly> {
     while 2 * size <= pool.len() {
         let mut found = None;
         let mut choice: Vec<usize> = (0..size).collect();
-        'subsets: loop {
-            let work_lead = work.last().cloned().unwrap_or_else(BigInt::one);
-            let mut candidate: ZPoly = vec![work_lead.clone()];
-            for &i in &choice {
-                candidate = z_mul(&candidate, &pool[i]).iter().map(|c| symmetric(c, &modulus)).collect();
-            }
-            let candidate = z_primitive(&candidate);
-            let scaled: ZPoly = work.iter().map(|c| c * &work_lead).collect();
-            if !candidate.is_empty() && exact_div(&scaled, &candidate).is_some() {
-                found = Some((choice.clone(), candidate));
-                break 'subsets;
-            }
-            // Next subset of `size` indices in lexicographic order.
-            let mut i = size;
-            loop {
-                if i == 0 {
-                    break 'subsets;
-                }
-                i -= 1;
-                if choice[i] != i + pool.len() - size {
+        let work_lead = work.last().cloned().unwrap_or_else(BigInt::one);
+        let scaled: ZPoly = work.iter().map(|c| c * &work_lead).collect();
+        // The first successful subset in lexicographic order wins. Large
+        // pools test a batch of consecutive subsets in parallel and take the
+        // first hit of the batch in order, so the factor found is the same.
+        let batch = if pool.len() >= RECOMBINE_PAR_POOL && rayon::current_num_threads() > 1 {
+            RECOMBINE_BATCH
+        } else {
+            1
+        };
+        let mut exhausted = false;
+        while !exhausted && found.is_none() {
+            let mut subsets: Vec<Vec<usize>> = Vec::with_capacity(batch);
+            while subsets.len() < batch {
+                subsets.push(choice.clone());
+                // Next subset of `size` indices in lexicographic order.
+                let mut i = size;
+                let more = loop {
+                    if i == 0 {
+                        break false;
+                    }
+                    i -= 1;
+                    if choice[i] != i + pool.len() - size {
+                        break true;
+                    }
+                };
+                if !more {
+                    exhausted = true;
                     break;
                 }
+                choice[i] += 1;
+                for j in i + 1..size {
+                    choice[j] = choice[j - 1] + 1;
+                }
             }
-            choice[i] += 1;
-            for j in i + 1..size {
-                choice[j] = choice[j - 1] + 1;
+            let test = |subset: &Vec<usize>| -> Option<ZPoly> {
+                let mut candidate: ZPoly = vec![work_lead.clone()];
+                for &i in subset {
+                    candidate = z_mul(&candidate, &pool[i])
+                        .iter()
+                        .map(|c| symmetric(c, &modulus))
+                        .collect();
+                }
+                let candidate = z_primitive(&candidate);
+                (!candidate.is_empty() && exact_div(&scaled, &candidate).is_some())
+                    .then_some(candidate)
+            };
+            let results = if subsets.len() >= 2 {
+                crate::kernels::par::map_slice(&subsets, 2, test)
+            } else {
+                subsets.iter().map(test).collect()
+            };
+            if let Some((k, candidate)) = results
+                .into_iter()
+                .enumerate()
+                .find_map(|(k, r)| r.map(|c| (k, c)))
+            {
+                found = Some((subsets[k].clone(), candidate));
             }
         }
         match found {
@@ -730,7 +834,9 @@ fn factor_square_free(f: &[BigInt]) -> Vec<ZPoly> {
     out
 }
 
-/// Complete factorisation over `Q`: `p = content * prod factor_i^e_i` with
+/// Complete factorisation over `Q`.
+///
+/// `p = content * prod factor_i^e_i` with
 /// each factor primitive over `Z`, irreducible, and with positive leading
 /// coefficient. Factors are ordered by degree, then by coefficients.
 #[must_use]
@@ -743,7 +849,12 @@ pub fn factor(p: &[BigRational]) -> (BigRational, Vec<(ZPoly, u32)>) {
             out.push((factor, multiplicity));
         }
     }
-    out.sort_by(|(a, ea), (b, eb)| a.len().cmp(&b.len()).then_with(|| a.cmp(b)).then_with(|| ea.cmp(eb)));
+    out.sort_by(|(a, ea), (b, eb)| {
+        a.len()
+            .cmp(&b.len())
+            .then_with(|| a.cmp(b))
+            .then_with(|| ea.cmp(eb))
+    });
     // The content of the input relative to the product of primitive
     // factors: compare leading coefficients.
     let lead_of_product = out.iter().fold(BigInt::one(), |acc, (f, e)| {
@@ -762,9 +873,11 @@ pub fn rational_roots(p: &[BigRational]) -> Vec<BigRational> {
     let mut roots: Vec<BigRational> = factor(p)
         .1
         .into_iter()
-        .filter_map(|(f, _)| match f.as_slice() {
-            | [c0, c1] => Some(BigRational::new(-c0.clone(), c1.clone())),
-            | _ => None,
+        .filter_map(|(f, _)| {
+            match f.as_slice() {
+                | [c0, c1] => Some(BigRational::new(-c0.clone(), c1.clone())),
+                | _ => None,
+            }
         })
         .collect();
     roots.sort();
@@ -777,7 +890,10 @@ mod tests {
     use super::*;
 
     fn q(coeffs: &[i64]) -> QPoly {
-        coeffs.iter().map(|&c| BigRational::from_integer(BigInt::from(c))).collect()
+        coeffs
+            .iter()
+            .map(|&c| BigRational::from_integer(BigInt::from(c)))
+            .collect()
     }
 
     fn z(coeffs: &[i64]) -> ZPoly {
@@ -790,7 +906,10 @@ mod tests {
     ) -> QPoly {
         let mut out: QPoly = vec![unit.clone()];
         for (f, e) in factors {
-            let fq: QPoly = f.iter().map(|c| BigRational::from_integer(c.clone())).collect();
+            let fq: QPoly = f
+                .iter()
+                .map(|c| BigRational::from_integer(c.clone()))
+                .collect();
             for _ in 0..*e {
                 out = mul(&out, &fq);
             }
@@ -801,11 +920,23 @@ mod tests {
     #[test]
     fn division_and_gcd() {
         // (x^2 - 1) / (x - 1) = x + 1
-        assert_eq!(divrem(&q(&[-1, 0, 1]), &q(&[-1, 1])), Some((q(&[1, 1]), Vec::new())));
-        assert_eq!(divrem(&q(&[1, 0, 1]), &q(&[-1, 1])), Some((q(&[1, 1]), q(&[2]))));
+        assert_eq!(
+            divrem(&q(&[-1, 0, 1]), &q(&[-1, 1])),
+            Some((q(&[1, 1]), Vec::new()))
+        );
+        assert_eq!(
+            divrem(&q(&[1, 0, 1]), &q(&[-1, 1])),
+            Some((q(&[1, 1]), q(&[2])))
+        );
         assert_eq!(divrem(&q(&[1]), &[]), None);
         // gcd((x-1)(x+2), (x-1)(x+3)) = x - 1
-        assert_eq!(gcd(&mul(&q(&[-1, 1]), &q(&[2, 1])), &mul(&q(&[-1, 1]), &q(&[3, 1]))), q(&[-1, 1]));
+        assert_eq!(
+            gcd(
+                &mul(&q(&[-1, 1]), &q(&[2, 1])),
+                &mul(&q(&[-1, 1]), &q(&[3, 1]))
+            ),
+            q(&[-1, 1])
+        );
         assert_eq!(gcd(&q(&[1, 1]), &q(&[2, 1])), q(&[1]));
     }
 
@@ -817,26 +948,30 @@ mod tests {
         let c = q(&[5, 1]);
         let p = mul(&mul(&mul(&a, &a), &mul(&mul(&b, &b), &b)), &c);
         assert_eq!(square_free(&p), vec![(c, 1), (a, 2), (b, 3)]);
-        assert!(square_free(&q(&[7])).is_empty());
+        assert_eq!(square_free(&q(&[7])), []);
     }
 
     #[test]
     fn factorisation_reproduces_the_input() {
         let cases: [&[i64]; 9] = [
-            &[-1, 0, 1],                    // x^2 - 1
-            &[1, 0, 1],                     // x^2 + 1 (irreducible)
-            &[-1, 0, 0, 0, 1],              // x^4 - 1
-            &[1, 0, 0, 0, 1],               // x^4 + 1 (irreducible, splits mod every p)
-            &[-2, 0, 1],                    // x^2 - 2
-            &[6, -5, -2, 1],                // (x-1)(x+2)(x-3)
-            &[1, 1, 1, 1, 1, 1, 1],         // cyclotomic 7
-            &[-1, 0, 0, 0, 0, 0, 1],        // x^6 - 1
-            &[4, 8, 5, 1],                  // (x+1)(x+2)^2
+            &[-1, 0, 1],             // x^2 - 1
+            &[1, 0, 1],              // x^2 + 1 (irreducible)
+            &[-1, 0, 0, 0, 1],       // x^4 - 1
+            &[1, 0, 0, 0, 1],        // x^4 + 1 (irreducible, splits mod every p)
+            &[-2, 0, 1],             // x^2 - 2
+            &[6, -5, -2, 1],         // (x-1)(x+2)(x-3)
+            &[1, 1, 1, 1, 1, 1, 1],  // cyclotomic 7
+            &[-1, 0, 0, 0, 0, 0, 1], // x^6 - 1
+            &[4, 8, 5, 1],           // (x+1)(x+2)^2
         ];
         for coeffs in cases {
             let p = q(coeffs);
             let (unit, factors) = factor(&p);
-            assert_eq!(product(&unit, &factors), p, "factors of {coeffs:?}: {factors:?}");
+            assert_eq!(
+                product(&unit, &factors),
+                p,
+                "factors of {coeffs:?}: {factors:?}"
+            );
             for (f, _) in &factors {
                 assert!(f.last().is_some_and(Signed::is_positive));
             }
@@ -846,16 +981,26 @@ mod tests {
     #[test]
     fn known_factorisations() {
         let degrees = |coeffs: &[i64]| -> Vec<(usize, u32)> {
-            factor(&q(coeffs)).1.iter().map(|(f, e)| (f.len() - 1, *e)).collect()
+            factor(&q(coeffs))
+                .1
+                .iter()
+                .map(|(f, e)| (f.len() - 1, *e))
+                .collect()
         };
         assert_eq!(degrees(&[-1, 0, 1]), vec![(1, 1), (1, 1)]);
         assert_eq!(degrees(&[1, 0, 1]), vec![(2, 1)]);
         assert_eq!(degrees(&[1, 0, 0, 0, 1]), vec![(4, 1)]);
         assert_eq!(degrees(&[-1, 0, 0, 0, 1]), vec![(1, 1), (1, 1), (2, 1)]);
-        assert_eq!(degrees(&[-1, 0, 0, 0, 0, 0, 1]), vec![(1, 1), (1, 1), (2, 1), (2, 1)]);
+        assert_eq!(
+            degrees(&[-1, 0, 0, 0, 0, 0, 1]),
+            vec![(1, 1), (1, 1), (2, 1), (2, 1)]
+        );
         assert_eq!(degrees(&[4, 8, 5, 1]), vec![(1, 1), (1, 2)]);
         // x^8 + x^4 + 1 = (x^2 + x + 1)(x^2 - x + 1)(x^4 - x^2 + 1)
-        assert_eq!(degrees(&[1, 0, 0, 0, 1, 0, 0, 0, 1]), vec![(2, 1), (2, 1), (4, 1)]);
+        assert_eq!(
+            degrees(&[1, 0, 0, 0, 1, 0, 0, 0, 1]),
+            vec![(2, 1), (2, 1), (4, 1)]
+        );
     }
 
     #[test]
@@ -886,7 +1031,7 @@ mod tests {
             let mut expected: Vec<ZPoly> = Vec::new();
             for piece in pieces {
                 seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
-                if (seed >> 40) % 2 == 0 {
+                if (seed >> 40).is_multiple_of(2) {
                     p = mul(&p, &q(piece));
                     expected.push(z(piece));
                 }
@@ -904,10 +1049,13 @@ mod tests {
         // (2x - 1)(x + 3)(x^2 + 1)
         let p = mul(&mul(&q(&[-1, 2]), &q(&[3, 1])), &q(&[1, 0, 1]));
         let roots = rational_roots(&p);
-        assert_eq!(roots, vec![
-            BigRational::from_integer(BigInt::from(-3)),
-            BigRational::new(BigInt::from(1), BigInt::from(2))
-        ]);
+        assert_eq!(
+            roots,
+            vec![
+                BigRational::from_integer(BigInt::from(-3)),
+                BigRational::new(BigInt::from(1), BigInt::from(2))
+            ]
+        );
         assert!(roots.iter().all(|r| eval(&p, r).is_zero()));
     }
 }

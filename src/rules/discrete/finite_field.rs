@@ -17,32 +17,32 @@
 //! | `gfp_add(f, g, p)`, `gfp_sub`, `gfp_mul` | polynomial arithmetic |
 //! | `gfp_divmod(f, g, p)` | `list(quotient, remainder)` |
 //! | `gfp_gcd(f, g, p)`, `gfp_egcd(f, g, p)` | monic gcd; `list(d, s, t)` with `s f + t g = d` |
-//! | `gfp_eval(f, x, p)`, `gfp_isirreducible(f, p)` | value at `x`; irreducibility of `f` for prime `p` (by trial division, small cases) |
+//! | `gfp_eval(f, x, p)`, `gfp_isirreducible(f, p)` | value at `x`; irreducibility of `f` for prime `p` (Rabin's test) |
+//! | `gfp_powmod`, `gfp_invmod`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf`, `gfp_factor`, `gfp_berlekamp`, `factor_mod` | see [`gf_factor`](super::gf_factor) |
 //! | `gfx_reduce(a, m, p)`, `gfx_add(a, b, m, p)`, `gfx_sub`, `gfx_mul`, `gfx_neg(a, m, p)` | extension field arithmetic |
 //! | `gfx_inv(a, m, p)`, `gfx_div(a, b, m, p)`, `gfx_pow(a, e, m, p)` | inverse, quotient, power |
 
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Signed;
-use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use super::V;
 use super::big;
 use super::bigs;
 use super::def;
 use super::mod_inverse;
 use super::modulo;
-use super::V;
-use crate::graph::rule::Installer;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::graph::rule::Installer;
 
-type Poly = Vec<BigInt>;
+pub(super) type Poly = Vec<BigInt>;
 
 /// Reduces the coefficients modulo `p` and strips leading zeros.
-fn norm(
+pub(super) fn norm(
     mut f: Poly,
     p: &BigInt,
 ) -> Poly {
@@ -54,7 +54,7 @@ fn norm(
     f
 }
 
-fn padd(
+pub(super) fn padd(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -77,7 +77,7 @@ fn pneg(
     norm(f.iter().map(|c| -c).collect(), p)
 }
 
-fn psub(
+pub(super) fn psub(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -85,7 +85,7 @@ fn psub(
     padd(f, &pneg(g, p), p)
 }
 
-fn pmul(
+pub(super) fn pmul(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -104,7 +104,7 @@ fn pmul(
 
 /// `(quotient, remainder)`; `None` for a zero divisor or one whose leading
 /// coefficient is not invertible.
-fn pdivmod(
+pub(super) fn pdivmod(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -126,7 +126,7 @@ fn pdivmod(
 }
 
 /// `(d, s, t)` with `s f + t g = d`, `d` a gcd (not normalised).
-fn pegcd(
+pub(super) fn pegcd(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -145,7 +145,7 @@ fn pegcd(
     Some((r0, s0, t0))
 }
 
-fn monic(
+pub(super) fn monic(
     f: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
@@ -161,7 +161,8 @@ fn peval(
     x: &BigInt,
     p: &BigInt,
 ) -> BigInt {
-    f.iter().fold(BigInt::zero(), |acc, c| modulo(&(acc * x + c), p))
+    f.iter()
+        .fold(BigInt::zero(), |acc, c| modulo(&(acc * x + c), p))
 }
 
 fn modulus(
@@ -171,11 +172,11 @@ fn modulus(
     big(cx.graph, n).filter(|p| *p > BigInt::one())
 }
 
-fn poly_value(f: Poly) -> V {
+pub(super) fn poly_value(f: Poly) -> V {
     V::ints(f)
 }
 
-fn read_poly(
+pub(super) fn read_poly(
     cx: &Cx<'_>,
     n: NodeId,
     p: &BigInt,
@@ -185,6 +186,7 @@ fn read_poly(
 
 // ---------------- prime field ----------------
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn scalar2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -221,10 +223,15 @@ fn gf_pow(
     let [x, e, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let (x, e) = (modulo(&big(cx.graph, *x)?, &p), big(cx.graph, *e)?);
-    let base = if e.is_negative() { mod_inverse(&x, &p)? } else { x };
+    let base = if e.is_negative() {
+        mod_inverse(&x, &p)?
+    } else {
+        x
+    };
     Some(V::Int(base.modpow(&e.abs(), &p)))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gf_is(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -233,11 +240,16 @@ fn gf_is(
     let [x, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let x = modulo(&big(cx.graph, *x)?, &p);
-    Some(V::Bool(if one { x.is_one() } else { x.is_zero() }))
+    Some(V::Bool(if one {
+        x.is_one()
+    } else {
+        x.is_zero()
+    }))
 }
 
 // ---------------- polynomials ----------------
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn poly2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -311,41 +323,6 @@ fn gfp_eval(
     Some(V::Int(peval(&f, &big(cx.graph, *x)?, &p)))
 }
 
-/// Trial division by every monic polynomial of degree `1..=deg/2`.
-fn irreducible(
-    f: &Poly,
-    p: &BigInt,
-) -> Option<bool> {
-    let deg = f.len().checked_sub(1)?;
-    if deg == 0 {
-        return Some(false);
-    }
-    let p_small = p.to_u64()?;
-    let mut budget = 300_000_u64;
-    for d in 1..=deg / 2 {
-        let count = p_small.checked_pow(u32::try_from(d).ok()?)?;
-        if count > budget {
-            return None;
-        }
-        budget -= count;
-        for code in 0..count {
-            let mut coeffs = vec![BigInt::one()];
-            let mut c = code;
-            let mut tail = Vec::with_capacity(d);
-            for _ in 0..d {
-                tail.push(BigInt::from(c % p_small));
-                c /= p_small;
-            }
-            tail.reverse();
-            coeffs.extend(tail);
-            if pdivmod(f, &coeffs, p)?.1.is_empty() {
-                return Some(false);
-            }
-        }
-    }
-    Some(true)
-}
-
 fn gfp_isirreducible(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -353,7 +330,10 @@ fn gfp_isirreducible(
     let [f, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let f = read_poly(cx, *f, &p)?;
-    irreducible(&f, &p).map(V::Bool)
+    if !crate::rules::number_theory::is_prime(&p) {
+        return None;
+    }
+    super::gf_factor::is_irreducible(&f, &p).map(V::Bool)
 }
 
 // ---------------- extension fields ----------------
@@ -368,7 +348,7 @@ fn field(
     (m.len() >= 2).then_some((m, p))
 }
 
-fn reduce(
+pub(super) fn reduce(
     f: &Poly,
     m: &Poly,
     p: &BigInt,
@@ -386,6 +366,7 @@ fn gfx_reduce(
     Some(poly_value(reduce(&f, &m, &p)?))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gfx2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -397,21 +378,40 @@ fn gfx2(
     Some(poly_value(op(&x, &y, &m, &p)?))
 }
 
-fn xadd(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xadd(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&padd(x, y, p), m, p)
 }
 
-fn xsub(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xsub(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&psub(x, y, p), m, p)
 }
 
-fn xmul(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xmul(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     reduce(&pmul(x, y, p), m, p)
 }
 
 /// The inverse of `x` modulo `m` over GF(p): `s x + t m = d` with `d` a
 /// non-zero constant.
-fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+pub(super) fn xinv(
+    x: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     let x = reduce(x, m, p)?;
     let (d, s, _) = pegcd(&x, m, p)?;
     if d.len() != 1 {
@@ -421,7 +421,12 @@ fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
     reduce(&norm(s.iter().map(|c| c * &d_inv).collect(), p), m, p)
 }
 
-fn xdiv(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+fn xdiv(
+    x: &Poly,
+    y: &Poly,
+    m: &Poly,
+    p: &BigInt,
+) -> Option<Poly> {
     xmul(x, &xinv(y, m, p)?, m, p)
 }
 
@@ -453,7 +458,11 @@ fn gfx_pow(
     let (m, p) = field(cx, *m, *p)?;
     let x = read_poly(cx, *x, &p)?;
     let e = big(cx.graph, *e)?;
-    let mut base = if e.is_negative() { xinv(&x, &m, &p)? } else { reduce(&x, &m, &p)? };
+    let mut base = if e.is_negative() {
+        xinv(&x, &m, &p)?
+    } else {
+        reduce(&x, &m, &p)?
+    };
     let mut e = e.abs();
     let mut acc = reduce(&vec![BigInt::one()], &m, &p)?;
     while !e.is_zero() {
@@ -467,16 +476,24 @@ fn gfx_pow(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "gf_add", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p))))?;
-    def(i, "gf_sub", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p))))?;
-    def(i, "gf_mul", Arity::Fixed(3), |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p))))?;
+    def(i, "gf_add", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p)))
+    })?;
+    def(i, "gf_sub", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p)))
+    })?;
+    def(i, "gf_mul", Arity::Fixed(3), |cx, a| {
+        scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p)))
+    })?;
     def(i, "gf_div", Arity::Fixed(3), |cx, a| {
         scalar2(cx, a, |x, y, p| Some(modulo(&(x * mod_inverse(y, p)?), p)))
     })?;
     def(i, "gf_neg", Arity::Fixed(2), gf_neg)?;
     def(i, "gf_inv", Arity::Fixed(2), gf_inv)?;
     def(i, "gf_pow", Arity::Fixed(3), gf_pow)?;
-    def(i, "gf_is_zero", Arity::Fixed(2), |cx, a| gf_is(cx, a, false))?;
+    def(i, "gf_is_zero", Arity::Fixed(2), |cx, a| {
+        gf_is(cx, a, false)
+    })?;
     def(i, "gf_is_one", Arity::Fixed(2), |cx, a| gf_is(cx, a, true))?;
 
     def(i, "gfp_norm", Arity::Fixed(2), gfp_norm)?;
@@ -508,7 +525,13 @@ mod tests {
     use super::super::test_util::s;
 
     fn poly(c: &[i64]) -> String {
-        format!("list({})", c.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+        format!(
+            "list({})",
+            c.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     #[test]
@@ -538,7 +561,10 @@ mod tests {
             }
         }
         // big modulus
-        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100) % ((1_u128 << 127) - 1)));
+        assert_eq!(
+            s("gf_mul(2^100, 3, 2^127 - 1)"),
+            format!("{}", (3_u128 << 100))
+        );
     }
 
     #[test]
@@ -560,7 +586,13 @@ mod tests {
     #[test]
     fn division_satisfies_its_definition() {
         let p = 7_i64;
-        let dividends = [vec![3, 0, 5, 1, 2], vec![1, 2, 3], vec![5], vec![1, 0, 0, 0, 0, 1], vec![2, 3, 4, 5, 6, 1]];
+        let dividends = [
+            vec![3, 0, 5, 1, 2],
+            vec![1, 2, 3],
+            vec![5],
+            vec![1, 0, 0, 0, 0, 1],
+            vec![2, 3, 4, 5, 6, 1],
+        ];
         let divisors = [vec![1, 1], vec![3, 0, 2], vec![5], vec![2, 1, 4, 1]];
         for f in &dividends {
             for g in &divisors {
@@ -570,15 +602,28 @@ mod tests {
                 // f = q g + r and deg r < deg g
                 let qg = s(&format!("gfp_mul({}, {}, {p})", poly(q), poly(g)));
                 let back = s(&format!("gfp_add({qg}, {}, {p})", poly(r)));
-                assert_eq!(back, s(&format!("gfp_norm({}, {p})", poly(f))), "{f:?} / {g:?}");
+                assert_eq!(
+                    back,
+                    s(&format!("gfp_norm({}, {p})", poly(f))),
+                    "{f:?} / {g:?}"
+                );
                 assert!(r.len() < g.len());
             }
         }
         // division by zero or by a non-invertible leading coefficient stays
-        assert_eq!(s("gfp_divmod(list(1, 1), list(), 7)"), "gfp_divmod(list(1, 1), list(), 7)");
-        assert_eq!(s("gfp_divmod(list(1, 1), list(2, 1), 4)"), "gfp_divmod(list(1, 1), list(2, 1), 4)");
+        assert_eq!(
+            s("gfp_divmod(list(1, 1), list(), 7)"),
+            "gfp_divmod(list(1, 1), list(), 7)"
+        );
+        assert_eq!(
+            s("gfp_divmod(list(1, 1), list(2, 1), 4)"),
+            "gfp_divmod(list(1, 1), list(2, 1), 4)"
+        );
         // the quotient is read in the right orientation: x^2 / x = x
-        assert_eq!(s("gfp_divmod(list(1, 0, 0), list(1, 0), 5)"), "list(list(1, 0), list())");
+        assert_eq!(
+            s("gfp_divmod(list(1, 0, 0), list(1, 0), 5)"),
+            "list(list(1, 0), list())"
+        );
     }
 
     #[test]
@@ -591,16 +636,24 @@ mod tests {
         let f3 = s("gfp_mul(list(3), list(1, 1), 7)");
         assert_eq!(s(&format!("gfp_gcd({f3}, {g}, 7)")), "list(1, 1)");
         assert_eq!(s("gfp_gcd(list(1, 0, 1), list(1, 1), 7)"), "list(1)");
-        for (a, b) in [(f.as_str(), g.as_str()), ("list(1, 0, 1)", "list(1, 1)"), ("list(1, 2, 3, 4)", "list(2, 5, 1)")] {
+        for (a, b) in [
+            (f.as_str(), g.as_str()),
+            ("list(1, 0, 1)", "list(1, 1)"),
+            ("list(1, 2, 3, 4)", "list(2, 5, 1)"),
+        ] {
             let e = nested(&s(&format!("gfp_egcd({a}, {b}, 7)")));
             assert_eq!(e.len(), 3);
             let sa = s(&format!("gfp_mul({}, {a}, 7)", poly(&e[1])));
             let tb = s(&format!("gfp_mul({}, {b}, 7)", poly(&e[2])));
-            assert_eq!(s(&format!("gfp_add({sa}, {tb}, 7)")), poly(&e[0]), "{a} {b}");
+            assert_eq!(
+                s(&format!("gfp_add({sa}, {tb}, 7)")),
+                poly(&e[0]),
+                "{a} {b}"
+            );
             // d divides both
             for x in [a, b] {
                 let r = nested(&s(&format!("gfp_divmod({x}, {}, 7)", poly(&e[0]))));
-                assert!(r[1].is_empty());
+                assert!(r[1].is_empty(), "not empty");
             }
         }
     }
@@ -632,17 +685,24 @@ mod tests {
             c
         };
         let mp = poly(m);
-        let mul = |a: &[i64], b: &[i64]| s(&format!("gfx_mul({}, {}, {mp}, {p})", poly(a), poly(b)));
+        let mul =
+            |a: &[i64], b: &[i64]| s(&format!("gfx_mul({}, {}, {mp}, {p})", poly(a), poly(b)));
         let one = s(&format!("gfx_reduce(list(1), {mp}, {p})"));
         for code in 1..order {
             let a = element(code);
             let inv = s(&format!("gfx_inv({}, {mp}, {p})", poly(&a)));
             assert_eq!(mul(&a, &nums(&inv)), one, "{a:?} in GF({p}^{deg})");
             // a^(q-1) = 1
-            assert_eq!(s(&format!("gfx_pow({}, {}, {mp}, {p})", poly(&a), order - 1)), one);
+            assert_eq!(
+                s(&format!("gfx_pow({}, {}, {mp}, {p})", poly(&a), order - 1)),
+                one
+            );
             // a^-1 through gfx_pow and division
             assert_eq!(s(&format!("gfx_pow({}, -1, {mp}, {p})", poly(&a))), inv);
-            assert_eq!(s(&format!("gfx_div({}, {}, {mp}, {p})", poly(&a), poly(&a))), one);
+            assert_eq!(
+                s(&format!("gfx_div({}, {}, {mp}, {p})", poly(&a), poly(&a))),
+                one
+            );
         }
         // distributivity and commutativity on a sample
         for x in (0..order).step_by(2) {
@@ -657,9 +717,15 @@ mod tests {
                     assert_eq!(lhs, rhs);
                     assert_eq!(mul(&a, &b), mul(&b, &a));
                     let sum = s(&format!("gfx_add({}, {}, {mp}, {p})", poly(&a), poly(&b)));
-                    assert_eq!(s(&format!("gfx_sub({sum}, {}, {mp}, {p})", poly(&b))), s(&format!("gfx_reduce({}, {mp}, {p})", poly(&a))));
+                    assert_eq!(
+                        s(&format!("gfx_sub({sum}, {}, {mp}, {p})", poly(&b))),
+                        s(&format!("gfx_reduce({}, {mp}, {p})", poly(&a)))
+                    );
                     let n = s(&format!("gfx_neg({}, {mp}, {p})", poly(&a)));
-                    assert_eq!(s(&format!("gfx_add({}, {n}, {mp}, {p})", poly(&a))), "list()");
+                    assert_eq!(
+                        s(&format!("gfx_add({}, {n}, {mp}, {p})", poly(&a))),
+                        "list()"
+                    );
                 }
             }
         }
@@ -677,12 +743,24 @@ mod tests {
     #[test]
     fn extension_field_specifics() {
         // x^2 = x + 1 in GF(4) = GF(2)[x]/(x^2 + x + 1)
-        assert_eq!(s("gfx_mul(list(1, 0), list(1, 0), list(1, 1, 1), 2)"), "list(1, 1)");
-        assert_eq!(s("gfx_reduce(list(1, 0, 0), list(1, 1, 1), 2)"), "list(1, 1)");
+        assert_eq!(
+            s("gfx_mul(list(1, 0), list(1, 0), list(1, 1, 1), 2)"),
+            "list(1, 1)"
+        );
+        assert_eq!(
+            s("gfx_reduce(list(1, 0, 0), list(1, 1, 1), 2)"),
+            "list(1, 1)"
+        );
         // with a reducible modulus a zero divisor has no inverse
-        assert_eq!(s("gfx_inv(list(1, 1), list(1, 0, 1), 2)"), "gfx_inv(list(1, 1), list(1, 0, 1), 2)");
+        assert_eq!(
+            s("gfx_inv(list(1, 1), list(1, 0, 1), 2)"),
+            "gfx_inv(list(1, 1), list(1, 0, 1), 2)"
+        );
         // zero has no inverse
-        assert_eq!(s("gfx_inv(list(), list(1, 1, 1), 2)"), "gfx_inv(list(), list(1, 1, 1), 2)");
+        assert_eq!(
+            s("gfx_inv(list(), list(1, 1, 1), 2)"),
+            "gfx_inv(list(), list(1, 1, 1), 2)"
+        );
         // the multiplicative group of GF(8) is cyclic of order 7
         assert_eq!(s("gfx_pow(list(1, 0), 7, list(1, 1, 0, 1), 2)"), "list(1)");
     }

@@ -88,9 +88,10 @@ where
     circle_integral(f, z0, radius, n) / (2.0 * PI * I)
 }
 
-/// The number of zeros minus the number of poles of `f` inside the circle
-/// `|z - center| = radius` (argument principle), as the winding number of
-/// `f` around the origin. Robust: it follows the continuous argument of
+/// The number of zeros minus the number of poles of `f` inside a circle.
+///
+/// The circle is `|z - center| = radius` (argument principle), and the count
+/// is the winding number of `f` around the origin. Robust: it follows the continuous argument of
 /// `f` instead of integrating `f'/f`. `None` if `f` vanishes or is not
 /// finite on the contour, or the sampling is too coarse to follow it.
 #[must_use]
@@ -211,7 +212,12 @@ impl Mobius {
     #[must_use]
     pub const fn identity() -> Self {
         let (zero, one) = (Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0));
-        Self { a: one, b: zero, c: zero, d: one }
+        Self {
+            a: one,
+            b: zero,
+            c: zero,
+            d: one,
+        }
     }
 
     /// The image of `z` (infinite at the pole `-d / c`).
@@ -225,6 +231,7 @@ impl Mobius {
 
     /// `self ∘ other`.
     #[must_use]
+    #[allow(clippy::suspicious_operation_groupings)] // 2x2 matrix product, indices are intentional
     pub fn compose(
         &self,
         other: &Self,
@@ -240,7 +247,12 @@ impl Mobius {
     /// The inverse map (up to the projective scale).
     #[must_use]
     pub fn inverse(&self) -> Self {
-        Self { a: self.d, b: -self.b, c: -self.c, d: self.a }
+        Self {
+            a: self.d,
+            b: -self.b,
+            c: -self.c,
+            d: self.a,
+        }
     }
 }
 
@@ -286,10 +298,19 @@ mod tests {
     #[test]
     fn argument_principle() {
         let f = |z: Complex64| (z - 0.5) * (z + 0.25 * I) * (z - 3.0) / (z - 0.1).powi(2);
-        assert_eq!(count_zeros_poles(f, Complex64::new(0.0, 0.0), 1.0, 512), Some(0));
-        assert_eq!(count_zeros_poles(f, Complex64::new(0.0, 0.0), 4.0, 2048), Some(1));
+        assert_eq!(
+            count_zeros_poles(f, Complex64::new(0.0, 0.0), 1.0, 512),
+            Some(0)
+        );
+        assert_eq!(
+            count_zeros_poles(f, Complex64::new(0.0, 0.0), 4.0, 2048),
+            Some(1)
+        );
         let g = |z: Complex64| z.powi(5) - 1.0;
-        assert_eq!(count_zeros_poles(g, Complex64::new(0.0, 0.0), 2.0, 512), Some(5));
+        assert_eq!(
+            count_zeros_poles(g, Complex64::new(0.0, 0.0), 2.0, 512),
+            Some(5)
+        );
     }
 
     #[test]
@@ -297,22 +318,39 @@ mod tests {
         let z = Complex64::new(0.3, 0.7);
         let d = complex_derivative(&|w: Complex64| w.sin(), z);
         assert!(close(d, z.cos(), 1e-8));
-        let d3 = cauchy_derivative(|w| w.exp(), z, 3, 1.0, 64);
+        let d3 = cauchy_derivative(num_complex::Complex::exp, z, 3, 1.0, 64);
         assert!(close(d3, z.exp(), 1e-12));
     }
 
     #[test]
     fn newton_finds_complex_roots() {
-        let root = newton(|z| z * z + 1.0, |z| 2.0 * z, Complex64::new(0.3, 0.8), 1e-14, 50);
+        let root = newton(
+            |z| z * z + 1.0,
+            |z| 2.0 * z,
+            Complex64::new(0.3, 0.8),
+            1e-14,
+            50,
+        );
         assert!(root.is_some_and(|r| close(r, I, 1e-12)));
-        let cube = newton(|z| z.powi(3) - 1.0, |z| 3.0 * z * z, Complex64::new(-1.0, 1.0), 1e-14, 100);
+        let cube = newton(
+            |z| z.powi(3) - 1.0,
+            |z| 3.0 * z * z,
+            Complex64::new(-1.0, 1.0),
+            1e-14,
+            100,
+        );
         assert!(cube.is_some_and(|r| close(r.powi(3), Complex64::new(1.0, 0.0), 1e-12)));
         assert!(newton(|z| z * z + 1.0, |_| Complex64::new(0.0, 0.0), I, 1e-14, 5).is_none());
     }
 
     #[test]
     fn mobius() {
-        let m = Mobius::new(Complex64::new(1.0, 0.0), I, Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0));
+        let m = Mobius::new(
+            Complex64::new(1.0, 0.0),
+            I,
+            Complex64::new(2.0, 0.0),
+            Complex64::new(1.0, 1.0),
+        );
         let z = Complex64::new(0.4, -0.2);
         assert!(close(m.inverse().apply(m.apply(z)), z, 1e-12));
         assert!(close(m.compose(&m).apply(z), m.apply(m.apply(z)), 1e-12));

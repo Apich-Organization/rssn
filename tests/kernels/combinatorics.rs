@@ -134,7 +134,6 @@ fn test_falling_factorial() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use proptest::prelude::*;
@@ -208,7 +207,11 @@ fn permutations_and_combinations_reference_values() {
     // Pascal's rule
     for n in 1..25u64 {
         for k in 1..n {
-            assert_eq!(combinations(n, k), combinations(n - 1, k - 1) + combinations(n - 1, k), "n={n} k={k}");
+            assert_eq!(
+                combinations(n, k),
+                combinations(n - 1, k - 1) + combinations(n - 1, k),
+                "n={n} k={k}"
+            );
         }
     }
 }
@@ -227,11 +230,15 @@ fn stirling_numbers_reference_values() {
 
 #[test]
 fn bell_and_catalan_reference_values() {
-    let bell_seq = [1.0, 1.0, 2.0, 5.0, 15.0, 52.0, 203.0, 877.0, 4140.0, 21147.0, 115_975.0];
+    let bell_seq = [
+        1.0, 1.0, 2.0, 5.0, 15.0, 52.0, 203.0, 877.0, 4140.0, 21147.0, 115_975.0,
+    ];
     for (n, b) in bell_seq.iter().enumerate() {
         assert_eq!(bell(n as u64), *b, "B({n})");
     }
-    let catalan_seq = [1.0, 1.0, 2.0, 5.0, 14.0, 42.0, 132.0, 429.0, 1430.0, 4862.0, 16_796.0];
+    let catalan_seq = [
+        1.0, 1.0, 2.0, 5.0, 14.0, 42.0, 132.0, 429.0, 1430.0, 4862.0, 16_796.0,
+    ];
     for (n, c) in catalan_seq.iter().enumerate() {
         assert_eq!(catalan(n as u64), *c, "C({n})");
     }
@@ -242,9 +249,15 @@ fn recurrence_solver_more_cases() {
     // a_n = 2 a_{n-1}, a_0 = 3  =>  3 * 2^n
     assert_eq!(solve_recurrence_numerical(&[2.0], &[3.0], 10), Ok(3072.0));
     // Fibonacci F(30) = 832040
-    assert_eq!(solve_recurrence_numerical(&[1.0, 1.0], &[0.0, 1.0], 30), Ok(832_040.0));
+    assert_eq!(
+        solve_recurrence_numerical(&[1.0, 1.0], &[0.0, 1.0], 30),
+        Ok(832_040.0)
+    );
     // Lucas numbers L(10) = 123
-    assert_eq!(solve_recurrence_numerical(&[1.0, 1.0], &[2.0, 1.0], 10), Ok(123.0));
+    assert_eq!(
+        solve_recurrence_numerical(&[1.0, 1.0], &[2.0, 1.0], 10),
+        Ok(123.0)
+    );
     // Mismatched initial conditions.
     assert!(solve_recurrence_numerical(&[1.0, 1.0], &[0.0], 5).is_err());
 }

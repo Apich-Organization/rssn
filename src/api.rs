@@ -31,6 +31,8 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use crate::graph::Budget;
 use crate::graph::ClosedForm;
 use crate::graph::Engine;
@@ -70,6 +72,10 @@ pub struct Config {
     bindings: Vec<(String, f64)>,
     assumptions: Vec<(String, Facts)>,
     budget: Budget,
+    dimension_mode: crate::graph::DimensionMode,
+    dimension_assumptions: Vec<(String, String)>,
+    base_dimensions: Vec<String>,
+    bypass_dimensions: bool,
 }
 
 impl Default for Config {
@@ -88,6 +94,10 @@ impl Config {
             bindings: Vec::new(),
             assumptions: Vec::new(),
             budget: Budget::default(),
+            dimension_mode: crate::graph::DimensionMode::Advisory,
+            dimension_assumptions: Vec::new(),
+            base_dimensions: Vec::new(),
+            bypass_dimensions: false,
         }
     }
 
@@ -100,6 +110,10 @@ impl Config {
             bindings: Vec::new(),
             assumptions: Vec::new(),
             budget: Budget::default(),
+            dimension_mode: crate::graph::DimensionMode::Advisory,
+            dimension_assumptions: Vec::new(),
+            base_dimensions: Vec::new(),
+            bypass_dimensions: false,
         }
     }
 
@@ -154,9 +168,82 @@ impl Config {
         self
     }
 
+    /// The search budget in effect.
+    #[must_use]
+    pub fn current_budget(&self) -> Budget {
+        self.budget.clone()
+    }
+
+    /// Sets the dimensional checking mode. The default is
+    /// [`DimensionMode::Advisory`].
+    #[must_use]
+    pub const fn dimensions(
+        mut self,
+        mode: crate::graph::DimensionMode,
+    ) -> Self {
+        self.dimension_mode = mode;
+        self
+    }
+
+    /// The dimensional checking mode.
+    #[must_use]
+    pub const fn dimension_mode(&self) -> crate::graph::DimensionMode {
+        self.dimension_mode
+    }
+
+    /// Declares the dimension of a symbol as text: a unit expression
+    /// (`"m/s"`, `"km/h"`), a base-dimension product (`"Length/Time"`), an
+    /// explicit base dimension (`"base:T"`, needed when a custom base has
+    /// the same name as a unit), or `"any"`.
+    ///
+    /// Unit symbols take precedence over base names for bare text, so `"T"`
+    /// is always the tesla. Use `"base:Name"` to force a base dimension.
+    #[must_use]
+    pub fn dimension(
+        mut self,
+        symbol: &str,
+        text: &str,
+    ) -> Self {
+        self.dimension_assumptions
+            .push((symbol.to_owned(), text.to_owned()));
+        self
+    }
+
+    /// Declares the dimension of the value of a function symbol. This is the
+    /// same declaration as [`Config::dimension`]; it exists for readability
+    /// at call sites that describe function values.
+    #[must_use]
+    pub fn dimension_of(
+        self,
+        symbol: &str,
+        text: &str,
+    ) -> Self {
+        self.dimension(symbol, text)
+    }
+
+    /// Registers a user-defined base dimension (for example `Currency`).
+    #[must_use]
+    pub fn define_base_dimension(
+        mut self,
+        name: &str,
+    ) -> Self {
+        self.base_dimensions.push(name.to_owned());
+        self
+    }
+
+    /// Disables hard dimensional errors even in
+    /// [`DimensionMode::Strict`]: dimensions are still inferred and
+    /// reported, but a conflict never fails the computation. This is the
+    /// explicit escape hatch for intentionally non-physical formulas.
+    #[must_use]
+    pub const fn bypass_dimension_checks(mut self) -> Self {
+        self.bypass_dimensions = true;
+        self
+    }
+
     /// Replaces the search budget.
     #[must_use]
-    pub fn budget(
+    pub const fn budget(
         mut self,
         budget: Budget,
     ) -> Self {
@@ -166,7 +253,7 @@ impl Config {
 }
 
 /// Why a computation could not produce an answer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ComputeError {
     /// A rule set failed to install.
     Rule(RuleError),
@@ -177,6 +264,8 @@ pub enum ComputeError {
     /// A numeric answer was requested but the term could not be evaluated;
     /// carries the best symbolic form that was reached.
     NotNumeric(String),
+    /// A dimension conflict in strict mode.
+    Dimension(crate::graph::DimError),
     /// The rules derived that two different numbers are equal. This is a
     /// bug in a rule set; the session must be discarded.
     Inconsistent(String),
@@ -194,6 +283,7 @@ impl fmt::Display for ComputeError {
             | Self::NotNumeric(term) => {
                 write!(f, "no numeric value could be determined for `{term}`")
             },
+            | Self::Dimension(error) => write!(f, "{error}"),
             | Self::Inconsistent(what) => write!(f, "rule set is unsound: derived {what}"),
         }
     }
@@ -282,6 +372,12 @@ pub struct Answer<'s> {
     /// Whether the request was fully reduced. `false` means `term` still
     /// contains unevaluated heavy operators.
     pub reduced: bool,
+    /// The inferred dimension of `term` (`None` when dimensional checking is
+    /// off or no dimension could be inferred).
+    pub dimension: Option<crate::graph::Dimension>,
+    /// Dimensional findings of an advisory run (conflicts, coverage gaps,
+    /// unresolved symbols).
+    pub diagnostics: Vec<crate::graph::DimError>,
     /// What the engine did.
     pub report: Report,
 }
@@ -357,6 +453,17 @@ impl Session {
         self.term(self.inner.borrow_mut().graph.float(value))
     }
 
+    /// The term with handle `id` (see [`Term::id`]); `None` when this
+    /// session has no such term.
+    #[must_use]
+    pub fn term_by_id(
+        &self,
+        id: u32,
+    ) -> Option<Term<'_>> {
+        let node = NodeId::from_raw(id);
+        (node.index() < self.inner.borrow().graph.len()).then(|| self.term(node))
+    }
+
     /// Parses a term from infix text.
     ///
     /// # Errors
@@ -402,91 +509,62 @@ impl Session {
     ) -> Result<Answer<'s>, ComputeError> {
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
-        let key: Vec<Arc<str>> = config.sets.iter().map(|s| Arc::from(s.name())).collect();
-        let index = match inner.templates.iter().position(|t| t.sets == key) {
-            | Some(i) => i,
-            | None => {
-                inner.templates.push(Template::new(&config.sets)?);
-                inner.templates.len().saturating_sub(1)
-            },
-        };
+        let index = template_index(inner, config)?;
+        let job = prepare(inner, index, term.node, config);
         let Some(template) = inner.templates.get(index) else {
             return Err(ComputeError::UnknownOperator("engine".to_owned()));
         };
-        let store = &mut inner.graph;
+        let done = run_job(&template.engine, job, config);
+        finish(self, &mut inner.graph, done)
+    }
 
-        // Work in a private copy; only the answer goes back to the store.
-        let mut graph = template.graph.clone();
-        let root = graph.import(store, term.node);
-        let mut env = match config.target {
-            | Target::Symbolic => Env::symbolic(),
-            | Target::Numeric { tolerance } => Env::numeric(tolerance),
+    /// Reduces every term of `terms` under the same `config`, running the
+    /// searches in parallel.
+    ///
+    /// The result equals `terms.iter().map(|&t| self.compute(t, config))`:
+    /// each request is copied into its own private clone of the template
+    /// (sequentially, because the store is borrowed), the engines run
+    /// concurrently on the rayon pool, and the answers are extracted and
+    /// copied back into the store in input order. The answers do not depend
+    /// on the thread count. A failure in one request does not affect the
+    /// others.
+    ///
+    /// # Errors
+    /// One entry per term; see [`Session::compute`].
+    pub fn compute_all<'s>(
+        &'s self,
+        terms: &[Term<'s>],
+        config: &Config,
+    ) -> Vec<Result<Answer<'s>, ComputeError>> {
+        let mut guard = self.inner.borrow_mut();
+        let inner = &mut *guard;
+        let index = match template_index(inner, config) {
+            | Ok(i) => i,
+            | Err(e) => return terms.iter().map(|_| Err(e.clone())).collect(),
         };
-        for (name, value) in &config.bindings {
-            env.bind(graph.interner_mut().symbol(name), *value);
-        }
-        for (name, facts) in &config.assumptions {
-            let symbol = graph.interner_mut().symbol(name);
-            graph.assume(symbol, *facts);
-        }
-        let roots = [root];
-        let report = match config.target {
-            | Target::Symbolic => {
-                template
-                    .engine
-                    .run(&mut graph, &roots, &env, &Saturate, &config.budget)
-            },
-            | Target::Numeric { .. } => {
-                template
-                    .engine
-                    .run(&mut graph, &roots, &env, &Evaluated, &config.budget)
-            },
+        let jobs: Vec<Job> = terms
+            .iter()
+            .map(|t| prepare(inner, index, t.node, config))
+            .collect();
+        let Some(template) = inner.templates.get(index) else {
+            return terms
+                .iter()
+                .map(|_| Err(ComputeError::UnknownOperator("engine".to_owned())))
+                .collect();
         };
-        if let Some((a, b)) = graph.conflicts().first() {
-            return Err(ComputeError::Inconsistent(format!("{a} = {b}")));
-        }
-
-        let witness = graph.approx(graph.find(root));
-        let closed = Extractor::new(&graph, &roots, &ClosedForm).build(&mut graph, root);
-        let reduced = closed.is_some();
-        let best = match closed {
-            | Some(node) => node,
-            | None => Extractor::new(&graph, &roots, &SizeCost)
-                .build(&mut graph, root)
-                .unwrap_or(root),
+        let engine = &template.engine;
+        let done: Vec<Done> = if jobs.len() >= COMPUTE_ALL_PAR_MIN {
+            jobs.into_par_iter()
+                .map(|job| run_job(engine, job, config))
+                .collect()
+        } else {
+            jobs.into_iter()
+                .map(|job| run_job(engine, job, config))
+                .collect()
         };
-        match config.target {
-            | Target::Symbolic => {
-                let exact = graph.as_number(best).map(Number::to_f64);
-                let node = store.import(&graph, best);
-                Ok(Answer {
-                    term: self.term(node),
-                    value: exact,
-                    error: exact.map(|_| 0.0),
-                    reduced,
-                    report,
-                })
-            },
-            | Target::Numeric { .. } => {
-                // Prefer evaluating the closed form; fall back to the
-                // witness numeric kernels produced.
-                let ball = graph
-                    .eval(best, &env)
-                    .map(crate::graph::Ball::exact)
-                    .or(witness);
-                let Some(ball) = ball else {
-                    return Err(ComputeError::NotNumeric(graph.display(best)));
-                };
-                let node = store.float(ball.mid);
-                Ok(Answer {
-                    term: self.term(node),
-                    value: Some(ball.mid),
-                    error: Some(ball.rad),
-                    reduced,
-                    report,
-                })
-            },
-        }
+        done.into_iter()
+            .map(|d| finish(self, &mut inner.graph, d))
+            .collect()
     }
 
     /// Shorthand for a symbolic [`Session::compute`] with the standard
@@ -499,6 +577,247 @@ impl Session {
         term: Term<'s>,
     ) -> Result<Term<'s>, ComputeError> {
         Ok(self.compute(term, &Config::new())?.term)
+    }
+}
+
+/// Number of requests from which [`Session::compute_all`] uses the pool.
+const COMPUTE_ALL_PAR_MIN: usize = 2;
+
+/// A request copied into its private graph, ready to run.
+struct Job {
+    graph: Graph,
+    root: NodeId,
+    env: Env,
+    dim_errors: Vec<crate::graph::DimError>,
+}
+
+/// A request after the search: the answer is chosen but not yet copied back
+/// into the store.
+struct Done {
+    graph: Graph,
+    env: Env,
+    report: Report,
+    target: Target,
+    failure: Option<ComputeError>,
+    best: NodeId,
+    reduced: bool,
+    witness: Option<crate::graph::Ball>,
+    dimension: Option<crate::graph::Dimension>,
+    diagnostics: Vec<crate::graph::DimError>,
+}
+
+const _: fn() = || {
+    const fn send<T: Send>() {}
+    const fn sync<T: Sync>() {}
+    send::<Job>();
+    send::<Done>();
+    sync::<Engine>();
+    sync::<Config>();
+};
+
+/// Index of the template for `config`'s rule sets, installing it on first use.
+fn template_index(
+    inner: &mut Inner,
+    config: &Config,
+) -> Result<usize, ComputeError> {
+    let key: Vec<Arc<str>> = config.sets.iter().map(|s| Arc::from(s.name())).collect();
+    match inner.templates.iter().position(|t| t.sets == key) {
+        | Some(i) => Ok(i),
+        | None => {
+            inner.templates.push(Template::new(&config.sets)?);
+            Ok(inner.templates.len().saturating_sub(1))
+        },
+    }
+}
+
+/// Copies the request into a private clone of the template.
+fn prepare(
+    inner: &Inner,
+    index: usize,
+    node: NodeId,
+    config: &Config,
+) -> Job {
+    let mut graph = inner
+        .templates
+        .get(index)
+        .map_or_else(Graph::new, |t| t.graph.clone());
+    for name in &config.base_dimensions {
+        graph.define_base_dimension(name);
+    }
+    let root = graph.import(&inner.graph, node);
+    let mut env = match config.target {
+        | Target::Symbolic => Env::symbolic(),
+        | Target::Numeric { tolerance } => Env::numeric(tolerance),
+    };
+    for (name, value) in &config.bindings {
+        env.bind(graph.interner_mut().symbol(name), *value);
+    }
+    for (name, facts) in &config.assumptions {
+        let symbol = graph.interner_mut().symbol(name);
+        graph.assume(symbol, *facts);
+    }
+    let mut dim_errors = Vec::new();
+    for (name, text) in &config.dimension_assumptions {
+        let symbol = graph.interner_mut().symbol(name);
+        if let Err(error) = graph.assume_dimension(symbol, text) {
+            dim_errors.push(error);
+        }
+    }
+    Job {
+        graph,
+        root,
+        env,
+        dim_errors,
+    }
+}
+
+/// Runs the engine on the private graph and chooses the answer in it.
+fn run_job(
+    engine: &Engine,
+    job: Job,
+    config: &Config,
+) -> Done {
+    let Job {
+        mut graph,
+        root,
+        env,
+        dim_errors,
+    } = job;
+    let roots = [root];
+    let report = match config.target {
+        | Target::Symbolic => engine.run(&mut graph, &roots, &env, &Saturate, &config.budget),
+        | Target::Numeric { .. } => {
+            engine.run(&mut graph, &roots, &env, &Evaluated, &config.budget)
+        },
+    };
+    let mut failure = graph
+        .conflicts()
+        .first()
+        .map(|(a, b)| ComputeError::Inconsistent(format!("{a} = {b}")));
+    let witness = graph.approx(graph.find(root));
+    let (best, reduced) = if failure.is_some() {
+        (root, false)
+    } else {
+        let closed = Extractor::new(&graph, &roots, &ClosedForm).build(&mut graph, root);
+        let reduced = closed.is_some();
+        let best = match closed {
+            | Some(node) => node,
+            | None => {
+                Extractor::new(&graph, &roots, &SizeCost)
+                    .build(&mut graph, root)
+                    .unwrap_or(root)
+            },
+        };
+        (best, reduced)
+    };
+    let mut diagnostics = dim_errors;
+    let dimension = if config.dimension_mode == crate::graph::DimensionMode::Off {
+        None
+    } else {
+        let answer = graph.dimension(best);
+        let input = if best == root {
+            None
+        } else {
+            Some(graph.dimension(root))
+        };
+        // A structured request (a decomposition, a predicate, a container)
+        // is typed `NonMetric` by its own rule. Its *expanded* literal then
+        // holds parts with different dimensions on purpose: `lu` returns a
+        // dimensionless permutation and `L` next to a dimensionful `U`.
+        // Differences between those parts are not a mixed scalar list, so
+        // the structural note is suppressed for such a request.
+        let structured = input
+            .as_ref()
+            .is_some_and(|outcome| outcome.dimension.non_metric);
+        let mut findings = answer.errors;
+        if let Some(input) = &input {
+            findings.extend(input.errors.iter().cloned());
+        }
+        if structured {
+            findings.retain(|error| !matches!(error, crate::graph::DimError::MixedList { .. }));
+        }
+        diagnostics.extend(findings);
+        let mut seen = std::collections::HashSet::new();
+        diagnostics.retain(|error| seen.insert(error.to_string()));
+        if failure.is_none()
+            && config.dimension_mode == crate::graph::DimensionMode::Strict
+            && !config.bypass_dimensions
+            && let Some(error) = diagnostics.iter().find(|error| error.is_blocking())
+        {
+            failure = Some(ComputeError::Dimension(error.clone()));
+        }
+        Some(answer.dimension)
+    };
+    Done {
+        graph,
+        env,
+        report,
+        target: config.target,
+        failure,
+        best,
+        reduced,
+        witness,
+        dimension,
+        diagnostics,
+    }
+}
+
+/// Copies the chosen answer back into the store.
+fn finish<'s>(
+    session: &'s Session,
+    store: &mut Graph,
+    done: Done,
+) -> Result<Answer<'s>, ComputeError> {
+    let Done {
+        graph,
+        env,
+        report,
+        target,
+        failure,
+        best,
+        reduced,
+        witness,
+        dimension,
+        diagnostics,
+    } = done;
+    if let Some(error) = failure {
+        return Err(error);
+    }
+    match target {
+        | Target::Symbolic => {
+            let exact = graph.as_number(best).map(Number::to_f64);
+            let node = store.import(&graph, best);
+            Ok(Answer {
+                term: session.term(node),
+                value: exact,
+                error: exact.map(|_| 0.0),
+                reduced,
+                dimension,
+                diagnostics,
+                report,
+            })
+        },
+        | Target::Numeric { .. } => {
+            // Prefer evaluating the closed form; fall back to the
+            // witness numeric kernels produced.
+            let ball = graph
+                .eval(best, &env)
+                .map(crate::graph::Ball::exact)
+                .or(witness);
+            let Some(ball) = ball else {
+                return Err(ComputeError::NotNumeric(graph.display(best)));
+            };
+            let node = store.float(ball.mid);
+            Ok(Answer {
+                term: session.term(node),
+                value: Some(ball.mid),
+                error: Some(ball.rad),
+                reduced,
+                dimension,
+                diagnostics,
+                report,
+            })
+        },
     }
 }
 
@@ -537,10 +856,94 @@ impl<'s> Term<'s> {
             .cloned()
     }
 
+    /// The inferred dimension of the term in this session's graph (without
+    /// the assumptions of a particular [`Config`]; use
+    /// [`Answer::dimension`] for a configured computation).
+    #[must_use]
+    pub fn dimension(self) -> crate::graph::Dimension {
+        self.session
+            .inner
+            .borrow()
+            .graph
+            .dimension(self.node)
+            .dimension
+    }
+
+    /// The inferred dimension together with the conflicts found.
+    #[must_use]
+    pub fn dimension_report(self) -> crate::graph::DimOutcome {
+        self.session.inner.borrow().graph.dimension(self.node)
+    }
+
+    /// A stable handle for this term within its session, for language
+    /// bindings that cannot hold a borrowed [`Term`]; turn it back into a
+    /// term with [`Session::term_by_id`].
+    #[must_use]
+    pub const fn id(self) -> u32 {
+        self.node.raw()
+    }
+
+    /// The term as a dense numeric array: a literal number is a scalar
+    /// (empty shape), a `list` of numbers a vector, a list of equally long
+    /// lists a matrix, and so on. `None` when an entry is not a number or
+    /// the nesting is ragged. Data is row-major.
+    #[must_use]
+    pub fn as_tensor(self) -> Option<(Vec<usize>, Vec<f64>)> {
+        fn walk(
+            graph: &Graph,
+            node: NodeId,
+            depth: usize,
+            shape: &mut Vec<usize>,
+            data: &mut Vec<f64>,
+        ) -> Option<()> {
+            if let Some(n) = graph.as_number(node) {
+                return (depth == shape.len()).then(|| data.push(n.to_f64()));
+            }
+            if graph.op(node) != core::LIST {
+                return None;
+            }
+            let items = graph.children(node);
+            match shape.get(depth) {
+                | Some(&len) if len != items.len() => return None,
+                | Some(_) => {},
+                | None if depth == shape.len() && data.is_empty() => shape.push(items.len()),
+                | None => return None,
+            }
+            for &item in items {
+                walk(graph, item, depth.saturating_add(1), shape, data)?;
+            }
+            Some(())
+        }
+        let inner = self.session.inner.borrow();
+        let mut shape = Vec::new();
+        let mut data = Vec::new();
+        walk(&inner.graph, self.node, 0, &mut shape, &mut data)?;
+        Some((shape, data))
+    }
+
     /// The term as a float if it is a literal number.
     #[must_use]
     pub fn as_f64(self) -> Option<f64> {
         self.as_number().map(|n| n.to_f64())
+    }
+
+    /// The term as LaTeX math (see [`crate::io::latex::to_latex`]).
+    #[must_use]
+    pub fn to_latex(self) -> String {
+        crate::io::latex::to_latex(&self.session.inner.borrow().graph, self.node)
+    }
+
+    /// The term as Typst math (see [`crate::io::typst::to_typst`]).
+    #[must_use]
+    pub fn to_typst(self) -> String {
+        crate::io::typst::to_typst(&self.session.inner.borrow().graph, self.node)
+    }
+
+    /// The term as a multi-line Unicode drawing (see
+    /// [`crate::io::pretty::to_pretty`]).
+    #[must_use]
+    pub fn to_pretty(self) -> String {
+        crate::io::pretty::to_pretty(&self.session.inner.borrow().graph, self.node)
     }
 
     /// Evaluates the term numerically under the given bindings, without
@@ -559,7 +962,9 @@ impl<'s> Term<'s> {
     }
 
     /// Compiles the term to a function of the named symbols, in order,
-    /// using the reference [`Interpreter`](crate::backend::Interpreter).
+    /// with the [current](crate::backend::current) backend (the reference
+    /// [`Interpreter`](crate::backend::Interpreter) unless another one was
+    /// selected).
     ///
     /// # Errors
     /// See [`BackendError`](crate::backend::BackendError).
@@ -567,7 +972,7 @@ impl<'s> Term<'s> {
         self,
         inputs: &[&str],
     ) -> Result<Box<dyn crate::backend::Compiled>, crate::backend::BackendError> {
-        self.compile_with(&crate::backend::Interpreter, inputs)
+        self.compile_with(&*crate::backend::current(), inputs)
     }
 
     /// Compiles the term with a specific backend.
@@ -679,7 +1084,7 @@ impl<'s> IntoTerm<'s> for Term<'s> {
     fn into_term(
         self,
         _session: &'s Session,
-    ) -> Term<'s> {
+    ) -> Self {
         self
     }
 }
@@ -771,10 +1176,10 @@ arithmetic!(Div, div, |a, b| a.binary(core::MUL, b.pow(-1)));
 arithmetic!(scalar i32);
 arithmetic!(scalar f64);
 
-impl<'s> Neg for Term<'s> {
-    type Output = Term<'s>;
+impl Neg for Term<'_> {
+    type Output = Self;
 
-    fn neg(self) -> Term<'s> {
+    fn neg(self) -> Self {
         self.session.int(-1).binary(core::MUL, self)
     }
 }
@@ -843,6 +1248,58 @@ pub fn diff_n<'s>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `compute_all` equals a loop of `compute` (same answers, same store
+    /// state), also with a failing request in the middle, and does not
+    /// depend on the thread count.
+    #[test]
+    fn compute_all_equals_a_loop_of_compute() {
+        let texts = [
+            "diff(sin(x)^2*exp(x^2), x)",
+            "(x + 1)^4 - (x - 1)^4",
+            "diff(x^3 + 2*x, x)",
+            "integral(x*exp(x), x)",
+        ];
+        let run = |batch: bool| -> Vec<String> {
+            let s = Session::new();
+            let terms: Vec<_> = texts.iter().map(|t| s.parse(t).unwrap()).collect();
+            let config = Config::new();
+            let answers: Vec<_> = if batch {
+                s.compute_all(&terms, &config)
+            } else {
+                terms.iter().map(|&t| s.compute(t, &config)).collect()
+            };
+            let mut out: Vec<String> = answers
+                .into_iter()
+                .map(|a| {
+                    let a = a.unwrap();
+                    format!("{} {:?} {:?} {}", a.term, a.value, a.error, a.reduced)
+                })
+                .collect();
+            out.push(format!("{s:?} id {}", s.sym("zz").id()));
+            out
+        };
+        let looped = run(false);
+        assert_eq!(run(true), looped);
+        let one = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        assert_eq!(one.install(|| run(true)), looped);
+    }
+
+    #[test]
+    fn compute_all_reports_errors_per_request() {
+        let s = Session::new();
+        let t = s.parse("x + 1").unwrap();
+        let u = s.parse("sin(x)").unwrap();
+        // A numeric target without a binding for x has no value.
+        let config = Config::new().numeric(1e-9);
+        let batch = s.compute_all(&[t, u], &config);
+        assert!(matches!(batch[0], Err(ComputeError::NotNumeric(_))));
+        assert!(matches!(batch[1], Err(ComputeError::NotNumeric(_))));
+        assert!(s.compute_all(&[], &config).is_empty());
+    }
 
     fn symbolic(
         s: &Session,
@@ -983,7 +1440,7 @@ mod tests {
     }
 
     #[test]
-    fn undetermined_functions_stay_unreduced_but_make_progress() {
+    fn derivatives_of_undetermined_functions_are_closed_forms() {
         let s = Session::new();
         let term = s
             .parse("diff(x * f(x), x)")
@@ -991,11 +1448,9 @@ mod tests {
         let answer = s
             .compute(term, &Config::new())
             .unwrap_or_else(|e| panic!("{e}"));
-        assert!(!answer.reduced);
-        assert_eq!(
-            answer.term.to_string(),
-            "x*diff(f(x), x) + f(x)"
-        );
+        // `diff(f(x), x)` cannot be computed any further: it is the answer.
+        assert!(answer.reduced);
+        assert_eq!(answer.term.to_string(), "x*diff(f(x), x) + f(x)");
     }
 
     #[test]

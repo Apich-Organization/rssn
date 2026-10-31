@@ -164,3 +164,19 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn double_slit_scenario_writes_the_final_density() {
+    let dir = std::env::temp_dir().join(format!("rssn_slit_{}", std::process::id()));
+    let res = simulate_double_slit_scenario(&dir);
+    // The .npy output needs the `npy` feature; without it the call reports an error.
+    if cfg!(feature = "npy") {
+        res.unwrap_or_else(|e| panic!("{e}"));
+        let meta = std::fs::metadata(dir.join("schrodinger_double_slit.npy"))
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(meta.len() > 256 * 256 * 8);
+    } else {
+        assert!(res.is_err());
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

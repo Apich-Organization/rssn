@@ -193,10 +193,10 @@ proptest! {
 
     #[test]
     fn prop_heat_1d_stays_in_range(d_coeff in 0.01..1.0f64) {
-        let res = solve_heat_equation_1d_cn(&vec![1.0; 10], 0.1, 0.001, d_coeff, 5);
+        let res = solve_heat_equation_1d_cn(&[1.0; 10], 0.1, 0.001, d_coeff, 5);
         for &val in &res {
             prop_assert!(val.is_finite());
-            prop_assert!(val >= -1e-12 && val <= 1.0 + 1e-12);
+            prop_assert!((-1e-12..=1.0 + 1e-12).contains(&val));
         }
     }
 

@@ -600,7 +600,7 @@ mod strengthened {
         assert_eq!(res.len(), 11);
         for k in 0..=10usize {
             for i in 0..n {
-                let want = if i >= k + 1 && i - k < n {
+                let want = if i > k && i - k < n {
                     u0[i - k]
                 } else {
                     0.0
@@ -636,7 +636,7 @@ mod strengthened {
         for u in &res {
             assert!((total(u) - t0).abs() < 1e-10);
             assert!(
-                u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12),
+                u.iter().all(|&v| (-1e-12..=1.0 + 1e-12).contains(&v)),
                 "upwind must stay monotone for CFL <= 1"
             );
         }
@@ -671,7 +671,7 @@ mod strengthened {
         let mass0: f64 = u0.iter().sum();
         for u in &res {
             assert!((u.iter().sum::<f64>() - mass0).abs() < 1e-12);
-            assert!(u.iter().all(|&v| v >= -1e-15 && v <= 1.0 + 1e-15));
+            assert!(u.iter().all(|&v| (-1e-15..=1.0 + 1e-15).contains(&v)));
         }
         // Fixed boundary values are kept.
         assert!(res.iter().all(|u| u[0] == 0.0 && u[n - 1] == 0.0));
@@ -715,7 +715,7 @@ mod strengthened {
         let res = solve_burgers_1d(&u0, 0.01, 0.02, 0.001, 200);
         for u in &res {
             assert!(
-                u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12),
+                u.iter().all(|&v| (-1e-12..=1.0 + 1e-12).contains(&v)),
                 "max principle violated"
             );
         }
@@ -960,7 +960,7 @@ mod strengthened {
             u0[n - 1] = u0[1];
             let res = solve_advection_1d(&u0, c, dx, dt, 25);
             for u in &res {
-                prop_assert!(u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12));
+                prop_assert!(u.iter().all(|&v| (-1e-12..=1.0 + 1e-12).contains(&v)));
             }
         }
     }

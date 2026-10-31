@@ -44,7 +44,7 @@ fn test_ln_gamma() {
 }
 
 #[test]
-
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
 fn test_digamma() {
     // ψ(1) = -γ where γ is Euler's constant ≈ -0.5772
     let psi1 = digamma_numerical(1.0);
@@ -432,7 +432,7 @@ proptest::proptest! {
 #[test]
 fn reference_values_erf_gamma_beta() {
     assert!((erf_numerical(1.0) - 0.842_700_792_949_714_9).abs() < 1e-9);
-    assert!((erfc_numerical(2.0) - 0.004_677_734_981_047_265_4).abs() < 1e-9);
+    assert!((erfc_numerical(2.0) - 0.004_677_734_981_047_265).abs() < 1e-9);
     assert!((inverse_erf_numerical(0.520_499_877_813_046_5) - 0.5).abs() < 1e-9);
     assert_eq!(inverse_erf_numerical(1.0), f64::INFINITY);
     assert_eq!(inverse_erf_numerical(-1.0), f64::NEG_INFINITY);
@@ -446,8 +446,8 @@ fn reference_values_erf_gamma_beta() {
 #[test]
 fn incomplete_gamma_closed_forms() {
     // s = 1: gamma(1, x) = 1 - e^-x
-    for x in [0.1, 1.0, 3.0, 10.0] {
-        let want = 1.0 - (-x as f64).exp();
+    for x in [0.1_f64, 1.0, 3.0, 10.0] {
+        let want = 1.0 - (-x).exp();
         assert!(
             (lower_incomplete_gamma(1.0, x) - want).abs() < 1e-8,
             "x = {x}"
@@ -457,11 +457,11 @@ fn incomplete_gamma_closed_forms() {
             "x = {x}"
         );
         assert!(
-            (regularized_upper_gamma(1.0, x) - (-x as f64).exp()).abs() < 1e-8,
+            (regularized_upper_gamma(1.0, x) - (-x).exp()).abs() < 1e-8,
             "x = {x}"
         );
         assert!(
-            (upper_incomplete_gamma(1.0, x) - (-x as f64).exp()).abs() < 1e-8,
+            (upper_incomplete_gamma(1.0, x) - (-x).exp()).abs() < 1e-8,
             "x = {x}"
         );
     }
@@ -947,6 +947,77 @@ fn riemann_zeta_matches_references() {
             "zeta({s}) = {got:e}, want {want:e}"
         );
     }
-    assert!(riemann_zeta(0.5).is_nan());
+    assert!(riemann_zeta(f64::NAN).is_nan());
+    assert!(riemann_zeta(f64::NEG_INFINITY).is_nan());
     assert!((hurwitz_zeta(2.0, 0.5) - PI * PI / 2.0).abs() < 1e-13);
+}
+
+#[test]
+fn riemann_zeta_analytic_continuation() {
+    // (s, reference value) from a multiprecision evaluation
+    let table: &[(f64, f64)] = &[
+        (0.5, -1.4603545088095868),
+        (-0.5, -0.20788622497735457),
+        (0.9, -9.430_114_019_402_255),
+        (0.1, -0.603_037_519_856_241_8),
+        (0.99, -99.423_512_977_728_1),
+        (0.999, -999.422_857_155_787_9),
+        (-2.5, 0.008516928777850331),
+        (-10.5, 0.011146122473942813),
+        (-20.5, -108.21747505877606),
+        (-1e-6, -0.499_999_081_062_47),
+        (-1.0, -1.0 / 12.0),
+        (-3.0, 1.0 / 120.0),
+        (-5.0, -1.0 / 252.0),
+        (-7.0, 1.0 / 240.0),
+        (-9.0, -1.0 / 132.0),
+        (-11.0, 691.0 / 32760.0),
+        (-13.0, -1.0 / 12.0),
+    ];
+    for &(s, want) in table {
+        let got = riemann_zeta(s);
+        assert!(
+            (got - want).abs() <= 1e-12 * want.abs(),
+            "zeta({s}) = {got:e}, want {want:e}"
+        );
+    }
+    assert_eq!(riemann_zeta(0.0), -0.5);
+    for k in 1..40 {
+        assert_eq!(
+            riemann_zeta(-2.0 * f64::from(k)),
+            0.0,
+            "trivial zero -{}",
+            2 * k
+        );
+    }
+    assert_eq!(riemann_zeta(1.0), f64::INFINITY);
+}
+
+#[test]
+#[allow(clippy::approx_constant)] // `f64::consts::EULER_GAMMA` is unstable
+fn riemann_zeta_continuous_across_one_and_zero() {
+    // zeta(s) ~ 1/(s-1) + gamma_E near the pole, from both sides
+    let gamma_e = 0.577_215_664_901_532_9;
+    for &e in &[1e-3, 1e-5] {
+        assert!((riemann_zeta(1.0 + e) - (1.0 / e + gamma_e)).abs() < 10.0 * e);
+        assert!((riemann_zeta(1.0 - e) - (-1.0 / e + gamma_e)).abs() < 10.0 * e);
+    }
+    // continuity at the seam between the eta series and the functional equation
+    assert!((riemann_zeta(1e-9) - riemann_zeta(-1e-9)).abs() < 1e-8);
+    assert!((riemann_zeta(1e-9) + 0.5).abs() < 1e-8);
+}
+
+#[test]
+fn riemann_zeta_functional_equation_holds() {
+    // zeta(s) = 2^s pi^(s-1) sin(pi s / 2) Gamma(1-s) zeta(1-s) for 0 < s < 1 too
+    for &s in &[0.1, 0.3, 0.5, 0.7, 0.95] {
+        let rhs = 2f64.powf(s)
+            * PI.powf(s - 1.0)
+            * (PI * s / 2.0).sin()
+            * gamma_numerical(1.0 - s)
+            * riemann_zeta(1.0 - s);
+        assert!((riemann_zeta(s) - rhs).abs() < 1e-11 * rhs.abs(), "s = {s}");
+    }
+    assert!(riemann_zeta(-200.0) == 0.0);
+    assert!(riemann_zeta(-201.0).is_infinite());
 }

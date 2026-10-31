@@ -162,6 +162,7 @@ const E: [f64; 7] = [
 /// # Errors
 /// Returns an error when the step size underflows, `max_steps` accepted or
 /// rejected steps are exhausted, or the state stops being finite.
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn solve_adaptive(
     f: impl Fn(f64, &[f64], &mut [f64]),
     y0: &[f64],

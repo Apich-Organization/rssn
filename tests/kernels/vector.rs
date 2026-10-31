@@ -3,11 +3,24 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::vector::{
-    angle, cosine_similarity, cross_product, distance, dot_product, is_orthogonal, is_parallel,
-    l1_norm, lerp, linf_norm, lp_norm, norm, normalize, project, reflect, scalar_mul, vec_add,
-    vec_sub,
-};
+use rssn::kernels::vector::angle;
+use rssn::kernels::vector::cosine_similarity;
+use rssn::kernels::vector::cross_product;
+use rssn::kernels::vector::distance;
+use rssn::kernels::vector::dot_product;
+use rssn::kernels::vector::is_orthogonal;
+use rssn::kernels::vector::is_parallel;
+use rssn::kernels::vector::l1_norm;
+use rssn::kernels::vector::lerp;
+use rssn::kernels::vector::linf_norm;
+use rssn::kernels::vector::lp_norm;
+use rssn::kernels::vector::norm;
+use rssn::kernels::vector::normalize;
+use rssn::kernels::vector::project;
+use rssn::kernels::vector::reflect;
+use rssn::kernels::vector::scalar_mul;
+use rssn::kernels::vector::vec_add;
+use rssn::kernels::vector::vec_sub;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -51,9 +64,18 @@ fn norms() {
 
 #[test]
 fn cross_product_of_basis_vectors() {
-    assert_eq!(cross_product(&[1.0, 0.0, 0.0], &[0.0, 1.0, 0.0]), Ok(vec![0.0, 0.0, 1.0]));
-    assert_eq!(cross_product(&[0.0, 1.0, 0.0], &[1.0, 0.0, 0.0]), Ok(vec![0.0, 0.0, -1.0]));
-    assert_eq!(cross_product(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0]), Ok(vec![-3.0, 6.0, -3.0]));
+    assert_eq!(
+        cross_product(&[1.0, 0.0, 0.0], &[0.0, 1.0, 0.0]),
+        Ok(vec![0.0, 0.0, 1.0])
+    );
+    assert_eq!(
+        cross_product(&[0.0, 1.0, 0.0], &[1.0, 0.0, 0.0]),
+        Ok(vec![0.0, 0.0, -1.0])
+    );
+    assert_eq!(
+        cross_product(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0]),
+        Ok(vec![-3.0, 6.0, -3.0])
+    );
     assert!(cross_product(&[1.0, 2.0], &[3.0, 4.0]).is_err());
 }
 
@@ -82,9 +104,18 @@ fn reflection_about_a_unit_normal() {
 
 #[test]
 fn angles() {
-    assert_approx_eq!(angle(&[1.0, 0.0], &[0.0, 1.0]).unwrap_or(f64::NAN), std::f64::consts::FRAC_PI_2);
-    assert_approx_eq!(angle(&[1.0, 0.0], &[-1.0, 0.0]).unwrap_or(f64::NAN), std::f64::consts::PI);
-    assert_approx_eq!(angle(&[1.0, 0.0], &[1.0, 1.0]).unwrap_or(f64::NAN), std::f64::consts::FRAC_PI_4);
+    assert_approx_eq!(
+        angle(&[1.0, 0.0], &[0.0, 1.0]).unwrap_or(f64::NAN),
+        std::f64::consts::FRAC_PI_2
+    );
+    assert_approx_eq!(
+        angle(&[1.0, 0.0], &[-1.0, 0.0]).unwrap_or(f64::NAN),
+        std::f64::consts::PI
+    );
+    assert_approx_eq!(
+        angle(&[1.0, 0.0], &[1.0, 1.0]).unwrap_or(f64::NAN),
+        std::f64::consts::FRAC_PI_4
+    );
     assert_eq!(angle(&[0.0, 0.0], &[1.0, 1.0]), Ok(0.0));
 }
 
@@ -100,7 +131,10 @@ fn distance_lerp_and_predicates() {
 
 #[test]
 fn cosine_similarity_values() {
-    assert_approx_eq!(cosine_similarity(&[1.0, 0.0], &[1.0, 1.0]).unwrap_or(f64::NAN), std::f64::consts::FRAC_1_SQRT_2);
+    assert_approx_eq!(
+        cosine_similarity(&[1.0, 0.0], &[1.0, 1.0]).unwrap_or(f64::NAN),
+        std::f64::consts::FRAC_1_SQRT_2
+    );
     assert!(cosine_similarity(&[0.0, 0.0], &[1.0, 1.0]).is_err());
 }
 

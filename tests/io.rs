@@ -1,7 +1,8 @@
 //! Array I/O in `rssn::io` (CSV, JSON and, with the `npy` feature, NumPy files).
 
 use assert_approx_eq::assert_approx_eq;
-use ndarray::{Array2, arr2};
+use ndarray::Array2;
+use ndarray::arr2;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::io::*;
@@ -24,7 +25,8 @@ impl Tmp {
         tag: &str,
         ext: &str,
     ) -> Self {
-        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::atomic::AtomicUsize;
+        use std::sync::atomic::Ordering;
         static N: AtomicUsize = AtomicUsize::new(0);
         let n = N.fetch_add(1, Ordering::SeqCst);
         Self(std::env::temp_dir().join(format!("rssn_io_{}_{n}_{tag}.{ext}", std::process::id())))

@@ -4,13 +4,38 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::stats::{
-    BinomialDist, ExponentialDist, GammaDist, PoissonDist, UniformDist, VarianceType,
-    chi_squared_test, coefficient_of_variation, correlation, covariance, geometric_mean,
-    harmonic_mean, iqr, kurtosis, max, mean, median, min, mode, one_way_anova, percentile, range,
-    shannon_entropy, simple_linear_regression, skewness, standard_error, std_dev,
-    two_sample_t_test, variance, variance_with_type, welch_t_test, z_scores,
-};
+use rssn::kernels::stats::BinomialDist;
+use rssn::kernels::stats::ExponentialDist;
+use rssn::kernels::stats::GammaDist;
+use rssn::kernels::stats::PoissonDist;
+use rssn::kernels::stats::UniformDist;
+use rssn::kernels::stats::VarianceType;
+use rssn::kernels::stats::chi_squared_test;
+use rssn::kernels::stats::coefficient_of_variation;
+use rssn::kernels::stats::correlation;
+use rssn::kernels::stats::covariance;
+use rssn::kernels::stats::geometric_mean;
+use rssn::kernels::stats::harmonic_mean;
+use rssn::kernels::stats::iqr;
+use rssn::kernels::stats::kurtosis;
+use rssn::kernels::stats::max;
+use rssn::kernels::stats::mean;
+use rssn::kernels::stats::median;
+use rssn::kernels::stats::min;
+use rssn::kernels::stats::mode;
+use rssn::kernels::stats::one_way_anova;
+use rssn::kernels::stats::percentile;
+use rssn::kernels::stats::range;
+use rssn::kernels::stats::shannon_entropy;
+use rssn::kernels::stats::simple_linear_regression;
+use rssn::kernels::stats::skewness;
+use rssn::kernels::stats::standard_error;
+use rssn::kernels::stats::std_dev;
+use rssn::kernels::stats::two_sample_t_test;
+use rssn::kernels::stats::variance;
+use rssn::kernels::stats::variance_with_type;
+use rssn::kernels::stats::welch_t_test;
+use rssn::kernels::stats::z_scores;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {

@@ -17,14 +17,17 @@ use crate::graph::SizeCost;
 use crate::graph::SymbolId;
 use crate::graph::op::core;
 
-/// Operator attribute: the partial derivative with respect to each
-/// argument, as a pattern over the arguments (`?a` is argument 0, `?b`
-/// argument 1, ...).
+/// Operator attribute: the partial derivatives of an operator.
+///
+/// One entry per argument, as a pattern over the arguments (`?a` is argument 0, `?b`
+/// argument 1, ...); `None` for an argument the operator cannot be
+/// differentiated in (the order of a Bessel function), which is fine as
+/// long as that argument does not depend on the variable.
 ///
 /// Attaching this to an operator is all it takes to teach the
 /// differentiation kernel about it.
 #[derive(Clone, Debug)]
-pub struct Partials(pub Vec<Pat>);
+pub struct Partials(pub Vec<Option<Pat>>);
 
 /// Structural differentiation: sum rule, n-ary product rule, and the chain
 /// rule through every operator that has [`Partials`].
@@ -89,7 +92,10 @@ impl Differentiate {
             if done.contains_key(&node) {
                 continue;
             }
-            if !graph.depends_on(graph.find(node), x) {
+            // Lists and equations are differentiated elementwise, keeping
+            // their shape even where an element is constant.
+            let elementwise = matches!(graph.op(node), core::LIST | core::EQ);
+            if !elementwise && !graph.depends_on(graph.find(node), x) {
                 done.insert(node, zero);
                 continue;
             }
@@ -98,7 +104,8 @@ impl Differentiate {
                 continue;
             }
             let op = graph.op(node);
-            let structural = op == core::ADD
+            let structural = elementwise
+                || op == core::ADD
                 || op == core::MUL
                 || graph.ops().attr::<super::Partials>(op).is_some();
             if !structural {
@@ -121,6 +128,11 @@ impl Differentiate {
                 .iter()
                 .map(|c| done.get(c).copied().unwrap_or(zero))
                 .collect();
+            if elementwise {
+                let mapped = graph.node(op, &derivs);
+                done.insert(node, mapped);
+                continue;
+            }
             let mut terms: Vec<NodeId> = Vec::new();
             if op == core::ADD {
                 terms.extend(derivs.iter().copied().filter(|&d| d != zero));
@@ -152,6 +164,7 @@ impl Differentiate {
                     }
                     let partial = partials
                         .get(i)
+                        .and_then(Option::as_ref)
                         .and_then(|p| p.instantiate(graph, &children));
                     let term = match partial {
                         | Some(p) if d == one => p,
@@ -260,8 +273,45 @@ fn richardson(
     let (d1, d2, d3) = (central(h0)?, central(h0 / 2.0)?, central(h0 / 4.0)?);
     let (e1, e2) = ((4.0 * d2 - d1) / 3.0, (4.0 * d3 - d2) / 3.0);
     let best = (16.0 * e2 - e1) / 15.0;
-    best.is_finite().then(|| Ball {
-        mid: best,
-        rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
+    best.is_finite().then(|| {
+        Ball {
+            mid: best,
+            rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
+        }
     })
+}
+
+/// `diffn(f, x, n)`: `n` nested `diff` requests for a literal `n ≥ 0`.
+pub(super) struct Repeated {
+    pub(super) diffn: OpId,
+    pub(super) diff: OpId,
+}
+
+impl Kernel for Repeated {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.diffn]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let &[f, x, n] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(n) = graph
+            .number_of(n)
+            .and_then(crate::graph::Number::to_i64)
+            .filter(|n| (0..=64).contains(n))
+        else {
+            return Outcome::Pass;
+        };
+        let mut term = f;
+        for _ in 0..n {
+            term = graph.node(self.diff, &[term, x]);
+        }
+        Outcome::Equal(term)
+    }
 }

@@ -5,7 +5,8 @@ use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::matrix::Matrix;
 use rssn::sim::physics_em::*;
-use rssn::sim::physics_rkm::{DampedOscillatorSystem, OdeSystem};
+use rssn::sim::physics_rkm::DampedOscillatorSystem;
+use rssn::sim::physics_rkm::OdeSystem;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -92,8 +93,8 @@ fn midpoint_and_heun_have_second_order_closed_forms() {
 #[test]
 fn convergence_orders_of_the_explicit_schemes() {
     let exact = 1.0f64.exp();
-    let err = |solver: fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>,
-               h: f64| {
+    type Solver = fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>;
+    let err = |solver: Solver, h: f64| {
         (last(&solver(&Exponential(1.0), &[1.0], (0.0, 1.0), h)).1 - exact).abs()
     };
     for (name, solver, order) in [
@@ -130,7 +131,7 @@ fn undamped_oscillator_scenario_shows_forward_euler_energy_growth() {
     let energy = |y: &[f64]| y[1] * y[1] + (2.0 * std::f64::consts::PI).powi(2) * y[0] * y[0];
     let (e0, e1) = (
         energy(&res[0].1),
-        energy(&res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])),
+        energy(res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])),
     );
     let growth = (1.0 + (2.0 * std::f64::consts::PI * 0.01f64).powi(2)).powi(res.len() as i32 - 1);
     assert!(e1 > 2.0 * e0);

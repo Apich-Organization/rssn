@@ -4,9 +4,10 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
-use rssn::kernels::interpolate::{
-    b_spline, bezier_curve, cubic_spline_interpolation, lagrange_interpolation,
-};
+use rssn::kernels::interpolate::b_spline;
+use rssn::kernels::interpolate::bezier_curve;
+use rssn::kernels::interpolate::cubic_spline_interpolation;
+use rssn::kernels::interpolate::lagrange_interpolation;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -18,14 +19,16 @@ fn cfg() -> ProptestConfig {
 
 #[test]
 fn lagrange_quadratic_value() {
-    let poly = lagrange_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)]).unwrap_or_else(|e| panic!("{e}"));
+    let poly = lagrange_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)])
+        .unwrap_or_else(|e| panic!("{e}"));
     assert_approx_eq!(poly.eval(1.5), 2.25, 1e-9);
 }
 
 #[test]
 fn lagrange_quadratic_coefficients() {
     // Coefficients are stored highest degree first: x^2.
-    let poly = lagrange_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)]).unwrap_or_else(|e| panic!("{e}"));
+    let poly = lagrange_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)])
+        .unwrap_or_else(|e| panic!("{e}"));
     let want = [1.0, 0.0, 0.0];
     assert_eq!(poly.coeffs.len(), 3);
     for (got, want) in poly.coeffs.iter().zip(want) {
@@ -49,7 +52,8 @@ fn lagrange_duplicate_abscissae_is_error() {
 
 #[test]
 fn cubic_spline_symmetric_hat() {
-    let spline = cubic_spline_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)]).unwrap_or_else(|e| panic!("{e}"));
+    let spline = cubic_spline_interpolation(&[(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)])
+        .unwrap_or_else(|e| panic!("{e}"));
     let val = spline(0.5);
     assert_approx_eq!(val, 0.6875, 1e-9);
     assert_approx_eq!(spline(1.5), 0.6875, 1e-9);
@@ -87,7 +91,12 @@ fn bezier_quadratic_midpoint() {
 
 #[test]
 fn bezier_interpolates_end_points_and_handles_edge_cases() {
-    let cp = [vec![1.0, -1.0], vec![3.0, 5.0], vec![-2.0, 4.0], vec![0.0, 0.0]];
+    let cp = [
+        vec![1.0, -1.0],
+        vec![3.0, 5.0],
+        vec![-2.0, 4.0],
+        vec![0.0, 0.0],
+    ];
     assert_eq!(bezier_curve(&cp, 0.0), vec![1.0, -1.0]);
     assert_eq!(bezier_curve(&cp, 1.0), vec![0.0, 0.0]);
     assert!(bezier_curve(&[], 0.5).is_empty());
