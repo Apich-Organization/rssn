@@ -54,6 +54,7 @@ use super::qe_field::Elem;
 use super::qe_field::Field;
 use super::qe_field::f_degree;
 use super::qe_field::f_divrem;
+use super::qe_field::f_eval_rational;
 use super::qe_field::f_gcd;
 use super::qe_field::f_isolate;
 use super::qe_field::f_mul;
@@ -551,15 +552,20 @@ impl Lift<'_> {
                 fibres.push(square_free);
             }
         }
+        let mut parts: Vec<Vec<Elem>> = Vec::new();
         let mut product = vec![Elem::one()];
         for f in &fibres {
             let common = f_gcd(&product, f, &work);
             let (part, _) = f_divrem(f, &common, &work)?;
+            if f_degree(&part).is_none() {
+                continue;
+            }
             product = f_mul(&product, &part, &work);
             let degree = f_degree(&product)?;
             if degree > usize::try_from(self.limits.degree).ok()? {
                 return None;
             }
+            parts.push(part);
         }
         let roots = f_isolate(&product, &mut work)?;
         if roots.len() > self.limits.cells {
@@ -586,27 +592,58 @@ impl Lift<'_> {
                     open,
                 });
             } else {
-                let extension =
-                    super::qe_field::extend(&mut work, &product, &(lo.clone(), hi.clone()))?;
-                if extension.field.degree() > self.limits.field_degree {
-                    return None;
+                // Adjoin the root through the single coprime factor that
+                // contains it, not through the product of every factor. The
+                // product is generally reducible over the current field, and
+                // extending by a reducible polynomial loses the field property
+                // the primitive-element construction relies on.
+                let factor = parts
+                    .iter()
+                    .find(|part| interval_contains_root(part, lo, hi, &mut work) == Some(true))
+                    .unwrap_or(&product);
+                // A linear factor already has its root in the current field;
+                // use it directly instead of adjoining an isomorphic copy.
+                let linear = if f_degree(factor) == Some(1) {
+                    let constant = factor.first()?.neg();
+                    let leading = factor.get(1)?.clone();
+                    Some(work.div(&constant, &leading)?)
+                } else {
+                    None
+                };
+                if let Some(root) = linear {
+                    let mut coords = ctx.coords.clone();
+                    coords.push(root);
+                    let mut open = ctx.open.clone();
+                    open.push(false);
+                    out.push(Ctx {
+                        field: work.clone(),
+                        coords,
+                        open,
+                    });
+                } else {
+                    let extension =
+                        super::qe_field::extend(&mut work, factor, &(lo.clone(), hi.clone()))?;
+                    if extension.field.degree() > self.limits.field_degree {
+                        return None;
+                    }
+                    let mut coords: Vec<Elem> =
+                        Vec::with_capacity(ctx.coords.len().saturating_add(1));
+                    for coordinate in &ctx.coords {
+                        coords.push(Field::substitute(
+                            coordinate,
+                            &extension.theta,
+                            &extension.field,
+                        ));
+                    }
+                    coords.push(extension.root);
+                    let mut open = ctx.open.clone();
+                    open.push(false);
+                    out.push(Ctx {
+                        field: extension.field,
+                        coords,
+                        open,
+                    });
                 }
-                let mut coords: Vec<Elem> = Vec::with_capacity(ctx.coords.len().saturating_add(1));
-                for coordinate in &ctx.coords {
-                    coords.push(Field::substitute(
-                        coordinate,
-                        &extension.theta,
-                        &extension.field,
-                    ));
-                }
-                coords.push(extension.root);
-                let mut open = ctx.open.clone();
-                open.push(false);
-                out.push(Ctx {
-                    field: extension.field,
-                    coords,
-                    open,
-                });
             }
             let next_lo = roots.get(index.saturating_add(1)).map(|(a, _)| a.clone());
             let sample = match next_lo {
@@ -620,6 +657,22 @@ impl Lift<'_> {
         }
         Some(out)
     }
+}
+
+/// Whether the square-free `g` has the root isolated by `[lo, hi]` (its sign
+/// changes across the interval). Endpoint roots are excluded: such an endpoint
+/// belongs to a different root that is reported as its own point interval.
+fn interval_contains_root(
+    g: &[Elem],
+    lo: &BigRational,
+    hi: &BigRational,
+    field: &mut Field,
+) -> Option<bool> {
+    let at_lo = f_eval_rational(g, lo, field);
+    let at_hi = f_eval_rational(g, hi, field);
+    let lo_sign = field.sign(&at_lo)?;
+    let hi_sign = field.sign(&at_hi)?;
+    Some(lo_sign != 0 && hi_sign != 0 && lo_sign != hi_sign)
 }
 
 /// The context of a sector cell: the lower coordinates plus one rational
@@ -876,6 +929,64 @@ mod tests {
         let mut limits = CadLimits::default();
         limits.cells = 2;
         assert!(cells(&polys, 2, &limits).is_none());
+    }
+
+    #[test]
+    fn coprime_fibre_factors_are_extended_separately() {
+        // At the parameter sections p0 = +/-sqrt(2) the two fibre factors
+        // p1^2 - 3 and p1^2 - 5 are coprime and irreducible over Q(sqrt(2)).
+        // Extending by their product gives a reducible algebra, which the
+        // primitive-element construction cannot invert; each factor has to be
+        // extended on its own.
+        let p0 = x()
+            .pow(2, 100)
+            .unwrap_or_default()
+            .sub(&MPoly::constant(integer(2)));
+        let p1_three = y()
+            .pow(2, 100)
+            .unwrap_or_default()
+            .sub(&MPoly::constant(integer(3)));
+        let p1_five = y()
+            .pow(2, 100)
+            .unwrap_or_default()
+            .sub(&MPoly::constant(integer(5)));
+        let projection = vec![
+            Vec::new(),
+            vec![p0],
+            vec![p1_three.clone(), p1_five.clone()],
+        ];
+        let polys = vec![p1_three, p1_five];
+        let truth = |_: &[i32]| true;
+        let limits = CadLimits::default();
+        let mut lift = Lift {
+            polys: &polys,
+            projection: &projection,
+            parameter_polys: &[],
+            variables: 2,
+            params: 2,
+            exists: true,
+            truth: &truth,
+            limits: &limits,
+            collect: true,
+            leaves: Vec::new(),
+            params_out: Vec::new(),
+            work: 0,
+        };
+        let ctx = Ctx {
+            field: Field::rational_field().unwrap_or_else(|| panic!()),
+            coords: Vec::new(),
+            open: Vec::new(),
+        };
+        lift.fibre(0, ctx, &mut false).expect("lifting");
+        // Five p0 cells and nine p1 cells over each of them.
+        assert_eq!(lift.leaves.len(), 45);
+        for cell in &lift.leaves {
+            assert_eq!(cell.sample.len(), 2);
+            assert_eq!(cell.signs.len(), 2);
+            let mut field = cell.field.clone();
+            let signs = signs_at(&polys, &cell.sample, &mut field).expect("signs");
+            assert_eq!(signs, cell.signs);
+        }
     }
 
     #[test]
