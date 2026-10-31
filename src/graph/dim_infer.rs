@@ -1,7 +1,7 @@
 //! Dimension inference over the term DAG.
 
-// The inference engine is a crate-internal implementation detail.
-#![allow(clippy::redundant_pub_crate)]
+// The inference engine is a crate-internal implementation detail; the module
+// declaration in `graph::mod` allows `clippy::redundant_pub_crate`.
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -17,6 +17,7 @@ use crate::graph::ClassId;
 use crate::graph::DimVarId;
 use crate::graph::Graph;
 use crate::graph::NodeId;
+use crate::graph::Payload;
 use crate::graph::SymbolId;
 use crate::graph::dim::DimArena;
 use crate::graph::dim::DimCtx;
@@ -333,6 +334,16 @@ impl<'a> DimInfer<'a> {
         if let Some(symbol) = self.graph.as_symbol(node) {
             return self.symbol_dimension(symbol);
         }
+        // A leaf payload that is not a number is not a scalar: a truth value,
+        // a name (a unit symbol, an option) or opaque data. Treating it as an
+        // operator would report a coverage gap for `lit` and make every
+        // predicate answer an unknown dimension.
+        if matches!(
+            self.graph.payload(node),
+            Some(Payload::Bool(_) | Payload::Str(_) | Payload::Blob(_))
+        ) {
+            return DimTerm::non_metric();
+        }
         let op = self.graph.op(node);
         let children: Vec<NodeId> = self.graph.children(node).to_vec();
         let args: Vec<DimTerm> = children
@@ -482,6 +493,15 @@ impl<'a> DimInfer<'a> {
                 }
             },
             | DimRule::UnknownFunction => {
+                // A declared function value (`Config::dimension_of("f", "m/s^2")`)
+                // fixes the dimension of `f(args...)`; otherwise the value is
+                // a fresh variable keyed by the application.
+                if let Some(&head) = children.first()
+                    && let Some(symbol) = self.graph.symbol_of(head)
+                    && let Some(known) = self.assumptions.get(&symbol)
+                {
+                    return self.unifier.resolve(known);
+                }
                 let id = self.intern_var(&self.graph.display(node));
                 DimTerm::var(id)
             },
@@ -541,7 +561,11 @@ impl<'a> DimInfer<'a> {
         node: NodeId,
     ) -> DimTerm {
         if args.is_empty() {
-            return DimTerm::non_metric();
+            // The empty list has no scalar leaves: its element dimension is
+            // unconstrained, exactly like a literal zero. `NonMetric` would
+            // conflict with a rule such as `nullspace` whose computed value
+            // happens to be the empty list.
+            return DimTerm::any();
         }
         if args.iter().all(DimTerm::is_non_metric) {
             return DimTerm::non_metric();

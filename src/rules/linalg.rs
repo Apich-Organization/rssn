@@ -127,14 +127,15 @@ fn request_rule(request: Request) -> DimRule {
             DimRule::Product
         },
         | Request::Madd => DimRule::Sum,
-        | Request::Transpose
-        | Request::Trace
-        | Request::Rref
-        | Request::Norm
-        | Request::Project => DimRule::Same(0),
+        | Request::Transpose | Request::Trace | Request::Norm | Request::Project => {
+            DimRule::Same(0)
+        },
+        // The reduced row echelon form divides each pivot row by its pivot
+        // and the null-space basis normalises a free variable to 1: both are
+        // ratios of entries, hence dimensionless.
+        | Request::Rref | Request::Nullspace => DimRule::Custom(dimensionless_result),
         | Request::Identity
         | Request::Zeros
-        | Request::Nullspace
         | Request::Eigenvals
         | Request::Eigenvects
         | Request::Lu
@@ -223,7 +224,15 @@ fn volume_integral_dimension(
 
 /// The order of the literal matrix argument of a `det`, when it is one.
 fn matrix_order(ctx: &DimCtx<'_>) -> Option<usize> {
-    let matrix = ctx.graph.children(ctx.node).first().copied()?;
+    matrix_order_at(ctx, 0)
+}
+
+/// The order of the literal matrix in child `index`, when it is one.
+fn matrix_order_at(
+    ctx: &DimCtx<'_>,
+    index: usize,
+) -> Option<usize> {
+    let matrix = ctx.graph.children(ctx.node).get(index).copied()?;
     if ctx.graph.op(matrix) != core::LIST {
         return None;
     }
@@ -231,6 +240,47 @@ fn matrix_order(ctx: &DimCtx<'_>) -> Option<usize> {
     let first_row = rows.first().copied()?;
     (ctx.graph.op(first_row) == core::LIST).then_some(rows.len())
 }
+
+/// `adj(A)` and `cof(A)` have entries `entry^(n - 1)` for an `n x n` matrix:
+/// every cofactor is the determinant of an `(n - 1) x (n - 1)` minor. An
+/// unknown shape falls back to `entry`, as [`det_dimension`] does.
+#[allow(clippy::unnecessary_wraps)]
+fn adjugate_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let Some(entry) = args.first() else {
+        return Ok(ctx.any());
+    };
+    let exponent = matrix_order(ctx).map_or(1, |order| order.saturating_sub(1));
+    Ok(entry.pow(&BigRational::from_integer(BigInt::from(exponent))))
+}
+
+/// `mpow(A, n)` has entries `entry^n`; a symbolic exponent becomes an atom of
+/// the exponent field, and an unknown exponent keeps the entry dimension.
+#[allow(clippy::unnecessary_wraps)]
+fn matrix_power_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let Some(entry) = args.first() else {
+        return Ok(ctx.any());
+    };
+    let exponent = ctx
+        .graph
+        .children(ctx.node)
+        .get(1)
+        .and_then(|&node| ctx.graph.number_of(node))
+        .and_then(Number::to_rational);
+    Ok(exponent.map_or_else(|| entry.clone(), |power| entry.pow(&power)))
+}
+
+// `matfun(f, x, A)` is `f(A)`. Its dimension is that of `f` evaluated at a
+// scalar of the entry dimension, which a rule cannot re-infer. It is only
+// well defined for a dimensionless `A` and `f` (the result is then a pure
+// number); a homogeneous function of a dimensionful matrix is written with
+// `mpow`/`matsqrt`/`cholesky`, which do carry the degree. The rule is
+// `Dimensionless`, so a dimensionful matrix is reported instead of guessed.
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let table: [(&str, Arity, Request); 38] = [
@@ -3635,22 +3685,16 @@ fn extension_rule(kind: Kind) -> DimRule {
         | Kind::Kron => DimRule::Product,
         | Kind::Diag
         | Kind::Hilbert
-        | Kind::Adjugate
-        | Kind::Cofactors
+        // The column space returns columns of the input, so its entries keep
+        // the input's entry dimension. The row space returns *reduced* rows
+        // (divided by their pivots) and the left null space a normalised null
+        // basis, so both are dimensionless and handled below.
         | Kind::Colspace
-        | Kind::Rowspace
-        | Kind::LeftNullspace
         | Kind::Jordan
         | Kind::JordanBlocks
-        | Kind::Matfun
-        | Kind::Matexp
-        | Kind::Mpow
-        | Kind::Matsqrt
         | Kind::Spectral
         | Kind::Ldl
-        | Kind::Cholesky
         | Kind::Orthogonalize
-        | Kind::Orthonormalize
         | Kind::Smith
         | Kind::InvariantFactors
         | Kind::Hermite => DimRule::List,
@@ -3664,6 +3708,21 @@ fn extension_rule(kind: Kind) -> DimRule {
         | Kind::IsPositiveDefinite => DimRule::NonMetric,
         | Kind::Pinv => DimRule::Inverse,
         | Kind::Lstsq => DimRule::Custom(quotient_dimension),
+        // A cofactor is the determinant of an `(n - 1) x (n - 1)` minor.
+        | Kind::Adjugate | Kind::Cofactors => DimRule::Custom(adjugate_dimension),
+        // `A^n` has entries `entry^n`; `sqrt(A)` and the Cholesky factor have
+        // entries `sqrt(entry)`.
+        | Kind::Mpow => DimRule::Custom(matrix_power_dimension),
+        | Kind::Matsqrt | Kind::Cholesky => DimRule::Root(2),
+        // `exp(A) = Σ A^k/k!` and an arbitrary matrix function are summarised
+        // as pure numbers, so `A` must be dimensionless (the rule enforces
+        // that on the matrix argument).
+        | Kind::Matexp | Kind::Matfun => DimRule::Dimensionless,
+        // Gram-Schmidt normalisation returns unit vectors, and reduced rows or
+        // a normalised null-space basis are entry ratios: pure numbers.
+        | Kind::Orthonormalize | Kind::Rowspace | Kind::LeftNullspace => {
+            DimRule::Custom(dimensionless_result)
+        },
     }
 }
 

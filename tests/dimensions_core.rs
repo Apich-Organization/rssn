@@ -6,11 +6,13 @@
 //! calculus requests, polynomials, solving, logic, units, radicals,
 //! rewriting and common-subexpression elimination.
 
+use rssn::graph::DimError;
 use rssn::graph::DimOutcome;
 use rssn::graph::DimRule;
 use rssn::graph::DimensionMode;
 use rssn::graph::Engine;
 use rssn::graph::Graph;
+use rssn::graph::Payload;
 use rssn::prelude::*;
 
 /// The dimension of `source` in a fresh graph with the given symbol
@@ -81,6 +83,80 @@ fn answer_dimension(answer: &Answer<'_>) -> String {
         .as_ref()
         .map(ToString::to_string)
         .unwrap_or_default()
+}
+
+#[test]
+fn a_dimensionful_exponent_is_rejected() {
+    let outcome = dimension_of("x^t", &[("x", "m"), ("t", "s")]);
+    assert!(
+        outcome
+            .errors
+            .iter()
+            .any(|error| matches!(error, DimError::NonDimensionless { .. })),
+        "{:?}",
+        outcome.errors
+    );
+    // The dimension still records the symbolic exponent rather than guessing.
+    assert_eq!(outcome.dimension.to_string(), "Length^t");
+    // `atan2` needs equal dimensions on both arguments.
+    let mixed = dimension_of("atan2(x, t)", &[("x", "m"), ("t", "s")]);
+    assert!(
+        mixed
+            .errors
+            .iter()
+            .any(|error| matches!(error, DimError::Mismatch { .. })),
+        "{:?}",
+        mixed.errors
+    );
+}
+
+#[test]
+fn non_numeric_literals_are_non_metric() {
+    // A truth value, a name or opaque data is not a scalar. Before this was
+    // handled, a boolean literal had no rule (`lit`), so every predicate
+    // answer was an unknown dimension plus a coverage-gap diagnostic, and
+    // Strict mode rejected it as a conflict.
+    let mut graph = Graph::new();
+    Engine::install(&mut graph, &rssn::rules::standard())
+        .unwrap_or_else(|error| panic!("cannot install the standard rules: {error}"));
+    for payload in [
+        Payload::Bool(true),
+        Payload::Bool(false),
+        Payload::Str(std::sync::Arc::from("m")),
+    ] {
+        let node = graph.lit(payload);
+        let outcome = graph.dimension(node);
+        assert_eq!(outcome.dimension.to_string(), "non-metric");
+        assert!(
+            outcome.errors.is_empty(),
+            "unexpected dimension errors {:?}",
+            outcome.errors
+        );
+    }
+}
+
+#[test]
+fn dimension_text_rejects_a_malformed_exponent() {
+    let mut graph = Graph::new();
+    Engine::install(&mut graph, &rssn::rules::standard())
+        .unwrap_or_else(|error| panic!("cannot install the standard rules: {error}"));
+    // A missing or non-numeric exponent used to be read as zero, silently
+    // making the unit dimensionless.
+    for text in ["m^", "m^x", "m^(1/0)", "m^1/0"] {
+        assert!(
+            graph.dimension_from_text(text).is_err(),
+            "`{text}` should not parse"
+        );
+    }
+    let arena = graph.dim_arena();
+    let length_per_time = graph
+        .dimension_from_text("m/s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(length_per_time.describe(&arena), "Length/Time");
+    let root = graph
+        .dimension_from_text("m^(1/2)")
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(root.describe(&arena), "sqrt(Length)");
 }
 
 #[test]

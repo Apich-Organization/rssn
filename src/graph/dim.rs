@@ -980,15 +980,27 @@ impl Graph {
     }
 }
 
+/// Split a dimension/unit product at its first `/` that is not inside
+/// parentheses, so that a rational exponent (`m^(1/2)`) is one factor.
+pub(crate) fn split_unit_fraction(text: &str) -> (&str, &str) {
+    let mut depth = 0_i32;
+    for (index, character) in text.char_indices() {
+        match character {
+            | '(' => depth = depth.saturating_add(1),
+            | ')' => depth = depth.saturating_sub(1),
+            | '/' if depth == 0 => return (&text[..index], &text[index + 1..]),
+            | _ => {},
+        }
+    }
+    (text, "")
+}
+
 fn parse_base_text(
     arena: &DimArena,
     text: &str,
 ) -> Result<DimTerm, DimError> {
     let cleaned = text.replace(' ', "");
-    let (numerator, denominator) = match cleaned.split_once('/') {
-        | Some((num, den)) => (num, den),
-        | None => (cleaned.as_str(), ""),
-    };
+    let (numerator, denominator) = split_unit_fraction(&cleaned);
     let mut term = DimTerm::dimensionless();
     for (part, sign) in [(numerator, 1_i32), (denominator, -1_i32)] {
         if part.is_empty() || part == "1" {
@@ -1023,6 +1035,11 @@ fn parse_exponent(
     text: &str,
     whole: &str,
 ) -> Result<BigRational, DimError> {
+    let text = text.trim();
+    let text = text
+        .strip_prefix('(')
+        .and_then(|rest| rest.strip_suffix(')'))
+        .unwrap_or(text);
     let (numerator, denominator) = match text.split_once('/') {
         | Some((num, den)) => (num, den),
         | None => (text, "1"),
@@ -1069,7 +1086,11 @@ fn base_alias(name: &str) -> &str {
 #[allow(clippy::match_same_arms)] // grouped by domain; identical bodies document families
 pub fn default_rule(name: &str) -> Option<DimRule> {
     let rule = match name {
-        | "add" | "sub" | "min" | "max" | "piecewise" => DimRule::Sum,
+        // `piecewise` is deliberately absent: a piecewise term interleaves
+        // conditions with values, so neither `Sum` nor any other uniform rule
+        // is correct. A rule set that registers it must supply its own rule
+        // (the coverage scanner enforces that).
+        | "add" | "sub" | "min" | "max" => DimRule::Sum,
         | "mul" | "dot" | "cross" | "matmul" | "kron" => DimRule::Product,
         | "div" => DimRule::Quotient,
         | "pow" => DimRule::Power,
@@ -1327,6 +1348,16 @@ mod tests {
     }
 
     #[test]
+    fn a_declared_function_value_has_its_dimension() {
+        let declared = dimension_of("f(x)", &[("f", "m/s^2")]);
+        assert_eq!(declared.dimension.to_string(), "Length/Time^2");
+        assert!(declared.errors.is_empty(), "{:?}", declared.errors);
+        // Without a declaration the application is an unknown value.
+        let unknown = dimension_of("g(x)", &[]);
+        assert!(unknown.dimension.is_unknown(), "{}", unknown.dimension);
+    }
+
+    #[test]
     fn zero_is_polymorphic() {
         let result = dimension_of("x + 0", &[("x", "m")]);
         assert_eq!(result.dimension.to_string(), "Length");
@@ -1351,22 +1382,90 @@ mod tests {
         assert_eq!(graph.dimension(root).dimension.to_string(), "Currency^2");
     }
 
+    /// Operators whose dimension rule is missing or explicitly `Unspecified`.
+    ///
+    /// `lit` and `sym` are leaves with no operator rule: the inference engine
+    /// reads their payloads directly (a number, a dimension variable, or a
+    /// non-metric truth value/name).
+    fn unannotated_operators(graph: &Graph) -> Vec<String> {
+        graph
+            .ops()
+            .iter()
+            .filter(|(_, descriptor)| !matches!(&*descriptor.name, "lit" | "sym"))
+            .filter(|(op, _)| {
+                graph
+                    .ops()
+                    .attr::<DimRule>(*op)
+                    .is_none_or(|rule| matches!(rule, DimRule::Unspecified))
+            })
+            .map(|(_, descriptor)| descriptor.name.to_string())
+            .collect()
+    }
+
+    /// The only operators allowed to be dimensionally polymorphic (`Any`).
+    /// Every entry is a documented bypass: `oo` and order terms are
+    /// dimensionless-or-polymorphic by construction, and a definiteness label
+    /// is a symbol whose dimension is unknown.
+    const DOCUMENTED_BYPASS: &[&str] = &["oo", "infinity", "big_o", "hessian_definiteness"];
+
     #[test]
     fn every_standard_operator_has_a_dimension_rule() {
         let mut graph = Graph::new();
         crate::graph::Engine::install(&mut graph, &crate::rules::standard())
             .unwrap_or_else(|error| panic!("{error}"));
-        let mut missing = Vec::new();
-        for (op, descriptor) in graph.ops().iter() {
-            let exempt = matches!(&*descriptor.name, "lit" | "sym");
-            if !exempt && graph.ops().attr::<DimRule>(op).is_none() {
-                missing.push(descriptor.name.to_string());
-            }
-        }
+        let missing = unannotated_operators(&graph);
         assert!(
             missing.is_empty(),
             "{} operators have no dimension rule: {missing:?}",
             missing.len()
+        );
+    }
+
+    /// The scanner is not vacuous: an operator registered without a rule is
+    /// reported. Removing an `i.dim(...)` line therefore fails the suite.
+    #[test]
+    fn the_coverage_scanner_detects_a_missing_rule() {
+        let gap = crate::graph::RuleSet::new("dimension-audit-gap", |i| {
+            i.op(crate::graph::OpDescriptor::new(
+                "audit_unannotated_operator",
+                crate::graph::Arity::Fixed(0),
+            ))?;
+            Ok(())
+        });
+        let mut graph = Graph::new();
+        let mut sets = crate::rules::standard();
+        sets.push(gap);
+        crate::graph::Engine::install(&mut graph, &sets).unwrap_or_else(|error| panic!("{error}"));
+        let missing = unannotated_operators(&graph);
+        assert!(
+            missing
+                .iter()
+                .any(|name| name == "audit_unannotated_operator"),
+            "the scanner did not report the unannotated operator: {missing:?}"
+        );
+    }
+
+    /// No operator bypasses dimensional checking by accident.
+    #[test]
+    fn only_documented_operators_bypass_dimensions() {
+        let mut graph = Graph::new();
+        crate::graph::Engine::install(&mut graph, &crate::rules::standard())
+            .unwrap_or_else(|error| panic!("{error}"));
+        let bypass: Vec<String> = graph
+            .ops()
+            .iter()
+            .filter(|(op, _)| {
+                graph
+                    .ops()
+                    .attr::<DimRule>(*op)
+                    .is_some_and(|rule| matches!(rule, DimRule::Any))
+            })
+            .map(|(_, descriptor)| descriptor.name.to_string())
+            .filter(|name| !DOCUMENTED_BYPASS.contains(&name.as_str()))
+            .collect();
+        assert!(
+            bypass.is_empty(),
+            "operators bypass dimensions without a documented reason: {bypass:?}"
         );
     }
 }

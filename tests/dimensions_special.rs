@@ -129,6 +129,117 @@ fn linear_algebra_dimensions() {
 }
 
 #[test]
+fn matrix_functions_carry_the_degree_of_an_entry() {
+    // `adj(A)` and `cof(A)` of a 3x3 matrix have 2x2 minors as entries.
+    assert_eq!(
+        dimension(
+            "adjugate(list(list(x, 0, 0), list(0, x, 0), list(0, 0, x)))",
+            &[("x", "m")]
+        ),
+        "Length^2"
+    );
+    assert_eq!(
+        dimension(
+            "cofactors(list(list(x, 0, 0), list(0, x, 0), list(0, 0, x)))",
+            &[("x", "m")]
+        ),
+        "Length^2"
+    );
+    // A square root of a matrix of squared lengths has length entries.
+    assert_eq!(
+        dimension("matsqrt(list(list(quantity(4, m^2))))", &[]),
+        "Length"
+    );
+    assert_eq!(
+        dimension("cholesky(list(list(quantity(4, m^2))))", &[]),
+        "Length"
+    );
+    // `A^n` has entries `entry^n`, for positive and negative powers.
+    assert_eq!(
+        dimension("mpow(list(list(quantity(2, m))), 3)", &[]),
+        "Length^3"
+    );
+    assert_eq!(
+        dimension("mpow(list(list(x)), -1)", &[("x", "m")]),
+        "1/Length"
+    );
+    // Unit vectors are dimensionless.
+    assert_eq!(
+        dimension(
+            "orthonormalize(list(list(x, 0), list(0, x)))",
+            &[("x", "m")]
+        ),
+        "1"
+    );
+    // A non-homogeneous matrix function, or a matrix exponential, of a
+    // dimensionful matrix is rejected rather than guessed.
+    for source in [
+        "matfun(exp(x), x, list(list(quantity(1, m))))",
+        "matexp(list(list(quantity(1, m))), 4)",
+    ] {
+        let error = strict_error(source, &[]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
+}
+
+#[test]
+fn row_reduction_returns_dimensionless_entries() {
+    // RREF divides pivot rows by pivots, and a null-space basis normalises a
+    // free variable to 1: their entries are ratios, hence dimensionless.
+    // A full-rank matrix has the empty basis, whose element dimension is
+    // unconstrained (like a literal zero).
+    for source in [
+        "rref(list(list(x, 0), list(0, x)))",
+        "nullspace(list(list(x, 0), list(0, x)))",
+        "nullspace(list(list(x, 0), list(0, 0)))",
+        "rowspace(list(list(x, 0), list(0, x)))",
+        "left_nullspace(list(list(x, 0), list(0, x)))",
+    ] {
+        assert_eq!(dimension(source, &[("x", "m")]), "1", "{source}");
+    }
+    // The column space keeps the entry dimension: the columns are not scaled.
+    assert_eq!(
+        dimension("colspace(list(list(x, 0), list(0, x)))", &[("x", "m")]),
+        "Length"
+    );
+}
+
+#[test]
+fn distribution_parameters_are_consistent() {
+    // A location-scale family: both parameters have the distribution's
+    // dimension, and `expectation` agrees with the reduced closed form.
+    assert_eq!(
+        dimension("normal(quantity(1, m), quantity(2, m))", &[]),
+        "Length"
+    );
+    assert_eq!(dimension("gamma_dist(2, quantity(1, 1/s))", &[]), "Time");
+    assert_eq!(
+        dimension("expectation(gamma_dist(2, quantity(1, 1/s)))", &[]),
+        "Time"
+    );
+    assert_eq!(dimension("exponential(quantity(2, 1/s))", &[]), "Time");
+    assert_eq!(
+        dimension("weibull(quantity(2, 1), quantity(3, m))", &[]),
+        "Length"
+    );
+    // A location in metres with a scale in seconds is ill-typed.
+    for source in [
+        "normal(quantity(1, m), quantity(2, s))",
+        "cauchy(quantity(1, m), quantity(2, s))",
+        "variance_of(normal(quantity(1, m), quantity(2, s)))",
+    ] {
+        let error = strict_error(source, &[]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
+}
+
+#[test]
 fn determinant_of_a_mixed_matrix_is_diagnosed() {
     // A matrix whose entries have different dimensions is not a scalar
     // conflict: the determinant still has the product dimension, and the

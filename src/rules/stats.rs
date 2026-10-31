@@ -2136,6 +2136,19 @@ fn density_dimension(
         .map_or_else(DimTerm::dimensionless, DimTerm::inverse))
 }
 
+/// `gamma_dist(shape, rate)` has mean `shape/rate`. The shape is a pure
+/// number, so the random variable's dimension is `1/rate` — the inverse of
+/// the *second* argument (`DimRule::Inverse` would read the shape).
+#[allow(clippy::unnecessary_wraps)]
+fn gamma_rate_dimension(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(args
+        .get(1)
+        .map_or_else(DimTerm::dimensionless, DimTerm::inverse))
+}
+
 /// The raw or central moment of order `k` of data with dimension `d` is
 /// `d^k`.
 #[allow(clippy::unnecessary_wraps)]
@@ -2343,27 +2356,35 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     attach_dimensions(
         i,
         &[
-            ("normal", DimRule::Same(0)),
+            // A location-scale family's location and scale must agree: the
+            // distribution is the random variable's dimension.
+            ("normal", DimRule::Sum),
             ("uniform", DimRule::Sum),
+            // `exponential(rate)` has mean `1/rate`: the distribution is a
+            // time when the rate is a frequency.
             ("exponential", DimRule::Inverse),
             ("bernoulli", DimRule::Dimensionless),
             ("binomial_dist", DimRule::Dimensionless),
             ("poisson", DimRule::Dimensionless),
-            ("gamma_dist", DimRule::Same(1)),
+            // `gamma_dist(shape, rate)` has mean `shape/rate`.
+            ("gamma_dist", DimRule::Custom(gamma_rate_dimension)),
             ("beta_dist", DimRule::Dimensionless),
             ("student_t", DimRule::Dimensionless),
             ("chi_squared", DimRule::Dimensionless),
-            ("cauchy", DimRule::Same(0)),
-            ("laplace_dist", DimRule::Same(0)),
-            ("lognormal", DimRule::Same(0)),
+            ("cauchy", DimRule::Sum),
+            ("laplace_dist", DimRule::Sum),
+            // A log-normal variable is `exp(mu + sigma Z)`: dimensionless.
+            ("lognormal", DimRule::Dimensionless),
+            // `weibull(shape, scale)`: the scale is the random variable.
             ("weibull", DimRule::Same(1)),
             ("geometric", DimRule::Dimensionless),
             ("negative_binomial", DimRule::Dimensionless),
             ("f_dist", DimRule::Dimensionless),
+            // `pareto(scale, shape)`: the scale is the random variable.
             ("pareto", DimRule::Same(0)),
             ("rayleigh", DimRule::Same(0)),
-            ("logistic", DimRule::Same(0)),
-            ("gumbel", DimRule::Same(0)),
+            ("logistic", DimRule::Sum),
+            ("gumbel", DimRule::Sum),
             ("binomial_trials", DimRule::Dimensionless),
             ("normal_known_sd", DimRule::Same(0)),
             ("pdf", DimRule::Custom(density_dimension)),

@@ -67,8 +67,9 @@ variables are allowed in the representation but block solving (see 3.4).
 
 ### 3.3 Special values
 
-* `Any` — polymorphic scalar: literal `0`, `oo`, and operators registered
-  with a bypass rule. Unifies with everything.
+* `Any` — polymorphic scalar: literal `0`, `oo`, the empty list (no scalar
+  leaves, so its element dimension is unconstrained), and operators
+  registered with a bypass rule. Unifies with everything.
 * `NonMetric` — booleans, predicates, dimension labels (`dimension(q)`),
   unresolved containers. Compatible only with `NonMetric` (or `Any`).
 * `Dimensionless` — the empty product `1`.
@@ -100,10 +101,15 @@ The unit layer supplies dimensions plus exact scales and affine offsets.
 * Unit expressions are parsed by the `units` rule set. The dimension core
   reads them through a resolver installed on the `quantity` operator, so
   `graph` does not depend on `rules`.
-* Affine units (`degC`, `degF`) are points of a one-dimensional affine space:
-  `point - point = vector`, `point + vector = point`; `point + point`,
-  `point * scalar` and `point^n` are rejected. Difference units (`delta_degC`)
-  are vectors.
+* Affine units (`degC`, `degF`) are points of a one-dimensional affine space.
+  The unit resolver reports the `affine` flag, and the dimension core sees
+  `Temperature` for a point and for a difference alike. The `units` kernel
+  converts a lone affine quantity through kelvin, so arithmetic between
+  `degC` quantities is carried out in kelvin (`quantity(1, degC) +
+  quantity(2, degC)` is `quantity(5493/10, K)`); an affine unit inside a
+  product or a power is refused by the resolver and the dimension of that
+  `quantity` is `any`. The point/vector distinction is therefore print- and
+  conversion-level, not a typing rule for arithmetic (see §13).
 * Dimensionless scaled units (`%`, `ppm`, `rad`, `deg`) keep their scale and an
   `Angle`/`Ratio` kind; `sin(quantity(30, deg))` converts to `sin(pi/6)`.
 * Derived named units (`N`, `Pa`, `J`, ...) are a printing preference: the
@@ -164,7 +170,7 @@ A curated table in `graph::dim` supplies rules for the core operator names
   are dimensionless angles).
 * `list`: unifies the scalar leaves; heterogeneous lists yield `Any` with a
   diagnostic rather than a hard error (matrices are homogeneous lists of
-  lists).
+  lists). An empty list is `Any` (its element dimension is unconstrained).
 * `big_o`: `Any` (an order term follows the series it belongs to).
 * Meijer G: `Custom`. If every `b_j` has the same real part, the result is
   `z^b`; otherwise `z` must be dimensionless. The rule reports a
@@ -204,10 +210,12 @@ all members of an e-class must have the same dimension. A conflict means a
 rewrite changed the dimension unless the dimension is unknown/`Any`.
 
 Analysis is run on the input and the final answer of every `compute` in
-Advisory/Strict mode. Intermediate tiers are not analysed by default; the
-testing hook (`graph::soundness`) analyses both sides of every standard
-rewrite with random dimension assignments, which catches rule-level errors
-without runtime cost.
+Advisory/Strict mode. Intermediate tiers are not analysed by default. The
+`graph::soundness` hook is a *numeric* refutation of rewrite rules, not a
+dimensional one; dimensional agreement of the standard algebra rewrites
+(`x + x`/`2*x`, `x^2/x`, `expand`/`factor`, trigonometric identities, unit
+conversions) is covered by `tests/dimensions*.rs`, and a full per-rewrite
+random-dimension check is listed as a limitation in §13.
 
 Errors are collected, not thrown. In `Advisory` they become
 `Answer::diagnostics`; in `Strict` the errors on the request or answer become
@@ -249,9 +257,14 @@ semantic dimension rule** (not `Unspecified`).
 
 * `DimRule` is stored as an operator attribute; `graph::dim::default_rule`
   covers the core names and `Installer::dim` overrides/adds.
-* `tests/dimension_coverage.rs` (or a unit test in `graph::dim`) installs
-  `rules::standard()`, iterates every operator and asserts that no operator
-  has `Unspecified`, printing a per-domain report.
+* The unit test `graph::dim::tests::every_standard_operator_has_a_dimension_rule`
+  installs `rules::standard()`, iterates every operator and asserts that no
+  operator is missing a rule or has `Unspecified`. Three companion tests keep
+  the scanner honest: `the_coverage_scanner_detects_a_missing_rule` proves it
+  reports an operator registered without a rule,
+  `only_documented_operators_bypass_dimensions` rejects an accidental `Any`
+  (the allowlist is `oo`, `infinity`, `big_o`, `hessian_definiteness`), and
+  `no_operator_has_an_accidental_rule` pins the core table.
 * The per-operator work is delegated to the coverage workstream, rule set by
   rule set: add `i.dim(op, rule)` in the install function (or extend the
   central table for families such as Bessel functions), add positive/negative
@@ -318,8 +331,69 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 - [x] Operator coverage workstream: every standard operator has a rule,
       scanner green (test unignored).
 - [x] Docs (`ARCHITECTURE.md`, README, `rssn.h`/`rssn.hpp` status code).
+- [ ] Serialization of `Dimension`/`DimError` and a dimension field in the
+      C API (§13).
 
-## 13. Landing status
+## 13. Known limitations
+
+These are genuine limits of the current layer, stated so that they are not
+mistaken for supported behaviour. Each is either tested as a diagnostic or
+covered by a test that pins the current behaviour.
+
+1. **No dimension field in the C API / no serialization.** `rssn.h` and
+   `rssn.hpp` expose `RSSN_STATUS_DIMENSION`, but `Answer.dimension` and
+   `DimError` are Rust-only; they do not serialize and have no FFI accessor.
+2. **`matfun(f, x, A)` is restricted to dimensionless arguments.** The
+   dimension of `f(A)` is the dimension of `f` evaluated at a scalar of the
+   entry dimension, which a `DimRule` cannot re-infer. The rule is
+   `Dimensionless`: a dimensionful matrix is reported rather than guessed.
+   Homogeneous functions have dedicated operators that do carry the degree:
+   `mpow` (`entry^n`), `matsqrt`/`cholesky` (`sqrt(entry)`), `adjugate`
+   /`cofactors` (`entry^(n-1)`).
+3. **A refused unit expression is `any`, not an error.** `quantity(1,
+   degC*m)` or `quantity(1, parsec)` has no resolvable unit; the unit
+   resolver returns `None`, so the dimension is `any` and the `units` kernel
+   leaves the request unreduced. The dimension layer has no `UnknownUnit`
+   diagnostic for a term-level unit (text declarations do report it).
+4. **Contour integrals assume a dimensionless complex variable.**
+   `contour_integral`, `cauchy_integral` and
+   `contour_integral_residue_theorem` keep the dimension of the integrand
+   (`Same(0)`) and ignore `dim(z)`; `cauchy_derivative` divides by `dim(z)`
+   and `residue`/`radius_of_convergence` follow the usual complex-analysis
+   conventions. A dimensionful `z` is not rejected.
+5. **Affine point arithmetic is not typed.** `degC`/`degF` are converted
+   through kelvin, so `quantity(1, degC) * 2` and `quantity(1, degC) +
+   quantity(2, degC)` evaluate in kelvin instead of being rejected; a
+   `degC` in a product/power makes the whole unit unresolvable (§13.3).
+6. **Structured list results are diagnosed as mixed.** `lu`, `qr`, `svd`,
+   `eigenvects`, `jordan`, `jordan_blocks`, `spectral` and `ldl` return
+   containers whose parts have different dimensions (a permutation, unit
+   triangular factors, eigenvalue/size pairs). Their `List` rule reports the
+   entry dimension and Advisory mode may report `MixedList` for the reduced
+   literal list. The finding is non-blocking and does not affect Strict mode.
+7. **Unit text wins over base-dimension text.** `dimension_from_text` first
+   asks the unit resolver, so `"T"` means tesla, not `Time`; `"C"` coulomb,
+   `"F"` farad. Use the base names (`"Length"`, `"Time"`, ...) or a unit
+   expression (`"s"`, `"m/s"`). A trailing `/` is tolerated (`"Length/"` is
+   `Length`).
+8. **Strict mode checks the input as written.** A term can be ill-typed
+   although it simplifies to a well-typed one: `ln(exp(x))` with `x` a length
+   is rejected, because `exp(x)` requires a dimensionless argument, even
+   though the term equals `x`. This is inherent in typing the input and the
+   answer independently; Advisory mode still reports the same finding
+   without failing the computation.
+9. **A distribution's shape parameter is not required to be
+   dimensionless.** `gamma_dist(shape, rate)`, `weibull(shape, scale)` and
+   `pareto(scale, shape)` take the random variable's dimension from the
+   rate/scale argument and do not constrain the shape (a `Custom` rule cannot
+   bind a variable, and there is no "check argument i" rule variant).
+10. **No per-rewrite dimensional soundness scan.** The e-graph class
+   unification catches a rewrite that changes a dimension *inside one
+   analysis*, and the equivalence tests cover the standard algebra and unit
+   rewrites. There is no test that walks every standard rewrite with random
+   dimension assignments.
+
+## 14. Landing status
 
 The core landed before the six algorithm branches were merged; the coverage
 workstream ran on the merged tree. Test commands for the core:

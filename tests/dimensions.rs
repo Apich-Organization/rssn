@@ -124,6 +124,56 @@ fn user_defined_base_dimension_through_config() {
 }
 
 #[test]
+fn boolean_answers_are_non_metric() {
+    let session = session();
+    for source in [
+        "eq(1, 1)",
+        "is_symmetric(list(list(1, 2), list(2, 5)))",
+        "is_convex(x^2, x)",
+    ] {
+        let term = session
+            .parse(source)
+            .unwrap_or_else(|error| panic!("cannot parse `{source}`: {error}"));
+        let config = Config::new().dimensions(rssn::graph::DimensionMode::Strict);
+        let answer = session
+            .compute(term, &config)
+            .unwrap_or_else(|error| panic!("`{source}` failed in strict mode: {error}"));
+        let dimension = answer
+            .dimension
+            .as_ref()
+            .unwrap_or_else(|| panic!("`{source}`: no dimension reported"));
+        assert!(dimension.non_metric, "`{source}`: {dimension}");
+        assert!(
+            answer.diagnostics.is_empty(),
+            "`{source}`: {:?}",
+            answer.diagnostics
+        );
+    }
+}
+
+#[test]
+fn a_declared_function_value_has_its_dimension() {
+    let session = session();
+    let term = session
+        .parse("f(x)")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let config = Config::new()
+        .dimension_of("f", "m/s^2")
+        .dimensions(rssn::graph::DimensionMode::Advisory);
+    let answer = session
+        .compute(term, &config)
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(
+        answer
+            .dimension
+            .as_ref()
+            .map(ToString::to_string)
+            .unwrap_or_default(),
+        "Length/Time^2"
+    );
+}
+
+#[test]
 fn symbolic_dimension_variables_are_reported() {
     let session = session();
     let term = session
