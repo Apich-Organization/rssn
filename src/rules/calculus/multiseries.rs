@@ -54,10 +54,16 @@
 //!
 //! A non-analytic fractional leading power (`sqrt(x*y)`, `x^(4/3)`) is a
 //! Puiseux series; it is handled by the ramification described in the next
-//! section. A power whose exponent is symbolic rather than numeric, such
-//! as `(1 + x)^a`, is not a structure either engine expands and the
-//! request stays unevaluated. Symbolic *coefficients* and symbolic
-//! expansion points (`a`, `exp(a)`, `(x - a)^k`) are fully supported.
+//! section.
+//!
+//! A power with a symbolic exponent, such as `(1 + x)^a` or
+//! `(1 + x + y)^a`, is expanded by the binomial series
+//! `Σ_k C(a, k) (base/c - 1)^k c^a` when the base has a non-zero numeric
+//! constant term `c` at the expansion point; the coefficients are exact
+//! falling factorials in `a`. A symbolic exponent with a vanishing base
+//! constant (`(x + x^2)^a`) or at a singular point stays unevaluated.
+//! Symbolic *coefficients* and symbolic expansion points (`a`, `exp(a)`,
+//! `(x - a)^k`) are fully supported.
 //!
 //! # Puiseux expansions: fractional monomial factors
 //!
@@ -1112,6 +1118,9 @@ impl Expander<'_, '_> {
         if self.is_zero(f) {
             return Some(Vec::new());
         }
+        if let Some(terms) = self.symbolic_binomial(f, level, target) {
+            return Some(terms);
+        }
         // A Laurent monomial is exact; expanding it through the univariate
         // engine would only cost time.
         if let Some(terms) = self.monomial(f, level, target) {
@@ -1199,6 +1208,139 @@ impl Expander<'_, '_> {
             }
             return Some(parts);
         }
+    }
+
+    /// Expands `base^e` for a symbolic exponent `e` when `base` has a
+    /// non-zero numeric constant term at the expansion point, using the
+    /// binomial series `Σ_k C(e, k) (base/c - 1)^k c^e`.
+    fn symbolic_binomial(
+        &mut self,
+        f: NodeId,
+        level: usize,
+        target: i64,
+    ) -> Option<Vec<Term>> {
+        if target < 0 {
+            return None;
+        }
+        let (base, exponent) = {
+            let graph = &self.cx.graph;
+            if graph.op(f) != core::POW {
+                return None;
+            }
+            let &[base, exponent] = graph.children(f) else {
+                return None;
+            };
+            if graph.number_of(exponent).is_some() {
+                return None;
+            }
+            for &variable in &self.variables {
+                let symbol = graph.symbol_of(variable)?;
+                if graph.depends_on(graph.find(exponent), symbol) {
+                    return None;
+                }
+            }
+            (base, exponent)
+        };
+        // The constant term of the base at the expansion point.
+        let zero = self.cx.graph.int(0);
+        let mut at = base;
+        for &variable in &self.variables {
+            at = self.cx.graph.substitute(at, variable, zero);
+        }
+        let at = self.cx.simplify(at);
+        let constant = self.cx.graph.number_of(at)?.clone();
+        if constant.is_zero() {
+            return None;
+        }
+        let one = self.cx.graph.int(1);
+        let constant_node = self.cx.graph.num(constant.clone());
+        let h = if constant.is_one() {
+            let negative = negate(self.cx.graph, one);
+            let difference = add(self.cx.graph, base, negative);
+            self.cx.simplify(difference)
+        } else {
+            let negative = negate(self.cx.graph, constant_node);
+            let difference = add(self.cx.graph, base, negative);
+            let inverse = power(self.cx.graph, constant_node, -1);
+            let product = self.cx.graph.node(core::MUL, &[difference, inverse]);
+            self.cx.simplify(product)
+        };
+        let h_series = self.expand(h, level, target)?;
+        if h_series
+            .iter()
+            .any(|term| term.exponents.iter().any(|&e| e < 0))
+        {
+            return None;
+        }
+        let mut result: Vec<Term> = Vec::new();
+        let mut h_power: Vec<Term> = vec![Term {
+            exponents: vec![0; self.symbols.len()],
+            coefficient: one,
+        }];
+        let mut coefficient = one;
+        for k in 0..=target {
+            if k > 0 {
+                let previous = self.cx.graph.int(k - 1);
+                let negative = negate(self.cx.graph, previous);
+                let numerator = add(self.cx.graph, exponent, negative);
+                coefficient = self.cx.graph.node(core::MUL, &[coefficient, numerator]);
+                let k_node = self.cx.graph.int(k);
+                let inverse = power(self.cx.graph, k_node, -1);
+                coefficient = self.cx.graph.node(core::MUL, &[coefficient, inverse]);
+                coefficient = self.cx.simplify(coefficient);
+                let mut next = Vec::new();
+                for left in &h_power {
+                    for right in &h_series {
+                        let mut exponents = left.exponents.clone();
+                        if exponents.len() != right.exponents.len() {
+                            return None;
+                        }
+                        for (slot, &value) in exponents.iter_mut().zip(&right.exponents) {
+                            *slot = slot.checked_add(value)?;
+                        }
+                        if total_degree(&exponents) > target {
+                            continue;
+                        }
+                        let product = self
+                            .cx
+                            .graph
+                            .node(core::MUL, &[left.coefficient, right.coefficient]);
+                        next.push(Term {
+                            exponents,
+                            coefficient: self.cx.simplify(product),
+                        });
+                    }
+                }
+                self.charge_monomials(next.len())?;
+                h_power = next;
+                if h_power.is_empty() {
+                    break;
+                }
+            }
+            for term in &h_power {
+                let scaled = self
+                    .cx
+                    .graph
+                    .node(core::MUL, &[coefficient, term.coefficient]);
+                result.push(Term {
+                    exponents: term.exponents.clone(),
+                    coefficient: self.cx.simplify(scaled),
+                });
+            }
+            if result.len() > MAX_TERMS {
+                return None;
+            }
+        }
+        if !constant.is_one() {
+            let factor = self.cx.graph.node(core::POW, &[constant_node, exponent]);
+            let factor = self.cx.simplify(factor);
+            for term in &mut result {
+                let product = self.cx.graph.node(core::MUL, &[factor, term.coefficient]);
+                term.coefficient = self.cx.simplify(product);
+            }
+        }
+        self.charge_monomials(result.len())?;
+        Some(result)
     }
 }
 
@@ -1925,6 +2067,22 @@ mod tests {
         assert_eq!(
             run("mseries(sin(1/x), list(x), list(1), 3)"),
             "(x - 1)^3*(sin(1) - 5/6*cos(1)) + (x - 1)^2*(cos(1) - 1/2*sin(1)) - (x - 1)*cos(1) + sin(1)"
+        );
+    }
+
+    #[test]
+    fn symbolic_exponent_binomial() {
+        assert_eq!(
+            run("mseries((1 + x)^a, list(x), list(0), 2)"),
+            "1/2*a*x^2*(a - 1) + a*x + 1"
+        );
+        assert_eq!(
+            run("mseries((1 + x + y)^a, list(x, y), list(0, 0), 1)"),
+            "a*x + a*y + 1"
+        );
+        assert_eq!(
+            run("mseries((2 + x)^a, list(x), list(0), 1)"),
+            "1/2*a*x*2^a + 2^a"
         );
     }
 }
