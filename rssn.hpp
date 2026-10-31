@@ -73,6 +73,11 @@ enum class RssnStatus {
      * A dimension conflict in strict mode.
      */
     RSSN_STATUS_DIMENSION = 12,
+    /**
+     * A scalar argument has an invalid value (for example an unknown
+     * dimension mode).
+     */
+    RSSN_STATUS_INVALID_ARGUMENT = 13,
 };
 
 /**
@@ -230,6 +235,21 @@ RssnStatus rssn_compute_all(const RssnSession *session,
                             RssnStatus *statuses);
 
 /**
+ * Computes `term` and writes a JSON object describing the answer to
+ * `*out`: `term`, `value`, `error`, `reduced`, `iterations`, `dimension`
+ * (a dimension string or `null`) and `diagnostics` (an array of strings).
+ * Free the string with `rssn_string_free`.
+ *
+ * # Safety
+ * `session` must be a live session, `config` null or a live
+ * configuration, and `out` a valid pointer.
+ */
+RssnStatus rssn_compute_json(const RssnSession *session,
+                             uint32_t term,
+                             const RssnConfig *config,
+                             char **out);
+
+/**
  * Declares facts about the symbol `name`. `facts` is a bit set: 1 real,
  * 2 nonzero, 4 nonnegative, 8 nonpositive, 16 integer (so 7 is
  * "positive").
@@ -255,6 +275,41 @@ RssnStatus rssn_config_bind(RssnConfig *config, const char *name, double value);
  * `config` must be a live configuration.
  */
 RssnStatus rssn_config_budget(RssnConfig *config, size_t max_iterations, size_t max_nodes);
+
+/**
+ * Disables hard dimensional errors even in strict mode (the explicit
+ * escape hatch). Advisory diagnostics are still reported.
+ *
+ * # Safety
+ * `config` must be a live configuration.
+ */
+RssnStatus rssn_config_bypass_dimensions(RssnConfig *config);
+
+/**
+ * Registers a new base dimension `name` (for example `"Currency"`).
+ *
+ * # Safety
+ * `config` must be a live configuration; `name` NUL-terminated.
+ */
+RssnStatus rssn_config_define_base_dimension(RssnConfig *config, const char *name);
+
+/**
+ * Declares the dimension of `symbol` as `text` (a unit expression, a
+ * base-dimension product, or `"any"`).
+ *
+ * # Safety
+ * `config` must be a live configuration; both strings NUL-terminated.
+ */
+RssnStatus rssn_config_dimension(RssnConfig *config, const char *symbol, const char *text);
+
+/**
+ * Sets the dimension checking mode: 0 off, 1 advisory (the default), 2
+ * strict. Any other value is rejected.
+ *
+ * # Safety
+ * `config` must be a live configuration.
+ */
+RssnStatus rssn_config_dimension_mode(RssnConfig *config, uint8_t mode);
 
 /**
  * Releases a configuration. Null is ignored.
@@ -285,6 +340,20 @@ RssnStatus rssn_config_numeric(RssnConfig *config, double tolerance);
  * `config` must be a live configuration.
  */
 RssnStatus rssn_config_symbolic(RssnConfig *config);
+
+/**
+ * Computes `term` and writes its inferred dimension as text (`""` when no
+ * dimension was inferred or dimensional checking is off). Free the string
+ * with `rssn_string_free`.
+ *
+ * # Safety
+ * `session` must be a live session, `config` null or a live
+ * configuration, and `out` a valid pointer.
+ */
+RssnStatus rssn_dimension(const RssnSession *session,
+                          uint32_t term,
+                          const RssnConfig *config,
+                          char **out);
 
 /**
  * The message of the last failed call on this thread (empty if none).

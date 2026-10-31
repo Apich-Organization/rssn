@@ -2,6 +2,8 @@
 
 use std::os::raw::c_char;
 
+use serde_json::json;
+
 use super::RSSN_NO_TERM;
 use super::RssnStatus;
 use super::compute_error;
@@ -11,7 +13,9 @@ use super::term::RssnSession;
 use super::term::borrow_session;
 use super::term::resolve;
 use super::text;
+use super::to_c;
 use crate::api::Config;
+use crate::graph::DimensionMode;
 use crate::graph::Facts;
 
 /// What to compute with and what to aim for. Opaque.
@@ -153,6 +157,74 @@ pub unsafe extern "C" fn rssn_config_budget(
     })
 }
 
+/// Sets the dimension checking mode: 0 off, 1 advisory (the default), 2
+/// strict. Any other value is rejected.
+///
+/// # Safety
+/// `config` must be a live configuration.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_config_dimension_mode(
+    config: *mut RssnConfig,
+    mode: u8,
+) -> RssnStatus {
+    let mode = match mode {
+        | 0 => DimensionMode::Off,
+        | 1 => DimensionMode::Advisory,
+        | 2 => DimensionMode::Strict,
+        | _ => {
+            return fail(
+                RssnStatus::InvalidArgument,
+                "dimension mode must be 0, 1 or 2",
+            );
+        },
+    };
+    edit(config, |c| Ok(c.dimensions(mode)))
+}
+
+/// Declares the dimension of `symbol` as `text` (a unit expression, a
+/// base-dimension product, or `"any"`).
+///
+/// # Safety
+/// `config` must be a live configuration; both strings NUL-terminated.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_config_dimension(
+    config: *mut RssnConfig,
+    symbol: *const c_char,
+    text: *const c_char,
+) -> RssnStatus {
+    // SAFETY: caller contract.
+    edit(config, |c| {
+        Ok(c.dimension(unsafe { super::text(symbol) }?, unsafe {
+            super::text(text)
+        }?))
+    })
+}
+
+/// Registers a new base dimension `name` (for example `"Currency"`).
+///
+/// # Safety
+/// `config` must be a live configuration; `name` NUL-terminated.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_config_define_base_dimension(
+    config: *mut RssnConfig,
+    name: *const c_char,
+) -> RssnStatus {
+    // SAFETY: caller contract.
+    edit(config, |c| {
+        Ok(c.define_base_dimension(unsafe { text(name) }?))
+    })
+}
+
+/// Disables hard dimensional errors even in strict mode (the explicit
+/// escape hatch). Advisory diagnostics are still reported.
+///
+/// # Safety
+/// `config` must be a live configuration.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_config_bypass_dimensions(config: *mut RssnConfig) -> RssnStatus {
+    edit(config, |c| Ok(c.bypass_dimension_checks()))
+}
+
 /// Reduces `term` to the target of `config` (null means the defaults) and
 /// stores the result in `*out`.
 ///
@@ -198,6 +270,107 @@ pub unsafe extern "C" fn rssn_compute(
         };
         // SAFETY: non-null and valid by contract.
         unsafe { *out = result };
+        RssnStatus::Ok
+    })
+}
+
+/// Computes `term` and writes a JSON object describing the answer to
+/// `*out`: `term`, `value`, `error`, `reduced`, `iterations`, `dimension`
+/// (a dimension string or `null`) and `diagnostics` (an array of strings).
+/// Free the string with `rssn_string_free`.
+///
+/// # Safety
+/// `session` must be a live session, `config` null or a live
+/// configuration, and `out` a valid pointer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_compute_json(
+    session: *const RssnSession,
+    term: u32,
+    config: *const RssnConfig,
+    out: *mut *mut c_char,
+) -> RssnStatus {
+    guard(|| {
+        if out.is_null() {
+            return fail(RssnStatus::NullArgument, "null output pointer");
+        }
+        // SAFETY: caller contract.
+        let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
+            | Ok(t) => t,
+            | Err(e) => return e,
+        };
+        let default;
+        // SAFETY: caller contract.
+        let config = match unsafe { config.as_ref() } {
+            | Some(c) => &c.0,
+            | None => {
+                default = Config::new();
+                &default
+            },
+        };
+        let answer = match request.session().compute(request, config) {
+            | Ok(a) => a,
+            | Err(e) => return compute_error(&e),
+        };
+        let document = json!({
+            "term": answer.term.to_string(),
+            "value": answer.value,
+            "error": answer.error,
+            "reduced": answer.reduced,
+            "iterations": answer.report.iterations,
+            "dimension": answer.dimension.map(|d| d.to_string()),
+            "diagnostics": answer
+                .diagnostics
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>(),
+        });
+        // SAFETY: non-null by the check above.
+        unsafe { *out = to_c(document.to_string()) };
+        RssnStatus::Ok
+    })
+}
+
+/// Computes `term` and writes its inferred dimension as text (`""` when no
+/// dimension was inferred or dimensional checking is off). Free the string
+/// with `rssn_string_free`.
+///
+/// # Safety
+/// `session` must be a live session, `config` null or a live
+/// configuration, and `out` a valid pointer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_dimension(
+    session: *const RssnSession,
+    term: u32,
+    config: *const RssnConfig,
+    out: *mut *mut c_char,
+) -> RssnStatus {
+    guard(|| {
+        if out.is_null() {
+            return fail(RssnStatus::NullArgument, "null output pointer");
+        }
+        // SAFETY: caller contract.
+        let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
+            | Ok(t) => t,
+            | Err(e) => return e,
+        };
+        let default;
+        // SAFETY: caller contract.
+        let config = match unsafe { config.as_ref() } {
+            | Some(c) => &c.0,
+            | None => {
+                default = Config::new();
+                &default
+            },
+        };
+        let answer = match request.session().compute(request, config) {
+            | Ok(a) => a,
+            | Err(e) => return compute_error(&e),
+        };
+        let text = answer
+            .dimension
+            .map_or_else(String::new, |dimension| dimension.to_string());
+        // SAFETY: non-null by the check above.
+        unsafe { *out = to_c(text) };
         RssnStatus::Ok
     })
 }

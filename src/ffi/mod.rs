@@ -66,6 +66,9 @@ pub enum RssnStatus {
     Panic = 11,
     /// A dimension conflict in strict mode.
     Dimension = 12,
+    /// A scalar argument has an invalid value (for example an unknown
+    /// dimension mode).
+    InvalidArgument = 13,
 }
 
 thread_local! {

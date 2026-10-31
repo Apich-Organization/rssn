@@ -225,3 +225,73 @@ fn compute_all_matches_compute_and_reports_per_request_codes() {
         rssn_session_free(s);
     }
 }
+
+#[test]
+fn dimension_c_api_and_json() {
+    let s = rssn_session_new();
+    unsafe {
+        let config = rssn_config_new();
+        let quantity = rssn_term_parse(s, c("quantity(2, m)").as_ptr());
+        assert_ne!(quantity, RSSN_NO_TERM);
+        let mut out = std::ptr::null_mut();
+        assert_eq!(
+            rssn_dimension(s, quantity, config, &raw mut out),
+            RssnStatus::Ok
+        );
+        assert_eq!(owned(out), "Length");
+
+        assert_eq!(
+            rssn_compute_json(s, quantity, config, &raw mut out),
+            RssnStatus::Ok
+        );
+        let document: serde_json::Value = serde_json::from_str(&owned(out)).unwrap();
+        assert_eq!(document["dimension"], "Length");
+        assert_eq!(document["term"], "quantity(2, m)");
+        assert!(document["diagnostics"].is_array());
+
+        // A declared symbol dimension reaches the C API.
+        assert_eq!(
+            rssn_config_dimension(config, c("v").as_ptr(), c("m/s").as_ptr()),
+            RssnStatus::Ok
+        );
+        let v = rssn_term_parse(s, c("v").as_ptr());
+        assert_eq!(rssn_dimension(s, v, config, &raw mut out), RssnStatus::Ok);
+        assert_eq!(owned(out), "Length/Time");
+
+        // Custom base dimension.
+        assert_eq!(
+            rssn_config_define_base_dimension(config, c("Currency").as_ptr()),
+            RssnStatus::Ok
+        );
+        assert_eq!(
+            rssn_config_dimension(config, c("price").as_ptr(), c("Currency").as_ptr()),
+            RssnStatus::Ok
+        );
+        let price = rssn_term_parse(s, c("price").as_ptr());
+        assert_eq!(
+            rssn_dimension(s, price, config, &raw mut out),
+            RssnStatus::Ok
+        );
+        assert_eq!(owned(out), "Currency");
+
+        // Strict mode rejects a conflict; bypass turns it back into an answer.
+        assert_eq!(rssn_config_dimension_mode(config, 2), RssnStatus::Ok);
+        let bad = rssn_term_parse(s, c("quantity(1, m) + quantity(1, s)").as_ptr());
+        let mut answer = std::mem::zeroed::<RssnAnswer>();
+        assert_eq!(
+            rssn_compute(s, bad, config, &raw mut answer),
+            RssnStatus::Dimension
+        );
+        assert_eq!(rssn_config_bypass_dimensions(config), RssnStatus::Ok);
+        assert_eq!(
+            rssn_compute(s, bad, config, &raw mut answer),
+            RssnStatus::Ok
+        );
+        assert_eq!(
+            rssn_config_dimension_mode(config, 3),
+            RssnStatus::InvalidArgument
+        );
+        rssn_config_free(config);
+        rssn_session_free(s);
+    }
+}
