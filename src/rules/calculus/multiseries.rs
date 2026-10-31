@@ -156,6 +156,13 @@
 //! In agreement with the univariate `laurent` operator (`n = 1`), `N` is
 //! the highest *power* kept, not the length of the coefficient list.
 //!
+//! A coefficient of the result never mentions one of the operator's internal
+//! translated variables. The dependence of a term on a variable is tested by
+//! *value*, and a body such as `(x + 1)/(x + 1)` is equal to a constant even
+//! though its term mentions `x`; the constant is then used in canonical
+//! form, so the answer is `1` rather than an expression in the internal
+//! variables.
+//!
 //! # Directional expansions
 //!
 //! A function with a pole along a hypersurface through the expansion point
@@ -210,6 +217,12 @@
 //! Exceeding a limit returns `Pass` (unevaluated) with one exception: a
 //! rational function with a pole along a hypersurface returns the
 //! directional expansion described above.
+//!
+//! The limits bound the result, not the running time. The cost grows quickly
+//! with the order because every coefficient is expanded through the
+//! univariate engine: a two-variable order-20 Taylor expansion has only 231
+//! terms but takes minutes, whereas the same request at order 6 is
+//! instantaneous.
 
 use crate::graph::Arity;
 use crate::graph::ClassId;
@@ -502,6 +515,40 @@ fn is_rational(
         return false;
     }
     true
+}
+
+/// Whether `node` syntactically mentions one of `symbols`.
+///
+/// [`Graph::depends_on`] tracks *value* dependence, and its free-symbol set
+/// is an over-approximation that shrinks when two equal classes are merged.
+/// So a node can still mention an expansion variable without depending on
+/// it: `(u + 1)/(u + 1)` is equal to the constant one, but its concrete
+/// term mentions `u`. A coefficient of the returned expansion must not
+/// mention an internal expansion variable, so this structural test detects
+/// that case; the caller then canonicalises the node with
+/// [`Cx::simplify`] instead of putting the raw node into the answer.
+fn mentions(
+    graph: &Graph,
+    node: NodeId,
+    symbols: &[SymbolId],
+) -> bool {
+    let mut stack = vec![node];
+    let mut seen = HashSet::new();
+    while let Some(current) = stack.pop() {
+        if !seen.insert(current) {
+            continue;
+        }
+        if graph.op(current) == core::SYM {
+            if let Some(symbol) = graph.as_symbol(current)
+                && symbols.contains(&symbol)
+            {
+                return true;
+            }
+            continue;
+        }
+        stack.extend_from_slice(graph.children(current));
+    }
+    false
 }
 
 /// The sum of the exponents of one term.
@@ -815,7 +862,7 @@ impl Expander<'_, '_> {
 
     /// The expansion of a term that depends on no variable any more.
     fn constant(
-        &self,
+        &mut self,
         f: NodeId,
     ) -> Option<Vec<Term>> {
         let class = self.cx.graph.find(f);
@@ -826,13 +873,24 @@ impl Expander<'_, '_> {
         {
             return None;
         }
-        if self.is_zero(f) {
+        let mut coefficient = f;
+        if mentions(self.cx.graph, coefficient, &self.symbols) {
+            // The class does not depend on any expansion variable, but the
+            // concrete term still mentions one: it is equal to a term that
+            // does not, as in `(u + 1)/(u + 1)`. Canonicalise it instead of
+            // returning the internal variable to the caller.
+            coefficient = self.cx.simplify(coefficient);
+            if mentions(self.cx.graph, coefficient, &self.symbols) {
+                return None;
+            }
+        }
+        if self.is_zero(coefficient) {
             return Some(Vec::new());
         }
         let exponents = vec![0_i64; self.symbols.len()];
         Some(vec![Term {
             exponents,
-            coefficient: f,
+            coefficient,
         }])
     }
 
@@ -877,8 +935,12 @@ impl Expander<'_, '_> {
         let mut factors: Vec<NodeId> = Vec::new();
         let mut stack = vec![f];
         while let Some(node) = stack.pop() {
-            if self.cx.graph.as_number(node).is_some() {
-                factors.push(node);
+            if let Some(number) = self.cx.graph.as_number(node).cloned() {
+                // The class may be a number even when the node is a
+                // compound term merged with one (`(u + 1)/(u + 1)`). Push
+                // the canonical number so the answer cannot print the
+                // internal expansion variable.
+                factors.push(self.cx.graph.num(number));
                 continue;
             }
             if let Some(symbol) = self.cx.graph.as_symbol(node) {
@@ -888,7 +950,7 @@ impl Expander<'_, '_> {
                         *slot = slot.saturating_add(1);
                     },
                     | Some(_) => return None,
-                    | None => factors.push(node),
+                    | None => factors.push(self.cx.graph.symbol_node(symbol)),
                 }
                 continue;
             }
@@ -917,7 +979,17 @@ impl Expander<'_, '_> {
             if self.depends_on_remaining(node, level) {
                 return None;
             }
-            factors.push(node);
+            // The class does not depend on the remaining variables, but the
+            // concrete term may still mention an expansion variable (see
+            // [`mentions`]); a factor of the answer must not.
+            let mut factor = node;
+            if mentions(self.cx.graph, factor, &self.symbols) {
+                factor = self.cx.simplify(factor);
+                if mentions(self.cx.graph, factor, &self.symbols) {
+                    return None;
+                }
+            }
+            factors.push(factor);
         }
         if total_degree(&exponents) > target {
             return Some(Vec::new());
@@ -1275,7 +1347,7 @@ fn expand(
             }
         }
         let terms = output_terms(terms, 1);
-        return finish(cx.graph, &bases, terms);
+        return finish(cx.graph, &bases, terms, &symbols);
     }
 
     // An essential singularity has no Laurent or Puiseux expansion; identify
@@ -1330,17 +1402,22 @@ fn expand(
             }
         }
         let terms = output_terms(first, q);
-        return finish(cx.graph, &bases, terms);
+        return finish(cx.graph, &bases, terms, &symbols);
     }
     None
 }
 
 /// Filters the zero terms, computes whether the sum is a Taylor polynomial
 /// and builds the printed sum.
+///
+/// Returns `None` when a coefficient still mentions an internal expansion
+/// variable: no such term is a valid answer, and returning it would leak the
+/// variables the operator introduced.
 fn finish(
     graph: &mut Graph,
     bases: &[Base],
     terms: Vec<OutputTerm>,
+    symbols: &[SymbolId],
 ) -> Option<Expansion> {
     let terms: Vec<OutputTerm> = terms
         .into_iter()
@@ -1350,6 +1427,12 @@ fn finish(
                 .is_some_and(Number::is_zero)
         })
         .collect();
+    if terms
+        .iter()
+        .any(|term| mentions(graph, term.coefficient, symbols))
+    {
+        return None;
+    }
     let is_taylor = terms.iter().all(|term| {
         term.exponents
             .iter()
@@ -1718,5 +1801,130 @@ mod tests {
             let (text, reduced) = reduce_with(&[calculus()], src, &[]);
             assert!(!reduced, "`{src}` should stay unevaluated: {text}");
         }
+    }
+
+    #[test]
+    fn constant_bodies_never_leak_internal_variables() {
+        // A body equal to a constant is expanded to that constant. The
+        // concrete term of the request still mentions the translated
+        // variable (`(x + 1)/(x + 1)`), and the value-based dependence test
+        // says it does not depend on it, so the coefficient must be
+        // canonicalised; it must never be returned with the operator's
+        // internal `u` symbols.
+        for (src, want) in [
+            ("mseries((x + 1)/(x + 1), list(x), list(0), 1)", "1"),
+            ("mseries((x + 1)/(x + 1), list(x), list(1), 1)", "1"),
+            ("mseries((x*y)/(x*y), list(x, y), list(0, 0), 2)", "1"),
+            ("mseries((x*y)/(x*y), list(x, y), list(1, 2), 2)", "1"),
+            ("mseries(x - x + 1, list(x), list(0), 1)", "1"),
+            ("mseries(0*x + 1, list(x), list(0), 1)", "1"),
+            ("mseries(exp(x)*exp(-x), list(x), list(0), 1)", "1"),
+            ("mseries(sqrt(x)^2/x, list(x), list(0), 1)", "1"),
+            ("mseries(sin(x)^2 + cos(x)^2, list(x), list(0), 2)", "1"),
+            (
+                "mseries((x*y)^(1/2)*(x*y)^(-1/2), list(x, y), list(0, 0), 1)",
+                "1",
+            ),
+            ("mtaylor((x + 1)/(x + 1), list(x), list(0), 1)", "1"),
+            // A constant multiple survives as itself.
+            ("mseries(exp(a)*x/x, list(x), list(0), 1)", "exp(a)"),
+            // A non-constant body that cancels: the expansion is the
+            // simplified function, without any internal variable.
+            ("mseries((x^2 - 1)/(x - 1), list(x), list(0), 2)", "x + 1"),
+            ("mseries((x*y + y^2)/y, list(x, y), list(0, 0), 2)", "x + y"),
+        ] {
+            let text = run(src);
+            assert!(
+                !text.contains("u#"),
+                "`{src}` leaked an internal variable: {text}"
+            );
+            assert_eq!(text, want, "`{src}`");
+        }
+    }
+
+    #[test]
+    fn further_puiseux_monomial_factors() {
+        for (src, want) in [
+            // Nested roots need a higher ramification index.
+            (
+                "mseries((x*y)^(1/4), list(x, y), list(0, 0), 2)",
+                "x^(1/4)*y^(1/4)",
+            ),
+            (
+                "mseries((x^(1/2)*y)^(1/2), list(x, y), list(0, 0), 2)",
+                "x^(1/4)*y^(1/2)",
+            ),
+            // A square times a unit: the square root is `x` times the unit
+            // series, even though the unit depends on another variable.
+            (
+                "mseries(sqrt(x^2*y), list(x, y), list(0, 0), 3)",
+                "x*y^(1/2)",
+            ),
+            (
+                "mseries(sqrt(x^2 + x^3), list(x, y), list(0, 0), 3)",
+                "1/2*x^2 - 1/8*x^3 + x",
+            ),
+            (
+                "mseries(sqrt(x^2*(1 + y^2)), list(x, y), list(0, 0), 3)",
+                "1/2*x*y^2 + x",
+            ),
+            // Negative fractional exponents.
+            (
+                "mseries((x*y)^(-1/3), list(x, y), list(0, 0), 2)",
+                "1/(x^(1/3)*y^(1/3))",
+            ),
+            // A fractional power with non-negative total degree above the
+            // request truncates to zero.
+            ("mseries((x^2*y)^(3/2), list(x, y), list(0, 0), 3)", "0"),
+        ] {
+            assert_eq!(run(src), want, "`{src}`");
+        }
+    }
+
+    #[test]
+    fn branch_loci_are_refused_but_monomial_factors_are_not() {
+        // No Puiseux series at the origin: the leading behaviour depends
+        // on the direction.
+        for src in [
+            "mseries(sqrt(x^2*y + x^3), list(x, y), list(0, 0), 3)",
+            "mseries(sqrt(x^2 + y^4), list(x, y), list(0, 0), 3)",
+            "mseries(sqrt(x^4 + y^4), list(x, y), list(0, 0), 3)",
+        ] {
+            let (text, reduced) = reduce_with(&[calculus()], src, &[]);
+            assert!(!reduced, "`{src}` should stay unevaluated: {text}");
+            assert!(
+                text.contains("mseries("),
+                "`{src}` must not be mis-expanded: {text}"
+            );
+        }
+        // A monomial factor times a unit is a Puiseux series; it must not be
+        // refused by the same checks.
+        for src in [
+            "mseries(sqrt(x^2*y), list(x, y), list(0, 0), 2)",
+            "mseries(sqrt(x^2 + x^3), list(x, y), list(0, 0), 2)",
+            "mseries(sqrt(x^2*(1 + y^2)), list(x, y), list(0, 0), 2)",
+        ] {
+            let (_, reduced) = reduce_with(&[calculus()], src, &[]);
+            assert!(reduced, "`{src}` should be expanded");
+        }
+    }
+
+    #[test]
+    fn essential_patterns_expand_at_regular_points() {
+        // The same elementary functions whose argument has a pole at the
+        // expansion point are analytic at a regular point and must expand
+        // there; the essential-singularity refusal must not fire.
+        assert_eq!(
+            run("mseries(exp(1/x), list(x), list(1), 2)"),
+            "3/2*E*(x - 1)^2 - E*(x - 1) + E"
+        );
+        assert_eq!(
+            run("mseries(exp(1/(1 + x)), list(x), list(0), 3)"),
+            "3/2*x^2*E - 13/6*x^3*E - x*E + E"
+        );
+        assert_eq!(
+            run("mseries(sin(1/x), list(x), list(1), 3)"),
+            "(x - 1)^3*(sin(1) - 5/6*cos(1)) + (x - 1)^2*(cos(1) - 1/2*sin(1)) - (x - 1)*cos(1) + sin(1)"
+        );
     }
 }

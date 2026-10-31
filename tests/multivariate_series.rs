@@ -451,6 +451,8 @@ fn unevaluated_cases_stay_unevaluated() {
         "mseries(ln(x), list(x), list(0), 2)",
         // A branch locus through the origin: no Puiseux expansion exists.
         "mseries((x^2 + y^2)^(1/2), list(x, y), list(0, 0), 4)",
+        "mseries(sqrt(x^2 + y^4), list(x, y), list(0, 0), 3)",
+        "mseries(sqrt(x^2*y + x^3), list(x, y), list(0, 0), 3)",
         // Malformed requests.
         "mseries(exp(x), x, list(0), 2)",
         "mseries(exp(x), list(x), list(0), -1)",
@@ -488,6 +490,43 @@ fn puiseux_monomial_factors_are_exact() {
         series("mseries(x^(1/2)/(1 - x - y), list(x, y), list(0, 0), 2)"),
         "x^(3/2) + x^(1/2)*y + x^(1/2)"
     );
+    // A nested root needs a higher ramification index; a square times a
+    // unit is `x` times the unit series.
+    assert_eq!(
+        series("mseries((x*y)^(1/4), list(x, y), list(0, 0), 2)"),
+        "x^(1/4)*y^(1/4)"
+    );
+    assert_eq!(
+        series("mseries(sqrt(x^2*y), list(x, y), list(0, 0), 2)"),
+        "x*y^(1/2)"
+    );
+    assert_eq!(
+        series("mseries(sqrt(x^2 + x^3), list(x, y), list(0, 0), 3)"),
+        "1/2*x^2 - 1/8*x^3 + x"
+    );
+}
+
+/// A request whose body is equal to a constant must return that constant,
+/// never the operator's internal expansion variables.
+#[test]
+fn expansion_never_exposes_internal_variables() {
+    for src in [
+        "mseries((x + 1)/(x + 1), list(x), list(0), 1)",
+        "mseries((x + 1)/(x + 1), list(x), list(1), 1)",
+        "mseries((x*y)/(x*y), list(x, y), list(0, 0), 2)",
+        "mseries((x*y)/(x*y), list(x, y), list(1, 2), 2)",
+        "mseries(sqrt(x)^2/x, list(x), list(0), 1)",
+        "mseries(sin(x)^2 + cos(x)^2, list(x), list(0), 2)",
+        "mseries(exp(x)*exp(-x), list(x), list(0), 1)",
+        "mtaylor((x + 1)/(x + 1), list(x), list(0), 1)",
+    ] {
+        let text = series(src);
+        assert!(
+            !text.contains("u#"),
+            "`{src}` leaked an internal variable: {text}"
+        );
+        assert_eq!(text, "1", "`{src}`");
+    }
 }
 
 /// Simplifies `src` in a fresh session and returns the printed result.
