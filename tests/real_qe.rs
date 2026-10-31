@@ -701,7 +701,8 @@ impl Harness {
                     self.graph
                         .as_number(c)
                         .map(Number::to_f64)
-                        .expect("number sample")
+                        .or_else(|| self.graph.eval(c, &Env::numeric(0.0)))
+                        .expect("numeric sample")
                 })
                 .collect();
             let open: Vec<bool> = self
@@ -787,6 +788,171 @@ fn cad_cells_reports_openness() {
     );
     let signs: Vec<i32> = cells.iter().map(|c| c.signs[0]).collect();
     assert_eq!(signs, vec![1, 0, -1, 0, 1]);
+}
+
+// ---------------------------------------------------------------------------
+// Five variables.
+
+const FIVE_VARIABLES: &str = "x1, x2, x3, x4, x5";
+
+/// The five-dimensional unit ball, a linear chain and a two-parameter square
+/// root are decided by the five-variable CAD. The returned quantifier-free
+/// formulas are checked at dense rational parameter samples against the
+/// geometric truth; for the square root that truth is `a + b >= 0`, since the
+/// remaining coordinates can be zero.
+#[test]
+fn five_variable_quantifier_elimination() {
+    let mut harness = harness();
+    let variables = FIVE_VARIABLES;
+    let ball = harness.answer(&format!(
+        "real_qe(exists(list({variables}), lt(x1^2 + x2^2 + x3^2 + x4^2 + x5^2, 1)), list({variables}))"
+    ));
+    assert_eq!(ball, "true");
+    let empty = harness.answer(&format!(
+        "real_qe(exists(list({variables}), lt(x1^2 + x2^2 + x3^2 + x4^2 + x5^2, 0)), list({variables}))"
+    ));
+    assert_eq!(empty, "false");
+
+    let chain = harness.answer(&format!(
+        "real_qe(exists(list({variables}), and(gt(x2, x1), gt(x3, x2), gt(x4, x3), gt(x5, x4))), list({variables}))"
+    ));
+    assert_eq!(chain, "true");
+    let cyclic = harness.answer(&format!(
+        "real_qe(exists(list({variables}), and(gt(x2, x1), gt(x3, x2), gt(x4, x3), gt(x5, x4), gt(x1, x5))), list({variables}))"
+    ));
+    assert_eq!(cyclic, "false");
+
+    let rooted = harness.answer(&format!(
+        "real_qe(exists(list({variables}), and(x1 = a, x2 = b, x3^2 = a + b, x4 = 0, x5 = 0)), list({variables}))"
+    ));
+
+    // Rationals on a quarter grid: sums and products are exact in double
+    // precision, so the comparison itself is exact at every sample.
+    let samples: Vec<f64> = (-6..=6).map(|k| f64::from(k) / 4.0).collect();
+    for &a in &samples {
+        for &b in &samples {
+            let bindings = [("a", a), ("b", b)];
+            assert_eq!(
+                harness.evaluate(&rooted, &bindings).unwrap_or(false),
+                a + b >= 0.0,
+                "rooted at a={a} b={b}: `{rooted}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cad_cells_five_variables_are_sign_invariant() {
+    let mut harness = harness();
+    let source =
+        format!("cad_cells(list(x1^2 + x2^2 + x3^2 + x4^2 + x5^2 - 1), list({FIVE_VARIABLES}))");
+    let cells = harness.cad_cells(&source);
+    assert!(cells.len() > 30, "{}", cells.len());
+    let mut all_open = 0_usize;
+    let mut sections = 0_usize;
+    for cell in &cells {
+        assert_eq!(cell.sample.len(), 5, "{:?}", cell.sample);
+        assert_eq!(cell.open.len(), 5);
+        assert_eq!(cell.signs.len(), 1);
+        let value = cell.sample.iter().map(|x| x * x).sum::<f64>() - 1.0;
+        assert_eq!(
+            cell.signs[0],
+            sign_of(value),
+            "sample sign at {:?}",
+            cell.sample
+        );
+        if cell.open.iter().all(|&open| open) {
+            all_open = all_open.saturating_add(1);
+            // Only a full-dimensional cell is an open neighbourhood; a mixed
+            // cell has section coordinates that constrain the others, so it
+            // must not be perturbed as a product.
+            for (index, _) in cell.open.iter().enumerate() {
+                for delta in [1e-4, -1e-4] {
+                    let mut point = cell.sample.clone();
+                    if let Some(coordinate) = point.get_mut(index) {
+                        *coordinate += delta;
+                    }
+                    let value = point.iter().map(|x| x * x).sum::<f64>() - 1.0;
+                    assert_eq!(
+                        sign_of(value),
+                        cell.signs[0],
+                        "perturbation {delta} of coordinate {index} in {:?}",
+                        cell.sample
+                    );
+                }
+            }
+        }
+        if cell.open.iter().any(|&open| !open) {
+            sections = sections.saturating_add(1);
+        }
+    }
+    assert!(all_open > 0, "the decomposition must have open cells");
+    assert!(sections > 0, "the decomposition must have sections");
+    assert!(
+        cells.iter().any(|cell| cell.signs[0] == 0),
+        "the sphere itself must occur as a cell"
+    );
+}
+
+/// A cubic section embedded in five variables: the sample point of the
+/// section coordinate is an exact `root_of`, and lifting the other four
+/// variables keeps the sign conditions.
+#[test]
+fn cad_cells_five_variables_use_root_of() {
+    let mut harness = harness();
+    let source = format!("cad_cells(list(x1^3 - 2), list({FIVE_VARIABLES}))");
+    let text = harness.answer(&source);
+    assert!(text.contains("root_of("), "exact algebraic sample: {text}");
+    let cells = harness.cad_cells(&source);
+    assert_eq!(cells.len(), 3, "one sector, one section, one sector");
+    let signs: Vec<i32> = cells.iter().map(|cell| cell.signs[0]).collect();
+    assert_eq!(signs, vec![-1, 0, 1]);
+    let mut root = None;
+    for cell in &cells {
+        assert_eq!(cell.sample.len(), 5);
+        assert_eq!(cell.open.len(), 5);
+        assert_eq!(cell.signs.len(), 1);
+        let x = cell.sample[0];
+        assert_eq!(
+            cell.signs[0],
+            sign_of(x * x * x - 2.0),
+            "sample sign at {:?}",
+            cell.sample
+        );
+        if !cell.open[0] {
+            root = Some(x);
+        } else {
+            // The outer sectors may be perturbed in the cubic coordinate.
+            for delta in [1e-4, -1e-4] {
+                let moved = x + delta;
+                assert_eq!(
+                    sign_of(moved * moved * moved - 2.0),
+                    cell.signs[0],
+                    "perturbation {delta} at {x}"
+                );
+            }
+        }
+        // The four lifted variables are sectors: perturbing them, or moving
+        // inside the cubic sector, leaves the sign unchanged because the
+        // polynomial does not involve them.
+        for index in 1..5 {
+            assert!(cell.open[index], "{:?}", cell.open);
+            for delta in [1e-4, -1e-4] {
+                let mut point = cell.sample.clone();
+                if let Some(coordinate) = point.get_mut(index) {
+                    *coordinate += delta;
+                }
+                let moved = point[0];
+                assert_eq!(
+                    sign_of(moved * moved * moved - 2.0),
+                    cell.signs[0],
+                    "perturbation of lifted coordinate {index}"
+                );
+            }
+        }
+    }
+    let root = root.expect("the section cell");
+    assert!((root - 2.0_f64.cbrt()).abs() < 1e-6, "root sample {root}");
 }
 
 #[test]

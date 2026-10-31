@@ -55,12 +55,16 @@
 //! request is left unevaluated rather than answered wrongly.
 //!
 //! Documented limits (all returning `None`/`Pass`, never a wrong answer):
-//! at most four variables, at most 256 projection polynomials per level, at
-//! most 20 000 cells, degree at most 48 for a fibre polynomial, at most
-//! 20 000 terms in a projection polynomial, a number-field degree of at
-//! most 64, and at most 256 interpolation points when a primitive element is
-//! built. The dimension limit is the practical one: the cost grows with
-//! the product of the projection sizes.
+//! at most 256 projection polynomials per level and 4 096 over the whole
+//! projection tower, at most 20 000 cells, degree at most 48 for a fibre
+//! polynomial, at most 20 000 terms in a projection polynomial, a
+//! number-field degree of at most 64, at most 256 interpolation points when
+//! a primitive element is built, and 1 000 000 projection/lifting steps per
+//! request. There is no cap on the number of variables: a decomposition has
+//! one level per variable and is bounded by those projection, cell and step
+//! budgets, so a formula with five or six variables is decided whenever its
+//! decomposition is genuinely small, and a decomposition that outgrows a
+//! budget is left unevaluated.
 
 #![allow(
     clippy::missing_const_for_fn,
@@ -179,9 +183,6 @@ impl Kernel for CadCells {
             return Outcome::Pass;
         }
         let limits = cad::CadLimits::default();
-        if variable_nodes.len() > limits.variables {
-            return Outcome::Pass;
-        }
         let Some(polynomials) = qe_impl::read_polynomials(graph, polys, &variable_nodes) else {
             return Outcome::Pass;
         };
@@ -494,5 +495,82 @@ mod tests {
         let text = s("cad_cells(list(x^3 - 2), list(x))");
         assert!(text.contains("root_of("), "{text}");
         assert!(!text.contains("0."), "{text}");
+    }
+
+    /// The five variables of the higher-dimensional tests.
+    const FIVE: &str = "x1, x2, x3, x4, x5";
+
+    #[test]
+    fn five_variable_ball_is_decided() {
+        let variables = FIVE;
+        let ball = s(&format!(
+            "real_qe(exists(list({variables}), lt(x1^2 + x2^2 + x3^2 + x4^2 + x5^2, 1)), list({variables}))"
+        ));
+        assert_eq!(ball, "true");
+        // The empty open ball is empty, and the closed unit sphere intersects
+        // the open ball.
+        let empty = s(&format!(
+            "real_qe(exists(list({variables}), lt(x1^2 + x2^2 + x3^2 + x4^2 + x5^2, 0)), list({variables}))"
+        ));
+        assert_eq!(empty, "false");
+    }
+
+    #[test]
+    fn six_variable_two_dimensional_system() {
+        // A genuine six-variable request whose decomposition is small: the
+        // first two coordinates form a disc and the other four are free, so
+        // the projection tower has six levels but only two of them branch.
+        let variables = "x1, x2, x3, x4, x5, x6";
+        let disc = s(&format!(
+            "real_qe(exists(list({variables}), lt(x1^2 + x2^2, 1)), list({variables}))"
+        ));
+        assert_eq!(disc, "true");
+        let empty = s(&format!(
+            "real_qe(exists(list({variables}), lt(x1^2 + x2^2, 0)), list({variables}))"
+        ));
+        assert_eq!(empty, "false");
+    }
+
+    #[test]
+    fn five_variable_linear_chain() {
+        // A strict linear chain: any increasing quintuple is a witness, while
+        // adding the cyclic inequality makes the system inconsistent.
+        let variables = FIVE;
+        let chain = s(&format!(
+            "real_qe(exists(list({variables}), and(gt(x2, x1), gt(x3, x2), gt(x4, x3), gt(x5, x4))), list({variables}))"
+        ));
+        assert_eq!(chain, "true");
+        let cyclic = s(&format!(
+            "real_qe(exists(list({variables}), and(gt(x2, x1), gt(x3, x2), gt(x4, x3), gt(x5, x4), gt(x1, x5))), list({variables}))"
+        ));
+        assert_eq!(cyclic, "false");
+    }
+
+    #[test]
+    fn five_variable_parameter_case() {
+        // Two free parameters and five quantified variables: the square is
+        // solvable exactly when a + b >= 0, and the other variables can be
+        // zero.
+        let variables = FIVE;
+        let rooted = s(&format!(
+            "real_qe(exists(list({variables}), and(x1 = a, x2 = b, x3^2 = a + b, x4 = 0, x5 = 0)), list({variables}))"
+        ));
+        for (a, b, want) in [
+            (0.0, 0.0, true),
+            (-1.0, 1.0, true),
+            (1.0, -1.0, true),
+            (2.0, 3.0, true),
+            (-1.0, 0.0, false),
+            (0.0, -1.0, false),
+            (-2.0, 1.0, false),
+            (-2.0, 3.0, true),
+            (2.0, -3.0, false),
+        ] {
+            assert_eq!(
+                holds(&rooted, &[("a", a), ("b", b)]),
+                want,
+                "rooted at a={a} b={b}: `{rooted}`"
+            );
+        }
     }
 }
