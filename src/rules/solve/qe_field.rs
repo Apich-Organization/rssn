@@ -46,8 +46,8 @@ use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use super::alg;
-use super::alg::RealAlg;
+use super::qe_alg as alg;
+use super::qe_alg::RealAlg;
 
 /// Bound on the degree of a computed primitive element.
 const MAX_FIELD_DEGREE: usize = 128;
@@ -591,9 +591,11 @@ pub(crate) fn f_monic(
 ) -> FPoly {
     match f_degree(a) {
         | None => Vec::new(),
-        | Some(n) => match a.get(n).and_then(|l| field.inv(l)) {
-            | Some(inverse) => f_scale(a, &inverse, field),
-            | None => a.to_vec(),
+        | Some(n) => {
+            match a.get(n).and_then(|l| field.inv(l)) {
+                | Some(inverse) => f_scale(a, &inverse, field),
+                | None => a.to_vec(),
+            }
         },
     }
 }
@@ -1142,8 +1144,10 @@ fn try_shift(
         let count = match lo.cmp(&hi) {
             | std::cmp::Ordering::Greater => 0,
             | std::cmp::Ordering::Equal => usize::from(alg::eval(&h, &lo).is_zero()),
-            | std::cmp::Ordering::Less => alg::sturm_count(&h_chain, Some(&lo), Some(&hi))
-                .saturating_add(usize::from(alg::eval(&h, &lo).is_zero())),
+            | std::cmp::Ordering::Less => {
+                alg::sturm_count(&h_chain, Some(&lo), Some(&hi))
+                    .saturating_add(usize::from(alg::eval(&h, &lo).is_zero()))
+            },
         };
         if count == 1 {
             chosen = Some((lo, hi));

@@ -937,20 +937,22 @@ fn find_dependencies(
         combo[row_index / 64] |= 1_u64 << (row_index % 64);
         loop {
             match highest_bit(&reduced) {
-                | Some(pivot) => match basis[pivot].take() {
-                    | Some((row_bits, row_combo)) => {
-                        for (target, source) in reduced.iter_mut().zip(&row_bits) {
-                            *target ^= source;
-                        }
-                        for (target, source) in combo.iter_mut().zip(&row_combo) {
-                            *target ^= source;
-                        }
-                        basis[pivot] = Some((row_bits, row_combo));
-                    },
-                    | None => {
-                        basis[pivot] = Some((reduced, combo));
-                        break;
-                    },
+                | Some(pivot) => {
+                    match basis[pivot].take() {
+                        | Some((row_bits, row_combo)) => {
+                            for (target, source) in reduced.iter_mut().zip(&row_bits) {
+                                *target ^= source;
+                            }
+                            for (target, source) in combo.iter_mut().zip(&row_combo) {
+                                *target ^= source;
+                            }
+                            basis[pivot] = Some((row_bits, row_combo));
+                        },
+                        | None => {
+                            basis[pivot] = Some((reduced, combo));
+                            break;
+                        },
+                    }
                 },
                 | None => {
                     dependencies.push(combo);

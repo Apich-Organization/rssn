@@ -28,8 +28,8 @@ use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 
-use super::field;
-use super::term;
+use super::algebraic_field as field;
+use super::algebraic_term as term;
 
 /// `p/q` as an exact rational.
 fn rat(

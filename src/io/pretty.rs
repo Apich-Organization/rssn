@@ -269,38 +269,42 @@ impl Block {
 
 fn superscript(s: &str) -> Option<String> {
     s.chars()
-        .map(|c| match c {
-            | '0' => Some('⁰'),
-            | '1' => Some('¹'),
-            | '2' => Some('²'),
-            | '3' => Some('³'),
-            | '4' => Some('⁴'),
-            | '5' => Some('⁵'),
-            | '6' => Some('⁶'),
-            | '7' => Some('⁷'),
-            | '8' => Some('⁸'),
-            | '9' => Some('⁹'),
-            | '-' => Some('⁻'),
-            | 'n' => Some('ⁿ'),
-            | _ => None,
+        .map(|c| {
+            match c {
+                | '0' => Some('⁰'),
+                | '1' => Some('¹'),
+                | '2' => Some('²'),
+                | '3' => Some('³'),
+                | '4' => Some('⁴'),
+                | '5' => Some('⁵'),
+                | '6' => Some('⁶'),
+                | '7' => Some('⁷'),
+                | '8' => Some('⁸'),
+                | '9' => Some('⁹'),
+                | '-' => Some('⁻'),
+                | 'n' => Some('ⁿ'),
+                | _ => None,
+            }
         })
         .collect()
 }
 
 fn subscript(s: &str) -> Option<String> {
     s.chars()
-        .map(|c| match c {
-            | '0' => Some('₀'),
-            | '1' => Some('₁'),
-            | '2' => Some('₂'),
-            | '3' => Some('₃'),
-            | '4' => Some('₄'),
-            | '5' => Some('₅'),
-            | '6' => Some('₆'),
-            | '7' => Some('₇'),
-            | '8' => Some('₈'),
-            | '9' => Some('₉'),
-            | _ => None,
+        .map(|c| {
+            match c {
+                | '0' => Some('₀'),
+                | '1' => Some('₁'),
+                | '2' => Some('₂'),
+                | '3' => Some('₃'),
+                | '4' => Some('₄'),
+                | '5' => Some('₅'),
+                | '6' => Some('₆'),
+                | '7' => Some('₇'),
+                | '8' => Some('₈'),
+                | '9' => Some('₉'),
+                | _ => None,
+            }
         })
         .collect()
 }
@@ -412,31 +416,41 @@ impl Printer<'_> {
     ) -> Block {
         let children = self.g.children(node);
         match self.g.op(node) {
-            | core::LIT => match self.g.payload(node) {
-                | Some(Payload::Num(n)) => Self::number(n),
-                | Some(Payload::Bool(b)) => Block::atom(if *b { "⊤" } else { "⊥" }),
-                | Some(Payload::Str(s)) => Block::atom(&format!("\"{s}\"")),
-                | _ => Block::atom("?"),
+            | core::LIT => {
+                match self.g.payload(node) {
+                    | Some(Payload::Num(n)) => Self::number(n),
+                    | Some(Payload::Bool(b)) => Block::atom(if *b { "⊤" } else { "⊥" }),
+                    | Some(Payload::Str(s)) => Block::atom(&format!("\"{s}\"")),
+                    | _ => Block::atom("?"),
+                }
             },
-            | core::SYM => self.g.as_symbol(node).map_or_else(
-                || Block::atom("?"),
-                |s| Block::atom(&Self::symbol(self.g.interner().symbol_name(s))),
-            ),
-            | core::EQ => match *children {
-                | [l, r] => Block::hcat(&[
-                    self.term(l, PREC_ADD),
-                    Block::atom(" = "),
-                    self.term(r, PREC_ADD),
-                ]),
-                | _ => self.call("eq", children),
+            | core::SYM => {
+                self.g.as_symbol(node).map_or_else(
+                    || Block::atom("?"),
+                    |s| Block::atom(&Self::symbol(self.g.interner().symbol_name(s))),
+                )
+            },
+            | core::EQ => {
+                match *children {
+                    | [l, r] => {
+                        Block::hcat(&[
+                            self.term(l, PREC_ADD),
+                            Block::atom(" = "),
+                            self.term(r, PREC_ADD),
+                        ])
+                    },
+                    | _ => self.call("eq", children),
+                }
             },
             | core::ADD => self.sum(node),
-            | core::MUL => match self.g.split_coefficient(node) {
-                | Some((c, f)) if c.is_negative() => {
-                    Block::atom("-").pipe_hcat(&self.product(&c.neg(), &f))
-                },
-                | Some((c, f)) => self.product(&c, &f),
-                | None => self.product(&Number::from(1), &self.g.ordered_children(node)),
+            | core::MUL => {
+                match self.g.split_coefficient(node) {
+                    | Some((c, f)) if c.is_negative() => {
+                        Block::atom("-").pipe_hcat(&self.product(&c.neg(), &f))
+                    },
+                    | Some((c, f)) => self.product(&c, &f),
+                    | None => self.product(&Number::from(1), &self.g.ordered_children(node)),
+                }
             },
             | core::POW => {
                 if self.prec(node) == PREC_MUL {
@@ -448,11 +462,13 @@ impl Printer<'_> {
                 }
             },
             | core::LIST => self.list(children),
-            | core::APPLY => match children.split_first() {
-                | Some((&h, rest)) if self.g.as_symbol(h).is_some() => {
-                    Block::hcat(&[self.term(h, PREC_ATOM), Block::paren(&self.args(rest))])
-                },
-                | _ => self.call("apply", children),
+            | core::APPLY => {
+                match children.split_first() {
+                    | Some((&h, rest)) if self.g.as_symbol(h).is_some() => {
+                        Block::hcat(&[self.term(h, PREC_ATOM), Block::paren(&self.args(rest))])
+                    },
+                    | _ => self.call("apply", children),
+                }
             },
             | _ => self.named(node),
         }
@@ -550,19 +566,23 @@ impl Printer<'_> {
                 Block::vcat(&[Block::atom(&"‾".repeat(inner.width)), inner], 1)
             },
             | ("factorial", &[x]) => self.term(x, PREC_ATOM).append("!"),
-            | ("binomial", &[n, k]) => Block::paren(&Block::vcat(
-                &[self.term(n, PREC_EQ), self.term(k, PREC_EQ)],
-                0,
-            )),
+            | ("binomial", &[n, k]) => {
+                Block::paren(&Block::vcat(
+                    &[self.term(n, PREC_EQ), self.term(k, PREC_EQ)],
+                    0,
+                ))
+            },
             | ("diff" | "diffn", _) => self.derivative(node),
-            | ("integral", &[f, x]) => Self::join(
-                &[
-                    Block::atom("∫"),
-                    self.term(f, PREC_EQ),
-                    Block::atom(&format!("d{}", self.term(x, PREC_ATOM).lines.join(""))),
-                ],
-                " ",
-            ),
+            | ("integral", &[f, x]) => {
+                Self::join(
+                    &[
+                        Block::atom("∫"),
+                        self.term(f, PREC_EQ),
+                        Block::atom(&format!("d{}", self.term(x, PREC_ATOM).lines.join(""))),
+                    ],
+                    " ",
+                )
+            },
             | ("integral" | "defint", &[f, x, a, b]) => {
                 let sign = Block::vcat(
                     &[
@@ -613,9 +633,11 @@ impl Printer<'_> {
         loop {
             let (var, order, inner) = match (self.name(cur), self.g.children(cur)) {
                 | ("diff", &[f, x]) => (x, 1, f),
-                | ("diffn", &[f, x, n]) => match self.g.as_number(n).and_then(Number::to_i64) {
-                    | Some(k) if k >= 1 => (x, u32::try_from(k).unwrap_or(1), f),
-                    | _ => break,
+                | ("diffn", &[f, x, n]) => {
+                    match self.g.as_number(n).and_then(Number::to_i64) {
+                        | Some(k) if k >= 1 => (x, u32::try_from(k).unwrap_or(1), f),
+                        | _ => break,
+                    }
                 },
                 | _ => break,
             };
@@ -687,9 +709,11 @@ impl Printer<'_> {
         }
         let b = self.term(base, PREC_ATOM);
         match (exp.is_negative(), exp) {
-            | (false, Number::Int(_)) => match superscript(&text) {
-                | Some(s) => b.append(&s),
-                | None => Block::sup(&b, &Self::number(exp)),
+            | (false, Number::Int(_)) => {
+                match superscript(&text) {
+                    | Some(s) => b.append(&s),
+                    | None => Block::sup(&b, &Self::number(exp)),
+                }
             },
             | _ => Block::sup(&b, &Self::number(exp)),
         }
@@ -725,11 +749,12 @@ impl Printer<'_> {
         let mut inverses: Vec<(NodeId, Number)> = Vec::new();
         for &factor in factors {
             let inverse = match *self.g.children(factor) {
-                | [base, exp] if self.g.op(factor) == core::POW => self
-                    .g
-                    .as_number(exp)
-                    .filter(|e| e.is_negative())
-                    .map(|e| (base, e.neg())),
+                | [base, exp] if self.g.op(factor) == core::POW => {
+                    self.g
+                        .as_number(exp)
+                        .filter(|e| e.is_negative())
+                        .map(|e| (base, e.neg()))
+                },
                 | _ => None,
             };
             match inverse {

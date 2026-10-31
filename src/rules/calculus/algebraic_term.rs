@@ -10,7 +10,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
 
-use super::field::Frac;
+use super::algebraic_field::Frac;
 
 /// The literal node for the rational number `q`.
 pub(super) fn rat_node(

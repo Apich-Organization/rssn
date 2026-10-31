@@ -355,13 +355,14 @@ fn aca(
         }
         norm2 += nu * nu * nv * nv + 2.0 * cross;
         // next row pivot: largest entry of the new column among unused rows
-        let next =
-            (0..m)
-                .filter(|&r| !used_rows[r])
-                .fold(None, |b: Option<(usize, f64)>, r| match b {
+        let next = (0..m)
+            .filter(|&r| !used_rows[r])
+            .fold(None, |b: Option<(usize, f64)>, r| {
+                match b {
                     | Some((_, x)) if x >= col[r].abs() => b,
                     | _ => Some((r, col[r].abs())),
-                });
+                }
+            });
         us.push(col);
         vs.push(v);
         if nu * nv <= tol * norm2.max(0.0).sqrt() {
@@ -525,9 +526,11 @@ fn solve_impl(
         mesh = &flipped_mesh;
         owned_bcs = bcs_in
             .iter()
-            .map(|b| match *b {
-                | BoundaryCondition::Flux(v) => BoundaryCondition::Flux(-v),
-                | BoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+            .map(|b| {
+                match *b {
+                    | BoundaryCondition::Flux(v) => BoundaryCondition::Flux(-v),
+                    | BoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+                }
             })
             .collect::<Vec<_>>();
         &owned_bcs

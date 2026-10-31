@@ -529,13 +529,15 @@ pub(crate) fn riemann_flux(
             let star = |w: &State, q: &State, s: f64| -> State {
                 let k = w[0] * (s - w[1]) / (s - sm);
                 match law {
-                    | Law::Euler { .. } => [
-                        k,
-                        k * sm,
-                        k * w[2],
-                        k * w[3],
-                        k * (q[4] / w[0] + (sm - w[1]) * (sm + w[4] / (w[0] * (s - w[1])))),
-                    ],
+                    | Law::Euler { .. } => {
+                        [
+                            k,
+                            k * sm,
+                            k * w[2],
+                            k * w[3],
+                            k * (q[4] / w[0] + (sm - w[1]) * (sm + w[4] / (w[0] * (s - w[1])))),
+                        ]
+                    },
                     | Law::ShallowWater { .. } => [k, k * sm, k * w[2], 0.0, 0.0],
                 }
             };

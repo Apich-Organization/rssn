@@ -203,9 +203,11 @@ pub(crate) fn divrem(
 pub(crate) fn monic(p: &[BigRational]) -> Vec<BigRational> {
     match degree(p) {
         | None => Vec::new(),
-        | Some(n) => match p.get(n) {
-            | Some(lead) if !lead.is_zero() => scale(p, &lead.recip()),
-            | _ => p.to_vec(),
+        | Some(n) => {
+            match p.get(n) {
+                | Some(lead) if !lead.is_zero() => scale(p, &lead.recip()),
+                | _ => p.to_vec(),
+            }
         },
     }
 }

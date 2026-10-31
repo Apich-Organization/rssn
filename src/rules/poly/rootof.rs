@@ -215,11 +215,13 @@ fn all_roots(q: &[BigRational]) -> Vec<Root> {
     for (factor, _) in factors {
         all.extend(factor_roots(&factor));
     }
-    all.sort_by(|a, b| match (a.interval.is_some(), b.interval.is_some()) {
-        | (true, true) => a.value.0.total_cmp(&b.value.0),
-        | (true, false) => std::cmp::Ordering::Less,
-        | (false, true) => std::cmp::Ordering::Greater,
-        | (false, false) => complex_order(a.value, b.value),
+    all.sort_by(|a, b| {
+        match (a.interval.is_some(), b.interval.is_some()) {
+            | (true, true) => a.value.0.total_cmp(&b.value.0),
+            | (true, false) => std::cmp::Ordering::Less,
+            | (false, true) => std::cmp::Ordering::Greater,
+            | (false, false) => complex_order(a.value, b.value),
+        }
     });
     all
 }
@@ -317,9 +319,11 @@ fn evaluate_complex(args: &[num_complex::Complex64]) -> Option<num_complex::Comp
     let index = k.re as usize;
     match real.get(index) {
         | Some(&r) => Some(num_complex::Complex64::new(r, 0.0)),
-        | None => complex
-            .get(index - real.len())
-            .map(|&(re, im)| num_complex::Complex64::new(re, im)),
+        | None => {
+            complex
+                .get(index - real.len())
+                .map(|&(re, im)| num_complex::Complex64::new(re, im))
+        },
     }
 }
 

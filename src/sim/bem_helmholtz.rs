@@ -698,33 +698,35 @@ impl HMat {
     ) -> Vec<Complex64> {
         // each block adds into a private vector; the sum is taken in block order
         let parts: Vec<Vec<(usize, Complex64)>> =
-            crate::kernels::par::map_slice(&self.blocks, 16, |b| match b {
-                | HBlock::Dense { rows, cols, data } => {
-                    let nc = cols.len();
-                    rows.iter()
-                        .enumerate()
-                        .map(|(r, &gi)| {
-                            let mut acc = Complex64::new(0.0, 0.0);
-                            for (c, &gj) in cols.iter().enumerate() {
-                                acc += data[r * nc + c] * x[gj];
+            crate::kernels::par::map_slice(&self.blocks, 16, |b| {
+                match b {
+                    | HBlock::Dense { rows, cols, data } => {
+                        let nc = cols.len();
+                        rows.iter()
+                            .enumerate()
+                            .map(|(r, &gi)| {
+                                let mut acc = Complex64::new(0.0, 0.0);
+                                for (c, &gj) in cols.iter().enumerate() {
+                                    acc += data[r * nc + c] * x[gj];
+                                }
+                                (gi, acc)
+                            })
+                            .collect()
+                    },
+                    | HBlock::LowRank { rows, cols, u, v } => {
+                        let mut acc = vec![Complex64::new(0.0, 0.0); rows.len()];
+                        for (ul, vl) in u.iter().zip(v) {
+                            let mut c = Complex64::new(0.0, 0.0);
+                            for (a, &gj) in vl.iter().zip(cols) {
+                                c += a * x[gj];
                             }
-                            (gi, acc)
-                        })
-                        .collect()
-                },
-                | HBlock::LowRank { rows, cols, u, v } => {
-                    let mut acc = vec![Complex64::new(0.0, 0.0); rows.len()];
-                    for (ul, vl) in u.iter().zip(v) {
-                        let mut c = Complex64::new(0.0, 0.0);
-                        for (a, &gj) in vl.iter().zip(cols) {
-                            c += a * x[gj];
+                            for (t, w) in acc.iter_mut().zip(ul) {
+                                *t += c * w;
+                            }
                         }
-                        for (t, w) in acc.iter_mut().zip(ul) {
-                            *t += c * w;
-                        }
-                    }
-                    rows.iter().copied().zip(acc).collect()
-                },
+                        rows.iter().copied().zip(acc).collect()
+                    },
+                }
             });
         let mut y = vec![Complex64::new(0.0, 0.0); self.n];
         for part in parts {
@@ -738,9 +740,11 @@ impl HMat {
     fn stored(&self) -> usize {
         self.blocks
             .iter()
-            .map(|b| match b {
-                | HBlock::Dense { data, .. } => data.len(),
-                | HBlock::LowRank { rows, cols, u, .. } => u.len() * (rows.len() + cols.len()),
+            .map(|b| {
+                match b {
+                    | HBlock::Dense { data, .. } => data.len(),
+                    | HBlock::LowRank { rows, cols, u, .. } => u.len() * (rows.len() + cols.len()),
+                }
             })
             .sum()
     }
@@ -919,11 +923,13 @@ pub fn solve_helmholtz_exterior_aca(
         }
         let local = |a: usize, b: usize| entry(rows[a], cols[b]);
         match aca_complex(rows.len(), cols.len(), opts.aca_tol, &local) {
-            | Some((u, v)) => HBlock::LowRank {
-                rows: rows.to_vec(),
-                cols: cols.to_vec(),
-                u,
-                v,
+            | Some((u, v)) => {
+                HBlock::LowRank {
+                    rows: rows.to_vec(),
+                    cols: cols.to_vec(),
+                    u,
+                    v,
+                }
             },
             | None => dense(),
         }

@@ -298,9 +298,11 @@ pub fn real_terms(system: &[Vec<PolyTerm>]) -> Vec<Vec<CTerm>> {
         .map(|equation| {
             equation
                 .iter()
-                .map(|term| CTerm {
-                    coef: Cx::new(term.coef, 0.0),
-                    exps: term.exps.clone(),
+                .map(|term| {
+                    CTerm {
+                        coef: Cx::new(term.coef, 0.0),
+                        exps: term.exps.clone(),
+                    }
                 })
                 .collect()
         })

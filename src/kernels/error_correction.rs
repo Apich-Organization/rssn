@@ -1300,10 +1300,12 @@ impl Bch {
         }
 
         g.iter()
-            .map(|&c| match c {
-                | 0 => Ok(0u8),
-                | 1 => Ok(1u8),
-                | _ => Err("generator polynomial is not binary".to_string()),
+            .map(|&c| {
+                match c {
+                    | 0 => Ok(0u8),
+                    | 1 => Ok(1u8),
+                    | _ => Err("generator polynomial is not binary".to_string()),
+                }
             })
             .collect()
     }

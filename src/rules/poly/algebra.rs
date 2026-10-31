@@ -353,9 +353,11 @@ impl Kernel for Algebra {
             | (Request::NormalForm, &[p, polys, vars]) => {
                 normal_form_term(graph, p, polys, vars).map(|t| (t, false))
             },
-            | (Request::IdealMember, &[p, polys, vars]) => normal_form_term(graph, p, polys, vars)
-                .map(|t| graph.as_number(t).is_some_and(Number::is_zero))
-                .map(|b| (graph.lit(Payload::Bool(b)), false)),
+            | (Request::IdealMember, &[p, polys, vars]) => {
+                normal_form_term(graph, p, polys, vars)
+                    .map(|t| graph.as_number(t).is_some_and(Number::is_zero))
+                    .map(|b| (graph.lit(Payload::Bool(b)), false))
+            },
             | (Request::WithRelations, &[e, relations, vars]) => {
                 with_relations(graph, e, relations, vars).map(|t| (t, false))
             },
@@ -536,9 +538,11 @@ pub(crate) fn isolate(q: &[BigRational]) -> Vec<(BigRational, BigRational)> {
         }
         match sturm_count(&chain, Some(&a), Some(&b)) {
             | 0 => {},
-            | 1 => match rational.iter().find(|r| **r > a && **r <= b) {
-                | Some(r) => out.push((r.clone(), r.clone())),
-                | None => out.push((a, b)),
+            | 1 => {
+                match rational.iter().find(|r| **r > a && **r <= b) {
+                    | Some(r) => out.push((r.clone(), r.clone())),
+                    | None => out.push((a, b)),
+                }
             },
             | _ => {
                 let mid = (&a + &b) / BigRational::from_integer(BigInt::from(2));
@@ -1063,11 +1067,12 @@ fn cad_plane(
             return Some(Vec::new());
         }
         match gx {
-            | Some(g) => p
-                .univariate_in(g)?
-                .iter()
-                .map(Number::to_rational)
-                .collect(),
+            | Some(g) => {
+                p.univariate_in(g)?
+                    .iter()
+                    .map(Number::to_rational)
+                    .collect()
+            },
             | None => Some(vec![p.as_constant()?.to_rational()?]),
         }
     };

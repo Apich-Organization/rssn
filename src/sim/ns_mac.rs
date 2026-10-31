@@ -1440,11 +1440,13 @@ impl NsSolver {
                     * match term {
                         | Term::Const(v) => *v,
                         | Term::Fixed(idx) => self.bvals[c][*idx],
-                        | Term::Wall { face, pos } => match self.cfg.bcs.get(*face) {
-                            | FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => {
-                                v[c].eval(t_new, *pos)
-                            },
-                            | _ => 0.0,
+                        | Term::Wall { face, pos } => {
+                            match self.cfg.bcs.get(*face) {
+                                | FluidBoundary::NoSlip(v) | FluidBoundary::Inflow(v) => {
+                                    v[c].eval(t_new, *pos)
+                                },
+                                | _ => 0.0,
+                            }
                         },
                     };
             }
@@ -1783,13 +1785,17 @@ impl NsSolver {
                     },
                 }
             },
-            | (None, Some(r)) => match th.map(|t| t.bcs[2 * a]) {
-                | Some(ScalarBc::Dirichlet(tw)) => tw,
-                | _ => r,
+            | (None, Some(r)) => {
+                match th.map(|t| t.bcs[2 * a]) {
+                    | Some(ScalarBc::Dirichlet(tw)) => tw,
+                    | _ => r,
+                }
             },
-            | (Some(l), None) => match th.map(|t| t.bcs[2 * a + 1]) {
-                | Some(ScalarBc::Dirichlet(tw)) => tw,
-                | _ => l,
+            | (Some(l), None) => {
+                match th.map(|t| t.bcs[2 * a + 1]) {
+                    | Some(ScalarBc::Dirichlet(tw)) => tw,
+                    | _ => l,
+                }
             },
             | (None, None) => 0.0,
         }

@@ -519,7 +519,8 @@ fn parse_unit_text(text: &str) -> Option<UnitMap> {
                 return None;
             }
             let value = exponent * Exp::new(sign, 1);
-            *map.entry(name.to_string()).or_insert_with(|| Exp::new(0, 1)) += value;
+            *map.entry(name.to_string())
+                .or_insert_with(|| Exp::new(0, 1)) += value;
         }
     }
     if map.is_empty() {
@@ -535,10 +536,7 @@ fn parse_unit_exponent(text: &str) -> Option<Exp> {
         .and_then(|rest| rest.strip_suffix(')'))
         .unwrap_or(text);
     let value = dec(text);
-    Some(Exp::new(
-        value.numer().to_i32()?,
-        value.denom().to_i32()?,
-    ))
+    Some(Exp::new(value.numer().to_i32()?, value.denom().to_i32()?))
 }
 
 /// The unit product a term denotes.
@@ -1031,10 +1029,9 @@ impl Kernel for Request1 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let quantity = i.op(OpDescriptor::new("quantity", Arity::Fixed(2)))?;
-    i.graph().ops_mut().set_attr(
-        quantity,
-        crate::graph::dim::UnitResolver(resolve_unit_node),
-    );
+    i.graph()
+        .ops_mut()
+        .set_attr(quantity, crate::graph::dim::UnitResolver(resolve_unit_node));
     i.graph().ops_mut().set_attr(
         quantity,
         crate::graph::dim::UnitTextResolver(resolve_unit_text),

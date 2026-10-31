@@ -1000,12 +1000,16 @@ fn operator_rows(
         let common = common_denominator(&present)?;
         let numerators: Vec<Vec<Q>> = entries
             .iter()
-            .map(|e| match e {
-                | Some(r) => Some(univariate::mul(
-                    &r.num,
-                    &univariate::divrem(&common, &r.den)?.0,
-                )),
-                | None => Some(Vec::new()),
+            .map(|e| {
+                match e {
+                    | Some(r) => {
+                        Some(univariate::mul(
+                            &r.num,
+                            &univariate::divrem(&common, &r.den)?.0,
+                        ))
+                    },
+                    | None => Some(Vec::new()),
+                }
             })
             .collect::<Option<_>>()?;
         let height = numerators.iter().map(Vec::len).max().unwrap_or(0);

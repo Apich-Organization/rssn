@@ -73,8 +73,8 @@ const MAX_DEGREE: u32 = 64;
 /// Largest integer or half-integer whose gamma value is computed exactly.
 const MAX_GAMMA: u32 = 1000;
 
-mod approx;
-mod meijer;
+use crate::rules::special_approx as approx;
+use crate::rules::special_meijer as meijer;
 
 /// The special-function rule set.
 #[must_use]
@@ -118,9 +118,11 @@ fn coulomb_eval(
     f: fn(f64, usize, f64) -> Option<f64>,
 ) -> f64 {
     match args {
-        | [eta, l, rho] => whole_index(*l)
-            .and_then(|l| f(*eta, l, *rho))
-            .unwrap_or(f64::NAN),
+        | [eta, l, rho] => {
+            whole_index(*l)
+                .and_then(|l| f(*eta, l, *rho))
+                .unwrap_or(f64::NAN)
+        },
         | _ => f64::NAN,
     }
 }
@@ -142,9 +144,11 @@ fn kelvin_eval(
     f: fn(usize, f64) -> f64,
 ) -> f64 {
     match args {
-        | [n, x] => match whole_index(*n) {
-            | Some(n) if n <= ext::KELVIN_MAX_ORDER => f(n, *x),
-            | _ => f64::NAN,
+        | [n, x] => {
+            match whole_index(*n) {
+                | Some(n) if n <= ext::KELVIN_MAX_ORDER => f(n, *x),
+                | _ => f64::NAN,
+            }
         },
         | _ => f64::NAN,
     }
@@ -325,9 +329,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "beta",
             2,
-            |a| match a {
-                | [x, y] => beta(*x, *y),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [x, y] => beta(*x, *y),
+                    | _ => f64::NAN,
+                }
             },
             Facts::REAL,
         ),
@@ -388,22 +394,26 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "polygamma",
             2,
-            |a| match a {
-                | [n, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= f64::from(u32::MAX) => {
-                    num::polygamma_numerical(n.to_u32().unwrap_or(0), *x)
-                },
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [n, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= f64::from(u32::MAX) => {
+                        num::polygamma_numerical(n.to_u32().unwrap_or(0), *x)
+                    },
+                    | _ => f64::NAN,
+                }
             },
             Facts::REAL,
         ),
         (
             "laguerre_gen",
             3,
-            |a| match a {
-                | [n, alpha, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= 1e6 => {
-                    num::generalized_laguerre(n.to_u32().unwrap_or(0), *alpha, *x)
-                },
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [n, alpha, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= 1e6 => {
+                        num::generalized_laguerre(n.to_u32().unwrap_or(0), *alpha, *x)
+                    },
+                    | _ => f64::NAN,
+                }
             },
             Facts::REAL,
         ),
@@ -452,9 +462,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "hurwitz_zeta",
             2,
-            |a| match a {
-                | [s, q] => num::hurwitz_zeta(*s, *q),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [s, q] => num::hurwitz_zeta(*s, *q),
+                    | _ => f64::NAN,
+                }
             },
             Facts::NONE,
         ),
@@ -595,18 +607,22 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "polylog",
             2,
-            |a| match a {
-                | [s, z] => ext::polylog(*s, *z),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [s, z] => ext::polylog(*s, *z),
+                    | _ => f64::NAN,
+                }
             },
             Facts::NONE,
         ),
         (
             "lerch",
             3,
-            |a| match a {
-                | [z, s, order] => ext::lerch(*z, *s, *order),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [z, s, order] => ext::lerch(*z, *s, *order),
+                    | _ => f64::NAN,
+                }
             },
             Facts::NONE,
         ),
@@ -614,9 +630,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "appell_f1",
             6,
-            |a| match a {
-                | [p, b1, b2, c, x, y] => ext::appell_f1(*p, *b1, *b2, *c, *x, *y),
-                | _ => f64::NAN,
+            |a| {
+                match a {
+                    | [p, b1, b2, c, x, y] => ext::appell_f1(*p, *b1, *b2, *c, *x, *y),
+                    | _ => f64::NAN,
+                }
             },
             Facts::NONE,
         ),
@@ -676,14 +694,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
     }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
-    let pi = i
-        .graph()
-        .ops()
-        .lookup("pi")
-        .ok_or_else(|| RuleError::Invalid {
+    let pi = i.graph().ops().lookup("pi").ok_or_else(|| {
+        RuleError::Invalid {
             rule: "special".to_owned(),
             reason: "`pi` is not registered",
-        })?;
+        }
+    })?;
     let (Some(gamma), Some(zeta), Some(sign), Some(heaviside)) = (
         op_named("gamma"),
         op_named("zeta"),
@@ -1391,9 +1407,11 @@ impl Kernel for PolygammaExact {
         let args = graph.children(node).to_vec();
         let (order, at) = match args.as_slice() {
             | &[x] if graph.op(node) == self.digamma => (0, x),
-            | &[m, x] => match graph.number_of(m).and_then(Number::to_i64) {
-                | Some(m) if (1..=60).contains(&m) => (m, x),
-                | _ => return Outcome::Pass,
+            | &[m, x] => {
+                match graph.number_of(m).and_then(Number::to_i64) {
+                    | Some(m) if (1..=60).contains(&m) => (m, x),
+                    | _ => return Outcome::Pass,
+                }
             },
             | _ => return Outcome::Pass,
         };

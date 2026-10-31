@@ -708,9 +708,11 @@ impl Harness {
                 .graph
                 .children(parts[1])
                 .iter()
-                .map(|&c| match self.graph.payload(c) {
-                    | Some(Payload::Bool(value)) => *value,
-                    | _ => panic!("open flag is not a boolean"),
+                .map(|&c| {
+                    match self.graph.payload(c) {
+                        | Some(Payload::Bool(value)) => *value,
+                        | _ => panic!("open flag is not a boolean"),
+                    }
                 })
                 .collect();
             let signs: Vec<i32> = self

@@ -100,9 +100,8 @@ fn holds(
         .iter()
         .any(|&t| !graph.free_symbols(graph.find(t)).is_empty());
     if !has_free {
-        return substituted
-            .iter()
-            .all(|&t| match graph.eval(t, &Env::numeric(0.0)) {
+        return substituted.iter().all(|&t| {
+            match graph.eval(t, &Env::numeric(0.0)) {
                 | Some(v) => {
                     v.abs()
                         <= 1e-7
@@ -115,7 +114,8 @@ fn holds(
                                     .powi(3))
                 },
                 | None => true,
-            });
+            }
+        });
     }
     for env in sample_envs(graph, &all, None) {
         let magnitude = tuple
@@ -393,9 +393,11 @@ pub(super) fn eliminate(
         let (e, u) = (exprs[i], unknowns[j]);
         let values = match linear {
             | Some(v) => vec![v],
-            | None => match solve_for(graph, e, u, 0) {
-                | Some(values) => values,
-                | None => continue,
+            | None => {
+                match solve_for(graph, e, u, 0) {
+                    | Some(values) => values,
+                    | None => continue,
+                }
             },
         };
         let rest_exprs: Vec<NodeId> = exprs

@@ -931,25 +931,29 @@ fn coulomb_wronskian_and_recurrences() {
 #[test]
 fn coulomb_eta_zero_and_series_asymptotic_continuity() {
     // eta = 0: F_l = rho j_l and G_l = -rho y_l.
-    let f = |l: usize, rho: f64| match l {
-        | 0 => rho.sin(),
-        | 1 => rho.sin() / rho - rho.cos(),
-        | 2 => (3.0 / (rho * rho) - 1.0) * rho.sin() - 3.0 * rho.cos() / rho,
-        | _ => {
-            let s = rho.sin();
-            let c = rho.cos();
-            (15.0 / (rho * rho * rho) - 6.0 / rho) * s + (1.0 - 15.0 / (rho * rho)) * c
-        },
+    let f = |l: usize, rho: f64| {
+        match l {
+            | 0 => rho.sin(),
+            | 1 => rho.sin() / rho - rho.cos(),
+            | 2 => (3.0 / (rho * rho) - 1.0) * rho.sin() - 3.0 * rho.cos() / rho,
+            | _ => {
+                let s = rho.sin();
+                let c = rho.cos();
+                (15.0 / (rho * rho * rho) - 6.0 / rho) * s + (1.0 - 15.0 / (rho * rho)) * c
+            },
+        }
     };
-    let g = |l: usize, rho: f64| match l {
-        | 0 => rho.cos(),
-        | 1 => rho.cos() / rho + rho.sin(),
-        | 2 => (3.0 / (rho * rho) - 1.0) * rho.cos() + 3.0 * rho.sin() / rho,
-        | _ => {
-            let s = rho.sin();
-            let c = rho.cos();
-            (15.0 / (rho * rho * rho) - 6.0 / rho) * c + (15.0 / (rho * rho) - 1.0) * s
-        },
+    let g = |l: usize, rho: f64| {
+        match l {
+            | 0 => rho.cos(),
+            | 1 => rho.cos() / rho + rho.sin(),
+            | 2 => (3.0 / (rho * rho) - 1.0) * rho.cos() + 3.0 * rho.sin() / rho,
+            | _ => {
+                let s = rho.sin();
+                let c = rho.cos();
+                (15.0 / (rho * rho * rho) - 6.0 / rho) * c + (15.0 / (rho * rho) - 1.0) * s
+            },
+        }
     };
     for l in 0..=3_usize {
         for rho in [0.2_f64, 0.7, 2.0, 6.0, 15.0, 24.0, 60.0] {

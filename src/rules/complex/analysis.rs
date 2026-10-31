@@ -116,12 +116,12 @@ enum Request {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("circle", Arity::Fixed(2)))?;
     i.op(OpDescriptor::new("path", Arity::Fixed(4)).binder(1, 0b1))?;
-    let distance = i.op(
-        OpDescriptor::new("distance", Arity::Fixed(2)).eval(|a| match a {
+    let distance = i.op(OpDescriptor::new("distance", Arity::Fixed(2)).eval(|a| {
+        match a {
             | [x, y] => (x - y).abs(),
             | _ => f64::NAN,
-        }),
-    )?;
+        }
+    }))?;
     i.graph().ops_mut().set_attr(
         distance,
         crate::graph::ComplexEval(|a| {
@@ -161,9 +161,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ),
         ("branch_cut", 2, Request::BranchCut),
     ];
-    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid {
-        rule: "complex/analysis".into(),
-        reason: "needs elementary",
+    let ops = Ops::of(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "complex/analysis".into(),
+            reason: "needs elementary",
+        }
     })?;
     for (name, arity, request) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
@@ -210,10 +212,12 @@ fn is_entire(
         let children = graph.children(n);
         let ok = match op {
             | core::ADD | core::MUL => true,
-            | core::POW => children
-                .get(1)
-                .and_then(|&e| graph.number_of(e))
-                .is_some_and(|e| e.is_integer() && e.to_f64() >= 0.0),
+            | core::POW => {
+                children
+                    .get(1)
+                    .and_then(|&e| graph.number_of(e))
+                    .is_some_and(|e| e.is_integer() && e.to_f64() >= 0.0)
+            },
             | _ if children.is_empty() => true,
             | _ => op != ops.ln && entire_fns.contains(&graph.ops().get(op).name.as_ref()),
         };
@@ -842,13 +846,14 @@ impl Analysis {
                 // The argument principle, numerically: robust, and an
                 // integer.
                 let symbol = cx.graph.symbol_of(z)?;
-                let winding =
-                    numeric_function(cx.graph, f, symbol).and_then(|function| match &contour {
+                let winding = numeric_function(cx.graph, f, symbol).and_then(|function| {
+                    match &contour {
                         | Contour::Circle { centre, radius } => {
                             numeric::count_zeros_poles(function, *centre, *radius, 4096)
                         },
                         | Contour::Polygon(vertices) => polygon_count(function, vertices, 2048),
-                    });
+                    }
+                });
                 let exact = self.count_exactly(cx, f, z, &contour);
                 match (exact, winding) {
                     | (Some(a), Some(b)) if a != b => None,

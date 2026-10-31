@@ -105,10 +105,12 @@ fn system(x: &[f64]) -> Vec<f64> {
 fn newton_broyden_system() {
     let s = newton_system(system, None::<&fn(&[f64]) -> Mat>, &[2.0, 0.5], 1e-12, 50).unwrap();
     assert!(system(&s.x).iter().all(|v| v.abs() < 1e-11));
-    let jac = |x: &[f64]| Mat {
-        rows: 2,
-        cols: 2,
-        data: vec![2.0 * x[0], 2.0 * x[1], x[1], x[0]],
+    let jac = |x: &[f64]| {
+        Mat {
+            rows: 2,
+            cols: 2,
+            data: vec![2.0 * x[0], 2.0 * x[1], x[1], x[0]],
+        }
     };
     let s2 = newton_system(system, Some(&jac), &[2.0, 0.5], 1e-12, 50).unwrap();
     assert!((s.x[0] - s2.x[0]).abs() < 1e-8);

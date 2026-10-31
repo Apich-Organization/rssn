@@ -584,19 +584,23 @@ fn shake_rattle_keep_rigid_dimers_rigid_and_conserve_energy() {
     ff.shift = true;
     // zero-strength bonds exclude the intramolecular pair from the non-bonded sum
     ff.bonds = (0..nmol)
-        .map(|m| Bond {
-            i: 2 * m,
-            j: 2 * m + 1,
-            k: 0.0,
-            r0: d,
+        .map(|m| {
+            Bond {
+                i: 2 * m,
+                j: 2 * m + 1,
+                k: 0.0,
+                r0: d,
+            }
         })
         .collect();
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.004, 72).unwrap();
     sim.constraints = (0..nmol)
-        .map(|m| Constraint {
-            i: 2 * m,
-            j: 2 * m + 1,
-            d,
+        .map(|m| {
+            Constraint {
+                i: 2 * m,
+                j: 2 * m + 1,
+                d,
+            }
         })
         .collect();
     // start from velocities consistent with the constraints
@@ -1025,19 +1029,23 @@ fn dimer_system(
     let mut ff = ForceField::<3>::new(lj(), 2.5);
     ff.shift = true;
     ff.bonds = (0..nmol)
-        .map(|m| Bond {
-            i: 2 * m,
-            j: 2 * m + 1,
-            k: 0.0,
-            r0: d,
+        .map(|m| {
+            Bond {
+                i: 2 * m,
+                j: 2 * m + 1,
+                k: 0.0,
+                r0: d,
+            }
         })
         .collect();
     let mut sim = MdSimulation::new(sys, ff, 0.3, 0.004, seed + 1).unwrap();
     sim.constraints = (0..nmol)
-        .map(|m| Constraint {
-            i: 2 * m,
-            j: 2 * m + 1,
-            d,
+        .map(|m| {
+            Constraint {
+                i: 2 * m,
+                j: 2 * m + 1,
+                d,
+            }
         })
         .collect();
     sim

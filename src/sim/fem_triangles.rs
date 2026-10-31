@@ -293,10 +293,12 @@ fn basis(
     l: [f64; 3],
 ) -> (Vec<f64>, Vec<[f64; 3]>) {
     match degree {
-        | Degree::P1 => (
-            l.to_vec(),
-            vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-        ),
+        | Degree::P1 => {
+            (
+                l.to_vec(),
+                vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            )
+        },
         | Degree::P2 => {
             let v = |i: usize| l[i] * (2.0 * l[i] - 1.0);
             let dv = |i: usize| {

@@ -166,24 +166,28 @@ pub fn euclidean_simple_roots(
             all.truncate(n);
             Some(all)
         },
-        | 'F' if n == 4 => Some(vec![
-            vec_of(4, &[(1, ql::q(1)), (2, ql::q(-1))]),
-            vec_of(4, &[(2, ql::q(1)), (3, ql::q(-1))]),
-            vec_of(4, &[(3, ql::q(1))]),
-            vec_of(
-                4,
-                &[
-                    (0, half.clone()),
-                    (1, -half.clone()),
-                    (2, -half.clone()),
-                    (3, -half),
-                ],
-            ),
-        ]),
-        | 'G' if n == 2 => Some(vec![
-            vec_of(3, &[(0, ql::q(1)), (1, ql::q(-1))]),
-            vec_of(3, &[(0, ql::q(-2)), (1, ql::q(1)), (2, ql::q(1))]),
-        ]),
+        | 'F' if n == 4 => {
+            Some(vec![
+                vec_of(4, &[(1, ql::q(1)), (2, ql::q(-1))]),
+                vec_of(4, &[(2, ql::q(1)), (3, ql::q(-1))]),
+                vec_of(4, &[(3, ql::q(1))]),
+                vec_of(
+                    4,
+                    &[
+                        (0, half.clone()),
+                        (1, -half.clone()),
+                        (2, -half.clone()),
+                        (3, -half),
+                    ],
+                ),
+            ])
+        },
+        | 'G' if n == 2 => {
+            Some(vec![
+                vec_of(3, &[(0, ql::q(1)), (1, ql::q(-1))]),
+                vec_of(3, &[(0, ql::q(-2)), (1, ql::q(1)), (2, ql::q(1))]),
+            ])
+        },
         | _ => None,
     }
 }

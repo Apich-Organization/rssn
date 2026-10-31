@@ -10,16 +10,16 @@
 //! [`crate::sim::relativity`].
 
 /// FDTD electrodynamics simulation.
-pub mod fdtd_electrodynamics;
+pub use super::models_fdtd_electrodynamics as fdtd_electrodynamics;
 /// Geodesic relativity simulation.
-pub mod geodesic_relativity;
+pub use super::models_geodesic_relativity as geodesic_relativity;
 /// GPE superfluidity simulation.
-pub mod gpe_superfluidity;
+pub use super::models_gpe_superfluidity as gpe_superfluidity;
 /// Ising statistical simulation.
-pub mod ising_statistical;
+pub use super::models_ising_statistical as ising_statistical;
 /// Linear elasticity simulation.
-pub mod linear_elasticity;
+pub use super::models_linear_elasticity as linear_elasticity;
 /// Navier-Stokes fluid simulation.
-pub mod navier_stokes_fluid;
+pub use super::models_navier_stokes_fluid as navier_stokes_fluid;
 /// Schrodinger quantum simulation.
-pub mod schrodinger_quantum;
+pub use super::models_schrodinger_quantum as schrodinger_quantum;

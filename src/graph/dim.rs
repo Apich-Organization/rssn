@@ -15,12 +15,10 @@
 
 // The exponent field and the inference engine are implementation details of
 // this module; `pub(crate)` is already the widest visibility reachable from
-// their private submodules, so the lint's suggested `pub(super)` would force
+// the sibling implementation modules, so the lint's suggested `pub(super)` would force
 // re-exports at every use site.
 #![allow(clippy::redundant_pub_crate)]
 
-pub(crate) mod expr;
-pub(crate) mod infer;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -34,9 +32,9 @@ use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::SymbolId;
 
-pub(crate) use expr::AtomId;
-pub(crate) use expr::Expo;
-pub(crate) use infer::DimInfer;
+pub(crate) use crate::graph::dim_expr::AtomId;
+pub(crate) use crate::graph::dim_expr::Expo;
+pub(crate) use crate::graph::dim_infer::DimInfer;
 
 /// Identifier of a base dimension inside a [`DimArena`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -249,14 +247,18 @@ impl fmt::Display for DimError {
             | Self::Mismatch { left, right, context } => {
                 write!(f, "dimension mismatch in `{context}`: {left} vs {right}")
             },
-            | Self::NonDimensionless { op, argument, found } => write!(
-                f,
-                "`{op}` requires a dimensionless argument, found {found} in `{argument}`"
-            ),
-            | Self::SymbolicConstraint { constraint, context } => write!(
-                f,
-                "dimensions force the constraint `{constraint}` in `{context}`"
-            ),
+            | Self::NonDimensionless { op, argument, found } => {
+                write!(
+                    f,
+                    "`{op}` requires a dimensionless argument, found {found} in `{argument}`"
+                )
+            },
+            | Self::SymbolicConstraint { constraint, context } => {
+                write!(
+                    f,
+                    "dimensions force the constraint `{constraint}` in `{context}`"
+                )
+            },
             | Self::UnknownUnit { unit } => write!(f, "unknown unit `{unit}`"),
             | Self::Affine { operation } => {
                 write!(f, "affine quantity misuse in `{operation}`")
@@ -814,13 +816,17 @@ impl DimTerm {
         arena: &DimArena,
     ) -> Dimension {
         match &self.repr {
-            | DimRepr::Any => Dimension {
-                any: true,
-                ..Dimension::default()
+            | DimRepr::Any => {
+                Dimension {
+                    any: true,
+                    ..Dimension::default()
+                }
             },
-            | DimRepr::NonMetric => Dimension {
-                non_metric: true,
-                ..Dimension::default()
+            | DimRepr::NonMetric => {
+                Dimension {
+                    non_metric: true,
+                    ..Dimension::default()
+                }
             },
             | DimRepr::Scalar { bases, vars } => {
                 let mut factors = Vec::with_capacity(bases.len());
@@ -1021,13 +1027,17 @@ fn parse_exponent(
         | Some((num, den)) => (num, den),
         | None => (text, "1"),
     };
-    let numerator = numerator.parse::<BigInt>().map_err(|_| DimError::Parse {
-        text: whole.to_string(),
-        reason: format!("`{text}` is not a rational exponent"),
+    let numerator = numerator.parse::<BigInt>().map_err(|_| {
+        DimError::Parse {
+            text: whole.to_string(),
+            reason: format!("`{text}` is not a rational exponent"),
+        }
     })?;
-    let denominator = denominator.parse::<BigInt>().map_err(|_| DimError::Parse {
-        text: whole.to_string(),
-        reason: format!("`{text}` is not a rational exponent"),
+    let denominator = denominator.parse::<BigInt>().map_err(|_| {
+        DimError::Parse {
+            text: whole.to_string(),
+            reason: format!("`{text}` is not a rational exponent"),
+        }
     })?;
     if denominator.is_zero() {
         return Err(DimError::Parse {
@@ -1178,7 +1188,7 @@ mod tests {
             arena.base_id("Length").unwrap_or(BaseId(0)),
             BigRational::one(),
         );
-        let mut unifier = infer::Unifier::default();
+        let mut unifier = crate::graph::dim_infer::Unifier::default();
         let variable = DimTerm::var(arena.intern_var("x"));
         let resolved = unifier
             .unify(&variable, &length)
@@ -1199,7 +1209,7 @@ mod tests {
             arena.base_id("Time").unwrap_or(BaseId(0)),
             BigRational::one(),
         );
-        let mut unifier = infer::Unifier::default();
+        let mut unifier = crate::graph::dim_infer::Unifier::default();
         assert!(unifier.unify(&length, &time).is_err());
     }
 

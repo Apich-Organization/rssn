@@ -197,9 +197,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // value is a pure number when the parameters are.
     i.dim(mellin, DimRule::Dimensionless);
     i.dim(series, DimRule::Custom(meijer_dimension));
-    let invalid = |reason: &'static str| RuleError::Invalid {
-        rule: "special/meijer".to_owned(),
-        reason,
+    let invalid = |reason: &'static str| {
+        RuleError::Invalid {
+            rule: "special/meijer".to_owned(),
+            reason,
+        }
     };
     let exp = i
         .graph()

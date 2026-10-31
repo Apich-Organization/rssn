@@ -76,6 +76,13 @@ pub mod md_engine;
 /// Rigid-molecule molecular dynamics.
 pub mod md_rigid;
 pub mod models;
+pub mod models_fdtd_electrodynamics;
+pub mod models_geodesic_relativity;
+pub mod models_gpe_superfluidity;
+pub mod models_ising_statistical;
+pub mod models_linear_elasticity;
+pub mod models_navier_stokes_fluid;
+pub mod models_schrodinger_quantum;
 /// Geometric multigrid (V/W/FMG) for Poisson/Helmholtz in 1D/2D/3D.
 pub mod multigrid;
 /// Barnes-Hut and fast multipole N-body solvers.

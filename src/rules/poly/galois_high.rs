@@ -1154,9 +1154,11 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
     let pi = pi_fixed(BITS + 64);
     // ζ^m = cos(2πm/7) + i sin(2πm/7); sin(x) = cos(x - π/2).
     let zeta: Vec<Fx> = (0..7_u64)
-        .map(|m| Fx {
-            re: cos_fixed(m, 7, &pi, 64),
-            im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64),
+        .map(|m| {
+            Fx {
+                re: cos_fixed(m, 7, &pi, 64),
+                im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64),
+            }
         })
         .collect();
     let real_tolerance = BigInt::one() << (BITS - 100);

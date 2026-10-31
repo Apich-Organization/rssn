@@ -53,11 +53,11 @@ use crate::graph::rule::Installer;
 use crate::rules::poly::univariate;
 use crate::rules::poly::univariate::QPoly;
 
-mod field;
-mod hermite;
-mod logpart;
-mod quadratic;
-mod term;
+use super::algebraic_field as field;
+use super::algebraic_hermite as hermite;
+use super::algebraic_logpart as logpart;
+use super::algebraic_quadratic as quadratic;
+use super::algebraic_term as term;
 
 use field::Element;
 use field::Frac;
@@ -65,14 +65,12 @@ use field::Frac;
 /// Registers the `integral` kernel and teaches the ordinary integrator the
 /// algebraic entry point.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let integral = i
-        .graph()
-        .ops()
-        .lookup("integral")
-        .ok_or_else(|| RuleError::Invalid {
+    let integral = i.graph().ops().lookup("integral").ok_or_else(|| {
+        RuleError::Invalid {
             rule: "calculus/algebraic".to_owned(),
             reason: "the `integral` operator is missing",
-        })?;
+        }
+    })?;
     i.kernel("calculus/algebraic", Tier::Reduce, Algebraic { integral });
     // The staged integrator consults the table for integrands its own
     // methods cannot decide.  Only radicands of degree three or more are

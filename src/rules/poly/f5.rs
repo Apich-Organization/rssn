@@ -583,10 +583,12 @@ fn f5_loop(
     let mut basis: Vec<Labelled> = generators
         .iter()
         .enumerate()
-        .map(|(index, g)| Labelled {
-            poly: common::monic(g, ENGINE_ORDER),
-            sig: unit.clone(),
-            index: index.saturating_add(1),
+        .map(|(index, g)| {
+            Labelled {
+                poly: common::monic(g, ENGINE_ORDER),
+                sig: unit.clone(),
+                index: index.saturating_add(1),
+            }
         })
         .collect();
     let mut queue: BTreeSet<Pair> = BTreeSet::new();
@@ -916,11 +918,13 @@ impl Kernel for F5Kernel {
         node: NodeId,
     ) -> Prepared {
         match common::prepare_data(cx, node) {
-            | Some((generators, order, gens)) => Prepared::Work(Box::new(F5Work {
-                generators,
-                order,
-                gens,
-            })),
+            | Some((generators, order, gens)) => {
+                Prepared::Work(Box::new(F5Work {
+                    generators,
+                    order,
+                    gens,
+                }))
+            },
             | None => Prepared::Done(Outcome::Pass),
         }
     }

@@ -82,9 +82,11 @@ fn pairs(
 ) -> Option<Vec<(f64, f64)>> {
     rows(g, n)?
         .into_iter()
-        .map(|r| match r.as_slice() {
-            | [x, y] => Some((float(g, *x)?, float(g, *y)?)),
-            | _ => None,
+        .map(|r| {
+            match r.as_slice() {
+                | [x, y] => Some((float(g, *x)?, float(g, *y)?)),
+                | _ => None,
+            }
         })
         .collect()
 }
@@ -428,11 +430,13 @@ fn lorenz(
     a: &[NodeId],
 ) -> Option<V> {
     let (sigma, rho, beta) = match a {
-        | [] => (
-            cx.graph.sym("sigma"),
-            cx.graph.sym("rho"),
-            cx.graph.sym("beta"),
-        ),
+        | [] => {
+            (
+                cx.graph.sym("sigma"),
+                cx.graph.sym("rho"),
+                cx.graph.sym("beta"),
+            )
+        },
         | [s, r, b] => (*s, *r, *b),
         | _ => return None,
     };

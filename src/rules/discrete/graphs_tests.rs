@@ -1,7 +1,7 @@
-use super::super::test_util::Lcg;
-use super::super::test_util::nested;
-use super::super::test_util::nums;
-use super::super::test_util::s;
+use super::test_util::Lcg;
+use super::test_util::nested;
+use super::test_util::nums;
+use super::test_util::s;
 
 type Edge = (usize, usize, i64);
 

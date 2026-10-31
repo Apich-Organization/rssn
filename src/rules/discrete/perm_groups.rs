@@ -772,10 +772,12 @@ fn read_presentation(
         .map(|w| read_word(g, &gens, w))
         .collect::<Option<_>>()?;
     let subs: Vec<Vec<usize>> = match a.get(2) {
-        | Some(&s) => items(g, s)?
-            .into_iter()
-            .map(|w| read_word(g, &gens, w))
-            .collect::<Option<_>>()?,
+        | Some(&s) => {
+            items(g, s)?
+                .into_iter()
+                .map(|w| read_word(g, &gens, w))
+                .collect::<Option<_>>()?
+        },
         | None => Vec::new(),
     };
     Some((gens.len(), rels, subs))

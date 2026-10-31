@@ -173,9 +173,11 @@ fn residual(
 ) -> Vec<Conserved> {
     let n = q.len();
     // Two ghost cells on each side.
-    let ghost = |w: Primitive| match boundary {
-        | Boundary::Transmissive => w,
-        | Boundary::Reflective => Primitive { u: -w.u, ..w },
+    let ghost = |w: Primitive| {
+        match boundary {
+            | Boundary::Transmissive => w,
+            | Boundary::Reflective => Primitive { u: -w.u, ..w },
+        }
     };
     let mut w: Vec<Primitive> = Vec::with_capacity(n + 4);
     let prim: Vec<Primitive> = q.iter().map(|&c| to_primitive(c, gamma)).collect();
@@ -586,10 +588,12 @@ mod tests {
     fn conservation_with_walls() {
         // Total mass and energy are conserved in a closed tube.
         let gamma = 1.4;
-        let init = |x: f64| Primitive {
-            rho: 1.0 + 0.5 * (-(x - 0.5).powi(2) / 0.01).exp(),
-            u: 0.0,
-            p: 1.0,
+        let init = |x: f64| {
+            Primitive {
+                rho: 1.0 + 0.5 * (-(x - 0.5).powi(2) / 0.01).exp(),
+                u: 0.0,
+                p: 1.0,
+            }
         };
         let (_, w0) = solve_euler_1d(
             init,

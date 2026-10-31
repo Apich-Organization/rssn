@@ -223,25 +223,29 @@ fn constant_dimension(
     let factors: &[(&str, i64)] = match name {
         | "c_0" => &[("Length", 1), ("Time", -1)],
         | "hbar" | "h_planck" => &[("Length", 2), ("Mass", 1), ("Time", -1)],
-        | "k_B" => &[
-            ("Length", 2),
-            ("Mass", 1),
-            ("Time", -2),
-            ("Temperature", -1),
-        ],
+        | "k_B" => {
+            &[
+                ("Length", 2),
+                ("Mass", 1),
+                ("Time", -2),
+                ("Temperature", -1),
+            ]
+        },
         | "epsilon_0" => &[("Current", 2), ("Time", 4), ("Mass", -1), ("Length", -3)],
         | "mu_0" => &[("Mass", 1), ("Length", 1), ("Time", -2), ("Current", -2)],
         | "G_N" => &[("Length", 3), ("Mass", -1), ("Time", -2)],
         | "q_e" => &[("Current", 1), ("Time", 1)],
         | "m_e" | "m_p" => &[("Mass", 1)],
         | "N_A" => &[("Amount", -1)],
-        | "R_gas" => &[
-            ("Length", 2),
-            ("Mass", 1),
-            ("Time", -2),
-            ("Temperature", -1),
-            ("Amount", -1),
-        ],
+        | "R_gas" => {
+            &[
+                ("Length", 2),
+                ("Mass", 1),
+                ("Time", -2),
+                ("Temperature", -1),
+                ("Amount", -1),
+            ]
+        },
         | "sigma_SB" => &[("Mass", 1), ("Time", -3), ("Temperature", -4)],
         | "a_0" => &[("Length", 1)],
         | _ => return DimTerm::any(),
@@ -677,9 +681,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
-        rule: "physics".to_owned(),
-        reason: "needs the functional analysis rule set",
+    let algebra = op_algebra(i.graph()).ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "physics".to_owned(),
+            reason: "needs the functional analysis rule set",
+        }
     })?;
     let heavy = |name: &str, arity: u8| {
         OpDescriptor::new(name, Arity::Fixed(arity))
@@ -1217,9 +1223,11 @@ impl Kernel for Physics {
             },
             | Request::DiracEquation => dirac_equation(cx, &args),
             | Request::KleinGordon => klein_gordon(cx, &args),
-            | Request::Slash => vector(cx.graph, args[0])
-                .and_then(|p| slash(cx.graph, &p))
-                .map(|m| matrix_term(cx.graph, &m)),
+            | Request::Slash => {
+                vector(cx.graph, args[0])
+                    .and_then(|p| slash(cx.graph, &p))
+                    .map(|m| matrix_term(cx.graph, &m))
+            },
             | Request::DiracAdjoint => dirac_adjoint(cx, args[0]),
             | Request::MinkowskiDot => minkowski_dot(cx.graph, args[0], args[1]),
             | Request::ScalarLagrangian => scalar_lagrangian(cx, &args),

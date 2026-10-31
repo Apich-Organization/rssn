@@ -109,9 +109,11 @@ fn monomial(
         .iter()
         .enumerate()
         .filter(|&(_, &e)| e > 0)
-        .map(|(i, &e)| match e {
-            | 1 => vars.get(i).cloned().unwrap_or_default(),
-            | _ => format!("{}^{e}", vars.get(i).map_or("", String::as_str)),
+        .map(|(i, &e)| {
+            match e {
+                | 1 => vars.get(i).cloned().unwrap_or_default(),
+                | _ => format!("{}^{e}", vars.get(i).map_or("", String::as_str)),
+            }
         })
         .collect();
     if factors.is_empty() {

@@ -384,12 +384,15 @@ impl<'a> DimInfer<'a> {
             | DimRule::Any => DimTerm::any(),
             | DimRule::Same(index) => args.get(index).cloned().unwrap_or_else(DimTerm::any),
             | DimRule::Sum => self.sum(args, node),
-            | DimRule::Product => args
-                .iter()
-                .fold(DimTerm::dimensionless(), |acc, arg| acc.mul(arg)),
-            | DimRule::Quotient => match (args.first(), args.get(1)) {
-                | (Some(left), Some(right)) => left.mul(&right.inverse()),
-                | _ => DimTerm::any(),
+            | DimRule::Product => {
+                args.iter()
+                    .fold(DimTerm::dimensionless(), |acc, arg| acc.mul(arg))
+            },
+            | DimRule::Quotient => {
+                match (args.first(), args.get(1)) {
+                    | (Some(left), Some(right)) => left.mul(&right.inverse()),
+                    | _ => DimTerm::any(),
+                }
             },
             | DimRule::Power => self.power(node, children, args),
             | DimRule::Root(degree) => {
@@ -413,9 +416,11 @@ impl<'a> DimInfer<'a> {
                 DimTerm::dimensionless()
             },
             | DimRule::Inverse => args.first().map_or_else(DimTerm::any, DimTerm::inverse),
-            | DimRule::Square => args.first().map_or_else(DimTerm::any, |base| {
-                base.pow(&BigRational::from_integer(BigInt::from(2)))
-            }),
+            | DimRule::Square => {
+                args.first().map_or_else(DimTerm::any, |base| {
+                    base.pow(&BigRational::from_integer(BigInt::from(2)))
+                })
+            },
             | DimRule::List => self.list(args, node),
             | DimRule::Compare => {
                 self.compare(args, node);

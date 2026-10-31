@@ -49,24 +49,28 @@ fn gmres_iterations(
     b: &[f64],
 ) -> (usize, bool, f64) {
     let r = match amg {
-        | Some(m) => gmres(
-            |x, y| a.matvec(x, y),
-            |r, z| m.precondition(r, z),
-            b,
-            None,
-            60,
-            1e-9,
-            300,
-        ),
-        | None => gmres(
-            |x, y| a.matvec(x, y),
-            identity_precond,
-            b,
-            None,
-            60,
-            1e-9,
-            300,
-        ),
+        | Some(m) => {
+            gmres(
+                |x, y| a.matvec(x, y),
+                |r, z| m.precondition(r, z),
+                b,
+                None,
+                60,
+                1e-9,
+                300,
+            )
+        },
+        | None => {
+            gmres(
+                |x, y| a.matvec(x, y),
+                identity_precond,
+                b,
+                None,
+                60,
+                1e-9,
+                300,
+            )
+        },
     };
     let mut ax = vec![0.0; b.len()];
     a.matvec(&r.x, &mut ax);

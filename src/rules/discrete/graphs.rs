@@ -58,8 +58,6 @@
 //! `graph_canonical_form` / `graph_automorphisms` answer only when the search
 //! is exact, because a best-effort labelling is not a canonical one.
 
-#[cfg(test)]
-mod tests;
 
 use std::collections::VecDeque;
 

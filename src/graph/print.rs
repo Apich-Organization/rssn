@@ -36,24 +36,26 @@ impl Graph {
         if a == b {
             return Ordering::Equal;
         }
-        let rank = |n: NodeId| match self.payload(n) {
-            | Some(Payload::Num(_)) => 0_u8,
-            | Some(Payload::Bool(_)) => 1,
-            | Some(Payload::Str(_)) => 2,
-            | Some(Payload::Sym(_)) => 3,
-            | Some(Payload::Blob(_)) => 4,
-            | None => 5,
+        let rank = |n: NodeId| {
+            match self.payload(n) {
+                | Some(Payload::Num(_)) => 0_u8,
+                | Some(Payload::Bool(_)) => 1,
+                | Some(Payload::Str(_)) => 2,
+                | Some(Payload::Sym(_)) => 3,
+                | Some(Payload::Blob(_)) => 4,
+                | None => 5,
+            }
         };
-        rank(a)
-            .cmp(&rank(b))
-            .then_with(|| match (self.payload(a), self.payload(b)) {
+        rank(a).cmp(&rank(b)).then_with(|| {
+            match (self.payload(a), self.payload(b)) {
                 | (Some(Payload::Num(x)), Some(Payload::Num(y))) => x.total_cmp(y),
                 | (Some(Payload::Bool(x)), Some(Payload::Bool(y))) => x.cmp(y),
                 | (Some(Payload::Str(x)), Some(Payload::Str(y))) => x.cmp(y),
-                | (Some(Payload::Sym(x)), Some(Payload::Sym(y))) => self
-                    .interner()
-                    .symbol_name(*x)
-                    .cmp(self.interner().symbol_name(*y)),
+                | (Some(Payload::Sym(x)), Some(Payload::Sym(y))) => {
+                    self.interner()
+                        .symbol_name(*x)
+                        .cmp(self.interner().symbol_name(*y))
+                },
                 | (Some(_), Some(_)) => a.cmp(&b),
                 | _ => {
                     let (ca, cb) = (self.ordered_children(a), self.ordered_children(b));
@@ -70,7 +72,8 @@ impl Graph {
                         })
                         .then_with(|| ca.len().cmp(&cb.len()))
                 },
-            })
+            }
+        })
     }
 
     /// Children of `node` in canonical print order.
@@ -109,9 +112,11 @@ impl Graph {
         node: NodeId,
     ) -> (NodeId, f64) {
         match *self.children(node) {
-            | [base, exp] if self.op(node) == core::POW => match self.as_number(exp) {
-                | Some(n) => (base, n.to_f64()),
-                | None => (node, 1.0),
+            | [base, exp] if self.op(node) == core::POW => {
+                match self.as_number(exp) {
+                    | Some(n) => (base, n.to_f64()),
+                    | None => (node, 1.0),
+                }
             },
             | _ => (node, 1.0),
         }
@@ -218,9 +223,11 @@ impl Graph {
         match self.op(node) {
             | core::EQ => PREC_EQ,
             | core::ADD => PREC_ADD,
-            | core::MUL => match self.split_coefficient(node) {
-                | Some((c, _)) if c.is_negative() => PREC_ADD,
-                | _ => PREC_MUL,
+            | core::MUL => {
+                match self.split_coefficient(node) {
+                    | Some((c, _)) if c.is_negative() => PREC_ADD,
+                    | _ => PREC_MUL,
+                }
             },
             | core::POW => {
                 match self.children(node).get(1).and_then(|&e| self.as_number(e)) {
@@ -229,10 +236,12 @@ impl Graph {
                     | _ => PREC_POW,
                 }
             },
-            | core::LIT => match self.as_number(node) {
-                | Some(n) if n.is_negative() => PREC_ADD,
-                | Some(Number::Rat(_)) => PREC_MUL,
-                | _ => PREC_ATOM,
+            | core::LIT => {
+                match self.as_number(node) {
+                    | Some(n) if n.is_negative() => PREC_ADD,
+                    | Some(Number::Rat(_)) => PREC_MUL,
+                    | _ => PREC_ATOM,
+                }
             },
             | _ => PREC_ATOM,
         }
@@ -328,9 +337,11 @@ impl Graph {
         match (self.op(node), self.children(node)) {
             | (core::MUL, factors) => factors.iter().map(|&f| self.degree(f)).sum(),
             | (core::ADD, terms) => terms.iter().map(|&t| self.degree(t)).fold(0.0, f64::max),
-            | (core::POW, &[base, exp]) => match self.as_number(exp) {
-                | Some(n) => self.degree(base) * n.to_f64(),
-                | None => 1.0,
+            | (core::POW, &[base, exp]) => {
+                match self.as_number(exp) {
+                    | Some(n) => self.degree(base) * n.to_f64(),
+                    | None => 1.0,
+                }
             },
             | _ => 1.0,
         }
@@ -393,10 +404,11 @@ impl Graph {
         let mut denom: Vec<(NodeId, Number)> = Vec::new();
         for &factor in factors {
             let inverse = match *self.children(factor) {
-                | [base, exp] if self.op(factor) == core::POW => self
-                    .as_number(exp)
-                    .filter(|e| e.is_negative())
-                    .map(|e| (base, e.neg())),
+                | [base, exp] if self.op(factor) == core::POW => {
+                    self.as_number(exp)
+                        .filter(|e| e.is_negative())
+                        .map(|e| (base, e.neg()))
+                },
                 | _ => None,
             };
             match inverse {

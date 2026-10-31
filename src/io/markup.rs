@@ -309,35 +309,43 @@ impl<D: Dialect> Walker<'_, D> {
     ) -> String {
         let children = self.g.children(node);
         match self.g.op(node) {
-            | core::LIT => match self.g.payload(node) {
-                | Some(Payload::Num(n)) => self.number(n),
-                | Some(Payload::Bool(b)) => self
-                    .d
-                    .constant(if *b { "true" } else { "false" })
-                    .map_or_else(|| b.to_string(), str::to_owned),
-                | Some(Payload::Str(s)) => self.d.text(s),
-                | _ => "?".to_owned(),
+            | core::LIT => {
+                match self.g.payload(node) {
+                    | Some(Payload::Num(n)) => self.number(n),
+                    | Some(Payload::Bool(b)) => {
+                        self.d
+                            .constant(if *b { "true" } else { "false" })
+                            .map_or_else(|| b.to_string(), str::to_owned)
+                    },
+                    | Some(Payload::Str(s)) => self.d.text(s),
+                    | _ => "?".to_owned(),
+                }
             },
-            | core::SYM => self
-                .symbol_name(node)
-                .map_or_else(|| "?".to_owned(), |n| self.d.symbol(n)),
-            | core::EQ => match *children {
-                | [lhs, rhs] => {
-                    format!(
-                        "{} = {}",
-                        self.term(lhs, PREC_ADD),
-                        self.term(rhs, PREC_ADD)
-                    )
-                },
-                | _ => self.call(node),
+            | core::SYM => {
+                self.symbol_name(node)
+                    .map_or_else(|| "?".to_owned(), |n| self.d.symbol(n))
+            },
+            | core::EQ => {
+                match *children {
+                    | [lhs, rhs] => {
+                        format!(
+                            "{} = {}",
+                            self.term(lhs, PREC_ADD),
+                            self.term(rhs, PREC_ADD)
+                        )
+                    },
+                    | _ => self.call(node),
+                }
             },
             | core::ADD => self.sum(node),
-            | core::MUL => match self.g.split_coefficient(node) {
-                | Some((coeff, factors)) if coeff.is_negative() => {
-                    format!("-{}", self.product(&coeff.neg(), &factors))
-                },
-                | Some((coeff, factors)) => self.product(&coeff, &factors),
-                | None => self.product(&Number::from(1), &self.g.ordered_children(node)),
+            | core::MUL => {
+                match self.g.split_coefficient(node) {
+                    | Some((coeff, factors)) if coeff.is_negative() => {
+                        format!("-{}", self.product(&coeff.neg(), &factors))
+                    },
+                    | Some((coeff, factors)) => self.product(&coeff, &factors),
+                    | None => self.product(&Number::from(1), &self.g.ordered_children(node)),
+                }
             },
             | core::POW => {
                 if self.prec(node) == PREC_MUL {
@@ -349,15 +357,17 @@ impl<D: Dialect> Walker<'_, D> {
                 }
             },
             | core::LIST => self.list(children),
-            | core::APPLY => match children.split_first() {
-                | Some((&head, rest)) if self.symbol_name(head).is_some() => {
-                    format!(
-                        "{}({})",
-                        self.term(head, PREC_ATOM),
-                        self.args(rest).join(", ")
-                    )
-                },
-                | _ => self.call(node),
+            | core::APPLY => {
+                match children.split_first() {
+                    | Some((&head, rest)) if self.symbol_name(head).is_some() => {
+                        format!(
+                            "{}({})",
+                            self.term(head, PREC_ATOM),
+                            self.args(rest).join(", ")
+                        )
+                    },
+                    | _ => self.call(node),
+                }
             },
             | _ => self.named(node),
         }
@@ -407,9 +417,10 @@ impl<D: Dialect> Walker<'_, D> {
         }
         match (name, children) {
             | ("not", &[x]) => self.d.not(&self.term(x, PREC_NEG)),
-            | ("exp", &[x]) => self
-                .d
-                .pow(self.d.constant("E").unwrap_or("e"), &self.term(x, PREC_EQ)),
+            | ("exp", &[x]) => {
+                self.d
+                    .pow(self.d.constant("E").unwrap_or("e"), &self.term(x, PREC_EQ))
+            },
             | ("sqrt", &[x]) => self.d.sqrt(&self.term(x, PREC_EQ), None),
             | ("abs", &[x]) => self.d.abs(&self.term(x, PREC_EQ)),
             | ("conj", &[x]) => self.d.conj(&self.term(x, PREC_EQ)),
@@ -430,27 +441,33 @@ impl<D: Dialect> Walker<'_, D> {
                 self.d
                     .integral(&self.term(f, PREC_EQ), &self.term(x, PREC_EQ), None)
             },
-            | ("integral" | "defint", &[f, x, a, b]) => self.d.integral(
-                &self.term(f, PREC_EQ),
-                &self.term(x, PREC_EQ),
-                Some((&self.term(a, PREC_EQ), &self.term(b, PREC_EQ))),
-            ),
-            | ("sum" | "product", &[f, n, a, b]) => self.d.big_op(
-                if name == "sum" {
-                    BigOp::Sum
-                } else {
-                    BigOp::Product
-                },
-                &self.term(f, PREC_MUL),
-                &self.term(n, PREC_EQ),
-                &self.term(a, PREC_EQ),
-                &self.term(b, PREC_EQ),
-            ),
-            | ("limit", &[f, x, a, ..]) => self.d.limit(
-                &self.term(f, PREC_MUL),
-                &self.term(x, PREC_EQ),
-                &self.term(a, PREC_EQ),
-            ),
+            | ("integral" | "defint", &[f, x, a, b]) => {
+                self.d.integral(
+                    &self.term(f, PREC_EQ),
+                    &self.term(x, PREC_EQ),
+                    Some((&self.term(a, PREC_EQ), &self.term(b, PREC_EQ))),
+                )
+            },
+            | ("sum" | "product", &[f, n, a, b]) => {
+                self.d.big_op(
+                    if name == "sum" {
+                        BigOp::Sum
+                    } else {
+                        BigOp::Product
+                    },
+                    &self.term(f, PREC_MUL),
+                    &self.term(n, PREC_EQ),
+                    &self.term(a, PREC_EQ),
+                    &self.term(b, PREC_EQ),
+                )
+            },
+            | ("limit", &[f, x, a, ..]) => {
+                self.d.limit(
+                    &self.term(f, PREC_MUL),
+                    &self.term(x, PREC_EQ),
+                    &self.term(a, PREC_EQ),
+                )
+            },
             | _ => self.call(node),
         }
     }
@@ -472,9 +489,11 @@ impl<D: Dialect> Walker<'_, D> {
         loop {
             let (var, order, inner) = match (self.name(cur), self.g.children(cur)) {
                 | ("diff", &[f, x]) => (x, 1, f),
-                | ("diffn", &[f, x, n]) => match self.g.as_number(n).and_then(Number::to_i64) {
-                    | Some(k) if k >= 1 => (x, u32::try_from(k).unwrap_or(1), f),
-                    | _ => break,
+                | ("diffn", &[f, x, n]) => {
+                    match self.g.as_number(n).and_then(Number::to_i64) {
+                        | Some(k) if k >= 1 => (x, u32::try_from(k).unwrap_or(1), f),
+                        | _ => break,
+                    }
                 },
                 | _ => break,
             };
@@ -587,11 +606,12 @@ impl<D: Dialect> Walker<'_, D> {
         let mut inverses: Vec<(NodeId, Number)> = Vec::new();
         for &factor in factors {
             let inverse = match *self.g.children(factor) {
-                | [base, exp] if self.g.op(factor) == core::POW => self
-                    .g
-                    .as_number(exp)
-                    .filter(|e| e.is_negative())
-                    .map(|e| (base, e.neg())),
+                | [base, exp] if self.g.op(factor) == core::POW => {
+                    self.g
+                        .as_number(exp)
+                        .filter(|e| e.is_negative())
+                        .map(|e| (base, e.neg()))
+                },
                 | _ => None,
             };
             match inverse {

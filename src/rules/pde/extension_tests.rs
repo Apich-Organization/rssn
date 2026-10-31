@@ -1266,10 +1266,12 @@ fn coulomb_wave_functions_match_bessel_and_derivatives() {
     use crate::kernels::special_ext::coulomb_asymptotic;
     use crate::kernels::special_ext::coulomb_series;
     // η = 0: F_ℓ(0, ρ) = ρ j_ℓ(ρ).
-    let spherical = |l: usize, x: f64| match l {
-        | 0 => x.sin() / x,
-        | 1 => x.sin() / (x * x) - x.cos() / x,
-        | _ => (3.0 / (x * x) - 1.0) * x.sin() / x - 3.0 * x.cos() / (x * x),
+    let spherical = |l: usize, x: f64| {
+        match l {
+            | 0 => x.sin() / x,
+            | 1 => x.sin() / (x * x) - x.cos() / x,
+            | _ => (3.0 / (x * x) - 1.0) * x.sin() / x - 3.0 * x.cos() / (x * x),
+        }
     };
     for l in 0..=2_usize {
         for rho in [0.1_f64, 0.7, 2.0, 6.0, 15.0] {

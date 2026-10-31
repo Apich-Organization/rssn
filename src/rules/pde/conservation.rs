@@ -221,19 +221,21 @@ pub(super) fn conservation_laws(
         let zeroth = !crate::rules::ode::occurs_in(cx.graph, multiplier, ux)
             && !crate::rules::ode::occurs_in(cx.graph, multiplier, uxx);
         let law = match (evolution, zeroth) {
-            | (Some(g), true) => (|| {
-                let density = antiderivative(cx, multiplier, u0)?;
-                let density = cx.simplify(density);
-                let dt = derivative(cx.graph, density, t)?;
-                let product = mul(cx.graph, &[multiplier, g]);
-                let r = add(cx.graph, &[product, dt]);
-                let minus = cx.graph.int(-1);
-                let r = mul(cx.graph, &[minus, r]);
-                let r = cx.simplify(r);
-                let flux = invert_dx(cx, &mut jets, r, x_index)?;
-                Some(vec![multiplier, density, flux])
-            })()
-            .unwrap_or_else(|| vec![multiplier]),
+            | (Some(g), true) => {
+                (|| {
+                    let density = antiderivative(cx, multiplier, u0)?;
+                    let density = cx.simplify(density);
+                    let dt = derivative(cx.graph, density, t)?;
+                    let product = mul(cx.graph, &[multiplier, g]);
+                    let r = add(cx.graph, &[product, dt]);
+                    let minus = cx.graph.int(-1);
+                    let r = mul(cx.graph, &[minus, r]);
+                    let r = cx.simplify(r);
+                    let flux = invert_dx(cx, &mut jets, r, x_index)?;
+                    Some(vec![multiplier, density, flux])
+                })()
+                .unwrap_or_else(|| vec![multiplier])
+            },
             | _ => vec![multiplier],
         };
         // Back from jets to derivatives of u.

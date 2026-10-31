@@ -118,12 +118,14 @@ impl GPoly {
 
     fn monic(&self) -> Self {
         match self.leading() {
-            | Some((_, lead)) => Self {
-                terms: self
-                    .terms
-                    .iter()
-                    .map(|(m, c)| (m.clone(), c / lead))
-                    .collect(),
+            | Some((_, lead)) => {
+                Self {
+                    terms: self
+                        .terms
+                        .iter()
+                        .map(|(m, c)| (m.clone(), c / lead))
+                        .collect(),
+                }
             },
             | None => self.clone(),
         }
@@ -148,25 +150,27 @@ impl GPoly {
         let mut pending = other.terms.first().map(shifted);
         loop {
             match (self.terms.get(i), &pending) {
-                | (Some(a), Some(b)) => match order.cmp(&a.0, &b.0) {
-                    | Ordering::Greater => {
-                        out.push(a.clone());
-                        i += 1;
-                    },
-                    | Ordering::Less => {
-                        out.push(b.clone());
-                        j += 1;
-                        pending = other.terms.get(j).map(shifted);
-                    },
-                    | Ordering::Equal => {
-                        let sum = &a.1 + &b.1;
-                        if !sum.is_zero() {
-                            out.push((a.0.clone(), sum));
-                        }
-                        i += 1;
-                        j += 1;
-                        pending = other.terms.get(j).map(shifted);
-                    },
+                | (Some(a), Some(b)) => {
+                    match order.cmp(&a.0, &b.0) {
+                        | Ordering::Greater => {
+                            out.push(a.clone());
+                            i += 1;
+                        },
+                        | Ordering::Less => {
+                            out.push(b.clone());
+                            j += 1;
+                            pending = other.terms.get(j).map(shifted);
+                        },
+                        | Ordering::Equal => {
+                            let sum = &a.1 + &b.1;
+                            if !sum.is_zero() {
+                                out.push((a.0.clone(), sum));
+                            }
+                            i += 1;
+                            j += 1;
+                            pending = other.terms.get(j).map(shifted);
+                        },
+                    }
                 },
                 | (Some(a), None) => {
                     out.push(a.clone());
@@ -299,9 +303,11 @@ pub fn groebner(
             // Normal strategy: the pair whose leading monomials have the
             // smallest least common multiple.
             let pick = (0..pairs.len()).min_by(|&a, &b| {
-                let key = |(i, j): (usize, usize)| match (basis[i].leading(), basis[j].leading()) {
-                    | (Some((x, _)), Some((y, _))) => lcm(x, y),
-                    | _ => Vec::new(),
+                let key = |(i, j): (usize, usize)| {
+                    match (basis[i].leading(), basis[j].leading()) {
+                        | (Some((x, _)), Some((y, _))) => lcm(x, y),
+                        | _ => Vec::new(),
+                    }
                 };
                 order.cmp(&key(pairs[a]), &key(pairs[b]))
             })?;
@@ -403,9 +409,11 @@ pub fn groebner(
             .collect();
         reduced.push(reduce(g, &others, order).monic());
     }
-    reduced.sort_by(|a, b| match (a.leading(), b.leading()) {
-        | (Some((x, _)), Some((y, _))) => order.cmp(x, y),
-        | _ => Ordering::Equal,
+    reduced.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((x, _)), Some((y, _))) => order.cmp(x, y),
+            | _ => Ordering::Equal,
+        }
     });
     Some(reduced)
 }
@@ -584,9 +592,11 @@ pub fn fglm(
             new_leads.push(monomial);
         }
     }
-    result.sort_by(|a, b| match (a.leading(), b.leading()) {
-        | (Some((x, _)), Some((y, _))) => to.cmp(x, y),
-        | _ => Ordering::Equal,
+    result.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((x, _)), Some((y, _))) => to.cmp(x, y),
+            | _ => Ordering::Equal,
+        }
     });
     Some(result)
 }

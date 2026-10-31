@@ -10,8 +10,10 @@
 //! [`crate::rules`] and talk to the kernel only through operators registered
 //! in the [`OpTable`] and rules grouped into rule sets.
 
-pub mod eval;
 pub mod dim;
+pub(crate) mod dim_expr;
+pub(crate) mod dim_infer;
+pub mod eval;
 pub mod extract;
 pub mod facts;
 pub mod id;
@@ -29,7 +31,6 @@ pub mod store;
 pub mod subst;
 pub mod window;
 
-pub use eval::ComplexEval;
 pub use dim::BaseId;
 pub use dim::DimError;
 pub use dim::DimOutcome;
@@ -41,6 +42,7 @@ pub use dim::DimensionMode;
 pub use dim::UnitInfo;
 pub use dim::UnitResolver;
 pub use dim::UnitTextResolver;
+pub use eval::ComplexEval;
 pub use extract::ClosedForm;
 pub use extract::CostModel;
 pub use extract::Extractor;

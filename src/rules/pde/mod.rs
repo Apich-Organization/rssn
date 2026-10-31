@@ -690,17 +690,23 @@ impl Kernel for Pde {
                 };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
             },
-            | Request::HodographSolution => match args.as_slice() {
-                | &[f, g] => Outcome::Pinned(nonlinear::hodograph_solution(cx, f, g)),
-                | &[f, g, lambda, mu] => nonlinear::hodograph_decoupled(cx, f, g, lambda, mu)
-                    .map_or(Outcome::Pass, Outcome::Pinned),
-                | _ => Outcome::Pass,
+            | Request::HodographSolution => {
+                match args.as_slice() {
+                    | &[f, g] => Outcome::Pinned(nonlinear::hodograph_solution(cx, f, g)),
+                    | &[f, g, lambda, mu] => {
+                        nonlinear::hodograph_decoupled(cx, f, g, lambda, mu)
+                            .map_or(Outcome::Pass, Outcome::Pinned)
+                    },
+                    | _ => Outcome::Pass,
+                }
             },
-            | Request::HodographRiemann => match args.as_slice() {
-                | &[n] => {
-                    nonlinear::hodograph_riemann(cx, n).map_or(Outcome::Pass, Outcome::Pinned)
-                },
-                | _ => Outcome::Pass,
+            | Request::HodographRiemann => {
+                match args.as_slice() {
+                    | &[n] => {
+                        nonlinear::hodograph_riemann(cx, n).map_or(Outcome::Pass, Outcome::Pinned)
+                    },
+                    | _ => Outcome::Pass,
+                }
             },
             | Request::CrumKdv | Request::GreensRobin | Request::GreensBallRobin => {
                 let &[first, second] = args.as_slice() else {
@@ -716,10 +722,12 @@ impl Kernel for Pde {
                         let psis = cx.graph.children(list).to_vec();
                         nonlinear::crum_kdv(cx, first, &psis)
                     },
-                    | Request::GreensRobin => match modes::exact_value(cx, first) {
-                        #[allow(clippy::cast_possible_truncation)]
-                        | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),
-                        | None => None,
+                    | Request::GreensRobin => {
+                        match modes::exact_value(cx, first) {
+                            #[allow(clippy::cast_possible_truncation)]
+                            | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),
+                            | None => None,
+                        }
                     },
                     | _ => poisson::greens_ball_robin(cx, first, second),
                 };
@@ -822,9 +830,11 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 let conditions = match conditions {
-                    | Some(c) => match Conditions::parse(cx, &problem, c) {
-                        | Some(c) => c,
-                        | None => return Outcome::Pass,
+                    | Some(c) => {
+                        match Conditions::parse(cx, &problem, c) {
+                            | Some(c) => c,
+                            | None => return Outcome::Pass,
+                        }
                     },
                     | None => Conditions::default(),
                 };
@@ -855,9 +865,11 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 let conditions = match conditions {
-                    | Some(c) => match Conditions::parse(cx, &problem, c) {
-                        | Some(c) => c,
-                        | None => return Outcome::Pass,
+                    | Some(c) => {
+                        match Conditions::parse(cx, &problem, c) {
+                            | Some(c) => c,
+                            | None => return Outcome::Pass,
+                        }
                     },
                     | None => Conditions::default(),
                 };
@@ -1139,9 +1151,11 @@ impl Problem {
             let term = Poly::monomial(rest, coeff.clone());
             match (jet, degree) {
                 | (None, _) => source = source.add(&term),
-                | (Some(index), 1) => match linear.iter_mut().find(|(i, _)| *i == index) {
-                    | Some((_, c)) => *c = c.add(&term),
-                    | None => linear.push((index, term)),
+                | (Some(index), 1) => {
+                    match linear.iter_mut().find(|(i, _)| *i == index) {
+                        | Some((_, c)) => *c = c.add(&term),
+                        | None => linear.push((index, term)),
+                    }
                 },
                 | _ => self.nonlinear = true,
             }
@@ -1702,29 +1716,35 @@ fn classify_term(
     let methods: &[&str] = match kind {
         | "transport" => &["characteristics"],
         | "burgers" => &["characteristics", "hopf_cole"],
-        | "heat" => &[
-            "separation_of_variables",
-            "fourier_transform",
-            "heat_kernel",
-            "images",
-        ],
-        | "wave" => &[
-            "dalembert",
-            "separation_of_variables",
-            "kirchhoff",
-            "descent",
-            "images",
-        ],
+        | "heat" => {
+            &[
+                "separation_of_variables",
+                "fourier_transform",
+                "heat_kernel",
+                "images",
+            ]
+        },
+        | "wave" => {
+            &[
+                "dalembert",
+                "separation_of_variables",
+                "kirchhoff",
+                "descent",
+                "images",
+            ]
+        },
         | "laplace" => &["separation_of_variables", "greens_function", "images"],
         | "poisson" | "helmholtz" => &["greens_function", "separation_of_variables", "images"],
         | "schrodinger" => &["fourier_transform", "separation_of_variables"],
         | "klein_gordon" => &["plane_waves", "separation_of_variables", "riemann"],
         | "telegraph" => &["separation_of_variables", "riemann"],
-        | "advection_diffusion" => &[
-            "gauge_transformation",
-            "heat_kernel",
-            "separation_of_variables",
-        ],
+        | "advection_diffusion" => {
+            &[
+                "gauge_transformation",
+                "heat_kernel",
+                "separation_of_variables",
+            ]
+        },
         | "beam" | "biharmonic" => &["separation_of_variables"],
         | _ => &[],
     };
@@ -3032,10 +3052,12 @@ fn assemble(
     let general_vanishes = cx.graph.number_of(general).is_some_and(Number::is_zero);
     let (mut terms, start) = match last_exceptional {
         | None => (Vec::new(), first),
-        | Some(m) => (
-            explicit[..=usize::try_from(m - first).ok()?].to_vec(),
-            m + 1,
-        ),
+        | Some(m) => {
+            (
+                explicit[..=usize::try_from(m - first).ok()?].to_vec(),
+                m + 1,
+            )
+        },
     };
     if !general_vanishes {
         let start = cx.graph.int(start);

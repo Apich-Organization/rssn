@@ -49,9 +49,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     };
     let series = i.op(OpDescriptor::new("chebyshev_series", Arity::Variadic)
         .cost(4)
-        .eval(|a| match a.split_first() {
-            | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
-            | _ => f64::NAN,
+        .eval(|a| {
+            match a.split_first() {
+                | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
+                | _ => f64::NAN,
+            }
         }))?;
     // A Chebyshev series is a polynomial in its dimensionless variable.
     i.dim(series, DimRule::Dimensionless);

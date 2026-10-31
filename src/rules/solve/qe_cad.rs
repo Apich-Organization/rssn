@@ -11,7 +11,7 @@
 //! Lifting evaluates the projection polynomials at an exact algebraic
 //! sample point of the lower-dimensional cell, isolates the real roots of
 //! the resulting one-variable polynomial over the sample point's number
-//! field (see [`super::field`]), and builds one section cell on every root
+//! field (see [`super::qe_field`]), and builds one section cell on every root
 //! and one sector cell between consecutive roots (and outside the first and
 //! last one). Sectors are sampled at rational points, which keeps the field
 //! degree as small as possible. Every sample point is exact: its coordinates
@@ -44,15 +44,15 @@ use crate::graph::Number;
 use crate::rules::poly::multifactor;
 use crate::rules::poly::repr::Poly as ReprPoly;
 
-use super::field::Elem;
-use super::field::Field;
-use super::field::f_degree;
-use super::field::f_divrem;
-use super::field::f_gcd;
-use super::field::f_isolate;
-use super::field::f_mul;
-use super::field::f_square_free;
-use super::poly::MPoly;
+use super::qe_field::Elem;
+use super::qe_field::Field;
+use super::qe_field::f_degree;
+use super::qe_field::f_divrem;
+use super::qe_field::f_gcd;
+use super::qe_field::f_isolate;
+use super::qe_field::f_mul;
+use super::qe_field::f_square_free;
+use super::qe_poly::MPoly;
 
 /// Resource limits of a decomposition.
 #[derive(Clone, Debug)]
@@ -552,7 +552,7 @@ impl Lift<'_> {
                 });
             } else {
                 let extension =
-                    super::field::extend(&mut work, &product, &(lo.clone(), hi.clone()))?;
+                    super::qe_field::extend(&mut work, &product, &(lo.clone(), hi.clone()))?;
                 if extension.field.degree() > self.limits.field_degree {
                     return None;
                 }
@@ -768,7 +768,7 @@ mod tests {
         let mut has_negative = false;
         let mut has_positive = false;
         for q in projected.iter().filter_map(|p| p.univariate_in(0)) {
-            for (lo, hi) in crate::rules::solve::qe::alg::isolate_roots(&q) {
+            for (lo, hi) in crate::rules::solve::qe_alg::isolate_roots(&q) {
                 let middle = (lo + hi) / BigRational::from_integer(BigInt::from(2));
                 if middle.is_negative() {
                     has_negative = true;

@@ -747,10 +747,11 @@ fn operands(
         | Inst::Cmp(_, a, b)
         | Inst::Extern2(_, a, b) => vec![a, b],
         | Inst::Select(c, a, b) => vec![c, a, b],
-        | Inst::Call(_, start, len) => args
-            .get(start as usize..(start as usize).saturating_add(len as usize))
-            .unwrap_or(&[])
-            .to_vec(),
+        | Inst::Call(_, start, len) => {
+            args.get(start as usize..(start as usize).saturating_add(len as usize))
+                .unwrap_or(&[])
+                .to_vec()
+        },
     }
 }
 
@@ -1450,13 +1451,17 @@ impl Scalar for Interval {
             | Intrinsic::Sinh => self.monotone(f64::sinh, true),
             | Intrinsic::Tanh => self.monotone(f64::tanh, true),
             | Intrinsic::Asinh => self.monotone(f64::asinh, true),
-            | Intrinsic::Floor => Self {
-                lo: self.lo.floor(),
-                hi: self.hi.floor(),
+            | Intrinsic::Floor => {
+                Self {
+                    lo: self.lo.floor(),
+                    hi: self.hi.floor(),
+                }
             },
-            | Intrinsic::Ceil => Self {
-                lo: self.lo.ceil(),
-                hi: self.hi.ceil(),
+            | Intrinsic::Ceil => {
+                Self {
+                    lo: self.lo.ceil(),
+                    hi: self.hi.ceil(),
+                }
             },
             | Intrinsic::Asin if self.lo >= -1.0 && self.hi <= 1.0 => {
                 self.monotone(f64::asin, true)

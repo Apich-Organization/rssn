@@ -181,11 +181,13 @@ fn comparison_set(
     kind: usize,
 ) -> Option<Set> {
     let symbol = graph.symbol_of(x)?;
-    let holds = |v: f64| match kind {
-        | 0 => v < 0.0,
-        | 1 => v <= 1e-12,
-        | 2 => v > 0.0,
-        | _ => v >= -1e-12,
+    let holds = |v: f64| {
+        match kind {
+            | 0 => v < 0.0,
+            | 1 => v <= 1e-12,
+            | 2 => v > 0.0,
+            | _ => v >= -1e-12,
+        }
     };
     let strict = kind == 0 || kind == 2;
     let eval_at = |graph: &Graph, at: f64| -> Option<f64> {

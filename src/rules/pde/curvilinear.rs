@@ -746,11 +746,13 @@ fn solve_layout(
     } else {
         2
     };
-    let time = time_index.map(|t| Time {
-        var: p.vars[t],
-        order,
-        a2,
-        a1,
+    let time = time_index.map(|t| {
+        Time {
+            var: p.vars[t],
+            order,
+            a2,
+            a1,
+        }
     });
     // Axes in the order azimuth, angle, radius, axis.
     let mut axes = Vec::new();

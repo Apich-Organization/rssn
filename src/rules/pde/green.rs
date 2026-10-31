@@ -97,10 +97,12 @@ pub(super) fn greens_function(
         return None;
     }
     let (a1, a2) = match time {
-        | Some(t) => (
-            p.coefficient(cx.graph, &p.unit(t, 1)),
-            p.coefficient(cx.graph, &p.unit(t, 2)),
-        ),
+        | Some(t) => {
+            (
+                p.coefficient(cx.graph, &p.unit(t, 1)),
+                p.coefficient(cx.graph, &p.unit(t, 2)),
+            )
+        },
         | None => (cx.graph.int(0), cx.graph.int(0)),
     };
     for (index, c) in &p.linear {

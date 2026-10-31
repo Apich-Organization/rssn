@@ -90,6 +90,8 @@ pub mod radicals;
 pub mod rewriting;
 pub mod solve;
 pub mod special;
+mod special_approx;
+mod special_meijer;
 pub mod stats;
 #[cfg(test)]
 pub(crate) mod testing;

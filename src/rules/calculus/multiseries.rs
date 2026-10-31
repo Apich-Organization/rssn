@@ -836,15 +836,19 @@ fn expand(
         let &(variable, _) = request.variables.get(index)?;
         let &point = request.points.get(index)?;
         bases.push(match point {
-            | Point::Finite(a) => Base {
-                node: offset(cx.graph, variable, a).unwrap_or(variable),
-                reciprocal: false,
-                signed: false,
+            | Point::Finite(a) => {
+                Base {
+                    node: offset(cx.graph, variable, a).unwrap_or(variable),
+                    reciprocal: false,
+                    signed: false,
+                }
             },
-            | Point::PositiveInfinity | Point::NegativeInfinity => Base {
-                node: variable,
-                reciprocal: true,
-                signed: matches!(point, Point::NegativeInfinity),
+            | Point::PositiveInfinity | Point::NegativeInfinity => {
+                Base {
+                    node: variable,
+                    reciprocal: true,
+                    signed: matches!(point, Point::NegativeInfinity),
+                }
             },
         });
     }

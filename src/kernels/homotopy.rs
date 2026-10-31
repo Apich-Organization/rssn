@@ -635,12 +635,14 @@ fn run_path<F: Field>(
     opts: &HomotopyOptions,
     max_step: f64,
 ) -> Ended<F> {
-    let failed = |x: &[F]| Ended {
-        x: x.to_vec(),
-        winding: 1,
-        converged: false,
-        cond_ok: false,
-        tally: StepTally::default(),
+    let failed = |x: &[F]| {
+        Ended {
+            x: x.to_vec(),
+            winding: 1,
+            converged: false,
+            cond_ok: false,
+            tally: StepTally::default(),
+        }
     };
     let s0 = opts.endgame_start.clamp(1e-3, 0.5);
     let mut tally = StepTally::default();
@@ -770,12 +772,14 @@ fn run_path<F: Field>(
         }
     }
     match best {
-        | Some((est, w)) => Ended {
-            x: est,
-            winding: w,
-            converged: false,
-            cond_ok: false,
-            tally,
+        | Some((est, w)) => {
+            Ended {
+                x: est,
+                winding: w,
+                converged: false,
+                cond_ok: false,
+                tally,
+            }
         },
         | None => failed(&x),
     }

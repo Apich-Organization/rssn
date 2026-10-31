@@ -68,7 +68,9 @@
 //! reference values and the formulation.
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{self};
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::jacobian::Factor;
 use crate::kernels::jacobian::FdMode;
 use crate::kernels::jacobian::Jac;
@@ -582,10 +584,12 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
         tabs.push(RadauTab::new(s).ok_or(OdeError::SolveFailed)?);
     }
     let tab_index = |s: usize| (s - 3) / 2;
-    let maxit_of = |s: usize| match s {
-        | 3 => 7,
-        | 5 => 10,
-        | _ => 12,
+    let maxit_of = |s: usize| {
+        match s {
+            | 3 => 7,
+            | 5 => 10,
+            | _ => 12,
+        }
     };
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);

@@ -47,7 +47,7 @@ use crate::rules::poly::univariate::QPoly;
 use super::diff::Differentiate;
 
 #[path = "integrate_ext.rs"]
-mod ext;
+mod integrate_ext;
 
 /// Operators the integrator builds results from.
 #[derive(Copy, Clone, Debug)]
@@ -777,14 +777,16 @@ impl Integrator<'_, '_> {
                 c.pop();
             }
             match c.as_slice() {
-                | [c0, b, a] => (|| {
-                    let four_ac = a.mul(c0, 4096)?.scale(&Number::from(4));
-                    let delta = four_ac.sub(&b.mul(b, 4096)?);
-                    if let Some(r) = poly_sqrt(&delta) {
-                        return Some((1, to_term(self.cx.graph, &gens, &r)));
-                    }
-                    poly_sqrt(&delta.neg()).map(|r| (-1, to_term(self.cx.graph, &gens, &r)))
-                })(),
+                | [c0, b, a] => {
+                    (|| {
+                        let four_ac = a.mul(c0, 4096)?.scale(&Number::from(4));
+                        let delta = four_ac.sub(&b.mul(b, 4096)?);
+                        if let Some(r) = poly_sqrt(&delta) {
+                            return Some((1, to_term(self.cx.graph, &gens, &r)));
+                        }
+                        poly_sqrt(&delta.neg()).map(|r| (-1, to_term(self.cx.graph, &gens, &r)))
+                    })()
+                },
                 | _ => None,
             }
         };
@@ -1399,11 +1401,13 @@ impl Integrator<'_, '_> {
             return Some(1);
         }
         match *graph.children(factor) {
-            | [base, exp] if op == core::POW && base == self.x => graph
-                .number_of(exp)
-                .and_then(Number::to_i64)
-                .filter(|&n| n > 0)
-                .map(|_| 1),
+            | [base, exp] if op == core::POW && base == self.x => {
+                graph
+                    .number_of(exp)
+                    .and_then(Number::to_i64)
+                    .filter(|&n| n > 0)
+                    .map(|_| 1)
+            },
             | _ => None,
         }
     }
@@ -2009,23 +2013,25 @@ impl Kernel for Definite {
         // Rational and Fourier-type integrals over the whole line: residues.
         if lower_infinite
             && upper_infinite
-            && let Some(value) = ext::by_residues(cx, integrand, variable, lower, upper)
+            && let Some(value) = integrate_ext::by_residues(cx, integrand, variable, lower, upper)
         {
             return Outcome::Equal(value);
         }
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
             // No antiderivative: residues and classical tables.
-            return ext::by_residues(cx, integrand, variable, lower, upper)
+            return integrate_ext::by_residues(cx, integrand, variable, lower, upper)
                 .map_or(Outcome::Pass, Outcome::Equal);
         };
         let graph = &mut *cx.graph;
         // An improper integral is the difference of the antiderivative's
         // limits at the infinite ends.
         let limit = graph.ops().lookup("limit");
-        let at = |graph: &mut Graph, bound: NodeId, is_infinite: bool| match (is_infinite, limit) {
-            | (true, Some(limit)) => Some(graph.node(limit, &[primitive, variable, bound])),
-            | (true, None) => None,
-            | (false, _) => Some(graph.substitute(primitive, variable, bound)),
+        let at = |graph: &mut Graph, bound: NodeId, is_infinite: bool| {
+            match (is_infinite, limit) {
+                | (true, Some(limit)) => Some(graph.node(limit, &[primitive, variable, bound])),
+                | (true, None) => None,
+                | (false, _) => Some(graph.substitute(primitive, variable, bound)),
+            }
         };
         let (Some(at_upper), Some(at_lower)) = (
             at(graph, upper, upper_infinite),

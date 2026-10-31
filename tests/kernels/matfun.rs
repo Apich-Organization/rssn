@@ -1,7 +1,9 @@
 //! Tests for expm, sqrtm, logm, phi functions and exp(tA) v.
 
 use rssn::kernels::dense::Mat;
-use rssn::kernels::dense::{self};
+use rssn::kernels::dense::{
+    self,
+};
 use rssn::kernels::krylov::Csr;
 use rssn::kernels::matfun::expm;
 use rssn::kernels::matfun::expm_krylov;

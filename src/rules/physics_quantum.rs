@@ -223,14 +223,18 @@ impl Kernel for Quantum {
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
         let result = match self.request {
-            | Request::ClebschGordan => rationals(cx.graph, &args).and_then(|v| {
-                let c = clebsch_gordan(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
-                Some(signed_root(cx.graph, &c))
-            }),
-            | Request::Wigner3j => rationals(cx.graph, &args).and_then(|v| {
-                let c = wigner_3j(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
-                Some(signed_root(cx.graph, &c))
-            }),
+            | Request::ClebschGordan => {
+                rationals(cx.graph, &args).and_then(|v| {
+                    let c = clebsch_gordan(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
+                    Some(signed_root(cx.graph, &c))
+                })
+            },
+            | Request::Wigner3j => {
+                rationals(cx.graph, &args).and_then(|v| {
+                    let c = wigner_3j(&v[0], &v[1], &v[2], &v[3], &v[4], &v[5])?;
+                    Some(signed_root(cx.graph, &c))
+                })
+            },
             | Request::SphericalHarmonic => spherical_harmonic(cx, &args),
             | Request::HydrogenRadial => hydrogen_radial(cx, &args),
             | Request::SecondOrder => second_order(cx, &args),

@@ -615,11 +615,13 @@ fn lower_hull(support: &[(i64, i64)]) -> Vec<Segment> {
         hull.push(p);
     }
     hull.windows(2)
-        .map(|w| Segment {
-            i0: w[0].0,
-            j0: w[0].1,
-            i1: w[1].0,
-            j1: w[1].1,
+        .map(|w| {
+            Segment {
+                i0: w[0].0,
+                j0: w[0].1,
+                i1: w[1].0,
+                j1: w[1].1,
+            }
         })
         .collect()
 }

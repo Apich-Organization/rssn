@@ -409,9 +409,11 @@ fn normal_form_series(
     let shifted = |v: &[Q], by: i64| -> Vec<Q> {
         let by = usize::try_from(by).ok();
         match by {
-            | Some(b) => std::iter::repeat_n(Q::zero(), b)
-                .chain(v.iter().cloned())
-                .collect(),
+            | Some(b) => {
+                std::iter::repeat_n(Q::zero(), b)
+                    .chain(v.iter().cloned())
+                    .collect()
+            },
             | None => Vec::new(),
         }
     };
@@ -984,16 +986,18 @@ fn formal_series(
     // Rational roots of the leading polynomial.
     let roots: Vec<Q> = match leading.as_slice() {
         | [c0, c1] => vec![-c0 / c1],
-        | [c0, c1, c2] => match rational_sqrt(&(c1 * c1 - q(4) * c0 * c2)) {
-            | Some(s) => {
-                let (r1, r2) = ((-c1 + &s) / (q(2) * c2), (-c1 - &s) / (q(2) * c2));
-                if r1 == r2 {
-                    vec![r1]
-                } else {
-                    vec![r1, r2]
-                }
-            },
-            | None => Vec::new(),
+        | [c0, c1, c2] => {
+            match rational_sqrt(&(c1 * c1 - q(4) * c0 * c2)) {
+                | Some(s) => {
+                    let (r1, r2) = ((-c1 + &s) / (q(2) * c2), (-c1 - &s) / (q(2) * c2));
+                    if r1 == r2 {
+                        vec![r1]
+                    } else {
+                        vec![r1, r2]
+                    }
+                },
+                | None => Vec::new(),
+            }
         },
         | _ => Vec::new(),
     };

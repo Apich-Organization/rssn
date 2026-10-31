@@ -484,10 +484,12 @@ impl Limiter<'_, '_> {
         let mut denom = Vec::new();
         for factor in &factors {
             let reciprocal = match *graph.children(*factor) {
-                | [base, exp] if graph.op(*factor) == core::POW => graph
-                    .number_of(exp)
-                    .filter(|n| n.is_negative())
-                    .map(|n| (base, n.neg())),
+                | [base, exp] if graph.op(*factor) == core::POW => {
+                    graph
+                        .number_of(exp)
+                        .filter(|n| n.is_negative())
+                        .map(|n| (base, n.neg()))
+                },
                 | _ => None,
             };
             match reciprocal {
@@ -502,10 +504,12 @@ impl Limiter<'_, '_> {
                 | None => numer.push(*factor),
             }
         }
-        let build = |graph: &mut Graph, parts: &[NodeId]| match parts {
-            | [] => graph.int(1),
-            | [only] => *only,
-            | _ => graph.node(core::MUL, parts),
+        let build = |graph: &mut Graph, parts: &[NodeId]| {
+            match parts {
+                | [] => graph.int(1),
+                | [only] => *only,
+                | _ => graph.node(core::MUL, parts),
+            }
         };
         if !denom.is_empty() {
             return Some((build(graph, &numer), build(graph, &denom)));
@@ -536,11 +540,13 @@ impl Limiter<'_, '_> {
         let graph = &mut *self.cx.graph;
         let (index, _) = match decaying {
             | Some(k) => (k, 0),
-            | None => numer
-                .iter()
-                .enumerate()
-                .map(|(k, &n)| (k, size(graph, n)))
-                .min_by_key(|&(_, s)| s)?,
+            | None => {
+                numer
+                    .iter()
+                    .enumerate()
+                    .map(|(k, &n)| (k, size(graph, n)))
+                    .min_by_key(|&(_, s)| s)?
+            },
         };
         let simplest = *numer.get(index)?;
         let rest: Vec<NodeId> = numer
@@ -578,10 +584,12 @@ impl Limiter<'_, '_> {
                     Some(self.cx.simplify(quotient))
                 },
                 | (Probe::Finite(_), p) if diverging(p) => Some(self.cx.graph.int(0)),
-                | _ => match self.probe(f) {
-                    | Probe::PlusInfinity => Some(self.infinite(true)),
-                    | Probe::MinusInfinity => Some(self.infinite(false)),
-                    | _ => None,
+                | _ => {
+                    match self.probe(f) {
+                        | Probe::PlusInfinity => Some(self.infinite(true)),
+                        | Probe::MinusInfinity => Some(self.infinite(false)),
+                        | _ => None,
+                    }
                 },
             };
         }
@@ -775,10 +783,12 @@ impl Kernel for NumericLimit {
             return Outcome::Pass;
         };
         match probe(graph, term, symbol, target, side, cx.env) {
-            | Probe::Finite(value) => Outcome::Approx(Ball {
-                mid: value,
-                rad: 1e-6 * (1.0 + value.abs()),
-            }),
+            | Probe::Finite(value) => {
+                Outcome::Approx(Ball {
+                    mid: value,
+                    rad: 1e-6 * (1.0 + value.abs()),
+                })
+            },
             | _ => Outcome::Pass,
         }
     }

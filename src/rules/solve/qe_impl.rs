@@ -41,17 +41,17 @@ use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits as ReprLimits;
 use crate::rules::poly::repr::from_term;
 
-use super::cad;
-use super::cad::CadLimits;
-use super::cad::ParamCell;
-use super::field::Elem;
-use super::field::Field;
-use super::formula::Atom;
-use super::formula::Cmp;
-use super::formula::Formula;
-use super::formula::Parsed;
-use super::formula::repr_to_mpoly;
-use super::poly::MPoly;
+use super::qe_cad as cad;
+use super::qe_cad::CadLimits;
+use super::qe_cad::ParamCell;
+use super::qe_field::Elem;
+use super::qe_field::Field;
+use super::qe_formula::Atom;
+use super::qe_formula::Cmp;
+use super::qe_formula::Formula;
+use super::qe_formula::Parsed;
+use super::qe_formula::repr_to_mpoly;
+use super::qe_poly::MPoly;
 
 /// Most rational assignments used by the independent verification.
 const MAX_SAMPLES: usize = 28;
@@ -95,10 +95,12 @@ fn remap(
 ) -> Formula {
     match formula {
         | Formula::Truth(value) => Formula::Truth(*value),
-        | Formula::Atom(atom) => Formula::Atom(Atom {
-            cmp: atom.cmp,
-            poly: atom.poly.renamed(map),
-        }),
+        | Formula::Atom(atom) => {
+            Formula::Atom(Atom {
+                cmp: atom.cmp,
+                poly: atom.poly.renamed(map),
+            })
+        },
         | Formula::Not(x) => Formula::Not(Box::new(remap(x, map))),
         | Formula::And(xs) => Formula::And(xs.iter().map(|x| remap(x, map)).collect()),
         | Formula::Or(xs) => Formula::Or(xs.iter().map(|x| remap(x, map)).collect()),
@@ -114,10 +116,12 @@ fn specialize(
 ) -> Formula {
     match formula {
         | Formula::Truth(value) => Formula::Truth(*value),
-        | Formula::Atom(atom) => Formula::Atom(Atom {
-            cmp: atom.cmp,
-            poly: atom.poly.substitute_rational(values),
-        }),
+        | Formula::Atom(atom) => {
+            Formula::Atom(Atom {
+                cmp: atom.cmp,
+                poly: atom.poly.substitute_rational(values),
+            })
+        },
         | Formula::Not(x) => Formula::Not(Box::new(specialize(x, values))),
         | Formula::And(xs) => Formula::And(xs.iter().map(|x| specialize(x, values)).collect()),
         | Formula::Or(xs) => Formula::Or(xs.iter().map(|x| specialize(x, values)).collect()),
@@ -132,9 +136,11 @@ fn truth_function<'a>(
     polys: &'a [MPoly],
 ) -> impl Fn(&[i32]) -> bool + 'a {
     move |signs: &[i32]| {
-        formula.truth_with(&|p: &MPoly| match polys.binary_search(p) {
-            | Ok(index) => signs.get(index).copied().unwrap_or(0),
-            | Err(_) => 0,
+        formula.truth_with(&|p: &MPoly| {
+            match polys.binary_search(p) {
+                | Ok(index) => signs.get(index).copied().unwrap_or(0),
+                | Err(_) => 0,
+            }
         })
     }
 }
@@ -250,13 +256,13 @@ fn matches(
     cube: &Cube,
     signs: &[i32],
 ) -> bool {
-    cube.iter()
-        .enumerate()
-        .all(|(index, value)| match (value, signs.get(index)) {
+    cube.iter().enumerate().all(|(index, value)| {
+        match (value, signs.get(index)) {
             | (Some(wanted), Some(actual)) => wanted == actual,
             | (None, _) => true,
             | (Some(_), None) => false,
-        })
+        }
+    })
 }
 
 /// Greedy minimisation of the true cells' sign conditions.
@@ -317,13 +323,12 @@ fn covers(
     general: &Cube,
     specific: &Cube,
 ) -> bool {
-    general
-        .iter()
-        .enumerate()
-        .all(|(index, value)| match value {
+    general.iter().enumerate().all(|(index, value)| {
+        match value {
             | None => true,
             | Some(wanted) => specific.get(index).copied().flatten() == Some(*wanted),
-        })
+        }
+    })
 }
 
 /// Verifies a block result on rational parameter assignments.
@@ -491,9 +496,9 @@ pub(crate) fn run(
     formula: NodeId,
     listed: &[NodeId],
 ) -> Option<NodeId> {
-    let parsed = super::formula::parse(graph, formula, listed)?;
+    let parsed = super::qe_formula::parse(graph, formula, listed)?;
     let result = eliminate_all(&parsed, graph, listed)?;
-    super::formula::term(graph, &parsed.ops, &result, &parsed.nodes)
+    super::qe_formula::term(graph, &parsed.ops, &result, &parsed.nodes)
 }
 
 /// Eliminates all quantifiers; `listed` free variables become existential.
@@ -541,7 +546,7 @@ pub(crate) fn try_quantifier(
     if extras.iter().any(|&node| graph.as_symbol(node).is_none()) {
         return None;
     }
-    let parsed = super::formula::parse(graph, body, &extras)?;
+    let parsed = super::qe_formula::parse(graph, body, &extras)?;
     let mut block = Vec::with_capacity(extras.len());
     for &node in &extras {
         let symbol = graph.as_symbol(node)?;
@@ -567,7 +572,7 @@ pub(crate) fn try_quantifier(
     };
     let total = parsed.variables.len();
     let result = eliminate(&formula, total, &CadLimits::default())?;
-    super::formula::term(graph, &parsed.ops, &result, &parsed.nodes)
+    super::qe_formula::term(graph, &parsed.ops, &result, &parsed.nodes)
 }
 
 /// Reads a list of polynomials in the given variable order.
@@ -605,7 +610,7 @@ pub(crate) fn sample_terms(
 ) -> Option<Vec<NodeId>> {
     let mut out = Vec::with_capacity(coords.len());
     for coordinate in coords {
-        out.push(super::formula::elem_term(graph, field, coordinate)?);
+        out.push(super::qe_formula::elem_term(graph, field, coordinate)?);
     }
     Some(out)
 }

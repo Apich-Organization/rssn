@@ -552,12 +552,14 @@ impl HermiteSystem {
         let n = self.mass.len();
         let t = self.time;
         let pred: Vec<Predicted> = (0..n)
-            .map(|i| Predicted {
-                x: self.pos[i],
-                v: self.vel[i],
-                a: [0.0; 3],
-                j: [0.0; 3],
-                s: [0.0; 3],
+            .map(|i| {
+                Predicted {
+                    x: self.pos[i],
+                    v: self.vel[i],
+                    a: [0.0; 3],
+                    j: [0.0; 3],
+                    s: [0.0; 3],
+                }
             })
             .collect();
         let all: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i)).collect();
@@ -742,17 +744,21 @@ impl HermiteSystem {
                 .iter()
                 .enumerate()
                 .map(|(i, p)| {
-                    std::array::from_fn(|k| Dual {
-                        v: p.v[k],
-                        d: an_all[i][k],
+                    std::array::from_fn(|k| {
+                        Dual {
+                            v: p.v[k],
+                            d: an_all[i][k],
+                        }
                     })
                 })
                 .collect();
             let an: Vec<[Dual; 3]> = (0..pred.len())
                 .map(|i| {
-                    std::array::from_fn(|k| Dual {
-                        v: an_all[i][k],
-                        d: jn_all[i][k],
+                    std::array::from_fn(|k| {
+                        Dual {
+                            v: an_all[i][k],
+                            d: jn_all[i][k],
+                        }
                     })
                 })
                 .collect();

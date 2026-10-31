@@ -28,9 +28,9 @@ use num_rational::BigRational;
 use crate::rules::poly::univariate;
 use crate::rules::poly::univariate::QPoly;
 
-use super::field;
-use super::field::Element;
-use super::field::Frac;
+use super::algebraic_field as field;
+use super::algebraic_field::Element;
+use super::algebraic_field::Frac;
 
 /// The most Hermite steps taken before giving up on a pathologically large
 /// input.
@@ -231,19 +231,23 @@ pub(super) fn reduce(
         steps = steps.saturating_add(1);
     }
     match element.to_quotient() {
-        | Some((a, b, c)) => Reduced {
-            pieces,
-            a,
-            b,
-            c,
-            steps,
+        | Some((a, b, c)) => {
+            Reduced {
+                pieces,
+                a,
+                b,
+                c,
+                steps,
+            }
         },
-        | None => Reduced {
-            pieces: Vec::new(),
-            a: a.to_vec(),
-            b: b.to_vec(),
-            c: c.to_vec(),
-            steps: 0,
+        | None => {
+            Reduced {
+                pieces: Vec::new(),
+                a: a.to_vec(),
+                b: b.to_vec(),
+                c: c.to_vec(),
+                steps: 0,
+            }
         },
     }
 }

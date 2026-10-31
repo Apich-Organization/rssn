@@ -84,12 +84,9 @@ use crate::graph::Tier;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
-pub(crate) mod alg;
-pub(crate) mod cad;
-pub(crate) mod field;
-pub(crate) mod formula;
-pub(crate) mod poly;
-mod qe_impl;
+use super::qe_cad as cad;
+use super::qe_formula as formula;
+use super::qe_impl;
 
 /// The outcome of routing one `exists`/`forall` request.
 pub(crate) enum Routed {

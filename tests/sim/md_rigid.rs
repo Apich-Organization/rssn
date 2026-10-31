@@ -133,11 +133,13 @@ fn rigid_integrator_agrees_with_shake_rattle_for_dimers() {
         let mut ff = lj_ff();
         ff.bonds = mols
             .iter()
-            .map(|m| Bond {
-                i: m[0],
-                j: m[1],
-                k: 0.0,
-                r0: d,
+            .map(|m| {
+                Bond {
+                    i: m[0],
+                    j: m[1],
+                    k: 0.0,
+                    r0: d,
+                }
             })
             .collect();
         let mut s2 = sys;
@@ -279,11 +281,13 @@ fn exact_constraint_virial_reproduces_the_molecular_pressure_without_a_time_step
     let mut ff = lj_ff();
     ff.bonds = mols
         .iter()
-        .map(|m| Bond {
-            i: m[0],
-            j: m[1],
-            k: 0.0,
-            r0: d,
+        .map(|m| {
+            Bond {
+                i: m[0],
+                j: m[1],
+                k: 0.0,
+                r0: d,
+            }
         })
         .collect();
     let mut sim = MdSimulation::new(rigid.sys.clone(), ff, 0.3, 0.004, 3).unwrap();

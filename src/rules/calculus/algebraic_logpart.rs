@@ -37,8 +37,8 @@ use crate::graph::NodeId;
 use crate::rules::poly::univariate;
 use crate::rules::poly::univariate::QPoly;
 
-use super::field;
-use super::term;
+use super::algebraic_field as field;
+use super::algebraic_term as term;
 
 /// `∫ q dx` for a polynomial `q`.
 fn integrate_poly(q: &[BigRational]) -> QPoly {

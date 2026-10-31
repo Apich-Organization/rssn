@@ -44,20 +44,22 @@ fn mono_mul(
     let (mut i, mut j) = (0, 0);
     loop {
         match (a.get(i), b.get(j)) {
-            | (Some(&(ga, ea)), Some(&(gb, eb))) => match ga.cmp(&gb) {
-                | std::cmp::Ordering::Equal => {
-                    out.push((ga, ea.saturating_add(eb)));
-                    i = i.saturating_add(1);
-                    j = j.saturating_add(1);
-                },
-                | std::cmp::Ordering::Less => {
-                    out.push((ga, ea));
-                    i = i.saturating_add(1);
-                },
-                | std::cmp::Ordering::Greater => {
-                    out.push((gb, eb));
-                    j = j.saturating_add(1);
-                },
+            | (Some(&(ga, ea)), Some(&(gb, eb))) => {
+                match ga.cmp(&gb) {
+                    | std::cmp::Ordering::Equal => {
+                        out.push((ga, ea.saturating_add(eb)));
+                        i = i.saturating_add(1);
+                        j = j.saturating_add(1);
+                    },
+                    | std::cmp::Ordering::Less => {
+                        out.push((ga, ea));
+                        i = i.saturating_add(1);
+                    },
+                    | std::cmp::Ordering::Greater => {
+                        out.push((gb, eb));
+                        j = j.saturating_add(1);
+                    },
+                }
             },
             | (Some(&x), None) => {
                 out.push(x);
@@ -80,16 +82,18 @@ fn lex_cmp(
     let (mut i, mut j) = (0, 0);
     loop {
         match (a.get(i), b.get(j)) {
-            | (Some(&(ga, ea)), Some(&(gb, eb))) => match ga.cmp(&gb) {
-                | std::cmp::Ordering::Equal => {
-                    if ea != eb {
-                        return ea.cmp(&eb);
-                    }
-                    i = i.saturating_add(1);
-                    j = j.saturating_add(1);
-                },
-                | std::cmp::Ordering::Less => return std::cmp::Ordering::Greater,
-                | std::cmp::Ordering::Greater => return std::cmp::Ordering::Less,
+            | (Some(&(ga, ea)), Some(&(gb, eb))) => {
+                match ga.cmp(&gb) {
+                    | std::cmp::Ordering::Equal => {
+                        if ea != eb {
+                            return ea.cmp(&eb);
+                        }
+                        i = i.saturating_add(1);
+                        j = j.saturating_add(1);
+                    },
+                    | std::cmp::Ordering::Less => return std::cmp::Ordering::Greater,
+                    | std::cmp::Ordering::Greater => return std::cmp::Ordering::Less,
+                }
             },
             | (Some(_), None) => return std::cmp::Ordering::Greater,
             | (None, Some(_)) => return std::cmp::Ordering::Less,

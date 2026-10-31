@@ -9,7 +9,9 @@
 //!   steepest-edge pricing and Bland's rule as an anti-cycling fallback.
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{self};
+use crate::kernels::dense::{
+    self,
+};
 use crate::kernels::random::Rng;
 
 /// Result of a minimisation.

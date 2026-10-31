@@ -308,10 +308,12 @@ impl Axis {
                 let c = call(cx, "cos", &[self.var])?;
                 let (mode, norm) = match l {
                     | Some(l) if l < m => return None,
-                    | Some(l) if m > 0 => (
-                        associated_mode(cx, self.var, l, m)?,
-                        Some(polar_norm(cx, l, m)?),
-                    ),
+                    | Some(l) if m > 0 => {
+                        (
+                            associated_mode(cx, self.var, l, m)?,
+                            Some(polar_norm(cx, l, m)?),
+                        )
+                    },
                     | Some(l) => (call(cx, "legendre", &[n, c])?, Some(polar_norm(cx, l, 0)?)),
                     | None => {
                         let mode = call(cx, "legendre", &[n, c])?;
@@ -390,16 +392,18 @@ impl Axis {
                     cx.graph.int(0)
                 };
                 match inner {
-                    | Some((a, a_end)) => annulus_families(
-                        cx,
-                        self.var,
-                        (*a, a_end),
-                        (*radius, end),
-                        *sphere,
-                        order,
-                        n,
-                        numeric,
-                    ),
+                    | Some((a, a_end)) => {
+                        annulus_families(
+                            cx,
+                            self.var,
+                            (*a, a_end),
+                            (*radius, end),
+                            *sphere,
+                            order,
+                            n,
+                            numeric,
+                        )
+                    },
                     | None => {
                         radial_families(cx, self.var, *radius, end, *sphere, order, n, numeric)
                     },
@@ -1520,12 +1524,14 @@ pub(super) fn interval(
         let (start, stop, _) = order_points(cx, c.point, other)?;
         let length = sub(cx.graph, stop, start);
         let length = cx.simplify(length);
-        let end = |point: NodeId, cx: &mut Cx<'_>| End {
-            kind: Kind::Dirichlet,
-            point,
-            p: cx.graph.int(1),
-            q: cx.graph.int(0),
-            value: cx.graph.int(0),
+        let end = |point: NodeId, cx: &mut Cx<'_>| {
+            End {
+                kind: Kind::Dirichlet,
+                point,
+                p: cx.graph.int(1),
+                q: cx.graph.int(0),
+                value: cx.graph.int(0),
+            }
         };
         let (left, right) = (end(start, cx), end(stop, cx));
         for c in &on {
@@ -1655,11 +1661,13 @@ pub(super) fn solve_box(
     } else {
         2
     };
-    let time = time_index.map(|t| Time {
-        var: p.vars[t],
-        order,
-        a2,
-        a1,
+    let time = time_index.map(|t| {
+        Time {
+            var: p.vars[t],
+            order,
+            a2,
+            a1,
+        }
     });
     // Axes.
     let mut intervals = Vec::new();
@@ -2035,9 +2043,11 @@ fn faces(
             .iter()
             .enumerate()
             .filter(|(k, _)| *k != level)
-            .map(|(_, v)| Axis {
-                var: v.var,
-                shape: Shape::Interval(v.clone()),
+            .map(|(_, v)| {
+                Axis {
+                    var: v.var,
+                    shape: Shape::Interval(v.clone()),
+                }
             })
             .collect();
         let face = Face {

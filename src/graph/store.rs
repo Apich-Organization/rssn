@@ -229,9 +229,7 @@ impl Graph {
             conflicts: Vec::new(),
             scratch: Vec::new(),
             assumptions: HashMap::new(),
-            dims: std::sync::Arc::new(std::sync::RwLock::new(
-                crate::graph::dim::DimArena::new(),
-            )),
+            dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
             dim_assumptions: HashMap::new(),
         }
     }

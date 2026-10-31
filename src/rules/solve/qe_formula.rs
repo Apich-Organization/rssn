@@ -3,7 +3,7 @@
 //!
 //! An atom is always normalised to `p = 0`, `p != 0`, `p < 0`, `p <= 0`,
 //! `p > 0` or `p >= 0` for a polynomial `p` over `Q` in a fixed list of
-//! variables (the indices are the [`super::poly::MPoly`] variable indices).
+//! variables (the indices are the [`super::qe_poly::MPoly`] variable indices).
 //! Boolean structure is `not`, `and`, `or`; `implies`, `iff` and `xor` are
 //! expanded on input. Quantifiers are blocks of variables
 //! (`exists`/`forall` with a symbol or a `list` prefix). Anything that is
@@ -35,7 +35,7 @@ use crate::rules::poly::repr::Limits as ReprLimits;
 use crate::rules::poly::repr::Poly as ReprPoly;
 use crate::rules::poly::repr::from_term;
 
-use super::poly::MPoly;
+use super::qe_poly::MPoly;
 
 /// A comparison operator.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -820,8 +820,8 @@ pub(crate) fn term(
 #[must_use]
 pub(crate) fn elem_term(
     graph: &mut Graph,
-    field: &super::field::Field,
-    value: &super::field::Elem,
+    field: &super::qe_field::Field,
+    value: &super::qe_field::Elem,
 ) -> Option<NodeId> {
     if let Some(constant) = value.constant() {
         return Some(graph.num(Number::rat(constant)));

@@ -223,18 +223,24 @@ fn mode_fn(
     dim: usize,
 ) -> (ScalarField, f64) {
     match bc {
-        | "neumann" => (
-            Box::new(move |x| (0..dim).map(|a| (PI * x[a]).cos()).product()),
-            dim as f64 * PI * PI,
-        ),
-        | "periodic" => (
-            Box::new(move |x| (0..dim).map(|a| (2.0 * PI * x[a]).sin()).product()),
-            4.0 * dim as f64 * PI * PI,
-        ),
-        | _ => (
-            Box::new(move |x| (0..dim).map(|a| (PI * x[a]).sin()).product()),
-            dim as f64 * PI * PI,
-        ),
+        | "neumann" => {
+            (
+                Box::new(move |x| (0..dim).map(|a| (PI * x[a]).cos()).product()),
+                dim as f64 * PI * PI,
+            )
+        },
+        | "periodic" => {
+            (
+                Box::new(move |x| (0..dim).map(|a| (2.0 * PI * x[a]).sin()).product()),
+                4.0 * dim as f64 * PI * PI,
+            )
+        },
+        | _ => {
+            (
+                Box::new(move |x| (0..dim).map(|a| (PI * x[a]).sin()).product()),
+                dim as f64 * PI * PI,
+            )
+        },
     }
 }
 
@@ -1173,9 +1179,11 @@ fn md_run<const D: usize>(r: &MdReq) -> Result<Value, String> {
     let mut sim = MdSimulation::new(sys, ff, 0.3, r.dt, r.seed + 1)?;
     sim.thermostat = match r.thermostat.as_str() {
         | "nve" => Thermostat::None,
-        | "langevin" => Thermostat::Langevin {
-            t0: r.temperature,
-            gamma: 1.0,
+        | "langevin" => {
+            Thermostat::Langevin {
+                t0: r.temperature,
+                gamma: 1.0,
+            }
         },
         | other => return Err(format!("unknown thermostat `{other}` (nve, langevin)")),
     };

@@ -376,9 +376,11 @@ fn read_elem(
         return (scalar && data.len() == c.len()).then_some(Elem { size: None, data });
     }
     let m = matrix(graph, node)?;
-    (m.len() == m[0].len()).then(|| Elem {
-        size: Some(m.len()),
-        data: m.into_iter().flatten().collect(),
+    (m.len() == m[0].len()).then(|| {
+        Elem {
+            size: Some(m.len()),
+            data: m.into_iter().flatten().collect(),
+        }
     })
 }
 

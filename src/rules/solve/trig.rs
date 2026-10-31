@@ -531,12 +531,14 @@ fn merge(
             },
             | None => {
                 let v = value(graph, f.base);
-                let duplicate = other.iter().any(|o| match (value(graph, o.base), v) {
-                    | (Some(a), Some(b)) => {
-                        let step = f.period.to_f64().unwrap_or(2.0) * std::f64::consts::PI;
-                        ((a - b) / step - ((a - b) / step).round()).abs() < 1e-9
-                    },
-                    | _ => graph.same(o.base, f.base),
+                let duplicate = other.iter().any(|o| {
+                    match (value(graph, o.base), v) {
+                        | (Some(a), Some(b)) => {
+                            let step = f.period.to_f64().unwrap_or(2.0) * std::f64::consts::PI;
+                            ((a - b) / step - ((a - b) / step).round()).abs() < 1e-9
+                        },
+                        | _ => graph.same(o.base, f.base),
+                    }
                 });
                 if !duplicate {
                     other.push(f);

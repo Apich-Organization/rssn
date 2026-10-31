@@ -51,6 +51,8 @@ pub mod fractal;
 pub mod gf_factor;
 pub mod graphics;
 pub mod graphs;
+#[cfg(test)]
+mod graphs_tests;
 pub mod group_theory;
 pub mod groups;
 pub mod perm_groups;

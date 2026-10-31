@@ -680,10 +680,12 @@ fn lie_casimir_operator(
     let (lie, basis) = read_lie(cx.graph, *a.first()?)?;
     let rho: Vec<QMat> = match a {
         | [_] => basis?,
-        | [_, r] => items(cx.graph, *r)?
-            .into_iter()
-            .map(|m| rat_matrix(cx.graph, m))
-            .collect::<Option<_>>()?,
+        | [_, r] => {
+            items(cx.graph, *r)?
+                .into_iter()
+                .map(|m| rat_matrix(cx.graph, m))
+                .collect::<Option<_>>()?
+        },
         | _ => return None,
     };
     Some(mat_v(&lie.casimir(&rho)?))
