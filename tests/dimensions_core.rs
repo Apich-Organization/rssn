@@ -85,6 +85,88 @@ fn answer_dimension(answer: &Answer<'_>) -> String {
         .unwrap_or_default()
 }
 
+/// Unit text wins over base-dimension text; `base:Name` forces a base and
+/// resolves a custom base whose name is also a standard unit (`T`).
+#[test]
+fn dimension_text_uses_units_first_and_supports_base_prefix() {
+    let mut graph = Graph::new();
+    Engine::install(&mut graph, &rssn::rules::standard())
+        .unwrap_or_else(|error| panic!("cannot install the standard rules: {error}"));
+    graph.define_base_dimension("T");
+    graph.define_base_dimension("Currency");
+    let arena = graph.dim_arena();
+
+    let tesla = graph
+        .dimension_from_text("Wb/m^2")
+        .unwrap_or_else(|error| panic!("{error}"));
+    // A bare `T` is still the tesla, even with a custom base of that name.
+    assert_eq!(
+        graph
+            .dimension_from_text("T")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .describe(&arena),
+        tesla.describe(&arena)
+    );
+    // The explicit prefix selects the base dimension.
+    assert_eq!(
+        graph
+            .dimension_from_text("base:T")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .describe(&arena),
+        "T"
+    );
+    // The prefix also works for the SI bases and for exponents.
+    assert_eq!(
+        graph
+            .dimension_from_text("base:Length")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .describe(&arena),
+        "Length"
+    );
+    assert_eq!(
+        graph
+            .dimension_from_text("base:Time^2")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .describe(&arena),
+        "Time^2"
+    );
+    // A custom base without a colliding unit needs no prefix.
+    assert_eq!(
+        graph
+            .dimension_from_text("Currency")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .describe(&arena),
+        "Currency"
+    );
+    assert!(graph.dimension_from_text("base:Nope").is_err());
+    // The registered name is exact: the `t` alias for `Time` is not applied.
+    assert!(graph.dimension_from_text("base:t").is_err());
+}
+
+/// A class that contains the literal zero is dimensionally polymorphic:
+/// kernels simplify intermediate expressions to zero, and a zero-valued
+/// expression must not impose its syntactic dimension on the class.
+#[test]
+fn a_zero_class_is_dimensionally_polymorphic() {
+    // A product with the literal zero is already polymorphic.
+    assert_eq!(dim("0 * quantity(2, m)", &[]), "any");
+    // Once the engine simplifies a zero-valued difference to the literal
+    // zero, the class is polymorphic and reports no conflict.
+    let session = Session::new();
+    let config = Config::new()
+        .dimension("x", "m")
+        .dimensions(DimensionMode::Advisory);
+    for source in ["x - x", "quantity(2, m) - quantity(2, m)"] {
+        let answer = computed(&session, source, &config);
+        assert_eq!(answer_dimension(&answer), "any", "`{source}`");
+        assert!(
+            answer.diagnostics.is_empty(),
+            "`{source}`: {:?}",
+            answer.diagnostics
+        );
+    }
+}
+
 #[test]
 fn a_dimensionful_exponent_is_rejected() {
     let outcome = dimension_of("x^t", &[("x", "m"), ("t", "s")]);

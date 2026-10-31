@@ -192,8 +192,12 @@ impl Config {
     }
 
     /// Declares the dimension of a symbol as text: a unit expression
-    /// (`"m/s"`, `"km/h"`), a base-dimension product (`"Length/Time"`), or
-    /// `"any"`.
+    /// (`"m/s"`, `"km/h"`), a base-dimension product (`"Length/Time"`), an
+    /// explicit base dimension (`"base:T"`, needed when a custom base has
+    /// the same name as a unit), or `"any"`.
+    ///
+    /// Unit symbols take precedence over base names for bare text, so `"T"`
+    /// is always the tesla. Use `"base:Name"` to force a base dimension.
     #[must_use]
     pub fn dimension(
         mut self,
@@ -711,11 +715,28 @@ fn run_job(
         None
     } else {
         let answer = graph.dimension(best);
-        diagnostics.extend(answer.errors);
-        if best != root {
-            let input = graph.dimension(root);
-            diagnostics.extend(input.errors);
+        let input = if best == root {
+            None
+        } else {
+            Some(graph.dimension(root))
+        };
+        // A structured request (a decomposition, a predicate, a container)
+        // is typed `NonMetric` by its own rule. Its *expanded* literal then
+        // holds parts with different dimensions on purpose: `lu` returns a
+        // dimensionless permutation and `L` next to a dimensionful `U`.
+        // Differences between those parts are not a mixed scalar list, so
+        // the structural note is suppressed for such a request.
+        let structured = input
+            .as_ref()
+            .is_some_and(|outcome| outcome.dimension.non_metric);
+        let mut findings = answer.errors;
+        if let Some(input) = &input {
+            findings.extend(input.errors.iter().cloned());
         }
+        if structured {
+            findings.retain(|error| !matches!(error, crate::graph::DimError::MixedList { .. }));
+        }
+        diagnostics.extend(findings);
         let mut seen = std::collections::HashSet::new();
         diagnostics.retain(|error| seen.insert(error.to_string()));
         if failure.is_none()

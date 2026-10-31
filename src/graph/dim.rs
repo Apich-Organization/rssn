@@ -200,9 +200,19 @@ pub enum DimError {
         context: String,
     },
     /// A unit name was not understood.
+    ///
+    /// A text declaration (`Config::dimension("x", "parsec")`) is a hard
+    /// parse error: `context` is `None`. A unit inside a term
+    /// (`quantity(1, parsec)`) is only an unknown, not a conflict: the value
+    /// keeps the dimension `any` and the finding is advisory in both
+    /// [`DimensionMode::Advisory`] and [`DimensionMode::Strict`]
+    /// (`context` is the printed term).
     UnknownUnit {
         /// The text.
         unit: String,
+        /// The term whose unit could not be resolved, when the finding comes
+        /// from inference rather than from a text declaration.
+        context: Option<String>,
     },
     /// An affine quantity (a temperature point) was used where a vector is
     /// required, or two points were combined.
@@ -230,11 +240,22 @@ pub enum DimError {
 }
 
 impl DimError {
-    /// Whether this error is a real conflict that strict mode rejects. A
-    /// missing operator rule is a coverage gap, not a conflict.
+    /// Whether this error is a real conflict that strict mode rejects.
+    ///
+    /// A missing operator rule is a coverage gap; a mixed list is a
+    /// structural note about a container; and an unresolved unit inside a
+    /// term is an *unknown*, not a conflict (the value is `any`). None of
+    /// them turns a Strict computation into a hard error. An unresolved unit
+    /// in requested dimension text (`context` is `None`) is a declaration
+    /// error and stays blocking.
     #[must_use]
     pub const fn is_blocking(&self) -> bool {
-        !matches!(self, Self::Unannotated { .. } | Self::MixedList { .. })
+        match self {
+            | Self::Unannotated { .. }
+            | Self::MixedList { .. }
+            | Self::UnknownUnit { context: Some(_), .. } => false,
+            | _ => true,
+        }
     }
 }
 
@@ -259,7 +280,14 @@ impl fmt::Display for DimError {
                     "dimensions force the constraint `{constraint}` in `{context}`"
                 )
             },
-            | Self::UnknownUnit { unit } => write!(f, "unknown unit `{unit}`"),
+            | Self::UnknownUnit { unit, context } => {
+                match context {
+                    | Some(context) => {
+                        write!(f, "unresolved unit `{unit}` in `{context}`")
+                    },
+                    | None => write!(f, "unknown unit `{unit}`"),
+                }
+            },
             | Self::Affine { operation } => {
                 write!(f, "affine quantity misuse in `{operation}`")
             },
@@ -349,6 +377,11 @@ pub enum DimRule {
     Unspecified,
     /// Not a scalar: booleans, labels, containers.
     NonMetric,
+    /// A structured tuple/decomposition. Like [`DimRule::NonMetric`] it is
+    /// reported as a container, but it is *compatible* with the dimension of
+    /// the reduced literal instead of conflicting with it (the search unions
+    /// a request with its answer).
+    Container,
     /// Explicit bypass: the value is treated as dimensionally polymorphic.
     Any,
     /// The result has the dimension of argument `i`.
@@ -414,10 +447,45 @@ pub enum DimRule {
         /// Index of the index variable.
         index: usize,
     },
+    /// A parameterised distribution family. Shape parameters must be
+    /// dimensionless; location and scale parameters must have the dimension
+    /// of the value.
+    Family {
+        /// Where the value's dimension comes from.
+        result: FamilySource,
+        /// Arguments that must have the value's dimension (a location, a
+        /// scale, or another parameter tied to it).
+        same: &'static [usize],
+        /// Arguments that must be pure numbers (shape parameters, counts,
+        /// probabilities).
+        dimensionless: &'static [usize],
+    },
+    /// `matfun(f, x, A)`, the matrix function `f(A)`.
+    ///
+    /// When `f` is a polynomial in `x` whose terms all have the same total
+    /// degree `k`, the value has entries `dim(f) * dim(A)^k`. Otherwise `A`
+    /// must be dimensionless (the `exp`/trig case).
+    MatrixFunction {
+        /// Index of the scalar function `f`.
+        function: usize,
+        /// Index of its formal variable `x`.
+        variable: usize,
+        /// Index of the matrix `A`.
+        matrix: usize,
+    },
     /// `quantity(v, u)`: the unit layer supplies the dimension.
     Quantity,
     /// A domain-specific rule.
     Custom(fn(&DimCtx<'_>, &[DimTerm]) -> Result<DimTerm, DimError>),
+}
+
+/// Where a [`DimRule::Family`] value's dimension comes from.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FamilySource {
+    /// The dimension of argument `i` (a location or a scale).
+    Argument(usize),
+    /// The inverse dimension of argument `i` (a rate).
+    Inverse(usize),
 }
 
 impl fmt::Debug for DimRule {
@@ -428,6 +496,7 @@ impl fmt::Debug for DimRule {
         let name = match self {
             | Self::Unspecified => "Unspecified",
             | Self::NonMetric => "NonMetric",
+            | Self::Container => "Container",
             | Self::Any => "Any",
             | Self::Same(_) => "Same",
             | Self::Sum => "Sum",
@@ -447,6 +516,8 @@ impl fmt::Debug for DimRule {
             | Self::Integral { .. } => "Integral",
             | Self::SumOver { .. } => "SumOver",
             | Self::ProductOver { .. } => "ProductOver",
+            | Self::Family { .. } => "Family",
+            | Self::MatrixFunction { .. } => "MatrixFunction",
             | Self::Quantity => "Quantity",
             | Self::Custom(_) => "Custom",
         };
@@ -588,6 +659,13 @@ pub struct DimTerm {
 pub(crate) enum DimRepr {
     Any,
     NonMetric,
+    /// A structured container (a tuple or a decomposition result). It is not
+    /// a scalar, but unlike [`DimRepr::NonMetric`] it is compatible with the
+    /// dimension of its reduced literal: kernels union a request with its
+    /// answer, and a tuple's expanded `list(...)` can legitimately have a
+    /// scalar dimension (all parts dimensionless) or `Any` (parts with
+    /// different dimensions).
+    Container,
     Scalar {
         bases: Vec<(BaseId, Expo)>,
         vars: Vec<(DimVarId, Expo)>,
@@ -600,7 +678,9 @@ impl PartialEq for DimTerm {
         other: &Self,
     ) -> bool {
         match (&self.repr, &other.repr) {
-            | (DimRepr::Any, DimRepr::Any) | (DimRepr::NonMetric, DimRepr::NonMetric) => true,
+            | (DimRepr::Any, DimRepr::Any)
+            | (DimRepr::NonMetric, DimRepr::NonMetric)
+            | (DimRepr::Container, DimRepr::Container) => true,
             | (
                 DimRepr::Scalar { bases: ab, vars: av },
                 DimRepr::Scalar { bases: bb, vars: bv },
@@ -635,6 +715,14 @@ impl DimTerm {
     pub const fn non_metric() -> Self {
         Self {
             repr: DimRepr::NonMetric,
+        }
+    }
+
+    /// A structured container (a tuple or decomposition result).
+    #[must_use]
+    pub const fn container() -> Self {
+        Self {
+            repr: DimRepr::Container,
         }
     }
 
@@ -681,10 +769,16 @@ impl DimTerm {
         matches!(self.repr, DimRepr::Any)
     }
 
-    /// Whether this is a non-scalar value.
+    /// Whether this is a non-scalar value (including a container).
     #[must_use]
     pub const fn is_non_metric(&self) -> bool {
-        matches!(self.repr, DimRepr::NonMetric)
+        matches!(self.repr, DimRepr::NonMetric | DimRepr::Container)
+    }
+
+    /// Whether this is a structured container rather than a lone non-scalar.
+    #[must_use]
+    pub const fn is_container(&self) -> bool {
+        matches!(self.repr, DimRepr::Container)
     }
 
     /// Whether this is exactly dimensionless.
@@ -731,7 +825,10 @@ impl DimTerm {
     ) -> Self {
         match (&self.repr, &other.repr) {
             | (DimRepr::Any, _) | (_, DimRepr::Any) => Self::any(),
-            | (DimRepr::NonMetric, _) | (_, DimRepr::NonMetric) => Self::non_metric(),
+            // A container has no multiplicative structure either; combining
+            // it with anything is a non-scalar value.
+            | (DimRepr::NonMetric | DimRepr::Container, _)
+            | (_, DimRepr::NonMetric | DimRepr::Container) => Self::non_metric(),
             | (
                 DimRepr::Scalar { bases: ab, vars: av },
                 DimRepr::Scalar { bases: bb, vars: bv },
@@ -822,7 +919,7 @@ impl DimTerm {
                     ..Dimension::default()
                 }
             },
-            | DimRepr::NonMetric => {
+            | DimRepr::NonMetric | DimRepr::Container => {
                 Dimension {
                     non_metric: true,
                     ..Dimension::default()
@@ -925,6 +1022,19 @@ impl Graph {
 
     /// Parses a dimension or unit written as text.
     ///
+    /// # Precedence
+    /// 1. `base:Name` is always a base dimension: `Name` is first looked up
+    ///    exactly (so a custom base called `T` is reachable even though `T`
+    ///    is the tesla), then through the base aliases (`base:Time`).
+    /// 2. Otherwise a unit expression is tried first (`"m/s"`, `"km/h"`,
+    ///    `"T"` is tesla).
+    /// 3. Only when no unit matches is the text read as a product of base
+    ///    dimensions (`"Length/Time"`, `"Currency"`).
+    ///
+    /// A standard unit is therefore never silently reinterpreted as a base
+    /// dimension. A custom base whose name is also a unit symbol must be
+    /// written with the `base:` prefix.
+    ///
     /// # Errors
     /// Returns [`DimError`] if the text cannot be parsed.
     pub fn dimension_from_text(
@@ -945,6 +1055,10 @@ impl Graph {
             return Ok(DimTerm::non_metric());
         }
         let arena = self.dim_arena();
+        // `base:Name` forces the base dimension, bypassing unit symbols.
+        if let Some(name) = trimmed.strip_prefix("base:") {
+            return parse_base_text(&arena, name.trim(), true);
+        }
         // The unit layer knows prefixes, derived units and lengths.
         if let Some(quantity) = self.ops().lookup("quantity")
             && let Some(resolver) = self.ops().attr::<UnitTextResolver>(quantity)
@@ -952,7 +1066,7 @@ impl Graph {
         {
             return Ok(info.dimension);
         }
-        parse_base_text(&arena, trimmed)
+        parse_base_text(&arena, trimmed, false)
     }
 
     /// Infers the dimension of `node` and collects conflicts.
@@ -998,6 +1112,7 @@ pub(crate) fn split_unit_fraction(text: &str) -> (&str, &str) {
 fn parse_base_text(
     arena: &DimArena,
     text: &str,
+    exact: bool,
 ) -> Result<DimTerm, DimError> {
     let cleaned = text.replace(' ', "");
     let (numerator, denominator) = split_unit_fraction(&cleaned);
@@ -1014,10 +1129,10 @@ fn parse_base_text(
                 },
                 | None => (factor, BigRational::one()),
             };
-            let base_name = base_alias(name);
-            let Some(base) = arena.base_id(base_name) else {
+            let Some(base) = base_lookup(arena, name, exact) else {
                 return Err(DimError::UnknownUnit {
                     unit: text.to_string(),
+                    context: None,
                 });
             };
             let exponent = if sign < 0 {
@@ -1029,6 +1144,22 @@ fn parse_base_text(
         }
     }
     Ok(term)
+}
+
+/// The base dimension a factor names.
+///
+/// With `exact` (the `base:Name` syntax) only the registered base name is
+/// matched, so `base:T` is a custom base `T` (or an error), never the alias
+/// for `Time`. Without it the friendly aliases are accepted as well.
+fn base_lookup(
+    arena: &DimArena,
+    name: &str,
+    exact: bool,
+) -> Option<BaseId> {
+    if exact {
+        return arena.base_id(name);
+    }
+    arena.base_id(base_alias(name))
 }
 
 fn parse_exponent(

@@ -28,7 +28,7 @@ These were fixed before implementation:
 | Default mode | `Advisory` (report and diagnose, never change the answer) |
 | Symbolic exponents | **Required**: `x^n`, `x^(a+b)`, `x^(1/2)`, `prod(f(k), k=1..n)` |
 | Angles | Dimensionless (`rad = 1`, `deg = pi/180`), with an `Angle` kind for UX |
-| Affine temperatures | `Point`/`Vector` distinction in the unit layer; core sees `Temperature` |
+| Affine temperatures | `Point`/`Vector` boundary checks in the unit layer; core sees `Temperature` |
 | Undeclared symbols | Unknown dimension variable (reported as unknown, not assumed dimensionless) |
 | `Strict` conflicts | Hard `ComputeError::Dimension` |
 | User-defined base dimensions | Supported (`Config::define_base_dimension`) |
@@ -101,22 +101,26 @@ The unit layer supplies dimensions plus exact scales and affine offsets.
 * Unit expressions are parsed by the `units` rule set. The dimension core
   reads them through a resolver installed on the `quantity` operator, so
   `graph` does not depend on `rules`.
-* Affine units (`degC`, `degF`) are points of a one-dimensional affine space.
-  The unit resolver reports the `affine` flag, and the dimension core sees
-  `Temperature` for a point and for a difference alike. The `units` kernel
-  converts a lone affine quantity through kelvin, so arithmetic between
-  `degC` quantities is carried out in kelvin (`quantity(1, degC) +
-  quantity(2, degC)` is `quantity(5493/10, K)`); an affine unit inside a
-  product or a power is refused by the resolver and the dimension of that
-  `quantity` is `any`. The point/vector distinction is therefore print- and
-  conversion-level, not a typing rule for arithmetic (see §13).
+* An affine unit (`degC`, `degF`) is a point of a one-dimensional affine
+  space. The unit resolver reports the `affine` flag, and the dimension core
+  sees `Temperature` for a point and for a difference alike. The `units`
+  kernel refuses to scale, power or add two points (`quantity(1, degC) * 2`,
+  `quantity(1, degC) + quantity(2, degC)` stay unreduced) instead of quietly
+  converting them through kelvin; inference reports `DimError::Affine` for
+  the same shapes, so Strict mode rejects them. A point plus a difference
+  written in `K` is still a temperature (`quantity(20, degC) + quantity(2,
+  K)`). A `degC` inside a product or a power makes the unit unresolvable and
+  is reported as `UnknownUnit`. The point/vector distinction is therefore a
+  boundary check, not a full affine type (see §13).
 * Dimensionless scaled units (`%`, `ppm`, `rad`, `deg`) keep their scale and an
   `Angle`/`Ratio` kind; `sin(quantity(30, deg))` converts to `sin(pi/6)`.
 * Derived named units (`N`, `Pa`, `J`, ...) are a printing preference: the
   dimension is the same product of bases.
 * User-defined base dimensions are registered per graph before parsing the
-  request. User-defined units are added to the unit table of the session's
-  template (future extension point; the resolver interface already allows it).
+  request. Text parsing uses units first and bases second; `base:Name`
+  forces a base dimension and resolves a custom base whose name is also a
+  unit symbol (`base:T` for a custom base `T`, while bare `T` stays the
+  tesla).
 
 ## 5. Operator signatures
 
@@ -126,7 +130,9 @@ rules that re-register an operator do not fight over the descriptor:
 ```rust
 pub enum DimRule {
     Unspecified,                 // coverage gap: forbidden by the scanner
-    NonMetric,                   // booleans, labels, containers
+    NonMetric,                   // booleans, labels
+    Container,                   // a tuple/decomposition: non-metric, but
+                                 // compatible with its expanded literal
     Any,                         // explicit bypass
     Same(usize),                 // result = dim of argument i
     Sum,                         // all arguments equal; result = common
@@ -141,6 +147,16 @@ pub enum DimRule {
     Integral { f: usize, x: usize }, // dim(f) * dim(x)
     SumOver { f: usize, index: usize },
     ProductOver { f: usize, index: usize }, // dim(f) ^ count
+    Family {                     // a distribution: scale/rate source plus
+        result: FamilySource,    // dimensionless shape parameters
+        same: &'static [usize],
+        dimensionless: &'static [usize],
+    },
+    MatrixFunction {             // matfun(f, x, A): homogeneous degree k
+        function: usize,         // gives dim(f) * entry^k
+        variable: usize,
+        matrix: usize,
+    },
     Custom(fn(&DimCtx<'_>, &[DimTerm]) -> Result<DimTerm, DimError>),
 }
 ```
@@ -219,8 +235,10 @@ random-dimension check is listed as a limitation in §13.
 
 Errors are collected, not thrown. In `Advisory` they become
 `Answer::diagnostics`; in `Strict` the errors on the request or answer become
-`ComputeError::Dimension`, except `Unannotated` (a coverage gap, reported as a
-warning even in Strict until the coverage workstream closes it).
+`ComputeError::Dimension`, except the non-conflicts: `Unannotated` (a coverage
+gap), `MixedList` (a structural note) and an `UnknownUnit` inside a term (an
+unknown, not a conflict). Those stay warnings even in Strict; an unknown unit
+in requested dimension text is a declaration error and is blocking.
 
 ## 7. Public API
 
@@ -331,8 +349,8 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 - [x] Operator coverage workstream: every standard operator has a rule,
       scanner green (test unignored).
 - [x] Docs (`ARCHITECTURE.md`, README, `rssn.h`/`rssn.hpp` status code).
-- [ ] Serialization of `Dimension`/`DimError` and a dimension field in the
-      C API (§13).
+- [x] Serialization of `Dimension` and the C API dimension accessor
+      (`rssn_dimension`, `rssn_compute_json`); diagnostics are text (§13).
 
 ## 13. Known limitations
 
@@ -340,58 +358,78 @@ These are genuine limits of the current layer, stated so that they are not
 mistaken for supported behaviour. Each is either tested as a diagnostic or
 covered by a test that pins the current behaviour.
 
-1. **No dimension field in the C API / no serialization.** `rssn.h` and
-   `rssn.hpp` expose `RSSN_STATUS_DIMENSION`, but `Answer.dimension` and
-   `DimError` are Rust-only; they do not serialize and have no FFI accessor.
-2. **`matfun(f, x, A)` is restricted to dimensionless arguments.** The
-   dimension of `f(A)` is the dimension of `f` evaluated at a scalar of the
-   entry dimension, which a `DimRule` cannot re-infer. The rule is
-   `Dimensionless`: a dimensionful matrix is reported rather than guessed.
-   Homogeneous functions have dedicated operators that do carry the degree:
-   `mpow` (`entry^n`), `matsqrt`/`cholesky` (`sqrt(entry)`), `adjugate`
-   /`cofactors` (`entry^(n-1)`).
-3. **A refused unit expression is `any`, not an error.** `quantity(1,
-   degC*m)` or `quantity(1, parsec)` has no resolvable unit; the unit
-   resolver returns `None`, so the dimension is `any` and the `units` kernel
-   leaves the request unreduced. The dimension layer has no `UnknownUnit`
-   diagnostic for a term-level unit (text declarations do report it).
+1. **Diagnostics are serialized as text.** The C API exposes the inferred
+   dimension (`rssn_dimension`), includes it in `rssn_compute_json` and
+   returns the diagnostic messages as strings. `DimError` has no stable
+   machine-readable code or structured JSON form, so a binding must parse
+   the message to tell `UnknownUnit` from `Mismatch`.
+2. **`matfun(f, x, A)` is homogeneous only for a single total degree.** If
+   `f` is a polynomial in `x` whose terms all have the same degree `k` and
+   whose coefficients do not mention `x`, `f(A)` has entries
+   `dim(f) * entry^k` (`x^2` gives `A^2`; `x^3 + x` is not homogeneous). A
+   non-homogeneous `f` (including `exp`, `sin` and other non-polynomial
+   functions) requires a dimensionless matrix and is reported with
+   `NonDimensionless` otherwise. Symbolic exponents (`x^n`) are not
+   analysed. `matexp(A, t)` still requires both `A` and `t` dimensionless,
+   although only the product `tA` needs to be.
+3. **A refused term-level unit is `any` plus a non-blocking diagnostic.**
+   `quantity(1, parsec)` or `quantity(1, degC*m)` has no resolvable unit;
+   the resolver returns `None`, the dimension is `any`, the `units` kernel
+   leaves the request unreduced, and `DimError::UnknownUnit` reports the
+   unit text and the term. It is an *unknown*, not a conflict, so Strict
+   mode answers with the diagnostic rather than failing. A unit in requested
+   dimension text (`Config::dimension("x", "parsec")`) is a declaration
+   error: `UnknownUnit` with no context is blocking.
 4. **Contour integrals assume a dimensionless complex variable.**
    `contour_integral`, `cauchy_integral` and
    `contour_integral_residue_theorem` keep the dimension of the integrand
    (`Same(0)`) and ignore `dim(z)`; `cauchy_derivative` divides by `dim(z)`
    and `residue`/`radius_of_convergence` follow the usual complex-analysis
    conventions. A dimensionful `z` is not rejected.
-5. **Affine point arithmetic is not typed.** `degC`/`degF` are converted
-   through kelvin, so `quantity(1, degC) * 2` and `quantity(1, degC) +
-   quantity(2, degC)` evaluate in kelvin instead of being rejected; a
-   `degC` in a product/power makes the whole unit unresolvable (§13.3).
-6. **Structured list results are diagnosed as mixed.** `lu`, `qr`, `svd`,
-   `eigenvects`, `jordan`, `jordan_blocks`, `spectral` and `ldl` return
-   containers whose parts have different dimensions (a permutation, unit
-   triangular factors, eigenvalue/size pairs). Their `List` rule reports the
-   entry dimension and Advisory mode may report `MixedList` for the reduced
-   literal list. The finding is non-blocking and does not affect Strict mode.
+5. **Affine points are boundary-checked, not fully typed.** The kernel and
+   the dimension rule reject scaling, powers and point+point, and report
+   `DimError::Affine` (blocking in Strict). But a point and a difference are
+   both `Temperature` in the type layer: `quantity(t, K)` is read as a
+   difference when added to a `degC` point, `convert` still shifts through
+   kelvin, and `point - point` is left unreduced rather than typed as a
+   difference. A full point/vector distinction would need a separate affine
+   dimension kind.
+6. **A structured result is a typed container, not a tuple type.** `lu`,
+   `qr`, `svd`, `eigenvects`, `jordan`, `jordan_blocks`, `spectral` and
+   `ldl` are typed `DimRule::Container` (`non-metric`): the operator knows
+   the parts have different dimensions, and an Advisory/Strict computation
+   reports no `MixedList` for a structured request. The dimensions of the
+   parts are documented and tested (`L`/`P`/`Q`/eigenvectors dimensionless,
+   `U`/`R`/`S`/eigenvalues the entry dimension, projectors dimensionless,
+   `d` the pivots), but a `Term` built directly from the expanded literal
+   (for example `Term::dimension` on the stored answer outside `compute`)
+   still analyses it as nested `list`s and can report `MixedList`; there is
+   no re-usable `(A, B, C)` product type. `vandermonde` and `companion` stay
+   `NonMetric` because their entries mix powers of the input.
 7. **Unit text wins over base-dimension text.** `dimension_from_text` first
-   asks the unit resolver, so `"T"` means tesla, not `Time`; `"C"` coulomb,
-   `"F"` farad. Use the base names (`"Length"`, `"Time"`, ...) or a unit
-   expression (`"s"`, `"m/s"`). A trailing `/` is tolerated (`"Length/"` is
-   `Length`).
+   asks the unit resolver, so `"T"` means tesla, `"C"` coulomb, `"F"` farad.
+   A custom base registered under one of those names is only reachable with
+   the explicit `base:Name` syntax; bare text is never silently
+   reinterpreted. `base:` also works for the SI bases (`base:Length`), with
+   the registered name matched exactly (the aliases are not applied). A
+   trailing `/` is tolerated (`"Length/"` is `Length`).
 8. **Strict mode checks the input as written.** A term can be ill-typed
    although it simplifies to a well-typed one: `ln(exp(x))` with `x` a length
    is rejected, because `exp(x)` requires a dimensionless argument, even
    though the term equals `x`. This is inherent in typing the input and the
    answer independently; Advisory mode still reports the same finding
    without failing the computation.
-9. **A distribution's shape parameter is not required to be
-   dimensionless.** `gamma_dist(shape, rate)`, `weibull(shape, scale)` and
-   `pareto(scale, shape)` take the random variable's dimension from the
-   rate/scale argument and do not constrain the shape (a `Custom` rule cannot
-   bind a variable, and there is no "check argument i" rule variant).
-10. **No per-rewrite dimensional soundness scan.** The e-graph class
+9. **A class containing the literal zero is polymorphic.** This is what makes
+   kernels that simplify intermediate expressions to zero safe (a
+   zero-equivalent expression such as `x - x` has a length dimension
+   syntactically, but the class is `any`). It also means Strict mode does not
+   catch an ill-typed subterm that is multiplied by zero.
+10. **No per-rewrite random dimensional scan.** The e-graph class
    unification catches a rewrite that changes a dimension *inside one
-   analysis*, and the equivalence tests cover the standard algebra and unit
-   rewrites. There is no test that walks every standard rewrite with random
-   dimension assignments.
+   analysis*, and `tests/dimensions.rs` pins a representative set (`x + x`,
+   `x^2/x`, `expand`/`factor`, `sin^2 + cos^2`, unit conversion,
+   `ln(exp(x))`). There is no test that walks every standard rewrite with
+   random dimension assignments.
 
 ## 14. Landing status
 

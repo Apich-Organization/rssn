@@ -274,10 +274,11 @@ pub unsafe extern "C" fn rssn_compute(
     })
 }
 
-/// Computes `term` and writes a JSON object describing the answer to
-/// `*out`: `term`, `value`, `error`, `reduced`, `iterations`, `dimension`
-/// (a dimension string or `null`) and `diagnostics` (an array of strings).
-/// Free the string with `rssn_string_free`.
+/// Computes `term` and writes a JSON object to `*out`.
+///
+/// The object has `term`, `value`, `error`, `reduced`, `iterations`,
+/// `dimension` (a dimension string or `null`) and `diagnostics` (an array of
+/// strings). Free the string with `rssn_string_free`.
 ///
 /// # Safety
 /// `session` must be a live session, `config` null or a live

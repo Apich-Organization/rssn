@@ -7,6 +7,8 @@
 //! negative tests, that Strict mode does reject an ill-typed request.
 
 use rssn::graph::DimensionMode;
+use rssn::graph::Engine;
+use rssn::graph::Graph;
 use rssn::prelude::*;
 
 fn config(assumptions: &[(&str, &str)]) -> Config {
@@ -344,4 +346,185 @@ fn lie_bracket_multiplies_dimensions() {
         ),
         "1"
     );
+}
+
+/// The printed parts of the reduced answer, each typed on its own.
+fn expanded_part_dimensions(source: &str) -> Vec<String> {
+    let session = Session::new();
+    let term = session
+        .parse(source)
+        .unwrap_or_else(|error| panic!("cannot parse `{source}`: {error}"));
+    let answer = session
+        .compute(term, &Config::new().dimensions(DimensionMode::Advisory))
+        .unwrap_or_else(|error| panic!("`{source}` failed: {error}"));
+    let text = answer.term.to_string();
+    let mut graph = Graph::new();
+    Engine::install(&mut graph, &rssn::rules::standard())
+        .unwrap_or_else(|error| panic!("cannot install the standard rules: {error}"));
+    let root = graph
+        .parse(&text)
+        .unwrap_or_else(|error| panic!("cannot re-parse the answer `{text}`: {error}"));
+    graph
+        .children(root)
+        .iter()
+        .map(|&child| graph.dimension(child).dimension.to_string())
+        .collect()
+}
+
+/// Structured decompositions are non-scalar containers, not mixed scalar
+/// lists: Advisory mode reports their dimension without a `MixedList`
+/// finding, and the parts keep the documented dimensions.
+#[test]
+fn structured_decompositions_are_typed_containers() {
+    let length2 = "list(list(quantity(2, m), 0), list(0, quantity(3, m)))";
+    let time3 = "list(list(quantity(2, s), 0, 0), \
+                 list(0, quantity(3, s), 0), list(0, 0, quantity(4, s)))";
+    let unit2 = "list(list(1, 0), list(0, 2))";
+    for source in [
+        format!("lu({length2})"),
+        format!("lu({time3})"),
+        format!("lu({unit2})"),
+        format!("qr({length2})"),
+        format!("qr({time3})"),
+        format!("svd({length2})"),
+        format!("eigenvects({length2})"),
+        format!("jordan({length2})"),
+        format!("jordan_blocks({time3})"),
+        format!("spectral({length2})"),
+        format!("ldl({length2})"),
+        format!("ldl({unit2})"),
+    ] {
+        let (dimension, diagnostics) = dimension_advisory(&source, &[]);
+        assert_eq!(dimension, "non-metric", "`{source}`");
+        assert_eq!(diagnostics, 0, "`{source}` produced {diagnostics} findings");
+    }
+
+    // Eigenvalues are entries of the matrix: they keep its dimension.
+    assert_eq!(dimension(&format!("eigenvals({length2})"), &[]), "Length");
+    assert_eq!(dimension(&format!("eigenvals({time3})"), &[]), "Time");
+
+    // `lu` = [P, L, U]: the permutation and unit-triangular factor are
+    // dimensionless, U carries the entry dimension.
+    assert_eq!(
+        expanded_part_dimensions(&format!("lu({length2})")),
+        ["1", "1", "Length"]
+    );
+    assert_eq!(
+        expanded_part_dimensions(&format!("lu({time3})")),
+        ["1", "1", "Time"]
+    );
+    // `qr` = [Q, R]: the orthonormal factor is dimensionless, R keeps it.
+    assert_eq!(
+        expanded_part_dimensions(&format!("qr({length2})")),
+        ["1", "Length"]
+    );
+    // `ldl` = [L, d]: L is dimensionless, the pivots keep the entry
+    // dimension.
+    assert_eq!(
+        expanded_part_dimensions(&format!("ldl({length2})")),
+        ["1", "Length"]
+    );
+    // `jordan` = [P, J]: the chain basis is normalised and dimensionless,
+    // the diagonal of J holds the eigenvalues.
+    assert_eq!(
+        expanded_part_dimensions(&format!("jordan({length2})")),
+        ["1", "Length"]
+    );
+}
+
+/// Shape parameters are pure numbers; location/scale parameters agree with
+/// the random variable; a density point lives in the variable's dimension.
+#[test]
+fn distribution_parameters_are_typed() {
+    assert_eq!(dimension("gamma_dist(2, quantity(1, 1/s))", &[]), "Time");
+    assert_eq!(
+        dimension("weibull(quantity(2, 1), quantity(3, m))", &[]),
+        "Length"
+    );
+    assert_eq!(
+        dimension("pareto(quantity(2, m), quantity(3, 1))", &[]),
+        "Length"
+    );
+    assert_eq!(
+        dimension("normal(quantity(1, m), quantity(2, m))", &[]),
+        "Length"
+    );
+    assert_eq!(
+        dimension(
+            "pdf(normal(quantity(1, m), quantity(2, m)), quantity(3, m))",
+            &[]
+        ),
+        "1/Length"
+    );
+    assert_eq!(
+        dimension(
+            "cdf(normal(quantity(1, m), quantity(2, m)), quantity(3, m))",
+            &[]
+        ),
+        "1"
+    );
+    for source in [
+        // shape parameters must be dimensionless
+        "gamma_dist(quantity(2, m), quantity(3, 1/s))",
+        "weibull(quantity(2, m), quantity(3, s))",
+        "pareto(quantity(2, m), quantity(3, s))",
+        "beta_dist(quantity(2, m), quantity(3, 1))",
+        "student_t(quantity(2, m))",
+        "lognormal(quantity(1, m), quantity(2, 1))",
+        // location and scale must agree
+        "normal(quantity(1, m), quantity(2, s))",
+        // the evaluation point must be the random variable
+        "pdf(normal(quantity(1, m), quantity(2, m)), quantity(3, s))",
+        "cdf(normal(quantity(1, m), quantity(2, m)), quantity(3, s))",
+    ] {
+        let error = strict_error(source, &[]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
+}
+
+/// A homogeneous matrix polynomial carries its degree; a non-homogeneous
+/// one still requires a dimensionless matrix.
+#[test]
+fn homogeneous_matrix_functions_carry_their_degree() {
+    let length2 = "list(list(quantity(2, m), 0), list(0, quantity(3, m)))";
+    let time3 = "list(list(quantity(2, s), 0, 0), \
+                 list(0, quantity(3, s), 0), list(0, 0, quantity(4, s)))";
+    let unit2 = "list(list(1, 0), list(0, 2))";
+    assert_eq!(
+        dimension(&format!("matfun(x^2, x, {length2})"), &[]),
+        "Length^2"
+    );
+    assert_eq!(
+        dimension(&format!("matfun(x^2, x, {time3})"), &[]),
+        "Time^2"
+    );
+    assert_eq!(
+        dimension(&format!("matfun(x^3, x, {length2})"), &[]),
+        "Length^3"
+    );
+    assert_eq!(
+        dimension(&format!("matfun(quantity(2, m) * x^2, x, {length2})"), &[]),
+        "Length^3"
+    );
+    // A constant function is independent of the matrix.
+    assert_eq!(
+        dimension(&format!("matfun(quantity(5, m), x, {length2})"), &[]),
+        "Length"
+    );
+    // The dimensionless matrix stays dimensionless.
+    assert_eq!(dimension(&format!("matfun(x^2, x, {unit2})"), &[]), "1");
+    // Degrees 2 and 1 do not agree: a dimensionful matrix is refused.
+    for source in [
+        format!("matfun(x^2 + x, x, {length2})"),
+        format!("matfun(exp(x), x, {length2})"),
+    ] {
+        let error = strict_error(&source, &[]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
 }
