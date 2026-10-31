@@ -496,7 +496,7 @@ fn parse_unit_text(text: &str) -> Option<UnitMap> {
     if text.is_empty() {
         return None;
     }
-    let (numerator, denominator) = text.split_once('/').map_or((text, ""), |(a, b)| (a, b));
+    let (numerator, denominator) = crate::graph::dim::split_unit_fraction(text);
     let mut map = UnitMap::new();
     for (part, sign) in [(numerator, 1_i32), (denominator, -1_i32)] {
         let part = part.trim();
@@ -535,7 +535,22 @@ fn parse_unit_exponent(text: &str) -> Option<Exp> {
         .strip_prefix('(')
         .and_then(|rest| rest.strip_suffix(')'))
         .unwrap_or(text);
-    let value = dec(text);
+    // Reject an empty or non-numeric exponent instead of letting `dec`
+    // silently read it as zero (`m^` and `m^x` would otherwise be `m^0`).
+    if text.is_empty()
+        || text.matches('/').count() > 1
+        || !text
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '.' | '/'))
+    {
+        return None;
+    }
+    let (numerator, denominator) = text.split_once('/').map_or((text, "1"), |(a, b)| (a, b));
+    let denominator = dec(denominator);
+    if denominator.is_zero() {
+        return None;
+    }
+    let value = dec(numerator) / denominator;
     Some(Exp::new(value.numer().to_i32()?, value.denom().to_i32()?))
 }
 
