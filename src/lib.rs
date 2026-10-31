@@ -1,246 +1,47 @@
-//! # RSSN: Rust Symbolic, Scientific and Numerical Computing Library
+//! # rssn
 //!
-//! `rssn` is a high-performance, modern library for symbolic mathematics and scientific
-//! computing in Rust. It leverages a Directed Acyclic Graph (DAG) based model for
-//! efficient, canonical representation of mathematical expressions.
+//! A scientific computing engine built on one idea: **almost every
+//! numerical or symbolic operation is an identity transformation** — it
+//! replaces an expression by an equal one. Differentiating, integrating,
+//! solving, simplifying, factoring a matrix and evaluating to a float differ
+//! only in which equal form is wanted.
 //!
-//! ## Key Features
+//! So instead of a catalogue of separate methods, rssn has two parts:
 //!
-//! - **Efficient DAG-based Expression Model**: Expressions are stored as a Directed Acyclic
-//!   Graph, ensuring that identical subexpressions are represented by a single node in memory.
-//!   This provides automatic canonicalization and significant performance gains.
+//! * **Graph computation** — [`graph`] is a domain-free kernel: a
+//!   hash-consed expression DAG whose nodes are linked into equivalence
+//!   classes, tree windows for destructive local search, and a heuristic
+//!   scheduler. [`rules`] supplies the mathematics as rule sets: declarative
+//!   rewrites and procedural reduction kernels, symbolic and numeric side by
+//!   side. [`api`] is the single entry point, [`Session::compute`].
+//! * **Simulation** — [`sim`] holds what is not an identity transformation:
+//!   time stepping, discretised fields, particle systems. [`kernels`] are
+//!   the plain numeric routines both parts share, and [`backend`] turns a
+//!   reduced term into an executable function for them.
 //!
-//! - **Advanced Symbolic Algebra**: A powerful Computer Algebra System (CAS) for manipulating
-//!   expressions. It goes beyond simple simplification by supporting:
-//!     - Polynomial algebra including **Gröbner basis** computation.
-//!     - Simplification and normalization of expressions with respect to polynomial side-relations.
+//! ```
+//! use rssn::prelude::*;
 //!
-//! - **Symbolic Calculus**: Functions for differentiation, integration, limits, and series expansion.
+//! let s = Session::new();
+//! let x = s.sym("x");
 //!
-//! - **Numerical Methods**: A rich collection of algorithms for numerical integration, solving
-//!   differential equations (ODEs and PDEs), optimization, and more.
+//! // One request, two phases.
+//! let request = diff(x.pow(3) * sin(x), x);
+//! let closed_form = s.compute(request, &Config::new())?.term;
+//! let at_two = s
+//!     .compute(request, &Config::new().numeric(1e-10).bind("x", 2.0))?
+//!     .value;
 //!
-//! - **Versatile Output**: Render expressions as pretty-printed text, LaTeX, or plots.
-//!
-//! ## Crate Structure
-//!
-//! The `rssn` crate is organized into the following main modules:
-//!
-//! - **`symbolic`**: The core of the CAS. It defines the `Expr` and `DagNode` representations and
-//!   provides all functionality for symbolic manipulation, including the `simplify_dag` engine
-//!   and advanced algebraic tools in `cas_foundations` and `grobner`.
-//! - **`numerical`**: Contains implementations of various numerical algorithms.
-//! - **`physics`**: Implements numerical methods specifically for physics simulations.
-//! - **`input`**: Provides tools for parsing and formatting expressions.
-//! - **`output`**: Provides tools for formatting and displaying expressions.
-//! - **`jit`**: Just-in-time compilation of expressions and commands.
-//! - **`compute`**: Provides tools for numerical and symbolic computation commands.
-//! - **`plugins`**: Provides tools for loading and managing plugins.
-//! - **`nightly`**: Provides tools with nightly features such as with AVX512.
-//! - **`prelude`**: Re-exports the most common types and functions for convenient use.
-//!
-//! ## Example: Simplification with Relations
-//!
-//! `rssn` can simplify expressions within the context of an algebraic variety. For example,
-//! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
-//!
-//! ```rust
-//! use rssn::symbolic::cas_foundations::simplify_with_relations;
-//! use rssn::symbolic::core::Expr;
-//! use rssn::symbolic::grobner::MonomialOrder;
-//!
-//! // Define variables x and y
-//! let x = Expr::new_variable("x");
-//!
-//! let y = Expr::new_variable("y");
-//!
-//! // Expression to simplify: 2*x^2
-//! let two = Expr::new_bigint(2.into());
-//!
-//! let x_sq = Expr::new_pow(x.clone(), Expr::new_bigint(2.into()));
-//!
-//! let expr_to_simplify = Expr::new_mul(two, x_sq);
-//!
-//! // Define the side-relation: x^2 + y^2 - 1 = 0
-//! let y_sq = Expr::new_pow(y.clone(), Expr::new_bigint(2.into()));
-//!
-//! let one = Expr::new_bigint(1.into());
-//!
-//! let relation = Expr::new_sub(Expr::new_add(x.clone(), y.clone()), one);
-//!
-//! // Simplify the expression with respect to the relation
-//! let simplified_expr = simplify_with_relations(
-//!     &expr_to_simplify,
-//!     &[relation],
-//!     &["x", "y"],
-//!     MonomialOrder::Lexicographical,
-//! );
-//!
-//! // The result will be 2 - 4y + 2y^2
-//! // Note: The exact output format and canonical form may vary between versions.
-//! println!("Original expression: {}", expr_to_simplify);
-//!
-//! println!("Simplified expression: {}", simplified_expr);
+//! assert_eq!(closed_form.eval(&[("x", 2.0)]), at_two);
+//! # Ok::<(), ComputeError>(())
 //! ```
 //!
-//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
-//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ode_lorenz_attractor_1_fg.svg)
-
-//! This library is in active development. The API may change, and community
-//! contributions are welcome.
-
-// =========================================================================
-// RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 1
-// =========================================================================
-//
-// -------------------------------------------------------------------------
-// LEVEL 1: CRITICAL ERRORS (Deny)
-// -------------------------------------------------------------------------
-// #![deny(
-// Rust Compiler Errors
-// dead_code,
-// unreachable_code,
-// improper_ctypes_definitions,
-// future_incompatible,
-// nonstandard_style,
-// rust_2018_idioms,
-// clippy::perf,
-// clippy::correctness,
-// clippy::suspicious,
-// clippy::unwrap_used,
-// =========================================================================
-// == LINT DISCUSSIONS AND SUPPRESSIONS (Performance vs. Safety) ===========
-// =========================================================================
-//
-// clippy::expect_used:
-// We allow `expect()` in specific controlled scenarios where an unrecoverable
-// logic error (e.g., failed quantity parsing where input is guaranteed clean)
-// is assumed to be a bug, not a runtime failure. For unit testing and quick
-// prototyping, this is often preferred over verbose unwrap_or_else.
-//
-// ENGINEERING ASSUMPTION: Scientific computing environments often operate
-// under the assumption that user-facing input validation is handled **up-stream** // (at the API or parsing layer). Internal calculations proceed based on the
-// assumption that values (like Quantity components) are valid, non-exceptional
-// numbers, allowing us to favor performance in hot spots over repetitive
-// internal validity checks.
-//
-// clippy::indexing_slicing:
-// We suppress this globally or per-file because our FVM and grid calculations
-// rely on flattened `Vec<f64>` and index arithmetic (e.g., `idx + width`)
-// for performance.
-//
-// DISCUSSION: We all know that in many numerical computing cases, performance
-// and security must be balanced. Direct indexing is structurally safe
-// in our validated internal loops, and using it allows the compiler to
-// perform **Bounds Check Elision (BCE)**, which is critical for performance
-// in hot loops. The long-term plan is to refactor these loops to use
-// Ghost Cells or clear range iteration to make the safety provable to Clippy
-// without suppression.
-//
-// clippy::arithmetic_side_effects:
-// We suppress this because we overload arithmetic operators for custom types
-// (`SupportedQuantity`) where the underlying operations (e.g., `uom`'s types)
-// are **mathematically pure** (side-effect-free).
-//
-// PERFORMANCE CONCERN: The lint encourages explicit function calls over
-// operator overloading for complex types. However, using idiomatic operator
-// overloading (`*`, `/`, `+`, `-`) here keeps the code clean and allows the
-// compiler to better inline and optimize these fundamental algebraic steps
-// within a complex expression tree, which is vital for the performance and
-// readability of scientific calculations. We assert that these operations
-// are side-effect-free.
-//
-// clippy::missing_safety_doc:
-// This lint is suppressed due to the project's current instability and the
-// high volume of FFI-exported functions (30,000+ lines).
-//
-// REASON FOR SUPPRESSION: All FFI export functions have been correctly marked
-// as `unsafe` (the structural fix). However, manually writing the required
-// `/// # Safety` documentation for every single one of these functions is
-// an insurmountable task for an early-stage project with limited resources.
-//
-// TECHNICAL DEBT: This is considered a **critical technical debt item** that
-// must be addressed before the project hits its Beta milestone. A tool
-// or a specialized automated script will be required to audit and enforce
-// detailed safety contracts at that stage. For now, the focus remains on
-// functional correctness.
-// )]
-// -------------------------------------------------------------------------
-// LEVEL 2: STYLE WARNINGS (Warn)
-// -------------------------------------------------------------------------
-// #![warn(
-// warnings,
-// unsafe_code,
-// clippy::all,
-// clippy::pedantic,
-// clippy::nursery,
-// clippy::dbg_macro,
-// clippy::todo,
-// clippy::implicit_clone,
-// clippy::unnecessary_safety_comment,
-// clippy::same_item_push
-// )]
-// -------------------------------------------------------------------------
-// LEVEL 3: ALLOW/IGNORABLE (Allow)
-// -------------------------------------------------------------------------
-// #![allow(
-// missing_docs,  // Temporary: To be addressed gradually
-// clippy::indexing_slicing,  // Performance-critical in numerical computations
-// clippy::match_same_arms,  // Allowed for code clarity in some cases
-// clippy::comparison_chain,  // Sometimes more readable than alternatives
-// clippy::redundant_closure_for_method_calls,  // For clarity in some cases
-// clippy::if_not_else,  // Sometimes the negative condition is clearer
-// clippy::single_match_else,  // Sometimes clearer than refactoring
-// clippy::redundant_else,  // Sometimes clearer to explicitly show all branches
-// clippy::missing_safety_doc,  // FFI functions that need safety docs to be completed
-// clippy::single_call_fn,  // Sometimes used for clarity or future expansion
-// clippy::min_ident_chars,  // Mathematical notation often uses short variable names
-// clippy::missing_docs_in_private_items,  // Private items temporarily missing docs
-// clippy::missing_errors_doc,  // Documentation to be completed
-// clippy::missing_panics_doc,  // Documentation to be completed
-// clippy::undocumented_unsafe_blocks,  // Safety comments to be added
-// clippy::doc_markdown,  // Technical terms sometimes need backticks
-// unused_doc_comments,  // To be addressed in documentation improvements
-// clippy::float_arithmetic,  // Required in numerical computing
-// clippy::cast_possible_truncation,  // Sometimes necessary in numerical computing
-// clippy::cast_precision_loss,  // Sometimes necessary in numerical computing
-// clippy::cast_sign_loss,  // Sometimes necessary in numerical computing
-// clippy::suboptimal_flops,  // Performance trade-offs in numerical methods
-// clippy::manual_midpoint,  // Manual implementation for numerical stability
-// clippy::non_std_lazy_statics,  // For performance in some cases
-// clippy::unreadable_literal,  // Sometimes mathematical constants need specific formatting
-// clippy::manual_let_else,  // Not yet stabilized feature
-// clippy::manual_map,  // Sometimes explicit control flow is clearer
-// clippy::option_if_let_else,  // Sometimes match is clearer
-// clippy::empty_line_after_doc_comments,  // Formatting preference for some cases
-// clippy::many_single_char_names,  // Mathematical notation often uses single letters
-// clippy::module_name_repetitions,  // Sometimes module names naturally repeat
-// clippy::redundant_field_names,  // Sometimes clearer to be explicit
-// clippy::similar_names,  // Sometimes mathematical variables are naturally similar
-// clippy::redundant_pub_crate,  // For API consistency
-// clippy::too_many_lines,  // Complex functions that need refactoring over time
-// clippy::must_use_candidate,  // To be addressed gradually
-// clippy::shadow_unrelated,  // Sometimes appropriate for local variables
-// clippy::use_self,  // For consistency in some cases
-// clippy::str_to_string,  // Sometimes needed for API compatibility
-// clippy::uninlined_format_args,  // Performance considerations in hot paths
-// clippy::collapsible_if,
-// clippy::single_match,
-// clippy::needless_pass_by_value,
-// clippy::needless_pass_by_ref_mut,
-// clippy::used_underscore_binding,
-// )]
-//
-// =========================================================================
-// RUST LINT CONFIGURATION: rssn (Scientific Computing Library) -- version 2
-// =========================================================================
+//! See `ARCHITECTURE.md` for the design.
 
 // -------------------------------------------------------------------------
 // LEVEL 1: CRITICAL ERRORS (Deny)
 // -------------------------------------------------------------------------
 #![deny(
-    // Rust Compiler Errors
-    dead_code,
     unreachable_code,
     improper_ctypes_definitions,
     future_incompatible,
@@ -250,37 +51,27 @@
     clippy::correctness,
     clippy::suspicious,
     clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
     clippy::missing_safety_doc,
     clippy::same_item_push,
     clippy::implicit_clone,
     clippy::all,
     clippy::pedantic,
-    clippy::nursery,
-    clippy::single_call_fn,
     missing_docs,
-    unsafe_code,
+    clippy::nursery,
+    clippy::single_call_fn
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
 #![warn(
+    dead_code,
     warnings,
-    // To avoid performance issues in hot paths
-    clippy::expect_used,
-    // To avoid simd optimization issues
-    clippy::indexing_slicing,
-    // To avoid simd optimization issues
-    clippy::arithmetic_side_effects,
-    // Precision loss is allowed here because we need to introduce bigint to all places otherwise --- that will require a lot of work and results in breaking change and loss of performance. So we will have to handle it later.
-    // DEBT: Handle precision loss when possible (add more suites of code)
-    // Possible Truncation warnned, due to CPU branch prediction and simd optimization programs, we will just warn this problems instead deny it.
-    clippy::cast_precision_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_possible_truncation,
+    unsafe_code,
     clippy::dbg_macro,
     clippy::todo,
-    // This is usually a sign of dead code --- but for development purposes, we will just warn it.
-    clippy::used_underscore_binding,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------
@@ -290,21 +81,37 @@
     clippy::restriction,
     clippy::inline_always,
     unused_doc_comments,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::empty_line_after_doc_comments
+)]
+// -------------------------------------------------------------------------
+// Scientific-computing compromises (documented downgrades)
+// -------------------------------------------------------------------------
+#![allow(
+    // `mul_add` is a slow libm call on targets without hardware FMA, and a
+    // fused rounding changes results between targets; the kernels keep the
+    // written evaluation order so results are reproducible everywhere.
+    clippy::suboptimal_flops,
+    // Counts and indices become `f64` throughout numerics (sample sizes,
+    // node positions, orders); they stay far below 2^53.
+    clippy::cast_precision_loss,
+    // Formulas follow the notation of the literature (`a, b, c, x, y, z`,
+    // `x0, x1`, `p, q, r, s`), which reads better than spelled-out names.
     clippy::many_single_char_names,
     clippy::similar_names,
-    clippy::redundant_else,
-    clippy::needless_continue,
-    clippy::empty_line_after_doc_comments,
-    clippy::empty_line_after_outer_attr,
-    clippy::manual_let_else,
-    // It is always reporting on normal math writings.
-    clippy::doc_markdown,
-    // We thinks do not collapsible if makes the code more extensible.
-    clippy::collapsible_if,
-    clippy::collapsible_match,
-    clippy::collapsible_else_if,
-    clippy::no_effect_underscore_binding,
-    clippy::must_use_candidate
+    // Fires on `[a, b]` built from separately computed bindings.
+    clippy::tuple_array_conversions,
+    // Numerical kernels index several arrays in step (stencils, tableaux,
+    // matrices); index loops read closest to the formulas they implement.
+    clippy::needless_range_loop,
+    // Quadrature nodes, Butcher tableaux and series coefficients are copied
+    // digit for digit from their references so they can be checked.
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    // Time-stepping loops advance a floating-point clock to a final time.
+    clippy::while_float
 )]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png"
@@ -313,72 +120,22 @@
     html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico"
 )]
 
-/// Computation engine and task management.
-#[cfg(feature = "compute")]
-pub mod compute;
-/// System and physical constants.
+/// Unified mathematical compute engine.
+pub mod api;
+pub mod backend;
+/// Build metadata and mathematical constants.
 pub mod constant;
-/// FFI APIs for the 'rssn' Library.
-#[cfg(feature = "ffi_api")]
-pub mod ffi_apis;
-
-// #[instability::unstable(feature = "experimental")]
-// Disabled because it only works on nightly rust
-/// FFI blinding and security utilities.
-#[cfg(feature = "ffi_blinding")]
-pub mod ffi_blindings;
-/// Input parsing and handling.
-#[cfg(feature = "input")]
-pub mod input;
-/// Just-In-Time (JIT) compilation for expressions.
-#[cfg(feature = "jit")]
-pub mod jit;
-/// Features requiring nightly Rust.
-#[cfg(feature = "nightly")]
-pub mod nightly;
-/// Numerical computation and optimization.
-pub mod numerical;
-/// Output formatting and handling.
-#[cfg(feature = "output")]
-pub mod output;
-/// Physics-related functionality.
-#[cfg(feature = "physics")]
-pub mod physics;
-/// Plugin system for extending functionality.
-#[cfg(feature = "plugins")]
-pub mod plugins;
-/// Prelude for common imports.
+pub mod ffi;
+pub mod graph;
+pub mod io;
+pub mod kernels;
 pub mod prelude;
-/// The symbolic computation engine.
-pub mod symbolic;
-/// Unfortunatily, faer and many math libraries are not compatible with kani so we have to wait.
-#[cfg(kani)]
-pub mod verification;
+pub mod rules;
+pub mod sim;
 
-// --- Useful Public Re-exports ---
-use std::sync::Arc;
+pub use api::Session;
 
-#[cfg(feature = "input")]
-pub use crate::input::parser::*;
-pub use crate::numerical::matrix::*;
-pub use crate::symbolic::calculus::*;
-pub use crate::symbolic::core::*;
-pub use crate::symbolic::matrix::*;
-pub use crate::symbolic::simplify_dag::*;
-
-/// Checks if an `Arc` has exclusive ownership (strong count is 1).
-///
-/// This is useful for optimizations where you want to mutate the contained data
-/// in-place, avoiding a clone. If this returns `true`, `Arc::get_mut` or
-/// `Arc::try_unwrap` will succeed.
-///
-/// # Arguments
-/// * `arc` - A reference to the `Arc` to check for exclusive ownership
-///
-/// # Returns
-/// * `bool` - True if the Arc has exclusive ownership, false otherwise
-#[allow(clippy::inline_always)]
-#[inline(always)]
-pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {
-    Arc::strong_count(arc) == 1
-}
+/// The README's code blocks, compiled and run as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;

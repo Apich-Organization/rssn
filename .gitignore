@@ -288,3 +288,4 @@ patch_engine_structs.py
 fix_trap.py
 fix_brnz.py
 tidy.py
+.claude/worktrees/
