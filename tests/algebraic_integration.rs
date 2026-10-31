@@ -234,6 +234,31 @@ fn simpson(
     sum * h / 3.0
 }
 
+/// `∫ dx/((x - α)√Q)` is an antiderivative on *both* sides of the pole.
+///
+/// The substitution `t = 1/(x - α)` used by the quadratic-radical rule had
+/// the sign of `√(t²) = |t|` missing, so the returned closed form was
+/// correct only on `(α, ∞)` and had the opposite sign on `(-∞, α)`.  Every
+/// integrand here is evaluated at sample points on both sides.
+#[test]
+fn quadratic_pole_antiderivatives_are_valid_on_both_sides() {
+    let session = Session::new();
+    for integrand in [
+        "1/((x - 1)*sqrt(x^2 - 2))",
+        "(2*x - 1)/((x + 1)^2*sqrt(x^2 - 2))",
+    ] {
+        check_antiderivative(&session, integrand);
+    }
+    // Definite integrals wholly on the far side of the pole, where the sign
+    // error changed the value rather than just the form.
+    for (integrand, a, b) in [
+        ("1/((x - 1)*sqrt(x^2 - 2))", -3.0, -2.0),
+        ("(2*x - 1)/((x + 1)^2*sqrt(x^2 - 2))", -4.0, -3.0),
+    ] {
+        check_definite(&session, integrand, a, b);
+    }
+}
+
 #[test]
 fn quadratic_radicands_have_closed_forms() {
     let session = Session::new();

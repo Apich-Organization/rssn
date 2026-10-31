@@ -499,6 +499,9 @@ fn parse_term(
         let value = parse_term(graph, base, x, radicand, d)?;
         if exponent.is_integer() {
             let n = exponent.to_integer().to_string().parse::<i64>().ok()?;
+            if n.unsigned_abs() > MAX_EXTENSION_POWER {
+                return None;
+            }
             return value.pow(n, d);
         }
         // `D^((2k+1)/2) = y^(2k+1)`.
@@ -508,6 +511,9 @@ fn parse_term(
                 return None;
             }
             let k = doubled.to_integer().to_string().parse::<i64>().ok()?;
+            if k.unsigned_abs() > MAX_EXTENSION_POWER {
+                return None;
+            }
             let root = Element {
                 a: Frac::zero(),
                 b: Frac::polynomial(&[BigRational::from_integer(BigInt::from(1))]),
@@ -518,6 +524,16 @@ fn parse_term(
     }
     None
 }
+
+/// Largest power of `y` the parser expands explicitly.
+///
+/// `sqrt(D)^n` is `y^n` in the field, and its denominator/numerator degrees
+/// grow linearly in `n`; a user-supplied exponent such as
+/// `sqrt(x^3 + 1)^1000000` would otherwise allocate polynomials of degree
+/// millions before any of the reduction caps applies.  The largest power
+/// that actually occurs in an integrand of the supported shape is `y^3`
+/// (from `D^(3/2)`), so the bound is generous.
+const MAX_EXTENSION_POWER: u64 = 64;
 
 /// Splits `D = unit * radical * s^2` with `radical` square-free, returning
 /// `unit * radical` and `s`.
@@ -850,6 +866,122 @@ mod tests {
             panic!("quotient");
         };
         assert!(a.is_empty() && b.is_empty(), "the reduction is not exact");
+    }
+
+    /// `d/dx (a + b y) = g` exactly, with `y^2 = D`.
+    fn assert_reduction_is_exact(
+        d: &[BigRational],
+        a: &[BigRational],
+        b: &[BigRational],
+        c: &[BigRational],
+    ) {
+        let Some(original) = Element::quotient(a, b, c) else {
+            panic!("bad quotient");
+        };
+        let reduced = hermite::reduce(d, a, b, c);
+        assert!(
+            reduced.steps > 0,
+            "the Hermite reduction took no step for D = {d:?}, C = {c:?}"
+        );
+        let mut total = Element::zero();
+        for piece in &reduced.pieces {
+            let den = field::pow(&piece.w, piece.power);
+            let Some(term) = Element::quotient(&piece.u, &piece.v, &den) else {
+                panic!("bad piece");
+            };
+            let Some(sum) = total.add(&differentiate(&term, d)) else {
+                panic!("add");
+            };
+            total = sum;
+        }
+        let Some(remaining) = Element::quotient(&reduced.a, &reduced.b, &reduced.c) else {
+            panic!("bad remainder");
+        };
+        let Some(sum) = total.add(&remaining) else {
+            panic!("add");
+        };
+        let Some(difference) = original.sub(&sum) else {
+            panic!("sub");
+        };
+        let Some((a, b, _)) = difference.to_quotient() else {
+            panic!("quotient");
+        };
+        assert!(
+            a.is_empty() && b.is_empty(),
+            "the Hermite reduction is not an exact identity for D = {d:?}, C = {c:?}"
+        );
+    }
+
+    #[test]
+    fn hermite_reduction_is_exact_for_repeated_and_ramified_denominators() {
+        let q = |v: &[i64]| -> QPoly {
+            v.iter()
+                .map(|&k| BigRational::from_integer(BigInt::from(k)))
+                .collect()
+        };
+        let mul = |a: &[BigRational], b: &[BigRational]| field::mul(a, b);
+        let pow = |p: &[BigRational], n: u32| field::pow(p, n);
+        let d_cubic = q(&[1, 0, 0, 1]); // x^3 + 1
+        let d_quartic = q(&[1, 0, 0, 0, 1]); // x^4 + 1
+        let d_ramified = mul(&q(&[1, 0, 1]), &q(&[1, 0, 2])); // (x^2+1)(x^2+2)
+        let d_monic = mul(&q(&[1, 0, 0, 1]), &q(&[3, 2, 1])); // (x^3+1)(x^2+2x+3)
+        let c_quadratic = q(&[1, 1, 1]); // x^2+x+1
+        let c_linear = q(&[-2, 1]); // x - 2
+        let c_ramified = mul(&pow(&q(&[1, 0, 1]), 2), &pow(&q(&[-3, 1]), 2)); // ramified at x^2+1
+        let c_multi = mul(&pow(&q(&[-1, 1]), 5), &pow(&c_quadratic, 2));
+        let c_rational = mul(&pow(&q(&[1, 0, 1]), 3), &q(&[-2, 2]));
+        let zero = Vec::new();
+        let cases: [(&[BigRational], QPoly, QPoly, QPoly); 7] = [
+            (
+                &d_cubic[..],
+                q(&[1, 0, 1]),
+                q(&[2, -1]),
+                mul(&pow(&c_quadratic, 2), &c_linear),
+            ),
+            (&d_quartic[..], q(&[3]), q(&[0, 1]), pow(&c_linear, 3)),
+            (&d_ramified[..], q(&[1, 2]), zero.clone(), c_ramified),
+            (
+                &d_monic[..],
+                q(&[1, 0, 0, 2]),
+                q(&[0, 1, 1]),
+                pow(&mul(&q(&[1, 0, 1]), &c_linear), 3),
+            ),
+            (&d_cubic[..], zero.clone(), q(&[1]), c_multi),
+            (&d_quartic[..], q(&[1, 0, 1]), q(&[0, 2]), c_rational),
+            (
+                &d_cubic[..],
+                q(&[2, 3]),
+                q(&[0, 0, 0, 1]),
+                pow(&q(&[0, 1]), 4),
+            ),
+        ];
+        for (d, a, b, c) in cases {
+            assert_reduction_is_exact(d, &a, &b, &c);
+        }
+    }
+
+    #[test]
+    fn huge_extension_powers_are_refused() {
+        let mut graph = Graph::new();
+        let Ok(engine) = Engine::install(&mut graph, &[calculus()]) else {
+            panic!("install");
+        };
+        let x = graph.sym("x");
+        // Without the exponent guard this builds polynomials of degree
+        // billions (or exhausts memory) before any reduction cap applies.
+        let Ok(integrand) = graph.parse("sqrt(x^3 + 1)^1000000000") else {
+            panic!("parse");
+        };
+        let env = Env::symbolic();
+        let mut cx = Cx {
+            graph: &mut graph,
+            env: &env,
+            engine: &engine,
+        };
+        assert!(
+            integrate_algebraic(&mut cx, integrand, x).is_none(),
+            "a billion-fold extension power must be refused"
+        );
     }
 
     #[test]
