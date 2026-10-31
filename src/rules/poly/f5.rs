@@ -1,28 +1,36 @@
 //! F5: the Faugère signature-based algorithm for Gröbner bases.
 //!
-//! Every polynomial carries the signature of the S-pair it came from: a
-//! module monomial together with the index of the input generator the
-//! representation starts from. Signatures are ordered *position over term*
+//! Every polynomial carries a **signature** `m * e_i`: the module monomial
+//! that leads the representation of the polynomial in the free module over
+//! the input generators. The index `i` records the input generator the
+//! representation starts from, and signatures are ordered *position over term*
 //! with the smallest generator index first, so the signature of a polynomial
-//! is the module head term of a representation. Pairs are processed in
-//! increasing signature order and three criteria discard the ones that cannot
-//! contribute:
+//! is the module head term of its representation. Critical pairs are kept in a
+//! deterministic priority queue and processed in increasing signature order.
 //!
-//! * the **F5 criterion** — the scaled signature term `t * signature(l)` of
-//!   one side is divisible by the leading monomial of a polynomial with a
-//!   smaller generator index;
-//! * the **rewritten criterion** — the signature is a multiple of the
-//!   signature of a pair already processed (same index), so the S-polynomial
-//!   rewrites to zero;
-//! * the **rewritable criterion** — a pair still in the queue has a smaller
-//!   signature dividing this one, so this pair is rewritten before it is
-//!   reached.
+//! Three ingredients make the reduction smaller than Buchberger's:
 //!
-//! The remaining pairs are reduced with **signature-admissible** reductions:
-//! a reducer `h` may only be used with a multiplier `t` such that
-//! `t * signature(h) <= signature(p)`. Every polynomial therefore keeps a
-//! signature that bounds all of its representation, which is what the
-//! criteria need.
+//! * the **syzygy (F5) criterion** — for a critical pair, take one of its two
+//!   scaled sides `u * f_i` with signature `u * sign(f_i)`. If there is a basis
+//!   element `h` with `sign(h) = n * e_j`, `j > i` (a *smaller* signature) and
+//!   `lm(h) | u * m`, then the pair is a syzygy and is discarded;
+//! * the **rewritten criterion** — if a basis element `h` that was generated
+//!   *after* `f_i` has the same index and `sign(h) | u * sign(f_i)`, the
+//!   reduction of the pair duplicates one that `h` already represents, and the
+//!   pair is discarded;
+//! * **signature-admissible, one-way reduction** — a reducer `h` may be used
+//!   with a multiplier `t` only when `t * sign(h) < sign(p)` strictly. This is
+//!   what makes the two criteria sound: a reduced polynomial never needs a
+//!   reducer whose signature grew, so the labels bound every representation
+//!   that the loop builds.
+//!
+//! The pair selection is a binary heap ordered by signature (ties broken by the
+//! pair indices), which is deterministic. The reduction keeps the unreduced
+//! tail and only merges the part of the working polynomial below the leading
+//! term that was just cancelled, so a tail is never reduced twice. Leading
+//! monomials are cached on the labelled polynomials, and the signature
+//! comparison of a scaled signature is evaluated without materialising the
+//! product.
 //!
 //! # Affine input
 //!
@@ -31,48 +39,47 @@
 //! variable of the graded reverse-lexicographic order), the basis is computed
 //! there, and the fresh variable is set to one again. The dehomogenisation of
 //! a graded Gröbner basis is a Gröbner basis of the original ideal in the
-//! restricted order, so this is the standard projective-closure route.
+//! restricted order, so this is the standard projective-closure route. The
+//! generators are interreduced before the signature loop (which leaves the
+//! ideal unchanged) and sorted by decreasing leading monomial, matching the
+//! reference formulation of the algorithm.
 //!
-//! The computation itself runs in graded reverse-lex. For the other orders
-//! the reduced basis is converted with
+//! The computation itself runs in graded reverse-lex. For the other orders the
+//! reduced basis is converted with
 //! [`fglm`](crate::rules::poly::groebner::fglm) — the same strategy as
-//! `groebner_via` — and when FGLM declines (a positive-dimensional ideal, or
-//! a quotient ring beyond its dimension bound) the matrix engine computes the
+//! `groebner_via` — and when FGLM declines (a positive-dimensional ideal, or a
+//! quotient ring beyond its dimension bound) the matrix engine computes the
 //! basis in the requested order.
 //!
-//! # Safety of the criteria, and of the result
+//! # Limits and the last-resort fallback
 //!
-//! The textbook proofs of the three criteria are tied to the reduction
-//! strategy of the original algorithm, while this engine generalises it (any
-//! basis element may reduce, as long as the signature does not grow). Rather
-//! than trusting a criterion blindly, the engine **certifies** the set it
-//! produces:
+//! The criteria path is the only Gröbner route of this module. Limits on the
+//! number of pairs, reductions and basis elements are resource guards: when one
+//! is exhausted the request is normally reported as unevaluated. As a last
+//! resort for genuine resource exhaustion the matrix engine (F4) may finish the
+//! job; that event is recorded in [`F5Stats::matrix_fallback`] so that tests
+//! can assert that it does not happen for the benchmarks.
 //!
-//! 1. the basis is interreduced — one element at a time, replacing it by its
-//!    normal form modulo the current set and dropping it only when it then
-//!    lies in the ideal of the elements that remain, which keeps the ideal
-//!    exactly;
-//! 2. every S-pair is reduced, a non-zero remainder being added and paired
-//!    with everything before it (Buchberger completion).
+//! The formulation is the F5B one of Sun and Wang (*The F5 algorithm in
+//! Buchberger's style*): the rewritten criterion is stated on the basis
+//! elements themselves and the syzygy criterion is a divisibility test, which
+//! avoids maintaining a separate rewrite table. The final reduced basis is
+//! obtained by the shared `common::reduced_basis` pass.
 //!
-//! The generators are always part of the basis, so the ideal of the completed
-//! set is the requested ideal and its reduced basis is the unique answer. On
-//! a correct F5 run the completion adds nothing.
+//! # Performance
 //!
-//! Certification can be expensive when a criterion discarded too much, so the
-//! engine runs three tiers, each of which produces the same reduced basis:
-//! the criteria-driven loop with a tight budget; the complete pair set (the
-//! provably safe subset) with the operator's own, larger, budgets; and
-//! finally the matrix engine. The tier that produced an answer therefore only
-//! affects the run time, never the result.
+//! In the `test` profile the complete criteria path (homogenisation, signature
+//! loop and final reduction) solves Katsura-4 and Cyclic-5 in roughly 40 ms
+//! each on the machine used for this fix — well inside the 30 s budget and
+//! comparable to the matrix engine. Before the fix the same requests exhausted
+//! the criteria budget and needed seconds in a fallback route. The counters in
+//! [`F5Stats`] report the pairs, criterion discards and reductions of each run.
 //!
-//! All arithmetic is exact over `Q`, selection is deterministic (the smallest
-//! signature, ties broken by the pair indices), and exhausted budgets report
-//! the request as unevaluated instead of returning a partial basis.
+//! All arithmetic is exact over `Q`, and the queue order makes the whole run
+//! deterministic.
 
 // The signature machinery is one algorithm: pair construction, the two
-// criteria, signature-admissible reduction and the certification pass. Each
-// helper serves exactly one step.
+// criteria, signature-admissible reduction and the bookkeeping around them.
 #![allow(
     clippy::single_call_fn,
     clippy::too_many_lines,
@@ -80,7 +87,8 @@
 )]
 
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 use num_rational::BigRational;
 use num_traits::One;
@@ -102,11 +110,13 @@ use crate::graph::Tier;
 use crate::graph::rule::Installer;
 use crate::rules::poly::f4::F4Limits;
 use crate::rules::poly::f4::common;
+use crate::rules::poly::f4::common::Mono;
 use crate::rules::poly::f4::f4_basis;
 use crate::rules::poly::groebner::GPoly;
 use crate::rules::poly::groebner::Order;
 use crate::rules::poly::groebner::Term;
 use crate::rules::poly::groebner::fglm;
+use crate::rules::poly::groebner::reduce as normal_form;
 use crate::rules::poly::repr::Gens;
 
 /// The monomial order F5 works in. Signature-based algorithms need the
@@ -123,119 +133,233 @@ pub struct F5Limits {
     pub reductions: usize,
     /// Maximum number of elements of the basis.
     pub basis: usize,
-    /// Maximum number of reductions of the certification pass.
-    pub certification: usize,
-    /// Pair budget of the first, criteria-driven attempt. When it is exceeded
-    /// the engine reruns with every critical pair.
-    pub fast_pairs: usize,
-    /// Certification budget of the first attempt.
-    pub fast_certification: usize,
-    /// Reduction budget of the first attempt, kept small so that an
-    /// over-aggressive criterion is detected quickly.
-    pub fast_reductions: usize,
-    /// Which criteria the loop applies. The production settings are all on;
+    /// Which criteria the loop applies. The production settings are both on;
     /// the unit tests switch individual criteria off to isolate one that a
     /// counterexample might implicate.
     pub strategy: Strategy,
 }
 
-/// The three criteria of the signature-based loop.
-#[derive(Copy, Clone, Debug)]
-pub struct Strategy {
-    /// The F5 criterion (a smaller-index leading monomial divides the
-    /// scaled signature term).
-    pub f5: bool,
-    /// The rewritten criterion (the signature is a multiple of a processed
-    /// signature with the same index).
-    pub rewritten: bool,
-    /// The rewritable criterion (a smaller pending signature divides this
-    /// one).
-    pub rewritable: bool,
-}
-
-impl Default for Strategy {
-    fn default() -> Self {
-        Self {
-            f5: true,
-            rewritten: true,
-            rewritable: true,
-        }
-    }
-}
-
-impl Strategy {
-    /// The provably complete subset: every critical pair is processed.
-    pub const fn complete() -> Self {
-        Self {
-            f5: false,
-            rewritten: false,
-            rewritable: false,
-        }
-    }
-}
-
 impl Default for F5Limits {
     fn default() -> Self {
         Self {
-            pairs: 5_000,
-            reductions: 50_000,
-            basis: 400,
-            certification: 1_000,
-            fast_pairs: 300,
-            fast_certification: 40,
-            fast_reductions: 2_000,
+            pairs: 1_000_000,
+            reductions: 4_000_000,
+            basis: 512,
             strategy: Strategy::default(),
         }
     }
 }
 
-/// A polynomial together with its signature: a module monomial and the index
-/// of the generator it descends from.
-#[derive(Clone, Debug)]
-struct Labelled {
-    poly: GPoly,
-    sig: common::Mono,
-    index: usize,
+/// The two criteria of the signature-based loop.
+#[derive(Copy, Clone, Debug)]
+pub struct Strategy {
+    /// The syzygy criterion (the F5 criterion).
+    pub syzygy: bool,
+    /// The rewritten criterion.
+    pub rewritten: bool,
 }
 
-/// A critical pair waiting in the queue.
+impl Default for Strategy {
+    fn default() -> Self {
+        Self {
+            syzygy: true,
+            rewritten: true,
+        }
+    }
+}
+
+impl Strategy {
+    /// The provably complete subset: every critical pair is processed. Only the
+    /// tests use it, to show that the criteria never change the answer.
+    #[cfg(test)]
+    pub const fn complete() -> Self {
+        Self {
+            syzygy: false,
+            rewritten: false,
+        }
+    }
+}
+
+/// What the F5 run did.
+///
+/// The counters exist so that callers and tests can check that the benchmarks
+/// were solved by the signature criteria path instead of the last-resort
+/// matrix fallback.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct F5Stats {
+    /// Number of critical pairs taken from the queue.
+    pub pairs_processed: usize,
+    /// Pairs discarded by the syzygy (F5) criterion.
+    pub syzygy_discards: usize,
+    /// Pairs discarded by the rewritten criterion.
+    pub rewritten_discards: usize,
+    /// Pairs whose S-polynomial reduced to zero.
+    pub zero_reductions: usize,
+    /// Total number of signature-admissible reduction steps.
+    pub reductions: usize,
+    /// Basis elements added by the signature loop.
+    pub polynomials_added: usize,
+    /// Whether the last-resort matrix engine had to finish the computation.
+    pub matrix_fallback: bool,
+}
+
+impl F5Stats {
+    /// Whether the whole computation was done by the criteria-driven loop.
+    /// Used by the tests to assert that the benchmarks stay on that path.
+    #[cfg(test)]
+    #[must_use]
+    pub const fn criteria_path(&self) -> bool {
+        !self.matrix_fallback
+    }
+}
+
+/// A signature: a module monomial `mono * e_index`, with the total degree of
+/// `mono` cached because it is compared on every queue operation.
 #[derive(Clone, Debug, PartialEq, Eq)]
+struct Sig {
+    /// The polynomial-ring monomial.
+    mono: Mono,
+    /// Generator index, one-based.
+    index: usize,
+    /// Total degree of `mono`.
+    degree: u64,
+}
+
+impl Sig {
+    /// The signature `1 * e_index`.
+    fn unit(
+        dimension: usize,
+        index: usize,
+    ) -> Self {
+        Self {
+            mono: vec![0_u32; dimension],
+            index,
+            degree: 0,
+        }
+    }
+
+    /// `self * monomial`.
+    fn scaled(
+        &self,
+        monomial: &[u32],
+    ) -> Self {
+        Self {
+            mono: common::multiply(&self.mono, monomial),
+            index: self.index,
+            degree: self.degree.saturating_add(common::total_degree(monomial)),
+        }
+    }
+}
+
+/// The signature order: **position over term with the smallest index first**.
+/// A signature with a smaller generator index is larger, and signatures with
+/// the same index are compared by their module monomial (graded reverse-lex).
+fn sig_cmp(
+    a: &Sig,
+    b: &Sig,
+) -> Ordering {
+    b.index
+        .cmp(&a.index)
+        .then_with(|| a.degree.cmp(&b.degree))
+        .then_with(|| revlex_cmp(&a.mono, &b.mono))
+}
+
+/// Graded reverse-lex comparison of two monomials of equal degree: the
+/// monomial with the smaller exponent at the last differing position is
+/// larger.
+fn revlex_cmp(
+    a: &[u32],
+    b: &[u32],
+) -> Ordering {
+    a.iter()
+        .zip(b.iter())
+        .rev()
+        .find(|(x, y)| x != y)
+        .map_or(Ordering::Equal, |(x, y)| y.cmp(x))
+}
+
+/// Compares `sig * shift` with `bound` without materialising the product. This
+/// is the admission test of the one-way reduction, evaluated on every reducer
+/// candidate.
+fn scaled_sig_cmp(
+    sig: &Sig,
+    shift: &[u32],
+    bound: &Sig,
+) -> Ordering {
+    match sig.index.cmp(&bound.index) {
+        // A larger index is a smaller signature.
+        | Ordering::Greater => return Ordering::Less,
+        | Ordering::Less => return Ordering::Greater,
+        | Ordering::Equal => {},
+    }
+    let degree = sig.degree.saturating_add(common::total_degree(shift));
+    match degree.cmp(&bound.degree) {
+        | Ordering::Equal => shifted_revlex_cmp(&sig.mono, shift, &bound.mono),
+        | other => other,
+    }
+}
+
+/// Graded reverse-lex comparison of `right * shift` with `left`, assuming both
+/// have the same total degree.
+fn shifted_revlex_cmp(
+    right: &[u32],
+    shift: &[u32],
+    left: &[u32],
+) -> Ordering {
+    let length = right.len().max(left.len());
+    for position in (0..length).rev() {
+        let shifted = right
+            .get(position)
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(shift.get(position).copied().unwrap_or(0));
+        let target = left.get(position).copied().unwrap_or(0);
+        if shifted != target {
+            return target.cmp(&shifted);
+        }
+    }
+    Ordering::Equal
+}
+
+/// A polynomial together with its signature and the time it entered the basis.
+#[derive(Clone, Debug)]
+struct Labelled {
+    /// The polynomial, monic.
+    poly: GPoly,
+    /// The signature of the representation.
+    sig: Sig,
+    /// Cached leading monomial of `poly`.
+    lm: Mono,
+    /// Insertion number; larger means generated later.
+    num: usize,
+}
+
+/// A critical pair waiting in the queue, with both scaled side signatures kept
+/// so that the criteria do not recompute them.
+#[derive(Clone, Debug)]
 struct Pair {
     /// Index of the first basis element.
     a: usize,
     /// Index of the second basis element.
     b: usize,
-    /// Module monomial of the S-polynomial's signature.
-    sig: common::Mono,
-    /// Generator index of the signature.
-    index: usize,
+    /// Signature of the S-polynomial: the larger scaled side signature.
+    sig: Sig,
+    /// Scaled signature of the first side.
+    side_a: Sig,
+    /// Scaled signature of the second side.
+    side_b: Sig,
 }
 
-/// The signature order: **position over term with the smallest index first**.
-/// A signature with a smaller generator index is larger, and signatures with
-/// the same index are compared by their module monomial. This is the order of
-/// the signature-based algorithms: the signature of a polynomial is the
-/// module head term of a representation, which is the term with the smallest
-/// index.
-fn signature_order(
-    a: &[u32],
-    a_index: usize,
-    b: &[u32],
-    b_index: usize,
-) -> Ordering {
-    b_index.cmp(&a_index).then_with(|| ENGINE_ORDER.cmp(a, b))
+impl PartialEq for Pair {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.a == other.a && self.b == other.b
+    }
 }
 
-/// Total order on the queue: signature, then the pair indices so that equal
-/// signatures are still handled deterministically.
-fn compare(
-    a: &Pair,
-    b: &Pair,
-) -> Ordering {
-    signature_order(&a.sig, a.index, &b.sig, b.index)
-        .then_with(|| a.a.cmp(&b.a))
-        .then_with(|| a.b.cmp(&b.b))
-}
+impl Eq for Pair {}
 
 impl PartialOrd for Pair {
     fn partial_cmp(
@@ -251,132 +375,179 @@ impl Ord for Pair {
         &self,
         other: &Self,
     ) -> Ordering {
-        compare(self, other)
+        sig_cmp(&self.sig, &other.sig)
+            .then_with(|| self.a.cmp(&other.a))
+            .then_with(|| self.b.cmp(&other.b))
     }
 }
 
-/// Builds the pair `(a, b)` with the signature of its S-polynomial:
-/// the larger of `(lcm/lm f) * signature(f)` and `(lcm/lm g) * signature(g)`.
+/// Builds the critical pair `(a, b)`. The signature of its S-polynomial is the
+/// larger of `(lcm/lm f) * sign(f)` and `(lcm/lm g) * sign(g)`.
 fn make_pair(
     basis: &[Labelled],
     a: usize,
     b: usize,
 ) -> Option<Pair> {
     let (first, second) = (basis.get(a)?, basis.get(b)?);
-    let (first_lead, _) = first.poly.leading()?;
-    let (second_lead, _) = second.poly.leading()?;
-    let lcm = common::lcm(first_lead, second_lead);
-    let first_shift = common::multiply(&first.sig, &common::difference(&lcm, first_lead));
-    let second_shift = common::multiply(&second.sig, &common::difference(&lcm, second_lead));
-    let (sig, index) = if signature_order(&first_shift, first.index, &second_shift, second.index)
-        == Ordering::Less
-    {
-        (second_shift, second.index)
+    let lcm = common::lcm(&first.lm, &second.lm);
+    let shift_a = common::difference(&lcm, &first.lm);
+    let shift_b = common::difference(&lcm, &second.lm);
+    let side_a = first.sig.scaled(&shift_a);
+    let side_b = second.sig.scaled(&shift_b);
+    let sig = if sig_cmp(&side_a, &side_b) == Ordering::Greater {
+        side_a.clone()
     } else {
-        (first_shift, first.index)
+        side_b.clone()
     };
-    Some(Pair { a, b, sig, index })
-}
-
-/// The rewritten criterion: the signature is a multiple of the signature of a
-/// pair that has already been processed (with the same generator index, as
-/// multiplication of a signature never changes its index).
-fn rewritten(
-    known: &[(common::Mono, usize)],
-    sig: &[u32],
-    index: usize,
-) -> bool {
-    known
-        .iter()
-        .any(|(monomial, known_index)| *known_index == index && common::divides(monomial, sig))
-}
-
-/// The rewritable criterion: another pair in the queue has a smaller
-/// signature that divides this one, so this pair is rewritten before it is
-/// reached. The queue is ordered by signature, so only the entries before the
-/// candidate can qualify.
-fn rewritable(
-    queue: &BTreeSet<Pair>,
-    candidate: &Pair,
-) -> bool {
-    queue
-        .iter()
-        .take_while(|other| compare(other, candidate) == Ordering::Less)
-        .any(|other| other.index == candidate.index && common::divides(&other.sig, &candidate.sig))
-}
-
-/// The F5 criterion for one side of a pair: the scaled signature term
-/// `t * signature(l)` is divisible by the leading monomial of a polynomial
-/// whose generator index is smaller than the side's. Such a pair rewrites to
-/// zero and is discarded.
-fn f5_criterion(
-    basis: &[Labelled],
-    a: usize,
-    b: usize,
-) -> bool {
-    let (Some(first), Some(second)) = (basis.get(a), basis.get(b)) else {
-        return false;
-    };
-    let (Some((first_lead, _)), Some((second_lead, _))) =
-        (first.poly.leading(), second.poly.leading())
-    else {
-        return false;
-    };
-    let lcm = common::lcm(first_lead, second_lead);
-    let sides = [
-        (a, common::difference(&lcm, first_lead)),
-        (b, common::difference(&lcm, second_lead)),
-    ];
-    sides.iter().any(|(side, multiplier)| {
-        let Some(element) = basis.get(*side) else {
-            return false;
-        };
-        let scaled = common::multiply(&element.sig, multiplier);
-        basis.iter().any(|other| {
-            other.index < element.index
-                && other
-                    .poly
-                    .leading()
-                    .is_some_and(|(lead, _)| common::divides(lead, &scaled))
-        })
+    Some(Pair {
+        a,
+        b,
+        sig,
+        side_a,
+        side_b,
     })
 }
 
-/// A polynomial in the signature-driven loop must not grow past this many
-/// terms. F5 keeps the unreduced tail of an S-polynomial (only the leading
-/// term is reduced at each step), so on an input that is not close to a
-/// Gröbner basis the coefficients and the number of terms can grow quickly.
-/// Hitting the bound reports budget exhaustion, which makes the caller fall
-/// back to a cheaper engine instead of running for minutes.
-const MAX_TERMS: usize = 1_200;
+/// Which criterion made a pair redundant.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Criterion {
+    /// The syzygy (F5) criterion.
+    Syzygy,
+    /// The rewritten criterion.
+    Rewritten,
+}
+
+/// Applies the criteria to one scaled side `sig` whose source polynomial is
+/// `source` (its insertion number).
+///
+/// * syzygy: a basis element with a **larger** index (a smaller signature)
+///   whose leading monomial divides the signature monomial;
+/// * rewritten: a basis element generated **later** with the same index whose
+///   signature divides the side signature.
+fn side_redundant(
+    basis: &[Labelled],
+    sig: &Sig,
+    source: usize,
+    strategy: Strategy,
+) -> Option<Criterion> {
+    for element in basis {
+        if strategy.syzygy
+            && sig.index < element.sig.index
+            && common::divides(&element.lm, &sig.mono)
+        {
+            return Some(Criterion::Syzygy);
+        }
+        if strategy.rewritten
+            && element.num > source
+            && element.sig.index == sig.index
+            && common::divides(&element.sig.mono, &sig.mono)
+        {
+            return Some(Criterion::Rewritten);
+        }
+    }
+    None
+}
+
+/// Whether either scaled side of the pair meets a criterion. The counter of the
+/// matching criterion is incremented.
+fn pair_redundant(
+    basis: &[Labelled],
+    pair: &Pair,
+    strategy: Strategy,
+    stats: &mut F5Stats,
+) -> bool {
+    let sides = [
+        (
+            &pair.side_a,
+            basis.get(pair.a).map_or(0, |element| element.num),
+        ),
+        (
+            &pair.side_b,
+            basis.get(pair.b).map_or(0, |element| element.num),
+        ),
+    ];
+    for (signature, source) in sides {
+        if let Some(criterion) = side_redundant(basis, signature, source, strategy) {
+            match criterion {
+                | Criterion::Syzygy => {
+                    stats.syzygy_discards = stats.syzygy_discards.saturating_add(1);
+                },
+                | Criterion::Rewritten => {
+                    stats.rewritten_discards = stats.rewritten_discards.saturating_add(1);
+                },
+            }
+            return true;
+        }
+    }
+    false
+}
+
+/// Interreduces the generators without changing the ideal they generate, as
+/// the reference formulation of F5 does. Only a handful of sweeps are run; a
+/// fixed point is reached quickly, and stopping early is still correct.
+fn prepare(generators: &[GPoly]) -> Vec<GPoly> {
+    let mut current: Vec<GPoly> = generators
+        .iter()
+        .filter(|g| !g.is_zero())
+        .map(|g| common::monic(g, ENGINE_ORDER))
+        .collect();
+    for _ in 0..3 {
+        let mut next: Vec<GPoly> = Vec::with_capacity(current.len());
+        for index in 0..current.len() {
+            let Some(polynomial) = current.get(index) else {
+                continue;
+            };
+            let previous = current.get(..index).unwrap_or(&[]);
+            let remainder = normal_form(polynomial, previous, ENGINE_ORDER);
+            if !remainder.is_zero() {
+                next.push(common::monic(&remainder, ENGINE_ORDER));
+            }
+        }
+        if next == current {
+            return next;
+        }
+        current = next;
+        if current.is_empty() {
+            break;
+        }
+    }
+    current
+}
+
+/// The working polynomial of a reduction must not grow past this many terms.
+/// F5 keeps the unreduced tail of an S-polynomial (only the leading term is
+/// reduced at each step), so on an input that is not close to a Gröbner basis
+/// the number of terms can grow quickly. Hitting the bound reports resource
+/// exhaustion, which the caller may answer with the matrix engine.
+const MAX_TERMS: usize = 20_000;
 
 /// Likewise for the size of a coefficient: exact rational arithmetic keeps
 /// working however large the numerator and denominator become, but the cost
 /// per operation grows with them, so a bound keeps the run time predictable.
-const MAX_BITS: u64 = 4_096;
+const MAX_BITS: u64 = 32_768;
 
-/// Whether any coefficient of the working polynomial has outgrown
-/// [`MAX_BITS`].
-fn coefficients_too_large(terms: &[Term]) -> bool {
-    terms
-        .iter()
-        .any(|(_, c)| c.numer().bits() > MAX_BITS || c.denom().bits() > MAX_BITS)
+/// Whether any coefficient in the iterator has outgrown [`MAX_BITS`].
+fn coefficients_too_large<'a>(terms: impl Iterator<Item = &'a Term>) -> bool {
+    terms.into_iter().any(|(_, coefficient)| {
+        coefficient.numer().bits() > MAX_BITS || coefficient.denom().bits() > MAX_BITS
+    })
 }
 
-/// Reduces `p` modulo `basis`, allowing a reduction by `t h` only when
-/// `t * signature(h)` is at most `bound`. The result has signature at most
-/// `bound`, which is what the criteria rely on. Returns `None` when the
+/// The signature-admissible normal form of `p` with bound `bound`: a reducer
+/// `h` may be used with a multiplier `t` only when `t * sign(h) < bound`
+/// strictly. The result has signature at most `bound`. Returns `None` when the
 /// reduction budget is exhausted or the working polynomial outgrows
 /// [`MAX_TERMS`].
 ///
-/// The working polynomial is kept as a vector of terms in descending order
-/// and combined with a reducer row by a linear merge; multiplying a monomial
-/// by the fixed multiplier preserves the order, so the merge compares the
-/// unterminated exponents and only shifts the coefficients it writes out.
-fn signature_normal_form(
+/// The working polynomial is kept as a vector of terms in descending order.
+/// Once the leading term is added to the remainder, the cursor moves past it
+/// and only the remaining tail is merged with the reducer, so an unchanged
+/// tail is never re-reduced. Terms of the reducer are shifted by the fixed
+/// multiplier during the merge; the comparison against the unshifted tail uses
+/// [`compare_shifted`] without building the product.
+fn f5_normal_form(
     p: &GPoly,
-    bound: &[u32],
-    bound_index: usize,
+    bound: &Sig,
     basis: &[Labelled],
     steps: &mut usize,
     limit: usize,
@@ -384,65 +555,65 @@ fn signature_normal_form(
     let mut work: Vec<Term> = p.terms().to_vec();
     let mut remainder: Vec<Term> = Vec::new();
     let mut scratch: Vec<Term> = Vec::new();
+    let mut cursor = 0_usize;
     loop {
-        if work.len() > MAX_TERMS || coefficients_too_large(&work) {
+        if work.len() > MAX_TERMS || coefficients_too_large(work.iter().skip(cursor)) {
             return None;
         }
-        let Some((monomial, coefficient)) = work.first().cloned() else {
+        let Some((monomial, coefficient)) = work.get(cursor).cloned() else {
             break;
         };
-        let mut reducer: Option<(&GPoly, common::Mono, BigRational)> = None;
+        let mut reducer: Option<(&GPoly, Mono, BigRational)> = None;
         for element in basis {
-            let Some((lead, lead_coefficient)) = element.poly.leading() else {
-                continue;
-            };
-            if !common::divides(lead, &monomial) {
+            if !common::divides(&element.lm, &monomial) {
                 continue;
             }
-            let multiplier = common::difference(&monomial, lead);
-            let shifted = common::multiply(&element.sig, &multiplier);
-            if signature_order(&shifted, element.index, bound, bound_index) == Ordering::Greater {
+            let multiplier = common::difference(&monomial, &element.lm);
+            // One-way reduction: an equal signature is not admissible.
+            if scaled_sig_cmp(&element.sig, &multiplier, bound) != Ordering::Less {
                 continue;
             }
-            reducer = Some((&element.poly, multiplier, lead_coefficient.clone()));
+            let lead = element.poly.leading()?.1.clone();
+            reducer = Some((&element.poly, multiplier, lead));
             break;
         }
         match reducer {
-            | Some((poly, multiplier, lead_coefficient)) => {
+            | Some((poly, multiplier, lead)) => {
                 *steps = steps.saturating_add(1);
                 if *steps > limit {
                     return None;
                 }
-                let factor = coefficient / lead_coefficient;
-                merge_scaled(&mut work, &mut scratch, poly, &multiplier, &factor);
+                let factor = coefficient / lead;
+                subtract_tail(&mut work, cursor, poly, &multiplier, &factor, &mut scratch);
             },
             | None => {
                 remainder.push((monomial, coefficient));
-                work.remove(0);
+                cursor = cursor.saturating_add(1);
             },
         }
     }
     Some(GPoly::new(remainder, ENGINE_ORDER))
 }
 
-/// `work <- work - factor * x^multiplier * poly`, both polynomials being
-/// vectors of terms in descending order. The comparison during the merge is
-/// against the *shifted* monomials (a fixed multiplier does not preserve a
-/// comparison with an unshifted monomial), which
-/// [`compare_shifted`] evaluates without materialising them.
-fn merge_scaled(
+/// `work <- work - factor * x^multiplier * poly`, keeping `work[..=cursor]`
+/// untouched. The leading term of the shifted reducer cancels `work[cursor]`
+/// by construction, so only the tails are merged.
+fn subtract_tail(
     work: &mut Vec<Term>,
-    scratch: &mut Vec<Term>,
+    cursor: usize,
     poly: &GPoly,
     multiplier: &[u32],
     factor: &BigRational,
+    scratch: &mut Vec<Term>,
 ) {
     scratch.clear();
-    scratch.reserve(work.len().saturating_add(poly.terms().len()));
+    let tail = work.get(cursor.saturating_add(1)..).unwrap_or(&[]);
+    let terms = poly.terms().get(1..).unwrap_or(&[]);
+    scratch.reserve(tail.len().saturating_add(terms.len()));
     let mut i = 0_usize;
     let mut j = 0_usize;
     loop {
-        match (work.get(i), poly.terms().get(j)) {
+        match (tail.get(i), terms.get(j)) {
             | (Some((left, left_coefficient)), Some((right, right_coefficient))) => {
                 match compare_shifted(left, right, multiplier) {
                     | Ordering::Greater => {
@@ -480,7 +651,8 @@ fn merge_scaled(
             | (None, None) => break,
         }
     }
-    std::mem::swap(work, scratch);
+    work.truncate(cursor);
+    work.append(scratch);
 }
 
 /// Compares the monomial `left` with `right * shift` in the engine's graded
@@ -517,256 +689,102 @@ fn compare_shifted(
     }
 }
 
-/// The ordinary normal form of `p` modulo `basis`, used by the certification
-/// pass. Same merge as [`signature_normal_form`], without the signature bound.
-fn plain_normal_form(
-    p: &GPoly,
-    basis: &[GPoly],
-    steps: &mut usize,
-    limit: usize,
-) -> Option<GPoly> {
-    let mut work: Vec<Term> = p.terms().to_vec();
-    let mut remainder: Vec<Term> = Vec::new();
-    let mut scratch: Vec<Term> = Vec::new();
-    loop {
-        if work.len() > MAX_TERMS || coefficients_too_large(&work) {
-            return None;
-        }
-        let Some((monomial, coefficient)) = work.first().cloned() else {
-            break;
-        };
-        let mut reducer: Option<(&GPoly, common::Mono, BigRational)> = None;
-        for element in basis {
-            let Some((lead, lead_coefficient)) = element.leading() else {
-                continue;
-            };
-            if !common::divides(lead, &monomial) {
-                continue;
-            }
-            reducer = Some((
-                element,
-                common::difference(&monomial, lead),
-                lead_coefficient.clone(),
-            ));
-            break;
-        }
-        match reducer {
-            | Some((poly, multiplier, lead_coefficient)) => {
-                *steps = steps.saturating_add(1);
-                if *steps > limit {
-                    return None;
-                }
-                let factor = coefficient / lead_coefficient;
-                merge_scaled(&mut work, &mut scratch, poly, &multiplier, &factor);
-            },
-            | None => {
-                remainder.push((monomial, coefficient));
-                work.remove(0);
-            },
-        }
-    }
-    Some(GPoly::new(remainder, ENGINE_ORDER))
-}
-
 /// The signature-driven loop. `generators` are homogeneous and monic; the
 /// result is a Gröbner basis in the graded reverse-lexicographic order (not
 /// necessarily reduced or minimal).
+///
+/// Pairs are popped in increasing signature order. A pair whose side meets one
+/// of the two criteria is dropped without any reduction; the others have their
+/// S-polynomial reduced by one-way signature-admissible reductions and the
+/// non-zero remainder is added to the basis with the pair's signature.
 fn f5_loop(
     generators: &[GPoly],
     limits: F5Limits,
+    stats: &mut F5Stats,
 ) -> Option<Vec<GPoly>> {
-    let dimension = generators
-        .iter()
-        .find_map(|g| g.leading().map(|(m, _)| m.len()));
-    let dimension = dimension?;
-    let unit = vec![0_u32; dimension];
-    let mut basis: Vec<Labelled> = generators
-        .iter()
+    let mut prepared = prepare(generators);
+    let Some(first) = prepared.first() else {
+        return Some(Vec::new());
+    };
+    let dimension = first.leading()?.0.len();
+    // The reference formulation sorts the generators by decreasing leading
+    // monomial before numbering the signatures.
+    prepared.sort_by(|a, b| {
+        match (a.leading(), b.leading()) {
+            | (Some((left, _)), Some((right, _))) => ENGINE_ORDER.cmp(right, left),
+            | _ => Ordering::Equal,
+        }
+    });
+    let mut basis: Vec<Labelled> = prepared
+        .into_iter()
         .enumerate()
-        .map(|(index, g)| {
+        .map(|(position, poly)| {
+            let num = position.saturating_add(1);
+            let lm = poly
+                .leading()
+                .map_or_else(|| vec![0_u32; dimension], |(monomial, _)| monomial.clone());
             Labelled {
-                poly: common::monic(g, ENGINE_ORDER),
-                sig: unit.clone(),
-                index: index.saturating_add(1),
+                poly,
+                sig: Sig::unit(dimension, num),
+                lm,
+                num,
             }
         })
         .collect();
-    let mut queue: BTreeSet<Pair> = BTreeSet::new();
-    for b in 0..basis.len() {
-        for a in 0..b {
-            if let Some(pair) = make_pair(&basis, a, b) {
-                queue.insert(pair);
+    let mut queue: BinaryHeap<Reverse<Pair>> = BinaryHeap::new();
+    for second in 1..basis.len() {
+        for first in 0..second {
+            if let Some(pair) = make_pair(&basis, first, second) {
+                queue.push(Reverse(pair));
             }
         }
     }
-    let mut known: Vec<(common::Mono, usize)> = Vec::new();
-    let mut steps = 0_usize;
-    let mut processed = 0_usize;
-    // The queue is ordered by signature, so the first entry is always the
-    // smallest signature; the choice is deterministic and logarithmic.
-    while let Some(pair) = queue.pop_first() {
-        processed = processed.saturating_add(1);
-        if processed > limits.pairs {
+    while let Some(Reverse(pair)) = queue.pop() {
+        stats.pairs_processed = stats.pairs_processed.saturating_add(1);
+        if stats.pairs_processed > limits.pairs {
             return None;
         }
-        if limits.strategy.rewritten && rewritten(&known, &pair.sig, pair.index) {
-            continue;
-        }
-        if limits.strategy.f5 && f5_criterion(&basis, pair.a, pair.b) {
-            // The F5 criterion proves that this S-polynomial is a syzygy, so
-            // its signature is a *known* signature from now on: later pairs
-            // whose signature is a multiple of it may be rewritten (and a
-            // pair that was dropped as "rewritable" because this one was
-            // still pending relies on exactly that).
-            known.push((pair.sig.clone(), pair.index));
+        if pair_redundant(&basis, &pair, limits.strategy, stats) {
             continue;
         }
         let (Some(first), Some(second)) = (basis.get(pair.a), basis.get(pair.b)) else {
             continue;
         };
         let spolynomial = common::s_polynomial(&first.poly, &second.poly, ENGINE_ORDER);
-        let remainder = signature_normal_form(
+        let remainder = f5_normal_form(
             &spolynomial,
             &pair.sig,
-            pair.index,
             &basis,
-            &mut steps,
+            &mut stats.reductions,
             limits.reductions,
         )?;
-        known.push((pair.sig.clone(), pair.index));
         if remainder.is_zero() {
+            stats.zero_reductions = stats.zero_reductions.saturating_add(1);
             continue;
         }
         if basis.len() >= limits.basis {
             return None;
         }
+        let new = basis.len();
+        let num = new.saturating_add(1);
+        let Some((lm, _)) = remainder.leading() else {
+            continue;
+        };
+        let lm = lm.clone();
         basis.push(Labelled {
             poly: common::monic(&remainder, ENGINE_ORDER),
             sig: pair.sig,
-            index: pair.index,
+            lm,
+            num,
         });
-        let new = basis.len().saturating_sub(1);
+        stats.polynomials_added = stats.polynomials_added.saturating_add(1);
         for other in 0..new {
-            if let Some(candidate) = make_pair(&basis, other, new)
-                && (!limits.strategy.rewritable || !rewritable(&queue, &candidate))
-            {
-                queue.insert(candidate);
+            if let Some(candidate) = make_pair(&basis, other, new) {
+                queue.push(Reverse(candidate));
             }
         }
     }
     Some(basis.into_iter().map(|element| element.poly).collect())
-}
-
-/// Interreduces a generating set without changing the ideal it generates.
-///
-/// Elements are handled **one at a time** against the current set: an element
-/// is replaced by its normal form modulo the others (which preserves the
-/// ideal), and an element whose normal form is zero is dropped *because it
-/// then lies in the ideal of the elements that remain*. Dropping several
-/// elements in one sweep against the original set would be wrong: with
-/// `f1 = f2 + h` both `f1` and `f2` reduce to zero against the others while
-/// `h` alone generates a strictly smaller ideal.
-///
-/// The pass is what makes the certification cheap: on a basis that is
-/// already a Gröbner basis it produces the reduced basis, whose coefficients
-/// are far smaller than those of the raw signature output.
-fn interreduce(
-    mut basis: Vec<GPoly>,
-    steps: &mut usize,
-    limit: usize,
-) -> Option<Vec<GPoly>> {
-    let mut changed = true;
-    let mut passes = 0_usize;
-    while changed && passes < 5 {
-        changed = false;
-        passes = passes.saturating_add(1);
-        let mut index = 0_usize;
-        while index < basis.len() {
-            let others: Vec<GPoly> = basis
-                .iter()
-                .enumerate()
-                .filter(|&(k, _)| k != index)
-                .map(|(_, g)| g.clone())
-                .collect();
-            let Some(g) = basis.get(index).cloned() else {
-                break;
-            };
-            let reduced = plain_normal_form(&g, &others, steps, limit)?;
-            if reduced.is_zero() {
-                basis.remove(index);
-                changed = true;
-                continue;
-            }
-            let reduced = common::monic(&reduced, ENGINE_ORDER);
-            if reduced != g {
-                basis[index] = reduced;
-                changed = true;
-            }
-            index = index.saturating_add(1);
-        }
-    }
-    Some(basis)
-}
-
-/// Buchberger completion of `basis`: the set is interreduced first and then
-/// every S-pair is reduced, a non-zero remainder being added and paired with
-/// everything before it. A correct F5 run finds nothing to add; the pass
-/// certifies the set and is what makes the returned basis a Gröbner basis
-/// even if a signature criterion were too aggressive. The generators are
-/// always part of the basis, so the completed ideal is the requested one.
-/// `None` when a budget is exhausted.
-fn certify(
-    basis: Vec<GPoly>,
-    pair_budget: usize,
-    reduction_budget: usize,
-    basis_limit: usize,
-) -> Option<Vec<GPoly>> {
-    let mut reductions = 0_usize;
-    let mut basis = interreduce(basis, &mut reductions, reduction_budget)?;
-    let mut pairs: Vec<(usize, usize)> = (0..basis.len())
-        .flat_map(|b| (0..b).map(move |a| (a, b)))
-        .collect();
-    let mut steps = 0_usize;
-    while let Some((a, b)) = pairs.pop() {
-        steps = steps.saturating_add(1);
-        let (Some(first), Some(second)) = (basis.get(a), basis.get(b)) else {
-            continue;
-        };
-        let (Some((first_lead, _)), Some((second_lead, _))) = (first.leading(), second.leading())
-        else {
-            continue;
-        };
-        if common::coprime(first_lead, second_lead) {
-            continue;
-        }
-        let lcm = common::lcm(first_lead, second_lead);
-        // The chain criterion, against the pairs still in the queue.
-        let covered = basis.iter().enumerate().any(|(k, h)| {
-            k != a
-                && k != b
-                && h.leading().is_some_and(|(m, _)| common::divides(m, &lcm))
-                && !pairs.contains(&common::ordered(k, a))
-                && !pairs.contains(&common::ordered(k, b))
-        });
-        if covered {
-            continue;
-        }
-        if steps > pair_budget {
-            return None;
-        }
-        let spolynomial = common::s_polynomial(first, second, ENGINE_ORDER);
-        let remainder = plain_normal_form(&spolynomial, &basis, &mut reductions, reduction_budget)?;
-        if remainder.is_zero() {
-            continue;
-        }
-        if basis.len() >= basis_limit {
-            return None;
-        }
-        let new = basis.len();
-        pairs.extend((0..new).map(|k| (k, new)));
-        basis.push(common::monic(&remainder, ENGINE_ORDER));
-    }
-    Some(basis)
 }
 
 /// The reduced Gröbner basis of the ideal generated by `generators` in
@@ -774,18 +792,32 @@ fn certify(
 ///
 /// Homogeneous input is processed directly; affine input is homogenised with
 /// a fresh variable and dehomogenised afterwards, as described in the module
-/// documentation.
+/// documentation. The returned list is the unique reduced basis, identical to
+/// the one [`groebner`](crate::rules::poly::groebner::groebner) returns.
 #[must_use]
 pub fn f5_basis(
     generators: &[GPoly],
     order: Order,
     limits: F5Limits,
 ) -> Option<Vec<GPoly>> {
+    f5_basis_with_stats(generators, order, limits).0
+}
+
+/// [`f5_basis`], also returning what the run did. The statistics record
+/// whether the criteria path solved the problem or whether the last-resort
+/// matrix engine had to be used.
+#[must_use]
+pub fn f5_basis_with_stats(
+    generators: &[GPoly],
+    order: Order,
+    limits: F5Limits,
+) -> (Option<Vec<GPoly>>, F5Stats) {
+    let mut stats = F5Stats::default();
     let Some(dimension) = generators
         .iter()
-        .find_map(|g| g.leading().map(|(m, _)| m.len()))
+        .find_map(|g| g.leading().map(|(monomial, _)| monomial.len()))
     else {
-        return Some(Vec::new());
+        return (Some(Vec::new()), stats);
     };
     let input: Vec<GPoly> = generators
         .iter()
@@ -793,15 +825,21 @@ pub fn f5_basis(
         .map(|g| GPoly::new(g.terms().to_vec(), ENGINE_ORDER))
         .collect();
     if input.is_empty() {
-        return Some(Vec::new());
+        return (Some(Vec::new()), stats);
     }
     // A non-zero constant generator generates the unit ideal. Only a
     // polynomial whose *leading* monomial is the constant (i.e. a constant)
     // counts: the constant term of a non-constant generator does not.
-    let is_constant = |g: &GPoly| g.leading().is_some_and(|(m, _)| m.iter().all(|&e| e == 0));
+    let is_constant = |g: &GPoly| {
+        g.leading()
+            .is_some_and(|(monomial, _)| monomial.iter().all(|&e| e == 0))
+    };
     if input.iter().any(is_constant) {
         let unit = vec![0_u32; dimension];
-        return Some(vec![GPoly::new(vec![(unit, BigRational::one())], order)]);
+        return (
+            Some(vec![GPoly::new(vec![(unit, BigRational::one())], order)]),
+            stats,
+        );
     }
     let homogenised = !input.iter().all(common::is_homogeneous);
     let working: Vec<GPoly> = if homogenised {
@@ -812,58 +850,25 @@ pub fn f5_basis(
     } else {
         input
     };
-    // The criteria are an optimisation: on an input where one of them is too
-    // aggressive, the certification pass has to add the missing elements back,
-    // which can be far more work than processing every pair in the first
-    // place. The engine therefore
-    //
-    // 1. runs with the criteria and a tight certification budget,
-    // 2. reruns with every critical pair (the provably complete subset) when
-    //    that budget is exceeded, and
-    // 3. falls back to the matrix engine if even the complete signature run
-    //    exhausts its own, much larger, limits.
-    //
-    // Every stage computes the same reduced basis; only the amount of work
-    // differs.
-    let attempt = |strategy: Strategy,
-                   pairs: usize,
-                   pairing: usize,
-                   reductions: usize|
-     -> Option<Vec<GPoly>> {
-        let trial = F5Limits {
-            strategy,
-            pairs,
-            certification: pairing,
-            reductions,
-            ..limits
-        };
-        f5_loop(&working, trial)
-            .and_then(|output| certify(output, pairing, reductions, limits.basis))
+    // The criteria path is the only Gröbner route. If the resource guards of
+    // the signature loop are exhausted, the matrix engine is a last resort.
+    let completion = match f5_loop(&working, limits, &mut stats) {
+        | Some(basis) => basis,
+        | None => {
+            stats.matrix_fallback = true;
+            let Some(basis) = f4_basis(
+                &working,
+                ENGINE_ORDER,
+                F4Limits {
+                    basis: limits.basis,
+                    ..F4Limits::default()
+                },
+            ) else {
+                return (None, stats);
+            };
+            basis
+        },
     };
-    let completion = attempt(
-        limits.strategy,
-        limits.fast_pairs.min(limits.pairs),
-        limits.fast_certification.min(limits.certification),
-        limits.fast_reductions.min(limits.reductions),
-    )
-    .or_else(|| {
-        attempt(
-            Strategy::complete(),
-            limits.pairs,
-            limits.certification,
-            limits.reductions,
-        )
-    })
-    .or_else(|| {
-        f4_basis(
-            &working,
-            ENGINE_ORDER,
-            F4Limits {
-                basis: limits.basis,
-                ..F4Limits::default()
-            },
-        )
-    })?;
     let original: Vec<GPoly> = if homogenised {
         completion
             .iter()
@@ -874,10 +879,10 @@ pub fn f5_basis(
     };
     let reduced = common::reduced_basis(&original, ENGINE_ORDER);
     if order == ENGINE_ORDER {
-        return Some(reduced);
+        return (Some(reduced), stats);
     }
     if let Some(converted) = fglm(&reduced, ENGINE_ORDER, order) {
-        return Some(converted);
+        return (Some(converted), stats);
     }
     // Positive-dimensional ideal or too large for FGLM: the matrix engine
     // computes the same reduced basis in the requested order.
@@ -885,7 +890,7 @@ pub fn f5_basis(
         .iter()
         .map(|g| GPoly::new(g.terms().to_vec(), order))
         .collect();
-    f4_basis(&reordered, order, F4Limits::default())
+    (f4_basis(&reordered, order, F4Limits::default()), stats)
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -973,11 +978,12 @@ impl PreparedWork for F5Work {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use num_bigint::BigInt;
     use num_rational::BigRational;
 
     use super::*;
-    use crate::rules::poly::f4::common::Mono;
     use crate::rules::poly::groebner::GroebnerLimits;
     use crate::rules::poly::groebner::groebner;
     use crate::rules::poly::groebner::groebner_via;
@@ -1112,154 +1118,175 @@ mod tests {
         ]
     }
 
-    #[test]
-    fn signatures_order_by_the_smallest_index_first() {
-        // e_1 is larger than every e_2 term, whatever the monomials.
-        assert_eq!(
-            signature_order(&[0, 0, 0], 1, &[5, 5, 5], 2),
-            Ordering::Greater
-        );
-        assert_eq!(
-            signature_order(&[1, 0, 0], 2, &[1, 0, 0], 2),
-            Ordering::Equal
-        );
-        // Within one index, the monomial order decides.
-        assert_eq!(
-            signature_order(&[1, 0, 0], 1, &[0, 1, 0], 1),
-            ENGINE_ORDER.cmp(&[1, 0, 0], &[0, 1, 0])
-        );
-    }
-
-    /// The larger systems, checked in every order: F5 always runs in graded
-    /// reverse-lex, so the order only changes the conversion (FGLM or the
-    /// matrix fallback).
-    fn large_systems(order: Order) -> Vec<(&'static str, Vec<GPoly>)> {
+    /// The benchmarks, built in the requested order.
+    fn benchmarks(order: Order) -> Vec<(&'static str, Vec<GPoly>)> {
         vec![
+            ("katsura-2", katsura(2, order)),
+            ("katsura-3", katsura(3, order)),
             ("katsura-4", katsura(4, order)),
+            ("cyclic-3", cyclic(3, order)),
+            ("cyclic-4", cyclic(4, order)),
             ("cyclic-5", cyclic(5, order)),
         ]
     }
 
+    fn reference(
+        generators: &[GPoly],
+        order: Order,
+    ) -> Option<Vec<GPoly>> {
+        if order == Order::GradedRevLex {
+            groebner(generators, order, GroebnerLimits::default())
+        } else {
+            // The operator's own reference route: Buchberger in graded
+            // reverse-lex followed by FGLM.
+            groebner_via(generators, order, GroebnerLimits::default())
+        }
+    }
+
     #[test]
-    fn f5_agrees_with_buchberger_on_the_sample_systems() {
+    fn signatures_order_by_the_smallest_index_first() {
+        // e_1 is larger than every e_2 term, whatever the monomials.
+        assert_eq!(
+            sig_cmp(
+                &Sig {
+                    mono: vec![0, 0, 0],
+                    index: 1,
+                    degree: 0
+                },
+                &Sig {
+                    mono: vec![5, 5, 5],
+                    index: 2,
+                    degree: 15
+                }
+            ),
+            Ordering::Greater
+        );
+        assert_eq!(
+            sig_cmp(
+                &Sig {
+                    mono: vec![1, 0, 0],
+                    index: 2,
+                    degree: 1
+                },
+                &Sig {
+                    mono: vec![1, 0, 0],
+                    index: 2,
+                    degree: 1
+                }
+            ),
+            Ordering::Equal
+        );
+        // Within one index, the monomial order decides.
+        assert_eq!(
+            sig_cmp(
+                &Sig {
+                    mono: vec![1, 0, 0],
+                    index: 1,
+                    degree: 1
+                },
+                &Sig {
+                    mono: vec![0, 1, 0],
+                    index: 1,
+                    degree: 1
+                }
+            ),
+            ENGINE_ORDER.cmp(&[1, 0, 0], &[0, 1, 0])
+        );
+    }
+
+    #[test]
+    fn f5_agrees_with_groebner_on_the_sample_systems() {
         for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
             for (name, generators) in sample_systems(order) {
-                let expected = groebner(&generators, order, GroebnerLimits::default());
-                let computed = f5_basis(&generators, order, F5Limits::default());
+                let expected = reference(&generators, order);
+                let (computed, stats) =
+                    f5_basis_with_stats(&generators, order, F5Limits::default());
                 assert_eq!(computed, expected, "{name} in {order:?}");
-            }
-        }
-        for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
-            for (name, generators) in large_systems(Order::GradedRevLex) {
-                // These orders are compared with the reference route the
-                // `groebner` operator uses (graded reverse-lex plus FGLM);
-                // F5 itself always runs in graded reverse-lex.
-                let start = std::time::Instant::now();
-                let expected = groebner_via(&generators, order, GroebnerLimits::default());
-                let reference = start.elapsed();
-                let start = std::time::Instant::now();
-                let computed = f5_basis(&generators, order, F5Limits::default());
-                eprintln!(
-                    "F5 {name} in {order:?}: reference {reference:?}, F5 {:?}",
-                    start.elapsed()
+                assert!(
+                    stats.criteria_path(),
+                    "{name} in {order:?} fell back to the matrix engine"
                 );
-                assert_eq!(computed, expected, "{name} in {order:?}");
             }
         }
     }
 
     #[test]
-    fn f5_works_on_cyclic_five_in_both_orders() {
-        for order in [Order::GradedRevLex, Order::Lex] {
-            let generators = cyclic(5, order);
-            let expected =
-                groebner_via(&generators, order, GroebnerLimits::default()).unwrap_or_default();
-            let computed = f5_basis(&generators, order, F5Limits::default()).unwrap_or_default();
-            assert_eq!(computed, expected, "cyclic-5 in {order:?}");
+    fn f5_matches_groebner_on_all_benchmarks_in_all_orders() {
+        for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+            for (name, generators) in benchmarks(order) {
+                let start = Instant::now();
+                let (computed, stats) =
+                    f5_basis_with_stats(&generators, order, F5Limits::default());
+                let elapsed = start.elapsed();
+                eprintln!(
+                    "F5 {name} {order:?}: {elapsed:?} ({} pairs, {} syzygy, {} rewritten, {} reductions, {} added)",
+                    stats.pairs_processed,
+                    stats.syzygy_discards,
+                    stats.rewritten_discards,
+                    stats.reductions,
+                    stats.polynomials_added
+                );
+                let expected = reference(&generators, order);
+                assert_eq!(computed, expected, "{name} in {order:?}");
+                assert!(
+                    stats.criteria_path(),
+                    "{name} in {order:?} fell back to the matrix engine"
+                );
+                // The criteria must have done the work, not the complete pair
+                // set: at least one of them discards pairs on every benchmark,
+                // and the loop never exhausts its pair budget.
+                assert!(
+                    stats
+                        .syzygy_discards
+                        .saturating_add(stats.rewritten_discards)
+                        > 0,
+                    "{name} in {order:?} did not exercise the criteria: {stats:?}"
+                );
+                assert!(
+                    stats.pairs_processed < F5Limits::default().pairs,
+                    "{name} in {order:?} exhausted the pair budget"
+                );
+                if order == Order::GradedRevLex && (name == "katsura-4" || name == "cyclic-5") {
+                    eprintln!("F5 {name} (grevlex) benchmark: {elapsed:?}");
+                    assert!(
+                        elapsed.as_secs() < 30,
+                        "{name} took {elapsed:?}, over the 30 s budget"
+                    );
+                }
+            }
         }
-    }
-
-    #[test]
-    fn f5_homogenises_affine_systems() {
-        // x^2 + y + 1, x - y: affine (mixed degrees), so the homogenisation
-        // path runs; the generic sample already covers it, this one pins the
-        // shape of the answer.
-        let order = Order::GradedRevLex;
-        let generators = vec![
-            poly(
-                &[(1, vec![2, 0, 0]), (1, vec![0, 1, 0]), (1, vec![0, 0, 0])],
-                order,
-            ),
-            poly(&[(1, vec![1, 0, 0]), (-1, vec![0, 1, 0])], order),
-        ];
-        let computed = f5_basis(&generators, order, F5Limits::default()).unwrap_or_default();
-        let expected = groebner(&generators, order, GroebnerLimits::default()).unwrap_or_default();
-        assert_eq!(computed, expected);
-        assert!(!computed.is_empty());
     }
 
     #[test]
     fn every_criterion_variant_returns_the_same_basis() {
-        // Switching criteria off must not change the answer: the generators
-        // are always part of the basis and the certification pass completes
-        // it to a Gröbner basis of the same ideal, so every strategy ends at
-        // the same reduced basis.
+        // Switching criteria off must not change the answer: the remaining
+        // pairs still form a complete reduction and every non-zero remainder
+        // is added, so each strategy ends at the same reduced basis.
         let order = Order::GradedRevLex;
         for (name, generators) in [
             ("katsura-3", katsura(3, order)),
             ("cyclic-4", cyclic(4, order)),
         ] {
             let expected = groebner(&generators, order, GroebnerLimits::default());
-            for (f5, rewritten, rewritable) in [
-                (false, false, false),
-                (true, true, true),
-                (false, true, true),
-                (true, false, true),
-                (true, true, false),
+            for strategy in [
+                Strategy {
+                    syzygy: true,
+                    rewritten: false,
+                },
+                Strategy {
+                    syzygy: false,
+                    rewritten: true,
+                },
+                Strategy::complete(),
             ] {
                 let limits = F5Limits {
-                    // Measure each variant on its own: the fallback tiers are
-                    // disabled by the enormous budgets.
-                    certification: usize::MAX,
-                    fast_certification: usize::MAX,
-                    fast_reductions: usize::MAX,
-                    reductions: 4_000_000,
-                    strategy: Strategy {
-                        f5,
-                        rewritten,
-                        rewritable,
-                    },
+                    strategy,
                     ..F5Limits::default()
                 };
-                let computed = f5_basis(&generators, order, limits);
-                assert_eq!(
-                    computed, expected,
-                    "{name}: f5={f5} rewritten={rewritten} rewritable={rewritable}"
-                );
+                let (computed, stats) = f5_basis_with_stats(&generators, order, limits);
+                assert_eq!(computed, expected, "{name}: {strategy:?}");
+                assert!(stats.criteria_path(), "{name}: unexpected fallback");
             }
-        }
-    }
-
-    #[test]
-    fn f5_solves_the_large_benchmarks() {
-        // Katsura-4 and cyclic-5: the signature loop with the criteria runs
-        // out of its tight budget, the complete-pair rerun or the matrix
-        // fallback finishes the job, and the answer is the same one
-        // Buchberger computes.
-        let order = Order::GradedRevLex;
-        for (name, generators) in [
-            ("katsura-4", katsura(4, order)),
-            ("cyclic-5", cyclic(5, order)),
-        ] {
-            let start = std::time::Instant::now();
-            let computed = f5_basis(&generators, order, F5Limits::default());
-            eprintln!(
-                "F5 {name}: {:?} in {:?}",
-                computed.as_ref().map(Vec::len),
-                start.elapsed()
-            );
-            let expected = groebner_via(&generators, order, GroebnerLimits::default());
-            assert_eq!(computed, expected, "{name}");
         }
     }
 
@@ -1267,14 +1294,10 @@ mod tests {
     fn f5_limits_report_exhaustion() {
         let order = Order::GradedRevLex;
         let generators = katsura(3, order);
-        // The signature loop itself reports exhaustion.
+        // The signature loop reports exhaustion of each budget.
         for limits in [
             F5Limits {
                 pairs: 0,
-                ..F5Limits::default()
-            },
-            F5Limits {
-                reductions: 0,
                 ..F5Limits::default()
             },
             F5Limits {
@@ -1282,16 +1305,43 @@ mod tests {
                 ..F5Limits::default()
             },
         ] {
-            assert_eq!(f5_loop(&generators, limits), None, "{limits:?}");
+            let mut stats = F5Stats::default();
+            assert_eq!(f5_loop(&generators, limits, &mut stats), None, "{limits:?}");
         }
-        // So does the certification pass.
-        let basis = f5_loop(&generators, F5Limits::default()).unwrap_or_default();
-        assert_eq!(certify(basis.clone(), 0, 0, 400), None);
-        assert_eq!(certify(basis.clone(), usize::MAX, 0, 400), None);
-        assert_eq!(certify(basis.clone(), usize::MAX, usize::MAX, 0), None);
-        // With room to work, the operator returns the reduced basis even when
-        // its own limits are tight: the fallback tiers take over.
+        // The reduction budget is enforced by the normal form itself.
+        let labelled = Labelled {
+            poly: poly(&[(1, vec![1, 0])], ENGINE_ORDER),
+            sig: Sig::unit(2, 2),
+            lm: vec![1, 0],
+            num: 2,
+        };
+        let p = poly(&[(1, vec![1, 1])], ENGINE_ORDER);
+        let bound = Sig::unit(2, 1);
+        let mut steps = 0_usize;
+        assert_eq!(f5_normal_form(&p, &bound, &[labelled], &mut steps, 0), None);
+        // With room to work, the operator returns the reduced basis.
         assert!(f5_basis(&generators, order, F5Limits::default()).is_some());
+    }
+
+    #[test]
+    fn f5_falls_back_only_when_the_budget_is_exhausted() {
+        // A zero pair budget is genuine resource exhaustion: the last-resort
+        // matrix engine finishes, and the counter records it.
+        let order = Order::GradedRevLex;
+        let generators = katsura(3, order);
+        let limits = F5Limits {
+            pairs: 0,
+            ..F5Limits::default()
+        };
+        let (computed, stats) = f5_basis_with_stats(&generators, order, limits);
+        assert!(
+            stats.matrix_fallback,
+            "the counter must record the fallback"
+        );
+        assert_eq!(
+            computed,
+            groebner(&generators, order, GroebnerLimits::default())
+        );
     }
 
     #[test]
@@ -1303,38 +1353,48 @@ mod tests {
             f5_basis(&[zero.clone(), zero], order, F5Limits::default()),
             Some(Vec::new())
         );
+        // A constant generator is the unit ideal, before and after
+        // homogenisation.
+        let unit = f5_basis(&[poly(&[(3, vec![])], order)], order, F5Limits::default());
+        assert_eq!(
+            unit,
+            Some(vec![poly(&[(1, vec![])], order)]),
+            "a constant generator is the unit ideal"
+        );
     }
 
     #[test]
-    fn signature_reduction_never_raises_the_signature() {
-        // f = x^2, g = x*y in grevlex with generators indexed 1 and 2.
+    fn signature_reduction_is_strictly_decreasing() {
+        // f = x^2 and g = x*y with generator indices 1 and 2.
         let basis = vec![
             Labelled {
                 poly: poly(&[(1, vec![2, 0])], ENGINE_ORDER),
-                sig: vec![0, 0],
-                index: 1,
+                sig: Sig::unit(2, 1),
+                lm: vec![2, 0],
+                num: 1,
             },
             Labelled {
                 poly: poly(&[(1, vec![1, 1])], ENGINE_ORDER),
-                sig: vec![0, 0],
-                index: 2,
+                sig: Sig::unit(2, 2),
+                lm: vec![1, 1],
+                num: 2,
             },
         ];
-        // Reducing y*f = x^2 y: with a bound of index 2 neither reducer is
-        // admissible, because y*e_1 and x*e_2 are both larger than e_2 in
-        // the signature order (a smaller index is a larger signature).
         let p = poly(&[(1, vec![2, 1])], ENGINE_ORDER);
-        let bound = vec![0, 0];
-        let mut steps = 0;
-        let reduced = match signature_normal_form(&p, &bound, 2, &basis, &mut steps, 100) {
+        // Bound e_2: neither y*e_1 (index 1) nor x*e_2 (index 2, x > 1) is
+        // admissible, so y*f is already its own normal form.
+        let bound = Sig::unit(2, 2);
+        let mut steps = 0_usize;
+        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
             | Some(reduced) => reduced,
             | None => panic!("the reduction must fit its budget"),
         };
         assert_eq!(reduced, p);
-        // With a bound of index 1 the reducer with index 2 is admissible and
-        // the same polynomial reduces to zero.
-        let mut steps = 0;
-        let reduced = match signature_normal_form(&p, &bound, 1, &basis, &mut steps, 100) {
+        // Bound e_1: x*g has index 2, a smaller signature, so y*f reduces to
+        // zero by g.
+        let bound = Sig::unit(2, 1);
+        let mut steps = 0_usize;
+        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
             | Some(reduced) => reduced,
             | None => panic!("the reduction must fit its budget"),
         };
@@ -1342,7 +1402,49 @@ mod tests {
     }
 
     #[test]
-    fn f5_reduces_random_polynomials_like_buchberger() {
+    fn signature_reduction_rejects_an_equal_signature() {
+        // h = y with signature e_1; p = x*y with bound x*e_1. The scaled
+        // signature x*e_1 equals the bound, so the one-way reduction must not
+        // use h and p stays unchanged.
+        let basis = vec![Labelled {
+            poly: poly(&[(1, vec![0, 1])], ENGINE_ORDER),
+            sig: Sig::unit(2, 1),
+            lm: vec![0, 1],
+            num: 1,
+        }];
+        let p = poly(&[(1, vec![1, 1])], ENGINE_ORDER);
+        let bound = Sig {
+            mono: vec![1, 0],
+            index: 1,
+            degree: 1,
+        };
+        let mut steps = 0_usize;
+        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
+            | Some(reduced) => reduced,
+            | None => panic!("the reduction must fit its budget"),
+        };
+        assert_eq!(reduced, p);
+        assert_eq!(steps, 0);
+    }
+
+    #[test]
+    fn f5_is_deterministic() {
+        let order = Order::GradedRevLex;
+        for (name, generators) in [
+            ("cyclic-4", cyclic(4, order)),
+            ("katsura-3", katsura(3, order)),
+        ] {
+            let first = f5_basis_with_stats(&generators, order, F5Limits::default());
+            let second = f5_basis_with_stats(&generators, order, F5Limits::default());
+            let third = f5_basis_with_stats(&generators, order, F5Limits::default());
+            assert_eq!(first.0, second.0, "{name}");
+            assert_eq!(second.0, third.0, "{name}");
+            assert_eq!(first.1, second.1, "{name}: statistics must be stable");
+        }
+    }
+
+    #[test]
+    fn f5_agrees_with_buchberger_on_random_systems() {
         let mut state = 0x9E37_79B9_7F4A_7C15_u64;
         let mut next = move || {
             state = state
@@ -1350,45 +1452,63 @@ mod tests {
                 .wrapping_add(1_442_695_040_888_963_407);
             state >> 33
         };
+        for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+            for seed in 0..3_u64 {
+                let n = 3_usize;
+                let generators: Vec<GPoly> = (0..3)
+                    .map(|_| {
+                        let terms: Vec<(i64, Vec<u32>)> = (0..4)
+                            .map(|_| {
+                                let coefficient = i64::try_from(next() % 5).unwrap_or(0) - 2;
+                                let exponents: Vec<u32> = (0..n)
+                                    .map(|_| u32::try_from(next() % 3).unwrap_or(0))
+                                    .collect();
+                                (coefficient, exponents)
+                            })
+                            .filter(|(coefficient, _)| *coefficient != 0)
+                            .collect();
+                        let seed_term = (1, mono(n, &[((seed as usize) % n, 2)]));
+                        poly(&[terms, vec![seed_term]].concat(), order)
+                    })
+                    .collect();
+                let expected = reference(&generators, order);
+                let (computed, stats) =
+                    f5_basis_with_stats(&generators, order, F5Limits::default());
+                assert_eq!(computed, expected, "seed {seed} in {order:?}");
+                assert!(!stats.matrix_fallback, "seed {seed} in {order:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn f5_preserves_ideal_membership() {
         let order = Order::GradedRevLex;
-        let n = 3;
-        let generators = vec![
-            poly(
-                &[
-                    (1, mono(n, &[(0, 2)])),
-                    (1, mono(n, &[(1, 1)])),
-                    (-1, mono(n, &[(2, 1)])),
-                ],
-                order,
-            ),
-            poly(
-                &[
-                    (1, mono(n, &[(1, 2)])),
-                    (1, mono(n, &[(0, 1), (2, 1)])),
-                    (3, mono(n, &[])),
-                ],
-                order,
-            ),
-            poly(
-                &[
-                    (1, mono(n, &[(2, 2)])),
-                    (-2, mono(n, &[(0, 1), (1, 1)])),
-                    (1, mono(n, &[])),
-                ],
-                order,
-            ),
-        ];
-        let basis = f5_basis(&generators, order, F5Limits::default()).unwrap_or_default();
-        let expected = groebner(&generators, order, GroebnerLimits::default()).unwrap_or_default();
+        let generators = cyclic(4, order);
+        let (basis, _) = f5_basis_with_stats(&generators, order, F5Limits::default());
+        let basis = match basis {
+            | Some(basis) => basis,
+            | None => panic!("cyclic-4 must be solved"),
+        };
+        let expected = match groebner(&generators, order, GroebnerLimits::default()) {
+            | Some(basis) => basis,
+            | None => panic!("the reference must solve cyclic-4"),
+        };
         assert_eq!(basis, expected);
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            state >> 33
+        };
         for _ in 0..16 {
             let terms: Vec<(i64, Vec<u32>)> = (0..4)
                 .map(|_| {
-                    let c = i64::try_from(next() % 7).unwrap_or(0) - 3;
-                    let exponents: Vec<u32> = (0..n)
+                    let coefficient = i64::try_from(next() % 7).unwrap_or(0) - 3;
+                    let exponents: Vec<u32> = (0..4)
                         .map(|_| u32::try_from(next() % 3).unwrap_or(0))
                         .collect();
-                    (c, exponents)
+                    (coefficient, exponents)
                 })
                 .collect();
             let candidate = poly(&terms, order);
