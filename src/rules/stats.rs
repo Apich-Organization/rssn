@@ -93,6 +93,7 @@ use crate::graph::dim::DimCtx;
 use crate::graph::dim::DimError;
 use crate::graph::dim::DimRule;
 use crate::graph::dim::DimTerm;
+use crate::graph::dim::FamilySource;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::stats as num;
@@ -2125,28 +2126,55 @@ fn dimensionless_result(
     Ok(DimTerm::dimensionless())
 }
 
-/// A density is a value per unit of its variable: `1 / dim(x)`.
+/// A density is a value per unit of its variable: `1 / dim(x)`. The
+/// variable must also live in the distribution's dimension.
 #[allow(clippy::unnecessary_wraps)]
 fn density_dimension(
-    _ctx: &DimCtx<'_>,
+    ctx: &DimCtx<'_>,
     args: &[DimTerm],
 ) -> Result<DimTerm, DimError> {
-    Ok(args
-        .get(1)
-        .map_or_else(DimTerm::dimensionless, DimTerm::inverse))
+    let distribution = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let point = args.get(1).cloned().unwrap_or_else(DimTerm::dimensionless);
+    check_distribution_point(ctx, &distribution, &point)?;
+    Ok(point.inverse())
 }
 
-/// `gamma_dist(shape, rate)` has mean `shape/rate`. The shape is a pure
-/// number, so the random variable's dimension is `1/rate` — the inverse of
-/// the *second* argument (`DimRule::Inverse` would read the shape).
+/// A cumulative probability is dimensionless; the evaluation point must
+/// still have the distribution's dimension.
 #[allow(clippy::unnecessary_wraps)]
-fn gamma_rate_dimension(
-    _ctx: &DimCtx<'_>,
+fn distribution_point_dimension(
+    ctx: &DimCtx<'_>,
     args: &[DimTerm],
 ) -> Result<DimTerm, DimError> {
-    Ok(args
-        .get(1)
-        .map_or_else(DimTerm::dimensionless, DimTerm::inverse))
+    let distribution = args.first().cloned().unwrap_or_else(DimTerm::dimensionless);
+    let point = args.get(1).cloned().unwrap_or_else(DimTerm::dimensionless);
+    check_distribution_point(ctx, &distribution, &point)?;
+    Ok(DimTerm::dimensionless())
+}
+
+/// The point where a density or distribution function is evaluated must have
+/// the dimension of the random variable. Unknowns are left for later
+/// unification instead of being reported as conflicts.
+fn check_distribution_point(
+    ctx: &DimCtx<'_>,
+    distribution: &DimTerm,
+    point: &DimTerm,
+) -> Result<(), DimError> {
+    if distribution.is_any()
+        || point.is_any()
+        || distribution.is_non_metric()
+        || point.is_non_metric()
+        || distribution.has_unknown()
+        || point.has_unknown()
+        || distribution == point
+    {
+        return Ok(());
+    }
+    Err(DimError::Mismatch {
+        left: distribution.describe(ctx.arena),
+        right: point.describe(ctx.arena),
+        context: ctx.graph.display(ctx.node),
+    })
 }
 
 /// The raw or central moment of order `k` of data with dimension `d` is
@@ -2366,8 +2394,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             ("bernoulli", DimRule::Dimensionless),
             ("binomial_dist", DimRule::Dimensionless),
             ("poisson", DimRule::Dimensionless),
-            // `gamma_dist(shape, rate)` has mean `shape/rate`.
-            ("gamma_dist", DimRule::Custom(gamma_rate_dimension)),
+            // `gamma_dist(shape, rate)` has mean `shape/rate`: the shape is
+            // a pure number and the variable's dimension is `1/rate`.
+            (
+                "gamma_dist",
+                DimRule::Family {
+                    result: FamilySource::Inverse(1),
+                    same: &[],
+                    dimensionless: &[0],
+                },
+            ),
             ("beta_dist", DimRule::Dimensionless),
             ("student_t", DimRule::Dimensionless),
             ("chi_squared", DimRule::Dimensionless),
@@ -2375,20 +2411,36 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             ("laplace_dist", DimRule::Sum),
             // A log-normal variable is `exp(mu + sigma Z)`: dimensionless.
             ("lognormal", DimRule::Dimensionless),
-            // `weibull(shape, scale)`: the scale is the random variable.
-            ("weibull", DimRule::Same(1)),
+            // `weibull(shape, scale)`: the scale is the random variable and
+            // the shape is a pure number.
+            (
+                "weibull",
+                DimRule::Family {
+                    result: FamilySource::Argument(1),
+                    same: &[],
+                    dimensionless: &[0],
+                },
+            ),
             ("geometric", DimRule::Dimensionless),
             ("negative_binomial", DimRule::Dimensionless),
             ("f_dist", DimRule::Dimensionless),
-            // `pareto(scale, shape)`: the scale is the random variable.
-            ("pareto", DimRule::Same(0)),
+            // `pareto(scale, shape)`: the scale is the random variable and
+            // the shape is a pure number.
+            (
+                "pareto",
+                DimRule::Family {
+                    result: FamilySource::Argument(0),
+                    same: &[],
+                    dimensionless: &[1],
+                },
+            ),
             ("rayleigh", DimRule::Same(0)),
             ("logistic", DimRule::Sum),
             ("gumbel", DimRule::Sum),
             ("binomial_trials", DimRule::Dimensionless),
             ("normal_known_sd", DimRule::Same(0)),
             ("pdf", DimRule::Custom(density_dimension)),
-            ("cdf", DimRule::Custom(dimensionless_result)),
+            ("cdf", DimRule::Custom(distribution_point_dimension)),
             ("expectation", DimRule::Same(0)),
             ("variance_of", DimRule::Square),
             ("mgf", DimRule::Custom(dimensionless_result)),

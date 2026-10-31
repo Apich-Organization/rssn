@@ -44,6 +44,7 @@ pub use dim::DimTerm;
 pub use dim::DimVarId;
 pub use dim::Dimension;
 pub use dim::DimensionMode;
+pub use dim::FamilySource;
 pub use dim::UnitInfo;
 pub use dim::UnitResolver;
 pub use dim::UnitTextResolver;

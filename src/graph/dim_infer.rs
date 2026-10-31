@@ -17,6 +17,7 @@ use crate::graph::ClassId;
 use crate::graph::DimVarId;
 use crate::graph::Graph;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::graph::Payload;
 use crate::graph::SymbolId;
 use crate::graph::dim::DimArena;
@@ -120,7 +121,15 @@ impl Unifier {
         for _ in 0..64 {
             match (&left.repr, &right.repr) {
                 | (DimRepr::Any, _) => return Ok(right),
-                | (_, DimRepr::Any) | (DimRepr::NonMetric, DimRepr::NonMetric) => {
+                | (_, DimRepr::Any) => return Ok(left),
+                // A container is a non-scalar supertype: it agrees with the
+                // scalar dimension of its expanded literal (all parts
+                // dimensionless) and with `Any` (mixed parts) without
+                // turning the request into a conflict.
+                | (DimRepr::Container, _) | (_, DimRepr::Container) => {
+                    return Ok(DimTerm::container());
+                },
+                | (DimRepr::NonMetric, DimRepr::NonMetric) => {
                     return Ok(left);
                 },
                 | (DimRepr::NonMetric, _) | (_, DimRepr::NonMetric) => {
@@ -296,9 +305,22 @@ impl<'a> DimInfer<'a> {
             return DimTerm::any();
         }
         let members: Vec<NodeId> = self.graph.members(class).collect();
-        let mut result: Option<DimTerm> = None;
+        // A class that contains the literal zero *is* the polymorphic scalar.
+        // Other members may be zero-valued expressions that still carry a
+        // syntactic dimension (`x - x` is a length syntactically); their
+        // dimensions must not constrain the class. They are still derived so
+        // that conflicts inside them are reported. This is what keeps
+        // kernels that simplify expressions to zero (`matrix_function`, row
+        // reduction) from reporting spurious conflicts.
+        let zero_class = members
+            .iter()
+            .any(|&member| self.graph.as_number(member).is_some_and(Number::is_zero));
+        let mut result: Option<DimTerm> = zero_class.then(DimTerm::any);
         for member in members {
             let dimension = self.derive(member);
+            if zero_class {
+                continue;
+            }
             match result.take() {
                 | None => result = Some(dimension),
                 | Some(current) => {
@@ -395,19 +417,12 @@ impl<'a> DimInfer<'a> {
                 DimTerm::var(id)
             },
             | DimRule::NonMetric => DimTerm::non_metric(),
+            | DimRule::Container => DimTerm::container(),
             | DimRule::Any => DimTerm::any(),
             | DimRule::Same(index) => args.get(index).cloned().unwrap_or_else(DimTerm::any),
-            | DimRule::Sum => self.sum(args, node),
-            | DimRule::Product => {
-                args.iter()
-                    .fold(DimTerm::dimensionless(), |acc, arg| acc.mul(arg))
-            },
-            | DimRule::Quotient => {
-                match (args.first(), args.get(1)) {
-                    | (Some(left), Some(right)) => left.mul(&right.inverse()),
-                    | _ => DimTerm::any(),
-                }
-            },
+            | DimRule::Sum => self.sum(name, node, children, args),
+            | DimRule::Product => self.product(name, node, children, args),
+            | DimRule::Quotient => self.quotient(name, node, children, args),
             | DimRule::Power => self.power(node, children, args),
             | DimRule::Root(degree) => {
                 let exponent = BigRational::new(BigInt::one(), BigInt::from(degree));
@@ -471,6 +486,16 @@ impl<'a> DimInfer<'a> {
                 let count = self.count_exponent(children, index);
                 factor.pow_expo(&count)
             },
+            | DimRule::Family {
+                result,
+                same,
+                dimensionless,
+            } => self.family(name, node, children, args, result, same, dimensionless),
+            | DimRule::MatrixFunction {
+                function,
+                variable,
+                matrix,
+            } => self.matrix_function(name, node, children, args, function, variable, matrix),
             | DimRule::Quantity => self.quantity(node),
             | DimRule::Custom(custom) => {
                 let result = {
@@ -510,9 +535,25 @@ impl<'a> DimInfer<'a> {
 
     fn sum(
         &mut self,
-        args: &[DimTerm],
+        name: &str,
         node: NodeId,
+        children: &[NodeId],
+        args: &[DimTerm],
     ) -> DimTerm {
+        // Two temperature *points* cannot be added; a point and a
+        // difference (written in `K`) can. `min`/`max` compare points and
+        // are left alone.
+        if matches!(name, "add" | "sub")
+            && children
+                .iter()
+                .filter(|&&child| self.is_affine_point(child))
+                .count()
+                >= 2
+        {
+            self.errors.push(DimError::Affine {
+                operation: self.graph.display(node),
+            });
+        }
         let mut result: Option<DimTerm> = None;
         for arg in args {
             match result.take() {
@@ -530,6 +571,237 @@ impl<'a> DimInfer<'a> {
             }
         }
         result.unwrap_or_else(DimTerm::any)
+    }
+
+    /// A product: `mul`, `dot`, `cross`, `matmul`, `kron`, ...
+    ///
+    /// An affine point (an absolute temperature such as `degC`) has no
+    /// multiplicative structure: it may not appear as a factor of a product.
+    fn product(
+        &mut self,
+        _name: &str,
+        node: NodeId,
+        children: &[NodeId],
+        args: &[DimTerm],
+    ) -> DimTerm {
+        if args.len() > 1 && children.iter().any(|&child| self.is_affine_point(child)) {
+            self.errors.push(DimError::Affine {
+                operation: self.graph.display(node),
+            });
+        }
+        args.iter()
+            .fold(DimTerm::dimensionless(), |acc, arg| acc.mul(arg))
+    }
+
+    fn quotient(
+        &mut self,
+        _name: &str,
+        node: NodeId,
+        children: &[NodeId],
+        args: &[DimTerm],
+    ) -> DimTerm {
+        if children.iter().any(|&child| self.is_affine_point(child)) {
+            self.errors.push(DimError::Affine {
+                operation: self.graph.display(node),
+            });
+        }
+        match (args.first(), args.get(1)) {
+            | (Some(left), Some(right)) => left.mul(&right.inverse()),
+            | _ => DimTerm::any(),
+        }
+    }
+
+    /// A parameterised family: the value's dimension comes from a location
+    /// or scale (or is the inverse of a rate); shape parameters are pure
+    /// numbers and tied parameters share the value's dimension.
+    #[allow(clippy::too_many_arguments)]
+    fn family(
+        &mut self,
+        name: &str,
+        node: NodeId,
+        children: &[NodeId],
+        args: &[DimTerm],
+        result: crate::graph::dim::FamilySource,
+        same: &[usize],
+        dimensionless: &[usize],
+    ) -> DimTerm {
+        use crate::graph::dim::FamilySource;
+        let value = match result {
+            | FamilySource::Argument(index) => {
+                args.get(index).cloned().unwrap_or_else(DimTerm::any)
+            },
+            | FamilySource::Inverse(index) => {
+                args.get(index).map_or_else(DimTerm::any, DimTerm::inverse)
+            },
+        };
+        for &index in same {
+            if let Some(argument) = args.get(index) {
+                let expected = self.unifier.resolve(&value);
+                if let Err(error) = self.unifier.unify(&expected, argument) {
+                    self.record_unify(error, node);
+                }
+            }
+        }
+        for &index in dimensionless {
+            if let Some(argument) = args.get(index)
+                && let Err(error) = self.unifier.unify(argument, &DimTerm::dimensionless())
+            {
+                self.record_unify(error, node);
+                self.errors.push(DimError::NonDimensionless {
+                    op: name.to_string(),
+                    argument: children
+                        .get(index)
+                        .map_or_else(String::new, |&child| self.graph.display(child)),
+                    found: self.text(argument),
+                });
+            }
+        }
+        value
+    }
+
+    /// `matfun(f, x, A)`: homogeneous polynomial `f` acts on the entries of
+    /// `A` with its degree; a non-homogeneous `f` needs a dimensionless
+    /// matrix.
+    #[allow(clippy::too_many_arguments)]
+    fn matrix_function(
+        &mut self,
+        name: &str,
+        node: NodeId,
+        children: &[NodeId],
+        args: &[DimTerm],
+        function: usize,
+        variable: usize,
+        matrix: usize,
+    ) -> DimTerm {
+        let pure = DimTerm::dimensionless();
+        if let Some(argument) = args.get(variable)
+            && let Err(error) = self.unifier.unify(argument, &pure)
+        {
+            self.record_unify(error, node);
+        }
+        let degree = children
+            .get(function)
+            .zip(children.get(variable))
+            .and_then(|(&f, &x)| self.homogeneous_degree(f, x));
+        let function_dim = args
+            .get(function)
+            .map_or_else(DimTerm::any, |arg| self.unifier.resolve(arg));
+        match degree {
+            | Some(degree) => {
+                let matrix_dim = args.get(matrix).cloned().unwrap_or_else(DimTerm::any);
+                let exponent = BigRational::from_integer(BigInt::from(degree));
+                function_dim.mul(&matrix_dim.pow(&exponent))
+            },
+            | None => {
+                if let Some(argument) = args.get(matrix)
+                    && let Err(error) = self.unifier.unify(argument, &pure)
+                {
+                    self.record_unify(error, node);
+                    self.errors.push(DimError::NonDimensionless {
+                        op: name.to_string(),
+                        argument: children
+                            .get(matrix)
+                            .map_or_else(String::new, |&child| self.graph.display(child)),
+                        found: self.text(argument),
+                    });
+                }
+                function_dim
+            },
+        }
+    }
+
+    /// The common total degree of `f` as a polynomial in `x`, when every
+    /// term has the same degree and the coefficients do not mention `x`.
+    fn homogeneous_degree(
+        &self,
+        function: NodeId,
+        variable: NodeId,
+    ) -> Option<i64> {
+        let target = self.graph.find(variable);
+        self.monomial_degree(function, target, 0)
+    }
+
+    fn monomial_degree(
+        &self,
+        node: NodeId,
+        variable: ClassId,
+        depth: usize,
+    ) -> Option<i64> {
+        if depth > 64 {
+            return None;
+        }
+        let class = self.graph.find(node);
+        if class == variable {
+            return Some(1);
+        }
+        if self.graph.as_number(node).is_some() {
+            return Some(0);
+        }
+        if !self.mentions(class, variable) {
+            return Some(0);
+        }
+        let op = self.graph.op(node);
+        if op == core::ADD {
+            let mut common: Option<i64> = None;
+            for &child in self.graph.children(node) {
+                let degree = self.monomial_degree(child, variable, depth + 1)?;
+                match common {
+                    | None => common = Some(degree),
+                    | Some(previous) if previous == degree => {},
+                    | Some(_) => return None,
+                }
+            }
+            return common;
+        }
+        if op == core::MUL {
+            let mut total: i64 = 0;
+            for &child in self.graph.children(node) {
+                total = total.checked_add(self.monomial_degree(child, variable, depth + 1)?)?;
+            }
+            return Some(total);
+        }
+        if op == core::POW {
+            let children = self.graph.children(node);
+            let &[base, exponent] = children else {
+                return None;
+            };
+            // `x^n` with `n` independent of `x`: an integer power only.
+            if self.mentions(self.graph.find(exponent), variable) {
+                return None;
+            }
+            let exponent = self.graph.number_of(exponent).and_then(exact_exponent)?;
+            if !exponent.is_integer() {
+                return None;
+            }
+            let degree = self.monomial_degree(base, variable, depth + 1)?;
+            degree.checked_mul(exponent.to_integer().to_i64()?)
+        } else {
+            None
+        }
+    }
+
+    /// Whether the subtree rooted at `root` contains `target`.
+    fn mentions(
+        &self,
+        root: ClassId,
+        target: ClassId,
+    ) -> bool {
+        let mut seen = HashSet::new();
+        let mut stack = vec![root];
+        while let Some(class) = stack.pop() {
+            if class == target {
+                return true;
+            }
+            if !seen.insert(class) {
+                continue;
+            }
+            for node in self.graph.enodes(class) {
+                for &child in self.graph.children(node) {
+                    stack.push(self.graph.find(child));
+                }
+            }
+        }
+        false
     }
 
     fn compare(
@@ -600,6 +872,14 @@ impl<'a> DimInfer<'a> {
         children: &[NodeId],
         args: &[DimTerm],
     ) -> DimTerm {
+        if children
+            .first()
+            .is_some_and(|&base| self.is_affine_point(base))
+        {
+            self.errors.push(DimError::Affine {
+                operation: self.graph.display(node),
+            });
+        }
         let Some(base) = args.first().cloned() else {
             return DimTerm::any();
         };
@@ -686,7 +966,7 @@ impl<'a> DimInfer<'a> {
     }
 
     fn quantity(
-        &self,
+        &mut self,
         node: NodeId,
     ) -> DimTerm {
         let Some(op) = self.graph.ops().lookup("quantity") else {
@@ -695,8 +975,55 @@ impl<'a> DimInfer<'a> {
         let Some(resolver) = self.graph.ops().attr::<UnitResolver>(op) else {
             return DimTerm::any();
         };
+        let resolved = {
+            let arena = self.read_arena();
+            (resolver.0)(self.graph, node, &arena)
+        };
+        match resolved {
+            | Some(info) => info.dimension,
+            | None => {
+                // A term-level unit that does not resolve (an unknown name,
+                // or an affine unit inside a product/power) is an unknown,
+                // not a conflict: the value is `any` and the finding is
+                // advisory in Strict as well. A text declaration with the
+                // same problem is a hard parse error elsewhere.
+                let context = self.graph.display(node);
+                let unit = self
+                    .graph
+                    .children(node)
+                    .get(1)
+                    .map_or_else(|| context.clone(), |&unit| self.graph.display(unit));
+                let duplicate = self.errors.iter().any(|error| {
+                    matches!(error, DimError::UnknownUnit { context: Some(seen), .. } if *seen == context)
+                });
+                if !duplicate {
+                    self.errors.push(DimError::UnknownUnit {
+                        unit,
+                        context: Some(context),
+                    });
+                }
+                DimTerm::any()
+            },
+        }
+    }
+
+    /// Whether `node` is a lone affine unit (`quantity(20, degC)`), an
+    /// absolute temperature point rather than a difference.
+    fn is_affine_point(
+        &self,
+        node: NodeId,
+    ) -> bool {
+        let Some(quantity) = self.graph.ops().lookup("quantity") else {
+            return false;
+        };
+        let Some(resolver) = self.graph.ops().attr::<UnitResolver>(quantity) else {
+            return false;
+        };
         let arena = self.read_arena();
-        (resolver.0)(self.graph, node, &arena).map_or_else(DimTerm::any, |info| info.dimension)
+        self.graph.enodes(self.graph.find(node)).any(|candidate| {
+            self.graph.op(candidate) == quantity
+                && (resolver.0)(self.graph, candidate, &arena).is_some_and(|info| info.affine)
+        })
     }
 
     fn check_not_non_metric(

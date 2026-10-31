@@ -134,13 +134,20 @@ fn request_rule(request: Request) -> DimRule {
         // and the null-space basis normalises a free variable to 1: both are
         // ratios of entries, hence dimensionless.
         | Request::Rref | Request::Nullspace => DimRule::Custom(dimensionless_result),
-        | Request::Identity
-        | Request::Zeros
-        | Request::Eigenvals
-        | Request::Eigenvects
-        | Request::Lu
-        | Request::Qr
-        | Request::Svd => DimRule::List,
+        // Eigenvalues are entries of the matrix, so they keep its entry
+        // dimension (a matrix is a homogeneous list).
+        | Request::Identity | Request::Zeros | Request::Eigenvals => DimRule::List,
+        // Structured decompositions mix dimensionless structural data with
+        // dimensionful parts: `lu` is `[P, L, U]` (P, L dimensionless; U
+        // entry), `qr` is `[Q, R]` (Q dimensionless; R entry), `svd` is
+        // `[U, S, V]` (U, V dimensionless; singular values S entry), and an
+        // eigenvector triple is `[eigenvalue, multiplicity, basis]`
+        // (eigenvalue entry; multiplicity and the normalised basis
+        // dimensionless). A tuple has no single scalar dimension, so it is
+        // typed as a container (`Container`, reported `non-metric`) rather
+        // than diagnosed as a mixed scalar list; it stays compatible with
+        // the dimension of the reduced literal.
+        | Request::Eigenvects | Request::Lu | Request::Qr | Request::Svd => DimRule::Container,
         | Request::Dims | Request::Rank | Request::Normalize => {
             DimRule::Custom(dimensionless_result)
         },
@@ -3683,21 +3690,30 @@ impl Kernel for Extension {
 fn extension_rule(kind: Kind) -> DimRule {
     match kind {
         | Kind::Kron => DimRule::Product,
+        // Homogeneous lists keep the entry dimension: `diag` and the
+        // column space use the input entries directly, `hilbert` and the
+        // integer normal forms are dimensionless by construction, and
+        // `orthogonalize` combines entry vectors with dimensionless
+        // coefficients.
         | Kind::Diag
         | Kind::Hilbert
-        // The column space returns columns of the input, so its entries keep
-        // the input's entry dimension. The row space returns *reduced* rows
-        // (divided by their pivots) and the left null space a normalised null
-        // basis, so both are dimensionless and handled below.
         | Kind::Colspace
-        | Kind::Jordan
-        | Kind::JordanBlocks
-        | Kind::Spectral
-        | Kind::Ldl
         | Kind::Orthogonalize
         | Kind::Smith
         | Kind::InvariantFactors
         | Kind::Hermite => DimRule::List,
+        // Structured decompositions: `jordan` is `[P, J]` (P dimensionless;
+        // J has eigenvalues on the diagonal and structural `1`s on the
+        // superdiagonal), `jordan_blocks` is `[[eigenvalue, size]]`,
+        // `spectral` is `[[eigenvalue, projector]]` (the projector is
+        // dimensionless), and `ldl` is `[L, d]` (L dimensionless; the
+        // diagonal d holds the pivots, with the entries' dimension). A
+        // tuple is not a scalar, so its dimension is a container
+        // (`non-metric`) that stays compatible with the reduced literal.
+        | Kind::Jordan | Kind::JordanBlocks | Kind::Spectral | Kind::Ldl => DimRule::Container,
+        // Matrices of mixed powers (`vandermonde`), normalised
+        // coefficients (`companion`) and polynomial descriptions are
+        // reported as non-scalar values.
         | Kind::Vandermonde
         | Kind::Companion
         | Kind::Matpoly
@@ -3714,10 +3730,20 @@ fn extension_rule(kind: Kind) -> DimRule {
         // entries `sqrt(entry)`.
         | Kind::Mpow => DimRule::Custom(matrix_power_dimension),
         | Kind::Matsqrt | Kind::Cholesky => DimRule::Root(2),
-        // `exp(A) = Σ A^k/k!` and an arbitrary matrix function are summarised
-        // as pure numbers, so `A` must be dimensionless (the rule enforces
-        // that on the matrix argument).
-        | Kind::Matexp | Kind::Matfun => DimRule::Dimensionless,
+        // `exp(A) = Σ A^k/k!` is a pure number, so `A` must be dimensionless
+        // (the rule enforces that on the matrix argument).
+        | Kind::Matexp => DimRule::Dimensionless,
+        // A polynomial `f` of a single total degree `k` acts homogeneously:
+        // `f(A)` has entries `dim(f) * entry^k` (`x^2` gives `A^2`,
+        // `x^3 + x` is not homogeneous). A non-homogeneous `f`, and the
+        // `exp`/trig matrix functions, need a dimensionless matrix.
+        | Kind::Matfun => {
+            DimRule::MatrixFunction {
+                function: 0,
+                variable: 1,
+                matrix: 2,
+            }
+        },
         // Gram-Schmidt normalisation returns unit vectors, and reduced rows or
         // a normalised null-space basis are entry ratios: pure numbers.
         | Kind::Orthonormalize | Kind::Rowspace | Kind::LeftNullspace => {

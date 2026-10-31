@@ -730,6 +730,32 @@ impl Units<'_, '_> {
         Some(Val::Quant { value, unit })
     }
 
+    /// Whether `node` is a lone affine quantity (an absolute temperature
+    /// point such as `quantity(20, degC)`).
+    ///
+    /// Affine points have no multiplicative structure and two of them cannot
+    /// be added: `unify_expression` refuses such requests instead of
+    /// silently reading them as kelvin. A point plus a difference written in
+    /// `K` is still allowed (the difference is the vector unit in SI).
+    fn is_affine_point(
+        &mut self,
+        node: NodeId,
+    ) -> bool {
+        let Some(term) = best(self.cx.graph, node) else {
+            return false;
+        };
+        if self.cx.graph.op(term) != self.quantity {
+            return false;
+        }
+        let &[_, unit] = self.cx.graph.children(term) else {
+            return false;
+        };
+        let Some(unit) = parse_unit(self.cx.graph, unit, 0) else {
+            return false;
+        };
+        resolve_map(&unit).is_some_and(|resolved| resolved.offset.is_some())
+    }
+
     /// A dimensionless quantity as the number it stands for.
     fn demote(
         &mut self,
@@ -778,6 +804,17 @@ impl Units<'_, '_> {
         }
         match op {
             | core::ADD => {
+                // point + point (two absolute temperatures) is not an
+                // absolute temperature: refuse it rather than convert both
+                // through kelvin and add.
+                if children
+                    .iter()
+                    .filter(|&&c| self.is_affine_point(c))
+                    .count()
+                    >= 2
+                {
+                    return None;
+                }
                 let vals: Vec<Val> = children
                     .iter()
                     .map(|&c| self.eval(c, depth + 1).and_then(|v| self.demote(v)))
@@ -821,6 +858,10 @@ impl Units<'_, '_> {
                 })
             },
             | core::MUL => {
+                // A point is affine: `degC * 2` is not a temperature.
+                if children.len() > 1 && children.iter().any(|&c| self.is_affine_point(c)) {
+                    return None;
+                }
                 let mut values = Vec::new();
                 let mut unit = UnitMap::new();
                 let mut any = false;
@@ -846,6 +887,10 @@ impl Units<'_, '_> {
                 let &[base, exponent] = children.as_slice() else {
                     return None;
                 };
+                // A power of an affine point is not a temperature.
+                if self.is_affine_point(base) {
+                    return None;
+                }
                 let (b, e) = (self.eval(base, depth + 1)?, self.eval(exponent, depth + 1)?);
                 let e = self.demote(e)?;
                 match (b, e) {
@@ -1258,6 +1303,23 @@ mod tests {
         );
         // they cannot be combined multiplicatively
         assert!(!attempt("unify_expression(quantity(1, degC*m))").1);
+        // an affine point is not a vector: it cannot be scaled, powered or
+        // added to another point. These used to be quietly converted to K.
+        for source in [
+            "unify_expression(quantity(20, degC) * 2)",
+            "unify_expression(2 * quantity(20, degC))",
+            "unify_expression(quantity(20, degC) / 2)",
+            "unify_expression(quantity(20, degC)^2)",
+            "unify_expression(quantity(20, degC) + quantity(30, degC))",
+        ] {
+            let (text, reduced) = attempt(source);
+            assert!(!reduced, "{source} reduced to {text}");
+        }
+        // a point plus a difference expressed in kelvin is still allowed
+        assert_eq!(
+            run("unify_expression(quantity(20, degC) + quantity(2, K))"),
+            "quantity(5903/20, K)"
+        );
     }
 
     #[test]
