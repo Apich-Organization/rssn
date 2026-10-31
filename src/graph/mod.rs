@@ -12,10 +12,10 @@
 
 pub mod dim;
 // `pub(crate)` is the intended visibility: these are internal modules, so
-// `pub` items inside them would be exactly as crate-private. Keep the
-// explicit `pub(crate)`; the module files themselves silence the
-// redundant-visibility lint, so no outer attribute is added here (an inner
-// and an outer copy of the same lint attribute are a duplicate).
+// `pub` items inside them are exactly as crate-private. Keep the explicit
+// `pub(crate)`: no extra visibility attribute is needed on the modules.
+
+
 pub(crate) mod dim_expr;
 pub(crate) mod dim_infer;
 pub mod eval;
