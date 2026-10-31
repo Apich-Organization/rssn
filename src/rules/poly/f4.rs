@@ -1305,8 +1305,29 @@ pub(super) mod common {
         for (mono, c) in p.terms() {
             row.push((columns.rank(&multiply(mono, shift))?, c.clone()));
         }
+        Some(merge_row(row))
+    }
+
+    /// A row with one entry per column, in increasing column order.
+    ///
+    /// Multiplication by a monomial is injective on monomials of a fixed
+    /// dimension, so a row built by [`matrix_row`] is already duplicate-free.
+    /// Exponent vectors of mixed dimensions can nevertheless map two terms to
+    /// the same column; merging them here keeps the invariants [`subtract_rows`]
+    /// and [`echelon`] rely on (strictly increasing ranks, no zero entries).
+    /// Without the merge a duplicate leading rank would never cancel, and the
+    /// elimination would loop until the reduction budget was exhausted.
+    fn merge_row(mut row: Row) -> Row {
         row.sort_by_key(|(rank, _)| *rank);
-        Some(row)
+        let mut merged: Row = Vec::with_capacity(row.len());
+        for (rank, value) in row {
+            match merged.last_mut() {
+                | Some((last, acc)) if *last == rank => *acc += value,
+                | _ => merged.push((rank, value)),
+            }
+        }
+        merged.retain(|(_, value)| !value.is_zero());
+        merged
     }
 
     /// `a - factor * b` on rows sorted by increasing column rank.
@@ -1372,7 +1393,7 @@ pub(super) mod common {
     ) -> Option<Vec<(usize, Row)>> {
         let mut pivots: BTreeMap<usize, Row> = BTreeMap::new();
         for row in rows {
-            let mut current = row;
+            let mut current = merge_row(row);
             while let Some(&(lead, _)) = current.last() {
                 match pivots.get(&lead) {
                     | Some(pivot) => {
@@ -1485,6 +1506,25 @@ pub(super) mod common {
             let one = vec![vec![(0, q(1)), (1, q(1))], vec![(0, q(1)), (1, q(2))]];
             assert!(echelon(one.clone(), &mut 0, 0).is_none());
             assert!(echelon(one, &mut 0, 100).is_some());
+        }
+
+        #[test]
+        fn the_echelon_form_merges_duplicate_column_ranks() {
+            // A row may carry two entries for one column if its source
+            // polynomial had exponent vectors of mixed dimensions. Their sum
+            // cancels here, so without the merge the last entry would be a
+            // zero coefficient at a column that never disappears and the
+            // elimination would spin until the step budget ran out.
+            let rows = vec![vec![(0, q(1)), (2, q(1)), (2, q(-1))], vec![(2, q(1))]];
+            let mut steps = 0;
+            let pivots = echelon(rows, &mut steps, 100).expect("must terminate");
+            assert_eq!(pivots.len(), 2);
+            assert_eq!(pivots[0].0, 0);
+            assert_eq!(pivots[1].0, 2);
+            // Duplicate entries that do not cancel are added.
+            let rows = vec![vec![(1, q(2)), (1, q(3))]];
+            let pivots = echelon(rows, &mut 0, 100).expect("must terminate");
+            assert_eq!(pivots, vec![(1, vec![(1, q(1))])]);
         }
 
         #[test]
