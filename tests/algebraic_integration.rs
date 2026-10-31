@@ -91,6 +91,82 @@ fn check_antiderivative(
     check_derivative(session, integrand, answer.term);
 }
 
+/// Requires a closed form (no residual `integral`) and checks it by
+/// differentiation.
+fn check_closed_form(
+    session: &Session,
+    integrand: &str,
+) -> String {
+    let answer = symbolic(session, &integral_request(integrand));
+    assert!(
+        answer.reduced,
+        "integral of `{integrand}` was not found: {}",
+        answer.term
+    );
+    let text = answer.term.to_string();
+    assert!(
+        !text.contains("integral"),
+        "integral of `{integrand}` did not close: {text}"
+    );
+    check_derivative(session, integrand, answer.term);
+    text
+}
+
+/// Positive-genus integrands whose primitive is the logarithm of an
+/// *algebraic* function, `g = 1 + D sqrt(D)`:
+///
+/// ```text
+/// g'/g = 3 D'(y - D^2) / (2 (1 - D^3)),   y^2 = D.
+/// ```
+///
+/// Every residue has a non-zero `y` component, so the `y`-trace `2 a`
+/// alone cannot represent the answer; the anti-trace part is the
+/// non-rational factor of `g`.  These are the cases the old code always
+/// left unevaluated.
+#[test]
+fn positive_genus_logarithmic_antiderivatives() {
+    let session = Session::new();
+    for integrand in [
+        "(-3*(x^3 + 1)^2*(3*x^2) + 3*(3*x^2)*sqrt(x^3 + 1))/(2*(1 - (x^3 + 1)^3))",
+        "(-3*(x^3 - x)^2*(3*x^2 - 1) + 3*(3*x^2 - 1)*sqrt(x^3 - x))/(2*(1 - (x^3 - x)^3))",
+        "(-3*(x^4 + 1)^2*(4*x^3) + 3*(4*x^3)*sqrt(x^4 + 1))/(2*(1 - (x^4 + 1)^3))",
+    ] {
+        let text = check_closed_form(&session, integrand);
+        println!("positive-genus logarithm: {text}");
+        // The answer is a logarithm of an algebraic function.
+        let algebraic = text.contains("sqrt") || text.contains("^(1/2)") || text.contains("^(3/2)");
+        assert!(
+            text.contains("ln") && algebraic,
+            "`{integrand}` did not give an algebraic logarithm: {text}"
+        );
+        check_definite(&session, integrand, 1.2, 2.0);
+    }
+}
+
+/// The same examples as in the defect report are genuinely non-elementary
+/// (elliptic or hyperelliptic integrals of the third kind): they must never
+/// produce a wrong closed form, and the definite integral must still agree
+/// with an independent quadrature.
+#[test]
+fn positive_genus_non_elementary_stays_an_identity() {
+    let session = Session::new();
+    for integrand in [
+        "1/(sqrt(x^3 + 1)*(x - 1))",
+        "(x + 2)/(sqrt(x^3 - x)*(x^2 + 1))",
+        "x^2/(sqrt(x^3 + 1)*(x - 1)^2)",
+        // Integer residues, but a non-exact differential of the second kind.
+        "sqrt(x^3 + 1)/(x - 2)",
+        "sqrt(x^4 + 1)/(x^2 + 1)",
+    ] {
+        let answer = symbolic(&session, &integral_request(integrand));
+        if answer.reduced {
+            check_derivative(&session, integrand, answer.term);
+        }
+        check_definite(&session, integrand, 1.2, 1.9);
+    }
+}
+
+
 /// Checks a definite integral: the numeric phase must agree with an
 /// independent Simpson rule, and a closed form, when the engine finds one,
 /// must evaluate to the same number.

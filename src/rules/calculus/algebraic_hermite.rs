@@ -88,7 +88,7 @@ fn frac_derivative(f: &Frac) -> Option<Frac> {
 }
 
 /// The derivative of `a + b y` in `Q(x)(y)`, exactly.
-fn element_derivative(
+pub(super) fn element_derivative(
     element: &Element,
     d: &[BigRational],
 ) -> Option<Element> {

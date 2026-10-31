@@ -16,19 +16,39 @@
 //!   is then integrated by residues and logarithms in [`logpart`] as far as
 //!   those are expressible over `Q(x)`.
 //!
-//! # Inherent limit
+//! # The logarithmic part and its limit
 //!
-//! The logarithmic part can only be written with logarithms and arctangents
-//! of rational functions when every residue lies in the base field and is
-//! constant (or a linear function of `x` over an irreducible quadratic
-//! residue field).  For a radicand of degree three or four the curve
-//! `y^2 = D` has positive genus; most remaining integrals are elliptic or
-//! hyperelliptic and have no elementary antiderivative.  In that case the
-//! kernel returns the Hermite-reduced integral
-//! `rational_part + integral((A0 + B0 y)/C0, x)`, which is a correct
-//! identity and has the lowest possible denominator multiplicities, rather
-//! than a wrong closed form.  The same applies to repeated factors that
-//! divide `D` (ramified places), which are left untouched.
+//! After Hermite reduction the remaining denominator is square-free, so the
+//! only residues are at its roots `alpha`, where the residue is an element of
+//! the residue field `Q(alpha, y_alpha)` of the curve.  It is computed
+//! exactly in the algebra `Q[alpha, y]/(w(alpha), y^2 - D(alpha))` as
+//! `a + b y`.  The logarithmic part is then found in two complementary ways:
+//!
+//! * a residue without a `y` component (`b = 0`) is summed over the
+//!   conjugates of `alpha`, which gives an element of `Q(x)`: linear factors
+//!   give logarithms, an irreducible quadratic gives a logarithm/arctangent
+//!   pair, and a constant residue of a factor of degree three or more gives
+//!   a logarithm;
+//! * a residue with a `y` component is the generic positive-genus case.  Its
+//!   `y`-trace `2a` is the base-field projection (the sum of the two
+//!   conjugate residues at the same `x = alpha`), and it is *not* an
+//!   antiderivative by itself: the anti-trace component is not a logarithm
+//!   of a rational function.  When the primitive is nevertheless elementary
+//!   it is a logarithm `log(g)` of an algebraic function `g` (for instance
+//!   `integral(3 D' (y - D^2) / (2 (1 - D^3)), x) = log(1 + D y)`,
+//!   `y^2 = D`).  [`logpart`] solves the linear system `g' = f g` for
+//!   `g = P + Q y` exactly and checks the trace of the answer
+//!   (`N'/N = 2a/c` for the norm `N = P^2 - Q^2 D`).
+//!
+//! A residue with a `y` component that is not such a logarithmic derivative
+//! is genuinely non-elementary: for a radicand of degree three or four the
+//! curve has positive genus and the remaining differential of the second or
+//! third kind has non-zero periods.  In that case the kernel returns the
+//! Hermite-reduced integral `rational_part + integral((A0 + B0 y)/C0, x)`,
+//! which is a correct identity with the lowest possible denominator
+//! multiplicities, rather than a wrong closed form.  Repeated factors that
+//! divide `D` (ramified places) and non-square constant radicands likewise
+//! stay unevaluated.
 //!
 //! Every candidate answer is differentiated and compared with the
 //! integrand at sample points before it is returned; a mismatch yields
@@ -302,6 +322,17 @@ fn higher_degree(
     b: &[BigRational],
     c: &[BigRational],
 ) -> Option<NodeId> {
+    // Try the logarithmic part on the original integrand first.  A primitive
+    // that is a logarithm of an algebraic function (the only way a
+    // positive-genus residue with a `y` component can close) is destroyed by
+    // subtracting Hermite pieces from it, because those pieces are
+    // algebraic and not logarithmic derivatives.  Solving the logarithmic
+    // ansatz on the unreduced integrand keeps that primitive available.
+    if let Some(logs) = logpart::complete(cx.graph, x, d, a, b, c)
+        && accept(cx, f, x, logs).is_some()
+    {
+        return Some(logs);
+    }
     let reduced = hermite::reduce(d, a, b, c);
     let rational = rational_part_term(cx, x, sqrt_term, &reduced.pieces);
     if let Some(logs) = logpart::complete(cx.graph, x, d, &reduced.a, &reduced.b, &reduced.c) {

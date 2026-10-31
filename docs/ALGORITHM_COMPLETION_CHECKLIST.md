@@ -1458,12 +1458,20 @@ reduced because its closed form is not global (documented).
 normalisation, conic parametrisations for degree 1–2 radicands, and for degree
 ≥3 the complete Hermite reduction (each multiplicity is lowered by subtracting
 an exact derivative, checked with rational-function arithmetic) followed by
-the residue logarithmic part (linear factors, quadratic residue fields by
-atan, constant residues in higher degree), with an 18-point differentiation
-check of every answer. Positive-genus residue fields that are not expressible
-over the base field return the Hermite-reduced integral (an identity, not a
-wrong answer); ramified repeated factors and non-square constant radicands
-stay unevaluated.
+the logarithmic part, with an 18-point differentiation check of every answer.
+The logarithmic part computes the residue in the algebra `Q(α, y)`,
+`y^2 = D(α)`, and either sums the conjugates of a residue in `Q(α)` (linear
+factors, quadratic residue fields by atan, constant residues in higher degree)
+or, when the residue has a `y` component, solves the exact linear system
+`g' = f g` for `g = P + Q y` and returns `log(g)` when the primitive is a
+logarithm of an algebraic function (e.g. `log(1 + D y)` for
+`3 D D'(y - D^2)/(2(1 - D^3))`, which closes elliptic cases).  The `y`-trace
+`2a` of the residue is the base-field projection, not the antiderivative; it
+is checked through the norm `N = P^2 - Q^2 D`, `N'/N = 2a/c`.  A residue with
+a `y` component that is not a logarithmic derivative (the generic
+positive-genus third-kind integral) returns the Hermite-reduced integral (an
+identity, not a wrong answer); ramified repeated factors and non-square
+constant radicands stay unevaluated.
 
 **Real QE.** Exact real algebraic numbers (square-free defining polynomial +
 rational isolating interval, gcd/Sturm sign and comparison), sparse
@@ -1524,7 +1532,9 @@ is unignored and green, covering all standard rule sets; group tests are
 when the ideal is zero-dimensional; F5's signature loop is used as-is only for
 small/medium systems; Meijer G and multivariate series have the numeric and
 support limits listed above; QE is bounded to four CAD variables; the
-quadratic sieve caps at 50 digits; Hermite's log part closes only when residues
-are in the base field. All are documented in the module docs and return
-unevaluated rather than a wrong answer.
+quadratic sieve caps at 50 digits; Hermite's logarithmic part closes when the
+residue is in the base field or is the logarithmic derivative of an algebraic
+function (`g = P + Q y` with `P`, `Q` of degree at most `deg C + 2`), and
+otherwise leaves the reduced integral. All are documented in the module docs
+and return unevaluated rather than a wrong answer.
 
