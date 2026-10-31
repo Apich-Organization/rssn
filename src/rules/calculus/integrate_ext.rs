@@ -858,7 +858,16 @@ impl Integrator<'_, '_> {
         };
         let one = self.int(1);
         let t_of_x = self.div(one, shifted);
-        Some(self.cx.graph.substitute(primitive, t, t_of_x))
+        let substituted = self.cx.graph.substitute(primitive, t, t_of_x);
+        // The primitive above is the one for `t > 0`: `√(Q(α + 1/t) t²)` is
+        // `|t| √Q*(t)`, not `t √Q*(t)`. Under `t = 1/(x - α)` the sign of `t`
+        // is the sign of `x - α`, so multiply by `(x - α)/|x - α|`; the
+        // result is then valid on both sides of the pole (where the integral
+        // diverges) instead of only on `(α, ∞)`.
+        let abs = self.cx.graph.ops().lookup("abs")?;
+        let magnitude = self.call(abs, shifted);
+        let sign = self.div(shifted, magnitude);
+        Some(self.mul(&[sign, substituted]))
     }
 
     /// Risch–Norman for one extension `θ = e^{g}` or `θ = ln x`.
