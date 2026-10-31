@@ -58,7 +58,13 @@
 //! is exhausted the request is normally reported as unevaluated. As a last
 //! resort for genuine resource exhaustion the matrix engine (F4) may finish the
 //! job; that event is recorded in [`F5Stats::matrix_fallback`] so that tests
-//! can assert that it does not happen for the benchmarks.
+//! can assert that it does not happen for the benchmarks. The matrix engine is
+//! also used for the final order conversion when FGLM declines; that
+//! documented structural limit is recorded separately in
+//! [`F5Stats::matrix_order_fallback`], so neither event can hide behind the
+//! other in the statistics. Cyclic-4 is positive-dimensional, so its graded-lex
+//! and lex bases necessarily take this route; the other benchmarks are
+//! zero-dimensional and stay on the criteria path in every order.
 //!
 //! The formulation is the F5B one of Sun and Wang (*The F5 algorithm in
 //! Buchberger's style*): the rewritten criterion is stated on the basis
@@ -199,17 +205,27 @@ pub struct F5Stats {
     pub reductions: usize,
     /// Basis elements added by the signature loop.
     pub polynomials_added: usize,
-    /// Whether the last-resort matrix engine had to finish the computation.
+    /// Whether the last-resort matrix engine had to finish the computation
+    /// because the signature loop exhausted one of its resource guards.
     pub matrix_fallback: bool,
+    /// Whether the matrix engine had to compute the basis in the requested
+    /// order because FGLM declined: the ideal is positive-dimensional, or its
+    /// quotient ring is larger than
+    /// [`FGLM_MAX_DIMENSION`](crate::rules::poly::groebner::FGLM_MAX_DIMENSION).
+    /// This is a documented structural limit, not an exhaustion of the
+    /// signature loop, so it is tracked apart from [`Self::matrix_fallback`].
+    pub matrix_order_fallback: bool,
 }
 
 impl F5Stats {
-    /// Whether the whole computation was done by the criteria-driven loop.
-    /// Used by the tests to assert that the benchmarks stay on that path.
+    /// Whether the whole computation was done by the criteria-driven loop,
+    /// with neither the resource fallback nor the order-conversion matrix
+    /// engine. Used by the tests to assert that the benchmarks stay on that
+    /// path.
     #[cfg(test)]
     #[must_use]
     pub const fn criteria_path(&self) -> bool {
-        !self.matrix_fallback
+        !self.matrix_fallback && !self.matrix_order_fallback
     }
 }
 
@@ -885,12 +901,24 @@ pub fn f5_basis_with_stats(
         return (Some(converted), stats);
     }
     // Positive-dimensional ideal or too large for FGLM: the matrix engine
-    // computes the same reduced basis in the requested order.
+    // computes the same reduced basis in the requested order. This is not a
+    // failure of the criteria loop, but it must be visible in the statistics.
+    stats.matrix_order_fallback = true;
     let reordered: Vec<GPoly> = original
         .iter()
         .map(|g| GPoly::new(g.terms().to_vec(), order))
         .collect();
-    (f4_basis(&reordered, order, F4Limits::default()), stats)
+    (
+        f4_basis(
+            &reordered,
+            order,
+            F4Limits {
+                basis: limits.basis,
+                ..F4Limits::default()
+            },
+        ),
+        stats,
+    )
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -1202,10 +1230,20 @@ mod tests {
                 let (computed, stats) =
                     f5_basis_with_stats(&generators, order, F5Limits::default());
                 assert_eq!(computed, expected, "{name} in {order:?}");
+                // The criteria loop itself must not be exhausted. A
+                // positive-dimensional sample may still need the matrix
+                // engine for the final order conversion, which is recorded
+                // separately in `matrix_order_fallback`.
                 assert!(
-                    stats.criteria_path(),
-                    "{name} in {order:?} fell back to the matrix engine"
+                    !stats.matrix_fallback,
+                    "{name} in {order:?} exhausted the criteria loop: {stats:?}"
                 );
+                if order == Order::GradedRevLex {
+                    assert!(
+                        stats.criteria_path(),
+                        "{name} in grevlex did not stay on the criteria path: {stats:?}"
+                    );
+                }
             }
         }
     }
@@ -1229,9 +1267,24 @@ mod tests {
                 let expected = reference(&generators, order);
                 assert_eq!(computed, expected, "{name} in {order:?}");
                 assert!(
-                    stats.criteria_path(),
-                    "{name} in {order:?} fell back to the matrix engine"
+                    !stats.matrix_fallback,
+                    "{name} in {order:?} exhausted the criteria loop: {stats:?}"
                 );
+                if name == "cyclic-4" && order != Order::GradedRevLex {
+                    // Cyclic-4 is positive-dimensional (no pure power of x3
+                    // leads a grevlex basis element), so FGLM cannot convert
+                    // its basis. The matrix engine computes the ordered basis
+                    // and the stats must record that structural limit.
+                    assert!(
+                        stats.matrix_order_fallback,
+                        "cyclic-4 in {order:?}: FGLM must decline and the order fallback must be recorded: {stats:?}"
+                    );
+                } else {
+                    assert!(
+                        stats.criteria_path(),
+                        "{name} in {order:?} did not stay on the criteria path: {stats:?}"
+                    );
+                }
                 // The criteria must have done the work, not the complete pair
                 // set: at least one of them discards pairs on every benchmark,
                 // and the loop never exhausts its pair budget.
@@ -1341,6 +1394,46 @@ mod tests {
         assert_eq!(
             computed,
             groebner(&generators, order, GroebnerLimits::default())
+        );
+    }
+
+    #[test]
+    fn f5_records_the_order_fallback_when_fglm_declines() {
+        // <x^2 - y^2> is one-dimensional: FGLM declines in lex, and the
+        // matrix engine computes the ordered basis. The statistics must say
+        // so instead of claiming the criteria path did everything.
+        let order = Order::Lex;
+        let generators = vec![poly(&[(1, vec![2, 0]), (-1, vec![0, 2])], order)];
+        let (computed, stats) = f5_basis_with_stats(&generators, order, F5Limits::default());
+        assert_eq!(
+            computed,
+            groebner(&generators, order, GroebnerLimits::default()),
+            "the ordered basis must still be correct"
+        );
+        assert!(
+            !stats.matrix_fallback,
+            "the criteria loop itself was not exhausted: {stats:?}"
+        );
+        assert!(
+            stats.matrix_order_fallback,
+            "the matrix engine computed the lex basis but the stats hide it: {stats:?}"
+        );
+        assert!(
+            !stats.criteria_path(),
+            "the criteria path did not produce the final ordered basis: {stats:?}"
+        );
+        // In the engine order no conversion is needed.
+        let (_, grevlex_stats) =
+            f5_basis_with_stats(&generators, Order::GradedRevLex, F5Limits::default());
+        assert!(
+            grevlex_stats.criteria_path(),
+            "grevlex should stay on the criteria path: {grevlex_stats:?}"
+        );
+        // The empty ideal is answered before either engine runs.
+        let (_, empty_stats) = f5_basis_with_stats(&[], order, F5Limits::default());
+        assert!(
+            !empty_stats.matrix_fallback && !empty_stats.matrix_order_fallback,
+            "the empty ideal runs neither engine: {empty_stats:?}"
         );
     }
 

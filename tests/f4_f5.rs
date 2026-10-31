@@ -446,6 +446,23 @@ fn order_variants_and_the_default_order() {
 }
 
 #[test]
+fn positive_dimensional_ideals_agree_in_every_order() {
+    let session = session();
+    // The hyperbola x0*x1 = 1 is one-dimensional. FGLM cannot convert it,
+    // so the F5 operator must finish in the matrix engine for lex/grlex, and
+    // every order must still match Buchberger's reduced basis.
+    let problem = Problem::new(
+        "positive-dimensional",
+        variables(2),
+        vec!["x0*x1 - 1".to_owned()],
+        Some("grevlex"),
+    );
+    for order in [Some("grevlex"), Some("grlex"), Some("lex")] {
+        check(&session, &problem.with_order(order));
+    }
+}
+
+#[test]
 fn random_dense_and_sparse_systems_agree() {
     let session = session();
     for (seed, order) in [(1_u64, "grevlex"), (2, "grlex"), (3, "lex"), (4, "grevlex")] {
