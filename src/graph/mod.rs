@@ -13,10 +13,10 @@
 pub mod dim;
 // `pub(crate)` is the intended visibility: these are internal modules, so
 // `pub` items inside them would be exactly as crate-private. Keep the
-// explicit `pub(crate)` and silence the redundant-visibility lint.
-#[allow(clippy::redundant_pub_crate)]
+// explicit `pub(crate)`; the module files themselves silence the
+// redundant-visibility lint, so no outer attribute is added here (an inner
+// and an outer copy of the same lint attribute are a duplicate).
 pub(crate) mod dim_expr;
-#[allow(clippy::redundant_pub_crate)]
 pub(crate) mod dim_infer;
 pub mod eval;
 pub mod extract;
