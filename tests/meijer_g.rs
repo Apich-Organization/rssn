@@ -177,20 +177,58 @@ fn bessel_and_bessel_y_reductions() {
         1e-8,
         "K_nu",
     );
-    // A negative argument is the modified Bessel I form; at nu = 0 the
-    // complex phase i^nu is one and the answer is real.
+    // A symbolic negative argument uses the global J form; a literal negative
+    // argument is in the `w > 0` domain of the modified-Bessel I form.
     let (text, reduced) = symbolic(&session, "meijerg(1, 0, list(), list(0, 0), -z)");
-    assert!(reduced, "I_nu reduction failed: {text}");
-    assert!(text.contains("besseli"), "{text}");
+    assert!(reduced, "J reduction failed: {text}");
+    assert!(text.contains("besselj"), "{text}");
     let term = session.parse(&text).unwrap_or_else(|e| panic!("{e}"));
-    for z in [0.3_f64, 1.6] {
+    for z in [-0.3_f64, -1.6] {
         close(
             term.eval(&[("z", z)]).unwrap_or(f64::NAN),
-            special::bessel_i(0.0, 2.0 * z.sqrt()),
+            special::bessel_j(0.0, 2.0 * (-z).sqrt()),
             1e-9,
-            "I_0",
+            "J_0",
         );
     }
+    let (text, reduced) = symbolic(&session, "meijerg(1, 0, list(), list(0, 0), -2)");
+    assert!(reduced, "I_0 reduction failed: {text}");
+    let term = session.parse(&text).unwrap_or_else(|e| panic!("{e}"));
+    close(
+        term.eval(&[]).unwrap_or(f64::NAN),
+        special::bessel_i(0.0, 2.0 * 2.0_f64.sqrt()),
+        1e-9,
+        "I_0 literal",
+    );
+    // General shifts for J and K.
+    let (text, _) = symbolic(&session, "meijerg(1, 0, list(), list(1/3, 1/4), z)");
+    assert!(text.contains("besselj"), "{text}");
+    let term = session.parse(&text).unwrap_or_else(|e| panic!("{e}"));
+    close(
+        term.eval(&[("z", 0.7)]).unwrap_or(f64::NAN),
+        0.421_144_699_126_796_1,
+        1e-10,
+        "J shift",
+    );
+    let (text, _) = symbolic(&session, "meijerg(2, 0, list(), list(1/3, 1/4), z)");
+    assert!(text.contains("besselk"), "{text}");
+    let term = session.parse(&text).unwrap_or_else(|e| panic!("{e}"));
+    close(
+        term.eval(&[("z", 0.7)]).unwrap_or(f64::NAN),
+        0.309_062_261_385_866_1,
+        1e-10,
+        "K shift",
+    );
+    // The Y form needs `a1 = b2 - 1/2`; without it the request stays
+    // unevaluated instead of returning `Y_2`.
+    let (text, reduced) = symbolic(&session, "meijerg(2, 0, list(2), list(1, -1, 2), z)");
+    assert!(!reduced, "invalid Y reduction installed: {text}");
+    close(
+        numeric(&session, "meijerg(2, 0, list(2), list(1, -1, 2), 0.5)", &[]).unwrap_or(f64::NAN),
+        -0.210_852_477_325_523_64,
+        1e-10,
+        "Y invalid relation",
+    );
     // Integer order: the numeric kernel takes a confluent-pole limit.
     let (text, _) = symbolic(
         &session,

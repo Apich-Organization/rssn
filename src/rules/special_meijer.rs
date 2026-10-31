@@ -40,14 +40,24 @@
 //! | `G^{1,0}_{0,2}(z | b+1/2, b)` | `z^b sin(2 sqrt z)/sqrt(pi)` |
 //! | `G^{1,1}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erf(sqrt z)` |
 //! | `G^{2,0}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erfc(sqrt z)` |
-//! | `G^{1,0}_{0,2}(z | nu/2, -nu/2)` | `J_nu(2 sqrt z)` |
-//! | `G^{1,0}_{0,2}(-w | nu/2, -nu/2)` | `i^nu I_nu(2 sqrt w)` |
-//! | `G^{2,0}_{0,2}(z | nu/2, -nu/2)` | `2 K_nu(2 sqrt z)` |
+//! | `G^{1,0}_{0,2}(z | b1, b2)` | `z^{(b1+b2)/2} J_{b1-b2}(2 sqrt z)` |
+//! | `G^{1,0}_{0,2}(-w | nu/2, -nu/2)` | `i^nu I_nu(2 sqrt w)` for `w > 0` |
+//! | `G^{2,0}_{0,2}(z | b1, b2)` | `2 z^{(b1+b2)/2} K_{b1-b2}(2 sqrt z)` |
 //! | `G^{1,0}_{0,2}(z | b, b)` | `z^b J_0(2 sqrt z)` |
-//! | `G^{2,0}_{1,3}(z | (-nu-1)/2; nu/2, -nu/2, (-nu-1)/2)` | `Y_nu(2 sqrt z)` |
+//! | `G^{2,0}_{1,3}(z | a; b1, b2, a)` | `z^{(b1+b2)/2} Y_{b1-b2}(2 sqrt z)` when `a = b2 - 1/2` |
 //! | `G^{1,2}_{2,2}(z | 1, 1; 1, 0)` | `ln(1+z)` |
 //! | `G^{1,2}_{2,2}(z | 1/2, 1; 1/2, 0)` | `2 atan(sqrt z)` |
 //! | any `p < q` with a terminating numerator parameter | the finite Slater `pF_{q-1}` series as an explicit polynomial |
+//!
+//! The Bessel forms carry the shift symmetry `G(z | a+c; b+c) = z^c G(z|a;b)`
+//! of the defining integral, so the `J`, `K` and `Y` entries are stated for
+//! general `(b1, b2)` rather than only for a symmetric pair. The modified
+//! Bessel form is the one entry that is not global: `i^nu I_nu(2 sqrt w)` is
+//! the value at `z = -w` only for `w > 0` (for `w < 0` the principal square
+//! root picks the wrong side and, for non-integer `nu`, a phase is left
+//! over). Since there is no assumption/piecewise construct here, that form is
+//! installed only when `w` is a positive numeric literal; a symbolic negative
+//! argument keeps the globally valid `J` reduction instead.
 //!
 //! The general terminating case builds the full Slater series
 //! `sum_h z^{b_h} C_h pF_{q-1}(A_h; B_h; (-1)^{p-m-n} z)` and truncates it
@@ -676,11 +686,11 @@ const J_SAMPLES: &[Sample] = &[
     (&[], &[0.25, -0.25], &[0.4, 1.5]),
     (&[], &[0.65, -0.65], &[0.4, 2.2]),
     (&[], &[1.2, -1.2], &[0.4, 1.5]),
-];
-
-const J0_SAMPLES: &[Sample] = &[
     (&[], &[0.7, 0.7], &[0.4, 1.5]),
     (&[], &[-0.3, -0.3], &[0.5, 2.4]),
+    // General `b1 + b2 != 0`, where the prefactor `z^{(b1+b2)/2}` matters.
+    (&[], &[1.0 / 3.0, 0.25], &[0.6, 2.1]),
+    (&[], &[-0.3, 0.7], &[0.5, 1.7]),
 ];
 
 const I_SAMPLES: &[Sample] = &[
@@ -693,6 +703,9 @@ const K_SAMPLES: &[Sample] = &[
     (&[], &[0.0, 0.0], &[0.4, 1.5]),
     (&[], &[0.35, -0.35], &[0.4, 1.5]),
     (&[], &[1.0, -1.0], &[0.4, 2.0]),
+    // General `b1 + b2 != 0`, where the prefactor `z^{(b1+b2)/2}` matters.
+    (&[], &[1.0 / 3.0, 0.25], &[0.6, 2.1]),
+    (&[], &[-0.3, 0.7], &[0.5, 1.7]),
 ];
 
 const Y_SAMPLES: &[Sample] = &[
@@ -700,6 +713,8 @@ const Y_SAMPLES: &[Sample] = &[
     (&[-1.0], &[0.5, -0.5, -1.0], &[0.4, 1.5]),
     (&[-1.5], &[1.0, -1.0, -1.5], &[0.4, 1.5]),
     (&[-0.85], &[0.35, -0.35, -0.85], &[0.4, 1.5]),
+    // A non-zero shift `c = (b1+b2)/2`, so the `z^c` prefactor is exercised.
+    (&[-0.7], &[0.8, -0.2, -0.7], &[0.4, 1.5]),
 ];
 
 const LOG_SAMPLES: &[Sample] = &[(&[1.0, 1.0], &[1.0, 0.0], &[-0.5, 0.5, 2.4])];
@@ -906,6 +921,19 @@ fn bessel_argument(
     mul(graph, two, root)
 }
 
+/// `z^{(b1 + b2)/2}`, the common prefactor of the Bessel reductions.
+fn bessel_z_power(
+    graph: &mut Graph,
+    z: NodeId,
+    b1: NodeId,
+    b2: NodeId,
+) -> NodeId {
+    let sum = add(graph, b1, b2);
+    let h = half(graph);
+    let exponent = mul(graph, h, sum);
+    pow(graph, z, exponent)
+}
+
 /// Writes a node that is plainly negative as `-w` and returns `w`: a
 /// negative literal, or a product with a negative numeric coefficient.
 fn decompose_negative(
@@ -936,6 +964,13 @@ fn decompose_negative(
 
 /// `G^{1,0}_{0,2}(-w | nu/2, -nu/2) = i^nu I_nu(2 sqrt(w))`, the modified
 /// Bessel form (`w = -z`).
+///
+/// This form is only valid with `w > 0`: for `w < 0` the principal square
+/// root puts the expression on the wrong side of the branch point, and for
+/// non-integer `nu` the identity differs by the phase `(-1)^nu`. Since the
+/// layer has no assumptions, it is installed only when `w` is a positive
+/// numeric literal; a symbolic `-w` keeps the globally valid Bessel `J`
+/// reduction instead.
 fn build_bessel_i(
     graph: &mut Graph,
     ops: &Ops,
@@ -947,6 +982,9 @@ fn build_bessel_i(
         return None;
     }
     let w = decompose_negative(graph, z)?;
+    if !value_of(graph, w).is_some_and(|value| value > 0.0) {
+        return None;
+    }
     let b1 = *b.first()?;
     let b2 = *b.get(1)?;
     let order = sub(graph, b1, b2);
@@ -958,6 +996,7 @@ fn build_bessel_i(
     Some(mul(graph, phase, call))
 }
 
+/// `G^{1,0}_{0,2}(z | b1, b2) = z^{(b1+b2)/2} J_{b1-b2}(2 sqrt(z))`.
 fn build_bessel_j(
     graph: &mut Graph,
     ops: &Ops,
@@ -970,19 +1009,14 @@ fn build_bessel_j(
     }
     let b1 = *b.first()?;
     let b2 = *b.get(1)?;
-    let j = ops.besselj?;
-    if graph.same(b1, b2) {
-        let argument = bessel_argument(graph, z);
-        let order = int_node(graph, 0);
-        let call = graph.node(j, &[order, argument]);
-        let power = pow(graph, z, b1);
-        return Some(mul(graph, power, call));
-    }
     let order = sub(graph, b1, b2);
     let argument = bessel_argument(graph, z);
-    Some(graph.node(j, &[order, argument]))
+    let call = graph.node(ops.besselj?, &[order, argument]);
+    let power = bessel_z_power(graph, z, b1, b2);
+    Some(mul(graph, power, call))
 }
 
+/// `G^{2,0}_{0,2}(z | b1, b2) = 2 z^{(b1+b2)/2} K_{b1-b2}(2 sqrt(z))`.
 fn build_bessel_k(
     graph: &mut Graph,
     ops: &Ops,
@@ -999,9 +1033,12 @@ fn build_bessel_k(
     let argument = bessel_argument(graph, z);
     let call = graph.node(ops.besselk?, &[order, argument]);
     let scale = int_node(graph, 2);
-    Some(mul(graph, scale, call))
+    let power = bessel_z_power(graph, z, b1, b2);
+    Some(mul_many(graph, &[scale, power, call]))
 }
 
+/// `G^{2,0}_{1,3}(z | a; b1, b2, a) = z^{(b1+b2)/2} Y_{b1-b2}(2 sqrt(z))`
+/// when `a = b2 - 1/2` (the caller checks both relations).
 fn build_bessel_y(
     graph: &mut Graph,
     ops: &Ops,
@@ -1016,7 +1053,9 @@ fn build_bessel_y(
     let b2 = *b.get(1)?;
     let order = sub(graph, b1, b2);
     let argument = bessel_argument(graph, z);
-    Some(graph.node(ops.bessely?, &[order, argument]))
+    let call = graph.node(ops.bessely?, &[order, argument]);
+    let power = bessel_z_power(graph, z, b1, b2);
+    Some(mul(graph, power, call))
 }
 
 fn literal_pair(
@@ -1077,6 +1116,11 @@ fn factorial_i64(k: usize) -> Option<i64> {
     Some(acc)
 }
 
+/// Whether a numeric gamma argument is a non-positive integer (a pole).
+fn pole_argument(value: f64) -> bool {
+    value <= 1e-9 && near(value, value.round())
+}
+
 /// The full left Slater series when a numerator parameter terminates it.
 /// Only installed for `p < q`, where the series is a global identity.
 fn terminating_series(
@@ -1111,12 +1155,43 @@ fn terminating_series(
     let mut families = Vec::with_capacity(m);
     for h in 0..m {
         let bh = *b.get(h)?;
+        let bhv = *bv.get(h)?;
+        // A gamma pole anywhere in the coefficient means the separate residue
+        // formula does not represent the G-function: a numerator pole is a
+        // pinched contour (the function is singular), while a denominator
+        // pole makes the whole family identically zero and the G-function is
+        // the non-zero limit of the non-degenerate parameters. A non-positive
+        // denominator Pochhammer parameter is the confluent (repeated-pole)
+        // case, where the truncated series is invalid. Stay unevaluated in all
+        // of them instead of returning `Gamma(0)` or a zero series.
+        for (j, &bjv) in bv.iter().enumerate() {
+            if j == h {
+                continue;
+            }
+            if j < m && pole_argument(bjv - bhv) {
+                return None;
+            }
+            if pole_argument(1.0 + bhv - bjv) {
+                return None;
+            }
+        }
+        for (i, &aiv) in av.iter().enumerate() {
+            let a_param = 1.0 + bhv - aiv;
+            if i < n {
+                // `a_i - b_h` a positive integer pinches the contour.
+                if pole_argument(a_param) {
+                    return None;
+                }
+            } else if pole_argument(aiv - bhv) {
+                // `a_i - b_h` a non-positive integer kills the family.
+                return None;
+            }
+        }
         let mut avec = Vec::with_capacity(p);
         let mut aval = Vec::with_capacity(p);
         for (i, &ai) in a.iter().enumerate() {
             let one_plus_bh = one_plus(graph, bh);
             avec.push(sub(graph, one_plus_bh, ai));
-            let bhv = *bv.get(h)?;
             let aiv = *av.get(i)?;
             aval.push(1.0 + bhv - aiv);
         }
@@ -1257,23 +1332,35 @@ fn reduce_request(
     let (m, n, p, q) = (args.m, args.n, args.a.len(), args.b.len());
     // Symbolic zero tests need the engine, so they run before the builder
     // borrows the graph for the rest of the function.
-    let mut order_sum_zero = [false, false, false];
-    let mut third_equals_first = false;
+    let mut order_sum_zero = false;
+    let mut y_parameters_ok = false;
     if p == 0
         && q == 2
         && let (Some(&b1), Some(&b2)) = (args.b.first(), args.b.get(1))
     {
         let sum = add(&mut *cx.graph, b1, b2);
-        order_sum_zero[0] = is_zero(cx, sum);
-        order_sum_zero[1] = order_sum_zero[0];
+        order_sum_zero = is_zero(cx, sum);
     }
     if p == 1
         && q == 3
-        && let (&[a1], &[b1, b2, _]) = (args.a.as_slice(), args.b.as_slice())
+        && let (&[a1], &[_, b2, b3]) = (args.a.as_slice(), args.b.as_slice())
     {
-        third_equals_first = cx.graph.same(a1, args.b.get(2).copied()?);
-        let sum = add(&mut *cx.graph, b1, b2);
-        order_sum_zero[2] = is_zero(cx, sum);
+        // The Bessel `Y` form needs both `b3 = a1` and `a1 = b2 - 1/2`.
+        // Without the second relation (for example `a1 = 2, b = (1, -1, 2)`)
+        // the reduction to `Y_2` is off by a finite factor.
+        let third_ok = if cx.graph.same(a1, b3) {
+            true
+        } else {
+            let difference = sub(&mut *cx.graph, b3, a1);
+            is_zero(cx, difference)
+        };
+        let relation = {
+            let graph = &mut *cx.graph;
+            let h = half(graph);
+            let shifted = add(graph, a1, h);
+            sub(graph, shifted, b2)
+        };
+        y_parameters_ok = third_ok && is_zero(cx, relation);
     }
     let graph = &mut *cx.graph;
     // Each table entry is tried in turn and accepted only when its numeric
@@ -1313,39 +1400,25 @@ fn reduce_request(
         1e-9
     );
     attempt!(
-        m == 1 && n == 0 && p == 0 && q == 2 && order_sum_zero[0],
+        m == 1 && n == 0 && p == 0 && q == 2 && order_sum_zero,
         build_bessel_i,
         I_SAMPLES,
         1e-8
     );
-    if m == 1
-        && n == 0
-        && p == 0
-        && q == 2
-        && let (Some(&b0), Some(&b1)) = (args.b.first(), args.b.get(1))
-    {
-        let same_pair = graph.same(b0, b1);
-        if order_sum_zero[0] || same_pair {
-            let samples = if same_pair {
-                J0_SAMPLES
-            } else {
-                J_SAMPLES
-            };
-            if let Some(candidate) = build_bessel_j(graph, ops, &args.a, &args.b, args.z)
-                && check_build(graph, ops, m, n, build_bessel_j, samples, 1e-8)
-            {
-                return Some(candidate);
-            }
-        }
-    }
     attempt!(
-        m == 2 && n == 0 && p == 0 && q == 2 && order_sum_zero[1],
+        m == 1 && n == 0 && p == 0 && q == 2,
+        build_bessel_j,
+        J_SAMPLES,
+        1e-8
+    );
+    attempt!(
+        m == 2 && n == 0 && p == 0 && q == 2,
         build_bessel_k,
         K_SAMPLES,
         1e-7
     );
     attempt!(
-        m == 2 && n == 0 && p == 1 && q == 3 && order_sum_zero[2] && third_equals_first,
+        m == 2 && n == 0 && p == 1 && q == 3 && y_parameters_ok,
         build_bessel_y,
         Y_SAMPLES,
         1e-6
@@ -2175,19 +2248,20 @@ mod tests {
         assert!(text.contains("besselk"), "{text}");
         let text = closed("meijerg(2, 0, list((-nu - 1)/2), list(nu/2, -nu/2, (-nu - 1)/2), z)");
         assert!(text.contains("bessely"), "{text}");
-        // A negative argument is the modified Bessel form: for nu = 0 it has
-        // no complex phase and can be evaluated directly.
+        // A symbolic negative argument uses the globally valid `J` form; the
+        // `I` form is only valid for `w = -z > 0` and is installed only for a
+        // numeric negative literal.
         let text = closed("meijerg(1, 0, list(), list(0, 0), -z)");
-        assert!(text.contains("besseli"), "{text}");
+        assert!(text.contains("besselj"), "{text}");
         assert!(
-            (eval_at(&text, &[("z", 0.5)])
-                - crate::kernels::special::bessel_i(0.0, 2.0 * 0.5_f64.sqrt()))
-            .abs()
+            (eval_at(&text, &[("z", -1.0)]) - crate::kernels::special::bessel_j(0.0, 2.0)).abs()
                 < 1e-9,
             "{text}"
         );
-        let text = closed("meijerg(1, 0, list(), list(nu/2, -nu/2), -z)");
-        assert!(text.contains("besseli"), "{text}");
+        let text = closed("meijerg(1, 0, list(), list(0, 0), -2)");
+        let got = eval_at(&text, &[]);
+        let want = crate::kernels::special::bessel_i(0.0, 2.0 * 2.0_f64.sqrt());
+        assert!((got - want).abs() < 1e-9, "{text}: {got} vs {want}");
     }
 
     #[test]
@@ -2253,6 +2327,15 @@ mod tests {
         let (text, reduced, _) = run_with("meijer_series(1, 0, list(), list(0), z, 3, oo)", false);
         assert!(!reduced, "a divergent 1/z series was installed: {text}");
         assert!(text.contains("meijer_series"), "{text}");
+        // For `p > q` the z-series is asymptotic rather than convergent, but
+        // its truncation is still the correct expansion at zero (mpmath
+        // reference at z = 1e-3).
+        let text = closed("meijer_series(1, 1, list(0, 3/2), list(0), z, 3)");
+        let value = eval_at(&text, &[("z", 1e-3)]);
+        assert!(
+            (value - 1.127_814_694_992_969_3).abs() < 1e-7,
+            "{text}: {value}"
+        );
     }
 
     #[test]
@@ -2290,5 +2373,92 @@ mod tests {
         let value = value.unwrap_or(f64::NAN);
         let want = 1.7_f64.sqrt() * (-1.7_f64).exp();
         assert!((value - want).abs() < 1e-10, "{text}: {value} vs {want}");
+    }
+
+    /// The Bessel `Y` form is not implied by `b3 = a1` alone: the standard
+    /// identity also needs `a1 = b2 - 1/2`.  With `a1 = 2` and `b = (1, -1, 2)`
+    /// the old code returned `Y_2`, which is off by a factor of about five
+    /// (`G = -0.210852...`, `Y_2 = -1.008617...`).
+    #[test]
+    fn bessel_y_requires_the_parameter_relation() {
+        let (text, reduced, _) = run_with("meijerg(2, 0, list(2), list(1, -1, 2), z)", false);
+        assert!(!reduced, "an invalid Y reduction was installed: {text}");
+        assert!(text.contains("meijerg"), "{text}");
+        // The numeric kernel still evaluates the request correctly.
+        let (_, _, value) = run_with("meijerg(2, 0, list(2), list(1, -1, 2), 1/2)", true);
+        let value = value.unwrap_or(f64::NAN);
+        assert!(
+            (value - -0.210_852_477_325_523_64).abs() < 1e-10,
+            "numeric Y-relation case: {value}"
+        );
+        // The standard `c = 0` relation still reduces.
+        let text = closed("meijerg(2, 0, list((-nu - 1)/2), list(nu/2, -nu/2, (-nu - 1)/2), z)");
+        assert!(text.contains("bessely"), "{text}");
+        // The shifted relation `a1 = b2 - 1/2`, `b1 + b2 != 0`, now reduces
+        // with the `z^{(b1+b2)/2}` prefactor (mpmath reference at z = 7/10).
+        let text = closed("meijerg(2, 0, list(-7/10), list(4/5, -1/5, -7/10), z)");
+        assert!(text.contains("bessely"), "{text}");
+        let got = eval_at(&text, &[("z", 0.7)]);
+        assert!(
+            (got - -0.270_741_613_474_064_5).abs() < 1e-10,
+            "{text}: {got}"
+        );
+    }
+
+    /// The general `J` and `K` shift forms, and the domain restriction on the
+    /// modified Bessel `I` form.
+    #[test]
+    fn bessel_shift_forms_and_the_i_domain() {
+        // G^{1,0}_{0,2}(z | 1/3, 1/4) = z^{7/24} J_{1/12}(2 sqrt z).
+        let text = closed("meijerg(1, 0, list(), list(1/3, 1/4), z)");
+        assert!(text.contains("besselj"), "{text}");
+        let got = eval_at(&text, &[("z", 0.7)]);
+        assert!(
+            (got - 0.421_144_699_126_796_1).abs() < 1e-10,
+            "J shift: {text}: {got}"
+        );
+        // G^{2,0}_{0,2}(z | 1/3, 1/4) = 2 z^{7/24} K_{1/12}(2 sqrt z).
+        let text = closed("meijerg(2, 0, list(), list(1/3, 1/4), z)");
+        assert!(text.contains("besselk"), "{text}");
+        let got = eval_at(&text, &[("z", 0.7)]);
+        assert!(
+            (got - 0.309_062_261_385_866_1).abs() < 1e-10,
+            "K shift: {text}: {got}"
+        );
+        // A symbolic negative argument must use the globally valid `J` form;
+        // the old `I` form was wrong (or NaN) once the bound argument `w` was
+        // negative and the order was non-integer.
+        let text = closed("meijerg(1, 0, list(), list(nu/2, -nu/2), -z)");
+        assert!(text.contains("besselj"), "{text}");
+        assert!(!text.contains("besseli"), "{text}");
+        let got = eval_at(&text, &[("nu", 0.5), ("z", -1.0)]);
+        assert!(
+            (got - 0.513_016_136_561_827_8).abs() < 1e-10,
+            "I-domain: {text}: {got}"
+        );
+        // A literal negative argument is genuinely in the `w > 0` domain and
+        // keeps the real modified-Bessel form.
+        let text = closed("meijerg(1, 0, list(), list(0, 0), -2)");
+        let got = eval_at(&text, &[]);
+        let want = crate::kernels::special::bessel_i(0.0, 2.0 * 2.0_f64.sqrt());
+        assert!((got - want).abs() < 1e-10, "{text}: {got} vs {want}");
+    }
+
+    /// Invalid `m`/`n`, list arity and series arguments stay unevaluated
+    /// instead of panicking or producing a value.
+    #[test]
+    fn operator_argument_validation() {
+        for src in [
+            "meijerg(1, 0, 0, list(0), z)",
+            "meijer_mellin(3, 0, list(), list(0), s)",
+            "meijer_mellin(0, 2, list(0), list(0), s)",
+            "meijer_series(1, 0, list(), list(0), z, 0)",
+            "meijer_series(1, 0, list(), list(0), z, 13)",
+            "meijer_series(1, 0, list(), list(0), z, 3, 1)",
+            "meijer_series(1, 0, list(), list(0), z)",
+        ] {
+            let (text, reduced, _) = run_with(src, false);
+            assert!(!reduced, "`{src}` was unexpectedly reduced to {text}");
+        }
     }
 }
