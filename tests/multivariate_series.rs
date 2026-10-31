@@ -446,9 +446,11 @@ fn unevaluated_cases_stay_unevaluated() {
         "mseries(exp(1/x), list(x), list(0), 2)",
         "mseries(sin(1/x), list(x), list(0), 2)",
         "mseries(exp(x/y), list(x, y), list(0, 0), 2)",
-        // Branch points.
-        "mseries(sqrt(x), list(x), list(0), 2)",
+        "mseries(sin(1/y), list(x, y), list(0, 0), 2)",
+        // A logarithmic singularity.
         "mseries(ln(x), list(x), list(0), 2)",
+        // A branch locus through the origin: no Puiseux expansion exists.
+        "mseries((x^2 + y^2)^(1/2), list(x, y), list(0, 0), 4)",
         // Malformed requests.
         "mseries(exp(x), x, list(0), 2)",
         "mseries(exp(x), list(x), list(0), -1)",
@@ -456,10 +458,128 @@ fn unevaluated_cases_stay_unevaluated() {
     ] {
         let (text, reduced) = run(src);
         assert!(!reduced, "`{src}` should stay unevaluated: {text}");
+        assert!(
+            text.contains("mseries("),
+            "`{src}` must not be mis-expanded: {text}"
+        );
     }
-    // A genuine multivariate Puiseux series.
-    let (text, reduced) = run("mseries(sqrt(x*y), list(x, y), list(0, 0), 2)");
-    assert!(!reduced, "sqrt(x*y) has no Laurent expansion: {text}");
+}
+
+#[test]
+fn puiseux_monomial_factors_are_exact() {
+    assert_eq!(
+        series("mseries(sqrt(x*y), list(x, y), list(0, 0), 4)"),
+        "x^(1/2)*y^(1/2)"
+    );
+    assert_eq!(series("mseries(x^(4/3), list(x), list(0), 3)"), "x^(4/3)");
+    assert_eq!(
+        series("mseries((x*y)^(5/2), list(x, y), list(0, 0), 5)"),
+        "x^(5/2)*y^(5/2)"
+    );
+    assert_eq!(
+        series("mseries(x^(1/2)*exp(y), list(x, y), list(0, 0), 3)"),
+        "1/2*x^(1/2)*y^2 + x^(1/2)*y + x^(1/2)"
+    );
+    assert_eq!(
+        series("mseries(sqrt(x^2*(1 + y)), list(x, y), list(0, 0), 3)"),
+        "1/2*x*y - 1/8*x*y^2 + x"
+    );
+    assert_eq!(
+        series("mseries(x^(1/2)/(1 - x - y), list(x, y), list(0, 0), 2)"),
+        "x^(3/2) + x^(1/2)*y + x^(1/2)"
+    );
+}
+
+/// Simplifies `src` in a fresh session and returns the printed result.
+fn simplify(src: &str) -> String {
+    let session = Session::new();
+    let term = session
+        .parse(src)
+        .unwrap_or_else(|e| panic!("parse `{src}`: {e}"));
+    session
+        .simplify(term)
+        .unwrap_or_else(|e| panic!("simplify `{src}`: {e}"))
+        .to_string()
+}
+
+/// The numeric value of `src` at `at`, without running any rules.
+fn value(
+    src: &str,
+    at: &[(&str, f64)],
+) -> f64 {
+    let session = Session::new();
+    session
+        .parse(src)
+        .unwrap_or_else(|e| panic!("parse `{src}`: {e}"))
+        .eval(at)
+        .unwrap_or_else(|| panic!("cannot evaluate `{src}` at {at:?}"))
+}
+
+#[test]
+fn puiseux_expansions_raise_back() {
+    // Repeated multiplication and powers recover the monomial part exactly.
+    assert_eq!(simplify("x^(1/2)*y^(1/2)*x^(1/2)*y^(1/2)"), "x*y");
+    assert_eq!(simplify("(x^(4/3))^3"), "x^4");
+    assert_eq!(simplify("x^(5/2)*y^(5/2)*x^(5/2)*y^(5/2)"), "x^5*y^5");
+    // Dividing the series by its monomial factor recovers the unit.
+    let at = &[("x", 0.04), ("y", 0.03)][..];
+    let got = value("(1/2*x^(1/2)*y^2 + x^(1/2)*y + x^(1/2))*x^(-1/2)", at);
+    let want = value("exp(y)", at);
+    assert!((got - want).abs() < 1e-4, "{got} vs {want}");
+    // Multiplying by the denominator recovers the truncation of x^(1/2):
+    // the remainder has total degree above the requested order.
+    let got = value("(1 - x - y)*(x^(3/2) + x^(1/2)*y + x^(1/2))", at);
+    let want = value("x^(1/2)", at);
+    assert!((got - want).abs() < 1e-2, "{got} vs {want}");
+}
+
+#[test]
+fn puiseux_expansions_match_numerically() {
+    // Positive small points: the principal branch of every fractional power.
+    let at = &[("x", 0.04), ("y", 0.09)][..];
+    for (request, function, tolerance) in [
+        (
+            "mseries(sqrt(x*y), list(x, y), list(0, 0), 4)",
+            "sqrt(x*y)",
+            1e-15,
+        ),
+        (
+            "mseries((x*y)^(5/2), list(x, y), list(0, 0), 5)",
+            "(x*y)^(5/2)",
+            1e-15,
+        ),
+        (
+            "mseries(x^(1/2)*exp(y), list(x, y), list(0, 0), 3)",
+            "x^(1/2)*exp(y)",
+            1e-4,
+        ),
+        (
+            "mseries(sqrt(x^2*(1 + y)), list(x, y), list(0, 0), 3)",
+            "sqrt(x^2*(1 + y))",
+            1e-4,
+        ),
+        (
+            "mseries(x^(1/2)/(1 - x - y), list(x, y), list(0, 0), 4)",
+            "x^(1/2)/(1 - x - y)",
+            1e-3,
+        ),
+    ] {
+        check(request, function, at, tolerance);
+    }
+    // Univariate fractional powers.
+    let session = Session::new();
+    let request = session
+        .parse("mseries(x^(4/3), list(x), list(0), 3)")
+        .unwrap_or_else(|e| panic!("parse: {e}"));
+    let answer = session
+        .compute(request, &Config::new())
+        .unwrap_or_else(|e| panic!("compute: {e}"));
+    let got = answer
+        .term
+        .eval(&[("x", 0.008)])
+        .unwrap_or_else(|| panic!("cannot evaluate the series"));
+    let want = 0.008_f64.powf(4.0 / 3.0);
+    assert!((got - want).abs() < 1e-15, "{got} vs {want}");
 }
 
 #[test]
