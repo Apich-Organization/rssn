@@ -19,7 +19,7 @@ use num_traits::Zero;
 
 /// Identifier of an atom of the exponent field (a symbol or an opaque term).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct AtomId(pub(crate) u32);
+pub struct AtomId(pub(crate) u32);
 
 /// A monomial: atoms with non-zero integer exponents, sorted by id.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -294,7 +294,7 @@ impl Poly {
 
 /// An exponent: a rational function `num / den` over the atoms.
 #[derive(Clone, Debug)]
-pub(crate) struct Expo {
+pub struct Expo {
     num: Poly,
     den: Poly,
 }
