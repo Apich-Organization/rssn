@@ -1,5 +1,8 @@
 //! Dimension inference over the term DAG.
 
+// The inference engine is a crate-internal implementation detail.
+#![allow(clippy::redundant_pub_crate)]
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::RwLock;

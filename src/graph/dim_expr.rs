@@ -7,6 +7,9 @@
 //! reduced to arithmetic. Equality is decided by cross-multiplication, so no
 //! polynomial gcd is needed; the polynomials are tiny (a handful of terms).
 
+// The exponent field is a crate-internal implementation detail.
+#![allow(clippy::redundant_pub_crate)]
+
 use std::collections::BTreeMap;
 
 use num_bigint::BigInt;
