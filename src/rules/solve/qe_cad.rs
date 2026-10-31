@@ -23,9 +23,13 @@
 //! projection, it then vanishes on the whole cylinder over the cell, so it
 //! imposes no section there.
 //!
-//! All growth is bounded ([`CadLimits`]); exhausting a bound returns
-//! `None`, which the callers turn into an unevaluated request, never into a
-//! wrong answer.
+//! All growth is bounded ([`CadLimits`]): the number of projection
+//! polynomials per level and over the whole tower, the number of cells, the
+//! degree of a fibre polynomial, the size of a number field and the number of
+//! projection/lifting steps. There is no fixed variable limit; a decomposition
+//! has one level per variable and is truncated only when a resource budget is
+//! exhausted. Exhausting a bound returns `None`, which the callers turn into
+//! an unevaluated request, never into a wrong answer.
 
 #![allow(
     clippy::missing_const_for_fn,
@@ -34,6 +38,8 @@
     clippy::redundant_pub_crate,
     clippy::single_call_fn
 )]
+
+use std::cell::Cell as Counter;
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -55,12 +61,18 @@ use super::qe_field::f_square_free;
 use super::qe_poly::MPoly;
 
 /// Resource limits of a decomposition.
+///
+/// The number of variables is not limited: a decomposition has one level per
+/// variable, and its size is controlled by the projection, cell and step
+/// budgets instead. Every budget counts work or objects, so a formula with
+/// many variables but a genuinely small decomposition is decided, while a
+/// large one exhausts a budget and leaves the request unevaluated.
 #[derive(Clone, Debug)]
 pub(crate) struct CadLimits {
-    /// Largest number of variables.
-    pub variables: usize,
     /// Largest number of projection polynomials per level.
     pub projection: usize,
+    /// Largest number of projection polynomials over the whole tower.
+    pub projection_total: usize,
     /// Largest number of cells (leaves plus intermediate cells).
     pub cells: usize,
     /// Largest degree of a one-variable fibre polynomial.
@@ -69,18 +81,35 @@ pub(crate) struct CadLimits {
     pub terms: usize,
     /// Largest degree of a number field.
     pub field_degree: usize,
+    /// Largest number of projection and lifting steps in one request.
+    pub steps: usize,
+    /// The steps already spent. Reset only by constructing a new value, so
+    /// the budget is shared by every block of one request.
+    spent: Counter<usize>,
 }
 
 impl Default for CadLimits {
     fn default() -> Self {
         Self {
-            variables: 4,
             projection: 256,
+            projection_total: 4_096,
             cells: 20_000,
             degree: 48,
             terms: 20_000,
             field_degree: 64,
+            steps: 1_000_000,
+            spent: Counter::new(0),
         }
+    }
+}
+
+impl CadLimits {
+    /// Charges one projection or lifting step, returning `None` when the
+    /// step budget is exhausted.
+    fn spend(&self) -> Option<()> {
+        let spent = self.spent.get().saturating_add(1);
+        self.spent.set(spent);
+        (spent <= self.steps).then_some(())
     }
 }
 
@@ -99,6 +128,7 @@ pub(crate) fn project(
     let mut out: Vec<MPoly> = Vec::new();
     let mut coefficient_lists: Vec<Vec<MPoly>> = Vec::with_capacity(polys.len());
     for p in polys {
+        limits.spend()?;
         let mut coefficients = p.coefficients_in(variable);
         while coefficients.last().is_some_and(MPoly::is_zero) {
             coefficients.pop();
@@ -128,6 +158,7 @@ pub(crate) fn project(
             if coefficient_lists.get(j).is_none_or(|c| c.len() < 2) {
                 continue;
             }
+            limits.spend()?;
             let Some(q) = polys.get(j) else {
                 continue;
             };
@@ -197,6 +228,7 @@ fn push_projection(
     p: &MPoly,
     limits: &CadLimits,
 ) -> Option<()> {
+    limits.spend()?;
     if p.as_constant().is_some() {
         return Some(());
     }
@@ -458,6 +490,7 @@ impl Lift<'_> {
         accumulator: &mut bool,
     ) -> Option<()> {
         if level == self.variables {
+            self.limits.spend()?;
             self.work = self.work.saturating_add(1);
             if self.work > self.limits.cells {
                 return None;
@@ -498,6 +531,7 @@ impl Lift<'_> {
         let mut work = ctx.field.clone();
         let mut fibres: Vec<Vec<Elem>> = Vec::new();
         for p in projection {
+            self.limits.spend()?;
             let coefficients = p.coefficients_in(u32::try_from(level).ok()?);
             let mut fibre = Vec::with_capacity(coefficients.len());
             for c in &coefficients {
@@ -539,6 +573,7 @@ impl Lift<'_> {
         };
         out.push(sector_context(ctx, &work, initial));
         for (index, (lo, hi)) in roots.iter().enumerate() {
+            self.limits.spend()?;
             // A point interval is a rational root: use it directly.
             if lo == hi {
                 let mut coords = ctx.coords.clone();
@@ -613,13 +648,15 @@ pub(crate) fn projections(
     variables: usize,
     limits: &CadLimits,
 ) -> Option<Vec<Vec<MPoly>>> {
-    if variables == 0 || variables > limits.variables {
+    if variables == 0 {
         return None;
     }
     let mut projection = vec![Vec::new(); variables.saturating_add(1)];
+    let mut total = 0_usize;
     if let Some(slot) = projection.get_mut(variables) {
         let mut factored: Vec<MPoly> = Vec::new();
         for p in polys {
+            limits.spend()?;
             for q in squarefree_factors(p)? {
                 let q = q.positive_leading();
                 if !factored.contains(&q) {
@@ -630,11 +667,20 @@ pub(crate) fn projections(
                 }
             }
         }
+        total = total.saturating_add(factored.len());
+        if total > limits.projection_total {
+            return None;
+        }
         *slot = factored;
     }
     for k in (1..variables).rev() {
+        limits.spend()?;
         let higher = projection.get(k.checked_add(1)?)?.clone();
         let projected = project(&higher, u32::try_from(k).ok()?, limits)?;
+        total = total.saturating_add(projected.len());
+        if total > limits.projection_total {
+            return None;
+        }
         if let Some(slot) = projection.get_mut(k) {
             *slot = projected;
         }
@@ -756,6 +802,15 @@ mod tests {
             .sub(&MPoly::constant(integer(1)))
     }
 
+    /// `x1^2 + ... + x5^2 - 1`.
+    fn unit_sphere_five() -> MPoly {
+        let mut sum = MPoly::zero();
+        for variable in 0..5 {
+            sum = sum.add(&MPoly::variable(variable).pow(2, 100).unwrap_or_default());
+        }
+        sum.sub(&MPoly::constant(integer(1)))
+    }
+
     #[test]
     fn projection_of_the_unit_circle() {
         let polys = vec![unit_circle()];
@@ -821,5 +876,31 @@ mod tests {
         let mut limits = CadLimits::default();
         limits.cells = 2;
         assert!(cells(&polys, 2, &limits).is_none());
+    }
+
+    #[test]
+    fn five_variable_sphere_cells() {
+        let polys = vec![unit_sphere_five()];
+        let limits = CadLimits::default();
+        let cells = cells(&polys, 5, &limits).expect("five-variable decomposition");
+        assert!(cells.len() > 30, "{}", cells.len());
+        let mut sections = 0_usize;
+        for cell in &cells {
+            assert_eq!(cell.sample.len(), 5);
+            assert_eq!(cell.open.len(), 5);
+            assert_eq!(cell.signs.len(), 1);
+            // The stored sign vector is reproduced from the exact sample.
+            let mut field = cell.field.clone();
+            let signs = signs_at(&polys, &cell.sample, &mut field).expect("signs");
+            assert_eq!(signs, cell.signs);
+            if cell.open.iter().any(|&open| !open) {
+                sections = sections.saturating_add(1);
+            }
+        }
+        assert!(sections > 0, "the sphere must have section cells");
+        assert!(
+            cells.iter().any(|cell| cell.signs.first() == Some(&0)),
+            "the sphere itself must occur as a cell"
+        );
     }
 }
