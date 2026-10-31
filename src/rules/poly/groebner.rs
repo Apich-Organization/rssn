@@ -1,4 +1,5 @@
-//! Gröbner bases over the rationals (Buchberger's algorithm).
+//! Gröbner bases over the rationals and over prime fields (Buchberger's
+//! algorithm).
 //!
 //! Polynomials are stored densely sorted by the chosen monomial order, with
 //! exponent vectors over a fixed list of variables. The implementation uses
@@ -6,6 +7,17 @@
 //! Buchberger's two criteria, and returns the *reduced* basis, which is
 //! unique for a given ideal and order — so two descriptions of the same
 //! ideal reduce to literally the same list.
+//!
+//! [`groebner`], [`reduce`], [`fglm`] and [`groebner_via`] run over `Q`.
+//! Their `_in` counterparts ([`groebner_in`], [`reduce_in`], [`fglm_in`],
+//! [`groebner_via_in`]) take a [`Domain`] and run the same exact algorithms
+//! over a prime field `GF(p)`: every addition, multiplication and division is
+//! modular, the pivot of the elimination is a modular inverse, and the result
+//! is monic, reduced and sorted with the canonical representatives `0 .. p`.
+//! The F4 and F5 operators use these entry points through
+//! `groebner_f4(polys, vars[, order][, p])` and `groebner_f5(...)`; see
+//! [`crate::rules::poly::field`] for the coefficient domain and its limits
+//! (prime fields only — extension fields are out of scope).
 //!
 //! [`fglm`] converts a reduced basis of a zero-dimensional ideal from one
 //! order to another by linear algebra in the finite-dimensional quotient
@@ -27,8 +39,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use num_rational::BigRational;
-use num_traits::One;
-use num_traits::Zero;
+
+use crate::rules::poly::field::Domain;
 
 /// A monomial order.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -79,10 +91,26 @@ pub struct GPoly {
 }
 
 impl GPoly {
-    /// Builds a polynomial from arbitrary terms: sorts them by `order`,
-    /// merges equal monomials and drops zeros.
+    /// Builds a rational polynomial from arbitrary terms: sorts them by
+    /// `order`, merges equal monomials and drops zeros.
     #[must_use]
     pub fn new(
+        terms: Vec<Term>,
+        order: Order,
+    ) -> Self {
+        Self::new_in(&Domain::Rational, terms, order)
+    }
+
+    /// Builds a polynomial over `domain`: sorts the terms by `order`, merges
+    /// equal monomials with the field addition and drops zeros.
+    ///
+    /// The coefficients must already be canonical elements of `domain` — for a
+    /// prime field, integers in `0 .. p`. Use [`Self::in_domain`] to convert a
+    /// polynomial with arbitrary rational coefficients; the engines only call
+    /// this constructor with coefficients their own arithmetic produced.
+    #[must_use]
+    pub fn new_in(
+        domain: &Domain,
         mut terms: Vec<Term>,
         order: Order,
     ) -> Self {
@@ -90,12 +118,31 @@ impl GPoly {
         let mut merged: Vec<Term> = Vec::with_capacity(terms.len());
         for (mono, coeff) in terms {
             match merged.last_mut() {
-                | Some((last, acc)) if *last == mono => *acc += coeff,
+                | Some((last, acc)) if *last == mono => *acc = domain.add(acc, &coeff),
                 | _ => merged.push((mono, coeff)),
             }
         }
-        merged.retain(|(_, c)| !c.is_zero());
+        merged.retain(|(_, c)| !domain.is_zero(c));
         Self { terms: merged }
+    }
+
+    /// This polynomial with every coefficient mapped into `domain`.
+    ///
+    /// For the rationals nothing changes. For a prime field the coefficient
+    /// `a/b` becomes `a b^-1 mod p`, as the canonical integer in `0 .. p`;
+    /// `None` when a denominator is divisible by `p`, i.e. when the
+    /// coefficient has no image in the prime field.
+    #[must_use]
+    pub fn in_domain(
+        &self,
+        domain: &Domain,
+        order: Order,
+    ) -> Option<Self> {
+        let mut terms = Vec::with_capacity(self.terms.len());
+        for (monomial, coefficient) in &self.terms {
+            terms.push((monomial.clone(), domain.normalize(coefficient)?));
+        }
+        Some(Self::new_in(domain, terms, order))
     }
 
     /// The terms in descending order.
@@ -116,15 +163,24 @@ impl GPoly {
         self.terms.first()
     }
 
-    fn monic(&self) -> Self {
+    fn monic_in(
+        &self,
+        domain: &Domain,
+    ) -> Self {
         match self.leading() {
             | Some((_, lead)) => {
-                Self {
-                    terms: self
-                        .terms
-                        .iter()
-                        .map(|(m, c)| (m.clone(), c / lead))
-                        .collect(),
+                let inverse = domain.inv(lead);
+                match inverse {
+                    | Some(inverse) => {
+                        Self {
+                            terms: self
+                                .terms
+                                .iter()
+                                .map(|(m, c)| (m.clone(), domain.mul(c, &inverse)))
+                                .collect(),
+                        }
+                    },
+                    | None => Self { terms: Vec::new() },
                 }
             },
             | None => self.clone(),
@@ -134,6 +190,7 @@ impl GPoly {
     /// `self - factor * x^shift * other`.
     fn sub_scaled(
         &self,
+        domain: &Domain,
         other: &Self,
         shift: &[u32],
         factor: &BigRational,
@@ -144,7 +201,7 @@ impl GPoly {
         let shifted = |t: &Term| -> Term {
             (
                 t.0.iter().zip(shift).map(|(a, b)| a + b).collect(),
-                -(&t.1 * factor),
+                domain.neg(&domain.mul(&t.1, factor)),
             )
         };
         let mut pending = other.terms.first().map(shifted);
@@ -162,8 +219,8 @@ impl GPoly {
                             pending = other.terms.get(j).map(shifted);
                         },
                         | Ordering::Equal => {
-                            let sum = &a.1 + &b.1;
-                            if !sum.is_zero() {
+                            let sum = domain.add(&a.1, &b.1);
+                            if !domain.is_zero(&sum) {
                                 out.push((a.0.clone(), sum));
                             }
                             i += 1;
@@ -201,10 +258,21 @@ fn lcm(
     a.iter().zip(b).map(|(&x, &y)| x.max(y)).collect()
 }
 
-/// The normal form of `p` modulo `basis`: no term of the result is
-/// divisible by a leading monomial of the basis.
+/// The normal form of `p` modulo `basis` over the rationals: no term of the
+/// result is divisible by a leading monomial of the basis.
 #[must_use]
 pub fn reduce(
+    p: &GPoly,
+    basis: &[GPoly],
+    order: Order,
+) -> GPoly {
+    reduce_in(&Domain::Rational, p, basis, order)
+}
+
+/// [`reduce`] over `domain`.
+#[must_use]
+pub fn reduce_in(
+    domain: &Domain,
     p: &GPoly,
     basis: &[GPoly],
     order: Order,
@@ -219,7 +287,10 @@ pub fn reduce(
         match reducer {
             | Some((g, lead_mono, lead_coeff)) => {
                 let shift: Vec<u32> = mono.iter().zip(lead_mono).map(|(a, b)| a - b).collect();
-                work = work.sub_scaled(g, &shift, &(&coeff / lead_coeff), order);
+                let factor = domain
+                    .div(&coeff, lead_coeff)
+                    .unwrap_or_else(|| domain.zero());
+                work = work.sub_scaled(domain, g, &shift, &factor, order);
             },
             | None => {
                 done.push((mono, coeff));
@@ -231,6 +302,7 @@ pub fn reduce(
 }
 
 fn s_polynomial(
+    domain: &Domain,
     f: &GPoly,
     g: &GPoly,
     order: Order,
@@ -243,8 +315,16 @@ fn s_polynomial(
     let shift_g: Vec<u32> = common.iter().zip(gm).map(|(a, b)| a - b).collect();
     let zero = GPoly { terms: Vec::new() };
     // (1/fc) x^sf f - (1/gc) x^sg g
-    let left = zero.sub_scaled(f, &shift_f, &(-BigRational::one() / fc), order);
-    left.sub_scaled(g, &shift_g, &(BigRational::one() / gc), order)
+    let left_factor = domain.neg(
+        &domain
+            .div(&domain.one(), fc)
+            .unwrap_or_else(|| domain.zero()),
+    );
+    let right_factor = domain
+        .div(&domain.one(), gc)
+        .unwrap_or_else(|| domain.zero());
+    let left = zero.sub_scaled(domain, f, &shift_f, &left_factor, order);
+    left.sub_scaled(domain, g, &shift_g, &right_factor, order)
 }
 
 /// S-pairs per thread reduced together in one batch of [`groebner`].
@@ -268,7 +348,8 @@ impl Default for GroebnerLimits {
     }
 }
 
-/// The reduced Gröbner basis of the ideal generated by `generators`.
+/// The reduced Gröbner basis of the ideal generated by `generators` over the
+/// rationals.
 ///
 /// Returns `None` when a limit is exceeded. The result is sorted by leading
 /// monomial, ascending, and every element is monic.
@@ -278,10 +359,26 @@ pub fn groebner(
     order: Order,
     limits: GroebnerLimits,
 ) -> Option<Vec<GPoly>> {
+    groebner_in(&Domain::Rational, generators, order, limits)
+}
+
+/// [`groebner`] over `domain`.
+///
+/// The generators must have canonical coefficients in `domain` (see
+/// [`GPoly::in_domain`]); for a prime field the result is monic with the
+/// canonical representatives `0 .. p`, reduced and sorted exactly like the
+/// rational result.
+#[must_use]
+pub fn groebner_in(
+    domain: &Domain,
+    generators: &[GPoly],
+    order: Order,
+    limits: GroebnerLimits,
+) -> Option<Vec<GPoly>> {
     let mut basis: Vec<GPoly> = generators
         .iter()
         .filter(|g| !g.is_zero())
-        .map(GPoly::monic)
+        .map(|g| g.monic_in(domain))
         .collect();
     let mut pairs: Vec<(usize, usize)> = (0..basis.len())
         .flat_map(|i| (0..i).map(move |j| (j, i)))
@@ -353,8 +450,9 @@ pub fn groebner(
         let remainders: Vec<GPoly> = if batch.len() >= 2 {
             let basis_ref = &basis;
             crate::kernels::par::map_slice(&batch, 2, |&(i, j)| {
-                reduce(
-                    &s_polynomial(&basis_ref[i], &basis_ref[j], order),
+                reduce_in(
+                    domain,
+                    &s_polynomial(domain, &basis_ref[i], &basis_ref[j], order),
                     basis_ref,
                     order,
                 )
@@ -362,13 +460,20 @@ pub fn groebner(
         } else {
             batch
                 .iter()
-                .map(|&(i, j)| reduce(&s_polynomial(&basis[i], &basis[j], order), &basis, order))
+                .map(|&(i, j)| {
+                    reduce_in(
+                        domain,
+                        &s_polynomial(domain, &basis[i], &basis[j], order),
+                        &basis,
+                        order,
+                    )
+                })
                 .collect()
         };
         for remainder in remainders {
             // elements added earlier in this batch may reduce it further
             let remainder = if basis.len() > snapshot {
-                reduce(&remainder, &basis, order)
+                reduce_in(domain, &remainder, &basis, order)
             } else {
                 remainder
             };
@@ -378,7 +483,7 @@ pub fn groebner(
                 }
                 let new = basis.len();
                 pairs.extend((0..new).map(|k| (k, new)));
-                basis.push(remainder.monic());
+                basis.push(remainder.monic_in(domain));
             }
         }
     }
@@ -407,7 +512,7 @@ pub fn groebner(
             .filter(|&(k, _)| k != index)
             .map(|(_, h)| h.clone())
             .collect();
-        reduced.push(reduce(g, &others, order).monic());
+        reduced.push(reduce_in(domain, g, &others, order).monic_in(domain));
     }
     reduced.sort_by(|a, b| {
         match (a.leading(), b.leading()) {
@@ -431,18 +536,33 @@ struct EchelonRow {
 }
 
 /// The reduced Gröbner basis in the order `to` of a zero-dimensional ideal
-/// given by its reduced Gröbner basis `basis` in the order `from`
-/// (FGLM).
+/// given by its reduced Gröbner basis `basis` in the order `from` (FGLM),
+/// over the rationals.
 ///
-/// The standard monomials of `basis` span the quotient ring; the matrices
-/// of multiplication by the variables are read off by reducing, and the
-/// monomials are then walked in the order `to`: a monomial whose normal
-/// form depends linearly on the smaller ones gives an element of the new
-/// basis, an independent one joins the staircase and contributes its
-/// multiples. `None` when the ideal is not zero-dimensional, `basis` is
-/// empty, or the quotient is larger than [`FGLM_MAX_DIMENSION`].
+/// See [`fglm_in`] for the general coefficient domain. `None` when the ideal
+/// is not zero-dimensional, `basis` is empty, or the quotient is larger than
+/// [`FGLM_MAX_DIMENSION`].
 #[must_use]
 pub fn fglm(
+    basis: &[GPoly],
+    from: Order,
+    to: Order,
+) -> Option<Vec<GPoly>> {
+    fglm_in(&Domain::Rational, basis, from, to)
+}
+
+/// [`fglm`] over `domain`.
+///
+/// The standard monomials of `basis` span the quotient ring; the matrices of
+/// multiplication by the variables are read off by reducing, and the monomials
+/// are then walked in the order `to`: a monomial whose normal form depends
+/// linearly on the smaller ones gives an element of the new basis, an
+/// independent one joins the staircase and contributes its multiples. Over a
+/// prime field the echelon division is a modular inverse, so the conversion is
+/// exact in `GF(p)`.
+#[must_use]
+pub fn fglm_in(
+    domain: &Domain,
     basis: &[GPoly],
     from: Order,
     to: Order,
@@ -453,7 +573,11 @@ pub fn fglm(
         .collect();
     let n = leads.first()?.len();
     if leads.iter().any(|m| m.iter().all(|&e| e == 0)) {
-        return Some(vec![GPoly::new(vec![(vec![0; n], BigRational::one())], to)]);
+        return Some(vec![GPoly::new_in(
+            domain,
+            vec![(vec![0; n], domain.one())],
+            to,
+        )]);
     }
     // Zero-dimensional: a pure power of every variable leads some element.
     let pure_power = |i: usize| {
@@ -493,11 +617,12 @@ pub fn fglm(
             let mut product = m.clone();
             *product.get_mut(i)? += 1;
             let column = match index.get(&product) {
-                | Some(&position) => vec![(position, BigRational::one())],
+                | Some(&position) => vec![(position, domain.one())],
                 | None => {
-                    let normal = reduce(
+                    let normal = reduce_in(
+                        domain,
                         &GPoly {
-                            terms: vec![(product, BigRational::one())],
+                            terms: vec![(product, domain.one())],
                         },
                         basis,
                         from,
@@ -514,20 +639,21 @@ pub fn fglm(
         multiplication.push(columns);
     }
     let multiply = |i: usize, v: &[BigRational]| -> Option<Vec<BigRational>> {
-        let mut out = vec![BigRational::zero(); dimension];
+        let mut out = vec![domain.zero(); dimension];
         for (j, value) in v.iter().enumerate() {
-            if value.is_zero() {
+            if domain.is_zero(value) {
                 continue;
             }
             for (r, coefficient) in multiplication.get(i)?.get(j)? {
-                *out.get_mut(*r)? += coefficient * value;
+                let slot = out.get_mut(*r)?;
+                *slot = domain.add(slot, &domain.mul(coefficient, value));
             }
         }
         Some(out)
     };
     // Walk the monomials in the target order.
-    let mut unit_vector = vec![BigRational::zero(); dimension];
-    *unit_vector.get_mut(*index.get(&unit_monomial)?)? = BigRational::one();
+    let mut unit_vector = vec![domain.zero(); dimension];
+    *unit_vector.get_mut(*index.get(&unit_monomial)?)? = domain.one();
     let mut queue: Vec<(Vec<u32>, Vec<BigRational>)> = vec![(unit_monomial.clone(), unit_vector)];
     let mut seen: HashSet<Vec<u32>> = HashSet::from([unit_monomial]);
     let mut staircase: Vec<Vec<u32>> = Vec::new();
@@ -548,27 +674,40 @@ pub fn fglm(
         }
         // Reduce against the echelon rows, tracking the combination.
         let mut rest = vector.clone();
-        let mut coefficients = vec![BigRational::zero(); staircase.len()];
+        let mut coefficients = vec![domain.zero(); staircase.len()];
         for row in &rows {
             let c = rest.get(row.pivot)?.clone();
-            if c.is_zero() {
+            if domain.is_zero(&c) {
                 continue;
             }
             for (slot, value) in rest.iter_mut().zip(&row.vector) {
-                *slot -= &c * value;
+                *slot = domain.sub(slot, &domain.mul(&c, value));
             }
             for (slot, value) in coefficients.iter_mut().zip(&row.combination) {
-                *slot += &c * value;
+                *slot = domain.add(slot, &domain.mul(&c, value));
             }
         }
-        if let Some(pivot) = rest.iter().position(|v| !v.is_zero()) {
+        if let Some(pivot) = rest.iter().position(|v| !domain.is_zero(v)) {
             // Independent: it joins the staircase and contributes its multiples.
             let scale = rest.get(pivot)?.clone();
-            let mut combination: Vec<BigRational> =
-                coefficients.iter().map(|c| -c / &scale).collect();
-            combination.push(BigRational::one() / &scale);
+            let mut combination: Vec<BigRational> = coefficients
+                .iter()
+                .map(|c| {
+                    domain
+                        .div(&domain.neg(c), &scale)
+                        .unwrap_or_else(|| domain.zero())
+                })
+                .collect();
+            combination.push(
+                domain
+                    .div(&domain.one(), &scale)
+                    .unwrap_or_else(|| domain.zero()),
+            );
             rows.push(EchelonRow {
-                vector: rest.iter().map(|v| v / &scale).collect(),
+                vector: rest
+                    .iter()
+                    .map(|v| domain.div(v, &scale).unwrap_or_else(|| domain.zero()))
+                    .collect(),
                 combination,
                 pivot,
             });
@@ -582,13 +721,13 @@ pub fn fglm(
             staircase.push(monomial);
         } else {
             // monomial = Σ coefficients_j staircase_j modulo the ideal.
-            let mut terms: Vec<Term> = vec![(monomial.clone(), BigRational::one())];
+            let mut terms: Vec<Term> = vec![(monomial.clone(), domain.one())];
             for (s, c) in staircase.iter().zip(&coefficients) {
-                if !c.is_zero() {
-                    terms.push((s.clone(), -c.clone()));
+                if !domain.is_zero(c) {
+                    terms.push((s.clone(), domain.neg(c)));
                 }
             }
-            result.push(GPoly::new(terms, to));
+            result.push(GPoly::new_in(domain, terms, to));
             new_leads.push(monomial);
         }
     }
@@ -601,7 +740,7 @@ pub fn fglm(
     Some(result)
 }
 
-/// The reduced Gröbner basis of `generators` in `order`.
+/// The reduced Gröbner basis of `generators` in `order`, over the rationals.
 ///
 /// For the lex and graded-lex orders the basis is computed in the graded reverse-lex order
 /// and converted by [`fglm`] when the ideal is zero-dimensional (usually
@@ -614,18 +753,29 @@ pub fn groebner_via(
     order: Order,
     limits: GroebnerLimits,
 ) -> Option<Vec<GPoly>> {
+    groebner_via_in(&Domain::Rational, generators, order, limits)
+}
+
+/// [`groebner_via`] over `domain`.
+#[must_use]
+pub fn groebner_via_in(
+    domain: &Domain,
+    generators: &[GPoly],
+    order: Order,
+    limits: GroebnerLimits,
+) -> Option<Vec<GPoly>> {
     if order != Order::GradedRevLex {
         let graded: Vec<GPoly> = generators
             .iter()
-            .map(|g| GPoly::new(g.terms().to_vec(), Order::GradedRevLex))
+            .map(|g| GPoly::new_in(domain, g.terms().to_vec(), Order::GradedRevLex))
             .collect();
-        if let Some(converted) = groebner(&graded, Order::GradedRevLex, limits)
-            .and_then(|basis| fglm(&basis, Order::GradedRevLex, order))
+        if let Some(converted) = groebner_in(domain, &graded, Order::GradedRevLex, limits)
+            .and_then(|basis| fglm_in(domain, &basis, Order::GradedRevLex, order))
         {
             return Some(converted);
         }
     }
-    groebner(generators, order, limits)
+    groebner_in(domain, generators, order, limits)
 }
 
 #[cfg(test)]
@@ -1035,5 +1185,280 @@ mod tests {
             let in_lex = GPoly::new(g.terms().to_vec(), Order::Lex);
             assert!(reduce(&in_lex, &lex, Order::Lex).is_zero());
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Prime fields GF(p)
+    // -----------------------------------------------------------------
+
+    use crate::rules::poly::field::Domain;
+    use crate::rules::poly::field::oracle;
+
+    use num_traits::One;
+
+    /// The canonical representative of every coefficient must lie in
+    /// `0 .. p`.
+    fn assert_canonical(
+        modulus: i64,
+        basis: &[GPoly],
+    ) {
+        for g in basis {
+            assert_eq!(
+                g.leading().map(|(_, c)| c),
+                Some(&BigRational::from_integer(BigInt::from(1))),
+                "a GF(p) basis element is not monic"
+            );
+            for (_, coefficient) in g.terms() {
+                let value = coefficient.numer();
+                assert!(
+                    *value >= BigInt::from(0) && *value < BigInt::from(modulus),
+                    "coefficient {coefficient} is not the canonical representative mod {modulus}"
+                );
+                assert!(
+                    coefficient.denom().is_one(),
+                    "a GF(p) coefficient is not integral"
+                );
+            }
+        }
+    }
+
+    /// The reference is a reduced basis: Buchberger on it changes nothing.
+    fn assert_reference_quality(
+        domain: &Domain,
+        modulus: i64,
+        basis: &[GPoly],
+        order: Order,
+    ) {
+        assert_canonical(modulus, basis);
+        // Idempotent: the basis is a reduced Gröbner basis.
+        assert_eq!(
+            groebner_in(domain, basis, order, GroebnerLimits::default()).as_deref(),
+            Some(basis),
+            "Buchberger changed the computed basis"
+        );
+        // Every S-polynomial of the basis reduces to zero.
+        for (i, f) in basis.iter().enumerate() {
+            for g in basis.iter().skip(i + 1) {
+                let s = s_polynomial(domain, f, g, order);
+                assert!(
+                    reduce_in(domain, &s, basis, order).is_zero(),
+                    "an S-polynomial does not reduce to zero"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn groebner_over_prime_fields_matches_the_independent_reference() {
+        let mut cases = 0_usize;
+        for modulus in oracle::PRIMES {
+            let domain = Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| {
+                panic!("{modulus} must be accepted as a prime");
+            });
+            for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+                for (name, system) in oracle::sample_systems(modulus) {
+                    let generators = oracle::generators(modulus, &system, order);
+                    let computed =
+                        groebner_via_in(&domain, &generators, order, GroebnerLimits::default())
+                            .unwrap_or_else(|| panic!("{name} over GF({modulus}) in {order:?}"));
+                    // The reference is a naive Buchberger implementation: in
+                    // lex it is hopeless on the random dense systems, so the
+                    // random cases are cross-checked in grevlex (where the
+                    // engine computes the basis directly) and certified
+                    // structurally in the other orders. The structured systems
+                    // and every grevlex run are compared literally.
+                    let random = name.starts_with("random");
+                    if !random || order == Order::GradedRevLex {
+                        let expected = oracle::buchberger_fp(modulus, &system, order);
+                        assert_eq!(computed, expected, "{name} over GF({modulus}) in {order:?}");
+                    }
+                    assert_reference_quality(&domain, modulus, &computed, order);
+                    // Every generator is in the ideal.
+                    for generator in &generators {
+                        assert!(
+                            reduce_in(&domain, generator, &computed, order).is_zero(),
+                            "{name}: a generator is not in the computed ideal"
+                        );
+                    }
+                    cases = cases.saturating_add(1);
+                }
+            }
+        }
+        eprintln!("groebner over GF(p): {cases} systems cross-checked");
+        assert!(cases >= 15, "the finite-field suite is too small");
+    }
+
+    #[test]
+    fn direct_buchberger_over_prime_fields_in_every_order() {
+        // Direct Buchberger in the target order (no FGLM) on small systems,
+        // so the actual elimination is exercised in lex and grlex too.
+        let systems: Vec<(&str, Vec<Vec<(i64, Vec<u32>)>>)> = vec![
+            ("katsura-2", oracle::katsura(2)),
+            ("cyclic-3", oracle::cyclic(3)),
+            (
+                "linear system",
+                vec![
+                    vec![(1, vec![1, 0, 0]), (1, vec![0, 1, 0]), (-3, vec![0, 0, 0])],
+                    vec![(1, vec![1, 0, 0]), (-1, vec![0, 1, 0]), (-1, vec![0, 0, 0])],
+                ],
+            ),
+            (
+                "unit ideal",
+                vec![
+                    vec![(1, vec![1, 0, 0])],
+                    vec![(1, vec![1, 0, 0]), (1, vec![0, 0, 0])],
+                ],
+            ),
+        ];
+        for modulus in oracle::PRIMES {
+            let domain = Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| {
+                panic!("{modulus} must be accepted as a prime");
+            });
+            for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+                for (name, system) in &systems {
+                    let generators = oracle::generators(modulus, system, order);
+                    let computed =
+                        groebner_in(&domain, &generators, order, GroebnerLimits::default())
+                            .unwrap_or_else(|| panic!("{name} over GF({modulus}) in {order:?}"));
+                    assert_eq!(
+                        computed,
+                        oracle::buchberger_fp(modulus, system, order),
+                        "{name} over GF({modulus}) in {order:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn groebner_over_prime_fields_is_independent_of_the_generators() {
+        // The reduced basis of an ideal does not depend on the presentation;
+        // over GF(p) the same must hold, including with redundant and
+        // non-monic generators and different input orders.
+        for modulus in oracle::PRIMES {
+            let domain = Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| {
+                panic!("{modulus} must be accepted as a prime");
+            });
+            for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+                let system = oracle::cyclic(3);
+                let generators = oracle::generators(modulus, &system, order);
+                let expected = groebner_in(&domain, &generators, order, GroebnerLimits::default())
+                    .unwrap_or_default();
+                // Add a non-trivial multiple of the first generator, and
+                // reorder the list: the reduced basis must not change.
+                let two = domain.add(&domain.one(), &domain.one());
+                let mut extended = vec![generators[0].clone()];
+                extended.extend(generators.iter().cloned());
+                let multiple = GPoly::new_in(
+                    &domain,
+                    generators[0]
+                        .terms()
+                        .iter()
+                        .map(|(m, c)| (m.clone(), domain.mul(c, &two)))
+                        .collect(),
+                    order,
+                );
+                extended.push(multiple);
+                let computed = groebner_in(&domain, &extended, order, GroebnerLimits::default())
+                    .unwrap_or_default();
+                assert_eq!(computed, expected, "GF({modulus}) in {order:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn coefficients_without_a_prime_field_image_are_rejected() {
+        // Over GF(5) the coefficient 1/6 has no image because 6 = 1 mod 5 is
+        // invertible... but 1/5 does not, and the request must not silently
+        // drop it.
+        let domain = Domain::prime(BigInt::from(5)).unwrap();
+        let null = GPoly::new(
+            vec![(
+                vec![1, 0],
+                BigRational::new(BigInt::from(1), BigInt::from(5)),
+            )],
+            Order::Lex,
+        );
+        assert_eq!(null.in_domain(&domain, Order::Lex), None);
+        // 1/2 has an image: 3.
+        let half = GPoly::new(
+            vec![(
+                vec![1, 0],
+                BigRational::new(BigInt::from(1), BigInt::from(2)),
+            )],
+            Order::Lex,
+        );
+        let converted = half
+            .in_domain(&domain, Order::Lex)
+            .unwrap_or_else(|| panic!("1/2 is invertible mod 5"));
+        assert_eq!(converted.terms(), &[(vec![1, 0], q(3))]);
+        // The same coefficient over Q is untouched.
+        assert_eq!(
+            half.in_domain(&Domain::Rational, Order::Lex),
+            Some(half.clone())
+        );
+    }
+
+    #[test]
+    fn fglm_over_prime_fields_matches_direct_buchberger() {
+        let mut conversions = 0_usize;
+        for modulus in oracle::PRIMES {
+            let domain = Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| {
+                panic!("{modulus} must be accepted as a prime");
+            });
+            for system in [
+                oracle::katsura(2),
+                oracle::katsura(3),
+                vec![
+                    vec![(1, vec![2, 0]), (1, vec![0, 2]), (-1, vec![0, 0])],
+                    vec![(1, vec![1, 0]), (-1, vec![0, 1])],
+                ],
+                oracle::cyclic(3),
+            ] {
+                let generators = oracle::generators(modulus, &system, Order::GradedRevLex);
+                let graded = groebner_in(
+                    &domain,
+                    &generators,
+                    Order::GradedRevLex,
+                    GroebnerLimits::default(),
+                )
+                .unwrap_or_default();
+                for target in [Order::Lex, Order::GradedLex] {
+                    // Direct Buchberger in lex is too slow on katsura: the F4
+                    // matrix engine (a different algorithm, no FGLM) is the
+                    // reference for the target order.
+                    let direct = crate::rules::poly::f4::f4_basis_in(
+                        &domain,
+                        &oracle::generators(modulus, &system, target),
+                        target,
+                        crate::rules::poly::f4::F4Limits::default(),
+                    )
+                    .unwrap_or_default();
+                    assert_eq!(
+                        oracle::buchberger_fp(modulus, &system, Order::GradedRevLex),
+                        graded,
+                        "the reference disagrees with the grevlex basis over GF({modulus})"
+                    );
+                    match fglm_in(&domain, &graded, Order::GradedRevLex, target) {
+                        | Some(converted) => {
+                            assert_eq!(
+                                converted, direct,
+                                "FGLM over GF({modulus}) into {target:?}"
+                            );
+                            conversions = conversions.saturating_add(1);
+                        },
+                        | None => {
+                            // Not zero-dimensional in this characteristic (for
+                            // example the katsura linear equation degenerates
+                            // over GF(2)); the direct basis is still checked.
+                        },
+                    }
+                }
+            }
+        }
+        assert!(
+            conversions >= 15,
+            "FGLM succeeded only {conversions} times over the prime fields"
+        );
     }
 }

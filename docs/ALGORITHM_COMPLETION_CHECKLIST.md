@@ -1398,7 +1398,7 @@ CAS / scientific-library workflow; **(c)** niche or research level.
 | (a) | clippy: a doc table with `\|` inside code spans and a list-like continuation line inside a code span (`indefinite_sum.rs`) made `doc_markdown` report "backticks are unbalanced" (25 table rows fixed) | **fixed** |
 | (b) | wavelets (SciPy / PyWavelets workflows) | **done (core)**: `kernels::wavelets` — Haar, `db2`, `db3`, `db4` orthogonal filters, periodised `dwt` / `idwt`, `wavedec` / `waverec`; tests: orthonormality and vanishing moments of the filters, Parseval, exact reconstruction, multilevel round trip, error cases. Not done: biorthogonal / symmetric families, 2-D transform, other boundary extensions |
 | (b) | fractional Fourier transform | **done (core)**: `kernels::wavelets::{frft_matrix, frft}`, the discrete (Candan / Pei) transform from the Hermite-like eigenvectors of the matrix commuting with the DFT (degenerate eigenvalue pairs, which occur for even lengths, are rotated to pure DFT eigenvectors); tests: `a = 0` identity, `a = 1` unitary DFT, `a = 2` reversal, `a = 4`, index additivity, unitarity (lengths 8, 15, 16, 24). `O(N^3)` |
-| (b) | F4 / F5 Gröbner | **done (L15)**: `groebner_f4` / `groebner_f5` in `rules/poly/f4.rs` and `f5.rs`, matrix elimination and signature criteria, compared literally with Buchberger on Katsura/cyclic/random systems; F5 falls back to the complete-pair or matrix tier on large benchmarks (documented) |
+| (b) | F4 / F5 Gröbner | **done (L15)**: `groebner_f4` / `groebner_f5` in `rules/poly/f4.rs` and `f5.rs`, matrix elimination and signature criteria, compared literally with Buchberger on Katsura/cyclic/random systems; F5 falls back to the complete-pair or matrix tier on large benchmarks (documented). **Finite fields (done, 2026-10-31)**: the same engines run over any prime field `GF(p)` through a coefficient domain with genuine modular arithmetic; forms `groebner_f4(polys, vars[, order][, p])` and `groebner_f5(...)`; prime fields only (extension fields out of scope). |
 | (b) | quadratic sieve | **done (L15)**: MPQS in `kernels/quadratic_sieve.rs` with factor base, large primes, GF(2) elimination and `factorint` dispatch; BPSW primality for large integers; 40-digit semiprimes ~1–2 s, >50 digits deliberately unevaluated |
 | (b) | Meijer G, Hermite reduction for algebraic integrands, real quantifier elimination, multivariate series | **done (L15)**: Meijer G (Slater/Mellin–Barnes numeric, symbolic reductions, derivative/integral/Mellin/series); Hermite reduction in `Q(x)(√D)` with confluent/quadratic radicands and residue log part; CAD-based `real_qe`/`cad_cells` with exact algebraic numbers and `exists`/`forall` routing; `mseries`/`mtaylor` with symbolic exponents and directional Laurent expansions |
 | (c) | Guruswami–Sudan / LDPC decoding, Darboux polynomials / Jacobi last multiplier | documented, not done |
@@ -1441,7 +1441,7 @@ independent reference.
 | Hermite reduction for algebraic integrands | `rules/calculus/algebraic.rs` + `algebraic/{field,hermite,logpart,quadratic,term}.rs` | `integrate_algebraic` (crate) and the `integral` kernel | `--lib rules::calculus` 47; `--test algebraic_integration` 9 |
 | Real quantifier elimination | `rules/solve/qe.rs` + `qe/{alg,poly,field,cad,formula,qe_impl}.rs`, `logic/ext.rs` routing | `real_qe(formula, list(vars))`, `cad_cells(polys, list(vars))`; `exists`/`forall` over real polynomial atoms | `--lib rules::solve::qe` 28; `--test real_qe` 10; `--lib rules::logic` 22 |
 | Multivariate series | `rules/calculus/multiseries.rs` | `mseries(f, list(x), list(a), N)`, `mtaylor(...)` | `--lib multiseries` 5; `--test multivariate_series` 13 |
-| F4 / F5 Gröbner | `rules/poly/f4.rs`, `f5.rs`, `f4/common.rs` | `groebner_f4(polys, vars[, order])`, `groebner_f5(...)` | `--lib rules::poly` 74; `--test f4_f5` 10 |
+| F4 / F5 Gröbner | `rules/poly/f4.rs`, `f5.rs`, `rules/poly/field.rs` | `groebner_f4(polys, vars[, order][, p])`, `groebner_f5(...)`; `GF(p)` coefficient domain (`Domain`, `groebner_in`, `reduce_in`, `fglm_in`, `groebner_via_in`) | `--lib rules::poly` 92 (14 new finite-field); `--test f4_f5` 16 (6 finite-field) |
 | Quadratic sieve (MPQS) | `kernels/quadratic_sieve.rs`, `rules/number_theory.rs` dispatch | `qs_factor`, `qs_factor_with`, `QsLimits`, `QsConfig`, `QsStats`; `factorint` integration | `--lib kernels::quadratic_sieve` 9; `--test quadratic_sieve` 8; `--lib rules::number_theory` 27 |
 
 **Meijer G.** Numeric evaluation by Slater's residue series (exact
@@ -1498,15 +1498,42 @@ variables and order 20.
 
 **F4 / F5.** F4: sugar/normal-strategy batches, product and chain criteria,
 Macaulay matrix with symbolic preprocessing, sparse exact Gaussian elimination
-over Q, row→polynomial map, tail reduction, unique reduced basis. F5:
-signatures `(module monomial, index)`, position-over-term order, F5 + rewritten
-+ rewritable criteria, signature-admissible reduction, homogenisation for
-affine input, FGLM conversion, and a certification pass with three budgeted
-tiers that all return the same reduced basis, so a criterion affects runtime
-but never correctness. Both operators return exactly `groebner`'s format and
-are compared literally with Buchberger in the integration suite. F5 is slower
-on the large benchmarks (katsura-4/cyclic-5 ~2.5–3.4 s, matrix fallback for
-cyclic-5); F4 katsura-4/cyclic-5 take 76/330 ms in grevlex.
+over the coefficient domain, row→polynomial map, tail reduction, unique
+reduced basis. F5: signatures `(module monomial, index)`, position-over-term
+order, F5 + rewritten + rewritable criteria, signature-admissible reduction,
+homogenisation for affine input, FGLM conversion, and a certification pass
+with three budgeted tiers that all return the same reduced basis, so a
+criterion affects runtime but never correctness. Both operators return exactly
+`groebner`'s format and are compared literally with Buchberger in the
+integration suite. F5 is slower on the large benchmarks (katsura-4/cyclic-5
+~2.5–3.4 s, matrix fallback for cyclic-5); F4 katsura-4/cyclic-5 take 76/330 ms
+in grevlex.
+
+**F4 / F5 over finite fields (2026-10-31).** `rules/poly/field.rs` adds the
+coefficient domain `Domain` (`Q` or `GF(p)`, `p` an arbitrary-precision prime
+validated by BPSW) with genuine modular arithmetic: `add`/`sub`/`mul` reduce
+modulo `p`, `inv` is a modular inverse, and every kernel of the engines goes
+through it — the Macaulay-matrix echelon form and S-polynomial of F4, the
+one-way signature-admissible normal form of F5, the monic normalisation and
+the final interreduction, and the FGLM order conversion (`fglm_in`). Nothing
+is lifted to `Q`; the `GF(p)` result is monic, reduced, sorted and uses the
+canonical representatives `0 .. p`, so it is literally the same list as
+`groebner_in` over the same field. The operator forms are
+`groebner_f4(polys, vars)` (lex, `Q`),
+`groebner_f4(polys, vars, order)`, `groebner_f4(polys, vars, p)` (lex, `GF(p)`)
+and `groebner_f4(polys, vars, order, p)`; the same for `groebner_f5`. A
+rational coefficient `a/b` maps to `a b^-1 mod p`; a denominator divisible by
+`p`, or a composite/non-positive modulus, leaves the request unevaluated.
+Limits: prime fields only — extension fields `GF(p^k)` remain out of scope
+(the `gfx_*` operators serve them separately); the F5 coefficient guard caps a
+canonical representative at 32 768 bits. Verification: an independent naive
+`GF(p)` Buchberger oracle (`field::oracle`, own `i64` arithmetic, own monomial
+comparison) cross-checks 120 engine cases per engine (8 systems × 5 primes
+{2,3,5,7,101} × 3 orders) plus direct-Buchberger cases in every order, FGLM
+conversions, membership decisions and the no-fallback statistics. F5 solves
+Katsura-3 over `GF(5)` in ~2 ms and Cyclic-4 in ~1 ms in every order; the
+criteria path is used in grevlex and the positive-dimensional order fallback
+for Cyclic-4 is recorded in `matrix_order_fallback` exactly as over `Q`.
 
 **Quadratic sieve.** MPQS with `a=q²`, Tonelli–Shanks + Hensel lift for
 `b² ≡ n (mod a)`, a Jacobi factor base, log sieving, single-large-prime
@@ -1537,4 +1564,15 @@ residue is in the base field or is the logarithmic derivative of an algebraic
 function (`g = P + Q y` with `P`, `Q` of degree at most `deg C + 2`), and
 otherwise leaves the reduced integral. All are documented in the module docs
 and return unevaluated rather than a wrong answer.
+
+For F4/F5 the finite-field support covers prime fields `GF(p)` only (no
+`GF(p^k)`; use the `gfx_*` extension-field operators for those), requires the
+modulus to be a literal prime larger than one, and refuses a generator whose
+rational coefficient has no image modulo `p` (`p` divides its denominator).
+The F5 `MAX_BITS` guard of 32 768 bits per canonical coefficient applies to
+`p` as well. The independent Buchberger cross-check is done on systems small
+enough for a naive implementation; the larger finite-field benchmarks are
+cross-checked against F4/the FGLM route and certified structurally (monic,
+reduced, all generators reduce to zero, S-polynomials reduce to zero in the
+oracle's own arithmetic).
 

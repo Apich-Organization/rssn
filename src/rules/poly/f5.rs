@@ -81,8 +81,22 @@
 //! the criteria budget and needed seconds in a fallback route. The counters in
 //! [`F5Stats`] report the pairs, criterion discards and reductions of each run.
 //!
-//! All arithmetic is exact over `Q`, and the queue order makes the whole run
-//! deterministic.
+//! # Coefficient domains
+//!
+//! The signature loop is arithmetic-agnostic in its criteria and
+//! signature-specific in its reduction: the coefficients live in a
+//! [`Domain`](crate::rules::poly::field::Domain), either the rationals or a
+//! prime field `GF(p)`. Over `GF(p)` the S-polynomial, the one-way
+//! signature-admissible normal form and every monic normalisation are modular
+//! (`a + b`, `a b`, `a b^-1` modulo `p`), so the reduced basis is computed in
+//! `GF(p)` from the start, never lifted to `Q`. The output uses the canonical
+//! representatives `0 .. p`, monic and reduced exactly like the rational
+//! result. The criteria themselves (syzygy, rewritten) and the signatures are
+//! field-independent, so the finite-field path has the same no-fallback
+//! guarantees as the rational one.
+//!
+//! All arithmetic is exact over the chosen domain, and the queue order makes
+//! the whole run deterministic.
 
 // The signature machinery is one algorithm: pair construction, the two
 // criteria, signature-admissible reduction and the bookkeeping around them.
@@ -97,8 +111,6 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 use num_rational::BigRational;
-use num_traits::One;
-use num_traits::Zero;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -117,12 +129,13 @@ use crate::graph::rule::Installer;
 use crate::rules::poly::f4::F4Limits;
 use crate::rules::poly::f4::common;
 use crate::rules::poly::f4::common::Mono;
-use crate::rules::poly::f4::f4_basis;
+use crate::rules::poly::f4::f4_basis_in;
+use crate::rules::poly::field::Domain;
 use crate::rules::poly::groebner::GPoly;
 use crate::rules::poly::groebner::Order;
 use crate::rules::poly::groebner::Term;
-use crate::rules::poly::groebner::fglm;
-use crate::rules::poly::groebner::reduce as normal_form;
+use crate::rules::poly::groebner::fglm_in;
+use crate::rules::poly::groebner::reduce_in as normal_form;
 use crate::rules::poly::repr::Gens;
 
 /// The monomial order F5 works in. Signature-based algorithms need the
@@ -501,11 +514,14 @@ fn pair_redundant(
 /// Interreduces the generators without changing the ideal they generate, as
 /// the reference formulation of F5 does. Only a handful of sweeps are run; a
 /// fixed point is reached quickly, and stopping early is still correct.
-fn prepare(generators: &[GPoly]) -> Vec<GPoly> {
+fn prepare(
+    domain: &Domain,
+    generators: &[GPoly],
+) -> Vec<GPoly> {
     let mut current: Vec<GPoly> = generators
         .iter()
         .filter(|g| !g.is_zero())
-        .map(|g| common::monic(g, ENGINE_ORDER))
+        .map(|g| common::monic(domain, g, ENGINE_ORDER))
         .collect();
     for _ in 0..3 {
         let mut next: Vec<GPoly> = Vec::with_capacity(current.len());
@@ -514,9 +530,9 @@ fn prepare(generators: &[GPoly]) -> Vec<GPoly> {
                 continue;
             };
             let previous = current.get(..index).unwrap_or(&[]);
-            let remainder = normal_form(polynomial, previous, ENGINE_ORDER);
+            let remainder = normal_form(domain, polynomial, previous, ENGINE_ORDER);
             if !remainder.is_zero() {
-                next.push(common::monic(&remainder, ENGINE_ORDER));
+                next.push(common::monic(domain, &remainder, ENGINE_ORDER));
             }
         }
         if next == current {
@@ -562,6 +578,7 @@ fn coefficients_too_large<'a>(terms: impl Iterator<Item = &'a Term>) -> bool {
 /// multiplier during the merge; the comparison against the unshifted tail uses
 /// [`compare_shifted`] without building the product.
 fn f5_normal_form(
+    domain: &Domain,
     p: &GPoly,
     bound: &Sig,
     basis: &[Labelled],
@@ -599,8 +616,18 @@ fn f5_normal_form(
                 if *steps > limit {
                     return None;
                 }
-                let factor = coefficient / lead;
-                subtract_tail(&mut work, cursor, poly, &multiplier, &factor, &mut scratch);
+                let factor = domain
+                    .div(&coefficient, &lead)
+                    .unwrap_or_else(|| domain.zero());
+                subtract_tail(
+                    domain,
+                    &mut work,
+                    cursor,
+                    poly,
+                    &multiplier,
+                    &factor,
+                    &mut scratch,
+                );
             },
             | None => {
                 remainder.push((monomial, coefficient));
@@ -608,13 +635,14 @@ fn f5_normal_form(
             },
         }
     }
-    Some(GPoly::new(remainder, ENGINE_ORDER))
+    Some(GPoly::new_in(domain, remainder, ENGINE_ORDER))
 }
 
 /// `work <- work - factor * x^multiplier * poly`, keeping `work[..=cursor]`
 /// untouched. The leading term of the shifted reducer cancels `work[cursor]`
 /// by construction, so only the tails are merged.
 fn subtract_tail(
+    domain: &Domain,
     work: &mut Vec<Term>,
     cursor: usize,
     poly: &GPoly,
@@ -639,13 +667,14 @@ fn subtract_tail(
                     | Ordering::Less => {
                         scratch.push((
                             common::multiply(right, multiplier),
-                            -(right_coefficient * factor),
+                            domain.neg(&domain.mul(right_coefficient, factor)),
                         ));
                         j = j.saturating_add(1);
                     },
                     | Ordering::Equal => {
-                        let value = left_coefficient - factor * right_coefficient;
-                        if !value.is_zero() {
+                        let value =
+                            domain.sub(left_coefficient, &domain.mul(factor, right_coefficient));
+                        if !domain.is_zero(&value) {
                             scratch.push((left.clone(), value));
                         }
                         i = i.saturating_add(1);
@@ -660,7 +689,7 @@ fn subtract_tail(
             | (None, Some((right, right_coefficient))) => {
                 scratch.push((
                     common::multiply(right, multiplier),
-                    -(right_coefficient * factor),
+                    domain.neg(&domain.mul(right_coefficient, factor)),
                 ));
                 j = j.saturating_add(1);
             },
@@ -714,11 +743,12 @@ fn compare_shifted(
 /// S-polynomial reduced by one-way signature-admissible reductions and the
 /// non-zero remainder is added to the basis with the pair's signature.
 fn f5_loop(
+    domain: &Domain,
     generators: &[GPoly],
     limits: F5Limits,
     stats: &mut F5Stats,
 ) -> Option<Vec<GPoly>> {
-    let mut prepared = prepare(generators);
+    let mut prepared = prepare(domain, generators);
     let Some(first) = prepared.first() else {
         return Some(Vec::new());
     };
@@ -766,8 +796,9 @@ fn f5_loop(
         let (Some(first), Some(second)) = (basis.get(pair.a), basis.get(pair.b)) else {
             continue;
         };
-        let spolynomial = common::s_polynomial(&first.poly, &second.poly, ENGINE_ORDER);
+        let spolynomial = common::s_polynomial(domain, &first.poly, &second.poly, ENGINE_ORDER);
         let remainder = f5_normal_form(
+            domain,
             &spolynomial,
             &pair.sig,
             &basis,
@@ -788,7 +819,7 @@ fn f5_loop(
         };
         let lm = lm.clone();
         basis.push(Labelled {
-            poly: common::monic(&remainder, ENGINE_ORDER),
+            poly: common::monic(domain, &remainder, ENGINE_ORDER),
             sig: pair.sig,
             lm,
             num,
@@ -804,26 +835,50 @@ fn f5_loop(
 }
 
 /// The reduced Gröbner basis of the ideal generated by `generators` in
-/// `order` (or `None` when a limit is hit).
+/// `order` over the rationals (or `None` when a limit is hit).
 ///
-/// Homogeneous input is processed directly; affine input is homogenised with
-/// a fresh variable and dehomogenised afterwards, as described in the module
-/// documentation. The returned list is the unique reduced basis, identical to
-/// the one [`groebner`](crate::rules::poly::groebner::groebner) returns.
+/// This is the rational convenience wrapper used by the unit tests; the
+/// operator calls [`f5_basis_in`] with the request's domain.
+#[cfg(test)]
 #[must_use]
 pub fn f5_basis(
     generators: &[GPoly],
     order: Order,
     limits: F5Limits,
 ) -> Option<Vec<GPoly>> {
-    f5_basis_with_stats(generators, order, limits).0
+    f5_basis_in(&Domain::Rational, generators, order, limits)
 }
 
-/// [`f5_basis`], also returning what the run did. The statistics record
+/// The F5 engine over `domain`: the same signature loop with modular
+/// arithmetic over a prime field, returning the canonical reduced `GF(p)`
+/// basis.
+#[must_use]
+pub fn f5_basis_in(
+    domain: &Domain,
+    generators: &[GPoly],
+    order: Order,
+    limits: F5Limits,
+) -> Option<Vec<GPoly>> {
+    f5_basis_with_stats_in(domain, generators, order, limits).0
+}
+
+/// The reduced basis, also returning what the run did. The statistics record
 /// whether the criteria path solved the problem or whether the last-resort
 /// matrix engine had to be used.
+#[cfg(test)]
 #[must_use]
 pub fn f5_basis_with_stats(
+    generators: &[GPoly],
+    order: Order,
+    limits: F5Limits,
+) -> (Option<Vec<GPoly>>, F5Stats) {
+    f5_basis_with_stats_in(&Domain::Rational, generators, order, limits)
+}
+
+/// [`f5_basis_with_stats`] over `domain`.
+#[must_use]
+pub fn f5_basis_with_stats_in(
+    domain: &Domain,
     generators: &[GPoly],
     order: Order,
     limits: F5Limits,
@@ -838,7 +893,7 @@ pub fn f5_basis_with_stats(
     let input: Vec<GPoly> = generators
         .iter()
         .filter(|g| !g.is_zero())
-        .map(|g| GPoly::new(g.terms().to_vec(), ENGINE_ORDER))
+        .map(|g| GPoly::new_in(domain, g.terms().to_vec(), ENGINE_ORDER))
         .collect();
     if input.is_empty() {
         return (Some(Vec::new()), stats);
@@ -853,7 +908,11 @@ pub fn f5_basis_with_stats(
     if input.iter().any(is_constant) {
         let unit = vec![0_u32; dimension];
         return (
-            Some(vec![GPoly::new(vec![(unit, BigRational::one())], order)]),
+            Some(vec![GPoly::new_in(
+                domain,
+                vec![(unit, domain.one())],
+                order,
+            )]),
             stats,
         );
     }
@@ -868,11 +927,12 @@ pub fn f5_basis_with_stats(
     };
     // The criteria path is the only Gröbner route. If the resource guards of
     // the signature loop are exhausted, the matrix engine is a last resort.
-    let completion = match f5_loop(&working, limits, &mut stats) {
+    let completion = match f5_loop(domain, &working, limits, &mut stats) {
         | Some(basis) => basis,
         | None => {
             stats.matrix_fallback = true;
-            let Some(basis) = f4_basis(
+            let Some(basis) = f4_basis_in(
+                domain,
                 &working,
                 ENGINE_ORDER,
                 F4Limits {
@@ -893,11 +953,11 @@ pub fn f5_basis_with_stats(
     } else {
         completion
     };
-    let reduced = common::reduced_basis(&original, ENGINE_ORDER);
+    let reduced = common::reduced_basis(domain, &original, ENGINE_ORDER);
     if order == ENGINE_ORDER {
         return (Some(reduced), stats);
     }
-    if let Some(converted) = fglm(&reduced, ENGINE_ORDER, order) {
+    if let Some(converted) = fglm_in(domain, &reduced, ENGINE_ORDER, order) {
         return (Some(converted), stats);
     }
     // Positive-dimensional ideal or too large for FGLM: the matrix engine
@@ -906,10 +966,11 @@ pub fn f5_basis_with_stats(
     stats.matrix_order_fallback = true;
     let reordered: Vec<GPoly> = original
         .iter()
-        .map(|g| GPoly::new(g.terms().to_vec(), order))
+        .map(|g| GPoly::new_in(domain, g.terms().to_vec(), order))
         .collect();
     (
-        f4_basis(
+        f4_basis_in(
+            domain,
             &reordered,
             order,
             F4Limits {
@@ -951,8 +1012,9 @@ impl Kernel for F5Kernel {
         node: NodeId,
     ) -> Prepared {
         match common::prepare_data(cx, node) {
-            | Some((generators, order, gens)) => {
+            | Some((domain, generators, order, gens)) => {
                 Prepared::Work(Box::new(F5Work {
+                    domain,
                     generators,
                     order,
                     gens,
@@ -976,10 +1038,10 @@ impl Kernel for F5Kernel {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
-        let Some((generators, order, gens)) = common::prepare_data(cx, node) else {
+        let Some((domain, generators, order, gens)) = common::prepare_data(cx, node) else {
             return Outcome::Pass;
         };
-        match f5_basis(&generators, order, F5Limits::default()) {
+        match f5_basis_in(&domain, &generators, order, F5Limits::default()) {
             | Some(basis) => common::pinned(cx.graph, &basis, &gens),
             | None => Outcome::Pass,
         }
@@ -992,6 +1054,7 @@ impl Kernel for F5Kernel {
 
 /// The graph-free part of a `groebner_f5` request.
 struct F5Work {
+    domain: Domain,
     generators: Vec<GPoly>,
     order: Order,
     gens: Gens,
@@ -999,7 +1062,12 @@ struct F5Work {
 
 impl PreparedWork for F5Work {
     fn run(self: Box<Self>) -> Box<dyn std::any::Any + Send> {
-        let basis = f5_basis(&self.generators, self.order, F5Limits::default());
+        let basis = f5_basis_in(
+            &self.domain,
+            &self.generators,
+            self.order,
+            F5Limits::default(),
+        );
         Box::new((basis, self.gens))
     }
 }
@@ -1015,7 +1083,7 @@ mod tests {
     use crate::rules::poly::groebner::GroebnerLimits;
     use crate::rules::poly::groebner::groebner;
     use crate::rules::poly::groebner::groebner_via;
-    use crate::rules::poly::groebner::reduce as normal_form;
+    use crate::rules::poly::groebner::reduce_in as normal_form;
 
     fn q(n: i64) -> BigRational {
         BigRational::from_integer(BigInt::from(n))
@@ -1359,7 +1427,11 @@ mod tests {
             },
         ] {
             let mut stats = F5Stats::default();
-            assert_eq!(f5_loop(&generators, limits, &mut stats), None, "{limits:?}");
+            assert_eq!(
+                f5_loop(&Domain::Rational, &generators, limits, &mut stats),
+                None,
+                "{limits:?}"
+            );
         }
         // The reduction budget is enforced by the normal form itself.
         let labelled = Labelled {
@@ -1371,7 +1443,10 @@ mod tests {
         let p = poly(&[(1, vec![1, 1])], ENGINE_ORDER);
         let bound = Sig::unit(2, 1);
         let mut steps = 0_usize;
-        assert_eq!(f5_normal_form(&p, &bound, &[labelled], &mut steps, 0), None);
+        assert_eq!(
+            f5_normal_form(&Domain::Rational, &p, &bound, &[labelled], &mut steps, 0),
+            None
+        );
         // With room to work, the operator returns the reduced basis.
         assert!(f5_basis(&generators, order, F5Limits::default()).is_some());
     }
@@ -1478,7 +1553,7 @@ mod tests {
         // admissible, so y*f is already its own normal form.
         let bound = Sig::unit(2, 2);
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
+        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
             | Some(reduced) => reduced,
             | None => panic!("the reduction must fit its budget"),
         };
@@ -1487,7 +1562,7 @@ mod tests {
         // zero by g.
         let bound = Sig::unit(2, 1);
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
+        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
             | Some(reduced) => reduced,
             | None => panic!("the reduction must fit its budget"),
         };
@@ -1512,7 +1587,7 @@ mod tests {
             degree: 1,
         };
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&p, &bound, &basis, &mut steps, 100) {
+        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
             | Some(reduced) => reduced,
             | None => panic!("the reduction must fit its budget"),
         };
@@ -1606,9 +1681,219 @@ mod tests {
                 .collect();
             let candidate = poly(&terms, order);
             assert_eq!(
-                normal_form(&candidate, &basis, order),
-                normal_form(&candidate, &expected, order)
+                normal_form(&Domain::Rational, &candidate, &basis, order),
+                normal_form(&Domain::Rational, &candidate, &expected, order)
             );
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Prime fields GF(p)
+    // -----------------------------------------------------------------
+
+    use crate::rules::poly::field::oracle;
+
+    #[test]
+    fn f5_over_prime_fields_matches_the_independent_reference() {
+        let mut cases = 0_usize;
+        let mut criteria_discards = 0_usize;
+        for modulus in oracle::PRIMES {
+            let domain = Domain::prime(BigInt::from(modulus))
+                .unwrap_or_else(|| panic!("{modulus} must be a prime"));
+            for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+                for (name, system) in oracle::sample_systems(modulus) {
+                    let generators = oracle::generators(modulus, &system, order);
+                    // The naive reference is impractical in lex on the random
+                    // dense systems; those are compared in the engine order
+                    // and certified structurally in the other orders.
+                    let random = name.starts_with("random");
+                    let expected = if !random || order == ENGINE_ORDER {
+                        Some(oracle::buchberger_fp(modulus, &system, order))
+                    } else {
+                        None
+                    };
+                    let (computed, stats) =
+                        f5_basis_with_stats_in(&domain, &generators, order, F5Limits::default());
+                    let computed = computed
+                        .unwrap_or_else(|| panic!("{name} over GF({modulus}) in {order:?}"));
+                    if let Some(expected) = expected {
+                        assert_eq!(computed, expected, "{name} over GF({modulus}) in {order:?}");
+                    }
+                    // The signature loop itself must never exhaust a resource
+                    // guard on these systems: the finite-field path has the
+                    // same no-fallback guarantee as the rational one.
+                    assert!(
+                        !stats.matrix_fallback,
+                        "{name} over GF({modulus}) in {order:?} fell back: {stats:?}"
+                    );
+                    if order == ENGINE_ORDER {
+                        assert!(
+                            stats.criteria_path(),
+                            "{name} over GF({modulus}) in grevlex did not stay on the criteria path: {stats:?}"
+                        );
+                    }
+                    assert!(
+                        stats.pairs_processed < F5Limits::default().pairs,
+                        "the pair budget was exhausted over GF({modulus})"
+                    );
+                    criteria_discards = criteria_discards.saturating_add(
+                        stats
+                            .syzygy_discards
+                            .saturating_add(stats.rewritten_discards),
+                    );
+                    oracle::check_basis(&domain, modulus, &computed, order);
+                    // Determinism: the same request gives the same basis and
+                    // the same counters.
+                    let (again, again_stats) =
+                        f5_basis_with_stats_in(&domain, &generators, order, F5Limits::default());
+                    assert_eq!(again.as_deref(), Some(computed.as_slice()));
+                    assert_eq!(again_stats, stats, "statistics are not deterministic");
+                    cases = cases.saturating_add(1);
+                }
+            }
+        }
+        eprintln!(
+            "F5 over GF(p): {cases} systems cross-checked, {criteria_discards} criterion discards"
+        );
+        assert!(cases >= 15, "the finite-field suite is too small");
+        assert!(
+            criteria_discards > 0,
+            "the criteria were never exercised over a finite field"
+        );
+    }
+
+    #[test]
+    fn f5_finite_field_benchmarks_stay_on_the_criteria_path() {
+        // Katsura-3 and Cyclic-4 over GF(5), in every order.
+        let modulus = 5_i64;
+        let domain =
+            Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| panic!("5 must be a prime"));
+        for (name, system) in [
+            ("katsura-3", oracle::katsura(3)),
+            ("cyclic-4", oracle::cyclic(4)),
+        ] {
+            for order in [Order::GradedRevLex, Order::GradedLex, Order::Lex] {
+                let generators = oracle::generators(modulus, &system, order);
+                let start = std::time::Instant::now();
+                let (computed, stats) =
+                    f5_basis_with_stats_in(&domain, &generators, order, F5Limits::default());
+                let elapsed = start.elapsed();
+                eprintln!(
+                    "F5 {name} over GF(5) in {order:?}: {elapsed:?} ({} pairs, {} syzygy, {} rewritten, {} reductions, {} added, order fallback: {})",
+                    stats.pairs_processed,
+                    stats.syzygy_discards,
+                    stats.rewritten_discards,
+                    stats.reductions,
+                    stats.polynomials_added,
+                    stats.matrix_order_fallback
+                );
+                let computed = computed.unwrap_or_else(|| panic!("{name} over GF(5) in {order:?}"));
+                let expected = if order == ENGINE_ORDER {
+                    // The independent reference in the order the criteria loop
+                    // actually runs in.
+                    oracle::buchberger_fp(modulus, &system, order)
+                } else {
+                    // In the other orders FGLM may decline (cyclic-4 is
+                    // positive-dimensional), so the matrix engine is the
+                    // reference: it is a different algorithm from the
+                    // signature loop.
+                    f4_basis_in(&domain, &generators, order, F4Limits::default())
+                        .unwrap_or_default()
+                };
+                assert_eq!(computed, expected, "{name} over GF(5) in {order:?}");
+                assert!(
+                    !stats.matrix_fallback,
+                    "{name} over GF(5) in {order:?} exhausted the criteria loop: {stats:?}"
+                );
+                oracle::check_basis(&domain, modulus, &computed, order);
+                // The criteria did the work: at least one pair was discarded
+                // by a criterion, and the pair budget was not exhausted.
+                assert!(
+                    stats
+                        .syzygy_discards
+                        .saturating_add(stats.rewritten_discards)
+                        > 0,
+                    "{name} over GF(5) in {order:?} did not exercise the criteria: {stats:?}"
+                );
+                assert!(
+                    stats.pairs_processed < F5Limits::default().pairs,
+                    "{name} over GF(5) in {order:?} exhausted the pair budget"
+                );
+                // Over the engine order the conversion is not needed, so both
+                // fallback counters must be clear.
+                if order == ENGINE_ORDER {
+                    assert!(
+                        stats.criteria_path(),
+                        "{name} over GF(5) did not stay on the criteria path in grevlex: {stats:?}"
+                    );
+                } else if stats.matrix_order_fallback {
+                    // Cyclic-4 is positive-dimensional, so FGLM cannot convert
+                    // it; the matrix engine finishes and the limit is recorded.
+                    assert!(
+                        !stats.criteria_path(),
+                        "{name}: the order fallback is not recorded"
+                    );
+                }
+                if order == ENGINE_ORDER {
+                    assert!(
+                        elapsed.as_secs() < 30,
+                        "{name} over GF(5) took {elapsed:?}, over the 30 s budget"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn f5_finite_field_ideal_membership_agrees_with_the_reference() {
+        // Membership decided by the computed basis must agree with the
+        // independent reference, for members and non-members alike.
+        let modulus = 7_i64;
+        let domain =
+            Domain::prime(BigInt::from(modulus)).unwrap_or_else(|| panic!("7 must be a prime"));
+        let order = Order::GradedRevLex;
+        let system = oracle::cyclic(3);
+        let generators = oracle::generators(modulus, &system, order);
+        let (basis, _) = f5_basis_with_stats_in(&domain, &generators, order, F5Limits::default());
+        let basis = basis.unwrap_or_else(|| panic!("the basis must be computed"));
+        // Every generator is in the ideal.
+        for generator in &generators {
+            assert!(normal_form(&domain, generator, &basis, order).is_zero());
+        }
+        // Random candidates: the engine's normal form and the independent
+        // reference agree on membership.
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            state >> 33
+        };
+        for _ in 0..12 {
+            let terms: Vec<(i64, Vec<u32>)> = (0..4)
+                .map(|_| {
+                    let coefficient = i64::try_from(next() % 7).unwrap_or(0) - 3;
+                    let exponents: Vec<u32> = (0..3)
+                        .map(|_| u32::try_from(next() % 3).unwrap_or(0))
+                        .collect();
+                    (coefficient, exponents)
+                })
+                .collect();
+            let candidate = oracle::generators(modulus, &[terms.clone()], order)
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| panic!("a random polynomial must be built"));
+            let member = normal_form(&domain, &candidate, &basis, order).is_zero();
+            assert_eq!(
+                member,
+                oracle::reduces_to_zero_fp(modulus, &basis, &terms, order),
+                "membership of {terms:?} over GF(7)"
+            );
+        }
+        // Adding a member does not change the ideal, hence not the basis.
+        let mut extended = generators.clone();
+        extended.push(basis[0].clone());
+        let (again, _) = f5_basis_with_stats_in(&domain, &extended, order, F5Limits::default());
+        assert_eq!(again.as_deref(), Some(basis.as_slice()));
     }
 }

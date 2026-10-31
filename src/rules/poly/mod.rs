@@ -12,6 +12,7 @@ pub mod algebra;
 pub mod apart;
 mod f4;
 mod f5;
+pub mod field;
 pub mod galois;
 pub mod galois_high;
 pub mod groebner;
