@@ -142,34 +142,46 @@ impl Formula {
         }
     }
 
-    /// Collects the bound variable indices.
-    pub(crate) fn bound_variables(
+    /// The free variable indices.
+    ///
+    /// Binding is tracked along the recursion: a variable bound by an inner
+    /// quantifier is free again once that quantifier is left, so a global set
+    /// difference would hide a free occurrence that shares a name with a bound
+    /// one somewhere else in the formula.
+    #[must_use]
+    pub(crate) fn free_variables(&self) -> BTreeSet<u32> {
+        let mut out = BTreeSet::new();
+        self.free_variables_from(&BTreeSet::new(), &mut out);
+        out
+    }
+
+    fn free_variables_from(
         &self,
+        bound: &BTreeSet<u32>,
         out: &mut BTreeSet<u32>,
     ) {
         match self {
-            | Self::Truth(_) | Self::Atom(_) => {},
-            | Self::Not(x) => x.bound_variables(out),
+            | Self::Truth(_) => {},
+            | Self::Atom(atom) => {
+                out.extend(
+                    atom.poly
+                        .support()
+                        .into_iter()
+                        .filter(|v| !bound.contains(v)),
+                );
+            },
+            | Self::Not(x) => x.free_variables_from(bound, out),
             | Self::And(xs) | Self::Or(xs) => {
                 for x in xs {
-                    x.bound_variables(out);
+                    x.free_variables_from(bound, out);
                 }
             },
             | Self::Exists(vars, body) | Self::Forall(vars, body) => {
-                out.extend(vars.iter().copied());
-                body.bound_variables(out);
+                let mut inner = bound.clone();
+                inner.extend(vars.iter().copied());
+                body.free_variables_from(&inner, out);
             },
         }
-    }
-
-    /// The free variable indices.
-    #[must_use]
-    pub(crate) fn free_variables(&self) -> BTreeSet<u32> {
-        let mut atoms = BTreeSet::new();
-        self.atom_variables(&mut atoms);
-        let mut bound = BTreeSet::new();
-        self.bound_variables(&mut bound);
-        atoms.difference(&bound).copied().collect()
     }
 
     /// Truth of a quantifier-free formula, with each atom's polynomial

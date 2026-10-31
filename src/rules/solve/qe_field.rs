@@ -983,6 +983,24 @@ pub(crate) fn f_isolate(
         *interval = f_refine_root_chain(&chain, &p, interval, &width, field)?;
     }
     out.sort_by(|x, y| x.0.cmp(&y.0));
+    // Bisection only notices a rational root when a midpoint happens to hit
+    // it. When all coefficients are rational, recover every rational root
+    // exactly: a point interval lets the caller use that number directly
+    // instead of adjoining a needless algebraic extension. Only roots strictly
+    // inside an isolating interval are snapped; an interval endpoint can be a
+    // different root that is isolated separately.
+    if out.iter().any(|(lo, hi)| lo != hi)
+        && let Some(dense) = p.iter().map(Elem::constant).collect::<Option<Vec<_>>>()
+    {
+        for root in crate::rules::poly::univariate::rational_roots(&dense) {
+            for interval in &mut out {
+                if interval.0 < root && root < interval.1 {
+                    *interval = (root.clone(), root.clone());
+                    break;
+                }
+            }
+        }
+    }
     Some(out)
 }
 
@@ -1054,17 +1072,53 @@ pub(crate) fn extend(
     f: &[Elem],
     interval: &(BigRational, BigRational),
 ) -> Option<Extension> {
-    let f = f_square_free(f, field);
-    let m = f_degree(&f)?;
-    if m == 0 || m > MAX_FIELD_DEGREE {
+    let mut f = f_square_free(f, field);
+    let mut m = f_degree(&f)?;
+    if m == 0 {
         return None;
     }
     let d = field.degree();
     if d.checked_mul(m)? > MAX_FIELD_DEGREE {
         return None;
     }
-    let degree_bound = d.checked_mul(m)?;
-    if degree_bound > MAX_INTERPOLATION {
+    // When `f` splits over the current field its root already lies in it.
+    // Factoring over the field keeps the primitive-element construction on an
+    // irreducible factor: extending by a reducible polynomial would turn the
+    // quotient into a product of fields and make the linear system that
+    // recovers `theta` inconsistent.
+    if m >= 2
+        && d > 1
+        && d.checked_mul(m)? <= 16
+        && let Some(factors) = factor_over_field(&f, field)
+        && factors.len() > 1
+    {
+        let found = factors
+            .iter()
+            .find(|g| f_interval_contains_root(g, interval, field) == Some(true))
+            .cloned();
+        if let Some(g) = found {
+            if f_degree(&g) == Some(1) {
+                let constant = g.first()?.neg();
+                let leading = g.get(1)?.clone();
+                let root = field.div(&constant, &leading)?;
+                return Some(Extension {
+                    field: field.clone(),
+                    theta: field.theta(),
+                    root,
+                });
+            }
+            if let Some(degree) = f_degree(&g)
+                && degree < m
+            {
+                m = degree;
+                f = g;
+            }
+        }
+    }
+    if d.checked_mul(m)? > MAX_FIELD_DEGREE {
+        return None;
+    }
+    if d.checked_mul(m)? > MAX_INTERPOLATION {
         return None;
     }
     for s in 1..=MAX_SHIFTS {
@@ -1075,17 +1129,33 @@ pub(crate) fn extend(
     None
 }
 
-/// One primitive-element attempt with `theta' = theta + s c`.
-#[allow(clippy::single_call_fn)] // one call site, kept separate for clarity
-fn try_shift(
-    field: &mut Field,
-    f: &[Elem],
+/// Whether the square-free field polynomial `g` has the root isolated by
+/// `interval` (its sign changes across the interval).
+fn f_interval_contains_root(
+    g: &[Elem],
     interval: &(BigRational, BigRational),
+    field: &mut Field,
+) -> Option<bool> {
+    let at_lo = f_eval_rational(g, &interval.0, field);
+    let at_hi = f_eval_rational(g, &interval.1, field);
+    let lo_sign = field.sign(&at_lo)?;
+    let hi_sign = field.sign(&at_hi)?;
+    Some(lo_sign != 0 && hi_sign != 0 && lo_sign != hi_sign)
+}
+
+/// The resolvent `Res_t(M(t), f(y - s t))` over `Q`, obtained by exact
+/// Lagrange interpolation of the coefficients of `y`.
+fn norm_shift(
+    f: &[Elem],
     s: u32,
-) -> Option<Extension> {
+    field: &Field,
+) -> Option<Vec<BigRational>> {
     let m = f_degree(f)?;
     let d = field.degree();
     let degree_bound = d.checked_mul(m)?;
+    if degree_bound > MAX_INTERPOLATION {
+        return None;
+    }
     let shift = BigRational::from_integer(BigInt::from(s));
     // B_k(t) for k = 0..=m: G(t, y) = sum_k y^k B_k(t).
     let mut b_polys: Vec<Vec<BigRational>> = Vec::with_capacity(m.saturating_add(1));
@@ -1130,6 +1200,85 @@ fn try_shift(
     }
     let h = interpolate(&xs, &values)?;
     alg::degree(&h)?;
+    Some(h)
+}
+
+/// The irreducible factors of the square-free `f` over `Q(theta)`, by
+/// Trager's norm algorithm. `None` when the norm is not separating for every
+/// attempted shift (the caller then keeps `f` unfactored).
+#[must_use]
+fn factor_over_field(
+    f: &[Elem],
+    field: &Field,
+) -> Option<Vec<FPoly>> {
+    let f = f_square_free(f, field);
+    let m = f_degree(&f)?;
+    if m <= 1 {
+        return Some(vec![f]);
+    }
+    let d = field.degree();
+    if d == 0 || d.checked_mul(m)? > 16 {
+        return None;
+    }
+    for s in 1..=MAX_SHIFTS {
+        let Some(norm) = norm_shift(&f, s, field) else {
+            continue;
+        };
+        if alg::degree(&norm).is_none() {
+            continue;
+        }
+        // Trager's theorem needs the norm to be square-free.
+        let square_free = alg::square_free_part(&norm);
+        if alg::degree(&square_free) != alg::degree(&norm) {
+            continue;
+        }
+        let (_, factors) = crate::rules::poly::univariate::factor(&norm);
+        let shifted_theta = field.mul(
+            &field.theta(),
+            &Elem::rational(BigRational::from_integer(BigInt::from(s))),
+        );
+        // `x + s*theta`
+        let linear: FPoly = vec![shifted_theta, Elem::one()];
+        let mut parts: Vec<FPoly> = Vec::new();
+        for (factor, _) in &factors {
+            let rational: Vec<BigRational> = factor
+                .iter()
+                .cloned()
+                .map(BigRational::from_integer)
+                .collect();
+            let mut at_x: FPoly = Vec::new();
+            for coefficient in rational.iter().rev() {
+                at_x = f_mul(&at_x, &linear, field);
+                at_x = f_add(&at_x, &[Elem::rational(coefficient.clone())]);
+            }
+            let part = f_monic(&f_gcd(&f, &at_x, field), field);
+            if f_degree(&part).is_some_and(|degree| degree > 0) && !parts.contains(&part) {
+                parts.push(part);
+            }
+        }
+        let mut product = vec![Elem::one()];
+        for part in &parts {
+            product = f_mul(&product, part, field);
+        }
+        if f_degree(&product) == Some(m) && f_sub(&f, &product).iter().all(Elem::is_zero) {
+            return Some(parts);
+        }
+    }
+    None
+}
+
+/// One primitive-element attempt with `theta' = theta + s c`.
+#[allow(clippy::single_call_fn)] // one call site, kept separate for clarity
+fn try_shift(
+    field: &mut Field,
+    f: &[Elem],
+    interval: &(BigRational, BigRational),
+    s: u32,
+) -> Option<Extension> {
+    let m = f_degree(f)?;
+    let d = field.degree();
+    let h = norm_shift(f, s, field)?;
+    let shift = BigRational::from_integer(BigInt::from(s));
     // Refine the interval of theta + s c until it isolates one root of H.
     let (theta_lo, theta_hi) = field.root().interval();
     let (mut theta_lo, mut theta_hi) = (theta_lo.clone(), theta_hi.clone());
@@ -1563,6 +1712,46 @@ mod tests {
         assert!(first.1 < q(0, 1), "{first:?}");
         let second = roots.get(1).cloned().unwrap_or_default();
         assert!(second.0 > q(1, 1), "{second:?}");
+    }
+
+    #[test]
+    fn rational_roots_are_exact_point_intervals() {
+        // `(x - 1/2)(x - 3/2)`: bisection alone misses both rational roots
+        // because no midpoint hits them; they must still be reported exactly.
+        let mut field = Field::rational_field().unwrap_or_else(|| panic!());
+        let p = vec![
+            Elem::rational(q(3, 4)),
+            Elem::rational(q(-2, 1)),
+            Elem::one(),
+        ];
+        let roots = f_isolate(&p, &mut field).unwrap_or_default();
+        assert_eq!(roots, vec![(q(1, 2), q(1, 2)), (q(3, 2), q(3, 2))]);
+
+        // The same over an algebraic field: the coefficients are rational
+        // constants of Q(sqrt(2)).
+        let mut field = field_sqrt2();
+        let p = vec![Elem::rational(q(-1, 2)), Elem::one()];
+        let roots = f_isolate(&p, &mut field).unwrap_or_default();
+        assert_eq!(roots, vec![(q(1, 2), q(1, 2))]);
+    }
+
+    #[test]
+    fn fibre_splitting_over_the_field() {
+        // K = Q(sqrt(6)), f(x) = 3x^2 - theta*x = x(3x - theta). Both roots
+        // are in K, so extending by the quadratic must stay in degree 2 and
+        // return theta/3 rather than building a degree-4 field.
+        let poly = vec![q(-6, 1), q(0, 1), q(1, 1)];
+        let mut field = Field::from_root(&poly, q(2, 1), q(3, 1)).unwrap_or_else(|| panic!());
+        let theta = field.theta();
+        let f = vec![Elem::zero(), theta.neg(), Elem::rational(q(3, 1))];
+        // theta/3 = sqrt(6)/3 is about 0.816, inside (1/2, 1).
+        let extension = extend(&mut field, &f, &(q(1, 2), q(1, 1))).unwrap_or_else(|| panic!());
+        assert_eq!(extension.field.degree(), 2);
+        let expected = extension
+            .field
+            .div(&extension.theta, &Elem::rational(q(3, 1)))
+            .unwrap_or_else(|| panic!());
+        assert!(extension.root.sub(&expected).is_zero());
     }
 
     #[test]

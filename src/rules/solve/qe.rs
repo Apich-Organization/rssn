@@ -573,4 +573,70 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn listed_free_variables_are_eliminated_despite_shadowing() {
+        // `x` occurs bound in one conjunct and free in the other. The listed
+        // variable must still be existentially eliminated at the top level; a
+        // global "atoms minus bound variables" set difference would hide the
+        // free occurrence and leave `x > 5` in the answer.
+        assert_eq!(
+            s("real_qe(and(exists(x, gt(x, 0)), gt(x, 5)), list(x))"),
+            "true"
+        );
+        assert_eq!(
+            s("real_qe(and(forall(x, ge(x^2 + 1, 0)), lt(x, 5)), list(x))"),
+            "true"
+        );
+        // The same with a parameter left free.
+        assert_eq!(
+            s("real_qe(and(exists(y, gt(y, a)), gt(y, 5)), list(y))"),
+            "true"
+        );
+    }
+
+    #[test]
+    fn algebraic_parameter_section_with_several_fibre_roots() {
+        // At the parameter sections a^2 = 6 the fibre polynomial factors into
+        // three linear factors whose roots are rational; at the same time the
+        // fibre of the atom has a double root. The elimination must decide the
+        // discriminant condition instead of exhausting the extension budget:
+        // `3x^2 - a*x - 2b^2 + 2b < 0` has a solution exactly when
+        // `a^2 + 24b^2 - 24b > 0`.
+        let text = s("real_qe(exists(x, lt(3*x^2 - a*x - 2*b^2 + 2*b, 0)), list(x))");
+        for (a, b, want) in [
+            (0.0, 0.0, false),
+            (0.0, 0.5, false),
+            (0.0, 1.0, false),
+            (0.0, 2.0, true),
+            (1.0, 0.0, true),
+            (0.5, 0.5, false),
+            (3.0, 1.0, true),
+            (-3.0, 1.0, true),
+            (-1.0, 0.0, true),
+        ] {
+            assert_eq!(
+                holds(&text, &[("a", a), ("b", b)]),
+                want,
+                "discriminant at a={a} b={b}: `{text}`"
+            );
+        }
+    }
+
+    #[test]
+    fn boolean_connectives_are_expanded() {
+        assert_eq!(
+            s("real_qe(exists(x, implies(gt(x, 0), gt(x, 1))), list(x))"),
+            "true"
+        );
+        assert_eq!(
+            s("real_qe(forall(x, iff(gt(x, 0), gt(x, -1))), list(x))"),
+            "false"
+        );
+        assert_eq!(
+            s("real_qe(exists(x, xor(gt(x, 0), gt(x, 1))), list(x))"),
+            "true"
+        );
+        assert_eq!(s("real_qe(forall(x, ne(x^2 + 1, 0)), list(x))"), "true");
+    }
 }

@@ -790,6 +790,72 @@ fn cad_cells_reports_openness() {
     assert_eq!(signs, vec![1, 0, -1, 0, 1]);
 }
 
+#[test]
+fn cad_cells_degenerate_polynomials_and_variable_order() {
+    let mut harness = harness();
+    // The zero polynomial vanishes on every cell.
+    let zero = harness.cad_cells("cad_cells(list(0), list(x))");
+    assert_eq!(zero.len(), 1);
+    assert_eq!(zero[0].signs, vec![0]);
+    assert_eq!(zero[0].open, vec![true]);
+
+    // A non-zero constant has one sign-invariant cell.
+    let constant = harness.cad_cells("cad_cells(list(2), list(x))");
+    assert_eq!(constant.len(), 1);
+    assert_eq!(constant[0].signs, vec![1]);
+
+    // A repeated input polynomial keeps one sign entry per input and the
+    // square-free decomposition of the underlying factor.
+    let repeated = harness.cad_cells("cad_cells(list(x^2 - 1, x^2 - 1), list(x))");
+    assert_eq!(repeated.len(), 5);
+    assert!(repeated.iter().all(|cell| cell.signs.len() == 2));
+    let signs: Vec<i32> = repeated.iter().map(|cell| cell.signs[0]).collect();
+    assert_eq!(signs, vec![1, 0, -1, 0, 1]);
+
+    // The order of the listed variables selects the lifting order; the result
+    // is a sign-invariant decomposition either way.
+    for source in [
+        "cad_cells(list(a*x - 1), list(a, x))",
+        "cad_cells(list(a*x - 1), list(x, a))",
+    ] {
+        let cells = harness.cad_cells(source);
+        assert!(!cells.is_empty(), "{source}");
+        for cell in &cells {
+            let value = cell.sample[0] * cell.sample[1] - 1.0;
+            assert_eq!(
+                cell.signs[0],
+                sign_of(value),
+                "{source} at {:?}",
+                cell.sample
+            );
+        }
+    }
+
+    // No polynomials: one full-dimensional cell with no sign entries.
+    let empty = harness.cad_cells("cad_cells(list(), list(x))");
+    assert_eq!(empty.len(), 1);
+    assert!(empty[0].signs.is_empty());
+}
+
+#[test]
+fn malformed_and_mixed_requests_stay_unevaluated() {
+    let mut harness = harness();
+    for request in [
+        "real_qe(gt(x, 0), 5)",
+        "real_qe(lt(x, 0), list(1))",
+        "cad_cells(list(x), list())",
+        "cad_cells(x, list(x))",
+        "cad_cells(list(x, y), list(x))",
+        // A real comparison mixed with a Boolean atom is not a real formula;
+        // it must not be decided with Boolean semantics.
+        "exists(x, and(gt(x, 0), sin(x)))",
+        "real_qe(exists(x, and(gt(x, 0), sin(x) = 0)), list(x))",
+    ] {
+        let (text, reduced) = harness.reduce(request);
+        assert!(!reduced, "`{request}` must stay unevaluated: {text}");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Five variables.
 
