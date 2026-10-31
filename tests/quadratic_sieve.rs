@@ -15,6 +15,7 @@ use num_traits::Zero;
 use rssn::kernels::quadratic_sieve::QsConfig;
 use rssn::kernels::quadratic_sieve::QsLimits;
 use rssn::kernels::quadratic_sieve::QsStats;
+use rssn::kernels::quadratic_sieve::is_probable_prime;
 use rssn::kernels::quadratic_sieve::qs_factor;
 use rssn::kernels::quadratic_sieve::qs_factor_with;
 use rssn::prelude::*;
@@ -407,25 +408,150 @@ fn deterministic_across_runs_and_thread_counts() {
 }
 
 #[test]
-fn oversized_composites_are_left_unevaluated() {
-    // Above the sieve's documented 50-digit range the public kernel returns
-    // `None` immediately, and `factorint` must not fall through to ECM.
-    let oversized: BigInt = BigInt::one() << 200;
-    assert!(oversized.to_str_radix(10).len() > 50);
+fn oversized_composites_are_refused_before_sieving() {
+    // Above the calibrated 80-digit range the public kernel returns `None`
+    // immediately, without building a factor base or a sieve.
+    let oversized: BigInt = BigInt::one() << 300;
+    assert!(oversized.to_str_radix(10).len() > 80);
     let start = Instant::now();
-    assert!(qs_factor(&oversized, QsLimits::for_digits(50)).is_none());
+    assert!(qs_factor(&oversized, QsLimits::for_digits(80)).is_none());
     assert!(start.elapsed().as_secs() < 1);
+}
 
+#[test]
+fn fifty_one_digit_cap_regression_now_factors() {
+    // This was the old "deliberately unevaluated above 50 digits" case. Its
+    // factors are 4151962928403878388093791 and
+    // 39885445382930678566564157 (independent sympy oracle).
     let semiprime: BigInt = "165602890612805810791919541180692229701175534849187"
         .parse()
         .expect("51-digit semiprime");
+    let small: BigInt = "4151962928403878388093791".parse().expect("factor");
+    let large: BigInt = "39885445382930678566564157".parse().expect("factor");
+    assert_eq!(&small * &large, semiprime);
+    assert!(is_prime_big(&small) && is_prime_big(&large));
+    assert_eq!(digits(&semiprime), 51);
+    let start = Instant::now();
+    let divisor = check_divisor(&semiprime, qs_factor(&semiprime, QsLimits::for_digits(51)));
+    assert!(divisor == small || divisor == large);
+    assert!(is_probable_prime(&divisor));
+    println!("51-digit cap regression factored in {:?}", start.elapsed());
     let session = Session::new();
     let start = Instant::now();
     assert_eq!(
         factorint(&session, &semiprime.to_string()),
-        format!("factorint({semiprime})")
+        format!("list(list({small}, 1), list({large}, 1))")
     );
-    assert!(start.elapsed().as_secs() < 2);
+    assert!(start.elapsed().as_secs() < 180);
+}
+
+#[test]
+fn fifty_five_and_sixty_digit_semiprimes_factor() {
+    // Balanced semiprimes with known primes (sympy oracle):
+    //   55 digits: 1000000000000000000001234627 * 1000000000000000000007654357
+    //   60 digits: 1000000000000000000000001234597 * 100000000000000000000007654371
+    let cases: [(&str, &str, u32, u64); 2] = [
+        (
+            "1000000000000000000001234627",
+            "1000000000000000000007654357",
+            55,
+            120,
+        ),
+        (
+            "1000000000000000000000001234597",
+            "100000000000000000000007654371",
+            60,
+            300,
+        ),
+    ];
+    for (p_text, q_text, expected_digits, bound_seconds) in cases {
+        let p: BigInt = p_text.parse().expect("prime");
+        let q: BigInt = q_text.parse().expect("prime");
+        let n = &p * &q;
+        assert_eq!(digits(&n), expected_digits);
+        assert!(is_probable_prime(&p) && is_probable_prime(&q));
+        let start = Instant::now();
+        let mut stats = QsStats::default();
+        let divisor = check_divisor(
+            &n,
+            qs_factor_with(
+                &n,
+                QsConfig {
+                    limits: QsLimits::for_digits(expected_digits),
+                    large_primes: true,
+                },
+                &mut stats,
+            ),
+        );
+        let elapsed = start.elapsed();
+        assert!(divisor == p || divisor == q, "{divisor} does not split {n}");
+        assert!(is_probable_prime(&divisor), "{divisor} is not BPSW prime");
+        assert!((&n % &divisor).is_zero());
+        assert!(stats.dependencies > 0, "no GF(2) dependency was extracted");
+        assert!(
+            elapsed.as_secs() < bound_seconds,
+            "{expected_digits}-digit QS took {elapsed:?}"
+        );
+        println!(
+            "{expected_digits}-digit semiprime factored in {elapsed:?}: \
+             {} polynomials, {} candidates, {} full, {} partial, {} combined, \
+             {} dependencies, matrix {}x{}",
+            stats.polynomials,
+            stats.candidates,
+            stats.full_relations,
+            stats.partial_relations,
+            stats.combined_relations,
+            stats.dependencies,
+            stats.matrix_rows,
+            stats.matrix_columns,
+        );
+        // The result is deterministic and independent of the thread pool.
+        assert_eq!(
+            qs_factor(&n, QsLimits::for_digits(expected_digits)),
+            Some(divisor)
+        );
+    }
+}
+
+#[test]
+fn sixty_five_digit_case_terminates_within_budget() {
+    // 65 digits: 100000000000000000000000001234671
+    //           * 100000000000000000000000007654333
+    // Either a factor comes out of the bounded run, or the sieve returns
+    // `None` after exhausting its work budget; it must not hang.
+    let p: BigInt = "100000000000000000000000001234671".parse().expect("prime");
+    let q: BigInt = "100000000000000000000000007654333".parse().expect("prime");
+    let n = &p * &q;
+    assert_eq!(digits(&n), 65);
+    let start = Instant::now();
+    let mut stats = QsStats::default();
+    let result = qs_factor_with(
+        &n,
+        QsConfig {
+            limits: QsLimits::for_digits(65),
+            large_primes: true,
+        },
+        &mut stats,
+    );
+    let elapsed = start.elapsed();
+    let found = result.is_some();
+    if let Some(divisor) = &result {
+        assert!(
+            divisor == &p || divisor == &q,
+            "{divisor} does not split {n}"
+        );
+        assert!(is_probable_prime(divisor));
+        assert!((&n % divisor).is_zero());
+    }
+    println!(
+        "65-digit case: {found} after {elapsed:?} ({} polynomials, matrix {}x{}, \
+         {} dependencies)",
+        stats.polynomials, stats.matrix_rows, stats.matrix_columns, stats.dependencies,
+    );
+    assert!(
+        elapsed.as_secs() < 600,
+        "65-digit case took {elapsed:?}, which is not a bounded run"
+    );
 }
 
 /// The `factorint` text for a request.
@@ -472,4 +598,33 @@ fn factorint_integration() {
         "factorint of a 40-digit semiprime took {:?}",
         start.elapsed()
     );
+
+    // Above the old 50-digit ceiling the same schedule must run the sieve
+    // and return the complete factorisation (known primes from sympy).
+    let large_cases = [
+        (
+            "1000000000000000000001234627",
+            "1000000000000000000007654357",
+            "list(list(1000000000000000000001234627, 1), list(1000000000000000000007654357, 1))",
+        ),
+        (
+            "1000000000000000000000001234597",
+            "100000000000000000000007654371",
+            "list(list(100000000000000000000007654371, 1), list(1000000000000000000000001234597, 1))",
+        ),
+    ];
+    for (p_text, q_text, expected) in large_cases {
+        let p: BigInt = p_text.parse().expect("prime");
+        let q: BigInt = q_text.parse().expect("prime");
+        let n = &p * &q;
+        let start = Instant::now();
+        let got = factorint(&session, &n.to_string());
+        let elapsed = start.elapsed();
+        assert_eq!(got, expected);
+        println!(
+            "factorint of a {}-digit semiprime took {elapsed:?}",
+            digits(&n)
+        );
+        assert!(elapsed.as_secs() < 300, "factorint took {elapsed:?}");
+    }
 }

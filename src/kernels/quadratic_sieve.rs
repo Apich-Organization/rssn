@@ -3,10 +3,10 @@
 //! `qs_factor(n, limits)` finds a non-trivial divisor of an odd composite
 //! `n` that has no small prime factor: a factor base of primes with
 //! `(n/p) = 1`, sieving of `Q(x) = (ax + b)^2 - n` over a symmetric
-//! interval, a single-large-prime variation, and a GF(2) dependency solve
-//! by sparse elimination. The rule set's `factorint` uses it for
-//! composites that survive trial division, perfect-power detection, BPSW
-//! and ECM.
+//! interval, a large-prime variation, and a structured GF(2) dependency
+//! solve. The rule set's `factorint` uses it for composites that survive
+//! trial division, perfect-power detection and BPSW; below 40 digits the
+//! elliptic curves get the first attempt.
 //!
 //! # Algorithm
 //!
@@ -23,36 +23,61 @@
 //!
 //! is sieved in `x in [-M, M]` with a logarithmic approximation (the
 //! factor `a = q^2` is a square and only enters a relation through `q`);
-//! the sign of `g` is the `-1` exponent of the relation. Candidates whose
-//! accumulated `log p` is close to `log |g(x)|` are
+//! the sign of `g` is the `-1` exponent of the relation. Both parities of
+//! `x` are sieved: `g(x)` is even for one parity and odd for the other.
+//! Candidates whose accumulated `log p` is close to `log |g(x)|` are
 //! factored exactly over the factor base; a cofactor below
-//! `16 * bound` becomes a partial relation and is combined with the next
-//! relation that has the same cofactor (treated as one large prime, which
-//! is valid even when the cofactor is composite). Full relations are
-//! reduced over GF(2) with a bitset elimination that tracks which rows
-//! combine into each dependency; for every dependency the two square
-//! roots `X = prod (a x + b)` and `Y = prod q * prod p^(e/2)` are formed
-//! and `gcd(X - Y, n)`, `gcd(X + Y, n)` are tried.
+//! `large_prime_factor * bound` becomes a partial relation and is combined
+//! with the next relation that has the same cofactor. Every prime factor
+//! of the cofactor is larger than the factor-base bound, so a cofactor
+//! below `bound^2` is prime; with the default multiplier (< bound) a
+//! partial relation therefore carries exactly one large prime.
+//!
+//! Full relations are reduced over GF(2) by a structured elimination.
+//! Columns are taken lightest-first: a singleton deletes its row, and a
+//! heavier column xors its shortest row into the other rows containing it
+//! (tracking which original relations each row is the xor of) until fill-in
+//! stops paying off; the small remaining core is eliminated densely with
+//! the same tracking. The elimination stops after 64 dependencies, which is
+//! far more than needed because each one succeeds with probability about
+//! one half. For every dependency the two square roots
+//! `X = prod (a x + b)` and `Y = prod q * prod p^(e/2)` are formed and
+//! `gcd(X - Y, n)`, `gcd(X + Y, n)` are tried.
 //!
 //! The sieve is not trial division and not Pollard's rho: the work is
 //! dominated by the logarithmic sieve over the interval, as a real QS.
 //!
-//! # Practical range
+//! # Practical range and work bound
 //!
-//! A 30-40 digit semiprime is the design point (well under ten seconds
-//! on a current machine, in release mode and in the test profile, which
-//! uses `opt-level = 1`). 45-50 digit semiprimes are attempted with the
-//! larger default limits; they either factor within the work bound or
-//! return [`None`] when the polynomial budget is exhausted. Inputs above
-//! [`QsLimits::MAX_DIGITS`] digits return `None` immediately. The three
-//! [`QsLimits`] fields bound the work: `bound` fixes the factor base,
-//! `interval` the number of sieved `x` values per polynomial and
-//! `polynomials` the number of polynomials tried.
+//! [`QsLimits::for_digits`] follows the standard quadratic-sieve
+//! complexity heuristic. The factor-base bound is `L_n[1/2, 1/2]` (the
+//! optimum for the relation-collection cost), rounded to two significant
+//! digits; the sieve interval is of the same order; the large-prime bound
+//! is a digit-dependent multiple of the factor base; and the relation
+//! target is the factor-base width plus a digit-dependent safety margin.
+//! The polynomial budget and the explicit `max_sieve_positions` budget
+//! come from `L_n[1/2, 1]`, capped so that a hopeless input exhausts a
+//! bounded amount of work instead of running forever.
+//!
+//! In the test profile (`opt-level = 1`) the design point is roughly
+//! 40-55 digits; 55 digits typically factor in seconds, 60 digits in tens
+//! of seconds on a current multi-core machine, and 65 digits is
+//! best-effort (factor within budget or `None`). The parameters are
+//! calibrated through 80 digits so that callers can ask for a larger
+//! budget, but the factor base is capped at
+//! [`MAX_FACTOR_BASE_COLUMNS`] columns: an 80-digit input builds its
+//! parameter set, then returns `None` before allocating the sieve because
+//! the relation matrix would not fit the documented memory bound.
+//! [`QsLimits::MAX_DIGITS`] is the largest calibrated size.
 //!
 //! Every step is deterministic: the polynomial primes are taken in
-//! increasing order, the sieve is sequential, the candidates are visited
-//! in increasing `x` and the elimination is deterministic, so the result
-//! is independent of the thread count. No random source is used.
+//! increasing order, relations are visited in a fixed order inside each
+//! fixed-size batch (the batches may run in parallel, but they are
+//! collected in index order), and the elimination is deterministic. The
+//! divisor found therefore does not depend on the thread count, and no
+//! random source is used.
+//!
+//! [`MAX_FACTOR_BASE_COLUMNS`]: QsLimits::MAX_FACTOR_BASE_COLUMNS
 
 // The sieve hot loops index fixed-size arrays in step with their formulas
 // and do index arithmetic that is bounded by the array lengths; the code
@@ -64,6 +89,8 @@
 // Prime and exponent counts become float limits for the logarithmic sieve.
 #![allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 
 use num_bigint::BigInt;
@@ -78,18 +105,60 @@ use crate::kernels::number_theory::primes_sieve;
 /// The logarithmic sieve stores `log2(p)` scaled by this factor.
 const LOG_SCALE: f64 = 256.0;
 /// Above this many decimal digits a request returns `None` immediately.
-const MAX_DIGITS: u32 = 50;
+///
+/// The parameters are calibrated through this size; the practical limit is
+/// lower because the factor base may not exceed
+/// [`QsLimits::MAX_FACTOR_BASE_COLUMNS`] columns.
+const MAX_DIGITS: u32 = 80;
+/// Largest number of factor-base columns (including the sign column) that
+/// the relation matrix is allowed to reach.
+///
+/// The structured solve stores one bitset over the relations per row while
+/// reducing the matrix, so this bounds both memory (roughly
+/// `columns^2 / 8` bytes at the peak) and the elimination time. A larger
+/// factor base is not attempted: the sieve returns `None` instead of
+/// allocating an unbounded matrix.
+pub const MAX_FACTOR_BASE_COLUMNS: usize = 40_000;
 /// Trial division by the primes below this before the sieve starts.
 const SMALL_TRIAL: u64 = 1_000;
 /// Relation-count target over the factor-base size (dependencies needed).
 const EXTRA_DEPENDENCIES: usize = 8;
+/// Polynomials sieved per deterministic parallel batch.
+///
+/// The batch size is fixed, so the set of polynomials processed before a
+/// solve, and therefore the result, does not depend on the thread count.
+const POLYNOMIAL_BATCH: usize = 32;
+/// Partials kept per factor-base column (a memory cap, not a math cap).
+const PARTIALS_PER_COLUMN: usize = 2;
+/// Heaviest column pivoted in the sparse phase of the GF(2) solve.
+///
+/// Singleton and doubleton columns are always worth eliminating; continuing
+/// up to this weight shrinks the dense core by roughly two thirds on QS
+/// matrices without letting fill-in take over.
+const SPARSE_MAX_WEIGHT: usize = 64;
+/// Longest pivot row used in the sparse phase (guards against fill-in).
+const SPARSE_MAX_ROW: usize = 1_024;
+/// Stop the sparse phase when at most this many rows remain.
+///
+/// The dense phase is cubic in the core width, so trading cheap sparse row
+/// operations for a smaller core is a large win. The remaining nullity means
+/// the dense column count is a little below this target.
+const DENSE_CORE_TARGET: usize = 4_000;
+/// Number of dependencies that is plenty to find a non-trivial factor.
+///
+/// Each dependency fails with probability about one half (odd `-1` or a
+/// trivial gcd), so 64 are already overwhelming. Stopping the elimination
+/// early avoids most of the dense work.
+const MAX_DEPENDENCIES: usize = 64;
 
 /// Limits for one quadratic-sieve attempt.
 ///
 /// The defaults come from [`QsLimits::for_digits`] for 30-digit input.
-/// Larger values enlarge the factor base (more relations needed) and the
-/// sieve interval (more candidates per polynomial) but raise the cost of
-/// one polynomial; `polynomials` is the hard work bound.
+/// The fields scale with the input size: a larger factor base needs more
+/// relations (a larger GF(2) matrix), a larger interval yields more
+/// candidates per polynomial, the large-prime factor widens the partial
+/// relations, and [`QsLimits::polynomials`] /
+/// [`QsLimits::max_sieve_positions`] are the hard work bounds.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct QsLimits {
     /// Factor-base bound: primes `p <= bound` with `(n/p) = 1` are used.
@@ -98,41 +167,92 @@ pub struct QsLimits {
     pub interval: u64,
     /// Maximum number of polynomials tried before giving up.
     pub polynomials: usize,
+    /// Multiplier of the factor-base bound that caps the cofactor of a
+    /// partial relation. Kept below `bound` so a partial has exactly one
+    /// large prime.
+    pub large_prime_factor: u64,
+    /// Extra relations collected beyond the factor-base width, on top of
+    /// the eight needed to have dependencies to try.
+    pub extra_relations: usize,
+    /// Hard bound on the number of sieved positions (polynomials times
+    /// interval length) for the whole attempt.
+    pub max_sieve_positions: u64,
 }
 
 impl QsLimits {
-    /// Largest supported input size in decimal digits.
+    /// Largest calibrated input size in decimal digits.
     ///
-    /// Requests for larger numbers are refused so that no call can run
-    /// for an unbounded time; the caller can still use ECM there.
+    /// Requests for larger numbers are refused before any sieving work;
+    /// the caller can still use ECM there. The practical limit is lower
+    /// (see [`MAX_FACTOR_BASE_COLUMNS`]).
     pub const MAX_DIGITS: u32 = MAX_DIGITS;
+    /// Largest number of factor-base columns this implementation will try.
+    pub const MAX_FACTOR_BASE_COLUMNS: usize = MAX_FACTOR_BASE_COLUMNS;
 
-    /// Parameter set for an `digits`-digit number.
+    /// Parameter set for a `digits`-digit number.
     ///
-    /// The bound grows roughly like the square root of the
-    /// `L_n[1/2, 1]` heuristic, and the interval with it, keeping the
-    /// number of polynomials per attempt in the hundreds.
+    /// The factor-base bound is the standard QS optimum
+    /// `L_n[1/2, 1/2] = exp(0.5 sqrt(ln n ln ln n))`, rounded up to two
+    /// significant digits; the sieve interval is of the same order. The
+    /// large-prime multiplier grows with the size, the relation margin is
+    /// a small fraction of the estimated factor-base width, and the work
+    /// bound is `L_n[1/2, 1] = exp(sqrt(ln n ln ln n))` capped at
+    /// `2 * 10^10` positions so that even a hopeless input has a bounded
+    /// cost.
+    ///
+    /// For 80 digits this yields a factor base around five million and a
+    /// sieve interval of two million, which is beyond the column limit:
+    /// the attempt returns `None` before allocating the sieve. At 65 digits
+    /// the matrix is already large (tens of thousands of columns and
+    /// hundreds of megabytes at the peak), but the work bound still
+    /// terminates; beyond about 66 digits the factor base exceeds the
+    /// column limit, so the attempt returns `None` after construction.
     #[must_use]
-    pub const fn for_digits(digits: u32) -> Self {
-        let (bound, interval, polynomials) = match digits {
-            | 0..=12 => (120, 3_000, 400),
-            | 13..=16 => (350, 5_000, 500),
-            | 17..=20 => (800, 8_000, 600),
-            | 21..=24 => (1_500, 12_000, 700),
-            | 25..=28 => (3_000, 18_000, 800),
-            | 29..=32 => (6_000, 25_000, 900),
-            | 33..=36 => (12_000, 35_000, 1_000),
-            | 37..=40 => (25_000, 50_000, 1_200),
-            | 41..=44 => (45_000, 70_000, 1_400),
-            | 45..=50 => (90_000, 90_000, 1_200),
-            | _ => (120_000, 120_000, 800),
+    pub fn for_digits(digits: u32) -> Self {
+        let digits = digits.clamp(4, MAX_DIGITS);
+        let ln_n = f64::from(digits) * std::f64::consts::LN_10;
+        let ln_ln_n = ln_n.ln();
+        let optimum = (0.5 * (ln_n * ln_ln_n).sqrt()).exp();
+        let bound = round_significant(optimum, 2).clamp(120.0, 6_000_000.0) as u64;
+        let interval = round_significant(optimum, 2).clamp(3_000.0, 2_000_000.0) as u64;
+        let large_prime_factor = match digits {
+            | 0..=32 => 16,
+            | 33..=52 => 24,
+            | 53..=64 => 32,
+            | _ => 48,
         };
+        // Estimated factor-base width: about half the primes up to `bound`
+        // have `(n/p) = 1`; use `bound / (2 ln bound)`.
+        let estimated_columns = bound as f64 / (2.0 * (bound as f64).ln());
+        let extra_relations = ((estimated_columns / 128.0).ceil() as usize).max(EXTRA_DEPENDENCIES);
+        let heuristic = (ln_n * ln_ln_n).sqrt().exp();
+        let max_sieve_positions = heuristic.min(2.0e10) as u64;
+        let polynomials = usize::try_from((max_sieve_positions / interval).max(64))
+            .unwrap_or(64)
+            .min(20_000);
         Self {
             bound,
             interval,
             polynomials,
+            large_prime_factor,
+            extra_relations,
+            max_sieve_positions,
         }
     }
+}
+
+/// Rounds `value` to `significant` decimal significant digits (upwards,
+/// to a two-digit value such as `4_700_000`).
+fn round_significant(
+    value: f64,
+    significant: i32,
+) -> f64 {
+    if !value.is_finite() || value <= 0.0 {
+        return 0.0;
+    }
+    let exponent = value.log10().floor() as i32 - significant + 1;
+    let scale = 10_f64.powi(exponent);
+    (value / scale).ceil() * scale
 }
 
 impl Default for QsLimits {
@@ -143,22 +263,16 @@ impl Default for QsLimits {
 
 /// Configuration of one sieve attempt.
 ///
-/// `large_primes` turns the single-large-prime variation on or off; the
-/// comparison is useful when measuring how much the variation helps.
-/// `large_prime_factor` is the multiplier of the factor-base bound that
-/// caps the large cofactor: a cofactor of at most
-/// `large_prime_factor * bound` is kept, matched with another relation
-/// that has the same cofactor, and the two are merged into a full
-/// relation. The default of 16 keeps the number of possible cofactors
-/// small enough that pairs are found quickly.
+/// `large_primes` turns the large-prime variation on or off; the
+/// comparison is useful when measuring how much the variation helps. The
+/// large-prime bound itself scales with the input and lives in
+/// [`QsLimits::large_prime_factor`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct QsConfig {
     /// Factor-base, interval and polynomial budget.
     pub limits: QsLimits,
     /// Whether partial relations with one large prime are collected.
     pub large_primes: bool,
-    /// Multiplier of the factor-base bound for the large cofactor.
-    pub large_prime_factor: u64,
 }
 
 impl Default for QsConfig {
@@ -166,7 +280,6 @@ impl Default for QsConfig {
         Self {
             limits: QsLimits::default(),
             large_primes: true,
-            large_prime_factor: 16,
         }
     }
 }
@@ -187,6 +300,12 @@ pub struct QsStats {
     pub partial_relations: usize,
     /// Partial relations that found a partner and became full relations.
     pub combined_relations: usize,
+    /// Sieve positions actually processed (the work-budget unit).
+    pub sieve_positions: u64,
+    /// Rows in the matrix handed to the last GF(2) solve.
+    pub matrix_rows: usize,
+    /// Columns in the matrix handed to the last GF(2) solve.
+    pub matrix_columns: usize,
     /// Dependencies found by the GF(2) elimination in the last solve.
     pub dependencies: usize,
 }
@@ -195,14 +314,18 @@ pub struct QsStats {
 ///
 /// Returns `Some(d)` with `1 < d < n` and `d | n`, or `None` for invalid
 /// input, for a prime, when `n` has more than [`QsLimits::MAX_DIGITS`]
-/// decimal digits, and when the work bound [`QsLimits::polynomials`] is
-/// exhausted. An even `n > 2` returns `2` directly.
+/// decimal digits, when the relation matrix would exceed
+/// [`QsLimits::MAX_FACTOR_BASE_COLUMNS`], and when the polynomial or
+/// [`QsLimits::max_sieve_positions`] budget is exhausted. An even `n > 2`
+/// returns `2` directly.
 ///
 /// The input may contain small factors: trial division by the primes
 /// below 1000 runs first and returns a factor directly. The digit limit is
 /// checked before that trial division, so an oversized request never does
 /// any sieving work. Perfect powers, prime input and even input are
-/// otherwise handled before the sieve.
+/// otherwise handled before the sieve. The limits are not clamped upwards
+/// or downwards to hide a bad choice: they are used as given, apart from a
+/// safety clamp on `bound` and `interval`.
 #[must_use]
 pub fn qs_factor(
     n: &BigInt,
@@ -234,6 +357,36 @@ pub fn qs_factor_with(
     (divisor > BigInt::one() && divisor < *n).then_some(divisor)
 }
 
+/// Immutable parameters shared by every polynomial of one attempt.
+#[derive(Copy, Clone, Debug)]
+struct SieveParams {
+    /// Half-width of the interval.
+    interval: usize,
+    /// Number of sieve positions, `2 * interval + 1`.
+    length: usize,
+    /// Largest cofactor accepted as a partial relation.
+    large_bound: u64,
+    /// Whether partial relations are collected.
+    large_primes: bool,
+    /// Log-scale slack for the candidate test.
+    tolerance: f64,
+}
+
+/// Everything one sieved polynomial contributes.
+#[derive(Default)]
+struct SieveOutput {
+    /// The polynomial was built and sieved.
+    polynomial: bool,
+    /// Per-polynomial counters.
+    stats: QsStats,
+    /// Full (smooth) relations, in increasing `x`.
+    full: Vec<Relation>,
+    /// `(large prime, relation)` pairs, in increasing `x`.
+    partial: Vec<(u64, Relation)>,
+    /// A factor found without a dependency (for example `q | n`).
+    factor: Option<BigInt>,
+}
+
 /// The sieve proper; its result is validated by [`qs_factor_with`].
 fn qs_core(
     n: &BigInt,
@@ -258,9 +411,10 @@ fn qs_core(
     if let Some(root) = perfect_power_root(n) {
         return Some(root);
     }
-    let bound = config.limits.bound.clamp(30, 500_000);
-    let interval = usize::try_from(config.limits.interval.clamp(100, 2_000_000)).ok()?;
-    if config.limits.polynomials == 0 {
+    let limits = config.limits;
+    let bound = limits.bound.clamp(30, 6_000_000);
+    let interval = usize::try_from(limits.interval.clamp(100, 2_000_000)).ok()?;
+    if limits.polynomials == 0 || limits.max_sieve_positions == 0 {
         return None;
     }
     let factor_base = match build_factor_base(n, bound) {
@@ -271,150 +425,82 @@ fn qs_core(
         return None;
     }
     let columns = factor_base.len() + 1;
+    if columns > MAX_FACTOR_BASE_COLUMNS {
+        return None;
+    }
     let divisors: Vec<BigInt> = factor_base.iter().map(|p| BigInt::from(p.prime)).collect();
+    let large_prime_factor = limits
+        .large_prime_factor
+        .clamp(1, bound.saturating_sub(1).max(1));
     let large_bound = if config.large_primes {
-        bound.saturating_mul(config.large_prime_factor.max(1))
+        bound.saturating_mul(large_prime_factor)
     } else {
         1
     };
-    let tolerance = (log2_approx(large_bound as f64) + log2_approx(bound as f64) + 2.0) * LOG_SCALE;
+    // The sieve counts each factor-base prime once; the slack covers the
+    // unsieved large cofactor and the rounding of the logarithmic sums.
+    let tolerance = (log2_approx(large_bound as f64) + 8.0) * LOG_SCALE;
+    let params = SieveParams {
+        interval,
+        length: 2 * interval + 1,
+        large_bound,
+        large_primes: config.large_primes,
+        tolerance,
+    };
+    let length_u64 = u64::try_from(params.length).ok()?;
     let mut q_cursor = polynomial_prime_start(n, interval);
     let mut relations: Vec<Relation> = Vec::new();
     let mut partials: HashMap<u64, Relation> = HashMap::new();
-    let mut target = columns + EXTRA_DEPENDENCIES;
-    let max_relations = 4 * columns + 128;
-    let length = 2 * interval + 1;
-    for _ in 0..config.limits.polynomials {
-        let q = match next_polynomial_prime(n, q_cursor) {
-            | Ok(prime) => prime,
-            | Err(factor) => return Some(factor),
-        };
-        q_cursor = q.saturating_add(2);
-        let Some(polynomial) = build_polynomial(n, q) else {
-            continue;
-        };
-        stats.polynomials += 1;
-        let skip = factor_base.iter().position(|entry| entry.prime == q);
-        let (roots1, roots2) = sieve_roots(&polynomial, &factor_base, skip, &divisors);
-        let parity = usize::from(polynomial.c.is_odd());
-        let mut sieve = vec![0_u32; length];
-        let two_log = scaled_log(2);
-        for index in (parity..length).step_by(2) {
-            sieve[index] += two_log;
+    let extra = limits.extra_relations.max(EXTRA_DEPENDENCIES);
+    let mut target = columns + extra;
+    let max_relations = 3 * columns + 256;
+    let max_partials = columns.saturating_mul(PARTIALS_PER_COLUMN);
+    let position_budget = limits.max_sieve_positions;
+    while stats.polynomials < limits.polynomials && stats.sieve_positions < position_budget {
+        let work_left = position_budget - stats.sieve_positions;
+        let by_work = usize::try_from(work_left / length_u64).unwrap_or(usize::MAX);
+        if by_work == 0 {
+            break;
         }
-        for (index, entry) in factor_base.iter().enumerate().skip(1) {
-            if Some(index) == skip {
-                continue;
-            }
-            let prime = usize::try_from(entry.prime).ok()?;
-            let log = entry.log;
-            let first = (usize::try_from(roots1[index]).ok()? + interval) % prime;
-            let mut position = first;
-            while position < length {
-                sieve[position] += log;
-                position += prime;
-            }
-            let second = roots2[index];
-            if second != roots1[index] {
-                let mut position = (usize::try_from(second).ok()? + interval) % prime;
-                while position < length {
-                    sieve[position] += log;
-                    position += prime;
-                }
-            }
-        }
-        let mut candidate = vec![false; length];
-        for (index, log) in sieve.iter().enumerate() {
-            let x = index as f64 - interval as f64;
-            let value = (polynomial.a_f64 * x + polynomial.two_b_f64) * x + polynomial.c_f64;
-            if value != 0.0 {
-                candidate[index] =
-                    f64::from(*log) + tolerance >= log2_approx(value.abs()) * LOG_SCALE;
-            }
-        }
-        let mut hits: Vec<(u32, u32)> = Vec::new();
-        for index in (parity..length).step_by(2) {
-            if candidate[index] {
-                hits.push((index as u32, 0));
-            }
-        }
-        for (index, entry) in factor_base.iter().enumerate().skip(1) {
-            if Some(index) == skip {
-                continue;
-            }
-            let prime = usize::try_from(entry.prime).ok()?;
-            let mut positions = [roots1[index], roots2[index]];
-            if positions[0] == positions[1] {
-                positions[1] = u32::MAX;
-            }
-            for root in positions {
-                if root == u32::MAX {
-                    continue;
-                }
-                let mut position = (usize::try_from(root).ok()? + interval) % prime;
-                while position < length {
-                    if candidate[position] {
-                        hits.push((position as u32, index as u32));
-                    }
-                    position += prime;
-                }
-            }
-        }
-        hits.sort_unstable_by_key(|&(position, prime)| (position, prime));
-        let mut next_hit = 0_usize;
-        for index in 0..length {
-            if !candidate[index] {
-                continue;
-            }
-            stats.candidates += 1;
-            let x = index as i64 - interval as i64;
-            let value = evaluate_g(&polynomial, x);
-            let negative = value.is_negative();
-            let mut magnitude = value.abs();
-            let mut exponents: Vec<(u32, u32)> = Vec::new();
-            while next_hit < hits.len() && usize::try_from(hits[next_hit].0).ok()? == index {
-                let prime_index = usize::try_from(hits[next_hit].1).ok()?;
-                let mut exponent = 0_u32;
-                loop {
-                    let (quotient, remainder) = magnitude.div_rem(&divisors[prime_index]);
-                    if !remainder.is_zero() {
-                        break;
-                    }
-                    magnitude = quotient;
-                    exponent += 1;
-                    if magnitude.is_one() {
-                        break;
-                    }
-                }
-                if exponent > 0 {
-                    exponents.push((hits[next_hit].1, exponent));
-                }
-                next_hit += 1;
-            }
-            let relation = Relation {
-                x: mod_pos(&(&polynomial.a * BigInt::from(x) + &polynomial.b), n),
-                known: &polynomial.q % n,
-                negative,
-                exponents,
+        let remaining = limits.polynomials - stats.polynomials;
+        let batch = POLYNOMIAL_BATCH.min(remaining).min(by_work);
+        let mut primes = Vec::with_capacity(batch);
+        for _ in 0..batch {
+            let q = match next_polynomial_prime(n, q_cursor) {
+                | Ok(prime) => prime,
+                | Err(factor) => return Some(factor),
             };
-            if magnitude.is_one() {
-                stats.full_relations += 1;
+            q_cursor = q.saturating_add(2);
+            primes.push(q);
+        }
+        // Batches are independent; `map_slice` returns them in index order,
+        // so the relation stream (and the result) does not depend on the
+        // number of worker threads.
+        let outputs = crate::kernels::par::map_slice(&primes, 4, |&q| {
+            sieve_polynomial(n, q, &factor_base, &divisors, params)
+        });
+        for output in outputs {
+            if let Some(factor) = output.factor {
+                return Some(factor);
+            }
+            if !output.polynomial {
+                continue;
+            }
+            stats.polynomials += output.stats.polynomials;
+            stats.candidates += output.stats.candidates;
+            stats.full_relations += output.stats.full_relations;
+            stats.partial_relations += output.stats.partial_relations;
+            stats.sieve_positions += length_u64;
+            for relation in output.full {
                 relations.push(relation);
-            } else if let Some(cofactor) = magnitude.to_u64().filter(|&value| value <= large_bound)
-            {
-                stats.partial_relations += 1;
-                if config.large_primes {
-                    match partials.remove(&cofactor) {
-                        | Some(previous) => {
-                            let combined = combine(&previous, &relation, cofactor, n);
-                            stats.combined_relations += 1;
-                            stats.full_relations += 1;
-                            relations.push(combined);
-                        },
-                        | None => {
-                            partials.insert(cofactor, relation);
-                        },
-                    }
+            }
+            for (cofactor, relation) in output.partial {
+                if let Some(previous) = partials.remove(&cofactor) {
+                    stats.combined_relations += 1;
+                    stats.full_relations += 1;
+                    relations.push(combine(&previous, &relation, cofactor, n));
+                } else if partials.len() < max_partials {
+                    partials.insert(cofactor, relation);
                 }
             }
             if relations.len() >= max_relations {
@@ -425,15 +511,13 @@ fn qs_core(
             if let Some(divisor) = solve_dependencies(&relations, &factor_base, n, stats) {
                 return Some(divisor);
             }
-            target = relations
-                .len()
-                .saturating_add((columns / 8).max(EXTRA_DEPENDENCIES));
+            target = relations.len().saturating_add((columns / 16).max(extra));
             if target > max_relations {
                 return None;
             }
         }
         if relations.len() >= max_relations {
-            return None;
+            break;
         }
     }
     if relations.len() > columns {
@@ -441,6 +525,180 @@ fn qs_core(
     } else {
         None
     }
+}
+
+/// Sieves one polynomial and extracts its relations.
+fn sieve_polynomial(
+    n: &BigInt,
+    q: u64,
+    factor_base: &[FbPrime],
+    divisors: &[BigInt],
+    params: SieveParams,
+) -> SieveOutput {
+    let mut output = SieveOutput::default();
+    let Some(polynomial) = build_polynomial(n, q) else {
+        return output;
+    };
+    let length = params.length;
+    let interval = params.interval;
+    let skip = factor_base.iter().position(|entry| entry.prime == q);
+    let (roots1, roots2) = sieve_roots(&polynomial, factor_base, skip, divisors);
+    // g(x) is even iff x and c have the same parity; convert that to an
+    // index parity through x = index - interval.
+    let x_parity = usize::from(polynomial.c.is_odd());
+    let index_parity = (x_parity + interval % 2) % 2;
+    let mut sieve = vec![0_u32; length];
+    let two_log = scaled_log(2);
+    for index in (index_parity..length).step_by(2) {
+        sieve[index] += two_log;
+    }
+    for (index, entry) in factor_base.iter().enumerate().skip(1) {
+        if Some(index) == skip {
+            continue;
+        }
+        let prime = usize::try_from(entry.prime).unwrap_or(0);
+        if prime == 0 {
+            break;
+        }
+        let log = entry.log;
+        let first = (usize::try_from(roots1[index]).unwrap_or(0) + interval) % prime;
+        let mut position = first;
+        while position < length {
+            sieve[position] += log;
+            position += prime;
+        }
+        let second = roots2[index];
+        if second != roots1[index] {
+            let mut position = (usize::try_from(second).unwrap_or(0) + interval) % prime;
+            while position < length {
+                sieve[position] += log;
+                position += prime;
+            }
+        }
+    }
+    // Every `x` is considered. `g(x)` is even for exactly one parity (the
+    // special prime 2 above); the other parity gives odd, still smoothable
+    // values.
+    let mut candidate = vec![false; length];
+    let mut square_factor = None;
+    for (index, log) in sieve.iter().enumerate() {
+        let x = index as f64 - interval as f64;
+        let value = (polynomial.a_f64 * x + polynomial.two_b_f64) * x + polynomial.c_f64;
+        if value == 0.0 {
+            // (a x + b)^2 = n exactly; this is a factor with no sieve.
+            let ax_b = &polynomial.a * BigInt::from(index as i64 - interval as i64) + &polynomial.b;
+            square_factor = Some(Integer::gcd(&ax_b, n));
+            continue;
+        }
+        candidate[index] =
+            f64::from(*log) + params.tolerance >= log2_approx(value.abs()) * LOG_SCALE;
+    }
+    if let Some(factor) = square_factor
+        && factor > BigInt::one()
+        && factor < *n
+    {
+        output.factor = Some(factor);
+        return output;
+    }
+    if !candidate.iter().any(|&hit| hit) {
+        output.polynomial = true;
+        output.stats.polynomials = 1;
+        return output;
+    }
+    let mut hits: Vec<(u32, u32)> = Vec::new();
+    for (index, hit) in candidate.iter().enumerate() {
+        if *hit && index % 2 == index_parity {
+            hits.push((index as u32, 0));
+        }
+    }
+    for (index, entry) in factor_base.iter().enumerate().skip(1) {
+        if Some(index) == skip {
+            continue;
+        }
+        let prime = usize::try_from(entry.prime).unwrap_or(0);
+        if prime == 0 {
+            break;
+        }
+        let mut positions = [roots1[index], roots2[index]];
+        if positions[0] == positions[1] {
+            positions[1] = u32::MAX;
+        }
+        for root in positions {
+            if root == u32::MAX {
+                continue;
+            }
+            let mut position = (usize::try_from(root).unwrap_or(0) + interval) % prime;
+            while position < length {
+                if candidate[position] {
+                    hits.push((position as u32, index as u32));
+                }
+                position += prime;
+            }
+        }
+    }
+    hits.sort_unstable_by_key(|&(position, prime)| (position, prime));
+    let known = &polynomial.q % n;
+    let mut next_hit = 0_usize;
+    for index in 0..length {
+        if !candidate[index] {
+            continue;
+        }
+        output.stats.candidates += 1;
+        let x = index as i64 - interval as i64;
+        let value = evaluate_g(&polynomial, x);
+        let negative = value.is_negative();
+        let mut magnitude = value.abs();
+        let mut exponents: Vec<(u32, u32)> = Vec::new();
+        while next_hit < hits.len()
+            && usize::try_from(hits[next_hit].0).unwrap_or(usize::MAX) == index
+        {
+            let prime_index = usize::try_from(hits[next_hit].1).unwrap_or(usize::MAX);
+            if prime_index >= divisors.len() {
+                next_hit += 1;
+                continue;
+            }
+            let mut exponent = 0_u32;
+            loop {
+                let (quotient, remainder) = magnitude.div_rem(&divisors[prime_index]);
+                if !remainder.is_zero() {
+                    break;
+                }
+                magnitude = quotient;
+                exponent += 1;
+                if magnitude.is_one() {
+                    break;
+                }
+            }
+            if exponent > 0 {
+                exponents.push((hits[next_hit].1, exponent));
+            }
+            next_hit += 1;
+        }
+        let relation = Relation {
+            x: mod_pos(&(&polynomial.a * BigInt::from(x) + &polynomial.b), n),
+            known: known.clone(),
+            negative,
+            exponents,
+        };
+        if magnitude.is_one() {
+            output.stats.full_relations += 1;
+            output.full.push(relation);
+        } else if let Some(cofactor) = magnitude
+            .to_u64()
+            .filter(|&value| value <= params.large_bound)
+        {
+            output.stats.partial_relations += 1;
+            if params.large_primes {
+                output.partial.push((cofactor, relation));
+            }
+        }
+        if output.full.len() + output.partial.len() >= 4 * divisors.len() + 256 {
+            break;
+        }
+    }
+    output.polynomial = true;
+    output.stats.polynomials = 1;
+    output
 }
 
 /// Returns the smallest prime divisor `p <= 1000` of the odd `n > 1`.
@@ -468,7 +726,8 @@ fn decimal_digits(n: &BigInt) -> u32 {
 /// parameters for larger integers. No composite is known to pass the
 /// latter, in particular the smallest strong pseudoprime to those twelve
 /// Miller-Rabin bases (318665857834031151167461) does not.
-fn is_probable_prime(n: &BigInt) -> bool {
+#[must_use]
+pub fn is_probable_prime(n: &BigInt) -> bool {
     if let Some(value) = n.to_u64() {
         return is_probable_prime_u64(value);
     }
@@ -632,8 +891,8 @@ fn is_probable_prime_u64(n: u64) -> bool {
 /// A root `r` of `r^k = n` for some `k >= 2`, if `n` is a perfect power.
 ///
 /// Only prime exponents below 64 need checking: a perfect power also has
-/// a prime exponent, and with at most 55 digits a larger exponent forces
-/// a base below 8, which trial division has already removed.
+/// a prime exponent, and with at most 80 digits a larger exponent forces
+/// a base below 21, which trial division has already removed.
 fn perfect_power_root(n: &BigInt) -> Option<BigInt> {
     const EXPONENTS: [u32; 18] = [
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61,
@@ -923,29 +1182,294 @@ fn highest_bit(bits: &[u64]) -> Option<usize> {
     None
 }
 
+/// Extracts the set bits of a dense row as sorted column indices.
+fn sparse_columns(
+    row: &[u64],
+    columns: usize,
+) -> Vec<u32> {
+    let mut out = Vec::new();
+    for (word_index, word) in row.iter().enumerate() {
+        let mut bits = *word;
+        while bits != 0 {
+            let bit = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            let column = word_index * 64 + bit;
+            if column < columns {
+                out.push(u32::try_from(column).unwrap_or(u32::MAX));
+            }
+        }
+    }
+    out
+}
+
+/// Xor of two sorted column lists.
+fn xor_sorted(
+    first: &[u32],
+    second: &[u32],
+) -> Vec<u32> {
+    let mut out = Vec::with_capacity(first.len() + second.len());
+    let (mut i, mut j) = (0_usize, 0_usize);
+    while i < first.len() && j < second.len() {
+        match first[i].cmp(&second[j]) {
+            | std::cmp::Ordering::Less => {
+                out.push(first[i]);
+                i += 1;
+            },
+            | std::cmp::Ordering::Greater => {
+                out.push(second[j]);
+                j += 1;
+            },
+            | std::cmp::Ordering::Equal => {
+                i += 1;
+                j += 1;
+            },
+        }
+    }
+    out.extend_from_slice(&first[i..]);
+    out.extend_from_slice(&second[j..]);
+    out
+}
+
+/// Xors `source` into `target` (same length).
+fn xor_bits(
+    target: &mut [u64],
+    source: &[u64],
+) {
+    for (left, right) in target.iter_mut().zip(source) {
+        *left ^= right;
+    }
+}
+
+/// The combination bitset of a row.
+///
+/// Original rows are kept implicit (only their own bit is set) until they
+/// take part in a merge; this keeps the memory proportional to the number
+/// of merged rows rather than to `rows * rows / 64`.
+fn materialize_combo(
+    row: usize,
+    combos: &mut [Option<Vec<u64>>],
+    combo_words: usize,
+) -> Vec<u64> {
+    match combos.get_mut(row).and_then(Option::take) {
+        | Some(bits) => bits,
+        | None => {
+            let mut bits = vec![0_u64; combo_words];
+            bits[row / 64] |= 1_u64 << (row % 64);
+            bits
+        },
+    }
+}
+
+/// Removes a row from all of its columns and marks it dead.
+fn detach_row(
+    row: usize,
+    row_cols: &[Vec<u32>],
+    col_rows: &mut [Vec<u32>],
+    weights: &mut [usize],
+    heap: &mut BinaryHeap<Reverse<(usize, usize)>>,
+) {
+    let row_id = u32::try_from(row).unwrap_or(u32::MAX);
+    for &column in &row_cols[row] {
+        let column = column as usize;
+        if let Some(position) = col_rows[column].iter().position(|&value| value == row_id) {
+            col_rows[column].swap_remove(position);
+        }
+        weights[column] = weights[column].saturating_sub(1);
+        heap.push(Reverse((weights[column], column)));
+    }
+}
+
+/// Adds a row to all of its columns.
+fn attach_row(
+    row: usize,
+    columns: &[u32],
+    col_rows: &mut [Vec<u32>],
+    weights: &mut [usize],
+    heap: &mut BinaryHeap<Reverse<(usize, usize)>>,
+) {
+    let row_id = u32::try_from(row).unwrap_or(u32::MAX);
+    for &column in columns {
+        let column = column as usize;
+        col_rows[column].push(row_id);
+        weights[column] += 1;
+        heap.push(Reverse((weights[column], column)));
+    }
+}
+
 /// Rows whose xor is zero, as bitsets over the row indices.
+///
+/// Structured elimination processes columns from the lightest to the
+/// heaviest. A singleton column deletes its row (that row cannot be part of
+/// a dependency); a heavier column xors its shortest row into every other
+/// row containing it, which removes the column and discards the pivot row.
+/// The row operations are reversible and each row carries the xor of the
+/// original relations it is a combination of, so a row that becomes empty
+/// yields a dependency directly. Once the remaining core is small enough
+/// (or fill-in makes the sparse phase unprofitable) the core is eliminated
+/// densely with the same combination tracking.
 fn find_dependencies(
     rows: &[Vec<u64>],
     columns: usize,
 ) -> Vec<Vec<u64>> {
-    let mut basis: Vec<Option<(Vec<u64>, Vec<u64>)>> = vec![None; columns];
-    let combo_words = rows.len().div_ceil(64);
-    let mut dependencies = Vec::new();
-    for (row_index, row) in rows.iter().enumerate() {
-        let mut reduced = row.clone();
-        let mut combo = vec![0_u64; combo_words];
-        combo[row_index / 64] |= 1_u64 << (row_index % 64);
+    let row_count = rows.len();
+    let combo_words = row_count.div_ceil(64);
+    let mut row_cols: Vec<Vec<u32>> = rows
+        .iter()
+        .map(|row| sparse_columns(row, columns))
+        .collect();
+    let mut alive = vec![true; row_count];
+    let mut combos: Vec<Option<Vec<u64>>> = vec![None; row_count];
+    let mut col_rows: Vec<Vec<u32>> = vec![Vec::new(); columns];
+    for (row, cols) in row_cols.iter().enumerate() {
+        let row_id = u32::try_from(row).unwrap_or(u32::MAX);
+        for &column in cols {
+            col_rows[column as usize].push(row_id);
+        }
+    }
+    let mut weights: Vec<usize> = col_rows.iter().map(Vec::len).collect();
+    let mut heap: BinaryHeap<Reverse<(usize, usize)>> = weights
+        .iter()
+        .enumerate()
+        .map(|(column, &weight)| Reverse((weight, column)))
+        .collect();
+    let mut dependencies: Vec<Vec<u64>> = Vec::new();
+    let mut alive_count = row_count;
+    // A relation that is already a square is a dependency on its own.
+    for row in 0..row_count {
+        if row_cols[row].is_empty() {
+            let combo = materialize_combo(row, &mut combos, combo_words);
+            dependencies.push(combo);
+            alive[row] = false;
+            alive_count -= 1;
+        }
+    }
+    if dependencies.len() >= MAX_DEPENDENCIES {
+        return dependencies;
+    }
+    let mut steps = 0_usize;
+    let step_budget = row_count.saturating_mul(8).saturating_add(columns);
+    while let Some(Reverse((weight, column))) = heap.pop() {
+        if dependencies.len() >= MAX_DEPENDENCIES {
+            return dependencies;
+        }
+        steps += 1;
+        if steps > step_budget || alive_count == 0 || alive_count <= DENSE_CORE_TARGET {
+            break;
+        }
+        if weights[column] != weight {
+            continue;
+        }
+        if weight == 0 {
+            continue;
+        }
+        if weight > SPARSE_MAX_WEIGHT {
+            // The heap is ordered, so every remaining column is heavier.
+            break;
+        }
+        let active_rows: Vec<usize> = col_rows[column]
+            .iter()
+            .filter_map(|&row| {
+                let row = row as usize;
+                (alive.get(row).copied().unwrap_or(false) && !row_cols[row].is_empty())
+                    .then_some(row)
+            })
+            .collect();
+        if active_rows.len() != weight {
+            // Stale adjacency; the weight will be refreshed by a pending
+            // heap entry.
+            continue;
+        }
+        if weight == 1 {
+            let row = active_rows[0];
+            alive[row] = false;
+            alive_count -= 1;
+            detach_row(row, &row_cols, &mut col_rows, &mut weights, &mut heap);
+            row_cols[row].clear();
+            continue;
+        }
+        // Markowitz-style pivot: the shortest row keeps fill-in small.
+        let pivot_row = active_rows
+            .iter()
+            .copied()
+            .min_by_key(|&row| (row_cols[row].len(), row))
+            .unwrap_or(active_rows[0]);
+        if row_cols[pivot_row].len() > SPARSE_MAX_ROW {
+            break;
+        }
+        let pivot_columns = row_cols[pivot_row].clone();
+        let pivot_combo = materialize_combo(pivot_row, &mut combos, combo_words);
+        for &row in &active_rows {
+            if row == pivot_row {
+                continue;
+            }
+            let mut combined = materialize_combo(row, &mut combos, combo_words);
+            xor_bits(&mut combined, &pivot_combo);
+            let new_cols = xor_sorted(&row_cols[row], &pivot_columns);
+            detach_row(row, &row_cols, &mut col_rows, &mut weights, &mut heap);
+            if new_cols.is_empty() {
+                alive[row] = false;
+                alive_count -= 1;
+                row_cols[row].clear();
+                dependencies.push(combined);
+                continue;
+            }
+            row_cols[row] = new_cols;
+            combos[row] = Some(combined);
+            attach_row(row, &row_cols[row], &mut col_rows, &mut weights, &mut heap);
+        }
+        // The pivot column appears only in the pivot row now; that row
+        // cannot belong to a dependency and is discarded.
+        detach_row(pivot_row, &row_cols, &mut col_rows, &mut weights, &mut heap);
+        alive[pivot_row] = false;
+        alive_count -= 1;
+        row_cols[pivot_row].clear();
+    }
+    if dependencies.len() >= MAX_DEPENDENCIES {
+        return dependencies;
+    }
+    // Dense elimination of the remaining core.
+    let mut column_map = vec![usize::MAX; columns];
+    let mut core_columns = 0_usize;
+    for row in 0..row_count {
+        if !alive[row] {
+            continue;
+        }
+        for &column in &row_cols[row] {
+            let column = column as usize;
+            if column_map[column] == usize::MAX {
+                column_map[column] = core_columns;
+                core_columns += 1;
+            }
+        }
+    }
+    let words = core_columns.div_ceil(64);
+    let mut core: Vec<(Vec<u64>, Vec<u64>)> = Vec::new();
+    for row in 0..row_count {
+        if !alive[row] {
+            continue;
+        }
+        let mut dense = vec![0_u64; words];
+        for &column in &row_cols[row] {
+            let mapped = column_map[column as usize];
+            if mapped != usize::MAX {
+                dense[mapped / 64] |= 1_u64 << (mapped % 64);
+            }
+        }
+        let combo = materialize_combo(row, &mut combos, combo_words);
+        core.push((dense, combo));
+    }
+    let mut basis: Vec<Option<(Vec<u64>, Vec<u64>)>> = vec![None; core_columns];
+    for (mut reduced, mut combo) in core {
+        if dependencies.len() >= MAX_DEPENDENCIES {
+            break;
+        }
         loop {
             match highest_bit(&reduced) {
                 | Some(pivot) => {
                     match basis[pivot].take() {
                         | Some((row_bits, row_combo)) => {
-                            for (target, source) in reduced.iter_mut().zip(&row_bits) {
-                                *target ^= source;
-                            }
-                            for (target, source) in combo.iter_mut().zip(&row_combo) {
-                                *target ^= source;
-                            }
+                            xor_bits(&mut reduced, &row_bits);
+                            xor_bits(&mut combo, &row_combo);
                             basis[pivot] = Some((row_bits, row_combo));
                         },
                         | None => {
@@ -1021,6 +1545,8 @@ fn solve_dependencies(
         .iter()
         .map(|relation| parity_row(relation, columns))
         .collect();
+    stats.matrix_rows = rows.len();
+    stats.matrix_columns = columns;
     let dependencies = find_dependencies(&rows, columns);
     stats.dependencies = dependencies.len();
     for combo in dependencies {
@@ -1362,6 +1888,32 @@ mod tests {
             }
             assert!(xor.iter().all(|&word| word == 0));
         }
+    }
+
+    #[test]
+    fn limits_scale_up_to_eighty_digits() {
+        assert_eq!(QsLimits::MAX_DIGITS, 80);
+        let forty = QsLimits::for_digits(40);
+        let fifty_five = QsLimits::for_digits(55);
+        let sixty = QsLimits::for_digits(60);
+        let seventy = QsLimits::for_digits(70);
+        let eighty = QsLimits::for_digits(80);
+        assert!(forty.bound < fifty_five.bound);
+        assert!(fifty_five.bound < sixty.bound);
+        assert!(sixty.bound < seventy.bound);
+        assert!(seventy.bound < eighty.bound);
+        assert!(fifty_five.interval < sixty.interval);
+        assert!(sixty.interval < seventy.interval);
+        assert!(fifty_five.polynomials > 0);
+        assert!(sixty.polynomials > 0);
+        assert!(eighty.polynomials > 0);
+        assert!(fifty_five.large_prime_factor < fifty_five.bound);
+        assert!(sixty.large_prime_factor < sixty.bound);
+        assert!(sixty.extra_relations >= EXTRA_DEPENDENCIES);
+        assert!(eighty.max_sieve_positions <= 20_000_000_000);
+        // The hard ceiling applies before any factorization work.
+        let oversized = BigInt::from(10_u8).pow(81);
+        assert!(qs_factor(&oversized, eighty).is_none());
     }
 
     #[test]
