@@ -52,12 +52,19 @@
 //! The general terminating case builds the full Slater series
 //! `sum_h z^{b_h} C_h pF_{q-1}(A_h; B_h; (-1)^{p-m-n} z)` and truncates it
 //! exactly where a numerator parameter `A_i = 1 + b_h - a_i` is a
-//! non-positive integer. For `p = q` with `n = 0` the G-function is `0` for
-//! `|z| > 1` (the defining contour encloses no pole there), so its finite
-//! Slater series is *not* a global identity; such reductions are
-//! deliberately not installed. `p = q` reductions with `n > 0` are
-//! installed, because their value is the analytic continuation of the same
-//! closed form.
+//! non-positive integer. It is installed for `p < q`, where the series is a
+//! global identity.
+//!
+//! On the diagonal `p = q` the two residue series meet at `|z| = 1`.
+//! `G^{1,0}_{1,1}` is non-zero for `|z| < 1`, where it equals
+//! `z^b (1-z)^{a-b-1} / Gamma(a-b)`, but the contour encloses no pole on
+//! `|z| > 1` and the function is zero there; that closed form is only a
+//! subdomain identity, and this layer has no piecewise construct to express
+//! the domain, so no global reduction is installed for it (the numeric
+//! kernel still evaluates the correct branch on each side). The first-order
+//! `G^{1,1}_{1,1}` reduction is a global identity, being the analytic
+//! continuation of its series, and is installed; its numeric self-check
+//! exercises both sides of `|z| = 1` and the branch point at `z = -1`.
 //!
 //! # Differentiation and integration
 //!
@@ -2130,6 +2137,11 @@ mod tests {
             ("meijerg(1, 0, list(), list(0), z)", &[("z", 0.7)]),
             ("meijerg(1, 0, list(), list(3/2), z)", &[("z", 0.7)]),
             ("meijerg(1, 1, list(1/2), list(1/5), z)", &[("z", 0.7)]),
+            // The same first-order `p = q` reduction on the far side of the
+            // unit circle and at a large argument; the branch-cut side is
+            // exercised by the complex kernel test.
+            ("meijerg(1, 1, list(1/2), list(1/5), z)", &[("z", 2.0)]),
+            ("meijerg(1, 1, list(1/2), list(1/5), z)", &[("z", 1e4)]),
             ("meijerg(1, 0, list(), list(0, 1/2), z)", &[("z", 0.7)]),
             ("meijerg(1, 0, list(), list(1/2, 0), z)", &[("z", 0.7)]),
             ("meijerg(1, 1, list(1), list(1/2, 0), z)", &[("z", 0.7)]),
@@ -2248,6 +2260,28 @@ mod tests {
         let (text, reduced, _) = run_with("meijerg(3, 0, list(0), list(0), z)", false);
         assert!(!reduced, "invalid order was reduced to {text}");
         assert!(text.contains("meijerg"), "{text}");
+    }
+
+    /// `G^{1,0}_{1,1}` has no global closed form: it equals
+    /// `z^b (1-z)^{a-b-1}/Gamma(a-b)` for `|z| < 1` and is zero for
+    /// `|z| > 1`, and this layer has no conditional/piecewise construct to
+    /// express that domain.  The request must stay unevaluated rather than
+    /// becoming wrong, while the numeric phase still follows the contour.
+    #[test]
+    fn diagonal_g10_is_not_a_global_identity() {
+        let (text, reduced, _) = run_with("meijerg(1, 0, list(1/2), list(1/5), z)", false);
+        assert!(
+            !reduced,
+            "a subdomain identity was installed globally: {text}"
+        );
+        assert!(text.contains("meijerg"), "{text}");
+        let (_, _, inside) = run_with("meijerg(1, 0, list(1/2), list(1/5), 0.25)", true);
+        let (_, _, outside) = run_with("meijerg(1, 0, list(1/2), list(1/5), 2.0)", true);
+        assert!(
+            inside.is_some_and(|v| (v - 0.309_846_143_397_960_09).abs() < 1e-12),
+            "{inside:?}"
+        );
+        assert_eq!(outside, Some(0.0));
     }
 
     #[test]

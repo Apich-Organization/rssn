@@ -28,7 +28,7 @@ use crate::graph::op::core;
 
 /// Why two dimensions could not be unified.
 #[derive(Clone, Debug)]
-pub(crate) enum UnifyError {
+pub enum UnifyError {
     /// The dimensions differ.
     Mismatch(DimTerm, DimTerm),
     /// A symbolic exponent would have to satisfy an equation.
@@ -37,7 +37,7 @@ pub(crate) enum UnifyError {
 
 /// The substitutions produced while unifying dimension variables.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct Unifier {
+pub struct Unifier {
     subst: Vec<(DimVarId, DimTerm)>,
 }
 
@@ -243,7 +243,7 @@ fn merge_var(
 
 /// The inference engine. It borrows the graph's arena through a lock so the
 /// graph itself stays `Sync`.
-pub(crate) struct DimInfer<'a> {
+pub struct DimInfer<'a> {
     graph: &'a Graph,
     arena: &'a RwLock<DimArena>,
     assumptions: &'a HashMap<SymbolId, DimTerm>,
