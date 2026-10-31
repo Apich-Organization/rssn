@@ -1398,14 +1398,15 @@ CAS / scientific-library workflow; **(c)** niche or research level.
 | (a) | clippy: a doc table with `\|` inside code spans and a list-like continuation line inside a code span (`indefinite_sum.rs`) made `doc_markdown` report "backticks are unbalanced" (25 table rows fixed) | **fixed** |
 | (b) | wavelets (SciPy / PyWavelets workflows) | **done (core)**: `kernels::wavelets` — Haar, `db2`, `db3`, `db4` orthogonal filters, periodised `dwt` / `idwt`, `wavedec` / `waverec`; tests: orthonormality and vanishing moments of the filters, Parseval, exact reconstruction, multilevel round trip, error cases. Not done: biorthogonal / symmetric families, 2-D transform, other boundary extensions |
 | (b) | fractional Fourier transform | **done (core)**: `kernels::wavelets::{frft_matrix, frft}`, the discrete (Candan / Pei) transform from the Hermite-like eigenvectors of the matrix commuting with the DFT (degenerate eigenvalue pairs, which occur for even lengths, are rotated to pure DFT eigenvectors); tests: `a = 0` identity, `a = 1` unitary DFT, `a = 2` reversal, `a = 4`, index additivity, unitarity (lengths 8, 15, 16, 24). `O(N^3)` |
-| (b) | F4 / F5 Gröbner | **done (L15)**: `groebner_f4` / `groebner_f5` in `rules/poly/f4.rs` and `f5.rs`, matrix elimination and signature criteria, compared literally with Buchberger on Katsura/cyclic/random systems; F5 falls back to the complete-pair or matrix tier on large benchmarks (documented). **Finite fields (done, 2026-10-31)**: the same engines run over any prime field `GF(p)` through a coefficient domain with genuine modular arithmetic; forms `groebner_f4(polys, vars[, order][, p])` and `groebner_f5(...)`; prime fields only (extension fields out of scope). |
-| (b) | quadratic sieve | **done (L15)**: MPQS in `kernels/quadratic_sieve.rs` with factor base, large primes, GF(2) elimination and `factorint` dispatch; BPSW primality for large integers; 40-digit semiprimes ~1–2 s, >50 digits deliberately unevaluated |
-| (b) | Meijer G, Hermite reduction for algebraic integrands, real quantifier elimination, multivariate series | **done (L15)**: Meijer G (Slater/Mellin–Barnes numeric, symbolic reductions, derivative/integral/Mellin/series); Hermite reduction in `Q(x)(√D)` with confluent/quadratic radicands and residue log part; CAD-based `real_qe`/`cad_cells` with exact algebraic numbers and `exists`/`forall` routing; `mseries`/`mtaylor` with symbolic exponents and directional Laurent expansions |
+| (b) | F4 / F5 Gröbner | **done (L15)**: `groebner_f4` / `groebner_f5` in `rules/poly/f4.rs` and `f5.rs`, matrix elimination and signature criteria, compared literally with Buchberger on Katsura/cyclic/random systems; F5B runs the criteria path on Katsura-4/Cyclic-5 (~29/~26 ms grevlex); the complete-pair rerun was removed and the F4 matrix is only a resource fallback. **Finite fields (done, 2026-10-31)**: the same engines run over any prime field `GF(p)` through a coefficient domain with genuine modular arithmetic; forms `groebner_f4(polys, vars[, order][, p])` and `groebner_f5(...)`; prime fields only (extension fields out of scope). |
+| (b) | quadratic sieve | **done (L15)**: MPQS in `kernels/quadratic_sieve.rs` with factor base, large primes, GF(2) elimination and `factorint` dispatch; BPSW primality for large integers; the 50-digit ceiling is gone (practical ~65 digits; 55-digit ~8–12 s, 60-digit ~20–45 s; above the 40k column cap returns unevaluated) |
+| (b) | Meijer G, Hermite reduction for algebraic integrands, real quantifier elimination, multivariate series | **done (L15)**: Meijer G (Slater/Mellin–Barnes numeric, symbolic reductions, derivative/integral/Mellin/series); Hermite reduction in `Q(x)(√D)` with confluent/quadratic radicands and residue log part; CAD-based `real_qe`/`cad_cells` with exact algebraic numbers, no fixed variable cap and `exists`/`forall` routing; `mseries`/`mtaylor` with Puiseux monomial factors, symbolic exponents and directional Laurent expansions |
 | (c) | Guruswami–Sudan / LDPC decoding, Darboux polynomials / Jacobi last multiplier | documented, not done |
 | (c) | all simulation `Limitations:` (`ns_mac` free surface / variable density, DG curved hexahedra, WENO in more than one dimension, `kerr` closed forms, `spin_models` beyond nearest neighbour, `euler_amr` 3-D, `yee_fdtd` media, `hyperelastic` P1 locking, `sse` winding numbers, DPD frozen walls, directional Helmholtz compression, ...) | documented, not done |
 
-Header: `rssn.h` / `rssn.hpp` regenerated with `DEV=1 cargo build`; the diff is exactly the new declaration
-`rssn_compute_all` (21 lines in each file).
+Header: `rssn.h` / `rssn.hpp` regenerated with `DEV=1 cargo build`; the diff
+includes `rssn_compute_all` and the dimension API (`rssn_dimension`,
+`rssn_compute_json`, mode/assumption setters and status codes).
 
 **Final suite (one run of `cargo test --all-targets --no-fail-fast`, then `cargo test --doc`, log in the scratch directory), after all Round 3 changes:**
 
@@ -1437,22 +1438,26 @@ independent reference.
 
 | Algorithm | Files | Public entry points | Tests (merged tree) |
 |---|---|---|---|
-| Meijer G | `kernels/meijer.rs`, `rules/special/meijer.rs` | `meijer_g`, `meijer_g_real`; `meijerg(m,n,list(a),list(b),z)`, `meijer_mellin`, `meijer_series` | `--lib meijer` 24; `--test meijer_g` 10 |
-| Hermite reduction for algebraic integrands | `rules/calculus/algebraic.rs` + `algebraic/{field,hermite,logpart,quadratic,term}.rs` | `integrate_algebraic` (crate) and the `integral` kernel | `--lib rules::calculus` 47; `--test algebraic_integration` 9 |
-| Real quantifier elimination | `rules/solve/qe.rs` + `qe/{alg,poly,field,cad,formula,qe_impl}.rs`, `logic/ext.rs` routing | `real_qe(formula, list(vars))`, `cad_cells(polys, list(vars))`; `exists`/`forall` over real polynomial atoms | `--lib rules::solve::qe` 28; `--test real_qe` 10; `--lib rules::logic` 22 |
-| Multivariate series | `rules/calculus/multiseries.rs` | `mseries(f, list(x), list(a), N)`, `mtaylor(...)` | `--lib multiseries` 5; `--test multivariate_series` 13 |
-| F4 / F5 Gröbner | `rules/poly/f4.rs`, `f5.rs`, `rules/poly/field.rs` | `groebner_f4(polys, vars[, order][, p])`, `groebner_f5(...)`; `GF(p)` coefficient domain (`Domain`, `groebner_in`, `reduce_in`, `fglm_in`, `groebner_via_in`) | `--lib rules::poly` 92 (14 new finite-field); `--test f4_f5` 16 (6 finite-field) |
-| Quadratic sieve (MPQS) | `kernels/quadratic_sieve.rs`, `rules/number_theory.rs` dispatch | `qs_factor`, `qs_factor_with`, `QsLimits`, `QsConfig`, `QsStats`; `factorint` integration | `--lib kernels::quadratic_sieve` 9; `--test quadratic_sieve` 8; `--lib rules::number_theory` 27 |
+| Meijer G | `kernels/meijer.rs`, `rules/special_meijer.rs` | `meijer_g`, `meijer_g_real`; `meijerg(m,n,list(a),list(b),z)`, `meijer_mellin`, `meijer_series` | `--lib meijer` 34; `--test meijer_g` 10 |
+| Hermite reduction for algebraic integrands | `rules/calculus/algebraic.rs` + `algebraic_{field,hermite,logpart,quadratic,term}.rs` | `integrate_algebraic` (crate) and the `integral` kernel | `--lib rules::calculus` 60; `--test algebraic_integration` 12 |
+| Real quantifier elimination | `rules/solve/qe.rs` + `qe_{alg,poly,field,cad,formula,qe_impl}.rs`, `rules/logic.rs` routing | `real_qe(formula, list(vars))`, `cad_cells(polys, list(vars))`; `exists`/`forall` over real polynomial atoms | `--lib rules::solve::qe` 39; `--test real_qe` 15; `--lib rules::logic` 22 |
+| Multivariate series | `rules/calculus/multiseries.rs` | `mseries(f, list(x), list(a), N)`, `mtaylor(...)` | `--lib multiseries` 14; `--test multivariate_series` 17 |
+| F4 / F5 Gröbner | `rules/poly/f4.rs`, `f5.rs`, `rules/poly/field.rs` | `groebner_f4(polys, vars[, order][, p])`, `groebner_f5(...)`; `GF(p)` coefficient domain (`Domain`, `groebner_in`, `reduce_in`, `fglm_in`, `groebner_via_in`) | `--lib rules::poly` 92 (14 finite-field); `--test f4_f5` 16 (6 finite-field) |
+| Quadratic sieve (MPQS) | `kernels/quadratic_sieve.rs`, `rules/number_theory.rs` dispatch | `qs_factor`, `qs_factor_with`, `QsLimits`, `QsConfig`, `QsStats`; `factorint` integration | `--lib kernels::quadratic_sieve` 10; `--test quadratic_sieve` 11; `--lib rules::number_theory` 27 |
 
 **Meijer G.** Numeric evaluation by Slater's residue series (exact
-consecutive-gamma ratios) with a numerical Mellin–Barnes fallback, confluent
-poles by parameter shift and Richardson extrapolation; symbolic reductions to
-powers, exponentials, erf/erfc, log/atan and Bessel forms, the terminating
-Slater pFq; derivative, antiderivative, Mellin transform and series at zero
-and infinity, all verified numerically. Limits: confluent-pole accuracy
-~1e-9 (Y_n ~1e-7); p<q at very large |z| and p=q near |z|=1 outside the
-Mellin–Barnes regime stay unevaluated; `G^{1,0}_{1,1}` is deliberately not
-reduced because its closed form is not global (documented).
+consecutive-gamma ratios) with a numerical Mellin–Barnes fallback,
+**exact confluent-pole residues** (differentiated Lanczos log-Gamma,
+reflection formula, repeated/integer-spaced parameters, order up to 64) and
+`p = q` evaluation on both sides of the unit circle; symbolic reductions to
+powers, exponentials, erf/erfc, log/atan, Bessel J/Y/K/I with the required
+parameter relations; the terminating Slater pFq; derivative, antiderivative,
+Mellin transform and series at zero and infinity, all verified numerically.
+Confluent accuracy is now ~1e-11–1e-13 (was ~1e-9, worst 1e-7). Limits:
+`p<q` at very large |z|, `p=q` exactly on |z| = 1 with `delta <= 0`, and
+identically-zero residue families stay unevaluated; literal `G^{1,0}_{1,1}`
+has no global closed form (it is zero for |z|>1) and is deliberately not
+reduced, while `G^{1,1}_{1,1}` is.
 
 **Hermite reduction.** Exact arithmetic in `Q(x)(√D)`: square-free
 normalisation, conic parametrisations for degree 1–2 radicands, and for degree
@@ -1482,9 +1487,14 @@ projection with the full coefficient/nullification sets, exact lifting
 elimination, sign-condition output minimised greedily, and an independent
 rational-grid verification of every block. `exists`/`forall` over polynomial
 real atoms are routed here; non-polynomial atoms stay unevaluated instead of
-falling into the Boolean path. Limits (documented): 4 CAD variables, 256
-projection polynomials/level, 20 000 cells, fibre degree 48, 20 000 terms per
-projection polynomial, number-field degree 64; exhaustion returns unevaluated.
+falling into the Boolean path. There is **no variable cap**: projection,
+lifting and cell construction are generic in the number of variables, and
+five- and six-variable formulas with small CADs are decided. Limits are
+resource budgets (256 projection polynomials per level and 4 096 over the
+tower, 20 000 cells, fibre degree 48, 20 000 terms per projection polynomial,
+number-field degree 64, 1 000 000 projection/lifting steps); exhaustion
+returns unevaluated. Audit fixes include binding-aware free variables,
+single-coprime-factor lifting, and exact rational-root snapping.
 
 **Multivariate series.** Recursive univariate expansion with a provably
 sufficient coefficient bound whenever the function has a monomial factor
@@ -1492,22 +1502,29 @@ sufficient coefficient bound whenever the function has a monomial factor
 Laurent expansions for rational poles along a hypersurface, exact symbolic
 coefficients and points, finite points and ±∞, `n=1` identical to
 `taylor`/`laurent`, and an error term documented as the truncated part (same
-convention as `taylor`). Genuine multivariate Puiseux factors (`sqrt(x*y)`),
-essential singularities and branch points stay unevaluated; limits are 8
-variables and order 20.
+convention as `taylor`). **Genuine Puiseux factors are expanded** by rational
+monomial-factor extraction (`sqrt(x*y)`, `x^(4/3)`, `(x*y)^(5/2)`,
+`sqrt(x^2*(1+y))`), and powers with a **symbolic exponent** are expanded by
+the binomial series when the base has a non-zero numeric constant
+(`(1+x+y)^a`). Genuine branch loci (`(x^2+y^2)^(1/2)` at the origin) and
+essential singularities (`exp(1/x)`, `sin(1/x)`, `exp(x/y)`, classified
+explicitly) stay unevaluated and never return a fabricated polynomial.
+Limits: 8 variables, order 20, ramification caps Q<=64 / Q*N<=128, symbolic
+exponents only for analytic bases.
 
 **F4 / F5.** F4: sugar/normal-strategy batches, product and chain criteria,
 Macaulay matrix with symbolic preprocessing, sparse exact Gaussian elimination
 over the coefficient domain, row→polynomial map, tail reduction, unique
 reduced basis. F5: signatures `(module monomial, index)`, position-over-term
 order, F5 + rewritten + rewritable criteria, signature-admissible reduction,
-homogenisation for affine input, FGLM conversion, and a certification pass
-with three budgeted tiers that all return the same reduced basis, so a
-criterion affects runtime but never correctness. Both operators return exactly
-`groebner`'s format and are compared literally with Buchberger in the
-integration suite. F5 is slower on the large benchmarks (katsura-4/cyclic-5
-~2.5–3.4 s, matrix fallback for cyclic-5); F4 katsura-4/cyclic-5 take 76/330 ms
-in grevlex.
+homogenisation for affine input, FGLM conversion, with the F4 matrix as a
+last-resort resource fallback; both operators return exactly `groebner`'s
+format and are compared literally with Buchberger in the integration suite.
+F5B now runs on the criteria path itself: Katsura-4 grevlex ~29 ms (was
+6.5 s) and Cyclic-5 ~26 ms (was 5.9 s), all orders correct; the complete-pair
+rerun was removed. Positive-dimensional cyclic-4 lex/grlex uses the
+documented FGLM order fallback, recorded in `F5Stats::matrix_order_fallback`.
+F4 katsura-4/cyclic-5 take 76/330 ms in grevlex.
 
 **F4 / F5 over finite fields (2026-10-31).** `rules/poly/field.rs` adds the
 coefficient domain `Domain` (`Q` or `GF(p)`, `p` an arbitrary-precision prime
@@ -1539,31 +1556,44 @@ for Cyclic-4 is recorded in `matrix_order_fallback` exactly as over `Q`.
 `b² ≡ n (mod a)`, a Jacobi factor base, log sieving, single-large-prime
 pairing, exact BigInt factor extraction, bitset GF(2) elimination and
 `gcd(X±Y,n)` retries, fully deterministic; `factorint` dispatches large
-composites to it. A 40-digit semiprime takes ~1–2 s in the test profile; 50
-random 20–30 digit semiprimes ~4–10 s; BPSW replaced the earlier 12-base
-Miller–Rabin for large integers after the audit found the 24-digit strong
-pseudoprime 318665857834031151167461; composites above 50 digits are
-deliberately left unevaluated instead of falling through to ECM.
+composites to it. The 50-digit ceiling is gone: parameters scale from the QS
+heuristic through 80 digits (practical ceiling ~65 digits, enforced by a 40k
+column cap that returns `None`, not a hang), the GF(2) solve is structured
+Markowitz elimination with bitsets, and the sieve covers both parities. A
+40-digit semiprime takes ~1–2 s; 55-digit ~8–12 s; 60-digit ~20–45 s;
+65-digit is bounded by the test budget. BPSW replaced the earlier 12-base
+Miller–Rabin after the audit found the 24-digit strong pseudoprime
+318665857834031151167461.
 
-**Dimensional analysis.** The same round added the dimension typing layer
+**Dimensional analysis.** The dimension typing layer
 (`docs/DIMENSIONS.md`): `DimensionMode::Advisory` by default, strict hard
-errors, symbolic exponents, units and affine temperatures, user-defined base
-dimensions and an explicit bypass. The core tests are `--lib graph::dim`
-(13 passed) and `--test dimensions` (7 passed). The operator coverage
-workstream is complete: `graph::dim::tests::every_standard_operator_has_a_dimension_rule`
-is unignored and green, covering all standard rule sets; group tests are
-`--test dimensions_core` (19), `dimensions_special` (12), `dimensions_ode_pde`
-(4) and `dimensions_physics` (9).
+errors, symbolic exponents, units and affine temperature boundary checks,
+user-defined base dimensions (`base:Name` text syntax) and an explicit
+bypass. The **C API** exposes dimension mode/assumptions/base dimensions,
+`rssn_dimension`, `rssn_compute_json` (term, value, reduced, dimension,
+diagnostics) and `RSSN_STATUS_DIMENSION`/`RSSN_STATUS_INVALID_ARGUMENT`
+(`rssn.h`/`rssn.hpp` regenerated). Findings are structured `DimError`s
+(`UnknownUnit`, `Affine`, `MixedList`, ...) and advisory non-conflicts do not
+fail Strict. The core tests are `--lib graph::dim` (16), `--test dimensions`
+(15), `--test dimensions_core` (24), `dimensions_special` (18),
+`dimensions_ode_pde` (4), `dimensions_physics` (9) — 86 tests — plus the FFI
+dimension test. The coverage scanner is unignored and non-vacuous; it rejects
+missing, explicit `Unspecified` and accidental `Any` rules. Structured
+decompositions (`lu`, `qr`, `svd`, `eigenvects`, `jordan`, `ldl`, ...),
+distribution shape parameters and homogeneous `matfun` are typed.
 
-**Known limits after the round.** F4/F5 use FGLM for lex/grlex operator routes
-when the ideal is zero-dimensional; F5's signature loop is used as-is only for
-small/medium systems; Meijer G and multivariate series have the numeric and
-support limits listed above; QE is bounded to four CAD variables; the
-quadratic sieve caps at 50 digits; Hermite's logarithmic part closes when the
-residue is in the base field or is the logarithmic derivative of an algebraic
-function (`g = P + Q y` with `P`, `Q` of degree at most `deg C + 2`), and
-otherwise leaves the reduced integral. All are documented in the module docs
-and return unevaluated rather than a wrong answer.
+**Known limits after the round.** Meijer G keeps the genuine numeric limits
+listed above; QE has no variable cap but resource budgets; multivariate series
+has the ramification/order and essential-singularity limits listed above; F5
+is prime-field only (extension fields `GF(p^k)` use `gfx_*`) and FGLM is
+bounded at quotient dimension 400; the quadratic sieve is practical to ~65
+digits; Hermite's logarithmic part closes when the residue is in the base
+field or is the logarithmic derivative of an algebraic function (`g = P + Q y`
+with `P`, `Q` of degree at most `deg C + 2`), and otherwise leaves the reduced
+integral. Dimension limits are listed in `docs/DIMENSIONS.md` §13 (text-only
+C diagnostics, homogeneous-only `matfun`, affine points boundary-checked but
+not a separate type, container answers not tuple-typed). All documented limits
+return unevaluated rather than a wrong answer.
 
 For F4/F5 the finite-field support covers prime fields `GF(p)` only (no
 `GF(p^k)`; use the `gfx_*` extension-field operators for those), requires the
