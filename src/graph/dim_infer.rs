@@ -1,5 +1,10 @@
 //! Dimension inference over the term DAG.
 
+// The module is `pub(crate)` and its items are used through it, so the
+// explicit `pub(crate)` on each item is what the crate needs; the lint would
+// suggest a narrower visibility that the crate-wide re-exports do not use.
+#![allow(clippy::redundant_pub_crate)]
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::RwLock;
