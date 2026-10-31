@@ -7,6 +7,15 @@
 //! changes nothing), that ideal membership agrees, that repeated runs agree,
 //! and that the request is left unevaluated instead of returning a wrong
 //! answer when a limit is hit or the arguments are malformed.
+//!
+//! The finite-field tests exercise the extended forms
+//! `groebner_f4(polys, vars[, order][, p])` and `groebner_f5(...)` over prime
+//! fields `GF(p)`: F4 and F5 must return the same monic, reduced and sorted
+//! basis with canonical representatives `0 .. p`, the three-argument form whose
+//! third argument is an integer must default to the lexicographic order, and
+//! composite or non-positive moduli must leave the request unevaluated. The
+//! independent `GF(p)` Buchberger oracle is in the unit tests
+//! (`rules::poly::field`).
 
 use std::time::Instant;
 
@@ -758,10 +767,16 @@ fn unevaluated_requests_instead_of_wrong_answers() {
         // The arguments must be lists.
         let (text, reduced) = compute(&session, &format!("{operator}(x0 - 1, list(x0))"));
         assert!(!reduced, "{operator}: `{text}` should be unevaluated");
-        // Too many arguments.
+        // A fourth argument that is not a modulus is refused (the four-argument
+        // form is `order, p`), and so is a fifth argument.
         let (text, reduced) = compute(
             &session,
             &format!("{operator}(list(x0), list(x0), lex, grevlex)"),
+        );
+        assert!(!reduced, "{operator}: `{text}` should be unevaluated");
+        let (text, reduced) = compute(
+            &session,
+            &format!("{operator}(list(x0), list(x0), lex, 5, 7)"),
         );
         assert!(!reduced, "{operator}: `{text}` should be unevaluated");
     }
@@ -826,5 +841,419 @@ fn stress_with_many_variables_is_bounded() {
             "{operator} took {elapsed:?} on the stress system"
         );
         assert_eq!(computed, reference, "{operator} on the stress system");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Prime fields GF(p): the extended operator forms
+// ---------------------------------------------------------------------------
+
+/// `operator(list(polys), list(vars)[, order], p)`.
+fn finite_field_request(
+    operator: &str,
+    polynomials: &[String],
+    vars: &[String],
+    order: Option<&str>,
+    modulus: i64,
+) -> String {
+    let mut args = format!(
+        "list({}), list({})",
+        polynomials.join(", "),
+        vars.join(", ")
+    );
+    if let Some(order) = order {
+        args.push_str(", ");
+        args.push_str(order);
+    }
+    args.push_str(&format!(", {modulus}"));
+    format!("{operator}({args})")
+}
+
+/// Every coefficient of a `GF(p)` basis must print as an integer in `0 .. p`.
+fn assert_canonical_mod(
+    text: &str,
+    modulus: i64,
+) {
+    assert!(
+        !text.contains('/'),
+        "a GF({modulus}) basis contains a rational number: {text}"
+    );
+    assert!(
+        !text.contains('-'),
+        "a GF({modulus}) basis contains a negative sign: {text}"
+    );
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0_usize;
+    while i < chars.len() {
+        if chars.get(i).is_some_and(|c| c.is_ascii_digit()) {
+            let start = i;
+            while chars.get(i).is_some_and(|c| c.is_ascii_digit()) {
+                i = i.saturating_add(1);
+            }
+            let literal: String = chars
+                .get(start..i)
+                .map(|digits| digits.iter().collect())
+                .unwrap_or_default();
+            let previous = start.checked_sub(1).and_then(|k| chars.get(k).copied());
+            // Digits of a variable name (`x0`) and of an exponent (`x0^12`)
+            // are not coefficients.
+            let part_of_name = previous.is_some_and(|p| p.is_ascii_alphabetic() || p == '_');
+            let exponent = previous == Some('^');
+            if !part_of_name && !exponent {
+                let value: i64 = literal
+                    .parse()
+                    .unwrap_or_else(|error| panic!("cannot parse `{literal}`: {error}"));
+                assert!(
+                    (0..modulus).contains(&value),
+                    "coefficient {value} is not the canonical representative mod {modulus}: {text}"
+                );
+            }
+        } else {
+            i = i.saturating_add(1);
+        }
+    }
+}
+
+/// The systems the operator tests run over every prime and order.
+fn finite_field_systems() -> Vec<(&'static str, Vec<String>, Vec<String>)> {
+    let two = variables(2);
+    let three = variables(3);
+    vec![
+        (
+            "circle and line",
+            three.clone(),
+            vec!["x0^2 + x1^2 - 1".to_owned(), "x0 - x1".to_owned()],
+        ),
+        ("katsura-3", katsura(3).vars, katsura(3).polynomials),
+        (
+            "cyclic-3",
+            cyclic(3, "grevlex").vars,
+            cyclic(3, "grevlex").polynomials,
+        ),
+        (
+            "cyclic-4",
+            cyclic(4, "grevlex").vars,
+            cyclic(4, "grevlex").polynomials,
+        ),
+        (
+            "non-monic",
+            three.clone(),
+            vec![
+                "2*x0^2 + 3*x1 - 1".to_owned(),
+                "4*x0*x2 - 5".to_owned(),
+                "-6*x1^2 + 7*x0".to_owned(),
+            ],
+        ),
+        (
+            "rational coefficients",
+            two.clone(),
+            vec!["x0^2 - 1/2".to_owned(), "x0*x1 - 1/3".to_owned()],
+        ),
+        (
+            "unit ideal",
+            two.clone(),
+            vec!["x0".to_owned(), "x0 + 1".to_owned()],
+        ),
+    ]
+}
+
+#[test]
+fn finite_field_engines_agree_in_every_order_and_prime() {
+    let session = session();
+    let order_names = ["grevlex", "grlex", "lex"];
+    let mut cases = 0_usize;
+    for (name, vars, polynomials) in finite_field_systems() {
+        for modulus in [2_i64, 3, 5, 7, 101] {
+            // 1/2 has no image in GF(2) and 1/3 none in GF(3): those requests
+            // must stay unevaluated, which the dedicated test checks.
+            if name == "rational coefficients" && modulus < 5 {
+                continue;
+            }
+            for order in order_names {
+                let mut answers: Vec<String> = Vec::new();
+                for operator in ["groebner_f4", "groebner_f5"] {
+                    let request =
+                        finite_field_request(operator, &polynomials, &vars, Some(order), modulus);
+                    let answer = basis(&session, &request);
+                    assert_canonical_mod(&answer, modulus);
+                    // The output is a reduced basis: feeding it back changes
+                    // nothing.
+                    let again = basis(
+                        &session,
+                        &format!(
+                            "{operator}({answer}, list({}), {order}, {modulus})",
+                            vars.join(", ")
+                        ),
+                    );
+                    assert_eq!(
+                        again, answer,
+                        "{name} over GF({modulus}) in {order}: {operator} is not reduced"
+                    );
+                    if order == "lex" {
+                        // The three-argument form with an integer third
+                        // argument is the lexicographic order.
+                        let implicit = basis(
+                            &session,
+                            &finite_field_request(operator, &polynomials, &vars, None, modulus),
+                        );
+                        assert_eq!(
+                            implicit, answer,
+                            "{name} over GF({modulus}): the third-argument modulus form must default to lex"
+                        );
+                    }
+                    answers.push(answer);
+                }
+                assert_eq!(
+                    answers[0], answers[1],
+                    "{name} over GF({modulus}) in {order}: F4 and F5 differ"
+                );
+                cases = cases.saturating_add(1);
+            }
+        }
+    }
+    eprintln!("finite-field operator suite: {cases} systems/orders/primes");
+    assert!(cases >= 15, "the finite-field operator suite is too small");
+}
+
+#[test]
+fn finite_field_rational_coefficients_and_degenerate_generators() {
+    let session = session();
+    // 1/2 has an image modulo an odd prime: over GF(5), 1/2 = 3, so
+    // 2*x0 - 1 = 2*(x0 - 3) and the monic basis element is x0 + 2.
+    assert_eq!(
+        basis(&session, "groebner_f4(list(2*x0 - 1), list(x0), 5)"),
+        "list(x0 + 2)"
+    );
+    assert_eq!(
+        basis(&session, "groebner_f5(list(2*x0 - 1), list(x0), 5)"),
+        "list(x0 + 2)"
+    );
+    // Over GF(3), 1/2 = 2, so x0 - 2 = x0 + 1.
+    assert_eq!(
+        basis(&session, "groebner_f4(list(2*x0 - 1), list(x0), 3)"),
+        "list(x0 + 1)"
+    );
+    // The rational form is unchanged: no modulus, no modular arithmetic.
+    assert_eq!(
+        basis(&session, "groebner_f4(list(2*x0 - 1), list(x0))"),
+        "list(x0 - 1/2)"
+    );
+    // A generator that vanishes modulo p is the zero polynomial: it does not
+    // change the ideal.
+    assert_eq!(
+        basis(&session, "groebner_f4(list(5, x0 - 1), list(x0), 5)"),
+        "list(x0 + 4)"
+    );
+    assert_eq!(
+        basis(&session, "groebner_f5(list(5, x0 - 1), list(x0), 5)"),
+        "list(x0 + 4)"
+    );
+    // A constant that does not vanish is the unit ideal.
+    assert_eq!(
+        basis(&session, "groebner_f4(list(2), list(x0, x1), 5)"),
+        "list(1)"
+    );
+    // The zero ideal and an empty generator list.
+    for operator in ["groebner_f4", "groebner_f5"] {
+        assert_eq!(
+            basis(
+                &session,
+                &format!("{operator}(list(0, 0), list(x0, x1), 5)")
+            ),
+            "list()"
+        );
+        assert_eq!(
+            basis(&session, &format!("{operator}(list(), list(x0, x1), 101)")),
+            "list()"
+        );
+    }
+}
+
+#[test]
+fn finite_field_invalid_moduli_are_unevaluated() {
+    let session = session();
+    for operator in ["groebner_f4", "groebner_f5"] {
+        // A composite modulus has zero divisors: no Gröbner basis over a
+        // field is defined, so the request stays unevaluated rather than
+        // returning an incomplete answer.
+        for modulus in ["4", "0", "1", "-5", "1001"] {
+            let (text, reduced) = compute(
+                &session,
+                &format!("{operator}(list(x0^2 - 1), list(x0), {modulus})"),
+            );
+            assert!(
+                !reduced,
+                "{operator}: GF({modulus}) must be refused, got {text}"
+            );
+            assert!(text.contains(operator), "{operator}: {text}");
+        }
+        // A coefficient with no image in the prime field.
+        for source in ["x0/5", "x0/10"] {
+            let (text, reduced) = compute(
+                &session,
+                &format!("{operator}(list({source}), list(x0), 5)"),
+            );
+            assert!(
+                !reduced,
+                "{operator}: `{source}` has no image mod 5, got {text}"
+            );
+        }
+        // Only the order-then-modulus four-argument form is accepted.
+        let (text, reduced) = compute(&session, &format!("{operator}(list(x0), list(x0), 5, lex)"));
+        assert!(!reduced, "{operator}: `5, lex` must be refused: {text}");
+        // Five arguments are still malformed.
+        let (text, reduced) = compute(
+            &session,
+            &format!("{operator}(list(x0), list(x0), lex, 5, 7)"),
+        );
+        assert!(
+            !reduced,
+            "{operator}: five arguments must be refused: {text}"
+        );
+    }
+}
+
+#[test]
+fn finite_field_random_operator_systems_agree() {
+    let session = session();
+    let n = 3_usize;
+    let vars = variables(n);
+    let mut rng = Lcg::new(0xC0FF_EE00);
+    let mut cases = 0_usize;
+    for modulus in [2_i64, 3, 5, 101] {
+        for order in ["grevlex", "grlex", "lex"] {
+            for _ in 0..2 {
+                let polynomials: Vec<String> = (0..3)
+                    .map(|_| {
+                        let terms: Vec<(i64, Vec<u32>)> = (0..4)
+                            .map(|_| {
+                                let coefficient = i64::try_from(
+                                    rng.next() % u64::try_from(2 * modulus - 1).unwrap_or(1),
+                                )
+                                .unwrap_or(0)
+                                    - (modulus - 1);
+                                let exponents: Vec<u32> = (0..n)
+                                    .map(|_| u32::try_from(rng.next() % 3).unwrap_or(0))
+                                    .collect();
+                                (coefficient, exponents)
+                            })
+                            .collect();
+                        polynomial(&vars, &terms)
+                    })
+                    .collect();
+                let f4 = basis(
+                    &session,
+                    &finite_field_request("groebner_f4", &polynomials, &vars, Some(order), modulus),
+                );
+                let f5 = basis(
+                    &session,
+                    &finite_field_request("groebner_f5", &polynomials, &vars, Some(order), modulus),
+                );
+                assert_eq!(
+                    f4, f5,
+                    "a random system over GF({modulus}) in {order}: F4 and F5 differ"
+                );
+                assert_canonical_mod(&f4, modulus);
+                cases = cases.saturating_add(1);
+            }
+        }
+    }
+    eprintln!("finite-field random operator suite: {cases} systems");
+    assert!(cases >= 15);
+}
+
+#[test]
+fn finite_field_membership_and_redundant_generators() {
+    let session = session();
+    let vars = variables(3);
+    let generators = vec![
+        "x0^2 + x1*x2 - 1".to_owned(),
+        "x1^2 + x0*x2 - 2".to_owned(),
+        "x2^2 + x0*x1 - 3".to_owned(),
+    ];
+    let modulus = 7_i64;
+    let base = basis(
+        &session,
+        &finite_field_request("groebner_f4", &generators, &vars, Some("grevlex"), modulus),
+    );
+    assert_eq!(
+        base,
+        basis(
+            &session,
+            &finite_field_request("groebner_f5", &generators, &vars, Some("grevlex"), modulus)
+        )
+    );
+    // Adding one of the generators again, and a polynomial that is visibly in
+    // the ideal (a combination of the generators), does not change the ideal
+    // or the reduced basis.
+    let combination = "x0*(x0^2 + x1*x2 - 1) + x1*(x1^2 + x0*x2 - 2) - (x2^2 + x0*x1 - 3)";
+    for extra in generators
+        .iter()
+        .cloned()
+        .chain(std::iter::once(combination.to_owned()))
+    {
+        let mut extended = generators.clone();
+        extended.push(extra);
+        let again = basis(
+            &session,
+            &finite_field_request("groebner_f4", &extended, &vars, Some("grevlex"), modulus),
+        );
+        assert_eq!(again, base, "a redundant generator changed the basis");
+    }
+    // The constant one is the unit ideal.
+    let mut with_one = generators.clone();
+    with_one.push("1".to_owned());
+    assert_eq!(
+        basis(
+            &session,
+            &finite_field_request("groebner_f5", &with_one, &vars, Some("lex"), modulus)
+        ),
+        "list(1)"
+    );
+}
+
+#[test]
+fn finite_field_benchmarks_over_gf5() {
+    // Katsura-3 and Cyclic-4 over GF(5) through the operators, in every order.
+    let session = session();
+    for problem in [katsura(3), cyclic(4, "grevlex")] {
+        for order in ["grevlex", "grlex", "lex"] {
+            let with_order = problem.with_order(Some(order));
+            let f4 = basis(
+                &session,
+                &finite_field_request(
+                    "groebner_f4",
+                    &with_order.polynomials,
+                    &with_order.vars,
+                    Some(order),
+                    5,
+                ),
+            );
+            let f5 = basis(
+                &session,
+                &finite_field_request(
+                    "groebner_f5",
+                    &with_order.polynomials,
+                    &with_order.vars,
+                    Some(order),
+                    5,
+                ),
+            );
+            assert_eq!(f4, f5, "{} over GF(5) in {order}", problem.name);
+            assert_canonical_mod(&f4, 5);
+            // Idempotent: the answer is the reduced basis.
+            assert_eq!(
+                basis(
+                    &session,
+                    &format!(
+                        "groebner_f4({f4}, list({}), {order}, 5)",
+                        with_order.vars.join(", ")
+                    )
+                ),
+                f4,
+                "{} over GF(5) in {order} is not reduced",
+                problem.name
+            );
+        }
     }
 }
