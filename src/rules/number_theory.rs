@@ -17,12 +17,15 @@
 //! standard stage 2): prime factors of up to about 25 digits are found. A
 //! composite cofactor of 40 or more digits, where the curves are unlikely to
 //! help, is attacked by the quadratic sieve / MPQS instead (a factor base
-//! with `(n/p) = 1`, log sieving, a single-large-prime variation and a GF(2)
-//! dependency solve); smaller cofactors fall back to it when the curves are
-//! exhausted. The sieve handles the 40-50 digit range; a composite cofactor
-//! above 50 digits is left unevaluated after trial division, perfect-power
-//! detection and BPSW, so it cannot trigger an unbounded ECM attempt. The
-//! other operators below
+//! with `(n/p) = 1`, log sieving, a large-prime variation and a structured
+//! GF(2) dependency solve); smaller cofactors fall back to it when the curves
+//! are exhausted. The sieve scales its factor base, interval, large-prime
+//! bound and work budget with the digit count using the standard QS
+//! heuristic; its practical range is roughly 55-65 digits, with 60-digit
+//! balanced semiprimes taking tens of seconds on a multi-core machine in the
+//! test profile. After the sieve exhausts its bounded budget on a large
+//! cofactor only a short ECM schedule runs, so an input the sieve cannot
+//! split still returns in bounded time. The other operators below
 //! that need a prime as a machine word (`sqrtmod`, `primitive_root`,
 //! `mult_order`, ...) still stop at 64-bit factors.
 //!
@@ -829,14 +832,24 @@ fn ecm_curve(
     nontrivial(&accumulator)
 }
 
-/// Lenstra's elliptic-curve method: a non-trivial divisor of the composite
-/// `n`, by stage-1 bounds 2 000, 11 000 and 50 000 with 20, 80 and 60
-/// curves (stage 2 up to 50 times the bound). Finds prime factors of up to
-/// about 25 digits; `None` when the curves are exhausted.
-fn ecm(n: &BigInt) -> Option<BigInt> {
-    const SCHEDULE: [(u64, usize); 3] = [(2_000, 20), (11_000, 80), (50_000, 60)];
+/// The full ECM schedule: stage-1 bounds 2 000, 11 000 and 50 000 with 20,
+/// 80 and 60 curves (stage 2 up to 50 times the bound). Finds prime factors
+/// of up to about 25 digits.
+const ECM_FULL: [(u64, usize); 3] = [(2_000, 20), (11_000, 80), (50_000, 60)];
+
+/// The short fallback used after the sieve has exhausted its budget on a
+/// large cofactor: only the two cheap stages, a few seconds at most. Running
+/// the full schedule there would spend minutes on a balanced semiprime whose
+/// factors the curves cannot reach.
+const ECM_AFTER_QS: [(u64, usize); 2] = [(2_000, 12), (11_000, 24)];
+
+/// Lenstra's elliptic-curve method over an explicit schedule.
+fn ecm_schedule(
+    n: &BigInt,
+    schedule: &[(u64, usize)],
+) -> Option<BigInt> {
     let mut sigma = 6_u64;
-    for (b1, curves) in SCHEDULE {
+    for &(b1, curves) in schedule {
         let b2 = 50 * b1;
         let flags = prime_flags(usize::try_from(b2 + 2 * 210 + 2).ok()?);
         // Curves are independent: they run in groups of one per thread and
@@ -863,9 +876,20 @@ fn ecm(n: &BigInt) -> Option<BigInt> {
     None
 }
 
+/// The full ECM schedule, used as the first attempt for cofactors below the
+/// sieve-first threshold.
+fn ecm(n: &BigInt) -> Option<BigInt> {
+    ecm_schedule(n, &ECM_FULL)
+}
+
+/// The cheap ECM fallback used after the sieve has exhausted its budget.
+fn ecm_after_qs(n: &BigInt) -> Option<BigInt> {
+    ecm_schedule(n, &ECM_AFTER_QS)
+}
+
 /// Cofactors at least this many decimal digits go to the quadratic sieve
 /// before the elliptic curves: at that size the curves rarely find a factor
-/// within their budget, while the sieve is built for balanced 40-50 digit
+/// within their budget, while the sieve is built for balanced 40-65 digit
 /// semiprimes. Smaller cofactors still try the curves first.
 const QS_FIRST_DIGITS: u32 = 40;
 
@@ -876,8 +900,10 @@ fn decimal_digits(n: &BigInt) -> u32 {
 
 /// One quadratic-sieve attempt for a composite cofactor.
 ///
-/// `None` when the cofactor is above the sieve's documented range or when
-/// its polynomial budget is exhausted.
+/// The factor base, interval and work budget scale with the digit count.
+/// `None` when the cofactor is above the calibrated range, when its matrix
+/// would exceed the documented column limit, or when its polynomial/work
+/// budget is exhausted.
 fn qs_stage(m: &BigInt) -> Option<BigInt> {
     let digits = decimal_digits(m);
     if digits > crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS {
@@ -896,12 +922,13 @@ fn qs_stage(m: &BigInt) -> Option<BigInt> {
 ///
 /// Cofactors of at least [`QS_FIRST_DIGITS`] digits go to the sieve first
 /// (the curves rarely reach their prime factors); smaller ones go to the
-/// curves first and fall back to the sieve. A composite cofactor above
+/// curves first and fall back to the sieve. The sieve is tried up to
 /// [`QsLimits::MAX_DIGITS`](crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS)
-/// digits is refused before ECM, so an oversized request returns `None`
-/// instead of running curves over a number outside the documented range.
-/// `None` for `n <= 0` and when a composite cofactor survives the allowed
-/// stages.
+/// digits, with its own bounded work budget. If it exhausts that budget on a
+/// cofactor of 40 or more digits, only the cheap [`ECM_AFTER_QS`] schedule
+/// runs afterwards, so a balanced semiprime that the sieve cannot split does
+/// not spend minutes in the curves. `None` for `n <= 0` and when a composite
+/// cofactor survives the allowed stages.
 pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
     if !n.is_positive() {
         return None;
@@ -953,11 +980,8 @@ pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
             continue;
         }
         let digits = decimal_digits(&m);
-        if digits > crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS {
-            return None;
-        }
         let divisor = if digits >= QS_FIRST_DIGITS {
-            qs_stage(&m).or_else(|| ecm(&m))
+            qs_stage(&m).or_else(|| ecm_after_qs(&m))
         } else {
             ecm(&m).or_else(|| qs_stage(&m))
         };
