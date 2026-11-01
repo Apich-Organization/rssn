@@ -81,6 +81,27 @@ impl Dimension {
         }
     }
 
+    /// The concrete factors with exact rational exponents.
+    ///
+    /// The printable form keeps exponents as text so that `Length^n` can be
+    /// shown; this accessor returns the exact rational ones and is what a
+    /// round trip through [`DimTerm`] uses.
+    ///
+    /// # Errors
+    /// Fails when an exponent is symbolic (`n`, `a + b`), which has no
+    /// rational value.
+    pub fn exact_factors(&self) -> Result<Vec<(String, BigRational)>, DimError> {
+        exact_exponents(&self.factors)
+    }
+
+    /// The unresolved variables with exact rational exponents.
+    ///
+    /// # Errors
+    /// See [`Dimension::exact_factors`].
+    pub fn exact_unknown(&self) -> Result<Vec<(String, BigRational)>, DimError> {
+        exact_exponents(&self.unknown)
+    }
+
     /// Whether this is exactly the dimensionless value.
     #[must_use]
     pub const fn is_dimensionless(&self) -> bool {
@@ -144,6 +165,36 @@ impl fmt::Display for Dimension {
         }
         f.write_str(&out)
     }
+}
+
+/// Parses printed exponents back into exact rationals.
+fn exact_exponents(
+    factors: &[(String, String)],
+) -> Result<Vec<(String, BigRational)>, DimError> {
+    let mut out = Vec::with_capacity(factors.len());
+    for (name, exponent) in factors {
+        let value = parse_rational_exponent(exponent).ok_or_else(|| DimError::Parse {
+            text: format!("{name}^{exponent}"),
+            reason: String::from("the exponent is not an exact rational"),
+        })?;
+        out.push((name.clone(), value));
+    }
+    Ok(out)
+}
+
+/// Parses an exponent as printed by [`Expo::display`]: `1`, `-2`, `1/2`.
+fn parse_rational_exponent(text: &str) -> Option<BigRational> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Some(BigRational::one());
+    }
+    let (numerator, denominator) = text.split_once('/').map_or((text, "1"), |(n, d)| (n, d));
+    let numerator = numerator.parse::<BigInt>().ok()?;
+    let denominator = denominator.parse::<BigInt>().ok()?;
+    if denominator.is_zero() {
+        return None;
+    }
+    Some(BigRational::new(numerator, denominator))
 }
 
 fn render_power(
@@ -646,6 +697,100 @@ impl DimArena {
     pub(crate) fn atoms(&self) -> &[String] {
         &self.atoms
     }
+
+    /// The names of all base dimensions, in id order.
+    #[must_use]
+    pub fn base_names(&self) -> &[String] {
+        &self.bases
+    }
+
+    /// Registers a base dimension, returning its id. Same as
+    /// [`DimArena::define_base`]; the spelling a host expects.
+    pub fn intern(
+        &mut self,
+        name: &str,
+    ) -> BaseId {
+        self.define_base(name)
+    }
+
+    /// A copy of the arena's interning tables.
+    ///
+    /// A snapshot lets a host save a numbering, run something that extends
+    /// it, and put it back — the arena is append-only, so restoring means
+    /// dropping whatever was appended.
+    #[must_use]
+    pub fn snapshot(&self) -> DimArenaSnapshot {
+        DimArenaSnapshot {
+            bases: self.bases.clone(),
+            atoms: self.atoms.clone(),
+            vars: self.vars.clone(),
+        }
+    }
+
+    /// Restores a snapshot taken by [`DimArena::snapshot`].
+    pub fn restore(
+        &mut self,
+        snapshot: &DimArenaSnapshot,
+    ) {
+        self.bases.clone_from(&snapshot.bases);
+        self.atoms.clone_from(&snapshot.atoms);
+        self.vars.clone_from(&snapshot.vars);
+        self.base_ids = self
+            .bases
+            .iter()
+            .enumerate()
+            .map(|(index, name)| {
+                (
+                    name.clone(),
+                    BaseId(u32::try_from(index).unwrap_or(u32::MAX)),
+                )
+            })
+            .collect();
+        self.atom_ids = self
+            .atoms
+            .iter()
+            .enumerate()
+            .map(|(index, name)| {
+                (
+                    name.clone(),
+                    AtomId(u32::try_from(index).unwrap_or(u32::MAX)),
+                )
+            })
+            .collect();
+        self.var_ids = self
+            .vars
+            .iter()
+            .enumerate()
+            .map(|(index, name)| {
+                (
+                    name.clone(),
+                    DimVarId(u32::try_from(index).unwrap_or(u32::MAX)),
+                )
+            })
+            .collect();
+    }
+}
+
+/// An owned copy of a [`DimArena`]'s interning tables.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DimArenaSnapshot {
+    bases: Vec<String>,
+    atoms: Vec<String>,
+    vars: Vec<String>,
+}
+
+impl DimArenaSnapshot {
+    /// Number of base dimensions in the snapshot.
+    #[must_use]
+    pub const fn base_count(&self) -> usize {
+        self.bases.len()
+    }
+
+    /// The base dimension names in the snapshot.
+    #[must_use]
+    pub fn base_names(&self) -> &[String] {
+        &self.bases
+    }
 }
 
 /// A dimension expression: a product of base dimensions and dimension
@@ -900,6 +1045,131 @@ impl DimTerm {
     /// A readable description, for diagnostics.
     #[must_use]
     pub fn describe(
+        &self,
+        arena: &DimArena,
+    ) -> String {
+        self.to_dimension(arena).to_string()
+    }
+
+    /// The concrete factors as `(base name, exact exponent)`, sorted by name.
+    ///
+    /// Only factors with a rational exponent appear; the rest are reported
+    /// by [`DimTerm::symbolic_factors`]. This is the structured accessor a
+    /// host uses instead of parsing the printed form.
+    #[must_use]
+    pub fn factors(
+        &self,
+        arena: &DimArena,
+    ) -> Vec<(String, BigRational)> {
+        match &self.repr {
+            | DimRepr::Scalar { bases, .. } => bases
+                .iter()
+                .filter_map(|(id, exponent)| {
+                    exponent
+                        .is_constant()
+                        .map(|e| (arena.base_name(*id).to_owned(), e))
+                })
+                .collect(),
+            | _ => Vec::new(),
+        }
+    }
+
+    /// The dimension variables as `(name, exact exponent)`, sorted by name.
+    #[must_use]
+    pub fn vars(
+        &self,
+        arena: &DimArena,
+    ) -> Vec<(String, BigRational)> {
+        match &self.repr {
+            | DimRepr::Scalar { vars, .. } => vars
+                .iter()
+                .filter_map(|(id, exponent)| {
+                    exponent
+                        .is_constant()
+                        .map(|e| (arena.var_name(*id).to_owned(), e))
+                })
+                .collect(),
+            | _ => Vec::new(),
+        }
+    }
+
+    /// The factors whose exponent is not a rational, as printed.
+    #[must_use]
+    pub fn symbolic_factors(
+        &self,
+        arena: &DimArena,
+    ) -> Vec<(String, String)> {
+        match &self.repr {
+            | DimRepr::Scalar { bases, vars } => bases
+                .iter()
+                .filter(|(_, e)| e.is_constant().is_none())
+                .map(|(id, e)| (arena.base_name(*id).to_owned(), e.display(arena.atoms())))
+                .chain(
+                    vars.iter()
+                        .filter(|(_, e)| e.is_constant().is_none())
+                        .map(|(id, e)| (arena.var_name(*id).to_owned(), e.display(arena.atoms()))),
+                )
+                .collect(),
+            | _ => Vec::new(),
+        }
+    }
+
+    /// A dimension variable raised to an exact power.
+    #[must_use]
+    pub fn var_pow(
+        id: DimVarId,
+        exponent: BigRational,
+    ) -> Self {
+        if exponent.is_zero() {
+            return Self::dimensionless();
+        }
+        Self::scalar(Vec::new(), vec![(id, Expo::from_rat(exponent))])
+    }
+
+    /// The dimension of a printed [`Dimension`], in this arena.
+    ///
+    /// The inverse of [`DimTerm::to_dimension`] for dimensions whose
+    /// exponents are rational.
+    ///
+    /// # Errors
+    /// Fails when an exponent is symbolic or a base dimension is unknown to
+    /// the arena.
+    pub fn from_dimension(
+        dimension: &Dimension,
+        arena: &DimArena,
+    ) -> Result<Self, DimError> {
+        if dimension.any {
+            return Ok(Self::any());
+        }
+        if dimension.non_metric {
+            return Ok(Self::non_metric());
+        }
+        let mut bases = Vec::new();
+        for (name, exponent) in dimension.exact_factors()? {
+            let id = arena.base_id(&name).ok_or_else(|| DimError::Parse {
+                text: name.clone(),
+                reason: String::from("unknown base dimension"),
+            })?;
+            bases.push((id, Expo::from_rat(exponent)));
+        }
+        let mut vars = Vec::new();
+        for (name, exponent) in dimension.exact_unknown()? {
+            let id = arena
+                .var_ids
+                .get(&name)
+                .copied()
+                .ok_or_else(|| DimError::Parse {
+                    text: name.clone(),
+                    reason: String::from("unknown dimension variable"),
+                })?;
+            vars.push((id, Expo::from_rat(exponent)));
+        }
+        Ok(Self::scalar(bases, vars))
+    }
+
+    /// The dimension as text, using `arena` for the names.
+    #[must_use]
+    pub fn to_string(
         &self,
         arena: &DimArena,
     ) -> String {

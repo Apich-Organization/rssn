@@ -3,6 +3,9 @@
 use rssn::graph::DimError;
 use rssn::prelude::*;
 
+/// `(input, expected rewrite, dimension assumptions)`.
+type Rewrite<'a> = (&'a str, &'a str, &'a [(&'a str, &'a str)]);
+
 fn session() -> Session {
     Session::new()
 }
@@ -368,7 +371,7 @@ fn affine_temperature_points_are_checked() {
 #[test]
 fn standard_rewrites_keep_a_consistent_dimension() {
     let session = Session::new();
-    let cases: &[(&str, &str, &[(&str, &str)])] = &[
+    let cases: &[Rewrite<'_>] = &[
         ("x + x", "2*x", &[("x", "m")]),
         ("x^2 / x", "x", &[("x", "m")]),
         (

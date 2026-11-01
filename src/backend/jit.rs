@@ -491,6 +491,40 @@ impl JitFunction {
                         let flag = b.ins().fcmp(FloatCC::NotEqual, c, zero);
                         b.ins().select(flag, x, y)
                     },
+                    | Inst::Gather(base, index) => {
+                        let index = get(&values, index)?;
+                        let start = usize::try_from(base).unwrap_or(usize::MAX);
+                        let span = tape.inputs.len().saturating_sub(start);
+                        let nan = b.ins().f64const(f64::NAN);
+                        if span == 0 {
+                            // The tensor is not in the input buffer at all;
+                            // reading anything would be a wild load.
+                            nan
+                        } else {
+                            let zero = b.ins().f64const(0.0);
+                            let span_f = b.ins().f64const(f64::from(u32::try_from(span).map_err(error)?));
+                            let last = b.ins().f64const(f64::from(u32::try_from(span - 1).map_err(error)?));
+                            let in_range = {
+                                let lo = b.ins().fcmp(FloatCC::GreaterThanOrEqual, index, zero);
+                                let hi = b.ins().fcmp(FloatCC::LessThan, index, span_f);
+                                b.ins().band(lo, hi)
+                            };
+                            // Clamping before the conversion is what makes
+                            // the load below provably in bounds; the `select`
+                            // then replaces the value the clamp produced when
+                            // the original index was out of range.
+                            let clamped = b.ins().fmax(b.ins().fmin(index, last), zero);
+                            let offset = b.ins().fcvt_to_uint_sat(clamped, types::I64);
+                            let bytes = b.ins().imul_imm(offset, 8);
+                            let address = b.ins().iadd_imm(
+                                bytes,
+                                i64::try_from(start).map_err(error)?.wrapping_mul(8),
+                            );
+                            let pointer = b.ins().iadd(in_ptr, address);
+                            let loaded = b.ins().load(types::F64, flags, pointer, 0);
+                            b.ins().select(in_range, loaded, nan)
+                        }
+                    },
                     | Inst::Call(f, start, len) => {
                         let range = start as usize..(start as usize).saturating_add(len as usize);
                         let regs = tape
@@ -736,24 +770,74 @@ impl CompiledMulti for Handle {
 }
 
 /// The Cranelift backend, with a cache keyed by the structural hash of the
-/// optimised tape.
+/// optimised tape, mixed with a context key.
+///
+/// # Why the key has two halves
+///
+/// Two graphs that lower to the same tape do not necessarily mean the same
+/// thing: an operator's *semantics* come from the rule set that installed it,
+/// and the same tape compiled for a different CPU may not be valid. The
+/// structural hash covers the first half — the program — and
+/// [`CraneliftBackend::key_extra`] covers the second: the manifest hash of the
+/// build plus the target device. A host that keeps a compiled cache on disk
+/// builds the same pair and gets the same key.
 #[derive(Default)]
 pub struct CraneliftBackend {
     cache: Mutex<HashMap<u64, Arc<JitFunction>>>,
+    key_extra: u64,
 }
 
 impl CraneliftBackend {
-    /// A backend with an empty cache.
+    /// A backend with an empty cache and no context key.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A backend whose cache keys are mixed with `key_extra`.
+    ///
+    /// Pass [`target_key`] combined with the manifest hash:
+    /// `backend = CraneliftBackend::with_key(manifest.hash_u64() ^ target_key())`.
+    #[must_use]
+    pub fn with_key(key_extra: u64) -> Self {
+        Self {
+            cache: Mutex::new(HashMap::new()),
+            key_extra,
+        }
+    }
+
+    /// The context key mixed into every cache key.
+    #[must_use]
+    pub const fn key_extra(&self) -> u64 {
+        self.key_extra
+    }
+
+    /// Changes the context key, dropping everything compiled under the old
+    /// one.
+    pub fn set_key_extra(
+        &mut self,
+        key_extra: u64,
+    ) {
+        self.key_extra = key_extra;
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.clear();
+        }
+    }
+
+    /// The cache key of `tape` under this backend's context.
+    #[must_use]
+    pub fn cache_key(
+        &self,
+        tape: &Tape,
+    ) -> u64 {
+        mix(tape.structural_hash(), self.key_extra)
     }
 
     fn get_or_compile(
         &self,
         tape: &Tape,
     ) -> Result<Arc<JitFunction>, BackendError> {
-        let key = tape.structural_hash();
+        let key = self.cache_key(tape);
         if let Some(f) = self.cache.lock().ok().and_then(|c| c.get(&key).cloned()) {
             return Ok(f);
         }
@@ -769,6 +853,56 @@ impl CraneliftBackend {
     pub fn cached(&self) -> usize {
         self.cache.lock().map_or(0, |c| c.len())
     }
+}
+
+/// Mixes two hashes so that neither half can cancel the other.
+///
+/// A plain `^` would make `(h, k)` and `(h ^ k, 0)` collide; the multiply
+/// and rotate below are the finaliser of splitmix64, which is cheap and has
+/// no fixed points worth exploiting.
+fn mix(
+    left: u64,
+    right: u64,
+) -> u64 {
+    let mut z = left
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(right.rotate_left(32));
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+/// A stable identifier for the machine this code will run on.
+///
+/// The value is a hash of the target triple and the CPU feature set the
+/// compiler was configured with, so two builds for different micro-
+/// architectures do not share cached machine code.
+#[must_use]
+pub fn target_key() -> u64 {
+    use std::hash::Hash;
+    use std::hash::Hasher;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    std::env::consts::ARCH.hash(&mut hasher);
+    std::env::consts::OS.hash(&mut hasher);
+    // `cfg!(target_feature = ...)` is the feature set this build was compiled
+    // for, which is what the generated code may assume.
+    for feature in [
+        "sse2", "sse4.1", "avx", "avx2", "fma", "neon", "sve",
+    ] {
+        let present = match feature {
+            | "sse2" => cfg!(target_feature = "sse2"),
+            | "sse4.1" => cfg!(target_feature = "sse4.1"),
+            | "avx" => cfg!(target_feature = "avx"),
+            | "avx2" => cfg!(target_feature = "avx2"),
+            | "fma" => cfg!(target_feature = "fma"),
+            | "neon" => cfg!(target_feature = "neon"),
+            | "sve" => cfg!(target_feature = "sve"),
+            | _ => false,
+        };
+        feature.hash(&mut hasher);
+        present.hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 impl Backend for CraneliftBackend {

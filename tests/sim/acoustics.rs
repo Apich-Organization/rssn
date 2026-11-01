@@ -5,7 +5,9 @@
 
 use rssn::sim::acoustics::Acoustics;
 use rssn::sim::acoustics::AcousticsConfig;
+use rssn::sim::boundary::BcValue;
 use rssn::sim::boundary::BoundaryCondition as Bc;
+use rssn::sim::boundary::Face;
 use rssn::sim::boundary::FaceBcs;
 use std::f64::consts::PI;
 
@@ -297,4 +299,106 @@ fn pressure_release_walls_conserve_energy_and_invert_the_reflection() {
         "energy {}",
         a.energy() / e0
     );
+}
+
+#[test]
+fn the_dirichlet_datum_sets_the_boundary_gradient() {
+    // One velocity update from a known pressure field. The face sits half a
+    // cell from the first cell centre, so `v = -dt (p - g)/(h/2)` there; with
+    // `g = 0` that is the old pressure-release rule exactly, which is what
+    // keeps the pre-existing reflection test passing.
+    let n = 16;
+    let h = 1.0 / n as f64;
+    for g in [0.0, 0.25, -1.5] {
+        let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
+        cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0)).with(Face::XMin, Bc::dirichlet(g));
+        let mut a = Acoustics::new(cfg).unwrap();
+        for p in &mut a.p {
+            *p = 1.0;
+        }
+        let dt = a.dt;
+        a.step();
+        let want = -dt * (1.0 - g) / (0.5 * h);
+        assert!(
+            (a.v[0][0] - want).abs() < 1e-12,
+            "g = {g}: {} vs {want}",
+            a.v[0][0]
+        );
+    }
+}
+
+#[test]
+fn the_dirichlet_datum_enters_linearly() {
+    // The scheme is linear and starts from rest, so doubling the datum doubles
+    // the field exactly. This is what would break if the datum were folded
+    // into the state instead of into the boundary gradient.
+    let run = |g: f64| {
+        let n = 24;
+        let h = 1.0 / n as f64;
+        let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
+        cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0)).with(Face::XMin, Bc::dirichlet(g));
+        let mut a = Acoustics::new(cfg).unwrap();
+        a.run(300);
+        a.p
+    };
+    let one = run(1.0);
+    let two = run(2.0);
+    for (single, double) in one.iter().zip(&two) {
+        assert!(
+            (2.0 * single - double).abs() < 1e-12 * (1.0 + double.abs()),
+            "{single} vs {double}"
+        );
+    }
+}
+
+#[test]
+fn the_datum_is_evaluated_at_the_face_not_at_the_origin() {
+    // In 2D the low `x` face runs along `y`, so a datum that varies with `y`
+    // must produce a face velocity that varies with `y`. A datum evaluated at
+    // the origin instead would give the same velocity on every row.
+    let n = [8, 8];
+    let h = 1.0 / 8.0;
+    let mut cfg = AcousticsConfig::new(&n, &[h, h], 1.0).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0))
+        .with(Face::XMin, Bc::Dirichlet(BcValue::space(|x| x[1])));
+    let mut a = Acoustics::new(cfg).unwrap();
+    for p in &mut a.p {
+        *p = 1.0;
+    }
+    let dt = a.dt;
+    a.step();
+    // `v[0]` is `(n[0] + 1) x n[1]`, x-fastest.
+    let stride = n[0] + 1;
+    let mut lo = f64::INFINITY;
+    let mut hi = f64::NEG_INFINITY;
+    for j in 0..n[1] {
+        let y = (j as f64 + 0.5) * h;
+        let want = -dt * (1.0 - y) / (0.5 * h);
+        let got = a.v[0][j * stride];
+        assert!((got - want).abs() < 1e-12, "row {j}: {got} vs {want}");
+        lo = lo.min(got);
+        hi = hi.max(got);
+    }
+    assert!(
+        hi - lo > 0.5,
+        "the face velocity must vary with y: {lo}..{hi}"
+    );
+}
+
+#[test]
+fn a_time_dependent_datum_drives_the_field() {
+    // A half-sine pulse at the face; the box must be quiet before it starts,
+    // move while it lasts, and not return to rest instantly afterwards.
+    let n = 64;
+    let h = 1.0 / n as f64;
+    let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0)).with(
+        Face::XMin,
+        Bc::Dirichlet(BcValue::time(|t| (PI * t).sin().max(0.0))),
+    );
+    let mut a = Acoustics::new(cfg).unwrap();
+    assert_eq!(a.p.iter().fold(0.0_f64, |m, &p| m.max(p.abs())), 0.0);
+    a.run(200);
+    let during = a.p.iter().fold(0.0_f64, |m, &p| m.max(p.abs()));
+    assert!(during > 0.2, "the pulse must reach the interior: {during}");
 }

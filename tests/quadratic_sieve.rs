@@ -279,7 +279,6 @@ fn one_forty_digit_semiprime() {
             QsConfig {
                 limits: QsLimits::for_digits(40),
                 large_primes: true,
-                ..QsConfig::default()
             },
             &mut stats,
         ),
@@ -340,7 +339,6 @@ fn large_prime_variation_adds_relations() {
         QsConfig {
             limits,
             large_primes: true,
-            ..QsConfig::default()
         },
         &mut with_stats,
     );
@@ -350,7 +348,6 @@ fn large_prime_variation_adds_relations() {
         QsConfig {
             limits,
             large_primes: false,
-            ..QsConfig::default()
         },
         &mut without_stats,
     );

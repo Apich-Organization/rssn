@@ -147,6 +147,48 @@ impl OdeSolution {
         }
     }
 
+    /// This solution as a structured result, naming each state component.
+    ///
+    /// The integrator works with anonymous columns; a model knows what they
+    /// are. Passing the names here is what turns `y[3][1]` into
+    /// `velocity`, and it is the only place the two views meet.
+    ///
+    /// A name list shorter than the state is padded with `y{k}`, and one
+    /// longer is truncated: a mismatch is a caller's slip, not a reason to
+    /// lose the solution.
+    #[must_use]
+    pub fn view(
+        &self,
+        components: &[&str],
+    ) -> crate::kernel::result::OdeSolutionView {
+        let width = self.y.first().map_or(0, Vec::len);
+        let flatten_order = (0..width)
+            .map(|k| {
+                components
+                    .get(k)
+                    .map_or_else(|| format!("y{k}"), |name| (*name).to_owned())
+            })
+            .collect();
+        let events = self
+            .events
+            .iter()
+            .map(|hit| crate::kernel::result::EventRecord {
+                t: hit.t,
+                component: components.get(hit.index).map(|name| (*name).to_owned()),
+                y: hit.y.clone(),
+            })
+            .collect();
+        crate::kernel::result::OdeSolutionView {
+            t: self.t.clone(),
+            y: self.y.clone(),
+            flatten_order,
+            events,
+            nfev: self.nfev,
+            rejected: self.rejected,
+            dimensions: vec![None; width],
+        }
+    }
+
     /// Evaluates the continuous extension at `t` (available for
     /// [`dopri5`], [`rosenbrock23`], the Radau and the BDF integrators); `None` outside the integrated range.
     #[must_use]

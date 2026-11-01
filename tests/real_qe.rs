@@ -485,7 +485,7 @@ impl Harness {
         for sample in &samples {
             let mut signs = Vec::with_capacity(atoms.len());
             for &atom in &atoms {
-                signs.push(atom_sign(self, &ops, atom, y, &sample)?);
+                signs.push(atom_sign(self, &ops, atom, y, sample)?);
             }
             let sign = |atom: NodeId| -> i32 {
                 atoms

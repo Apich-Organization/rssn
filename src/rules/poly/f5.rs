@@ -1553,18 +1553,18 @@ mod tests {
         // admissible, so y*f is already its own normal form.
         let bound = Sig::unit(2, 2);
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
-            | Some(reduced) => reduced,
-            | None => panic!("the reduction must fit its budget"),
+        let Some(reduced) = f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100)
+        else {
+            panic!("the reduction must fit its budget");
         };
         assert_eq!(reduced, p);
         // Bound e_1: x*g has index 2, a smaller signature, so y*f reduces to
         // zero by g.
         let bound = Sig::unit(2, 1);
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
-            | Some(reduced) => reduced,
-            | None => panic!("the reduction must fit its budget"),
+        let Some(reduced) = f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100)
+        else {
+            panic!("the reduction must fit its budget");
         };
         assert!(reduced.is_zero(), "y*f = x*(x*y) rewrites to zero");
     }
@@ -1587,9 +1587,9 @@ mod tests {
             degree: 1,
         };
         let mut steps = 0_usize;
-        let reduced = match f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100) {
-            | Some(reduced) => reduced,
-            | None => panic!("the reduction must fit its budget"),
+        let Some(reduced) = f5_normal_form(&Domain::Rational, &p, &bound, &basis, &mut steps, 100)
+        else {
+            panic!("the reduction must fit its budget");
         };
         assert_eq!(reduced, p);
         assert_eq!(steps, 0);
@@ -1653,13 +1653,11 @@ mod tests {
         let order = Order::GradedRevLex;
         let generators = cyclic(4, order);
         let (basis, _) = f5_basis_with_stats(&generators, order, F5Limits::default());
-        let basis = match basis {
-            | Some(basis) => basis,
-            | None => panic!("cyclic-4 must be solved"),
+        let Some(basis) = basis else {
+            panic!("cyclic-4 must be solved");
         };
-        let expected = match groebner(&generators, order, GroebnerLimits::default()) {
-            | Some(basis) => basis,
-            | None => panic!("the reference must solve cyclic-4"),
+        let Some(expected) = groebner(&generators, order, GroebnerLimits::default()) else {
+            panic!("the reference must solve cyclic-4");
         };
         assert_eq!(basis, expected);
         let mut state = 0x2545_F491_4F6C_DD1D_u64;
@@ -1879,7 +1877,7 @@ mod tests {
                     (coefficient, exponents)
                 })
                 .collect();
-            let candidate = oracle::generators(modulus, &[terms.clone()], order)
+            let candidate = oracle::generators(modulus, std::slice::from_ref(&terms), order)
                 .into_iter()
                 .next()
                 .unwrap_or_else(|| panic!("a random polynomial must be built"));
@@ -1891,7 +1889,7 @@ mod tests {
             );
         }
         // Adding a member does not change the ideal, hence not the basis.
-        let mut extended = generators.clone();
+        let mut extended = generators;
         extended.push(basis[0].clone());
         let (again, _) = f5_basis_with_stats_in(&domain, &extended, order, F5Limits::default());
         assert_eq!(again.as_deref(), Some(basis.as_slice()));

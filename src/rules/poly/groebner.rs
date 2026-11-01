@@ -784,6 +784,10 @@ mod tests {
 
     use super::*;
 
+    /// A named system over a prime field: `(name, generators)`, each
+    /// generator a list of `(coefficient, exponents)` terms.
+    type PrimeSystem = (&'static str, Vec<Vec<(i64, Vec<u32>)>>);
+
     fn q(n: i64) -> BigRational {
         BigRational::from_integer(BigInt::from(n))
     }
@@ -1292,7 +1296,7 @@ mod tests {
     fn direct_buchberger_over_prime_fields_in_every_order() {
         // Direct Buchberger in the target order (no FGLM) on small systems,
         // so the actual elimination is exercised in lex and grlex too.
-        let systems: Vec<(&str, Vec<Vec<(i64, Vec<u32>)>>)> = vec![
+        let systems: Vec<PrimeSystem> = vec![
             ("katsura-2", oracle::katsura(2)),
             ("cyclic-3", oracle::cyclic(3)),
             (
@@ -1395,7 +1399,7 @@ mod tests {
         // The same coefficient over Q is untouched.
         assert_eq!(
             half.in_domain(&Domain::Rational, Order::Lex),
-            Some(half.clone())
+            Some(half)
         );
     }
 

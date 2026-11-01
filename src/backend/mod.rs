@@ -230,7 +230,38 @@ pub enum Lowering {
     Extern1(extern "C" fn(f64) -> f64),
     /// A scalar C function of two arguments.
     Extern2(extern "C" fn(f64, f64) -> f64),
+    /// `gather(tensor, offset)`: read `inputs[base + offset]`, where `base`
+    /// is the position of the tensor's first element in the caller's
+    /// flattened input buffer.
+    ///
+    /// A tensor has no tape representation of its own — the tape is scalar —
+    /// so indexing is an offset into the input buffer. An index outside the
+    /// tensor reads NaN, never memory outside the buffer.
+    Gather,
 }
+
+impl PartialEq for Lowering {
+    /// Compares *kinds*, not function addresses.
+    ///
+    /// Two function pointers are not reliably comparable — the compiler may
+    /// merge or duplicate a function — so comparing them would give an answer
+    /// that depends on the build. Callers here ask "is this the same kind of
+    /// lowering", which the discriminant answers.
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        match (self, other) {
+            | (Self::Intrinsic(a), Self::Intrinsic(b)) => a == b,
+            | (Self::Extern1(_), Self::Extern1(_))
+            | (Self::Extern2(_), Self::Extern2(_))
+            | (Self::Gather, Self::Gather) => true,
+            | _ => false,
+        }
+    }
+}
+
+impl Eq for Lowering {}
 
 /// A [`tape::Tape`] evaluated by the reference tape interpreter.
 #[derive(Clone, Debug)]

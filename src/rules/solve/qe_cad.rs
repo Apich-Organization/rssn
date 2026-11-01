@@ -869,7 +869,7 @@ mod tests {
         let polys = vec![unit_circle()];
         let limits = CadLimits::default();
         let projected = project(&polys, 1, &limits).unwrap_or_default();
-        assert!(!projected.is_empty());
+        assert_ne!(projected, [] as [MPoly; 0]);
         assert!(projected.iter().any(|p| p.as_constant().is_none()));
         // The sections of the circle occur at x = +/-1 (the projection is
         // split into the two linear factors x - 1 and x + 1).
@@ -926,8 +926,10 @@ mod tests {
     #[test]
     fn tesseract_limits() {
         let polys = vec![unit_circle()];
-        let mut limits = CadLimits::default();
-        limits.cells = 2;
+        let limits = CadLimits {
+            cells: 2,
+            ..CadLimits::default()
+        };
         assert!(cells(&polys, 2, &limits).is_none());
     }
 

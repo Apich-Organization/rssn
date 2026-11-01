@@ -1,7 +1,9 @@
 //! `sim::dpd`: the Groot–Warren DPD fluid. Direct checks of the pair force
 //! (conservative repulsion, minimum image, virial), momentum conservation,
 //! the free-particle and ideal-gas limits, thermostat relaxation and
-//! equipartition, determinism and input validation.
+//! equipartition, determinism and input validation, and of the walled slab:
+//! confinement, momentum and energy balance at the reflection, the wall
+//! contribution to the virial pressure, and the friction of a no-slip wall.
 
 use rssn::sim::dpd::Dpd;
 use rssn::sim::dpd::DpdParams;
@@ -334,6 +336,7 @@ mod walls {
 
     use super::*;
 
+    /// 375 particles at density 3 in a slab `0 <= z <= 5`, optionally walled along `z`.
     fn fluid(
         wall: Option<DpdWall>,
         seed: u64,
@@ -345,14 +348,114 @@ mod walls {
         s
     }
 
+    fn specular(a_wall: f64) -> DpdWall {
+        DpdWall {
+            axis: 2,
+            a_wall,
+            kind: WallKind::Specular,
+        }
+    }
+
+    fn kinetic(s: &Dpd) -> f64 {
+        let sum = s
+            .vel
+            .iter()
+            .flat_map(|v| v.iter())
+            .map(|x| x * x)
+            .sum::<f64>();
+        0.5 * s.params.mass * sum
+    }
+
+    /// Separations of every pair, with the minimum image on the periodic axes and the plain
+    /// distance on the walled axis 2, exactly as the force loop uses them.
+    fn separations(
+        s: &Dpd,
+        walled: bool,
+    ) -> Vec<f64> {
+        let p = s.params;
+        let mut out = Vec::new();
+        for i in 0..s.len() {
+            for j in (i + 1)..s.len() {
+                let mut r2 = 0.0;
+                for a in 0..p.dim {
+                    let mut x = s.pos[i][a] - s.pos[j][a];
+                    if !(walled && a == 2) {
+                        x -= p.box_len[a] * (x / p.box_len[a]).round();
+                    }
+                    r2 += x * x;
+                }
+                out.push(r2.sqrt());
+            }
+        }
+        out
+    }
+
+    /// Conservative pair potential `Σ a r_c (1 - r/r_c)² / 2` and the virial `Σ a (1 - r/r_c) r`.
+    fn pair_terms(
+        s: &Dpd,
+        walled: bool,
+    ) -> (f64, f64) {
+        let p = s.params;
+        let (mut energy, mut virial) = (0.0, 0.0);
+        for r in separations(s, walled).iter().copied().filter(|r| *r < p.rc) {
+            let w = 1.0 - r / p.rc;
+            energy += 0.5 * p.a * p.rc * w * w;
+            virial += p.a * w * r;
+        }
+        (energy, virial)
+    }
+
+    /// Wall potential `a_wall (r_c - d)² / (2 r_c)` and virial `f_wall d` summed over both
+    /// planes for every particle within `r_c` of one.
+    fn wall_terms(
+        s: &Dpd,
+        a_wall: f64,
+    ) -> (f64, f64) {
+        let p = s.params;
+        let len = p.box_len[2];
+        let (mut energy, mut virial) = (0.0, 0.0);
+        for r in &s.pos {
+            for d in [r[2], len - r[2]] {
+                if d < p.rc {
+                    let f = a_wall * (1.0 - d / p.rc);
+                    energy += 0.5 * f * (p.rc - d);
+                    virial += f * d;
+                }
+            }
+        }
+        (energy, virial)
+    }
+
+    /// `m Σ (v - V)² / (d (N - 1))`: the temperature with the streaming velocity removed, which
+    /// is what the DPD thermostat targets and what a drift leaves untouched.
+    fn peculiar_temperature(s: &Dpd) -> f64 {
+        let n = s.len() as f64;
+        let mut mean = [0.0; 3];
+        for v in &s.vel {
+            for a in 0..3 {
+                mean[a] += v[a] / n;
+            }
+        }
+        let mut sum = 0.0;
+        for v in &s.vel {
+            for a in 0..3 {
+                let d = v[a] - mean[a];
+                sum += d * d;
+            }
+        }
+        s.params.mass * sum / (s.params.dim as f64 * (n - 1.0))
+    }
+
+    fn total_energy(
+        s: &Dpd,
+        a_wall: f64,
+    ) -> f64 {
+        kinetic(s) + pair_terms(s, true).0 + wall_terms(s, a_wall).0
+    }
+
     #[test]
     fn particles_stay_between_the_walls_and_tangential_momentum_survives_specular_walls() {
-        let wall = DpdWall {
-            axis: 2,
-            a_wall: 10.0,
-            kind: WallKind::Specular,
-        };
-        let mut s = fluid(Some(wall), 7);
+        let mut s = fluid(Some(specular(10.0)), 7);
         for v in &mut s.vel {
             v[0] += 0.8;
         }
@@ -371,12 +474,142 @@ mod walls {
             m0[0]
         );
         assert!((m1[1] - m0[1]).abs() < 1e-8 * 375.0);
-        // temperature stays near the thermostat value plus the kinetic energy of the drift 0.8
+        // The temperature is the thermostat value plus the kinetic energy of the imposed drift.
+        // A single instantaneous value is a poor estimator: `m Σ v² / (d (N - 1))` has a relative
+        // standard deviation of sqrt(2 / (d N)) = 4.2 % here (plus the 0.8² drift), so the old
+        // `±0.1` on one sample was a two-sigma test. The measured autocorrelation of the
+        // peculiar temperature is 0.10 after t = 2 and 0.00 after t = 4, so averages over blocks
+        // of t = 2 are independent to within 10 %; ten of them give a standard error of 1.3 %,
+        // and the bound is three of those.
+        s.run(0.02, 1000);
+        let mut blocks = Vec::new();
+        for _ in 0..10 {
+            s.run(0.02, 100);
+            blocks.push(s.temperature());
+        }
+        let n = blocks.len() as f64;
+        let mean = blocks.iter().sum::<f64>() / n;
+        let var = blocks.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / (n - 1.0);
+        let se = (var / n).sqrt();
         let expected = 1.0 + 0.8 * 0.8 / 3.0;
+        println!("mean T = {mean:.4} +- {se:.4} over {n} blocks, want {expected:.4}");
+        // + 0.002 covers the N / (N - 1) of the estimator, which puts the exact expectation
+        // 0.0006 above 1 + 0.8²/3.
         assert!(
-            (s.temperature() - expected).abs() < 0.1,
-            "T = {}",
-            s.temperature()
+            (mean - expected).abs() < 3.0 * se + 0.002,
+            "mean T = {mean} +- {se} over {n} blocks, want {expected}"
+        );
+    }
+
+    #[test]
+    fn a_specular_wall_neither_injects_nor_removes_energy() {
+        // With the thermostat switched off the wall force is conservative and the reflection is
+        // elastic, so KE + U_pair + U_wall must be constant. Applying the reflection to the whole
+        // post-step velocity, and so mirroring the post-collision force impulse as well, added
+        // 0.075 per crossing (+4.6 % of the total energy over t = 20); mirroring only the
+        // pre-collision half of the step leaves 4e-4 to 1.8e-3 over eight seeds, which is the
+        // same order as the periodic integrator error (5e-4 at this step).
+        let wall = specular(10.0);
+        let mut s = fluid(Some(wall), 5);
+        s.run(0.02, 2000);
+        s.params.gamma = 0.0;
+        s.params.kt = 0.0;
+        s.set_walls(wall).unwrap();
+        let e0 = total_energy(&s, 10.0);
+        s.run(0.01, 2000);
+        let e1 = total_energy(&s, 10.0);
+        assert!(
+            (e1 - e0).abs() < 5e-3 * e0,
+            "energy {} -> {} ({:e} relative)",
+            e0,
+            e1,
+            (e1 - e0) / e0
+        );
+    }
+
+    #[test]
+    fn the_wall_force_enters_the_virial_pressure() {
+        // p = rho T + (pair virial + wall virial) / (d V), with both virials recomputed here from
+        // the positions of the last force evaluation.
+        let mut s = fluid(Some(specular(25.0)), 3);
+        s.run(0.02, 600);
+        let (_, pair) = pair_terms(&s, true);
+        let (_, wall) = wall_terms(&s, 25.0);
+        assert!(
+            wall > 0.05 * pair,
+            "the wall virial must matter here: {wall} vs {pair}"
+        );
+        let volume = 125.0;
+        let want = s.density() * s.temperature() + (pair + wall) / (3.0 * volume);
+        assert!(
+            (s.pressure() - want).abs() < 1e-9 * want,
+            "{} vs {want}",
+            s.pressure()
+        );
+    }
+
+    #[test]
+    fn a_wall_out_of_range_leaves_the_pressure_alone() {
+        // Every particle sits at least r_c away from both planes, so neither the wall force nor
+        // its virial is non-zero and the pressure is the periodic one: adding the wall cannot
+        // make it jump.
+        let mut s = Dpd::new(64, params(3, 8.0, 25.0, 4.5, 1.0), 3).unwrap();
+        for (i, p) in s.pos.iter_mut().enumerate() {
+            for (a, x) in p.iter_mut().enumerate() {
+                *x = 3.2 + 0.4 * ((i >> (2 * a)) & 3) as f64;
+            }
+        }
+        s.set_walls(specular(0.0)).unwrap();
+        let cold = s.pressure();
+        s.set_walls(specular(25.0)).unwrap();
+        assert_eq!(s.pressure(), cold);
+        assert!(
+            s.pos.iter().all(|p| (1.0..7.0).contains(&p[2])),
+            "the cluster must stay clear of the walls"
+        );
+    }
+
+    #[test]
+    fn a_frictional_wall_decays_a_drift_and_a_specular_wall_keeps_it() {
+        let run = |kind: WallKind| {
+            let mut s = fluid(
+                Some(DpdWall {
+                    axis: 2,
+                    a_wall: 0.0,
+                    kind,
+                }),
+                11,
+            );
+            for v in &mut s.vel {
+                v[0] += 0.8;
+            }
+            let start = s.mean_velocity(0);
+            s.run(0.02, 1500);
+            let drift = s.mean_velocity(0);
+            // time average of the peculiar temperature over the last t = 20 in blocks of t = 4
+            let mut t = 0.0;
+            for _ in 0..5 {
+                s.run(0.02, 200);
+                t += peculiar_temperature(&s);
+            }
+            (start, drift, t / 5.0)
+        };
+        let (start, specular_drift, specular_t) = run(WallKind::Specular);
+        let (_, frictional_drift, frictional_t) = run(WallKind::NoSlip { friction: 1.0 });
+        assert!((specular_drift - start).abs() < 1e-8 * 10.0);
+        assert!(
+            frictional_drift.abs() < 0.1 * start,
+            "frictional wall kept {frictional_drift} of {start}"
+        );
+        // The Langevin collision removes the drift without cooling the fluid; a purely
+        // dissipative rule leaves it at about 0.85 kT.
+        assert!(
+            (frictional_t - 1.0).abs() < 0.1,
+            "frictional wall temperature {frictional_t}"
+        );
+        assert!(
+            (specular_t - 1.0).abs() < 0.15,
+            "specular wall temperature {specular_t}"
         );
     }
 
@@ -410,12 +643,7 @@ mod walls {
 
     #[test]
     fn a_wall_leaves_the_bulk_density_and_depletes_next_to_it() {
-        let wall = DpdWall {
-            axis: 2,
-            a_wall: 25.0,
-            kind: WallKind::Specular,
-        };
-        let mut s = fluid(Some(wall), 3);
+        let mut s = fluid(Some(specular(25.0)), 3);
         s.run(0.02, 800);
         let (mut mid, mut edge, mut samples) = (0.0, 0.0, 0.0);
         for _ in 0..600 {
@@ -456,6 +684,17 @@ mod walls {
             })
             .is_err()
         );
+        for friction in [-0.1, 1.5, f64::NAN] {
+            assert!(
+                s.set_walls(DpdWall {
+                    axis: 2,
+                    a_wall: 1.0,
+                    kind: WallKind::NoSlip { friction }
+                })
+                .is_err(),
+                "friction {friction}"
+            );
+        }
         let (mut a, mut b) = (fluid(None, 5), fluid(None, 5));
         a.run(0.02, 20);
         b.run(0.02, 20);

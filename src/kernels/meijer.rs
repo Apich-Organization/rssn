@@ -1536,6 +1536,15 @@ mod tests {
     use super::*;
     use crate::kernels::special;
 
+    /// `(p, q, a, b, z, expected)`, real parameters.
+    ///
+    /// The lifetime is the enclosing block's: the argument slices are
+    /// temporaries built by `re(..)` calls, so they cannot be `'static`.
+    type RealCase<'a> = (usize, usize, &'a [f64], &'a [f64], f64, f64);
+
+    /// `(p, q, a, b, z, expected)`, complex parameters.
+    type ComplexCase<'a> = (usize, usize, &'a [C], &'a [C], C, C);
+
     fn close(
         got: C,
         want: C,
@@ -1697,7 +1706,7 @@ mod tests {
     /// `1e-9`--`1e-7`.
     #[test]
     fn confluent_poles_match_mpmath() {
-        let cases: &[(usize, usize, &[f64], &[f64], f64, f64)] = &[
+        let cases: &[RealCase<'_>] = &[
             // Repeated b: G^{2,0}_{0,2}(z | 0, 0) = 2 K_0(2 sqrt z).
             (2, 0, &[], &[0.0, 0.0], 0.25, 0.842_048_876_481_416_666_7),
             (2, 0, &[], &[0.0, 0.0], 2.0, 0.084_783_547_996_802_991_543),
@@ -1876,7 +1885,7 @@ mod tests {
     #[test]
     fn complex_parameters_with_integer_imaginary_offsets() {
         let i = C::new(0.0, 1.0);
-        let cases: &[(usize, usize, &[C], &[C], C, C)] = &[
+        let cases: &[ComplexCase<'_>] = &[
             // p = q, delta = 0: no Mellin-Barnes check, so the old code
             // returned a wrong finite value.
             (
@@ -1965,7 +1974,7 @@ mod tests {
     /// moderate `|z|`.  The references are mpmath 1.3.0 at 60 digits.
     #[test]
     fn right_series_has_the_correct_gamma_ratio() {
-        let cases: &[(usize, usize, &[C], &[C], C, C)] = &[
+        let cases: &[ComplexCase<'_>] = &[
             // p = q = 2, n = 2, outside the unit circle.
             (
                 2,
@@ -1999,7 +2008,7 @@ mod tests {
                 &[re(-2.5), re(2.0), re(1.5), re(3.0)],
                 &[re(4.0), re(2.5)],
                 re(200.0),
-                C::new(2311.423_769_068_165_3, 0.0),
+                C::new(2_311.423_769_068_165_3, 0.0),
             ),
             (
                 2,
@@ -2031,7 +2040,7 @@ mod tests {
     /// so it stays unevaluated rather than returning a radial limit.
     #[test]
     fn diagonal_on_the_unit_circle() {
-        let cases: &[(usize, usize, &[C], &[C], C, C)] = &[
+        let cases: &[ComplexCase<'_>] = &[
             (
                 1,
                 1,
@@ -2078,7 +2087,7 @@ mod tests {
     /// integral that cannot converge.
     #[test]
     fn diagonal_p_q_matches_mpmath() {
-        let cases: &[(usize, usize, &[f64], &[f64], f64, f64)] = &[
+        let cases: &[RealCase<'_>] = &[
             (1, 1, &[0.5], &[0.2], 0.25, 0.841_480_775_090_993_030_31),
             (1, 1, &[0.5], &[0.2], 2.0, 0.691_057_725_642_243_145_75),
             (1, 1, &[0.5], &[0.2], 1e-4, 0.205_713_506_285_645_853_95),
@@ -2196,7 +2205,7 @@ mod tests {
             let got = meijer_g(1, 2, &[re(1.0), re(1.0)], &[re(1.0), re(0.0)], re(z));
             close(
                 got.unwrap_or(C::new(f64::NAN, 0.0)),
-                re((1.0 + z).ln()),
+                re(z.ln_1p()),
                 1e-10,
                 "log",
             );

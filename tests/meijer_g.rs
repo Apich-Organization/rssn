@@ -11,6 +11,12 @@ use rssn::api::Session;
 use rssn::kernels::meijer::meijer_g_real;
 use rssn::kernels::special;
 
+/// `(request, parameter values, expected value)`.
+type Case<'a> = (&'a str, &'a [(&'a str, f64)], f64);
+
+/// `(m, n, a, b, z)` for a numeric comparison.
+type Gauss<'a> = (usize, usize, &'a [f64], &'a [f64], f64);
+
 /// A symbolic answer and whether it is free of heavy operators.
 fn symbolic(
     session: &Session,
@@ -69,7 +75,7 @@ fn kernel(
 #[test]
 fn exact_reductions_are_identities() {
     // (request, parameter values, expected value)
-    let cases: &[(&str, &[(&str, f64)], f64)] = &[
+    let cases: &[Case<'_>] = &[
         (
             "meijerg(1, 0, list(), list(0), z)",
             &[("z", 0.37)],
@@ -389,7 +395,7 @@ fn residue_series_at_zero_and_infinity() {
 #[test]
 fn numeric_phase_agrees_with_the_kernel() {
     // (m, n, a, b, z)
-    let cases: &[(usize, usize, &[f64], &[f64], f64)] = &[
+    let cases: &[Gauss<'_>] = &[
         (1, 0, &[], &[0.0], 0.37),
         (1, 0, &[], &[0.5], 1.9),
         (1, 0, &[], &[0.0, 0.5], 0.49),

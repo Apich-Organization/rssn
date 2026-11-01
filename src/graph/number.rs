@@ -17,7 +17,7 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 /// A literal number: exact integer, exact rational, or binary float.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Number {
     /// Arbitrary precision integer.
     Int(BigInt),

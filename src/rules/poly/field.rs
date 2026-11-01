@@ -600,7 +600,7 @@ pub(crate) mod oracle {
     /// `generators` are `(coefficient, exponents)` lists; coefficients are
     /// reduced modulo `p`, so negative values are allowed. The prime `p` must
     /// fit an `i64` and is assumed prime.
-    pub(crate) fn buchberger_fp(
+    pub fn buchberger_fp(
         modulus: i64,
         generators: &[Vec<(i64, Vec<u32>)>],
         order: Order,
@@ -623,7 +623,7 @@ pub(crate) mod oracle {
 
     /// Whether `candidate` reduces to zero modulo the reference basis, i.e.
     /// lies in the ideal.
-    pub(crate) fn reduces_to_zero_fp(
+    pub fn reduces_to_zero_fp(
         modulus: i64,
         basis: &[GPoly],
         candidate: &[(i64, Vec<u32>)],
@@ -659,14 +659,14 @@ pub(crate) mod oracle {
 
     /// The primes the finite-field tests cover: the small characteristic
     /// cases, an odd mid-sized prime and a larger prime.
-    pub(crate) const PRIMES: [i64; 5] = [2, 3, 5, 7, 101];
+    pub const PRIMES: [i64; 5] = [2, 3, 5, 7, 101];
 
     /// A deterministic linear congruential generator, so the "random" systems
     /// are identical on every machine and in every run.
-    pub(crate) struct Lcg(u64);
+    pub struct Lcg(u64);
 
     impl Lcg {
-        pub(crate) fn new(seed: u64) -> Self {
+        pub fn new(seed: u64) -> Self {
             Self(seed)
         }
 
@@ -709,7 +709,7 @@ pub(crate) mod oracle {
 
     /// A dense system: every monomial of degree at most two with a random
     /// coefficient.
-    pub(crate) fn random_dense(
+    pub fn random_dense(
         modulus: i64,
         seed: u64,
         n: usize,
@@ -741,7 +741,7 @@ pub(crate) mod oracle {
 
     /// A sparse system: three random monomials per polynomial, degree at most
     /// two.
-    pub(crate) fn random_sparse(
+    pub fn random_sparse(
         modulus: i64,
         seed: u64,
         n: usize,
@@ -766,7 +766,7 @@ pub(crate) mod oracle {
     }
 
     /// Katsura-`m` in `m + 1` variables, over the integers.
-    pub(crate) fn katsura(m: usize) -> Vec<Vec<(i64, Vec<u32>)>> {
+    pub fn katsura(m: usize) -> Vec<Vec<(i64, Vec<u32>)>> {
         let n = m + 1;
         let mut out = Vec::new();
         let mut linear = vec![(1, exponents(n, &[(0, 1)])), (-1, exponents(n, &[]))];
@@ -789,7 +789,7 @@ pub(crate) mod oracle {
     }
 
     /// Cyclic-`n`, over the integers.
-    pub(crate) fn cyclic(n: usize) -> Vec<Vec<(i64, Vec<u32>)>> {
+    pub fn cyclic(n: usize) -> Vec<Vec<(i64, Vec<u32>)>> {
         let mut out = Vec::new();
         for d in 1..n {
             let terms = (0..n)
@@ -807,9 +807,13 @@ pub(crate) mod oracle {
         out
     }
 
+    /// A named system over `GF(p)`: `(name, generators)`, each generator a
+    /// list of `(coefficient, exponents)` terms.
+    pub type SampleSystem = (&'static str, Vec<Vec<(i64, Vec<u32>)>>);
+
     /// The systems every engine test runs over every prime and monomial order:
     /// structured, redundant, degenerate and random cases.
-    pub(crate) fn sample_systems(modulus: i64) -> Vec<(&'static str, Vec<Vec<(i64, Vec<u32>)>>)> {
+    pub fn sample_systems(modulus: i64) -> Vec<SampleSystem> {
         let n = 3;
         vec![
             (
@@ -870,7 +874,7 @@ pub(crate) mod oracle {
     }
 
     /// Builds canonical `GF(p)` polynomials from a raw system.
-    pub(crate) fn generators(
+    pub fn generators(
         modulus: i64,
         system: &[Vec<(i64, Vec<u32>)>],
         order: Order,
@@ -916,7 +920,7 @@ pub(crate) mod oracle {
     /// basis (idempotent under the reference implementation), and every pair
     /// of elements forming an S-polynomial that reduces to zero under the
     /// **reference** arithmetic.
-    pub(crate) fn check_basis(
+    pub fn check_basis(
         domain: &super::Domain,
         modulus: i64,
         basis: &[GPoly],

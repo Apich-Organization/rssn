@@ -9,7 +9,7 @@
 //! | Face condition | Meaning |
 //! |---|---|
 //! | `Neumann` / `Symmetry` | rigid wall, `v·n = 0` |
-//! | `Dirichlet(0)` | pressure-release surface, `p = 0` at the face |
+//! | `Dirichlet(g)` | prescribed pressure `p = g(t, x)` at the face (`g = 0` is a pressure-release surface) |
 //! | `Periodic` | wrap-around (both faces of the axis) |
 //! | `Absorbing` | convolutional PML of [`AcousticsConfig::pml_cells`] cells ending in a rigid wall |
 //!
@@ -18,9 +18,16 @@
 //! derivative; because it acts on the first-order system it is exactly the
 //! PML of the scalar wave equation for `p`.
 //!
-//! Limitations: homogeneous medium, no dispersive attenuation, Dirichlet data
-//! must be zero (`p = 0`).
+//! The Dirichlet datum is applied as a ghost value: the face sits half a cell
+//! from the first cell centre, so the normal pressure gradient there is
+//! `(p_cell - g) / (h/2)`. A time-dependent `g` is evaluated at the current
+//! time `t`; the leapfrog scheme is second order, so the half-step offset of
+//! the velocity field does not degrade the boundary condition.
+//!
+//! Limitations: homogeneous medium, no dispersive attenuation, Robin faces
+//! are refused.
 
+use crate::sim::boundary::BcValue;
 use crate::sim::boundary::BoundaryCondition;
 use crate::sim::boundary::Face;
 use crate::sim::boundary::FaceBcs;
@@ -95,7 +102,8 @@ pub struct Acoustics {
     psi_p: [Vec<f64>; 3],
     psi_v: [Vec<f64>; 3],
     use_pml: bool,
-    release: [[bool; 2]; 3],
+    /// Dirichlet datum per axis and face; `Some(g)` replaces the rigid wall.
+    dirichlet: [[Option<BcValue>; 2]; 3],
     sources: Vec<(usize, SourceFn)>,
 }
 
@@ -111,7 +119,7 @@ impl Acoustics {
         let inv: f64 = (0..cfg.dim).map(|a| 1.0 / (cfg.h[a] * cfg.h[a])).sum();
         let dt = cfg.cfl / (cfg.c * inv.sqrt());
         let mut periodic = [false; 3];
-        let mut release = [[false; 2]; 3];
+        let mut dirichlet: [[Option<BcValue>; 2]; 3] = std::array::from_fn(|_| [None, None]);
         let mut use_pml = false;
         let mut pml_c: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
         let mut pml_f: [Vec<(f64, f64)>; 3] =
@@ -124,10 +132,7 @@ impl Acoustics {
                     | BoundaryCondition::Symmetry
                     | BoundaryCondition::Periodic => {},
                     | BoundaryCondition::Dirichlet(g) => {
-                        if g.eval(0.0, [0.0; 3]) != 0.0 {
-                            return Err("pressure-release faces need zero data".into());
-                        }
-                        release[a][m] = true;
+                        dirichlet[a][m] = Some(g.clone());
                     },
                     | BoundaryCondition::Absorbing => {
                         let d = cfg.pml_cells;
@@ -202,7 +207,7 @@ impl Acoustics {
             psi_p,
             psi_v,
             use_pml,
-            release,
+            dirichlet,
             sources: Vec::new(),
         })
     }
@@ -288,6 +293,7 @@ impl Acoustics {
         let cfg = &self.cfg;
         let (n, dim) = (cfg.n, cfg.dim);
         // velocity update at faces
+        let t = self.t;
         for a in 0..dim {
             let e = self.face_dims(a);
             let total = e.iter().product::<usize>();
@@ -300,11 +306,24 @@ impl Acoustics {
                     c[a] = ii;
                     c[0] + n[0] * (c[1] + n[1] * c[2])
                 };
+                // Where a face sits, for a datum that depends on position.
+                let face_at = |index: usize| -> [f64; 3] {
+                    let mut x = [0.0; 3];
+                    for b in 0..dim {
+                        x[b] = if b == a {
+                            index as f64 * cfg.h[b]
+                        } else {
+                            (ijk[b] as f64 + 0.5) * cfg.h[b]
+                        };
+                    }
+                    x
+                };
                 let grad = if i == 0 {
                     if self.periodic[a] {
                         (self.p[pidx(0)] - self.p[pidx(n[a] - 1)]) / h
-                    } else if self.release[a][0] {
-                        self.p[pidx(0)] / (0.5 * h)
+                    } else if let Some(g) = &self.dirichlet[a][0] {
+                        // ghost value: the face is half a cell from the centre
+                        (self.p[pidx(0)] - g.eval(t, face_at(0))) / (0.5 * h)
                     } else {
                         continue; // rigid wall: v stays zero
                     }
@@ -312,8 +331,10 @@ impl Acoustics {
                     if self.periodic[a] {
                         // alias of face 0, set after the sweep
                         continue;
-                    } else if self.release[a][1] {
-                        -self.p[pidx(n[a] - 1)] / (0.5 * h)
+                    } else if let Some(g) = &self.dirichlet[a][1] {
+                        // The outward normal is `-x` on this face, so the sign
+                        // of the gradient is the mirror of the low face's.
+                        (g.eval(t, face_at(n[a])) - self.p[pidx(n[a] - 1)]) / (0.5 * h)
                     } else {
                         continue;
                     }

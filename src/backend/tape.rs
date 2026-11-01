@@ -101,6 +101,16 @@ pub enum Inst {
     Extern1(extern "C" fn(f64) -> f64, Reg),
     /// An external C function of two arguments.
     Extern2(extern "C" fn(f64, f64) -> f64, Reg, Reg),
+    /// `inputs[base + trunc(index)]`: one element of a tensor the caller has
+    /// flattened into the input buffer.
+    ///
+    /// This is the load/index instruction. A tensor has no representation of
+    /// its own on the tape — the tape is scalar — so indexing is expressed as
+    /// an offset into the flat input buffer, with `base` the constant offset
+    /// of the tensor and `index` a computed element offset. An index outside
+    /// `[0, len - base)` reads NaN, which is the same convention as every
+    /// other out-of-range read here.
+    Gather(u32, Reg),
 }
 
 /// A lowered program: instructions in dependency order, argument lists of
@@ -149,6 +159,7 @@ fn key_of(inst: &Inst) -> (u8, u64, u64, u64) {
         | Inst::Call(f, s, l) => (14, f as usize as u64, u64::from(s), u64::from(l)),
         | Inst::Extern1(f, a) => (15, f as usize as u64, r(a), 0),
         | Inst::Extern2(f, a, b) => (16, f as usize as u64, r(a), r(b)),
+        | Inst::Gather(base, i) => (17, u64::from(base), r(i), 0),
     }
 }
 
@@ -428,6 +439,21 @@ fn lower_one(
             | (Lowering::Intrinsic(f), &[a]) => return Ok(b.push(Inst::Unary(*f, a))),
             | (Lowering::Extern1(f), &[a]) => return Ok(b.push(Inst::Extern1(*f, a))),
             | (Lowering::Extern2(f), &[a, c]) => return Ok(b.push(Inst::Extern2(*f, a, c))),
+            | (Lowering::Gather, &[_, offset]) => {
+                // The tensor must be an input symbol: the tape has no other
+                // way to name a buffer.
+                let base = children
+                    .first()
+                    .copied()
+                    .and_then(|tensor| graph.as_symbol(tensor))
+                    .and_then(|symbol| inputs.iter().position(|&s| s == symbol));
+                if let Some(base) = base {
+                    return Ok(b.push(Inst::Gather(
+                        u32::try_from(base).unwrap_or(u32::MAX),
+                        offset,
+                    )));
+                }
+            },
             | _ => {},
         }
     }
@@ -611,6 +637,7 @@ impl Tape {
                 | Inst::Select(c, a, b) => Inst::Select(m(c), m(a), m(b)),
                 | Inst::Extern1(f, a) => Inst::Extern1(f, m(a)),
                 | Inst::Extern2(f, a, b) => Inst::Extern2(f, m(a), m(b)),
+                | Inst::Gather(base, index) => Inst::Gather(base, m(index)),
                 | Inst::Call(f, start, len) => {
                     let new_start = u32::try_from(out.args.len()).unwrap_or(u32::MAX);
                     let range = start as usize..(start as usize).saturating_add(len as usize);
@@ -662,6 +689,29 @@ impl Tape {
             let value = match *inst {
                 | Inst::Input(i) => inputs.get(i as usize).copied().unwrap_or_else(T::nan),
                 | Inst::Param(i) => params.get(i as usize).copied().unwrap_or_else(T::nan),
+                | Inst::Gather(base, index) => {
+                    // Truncation, not rounding: an index is an offset, and a
+                    // fractional one is a bug in whatever produced it rather
+                    // than a reason to read a neighbouring element.
+                    let offset = values.get(index as usize).copied().map_or(f64::NAN, T::to_f64);
+                    let slot = if offset.is_finite() {
+                        #[allow(clippy::cast_possible_truncation)]
+                        let offset = offset.trunc();
+                        usize::try_from(base).ok().and_then(|base| {
+                            if offset < 0.0 || offset > 1.0e18 {
+                                None
+                            } else {
+                                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                                let offset = offset as usize;
+                                base.checked_add(offset)
+                            }
+                        })
+                    } else {
+                        None
+                    };
+                    slot.and_then(|slot| inputs.get(slot).copied())
+                        .unwrap_or_else(T::nan)
+                },
                 | _ => {
                     scratch.clear();
                     scratch.extend(
@@ -747,6 +797,7 @@ fn operands(
         | Inst::Cmp(_, a, b)
         | Inst::Extern2(_, a, b) => vec![a, b],
         | Inst::Select(c, a, b) => vec![c, a, b],
+        | Inst::Gather(_, index) => vec![index],
         | Inst::Call(_, start, len) => {
             args.get(start as usize..(start as usize).saturating_add(len as usize))
                 .unwrap_or(&[])
@@ -760,6 +811,13 @@ pub trait Scalar: Copy + FromExtern {
     /// NaN (or the whole line).
     #[must_use]
     fn nan() -> Self;
+    /// This number as a plain `f64`.
+    ///
+    /// Only [`Inst::Gather`] needs it: an element offset has to become an
+    /// integer before the tape can read memory, and a dual number or an
+    /// interval cannot index anything meaningfully. Those types therefore
+    /// report a value that indexes nothing.
+    fn to_f64(self) -> f64;
     /// A constant.
     #[must_use]
     fn constant(c: f64) -> Self;
@@ -842,7 +900,7 @@ fn apply<T: Scalar>(
     let get = |i: usize| v.get(i).copied().unwrap_or_else(T::nan);
     match *inst {
         | Inst::Const(c) => T::constant(c),
-        | Inst::Input(_) | Inst::Param(_) => T::nan(),
+        | Inst::Input(_) | Inst::Param(_) | Inst::Gather(..) => T::nan(),
         | Inst::Add(..) => get(0).add(get(1)),
         | Inst::Sub(..) => get(0).sub(get(1)),
         | Inst::Mul(..) => get(0).mul(get(1)),
@@ -956,6 +1014,10 @@ fn compare_f64(
 impl Scalar for f64 {
     fn nan() -> Self {
         Self::NAN
+    }
+
+    fn to_f64(self) -> f64 {
+        self
     }
 
     fn constant(c: f64) -> Self {
@@ -1096,6 +1158,11 @@ pub struct Dual(pub f64, pub f64);
 impl Scalar for Dual {
     fn nan() -> Self {
         Self(f64::NAN, f64::NAN)
+    }
+
+    /// The value, not the derivative: an index has no derivative.
+    fn to_f64(self) -> f64 {
+        self.0
     }
 
     fn constant(c: f64) -> Self {
@@ -1317,6 +1384,12 @@ impl Interval {
 impl Scalar for Interval {
     fn nan() -> Self {
         Self::ENTIRE
+    }
+
+    /// The midpoint, which indexes nothing on its own; an interval index is
+    /// not a thing a tape can do.
+    fn to_f64(self) -> f64 {
+        f64::midpoint(self.lo, self.hi)
     }
 
     fn constant(c: f64) -> Self {

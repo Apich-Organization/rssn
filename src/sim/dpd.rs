@@ -1,6 +1,6 @@
 //! # Dissipative particle dynamics (DPD) in 2D and 3D
 //!
-//! Groot–Warren DPD fluid in a periodic box: soft conservative repulsion
+//! Groot–Warren DPD fluid in a periodic box or a walled slab: soft conservative repulsion
 //! `F^C = a (1 - r/r_c) r̂`, pairwise dissipative friction
 //! `F^D = -γ w²(r) (r̂·v_ij) r̂` and random force
 //! `F^R = σ w(r) ξ_ij Δt^{-1/2} r̂` with `w = 1 - r/r_c`, `σ² = 2 γ k_B T`
@@ -12,7 +12,7 @@
 //! | Feature | Support |
 //! |---|---|
 //! | Dimensions | 2 and 3 |
-//! | Boundary | periodic box (minimum image), cell-list neighbour search |
+//! | Boundary | periodic box (minimum image) or one walled slab, cell-list neighbour search |
 //! | Diagnostics | kinetic temperature, momentum, virial pressure |
 //! | Equation of state | `p = ρ k_B T + α a ρ²`; measured `α = 0.0918 ± 0.0003` at `a = 25`, `ρ = 3` (3D, `r_c = 1`, `Δt` from 0.01 to 0.04, boxes 6 and 8) |
 //!
@@ -29,15 +29,25 @@
 //! (`p = 25.7`), so that single number should not be used as a reference
 //! for `a = 25`, `ρ = 3` (the fit is accurate for larger `a ρ`).
 //!
-//! **Walls.** [`Dpd::set_walls`] replaces the periodic boundary along one axis by two walls with an
-//! effective soft repulsion `a_wall (1 - d/r_c)` ([`DpdWall`]) and specular (free-slip) or
-//! bounce-back (no-slip) reflection of particles that cross them; the wall layer has no structure
-//! of its own (no frozen particles, no density matching), so the fluid density next to a wall
-//! deviates from the bulk within about `r_c`.
+//! **Walls.** [`Dpd::set_walls`] replaces the periodic boundary along one axis by a slab between
+//! two planes at `0` and `L`, with an effective soft repulsion `a_wall (1 - d/r_c)` ([`DpdWall`])
+//! and a reflection rule for particles that cross ([`WallKind`]): specular (free slip),
+//! bounce-back (the whole velocity reverses) or [`WallKind::NoSlip`] (specular plus a Langevin
+//! tangential collision, so a drift decays and the wall stays at `k_B T`). The wall layer has no
+//! structure of its own (no frozen particles, no density matching), so the fluid density next to a
+//! wall deviates from the bulk within about `r_c`. The wall force enters the virial, so
+//! [`Dpd::pressure`] stays consistent in a walled system, and the collision is applied to the
+//! pre-collision half of the velocity-Verlet step, so a specular wall does not pump energy in.
 //!
-//! Limitations: single species and no bonds (polymers); walls are a single pair of planes, the
-//! virial pressure ignores the wall force, and the wall exerts no tangential friction beyond the
-//! reflection rule.
+//! Limitations: single species and no bonds (polymers). The wall is a boundary rule and not a
+//! material: there is no frozen, structured or thermostatted layer of wall particles and no wall
+//! density profile, so the density next to a wall is whatever the soft repulsion produces.
+//! Exactly one slab is supported — one walled axis with two planes — so walls on two axes at once,
+//! more than two planes, and moving walls are not available, and the wall carries no velocity, so
+//! [`WallKind::NoSlip`] can damp a drift but cannot drive a shear flow. [`WallKind::Specular`] and
+//! [`WallKind::BounceBack`] exchange no energy with the fluid beyond the elastic collision, and
+//! only [`WallKind::NoSlip`] thermostats at the wall. [`Dpd::pressure`] returns the trace over `d`
+//! and does not resolve the normal and tangential components separately, which differ in a slab.
 
 use crate::kernels::random::Rng;
 use std::collections::HashMap;
@@ -62,12 +72,22 @@ pub struct DpdParams {
 }
 
 /// How a particle that reaches a wall is reflected.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum WallKind {
-    /// Specular reflection: the normal velocity changes sign (free slip).
+    /// Specular reflection: the normal velocity changes sign and the tangential velocity is
+    /// untouched (free slip).
     Specular,
     /// Bounce-back: the whole velocity changes sign (no slip at the wall).
     BounceBack,
+    /// Specular reflection plus a Langevin tangential collision: the normal velocity changes
+    /// sign and each tangential component becomes `(1 - friction) v_t + ξ` with
+    /// `⟨ξ²⟩ = friction (2 - friction) k_B T / m`, so a uniform drift decays while a Maxwell
+    /// distribution at `k_B T` is left invariant. `friction = 0` is [`WallKind::Specular`] and
+    /// `friction = 1` replaces the tangential velocity by a fresh thermal draw at the wall.
+    NoSlip {
+        /// Fraction of the tangential velocity removed at each collision, in `[0, 1]`.
+        friction: f64,
+    },
 }
 
 /// A pair of parallel walls at `0` and `box_len[axis]` normal to `axis` (see [`Dpd::set_walls`]).
@@ -149,19 +169,25 @@ impl Dpd {
         Ok(s)
     }
 
-    /// Replaces the periodic boundary along `wall.axis` by two walls at `0` and `L`. Particles
-    /// outside are folded back and reflected; the wall force acts on later steps. Pair forces
-    /// along that axis use the plain (not minimum-image) distance, and the pressure does not
-    /// include the wall force.
+    /// Replaces the periodic boundary along `wall.axis` by a slab bounded by two walls at `0`
+    /// and `L`. Particles outside are folded back and reflected; the wall force acts on later
+    /// steps. Pair forces along that axis use the plain (not minimum-image) distance, and
+    /// [`Dpd::pressure`] includes the virial of the wall force. Only one axis can be walled.
     ///
     /// # Errors
-    /// For an axis outside the dimension or a negative `a_wall`.
+    /// For an axis outside the dimension, a negative `a_wall`, or a
+    /// [`WallKind::NoSlip`] friction outside `[0, 1]`.
     pub fn set_walls(
         &mut self,
         wall: DpdWall,
     ) -> Result<(), String> {
         if wall.axis >= self.params.dim || wall.a_wall < 0.0 {
             return Err("invalid wall".into());
+        }
+        if let WallKind::NoSlip { friction } = wall.kind
+            && !(0.0..=1.0).contains(&friction)
+        {
+            return Err("wall friction must lie in [0, 1]".into());
         }
         self.wall = Some(wall);
         self.reflect();
@@ -222,7 +248,12 @@ impl Dpd {
         self.params.mass * ke / (self.params.dim as f64 * (self.len() - 1) as f64)
     }
 
-    /// Pressure `ρ k_B T_kin + virial / (d V)` from the last force evaluation.
+    /// Pressure `ρ k_B T_kin + (virial + wall virial) / (d V)` from the last force evaluation.
+    ///
+    /// The virial sums `Σ a w r` over interacting pairs plus `Σ f_wall d` over the particles
+    /// within `r_c` of a wall, `d` being the distance to that wall. The result is the trace of
+    /// the pressure tensor over `d`; a slab is not isotropic, so the normal and tangential
+    /// pressures differ even though this single number does not say so.
     #[must_use]
     pub fn pressure(&self) -> f64 {
         let vol: f64 = (0..self.params.dim)
@@ -243,7 +274,9 @@ impl Dpd {
         self.reflect();
     }
 
-    /// Applies the reflection rule of the wall to one velocity.
+    /// Applies the reflection rule of the wall to one velocity: the normal component changes
+    /// sign and bounce-back also reverses the tangential ones. The tangential friction of a
+    /// [`WallKind::NoSlip`] wall is not applied here (see [`Self::friction_velocity`]).
     fn reflect_velocity(
         &self,
         v: &mut [f64; 3],
@@ -254,6 +287,23 @@ impl Dpd {
             for a in (0..self.params.dim).filter(|&a| a != w.axis) {
                 v[a] = -v[a];
             }
+        }
+    }
+
+    /// Applies the tangential friction of a [`WallKind::NoSlip`] wall to the final velocity of a
+    /// step, once per crossing. The friction is a Langevin collision, `v_t -> (1 - f) v_t + ξ`
+    /// with `⟨ξ²⟩ = f (2 - f) k_B T / m`, so a drift decays while a Maxwell distribution at `k_B T`
+    /// is left invariant; a purely dissipative rule would cool the fluid.
+    fn friction_velocity(
+        &mut self,
+        v: &mut [f64; 3],
+    ) {
+        let Some(w) = self.wall else { return };
+        let WallKind::NoSlip { friction } = w.kind else { return };
+        let keep = 1.0 - friction;
+        let sd = (friction * (2.0 - friction) * self.params.kt / self.params.mass).sqrt();
+        for a in (0..self.params.dim).filter(|&a| a != w.axis) {
+            v[a] = keep * v[a] + sd * self.rng.normal();
         }
     }
 
@@ -389,10 +439,17 @@ impl Dpd {
             for (i, fi) in f.iter_mut().enumerate() {
                 let z = self.pos[i][w.axis];
                 if z < p.rc {
-                    fi[w.axis] += w.a_wall * (1.0 - z / p.rc);
+                    let fw = w.a_wall * (1.0 - z / p.rc);
+                    fi[w.axis] += fw;
+                    // the wall force is external, so its virial is the force times the distance
+                    // from the wall plane it acts through, not a pair separation
+                    virial += fw * z;
                 }
-                if len - z < p.rc {
-                    fi[w.axis] -= w.a_wall * (1.0 - (len - z) / p.rc);
+                let d = len - z;
+                if d < p.rc {
+                    let fw = w.a_wall * (1.0 - d / p.rc);
+                    fi[w.axis] -= fw;
+                    virial += fw * d;
                 }
             }
         }
@@ -419,13 +476,26 @@ impl Dpd {
         self.wrap();
         self.compute_forces(dt, true);
         for i in 0..self.len() {
-            for a in 0..dim {
-                self.vel[i][a] = v_old[i][a] + 0.5 * dt * (f_old[i][a] + self.force[i][a]) / m;
-            }
             if self.wall.is_some() && self.crossed[i] {
-                let mut v = self.vel[i];
+                // The particle is now on the reflected branch of its path, so the part of the
+                // velocity that predates the collision is mirrored (the half kick from `f_old`
+                // included) and only the post-collision impulse from `f_new` is added on top.
+                // Mirroring `f_new` as well would apply the wall's own impulse in the wrong
+                // direction and pump energy in on every crossing.
+                let mut v = [0.0; 3];
+                for a in 0..dim {
+                    v[a] = v_old[i][a] + 0.5 * dt * f_old[i][a] / m;
+                }
                 self.reflect_velocity(&mut v);
+                for a in 0..dim {
+                    v[a] += 0.5 * dt * self.force[i][a] / m;
+                }
+                self.friction_velocity(&mut v);
                 self.vel[i] = v;
+            } else {
+                for a in 0..dim {
+                    self.vel[i][a] = v_old[i][a] + 0.5 * dt * (f_old[i][a] + self.force[i][a]) / m;
+                }
             }
         }
         self.t += dt;

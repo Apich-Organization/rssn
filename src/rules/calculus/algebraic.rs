@@ -946,7 +946,7 @@ mod tests {
                 q(&[0, 1, 1]),
                 pow(&mul(&q(&[1, 0, 1]), &c_linear), 3),
             ),
-            (&d_cubic[..], zero.clone(), q(&[1]), c_multi),
+            (&d_cubic[..], zero, q(&[1]), c_multi),
             (&d_quartic[..], q(&[1, 0, 1]), q(&[0, 2]), c_rational),
             (
                 &d_cubic[..],

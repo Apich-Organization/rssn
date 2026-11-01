@@ -170,9 +170,16 @@ struct ClassData {
 }
 
 /// The expression graph. See the [module documentation](self).
-#[derive(Clone, Debug)]
+///
+/// # Cloning
+///
+/// Cloning is how a request gets a private workspace: the operator table is
+/// shared through an [`Arc`] (it is large and never changes during a run),
+/// while the dimension arena is copied. The arena is tiny, and copying it is
+/// what keeps one request's user-defined base dimensions out of another's.
+#[derive(Debug)]
 pub struct Graph {
-    ops: OpTable,
+    ops: std::sync::Arc<OpTable>,
     interner: Interner,
     nodes: Vec<Node>,
     classes: Vec<ClassData>,
@@ -195,6 +202,38 @@ pub struct Graph {
     pub(crate) dim_assumptions: HashMap<SymbolId, crate::graph::dim::DimTerm>,
 }
 
+impl Clone for Graph {
+    fn clone(&self) -> Self {
+        let arena = match self.dims.read() {
+            | Ok(guard) => guard.clone(),
+            | Err(poisoned) => poisoned.into_inner().clone(),
+        };
+        Self {
+            ops: std::sync::Arc::clone(&self.ops),
+            interner: self.interner.clone(),
+            nodes: self.nodes.clone(),
+            classes: self.classes.clone(),
+            child_pool: self.child_pool.clone(),
+            uses: self.uses.clone(),
+            structural: self.structural.clone(),
+            memo: self.memo.clone(),
+            by_op: self.by_op.clone(),
+            pending: self.pending.clone(),
+            analysis_pending: self.analysis_pending.clone(),
+            stamp: self.stamp,
+            class_count: self.class_count,
+            unions: self.unions,
+            conflicts: self.conflicts.clone(),
+            scratch: self.scratch.clone(),
+            assumptions: self.assumptions.clone(),
+            // The arena is *not* shared: a clone may define base dimensions
+            // (a user request) and must not leak them into its source.
+            dims: std::sync::Arc::new(std::sync::RwLock::new(arena)),
+            dim_assumptions: self.dim_assumptions.clone(),
+        }
+    }
+}
+
 impl Default for Graph {
     fn default() -> Self {
         Self::new()
@@ -212,7 +251,7 @@ impl Graph {
     #[must_use]
     pub fn with_ops(ops: OpTable) -> Self {
         Self {
-            ops,
+            ops: std::sync::Arc::new(ops),
             interner: Interner::default(),
             nodes: Vec::new(),
             classes: Vec::new(),
@@ -240,13 +279,17 @@ impl Graph {
 
     /// The operator table.
     #[must_use]
-    pub const fn ops(&self) -> &OpTable {
+    pub fn ops(&self) -> &OpTable {
         &self.ops
     }
 
     /// Mutable access to the operator table, for registering operators.
-    pub const fn ops_mut(&mut self) -> &mut OpTable {
-        &mut self.ops
+    ///
+    /// The table is shared copy-on-write: registering into a graph that was
+    /// cloned from a template gives this graph its own table and leaves the
+    /// template alone.
+    pub fn ops_mut(&mut self) -> &mut OpTable {
+        std::sync::Arc::make_mut(&mut self.ops)
     }
 
     /// The payload and symbol interner.
@@ -1102,9 +1145,12 @@ impl Graph {
                 continue;
             }
             let desc = src.ops.get(src.op(cur));
-            let op = match self.ops.lookup(&desc.name) {
+            let op = match self.ops().lookup_exact(desc) {
                 | Some(op) => op,
-                | None => self.ops.register(desc.clone()).unwrap_or(OpId::NONE),
+                | None => self
+                    .ops_mut()
+                    .register(desc.clone())
+                    .unwrap_or(OpId::NONE),
             };
             let payload = match src.payload(cur) {
                 | Some(Payload::Sym(s)) => {

@@ -548,15 +548,37 @@ impl Program {
 pub struct Installer<'g> {
     graph: &'g mut Graph,
     program: &'g mut Program,
+    rule_set: Arc<str>,
 }
 
 impl<'g> Installer<'g> {
     /// Starts an installation into `graph`, appending to `program`.
-    pub const fn new(
+    ///
+    /// Operators registered through this installer are attributed to the
+    /// empty rule set; use [`Installer::for_set`] inside a rule set so that
+    /// the manifest can say where an operator came from.
+    pub fn new(
         graph: &'g mut Graph,
         program: &'g mut Program,
     ) -> Self {
-        Self { graph, program }
+        Self {
+            graph,
+            program,
+            rule_set: Arc::from(""),
+        }
+    }
+
+    /// Starts an installation attributed to the rule set `name`.
+    pub fn for_set(
+        graph: &'g mut Graph,
+        program: &'g mut Program,
+        name: &str,
+    ) -> Self {
+        Self {
+            graph,
+            program,
+            rule_set: Arc::from(name),
+        }
     }
 
     /// The graph being installed into.
@@ -573,7 +595,12 @@ impl<'g> Installer<'g> {
         desc: OpDescriptor,
     ) -> Result<OpId, RuleError> {
         let name = desc.name.to_string();
+        let lowering = desc.jit;
+        let desc = desc.owned_by(&self.rule_set);
         let op = self.graph.ops_mut().register(desc)?;
+        if let Some(lowering) = lowering {
+            self.graph.ops_mut().set_attr(op, lowering);
+        }
         if self
             .graph
             .ops()
@@ -932,6 +959,33 @@ fn parse_guard(parser: &mut Parser<'_>) -> Result<Guard, ParseError> {
 
 type InstallFn = dyn Fn(&mut Installer<'_>) -> Result<(), RuleError> + Send + Sync;
 
+/// What a rule set declares about itself, for the manifest.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuleSetMeta {
+    /// Version of the set's rules and operators.
+    pub version: String,
+    /// Version of rssn it appeared in.
+    pub since: String,
+    /// How settled it is.
+    pub stability: crate::kernel::signature::Stability,
+    /// Capabilities it provides (`calculus`, `ode`, `units`, ...).
+    pub capabilities: Vec<String>,
+}
+
+impl RuleSetMeta {
+    /// The metadata of a set named `name` that declares nothing: it is
+    /// stable, appeared in `0.1`, and provides a capability of its own name.
+    #[must_use]
+    pub fn of(name: &str) -> Self {
+        Self {
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+            since: "0.1".to_owned(),
+            stability: crate::kernel::signature::Stability::Stable,
+            capabilities: vec![name.to_owned()],
+        }
+    }
+}
+
 /// A named group of operators and rules for one mathematical domain.
 ///
 /// A rule set is a *recipe*: installing it into a graph registers its
@@ -941,6 +995,7 @@ pub struct RuleSet {
     name: Arc<str>,
     deps: Vec<Self>,
     install: Arc<InstallFn>,
+    meta: RuleSetMeta,
 }
 
 impl fmt::Debug for RuleSet {
@@ -962,7 +1017,39 @@ impl RuleSet {
             name: Arc::from(name),
             deps: Vec::new(),
             install: Arc::new(install),
+            meta: RuleSetMeta::of(name),
         }
+    }
+
+    /// Declares the set's version, the version it appeared in and the
+    /// capabilities it provides.
+    #[must_use]
+    pub fn about(
+        mut self,
+        version: &str,
+        since: &str,
+        capabilities: &[&str],
+    ) -> Self {
+        version.clone_into(&mut self.meta.version);
+        since.clone_into(&mut self.meta.since);
+        self.meta.capabilities = capabilities.iter().map(|c| (*c).to_owned()).collect();
+        self
+    }
+
+    /// Declares the set's stability.
+    #[must_use]
+    pub const fn stability(
+        mut self,
+        stability: crate::kernel::signature::Stability,
+    ) -> Self {
+        self.meta.stability = stability;
+        self
+    }
+
+    /// The set's metadata.
+    #[must_use]
+    pub const fn meta(&self) -> &RuleSetMeta {
+        &self.meta
     }
 
     /// Declares that `dep` must be installed before this set.
@@ -998,7 +1085,7 @@ impl RuleSet {
         for dep in &self.deps {
             dep.install_into(graph, program)?;
         }
-        (self.install)(&mut Installer::new(graph, program))
+        (self.install)(&mut Installer::for_set(graph, program, &self.name))
     }
 }
 

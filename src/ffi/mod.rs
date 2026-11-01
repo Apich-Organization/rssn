@@ -19,6 +19,7 @@
 #![allow(unsafe_code)]
 
 mod compute;
+mod manifest;
 mod term;
 
 use std::cell::RefCell;
@@ -29,6 +30,7 @@ use std::panic::AssertUnwindSafe;
 use std::panic::catch_unwind;
 
 pub use compute::*;
+pub use manifest::*;
 pub use term::*;
 
 use crate::api::ComputeError;

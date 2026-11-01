@@ -40,6 +40,15 @@ exclude = [
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
 
+# Reports how much of the operator table is typed. Named with a hyphen so
+# that the documented invocation is `cargo run --bin signature-audit`; the
+# file is `signature_audit.rs` because a Rust module cannot have one.
+[[bin]]
+name = "signature-audit"
+path = "src/bin/signature_audit.rs"
+doc = false
+test = false
+
 [profile.dev]
 lto = false
 opt-level = 0
@@ -88,6 +97,12 @@ num-traits = "0.2"
 num-integer = "0.1"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
+# Every byte RSSN writes or reads goes through `bincode-next`: it is ours, it
+# has a frozen bincode format and a frozen high-speed CBOR encoder, and it is
+# the only wire format the kernel ABI and the manifest are allowed to use.
+bincode-next = { version = "3.1.1", features = ["serde"] }
+# Stable, collision-resistant digests for manifests and operator keys.
+blake3 = "1.8"
 
 [dependencies.faer]
 version = "0.24"

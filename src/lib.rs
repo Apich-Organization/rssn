@@ -125,9 +125,21 @@ pub mod api;
 pub mod backend;
 /// Build metadata and mathematical constants.
 pub mod constant;
+/// The dimension and unit layer.
+///
+/// This is the module a `rssn-dim` crate would be. It is not one because it
+/// shares the dimension arena and the operator table with the rest of the
+/// crate; see [`kernel`] for the same reasoning about `rssn-api`.
+pub mod dim;
 pub mod ffi;
 pub mod graph;
 pub mod io;
+/// The embedding kernel: dynamic call ABI, signatures, plugins, manifest.
+///
+/// This is the module a `rssn-api` crate would be. Everything a host needs is
+/// reachable from here without touching crate internals, so the split remains
+/// a packaging decision rather than an architectural one.
+pub mod kernel;
 pub mod kernels;
 pub mod prelude;
 pub mod rules;

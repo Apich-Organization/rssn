@@ -364,70 +364,6 @@ pub(super) fn complete(
     residue_logpart(graph, x, d, a, b, c)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn one() -> BigRational {
-        BigRational::from_integer(BigInt::from(1))
-    }
-
-    /// `g = 1 + D y`, so `g'/g = 3 D'(y - D^2)/(2 (1 - D^3))`.
-    fn logarithmic_example(d: &[BigRational]) -> (QPoly, QPoly, QPoly) {
-        let three = BigRational::from_integer(BigInt::from(3));
-        let two = BigRational::from_integer(BigInt::from(2));
-        let d_prime = field::derivative(d);
-        let d_squared = field::mul(d, d);
-        let minus_three = -three.clone();
-        let a = field::scale(&field::mul(&d_squared, &d_prime), &minus_three);
-        let b = field::scale(&d_prime, &three);
-        let d_cubed = field::mul(&d_squared, d);
-        let one_poly = vec![one()];
-        let c = field::scale(&field::sub(&one_poly, &d_cubed), &two);
-        (a, b, c)
-    }
-
-    #[test]
-    fn logarithmic_antiderivative_closes_positive_genus() {
-        for d in [
-            vec![one(), BigRational::zero(), BigRational::zero(), one()],
-            vec![BigRational::zero(), -one(), BigRational::zero(), one()],
-            vec![
-                one(),
-                BigRational::zero(),
-                BigRational::zero(),
-                BigRational::zero(),
-                one(),
-            ],
-        ] {
-            let (a, b, c) = logarithmic_example(&d);
-            let (p, q) = log_derivative(&d, &a, &b, &c).expect("no logarithmic antiderivative");
-            assert!(verifies_log_derivative(&d, &a, &b, &c, &p, &q));
-            assert!(trace_matches(&d, &a, &c, &p, &q));
-            // The solution is the expected `g = 1 + D y`, up to a scalar.
-            let scale = p.first().cloned().unwrap_or_else(Zero::zero);
-            assert!(!scale.is_zero());
-            assert_eq!(field::scale(&d, &scale), q, "unexpected y coefficient");
-            assert_eq!(field::scale(&vec![one()], &scale), p);
-        }
-    }
-
-    #[test]
-    fn non_logarithmic_residue_is_rejected() {
-        // `y/(x - 2)`, `y^2 = x^3 + 1`: the residues are `+-3`, but the
-        // remaining differential of the second kind is not exact, so the
-        // integral is not a logarithm of an algebraic function.
-        let d = vec![one(), BigRational::zero(), BigRational::zero(), one()];
-        let c = vec![BigRational::from_integer(BigInt::from(-2)), one()];
-        assert!(log_derivative(&d, &[], &[one()], &c).is_none());
-        // The trace of a pure `y` integrand is zero, so the norm check is
-        // not vacuous.
-        let (a, b, c) = logarithmic_example(&d);
-        let (p, q) = log_derivative(&d, &a, &b, &c).expect("no logarithmic antiderivative");
-        assert!(!trace_matches(&d, &[], &c, &p, &q));
-    }
-}
-
 /// The residue-by-residue logarithmic part for residues without a `y`
 /// component (and the polynomial part of the integrand).
 fn residue_logpart(
@@ -548,4 +484,68 @@ fn residue_logpart(
         }
     }
     Some(term::add_all(graph, &terms))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn one() -> BigRational {
+        BigRational::from_integer(BigInt::from(1))
+    }
+
+    /// `g = 1 + D y`, so `g'/g = 3 D'(y - D^2)/(2 (1 - D^3))`.
+    fn logarithmic_example(d: &[BigRational]) -> (QPoly, QPoly, QPoly) {
+        let three = BigRational::from_integer(BigInt::from(3));
+        let two = BigRational::from_integer(BigInt::from(2));
+        let d_prime = field::derivative(d);
+        let d_squared = field::mul(d, d);
+        let minus_three = -three.clone();
+        let a = field::scale(&field::mul(&d_squared, &d_prime), &minus_three);
+        let b = field::scale(&d_prime, &three);
+        let d_cubed = field::mul(&d_squared, d);
+        let one_poly = vec![one()];
+        let c = field::scale(&field::sub(&one_poly, &d_cubed), &two);
+        (a, b, c)
+    }
+
+    #[test]
+    fn logarithmic_antiderivative_closes_positive_genus() {
+        for d in [
+            vec![one(), BigRational::zero(), BigRational::zero(), one()],
+            vec![BigRational::zero(), -one(), BigRational::zero(), one()],
+            vec![
+                one(),
+                BigRational::zero(),
+                BigRational::zero(),
+                BigRational::zero(),
+                one(),
+            ],
+        ] {
+            let (a, b, c) = logarithmic_example(&d);
+            let (p, q) = log_derivative(&d, &a, &b, &c).expect("no logarithmic antiderivative");
+            assert!(verifies_log_derivative(&d, &a, &b, &c, &p, &q));
+            assert!(trace_matches(&d, &a, &c, &p, &q));
+            // The solution is the expected `g = 1 + D y`, up to a scalar.
+            let scale = p.first().cloned().unwrap_or_else(Zero::zero);
+            assert!(!scale.is_zero());
+            assert_eq!(field::scale(&d, &scale), q, "unexpected y coefficient");
+            assert_eq!(field::scale(&[one()], &scale), p);
+        }
+    }
+
+    #[test]
+    fn non_logarithmic_residue_is_rejected() {
+        // `y/(x - 2)`, `y^2 = x^3 + 1`: the residues are `+-3`, but the
+        // remaining differential of the second kind is not exact, so the
+        // integral is not a logarithm of an algebraic function.
+        let d = vec![one(), BigRational::zero(), BigRational::zero(), one()];
+        let c = vec![BigRational::from_integer(BigInt::from(-2)), one()];
+        assert!(log_derivative(&d, &[], &[one()], &c).is_none());
+        // The trace of a pure `y` integrand is zero, so the norm check is
+        // not vacuous.
+        let (a, b, c) = logarithmic_example(&d);
+        let (p, q) = log_derivative(&d, &a, &b, &c).expect("no logarithmic antiderivative");
+        assert!(!trace_matches(&d, &[], &c, &p, &q));
+    }
 }

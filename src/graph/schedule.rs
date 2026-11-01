@@ -308,9 +308,16 @@ fn reduced_arguments(
 }
 
 /// A program together with the scheduling logic that runs it.
+///
+/// The engine also owns the [manifest](crate::kernel::manifest) of what it
+/// installed. The manifest is rebuilt whenever the program grows, so a
+/// session's manifest always describes the operators it can actually call.
 #[derive(Clone, Debug, Default)]
 pub struct Engine {
     program: Program,
+    sets: Vec<RuleSet>,
+    plugins: Vec<crate::kernel::plugin::PluginManifest>,
+    manifest: std::sync::Arc<crate::kernel::manifest::KernelManifest>,
 }
 
 impl Engine {
@@ -338,8 +345,52 @@ impl Engine {
     ) -> Result<(), RuleError> {
         for set in sets {
             set.install_into(graph, &mut self.program)?;
+            if !self.sets.iter().any(|s| s.name() == set.name()) {
+                self.sets.push(set.clone());
+            }
         }
+        self.refresh_manifest(graph);
         Ok(())
+    }
+
+    /// Mutable access to the program, for a plugin that registers rules.
+    ///
+    /// Call [`Engine::refresh_manifest`] afterwards so that the new
+    /// operators appear in the manifest.
+    pub const fn program_mut(&mut self) -> &mut Program {
+        &mut self.program
+    }
+
+    /// Records a plugin's declaration, so that it appears in the manifest.
+    pub fn add_plugin(
+        &mut self,
+        manifest: crate::kernel::plugin::PluginManifest,
+    ) {
+        self.plugins.push(manifest);
+    }
+
+    /// Rebuilds the manifest from the graph's operator table.
+    pub fn refresh_manifest(
+        &mut self,
+        graph: &Graph,
+    ) {
+        self.manifest = std::sync::Arc::new(crate::kernel::manifest::KernelManifest::build(
+            graph,
+            &self.sets,
+            &self.plugins,
+        ));
+    }
+
+    /// The manifest of this engine's configuration.
+    #[must_use]
+    pub fn manifest(&self) -> &crate::kernel::manifest::KernelManifest {
+        &self.manifest
+    }
+
+    /// The manifest, shared.
+    #[must_use]
+    pub fn manifest_arc(&self) -> std::sync::Arc<crate::kernel::manifest::KernelManifest> {
+        std::sync::Arc::clone(&self.manifest)
     }
 
     /// The installed program.

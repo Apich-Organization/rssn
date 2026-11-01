@@ -1858,8 +1858,8 @@ mod tests {
                 .wrapping_add(1_442_695_040_888_963_407);
             state
         };
-        let columns = 37;
-        let words = (columns + 63) / 64;
+        let columns: usize = 37;
+        let words = columns.div_ceil(64);
         let mask = (1_u64 << (columns % 64)) - 1;
         let mut rows: Vec<Vec<u64>> = (0..20)
             .map(|_| (0..words).map(|_| next() & mask).collect())
@@ -1873,7 +1873,7 @@ mod tests {
         );
         rows.push((0..words).map(|w| rows[7][w] ^ rows[11][w]).collect());
         let dependencies = find_dependencies(&rows, columns);
-        assert!(!dependencies.is_empty());
+        assert_ne!(dependencies, [] as [Vec<u64>; 0]);
         for combo in &dependencies {
             let mut xor = vec![0_u64; words];
             for (word_index, word) in combo.iter().enumerate() {
@@ -1930,7 +1930,7 @@ mod tests {
         let n2 = n("1000033");
         let composite = &n1 * &n2;
         let divisor = qs_factor(&composite, QsLimits::for_digits(14)).expect("semiprime");
-        assert!(&composite % &divisor == BigInt::zero());
+        assert_eq!(&composite % &divisor, BigInt::zero());
         assert!(divisor > BigInt::one() && divisor < composite);
     }
 }

@@ -201,7 +201,7 @@ fn total_degree_truncation() {
             .eval(&at)
             .unwrap_or_else(|| panic!("cannot evaluate the series"));
         let want = 1.0 / (1.0 - 0.04 - 0.03);
-        let bound = 2.0 * 0.1_f64.powi(i32::try_from(order + 1).unwrap_or(2));
+        let bound = 2.0 * 0.1_f64.powi(order + 1);
         assert!(
             (got - want).abs() <= bound,
             "order {order}: {got} vs {want} (error {})",

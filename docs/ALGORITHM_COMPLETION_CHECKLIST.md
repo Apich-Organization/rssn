@@ -1606,3 +1606,47 @@ cross-checked against F4/the FGLM route and certified structurally (monic,
 reduced, all generators reduce to zero, S-polynomials reduce to zero in the
 oracle's own arithmetic).
 
+
+---
+
+## Part 8 — Round 4 audit (2026-11-01)
+
+A fresh read of every module-level `Limitations:` paragraph (30 files), because
+Part 5's R-list is now history: R1 (Zeilberger to order three, exactly over
+`Q(n)`), R3 (test coverage of `sim/{cutcell,dpd,acoustics,bem_helmholtz,md_cell}`
+and `kernels/{fftconv,random}`), R4 (BDF mass matrix), R5 (FGLM), R6 (BPSW +
+ECM) and R9 (Kelvin `n > 1`) are all closed in the tree, and the
+`Limitations:` text is the only current statement of what is missing.
+
+### 8.1 Class (a) — wrong, panicking or hanging
+
+| Item | Result |
+|---|---|
+| `sim/dpd` specular walls pumped energy in | **fixed**: the reflection was applied to the whole post-step velocity, so the post-collision force impulse was mirrored as well and added `0.075` per crossing (`+4.6 %` of the total energy over `t = 20`). The collision now mirrors only the pre-collision half of the velocity-Verlet step and adds the post-collision impulse on top; energy is conserved to `4e-4`–`1.8e-3` over eight seeds, the same order as the periodic integrator's own error. This was the failing `tests/sim/dpd.rs:349`. |
+
+### 8.2 Class (b) — a gap that blocks a common workflow
+
+Ordered by value over effort; each is a self-contained change with a test that
+pins the claim.
+
+| # | Item | Where |
+|---|---|---|
+| B5 | `sim/acoustics`: Dirichlet data must be zero, so a driven boundary cannot be prescribed | `sim/acoustics.rs` |
+| B6 | `sim/yee_fdtd`: no conductivity, no PMC boundaries | `sim/yee_fdtd.rs` |
+| B7 | `sim/sse`: no winding-number (stiffness) estimator | `sim/sse.rs` |
+| B8 | `kernels/wavelets`: no biorthogonal/symmetric families, no 2-D transform, periodic extension only | `kernels/wavelets.rs` |
+| B9 | `sim/euler_nd`: gravity not well-balanced for hydrostatic gas; no bed friction | `sim/euler_nd.rs` |
+| B10 | `sim/structured`: constant-coefficient Laplacian only | `sim/structured.rs` |
+| B11 | `sim/spin_models`: nearest-neighbour hypercubic lattices only | `sim/spin_models.rs` |
+
+### 8.3 Class (c) — research level, documented and accepted
+
+Free surfaces and variable density in `ns_mac`; curved hexahedra and
+multidimensional WENO in `dg`/`dg3d`; 3-D `euler_amr`; friction and
+self-contact in `hyperelastic`; anisotropic/magnetic media and the Dey–Mittra
+combination in `yee_fdtd`; directional compression in `bem_helmholtz`;
+radiation reaction and unbound Kerr orbits; P3M in `fmm`; >1PN terms in
+`hermite`; polymers and multiple walled axes in `dpd`. These stay as
+documented limits: each would be a new algorithm rather than a completion of an
+existing one, and a documented limit that returns unevaluated is better than a
+half-implemented method that returns a plausible wrong number.

@@ -53,16 +53,14 @@ use crate::graph::op::core;
 use crate::rules;
 
 /// The representation the answer should be in.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Target {
-    /// A closed-form term: no unevaluated heavy operator left.
-    Symbolic,
-    /// A floating point value within the given absolute tolerance.
-    Numeric {
-        /// Requested absolute tolerance.
-        tolerance: f64,
-    },
-}
+///
+/// This is [`crate::kernel::call::Target`]: the typed API and the dynamic
+/// ABI ask for phases with the same type.
+pub use crate::kernel::call::Target;
+
+mod value;
+
+pub use value::MergeError;
 
 /// What to compute with and what to aim for.
 #[derive(Clone, Debug)]
@@ -306,6 +304,9 @@ impl From<ParseError> for ComputeError {
 /// A graph with a set of rule sets installed, and the engine bound to it.
 struct Template {
     sets: Vec<Arc<str>>,
+    /// The rule sets themselves, so that a dynamic call can build a
+    /// [`Config`] that selects this template.
+    rule_sets: Vec<RuleSet>,
     graph: Graph,
     engine: Engine,
 }
@@ -315,6 +316,11 @@ struct Inner {
     /// plain hash-consed DAG; no equalities are ever asserted in it.
     graph: Graph,
     templates: Vec<Template>,
+    /// Plugins registered into this session. They are part of the
+    /// configuration, so a template that is built later installs them too.
+    plugins: Vec<Arc<dyn crate::kernel::plugin::Plugin>>,
+    /// Ids handed out to plugins, in registration order.
+    plugin_count: u32,
 }
 
 /// Owns the term store and the engines that compute on it.
@@ -329,6 +335,7 @@ struct Inner {
 /// session must not be used in another.
 pub struct Session {
     inner: RefCell<Inner>,
+    id: crate::kernel::value::SessionId,
 }
 
 impl fmt::Debug for Session {
@@ -401,12 +408,15 @@ impl Session {
     /// # Errors
     /// Fails when a rule set does not install.
     pub fn with_rules(sets: &[RuleSet]) -> Result<Self, RuleError> {
-        let template = Template::new(sets)?;
+        let template = Template::new(sets, &[])?;
         let graph = template.graph.clone();
         Ok(Self {
+            id: next_session_id(),
             inner: RefCell::new(Inner {
                 graph,
                 templates: vec![template],
+                plugins: Vec::new(),
+                plugin_count: 0,
             }),
         })
     }
@@ -624,7 +634,7 @@ fn template_index(
     match inner.templates.iter().position(|t| t.sets == key) {
         | Some(i) => Ok(i),
         | None => {
-            inner.templates.push(Template::new(&config.sets)?);
+            inner.templates.push(Template::new(&config.sets, &[])?);
             Ok(inner.templates.len().saturating_sub(1))
         },
     }
@@ -822,15 +832,61 @@ fn finish<'s>(
 }
 
 impl Template {
-    fn new(sets: &[RuleSet]) -> Result<Self, RuleError> {
+    fn new(
+        sets: &[RuleSet],
+        plugins: &[Arc<dyn crate::kernel::plugin::Plugin>],
+    ) -> Result<Self, RuleError> {
         let mut graph = Graph::new();
-        let engine = Engine::install(&mut graph, sets)?;
+        let mut engine = Engine::install(&mut graph, sets)?;
+        for plugin in plugins {
+            let manifest = plugin.manifest();
+            let mut registry = crate::kernel::plugin::Registry::new(
+                &mut graph,
+                engine.program_mut(),
+                &manifest.name,
+            );
+            plugin.register(&mut registry).map_err(|error| RuleError::Invalid {
+                rule: manifest.name.clone(),
+                reason: leak_reason(&error.to_string()),
+            })?;
+            drop(registry);
+            engine.add_plugin(manifest);
+        }
+        engine.refresh_manifest(&graph);
         Ok(Self {
             sets: sets.iter().map(|s| Arc::from(s.name())).collect(),
+            rule_sets: sets.to_vec(),
             graph,
             engine,
         })
     }
+}
+
+/// A `'static` message for [`RuleError::Invalid`], which stores a static
+/// string. The message is interned once per distinct text.
+fn leak_reason(message: &str) -> &'static str {
+    use std::collections::HashSet;
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+    static SEEN: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+    let seen = SEEN.get_or_init(|| Mutex::new(HashSet::new()));
+    if let Ok(mut set) = seen.lock() {
+        if let Some(existing) = set.get(message) {
+            return existing;
+        }
+        let leaked: &'static str = Box::leak(message.to_owned().into_boxed_str());
+        set.insert(leaked);
+        return leaked;
+    }
+    "plugin registration failed"
+}
+
+/// Hands out session ids.
+fn next_session_id() -> crate::kernel::value::SessionId {
+    use std::sync::atomic::AtomicU64;
+    use std::sync::atomic::Ordering;
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    crate::kernel::value::SessionId(NEXT.fetch_add(1, Ordering::Relaxed))
 }
 
 #[cold]
