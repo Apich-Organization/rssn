@@ -67,21 +67,38 @@ pub(crate) const DIMENSIONS: [&str; 7] = [
     "Luminosity",
 ];
 
-/// Exponents of the seven base dimensions.
+/// Exponents of the base dimensions a unit is measured in.
+///
+/// The seven SI bases are kept in a fixed array because they are on every
+/// path; anything else — a currency, a count of items, whatever a host
+/// registers — goes in a sorted side table. That split is what lets
+/// `unit EUR : Currency` exist without giving up the constant-time common
+/// case.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Dim(pub(crate) [Exp; 7]);
+pub(crate) struct Dim {
+    /// Exponents of the seven SI bases, in `DIMENSIONS` order.
+    si: [Exp; 7],
+    /// Exponents of every other base, sorted by name.
+    extra: Vec<(String, Exp)>,
+}
 
 impl Dim {
     pub(crate) fn zero() -> Self {
-        Self([Exp::zero(); 7])
+        Self {
+            si: [Exp::zero(); 7],
+            extra: Vec::new(),
+        }
     }
 
     pub(crate) fn of(e: [i32; 7]) -> Self {
-        Self(e.map(Exp::from_integer))
+        Self {
+            si: e.map(Exp::from_integer),
+            extra: Vec::new(),
+        }
     }
 
     pub(crate) fn is_zero(&self) -> bool {
-        self.0.iter().all(Zero::is_zero)
+        self.si.iter().all(Zero::is_zero) && self.extra.is_empty()
     }
 
     pub(crate) fn add_scaled(
@@ -89,9 +106,60 @@ impl Dim {
         other: &Self,
         k: Exp,
     ) {
-        for (a, b) in self.0.iter_mut().zip(&other.0) {
+        for (a, b) in self.si.iter_mut().zip(&other.si) {
             *a += *b * k;
         }
+        for (name, exponent) in &other.extra {
+            self.add_extra(name, *exponent * k);
+        }
+    }
+
+    /// Adds `exponent` to the exponent of the base dimension `name`.
+    ///
+    /// A name the seven SI bases do not have lands in the side table, which is
+    /// how a custom base dimension reaches a unit at all.
+    pub(crate) fn add_base(
+        &mut self,
+        name: &str,
+        exponent: Exp,
+    ) {
+        if let Some(index) = DIMENSIONS.iter().position(|known| *known == name) {
+            if let Some(slot) = self.si.get_mut(index) {
+                *slot += exponent;
+            }
+            return;
+        }
+        self.add_extra(name, exponent);
+    }
+
+    /// Adds `exponent` to the side-table base `name`.
+    fn add_extra(
+        &mut self,
+        name: &str,
+        exponent: Exp,
+    ) {
+        if exponent.is_zero() {
+            return;
+        }
+        match self.extra.binary_search_by(|(known, _)| known.as_str().cmp(name)) {
+            | Ok(index) => {
+                if let Some(slot) = self.extra.get_mut(index) {
+                    slot.1 += exponent;
+                }
+                self.extra.retain(|(_, e)| !e.is_zero());
+            },
+            | Err(index) => self.extra.insert(index, (name.to_owned(), exponent)),
+        }
+    }
+
+    /// The seven SI exponents.
+    pub(crate) const fn si(&self) -> &[Exp; 7] {
+        &self.si
+    }
+
+    /// The non-SI base dimensions, sorted by name.
+    pub(crate) fn extra(&self) -> &[(String, Exp)] {
+        &self.extra
     }
 }
 
@@ -399,6 +467,12 @@ pub(crate) const ALIASES: [(&str, &[(&str, i32)]); 19] = [
 ];
 
 pub(crate) fn resolve_symbol(name: &str) -> Option<Resolved> {
+    // A unit the host registered wins over the built-in table: `register`
+    // refuses a name that would shadow a different unit, so a hit here is the
+    // unit the host meant.
+    if let Some(resolved) = resolve_user(name) {
+        return Some(resolved);
+    }
     if let Some((_, parts)) = ALIASES.iter().find(|(alias, _)| *alias == name) {
         let map: UnitMap = parts
             .iter()
@@ -462,11 +536,22 @@ pub(crate) fn dimension_term(
     arena: &crate::graph::dim::DimArena,
 ) -> Option<crate::graph::dim::DimTerm> {
     let mut term = crate::graph::dim::DimTerm::dimensionless();
-    for (index, exponent) in dim.0.iter().enumerate() {
+    for (index, exponent) in dim.si().iter().enumerate() {
         if exponent.is_zero() {
             continue;
         }
         let name = DIMENSIONS.get(index)?;
+        let base = arena.base_id(name)?;
+        let rational = BigRational::new(
+            BigInt::from(*exponent.numer()),
+            BigInt::from(*exponent.denom()),
+        );
+        term = term.mul(&crate::graph::dim::DimTerm::base(base, rational));
+    }
+    // A base the arena has never seen is not an error here: the graph defines
+    // it when the host declares the dimension, and until then the unit simply
+    // has no term form.
+    for (name, exponent) in dim.extra() {
         let base = arena.base_id(name)?;
         let rational = BigRational::new(
             BigInt::from(*exponent.numer()),
@@ -485,6 +570,25 @@ pub(crate) fn unit_info(
         dimension: dimension_term(&resolved.dim, arena)?,
         scale: resolved.scale.to_f64()?,
         affine: resolved.offset.is_some(),
+    })
+}
+
+/// Resolves a unit the host registered, by name or alias.
+fn resolve_user(name: &str) -> Option<Resolved> {
+    // Take a copy under the guard and let it go: nothing below needs the lock,
+    // and holding it across the conversion would block a concurrent register.
+    let def = {
+        let extra = user_units().read().ok()?;
+        extra
+            .get(name)
+            .or_else(|| extra.values().find(|unit| unit.aliases.iter().any(|a| a == name)))?
+            .clone()
+    };
+    let dim = expr_to_dim(&def.dimension).ok()?;
+    Some(Resolved {
+        dim,
+        scale: def.scale,
+        offset: def.offset,
     })
 }
 
@@ -1030,17 +1134,18 @@ fn display_of(name: &str) -> String {
 /// A rough category for a dimension.
 fn category_of(dim: &Dim) -> String {
     let non_zero: Vec<usize> = dim
-        .0
+        .si()
         .iter()
         .enumerate()
         .filter(|(_, e)| !e.is_zero())
         .map(|(i, _)| i)
         .collect();
-    match non_zero.as_slice() {
-        | [] => "dimensionless".to_owned(),
-        | [i] => DIMENSIONS
+    match (non_zero.as_slice(), dim.extra()) {
+        | ([], []) => "dimensionless".to_owned(),
+        | ([i], []) => DIMENSIONS
             .get(*i)
             .map_or_else(|| "derived".to_owned(), |n| n.to_ascii_lowercase()),
+        | ([], [(name, _)]) => name.to_ascii_lowercase(),
         | _ => "derived".to_owned(),
     }
 }
@@ -1048,13 +1153,22 @@ fn category_of(dim: &Dim) -> String {
 /// The type-level dimension of an internal `Dim`.
 fn dim_to_expr(dim: &Dim) -> DimExpr {
     let mut factors = Vec::new();
-    for (index, exponent) in dim.0.iter().enumerate() {
+    for (index, exponent) in dim.si().iter().enumerate() {
         if exponent.is_zero() {
             continue;
         }
         let Some(name) = DIMENSIONS.get(index) else {
             continue;
         };
+        let (numer, denom) = (*exponent.numer(), *exponent.denom());
+        factors.push(
+            DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
+                i64::from(numer),
+                i64::from(denom),
+            ))),
+        );
+    }
+    for (name, exponent) in dim.extra() {
         let (numer, denom) = (*exponent.numer(), *exponent.denom());
         factors.push(
             DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
@@ -1088,13 +1202,10 @@ fn expr_to_dim(dim: &DimExpr) -> Result<Dim, DimError> {
         match dim {
             | DimExpr::Dimless => Ok(()),
             | DimExpr::Base(name) => {
-                let index = DIMENSIONS
-                    .iter()
-                    .position(|d| d == name)
-                    .ok_or_else(|| bad("not a base dimension"))?;
-                if let Some(slot) = out.0.get_mut(index) {
-                    *slot += Exp::new(sign, 1);
-                }
+                // Any base name is accepted: the seven SI ones go in the
+                // fixed array, everything else in the side table, and the
+                // graph defines it in the arena when the host declares it.
+                out.add_base(name, Exp::new(sign, 1));
                 Ok(())
             },
             | DimExpr::Mul(factors) => {
@@ -1104,16 +1215,12 @@ fn expr_to_dim(dim: &DimExpr) -> Result<Dim, DimError> {
                 Ok(())
             },
             | DimExpr::Pow(base, TypeExp::Rat(r)) => {
-                let index = match &**base {
-                    | DimExpr::Base(name) => DIMENSIONS.iter().position(|d| d == name),
-                    | _ => None,
-                }
-                .ok_or_else(|| bad("only base dimensions may carry an exponent"))?;
+                let DimExpr::Base(name) = &**base else {
+                    return Err(bad("only base dimensions may carry an exponent"));
+                };
                 let numer = i32::try_from(r.numer).map_err(|_| bad("exponent too large"))?;
                 let denom = i32::try_from(r.denom).map_err(|_| bad("exponent too large"))?;
-                if let Some(slot) = out.0.get_mut(index) {
-                    *slot += Exp::new(numer * sign, denom);
-                }
+                out.add_base(name, Exp::new(numer * sign, denom));
                 Ok(())
             },
             | DimExpr::Inverse(base) => walk(base, out, -sign),
@@ -1133,12 +1240,9 @@ fn term_to_dim(
 ) -> Option<Dim> {
     let mut out = Dim::zero();
     for (name, exponent) in term.factors(arena) {
-        let index = DIMENSIONS.iter().position(|d| *d == name)?;
         let numer = exponent.numer().to_i32()?;
         let denom = exponent.denom().to_i32()?;
-        if let Some(slot) = out.0.get_mut(index) {
-            *slot += Exp::new(numer, denom);
-        }
+        out.add_base(&name, Exp::new(numer, denom));
     }
     term.vars(arena).is_empty().then_some(out)
 }

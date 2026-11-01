@@ -426,7 +426,7 @@ impl Session {
         ctx.trace("resolve", format!("{name}/{} -> {}", args.len(), op.index()));
         if let Some(evaluator) = descriptor.eval_dyn.clone() {
             ctx.trace("dispatch", "native evaluator");
-            return evaluator.eval(args, &ctx);
+            return evaluator.eval(args, ctx);
         }
         let term = {
             let mut inner = self.inner.borrow_mut();
@@ -450,10 +450,28 @@ impl Session {
             })?;
             self.term(node)
         };
-        let config = config_for(&sets, &ctx);
+        let config = config_for(&sets, ctx);
         let answer = self.compute(term, &config).map_err(op_error)?;
         ctx.trace("compute", format!("reduced={}", answer.reduced));
         self.value_of(answer.term)
+    }
+
+    /// Loads a plugin from a shared library and registers it.
+    ///
+    /// This is [`cdylib::load`](crate::kernel::cdylib::load) followed by
+    /// [`Session::register`]; the library stays mapped for as long as the
+    /// session holds the plugin.
+    ///
+    /// # Errors
+    /// See [`cdylib::load`](crate::kernel::cdylib::load) and
+    /// [`Session::register`].
+    #[cfg(feature = "plugin-cdylib")]
+    pub fn load_plugin(
+        &mut self,
+        path: &std::path::Path,
+    ) -> Result<PluginId, PluginError> {
+        let plugin = crate::kernel::cdylib::load(path)?;
+        self.register(Box::new(plugin))
     }
 
     /// Registers a plugin.

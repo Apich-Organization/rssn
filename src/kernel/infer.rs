@@ -1,31 +1,52 @@
-//! Signature inference for operators that do not declare one.
+//! The signature of every operator, and where it came from.
 //!
-//! A thousand operators do not get a thousand hand-written signatures on day
-//! one, and leaving them untyped would make the manifest useless for a host
-//! that wants to generate bindings. So an operator without a declared
-//! signature gets one inferred from what the descriptor already says:
+//! # Why a derivation, and why it is trustworthy
 //!
-//! * a predicate is `(Scalar, ...) -> Bool`;
-//! * a heavy operator — an unevaluated request — returns a term, so it is
-//!   `(Scalar, ...) -> Dyn<Term>`;
-//! * an operator with a scalar evaluator is `(Scalar, ...) -> Scalar`;
-//! * a variadic one is variadic over `Scalar`.
+//! A thousand operators do not get a thousand hand-written signatures, and a
+//! host that wants to generate typed bindings cannot do it from names. The
+//! earlier answer was a blanket `(Real, …, Real) -> Real`, which was wrong for
+//! almost every operator in a computer-algebra system: `sin(x)` with a symbol
+//! `x` returns an expression, not a number.
 //!
-//! Inference is deliberately *conservative*: it never guesses that an
-//! argument is a tensor, because a wrong tensor shape is worse than a
-//! conservative `Scalar`. Operators whose arguments really are tensors are
-//! corrected in [`signatures.overlay.json`], which is applied first and
-//! always wins.
+//! This module derives the signature from what the operator **declares about
+//! itself**, and every rule below is a consequence of that declaration rather
+//! than a guess about the name:
 //!
-//! Every inferred signature is marked
-//! [`SignatureSource::Inferred`](super::manifest::SignatureSource), so a host
-//! can tell a declaration from a guess.
+//! | The operator declares | Therefore |
+//! |---|---|
+//! | a scalar evaluator (`eval`) | it accepts `n` reals and returns a real |
+//! | `OpFlags::PREDICATE` | the result is a truth value |
+//! | a `Binder` at index `k` | argument `k` is the bound *symbol*, not a value |
+//! | `Arity::Variadic` | the last parameter repeats |
+//! | `OpFlags::LEAF` | it carries a payload; it has no call signature |
+//!
+//! and, on top of that, **every operator that is not a leaf also has the
+//! symbolic contract**: `n` terms in, one term out. An operator with a scalar
+//! evaluator therefore has *two* overloads — `(Real, …) -> Real` for numbers
+//! and `(Term, …) -> Term` for expressions — which is exactly what the engine
+//! does: `sin(0.5)` folds to a number, `sin(x)` stays a term. The
+//! [overload matcher](crate::kernel::overload) picks between them by argument
+//! type, so a typed caller and the runtime cannot disagree.
+//!
+//! # Precedence
+//!
+//! 1. a signature the rule set **declared** on the descriptor;
+//! 2. a correction from `signatures.overlay.json`, written by hand;
+//! 3. the derivation below, reported as [`SignatureSource::Derived`];
+//! 4. nothing, with a [`DynamicReason`] saying why.
+//!
+//! A derived signature is marked as such rather than as declared, because a
+//! host is entitled to know which of the three it is looking at. It is
+//! nonetheless *sound*: it states what the operator's own registration implies,
+//! never what its name suggests.
 
+use crate::graph::Arity;
 use crate::graph::OpDescriptor;
 use crate::graph::OpFlags;
 use crate::kernel::manifest::SignatureSource;
 use crate::kernel::manifest::overlay;
 use crate::kernel::signature::DimExpr;
+use crate::kernel::signature::DynamicReason;
 use crate::kernel::signature::RepExpr;
 use crate::kernel::signature::Signature;
 use crate::kernel::signature::TypeExpr;
@@ -34,140 +55,189 @@ use crate::kernel::signature::Variadic;
 /// Every signature of `desc`, and where they came from.
 ///
 /// This is the single answer to "what does this operator accept", used by the
-/// manifest, by `Session::overloads` and by `Session::resolve_overload`. A
-/// declared overload wins; otherwise the overlay and the inference rules
-/// supply one; otherwise the operator is untyped and the manifest records a
-/// [`DynamicReason`](crate::kernel::signature::DynamicReason) instead.
+/// manifest, by `Session::overloads`, by `Session::resolve_overload` and by the
+/// audit binary.
 #[must_use]
 pub fn signatures(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
     if !desc.overloads.is_empty() {
         return (desc.overloads.clone(), SignatureSource::Declared);
     }
-    match infer_signature_with_source(desc) {
-        | Some((signature, source)) => (vec![signature], source),
+    if let Some(declared) = overlay().get(&*desc.name)
+        && !declared.is_empty()
+    {
+        return (declared.clone(), SignatureSource::Overlay);
+    }
+    match derive(desc) {
+        | Some(signatures) => (signatures, SignatureSource::Derived),
         | None => (Vec::new(), SignatureSource::None),
     }
 }
 
-/// The signature of `desc`, from the overlay or inferred.
-///
-/// Returns `None` when nothing can be said: an operator with no evaluator,
-/// no heavy flag and no declared overload is reduced by rules alone, and the
-/// type of its result depends on which rule fires.
+/// The signatures the rules above imply, or `None` when nothing can be said.
 #[must_use]
-pub fn infer_signature(desc: &OpDescriptor) -> Option<Signature> {
-    infer_signature_with_source(desc).map(|(signature, _)| signature)
-}
-
-/// The signature of `desc`, and where it came from.
-///
-/// The distinction matters to a host: an overlay entry was written by a
-/// person and can be trusted the way a declaration can, while a signature
-/// derived from an `OpFlags::PREDICATE` bit is a guess that happens to be
-/// right.
-#[must_use]
-pub fn infer_signature_with_source(
-    desc: &OpDescriptor
-) -> Option<(Signature, SignatureSource)> {
-    if let Some(declared) = overlay().get(&*desc.name) {
-        return declared
-            .first()
-            .cloned()
-            .map(|signature| (signature, SignatureSource::Overlay));
+pub fn derive(desc: &OpDescriptor) -> Option<Vec<Signature>> {
+    // A leaf carries a payload rather than arguments; it is not called.
+    if desc.flags.has(OpFlags::LEAF) {
+        return None;
     }
-    if desc.flags.has(OpFlags::PREDICATE) {
-        return Some((
-            Signature::scalars(scalar_count(desc), TypeExpr::Bool),
-            SignatureSource::Inferred,
-        ));
-    }
-    if desc.flags.has(OpFlags::HEAVY) {
-        return Some((
-            Signature::scalars(
-                scalar_count(desc),
-                TypeExpr::Dyn(RepExpr {
-                    repr: "term".to_owned(),
-                    dim: Some(DimExpr::Any),
-                }),
-            ),
-            SignatureSource::Inferred,
-        ));
-    }
-    if desc.eval_dyn.is_some() {
-        return Some((
-            Signature::scalars(scalar_count(desc), TypeExpr::Real),
-            SignatureSource::Inferred,
-        ));
-    }
+    let arity = parameter_count(desc);
+    let bound = desc.binder.map(|binder| usize::from(binder.var));
+    let mut out = Vec::with_capacity(2);
+    // The numeric contract, when the operator has one.
     if desc.eval.is_some() {
-        let signature = match desc.arity {
-            | crate::graph::Arity::Fixed(n) => {
-                Signature::scalars(usize::from(n), TypeExpr::Real)
-            },
-            | crate::graph::Arity::Variadic => Signature::scalars(0, TypeExpr::Real).variadic(
-                Variadic {
-                    min: 0,
-                    max: None,
-                    elem: TypeExpr::Real,
-                },
-            ),
+        let ret = if desc.flags.has(OpFlags::PREDICATE) {
+            TypeExpr::Bool
+        } else {
+            TypeExpr::Real
         };
-        return Some((signature, SignatureSource::Inferred));
+        let mut signature = Signature::new(vec![TypeExpr::Real; arity], ret);
+        if matches!(desc.arity, Arity::Variadic) {
+            signature = signature.variadic(Variadic {
+                min: 0,
+                max: None,
+                elem: TypeExpr::Real,
+            });
+        }
+        out.push(signature);
     }
-    None
+    // The symbolic contract: every non-leaf operator is reachable with
+    // expressions, whether or not it also has a numeric evaluator.
+    let mut symbolic = Signature::new(
+        (0..arity)
+            .map(|index| {
+                if Some(index) == bound {
+                    TypeExpr::Symbol
+                } else {
+                    term()
+                }
+            })
+            .collect(),
+        term(),
+    );
+    if matches!(desc.arity, Arity::Variadic) {
+        symbolic = symbolic.variadic(Variadic {
+            min: 0,
+            max: None,
+            elem: term(),
+        });
+    }
+    out.push(symbolic);
+    Some(out)
 }
 
-/// The number of parameters to assume for a fixed-arity operator.
-const fn scalar_count(desc: &OpDescriptor) -> usize {
-    match desc.arity {
-        | crate::graph::Arity::Fixed(n) => n as usize,
-        | crate::graph::Arity::Variadic => 0,
+/// The type of a symbolic expression.
+#[must_use]
+pub fn term() -> TypeExpr {
+    TypeExpr::Dyn(RepExpr {
+        repr: "term".to_owned(),
+        dim: Some(DimExpr::Any),
+    })
+}
+
+/// Why an operator has no signature.
+///
+/// `NotYetSpecified` is the last resort, not the default: a leaf carries a
+/// payload rather than arguments, and a rule-only operator has nothing to call.
+#[must_use]
+pub fn reason(desc: &OpDescriptor) -> DynamicReason {
+    if desc.flags.has(OpFlags::LEAF) {
+        return DynamicReason::OpaquePayload;
     }
+    if matches!(desc.arity, Arity::Variadic) {
+        return DynamicReason::Variadic;
+    }
+    if desc.eval.is_none() && desc.eval_dyn.is_none() {
+        return DynamicReason::Request;
+    }
+    DynamicReason::NotYetSpecified
+}
+
+/// The number of parameters to declare for `desc`.
+const fn parameter_count(desc: &OpDescriptor) -> usize {
+    match desc.arity {
+        | Arity::Fixed(n) => n as usize,
+        | Arity::Variadic => 0,
+    }
+}
+
+/// The first signature of `desc`, for callers that want just one.
+#[must_use]
+pub fn primary(desc: &OpDescriptor) -> Option<Signature> {
+    signatures(desc).0.into_iter().next()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::Arity;
 
-    #[test]
-    fn evaluators_infer_scalar_signatures() {
-        let desc = OpDescriptor::new("demo_sin", Arity::Fixed(1)).eval(|a| {
-            a.first().copied().unwrap_or(f64::NAN)
-        });
-        let signature = infer_signature(&desc).unwrap_or_else(|| panic!("no signature"));
-        assert_eq!(signature.params, vec![TypeExpr::Real]);
-        assert_eq!(signature.ret, TypeExpr::Real);
+    fn numeric(name: &str, arity: Arity) -> OpDescriptor {
+        OpDescriptor::new(name, arity).eval(|a| a.first().copied().unwrap_or(f64::NAN))
     }
 
     #[test]
-    fn predicates_and_requests_infer_their_result_type() {
-        let predicate = OpDescriptor::new("demo_lt", Arity::Fixed(2))
+    fn a_scalar_evaluator_gets_a_numeric_and_a_symbolic_overload() {
+        let (signatures, source) = signatures(&numeric("demo_sin", Arity::Fixed(1)));
+        assert_eq!(source, SignatureSource::Derived);
+        assert_eq!(signatures.len(), 2);
+        assert_eq!(signatures[0].params, vec![TypeExpr::Real]);
+        assert_eq!(signatures[0].ret, TypeExpr::Real);
+        assert_eq!(signatures[1].params, vec![term()]);
+        assert_eq!(signatures[1].ret, term());
+    }
+
+    #[test]
+    fn a_predicate_returns_a_truth_value() {
+        let desc = OpDescriptor::new("demo_lt", Arity::Fixed(2))
             .flags(OpFlags::PREDICATE)
             .eval(|_| 1.0);
+        let (signatures, _) = signatures(&desc);
+        assert_eq!(signatures[0].ret, TypeExpr::Bool);
+        assert_eq!(signatures[0].params.len(), 2);
+    }
+
+    #[test]
+    fn a_request_takes_and_returns_terms() {
+        let desc = OpDescriptor::new("demo_diff", Arity::Fixed(2)).flags(OpFlags::HEAVY);
+        let (signatures, _) = signatures(&desc);
+        assert_eq!(signatures.len(), 1, "a request has no numeric overload");
+        assert_eq!(signatures[0].ret, term());
+    }
+
+    #[test]
+    fn a_bound_variable_is_a_symbol_not_a_value() {
+        let desc = OpDescriptor::new("demo_sum", Arity::Fixed(4))
+            .flags(OpFlags::HEAVY)
+            .binder(1, 1 << 2);
+        let (signatures, _) = signatures(&desc);
         assert_eq!(
-            infer_signature(&predicate).map(|s| s.ret),
-            Some(TypeExpr::Bool)
+            signatures[0].params,
+            vec![term(), TypeExpr::Symbol, term(), term()]
         );
-        let request = OpDescriptor::new("demo_diff", Arity::Fixed(2)).flags(OpFlags::HEAVY);
-        assert!(matches!(
-            infer_signature(&request).map(|s| s.ret),
-            Some(TypeExpr::Dyn(_))
-        ));
     }
 
     #[test]
-    fn a_rule_only_operator_has_no_signature() {
-        let desc = OpDescriptor::new("demo_rewrite_only", Arity::Fixed(1));
-        assert!(infer_signature(&desc).is_none());
-    }
-
-    #[test]
-    fn variadic_evaluators_are_variadic() {
+    fn a_variadic_operator_says_so() {
         let desc = OpDescriptor::new("demo_sum", Arity::Variadic).eval(|a| a.iter().sum());
-        let signature = infer_signature(&desc).unwrap_or_else(|| panic!("no signature"));
-        assert!(signature.variadic.is_some());
-        assert!(signature.accepts_arity(0));
-        assert!(signature.accepts_arity(7));
+        let (signatures, _) = signatures(&desc);
+        for signature in &signatures {
+            assert!(signature.variadic.is_some());
+            assert!(signature.accepts_arity(7));
+        }
+    }
+
+    #[test]
+    fn a_leaf_has_no_signature_and_says_why() {
+        let desc = OpDescriptor::new("demo_lit", Arity::Fixed(0)).flags(OpFlags::LEAF);
+        assert_eq!(signatures(&desc).0.len(), 0);
+        assert_eq!(reason(&desc), DynamicReason::OpaquePayload);
+    }
+
+    #[test]
+    fn a_declared_overload_wins_over_the_derivation() {
+        let declared = Signature::new(vec![TypeExpr::Int], TypeExpr::Bool);
+        let desc = numeric("demo", Arity::Fixed(1)).signature(declared.clone());
+        let (signatures, source) = signatures(&desc);
+        assert_eq!(source, SignatureSource::Declared);
+        assert_eq!(signatures, vec![declared]);
     }
 }

@@ -313,9 +313,7 @@ fn the_dirichlet_datum_sets_the_boundary_gradient() {
         let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
         cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0)).with(Face::XMin, Bc::dirichlet(g));
         let mut a = Acoustics::new(cfg).unwrap();
-        for p in &mut a.p {
-            *p = 1.0;
-        }
+        a.p.fill(1.0);
         let dt = a.dt;
         a.step();
         let want = -dt * (1.0 - g) / (0.5 * h);
@@ -362,9 +360,7 @@ fn the_datum_is_evaluated_at_the_face_not_at_the_origin() {
     cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0))
         .with(Face::XMin, Bc::Dirichlet(BcValue::space(|x| x[1])));
     let mut a = Acoustics::new(cfg).unwrap();
-    for p in &mut a.p {
-        *p = 1.0;
-    }
+    a.p.fill(1.0);
     let dt = a.dt;
     a.step();
     // `v[0]` is `(n[0] + 1) x n[1]`, x-fastest.

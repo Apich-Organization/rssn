@@ -65,6 +65,7 @@
 //! ```
 
 pub mod call;
+pub mod cdylib;
 pub mod codec;
 pub mod infer;
 pub mod manifest;
@@ -85,8 +86,8 @@ pub use result::{
     SchemaError, SimField, SimResult, Solutions,
 };
 pub use plugin::{
-    HostCallback, NativeCallback, Plugin, PluginError, PluginId, PluginManifest, Registry,
-    SimplePlugin,
+    HostCallback, NativeCallback, Plugin, PluginError, PluginId, PluginKind, PluginManifest,
+    Registry, SimplePlugin,
 };
 pub use signature::{
     API_VERSION, PLUGIN_ABI, ArityInfo, BackendSupport, BinderInfo, Constraint, ConstraintKind,
@@ -95,7 +96,8 @@ pub use signature::{
     Stability, ThreadSafety, TypeExpr, TypeParam, TypeParamKind, Variadic,
 };
 pub use value::{
-    CallbackRef, ComplexValue, DynValue, OpaqueValue, QuantityValue, RecordValue, ScaleValue,
+    CallbackRef, ComplexValue, ConstantValue, DynValue, OpaqueValue, QuantityValue, RecordValue,
+    ScaleValue,
     SessionId, SparseFormat, SparseValue, TensorValue, TermRef, UnitValue, Value, ValueKind,
     ValueKindInfo, VariantValue,
 };

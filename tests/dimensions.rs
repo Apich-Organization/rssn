@@ -471,7 +471,7 @@ fn astronomy_and_cgs_units_carry_their_exact_si_scales() {
     let rational = [
         ("au", 1.495_978_707e11_f64),
         ("ly", 9.460_730_472_580_8e15),
-        ("pc", 3.085_677_581_491_367_3e16),
+        ("pc", 3.085_677_581_491_367e16),
         ("dyn", 1e-5),
         ("erg", 1e-7),
         ("Gal", 1e-2),
@@ -504,4 +504,65 @@ fn astronomy_and_cgs_units_carry_their_exact_si_scales() {
     let ratio = kiloparsec.scale.rat.to_f64().unwrap_or(f64::NAN)
         / parsec.scale.rat.to_f64().unwrap_or(f64::NAN);
     assert!((ratio - 1000.0).abs() < 1e-9, "{ratio}");
+}
+
+#[test]
+fn a_unit_on_a_custom_base_dimension_can_be_registered() {
+    use rssn::dim::DimExpr;
+    use rssn::dim::Scale;
+    use rssn::dim::StandardRegistry;
+    use rssn::dim::UnitDef;
+    use rssn::dim::UnitRegistry;
+
+    // `Currency` is a base dimension the seven SI bases do not have, which is
+    // the case that used to be refused as "not a base dimension".
+    let euro = UnitDef::linear("EUR", DimExpr::base("Currency"), Scale::one())
+        .alias("euro")
+        .display("\u{20ac}")
+        .category("currency");
+    let mut registry = StandardRegistry;
+    registry
+        .register(euro)
+        .unwrap_or_else(|e| panic!("{e}"));
+
+    let back = registry
+        .lookup("EUR")
+        .unwrap_or_else(|| panic!("EUR was not registered"));
+    assert_eq!(back.dimension, DimExpr::base("Currency"));
+    assert_eq!(back.display, "\u{20ac}");
+    assert!(back.aliases.iter().any(|alias| alias == "euro"));
+
+    // The alias resolves to the same unit.
+    let by_alias = registry
+        .lookup("euro")
+        .unwrap_or_else(|| panic!("the alias was not registered"));
+    assert_eq!(by_alias.name, "EUR");
+
+    // A second unit on the same base composes with it.
+    let cent = UnitDef::linear(
+        "EURcent",
+        DimExpr::base("Currency"),
+        Scale {
+            rat: num_rational::BigRational::new(1.into(), 100.into()),
+            pi: 0,
+        },
+    );
+    registry
+        .register(cent)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let cents = registry.resolve("EURcent").unwrap_or_else(|e| panic!("{e}"));
+    let euros = registry.resolve("EUR").unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(cents.dimension, euros.dimension);
+
+    // The graph carries it into a dimension term once the host declares the
+    // base, which is what `Config::base_dimensions` is for.
+    let session = Session::new();
+    let price = session.sym("price");
+    let config = Config::new()
+        .base_dimension("Currency")
+        .dimension_term("price", DimExpr::base("Currency"));
+    let answer = session
+        .compute(session.parse("price + price").unwrap_or(price), &config)
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(answer.term.to_string(), "2*price");
 }

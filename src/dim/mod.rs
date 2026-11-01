@@ -27,6 +27,7 @@
 //! signature, a manifest — therefore carries [`DimExpr`], which names the
 //! bases, and converts to a [`DimTerm`] against the receiving arena.
 
+pub mod constants;
 pub mod units;
 
 use num_rational::BigRational;
@@ -45,6 +46,7 @@ pub use crate::graph::dim::DimensionMode;
 pub use crate::graph::dim::SI_BASES;
 pub use crate::graph::dim::UnitInfo;
 
+pub use constants::PhysicalConstant;
 pub use units::ResolvedUnit;
 pub use units::Scale;
 pub use units::StandardRegistry;

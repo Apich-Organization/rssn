@@ -211,6 +211,25 @@ impl Config {
         self
     }
 
+    /// Declares a base dimension the engine does not have.
+    ///
+    /// The seven SI bases always exist. A unit on a base of the host's own
+    /// (`unit EUR : Currency`) needs that base in the graph's arena before its
+    /// dimension can be interned, and this is the declaration that puts it
+    /// there. It is idempotent: declaring the same name twice is harmless.
+    ///
+    /// [`Config::dimension_term`] interns the bases it names on its own, so
+    /// this is only needed when a *unit* — rather than a symbol — is what
+    /// carries the custom dimension.
+    #[must_use]
+    pub fn base_dimension(
+        mut self,
+        name: &str,
+    ) -> Self {
+        self.base_dimensions.push(name.to_owned());
+        self
+    }
+
     /// Declares the dimension of a symbol from a structured expression.
     ///
     /// This is the entry a generated typed front end should use. Unlike

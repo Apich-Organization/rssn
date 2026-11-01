@@ -103,6 +103,9 @@ serde_json = "1.0"
 bincode-next = { version = "3.1.1", features = ["serde"] }
 # Stable, collision-resistant digests for manifests and operator keys.
 blake3 = "1.8"
+# Loading a plugin from a shared library (`plugin-cdylib`). Opt-in: it runs
+# arbitrary code in the host process.
+libloading = { version = "0.9", optional = true }
 
 [dependencies.faer]
 version = "0.24"
@@ -137,7 +140,10 @@ default = []
 jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
 # Reading and writing `.npy` files in `rssn::io`.
 npy = ["dep:ndarray-npy"]
-full = ["npy", "jit"]
+# Loading plugins from shared libraries (`rssn::kernel::cdylib`). Off by
+# default: a cdylib runs arbitrary code in the host process with no sandbox.
+plugin-cdylib = ["dep:libloading"]
+full = ["npy", "jit", "plugin-cdylib"]
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }

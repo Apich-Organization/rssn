@@ -50,6 +50,7 @@ use crate::kernel::signature::Purity;
 use crate::kernel::signature::Signature;
 use crate::kernel::signature::Stability;
 use crate::kernel::signature::ThreadSafety;
+use crate::kernel::value::ConstantValue;
 use crate::kernel::value::UnitValue;
 use crate::kernel::value::ValueKindInfo;
 
@@ -88,12 +89,19 @@ pub struct Features {
     pub structured_results: bool,
     /// Higher-order operators accept host callbacks.
     pub higher_order: bool,
+    /// How a plugin may reach this build: `in-process` always, `cdylib` when
+    /// the `plugin-cdylib` feature is on.
+    ///
+    /// A host that meets a `kind = "cdylib"` plugin in a build without the
+    /// capability refuses it with a precise diagnostic instead of failing
+    /// obscurely at the loader.
+    pub plugin_kinds: Vec<String>,
 }
 
 impl Features {
     /// What this build provides, read from the compile-time configuration.
     #[must_use]
-    pub const fn current() -> Self {
+    pub fn current() -> Self {
         Self {
             dynamic_call: true,
             plugin_abi: crate::kernel::signature::PLUGIN_ABI,
@@ -106,6 +114,11 @@ impl Features {
             user_base_dimensions: true,
             structured_results: true,
             higher_order: true,
+            plugin_kinds: if cfg!(feature = "plugin-cdylib") {
+                vec![String::from("in-process"), String::from("cdylib")]
+            } else {
+                vec![String::from("in-process")]
+            },
         }
     }
 }
@@ -128,13 +141,20 @@ pub struct RuleSetInfo {
 }
 
 /// Where an operator's signature came from.
+///
+/// `Declared` and `Overlay` are hand-written. `Derived` is computed from what
+/// the operator's registration *states* about it — a scalar evaluator, a
+/// predicate flag, a binder, a variadic arity — by the rules in
+/// [`crate::kernel::infer`], so it is sound in the same way a declaration is:
+/// it never guesses from the operator's name. A host may generate typed
+/// bindings from all three; only `None` means "there is no signature".
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SignatureSource {
-    /// The rule set declared it.
+    /// The rule set declared it on the descriptor.
     Declared,
-    /// It was inferred from the descriptor.
-    Inferred,
+    /// It was derived from what the registration states about the operator.
+    Derived,
     /// It came from `signatures.overlay.json`, written by hand.
     Overlay,
     /// There is none; `dynamic_reason` says why.
@@ -240,6 +260,12 @@ pub struct KernelManifest {
     pub base_dimensions: Vec<BaseDimInfo>,
     /// Registered plugins, sorted by name.
     pub plugins: Vec<PluginInfo>,
+    /// Every physical constant, sorted by symbol.
+    ///
+    /// Carried so that a host can generate `Units.Constants` from the manifest
+    /// alone: each entry has its exact value, its dimension, its SI unit and
+    /// whether the value is exact by definition or measured.
+    pub constants: Vec<ConstantValue>,
     /// Every [`Value`](crate::kernel::Value) variant and whether it can be
     /// passed to an operator.
     ///
@@ -263,6 +289,7 @@ impl Default for KernelManifest {
             units: Vec::new(),
             base_dimensions: Vec::new(),
             plugins: Vec::new(),
+            constants: Vec::new(),
             value_kinds: ValueKindInfo::all(),
         }
     }
@@ -340,6 +367,10 @@ impl KernelManifest {
             units,
             base_dimensions,
             plugins,
+            constants: crate::dim::constants::all()
+                .iter()
+                .map(crate::dim::constants::PhysicalConstant::to_value)
+                .collect(),
             value_kinds: ValueKindInfo::all(),
         };
         manifest.seal();
@@ -503,19 +534,8 @@ fn signatures_for(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
 }
 
 /// Why an operator that declared no reason has no signature.
-///
-/// `NotYetSpecified` is the last resort, not the default: a rule-only
-/// operator has a *real* explanation — there is nothing to call, and the
-/// result type is whatever the rule that fires produces — and saying so is
-/// more useful to a host than "we did not write it down".
 fn inferred_reason(desc: &OpDescriptor) -> DynamicReason {
-    if matches!(desc.arity, crate::graph::Arity::Variadic) {
-        return DynamicReason::Variadic;
-    }
-    if desc.eval.is_none() && desc.eval_dyn.is_none() {
-        return DynamicReason::Request;
-    }
-    DynamicReason::NotYetSpecified
+    crate::kernel::infer::reason(desc)
 }
 
 /// The name a host sees for a JIT lowering.
@@ -652,6 +672,43 @@ mod tests {
         );
         assert!(manifest.op("diff").is_some());
         assert!(manifest.op("sin").is_some());
+    }
+
+    #[test]
+    fn the_constants_are_listed_with_their_exactness() {
+        let manifest = standard_manifest();
+        assert!(
+            manifest.constants.len() >= 25,
+            "only {} constants",
+            manifest.constants.len()
+        );
+        // Sorted by symbol, so two builds agree.
+        let symbols: Vec<&str> = manifest
+            .constants
+            .iter()
+            .map(|c| c.symbol.as_str())
+            .collect();
+        let mut sorted = symbols.clone();
+        sorted.sort_unstable();
+        assert_eq!(symbols, sorted);
+        // The defining constants are exact and carry no uncertainty.
+        let light = manifest
+            .constants
+            .iter()
+            .find(|c| c.symbol == "c")
+            .unwrap_or_else(|| panic!("no c"));
+        assert!(light.exact);
+        assert!(light.uncertainty.is_none());
+        assert_eq!(light.value.numer, num_bigint::BigInt::from(299_792_458));
+        assert_eq!(light.value.denom, num_bigint::BigInt::from(1));
+        // A measured one is not.
+        let gravitation = manifest
+            .constants
+            .iter()
+            .find(|c| c.symbol == "G")
+            .unwrap_or_else(|| panic!("no G"));
+        assert!(!gravitation.exact);
+        assert!(gravitation.uncertainty.is_some());
     }
 
     #[test]

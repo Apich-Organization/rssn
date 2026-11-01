@@ -138,6 +138,32 @@ pub struct UnitValue {
     pub since: String,
 }
 
+/// A physical constant, as the manifest describes it.
+///
+/// The same shape as a [`UnitValue`] — a name, a dimension and an exact scale —
+/// plus whether the value is exact by definition and, when it is not, its
+/// standard uncertainty. A host that generates `Units.Constants` reads this and
+/// nothing else.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConstantValue {
+    /// What it is called (`speed of light in vacuum`).
+    pub name: String,
+    /// The symbol it is written with (`c`).
+    pub symbol: String,
+    /// Its exact value in coherent SI units.
+    pub value: ScaleValue,
+    /// What it measures.
+    pub dimension: DimExpr,
+    /// The coherent SI unit it is expressed in (`m/s`).
+    pub unit: String,
+    /// Whether the value is exact by definition.
+    pub exact: bool,
+    /// The standard uncertainty, when the value is measured.
+    pub uncertainty: Option<ScaleValue>,
+    /// Where the value comes from (`CODATA 2022`, `SI 2019 definition`).
+    pub source: String,
+}
+
 /// An exact scale factor `rat * pi^pi`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScaleValue {

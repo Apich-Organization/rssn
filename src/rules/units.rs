@@ -471,7 +471,7 @@ impl Units<'_, '_> {
             | Val::Quant { unit, .. } => resolve_map(&unit)?.dim,
         };
         let mut factors = Vec::new();
-        for (name, &e) in DIMENSIONS.iter().zip(&dim.0) {
+        for (name, &e) in DIMENSIONS.iter().zip(dim.si()) {
             if e.is_zero() {
                 continue;
             }
@@ -518,7 +518,7 @@ fn coherent_unit(dim: &Dim) -> UnitMap {
         map.insert((*name).to_owned(), Exp::one());
         return map;
     }
-    for (name, &e) in ["m", "kg", "s", "A", "K", "mol", "cd"].iter().zip(&dim.0) {
+    for (name, &e) in ["m", "kg", "s", "A", "K", "mol", "cd"].iter().zip(dim.si()) {
         if !e.is_zero() {
             map.insert((*name).to_owned(), e);
         }

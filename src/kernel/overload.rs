@@ -88,15 +88,14 @@ pub fn matches_type(
     }
     match (param, got) {
         // A type variable or a `Dyn` accepts anything.
-        | (TypeExpr::Var(_), _) | (TypeExpr::Dyn(_), _) | (_, TypeExpr::Dyn(_)) => Match::Generic,
-        // Numeric widening, one direction only.
-        | (TypeExpr::Real, TypeExpr::Int | TypeExpr::Float) => Match::Widened,
+        | (TypeExpr::Var(_) | TypeExpr::Dyn(_), _) | (_, TypeExpr::Dyn(_)) => Match::Generic,
+        // Numeric widening, one direction only: an `Int` is a `Real`, a
+        // `Real` is a `Complex`, and none of the three narrows.
+        | (TypeExpr::Real, TypeExpr::Int | TypeExpr::Float)
         | (TypeExpr::Complex, TypeExpr::Int | TypeExpr::Real | TypeExpr::Float) => Match::Widened,
-        // The same constructor with an argument the signature does not pin.
-        | (TypeExpr::Dim(a, _), TypeExpr::Dim(b, _)) => weaker(
-            Match::Shaped,
-            matches_type(a, b),
-        ),
+        // The same constructor, with an argument the signature does not pin
+        // down: a dimension, a rank, an element type.
+        | (TypeExpr::Dim(a, _), TypeExpr::Dim(b, _))
         | (
             TypeExpr::Tensor {
                 elem: a, ..

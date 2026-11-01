@@ -109,7 +109,7 @@ struct Audit<'m> {
     explained: usize,
     /// Names of operators that are neither typed nor explained.
     unexplained: Vec<String>,
-    /// Operators whose signature was inferred rather than declared.
+    /// Operators whose signature was derived rather than declared.
     inferred_names: Vec<String>,
     /// Per rule set: (typed, explained, unexplained).
     per_set: BTreeMap<&'m str, (usize, usize, usize)>,
@@ -134,7 +134,7 @@ impl<'m> Audit<'m> {
             if !op.overloads.is_empty() {
                 match op.signature_source {
                     | SignatureSource::Declared | SignatureSource::Overlay => audit.declared += 1,
-                    | SignatureSource::Inferred => {
+                    | SignatureSource::Derived => {
                         audit.inferred += 1;
                         audit.inferred_names.push(op.name.clone());
                     },
@@ -176,7 +176,7 @@ impl<'m> Audit<'m> {
             self.unexplained.len()
         );
         println!(
-            "  declared: {}   inferred: {}   overlay: {}",
+            "  declared: {}   derived: {}   overlay: {}",
             self.declared,
             self.inferred,
             self.manifest
@@ -186,10 +186,22 @@ impl<'m> Audit<'m> {
                 .count()
         );
         println!(
-            "  units: {}   base dimensions: {}   plugins: {}",
+            "  units: {}   base dimensions: {}   constants: {} ({} exact)   plugins: {}",
             self.manifest.units.len(),
             self.manifest.base_dimensions.len(),
+            self.manifest.constants.len(),
+            self.manifest.constants.iter().filter(|c| c.exact).count(),
             self.manifest.plugins.len()
+        );
+        println!(
+            "  plugin kinds: {}   value kinds: {} ({})",
+            self.manifest.features.plugin_kinds.join(", "),
+            self.manifest.value_kinds.len(),
+            self.manifest
+                .value_kinds
+                .iter()
+                .filter(|kind| kind.in_term_graph)
+                .count()
         );
 
         println!("\nper rule set:");
@@ -207,7 +219,7 @@ impl<'m> Audit<'m> {
         }
 
         if verbose && !self.inferred_names.is_empty() {
-            println!("\ninferred (no declaration, no overlay):");
+            println!("\nderived (no declaration, no overlay):");
             for name in &self.inferred_names {
                 println!("  {name}");
             }

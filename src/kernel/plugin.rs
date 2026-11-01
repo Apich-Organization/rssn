@@ -18,6 +18,9 @@
 use std::fmt;
 use std::sync::Arc;
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::graph::Graph;
 use crate::graph::OpDescriptor;
 use crate::graph::OpId;
@@ -55,10 +58,39 @@ pub struct PluginManifest {
     pub version: String,
     /// Plugin ABI the plugin was built against.
     pub abi: u32,
+    /// How the plugin is loaded.
+    pub kind: PluginKind,
     /// What it provides (`ops`, `rules`, `units`, ...).
     pub capabilities: Vec<String>,
     /// One-line description.
     pub description: String,
+}
+
+/// How a plugin reaches the host.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PluginKind {
+    /// Statically linked Rust, registered through [`Session::register`].
+    ///
+    /// [`Session::register`]: crate::api::Session::register
+    #[default]
+    InProcess,
+    /// Loaded from a shared library at run time
+    /// ([`cdylib::load`](crate::kernel::cdylib::load)); needs the
+    /// `plugin-cdylib` feature.
+    Cdylib,
+}
+
+impl fmt::Display for PluginKind {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        f.write_str(match self {
+            | Self::InProcess => "in-process",
+            | Self::Cdylib => "cdylib",
+        })
+    }
 }
 
 /// Why a plugin could not be registered or called.
@@ -380,6 +412,7 @@ impl SimplePlugin {
     ) -> Self {
         Self {
             manifest: PluginManifest {
+                kind: PluginKind::InProcess,
                 name: name.to_owned(),
                 version: version.to_owned(),
                 abi: PLUGIN_ABI,
