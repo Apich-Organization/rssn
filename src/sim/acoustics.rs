@@ -20,9 +20,17 @@
 //!
 //! The Dirichlet datum is applied as a ghost value: the face sits half a cell
 //! from the first cell centre, so the normal pressure gradient there is
-//! `(p_cell - g) / (h/2)`. A time-dependent `g` is evaluated at the current
-//! time `t`; the leapfrog scheme is second order, so the half-step offset of
-//! the velocity field does not degrade the boundary condition.
+//! `(p_cell - g) / (h/2)` on a low face and `(g - p_cell) / (h/2)` on a high
+//! one, the outward normal flipping the sign between the two. A
+//! time-dependent `g` is evaluated at the current time `t`; the leapfrog
+//! scheme is second order, so the half-step offset of the velocity field does
+//! not degrade the boundary condition.
+//!
+//! A Dirichlet face is a **pressure-release** surface and therefore a
+//! reflector, not an absorber: it pins `p` and leaves `v` free, so a
+//! transient keeps bouncing between it and the other faces instead of
+//! radiating out. A boundary that absorbs needs [`BoundaryCondition::Absorbing`]
+//! (the PML), and a driven problem with a steady state needs one of the two.
 //!
 //! Limitations: homogeneous medium, no dispersive attenuation, Robin faces
 //! are refused.

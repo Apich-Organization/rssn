@@ -130,7 +130,6 @@ pub mod constant;
 /// This is the module a `rssn-dim` crate would be. It is not one because it
 /// shares the dimension arena and the operator table with the rest of the
 /// crate; see [`kernel`] for the same reasoning about `rssn-api`.
-#[doc(hidden)]
 pub mod dim;
 pub mod ffi;
 pub mod graph;
@@ -140,7 +139,6 @@ pub mod io;
 /// This is the module a `rssn-api` crate would be. Everything a host needs is
 /// reachable from here without touching crate internals, so the split remains
 /// a packaging decision rather than an architectural one.
-#[doc(hidden)]
 pub mod kernel;
 pub mod kernels;
 pub mod prelude;

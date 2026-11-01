@@ -31,6 +31,24 @@ use crate::kernel::signature::Signature;
 use crate::kernel::signature::TypeExpr;
 use crate::kernel::signature::Variadic;
 
+/// Every signature of `desc`, and where they came from.
+///
+/// This is the single answer to "what does this operator accept", used by the
+/// manifest, by `Session::overloads` and by `Session::resolve_overload`. A
+/// declared overload wins; otherwise the overlay and the inference rules
+/// supply one; otherwise the operator is untyped and the manifest records a
+/// [`DynamicReason`](crate::kernel::signature::DynamicReason) instead.
+#[must_use]
+pub fn signatures(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
+    if !desc.overloads.is_empty() {
+        return (desc.overloads.clone(), SignatureSource::Declared);
+    }
+    match infer_signature_with_source(desc) {
+        | Some((signature, source)) => (vec![signature], source),
+        | None => (Vec::new(), SignatureSource::None),
+    }
+}
+
 /// The signature of `desc`, from the overlay or inferred.
 ///
 /// Returns `None` when nothing can be said: an operator with no evaluator,

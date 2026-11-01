@@ -299,6 +299,17 @@ pub enum OpError {
         /// Position of the argument.
         arg: usize,
     },
+    /// More than one overload accepts the arguments and none is more
+    /// specific.
+    ///
+    /// Refusing is deliberate: picking one silently is how a typed caller
+    /// that chose statically ends up executing a different overload.
+    Ambiguous {
+        /// The operator's name.
+        name: String,
+        /// How many overloads tied.
+        count: usize,
+    },
     /// A dimensional conflict.
     Dimension(crate::graph::DimError),
     /// The value has no numeric form.
@@ -350,6 +361,10 @@ impl fmt::Display for OpError {
             } => {
                 write!(f, "argument {arg} has type {got}, expected {expected}")
             },
+            | Self::Ambiguous { name, count } => write!(
+                f,
+                "`{name}` has {count} overloads that accept these arguments equally well"
+            ),
             | Self::Dimension(e) => write!(f, "{e}"),
             | Self::NotNumeric(what) => write!(f, "`{what}` has no numeric value"),
             | Self::NotReduced(what) => write!(f, "`{what}` did not reduce to a closed form"),

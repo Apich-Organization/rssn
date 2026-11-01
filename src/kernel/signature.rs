@@ -264,6 +264,13 @@ pub enum TypeExpr {
     Bool,
     /// Text.
     String,
+    /// A free symbol of the expression graph.
+    ///
+    /// Distinct from [`TypeExpr::String`]: a string is data, a symbol is a
+    /// hole an operator may differentiate against or solve for. Without this
+    /// variant `diff` and `solve` could only be declared as `Dyn`, so a
+    /// generated typed facade could not describe them.
+    Symbol,
     /// A unit definition (a scale and a dimension), not a quantity.
     Unit(DimExpr),
     /// An affine point (`degC`) of the given dimension.
@@ -541,6 +548,7 @@ pub fn type_name(expr: &TypeExpr) -> String {
         | TypeExpr::Complex => "Complex".to_owned(),
         | TypeExpr::Bool => "Bool".to_owned(),
         | TypeExpr::String => "String".to_owned(),
+        | TypeExpr::Symbol => "Symbol".to_owned(),
         | TypeExpr::Device => "Device".to_owned(),
         | TypeExpr::Unit(d) => format!("Unit[{}]", dim_name(d)),
         | TypeExpr::Point(d) => format!("Point[{}]", dim_name(d)),

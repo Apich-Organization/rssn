@@ -124,6 +124,18 @@ pub struct UnitValue {
     pub offset: Option<ScaleValue>,
     /// Whether the unit is affine (a point scale such as `degC`).
     pub affine: bool,
+    /// Other spellings that resolve to this unit.
+    ///
+    /// Carried so that a host can generate its unit table from the manifest
+    /// alone: without the aliases it would have to consult
+    /// [`UnitRegistry`](crate::dim::UnitRegistry) as a second source.
+    pub aliases: Vec<String>,
+    /// Whether SI prefixes may be attached (`km`, `µs`).
+    pub prefixable: bool,
+    /// Rough grouping (`length`, `time`, `derived`, ...).
+    pub category: String,
+    /// Version the unit appeared in.
+    pub since: String,
 }
 
 /// An exact scale factor `rat * pi^pi`.
@@ -304,6 +316,149 @@ pub struct OpaqueValue {
     pub bytes: Vec<u8>,
 }
 
+/// Which variant a [`Value`] is, without its payload.
+///
+/// A host that generates bindings needs to know, per variant, whether the
+/// value can be passed *into* an operator or only returned by one; see
+/// [`ValueKindInfo`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueKind {
+    /// An exact integer.
+    Int,
+    /// An exact rational or a symbolic real.
+    Real,
+    /// A double-precision float.
+    Float,
+    /// A complex number.
+    Complex,
+    /// A truth value.
+    Bool,
+    /// Text.
+    String,
+    /// A free symbol.
+    Symbol,
+    /// A unit.
+    Unit,
+    /// A value with a unit.
+    Quantity,
+    /// A dense tensor.
+    Tensor,
+    /// A sparse tensor.
+    Sparse,
+    /// A record.
+    Record,
+    /// A tagged union.
+    Variant,
+    /// A handle to a term.
+    Term,
+    /// A host callback.
+    Function,
+    /// A value with a run-time dimension.
+    Dyn,
+    /// Host data.
+    Opaque,
+}
+
+impl fmt::Display for ValueKind {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        let name = match self {
+            | Self::Int => "int",
+            | Self::Real => "real",
+            | Self::Float => "float",
+            | Self::Complex => "complex",
+            | Self::Bool => "bool",
+            | Self::String => "string",
+            | Self::Symbol => "symbol",
+            | Self::Unit => "unit",
+            | Self::Quantity => "quantity",
+            | Self::Tensor => "tensor",
+            | Self::Sparse => "sparse",
+            | Self::Record => "record",
+            | Self::Variant => "variant",
+            | Self::Term => "term",
+            | Self::Function => "function",
+            | Self::Dyn => "dyn",
+            | Self::Opaque => "opaque",
+        };
+        f.write_str(name)
+    }
+}
+
+/// Whether a [`Value`] variant can cross the boundary, and how.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ValueKindInfo {
+    /// The variant.
+    pub kind: ValueKind,
+    /// `Session::term_of` can turn it into a node of the expression graph, so
+    /// any operator can take it as an argument.
+    pub in_term_graph: bool,
+    /// What to do instead when it cannot.
+    pub note: String,
+}
+
+impl ValueKindInfo {
+    /// Every variant, in declaration order.
+    ///
+    /// This is the table a generated binding reads: a variant with
+    /// `in_term_graph = false` may only be passed to an operator with a
+    /// dynamic evaluator, or returned.
+    #[must_use]
+    pub fn all() -> Vec<Self> {
+        let entry = |kind: ValueKind, in_term_graph: bool, note: &str| Self {
+            kind,
+            in_term_graph,
+            note: note.to_owned(),
+        };
+        vec![
+            entry(ValueKind::Int, true, ""),
+            entry(ValueKind::Real, true, ""),
+            entry(ValueKind::Float, true, ""),
+            entry(
+                ValueKind::Complex,
+                false,
+                "a complex literal enters the graph only when its imaginary part is zero",
+            ),
+            entry(ValueKind::Bool, true, ""),
+            entry(ValueKind::String, true, ""),
+            entry(ValueKind::Symbol, true, ""),
+            entry(ValueKind::Unit, true, ""),
+            entry(ValueKind::Quantity, true, ""),
+            entry(ValueKind::Tensor, true, "nested `list` nodes"),
+            entry(
+                ValueKind::Sparse,
+                false,
+                "no sparse literal in the graph; pass it to a dynamic evaluator",
+            ),
+            entry(
+                ValueKind::Record,
+                false,
+                "records are results and dynamic-evaluator arguments",
+            ),
+            entry(
+                ValueKind::Variant,
+                false,
+                "variants are results and dynamic-evaluator arguments",
+            ),
+            entry(ValueKind::Term, true, ""),
+            entry(
+                ValueKind::Function,
+                false,
+                "host callbacks reach higher-order operators through `call_ho`",
+            ),
+            entry(ValueKind::Dyn, true, ""),
+            entry(
+                ValueKind::Opaque,
+                false,
+                "host data the kernel does not interpret",
+            ),
+        ]
+    }
+}
+
 /// A dynamically typed value.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -349,6 +504,30 @@ pub enum Value {
 }
 
 impl Value {
+    /// Which variant this is, without its payload.
+    #[must_use]
+    pub const fn kind(&self) -> ValueKind {
+        match self {
+            | Self::Int(_) => ValueKind::Int,
+            | Self::Real(_) => ValueKind::Real,
+            | Self::Float(_) => ValueKind::Float,
+            | Self::Complex(_) => ValueKind::Complex,
+            | Self::Bool(_) => ValueKind::Bool,
+            | Self::String(_) => ValueKind::String,
+            | Self::Symbol(_) => ValueKind::Symbol,
+            | Self::Unit(_) => ValueKind::Unit,
+            | Self::Quantity(_) => ValueKind::Quantity,
+            | Self::Tensor(_) => ValueKind::Tensor,
+            | Self::Sparse(_) => ValueKind::Sparse,
+            | Self::Record(_) => ValueKind::Record,
+            | Self::Variant(_) => ValueKind::Variant,
+            | Self::Term(_) => ValueKind::Term,
+            | Self::Function(_) => ValueKind::Function,
+            | Self::Dyn(_) => ValueKind::Dyn,
+            | Self::Opaque(_) => ValueKind::Opaque,
+        }
+    }
+
     /// The value `0`.
     #[must_use]
     pub fn zero() -> Self {
@@ -428,7 +607,7 @@ impl Value {
             | Self::Complex(_) => TypeExpr::Complex,
             | Self::Bool(_) => TypeExpr::Bool,
             | Self::String(_) => TypeExpr::String,
-            | Self::Symbol(_) => TypeExpr::Var("Symbol".to_owned()),
+            | Self::Symbol(_) => TypeExpr::Symbol,
             | Self::Unit(u) => TypeExpr::Unit(u.dimension.clone()),
             | Self::Quantity(q) => TypeExpr::Dim(
                 Box::new(TypeExpr::Real),

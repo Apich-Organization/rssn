@@ -68,6 +68,7 @@ pub mod call;
 pub mod codec;
 pub mod infer;
 pub mod manifest;
+pub mod overload;
 pub mod plugin;
 pub mod result;
 pub mod signature;
@@ -75,6 +76,7 @@ pub mod value;
 
 pub use call::{Assumption, CallCtx, Kernel, OpError, Target, Trace, TraceEvent};
 pub use codec::CodecError;
+pub use overload::{Best, Match};
 pub use manifest::{
     BaseDimInfo, Features, KernelManifest, OpInfo, PluginInfo, RuleSetInfo, SignatureSource,
 };
@@ -94,5 +96,6 @@ pub use signature::{
 };
 pub use value::{
     CallbackRef, ComplexValue, DynValue, OpaqueValue, QuantityValue, RecordValue, ScaleValue,
-    SessionId, SparseFormat, SparseValue, TensorValue, TermRef, UnitValue, Value, VariantValue,
+    SessionId, SparseFormat, SparseValue, TensorValue, TermRef, UnitValue, Value, ValueKind,
+    ValueKindInfo, VariantValue,
 };

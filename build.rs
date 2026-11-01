@@ -35,6 +35,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_instructions(&cargo)?
         .emit()?;
 
+    // The signature overlay is a hand-maintained JSON file and `*.json` is
+    // ignored by git, so a clean checkout does not contain it; `include_str!`
+    // has no "optional" form and the crate would not compile. Materialise it
+    // in `$OUT_DIR` first — unconditionally, because this has nothing to do
+    // with the `DEV` gate below.
+    write_overlay()?;
+
+    println!("cargo:rerun-if-changed=signatures.overlay.json");
+
     // 1. Attempt to get the environment variable's value.
     match env::var(ENV_VAR_NAME) {
         // 2. If the variable is successfully retrieved (Ok(value)), check if the value is "1".
@@ -116,5 +125,27 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("cargo:rerun-if-changed=Cargo.toml");
 
+    Ok(())
+}
+
+/// Copies `signatures.overlay.json` into `$OUT_DIR`, or writes an empty one.
+///
+/// The overlay is the one place a human corrects an inferred signature, so it
+/// has to exist for the crate to build at all: an empty overlay is a valid
+/// overlay, a missing one is not.
+fn write_overlay() -> Result<(), Box<dyn std::error::Error>> {
+    const EMPTY: &str = "{\"ops\": {}}\n";
+    let source = std::path::Path::new("signatures.overlay.json");
+    let out_dir = env::var("OUT_DIR")?;
+    let target = std::path::Path::new(&out_dir).join("signatures.overlay.json");
+    if source.is_file() {
+        std::fs::copy(source, &target)?;
+        println!("cargo:warning=Using signatures.overlay.json from the crate root");
+    } else {
+        std::fs::write(&target, EMPTY)?;
+        println!(
+            "cargo:warning=signatures.overlay.json is missing; using an empty signature overlay"
+        );
+    }
     Ok(())
 }

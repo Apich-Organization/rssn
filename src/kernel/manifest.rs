@@ -51,6 +51,7 @@ use crate::kernel::signature::Signature;
 use crate::kernel::signature::Stability;
 use crate::kernel::signature::ThreadSafety;
 use crate::kernel::value::UnitValue;
+use crate::kernel::value::ValueKindInfo;
 
 /// What this build can do.
 ///
@@ -239,6 +240,13 @@ pub struct KernelManifest {
     pub base_dimensions: Vec<BaseDimInfo>,
     /// Registered plugins, sorted by name.
     pub plugins: Vec<PluginInfo>,
+    /// Every [`Value`](crate::kernel::Value) variant and whether it can be
+    /// passed to an operator.
+    ///
+    /// A generator needs this to decide, for each of its own types, whether a
+    /// conversion to `Value` is enough or whether the value has to reach a
+    /// dynamic evaluator.
+    pub value_kinds: Vec<ValueKindInfo>,
 }
 
 impl Default for KernelManifest {
@@ -255,6 +263,7 @@ impl Default for KernelManifest {
             units: Vec::new(),
             base_dimensions: Vec::new(),
             plugins: Vec::new(),
+            value_kinds: ValueKindInfo::all(),
         }
     }
 }
@@ -331,6 +340,7 @@ impl KernelManifest {
             units,
             base_dimensions,
             plugins,
+            value_kinds: ValueKindInfo::all(),
         };
         manifest.seal();
         manifest
@@ -489,13 +499,7 @@ fn describe(
 
 /// The signatures of an operator and where they came from.
 fn signatures_for(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
-    if !desc.overloads.is_empty() {
-        return (desc.overloads.clone(), SignatureSource::Declared);
-    }
-    if let Some((signature, source)) = crate::kernel::infer::infer_signature_with_source(desc) {
-        return (vec![signature], source);
-    }
-    (Vec::new(), SignatureSource::None)
+    crate::kernel::infer::signatures(desc)
 }
 
 /// Why an operator that declared no reason has no signature.
@@ -554,8 +558,14 @@ struct Overlay {
     ops: BTreeMap<String, Vec<Signature>>,
 }
 
-/// The overlay shipped with the crate.
-const OVERLAY_JSON: &str = include_str!("../../signatures.overlay.json");
+/// The overlay shipped with the crate, materialised by `build.rs`.
+///
+/// `signatures.overlay.json` is matched by the `*.json` ignore rule, so a
+/// clean checkout does not contain it; `build.rs` copies it into `OUT_DIR`
+/// when it is present and writes an empty overlay when it is not. That keeps
+/// the crate buildable from a fresh clone while leaving the file as the one
+/// place a human corrects an inferred signature.
+const OVERLAY_JSON: &str = include_str!(concat!(env!("OUT_DIR"), "/signatures.overlay.json"));
 
 /// The parsed overlay, or an empty one when the file is unreadable.
 ///

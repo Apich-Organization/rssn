@@ -718,6 +718,8 @@ impl OdeSolutionView {
                 Field::new("events", FieldKind::List).doc("located events, in time order"),
                 Field::new("nfev", FieldKind::Scalar).doc("right-hand-side evaluations"),
                 Field::new("rejected", FieldKind::Scalar).doc("rejected steps"),
+                Field::new("dimensions", FieldKind::List)
+                    .doc("the dimension of each component, by name; empty when unknown"),
             ],
         )
     }
@@ -820,6 +822,23 @@ impl OdeSolutionView {
                 (
                     String::from("rejected"),
                     Value::int(i64::try_from(self.rejected).unwrap_or(i64::MAX)),
+                ),
+                // Kept in the record, not only in the struct: a host that
+                // reads the `Value` must see the dimensions, or it has to go
+                // back to Rust for them.
+                (
+                    String::from("dimensions"),
+                    Value::Tensor(TensorValue::vector(
+                        self.dimensions
+                            .iter()
+                            .map(|dim| {
+                                Value::String(
+                                    dim.as_ref()
+                                        .map_or_else(String::new, crate::kernel::signature::dim_name),
+                                )
+                            })
+                            .collect(),
+                    )),
                 ),
             ],
         }))

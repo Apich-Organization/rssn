@@ -32,6 +32,7 @@ use crate::kernel::plugin::PluginId;
 use crate::kernel::plugin::Registry;
 use crate::kernel::signature::ArityInfo;
 use crate::kernel::signature::OpKey;
+use crate::kernel::signature::Signature;
 use crate::kernel::value::CallbackRef;
 use crate::kernel::value::QuantityValue;
 use crate::kernel::value::SessionId;
@@ -229,18 +230,21 @@ impl Session {
             ],
             &CallCtx::new(),
         )?;
-        let roots = match value {
-            | Value::Tensor(tensor) => tensor.data,
-            | Value::Sparse(sparse) => sparse.data,
-            // A single root comes back as the root itself, not as a list.
-            | other => vec![other],
+        // A `list(...)` answer is the solver's exhaustive form; a bare value
+        // is a single root found on the way, which is not a claim that the
+        // others do not exist. Reporting the difference is the point of the
+        // field.
+        let (roots, complete) = match value {
+            | Value::Tensor(tensor) => (tensor.data, true),
+            | Value::Sparse(sparse) => (sparse.data, true),
+            | other => (vec![other], false),
         };
         Ok(crate::kernel::result::Solutions {
             variable: Some(name),
             roots,
             multiplicities: Vec::new(),
             conditions: Vec::new(),
-            complete: true,
+            complete,
         })
     }
 
@@ -265,6 +269,117 @@ impl Session {
         self.call_with(name, args, fns, ctx)
     }
 
+    /// Every typed overload of `name`, with the key to call it by.
+    ///
+    /// An operator with no declared or inferred signature has no overloads and
+    /// returns an empty list; it is reachable by [`Session::call_value`] but
+    /// not by [`Session::call_key`].
+    #[must_use]
+    pub fn overloads(
+        &self,
+        name: &str,
+    ) -> Vec<(OpKey, Signature)> {
+        let inner = self.inner.borrow();
+        let graph = &inner.graph;
+        graph
+            .ops()
+            .lookup_all(name)
+            .iter()
+            .flat_map(|&id| {
+                let descriptor = graph.ops().get(id);
+                let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+                signatures
+                    .iter()
+                    .map(|signature| {
+                        (
+                            OpKey::new(&descriptor.rule_set, &descriptor.name, Some(signature)),
+                            signature.clone(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// The overload of `name` that `args` belong to.
+    ///
+    /// Resolution is by arity first and then by type, most specific first; a
+    /// tie is [`OpError::Ambiguous`] rather than a silent choice. This is the
+    /// same decision [`Session::call_value`] makes, exposed so that a
+    /// generated typed front end can choose statically and cache on the key.
+    ///
+    /// # Errors
+    /// [`OpError::UnknownOp`] when nothing is registered under `name`,
+    /// [`OpError::Arity`] when no overload takes that many arguments, and
+    /// [`OpError::Ambiguous`] when several tie.
+    pub fn resolve_overload(
+        &self,
+        name: &str,
+        args: &[Value],
+    ) -> Result<OpKey, OpError> {
+        let inner = self.inner.borrow();
+        let graph = &inner.graph;
+        let op = resolve_op(graph, name, args)?;
+        let descriptor = graph.ops().get(op);
+        let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+        let chosen = match crate::kernel::overload::best(&signatures, args) {
+            | crate::kernel::overload::Best::Unique(index) => signatures.get(index),
+            | _ => None,
+        };
+        Ok(OpKey::new(&descriptor.rule_set, &descriptor.name, chosen))
+    }
+
+    /// Calls exactly the overload `key` names.
+    ///
+    /// [`Session::call_value`] resolves an overload from the arguments; this
+    /// does not resolve anything. A host that generated a typed declaration
+    /// from `OpInfo.keys` should call through the key it generated, so that
+    /// the static choice and the executed operator cannot disagree.
+    ///
+    /// An all-zero `signature_hash` means "the registration with no declared
+    /// overload", which is how an untyped operator is named.
+    ///
+    /// # Errors
+    /// [`OpError::UnknownOp`] when no registration matches the key, plus
+    /// everything [`Session::call_value`] can return.
+    pub fn call_key(
+        &self,
+        key: &OpKey,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let ctx = clone_ctx(ctx);
+        let op = self.op_for_key(key)?;
+        self.call_op(op, &key.name, args, &ctx)
+    }
+
+    /// The registration `key` names.
+    fn op_for_key(
+        &self,
+        key: &OpKey,
+    ) -> Result<OpId, OpError> {
+        let inner = self.inner.borrow();
+        let graph = &inner.graph;
+        for &id in graph.ops().lookup_all(&key.name) {
+            let descriptor = graph.ops().get(id);
+            if !key.rule_set.is_empty() && *descriptor.rule_set != *key.rule_set {
+                continue;
+            }
+            let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+            if key.signature_hash == [0_u8; 16] {
+                if signatures.is_empty() {
+                    return Ok(id);
+                }
+            } else if signatures
+                .iter()
+                .any(|signature| signature.hash() == key.signature_hash)
+            {
+                return Ok(id);
+            }
+        }
+        Err(OpError::UnknownOp(key.clone()))
+    }
+
     fn call_with(
         &self,
         name: &str,
@@ -281,24 +396,28 @@ impl Session {
                 )));
             }
         }
-        let (op, sets) = {
+        let op = {
             let inner = self.inner.borrow();
-            let graph = &inner.graph;
-            let Some(op) = graph.ops().lookup_arity(name, args.len()) else {
-                return Err(match graph.ops().lookup(name) {
-                    | Some(id) => OpError::Arity {
-                        expected: ArityInfo::from_arity(graph.ops().get(id).arity),
-                        got: args.len(),
-                    },
-                    | None => OpError::UnknownOp(OpKey::new("", name, None)),
-                });
-            };
-            let sets = inner
+            resolve_op(&inner.graph, name, args)?
+        };
+        self.call_op(op, name, args, &ctx)
+    }
+
+    /// Calls the registration `op`, which has already been resolved.
+    fn call_op(
+        &self,
+        op: OpId,
+        name: &str,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let sets = {
+            let inner = self.inner.borrow();
+            inner
                 .templates
                 .first()
                 .map(|t| t.rule_sets.clone())
-                .unwrap_or_default();
-            (op, sets)
+                .unwrap_or_default()
         };
         let descriptor = {
             let inner = self.inner.borrow();
@@ -590,6 +709,69 @@ fn op_error(
         | crate::api::ComputeError::Inconsistent(what) => OpError::Internal(what),
         | crate::api::ComputeError::Parse(error) => OpError::Domain(error.to_string()),
         | crate::api::ComputeError::Rule(error) => OpError::Domain(error.to_string()),
+    }
+}
+
+/// The registration that `args` should reach.
+///
+/// Arity filters first, then the declared signatures decide by type, most
+/// specific first. When none of the candidates declares a signature the first
+/// arity match wins, which is the behaviour an untyped operator has always
+/// had; a tie between typed candidates is refused rather than guessed.
+fn resolve_op(
+    graph: &Graph,
+    name: &str,
+    args: &[Value],
+) -> Result<OpId, OpError> {
+    let candidates = graph.ops().lookup_all(name);
+    let Some(&first) = candidates.first() else {
+        return Err(OpError::UnknownOp(OpKey::new("", name, None)));
+    };
+    let fitting: Vec<OpId> = candidates
+        .iter()
+        .copied()
+        .filter(|&id| graph.ops().get(id).arity.accepts(args.len()))
+        .collect();
+    let Some(&only) = fitting.first() else {
+        return Err(OpError::Arity {
+            expected: ArityInfo::from_arity(graph.ops().get(first).arity),
+            got: args.len(),
+        });
+    };
+    if fitting.len() == 1 {
+        return Ok(only);
+    }
+    let mut scored: Vec<(OpId, u32)> = Vec::new();
+    for &id in &fitting {
+        let descriptor = graph.ops().get(id);
+        let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+        let best = signatures
+            .iter()
+            .filter_map(|signature| crate::kernel::overload::score(signature, args))
+            .max();
+        if let Some(score) = best {
+            scored.push((id, score));
+        }
+    }
+    if scored.is_empty() {
+        return Ok(only);
+    }
+    let top = scored.iter().map(|(_, score)| *score).max().unwrap_or(0);
+    let mut tied = scored
+        .iter()
+        .filter(|(_, score)| *score == top)
+        .map(|(id, _)| *id);
+    let Some(winner) = tied.next() else {
+        return Ok(only);
+    };
+    let count = 1 + tied.count();
+    if count == 1 {
+        Ok(winner)
+    } else {
+        Err(OpError::Ambiguous {
+            name: name.to_owned(),
+            count,
+        })
     }
 }
 
@@ -1065,6 +1247,91 @@ mod tests {
         };
         assert_eq!(merged, "3*x^2 + 2*x");
         assert_eq!(serial, "x^3*cos(x) + 3*x^2*sin(x)");
+    }
+
+    #[test]
+    fn a_symbol_is_a_type_of_its_own() {
+        // `Symbol` is not `String`: `diff` and `solve` need a hole, not text.
+        assert_eq!(
+            Value::Symbol("x".to_owned()).type_expr(),
+            crate::kernel::signature::TypeExpr::Symbol
+        );
+        assert_ne!(
+            Value::Symbol("x".to_owned()).type_expr(),
+            crate::kernel::signature::TypeExpr::String
+        );
+    }
+
+    #[test]
+    fn an_overload_can_be_resolved_and_called_by_key() {
+        let s = Session::new();
+        let args = [Value::Float(0.5)];
+        let key = s
+            .resolve_overload("sin", &args)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(key.name, "sin");
+        assert_ne!(key.signature_hash, [0_u8; 16], "sin is typed");
+        let by_name = s
+            .call_value("sin", &args, &CallCtx::new())
+            .unwrap_or_else(|e| panic!("{e}"));
+        let by_key = s
+            .call_key(&key, &args, &CallCtx::new())
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(by_name, by_key);
+        // The key is exactly what `overloads` lists.
+        assert!(s.overloads("sin").iter().any(|(k, _)| *k == key));
+    }
+
+    #[test]
+    fn a_key_that_names_nothing_is_refused() {
+        let s = Session::new();
+        let mut key = s
+            .resolve_overload("sin", &[Value::Float(0.5)])
+            .unwrap_or_else(|e| panic!("{e}"));
+        key.signature_hash = [0xAB; 16];
+        assert!(matches!(
+            s.call_key(&key, &[Value::Float(0.5)], &CallCtx::new()),
+            Err(OpError::UnknownOp(_))
+        ));
+    }
+
+    #[test]
+    fn an_untyped_operator_has_no_overloads_but_is_still_explained() {
+        // 570 of the standard operators have no signature at all; they are
+        // reachable by name and carry a reason, never a fabricated type.
+        let s = Session::new();
+        let manifest = s.manifest();
+        let untyped = manifest
+            .ops
+            .iter()
+            .find(|op| op.overloads.is_empty())
+            .unwrap_or_else(|| panic!("the standard rule sets have no untyped operator"));
+        assert!(
+            s.overloads(&untyped.name).is_empty(),
+            "{} reported overloads",
+            untyped.name
+        );
+        assert!(
+            untyped.dynamic_reason.is_some(),
+            "{} is untyped and unexplained",
+            untyped.name
+        );
+        assert_eq!(untyped.keys.len(), 1);
+        assert_eq!(untyped.keys[0].signature_hash, [0_u8; 16]);
+    }
+
+    #[test]
+    fn a_structured_dimension_accepts_a_base_the_engine_has_never_seen() {
+        use crate::kernel::signature::DimExpr;
+        let s = Session::new();
+        let x = s.sym("x");
+        let answer = s
+            .compute(
+                s.parse("x + x").unwrap_or(x),
+                &Config::new().dimension_term("x", DimExpr::base("Currency")),
+            )
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(answer.term.to_string(), "2*x");
     }
 
     #[test]

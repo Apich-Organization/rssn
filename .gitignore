@@ -10,6 +10,10 @@ Cargo.lock
 **/*.js
 *.json
 **/*.json
+# The signature overlay is source, not build output: `build.rs` copies it
+# into `$OUT_DIR` so that a clean clone still builds, but the corrections it
+# carries have to be versioned.
+!signatures.overlay.json
 scc
 *.exe
 *.a
@@ -289,4 +293,3 @@ fix_trap.py
 fix_brnz.py
 tidy.py
 .claude/worktrees/
-!signatures.overlay.json

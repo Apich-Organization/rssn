@@ -1,6 +1,7 @@
 //! Dimensional analysis through the public session API.
 
 use rssn::graph::DimError;
+use num_traits::ToPrimitive;
 use rssn::prelude::*;
 
 /// `(input, expected rewrite, dimension assumptions)`.
@@ -460,4 +461,47 @@ fn ln_exp_of_a_dimensionful_argument_is_the_documented_strict_case() {
         "{:?}",
         answer.diagnostics
     );
+}
+
+#[test]
+fn astronomy_and_cgs_units_carry_their_exact_si_scales() {
+    // The values are the defining constants, not measurements: the au is exact
+    // by definition, the light-year follows from the exact speed of light, and
+    // the parsec from the exact au and the IAU 2015 parallax.
+    let rational = [
+        ("au", 1.495_978_707e11_f64),
+        ("ly", 9.460_730_472_580_8e15),
+        ("pc", 3.085_677_581_491_367_3e16),
+        ("dyn", 1e-5),
+        ("erg", 1e-7),
+        ("Gal", 1e-2),
+        ("P", 0.1),
+        ("St", 1e-4),
+        ("G", 1e-4),
+        ("Mx", 1e-8),
+        ("Ba", 0.1),
+    ];
+    for (name, want) in rational {
+        let unit = rssn::dim::units::lookup(name).unwrap_or_else(|| panic!("no unit {name}"));
+        assert_eq!(unit.scale.pi, 0, "{name} should have no power of pi");
+        let got = unit.scale.rat.to_f64().unwrap_or(f64::NAN);
+        assert!(
+            (got / want - 1.0).abs() < 1e-12,
+            "{name}: {got:e} vs {want:e}"
+        );
+    }
+    // The oersted is `1000/(4 pi) A/m`, so it carries a power of pi.
+    let oersted = rssn::dim::units::lookup("Oe").unwrap_or_else(|| panic!("no unit Oe"));
+    assert_eq!(oersted.scale.pi, -1);
+    let amps_per_metre =
+        oersted.scale.rat.to_f64().unwrap_or(f64::NAN) * std::f64::consts::PI.powi(-1);
+    let want = 250.0 / std::f64::consts::PI;
+    assert!((amps_per_metre / want - 1.0).abs() < 1e-15, "{amps_per_metre}");
+    // A prefixed astronomical unit of length works like any other.
+    let kiloparsec = rssn::dim::units::resolve("kpc").unwrap_or_else(|e| panic!("{e}"));
+    let parsec = rssn::dim::units::resolve("pc").unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(kiloparsec.dimension, parsec.dimension);
+    let ratio = kiloparsec.scale.rat.to_f64().unwrap_or(f64::NAN)
+        / parsec.scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((ratio - 1000.0).abs() < 1e-9, "{ratio}");
 }

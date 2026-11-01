@@ -1260,6 +1260,22 @@ impl Graph {
         }
     }
 
+    /// Runs `body` with mutable access to the dimension arena.
+    ///
+    /// Interning a base dimension is the only mutation the arena has, and it
+    /// happens whenever a structured dimension names something new; a caller
+    /// that has a [`DimExpr`](crate::kernel::signature::DimExpr) needs the
+    /// guard rather than the read-only [`Graph::dim_arena`].
+    pub fn with_dim_arena<R>(
+        &self,
+        body: impl FnOnce(&mut DimArena) -> R,
+    ) -> R {
+        match self.dims.write() {
+            | Ok(mut arena) => body(&mut arena),
+            | Err(poisoned) => body(&mut poisoned.into_inner()),
+        }
+    }
+
     /// Registers a base dimension for this graph.
     pub fn define_base_dimension(
         &mut self,
@@ -1273,6 +1289,20 @@ impl Graph {
                 poisoned.into_inner().define_base(name);
             },
         }
+    }
+
+    /// Declares the dimension of a symbol from a structured term.
+    ///
+    /// This is the entry a typed front end should use: it never parses text,
+    /// so a unit symbol and a base dimension with the same name cannot be
+    /// confused. Base names the arena does not know are defined on the way
+    /// in, which is how a host introduces a dimension of its own.
+    pub fn assume_dimension_value(
+        &mut self,
+        symbol: SymbolId,
+        term: DimTerm,
+    ) {
+        self.dim_assumptions.insert(symbol, term);
     }
 
     /// Declares the dimension of a symbol from text (`"m/s"`,

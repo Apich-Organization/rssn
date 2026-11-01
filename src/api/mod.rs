@@ -72,6 +72,8 @@ pub struct Config {
     budget: Budget,
     dimension_mode: crate::graph::DimensionMode,
     dimension_assumptions: Vec<(String, String)>,
+    /// Structured dimension assumptions, applied after the text ones.
+    dimension_terms: Vec<(String, crate::kernel::signature::DimExpr)>,
     base_dimensions: Vec<String>,
     bypass_dimensions: bool,
 }
@@ -94,6 +96,7 @@ impl Config {
             budget: Budget::default(),
             dimension_mode: crate::graph::DimensionMode::Advisory,
             dimension_assumptions: Vec::new(),
+            dimension_terms: Vec::new(),
             base_dimensions: Vec::new(),
             bypass_dimensions: false,
         }
@@ -110,6 +113,7 @@ impl Config {
             budget: Budget::default(),
             dimension_mode: crate::graph::DimensionMode::Advisory,
             dimension_assumptions: Vec::new(),
+            dimension_terms: Vec::new(),
             base_dimensions: Vec::new(),
             bypass_dimensions: false,
         }
@@ -204,6 +208,26 @@ impl Config {
     ) -> Self {
         self.dimension_assumptions
             .push((symbol.to_owned(), text.to_owned()));
+        self
+    }
+
+    /// Declares the dimension of a symbol from a structured expression.
+    ///
+    /// This is the entry a generated typed front end should use. Unlike
+    /// [`Config::dimension`] it never parses text, so a unit symbol and a base
+    /// dimension that happen to share a name cannot be confused, and a base
+    /// dimension the engine has never seen (`Currency`) is defined on the way
+    /// in rather than rejected.
+    ///
+    /// Structured assumptions are applied after the text ones, so the two can
+    /// be mixed and the structured one wins.
+    #[must_use]
+    pub fn dimension_term(
+        mut self,
+        symbol: &str,
+        dim: crate::kernel::signature::DimExpr,
+    ) -> Self {
+        self.dimension_terms.push((symbol.to_owned(), dim));
         self
     }
 
@@ -671,6 +695,15 @@ fn prepare(
         let symbol = graph.interner_mut().symbol(name);
         if let Err(error) = graph.assume_dimension(symbol, text) {
             dim_errors.push(error);
+        }
+    }
+    // Structured assumptions come last so that they win over text.
+    for (name, dim) in &config.dimension_terms {
+        let symbol = graph.interner_mut().symbol(name);
+        let term = graph.with_dim_arena(|arena| dim.to_term(arena));
+        match term {
+            | Ok(term) => graph.assume_dimension_value(symbol, term),
+            | Err(error) => dim_errors.push(error),
         }
     }
     Job {

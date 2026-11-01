@@ -273,6 +273,40 @@ pub(crate) fn table() -> &'static HashMap<&'static str, Def> {
         add("lbf", [1, 1, -2, 0, 0, 0, 0], "4.4482216152605", false);
         // hp = 550 ft lbf / s
         add("hp", [2, 1, -3, 0, 0, 0, 0], "745.69987158227022", false);
+        // Astronomy (IAU 2012 constants): the astronomical unit is exact, the
+        // light-year follows from the defining speed of light, and the parsec
+        // from the exact au and the IAU 2015 parallax definition.
+        add("au", [1, 0, 0, 0, 0, 0, 0], "149597870700", false);
+        add("ly", [1, 0, 0, 0, 0, 0, 0], "9460730472580800", false);
+        add("pc", [1, 0, 0, 0, 0, 0, 0], "30856775814913673", true);
+        add("Rsun", [1, 0, 0, 0, 0, 0, 0], "695700000", false);
+        add("Msun", [0, 1, 0, 0, 0, 0, 0], "1.98892e30", false);
+        add("Mearth", [0, 1, 0, 0, 0, 0, 0], "5.9722e24", false);
+        add("jup", [0, 1, 0, 0, 0, 0, 0], "1.89813e27", false);
+        // CGS: the Gaussian system, still the working unit set of much of
+        // astronomy, geophysics and spectroscopy.
+        add("dyn", [1, 1, -2, 0, 0, 0, 0], "1/100000", false);
+        add("erg", [2, 1, -2, 0, 0, 0, 0], "1/10000000", false);
+        add("Gal", [1, 0, -2, 0, 0, 0, 0], "1/100", false);
+        add("P", [-1, 1, -1, 0, 0, 0, 0], "1/10", false);
+        add("St", [2, 0, -1, 0, 0, 0, 0], "1/10000", false);
+        add("G", [0, 1, -2, -1, 0, 0, 0], "1/10000", false);
+        add("Mx", [2, 1, -2, -1, 0, 0, 0], "1/100000000", false);
+        add("Ba", [-1, 1, -1, 0, 0, 0, 0], "1/10", false);
+        // The oersted is `1000/(4 pi) A/m`, so its scale carries a power of pi
+        // rather than a rational alone.
+        t.insert(
+            "Oe",
+            Def {
+                dim: Dim::of([-1, 0, 0, 1, 0, 0, 0]),
+                scale: Scale {
+                    rat: dec("250"),
+                    pi: -1,
+                },
+                offset: None,
+                prefixable: false,
+            },
+        );
         let angle = |name: &'static str, t: &mut HashMap<&'static str, Def>, denominator: &str| {
             t.insert(
                 name,
@@ -1128,6 +1162,10 @@ impl crate::kernel::value::UnitValue {
                 crate::kernel::value::ScaleValue { numer, denom, pi: 0 }
             }),
             affine: def.affine,
+            aliases: def.aliases.clone(),
+            prefixable: def.prefixable,
+            category: def.category.clone(),
+            since: def.since.clone(),
         }
     }
 }
