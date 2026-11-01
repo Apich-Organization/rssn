@@ -64,15 +64,45 @@
 //! to double precision whatever the size of `a`, `b` and `|z|`. This covers
 //! every `z` with `Re z >= 0` and `Re a, Re b > 0` (no cancellation at all),
 //! and, through Kummer's transformation `M(a, b, z) = e^z M(b - a, b, -z)`,
-//! the left half plane whenever `Re (b - a) > 0`. Only the transition
-//! regions where `M` is exponentially smaller than its own series terms (for
-//! example `a >> b` with `z < 0` and `|z|` of the order of `|a|`, an
-//! oscillatory region) are summed in exact integer arithmetic: for real
-//! parameters and argument the series is evaluated in fixed point on
-//! arbitrary-precision integers (`num-bigint`), with a working precision that
-//! is doubled until the result has lost nothing to cancellation. Only complex
-//! parameters in those regions use the Taylor stepping, with its limited
-//! accuracy.
+//! the left half plane whenever `Re (b - a) > 0`. The transition regions
+//! where `M` is exponentially smaller than its own series terms (for example
+//! `a >> b` with `z < 0` and `|z|` of the order of `|a|`, an oscillatory
+//! region) are summed in exact integer arithmetic for real parameters and
+//! argument: the series is evaluated in fixed point on arbitrary-precision
+//! integers (`num-bigint`), with a working precision that is doubled until
+//! the result has lost nothing to cancellation.
+//!
+//! Complex parameters with `Re b >= 1` and `|z| <= Re b` are evaluated by
+//! Miller's backward recurrence in `b`, which does not cancel at all. The
+//! contiguous relation
+//! `b (b - 1) M(a, b - 1) + b (1 - b - z) M(a, b) + z (b - a) M(a, b + 1) = 0`
+//! is solved for `M(a, b - 1)` and run from the index `b + n` down to `b`
+//! (equivalently: the continued fraction for the successive ratios
+//! `M(a, b + j + 1) / M(a, b + j)`, evaluated from its tail). The two start
+//! values at `b + n` and `b + n - 1` come from the power series there, with
+//! `n >= 1.5 |a z|` so that every term ratio of that series is below `2/3`:
+//! it decays from its first term and loses nothing to cancellation. An error
+//! `eps` made at index `b + j` reaches `b` multiplied by the ratio of the
+//! second solution of the recurrence, `|U(a, b, z) / U(a, b + j, z)|`, and
+//! that solution behaves like `Gamma(x) z^(1 - x)`; the descent moves `x` from
+//! `Re b + n` down to `Re b`, so for `|z| <= Re b` its modulus grows with `x`
+//! and every error is damped (for `|z| > Re b` the minimum lies *inside* the
+//! descent and errors are amplified by `exp(b (r - 1 - ln r))`, `r = |z| / Re b`:
+//! `1e5` at `r = 1.5` with `b = 100`). `Re b < 1` is excluded as well: there
+//! the wanted solution is not the minimal one of the recurrence, and the
+//! descent converges to the other branch instead.
+//!
+//! Two independent checks gate the result. Two descents with `n` and `1.25 n`
+//! must agree to `1e-13` -- their difference is the start transient -- and the
+//! value must reproduce Kummer's transformation, `M(a, b, z) = e^z M(b - a, b,
+//! -z)`, to `1e-11`, with the right side run through the same recurrence from
+//! `b - a` and `-z`. The second check is the one that catches a *systematic*
+//! error (the wrong branch, or rounding amplified where the second solution is
+//! smallest), which both descents of the first check share and which therefore
+//! cancels out of their difference. Anything that fails falls back to the
+//! Taylor stepping. The same recurrence covers `|z| <= 1/2` with a large
+//! numerator (`|a z| > 2 |b|`), where the plain series grows its terms before
+//! they decay. `n` is capped at 200000 steps, which covers `|a z|` up to `1e5`.
 //!
 //! `U(a, b, z)` for real `a >= 12`, real `b` and `z > 0` is computed from its
 //! positive integral representation `Gamma(a)^-1 int e^{-zt} t^{a-1}
@@ -80,12 +110,32 @@
 //! relative accuracy where `U` is tiny (down to `10^-300`); elsewhere the
 //! asymptotic series and the inward continuation described above are used.
 //!
-//! Limitations: complex `M` outside the regions above with parameters of
-//! very large modulus (more than about 50) loses accuracy. `U` was compared
-//! with mpmath on 979 stress cases (`a` of modulus 60 to 150, `b` up to 30,
-//! `z` on the imaginary axis and in the left and right half planes). For
-//! `Re a >= 0`, `|a| <= 100`, `|Im a| <= 90` and `|b| <= 8` the relative error
-//! is below `6e-11` (typically `1e-13`; the table in
+//! Limitations. `M` with complex parameters, `Re b >= 1` and `|z| <= Re b`,
+//! whose series cancels by more than `1e15`, is computed by Miller's
+//! recurrence, and the identities in `tests/kernels/hypergeometric.rs` hold to
+//! `1e-12` there over `|a|, |b| <= 205` (Kummer's transformation, the
+//! contiguous relations in `a` and in `b`, the closed forms `M(a, a, z) = e^z`
+//! and `M(1, 2, 2z) = (e^(2z) - 1) / (2z)`, and the Wronskian with `U`), which
+//! is what the Taylor stepping could not do above `|b|` of a few tens. Five
+//! cases still fall back to that stepping and its limited accuracy: `Re b < 1`
+//! (the wanted solution is not the minimal one of the recurrence in `b` there,
+//! so the descent converges to the other branch); `|z| > Re b`, where the
+//! descent no longer damps the second solution (amplification
+//! `exp(b (r - 1 - ln r))`, `r = |z| / Re b`: `1e5` at `r = 1.5` with
+//! `b = 100`, no digit at `r = 2`); `|a z| > 1e5` (more than 200000 recurrence
+//! steps); `b` a real integer at or below `1` (the recurrence divides by
+//! `b (b - 1)`); and a value that the Kummer cross-check or the two-descent
+//! agreement does not confirm. The region `|z| > Re b` is the turning point of
+//! the equation, where a uniform asymptotic expansion in Airy functions would
+//! be needed: it is not implemented, and the `1/z` expansion alone needs
+//! `|z| >= |a|^2 / 40` for `1e-16` (at `|a| = 100` that is `|z| >= 2.5e5`,
+//! where `M` is `e^(-|z|)` and underflows). Results smaller than about
+//! `1e-270` underflow inside the continuation and come out as zero.
+//!
+//! `U` was compared with mpmath on 979 stress cases (`a` of modulus 60 to 150,
+//! `b` up to 30, `z` on the imaginary axis and in the left and right half
+//! planes). For `Re a >= 0`, `|a| <= 100`, `|Im a| <= 90` and `|b| <= 8` the
+//! relative error is below `6e-11` (typically `1e-13`; the table in
 //! `tests/kernels/hypergeometric.rs`), except `a = 65i` at `z = -40i` (near the
 //! turning point `|z| < |a|`, up to `3e-8`). What remains: (i) results smaller than
 //! about `1e-270` (for example `a = 150 - 40i`, `Re z <= -60`) underflow
@@ -275,6 +325,149 @@ fn kummer_series_exact(
         return None;
     }
     None
+}
+
+// ---------------------------------------------- Miller's backward recurrence
+
+/// Largest number of steps of the backward recurrence. The start index grows
+/// like `|a z|`, so this bounds the method at `|a z|` of about `1e5`.
+const MILLER_MAX_STEPS: f64 = 200_000.0;
+
+/// `M(a, b, z)` from its power series when every term ratio is below one.
+///
+/// The terms then decay from the first one, so `|sum| >= |term| / 2` and
+/// nothing is lost to cancellation. `None` when a ratio reaches one (the
+/// terms would grow first, which is the case the recurrence is for) or the
+/// series does not settle within `10^4` terms.
+fn kummer_series_decaying(
+    a: C,
+    b: C,
+    z: C,
+) -> Option<C> {
+    let mut term = ONE;
+    let mut sum = ONE;
+    for k in 0..10_000_u32 {
+        let kf = f64::from(k);
+        let ratio = (a + kf) * z / ((b + kf) * (kf + 1.0));
+        let size = ratio.norm();
+        if size >= 1.0 || size.is_nan() {
+            return None;
+        }
+        term *= ratio;
+        sum += term;
+        if term.norm() <= 1e-20 * sum.norm() {
+            return Some(sum);
+        }
+    }
+    None
+}
+
+/// `M(a, b, z)` by Miller's backward recurrence in `b`, started `steps`
+/// indices above `b`.
+///
+/// `f(j) = M(a, b + j, z)` satisfies
+/// `(b + j)(b + j - 1) f(j - 1) + (b + j)(1 - b - j - z) f(j)
+/// + z (b + j - a) f(j + 1) = 0`; the start values `f(steps)` and
+/// `f(steps - 1)` are summed directly, where the series decays, and the
+/// relation is solved for `f(j - 1)` down to `f(0)`. `None` on a singular
+/// coefficient or a non-finite intermediate value.
+fn kummer_miller_from(
+    a: C,
+    b: C,
+    z: C,
+    steps: u32,
+) -> Option<C> {
+    let offset = f64::from(steps);
+    let mut next = kummer_series_decaying(a, b + offset, z)?;
+    let mut cur = kummer_series_decaying(a, b + (offset - 1.0), z)?;
+    for j in (1..steps).rev() {
+        let bj = b + f64::from(j);
+        let den = bj * (bj - 1.0);
+        if den.norm() == 0.0 {
+            return None;
+        }
+        let lower = (bj * (bj + z - 1.0) * cur - z * (bj - a) * next) / den;
+        if !lower.is_finite() {
+            return None;
+        }
+        next = cur;
+        cur = lower;
+    }
+    cur.is_finite().then_some(cur)
+}
+
+/// `M(a, b, z)` by Miller's backward recurrence in `b`, without the final
+/// cross-check against Kummer's transformation.
+///
+/// `None` when the recurrence is not admissible: `Re b < 1` (the wanted
+/// solution is not the minimal one of the recurrence in `b` there, so the
+/// descent converges to the other branch), `|z| > Re b` (the second solution's
+/// modulus has its minimum inside the descent, so the errors are amplified
+/// instead of damped), a singular coefficient, more than
+/// [`MILLER_MAX_STEPS`] steps, or two descents that do not agree to `1e-13`.
+fn kummer_miller_descent(
+    a: C,
+    b: C,
+    z: C,
+) -> Option<C> {
+    let (an, bn, zn) = (a.norm(), b.norm(), z.norm());
+    if !(an.is_finite() && bn.is_finite() && zn.is_finite()) {
+        return None;
+    }
+    // the recurrence is stable only where `M` is the minimal solution and the
+    // second solution shrinks along the descent
+    if b.re < 1.0 || zn > b.re {
+        return None;
+    }
+    // the last step divides by b (b - 1)
+    if b.im.abs() < 1e-8 && (b.re - 1.0).abs() < 1e-8 {
+        return None;
+    }
+    // start where the series decays from its first term (|a z| / |b + n| <= 2/3)
+    // and far enough above b for the second solution to damp the descent
+    let steps = (1.5 * an * zn + 4.0 * (an + zn) + 2.0 * bn + 30.0).ceil();
+    if steps > MILLER_MAX_STEPS {
+        return None;
+    }
+    let first = kummer_miller_from(a, b, z, steps as u32)?;
+    let wider = (1.25 * steps).ceil();
+    if wider > MILLER_MAX_STEPS {
+        return None;
+    }
+    let second = kummer_miller_from(a, b, z, wider as u32)?;
+    let scale = first.norm().max(second.norm());
+    if scale == 0.0 || (first - second).norm() > 1e-13 * scale {
+        return None;
+    }
+    Some(first)
+}
+
+/// `M(a, b, z)` by Miller's backward recurrence in `b`, checked against
+/// Kummer's transformation.
+///
+/// The admissibility conditions of [`kummer_miller_descent`] make the descent
+/// stable, but a *systematic* error -- the wrong branch of the recurrence, or
+/// rounding amplified where the second solution is smallest -- is shared by
+/// both of its descents and escapes their agreement. The value is therefore
+/// also compared with `e^z M(b - a, b, -z)`, the same function reached through
+/// the recurrence with a different first parameter and the other half plane;
+/// only agreement to `1e-11` is accepted. Anything else returns `None`, which
+/// leaves the caller with the Taylor stepping.
+fn kummer_miller(
+    a: C,
+    b: C,
+    z: C,
+) -> Option<C> {
+    let value = kummer_miller_descent(a, b, z)?;
+    let mirror = z.exp() * kummer_miller_descent(b - a, b, -z)?;
+    if !mirror.is_finite() {
+        return None;
+    }
+    let scale = value.norm().max(mirror.norm());
+    if scale == 0.0 || (value - mirror).norm() > 1e-11 * scale {
+        return None;
+    }
+    Some(value)
 }
 
 // --------------------------------------------------------- Taylor ODE engine
@@ -708,6 +901,15 @@ pub fn hyp_pfq(
         return ONE;
     }
     if z.norm() <= 0.5 {
+        // `1F1` with a large numerator loses digits here too: the terms grow
+        // before they decay (`|a z| > 2 |b|`). Miller's recurrence starts at a
+        // `b + n` where they do not, so it is tried first for that case.
+        if let ([a1], [b1]) = (a, b)
+            && a1.norm() * z.norm() > 2.0 * b1.norm()
+            && let Some(v) = kummer_miller(*a1, *b1, z)
+        {
+            return v;
+        }
         return pfq_series(a, b, z);
     }
     if let ([a1], [b1]) = (a, b) {
@@ -720,6 +922,9 @@ pub fn hyp_pfq(
             && let Some(v) = kummer_series_exact(a1.re, b1.re, z.re)
         {
             return C::new(v, 0.0);
+        }
+        if let Some(v) = kummer_miller(*a1, *b1, z) {
+            return v;
         }
     }
     let ode = HypOde::new(a, b);

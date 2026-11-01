@@ -1461,3 +1461,169 @@ fn undefined_cases_have_a_reason_and_the_origin_is_always_one() {
     }
     assert!(HypError::Divergent.to_string().contains("diverges"));
 }
+
+// ------------------------------ Miller's recurrence: large complex parameters
+
+/// The parameter pairs of the identities below, and the arguments used with
+/// them: `|a|, |b|` from 50 to 205 with `|a - b|` small enough that `M` stays
+/// representable, `Re b >= 50` and `|z| <= Re b`, which is exactly the region
+/// in which the backward recurrence damps the second solution over the whole
+/// descent. The series cancels by `e^|z|` (up to `1e85`) at these points, far
+/// past the `1e15` guard of the double-double summation.
+fn large_parameter_cases() -> [((C, C), [C; 3]); 5] {
+    [
+        (
+            (c(60.5, 3.0), c(62.5, -2.0)),
+            [c(0.0, 60.0), c(-40.0, 40.0), c(30.0, -50.0)],
+        ),
+        (
+            (c(120.5, -4.0), c(115.5, 6.0)),
+            [c(0.0, 110.0), c(-60.0, 90.0), c(80.0, -80.0)],
+        ),
+        (
+            (c(200.5, 10.0), c(195.5, -8.0)),
+            [c(0.0, 180.0), c(-100.0, 150.0), c(120.0, -150.0)],
+        ),
+        (
+            (c(60.5, 4.0), c(50.5, -3.0)),
+            [c(0.0, 45.0), c(-30.0, 30.0), c(20.0, -40.0)],
+        ),
+        (
+            (c(0.5, 0.0), c(150.5, 20.0)),
+            [c(0.0, 140.0), c(60.0, -120.0), c(-90.0, 100.0)],
+        ),
+    ]
+}
+
+#[test]
+fn kummer_transformation_with_large_complex_parameters() {
+    // M(a, b, z) = e^z M(b - a, b, -z), where the series of one or both sides
+    // cancels. `hyp_pfq` does not apply the transformation itself, so the right
+    // side is an independent evaluation (other parameters, other argument).
+    for ((a, b), arguments) in large_parameter_cases() {
+        for z in arguments {
+            let lhs = hyp1f1_cplx(a, b, z);
+            let rhs = z.exp() * hyp_pfq(&[b - a], &[b], -z);
+            close(
+                lhs,
+                rhs,
+                1e-12,
+                &format!("M(a,b,z) = e^z M(b-a,b,-z), a={a} b={b} z={z}"),
+            );
+        }
+    }
+}
+
+#[test]
+fn kummer_contiguous_relations_with_large_complex_parameters() {
+    for ((a, b), arguments) in large_parameter_cases() {
+        for z in arguments {
+            let m = hyp1f1_cplx(a, b, z);
+            let lower = hyp1f1_cplx(a - 1.0, b, z);
+            let upper = hyp1f1_cplx(a, b + 1.0, z);
+            // b M(a, b, z) - b M(a - 1, b, z) - z M(a, b + 1, z) = 0
+            let r = b * m - b * lower - z * upper;
+            let scale = (b * m).norm().max((b * lower).norm()).max((z * upper).norm());
+            assert!(
+                r.norm() <= 1e-12 * scale,
+                "b-contiguous a={a} b={b} z={z}: {:.2e}",
+                r.norm() / scale
+            );
+            // (b - a) M(a - 1, b, z) + (2a - b + z) M(a, b, z) - a M(a + 1, b, z) = 0
+            let above = hyp1f1_cplx(a + 1.0, b, z);
+            let r = (b - a) * lower + (2.0 * a - b + z) * m - a * above;
+            let scale = ((b - a) * lower)
+                .norm()
+                .max(((2.0 * a - b + z) * m).norm())
+                .max((a * above).norm());
+            assert!(
+                r.norm() <= 1e-12 * scale,
+                "a-contiguous a={a} b={b} z={z}: {:.2e}",
+                r.norm() / scale
+            );
+        }
+    }
+}
+
+#[test]
+fn kummer_closed_forms_with_large_parameters() {
+    // M(a, a, z) = e^z. On the imaginary axis the terms of the series reach
+    // e^{|z|} while the value has modulus one, so the direct series has lost
+    // every digit there; only a method free of cancellation reaches 1e-12.
+    for (a, arguments) in [
+        (c(60.5, 0.0), [c(0.0, 60.0), c(0.0, -55.0), c(20.0, 55.0)]),
+        (
+            c(150.5, 7.0),
+            [c(0.0, 140.0), c(0.0, -120.0), c(30.0, 130.0)],
+        ),
+        (
+            c(80.5, 4.0),
+            [c(0.0, 75.0), c(-40.0, 60.0), c(20.0, -70.0)],
+        ),
+    ] {
+        for z in arguments {
+            close(
+                hyp1f1_cplx(a, a, z),
+                z.exp(),
+                1e-12,
+                &format!("M(a,a,z) = e^z at a={a} z={z}"),
+            );
+        }
+    }
+    // M(1, 2, w) = (e^w - 1) / w (b = 2 is too small for the recurrence here,
+    // so this checks the continuation, not the recurrence)
+    for w in [c(0.0, 70.0), c(0.0, -55.0), c(40.0, 50.0)] {
+        close(
+            hyp1f1_cplx(c(1.0, 0.0), c(2.0, 0.0), w),
+            (w.exp() - 1.0) / w,
+            1e-10,
+            &format!("M(1,2,{w}) = (e^w - 1)/w"),
+        );
+    }
+}
+
+#[test]
+fn kummer_wronskian_with_large_parameters() {
+    // M U' - M' U = -Gamma(b)/Gamma(a) z^(-b) e^z, with
+    // M' = (a/b) M(a+1, b+1, z) and U' = -a U(a+1, b+1, z): an identity that
+    // ties `M` (the recurrence) to `U` (the continuation) and to `gamma_c`.
+    for (a, b, z) in [
+        (c(60.5, 0.0), c(90.5, 0.0), c(20.0, 30.0)),
+        (c(60.5, 3.0), c(62.5, -2.0), c(30.0, 40.0)),
+    ] {
+        let m = hyp1f1_cplx(a, b, z);
+        let m_prime = (a / b) * hyp1f1_cplx(a + 1.0, b + 1.0, z);
+        let u = hyp_u_cplx(a, b, z);
+        let u_prime = -a * hyp_u_cplx(a + 1.0, b + 1.0, z);
+        let lhs = m * u_prime - m_prime * u;
+        let want = -(gamma_c(b) / gamma_c(a)) * (z - b * z.ln()).exp();
+        let scale = (m * u_prime).norm().max((m_prime * u).norm());
+        assert!(
+            (lhs - want).norm() <= 1e-8 * scale,
+            "Wronskian a={a} b={b} z={z}: {lhs} vs {want} (rel {:.2e})",
+            (lhs - want).norm() / scale
+        );
+    }
+}
+
+#[test]
+#[allow(clippy::type_complexity)]
+fn kummer_small_argument_with_a_large_numerator() {
+    // |z| <= 1/2 with |a| >> |b|: the terms of the series grow by |a z| / |b|
+    // before they decay, which costs that many digits in the direct sum. The
+    // recurrence starts at a `b` where they decay. Every argument is a dyadic
+    // rational, so the exact rational sum of the series is the reference.
+    let cases: [((f64, f64, f64), ((i64, i64), (i64, i64), (i64, i64))); 3] = [
+        ((200.25, 3.5, -0.375), ((801, 4), (7, 2), (-3, 8))),
+        ((150.25, 4.5, 0.3125), ((601, 4), (9, 2), (5, 16))),
+        ((100.75, 5.5, -0.1875), ((403, 4), (11, 2), (-3, 16))),
+    ];
+    for ((a, b, z), (ea, eb, ez)) in cases {
+        let want = exact_m(ea, eb, ez);
+        let got = hyp1f1_cplx(c(a, 0.0), c(b, 0.0), c(z, 0.0)).re;
+        assert!(
+            (got - want).abs() <= 1e-11 * want.abs(),
+            "M({a}, {b}, {z}) = {got:e}, want {want:e}"
+        );
+    }
+}

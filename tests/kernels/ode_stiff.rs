@@ -4,7 +4,9 @@ use rssn::kernels::dense::Mat;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_adaptive::rosenbrock23;
 use rssn::kernels::ode_stiff::bdf;
+use rssn::kernels::ode_stiff::BdfOptions;
 use rssn::kernels::ode_stiff::bdf_jac;
+use rssn::kernels::ode_stiff::bdf_with;
 use rssn::kernels::ode_stiff::radau5;
 use rssn::kernels::ode_stiff::radau5_fixed;
 use rssn::kernels::ode_stiff::radau5_jac;
@@ -243,4 +245,54 @@ fn backward_integration_and_errors() {
     assert!((s.y.last().unwrap()[0] - 1.0).abs() < 1e-5);
     assert!(radau5(f, 0.0, 0.0, &[1.0], &o).is_err());
     assert!(bdf(f, 0.0, 1.0, &[], &o, 5).is_err());
+}
+
+#[test]
+fn bdf_accepts_a_time_dependent_mass_matrix() {
+    // `(1 + t) y' = -y` with `y(0) = 1` has the exact solution `1/(1 + t)`.
+    // The corrector is `M(t_{n+1}) (y - y_pred) = h gamma0 f`, so no `dM/dt` is
+    // needed: the mass is simply evaluated at the new time of each step.
+    let f = |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = -y[0];
+    };
+    let mass_at = |t: f64| Mat::from_rows(&[vec![1.0 + t]]).unwrap_or_else(|e| panic!("{e}"));
+    let options = BdfOptions {
+        max_order: 5,
+        mass_fn: Some(&mass_at),
+        ..BdfOptions::default()
+    };
+    let opts = OdeOptions {
+        rtol: 1e-10,
+        atol: 1e-12,
+        ..OdeOptions::default()
+    };
+    let solution = bdf_with(f, 0.0, 2.0, &[1.0], &opts, &options)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let last = solution.t.last().copied().unwrap_or(f64::NAN);
+    assert!((last - 2.0).abs() < 1e-12);
+    let y = solution.y.last().and_then(|row| row.first()).copied().unwrap_or(f64::NAN);
+    let exact = 1.0 / (1.0 + last);
+    assert!((y - exact).abs() < 1e-8, "{y} vs {exact}");
+
+    // The same problem written with a constant mass and the `1/(1+t)` folded
+    // into the right-hand side must agree: the two paths describe one system.
+    let folded = |t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = -y[0] / (1.0 + t);
+    };
+    let constant = BdfOptions {
+        max_order: 5,
+        ..BdfOptions::default()
+    };
+    let reference = bdf_with(folded, 0.0, 2.0, &[1.0], &opts, &constant)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let reference_y = reference
+        .y
+        .last()
+        .and_then(|row| row.first())
+        .copied()
+        .unwrap_or(f64::NAN);
+    assert!(
+        (y - reference_y).abs() < 1e-7,
+        "{y} vs {reference_y}"
+    );
 }

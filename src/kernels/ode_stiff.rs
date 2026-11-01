@@ -55,7 +55,9 @@
 //!
 //! Limitations: BDF handles index 1 only (use Radau for higher-index
 //! Hessenberg systems, whose error estimate needs the `h` and `h^2`
-//! weights); the mass matrix must be constant; Radau's
+//! weights); the mass matrix may be constant ([`BdfOptions::mass`]) or a
+//! function of time ([`BdfOptions::mass_fn`], which costs one factorisation per
+//! step); Radau's
 //! algebraic-variable error estimate is the plain collocation estimate for
 //! index 1 (no extra scaling needed there).
 //!
@@ -1078,6 +1080,19 @@ pub struct BdfOptions<'a> {
     pub mass: Option<&'a Mat>,
     /// Sparse mass matrix (used when `mass` is `None`).
     pub sparse_mass: Option<&'a Csr>,
+    /// A mass matrix that depends on time, `M(t)`.
+    ///
+    /// The BDF corrector is `M(t_{n+1}) (y_{n+1} - y_pred) = h gamma0 f(t_{n+1},
+    /// y_{n+1})`, so a time-dependent mass needs no `dM/dt`: it only has to be
+    /// evaluated at the new time of each step. The one real consequence is that
+    /// the Newton factorisation can no longer be reused across steps, so this
+    /// costs one factorisation per step — exactly as a time-dependent Jacobian
+    /// does.
+    ///
+    /// The sparsity must be the same at every time; the band used for the
+    /// factorisation is taken from `M(t0)`. `mass` and `sparse_mass` are
+    /// ignored when this is set.
+    pub mass_fn: Option<&'a dyn Fn(f64) -> Mat>,
 }
 
 impl Default for BdfOptions<'_> {
@@ -1090,6 +1105,7 @@ impl Default for BdfOptions<'_> {
             events: &[],
             mass: None,
             sparse_mass: None,
+            mass_fn: None,
         }
     }
 }
@@ -1223,7 +1239,13 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         .mass
         .map(Mass::Dense)
         .or_else(|| bo.sparse_mass.map(Mass::Sparse));
-    if let Some(m) = mass
+    // A time-dependent mass is evaluated at the start of each step; this first
+    // evaluation is what the band, the dimension check and the starting
+    // derivative use.
+    let mass_fn = bo.mass_fn;
+    let initial_mass: Option<Mat> = mass_fn.map(|f| f(t0));
+    let mass_start: Option<Mass<'_>> = initial_mass.as_ref().map(Mass::Dense).or(mass);
+    if let Some(m) = mass_start
         && (m.rows() != n || m.cols() != n)
     {
         return Err(OdeError::Invalid);
@@ -1231,7 +1253,7 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let provider =
         JacobianProvider::new(n, bo.structure, bo.jac, bo.sparse_jac).ok_or(OdeError::Invalid)?;
     let mut band = provider.band;
-    if let Some(m) = mass {
+    if let Some(m) = mass_start {
         let (ml, mu) = m.band();
         band = (band.0.max(ml), band.1.max(mu));
     }
@@ -1245,14 +1267,14 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
     let mut nfev = 1;
-    let mut h_abs = match (opts.h0, mass) {
+    let mut h_abs = match (opts.h0, mass_start) {
         | (Some(h), _) => h,
         | (None, None) => initial_step(f, t0, y0, &f0, dir, 1.0, Tol { rtol, atol }),
         | (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
     }
     .abs()
     .min(opts.hmax);
-    let ydot0 = mass.map_or_else(|| f0.clone(), |m| initial_derivative(m, &f0));
+    let ydot0 = mass_start.map_or_else(|| f0.clone(), |m| initial_derivative(m, &f0));
     let mut d = vec![vec![0.0; n]; BDF_MAX_ORDER + 3];
     d[0].clone_from(&y);
     for q in 0..n {
@@ -1310,9 +1332,16 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             let cc = h / alpha[order];
             let mut converged = false;
             let mut n_iter = 0;
+            // The mass matrix of *this* step. A time-dependent `M` also means
+            // the factorisation cannot be carried over: it depends on `M(t)`.
+            let step_mass: Option<Mat> = mass_fn.map(|f| f(t_new));
+            let mass_now: Option<Mass<'_>> = step_mass.as_ref().map(Mass::Dense).or(mass);
+            if mass_fn.is_some() {
+                lu = None;
+            }
             while !converged {
                 if lu.is_none() {
-                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, mass, &jac);
+                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, mass_now, &jac);
                     match Factor::from_triplets(n, 1, &trip, provider.kind, band) {
                         | Some(l) => lu = Some(l),
                         | None => break,
@@ -1334,7 +1363,8 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     }
                     // `c f - M (psi + d)`.
                     let shifted: Vec<f64> = (0..n).map(|q| psi[q] + dd[q]).collect();
-                    let m_shifted = mass.map_or_else(|| shifted.clone(), |m| m.matvec(&shifted));
+                    let m_shifted =
+                        mass_now.map_or_else(|| shifted.clone(), |m| m.matvec(&shifted));
                     let rhs: Vec<f64> = (0..n).map(|q| cc * fv[q] - m_shifted[q]).collect();
                     let dy = l.solve(&rhs);
                     let dn = rms(&dy, &sc);
