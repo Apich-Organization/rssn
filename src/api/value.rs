@@ -324,7 +324,17 @@ impl Session {
         let (signatures, _) = crate::kernel::infer::signatures(descriptor);
         let chosen = match crate::kernel::overload::best(&signatures, args) {
             | crate::kernel::overload::Best::Unique(index) => signatures.get(index),
-            | _ => None,
+            // An operator with no signature has exactly one key, the
+            // all-zero one, and `call_key` accepts it.
+            | _ if signatures.is_empty() => None,
+            // Several overloads fit and none is more specific. Returning a
+            // key here would be a key `call_key` refuses, so say so instead.
+            | _ => {
+                return Err(OpError::Ambiguous {
+                    name: name.to_owned(),
+                    count: signatures.len(),
+                });
+            },
         };
         Ok(OpKey::new(&descriptor.rule_set, &descriptor.name, chosen))
     }
@@ -388,14 +398,7 @@ impl Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        for handle in fns {
-            if ctx.callbacks.get(handle.0 as usize).is_none() {
-                return Err(OpError::Host(format!(
-                    "callback {} was not supplied in the context",
-                    handle.0
-                )));
-            }
-        }
+        check_callbacks(&ctx, fns)?;
         let op = {
             let inner = self.inner.borrow();
             resolve_op(&inner.graph, name, args)?
@@ -651,10 +654,10 @@ impl Kernel for Session {
         args: &[Value],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
-        // Dispatch is by name: the rule set in the key is there so a host
-        // can tell two same-named operators of different sets apart, not
-        // because the table is keyed on it.
-        self.call_value(&op.name, args, ctx)
+        // The key pins the overload, so this must not fall back to dispatch by
+        // name: a caller that resolved once would silently get a different
+        // operator if the table changed underneath it.
+        self.call_key(op, args, ctx)
     }
 
     fn call_ho(
@@ -664,7 +667,10 @@ impl Kernel for Session {
         fns: &[CallbackRef],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
-        self.call_ho(&op.name, args, fns, ctx)
+        let ctx = clone_ctx(ctx);
+        check_callbacks(&ctx, fns)?;
+        let registration = self.op_for_key(op)?;
+        self.call_op(registration, &op.name, args, &ctx)
     }
 
     fn register(
@@ -730,6 +736,77 @@ fn op_error(
     }
 }
 
+/// Checks that every callback handle names a callback in the context.
+fn check_callbacks(
+    ctx: &CallCtx<'_>,
+    fns: &[CallbackRef],
+) -> Result<(), OpError> {
+    for handle in fns {
+        if ctx.callbacks.get(handle.0 as usize).is_none() {
+            return Err(OpError::Host(format!(
+                "callback {} was not supplied in the context",
+                handle.0
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Checks `args` against the signatures of `descriptor`.
+///
+/// An operator with no signature accepts anything. One with signatures accepts
+/// only what at least one of them describes, and the error names the first
+/// argument no overload takes — silently executing a `(Real) -> Real` overload
+/// on a tensor is a wrong answer waiting to happen, not a conservative choice.
+fn check_args(
+    descriptor: &crate::graph::OpDescriptor,
+    args: &[Value],
+) -> Result<(), OpError> {
+    let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+    if signatures.is_empty() {
+        return Ok(());
+    }
+    if crate::kernel::overload::best(&signatures, args) != crate::kernel::overload::Best::None {
+        return Ok(());
+    }
+    for (index, value) in args.iter().enumerate() {
+        let accepted = signatures.iter().any(|signature| {
+            signature
+                .params
+                .get(index)
+                .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))
+                .is_some_and(|param| crate::kernel::overload::matches(param, value).accepted())
+        });
+        if accepted {
+            continue;
+        }
+        let expected = signatures
+            .iter()
+            .filter_map(|signature| {
+                signature
+                    .params
+                    .get(index)
+                    .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))
+            })
+            .find(|param| {
+                crate::kernel::overload::matches(param, value)
+                    == crate::kernel::overload::Match::No
+            })
+            .cloned()
+            .unwrap_or_else(crate::kernel::infer::term);
+        return Err(OpError::Type {
+            expected: Box::new(expected),
+            got: Box::new(value.type_expr()),
+            arg: index,
+        });
+    }
+    // The arity does not fit any signature (a variadic range, say).
+    Err(OpError::Arity {
+        expected: ArityInfo::from_arity(descriptor.arity),
+        got: args.len(),
+    })
+}
+
 /// The registration that `args` should reach.
 ///
 /// Arity filters first, then the declared signatures decide by type, most
@@ -757,6 +834,7 @@ fn resolve_op(
         });
     };
     if fitting.len() == 1 {
+        check_args(graph.ops().get(only), args)?;
         return Ok(only);
     }
     let mut scored: Vec<(OpId, u32)> = Vec::new();
@@ -772,6 +850,15 @@ fn resolve_op(
         }
     }
     if scored.is_empty() {
+        // No candidate's signature fits. That is an error unless none of them
+        // declares one at all, in which case arity is all there is to go on.
+        if fitting
+            .iter()
+            .all(|&id| crate::kernel::infer::signatures(graph.ops().get(id)).0.is_empty())
+        {
+            return Ok(only);
+        }
+        check_args(graph.ops().get(only), args)?;
         return Ok(only);
     }
     let top = scored.iter().map(|(_, score)| *score).max().unwrap_or(0);
@@ -784,6 +871,7 @@ fn resolve_op(
     };
     let count = 1 + tied.count();
     if count == 1 {
+        check_args(graph.ops().get(winner), args)?;
         Ok(winner)
     } else {
         Err(OpError::Ambiguous {
@@ -1314,28 +1402,35 @@ mod tests {
     }
 
     #[test]
-    fn an_untyped_operator_has_no_overloads_but_is_still_explained() {
-        // 570 of the standard operators have no signature at all; they are
-        // reachable by name and carry a reason, never a fabricated type.
+    fn every_operator_has_a_signature_and_none_is_unexplained() {
+        // The old contract allowed an operator with no type at all. The
+        // derivation in `kernel::infer` covers every non-leaf, so the only
+        // way to have none is to be a leaf, and a leaf says so.
         let s = Session::new();
         let manifest = s.manifest();
-        let untyped = manifest
-            .ops
-            .iter()
-            .find(|op| op.overloads.is_empty())
-            .unwrap_or_else(|| panic!("the standard rule sets have no untyped operator"));
-        assert!(
-            s.overloads(&untyped.name).is_empty(),
-            "{} reported overloads",
-            untyped.name
+        assert!(manifest.ops.len() > 1000);
+        let mut typed = 0_usize;
+        for op in &manifest.ops {
+            if op.overloads.is_empty() {
+                assert!(
+                    op.dynamic_reason.is_some(),
+                    "`{}` is neither typed nor explained",
+                    op.name
+                );
+                assert_eq!(op.keys.len(), 1);
+                assert_eq!(op.keys[0].signature_hash, [0_u8; 16]);
+            } else {
+                typed += 1;
+                assert_eq!(op.keys.len(), op.overloads.len());
+                // `Session::overloads` agrees with the manifest.
+                assert_eq!(s.overloads(&op.name).len(), op.overloads.len());
+            }
+        }
+        assert_eq!(
+            typed,
+            manifest.ops.len(),
+            "every operator in the standard sets must be typed"
         );
-        assert!(
-            untyped.dynamic_reason.is_some(),
-            "{} is untyped and unexplained",
-            untyped.name
-        );
-        assert_eq!(untyped.keys.len(), 1);
-        assert_eq!(untyped.keys[0].signature_hash, [0_u8; 16]);
     }
 
     #[test]

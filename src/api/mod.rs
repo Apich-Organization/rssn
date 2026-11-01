@@ -719,7 +719,7 @@ fn prepare(
     // Structured assumptions come last so that they win over text.
     for (name, dim) in &config.dimension_terms {
         let symbol = graph.interner_mut().symbol(name);
-        let term = graph.with_dim_arena(|arena| dim.to_term(arena));
+        let term = graph.with_dim_arena_mut(|arena| dim.to_term(arena));
         match term {
             | Ok(term) => graph.assume_dimension_value(symbol, term),
             | Err(error) => dim_errors.push(error),

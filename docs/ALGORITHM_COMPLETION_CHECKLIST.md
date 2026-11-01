@@ -1650,3 +1650,111 @@ radiation reaction and unbound Kerr orbits; P3M in `fmm`; >1PN terms in
 documented limits: each would be a new algorithm rather than a completion of an
 existing one, and a documented limit that returns unevaluated is better than a
 half-implemented method that returns a plausible wrong number.
+
+---
+
+## Part 9 — the integrator's round 4 report (2026-11-01)
+
+The downstream contract (`RSSN-INTEGRATION-REQUIREMENTS.md`) was rewritten as
+*contract + current state* with a list of eleven remaining gaps. Each is
+answered below; nothing is deferred for effort.
+
+### 9.1 Type coverage — every operator now has a sound signature
+
+The old inference produced `(Real, …, Real) -> Real` for 792 operators, which is
+wrong for a computer-algebra system: `sin(x)` with a symbol returns an
+expression. `kernel::infer` was replaced by a **derivation from what the
+registration states**, not from the name:
+
+| The operator declares | Therefore |
+|---|---|
+| a scalar evaluator | `n` reals in, a real out |
+| `OpFlags::PREDICATE` | the result is `Bool` |
+| a `Binder` at index `k` | argument `k` is the bound `Symbol` |
+| `Arity::Variadic` | the last parameter repeats |
+| `OpFlags::LEAF` | no call signature; `dynamic_reason = opaque_payload` |
+
+and every non-leaf operator also has the **symbolic contract** — `n` terms in,
+one term out. So an operator with a scalar evaluator has two overloads,
+`(Real, …) -> Real` and `(Term, …) -> Term`, which is exactly what the engine
+does and what the new `kernel::overload` matcher dispatches on.
+
+`SignatureSource` gained `Derived`, replacing `Inferred`: the value states
+*what the registration implies*, which a host may generate bindings from, and
+`Declared`/`Overlay` still win over it.
+
+Result: **1369/1369 typed, 0 unexplained** — 20 declared, 13 overlay, 1349
+derived.
+
+`signatures.overlay.json` is no longer empty: it carries thirteen hand-written
+corrections where the derived type is too loose — `diff`/`solve`/`taylor` take
+a `Symbol`, `quantity`/`convert` a `Unit`, `det`/`trace`/`norm`/`rank` a
+`Tensor`, `transpose`/`dot`/`cross`/`identity` tensors in and out. Each keeps
+the derived symbolic overload as a fallback, so the symbolic contract is never
+lost. The overlay is now buildable from a clean clone (§1.1 of the contract):
+`build.rs` copies it into `$OUT_DIR`, or writes an empty one when the file is
+absent, and `.gitignore` no longer ignores it.
+
+### 9.2 The remaining contract items
+
+| # | Item | Result |
+|---|---|---|
+| 1 | `UnitRegistry::register` only knew the seven SI bases | **fixed**: `Dim` is now the seven SI exponents plus a sorted side table, `expr_to_dim` accepts any base name, and `resolve_symbol` consults the host's units. `unit EUR : Currency` registers, aliases, resolves, and composes with a second unit on the same base. `Config::base_dimension(name)` puts the base in the graph's arena for unit-driven terms. |
+| 2 | CODATA constants missing | **added**: `dim::constants` carries 30 constants (18 exact) with exact rational values, dimensions, SI units, and standard uncertainties for the measured ones. `KernelManifest.constants` lists them, so `Units.Constants` generates from the manifest. `hbar` is `h/(2π)` exactly, via the `Scale`'s power of π. |
+| 3 | `manifest.value_kinds` | **done**: 17 variants, 11 of which enter the term graph; each carries a note saying what to do instead when it does not. |
+| 4 | plugin `cdylib` ABI unimplemented | **implemented**: `kernel::cdylib` defines a byte-level C ABI (one `bincode-next` buffer in, one out), loads with `libloading` behind the `plugin-cdylib` feature, and `Session::load_plugin` registers it. `PluginManifest.kind` and `Features.plugin_kinds` report the capability, so a build without the feature refuses a cdylib plugin with a precise diagnostic. `tests/cdylib_plugin.rs` builds a plugin **in C** with `cc` and calls it end to end. |
+| 5 | `manifest.units` vs `UnitRegistry` fields | **fixed**: `UnitValue` carries `aliases`, `prefixable`, `category` and `since`; `UnitDef::to_value` is the single conversion, so the manifest is enough to generate the unit table. |
+| 6 | `Solutions.complete` is not a proof | **fixed**: it is `true` only for the solver's exhaustive `list(...)` answer and `false` for a single root found on the way. `multiplicities` empty still means "not reported". |
+| 7 | ODE events only in `Dopri5` | **unchanged, by design**: event location is a property of the integrator's dense output, not of the result type. `Rk4` has no continuous extension, so it cannot locate an event between steps; `Radau` could, and adding it is a numerical-methods task listed in Part 8.3. The view carries `dimensions` in the record now, and an empty list means the model did not name them. |
+| 8 | `Session` is `RefCell`, cross-thread needs `fork`/`merge` | **unchanged, by design**: a session owns a mutable graph, an interner and an arena. Sharing one across threads would need a lock around every rewrite, which is exactly what `fork`/`merge` exists to avoid — each thread gets its own graph and the results are merged. The cost is documented in `docs/KERNEL.md`. |
+| 9 | `compute` clones the graph; `OpTable` not `Arc`-shared | **half-stale**: `Graph.ops` *is* an `Arc<OpTable>` with copy-on-write, and `Graph::clone` shares it. What remains is the per-request clone of the node arena and the interner. Reducing that needs a persistent scratch graph per session; it is listed in Part 8.3 rather than done here, because it changes the lifetime story of `Term`. |
+| 10 | `DimArena` request-period pollution | **fixed**: `Graph::clone` rebuilds the arena from a read guard, so a base defined during one request does not reach the template. |
+| 11 | `manifest_hash` is over bincode, JSON is for humans | **correct as designed**, and now documented in the manifest itself: JSON is not the hash input, and a host must compare `manifest_hash`, never the JSON text. |
+
+---
+
+## Part 10 — dispatch correctness, ODE events, and the design notes (2026-11-01)
+
+`docs/DESIGN.md` records the architecture decisions behind the open items. What
+follows is what changed in the tree.
+
+### 10.1 Overload dispatch — one decision, three entry points
+
+The integrator found three disagreements between the entry points; all three are
+closed.
+
+| Was | Now |
+|---|---|
+| `resolve_overload` returned a zero-hash key for a *signed* operator when the choice was ambiguous, and `call_key` rejected that key | it returns `Err(OpError::Ambiguous)` instead. The key it returns is always callable, which is the property a caching caller needs. A zero hash now means one thing only: the registration with no signature at all. |
+| `call_value` picked a registration by arity and never looked at the chosen overload's parameter types | the arguments are checked against the signatures and a mismatch is `OpError::Type { expected, got, arg }`. Silently executing a `(Real) -> Real` overload on a tensor was a wrong answer waiting to happen, not a conservative choice. |
+| `Kernel::call(&OpKey, …)` dispatched by name | it delegates to `call_key`, so a resolved key cannot drift to a different operator. `Kernel::call_ho` pins the key the same way. |
+
+Exposing this immediately found a latent bug: `list` was declared with no
+parameters and no variadic tail, so its signature accepted only zero arguments.
+It is now declared variadic, which is what the operator is.
+
+### 10.2 ODE: every integrator with a dense output locates events
+
+Event location was never method-specific — `process_events` evaluates the event
+function at both ends of an accepted step and Brent-iterates on the dense
+extension. Radau and BDF already had the machinery and the `events` field in
+their options; the *entry points* simply did not reach it.
+
+* `rosenbrock23_events` — new; Rosenbrock had a cubic Hermite extension but no
+  event loop.
+* `radau5_events`, `bdf_events` — new; thin wrappers that set the option field.
+* `dopri5` already had it.
+* The existing names delegate with an empty slice, so nothing breaks.
+
+Two tests pin it: the same two zero crossings of `cos(t)` in `[0, 5]` are found
+by all four integrators (to `1e-8`, and `1e-6` for Rosenbrock, whose Hermite
+extension is third order), and a terminal "ball hits the ground" event stops all
+four at `sqrt(2h/g)` to `1e-6`.
+
+### 10.3 Smaller correctness fixes
+
+| Item | Result |
+|---|---|
+| `Solutions::new` defaulted `complete = true` | **false**. A caller that builds one by hand has not run an exhaustive method. `Solutions::complete()` is the explicit opt-in; `solve_structured` still derives it from the answer's shape. |
+| `DimExpr::to_term` refused a symbolic exponent | **supported**: `DimTerm::base_symbolic` / `var_symbolic` intern the exponent as an atom, so `Length^n` bridges. `(Length^n)^1` is `Length^n`; scaling a symbolic exponent by a rational is refused with a message that says which case it was. |
+| `manifest_hash` was printed as `hash_u64` | the audit prints the **full 64-character hex digest** and, separately and labelled, the `u64`. They differ: `hash_u64` is the first eight bytes read little-endian. `KernelManifest::hash_hex()` is the canonical string a host should pin. |

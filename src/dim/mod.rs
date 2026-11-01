@@ -74,22 +74,38 @@ impl DimExpr {
     ) -> Result<DimTerm, DimError> {
         let mut term = DimTerm::dimensionless();
         for (factor, exponent) in self.factors()? {
-            let power = match exponent {
-                | TypeExp::Rat(r) => BigRational::new(
+            // A rational exponent is the common case; a symbolic one (`x^n`)
+            // is interned as an atom, which is what `DimTerm` stores.
+            let rational = match &exponent {
+                | TypeExp::Rat(r) => Some(BigRational::new(
                     num_bigint::BigInt::from(r.numer),
                     num_bigint::BigInt::from(r.denom),
-                ),
-                | TypeExp::Symbol(_) => {
-                    return Err(DimError::Parse {
-                        text: crate::kernel::signature::dim_name(self),
-                        reason: String::from("a symbolic exponent cannot be interned yet"),
-                    });
+                )),
+                | TypeExp::Symbol(_) => None,
+            };
+            let symbol = match &exponent {
+                | TypeExp::Symbol(name) => Some(name.clone()),
+                | TypeExp::Rat(_) => None,
+            };
+            let factor_term = match factor {
+                | Factor::Base(name) => {
+                    let base = arena.define_base(&name);
+                    match (&rational, &symbol) {
+                        | (Some(power), _) => DimTerm::base(base, power.clone()),
+                        | (None, Some(symbol)) => DimTerm::base_symbolic(base, symbol, arena),
+                        | (None, None) => DimTerm::dimensionless(),
+                    }
+                },
+                | Factor::Var(name) => {
+                    let var = arena.intern_var(&name);
+                    match (&rational, &symbol) {
+                        | (Some(power), _) => DimTerm::var_pow(var, power.clone()),
+                        | (None, Some(symbol)) => DimTerm::var_symbolic(var, symbol, arena),
+                        | (None, None) => DimTerm::dimensionless(),
+                    }
                 },
             };
-            term = term.mul(&match factor {
-                | Factor::Base(name) => DimTerm::base(arena.define_base(&name), power),
-                | Factor::Var(name) => DimTerm::var_pow(arena.intern_var(&name), power),
-            });
+            term = term.mul(&factor_term);
         }
         Ok(term)
     }
@@ -168,6 +184,23 @@ impl DimExpr {
                             i64::try_from(d).unwrap_or(1),
                         ))
                     },
+                    // `(Length^n)^1` is `Length^n`. A symbolic exponent
+                    // cannot be *scaled* by a rational — `Exp` has no product
+                    // of a symbol and a rational — so anything else is refused
+                    // with a message that says which case it was.
+                    | (TypeExp::Rat(a), TypeExp::Symbol(symbol))
+                        if a.numer == 1 && a.denom == 1 =>
+                    {
+                        TypeExp::Symbol(symbol.clone())
+                    },
+                    | (TypeExp::Rat(_), TypeExp::Symbol(_)) => {
+                        return Err(DimError::Parse {
+                            text: crate::kernel::signature::dim_name(self),
+                            reason: String::from(
+                                "a symbolic exponent cannot be scaled by a rational",
+                            ),
+                        });
+                    },
                     | _ => {
                         return Err(DimError::Parse {
                             text: crate::kernel::signature::dim_name(self),
@@ -235,6 +268,20 @@ mod tests {
             let term = case.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));
             assert_eq!(DimExpr::from_term(&term, &arena), case, "{case:?}");
         }
+    }
+
+    #[test]
+    fn symbolic_exponents_survive_the_bridge() {
+        // `Length^n` is representable in `DimTerm` as an interned atom; the
+        // bridge used to refuse it, which meant a static dimension with a
+        // symbolic exponent could not be declared at all.
+        let mut arena = DimArena::new();
+        let expr = DimExpr::base("Length").pow(TypeExp::Symbol(String::from("n")));
+        let term = expr.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(term.describe(&arena), "Length^n");
+        // Two occurrences of the same symbol are the same atom.
+        let again = expr.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(term, again);
     }
 
     #[test]

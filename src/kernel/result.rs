@@ -474,6 +474,12 @@ pub struct Solutions {
 
 impl Solutions {
     /// A solution set of `roots`, each a simple root.
+    ///
+    /// `complete` starts **false**: a caller that builds a `Solutions` by hand
+    /// has not run an exhaustive method, so claiming completeness would be a
+    /// statement it cannot support. Call [`Solutions::complete`] when the
+    /// method you used has earned it — `solve_structured` sets it from the
+    /// shape of the solver's answer, not by assumption.
     #[must_use]
     pub const fn new(roots: Vec<Value>) -> Self {
         Self {
@@ -481,8 +487,15 @@ impl Solutions {
             roots,
             multiplicities: Vec::new(),
             conditions: Vec::new(),
-            complete: true,
+            complete: false,
         }
+    }
+
+    /// Declares the set complete.
+    #[must_use]
+    pub const fn complete(mut self) -> Self {
+        self.complete = true;
+        self
     }
 
     /// The layout every `Solutions` record has.

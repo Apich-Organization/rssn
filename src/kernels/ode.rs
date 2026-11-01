@@ -9,6 +9,8 @@
 //! Dormand–Prince 5(4) integrator chooses its own steps to meet a tolerance
 //! and returns the accepted points.
 
+use crate::kernels::ode_adaptive::Event;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -68,42 +70,7 @@ pub fn solve_fixed(
     let mut stage = vec![0.0; n];
     for step in 0..steps {
         let t = t_span.0 + h * step as f64;
-        match method {
-            | OdeSolverMethod::Euler => {
-                f(t, &y, &mut k[0]);
-                for i in 0..n {
-                    y[i] += h * k[0][i];
-                }
-            },
-            | OdeSolverMethod::Heun => {
-                f(t, &y, &mut k[0]);
-                for i in 0..n {
-                    stage[i] = y[i] + h * k[0][i];
-                }
-                f(t + h, &stage, &mut k[1]);
-                for i in 0..n {
-                    y[i] += 0.5 * h * (k[0][i] + k[1][i]);
-                }
-            },
-            | OdeSolverMethod::RungeKutta4 => {
-                f(t, &y, &mut k[0]);
-                for i in 0..n {
-                    stage[i] = y[i] + 0.5 * h * k[0][i];
-                }
-                f(t + 0.5 * h, &stage, &mut k[1]);
-                for i in 0..n {
-                    stage[i] = y[i] + 0.5 * h * k[1][i];
-                }
-                f(t + 0.5 * h, &stage, &mut k[2]);
-                for i in 0..n {
-                    stage[i] = y[i] + h * k[2][i];
-                }
-                f(t + h, &stage, &mut k[3]);
-                for i in 0..n {
-                    y[i] += h / 6.0 * (k[0][i] + 2.0 * k[1][i] + 2.0 * k[2][i] + k[3][i]);
-                }
-            },
-        }
+        advance(method, &f, t, &mut y, h, &mut k, &mut stage);
         if y.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
@@ -111,6 +78,212 @@ pub fn solve_fixed(
         out.y.push(y.clone());
     }
     Ok(out)
+}
+
+/// One step of `method` from `(t, y)` with step `h`, in place.
+///
+/// The scratch buffers are passed in so that a caller taking many steps does
+/// not allocate per step; the event locator below relies on being able to take
+/// a *partial* step from the same state, which is what makes it exact for a
+/// one-step method.
+fn advance<F: Fn(f64, &[f64], &mut [f64])>(
+    method: OdeSolverMethod,
+    f: &F,
+    t: f64,
+    y: &mut [f64],
+    h: f64,
+    k: &mut [Vec<f64>],
+    stage: &mut [f64],
+) {
+    let n = y.len();
+    match method {
+        | OdeSolverMethod::Euler => {
+            f(t, y, &mut k[0]);
+            for i in 0..n {
+                y[i] += h * k[0][i];
+            }
+        },
+        | OdeSolverMethod::Heun => {
+            f(t, y, &mut k[0]);
+            for i in 0..n {
+                stage[i] = y[i] + h * k[0][i];
+            }
+            f(t + h, stage, &mut k[1]);
+            for i in 0..n {
+                y[i] += 0.5 * h * (k[0][i] + k[1][i]);
+            }
+        },
+        | OdeSolverMethod::RungeKutta4 => {
+            f(t, y, &mut k[0]);
+            for i in 0..n {
+                stage[i] = y[i] + 0.5 * h * k[0][i];
+            }
+            f(t + 0.5 * h, stage, &mut k[1]);
+            for i in 0..n {
+                stage[i] = y[i] + 0.5 * h * k[1][i];
+            }
+            f(t + 0.5 * h, stage, &mut k[2]);
+            for i in 0..n {
+                stage[i] = y[i] + h * k[2][i];
+            }
+            f(t + h, stage, &mut k[3]);
+            for i in 0..n {
+                y[i] += h / 6.0 * (k[0][i] + 2.0 * k[1][i] + 2.0 * k[2][i] + k[3][i]);
+            }
+        },
+    }
+}
+
+/// One event located by [`solve_fixed_events`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct FixedEvent {
+    /// Index into the event list.
+    pub index: usize,
+    /// The time it happened.
+    pub t: f64,
+    /// The state at that time, as `method` computes it.
+    pub y: Vec<f64>,
+    /// Whether the integration stopped here.
+    pub terminal: bool,
+}
+
+/// Integrates in `steps` equal steps and locates events.
+///
+/// # How an event is located without a dense output
+///
+/// A fixed-step method has no interpolant, so there is nothing to Brent-iterate
+/// on. It is a *one-step* method, however, which means the state at any
+/// intermediate time is just another application of the same step from the same
+/// start: the locator bisects the step length, re-integrating the partial step
+/// each time, until the bracket is below `1e-13`. That is exact for the method —
+/// the located state is a point of the method's own trajectory, not of an
+/// interpolant — and it costs about fifty evaluations per event, which is the
+/// right trade for a method that is cheap by construction.
+///
+/// A `terminal` event stops the integration; the trajectory then ends at the
+/// event point.
+///
+/// # Errors
+/// As [`solve_fixed`].
+pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    y0: &[f64],
+    t_span: (f64, f64),
+    steps: usize,
+    method: OdeSolverMethod,
+    events: &[Event<'_>],
+) -> Result<(Trajectory, Vec<FixedEvent>), String> {
+    if steps == 0 {
+        return Err("The number of steps must be positive.".to_string());
+    }
+    let n = y0.len();
+    let h = (t_span.1 - t_span.0) / steps as f64;
+    let mut y = y0.to_vec();
+    let mut out = Trajectory {
+        t: Vec::with_capacity(steps + 1),
+        y: Vec::with_capacity(steps + 1),
+    };
+    out.t.push(t_span.0);
+    out.y.push(y.clone());
+    let mut hits: Vec<FixedEvent> = Vec::new();
+    let mut k = vec![vec![0.0; n]; 4];
+    let mut stage = vec![0.0; n];
+    let mut probe_k = vec![vec![0.0; n]; 4];
+    let mut probe_stage = vec![0.0; n];
+    let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t_span.0, y0)).collect();
+    for step in 0..steps {
+        let t = t_span.0 + h * step as f64;
+        let mut next = y.clone();
+        advance(method, &f, t, &mut next, h, &mut k, &mut stage);
+        if next.iter().any(|v| !v.is_finite()) {
+            return Err("Overflow or invalid value encountered during ODE solving.".to_string());
+        }
+        // Locate every crossing inside this step, in time order.
+        let mut step_hits: Vec<FixedEvent> = Vec::new();
+        for (index, event) in events.iter().enumerate() {
+            let g1 = (event.g)(t + h, &next);
+            let g0 = gprev.get(index).copied().unwrap_or(g1);
+            let crossing = (g0 < 0.0 && g1 >= 0.0 && event.direction >= 0)
+                || (g0 > 0.0 && g1 <= 0.0 && event.direction <= 0);
+            if crossing {
+                let (fraction, state) = locate_in_step(
+                    &f,
+                    method,
+                    t,
+                    &y,
+                    h,
+                    g0,
+                    event,
+                    &mut probe_k,
+                    &mut probe_stage,
+                );
+                step_hits.push(FixedEvent {
+                    index,
+                    t: t + fraction * h,
+                    y: state,
+                    terminal: event.terminal,
+                });
+            }
+            if let Some(slot) = gprev.get_mut(index) {
+                *slot = g1;
+            }
+        }
+        step_hits.sort_by(|a, b| {
+            let (ta, tb) = if h >= 0.0 { (a.t, b.t) } else { (-a.t, -b.t) };
+            ta.total_cmp(&tb)
+        });
+        if let Some(position) = step_hits.iter().position(|hit| hit.terminal) {
+            let kept: Vec<FixedEvent> = step_hits.into_iter().take(position + 1).collect();
+            if let Some(last) = kept.last() {
+                out.t.push(last.t);
+                out.y.push(last.y.clone());
+            }
+            hits.extend(kept);
+            return Ok((out, hits));
+        }
+        hits.extend(step_hits);
+        y = next;
+        out.t.push(t_span.0 + h * (step + 1) as f64);
+        out.y.push(y.clone());
+    }
+    Ok((out, hits))
+}
+
+/// Bisects the step `[t, t + h]` for the event's root.
+///
+/// Returns the fraction of the step at which `g` changes sign, and the state
+/// there as `method` computes it.
+#[allow(clippy::too_many_arguments)]
+fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
+    f: &F,
+    method: OdeSolverMethod,
+    t: f64,
+    y: &[f64],
+    h: f64,
+    g0: f64,
+    event: &Event<'_>,
+    k: &mut [Vec<f64>],
+    stage: &mut [f64],
+) -> (f64, Vec<f64>) {
+    let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    for _ in 0..80 {
+        let mid = f64::midpoint(lo, hi);
+        let mut state = y.to_vec();
+        advance(method, f, t, &mut state, mid * h, k, stage);
+        let gm = (event.g)(t + mid * h, &state);
+        if (gm < 0.0) == (g0 < 0.0) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+        if (hi - lo) * h.abs() < 1e-13 {
+            break;
+        }
+    }
+    // Report the state at the bracket's far end, which is on the other side.
+    let mut final_state = y.to_vec();
+    advance(method, f, t, &mut final_state, hi * h, k, stage);
+    (hi, final_state)
 }
 
 // Dormand–Prince 5(4) coefficients.

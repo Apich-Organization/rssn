@@ -203,11 +203,14 @@ pub struct Graph {
 }
 
 impl Clone for Graph {
+    /// A shallow clone with copy-on-write for the two shared tables.
+    ///
+    /// `ops` and `dims` are `Arc`s: a clone shares them until one side
+    /// mutates, at which point `Arc::make_mut` gives the mutator its own copy.
+    /// That keeps the two properties that matter at once — a request cannot
+    /// leak a base dimension into the template it was cloned from, and a
+    /// request that never defines one does not pay for a copy of the arena.
     fn clone(&self) -> Self {
-        let arena = match self.dims.read() {
-            | Ok(guard) => guard.clone(),
-            | Err(poisoned) => poisoned.into_inner().clone(),
-        };
         Self {
             ops: std::sync::Arc::clone(&self.ops),
             interner: self.interner.clone(),
@@ -226,9 +229,8 @@ impl Clone for Graph {
             conflicts: self.conflicts.clone(),
             scratch: self.scratch.clone(),
             assumptions: self.assumptions.clone(),
-            // The arena is *not* shared: a clone may define base dimensions
-            // (a user request) and must not leak them into its source.
-            dims: std::sync::Arc::new(std::sync::RwLock::new(arena)),
+            // Shared until written; see the note on this impl.
+            dims: std::sync::Arc::clone(&self.dims),
             dim_assumptions: self.dim_assumptions.clone(),
         }
     }

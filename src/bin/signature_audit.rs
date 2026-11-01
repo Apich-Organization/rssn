@@ -162,10 +162,17 @@ impl<'m> Audit<'m> {
     ) {
         let total = self.manifest.ops.len();
         let typed = self.declared + self.inferred;
+        // The identity is the 32-byte digest; `hash_u64` is the first eight
+        // bytes read little-endian, which is *not* the first eight bytes in
+        // hex order. Printing both, labelled, stops a host pinning the wrong
+        // one.
         println!(
-            "rssn {} · api {} · manifest {:016x}",
-            self.manifest.rssn_version,
-            self.manifest.api_version,
+            "rssn {} · api {}",
+            self.manifest.rssn_version, self.manifest.api_version
+        );
+        println!(
+            "manifest hash {} (u64 {:016x})",
+            self.manifest.hash_hex(),
             self.manifest.hash_u64()
         );
         println!(

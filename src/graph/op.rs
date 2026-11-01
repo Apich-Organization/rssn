@@ -796,14 +796,23 @@ impl OpTable {
                 .doc("An ordered tuple of children.")
                 .category("kernel")
                 .since("0.1")
-                .signature(Signature::new(
-                    Vec::new(),
-                    crate::kernel::signature::TypeExpr::Tensor {
-                        rank: crate::kernel::signature::NatExpr::Var("n".to_owned()),
-                        shape: None,
-                        elem: Box::new(crate::kernel::signature::TypeExpr::Real),
-                    },
-                )),
+                .signature(
+                    Signature::new(
+                        Vec::new(),
+                        crate::kernel::signature::TypeExpr::Tensor {
+                            rank: crate::kernel::signature::NatExpr::Var("n".to_owned()),
+                            shape: None,
+                            elem: Box::new(crate::kernel::infer::term()),
+                        },
+                    )
+                    // A list takes any number of elements, of any type: the
+                    // element type of the resulting tensor depends on them.
+                    .variadic(crate::kernel::signature::Variadic {
+                        min: 0,
+                        max: None,
+                        elem: crate::kernel::infer::term(),
+                    }),
+                ),
             OpDescriptor::new("eq", Arity::Fixed(2))
                 .cost(1)
                 .doc("The equation `lhs = rhs`, as a term.")

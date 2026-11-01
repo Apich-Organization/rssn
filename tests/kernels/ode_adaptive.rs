@@ -8,8 +8,11 @@ use rssn::kernels::ode_adaptive::dde_rk4;
 use rssn::kernels::ode_adaptive::dopri5;
 use rssn::kernels::ode_adaptive::leapfrog;
 use rssn::kernels::ode_adaptive::rosenbrock23;
+use rssn::kernels::ode_adaptive::rosenbrock23_events;
 use rssn::kernels::ode_adaptive::shooting;
 use rssn::kernels::ode_adaptive::yoshida4;
+use rssn::kernels::ode_stiff::bdf_events;
+use rssn::kernels::ode_stiff::radau5_events;
 
 fn decay(
     _t: f64,
@@ -210,4 +213,110 @@ fn dde_delayed_decay() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn every_integrator_with_a_dense_output_locates_events() {
+    // `y'' = -y` from `(1, 0)` is `y = cos(t)`, so `y[0]` crosses zero at
+    // pi/2 and 3 pi/2 in [0, 5]. Each integrator locates the crossing on its
+    // own continuous extension, so the times agree to the method's order.
+    let osc = |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = y[1];
+        dy[1] = -y[0];
+    };
+    let zero = |_t: f64, y: &[f64]| y[0];
+    let events = [Event {
+        g: &zero,
+        terminal: false,
+        direction: 0,
+    }];
+    let opts = OdeOptions {
+        rtol: 1e-10,
+        atol: 1e-12,
+        ..OdeOptions::default()
+    };
+    let want = [std::f64::consts::FRAC_PI_2, 3.0 * std::f64::consts::FRAC_PI_2];
+    let check = |name: &str, hits: &[f64], tolerance: f64| {
+        assert_eq!(hits.len(), 2, "{name}: {} events", hits.len());
+        for (got, expected) in hits.iter().zip(&want) {
+            assert!(
+                (got - expected).abs() < tolerance,
+                "{name}: {got} vs {expected}"
+            );
+        }
+    };
+    let times = |sol: &rssn::kernels::ode_adaptive::OdeSolution| -> Vec<f64> {
+        sol.events.iter().map(|hit| hit.t).collect()
+    };
+
+    let sol = dopri5(osc, 0.0, 5.0, &[1.0, 0.0], &opts, &events)
+        .unwrap_or_else(|e| panic!("dopri5: {e:?}"));
+    check("dopri5", &times(&sol), 1e-8);
+
+    // Rosenbrock23's extension is the third-order Hermite interpolant, so its
+    // event time is good to the interpolation error, not to the step tolerance.
+    let sol = rosenbrock23_events(osc, 0.0, 5.0, &[1.0, 0.0], &opts, &events)
+        .unwrap_or_else(|e| panic!("rosenbrock23: {e:?}"));
+    check("rosenbrock23", &times(&sol), 1e-6);
+
+    let sol = radau5_events(osc, 0.0, 5.0, &[1.0, 0.0], &opts, &events)
+        .unwrap_or_else(|e| panic!("radau5: {e:?}"));
+    check("radau5", &times(&sol), 1e-8);
+
+    let sol = bdf_events(osc, 0.0, 5.0, &[1.0, 0.0], &opts, 5, &events)
+        .unwrap_or_else(|e| panic!("bdf: {e:?}"));
+    check("bdf", &times(&sol), 1e-8);
+}
+
+#[test]
+fn a_terminal_event_ends_every_integrator_at_the_event() {
+    // A ball dropped from rest hits the ground at `sqrt(2 h / g)`; a terminal
+    // event must stop the integration there, not at the end of the interval.
+    let g = 9.81_f64;
+    let fall = move |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = y[1];
+        dy[1] = -g;
+    };
+    let ground = |_t: f64, y: &[f64]| y[0];
+    let events = [Event {
+        g: &ground,
+        terminal: true,
+        direction: -1,
+    }];
+    let opts = OdeOptions {
+        rtol: 1e-10,
+        atol: 1e-12,
+        ..OdeOptions::default()
+    };
+    let expected = (2.0 * 10.0 / g).sqrt();
+    for (name, sol) in [
+        (
+            "dopri5",
+            dopri5(fall, 0.0, 5.0, &[10.0, 0.0], &opts, &events),
+        ),
+        (
+            "rosenbrock23",
+            rosenbrock23_events(fall, 0.0, 5.0, &[10.0, 0.0], &opts, &events),
+        ),
+        (
+            "radau5",
+            radau5_events(fall, 0.0, 5.0, &[10.0, 0.0], &opts, &events),
+        ),
+        (
+            "bdf",
+            bdf_events(fall, 0.0, 5.0, &[10.0, 0.0], &opts, 5, &events),
+        ),
+    ] {
+        let sol = sol.unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        let last = sol.t.last().copied().unwrap_or(f64::NAN);
+        assert!(
+            (last - expected).abs() < 1e-6,
+            "{name}: stopped at {last}, want {expected}"
+        );
+        assert_eq!(sol.events.len(), 1, "{name}");
+        assert!(
+            events.get(sol.events[0].index).is_some_and(|event| event.terminal),
+            "{name}: the hit is not on a terminal event"
+        );
+    }
 }

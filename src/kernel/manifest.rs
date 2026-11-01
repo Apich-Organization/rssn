@@ -458,6 +458,23 @@ impl KernelManifest {
         serde_json::to_string_pretty(self).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}"))
     }
 
+    /// The full digest as 64 lowercase hex characters.
+    ///
+    /// This is the string a host should pin: it is the whole 32-byte BLAKE3
+    /// hash in big-endian display order. [`KernelManifest::hash_u64`] is a
+    /// different value — the first eight bytes read *little*-endian — and the
+    /// two are not interchangeable.
+    #[must_use]
+    pub fn hash_hex(&self) -> String {
+        use std::fmt::Write;
+        let mut out = String::with_capacity(64);
+        for byte in self.manifest_hash {
+            // Writing into the string avoids one allocation per byte.
+            let _ = write!(out, "{byte:02x}");
+        }
+        out
+    }
+
     /// The first 64 bits of [`KernelManifest::manifest_hash`], for ABIs that
     /// carry a `uint64_t` instead of 32 bytes.
     #[must_use]

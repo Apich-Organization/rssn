@@ -2,9 +2,9 @@
 //!
 //! * [`dopri5`]: Dormand-Prince 5(4) with step-size control, a fourth-order
 //!   continuous extension ("dense output") and event detection;
-//! * [`rosenbrock23`]: the L-stable Rosenbrock pair of Shampine and
-//!   Reichelt for stiff problems (finite-difference Jacobian, cubic Hermite
-//!   dense output);
+//! * [`rosenbrock23`] / [`rosenbrock23_events`]: the L-stable Rosenbrock pair
+//!   of Shampine and Reichelt for stiff problems (finite-difference Jacobian,
+//!   cubic Hermite dense output, event detection);
 //! * [`leapfrog`] and [`yoshida4`]: symplectic integrators for
 //!   `H = p^2/2 + V(q)`;
 //! * [`bvp_fd`]: second-order finite-difference BVP solver for
@@ -13,6 +13,27 @@
 //! * [`dae_index1`]: backward-Euler for semi-explicit index-1 DAEs;
 //! * [`dde_rk4`]: constant-delay differential equations by the method of
 //!   steps with Hermite history interpolation.
+//!
+//! # Event location
+//!
+//! An [`Event`] is a scalar function `g(t, y)`; a sign change is an event. It is
+//! located by Brent iteration on the integrator's *own* continuous extension, so
+//! the accuracy of an event time is the accuracy of the extension: fourth order
+//! for [`dopri5`], the collocation polynomial for Radau IIA, the
+//! backward-difference interpolant for BDF, and the cubic Hermite interpolant for
+//! [`rosenbrock23`] (third order — its event times are correspondingly coarser
+//! than its step tolerance).
+//!
+//! Every integrator with a continuous extension therefore has an event-aware
+//! entry point: [`dopri5`], [`rosenbrock23_events`],
+//! [`radau5_events`](crate::kernels::ode_stiff::radau5_events) and
+//! [`bdf_events`](crate::kernels::ode_stiff::bdf_events). A `terminal` event ends
+//! the integration at the event point, which is recorded as the last sample; a
+//! non-terminal one is recorded and the integration continues.
+//!
+//! The fixed-step solvers in [`crate::kernels::ode`] have no extension, so they
+//! locate events by step bisection instead — see
+//! [`solve_fixed_events`](crate::kernels::ode::solve_fixed_events).
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
@@ -664,6 +685,25 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
+    rosenbrock23_events(f, t0, t1, y0, opts, &[])
+}
+
+/// The same integrator, locating events on its Hermite extension.
+///
+/// The extension is third order, so an event time is located to the accuracy of
+/// the step rather than to the step size; the bracket is refined by Brent
+/// iteration to `1e-14`.
+///
+/// # Errors
+/// As [`rosenbrock23`].
+pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
     let n = y0.len();
     if n == 0 || crate::kernels::exact_eq(t0, t1) {
         return Err(OdeError::Invalid);
@@ -704,6 +744,9 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
         orders: Vec::new(),
         dense: Vec::new(),
     };
+    // The event functions at the start of the interval; a crossing is a sign
+    // change from one accepted step's end to the next.
+    let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t0, y0)).collect();
     let mut steps = 0;
     while (t1 - t) * dir > 0.0 {
         if steps >= opts.max_steps {
@@ -774,7 +817,7 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
         if en <= 1.0 {
-            sol.dense.push(DenseStep {
+            let step = DenseStep {
                 t0: t,
                 h,
                 y0: y.clone(),
@@ -783,7 +826,18 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
                     f0: f0.clone(),
                     f1: f2.clone(),
                 },
-            });
+            };
+            // `process_events` records the step and the events; a terminal
+            // event ends the integration where it happened.
+            let window = StepWindow {
+                t_old: t,
+                tn: t + h,
+                ynew: &ynew,
+                dir,
+            };
+            if process_events(events, &mut gprev, &mut sol, step, &window) {
+                return Ok(sol);
+            }
             t += h;
             y = ynew;
             f0 = f2;

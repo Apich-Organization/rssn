@@ -435,9 +435,28 @@ pub fn radau5<F: Fn(f64, &[f64], &mut [f64])>(
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
+    radau5_events(f, t0, t1, y0, opts, &[])
+}
+
+/// Radau IIA with event detection on its collocation polynomial.
+///
+/// The extension is the collocation polynomial through the internal stages, so
+/// an event time is located to the order of the method, not to the step size.
+///
+/// # Errors
+/// As [`radau5`].
+pub fn radau5_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
     let ro = RadauOptions {
         min_stages: 3,
         max_stages: 3,
+        events,
         ..RadauOptions::default()
     };
     radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro, &FdMode::serial())
@@ -980,8 +999,26 @@ pub fn bdf<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     max_order: usize,
 ) -> Result<OdeSolution, OdeError> {
+    bdf_events(f, t0, t1, y0, opts, max_order, &[])
+}
+
+/// Variable-order BDF with event detection on its backward-difference
+/// interpolant.
+///
+/// # Errors
+/// As [`bdf`].
+pub fn bdf_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    max_order: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
     let bo = BdfOptions {
         max_order,
+        events,
         ..BdfOptions::default()
     };
     bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo, &FdMode::serial())

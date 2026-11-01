@@ -34,6 +34,12 @@ uses `bincode-next`:
 Nothing in rssn writes JSON to a peer. `KernelManifest::to_json` exists for
 humans and for the C ABI's `rssn_manifest_json`, and is documented as such.
 
+The one JSON file the crate *reads* is `signatures.overlay.json`. It is matched
+by the `*.json` ignore rule, so a clean checkout does not contain it; `build.rs`
+copies it into `$OUT_DIR` when it is present and writes an empty overlay when it
+is not, and the crate `include_str!`s that copy. A fresh clone therefore builds,
+and the overlay is still the one place a human corrects an inferred signature.
+
 ### 2. One description
 
 An operator is described once, by `OpDescriptor`, and that description becomes:
@@ -50,7 +56,29 @@ assert!(!sin.overloads.is_empty());
 let key = &sin.keys[0];                 // cache on (manifest_hash, key)
 ```
 
-### 3. No silent unknowns
+### 3. Every operator is typed, and the type is derived from the registration
+
+A host generating typed bindings cannot work from names. Every non-leaf
+operator therefore has at least one signature, and it is *derived from what the
+registration states*, never guessed:
+
+| The operator declares | Therefore |
+|---|---|
+| a scalar evaluator (`eval`) | `n` reals in, a real out |
+| `OpFlags::PREDICATE` | the result is `Bool` |
+| a `Binder` at index `k` | argument `k` is the bound `Symbol` |
+| `Arity::Variadic` | the last parameter repeats |
+| `OpFlags::LEAF` | no call signature; a `dynamic_reason` instead |
+
+and every non-leaf operator also has the **symbolic contract** — `n` terms in,
+one term out. An operator with a scalar evaluator therefore has two overloads,
+`(Real, …) -> Real` and `(Term, …) -> Term`, which is exactly what the engine
+does: `sin(0.5)` folds, `sin(x)` stays a term. `SignatureSource` says where a
+signature came from: `Declared` (the rule set wrote it), `Overlay` (a human
+corrected it in `signatures.overlay.json`), `Derived` (the rules above), or
+`None`.
+
+### 4. No silent unknowns
 
 Every operator is either typed or explained. The explanation is a
 `DynamicReason`:
@@ -68,7 +96,7 @@ Every operator is either typed or explained. The explanation is a
 operator is neither typed nor explained. Today: 1369 operators, 799 typed
 (58.4%), 570 explained, 0 unexplained.
 
-### 4. Determinism
+### 5. Determinism
 
 A manifest built from the same operator table and the same rule sets is
 byte-identical, in any process, in any registration order. The mechanism:
@@ -110,6 +138,27 @@ match session.call_value("sin", &[], &CallCtx::new()) {
 }
 ```
 
+### Choosing between overloads
+
+`call_value` resolves by arity and then by type, most specific first; a tie is
+`OpError::Ambiguous` rather than a silent choice. A generated facade should
+resolve once and then call through the key it got, so the static choice and the
+executed operator cannot disagree:
+
+```rust
+let args = [Value::Float(0.5)];
+let key = session.resolve_overload("sin", &args)?;   // OpKey
+session.call_key(&key, &args, &CallCtx::new())?;     // exact dispatch
+```
+
+`Session::overloads(name)` lists every signature with its key. An operator with
+no signature has no overloads and is reachable by name only; its key carries an
+all-zero `signature_hash`.
+
+The match lattice is `Exact` > `Widened` (an `Int` into a `Real`, a `Real` into
+a `Complex`) > `Shaped` (same constructor, looser argument) > `Generic` (a type
+variable or `Dyn`), and a call is scored by its *worst* parameter.
+
 ## Plugins
 
 A plugin is a bundle of extensions registered through `Registry`:
@@ -136,6 +185,46 @@ Registration refuses an operator that declares neither a signature nor a
 a name that clashes with an existing operator of a different shape; adding an
 overload of the same name requires `.overload()` on the descriptor.
 
+## Physical constants
+
+`dim::constants` carries the CODATA 2022 constants with an exact rational value,
+a dimension and an SI unit, and distinguishes the ones that are **exact by
+definition** (the seven SI defining constants and everything derived from them)
+from the **measured** ones, which carry a standard uncertainty. `c` really is
+the integer `299792458`; `hbar` is `h/(2π)` exactly, carried as a rational times
+`π^-1`.
+
+`KernelManifest.constants` lists them, so a host can generate
+`Units.Constants` without a second table. Note that `G` is the gravitational
+constant here and the gauss in the unit table — different namespaces, on
+purpose.
+
+## Loading a plugin from a shared library
+
+`kernel::cdylib` defines a byte-level C ABI: one `bincode-next` buffer of
+`Vec<Value>` in, one of `Result<Value, String>` out. A `#[repr(C)]` mirror of
+`Value` would have to track every variant across two independently compiled
+artifacts and would break silently the day one is added; the deterministic
+encoding is already the stable description of a value.
+
+It is behind the `plugin-cdylib` feature because a shared library runs
+arbitrary code in the host process. `Features::plugin_kinds` reports whether the
+build can load one, so a host that meets a `kind = "cdylib"` plugin in a build
+without the capability refuses it with a precise diagnostic.
+`tests/cdylib_plugin.rs` builds a plugin in C with `cc` and calls it end to end.
+
+## Which values can enter the graph
+
+`KernelManifest.value_kinds` lists every `Value` variant with
+`in_term_graph: bool`. A variant with `in_term_graph = true` becomes a node of
+the expression graph and can be passed to any operator; one with `false` reaches
+only an operator with a dynamic evaluator, or comes back as a result.
+
+`Int`, `Real`, `Float`, `Bool`, `String`, `Symbol`, `Unit`, `Quantity`,
+`Tensor`, `Term` and `Dyn` enter the graph. `Complex` enters only when its
+imaginary part is zero. `Sparse`, `Record`, `Variant`, `Function` and `Opaque`
+do not, and the manifest says why in each `note`.
+
 ## Structured results
 
 A result that is more than one number is a `Value::Record` with a declared
@@ -152,7 +241,12 @@ serialises with `bincode-next` for free, and the layout travels with the value.
 `Solutions`, and `OdeSolution::view` names an integrator's anonymous columns.
 
 An empty `multiplicities` means the solver did not distinguish them; it does not
-mean "all one" as a claim.
+mean "all one" as a claim. `complete` is true only when the solver answered in
+its exhaustive `list(...)` form; a single root found on the way is reported with
+`complete = false`, because it is not a claim that the others do not exist.
+
+`OdeSolutionView::dimensions` travels inside the record, so a host reading the
+`Value` does not have to go back to Rust for it.
 
 ## Dimensions and units
 
@@ -167,6 +261,23 @@ mean "all one" as a claim.
 * Everything is exact. The scale of a foot is the rational `381/1250`, the scale
   of a degree is `pi/180`, the offset of `degC` is `27315/100`. A float would
   lose the distinction between `1 in` and `0.0254 m` after a few conversions.
+* The table covers SI, the non-SI units accepted with it, the IAU astronomy
+  units (`au`, `ly`, `pc`, `Rsun`, `Msun`, `Mearth`, `jup`) and the CGS set
+  (`dyn`, `erg`, `Gal`, `P`, `St`, `G`, `Oe`, `Mx`, `Ba`).
+* `KernelManifest.units` carries `aliases`, `prefixable`, `category` and
+  `since` as well as the name, dimension and scale, so a host can generate its
+  unit table from the manifest alone.
+
+A typed front end should declare dimensions with `Config::dimension_term`,
+which takes a `DimExpr` and never parses text:
+
+```rust
+let config = Config::new().dimension_term("x", DimExpr::base("Currency"));
+```
+
+Unlike `Config::dimension(symbol, "Currency")` it cannot confuse a unit symbol
+with a base dimension, and a base the arena has never seen is defined on the
+way in.
 
 `DimExpr` is the *type-level* mirror of a dimension: names instead of arena-local
 ids, so it can go in a manifest and be read back by another process.

@@ -882,6 +882,33 @@ impl DimTerm {
         }
     }
 
+    /// A base dimension raised to a symbolic exponent.
+    ///
+    /// The exponent is a name (`n` in `Length^n`), interned in `arena` so that
+    /// two occurrences of the same symbol are the same atom. This is the
+    /// constructor a type-level `DimExpr::Pow(_, Exp::Symbol(..))` needs; the
+    /// rational case stays on [`DimTerm::base`], which is the common one.
+    #[must_use]
+    pub fn base_symbolic(
+        id: BaseId,
+        exponent: &str,
+        arena: &mut DimArena,
+    ) -> Self {
+        let atom = arena.intern_atom(exponent);
+        Self::scalar(vec![(id, Expo::atom(atom))], Vec::new())
+    }
+
+    /// A dimension variable raised to a symbolic exponent.
+    #[must_use]
+    pub fn var_symbolic(
+        id: DimVarId,
+        exponent: &str,
+        arena: &mut DimArena,
+    ) -> Self {
+        let atom = arena.intern_atom(exponent);
+        Self::scalar(Vec::new(), vec![(id, Expo::atom(atom))])
+    }
+
     /// A base dimension with an exponent.
     #[must_use]
     pub fn base(
@@ -1253,6 +1280,9 @@ fn add_factor_var(
 
 impl Graph {
     /// The dimension arena of this graph (base dimensions and atoms).
+    ///
+    /// The arena is shared with every graph cloned from this one until one of
+    /// them writes; see [`Graph::with_dim_arena_mut`].
     pub fn dim_arena(&self) -> std::sync::RwLockReadGuard<'_, DimArena> {
         match self.dims.read() {
             | Ok(guard) => guard,
@@ -1266,10 +1296,25 @@ impl Graph {
     /// happens whenever a structured dimension names something new; a caller
     /// that has a [`DimExpr`](crate::kernel::signature::DimExpr) needs the
     /// guard rather than the read-only [`Graph::dim_arena`].
-    pub fn with_dim_arena<R>(
-        &self,
+    ///
+    /// The arena is copy-on-write. The first mutation on a cloned graph gives
+    /// it an arena of its own, so a base defined during one request cannot
+    /// reach the template the request was cloned from — and a request that
+    /// defines nothing shares the arena and pays nothing.
+    pub fn with_dim_arena_mut<R>(
+        &mut self,
         body: impl FnOnce(&mut DimArena) -> R,
     ) -> R {
+        // `Arc::make_mut` cannot be used directly: `RwLock<T>` is not `Clone`.
+        // Detach by hand when the arena is shared, which is exactly the
+        // copy-on-write `Arc::make_mut` would perform.
+        if std::sync::Arc::strong_count(&self.dims) > 1 {
+            let detached = match self.dims.read() {
+                | Ok(guard) => guard.clone(),
+                | Err(poisoned) => poisoned.into_inner().clone(),
+            };
+            self.dims = std::sync::Arc::new(std::sync::RwLock::new(detached));
+        }
         match self.dims.write() {
             | Ok(mut arena) => body(&mut arena),
             | Err(poisoned) => body(&mut poisoned.into_inner()),
@@ -1277,18 +1322,16 @@ impl Graph {
     }
 
     /// Registers a base dimension for this graph.
+    ///
+    /// Copy-on-write: defining a base on a cloned graph detaches the arena
+    /// first, so the template keeps its own numbering.
     pub fn define_base_dimension(
         &mut self,
         name: &str,
     ) {
-        match self.dims.write() {
-            | Ok(mut arena) => {
-                arena.define_base(name);
-            },
-            | Err(poisoned) => {
-                poisoned.into_inner().define_base(name);
-            },
-        }
+        self.with_dim_arena_mut(|arena| {
+            arena.define_base(name);
+        });
     }
 
     /// Declares the dimension of a symbol from a structured term.
@@ -1721,6 +1764,32 @@ mod tests {
 
         let cancellations = dimension_of("(x/y)*(y/x)", &[("x", "m"), ("y", "s")]);
         assert_eq!(cancellations.dimension.to_string(), "1");
+    }
+
+    #[test]
+    fn a_base_defined_on_a_clone_does_not_reach_its_source() {
+        // The arena is copy-on-write: a request may define a base dimension of
+        // its own, and the template it was cloned from must not see it.
+        let template = Graph::new();
+        let mut request = template.clone();
+        request.define_base_dimension("Currency");
+        assert!(request.dim_arena().base_id("Currency").is_some());
+        assert!(
+            template.dim_arena().base_id("Currency").is_none(),
+            "the template picked up a base from a request"
+        );
+        // A request that defines nothing shares the arena rather than copying
+        // it, so the common path pays nothing.
+        let untouched = template.clone();
+        assert!(untouched.dim_arena().base_id("Currency").is_none());
+        // Writing through the mutable accessor detaches the same way.
+        let mut second = template.clone();
+        let term = second.with_dim_arena_mut(|arena| {
+            let base = arena.define_base("Currency");
+            DimTerm::base(base, BigRational::one())
+        });
+        assert!(!term.is_dimensionless());
+        assert!(template.dim_arena().base_id("Currency").is_none());
     }
 
     #[test]

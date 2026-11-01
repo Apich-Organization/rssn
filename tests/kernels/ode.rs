@@ -7,6 +7,8 @@ use proptest::test_runner::RngSeed;
 use rssn::kernels::ode::OdeSolverMethod;
 use rssn::kernels::ode::solve_adaptive;
 use rssn::kernels::ode::solve_fixed;
+use rssn::kernels::ode::solve_fixed_events;
+use rssn::kernels::ode_adaptive::Event;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -187,4 +189,73 @@ proptest! {
         let err = |n| (last(move |_t, y, dy| dy[0] = a * y[0], &[1.0], (0.0, 1.0), n, OdeSolverMethod::Heun)[0] - exact).abs();
         prop_assert!(err(200) < err(100));
     }
+}
+
+#[test]
+fn the_fixed_step_solver_locates_events_by_re_integrating_the_step() {
+    // `y'' = -y` from `(1, 0)` is `cos(t)`, so `y[0]` crosses zero at pi/2 and
+    // 3 pi/2. A fixed-step method has no interpolant, so the locator bisects
+    // the step and re-integrates the partial step from the same start; the
+    // located time is therefore a point of the method's own trajectory.
+    let osc = |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = y[1];
+        dy[1] = -y[0];
+    };
+    let zero = |_t: f64, y: &[f64]| y[0];
+    let events = [Event {
+        g: &zero,
+        terminal: false,
+        direction: 0,
+    }];
+    let (trajectory, hits) = solve_fixed_events(
+        osc,
+        &[1.0, 0.0],
+        (0.0, 5.0),
+        1000,
+        OdeSolverMethod::RungeKutta4,
+        &events,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(trajectory.t.len(), 1001);
+    assert_eq!(hits.len(), 2, "{} events", hits.len());
+    let want = [std::f64::consts::FRAC_PI_2, 3.0 * std::f64::consts::FRAC_PI_2];
+    for (hit, expected) in hits.iter().zip(&want) {
+        assert!(
+            (hit.t - expected).abs() < 1e-6,
+            "{} vs {expected}",
+            hit.t
+        );
+        // The located state is on the trajectory: `y[0]` is zero there.
+        assert!(hit.y[0].abs() < 1e-6, "y[0] = {}", hit.y[0]);
+    }
+}
+
+#[test]
+fn a_terminal_event_ends_the_fixed_step_trajectory_at_the_event() {
+    let g = 9.81_f64;
+    let fall = move |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = y[1];
+        dy[1] = -g;
+    };
+    let ground = |_t: f64, y: &[f64]| y[0];
+    let events = [Event {
+        g: &ground,
+        terminal: true,
+        direction: -1,
+    }];
+    let expected = (2.0 * 10.0 / g).sqrt();
+    let (trajectory, hits) = solve_fixed_events(
+        fall,
+        &[10.0, 0.0],
+        (0.0, 5.0),
+        2000,
+        OdeSolverMethod::RungeKutta4,
+        &events,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(hits.len(), 1);
+    let last = trajectory.t.last().copied().unwrap_or(f64::NAN);
+    assert!((last - expected).abs() < 1e-6, "{last} vs {expected}");
+    // The trajectory stops there rather than running to t = 5.
+    assert!(last < 2.0, "the integration did not stop: {last}");
 }
