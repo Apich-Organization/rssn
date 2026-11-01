@@ -289,3 +289,4 @@ fix_trap.py
 fix_brnz.py
 tidy.py
 .claude/worktrees/
+!signatures.overlay.json
