@@ -8,11 +8,13 @@
 //! | Chebyshev collocation Helmholtz ([`ChebGrid::solve_helmholtz`]) | yes | yes | yes | Dirichlet, Neumann, Robin per face, time dependent data |
 //! | Chebyshev heat equation θ-method ([`ChebGrid::heat`]) | yes | yes | yes | same |
 //!
-//! Fourier grids need power-of-two sizes (the FFT of
-//! [`crate::kernels::transforms`] is radix-2). Chebyshev grids use
-//! Gauss–Lobatto points, dense differentiation matrices and the sparse LU of
-//! [`crate::kernels::krylov`] for the (dense-block) collocation systems, so
-//! they are meant for modest sizes (up to a few thousand unknowns).
+//! The Fourier grids here need power-of-two sizes: [`fft_nd`] passes rows and
+//! columns to the in-place radix-2 slice kernels, and it rejects any other
+//! extent. (The transforms in [`crate::kernels::transforms`] themselves accept
+//! any length; the restriction is this module's, not the FFT's.) Chebyshev
+//! grids use Gauss–Lobatto points, dense differentiation matrices and the
+//! sparse LU of [`crate::kernels::krylov`] for the (dense-block) collocation
+//! systems, so they are meant for modest sizes (up to a few thousand unknowns).
 
 use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::SparseOrdering;

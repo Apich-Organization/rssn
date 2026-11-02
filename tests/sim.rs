@@ -110,6 +110,8 @@ mod physics_mtm;
 mod physics_rkm;
 #[path = "sim/physics_sm.rs"]
 mod physics_sm;
+#[path = "sim/pic.rs"]
+mod pic;
 #[path = "sim/relativity.rs"]
 mod relativity;
 #[path = "sim/scenario_engines.rs"]

@@ -19,6 +19,42 @@
 //! [`monte_carlo_par`] sum fixed blocks of 4096 points concurrently (block sums added in block
 //! order; deterministic for every thread count, but a different summation order / sample stream
 //! than the serial functions).
+//!
+//! # Limitations
+//!
+//! Adaptive error control is available in one dimension ([`integrate_gk`],
+//! [`tanh_sinh`], [`exp_sinh`], [`sinh_sinh`], [`clenshaw_curtis`]) and on
+//! axis-aligned boxes ([`cubature_genz_malik`], [`cubature_nested`]). The
+//! following remain true.
+//!
+//! * There is no adaptive rule on a simplex, a ball or an implicitly defined
+//!   region. Map such a region to a box and supply the Jacobian, or use
+//!   [`quasi_monte_carlo`]; the cubature rules accept a box only.
+//! * [`cubature_genz_malik`] halves one axis per split and evaluates the
+//!   `2^n` corners of every region, so its cost per region is exponential in
+//!   the dimension. It is capped at 20 dimensions and practical for 2 to 8;
+//!   a feature that is narrow along several axes needs many regions.
+//! * The region estimate is the embedded degree-5/7 difference, a heuristic
+//!   and not a rigorous bound. On the reference problems it is conservative
+//!   (the actual error is 0.001 to 0.15 of the estimate at `rel_tol = 1e-8`),
+//!   but a converged result means "the estimate is below the tolerance", not
+//!   "the error is proven below it". This module provides no enclosure.
+//! * On smooth integrands a fixed tensor-product Gauss rule is cheaper:
+//!   `exp(-100(x^2+y^2))` on `[0, 1]^2` reaches 1e-8 with a 32x32 rule
+//!   (1,024 evaluations), while the adaptive rule needs 10,506, because it
+//!   pays for the partition bookkeeping and for the 17-point rule in every
+//!   region. The adaptive win appears at singularities: `1/sqrt(x+y)` needs
+//!   10,676 evaluations against 262,144 for the 512x512 tensor rule, and
+//!   `(xy)^(-1/2)` 228,412 against more than 1,048,576 (the 1024x1024 rule
+//!   is still at 8.5e-4 relative error).
+//! * No oscillatory (Filon/Levin) rule exists in more than one dimension, and
+//!   no tanh-sinh rule for fractional endpoint singularities.
+//! * The Monte Carlo rules are deterministic for a fixed seed, but their
+//!   error is statistical and not controlled by a tolerance.
+//!
+//! The one-dimensional rules are unaffected by the cubature: they share no
+//! state, and [`integrate`] / [`integrate_gk`] return the same values as
+//! before.
 
 use std::cell::RefCell;
 use std::f64::consts::PI;
@@ -1030,6 +1066,7 @@ fn cubature_nested_tail<F: Fn(&[f64]) -> f64>(
 }
 
 /// A region of the Genz-Malik adaptive cubature.
+#[derive(Debug)]
 struct GmRegion {
     center: Vec<f64>,
     half: Vec<f64>,
@@ -1167,6 +1204,13 @@ const fn gm_cost(n: usize) -> usize {
 /// `max(abs_tol, rel_tol * |value|)` or after `max_evals` integrand
 /// evaluations (`converged == false`). Intended for 2 to about 8
 /// dimensions.
+///
+/// A bisection only replaces a region by its two halves, so the regions
+/// always tile the box exactly: their volumes sum to the box volume and no
+/// two overlap. `value` and `error` are the sums of the region values and
+/// of the region estimates; the estimate is the embedded degree-5/7
+/// difference, a heuristic rather than a rigorous bound (see the module
+/// limitations).
 pub fn cubature_genz_malik<F: Fn(&[f64]) -> f64>(
     f: F,
     lo: &[f64],
@@ -1175,70 +1219,388 @@ pub fn cubature_genz_malik<F: Fn(&[f64]) -> f64>(
     rel_tol: f64,
     max_evals: usize,
 ) -> Integral {
+    gm_adaptive(&f, lo, hi, abs_tol, rel_tol, max_evals).0
+}
+
+/// The adaptive loop of [`cubature_genz_malik`], also returning the final
+/// partition so that the tiling invariants can be checked in the tests.
+fn gm_adaptive<F: Fn(&[f64]) -> f64>(
+    f: &F,
+    lo: &[f64],
+    hi: &[f64],
+    abs_tol: f64,
+    rel_tol: f64,
+    max_evals: usize,
+) -> (Integral, Vec<GmRegion>) {
     let n = lo.len();
     if n == 0 || hi.len() != n || n > 20 {
-        return Integral {
-            value: f64::NAN,
-            error: f64::NAN,
-            evaluations: 0,
-            converged: false,
-        };
+        return (
+            Integral {
+                value: f64::NAN,
+                error: f64::NAN,
+                evaluations: 0,
+                converged: false,
+            },
+            Vec::new(),
+        );
     }
     let cost = gm_cost(n);
-    let mut evals = 0usize;
-    // initial uniform split
-    let parts = ((64.0_f64).powf(1.0 / n as f64).floor() as usize).max(2);
-    let mut heap = std::collections::BinaryHeap::new();
+    // Initial uniform split. `2^n` corners per region make the grid cost
+    // exponential, so shrink it when the budget cannot cover it.
+    let mut parts = ((64.0_f64).powf(1.0 / n as f64).floor() as usize).max(2);
+    while parts > 2 && parts.pow(n as u32).saturating_mul(cost) > max_evals {
+        parts -= 1;
+    }
     let count = parts.pow(n as u32);
-    for mut idx in 0..count {
-        let mut c = vec![0.0; n];
-        let mut h = vec![0.0; n];
-        for i in 0..n {
+    if count.saturating_mul(cost) > max_evals {
+        return (
+            Integral {
+                value: f64::NAN,
+                error: f64::NAN,
+                evaluations: 0,
+                converged: false,
+            },
+            Vec::new(),
+        );
+    }
+    let mut evals = 0usize;
+    let mut value = 0.0;
+    let mut error = 0.0;
+    let mut heap = std::collections::BinaryHeap::with_capacity(count);
+    for idx0 in 0..count {
+        let mut idx = idx0;
+        let mut center = Vec::with_capacity(n);
+        let mut half = Vec::with_capacity(n);
+        for (&a, &b) in lo.iter().zip(hi) {
             let k = idx % parts;
             idx /= parts;
-            let w = (hi[i] - lo[i]) / parts as f64;
-            c[i] = lo[i] + w * (k as f64 + 0.5);
-            h[i] = 0.5 * w;
+            let w = (b - a) / parts as f64;
+            center.push(a + w * (k as f64 + 0.5));
+            half.push(0.5 * w);
         }
-        heap.push(gm_apply(&f, c, h));
+        let region = gm_apply(f, center, half);
+        value += region.value;
+        error += region.error;
+        heap.push(region);
         evals += cost;
     }
     loop {
-        let value: f64 = heap.iter().map(|r| r.value).sum();
-        let error: f64 = heap.iter().map(|r| r.error).sum();
         let target = abs_tol.max(rel_tol * value.abs());
         if error <= target {
-            return Integral {
-                value,
-                error,
-                evaluations: evals,
-                converged: true,
-            };
+            return (
+                Integral {
+                    value,
+                    error,
+                    evaluations: evals,
+                    converged: true,
+                },
+                heap.into_vec(),
+            );
         }
-        if evals + 2 * cost > max_evals || !value.is_finite() {
-            return Integral {
-                value,
-                error,
-                evaluations: evals,
-                converged: false,
-            };
+        if evals.saturating_add(2 * cost) > max_evals || !value.is_finite() {
+            return (
+                Integral {
+                    value,
+                    error,
+                    evaluations: evals,
+                    converged: false,
+                },
+                heap.into_vec(),
+            );
         }
-        let Some(r) = heap.pop() else {
-            return Integral {
-                value,
-                error,
-                evaluations: evals,
-                converged: false,
-            };
+        let Some(region) = heap.pop() else {
+            return (
+                Integral {
+                    value,
+                    error,
+                    evaluations: evals,
+                    converged: false,
+                },
+                heap.into_vec(),
+            );
         };
-        let mut h = r.half.clone();
-        h[r.axis] *= 0.5;
-        let mut c1 = r.center.clone();
-        let mut c2 = r.center.clone();
-        c1[r.axis] -= h[r.axis];
-        c2[r.axis] += h[r.axis];
-        heap.push(gm_apply(&f, c1, h.clone()));
-        heap.push(gm_apply(&f, c2, h));
+        let axis = region.axis;
+        let half = region
+            .half
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| if i == axis { 0.5 * v } else { v })
+            .collect::<Vec<_>>();
+        let shift = half.get(axis).copied().unwrap_or(0.0);
+        let lower = region
+            .center
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| if i == axis { v - shift } else { v })
+            .collect::<Vec<_>>();
+        let upper = region
+            .center
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| if i == axis { v + shift } else { v })
+            .collect::<Vec<_>>();
+        let first = gm_apply(f, lower, half.clone());
+        let second = gm_apply(f, upper, half);
+        value += first.value + second.value - region.value;
+        error += first.error + second.error - region.error;
+        heap.push(first);
+        heap.push(second);
         evals += 2 * cost;
+    }
+}
+
+#[cfg(test)]
+mod quad_cubature_tests {
+    //! Adaptive cubature: known values, honest error estimates, tiling of
+    //! the partition, and the cost against a fixed tensor-product rule.
+    //!
+    //! The three reference integrands on `[0, 1]^2` are
+    //! `1/sqrt(x+y) = 8(sqrt 2 - 1)/3` (a corner singularity; the frequently
+    //! quoted `8(2 - sqrt 2)/3` is `sqrt 2` times this and is not the value of
+    //! this integral), `exp(-100(x^2+y^2)) = pi/400` (a boundary layer of
+    //! width 0.1 at the origin) and `(xy)^(-1/2) = 4` (a product corner
+    //! singularity).
+
+    #![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+    #![allow(clippy::single_call_fn)]
+
+    use super::*;
+
+    /// `(name, integrand, exact value)` for the reference problems.
+    #[allow(clippy::type_complexity)]
+    fn reference_cases() -> [(&'static str, fn(&[f64]) -> f64, f64); 3] {
+        [
+            (
+                "1/sqrt(x+y)",
+                |p: &[f64]| 1.0 / (p[0] + p[1]).sqrt(),
+                8.0 * (2.0_f64.sqrt() - 1.0) / 3.0,
+            ),
+            (
+                "exp(-100(x^2+y^2))",
+                |p: &[f64]| (-100.0 * (p[0] * p[0] + p[1] * p[1])).exp(),
+                PI / 400.0,
+            ),
+            ("(xy)^(-1/2)", |p: &[f64]| 1.0 / (p[0] * p[1]).sqrt(), 4.0),
+        ]
+    }
+
+    /// `n`-point Gauss-Legendre nodes and weights on `[-1, 1]`
+    /// (Newton iteration on the Legendre recurrence).
+    fn gauss_legendre(n: usize) -> (Vec<f64>, Vec<f64>) {
+        let mut x = vec![0.0; n];
+        let mut w = vec![0.0; n];
+        for i in 0..n.div_ceil(2) {
+            let mut z = (PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
+            for _ in 0..100 {
+                let (mut p0, mut p1) = (1.0, z);
+                for k in 2..=n {
+                    let p2 = ((2.0 * k as f64 - 1.0) * z * p1 - (k as f64 - 1.0) * p0) / k as f64;
+                    p0 = p1;
+                    p1 = p2;
+                }
+                let dz = p1 / (n as f64 * (z * p1 - p0) / (z * z - 1.0));
+                z -= dz;
+                if dz.abs() < 1e-16 {
+                    break;
+                }
+            }
+            let (mut p0, mut p1) = (1.0, z);
+            for k in 2..=n {
+                let p2 = ((2.0 * k as f64 - 1.0) * z * p1 - (k as f64 - 1.0) * p0) / k as f64;
+                p0 = p1;
+                p1 = p2;
+            }
+            let dp = n as f64 * (z * p1 - p0) / (z * z - 1.0);
+            x[i] = z;
+            x[n - 1 - i] = -z;
+            w[i] = 2.0 / ((1.0 - z * z) * dp * dp);
+            w[n - 1 - i] = w[i];
+        }
+        (x, w)
+    }
+
+    /// Fixed `m x m` Gauss-Legendre tensor rule on `[0, 1]^2`; returns the
+    /// value and the number of evaluations (`m * m`).
+    fn tensor_rule_2d(
+        f: fn(&[f64]) -> f64,
+        m: usize,
+    ) -> (f64, usize) {
+        let (x, w) = gauss_legendre(m);
+        let mut s = 0.0;
+        for i in 0..m {
+            for j in 0..m {
+                s += w[i] * w[j] * f(&[f64::midpoint(x[i], 1.0), f64::midpoint(x[j], 1.0)]);
+            }
+        }
+        (0.25 * s, m * m)
+    }
+
+    #[test]
+    fn quad_cubature_known_values_at_1e_8() {
+        for (name, f, exact) in reference_cases() {
+            let r = cubature_genz_malik(f, &[0.0; 2], &[1.0; 2], 0.0, 1e-8, 4_000_000);
+            assert!(r.converged, "{name}: not converged: {r:?}");
+            let rel = (r.value - exact).abs() / exact.abs();
+            assert!(
+                rel <= 1e-8,
+                "{name}: relative error {rel:e} (value {:.17e}, exact {exact:.17e}, {r:?})",
+                r.value
+            );
+        }
+    }
+
+    #[test]
+    fn quad_cubature_error_estimate_is_honest() {
+        for (name, f, exact) in reference_cases() {
+            for tol in [1e-6, 1e-8] {
+                let r = cubature_genz_malik(f, &[0.0; 2], &[1.0; 2], 0.0, tol, 8_000_000);
+                assert!(r.converged, "{name} at {tol:e}: not converged: {r:?}");
+                let actual = (r.value - exact).abs();
+                assert!(r.error > 0.0, "{name} at {tol:e}: zero estimate: {r:?}");
+                eprintln!(
+                    "{name} tol {tol:e}: rel {:.2e}, estimate {:.2e}, \
+                     actual/estimate {:.3}",
+                    actual / exact.abs(),
+                    r.error / exact.abs(),
+                    actual / r.error
+                );
+                assert!(
+                    actual <= 4.0 * r.error + 1e-14 * exact.abs(),
+                    "{name} at {tol:e}: actual {actual:e} exceeds 4 * estimate {:e} \
+                     (ratio {:.2})",
+                    r.error,
+                    actual / r.error
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn quad_cubature_partition_tiles_the_box() {
+        // The 2-D run uses the corner singularity so that the partition is
+        // actually split (hundreds of regions); the 3-D run checks the
+        // tensor-grid initial split and its further bisections.
+        #[allow(clippy::type_complexity)]
+        let runs: [(&[f64], &[f64], fn(&[f64]) -> f64, f64); 2] = [
+            (
+                &[0.0, 0.0],
+                &[1.0, 1.0],
+                |p: &[f64]| 1.0 / (p[0] + p[1]).sqrt(),
+                1e-6,
+            ),
+            (
+                &[-1.0, 0.0, 2.0],
+                &[1.0, 3.0, 2.5],
+                |p: &[f64]| p.iter().map(|v| v.exp()).product::<f64>(),
+                1e-8,
+            ),
+        ];
+        for (lo, hi, f, tol) in runs {
+            let (r, regions) = gm_adaptive(&f, lo, hi, 0.0, tol, 400_000);
+            assert!(r.converged, "{r:?}");
+            assert!(
+                regions.len() > 64,
+                "no bisection happened: {}",
+                regions.len()
+            );
+            let volume: f64 = lo.iter().zip(hi).map(|(a, b)| b - a).product();
+            let mut tiled = 0.0;
+            for g in &regions {
+                tiled += g.half.iter().map(|h| 2.0 * h).product::<f64>();
+                for i in 0..lo.len() {
+                    assert!(
+                        g.center[i] - g.half[i] >= lo[i] - 1e-15
+                            && g.center[i] + g.half[i] <= hi[i] + 1e-15,
+                        "region outside the box"
+                    );
+                }
+            }
+            assert!(
+                (tiled - volume).abs() <= 1e-13 * volume,
+                "measure {tiled} != {volume}"
+            );
+            for (i, a) in regions.iter().enumerate() {
+                for b in &regions[i + 1..] {
+                    let disjoint = (0..lo.len()).any(|d| {
+                        a.center[d] + a.half[d] <= b.center[d] - b.half[d] + 1e-15
+                            || b.center[d] + b.half[d] <= a.center[d] - a.half[d] + 1e-15
+                    });
+                    assert!(disjoint, "two regions overlap: {a:?} {b:?}");
+                }
+            }
+            let values: f64 = regions.iter().map(|g| g.value).sum();
+            let errors: f64 = regions.iter().map(|g| g.error).sum();
+            assert!((values - r.value).abs() <= 1e-12 * r.value.abs().max(1.0));
+            assert!((errors - r.error).abs() <= 1e-12 * r.error.max(1e-300));
+        }
+    }
+
+    #[test]
+    fn quad_one_dimensional_results_are_unchanged() {
+        let a = integrate(f64::sin, 0.0, PI, 1e-12);
+        assert!((a.value - 2.0).abs() < 1e-11, "{a:?}");
+        let b = integrate(|x| 1.0 / (1.0 + x * x), 0.0, 1.0, 1e-12);
+        assert!((b.value - PI / 4.0).abs() < 1e-11, "{b:?}");
+        let c = tanh_sinh(|x| x.powf(-0.5), 0.0, 1.0, 1e-10);
+        assert!((c.value - 2.0).abs() < 1e-9, "{c:?}");
+        let d = integrate_gk(|x| x.powi(10), -1.0, 1.0, GkRule::G10K21, 1e-15, 1e-15, 8);
+        assert!((d.value - 2.0 / 11.0).abs() < 1e-15, "{d:?}");
+    }
+
+    /// The smallest tabulated `m x m` Gauss-Legendre tensor rule that
+    /// reaches 1e-8 relative error, with its evaluation count. Returns the
+    /// largest tabulated rule (1024x1024) when none does.
+    fn smallest_tensor_rule(
+        f: fn(&[f64]) -> f64,
+        exact: f64,
+    ) -> (usize, usize) {
+        for m in [16usize, 32, 64, 128, 256, 512, 1024] {
+            let (v, evals) = tensor_rule_2d(f, m);
+            if (v - exact).abs() <= 1e-8 * exact.abs() {
+                return (m, evals);
+            }
+        }
+        (1024, 1024 * 1024)
+    }
+
+    #[test]
+    fn quad_cubature_beats_the_fixed_tensor_rule_on_singular_integrals() {
+        let cases = reference_cases();
+        // Corner singularities: the tensor rule converges algebraically, the
+        // adaptive rule must win.
+        for (name, f, exact) in [cases[0], cases[2]] {
+            let (m, evals) = smallest_tensor_rule(f, exact);
+            let r = cubature_genz_malik(f, &[0.0; 2], &[1.0; 2], 0.0, 1e-8, 4_000_000);
+            assert!(r.converged, "{name}: {r:?}");
+            eprintln!(
+                "{name}: adaptive {} evaluations vs tensor {m}x{m} = {evals}",
+                r.evaluations
+            );
+            assert!(
+                r.evaluations < evals,
+                "{name}: adaptive {} evaluations vs tensor {m}x{m} = {evals}",
+                r.evaluations
+            );
+        }
+    }
+
+    #[test]
+    fn quad_cubature_loses_to_the_tensor_rule_on_a_smooth_integrand() {
+        // Expected and documented: the fixed tensor rule converges
+        // spectrally on a smooth boundary layer and needs no partition
+        // bookkeeping, so it is cheaper than adaptive refinement.
+        let (name, f, exact) = reference_cases()[1];
+        let (m, evals) = smallest_tensor_rule(f, exact);
+        let r = cubature_genz_malik(f, &[0.0; 2], &[1.0; 2], 0.0, 1e-8, 4_000_000);
+        assert!(r.converged, "{name}: {r:?}");
+        eprintln!(
+            "{name}: adaptive {} evaluations vs tensor {m}x{m} = {evals}",
+            r.evaluations
+        );
+        assert!(
+            evals < r.evaluations,
+            "{name}: expected the tensor rule ({m}x{m} = {evals}) to beat {}",
+            r.evaluations
+        );
     }
 }

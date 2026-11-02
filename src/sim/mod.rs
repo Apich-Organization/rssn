@@ -14,6 +14,7 @@
 //! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK and flexible-cell Parrinello-Rahman/MTTK barostats on triclinic cells, SHAKE/RATTLE (also with barostat and Langevin), RDF/MSD/VACF |
 //! | [`md_rigid`] | 3 | periodic | rigid molecules: COM + quaternion, symmetric-top / NO_SQUISH rotor splitting, molecular virial |
 //! | [`ewald`] | 3 | periodic (orthorhombic and triclinic) | Ewald, smooth PME |
+//! | [`pic`] | 1 | periodic | electrostatic `PIC`: `CIC` and four-point cubic shapes, spectral Poisson |
 //! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open (3-D FMM also periodic) | Barnes-Hut, adaptive 2-D/3-D FMM with softened far field, periodic triclinic FMM |
 //! | [`sse`] | any bipartite graph | periodic / open | spin-1/2 XXZ quantum Monte Carlo: stochastic series expansion with directed loops |
 //! | [`hermite`] | 3 | open | 4th/6th-order Hermite with block time steps, 1PN EIH terms, KS-regularised binaries |
@@ -108,6 +109,8 @@ pub mod physics_mtm;
 pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
+/// Electrostatic particle-in-cell with selectable `CIC`/`TSC`/`PQS` shapes.
+pub mod pic;
 /// Kerr-Newman geodesics.
 pub mod relativity;
 pub mod scenario;

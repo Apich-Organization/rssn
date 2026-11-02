@@ -272,7 +272,7 @@ fn transform_z_columns(
     data: &mut [Complex<f64>],
     plane_size: usize,
     depth: usize,
-    f: fn(&mut Vec<Complex<f64>>),
+    f: fn(&mut [Complex<f64>]),
 ) {
     let columns: Vec<Vec<Complex<f64>>> = (0..plane_size)
         .into_par_iter()

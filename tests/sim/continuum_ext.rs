@@ -146,10 +146,18 @@ fn pressure_release_inverts_and_periodic_wraps() {
     let periodic = run(Bc::Periodic, 1.0);
     let c = (0.7 / h) as usize;
     assert!(periodic.p[c] > 0.95, "periodic return {}", periodic.p[c]);
-    // non-zero release data and Robin faces are rejected
+    // A non-zero Dirichlet datum is supported (it is an inhomogeneous
+    // pressure-release face, exercised in tests/sim/acoustics.rs), but a
+    // Robin face is not: the solver has no impedance closure for it.
     let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
     cfg.bcs = FaceBcs::uniform(&Bc::dirichlet(1.0));
-    assert!(Acoustics::new(cfg).is_err());
+    assert!(
+        Acoustics::new(cfg).is_ok(),
+        "non-zero Dirichlet data must be accepted"
+    );
+    let mut cfg = AcousticsConfig::new(&[n], &[h], 1.0).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::robin(1.0, 1.0, 0.0));
+    assert!(Acoustics::new(cfg).is_err(), "Robin faces must be rejected");
 }
 
 // ------------------------------------------------------- Euler non-reflecting

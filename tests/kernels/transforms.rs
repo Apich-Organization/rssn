@@ -1,4 +1,7 @@
-//! Radix-2 FFT / IFFT (ported from `numerical_transforms_test.rs`).
+//! FFT / IFFT at power-of-two and arbitrary lengths.
+
+use std::f64::consts::PI;
+use std::time::Instant;
 
 use num_complex::Complex;
 use proptest::prelude::*;
@@ -73,12 +76,14 @@ fn round_trip() {
 }
 
 #[test]
-fn non_power_of_two_input_is_zero_padded() {
+fn non_power_of_two_input_keeps_its_length() {
     let mut data = vec![Complex::new(1.0, 0.0); 3];
     fft(&mut data);
-    assert_eq!(data.len(), 4);
-    // DC bin is the sum of the samples.
+    assert_eq!(data.len(), 3);
+    // A constant signal of length 3: [3, 0, 0], not the 4-point padded spectrum.
     assert!(close(data[0], Complex::new(3.0, 0.0)));
+    assert!(data[1].norm() < 1e-12);
+    assert!(data[2].norm() < 1e-12);
 }
 
 #[test]
@@ -144,5 +149,197 @@ proptest! {
         fft(&mut data);
         let f: f64 = data.iter().map(|c| c.norm_sqr()).sum::<f64>() / 16.0;
         prop_assert!((t - f).abs() < 1e-8 * t.max(1.0));
+    }
+}
+
+// -------------------------------------------------------------------------
+// Arbitrary lengths (Bluestein chirp-z) against a direct-DFT oracle
+// -------------------------------------------------------------------------
+
+/// Naive `O(n^2)` DFT, the reference every fast path is checked against.
+fn direct_dft(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = x.len();
+    (0..n)
+        .map(|k| {
+            x.iter()
+                .enumerate()
+                .fold(Complex::new(0.0, 0.0), |acc, (j, xj)| {
+                    let ang = -2.0 * PI * (j as f64) * (k as f64) / (n as f64);
+                    acc + xj * Complex::from_polar(1.0, ang)
+                })
+        })
+        .collect()
+}
+
+/// A deterministic complex signal with both parts of order one.
+fn sample(n: usize) -> Vec<Complex<f64>> {
+    (0..n)
+        .map(|i| {
+            let t = i as f64;
+            Complex::new((0.3 * t).sin() + 0.5, (0.7 * t).cos() - 0.2)
+        })
+        .collect()
+}
+
+/// `1..=64`, the three primes, and the two highly composite lengths.
+fn lengths() -> Vec<usize> {
+    let mut v: Vec<usize> = (1..=64).collect();
+    v.extend([97, 101, 127, 120, 210]);
+    v
+}
+
+#[test]
+fn arbitrary_lengths_round_trip_and_satisfy_parseval() {
+    for n in lengths() {
+        let original = sample(n);
+        let mut data = original.clone();
+        fft(&mut data);
+        assert_eq!(data.len(), n, "length changed at n = {n}");
+        let time_energy: f64 = original.iter().map(|c| c.norm_sqr()).sum();
+        let freq_energy: f64 = data.iter().map(|c| c.norm_sqr()).sum::<f64>() / n as f64;
+        assert!(
+            (time_energy - freq_energy).abs() <= 1e-12 * time_energy.max(1.0),
+            "Parseval at n = {n}: {time_energy} vs {freq_energy}"
+        );
+        ifft(&mut data);
+        for (got, want) in data.iter().zip(&original) {
+            assert!(
+                (got - want).norm() <= 1e-12,
+                "round trip at n = {n}: {got} vs {want}"
+            );
+        }
+    }
+}
+
+#[test]
+fn arbitrary_lengths_match_the_direct_dft() {
+    for n in lengths() {
+        let x = sample(n);
+        let want = direct_dft(&x);
+        let scale = want.iter().map(|c| c.norm()).fold(1.0_f64, f64::max);
+        let mut got = x.clone();
+        fft(&mut got);
+        for (k, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert!(
+                (g - w).norm() <= 1e-12 * scale,
+                "bin {k} at n = {n}: {g} vs {w}"
+            );
+        }
+    }
+}
+
+#[test]
+fn prime_lengths_match_the_direct_dft() {
+    for n in [97usize, 101, 127] {
+        let x = sample(n);
+        let want = direct_dft(&x);
+        let scale = want.iter().map(|c| c.norm()).fold(1.0_f64, f64::max);
+        let mut got = x.clone();
+        fft(&mut got);
+        assert_eq!(got.len(), n);
+        for (k, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert!(
+                (g - w).norm() <= 1e-12 * scale,
+                "prime bin {k} at n = {n}: {g} vs {w}"
+            );
+        }
+        // The slice entry point must agree with the Vec one exactly.
+        let mut via_slice = x.clone();
+        fft_slice(&mut via_slice);
+        for (a, b) in got.iter().zip(&via_slice) {
+            assert_eq!(a.re.to_bits(), b.re.to_bits(), "slice re at n = {n}");
+            assert_eq!(a.im.to_bits(), b.im.to_bits(), "slice im at n = {n}");
+        }
+        // And the inverse of that spectrum is the signal.
+        ifft(&mut got);
+        for (g, w) in got.iter().zip(&x) {
+            assert!((g - w).norm() <= 1e-12, "prime inverse at n = {n}");
+        }
+    }
+}
+
+/// The radix-2 kernel exactly as it stood before the arbitrary-length path
+/// was added: the power-of-two route must keep reproducing it bit for bit.
+fn radix2_reference(data: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let mut data = data.to_vec();
+    let n = data.len();
+    if n <= 1 {
+        return data;
+    }
+    let mut j = 0;
+    for i in 0..n {
+        if i < j {
+            data.swap(i, j);
+        }
+        let mut bit = n >> 1;
+        while j & bit != 0 {
+            j ^= bit;
+            bit >>= 1;
+        }
+        j ^= bit;
+    }
+    let mut len = 2;
+    while len <= n {
+        let half_len = len / 2;
+        let w_m = Complex::from_polar(1.0, -2.0 * PI / (len as f64));
+        for i in (0..n).step_by(len) {
+            let mut w = Complex::new(1.0, 0.0);
+            for k in 0..half_len {
+                let even_idx = i + k;
+                let odd_idx = i + k + half_len;
+                let t = w * data[odd_idx];
+                let u = data[even_idx];
+                data[even_idx] = u + t;
+                data[odd_idx] = u - t;
+                w *= w_m;
+            }
+        }
+        len *= 2;
+    }
+    data
+}
+
+#[test]
+fn power_of_two_results_are_bit_identical_to_the_radix2_kernel() {
+    for n in [1usize, 2, 4, 8, 16, 64, 128, 1024] {
+        let x = sample(n);
+        let want = radix2_reference(&x);
+        let mut got = x.clone();
+        fft(&mut got);
+        for (k, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert_eq!(g.re.to_bits(), w.re.to_bits(), "re bin {k} at n = {n}");
+            assert_eq!(g.im.to_bits(), w.im.to_bits(), "im bin {k} at n = {n}");
+        }
+    }
+}
+
+#[test]
+fn cost_of_the_general_path() {
+    let m = 2048_usize;
+    let log_m = 11_usize;
+    println!(
+        "n = 1000 (not a power of two): Bluestein, m = {m}, \
+         3 transforms x {log_m} stages of {}/2 = {} butterflies",
+        m,
+        3 * m * log_m / 2
+    );
+    println!(
+        "n = 1024 (power of two): 10 stages of 512 = {} butterflies",
+        1024 * 10 / 2
+    );
+
+    let reps = 32_u32;
+    for (label, n) in [("n = 1000", 1000usize), ("n = 1024", 1024)] {
+        let pattern = sample(n);
+        let mut data = pattern.clone();
+        fft(&mut data);
+        let start = Instant::now();
+        for _ in 0..reps {
+            data.copy_from_slice(&pattern);
+            fft(&mut data);
+        }
+        let per = start.elapsed() / reps;
+        println!("{label}: {per:?} per forward transform ({reps} reps)");
+        assert!(data.iter().all(|c| c.re.is_finite() && c.im.is_finite()));
     }
 }
