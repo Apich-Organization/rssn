@@ -1,7 +1,9 @@
 //! Tests for the optimisation kernels.
 
 use rssn::kernels::dense::Mat;
+use rssn::kernels::optim::ConstrainedStatus;
 use rssn::kernels::optim::LpStatus;
+use rssn::kernels::optim::OptResult;
 use rssn::kernels::optim::Pricing;
 use rssn::kernels::optim::Relation;
 use rssn::kernels::optim::augmented_lagrangian;
@@ -12,6 +14,7 @@ use rssn::kernels::optim::nelder_mead;
 use rssn::kernels::optim::simplex;
 use rssn::kernels::optim::simplex_with;
 use rssn::kernels::optim::simulated_annealing;
+use rssn::kernels::optim::sqp;
 use rssn::kernels::optim::trust_region;
 
 fn rosen(x: &[f64]) -> f64 {
@@ -331,5 +334,263 @@ fn simplex_two_phase_with_pricing() {
     // the optimum is no worse than this feasible plan (x = 10, 5, 15, 5, 15, 0)
     assert!(
         vals[0] <= 4.0 * 10.0 + 6.0 * 5.0 + 5.0 * 15.0 + 3.0 * 5.0 + 2.0 * 15.0 + 7.0 * 0.0 + 1e-9
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Constrained optimisation: SQP
+// ---------------------------------------------------------------------------
+
+/// `grad f + J_h^T lambda + J_g^T mu`, computed here independently of the
+/// solver so that the reported KKT residual is checked, not echoed.
+fn lagrangian_grad(
+    gf: &[f64],
+    jh: &[Vec<f64>],
+    jg: &[Vec<f64>],
+    lambda: &[f64],
+    mu: &[f64],
+) -> Vec<f64> {
+    let mut r = gf.to_vec();
+    for (row, l) in jh.iter().zip(lambda) {
+        for (a, b) in r.iter_mut().zip(row) {
+            *a += l * b;
+        }
+    }
+    for (row, m) in jg.iter().zip(mu) {
+        for (a, b) in r.iter_mut().zip(row) {
+            *a += m * b;
+        }
+    }
+    r
+}
+
+fn inf_norm(v: &[f64]) -> f64 {
+    v.iter().fold(0.0_f64, |a, b| a.max(b.abs()))
+}
+
+#[test]
+fn sqp_active_inequality_is_exact() {
+    // min x^2 s.t. x >= 1, i.e. g(x) = 1 - x <= 0. A penalty method returns
+    // x slightly below 1; the exact solution is x = 1 with mu = 2.
+    let f = |x: &[f64]| x[0] * x[0];
+    let grad = |x: &[f64]| vec![2.0 * x[0]];
+    let ineq = |x: &[f64]| vec![1.0 - x[0]];
+    let r = sqp(f, Some(&grad), |_| vec![], ineq, &[0.0], 1e-10, 100);
+    println!(
+        "active-inequality: x={:?} fx={:.12} viol={:.3e} kkt={:.3e} mu={:?} status={:?}",
+        r.x, r.fx, r.violation, r.kkt_residual, r.mu, r.status
+    );
+    assert_eq!(r.status, ConstrainedStatus::Optimal);
+    // (a) feasibility
+    assert!(r.violation <= 1e-10, "{r:?}");
+    assert!(1.0 - r.x[0] <= 1e-10);
+    // (b) optimality: the Lagrangian gradient vanishes and the multiplier
+    // has the right sign and is exactly the known one.
+    let jg = vec![vec![-1.0]];
+    let gl = lagrangian_grad(&grad(&r.x), &[], &jg, &[], &r.mu);
+    let kkt = inf_norm(&gl);
+    println!("  independent KKT residual {kkt:.3e}");
+    assert!(kkt < 1e-8, "kkt {kkt}");
+    assert!((r.kkt_residual - kkt).abs() < 1e-8, "{r:?}");
+    assert!(r.mu[0] > 0.0, "multiplier sign {:?}", r.mu);
+    assert!((r.mu[0] - 2.0).abs() < 1e-6, "{:?}", r.mu);
+    // complementary slackness: the constraint is active here
+    assert!((r.mu[0] * (1.0 - r.x[0])).abs() < 1e-9);
+    assert!((r.x[0] - 1.0).abs() < 1e-9, "{:?}", r.x);
+    assert!((r.fx - 1.0).abs() < 1e-9);
+}
+
+#[test]
+fn sqp_equality_constrained_quadratic() {
+    // min x^2 + y^2 s.t. x + y = 1 -> (0.5, 0.5), lambda = -1
+    let f = |x: &[f64]| x[0] * x[0] + x[1] * x[1];
+    let grad = |x: &[f64]| vec![2.0 * x[0], 2.0 * x[1]];
+    let eq = |x: &[f64]| vec![x[0] + x[1] - 1.0];
+    let r = sqp(f, Some(&grad), eq, |_| vec![], &[0.0, 0.0], 1e-10, 100);
+    println!(
+        "equality: x={:?} fx={:.12} viol={:.3e} kkt={:.3e} lambda={:?}",
+        r.x, r.fx, r.violation, r.kkt_residual, r.lambda
+    );
+    assert_eq!(r.status, ConstrainedStatus::Optimal);
+    assert!(r.violation <= 1e-10, "{r:?}");
+    assert!((r.x[0] - 0.5).abs() < 1e-9 && (r.x[1] - 0.5).abs() < 1e-9);
+    let jh = vec![vec![1.0, 1.0]];
+    let kkt = inf_norm(&lagrangian_grad(&grad(&r.x), &jh, &[], &r.lambda, &[]));
+    println!("  independent KKT residual {kkt:.3e}");
+    assert!(kkt < 1e-8, "kkt {kkt}");
+    assert!((r.lambda[0] + 1.0).abs() < 1e-6, "{:?}", r.lambda);
+
+    // Both kinds at once: min x^2 + y^2 s.t. x + y = 1, y >= 0.6
+    // -> (0.4, 0.6), lambda = -0.8, mu = 0.4
+    let ineq = |x: &[f64]| vec![0.6 - x[1]];
+    let r = sqp(f, Some(&grad), eq, ineq, &[0.0, 0.0], 1e-10, 100);
+    println!(
+        "mixed: x={:?} viol={:.3e} kkt={:.3e} lambda={:?} mu={:?}",
+        r.x, r.violation, r.kkt_residual, r.lambda, r.mu
+    );
+    assert_eq!(r.status, ConstrainedStatus::Optimal);
+    assert!(r.violation <= 1e-10, "{r:?}");
+    assert!((r.x[0] - 0.4).abs() < 1e-8 && (r.x[1] - 0.6).abs() < 1e-8);
+    let jg = vec![vec![0.0, -1.0]];
+    let kkt = inf_norm(&lagrangian_grad(&grad(&r.x), &jh, &jg, &r.lambda, &r.mu));
+    println!("  independent KKT residual {kkt:.3e}");
+    assert!(kkt < 1e-8, "kkt {kkt}");
+    assert!((r.lambda[0] + 0.8).abs() < 1e-6, "{:?}", r.lambda);
+    assert!((r.mu[0] - 0.4).abs() < 1e-6, "{:?}", r.mu);
+    assert!(r.mu[0] >= 0.0);
+    // complementary slackness: y >= 0.6 is active
+    assert!((r.mu[0] * (0.6 - r.x[1])).abs() < 1e-9);
+}
+
+#[test]
+fn sqp_unconstrained_minimum_infeasible() {
+    // min (x - 2)^2 s.t. x <= 1 -> x = 1, mu = 2. Started from x = 5, which
+    // is infeasible, so the restoration phase has to run first.
+    let f = |x: &[f64]| (x[0] - 2.0).powi(2);
+    let grad = |x: &[f64]| vec![2.0 * (x[0] - 2.0)];
+    let ineq = |x: &[f64]| vec![x[0] - 1.0];
+    for x0 in [5.0, 0.0] {
+        let r = sqp(f, Some(&grad), |_| vec![], ineq, &[x0], 1e-10, 100);
+        println!(
+            "from {x0}: x={:?} fx={:.12} viol={:.3e} kkt={:.3e} mu={:?}",
+            r.x, r.fx, r.violation, r.kkt_residual, r.mu
+        );
+        assert_eq!(r.status, ConstrainedStatus::Optimal);
+        assert!(r.violation <= 1e-10, "{r:?}");
+        assert!((r.x[0] - 1.0).abs() < 1e-9, "{:?}", r.x);
+        assert!((r.fx - 1.0).abs() < 1e-9);
+        let kkt = inf_norm(&lagrangian_grad(&grad(&r.x), &[], &[vec![1.0]], &[], &r.mu));
+        println!("  independent KKT residual {kkt:.3e}");
+        assert!(kkt < 1e-8, "kkt {kkt}");
+        assert!((r.mu[0] - 2.0).abs() < 1e-6, "{:?}", r.mu);
+    }
+}
+
+#[test]
+fn sqp_multiplier_is_the_relaxation_sensitivity() {
+    // min x^4 + x s.t. 1 - x <= 0 -> x = 1, mu = 4x^3 + 1 = 5.
+    // Relaxing the constraint to 1 - x - eps <= 0 moves the optimum to
+    // x = 1 - eps, so df*/deps = -(4(1-eps)^3 + 1) and mu = -df*/deps.
+    let f = |x: &[f64]| x[0].powi(4) + x[0];
+    let grad = |x: &[f64]| vec![4.0 * x[0].powi(3) + 1.0];
+    let base = sqp(
+        f,
+        Some(&grad),
+        |_| vec![],
+        |x: &[f64]| vec![1.0 - x[0]],
+        &[0.0],
+        1e-12,
+        200,
+    );
+    assert_eq!(base.status, ConstrainedStatus::Optimal);
+    let mu = base.mu[0];
+    let eps = 1e-4;
+    let plus = sqp(
+        f,
+        Some(&grad),
+        |_| vec![],
+        |x: &[f64]| vec![1.0 - x[0] - eps],
+        &[0.0],
+        1e-12,
+        200,
+    );
+    let minus = sqp(
+        f,
+        Some(&grad),
+        |_| vec![],
+        |x: &[f64]| vec![1.0 - x[0] + eps],
+        &[0.0],
+        1e-12,
+        200,
+    );
+    assert_eq!(plus.status, ConstrainedStatus::Optimal);
+    assert_eq!(minus.status, ConstrainedStatus::Optimal);
+    assert!((plus.x[0] - (1.0 - eps)).abs() < 1e-8, "{:?}", plus.x);
+    assert!((minus.x[0] - (1.0 + eps)).abs() < 1e-8, "{:?}", minus.x);
+    let sensitivity = (plus.fx - minus.fx) / (2.0 * eps);
+    println!(
+        "sensitivity: mu={mu:.9} -(df*/deps)={:.9} diff={:.3e}",
+        -sensitivity,
+        (mu + sensitivity).abs()
+    );
+    assert!((mu - 5.0).abs() < 1e-6, "{mu}");
+    assert!(
+        (mu + sensitivity).abs() < 1e-6,
+        "mu {mu} vs -df*/deps {}",
+        -sensitivity
+    );
+}
+
+#[test]
+fn sqp_reports_infeasible_problems() {
+    // x >= 1 and x <= 0 cannot both hold.
+    let f = |x: &[f64]| x[0] * x[0];
+    let ineq = |x: &[f64]| vec![1.0 - x[0], x[0]];
+    for x0 in [0.0, 0.5, -3.0, 4.0] {
+        let r = sqp(
+            f,
+            None::<&fn(&[f64]) -> Vec<f64>>,
+            |_| vec![],
+            ineq,
+            &[x0],
+            1e-10,
+            100,
+        );
+        println!(
+            "infeasible from {x0}: status={:?} x={:?} viol={:.3e}",
+            r.status, r.x, r.violation
+        );
+        assert_eq!(r.status, ConstrainedStatus::Infeasible, "{r:?}");
+        assert!(r.violation > 1e-10, "{r:?}");
+    }
+    // contradictory equalities: x = 1 and x = 2
+    let r = sqp(
+        f,
+        None::<&fn(&[f64]) -> Vec<f64>>,
+        |x: &[f64]| vec![x[0] - 1.0, x[0] - 2.0],
+        |_| vec![],
+        &[0.0],
+        1e-10,
+        100,
+    );
+    println!("contradictory eq: status={:?} x={:?}", r.status, r.x);
+    assert_eq!(r.status, ConstrainedStatus::Infeasible, "{r:?}");
+}
+
+#[test]
+fn unconstrained_results_unchanged() {
+    // Snapshot of the unconstrained solvers, which the constrained work
+    // must not perturb: exact equality on the whole result, not a tolerance.
+    // The literals are the values these calls produced before `sqp` was
+    // added; any change to the unconstrained code breaks this test.
+    assert_eq!(
+        bfgs(rosen, Some(&rosen_grad), &[-1.2, 1.0], 1e-8, 200),
+        OptResult {
+            x: vec![1.0000000000029823, 1.0000000000040405],
+            fx: 3.7907795036422755e-22,
+            iterations: 37,
+            evaluations: 64,
+            converged: true,
+        }
+    );
+    assert_eq!(
+        lbfgs(rosen, Some(&rosen_grad), &[-1.2, 1.0], 10, 1e-8, 500),
+        OptResult {
+            x: vec![1.0000000002364082, 1.0000000004871545],
+            fx: 7.644692127531243e-20,
+            iterations: 37,
+            evaluations: 63,
+            converged: true,
+        }
+    );
+    assert_eq!(
+        nelder_mead(rosen, &[-1.2, 1.0], 0.1, 1e-14, 5000),
+        OptResult {
+            x: vec![1.0000000204555615, 1.0000000395486834],
+            fx: 6.04054253567982e-16,
+            iterations: 125,
+            evaluations: 234,
+            converged: true,
+        }
     );
 }

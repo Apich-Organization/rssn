@@ -7,7 +7,9 @@
 //! * Clenshaw-Curtis rules;
 //! * Filon-type quadrature for oscillatory integrands;
 //! * multi-dimensional integration: nested adaptive Gauss-Kronrod, plain
-//!   Monte Carlo and quasi-Monte Carlo with Halton and Sobol sequences;
+//!   Monte Carlo, variance-reduced Monte Carlo (antithetic variates,
+//!   stratification, Gaussian importance sampling) and quasi-Monte Carlo
+//!   with Halton and Sobol sequences;
 //! * adaptive Genz-Malik cubature (embedded degree 7/5 rule,
 //!   error-driven subdivision) on hyperrectangles.
 //!
@@ -50,7 +52,19 @@
 //! * No oscillatory (Filon/Levin) rule exists in more than one dimension, and
 //!   no tanh-sinh rule for fractional endpoint singularities.
 //! * The Monte Carlo rules are deterministic for a fixed seed, but their
-//!   error is statistical and not controlled by a tolerance.
+//!   error is statistical and not controlled by a tolerance; the reported
+//!   error is a sample standard error, not an enclosure. Variance reduction
+//!   lowers the constant of the `1/sqrt(n)` rate and not the rate itself.
+//!   Antithetic variates help only an integrand that is monotone along the
+//!   sampled axes, and can lose slightly on one symmetric about the centre
+//!   of the box. Stratification helps only while a cell resolves the
+//!   integrand: on a discontinuity finer than the cells the variance is
+//!   unchanged, and the cost is `strata^dim` cells. Importance sampling is
+//!   unbiased for any shift, but the weight variance grows and the effective
+//!   sample size collapses as the proposal moves away from the target, and
+//!   the proposal must dominate the target in the tails. Importance sampling
+//!   here is univariate Gaussian only, with no multivariate or adaptive
+//!   proposal, and no variance-reduced rule has a parallel variant.
 //!
 //! The one-dimensional rules are unaffected by the cubature: they share no
 //! state, and [`integrate`] / [`integrate_gk`] return the same values as
@@ -842,6 +856,260 @@ pub fn monte_carlo<F: Fn(&[f64]) -> f64>(
     }
 }
 
+/// Antithetic-variate Monte Carlo integral over `[lo, hi]`.
+///
+/// Each of the `pairs` iterations draws one uniform point `u` and evaluates
+/// the integrand at both `u` and its reflection `1 - u` in every axis; the
+/// estimator is the mean of the `pairs` pair averages, so it costs
+/// `2 * pairs` evaluations. Both points are marginally uniform, hence the
+/// estimator is unbiased whatever the correlation between them. For an
+/// integrand that is monotone along the sampled axes the two evaluations are
+/// negatively correlated and the variance is below that of
+/// [`monte_carlo`] with the same number of evaluations; for an integrand
+/// that is symmetric about the centre of the box the correlation is positive
+/// and the variance can be slightly worse.
+///
+/// The reported error is the standard error of the pair averages, which is
+/// the correct standard error of this estimator and already accounts for the
+/// correlation.
+#[must_use]
+pub fn monte_carlo_antithetic<F: Fn(&[f64]) -> f64>(
+    f: F,
+    lo: &[f64],
+    hi: &[f64],
+    pairs: usize,
+    seed: u64,
+) -> Integral {
+    let dim = lo.len();
+    let vol: f64 = lo.iter().zip(hi).map(|(a, b)| b - a).product();
+    let mut rng = Rng::new(seed);
+    let mut x = Vec::with_capacity(dim);
+    let mut y = Vec::with_capacity(dim);
+    let (mut s, mut s2) = (0.0, 0.0);
+    for _ in 0..pairs {
+        x.clear();
+        y.clear();
+        for (&a, &b) in lo.iter().zip(hi) {
+            let u = rng.uniform();
+            x.push(a + (b - a) * u);
+            y.push(a + (b - a) * (1.0 - u));
+        }
+        let g = f64::midpoint(f(&x), f(&y));
+        s += g;
+        s2 += g * g;
+    }
+    let nf = pairs as f64;
+    let mean = s / nf;
+    let mean_sq = mean * mean;
+    let var = (s2 / nf - mean_sq).max(0.0);
+    Integral {
+        value: vol * mean,
+        error: vol * (var / nf).sqrt(),
+        evaluations: pairs.saturating_mul(2),
+        converged: true,
+    }
+}
+
+/// Stratified Monte Carlo integral over `[lo, hi]`.
+///
+/// Every axis is cut into `strata_per_axis` equal cells, so the box has
+/// `strata_per_axis^dim` strata and each stratum receives `per_stratum`
+/// uniform samples. The estimator is the volume-weighted sum of the stratum
+/// means and the error is the root of the sum of the squared stratum
+/// standard errors, which is unbiased and never assumes that the strata are
+/// equally variable.
+///
+/// Stratification removes the between-stratum part of the variance, so it
+/// pays when the integrand is smooth on the scale of a cell (the within-cell
+/// variance falls like the square of the cell width) and buys nothing when
+/// the integrand varies inside every cell, as a discontinuity finer than the
+/// grid does. The cost is exponential in the dimension: `strata^dim *
+/// per_stratum` evaluations. Arguments below one are treated as one.
+///
+/// Returns `converged = false` with a `NaN` value and no evaluations when
+/// `strata_per_axis^dim * per_stratum` does not fit in a `usize`.
+#[must_use]
+pub fn monte_carlo_stratified<F: Fn(&[f64]) -> f64>(
+    f: F,
+    lo: &[f64],
+    hi: &[f64],
+    strata_per_axis: usize,
+    per_stratum: usize,
+    seed: u64,
+) -> Integral {
+    let dim = lo.len();
+    let k = strata_per_axis.max(1);
+    let m = per_stratum.max(1);
+    let degenerate = Integral {
+        value: f64::NAN,
+        error: f64::INFINITY,
+        evaluations: 0,
+        converged: false,
+    };
+    let Some(total) = k.checked_pow(dim as u32) else {
+        return degenerate;
+    };
+    let Some(evals) = total.checked_mul(m) else {
+        return degenerate;
+    };
+    let vol: f64 = lo.iter().zip(hi).map(|(a, b)| b - a).product();
+    let cell_vol = vol / total as f64;
+    let kf = k as f64;
+    let mut rng = Rng::new(seed);
+    let mut cell = vec![0usize; dim];
+    let mut x = Vec::with_capacity(dim);
+    let (mut value, mut variance) = (0.0, 0.0);
+    for s in 0..total {
+        let mut rest = s;
+        for slot in cell.iter_mut().rev() {
+            *slot = rest % k;
+            rest /= k;
+        }
+        let (mut sum, mut sum2) = (0.0, 0.0);
+        for _ in 0..m {
+            x.clear();
+            for ((&a, &b), &i) in lo.iter().zip(hi).zip(cell.iter()) {
+                let h = (b - a) / kf;
+                x.push(a + (i as f64 + rng.uniform()) * h);
+            }
+            let v = f(&x);
+            sum += v;
+            sum2 += v * v;
+        }
+        let mf = m as f64;
+        let mean = sum / mf;
+        let mean_sq = mean * mean;
+        let var = (sum2 / mf - mean_sq).max(0.0);
+        value += cell_vol * mean;
+        variance += cell_vol * cell_vol * var / mf;
+    }
+    Integral {
+        value,
+        error: variance.sqrt(),
+        evaluations: evals,
+        converged: true,
+    }
+}
+
+/// Normalised univariate Gaussian density `N(mean, sd^2)`, used as the target
+/// or the proposal of [`importance_sampling_gaussian`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gaussian {
+    /// Mean of the distribution.
+    pub mean: f64,
+    /// Standard deviation. It must be positive; it is not checked, and a
+    /// non-positive value makes [`Gaussian::pdf`] return a non-finite number.
+    pub sd: f64,
+}
+
+impl Gaussian {
+    /// Creates a Gaussian with the given mean and standard deviation.
+    #[must_use]
+    pub const fn new(
+        mean: f64,
+        sd: f64,
+    ) -> Self {
+        Self { mean, sd }
+    }
+
+    /// Density at `x`.
+    #[must_use]
+    pub fn pdf(
+        self,
+        x: f64,
+    ) -> f64 {
+        let z = (x - self.mean) / self.sd;
+        (-0.5 * z * z).exp() / (self.sd * (2.0 * PI).sqrt())
+    }
+
+    /// Draws one sample with `rng`.
+    pub fn sample(
+        self,
+        rng: &mut Rng,
+    ) -> f64 {
+        self.mean + self.sd * rng.normal()
+    }
+
+    /// Importance weight `target(x) / proposal(x)` of a point `x` drawn from
+    /// `proposal` when `self` is the target density.
+    ///
+    /// The weight has mean one under the proposal whenever the proposal has
+    /// the same support, which is what makes the estimator of
+    /// [`importance_sampling_gaussian`] unbiased.
+    #[must_use]
+    pub fn weight(
+        self,
+        proposal: Self,
+        x: f64,
+    ) -> f64 {
+        self.pdf(x) / proposal.pdf(x)
+    }
+}
+
+/// Importance-sampling estimate and the effective sample size of its weights.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ImportanceSample {
+    /// Weighted estimate of `∫ f dP_target` and its standard error.
+    pub integral: Integral,
+    /// Effective sample size `(Σ w)^2 / Σ w^2` of the weights, between 1 and
+    /// the number of draws. It falls as the proposal moves away from the
+    /// target and is the honest diagnostic of how much of the sample the
+    /// estimate actually uses.
+    pub ess: f64,
+}
+
+/// Importance-sampling estimate of `∫ f(x) p_target(x) dx`.
+///
+/// Draws `n` points from `proposal` and averages `f(x) * p_target(x) /
+/// p_proposal(x)`. Because the weight has mean one under the proposal, the
+/// estimator is unbiased for the target integral whatever the shift; what
+/// the shift costs is variance, visible in the effective sample size. The
+/// proposal must be non-degenerate and have at least the support of the
+/// target, otherwise the weights are not finite and the estimate is not
+/// defined.
+///
+/// The error is the sample standard error of the weighted terms, and the
+/// effective sample size is `(Σ w)^2 / Σ w^2`.
+#[must_use]
+pub fn importance_sampling_gaussian<F: Fn(f64) -> f64>(
+    f: F,
+    target: Gaussian,
+    proposal: Gaussian,
+    n: usize,
+    seed: u64,
+) -> ImportanceSample {
+    let mut rng = Rng::new(seed);
+    let (mut sum_w, mut sum_w2) = (0.0, 0.0);
+    let (mut sum_g, mut sum_g2) = (0.0, 0.0);
+    for _ in 0..n {
+        let x = proposal.sample(&mut rng);
+        let w = target.weight(proposal, x);
+        let g = f(x) * w;
+        sum_w += w;
+        sum_w2 += w * w;
+        sum_g += g;
+        sum_g2 += g * g;
+    }
+    let nf = n as f64;
+    let mean = sum_g / nf;
+    let mean_sq = mean * mean;
+    let var = (sum_g2 / nf - mean_sq).max(0.0);
+    let ess = if sum_w2 > 0.0 {
+        sum_w * sum_w / sum_w2
+    } else {
+        0.0
+    };
+    ImportanceSample {
+        integral: Integral {
+            value: mean,
+            error: (var / nf).sqrt(),
+            evaluations: n,
+            converged: true,
+        },
+        ess,
+    }
+}
+
 /// Nested adaptive Gauss-Kronrod cubature over the box `[lo, hi]`
 /// (practical up to about four dimensions).
 pub fn cubature_nested<F: Fn(&[f64]) -> f64>(
@@ -1602,5 +1870,232 @@ mod quad_cubature_tests {
             "{name}: expected the tensor rule ({m}x{m} = {evals}) to beat {}",
             r.evaluations
         );
+    }
+}
+
+#[cfg(test)]
+mod monte_variance_tests {
+    //! Statistical verification of the variance-reduced Monte Carlo rules.
+    //!
+    //! Each estimator is run `M = 200` times with independent seeds; the
+    //! empirical variance of those replicates is the quantity compared, never
+    //! a single run. The reference integrands are fixed and their exact values
+    //! are known: `exp(x)` and `x` on `[0, 1]`, a square wave of one period per
+    //! stratum, and `x^2` against a standard Gaussian target.
+
+    #![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+    #![allow(clippy::single_call_fn)]
+
+    use super::*;
+
+    /// Independent replicates per estimator.
+    const M: usize = 200;
+
+    /// Mean and empirical variance of `M` replicates produced by `run`.
+    fn replicate(mut run: impl FnMut(u64) -> f64) -> (f64, f64) {
+        let mut vals = Vec::with_capacity(M);
+        for i in 0..M {
+            vals.push(run(
+                0x5EED_0000_u64.wrapping_add((i as u64).wrapping_mul(7919))
+            ));
+        }
+        let nf = M as f64;
+        let mean = vals.iter().sum::<f64>() / nf;
+        let var = vals.iter().map(|v| (v - mean) * (v - mean)).sum::<f64>() / (nf - 1.0);
+        (mean, var)
+    }
+
+    /// 95% interval for the ratio of two independent variance estimates of
+    /// `M` replicates each, from the delta method on the log ratio
+    /// (`2 / (M - 1)` variance per log-variance estimate).
+    fn ratio_ci(ratio: f64) -> (f64, f64) {
+        let se = (4.0 / (M as f64 - 1.0)).sqrt();
+        (ratio * (-1.96 * se).exp(), ratio * (1.96 * se).exp())
+    }
+
+    /// Bias of the mean of `M` replicates, in standard errors.
+    fn bias_z(
+        mean: f64,
+        var: f64,
+        exact: f64,
+    ) -> f64 {
+        (mean - exact) / (var / M as f64).sqrt()
+    }
+
+    #[test]
+    fn monte_plain_value_is_bit_identical() {
+        let f = |x: &[f64]| (3.0 * x[0]).exp() + x[1] * x[1];
+        let r = monte_carlo(f, &[0.0, 0.0], &[1.0, 2.0], 4096, 42);
+        eprintln!("plain: {:.17e} bits {:#018x}", r.value, r.value.to_bits());
+        assert_eq!(
+            r.value.to_bits(),
+            0x402f_4c16_af10_d2ee,
+            "value {:.17e}",
+            r.value
+        );
+    }
+
+    #[test]
+    fn monte_antithetic_reduces_variance_and_stays_unbiased() {
+        let exact = std::f64::consts::E - 1.0;
+        let f = |x: &[f64]| x[0].exp();
+        let n = 8192;
+        let (plain_mean, plain_var) =
+            replicate(|seed| monte_carlo(f, &[0.0], &[1.0], n, seed).value);
+        let (anti_mean, anti_var) =
+            replicate(|seed| monte_carlo_antithetic(f, &[0.0], &[1.0], n / 2, seed).value);
+        let ratio = anti_var / plain_var;
+        let (lo, hi) = ratio_ci(ratio);
+        eprintln!(
+            "antithetic: plain var {plain_var:.3e}, antithetic var {anti_var:.3e}, \
+             ratio {ratio:.4} [{lo:.4}, {hi:.4}]"
+        );
+        eprintln!(
+            "antithetic: bias z plain {:.2}, antithetic {:.2}",
+            bias_z(plain_mean, plain_var, exact),
+            bias_z(anti_mean, anti_var, exact)
+        );
+        assert!(hi < 0.1, "ratio {ratio:.4} [{lo:.4}, {hi:.4}]");
+        assert_eq!(
+            monte_carlo_antithetic(f, &[0.0], &[1.0], n / 2, 42).evaluations,
+            n
+        );
+        assert!(bias_z(plain_mean, plain_var, exact).abs() < 3.0);
+        assert!(bias_z(anti_mean, anti_var, exact).abs() < 3.0);
+    }
+
+    #[test]
+    fn monte_stratified_helps_a_smooth_integrand() {
+        let exact = 0.5;
+        let f = |x: &[f64]| x[0];
+        let (k, m) = (8usize, 1000usize);
+        let n = k * m;
+        let (plain_mean, plain_var) =
+            replicate(|seed| monte_carlo(f, &[0.0], &[1.0], n, seed).value);
+        let (strat_mean, strat_var) =
+            replicate(|seed| monte_carlo_stratified(f, &[0.0], &[1.0], k, m, seed).value);
+        let ratio = strat_var / plain_var;
+        let (lo, hi) = ratio_ci(ratio);
+        eprintln!(
+            "stratified smooth: plain var {plain_var:.3e}, stratified var {strat_var:.3e}, \
+             ratio {ratio:.4} [{lo:.4}, {hi:.4}]"
+        );
+        eprintln!(
+            "stratified smooth: bias z plain {:.2}, stratified {:.2}",
+            bias_z(plain_mean, plain_var, exact),
+            bias_z(strat_mean, strat_var, exact)
+        );
+        // The within-cell variance of `x` is `h^2 / 12`, so the ratio is
+        // `1 / k^2 = 1/64` up to the noise of the empirical variances.
+        assert!(hi < 0.05, "ratio {ratio:.4} [{lo:.4}, {hi:.4}]");
+        assert_eq!(
+            monte_carlo_stratified(f, &[0.0], &[1.0], k, m, 42).evaluations,
+            n
+        );
+        assert!(bias_z(plain_mean, plain_var, exact).abs() < 3.0);
+        assert!(bias_z(strat_mean, strat_var, exact).abs() < 3.0);
+    }
+
+    #[test]
+    fn monte_stratified_cannot_help_a_discontinuity_finer_than_the_cells() {
+        // One period of the square wave per cell: every cell sees the full
+        // variance of the integrand, so stratification has nothing to remove.
+        let exact = 0.5;
+        let f = |x: &[f64]| {
+            if (8.0 * x[0]).fract() < 0.5 {
+                1.0
+            } else {
+                0.0
+            }
+        };
+        let (k, m) = (8usize, 1000usize);
+        let n = k * m;
+        let (plain_mean, plain_var) =
+            replicate(|seed| monte_carlo(f, &[0.0], &[1.0], n, seed).value);
+        let (strat_mean, strat_var) =
+            replicate(|seed| monte_carlo_stratified(f, &[0.0], &[1.0], k, m, seed).value);
+        let ratio = strat_var / plain_var;
+        let (lo, hi) = ratio_ci(ratio);
+        eprintln!(
+            "stratified discontinuous: plain var {plain_var:.3e}, stratified var {strat_var:.3e}, \
+             ratio {ratio:.4} [{lo:.4}, {hi:.4}]"
+        );
+        eprintln!(
+            "stratified discontinuous: bias z plain {:.2}, stratified {:.2}",
+            bias_z(plain_mean, plain_var, exact),
+            bias_z(strat_mean, strat_var, exact)
+        );
+        // No gain: the ratio is one within the noise of the variance estimates.
+        assert!(
+            (0.6..1.6).contains(&ratio),
+            "ratio {ratio:.4} [{lo:.4}, {hi:.4}]"
+        );
+        assert!(
+            lo < 1.0 && hi > 1.0,
+            "interval [{lo:.4}, {hi:.4}] excludes one"
+        );
+        assert!(bias_z(plain_mean, plain_var, exact).abs() < 3.0);
+        assert!(bias_z(strat_mean, strat_var, exact).abs() < 3.0);
+    }
+
+    #[test]
+    fn monte_importance_weights_ess_and_bias() {
+        let target = Gaussian::new(0.0, 1.0);
+        let n = 200_000;
+
+        // The weight has mean one under the proposal, for every shift.
+        for shift in [0.5, 1.0, 1.5] {
+            let proposal = Gaussian::new(shift, 1.0);
+            let mut rng = Rng::new(4242);
+            let (mut sum, mut sum2) = (0.0, 0.0);
+            for _ in 0..n {
+                let w = target.weight(proposal, proposal.sample(&mut rng));
+                sum += w;
+                sum2 += w * w;
+            }
+            let nf = n as f64;
+            let mean = sum / nf;
+            let mean_sq = mean * mean;
+            let var = (sum2 / nf - mean_sq).max(0.0);
+            let z = (mean - 1.0) / (var / nf).sqrt();
+            eprintln!("importance shift {shift}: mean weight {mean:.6}, z {z:.2}");
+            assert!(z.abs() < 3.5, "shift {shift}: mean weight {mean}, z {z}");
+        }
+
+        // The effective sample size falls as the shift grows, and at a shift
+        // of one it matches the lognormal prediction `n * exp(-shift^2)`.
+        let f = |x: f64| x * x;
+        let mut ess = Vec::new();
+        for shift in [0.0, 0.5, 1.0, 1.5, 2.0, 3.0] {
+            let s = importance_sampling_gaussian(f, target, Gaussian::new(shift, 1.0), n, 7);
+            eprintln!(
+                "importance shift {shift}: value {:.5} +/- {:.5}, ESS {:.0} ({:.4} of n)",
+                s.integral.value,
+                s.integral.error,
+                s.ess,
+                s.ess / n as f64
+            );
+            ess.push(s.ess);
+        }
+        for pair in ess.windows(2) {
+            assert!(pair[1] < pair[0], "ESS not decreasing: {ess:?}");
+        }
+        let predicted = n as f64 * (-1.0_f64).exp();
+        assert!(
+            (ess[2] / predicted - 1.0).abs() < 0.1,
+            "ESS at shift 1: {}, predicted {predicted}",
+            ess[2]
+        );
+
+        // Unbiased over 200 replicates at a shift of one: `f = x^2` has
+        // target mean one.
+        let (mean, var) = replicate(|seed| {
+            importance_sampling_gaussian(f, target, Gaussian::new(1.0, 1.0), 5000, seed)
+                .integral
+                .value
+        });
+        let z = bias_z(mean, var, 1.0);
+        eprintln!("importance shift 1: mean {mean:.5}, var {var:.3e}, bias z {z:.2}");
+        assert!(z.abs() < 3.0, "bias z {z}");
     }
 }

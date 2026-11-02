@@ -1,6 +1,6 @@
 //! # Sparse matrices and Krylov solvers
 //!
-//! A compressed-sparse-row matrix ([`Csr`]), Jacobi and ILU(0)
+//! A compressed-sparse-row matrix ([`Csr`]), Jacobi, ILU(0) and IC(0)
 //! preconditioners, and the iterative solvers conjugate gradients (CG),
 //! restarted GMRES and BiCGSTAB, all matrix-free: they only need a
 //! matrix-vector product closure.
@@ -15,6 +15,28 @@
 //!
 //! Parallelism: [`Csr::matvec`] processes blocks of 512 rows concurrently from 60000 nonzeros on
 //! (every row is an independent sequential dot product, so the product is bit-identical).
+//!
+//! # Limitations
+//!
+//! * The incomplete factorisations are zero-fill on the pattern of `A`: ILU(0)
+//!   ([`Csr::ilu0`]) and IC(0) ([`Csr::ic0`]). There is no ILU(k), no
+//!   threshold dropping and no pivoting, so a structurally or numerically
+//!   zero pivot makes the factorisation fail with `None` instead of producing
+//!   NaN. Callers must then fall back to [`Preconditioner::Jacobi`] or
+//!   [`Preconditioner::None`]; no automatic fallback is performed.
+//! * [`Csr::ic0`] reads only the lower triangle and assumes symmetry; on a
+//!   nonsymmetric or indefinite matrix it either returns `None` (non-positive
+//!   pivot) or is not a valid preconditioner. Neither solver checks that the
+//!   operator is SPD, so CG can still stagnate on a matrix that is not.
+//! * Preconditioners are applied as operators (one forward and one backward
+//!   triangular solve); no dense inverse is formed. Those solves are
+//!   sequential within a row, so they are not parallelised.
+//! * ILU(0)/IC(0) reduce the iteration count but do not make the iteration
+//!   count independent of the mesh size: on a 2-D Poisson problem CG still
+//!   needs `O(sqrt(h^-1))` iterations, unlike a multigrid cycle.
+//! * The sparse direct solver ([`Csr::sparse_lu`]) is the fallback for
+//!   matrices on which the incomplete factorisation breaks down, at the cost
+//!   of fill-in and `O(nnz(LU))` memory.
 
 /// Compressed sparse row matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -131,7 +153,16 @@ impl Csr {
     }
 
     /// ILU(0) factorisation (incomplete LU keeping the sparsity pattern).
-    /// Returns `None` if a zero pivot is met.
+    ///
+    /// The factors are stored in the pattern of `A`: the strictly lower
+    /// entries of `L` (unit diagonal) and the entries of `U` in the same
+    /// arrays. No fill is created and no pivoting is performed.
+    ///
+    /// # Returns
+    /// `None` when the matrix has no entry on the diagonal of some row or
+    /// when a zero pivot is met (structurally or after elimination). The
+    /// factorisation never returns `NaN`: on `None` the caller keeps the
+    /// unpreconditioned path or falls back to [`Csr::jacobi_inverse`].
     #[must_use]
     pub fn ilu0(&self) -> Option<Ilu0> {
         let n = self.rows;
@@ -209,6 +240,145 @@ impl Ilu0 {
     }
 }
 
+impl Csr {
+    /// IC(0) factorisation `A ≈ L D L^T` (incomplete Cholesky without fill).
+    ///
+    /// The lower triangular factor uses the strictly lower pattern of `A`;
+    /// the upper triangle of `A` is ignored, so the matrix must be symmetric
+    /// and positive definite for `M = L D L^T` to be a valid CG
+    /// preconditioner. On a symmetric matrix this is the same operator as
+    /// [`Csr::ilu0`] written as `L D L^T` instead of `L U`.
+    ///
+    /// # Returns
+    /// `None` when the diagonal is missing in some row or when a pivot `d_i`
+    /// is not positive (zero pivot, indefinite matrix, or round-off that
+    /// destroys positivity). No `NaN` is produced; the caller falls back to
+    /// [`Csr::jacobi_inverse`] or to the unpreconditioned path.
+    #[must_use]
+    pub fn ic0(&self) -> Option<Ic0> {
+        let n = self.rows;
+        if self.cols != n {
+            return None;
+        }
+        let mut diag = vec![0usize; n];
+        for i in 0..n {
+            diag[i] = (self.indptr[i]..self.indptr[i + 1]).find(|&k| self.indices[k] == i)?;
+        }
+        // `l` starts as a copy of `A`: its strictly lower entries are
+        // overwritten by `L`, its upper entries are never read.
+        let mut l = self.values.clone();
+        let mut d = vec![0.0; n];
+        let mut pos = vec![usize::MAX; n];
+        for i in 0..n {
+            for k in self.indptr[i]..self.indptr[i + 1] {
+                pos[self.indices[k]] = k;
+            }
+            let mut acc = 0.0;
+            for k in self.indptr[i]..diag[i] {
+                let j = self.indices[k];
+                let mut s = self.values[k];
+                for kk in self.indptr[j]..diag[j] {
+                    let p = pos[self.indices[kk]];
+                    if p != usize::MAX && p < diag[i] {
+                        s -= l[p] * d[self.indices[kk]] * l[kk];
+                    }
+                }
+                let dj = d[j];
+                if !dj.is_finite() || dj <= 0.0 {
+                    return None;
+                }
+                l[k] = s / dj;
+                acc += l[k] * l[k] * dj;
+            }
+            let di = self.values[diag[i]] - acc;
+            if !di.is_finite() || di <= 0.0 {
+                return None;
+            }
+            d[i] = di;
+            for k in self.indptr[i]..self.indptr[i + 1] {
+                pos[self.indices[k]] = usize::MAX;
+            }
+        }
+        // Transpose of the strictly lower factor, for the backward solve.
+        let mut lt = Self {
+            rows: n,
+            cols: n,
+            indptr: vec![0; n + 1],
+            indices: Vec::new(),
+            values: Vec::new(),
+        };
+        for i in 0..n {
+            for k in self.indptr[i]..diag[i] {
+                lt.indptr[self.indices[k] + 1] += 1;
+            }
+        }
+        for i in 0..n {
+            lt.indptr[i + 1] += lt.indptr[i];
+        }
+        lt.indices = vec![0; lt.indptr[n]];
+        lt.values = vec![0.0; lt.indptr[n]];
+        let mut next = lt.indptr.clone();
+        for i in 0..n {
+            for k in self.indptr[i]..diag[i] {
+                let c = self.indices[k];
+                let p = next[c];
+                next[c] += 1;
+                lt.indices[p] = i;
+                lt.values[p] = l[k];
+            }
+        }
+        Some(Ic0 {
+            l: Self {
+                values: l,
+                ..self.clone()
+            },
+            diag,
+            lt,
+            d,
+        })
+    }
+}
+
+/// IC(0) factors `M = L D L^T` stored on the pattern of `A`.
+#[derive(Debug, Clone)]
+pub struct Ic0 {
+    l: Csr,
+    diag: Vec<usize>,
+    lt: Csr,
+    d: Vec<f64>,
+}
+
+impl Ic0 {
+    /// Applies the preconditioner `M^-1 = L^-T D^-1 L^-1` by one forward
+    /// substitution, a diagonal scaling and one backward substitution.
+    pub fn apply(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
+        let n = self.l.rows;
+        // L u = r (unit diagonal), then u <- D^-1 u.
+        for i in 0..n {
+            let mut s = r[i];
+            for k in self.l.indptr[i]..self.diag[i] {
+                s -= self.l.values[k] * z[self.l.indices[k]];
+            }
+            z[i] = s;
+        }
+        for (zi, di) in z.iter_mut().zip(&self.d) {
+            *zi /= di;
+        }
+        // L^T z = u.
+        for i in (0..n).rev() {
+            let mut s = z[i];
+            for k in self.lt.indptr[i]..self.lt.indptr[i + 1] {
+                s -= self.lt.values[k] * z[self.lt.indices[k]];
+            }
+            z[i] = s;
+        }
+    }
+}
+
 /// Outcome of an iterative solve.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IterResult {
@@ -239,6 +409,117 @@ pub const fn identity_precond(
     z: &mut [f64],
 ) {
     z.copy_from_slice(r);
+}
+
+/// Preconditioner selection for [`cg_with`], [`gmres_with`] and
+/// [`bicgstab_with`].
+///
+/// The variant is only a selector: [`Preconditioner::apply`] runs the
+/// operator (a copy for [`Preconditioner::None`], one triangular sweep per
+/// level for the incomplete factors), so no dense inverse is ever formed.
+#[derive(Debug, Clone, Copy)]
+pub enum Preconditioner<'a> {
+    /// No preconditioner: the unpreconditioned solver path, unchanged.
+    None,
+    /// Diagonal scaling; the slice holds the inverse diagonal
+    /// ([`Csr::jacobi_inverse`]).
+    Jacobi(&'a [f64]),
+    /// ILU(0) factors of a general (possibly nonsymmetric) matrix
+    /// ([`Csr::ilu0`]).
+    Ilu0(&'a Ilu0),
+    /// IC(0) factors of a symmetric positive definite matrix
+    /// ([`Csr::ic0`]).
+    Ic0(&'a Ic0),
+}
+
+impl Preconditioner<'_> {
+    /// Writes `M^-1 r` into `z`.
+    pub fn apply(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
+        match *self {
+            | Self::None => {
+                z.copy_from_slice(r);
+            },
+            | Self::Jacobi(inv) => {
+                for ((zi, ri), di) in z.iter_mut().zip(r).zip(inv) {
+                    *zi = ri * di;
+                }
+            },
+            | Self::Ilu0(f) => f.apply(r, z),
+            | Self::Ic0(f) => f.apply(r, z),
+        }
+    }
+}
+
+/// Conjugate gradients with an explicit [`Preconditioner`].
+///
+/// [`Preconditioner::None`] dispatches to [`cg`] with [`identity_precond`],
+/// so the unpreconditioned result is unchanged bit for bit.
+pub fn cg_with<A>(
+    apply: A,
+    precond: &Preconditioner<'_>,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
+where
+    A: Fn(&[f64], &mut [f64]),
+{
+    match *precond {
+        | Preconditioner::None => cg(apply, identity_precond, b, x0, tol, max_iter),
+        | _ => cg(apply, |r, z| precond.apply(r, z), b, x0, tol, max_iter),
+    }
+}
+
+/// Restarted GMRES with an explicit [`Preconditioner`]; see [`gmres`].
+pub fn gmres_with<A>(
+    apply: A,
+    precond: &Preconditioner<'_>,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    restart: usize,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
+where
+    A: Fn(&[f64], &mut [f64]),
+{
+    match *precond {
+        | Preconditioner::None => gmres(apply, identity_precond, b, x0, restart, tol, max_iter),
+        | _ => {
+            gmres(
+                apply,
+                |r, z| precond.apply(r, z),
+                b,
+                x0,
+                restart,
+                tol,
+                max_iter,
+            )
+        },
+    }
+}
+
+/// `BiCGSTAB` with an explicit [`Preconditioner`]; see [`bicgstab`].
+pub fn bicgstab_with<A>(
+    apply: A,
+    precond: &Preconditioner<'_>,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    tol: f64,
+    max_iter: usize,
+) -> IterResult
+where
+    A: Fn(&[f64], &mut [f64]),
+{
+    match *precond {
+        | Preconditioner::None => bicgstab(apply, identity_precond, b, x0, tol, max_iter),
+        | _ => bicgstab(apply, |r, z| precond.apply(r, z), b, x0, tol, max_iter),
+    }
 }
 
 /// Preconditioned conjugate gradients for SPD operators.
@@ -974,5 +1255,470 @@ impl SparseLu {
             x[self.perm[i]] = w[i];
         }
         x
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 5-point Laplacian on an `m x m` grid with homogeneous Dirichlet data:
+    /// `4` on the diagonal and `-1` on the four grid neighbours.
+    fn poisson2d(m: usize) -> Csr {
+        let mut t = Vec::with_capacity(5 * m * m);
+        for i in 0..m {
+            for j in 0..m {
+                let r = i * m + j;
+                t.push((r, r, 4.0));
+                if i > 0 {
+                    t.push((r, r - m, -1.0));
+                }
+                if i + 1 < m {
+                    t.push((r, r + m, -1.0));
+                }
+                if j > 0 {
+                    t.push((r, r - 1, -1.0));
+                }
+                if j + 1 < m {
+                    t.push((r, r + 1, -1.0));
+                }
+            }
+        }
+        Csr::from_triplets(m * m, m * m, &t)
+    }
+
+    fn rhs(n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|i| ((i * 7919 % 101) as f64) / 50.0 - 1.0)
+            .collect()
+    }
+
+    fn dense(a: &Csr) -> Vec<Vec<f64>> {
+        let n = a.rows;
+        let mut out = vec![vec![0.0; n]; n];
+        for j in 0..n {
+            let mut e = vec![0.0; n];
+            e[j] = 1.0;
+            let mut col = vec![0.0; n];
+            a.matvec(&e, &mut col);
+            for i in 0..n {
+                out[i][j] = col[i];
+            }
+        }
+        out
+    }
+
+    fn matmul(
+        l: &[Vec<f64>],
+        u: &[Vec<f64>],
+    ) -> Vec<Vec<f64>> {
+        let n = l.len();
+        let mut p = vec![vec![0.0; n]; n];
+        for i in 0..n {
+            for k in 0..n {
+                let lik = l[i][k];
+                if lik != 0.0 {
+                    for j in 0..n {
+                        p[i][j] += lik * u[k][j];
+                    }
+                }
+            }
+        }
+        p
+    }
+
+    /// Exact eigenvalues of the 5-point Laplacian on an `m x m` grid, used as
+    /// the condition-number proxy `lambda_max / lambda_min`.
+    fn poisson_condition(m: usize) -> f64 {
+        let theta = std::f64::consts::PI / (m as f64 + 1.0);
+        let lam_min = 4.0 - 4.0 * theta.cos();
+        let lam_max = 4.0 + 4.0 * theta.cos();
+        lam_max / lam_min
+    }
+
+    fn rel_residual(
+        a: &Csr,
+        x: &[f64],
+        b: &[f64],
+    ) -> f64 {
+        let mut ax = vec![0.0; b.len()];
+        a.matvec(x, &mut ax);
+        let num: f64 = ax
+            .iter()
+            .zip(b)
+            .map(|(p, q)| (p - q) * (p - q))
+            .sum::<f64>()
+            .sqrt();
+        let den: f64 = b.iter().map(|q| q * q).sum::<f64>().sqrt();
+        num / den.max(f64::MIN_POSITIVE)
+    }
+
+    /// Textbook unpreconditioned CG, kept independent of [`cg`] so the
+    /// identity-preconditioner path can be compared bit for bit.
+    fn reference_cg(
+        a: &Csr,
+        b: &[f64],
+        tol: f64,
+        max_iter: usize,
+    ) -> (Vec<f64>, usize) {
+        let n = b.len();
+        let mut x = vec![0.0; n];
+        let mut ax = vec![0.0; n];
+        a.matvec(&x, &mut ax);
+        let mut r: Vec<f64> = (0..n).map(|i| b[i] - ax[i]).collect();
+        let mut p = r.clone();
+        let mut rs = r.iter().map(|v| v * v).sum::<f64>();
+        let bn = b
+            .iter()
+            .map(|v| v * v)
+            .sum::<f64>()
+            .sqrt()
+            .max(f64::MIN_POSITIVE);
+        let mut it = 0;
+        while it < max_iter && rs.sqrt() / bn > tol {
+            let mut ap = vec![0.0; n];
+            a.matvec(&p, &mut ap);
+            let alpha = rs / p.iter().zip(&ap).map(|(u, v)| u * v).sum::<f64>();
+            for i in 0..n {
+                x[i] += alpha * p[i];
+                r[i] -= alpha * ap[i];
+            }
+            let rs_new = r.iter().map(|v| v * v).sum::<f64>();
+            let beta = rs_new / rs;
+            for i in 0..n {
+                p[i] = r[i] + beta * p[i];
+            }
+            rs = rs_new;
+            it += 1;
+        }
+        (x, it)
+    }
+
+    /// `L U` of an ILU(0) factor, as a dense matrix.
+    fn ilu_dense(f: &Ilu0) -> Vec<Vec<f64>> {
+        let n = f.a.rows;
+        let mut l = vec![vec![0.0; n]; n];
+        let mut u = vec![vec![0.0; n]; n];
+        for i in 0..n {
+            l[i][i] = 1.0;
+            for k in f.a.indptr[i]..f.a.indptr[i + 1] {
+                let j = f.a.indices[k];
+                if j < i {
+                    l[i][j] = f.a.values[k];
+                } else {
+                    u[i][j] = f.a.values[k];
+                }
+            }
+        }
+        matmul(&l, &u)
+    }
+
+    /// `L D L^T` of an IC(0) factor, as a dense matrix.
+    fn ic0_dense(f: &Ic0) -> Vec<Vec<f64>> {
+        let n = f.l.rows;
+        let mut l = vec![vec![0.0; n]; n];
+        for i in 0..n {
+            l[i][i] = 1.0;
+            for k in f.l.indptr[i]..f.diag[i] {
+                l[i][f.l.indices[k]] = f.l.values[k];
+            }
+        }
+        let mut p = vec![vec![0.0; n]; n];
+        for i in 0..n {
+            for j in 0..n {
+                p[i][j] = (0..n).map(|k| l[i][k] * f.d[k] * l[j][k]).sum();
+            }
+        }
+        p
+    }
+
+    /// On-pattern error and off-pattern fill of `P = M` against `A`.
+    fn pattern_error(
+        a: &[Vec<f64>],
+        p: &[Vec<f64>],
+    ) -> (f64, f64, f64) {
+        let n = a.len();
+        let mut on = 0.0_f64;
+        let mut off = 0.0_f64;
+        let mut off_fro = 0.0_f64;
+        for i in 0..n {
+            for j in 0..n {
+                if a[i][j] == 0.0 {
+                    off = off.max(p[i][j].abs());
+                    off_fro += p[i][j] * p[i][j];
+                } else {
+                    on = on.max((p[i][j] - a[i][j]).abs());
+                }
+            }
+        }
+        (on, off, off_fro.sqrt())
+    }
+
+    #[test]
+    fn sparse_poisson_cg_ic0_cuts_iterations() {
+        for &m in &[64_usize, 128] {
+            let a = poisson2d(m);
+            let n = a.rows;
+            let b = rhs(n);
+            let dinv = a.jacobi_inverse();
+            let ic = a.ic0().unwrap();
+            let ilu = a.ilu0().unwrap();
+            let plain = cg(
+                |x, y| a.matvec(x, y),
+                identity_precond,
+                &b,
+                None,
+                1e-10,
+                5000,
+            );
+            let jac = cg_with(
+                |x, y| a.matvec(x, y),
+                &Preconditioner::Jacobi(&dinv),
+                &b,
+                None,
+                1e-10,
+                5000,
+            );
+            let pre = cg_with(
+                |x, y| a.matvec(x, y),
+                &Preconditioner::Ic0(&ic),
+                &b,
+                None,
+                1e-10,
+                5000,
+            );
+            let pilu = cg_with(
+                |x, y| a.matvec(x, y),
+                &Preconditioner::Ilu0(&ilu),
+                &b,
+                None,
+                1e-10,
+                5000,
+            );
+            println!(
+                "poisson m={m} n={n} kappa~{:.0}: none={} jacobi={} ic0={} ilu0={}",
+                poisson_condition(m),
+                plain.iterations,
+                jac.iterations,
+                pre.iterations,
+                pilu.iterations
+            );
+            assert!(plain.converged && jac.converged && pre.converged && pilu.converged);
+            assert!(
+                pre.iterations * 2 < plain.iterations,
+                "IC(0) did not cut the count: {} vs {}",
+                pre.iterations,
+                plain.iterations
+            );
+            assert!(pilu.iterations * 2 < plain.iterations);
+            assert!(rel_residual(&a, &pre.x, &b) < 1e-8);
+            assert!(rel_residual(&a, &pilu.x, &b) < 1e-8);
+        }
+    }
+
+    #[test]
+    fn sparse_ilu0_factor_matches_a_on_pattern() {
+        let a = poisson2d(8);
+        let f = a.ilu0().unwrap();
+        let (on, off, off_fro) = pattern_error(&dense(&a), &ilu_dense(&f));
+        println!(
+            "ILU(0) m=8: max |LU-A| on pattern={on:.3e}, max off-pattern |LU|={off:.3e}, \
+             off-pattern Frobenius={off_fro:.3e}"
+        );
+        assert!(on < 1e-12, "on-pattern error {on}");
+        assert!(off > 1e-6, "no fill was dropped: {off}");
+        assert!(off_fro > 1e-6);
+        // The apply really is (LU)^-1: compare with a dense solve.
+        let r = rhs(64);
+        let mut z = vec![0.0; 64];
+        f.apply(&r, &mut z);
+        let mat = crate::kernels::dense::Mat::from_rows(&ilu_dense(&f)).unwrap();
+        let want = crate::kernels::dense::solve(&mat, &r).unwrap();
+        let d = z
+            .iter()
+            .zip(&want)
+            .map(|(p, q)| (p - q).abs())
+            .fold(0.0, f64::max);
+        assert!(d < 1e-12, "apply is not (LU)^-1: {d}");
+    }
+
+    #[test]
+    fn sparse_ic0_factor_matches_a_on_pattern() {
+        let a = poisson2d(8);
+        let f = a.ic0().unwrap();
+        let (on, off, off_fro) = pattern_error(&dense(&a), &ic0_dense(&f));
+        println!(
+            "IC(0) m=8: max |LDL^T-A| on pattern={on:.3e}, max off-pattern |LDL^T|={off:.3e}, \
+             off-pattern Frobenius={off_fro:.3e}"
+        );
+        assert!(on < 1e-12, "on-pattern error {on}");
+        assert!(off > 1e-6, "no fill was dropped: {off}");
+        assert!(off_fro > 1e-6);
+        // The apply really is (L D L^T)^-1: compare with a dense solve.
+        let r = rhs(64);
+        let mut z = vec![0.0; 64];
+        f.apply(&r, &mut z);
+        let mat = crate::kernels::dense::Mat::from_rows(&ic0_dense(&f)).unwrap();
+        let want = crate::kernels::dense::cholesky_solve(&mat, &r).unwrap();
+        let d = z
+            .iter()
+            .zip(&want)
+            .map(|(p, q)| (p - q).abs())
+            .fold(0.0, f64::max);
+        assert!(d < 1e-12, "apply is not (LDL^T)^-1: {d}");
+    }
+
+    #[test]
+    fn sparse_ilu0_breakdown_is_reported() {
+        // Zero pivot after the first elimination step.
+        let singular =
+            Csr::from_triplets(2, 2, &[(0, 0, 1.0), (0, 1, 1.0), (1, 0, 1.0), (1, 1, 1.0)]);
+        assert!(singular.ilu0().is_none());
+        // Structurally missing diagonal.
+        let off_diag = Csr::from_triplets(2, 2, &[(0, 1, 1.0), (1, 0, 1.0)]);
+        assert!(off_diag.ilu0().is_none());
+        assert!(off_diag.ic0().is_none());
+        // Indefinite: d_1 = 1 - 2^2 / 1 < 0.
+        let indefinite =
+            Csr::from_triplets(2, 2, &[(0, 0, 1.0), (0, 1, 2.0), (1, 0, 2.0), (1, 1, 1.0)]);
+        assert!(indefinite.ic0().is_none());
+        // A valid factor never produces NaN on apply.
+        let f = poisson2d(8).ic0().unwrap();
+        let r = vec![1.0; 64];
+        let mut z = vec![0.0; 64];
+        f.apply(&r, &mut z);
+        assert!(z.iter().all(|v| v.is_finite()));
+    }
+
+    #[test]
+    fn sparse_preconditioned_cg_matches_direct_solve() {
+        let a = poisson2d(16);
+        let n = a.rows;
+        let b = rhs(n);
+        let ic = a.ic0().unwrap();
+        let got = cg_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::Ic0(&ic),
+            &b,
+            None,
+            1e-14,
+            2000,
+        );
+        assert!(got.converged);
+        let mat = crate::kernels::dense::Mat::from_rows(&dense(&a)).unwrap();
+        let direct = crate::kernels::dense::cholesky_solve(&mat, &b).unwrap();
+        let err = got
+            .x
+            .iter()
+            .zip(&direct)
+            .map(|(p, q)| (p - q).abs())
+            .fold(0.0, f64::max);
+        println!("max |x_ic0-cg - x_direct| = {err:.3e}");
+        assert!(err < 1e-10, "solution mismatch {err}");
+    }
+
+    #[test]
+    fn sparse_unpreconditioned_path_is_unchanged() {
+        let a = poisson2d(32);
+        let n = a.rows;
+        let b = rhs(n);
+        let (xr, it) = reference_cg(&a, &b, 1e-10, 2000);
+        let got = cg(
+            |x, y| a.matvec(x, y),
+            identity_precond,
+            &b,
+            None,
+            1e-10,
+            2000,
+        );
+        assert_eq!(got.iterations, it);
+        for i in 0..n {
+            assert_eq!(got.x[i].to_bits(), xr[i].to_bits(), "row {i}");
+        }
+        let sel = cg_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::None,
+            &b,
+            None,
+            1e-10,
+            2000,
+        );
+        assert_eq!(sel, got);
+    }
+
+    #[test]
+    fn sparse_gmres_bicgstab_preconditioner_selection() {
+        let mut t = Vec::new();
+        for i in 0..400 {
+            t.push((i, i, 3.0));
+            if i > 0 {
+                t.push((i, i - 1, -2.0));
+            }
+            if i + 1 < 400 {
+                t.push((i, i + 1, -0.5));
+            }
+        }
+        let a = Csr::from_triplets(400, 400, &t);
+        let b = vec![1.0; 400];
+        let ilu = a.ilu0().unwrap();
+        let g0 = gmres(
+            |x, y| a.matvec(x, y),
+            identity_precond,
+            &b,
+            None,
+            30,
+            1e-10,
+            2000,
+        );
+        let g1 = gmres_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::None,
+            &b,
+            None,
+            30,
+            1e-10,
+            2000,
+        );
+        assert_eq!(g0, g1);
+        let gp = gmres_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::Ilu0(&ilu),
+            &b,
+            None,
+            10,
+            1e-12,
+            100,
+        );
+        assert!(gp.converged && gp.iterations < g0.iterations);
+        let b0 = bicgstab(
+            |x, y| a.matvec(x, y),
+            identity_precond,
+            &b,
+            None,
+            1e-10,
+            1000,
+        );
+        let b1 = bicgstab_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::None,
+            &b,
+            None,
+            1e-10,
+            1000,
+        );
+        assert_eq!(b0, b1);
+        let bp = bicgstab_with(
+            |x, y| a.matvec(x, y),
+            &Preconditioner::Ilu0(&ilu),
+            &b,
+            None,
+            1e-12,
+            100,
+        );
+        assert!(bp.converged && bp.iterations < b0.iterations);
+        println!(
+            "gmres none={} ilu0={}, bicgstab none={} ilu0={}",
+            g0.iterations, gp.iterations, b0.iterations, bp.iterations
+        );
     }
 }
