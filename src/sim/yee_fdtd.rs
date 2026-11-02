@@ -35,7 +35,18 @@
 //! * *Dispersive media* ([`Pole`], [`YeeConfig::dispersive`]): any number of
 //!   Lorentz / Drude poles per cell through auxiliary differential equations
 //!   `P_tt + γ P_t + ω0² P = a E` (central differences, second order). A
-//!   Drude pole has `ω0 = 0`; `ε(ω) = ε∞ + Σ a / (ω0² - ω² - i γ ω)`.
+//!   Drude pole has `ω0 = 0`; `ε(ω) = ε∞ + Σ a / (ω0² - ω² - i γ ω)`. The
+//!   polarisation enters Ampère's law as the current `(P^{n+1} - P^n)/dt`,
+//!   so the work the field does on the oscillator is the same discrete
+//!   `ΔP · E` in both equations and a closed lossless medium conserves
+//!   `½ Σ (ε∞ E² + H²) + Σ (P_t² + ω0² P²)/(2a)` (see [`Yee::energy`]).
+//!   *Stability*: the pole adds its own restoring force to the lattice, and
+//!   the von Neumann analysis of the coupled scheme gives
+//!   `dt ≤ 2 / sqrt(ω0² + a/ε∞ + 4 Σ_a h_a^{-2}/ε∞)`
+//!   for every pole of every cell (the vacuum limit `dt ≤ 1/sqrt(Σ 1/h²)`
+//!   is the `ω0 = a = 0` case of the same bound). [`Yee::new`] clamps `dt` to
+//!   the stiffest pole, so a strong Lorentz pole *tightens* the time step;
+//!   [`Yee::ade_dt_limit`] reports the bound.
 //! * *Complex-frequency-shifted PML*: `κ` stretching and `α` shift
 //!   ([`YeeConfig::pml_kappa_max`], [`YeeConfig::pml_alpha_max`]) absorb
 //!   evanescent and grazing waves that the plain PML reflects.
@@ -49,10 +60,15 @@
 //!   rotation to the box of an [`ObliquePlaneWave`] (staircase boundary with
 //!   the usual consistent total/scattered correction).
 //!
-//! Limitations: no anisotropic or magnetic media, no conductivity, the
-//! Dey–Mittra treatment is not combined with the TF/SF source or periodic
-//! faces, the auxiliary-grid plane wave and the analytic oblique wave assume
-//! a vacuum incident medium, PMC boundaries not available.
+//! Limitations: the medium is isotropic and non-magnetic (`μ = μ0`, no
+//! gyrotropy, no tensorial `ε`), it has no ohmic `σ E` term (conduction is
+//! modelled only with inertia, as a Drude pole), and every pole is linear
+//! with fixed parameters (no saturable or field-dependent susceptibility, so
+//! no nonlinear optics). A pole is integrated with second-order central
+//! differences, which caps the time step as described above. The Dey–Mittra
+//! treatment is not combined with the TF/SF source or periodic faces, the
+//! auxiliary-grid plane wave and the analytic oblique wave assume a vacuum
+//! incident medium, and PMC boundaries are not available.
 
 use crate::sim::boundary::BoundaryCondition;
 use crate::sim::boundary::Face;
@@ -271,6 +287,7 @@ pub struct Yee {
     pml_int: [Vec<(f64, f64, f64)>; 3],
     pml_half: [Vec<(f64, f64, f64)>; 3],
     layers: Vec<PoleLayer>,
+    ade_dt_limit: f64,
     dm: Option<DeyMittra>,
     psi: Vec<Vec<f64>>,
     use_pml: bool,
@@ -322,6 +339,10 @@ struct CurlTerm {
 
 impl Yee {
     /// Creates a solver.
+    ///
+    /// The time step is `cfl / sqrt(Σ 1/h²)`, reduced to the ADE stability
+    /// bound ([`Yee::ade_dt_limit`]) when a dispersive pole is present and to
+    /// keep the subcell PEC scheme stable.
     ///
     /// # Errors
     /// For unsupported boundary conditions, inconsistent periodic faces, a
@@ -430,6 +451,12 @@ impl Yee {
                         i[1] as f64 * cfg.h[1],
                         i[2] as f64 * cfg.h[2],
                     ])
+                    .into_iter()
+                    // a pole with no drive does not couple to the field: drop
+                    // it so that `Δε = 0` keeps the non-dispersive code path
+                    // and its results bit for bit
+                    .filter(|q| q.strength != 0.0)
+                    .collect()
                 })
                 .collect();
             let kmax = per_cell.iter().map(Vec::len).max().unwrap_or(0);
@@ -451,7 +478,26 @@ impl Yee {
                 layers.push(l);
             }
         }
-        let mut dt = dt;
+        // von Neumann bound of the coupled scheme: the pole shifts the
+        // lattice frequency by its resonance and its drive,
+        // dt ≤ 2/sqrt(ω0² + a/ε∞ + 4Σ1/h²/ε∞), worst pole of the worst cell.
+        let mut ade_dt_limit = f64::INFINITY;
+        if !layers.is_empty() {
+            let mut stiff = 0.0_f64;
+            for p in 0..nn {
+                let inv_eps = eps_inv[p];
+                let (mut drive, mut resonance) = (0.0_f64, 0.0_f64);
+                for l in &layers {
+                    drive += l.strength[p];
+                    resonance = resonance.max(l.omega2[p]);
+                }
+                stiff = stiff.max(4.0 * inv_eps * inv_sum + inv_eps * drive + resonance);
+            }
+            if stiff > 0.0 {
+                ade_dt_limit = 2.0 / stiff.sqrt();
+            }
+        }
+        let mut dt = dt.min(ade_dt_limit);
         let dm = if let Some(body) = &cfg.pec_body {
             if use_pml || periodic.iter().any(|&b| b) {
                 return Err("the subcell PEC scheme is available with PEC walls only".into());
@@ -517,6 +563,7 @@ impl Yee {
             cfg,
             dt,
             layers,
+            ade_dt_limit,
             dm,
             t: 0.0,
             f: std::array::from_fn(|_| vec![0.0; nn]),
@@ -813,7 +860,23 @@ impl Yee {
         self.cfg.n
     }
 
-    /// Electromagnetic energy `½ Σ (ε E² + H²) ΔV`.
+    /// Largest time step for which the coupled ADE scheme is stable,
+    /// `2 / sqrt(ω0² + a/ε∞ + 4 Σ_a h_a^{-2}/ε∞)` for the stiffest pole and
+    /// cell; infinite when the medium is non-dispersive. [`Yee::new`] reduces
+    /// `dt` to this bound.
+    #[must_use]
+    pub const fn ade_dt_limit(&self) -> f64 {
+        self.ade_dt_limit
+    }
+
+    /// Conserved energy: `½ Σ (ε∞ E² + H²) ΔV` and, for a dispersive medium,
+    /// the oscillator energy `Σ (P_t² + ω0² P²) / (2 a) ΔV` of every pole,
+    /// both taken at `n - 1/2`. Without poles this is the electromagnetic
+    /// energy alone.
+    ///
+    /// `E` sits at `n` and `H` at `n + 1/2`, so the estimator itself wobbles
+    /// at `O(ω dt)` (a few per cent on a coarse grid) even where the discrete
+    /// scheme conserves energy exactly; the mean over a period is constant.
     #[must_use]
     pub fn energy(&self) -> f64 {
         let dv: f64 = (0..self.cfg.dim).map(|a| self.cfg.h[a]).product();
@@ -822,6 +885,22 @@ impl Yee {
             for c in 0..3 {
                 s += self.f[c][p] * self.f[c][p] / self.eps_inv[p]
                     + self.f[3 + c][p] * self.f[3 + c][p];
+            }
+        }
+        for l in &self.layers {
+            for p in 0..self.size() {
+                let a = l.strength[p];
+                if a == 0.0 {
+                    continue;
+                }
+                for c in 0..3 {
+                    // P_t and P are naturally at `n - 1/2`: evaluating both
+                    // there leaves an O(dt²) wobble in the oscillator energy
+                    let (pn, pm) = (l.p[c][p], l.pm[c][p]);
+                    let pt = (pn - pm) / self.dt;
+                    let ph = f64::midpoint(pn, pm);
+                    s += (pt * pt + l.omega2[p] * ph * ph) / a;
+                }
             }
         }
         0.5 * s * dv

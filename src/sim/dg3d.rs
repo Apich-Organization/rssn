@@ -28,7 +28,7 @@
 //! |---|---|
 //! | [`Dg3Limiter::Minmax`] | TVB-tested min/max mode scaling: a troubled element has every Legendre mode of total degree `>= 1` multiplied by one factor `θ ∈ [0, 1]` until its nodal values lie inside the min/max of the element mean and the six face-neighbour means (the element average is unchanged, so the bound is enforced without a global slope limiter) |
 //! | [`Dg3Limiter::Characteristic`] | TVB-tested characteristic moment limiter: troubled elements are detected from the face traces and the neighbour means, then the Legendre modes are bounded from degree `p` down in the characteristic variables of the normal Jacobian ([`DgLaw::to_characteristic`], Euler eigenvectors for [`Euler3d`]) |
-//! | [`Dg3Limiter::Hierarchical`] | the same moment limiter, componentwise, on the elements flagged by the componentwise TVB test |
+//! | [`Dg3Limiter::Hierarchical`] | the same moment limiter, componentwise, on the elements flagged by the componentwise TVB test, followed by a bound on the reconstruction (the limited polynomial is scaled into the range of the element mean and the six face-neighbour means, because a bound on the modes alone does not bound their sum) |
 //! | [`Dg3Limiter::Weno`] | Zhong–Shu WENO reconstruction of troubled elements along every axis (element plus left/right neighbours, componentwise) |
 //!
 //! The troubled-cell flags are reported by [`Dg3Solution::troubled`] and
@@ -345,6 +345,14 @@ pub enum Dg3Limiter {
     /// Krivodonova's hierarchical moment limiter on the Legendre coefficients,
     /// componentwise, along all three directions, applied to the elements
     /// flagged by the componentwise TVB troubled-element test.
+    ///
+    /// The minmod bounds one mode at a time, so the sum of the bounded modes
+    /// can still leave the reconstruction outside the range of the element mean
+    /// and the neighbour means (the trace then overshoots, and the total
+    /// variation of a contact grows). The reconstruction of a troubled element
+    /// is therefore finally scaled toward its mean until its nodal values lie
+    /// inside that range, as in [`Dg3Limiter::Minmax`]; the modal limiting
+    /// still shapes the polynomial inside the range.
     Hierarchical,
     /// Zhong–Shu WENO reconstruction of the troubled elements along each axis,
     /// componentwise, using the element and its left/right neighbours.
@@ -1001,8 +1009,19 @@ impl Ctx<'_> {
     /// Jacobian at the element mean first. Modes are limited along each axis
     /// using the left and right neighbour of that axis (periodic wrap-around
     /// for periodic faces, the ghost element of `Ctx::ghost_modal` at a
-    /// non-periodic boundary). The element
-    /// average (mode zero) is never touched, so the scheme stays conservative.
+    /// non-periodic boundary), and a mode that several axes bound is bounded
+    /// against the value the previous axis left, so the bounds compose instead
+    /// of overwriting each other. The element average (mode zero) is never
+    /// touched, so the scheme stays conservative.
+    ///
+    /// A bound on the modes is not a bound on the polynomial: the modes are
+    /// bounded one at a time, so their sum can still leave the reconstruction
+    /// outside the range of the element mean and the neighbour means (a mode
+    /// left at its own magnitude by a minmod that only sees neighbour modes
+    /// adds to a trace that overshoots, and the variation of a contact then
+    /// grows). The reconstruction of every limited element is therefore
+    /// finally scaled toward its mean by one `θ ∈ [0, 1]` until every nodal
+    /// value of every variable lies inside that range.
     fn limit_moment(
         &self,
         q: &mut [f64],
@@ -1094,8 +1113,11 @@ impl Ctx<'_> {
                                     }
                                 };
                                 for v in 0..nv {
-                                    raw_deg[v] = old[(e * nv + v) * np + idx];
-                                    raw_low[v] = old[(e * nv + v) * np + lidx];
+                                    // the value the previous axis left, so that a
+                                    // mode bounded along several axes takes the
+                                    // smallest bound instead of the last one
+                                    raw_deg[v] = modal[(e * nv + v) * np + idx];
+                                    raw_low[v] = modal[(e * nv + v) * np + lidx];
                                     raw_plus[v] = fetch(true, v);
                                     raw_minus[v] = fetch(false, v);
                                 }
@@ -1156,6 +1178,66 @@ impl Ctx<'_> {
                     let vals = self.from_modal(&modal[(e * nv + v) * np..(e * nv + v + 1) * np]);
                     for nd in 0..np {
                         q[(e * np + nd) * nv + v] = vals[nd];
+                    }
+                }
+                // The modes are bounded one at a time, so their sum is not: the
+                // limited polynomial can still leave the range of the element
+                // mean and the neighbour means, and its trace then overshoots
+                // and the variation of a contact grows. Scale the deviation
+                // from the element mean by the largest `theta` that keeps every
+                // nodal value of every variable inside that range.
+                let mut lo = mean.to_vec();
+                let mut hi = mean.to_vec();
+                let mut sides: usize = 0;
+                for axis in 0..3 {
+                    for max in [false, true] {
+                        if let Some(en) = self.neighbour(e, axis, max) {
+                            // a single element on a periodic axis is its own neighbour
+                            if en == e {
+                                continue;
+                            }
+                            sides += 1;
+                            for v in 0..nv {
+                                lo[v] = lo[v].min(means[en * nv + v]);
+                                hi[v] = hi[v].max(means[en * nv + v]);
+                            }
+                        } else if let Some(g) = ghosts.get(&(e, axis, max)) {
+                            sides += 1;
+                            for v in 0..nv {
+                                lo[v] = lo[v].min(g[v * np]);
+                                hi[v] = hi[v].max(g[v * np]);
+                            }
+                        }
+                    }
+                }
+                if sides > 0 {
+                    let mut theta: f64 = 1.0;
+                    for v in 0..nv {
+                        // A cell whose mean only *equals* the neighbour maximum
+                        // (a plateau, up to round-off) is not a strict maximum:
+                        // without the slack the last bit of the mean decides
+                        // whether the cell is rescaled at all.
+                        let slack = 1e-12 * (mean[v].abs() + hi[v].abs() + lo[v].abs() + 1e-300);
+                        for nd in 0..np {
+                            let d = q[(e * np + nd) * nv + v] - mean[v];
+                            let bound = if d > 0.0 {
+                                (hi[v] + slack - mean[v]) / d
+                            } else if d < 0.0 {
+                                (lo[v] - slack - mean[v]) / d
+                            } else {
+                                1.0
+                            };
+                            theta = theta.min(bound);
+                        }
+                    }
+                    let theta = theta.clamp(0.0, 1.0);
+                    if theta < 1.0 {
+                        for nd in 0..np {
+                            for v in 0..nv {
+                                let i = (e * np + nd) * nv + v;
+                                q[i] = mean[v] + theta * (q[i] - mean[v]);
+                            }
+                        }
                     }
                 }
             }

@@ -74,6 +74,8 @@ pub mod ode;
 pub mod ode_adaptive;
 /// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
 pub mod ode_ext;
+/// L-stable SDIRK3(2) integrator for stiff initial-value problems.
+pub mod ode_sdirk;
 /// Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
 pub mod ode_stiff;
 /// Unconstrained, global and constrained optimisation and linear programming.

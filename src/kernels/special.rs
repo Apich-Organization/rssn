@@ -3,8 +3,26 @@
 //! This module provides numerical implementations of mathematical special functions.
 //! It includes gamma functions, beta functions, error functions, Bessel functions,
 //! orthogonal polynomials, and other commonly used special functions.
+//!
+//! ## Limitations
+//!
+//! [`bessel_j`] and [`bessel_y`] use Bessel's integral, evaluated by adaptive
+//! quadrature, outside the uniform region `ν >= 50` with
+//! `|x/ν − 1| <= 1/4`. There the integrand oscillates `O(ν)` times and the
+//! quadrature cost grows with `ν`; inside that region both functions switch to
+//! the uniform Airy-type (Debye) expansion of DLMF 10.20.4-10.20.5, which is
+//! accurate for large order and through the turning point `x = ν`. What remains
+//! limited: (i) the quadrature branch is unchanged and still costs `O(ν)`
+//! integrand evaluations outside the band; (ii) [`bessel_j`]/[`bessel_y`] accept
+//! real `ν` only — complex order is not implemented; (iii) the Airy expansion
+//! is evaluated with `A_0..A_2` and `B_0..B_2`, so its relative error grows
+//! like `ν^{-6}` in the worst case (about `1e-14` at `ν = 50`, `1e-16` at
+//! `ν = 100`); (iv) for `x` far below `ν` the exponentially small `J_ν` and
+//! exponentially large `Y_ν` underflow/overflow in `f64` regardless of method.
 
 use std::f64::consts::FRAC_2_PI;
+
+use num_complex::Complex64;
 
 use statrs::function::beta::beta;
 use statrs::function::beta::ln_beta;
@@ -1420,6 +1438,9 @@ pub fn bessel_j(
         };
         return sign * bessel_j(-nu, x);
     }
+    if let Some((j, _)) = uniform_bessel_jy(nu, x) {
+        return j;
+    }
     let pi = std::f64::consts::PI;
     let main = quad(|theta| (nu * theta - x * theta.sin()).cos(), 0.0, pi) / pi;
     if is_integer_order(nu) {
@@ -1446,6 +1467,9 @@ pub fn bessel_y(
     if nu == 0.0 {
         return bessel_y0(x);
     }
+    if let Some((_, y)) = uniform_bessel_jy(nu, x) {
+        return y;
+    }
     let pi = std::f64::consts::PI;
     let main = quad(|theta| (x * theta.sin() - nu * theta).sin(), 0.0, pi) / pi;
     let c = (nu * pi).cos();
@@ -1455,6 +1479,344 @@ pub fn bessel_y(
         decay_end(x, nu),
     );
     main - tail / pi
+}
+
+// ----------------------------------------------------------------------------
+// Uniform Airy-type (Debye) expansion for large order
+// ----------------------------------------------------------------------------
+
+/// Debye polynomial `U_0(p) = 1` (DLMF 10.41.10), coefficients ascending in `p`.
+const DEBYE_U0: &[f64] = &[1.0];
+
+/// Debye polynomial `U_1(p) = (3p − 5p³)/24`.
+const DEBYE_U1: &[f64] = &[0.0, 0.125, 0.0, -0.208_333_333_333_333_34];
+
+/// Debye polynomial `U_2(p) = (81p² − 462p⁴ + 385p⁶)/1152`.
+const DEBYE_U2: &[f64] = &[
+    0.0,
+    0.0,
+    0.070_312_5,
+    0.0,
+    -0.401_041_666_666_666_7,
+    0.0,
+    0.334_201_388_888_888_9,
+];
+
+/// Debye polynomial `U_3(p)` (DLMF 10.41.10).
+const DEBYE_U3: &[f64] = &[
+    0.0,
+    0.0,
+    0.0,
+    0.073_242_187_5,
+    0.0,
+    -0.891_210_937_5,
+    0.0,
+    1.846_462_673_611_111_2,
+    0.0,
+    -1.025_812_596_450_617_3,
+];
+
+/// Debye polynomial `U_4(p)` (from the DLMF 10.41.9 recurrence).
+const DEBYE_U4: &[f64] = &[
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.112_152_099_609_375,
+    0.0,
+    -2.364_086_914_062_5,
+    0.0,
+    8.789_123_535_156_25,
+    0.0,
+    -11.207_002_616_222_994,
+    0.0,
+    4.669_584_423_426_247,
+];
+
+/// Debye polynomial `U_5(p)` (from the DLMF 10.41.9 recurrence).
+const DEBYE_U5: &[f64] = &[
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.227_108_001_708_984_4,
+    0.0,
+    -7.368_794_359_479_632,
+    0.0,
+    42.534_998_745_388_46,
+    0.0,
+    -91.818_241_543_24,
+    0.0,
+    84.636_217_674_600_73,
+    0.0,
+    -28.212_072_558_200_245,
+];
+
+/// Airy asymptotic coefficient `u_1 = 5/72` (DLMF 9.7.2).
+const AIRY_U1: f64 = 0.069_444_444_444_444_45;
+
+/// Airy asymptotic coefficient `u_2 = 385/10368`.
+const AIRY_U2: f64 = 0.037_133_487_654_320_99;
+
+/// Airy asymptotic coefficient `u_3 = 85085/2239488`.
+const AIRY_U3: f64 = 0.037_993_059_127_800_64;
+
+/// Airy asymptotic coefficient `u_4 = 37182145/644972544`.
+const AIRY_U4: f64 = 0.057_649_190_412_669_72;
+
+/// Airy asymptotic coefficient `u_5 = 5391411025/46438023168`.
+const AIRY_U5: f64 = 0.116_099_064_025_515_41;
+
+/// Airy asymptotic coefficient `v_1 = −7/72`.
+const AIRY_V1: f64 = -0.097_222_222_222_222_22;
+
+/// Airy asymptotic coefficient `v_2 = −455/10368`.
+const AIRY_V2: f64 = -0.043_885_030_864_197_53;
+
+/// Airy asymptotic coefficient `v_3 = −95095/2239488`.
+const AIRY_V3: f64 = -0.042_462_830_789_894_83;
+
+/// Airy asymptotic coefficient `v_4 = −40415375/644972544`.
+const AIRY_V4: f64 = -0.062_662_163_492_032_31;
+
+/// Local expansion coefficients of `A_1(ζ(w))` about `w = 1 − z = 0`
+/// (DLMF 10.20.10), used only for `|w| < 0.05` where the defining sum
+/// cancels catastrophically.
+const A1_TAYLOR: &[f64] = &[
+    -0.004_444_444_444_444_444,
+    -0.001_844_155_844_155_844_2,
+    0.000_568_120_768_120_768_1,
+    0.001_681_378_656_616_743_6,
+    0.001_867_440_421_392_210_7,
+    0.001_613_301_057_994_372_2,
+    0.001_231_773_155_394_427_6,
+];
+
+/// Local expansion coefficients of `A_2(ζ(w))` about `w = 0`.
+const A2_TAYLOR: &[f64] = &[
+    0.000_693_735_541_354_589,
+    0.000_464_483_490_365_843_3,
+    -0.000_289_036_254_605_598_1,
+    -0.000_874_764_943_953_730_5,
+    -0.001_029_716_376_135_103_6,
+    -0.000_836_857_330_452_832_8,
+    -0.000_488_910_822_108_250_4,
+];
+
+/// Local expansion coefficients of `B_0(ζ(w))` about `w = 0`
+/// (`B_0(0) = 2^{1/3}/70`).
+const B0_TAYLOR: &[f64] = &[
+    0.017_998_872_141_355_33,
+    0.011_199_298_221_287_762,
+    0.005_940_406_978_601_43,
+    0.002_867_672_451_639_014,
+    0.001_233_918_905_254_176,
+    0.000_416_925_067_849_407_2,
+    0.000_033_017_300_252_851_02,
+];
+
+/// Local expansion coefficients of `B_1(ζ(w))` about `w = 0`.
+const B1_TAYLOR: &[f64] = &[
+    -0.001_492_829_532_134_291_7,
+    -0.001_756_409_419_092_778_6,
+    -0.001_133_461_488_741_749_1,
+    -0.000_346_910_909_813_837_3,
+    0.000_227_525_161_050_399_68,
+    0.000_517_641_456_930_732_4,
+    0.000_589_061_778_735_897_8,
+];
+
+/// Local expansion coefficients of `B_2(ζ(w))` about `w = 0`.
+const B2_TAYLOR: &[f64] = &[
+    0.000_552_213_076_721_292_8,
+    0.000_895_865_163_104_769_3,
+    0.000_670_150_034_415_699_5,
+    0.000_101_662_633_619_006_3,
+    -0.000_440_863_451_261_136_6,
+    -0.000_739_630_822_719_961,
+    -0.000_767_454_454_768_502_5,
+];
+
+/// Evaluates a real polynomial given in ascending coefficient order.
+fn horner_real(
+    coeffs: &[f64],
+    x: f64,
+) -> f64 {
+    coeffs.iter().rev().fold(0.0, |acc, &c| acc.mul_add(x, c))
+}
+
+/// Evaluates a complex polynomial given in ascending coefficient order.
+fn horner_complex(
+    coeffs: &[f64],
+    x: Complex64,
+) -> Complex64 {
+    coeffs
+        .iter()
+        .rev()
+        .fold(Complex64::new(0.0, 0.0), |acc, &c| {
+            acc * x + Complex64::new(c, 0.0)
+        })
+}
+
+/// Debye polynomial `U_k(p)` for `k <= 5`.
+fn debye_u(
+    k: usize,
+    p: Complex64,
+) -> Complex64 {
+    let coeffs = match k {
+        | 0 => DEBYE_U0,
+        | 1 => DEBYE_U1,
+        | 2 => DEBYE_U2,
+        | 3 => DEBYE_U3,
+        | 4 => DEBYE_U4,
+        | _ => DEBYE_U5,
+    };
+    horner_complex(coeffs, p)
+}
+
+/// `ζ(z)` of DLMF 10.20.2-10.20.3 for `z = x/ν`.
+///
+/// The two integrals lose all digits by cancellation as `z → 1`; the first
+/// three terms of the local series `ζ = 2^{1/3} w (1 + 3w/10 + 32w²/175)`
+/// are used there instead.
+fn debye_zeta(
+    z: f64,
+    w: f64,
+) -> f64 {
+    if w.abs() < 3.0e-3 {
+        let c = 2.0_f64.cbrt();
+        let w2 = w * w;
+        return c
+            * w
+            * (1.0
+                + 0.3 * w
+                + 0.182_857_142_857_142_86 * w2
+                + 0.131_682_539_682_539_68 * w2 * w
+                + 0.102_636_487_322_201_61 * w2 * w2);
+    }
+    if z < 1.0 {
+        let s = (1.0 / z).acosh() - (1.0 - z * z).sqrt();
+        return (1.5 * s).powf(2.0 / 3.0);
+    }
+    let s = (z * z - 1.0).sqrt() - (1.0 / z).acos();
+    -(1.5 * s).powf(2.0 / 3.0)
+}
+
+/// The five nontrivial coefficients `A_1, A_2, B_0, B_1, B_2` of the uniform
+/// expansion at scaled argument `z = x/ν` (`w = 1 − z`).
+///
+/// For `|w| < 0.05` the local polynomials above are used. Outside, the
+/// defining sums of DLMF 10.20.10-10.20.11 are evaluated in `f64` complex
+/// arithmetic: `p = (1 − z²)^{-1/2}` is imaginary for `z > 1`, and the
+/// imaginary parts of the two sums cancel.
+fn debye_coefficients(
+    w: f64,
+    zeta: f64,
+) -> (f64, f64, f64, f64, f64) {
+    if w.abs() < 0.05 {
+        return (
+            horner_real(A1_TAYLOR, w),
+            horner_real(A2_TAYLOR, w),
+            horner_real(B0_TAYLOR, w),
+            horner_real(B1_TAYLOR, w),
+            horner_real(B2_TAYLOR, w),
+        );
+    }
+    let zc = Complex64::new(zeta, 0.0);
+    let sqrt_zeta = zc.sqrt();
+    let zm = Complex64::new(1.0, 0.0) / (zc * sqrt_zeta); // ζ^{-3/2}
+    let zm2 = zm * zm;
+    let zm3 = zm2 * zm;
+    let zm4 = zm3 * zm;
+    let zm5 = zm4 * zm;
+    let zis = Complex64::new(1.0, 0.0) / sqrt_zeta; // ζ^{-1/2}
+    let p = Complex64::new(1.0, 0.0) / Complex64::new(w * (2.0 - w), 0.0).sqrt();
+    let (u0, u1, u2, u3, u4, u5) = (
+        debye_u(0, p),
+        debye_u(1, p),
+        debye_u(2, p),
+        debye_u(3, p),
+        debye_u(4, p),
+        debye_u(5, p),
+    );
+    let a1 = u2 + zm * u1 * AIRY_V1 * 1.5 + zm2 * u0 * AIRY_V2 * 2.25;
+    let a2 = u4
+        + zm * u3 * AIRY_V1 * 1.5
+        + zm2 * u2 * AIRY_V2 * 2.25
+        + zm3 * u1 * AIRY_V3 * 3.375
+        + zm4 * u0 * AIRY_V4 * 5.062_5;
+    let b0 = -zis * (u1 + zm * u0 * AIRY_U1 * 1.5);
+    let b1 = -zis
+        * (u3 + zm * u2 * AIRY_U1 * 1.5 + zm2 * u1 * AIRY_U2 * 2.25 + zm3 * u0 * AIRY_U3 * 3.375);
+    let b2 = -zis
+        * (u5
+            + zm * u4 * AIRY_U1 * 1.5
+            + zm2 * u3 * AIRY_U2 * 2.25
+            + zm3 * u2 * AIRY_U3 * 3.375
+            + zm4 * u1 * AIRY_U4 * 5.062_5
+            + zm5 * u0 * AIRY_U5 * 7.593_75);
+    (a1.re, a2.re, b0.re, b1.re, b2.re)
+}
+
+/// Uniform Airy-type (Debye) expansion of `J_ν(x)` and `Y_ν(x)` (DLMF
+/// 10.20.4-10.20.5), valid for large `ν` and uniformly through `x = ν`.
+///
+/// Returns `None` outside `ν >= 50`, `x > 0`, `|x/ν − 1| <= 1/4`, where the
+/// quadrature branches of [`bessel_j`]/[`bessel_y`] are used instead. Inside
+/// the band the expansion is accurate to about `ν^{-6}` (worst case) and is
+/// the only branch that remains accurate as `ν` grows: the quadrature needs
+/// `O(ν)` oscillations and eventually loses all digits.
+#[allow(clippy::float_cmp)] // w == 0 is exactly the turning point x = nu
+fn uniform_bessel_jy(
+    nu: f64,
+    x: f64,
+) -> Option<(f64, f64)> {
+    if nu.is_nan() || nu < 50.0 || !nu.is_finite() || x <= 0.0 {
+        return None;
+    }
+    // Compute w = 1 - x/ν from (ν - x)/ν: the direct form loses every digit
+    // of w as x -> ν (Sterbenz's lemma makes the subtraction exact).
+    let w = (nu - x) / nu;
+    let z = 1.0 - w;
+    if w.abs() > 0.25 {
+        return None;
+    }
+    let (zeta, pref) = if w == 0.0 {
+        (0.0, 2.0_f64.cbrt())
+    } else {
+        let zeta = debye_zeta(z, w);
+        let pref = (4.0 * zeta / (w * (2.0 - w))).powf(0.25);
+        (zeta, pref)
+    };
+    let (a1, a2, b0, b1, b2) = debye_coefficients(w, zeta);
+    let nu2 = nu * nu;
+    let sum_a = 1.0 + a1 / nu2 + a2 / (nu2 * nu2);
+    let sum_b = b0 + b1 / nu2 + b2 / (nu2 * nu2);
+    let tau = nu.powf(2.0 / 3.0) * zeta;
+    // The K-function representation used by `airy_ai` for x > 0 loses its
+    // meaning as x -> 0+ (the integrand stops decaying); the Taylor series
+    // from the origin is exact there and is used for |tau| < 1/2.
+    let (ai, aip, bi, bip) = if tau.abs() < 0.5 {
+        let (ai, aip) = airy_taylor(tau, AIRY_AI0, -AIRY_AIP0);
+        let (bi, bip) = airy_taylor(tau, 3.0_f64.sqrt() * AIRY_AI0, 3.0_f64.sqrt() * AIRY_AIP0);
+        (ai, aip, bi, bip)
+    } else {
+        (
+            airy_ai(tau),
+            airy_ai_prime(tau),
+            airy_bi(tau),
+            airy_bi_prime(tau),
+        )
+    };
+    let inv_cbrt = 1.0 / nu.cbrt();
+    let inv_five_thirds = 1.0 / nu.powf(5.0 / 3.0);
+    let j = pref * (ai * inv_cbrt * sum_a + aip * inv_five_thirds * sum_b);
+    let y = -pref * (bi * inv_cbrt * sum_a + bip * inv_five_thirds * sum_b);
+    if j.is_nan() || y.is_nan() {
+        return None;
+    }
+    Some((j, y))
 }
 
 /// Modified Bessel function of the first kind `I_ν(x)`, by
@@ -2289,5 +2651,198 @@ mod airy_tests {
             let w = airy_ai(x) * airy_bi_prime(x) - airy_ai_prime(x) * airy_bi(x);
             assert!((w - 1.0 / std::f64::consts::PI).abs() < 1e-10, "{x}: {w}");
         }
+    }
+}
+
+#[cfg(test)]
+mod debye_tests {
+    use super::*;
+
+    fn rel_err(
+        a: f64,
+        b: f64,
+    ) -> f64 {
+        (a - b).abs() / b.abs().max(f64::MIN_POSITIVE)
+    }
+
+    #[test]
+    fn uniform_expansion_matches_reference_values() {
+        // mpmath 50-digit values at ν = 100 (the old quadrature agrees to 1e-14).
+        let cases = [
+            (90.0, 2.602_130_581_996_329e-3, -2.830_777_138_718_563),
+            (95.0, 2.315_076_800_942_797e-2, -4.576_220_049_590_498e-1),
+            (99.0, 7.768_716_170_045_94e-2, -2.010_721_995_738_357e-1),
+            (100.0, 9.636_667_329_586_116e-2, -1.669_214_114_175_765e-1),
+            (101.0, 1.148_013_214_278_991e-1, -1.332_273_838_156_164e-1),
+            (105.0, 1.358_350_278_036_409e-1, 2.633_762_899_822_202e-2),
+            (110.0, -5.385_144_819_503_075e-2, 1.043_543_190_047_037e-1),
+        ];
+        for (x, j, y) in cases {
+            assert!(rel_err(bessel_j(100.0, x), j) < 5e-13, "J(100, {x})");
+            assert!(rel_err(bessel_y(100.0, x), y) < 5e-13, "Y(100, {x})");
+        }
+    }
+
+    #[test]
+    fn recurrence_holds_across_turning_point() {
+        let nu = 100.0;
+        for x in [76.0, 85.0, 95.0, 99.0, 100.0, 101.0, 105.0, 115.0, 124.0] {
+            let jm = bessel_j(nu - 1.0, x);
+            let j0 = bessel_j(nu, x);
+            let jp = bessel_j(nu + 1.0, x);
+            let lhs = jm + jp;
+            let rhs = 2.0 * nu / x * j0;
+            assert!(
+                rel_err(lhs, rhs) < 5e-13,
+                "J recurrence at {x}: {lhs} vs {rhs}"
+            );
+
+            let ym = bessel_y(nu - 1.0, x);
+            let y0 = bessel_y(nu, x);
+            let yp = bessel_y(nu + 1.0, x);
+            let lhs = ym + yp;
+            let rhs = 2.0 * nu / x * y0;
+            assert!(
+                rel_err(lhs, rhs) < 5e-13,
+                "Y recurrence at {x}: {lhs} vs {rhs}"
+            );
+        }
+    }
+
+    #[test]
+    fn wronskian_holds_across_turning_point() {
+        let nu = 100.0;
+        for x in [76.0, 85.0, 95.0, 99.0, 100.0, 101.0, 105.0, 115.0, 124.0] {
+            // J' = (J_{ν−1} − J_{ν+1})/2, likewise for Y (DLMF 10.6.1).
+            let j = bessel_j(nu, x);
+            let y = bessel_y(nu, x);
+            let jp = (bessel_j(nu - 1.0, x) - bessel_j(nu + 1.0, x)) / 2.0;
+            let yp = (bessel_y(nu - 1.0, x) - bessel_y(nu + 1.0, x)) / 2.0;
+            let w = j * yp - jp * y;
+            let expected = 2.0 / (std::f64::consts::PI * x);
+            assert!(
+                rel_err(w, expected) < 1e-12,
+                "Wronskian at {x}: {w} vs {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn sweep_through_turning_point_is_smooth() {
+        let nu = 100.0;
+        let mut worst = 0.0_f64;
+        let mut x = 90.0;
+        while x <= 110.0 {
+            let jm = bessel_j(nu - 1.0, x);
+            let j0 = bessel_j(nu, x);
+            let jp = bessel_j(nu + 1.0, x);
+            assert!(j0.is_finite(), "J(100, {x}) is not finite");
+            let residual = rel_err(jm + jp, 2.0 * nu / x * j0);
+            worst = worst.max(residual);
+            assert!(residual < 2e-12, "recurrence residual {residual} at {x}");
+            x += 0.1;
+        }
+        assert!(worst < 2e-12, "worst recurrence residual {worst}");
+    }
+
+    #[test]
+    fn seam_between_uniform_and_quadrature_is_continuous() {
+        // The uniform band is |x/ν − 1| <= 1/4, so 75 and 125 are the seams.
+        // Both sides are checked against mpmath, which is what rules out a jump.
+        let cases = [
+            // Just outside the band: quadrature, accurate to ~2e-9 relative on
+            // this exponentially small J (absolute error ~1e-16).
+            (
+                74.999,
+                7.441_273_517_697_171e-8,
+                -6.469_552_632_950_964e4,
+                1e-8,
+            ),
+            // On the seam the uniform path is used; it is accurate to 1e-12.
+            (
+                75.0,
+                7.447_900_590_590_388e-8,
+                -6.463_907_226_123_209e4,
+                1e-12,
+            ),
+            (
+                125.0,
+                -8.359_856_456_811_825e-2,
+                -3.865_789_123_650_626e-2,
+                1e-12,
+            ),
+            (
+                125.001,
+                -8.357_441_484_005_472e-2,
+                -3.870_764_520_013_322e-2,
+                1e-8,
+            ),
+        ];
+        for (x, j, y, tol) in cases {
+            assert!(rel_err(bessel_j(100.0, x), j) < tol, "J seam at {x}");
+            assert!(rel_err(bessel_y(100.0, x), y) < tol, "Y seam at {x}");
+        }
+    }
+
+    #[test]
+    fn nicholson_integral_matches_jy() {
+        // J_ν(x)² + Y_ν(x)² = (8/π²) ∫_0^∞ K_0(2x sinh t) cosh(2νt) dt
+        // (Watson, §13.72).  The integrand is logarithmically singular at t = 0
+        // and decays like exp(2νt − 2x sinh t), so 2 is a safe upper limit here.
+        let nu = 100.0_f64;
+        let x = 100.0_f64;
+        let integral = quad(
+            |t| bessel_k_fractional(0.0, 2.0 * x * t.sinh()) * (2.0 * nu * t).cosh(),
+            0.0,
+            2.0,
+        );
+        let rhs = 8.0 / (std::f64::consts::PI * std::f64::consts::PI) * integral;
+        let lhs = bessel_j(nu, x).powi(2) + bessel_y(nu, x).powi(2);
+        assert!(rel_err(lhs, rhs) < 1e-12, "{lhs} vs {rhs}");
+    }
+
+    #[test]
+    fn large_order_limit_is_the_airy_value() {
+        // DLMF 10.20.4 at z = 1: ζ = 0, prefactor (4ζ/(1−z²))^{1/4} -> 2^{1/3},
+        // A_0(0) = 1, so J_ν(ν) ~ 2^{1/3} Ai(0) ν^{-1/3}.  The B_0 term is
+        // O(ν^{-5/3}) with B_0(0) = 2^{1/3}/70.
+        let nu = 1.0e6_f64;
+        let constant = 2.0_f64.cbrt() * airy_ai(0.0);
+        let scaled = bessel_j(nu, nu) * nu.cbrt();
+        assert!(rel_err(scaled, constant) < 1e-6, "{scaled} vs {constant}");
+    }
+
+    #[test]
+    fn outside_band_and_small_orders_are_bit_identical() {
+        // Values produced by the quadrature branch before the uniform path was
+        // added; the guard must leave them untouched.
+        assert_eq!(
+            bessel_j(100.0, 74.0).to_bits(),
+            3.017_594_391_878_188_9e-8_f64.to_bits()
+        );
+        assert_eq!(
+            bessel_y(100.0, 74.0).to_bits(),
+            (-1.568_827_309_478_636_9e5_f64).to_bits()
+        );
+        assert_eq!(
+            bessel_j(100.0, 126.0).to_bits(),
+            (-4.630_129_654_029_885_3e-2_f64).to_bits()
+        );
+        assert_eq!(
+            bessel_y(100.0, 126.0).to_bits(),
+            (-7.846_463_206_197_208_7e-2_f64).to_bits()
+        );
+        assert_eq!(
+            bessel_j(2.5, 5.0).to_bits(),
+            2.403_772_011_113_173_3e-1_f64.to_bits()
+        );
+        assert_eq!(
+            bessel_y(2.5, 5.0).to_bits(),
+            2.943_723_749_617_924_2e-1_f64.to_bits()
+        );
+        assert_eq!(
+            bessel_j(10.0, 20.0).to_bits(),
+            1.864_825_580_239_450_3e-1_f64.to_bits()
+        );
     }
 }

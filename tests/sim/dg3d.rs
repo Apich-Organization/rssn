@@ -423,6 +423,51 @@ fn dg3d_sod_total_variation_does_not_grow_and_does_not_undershoot() {
 }
 
 #[test]
+fn dg3d_hierarchical_limiter_keeps_total_variation_non_increasing() {
+    // The hierarchical limiter bounds one Legendre mode at a time, so the sum
+    // of the bounded modes can still leave the reconstruction outside the range
+    // of the element mean and the neighbour means. On Sod that left a bump
+    // behind the contact and the total variation of the element-average
+    // density grew from 0.875136 at t = 0.1 to 0.894724 at t = 0.2 on
+    // 12 x 2 x 2 (and above the initial 0.875). With the reconstruction
+    // bounded as well, the variation must not grow after the shock has formed,
+    // at both resolutions.
+    let law = Euler3d { gamma: GAMMA };
+    let bcs = sod_bcs(0);
+    let init = |x: [f64; 3]| sod_state(x, 0);
+    let tv_initial = 1.0 - 0.125;
+    for nx in [12_usize, 24] {
+        let run = |t_end: f64| {
+            let mesh = Dg3Mesh {
+                ne: [nx, 2, 2],
+                lo: [0.0; 3],
+                hi: [1.0; 3],
+                p: 2,
+            };
+            let opt = Dg3Options {
+                limiter: Dg3Limiter::Hierarchical,
+                positivity: true,
+                limiter_tvd: 10.0,
+                ..Dg3Options::default()
+            };
+            solve_dg3d(&mesh, &law, &bcs, &init, t_end, 0.35, &opt).unwrap()
+        };
+        let (tv_formed, tv_late) = (tv_along(&run(0.1), 0), tv_along(&run(0.2), 0));
+        println!(
+            "sod TV Hierarchical nx={nx}: TV(0.1) {tv_formed:.6} -> TV(0.2) {tv_late:.6} (initial {tv_initial})"
+        );
+        assert!(
+            tv_late <= tv_formed,
+            "Hierarchical nx={nx}: TV grew from {tv_formed} to {tv_late} after the shock formed"
+        );
+        assert!(
+            tv_late <= tv_initial,
+            "Hierarchical nx={nx}: TV {tv_late} exceeds the initial variation {tv_initial}"
+        );
+    }
+}
+
+#[test]
 fn dg3d_characteristic_limiter_conserves_euler_quantities() {
     // A periodic compression wave steepens into a shock; mass, momentum and
     // energy are conserved because every limiter preserves element averages.
