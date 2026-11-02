@@ -1,7 +1,7 @@
 //! Dimensional analysis through the public session API.
 
-use rssn::graph::DimError;
 use num_traits::ToPrimitive;
+use rssn::graph::DimError;
 use rssn::prelude::*;
 
 /// `(input, expected rewrite, dimension assumptions)`.
@@ -496,7 +496,10 @@ fn astronomy_and_cgs_units_carry_their_exact_si_scales() {
     let amps_per_metre =
         oersted.scale.rat.to_f64().unwrap_or(f64::NAN) * std::f64::consts::PI.powi(-1);
     let want = 250.0 / std::f64::consts::PI;
-    assert!((amps_per_metre / want - 1.0).abs() < 1e-15, "{amps_per_metre}");
+    assert!(
+        (amps_per_metre / want - 1.0).abs() < 1e-15,
+        "{amps_per_metre}"
+    );
     // A prefixed astronomical unit of length works like any other.
     let kiloparsec = rssn::dim::units::resolve("kpc").unwrap_or_else(|e| panic!("{e}"));
     let parsec = rssn::dim::units::resolve("pc").unwrap_or_else(|e| panic!("{e}"));
@@ -521,9 +524,7 @@ fn a_unit_on_a_custom_base_dimension_can_be_registered() {
         .display("\u{20ac}")
         .category("currency");
     let mut registry = StandardRegistry;
-    registry
-        .register(euro)
-        .unwrap_or_else(|e| panic!("{e}"));
+    registry.register(euro).unwrap_or_else(|e| panic!("{e}"));
 
     let back = registry
         .lookup("EUR")
@@ -547,10 +548,10 @@ fn a_unit_on_a_custom_base_dimension_can_be_registered() {
             pi: 0,
         },
     );
-    registry
-        .register(cent)
+    registry.register(cent).unwrap_or_else(|e| panic!("{e}"));
+    let cents = registry
+        .resolve("EURcent")
         .unwrap_or_else(|e| panic!("{e}"));
-    let cents = registry.resolve("EURcent").unwrap_or_else(|e| panic!("{e}"));
     let euros = registry.resolve("EUR").unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(cents.dimension, euros.dimension);
 

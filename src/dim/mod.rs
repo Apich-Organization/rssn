@@ -77,10 +77,12 @@ impl DimExpr {
             // A rational exponent is the common case; a symbolic one (`x^n`)
             // is interned as an atom, which is what `DimTerm` stores.
             let rational = match &exponent {
-                | TypeExp::Rat(r) => Some(BigRational::new(
-                    num_bigint::BigInt::from(r.numer),
-                    num_bigint::BigInt::from(r.denom),
-                )),
+                | TypeExp::Rat(r) => {
+                    Some(BigRational::new(
+                        num_bigint::BigInt::from(r.numer),
+                        num_bigint::BigInt::from(r.denom),
+                    ))
+                },
                 | TypeExp::Symbol(_) => None,
             };
             let symbol = match &exponent {
@@ -188,9 +190,7 @@ impl DimExpr {
                     // cannot be *scaled* by a rational — `Exp` has no product
                     // of a symbol and a rational — so anything else is refused
                     // with a message that says which case it was.
-                    | (TypeExp::Rat(a), TypeExp::Symbol(symbol))
-                        if a.numer == 1 && a.denom == 1 =>
-                    {
+                    | (TypeExp::Rat(a), TypeExp::Symbol(symbol)) if a.numer == 1 && a.denom == 1 => {
                         TypeExp::Symbol(symbol.clone())
                     },
                     | (TypeExp::Rat(_), TypeExp::Symbol(_)) => {
@@ -212,17 +212,19 @@ impl DimExpr {
             },
             | Self::Inverse(base) => {
                 let negated = match &exponent {
-                    | TypeExp::Rat(r) => TypeExp::Rat(crate::kernel::signature::Rational::new(
-                        -r.numer, r.denom,
-                    )),
+                    | TypeExp::Rat(r) => {
+                        TypeExp::Rat(crate::kernel::signature::Rational::new(-r.numer, r.denom))
+                    },
                     | TypeExp::Symbol(s) => TypeExp::Symbol(format!("-{s}")),
                 };
                 base.collect(out, negated)
             },
-            | Self::Any | Self::NonMetric | Self::Container => Err(DimError::Parse {
-                text: crate::kernel::signature::dim_name(self),
-                reason: String::from("not a product of factors"),
-            }),
+            | Self::Any | Self::NonMetric | Self::Container => {
+                Err(DimError::Parse {
+                    text: crate::kernel::signature::dim_name(self),
+                    reason: String::from("not a product of factors"),
+                })
+            },
         }
     }
 }
@@ -260,9 +262,8 @@ mod tests {
                 DimExpr::base("Length"),
                 DimExpr::base("Time").pow(TypeExp::from(-1_i64)),
             ]),
-            DimExpr::base("Length").pow(TypeExp::Rat(
-                crate::kernel::signature::Rational::new(1, 2),
-            )),
+            DimExpr::base("Length")
+                .pow(TypeExp::Rat(crate::kernel::signature::Rational::new(1, 2))),
         ];
         for case in cases {
             let term = case.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));

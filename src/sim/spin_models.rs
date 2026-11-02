@@ -1,16 +1,18 @@
 //! # Lattice spin models: Ising, Potts, XY, Heisenberg in 1-3 (any) dimensions
 //!
-//! Monte Carlo for `H = -J sum_<ij> s_i . s_j - h sum_i s_i[0]` (O(N) models:
-//! N = 1 Ising, 2 XY, 3 Heisenberg) and the q-state Potts model
+//! Monte Carlo for `H = -J sum_<ij> s_i . s_j - J2 sum_<<ij>> s_i . s_j - h sum_i s_i[0]`
+//! (O(N) models: N = 1 Ising, 2 XY, 3 Heisenberg) and the q-state Potts model
 //! `H = -J sum_<ij> delta(s_i, s_j)` on hypercubic lattices of any
-//! dimension `D` (const generic), with periodic or open boundaries.
+//! dimension `D` (const generic), with periodic or open boundaries. `<<ij>>` are the
+//! next-nearest-neighbour (diagonal) bonds of the same lattice: one step along two
+//! distinct axes, 4 per site in 2-D and 12 in 3-D (see [`Lattice::second_neighbours`]).
 //!
 //! | Algorithm | Ising (O(1)) | XY / Heisenberg (O(N), N>=2) | Potts |
 //! |---|---|---|---|
 //! | Metropolis | yes | yes (random-walk proposal) | yes |
 //! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg, Wood's von Mises-Fisher algorithm for `N >= 4`; field included) | yes |
-//! | Wolff cluster (embedded Ising for O(N)), `J > 0`, field through a ghost spin | yes | yes | yes |
-//! | Swendsen-Wang (embedded; field through a ghost spin) | yes | yes | yes |
+//! | Wolff cluster (embedded Ising for O(N)), `J > 0`, field through a ghost spin, `J2` included | yes | yes | yes |
+//! | Swendsen-Wang (embedded; field through a ghost spin, `J2` included) | yes | yes | yes |
 //! | Over-relaxation (micro-canonical) | - | yes | - |
 //!
 //! Further tools: [`ParallelTempering`] (replica exchange for O(N) models),
@@ -28,12 +30,31 @@
 //! sides >= 3 when periodic), hot (random) and cold (aligned) starts, user
 //! supplied spin arrays via the public `spins` field.
 //!
-//! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 (cluster updates include it through a ghost spin); the quantum spin-1/2 XXZ
-//! model (SSE with directed loops) lives in [`crate::sim::sse`]; single-walker Wang-Landau for continuous spins
-//! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
-//! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
-//! walkers).
+//! Next-nearest neighbours: [`OnModel::j2`] couples the diagonal bonds with the **same sign
+//! convention** as [`OnModel::j`], so `J2 > 0` is ferromagnetic. The literature writes the
+//! frustrated square-lattice model as `H = +J1 sum_nn + J2 sum_diag` with both couplings
+//! antiferromagnetic-positive, i.e. `j = -J1_lit` and `j2 = -J2_lit`; the stripe phase, which
+//! the literature places at `J2_lit/J1_lit > 0.5`, is therefore `j2/j < -0.5` for `j > 0` and
+//! `j2/j > 0.5` for `j < 0`. `J2` enters the energy, the local field (and hence the
+//! Metropolis, heat-bath and over-relaxation moves) and the cluster construction: a
+//! ferromagnetic `J2 > 0` joins the Wolff / Swendsen-Wang bond set like `J`, while an
+//! antiferromagnetic `J2 < 0` is frustrated with respect to the `J` bonds, so the cluster
+//! grows on the `J` bonds only and its flip is accepted with the exact Metropolis factor of
+//! the diagonal bonds that cross the cluster boundary. Wolff flips one cluster per step;
+//! Swendsen-Wang flips the clusters of a sweep one at a time — atomically, and against the
+//! configuration left by the previous ones, for `J2 < 0`, where the frustrated bonds couple
+//! neighbouring clusters — and independently for `J2 > 0`.
+//!
+//! Limitations: hypercubic lattices only (no triangular, hexagonal or fcc geometries); the
+//! field `h` couples to component 0 (cluster updates include it through a ghost spin); cluster
+//! updates require a ferromagnetic `J > 0`; [`Potts`] remains nearest-neighbour;
+//! [`wang_landau_ising`], [`wang_landau_on`] and [`replica_exchange_wang_landau`] build their
+//! own nearest-neighbour model internally, so they run with `J2 = 0` and offer no way to set
+//! it (set `j2` on the replicas of a [`ParallelTempering`] instead); the quantum spin-1/2 XXZ
+//! model (SSE with directed loops) lives in [`crate::sim::sse`]; single-walker Wang-Landau for
+//! continuous spins ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves
+//! leaving it are rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds
+//! windows and walkers).
 //!
 //! Parallelism: the replicas of [`ParallelTempering`] and [`PottsTempering`] own their random
 //! number generators, so the per-round updates of the replicas run concurrently (from 1024 sites
@@ -42,7 +63,7 @@
 
 use crate::kernels::random::Rng;
 
-/// Hypercubic lattice with nearest-neighbour table.
+/// Hypercubic lattice with nearest-neighbour and diagonal (next-nearest-neighbour) tables.
 #[derive(Clone, Debug)]
 pub struct Lattice<const D: usize> {
     /// Side lengths.
@@ -50,7 +71,34 @@ pub struct Lattice<const D: usize> {
     /// Whether all boundaries are periodic.
     pub periodic: bool,
     nbr: Vec<usize>,
+    nbr2: Vec<usize>,
+    per2: usize,
     n: usize,
+}
+
+/// Coordinate of the neighbour of `x` along a side of length `len`, or `None` across an open
+/// boundary.
+const fn step_coord(
+    x: usize,
+    len: usize,
+    forward: bool,
+    periodic: bool,
+) -> Option<usize> {
+    if forward {
+        if x + 1 < len {
+            Some(x + 1)
+        } else if periodic {
+            Some(0)
+        } else {
+            None
+        }
+    } else if x > 0 {
+        Some(x - 1)
+    } else if periodic {
+        Some(len - 1)
+    } else {
+        None
+    }
 }
 
 impl<const D: usize> Lattice<D> {
@@ -100,10 +148,35 @@ impl<const D: usize> Lattice<D> {
                 }
             }
         }
+        // Diagonal table: for every pair of axes `a < b` the four sign combinations, stored as
+        // (++), (+-), (-+), (--). `for_each_diagonal_bond` walks the first two of each group,
+        // which lists every bond exactly once; the other two are its reverses.
+        let per2 = 2 * D * D.saturating_sub(1);
+        let mut nbr2 = vec![usize::MAX; n * per2];
+        for i in 0..n {
+            let mut pair = 0;
+            for a in 0..D {
+                for b in (a + 1)..D {
+                    let xa = (i / stride[a]) % dims[a];
+                    let xb = (i / stride[b]) % dims[b];
+                    for s in 0..4 {
+                        let ya = step_coord(xa, dims[a], s < 2, periodic);
+                        let yb = step_coord(xb, dims[b], s & 1 == 0, periodic);
+                        if let (Some(ya), Some(yb)) = (ya, yb) {
+                            let base = i - xa * stride[a] - xb * stride[b];
+                            nbr2[i * per2 + 4 * pair + s] = base + ya * stride[a] + yb * stride[b];
+                        }
+                    }
+                    pair += 1;
+                }
+            }
+        }
         Ok(Self {
             dims,
             periodic,
             nbr,
+            nbr2,
+            per2,
             n,
         })
     }
@@ -123,10 +196,31 @@ impl<const D: usize> Lattice<D> {
         &self.nbr[i * 2 * D..(i + 1) * 2 * D]
     }
 
+    /// Diagonal (next-nearest-neighbour) slice of a site: for every pair of axes the four
+    /// combinations `(+-1, +-1)` in the order `(++)`, `(+-)`, `(-+)`, `(--)`, with `usize::MAX`
+    /// for a missing open-boundary neighbour. Empty in one dimension.
+    #[must_use]
+    pub fn second_neighbours(
+        &self,
+        i: usize,
+    ) -> &[usize] {
+        let lo = i * self.per2;
+        self.nbr2
+            .get(lo..lo.saturating_add(self.per2))
+            .unwrap_or(&[])
+    }
+
     /// Number of bonds.
     #[must_use]
     pub fn bonds(&self) -> usize {
         self.nbr.iter().filter(|&&j| j != usize::MAX).count() / 2
+    }
+
+    /// Number of diagonal (next-nearest-neighbour) bonds: `2 D (D - 1)` per site on a periodic
+    /// lattice, fewer at open boundaries.
+    #[must_use]
+    pub fn diagonal_bonds(&self) -> usize {
+        self.nbr2.iter().filter(|&&j| j != usize::MAX).count() / 2
     }
 
     fn for_each_bond(
@@ -138,6 +232,26 @@ impl<const D: usize> Lattice<D> {
                 let j = self.nbr[i * 2 * D + 2 * k];
                 if j != usize::MAX {
                     f(i, j);
+                }
+            }
+        }
+    }
+
+    /// Walks every diagonal bond once (`per2` is always a multiple of four, so the chunking
+    /// leaves no remainder).
+    fn for_each_diagonal_bond(
+        &self,
+        mut f: impl FnMut(usize, usize),
+    ) {
+        for i in 0..self.n {
+            let lo = i * self.per2;
+            if let Some(row) = self.nbr2.get(lo..lo.saturating_add(self.per2)) {
+                for group in row.as_chunks::<4>().0 {
+                    for &j in group.iter().take(2) {
+                        if j != usize::MAX {
+                            f(i, j);
+                        }
+                    }
                 }
             }
         }
@@ -373,6 +487,10 @@ pub struct OnModel<const D: usize, const N: usize> {
     pub beta: f64,
     /// Exchange coupling.
     pub j: f64,
+    /// Next-nearest-neighbour (diagonal) exchange coupling, same sign convention as `j`
+    /// (`> 0` ferromagnetic). `0.0` (the default) leaves every result of the
+    /// nearest-neighbour model unchanged.
+    pub j2: f64,
     /// Field along component 0.
     pub field: f64,
     /// Random number generator.
@@ -380,7 +498,7 @@ pub struct OnModel<const D: usize, const N: usize> {
 }
 
 impl<const D: usize, const N: usize> OnModel<D, N> {
-    /// Creates a model with a hot (random) start.
+    /// Creates a model with a hot (random) start and `j = 1`, `j2 = 0`, `field = 0`.
     ///
     /// # Errors
     /// Propagates lattice construction errors.
@@ -412,6 +530,7 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
             spins,
             beta,
             j: 1.0,
+            j2: 0.0,
             field: 0.0,
             rng,
         })
@@ -425,12 +544,17 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         }
     }
 
-    /// Total energy.
+    /// Total energy `-J sum_nn - J2 sum_diag - h sum s_i[0]`.
     #[must_use]
     pub fn energy(&self) -> f64 {
         let mut e = 0.0;
         self.lattice
             .for_each_bond(|i, j| e -= self.j * dot(&self.spins[i], &self.spins[j]));
+        if self.j2 != 0.0 {
+            self.lattice.for_each_diagonal_bond(|i, j| {
+                e -= self.j2 * dot(&self.spins[i], &self.spins[j]);
+            });
+        }
         for s in &self.spins {
             e -= self.field * s[0];
         }
@@ -456,7 +580,7 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         dot(&m, &m).sqrt() / self.lattice.sites() as f64
     }
 
-    /// Local field `h e_0 + J sum_nn s_j` acting on site `i`.
+    /// Local field `h e_0 + J sum_nn s_j + J2 sum_diag s_j` acting on site `i`.
     #[must_use]
     pub fn local_field_public(
         &self,
@@ -475,6 +599,15 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
             if j != usize::MAX {
                 for k in 0..N {
                     f[k] += self.j * self.spins[j][k];
+                }
+            }
+        }
+        if self.j2 != 0.0 {
+            for &j in self.lattice.second_neighbours(i) {
+                if j != usize::MAX {
+                    for k in 0..N {
+                        f[k] += self.j2 * self.spins[j][k];
+                    }
                 }
             }
         }
@@ -553,12 +686,27 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         Ok(())
     }
 
-    /// Grows and flips one Wolff cluster; returns its size.
+    /// Grows and flips one Wolff cluster; returns its size (`0` when the correction of a
+    /// frustrated `J2` boundary rejects the flip).
     ///
     /// A non-zero field `h` is handled by the **ghost-spin** construction: the field couples every
     /// site to an extra ghost spin `sign(h) e_0` with strength `|h|`, the cluster may absorb the
     /// ghost, and when it does the cluster's complement is flipped instead (the global symmetry of the
     /// extended system), which keeps detailed balance.
+    ///
+    /// A ferromagnetic `j2 > 0` joins the bond set like `j`. An antiferromagnetic `j2 < 0` is
+    /// frustrated with respect to the `j` bonds, so it stays out of the bond set: the cluster
+    /// grows on the `j` bonds only and the flip is then accepted with `min(1, exp(-beta dE))`,
+    /// where `dE = 2 J2 sum p_i p_j` runs over the diagonal bonds with exactly one endpoint in
+    /// the cluster and `p_i = s_i . r` is the projection on the embedding direction. Those
+    /// projections, not the scalar products `s_i . s_j`, are what the reflection
+    /// `s_i -> s_i - 2 p_i r` changes: it maps `s_i . s_j` to `s_i . s_j - 2 p_i p_j`, so the
+    /// perpendicular components drop out (`p_i p_j = s_i s_j` only for `N = 1`). Only the
+    /// frustrated bonds need the correction — the Fortuin-Kasteleyn weight of a ferromagnetic
+    /// bond is the same before and after a cluster flip, while the Boltzmann factor of a
+    /// frustrated bond is not. The proposal is symmetric (the bond construction uses only bonds
+    /// inside the cluster, whose products the flip leaves unchanged), so the correction keeps
+    /// detailed balance.
     ///
     /// # Errors
     /// Fails for `J <= 0`.
@@ -566,16 +714,18 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         self.cluster_ready()?;
         let r = random_unit::<N>(&mut self.rng);
         let n = self.lattice.sites();
+        let proj: Vec<f64> = self.spins.iter().map(|s| dot(s, &r)).collect();
         let seed = self.rng.below(n as u64) as usize;
         let mut in_cluster = vec![false; n];
         let mut stack = vec![seed];
+        let mut members = Vec::new();
         in_cluster[seed] = true;
-        let mut size = 0;
         let hh = self.field.abs();
         let g0 = r[0] * self.field.signum();
         let mut ghost_in = false;
+        let j2_bond = self.j2.max(0.0);
         while let Some(i) = stack.pop() {
-            let pi = dot(&self.spins[i], &r);
+            let pi = proj[i];
             // ghost bond: the cluster absorbs the ghost, which then bonds to every other site
             if !ghost_in
                 && hh > 0.0
@@ -587,7 +737,7 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                     if in_cluster[j] || j == i {
                         continue;
                     }
-                    let pj = dot(&self.spins[j], &r);
+                    let pj = proj[j];
                     if pj * g0 > 0.0
                         && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pj * g0).exp()
                     {
@@ -596,24 +746,54 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                     }
                 }
             }
-            // flip i
-            for k in 0..N {
-                self.spins[i][k] -= 2.0 * pi * r[k];
-            }
-            size += 1;
+            members.push(i);
             for t in 0..2 * D {
                 let j = self.lattice.nbr[i * 2 * D + t];
                 if j == usize::MAX || in_cluster[j] {
                     continue;
                 }
-                let pj = dot(&self.spins[j], &r);
-                // after flipping i its projection is -pi; bond uses the pre-flip product
-                let prod = pi * pj;
+                // the bond uses the pre-flip product; the flip is applied after the growth
+                let prod = pi * proj[j];
                 if prod > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * self.j * prod).exp()
                 {
                     in_cluster[j] = true;
                     stack.push(j);
                 }
+            }
+            if j2_bond > 0.0 {
+                for &j in self.lattice.second_neighbours(i) {
+                    if j == usize::MAX || in_cluster[j] {
+                        continue;
+                    }
+                    let prod = pi * proj[j];
+                    if prod > 0.0
+                        && self.rng.uniform() < 1.0 - (-2.0 * self.beta * j2_bond * prod).exp()
+                    {
+                        in_cluster[j] = true;
+                        stack.push(j);
+                    }
+                }
+            }
+        }
+        if self.j2 < 0.0 {
+            let mut dfrust = 0.0;
+            for &i in &members {
+                let pi = proj[i];
+                for &j in self.lattice.second_neighbours(i) {
+                    if j != usize::MAX && !in_cluster[j] {
+                        // the reflection changes `s_i . s_j` by `-2 p_i p_j`, so only the
+                        // projections enter; the perpendicular components cancel
+                        dfrust += 2.0 * self.j2 * pi * proj[j];
+                    }
+                }
+            }
+            if dfrust > 0.0 && self.rng.uniform() >= (-self.beta * dfrust).exp() {
+                return Ok(0);
+            }
+        }
+        for &i in &members {
+            for k in 0..N {
+                self.spins[i][k] -= 2.0 * proj[i] * r[k];
             }
         }
         if ghost_in {
@@ -626,13 +806,24 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                 }
             }
         }
-        Ok(size)
+        Ok(members.len())
     }
 
     /// One Swendsen-Wang sweep with a random embedding direction; returns the number of clusters.
     ///
     /// A non-zero field is included through the ghost spin `sign(h) e_0`: the cluster attached to
     /// the ghost is never flipped.
+    ///
+    /// A ferromagnetic `j2 > 0` joins the bond set and the clusters stay independent. An
+    /// antiferromagnetic `j2 < 0` is frustrated, so it stays out of the bond set; its Boltzmann
+    /// factor then couples the orientations of *pairs* of clusters and they are no longer
+    /// independent, so the sweep becomes a cluster-level Metropolis: every cluster is flipped
+    /// atomically, in a fixed order, and accepted with `min(1, exp(-beta dE))`, `dE` being the
+    /// change of `2 J2 sum p_i p_j` over the diagonal bonds that cross it, evaluated against the
+    /// configuration left by the clusters already flipped in the same sweep (`p_i = s_i . r` is
+    /// the projection on the embedding direction, see [`Self::wolff_step`]). Both branches are
+    /// exact; for `j2 < 0` only the independence of the clusters — and hence the reading of the
+    /// sweep as independent Fortuin-Kasteleyn clusters — is lost.
     ///
     /// # Errors
     /// Fails for `J <= 0`.
@@ -661,23 +852,81 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                 uf.union(i, j);
             }
         }
+        let j2_bond = self.j2.max(0.0);
+        if j2_bond > 0.0 {
+            let mut diagonals = Vec::new();
+            self.lattice
+                .for_each_diagonal_bond(|i, j| diagonals.push((i, j)));
+            for (i, j) in diagonals {
+                let prod = proj[i] * proj[j];
+                if prod > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * beta * j2_bond * prod).exp() {
+                    uf.union(i, j);
+                }
+            }
+        }
+        let roots: Vec<usize> = (0..n).map(|i| uf.find(i)).collect();
         let mut flip = vec![None; n + 1];
         let ghost_root = uf.find(n);
         flip[ghost_root] = Some(false);
         let mut clusters = 0;
         for i in 0..n {
-            let root = uf.find(i);
-            let f = if let Some(f) = flip[root] {
-                f
-            } else {
-                let f = self.rng.uniform() < 0.5;
-                flip[root] = Some(f);
+            let root = roots[i];
+            if flip[root].is_none() {
+                flip[root] = Some(self.rng.uniform() < 0.5);
                 clusters += 1;
-                f
-            };
-            if f {
-                for k in 0..N {
-                    self.spins[i][k] -= 2.0 * proj[i] * r[k];
+            }
+        }
+        if self.j2 < 0.0 {
+            // The frustrated diagonals are outside the bond set, so their Boltzmann factor
+            // couples the orientations of *pairs* of clusters. Each cluster is therefore flipped
+            // atomically as a single Metropolis move, tested against the configuration left by
+            // the clusters already flipped in this sweep: the pairwise factor is evaluated once,
+            // when both endpoints are known, instead of being split into two independent
+            // per-cluster factors.
+            let mut head = vec![usize::MAX; n + 1];
+            let mut next = vec![usize::MAX; n];
+            for i in (0..n).rev() {
+                let root = roots[i];
+                next[i] = head[root];
+                head[root] = i;
+            }
+            let mut cur = proj;
+            for i in 0..n {
+                let root = roots[i];
+                if flip[root] != Some(true) || head[root] != i {
+                    continue;
+                }
+                let mut de = 0.0;
+                let mut k = i;
+                while k != usize::MAX {
+                    let pk = cur[k];
+                    for &j in self.lattice.second_neighbours(k) {
+                        if j != usize::MAX && roots[j] != root {
+                            de += 2.0 * self.j2 * pk * cur[j];
+                        }
+                    }
+                    k = next[k];
+                }
+                if de > 0.0 && self.rng.uniform() >= (-beta * de).exp() {
+                    flip[root] = Some(false);
+                    continue;
+                }
+                k = i;
+                while k != usize::MAX {
+                    let pk = cur[k];
+                    for c in 0..N {
+                        self.spins[k][c] -= 2.0 * pk * r[c];
+                    }
+                    cur[k] = -pk;
+                    k = next[k];
+                }
+            }
+        } else {
+            for i in 0..n {
+                if flip[roots[i]] == Some(true) {
+                    for k in 0..N {
+                        self.spins[i][k] -= 2.0 * proj[i] * r[k];
+                    }
                 }
             }
         }
@@ -942,7 +1191,11 @@ pub struct ParallelTempering<const D: usize, const N: usize> {
 }
 
 impl<const D: usize, const N: usize> ParallelTempering<D, N> {
-    /// Creates replicas at the given inverse temperatures.
+    /// Creates replicas at the given inverse temperatures (`j = 1`, `j2 = 0`).
+    ///
+    /// The replicas are ordinary [`OnModel`]s, so a next-nearest-neighbour coupling is set by
+    /// assigning `j2` on every replica before the run; the exchange criterion only uses
+    /// [`OnModel::energy`], which includes it.
     ///
     /// # Errors
     /// Propagates lattice errors; requires at least two temperatures.
@@ -1088,7 +1341,8 @@ impl<const D: usize> PottsTempering<D> {
 /// Single-spin moves of width `delta`; `ln f` starts at 1 and is halved whenever the histogram
 /// of visited bins satisfies `min H > flatness * mean H` (checked every `check` attempted
 /// moves) until `ln_f_final`. Returns `(bin centre, ln g)` for the visited bins, normalised
-/// to `sum g = 1`.
+/// to `sum g = 1`. The model is the nearest-neighbour one (`J2 = 0`); the signature carries no
+/// coupling, so a next-nearest-neighbour run has to use [`ParallelTempering`].
 ///
 /// # Errors
 /// Fails for invalid bins or lattice errors.
@@ -1225,6 +1479,7 @@ pub fn enumerate_ising_dos<const D: usize>(
 ///
 /// The move set is single spin flips; the flatness criterion is `min H > flatness * mean H`
 /// over the energies visited so far; `ln f` starts at 1 and is halved until `ln_f_final`.
+/// Nearest-neighbour only (`J2 = 0`); the energy levels are those of [`Lattice::bonds`].
 ///
 /// # Errors
 /// Propagates lattice errors.

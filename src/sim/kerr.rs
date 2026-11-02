@@ -1,13 +1,13 @@
-//! # Exact bound Kerr geodesics in Mino time and black-hole shadows
+//! # Kerr geodesics in Mino time: exact bound orbits, unbound scattering, black-hole shadows
 //!
-//! Timelike geodesics of the Kerr metric (Boyer-Lindquist coordinates, `G = c = 1`, mass `M`,
-//! spin `a`) with the constants of motion energy `E`, axial angular momentum `L` and Carter
-//! constant `Q`. In **Mino time** `d lambda = d tau / Sigma` the radial and polar motions
-//! decouple,
+//! Geodesics of the Kerr metric (Boyer-Lindquist coordinates, `G = c = 1`, mass `M`, spin `a`)
+//! with the constants of motion energy `E`, axial angular momentum `L` and Carter constant `Q`;
+//! `mu^2 = 1` for a unit-mass particle and `0` for a photon. In **Mino time**
+//! `d lambda = d tau / Sigma` the radial and polar motions decouple,
 //!
 //! ```text
-//! (dr/dlambda)^2 = R(r) = [E (r^2 + a^2) - a L]^2 - Delta [r^2 + (L - a E)^2 + Q]
-//! (dz/dlambda)^2 = Q - (Q + L^2 + a^2 (1 - E^2)) z^2 + a^2 (1 - E^2) z^4,   z = cos(theta)
+//! (dr/dlambda)^2 = R(r) = [E (r^2 + a^2) - a L]^2 - Delta [mu^2 r^2 + (L - a E)^2 + Q]
+//! (dz/dlambda)^2 = Q - (Q + L^2 + a^2 (mu^2 - E^2)) z^2 + a^2 (mu^2 - E^2) z^4,   z = cos(theta)
 //! ```
 //!
 //! and for bound orbits they are solved in closed form (Fujita and Hikida 2009):
@@ -23,13 +23,20 @@
 //! | [`KerrOrbit::from_apsides`] | constants of motion from periapsis, apoapsis and the turning latitude |
 //! | [`KerrOrbit::state`] | `(t, r, theta, phi)` at any Mino time |
 //! | [`KerrOrbit::frequencies`] | Mino frequencies `Upsilon_r, Upsilon_theta, Upsilon_phi`, `Gamma` and the coordinate-time frequencies |
+//! | [`UnboundGeodesic::new`] | unbound (`E^2 >= mu^2`) null and timelike geodesics of any inclination, integrated in `u = 1/r` |
+//! | [`UnboundGeodesic::scatter`] | deflection angle of an escaping orbit or capture by the horizon |
 //! | [`shadow_boundary_analytic`] | Bardeen's critical curve of the shadow seen by a distant observer |
 //! | [`KerrSchildGeodesic`] | geodesics in ingoing Kerr-Schild Cartesian coordinates (Hamiltonian form, adaptive Dormand-Prince): regular across the horizon and through the poles/axis; checked against the exact Mino orbits, the Schwarzschild free-fall proper time and conserved `E`, `L_z`, `Q` across the horizon |
 //! | [`trace_shadow`] | backward ray tracing of null geodesics (Mino-time integration) to locate the shadow boundary numerically |
 //!
-//! Limitations: the closed form covers bound timelike orbits (`mu = 1`, `E < 1`) without
-//! radiation reaction and excludes the separatrix and circular orbits (`r1 = r2`, where the
-//! radial motion degenerates to a point) and extremal spin; ray tracing is numerical.
+//! Limitations: [`KerrOrbit`] is closed-form but covers only bound timelike orbits (`mu = 1`,
+//! `E < 1`), excluding the separatrix and circular orbits (`r1 = r2`) and extremal spin.
+//! [`UnboundGeodesic`] covers the rest of the equatorial and inclined phase space (`E^2 >=
+//! mu^2`, photons and particles) but is numerical: its accuracy is the tolerance passed to
+//! [`UnboundGeodesic::advance`], it stops at the horizon instead of continuing inside it, it
+//! starts at a finite radius and completes the azimuth with the leading `b/r` asymptote, so
+//! that radius must be large compared with the impact parameter, and extremal spin, radiation
+//! reaction and self-force are still absent. Ray tracing is numerical.
 
 use std::f64::consts::PI;
 
@@ -782,6 +789,376 @@ pub fn trace_shadow(
         out.push((rho * psi.cos(), rho * psi.sin()));
     }
     Ok(out)
+}
+
+// ---------------------------------------------------------------------------
+// Unbound geodesics: scattering, capture and frame dragging
+// ---------------------------------------------------------------------------
+
+/// Coefficients `[c4, c3, c2, c1, c0]` of the radial potential `R(r)` for mass shell `mu2`
+/// (`0` photon, `1` unit-mass particle).
+fn radial_poly_mu(
+    m: f64,
+    a: f64,
+    mu2: f64,
+    e: f64,
+    l: f64,
+    q: f64,
+) -> [f64; 5] {
+    let k = (l - a * e).powi(2) + q;
+    [
+        e * e - mu2,
+        2.0 * m * mu2,
+        a * a * (e * e - mu2) - l * l - q,
+        2.0 * m * k,
+        (e * a * a - a * l).powi(2) - a * a * k,
+    ]
+}
+
+/// Outcome of an unbound geodesic run out to its asymptotic state.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ScatterOutcome {
+    /// The orbit returned to its starting radius and escapes; `azimuth` is the total swing of
+    /// `phi` between the incoming and the outgoing asymptote, and `deflection` is
+    /// `|azimuth| - pi`, the excess over a straight line.
+    Escaped {
+        /// Total azimuthal swing, incoming asymptote to outgoing asymptote.
+        azimuth: f64,
+        /// Deflection angle `|azimuth| - pi`.
+        deflection: f64,
+    },
+    /// The orbit fell through the horizon.
+    Captured,
+}
+
+/// A geodesic of arbitrary mass shell integrated in Mino time, unbound orbits included.
+///
+/// The radial motion is carried by `u = 1/r`, whose potential
+/// `(du/dlambda)^2 = R_u(u) = c4 + c3 u + c2 u^2 + c1 u^3 + c0 u^4` stays of order one at
+/// large radius, unlike `R(r) ~ r^4`. A scattering orbit therefore keeps its first integrals
+/// to integrator accuracy all the way from `r ~ 10^6 M` down to periapsis, where `R` has to be
+/// resolved to a small fraction of its large-`r` magnitude. The polar motion uses Carter's
+/// constant, so inclined orbits of both signs of the spin are covered.
+#[derive(Clone, Debug)]
+pub struct UnboundGeodesic {
+    /// Black-hole mass.
+    pub m: f64,
+    /// Spin parameter `a = J/M`.
+    pub a: f64,
+    /// Mass shell `mu^2`: `0` for a photon, `1` for a unit-mass particle.
+    pub mu2: f64,
+    /// Energy per unit mass.
+    pub energy: f64,
+    /// Axial angular momentum.
+    pub lz: f64,
+    /// Carter constant.
+    pub carter: f64,
+    y: [f64; 6],
+}
+
+impl UnboundGeodesic {
+    /// Starts a geodesic with constants `(E, L, Q)` at `(r, theta, phi)`; `radial_out` /
+    /// `polar_down` give the signs of `dr/dlambda` and of `dtheta/dlambda`.
+    ///
+    /// # Errors
+    /// Fails unless `M > 0`, `|a| < M`, `Q >= 0`, `0 < E`, `E^2 >= mu^2` (an orbit that can
+    /// reach infinity), `r` is outside the horizon and both potentials allow the motion there.
+    pub fn new(
+        m: f64,
+        a: f64,
+        mu2: f64,
+        (energy, lz, carter): (f64, f64, f64),
+        (r, theta, phi): (f64, f64, f64),
+        (radial_out, polar_down): (bool, bool),
+    ) -> Result<Self, String> {
+        if m <= 0.0 || a.abs() >= m || mu2 < 0.0 || energy <= 0.0 || carter < 0.0 {
+            return Err("need M > 0, |a| < M, mu2 >= 0, E > 0 and Q >= 0".into());
+        }
+        if energy * energy < mu2 {
+            return Err("bound orbit (E^2 < mu^2) cannot reach infinity".into());
+        }
+        let rh = m + (m * m - a * a).sqrt();
+        if r <= rh {
+            return Err("start outside the horizon".into());
+        }
+        let c = radial_poly_mu(m, a, mu2, energy, lz, carter);
+        let u = 1.0 / r;
+        // R_u(u) = c4 + c3 u + c2 u^2 + c1 u^3 + c0 u^4
+        let rpot = (((c[4] * u + c[3]) * u + c[2]) * u + c[1]) * u + c[0];
+        let z = theta.cos();
+        let beta = a * a * (mu2 - energy * energy);
+        let tpot = carter - (carter + lz * lz + beta) * z * z + beta * z * z * z * z;
+        if rpot < -1e-12 || tpot < -1e-12 {
+            return Err("motion is forbidden at the requested position".into());
+        }
+        // du/dlambda > 0 runs inward (r decreasing), dz/dlambda < 0 runs toward the south pole
+        let pu = (if radial_out { -1.0 } else { 1.0 }) * rpot.max(0.0).sqrt();
+        let pz = (if polar_down { 1.0 } else { -1.0 }) * tpot.max(0.0).sqrt();
+        Ok(Self {
+            m,
+            a,
+            mu2,
+            energy,
+            lz,
+            carter,
+            y: [u, pu, z, pz, 0.0, phi],
+        })
+    }
+
+    /// State `(t, r, theta, phi)`; `t = 0` and `phi = phi0` at the start.
+    #[must_use]
+    pub fn state(&self) -> (f64, f64, f64, f64) {
+        (
+            self.y[4],
+            1.0 / self.y[0].max(1e-300),
+            self.y[2].clamp(-1.0, 1.0).acos(),
+            self.y[5],
+        )
+    }
+
+    /// Impact parameter `b = L / sqrt(E^2 - mu^2)` (`None` for a parabolic orbit `E^2 = mu^2`).
+    #[must_use]
+    pub fn impact_parameter(&self) -> Option<f64> {
+        let v2 = self.energy * self.energy - self.mu2;
+        (v2 > 0.0).then(|| self.lz / v2.sqrt())
+    }
+
+    /// Carter constant measured from the current state,
+    /// `Q = p_theta^2 + cos^2 theta [a^2 (mu^2 - E^2) + L^2 / sin^2 theta]` (off the axis).
+    #[must_use]
+    pub fn carter_constant(&self) -> f64 {
+        let (a, e, l) = (self.a, self.energy, self.lz);
+        let z = self.y[2];
+        let s2 = (1.0 - z * z).max(1e-300);
+        let pth = -self.y[3] / s2.sqrt();
+        pth * pth + z * z * (a * a * (self.mu2 - e * e) + l * l / s2)
+    }
+
+    /// Normalisation `g_{mu nu} u^mu u^nu` of the current state, from
+    /// `Sigma g^{mu nu} p_mu p_nu = -mu^2` with `p_t = -E`, `p_phi = L`, `p_r = dr/dlambda`
+    /// and `p_theta = dtheta/dlambda`; it equals `-mu^2` on a geodesic.
+    #[must_use]
+    pub fn normalisation(&self) -> f64 {
+        let (m, a, e, l) = (self.m, self.a, self.energy, self.lz);
+        let u = self.y[0].max(1e-300);
+        let r = 1.0 / u;
+        let z = self.y[2];
+        let s2 = (1.0 - z * z).max(1e-300);
+        let sigma = r * r + a * a * z * z;
+        let delta = r * r - 2.0 * m * r + a * a;
+        let aa = (r * r + a * a).powi(2) - a * a * delta * s2;
+        let pth = -self.y[3] / s2.sqrt();
+        let pr = -self.y[1] / (u * u);
+        let nn = -aa * e * e
+            + 4.0 * m * a * r * e * l
+            + (delta - a * a * s2) * l * l / s2
+            + pr * pr
+            + delta * pth * pth;
+        nn / (sigma * delta)
+    }
+
+    /// Mino-time derivative of `[u, du/dlambda, z, dz/dlambda, t, phi]`.
+    fn derivative(
+        &self,
+        y: &[f64; 6],
+    ) -> [f64; 6] {
+        let (m, a, e, l, q, mu2) = (self.m, self.a, self.energy, self.lz, self.carter, self.mu2);
+        let c = radial_poly_mu(m, a, mu2, e, l, q);
+        let u = y[0];
+        let z = y[2];
+        // dR_u/du / 2
+        let pu = f64::midpoint(((4.0 * c[4] * u + 3.0 * c[3]) * u + 2.0 * c[2]) * u, c[1]);
+        let beta = a * a * (mu2 - e * e);
+        let bq = q + l * l + beta;
+        let pz = -bq * z + 2.0 * beta * z * z * z;
+        let r = 1.0 / u.max(1e-12);
+        let delta = (r * r - 2.0 * m * r + a * a).max(1e-12);
+        let p = e * (r * r + a * a) - a * l;
+        let s2 = (1.0 - z * z).max(1e-12);
+        let tdot = (r * r + a * a) * p / delta - a * (a * e * s2 - l);
+        let phidot = a * p / delta - a * e + l / s2;
+        [y[1], pu, y[3], pz, tdot, phidot]
+    }
+
+    /// One Dormand-Prince 5(4) step of size `h`: the fifth-order candidate and the largest
+    /// scaled error. The coordinate time is a pure quadrature and is left out of the step
+    /// control, whose scale would otherwise be dominated by `dt/dlambda ~ r^2`.
+    fn dp_step(
+        &self,
+        y: &[f64; 6],
+        h: f64,
+        tol: f64,
+    ) -> ([f64; 6], f64) {
+        let a: [[f64; 6]; 6] = [
+            [1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0],
+            [44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0],
+            [
+                19372.0 / 6561.0,
+                -25360.0 / 2187.0,
+                64448.0 / 6561.0,
+                -212.0 / 729.0,
+                0.0,
+                0.0,
+            ],
+            [
+                9017.0 / 3168.0,
+                -355.0 / 33.0,
+                46732.0 / 5247.0,
+                49.0 / 176.0,
+                -5103.0 / 18656.0,
+                0.0,
+            ],
+            [
+                35.0 / 384.0,
+                0.0,
+                500.0 / 1113.0,
+                125.0 / 192.0,
+                -2187.0 / 6784.0,
+                11.0 / 84.0,
+            ],
+        ];
+        let b5 = [
+            35.0 / 384.0,
+            0.0,
+            500.0 / 1113.0,
+            125.0 / 192.0,
+            -2187.0 / 6784.0,
+            11.0 / 84.0,
+            0.0,
+        ];
+        let b4 = [
+            5179.0 / 57600.0,
+            0.0,
+            7571.0 / 16695.0,
+            393.0 / 640.0,
+            -92097.0 / 339200.0,
+            187.0 / 2100.0,
+            1.0 / 40.0,
+        ];
+        let mut k = [[0.0; 6]; 7];
+        k[0] = self.derivative(y);
+        for s in 1..7 {
+            let mut ys = *y;
+            for j in 0..s {
+                let coef = if s < 6 { a[s - 1][j] } else { b5[j] };
+                for c in 0..6 {
+                    ys[c] += h * coef * k[j][c];
+                }
+            }
+            k[s] = self.derivative(&ys);
+        }
+        let mut y5 = *y;
+        let mut err = 0.0_f64;
+        for c in 0..6 {
+            let (mut d5, mut d4) = (0.0, 0.0);
+            for j in 0..7 {
+                d5 += b5[j] * k[j][c];
+                d4 += b4[j] * k[j][c];
+            }
+            y5[c] += h * d5;
+            if c != 4 {
+                let sc = tol * (1.0 + y[c].abs().max(y5[c].abs()) + (h * d5).abs());
+                err = err.max((h * (d5 - d4)).abs() / sc);
+            }
+        }
+        (y5, err)
+    }
+
+    /// Advances the geodesic by the Mino time `dlambda` with an adaptive Dormand-Prince 5(4)
+    /// integrator (relative tolerance `tol`). Returns `false` if the orbit reached the horizon
+    /// (the state is left at the last accepted step).
+    pub fn advance(
+        &mut self,
+        dlambda: f64,
+        tol: f64,
+    ) -> bool {
+        let rh = self.m + (self.m * self.m - self.a * self.a).sqrt();
+        let mut h = dlambda.signum() * 0.01_f64.min(dlambda.abs());
+        let mut t = 0.0;
+        let mut steps = 0usize;
+        while (dlambda - t) * dlambda.signum() > 1e-14 * dlambda.abs() {
+            steps += 1;
+            if steps > 1_000_000 {
+                break;
+            }
+            if (t + h - dlambda) * dlambda.signum() > 0.0 {
+                h = dlambda - t;
+            }
+            let (y5, err) = self.dp_step(&self.y, h, tol);
+            if err <= 1.0 || h.abs() < 1e-14 {
+                self.y = y5;
+                t += h;
+                if 1.0 / self.y[0].max(1e-300) <= rh * (1.0 + 1e-6) {
+                    return false;
+                }
+            }
+            let fac = if err == 0.0 {
+                5.0
+            } else {
+                (0.9 * err.powf(-0.2)).clamp(0.2, 5.0)
+            };
+            h *= fac;
+        }
+        true
+    }
+
+    /// Runs the orbit from its (inward) start until it either falls through the horizon or
+    /// returns to its starting radius moving outward.
+    ///
+    /// The azimuth is completed analytically: the two legs still missing between the start
+    /// radius and infinity contribute `b (u0 + u1)` to leading order, so the start radius has to
+    /// be large compared with the impact parameter.
+    ///
+    /// # Errors
+    /// Fails if the state does not move inward, if the orbit is parabolic (`E^2 = mu^2`) or if
+    /// the step budget is exhausted.
+    pub fn scatter(
+        &mut self,
+        tol: f64,
+    ) -> Result<ScatterOutcome, String> {
+        if self.y[1] <= 0.0 {
+            return Err("scatter needs an inward start (du/dlambda > 0)".into());
+        }
+        let b = self
+            .impact_parameter()
+            .ok_or("a parabolic orbit (E^2 = mu^2) does not scatter")?;
+        let (u0, phi0) = (self.y[0], self.y[5]);
+        let rh = self.m + (self.m * self.m - self.a * self.a).sqrt();
+        let mut h = 0.01_f64;
+        let mut turned = false;
+        for _ in 0..200_000 {
+            let (y5, err) = self.dp_step(&self.y, h, tol);
+            if err <= 1.0 || h.abs() < 1e-14 {
+                self.y = y5;
+                if 1.0 / self.y[0].max(1e-300) <= rh * (1.0 + 1e-6) {
+                    return Ok(ScatterOutcome::Captured);
+                }
+                if self.y[1] < 0.0 {
+                    turned = true;
+                }
+                if turned && self.y[0] <= u0 * (1.0 + 1e-12) {
+                    let azimuth = self.y[5] - phi0 + b * (u0 + self.y[0]);
+                    return Ok(ScatterOutcome::Escaped {
+                        azimuth,
+                        deflection: azimuth.abs() - PI,
+                    });
+                }
+            }
+            let fac = if err == 0.0 {
+                5.0
+            } else {
+                (0.9 * err.powf(-0.2)).clamp(0.2, 5.0)
+            };
+            h *= fac;
+            if self.y[1] < 0.0 && self.y[0] > u0 {
+                // approach the starting radius geometrically so that the asymptotic tail is
+                // evaluated where it is valid
+                h = h.min(0.5 * (self.y[0] - u0) / self.y[1].abs());
+            }
+        }
+        Err("scatter step budget exhausted".into())
+    }
 }
 
 // ---------------------------------------------------------------------------

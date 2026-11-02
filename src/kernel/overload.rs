@@ -96,22 +96,10 @@ pub fn matches_type(
         // The same constructor, with an argument the signature does not pin
         // down: a dimension, a rank, an element type.
         | (TypeExpr::Dim(a, _), TypeExpr::Dim(b, _))
-        | (
-            TypeExpr::Tensor {
-                elem: a, ..
-            },
-            TypeExpr::Tensor {
-                elem: b, ..
-            },
-        )
-        | (
-            TypeExpr::Sparse {
-                elem: a, ..
-            },
-            TypeExpr::Sparse {
-                elem: b, ..
-            },
-        ) => weaker(Match::Shaped, matches_type(a, b)),
+        | (TypeExpr::Tensor { elem: a, .. }, TypeExpr::Tensor { elem: b, .. })
+        | (TypeExpr::Sparse { elem: a, .. }, TypeExpr::Sparse { elem: b, .. }) => {
+            weaker(Match::Shaped, matches_type(a, b))
+        },
         | (TypeExpr::Function(pa, ra), TypeExpr::Function(pb, rb)) => {
             let params = pa
                 .iter()
@@ -149,12 +137,10 @@ pub fn score(
     let mut worst = Match::Exact;
     for (index, value) in args.iter().enumerate() {
         // A variadic tail repeats its element type.
-        let param = signature.params.get(index).or_else(|| {
-            signature
-                .variadic
-                .as_ref()
-                .map(|variadic| &variadic.elem)
-        })?;
+        let param = signature
+            .params
+            .get(index)
+            .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))?;
         let matched = matches(param, value);
         if !matched.accepted() {
             return None;
@@ -246,7 +232,8 @@ mod tests {
             vec![TypeExpr::Real.with_dim(DimExpr::base("Length"))],
             TypeExpr::Real,
         );
-        let unit = UnitDef::linear("m", DimExpr::base("Length"), crate::dim::Scale::one()).to_value();
+        let unit =
+            UnitDef::linear("m", DimExpr::base("Length"), crate::dim::Scale::one()).to_value();
         let quantity = Value::Quantity(QuantityValue {
             value: Box::new(real()),
             unit,
@@ -264,7 +251,8 @@ mod tests {
             vec![TypeExpr::Var("T".to_owned()).with_dim(DimExpr::base("Length"))],
             TypeExpr::Real,
         );
-        let unit = UnitDef::linear("m", DimExpr::base("Length"), crate::dim::Scale::one()).to_value();
+        let unit =
+            UnitDef::linear("m", DimExpr::base("Length"), crate::dim::Scale::one()).to_value();
         let quantity = Value::Quantity(QuantityValue {
             value: Box::new(real()),
             unit,
@@ -276,10 +264,7 @@ mod tests {
     fn the_same_constructor_with_a_different_shape_is_shaped() {
         // A rank-1 tensor signature against a rank-2 value: the element type
         // matches exactly but the shape does not, which is `Shaped`.
-        let vector = Signature::new(
-            vec![TypeExpr::Real.vector(3_u64)],
-            TypeExpr::Real,
-        );
+        let vector = Signature::new(vec![TypeExpr::Real.vector(3_u64)], TypeExpr::Real);
         let matrix = Value::Tensor(crate::kernel::value::TensorValue {
             shape: vec![2, 2],
             data: vec![real(), real(), real(), real()],
@@ -306,13 +291,12 @@ mod tests {
 
     #[test]
     fn a_variadic_tail_repeats_its_element_type() {
-        let variadic = Signature::scalars(0, TypeExpr::Real).variadic(
-            crate::kernel::signature::Variadic {
+        let variadic =
+            Signature::scalars(0, TypeExpr::Real).variadic(crate::kernel::signature::Variadic {
                 min: 0,
                 max: None,
                 elem: TypeExpr::Real,
-            },
-        );
+            });
         assert_eq!(score(&variadic, &[real(), real(), real()]), Some(4));
         assert_eq!(
             score(&variadic, &[real(), Value::String("x".to_owned())]),

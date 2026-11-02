@@ -22,9 +22,10 @@
 //! water the first `1 + dim`. Initial data are given in primitive variables
 //! `[ρ, u, v, w, p]` (Euler) or `[h, u, v, 0, 0]` (shallow water).
 //!
-//! Block-structured adaptive refinement with sub-cycling and refluxing for 1D
-//! and 2D is provided by [`euler_amr`](crate::sim::euler_amr), built on the
-//! reconstruction and Riemann kernels of this module.
+//! Block-structured adaptive refinement with sub-cycling and refluxing is
+//! provided by [`euler_amr`](crate::sim::euler_amr) for Euler in 1D–3D and
+//! shallow water in 1D–2D, built on the reconstruction and Riemann kernels of
+//! this module.
 //!
 //! ## Source terms ([`solve_with_sources`])
 //!
@@ -50,8 +51,8 @@
 //! well-balanced reconstruction is positivity-preserving in `h*`, but a
 //! front over a dry bed is not resolved sharply); gravity is not
 //! well-balanced for hydrostatic gas; shallow water supports one bed
-//! (no friction); this solver itself uses a uniform grid (3D has no adaptive
-//! mesh).
+//! (no friction); this solver itself uses a uniform grid (adaptive refinement
+//! is [`euler_amr`](crate::sim::euler_amr)).
 //!
 //! Parallelism: the flux sweeps of the residual process the lines of a sweep concurrently; the cell
 //! updates are applied in line order, so the residual is bit-identical to the serial sweep.

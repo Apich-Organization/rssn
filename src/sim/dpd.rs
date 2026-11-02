@@ -299,7 +299,9 @@ impl Dpd {
         v: &mut [f64; 3],
     ) {
         let Some(w) = self.wall else { return };
-        let WallKind::NoSlip { friction } = w.kind else { return };
+        let WallKind::NoSlip { friction } = w.kind else {
+            return;
+        };
         let keep = 1.0 - friction;
         let sd = (friction * (2.0 - friction) * self.params.kt / self.params.mass).sqrt();
         for a in (0..self.params.dim).filter(|&a| a != w.axis) {

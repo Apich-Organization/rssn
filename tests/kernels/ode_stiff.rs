@@ -3,8 +3,8 @@
 use rssn::kernels::dense::Mat;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_adaptive::rosenbrock23;
-use rssn::kernels::ode_stiff::bdf;
 use rssn::kernels::ode_stiff::BdfOptions;
+use rssn::kernels::ode_stiff::bdf;
 use rssn::kernels::ode_stiff::bdf_jac;
 use rssn::kernels::ode_stiff::bdf_with;
 use rssn::kernels::ode_stiff::radau5;
@@ -266,11 +266,16 @@ fn bdf_accepts_a_time_dependent_mass_matrix() {
         atol: 1e-12,
         ..OdeOptions::default()
     };
-    let solution = bdf_with(f, 0.0, 2.0, &[1.0], &opts, &options)
-        .unwrap_or_else(|e| panic!("{e:?}"));
+    let solution =
+        bdf_with(f, 0.0, 2.0, &[1.0], &opts, &options).unwrap_or_else(|e| panic!("{e:?}"));
     let last = solution.t.last().copied().unwrap_or(f64::NAN);
     assert!((last - 2.0).abs() < 1e-12);
-    let y = solution.y.last().and_then(|row| row.first()).copied().unwrap_or(f64::NAN);
+    let y = solution
+        .y
+        .last()
+        .and_then(|row| row.first())
+        .copied()
+        .unwrap_or(f64::NAN);
     let exact = 1.0 / (1.0 + last);
     assert!((y - exact).abs() < 1e-8, "{y} vs {exact}");
 
@@ -283,16 +288,13 @@ fn bdf_accepts_a_time_dependent_mass_matrix() {
         max_order: 5,
         ..BdfOptions::default()
     };
-    let reference = bdf_with(folded, 0.0, 2.0, &[1.0], &opts, &constant)
-        .unwrap_or_else(|e| panic!("{e:?}"));
+    let reference =
+        bdf_with(folded, 0.0, 2.0, &[1.0], &opts, &constant).unwrap_or_else(|e| panic!("{e:?}"));
     let reference_y = reference
         .y
         .last()
         .and_then(|row| row.first())
         .copied()
         .unwrap_or(f64::NAN);
-    assert!(
-        (y - reference_y).abs() < 1e-7,
-        "{y} vs {reference_y}"
-    );
+    assert!((y - reference_y).abs() < 1e-7, "{y} vs {reference_y}");
 }

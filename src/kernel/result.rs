@@ -117,10 +117,12 @@ impl std::fmt::Display for SchemaError {
                 field,
                 expected,
                 got,
-            } => write!(
-                f,
-                "`{schema}.{field}` should have {expected} entries, got {got}"
-            ),
+            } => {
+                write!(
+                    f,
+                    "`{schema}.{field}` should have {expected} entries, got {got}"
+                )
+            },
         }
     }
 }
@@ -176,10 +178,12 @@ impl FieldKind {
             | Self::Scalar => {
                 value.is_number() || matches!(value, Value::Quantity(_) | Value::Unit(_))
             },
-            | Self::Tensor(rank) => match value {
-                | Value::Tensor(tensor) => rank.is_none_or(|rank| tensor.rank() == rank),
-                | Value::Sparse(sparse) => rank.is_none_or(|rank| sparse.shape.len() == rank),
-                | _ => false,
+            | Self::Tensor(rank) => {
+                match value {
+                    | Value::Tensor(tensor) => rank.is_none_or(|rank| tensor.rank() == rank),
+                    | Value::Sparse(sparse) => rank.is_none_or(|rank| sparse.shape.len() == rank),
+                    | _ => false,
+                }
             },
             | Self::Text => matches!(value, Value::String(_) | Value::Symbol(_)),
             | Self::Bool => matches!(value, Value::Bool(_)),
@@ -292,7 +296,10 @@ impl FlattenSchema {
     /// The field names, in order.
     #[must_use]
     pub fn names(&self) -> Vec<&str> {
-        self.fields.iter().map(|field| field.name.as_str()).collect()
+        self.fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect()
     }
 
     /// Checks `record` against the schema.
@@ -340,10 +347,7 @@ impl FlattenSchema {
             .map(|field| {
                 let mut entry = vec![
                     (String::from("name"), Value::String(field.name.clone())),
-                    (
-                        String::from("kind"),
-                        Value::String(field.kind.to_string()),
-                    ),
+                    (String::from("kind"), Value::String(field.kind.to_string())),
                 ];
                 if let Some(dim) = &field.dim {
                     entry.push((
@@ -360,10 +364,7 @@ impl FlattenSchema {
         Value::Record(RecordValue {
             fields: vec![
                 (String::from("name"), Value::String(self.name.clone())),
-                (
-                    String::from("version"),
-                    Value::int(i64::from(self.version)),
-                ),
+                (String::from("version"), Value::int(i64::from(self.version))),
                 (
                     String::from("fields"),
                     Value::Tensor(TensorValue::vector(fields)),
@@ -661,9 +662,11 @@ fn as_record<'v>(
 ) -> Result<&'v RecordValue, SchemaError> {
     match value {
         | Value::Record(record) => Ok(record),
-        | _ => Err(SchemaError::NotARecord {
-            schema: schema.to_owned(),
-        }),
+        | _ => {
+            Err(SchemaError::NotARecord {
+                schema: schema.to_owned(),
+            })
+        },
     }
 }
 
@@ -791,9 +794,12 @@ impl OdeSolutionView {
                         (String::from("t"), Value::Float(event.t)),
                         (
                             String::from("component"),
-                            event.component.as_ref().map_or(Value::String(String::new()), |name| {
-                                Value::String(name.clone())
-                            }),
+                            event
+                                .component
+                                .as_ref()
+                                .map_or(Value::String(String::new()), |name| {
+                                    Value::String(name.clone())
+                                }),
                         ),
                         (
                             String::from("y"),
@@ -846,8 +852,10 @@ impl OdeSolutionView {
                             .iter()
                             .map(|dim| {
                                 Value::String(
-                                    dim.as_ref()
-                                        .map_or_else(String::new, crate::kernel::signature::dim_name),
+                                    dim.as_ref().map_or_else(
+                                        String::new,
+                                        crate::kernel::signature::dim_name,
+                                    ),
                                 )
                             })
                             .collect(),
@@ -896,8 +904,7 @@ impl SimResult {
             vec![
                 Field::new("scenario", FieldKind::Text).doc("which scenario produced it"),
                 Field::new("t", FieldKind::List).doc("the time axis"),
-                Field::new("fields", FieldKind::List)
-                    .doc("output channels, in declaration order"),
+                Field::new("fields", FieldKind::List).doc("output channels, in declaration order"),
                 Field::new("schema", FieldKind::Record(String::from("sim_field")))
                     .doc("the layout of `fields`"),
             ],
@@ -907,7 +914,10 @@ impl SimResult {
     /// The names of the output channels, in order.
     #[must_use]
     pub fn names(&self) -> Vec<&str> {
-        self.fields.iter().map(|field| field.name.as_str()).collect()
+        self.fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect()
     }
 
     /// The result as one tensor of shape `[steps, channels]`.
@@ -928,7 +938,9 @@ impl SimResult {
         let mut data = Vec::with_capacity(self.t.len() * self.fields.len());
         for step in 0..self.t.len() {
             for field in &self.fields {
-                data.push(Value::Float(field.values.get(step).copied().unwrap_or(f64::NAN)));
+                data.push(Value::Float(
+                    field.values.get(step).copied().unwrap_or(f64::NAN),
+                ));
             }
         }
         Ok(TensorValue {
@@ -949,8 +961,8 @@ impl SimResult {
             self.fields
                 .iter()
                 .map(|field| {
-                    let mut declared = Field::new(&field.name, FieldKind::List)
-                        .doc("one value per time step");
+                    let mut declared =
+                        Field::new(&field.name, FieldKind::List).doc("one value per time step");
                     if let Some(dim) = &field.dim {
                         declared = declared.with_dim(dim.clone());
                     }
@@ -1108,8 +1120,7 @@ mod tests {
         ] {
             let value = schema.to_value();
             let bytes = codec::encode_deterministic(&value).unwrap_or_else(|e| panic!("{e}"));
-            let back: Value = codec::decode_deterministic(&bytes)
-                .unwrap_or_else(|e| panic!("{e}"));
+            let back: Value = codec::decode_deterministic(&bytes).unwrap_or_else(|e| panic!("{e}"));
             assert_eq!(back, value);
             assert!(!schema.is_empty());
         }

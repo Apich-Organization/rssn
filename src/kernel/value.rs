@@ -196,11 +196,7 @@ impl ScaleValue {
 impl From<BigRational> for ScaleValue {
     fn from(value: BigRational) -> Self {
         let (numer, denom) = value.into();
-        Self {
-            numer,
-            denom,
-            pi: 0,
-        }
+        Self { numer, denom, pi: 0 }
     }
 }
 
@@ -434,10 +430,12 @@ impl ValueKindInfo {
     /// dynamic evaluator, or returned.
     #[must_use]
     pub fn all() -> Vec<Self> {
-        let entry = |kind: ValueKind, in_term_graph: bool, note: &str| Self {
-            kind,
-            in_term_graph,
-            note: note.to_owned(),
+        let entry = |kind: ValueKind, in_term_graph: bool, note: &str| {
+            Self {
+                kind,
+                in_term_graph,
+                note: note.to_owned(),
+            }
         };
         vec![
             entry(ValueKind::Int, true, ""),
@@ -562,9 +560,7 @@ impl Value {
 
     /// An exact integer.
     #[must_use]
-    pub fn int(
-        value: impl Into<BigInt>,
-    ) -> Self {
+    pub fn int(value: impl Into<BigInt>) -> Self {
         Self::Int(value.into())
     }
 
@@ -635,48 +631,59 @@ impl Value {
             | Self::String(_) => TypeExpr::String,
             | Self::Symbol(_) => TypeExpr::Symbol,
             | Self::Unit(u) => TypeExpr::Unit(u.dimension.clone()),
-            | Self::Quantity(q) => TypeExpr::Dim(
-                Box::new(TypeExpr::Real),
-                q.unit.dimension.clone(),
-            ),
-            | Self::Tensor(t) => TypeExpr::Tensor {
-                rank: NatExpr::Lit(u64::try_from(t.rank()).unwrap_or(u64::MAX)),
-                shape: Some(
-                    t.shape
+            | Self::Quantity(q) => {
+                TypeExpr::Dim(Box::new(TypeExpr::Real), q.unit.dimension.clone())
+            },
+            | Self::Tensor(t) => {
+                TypeExpr::Tensor {
+                    rank: NatExpr::Lit(u64::try_from(t.rank()).unwrap_or(u64::MAX)),
+                    shape: Some(
+                        t.shape
+                            .iter()
+                            .map(|&n| NatExpr::Lit(u64::try_from(n).unwrap_or(u64::MAX)))
+                            .collect(),
+                    ),
+                    elem: Box::new(t.data.first().map_or(TypeExpr::Real, Self::type_expr)),
+                }
+            },
+            | Self::Sparse(s) => {
+                TypeExpr::Sparse {
+                    format: match s.format {
+                        | SparseFormat::Csr => "csr".to_owned(),
+                        | SparseFormat::Csc => "csc".to_owned(),
+                        | SparseFormat::Coo => "coo".to_owned(),
+                    },
+                    rank: NatExpr::Lit(u64::try_from(s.shape.len()).unwrap_or(u64::MAX)),
+                    elem: Box::new(s.data.first().map_or(TypeExpr::Real, Self::type_expr)),
+                }
+            },
+            | Self::Record(r) => {
+                TypeExpr::Record(
+                    r.fields
                         .iter()
-                        .map(|&n| NatExpr::Lit(u64::try_from(n).unwrap_or(u64::MAX)))
+                        .map(|(name, value)| (name.clone(), value.type_expr()))
                         .collect(),
-                ),
-                elem: Box::new(t.data.first().map_or(TypeExpr::Real, Self::type_expr)),
+                )
             },
-            | Self::Sparse(s) => TypeExpr::Sparse {
-                format: match s.format {
-                    | SparseFormat::Csr => "csr".to_owned(),
-                    | SparseFormat::Csc => "csc".to_owned(),
-                    | SparseFormat::Coo => "coo".to_owned(),
-                },
-                rank: NatExpr::Lit(u64::try_from(s.shape.len()).unwrap_or(u64::MAX)),
-                elem: Box::new(s.data.first().map_or(TypeExpr::Real, Self::type_expr)),
+            | Self::Variant(v) => {
+                TypeExpr::Variant(vec![(
+                    v.tag.clone(),
+                    v.payload.iter().map(Self::type_expr).collect(),
+                )])
             },
-            | Self::Record(r) => TypeExpr::Record(
-                r.fields
-                    .iter()
-                    .map(|(name, value)| (name.clone(), value.type_expr()))
-                    .collect(),
-            ),
-            | Self::Variant(v) => TypeExpr::Variant(vec![(
-                v.tag.clone(),
-                v.payload.iter().map(Self::type_expr).collect(),
-            )]),
-            | Self::Term(_) => TypeExpr::Dyn(crate::kernel::signature::RepExpr {
-                repr: "term".to_owned(),
-                dim: None,
-            }),
+            | Self::Term(_) => {
+                TypeExpr::Dyn(crate::kernel::signature::RepExpr {
+                    repr: "term".to_owned(),
+                    dim: None,
+                })
+            },
             | Self::Function(_) => TypeExpr::Function(Vec::new(), Box::new(TypeExpr::Never)),
-            | Self::Dyn(d) => TypeExpr::Dyn(crate::kernel::signature::RepExpr {
-                repr: "dyn".to_owned(),
-                dim: Some(d.dim.clone()),
-            }),
+            | Self::Dyn(d) => {
+                TypeExpr::Dyn(crate::kernel::signature::RepExpr {
+                    repr: "dyn".to_owned(),
+                    dim: Some(d.dim.clone()),
+                })
+            },
             | Self::Opaque(o) => TypeExpr::Opaque(o.kind.clone()),
         }
     }

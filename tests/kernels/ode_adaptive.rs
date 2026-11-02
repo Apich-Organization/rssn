@@ -235,7 +235,10 @@ fn every_integrator_with_a_dense_output_locates_events() {
         atol: 1e-12,
         ..OdeOptions::default()
     };
-    let want = [std::f64::consts::FRAC_PI_2, 3.0 * std::f64::consts::FRAC_PI_2];
+    let want = [
+        std::f64::consts::FRAC_PI_2,
+        3.0 * std::f64::consts::FRAC_PI_2,
+    ];
     let check = |name: &str, hits: &[f64], tolerance: f64| {
         assert_eq!(hits.len(), 2, "{name}: {} events", hits.len());
         for (got, expected) in hits.iter().zip(&want) {
@@ -315,7 +318,9 @@ fn a_terminal_event_ends_every_integrator_at_the_event() {
         );
         assert_eq!(sol.events.len(), 1, "{name}");
         assert!(
-            events.get(sol.events[0].index).is_some_and(|event| event.terminal),
+            events
+                .get(sol.events[0].index)
+                .is_some_and(|event| event.terminal),
             "{name}: the hit is not on a terminal event"
         );
     }

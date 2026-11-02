@@ -1,7 +1,9 @@
 //! `sim::acoustics`: the staggered-grid scalar wave solver. Direct checks of
 //! the time step, the d'Alembert split of a pulse, the discrete conservation
 //! laws (mass and energy), the domain of dependence, soft sources, symmetry,
-//! wave-speed isotropy in 2D and the input checks.
+//! wave-speed isotropy in 2D and the input checks; and of the variable medium,
+//! the impedance reflection, Snell refraction, total internal reflection, the
+//! energy of a heterogeneous box and the second-order convergence in `c(x)`.
 
 use rssn::sim::acoustics::Acoustics;
 use rssn::sim::acoustics::AcousticsConfig;
@@ -397,4 +399,348 @@ fn a_time_dependent_datum_drives_the_field() {
     a.run(200);
     let during = a.p.iter().fold(0.0_f64, |m, &p| m.max(p.abs()));
     assert!(during > 0.2, "the pulse must reach the interior: {during}");
+}
+
+// ------------------------------------------------------- variable medium
+
+/// A wave packet `cos(k d) e^{-(d² + s²)/2σ²}` travelling along `theta`, with
+/// `d` the distance along the beam from `x0` and `s` the distance across it.
+fn wave_packet(
+    a: &mut Acoustics,
+    x0: [f64; 2],
+    theta: f64,
+    k: f64,
+    sigma: f64,
+) {
+    let (sn, cs) = theta.sin_cos();
+    a.set_pressure(move |x| {
+        let (dx, dy) = (x[0] - x0[0], x[1] - x0[1]);
+        let d = dx * cs + dy * sn;
+        let s = dy * cs - dx * sn;
+        (k * d).cos() * (-(d * d + s * s) / (2.0 * sigma * sigma)).exp()
+    });
+    a.start_from_rest();
+}
+
+#[test]
+fn the_constant_medium_keeps_the_frozen_field_bits() {
+    // The conservative form has to reduce to the old `p_t = -c²∇·v`,
+    // `v_t = -∇p` scheme term for term. These are the exact bit patterns the
+    // solver produced before the variable medium existed, so any change in the
+    // arithmetic order moves at least one of them.
+    let n = 64;
+    let h = 1.0 / n as f64;
+    let mut cfg = AcousticsConfig::new(&[n], &[h], 1.5).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0)).with(Face::XMax, Bc::dirichlet(0.0));
+    let mut a = Acoustics::new(cfg).unwrap();
+    a.add_source(20, |t| (2.0 * PI * 3.0 * t).sin());
+    a.run(300);
+    assert_eq!(a.dt.to_bits(), 4_576_557_941_333_898_035, "1D dt");
+    assert_eq!(a.t.to_bits(), 4_613_515_605_776_007_133, "1D t");
+    for (i, want) in [
+        (0usize, 0xbf16_b34a_9aa4_a0ea_u64),
+        (1, 0x3ef1_4891_e9c2_6ed3),
+        (20, 0x3f5f_d966_e7f6_17c0),
+        (31, 0x3f64_61d0_cb03_6c08),
+        (63, 0xbf03_01fc_f217_a5f1),
+    ] {
+        assert_eq!(a.p[i].to_bits(), want, "1D cell {i}");
+    }
+    assert_eq!(a.energy().to_bits(), 0x3ec9_2f55_35e7_48eb, "1D energy");
+
+    let n = [24, 20];
+    let h = [1.0 / 24.0, 1.0 / 20.0];
+    let mut cfg = AcousticsConfig::new(&n, &h, 2.0).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::Periodic);
+    let mut b = Acoustics::new(cfg).unwrap();
+    b.set_pressure(|x| {
+        (-((x[0] - 0.4).powi(2) + (x[1] - 0.6).powi(2)) / (2.0 * 0.05 * 0.05)).exp()
+    });
+    b.start_from_rest();
+    b.run(150);
+    assert_eq!(b.dt.to_bits(), 4_579_457_048_345_532_227, "2D dt");
+    for (i, j, want) in [
+        (0usize, 0usize, 0x3f9d_e532_c62d_aa26_u64),
+        (5, 7, 0x3fa3_cbec_c52e_0c41),
+        (23, 19, 0x3fbc_7b66_5e4d_33be),
+    ] {
+        assert_eq!(b.p[b.idx(i, j, 0)].to_bits(), want, "2D cell ({i}, {j})");
+    }
+    assert_eq!(b.energy().to_bits(), 0x3f4e_9de5_19e2_a014, "2D energy");
+}
+
+#[test]
+fn the_uniform_medium_is_the_varying_one_with_a_constant_field() {
+    // A constant `c` and `ρ` must give the same bits, not merely the same
+    // numbers: the conservative form has to collapse term for term onto the
+    // old `p_t = -c²∇·v`, `v_t = -∇p` scheme.
+    for (c, rho) in [(1.5, 1.0), (0.75, 2.0)] {
+        let n = 128;
+        let h = 1.0 / n as f64;
+        let mut cfg = AcousticsConfig::new(&[n], &[h], c).unwrap();
+        cfg.rho = rho;
+        let mut plain = Acoustics::new(cfg).unwrap();
+        let mut varied = Acoustics::new(AcousticsConfig::new(&[n], &[h], c).unwrap()).unwrap();
+        varied.set_medium(move |_| (c, rho)).unwrap();
+        assert_eq!(plain.dt.to_bits(), varied.dt.to_bits(), "c = {c}");
+        for s in [&mut plain, &mut varied] {
+            s.add_source(40, |t| (2.0 * PI * 4.0 * t).sin());
+            s.run(400);
+        }
+        for i in 0..n {
+            assert_eq!(
+                plain.p[i].to_bits(),
+                varied.p[i].to_bits(),
+                "c = {c}, cell {i}"
+            );
+        }
+        assert_eq!(plain.energy().to_bits(), varied.energy().to_bits());
+    }
+}
+
+/// Peak of the bump in `0.8 < x < 1` of a run whose interface sits on the face
+/// at `x = 1`, signed by the extremum it belongs to.
+fn reflected_peak(
+    a: &Acoustics,
+    n: usize,
+    h: f64,
+) -> f64 {
+    let mut best: f64 = 0.0;
+    for i in 0..n {
+        let x = (i as f64 + 0.5) * h;
+        if (0.8..1.0).contains(&x) && a.p[i].abs() > best.abs() {
+            best = a.p[i];
+        }
+    }
+    best
+}
+
+/// Ratio of the reflected to the incident bump for a normal-incidence crossing.
+fn normal_reflection(
+    c2: f64,
+    rho2: f64,
+) -> f64 {
+    let n = 1600;
+    let h = 2.0 / n as f64;
+    let mut a = Acoustics::new(AcousticsConfig::new(&[n], &[h], 1.0).unwrap()).unwrap();
+    a.set_medium(move |x| {
+        if x[0] < 1.0 {
+            (1.0, 1.0)
+        } else {
+            (c2, rho2)
+        }
+    })
+    .unwrap();
+    a.set_pressure(|x| (-(x[0] - 0.8).powi(2) / (2.0 * 0.02 * 0.02)).exp());
+    a.start_from_rest();
+    // The bump is centred at 0.9 at t = 0.1 and, mirrored about the interface,
+    // at 0.9 again at t = 0.3: both peaks are measured 0.1 from the interface,
+    // so the numerical dispersion cancels in the ratio.
+    a.run((0.1 / a.dt).round() as usize);
+    let incident = reflected_peak(&a, n, h);
+    a.run((0.2 / a.dt).round() as usize);
+    reflected_peak(&a, n, h) / incident
+}
+
+#[test]
+fn an_interface_reflects_with_the_impedance_ratio() {
+    // R = (Z₂ - Z₁)/(Z₁ + Z₂) with Z = ρc, for a fast, a heavy and an
+    // impedance-matched medium. The last one has R = 0 although both c and ρ
+    // jump, which only a conservative interface treatment gets right.
+    for (c2, rho2) in [(0.5, 1.0), (1.0, 4.0), (2.0, 0.5)] {
+        let z2 = c2 * rho2;
+        let want = (z2 - 1.0) / (z2 + 1.0);
+        let got = normal_reflection(c2, rho2);
+        assert!(
+            (got - want).abs() < 0.02,
+            "c = {c2}, rho = {rho2}: R = {got}, want {want}"
+        );
+    }
+}
+
+/// Direction of the transmitted beam: the energy centroid of the second
+/// medium at two times gives its group velocity.
+fn refraction_angle(
+    c2: f64,
+    theta1: f64,
+) -> f64 {
+    // h is small enough that the discrete group velocity points within a
+    // quarter of a degree of the wavevector (the error is O((kh)²)).
+    let n = 512;
+    let h = 1.0 / n as f64;
+    let mut a = Acoustics::new(AcousticsConfig::new(&[n, n], &[h, h], 1.0).unwrap()).unwrap();
+    a.set_medium(move |x| {
+        if x[0] < 0.5 {
+            (1.0, 1.0)
+        } else {
+            (c2, 1.0)
+        }
+    })
+    .unwrap();
+    // The beam enters the interface at (0.5, 0.45), 0.2 back along its axis.
+    wave_packet(
+        &mut a,
+        [0.3, 0.45 - 0.2 * theta1.tan()],
+        theta1,
+        100.0,
+        0.05,
+    );
+    let centroid = |a: &Acoustics| -> [f64; 2] {
+        let (mut w, mut sx, mut sy) = (0.0, 0.0, 0.0);
+        for j in 0..n {
+            for i in (n / 2)..n {
+                let p = a.p[a.idx(i, j, 0)];
+                let q = p * p;
+                w += q;
+                sx += q * (i as f64 + 0.5) * h;
+                sy += q * (j as f64 + 0.5) * h;
+            }
+        }
+        [sx / w, sy / w]
+    };
+    // Both samples are clear of the interface and of the walls.
+    a.run((0.55 / a.dt).round() as usize);
+    let before = centroid(&a);
+    a.run((0.15 / a.dt).round() as usize);
+    let after = centroid(&a);
+    assert!(after[0] > before[0], "the beam must travel into medium 2");
+    (after[1] - before[1]).atan2(after[0] - before[0])
+}
+
+#[test]
+fn an_oblique_beam_refracts_by_snell_law() {
+    for (c2, theta1) in [(0.5, 30.0_f64), (0.75, 45.0)] {
+        let theta1 = theta1.to_radians();
+        let got = refraction_angle(c2, theta1);
+        let want = (c2 * theta1.sin()).asin();
+        assert!(
+            (got - want).abs() < 0.03,
+            "c2 = {c2}: theta2 = {} deg, want {} deg",
+            got.to_degrees(),
+            want.to_degrees()
+        );
+        assert!(
+            (theta1.sin() - got.sin() / c2).abs() < 0.03,
+            "sin(theta1)/c1 = {} vs sin(theta2)/c2 = {}",
+            theta1.sin(),
+            got.sin() / c2
+        );
+    }
+}
+
+/// Peak pressure 0.1 deep in the fast medium, for a beam at `theta1` from a
+/// slow medium into a fast one.
+fn depth_amplitude(
+    x0: [f64; 2],
+    theta1: f64,
+) -> f64 {
+    let n = 256;
+    let h = 1.0 / n as f64;
+    let mut a = Acoustics::new(AcousticsConfig::new(&[n, n], &[h, h], 1.0).unwrap()).unwrap();
+    a.set_medium(|x| {
+        if x[0] < 0.5 {
+            (1.0, 1.0)
+        } else {
+            (2.0, 1.0)
+        }
+    })
+    .unwrap();
+    wave_packet(&mut a, x0, theta1, 160.0, 0.04);
+    a.run((0.45 / a.dt).round() as usize);
+    let mut best: f64 = 0.0;
+    for j in 0..n {
+        for i in 0..n {
+            if (i as f64 + 0.5) * h > 0.6 {
+                best = best.max(a.p[a.idx(i, j, 0)].abs());
+            }
+        }
+    }
+    best
+}
+
+#[test]
+fn past_the_critical_angle_nothing_propagates_into_the_fast_medium() {
+    // c1 = 1 into c2 = 2: the critical angle is 30 degrees.
+    let below = depth_amplitude([0.3, 0.25], 20.0_f64.to_radians());
+    let beyond = depth_amplitude([0.3, 0.254], 60.0_f64.to_radians());
+    assert!(
+        below > 0.15,
+        "below the critical angle the beam must cross: {below}"
+    );
+    assert!(
+        beyond < 0.01 * below,
+        "past the critical angle only the evanescent tail may remain: {beyond}"
+    );
+}
+
+#[test]
+fn a_closed_box_with_a_varying_medium_conserves_the_discrete_energy() {
+    // ½ Σ (p²/K + ρv²) ΔV is the invariant; ½ Σ (p²/c² + v²) is not, because
+    // the strain energy is p²/K with K = ρc² and the kinetic energy is ρv².
+    type Medium = fn([f64; 3]) -> (f64, f64);
+    let media: [(&str, Medium); 2] = [
+        ("smooth", |x| {
+            let c = 1.0 + 0.25 * (2.0 * PI * x[0]).sin() * (2.0 * PI * x[1]).cos();
+            let r = 1.0 + 0.2 * (2.0 * PI * (x[0] + x[1])).cos();
+            (c, r)
+        }),
+        ("step", |x| {
+            if x[0] < 0.5 {
+                (0.7, 1.0)
+            } else {
+                (1.4, 3.0)
+            }
+        }),
+    ];
+    for (name, medium) in media {
+        let n = 96;
+        let h = 1.0 / n as f64;
+        let mut a = Acoustics::new(AcousticsConfig::new(&[n, n], &[h, h], 1.0).unwrap()).unwrap();
+        a.set_medium(medium).unwrap();
+        a.set_pressure(|x| {
+            (-((x[0] - 0.4).powi(2) + (x[1] - 0.6).powi(2)) / (2.0 * 0.06 * 0.06)).exp()
+        });
+        a.start_from_rest();
+        let e0 = a.energy();
+        let mut worst: f64 = 0.0;
+        for _ in 0..8 {
+            a.run(40);
+            worst = worst.max((a.energy() / e0 - 1.0).abs());
+        }
+        assert!(worst < 0.05, "{name}: energy drift {worst}");
+    }
+}
+
+#[test]
+fn a_smooth_medium_converges_at_second_order() {
+    // The same physical problem on n, 2n and 4n cells with a common time step,
+    // so the three runs differ in space only. The coarse centres fall halfway
+    // between two fine cells, and the fine average is itself second order.
+    let dt = 0.4 / (1.3 * 256.0);
+    let run = |n: usize| -> Vec<f64> {
+        let h = 1.0 / n as f64;
+        let mut cfg = AcousticsConfig::new(&[n], &[h], 1.3).unwrap();
+        cfg.cfl = 0.5;
+        let mut a = Acoustics::new(cfg).unwrap();
+        a.set_medium(|x| (1.0 + 0.3 * (2.0 * PI * x[0]).sin(), 1.0))
+            .unwrap();
+        a.dt = dt;
+        a.set_pressure(|x| (-(x[0] - 0.5).powi(2) / (2.0 * 0.06 * 0.06)).exp());
+        a.start_from_rest();
+        a.run((0.25 / dt).round() as usize);
+        a.p
+    };
+    let difference = |coarse: &[f64], fine: &[f64]| -> f64 {
+        let mut s = 0.0;
+        for (i, &c) in coarse.iter().enumerate() {
+            let mid = 0.5 * (fine[2 * i] + fine[2 * i + 1]);
+            s += (c - mid).powi(2);
+        }
+        (s / coarse.len() as f64).sqrt()
+    };
+    let (p64, p128, p256) = (run(64), run(128), run(256));
+    let (e1, e2) = (difference(&p64, &p128), difference(&p128, &p256));
+    let order = (e1 / e2).log2();
+    assert!(e1 > 0.0, "the medium must change the field");
+    assert!(order > 1.85, "measured order {order} ({e1} -> {e2})");
 }

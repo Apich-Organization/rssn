@@ -141,7 +141,10 @@ impl Dim {
         if exponent.is_zero() {
             return;
         }
-        match self.extra.binary_search_by(|(known, _)| known.as_str().cmp(name)) {
+        match self
+            .extra
+            .binary_search_by(|(known, _)| known.as_str().cmp(name))
+        {
             | Ok(index) => {
                 if let Some(slot) = self.extra.get_mut(index) {
                     slot.1 += exponent;
@@ -581,7 +584,11 @@ fn resolve_user(name: &str) -> Option<Resolved> {
         let extra = user_units().read().ok()?;
         extra
             .get(name)
-            .or_else(|| extra.values().find(|unit| unit.aliases.iter().any(|a| a == name)))?
+            .or_else(|| {
+                extra
+                    .values()
+                    .find(|unit| unit.aliases.iter().any(|a| a == name))
+            })?
             .clone()
     };
     let dim = expr_to_dim(&def.dimension).ok()?;
@@ -991,11 +998,7 @@ pub fn lookup(name: &str) -> Option<UnitDef> {
         }
     }
     resolve_symbol(name).map(|resolved| {
-        let mut unit = UnitDef::linear(
-            name,
-            dim_to_expr(&resolved.dim),
-            resolved.scale.clone(),
-        );
+        let mut unit = UnitDef::linear(name, dim_to_expr(&resolved.dim), resolved.scale.clone());
         if let Some(offset) = resolved.offset.clone() {
             unit = unit.affine(offset);
         }
@@ -1011,13 +1014,17 @@ pub fn lookup(name: &str) -> Option<UnitDef> {
 /// Fails when a factor is not a known unit, or when an affine unit is
 /// combined with anything else.
 pub fn resolve(expr: &str) -> Result<ResolvedUnit, DimError> {
-    let map = parse_unit_text(expr).ok_or_else(|| DimError::UnknownUnit {
-        unit: expr.to_owned(),
-        context: None,
+    let map = parse_unit_text(expr).ok_or_else(|| {
+        DimError::UnknownUnit {
+            unit: expr.to_owned(),
+            context: None,
+        }
     })?;
-    let resolved = resolve_map(&map).ok_or_else(|| DimError::UnknownUnit {
-        unit: expr.to_owned(),
-        context: None,
+    let resolved = resolve_map(&map).ok_or_else(|| {
+        DimError::UnknownUnit {
+            unit: expr.to_owned(),
+            context: None,
+        }
     })?;
     Ok(ResolvedUnit {
         dimension: dim_to_expr(&resolved.dim),
@@ -1048,12 +1055,13 @@ pub fn register(unit: UnitDef) -> Result<(), DimError> {
     };
     let clash = |other: &UnitDef| other.name != unit.name && other.dimension != unit.dimension;
     if let Some(existing) = extra.get(&unit.name)
-        && clash(existing) {
-            return Err(DimError::Parse {
-                text: unit.name.clone(),
-                reason: String::from("a different unit already has this name"),
-            });
-        }
+        && clash(existing)
+    {
+        return Err(DimError::Parse {
+            text: unit.name.clone(),
+            reason: String::from("a different unit already has this name"),
+        });
+    }
     for alias in &unit.aliases {
         if extra.get(alias).is_some_and(clash) {
             return Err(DimError::Parse {
@@ -1104,7 +1112,9 @@ fn def_of(name: &str) -> UnitDef {
     };
     let aliases: Vec<String> = ALIASES
         .iter()
-        .filter(|(_, parts)| parts.len() == 1 && parts.first().is_some_and(|&(n, e)| n == name && e == 1))
+        .filter(|(_, parts)| {
+            parts.len() == 1 && parts.first().is_some_and(|&(n, e)| n == name && e == 1)
+        })
         .map(|(alias, _)| (*alias).to_owned())
         .collect();
     UnitDef {
@@ -1142,9 +1152,11 @@ fn category_of(dim: &Dim) -> String {
         .collect();
     match (non_zero.as_slice(), dim.extra()) {
         | ([], []) => "dimensionless".to_owned(),
-        | ([i], []) => DIMENSIONS
-            .get(*i)
-            .map_or_else(|| "derived".to_owned(), |n| n.to_ascii_lowercase()),
+        | ([i], []) => {
+            DIMENSIONS
+                .get(*i)
+                .map_or_else(|| "derived".to_owned(), |n| n.to_ascii_lowercase())
+        },
         | ([], [(name, _)]) => name.to_ascii_lowercase(),
         | _ => "derived".to_owned(),
     }
@@ -1161,21 +1173,17 @@ fn dim_to_expr(dim: &Dim) -> DimExpr {
             continue;
         };
         let (numer, denom) = (*exponent.numer(), *exponent.denom());
-        factors.push(
-            DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
-                i64::from(numer),
-                i64::from(denom),
-            ))),
-        );
+        factors.push(DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
+            i64::from(numer),
+            i64::from(denom),
+        ))));
     }
     for (name, exponent) in dim.extra() {
         let (numer, denom) = (*exponent.numer(), *exponent.denom());
-        factors.push(
-            DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
-                i64::from(numer),
-                i64::from(denom),
-            ))),
-        );
+        factors.push(DimExpr::base(name).pow(TypeExp::Rat(Rational::new(
+            i64::from(numer),
+            i64::from(denom),
+        ))));
     }
     match factors.len() {
         | 0 => DimExpr::Dimless,
@@ -1195,9 +1203,11 @@ fn expr_to_dim(dim: &DimExpr) -> Result<Dim, DimError> {
         out: &mut Dim,
         sign: i32,
     ) -> Result<(), DimError> {
-        let bad = |reason: &str| DimError::Parse {
-            text: crate::kernel::signature::dim_name(dim),
-            reason: reason.to_owned(),
+        let bad = |reason: &str| {
+            DimError::Parse {
+                text: crate::kernel::signature::dim_name(dim),
+                reason: reason.to_owned(),
+            }
         };
         match dim {
             | DimExpr::Dimless => Ok(()),

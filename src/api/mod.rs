@@ -897,9 +897,11 @@ impl Template {
                 engine.program_mut(),
                 &manifest.name,
             );
-            plugin.register(&mut registry).map_err(|error| RuleError::Invalid {
-                rule: manifest.name.clone(),
-                reason: leak_reason(&error.to_string()),
+            plugin.register(&mut registry).map_err(|error| {
+                RuleError::Invalid {
+                    rule: manifest.name.clone(),
+                    reason: leak_reason(&error.to_string()),
+                }
             })?;
             drop(registry);
             engine.add_plugin(manifest);

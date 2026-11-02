@@ -64,7 +64,10 @@ impl Rational {
         numer: i64,
         denom: i64,
     ) -> Self {
-        assert!(denom != 0, "rssn: a type exponent cannot have denominator 0");
+        assert!(
+            denom != 0,
+            "rssn: a type exponent cannot have denominator 0"
+        );
         let g = gcd(numer, denom);
         let sign = if denom < 0 { -1 } else { 1 };
         Self {
@@ -453,9 +456,7 @@ impl EffectRow {
     /// The pure row.
     #[must_use]
     pub const fn pure() -> Self {
-        Self {
-            effects: Vec::new(),
-        }
+        Self { effects: Vec::new() }
     }
 
     /// Whether the operator is pure.
@@ -493,10 +494,7 @@ impl ArityInfo {
     /// The shape of a fixed-arity operator.
     #[must_use]
     pub const fn fixed(n: u8) -> Self {
-        Self {
-            min: n,
-            max: Some(n),
-        }
+        Self { min: n, max: Some(n) }
     }
 
     /// The shape of an operator taking any number of arguments.
@@ -553,17 +551,21 @@ pub fn type_name(expr: &TypeExpr) -> String {
         | TypeExpr::Unit(d) => format!("Unit[{}]", dim_name(d)),
         | TypeExpr::Point(d) => format!("Point[{}]", dim_name(d)),
         | TypeExpr::Dim(inner, dim) => format!("{}[{}]", type_name(inner), dim_name(dim)),
-        | TypeExpr::Tensor { rank, elem, .. } => format!("Tensor<{}, {}>", type_name(elem), nat_name(rank)),
+        | TypeExpr::Tensor { rank, elem, .. } => {
+            format!("Tensor<{}, {}>", type_name(elem), nat_name(rank))
+        },
         | TypeExpr::Sparse { format, elem, .. } => {
             format!("Sparse<{format}, {}>", type_name(elem))
         },
         | TypeExpr::Record(fields) => format!("Record({})", fields.len()),
         | TypeExpr::Variant(variants) => format!("Variant({})", variants.len()),
-        | TypeExpr::Function(args, ret) => format!(
-            "({}) -> {}",
-            args.iter().map(type_name).collect::<Vec<_>>().join(", "),
-            type_name(ret)
-        ),
+        | TypeExpr::Function(args, ret) => {
+            format!(
+                "({}) -> {}",
+                args.iter().map(type_name).collect::<Vec<_>>().join(", "),
+                type_name(ret)
+            )
+        },
         | TypeExpr::Table(row) => format!("Table({})", row.columns.len()),
         | TypeExpr::Dyn(rep) => format!("Dyn<{}>", rep.repr),
         | TypeExpr::Opaque(name) => format!("Opaque<{name}>"),
@@ -781,7 +783,9 @@ impl fmt::Display for OpKey {
 // ---------------------------------------------------------------------------
 
 /// How settled an operator's behaviour is.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Stability {
     /// Semantics and signature do not change within a major version.
@@ -794,7 +798,9 @@ pub enum Stability {
 }
 
 /// Whether an operator touches anything but its arguments.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Purity {
     /// A function of its arguments alone.
@@ -807,7 +813,9 @@ pub enum Purity {
 }
 
 /// Whether repeated calls agree.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Determinism {
     /// Same arguments, same result, always.
@@ -820,7 +828,9 @@ pub enum Determinism {
 }
 
 /// How an operator may be used across threads.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ThreadSafety {
     /// Callable from any thread; the computation carries no session state.
@@ -833,7 +843,9 @@ pub enum ThreadSafety {
 }
 
 /// How an operator produces values.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum EvalKind {
     /// No direct evaluation: only rules can reduce it.
@@ -904,7 +916,9 @@ pub struct Example {
 /// Independent properties, so independent fields: a host reads
 /// `flags.commutative`, it does not mask bits.
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct OpFlagsInfo {
     /// `f(f(a, b), c) = f(a, b, c)`.
     pub associative: bool,
@@ -1047,9 +1061,8 @@ fn index(
     value: usize,
     what: &'static str,
 ) -> u8 {
-    u8::try_from(value).unwrap_or_else(|_| {
-        panic!("rssn: {what} index {value} does not fit in a signature")
-    })
+    u8::try_from(value)
+        .unwrap_or_else(|_| panic!("rssn: {what} index {value} does not fit in a signature"))
 }
 
 impl From<DimRule> for DimRuleInfo {
@@ -1072,50 +1085,68 @@ impl From<DimRule> for DimRuleInfo {
             | DimRule::Compare => Self::Compare,
             | DimRule::Angle => Self::Angle,
             | DimRule::UnknownFunction => Self::UnknownFunction,
-            | DimRule::Diff { f, x } => Self::Diff {
-                f: index(f, "function"),
-                x: index(x, "variable"),
+            | DimRule::Diff { f, x } => {
+                Self::Diff {
+                    f: index(f, "function"),
+                    x: index(x, "variable"),
+                }
             },
-            | DimRule::DiffN { f, x, n } => Self::DiffN {
-                f: index(f, "function"),
-                x: index(x, "variable"),
-                n: index(n, "order"),
+            | DimRule::DiffN { f, x, n } => {
+                Self::DiffN {
+                    f: index(f, "function"),
+                    x: index(x, "variable"),
+                    n: index(n, "order"),
+                }
             },
-            | DimRule::Integral { f, x } => Self::Integral {
-                f: index(f, "integrand"),
-                x: index(x, "variable"),
+            | DimRule::Integral { f, x } => {
+                Self::Integral {
+                    f: index(f, "integrand"),
+                    x: index(x, "variable"),
+                }
             },
-            | DimRule::SumOver { f, index: i } => Self::SumOver {
-                f: index(f, "summand"),
-                index: index(i, "index variable"),
+            | DimRule::SumOver { f, index: i } => {
+                Self::SumOver {
+                    f: index(f, "summand"),
+                    index: index(i, "index variable"),
+                }
             },
-            | DimRule::ProductOver { f, index: i } => Self::ProductOver {
-                f: index(f, "factor"),
-                index: index(i, "index variable"),
+            | DimRule::ProductOver { f, index: i } => {
+                Self::ProductOver {
+                    f: index(f, "factor"),
+                    index: index(i, "index variable"),
+                }
             },
             | DimRule::Family {
                 result,
                 same,
                 dimensionless,
-            } => Self::Family {
-                result: match result {
-                    | FamilySource::Argument(i) => FamilySourceInfo::Argument(index(i, "argument")),
-                    | FamilySource::Inverse(i) => FamilySourceInfo::Inverse(index(i, "argument")),
-                },
-                same: same.iter().map(|&i| index(i, "argument")).collect(),
-                dimensionless: dimensionless
-                    .iter()
-                    .map(|&i| index(i, "argument"))
-                    .collect(),
+            } => {
+                Self::Family {
+                    result: match result {
+                        | FamilySource::Argument(i) => {
+                            FamilySourceInfo::Argument(index(i, "argument"))
+                        },
+                        | FamilySource::Inverse(i) => {
+                            FamilySourceInfo::Inverse(index(i, "argument"))
+                        },
+                    },
+                    same: same.iter().map(|&i| index(i, "argument")).collect(),
+                    dimensionless: dimensionless
+                        .iter()
+                        .map(|&i| index(i, "argument"))
+                        .collect(),
+                }
             },
             | DimRule::MatrixFunction {
                 function,
                 variable,
                 matrix,
-            } => Self::MatrixFunction {
-                function: index(function, "function"),
-                variable: index(variable, "variable"),
-                matrix: index(matrix, "matrix"),
+            } => {
+                Self::MatrixFunction {
+                    function: index(function, "function"),
+                    variable: index(variable, "variable"),
+                    matrix: index(matrix, "matrix"),
+                }
             },
             | DimRule::Quantity => Self::Quantity,
             // A `Custom` rule is a function pointer; the manifest records the
@@ -1151,35 +1182,47 @@ impl DimRuleInfo {
             | Self::Compare => DimRule::Compare,
             | Self::Angle => DimRule::Angle,
             | Self::UnknownFunction => DimRule::UnknownFunction,
-            | Self::Diff { f, x } => DimRule::Diff {
-                f: usize::from(*f),
-                x: usize::from(*x),
+            | Self::Diff { f, x } => {
+                DimRule::Diff {
+                    f: usize::from(*f),
+                    x: usize::from(*x),
+                }
             },
-            | Self::DiffN { f, x, n } => DimRule::DiffN {
-                f: usize::from(*f),
-                x: usize::from(*x),
-                n: usize::from(*n),
+            | Self::DiffN { f, x, n } => {
+                DimRule::DiffN {
+                    f: usize::from(*f),
+                    x: usize::from(*x),
+                    n: usize::from(*n),
+                }
             },
-            | Self::Integral { f, x } => DimRule::Integral {
-                f: usize::from(*f),
-                x: usize::from(*x),
+            | Self::Integral { f, x } => {
+                DimRule::Integral {
+                    f: usize::from(*f),
+                    x: usize::from(*x),
+                }
             },
-            | Self::SumOver { f, index } => DimRule::SumOver {
-                f: usize::from(*f),
-                index: usize::from(*index),
+            | Self::SumOver { f, index } => {
+                DimRule::SumOver {
+                    f: usize::from(*f),
+                    index: usize::from(*index),
+                }
             },
-            | Self::ProductOver { f, index } => DimRule::ProductOver {
-                f: usize::from(*f),
-                index: usize::from(*index),
+            | Self::ProductOver { f, index } => {
+                DimRule::ProductOver {
+                    f: usize::from(*f),
+                    index: usize::from(*index),
+                }
             },
             | Self::MatrixFunction {
                 function,
                 variable,
                 matrix,
-            } => DimRule::MatrixFunction {
-                function: usize::from(*function),
-                variable: usize::from(*variable),
-                matrix: usize::from(*matrix),
+            } => {
+                DimRule::MatrixFunction {
+                    function: usize::from(*function),
+                    variable: usize::from(*variable),
+                    matrix: usize::from(*matrix),
+                }
             },
             | Self::Quantity => DimRule::Quantity,
         }

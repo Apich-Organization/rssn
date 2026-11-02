@@ -6,8 +6,11 @@ use std::f64::consts::PI;
 use rssn::kernels::convergence::LevinVariant;
 use rssn::kernels::convergence::aitken_acceleration;
 use rssn::kernels::convergence::find_sequence_limit;
+use rssn::kernels::convergence::levin_condition_number;
 use rssn::kernels::convergence::levin_sum;
+use rssn::kernels::convergence::levin_sum_lazy;
 use rssn::kernels::convergence::levin_transform;
+use rssn::kernels::convergence::levin_transform_terms;
 use rssn::kernels::convergence::richardson_extrapolation;
 use rssn::kernels::convergence::richardson_extrapolation_with;
 use rssn::kernels::convergence::sum_series_numerical;
@@ -177,4 +180,118 @@ fn levin_edge_cases() {
     // geometric series is summed essentially exactly
     let (v, _) = levin_sum(|k| 0.5_f64.powi(k as i32), 12, LevinVariant::T).unwrap();
     assert!((v - 2.0).abs() < 1e-10);
+}
+
+#[test]
+fn levin_u_on_terms_beats_partial_sums_on_hard_series() {
+    let zeta2 = |k: usize| 1.0 / ((k + 1) as f64).powi(2);
+    let ln2 = |k: usize| {
+        let sign = if k.is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
+        sign / ((k + 1) as f64)
+    };
+    let zeta3 = |k: usize| 1.0 / ((k + 1) as f64).powi(3);
+    let slow_tail = |k: usize| {
+        let sign = if k.is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
+        sign / ((k + 1) as f64).sqrt()
+    };
+
+    let cases: [(fn(usize) -> f64, f64, &str); 4] = [
+        (zeta2, PI * PI / 6.0, "zeta2"),
+        (ln2, LN_2, "ln2"),
+        (zeta3, 1.202_056_903_159_594_2, "zeta3"),
+        (slow_tail, 0.604_898_643_421_630_4, "eta(1/2)"),
+    ];
+    for (term, exact, name) in cases {
+        let sums = ps(term, 32);
+        let raw = (sums[31] - exact).abs();
+        let (value, _) = levin_sum_lazy((0..32).map(term), 32, LevinVariant::U, 1.0)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let err = (value - exact).abs();
+        println!(
+            "{name:10} raw {raw:.3e}  levin {err:.3e}  gain {:.1e}",
+            raw / err
+        );
+        // Every one of these converges too slowly to reach 1e-9 by summing
+        // 32 terms, and Levin reaches it.
+        assert!(raw > 1e-4, "{name}: {raw}");
+        assert!(err < 1e-9, "{name}: {err}");
+    }
+    // The logarithmic case: nine orders of magnitude on 32 terms.
+    let sums = ps(zeta2, 32);
+    let raw = (sums[31] - PI * PI / 6.0).abs();
+    let (value, _) = levin_sum_lazy((0..32).map(zeta2), 32, LevinVariant::U, 1.0).unwrap();
+    assert!(raw / (value - PI * PI / 6.0).abs() > 1e8);
+}
+
+#[test]
+fn levin_terms_and_partial_sums_agree_low_order_and_differ_high_order() {
+    let zeta2 = |k: usize| 1.0 / ((k + 1) as f64).powi(2);
+    let terms: Vec<f64> = (0..17).map(zeta2).collect();
+    let sums = ps(zeta2, 17);
+    let by_terms = levin_transform_terms(&terms, LevinVariant::U, 1.0);
+    let by_sums = levin_transform(&sums, LevinVariant::U, 1.0);
+    // Order 8 is well below the conditioning limit: both paths agree.
+    assert!((by_terms[8] - by_sums[8]).abs() < 1e-11);
+    // At order 16 the differenced terms have lost the digits the terms keep.
+    let exact = PI * PI / 6.0;
+    let terms_err = (by_terms[16] - exact).abs();
+    let sums_err = (by_sums[16] - exact).abs();
+    println!("order 16: terms {terms_err:.3e}  differenced sums {sums_err:.3e}");
+    assert!(terms_err < sums_err / 10.0, "{terms_err} vs {sums_err}");
+}
+
+#[test]
+fn levin_condition_number_says_where_the_order_stops_helping() {
+    let zeta2: Vec<f64> = (0..20).map(|k| 1.0 / ((k + 1) as f64).powi(2)).collect();
+    let k11 = levin_condition_number(&zeta2[..12], LevinVariant::U, 1.0);
+    let k16 = levin_condition_number(&zeta2[..17], LevinVariant::U, 1.0);
+    assert!((k11 / 4.6e5 - 1.0).abs() < 0.1, "{k11}");
+    assert!((k16 / 2.3e8 - 1.0).abs() < 0.1, "{k16}");
+    // Roughly a factor 3.5 per order, so the floor kappa * eps rises from
+    // 1e-10 at order 11 to 5e-8 at order 16.
+    assert!(k11 * f64::EPSILON > 5e-11 && k11 * f64::EPSILON < 2e-10);
+    assert!(k16 * f64::EPSILON > 4e-8 && k16 * f64::EPSILON < 6e-8);
+
+    // The measured error follows that floor: best at order 11, worse at 19.
+    let est = levin_transform_terms(&zeta2, LevinVariant::U, 1.0);
+    let exact = PI * PI / 6.0;
+    let e11 = (est[11] - exact).abs();
+    let e14 = (est[14] - exact).abs();
+    let e19 = (est[19] - exact).abs();
+    println!("order 11 {e11:.3e}  14 {e14:.3e}  19 {e19:.3e}");
+    assert!(e11 < 1e-10);
+    assert!(e14 > e11);
+    assert!(e19 > 1e-7);
+
+    // Alternating terms are a convex combination: no conditioning limit.
+    let alt: Vec<f64> = (0..17_usize)
+        .map(|k| {
+            let sign = if k.is_multiple_of(2) {
+                1.0
+            } else {
+                -1.0
+            };
+            sign / ((k + 1) as f64)
+        })
+        .collect();
+    assert!((levin_condition_number(&alt, LevinVariant::U, 1.0) - 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn levin_sums_an_abel_divergent_series() {
+    // sum_{n>=1} (-1)^n n = -1/4 in the Abel sense.
+    let terms = (1..25_usize).map(|n| {
+        let sign = if n % 2 == 1 { -1.0 } else { 1.0 };
+        sign * (n as f64)
+    });
+    let (value, _) = levin_sum_lazy(terms, 24, LevinVariant::U, 1.0).unwrap();
+    assert!((value + 0.25).abs() < 1e-12, "{value}");
 }

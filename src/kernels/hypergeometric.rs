@@ -365,12 +365,17 @@ fn kummer_series_decaying(
 /// `M(a, b, z)` by Miller's backward recurrence in `b`, started `steps`
 /// indices above `b`.
 ///
-/// `f(j) = M(a, b + j, z)` satisfies
-/// `(b + j)(b + j - 1) f(j - 1) + (b + j)(1 - b - j - z) f(j)
-/// + z (b + j - a) f(j + 1) = 0`; the start values `f(steps)` and
-/// `f(steps - 1)` are summed directly, where the series decays, and the
-/// relation is solved for `f(j - 1)` down to `f(0)`. `None` on a singular
-/// coefficient or a non-finite intermediate value.
+/// Writing `f(j) = M(a, b + j, z)`, the contiguous relation is
+///
+/// ```text
+/// (b + j)(b + j - 1) f(j - 1) + (b + j)(1 - b - j - z) f(j)
+///     + z (b + j - a) f(j + 1) = 0
+/// ```
+///
+/// The start values `f(steps)` and `f(steps - 1)` are summed directly,
+/// where the series decays, and the relation is solved for `f(j - 1)`
+/// down to `f(0)`. Returns `None` on a singular coefficient or a
+/// non-finite intermediate value.
 fn kummer_miller_from(
     a: C,
     b: C,

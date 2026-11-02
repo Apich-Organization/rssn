@@ -925,12 +925,91 @@ fn shifted_bindings<'a>(
     bindings
 }
 
+/// The residual of the telescoping identity
+/// `Σ_j p_j(n) F(n+j,k) = G(n,k+1) - G(n,k)` at one point, together with
+/// the size of the terms that cancelled; `None` when a factor of the
+/// identity is undefined there.
+fn telescoping_residual(
+    rules: &[crate::graph::RuleSet],
+    f: &str,
+    recurrence: &[String],
+    certificate: &str,
+    parameters: &[(&str, f64)],
+    n: f64,
+    k: f64,
+) -> Option<(f64, f64)> {
+    let at = shifted_bindings(parameters, n, k);
+    let next = shifted_bindings(parameters, n, k + 1.0);
+    let mut residual = 0.0;
+    // The tolerance is set by the size of the terms that cancel, not by the
+    // size of their sum: the coefficients of a high-order recurrence are
+    // large, and a correct identity then leaves a comparatively large
+    // absolute residual.
+    let mut scale = 0.0_f64;
+    for (j, coefficient) in recurrence.iter().enumerate() {
+        let index = f64::from(u32::try_from(j).ok()?);
+        let lifted = shifted_bindings(parameters, n + index, k);
+        let term = eval(rules, coefficient, &at) * eval(rules, f, &lifted);
+        if !term.is_finite() {
+            return None;
+        }
+        residual += term;
+        scale += term.abs();
+    }
+    let upper = eval(rules, certificate, &next) * eval(rules, f, &next);
+    let lower = eval(rules, certificate, &at) * eval(rules, f, &at);
+    if !upper.is_finite() || !lower.is_finite() {
+        return None;
+    }
+    residual -= upper - lower;
+    scale += upper.abs() + lower.abs();
+    Some((residual, scale))
+}
+
+/// Whether the printed identity holds at every point of a grid of `n` and
+/// `k` at which it can be evaluated — the substitution of the recurrence and
+/// the certificate back into the summand — with at least twelve points
+/// checked.
+fn telescoping_holds(
+    f: &str,
+    recurrence: &[String],
+    certificate: &str,
+    parameters: &[(&str, f64)],
+) -> bool {
+    let rules = crate::rules::standard();
+    let mut checked = 0_usize;
+    for n in [3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0] {
+        for k in [0.0, 1.0, 2.0, 3.0] {
+            let Some((residual, scale)) =
+                telescoping_residual(&rules, f, recurrence, certificate, parameters, n, k)
+            else {
+                continue;
+            };
+            if residual.abs() > 1e-10 * scale.max(1.0) {
+                return false;
+            }
+            checked = checked.saturating_add(1);
+        }
+    }
+    checked >= 12
+}
+
 /// Checks the printed telescoping identity
-/// `Σ_j p_j(n) F(n+j,k) = G(n,k+1) - G(n,k)` at several points and returns
-/// the recurrence coefficients and the certificate.
+/// `Σ_j p_j(n) F(n+j,k) = G(n,k+1) - G(n,k)` by substitution back into the
+/// summand, at one assignment of the parameters, and returns the recurrence
+/// coefficients and the certificate.
 fn check_telescoping(
     f: &str,
     parameters: &[(&str, f64)],
+) -> (Vec<String>, String) {
+    check_telescoping_over(f, &[parameters])
+}
+
+/// The same check at several assignments of the parameters: a recurrence
+/// whose coefficients are symbolic in them must hold at every one.
+fn check_telescoping_over(
+    f: &str,
+    assignments: &[&[(&str, f64)]],
 ) -> (Vec<String>, String) {
     let rules = crate::rules::standard();
     let request = format!("zeilberger({f}, k, n)");
@@ -940,22 +1019,14 @@ fn check_telescoping(
     assert_eq!(outer.len(), 2, "{request}: {text}");
     let recurrence = split_list(&outer[0]);
     let certificate = outer[1].clone();
-    assert!(recurrence.len() <= 4, "{request}: {text}");
-    for &(n, k) in &[(4.0, 0.0), (5.0, 1.0), (6.0, 3.0), (7.0, 2.0)] {
-        let at = shifted_bindings(parameters, n, k);
-        let next = shifted_bindings(parameters, n, k + 1.0);
-        let mut lhs = 0.0;
-        for (j, coefficient) in recurrence.iter().enumerate() {
-            let index = f64::from(u32::try_from(j).unwrap_or(0));
-            let lifted = shifted_bindings(parameters, n + index, k);
-            lhs += eval(&rules, coefficient, &at) * eval(&rules, f, &lifted);
-        }
-        let rhs = eval(&rules, &certificate, &next) * eval(&rules, f, &next)
-            - eval(&rules, &certificate, &at) * eval(&rules, f, &at);
-        let scale = lhs.abs().max(rhs.abs()).max(1.0);
+    assert!(
+        recurrence.len() <= 5,
+        "the recurrence of {request} is beyond the order bound: {text}"
+    );
+    for parameters in assignments {
         assert!(
-            (lhs - rhs).abs() <= 1e-7 * scale,
-            "{request} at n = {n}, k = {k}: {lhs} vs {rhs} ({text})"
+            telescoping_holds(f, &recurrence, &certificate, parameters),
+            "{request} fails the substitution check at {parameters:?}: {text}"
         );
     }
     (recurrence, certificate)
@@ -1034,24 +1105,30 @@ fn classical_hypergeometric_identities() {
     }
 }
 
-/// `Σ_j p_j(n) S(n+j)` for `S(n) = Σ_{k=0}^{n} F(n, k)` summed directly.
+/// `Σ_j p_j(n) S(n+j)` for `S(n) = Σ_{k=0}^{n} F(n, k)` summed directly:
+/// the recurrence checked on the sum itself, not on the summand.
 fn recurrence_residual(
     rules: &[crate::graph::RuleSet],
     f: &str,
     recurrence: &[String],
+    parameters: &[(&str, f64)],
     n: i32,
 ) -> (f64, f64) {
     let mut total = 0.0;
     let mut scale = 0.0_f64;
     for (j, coefficient) in recurrence.iter().enumerate() {
         let shift = i32::try_from(j).unwrap();
-        let p = eval(rules, coefficient, &[("n", f64::from(n))]);
+        let p = eval(
+            rules,
+            coefficient,
+            &shifted_bindings(parameters, f64::from(n), 0.0),
+        );
         let s: f64 = (0..=n + shift)
             .map(|k| {
                 eval(
                     rules,
                     f,
-                    &[("n", f64::from(n + shift)), ("k", f64::from(k))],
+                    &shifted_bindings(parameters, f64::from(n + shift), f64::from(k)),
                 )
             })
             .sum();
@@ -1074,7 +1151,7 @@ fn zeilberger_second_order_dixon_and_apery() {
         "Dixon is of second order: {recurrence:?}"
     );
     for n in 0..=6 {
-        let (residual, scale) = recurrence_residual(&rules, dixon, &recurrence, n);
+        let (residual, scale) = recurrence_residual(&rules, dixon, &recurrence, &[], n);
         assert!(
             residual.abs() <= 1e-9 * scale.max(1.0),
             "Dixon recurrence at n = {n}: {residual}"
@@ -1090,7 +1167,7 @@ fn zeilberger_second_order_dixon_and_apery() {
         "Apery is of second order: {recurrence:?}"
     );
     for n in 0..=6 {
-        let (residual, scale) = recurrence_residual(&rules, apery, &recurrence, n);
+        let (residual, scale) = recurrence_residual(&rules, apery, &recurrence, &[], n);
         assert!(
             residual.abs() <= 1e-9 * scale.max(1.0),
             "Apery recurrence at n = {n}: {residual}"
@@ -1165,6 +1242,137 @@ fn zeilberger_certificate_with_a_nontrivial_denominator() {
         certificate.contains("k + 1") && certificate.contains('/'),
         "{certificate}"
     );
+}
+
+#[test]
+fn zeilberger_checker_rejects_a_corrupted_recurrence() {
+    // The check used by every other test here must be able to fail: a
+    // recurrence that is off by one, or a certificate that is, is rejected.
+    let f = "binomial(n, k)^2";
+    let (recurrence, certificate) = check_telescoping(f, &[]);
+    assert!(
+        telescoping_holds(f, &recurrence, &certificate, &[]),
+        "the recurrence of {f} does not pass its own check: {recurrence:?}"
+    );
+    let mut corrupted = recurrence.clone();
+    if let Some(slot) = corrupted.get_mut(1) {
+        *slot = format!("({slot}) + 1");
+    }
+    assert!(
+        !telescoping_holds(f, &corrupted, &certificate, &[]),
+        "the check accepted the corrupted recurrence {corrupted:?}"
+    );
+    let spoiled = format!("({certificate}) + 1");
+    assert!(
+        !telescoping_holds(f, &recurrence, &spoiled, &[]),
+        "the check accepted the corrupted certificate {spoiled}"
+    );
+}
+
+/// Checks a recurrence on the sum itself — `Σ_j p_j(n) S(n+j) = 0` with
+/// `S(n) = Σ_k F(n, k)` summed directly — and the first values of the sum
+/// against `values`.
+fn check_recurrence_on_sum(
+    f: &str,
+    recurrence: &[String],
+    values: &[f64],
+) {
+    let rules = crate::rules::standard();
+    for (n, want) in values.iter().enumerate() {
+        let index = i32::try_from(n).unwrap_or(0);
+        let at = f64::from(u32::try_from(n).unwrap_or(0));
+        let (residual, scale) = recurrence_residual(&rules, f, recurrence, &[], index);
+        assert!(
+            residual.abs() <= 1e-9 * scale.max(1.0),
+            "the recurrence of Σ {f} fails at n = {n}: {residual}"
+        );
+        let sum: f64 = (0..=u32::try_from(n).unwrap_or(0))
+            .map(|k| eval(&rules, f, &[("n", at), ("k", f64::from(k))]))
+            .sum();
+        assert!(
+            (sum - want).abs() <= 1e-9 * want.max(1.0),
+            "Σ {f} at n = {n}: {sum} vs {want}"
+        );
+    }
+}
+
+#[test]
+fn zeilberger_orders_one_to_three() {
+    // Σ_k C(n,k) = 2^n: a first-order recurrence.
+    let (vandermonde, _) = check_telescoping("binomial(n, k)", &[]);
+    assert_eq!(vandermonde.len(), 2, "{vandermonde:?}");
+    let powers: Vec<f64> = (0..7).map(|n| 2.0_f64.powi(n)).collect();
+    check_recurrence_on_sum("binomial(n, k)", &vandermonde, &powers);
+    // Σ_k C(n,k)² = C(2n,n): again first order.
+    let (squares, _) = check_telescoping("binomial(n, k)^2", &[]);
+    assert_eq!(squares.len(), 2, "{squares:?}");
+    let rules = crate::rules::standard();
+    let central: Vec<f64> = (0..7)
+        .map(|n| eval(&rules, "binomial(2*n, n)", &[("n", f64::from(n))]))
+        .collect();
+    check_recurrence_on_sum("binomial(n, k)^2", &squares, &central);
+    // Σ_k C(n,k)³: the Franel numbers, whose recurrence is of second order.
+    let (cubes, _) = check_telescoping("binomial(n, k)^3", &[]);
+    assert_eq!(cubes.len(), 3, "Σ C(n,k)³ is of second order: {cubes:?}");
+    check_recurrence_on_sum(
+        "binomial(n, k)^3",
+        &cubes,
+        &[1.0, 2.0, 10.0, 56.0, 346.0, 2252.0, 15184.0],
+    );
+    // Σ_k C(n,k)⁵: 1, 2, 34, 488, 9826, …, of third order.
+    let (fifths, _) = check_telescoping("binomial(n, k)^5", &[]);
+    assert_eq!(fifths.len(), 4, "Σ C(n,k)⁵ is of third order: {fifths:?}");
+    check_recurrence_on_sum(
+        "binomial(n, k)^5",
+        &fifths,
+        &[1.0, 2.0, 34.0, 488.0, 9826.0],
+    );
+}
+
+#[test]
+fn zeilberger_fourth_order() {
+    // Σ_k C(n,k)³ C(n+k,k) = 1, 3, 31, 399, 5871, 93753, …: its minimal
+    // recurrence is of order four, with coefficients of degree eight in n.
+    let f = "binomial(n, k)^3*binomial(n + k, k)";
+    let (recurrence, _) = check_telescoping(f, &[]);
+    assert_eq!(
+        recurrence.len(),
+        5,
+        "Σ C(n,k)³ C(n+k,k) is of fourth order: {recurrence:?}"
+    );
+    check_recurrence_on_sum(f, &recurrence, &[1.0, 3.0, 31.0, 399.0, 5871.0, 93753.0]);
+}
+
+#[test]
+fn zeilberger_symbolic_parameter() {
+    // Σ_k C(n,k) C(n+k,k) x^k = P_n(1 + 2x), the Legendre polynomial at
+    // 1 + 2x: a second-order recurrence whose coefficients are linear in the
+    // symbolic `x`. The same printed recurrence must hold at every `x`.
+    let f = "binomial(n, k)*binomial(n + k, k)*x^k";
+    let (recurrence, certificate) = check_telescoping_over(
+        f,
+        &[&[("x", 0.7)], &[("x", 1.3)], &[("x", -0.4)], &[("x", 2.0)]],
+    );
+    assert_eq!(recurrence.len(), 3, "{recurrence:?}");
+    assert!(
+        recurrence.iter().any(|p| p.contains('x')),
+        "the recurrence does not carry x symbolically: {recurrence:?}"
+    );
+    assert!(
+        recurrence.iter().all(|p| !p.contains("0.7")),
+        "a parameter was specialised: {recurrence:?}"
+    );
+    let rules = crate::rules::standard();
+    for x in [0.7_f64, 1.3, -0.4, 2.0] {
+        for n in 1..=5 {
+            let (residual, scale) = recurrence_residual(&rules, f, &recurrence, &[("x", x)], n);
+            assert!(
+                residual.abs() <= 1e-9 * scale.max(1.0),
+                "Σ C(n,k) C(n+k,k) x^k at n = {n}, x = {x}: {residual}"
+            );
+        }
+    }
+    assert!(!certificate.is_empty(), "{certificate}");
 }
 
 // ---------------------------------------------------------------------

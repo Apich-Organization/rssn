@@ -784,7 +784,10 @@ impl OpTable {
                 .doc("`base ^ exponent`.")
                 .category("kernel")
                 .since("0.1")
-                .signature(Signature::scalars(2, crate::kernel::signature::TypeExpr::Real)),
+                .signature(Signature::scalars(
+                    2,
+                    crate::kernel::signature::TypeExpr::Real,
+                )),
             OpDescriptor::new("apply", Arity::Variadic)
                 .cost(2)
                 .doc("Application of an undetermined function: `apply(f, args...)`.")
@@ -818,7 +821,10 @@ impl OpTable {
                 .doc("The equation `lhs = rhs`, as a term.")
                 .category("kernel")
                 .since("0.1")
-                .signature(Signature::scalars(2, crate::kernel::signature::TypeExpr::Bool)),
+                .signature(Signature::scalars(
+                    2,
+                    crate::kernel::signature::TypeExpr::Bool,
+                )),
         ];
         for desc in builtins {
             table.push(desc.owned_by(&Arc::from("kernel")));
@@ -866,7 +872,11 @@ impl OpTable {
             return Ok(self.push(desc));
         };
         for id in &existing {
-            if self.ops.get(id.index()).is_some_and(|old| old.same_operator(&desc)) {
+            if self
+                .ops
+                .get(id.index())
+                .is_some_and(|old| old.same_operator(&desc))
+            {
                 if let Some(slot) = self.ops.get_mut(id.index()) {
                     slot.fill_gaps_from(&desc);
                 }
@@ -943,7 +953,11 @@ impl OpTable {
             .into_iter()
             .flatten()
             .copied()
-            .find(|id| self.ops.get(id.index()).is_some_and(|old| old.same_operator(desc)))
+            .find(|id| {
+                self.ops
+                    .get(id.index())
+                    .is_some_and(|old| old.same_operator(desc))
+            })
     }
 
     /// Iterates over the registered operators and their descriptors.

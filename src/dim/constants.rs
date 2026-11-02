@@ -104,10 +104,7 @@ fn exact_pi(
     text: &str,
     pi: i32,
 ) -> Scale {
-    Scale {
-        rat: dec(text),
-        pi,
-    }
+    Scale { rat: dec(text), pi }
 }
 
 /// A measured value with its standard uncertainty, both as decimals.
@@ -231,7 +228,12 @@ fn build() -> Vec<PhysicalConstant> {
         "Boltzmann constant",
         "k_B",
         exact("1.380649e-23"),
-        dim(&[("Length", 2), ("Mass", 1), ("Time", -2), ("Temperature", -1)]),
+        dim(&[
+            ("Length", 2),
+            ("Mass", 1),
+            ("Time", -2),
+            ("Temperature", -1),
+        ]),
         "J/K",
         true,
         None,
@@ -442,16 +444,7 @@ fn build() -> Vec<PhysicalConstant> {
         CODATA,
     );
     let (a0, a0_u) = measured("5.29177210544e-11", "0.00000000082e-11");
-    add(
-        "Bohr radius",
-        "a_0",
-        a0,
-        length(),
-        "m",
-        false,
-        a0_u,
-        CODATA,
-    );
+    add("Bohr radius", "a_0", a0, length(), "m", false, a0_u, CODATA);
     let (ry, ry_u) = measured("10973731.568157", "0.000012");
     add(
         "Rydberg constant",
@@ -479,11 +472,7 @@ fn build() -> Vec<PhysicalConstant> {
         "Stefan-Boltzmann constant",
         "sigma_SB",
         sigma,
-        dim(&[
-            ("Mass", 1),
-            ("Time", -3),
-            ("Temperature", -4),
-        ]),
+        dim(&[("Mass", 1), ("Time", -3), ("Temperature", -4)]),
         "W/(m^2*K^4)",
         false,
         sigma_u,
@@ -494,12 +483,7 @@ fn build() -> Vec<PhysicalConstant> {
         "vacuum electric permittivity",
         "epsilon_0",
         eps0,
-        dim(&[
-            ("Length", -3),
-            ("Mass", -1),
-            ("Time", 4),
-            ("Current", 2),
-        ]),
+        dim(&[("Length", -3), ("Mass", -1), ("Time", 4), ("Current", 2)]),
         "F/m",
         false,
         eps0_u,
@@ -527,9 +511,7 @@ fn build() -> Vec<PhysicalConstant> {
 /// The value is exact when the constant is, which is the point of storing it
 /// as a rational: `c` is an integer, not `2.99792458e8`.
 #[must_use]
-pub fn to_quantity(
-    constant: &PhysicalConstant,
-) -> crate::kernel::value::QuantityValue {
+pub fn to_quantity(constant: &PhysicalConstant) -> crate::kernel::value::QuantityValue {
     let magnitude = if constant.value.pi == 0 {
         crate::kernel::value::Value::rational(constant.value.rat.clone())
     } else {
@@ -595,7 +577,10 @@ mod tests {
         for symbol in ["c", "h", "e", "k_B", "N_A", "dnu_Cs", "K_cd"] {
             let constant = lookup(symbol).unwrap_or_else(|| panic!("{symbol}"));
             assert!(constant.exact, "{symbol} must be exact");
-            assert!(constant.uncertainty.is_none(), "{symbol} has an uncertainty");
+            assert!(
+                constant.uncertainty.is_none(),
+                "{symbol} has an uncertainty"
+            );
         }
     }
 

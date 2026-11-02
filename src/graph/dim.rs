@@ -168,14 +168,14 @@ impl fmt::Display for Dimension {
 }
 
 /// Parses printed exponents back into exact rationals.
-fn exact_exponents(
-    factors: &[(String, String)],
-) -> Result<Vec<(String, BigRational)>, DimError> {
+fn exact_exponents(factors: &[(String, String)]) -> Result<Vec<(String, BigRational)>, DimError> {
     let mut out = Vec::with_capacity(factors.len());
     for (name, exponent) in factors {
-        let value = parse_rational_exponent(exponent).ok_or_else(|| DimError::Parse {
-            text: format!("{name}^{exponent}"),
-            reason: String::from("the exponent is not an exact rational"),
+        let value = parse_rational_exponent(exponent).ok_or_else(|| {
+            DimError::Parse {
+                text: format!("{name}^{exponent}"),
+                reason: String::from("the exponent is not an exact rational"),
+            }
         })?;
         out.push((name.clone(), value));
     }
@@ -1089,14 +1089,16 @@ impl DimTerm {
         arena: &DimArena,
     ) -> Vec<(String, BigRational)> {
         match &self.repr {
-            | DimRepr::Scalar { bases, .. } => bases
-                .iter()
-                .filter_map(|(id, exponent)| {
-                    exponent
-                        .is_constant()
-                        .map(|e| (arena.base_name(*id).to_owned(), e))
-                })
-                .collect(),
+            | DimRepr::Scalar { bases, .. } => {
+                bases
+                    .iter()
+                    .filter_map(|(id, exponent)| {
+                        exponent
+                            .is_constant()
+                            .map(|e| (arena.base_name(*id).to_owned(), e))
+                    })
+                    .collect()
+            },
             | _ => Vec::new(),
         }
     }
@@ -1108,14 +1110,15 @@ impl DimTerm {
         arena: &DimArena,
     ) -> Vec<(String, BigRational)> {
         match &self.repr {
-            | DimRepr::Scalar { vars, .. } => vars
-                .iter()
-                .filter_map(|(id, exponent)| {
-                    exponent
-                        .is_constant()
-                        .map(|e| (arena.var_name(*id).to_owned(), e))
-                })
-                .collect(),
+            | DimRepr::Scalar { vars, .. } => {
+                vars.iter()
+                    .filter_map(|(id, exponent)| {
+                        exponent
+                            .is_constant()
+                            .map(|e| (arena.var_name(*id).to_owned(), e))
+                    })
+                    .collect()
+            },
             | _ => Vec::new(),
         }
     }
@@ -1127,16 +1130,20 @@ impl DimTerm {
         arena: &DimArena,
     ) -> Vec<(String, String)> {
         match &self.repr {
-            | DimRepr::Scalar { bases, vars } => bases
-                .iter()
-                .filter(|(_, e)| e.is_constant().is_none())
-                .map(|(id, e)| (arena.base_name(*id).to_owned(), e.display(arena.atoms())))
-                .chain(
-                    vars.iter()
-                        .filter(|(_, e)| e.is_constant().is_none())
-                        .map(|(id, e)| (arena.var_name(*id).to_owned(), e.display(arena.atoms()))),
-                )
-                .collect(),
+            | DimRepr::Scalar { bases, vars } => {
+                bases
+                    .iter()
+                    .filter(|(_, e)| e.is_constant().is_none())
+                    .map(|(id, e)| (arena.base_name(*id).to_owned(), e.display(arena.atoms())))
+                    .chain(
+                        vars.iter()
+                            .filter(|(_, e)| e.is_constant().is_none())
+                            .map(|(id, e)| {
+                                (arena.var_name(*id).to_owned(), e.display(arena.atoms()))
+                            }),
+                    )
+                    .collect()
+            },
             | _ => Vec::new(),
         }
     }
@@ -1173,22 +1180,22 @@ impl DimTerm {
         }
         let mut bases = Vec::new();
         for (name, exponent) in dimension.exact_factors()? {
-            let id = arena.base_id(&name).ok_or_else(|| DimError::Parse {
-                text: name.clone(),
-                reason: String::from("unknown base dimension"),
+            let id = arena.base_id(&name).ok_or_else(|| {
+                DimError::Parse {
+                    text: name.clone(),
+                    reason: String::from("unknown base dimension"),
+                }
             })?;
             bases.push((id, Expo::from_rat(exponent)));
         }
         let mut vars = Vec::new();
         for (name, exponent) in dimension.exact_unknown()? {
-            let id = arena
-                .var_ids
-                .get(&name)
-                .copied()
-                .ok_or_else(|| DimError::Parse {
+            let id = arena.var_ids.get(&name).copied().ok_or_else(|| {
+                DimError::Parse {
                     text: name.clone(),
                     reason: String::from("unknown dimension variable"),
-                })?;
+                }
+            })?;
             vars.push((id, Expo::from_rat(exponent)));
         }
         Ok(Self::scalar(bases, vars))

@@ -36,11 +36,15 @@
 //! * **buoyancy** ([`Thermal`]): a cell-centred temperature advected and
 //!   diffused (Crank–Nicolson) with a Boussinesq force
 //!   `g β (T - T_ref)` on the momentum equation (Rayleigh–Bénard onset is
-//!   reproduced, see the tests).
+//!   reproduced, see the tests);
+//! * **variable density** ([`Density`]): a cell-centred `ρ` advected in flux
+//!   form, the body force `ρ g` and a variable-coefficient projection; see
+//!   [Variable density](#variable-density) below.
 //!
 //! | Feature | 2D | 3D |
 //! |---|---|---|
-//! | Navier–Stokes, constant density (Boussinesq buoyancy) | yes (`nz = 1`) | yes |
+//! | Navier–Stokes, uniform density (Boussinesq buoyancy) | yes (`nz = 1`) | yes |
+//! | variable density: advected `ρ`, `ρ g`, variable-coefficient projection | yes | yes |
 //! | no-slip / moving wall, slip, inflow, outflow, periodic | yes | yes |
 //! | obstacles (cell mask) | yes | yes |
 //! | immersed level-set body, exact apertures, flux redistribution | yes | yes |
@@ -49,10 +53,43 @@
 //! | body force `f(t, x)` | yes | yes |
 //! | drag by momentum balance ([`NsSolver::force_on_region`]) | yes | yes |
 //!
-//! Limitations: uniform grids, no variable density (Boussinesq only), no
-//! free surface, the thermal field needs a body-free domain, the
+//! ## Variable density
+//!
+//! Setting [`NsConfig::density`] switches the solver to the variable-density
+//! incompressible equations
+//!
+//! ```text
+//! ∂ₜρ + ∇·(ρ u) = 0,   ρ(∂ₜu + u·∇u) = -∇p + μ∇²u + ρ g,   ∇·u = 0
+//! ```
+//!
+//! on the same staggered grid:
+//!
+//! * the predictor divides the pressure gradient by the face density
+//!   `ρ_f = ½ (ρ_L + ρ_R)`; the viscosity stays a single uniform kinematic
+//!   value (`μ = ν ρ`);
+//! * the projection solves the variable-coefficient Poisson equation
+//!   `∇·((1/ρ) ∇φ) = ∇·u*/Δt` and updates `u = u* - Δt (1/ρ) ∇φ`,
+//!   `p += φ`.  The `1/ρ_f` weights are exactly those of the divergence, so
+//!   `∇·u = 0` holds in the same discrete sense as before, and every term
+//!   reduces to the uniform-density operator when `ρ ≡ 1` (bit for bit);
+//! * the face density is the arithmetic mean of the two adjacent cells and
+//!   the same mean weights the hydrostatic pressure gradient, so a
+//!   stratification at rest is an exact discrete steady state
+//!   (`p_j - p_{j-1} = h g ρ_f`); a projection that drops the `1/ρ` from the
+//!   velocity update breaks that balance and starts the fluid moving;
+//! * `ρ` is advected in conservative flux form with the scheme of
+//!   [`NsConfig::convection`] and Adams–Bashforth 2 in time, so the total
+//!   mass is conserved to round-off; no explicit diffusivity is added, so a
+//!   sharp interface spreads by numerical diffusion only.
+//!
+//! Limitations: uniform grids; the viscosity is one uniform kinematic value
+//! (`μ = ν ρ`, no spatially varying viscosity); the density carries no
+//! diffusivity of its own and there is no equation of state (it is
+//! prescribed or advected, never derived from `p` or `T`), and a variable
+//! density and the Boussinesq [`Thermal`] field are mutually exclusive; no
+//! free surface; the thermal field needs a body-free domain; the
 //! eddy-viscosity stress is not wall-modelled and is evaluated on the plain
-//! grid stencils near immersed bodies, and the high-resolution convection
+//! grid stencils near immersed bodies; and the high-resolution convection
 //! schemes fall back to central differences next to walls and bodies.
 //!
 //! Validation: the immersed-body solver reproduces the `Re = 100` flow past a
@@ -61,7 +98,10 @@
 //! shedding periods (literature `C_D = 1.32-1.34`, `St = 0.164-0.166`; Braza,
 //! Chassaing & Ha Minh 1986, Williamson 1989), i.e. +5.2 % and +0.2 %; a
 //! 20 x 10 box at 12-16 cells per diameter gives `C_D = 1.49` and
-//! `St = 0.178`, the difference being blockage.  See `tests/sim/ns_mac.rs`.
+//! `St = 0.178`, the difference being blockage.  The variable-density path
+//! reproduces the linear Rayleigh–Taylor rate `σ = sqrt(A g k)`, keeps a
+//! stratified fluid at rest, conserves mass to round-off and leaves `∇·u` at
+//! the solver tolerance.  See `tests/sim/ns_mac.rs`.
 
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::Face;
@@ -157,6 +197,11 @@ pub enum ScalarBc {
 }
 
 /// Boussinesq temperature field: `T_t + u·∇T = κ ΔT`, buoyancy `g β (T - T_ref)`.
+///
+/// This is the cheap path to buoyancy: one advected scalar and a linear force
+/// in the momentum equation, with the density left uniform.  Use [`Density`]
+/// when the density variations must also enter the inertia and the
+/// projection.
 pub struct Thermal {
     /// Thermal diffusivity.
     pub kappa: f64,
@@ -169,6 +214,31 @@ pub struct Thermal {
     pub bcs: [ScalarBc; 6],
     /// Initial temperature `T(x)`.
     pub init: Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>,
+}
+
+/// Variable-density field and the gravity that couples it to the flow.
+///
+/// With a density the solver integrates
+///
+/// ```text
+/// ∂ₜρ + ∇·(ρ u) = 0,   ρ(∂ₜu + u·∇u) = -∇p + μ∇²u + ρ g,   ∇·u = 0
+/// ```
+///
+/// through the variable-coefficient MAC projection
+/// `∇·((1/ρ) ∇φ) = ∇·u*/Δt`, `u = u* - Δt (1/ρ) ∇φ` (see the module
+/// documentation).  The kinematic viscosity [`NsConfig::nu`] stays uniform.
+///
+/// A [`Density`] and a Boussinesq [`Thermal`] field cannot be combined: both
+/// supply a buoyancy force.
+pub struct Density {
+    /// Initial density `ρ(x)`, strictly positive and finite.
+    pub init: Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>,
+    /// Advect `ρ` with the flow (`∂ₜρ + ∇·(ρ u) = 0`); when `false` the
+    /// field stays at `init` (a prescribed stratification).
+    pub transport: bool,
+    /// Gravity acceleration `g`; the momentum equation gains the body force
+    /// `ρ g`, i.e. the acceleration `g` per unit mass.
+    pub gravity: [f64; 3],
 }
 
 /// Cut-cell treatment of the convective term near an immersed body.
@@ -219,6 +289,8 @@ pub struct NsConfig {
     pub les: LesModel,
     /// Optional Boussinesq temperature field.
     pub thermal: Option<Thermal>,
+    /// Optional variable density field (`None` for a uniform density of one).
+    pub density: Option<Density>,
     /// Cut-cell options (used with an immersed body).
     pub cut_cell: CutCellOptions,
 }
@@ -251,6 +323,7 @@ impl NsConfig {
             convection: Convection::Central,
             les: LesModel::None,
             thermal: None,
+            density: None,
             cut_cell: CutCellOptions::default(),
         };
         c.n[..dim].copy_from_slice(&n[..dim]);
@@ -320,6 +393,7 @@ pub struct NsSolver {
     periodic: [bool; 3],
     steps: usize,
     th: Option<ThermalState>,
+    dens: Option<DensState>,
 }
 
 impl NsSolver {
@@ -547,6 +621,30 @@ impl NsSolver {
         Some(ib)
     }
 
+    fn build_density(cfg: &NsConfig) -> Result<Option<DensState>, String> {
+        let Some(d) = &cfg.density else {
+            return Ok(None);
+        };
+        let ncell: usize = cfg.n.iter().product();
+        let mut rho = vec![0.0; ncell];
+        for p in 0..ncell {
+            let i = Self::fijk(cfg.n, p);
+            let mut x = [0.0; 3];
+            for a in 0..cfg.dim {
+                x[a] = (i[a] as f64 + 0.5) * cfg.len[a] / cfg.n[a] as f64;
+            }
+            rho[p] = (d.init)(x);
+        }
+        if rho.iter().any(|&r| !r.is_finite() || r <= 0.0) {
+            return Err("the density must be positive and finite".into());
+        }
+        Ok(Some(DensState {
+            rho,
+            adv_prev: None,
+            adv_now: vec![0.0; ncell],
+        }))
+    }
+
     fn ib_theta(
         &self,
         c: usize,
@@ -583,6 +681,74 @@ impl NsSolver {
         ib.aperture[a][Self::fidx(Self::ext(&self.cfg, a), f)]
     }
 
+    /// Cell-centred density (`None` for the uniform density of one).
+    fn rho(&self) -> Option<&[f64]> {
+        self.dens.as_ref().map(|d| d.rho.as_slice())
+    }
+
+    /// Density of the fluid between cell `i` and its neighbour `side` along
+    /// `a`: the arithmetic mean of the two cells, or the density of the only
+    /// adjacent cell on a wall. Periodic axes wrap.
+    fn face_density(
+        &self,
+        a: usize,
+        i: [usize; 3],
+        side: isize,
+    ) -> f64 {
+        let Some(rho) = self.rho() else { return 1.0 };
+        let n = self.cfg.n;
+        let na = n[a] as isize;
+        let here = Self::fidx(n, i);
+        let k = i[a] as isize + side;
+        let k = if k < 0 || k >= na {
+            if !self.periodic[a] {
+                return rho[here];
+            }
+            k.rem_euclid(na)
+        } else {
+            k
+        };
+        let mut q = i;
+        q[a] = k as usize;
+        f64::midpoint(rho[here], rho[Self::fidx(n, q)])
+    }
+
+    /// Density on the face of component `c` at face index `i` (mean of the two
+    /// adjacent cells; a wall face takes the cell it bounds, a periodic face
+    /// the two cells it separates).
+    fn rho_face(
+        &self,
+        c: usize,
+        i: [usize; 3],
+    ) -> f64 {
+        let Some(rho) = self.rho() else { return 1.0 };
+        let n = self.cfg.n;
+        let nc = n[c];
+        let (lo, hi) = if i[c] == 0 {
+            if self.periodic[c] {
+                (nc - 1, 0)
+            } else {
+                (0, 0)
+            }
+        } else if i[c] == nc {
+            (
+                nc - 1,
+                if self.periodic[c] {
+                    0
+                } else {
+                    nc - 1
+                },
+            )
+        } else {
+            (i[c] - 1, i[c])
+        };
+        let mut a = i;
+        a[c] = lo;
+        let mut b = i;
+        b[c] = hi;
+        f64::midpoint(rho[Self::fidx(n, a)], rho[Self::fidx(n, b)])
+    }
+
     /// Creates a solver with the given initial velocity (faces) and time step.
     ///
     /// # Errors
@@ -610,6 +776,12 @@ impl NsSolver {
         {
             return Err("solid mask has the wrong length".into());
         }
+        if cfg.density.is_some() && cfg.thermal.is_some() {
+            return Err(
+                "a variable density and a Boussinesq temperature cannot be combined".into(),
+            );
+        }
+        let dens = Self::build_density(&cfg)?;
         let ib = Self::build_ib(&cfg);
         let mut status: [Vec<Status>; 3] = std::array::from_fn(|_| Vec::new());
         let mut bvals: [Vec<f64>; 3] = std::array::from_fn(|_| Vec::new());
@@ -698,6 +870,7 @@ impl NsSolver {
             periodic,
             steps: 0,
             th: None,
+            dens,
         };
         solver.th = Self::build_thermal(&solver.cfg, dt)?;
         solver.update_boundary_values(0.0);
@@ -908,7 +1081,7 @@ impl NsSolver {
                 for side in [-1_isize, 1] {
                     let ni = i[a] as isize + side;
                     let mut q = i;
-                    let w = w * self.aperture(a, i, side);
+                    let w = w / self.face_density(a, i, side) * self.aperture(a, i, side);
                     if w <= 1e-12 {
                         continue;
                     }
@@ -1401,6 +1574,14 @@ impl NsSolver {
                 st.adv_now = adv;
             }
         }
+        let drho = if self.transports_density() {
+            self.dens.as_ref().map(|st| self.scalar_advection(&st.rho))
+        } else {
+            None
+        };
+        if let (Some(adv), Some(st)) = (drho, &mut self.dens) {
+            st.adv_now = adv;
+        }
         let adv: [Vec<f64>; 3] = std::array::from_fn(|c| {
             if c >= cfg_dim {
                 return Vec::new();
@@ -1425,14 +1606,17 @@ impl NsSolver {
             for (r, &p) in helm.rows.iter().enumerate() {
                 let i = Self::fijk(e, p);
                 let x = Self::face_pos(&self.cfg, c, i);
-                let f = self
+                let mut f = self
                     .cfg
                     .force
                     .as_ref()
                     .map_or(0.0, |ff| ff(self.t + 0.5 * dt, x)[c])
                     + self.buoyancy(c, i)
                     + les.as_ref().map_or(0.0, |l| l[c][p]);
-                let g = self.pressure_gradient(c, i, &self.p, true);
+                if let Some(gr) = self.cfg.density.as_ref().map(|d| d.gravity) {
+                    f += gr[c];
+                }
+                let g = self.pressure_gradient(c, i, &self.p, true) / self.rho_face(c, i);
                 rhs[r] = self.u[c][p] + dt * (-adv[c][p] - g + f) + 0.5 * nu * dt * lap[c][p];
             }
             for (r, coef, term) in &helm.terms {
@@ -1483,13 +1667,18 @@ impl NsSolver {
         {
             rhs[p0] = 0.0;
         }
+        if self.transports_density() {
+            // the projection uses the density the predictor saw
+            self.build_poisson()?;
+        }
         let phi = self.pmat.solve(&rhs, None)?;
         for c in 0..self.cfg.dim {
             let e = Self::ext(&self.cfg, c);
             for p in 0..self.u[c].len() {
                 if self.status[c][p] == Status::Unknown {
                     let i = Self::fijk(e, p);
-                    self.u[c][p] -= dt * self.pressure_gradient(c, i, &phi, false);
+                    self.u[c][p] -=
+                        dt * self.pressure_gradient(c, i, &phi, false) / self.rho_face(c, i);
                 }
             }
         }
@@ -1507,6 +1696,7 @@ impl NsSolver {
         }
         let _ = old;
         self.advance_temperature()?;
+        self.advance_density()?;
         self.conv_prev = Some(std::array::from_fn(|c| conv[c].clone()));
         self.t = t_new;
         self.steps += 1;
@@ -1648,6 +1838,13 @@ impl NsSolver {
     }
 }
 
+/// Density field state of the variable-density model.
+struct DensState {
+    rho: Vec<f64>,
+    adv_prev: Option<Vec<f64>>,
+    adv_now: Vec<f64>,
+}
+
 /// Temperature field state of the Boussinesq model.
 struct ThermalState {
     t: Vec<f64>,
@@ -1733,6 +1930,35 @@ impl NsSolver {
         }))
     }
 
+    /// Face value of a cell-centred scalar from the upwind-biased nodes
+    /// `up` (first upwind), `down` (first downwind) and `upup` (second
+    /// upwind); `None` for `upup` (outside the ghost layer) falls back to the
+    /// central mean.
+    fn blend(
+        conv: Convection,
+        up: f64,
+        down: f64,
+        upup: Option<f64>,
+    ) -> f64 {
+        let central = f64::midpoint(up, down);
+        if conv == Convection::Central {
+            return central;
+        }
+        let Some(uu) = upup else { return central };
+        match conv {
+            | Convection::Central => central,
+            | Convection::Quick => 0.75 * up + 0.375 * down - 0.125 * uu,
+            | Convection::Tvd(lim) => {
+                let den = down - up;
+                if den.abs() < 1e-300 {
+                    up
+                } else {
+                    up + 0.5 * lim.psi((up - uu) / den) * den
+                }
+            },
+        }
+    }
+
     /// Face value of the temperature between cells `f - 1` and `f` along `a`
     /// (`f` in `0..=n`), for the transporting velocity `v`.
     fn temperature_face(
@@ -1762,28 +1988,12 @@ impl NsSolver {
         let (c0, c1) = (cell(fi - 1), cell(fi));
         match (c0, c1) {
             | (Some(l), Some(r)) => {
-                let central = f64::midpoint(l, r);
-                if self.cfg.convection == Convection::Central {
-                    return central;
-                }
                 let (up, upup, down) = if v >= 0.0 {
                     (l, cell(fi - 2), r)
                 } else {
                     (r, cell(fi + 1), l)
                 };
-                let Some(uu) = upup else { return central };
-                match self.cfg.convection {
-                    | Convection::Central => central,
-                    | Convection::Quick => 0.75 * up + 0.375 * down - 0.125 * uu,
-                    | Convection::Tvd(lim) => {
-                        let den = down - up;
-                        if den.abs() < 1e-300 {
-                            up
-                        } else {
-                            up + 0.5 * lim.psi((up - uu) / den) * den
-                        }
-                    },
-                }
+                Self::blend(self.cfg.convection, up, down, upup)
             },
             | (None, Some(r)) => {
                 match th.map(|t| t.bcs[2 * a]) {
@@ -1829,10 +2039,135 @@ impl NsSolver {
         out
     }
 
+    /// Whether the density is advected with the flow.
+    fn transports_density(&self) -> bool {
+        self.cfg.density.as_ref().is_some_and(|d| d.transport)
+    }
+
+    /// Cell value of the scalar `phi` at cell offset `k` along `a`, `None`
+    /// outside a non-periodic boundary (where the wall is zero-gradient).
+    const fn scalar_cell(
+        &self,
+        phi: &[f64],
+        i: [usize; 3],
+        a: usize,
+        k: isize,
+    ) -> Option<f64> {
+        let n = self.cfg.n;
+        let na = n[a] as isize;
+        let mut q = i;
+        if k >= 0 && k < na {
+            q[a] = k as usize;
+            Some(phi[Self::fidx(n, q)])
+        } else if self.periodic[a] {
+            q[a] = k.rem_euclid(na) as usize;
+            Some(phi[Self::fidx(n, q)])
+        } else {
+            None
+        }
+    }
+
+    /// Face value of the scalar `phi` between cells `f - 1` and `f` along `a`
+    /// (`f` in `0..=n`), transported by `v`; walls are zero-gradient.
+    fn scalar_face(
+        &self,
+        phi: &[f64],
+        i: [usize; 3],
+        a: usize,
+        f: usize,
+        v: f64,
+    ) -> f64 {
+        let fi = f as isize;
+        let (c0, c1) = (
+            self.scalar_cell(phi, i, a, fi - 1),
+            self.scalar_cell(phi, i, a, fi),
+        );
+        match (c0, c1) {
+            | (Some(l), Some(r)) => {
+                let (up, upup, down) = if v >= 0.0 {
+                    (l, self.scalar_cell(phi, i, a, fi - 2), r)
+                } else {
+                    (r, self.scalar_cell(phi, i, a, fi + 1), l)
+                };
+                Self::blend(self.cfg.convection, up, down, upup)
+            },
+            | (Some(l), None) => l,
+            | (None, Some(r)) => r,
+            | (None, None) => 0.0,
+        }
+    }
+
+    /// Conservative advection `∇·(u ρ)` of the density at every cell.
+    fn scalar_advection(
+        &self,
+        phi: &[f64],
+    ) -> Vec<f64> {
+        let cfg = &self.cfg;
+        let n = cfg.n;
+        let ncell: usize = n.iter().product();
+        let mut out = vec![0.0; ncell];
+        for p in 0..ncell {
+            let i = Self::fijk(n, p);
+            let mut s = 0.0;
+            for a in 0..cfg.dim {
+                let e = Self::ext(cfg, a);
+                let mut fl = [0.0; 2];
+                for (k, f) in [i[a], i[a] + 1].into_iter().enumerate() {
+                    let mut fi = i;
+                    fi[a] = f;
+                    let v = self.u[a][Self::fidx(e, fi)];
+                    fl[k] = v * self.scalar_face(phi, i, a, f, v);
+                }
+                s += (fl[1] - fl[0]) / self.h(a);
+            }
+            out[p] = s;
+        }
+        out
+    }
+
     /// Cell-centred temperature (`None` without a thermal model).
     #[must_use]
     pub fn temperature(&self) -> Option<&[f64]> {
         self.th.as_ref().map(|s| s.t.as_slice())
+    }
+
+    /// Cell-centred density (`None` for the uniform density of one).
+    #[must_use]
+    pub fn density(&self) -> Option<&[f64]> {
+        self.rho()
+    }
+
+    /// Total mass `∫ ρ dV` over the domain (the volume when `ρ ≡ 1`).
+    #[must_use]
+    pub fn mass(&self) -> f64 {
+        let vol: f64 = (0..self.cfg.dim).map(|a| self.h(a)).product();
+        let ncell: usize = self.cfg.n.iter().product();
+        let sum = self.rho().map_or(ncell as f64, |r| r.iter().sum());
+        sum * vol
+    }
+
+    /// Overwrites the density field and rebuilds the projection operator.
+    ///
+    /// # Errors
+    /// Without a density field, for a wrong length, or for a non-positive or
+    /// non-finite value.
+    pub fn set_density(
+        &mut self,
+        rho: &[f64],
+    ) -> Result<(), String> {
+        let ncell: usize = self.cfg.n.iter().product();
+        let Some(st) = self.dens.as_mut() else {
+            return Err("no density field configured".into());
+        };
+        if rho.len() != ncell {
+            return Err("density field has the wrong length".into());
+        }
+        if rho.iter().any(|&r| !r.is_finite() || r <= 0.0) {
+            return Err("the density must be positive and finite".into());
+        }
+        st.rho.copy_from_slice(rho);
+        st.adv_prev = None;
+        self.build_poisson()
     }
 
     /// Overwrites the temperature field.
@@ -1877,6 +2212,36 @@ impl NsSolver {
         let new = st.sys.solve(&rhs, Some(&st.t))?;
         if let Some(st) = &mut self.th {
             st.t_prev = Some(std::mem::replace(&mut st.t, new));
+            st.adv_prev = Some(adv);
+        }
+        Ok(())
+    }
+
+    /// Advances the density by one step with the velocity at the old time.
+    fn advance_density(&mut self) -> Result<(), String> {
+        let dt = self.dt;
+        let Some(st) = &self.dens else { return Ok(()) };
+        let adv = st.adv_now.clone();
+        let adv_ab = st.adv_prev.as_ref().map_or_else(
+            || adv.clone(),
+            |prev| {
+                adv.iter()
+                    .zip(prev)
+                    .map(|(a, b)| 1.5 * a - 0.5 * b)
+                    .collect()
+            },
+        );
+        let rho: Vec<f64> = st
+            .rho
+            .iter()
+            .zip(&adv_ab)
+            .map(|(r, a)| r - dt * a)
+            .collect();
+        if rho.iter().any(|&r| r <= 0.0) {
+            return Err("the density left the positive cone (under-resolved interface)".into());
+        }
+        if let Some(st) = &mut self.dens {
+            st.rho = rho;
             st.adv_prev = Some(adv);
         }
         Ok(())

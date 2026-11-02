@@ -1523,7 +1523,10 @@ fn kummer_contiguous_relations_with_large_complex_parameters() {
             let upper = hyp1f1_cplx(a, b + 1.0, z);
             // b M(a, b, z) - b M(a - 1, b, z) - z M(a, b + 1, z) = 0
             let r = b * m - b * lower - z * upper;
-            let scale = (b * m).norm().max((b * lower).norm()).max((z * upper).norm());
+            let scale = (b * m)
+                .norm()
+                .max((b * lower).norm())
+                .max((z * upper).norm());
             assert!(
                 r.norm() <= 1e-12 * scale,
                 "b-contiguous a={a} b={b} z={z}: {:.2e}",
@@ -1556,10 +1559,7 @@ fn kummer_closed_forms_with_large_parameters() {
             c(150.5, 7.0),
             [c(0.0, 140.0), c(0.0, -120.0), c(30.0, 130.0)],
         ),
-        (
-            c(80.5, 4.0),
-            [c(0.0, 75.0), c(-40.0, 60.0), c(20.0, -70.0)],
-        ),
+        (c(80.5, 4.0), [c(0.0, 75.0), c(-40.0, 60.0), c(20.0, -70.0)]),
     ] {
         for z in arguments {
             close(

@@ -15,7 +15,8 @@ pub mod calculus;
 pub mod combinatorics;
 pub mod complex;
 pub mod computer_graphics;
-/// Sequence and series convergence acceleration (Aitken, Richardson, Wynn).
+/// Sequence and series convergence acceleration (Aitken, Richardson, Wynn,
+/// Levin on partial sums and on terms).
 pub mod convergence;
 /// Coordinate transformations between Cartesian, polar, cylindrical and spherical systems.
 pub mod coordinates;

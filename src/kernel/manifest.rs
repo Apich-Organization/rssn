@@ -317,16 +317,22 @@ impl KernelManifest {
         let mut base_dimensions: Vec<BaseDimInfo> = arena
             .bases()
             .iter()
-            .map(|name| BaseDimInfo {
-                name: name.clone(),
-                si: crate::graph::dim::SI_BASES.contains(&name.as_str()),
+            .map(|name| {
+                BaseDimInfo {
+                    name: name.clone(),
+                    si: crate::graph::dim::SI_BASES.contains(&name.as_str()),
+                }
             })
             .collect();
         base_dimensions.sort();
         base_dimensions.dedup();
         drop(arena);
 
-        let mut ops: Vec<OpInfo> = graph.ops().iter().map(|(_, d)| describe(d, graph)).collect();
+        let mut ops: Vec<OpInfo> = graph
+            .ops()
+            .iter()
+            .map(|(_, d)| describe(d, graph))
+            .collect();
         ops.sort_by(|a, b| {
             a.name
                 .cmp(&b.name)
@@ -334,7 +340,8 @@ impl KernelManifest {
                 .then_with(|| a.keys.cmp(&b.keys))
         });
 
-        let mut rule_sets: Vec<RuleSetInfo> = sets.iter().map(|set| rule_set_info(set, &ops)).collect();
+        let mut rule_sets: Vec<RuleSetInfo> =
+            sets.iter().map(|set| rule_set_info(set, &ops)).collect();
         rule_sets.sort_by(|a, b| a.name.cmp(&b.name));
         rule_sets.dedup_by(|a, b| a.name == b.name);
 
@@ -347,11 +354,13 @@ impl KernelManifest {
 
         let mut plugins: Vec<PluginInfo> = plugins
             .iter()
-            .map(|p| PluginInfo {
-                name: p.name.clone(),
-                version: p.version.clone(),
-                abi: p.abi,
-                capabilities: p.capabilities.clone(),
+            .map(|p| {
+                PluginInfo {
+                    name: p.name.clone(),
+                    version: p.version.clone(),
+                    abi: p.abi,
+                    capabilities: p.capabilities.clone(),
+                }
             })
             .collect();
         plugins.sort_by(|a, b| a.name.cmp(&b.name));
@@ -499,8 +508,14 @@ fn describe(
             .map(|s| OpKey::new(&desc.rule_set, &desc.name, Some(s)))
             .collect()
     };
-    let op = graph.ops().lookup(&desc.name).unwrap_or(crate::graph::OpId::NONE);
-    let dim_rule = graph.ops().attr::<crate::graph::dim::DimRule>(op).map(|r| DimRuleInfo::from(*r));
+    let op = graph
+        .ops()
+        .lookup(&desc.name)
+        .unwrap_or(crate::graph::OpId::NONE);
+    let dim_rule = graph
+        .ops()
+        .attr::<crate::graph::dim::DimRule>(op)
+        .map(|r| DimRuleInfo::from(*r));
     let dynamic_reason = if overloads.is_empty() {
         Some(
             desc.dynamic_reason
@@ -514,7 +529,11 @@ fn describe(
     OpInfo {
         keys,
         name: desc.name.to_string(),
-        aliases: desc.aliases.iter().map(std::string::ToString::to_string).collect(),
+        aliases: desc
+            .aliases
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
         category: desc.category.to_string(),
         arity: ArityInfo::from_arity(desc.arity),
         overloads,
@@ -680,7 +699,9 @@ mod tests {
     #[test]
     fn rule_sets_list_their_own_operators() {
         let manifest = standard_manifest();
-        let calculus = manifest.rule_set("calculus").unwrap_or_else(|| panic!("no calculus"));
+        let calculus = manifest
+            .rule_set("calculus")
+            .unwrap_or_else(|| panic!("no calculus"));
         assert!(
             calculus
                 .ops
@@ -733,6 +754,11 @@ mod tests {
         let manifest = standard_manifest();
         assert!(manifest.units.iter().any(|u| u.name == "m"));
         assert!(manifest.units.iter().any(|u| u.name == "degC"));
-        assert!(manifest.base_dimensions.iter().any(|b| b.name == "Length" && b.si));
+        assert!(
+            manifest
+                .base_dimensions
+                .iter()
+                .any(|b| b.name == "Length" && b.si)
+        );
     }
 }

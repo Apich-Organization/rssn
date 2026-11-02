@@ -72,9 +72,7 @@ fn main() -> ExitCode {
         for name in &audit.unexplained {
             eprintln!("  {name}");
         }
-        eprintln!(
-            "signature-audit: declare a `Signature`, or a `DynamicReason` saying why not"
-        );
+        eprintln!("signature-audit: declare a `Signature`, or a `DynamicReason` saying why not");
         ExitCode::FAILURE
     }
 }

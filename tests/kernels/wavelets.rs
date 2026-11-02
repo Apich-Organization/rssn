@@ -5,14 +5,14 @@ use rssn::kernels::wavelets::Boundary;
 use rssn::kernels::wavelets::Wavelet;
 use rssn::kernels::wavelets::WaveletError;
 use rssn::kernels::wavelets::dwt;
-use rssn::kernels::wavelets::dwt2;
 use rssn::kernels::wavelets::dwt_with;
+use rssn::kernels::wavelets::dwt2;
 use rssn::kernels::wavelets::extend;
 use rssn::kernels::wavelets::frft;
 use rssn::kernels::wavelets::frft_matrix;
 use rssn::kernels::wavelets::idwt;
-use rssn::kernels::wavelets::idwt2;
 use rssn::kernels::wavelets::idwt_with;
+use rssn::kernels::wavelets::idwt2;
 use rssn::kernels::wavelets::wavedec;
 use rssn::kernels::wavelets::wavedec_with;
 use rssn::kernels::wavelets::waverec;
@@ -64,7 +64,11 @@ fn table_limited(w: Wavelet) -> bool {
 }
 
 fn round_trip_tolerance(w: Wavelet) -> f64 {
-    if table_limited(w) { 1e-9 } else { 1e-11 }
+    if table_limited(w) {
+        1e-9
+    } else {
+        1e-11
+    }
 }
 
 fn moment(
@@ -92,7 +96,11 @@ fn filters_are_orthonormal_or_biorthogonal_with_the_advertised_vanishing_moments
             "{w:?}: sum h_syn = {sum_syn}"
         );
         // biorthogonality (orthonormality for the self-dual families)
-        let tol = if table_limited(w) { 1e-11 } else { 1e-12 };
+        let tol = if table_limited(w) {
+            1e-11
+        } else {
+            1e-12
+        };
         for shift in 0..=h.len() / 2 {
             let dot: f64 = (0..h.len())
                 .filter(|m| m + 2 * shift < h.len())
@@ -105,7 +113,10 @@ fn filters_are_orthonormal_or_biorthogonal_with_the_advertised_vanishing_moments
             );
         }
         if w.is_orthogonal() {
-            for (name, g) in [("analysis", w.analysis_high()), ("synthesis", w.synthesis_high())] {
+            for (name, g) in [
+                ("analysis", w.analysis_high()),
+                ("synthesis", w.synthesis_high()),
+            ] {
                 for shift in 0..=g.len() / 2 {
                     let dot: f64 = (0..g.len())
                         .filter(|m| m + 2 * shift < g.len())
@@ -167,7 +178,11 @@ fn the_high_pass_banks_are_the_alternating_mirror_of_the_dual_low_pass() {
             } else {
                 -h_syn[l - 1 - k]
             };
-            let want_s = if k % 2 == 0 { h[l - 1 - k] } else { -h[l - 1 - k] };
+            let want_s = if k % 2 == 0 {
+                h[l - 1 - k]
+            } else {
+                -h[l - 1 - k]
+            };
             assert!((g[k] - want_a).abs() < 1e-16, "{w:?}: g~[{k}]");
             assert!((g_syn[k] - want_s).abs() < 1e-16, "{w:?}: g[{k}]");
         }
@@ -181,7 +196,13 @@ fn symmetry(g: &[f64]) -> (usize, usize, i8) {
     let hi = g.iter().rposition(|v| *v != 0.0).unwrap_or(0);
     let sym = (0..=hi - lo).all(|t| (g[lo + t] - g[hi - t]).abs() < 1e-15);
     let anti = (0..=hi - lo).all(|t| (g[lo + t] + g[hi - t]).abs() < 1e-15);
-    let kind = if sym { 1 } else if anti { -1 } else { 0 };
+    let kind = if sym {
+        1
+    } else if anti {
+        -1
+    } else {
+        0
+    };
     (lo, hi, kind)
 }
 
@@ -241,10 +262,7 @@ fn one_level_is_an_orthogonal_transform_with_exact_reconstruction() {
         assert_eq!((a.len(), d.len()), (32, 32));
         let energy: f64 = x.iter().map(|v| v * v).sum();
         let coeff: f64 = a.iter().chain(&d).map(|v| v * v).sum();
-        assert!(
-            (energy - coeff).abs() < 1e-10 * energy,
-            "{w:?}: Parseval"
-        );
+        assert!((energy - coeff).abs() < 1e-10 * energy, "{w:?}: Parseval");
         let back = idwt(&a, &d, *w).unwrap();
         assert!(
             max_diff(&x, &back) < round_trip_tolerance(*w),
@@ -321,7 +339,12 @@ fn the_periodic_mode_is_the_legacy_transform() {
         assert_eq!(dwt(&signal(7), w), Err(WaveletError::OddLength));
         let (a, d) = dwt_with(&signal(7), w, Boundary::Periodic).unwrap();
         assert_eq!(a.len(), 4);
-        assert!(max_diff(&signal(7), &idwt_with(&a, &d, w, Boundary::Periodic, 7).unwrap()) < 1e-9);
+        assert!(
+            max_diff(
+                &signal(7),
+                &idwt_with(&a, &d, w, Boundary::Periodic, 7).unwrap()
+            ) < 1e-9
+        );
     }
 }
 
@@ -331,34 +354,38 @@ fn the_boundary_extensions_are_the_documented_mirrors() {
     let periodic: Vec<f64> = (-7..=7)
         .map(|i| extend(&x, i, Boundary::Periodic))
         .collect();
-    let zero: Vec<f64> = (-7..=7)
-        .map(|i| extend(&x, i, Boundary::Zero))
-        .collect();
+    let zero: Vec<f64> = (-7..=7).map(|i| extend(&x, i, Boundary::Zero)).collect();
     let symmetric: Vec<f64> = (-7..=7)
         .map(|i| extend(&x, i, Boundary::Symmetric))
         .collect();
-    let reflect: Vec<f64> = (-7..=7)
-        .map(|i| extend(&x, i, Boundary::Reflect))
-        .collect();
+    let reflect: Vec<f64> = (-7..=7).map(|i| extend(&x, i, Boundary::Reflect)).collect();
     // period 5
     assert_eq!(
         periodic,
-        [4.0, 5.0, 1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0]
+        [
+            4.0, 5.0, 1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0
+        ]
     );
     // nothing outside the signal
     assert_eq!(
         zero,
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 0.0, 0.0]
+        [
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 0.0, 0.0
+        ]
     );
     // half-sample: the edge sample is repeated, period 10
     assert_eq!(
         symmetric,
-        [4.0, 5.0, 5.0, 4.0, 3.0, 2.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 4.0, 3.0]
+        [
+            4.0, 5.0, 5.0, 4.0, 3.0, 2.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 4.0, 3.0
+        ]
     );
     // whole-sample: no repeated edge sample, period 8
     assert_eq!(
         reflect,
-        [2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0]
+        [
+            2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0
+        ]
     );
     // a single sample extends to itself in every mirroring mode
     for b in [Boundary::Periodic, Boundary::Symmetric, Boundary::Reflect] {
@@ -447,7 +474,14 @@ fn the_biorthogonal_coefficients_are_the_hand_computed_cdf_values() {
     }
     // bior2.2 synthesis low-pass is the 3-tap [1, 2, 1] / (2 sqrt 2) spline
     let h_syn = Wavelet::Bior2_2.synthesis_low();
-    let want_syn = [0.0, 1.0 / (2.0 * s2), 2.0 / (2.0 * s2), 1.0 / (2.0 * s2), 0.0, 0.0];
+    let want_syn = [
+        0.0,
+        1.0 / (2.0 * s2),
+        2.0 / (2.0 * s2),
+        1.0 / (2.0 * s2),
+        0.0,
+        0.0,
+    ];
     for (k, v) in want_syn.iter().enumerate() {
         assert!((h_syn[k] - v).abs() < 1e-15, "bior2.2 h[{k}]");
     }
@@ -603,4 +637,3 @@ fn the_fractional_matrix_is_unitary_and_validates_the_size() {
     }
     assert!(frft_matrix(1, 0.5).is_err());
 }
-

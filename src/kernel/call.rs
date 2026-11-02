@@ -7,7 +7,8 @@
 //! thing.
 //!
 //! ```no_run
-//! use rssn::kernel::{CallCtx, Value};
+//! use rssn::kernel::CallCtx;
+//! use rssn::kernel::Value;
 //! use rssn::prelude::*;
 //!
 //! let s = Session::new();
@@ -34,8 +35,7 @@ use crate::kernel::value::Value;
 ///
 /// This is the boundary's spelling of
 /// [`api::Target`](crate::api::Target); they are the same type.
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum Target {
     /// A closed-form term: no unevaluated heavy operator left.
     #[default]
@@ -354,17 +354,15 @@ impl fmt::Display for OpError {
             | Self::Arity { expected, got } => {
                 write!(f, "operator takes {expected} arguments, got {got}")
             },
-            | Self::Type {
-                expected,
-                got,
-                arg,
-            } => {
+            | Self::Type { expected, got, arg } => {
                 write!(f, "argument {arg} has type {got}, expected {expected}")
             },
-            | Self::Ambiguous { name, count } => write!(
-                f,
-                "`{name}` has {count} overloads that accept these arguments equally well"
-            ),
+            | Self::Ambiguous { name, count } => {
+                write!(
+                    f,
+                    "`{name}` has {count} overloads that accept these arguments equally well"
+                )
+            },
             | Self::Dimension(e) => write!(f, "{e}"),
             | Self::NotNumeric(what) => write!(f, "`{what}` has no numeric value"),
             | Self::NotReduced(what) => write!(f, "`{what}` did not reduce to a closed form"),

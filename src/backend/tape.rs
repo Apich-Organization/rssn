@@ -693,7 +693,10 @@ impl Tape {
                     // Truncation, not rounding: an index is an offset, and a
                     // fractional one is a bug in whatever produced it rather
                     // than a reason to read a neighbouring element.
-                    let offset = values.get(index as usize).copied().map_or(f64::NAN, T::to_f64);
+                    let offset = values
+                        .get(index as usize)
+                        .copied()
+                        .map_or(f64::NAN, T::to_f64);
                     let slot = if offset.is_finite() {
                         #[allow(clippy::cast_possible_truncation)]
                         let offset = offset.trunc();

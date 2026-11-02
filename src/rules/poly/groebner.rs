@@ -1397,10 +1397,7 @@ mod tests {
             .unwrap_or_else(|| panic!("1/2 is invertible mod 5"));
         assert_eq!(converted.terms(), &[(vec![1, 0], q(3))]);
         // The same coefficient over Q is untouched.
-        assert_eq!(
-            half.in_domain(&Domain::Rational, Order::Lex),
-            Some(half)
-        );
+        assert_eq!(half.in_domain(&Domain::Rational, Order::Lex), Some(half));
     }
 
     #[test]

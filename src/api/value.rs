@@ -36,8 +36,8 @@ use crate::kernel::signature::Signature;
 use crate::kernel::value::CallbackRef;
 use crate::kernel::value::QuantityValue;
 use crate::kernel::value::SessionId;
-use crate::kernel::value::TermRef;
 use crate::kernel::value::TensorValue;
+use crate::kernel::value::TermRef;
 use crate::kernel::value::Value;
 
 /// Why two sessions could not be merged.
@@ -62,14 +62,12 @@ impl fmt::Display for MergeError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
-            | Self::Dimension {
-                symbol,
-                left,
-                right,
-            } => write!(
-                f,
-                "symbol `{symbol}` has dimension {left} here but {right} in the merged session"
-            ),
+            | Self::Dimension { symbol, left, right } => {
+                write!(
+                    f,
+                    "symbol `{symbol}` has dimension {left} here but {right} in the merged session"
+                )
+            },
             | Self::Translation(message) => write!(f, "cannot translate a dimension: {message}"),
         }
     }
@@ -86,13 +84,10 @@ impl Session {
     #[must_use]
     pub fn manifest(&self) -> Arc<KernelManifest> {
         let inner = self.inner.borrow();
-        inner
-            .templates
-            .first()
-            .map_or_else(
-                || Arc::new(KernelManifest::default()),
-                |t| t.engine.manifest_arc(),
-            )
+        inner.templates.first().map_or_else(
+            || Arc::new(KernelManifest::default()),
+            |t| t.engine.manifest_arc(),
+        )
     }
 
     /// The manifest as JSON.
@@ -426,7 +421,10 @@ impl Session {
             let inner = self.inner.borrow();
             inner.graph.ops().get(op).clone()
         };
-        ctx.trace("resolve", format!("{name}/{} -> {}", args.len(), op.index()));
+        ctx.trace(
+            "resolve",
+            format!("{name}/{} -> {}", args.len(), op.index()),
+        );
         if let Some(evaluator) = descriptor.eval_dyn.clone() {
             ctx.trace("dispatch", "native evaluator");
             return evaluator.eval(args, ctx);
@@ -437,19 +435,25 @@ impl Session {
                 .iter()
                 .enumerate()
                 .map(|(index, value)| {
-                    term_of_value(&mut inner.graph, value, self.id).map_err(|error| match error {
-                        | OpError::Type { expected, .. } => OpError::Type {
-                            expected,
-                            got: Box::new(value.type_expr()),
-                            arg: index,
-                        },
-                        | other => other,
+                    term_of_value(&mut inner.graph, value, self.id).map_err(|error| {
+                        match error {
+                            | OpError::Type { expected, .. } => {
+                                OpError::Type {
+                                    expected,
+                                    got: Box::new(value.type_expr()),
+                                    arg: index,
+                                }
+                            },
+                            | other => other,
+                        }
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let node = inner.graph.try_node(op, &nodes).ok_or_else(|| OpError::Arity {
-                expected: ArityInfo::from_arity(descriptor.arity),
-                got: args.len(),
+            let node = inner.graph.try_node(op, &nodes).ok_or_else(|| {
+                OpError::Arity {
+                    expected: ArityInfo::from_arity(descriptor.arity),
+                    got: args.len(),
+                }
             })?;
             self.term(node)
         };
@@ -500,10 +504,12 @@ impl Session {
         }
         let plugin: Arc<dyn Plugin> = Arc::from(plugin);
         let mut inner = self.inner.borrow_mut();
-        if inner.plugins.iter().any(|p| p.manifest().name == manifest.name) {
-            return Err(PluginError::Duplicate {
-                name: manifest.name,
-            });
+        if inner
+            .plugins
+            .iter()
+            .any(|p| p.manifest().name == manifest.name)
+        {
+            return Err(PluginError::Duplicate { name: manifest.name });
         }
         // Register into the store graph so that names resolve for terms the
         // user builds directly.
@@ -536,11 +542,13 @@ impl Session {
         let templates: Vec<crate::api::Template> = inner
             .templates
             .iter()
-            .map(|template| crate::api::Template {
-                sets: template.sets.clone(),
-                rule_sets: template.rule_sets.clone(),
-                graph: template.graph.clone(),
-                engine: template.engine.clone(),
+            .map(|template| {
+                crate::api::Template {
+                    sets: template.sets.clone(),
+                    rule_sets: template.rule_sets.clone(),
+                    graph: template.graph.clone(),
+                    engine: template.engine.clone(),
+                }
             })
             .collect();
         Self {
@@ -596,9 +604,10 @@ impl Session {
             };
             for member in rest {
                 if let Some(&image) = images.get(member.index())
-                    && inner.graph.union(target, image) {
-                        replayed = replayed.saturating_add(1);
-                    }
+                    && inner.graph.union(target, image)
+                {
+                    replayed = replayed.saturating_add(1);
+                }
             }
         }
         inner.graph.rebuild();
@@ -623,9 +632,9 @@ impl Session {
                     | Ok(guard) => guard,
                     | Err(poisoned) => poisoned.into_inner(),
                 };
-                expression.to_term(&mut arena).map_err(|error| {
-                    MergeError::Translation(error.to_string())
-                })?
+                expression
+                    .to_term(&mut arena)
+                    .map_err(|error| MergeError::Translation(error.to_string()))?
             };
             let symbol = inner.graph.interner_mut().symbol(&name);
             if let Some(existing) = inner.graph.dim_assumptions.get(&symbol) {
@@ -682,9 +691,7 @@ impl Kernel for Session {
 }
 
 /// Copies a call context so that it can be mutated while it is used.
-fn clone_ctx<'a>(
-    ctx: &CallCtx<'_>,
-) -> CallCtx<'a> {
+fn clone_ctx<'a>(ctx: &CallCtx<'_>) -> CallCtx<'a> {
     CallCtx {
         target: ctx.target,
         budget: ctx.budget.clone(),
@@ -710,7 +717,9 @@ fn config_for(
         | Target::Symbolic => config.symbolic(),
         | Target::Numeric { tolerance } => config.numeric(tolerance),
     };
-    config = config.budget(ctx.budget.clone()).dimensions(ctx.dimension_mode);
+    config = config
+        .budget(ctx.budget.clone())
+        .dimensions(ctx.dimension_mode);
     for (symbol, value) in &ctx.bindings {
         config = config.bind(symbol, *value);
     }
@@ -721,9 +730,7 @@ fn config_for(
 }
 
 /// Maps a computation error onto the ABI's error type.
-fn op_error(
-    error: crate::api::ComputeError,
-) -> OpError {
+fn op_error(error: crate::api::ComputeError) -> OpError {
     match error {
         | crate::api::ComputeError::UnknownOperator(name) => {
             OpError::UnknownOp(OpKey::new("", &name, None))
@@ -789,8 +796,7 @@ fn check_args(
                     .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))
             })
             .find(|param| {
-                crate::kernel::overload::matches(param, value)
-                    == crate::kernel::overload::Match::No
+                crate::kernel::overload::matches(param, value) == crate::kernel::overload::Match::No
             })
             .cloned()
             .unwrap_or_else(crate::kernel::infer::term);
@@ -852,10 +858,11 @@ fn resolve_op(
     if scored.is_empty() {
         // No candidate's signature fits. That is an error unless none of them
         // declares one at all, in which case arity is all there is to go on.
-        if fitting
-            .iter()
-            .all(|&id| crate::kernel::infer::signatures(graph.ops().get(id)).0.is_empty())
-        {
+        if fitting.iter().all(|&id| {
+            crate::kernel::infer::signatures(graph.ops().get(id))
+                .0
+                .is_empty()
+        }) {
             return Ok(only);
         }
         check_args(graph.ops().get(only), args)?;
@@ -936,12 +943,7 @@ fn quantity_of(
     let &unit_node = unit_node.first()?;
     let text = unit_text(graph, unit_node)?;
     let resolved = crate::dim::units::resolve(&text).ok()?;
-    let unit = crate::dim::UnitDef::linear(
-        &text,
-        resolved.dimension,
-        resolved.scale,
-    )
-    .to_value();
+    let unit = crate::dim::UnitDef::linear(&text, resolved.dimension, resolved.scale).to_value();
     Some(QuantityValue {
         value: Box::new(value_of_node(graph, value, SessionId(0))),
         unit,
@@ -976,11 +978,7 @@ fn unit_text(
             let &exponent = rest.first()?;
             let name = unit_text(graph, base)?;
             let power = graph.number_of(exponent)?.to_rational()?;
-            Some(format!(
-                "{name}^{}/{}",
-                power.numer(),
-                power.denom()
-            ))
+            Some(format!("{name}^{}/{}", power.numer(), power.denom()))
         },
         | _ => None,
     }
@@ -1042,18 +1040,17 @@ fn term_of_value(
         | Value::Symbol(name) => Ok(graph.sym(name)),
         | Value::Unit(unit) => Ok(graph.sym(&unit.name)),
         | Value::Quantity(quantity) => {
-            let op = graph
-                .ops()
-                .lookup("quantity")
-                .ok_or_else(|| OpError::Unsupported {
+            let op = graph.ops().lookup("quantity").ok_or_else(|| {
+                OpError::Unsupported {
                     backend: "term".to_owned(),
                     feature: "quantities (the `units` rule set is not installed)".to_owned(),
-                })?;
+                }
+            })?;
             let value = term_of_value(graph, &quantity.value, session)?;
             let unit = graph.sym(&quantity.unit.name);
-            graph.try_node(op, &[value, unit]).ok_or_else(|| OpError::Internal(
-                "quantity is not binary".to_owned(),
-            ))
+            graph
+                .try_node(op, &[value, unit])
+                .ok_or_else(|| OpError::Internal("quantity is not binary".to_owned()))
         },
         | Value::Complex(complex) => {
             let (re, im) = complex.to_f64();
@@ -1094,10 +1091,7 @@ fn term_of_value(
                 };
                 items.push(term_of_value(graph, &Value::Tensor(inner), session)?);
             }
-            let list = graph
-                .ops()
-                .lookup("list")
-                .unwrap_or(core::LIST);
+            let list = graph.ops().lookup("list").unwrap_or(core::LIST);
             Ok(graph.node(list, &items))
         },
         | Value::Term(handle) => {
@@ -1114,22 +1108,30 @@ fn term_of_value(
             Ok(node)
         },
         | Value::Dyn(dynamic) => term_of_value(graph, &dynamic.value, session),
-        | Value::Sparse(_) => Err(OpError::Unsupported {
-            backend: "term".to_owned(),
-            feature: "sparse literals".to_owned(),
-        }),
-        | Value::Record(_) | Value::Variant(_) => Err(OpError::Unsupported {
-            backend: "term".to_owned(),
-            feature: "records and variants".to_owned(),
-        }),
-        | Value::Function(_) => Err(OpError::Unsupported {
-            backend: "term".to_owned(),
-            feature: "host callbacks".to_owned(),
-        }),
-        | Value::Opaque(_) => Err(OpError::Unsupported {
-            backend: "term".to_owned(),
-            feature: "opaque payloads".to_owned(),
-        }),
+        | Value::Sparse(_) => {
+            Err(OpError::Unsupported {
+                backend: "term".to_owned(),
+                feature: "sparse literals".to_owned(),
+            })
+        },
+        | Value::Record(_) | Value::Variant(_) => {
+            Err(OpError::Unsupported {
+                backend: "term".to_owned(),
+                feature: "records and variants".to_owned(),
+            })
+        },
+        | Value::Function(_) => {
+            Err(OpError::Unsupported {
+                backend: "term".to_owned(),
+                feature: "host callbacks".to_owned(),
+            })
+        },
+        | Value::Opaque(_) => {
+            Err(OpError::Unsupported {
+                backend: "term".to_owned(),
+                feature: "opaque payloads".to_owned(),
+            })
+        },
     }
 }
 
@@ -1155,9 +1157,11 @@ impl Term<'_> {
             .graph
             .children(self.node)
             .iter()
-            .map(|&node| Self {
-                session: self.session,
-                node,
+            .map(|&node| {
+                Self {
+                    session: self.session,
+                    node,
+                }
             })
             .collect()
     }
@@ -1465,7 +1469,9 @@ mod tests {
             Ok(())
         });
         let mut s = Session::new();
-        let id = s.register(Box::new(plugin)).unwrap_or_else(|e| panic!("{e}"));
+        let id = s
+            .register(Box::new(plugin))
+            .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(id.0, 0);
         let manifest = s.manifest();
         assert!(manifest.op("acme_twice").is_some());
@@ -1475,8 +1481,10 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(out, Value::int(0_i32));
         assert!(
-            s.register(Box::new(SimplePlugin::new("acme/twice", "0.1.0", |_| Ok(()))))
-                .is_err(),
+            s.register(Box::new(SimplePlugin::new("acme/twice", "0.1.0", |_| {
+                Ok(())
+            })))
+            .is_err(),
             "a plugin may not be registered twice"
         );
     }

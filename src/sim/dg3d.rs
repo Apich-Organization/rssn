@@ -12,31 +12,53 @@
 //!   (flux-differencing volume terms with the Chandrashekar entropy-conservative
 //!   two-point flux and Lax–Friedrichs dissipation, [`Dg3Options::entropy_stable`]);
 //! * boundaries: periodic, outflow, slip wall, fixed (inflow) state;
-//! * shock limiters: characteristic, hierarchical and WENO
+//! * shock limiters: min/max-preserving, characteristic, hierarchical and WENO
 //!   ([`Dg3Options::limiter`]), applied after every SSP-RK3 stage;
 //! * Zhang–Shu positivity-preserving scaling of density and pressure.
 //!
 //! Every limiter preserves the element averages, so a periodic computation
-//! keeps total mass, momentum and energy to round-off. The three limiters are
+//! keeps total mass, momentum and energy to round-off. All limiters are
+//! hierarchical (`P_N`): the troubled-cell test looks at the cell means of the
+//! neighbours, and only the flagged elements have their modes changed, so a
+//! smooth solution keeps the design order of the scheme. The four limiters are
 //! the 3D tensor-product analogues of the 1D/2D limiters of
 //! [`dg`](crate::sim::dg):
 //!
 //! | [`Dg3Limiter`] | Method |
 //! |---|---|
+//! | [`Dg3Limiter::Minmax`] | TVB-tested min/max mode scaling: a troubled element has every Legendre mode of total degree `>= 1` multiplied by one factor `θ ∈ [0, 1]` until its nodal values lie inside the min/max of the element mean and the six face-neighbour means (the element average is unchanged, so the bound is enforced without a global slope limiter) |
 //! | [`Dg3Limiter::Characteristic`] | TVB-tested characteristic moment limiter: troubled elements are detected from the face traces and the neighbour means, then the Legendre modes are bounded from degree `p` down in the characteristic variables of the normal Jacobian ([`DgLaw::to_characteristic`], Euler eigenvectors for [`Euler3d`]) |
 //! | [`Dg3Limiter::Hierarchical`] | the same moment limiter, componentwise, on the elements flagged by the componentwise TVB test |
 //! | [`Dg3Limiter::Weno`] | Zhong–Shu WENO reconstruction of troubled elements along every axis (element plus left/right neighbours, componentwise) |
 //!
+//! The troubled-cell flags are reported by [`Dg3Solution::troubled`] and
+//! [`Dg3Solution::troubled_cells`], which makes the locality of the limiting
+//! observable.
+//!
 //! Smooth problems converge with order `p + 1` (advection) and `p`–`p + 1`
-//! (Euler vortex). Limitations: elements are axis-aligned boxes of one
-//! uniform size (no curved or unstructured hexahedra, no hanging nodes); the
-//! moment limiters use ghost elements built from the boundary condition at
-//! non-periodic faces (mirror image for walls, the exterior state for fixed
-//! states, even mirror image for outflow (the flux's exterior state is the interior trace); a direction is skipped only on an
-//! axis with a single element), the characteristic limiter needs the law's eigenvectors for the full benefit
-//! (it falls back to the componentwise moment limiter otherwise), and the
-//! WENO limiter is componentwise (its directional reconstructions are
-//! averaged, not a full multidimensional WENO reconstruction).
+//! (Euler vortex) with every limiter, because the TVB test leaves smooth
+//! elements unflagged.
+//!
+//! Limitations: elements are axis-aligned boxes of one uniform size and one
+//! uniform degree `p` per mesh (no curved or unstructured hexahedra, no
+//! hanging nodes, no h- or p-adaptivity, no sub-cell shock resolution); the
+//! troubled-cell test is the TVB minmod with the user-set threshold `M h²`
+//! ([`Dg3Options::limiter_tvd`]), which is resolution dependent and, unlike a
+//! modal-decay indicator, has no cell-local scale of its own; the min/max
+//! limiter bounds the nodal values of an element by the element means of
+//! itself and its six face neighbours only (not the polynomial between the
+//! nodes, and not diagonal neighbours), and it clips a flagged local extremum
+//! toward its own mean; the moment limiters use ghost elements built from the
+//! boundary condition at non-periodic faces (mirror image for walls, the
+//! exterior state for fixed states, even mirror image for outflow (the flux's
+//! exterior state is the interior trace)), and on an axis with a single
+//! periodic element the element is its own neighbour and contributes no bound
+//! (so a `1 × 1 × 1` periodic mesh is not limited by [`Dg3Limiter::Minmax`]);
+//! the characteristic limiter needs the law's eigenvectors
+//! for the full benefit (it falls back to the componentwise moment limiter
+//! otherwise), and the WENO limiter is componentwise (its directional
+//! reconstructions are averaged, not a full multidimensional WENO
+//! reconstruction).
 //!
 //! Parallelism: the element-local right-hand side and the troubled-element test run concurrently
 //! over the elements.
@@ -295,7 +317,7 @@ impl Dg3Mesh {
 
 /// Shock-capturing limiter applied after every SSP-RK3 stage.
 ///
-/// All three limiters preserve the element averages and therefore the total
+/// All four limiters preserve the element averages and therefore the total
 /// mass, momentum and energy of a periodic computation to round-off. They run
 /// before the Zhang–Shu positivity scaling of [`Dg3Options::positivity`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -303,6 +325,18 @@ pub enum Dg3Limiter {
     /// No limiting (default, preserves the plain DGSEM scheme).
     #[default]
     None,
+    /// Min/max-preserving hierarchical mode scaling.
+    ///
+    /// Elements flagged by the componentwise TVB test are scaled as a whole:
+    /// every Legendre mode of total degree `>= 1` is multiplied by one factor
+    /// `θ ∈ [0, 1]` (equivalently, `q` is moved toward the element mean) until
+    /// the nodal values lie inside `[lo, hi]`, where `lo`/`hi` are the smallest
+    /// and largest element mean of the element and its six face neighbours
+    /// (the ghost element of the boundary condition where a neighbour is
+    /// missing). The element average is mode zero and is never touched, so the
+    /// scheme stays conservative, and untroubled elements are left untouched,
+    /// so smooth regions keep the design order.
+    Minmax,
     /// Characteristic moment limiter: elements flagged by the TVB test have
     /// their Legendre modes bounded from degree `p` down to degree `1` in the
     /// characteristic variables of the flux Jacobian ([`DgLaw::to_characteristic`];
@@ -327,7 +361,7 @@ pub struct Dg3Options {
     /// Shock-capturing limiter (default [`Dg3Limiter::None`], i.e. the plain
     /// DGSEM scheme).
     pub limiter: Dg3Limiter,
-    /// TVB constant `M` of the troubled-element test shared by all three
+    /// TVB constant `M` of the troubled-element test shared by all four
     /// limiters (default `50`): jumps smaller than `M h²` are treated as
     /// smooth and left untouched, which keeps smooth extrema intact.
     pub limiter_tvd: f64,
@@ -365,6 +399,12 @@ pub struct Dg3Solution {
     pub t: f64,
     /// Number of steps.
     pub steps: usize,
+    /// Troubled-element flags of the limiter at the final state, layout
+    /// `[element]` (empty when no limiter is configured).
+    pub troubled: Vec<bool>,
+    /// Total number of troubled-element flags over every limiter application
+    /// of the run (`0` for a limiter that never fired, and without limiting).
+    pub troubled_cells: usize,
 }
 
 impl Dg3Solution {
@@ -1237,6 +1277,93 @@ impl Ctx<'_> {
         }
     }
 
+    /// Min/max-preserving hierarchical mode scaling ([`Dg3Limiter::Minmax`]).
+    ///
+    /// For every troubled element the bounds `lo`, `hi` are the smallest and
+    /// largest element mean among the element itself and its six face
+    /// neighbours (the ghost element of the boundary condition where the
+    /// neighbour is missing), and the nodal values `u` are replaced by
+    /// `mean + θ (u - mean)` with the largest `θ ∈ [0, 1]` for which
+    /// `lo <= mean + θ (u - mean) <= hi` at every node and in every variable.
+    /// Scaling the nodal deviation is the same as scaling all Legendre modes
+    /// of total degree `>= 1` by `θ` (the nodal values are linear in the
+    /// modes), and mode zero is the mean, so the element average is preserved.
+    /// An element without a distinct face neighbour (a `1 × 1 × 1` periodic
+    /// mesh) has no bound to enforce and is left unchanged.
+    fn limit_minmax(
+        &self,
+        q: &mut [f64],
+        trouble: &[bool],
+        t: f64,
+    ) {
+        if !trouble.iter().any(|&flag| flag) {
+            return;
+        }
+        let (nv, np, ne) = (self.nv, self.np, self.mesh.elements());
+        let means = self.means(q);
+        // Bounds first: they read `q` and the ghost elements, so they are
+        // computed before any element is modified.
+        let mut lo = vec![0.0; ne * nv];
+        let mut hi = vec![0.0; ne * nv];
+        let mut sides = vec![0_usize; ne];
+        let mut nb_mean = vec![0.0; nv];
+        for e in (0..ne).filter(|&e| trouble[e]) {
+            for v in 0..nv {
+                lo[e * nv + v] = means[e * nv + v];
+                hi[e * nv + v] = means[e * nv + v];
+            }
+            for axis in 0..3 {
+                for max in [false, true] {
+                    let mut known = true;
+                    if let Some(en) = self.neighbour(e, axis, max) {
+                        // a single element on a periodic axis is its own neighbour
+                        known = en != e;
+                        nb_mean.copy_from_slice(&means[en * nv..(en + 1) * nv]);
+                    } else if let Some(g) = self.ghost_modal(e, axis, max, q, t) {
+                        for v in 0..nv {
+                            nb_mean[v] = g[v * np];
+                        }
+                    } else {
+                        known = false;
+                    }
+                    if known {
+                        sides[e] += 1;
+                        for v in 0..nv {
+                            lo[e * nv + v] = lo[e * nv + v].min(nb_mean[v]);
+                            hi[e * nv + v] = hi[e * nv + v].max(nb_mean[v]);
+                        }
+                    }
+                }
+            }
+        }
+        for e in (0..ne).filter(|&e| trouble[e] && sides[e] > 0) {
+            let mean = &means[e * nv..(e + 1) * nv];
+            let mut theta: f64 = 1.0;
+            for nd in 0..np {
+                for v in 0..nv {
+                    let d = q[(e * np + nd) * nv + v] - mean[v];
+                    let bound = if d > 0.0 {
+                        (hi[e * nv + v] - mean[v]) / d
+                    } else if d < 0.0 {
+                        (lo[e * nv + v] - mean[v]) / d
+                    } else {
+                        1.0
+                    };
+                    theta = theta.min(bound);
+                }
+            }
+            let theta = theta.clamp(0.0, 1.0);
+            if theta < 1.0 {
+                for nd in 0..np {
+                    for v in 0..nv {
+                        let i = (e * np + nd) * nv + v;
+                        q[i] = mean[v] + theta * (q[i] - mean[v]);
+                    }
+                }
+            }
+        }
+    }
+
     /// Zhong–Shu WENO limiter: a troubled element is reconstructed along every
     /// axis from its own polynomial and the shifted polynomials of its
     /// left/right neighbours, and the directional reconstructions are averaged
@@ -1246,14 +1373,15 @@ impl Ctx<'_> {
         &self,
         q: &mut [f64],
         time: f64,
-    ) {
+    ) -> usize {
         let (nv, np, n1) = (self.nv, self.np, self.n1);
         let m = &self.mesh;
         let ne = m.elements();
         let src = q.to_vec();
         let trouble = self.troubled_elements(&src, self.tvd, false, time);
-        if !trouble.iter().any(|&t| t) {
-            return;
+        let count = trouble.iter().filter(|&&flag| flag).count();
+        if count == 0 {
+            return 0;
         }
         let mut cand = vec![0.0; 3 * nv * n1];
         let mut out_comp = vec![0.0; nv * n1];
@@ -1340,29 +1468,43 @@ impl Ctx<'_> {
                 }
             }
         }
+        count
     }
 
-    /// Applies the configured shock limiter and then the Zhang–Shu positivity scaling.
+    /// Applies the configured shock limiter and then the Zhang–Shu positivity
+    /// scaling, returning the number of elements the troubled-cell test
+    /// flagged.
     fn limit_all(
         &self,
         q: &mut [f64],
         t: f64,
-    ) {
-        match self.limiter {
-            | Dg3Limiter::None => {},
+    ) -> usize {
+        let count = match self.limiter {
+            | Dg3Limiter::None => 0,
+            | Dg3Limiter::Minmax => {
+                let trouble = self.troubled_elements(q, self.tvd, false, t);
+                let count = trouble.iter().filter(|&&flag| flag).count();
+                self.limit_minmax(q, &trouble, t);
+                count
+            },
             | Dg3Limiter::Characteristic => {
                 let trouble = self.troubled_elements(q, self.tvd, true, t);
+                let count = trouble.iter().filter(|&&flag| flag).count();
                 self.limit_moment(q, &trouble, true, t);
+                count
             },
             | Dg3Limiter::Hierarchical => {
                 let trouble = self.troubled_elements(q, self.tvd, false, t);
+                let count = trouble.iter().filter(|&&flag| flag).count();
                 self.limit_moment(q, &trouble, false, t);
+                count
             },
             | Dg3Limiter::Weno => self.limit_weno(q, t),
-        }
+        };
         if self.positivity {
             self.positivity(q);
         }
+        count
     }
 }
 
@@ -1423,6 +1565,8 @@ pub fn solve_dg3d(
         nvar: nv,
         t: 0.0,
         steps: 0,
+        troubled: Vec::new(),
+        troubled_cells: 0,
     };
     for e in 0..mesh.elements() {
         for nd in 0..np {
@@ -1436,6 +1580,7 @@ pub fn solve_dg3d(
     let limiting = opt.limiter != Dg3Limiter::None || opt.positivity;
     let mut q = sol.q.clone();
     let (mut t, mut steps) = (0.0, 0);
+    let mut troubled_cells = 0;
     while t < t_end * (1.0 - 1e-14) {
         let rate = ctx.max_rate(&q);
         if !rate.is_finite() || rate <= 0.0 {
@@ -1445,21 +1590,21 @@ pub fn solve_dg3d(
         let l0 = ctx.rhs(&q, t);
         let mut q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
         if limiting {
-            ctx.limit_all(&mut q1, t + dt);
+            troubled_cells += ctx.limit_all(&mut q1, t + dt);
         }
         let l1 = ctx.rhs(&q1, t + dt);
         let mut q2: Vec<f64> = (0..q.len())
             .map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q2, t + 0.5 * dt);
+            troubled_cells += ctx.limit_all(&mut q2, t + 0.5 * dt);
         }
         let l2 = ctx.rhs(&q2, t + 0.5 * dt);
         q = (0..q.len())
             .map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i]))
             .collect();
         if limiting {
-            ctx.limit_all(&mut q, t + dt);
+            troubled_cells += ctx.limit_all(&mut q, t + dt);
         }
         t += dt;
         steps += 1;
@@ -1470,5 +1615,14 @@ pub fn solve_dg3d(
     sol.q = q;
     sol.t = t;
     sol.steps = steps;
+    sol.troubled_cells = troubled_cells;
+    if opt.limiter != Dg3Limiter::None {
+        sol.troubled = ctx.troubled_elements(
+            &sol.q,
+            ctx.tvd,
+            matches!(opt.limiter, Dg3Limiter::Characteristic),
+            t,
+        );
+    }
     Ok(sol)
 }

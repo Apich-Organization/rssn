@@ -359,8 +359,14 @@ const SYM6: [f64; 12] = [
     0.003_490_712_084_217_470_2,
     0.015_404_109_327_027_373,
 ];
-const BIOR11_LOW: [f64; 2] = [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2];
-const BIOR11_SYN: [f64; 2] = [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2];
+const BIOR11_LOW: [f64; 2] = [
+    std::f64::consts::FRAC_1_SQRT_2,
+    std::f64::consts::FRAC_1_SQRT_2,
+];
+const BIOR11_SYN: [f64; 2] = [
+    std::f64::consts::FRAC_1_SQRT_2,
+    std::f64::consts::FRAC_1_SQRT_2,
+];
 const BIOR13_LOW: [f64; 6] = [
     -0.088_388_347_648_318_45,
     0.088_388_347_648_318_45,
@@ -557,7 +563,11 @@ pub fn extend(
         | Boundary::Periodic => i.rem_euclid(len),
         | Boundary::Symmetric => {
             let r = i.rem_euclid(2 * len);
-            if r < len { r } else { 2 * len - 1 - r }
+            if r < len {
+                r
+            } else {
+                2 * len - 1 - r
+            }
         },
         | Boundary::Reflect => {
             if len == 1 {
@@ -745,7 +755,11 @@ pub fn idwt_with(
     match b {
         | Boundary::Periodic => {
             // the odd case reconstructs the padded even signal and drops the extra sample
-            let len = if n.is_multiple_of(2) { n } else { n + 1 };
+            let len = if n.is_multiple_of(2) {
+                n
+            } else {
+                n + 1
+            };
             let mut x = vec![0.0; len];
             for (k, (ak, dk)) in a.iter().zip(d).enumerate() {
                 for (m, (hm, gm)) in hs.iter().zip(&gs).enumerate() {
@@ -1190,7 +1204,10 @@ mod tests {
 
     #[test]
     fn the_alternating_mirror_reverses_and_flips_every_second_tap() {
-        assert_eq!(alternating_mirror(&[1.0, 2.0, 3.0, 4.0]), vec![4.0, -3.0, 2.0, -1.0]);
+        assert_eq!(
+            alternating_mirror(&[1.0, 2.0, 3.0, 4.0]),
+            vec![4.0, -3.0, 2.0, -1.0]
+        );
         assert_eq!(alternating_mirror(&[2.0]), vec![2.0]);
     }
 

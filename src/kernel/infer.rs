@@ -170,7 +170,10 @@ pub fn primary(desc: &OpDescriptor) -> Option<Signature> {
 mod tests {
     use super::*;
 
-    fn numeric(name: &str, arity: Arity) -> OpDescriptor {
+    fn numeric(
+        name: &str,
+        arity: Arity,
+    ) -> OpDescriptor {
         OpDescriptor::new(name, arity).eval(|a| a.first().copied().unwrap_or(f64::NAN))
     }
 

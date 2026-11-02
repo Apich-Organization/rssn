@@ -1,10 +1,31 @@
 //! # Scalar wave equation / linear acoustics with PML in 1D, 2D and 3D
 //!
 //! The scalar wave equation `p_tt = c² Δp` is solved in its first-order
-//! (linear acoustics) form on a staggered grid,
-//! `p_t = -c² ∇·v`, `v_t = -∇p` (unit density), with `p` in the cells and the
-//! velocity components on the faces. Boundary faces use
-//! [`BoundaryCondition`]:
+//! (linear acoustics) form on a staggered grid, with `p` in the cells and the
+//! velocity components on the faces. The medium is a wave speed `c(x)` and a
+//! mass density `ρ(x)`; the scheme integrates
+//!
+//! ```text
+//! p_t = -K ∇·v,   v_t = -ρ⁻¹ ∇p,   K = ρ c²,
+//! ```
+//!
+//! which is the conservative form `∂ₜ(ρ⁻¹∂ₜp) = ∇·(ρ⁻¹∇p)` of the
+//! variable-medium equation. It keeps the second order of the uniform scheme
+//! across a jump in the medium: the density on a face is the harmonic mean of
+//! the two cells it separates (the mean of the compliances, which is what
+//! continuity of the normal velocity asks for) and the bulk modulus `ρc²` is
+//! constant within a cell. The obvious `c(x)² ∇²p` is only first order at such
+//! a jump. For constant `c` and `ρ = 1` every term collapses to the plain
+//! `p_t = -c²∇·v`, `v_t = -∇p` scheme.
+//!
+//! [`AcousticsConfig::c`] and [`AcousticsConfig::rho`] describe a uniform
+//! medium; [`Acoustics::set_medium`] replaces it with a spatially varying one
+//! and re-derives [`Acoustics::dt`] from the fastest effective speed. The
+//! invariant of the scheme is the discrete energy `½ Σ (p²/K + ρ v²) ΔV`
+//! ([`Acoustics::energy`]); the naive `½ Σ (p²/c² + |v|²)` is not conserved
+//! once `ρ` varies.
+//!
+//! Boundary faces use [`BoundaryCondition`]:
 //!
 //! | Face condition | Meaning |
 //! |---|---|
@@ -32,8 +53,11 @@
 //! radiating out. A boundary that absorbs needs [`BoundaryCondition::Absorbing`]
 //! (the PML), and a driven problem with a steady state needs one of the two.
 //!
-//! Limitations: homogeneous medium, no dispersive attenuation, Robin faces
-//! are refused.
+//! Limitations: the medium is piecewise constant on the cells, so an
+//! interface is only represented to second order when it lies on a face and is
+//! smeared over one cell otherwise; `c` and `ρ` are time independent; there is
+//! no attenuation (a complex, frequency-dependent bulk modulus) and no flow.
+//! Robin faces are refused.
 
 use crate::sim::boundary::BcValue;
 use crate::sim::boundary::BoundaryCondition;
@@ -50,8 +74,10 @@ pub struct AcousticsConfig {
     pub dim: usize,
     /// Cell size per axis.
     pub h: [f64; 3],
-    /// Wave speed.
+    /// Wave speed of the uniform medium.
     pub c: f64,
+    /// Mass density of the uniform medium (`1` for a velocity-only medium).
+    pub rho: f64,
     /// Courant number (`<= 1`).
     pub cfl: f64,
     /// Face conditions.
@@ -63,7 +89,7 @@ pub struct AcousticsConfig {
 }
 
 impl AcousticsConfig {
-    /// Rigid-wall configuration.
+    /// Rigid-wall configuration with unit density.
     ///
     /// # Errors
     /// For a bad dimension or sizes.
@@ -81,6 +107,7 @@ impl AcousticsConfig {
             dim,
             h: [1.0; 3],
             c,
+            rho: 1.0,
             cfl: 0.9,
             bcs: FaceBcs::uniform(&BoundaryCondition::neumann(0.0)),
             pml_cells: 10,
@@ -104,12 +131,20 @@ pub struct Acoustics {
     /// Face velocities (`v[a]` has `n[a] + 1` entries along axis `a`).
     pub v: [Vec<f64>; 3],
     periodic: [bool; 3],
+    /// Bulk modulus `ρc²` at the cell centres.
+    bulk: Vec<f64>,
+    /// Density at the faces, laid out like [`Acoustics::v`].
+    rho_f: [Vec<f64>; 3],
+    /// Fastest effective speed; sets [`Acoustics::dt`] and the PML strength.
+    c_ref: f64,
     // (b, a) CPML coefficients per axis at cell centres and at faces
     pml_c: [Vec<(f64, f64)>; 3],
     pml_f: [Vec<(f64, f64)>; 3],
     psi_p: [Vec<f64>; 3],
     psi_v: [Vec<f64>; 3],
     use_pml: bool,
+    /// Faces carrying a PML, per axis and face.
+    absorbing: [[bool; 2]; 3],
     /// Dirichlet datum per axis and face; `Some(g)` replaces the rigid wall.
     dirichlet: [[Option<BcValue>; 2]; 3],
     sources: Vec<(usize, SourceFn)>,
@@ -124,14 +159,17 @@ impl Acoustics {
         if !(cfg.cfl > 0.0 && cfg.cfl <= 1.0) {
             return Err("cfl must be in (0, 1]".into());
         }
+        if !(cfg.rho > 0.0 && cfg.rho.is_finite()) {
+            return Err("density must be positive".into());
+        }
         let inv: f64 = (0..cfg.dim).map(|a| 1.0 / (cfg.h[a] * cfg.h[a])).sum();
         let dt = cfg.cfl / (cfg.c * inv.sqrt());
         let mut periodic = [false; 3];
         let mut dirichlet: [[Option<BcValue>; 2]; 3] = std::array::from_fn(|_| [None, None]);
+        let mut absorbing = [[false; 2]; 3];
         let mut use_pml = false;
-        let mut pml_c: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
-        let mut pml_f: [Vec<(f64, f64)>; 3] =
-            std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a] + 1]);
+        let pml_c: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
+        let pml_f: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a] + 1]);
         for a in 0..cfg.dim {
             periodic[a] = cfg.bcs.axis_periodic(a)?;
             for (m, max) in [false, true].into_iter().enumerate() {
@@ -143,35 +181,11 @@ impl Acoustics {
                         dirichlet[a][m] = Some(g.clone());
                     },
                     | BoundaryCondition::Absorbing => {
-                        let d = cfg.pml_cells;
-                        let n = cfg.n[a];
-                        if 2 * d >= n {
+                        if 2 * cfg.pml_cells >= cfg.n[a] {
                             return Err("PML too thick for the grid".into());
                         }
                         use_pml = true;
-                        let smax = 0.8 * (cfg.pml_order + 1.0) * cfg.c / cfg.h[a];
-                        let prof = |pos: f64| -> Option<(f64, f64)> {
-                            let depth = if max {
-                                pos - (n - d) as f64
-                            } else {
-                                d as f64 - pos
-                            };
-                            (depth > 0.0).then(|| {
-                                let sigma = smax * (depth / d as f64).powf(cfg.pml_order);
-                                let b = (-sigma * dt).exp();
-                                (b, b - 1.0)
-                            })
-                        };
-                        for i in 0..n {
-                            if let Some(c) = prof(i as f64 + 0.5) {
-                                pml_c[a][i] = c;
-                            }
-                        }
-                        for i in 0..=n {
-                            if let Some(c) = prof(i as f64) {
-                                pml_f[a][i] = c;
-                            }
-                        }
+                        absorbing[a][m] = true;
                     },
                     | BoundaryCondition::Robin { .. } => {
                         return Err("Robin faces are not supported".into());
@@ -185,6 +199,13 @@ impl Acoustics {
                 let mut e = cfg.n;
                 e[a] += 1;
                 vec![0.0; e.iter().product()]
+            } else {
+                Vec::new()
+            }
+        });
+        let rho_f: [Vec<f64>; 3] = std::array::from_fn(|a| {
+            if a < cfg.dim {
+                vec![cfg.rho; v[a].len()]
             } else {
                 Vec::new()
             }
@@ -203,21 +224,145 @@ impl Acoustics {
                 Vec::new()
             }
         });
-        Ok(Self {
+        let bulk = vec![cfg.rho * cfg.c * cfg.c; nn];
+        let c_ref = cfg.c;
+        let mut solver = Self {
             cfg,
             dt,
             t: 0.0,
             p: vec![0.0; nn],
             v,
             periodic,
+            bulk,
+            rho_f,
+            c_ref,
             pml_c,
             pml_f,
             psi_p,
             psi_v,
             use_pml,
+            absorbing,
             dirichlet,
             sources: Vec::new(),
-        })
+        };
+        if use_pml {
+            solver.set_pml();
+        }
+        Ok(solver)
+    }
+
+    /// Builds the convolutional-PML coefficients from `dt`, `c_ref` and the
+    /// absorbing faces.
+    fn set_pml(&mut self) {
+        let d = self.cfg.pml_cells;
+        let dt = self.dt;
+        let order = self.cfg.pml_order;
+        for a in 0..self.cfg.dim {
+            let (n, h) = (self.cfg.n[a], self.cfg.h[a]);
+            let smax = 0.8 * (order + 1.0) * self.c_ref / h;
+            for (m, max) in [false, true].into_iter().enumerate() {
+                if !self.absorbing[a][m] {
+                    continue;
+                }
+                let prof = |pos: f64| -> Option<(f64, f64)> {
+                    let depth = if max {
+                        pos - (n - d) as f64
+                    } else {
+                        d as f64 - pos
+                    };
+                    (depth > 0.0).then(|| {
+                        let sigma = smax * (depth / d as f64).powf(order);
+                        let b = (-sigma * dt).exp();
+                        (b, b - 1.0)
+                    })
+                };
+                for i in 0..n {
+                    if let Some(c) = prof(i as f64 + 0.5) {
+                        self.pml_c[a][i] = c;
+                    }
+                }
+                for i in 0..=n {
+                    if let Some(c) = prof(i as f64) {
+                        self.pml_f[a][i] = c;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Sets a spatially varying medium from `x ↦ (c, ρ)` sampled at the cell
+    /// centres, and re-derives [`Acoustics::dt`] and the PML from the result.
+    ///
+    /// The density on a face is the harmonic mean of the two cells it
+    /// separates and the bulk modulus of a cell is `ρc²`, which is what keeps
+    /// the scheme second order across an interface (an interface is exact when
+    /// it lies on a face). Call this before stepping: the fields, the clock and
+    /// the sources are left alone.
+    ///
+    /// # Errors
+    /// A non-positive or non-finite `c` or `ρ` at a cell centre.
+    pub fn set_medium(
+        &mut self,
+        f: impl Fn([f64; 3]) -> (f64, f64),
+    ) -> Result<(), String> {
+        let (n, dim, h) = (self.cfg.n, self.cfg.dim, self.cfg.h);
+        let cells = self.p.len();
+        let mut bulk = vec![0.0; cells];
+        let mut speed = vec![0.0; cells];
+        let mut rho = vec![0.0; cells];
+        let mut rho_min = f64::INFINITY;
+        for q in 0..cells {
+            let ijk = [q % n[0], (q / n[0]) % n[1], q / (n[0] * n[1])];
+            let mut x = [0.0; 3];
+            for a in 0..dim {
+                x[a] = (ijk[a] as f64 + 0.5) * h[a];
+            }
+            let (c, r) = f(x);
+            if !(c > 0.0 && r > 0.0 && c.is_finite() && r.is_finite()) {
+                return Err("invalid medium".into());
+            }
+            bulk[q] = r * c * c;
+            speed[q] = c;
+            rho[q] = r;
+            rho_min = rho_min.min(r);
+        }
+        self.bulk = bulk;
+        for a in 0..dim {
+            let e = self.face_dims(a);
+            let total = e.iter().product::<usize>();
+            for q in 0..total {
+                let ijk = [q % e[0], (q / e[0]) % e[1], q / (e[0] * e[1])];
+                let i = ijk[a];
+                let at = |ii: usize| {
+                    let mut c = ijk;
+                    c[a] = ii;
+                    c[0] + n[0] * (c[1] + n[1] * c[2])
+                };
+                // Harmonic mean of the two cells: the mean of the compliances.
+                // A boundary face has one cell and takes its value.
+                let compliance = if i == 0 {
+                    1.0 / rho[at(0)]
+                } else if i == n[a] {
+                    1.0 / rho[at(n[a] - 1)]
+                } else {
+                    f64::midpoint(1.0 / rho[at(i - 1)], 1.0 / rho[at(i)])
+                };
+                self.rho_f[a][q] = 1.0 / compliance;
+            }
+        }
+        // The CFL bound of the coupled system is `dt <= 2 / sqrt(Σ 4 K/(ρ h²))`,
+        // so the reference speed is the largest `sqrt(K/ρ_min)` over the cells.
+        let mut c_ref: f64 = 0.0;
+        for q in 0..cells {
+            c_ref = c_ref.max(speed[q] * (rho[q] / rho_min).sqrt());
+        }
+        let inv: f64 = (0..dim).map(|a| 1.0 / (h[a] * h[a])).sum();
+        self.c_ref = c_ref;
+        self.dt = self.cfg.cfl / (c_ref * inv.sqrt());
+        if self.use_pml {
+            self.set_pml();
+        }
+        Ok(())
     }
 
     /// Cells per axis.
@@ -262,12 +407,12 @@ impl Acoustics {
         self.sources.push((cell, Box::new(s)));
     }
 
-    /// Acoustic energy `½ Σ (p²/c² + |v|²) ΔV`.
+    /// Acoustic energy `½ Σ (p²/K + ρ|v|²) ΔV`, the invariant of the
+    /// conservative scheme (`K = ρc²` in the cells, `ρ` the face density).
     #[must_use]
     pub fn energy(&self) -> f64 {
         let dv: f64 = (0..self.cfg.dim).map(|a| self.cfg.h[a]).product();
-        let c2 = self.cfg.c * self.cfg.c;
-        let mut s: f64 = self.p.iter().map(|x| x * x / c2).sum();
+        let mut s: f64 = self.p.iter().zip(&self.bulk).map(|(x, k)| x * x / k).sum();
         for a in 0..self.cfg.dim {
             let mut e = self.cfg.n;
             e[a] += 1;
@@ -278,7 +423,7 @@ impl Acoustics {
                 } else {
                     1.0
                 };
-                s += w * x * x;
+                s += w * self.rho_f[a][q] * x * x;
             }
         }
         0.5 * s * dv
@@ -356,7 +501,8 @@ impl Acoustics {
                     *psi = b * *psi + aa * g;
                     g += *psi;
                 }
-                self.v[a][q] -= dt * g;
+                let rho = self.rho_f[a][q];
+                self.v[a][q] -= dt * g / rho;
             }
             if self.periodic[a] {
                 for q in 0..total {
@@ -378,7 +524,6 @@ impl Acoustics {
     ) {
         let cfg = &self.cfg;
         let (n, dim) = (cfg.n, cfg.dim);
-        let c2 = cfg.c * cfg.c;
         // pressure update at cells
         for p in 0..self.p.len() {
             let ijk = [p % n[0], (p / n[0]) % n[1], p / (n[0] * n[1])];
@@ -400,7 +545,8 @@ impl Acoustics {
                 }
                 div += dd;
             }
-            self.p[p] -= dt * c2 * div;
+            let k = self.bulk[p];
+            self.p[p] -= dt * k * div;
         }
     }
 

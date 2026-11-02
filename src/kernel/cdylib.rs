@@ -157,8 +157,7 @@ pub struct RssnOpEntry {
 }
 
 /// `bincode(Vec<Value>)` in, `bincode(Result<Value, String>)` out.
-pub type RssnCallFn =
-    extern "C" fn(state: *mut c_void, args: *const u8, len: usize) -> RssnBuf;
+pub type RssnCallFn = extern "C" fn(state: *mut c_void, args: *const u8, len: usize) -> RssnBuf;
 
 /// What the plugin declares about itself.
 #[repr(C)]
@@ -241,7 +240,6 @@ impl CdylibPlugin {
 
 /// Reads a NUL-terminated C string, or the empty string.
 #[cfg(feature = "plugin-cdylib")]
-///
 /// # Safety
 /// `text` must be null or a valid NUL-terminated string.
 unsafe fn c_str(text: *const std::os::raw::c_char) -> String {
@@ -323,7 +321,10 @@ impl EvalDyn for CdylibEval {
 
     fn signature(&self) -> Signature {
         self.signature.clone().unwrap_or_else(|| {
-            Signature::new(vec![crate::kernel::infer::term()], crate::kernel::infer::term())
+            Signature::new(
+                vec![crate::kernel::infer::term()],
+                crate::kernel::infer::term(),
+            )
         })
     }
 }
@@ -389,13 +390,13 @@ pub fn load(path: &Path) -> Result<CdylibPlugin, PluginError> {
                 "an operator has no call function",
             )));
         };
-        let signatures: Vec<Signature> = if entry.signatures.is_null()
-            || entry.signatures_len == 0
+        let signatures: Vec<Signature> = if entry.signatures.is_null() || entry.signatures_len == 0
         {
             Vec::new()
         } else {
             // SAFETY: the plugin declared this many bytes at this address.
-            let bytes = unsafe { std::slice::from_raw_parts(entry.signatures, entry.signatures_len) };
+            let bytes =
+                unsafe { std::slice::from_raw_parts(entry.signatures, entry.signatures_len) };
             codec::decode_deterministic(bytes).map_err(|error| {
                 PluginError::Registration(format!("cannot read the signatures: {error}"))
             })?
@@ -419,7 +420,9 @@ pub fn load(path: &Path) -> Result<CdylibPlugin, PluginError> {
             call,
         });
     }
-    let state = descriptor.init.map_or(std::ptr::null_mut(), |init| init(&raw const host));
+    let state = descriptor
+        .init
+        .map_or(std::ptr::null_mut(), |init| init(&raw const host));
     Ok(CdylibPlugin {
         _library: library,
         manifest,

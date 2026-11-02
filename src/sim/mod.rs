@@ -20,7 +20,7 @@
 //! | [`symplectic`] | any | - | order 2-8 schemes, TTL (composed to order 8), KS, rigid body (exact symmetric-top flows) |
 //! | [`chain`] | 3 | open | Mikkola-Aarseth chain regularisation, algorithmic regularisation + GBS extrapolation |
 //! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath (also XY/Heisenberg), Wolff, SW, PT (O(N) and Potts), WL (Ising and continuous spins) |
-//! | [`relativity`], [`kerr`], [`elliptic`] | 3+1 | horizon / escape events | Kerr-Newman geodesics; exact bound Kerr orbits in Mino time, shadows; third-kind elliptic integrals |
+//! | [`relativity`], [`kerr`], [`elliptic`] | 3+1 | horizon / escape events | Kerr-Newman geodesics; exact bound and numerical unbound Kerr geodesics in Mino time, shadows; third-kind elliptic integrals |
 //! | [`sph`] | any | open, periodic, reflecting, fixed particles | cubic / Wendland kernels |
 //! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
 
@@ -69,7 +69,7 @@ pub mod hermite;
 pub mod hyperelastic;
 /// Symplectic and stiff (implicit, Rosenbrock) integrators.
 pub mod integrators;
-/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
+/// Kerr geodesics in Mino time (exact bound orbits, unbound scattering) and black-hole shadows.
 pub mod kerr;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;

@@ -47,8 +47,10 @@ impl std::error::Error for CodecError {}
 /// fallible `Serialize` cannot panic the process.
 pub fn encode_deterministic<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, CodecError> {
     bincode_next::serde::encode_to_vec(value, config::standard().with_deterministic_bincode())
-        .map_err(|e| CodecError {
-            message: e.to_string(),
+        .map_err(|e| {
+            CodecError {
+                message: e.to_string(),
+            }
         })
 }
 
@@ -59,8 +61,10 @@ pub fn encode_deterministic<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>,
 pub fn decode_deterministic<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, CodecError> {
     bincode_next::serde::decode_from_slice(bytes, config::standard().with_deterministic_bincode())
         .map(|(value, _)| value)
-        .map_err(|e| CodecError {
-            message: e.to_string(),
+        .map_err(|e| {
+            CodecError {
+                message: e.to_string(),
+            }
         })
 }
 
@@ -69,10 +73,13 @@ pub fn decode_deterministic<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Code
 /// # Errors
 /// See [`encode_deterministic`].
 pub fn encode_cbor<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, CodecError> {
-    bincode_next::serde::encode_to_vec(value, config::standard().with_deterministic_cbor())
-        .map_err(|e| CodecError {
-            message: e.to_string(),
-        })
+    bincode_next::serde::encode_to_vec(value, config::standard().with_deterministic_cbor()).map_err(
+        |e| {
+            CodecError {
+                message: e.to_string(),
+            }
+        },
+    )
 }
 
 /// Decodes deterministic CBOR written by [`encode_cbor`].
@@ -82,8 +89,10 @@ pub fn encode_cbor<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, CodecErr
 pub fn decode_cbor<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, CodecError> {
     bincode_next::serde::decode_from_slice(bytes, config::standard().with_deterministic_cbor())
         .map(|(value, _)| value)
-        .map_err(|e| CodecError {
-            message: e.to_string(),
+        .map_err(|e| {
+            CodecError {
+                message: e.to_string(),
+            }
         })
 }
 

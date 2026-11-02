@@ -33,26 +33,43 @@
 //!
 //! Two searches are used.
 //!
-//! * A term with free parameters is searched with a bounded polynomial
-//!   ansatz: the `p_j` and the certificate numerator are polynomials in `n`
-//!   and the parameters of fixed degree (orders one and two).
 //! * A parameter-free term is searched exactly over `Q(n)` for orders one to
-//!   three, with no bound on the degrees in `n`: the system is solved for
+//!   four, with no bound on the degrees in `n`: the system is solved for
 //!   integer values of `n` and the solution is recovered as a rational
 //!   function of `n` by Cauchy interpolation (see "The exact search over
 //!   Q(n)" below). The certificate may have poles in `n`. This finds the
 //!   second-order recurrences of Dixon's `Σ (-1)^k C(n,k)³` and Apéry's
-//!   `Σ C(n,k)² C(n+k,k)²` and the recurrence of a Pfaff–Saalschütz 3F2.
+//!   `Σ C(n,k)² C(n+k,k)²`, the third-order recurrence of `Σ C(n,k)⁵` and
+//!   the fourth-order recurrence of `Σ C(n,k)³ C(n+k,k)`.
+//! * A term with free parameters is searched with a bounded polynomial
+//!   ansatz for orders one and two: the `p_j` and the certificate numerator
+//!   are polynomials in `n`, `k` and the parameters of fixed degree. The
+//!   parameters stay symbolic throughout — the linear system is solved over
+//!   `Q` with the parameters as indeterminates — so the recurrence returned
+//!   is valid for every value of `a, b, c, …` at once, and the certificate
+//!   carries them as well. `Σ C(n,k) C(n+k,k) x^k = P_n(1 + 2x)` comes out
+//!   with coefficients linear in `x`.
+//!
+//! Every candidate is substituted back into the original summand and checked
+//! numerically at eight `(n, k)` points and three values of each parameter
+//! before it is returned, the tolerance being set by the size of the terms
+//! that cancel; a recurrence that is wrong is never reported. When no
+//! recurrence is found within the bounds the search says so
+//! ([`Search::OrderBoundExceeded`]) and `zeilberger` stays unevaluated rather
+//! than returning a recurrence of its own making.
 //!
 //! Limitations: the certificate is of the form `U/(B·Q)` with `U` a
 //! polynomial in `k` (`B` the denominator of the `k`-ratio, `Q` a common
-//! multiple of the denominators of the `n`-ratios); recurrences of order
-//! above three, terms with symbolic parameters and orders above two, and
-//! terms whose ratios are not rational (non-integer Gamma shifts) are not
-//! covered. The recurrence is a recurrence of the summand: a sum without
-//! natural boundaries (a 3F2 written with shifted factorials) also needs
-//! the boundary values of the certificate before it becomes a recurrence of
-//! the sum. `definite_sum` solves first-order recurrences only.
+//! multiple of the denominators of the `n`-ratios); a recurrence of order
+//! above four, or whose certificate numerator has degree above
+//! `MAX_CERTIFICATE_DEGREE` in `k`, is not searched. Terms with free
+//! parameters reach order two only, at most three parameters, and the
+//! parameters are searched to degree two; terms whose ratios are not
+//! rational (non-integer Gamma shifts) are not covered. The recurrence is a
+//! recurrence of the summand: a sum without natural boundaries (a 3F2 written
+//! with shifted factorials) also needs the boundary values of the certificate
+//! before it becomes a recurrence of the sum. `definite_sum` solves
+//! first-order recurrences only.
 
 #![allow(
     clippy::single_call_fn,
@@ -95,8 +112,35 @@ const MAX_GAMMA_SHIFT: i64 = 64;
 const MAX_UNKNOWNS: usize = 72;
 /// Largest degree of the parameter monomials in the ansatz.
 const MAX_PARAMETER_DEGREE: usize = 2;
+/// Largest number of free parameters the ansatz accepts.
+const MAX_PARAMETERS: usize = 3;
+/// Largest recurrence order of the bounded ansatz: above it the system is
+/// too large for exact rational elimination.
+const MAX_ANSATZ_ORDER: usize = 2;
+/// Largest recurrence order either search attempts.
+const MAX_ORDER: usize = 4;
 /// Number of further `n` values at which a closed form is checked.
 const CHECKS: i64 = 5;
+/// Values given to the free parameters while a candidate is checked. They
+/// are integers so that a factor like `binomial(m, k)` is defined at every
+/// sample point; a recurrence that only holds for one of them is still
+/// caught.
+const PARAMETER_SAMPLES: [f64; 3] = [2.0, 3.0, 4.0];
+/// Points `(n, k)` at which a candidate identity is checked. The small `k`
+/// keep every factor of a terminating term defined, so that the check is not
+/// silently skipped at most of the points.
+const CHECK_POINTS: [(i64, i64); 8] = [
+    (4, 1),
+    (5, 2),
+    (6, 0),
+    (7, 1),
+    (8, 2),
+    (9, 0),
+    (10, 1),
+    (11, 2),
+];
+/// Fewest successful checks a candidate must survive.
+const MIN_CHECKS: usize = 12;
 
 fn rat(value: i64) -> BigRational {
     BigRational::from_integer(BigInt::from(value))
@@ -208,6 +252,7 @@ struct Symbols {
 }
 
 /// One Gamma factor `Γ(linear form)^exponent` of the term.
+#[derive(Clone)]
 struct GammaFactor {
     n: i64,
     k: i64,
@@ -216,6 +261,7 @@ struct GammaFactor {
 }
 
 /// One exponential factor `base^(n_coefficient·n + k_coefficient·k)`.
+#[derive(Clone)]
 struct ExpFactor {
     base: NodeId,
     n: BigRational,
@@ -328,6 +374,44 @@ fn factorize(
 ) -> Option<Factored> {
     let term = best(cx.graph, term)?;
     factor_term(cx, term, symbols)
+}
+
+/// The factors with equal Gamma factors merged.
+///
+/// Two Gamma factors of the same linear form — `Γ(n+1)` from `C(n,k)` and
+/// `Γ(n+1)⁻¹` from `C(n+k,k)`, say — cancel. The ansatz needs them merged:
+/// with an unreduced `k`- or `n`-ratio the certificate equation has factors
+/// common to numerator and denominator and no polynomial solution.
+fn reduced_factors(
+    graph: &Graph,
+    factors: &Factored,
+) -> Factored {
+    Factored {
+        num: factors.num,
+        den: factors.den,
+        gammas: merged_gammas(graph, factors.gammas.clone()),
+        exps: factors.exps.clone(),
+    }
+}
+
+/// The Gamma factors with equal linear forms combined, and the trivial ones
+/// dropped.
+fn merged_gammas(
+    graph: &Graph,
+    gammas: Vec<GammaFactor>,
+) -> Vec<GammaFactor> {
+    let mut out: Vec<GammaFactor> = Vec::with_capacity(gammas.len());
+    for factor in gammas {
+        let same = out.iter_mut().find(|other| {
+            other.n == factor.n && other.k == factor.k && graph.same(other.offset, factor.offset)
+        });
+        match same {
+            | Some(other) => other.exponent = other.exponent.saturating_add(factor.exponent),
+            | None => out.push(factor),
+        }
+    }
+    out.retain(|factor| factor.exponent != 0);
+    out
 }
 
 fn power_factored(
@@ -1108,6 +1192,21 @@ pub(super) struct Telescoping {
     pub(super) certificate: NodeId,
 }
 
+/// What a telescoping search produced.
+pub(super) enum Search {
+    /// A recurrence and its certificate.
+    Found(Telescoping),
+    /// The term is not proper hypergeometric (or has more free parameters
+    /// than the ansatz accepts): the algorithm does not apply at all.
+    Unsupported,
+    /// The term is proper hypergeometric, but no recurrence that survived
+    /// the substitution check was found with an order up to the bound. The
+    /// search reports this instead of returning a recurrence of its own
+    /// making: a recurrence outside the bound is not known, and a guess would
+    /// be wrong.
+    OrderBoundExceeded,
+}
+
 /// The degree tuples tried for one order, richest first. A solution with
 /// smaller degrees is contained in the larger ansatz, so a single generous
 /// shape per order is enough; the shorter list keeps the exact linear
@@ -1181,12 +1280,10 @@ fn frac_node(
 // is the recurrence and a certificate numerator over `Q(n)`: poles in `n`
 // are allowed. The caller verifies the final identity independently.
 
-/// Highest recurrence order of the exact search.
-const MAX_EXACT_ORDER: usize = 3;
 /// The first integer `n` at which the term is specialised.
 const FIRST_SAMPLE: i64 = 23;
 /// Numbers of samples after which a reconstruction is attempted.
-const SAMPLE_STAGES: [i64; 4] = [12, 20, 32, 48];
+const SAMPLE_STAGES: [i64; 5] = [12, 20, 32, 48, 64];
 /// Largest degree in `k` of the certificate numerator.
 const MAX_CERTIFICATE_DEGREE: usize = 48;
 
@@ -1704,19 +1801,38 @@ fn reconstruct(
 /// The smallest order, and for it the smallest certificate degree, at which
 /// the specialised system has a solution; then the reconstruction over
 /// `Q(n)`.
-fn exact_search(problem: &Problem) -> Option<Exact> {
-    for order in 1..=MAX_EXACT_ORDER.min(problem.nums.len()) {
+///
+/// The certificate numerator of an order-`J` recurrence is a multiple of
+/// `B·Q` with `Q` a product of `J` denominators, so its degree in `k` grows
+/// with `J`; the scan over the certificate degree is widened accordingly.
+fn exact_search(
+    problem: &Problem,
+    bound: usize,
+) -> Option<Exact> {
+    for order in 1..=bound.min(problem.nums.len()) {
         let q_set = denominator_set(problem, order);
-        let k_degree = problem.b.k_degree()
-            + problem.a.k_degree()
-            + q_set
-                .iter()
-                .filter_map(|&i| problem.dens.get(i - 1))
-                .map(Bivariate::k_degree)
-                .sum::<usize>();
-        let limit = k_degree.saturating_add(4).min(MAX_CERTIFICATE_DEGREE);
+        let q_degree = q_set
+            .iter()
+            .filter_map(|&i| problem.dens.get(i - 1))
+            .map(Bivariate::k_degree)
+            .sum::<usize>();
+        let k_degree = problem.b.k_degree() + problem.a.k_degree() + q_degree;
+        let widened = k_degree.saturating_add(order.saturating_mul(q_degree));
+        let limit = widened.saturating_add(4).min(MAX_CERTIFICATE_DEGREE);
+        // The ansätze of one order are nested, so a system that has no
+        // solution at the largest degree has none at any smaller one: one
+        // probe at `limit` settles whether the order is worth scanning.
+        let Some(probe) = slice_at(problem, order, &q_set, limit, FIRST_SAMPLE) else {
+            continue;
+        };
+        let probed = null_vector(&probe, order, limit);
+        if matches!(probed, Null::Absent) {
+            continue;
+        }
         for degree in 0..=limit {
-            let slice = slice_at(problem, order, &q_set, degree, FIRST_SAMPLE)?;
+            let Some(slice) = slice_at(problem, order, &q_set, degree, FIRST_SAMPLE) else {
+                break;
+            };
             match null_vector(&slice, order, degree) {
                 | Null::Absent | Null::Degenerate => {},
                 | Null::Unique(_) | Null::Many => {
@@ -1737,15 +1853,51 @@ fn telescoping_over_qn(
     f: NodeId,
     factors: &Factored,
     symbols: Symbols,
-) -> Option<Telescoping> {
+    bound: usize,
+) -> Search {
+    let Some(qn) = qn_problem(cx, factors, symbols, bound) else {
+        return Search::Unsupported;
+    };
+    let Some(exact) = exact_search(&qn.problem, bound) else {
+        return Search::OrderBoundExceeded;
+    };
+    let Some(found) = qn_telescoping(cx, &exact, &qn, symbols) else {
+        return Search::OrderBoundExceeded;
+    };
+    if verified(cx, f, &found, symbols, &[]) {
+        Search::Found(found)
+    } else {
+        Search::OrderBoundExceeded
+    }
+}
+
+/// The specialised problem of a parameter-free term together with the terms
+/// its certificate is assembled from.
+struct Qn {
+    problem: Problem,
+    /// The denominator of the `k`-ratio.
+    k_den: NodeId,
+    /// The denominators of the `n`-ratios, in order.
+    den_nodes: Vec<NodeId>,
+}
+
+/// The ratios of a parameter-free term as polynomials in `n` and `k`, or
+/// `None` when one of them is not a rational function.
+fn qn_problem(
+    cx: &mut Cx<'_>,
+    factors: &Factored,
+    symbols: Symbols,
+    bound: usize,
+) -> Option<Qn> {
     let kq = k_ratio(cx, factors, symbols)?;
     let a = Bivariate::from_node(cx.graph, kq.num, symbols.n, symbols.k)?;
     let b = Bivariate::from_node(cx.graph, kq.den, symbols.n, symbols.k)?;
     let mut nums = Vec::new();
     let mut dens = Vec::new();
     let mut den_nodes = Vec::new();
-    for j in 1..=MAX_EXACT_ORDER {
-        let ratio = n_ratio(cx, factors, i64::try_from(j).ok()?, symbols)?;
+    for j in 1..=bound {
+        let shift = i64::try_from(j).ok()?;
+        let ratio = n_ratio(cx, factors, shift, symbols)?;
         let (Some(num), Some(den)) = (
             Bivariate::from_node(cx.graph, ratio.num, symbols.n, symbols.k),
             Bivariate::from_node(cx.graph, ratio.den, symbols.n, symbols.k),
@@ -1756,8 +1908,23 @@ fn telescoping_over_qn(
         dens.push(den);
         den_nodes.push(ratio.den);
     }
-    let problem = Problem { a, b, nums, dens };
-    let exact = exact_search(&problem)?;
+    if nums.is_empty() {
+        return None;
+    }
+    Some(Qn {
+        problem: Problem { a, b, nums, dens },
+        k_den: kq.den,
+        den_nodes,
+    })
+}
+
+/// The recurrence and certificate of an exact solution, as terms.
+fn qn_telescoping(
+    cx: &mut Cx<'_>,
+    exact: &Exact,
+    qn: &Qn,
+    symbols: Symbols,
+) -> Option<Telescoping> {
     let coefficients: Vec<NodeId> = exact
         .p
         .iter()
@@ -1773,18 +1940,17 @@ fn telescoping_over_qn(
         numerator_terms.push(mul_of(cx.graph, &[value, power]));
     }
     let numerator = add_of(cx.graph, &numerator_terms);
-    let mut denominator_factors = vec![kq.den];
-    denominator_factors.extend(exact.q_set.iter().filter_map(|&i| den_nodes.get(i - 1)));
+    let mut denominator_factors = vec![qn.k_den];
+    denominator_factors.extend(exact.q_set.iter().filter_map(|&i| qn.den_nodes.get(i - 1)));
     let denominator = mul_of(cx.graph, &denominator_factors);
     let minus_one = cx.graph.int(-1);
     let inverse = cx.graph.node(core::POW, &[denominator, minus_one]);
     let raw = cx.graph.node(core::MUL, &[numerator, inverse]);
     let certificate = cx.simplify(raw);
-    let found = Telescoping {
+    Some(Telescoping {
         coefficients,
         certificate,
-    };
-    verified(cx, f, &found, symbols, &[]).then_some(found)
+    })
 }
 
 /// Zeilberger's creative telescoping for `F(n, k)` in the index `k`.
@@ -1793,35 +1959,71 @@ pub(super) fn creative_telescoping(
     f: NodeId,
     k: NodeId,
     n: NodeId,
-) -> Option<Telescoping> {
-    let ns = cx.graph.symbol_of(n)?;
-    let ks = cx.graph.symbol_of(k)?;
+) -> Search {
+    search_with_bound(cx, f, k, n, MAX_ORDER)
+}
+
+/// The same search with an explicit order bound, so that a caller can tell
+/// "the term is out of scope" from "the order bound was reached".
+fn search_with_bound(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    k: NodeId,
+    n: NodeId,
+    bound: usize,
+) -> Search {
+    let Some(ns) = cx.graph.symbol_of(n) else {
+        return Search::Unsupported;
+    };
+    let Some(ks) = cx.graph.symbol_of(k) else {
+        return Search::Unsupported;
+    };
     let symbols = Symbols { n, k, ns, ks };
-    let factors = factorize(cx, f, symbols)?;
+    let Some(factors) = factorize(cx, f, symbols) else {
+        return Search::Unsupported;
+    };
     let free = cx.graph.free_symbols(cx.graph.find(f)).to_vec();
     let parameters: Vec<NodeId> = free
         .iter()
         .filter(|&&s| s != ns && s != ks)
         .map(|&s| cx.graph.symbol_node(s))
         .collect();
-    if parameters.len() > 2 {
-        return None;
+    if parameters.len() > MAX_PARAMETERS {
+        return Search::Unsupported;
     }
     if parameters.is_empty() {
         // Without parameters the exact search over `Q(n)` covers every
         // order, including certificates with poles in `n`.
-        return telescoping_over_qn(cx, f, &factors, symbols);
+        return telescoping_over_qn(cx, f, &factors, symbols, bound);
     }
-    let kq = k_ratio(cx, &factors, symbols)?;
-    for order in 1..=2_usize {
-        let ratios: Vec<Quotient> = (0..=order)
-            .map(|j| n_ratio(cx, &factors, i64::try_from(j).unwrap_or(0), symbols))
-            .collect::<Option<Vec<_>>>()?;
+    ansatz_search(cx, f, &factors, symbols, &parameters, bound)
+}
+
+/// The bounded polynomial ansatz, used when the term has free parameters.
+fn ansatz_search(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    factors: &Factored,
+    symbols: Symbols,
+    parameters: &[NodeId],
+    bound: usize,
+) -> Search {
+    let factors = &reduced_factors(cx.graph, factors);
+    let Some(kq) = k_ratio(cx, factors, symbols) else {
+        return Search::Unsupported;
+    };
+    for order in 1..=bound.min(MAX_ANSATZ_ORDER) {
+        let Some(ratios) = (0..=order)
+            .map(|j| n_ratio(cx, factors, i64::try_from(j).unwrap_or(0), symbols))
+            .collect::<Option<Vec<_>>>()
+        else {
+            return Search::Unsupported;
+        };
         for (n_degree, u_n_degree, u_k_degree) in degrees(order) {
             for parameter_degree in 0..=MAX_PARAMETER_DEGREE {
                 let Some(ansatz) = build_ansatz(
                     cx.graph,
-                    &parameters,
+                    parameters,
                     order,
                     n_degree,
                     u_n_degree,
@@ -1869,9 +2071,18 @@ pub(super) fn creative_telescoping(
                     }
                     normalize(&mut values, &p_columns, &order_columns);
                     let coefficients: Vec<NodeId> = (0..=order)
-                        .map(|j| ansatz.numeric_polynomial(cx.graph, &values, Some(j), n, k))
+                        .map(|j| {
+                            ansatz.numeric_polynomial(
+                                cx.graph,
+                                &values,
+                                Some(j),
+                                symbols.n,
+                                symbols.k,
+                            )
+                        })
                         .collect();
-                    let u = ansatz.numeric_polynomial(cx.graph, &values, None, n, k);
+                    let u =
+                        ansatz.numeric_polynomial(cx.graph, &values, None, symbols.n, symbols.k);
                     let minus_one = cx.graph.int(-1);
                     let common =
                         mul_of(cx.graph, &ratios.iter().map(|r| r.den).collect::<Vec<_>>());
@@ -1883,18 +2094,21 @@ pub(super) fn creative_telescoping(
                         coefficients,
                         certificate,
                     };
-                    if verified(cx, f, &found, symbols, &parameters) {
-                        return Some(found);
+                    if verified(cx, f, &found, symbols, parameters) {
+                        return Search::Found(found);
                     }
                 }
             }
         }
     }
-    None
+    Search::OrderBoundExceeded
 }
 
-/// Numeric check of `Σ_j p_j F(n+j,k) = G(n,k+1) - G(n,k)` at sample
-/// points.
+/// Numeric check of `Σ_j p_j F(n+j,k) = G(n,k+1) - G(n,k)`: the candidate
+/// is substituted back into the original summand at every point of
+/// [`CHECK_POINTS`] and, when the term has free parameters, at every value
+/// of [`PARAMETER_SAMPLES`]. A recurrence that is off by any amount fails
+/// here, so a candidate is only returned once it has been checked.
 fn verified(
     cx: &mut Cx<'_>,
     f: NodeId,
@@ -1904,38 +2118,70 @@ fn verified(
 ) -> bool {
     let graph = &mut *cx.graph;
     let one = graph.int(1);
-    let mut lhs_terms = Vec::new();
+    // The identity as a signed sum of terms, so that the size of the terms
+    // that cancel — not the size of their sum — sets the tolerance. The
+    // coefficients of a high-order recurrence are large, and comparing the
+    // residual with the summand alone would reject correct recurrences.
+    let mut parts: Vec<(NodeId, f64)> = Vec::new();
     for (j, coefficient) in found.coefficients.iter().enumerate() {
         let step = graph.int(i64::try_from(j).unwrap_or(0));
         let lifted = graph.node(core::ADD, &[symbols.n, step]);
         let term = graph.substitute(f, symbols.n, lifted);
-        lhs_terms.push(mul_of(graph, &[*coefficient, term]));
+        parts.push((mul_of(graph, &[*coefficient, term]), 1.0));
     }
-    let lhs = add_of(graph, &lhs_terms);
     let next = graph.node(core::ADD, &[symbols.k, one]);
     let next_value = graph.substitute(f, symbols.k, next);
     let certificate_next = graph.substitute(found.certificate, symbols.k, next);
-    let upper_right = mul_of(graph, &[certificate_next, next_value]);
-    let lower_right = mul_of(graph, &[found.certificate, f]);
-    let right = sub_of(graph, upper_right, lower_right);
-    let residual = sub_of(graph, lhs, right);
+    parts.push((mul_of(graph, &[certificate_next, next_value]), -1.0));
+    parts.push((mul_of(graph, &[found.certificate, f]), 1.0));
     let mut checked = 0;
-    for (n_value, k_value) in [(5_i64, 2_i64), (6, 3), (7, 1), (8, 4), (9, 2), (4, 1)] {
-        let mut env = generic_env(graph, parameters);
-        env.bind(symbols.ns, n_value as f64);
-        env.bind(symbols.ks, k_value as f64);
-        let (Some(value), Some(scale)) = (graph.eval(residual, &env), graph.eval(f, &env)) else {
-            continue;
-        };
-        if !value.is_finite() || !scale.is_finite() {
-            continue;
+    for base in PARAMETER_SAMPLES {
+        for &(n_value, k_value) in &CHECK_POINTS {
+            let mut env = bound_env(graph, parameters, base);
+            env.bind(symbols.ns, n_value as f64);
+            env.bind(symbols.ks, k_value as f64);
+            let mut residual = 0.0;
+            let mut scale = 0.0;
+            let mut defined = true;
+            for &(term, sign) in &parts {
+                let Some(value) = graph.eval(term, &env) else {
+                    defined = false;
+                    break;
+                };
+                if !value.is_finite() {
+                    defined = false;
+                    break;
+                }
+                residual += sign * value;
+                scale += value.abs();
+            }
+            if !defined {
+                continue;
+            }
+            if residual.abs() > 1e-10 * scale.max(1.0) {
+                return false;
+            }
+            checked += 1;
         }
-        if value.abs() > 1e-8 * scale.abs().max(1.0) {
-            return false;
-        }
-        checked += 1;
     }
-    checked >= 3
+    checked >= MIN_CHECKS
+}
+
+/// The parameters bound to nearby values around `base`, so that a candidate
+/// which only holds for one special value is caught.
+fn bound_env(
+    graph: &Graph,
+    parameters: &[NodeId],
+    base: f64,
+) -> Env {
+    let mut env = Env::numeric(0.0);
+    for (index, parameter) in parameters.iter().enumerate() {
+        if let Some(symbol) = graph.symbol_of(*parameter) {
+            let offset = u32::try_from(index).unwrap_or(0);
+            env.bind(symbol, base + f64::from(offset));
+        }
+    }
+    env
 }
 
 fn generic_env(
@@ -1971,7 +2217,10 @@ impl Kernel for Zeilberger {
         let &[f, k, n] = cx.graph.children(node) else {
             return Outcome::Pass;
         };
-        let Some(found) = creative_telescoping(cx, f, k, n) else {
+        let Search::Found(found) = creative_telescoping(cx, f, k, n) else {
+            // `Unsupported` and `OrderBoundExceeded` both leave the call
+            // unevaluated: a recurrence outside the search bounds is not
+            // replaced by a guess.
             return Outcome::Pass;
         };
         let recurrence = cx.graph.node(core::LIST, &found.coefficients);
@@ -1996,10 +2245,12 @@ pub(super) fn sum_over_integers(
         .filter(|&&s| s != ns && s != ks)
         .map(|&s| cx.graph.symbol_node(s))
         .collect();
-    if parameters.len() > 2 {
+    if parameters.len() > 1 {
         return None;
     }
-    let found = creative_telescoping(cx, f, k, n)?;
+    let Search::Found(found) = creative_telescoping(cx, f, k, n) else {
+        return None;
+    };
     if found.coefficients.len() != 2 {
         return None;
     }

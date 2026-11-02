@@ -229,7 +229,11 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
             }
         }
         step_hits.sort_by(|a, b| {
-            let (ta, tb) = if h >= 0.0 { (a.t, b.t) } else { (-a.t, -b.t) };
+            let (ta, tb) = if h >= 0.0 {
+                (a.t, b.t)
+            } else {
+                (-a.t, -b.t)
+            };
             ta.total_cmp(&tb)
         });
         if let Some(position) = step_hits.iter().position(|hit| hit.terminal) {

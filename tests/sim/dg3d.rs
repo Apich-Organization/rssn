@@ -1,5 +1,6 @@
-//! 3D DG shock limiters: order preservation, Sod shock tubes, conservation and
-//! a blast stability regression.
+//! 3D DG shock limiters: order preservation, troubled-cell locality, Sod shock
+//! tubes with total-variation / undershoot checks, conservation and a blast
+//! stability regression.
 //!
 //! The Sod reference shock position at `t = 0.2` is
 //! `x = 0.5 + 1.752_155_7 * 0.2 = 0.850_431`, from the exact self-similar
@@ -23,8 +24,9 @@ fn periodic() -> [Dg3Bc; 6] {
     std::array::from_fn(|_| Dg3Bc::Periodic)
 }
 
-fn shock_limiters() -> [Dg3Limiter; 3] {
+fn shock_limiters() -> [Dg3Limiter; 4] {
     [
+        Dg3Limiter::Minmax,
         Dg3Limiter::Characteristic,
         Dg3Limiter::Hierarchical,
         Dg3Limiter::Weno,
@@ -92,41 +94,110 @@ fn shock_position(
     pos
 }
 
+/// Exact solution of `u_t + a·∇u = 0` for the smooth wave
+/// `sin(2πx) cos(2πy) cos(2πz)` and `a = (1, 0.5, -0.5)`.
+fn advection_exact(
+    x: [f64; 3],
+    t: f64,
+) -> f64 {
+    (2.0 * PI * (x[0] - t)).sin()
+        * (2.0 * PI * (x[1] - 0.5 * t)).cos()
+        * (2.0 * PI * (x[2] + 0.5 * t)).cos()
+}
+
+/// Smooth periodic advection to `t = 0.5` on an `ne³` mesh of degree `p`.
+fn solve_smooth_advection(
+    limiter: Dg3Limiter,
+    ne: usize,
+    p: usize,
+) -> Dg3Solution {
+    let law = LinearAdvection3d { a: [1.0, 0.5, -0.5] };
+    let mesh = Dg3Mesh {
+        ne: [ne; 3],
+        lo: [0.0; 3],
+        hi: [1.0; 3],
+        p,
+    };
+    let opt = Dg3Options {
+        limiter,
+        ..Dg3Options::default()
+    };
+    solve_dg3d(
+        &mesh,
+        &law,
+        &periodic(),
+        &|x| vec![advection_exact(x, 0.0)],
+        0.5,
+        0.3,
+        &opt,
+    )
+    .unwrap()
+}
+
 #[test]
 fn dg3d_smooth_advection_keeps_design_order_with_every_limiter() {
-    let law = LinearAdvection3d { a: [1.0, 0.5, -0.5] };
-    let per = periodic();
-    let exact = |x: [f64; 3], t: f64| {
-        (2.0 * PI * (x[0] - t)).sin()
-            * (2.0 * PI * (x[1] - 0.5 * t)).cos()
-            * (2.0 * PI * (x[2] + 0.5 * t)).cos()
-    };
-    let run = |limiter: Dg3Limiter, ne: usize| {
-        let mesh = Dg3Mesh {
-            ne: [ne; 3],
-            lo: [0.0; 3],
-            hi: [1.0; 3],
-            p: 2,
+    // The TVB troubled-element test leaves this smooth wave untouched (the
+    // default M h² threshold is well above its face slopes), so every limiter
+    // must reproduce the design order p + 1 rather than degrade it — and, since
+    // no element is flagged, the limited state must equal the unlimited one.
+    for (p, n0, n1, min_order) in [
+        (2_usize, 2_usize, 4_usize, 2.8_f64),
+        (2, 4, 8, 2.8),
+        (3, 2, 4, 3.5),
+    ] {
+        let base = |ne: usize| {
+            solve_smooth_advection(Dg3Limiter::None, ne, p).l2_error(0, |x| advection_exact(x, 0.5))
         };
-        let opt = Dg3Options {
-            limiter,
-            ..Dg3Options::default()
-        };
-        let s = solve_dg3d(&mesh, &law, &per, &|x| vec![exact(x, 0.0)], 0.5, 0.3, &opt).unwrap();
-        s.l2_error(0, |x| exact(x, 0.5))
-    };
-    for limiter in shock_limiters() {
-        let (e1, e2) = (run(limiter, 2), run(limiter, 4));
-        let order = (e1 / e2).log2();
-        println!("advection p=2 {limiter:?}: errors {e1:.3e} {e2:.3e}, order {order:.2}");
-        // The TVB troubled-element test leaves this smooth wave untouched (the
-        // default M h² threshold is well above its face slopes), so the limiter
-        // must reproduce the design order p + 1 = 3 rather than degrade it.
-        assert!(
-            order >= 2.0,
-            "{limiter:?} destroys the p=2 order: {e1} -> {e2} (order {order})"
+        let (b1, b2) = (base(n0), base(n1));
+        println!(
+            "advection p={p} unlimited: errors {b1:.3e} {b2:.3e}, order {:.2}",
+            (b1 / b2).log2()
         );
+        for limiter in shock_limiters() {
+            let e1 =
+                solve_smooth_advection(limiter, n0, p).l2_error(0, |x| advection_exact(x, 0.5));
+            let e2 =
+                solve_smooth_advection(limiter, n1, p).l2_error(0, |x| advection_exact(x, 0.5));
+            let order = (e1 / e2).log2();
+            println!("advection p={p} {limiter:?}: errors {e1:.3e} {e2:.3e}, order {order:.2}");
+            assert!(
+                order >= min_order,
+                "{limiter:?} degrades the p={p} design order {}: {e1} -> {e2} (order {order})",
+                p + 1
+            );
+            // the limiter is a bitwise no-op on a smooth solution
+            assert_eq!(e1, b1, "{limiter:?} changed the p={p} ne={n0} solution");
+            assert_eq!(e2, b2, "{limiter:?} changed the p={p} ne={n1} solution");
+        }
     }
+}
+
+#[test]
+fn dg3d_limiters_stay_inactive_on_a_smooth_wave() {
+    // Locality: a smooth solution must never be flagged, so the limiter is a
+    // no-op away from shocks (this is what keeps the order above intact).
+    for limiter in shock_limiters() {
+        for ne in [4_usize, 8] {
+            let s = solve_smooth_advection(limiter, ne, 2);
+            let count = s.troubled.iter().filter(|&&flag| flag).count();
+            println!(
+                "{limiter:?} ne={ne}: troubled_cells {}, final flags {count}/{}",
+                s.troubled_cells,
+                s.troubled.len()
+            );
+            assert_eq!(
+                s.troubled.len(),
+                s.mesh.elements(),
+                "{limiter:?}: flags must cover the mesh"
+            );
+            assert_eq!(s.troubled_cells, 0, "{limiter:?} fired on a smooth wave");
+            assert_eq!(count, 0, "{limiter:?} flagged a smooth element");
+        }
+    }
+    // Without a limiter the diagnostics are empty rather than "all clear".
+    let s = solve_smooth_advection(Dg3Limiter::None, 4, 2);
+    assert!(s.troubled.is_empty());
+    assert_eq!(s.troubled_cells, 0);
 }
 
 fn sod_state(
@@ -157,6 +228,35 @@ fn primitive(
     let rho = q[0];
     let p = (GAMMA - 1.0) * (q[4] - 0.5 * (q[1] * q[1] + q[2] * q[2] + q[3] * q[3]) / rho);
     (rho, p)
+}
+
+/// Total variation of the element-average density along `axis`; the Sod data is
+/// constant in the transverse directions, so the extruded solution is 1D.
+fn tv_along(
+    s: &Dg3Solution,
+    axis: usize,
+) -> f64 {
+    let m = s.mesh;
+    let mut c = [0_usize; 3];
+    let mut prev = f64::NAN;
+    let mut tv = 0.0;
+    for i in 0..m.ne[axis] {
+        c[axis] = i;
+        let rho = element_mean(s, element_at(m.ne, c), 0);
+        if i > 0 {
+            tv += (rho - prev).abs();
+        }
+        prev = rho;
+    }
+    tv
+}
+
+fn element_axis_index(
+    ne: [usize; 3],
+    e: usize,
+    axis: usize,
+) -> usize {
+    [e % ne[0], (e / ne[0]) % ne[1], e / (ne[0] * ne[1])][axis]
 }
 
 fn check_sod(axis: usize) {
@@ -200,8 +300,14 @@ fn check_sod(axis: usize) {
         }
         let xs = shock_position(&s, axis);
         let drift = (xs - SOD_SHOCK).abs() / dx;
+        let flagged: Vec<usize> = (0..mesh.elements())
+            .filter(|&e| s.troubled[e])
+            .map(|e| element_axis_index(ne, e, axis))
+            .collect();
+        let band = format!("{flagged:?}");
         println!(
-            "sod axis {axis} {limiter:?}: rho [{rho_min:.4}, {rho_max:.4}], p [{p_min:.4}, {p_max:.4}], shock {xs:.4} ({drift:.2} cells)"
+            "sod axis {axis} {limiter:?}: rho [{rho_min:.4}, {rho_max:.4}], p [{p_min:.4}, {p_max:.4}], shock {xs:.4} ({drift:.2} cells), {} flags in the run, final flags {band}",
+            s.troubled_cells
         );
         // non-oscillatory: at most 5% of the density / pressure jump beyond the data range
         assert!(
@@ -237,6 +343,83 @@ fn dg3d_sod_along_y_with_all_limiters() {
 #[test]
 fn dg3d_sod_along_z_with_all_limiters() {
     check_sod(2);
+}
+
+#[test]
+fn dg3d_sod_total_variation_does_not_grow_and_does_not_undershoot() {
+    // The exact Sod solution is monotone, so its total variation is the initial
+    // jump 1 - 0.125 = 0.875 for all time. A limited DG solution must not add
+    // variation after the shock has formed, and the min/max limiter must not
+    // dip below the initial minimum of density or pressure (the small residual
+    // is the O(h) smearing of the plateau, not an oscillation: it shrinks under
+    // refinement).
+    let law = Euler3d { gamma: GAMMA };
+    let bcs = sod_bcs(0);
+    let init = |x: [f64; 3]| sod_state(x, 0);
+    let tv_initial = 1.0 - 0.125;
+    let run = |nx: usize, limiter: Dg3Limiter, t_end: f64| {
+        let mesh = Dg3Mesh {
+            ne: [nx, 2, 2],
+            lo: [0.0; 3],
+            hi: [1.0; 3],
+            p: 2,
+        };
+        let opt = Dg3Options {
+            limiter,
+            positivity: true,
+            limiter_tvd: 10.0,
+            ..Dg3Options::default()
+        };
+        solve_dg3d(&mesh, &law, &bcs, &init, t_end, 0.35, &opt).unwrap()
+    };
+    let extrema = |s: &Dg3Solution| {
+        let (mut rho_min, mut p_min) = (f64::INFINITY, f64::INFINITY);
+        for e in 0..s.mesh.elements() {
+            for nd in 0..s.mesh.nodes_per_element() {
+                let (rho, p) = primitive(s, e, nd);
+                rho_min = rho_min.min(rho);
+                p_min = p_min.min(p);
+            }
+        }
+        (rho_min, p_min)
+    };
+    for limiter in shock_limiters() {
+        let formed = run(12, limiter, 0.1);
+        let late = run(12, limiter, 0.2);
+        let (tv_formed, tv_late) = (tv_along(&formed, 0), tv_along(&late, 0));
+        let (rho_min, p_min) = extrema(&late);
+        println!(
+            "sod TV {limiter:?}: TV(0.1) {tv_formed:.6} -> TV(0.2) {tv_late:.6} (initial {tv_initial}), min rho {rho_min:.9}, min p {p_min:.9}"
+        );
+        if limiter == Dg3Limiter::Minmax {
+            assert!(
+                tv_late <= tv_formed,
+                "{limiter:?}: TV grew from {tv_formed} to {tv_late} after the shock formed"
+            );
+            assert!(
+                tv_late <= tv_initial,
+                "{limiter:?}: TV {tv_late} exceeds the initial variation {tv_initial}"
+            );
+            // the residual undershoot is O(h) smearing, not an oscillation
+            let (rho_fine, p_fine) = extrema(&run(24, limiter, 0.2));
+            println!("sod TV Minmax nx=24: min rho {rho_fine:.9}, min p {p_fine:.9}");
+            assert!(
+                rho_min >= 0.125 - 2e-3 && p_min >= 0.1 - 2e-3,
+                "{limiter:?}: undershoot below the initial minima: rho {rho_min}, p {p_min}"
+            );
+            assert!(
+                rho_fine >= rho_min && p_fine >= p_min,
+                "{limiter:?}: the undershoot must shrink under refinement: rho {rho_min} -> {rho_fine}, p {p_min} -> {p_fine}"
+            );
+        } else {
+            // the moment limiters do not guarantee a monotone profile, but the
+            // variation must stay bounded by the data range
+            assert!(
+                tv_late <= tv_initial * 1.03,
+                "{limiter:?}: TV {tv_late} exceeds the initial variation {tv_initial}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -307,11 +490,7 @@ fn dg3d_blast_stability_regression_with_limiters() {
         p: 1,
     };
     let bcs: [Dg3Bc; 6] = std::array::from_fn(|_| Dg3Bc::Outflow);
-    for limiter in [
-        Dg3Limiter::Characteristic,
-        Dg3Limiter::Hierarchical,
-        Dg3Limiter::Weno,
-    ] {
+    for limiter in shock_limiters() {
         let opt = Dg3Options {
             limiter,
             positivity: true,

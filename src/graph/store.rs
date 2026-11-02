@@ -1149,10 +1149,7 @@ impl Graph {
             let desc = src.ops.get(src.op(cur));
             let op = match self.ops().lookup_exact(desc) {
                 | Some(op) => op,
-                | None => self
-                    .ops_mut()
-                    .register(desc.clone())
-                    .unwrap_or(OpId::NONE),
+                | None => self.ops_mut().register(desc.clone()).unwrap_or(OpId::NONE),
             };
             let payload = match src.payload(cur) {
                 | Some(Payload::Sym(s)) => {

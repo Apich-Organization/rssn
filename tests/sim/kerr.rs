@@ -1,4 +1,5 @@
-//! Exact bound Kerr geodesics in Mino time vs direct integration; frequencies; shadows.
+//! Exact bound Kerr geodesics in Mino time vs direct integration; unbound scattering and
+//! capture; frame dragging; frequencies; shadows.
 
 use rssn::sim::kerr::*;
 
@@ -458,4 +459,201 @@ fn polar_geodesic_passes_through_the_axis_without_coordinate_trouble() {
         crossings >= 4,
         "the orbit must cross the axis repeatedly: {crossings}"
     );
+}
+
+/// Unbound geodesic with constants `(a, mu^2, E, L, Q)` started inward at `r0`, polar angle
+/// `acos(z0)` on the equator-crossing side.
+fn unbound_at(
+    (a, mu2, e, l, q): (f64, f64, f64, f64, f64),
+    z0: f64,
+    r0: f64,
+) -> UnboundGeodesic {
+    UnboundGeodesic::new(1.0, a, mu2, (e, l, q), (r0, z0.acos(), 0.0), (false, true)).unwrap()
+}
+
+/// Deflection angle of the Schwarzschild null geodesic with impact parameter `b`.
+fn schwarzschild_deflection(
+    b: f64,
+    r0: f64,
+) -> ScatterOutcome {
+    unbound_at((0.0, 0.0, 1.0, b, 0.0), 0.0, r0)
+        .scatter(1e-12)
+        .unwrap()
+}
+
+#[test]
+fn unbound_geodesics_conserve_energy_momentum_carter_and_norm() {
+    for &(a, mu2, e, l, q, z0) in &[
+        (0.0, 0.0, 1.0, 20.0, 0.0, 0.0),
+        (0.9, 0.0, 1.0, 4.0, 3.0, 0.3),
+        (0.7, 1.0, 1.05, 4.0, 4.0, 0.4),
+    ] {
+        let mut g = unbound_at((a, mu2, e, l, q), z0, 50.0);
+        let (mut worst_q, mut worst_n) = (0.0_f64, 0.0_f64);
+        let (mut rmin, mut back) = (f64::INFINITY, false);
+        for _ in 0..4000 {
+            assert!(
+                g.advance(0.01, 1e-12),
+                "a={a}: the scattering orbit must not hit the horizon"
+            );
+            let (_, r, _, _) = g.state();
+            rmin = rmin.min(r);
+            assert!((g.energy - e).abs() < 1e-15, "a={a}: E drifted");
+            assert!((g.lz - l).abs() < 1e-15, "a={a}: L drifted");
+            worst_q = worst_q.max((g.carter_constant() - q).abs());
+            worst_n = worst_n.max((g.normalisation() + mu2).abs());
+            if rmin < 25.0 && r >= 50.0 {
+                back = true;
+                break;
+            }
+        }
+        assert!(
+            back,
+            "a={a}: the orbit must return to its start, rmin {rmin}"
+        );
+        println!(
+            "a={a} mu2={mu2}: rmin={rmin:.4} max|dQ|={worst_q:.2e} max|g(u,u)+mu^2|={worst_n:.2e}"
+        );
+        assert!(worst_q < 1e-9, "a={a}: Q drifted by {worst_q}");
+        assert!(worst_n < 1e-8, "a={a}: g(u,u) drifted by {worst_n}");
+        if mu2 == 0.0 && q == 0.0 {
+            // a photon in the equatorial plane has no Carter constant
+            assert!(g.carter_constant().abs() < 1e-12, "{}", g.carter_constant());
+        }
+    }
+}
+
+#[test]
+fn unbound_photon_deflection_approaches_four_m_over_b() {
+    let mut prev = f64::INFINITY;
+    for &b in &[300.0, 1000.0, 3000.0] {
+        let deflection = match schwarzschild_deflection(b, 1e6) {
+            | ScatterOutcome::Escaped { deflection, .. } => deflection,
+            | ScatterOutcome::Captured => panic!("b = {b} must escape"),
+        };
+        let ratio = deflection * b / 4.0;
+        println!("b={b}: deflection={deflection:.9} b*alpha/4M={ratio:.7}");
+        assert!(ratio < prev, "b = {b}: ratio {ratio} did not decrease");
+        assert!(ratio > 1.0 && ratio < 1.02, "b = {b}: ratio {ratio}");
+        // the next order is 15 pi M^2 / (4 b^2), i.e. (ratio - 1) b -> 15 pi / 16
+        let next = (ratio - 1.0) * b;
+        assert!(
+            (next - 15.0 * std::f64::consts::PI / 16.0).abs() < 0.1,
+            "b = {b}: (ratio - 1) b = {next}"
+        );
+        prev = ratio;
+    }
+    assert!(prev - 1.0 < 2e-3, "b = 3000: ratio {prev}");
+}
+
+#[test]
+fn unbound_timelike_deflection_approaches_the_massive_particle_value() {
+    // a particle with speed v at infinity is deflected by 2 M (1 + v^2) / (b v^2)
+    let v = 0.6_f64;
+    let gamma = 1.0 / (1.0 - v * v).sqrt();
+    let momentum = gamma * v;
+    let mut prev = f64::INFINITY;
+    for &b in &[300.0, 1000.0, 3000.0] {
+        let mut g = unbound_at((0.0, 1.0, gamma, b * momentum, 0.0), 0.0, 1e6);
+        let deflection = match g.scatter(1e-12).unwrap() {
+            | ScatterOutcome::Escaped { deflection, .. } => deflection,
+            | ScatterOutcome::Captured => panic!("b = {b} must escape"),
+        };
+        let ratio = deflection * b * v * v / (2.0 * (1.0 + v * v));
+        println!("b={b}: timelike deflection={deflection:.9} ratio={ratio:.7}");
+        assert!(ratio < prev, "b = {b}: ratio {ratio} did not decrease");
+        assert!(ratio > 1.0 && ratio < 1.02, "b = {b}: ratio {ratio}");
+        prev = ratio;
+    }
+    assert!(prev - 1.0 < 2e-3, "b = 3000: ratio {prev}");
+}
+
+#[test]
+fn unbound_photon_capture_threshold_is_three_root_three_m() {
+    let captured =
+        |b: f64| -> bool { schwarzschild_deflection(b, 1e5) == ScatterOutcome::Captured };
+    assert!(captured(4.0));
+    assert!(!captured(6.0));
+    let (mut lo, mut hi) = (4.0, 6.0);
+    for _ in 0..60 {
+        let mid = f64::midpoint(lo, hi);
+        if captured(mid) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let bc = 27.0_f64.sqrt();
+    println!("capture threshold {hi:.15} vs 3 sqrt 3 {bc:.15}");
+    assert!(
+        (hi - bc).abs() < 1e-9,
+        "capture threshold {hi} vs 3 sqrt 3 M = {bc}"
+    );
+}
+
+#[test]
+fn unbound_deflection_diverges_at_the_critical_impact_parameter() {
+    let bc = 27.0_f64.sqrt();
+    let mut prev = 0.0_f64;
+    let mut last = 0.0_f64;
+    for &delta in &[1e-2, 1e-3, 1e-4, 1e-5] {
+        let deflection = match schwarzschild_deflection(bc * (1.0 + delta), 1e5) {
+            | ScatterOutcome::Escaped { deflection, .. } => deflection,
+            | ScatterOutcome::Captured => panic!("b above the critical value must escape"),
+        };
+        assert!(deflection > prev, "delta = {delta}: {deflection}");
+        println!("delta={delta:.0e}: deflection={deflection:.6}");
+        if prev > 0.0 {
+            // the divergence is logarithmic: one decade of b - b_crit adds ln(10)
+            let step = deflection - prev;
+            assert!(
+                (step - std::f64::consts::LN_10).abs() < 0.05,
+                "delta = {delta}: increment {step}"
+            );
+            last = step;
+        }
+        prev = deflection;
+    }
+    assert!(
+        (last - std::f64::consts::LN_10).abs() < 1e-3,
+        "the increments must converge to ln(10): {last}"
+    );
+    assert!(prev > 11.0, "deflection at delta = 1e-5: {prev}");
+    // there is no smooth continuation below the threshold: the ray is simply captured
+    assert_eq!(
+        schwarzschild_deflection(bc * 0.999, 1e5),
+        ScatterOutcome::Captured
+    );
+}
+
+#[test]
+fn kerr_zero_angular_momentum_particle_is_dragged_by_the_spin() {
+    for &a in &[0.9, -0.9, 0.0] {
+        let mut g = unbound_at((a, 1.0, 1.0, 0.0, 0.0), 0.0, 20.0);
+        let mut steps = 0;
+        while g.state().1 > 6.0 {
+            assert!(g.advance(0.01, 1e-13), "a = {a}: must reach r = 6 M");
+            steps += 1;
+            assert!(steps < 10_000);
+        }
+        let (t0, r0, _, p0) = g.state();
+        assert!(g.advance(1e-5, 1e-13));
+        let (t1, r1, _, p1) = g.state();
+        let omega = (p1 - p0) / (t1 - t0);
+        // ZAMO angular velocity of the equatorial plane at the midpoint radius
+        let r = f64::midpoint(r0, r1);
+        let delta = r * r - 2.0 * r + a * a;
+        let expected = 2.0 * a * r / ((r * r + a * a).powi(2) - a * a * delta);
+        println!("a={a:+.1} r={r:.4}: dphi/dt={omega:.8} (ZAMO {expected:.8})");
+        assert!(
+            (omega - expected).abs() < 1e-3 * expected.abs().max(1e-6),
+            "a = {a}: dphi/dt = {omega} vs {expected}"
+        );
+        if a != 0.0 {
+            assert!(
+                omega * a.signum() > 0.0,
+                "a = {a}: frame dragging has the wrong sign, dphi/dt = {omega}"
+            );
+        }
+    }
 }

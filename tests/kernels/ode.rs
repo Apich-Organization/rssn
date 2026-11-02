@@ -218,13 +218,12 @@ fn the_fixed_step_solver_locates_events_by_re_integrating_the_step() {
     .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(trajectory.t.len(), 1001);
     assert_eq!(hits.len(), 2, "{} events", hits.len());
-    let want = [std::f64::consts::FRAC_PI_2, 3.0 * std::f64::consts::FRAC_PI_2];
+    let want = [
+        std::f64::consts::FRAC_PI_2,
+        3.0 * std::f64::consts::FRAC_PI_2,
+    ];
     for (hit, expected) in hits.iter().zip(&want) {
-        assert!(
-            (hit.t - expected).abs() < 1e-6,
-            "{} vs {expected}",
-            hit.t
-        );
+        assert!((hit.t - expected).abs() < 1e-6, "{} vs {expected}", hit.t);
         // The located state is on the trajectory: `y[0]` is zero there.
         assert!(hit.y[0].abs() < 1e-6, "y[0] = {}", hit.y[0]);
     }

@@ -1840,7 +1840,10 @@ pub(super) mod common {
                 assert_eq!(g.leading().map(|(_, c)| c), Some(&q(1)));
             }
             let empty: Vec<GPoly> = Vec::new();
-            assert_eq!(reduced_basis(&Domain::Rational, &empty, order), [] as [GPoly; 0]);
+            assert_eq!(
+                reduced_basis(&Domain::Rational, &empty, order),
+                [] as [GPoly; 0]
+            );
         }
     }
 }

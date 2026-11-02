@@ -1,4 +1,4 @@
-//! # Block-structured adaptive mesh refinement for Euler and shallow water (1D and 2D)
+//! # Block-structured adaptive mesh refinement for Euler and shallow water (1D–3D)
 //!
 //! Berger–Colella style AMR on top of the finite-volume kernels of
 //! [`euler_nd`](crate::sim::euler_nd):
@@ -25,10 +25,22 @@
 //!   conditions (transmissive, reflective, periodic, fixed) are those of
 //!   [`FvConfig`].
 //!
-//! Limitations: 1D and 2D only, refinement ratio 2, characteristic
-//! non-reflecting boundaries and 3D are not supported, patches are
-//! aligned with the coarse grid and the regridding re-creates the whole fine
-//! hierarchy (data are copied where the old patches overlap the new ones).
+//! The same code runs in 1D, 2D and 3D: a patch is a box of
+//! `[usize; 3]` index ranges, the inactive axes of a lower-dimensional
+//! problem have one cell and no ghost layer, and every sweep, prolongation,
+//! restriction and flux-register correction loops over `0..dim`. The 1D and
+//! 2D results are unchanged by the third axis (it contributes no flux, no
+//! ghost cell and a factor-one volume).
+//!
+//! Limitations: the refinement ratio is fixed at 2; characteristic
+//! non-reflecting boundaries are not supported (a patch boundary is filled
+//! from the coarser level or the physical law, so the walls are limited to
+//! transmissive, reflective, periodic and fixed states); shallow water is
+//! 1D and 2D only (its 3D flux is not part of [`euler_nd`]); patches are
+//! aligned with the coarse grid, and every regridding re-creates the whole
+//! fine hierarchy — the tagging arrays are sized as the full grid of each
+//! level and the data are copied where the old patches overlap the new ones —
+//! so a regrid costs the whole hierarchy, not the tagged region.
 
 use crate::sim::euler_nd::FvConfig;
 use crate::sim::euler_nd::FvGrid;
@@ -45,6 +57,23 @@ use crate::sim::euler_nd::to_prim;
 
 const GH: usize = 3;
 
+/// The two axes transverse to `a`, in increasing order.
+///
+/// The inactive axes of a lower-dimensional problem are included; they have a
+/// single cell, so their contribution to a transverse index is zero.
+const fn transverse(a: usize) -> [usize; 2] {
+    match a {
+        | 0 => [1, 2],
+        | 1 => [0, 2],
+        | _ => [0, 1],
+    }
+}
+
+/// Number of cells of the next coarser level under `n` cells of an axis.
+const fn coarsen(n: usize) -> usize {
+    if n < 2 { 1 } else { n / 2 }
+}
+
 /// AMR parameters.
 #[derive(Clone, Copy, Debug)]
 pub struct AmrConfig {
@@ -60,10 +89,18 @@ pub struct AmrConfig {
     pub buffer: usize,
     /// Minimum fraction of tagged cells in a patch before it is bisected.
     pub efficiency: f64,
+    /// Whether the flux registers correct the coarse cells next to a
+    /// coarse–fine interface (refluxing).
+    ///
+    /// Switching it off keeps the fine-to-coarse averaging and the
+    /// sub-cycling but drops the flux correction, so the total mass, momentum
+    /// and energy then drift at a rate set by the flux mismatch of the
+    /// interface. It exists to make that difference measurable.
+    pub reflux: bool,
 }
 
 impl AmrConfig {
-    /// Default AMR parameters around a scheme: two levels, regrid every 4 steps, threshold 0.05.
+    /// Default AMR parameters around a scheme: two levels, regrid every 4 steps, threshold 0.05, refluxing on.
     #[must_use]
     pub const fn new(fv: FvConfig) -> Self {
         Self {
@@ -73,26 +110,27 @@ impl AmrConfig {
             threshold: 0.05,
             buffer: 2,
             efficiency: 0.6,
+            reflux: true,
         }
     }
 }
 
 struct Patch {
-    lo: [usize; 2],
-    n: [usize; 2],
+    lo: [usize; 3],
+    n: [usize; 3],
     q: Vec<State>,
     old: Vec<State>,
     new: Vec<State>,
     /// Time-averaged (RK-weighted) numerical flux per axis of the last step.
-    flux: [Vec<State>; 2],
+    flux: [Vec<State>; 3],
     /// Flux registers `[axis][side]` over the coarse transverse faces.
-    reg: [[Vec<State>; 2]; 2],
+    reg: [[Vec<State>; 2]; 3],
 }
 
 impl Patch {
     fn new(
-        lo: [usize; 2],
-        n: [usize; 2],
+        lo: [usize; 3],
+        n: [usize; 3],
         q: Vec<State>,
     ) -> Self {
         Self {
@@ -101,26 +139,32 @@ impl Patch {
             old: q.clone(),
             new: q.clone(),
             q,
-            flux: [Vec::new(), Vec::new()],
-            reg: [[Vec::new(), Vec::new()], [Vec::new(), Vec::new()]],
+            flux: [Vec::new(), Vec::new(), Vec::new()],
+            reg: [
+                [Vec::new(), Vec::new()],
+                [Vec::new(), Vec::new()],
+                [Vec::new(), Vec::new()],
+            ],
         }
     }
 
     const fn flat(
         &self,
-        i: [usize; 2],
+        i: [usize; 3],
     ) -> usize {
-        (i[0] - self.lo[0]) + self.n[0] * (i[1] - self.lo[1])
+        (i[0] - self.lo[0]) + self.n[0] * ((i[1] - self.lo[1]) + self.n[1] * (i[2] - self.lo[2]))
     }
 
     const fn contains(
         &self,
-        i: [usize; 2],
+        i: [usize; 3],
     ) -> bool {
         i[0] >= self.lo[0]
             && i[0] < self.lo[0] + self.n[0]
             && i[1] >= self.lo[1]
             && i[1] < self.lo[1] + self.n[1]
+            && i[2] >= self.lo[2]
+            && i[2] < self.lo[2] + self.n[2]
     }
 }
 
@@ -131,15 +175,15 @@ struct Level {
 }
 
 enum Mapped {
-    Cell([usize; 2], [bool; 2]),
+    Cell([usize; 3], [bool; 3]),
     Fixed(State),
 }
 
 struct Amr {
     cfg: AmrConfig,
     dim: usize,
-    n0: [usize; 2],
-    h0: [f64; 2],
+    n0: [usize; 3],
+    h0: [f64; 3],
     nv: usize,
     levels: Vec<Level>,
 }
@@ -161,16 +205,29 @@ impl Amr {
     const fn dom(
         &self,
         l: usize,
-    ) -> [isize; 2] {
+    ) -> [isize; 3] {
         let f = 1isize << l;
         [
             self.n0[0] as isize * f,
-            if self.dim == 2 {
+            if self.dim > 1 {
                 self.n0[1] as isize * f
             } else {
                 1
             },
+            if self.dim > 2 {
+                self.n0[2] as isize * f
+            } else {
+                1
+            },
         ]
+    }
+
+    /// Ghost layers of an axis: none beyond the active ones.
+    const fn ghost(
+        &self,
+        a: usize,
+    ) -> usize {
+        if a < self.dim { GH } else { 0 }
     }
 
     fn h(
@@ -184,7 +241,7 @@ impl Amr {
     fn find(
         &self,
         l: usize,
-        i: [usize; 2],
+        i: [usize; 3],
     ) -> Option<(usize, usize)> {
         self.levels[l]
             .patches
@@ -198,12 +255,12 @@ impl Amr {
     fn bc_map(
         &self,
         l: usize,
-        idx: [isize; 2],
+        idx: [isize; 3],
     ) -> Mapped {
         let dom = self.dom(l);
         let law = self.cfg.fv.law;
         let mut j = idx;
-        let mut flip = [false; 2];
+        let mut flip = [false; 3];
         for a in 0..self.dim {
             if j[a] >= 0 && j[a] < dom[a] {
                 continue;
@@ -223,7 +280,14 @@ impl Amr {
                 | _ => j[a] = j[a].clamp(0, dom[a] - 1),
             }
         }
-        Mapped::Cell([j[0] as usize, j[1].max(0) as usize], flip)
+        Mapped::Cell(
+            [
+                j[0].max(0) as usize,
+                j[1].max(0) as usize,
+                j[2].max(0) as usize,
+            ],
+            flip,
+        )
     }
 
     /// Conserved state of cell `idx` of level `l` at time `tau`.
@@ -233,18 +297,19 @@ impl Amr {
     fn sample(
         &self,
         l: usize,
-        idx: [isize; 2],
+        idx: [isize; 3],
         tau: f64,
         stage: Option<(usize, &[Vec<State>])>,
     ) -> State {
         let dom = self.dom(l);
-        let inside = (0..2).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
+        let inside = (0..3).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
         if !inside {
             return match self.bc_map(l, idx) {
                 | Mapped::Fixed(s) => s,
                 | Mapped::Cell(j, flip) => {
-                    let mut s = self.sample(l, [j[0] as isize, j[1] as isize], tau, stage);
-                    for a in 0..2 {
+                    let mut s =
+                        self.sample(l, [j[0] as isize, j[1] as isize, j[2] as isize], tau, stage);
+                    for a in 0..3 {
                         if flip[a] {
                             s[1 + a] = -s[1 + a];
                         }
@@ -253,7 +318,7 @@ impl Amr {
                 },
             };
         }
-        let u = [idx[0] as usize, idx[1] as usize];
+        let u = [idx[0] as usize, idx[1] as usize, idx[2] as usize];
         if let Some((k, flat)) = self.find(l, u) {
             if let Some((sl, arrays)) = stage
                 && sl == l
@@ -274,7 +339,11 @@ impl Amr {
             return s;
         }
         // not covered at this level: conservative slope-limited prolongation from the parent
-        let parent = [idx[0].div_euclid(2), idx[1].div_euclid(2)];
+        let parent = [
+            idx[0].div_euclid(2),
+            idx[1].div_euclid(2),
+            idx[2].div_euclid(2),
+        ];
         let q0 = self.sample(l - 1, parent, tau, stage);
         let mut out = q0;
         for a in 0..self.dim {
@@ -307,21 +376,29 @@ impl Amr {
         tau: f64,
     ) -> Vec<State> {
         let p = &self.levels[l].patches[k];
-        let g = [GH, if self.dim == 2 { GH } else { 0 }];
-        let np = [p.n[0] + 2 * g[0], p.n[1] + 2 * g[1]];
-        let mut out = vec![[0.0; 5]; np[0] * np[1]];
-        for j in 0..np[1] {
-            for i in 0..np[0] {
-                let gi = [
-                    p.lo[0] as isize + i as isize - g[0] as isize,
-                    p.lo[1] as isize + j as isize - g[1] as isize,
-                ];
-                let interior = i >= g[0] && i < g[0] + p.n[0] && j >= g[1] && j < g[1] + p.n[1];
-                out[i + np[0] * j] = if interior {
-                    stage[k][(i - g[0]) + p.n[0] * (j - g[1])]
-                } else {
-                    self.sample(l, gi, tau, Some((l, stage)))
-                };
+        let g = [self.ghost(0), self.ghost(1), self.ghost(2)];
+        let np = [p.n[0] + 2 * g[0], p.n[1] + 2 * g[1], p.n[2] + 2 * g[2]];
+        let mut out = vec![[0.0; 5]; np[0] * np[1] * np[2]];
+        for kk in 0..np[2] {
+            for j in 0..np[1] {
+                for i in 0..np[0] {
+                    let gi = [
+                        p.lo[0] as isize + i as isize - g[0] as isize,
+                        p.lo[1] as isize + j as isize - g[1] as isize,
+                        p.lo[2] as isize + kk as isize - g[2] as isize,
+                    ];
+                    let interior = i >= g[0]
+                        && i < g[0] + p.n[0]
+                        && j >= g[1]
+                        && j < g[1] + p.n[1]
+                        && kk >= g[2]
+                        && kk < g[2] + p.n[2];
+                    out[i + np[0] * (j + np[1] * kk)] = if interior {
+                        stage[k][(i - g[0]) + p.n[0] * ((j - g[1]) + p.n[1] * (kk - g[2]))]
+                    } else {
+                        self.sample(l, gi, tau, Some((l, stage)))
+                    };
+                }
             }
         }
         out
@@ -331,26 +408,29 @@ impl Amr {
     fn fluxes(
         &self,
         padded: &[State],
-        n: [usize; 2],
-    ) -> [Vec<State>; 2] {
+        n: [usize; 3],
+    ) -> [Vec<State>; 3] {
         let cfg = &self.cfg.fv;
         let law = cfg.law;
-        let g = [GH, if self.dim == 2 { GH } else { 0 }];
-        let np = [n[0] + 2 * g[0], n[1] + 2 * g[1]];
+        let g = [self.ghost(0), self.ghost(1), self.ghost(2)];
+        let np = [n[0] + 2 * g[0], n[1] + 2 * g[1], n[2] + 2 * g[2]];
         let wp: Vec<State> = padded.iter().map(|&c| to_prim(law, c)).collect();
-        let mut out: [Vec<State>; 2] = [Vec::new(), Vec::new()];
+        let mut out: [Vec<State>; 3] = [Vec::new(), Vec::new(), Vec::new()];
         for d in 0..self.dim {
-            let o = 1 - d;
-            let nlines = if self.dim == 2 { n[o] } else { 1 };
+            let o = transverse(d);
+            let (na, nb) = (n[o[0]], n[o[1]]);
+            let nlines = na * nb;
             let nf = n[d] + 1;
             let mut flux = vec![[0.0; 5]; nf * nlines];
             let mut line = vec![[0.0; 5]; np[d]];
-            for t in 0..nlines {
+            for li in 0..nlines {
+                let (ia, ib) = (li % na, li / na);
                 for k in 0..np[d] {
-                    let mut ij = [0usize; 2];
+                    let mut ij = [0usize; 3];
                     ij[d] = k;
-                    ij[o] = t + g[o];
-                    line[k] = wp[ij[0] + np[0] * ij[1]];
+                    ij[o[0]] = ia + g[o[0]];
+                    ij[o[1]] = ib + g[o[1]];
+                    line[k] = wp[ij[0] + np[0] * (ij[1] + np[1] * ij[2])];
                 }
                 for f in 0..nf {
                     let (mut l, mut r) = face_states(cfg.recon, &line, GH + f, self.nv);
@@ -362,13 +442,7 @@ impl Amr {
                     swap_dir(&mut r, d);
                     let mut fl = riemann_flux(law, cfg.riemann, &l, &r);
                     swap_dir(&mut fl, d);
-                    // flux layout: axis 0 -> f + nf t ; axis 1 -> t + n0 f
-                    let at = if d == 0 {
-                        f + nf * t
-                    } else {
-                        t + n[0] * f
-                    };
-                    flux[at] = fl;
+                    flux[f + nf * li] = fl;
                 }
             }
             out[d] = flux;
@@ -378,22 +452,30 @@ impl Amr {
 
     fn residual(
         &self,
-        n: [usize; 2],
-        flux: &[Vec<State>; 2],
+        n: [usize; 3],
+        flux: &[Vec<State>; 3],
         l: usize,
     ) -> Vec<State> {
-        let mut res = vec![[0.0; 5]; n[0] * n[1]];
-        for j in 0..n[1] {
-            for i in 0..n[0] {
-                for c in 0..5 {
-                    let mut r = -(flux[0][i + 1 + (n[0] + 1) * j][c]
-                        - flux[0][i + (n[0] + 1) * j][c])
-                        / self.h(l, 0);
-                    if self.dim == 2 {
-                        r -= (flux[1][i + n[0] * (j + 1)][c] - flux[1][i + n[0] * j][c])
-                            / self.h(l, 1);
+        let mut res = vec![[0.0; 5]; n[0] * n[1] * n[2]];
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    let idx = [i, j, k];
+                    for c in 0..5 {
+                        let mut r = 0.0;
+                        for a in 0..self.dim {
+                            let o = transverse(a);
+                            let li = idx[o[0]] + n[o[0]] * idx[o[1]];
+                            let at = (n[a] + 1) * li + idx[a];
+                            let d = flux[a][at + 1][c] - flux[a][at][c];
+                            if a == 0 {
+                                r = -d / self.h(l, 0);
+                            } else {
+                                r -= d / self.h(l, a);
+                            }
+                        }
+                        res[i + n[0] * (j + n[1] * k)][c] = r;
                     }
-                    res[i + n[0] * j][c] = r;
                 }
             }
         }
@@ -414,7 +496,7 @@ impl Amr {
         self.levels[l].t_old = t;
         self.levels[l].t_new = t + dt;
         let q0: Vec<Vec<State>> = self.levels[l].patches.iter().map(|p| p.q.clone()).collect();
-        let mut eff: Vec<[Vec<State>; 2]> = Vec::new();
+        let mut eff: Vec<[Vec<State>; 3]> = Vec::new();
         let weights = [1.0 / 6.0, 1.0 / 6.0, 4.0 / 6.0];
         let times = [t, t + dt, t + 0.5 * dt];
         let mut qcur = q0.clone();
@@ -435,12 +517,13 @@ impl Amr {
                         [
                             f[0].iter().map(|v| v.map(|x| x * weights[0])).collect(),
                             f[1].iter().map(|v| v.map(|x| x * weights[0])).collect(),
+                            f[2].iter().map(|v| v.map(|x| x * weights[0])).collect(),
                         ]
                     })
                     .collect();
             } else {
                 for k in 0..np {
-                    for a in 0..2 {
+                    for a in 0..self.dim {
                         for (e, f) in eff[k][a].iter_mut().zip(&fl_all[k][a]) {
                             for c in 0..5 {
                                 e[c] += weights[s] * f[c];
@@ -487,23 +570,23 @@ impl Amr {
             let dim = self.dim;
             for p in &mut self.levels[l].patches {
                 for a in 0..dim {
-                    let o = 1 - a;
-                    let ntc = if dim == 2 { p.n[o] / 2 } else { 1 };
+                    let o = transverse(a);
+                    let (na, nb) = (coarsen(p.n[o[0]]), coarsen(p.n[o[1]]));
+                    let ntc = na * nb;
                     for s in 0..2 {
                         if p.reg[a][s].len() != ntc {
                             p.reg[a][s] = vec![[0.0; 5]; ntc];
                         }
                         let face = if s == 0 { 0 } else { p.n[a] };
                         for tc in 0..ntc {
-                            let sub = if dim == 2 { 2 } else { 1 };
+                            let (ca, cb) = (tc % na, tc / na);
+                            let sub =
+                                (if o[0] < dim { 2 } else { 1 }) * (if o[1] < dim { 2 } else { 1 });
                             let mut sum = [0.0; 5];
                             for u in 0..sub {
-                                let t = tc * sub + u;
-                                let at = if a == 0 {
-                                    face + (p.n[0] + 1) * t
-                                } else {
-                                    t + p.n[0] * face
-                                };
+                                let f0 = 2 * ca + u % 2;
+                                let f1 = 2 * cb + u / 2;
+                                let at = face + (p.n[a] + 1) * (f0 + p.n[o[0]] * f1);
                                 for c in 0..5 {
                                     sum[c] += p.flux[a][at][c];
                                 }
@@ -531,12 +614,18 @@ impl Amr {
             && !self.levels[l + 1].patches.is_empty()
         {
             for p in &mut self.levels[l + 1].patches {
-                p.reg = [[Vec::new(), Vec::new()], [Vec::new(), Vec::new()]];
+                p.reg = [
+                    [Vec::new(), Vec::new()],
+                    [Vec::new(), Vec::new()],
+                    [Vec::new(), Vec::new()],
+                ];
             }
             self.advance(l + 1, t, 0.5 * dt)?;
             self.advance(l + 1, t + 0.5 * dt, 0.5 * dt)?;
             self.average_down(l + 1);
-            self.reflux(l + 1, dt);
+            if self.cfg.reflux {
+                self.reflux(l + 1, dt);
+            }
         }
         Ok(())
     }
@@ -546,44 +635,37 @@ impl Amr {
         &mut self,
         lf: usize,
     ) {
-        let sub = if self.dim == 2 { 4.0 } else { 2.0 };
+        let sub = (1u64 << self.dim) as f64;
         let fine = std::mem::take(&mut self.levels[lf].patches);
         for fp in &fine {
-            let (cn, clo) = (
-                [
-                    fp.n[0] / 2,
-                    if self.dim == 2 {
-                        fp.n[1] / 2
-                    } else {
-                        1
-                    },
-                ],
-                [
-                    fp.lo[0] / 2,
-                    if self.dim == 2 {
-                        fp.lo[1] / 2
-                    } else {
-                        0
-                    },
-                ],
-            );
-            for cj in 0..cn[1] {
-                for ci in 0..cn[0] {
-                    let cidx = [clo[0] + ci, clo[1] + cj];
-                    let mut sum = [0.0; 5];
-                    for dj in 0..if self.dim == 2 { 2 } else { 1 } {
-                        for di in 0..2 {
-                            let v = fp.q[(2 * ci + di) + fp.n[0] * (2 * cj + dj)];
-                            for c in 0..5 {
-                                sum[c] += v[c];
+            let mut cn = [1usize; 3];
+            let mut clo = [0usize; 3];
+            for a in 0..self.dim {
+                cn[a] = coarsen(fp.n[a]);
+                clo[a] = fp.lo[a] / 2;
+            }
+            for ck in 0..cn[2] {
+                for cj in 0..cn[1] {
+                    for ci in 0..cn[0] {
+                        let cidx = [clo[0] + ci, clo[1] + cj, clo[2] + ck];
+                        let mut sum = [0.0; 5];
+                        for dk in 0..if self.dim > 2 { 2 } else { 1 } {
+                            for dj in 0..if self.dim > 1 { 2 } else { 1 } {
+                                for di in 0..2 {
+                                    let v = fp.q[(2 * ci + di)
+                                        + fp.n[0] * ((2 * cj + dj) + fp.n[1] * (2 * ck + dk))];
+                                    for c in 0..5 {
+                                        sum[c] += v[c];
+                                    }
+                                }
                             }
                         }
-                    }
-                    if let Some((k, flat)) = self.find(lf - 1, cidx) {
-                        let cp = &mut self.levels[lf - 1].patches[k];
-                        for c in 0..5 {
-                            cp.q[flat][c] = sum[c] / sub;
-                            cp.new[flat][c] = sum[c] / sub;
+                        if let Some((k, flat)) = self.find(lf - 1, cidx) {
+                            let cp = &mut self.levels[lf - 1].patches[k];
+                            for c in 0..5 {
+                                cp.q[flat][c] = sum[c] / sub;
+                                cp.new[flat][c] = sum[c] / sub;
+                            }
                         }
                     }
                 }
@@ -603,20 +685,10 @@ impl Amr {
         let fine = std::mem::take(&mut self.levels[lf].patches);
         for fp in &fine {
             for a in 0..self.dim {
-                let o = 1 - a;
-                let ntc = if self.dim == 2 {
-                    fp.n[o] / 2
-                } else {
-                    1
-                };
-                let clo = [
-                    fp.lo[0] / 2,
-                    if self.dim == 2 {
-                        fp.lo[1] / 2
-                    } else {
-                        0
-                    },
-                ];
+                let o = transverse(a);
+                let (na, nb) = (coarsen(fp.n[o[0]]), coarsen(fp.n[o[1]]));
+                let ntc = na * nb;
+                let clo = [fp.lo[0] / 2, fp.lo[1] / 2, fp.lo[2] / 2];
                 for s in 0..2 {
                     if fp.reg[a][s].len() != ntc {
                         continue;
@@ -624,7 +696,7 @@ impl Amr {
                     let mut ca = if s == 0 {
                         clo[a] as isize - 1
                     } else {
-                        (clo[a] + fp.n[a] / 2) as isize
+                        (clo[a] + coarsen(fp.n[a])) as isize
                     };
                     if ca < 0 || ca >= dom[a] {
                         if self.cfg.fv.bcs[2 * a] != GasBc::Periodic {
@@ -633,15 +705,13 @@ impl Amr {
                         ca = ca.rem_euclid(dom[a]);
                     }
                     for tc in 0..ntc {
-                        let mut cidx = [0usize; 2];
+                        let (ta, tb) = (tc % na, tc / na);
+                        let mut cidx = [0usize; 3];
                         cidx[a] = ca as usize;
-                        cidx[o] = if self.dim == 2 {
-                            clo[o] + tc
-                        } else {
-                            0
-                        };
+                        cidx[o[0]] = clo[o[0]] + ta;
+                        cidx[o[1]] = clo[o[1]] + tb;
                         // skip when the neighbour is itself refined
-                        let fidx = [cidx[0] * 2, cidx[1] * 2];
+                        let fidx = [cidx[0] * 2, cidx[1] * 2, cidx[2] * 2];
                         if fine.iter().any(|p| p.contains(fidx)) {
                             continue;
                         }
@@ -650,17 +720,14 @@ impl Amr {
                         };
                         let hc = self.h(lc, a);
                         let cp = &mut self.levels[lc].patches[k];
-                        let local = [cidx[0] - cp.lo[0], cidx[1] - cp.lo[1]];
+                        let local = [cidx[0] - cp.lo[0], cidx[1] - cp.lo[1], cidx[2] - cp.lo[2]];
                         let face = if s == 0 {
                             local[a] + 1
                         } else {
                             local[a]
                         };
-                        let at = if a == 0 {
-                            face + (cp.n[0] + 1) * local[1]
-                        } else {
-                            local[0] + cp.n[0] * face
-                        };
+                        let li = local[o[0]] + cp.n[o[0]] * local[o[1]];
+                        let at = face + (cp.n[a] + 1) * li;
                         let sign = if s == 0 { -1.0 } else { 1.0 };
                         for c in 0..5 {
                             let corr = sign * (fp.reg[a][s][tc][c] - dt_c * cp.flux[a][at][c]) / hc;
@@ -697,7 +764,7 @@ impl Amr {
     fn current(
         &self,
         l: usize,
-        idx: [isize; 2],
+        idx: [isize; 3],
     ) -> State {
         self.sample_now(l, idx)
     }
@@ -705,17 +772,17 @@ impl Amr {
     fn sample_now(
         &self,
         l: usize,
-        idx: [isize; 2],
+        idx: [isize; 3],
     ) -> State {
         // the current data of every level equal `new` (= `q`); set the interpolation weight to one
         let dom = self.dom(l);
-        let inside = (0..2).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
+        let inside = (0..3).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
         if !inside {
             return match self.bc_map(l, idx) {
                 | Mapped::Fixed(s) => s,
                 | Mapped::Cell(j, flip) => {
-                    let mut s = self.sample_now(l, [j[0] as isize, j[1] as isize]);
-                    for a in 0..2 {
+                    let mut s = self.sample_now(l, [j[0] as isize, j[1] as isize, j[2] as isize]);
+                    for a in 0..3 {
                         if flip[a] {
                             s[1 + a] = -s[1 + a];
                         }
@@ -724,11 +791,15 @@ impl Amr {
                 },
             };
         }
-        let u = [idx[0] as usize, idx[1] as usize];
+        let u = [idx[0] as usize, idx[1] as usize, idx[2] as usize];
         if let Some((k, flat)) = self.find(l, u) {
             return self.levels[l].patches[k].q[flat];
         }
-        let parent = [idx[0].div_euclid(2), idx[1].div_euclid(2)];
+        let parent = [
+            idx[0].div_euclid(2),
+            idx[1].div_euclid(2),
+            idx[2].div_euclid(2),
+        ];
         let q0 = self.sample_now(l - 1, parent);
         let mut out = q0;
         for a in 0..self.dim {
@@ -761,77 +832,105 @@ impl Amr {
             .collect();
         for l in 0..self.cfg.max_level {
             let dom = self.dom(l);
-            let nd = [dom[0] as usize, dom[1] as usize];
+            let nd = [dom[0] as usize, dom[1] as usize, dom[2] as usize];
             // coverage of level l and tags
-            let mut covered = vec![false; nd[0] * nd[1]];
-            let mut tags = vec![false; nd[0] * nd[1]];
+            let mut covered = vec![false; nd[0] * nd[1] * nd[2]];
+            let mut tags = vec![false; nd[0] * nd[1] * nd[2]];
             for p in &self.levels[l].patches {
-                for j in 0..p.n[1] {
-                    for i in 0..p.n[0] {
-                        covered[(p.lo[0] + i) + nd[0] * (p.lo[1] + j)] = true;
+                for k in 0..p.n[2] {
+                    for j in 0..p.n[1] {
+                        for i in 0..p.n[0] {
+                            covered
+                                [(p.lo[0] + i) + nd[0] * ((p.lo[1] + j) + nd[1] * (p.lo[2] + k))] =
+                                true;
+                        }
                     }
                 }
             }
             let law = self.cfg.fv.law;
-            let rho = |idx: [isize; 2]| to_prim(law, self.current(l, idx))[0];
-            for j in 0..nd[1] {
-                for i in 0..nd[0] {
-                    if !covered[i + nd[0] * j] {
-                        continue;
-                    }
-                    let c = [i as isize, j as isize];
-                    let mut ind: f64 = 0.0;
-                    for a in 0..dim {
-                        let (mut p, mut m) = (c, c);
-                        p[a] += 1;
-                        m[a] -= 1;
-                        ind = ind.max((rho(p) - rho(m)).abs() / (2.0 * rho(c).abs().max(1e-12)));
-                    }
-                    if ind > self.cfg.threshold {
-                        tags[i + nd[0] * j] = true;
+            let rho = |idx: [isize; 3]| to_prim(law, self.current(l, idx))[0];
+            for k in 0..nd[2] {
+                for j in 0..nd[1] {
+                    for i in 0..nd[0] {
+                        let cell = i + nd[0] * (j + nd[1] * k);
+                        if !covered[cell] {
+                            continue;
+                        }
+                        let c = [i as isize, j as isize, k as isize];
+                        let mut ind: f64 = 0.0;
+                        for a in 0..dim {
+                            let (mut p, mut m) = (c, c);
+                            p[a] += 1;
+                            m[a] -= 1;
+                            ind =
+                                ind.max((rho(p) - rho(m)).abs() / (2.0 * rho(c).abs().max(1e-12)));
+                        }
+                        if ind > self.cfg.threshold {
+                            tags[cell] = true;
+                        }
                     }
                 }
             }
             // buffer
             let b = self.cfg.buffer as isize;
             let mut buffered = tags.clone();
-            for j in 0..nd[1] {
-                for i in 0..nd[0] {
-                    if !tags[i + nd[0] * j] {
-                        continue;
-                    }
-                    for dj in if dim == 2 { -b..=b } else { 0..=0 } {
-                        for di in -b..=b {
-                            let (ii, jj) = (i as isize + di, j as isize + dj);
-                            if ii >= 0 && ii < dom[0] && jj >= 0 && jj < dom[1] {
-                                buffered[ii as usize + nd[0] * jj as usize] = true;
+            for k in 0..nd[2] {
+                for j in 0..nd[1] {
+                    for i in 0..nd[0] {
+                        if !tags[i + nd[0] * (j + nd[1] * k)] {
+                            continue;
+                        }
+                        for dk in if dim > 2 { -b..=b } else { 0..=0 } {
+                            for dj in if dim > 1 { -b..=b } else { 0..=0 } {
+                                for di in -b..=b {
+                                    let (ii, jj, kk) =
+                                        (i as isize + di, j as isize + dj, k as isize + dk);
+                                    if ii >= 0
+                                        && ii < dom[0]
+                                        && jj >= 0
+                                        && jj < dom[1]
+                                        && kk >= 0
+                                        && kk < dom[2]
+                                    {
+                                        buffered[ii as usize
+                                            + nd[0] * (jj as usize + nd[1] * kk as usize)] = true;
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
             // proper nesting: only cells whose +-2 neighbourhood is covered by level l may be refined
-            let mut nested = vec![false; nd[0] * nd[1]];
-            for j in 0..nd[1] {
-                for i in 0..nd[0] {
-                    if !covered[i + nd[0] * j] {
-                        continue;
-                    }
-                    let mut ok = true;
-                    for dj in if dim == 2 { -2..=2 } else { 0..=0 } {
-                        for di in -2..=2 {
-                            let (ii, jj) = (i as isize + di, j as isize + dj);
-                            if ii >= 0
-                                && ii < dom[0]
-                                && jj >= 0
-                                && jj < dom[1]
-                                && !covered[ii as usize + nd[0] * jj as usize]
-                            {
-                                ok = false;
+            let mut nested = vec![false; nd[0] * nd[1] * nd[2]];
+            for k in 0..nd[2] {
+                for j in 0..nd[1] {
+                    for i in 0..nd[0] {
+                        if !covered[i + nd[0] * (j + nd[1] * k)] {
+                            continue;
+                        }
+                        let mut ok = true;
+                        for dk in if dim > 2 { -2..=2 } else { 0..=0 } {
+                            for dj in if dim > 1 { -2..=2 } else { 0..=0 } {
+                                for di in -2..=2 {
+                                    let (ii, jj, kk) =
+                                        (i as isize + di, j as isize + dj, k as isize + dk);
+                                    if ii >= 0
+                                        && ii < dom[0]
+                                        && jj >= 0
+                                        && jj < dom[1]
+                                        && kk >= 0
+                                        && kk < dom[2]
+                                        && !covered[ii as usize
+                                            + nd[0] * (jj as usize + nd[1] * kk as usize)]
+                                    {
+                                        ok = false;
+                                    }
+                                }
                             }
                         }
+                        nested[i + nd[0] * (j + nd[1] * k)] = ok;
                     }
-                    nested[i + nd[0] * j] = ok;
                 }
             }
             let allowed: Vec<bool> = buffered
@@ -839,22 +938,31 @@ impl Amr {
                 .zip(&nested)
                 .map(|(a, b)| *a && *b)
                 .collect();
-            let boxes = cluster(&allowed, &nested, nd, self.cfg.efficiency);
+            let boxes = cluster(&allowed, &nested, nd, self.cfg.efficiency, dim);
             let mut patches = Vec::new();
             for (clo, cn) in boxes {
-                let flo = [clo[0] * 2, if dim == 2 { clo[1] * 2 } else { 0 }];
-                let fnn = [cn[0] * 2, if dim == 2 { cn[1] * 2 } else { 1 }];
-                let mut q = Vec::with_capacity(fnn[0] * fnn[1]);
-                for j in 0..fnn[1] {
-                    for i in 0..fnn[0] {
-                        let gi = [flo[0] + i, flo[1] + j];
-                        // copy from an old patch of the same level when possible
-                        let from_old = old_levels.get(l).and_then(|ps| {
-                            ps.iter().find(|p| p.contains(gi)).map(|p| p.q[p.flat(gi)])
-                        });
-                        q.push(from_old.unwrap_or_else(|| {
-                            self.sample_now(l + 1, [gi[0] as isize, gi[1] as isize])
-                        }));
+                let mut flo = [0usize; 3];
+                let mut fnn = [1usize; 3];
+                for a in 0..dim {
+                    flo[a] = clo[a] * 2;
+                    fnn[a] = cn[a] * 2;
+                }
+                let mut q = Vec::with_capacity(fnn[0] * fnn[1] * fnn[2]);
+                for k in 0..fnn[2] {
+                    for j in 0..fnn[1] {
+                        for i in 0..fnn[0] {
+                            let gi = [flo[0] + i, flo[1] + j, flo[2] + k];
+                            // copy from an old patch of the same level when possible
+                            let from_old = old_levels.get(l).and_then(|ps| {
+                                ps.iter().find(|p| p.contains(gi)).map(|p| p.q[p.flat(gi)])
+                            });
+                            q.push(from_old.unwrap_or_else(|| {
+                                self.sample_now(
+                                    l + 1,
+                                    [gi[0] as isize, gi[1] as isize, gi[2] as isize],
+                                )
+                            }));
+                        }
                     }
                 }
                 patches.push(Patch::new(flo, fnn, q));
@@ -870,36 +978,49 @@ impl Amr {
 fn cluster(
     tags: &[bool],
     valid: &[bool],
-    nd: [usize; 2],
+    nd: [usize; 3],
     eff: f64,
-) -> Vec<([usize; 2], [usize; 2])> {
+    dim: usize,
+) -> Vec<([usize; 3], [usize; 3])> {
     let mut out = Vec::new();
-    let tagged = |i: usize, j: usize| tags[i + nd[0] * j];
+    let tagged = |i: [usize; 3]| tags[i[0] + nd[0] * (i[1] + nd[1] * i[2])];
     // bounding box of a region
-    let bbox = |lo: [usize; 2], hi: [usize; 2]| -> Option<([usize; 2], [usize; 2], usize)> {
-        let (mut bl, mut bh, mut cnt) = ([usize::MAX; 2], [0usize; 2], 0usize);
-        for j in lo[1]..hi[1] {
-            for i in lo[0]..hi[0] {
-                if tagged(i, j) {
-                    bl[0] = bl[0].min(i);
-                    bl[1] = bl[1].min(j);
-                    bh[0] = bh[0].max(i + 1);
-                    bh[1] = bh[1].max(j + 1);
-                    cnt += 1;
+    let bbox = |lo: [usize; 3], hi: [usize; 3]| -> Option<([usize; 3], [usize; 3], usize)> {
+        let (mut bl, mut bh, mut cnt) = ([usize::MAX; 3], [0usize; 3], 0usize);
+        for k in lo[2]..hi[2] {
+            for j in lo[1]..hi[1] {
+                for i in lo[0]..hi[0] {
+                    if tagged([i, j, k]) {
+                        bl[0] = bl[0].min(i);
+                        bl[1] = bl[1].min(j);
+                        bl[2] = bl[2].min(k);
+                        bh[0] = bh[0].max(i + 1);
+                        bh[1] = bh[1].max(j + 1);
+                        bh[2] = bh[2].max(k + 1);
+                        cnt += 1;
+                    }
                 }
             }
         }
         (cnt > 0).then_some((bl, bh, cnt))
     };
-    let mut stack = vec![([0usize, 0usize], nd)];
+    let mut stack = vec![([0usize; 3], nd)];
     while let Some((lo, hi)) = stack.pop() {
         let Some((bl, bh, cnt)) = bbox(lo, hi) else {
             continue;
         };
-        let size = [bh[0] - bl[0], bh[1] - bl[1]];
-        let fraction = cnt as f64 / (size[0] * size[1]) as f64;
-        let axis = usize::from(size[1] > size[0]);
-        let all_valid = (bl[1]..bh[1]).all(|j| (bl[0]..bh[0]).all(|i| valid[i + nd[0] * j]));
+        let size = [bh[0] - bl[0], bh[1] - bl[1], bh[2] - bl[2]];
+        let fraction = cnt as f64 / (size[0] * size[1] * size[2]) as f64;
+        // the longest side is split; a tie keeps the lowest axis
+        let mut axis = 0;
+        for a in 1..dim {
+            if size[a] > size[axis] {
+                axis = a;
+            }
+        }
+        let all_valid = (bl[2]..bh[2]).all(|k| {
+            (bl[1]..bh[1]).all(|j| (bl[0]..bh[0]).all(|i| valid[i + nd[0] * (j + nd[1] * k)]))
+        });
         if all_valid && (fraction >= eff || size[axis] < 4) {
             out.push((bl, size));
             continue;
@@ -917,14 +1038,16 @@ fn cluster(
             }
             let mut count = 0;
             let slice = if cut == 0 { 0 } else { cut - 1 };
-            for t in bl[1 - axis]..bh[1 - axis] {
-                let (i, j) = if axis == 0 {
-                    (slice, t)
-                } else {
-                    (t, slice)
-                };
-                if tagged(i, j) {
-                    count += 1;
+            let o = transverse(axis);
+            for t1 in bl[o[0]]..bh[o[0]] {
+                for t0 in bl[o[1]]..bh[o[1]] {
+                    let mut p = [0usize; 3];
+                    p[axis] = slice;
+                    p[o[0]] = t1;
+                    p[o[1]] = t0;
+                    if tagged(p) {
+                        count += 1;
+                    }
                 }
             }
             if count < best.0
@@ -949,7 +1072,7 @@ pub struct AmrLevelData {
     /// Level number (0 is the base grid).
     pub level: usize,
     /// Patches as `(lower index, size, conserved states)` in the index space of the level.
-    pub patches: Vec<([usize; 2], [usize; 2], Vec<State>)>,
+    pub patches: Vec<([usize; 3], [usize; 3], Vec<State>)>,
 }
 
 /// Final state of an AMR run.
@@ -972,18 +1095,23 @@ impl AmrSolution {
     pub fn cells_per_level(&self) -> Vec<usize> {
         self.levels
             .iter()
-            .map(|l| l.patches.iter().map(|p| p.1[0] * p.1[1]).sum())
+            .map(|l| l.patches.iter().map(|p| p.1[0] * p.1[1] * p.1[2]).sum())
             .collect()
     }
 
     fn covered(
         &self,
         level: usize,
-        idx: [usize; 2],
+        idx: [usize; 3],
     ) -> bool {
         self.levels.get(level).is_some_and(|l| {
             l.patches.iter().any(|(lo, n, _)| {
-                idx[0] >= lo[0] && idx[0] < lo[0] + n[0] && idx[1] >= lo[1] && idx[1] < lo[1] + n[1]
+                idx[0] >= lo[0]
+                    && idx[0] < lo[0] + n[0]
+                    && idx[1] >= lo[1]
+                    && idx[1] < lo[1] + n[1]
+                    && idx[2] >= lo[2]
+                    && idx[2] < lo[2] + n[2]
             })
         })
     }
@@ -997,14 +1125,16 @@ impl AmrSolution {
                 .map(|a| self.grid.h(a) / (1u64 << lv.level) as f64)
                 .product();
             for (lo, n, q) in &lv.patches {
-                for j in 0..n[1] {
-                    for i in 0..n[0] {
-                        let idx = [2 * (lo[0] + i), 2 * (lo[1] + j)];
-                        if self.covered(lv.level + 1, idx) {
-                            continue;
-                        }
-                        for c in 0..5 {
-                            s[c] += q[i + n[0] * j][c] * vol;
+                for k in 0..n[2] {
+                    for j in 0..n[1] {
+                        for i in 0..n[0] {
+                            let idx = [2 * (lo[0] + i), 2 * (lo[1] + j), 2 * (lo[2] + k)];
+                            if self.covered(lv.level + 1, idx) {
+                                continue;
+                            }
+                            for c in 0..5 {
+                                s[c] += q[i + n[0] * (j + n[1] * k)][c] * vol;
+                            }
                         }
                     }
                 }
@@ -1025,31 +1155,42 @@ impl AmrSolution {
             let f = (1u64 << lv.level) as f64;
             let h = [
                 self.grid.h(0) / f,
-                if dim == 2 {
+                if dim > 1 {
                     self.grid.h(1) / f
                 } else {
                     1.0
                 },
+                if dim > 2 {
+                    self.grid.h(2) / f
+                } else {
+                    1.0
+                },
             ];
-            let vol = h[0] * if dim == 2 { h[1] } else { 1.0 };
+            let vol = h[0] * if dim > 1 { h[1] } else { 1.0 } * if dim > 2 { h[2] } else { 1.0 };
             for (lo, n, q) in &lv.patches {
-                for j in 0..n[1] {
-                    for i in 0..n[0] {
-                        let idx = [2 * (lo[0] + i), 2 * (lo[1] + j)];
-                        if self.covered(lv.level + 1, idx) {
-                            continue;
+                for k in 0..n[2] {
+                    for j in 0..n[1] {
+                        for i in 0..n[0] {
+                            let idx = [2 * (lo[0] + i), 2 * (lo[1] + j), 2 * (lo[2] + k)];
+                            if self.covered(lv.level + 1, idx) {
+                                continue;
+                            }
+                            let x = [
+                                self.grid.lo[0] + ((lo[0] + i) as f64 + 0.5) * h[0],
+                                if dim > 1 {
+                                    self.grid.lo[1] + ((lo[1] + j) as f64 + 0.5) * h[1]
+                                } else {
+                                    0.0
+                                },
+                                if dim > 2 {
+                                    self.grid.lo[2] + ((lo[2] + k) as f64 + 0.5) * h[2]
+                                } else {
+                                    0.0
+                                },
+                            ];
+                            let w = to_prim(self.law, q[i + n[0] * (j + n[1] * k)]);
+                            sum += (w[component] - exact(x)).abs() * vol;
                         }
-                        let x = [
-                            self.grid.lo[0] + ((lo[0] + i) as f64 + 0.5) * h[0],
-                            if dim == 2 {
-                                self.grid.lo[1] + ((lo[1] + j) as f64 + 0.5) * h[1]
-                            } else {
-                                0.0
-                            },
-                            0.0,
-                        ];
-                        let w = to_prim(self.law, q[i + n[0] * j]);
-                        sum += (w[component] - exact(x)).abs() * vol;
                     }
                 }
             }
@@ -1066,31 +1207,46 @@ impl AmrSolution {
         let f = 1usize << level;
         let n = [
             self.grid.n[0] * f,
-            if self.grid.dim == 2 {
+            if self.grid.dim > 1 {
                 self.grid.n[1] * f
             } else {
                 1
             },
+            if self.grid.dim > 2 {
+                self.grid.n[2] * f
+            } else {
+                1
+            },
         ];
-        let mut out = vec![[0.0; 5]; n[0] * n[1]];
-        for j in 0..n[1] {
-            for i in 0..n[0] {
-                // finest covering level not above `level`
-                let mut found = None;
-                for l in (0..=level.min(self.levels.len() - 1)).rev() {
-                    let sh = level - l;
-                    let idx = [i >> sh, j >> sh];
-                    if let Some((lo, nn, q)) = self.levels[l].patches.iter().find(|(lo, nn, _)| {
-                        idx[0] >= lo[0]
-                            && idx[0] < lo[0] + nn[0]
-                            && idx[1] >= lo[1]
-                            && idx[1] < lo[1] + nn[1]
-                    }) {
-                        found = Some(q[(idx[0] - lo[0]) + nn[0] * (idx[1] - lo[1])]);
-                        break;
+        let mut out = vec![[0.0; 5]; n[0] * n[1] * n[2]];
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    // finest covering level not above `level`
+                    let mut found = None;
+                    for l in (0..=level.min(self.levels.len() - 1)).rev() {
+                        let sh = level - l;
+                        let idx = [i >> sh, j >> sh, k >> sh];
+                        if let Some((lo, nn, q)) =
+                            self.levels[l].patches.iter().find(|(lo, nn, _)| {
+                                idx[0] >= lo[0]
+                                    && idx[0] < lo[0] + nn[0]
+                                    && idx[1] >= lo[1]
+                                    && idx[1] < lo[1] + nn[1]
+                                    && idx[2] >= lo[2]
+                                    && idx[2] < lo[2] + nn[2]
+                            })
+                        {
+                            found = Some(
+                                q[(idx[0] - lo[0])
+                                    + nn[0] * ((idx[1] - lo[1]) + nn[1] * (idx[2] - lo[2]))],
+                            );
+                            break;
+                        }
                     }
+                    out[i + n[0] * (j + n[1] * k)] =
+                        to_prim(self.law, found.unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0]));
                 }
-                out[i + n[0] * j] = to_prim(self.law, found.unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0]));
             }
         }
         out
@@ -1100,16 +1256,17 @@ impl AmrSolution {
 /// Runs the AMR solver from primitive initial data (evaluated at the cell centres of every level) to `t_end`.
 ///
 /// # Errors
-/// For 3D grids, unsupported boundary conditions, a CFL number outside
-/// `(0, 1)`, non-admissible initial data or a blown-up solution.
+/// For shallow water in 3D, unsupported boundary conditions, a CFL number
+/// outside `(0, 1)`, a base grid with an odd number of cells, non-admissible
+/// initial data or a blown-up solution.
 pub fn solve_amr(
     grid: &FvGrid,
     cfg: &AmrConfig,
     init: &dyn Fn([f64; 3]) -> State,
     t_end: f64,
 ) -> Result<AmrSolution, String> {
-    if grid.dim > 2 {
-        return Err("AMR is available in 1D and 2D".into());
+    if grid.dim > 2 && matches!(cfg.fv.law, Law::ShallowWater { .. }) {
+        return Err("shallow water is available in 1D and 2D".into());
     }
     if !(cfg.fv.cfl > 0.0 && cfg.fv.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
@@ -1127,50 +1284,54 @@ pub fn solve_amr(
             return Err("periodic must be set on both faces of an axis".into());
         }
     }
-    if !grid.n[0].is_multiple_of(2) || (grid.dim == 2 && !grid.n[1].is_multiple_of(2)) {
+    if (0..grid.dim).any(|a| !grid.n[a].is_multiple_of(2)) {
         return Err("the base grid needs an even number of cells per axis".into());
     }
     let nv = match cfg.fv.law {
         | Law::Euler { .. } => 5,
         | Law::ShallowWater { .. } => 1 + grid.dim,
     };
-    let n0 = [
-        grid.n[0],
-        if grid.dim == 2 {
-            grid.n[1]
-        } else {
-            1
-        },
-    ];
+    let n0 = grid.n;
     let h0 = [
         grid.h(0),
-        if grid.dim == 2 {
+        if grid.dim > 1 {
             grid.h(1)
         } else {
             1.0
         },
+        if grid.dim > 2 {
+            grid.h(2)
+        } else {
+            1.0
+        },
     ];
-    let mut q = Vec::with_capacity(n0[0] * n0[1]);
-    for j in 0..n0[1] {
-        for i in 0..n0[0] {
-            let x = [
-                grid.lo[0] + (i as f64 + 0.5) * h0[0],
-                if grid.dim == 2 {
-                    grid.lo[1] + (j as f64 + 0.5) * h0[1]
-                } else {
-                    0.0
-                },
-                0.0,
-            ];
-            let w = init(x);
-            if !admissible(cfg.fv.law, &w) {
-                return Err("initial state is not admissible".into());
+    let mut q = Vec::with_capacity(n0[0] * n0[1] * n0[2]);
+    for k in 0..n0[2] {
+        for j in 0..n0[1] {
+            for i in 0..n0[0] {
+                let x = [
+                    grid.lo[0] + (i as f64 + 0.5) * h0[0],
+                    if grid.dim > 1 {
+                        grid.lo[1] + (j as f64 + 0.5) * h0[1]
+                    } else {
+                        0.0
+                    },
+                    if grid.dim > 2 {
+                        grid.lo[2] + (k as f64 + 0.5) * h0[2]
+                    } else {
+                        0.0
+                    },
+                ];
+                let w = init(x);
+                if !admissible(cfg.fv.law, &w) {
+                    return Err("initial state is not admissible".into());
+                }
+                q.push(to_cons(cfg.fv.law, w));
             }
-            q.push(to_cons(cfg.fv.law, w));
         }
     }
     let mut levels = vec![Level {
-        patches: vec![Patch::new([0, 0], n0, q)],
+        patches: vec![Patch::new([0, 0, 0], n0, q)],
         t_old: 0.0,
         t_new: 0.0,
     }];
@@ -1252,22 +1413,28 @@ impl Amr {
         let law = self.cfg.fv.law;
         let dim = self.dim;
         for l in 1..self.levels.len() {
-            let hs = [self.h(l, 0), self.h(l, 1)];
+            let hs = [self.h(l, 0), self.h(l, 1), self.h(l, 2)];
             for p in &mut self.levels[l].patches {
-                for j in 0..p.n[1] {
-                    for i in 0..p.n[0] {
-                        let x = [
-                            grid.lo[0] + ((p.lo[0] + i) as f64 + 0.5) * hs[0],
-                            if dim == 2 {
-                                grid.lo[1] + ((p.lo[1] + j) as f64 + 0.5) * hs[1]
-                            } else {
-                                0.0
-                            },
-                            0.0,
-                        ];
-                        let w = init(x);
-                        if admissible(law, &w) {
-                            p.q[i + p.n[0] * j] = to_cons(law, w);
+                for k in 0..p.n[2] {
+                    for j in 0..p.n[1] {
+                        for i in 0..p.n[0] {
+                            let x = [
+                                grid.lo[0] + ((p.lo[0] + i) as f64 + 0.5) * hs[0],
+                                if dim > 1 {
+                                    grid.lo[1] + ((p.lo[1] + j) as f64 + 0.5) * hs[1]
+                                } else {
+                                    0.0
+                                },
+                                if dim > 2 {
+                                    grid.lo[2] + ((p.lo[2] + k) as f64 + 0.5) * hs[2]
+                                } else {
+                                    0.0
+                                },
+                            ];
+                            let w = init(x);
+                            if admissible(law, &w) {
+                                p.q[i + p.n[0] * (j + p.n[1] * k)] = to_cons(law, w);
+                            }
                         }
                     }
                 }

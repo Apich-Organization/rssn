@@ -737,3 +737,326 @@ fn cluster_updates_with_a_field_agree_with_heat_bath_for_o_n_models() {
     check::<2>(500);
     check::<3>(510);
 }
+
+// ---------------------------------------------------------------------------
+// Next-nearest neighbours (J2)
+// ---------------------------------------------------------------------------
+
+/// One bond as a pair of site indices.
+type Bond = (usize, usize);
+
+/// Nearest-neighbour and diagonal bond lists.
+type Bonds = (Vec<Bond>, Vec<Bond>);
+
+/// Brute-force bond lists `(nearest, diagonal)` of a hypercubic lattice, derived from the site
+/// coordinates alone: two sites are a diagonal pair when their minimum-image coordinate
+/// differences vanish everywhere except on exactly two axes, where they are one.
+fn brute_bonds<const D: usize>(
+    dims: [usize; D],
+    periodic: bool,
+) -> Bonds {
+    let n: usize = dims.iter().product();
+    let mut stride = [1usize; D];
+    for k in 1..D {
+        stride[k] = stride[k - 1] * dims[k - 1];
+    }
+    let coord = |i: usize| -> Vec<usize> { (0..D).map(|k| (i / stride[k]) % dims[k]).collect() };
+    let (mut nn, mut diag) = (Vec::new(), Vec::new());
+    for i in 0..n {
+        let ci = coord(i);
+        for j in (i + 1)..n {
+            let cj = coord(j);
+            let (mut unit, mut rest) = (0usize, 0usize);
+            for k in 0..D {
+                let d = ci[k].abs_diff(cj[k]);
+                let m = if periodic {
+                    d.min(dims[k] - d)
+                } else {
+                    d
+                };
+                if m == 1 {
+                    unit += 1;
+                } else if m != 0 {
+                    rest += 1;
+                }
+            }
+            if rest == 0 && unit == 1 {
+                nn.push((i, j));
+            } else if rest == 0 && unit == 2 {
+                diag.push((i, j));
+            }
+        }
+    }
+    (nn, diag)
+}
+
+/// Energy of an Ising configuration from explicit bond lists.
+fn ising_energy_of(
+    spins: &[f64],
+    bonds: &Bonds,
+    (j, j2, h): (f64, f64, f64),
+) -> f64 {
+    let mut e = 0.0;
+    for &(i, k) in &bonds.0 {
+        e -= j * spins[i] * spins[k];
+    }
+    for &(i, k) in &bonds.1 {
+        e -= j2 * spins[i] * spins[k];
+    }
+    for &s in spins {
+        e -= h * s;
+    }
+    e
+}
+
+fn check_diagonal_table<const D: usize>(
+    dims: [usize; D],
+    periodic: bool,
+) -> usize {
+    let lat = Lattice::new(dims, periodic).unwrap();
+    let (nn, diag) = brute_bonds(dims, periodic);
+    assert_eq!(lat.bonds(), nn.len(), "{dims:?}");
+    assert_eq!(lat.diagonal_bonds(), diag.len(), "{dims:?}");
+    let mut seen = std::collections::BTreeSet::new();
+    for i in 0..lat.sites() {
+        for &j in lat.second_neighbours(i) {
+            if j == usize::MAX {
+                continue;
+            }
+            assert_ne!(i, j);
+            assert!(
+                lat.second_neighbours(j).contains(&i),
+                "{dims:?}: {i} -> {j} is not mutual"
+            );
+            seen.insert((i.min(j), i.max(j)));
+        }
+    }
+    assert_eq!(
+        seen.iter().copied().collect::<Vec<_>>(),
+        diag,
+        "{dims:?}: diagonal table differs from the brute-force bond list"
+    );
+    diag.len()
+}
+
+#[test]
+fn diagonal_bond_table_matches_a_coordinate_brute_force() {
+    assert_eq!(check_diagonal_table([4, 4], true), 32);
+    assert_eq!(check_diagonal_table([4, 4], false), 18);
+    assert_eq!(check_diagonal_table([3, 5], true), 30);
+    // odd side lengths with periodic wrapping: 4 diagonals per site, 18 bonds
+    assert_eq!(check_diagonal_table([3, 3], true), 18);
+    assert_eq!(check_diagonal_table([4, 4, 4], true), 384);
+    assert_eq!(check_diagonal_table([3, 3, 3], true), 162);
+    // open 3x3x3: 3 axis pairs x 2 (3-1)^2 diagonals per plane x 3 planes
+    assert_eq!(check_diagonal_table([3, 3, 3], false), 72);
+    assert_eq!(check_diagonal_table([10], true), 0);
+    assert_eq!(
+        Lattice::new([6, 6], true)
+            .unwrap()
+            .second_neighbours(0)
+            .len(),
+        4
+    );
+    assert_eq!(
+        Lattice::new([6, 6, 6], true)
+            .unwrap()
+            .second_neighbours(0)
+            .len(),
+        12
+    );
+    // an open 1-wide strip has no diagonal neighbours at all
+    assert!(
+        Lattice::new([1, 5], false)
+            .unwrap()
+            .second_neighbours(0)
+            .iter()
+            .all(|&j| j == usize::MAX)
+    );
+}
+
+#[test]
+fn next_nearest_neighbour_energy_matches_an_explicit_bond_sum() {
+    let dims = [5usize, 6];
+    let bonds = brute_bonds(dims, true);
+    let mut m = OnModel::<2, 1>::new(dims, true, 0.7, 901).unwrap();
+    m.j = 0.9;
+    m.j2 = -0.43;
+    m.field = 0.21;
+    let n = m.lattice.sites();
+    let spins: Vec<f64> = m.spins.iter().map(|s| s[0]).collect();
+    let explicit = ising_energy_of(&spins, &bonds, (m.j, m.j2, m.field));
+    assert!(
+        (m.energy() - explicit).abs() < 1e-10,
+        "energy {} vs explicit {explicit}",
+        m.energy()
+    );
+    // the local field is the incremental path: -1/2 sum_i s_i . (f_i - h e_0) - h sum_i s_i
+    let mut incremental = 0.0;
+    for i in 0..n {
+        let f = m.local_field_public(i);
+        incremental -= 0.5 * (m.spins[i][0] * f[0] - m.field * m.spins[i][0]);
+    }
+    incremental -= m.field * spins.iter().sum::<f64>();
+    assert!(
+        (incremental - explicit).abs() < 1e-10,
+        "local field {incremental} vs explicit {explicit}"
+    );
+    // j2 = 0 reproduces the nearest-neighbour energy exactly
+    m.j2 = 0.0;
+    let nn_only = ising_energy_of(&spins, &bonds, (m.j, 0.0, m.field));
+    assert!((m.energy() - nn_only).abs() < 1e-10);
+    // and so does a three-dimensional lattice with open boundaries
+    let dims3 = [4usize, 3, 5];
+    let bonds3 = brute_bonds(dims3, false);
+    let mut m3 = OnModel::<3, 1>::new(dims3, false, 0.4, 902).unwrap();
+    m3.j = -1.3;
+    m3.j2 = 0.77;
+    m3.field = -0.11;
+    let spins3: Vec<f64> = m3.spins.iter().map(|s| s[0]).collect();
+    let explicit3 = ising_energy_of(&spins3, &bonds3, (m3.j, m3.j2, m3.field));
+    assert!((m3.energy() - explicit3).abs() < 1e-10);
+    assert!(m3.lattice.diagonal_bonds() > 0);
+}
+
+#[test]
+fn cluster_updates_with_next_nearest_neighbours_reproduce_exact_averages() {
+    // 4x4 periodic Ising with a frustrated diagonal coupling and a field, exact by enumeration
+    let (beta, j, j2, h) = (0.5, 1.0, -0.6, 0.25);
+    let dims = [4usize, 4];
+    let n = 16;
+    let bonds = brute_bonds(dims, true);
+    let (mut z, mut e_acc, mut m_acc) = (0.0, 0.0, 0.0);
+    for state in 0u32..(1 << n) {
+        let spins: Vec<f64> = (0..n)
+            .map(|i| {
+                if (state >> i) & 1 == 1 {
+                    1.0
+                } else {
+                    -1.0
+                }
+            })
+            .collect();
+        let e = ising_energy_of(&spins, &bonds, (j, j2, h));
+        let w = (-beta * e).exp();
+        z += w;
+        e_acc += w * e;
+        m_acc += w * spins.iter().sum::<f64>();
+    }
+    let (e_ex, m_ex) = (e_acc / z / n as f64, m_acc / z / n as f64);
+    for upd in [Update::Wolff, Update::SwendsenWang, Update::HeatBath] {
+        let mut model = OnModel::<2, 1>::new(dims, true, beta, 903).unwrap();
+        model.j = j;
+        model.j2 = j2;
+        model.field = h;
+        let (mut es, mut ms) = (Vec::new(), Vec::new());
+        for k in 0..100_000 {
+            model.update(upd).unwrap();
+            if k > 2_000 {
+                es.push(model.energy() / n as f64);
+                ms.push(model.magnetisation()[0] / n as f64);
+            }
+        }
+        let (e, ee) = mean_and_error(&es);
+        let (m, me) = mean_and_error(&ms);
+        assert!(
+            (e - e_ex).abs() < 5.0 * ee + 0.02,
+            "{upd:?}: e = {e} +- {ee} vs {e_ex}"
+        );
+        assert!(
+            (m - m_ex).abs() < 5.0 * me + 0.02,
+            "{upd:?}: m = {m} +- {me} vs {m_ex}"
+        );
+    }
+}
+
+#[test]
+fn xy_cluster_updates_with_next_nearest_neighbours_match_heat_bath() {
+    for j2 in [-0.5, 0.5] {
+        let mut a = OnModel::<2, 2>::new([6, 6], true, 1.5, 904).unwrap();
+        let mut b = OnModel::<2, 2>::new([6, 6], true, 1.5, 905).unwrap();
+        let mut c = OnModel::<2, 2>::new([6, 6], true, 1.5, 906).unwrap();
+        for m in [&mut a, &mut b, &mut c] {
+            m.j2 = j2;
+        }
+        let (ea, _) = series_on(&mut a, Update::HeatBath, 500, 20_000);
+        let (eb, _) = series_on(&mut b, Update::Wolff, 500, 20_000);
+        let (ec, _) = series_on(&mut c, Update::SwendsenWang, 500, 20_000);
+        agree(&ea, &eb, 5.0, 0.01);
+        agree(&ea, &ec, 5.0, 0.01);
+    }
+}
+
+#[test]
+fn square_lattice_is_neel_below_and_striped_above_the_j2_critical_ratio() {
+    // `H = -J sum_nn - J2 sum_diag`, so the literature's antiferromagnetic `J1 = J2 = 1` model is
+    // `j = -1`, `j2 = -ratio`, and `j2 / j` is the literature's `J2 / J1` (critical near 0.5).
+    //
+    // Order parameters: `neel = |sum (-1)^(x+y) s| / N` and `stripe = |sum (-1)^x s| / N +
+    // |sum (-1)^y s| / N`, which is 1 for any stripe state (the two orientations add up) and 0 for
+    // both the Neel and the ferromagnetic state.
+    let run = |ratio: f64, seed: u64| -> (f64, f64, f64) {
+        let mut m = OnModel::<2, 1>::new([12, 12], true, 0.5, seed).unwrap();
+        m.j = -1.0;
+        m.j2 = -ratio;
+        let n = m.lattice.sites();
+        let lx = m.lattice.dims[0];
+        for step in 0..60 {
+            m.beta = 0.5 + 0.1 * f64::from(step);
+            for _ in 0..30 {
+                m.heat_bath_sweep().unwrap();
+            }
+        }
+        m.beta = 6.5;
+        for _ in 0..600 {
+            m.heat_bath_sweep().unwrap();
+        }
+        let samples = 300;
+        let (mut neel, mut stripe, mut e) = (0.0, 0.0, 0.0);
+        for _ in 0..samples {
+            m.heat_bath_sweep().unwrap();
+            let (mut mn, mut mx, mut my) = (0.0, 0.0, 0.0);
+            for i in 0..n {
+                let x = i % lx;
+                let y = i / lx;
+                let s = m.spins[i][0];
+                mn += if (x + y).is_multiple_of(2) {
+                    s
+                } else {
+                    -s
+                };
+                mx += if x.is_multiple_of(2) { s } else { -s };
+                my += if y.is_multiple_of(2) { s } else { -s };
+            }
+            let inv = 1.0 / n as f64;
+            neel += (mn * inv).abs();
+            stripe += (mx * inv).abs() + (my * inv).abs();
+            e += m.energy() * inv;
+        }
+        (
+            neel / f64::from(samples),
+            stripe / f64::from(samples),
+            e / f64::from(samples),
+        )
+    };
+    let (neel_low, stripe_low, e_low) = run(0.2, 911);
+    let (neel_high, stripe_high, e_high) = run(0.8, 912);
+    assert!(neel_low > 0.8, "Neel order at J2/J1 = 0.2 is {neel_low}");
+    assert!(
+        stripe_low < 0.2,
+        "stripe order at J2/J1 = 0.2 is {stripe_low}"
+    );
+    assert!(
+        stripe_high > 0.8,
+        "stripe order at J2/J1 = 0.8 is {stripe_high}"
+    );
+    assert!(neel_high < 0.2, "Neel order at J2/J1 = 0.8 is {neel_high}");
+    assert!(
+        neel_low > neel_high + 0.5 && stripe_high > stripe_low + 0.5,
+        "the two order parameters do not separate: Neel {neel_low}/{neel_high}, \
+         stripe {stripe_low}/{stripe_high}"
+    );
+    // ground-state energies per site are -1.6 in both phases
+    assert!(e_low < -1.4, "energy at J2/J1 = 0.2 is {e_low}");
+    assert!(e_high < -1.4, "energy at J2/J1 = 0.8 is {e_high}");
+}

@@ -45,12 +45,20 @@
 //! # A worked example
 //!
 //! ```no_run
-//! use rssn::kernel::{CallCtx, OpError, Signature, TypeExpr, Value};
+//! use rssn::kernel::CallCtx;
+//! use rssn::kernel::OpError;
+//! use rssn::kernel::Signature;
+//! use rssn::kernel::TypeExpr;
+//! use rssn::kernel::Value;
 //!
 //! # fn run(session: &rssn::api::Session) -> Result<(), OpError> {
 //! // What does the kernel claim to be?
 //! let manifest = session.manifest();
-//! println!("{} operators, hash {:016x}", manifest.ops.len(), manifest.hash_u64());
+//! println!(
+//!     "{} operators, hash {:016x}",
+//!     manifest.ops.len(),
+//!     manifest.hash_u64()
+//! );
 //!
 //! // Call an operator by name, dynamically, with a checked argument list.
 //! let value = session.call_value("sin", &[Value::Real(0.5)], CallCtx::new())?;
@@ -75,29 +83,89 @@ pub mod result;
 pub mod signature;
 pub mod value;
 
-pub use call::{Assumption, CallCtx, Kernel, OpError, Target, Trace, TraceEvent};
+pub use call::Assumption;
+pub use call::CallCtx;
+pub use call::Kernel;
+pub use call::OpError;
+pub use call::Target;
+pub use call::Trace;
+pub use call::TraceEvent;
 pub use codec::CodecError;
-pub use overload::{Best, Match};
-pub use manifest::{
-    BaseDimInfo, Features, KernelManifest, OpInfo, PluginInfo, RuleSetInfo, SignatureSource,
-};
-pub use result::{
-    Condition, ConditionKind, EventRecord, Field, FieldKind, FlattenSchema, OdeSolutionView,
-    SchemaError, SimField, SimResult, Solutions,
-};
-pub use plugin::{
-    HostCallback, NativeCallback, Plugin, PluginError, PluginId, PluginKind, PluginManifest,
-    Registry, SimplePlugin,
-};
-pub use signature::{
-    API_VERSION, PLUGIN_ABI, ArityInfo, BackendSupport, BinderInfo, Constraint, ConstraintKind,
-    Determinism, DimExpr, DimRuleInfo, DynamicReason, Effect, EffectRow, EvalKind, Example, Exp,
-    FamilySourceInfo, NatExpr, OpFlagsInfo, OpKey, Purity, Rational, RepExpr, RowExpr, Signature,
-    Stability, ThreadSafety, TypeExpr, TypeParam, TypeParamKind, Variadic,
-};
-pub use value::{
-    CallbackRef, ComplexValue, ConstantValue, DynValue, OpaqueValue, QuantityValue, RecordValue,
-    ScaleValue,
-    SessionId, SparseFormat, SparseValue, TensorValue, TermRef, UnitValue, Value, ValueKind,
-    ValueKindInfo, VariantValue,
-};
+pub use manifest::BaseDimInfo;
+pub use manifest::Features;
+pub use manifest::KernelManifest;
+pub use manifest::OpInfo;
+pub use manifest::PluginInfo;
+pub use manifest::RuleSetInfo;
+pub use manifest::SignatureSource;
+pub use overload::Best;
+pub use overload::Match;
+pub use plugin::HostCallback;
+pub use plugin::NativeCallback;
+pub use plugin::Plugin;
+pub use plugin::PluginError;
+pub use plugin::PluginId;
+pub use plugin::PluginKind;
+pub use plugin::PluginManifest;
+pub use plugin::Registry;
+pub use plugin::SimplePlugin;
+pub use result::Condition;
+pub use result::ConditionKind;
+pub use result::EventRecord;
+pub use result::Field;
+pub use result::FieldKind;
+pub use result::FlattenSchema;
+pub use result::OdeSolutionView;
+pub use result::SchemaError;
+pub use result::SimField;
+pub use result::SimResult;
+pub use result::Solutions;
+pub use signature::API_VERSION;
+pub use signature::ArityInfo;
+pub use signature::BackendSupport;
+pub use signature::BinderInfo;
+pub use signature::Constraint;
+pub use signature::ConstraintKind;
+pub use signature::Determinism;
+pub use signature::DimExpr;
+pub use signature::DimRuleInfo;
+pub use signature::DynamicReason;
+pub use signature::Effect;
+pub use signature::EffectRow;
+pub use signature::EvalKind;
+pub use signature::Example;
+pub use signature::Exp;
+pub use signature::FamilySourceInfo;
+pub use signature::NatExpr;
+pub use signature::OpFlagsInfo;
+pub use signature::OpKey;
+pub use signature::PLUGIN_ABI;
+pub use signature::Purity;
+pub use signature::Rational;
+pub use signature::RepExpr;
+pub use signature::RowExpr;
+pub use signature::Signature;
+pub use signature::Stability;
+pub use signature::ThreadSafety;
+pub use signature::TypeExpr;
+pub use signature::TypeParam;
+pub use signature::TypeParamKind;
+pub use signature::Variadic;
+pub use value::CallbackRef;
+pub use value::ComplexValue;
+pub use value::ConstantValue;
+pub use value::DynValue;
+pub use value::OpaqueValue;
+pub use value::QuantityValue;
+pub use value::RecordValue;
+pub use value::ScaleValue;
+pub use value::SessionId;
+pub use value::SparseFormat;
+pub use value::SparseValue;
+pub use value::TensorValue;
+pub use value::TermRef;
+pub use value::UnitValue;
+pub use value::Value;
+pub use value::ValueKind;
+pub use value::ValueKindInfo;
+pub use value::VariantValue;

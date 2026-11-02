@@ -193,10 +193,12 @@ impl OdeSolution {
         let events = self
             .events
             .iter()
-            .map(|hit| crate::kernel::result::EventRecord {
-                t: hit.t,
-                component: components.get(hit.index).map(|name| (*name).to_owned()),
-                y: hit.y.clone(),
+            .map(|hit| {
+                crate::kernel::result::EventRecord {
+                    t: hit.t,
+                    component: components.get(hit.index).map(|name| (*name).to_owned()),
+                    y: hit.y.clone(),
+                }
             })
             .collect();
         crate::kernel::result::OdeSolutionView {

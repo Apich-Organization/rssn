@@ -67,7 +67,9 @@ pub struct PluginManifest {
 }
 
 /// How a plugin reaches the host.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum PluginKind {
     /// Statically linked Rust, registered through [`Session::register`].
@@ -123,7 +125,10 @@ impl fmt::Display for PluginError {
     ) -> fmt::Result {
         match self {
             | Self::AbiMismatch { expected, got } => {
-                write!(f, "plugin ABI mismatch: host provides {expected}, plugin wants {got}")
+                write!(
+                    f,
+                    "plugin ABI mismatch: host provides {expected}, plugin wants {got}"
+                )
             },
             | Self::Duplicate { name } => write!(f, "plugin `{name}` is already registered"),
             | Self::Registration(message) => write!(f, "plugin registration failed: {message}"),
@@ -201,7 +206,8 @@ pub struct NativeCallback<F> {
 }
 
 impl<F> NativeCallback<F>
-where F: Fn(&[Value]) -> Result<Value, OpError> + Send + Sync
+where
+    F: Fn(&[Value]) -> Result<Value, OpError> + Send + Sync,
 {
     /// Wraps `f` with the given signature.
     #[must_use]
@@ -214,7 +220,8 @@ where F: Fn(&[Value]) -> Result<Value, OpError> + Send + Sync
 }
 
 impl<F> HostCallback for NativeCallback<F>
-where F: Fn(&[Value]) -> Result<Value, OpError> + Send + Sync
+where
+    F: Fn(&[Value]) -> Result<Value, OpError> + Send + Sync,
 {
     fn call(
         &self,
@@ -386,10 +393,14 @@ impl<'g> Registry<'g> {
 ///
 /// let plugin = SimplePlugin::new("acme/demo", "0.1.0", |reg| {
 ///     let op = reg.register_op(
-///         rssn::graph::OpDescriptor::new("acme_bump", rssn::graph::Arity::Fixed(1))
-///             .signature(rssn::kernel::Signature::scalars(1, rssn::kernel::TypeExpr::Real)),
+///         rssn::graph::OpDescriptor::new("acme_bump", rssn::graph::Arity::Fixed(1)).signature(
+///             rssn::kernel::Signature::scalars(1, rssn::kernel::TypeExpr::Real),
+///         ),
 ///     )?;
-///     reg.register_rewrites(rssn::graph::Tier::Normalize, &["acme/bump-zero: acme_bump(0) => 0"])?;
+///     reg.register_rewrites(
+///         rssn::graph::Tier::Normalize,
+///         &["acme/bump-zero: acme_bump(0) => 0"],
+///     )?;
 ///     Ok(())
 /// })
 /// .with_description("An example plugin.");
@@ -477,10 +488,7 @@ mod tests {
                 OpDescriptor::new("acme_double", Arity::Fixed(1))
                     .signature(Signature::scalars(1, TypeExpr::Real)),
             )?;
-            reg.register_rewrites(
-                Tier::Normalize,
-                &["acme/double-zero: acme_double(0) => 0"],
-            )?;
+            reg.register_rewrites(Tier::Normalize, &["acme/double-zero: acme_double(0) => 0"])?;
             Ok(())
         });
         let mut graph = Graph::new();
@@ -512,13 +520,12 @@ mod tests {
     fn host_callbacks_are_closures() {
         let cb = NativeCallback::new(
             |args: &[Value]| {
-                let first = args
-                    .first()
-                    .cloned()
-                    .ok_or_else(|| OpError::Arity {
+                let first = args.first().cloned().ok_or_else(|| {
+                    OpError::Arity {
                         expected: crate::kernel::ArityInfo::fixed(1),
                         got: 0,
-                    })?;
+                    }
+                })?;
                 Ok(first)
             },
             Signature::scalars(1, TypeExpr::Real),

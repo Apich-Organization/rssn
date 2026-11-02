@@ -502,8 +502,12 @@ impl JitFunction {
                             nan
                         } else {
                             let zero = b.ins().f64const(0.0);
-                            let span_f = b.ins().f64const(f64::from(u32::try_from(span).map_err(error)?));
-                            let last = b.ins().f64const(f64::from(u32::try_from(span - 1).map_err(error)?));
+                            let span_f = b
+                                .ins()
+                                .f64const(f64::from(u32::try_from(span).map_err(error)?));
+                            let last = b
+                                .ins()
+                                .f64const(f64::from(u32::try_from(span - 1).map_err(error)?));
                             let in_range = {
                                 let lo = b.ins().fcmp(FloatCC::GreaterThanOrEqual, index, zero);
                                 let hi = b.ins().fcmp(FloatCC::LessThan, index, span_f);
@@ -886,9 +890,7 @@ pub fn target_key() -> u64 {
     std::env::consts::OS.hash(&mut hasher);
     // `cfg!(target_feature = ...)` is the feature set this build was compiled
     // for, which is what the generated code may assume.
-    for feature in [
-        "sse2", "sse4.1", "avx", "avx2", "fma", "neon", "sve",
-    ] {
+    for feature in ["sse2", "sse4.1", "avx", "avx2", "fma", "neon", "sve"] {
         let present = match feature {
             | "sse2" => cfg!(target_feature = "sse2"),
             | "sse4.1" => cfg!(target_feature = "sse4.1"),
