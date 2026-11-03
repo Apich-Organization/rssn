@@ -1,4 +1,5 @@
-//! CSR sparse matrices (ported from `numerical_sparse_test.rs`).
+//! Sparse matrices backed by `faer::sparse::SparseColMat` (ported from
+//! `numerical_sparse_test.rs`).
 
 use assert_approx_eq::assert_approx_eq;
 use ndarray::Array1;
@@ -31,7 +32,7 @@ fn cfg() -> ProptestConfig {
 #[test]
 fn construction() {
     let mat = csr_from_triplets(3, 3, &[(0, 0, 1.0), (1, 1, 2.0), (2, 2, 3.0)]);
-    assert_eq!((mat.rows(), mat.cols(), mat.nnz()), (3, 3, 3));
+    assert_eq!((mat.nrows(), mat.ncols(), mat.compute_nnz()), (3, 3, 3));
     assert_eq!(mat.get(1, 1), Some(&2.0));
     assert_eq!(mat.get(0, 1), None);
 }
@@ -84,7 +85,7 @@ fn predicates() {
 fn dense_round_trip_and_rank() {
     let dense = array![[1.0, 0.0, 2.0], [0.0, 0.0, 0.0], [0.0, 3.0, 0.0]].into_dyn();
     let sp = to_csr(&dense);
-    assert_eq!(sp.nnz(), 3);
+    assert_eq!(sp.compute_nnz(), 3);
     let back = to_dense(&sp);
     for i in 0..3 {
         for j in 0..3 {
@@ -98,7 +99,7 @@ fn dense_round_trip_and_rank() {
 fn transpose_moves_entries() {
     let mat = csr_from_triplets(2, 3, &[(0, 2, 5.0), (1, 0, 7.0)]);
     let t = transpose(&mat);
-    assert_eq!((t.rows(), t.cols()), (3, 2));
+    assert_eq!((t.nrows(), t.ncols()), (3, 2));
     assert_eq!(t.get(2, 0), Some(&5.0));
     assert_eq!(t.get(0, 1), Some(&7.0));
 }
@@ -110,7 +111,7 @@ fn serde_round_trip() {
         serde_json::to_string(&SparseMatrixData::from(&mat)).unwrap_or_else(|e| panic!("{e}"));
     let decoded: SparseMatrixData = serde_json::from_str(&json).unwrap_or_else(|e| panic!("{e}"));
     let back = decoded.to_csmat();
-    assert_eq!((back.rows(), back.cols(), back.nnz()), (3, 3, 2));
+    assert_eq!((back.nrows(), back.ncols(), back.compute_nnz()), (3, 3, 2));
     assert_eq!(back.get(1, 2), Some(&2.0));
 }
 
@@ -125,9 +126,9 @@ proptest! {
         let triplets: Vec<_> = elements.into_iter().map(|(r, c, v)| (r % rows, c % cols, v)).collect();
         let mat = csr_from_triplets(rows, cols, &triplets);
         let tt = transpose(&transpose(&mat));
-        prop_assert_eq!((mat.rows(), mat.cols(), mat.nnz()), (tt.rows(), tt.cols(), tt.nnz()));
-        for (val, (r, c)) in mat.iter() {
-            prop_assert!((val - tt.get(r, c).copied().unwrap_or(0.0)).abs() < 1e-9);
+        prop_assert_eq!((mat.nrows(), mat.ncols(), mat.compute_nnz()), (tt.nrows(), tt.ncols(), tt.compute_nnz()));
+        for entry in mat.triplet_iter() {
+            prop_assert!((*entry.val - tt.get(entry.row, entry.col).copied().unwrap_or(0.0)).abs() < 1e-9);
         }
     }
 

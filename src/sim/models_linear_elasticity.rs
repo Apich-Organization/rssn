@@ -17,8 +17,8 @@ use ndarray::array;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
-use sprs_rssn::CsMat;
 
+use crate::kernels::sparse::SparseMat;
 use crate::kernels::sparse::csr_from_triplets;
 use crate::kernels::sparse::solve_conjugate_gradient;
 
@@ -236,7 +236,7 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
         f_global[dof2] = 0.0;
     }
 
-    let k_global: CsMat<f64> = csr_from_triplets(n_dofs, n_dofs, &filtered_triplets);
+    let k_global: SparseMat = csr_from_triplets(n_dofs, n_dofs, &filtered_triplets);
 
     let displacements = solve_conjugate_gradient(&k_global, &f_global, None, 5000, 1e-9)?;
 

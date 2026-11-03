@@ -78,14 +78,12 @@ cranelift-jit = { version = "0.136", optional = true }
 cranelift-module = { version = "0.136", optional = true }
 cranelift-native = { version = "0.136", optional = true }
 # Not upgrading to 0.17: `argmin-math` implements its traits for 0.16's
-# `ArrayBase` and `sprs-rssn` pins 0.16, so 0.17 arrives as a second, unrelated
-# `ndarray` type. Dropping either crate would move this forward.
+# `ArrayBase`, so 0.17 would arrive as a second, unrelated `ndarray` type.
 ndarray = { version = "0.16", features = ["serde"] }
 statrs = "0.19"
 argmin-math = { version = "0.5", features = ["ndarray_latest-nolinalg"] }
 argmin = { version = "0.11", features = ["serde", "serde1"] }
 rustfft = "6.4"
-sprs-rssn = "0.11"
 # Not upgrading because of argmin requires ndarray 0.16
 ndarray-npy = { version = "0.9", optional = true }
 rayon = "1.11"
