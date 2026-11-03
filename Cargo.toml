@@ -72,12 +72,14 @@ overflow-checks = false
 incremental = true
 
 [dependencies]
-cranelift-codegen = { version = "0.130", optional = true }
-cranelift-frontend = { version = "0.130", optional = true }
-cranelift-jit = { version = "0.130", optional = true }
-cranelift-module = { version = "0.130", optional = true }
-cranelift-native = { version = "0.130", optional = true }
-# Not upgrading because of argmin
+cranelift-codegen = { version = "0.136", optional = true }
+cranelift-frontend = { version = "0.136", optional = true }
+cranelift-jit = { version = "0.136", optional = true }
+cranelift-module = { version = "0.136", optional = true }
+cranelift-native = { version = "0.136", optional = true }
+# Not upgrading to 0.17: `argmin-math` implements its traits for 0.16's
+# `ArrayBase` and `sprs-rssn` pins 0.16, so 0.17 arrives as a second, unrelated
+# `ndarray` type. Dropping either crate would move this forward.
 ndarray = { version = "0.16", features = ["serde"] }
 statrs = "0.19"
 argmin-math = { version = "0.5", features = ["ndarray_latest-nolinalg"] }
@@ -91,7 +93,11 @@ rand_v09 = { package = "rand", version = "0.9" }
 # `rand_v10` (rand 0.10.0) is needed by faer.
 rand_v10 = { package = "rand", version = "0.10" }
 num-complex = { version = "0.4", features = ["serde"] }
-num-bigint = { version = "0.4", features = ["serde", "rand"] }
+# No `rand` feature: no call site generates a random `BigInt`. It does not
+# remove `rand 0.8` from the tree — that arrives through `num-complex`'s own
+# `rand` feature, pulled by `argmin-math` and `faer` — but it is a capability
+# nobody asked for.
+num-bigint = { version = "0.4", features = ["serde"] }
 num-rational = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 num-integer = "0.1"

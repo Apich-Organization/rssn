@@ -34,7 +34,7 @@ use std::sync::atomic::Ordering;
 
 use cranelift_codegen::ir::AbiParam;
 use cranelift_codegen::ir::InstBuilder;
-use cranelift_codegen::ir::MemFlags;
+use cranelift_codegen::ir::MemFlagsData;
 use cranelift_codegen::ir::StackSlotData;
 use cranelift_codegen::ir::StackSlotKind;
 use cranelift_codegen::ir::Value;
@@ -283,6 +283,9 @@ impl JitFunction {
             .map_err(error)?
             .finish(settings::Flags::new(flags))
             .map_err(error)?;
+        // `finalize` needs the target's frontend config, and `isa` is moved
+        // into the builder below, so take it first.
+        let frontend_config = isa.frontend_config();
         let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
         for f in UNARY_SHIMS {
             if let Some((name, shim)) = library(f) {
@@ -381,7 +384,9 @@ impl JitFunction {
             let &[in_ptr, par_ptr, out_ptr] = params.as_slice() else {
                 return Err(BackendError::Codegen("signature".to_owned()));
             };
-            let flags = MemFlags::trusted();
+            // 0.136 separates the flag *data* (what the builder takes) from
+            // the interned `MemFlags` handle the encoder uses.
+            let flags = MemFlagsData::trusted();
             let mut refs = HashMap::new();
             for (&name, &fid) in &imports {
                 refs.insert(name, module.declare_func_in_func(fid, b.func));
@@ -494,7 +499,7 @@ impl JitFunction {
                     | Inst::Gather(base, index) => {
                         let index = get(&values, index)?;
                         let start = usize::try_from(base).unwrap_or(usize::MAX);
-                        let span = tape.inputs.len().saturating_sub(start);
+                        let span = tape.inputs.saturating_sub(start);
                         let nan = b.ins().f64const(f64::NAN);
                         if span == 0 {
                             // The tensor is not in the input buffer at all;
@@ -517,10 +522,11 @@ impl JitFunction {
                             // the load below provably in bounds; the `select`
                             // then replaces the value the clamp produced when
                             // the original index was out of range.
-                            let clamped = b.ins().fmax(b.ins().fmin(index, last), zero);
-                            let offset = b.ins().fcvt_to_uint_sat(clamped, types::I64);
-                            let bytes = b.ins().imul_imm(offset, 8);
-                            let address = b.ins().iadd_imm(
+                            let floor = b.ins().fmin(index, last);
+                            let clamped = b.ins().fmax(floor, zero);
+                            let offset = b.ins().fcvt_to_uint_sat(types::I64, clamped);
+                            let bytes = b.ins().imul_imm_s(offset, 8);
+                            let address = b.ins().iadd_imm_s(
                                 bytes,
                                 i64::try_from(start).map_err(error)?.wrapping_mul(8),
                             );
@@ -545,6 +551,7 @@ impl JitFunction {
                         for (k, &r) in regs.iter().enumerate() {
                             let v = get(&values, r)?;
                             b.ins().stack_store(
+                                types::I64,
                                 v,
                                 slot,
                                 i32::try_from(k.saturating_mul(8)).map_err(error)?,
@@ -586,7 +593,7 @@ impl JitFunction {
                 );
             }
             b.ins().return_(&[]);
-            b.finalize();
+            b.finalize(frontend_config);
         }
         module.define_function(id, &mut ctx).map_err(error)?;
         module.clear_context(&mut ctx);
