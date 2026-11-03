@@ -319,6 +319,21 @@ pub(crate) mod oracle {
                     Ordering::Equal
                 })
             },
+            | Order::Block(eliminated) => {
+                let split = eliminated.min(a.len()).min(b.len());
+                order_cmp(
+                    Order::GradedRevLex,
+                    a.get(..split).unwrap_or_default(),
+                    b.get(..split).unwrap_or_default(),
+                )
+                .then_with(|| {
+                    order_cmp(
+                        Order::GradedRevLex,
+                        a.get(split..).unwrap_or_default(),
+                        b.get(split..).unwrap_or_default(),
+                    )
+                })
+            },
         }
     }
 

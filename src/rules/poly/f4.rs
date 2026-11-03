@@ -444,9 +444,10 @@ pub fn f4_via(
 
 /// The operator route over `domain`.
 ///
-/// For the lexicographic and graded lexicographic orders the matrix engine
-/// runs in the graded reverse-lexicographic order (the cheap one) and the
-/// basis is converted with [`fglm_in`]; this is exactly the strategy of
+/// For every order other than graded reverse-lex — lexicographic, graded
+/// lexicographic and the block elimination order — the matrix engine runs in
+/// the graded reverse-lexicographic order (the cheap one) and the basis is
+/// converted with [`fglm_in`]; this is exactly the strategy of
 /// [`crate::rules::poly::groebner::groebner_via_in`], so the operator and the
 /// reference agree and the elimination stays small. When FGLM declines — the
 /// ideal is positive-dimensional or the quotient ring is too large — the
@@ -1040,6 +1041,33 @@ mod tests {
             );
         }
         assert!(f4_basis_in(&domain, &generators, order, F4Limits::default()).is_some());
+    }
+
+    #[test]
+    fn f4_supports_the_elimination_order() {
+        // The matrix engine is order generic: it also runs in the block
+        // elimination order, and the operator route (matrix run plus FGLM)
+        // agrees with the direct run there.
+        let order = Order::Block(1);
+        for (name, generators) in sample_systems(order) {
+            let expected = groebner(&generators, order, GroebnerLimits::default());
+            let computed = f4_basis(&generators, order, F4Limits::default());
+            assert_eq!(computed, expected, "{name} in {order:?}");
+            assert_eq!(
+                f4_via(&generators, order, F4Limits::default()),
+                expected,
+                "{name} in {order:?} via FGLM"
+            );
+        }
+        // A positive-dimensional ideal: FGLM declines, so the matrix engine
+        // has to run in the block order itself.
+        let generators = vec![
+            poly(&[(1, vec![1, 1, 0]), (-1, vec![0, 0, 0])], order),
+            poly(&[(1, vec![1, 0, 1]), (-2, vec![0, 0, 0])], order),
+        ];
+        let expected = groebner(&generators, order, GroebnerLimits::default());
+        assert_eq!(f4_basis(&generators, order, F4Limits::default()), expected);
+        assert_eq!(f4_via(&generators, order, F4Limits::default()), expected);
     }
 }
 
