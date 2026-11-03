@@ -31,6 +31,7 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::dim::UnitRegistry;
 use crate::graph::Graph;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleSet;
@@ -307,12 +308,35 @@ impl KernelManifest {
     /// `sets` must be the rule sets that were installed into `graph`; they
     /// supply versions and capabilities, while the operators themselves come
     /// from the graph, so a plugin's operators appear here too.
+    ///
+    /// Units come from the process-wide table. A session that owns its own
+    /// [`UnitRegistry`] must call [`KernelManifest::build_with_units`] so that
+    /// the units it registered appear in the manifest.
     #[must_use]
     pub fn build(
         graph: &Graph,
         sets: &[RuleSet],
         plugins: &[crate::kernel::plugin::PluginManifest],
     ) -> Self {
+        Self::build_with_units(graph, sets, plugins, &crate::dim::StandardRegistry)
+    }
+
+    /// Builds the manifest of an installed configuration from `units`.
+    ///
+    /// The unit list is read from the caller's registry rather than the
+    /// global table, so a unit a plugin registered in a session's registry is
+    /// described here and a host generating a units module from the manifest
+    /// does not silently omit it.
+    #[must_use]
+    pub fn build_with_units<U>(
+        graph: &Graph,
+        sets: &[RuleSet],
+        plugins: &[crate::kernel::plugin::PluginManifest],
+        units: &U,
+    ) -> Self
+    where
+        U: UnitRegistry + ?Sized,
+    {
         let arena = graph.dim_arena();
         let mut base_dimensions: Vec<BaseDimInfo> = arena
             .bases()
@@ -345,7 +369,8 @@ impl KernelManifest {
         rule_sets.sort_by(|a, b| a.name.cmp(&b.name));
         rule_sets.dedup_by(|a, b| a.name == b.name);
 
-        let mut units: Vec<UnitValue> = crate::dim::units::all()
+        let mut units: Vec<UnitValue> = units
+            .list()
             .into_iter()
             .map(|unit| UnitValue::from_def(&unit))
             .collect();
@@ -760,5 +785,102 @@ mod tests {
                 .iter()
                 .any(|b| b.name == "Length" && b.si)
         );
+    }
+
+    /// A session-level registry: the built-in table plus what this session
+    /// registered, without touching the process-wide one.
+    #[derive(Default)]
+    struct SessionUnits {
+        extra: Vec<crate::dim::UnitDef>,
+    }
+
+    impl crate::dim::UnitRegistry for SessionUnits {
+        fn list(&self) -> Vec<crate::dim::UnitDef> {
+            let mut units = crate::dim::units::all();
+            units.extend(self.extra.iter().cloned());
+            units.sort_by(|a, b| a.name.cmp(&b.name));
+            units
+        }
+
+        fn lookup(
+            &self,
+            name: &str,
+        ) -> Option<crate::dim::UnitDef> {
+            self.extra
+                .iter()
+                .find(|u| u.name == name || u.aliases.iter().any(|a| a == name))
+                .cloned()
+                .or_else(|| crate::dim::units::lookup(name))
+        }
+
+        fn resolve(
+            &self,
+            expr: &str,
+        ) -> Result<crate::dim::ResolvedUnit, crate::dim::DimError> {
+            crate::dim::units::resolve(expr)
+        }
+
+        fn register(
+            &mut self,
+            unit: crate::dim::UnitDef,
+        ) -> Result<(), crate::dim::DimError> {
+            self.extra.push(unit);
+            Ok(())
+        }
+
+        fn format(
+            &self,
+            dim: &crate::dim::DimTerm,
+            value: &crate::kernel::value::Value,
+        ) -> String {
+            crate::dim::StandardRegistry.format(dim, value)
+        }
+
+        fn snapshot(&self) -> crate::dim::UnitRegistrySnapshot {
+            let units = self.list();
+            crate::dim::UnitRegistrySnapshot {
+                hash: crate::kernel::codec::digest(&units),
+                units,
+            }
+        }
+    }
+
+    #[test]
+    fn a_session_unit_registry_is_described_by_the_manifest() {
+        let sets = rules::standard();
+        let mut graph = Graph::new();
+        Engine::install(&mut graph, &sets).unwrap_or_else(|e| panic!("{e}"));
+        let mut units = SessionUnits::default();
+        units
+            .register(crate::dim::UnitDef::linear(
+                "furlong",
+                crate::kernel::signature::DimExpr::base("Length"),
+                crate::dim::Scale::one(),
+            ))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let manifest = KernelManifest::build_with_units(&graph, &sets, &[], &units);
+        assert!(
+            manifest.units.iter().any(|u| u.name == "furlong"),
+            "a session's unit must reach the manifest"
+        );
+        // The rest of the registry's table is described too.
+        assert!(manifest.units.iter().any(|u| u.name == "m"));
+        assert!(manifest.verify());
+    }
+
+    #[test]
+    fn the_default_build_still_lists_the_global_units() {
+        let sets = rules::standard();
+        let mut graph = Graph::new();
+        Engine::install(&mut graph, &sets).unwrap_or_else(|e| panic!("{e}"));
+        let manifest = KernelManifest::build(&graph, &sets, &[]);
+        let mut expected: Vec<String> = crate::dim::units::all()
+            .into_iter()
+            .map(|unit| unit.name)
+            .collect();
+        expected.sort();
+        expected.dedup();
+        let got: Vec<String> = manifest.units.iter().map(|u| u.name.clone()).collect();
+        assert_eq!(got, expected, "`build` must not change what it lists");
     }
 }

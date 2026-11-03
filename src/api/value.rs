@@ -156,11 +156,17 @@ impl Session {
 
     /// The term a value denotes.
     ///
+    /// A unit is not a value: [`Value::Unit`] is a definition and is refused,
+    /// because the term graph has no node for a dimension plus a scale.
+    /// [`Value::Quantity`] carries the unit and converts normally, and a unit
+    /// passed to an operator that declares a unit parameter (the second
+    /// argument of `quantity`) is still accepted by [`Session::call_value`].
+    ///
     /// # Errors
-    /// Fails for values that have no term form: a host callback, an opaque
-    /// payload, a sparse tensor, a record or a variant. Those are boundary
-    /// values; they reach an operator through its [`EvalDyn`], not through
-    /// the term graph.
+    /// Fails for values that have no term form: a bare unit, a host
+    /// callback, an opaque payload, a sparse tensor, a record or a variant.
+    /// Those are boundary values; they reach an operator through its
+    /// [`EvalDyn`], not through the term graph.
     ///
     /// [`EvalDyn`]: crate::graph::op::EvalDyn
     pub fn term_of(
@@ -324,7 +330,20 @@ impl Session {
             | _ if signatures.is_empty() => None,
             // Several overloads fit and none is more specific. Returning a
             // key here would be a key `call_key` refuses, so say so instead.
-            | _ => {
+            // `count` is the number that *tied*, not the number of overloads:
+            // a host quotes it in its own diagnostic, and "3 candidates" for a
+            // two-way tie sends the reader looking for a third.
+            | crate::kernel::overload::Best::Ambiguous(indices) => {
+                return Err(OpError::Ambiguous {
+                    name: name.to_owned(),
+                    count: indices.len(),
+                });
+            },
+            // Nothing accepts the arguments. There is no more specific error
+            // to give without re-deriving one signature's refusal, and the
+            // callers that reach here are hosts resolving from values, which
+            // the typed front end has already checked.
+            | crate::kernel::overload::Best::None => {
                 return Err(OpError::Ambiguous {
                     name: name.to_owned(),
                     count: signatures.len(),
@@ -354,14 +373,21 @@ impl Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        let op = self.op_for_key(key)?;
+        let op = self.op_for_key(key, args)?;
         self.call_op(op, &key.name, args, &ctx)
     }
 
-    /// The registration `key` names.
+    /// The registration `key` names, for these arguments.
+    ///
+    /// A key names one *overload*, not merely one registration: checking only
+    /// that some signature of the registration has the pinned hash made
+    /// "the overload the host chose is the overload that runs" true per
+    /// registration rather than per overload. The arguments are validated
+    /// against the pinned signature so the two cannot drift.
     fn op_for_key(
         &self,
         key: &OpKey,
+        args: &[Value],
     ) -> Result<OpId, OpError> {
         let inner = self.inner.borrow();
         let graph = &inner.graph;
@@ -375,11 +401,15 @@ impl Session {
                 if signatures.is_empty() {
                     return Ok(id);
                 }
-            } else if signatures
+            } else if let Some(pinned) = signatures
                 .iter()
-                .any(|signature| signature.hash() == key.signature_hash)
+                .find(|signature| signature.hash() == key.signature_hash)
             {
-                return Ok(id);
+                // The pinned overload must be one these arguments can reach,
+                // or the executed overload is not the chosen one.
+                if crate::kernel::overload::score(pinned, args).is_some() {
+                    return Ok(id);
+                }
             }
         }
         Err(OpError::UnknownOp(key.clone()))
@@ -429,13 +459,20 @@ impl Session {
             ctx.trace("dispatch", "native evaluator");
             return evaluator.eval(args, ctx);
         }
+        let unit_positions = unit_parameters(&descriptor, args.len());
         let term = {
             let mut inner = self.inner.borrow_mut();
-            let nodes = args
+            let mut nodes = args
                 .iter()
                 .enumerate()
                 .map(|(index, value)| {
-                    term_of_value(&mut inner.graph, value, self.id).map_err(|error| {
+                    term_of_argument(
+                        &mut inner.graph,
+                        value,
+                        self.id,
+                        unit_positions.get(index).copied().unwrap_or(false),
+                    )
+                    .map_err(|error| {
                         match error {
                             | OpError::Type { expected, .. } => {
                                 OpError::Type {
@@ -449,6 +486,17 @@ impl Session {
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
+            // `CallCtx::substitute` used to be recorded and never read: a host
+            // that replaced a symbol before a call got the unsubstituted
+            // answer with no diagnostic. Apply it here, where the arguments
+            // become terms.
+            for (symbol, value) in &ctx.substitutions {
+                let from = inner.graph.sym(symbol);
+                let to = term_of_value(&mut inner.graph, value, self.id)?;
+                for node in &mut nodes {
+                    *node = inner.graph.substitute(*node, from, to);
+                }
+            }
             let node = inner.graph.try_node(op, &nodes).ok_or_else(|| {
                 OpError::Arity {
                     expected: ArityInfo::from_arity(descriptor.arity),
@@ -525,7 +573,15 @@ impl Session {
         let plugins = inner.plugins.clone();
         let mut rebuilt = Vec::with_capacity(inner.templates.len());
         for template in &inner.templates {
-            rebuilt.push(crate::api::Template::new(&template.rule_sets, &plugins)?);
+            // Carry the session's units forward. `Template::new` starts from
+            // the process-wide table, so a host unit registered before the
+            // plugin would silently drop out of the manifest.
+            let units = crate::api::SessionUnits::from_manifest(template.engine.manifest());
+            rebuilt.push(crate::api::Template::with_units(
+                &template.rule_sets,
+                &plugins,
+                units,
+            )?);
         }
         inner.templates = rebuilt;
         Ok(PluginId(inner.plugin_count.saturating_sub(1)))
@@ -626,7 +682,11 @@ impl Session {
             .collect();
         drop(source_arena);
         for (name, term) in translations {
-            let expression = crate::dim::DimExpr::from_term(&term, &source.graph.dim_arena());
+            // Fallible on purpose: `from_term` is total but answers `Any`
+            // when the term cannot be expressed, and translating a dimension
+            // assumption into "any dimension" is a silently weakened merge.
+            let expression = crate::dim::DimExpr::try_from_term(&term, &source.graph.dim_arena())
+                .map_err(|error| MergeError::Translation(error.to_string()))?;
             let translated = {
                 let mut arena = match inner.graph.dims.write() {
                     | Ok(guard) => guard,
@@ -678,7 +738,7 @@ impl Kernel for Session {
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
         check_callbacks(&ctx, fns)?;
-        let registration = self.op_for_key(op)?;
+        let registration = self.op_for_key(op, args)?;
         self.call_op(registration, &op.name, args, &ctx)
     }
 
@@ -691,7 +751,7 @@ impl Kernel for Session {
 }
 
 /// Copies a call context so that it can be mutated while it is used.
-fn clone_ctx<'a>(ctx: &CallCtx<'_>) -> CallCtx<'a> {
+fn clone_ctx<'a>(ctx: &CallCtx<'a>) -> CallCtx<'a> {
     CallCtx {
         target: ctx.target,
         budget: ctx.budget.clone(),
@@ -700,7 +760,10 @@ fn clone_ctx<'a>(ctx: &CallCtx<'_>) -> CallCtx<'a> {
         bindings: ctx.bindings.clone(),
         substitutions: ctx.substitutions.clone(),
         callbacks: ctx.callbacks.clone(),
-        trace: None,
+        // Carried through, not dropped. It used to be `None`, so every public
+        // entry point silently discarded the caller's collector and
+        // `CallCtx::with_trace` recorded nothing at all.
+        trace: ctx.trace,
     }
 }
 
@@ -985,47 +1048,89 @@ fn unit_text(
 }
 
 /// The dense tensor a nested `list` denotes.
+///
+/// The shape is the full shape, not the outermost length: a `list` of `list`s
+/// is rank 2. Deriving only the outermost extent made every matrix-shaped
+/// result fail `is_consistent`, so `identity(3)` came back as an opaque `Term`
+/// and every matrix-returning operator violated its declared type.
+///
+/// Ragged input is rejected rather than truncated: `[[1, 2], [3]]` has no
+/// shape, and silently padding it would be a wrong answer.
 fn tensor_of(
     graph: &Graph,
     node: NodeId,
 ) -> Option<TensorValue> {
-    fn walk(
+    /// The shape of a nested list, or `None` when it is ragged.
+    fn shape_of(
         graph: &Graph,
         node: NodeId,
-        shape: &mut Vec<usize>,
-        data: &mut Vec<Value>,
-    ) -> Option<()> {
-        if let Some(number) = graph.number_of(node) {
-            data.push(match number {
-                | Number::Int(value) => Value::Int(value.clone()),
-                | other => Value::Real(other.clone()),
-            });
-            return Some(());
+    ) -> Option<Vec<usize>> {
+        if graph.number_of(node).is_some() {
+            return Some(Vec::new());
         }
         if graph.op(node) != core::LIST {
             return None;
         }
         let items = graph.children(node).to_vec();
-        match shape.len() {
-            | 0 => shape.push(items.len()),
-            | _ => {},
+        let Some((&first, rest)) = items.split_first() else {
+            // An empty list is a rank-1 empty tensor.
+            return Some(vec![0]);
+        };
+        let tail = shape_of(graph, first)?;
+        for &item in rest {
+            if shape_of(graph, item)? != tail {
+                return None;
+            }
         }
-        for &item in &items {
-            walk(graph, item, shape, data)?;
+        let mut shape = vec![items.len()];
+        shape.extend(tail);
+        Some(shape)
+    }
+    fn flatten(
+        graph: &Graph,
+        node: NodeId,
+        data: &mut Vec<Value>,
+    ) {
+        if let Some(number) = graph.number_of(node) {
+            data.push(match number {
+                | Number::Int(value) => Value::Int(value.clone()),
+                | other => Value::Real(other.clone()),
+            });
+            return;
         }
-        Some(())
+        for &item in &graph.children(node).to_vec() {
+            flatten(graph, item, data);
+        }
     }
     if graph.op(node) != core::LIST {
         return None;
     }
-    let mut shape = Vec::new();
+    let shape = shape_of(graph, node)?;
     let mut data = Vec::new();
-    walk(graph, node, &mut shape, &mut data)?;
-    let tensor = TensorValue { shape, data };
+    flatten(graph, node, &mut data);
+    let elem = data
+        .first()
+        .map_or(crate::kernel::signature::TypeExpr::Real, Value::type_expr);
+    let tensor = TensorValue { shape, data, elem };
     tensor.is_consistent().then_some(tensor)
 }
 
 /// The term a value denotes, interned into `graph`.
+///
+/// A unit is deliberately **not** convertible here. A [`Value::Unit`] is a
+/// definition — a name, a dimension and a scale — not a number, and the term
+/// graph has no node that carries those three things. Spelling it as a bare
+/// symbol (`m`) would be a lie twice over: the graph would hold a free
+/// variable that `value_of` reads back as a dimensionless
+/// [`Value::Symbol`], and an operator receiving it would see an unknown
+/// scalar where a unit was meant. So a bare unit is refused, and the caller
+/// must pass [`Value::Quantity`] (a number *with* that unit).
+///
+/// The one legitimate unit position is the second argument of `quantity`
+/// (`convert`'s target unit is the same idea). There the units rules parse a
+/// *unit term*, which is exactly a symbol or a product of symbols, so
+/// [`Session::call_op`] encodes a unit argument that way through
+/// [`term_of_argument`] before reaching this function.
 fn term_of_value(
     graph: &mut Graph,
     value: &Value,
@@ -1038,7 +1143,16 @@ fn term_of_value(
         | Value::Bool(value) => Ok(graph.lit(Payload::Bool(*value))),
         | Value::String(text) => Ok(graph.lit(Payload::Str(Arc::from(text.as_str())))),
         | Value::Symbol(name) => Ok(graph.sym(name)),
-        | Value::Unit(unit) => Ok(graph.sym(&unit.name)),
+        | Value::Unit(unit) => {
+            Err(OpError::Unsupported {
+                backend: "term".to_owned(),
+                feature: format!(
+                    "a bare unit definition (`{}`): a unit is a definition, not a number, \
+                 so it has no term of its own; pass `quantity(value, {})` instead",
+                    unit.name, unit.name
+                ),
+            })
+        },
         | Value::Quantity(quantity) => {
             let op = graph.ops().lookup("quantity").ok_or_else(|| {
                 OpError::Unsupported {
@@ -1088,6 +1202,7 @@ fn term_of_value(
                 let inner = TensorValue {
                     shape: tensor.shape.get(1..).unwrap_or(&[]).to_vec(),
                     data: slice.to_vec(),
+                    elem: tensor.elem.clone(),
                 };
                 items.push(term_of_value(graph, &Value::Tensor(inner), session)?);
             }
@@ -1102,7 +1217,10 @@ fn term_of_value(
                 });
             }
             let node = NodeId::from_raw(handle.node);
-            if node.is_none() {
+            // `is_none` rejects only 0. A handle from another graph of the
+            // same session is a valid id with no node here, and indexing it
+            // would panic inside the arena rather than at the boundary.
+            if node.is_none() || !graph.contains(node) {
                 return Err(OpError::Internal(format!("no term {}", handle.node)));
             }
             Ok(node)
@@ -1133,6 +1251,48 @@ fn term_of_value(
             })
         },
     }
+}
+
+/// The arguments of `descriptor` that are declared as a unit.
+///
+/// A unit parameter is the one place a unit *definition* belongs in a term:
+/// `quantity(value, unit)` declares its second parameter `Unit(D)`, and
+/// `convert` its target unit the same way. The graph spells such an argument
+/// as the unit's symbol, because that is exactly what the units rules parse.
+fn unit_parameters(
+    descriptor: &crate::graph::OpDescriptor,
+    count: usize,
+) -> Vec<bool> {
+    use crate::kernel::signature::TypeExpr;
+
+    let (signatures, _) = crate::kernel::infer::signatures(descriptor);
+    (0..count)
+        .map(|index| {
+            signatures.iter().any(|signature| {
+                signature
+                    .params
+                    .get(index)
+                    .is_some_and(|param| matches!(param, TypeExpr::Unit(_) | TypeExpr::Point(_)))
+            })
+        })
+        .collect()
+}
+
+/// The term an argument denotes, honouring a declared unit parameter.
+///
+/// `unit_position` comes from [`unit_parameters`]; only there is a
+/// [`Value::Unit`] turned into the symbol the graph uses for a unit. Every
+/// other position goes through [`term_of_value`], which refuses a bare unit.
+fn term_of_argument(
+    graph: &mut Graph,
+    value: &Value,
+    session: SessionId,
+    unit_position: bool,
+) -> Result<NodeId, OpError> {
+    if unit_position && let Value::Unit(unit) = value {
+        return Ok(graph.sym(&unit.name));
+    }
+    term_of_value(graph, value, session)
 }
 
 impl Term<'_> {
@@ -1222,6 +1382,49 @@ mod tests {
     use super::*;
     use crate::api::Config;
     use crate::graph::OpDescriptor;
+
+    #[test]
+    fn a_nested_list_is_a_tensor_of_the_full_rank() {
+        // The shape used to be the outermost `list` length only, so a rank-2
+        // value failed `is_consistent` and came back as an opaque `Term`:
+        // every matrix-returning operator then violated its declared type.
+        let s = Session::new();
+        let node = s
+            .parse("list(list(1, 2), list(3, 4))")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let value = s.value_of(node).unwrap_or_else(|e| panic!("{e}"));
+        let Value::Tensor(tensor) = value else {
+            panic!("expected a rank-2 tensor, got {value:?}");
+        };
+        assert_eq!(tensor.shape, vec![2, 2]);
+        assert_eq!(tensor.data.len(), 4);
+
+        // Rank 3, and the row-major order is preserved.
+        let cube = s
+            .parse("list(list(list(1, 2), list(3, 4)), list(list(5, 6), list(7, 8)))")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let Value::Tensor(tensor) = s.value_of(cube).unwrap_or_else(|e| panic!("{e}")) else {
+            panic!("expected a rank-3 tensor");
+        };
+        assert_eq!(tensor.shape, vec![2, 2, 2]);
+        assert_eq!(tensor.data[0], Value::Int(BigInt::from(1)));
+        assert_eq!(tensor.data[7], Value::Int(BigInt::from(8)));
+    }
+
+    #[test]
+    fn a_ragged_list_is_not_a_tensor() {
+        // `[[1, 2], [3]]` has no shape. Padding or truncating it would be a
+        // wrong answer, so it stays a term.
+        let s = Session::new();
+        let node = s
+            .parse("list(list(1, 2), list(3))")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let value = s.value_of(node).unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            matches!(value, Value::Term(_)),
+            "a ragged list must not become a tensor, got {value:?}"
+        );
+    }
 
     #[test]
     fn numbers_symbols_and_tensors_cross_the_boundary() {
@@ -1487,6 +1690,102 @@ mod tests {
             .is_err(),
             "a plugin may not be registered twice"
         );
+    }
+
+    /// A unit is a definition, not a number, so it has no term of its own.
+    ///
+    /// It used to become a bare symbol (`m`), which in the graph is a *free
+    /// variable*. `value_of` then read that back as `Value::Symbol("m")` — a
+    /// dimensionless value — so a unit passed as a term argument was silently
+    /// reinterpreted as an unknown scalar.
+    #[test]
+    fn a_bare_unit_is_refused_in_the_term_path() {
+        let s = Session::new();
+        let metre = crate::dim::units::lookup("m")
+            .unwrap_or_else(|| panic!("metre is in the table"))
+            .to_value();
+        let error = s
+            .term_of(&Value::Unit(metre))
+            .err()
+            .unwrap_or_else(|| panic!("a bare unit must not enter the term graph"));
+        assert!(
+            matches!(error, OpError::Unsupported { .. }),
+            "expected Unsupported, got {error:?}"
+        );
+        let message = error.to_string();
+        assert!(
+            message.contains("unit"),
+            "the reason must name the unit: {message}"
+        );
+        assert!(
+            message.contains("quantity"),
+            "the reason must say what to pass instead: {message}"
+        );
+    }
+
+    /// `quantity(3.0, m)` must keep working: the unit argument of `quantity`
+    /// is the one place a unit definition belongs in a term, and there it is
+    /// spelled as its symbol, which is what the units rules parse.
+    #[test]
+    fn a_unit_is_still_accepted_as_a_quantity_argument() {
+        let s = Session::new();
+        let metre = crate::dim::units::lookup("m")
+            .unwrap_or_else(|| panic!("metre is in the table"))
+            .to_value();
+        let out = s
+            .call_value(
+                "quantity",
+                &[Value::Float(3.0), Value::Unit(metre.clone())],
+                &CallCtx::new(),
+            )
+            .unwrap_or_else(|e| panic!("{e}"));
+        let Value::Quantity(quantity) = out else {
+            panic!("expected a quantity, got {out:?}");
+        };
+        assert_eq!(quantity.value.as_f64(), Some(3.0));
+        assert_eq!(quantity.unit.name, "m");
+        assert_eq!(quantity.unit.dimension, metre.dimension);
+
+        // The rule is by declared parameter, not by operator name, so
+        // `convert`'s target unit keeps working too.
+        let converted = s
+            .call_value(
+                "convert",
+                &[
+                    Value::Quantity(QuantityValue {
+                        value: Box::new(Value::Float(3.0)),
+                        unit: metre.clone(),
+                    }),
+                    Value::Unit(metre.clone()),
+                ],
+                &CallCtx::new(),
+            )
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            matches!(converted, Value::Quantity(_)),
+            "expected a quantity, got {converted:?}"
+        );
+    }
+
+    /// A `Value::Quantity` still becomes `quantity(value, unit)` and comes
+    /// back with its dimension: the refusal above must not reach it.
+    #[test]
+    fn a_quantity_keeps_its_unit_across_the_boundary() {
+        let s = Session::new();
+        let metre = crate::dim::units::lookup("m")
+            .unwrap_or_else(|| panic!("metre is in the table"))
+            .to_value();
+        let value = Value::Quantity(QuantityValue {
+            value: Box::new(Value::Float(3.0)),
+            unit: metre.clone(),
+        });
+        let term = s.term_of(&value).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(term.to_string(), "quantity(3, m)");
+        let back = s.value_of(term).unwrap_or_else(|e| panic!("{e}"));
+        let Value::Quantity(quantity) = back else {
+            panic!("expected a quantity, got {back:?}");
+        };
+        assert_eq!(quantity.unit.dimension, metre.dimension);
     }
 
     #[test]

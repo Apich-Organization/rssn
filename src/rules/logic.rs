@@ -2442,4 +2442,46 @@ mod ext_tests {
             "list(and(b, c), and(c, not(a)), and(a, b))"
         );
     }
+
+    /// Resolves a boolean operator **by type**, not by evaluating it.
+    ///
+    /// The registration says "predicate with a scalar evaluator", so the
+    /// derived overloads are `(Real, …) -> Bool` and `(Term, …) -> Term`.
+    /// Two `Bool` arguments must land on the boolean overload — the symbolic
+    /// one is only a looser match — because a pinned `OpKey` names the
+    /// overload that runs.
+    #[test]
+    fn boolean_operators_resolve_by_type_to_the_boolean_overload() {
+        use crate::graph::Engine;
+        use crate::graph::Graph;
+        use crate::kernel::SignatureSource;
+        use crate::kernel::infer::signatures;
+        use crate::kernel::overload::Best;
+        use crate::kernel::overload::best_types;
+        use crate::kernel::signature::TypeExpr;
+
+        let mut g = Graph::new();
+        assert!(Engine::install(&mut g, &[logic()]).is_ok());
+        for (name, arity) in [
+            ("and", 2_usize),
+            ("or", 2),
+            ("xor", 2),
+            ("not", 1),
+            ("implies", 2),
+            ("iff", 2),
+        ] {
+            let op = g
+                .ops()
+                .lookup(name)
+                .unwrap_or_else(|| panic!("{name} is registered"));
+            let (overloads, source) = signatures(g.ops().get(op));
+            assert_eq!(source, SignatureSource::Overlay, "{name}");
+            let args = vec![TypeExpr::Bool; arity];
+            let Best::Unique(chosen) = best_types(&overloads, &args) else {
+                panic!("{name}: {args:?} did not resolve to one overload");
+            };
+            assert_eq!(overloads[chosen].params, args, "{name}");
+            assert_eq!(overloads[chosen].ret, TypeExpr::Bool, "{name}");
+        }
+    }
 }

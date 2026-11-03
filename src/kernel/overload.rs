@@ -30,6 +30,8 @@
 //! refused — silently choosing one is how a typed caller and the runtime drift
 //! apart.
 
+use crate::kernel::signature::DimExpr;
+use crate::kernel::signature::NatExpr;
 use crate::kernel::signature::Signature;
 use crate::kernel::signature::TypeExpr;
 use crate::kernel::value::Value;
@@ -77,6 +79,60 @@ const fn weaker(
     if a.rank() < b.rank() { a } else { b }
 }
 
+/// How a parameter's rank accepts the argument's.
+///
+/// Two literals are compared; anything else is unpinned and scores [`Match::Shaped`].
+const fn rank_match(
+    param: &NatExpr,
+    got: &NatExpr,
+) -> Match {
+    match (param, got) {
+        | (NatExpr::Lit(a), NatExpr::Lit(b)) => {
+            if *a == *b {
+                Match::Exact
+            } else {
+                Match::No
+            }
+        },
+        | _ => Match::Shaped,
+    }
+}
+
+/// How a parameter's extents accept the argument's.
+fn shape_match(
+    param: &Option<Vec<NatExpr>>,
+    got: &Option<Vec<NatExpr>>,
+) -> Match {
+    let (Some(a), Some(b)) = (param, got) else {
+        // One side does not pin the extents; the rank already compared.
+        return Match::Shaped;
+    };
+    if a.len() != b.len() {
+        return Match::No;
+    }
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| rank_match(x, y))
+        .fold(Match::Exact, weaker)
+}
+
+/// How a parameter's dimension accepts the argument's.
+///
+/// `Any` and a variable accept anything; two concrete dimensions must be
+/// equal. A length parameter does not accept a time argument.
+fn dim_match(
+    param: &DimExpr,
+    got: &DimExpr,
+) -> Match {
+    match (param, got) {
+        | (DimExpr::Any | DimExpr::Var(_), _) | (_, DimExpr::Any | DimExpr::Var(_)) => {
+            Match::Generic
+        },
+        | (a, b) if a == b => Match::Exact,
+        | _ => Match::No,
+    }
+}
+
 /// How the type `param` accepts the type `got`.
 #[must_use]
 pub fn matches_type(
@@ -94,11 +150,57 @@ pub fn matches_type(
         | (TypeExpr::Real, TypeExpr::Int | TypeExpr::Float)
         | (TypeExpr::Complex, TypeExpr::Int | TypeExpr::Real | TypeExpr::Float) => Match::Widened,
         // The same constructor, with an argument the signature does not pin
-        // down: a dimension, a rank, an element type.
-        | (TypeExpr::Dim(a, _), TypeExpr::Dim(b, _))
-        | (TypeExpr::Tensor { elem: a, .. }, TypeExpr::Tensor { elem: b, .. })
-        | (TypeExpr::Sparse { elem: a, .. }, TypeExpr::Sparse { elem: b, .. }) => {
-            weaker(Match::Shaped, matches_type(a, b))
+        // down: a dimension, a rank, an element type. A pinned argument is
+        // compared, not ignored: a rank-2 value must not match a rank-1
+        // parameter, or the host's static lattice and this one disagree about
+        // which overload the program chose.
+        | (TypeExpr::Dim(a, da), TypeExpr::Dim(b, db)) => {
+            weaker(dim_match(da, db), matches_type(a, b))
+        },
+        // A unit is a dimension carrier: `quantity(value, unit)` declares its
+        // unit parameter as `Unit(D)` and passes a `Value::Unit`, and without
+        // this arm the typed overload scored `No` and lost to the all-`Dyn`
+        // one.
+        | (TypeExpr::Dim(_, da), TypeExpr::Unit(db) | TypeExpr::Point(db))
+        | (TypeExpr::Unit(da) | TypeExpr::Point(da), TypeExpr::Dim(_, db)) => dim_match(da, db),
+        | (TypeExpr::Unit(a), TypeExpr::Unit(b)) | (TypeExpr::Point(a), TypeExpr::Point(b)) => {
+            dim_match(a, b)
+        },
+        | (
+            TypeExpr::Tensor {
+                rank: ra,
+                shape: sa,
+                elem: ea,
+            },
+            TypeExpr::Tensor {
+                rank: rb,
+                shape: sb,
+                elem: eb,
+            },
+        ) => {
+            weaker(
+                rank_match(ra, rb),
+                weaker(shape_match(sa, sb), matches_type(ea, eb)),
+            )
+        },
+        | (
+            TypeExpr::Sparse {
+                format: fa,
+                rank: ra,
+                elem: ea,
+            },
+            TypeExpr::Sparse {
+                format: fb,
+                rank: rb,
+                elem: eb,
+            },
+        ) => {
+            let format = if fa == fb {
+                Match::Exact
+            } else {
+                Match::No
+            };
+            weaker(format, weaker(rank_match(ra, rb), matches_type(ea, eb)))
         },
         | (TypeExpr::Function(pa, ra), TypeExpr::Function(pb, rb)) => {
             let params = pa
@@ -121,6 +223,39 @@ pub fn matches(
     matches_type(param, &value.type_expr())
 }
 
+/// The shared scoring fold: the *minimum* match over the parameters.
+///
+/// `match_at` classifies parameter `index` against the argument at that
+/// position. Everything except that classification is identical for values
+/// and for types, so both [`score`] and [`score_types`] go through here and
+/// cannot disagree about arity, the variadic tail or the ranking.
+fn score_fold<F>(
+    signature: &Signature,
+    arity: usize,
+    mut match_at: F,
+) -> Option<u32>
+where
+    F: FnMut(usize, &TypeExpr) -> Match,
+{
+    if !signature.accepts_arity(arity) {
+        return None;
+    }
+    let mut worst = Match::Exact;
+    for index in 0..arity {
+        // A variadic tail repeats its element type.
+        let param = signature
+            .params
+            .get(index)
+            .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))?;
+        let matched = match_at(index, param);
+        if !matched.accepted() {
+            return None;
+        }
+        worst = weaker(worst, matched);
+    }
+    Some(worst.rank())
+}
+
 /// How well `signature` fits `args`.
 ///
 /// The score is the *minimum* match over the parameters, so an overload is
@@ -131,23 +266,23 @@ pub fn score(
     signature: &Signature,
     args: &[Value],
 ) -> Option<u32> {
-    if !signature.accepts_arity(args.len()) {
-        return None;
-    }
-    let mut worst = Match::Exact;
-    for (index, value) in args.iter().enumerate() {
-        // A variadic tail repeats its element type.
-        let param = signature
-            .params
-            .get(index)
-            .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))?;
-        let matched = matches(param, value);
-        if !matched.accepted() {
-            return None;
-        }
-        worst = weaker(worst, matched);
-    }
-    Some(worst.rank())
+    score_fold(signature, args.len(), |index, param| {
+        matches(param, &args[index])
+    })
+}
+
+/// How well `signature` fits the static types `args`.
+///
+/// The type-level twin of [`score`]: a host that resolves an overload
+/// statically gets the same number the dynamic call path would.
+#[must_use]
+pub fn score_types(
+    signature: &Signature,
+    args: &[TypeExpr],
+) -> Option<u32> {
+    score_fold(signature, args.len(), |index, param| {
+        matches_type(param, &args[index])
+    })
 }
 
 /// The outcome of choosing among the overloads of one operator.
@@ -167,10 +302,32 @@ pub fn best(
     signatures: &[Signature],
     args: &[Value],
 ) -> Best {
-    let scored: Vec<(usize, u32)> = signatures
-        .iter()
+    choose(signatures.iter().map(|signature| score(signature, args)))
+}
+
+/// Chooses among `signatures` for the static types `args`.
+///
+/// The type-level twin of [`best`]: a host that resolves statically runs the
+/// same lattice the dynamic call path runs, instead of rebuilding the fold
+/// and letting the two drift apart.
+#[must_use]
+pub fn best_types(
+    signatures: &[Signature],
+    args: &[TypeExpr],
+) -> Best {
+    choose(
+        signatures
+            .iter()
+            .map(|signature| score_types(signature, args)),
+    )
+}
+
+/// The shared choice fold: keep the accepted scores, pick the highest, and
+/// report a tie rather than guessing.
+fn choose(scores: impl Iterator<Item = Option<u32>>) -> Best {
+    let scored: Vec<(usize, u32)> = scores
         .enumerate()
-        .filter_map(|(index, signature)| score(signature, args).map(|score| (index, score)))
+        .filter_map(|(index, score)| score.map(|score| (index, score)))
         .collect();
     if scored.is_empty() {
         return Best::None;
@@ -261,15 +418,39 @@ mod tests {
     }
 
     #[test]
-    fn the_same_constructor_with_a_different_shape_is_shaped() {
-        // A rank-1 tensor signature against a rank-2 value: the element type
-        // matches exactly but the shape does not, which is `Shaped`.
+    fn a_rank_mismatch_is_not_a_match() {
+        // A rank-1 signature against a rank-2 value. The element type matches
+        // exactly, but rank is not decoration: passing a matrix where a vector
+        // is declared is a type error, not a looser match. Scoring this
+        // `Shaped` let a host's static lattice and this one disagree about
+        // which overload the program had chosen.
         let vector = Signature::new(vec![TypeExpr::Real.vector(3_u64)], TypeExpr::Real);
         let matrix = Value::Tensor(crate::kernel::value::TensorValue {
             shape: vec![2, 2],
+            elem: TypeExpr::Real,
             data: vec![real(), real(), real(), real()],
         });
-        assert_eq!(score(&vector, &[matrix]), Some(2));
+        assert_eq!(score(&vector, &[matrix]), None);
+    }
+
+    #[test]
+    fn an_unpinned_rank_still_matches_any_rank() {
+        // A signature that quantifies its rank accepts either, so the fix
+        // above must not make every tensor signature rank-specific.
+        let any = Signature::new(
+            vec![TypeExpr::Tensor {
+                rank: NatExpr::Var("r".to_owned()),
+                shape: None,
+                elem: Box::new(TypeExpr::Real),
+            }],
+            TypeExpr::Real,
+        );
+        let matrix = Value::Tensor(crate::kernel::value::TensorValue {
+            shape: vec![2, 2],
+            elem: TypeExpr::Real,
+            data: vec![real(), real(), real(), real()],
+        });
+        assert_eq!(score(&any, &[matrix]), Some(2));
     }
 
     #[test]
@@ -302,5 +483,56 @@ mod tests {
             score(&variadic, &[real(), Value::String("x".to_owned())]),
             None
         );
+    }
+
+    #[test]
+    fn the_type_lattice_agrees_with_the_value_lattice() {
+        // Every case the value-level `best` tests cover, run once over
+        // `Value`s and once over the corresponding `TypeExpr`s.
+        let exact = Signature::scalars(1, TypeExpr::Real);
+        let generic = Signature::new(vec![TypeExpr::Var("T".to_owned())], TypeExpr::Real);
+        let values = [real()];
+        let types = [TypeExpr::Real];
+        assert_eq!(
+            best(&[generic.clone(), exact.clone()], &values),
+            best_types(&[generic, exact], &types)
+        );
+        assert_eq!(
+            best_types(&[Signature::scalars(1, TypeExpr::Real)], &types),
+            Best::Unique(0)
+        );
+
+        // Widening: an `Int` prefers the `Int` parameter in both lattices.
+        let real_param = Signature::new(vec![TypeExpr::Real], TypeExpr::Real);
+        let int_param = Signature::new(vec![TypeExpr::Int], TypeExpr::Real);
+        assert_eq!(
+            best(
+                &[real_param.clone(), int_param.clone()],
+                &[Value::int(1_i32)]
+            ),
+            best_types(&[real_param, int_param], &[TypeExpr::Int])
+        );
+
+        // The tie case must be ambiguous in both, not silently broken.
+        let a = Signature::scalars(1, TypeExpr::Real);
+        let b = Signature::scalars(1, TypeExpr::Complex);
+        let by_value = best(&[a.clone(), b.clone()], &values);
+        let by_type = best_types(&[a, b], &types);
+        assert_eq!(by_value, by_type);
+        assert!(matches!(by_value, Best::Ambiguous(ref indices) if indices.len() == 2));
+
+        // Arity filters first, and an impossible call has no candidate.
+        let one = Signature::scalars(1, TypeExpr::Real);
+        let two = Signature::scalars(2, TypeExpr::Real);
+        assert_eq!(
+            best(&[one.clone(), two.clone()], &values),
+            best_types(&[one, two], &types)
+        );
+        let real_only = Signature::new(vec![TypeExpr::Real], TypeExpr::Real);
+        assert_eq!(
+            best(&[real_only.clone()], &[Value::String("x".to_owned())]),
+            Best::None
+        );
+        assert_eq!(best_types(&[real_only], &[TypeExpr::String]), Best::None);
     }
 }

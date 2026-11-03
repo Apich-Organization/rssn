@@ -312,12 +312,32 @@ fn reduced_arguments(
 /// The engine also owns the [manifest](crate::kernel::manifest) of what it
 /// installed. The manifest is rebuilt whenever the program grows, so a
 /// session's manifest always describes the operators it can actually call.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Engine {
     program: Program,
     sets: Vec<RuleSet>,
     plugins: Vec<crate::kernel::plugin::PluginManifest>,
+    /// The session's unit registry, when it has one. `None` means the
+    /// process-wide table, which is what [`KernelManifest::build`] reads.
+    ///
+    /// [`KernelManifest::build`]: crate::kernel::manifest::KernelManifest::build
+    units: Option<Arc<dyn crate::dim::UnitRegistry + Send + Sync>>,
     manifest: std::sync::Arc<crate::kernel::manifest::KernelManifest>,
+}
+
+impl std::fmt::Debug for Engine {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("Engine")
+            .field("program", &self.program)
+            .field("sets", &self.sets)
+            .field("plugins", &self.plugins)
+            .field("units", &self.units.as_ref().map(|_| "<session registry>"))
+            .field("manifest", &self.manifest)
+            .finish()
+    }
 }
 
 impl Engine {
@@ -369,16 +389,40 @@ impl Engine {
         self.plugins.push(manifest);
     }
 
+    /// Records the session's unit registry.
+    ///
+    /// After the next [`Engine::refresh_manifest`] the manifest lists this
+    /// registry's units instead of the process-wide table, so a unit the
+    /// session registered is described to a host that generates a units
+    /// module from the manifest.
+    pub fn set_unit_registry<R>(
+        &mut self,
+        registry: R,
+    ) where
+        R: crate::dim::UnitRegistry + Send + Sync + 'static,
+    {
+        self.units = Some(Arc::new(registry));
+    }
+
     /// Rebuilds the manifest from the graph's operator table.
     pub fn refresh_manifest(
         &mut self,
         graph: &Graph,
     ) {
-        self.manifest = std::sync::Arc::new(crate::kernel::manifest::KernelManifest::build(
-            graph,
-            &self.sets,
-            &self.plugins,
-        ));
+        let manifest = match self.units.as_ref() {
+            | Some(units) => {
+                crate::kernel::manifest::KernelManifest::build_with_units(
+                    graph,
+                    &self.sets,
+                    &self.plugins,
+                    &**units,
+                )
+            },
+            | None => {
+                crate::kernel::manifest::KernelManifest::build(graph, &self.sets, &self.plugins)
+            },
+        };
+        self.manifest = std::sync::Arc::new(manifest);
     }
 
     /// The manifest of this engine's configuration.
@@ -917,6 +961,7 @@ fn propagate_witnesses(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dim::UnitRegistry as _;
     use crate::graph::number::Number;
     use crate::graph::op::Arity;
     use crate::graph::op::OpDescriptor;
@@ -1205,5 +1250,88 @@ mod tests {
             report.iterations
         );
         assert_eq!(best(&mut g, root), "(a + b)*(c + d)*(e + f)");
+    }
+
+    /// A session registry: the built-in table plus what this session added,
+    /// without touching the process-wide one.
+    #[derive(Default)]
+    struct SessionUnits {
+        extra: Vec<crate::dim::UnitDef>,
+    }
+
+    impl crate::dim::UnitRegistry for SessionUnits {
+        fn list(&self) -> Vec<crate::dim::UnitDef> {
+            let mut units = crate::dim::units::all();
+            units.extend(self.extra.iter().cloned());
+            units.sort_by(|a, b| a.name.cmp(&b.name));
+            units
+        }
+
+        fn lookup(
+            &self,
+            name: &str,
+        ) -> Option<crate::dim::UnitDef> {
+            self.extra
+                .iter()
+                .find(|u| u.name == name || u.aliases.iter().any(|a| a == name))
+                .cloned()
+                .or_else(|| crate::dim::units::lookup(name))
+        }
+
+        fn resolve(
+            &self,
+            expr: &str,
+        ) -> Result<crate::dim::ResolvedUnit, crate::dim::DimError> {
+            crate::dim::units::resolve(expr)
+        }
+
+        fn register(
+            &mut self,
+            unit: crate::dim::UnitDef,
+        ) -> Result<(), crate::dim::DimError> {
+            self.extra.push(unit);
+            Ok(())
+        }
+
+        fn format(
+            &self,
+            dim: &crate::dim::DimTerm,
+            value: &crate::kernel::value::Value,
+        ) -> String {
+            crate::dim::StandardRegistry.format(dim, value)
+        }
+
+        fn snapshot(&self) -> crate::dim::UnitRegistrySnapshot {
+            let units = self.list();
+            crate::dim::UnitRegistrySnapshot {
+                hash: crate::kernel::codec::digest(&units),
+                units,
+            }
+        }
+    }
+
+    #[test]
+    fn the_manifest_lists_the_session_unit_registry() {
+        let mut g = Graph::new();
+        let mut engine = Engine::install(&mut g, &[calculus()]).unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            !engine.manifest().units.iter().any(|u| u.name == "furlong"),
+            "nothing has registered it yet"
+        );
+        let mut units = SessionUnits::default();
+        units
+            .register(crate::dim::UnitDef::linear(
+                "furlong",
+                crate::kernel::signature::DimExpr::base("Length"),
+                crate::dim::Scale::one(),
+            ))
+            .unwrap_or_else(|e| panic!("{e}"));
+        engine.set_unit_registry(units);
+        engine.refresh_manifest(&g);
+        assert!(
+            engine.manifest().units.iter().any(|u| u.name == "furlong"),
+            "the session's registry must reach the manifest"
+        );
+        assert!(engine.manifest().verify());
     }
 }

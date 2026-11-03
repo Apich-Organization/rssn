@@ -80,6 +80,7 @@ pub mod lie_structure;
 pub mod linalg;
 pub mod logic;
 pub mod number_theory;
+pub mod numeric;
 pub mod ode;
 pub mod optimize;
 pub mod pde;
@@ -115,6 +116,7 @@ pub use lie_structure::lie_structure;
 pub use linalg::linalg;
 pub use logic::logic;
 pub use number_theory::number_theory;
+pub use numeric::numeric;
 pub use ode::ode;
 pub use optimize::optimize;
 pub use pde::pde;
@@ -152,6 +154,7 @@ pub fn standard() -> Vec<RuleSet> {
         special(),
         stats(),
         transforms(),
+        numeric(),
         variational(),
         pde(),
         functional(),

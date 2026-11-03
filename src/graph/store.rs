@@ -353,6 +353,19 @@ impl Graph {
         }
     }
 
+    /// Whether `id` names a node of this graph.
+    ///
+    /// A handle from another graph in the same session is a valid `NodeId`
+    /// with no node here; indexing would panic, so a caller that did not
+    /// create the id itself asks first.
+    #[must_use]
+    pub fn contains(
+        &self,
+        id: NodeId,
+    ) -> bool {
+        self.nodes.get(id.index()).is_some()
+    }
+
     /// Operator of a node.
     #[must_use]
     pub fn op(

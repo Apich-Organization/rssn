@@ -31,7 +31,6 @@ pub mod constants;
 pub mod units;
 
 use num_rational::BigRational;
-use num_traits::Zero;
 
 pub use crate::graph::dim::BaseId;
 pub use crate::graph::dim::DimArena;
@@ -113,32 +112,94 @@ impl DimExpr {
     }
 
     /// The dimension of `term` as a type-level expression.
+    ///
+    /// This is the exact inverse of [`DimExpr::to_term`] for every term that
+    /// [`Exp`](crate::kernel::signature::Exp) can write: a rational exponent
+    /// becomes `Exp::Rat`, an exponent of `-1` becomes [`DimExpr::Inverse`],
+    /// and an exponent that is a single interned symbol becomes `Exp::Symbol`
+    /// (`Length^n` stays `Length^n`).
+    ///
+    /// # Errors
+    /// Fails for an exponent the type-level language cannot write — a
+    /// compound symbolic exponent such as `Length^(2n)`, or a rational
+    /// outside `i64` — instead of dropping the factor. The answer is checked
+    /// by converting it back with [`DimExpr::to_term`] against a copy of
+    /// `arena` and comparing terms, so this never returns a value that would
+    /// rebuild a *different* term.
+    ///
+    /// The result is canonical rather than literally the input: factors are
+    /// sorted by name with bases before variables, `Mul` is flat, and an
+    /// exponent of `1` is the bare factor. A product written in that order
+    /// round trips unchanged.
+    pub fn try_from_term(
+        term: &DimTerm,
+        arena: &DimArena,
+    ) -> Result<Self, DimError> {
+        if term.is_any() {
+            return Ok(Self::Any);
+        }
+        if term.is_container() {
+            return Ok(Self::Container);
+        }
+        if term.is_non_metric() {
+            return Ok(Self::NonMetric);
+        }
+        let view = term.to_dimension(arena);
+        let mut factors: Vec<Self> =
+            Vec::with_capacity(view.factors.len().saturating_add(view.unknown.len()));
+        for (name, exponent) in view.factors {
+            factors.push(factor_with_exponent(
+                Self::base(&name),
+                exponent_from_text(&exponent),
+            ));
+        }
+        for (name, exponent) in view.unknown {
+            factors.push(factor_with_exponent(
+                Self::Var(name),
+                exponent_from_text(&exponent),
+            ));
+        }
+        let candidate = match factors.len() {
+            | 0 => Self::Dimless,
+            | 1 => factors.into_iter().next().unwrap_or(Self::Dimless),
+            | _ => Self::Mul(factors),
+        };
+        // The printed exponent is the only window `DimTerm` offers onto an
+        // exponent, and a compound one (`2n`) prints the same shape as a
+        // symbol named `2*n`. Rebuilding the term is what tells them apart.
+        let rebuilt = candidate.to_term(&mut arena.clone())?;
+        if rebuilt == *term {
+            return Ok(candidate);
+        }
+        let reason = match term.symbolic_factors(arena).into_iter().next() {
+            | Some((name, exponent)) => {
+                format!(
+                    "the exponent {exponent} of {name} is not a single symbol, so Exp cannot write it"
+                )
+            },
+            | None => String::from("the exponents of this term do not fit Exp's rational range"),
+        };
+        Err(DimError::Parse {
+            text: term.describe(arena),
+            reason,
+        })
+    }
+
+    /// The dimension of `term` as a type-level expression, or [`DimExpr::Any`].
+    ///
+    /// The total form of [`DimExpr::try_from_term`]: the same value whenever
+    /// that function succeeds. A term whose exponent `Exp` cannot write
+    /// (`Length^(2n)`) becomes [`DimExpr::Any`] — "no type-level dimension is
+    /// known" — never a wrong dimension such as `Length^n`. `Any` is not the
+    /// input, and [`DimExpr::to_term`] refuses it, so converting back is an
+    /// error rather than a quiet lie. Use `try_from_term` to see that failure
+    /// where it happens.
     #[must_use]
     pub fn from_term(
         term: &DimTerm,
         arena: &DimArena,
     ) -> Self {
-        if term.is_any() {
-            return Self::Any;
-        }
-        if term.is_container() {
-            return Self::Container;
-        }
-        if term.is_non_metric() {
-            return Self::NonMetric;
-        }
-        let mut factors = Vec::new();
-        for (name, exponent) in term.factors(arena) {
-            factors.push(Self::base(&name).pow(rat_exp(&exponent)));
-        }
-        for (name, exponent) in term.vars(arena) {
-            factors.push(Self::Var(name).pow(rat_exp(&exponent)));
-        }
-        match factors.len() {
-            | 0 => Self::Dimless,
-            | 1 => factors.into_iter().next().unwrap_or(Self::Dimless),
-            | _ => Self::Mul(factors),
-        }
+        Self::try_from_term(term, arena).unwrap_or(Self::Any)
     }
 
     /// The multiplicative factors of the expression, with their exponents.
@@ -238,37 +299,157 @@ pub enum Factor {
     Var(String),
 }
 
-/// A rational exponent as a type-level exponent.
-fn rat_exp(value: &BigRational) -> TypeExp {
-    if value.is_zero() {
-        return TypeExp::from(0_i64);
+/// A factor raised to a type-level exponent.
+///
+/// `-1` is the reciprocal, which is the shape [`DimExpr::Inverse`] exists
+/// for; any other exponent is a [`DimExpr::Pow`].
+fn factor_with_exponent(
+    factor: DimExpr,
+    exponent: TypeExp,
+) -> DimExpr {
+    match exponent {
+        | TypeExp::Rat(r) if r.numer == -1 && r.denom == 1 => DimExpr::Inverse(Box::new(factor)),
+        | exp => factor.pow(exp),
     }
-    let numer = i64::try_from(value.numer().clone()).unwrap_or(0);
-    let denom = i64::try_from(value.denom().clone()).unwrap_or(1);
-    TypeExp::Rat(crate::kernel::signature::Rational::new(numer, denom))
+}
+
+/// A printed exponent as a type-level exponent.
+///
+/// The printed form of a rational is `p`, `-p`, `p/q` or `-p/q`; anything
+/// else is a symbol name, or a compound such as `2*n` that is kept as a
+/// symbol here and refused by the caller's round-trip check.
+fn exponent_from_text(text: &str) -> TypeExp {
+    let (numer, denom) = match text.split_once('/') {
+        | Some((numer, denom)) => (numer, denom),
+        | None => (text, "1"),
+    };
+    match (numer.parse::<i64>(), denom.parse::<i64>()) {
+        | (Ok(numer), Ok(denom)) if denom != 0 => {
+            TypeExp::Rat(crate::kernel::signature::Rational::new(numer, denom))
+        },
+        | _ => TypeExp::Symbol(text.to_owned()),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn type_level_dimensions_round_trip_through_terms() {
+    use num_bigint::BigInt;
+
+    /// `expr` through `to_term` and back, on a fresh arena.
+    fn round_trip(expr: &DimExpr) -> DimExpr {
         let mut arena = DimArena::new();
+        let term = expr.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));
+        DimExpr::from_term(&term, &arena)
+    }
+
+    #[test]
+    fn from_term_is_the_inverse_of_to_term() {
         let cases = [
             DimExpr::Dimless,
             DimExpr::base("Length"),
             DimExpr::Mul(vec![
                 DimExpr::base("Length"),
-                DimExpr::base("Time").pow(TypeExp::from(-1_i64)),
+                DimExpr::Inverse(Box::new(DimExpr::base("Time"))),
             ]),
             DimExpr::base("Length")
                 .pow(TypeExp::Rat(crate::kernel::signature::Rational::new(1, 2))),
+            DimExpr::Inverse(Box::new(DimExpr::base("Time"))),
+            DimExpr::base("Length").pow(TypeExp::Symbol(String::from("n"))),
+            DimExpr::Var(String::from("D")).pow(TypeExp::Symbol(String::from("n"))),
         ];
         for case in cases {
-            let term = case.to_term(&mut arena).unwrap_or_else(|e| panic!("{e}"));
-            assert_eq!(DimExpr::from_term(&term, &arena), case, "{case:?}");
+            assert_eq!(round_trip(&case), case, "{case:?}");
         }
+    }
+
+    #[test]
+    fn inverse_comes_back_as_inverse() {
+        let reciprocal = DimExpr::Inverse(Box::new(DimExpr::base("Time")));
+        assert_eq!(round_trip(&reciprocal), reciprocal);
+        // Not the old rewrite of `Inverse(x)` into `Pow(x, -1)`.
+        assert_ne!(
+            round_trip(&reciprocal),
+            DimExpr::base("Time").pow(TypeExp::from(-1_i64))
+        );
+    }
+
+    #[test]
+    fn a_single_symbol_exponent_survives_and_a_compound_one_is_refused() {
+        let mut arena = DimArena::new();
+        let symbolic = DimExpr::base("Length").pow(TypeExp::Symbol(String::from("n")));
+        let term = symbolic
+            .to_term(&mut arena)
+            .unwrap_or_else(|e| panic!("{e}"));
+        // `Length^n` is one interned atom, and `Exp::Symbol` writes it exactly.
+        assert_eq!(
+            DimExpr::try_from_term(&term, &arena).unwrap_or_else(|e| panic!("{e}")),
+            symbolic
+        );
+
+        // `Length^n * Length^n` is `Length^(2n)`. `Exp` has no product of a
+        // symbol and a rational, so the honest outcome is a refusal — not a
+        // silent `Length^n`, which is what the old code returned.
+        let squared = term.mul(&term);
+        assert!(DimExpr::try_from_term(&squared, &arena).is_err());
+        assert_ne!(DimExpr::from_term(&squared, &arena), symbolic);
+        assert_eq!(DimExpr::from_term(&squared, &arena), DimExpr::Any);
+    }
+
+    #[test]
+    fn to_term_output_is_unchanged() {
+        let mut arena = DimArena::new();
+        let length = arena.define_base("Length");
+        let time = arena.define_base("Time");
+        let one = BigRational::new(BigInt::from(1), BigInt::from(1));
+        let minus_one = BigRational::new(BigInt::from(-1), BigInt::from(1));
+
+        let single = DimExpr::base("Length")
+            .to_term(&mut arena)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(single, DimTerm::base(length, one.clone()));
+
+        let product = DimExpr::Mul(vec![
+            DimExpr::base("Length"),
+            DimExpr::base("Time").pow(TypeExp::from(-1_i64)),
+        ])
+        .to_term(&mut arena)
+        .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            product.factors(&arena),
+            vec![
+                (String::from("Length"), one.clone()),
+                (String::from("Time"), minus_one.clone()),
+            ]
+        );
+        assert_eq!(
+            product,
+            DimTerm::base(length, one.clone()).mul(&DimTerm::base(time, minus_one))
+        );
+
+        let half = DimExpr::base("Length")
+            .pow(TypeExp::Rat(crate::kernel::signature::Rational::new(1, 2)))
+            .to_term(&mut arena)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            half,
+            DimTerm::base(length, BigRational::new(BigInt::from(1), BigInt::from(2)))
+        );
+
+        let symbolic = DimExpr::base("Length")
+            .pow(TypeExp::Symbol(String::from("n")))
+            .to_term(&mut arena)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            symbolic.symbolic_factors(&arena),
+            vec![(String::from("Length"), String::from("n"))]
+        );
+        assert_eq!(symbolic.describe(&arena), "Length^n");
+
+        assert!(DimExpr::Any.to_term(&mut arena).is_err());
+        assert!(DimExpr::NonMetric.to_term(&mut arena).is_err());
+        assert!(DimExpr::Container.to_term(&mut arena).is_err());
     }
 
     #[test]

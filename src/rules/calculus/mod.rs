@@ -15,6 +15,7 @@
 //! | `limit(f, x, a)`, `limit(f, x, a, plus\|minus)` | the limit by continuity, l'Hôpital, Gruntz growth comparison and the numeric probe |
 //! | `taylor(f, x, a, n)`, `laurent(f, x, a, n)`, `fourier_series(f, x, L, n)` | expansions about `a` (also `asymptotic(f, x, n)`, the expansion in `1/x`) |
 //! | `sum(f, k, a, b)`, `product(f, k, a, b)`, `converges(f, k)` | finite and closed-form sums and products, and convergence tests |
+//! | `sum(t)`, `sum(t, axis)` | the sum of every element of a tensor, and the sum along one axis (see `tensor`) |
 //! | `antidifference(t, k)`, `indefinite_sum(f, k)`, `indefinite_product(f, k)` | Gosper's indefinite sum and the indefinite product |
 //! | `zeilberger(F, k, n)` | `list(list(p_0, …, p_J), G/F)`: Zeilberger's recurrence `Σ_j p_j(n) S(n+j) = 0` for `S(n) = Σ_k F(n, k)` and the telescoping certificate |
 //! | `definite_sum(F, k, n)` | the closed form of `Σ_{k=-oo}^{oo} F(n, k)` from the first-order Zeilberger recurrence |
@@ -36,6 +37,7 @@ mod recurrence;
 pub(crate) use powerseries::laurent_expansion;
 mod gruntz;
 mod series;
+mod tensor;
 #[cfg(test)]
 mod tests;
 mod zeilberger;
@@ -329,6 +331,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .flags(OpFlags::HEAVY)
             .cost(100)
     };
+    // `sum` also has a tensor overload — `sum(t)` and `sum(t, axis)` — which
+    // the manifest cannot express as a second registration (one name, one
+    // declaration), so the registration is variadic and the two meanings are
+    // told apart by arity. The tensor branch is `tensor::SumTensor`.
+    let sum = i.op(OpDescriptor::new("sum", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .binder(1, 0b1))?;
     let ops = series::SeriesOps {
         functions,
         infinity,
@@ -336,7 +346,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         taylor: i.op(request("taylor", 4))?,
         laurent: i.op(request("laurent", 4))?,
         fourier: i.op(request("fourier_series", 4))?,
-        sum: i.op(request("sum", 4).binder(1, 0b1))?,
+        sum,
         product: i.op(request("product", 4).binder(1, 0b1))?,
         converges: i.op(request("converges", 2).binder(1, 0b1))?,
     };
@@ -344,6 +354,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "calculus/series",
         Tier::Reduce,
         series::SeriesKernel { ops },
+    );
+    i.kernel(
+        "calculus/tensor-sum",
+        Tier::Reduce,
+        tensor::SumTensor { sum },
     );
     // antidifference(t, k): T with T(k+1) - T(k) = t(k).
     let antidifference = i.op(request("antidifference", 2))?;

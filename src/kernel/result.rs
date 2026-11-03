@@ -774,6 +774,7 @@ impl OdeSolutionView {
             .collect();
         Ok(TensorValue {
             shape: vec![self.y.len(), self.components()],
+            elem: crate::kernel::signature::TypeExpr::Float,
             data,
         })
     }
@@ -945,6 +946,7 @@ impl SimResult {
         }
         Ok(TensorValue {
             shape: vec![self.t.len(), self.fields.len()],
+            elem: crate::kernel::signature::TypeExpr::Float,
             data,
         })
     }

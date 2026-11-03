@@ -216,6 +216,13 @@ pub struct TensorValue {
     pub shape: Vec<usize>,
     /// Elements, row-major. `data.len()` is the product of `shape`.
     pub data: Vec<Value>,
+    /// What the elements are.
+    ///
+    /// Carried rather than derived from `data.first()`, which reported `Real`
+    /// for an empty tensor and the type of the first *stored* entry for a
+    /// sparse one — both guesses, and both wrong for a tensor that was built
+    /// with a declared element type.
+    pub elem: TypeExpr,
 }
 
 impl TensorValue {
@@ -224,6 +231,7 @@ impl TensorValue {
     pub fn scalar(value: Value) -> Self {
         Self {
             shape: Vec::new(),
+            elem: value.type_expr(),
             data: vec![value],
         }
     }
@@ -232,10 +240,23 @@ impl TensorValue {
     #[must_use]
     pub fn vector(data: Vec<Value>) -> Self {
         let len = data.len();
+        let elem = data.first().map_or(TypeExpr::Real, Value::type_expr);
         Self {
             shape: vec![len],
+            elem,
             data,
         }
+    }
+
+    /// A tensor whose element type the caller knows even when the data is
+    /// empty — the case `vector` can only guess at.
+    #[must_use]
+    pub fn of(
+        shape: Vec<usize>,
+        data: Vec<Value>,
+        elem: TypeExpr,
+    ) -> Self {
+        Self { shape, data, elem }
     }
 
     /// The rank.
@@ -449,7 +470,13 @@ impl ValueKindInfo {
             entry(ValueKind::Bool, true, ""),
             entry(ValueKind::String, true, ""),
             entry(ValueKind::Symbol, true, ""),
-            entry(ValueKind::Unit, true, ""),
+            entry(
+                ValueKind::Unit,
+                false,
+                "a unit is a definition, not a number: `term_of` refuses it; pass \
+                 `quantity(value, unit)` instead (a unit is accepted directly only \
+                 in a declared unit parameter, such as `quantity`'s second argument)",
+            ),
             entry(ValueKind::Quantity, true, ""),
             entry(ValueKind::Tensor, true, "nested `list` nodes"),
             entry(
@@ -643,7 +670,7 @@ impl Value {
                             .map(|&n| NatExpr::Lit(u64::try_from(n).unwrap_or(u64::MAX)))
                             .collect(),
                     ),
-                    elem: Box::new(t.data.first().map_or(TypeExpr::Real, Self::type_expr)),
+                    elem: Box::new(t.elem.clone()),
                 }
             },
             | Self::Sparse(s) => {
@@ -654,6 +681,10 @@ impl Value {
                         | SparseFormat::Coo => "coo".to_owned(),
                     },
                     rank: NatExpr::Lit(u64::try_from(s.shape.len()).unwrap_or(u64::MAX)),
+                    // Still derived: a sparse value carries no element type of its
+                    // own, and nothing in this crate constructs one, so there is
+                    // no producer to take the type from. A tensor that is known to
+                    // be sparse should carry one, and this arm should read it.
                     elem: Box::new(s.data.first().map_or(TypeExpr::Real, Self::type_expr)),
                 }
             },
@@ -784,9 +815,20 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_tensor_reports_the_element_type_it_was_given() {
+        // `data.first()` answered `Real` for an empty tensor whatever it held.
+        let empty = TensorValue::of(vec![0, 3], Vec::new(), TypeExpr::Int);
+        let TypeExpr::Tensor { elem, .. } = Value::Tensor(empty).type_expr() else {
+            panic!("expected a tensor type");
+        };
+        assert_eq!(*elem, TypeExpr::Int);
+    }
+
+    #[test]
     fn tensors_report_shape_and_type() {
         let t = TensorValue {
             shape: vec![2, 2],
+            elem: TypeExpr::Int,
             data: vec![Value::int(1), Value::int(2), Value::int(3), Value::int(4)],
         };
         assert!(t.is_consistent());

@@ -31,8 +31,16 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use num_rational::BigRational;
 use rayon::prelude::*;
 
+use crate::dim::DimError;
+use crate::dim::DimTerm;
+use crate::dim::ResolvedUnit;
+use crate::dim::Scale;
+use crate::dim::UnitDef;
+use crate::dim::UnitRegistry;
+use crate::dim::UnitRegistrySnapshot;
 use crate::graph::Budget;
 use crate::graph::ClosedForm;
 use crate::graph::Engine;
@@ -50,6 +58,10 @@ use crate::graph::RuleSet;
 use crate::graph::Saturate;
 use crate::graph::SizeCost;
 use crate::graph::op::core;
+use crate::kernel::manifest::KernelManifest;
+use crate::kernel::value::ScaleValue;
+use crate::kernel::value::UnitValue;
+use crate::kernel::value::Value;
 use crate::rules;
 
 /// The representation the answer should be in.
@@ -344,6 +356,165 @@ impl From<ParseError> for ComputeError {
     }
 }
 
+/// The units one session knows: the built-in table plus the units that
+/// session registered.
+///
+/// The registry belongs to the session, not to the process. Every engine of
+/// the session is given a copy (see [`Engine::set_unit_registry`]) before its
+/// manifest is built, so a unit registered here is described by this
+/// session's [`KernelManifest`] and by no other session's. Registering a unit
+/// therefore does not go through [`crate::dim::units::register`], the table
+/// every process shares.
+///
+/// The built-in table is read through [`crate::dim::units::all`], which also
+/// carries the units a *plugin* registered: a plugin reaches the session
+/// through [`crate::kernel::plugin::Registry`], which has no session handle,
+/// so its units are still written to the shared table.
+#[derive(Clone, Debug, Default)]
+pub(super) struct SessionUnits {
+    /// Units registered into this session, in registration order.
+    extra: Vec<UnitDef>,
+}
+
+impl SessionUnits {
+    /// The registry an engine's manifest describes.
+    ///
+    /// The engine keeps no handle to its registry, only the manifest built
+    /// from it, so this is how a session carries its units forward when its
+    /// configuration changes — a unit is added, or a template is built for
+    /// another set of rule sets.
+    pub(super) fn from_manifest(manifest: &KernelManifest) -> Self {
+        let global = crate::dim::units::all();
+        let extra = manifest
+            .units
+            .iter()
+            .map(unit_def)
+            // What the shared table already describes is not this session's,
+            // unless this session redefined it.
+            .filter(|unit| !global.contains(unit))
+            .collect();
+        Self { extra }
+    }
+}
+
+/// A unit as the manifest carries it, back as a definition.
+fn unit_def(unit: &UnitValue) -> UnitDef {
+    fn scale(value: &ScaleValue) -> Scale {
+        Scale {
+            rat: BigRational::new(value.numer.clone(), value.denom.clone()),
+            pi: value.pi,
+        }
+    }
+    UnitDef {
+        name: unit.name.clone(),
+        aliases: unit.aliases.clone(),
+        dimension: unit.dimension.clone(),
+        scale: scale(&unit.scale),
+        offset: unit
+            .offset
+            .as_ref()
+            .map(|offset| BigRational::new(offset.numer.clone(), offset.denom.clone())),
+        prefixable: unit.prefixable,
+        affine: unit.affine,
+        display: unit.display.clone(),
+        category: unit.category.clone(),
+        since: unit.since.clone(),
+    }
+}
+
+impl UnitRegistry for SessionUnits {
+    fn list(&self) -> Vec<UnitDef> {
+        let mut units = crate::dim::units::all();
+        for unit in &self.extra {
+            match units.iter_mut().find(|known| known.name == unit.name) {
+                | Some(slot) => *slot = unit.clone(),
+                | None => units.push(unit.clone()),
+            }
+        }
+        units.sort_by(|a, b| a.name.cmp(&b.name));
+        units
+    }
+
+    fn lookup(
+        &self,
+        name: &str,
+    ) -> Option<UnitDef> {
+        self.extra
+            .iter()
+            .find(|unit| unit.name == name || unit.aliases.iter().any(|alias| alias == name))
+            .cloned()
+            .or_else(|| crate::dim::units::lookup(name))
+    }
+
+    fn resolve(
+        &self,
+        expr: &str,
+    ) -> Result<ResolvedUnit, DimError> {
+        // A single unit, this session's own included; a compound expression
+        // is resolved by the shared parser, which does not know this
+        // session's units yet.
+        if let Some(unit) = self.lookup(expr.trim()) {
+            return Ok(ResolvedUnit {
+                dimension: unit.dimension,
+                scale: unit.scale,
+                offset: unit.offset,
+                affine: unit.affine,
+            });
+        }
+        crate::dim::units::resolve(expr)
+    }
+
+    fn register(
+        &mut self,
+        unit: UnitDef,
+    ) -> Result<(), DimError> {
+        if unit.name.trim().is_empty() {
+            return Err(DimError::Parse {
+                text: unit.name,
+                reason: String::from("a unit needs a name"),
+            });
+        }
+        let clash = |other: &UnitDef| other.name != unit.name && other.dimension != unit.dimension;
+        if let Some(known) = self.extra.iter().find(|known| known.name == unit.name)
+            && clash(known)
+        {
+            return Err(DimError::Parse {
+                text: unit.name.clone(),
+                reason: String::from("a different unit already has this name"),
+            });
+        }
+        if let Some(alias) = unit.aliases.iter().find(|alias| {
+            self.extra
+                .iter()
+                .any(|known| known.aliases.contains(alias) && clash(known))
+        }) {
+            return Err(DimError::Parse {
+                text: alias.clone(),
+                reason: String::from("a different unit already has this alias"),
+            });
+        }
+        self.extra.retain(|known| known.name != unit.name);
+        self.extra.push(unit);
+        Ok(())
+    }
+
+    fn format(
+        &self,
+        dim: &DimTerm,
+        value: &Value,
+    ) -> String {
+        crate::dim::StandardRegistry.format(dim, value)
+    }
+
+    fn snapshot(&self) -> UnitRegistrySnapshot {
+        let units = self.list();
+        UnitRegistrySnapshot {
+            hash: crate::kernel::codec::digest(&units),
+            units,
+        }
+    }
+}
+
 /// A graph with a set of rule sets installed, and the engine bound to it.
 struct Template {
     sets: Vec<Arc<str>>,
@@ -469,6 +640,30 @@ impl Session {
         node: NodeId,
     ) -> Term<'_> {
         Term { session: self, node }
+    }
+
+    /// Registers a unit in this session.
+    ///
+    /// The unit is described by this session's [manifest](Session::manifest)
+    /// and by no other session's: it goes into the session's own
+    /// [`UnitRegistry`], not into the table every session shares. The built-in
+    /// units stay available.
+    ///
+    /// # Errors
+    /// Fails when the name or an alias already belongs to a unit with a
+    /// different dimension.
+    pub fn register_unit(
+        &mut self,
+        unit: UnitDef,
+    ) -> Result<(), DimError> {
+        let mut inner = self.inner.borrow_mut();
+        for template in &mut inner.templates {
+            let mut units = SessionUnits::from_manifest(template.engine.manifest());
+            units.register(unit.clone())?;
+            template.engine.set_unit_registry(units);
+            template.engine.refresh_manifest(&template.graph);
+        }
+        Ok(())
     }
 
     /// The symbol named `name`.
@@ -677,7 +872,17 @@ fn template_index(
     match inner.templates.iter().position(|t| t.sets == key) {
         | Some(i) => Ok(i),
         | None => {
-            inner.templates.push(Template::new(&config.sets, &[])?);
+            // A template built for another set of rule sets describes the
+            // units the session already knows, not only the built-in ones.
+            let units = inner
+                .templates
+                .first()
+                .map_or_else(SessionUnits::default, |t| {
+                    SessionUnits::from_manifest(t.engine.manifest())
+                });
+            inner
+                .templates
+                .push(Template::with_units(&config.sets, &[], units)?);
             Ok(inner.templates.len().saturating_sub(1))
         },
     }
@@ -888,6 +1093,16 @@ impl Template {
         sets: &[RuleSet],
         plugins: &[Arc<dyn crate::kernel::plugin::Plugin>],
     ) -> Result<Self, RuleError> {
+        Self::with_units(sets, plugins, SessionUnits::default())
+    }
+
+    /// Builds a template whose engine describes `units` rather than the
+    /// process-wide table.
+    pub(super) fn with_units(
+        sets: &[RuleSet],
+        plugins: &[Arc<dyn crate::kernel::plugin::Plugin>],
+        units: SessionUnits,
+    ) -> Result<Self, RuleError> {
         let mut graph = Graph::new();
         let mut engine = Engine::install(&mut graph, sets)?;
         for plugin in plugins {
@@ -906,6 +1121,9 @@ impl Template {
             drop(registry);
             engine.add_plugin(manifest);
         }
+        // The session's registry must be in place before the manifest that
+        // describes it is built.
+        engine.set_unit_registry(units);
         engine.refresh_manifest(&graph);
         Ok(Self {
             sets: sets.iter().map(|s| Arc::from(s.name())).collect(),
@@ -1676,5 +1894,69 @@ mod tests {
         );
         assert!(s.call("sin", &[x, x]).is_err());
         assert!(s.parse("1 +").is_err());
+    }
+
+    /// A unit defined by a session, not by the process.
+    fn furlong() -> UnitDef {
+        UnitDef::linear(
+            "furlong",
+            crate::kernel::signature::DimExpr::base("Length"),
+            Scale::one(),
+        )
+    }
+
+    fn names(manifest: &KernelManifest) -> Vec<String> {
+        manifest
+            .units
+            .iter()
+            .map(|unit| unit.name.clone())
+            .collect()
+    }
+
+    /// A unit registered on one session is described by that session's
+    /// manifest — and by no other session's, which is the whole point of the
+    /// session owning its registry instead of sharing the global table.
+    #[test]
+    fn a_session_unit_stays_in_its_own_manifest() {
+        let mut mine = Session::new();
+        mine.register_unit(furlong())
+            .unwrap_or_else(|e| panic!("{e}"));
+        let theirs = Session::new();
+
+        let mine = mine.manifest();
+        let theirs = theirs.manifest();
+        assert!(
+            names(&mine).iter().any(|name| name == "furlong"),
+            "the session that registered it must describe it"
+        );
+        assert!(
+            !names(&theirs).iter().any(|name| name == "furlong"),
+            "a unit must not leak into another session's manifest"
+        );
+        // Both still describe the standard units.
+        for manifest in [&mine, &theirs] {
+            assert!(names(manifest).iter().any(|name| name == "m"));
+            assert!(names(manifest).iter().any(|name| name == "degC"));
+            assert!(manifest.verify(), "the hash must match the contents");
+        }
+        assert_ne!(mine.manifest_hash, theirs.manifest_hash);
+    }
+
+    /// A second registration keeps the first: the registry a template's
+    /// engine holds is carried forward, not rebuilt from the global table.
+    #[test]
+    fn session_units_accumulate() {
+        let mut s = Session::new();
+        s.register_unit(furlong()).unwrap_or_else(|e| panic!("{e}"));
+        s.register_unit(UnitDef::linear(
+            "stone",
+            crate::kernel::signature::DimExpr::base("Mass"),
+            Scale::one(),
+        ))
+        .unwrap_or_else(|e| panic!("{e}"));
+        let manifest = s.manifest();
+        assert!(names(&manifest).iter().any(|name| name == "furlong"));
+        assert!(names(&manifest).iter().any(|name| name == "stone"));
+        assert!(names(&manifest).iter().any(|name| name == "m"));
     }
 }

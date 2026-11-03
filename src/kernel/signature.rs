@@ -722,9 +722,18 @@ impl Signature {
     ///
     /// The digest is taken over the deterministic binary encoding of the
     /// signature, so it is stable across processes and platforms.
+    ///
+    /// # Panics
+    ///
+    /// If the signature cannot be encoded. This used to fall back to
+    /// `unwrap_or_default()`, which hashed the empty byte string: every
+    /// signature that failed to encode collided with every other one, and a
+    /// host that pinned a key silently pinned the wrong overload. A digest
+    /// that cannot be computed is a bug, so it is reported as one.
     #[must_use]
     pub fn hash(&self) -> [u8; 16] {
-        let bytes = super::codec::encode_deterministic(self).unwrap_or_default();
+        let bytes = super::codec::encode_deterministic(self)
+            .expect("a signature must be encodable to have a stable hash");
         let full = *blake3::hash(&bytes).as_bytes();
         let mut out = [0_u8; 16];
         out.copy_from_slice(full.get(..16).unwrap_or(&full));
