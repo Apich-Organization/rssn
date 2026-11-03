@@ -2,7 +2,7 @@
 name = "rssn"
 version = "0.2.13"
 edition = "2024"
-rust-version = "1.96.0"
+rust-version = "1.97.0"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy and SymPy."
 license = "Apache-2.0"
@@ -72,11 +72,11 @@ overflow-checks = false
 incremental = true
 
 [dependencies]
-cranelift-codegen = { version = "0.136", optional = true }
-cranelift-frontend = { version = "0.136", optional = true }
-cranelift-jit = { version = "0.136", optional = true }
-cranelift-module = { version = "0.136", optional = true }
-cranelift-native = { version = "0.136", optional = true }
+cranelift-codegen = { version = "0.137", optional = true }
+cranelift-frontend = { version = "0.137", optional = true }
+cranelift-jit = { version = "0.137", optional = true }
+cranelift-module = { version = "0.137", optional = true }
+cranelift-native = { version = "0.137", optional = true }
 # Not upgrading to 0.17: `argmin-math` implements its traits for 0.16's
 # `ArrayBase`, so 0.17 would arrive as a second, unrelated `ndarray` type.
 ndarray = { version = "0.16", features = ["serde"] }
@@ -104,7 +104,7 @@ serde_json = "1.0"
 # Every byte RSSN writes or reads goes through `bincode-next`: it is ours, it
 # has a frozen bincode format and a frozen high-speed CBOR encoder, and it is
 # the only wire format the kernel ABI and the manifest are allowed to use.
-bincode-next = { version = "3.1.1", features = ["serde"] }
+bincode-next = { version = "3.1", features = ["serde"] }
 # Stable, collision-resistant digests for manifests and operator keys.
 blake3 = "1.8"
 # Loading a plugin from a shared library (`plugin-cdylib`). Opt-in: it runs
