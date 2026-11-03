@@ -25,8 +25,30 @@
 //!
 //! Besides plain evaluation the same program can be interpreted over
 //! dual numbers ([`Tape::gradient`], forward-mode automatic
-//! differentiation) and over outward-rounded intervals ([`Tape::enclose`]),
-//! which turns a numeric witness into a rigorous enclosure.
+//! differentiation), over [`HyperDual`] numbers ([`Tape::hessian`],
+//! forward-over-forward second derivatives) and over outward-rounded
+//! intervals ([`Tape::enclose`]), which turns a numeric witness into a
+//! rigorous enclosure.
+//!
+//! # Limitations
+//!
+//! * Second derivatives are exact for every instruction with an analytic
+//!   rule: the arithmetic, the elementary functions, `atan2`, integer and
+//!   real powers, and any composition of them. A full Hessian costs `n²`
+//!   forward passes for `n` inputs ([`Tape::hessian`]); there is no reverse
+//!   mode and no Hessian-vector product from a single pass.
+//! * Opaque operators (`Call`, `Extern1`, `Extern2`) have no analytic
+//!   second-order rule. Their values are exact and their first derivatives
+//!   remain central differences (as in [`Tape::gradient`]), but the mixed
+//!   hyper-dual component is NaN, so a Hessian that crosses one reports NaN
+//!   instead of a differenced second derivative.
+//! * The non-smooth intrinsics (`abs`, `floor`, `ceil`) report a zero second
+//!   derivative everywhere, including at their kinks, where the derivative
+//!   does not exist; the caller must know to stay away from them.
+//! * A domain error (`ln` or `sqrt` of a negative number, `asin` outside
+//!   `[-1, 1]`, ...) makes every component of the result NaN; a NaN value
+//!   never carries a finite slope or curvature.
+//! * Third and higher derivatives are not available.
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -768,6 +790,56 @@ impl Tape {
             .collect()
     }
 
+    /// The Hessian of output `k` with respect to every input at `inputs`,
+    /// row-major (`n` rows of `n` entries), by hyper-dual arithmetic.
+    ///
+    /// Entry `(i, j)` is the `ε₁ε₂` component of a run whose two directions
+    /// are seeded by `e_i` and `e_j`. Every entry is computed by its own
+    /// pass, so symmetry is a property of the rules rather than of the
+    /// assembly. The cost is `n²` forward passes for `n` inputs.
+    ///
+    /// Entries are NaN when the tape reaches an opaque operator
+    /// (`Call`, `Extern1`, `Extern2`) or a domain error; see the module
+    /// limitations.
+    #[must_use]
+    pub fn hessian(
+        &self,
+        k: usize,
+        inputs: &[f64],
+        params: &[f64],
+    ) -> Vec<f64> {
+        let n = inputs.len();
+        let params: Vec<HyperDual> = params.iter().map(|&p| HyperDual::constant(p)).collect();
+        let mut values = Vec::with_capacity(self.insts.len());
+        let mut out = vec![HyperDual::nan(); self.outputs.len()];
+        let mut hessian = vec![0.0; n.saturating_mul(n)];
+        for i in 0..n {
+            for j in 0..n {
+                let seeded: Vec<HyperDual> = inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(l, &x)| {
+                        HyperDual::new(
+                            x,
+                            if l == i { 1.0 } else { 0.0 },
+                            if l == j { 1.0 } else { 0.0 },
+                            0.0,
+                        )
+                    })
+                    .collect();
+                self.run(&seeded, &params, &mut values, &mut out);
+                let value = out.get(k).map_or(f64::NAN, |d| d.mixed());
+                let slot = i.checked_mul(n).and_then(|row| row.checked_add(j));
+                if let Some(slot) = slot
+                    && let Some(cell) = hessian.get_mut(slot)
+                {
+                    *cell = value;
+                }
+            }
+        }
+        hessian
+    }
+
     /// Rigorous enclosures of every output over the input boxes `inputs`
     /// (interval arithmetic with outward rounding; calls of operator
     /// semantics without interval rules give the whole line).
@@ -991,6 +1063,64 @@ impl Intrinsic {
             | Self::Abs => x.signum(),
             | Self::Floor | Self::Ceil => 0.0,
             | Self::Cbrt => 1.0 / (3.0 * x.cbrt() * x.cbrt()),
+        }
+    }
+
+    /// The second derivative on `f64`.
+    ///
+    /// These are the classical formulas. `abs`, `floor` and `ceil` report
+    /// zero everywhere, including at their kinks, where the derivative does
+    /// not exist.
+    #[must_use]
+    pub fn second_derivative(
+        self,
+        x: f64,
+    ) -> f64 {
+        match self {
+            | Self::Exp => x.exp(),
+            | Self::Ln => -1.0 / (x * x),
+            | Self::Sin => -x.sin(),
+            | Self::Cos => -x.cos(),
+            | Self::Tan => {
+                let c = x.cos();
+                2.0 * x.sin() / (c * c * c)
+            },
+            | Self::Asin => {
+                let u = 1.0 - x * x;
+                x / (u * u.sqrt())
+            },
+            | Self::Acos => {
+                let u = 1.0 - x * x;
+                -x / (u * u.sqrt())
+            },
+            | Self::Atan => {
+                let u = 1.0 + x * x;
+                -2.0 * x / (u * u)
+            },
+            | Self::Sinh => x.sinh(),
+            | Self::Cosh => x.cosh(),
+            | Self::Tanh => {
+                let c = x.cosh();
+                -2.0 * x.tanh() / (c * c)
+            },
+            | Self::Asinh => {
+                let u = x * x + 1.0;
+                -x / (u * u.sqrt())
+            },
+            | Self::Acosh => {
+                let u = x * x - 1.0;
+                -x / (u * u.sqrt())
+            },
+            | Self::Atanh => {
+                let u = 1.0 - x * x;
+                2.0 * x / (u * u)
+            },
+            | Self::Sqrt => -1.0 / (4.0 * x * x.sqrt()),
+            | Self::Abs | Self::Floor | Self::Ceil => 0.0,
+            | Self::Cbrt => {
+                let c = x.cbrt();
+                -2.0 / (9.0 * c * c * c * c * c)
+            },
         }
     }
 }
@@ -1312,6 +1442,351 @@ impl FromExtern for Dual {
         let da = (f(a.0 + ha, b.0) - f(a.0 - ha, b.0)) / (2.0 * ha);
         let db = (f(a.0, b.0 + hb) - f(a.0, b.0 - hb)) / (2.0 * hb);
         Self(f(a.0, b.0), da * a.1 + db * b.1)
+    }
+}
+
+/// A second-order hyper-dual number `a + b ε₁ + c ε₂ + d ε₁ε₂`, with
+/// `ε₁² = ε₂² = 0` and `ε₁ε₂ ≠ 0`.
+///
+/// Seeding the two directions with unit vectors `e_i` and `e_j` makes the
+/// `ε₁ε₂` component of `f(x)` the Hessian entry `∂²f/∂x_i∂x_j`. The value and
+/// both first derivatives are carried exactly, so no step size enters and a
+/// tiny second derivative is never differenced out of a large value.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HyperDual {
+    v: f64,
+    d1: f64,
+    d2: f64,
+    d12: f64,
+}
+
+impl HyperDual {
+    /// `a + b ε₁ + c ε₂ + d ε₁ε₂`.
+    #[must_use]
+    pub const fn new(
+        v: f64,
+        d1: f64,
+        d2: f64,
+        d12: f64,
+    ) -> Self {
+        Self { v, d1, d2, d12 }
+    }
+
+    /// The value `a`.
+    #[must_use]
+    pub const fn value(self) -> f64 {
+        self.v
+    }
+
+    /// The coefficient of `ε₁` (the first derivative along direction one).
+    #[must_use]
+    pub const fn first(self) -> f64 {
+        self.d1
+    }
+
+    /// The coefficient of `ε₂` (the first derivative along direction two).
+    #[must_use]
+    pub const fn second(self) -> f64 {
+        self.d2
+    }
+
+    /// The coefficient of `ε₁ε₂` (the mixed second derivative).
+    #[must_use]
+    pub const fn mixed(self) -> f64 {
+        self.d12
+    }
+}
+
+impl Scalar for HyperDual {
+    fn nan() -> Self {
+        Self {
+            v: f64::NAN,
+            d1: f64::NAN,
+            d2: f64::NAN,
+            d12: f64::NAN,
+        }
+    }
+
+    /// The value, not a derivative: an index has no derivative.
+    fn to_f64(self) -> f64 {
+        self.v
+    }
+
+    fn constant(c: f64) -> Self {
+        Self {
+            v: c,
+            d1: 0.0,
+            d2: 0.0,
+            d12: 0.0,
+        }
+    }
+
+    fn add(
+        self,
+        b: Self,
+    ) -> Self {
+        Self {
+            v: self.v + b.v,
+            d1: self.d1 + b.d1,
+            d2: self.d2 + b.d2,
+            d12: self.d12 + b.d12,
+        }
+    }
+
+    fn sub(
+        self,
+        b: Self,
+    ) -> Self {
+        Self {
+            v: self.v - b.v,
+            d1: self.d1 - b.d1,
+            d2: self.d2 - b.d2,
+            d12: self.d12 - b.d12,
+        }
+    }
+
+    fn mul(
+        self,
+        b: Self,
+    ) -> Self {
+        Self {
+            v: self.v * b.v,
+            d1: self.v * b.d1 + self.d1 * b.v,
+            d2: self.v * b.d2 + self.d2 * b.v,
+            d12: self.v * b.d12 + self.d1 * b.d2 + self.d2 * b.d1 + self.d12 * b.v,
+        }
+    }
+
+    fn div(
+        self,
+        b: Self,
+    ) -> Self {
+        let q = self.v / b.v;
+        let d1 = (self.d1 * b.v - self.v * b.d1) / (b.v * b.v);
+        let d2 = (self.d2 * b.v - self.v * b.d2) / (b.v * b.v);
+        Self {
+            v: q,
+            d1,
+            d2,
+            d12: (self.d12 - d1 * b.d2 - d2 * b.d1 - q * b.d12) / b.v,
+        }
+    }
+
+    fn neg(self) -> Self {
+        Self {
+            v: -self.v,
+            d1: -self.d1,
+            d2: -self.d2,
+            d12: -self.d12,
+        }
+    }
+
+    fn powi(
+        self,
+        n: i32,
+    ) -> Self {
+        let value = int_pow(self.v, n);
+        let (slope, curve) = if n == 0 {
+            (0.0, 0.0)
+        } else {
+            let m = n.saturating_sub(1);
+            let slope = f64::from(n) * int_pow(self.v, m);
+            let curve = if n == 1 {
+                0.0
+            } else {
+                f64::from(n) * f64::from(m) * int_pow(self.v, m.saturating_sub(1))
+            };
+            (slope, curve)
+        };
+        Self {
+            v: value,
+            d1: slope * self.d1,
+            d2: slope * self.d2,
+            d12: curve * self.d1 * self.d2 + slope * self.d12,
+        }
+    }
+
+    fn powf(
+        self,
+        b: Self,
+    ) -> Self {
+        let value = self.v.powf(b.v);
+        let d_base1 = if self.d1 == 0.0 {
+            0.0
+        } else {
+            b.v * self.v.powf(b.v - 1.0) * self.d1
+        };
+        let d_exp1 = if b.d1 == 0.0 {
+            0.0
+        } else {
+            value * self.v.ln() * b.d1
+        };
+        let d_base2 = if self.d2 == 0.0 {
+            0.0
+        } else {
+            b.v * self.v.powf(b.v - 1.0) * self.d2
+        };
+        let d_exp2 = if b.d2 == 0.0 {
+            0.0
+        } else {
+            value * self.v.ln() * b.d2
+        };
+        let ln = self.v.ln();
+        let w1 = if b.d1 == 0.0 {
+            b.v * self.d1 / self.v
+        } else {
+            b.d1 * ln + b.v * self.d1 / self.v
+        };
+        let w2 = if b.d2 == 0.0 {
+            b.v * self.d2 / self.v
+        } else {
+            b.d2 * ln + b.v * self.d2 / self.v
+        };
+        let mut w12 = 0.0;
+        if b.d12 != 0.0 {
+            w12 += b.d12 * ln;
+        }
+        if b.d1 != 0.0 {
+            w12 += b.d1 * self.d2 / self.v;
+        }
+        if b.d2 != 0.0 {
+            w12 += b.d2 * self.d1 / self.v;
+        }
+        w12 += b.v * (self.d12 * self.v - self.d1 * self.d2) / (self.v * self.v);
+        Self {
+            v: value,
+            d1: d_base1 + d_exp1,
+            d2: d_base2 + d_exp2,
+            d12: value * (w1 * w2 + w12),
+        }
+    }
+
+    fn unary(
+        self,
+        f: Intrinsic,
+    ) -> Self {
+        let value = f.apply(self.v);
+        if value.is_nan() {
+            return Self::nan();
+        }
+        let slope = f.derivative(self.v);
+        let curve = f.second_derivative(self.v);
+        Self {
+            v: value,
+            d1: slope * self.d1,
+            d2: slope * self.d2,
+            d12: curve * self.d1 * self.d2 + slope * self.d12,
+        }
+    }
+
+    fn atan2(
+        self,
+        x: Self,
+    ) -> Self {
+        let r2 = self.v * self.v + x.v * x.v;
+        let value = self.v.atan2(x.v);
+        if value.is_nan() {
+            return Self::nan();
+        }
+        let d1 = (x.v * self.d1 - self.v * x.d1) / r2;
+        let d2 = (x.v * self.d2 - self.v * x.d2) / r2;
+        let r4 = r2 * r2;
+        let f_yy = -2.0 * self.v * x.v / r4;
+        let f_xx = 2.0 * self.v * x.v / r4;
+        let f_xy = (self.v * self.v - x.v * x.v) / r4;
+        Self {
+            v: value,
+            d1,
+            d2,
+            d12: f_yy * self.d1 * self.d2
+                + f_xx * x.d1 * x.d2
+                + f_xy * (self.d1 * x.d2 + x.d1 * self.d2)
+                + (x.v / r2) * self.d12
+                - (self.v / r2) * x.d12,
+        }
+    }
+
+    fn compare(
+        self,
+        c: Cmp,
+        b: Self,
+    ) -> Self {
+        Self::constant(bit(compare_f64(self.v, c, b.v)))
+    }
+
+    fn select(
+        self,
+        a: Self,
+        b: Self,
+    ) -> Self {
+        if (self.v - 0.0).abs() > 0.0 || self.v.is_nan() {
+            a
+        } else {
+            b
+        }
+    }
+
+    fn call(
+        f: EvalFn,
+        args: &[Self],
+    ) -> Self {
+        // Values exactly; first derivatives by central differences, as for
+        // `Dual`; no second-order rule, so the mixed component is NaN.
+        let point: Vec<f64> = args.iter().map(|d| d.v).collect();
+        let value = f(&point);
+        let mut slope1 = 0.0;
+        let mut slope2 = 0.0;
+        for (k, d) in args.iter().enumerate() {
+            if d.d1 == 0.0 && d.d2 == 0.0 {
+                continue;
+            }
+            let h = 1e-6 * (1.0 + d.v.abs());
+            let (mut up, mut down) = (point.clone(), point.clone());
+            if let (Some(u), Some(w)) = (up.get_mut(k), down.get_mut(k)) {
+                *u += h;
+                *w -= h;
+            }
+            let derivative = (f(&up) - f(&down)) / (2.0 * h);
+            slope1 += derivative * d.d1;
+            slope2 += derivative * d.d2;
+        }
+        Self {
+            v: value,
+            d1: slope1,
+            d2: slope2,
+            d12: f64::NAN,
+        }
+    }
+}
+
+impl FromExtern for HyperDual {
+    fn from_extern1(
+        f: extern "C" fn(f64) -> f64,
+        a: Self,
+    ) -> Self {
+        let h = 1e-6 * (1.0 + a.v.abs());
+        Self {
+            v: f(a.v),
+            d1: (f(a.v + h) - f(a.v - h)) / (2.0 * h) * a.d1,
+            d2: (f(a.v + h) - f(a.v - h)) / (2.0 * h) * a.d2,
+            d12: f64::NAN,
+        }
+    }
+
+    fn from_extern2(
+        f: extern "C" fn(f64, f64) -> f64,
+        a: Self,
+        b: Self,
+    ) -> Self {
+        let (ha, hb) = (1e-6 * (1.0 + a.v.abs()), 1e-6 * (1.0 + b.v.abs()));
+        let da = (f(a.v + ha, b.v) - f(a.v - ha, b.v)) / (2.0 * ha);
+        let db = (f(a.v, b.v + hb) - f(a.v, b.v - hb)) / (2.0 * hb);
+        Self {
+            v: f(a.v, b.v),
+            d1: da * a.d1 + db * b.d1,
+            d2: da * a.d2 + db * b.d2,
+            d12: f64::NAN,
+        }
     }
 }
 
@@ -1737,6 +2212,41 @@ mod tests {
             .optimise()
     }
 
+    fn tape_x(src: &str) -> Tape {
+        let mut g = Graph::new();
+        assert!(Engine::install(&mut g, &rules::standard()).is_ok());
+        let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
+        let x = g.interner_mut().symbol("x");
+        lower(&g, &[root], &[x], &[])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .optimise()
+    }
+
+    fn hyper_seeded(
+        t: &Tape,
+        k: usize,
+        inputs: &[f64],
+        i: usize,
+        j: usize,
+    ) -> HyperDual {
+        let seeded: Vec<HyperDual> = inputs
+            .iter()
+            .enumerate()
+            .map(|(l, &x)| {
+                HyperDual::new(
+                    x,
+                    if l == i { 1.0 } else { 0.0 },
+                    if l == j { 1.0 } else { 0.0 },
+                    0.0,
+                )
+            })
+            .collect();
+        let mut values = Vec::new();
+        let mut out = vec![HyperDual::nan(); t.outputs.len()];
+        t.run(&seeded, &[], &mut values, &mut out);
+        out.get(k).copied().unwrap_or_else(HyperDual::nan)
+    }
+
     #[test]
     fn canonical_forms_become_native_operations() {
         let t = tape("x - y");
@@ -1825,5 +2335,130 @@ mod tests {
         let positive =
             tape("x^2 + 1").enclose(&[Interval { lo: -5.0, hi: 3.0 }, Interval::point(0.0)], &[]);
         assert!(positive[0].lo > 0.0);
+    }
+
+    #[test]
+    fn hyper_dual_first_derivatives_are_bit_identical() {
+        let cases = [
+            ("x^3*y + sin(x*y) + exp(y)/x", 1.3, -0.4),
+            ("sin(exp(x^2))", 0.7, 0.0),
+            ("(x^2+1)/(x+2)", 3.0, 0.0),
+            ("ln(x) + atan2(y, x)", 1.9, 0.6),
+        ];
+        for (src, x, y) in cases {
+            let t = tape(src);
+            let dual = t.gradient(0, &[x, y], &[]);
+            let hyper: Vec<f64> = (0..2)
+                .map(|i| hyper_seeded(&t, 0, &[x, y], i, 0).first())
+                .collect();
+            assert_eq!(dual.len(), hyper.len());
+            for (a, b) in dual.iter().zip(&hyper) {
+                assert_eq!(
+                    a.to_bits(),
+                    b.to_bits(),
+                    "{src}: Dual {a:?} != HyperDual {b:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn second_derivatives_match_analytic() {
+        let composition = |x: f64| {
+            let g = (x * x).exp();
+            let gp = 2.0 * x * g;
+            let gpp = (2.0 + 4.0 * x * x) * g;
+            -g.sin() * gp * gp + g.cos() * gpp
+        };
+        let cases: [(&str, f64, f64); 5] = [
+            ("sin(x)", 0.7, -(0.7f64).sin()),
+            ("exp(x)", 0.4, (0.4f64).exp()),
+            ("ln(x)", 1.9, -1.0 / (1.9 * 1.9)),
+            ("(x^2+1)/(x+2)", 3.0, 10.0 / 125.0),
+            ("sin(exp(x^2))", 0.7, composition(0.7)),
+        ];
+        for (src, x, want) in cases {
+            let t = tape_x(src);
+            let h = t.hessian(0, &[x], &[]);
+            let got = h.first().copied().unwrap_or(f64::NAN);
+            let tol = 1e-12 * want.abs().max(1.0);
+            assert!(
+                (got - want).abs() <= tol,
+                "{src} at {x}: got {got:.17e}, want {want:.17e}"
+            );
+        }
+    }
+
+    #[test]
+    fn hessian_of_multivariate_function_is_analytic_and_symmetric() {
+        let t = tape("x^2*y + sin(x*y)");
+        let (x, y) = (1.2, -0.7);
+        let h = t.hessian(0, &[x, y], &[]);
+        let s = (x * y).sin();
+        let c = (x * y).cos();
+        let hxx = 2.0 * y - y * y * s;
+        let hyy = -x * x * s;
+        let hxy = 2.0 * x + c - x * y * s;
+        let want = [hxx, hxy, hxy, hyy];
+        for (got, want) in h.iter().zip(want) {
+            assert!(
+                (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+                "Hessian {h:?}, want {want:?}"
+            );
+        }
+        let off = (h[1] - h[2]).abs();
+        assert!(off <= 4e-15, "asymmetric off-diagonals: {off:.3e}");
+    }
+
+    #[test]
+    fn second_derivative_is_exact_where_finite_differences_cancel() {
+        let x = 1e-3;
+        let t = tape_x("sin(x)");
+        let ad = t.hessian(0, &[x], &[]).first().copied().unwrap_or(f64::NAN);
+        let exact = -x.sin();
+        let h = 1e-4;
+        let fd = ((x + h).sin() - 2.0 * x.sin() + (x - h).sin()) / (h * h);
+        let ad_error = (ad - exact).abs();
+        let fd_error = (fd - exact).abs();
+        let fd_relative = fd_error / exact.abs();
+        println!(
+            "sin''(1e-3): AD = {ad:.17e} (abs error {ad_error:.3e}); \
+             FD(h=1e-4) = {fd:.17e} (abs error {fd_error:.3e}, \
+             relative error {fd_relative:.3e})"
+        );
+        assert_eq!(ad.to_bits(), exact.to_bits(), "AD must be exact");
+        assert!(
+            fd_relative > 1e-12,
+            "finite differences unexpectedly accurate: {fd_relative:.3e}"
+        );
+    }
+
+    #[test]
+    fn chain_rule_holds_to_second_order() {
+        let x = 0.6;
+        let t = tape_x("sin(exp(x^2))");
+        let got = t.hessian(0, &[x], &[]).first().copied().unwrap_or(f64::NAN);
+        let g = (x * x).exp();
+        let gp = 2.0 * x * g;
+        let gpp = (2.0 + 4.0 * x * x) * g;
+        let f_gg = -g.sin();
+        let f_g = g.cos();
+        let want = f_gg * gp * gp + f_g * gpp;
+        assert!(
+            (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+            "f''(g)g'^2 + f'(g)g'': got {got:.17e}, want {want:.17e}"
+        );
+    }
+
+    #[test]
+    fn domain_errors_make_every_component_nan() {
+        for (src, x) in [("ln(x)", -1.0), ("sqrt(x)", -1.0), ("asin(x)", 2.0)] {
+            let t = tape_x(src);
+            let d = hyper_seeded(&t, 0, &[x], 0, 0);
+            assert!(d.value().is_nan(), "{src}({x}): value {}", d.value());
+            assert!(d.first().is_nan(), "{src}({x}): d1 {}", d.first());
+            assert!(d.second().is_nan(), "{src}({x}): d2 {}", d.second());
+            assert!(d.mixed().is_nan(), "{src}({x}): d12 {}", d.mixed());
+        }
     }
 }

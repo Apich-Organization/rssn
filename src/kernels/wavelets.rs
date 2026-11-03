@@ -1,7 +1,7 @@
 //! # Discrete wavelet transforms and the discrete fractional Fourier transform
 //!
-//! * [`Wavelet`]: fifteen filter-bank families — the orthogonal `Haar` and Daubechies
-//!   `db2`..`db4`, the least-asymmetric `sym4`..`sym6`, and the symmetric biorthogonal CDF
+//! * [`Wavelet`]: twenty-one filter-bank families — the orthogonal `Haar` and Daubechies
+//!   `db2`..`db10`, the least-asymmetric `sym4`..`sym6`, and the symmetric biorthogonal CDF
 //!   splines `bior1.1`..`bior4.4`. A family carries two low-pass banks, the analysis one
 //!   ([`Wavelet::analysis_low`]) and the synthesis one ([`Wavelet::synthesis_low`]); the
 //!   high-pass banks are their alternating mirror. For the orthogonal families the two pairs
@@ -59,26 +59,30 @@
 //!
 //! ## Limitations
 //!
-//! The families stop where the tables stop: no `db5` or higher, no `sym7` or higher, no coiflets,
-//! discrete Meyer or other orthogonal families, and of the biorthogonal splines only the eight
-//! listed (`bior5.5`, `bior6.8` are absent). There are no complex wavelets, no wavelet packets,
-//! no lifting scheme and no non-separable or 3-D transforms. The 2-D transform is one level only:
+//! The families stop where the tables stop: the Daubechies ladder ends at `db10` (20 taps), so
+//! `db11` and higher, coiflets, discrete Meyer and the other orthogonal families are absent, and
+//! the symlets end at `sym6`; of the biorthogonal splines only the eight listed are present
+//! (`bior5.5`, `bior6.8` are absent). There are no complex wavelets, no wavelet packets, no
+//! lifting scheme and no non-separable or 3-D transforms. The 2-D transform is one level only:
 //! the coefficient counts of the extension modes are not dyadic, so a multilevel 2-D scheme needs
 //! shape bookkeeping that [`dwt2`] does not provide. Only the four [`Boundary`] modes exist, and
 //! one mode applies to both ends. The published symlet tables are orthonormal only to about
 //! `1e-12` (and `bior4.4` biorthogonal to about `1e-12`), so those families round-trip to
-//! `1e-12 * max|x|` rather than to machine epsilon. Because the extension modes return about
-//! `n/2 + (m_hi - m_lo)/2` coefficients, a multilevel decomposition stops shrinking once the
-//! length is comparable to the filter length. The fractional Fourier matrix costs an `O(N^3)` symmetric
-//! eigensolve (use it for lengths up to a few hundred; the continuous transform of a sampled
-//! chirp-like function needs the sampling rate chosen by the caller).
+//! `1e-12 * max|x|` rather than to machine epsilon; the Daubechies tables `db2`..`db10` are
+//! orthonormal to machine epsilon and round-trip to machine epsilon. No Daubechies filter has
+//! linear phase, and the long ones (`db8`..`db10`) are strongly asymmetric, so their support
+//! smears a jump over many samples; the symlets trade table accuracy for a flatter group delay. Because the extension modes
+//! return about `n/2 + (m_hi - m_lo)/2` coefficients, a multilevel decomposition stops shrinking
+//! once the length is comparable to the filter length. The fractional Fourier matrix costs an
+//! `O(N^3)` symmetric eigensolve (use it for lengths up to a few hundred; the continuous
+//! transform of a sampled chirp-like function needs the sampling rate chosen by the caller).
 
 use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::eigen_symmetric;
 
-/// A wavelet family: orthogonal (`Haar`, `db2`..`db4`, `sym4`..`sym6`) or biorthogonal (`bior*`).
+/// A wavelet family: orthogonal (`Haar`, `db2`..`db10`, `sym4`..`sym6`) or biorthogonal (`bior*`).
 ///
 /// The biorthogonal variants are the CDF spline families of Cohen, Daubechies and Feauveau; the
 /// digits are the `PyWavelets` name `biorNr.Nd`, with `Nr` vanishing moments in the analysis
@@ -93,6 +97,18 @@ pub enum Wavelet {
     Db3,
     /// Daubechies with 4 vanishing moments (8 taps).
     Db4,
+    /// Daubechies with 5 vanishing moments (10 taps).
+    Db5,
+    /// Daubechies with 6 vanishing moments (12 taps).
+    Db6,
+    /// Daubechies with 7 vanishing moments (14 taps).
+    Db7,
+    /// Daubechies with 8 vanishing moments (16 taps).
+    Db8,
+    /// Daubechies with 9 vanishing moments (18 taps).
+    Db9,
+    /// Daubechies with 10 vanishing moments (20 taps).
+    Db10,
     /// Symlet with 4 vanishing moments (8 taps), least asymmetric.
     Sym4,
     /// Symlet with 5 vanishing moments (10 taps), least asymmetric.
@@ -119,11 +135,17 @@ pub enum Wavelet {
 
 impl Wavelet {
     /// Every family, orthogonal first.
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 21] = [
         Self::Haar,
         Self::Db2,
         Self::Db3,
         Self::Db4,
+        Self::Db5,
+        Self::Db6,
+        Self::Db7,
+        Self::Db8,
+        Self::Db9,
+        Self::Db10,
         Self::Sym4,
         Self::Sym5,
         Self::Sym6,
@@ -190,6 +212,12 @@ impl Wavelet {
                     -0.010_597_401_785_069_0,
                 ]
             },
+            | Self::Db5 => DB5.to_vec(),
+            | Self::Db6 => DB6.to_vec(),
+            | Self::Db7 => DB7.to_vec(),
+            | Self::Db8 => DB8.to_vec(),
+            | Self::Db9 => DB9.to_vec(),
+            | Self::Db10 => DB10.to_vec(),
             | Self::Sym4 => SYM4.to_vec(),
             | Self::Sym5 => SYM5.to_vec(),
             | Self::Sym6 => SYM6.to_vec(),
@@ -231,6 +259,12 @@ impl Wavelet {
             | Self::Db2
             | Self::Db3
             | Self::Db4
+            | Self::Db5
+            | Self::Db6
+            | Self::Db7
+            | Self::Db8
+            | Self::Db9
+            | Self::Db10
             | Self::Sym4
             | Self::Sym5
             | Self::Sym6 => self.low_pass(),
@@ -269,6 +303,12 @@ impl Wavelet {
             | Self::Db2 | Self::Bior2_2 => (2, 2),
             | Self::Db3 | Self::Bior3_3 => (3, 3),
             | Self::Db4 | Self::Sym4 | Self::Bior4_4 => (4, 4),
+            | Self::Db5 => (5, 5),
+            | Self::Db6 => (6, 6),
+            | Self::Db7 => (7, 7),
+            | Self::Db8 => (8, 8),
+            | Self::Db9 => (9, 9),
+            | Self::Db10 => (10, 10),
             | Self::Sym5 => (5, 5),
             | Self::Sym6 => (6, 6),
             | Self::Bior1_3 => (1, 3),
@@ -323,6 +363,109 @@ fn alternating_mirror(h: &[f64]) -> Vec<f64> {
 // `PyWavelets` `Wavelet(family).filter_bank`: `*_LOW` is `dec_lo` reversed (the analysis low-pass),
 // `*_HIGH` is `rec_lo` (the synthesis low-pass). Every bank keeps `PyWavelets`' zero padding, which
 // fixes the relative alignment of the two filters.
+const DB5: [f64; 10] = [
+    0.160_102_397_974_192_93,
+    0.603_829_269_797_189_6,
+    0.724_308_528_437_772_9,
+    0.138_428_145_901_320_74,
+    -0.242_294_887_066_382_03,
+    -0.032_244_869_584_638_375,
+    0.077_571_493_840_045_72,
+    -0.006_241_490_212_798_274,
+    -0.012_580_751_999_081_999,
+    0.003_335_725_285_473_771_2,
+];
+const DB6: [f64; 12] = [
+    0.111_540_743_350_109_47,
+    0.494_623_890_398_453_06,
+    0.751_133_908_021_095_4,
+    0.315_250_351_709_197_63,
+    -0.226_264_693_965_439_83,
+    -0.129_766_867_567_261_94,
+    0.097_501_605_587_323_04,
+    0.027_522_865_530_305_727,
+    -0.031_582_039_317_486_03,
+    0.000_553_842_201_161_496_1,
+    0.004_777_257_510_945_511,
+    -0.001_077_301_085_308_479_6,
+];
+const DB7: [f64; 14] = [
+    0.077_852_054_085_009_18,
+    0.396_539_319_481_917_3,
+    0.729_132_090_846_235_1,
+    0.469_782_287_405_193_1,
+    -0.143_906_003_928_564_98,
+    -0.224_036_184_993_874_98,
+    0.071_309_219_266_830_26,
+    0.080_612_609_151_083_08,
+    -0.038_029_936_935_014_41,
+    -0.016_574_541_630_666_88,
+    0.012_550_998_556_099_84,
+    0.000_429_577_972_921_366_5,
+    -0.001_801_640_704_047_490_8,
+    0.000_353_713_799_974_520_24,
+];
+const DB8: [f64; 16] = [
+    0.054_415_842_243_104_01,
+    0.312_871_590_914_299_95,
+    0.675_630_736_297_289_8,
+    0.585_354_683_654_206_7,
+    -0.015_829_105_256_349_306,
+    -0.284_015_542_961_546_9,
+    0.000_472_484_573_913_282_8,
+    0.128_747_426_620_478_47,
+    -0.017_369_301_001_807_547,
+    -0.044_088_253_930_794_755,
+    0.013_981_027_917_398_282,
+    0.008_746_094_047_405_777,
+    -0.004_870_352_993_451_574,
+    -0.000_391_740_373_376_947_05,
+    0.000_675_449_406_450_569_3,
+    -0.000_117_476_784_124_769_53,
+];
+const DB9: [f64; 18] = [
+    0.038_077_947_363_878_345,
+    0.243_834_674_612_590_34,
+    0.604_823_123_690_111_2,
+    0.657_288_078_051_300_5,
+    0.133_197_385_825_007_56,
+    -0.293_273_783_279_174_9,
+    -0.096_840_783_222_976_46,
+    0.148_540_749_338_106_38,
+    0.030_725_681_479_333_38,
+    -0.067_632_829_061_329_97,
+    0.000_250_947_114_831_451_97,
+    0.022_361_662_123_679_096,
+    -0.004_723_204_757_751_397,
+    -0.004_281_503_682_463_43,
+    0.001_847_646_883_056_226_5,
+    0.000_230_385_763_523_195_97,
+    -0.000_251_963_188_942_710_1,
+    0.000_039_347_320_316_271_6,
+];
+const DB10: [f64; 20] = [
+    0.026_670_057_900_555_554,
+    0.188_176_800_077_691_5,
+    0.527_201_188_931_725_6,
+    0.688_459_039_453_603_5,
+    0.281_172_343_660_577_5,
+    -0.249_846_424_327_315_38,
+    -0.195_946_274_377_377_05,
+    0.127_369_340_335_793_25,
+    0.093_057_364_603_572_35,
+    -0.071_394_147_166_397_08,
+    -0.029_457_536_821_875_813,
+    0.033_212_674_059_341,
+    0.003_606_553_566_956_169_7,
+    -0.010_733_175_483_330_575,
+    0.001_395_351_747_052_901,
+    0.001_992_405_295_185_056,
+    -0.000_685_856_694_959_711_6,
+    -0.000_116_466_855_129_285_45,
+    0.000_093_588_670_320_069_59,
+    -0.000_013_264_202_894_521_244,
+];
+
 const SYM4: [f64; 8] = [
     0.032_223_100_604_042_7,
     -0.012_603_967_262_037_833,
@@ -1182,7 +1325,8 @@ pub fn frft(
 #[cfg(test)]
 mod tests {
     //! Unit tests for the parts the integration tests cannot reach: the private bank assembly,
-    //! the coefficient-count arithmetic and the self-duality of the orthogonal families.
+    //! the coefficient-count arithmetic, the self-duality of the orthogonal families and the
+    //! higher-order Daubechies ladder.
 
     #![allow(clippy::indexing_slicing)]
 
@@ -1194,6 +1338,8 @@ mod tests {
     use super::ext_layout;
     use super::idwt;
     use super::idwt_with;
+    use super::wavedec_with;
+    use super::waverec_with;
 
     const MODES: [Boundary; 4] = [
         Boundary::Periodic,
@@ -1282,6 +1428,338 @@ mod tests {
                 Ok(8),
                 "{w:?}: the even inverse keeps the padded sample"
             );
+        }
+    }
+
+    /// The Daubechies ladder `db1`..`db10` (`db1` is `Haar`), in order of vanishing moments.
+    const DAUBECHIES: [Wavelet; 10] = [
+        Wavelet::Haar,
+        Wavelet::Db2,
+        Wavelet::Db3,
+        Wavelet::Db4,
+        Wavelet::Db5,
+        Wavelet::Db6,
+        Wavelet::Db7,
+        Wavelet::Db8,
+        Wavelet::Db9,
+        Wavelet::Db10,
+    ];
+
+    /// A reproducible signal of unit-scale noise.
+    fn signal(n: usize) -> Vec<f64> {
+        let mut s = 12345_u64;
+        (0..n)
+            .map(|_| {
+                s = s
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                (s >> 11) as f64 / (1_u64 << 53) as f64 - 0.5
+            })
+            .collect()
+    }
+
+    fn max_diff(
+        a: &[f64],
+        b: &[f64],
+    ) -> f64 {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| (p - q).abs())
+            .fold(0.0, f64::max)
+    }
+
+    #[test]
+    fn the_daubechies_banks_are_orthonormal_and_the_high_pass_is_their_alternating_reverse() {
+        let mut worst_orth = 0.0_f64;
+        let mut worst_moment = 0.0_f64;
+        for w in DAUBECHIES {
+            let p = w.vanishing_moments().0;
+            assert_eq!(w.vanishing_moments(), (p, p), "{w:?}: moments");
+            assert_eq!(w.taps(), 2 * p, "{w:?}: taps");
+            assert!(w.is_orthogonal(), "{w:?}: orthogonal");
+            let h = w.analysis_low();
+            let g = w.analysis_high();
+            let l = h.len();
+            // the orthogonal families are self-dual: the synthesis banks are the analysis banks
+            assert_eq!(h, w.synthesis_low(), "{w:?}: synthesis low");
+            assert_eq!(g, w.synthesis_high(), "{w:?}: synthesis high");
+            let sum_h: f64 = h.iter().sum();
+            assert!(
+                (sum_h - 2.0_f64.sqrt()).abs() < 1e-12,
+                "{w:?}: sum h = {sum_h}"
+            );
+            let sum_g: f64 = g.iter().sum();
+            assert!(sum_g.abs() < 1e-12, "{w:?}: sum g = {sum_g}");
+            // the high-pass bank is the alternating reverse of the low-pass: g[n] = (-1)^n h[L-1-n]
+            for n in 0..l {
+                let want = if n % 2 == 0 {
+                    h[l - 1 - n]
+                } else {
+                    -h[l - 1 - n]
+                };
+                assert_eq!(g[n], want, "{w:?}: g[{n}]");
+            }
+            // orthonormality sum_n h[n] h[n + 2k] = delta_k, the same for g, and no cross-talk
+            for k in 0..=p {
+                let want = if k == 0 { 1.0 } else { 0.0 };
+                let dot_h: f64 = (0..l)
+                    .filter(|m| m + 2 * k < l)
+                    .map(|m| h[m] * h[m + 2 * k])
+                    .sum();
+                let dot_g: f64 = (0..l)
+                    .filter(|m| m + 2 * k < l)
+                    .map(|m| g[m] * g[m + 2 * k])
+                    .sum();
+                let cross: f64 = (0..l)
+                    .filter(|m| m + 2 * k < l)
+                    .map(|m| h[m] * g[m + 2 * k])
+                    .sum();
+                worst_orth = worst_orth
+                    .max((dot_h - want).abs())
+                    .max((dot_g - want).abs())
+                    .max(cross.abs());
+                assert!(
+                    (dot_h - want).abs() < 1e-12,
+                    "{w:?}: <h, h(. + 2*{k})> = {dot_h}"
+                );
+                assert!(
+                    (dot_g - want).abs() < 1e-12,
+                    "{w:?}: <g, g(. + 2*{k})> = {dot_g}"
+                );
+                assert!(cross.abs() < 1e-12, "{w:?}: <h, g(. + 2*{k})> = {cross}");
+            }
+            // the filter moments of the high-pass, scaled to a unit argument so that the sum
+            // stays O(1), vanish for every degree below the order
+            for d in 0..p {
+                let m: f64 = g
+                    .iter()
+                    .enumerate()
+                    .map(|(k, v)| {
+                        v * (k as f64 / (l - 1) as f64).powi(i32::try_from(d).unwrap_or(0))
+                    })
+                    .sum();
+                worst_moment = worst_moment.max(m.abs());
+                assert!(m.abs() < 1e-12, "{w:?}: scaled moment {d} = {m}");
+            }
+        }
+        println!(
+            "db1..db10: max orthonormality residual {worst_orth:.2e}, max scaled filter moment {worst_moment:.2e}"
+        );
+    }
+
+    #[test]
+    fn the_daubechies_detail_coefficients_annihilate_polynomials_below_the_order() {
+        let n = 64_usize;
+        let polynomial = |d: usize| -> Vec<f64> {
+            let half = (n as f64 - 1.0) / 2.0;
+            (0..n)
+                .map(|i| ((i as f64 - half) / half).powi(i32::try_from(d).unwrap_or(0)))
+                .collect()
+        };
+        let mut worst = 0.0_f64;
+        let mut smallest_at_order = f64::INFINITY;
+        for w in DAUBECHIES {
+            let p = w.vanishing_moments().0;
+            let l = w.taps();
+            // only the coefficients whose analysis window does not wrap around the periodic seam
+            // see a pure polynomial, so the moments are read off the interior
+            let interior = (n - l + 1) / 2;
+            assert!(interior > 0, "{w:?}: signal too short");
+            for d in 0..=p {
+                let (_, c) = dwt(&polynomial(d), w).unwrap();
+                let peak = c[..interior].iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+                if d < p {
+                    worst = worst.max(peak);
+                    assert!(peak < 1e-12, "{w:?}: degree {d} leaves detail {peak}");
+                } else {
+                    smallest_at_order = smallest_at_order.min(peak);
+                    assert!(
+                        peak > 1e-12,
+                        "{w:?}: degree {p} must not be annihilated, but its detail is {peak}"
+                    );
+                }
+            }
+        }
+        println!(
+            "vanishing moments: max detail below the order {worst:.2e}, smallest at the order {smallest_at_order:.2e}"
+        );
+    }
+
+    #[test]
+    fn the_higher_order_families_reconstruct_dyadic_odd_and_rough_signals() {
+        let rough = |n: usize| -> Vec<f64> {
+            (0..n)
+                .map(|i| {
+                    let square = if (i / 8) % 2 == 0 {
+                        1.0
+                    } else {
+                        -1.0
+                    };
+                    let spike = if i % 17 == 3 { 4.0 } else { 0.0 };
+                    square + spike + 0.1 * i as f64
+                })
+                .collect()
+        };
+        let mut worst = 0.0_f64;
+        for w in DAUBECHIES {
+            for b in [Boundary::Periodic, Boundary::Symmetric] {
+                for n in [63_usize, 64, 65, 127, 128, 256] {
+                    for x in [signal(n), rough(n)] {
+                        let (a, d) = dwt_with(&x, w, b).unwrap();
+                        assert_eq!(a.len(), w.coeff_len(n, b), "{w:?} {b:?} n = {n}: count");
+                        let back = idwt_with(&a, &d, w, b, n).unwrap();
+                        let err = max_diff(&x, &back);
+                        worst = worst.max(err);
+                        assert!(err < 1e-12, "{w:?} {b:?} n = {n}: reconstruction {err}");
+                    }
+                }
+                let x = rough(256);
+                let c = wavedec_with(&x, w, 4, b).unwrap();
+                let back = waverec_with(&c, w, b, 256).unwrap();
+                let err = max_diff(&x, &back);
+                worst = worst.max(err);
+                assert!(err < 1e-12, "{w:?} {b:?}: multilevel reconstruction {err}");
+            }
+        }
+        println!("perfect reconstruction: max error {worst:.2e}");
+    }
+
+    #[test]
+    fn the_higher_order_families_preserve_energy() {
+        let mut worst = 0.0_f64;
+        for w in DAUBECHIES {
+            // an odd length is padded with one sample before the circular transform, so Parseval
+            // holds for the padded signal rather than for `x`; only the even lengths are exact
+            for n in [64_usize, 128, 256] {
+                let x = signal(n);
+                let (a, d) = dwt_with(&x, w, Boundary::Periodic).unwrap();
+                let energy: f64 = x.iter().map(|v| v * v).sum();
+                let coeff: f64 = a.iter().chain(&d).map(|v| v * v).sum();
+                worst = worst.max((energy - coeff).abs() / energy);
+                assert!(
+                    (energy - coeff).abs() < 1e-12 * energy,
+                    "{w:?} n = {n}: {energy} vs {coeff}"
+                );
+            }
+        }
+        println!("Parseval: max relative energy defect {worst:.2e}");
+    }
+
+    #[test]
+    fn higher_order_wavelets_compress_a_smooth_signal_far_better_than_haar() {
+        let n = 1024_usize;
+        let x: Vec<f64> = (0..n)
+            .map(|i| {
+                let t = i as f64 / n as f64;
+                (4.0 * std::f64::consts::PI * t).sin()
+                    + 0.3 * (2.0 * std::f64::consts::PI * t).cos()
+                    + 0.2 * t
+            })
+            .collect();
+        let relative_error = |w: Wavelet| {
+            let c = wavedec_with(&x, w, 5, Boundary::Periodic).unwrap();
+            // keep the 5 % largest coefficients of the whole decomposition, drop the rest
+            let mut magnitude: Vec<f64> = c.iter().flatten().map(|v| v.abs()).collect();
+            magnitude.sort_by(f64::total_cmp);
+            let threshold = magnitude[magnitude.len() - n / 20];
+            let kept: Vec<Vec<f64>> = c
+                .iter()
+                .map(|band| {
+                    band.iter()
+                        .map(|v| {
+                            if v.abs() >= threshold {
+                                *v
+                            } else {
+                                0.0
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+            let back = waverec_with(&kept, w, Boundary::Periodic, n).unwrap();
+            let residual: f64 = back
+                .iter()
+                .zip(&x)
+                .map(|(p, q)| (p - q) * (p - q))
+                .sum::<f64>()
+                .sqrt();
+            residual / x.iter().map(|v| v * v).sum::<f64>().sqrt()
+        };
+        let haar = relative_error(Wavelet::Haar);
+        let db4 = relative_error(Wavelet::Db4);
+        let db8 = relative_error(Wavelet::Db8);
+        let db10 = relative_error(Wavelet::Db10);
+        println!(
+            "5 % of the coefficients: Haar {haar:.3e}, db4 {db4:.3e}, db8 {db8:.3e}, db10 {db10:.3e}"
+        );
+        assert!(haar > 1e-2, "Haar error {haar}");
+        assert!(db8 < 5e-3, "db8 error {db8}");
+        assert!(
+            haar > 10.0 * db8,
+            "the higher order wavelet must win: Haar {haar} vs db8 {db8}"
+        );
+    }
+
+    #[test]
+    fn the_older_families_are_bit_identical_to_their_pinned_coefficients() {
+        // values pinned from the release before `db5`..`db10` were added: a new family must not
+        // perturb a single bit of what the existing families produce. The filters of `db2` and
+        // `db4` are unchanged by that release (`db2` is still evaluated from `(1 +- sqrt 3)/(4
+        // sqrt 2)` at run time), so these are the bits the old code produced, not the
+        // correctly rounded values: a four-term dot product rounds up to one ulp away from the
+        // exact sum.
+        let x = [0.5, -1.25, 0.75, 2.0, -0.5, 0.25, 1.5, -0.75];
+        let pinned: [(Wavelet, [f64; 4], [f64; 4]); 3] = [
+            (
+                Wavelet::Haar,
+                [
+                    -0.530_330_085_889_910_7,
+                    1.944_543_648_263_005_9,
+                    -0.176_776_695_296_636_9,
+                    0.530_330_085_889_910_7,
+                ],
+                [
+                    1.237_436_867_076_458_2,
+                    -0.883_883_476_483_184_4,
+                    -0.530_330_085_889_910_7,
+                    1.590_990_257_669_732_1,
+                ],
+            ),
+            (
+                Wavelet::Db2,
+                [
+                    -0.894_875_067_171_003_1,
+                    1.890_830_477_675_194_1,
+                    0.400_920_563_338_650_2,
+                    0.370_890_979_123_527_53,
+                ],
+                [
+                    -0.123_063_524_708_825_87,
+                    -1.084_343_758_152_509_3,
+                    1.625_665_434_730_239_1,
+                    0.995_955_410_504_191,
+                ],
+            ),
+            (
+                Wavelet::Db4,
+                [
+                    -0.202_675_949_265_455_65,
+                    1.006_045_178_877_827_5,
+                    0.902_230_036_967_242,
+                    0.062_167_686_386_754,
+                ],
+                [
+                    1.534_330_632_042_939_5,
+                    1.034_204_411_074_103_1,
+                    0.753_052_288_440_621_7,
+                    -1.907_373_769_184_57,
+                ],
+            ),
+        ];
+        for (w, want_a, want_d) in pinned {
+            let (a, d) = dwt(&x, w).unwrap();
+            assert_eq!(a, want_a, "{w:?}: approximation");
+            assert_eq!(d, want_d, "{w:?}: detail");
         }
     }
 }

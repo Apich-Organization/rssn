@@ -12,6 +12,7 @@ use rssn::kernels::sde::heun_stratonovich;
 use rssn::kernels::sde::levy_areas;
 use rssn::kernels::sde::milstein;
 use rssn::kernels::sde::milstein_noncommutative;
+use rssn::kernels::sde::milstein_stratonovich;
 use rssn::kernels::sde::noncommutative_noise_grid;
 use rssn::kernels::sde::sample_noise;
 use rssn::kernels::sde::sde_adaptive_noncommutative_with;
@@ -564,4 +565,240 @@ fn ensemble_members_depend_only_on_seed_and_index() {
         .unwrap()
     };
     assert_eq!(nc(16), one.install(|| nc(16)));
+}
+
+// ---------------------------------------------------------------------------
+// Order of convergence, Ito/Stratonovich conventions and the moments
+// ---------------------------------------------------------------------------
+
+/// Finest grid of the common Brownian path: `dt = 2^-10` on `[0, 1]`.
+const FINE: usize = 1024;
+
+/// Paths of the convergence measurements.
+const PATHS: usize = 2000;
+
+/// Step levels `dt = 2^-l` of the convergence measurements.
+const LEVELS: [u32; 7] = [4, 5, 6, 7, 8, 9, 10];
+
+/// Least-squares slope of `log(err)` against `log(dt)`.
+fn fit_slope(
+    dts: &[f64],
+    errs: &[f64],
+) -> f64 {
+    let n = dts.len() as f64;
+    let lx: Vec<f64> = dts.iter().map(|d| d.ln()).collect();
+    let ly: Vec<f64> = errs.iter().map(|e| e.ln()).collect();
+    let mx = lx.iter().sum::<f64>() / n;
+    let my = ly.iter().sum::<f64>() / n;
+    let num: f64 = lx.iter().zip(&ly).map(|(x, y)| (x - mx) * (y - my)).sum();
+    let den: f64 = lx.iter().map(|x| (x - mx).powi(2)).sum();
+    num / den
+}
+
+/// The finest path coarsened to the step `2^-l`; every level therefore sees the
+/// *same* Brownian path (the same increments summed in the same order).
+fn at_level(
+    dws: &[Vec<f64>],
+    l: u32,
+) -> Vec<Vec<f64>> {
+    coarsen(dws, FINE >> l)
+}
+
+#[test]
+fn strong_and_weak_orders_on_a_common_brownian_path() {
+    // dX = mu X dt + sigma X dW, X0 = 1: the exact Ito solution is
+    // X_T = exp((mu - sigma^2/2) T + sigma W_T), the Stratonovich solution of
+    // the same coefficients is exp(mu T + sigma W_T).
+    let tf = 1.0;
+    let hf = tf / FINE as f64;
+    let np = PATHS as f64;
+    let mut strong_em = [0.0_f64; 7];
+    let mut strong_mil = [0.0_f64; 7];
+    let mut strong_str = [0.0_f64; 7];
+    let mut weak_em = [0.0_f64; 7];
+    let mut weak_mil = [0.0_f64; 7];
+    let mut rng = Rng::new(20_240_101);
+    for _ in 0..PATHS {
+        let fine = brownian_increments(&mut rng, 1, FINE, hf);
+        let w: f64 = fine.iter().map(|d| d[0]).sum();
+        let exact_ito = ((MU - 0.5 * SIGMA * SIGMA) * tf + SIGMA * w).exp();
+        let exact_str = (MU * tf + SIGMA * w).exp();
+        for (i, &l) in LEVELS.iter().enumerate() {
+            let dws = at_level(&fine, l);
+            let h = hf * (FINE >> l) as f64;
+            let e = euler_maruyama(gbm_a, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+            let m = milstein(gbm_a, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+            let s = milstein_stratonovich(gbm_a, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+            let xe = e.last().unwrap()[0];
+            let xm = m.last().unwrap()[0];
+            let xs = s.last().unwrap()[0];
+            strong_em[i] += (xe - exact_ito).abs() / np;
+            strong_mil[i] += (xm - exact_ito).abs() / np;
+            strong_str[i] += (xs - exact_str).abs() / np;
+            // The coupled mean difference is unbiased for E[X_T^h] - E[X_T]
+            // while the sampling noise of the exact solution cancels.
+            weak_em[i] += (xe - exact_ito) / np;
+            weak_mil[i] += (xm - exact_ito) / np;
+        }
+    }
+    let dts: Vec<f64> = LEVELS.iter().map(|&l| hf * (FINE >> l) as f64).collect();
+    let weak_em: Vec<f64> = weak_em.iter().map(|e| e.abs()).collect();
+    let weak_mil: Vec<f64> = weak_mil.iter().map(|e| e.abs()).collect();
+    let p_em = fit_slope(&dts, &strong_em);
+    let p_mil = fit_slope(&dts, &strong_mil);
+    let p_str = fit_slope(&dts, &strong_str);
+    let w_em = fit_slope(&dts, &weak_em);
+    let w_mil = fit_slope(&dts, &weak_mil);
+    eprintln!("strong EM          {strong_em:?}");
+    eprintln!("strong Milstein    {strong_mil:?}");
+    eprintln!("strong Stratonovich{strong_str:?}");
+    eprintln!("weak EM            {weak_em:?}");
+    eprintln!("weak Milstein      {weak_mil:?}");
+    eprintln!("strong order: EM {p_em:.3}, Milstein {p_mil:.3}, Stratonovich Milstein {p_str:.3}");
+    eprintln!("weak order:   EM {w_em:.3}, Milstein {w_mil:.3}");
+    assert!((0.4..=0.62).contains(&p_em), "EM strong order {p_em}");
+    assert!(
+        (0.85..=1.15).contains(&p_mil),
+        "Milstein strong order {p_mil}"
+    );
+    assert!(
+        (0.85..=1.15).contains(&p_str),
+        "Stratonovich Milstein strong order {p_str}"
+    );
+    assert!((0.8..=1.25).contains(&w_em), "EM weak order {w_em}");
+    assert!((0.8..=1.25).contains(&w_mil), "Milstein weak order {w_mil}");
+    // at the finest step the strong order one scheme is far closer than EM
+    assert!(
+        strong_mil[6] * 4.0 < strong_em[6],
+        "Milstein {} vs EM {}",
+        strong_mil[6],
+        strong_em[6]
+    );
+}
+
+#[test]
+fn ito_and_stratonovich_milstein_hit_their_own_exact_solutions() {
+    // dX = sigma X dW: Ito X_T = exp(sigma W_T - sigma^2 T / 2), Stratonovich
+    // X_T = exp(sigma W_T). The two Milstein corrections differ only in the sign
+    // of the -h term, i.e. by the drift correction sigma^2 X h / 2.
+    let zero = |_: f64, _: &[f64], o: &mut [f64]| o[0] = 0.0;
+    let tf = 1.0;
+    let n = 1024;
+    let h = tf / n as f64;
+    let paths = 200;
+    let nf = paths as f64;
+    let mut rng = Rng::new(424_242);
+    let (mut e_ito, mut e_str, mut e_heun, mut e_wrong, mut ratio) = (0.0, 0.0, 0.0, 0.0, 0.0);
+    for _ in 0..paths {
+        let dws = brownian_increments(&mut rng, 1, n, h);
+        let w: f64 = dws.iter().map(|d| d[0]).sum();
+        let ito_exact = (-0.5 * SIGMA * SIGMA * tf + SIGMA * w).exp();
+        let str_exact = (SIGMA * w).exp();
+        let ito = milstein(zero, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+        let strat = milstein_stratonovich(zero, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+        let heun = heun_stratonovich(zero, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+        let xi = ito.last().unwrap()[0];
+        let xs = strat.last().unwrap()[0];
+        let xh = heun.last().unwrap()[0];
+        e_ito += (xi - ito_exact).abs() / nf;
+        e_str += (xs - str_exact).abs() / nf;
+        e_heun += (xh - str_exact).abs() / nf;
+        e_wrong += (xi - str_exact).abs() / nf;
+        ratio += str_exact / ito_exact / nf;
+    }
+    let expected = (0.5 * SIGMA * SIGMA * tf).exp();
+    eprintln!(
+        "Ito {e_ito:e}, Stratonovich {e_str:e}, Heun {e_heun:e}, wrong convention {e_wrong:e}"
+    );
+    eprintln!("exp(sigma W)/exp(sigma W - sigma^2/2) = {ratio} (expected {expected})");
+    assert!(e_ito < 2e-3, "Ito Milstein vs Ito solution {e_ito:e}");
+    assert!(
+        e_str < 2e-3,
+        "Stratonovich Milstein vs Stratonovich {e_str:e}"
+    );
+    assert!(e_heun < 4e-3, "Heun vs Stratonovich {e_heun:e}");
+    // the sign of the correction is not cosmetic: the Ito scheme is nowhere
+    // near the Stratonovich solution (they differ by exp(sigma^2 T / 2))
+    assert!(e_wrong > 20.0 * e_ito, "{e_wrong:e} vs {e_ito:e}");
+    assert!((ratio - expected).abs() < 1e-12, "{ratio} vs {expected}");
+}
+
+#[test]
+fn mean_and_variance_converge_to_the_lognormal_moments() {
+    // GBM: E X_T = exp(mu T), Var X_T = exp(2 mu T) (exp(sigma^2 T) - 1).
+    let tf = 1.0;
+    let paths = 20_000usize;
+    let fine = 64usize;
+    let hf = tf / fine as f64;
+    let np = paths as f64;
+    let mean_exact = (MU * tf).exp();
+    let var_exact = (2.0 * MU * tf).exp() * ((SIGMA * SIGMA * tf).exp() - 1.0);
+    let em: Scheme = euler_maruyama::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
+    let mil: Scheme = milstein::<fn(f64, &[f64], &mut [f64]), fn(f64, &[f64], &mut [f64])>;
+    let run = |scheme: Scheme, dws: &[Vec<f64>], h: f64| -> f64 {
+        scheme(gbm_a, gbm_g, 1, 0.0, h, &[1.0], dws)
+            .unwrap()
+            .last()
+            .unwrap()[0]
+    };
+    // [scheme][sum, sum of squares], at h = 1/64 and at h = 1/16
+    let mut acc = [[0.0_f64; 2]; 2];
+    let mut coarse_acc = [[0.0_f64; 2]; 2];
+    let mut rng = Rng::new(90_210);
+    for _ in 0..paths {
+        let dws = brownian_increments(&mut rng, 1, fine, hf);
+        let coarse = coarsen(&dws, 4);
+        for (i, scheme) in [em, mil].iter().enumerate() {
+            let x = run(*scheme, &dws, hf);
+            acc[i][0] += x;
+            acc[i][1] += x * x;
+            let y = run(*scheme, &coarse, 4.0 * hf);
+            coarse_acc[i][0] += y;
+            coarse_acc[i][1] += y * y;
+        }
+    }
+    let moments = |a: [f64; 2]| {
+        let m = a[0] / np;
+        (m, a[1] / np - m * m)
+    };
+    let se_mean = (var_exact / np).sqrt();
+    for (i, name) in ["Euler-Maruyama", "Milstein"].iter().enumerate() {
+        let (m, v) = moments(acc[i]);
+        let (mc, vc) = moments(coarse_acc[i]);
+        eprintln!("{name}: mean {m:.6} var {v:.6} (exact {mean_exact:.6} / {var_exact:.6})");
+        eprintln!("{name}: h=1/16 mean {mc:.6} var {vc:.6}");
+        assert!((m - mean_exact).abs() < 4.0 * se_mean, "{name} mean {m}");
+        assert!((v / var_exact - 1.0).abs() < 0.06, "{name} var {v}");
+        assert!(
+            (vc - var_exact).abs() > (v - var_exact).abs(),
+            "{name}: variance error at h=1/16 ({vc}) not larger than at h=1/64 ({v})"
+        );
+    }
+}
+
+#[test]
+fn euler_maruyama_path_is_bit_identical_to_the_pinned_reference() {
+    // Regression guard for the strong order 1/2 scheme: adding the higher order
+    // schemes must not move a single bit of the Euler-Maruyama path. The pin
+    // uses fixed increments rather than the RNG so that it is pure IEEE
+    // multiply/add and therefore reproducible on every platform.
+    let h = 1.0 / 8.0;
+    let dws: Vec<Vec<f64>> = [0.1, -0.2, 0.15, 0.05, -0.1, 0.2, -0.05, 0.1]
+        .iter()
+        .map(|d| vec![*d])
+        .collect();
+    let path = euler_maruyama(gbm_a, gbm_g, 1, 0.0, h, &[1.0], &dws).unwrap();
+    let last = path.last().unwrap()[0];
+    assert_eq!(last.to_bits(), 0x4003_424f_be5b_c759, "endpoint {last}");
+    // and the seeded path is reproduced bit for bit
+    let seeded = |seed: u64| {
+        let mut rng = Rng::new(seed);
+        let d = brownian_increments(&mut rng, 1, 64, 1.0 / 64.0);
+        euler_maruyama(gbm_a, gbm_g, 1, 0.0, 1.0 / 64.0, &[1.0], &d).unwrap()
+    };
+    let (a, b) = (seeded(2024), seeded(2024));
+    assert_eq!(a.len(), b.len());
+    for (x, y) in a.iter().flatten().zip(b.iter().flatten()) {
+        assert_eq!(x.to_bits(), y.to_bits());
+    }
 }

@@ -18,7 +18,7 @@ use rssn::kernels::wavelets::wavedec_with;
 use rssn::kernels::wavelets::waverec;
 use rssn::kernels::wavelets::waverec_with;
 
-const FAMILIES: [Wavelet; 15] = Wavelet::ALL;
+const FAMILIES: [Wavelet; 21] = Wavelet::ALL;
 
 /// Every mode, the circular one included.
 const MODES: [Boundary; 4] = [

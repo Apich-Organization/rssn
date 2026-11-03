@@ -8,6 +8,9 @@
 //! * [`milstein`]: strong order 1 for *commutative* noise (scalar,
 //!   diagonal, additive), with the Levy-area-free Milstein term evaluated
 //!   by directional finite differences of `g`;
+//! * [`milstein_stratonovich`]: the same scheme for the *Stratonovich*
+//!   interpretation, where the iterated integral loses the `-h` term
+//!   (`dW_j dW_k / 2` instead of `(dW_j dW_k - delta_jk h) / 2`);
 //! * [`srk_platen`]: the derivative-free strong order 1 stochastic
 //!   Runge-Kutta scheme of Platen (same commutativity assumption);
 //! * [`heun_stratonovich`]: the Stratonovich predictor-corrector scheme;
@@ -39,13 +42,24 @@
 //!   pool; member `i` is seeded by [`ensemble_seed`]`(seed, i)`, so the ensemble does not depend on
 //!   the thread count.
 //!
-//! Limitation: [`milstein`], [`srk_platen`] and [`sde_adaptive_with`] need
-//! commutative noise; use [`milstein_noncommutative`] or
-//! [`sde_adaptive_noncommutative_with`] otherwise. The non-commutative adaptive
-//! solver cannot take a step shorter than its grid cell (it reports
-//! [`SdeError::StepLimit`]; use more cells) and, being a pathwise Milstein
-//! scheme with the Levy areas of [`levy_areas`], inherits their finite-mode
-//! accuracy.
+//! All schemes but [`heun_stratonovich`] and [`milstein_stratonovich`]
+//! integrate the Ito SDE; those two integrate `dX = a dt + g o dW` and
+//! converge to the Stratonovich solution, which for `dX = sigma X dW` is
+//! `X_0 exp(sigma W_T)` rather than the Ito `X_0 exp(sigma W_T - sigma^2 T / 2)`.
+//!
+//! Limitation: [`milstein`], [`milstein_stratonovich`], [`srk_platen`] and
+//! [`sde_adaptive_with`] are strong order one only for commutative noise and
+//! cannot integrate non-commutative noise at all; every SDE is commutative when
+//! `m = 1`, so scalar noise is always covered, and otherwise one needs
+//! [`milstein_noncommutative`] or [`sde_adaptive_noncommutative_with`] and
+//! their Levy areas. The
+//! non-commutative adaptive solver cannot take a step shorter than its grid cell
+//! (it reports [`SdeError::StepLimit`]; use more cells) and, being a pathwise
+//! Milstein scheme with the Levy areas of [`levy_areas`], inherits their
+//! finite-mode accuracy. No scheme here is better than strong order one, and
+//! [`milstein`] and [`milstein_stratonovich`] are weak order one as well (they
+//! are not weak order two), so ensemble means converge no faster than `O(h)` in
+//! general.
 
 use crate::kernels::random::Rng;
 
@@ -223,6 +237,58 @@ where
                 s += g[i * m + j] * dw[j];
             }
             y[i] += s;
+        }
+        finite(&y)?;
+        out.push(y.clone());
+    }
+    Ok(out)
+}
+
+/// Milstein scheme (strong order 1) for the *Stratonovich* interpretation
+/// `dX = a dt + g o dW` of the same coefficients; arguments as in
+/// [`euler_maruyama`].
+///
+/// It differs from the Ito [`milstein`] only in the iterated integral of the
+/// correction, `I_jk = dW_j dW_k / 2` instead of
+/// `(dW_j dW_k - delta_jk h) / 2`: for scalar noise the correction is
+/// `g g' dW^2 / 2` rather than `g g' (dW^2 - h) / 2`, so the two differ by the
+/// Ito-Stratonovich drift correction `g g' h / 2` and converge to different
+/// solutions. For `dX = sigma X dW` they are `X_0 exp(sigma W_T)` (here) and
+/// `X_0 exp(sigma W_T - sigma^2 T / 2)` ([`milstein`]).
+///
+/// # Errors
+/// [`SdeError::Invalid`] or [`SdeError::NonFinite`].
+pub fn milstein_stratonovich<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    dws: &[Vec<f64>],
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    check(y0, m, dws)?;
+    let n = y0.len();
+    let mut y = y0.to_vec();
+    let mut out = vec![y.clone()];
+    let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    for (k, dw) in dws.iter().enumerate() {
+        let t = t0 + k as f64 * h;
+        drift(t, &y, &mut a);
+        diff(t, &y, &mut g);
+        let mut areas = vec![0.0; m * m];
+        for (row, d) in areas.chunks_mut(m).zip(dw) {
+            for (area, d2) in row.iter_mut().zip(dw) {
+                *area = 0.5 * d * d2;
+            }
+        }
+        let corr = milstein_term_areas(&diff, t, &y, &g, m, &areas);
+        for (((yi, ai), ci), grow) in y.iter_mut().zip(&a).zip(&corr).zip(g.chunks(m)) {
+            *yi += ai * h + ci + grow.iter().zip(dw).map(|(gij, dwj)| gij * dwj).sum::<f64>();
         }
         finite(&y)?;
         out.push(y.clone());

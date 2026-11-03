@@ -1758,3 +1758,28 @@ four at `sqrt(2h/g)` to `1e-6`.
 | `Solutions::new` defaulted `complete = true` | **false**. A caller that builds one by hand has not run an exhaustive method. `Solutions::complete()` is the explicit opt-in; `solve_structured` still derives it from the answer's shape. |
 | `DimExpr::to_term` refused a symbolic exponent | **supported**: `DimTerm::base_symbolic` / `var_symbolic` intern the exponent as an atom, so `Length^n` bridges. `(Length^n)^1` is `Length^n`; scaling a symbolic exponent by a rational is refused with a message that says which case it was. |
 | `manifest_hash` was printed as `hash_u64` | the audit prints the **full 64-character hex digest** and, separately and labelled, the `u64`. They differ: `hash_u64` is the first eight bytes read little-endian. `KernelManifest::hash_hex()` is the canonical string a host should pin. |
+
+### 10.4 The designed items, pushed
+
+| Item | Outcome |
+|---|---|
+| **Copy-on-write `DimArena`** (items 9/12/13) | **implemented**. `Graph.dims` is `Arc<RwLock<DimArena>>`, shared until written; the first mutation on a clone detaches it (the manual equivalent of `Arc::make_mut`, unavailable because `RwLock<T>` is not `Clone`). A request that defines no base dimension now copies nothing, and one that does still cannot leak into the template. `define_base_dimension` and the new `with_dim_arena_mut` both go through it. Test: `a_base_defined_on_a_clone_does_not_reach_its_source`. |
+| **Fixed-step event location** | **implemented**: `solve_fixed_events`. A fixed-step method has no interpolant, so the locator bisects the *step length* and re-integrates the partial step from the same start. Euler/Heun/RK4 are one-step methods, so the located state is a point of the method's own trajectory — exact for the method, and no dense output needed. Two tests: the `cos` zero crossings to `1e-6` with 1000 RK4 steps, and a terminal ground event that stops the trajectory at `sqrt(2h/g)`. |
+| **`dim_rule`-driven dimension overloads** | **considered and rejected**, with the reason in `docs/DESIGN.md` §2.1. A signature is a promise the runtime keeps; the matcher scores *arguments* and never checks a `ret`, so `(Real[d]) -> Real[d]` would be a claim the engine does not enforce — worse than silence, because a host would generate generic bindings on the strength of it. The data a host needs is already in `OpInfo.dim_rule`, per operator, without pretending the type system checks it. Enforcing it is a separate feature (a post-call dimension check) with its own false-positive risk. |
+| **BDF index-2/3, variable mass matrix** | **scoped, not attempted**, with the reason in §4: both change the order conditions, the error estimate and the step-size controller, and there is no benchmark in the tree to validate them against. They are new methods, not completions, and doing them in the same round as the correctness fixes would be reckless. |
+| **Reusable scratch graph** | **scoped**, §3: it changes the lifetime story of `Term` (a generation counter and an engine guard), so it is a redesign rather than a refactor. The COW arena above already removed the larger half of the per-request cost. |
+
+### 10.5 BDF with a time-dependent mass matrix
+
+`BdfOptions::mass_fn: Option<&dyn Fn(f64) -> Mat>` makes `M(t)` available. The
+corrector is `M(t_{n+1})(y_{n+1} − y_pred) = h γ0 f(t_{n+1}, y_{n+1})`, so a
+time-dependent mass needs **no `dM/dt`** — it only has to be evaluated at the new
+time of each step. The one real consequence is that the Newton factorisation can
+no longer be carried over between steps, which is exactly what a time-dependent
+Jacobian already costs; the code says so where it forces the refactorisation.
+
+Test: `(1 + t) y' = −y` from `y(0) = 1` has the exact solution `1/(1+t)`; the
+integrator matches it to `1e-8` over `[0, 2]`, and agrees with the same problem
+written with a constant mass and the `1/(1+t)` folded into the right-hand side.
+
+The module doc no longer claims "the mass matrix must be constant".
