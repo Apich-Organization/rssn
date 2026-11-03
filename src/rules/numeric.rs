@@ -36,9 +36,9 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
-use crate::graph::dim::DimRule;
 use crate::kernels::fftconv;
 use crate::kernels::interpolate::lagrange_interpolation;
 
