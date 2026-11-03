@@ -397,9 +397,11 @@ impl<'g> Registry<'g> {
         unit: crate::dim::UnitDef,
     ) -> Result<(), OpError> {
         match &mut self.units {
-            | Units::Session(units) => units
-                .register(unit)
-                .map_err(|e| OpError::Domain(e.to_string())),
+            | Units::Session(units) => {
+                units
+                    .register(unit)
+                    .map_err(|e| OpError::Domain(e.to_string()))
+            },
             | Units::Local(units) => {
                 if unit.name.trim().is_empty() {
                     return Err(OpError::Domain("a unit needs a name".to_owned()));
