@@ -366,10 +366,9 @@ impl From<ParseError> for ComputeError {
 /// therefore does not go through [`crate::dim::units::register`], the table
 /// every process shares.
 ///
-/// The built-in table is read through [`crate::dim::units::all`], which also
-/// carries the units a *plugin* registered: a plugin reaches the session
-/// through [`crate::kernel::plugin::Registry`], which has no session handle,
-/// so its units are still written to the shared table.
+/// A unit a *plugin* registers arrives here too: [`Template::with_units`]
+/// hands this registry to the plugin's [`Registry`](crate::kernel::plugin::Registry),
+/// so the plugin's units are the session's and not the process's.
 #[derive(Clone, Debug, Default)]
 pub(super) struct SessionUnits {
     /// Units registered into this session, in registration order.
@@ -1105,20 +1104,26 @@ impl Template {
     ) -> Result<Self, RuleError> {
         let mut graph = Graph::new();
         let mut engine = Engine::install(&mut graph, sets)?;
+        let mut units = units;
         for plugin in plugins {
             let manifest = plugin.manifest();
-            let mut registry = crate::kernel::plugin::Registry::new(
-                &mut graph,
-                engine.program_mut(),
-                &manifest.name,
-            );
-            plugin.register(&mut registry).map_err(|error| {
-                RuleError::Invalid {
-                    rule: manifest.name.clone(),
-                    reason: leak_reason(&error.to_string()),
-                }
-            })?;
-            drop(registry);
+            {
+                // The registry writes a plugin's units into this session's
+                // registry, not into the table every process shares, so the
+                // manifest built below describes them here and nowhere else.
+                let mut registry = crate::kernel::plugin::Registry::with_units(
+                    &mut graph,
+                    engine.program_mut(),
+                    &manifest.name,
+                    &mut units,
+                );
+                plugin.register(&mut registry).map_err(|error| {
+                    RuleError::Invalid {
+                        rule: manifest.name.clone(),
+                        reason: leak_reason(&error.to_string()),
+                    }
+                })?;
+            }
             engine.add_plugin(manifest);
         }
         // The session's registry must be in place before the manifest that
@@ -1958,5 +1963,83 @@ mod tests {
         assert!(names(&manifest).iter().any(|name| name == "furlong"));
         assert!(names(&manifest).iter().any(|name| name == "stone"));
         assert!(names(&manifest).iter().any(|name| name == "m"));
+    }
+
+    /// A plugin that registers one unit, `cubit`, scaled by `tenths / 10 m`.
+    /// Two instances are the same plugin — same name, same unit name — with
+    /// different definitions, which is exactly what two sessions must not
+    /// share.
+    fn cubit_plugin(tenths: i64) -> Box<dyn crate::kernel::plugin::Plugin> {
+        Box::new(crate::kernel::plugin::SimplePlugin::new(
+            "acme/cubit",
+            "0.1.0",
+            move |reg| {
+                reg.register_unit(UnitDef::linear(
+                    "cubit",
+                    crate::kernel::signature::DimExpr::base("Length"),
+                    Scale {
+                        rat: BigRational::new(tenths.into(), 10.into()),
+                        pi: 0,
+                    },
+                ))?;
+                Ok(())
+            },
+        ))
+    }
+
+    /// The scale of `cubit` as the manifest describes it.
+    fn cubit_scale(manifest: &KernelManifest) -> Option<String> {
+        manifest
+            .units
+            .iter()
+            .find(|unit| unit.name == "cubit")
+            .map(|unit| format!("{}/{}", unit.scale.numer, unit.scale.denom))
+    }
+
+    /// The unit a plugin registers belongs to the session that installed the
+    /// plugin. Two sessions install the same plugin with different
+    /// definitions of the same unit; each manifest must report its own, and
+    /// a third session that never installed the plugin must report neither —
+    /// that last check is what proves the unit did not reach the process-wide
+    /// table.
+    #[test]
+    fn a_plugin_unit_stays_in_the_session_that_installed_it() {
+        let mut half = Session::new();
+        half.register(cubit_plugin(5))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let mut tenths = Session::new();
+        tenths
+            .register(cubit_plugin(7))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let neither = Session::new();
+
+        let half = half.manifest();
+        let tenths = tenths.manifest();
+        let neither = neither.manifest();
+        assert_eq!(cubit_scale(&half), Some(String::from("1/2")));
+        assert_eq!(cubit_scale(&tenths), Some(String::from("7/10")));
+        assert_eq!(
+            cubit_scale(&neither),
+            None,
+            "a plugin unit must not leak into a session that did not install the plugin"
+        );
+        assert!(
+            crate::dim::units::lookup("cubit").is_none(),
+            "a plugin unit must not reach the table every process shares"
+        );
+        for manifest in [&half, &tenths] {
+            assert_eq!(
+                manifest.units.iter().filter(|u| u.name == "cubit").count(),
+                1,
+                "each session describes its own definition exactly once"
+            );
+            assert!(manifest.verify(), "the hash must match the contents");
+        }
+        assert_eq!(
+            neither.units.iter().filter(|u| u.name == "cubit").count(),
+            0
+        );
+        assert!(neither.verify(), "the hash must match the contents");
+        assert_ne!(half.manifest_hash, tenths.manifest_hash);
     }
 }

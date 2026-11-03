@@ -249,13 +249,33 @@ impl fmt::Debug for dyn HostCallback {
 /// The registry is a checked view of the session's operator table and rule
 /// program. It cannot remove anything, cannot touch terms, and refuses
 /// registrations that would change the meaning of an existing operator.
+///
+/// A unit a plugin registers goes where the registry points: into the
+/// session's own [`UnitRegistry`](crate::dim::UnitRegistry) when there is one
+/// (see [`Registry::with_units`]), and otherwise into a buffer that belongs
+/// to the registry. It never goes into the process-wide table, so one
+/// session's plugin units cannot appear in another session's manifest.
 pub struct Registry<'g> {
     installer: Installer<'g>,
     plugin: String,
+    units: Units<'g>,
+}
+
+/// Where a unit a plugin registers is written.
+enum Units<'g> {
+    /// The session that is installing the plugin.
+    Session(&'g mut dyn crate::dim::UnitRegistry),
+    /// No session: the units stay here, for the caller that owns the
+    /// registry. Nothing is written to the table every process shares.
+    Local(Vec<crate::dim::UnitDef>),
 }
 
 impl<'g> Registry<'g> {
     /// A registry that appends to `program` while registering into `graph`.
+    ///
+    /// It has no session, so the units it accepts are kept by the registry
+    /// itself rather than added to the process-wide table. Use
+    /// [`Registry::with_units`] to put them in a session.
     #[must_use]
     pub fn new(
         graph: &'g mut Graph,
@@ -265,6 +285,26 @@ impl<'g> Registry<'g> {
         Self {
             installer: Installer::new(graph, program),
             plugin: plugin.to_owned(),
+            units: Units::Local(Vec::new()),
+        }
+    }
+
+    /// A registry that writes the units it accepts into `units` — the
+    /// session's own registry — instead of the process-wide table.
+    ///
+    /// This is the constructor a session uses, so that a unit a plugin
+    /// registers is described by that session's manifest and by no other's.
+    #[must_use]
+    pub fn with_units(
+        graph: &'g mut Graph,
+        program: &'g mut Program,
+        plugin: &str,
+        units: &'g mut dyn crate::dim::UnitRegistry,
+    ) -> Self {
+        Self {
+            installer: Installer::new(graph, program),
+            plugin: plugin.to_owned(),
+            units: Units::Session(units),
         }
     }
 
@@ -344,6 +384,11 @@ impl<'g> Registry<'g> {
 
     /// Registers a unit.
     ///
+    /// The unit goes into the registry this one points at: the session's,
+    /// when it was built with [`Registry::with_units`]. A registry with no
+    /// session keeps the unit for its caller; it is never added to the table
+    /// every process shares.
+    ///
     /// # Errors
     /// Fails when the name or an alias is already taken by a different
     /// unit.
@@ -351,7 +396,34 @@ impl<'g> Registry<'g> {
         &mut self,
         unit: crate::dim::UnitDef,
     ) -> Result<(), OpError> {
-        crate::dim::units::register(unit).map_err(|e| OpError::Domain(e.to_string()))
+        match &mut self.units {
+            | Units::Session(units) => units
+                .register(unit)
+                .map_err(|e| OpError::Domain(e.to_string())),
+            | Units::Local(units) => {
+                if unit.name.trim().is_empty() {
+                    return Err(OpError::Domain("a unit needs a name".to_owned()));
+                }
+                let clash = |known: &crate::dim::UnitDef| {
+                    known.name != unit.name && known.dimension != unit.dimension
+                };
+                if units.iter().any(|known| clash(known))
+                    || unit.aliases.iter().any(|alias| {
+                        units
+                            .iter()
+                            .any(|known| known.aliases.contains(alias) && clash(known))
+                    })
+                {
+                    return Err(OpError::Domain(format!(
+                        "a different unit already has the name or alias of `{}`",
+                        unit.name
+                    )));
+                }
+                units.retain(|known| known.name != unit.name);
+                units.push(unit);
+                Ok(())
+            },
+        }
     }
 
     /// Registers a base dimension.
