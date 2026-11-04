@@ -72,34 +72,10 @@ Benchmarks: `cargo bench --bench engine`.
 
 ---
 
-## Roadmap
-
-* **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
-* **v0.2.0** — Stabilization release, expand numerical methods.
-* **v0.3.0** — Performance improvements & broader algorithm coverage.
-* **v0.4.0** — Building up Computation Ecosystem, expand physics simulations.
-* **v0.5.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
-* **v1.0.0** — Full API stabilization.
-
----
-
 ## Contributing
 
 We welcome contributions of all kinds — bug fixes, performance optimizations, new algorithms, and documentation improvements.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
-
-## Maintainers & Contributors
-
-* **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Xinyu.Yang@apich.org](mailto:Xinyu.Yang@apich.org))
-* **Consultants**:
-  * X. Zhang (Algorithm & Informatics, [@RheaCherry](https://github.com/RheaCherry), [3248998213@qq.com](mailto:3248998213@qq.com))
-  * Z. Wang (Mathematics)
-  * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
-* **Project Reviewer**: Z. Li
-* **Outside Collaborator**: Chahat Patel ([@chahat-101](https://github.com/chahat-101))
-* **Contributors**: Owen Yang ([Owen.Yang@apich.org](mailto:Owen.Yang@apich.org))
 
 ---
 
