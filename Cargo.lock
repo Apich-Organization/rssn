@@ -2142,7 +2142,7 @@ dependencies = [
 
 [[package]]
 name = "rssn"
-version = "0.2.13"
+version = "3.0.0-rc.1"
 dependencies = [
  "argmin",
  "argmin-math",

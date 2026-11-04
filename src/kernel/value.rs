@@ -251,7 +251,7 @@ impl TensorValue {
     /// A tensor whose element type the caller knows even when the data is
     /// empty — the case `vector` can only guess at.
     #[must_use]
-    pub fn of(
+    pub const fn of(
         shape: Vec<usize>,
         data: Vec<Value>,
         elem: TypeExpr,

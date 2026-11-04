@@ -611,7 +611,7 @@ char *rssn_term_to_string(const struct RssnSession *session, uint32_t term);
 char *rssn_term_to_typst(const struct RssnSession *session, uint32_t term);
 
 /**
- * The crate version, e.g. `"0.3.0"`. Static; do not free.
+ * The crate version, e.g. `"3.0.0-rc.1"`. Static; do not free.
  */
 const char *rssn_version(void);
 

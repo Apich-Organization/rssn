@@ -344,7 +344,7 @@ mod tests {
             ],
         });
         let total = session
-            .call_value("sum", &[matrix.clone()], &CallCtx::new())
+            .call_value("sum", std::slice::from_ref(&matrix), &CallCtx::new())
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(total, Value::int(10_i32));
 

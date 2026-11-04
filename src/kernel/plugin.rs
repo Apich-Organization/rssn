@@ -409,7 +409,7 @@ impl<'g> Registry<'g> {
                 let clash = |known: &crate::dim::UnitDef| {
                     known.name != unit.name && known.dimension != unit.dimension
                 };
-                if units.iter().any(|known| clash(known))
+                if units.iter().any(&clash)
                     || unit.aliases.iter().any(|alias| {
                         units
                             .iter()

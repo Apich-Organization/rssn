@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.2.13"
+version = "3.0.0-rc.1"
 edition = "2024"
 rust-version = "1.97.0"
 authors = ["The rssn developers"]

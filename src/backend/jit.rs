@@ -871,7 +871,7 @@ impl CraneliftBackend {
 /// A plain `^` would make `(h, k)` and `(h ^ k, 0)` collide; the multiply
 /// and rotate below are the finaliser of splitmix64, which is cheap and has
 /// no fixed points worth exploiting.
-fn mix(
+const fn mix(
     left: u64,
     right: u64,
 ) -> u64 {

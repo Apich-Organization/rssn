@@ -353,7 +353,7 @@ mod tests {
             for i in 1..=k {
                 let bi = b.get(i).cloned().unwrap_or_else(BigRational::zero);
                 let si = out.get(k - i).cloned().unwrap_or_else(BigRational::zero);
-                acc = acc - bi * si;
+                acc -= bi * si;
             }
             out.push(acc / &lead);
         }
@@ -492,7 +492,7 @@ mod tests {
             let defect = recombination_defect(&parts, &n, &d);
             assert!(defect.is_empty(), "{n:?}/{d:?} leaves {defect:?}");
             for piece in &parts.pieces {
-                assert!(!piece.numerator.is_empty());
+                assert_ne!(piece.numerator, []);
                 assert!(piece.numerator.len() < piece.factor.len());
                 assert!(piece.power >= 1);
             }
@@ -526,7 +526,7 @@ mod tests {
     #[test]
     fn repeated_factor_terms_are_exact() {
         let parts = apart(&q(&[1]), &q(&[0, 0, 1, 1])).unwrap_or_else(|| panic!("none"));
-        assert!(parts.quotient.is_empty());
+        assert_eq!(parts.quotient, []);
         assert_eq!(
             parts.pieces,
             vec![
@@ -554,7 +554,7 @@ mod tests {
     #[test]
     fn irreducible_quadratic_terms_are_exact() {
         let parts = apart(&q(&[1]), &q(&[1, 0, 0, 1])).unwrap_or_else(|| panic!("none"));
-        assert!(parts.quotient.is_empty());
+        assert_eq!(parts.quotient, []);
         assert_eq!(
             parts.pieces,
             vec![
@@ -663,7 +663,7 @@ mod tests {
         assert_eq!(split[1].radical, frac(-1, 5));
         assert_eq!(split[1].scale, frac(-1, 2));
         quadratic_pair(&split, &numer, &denom);
-        assert!(univariate::rational_roots(&denom).is_empty());
+        assert_eq!(univariate::rational_roots(&denom), []);
     }
 
     /// A rational factor keeps its exact residue when a real quadratic sits

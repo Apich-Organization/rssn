@@ -64,5 +64,5 @@ keywords:
   - Advanced Algebras
 license: Apache-2.0
 commit: 5fbf7eace6f6632fa6d577ff9f6e8965e0812
-version: v0.2.6
+version: 3.0.0-rc.1
 date-released: '2026-02-14'

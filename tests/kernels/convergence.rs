@@ -203,7 +203,8 @@ fn levin_u_on_terms_beats_partial_sums_on_hard_series() {
         sign / ((k + 1) as f64).sqrt()
     };
 
-    let cases: [(fn(usize) -> f64, f64, &str); 4] = [
+    type Case = (fn(usize) -> f64, f64, &'static str);
+    let cases: [Case; 4] = [
         (zeta2, PI * PI / 6.0, "zeta2"),
         (ln2, LN_2, "ln2"),
         (zeta3, 1.202_056_903_159_594_2, "zeta3"),

@@ -330,6 +330,7 @@ impl CpOptions {
 }
 
 /// Outcome of [`cp_als`].
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct CpDecomposition {
     /// Factor matrices `A^(k)`, one per mode, each `n_k x rank` with
@@ -396,7 +397,7 @@ pub fn cp_als(
     if options.max_sweeps == 0 {
         return Err("max_sweeps must be at least 1.".to_string());
     }
-    if tensor.shape().iter().any(|&d| d == 0) {
+    if tensor.shape().contains(&0) {
         return Err("CP decomposition needs non-empty dimensions.".to_string());
     }
     if tensor.iter().any(|v| !v.is_finite()) {
@@ -779,7 +780,7 @@ mod tests {
         options.seed = 5;
         let d = cp_als(&t, &options).unwrap();
 
-        assert!(d.converged, "not converged: {:?}", d);
+        assert!(d.converged, "not converged: {d:?}");
         assert!(!d.diverged);
         assert!(
             d.relative_residual < 1e-10,
@@ -864,8 +865,7 @@ mod tests {
 
         assert!(
             !d.converged,
-            "degenerate problem claimed to converge: {:?}",
-            d
+            "degenerate problem claimed to converge: {d:?}"
         );
         assert!(
             d.stagnated || d.diverged,

@@ -569,10 +569,12 @@ pub const FGLM_MAX_DIMENSION: usize = 400;
 /// (the walk is stopped at [`FGLM_MAX_DIMENSION`] instead of running forever)
 /// or when a monomial cannot be extended, which can only happen if `leads`
 /// mixes exponent vectors of different lengths.
+type Staircase = (Vec<Vec<u32>>, HashMap<Vec<u32>, usize>);
+
 fn staircase(
     leads: &[&Vec<u32>],
     n: usize,
-) -> Option<(Vec<Vec<u32>>, HashMap<Vec<u32>, usize>)> {
+) -> Option<Staircase> {
     let mut standard: Vec<Vec<u32>> = Vec::new();
     let mut index: HashMap<Vec<u32>, usize> = HashMap::new();
     let mut frontier = vec![vec![0_u32; n]];
@@ -1460,7 +1462,7 @@ mod tests {
         let generators = curve(block);
         let basis = groebner_eliminate(&generators, 1, ELIMINATION_LIMITS)
             .unwrap_or_else(|| panic!("the block basis exists"));
-        assert!(!basis.is_empty());
+        assert_ne!(basis, []);
         // The basis is the reduced one for the block order.
         assert_eq!(
             groebner(&in_order(&basis, block), block, GroebnerLimits::default()).as_deref(),
@@ -1500,7 +1502,7 @@ mod tests {
         )
         .unwrap_or_default();
         let lex_eliminated = elimination_ideal(&lex, 1);
-        assert!(!lex_eliminated.is_empty());
+        assert_ne!(lex_eliminated, []);
         assert!(
             same_ideal(
                 &in_order(&eliminated, Order::GradedRevLex),

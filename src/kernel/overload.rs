@@ -100,8 +100,8 @@ const fn rank_match(
 
 /// How a parameter's extents accept the argument's.
 fn shape_match(
-    param: &Option<Vec<NatExpr>>,
-    got: &Option<Vec<NatExpr>>,
+    param: Option<&[NatExpr]>,
+    got: Option<&[NatExpr]>,
 ) -> Match {
     let (Some(a), Some(b)) = (param, got) else {
         // One side does not pin the extents; the rank already compared.
@@ -180,7 +180,10 @@ pub fn matches_type(
         ) => {
             weaker(
                 rank_match(ra, rb),
-                weaker(shape_match(sa, sb), matches_type(ea, eb)),
+                weaker(
+                    shape_match(sa.as_deref(), sb.as_deref()),
+                    matches_type(ea, eb),
+                ),
             )
         },
         | (
@@ -530,7 +533,10 @@ mod tests {
         );
         let real_only = Signature::new(vec![TypeExpr::Real], TypeExpr::Real);
         assert_eq!(
-            best(&[real_only.clone()], &[Value::String("x".to_owned())]),
+            best(
+                std::slice::from_ref(&real_only),
+                &[Value::String("x".to_owned())]
+            ),
             Best::None
         );
         assert_eq!(best_types(&[real_only], &[TypeExpr::String]), Best::None);

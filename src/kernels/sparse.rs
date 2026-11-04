@@ -217,6 +217,9 @@ pub fn rank(matrix: &SparseMat) -> usize {
 ///
 /// The transpose is a column-major view of a row-major matrix, so faer converts
 /// it without re-sorting the entries.
+///
+/// # Panics
+/// Panics if the matrix cannot be converted to column-major format.
 #[must_use]
 pub fn transpose(matrix: &SparseMat) -> SparseMat {
     matrix
