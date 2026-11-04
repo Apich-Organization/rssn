@@ -6,6 +6,8 @@
 //!   singularities and infinite ranges;
 //! * Clenshaw-Curtis rules;
 //! * Filon-type quadrature for oscillatory integrands;
+//! * tensor-product Filon 2-D rules for a linear phase ([`filon2d`],
+//!   [`filon2d_complex`]) and a general-phase fallback ([`oscillatory2d`]);
 //! * multi-dimensional integration: nested adaptive Gauss-Kronrod, plain
 //!   Monte Carlo, variance-reduced Monte Carlo (antithetic variates,
 //!   stratification, Gaussian importance sampling) and quasi-Monte Carlo
@@ -49,8 +51,18 @@
 //!   10,676 evaluations against 262,144 for the 512x512 tensor rule, and
 //!   `(xy)^(-1/2)` 228,412 against more than 1,048,576 (the 1024x1024 rule
 //!   is still at 8.5e-4 relative error).
-//! * No oscillatory (Filon/Levin) rule exists in more than one dimension, and
-//!   no tanh-sinh rule for fractional endpoint singularities.
+//! * The 2-D Filon rules ([`filon2d`], [`filon2d_complex`]) are
+//!   moment-corrected for a *linear* phase `omega (a x + b y)` only: the
+//!   amplitude is interpolated by a quadratic on every double panel and each
+//!   moment is exact, so the rule is exact for a quadratic amplitude and
+//!   third-order in the panel width otherwise. The reported error is the
+//!   difference between the last two panel refinements, a heuristic rather
+//!   than an enclosure. A nonlinear phase must go through [`oscillatory2d`],
+//!   which integrates the oscillating integrand with adaptive Genz-Malik
+//!   cubature: it is reliable while the partition resolves the oscillation but
+//!   its cost grows with the frequency, and there is no frequency-independent
+//!   2-D Levin collocation. No tanh-sinh rule exists for fractional endpoint
+//!   singularities.
 //! * The Monte Carlo rules are deterministic for a fixed seed, but their
 //!   error is statistical and not controlled by a tolerance; the reported
 //!   error is a sample standard error, not an enclosure. Variance reduction
@@ -72,6 +84,8 @@
 
 use std::cell::RefCell;
 use std::f64::consts::PI;
+
+use num_complex::Complex64;
 
 use crate::kernels::random::Rng;
 
@@ -607,6 +621,27 @@ pub fn romberg<F: Fn(f64) -> f64>(
     }
 }
 
+/// Filon functional coefficients `(alpha, beta, gamma)` for the half-panel
+/// angle `theta = omega * h`.
+fn filon_coefficients(theta: f64) -> (f64, f64, f64) {
+    if theta.abs() < 0.1 {
+        let t2 = theta * theta;
+        (
+            2.0 * theta.powi(3) / 45.0 - 2.0 * theta.powi(5) / 315.0 + 2.0 * theta.powi(7) / 4725.0,
+            2.0 / 3.0 + 2.0 * t2 / 15.0 - 4.0 * t2 * t2 / 105.0 + 2.0 * t2.powi(3) / 567.0,
+            4.0 / 3.0 - 2.0 * t2 / 15.0 + t2 * t2 / 210.0 - t2.powi(3) / 11340.0,
+        )
+    } else {
+        let (s, c) = theta.sin_cos();
+        let t3 = theta.powi(3);
+        (
+            (theta * theta + theta * s * c - 2.0 * s * s) / t3,
+            2.0 * (theta * (1.0 + c * c) - 2.0 * s * c) / t3,
+            4.0 * (s - theta * c) / t3,
+        )
+    }
+}
+
 /// Filon quadrature for `integral_a^b f(x) cos(w x) dx` (`cosine = true`)
 /// or `sin(w x)` (`cosine = false`), using `2 * panels` sub-intervals.
 ///
@@ -623,22 +658,7 @@ pub fn filon<F: Fn(f64) -> f64>(
     let n = panels.max(1);
     let h = (b - a) / (2 * n) as f64;
     let th = omega * h;
-    let (alpha, beta, gamma) = if th.abs() < 0.1 {
-        let t2 = th * th;
-        (
-            2.0 * th.powi(3) / 45.0 - 2.0 * th.powi(5) / 315.0 + 2.0 * th.powi(7) / 4725.0,
-            2.0 / 3.0 + 2.0 * t2 / 15.0 + 4.0 * t2 * t2 / 105.0 + 2.0 * t2.powi(3) / 567.0,
-            4.0 / 3.0 - 2.0 * t2 / 15.0 + t2 * t2 / 210.0 - t2.powi(3) / 11340.0,
-        )
-    } else {
-        let (s, c) = th.sin_cos();
-        let t3 = th.powi(3);
-        (
-            (th * th + th * s * c - 2.0 * s * s) / t3,
-            2.0 * (th * (1.0 + c * c) - 2.0 * s * c) / t3,
-            4.0 * (s - th * c) / t3,
-        )
-    };
+    let (alpha, beta, gamma) = filon_coefficients(th);
     let g = |x: f64| {
         if cosine {
             (omega * x).cos()
@@ -669,6 +689,335 @@ pub fn filon<F: Fn(f64) -> f64>(
         -(fb * (omega * b).cos() - fa * (omega * a).cos())
     };
     h * (alpha * boundary + beta * even + gamma * odd)
+}
+
+/// Result of a complex-valued two-dimensional oscillatory quadrature.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OscillatoryIntegral {
+    /// Estimated value of the integral (real and imaginary parts).
+    pub value: Complex64,
+    /// Estimated absolute error: the Euclidean norm of the complex error.
+    pub error: f64,
+    /// Number of amplitude evaluations.
+    pub evaluations: usize,
+    /// Whether the requested tolerance was reached.
+    pub converged: bool,
+}
+
+/// Largest number of double panels per axis in the adaptive 2-D Filon rules.
+const FILON2D_MAX_PANELS: usize = 256;
+
+/// Integrand budget of the general-phase fallback [`oscillatory2d`].
+const OSC2D_MAX_EVALS: usize = 200_000;
+
+/// Invalid-result marker of the 2-D oscillatory rules.
+const fn invalid_osc2d() -> OscillatoryIntegral {
+    OscillatoryIntegral {
+        value: Complex64::new(f64::NAN, f64::NAN),
+        error: f64::NAN,
+        evaluations: 0,
+        converged: false,
+    }
+}
+
+/// Invalid-result marker of [`filon2d`].
+const fn invalid_filon2d() -> Integral {
+    Integral {
+        value: f64::NAN,
+        error: f64::NAN,
+        evaluations: 0,
+        converged: false,
+    }
+}
+
+/// Whether the box, frequency, phase slopes and tolerance of a 2-D
+/// oscillatory rule are usable.
+fn osc2d_arguments_valid(
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    phase: &[f64],
+    tol: f64,
+) -> bool {
+    lo.len() == 2
+        && hi.len() == 2
+        && phase.len() == 2
+        && lo.iter().chain(hi).chain(phase).all(|v| v.is_finite())
+        && omega.is_finite()
+        && tol.is_finite()
+        && tol > 0.0
+        && hi[0] > lo[0]
+        && hi[1] > lo[1]
+}
+
+/// Complex moments of the three quadratic Lagrange basis functions on the
+/// double panel `[x0, x0 + 2h]`, `integral L_k(x) exp(i omega x) dx`.
+///
+/// The three entries are the Filon functional applied to the basis: for a
+/// quadratic `g` the existing 1-D [`filon`] rule is exactly the linear
+/// combination of `g(x0)`, `g(x0 + h)` and `g(x0 + 2h)` with these weights.
+fn quadratic_panel_moments(
+    x0: f64,
+    h: f64,
+    omega: f64,
+) -> [Complex64; 3] {
+    let (alpha, beta, gamma) = filon_coefficients(omega * h);
+    let (a, b, c) = (omega * x0, omega * (x0 + h), omega * (x0 + 2.0 * h));
+    let half_beta = 0.5 * beta;
+    let (sa, ca) = a.sin_cos();
+    let (sb, cb) = b.sin_cos();
+    let (sc, cc) = c.sin_cos();
+    // The cos functional: the endpoint terms also enter the boundary term, the
+    // midpoint only through gamma. The sin functional is the same with
+    // sin/cos swapped and the sign of the right boundary term flipped.
+    let cos = [
+        h * (-alpha * sa + half_beta * ca),
+        h * gamma * cb,
+        h * (alpha * sc + half_beta * cc),
+    ];
+    let sin = [
+        h * (alpha * ca + half_beta * sa),
+        h * gamma * sb,
+        h * (-alpha * cc + half_beta * sc),
+    ];
+    [
+        Complex64::new(cos[0], sin[0]),
+        Complex64::new(cos[1], sin[1]),
+        Complex64::new(cos[2], sin[2]),
+    ]
+}
+
+/// One tensor-product quadratic-Filon sweep over `panels` double panels per
+/// axis, for the linear phase `omega * (phase[0] * x + phase[1] * y)`.
+///
+/// The amplitude is interpolated by the tensor product of the three-point
+/// quadratic Lagrange basis on every double panel, and each basis moment is
+/// exact for the oscillatory factor. Returns the complex value and the number
+/// of amplitude evaluations.
+fn filon2d_sweep<F: Fn(f64, f64) -> f64>(
+    f: &F,
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    phase: &[f64],
+    panels: usize,
+) -> (Complex64, usize) {
+    let n = panels.max(1);
+    let nodes = 2 * n + 1;
+    let hx = (hi[0] - lo[0]) / (2 * n) as f64;
+    let hy = (hi[1] - lo[1]) / (2 * n) as f64;
+    let (wx, wy) = (omega * phase[0], omega * phase[1]);
+    let mut mx = Vec::with_capacity(n);
+    let mut my = Vec::with_capacity(n);
+    for p in 0..n {
+        let x0 = lo[0] + 2.0 * p as f64 * hx;
+        let y0 = lo[1] + 2.0 * p as f64 * hy;
+        mx.push(quadratic_panel_moments(x0, hx, wx));
+        my.push(quadratic_panel_moments(y0, hy, wy));
+    }
+    let mut grid = vec![0.0; nodes * nodes];
+    for i in 0..nodes {
+        let x = lo[0] + i as f64 * hx;
+        for j in 0..nodes {
+            grid[i * nodes + j] = f(x, lo[1] + j as f64 * hy);
+        }
+    }
+    let mut total = Complex64::new(0.0, 0.0);
+    for p in 0..n {
+        for q in 0..n {
+            let mut cell = Complex64::new(0.0, 0.0);
+            for a in 0..3 {
+                let i = 2 * p + a;
+                let mxa = mx[p][a];
+                for b in 0..3 {
+                    let j = 2 * q + b;
+                    cell += grid[i * nodes + j] * mxa * my[q][b];
+                }
+            }
+            total += cell;
+        }
+    }
+    (total, nodes * nodes)
+}
+
+/// Adaptive core of the linear-phase 2-D Filon rules.
+fn filon2d_adaptive<F: Fn(f64, f64) -> f64>(
+    f: &F,
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    phase: &[f64],
+    tol: f64,
+) -> OscillatoryIntegral {
+    let mut panels = 1usize;
+    let mut previous: Option<Complex64> = None;
+    let mut evaluations = 0usize;
+    loop {
+        let (value, evals) = filon2d_sweep(f, lo, hi, omega, phase, panels);
+        evaluations = evaluations.saturating_add(evals);
+        if let Some(coarse) = previous {
+            let error = (value - coarse).norm();
+            let converged = error <= tol * value.norm().max(1.0);
+            if converged || panels >= FILON2D_MAX_PANELS {
+                return OscillatoryIntegral {
+                    value,
+                    error,
+                    evaluations,
+                    converged,
+                };
+            }
+        }
+        previous = Some(value);
+        panels *= 2;
+    }
+}
+
+/// Two-dimensional Filon quadrature of an oscillatory integrand over a box.
+///
+/// The integrand is `f(x, y) * cos(omega * phi(x, y))` (`cosine = true`) or
+/// `f(x, y) * sin(omega * phi(x, y))` (`cosine = false`), for the linear phase
+/// `phi(x, y) = a x + b y` with `phase = [a, b]`.
+///
+/// The amplitude is interpolated by a tensor product of quadratic Lagrange
+/// polynomials, one per double panel and axis, and each oscillatory moment is
+/// integrated exactly (it is the 1-D [`filon`] functional), so the accuracy
+/// does not degrade as `|omega|` grows. The panel count is doubled from one
+/// until the difference between successive sweeps is at most
+/// `tol * max(|value|, 1)`, so `omega = 0` reproduces the classical Simpson
+/// rule (exact for a quadratic amplitude).
+///
+/// Invalid input (a box dimension list other than two, `hi <= lo`, a
+/// non-finite frequency/slope/tolerance, `tol <= 0`) returns `NaN` values
+/// with `converged == false`; it never panics.
+#[must_use]
+pub fn filon2d<F: Fn(f64, f64) -> f64>(
+    f: F,
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    phase: &[f64],
+    cosine: bool,
+    tol: f64,
+) -> Integral {
+    if !osc2d_arguments_valid(lo, hi, omega, phase, tol) {
+        return invalid_filon2d();
+    }
+    let complex = filon2d_adaptive(&f, lo, hi, omega, phase, tol);
+    Integral {
+        value: if cosine {
+            complex.value.re
+        } else {
+            complex.value.im
+        },
+        error: complex.error,
+        evaluations: complex.evaluations,
+        converged: complex.converged,
+    }
+}
+
+/// Two-dimensional complex-exponential Filon quadrature,
+/// `integral f(x, y) exp(i omega (a x + b y)) dx dy` over the box `[lo, hi]`,
+/// with `phase = [a, b]`.
+///
+/// Same method and validity rules as [`filon2d`]; the value is returned as a
+/// complex number so both the cosine and sine components are available, and
+/// the error is the norm of the complex error.
+#[must_use]
+pub fn filon2d_complex<F: Fn(f64, f64) -> f64>(
+    f: F,
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    phase: &[f64],
+    tol: f64,
+) -> OscillatoryIntegral {
+    if !osc2d_arguments_valid(lo, hi, omega, phase, tol) {
+        return invalid_osc2d();
+    }
+    filon2d_adaptive(&f, lo, hi, omega, phase, tol)
+}
+
+/// General-phase fallback for `integral f(x, y) exp(i omega phi(x, y)) dx dy`
+/// over the box `[lo, hi]`.
+///
+/// [`filon2d`] is moment-corrected only for a linear phase. For a nonlinear
+/// phase this fallback integrates the real and imaginary oscillating
+/// integrands directly with [`cubature_genz_malik`]: deterministic and
+/// reliable while the adaptive partition resolves the oscillation, but its
+/// cost grows with `|omega|` (there is no frequency-independent 2-D Levin
+/// collocation). The tolerance is used as both absolute and relative
+/// tolerance of the two cubatures, with an integrand budget of
+/// [`OSC2D_MAX_EVALS`] evaluations per component.
+///
+/// A non-finite phase at the box corners, edge midpoints or centre, or any
+/// other invalid argument, returns `NaN` with `converged == false`.
+#[must_use]
+pub fn oscillatory2d<F, P>(
+    f: F,
+    phase: P,
+    lo: &[f64],
+    hi: &[f64],
+    omega: f64,
+    tol: f64,
+) -> OscillatoryIntegral
+where
+    F: Fn(f64, f64) -> f64,
+    P: Fn(f64, f64) -> f64,
+{
+    if !osc2d_arguments_valid(lo, hi, omega, &[0.0, 0.0], tol) {
+        return invalid_osc2d();
+    }
+    let (xm, ym) = (lo[0].midpoint(hi[0]), lo[1].midpoint(hi[1]));
+    let probes = [
+        phase(lo[0], lo[1]),
+        phase(hi[0], lo[1]),
+        phase(lo[0], hi[1]),
+        phase(hi[0], hi[1]),
+        phase(xm, ym),
+        phase(xm, lo[1]),
+        phase(lo[0], ym),
+    ];
+    if probes.iter().any(|v| !v.is_finite()) {
+        return invalid_osc2d();
+    }
+    let real = cubature_genz_malik(
+        |p| {
+            let (x, y) = (
+                p.first().copied().unwrap_or(0.0),
+                p.get(1).copied().unwrap_or(0.0),
+            );
+            f(x, y) * (omega * phase(x, y)).cos()
+        },
+        lo,
+        hi,
+        tol,
+        tol,
+        OSC2D_MAX_EVALS,
+    );
+    let imag = cubature_genz_malik(
+        |p| {
+            let (x, y) = (
+                p.first().copied().unwrap_or(0.0),
+                p.get(1).copied().unwrap_or(0.0),
+            );
+            f(x, y) * (omega * phase(x, y)).sin()
+        },
+        lo,
+        hi,
+        tol,
+        tol,
+        OSC2D_MAX_EVALS,
+    );
+    let value = Complex64::new(real.value, imag.value);
+    if !value.re.is_finite() || !value.im.is_finite() {
+        return invalid_osc2d();
+    }
+    OscillatoryIntegral {
+        value,
+        error: real.error.hypot(imag.error),
+        evaluations: real.evaluations.saturating_add(imag.evaluations),
+        converged: real.converged && imag.converged,
+    }
 }
 
 /// Radical inverse of `i` in base `base`.

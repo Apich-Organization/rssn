@@ -4,7 +4,9 @@
 //! `X_k = sum_j x_j exp(-2 pi i j k / n)` convention, in place:
 //!
 //! * [`fft`] / [`ifft`] on a `Vec`, keeping its length;
-//! * [`fft_slice`] / [`ifft_slice`] on a slice, for row/column passes.
+//! * [`fft_slice`] / [`ifft_slice`] on a slice, for row/column passes;
+//! * [`rfft`] / [`irfft`] for real input, returning the `n/2 + 1` non-redundant
+//!   bins.
 //!
 //! **Power-of-two lengths** take the iterative radix-2 Cooley-Tukey kernel
 //! ([`fft_cooley_tukey_in_place`]) directly on the buffer: `log2(n)` stages of
@@ -23,6 +25,15 @@
 //! is the `n`-point DFT itself — the padding is internal to the convolution and
 //! never reaches the caller, who sees `n` coefficients for `n` samples.
 //!
+//! **Real input** uses [`rfft`] / [`irfft`], the standard real-to-complex
+//! packing: an even `n = 2m` is packed into the `m` complex values
+//! `z_j = x_{2j} + i x_{2j+1}`, one `m`-point complex transform is taken, and
+//! the `m + 1` non-redundant bins `X_k = E_k + W_n^k O_k` are unpacked from
+//! `Z_k` and `conj(Z_{m-k})`. Odd `n` has no such packing and falls back to one
+//! full `n`-point complex transform, keeping the first `n/2 + 1` bins. The
+//! return convention matches [`fft`] / [`ifft`]: [`rfft`] is unnormalised and
+//! its half spectrum has length `n/2 + 1`, [`irfft`] divides by `n`.
+//!
 //! ## Limitations
 //!
 //! Length is no longer a restriction: every `n >= 1` is a true `n`-point
@@ -36,13 +47,14 @@
 //!   (`m = 2048`) — plus two `O(m)` scratch buffers.
 //! * **No prime special case.** Prime `n` goes through Bluestein like any other
 //!   non-power-of-two length; there is no Rader transform.
-//! * **Complex input only.** Real sequences pay for a complex transform; there
-//!   is no real-to-complex packing and no half-length trick.
+//! * **No odd-length real packing.** [`rfft`] halves the work for even `n` only;
+//!   an odd `n` runs a full complex transform (still `O(n log n)` with the same
+//!   Bluestein fallback) and copies the first `n/2 + 1` bins.
 //! * **Single-threaded.** Each call is serial; callers parallelise over
 //!   independent rows/columns with the slice variants.
-//! * **Normalisation.** [`fft`] is unnormalised, [`ifft`] divides by `n`; the
-//!   `1/n` is applied to the complex conjugate, matching the radix-2 path
-//!   exactly.
+//! * **Normalisation.** [`fft`] and [`rfft`] are unnormalised; [`ifft`] and
+//!   [`irfft`] divide by `n` (`irfft` divides by the target length, not by the
+//!   half-spectrum length).
 //! * **Accuracy.** Accumulation is `f64`. The round trip and Parseval hold to
 //!   about `1e-14 * n` relative, and Bluestein adds an `O(eps * n)` chirp-phase
 //!   error on top of the radix-2 round-off.
@@ -50,6 +62,7 @@
 use std::f64::consts::PI;
 
 use num_complex::Complex;
+use num_complex::Complex64;
 
 /// The optimized, in-place, iterative Cooley-Tukey Fast Fourier Transform (FFT) algorithm.
 ///
@@ -280,6 +293,199 @@ pub fn ifft(data: &mut [Complex<f64>]) {
 
     for (val, out) in data.iter_mut().zip(transformed.iter()) {
         *val = out.conj() / n_f64;
+    }
+}
+
+/// Computes the real-input FFT: the `n/2 + 1` non-redundant bins of the DFT of
+/// a real sequence.
+///
+/// For real `x`, the full spectrum obeys `X_{n-k} = conj(X_k)`, so only the
+/// bins `k = 0 ..= n/2` are returned (length `n/2 + 1`, unnormalised like
+/// [`fft`]). At even `n = 2m` the sequence is packed as the `m` complex values
+/// `x_{2j} + i x_{2j+1}`, so one `m`-point complex transform replaces the
+/// `n`-point one. Odd `n` has no such packing and runs a full `n`-point complex
+/// transform, keeping the first `n/2 + 1` bins.
+///
+/// # Arguments
+/// * `x` - The real input sequence.
+///
+/// # Example
+/// ```rust
+/// use rssn::kernels::transforms::rfft;
+///
+/// // An impulse has a flat half spectrum.
+/// let spectrum = rfft(&[1.0, 0.0, 0.0, 0.0]);
+///
+/// assert_eq!(spectrum.len(), 3);
+/// assert!((spectrum[0].re - 1.0).abs() < 1e-12);
+/// assert!((spectrum[2].re - 1.0).abs() < 1e-12);
+/// ```
+///
+/// A constant signal concentrates all the energy in the DC bin:
+/// ```rust
+/// use rssn::kernels::transforms::rfft;
+///
+/// let spectrum = rfft(&[2.0; 5]);
+///
+/// assert!((spectrum[0].re - 10.0).abs() < 1e-12);
+/// assert!(spectrum[1..].iter().all(|bin| bin.norm() < 1e-12));
+/// ```
+#[must_use]
+pub fn rfft(x: &[f64]) -> Vec<Complex64> {
+    let n = x.len();
+
+    if n == 0 {
+        return Vec::new();
+    }
+
+    if n == 1 {
+        return vec![Complex64::new(x[0], 0.0)];
+    }
+
+    if n.is_multiple_of(2) {
+        let m = n / 2;
+
+        let mut packed: Vec<Complex64> = x
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|pair| Complex64::new(pair[0], pair[1]))
+            .collect();
+
+        fft(&mut packed);
+
+        let n_f64 = n as f64;
+
+        let mut spectrum = Vec::with_capacity(m + 1);
+
+        for k in 0..=m {
+            // Z_{m} = Z_{0} by periodicity, so index m with 0.
+            let z_k = packed[k % m];
+
+            let conj_z_mk = packed[(m - k % m) % m].conj();
+
+            let even = (z_k + conj_z_mk) * 0.5;
+
+            let odd = Complex64::new(0.0, -0.5) * (z_k - conj_z_mk);
+
+            let twiddle = Complex64::from_polar(1.0, -2.0 * PI * (k as f64) / n_f64);
+
+            spectrum.push(even + twiddle * odd);
+        }
+
+        spectrum
+    } else {
+        let mut full: Vec<Complex64> = x.iter().map(|&value| Complex64::new(value, 0.0)).collect();
+
+        fft(&mut full);
+
+        full.truncate(n / 2 + 1);
+
+        full
+    }
+}
+
+/// Inverts [`rfft`]: reconstructs the real signal of length `n` from its
+/// `n/2 + 1` non-redundant bins, with the `1/n` normalisation of [`ifft`].
+///
+/// The imaginary parts of the DC bin (`k = 0`) and, for even `n`, of the
+/// Nyquist bin (`k = n/2`) are ignored, because a real signal has purely real
+/// values there. Even `n = 2m` is unpacked into one `m`-point inverse complex
+/// transform; odd `n` reconstructs the full conjugate-symmetric spectrum and
+/// takes one `n`-point inverse transform.
+///
+/// Returns an empty vector when `n` is zero or when `spectrum.len()` is not
+/// `n/2 + 1`.
+///
+/// # Arguments
+/// * `spectrum` - The half spectrum produced by [`rfft`] (or any conjugate-
+///   symmetric data).
+/// * `n` - The length of the reconstructed real signal.
+///
+/// # Example
+/// ```rust
+/// use rssn::kernels::transforms::irfft;
+/// use rssn::kernels::transforms::rfft;
+///
+/// let x = [0.5, -1.25, 2.0, 0.0, -3.5, 1.0];
+/// let back = irfft(&rfft(&x), x.len());
+///
+/// for (got, want) in back.iter().zip(x) {
+///     assert!((got - want).abs() < 1e-12);
+/// }
+/// ```
+#[must_use]
+pub fn irfft(
+    spectrum: &[Complex64],
+    n: usize,
+) -> Vec<f64> {
+    if n == 0 || spectrum.len() != n / 2 + 1 {
+        return Vec::new();
+    }
+
+    if n == 1 {
+        return vec![spectrum[0].re];
+    }
+
+    if n.is_multiple_of(2) {
+        let m = n / 2;
+
+        let n_f64 = n as f64;
+
+        let dc = spectrum[0].re;
+
+        let nyquist = spectrum[m].re;
+
+        let mut packed = Vec::with_capacity(m);
+
+        for k in 0..m {
+            let x_k = if k == 0 {
+                Complex64::new(dc, 0.0)
+            } else {
+                spectrum[k]
+            };
+
+            let conj_x_mk = if k == 0 {
+                Complex64::new(nyquist, 0.0)
+            } else {
+                spectrum[m - k].conj()
+            };
+
+            let even = (x_k + conj_x_mk) * 0.5;
+
+            // O_k = (X_k - conj(X_{m-k})) / (2 W_n^k), and Z_k = E_k + i O_k.
+            let inv_twiddle = Complex64::from_polar(1.0, 2.0 * PI * (k as f64) / n_f64);
+
+            let odd = (x_k - conj_x_mk) * 0.5 * inv_twiddle;
+
+            packed.push(even + Complex64::new(0.0, 1.0) * odd);
+        }
+
+        ifft(&mut packed);
+
+        let mut x = Vec::with_capacity(n);
+
+        for value in packed {
+            x.push(value.re);
+            x.push(value.im);
+        }
+
+        x
+    } else {
+        let half = n / 2;
+
+        let mut full = vec![Complex64::new(0.0, 0.0); n];
+
+        full[0] = Complex64::new(spectrum[0].re, 0.0);
+
+        for k in 1..=half {
+            full[k] = spectrum[k];
+            full[n - k] = spectrum[k].conj();
+        }
+
+        ifft(&mut full);
+
+        full.iter().map(|value| value.re).collect()
     }
 }
 

@@ -23,7 +23,7 @@
 //! | [`ShockLimiter::Tvb`] | component-wise TVB minmod |
 //! | [`ShockLimiter::TvbCharacteristic`] | TVB minmod on the **characteristic variables** (Euler eigenvectors of the Jacobian at the element mean, [`DgLaw::to_characteristic`]) |
 //! | [`ShockLimiter::Hierarchical`] | Krivodonova's hierarchical moment limiter (modal coefficients bounded from the top degree down), 1D and 2D |
-//! | [`ShockLimiter::Weno`] | Zhong–Shu WENO reconstruction of troubled elements (1D) |
+//! | [`ShockLimiter::Weno`] | Zhong–Shu WENO reconstruction of troubled elements along every axis (1D and 2D; the per-axis 1D reconstructions are averaged) |
 //! | `positivity` | Zhang–Shu scaling |
 //! | `entropy_stable` | flux-differencing volume terms with the entropy-conservative two-point flux ([`DgLaw::two_point_flux`]; Chandrashekar flux for Euler) and Lax–Friedrichs interface dissipation |
 //!
@@ -38,11 +38,13 @@
 //! problem much smaller than the component-wise limiter.
 //!
 //! Limitations: the characteristic limiter needs a law with eigenvectors
-//! (Euler 1D/2D); the WENO limiter is one-dimensional; the hierarchical limiter
-//! uses ghost elements built from the boundary condition at non-periodic
-//! faces (mirror image for walls, the exterior state for fixed / custom
-//! states, even mirror image for outflow (the flux's exterior state is the interior trace); none on an axis with a single
-//! element), and limits against a missing neighbour only through them.
+//! (Euler 1D/2D); the WENO limiter is componentwise and, in 2D, averages the
+//! 1D reconstructions of the two axes (no genuinely multidimensional WENO
+//! stencil); the hierarchical limiter uses ghost elements built from the
+//! boundary condition at non-periodic faces (mirror image for walls, the
+//! exterior state for fixed / custom states, even mirror image for outflow
+//! (the flux's exterior state is the interior trace); none on an axis with a
+//! single element), and limits against a missing neighbour only through them.
 
 use std::sync::Arc;
 
@@ -1314,8 +1316,9 @@ pub enum ShockLimiter {
     /// Krivodonova's hierarchical moment limiter (modal coefficients are
     /// bounded from the highest degree down), 1D and 2D.
     Hierarchical,
-    /// Zhong–Shu WENO reconstruction of troubled elements (1D). Troubled
-    /// elements are detected with the TVB test of constant `m`.
+    /// Zhong–Shu WENO reconstruction of troubled elements (1D and 2D; in 2D
+    /// the per-axis 1D reconstructions are averaged). Troubled elements are
+    /// detected with the TVB test of constant `m`.
     Weno {
         /// TVB constant `M` of the troubled-element indicator.
         m: f64,
@@ -1747,15 +1750,79 @@ impl Ctx<'_> {
         s
     }
 
-    /// Zhong–Shu WENO limiter for troubled elements (1D).
+    /// WENO combination of `ncand` nodal candidate vectors of `n1` values,
+    /// stored at `cands[k * stride ..]`, using the 1D Zhong–Shu oscillation
+    /// indicator. Every candidate is shifted to the mean `mean_i` before the
+    /// nonlinear weighting, so the result has that mean exactly. `out` receives
+    /// the reconstructed values; `shifts`, `d1`, `d2` and `omegas` are
+    /// caller-provided scratch buffers.
+    #[allow(clippy::too_many_arguments)] // small numerical kernel kept allocation-free
+    fn weno_combine(
+        &self,
+        cands: &[f64],
+        stride: usize,
+        ncand: usize,
+        weights: &[f64],
+        mean_i: f64,
+        out: &mut [f64],
+        shifts: &mut [f64],
+        d1: &mut [f64],
+        d2: &mut [f64],
+        omegas: &mut [f64],
+    ) {
+        let n1 = self.n1;
+        let eps = 1e-6 * (mean_i * mean_i + 1e-12);
+        for k in 0..ncand {
+            let vals = &cands[k * stride..k * stride + n1];
+            let mc: f64 = (0..n1).map(|s| 0.5 * self.w[s] * vals[s]).sum();
+            shifts[k] = mean_i - mc;
+            for s in 0..n1 {
+                d1[s] = vals[s] + shifts[k];
+            }
+            // Oscillation indicator: weighted squared norms of the successive
+            // derivatives of the shifted candidate, as in the 1D construction.
+            let mut beta = 0.0;
+            for l in 1..=self.mesh.p {
+                for i in 0..n1 {
+                    d2[i] = (0..n1).map(|j| self.d[i][j] * d1[j]).sum();
+                }
+                let scale = f64::from(1u32 << (2 * l - 1));
+                beta += scale * (0..n1).map(|j| self.w[j] * d2[j] * d2[j]).sum::<f64>();
+                d1.copy_from_slice(d2);
+            }
+            omegas[k] = weights[k] / ((eps + beta) * (eps + beta));
+        }
+        let tot: f64 = (0..ncand).map(|k| omegas[k]).sum();
+        for s in 0..n1 {
+            out[s] = (0..ncand)
+                .map(|k| omegas[k] / tot * (cands[k * stride + s] + shifts[k]))
+                .sum();
+        }
+    }
+
+    /// Zhong–Shu WENO limiter for troubled elements (1D and 2D).
+    ///
+    /// A troubled element (flagged by the TVB test of constant `mt`) is
+    /// reconstructed along every axis from its own polynomial (weight `0.998`)
+    /// and the shifted polynomials of the left and right neighbours
+    /// (evaluated at `xi ± 2`, weight `0.001` each), on every line of LGL
+    /// nodes perpendicular to the axis, using the 1D Zhong–Shu oscillation
+    /// indicator. The directional reconstructions are averaged
+    /// (`(recon_x + recon_y) / 2` in 2D) componentwise. Each candidate is
+    /// shifted to the line mean before combining, so the reconstruction
+    /// preserves every line mean and therefore the element mean; the average of
+    /// mean-preserving reconstructions preserves it too. An axis without any
+    /// usable neighbour is skipped, and an element whose flagged state has no
+    /// usable neighbour along either axis is left unchanged.
     fn limit_weno(
         &self,
         q: &mut [f64],
         mt: f64,
         xi: &[f64],
     ) {
-        let (nv, np) = (self.nv, self.np);
-        let ne = self.mesh.elements();
+        let (nv, np, n1) = (self.nv, self.np, self.n1);
+        let m = &self.mesh;
+        let ne = m.elements();
         let mut trial = q.to_vec();
         let tvb = DgLimiter {
             tvb_m: Some(mt),
@@ -1763,6 +1830,15 @@ impl Ctx<'_> {
         };
         self.limit(&mut trial, &tvb, xi);
         let old = q.to_vec();
+        let mut cand = vec![0.0; 3 * nv * n1];
+        let mut out_comp = vec![0.0; nv * n1];
+        let mut acc = vec![0.0; np * nv];
+        let mut weights = [0.0_f64; 3];
+        let mut shifts = [0.0_f64; 3];
+        let mut omegas = [0.0_f64; 3];
+        let mut nb_line = vec![0.0; n1];
+        let mut d1 = vec![0.0; n1];
+        let mut d2 = vec![0.0; n1];
         for e in 0..ne {
             let troubled = (0..np * nv).any(|k| {
                 (trial[e * np * nv + k] - old[e * np * nv + k]).abs()
@@ -1771,51 +1847,77 @@ impl Ctx<'_> {
             if !troubled {
                 continue;
             }
-            for v in 0..nv {
-                let own: Vec<f64> = (0..np).map(|nd| old[(e * np + nd) * nv + v]).collect();
-                let mean_i: f64 = (0..np).map(|nd| 0.5 * self.w[nd] * own[nd]).sum();
-                let mut cands: Vec<(Vec<f64>, f64)> = vec![(own.clone(), 0.998)];
-                for (max, shift) in [(false, -2.0), (true, 2.0)] {
-                    if let Some(en) = self.neighbour(e, 0, max) {
-                        let nb: Vec<f64> = (0..np).map(|nd| old[(en * np + nd) * nv + v]).collect();
-                        let vals: Vec<f64> = (0..np)
-                            .map(|j| Self::lagrange_eval(xi, &nb, xi[j] - shift))
-                            .collect();
-                        cands.push((vals, 0.001));
+            acc.fill(0.0);
+            let mut axes_done: usize = 0;
+            for a in 0..m.dim {
+                let tr = if m.dim == 2 { n1 } else { 1 };
+                let mut axis_used = false;
+                for t in 0..tr {
+                    let nd = |s: usize| {
+                        if a == 0 {
+                            self.node(s, t)
+                        } else {
+                            self.node(t, s)
+                        }
+                    };
+                    for v in 0..nv {
+                        for s in 0..n1 {
+                            cand[v * n1 + s] = old[(e * np + nd(s)) * nv + v];
+                        }
+                    }
+                    weights[0] = 0.998;
+                    let mut ncand = 1;
+                    for (max, shift) in [(false, -2.0), (true, 2.0)] {
+                        let Some(en) = self.neighbour(e, a, max) else {
+                            continue;
+                        };
+                        for v in 0..nv {
+                            for j in 0..n1 {
+                                nb_line[j] = old[(en * np + nd(j)) * nv + v];
+                            }
+                            for s in 0..n1 {
+                                cand[(ncand * nv + v) * n1 + s] =
+                                    Self::lagrange_eval(xi, &nb_line, xi[s] - shift);
+                            }
+                        }
+                        weights[ncand] = 0.001;
+                        ncand += 1;
+                    }
+                    if ncand == 1 {
+                        continue;
+                    }
+                    if ncand == 2 {
+                        weights[0] = 0.999;
+                    }
+                    axis_used = true;
+                    for v in 0..nv {
+                        let mean_v: f64 = (0..n1).map(|s| 0.5 * self.w[s] * cand[v * n1 + s]).sum();
+                        self.weno_combine(
+                            &cand[v * n1..],
+                            nv * n1,
+                            ncand,
+                            &weights,
+                            mean_v,
+                            &mut out_comp[v * n1..],
+                            &mut shifts,
+                            &mut d1,
+                            &mut d2,
+                            &mut omegas,
+                        );
+                    }
+                    for s in 0..n1 {
+                        for v in 0..nv {
+                            acc[nd(s) * nv + v] += out_comp[v * n1 + s];
+                        }
                     }
                 }
-                if cands.len() == 2 {
-                    cands[0].1 = 0.999;
+                if axis_used {
+                    axes_done += 1;
                 }
-                if cands.len() == 1 {
-                    continue;
-                }
-                let eps = 1e-6 * (mean_i * mean_i + 1e-12);
-                let mut omegas = Vec::new();
-                for (vals, g) in &mut cands {
-                    let mc: f64 = (0..np).map(|nd| 0.5 * self.w[nd] * vals[nd]).sum();
-                    for x in vals.iter_mut() {
-                        *x += mean_i - mc;
-                    }
-                    // oscillation indicator
-                    let mut beta = 0.0;
-                    let mut d = vals.clone();
-                    for l in 1..=self.mesh.p {
-                        d = (0..np)
-                            .map(|i| (0..np).map(|k| self.d[i][k] * d[k]).sum::<f64>())
-                            .collect();
-                        let scale = f64::from(1u32 << (2 * l - 1));
-                        beta += scale * (0..np).map(|j| self.w[j] * d[j] * d[j]).sum::<f64>();
-                    }
-                    omegas.push(*g / ((eps + beta) * (eps + beta)));
-                }
-                let tot: f64 = omegas.iter().sum();
-                for nd in 0..np {
-                    q[(e * np + nd) * nv + v] = cands
-                        .iter()
-                        .zip(&omegas)
-                        .map(|((vals, _), w)| w / tot * vals[nd])
-                        .sum();
+            }
+            if axes_done > 0 {
+                for k in 0..np * nv {
+                    q[e * np * nv + k] = acc[k] / axes_done as f64;
                 }
             }
         }
@@ -1856,20 +1958,7 @@ impl Ctx<'_> {
                 }
             },
             | ShockLimiter::Hierarchical => self.limit_hierarchical(q, t, xi),
-            | ShockLimiter::Weno { m } => {
-                if self.mesh.dim == 1 {
-                    self.limit_weno(q, m, xi);
-                } else {
-                    self.limit(
-                        q,
-                        &DgLimiter {
-                            tvb_m: Some(m),
-                            positivity: false,
-                        },
-                        xi,
-                    );
-                }
-            },
+            | ShockLimiter::Weno { m } => self.limit_weno(q, m, xi),
         }
         if opt.positivity {
             self.limit(

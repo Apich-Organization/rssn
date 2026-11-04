@@ -3,6 +3,25 @@
 //! A small, fully deterministic xoshiro256++ generator (seeded through
 //! SplitMix64) and samplers for the common distributions. The same seed
 //! always yields the same stream on every platform.
+//!
+//! # Limitations and coverage
+//!
+//! * The generator is **not** cryptographically secure and is not jumpable or
+//!   splittable: one `Rng` is a single mutable stream, so parallel sampling
+//!   needs one generator per worker with distinct seeds.
+//! * Samplers cover uniform, normal, exponential, gamma, beta, Poisson and
+//!   binomial plus Fisher-Yates shuffle; there is no Student-t, chi-square,
+//!   log-normal, Dirichlet, multivariate normal, rejection-free discrete table
+//!   or quasi-Monte Carlo generator.
+//! * The gamma/beta/Poisson/binomial samplers are rejection methods: exact in
+//!   distribution for valid parameters, but their cost is data-dependent and an
+//!   extreme parameter set can loop for a long time. Invalid parameters are
+//!   rejected by the individual functions (`assert`/`Option`) rather than
+//!   silently clamped.
+//! * Box-Muller caches one spare normal value, so the number of raw draws per
+//!   reported normal sample is two and the stream depends on the interleaving
+//!   of calls; changing the order of sampling calls changes the stream even
+//!   for the same seed.
 
 use std::f64::consts::PI;
 

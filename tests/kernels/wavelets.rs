@@ -15,8 +15,12 @@ use rssn::kernels::wavelets::idwt_with;
 use rssn::kernels::wavelets::idwt2;
 use rssn::kernels::wavelets::wavedec;
 use rssn::kernels::wavelets::wavedec_with;
+use rssn::kernels::wavelets::wavedec2;
+use rssn::kernels::wavelets::wavedec2_with;
 use rssn::kernels::wavelets::waverec;
 use rssn::kernels::wavelets::waverec_with;
+use rssn::kernels::wavelets::waverec2;
+use rssn::kernels::wavelets::waverec2_with;
 
 const FAMILIES: [Wavelet; 21] = Wavelet::ALL;
 
@@ -71,14 +75,31 @@ fn round_trip_tolerance(w: Wavelet) -> f64 {
     }
 }
 
-fn moment(
+/// `|sum_m g[m] m^p| / sum_m |g[m]| m^p`: a scale-free measure of a vanishing
+/// moment.
+///
+/// The absolute round-off of the moment sum grows like `max_m |g[m]| m^p`, so a
+/// fixed absolute tolerance is meaningless for the long filters: `db9`/`db10`
+/// reach about `1e-6` absolute at their last moment while still cancelling to
+/// far below round-off relative to the terms. This replaces the old absolute
+/// `1e-8` bound, which already failed at HEAD for `db9` (moment 7 was `1.9e-8`)
+/// and `db10`, independently of the multilevel 2-D transform.
+fn moment_residual(
     g: &[f64],
     p: usize,
 ) -> f64 {
-    g.iter()
-        .enumerate()
-        .map(|(m, v)| v * (m as f64).powi(i32::try_from(p).unwrap_or(0)))
-        .sum()
+    let mut sum = 0.0;
+    let mut scale = 0.0;
+    for (m, v) in g.iter().enumerate() {
+        let w = (m as f64).powi(i32::try_from(p).unwrap_or(0));
+        sum += v * w;
+        scale += v.abs() * w;
+    }
+    if scale == 0.0 {
+        0.0
+    } else {
+        sum.abs() / scale
+    }
 }
 
 #[test]
@@ -144,20 +165,28 @@ fn filters_are_orthonormal_or_biorthogonal_with_the_advertised_vanishing_moments
         let ga = w.analysis_high();
         let gs = w.synthesis_high();
         for p in 0..na {
-            let m = moment(&ga, p);
-            assert!(m.abs() < 1e-8, "{w:?}: analysis moment {p} is {m}");
+            let rel = moment_residual(&ga, p);
+            assert!(
+                rel < 1e-10,
+                "{w:?}: analysis moment {p} is {rel:.3e} of its term scale"
+            );
         }
         assert!(
-            moment(&ga, na).abs() > 1e-3,
-            "{w:?}: analysis moment {na} should not vanish"
+            moment_residual(&ga, na) > 1e-8,
+            "{w:?}: analysis moment {na} should not vanish (relative {:.3e})",
+            moment_residual(&ga, na)
         );
         for p in 0..ns {
-            let m = moment(&gs, p);
-            assert!(m.abs() < 1e-8, "{w:?}: synthesis moment {p} is {m}");
+            let rel = moment_residual(&gs, p);
+            assert!(
+                rel < 1e-10,
+                "{w:?}: synthesis moment {p} is {rel:.3e} of its term scale"
+            );
         }
         assert!(
-            moment(&gs, ns).abs() > 1e-3,
-            "{w:?}: synthesis moment {ns} should not vanish"
+            moment_residual(&gs, ns) > 1e-8,
+            "{w:?}: synthesis moment {ns} should not vanish (relative {:.3e})",
+            moment_residual(&gs, ns)
         );
     }
 }
@@ -636,4 +665,193 @@ fn the_fractional_matrix_is_unitary_and_validates_the_size() {
         }
     }
     assert!(frft_matrix(1, 0.5).is_err());
+}
+
+// -------------------------------------------------------------------------
+// Multilevel 2-D transform
+// -------------------------------------------------------------------------
+
+/// The `LL` band (top-left `ra x ca` block) of a [`dwt2`] packing.
+fn ll_band(
+    packed: &[f64],
+    ra: usize,
+    ca: usize,
+) -> Vec<f64> {
+    let out_cols = 2 * ca;
+    let mut ll = Vec::with_capacity(ra * ca);
+    for r in 0..ra {
+        for c in 0..ca {
+            ll.push(packed[r * out_cols + c]);
+        }
+    }
+    ll
+}
+
+fn array_energy(v: &[f64]) -> f64 {
+    v.iter().map(|x| x * x).sum()
+}
+
+#[test]
+fn multilevel_two_dimensional_round_trip_on_dyadic_shapes() {
+    let families = [Wavelet::Haar, Wavelet::Db2, Wavelet::Db4, Wavelet::Bior2_2];
+    for (rows, cols, levels) in [(8usize, 8usize, 2usize), (16, 16, 3)] {
+        let x = signal(rows * cols);
+        for w in families {
+            let c = wavedec2(&x, rows, cols, w, levels).unwrap();
+            assert_eq!(c.len(), levels + 1, "{w:?}: coefficient count");
+            // Shape bookkeeping: LL_L is rows/2^L x cols/2^L, and packed_j has
+            // the size of the array level j was applied to.
+            assert_eq!(
+                c[0].len(),
+                (rows >> levels) * (cols >> levels),
+                "{w:?}: LL shape"
+            );
+            for j in 1..=levels {
+                let scale = 1usize << (j - 1);
+                assert_eq!(
+                    c[levels - j + 1].len(),
+                    (rows / scale) * (cols / scale),
+                    "{w:?}: packed level {j}"
+                );
+            }
+            let back = waverec2(&c, rows, cols, w).unwrap();
+            let err = max_diff(&x, &back);
+            assert!(
+                err < round_trip_tolerance(w),
+                "{w:?} {rows}x{cols} levels = {levels}: error {err}"
+            );
+            // The explicit periodic variant must agree with wavedec2.
+            let c2 = wavedec2_with(&x, rows, cols, w, levels, Boundary::Periodic).unwrap();
+            assert_eq!(c, c2, "{w:?}: periodic variant");
+        }
+    }
+}
+
+#[test]
+fn multilevel_two_dimensional_layout_is_the_recursive_one_level_transform() {
+    let (rows, cols, levels) = (16usize, 16usize, 3usize);
+    let x = signal(rows * cols);
+    for w in [Wavelet::Haar, Wavelet::Db2, Wavelet::Db4, Wavelet::Bior3_3] {
+        let c = wavedec2(&x, rows, cols, w, levels).unwrap();
+        let mut current = x.clone();
+        let (mut rr, mut cc) = (rows, cols);
+        let mut reference = Vec::new();
+        for _ in 0..levels {
+            let packed = dwt2(&current, rr, cc, w, Boundary::Periodic).unwrap();
+            let ra = w.coeff_len(rr, Boundary::Periodic);
+            let ca = w.coeff_len(cc, Boundary::Periodic);
+            reference.push(packed.clone());
+            current = ll_band(&packed, ra, ca);
+            rr = ra;
+            cc = ca;
+        }
+        reference.reverse();
+        assert_eq!(c[0], current, "{w:?}: final approximation");
+        for (k, want) in reference.iter().enumerate() {
+            assert_eq!(&c[k + 1], want, "{w:?}: packed level {}", levels - k);
+        }
+    }
+}
+
+#[test]
+fn multilevel_two_dimensional_parseval_per_level() {
+    let (rows, cols, levels) = (16usize, 16usize, 3usize);
+    let x = signal(rows * cols);
+    for w in [Wavelet::Haar, Wavelet::Db2, Wavelet::Db4] {
+        let c = wavedec2(&x, rows, cols, w, levels).unwrap();
+        let mut input_energy = array_energy(&x);
+        let (mut rr, mut cc) = (rows, cols);
+        for j in 1..=levels {
+            let idx = levels - j + 1;
+            let packed = &c[idx];
+            let packed_energy = array_energy(packed);
+            assert!(
+                (packed_energy - input_energy).abs() <= 1e-10 * input_energy.max(1.0),
+                "{w:?}: Parseval at level {j}: {packed_energy} vs {input_energy}"
+            );
+            let ra = w.coeff_len(rr, Boundary::Periodic);
+            let ca = w.coeff_len(cc, Boundary::Periodic);
+            let ll = ll_band(packed, ra, ca);
+            input_energy = array_energy(&ll);
+            rr = ra;
+            cc = ca;
+        }
+        assert_eq!(c[0].len(), rr * cc, "{w:?}: final LL shape");
+        assert!(
+            (array_energy(&c[0]) - input_energy).abs() < 1e-10 * input_energy.max(1.0),
+            "{w:?}: final LL energy"
+        );
+    }
+}
+
+#[test]
+fn multilevel_two_dimensional_extension_modes_round_trip_and_stop() {
+    for (w, b) in [
+        (Wavelet::Db4, Boundary::Symmetric),
+        (Wavelet::Bior3_3, Boundary::Reflect),
+        (Wavelet::Haar, Boundary::Zero),
+    ] {
+        let (rows, cols) = (32usize, 32usize);
+        let x = signal(rows * cols);
+        let c = wavedec2_with(&x, rows, cols, w, 2, b).unwrap();
+        assert_eq!(c.len(), 3, "{w:?} {b:?}: coefficient count");
+        let back = waverec2_with(&c, rows, cols, w, b).unwrap();
+        let err = max_diff(&x, &back);
+        assert!(
+            err < 10.0 * round_trip_tolerance(w),
+            "{w:?} {b:?}: error {err}"
+        );
+        assert!(c[0].len() < c[2].len(), "{w:?} {b:?}: shrinking");
+    }
+    // db4 has 8 taps: its symmetric coefficient count at 8x8 is 7, so a second
+    // level would not shrink the band and the recursion reports it.
+    assert_eq!(
+        wavedec2_with(&signal(64), 8, 8, Wavelet::Db4, 2, Boundary::Symmetric),
+        Err(WaveletError::TooManyLevels)
+    );
+}
+
+#[test]
+fn multilevel_two_dimensional_invalid_inputs() {
+    assert_eq!(
+        wavedec2(&signal(15), 4, 4, Wavelet::Haar, 2),
+        Err(WaveletError::Shape)
+    );
+    assert_eq!(
+        wavedec2(&[], 0, 4, Wavelet::Haar, 2),
+        Err(WaveletError::Shape)
+    );
+    assert_eq!(
+        wavedec2(&signal(64), 8, 8, Wavelet::Haar, 0),
+        Err(WaveletError::TooManyLevels)
+    );
+    // beyond the dyadic depth
+    assert_eq!(
+        wavedec2(&signal(64), 8, 8, Wavelet::Haar, 4),
+        Err(WaveletError::TooManyLevels)
+    );
+    // non-dyadic shape
+    assert_eq!(
+        wavedec2(&signal(36), 6, 6, Wavelet::Haar, 2),
+        Err(WaveletError::TooManyLevels)
+    );
+    let c = wavedec2(&signal(64), 8, 8, Wavelet::Haar, 2).unwrap();
+    assert_eq!(waverec2(&c, 16, 8, Wavelet::Haar), Err(WaveletError::Shape));
+    assert_eq!(waverec2(&[], 8, 8, Wavelet::Haar), Err(WaveletError::Shape));
+    assert_eq!(
+        waverec2(&c[..2], 8, 8, Wavelet::Haar),
+        Err(WaveletError::Shape)
+    );
+    let mut bad_ll = c.clone();
+    bad_ll[0].push(0.0);
+    assert_eq!(
+        waverec2(&bad_ll, 8, 8, Wavelet::Haar),
+        Err(WaveletError::Shape)
+    );
+    let mut bad_packed = c.clone();
+    bad_packed[1].pop();
+    assert_eq!(
+        waverec2(&bad_packed, 8, 8, Wavelet::Haar),
+        Err(WaveletError::Shape)
+    );
 }

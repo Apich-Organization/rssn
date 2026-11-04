@@ -1,10 +1,14 @@
 //! Tests for the sparse matrix and Krylov solver kernels.
 
+use rssn::kernels::krylov::AutoPreconditionerKind;
 use rssn::kernels::krylov::Csr;
 use rssn::kernels::krylov::SparseLuError;
 use rssn::kernels::krylov::SparseOrdering;
+use rssn::kernels::krylov::auto_preconditioner;
 use rssn::kernels::krylov::bicgstab;
+use rssn::kernels::krylov::bicgstab_with;
 use rssn::kernels::krylov::cg;
+use rssn::kernels::krylov::cg_with;
 use rssn::kernels::krylov::gmres;
 use rssn::kernels::krylov::identity_precond;
 
@@ -337,4 +341,103 @@ fn sparse_lu_errors() {
     // empty pattern column
     let sing = Csr::from_triplets(2, 2, &[(0, 0, 1.0), (1, 0, 1.0)]);
     assert!(sing.sparse_lu(SparseOrdering::Rcm).is_err());
+}
+
+// -------------------------------------------------------------------------
+// Automatic preconditioner selection
+// -------------------------------------------------------------------------
+
+#[test]
+fn auto_preconditioner_falls_back_to_jacobi_when_ilu_breaks() {
+    // Row 0 has no diagonal entry, so ILU(0) has no pivot to use there and
+    // returns None; the matrix is nonsymmetric but nonsingular.
+    let a = Csr::from_triplets(
+        3,
+        3,
+        &[
+            (0, 1, 1.0),
+            (1, 0, 2.0),
+            (1, 1, 4.0),
+            (2, 1, 1.0),
+            (2, 2, 3.0),
+        ],
+    );
+    assert!(a.ilu0().is_none(), "the test matrix must break ILU(0)");
+    let auto = auto_preconditioner(&a);
+    assert_eq!(
+        auto.kind(),
+        AutoPreconditionerKind::Jacobi,
+        "the fallback must be Jacobi"
+    );
+    let b = [1.0, 2.0, 3.0];
+    let sol = bicgstab_with(
+        |x, y| a.matvec(x, y),
+        &auto.as_preconditioner(),
+        &b,
+        None,
+        1e-12,
+        100,
+    );
+    assert!(sol.converged, "{sol:?}");
+    check(&a, &sol.x, &b, 1e-10);
+    // The owned operator and the selector it hands out are the same map.
+    let mut z1 = vec![0.0; 3];
+    let mut z2 = vec![0.0; 3];
+    auto.apply(&b, &mut z1);
+    auto.as_preconditioner().apply(&b, &mut z2);
+    assert_eq!(z1, z2);
+}
+
+#[test]
+fn auto_preconditioner_selects_ic0_on_a_symmetric_positive_definite_matrix() {
+    let n = 64;
+    let a = laplacian(n);
+    let auto = auto_preconditioner(&a);
+    assert_eq!(auto.kind(), AutoPreconditionerKind::Ic0);
+    let b = rhs(n);
+    let via_auto = cg_with(
+        |x, y| a.matvec(x, y),
+        &auto.as_preconditioner(),
+        &b,
+        None,
+        1e-10,
+        1000,
+    );
+    assert!(via_auto.converged, "{via_auto:?}");
+    check(&a, &via_auto.x, &b, 1e-8);
+    // IC(0) is exactly the hand-built preconditioner: same iteration, same
+    // floating-point trajectory.
+    let ic = a.ic0().unwrap();
+    let hand = cg(
+        |x, y| a.matvec(x, y),
+        |r, z| ic.apply(r, z),
+        &b,
+        None,
+        1e-10,
+        1000,
+    );
+    assert_eq!(via_auto.x, hand.x);
+    assert_eq!(via_auto.iterations, hand.iterations);
+}
+
+#[test]
+fn auto_preconditioner_uses_ilu0_when_ic0_rejects_the_matrix() {
+    // Structurally symmetric but indefinite: IC(0) has no positive pivot,
+    // while ILU(0) still factors the diagonal and is exact here.
+    let a = Csr::from_triplets(2, 2, &[(0, 0, -1.0), (1, 1, -2.0)]);
+    assert!(a.ic0().is_none());
+    assert!(a.ilu0().is_some());
+    let auto = auto_preconditioner(&a);
+    assert_eq!(auto.kind(), AutoPreconditionerKind::Ilu0);
+    let b = [1.0, -2.0];
+    let sol = bicgstab_with(
+        |x, y| a.matvec(x, y),
+        &auto.as_preconditioner(),
+        &b,
+        None,
+        1e-12,
+        10,
+    );
+    assert!(sol.converged && sol.iterations <= 2, "{sol:?}");
+    check(&a, &sol.x, &b, 1e-12);
 }

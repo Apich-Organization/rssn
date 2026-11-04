@@ -6,11 +6,13 @@ use rssn::kernels::optim::LpStatus;
 use rssn::kernels::optim::OptResult;
 use rssn::kernels::optim::Pricing;
 use rssn::kernels::optim::Relation;
+use rssn::kernels::optim::SecondOrderStatus;
 use rssn::kernels::optim::augmented_lagrangian;
 use rssn::kernels::optim::bfgs;
 use rssn::kernels::optim::differential_evolution;
 use rssn::kernels::optim::lbfgs;
 use rssn::kernels::optim::nelder_mead;
+use rssn::kernels::optim::second_order_check;
 use rssn::kernels::optim::simplex;
 use rssn::kernels::optim::simplex_with;
 use rssn::kernels::optim::simulated_annealing;
@@ -593,4 +595,84 @@ fn unconstrained_results_unchanged() {
             converged: true,
         }
     );
+}
+
+// -------------------------------------------------------------------------
+// Second-order sufficiency of the SQP result
+// -------------------------------------------------------------------------
+
+#[test]
+fn sqp_certifies_second_order_sufficiency_for_a_convex_equality_qp() {
+    // min x^2 + y^2 s.t. x + y = 1 -> (0.5, 0.5), strictly convex.
+    let f = |x: &[f64]| x[0] * x[0] + x[1] * x[1];
+    let grad = |x: &[f64]| vec![2.0 * x[0], 2.0 * x[1]];
+    let eq = |x: &[f64]| vec![x[0] + x[1] - 1.0];
+    let r = sqp(f, Some(&grad), eq, |_| vec![], &[0.0, 0.0], 1e-10, 100);
+    assert_eq!(r.status, ConstrainedStatus::Optimal, "{r:?}");
+    assert_eq!(r.second_order, SecondOrderStatus::Sufficient, "{r:?}");
+    assert_eq!(
+        second_order_check(f, eq, |_| vec![], &r.x, &r.lambda, &r.mu),
+        SecondOrderStatus::Sufficient
+    );
+
+    // An inactive inequality must not be projected away as if it were active.
+    let ineq = |x: &[f64]| vec![-x[1]];
+    let r = sqp(f, Some(&grad), eq, ineq, &[0.0, 0.0], 1e-10, 100);
+    assert_eq!(r.status, ConstrainedStatus::Optimal, "{r:?}");
+    assert_eq!(r.second_order, SecondOrderStatus::Sufficient, "{r:?}");
+    assert!(r.mu[0] <= 1e-12, "inactive multiplier {:?}", r.mu);
+}
+
+#[test]
+fn sqp_certifies_second_order_sufficiency_with_an_active_inequality() {
+    // min x^2 + y^2 s.t. x + y >= 2 -> (1, 1), one active inequality.
+    let f = |x: &[f64]| x[0] * x[0] + x[1] * x[1];
+    let grad = |x: &[f64]| vec![2.0 * x[0], 2.0 * x[1]];
+    let ineq = |x: &[f64]| vec![2.0 - x[0] - x[1]];
+    let r = sqp(f, Some(&grad), |_| vec![], ineq, &[0.5, 0.0], 1e-10, 100);
+    assert_eq!(r.status, ConstrainedStatus::Optimal, "{r:?}");
+    assert!(r.mu[0] > 0.0, "multiplier {:?}", r.mu);
+    assert_eq!(r.second_order, SecondOrderStatus::Sufficient, "{r:?}");
+}
+
+#[test]
+fn sqp_flags_a_feasible_maximum_as_not_second_order_optimal() {
+    // min -(x^2 + y^2) s.t. x - y = 0. The origin is a KKT point with
+    // lambda = 0, and on the feasible line it is a strict maximum (curvature
+    // -2 along (1, 1)); the first-order test alone cannot see that.
+    let f = |x: &[f64]| -(x[0] * x[0] + x[1] * x[1]);
+    let grad = |x: &[f64]| vec![-2.0 * x[0], -2.0 * x[1]];
+    let eq = |x: &[f64]| vec![x[0] - x[1]];
+    let r = sqp(f, Some(&grad), eq, |_| vec![], &[0.0, 0.0], 1e-10, 100);
+    assert_eq!(r.status, ConstrainedStatus::Optimal, "{r:?}");
+    assert_eq!(r.second_order, SecondOrderStatus::NotSufficient, "{r:?}");
+    assert_eq!(
+        second_order_check(f, eq, |_| vec![], &r.x, &r.lambda, &r.mu),
+        SecondOrderStatus::NotSufficient
+    );
+}
+
+#[test]
+fn sqp_reports_second_order_inconclusive_without_feasible_directions() {
+    // min x^2 on the singleton {0}: no feasible direction exists, so the check
+    // must not claim sufficiency.
+    let f = |x: &[f64]| x[0] * x[0];
+    let grad = |x: &[f64]| vec![2.0 * x[0]];
+    let eq = |x: &[f64]| vec![x[0]];
+    let r = sqp(f, Some(&grad), eq, |_| vec![], &[0.0], 1e-10, 100);
+    assert_eq!(r.status, ConstrainedStatus::Optimal, "{r:?}");
+    assert_eq!(r.second_order, SecondOrderStatus::Inconclusive, "{r:?}");
+
+    // A non-optimal outcome is inconclusive by definition.
+    let r = sqp(
+        |x: &[f64]| x[0] * x[0],
+        None::<&fn(&[f64]) -> Vec<f64>>,
+        |_| vec![],
+        |x: &[f64]| vec![1.0 - x[0], x[0]],
+        &[0.5],
+        1e-10,
+        100,
+    );
+    assert_eq!(r.status, ConstrainedStatus::Infeasible, "{r:?}");
+    assert_eq!(r.second_order, SecondOrderStatus::Inconclusive, "{r:?}");
 }

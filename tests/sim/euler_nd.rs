@@ -615,11 +615,12 @@ fn a_uniform_gas_in_free_fall_gains_exactly_g_t() {
 }
 
 #[test]
-fn an_isothermal_atmosphere_is_held_to_the_order_of_the_scheme() {
-    // rho = exp(-g x / T), p = rho T (T = g = 1) between two walls: the
-    // residual motion is a truncation effect, first order because of the
-    // zero-gradient ghost cells at the walls.
-    let residual = |n: usize| {
+fn an_isothermal_atmosphere_at_rest_is_held_to_round_off() {
+    // rho = exp(-g x / T), p = rho T (T = g = 1) between two walls. The
+    // well-balanced interface pressure balances the cell gravity source
+    // exactly, so the atmosphere does not move (the previous scheme had a
+    // first-order residual of ~1e-2 from the zero-gradient wall ghosts).
+    let run = |n: usize| {
         let grid = FvGrid::new(&[n], &[0.0], &[1.0]).unwrap();
         let mut cfg = FvConfig::euler(GAMMA).with_axis(0, GasBc::Reflective);
         cfg.recon = Reconstruction::Muscl(SlopeLimiter::VanLeer);
@@ -632,16 +633,26 @@ fn an_isothermal_atmosphere_is_held_to_the_order_of_the_scheme() {
             [rho, 0.0, 0.0, 0.0, rho]
         };
         let sol = solve_with_sources(&grid, &cfg, &init, &sources, 0.5).unwrap();
-        (0..n)
-            .map(|p| sol.primitive(p)[1].abs())
-            .fold(0.0, f64::max)
+        let mut speed: f64 = 0.0;
+        let mut pressure: f64 = 0.0;
+        for p in 0..n {
+            let w = sol.primitive(p);
+            speed = speed.max(w[1].abs());
+            pressure = pressure.max((w[4] - (-grid.centre(p)[0]).exp()).abs());
+        }
+        (speed, pressure)
     };
-    let (a, b, c) = (residual(40), residual(80), residual(160));
-    assert!(a < 0.05, "the equilibrium is nearly held: {a}");
-    assert!(
-        a / b > 1.8 && b / c > 1.8,
-        "residual speeds {a:e} {b:e} {c:e}"
-    );
+    for n in [40, 80, 160] {
+        let (speed, pressure) = run(n);
+        println!(
+            "isothermal atmosphere n={n}: max speed {speed:.3e}, pressure error {pressure:.3e}"
+        );
+        assert!(speed < 1e-10, "residual speed {speed:e} at n={n}");
+        assert!(
+            pressure < 1e-12,
+            "the pressure profile moved: {pressure:e} at n={n}"
+        );
+    }
     // A uniform column is not in equilibrium: gravity accelerates its interior.
     let grid = FvGrid::new(&[40], &[0.0], &[1.0]).unwrap();
     let sources = Sources {
@@ -655,5 +666,213 @@ fn an_isothermal_atmosphere_is_held_to_the_order_of_the_scheme() {
         sol.primitive(20)[1] < -0.05,
         "free fall of the interior: {}",
         sol.primitive(20)[1]
+    );
+}
+
+#[test]
+fn a_pressure_perturbation_of_the_hydrostatic_atmosphere_conserves_mass() {
+    // A smooth 1 % pressure perturbation over the isothermal atmosphere at
+    // rest excites motion; the reflective walls still conserve mass and the
+    // state stays finite and positive.
+    for n in [40, 80] {
+        let grid = FvGrid::new(&[n], &[0.0], &[1.0]).unwrap();
+        let mut cfg = FvConfig::euler(GAMMA).with_axis(0, GasBc::Reflective);
+        cfg.recon = Reconstruction::Muscl(SlopeLimiter::VanLeer);
+        let sources = Sources {
+            gravity: [-1.0, 0.0, 0.0],
+            ..Sources::default()
+        };
+        let init = |x: [f64; 3]| {
+            let rho = (-x[0]).exp();
+            let p = rho * (1.0 + 0.01 * (2.0 * PI * x[0]).sin());
+            [rho, 0.0, 0.0, 0.0, p]
+        };
+        let sol = solve_with_sources(&grid, &cfg, &init, &sources, 0.5).unwrap();
+        let volume = grid.cell_volume();
+        let mut mass = 0.0;
+        let mut moved: f64 = 0.0;
+        for p in 0..n {
+            let w = sol.primitive(p);
+            assert!(w.iter().all(|v| v.is_finite()), "non-finite state at {n}");
+            assert!(
+                w[0] > 0.0 && w[4] > 0.0,
+                "non-positive density or pressure: {w:?}"
+            );
+            moved = moved.max(w[1].abs());
+            mass += w[0] * volume;
+        }
+        let m0: f64 = (0..n).map(|p| (-grid.centre(p)[0]).exp()).sum::<f64>() * volume;
+        println!(
+            "perturbed atmosphere n={n}: max speed {moved:.3e}, mass {mass:.15e} (drift {:.3e})",
+            (mass - m0).abs()
+        );
+        assert!(
+            moved > 1e-6,
+            "the perturbation did not move the gas: {moved}"
+        );
+        assert!(
+            (mass - m0).abs() < 1e-10 * m0,
+            "mass not conserved: {mass} vs {m0}"
+        );
+    }
+}
+
+// -------------------------------------------------------- Manning friction
+
+/// Friction acts on the momentum only, so a lake at rest (zero velocity over
+/// any bed) stays at rest.
+#[test]
+fn manning_friction_keeps_the_lake_at_rest_at_rest() {
+    let grid = FvGrid::new(&[80], &[0.0], &[1.0]).unwrap();
+    let cfg = FvConfig::shallow_water(G).with_axis(0, GasBc::Reflective);
+    let sources = Sources {
+        bed: Some(&smooth_bed),
+        manning: 0.04,
+        ..Sources::default()
+    };
+    let sol = solve_with_sources(
+        &grid,
+        &cfg,
+        &|x| [1.0 - smooth_bed(x), 0.0, 0.0, 0.0, 0.0],
+        &sources,
+        0.5,
+    )
+    .unwrap();
+    for p in 0..grid.len() {
+        let w = sol.primitive(p);
+        assert!(
+            w[1].abs() < 1e-12 && w[2].abs() < 1e-12,
+            "lake at rest moved: {w:?}"
+        );
+        assert!((w[0] + smooth_bed(grid.centre(p)) - 1.0).abs() < 1e-12);
+    }
+}
+
+/// Uniform periodic flow over a flat bed: the momentum source
+/// `-g n² h^{-7/3} |q| q` gives `u(t) = u₀ / (1 + t g n² u₀ / h^{4/3})`.
+/// The exact friction half step is exact for the source, so the decay is
+/// reproduced to round-off (up to the splitting error of the hyperbolic step,
+/// which is exactly zero for a uniform flow).
+#[test]
+fn manning_friction_decays_uniform_flow_by_the_analytic_law() {
+    let (n, g) = (0.03, G);
+    let grid = FvGrid::new(&[16], &[0.0], &[1.0]).unwrap();
+    let cfg = FvConfig::shallow_water(g).with_axis(0, GasBc::Periodic);
+    let sources = Sources {
+        manning: n,
+        ..Sources::default()
+    };
+    let t_end = 2.0;
+    for (h0, u0) in [(1.0, 2.0), (0.5, 1.0)] {
+        let sol =
+            solve_with_sources(&grid, &cfg, &|_| [h0, u0, 0.0, 0.0, 0.0], &sources, t_end).unwrap();
+        let expected = u0 / (1.0 + t_end * g * n * n * u0 / h0.powf(4.0 / 3.0));
+        for p in 0..grid.len() {
+            let w = sol.primitive(p);
+            assert!((w[0] - h0).abs() < 1e-12, "depth drifted: {}", w[0]);
+            assert!(w[2].abs() < 1e-14);
+            assert!(
+                (w[1] - expected).abs() < 1e-9 * expected,
+                "u = {} vs analytic {expected} (h = {h0})",
+                w[1]
+            );
+        }
+    }
+}
+
+/// `manning = 0` must leave the solver bit for bit unchanged.
+#[test]
+fn zero_manning_reproduces_the_plain_solver_bit_for_bit() {
+    let grid = FvGrid::new(&[120], &[0.0], &[1.0]).unwrap();
+    let cfg = FvConfig::shallow_water(G);
+    let init = |x: [f64; 3]| [if x[0] < 0.5 { 2.0 } else { 1.0 }, 0.0, 0.0, 0.0, 0.0];
+    let a = solve(&grid, &cfg, &init, 0.05).unwrap();
+    let b = solve_with_sources(&grid, &cfg, &init, &Sources::default(), 0.05).unwrap();
+    assert_eq!(a.q, b.q);
+    let c = solve_with_sources(
+        &grid,
+        &cfg,
+        &init,
+        &Sources {
+            manning: 0.0,
+            ..Sources::default()
+        },
+        0.05,
+    )
+    .unwrap();
+    assert_eq!(a.q, c.q);
+}
+
+/// Friction changes the momentum only: mass is conserved exactly, and the
+/// flow of a dam break is slowed down.
+#[test]
+fn manning_friction_conserves_mass_and_slows_the_dam_break() {
+    let n = 0.15;
+    let grid = FvGrid::new(&[200], &[0.0], &[1.0]).unwrap();
+    let cfg = FvConfig::shallow_water(G).with_axis(0, GasBc::Reflective);
+    let init = |x: [f64; 3]| [if x[0] < 0.5 { 2.0 } else { 1.0 }, 0.0, 0.0, 0.0, 0.0];
+    let friction = Sources {
+        manning: n,
+        ..Sources::default()
+    };
+    let with = solve_with_sources(&grid, &cfg, &init, &friction, 0.5).unwrap();
+    let without = solve(&grid, &cfg, &init, 0.5).unwrap();
+    let (m0, m1) = (without.totals()[0], with.totals()[0]);
+    assert!((m0 - m1).abs() < 1e-12 * m0, "{m1} vs {m0}");
+    let umax = |sol: &rssn::sim::euler_nd::FvSolution| {
+        (0..grid.len())
+            .map(|p| sol.primitive(p)[1].abs())
+            .fold(0.0, f64::max)
+    };
+    assert!(
+        umax(&with) < 0.99 * umax(&without),
+        "friction did not slow the flow: {} vs {}",
+        umax(&with),
+        umax(&without)
+    );
+    // 2D: friction does not touch the mass either.
+    let grid = FvGrid::new(&[32, 32], &[0.0; 2], &[1.0; 2]).unwrap();
+    let cfg = FvConfig::shallow_water(G)
+        .with_axis(0, GasBc::Reflective)
+        .with_axis(1, GasBc::Reflective);
+    let init = |x: [f64; 3]| {
+        let r = ((x[0] - 0.5).powi(2) + (x[1] - 0.5).powi(2)).sqrt();
+        [if r < 0.2 { 1.5 } else { 1.0 }, 0.0, 0.0, 0.0, 0.0]
+    };
+    let a = solve_with_sources(&grid, &cfg, &init, &friction, 0.0).unwrap();
+    let b = solve_with_sources(&grid, &cfg, &init, &friction, 0.15).unwrap();
+    assert!((a.totals()[0] - b.totals()[0]).abs() < 1e-12 * a.totals()[0]);
+}
+
+#[test]
+fn invalid_manning_setups_are_rejected() {
+    let grid = FvGrid::new(&[20], &[0.0], &[1.0]).unwrap();
+    // a friction coefficient is meaningless for the Euler equations
+    assert!(
+        solve_with_sources(
+            &grid,
+            &FvConfig::euler(GAMMA),
+            &|x| sod_state(x[0]),
+            &Sources {
+                manning: 0.03,
+                ..Sources::default()
+            },
+            0.01,
+        )
+        .is_err()
+    );
+    // a negative coefficient is invalid
+    assert!(
+        solve_with_sources(
+            &grid,
+            &FvConfig::shallow_water(G),
+            &|_| [1.0, 0.0, 0.0, 0.0, 0.0],
+            &Sources {
+                manning: -0.03,
+                ..Sources::default()
+            },
+            0.01,
+        )
+        .is_err()
     );
 }

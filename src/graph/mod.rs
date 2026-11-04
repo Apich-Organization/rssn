@@ -9,6 +9,57 @@
 //! Nothing in here knows what a derivative or a matrix is. Domains live in
 //! [`crate::rules`] and talk to the kernel only through operators registered
 //! in the [`OpTable`] and rules grouped into rule sets.
+//!
+//! # Limitations and coverage
+//!
+//! Priorities: P1 = correctness/soundness, P2 = capability, P3 = polish.
+//!
+//! * **Witness balls are estimates, not certificates (P1).** A [`Ball`] is a
+//!   `mid ± rad` witness, not a proof: numeric kernels behind [`Outcome::Approx`]
+//!   report convergence estimates, and witness propagation is outward rounded
+//!   only for sums and products (every other operator inherits the largest
+//!   child radius). Witnesses feed reporting, [`Graph::approx`] and the
+//!   [`Evaluated`] goal, never facts.
+//! * **Sign facts need a certificate (P1).** A constant's sign comes only from
+//!   exact literals, structure or an outward-rounded tape enclosure
+//!   ([`Graph::approx_interval`], [`crate::backend::tape::Tape::enclose`]).
+//!   The enclosure covers `+ - * /`, integer and positive-base real powers and
+//!   most elementary functions, but not `tan`, `atan2`, opaque
+//!   `Call`/`Extern`/`Gather`; it is taken over the `f64` image of literals,
+//!   `sin`/`cos` degrade to `[-1, 1]` beyond `2π`, and boxes are not split at
+//!   poles or branch cuts. Many constants therefore stay sign-unknown.
+//! * **Extraction is a local greedy optimum (P2).** [`SizeCost`] and
+//!   [`ClosedForm`] price shape; [`EvalCost`] prices the tape instructions a
+//!   representative lowers to (weights in `extract.rs`, cached per node and
+//!   class). All are additive local proxies: no common-subexpression credit,
+//!   no register pressure or vectorisation, only reachable classes, and the
+//!   optimum is local to the classes the rules explored.
+//! * **Search is budgeted and incomplete (P2).** The defaults (24 iterations,
+//!   20k nodes, 1000 matches per rewrite, 512 window steps, plus match fuel,
+//!   bans and plateau back-off) make [`Saturate`] mean "no change within the
+//!   budget", not "all consequences derived". Without the wall-clock
+//!   `Budget::time_limit`, a fixed graph, program and budget are deterministic.
+//! * **Windows see only unshared trees (P3).** A [`TreeWindow`] copies at most
+//!   `window_cells` cells of the unshared region; shared subterms stay opaque
+//!   atoms, greedy/beam search is not exhaustive, and equalities discarded
+//!   inside a window are lost with it.
+//! * **Soundness sampling is a smoke test (P2).** Rewrites are checked on
+//!   name-seeded random substitutions in `[-3, 3]` (positive requirements
+//!   `(0.25, 3)`), and every fourth sample is drawn near a singular locus
+//!   (zero, the log cut, `±1`, `±π/2`) or a cancellation. Such a sample is
+//!   compared with a tolerance scaled by intermediate magnitude and
+//!   finite-difference sensitivity, is inconclusive when evaluation leaves the
+//!   reals, and only refutes if the disagreement survives a small absolute
+//!   jitter (a rounding artefact at a discontinuity does not). Together these
+//!   suppress rounding/branch false alarms at the cost of refutation power
+//!   exactly where conditioning is worst; integer and rational magnitudes are
+//!   also clamped so special functions stay cheap. Agreement is still not a
+//!   proof, and opaque operators make a rule inconclusive.
+//! * **Tape derivatives are forward mode only (P2).** First and second
+//!   derivatives only: a Hessian costs `n²` passes, there is no reverse mode
+//!   or Hessian-vector product and no third derivative. Opaque `Call`/`Extern`
+//!   operators are differenced and report a NaN mixed second component;
+//!   `abs`/`floor`/`ceil` report zero second derivative at their kinks.
 
 pub mod dim;
 // `pub(crate)` is the intended visibility: these are internal modules, so
@@ -51,6 +102,7 @@ pub use dim::UnitTextResolver;
 pub use eval::ComplexEval;
 pub use extract::ClosedForm;
 pub use extract::CostModel;
+pub use extract::EvalCost;
 pub use extract::Extractor;
 pub use extract::SizeCost;
 pub use facts::Always;

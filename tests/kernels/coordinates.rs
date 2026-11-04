@@ -2,6 +2,7 @@
 
 use rssn::kernels::coordinates::CoordinateSystem as C;
 use rssn::kernels::coordinates::from_cartesian;
+use rssn::kernels::coordinates::jacobian_determinant;
 use rssn::kernels::coordinates::numerical_jacobian;
 use rssn::kernels::coordinates::to_cartesian;
 use rssn::kernels::coordinates::transform_point;
@@ -112,4 +113,40 @@ fn jacobian_of_inverse_map_is_inverse() {
     let back =
         numerical_jacobian(C::Spherical, C::Cartesian, &sph).unwrap_or_else(|e| panic!("{e}"));
     assert!((det(&fwd) * det(&back) - 1.0).abs() < 1e-6);
+}
+
+#[test]
+fn jacobian_determinant_matches_the_known_volume_factors() {
+    // polar -> Cartesian: |det J| = r.
+    let j =
+        jacobian_determinant(C::Polar, C::Cartesian, &[3.0, 0.7]).unwrap_or_else(|e| panic!("{e}"));
+    assert!((j - 3.0).abs() < 1e-9, "{j}");
+    // cylindrical -> Cartesian: |det J| = r.
+    let j = jacobian_determinant(C::Cylindrical, C::Cartesian, &[4.0, -0.2, 1.5])
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!((j - 4.0).abs() < 1e-9, "{j}");
+    // spherical -> Cartesian: |det J| = r^2 sin(theta).
+    let (r, theta, phi) = (2.0, 1.1, -0.4);
+    let j = jacobian_determinant(C::Spherical, C::Cartesian, &[r, theta, phi])
+        .unwrap_or_else(|e| panic!("{e}"));
+    let want = r * r * theta.sin();
+    assert!((j - want).abs() < 1e-9 * want, "{j} vs {want}");
+    // The inverse map carries the reciprocal determinant.
+    let cart = transform_point(&[r, theta, phi], C::Spherical, C::Cartesian)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let inv =
+        jacobian_determinant(C::Cartesian, C::Spherical, &cart).unwrap_or_else(|e| panic!("{e}"));
+    assert!((inv * j - 1.0).abs() < 1e-7, "{inv} * {j}");
+    // Identity map: the central difference of `x +/- h` divided by `2h` is
+    // one up to round-off, so the determinant is one to about 1e-10.
+    let j = jacobian_determinant(C::Cartesian, C::Cartesian, &[1.0, 2.0, 3.0])
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!((j - 1.0).abs() < 1e-9, "{j}");
+    let jac = numerical_jacobian(C::Spherical, C::Cartesian, &[r, theta, phi])
+        .unwrap_or_else(|e| panic!("{e}"));
+    let helper = jacobian_determinant(C::Spherical, C::Cartesian, &[r, theta, phi])
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!((det(&jac) - helper).abs() < 1e-12);
+    // Mixing dimensions is an error.
+    assert!(jacobian_determinant(C::Polar, C::Spherical, &[1.0, 0.5]).is_err());
 }

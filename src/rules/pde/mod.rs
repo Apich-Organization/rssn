@@ -138,10 +138,13 @@
 //!   problems, separable products and the Coulomb problem (bound states for
 //!   `Z > 0`, scattering states for any real `Z` — attractive or repulsive,
 //!   `η = -Z/k` of either sign — with integer `l`, analytic continuum and an
-//!   error-controlled cut-off `k_max ≤ 64`). Not covered: spheroidal exterior
-//!   (radiation) problems and Neumann/Robin data on spheroids, other
-//!   continuous spectra and Weyl-Titchmarsh measures (only the Hankel, Weber
-//!   and Coulomb instances), zero order terms that are not a sum of
+//!   error-controlled cut-off `k_max ≤ 64`). The regular finite-interval
+//!   Weyl–Titchmarsh m-function and spectral density are numeric
+//!   (`sl_mfun_re`/`sl_mfun_im`/`sl_density`; poles and atom weights
+//!   documented in [`sl`]). Not covered: spheroidal exterior (radiation)
+//!   problems and Neumann/Robin data on spheroids, half-line continuous
+//!   spectra and their Weyl–Titchmarsh measures beyond the Hankel, Weber and
+//!   Coulomb instances, zero order terms that are not a sum of
 //!   single-variable functions.
 //! * Transform methods: Fourier (with sources) is general; Hankel only for
 //!   radial whole-space evolution and Weber on the exterior disk; the Laplace
@@ -155,14 +158,19 @@
 //!   disks and balls (`h > 0`, `h R` not a positive integer; the 2D kernel is
 //!   bounded rather than decaying). No curvilinear boxes.
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
-//!   problems for a single step; the soliton operators cover `KdV`
+//!   problems for a single step, and the exact two-wave Riemann solution of
+//!   the flat-bed shallow-water system (`pde_riemann_shallow_water`:
+//!   star state, wave types and speeds, `x/t` evaluation); the soliton
+//!   operators cover `KdV`
 //!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
 //!   ansatz needs a travelling wave; Darboux/Crum determinants for `KdV`
 //!   (given the eigenfunctions); the GLM route is numeric point evaluation
 //!   for `KdV`; the hodograph equation is solved only for `lambda = r`,
 //!   `mu = s`; two interacting Riemann waves (three-state data: shock and
 //!   rarefaction collisions, `riemann_two_steps`). Not covered: more than
-//!   two interacting waves. (Riemann's method for the hodograph equation of
+//!   two interacting waves. Not covered for systems: the Euler equations,
+//!   non-flat beds, and the vacuum/dry-front case of the shallow-water
+//!   Riemann problem (refused cleanly). (Riemann's method for the hodograph equation of
 //!   non-integer order `N` is `pde_hodograph_riemann` and
 //!   [`riemann::epd_goursat`]; `pde_hodograph_solution` stays symbolic for
 //!   them.)
@@ -199,7 +207,9 @@
 //! | `bessel_neg_root(ν, h)` | the `κ > 0` with `z I_ν'(z) + h I_ν(z) = 0` (NaN unless `h < -ν`) |
 //! | `struve_h(ν, x)`, `struve_l(ν, x)` | Struve functions |
 //! | `sl_eigen(m, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`, `sl_mode(m, x, …)`, `sl_weight(x, …)` | the `m`-th eigenvalue, normalised eigenfunction and weight of `-(p y')' + q y = μ w y` (coefficients as values at the `N + 1` Chebyshev points of `[a, b]`) |
+//! | `sl_mfun_re(re, im, …)`, `sl_mfun_im(…)`, `sl_density(λ, ε, …)` | the two components of the regular Weyl–Titchmarsh m-function `m(λ) = p(a) u'(a)/u(a)` at `λ = re + i·im` (right boundary condition `α₁ u + β₁ u' = 0` at `b`, `u` integrated outwards by Runge–Kutta, NaNs for invalid data), and the spectral density `(1/π) Im m(λ + i ε)` |
 //! | `pde_kdv_soliton(list(κ…), list(x₀…))`, `pde_sine_gordon_soliton(list(a…), list(c…))` | the soliton solutions above |
+//! | `pde_riemann_shallow_water(h_l, u_l, h_r, u_r, g)`, `pde_riemann_shallow_water_at(xi, …)`, `pde_riemann_shallow_water_velocity(xi, …)` | the exact two-wave Riemann solution of the flat-bed shallow-water system: `list(h*, u*, list(kind_l, head_l, tail_l), list(kind_r, head_r, tail_r))` (kind `shock`/`rarefaction`/`none`), and the depth / velocity at `x/t = xi` |
 //! | `annulus_neg_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `κ > 0` of the annulus with `I_ν`/`K_ν` modes (eigenvalue `-κ²`) |
 //! | `pde_greens_function(eq, u(...)[, conditions])` | the Green's function `G(x…; s_x…)` of the operator part of the equation |
 //! | `pde_greens_ball_neumann(R, d)` | the generalised zero-mean Neumann Green's function of the disk (`d = 2`) or ball (`d = 3`) |
@@ -351,6 +361,7 @@ enum Request {
     GreensExteriorRobin,
     KdvReflectionless,
     DarbouxKdv,
+    ShallowWaterRiemann,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -638,6 +649,31 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::SineGordonSoliton,
         },
     );
+    let shallow_water = i.op(heavy("pde_riemann_shallow_water", Arity::Fixed(5)))?;
+    // `list(h*, u*, list(kind, head, tail), list(kind, head, tail))`: mixed
+    // physical quantities, analysed by the rule directly.
+    i.dim(shallow_water, DimRule::NonMetric);
+    i.kernel(
+        "pde/pde_riemann_shallow_water",
+        Tier::Reduce,
+        Pde {
+            op: shallow_water,
+            request: Request::ShallowWaterRiemann,
+        },
+    );
+    for (name, eval) in [
+        (
+            "pde_riemann_shallow_water_at",
+            nonlinear::shallow_water_at_depth as fn(&[f64]) -> f64,
+        ),
+        (
+            "pde_riemann_shallow_water_velocity",
+            nonlinear::shallow_water_at_velocity,
+        ),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(6)).eval(eval))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
     // The Green's function's dimension is fixed by the operator and the
     // domain; its expression is analysed directly, so the rule only has to
@@ -819,6 +855,13 @@ impl Kernel for Pde {
                     nonlinear::sine_gordon_soliton(cx, &a, &b)
                 };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::ShallowWaterRiemann => {
+                let &[h_l, u_l, h_r, u_r, gravity] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                nonlinear::riemann_shallow_water(cx, &[h_l, u_l, h_r, u_r, gravity])
+                    .map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Green => {
                 let (equation, unknown, conditions) = match *args.as_slice() {

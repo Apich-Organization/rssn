@@ -1,4 +1,9 @@
 //! Dimensional analysis through the public session API.
+//!
+//! Besides the hand-picked cases, this file holds
+//! [`per_rewrite_random_dimension_scan`], a deterministic fixed-seed scan that
+//! instantiates every declarative rewrite of `rules::standard()` under random
+//! dimension assignments and checks that both sides keep the same dimension.
 
 use num_traits::ToPrimitive;
 use rssn::graph::DimError;
@@ -313,6 +318,150 @@ fn unresolved_dimension_text_is_a_declaration_error() {
     );
 }
 
+/// Every diagnostic carries a stable, machine-readable code (`DimError::code`),
+/// so a binding can branch on the kind without parsing the message. The code
+/// is part of the public API and is additive: `Display` is unchanged.
+#[test]
+fn diagnostics_carry_stable_codes() {
+    let session = Session::new();
+
+    // A conflict.
+    let term = session
+        .parse("x + y")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let config = Config::new()
+        .dimension("x", "m")
+        .dimension("y", "s")
+        .dimensions(rssn::graph::DimensionMode::Advisory);
+    let answer = session
+        .compute(term, &config)
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert!(
+        answer
+            .diagnostics
+            .iter()
+            .any(|error| error.code() == "mismatch"),
+        "{:?}",
+        answer.diagnostics
+    );
+
+    // An argument that must be dimensionless.
+    let term = session
+        .parse("exp(x)")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let config = Config::new()
+        .dimension("x", "m")
+        .dimensions(rssn::graph::DimensionMode::Advisory);
+    let answer = session
+        .compute(term, &config)
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert!(
+        answer
+            .diagnostics
+            .iter()
+            .any(|error| error.code() == "non_dimensionless"),
+        "{:?}",
+        answer.diagnostics
+    );
+
+    // An affine point misuse.
+    let term = session
+        .parse("quantity(20, degC) * 2")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let answer = session
+        .compute(
+            term,
+            &Config::new().dimensions(rssn::graph::DimensionMode::Advisory),
+        )
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert!(
+        answer
+            .diagnostics
+            .iter()
+            .any(|error| error.code() == "affine"),
+        "{:?}",
+        answer.diagnostics
+    );
+
+    // The full set of codes is constructible through the public API and is
+    // closed: eight variants, two `UnknownUnit` contexts sharing one code.
+    let variants = [
+        (
+            DimError::Mismatch {
+                left: String::from("Length"),
+                right: String::from("Time"),
+                context: String::from("x + y"),
+            },
+            "mismatch",
+        ),
+        (
+            DimError::NonDimensionless {
+                op: String::from("exp"),
+                argument: String::from("x"),
+                found: String::from("Length"),
+            },
+            "non_dimensionless",
+        ),
+        (
+            DimError::SymbolicConstraint {
+                constraint: String::from("n = 1"),
+                context: String::from("x^n"),
+            },
+            "symbolic_constraint",
+        ),
+        (
+            DimError::UnknownUnit {
+                unit: String::from("parsec"),
+                context: None,
+            },
+            "unknown_unit",
+        ),
+        (
+            DimError::Affine {
+                operation: String::from("degC * 2"),
+            },
+            "affine",
+        ),
+        (
+            DimError::MixedList {
+                context: String::from("list(x, y)"),
+            },
+            "mixed_list",
+        ),
+        (
+            DimError::Unannotated {
+                op: String::from("mystery"),
+            },
+            "unannotated",
+        ),
+        (
+            DimError::Parse {
+                text: String::from("m^"),
+                reason: String::from("missing exponent"),
+            },
+            "parse",
+        ),
+    ];
+    for (error, code) in &variants {
+        assert_eq!(error.code(), *code, "{error:?}");
+        assert!(
+            code.chars().all(|c| c.is_ascii_lowercase() || c == '_'),
+            "`{code}` is not snake_case"
+        );
+        // `is_blocking` is orthogonal to the code and stays as documented.
+        assert_eq!(
+            error.is_blocking(),
+            !matches!(
+                error,
+                DimError::Unannotated { .. }
+                    | DimError::MixedList { .. }
+                    | DimError::UnknownUnit { context: Some(_), .. }
+            ),
+            "{error:?}"
+        );
+    }
+}
+
 /// An affine temperature is a point: scaling it, raising it to a power or
 /// adding two points is rejected. A point plus a difference in kelvin is a
 /// point and stays valid.
@@ -413,6 +562,287 @@ fn standard_rewrites_keep_a_consistent_dimension() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Per-rewrite random dimensional scan
+// ---------------------------------------------------------------------------
+
+/// Dimensions a scanned pattern variable can be given.
+const SCAN_DIMENSIONS: &[&str] = &["1", "Length", "Time", "Mass", "Length/Time", "1/Length"];
+
+/// Assignments every scanned rewrite is checked under. The first three are
+/// structured (all dimensionless, all length, all time); the rest are
+/// pseudo-random but seeded per rule, so the scan is deterministic.
+const SCAN_SAMPLES: usize = 6;
+
+/// A small deterministic generator: the scan must never be flaky.
+struct ScanRng(u64);
+
+impl ScanRng {
+    const fn new(seed: u64) -> Self {
+        Self(seed)
+    }
+
+    fn next(&mut self) -> u64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        self.0
+    }
+
+    fn below(
+        &mut self,
+        bound: usize,
+    ) -> usize {
+        if bound <= 1 {
+            return 0;
+        }
+        usize::try_from((self.next() >> 33) % u64::try_from(bound).unwrap_or(1)).unwrap_or(0)
+    }
+}
+
+/// A deterministic seed for `(rule name, sample index)`.
+fn scan_seed(
+    name: &str,
+    sample: usize,
+) -> u64 {
+    let mut hash = 0x5eed_0000_u64
+        ^ u64::try_from(sample)
+            .unwrap_or(0)
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    for byte in name.bytes() {
+        hash = hash.wrapping_mul(131).wrapping_add(u64::from(byte));
+    }
+    hash
+}
+
+/// Which numeric facts and shape a scanned pattern variable must satisfy.
+#[derive(Clone, Copy, Default)]
+struct ScanNeed {
+    number: bool,
+    integer: bool,
+    nonzero: bool,
+    positive: bool,
+    negative: bool,
+    nonnegative: bool,
+}
+
+fn scan_guard_needs(
+    guard: &rssn::graph::Guard,
+    needs: &mut [ScanNeed],
+) {
+    let mark = |needs: &mut [ScanNeed], var: u32, apply: fn(&mut ScanNeed)| {
+        if let Some(need) = needs.get_mut(usize::try_from(var).unwrap_or(usize::MAX)) {
+            apply(need);
+        }
+    };
+    match guard {
+        | rssn::graph::Guard::IsNumber(var) => mark(needs, *var, |need| need.number = true),
+        | rssn::graph::Guard::IsInteger(var) => mark(needs, *var, |need| need.integer = true),
+        | rssn::graph::Guard::NonZero(var) => mark(needs, *var, |need| need.nonzero = true),
+        | rssn::graph::Guard::Positive(var) => mark(needs, *var, |need| need.positive = true),
+        | rssn::graph::Guard::Negative(var) => mark(needs, *var, |need| need.negative = true),
+        | rssn::graph::Guard::NonNegative(var) => mark(needs, *var, |need| need.nonnegative = true),
+        | rssn::graph::Guard::Not(inner) => scan_guard_needs(inner, needs),
+        | _ => {},
+    }
+}
+
+/// Instantiates the pattern variables of `rewrite` for one scan sample.
+///
+/// Variables that a guard requires to be numeric become integer literals
+/// (dimensionless). Every other variable becomes a fresh symbol with a
+/// dimension from [`SCAN_DIMENSIONS`] and the facts its guards ask for, so
+/// `Rewrite::admits` accepts the sample.
+fn scan_substitution(
+    graph: &mut rssn::graph::Graph,
+    rewrite: &rssn::graph::Rewrite,
+    needs: &[ScanNeed],
+    rule_index: usize,
+    sample: usize,
+    rng: &mut ScanRng,
+) -> Vec<rssn::graph::NodeId> {
+    let mut subst = Vec::with_capacity(rewrite.nvars);
+    for var in 0..rewrite.nvars {
+        let need = needs.get(var).copied().unwrap_or_default();
+        if need.integer || need.number {
+            // An integer literal satisfies both `integer` and `number`, and it
+            // is dimensionless.
+            let value = if need.positive || need.nonnegative {
+                2
+            } else {
+                -3
+            };
+            subst.push(graph.int(value));
+            continue;
+        }
+        let text = if sample < 3 {
+            SCAN_DIMENSIONS[sample]
+        } else {
+            SCAN_DIMENSIONS[rng.below(SCAN_DIMENSIONS.len())]
+        };
+        let name = format!("dimscan{rule_index}_{sample}_{var}");
+        let symbol = graph.interner_mut().symbol(&name);
+        graph
+            .assume_dimension(symbol, text)
+            .unwrap_or_else(|error| panic!("cannot declare `{name}` as `{text}`: {error}"));
+        let mut facts = rssn::graph::Facts::REAL | rssn::graph::Facts::NONZERO;
+        if need.nonzero {
+            facts = facts | rssn::graph::Facts::NONZERO;
+        }
+        if need.positive || need.nonnegative {
+            facts = facts | rssn::graph::Facts::POSITIVE;
+        }
+        if need.negative {
+            facts = facts | rssn::graph::Facts::NEGATIVE;
+        }
+        graph.assume(symbol, facts);
+        subst.push(graph.symbol_node(symbol));
+    }
+    subst
+}
+
+/// Whether two inferred dimensions can be the same value's dimension.
+///
+/// `Any` (the literal zero, an order term) unifies with everything, which is
+/// the documented polymorphic-zero behaviour; every other dimension must be
+/// exactly equal.
+fn scan_compatible(
+    left: &rssn::graph::Dimension,
+    right: &rssn::graph::Dimension,
+) -> bool {
+    left.any || right.any || left == right
+}
+
+/// Every declarative rewrite of `rules::standard()` is instantiated under
+/// random dimension assignments and both sides are analysed: a rewrite whose
+/// two sides are dimensionally well-typed must preserve the dimension.
+///
+/// The scan is deterministic (fixed rule order, per-rule seeded generator) and
+/// bounded ([`SCAN_SAMPLES`] assignments per rewrite). It is also non-vacuous:
+/// it asserts that at least 20 rewrites were exercised and at least 100
+/// instantiations were dimension-checked. The test prints the coverage counters
+/// when run with `--nocapture`.
+///
+/// Skipped samples are counted, not failures:
+/// * a *left* side that is dimensionally ill-typed is outside the rewrite's
+///   dimensional domain (the pattern can only match a well-typed term);
+/// * a *right* side that is ill-typed is a rewrite domain restriction the
+///   random assignment does not satisfy (for example a unit rewrite whose
+///   coefficient must be a pure number).
+///
+/// A refutation is a sample where both sides are well-typed and their
+/// dimensions are incompatible.
+#[test]
+fn per_rewrite_random_dimension_scan() {
+    use rssn::graph::Action;
+
+    let mut graph = rssn::graph::Graph::new();
+    let engine = rssn::graph::Engine::install(&mut graph, &rssn::rules::standard())
+        .unwrap_or_else(|error| panic!("cannot install the standard rules: {error}"));
+    let rules: Vec<(&str, &rssn::graph::Rewrite)> = engine
+        .program()
+        .rules
+        .iter()
+        .filter_map(|rule| {
+            match &rule.action {
+                | Action::Rewrite(rewrite) => Some((&*rule.name, rewrite)),
+                | Action::Kernel(_) => None,
+            }
+        })
+        .collect();
+
+    let mut rules_total = 0_usize;
+    let mut rules_exercised = 0_usize;
+    let mut samples_checked = 0_usize;
+    let mut samples_left_ill_typed = 0_usize;
+    let mut samples_right_restricted = 0_usize;
+    let mut samples_guarded_out = 0_usize;
+    let mut refutations: Vec<String> = Vec::new();
+
+    for (index, (name, rewrite)) in rules.iter().enumerate() {
+        rules_total = rules_total.saturating_add(1);
+        let mut needs = vec![ScanNeed::default(); rewrite.nvars];
+        for guard in &rewrite.guards {
+            scan_guard_needs(guard, &mut needs);
+        }
+        let mut exercised = false;
+        for sample in 0..SCAN_SAMPLES {
+            let mut rng = ScanRng::new(scan_seed(name, sample));
+            let subst = scan_substitution(&mut graph, rewrite, &needs, index, sample, &mut rng);
+            if !rewrite.admits(&graph, &subst) {
+                samples_guarded_out = samples_guarded_out.saturating_add(1);
+                continue;
+            }
+            let Some(left) = rewrite.lhs.instantiate(&mut graph, &subst) else {
+                samples_guarded_out = samples_guarded_out.saturating_add(1);
+                continue;
+            };
+            let Some(right) = rewrite.rhs.instantiate(&mut graph, &subst) else {
+                samples_guarded_out = samples_guarded_out.saturating_add(1);
+                continue;
+            };
+            let left_outcome = graph.dimension(left);
+            if left_outcome
+                .errors
+                .iter()
+                .any(rssn::graph::DimError::is_blocking)
+            {
+                samples_left_ill_typed = samples_left_ill_typed.saturating_add(1);
+                continue;
+            }
+            let right_outcome = graph.dimension(right);
+            if right_outcome
+                .errors
+                .iter()
+                .any(rssn::graph::DimError::is_blocking)
+            {
+                samples_right_restricted = samples_right_restricted.saturating_add(1);
+                continue;
+            }
+            if scan_compatible(&left_outcome.dimension, &right_outcome.dimension) {
+                samples_checked = samples_checked.saturating_add(1);
+                exercised = true;
+            } else {
+                refutations.push(format!(
+                    "`{name}` sample {sample}: `{}` has {}, `{}` has {}",
+                    graph.display(left),
+                    left_outcome.dimension,
+                    graph.display(right),
+                    right_outcome.dimension,
+                ));
+            }
+        }
+        if exercised {
+            rules_exercised = rules_exercised.saturating_add(1);
+        }
+    }
+
+    println!(
+        "dimension scan: {rules_total} rewrites, {rules_exercised} exercised, {samples_checked} checked, \
+         {samples_left_ill_typed} left-ill-typed, {samples_right_restricted} right-restricted, \
+         {samples_guarded_out} guarded out"
+    );
+    assert!(
+        refutations.is_empty(),
+        "{} dimension-changing rewrite(s) found among {rules_total}:\n{}",
+        refutations.len(),
+        refutations.join("\n")
+    );
+    assert!(
+        rules_total >= 100,
+        "unexpectedly few declarative rewrites in the standard rule set: {rules_total}"
+    );
+    assert!(
+        rules_exercised >= 20,
+        "the scan exercised only {rules_exercised} of {rules_total} rewrites"
+    );
+    assert!(
+        samples_checked >= 100,
+        "the scan checked only {samples_checked} dimensioned instantiations"
+    );
 }
 
 fn computed<'s>(

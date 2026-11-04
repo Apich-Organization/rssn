@@ -1,5 +1,22 @@
 //! Two-dimensional Unicode layout of terms of a [`Graph`]: fractions with
 //! bars, superscripts, radicals, stacked sums and tall brackets.
+//!
+//! # Limitations
+//!
+//! - The layout is a monospace character grid: every glyph is assumed to
+//!   occupy one terminal cell, so wide (CJK, emoji) and combining characters
+//!   misalign.
+//! - Unicode superscript glyphs exist only for digits, `-` and `n`, and
+//!   subscripts only for digits; everything else uses the stacked fallback
+//!   (superscript blocks, `_(...)`-style text for subscripts).
+//! - The Greek table covers the lowercase letters, including `omicron`, and
+//!   the capitals that have a distinct glyph (`Upsilon` included); variant
+//!   forms (`varepsilon`, `varphi`, ...) are not distinguished, and
+//!   multi-letter symbol names are printed verbatim.
+//! - No wrapping to a terminal width, no colours or ANSI styles, no line
+//!   breaks for long terms, and unknown payloads or operators print as `?` or
+//!   as a plain call. Matrices use fixed parentheses and centred rows, and
+//!   there is no `cases` layout.
 
 use super::markup::split_subscript;
 use crate::graph::Graph;
@@ -30,6 +47,7 @@ const GREEK: &[(&str, char)] = &[
     ("mu", 'μ'),
     ("nu", 'ν'),
     ("xi", 'ξ'),
+    ("omicron", 'ο'),
     ("pi", 'π'),
     ("rho", 'ρ'),
     ("sigma", 'σ'),
@@ -46,6 +64,8 @@ const GREEK: &[(&str, char)] = &[
     ("Xi", 'Ξ'),
     ("Pi", 'Π'),
     ("Sigma", 'Σ'),
+    ("Tau", 'Τ'),
+    ("Upsilon", 'Υ'),
     ("Phi", 'Φ'),
     ("Psi", 'Ψ'),
     ("Omega", 'Ω'),

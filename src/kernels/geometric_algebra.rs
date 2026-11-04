@@ -3,6 +3,21 @@
 //! This module provides a `Multivector3D` struct for numerical computations
 //! in 3D Geometric Algebra (`G_3`). It implements the geometric product and
 //! standard arithmetic operations for multivectors with `f64` components.
+//!
+//! # Limitations and coverage
+//!
+//! * Fixed to the 3-D algebra `G_3`: one scalar, three vectors, three
+//!   bivectors and one pseudoscalar. There is no general `Cl(p, q)` or
+//!   higher-dimensional Clifford algebra and no dimension parameter.
+//! * Coefficients are numeric `f64` only: no symbolic, exact or generic-scalar
+//!   arithmetic; the struct is `Copy` and every operation is a small fixed-size
+//!   component loop.
+//! * [`Multivector3D::inv`] returns `None` for a non-invertible element (zero
+//!   norm); there is no exponential, logarithm, rotor interpolation or
+//!   trigonometric function of a multivector, and no outermorphism/matrix
+//!   representation.
+//! * No SIMD or batch evaluation: the type is intended for single-element
+//!   numerical work, not for large geometric-algebra arrays.
 
 use std::ops::Add;
 use std::ops::Neg;

@@ -31,29 +31,50 @@
 //! iterate, so the iteration is quadratically convergent and the Jacobian
 //! enters the solve itself (not only the error estimate).
 //!
+//! Stiff accuracy makes the last stage the solution, so `K_3 =
+//! f(t_{n+1}, y_{n+1})` is the right-end slope for free and the previous step's
+//! `K_3` is the left-end slope of the next one. Those endpoint values and
+//! slopes define the cubic Hermite continuous extension exposed by
+//! [`SdirkSolution::eval`]; [`sdirk3_events`] and [`sdirk3_fixed_events`] locate
+//! events on it with the same [`Event`] conventions as the explicit and Radau
+//! integrators (direction-aware sign changes, terminal events end the run). The
+//! extension adds no right-hand-side evaluation, but it retains four
+//! state-sized vectors per accepted step (both endpoints and both slopes), so
+//! the memory of a solution grows with the number of steps.
+//!
 //! # Limitations
 //!
-//! The method is order 3 only, with no continuous extension (dense output), no
-//! event location, no mass matrix (DAE) support and no banded or sparse
-//! Jacobian: the Newton matrix `I − hγJ` is factored by a dense `O(n³)` LU at
-//! every iteration of every stage, and no factorisation is reused across
-//! steps, so cost grows cubically with the state dimension (use
+//! The method is order 3 only, with no mass matrix (DAE) support and no banded
+//! or sparse Jacobian: the Newton matrix `I − hγJ` is factored by a dense
+//! `O(n³)` LU at every iteration of every stage, and no factorisation is
+//! reused across steps, so cost grows cubically with the state dimension (use
 //! [`crate::kernels::ode_stiff`] for large, structured or higher-index
-//! problems). The error estimate is the difference to the embedded
-//! second-order weights, whose leading term is `O(h³)`; it drives the step
-//! size but is not itself L-stable, and only the classical order 3 is
-//! claimed — a strongly stiff step can show the usual order reduction, so
-//! what is guaranteed as `h|λ| → ∞` is L-stability, not accuracy order.
-//! Every call starts from scratch — no step size and no factorisation is
-//! carried between calls — and the right-hand side is a plain closure, so no
-//! Jacobian sparsity pattern can be exploited.
+//! problems). The continuous extension is the cubic Hermite interpolant through
+//! the endpoint states and slopes, locally `O(h⁴)` and hence `O(h³)` at a fixed
+//! time — denser than the step but not a collocation polynomial of higher
+//! order; an event time inherits that interpolation error rather than being
+//! exact. The error estimate is the difference to the embedded second-order
+//! weights, whose leading term is `O(h³)`; it drives the step size but is not
+//! itself L-stable, and only the classical order 3 is claimed — a strongly
+//! stiff step can show the usual order reduction, so what is guaranteed as
+//! `h|λ| → ∞` is L-stability, not accuracy order. Every call starts from
+//! scratch — no step size and no factorisation is carried between calls — and
+//! the right-hand side is a plain closure, so no Jacobian sparsity pattern can
+//! be exploited.
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::lu_factor;
 use crate::kernels::jacobian::fd_jacobian_dense;
+use crate::kernels::ode_adaptive::DenseKind;
+use crate::kernels::ode_adaptive::DenseStep;
+use crate::kernels::ode_adaptive::Event;
 use crate::kernels::ode_adaptive::OdeError;
+use crate::kernels::ode_adaptive::OdeSolution;
+use crate::kernels::ode_adaptive::StepWindow;
 use crate::kernels::ode_adaptive::Tol;
+use crate::kernels::ode_adaptive::dense_eval;
 use crate::kernels::ode_adaptive::initial_step;
+use crate::kernels::ode_adaptive::process_events;
 
 /// Diagonal coefficient `γ` (root in `(0, 1)` of `6γ³ − 18γ² + 9γ − 1`).
 const GAMMA: f64 = 0.435_866_521_508_459;
@@ -108,7 +129,7 @@ impl Default for SdirkOptions {
 }
 
 /// Result of an adaptive [`sdirk3`] integration.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SdirkSolution {
     /// Accepted time points, starting at `t0`.
     pub t: Vec<f64>,
@@ -124,6 +145,52 @@ pub struct SdirkSolution {
     pub nfev: usize,
     /// Number of Jacobian evaluations.
     pub njev: usize,
+    /// Cubic Hermite interpolants of the accepted steps (dense output).
+    pub(crate) dense: Vec<DenseStep>,
+}
+
+impl PartialEq for SdirkSolution {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.t == other.t
+            && self.y == other.y
+            && self.accepted == other.accepted
+            && self.rejected == other.rejected
+            && self.newton_iterations == other.newton_iterations
+            && self.nfev == other.nfev
+            && self.njev == other.njev
+    }
+}
+
+impl SdirkSolution {
+    /// Evaluates the cubic Hermite continuous extension at `t`.
+    ///
+    /// Within an accepted step `[t_n, t_{n+1}]` the interpolant is the cubic
+    /// Hermite polynomial matching `y_n`, `y_{n+1}` and the endpoint slopes
+    /// `f(t_n, y_n)`, `f(t_{n+1}, y_{n+1})`. Returns `None` outside the
+    /// integrated range or when no step was accepted.
+    #[must_use]
+    pub fn eval(
+        &self,
+        t: f64,
+    ) -> Option<Vec<f64>> {
+        let (&first, &last) = (self.t.first()?, self.t.last()?);
+        let (lo, hi) = if first <= last {
+            (first, last)
+        } else {
+            (last, first)
+        };
+        if t < lo || t > hi || self.dense.is_empty() {
+            return None;
+        }
+        let idx = self
+            .dense
+            .partition_point(|s| (s.t0 + s.h - t) * s.h.signum() < 0.0)
+            .min(self.dense.len() - 1);
+        Some(dense_eval(&self.dense[idx], t))
+    }
 }
 
 /// One step of the method: the new state, the local error estimate and the
@@ -133,6 +200,9 @@ struct StepOut {
     y: Vec<f64>,
     /// Local error estimate `h Σ (b_i − b̂_i) K_i`.
     err: Vec<f64>,
+    /// Right-end slope `K_3 = f(t + h, Y_3) = f(t + h, y_{n+1})` (the last
+    /// stage is the step by stiff accuracy), for the Hermite extension.
+    f_end: Vec<f64>,
     /// Newton iterations used by the three stages.
     newton: usize,
     /// Right-hand-side evaluations of the step.
@@ -240,36 +310,40 @@ where
     if ynew.iter().any(|v| !v.is_finite()) || err.iter().any(|v| !v.is_finite()) {
         return Err(OdeError::NonFinite);
     }
+    // Stiff accuracy makes the last stage the step itself, so its slope is the
+    // right-end derivative of the continuous extension.
+    let f_end = k.pop().ok_or(OdeError::Invalid)?;
     Ok(StepOut {
         y: ynew,
         err,
+        f_end,
         newton,
         nfev,
         njev,
     })
 }
 
-/// Integrates `y' = f(t, y)` from `t0` to `t1` with the adaptive SDIRK3(2)
-/// method, using the analytic Jacobian `jac(t, y)`.
-///
-/// The step size is controlled by the embedded second-order estimate with
-/// exponent `1/3`; steps whose Newton iteration fails are rejected and
-/// retried with half the step.
-///
-/// # Errors
-/// [`OdeError::Invalid`] for an empty state, `t0 == t1` or a Jacobian of the
-/// wrong shape; [`OdeError::NonFinite`] when the state or the estimate stops
-/// being finite; [`OdeError::SolveFailed`] when Newton iteration does not
-/// converge at the smallest step; [`OdeError::StepLimit`] when
-/// [`SdirkOptions::max_steps`] or the step-size floor is reached.
-pub fn sdirk3<F, J>(
-    f: F,
-    jac: J,
+/// Dense output and counters of one adaptive run, before conversion to the
+/// public result type.
+struct SdirkRun {
+    /// Accepted samples, events and the per-step Hermite segments.
+    sol: OdeSolution,
+    /// Total Newton iterations over all stages and attempts.
+    newton_iterations: usize,
+    /// Total Jacobian evaluations.
+    njev: usize,
+}
+
+/// The adaptive integration loop shared by [`sdirk3`] and [`sdirk3_events`].
+fn sdirk3_run<F, J>(
+    f: &F,
+    jac: &J,
     t0: f64,
     t1: f64,
     y0: &[f64],
     opts: &SdirkOptions,
-) -> Result<SdirkSolution, OdeError>
+    events: &[Event<'_>],
+) -> Result<SdirkRun, OdeError>
 where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
@@ -283,15 +357,15 @@ where
     let hmax = opts.hmax.abs().max(floor);
     let mut t = t0;
     let mut y = y0.to_vec();
-    let mut f0 = vec![0.0; n];
-    f(t, &y, &mut f0);
+    let mut f_start = vec![0.0; n];
+    f(t, &y, &mut f_start);
     let mut nfev = 1usize;
     let h_start = opts.h0.unwrap_or_else(|| {
         initial_step(
             &f,
             t0,
             y0,
-            &f0,
+            &f_start,
             dir,
             3.0,
             Tol {
@@ -301,15 +375,10 @@ where
         )
     });
     let mut h = h_start.abs().clamp(floor, hmax) * dir;
-    let mut sol = SdirkSolution {
-        t: vec![t0],
-        y: vec![y0.to_vec()],
-        accepted: 0,
-        rejected: 0,
-        newton_iterations: 0,
-        nfev: 0,
-        njev: 0,
-    };
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev: Vec<f64> = events.iter().map(|ev| (ev.g)(t0, y0)).collect();
+    let mut newton_iterations = 0usize;
+    let mut njev = 0usize;
     let mut attempts = 0usize;
     while (t1 - t) * dir > 0.0 {
         if attempts >= opts.max_steps {
@@ -332,8 +401,8 @@ where
             | Err(other) => return Err(other),
         };
         nfev = nfev.saturating_add(out.nfev);
-        sol.njev = sol.njev.saturating_add(out.njev);
-        sol.newton_iterations = sol.newton_iterations.saturating_add(out.newton);
+        njev = njev.saturating_add(out.njev);
+        newton_iterations = newton_iterations.saturating_add(out.newton);
         let en = out
             .err
             .iter()
@@ -344,9 +413,34 @@ where
             return Err(OdeError::NonFinite);
         }
         if en <= 1.0 {
-            t += h;
+            let t_new = t + h;
+            let dense_step = DenseStep {
+                t0: t,
+                h,
+                y0: y.clone(),
+                kind: DenseKind::Hermite {
+                    y1: out.y.clone(),
+                    f0: f_start.clone(),
+                    f1: out.f_end.clone(),
+                },
+            };
+            let window = StepWindow {
+                t_old: t,
+                tn: t_new,
+                ynew: &out.y,
+                dir,
+            };
+            if process_events(events, &mut gprev, &mut sol, dense_step, &window) {
+                sol.nfev = nfev;
+                return Ok(SdirkRun {
+                    sol,
+                    newton_iterations,
+                    njev,
+                });
+            }
+            t = t_new;
             y = out.y;
-            sol.accepted = sol.accepted.saturating_add(1);
+            f_start = out.f_end;
             sol.t.push(t);
             sol.y.push(y.clone());
             let fac = if en == 0.0 {
@@ -364,7 +458,80 @@ where
         }
     }
     sol.nfev = nfev;
-    Ok(sol)
+    Ok(SdirkRun {
+        sol,
+        newton_iterations,
+        njev,
+    })
+}
+
+/// Integrates `y' = f(t, y)` from `t0` to `t1` with the adaptive SDIRK3(2)
+/// method, using the analytic Jacobian `jac(t, y)`.
+///
+/// The step size is controlled by the embedded second-order estimate with
+/// exponent `1/3`; steps whose Newton iteration fails are rejected and
+/// retried with half the step. The cubic Hermite continuous extension of the
+/// accepted steps is exposed by [`SdirkSolution::eval`].
+///
+/// # Errors
+/// [`OdeError::Invalid`] for an empty state, `t0 == t1` or a Jacobian of the
+/// wrong shape; [`OdeError::NonFinite`] when the state or the estimate stops
+/// being finite; [`OdeError::SolveFailed`] when Newton iteration does not
+/// converge at the smallest step; [`OdeError::StepLimit`] when
+/// [`SdirkOptions::max_steps`] or the step-size floor is reached.
+pub fn sdirk3<F, J>(
+    f: F,
+    jac: J,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdirkOptions,
+) -> Result<SdirkSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &mut [f64]),
+    J: Fn(f64, &[f64]) -> Mat,
+{
+    let run = sdirk3_run(&f, &jac, t0, t1, y0, opts, &[])?;
+    let accepted = run.sol.t.len().saturating_sub(1);
+    Ok(SdirkSolution {
+        t: run.sol.t,
+        y: run.sol.y,
+        accepted,
+        rejected: run.sol.rejected,
+        newton_iterations: run.newton_iterations,
+        nfev: run.sol.nfev,
+        njev: run.njev,
+        dense: run.sol.dense,
+    })
+}
+
+/// Adaptive SDIRK3(2) with event detection on its cubic Hermite dense output.
+///
+/// Events follow the conventions of the other integrators: a sign change of
+/// `g(t, y)` is located by Brent iteration on the continuous extension,
+/// `direction` selects rising, falling or both crossings, and a `terminal`
+/// event ends the run at the event point, which is recorded as the last
+/// sample of [`OdeSolution::t`]. Non-terminal events are recorded in
+/// [`OdeSolution::events`] and integration continues to `t1`. The located
+/// event time inherits the `O(h³)` accuracy of the interpolation (see the
+/// module limitations), not the `1e-14` bracket tolerance of the root finder.
+///
+/// # Errors
+/// As [`sdirk3`].
+pub fn sdirk3_events<F, J>(
+    f: F,
+    jac: J,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdirkOptions,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &mut [f64]),
+    J: Fn(f64, &[f64]) -> Mat,
+{
+    Ok(sdirk3_run(&f, &jac, t0, t1, y0, opts, events)?.sol)
 }
 
 /// The same integrator with a forward-difference Jacobian (`n + 1`
@@ -424,6 +591,78 @@ where
         y = out.y;
     }
     Ok(y)
+}
+
+/// Fixed-step SDIRK3(2) with event detection on the cubic Hermite dense
+/// output.
+///
+/// The `steps` equal steps are the same as in [`sdirk3_fixed`]; events follow
+/// the conventions of [`sdirk3_events`]. Returns the full solution (accepted
+/// samples, located events and dense output), so [`OdeSolution::eval`] also
+/// works. The right-end slope of every step is the last stage of the method,
+/// so the extension adds no right-hand-side evaluations.
+///
+/// # Errors
+/// [`OdeError::Invalid`] for an empty state or `steps == 0`, and the errors of
+/// [`sdirk3_fixed`] otherwise.
+pub fn sdirk3_fixed_events<F, J>(
+    f: F,
+    jac: J,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &mut [f64]),
+    J: Fn(f64, &[f64]) -> Mat,
+{
+    if y0.is_empty() || steps == 0 {
+        return Err(OdeError::Invalid);
+    }
+    let opts = SdirkOptions::default();
+    let h = (t1 - t0) / steps as f64;
+    let dir = h.signum();
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut f_start = vec![0.0; y.len()];
+    f(t, &y, &mut f_start);
+    let mut nfev = 1usize;
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev: Vec<f64> = events.iter().map(|ev| (ev.g)(t0, y0)).collect();
+    for _ in 0..steps {
+        let out = step(&f, &jac, t, &y, h, &opts)?;
+        nfev = nfev.saturating_add(out.nfev);
+        let t_new = t + h;
+        let dense_step = DenseStep {
+            t0: t,
+            h,
+            y0: y.clone(),
+            kind: DenseKind::Hermite {
+                y1: out.y.clone(),
+                f0: f_start.clone(),
+                f1: out.f_end.clone(),
+            },
+        };
+        let window = StepWindow {
+            t_old: t,
+            tn: t_new,
+            ynew: &out.y,
+            dir,
+        };
+        if process_events(events, &mut gprev, &mut sol, dense_step, &window) {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        t = t_new;
+        y = out.y;
+        f_start = out.f_end;
+        sol.t.push(t);
+        sol.y.push(y.clone());
+    }
+    sol.nfev = nfev;
+    Ok(sol)
 }
 
 #[cfg(test)]
@@ -643,7 +882,7 @@ mod tests {
                 eprintln!(
                     "corrupted Jacobian: failed with {e:?} (good run: {} steps, {} Newton iterations)",
                     good.accepted, good.newton_iterations
-                )
+                );
             },
             | Ok(sol) => {
                 eprintln!(

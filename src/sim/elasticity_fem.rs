@@ -9,17 +9,30 @@
 //! | plane stress ([`Model::PlaneStress`]) | 2D | P1 (CST), P2 (LST) | thickness factor |
 //! | plane strain ([`Model::PlaneStrain`]) | 2D | P1, P2 | |
 //! | full 3D ([`Model::Solid3d`]) | 3D | P1, P2 tetrahedra | |
+//! | heterogeneous `E(x)`, `ν(x)` ([`ElasticityProblemVar`], [`solve_heterogeneous`]) | 2D, 3D | P1, P2 | all three models; per-cell stress uses the cell material |
 //!
 //! Boundary conditions per marker ([`ElasticBoundary`]): displacement per
 //! component (clamp, roller, prescribed, time dependent), traction vector
 //! (`σ n = t`), traction-free. Body force `f(x)`. Stress recovery per cell
 //! (exact for P1, centroid value for P2) and von Mises stress are provided.
 //!
+//! **Heterogeneous material.** [`ElasticityProblemVar`] with
+//! [`solve_heterogeneous`] takes the isotropic material as closures `E(x)`,
+//! `ν(x)` evaluated at every quadrature point (and at the cell centroid for
+//! the per-cell stress recovery, which uses that cell's constitutive matrix),
+//! keeping the same P1/P2 spaces, plane stress / plane strain / 3D models,
+//! boundary markers and body force. A constant material reproduces [`solve`]
+//! to round-off, and a material that is piecewise constant on the element
+//! boundaries (layered media) passes the patch test exactly.
+//!
 //! Large deformation (St. Venant–Kirchhoff, neo-Hookean), elastodynamics
 //! (Newmark, generalised-α) and penalty contact are in
 //! [`hyperelastic`](crate::sim::hyperelastic).
 //!
-//! Limitations: this module is isotropic, homogeneous, small strain and static.
+//! Limitations: the material is isotropic (heterogeneous through
+//! [`ElasticityProblemVar`], but no tensorial/anisotropic elasticity, no
+//! per-cell damage or plasticity), and the analysis is linearised, static and
+//! small strain (no prestress, contact or dynamics).
 
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::ElasticBoundary;
@@ -60,6 +73,24 @@ pub struct ElasticityProblem<'a> {
     pub model: Model,
     /// Material.
     pub material: Material,
+    /// Body force.
+    pub force: BodyForce<'a>,
+    /// Boundary conditions per marker (unlisted: traction free).
+    pub bcs: &'a MarkerBcs<ElasticBoundary>,
+}
+
+/// Elasticity problem with a spatially varying isotropic material, `E(x)` and
+/// `ν(x)` (the heterogeneous counterpart of [`ElasticityProblem`]; a constant
+/// material reproduces [`solve`] to round-off).
+pub struct ElasticityProblemVar<'a> {
+    /// Model.
+    pub model: Model,
+    /// Young's modulus `E(x)` (positive).
+    pub young: &'a dyn Fn([f64; 3]) -> f64,
+    /// Poisson ratio `ν(x)`.
+    pub poisson: &'a dyn Fn([f64; 3]) -> f64,
+    /// Thickness (2D models only).
+    pub thickness: f64,
     /// Body force.
     pub force: BodyForce<'a>,
     /// Boundary conditions per marker (unlisted: traction free).
@@ -130,7 +161,11 @@ pub struct ElasticSolution<'a> {
     pub space: &'a FemSpace,
     /// Displacements, `u[dof * dim + component]`.
     pub u: Vec<f64>,
+    /// Constitutive matrix of the homogeneous material (unused when
+    /// `cell_c` is present).
     c: Vec<Vec<f64>>,
+    /// Constitutive matrix of every cell (heterogeneous material).
+    cell_c: Option<Vec<Vec<Vec<f64>>>>,
 }
 
 impl ElasticSolution<'_> {
@@ -165,7 +200,8 @@ impl ElasticSolution<'_> {
         Some(out)
     }
 
-    /// Stress (Voigt) at the centroid of a cell.
+    /// Stress (Voigt) at the centroid of a cell, using that cell's
+    /// constitutive matrix (heterogeneous material) or the homogeneous one.
     #[must_use]
     pub fn stress_at_cell(
         &self,
@@ -193,8 +229,12 @@ impl ElasticSolution<'_> {
                 }
             }
         }
+        let c = match &self.cell_c {
+            | Some(cells) => &cells[cell],
+            | None => &self.c,
+        };
         (0..nv)
-            .map(|r| (0..nv).map(|k| self.c[r][k] * eps[k]).sum())
+            .map(|r| (0..nv).map(|k| c[r][k] * eps[k]).sum())
             .collect()
     }
 
@@ -226,18 +266,82 @@ pub fn solve<'a>(
     if (prob.model == Model::Solid3d) != (dim == 3) || dim == 1 {
         return Err("model and mesh dimension do not match".into());
     }
-    let c = constitutive_matrix(prob.model, &prob.material);
-    let scale = if dim == 2 {
-        prob.material.thickness
-    } else {
-        1.0
+    let mat_at = |_: [f64; 3]| prob.material;
+    solve_with_material(
+        space,
+        prob.model,
+        prob.material.thickness,
+        &mat_at,
+        prob.force,
+        prob.bcs,
+        solver,
+        false,
+    )
+}
+
+/// Solves the static problem with a spatially varying material.
+///
+/// `E(x)` and `ν(x)` are evaluated at every quadrature point; the per-cell
+/// stress recovery ([`ElasticSolution::stress_at_cell`]) uses the
+/// constitutive matrix at the cell centroid. A constant material reproduces
+/// [`solve`] to round-off.
+///
+/// # Errors
+/// As [`solve`].
+pub fn solve_heterogeneous<'a>(
+    space: &'a FemSpace,
+    prob: &ElasticityProblemVar<'_>,
+    solver: LinearSolver,
+) -> Result<ElasticSolution<'a>, String> {
+    let dim = space.mesh.dim;
+    if (prob.model == Model::Solid3d) != (dim == 3) || dim == 1 {
+        return Err("model and mesh dimension do not match".into());
+    }
+    let mat_at = |x: [f64; 3]| {
+        Material {
+            young: (prob.young)(x),
+            poisson: (prob.poisson)(x),
+            thickness: prob.thickness,
+        }
     };
+    solve_with_material(
+        space,
+        prob.model,
+        prob.thickness,
+        &mat_at,
+        prob.force,
+        prob.bcs,
+        solver,
+        true,
+    )
+}
+
+/// Assembly and solve shared by [`solve`] and [`solve_heterogeneous`]:
+/// `mat_at` is sampled at every quadrature point; when `per_cell_c` is set the
+/// constitutive matrix at each cell centroid is stored for stress recovery.
+#[allow(clippy::too_many_arguments)]
+fn solve_with_material<'a>(
+    space: &'a FemSpace,
+    model: Model,
+    thickness: f64,
+    mat_at: &dyn Fn([f64; 3]) -> Material,
+    force: BodyForce<'_>,
+    bcs: &MarkerBcs<ElasticBoundary>,
+    solver: LinearSolver,
+    per_cell_c: bool,
+) -> Result<ElasticSolution<'a>, String> {
+    let dim = space.mesh.dim;
+    let scale = if dim == 2 { thickness } else { 1.0 };
     let nd = space.size();
     let ndof = nd * dim;
     let (pts, w) = simplex_rule(dim, space.degree + 1);
     let mut trip: Vec<(usize, usize, f64)> = Vec::new();
     let mut load = vec![0.0; ndof];
-    let nv = c.len();
+    let mut cell_c: Vec<Vec<Vec<f64>>> = if per_cell_c {
+        Vec::with_capacity(space.mesh.cells.len())
+    } else {
+        Vec::new()
+    };
     for ci in 0..space.mesh.cells.len() {
         let vol = space.mesh.measure(ci);
         let g = space.mesh.bary_gradients(ci);
@@ -267,7 +371,9 @@ pub fn solve<'a>(
                     x[a] += l * space.mesh.nodes[space.mesh.cells[ci][m]][a];
                 }
             }
-            let f = (prob.force)(x);
+            let c = constitutive_matrix(model, &mat_at(x));
+            let nv = c.len();
+            let f = (force)(x);
             for i in 0..nl {
                 for a in 0..dim {
                     load[cd[i] * dim + a] += scale * vol * wq * f[a] * b[i];
@@ -285,11 +391,20 @@ pub fn solve<'a>(
                 }
             }
         }
+        if per_cell_c {
+            let mut xc = [0.0; 3];
+            for m in 0..=dim {
+                for a in 0..3 {
+                    xc[a] += space.mesh.nodes[space.mesh.cells[ci][m]][a] / (dim + 1) as f64;
+                }
+            }
+            cell_c.push(constitutive_matrix(model, &mat_at(xc)));
+        }
     }
     let mut dirichlet: Vec<Option<f64>> = vec![None; ndof];
     let (fp, fw) = simplex_rule(dim - 1, space.degree + 1);
     for &(ci, face, mk) in &space.mesh.facets {
-        let Some(bc) = prob.bcs.get(mk) else { continue };
+        let Some(bc) = bcs.get(mk) else { continue };
         match bc {
             | ElasticBoundary::Free => {},
             | ElasticBoundary::Displacement(vals) => {
@@ -343,5 +458,11 @@ pub fn solve<'a>(
     }
     let a = Csr::from_triplets(ndof, ndof, &t2);
     let u = LinearSystem::new(a, solver)?.solve(&load, None)?;
-    Ok(ElasticSolution { space, u, c })
+    let c0 = constitutive_matrix(model, &mat_at([0.0; 3]));
+    Ok(ElasticSolution {
+        space,
+        u,
+        c: c0,
+        cell_c: per_cell_c.then_some(cell_c),
+    })
 }

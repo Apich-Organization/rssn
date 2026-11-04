@@ -1,6 +1,7 @@
 //! Tests for ETDRK4, exp-Rosenbrock, IMEX, symplectic and variational integrators.
 
 use rssn::kernels::dense::Mat;
+use rssn::kernels::ode_adaptive::Event;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_ext::ImexOptions;
 use rssn::kernels::ode_ext::ImexScheme;
@@ -12,6 +13,11 @@ use rssn::kernels::ode_ext::exprb32;
 use rssn::kernels::ode_ext::imex_rk_with;
 use rssn::kernels::ode_ext::symplectic_split;
 use rssn::kernels::ode_ext::variational_lobatto_with;
+use rssn::kernels::ode_sdirk::SdirkOptions;
+use rssn::kernels::ode_sdirk::sdirk3;
+use rssn::kernels::ode_sdirk::sdirk3_events;
+use rssn::kernels::ode_sdirk::sdirk3_fixed;
+use rssn::kernels::ode_sdirk::sdirk3_fixed_events;
 
 fn order(
     e1: f64,
@@ -401,4 +407,188 @@ fn variational_integrators_order_and_invariants() {
         )
         .is_err()
     );
+}
+
+// -------------------------------------------------------------------------
+// SDIRK3 continuous extension (dense output) and event location
+// -------------------------------------------------------------------------
+
+/// `y' = y cos(t)`, `y(0) = 1`, exact `y = exp(sin t)`: smooth and non-stiff.
+fn cosine_rhs(
+    t: f64,
+    y: &[f64],
+    dy: &mut [f64],
+) {
+    dy[0] = y[0] * t.cos();
+}
+
+/// Jacobian of [`cosine_rhs`].
+fn cosine_jac(
+    t: f64,
+    _y: &[f64],
+) -> Mat {
+    Mat::from_rows(&[vec![t.cos()]]).unwrap()
+}
+
+#[test]
+fn sdirk3_dense_output_is_third_order() {
+    let exact = |t: f64| t.sin().exp();
+    let point = 0.37_f64;
+    let mut prev = f64::NAN;
+    let mut mean_order = 0.0;
+    let mut count = 0;
+    for k in 0..4 {
+        let steps = 10usize << k;
+        let sol =
+            sdirk3_fixed_events(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], steps, &[]).unwrap();
+        let got = sol.eval(point).unwrap()[0];
+        let err = (got - exact(point)).abs();
+        if k > 0 {
+            let p = (prev / err).log2();
+            eprintln!("dense steps = {steps}: err = {err:.3e}, observed order {p:.2}");
+            assert!(p > 2.8, "dense-output order {p} at {steps} steps");
+            mean_order += p;
+            count += 1;
+        }
+        prev = err;
+    }
+    let mean_order = mean_order / count as f64;
+    assert!(mean_order > 2.9, "mean dense-output order {mean_order}");
+}
+
+#[test]
+fn sdirk3_dense_output_endpoint_exactness_and_range() {
+    let sol = sdirk3_fixed_events(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], 20, &[]).unwrap();
+    // The Hermite interpolant is the identity at both ends of a step.
+    assert!((sol.eval(0.0).unwrap()[0] - 1.0).abs() < 1e-14);
+    let (end, want_end) = (sol.eval(1.0).unwrap()[0], sol.y.last().unwrap()[0]);
+    assert!((end - want_end).abs() < 1e-14);
+    // Outside the integrated range there is no extension.
+    assert!(sol.eval(-0.1).is_none());
+    assert!(sol.eval(1.1).is_none());
+}
+
+#[test]
+fn sdirk3_adaptive_solution_exposes_dense_output() {
+    let opts = SdirkOptions {
+        rtol: 1e-9,
+        atol: 1e-11,
+        ..SdirkOptions::default()
+    };
+    let sol = sdirk3(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], &opts).unwrap();
+    for &t in &[0.0_f64, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0] {
+        let got = sol.eval(t).unwrap()[0];
+        let want = (t.sin()).exp();
+        assert!(
+            (got - want).abs() < 1e-6,
+            "eval at t = {t}: {got} vs {want}"
+        );
+    }
+    assert!(sol.eval(-0.5).is_none());
+    assert!(sol.eval(1.5).is_none());
+}
+
+#[test]
+fn sdirk3_events_find_the_cosine_zero_crossings() {
+    // g(t) = cos(t): crossings at pi/2 and 3 pi/2 in [0, 5].
+    let events = [Event {
+        g: &|t: f64, _y: &[f64]| t.cos(),
+        terminal: false,
+        direction: 0,
+    }];
+    let opts = SdirkOptions {
+        rtol: 1e-9,
+        atol: 1e-11,
+        ..SdirkOptions::default()
+    };
+    let f = |_t: f64, y: &[f64], dy: &mut [f64]| dy[0] = -y[0];
+    let jac = |_t: f64, _y: &[f64]| Mat::from_rows(&[vec![-1.0]]).unwrap();
+    let sol = sdirk3_events(f, jac, 0.0, 5.0, &[1.0], &opts, &events).unwrap();
+    assert_eq!(sol.events.len(), 2, "expected two crossings");
+    let want = [std::f64::consts::FRAC_PI_2, 1.5 * std::f64::consts::PI];
+    for (hit, want_t) in sol.events.iter().zip(want) {
+        assert!(
+            (hit.t - want_t).abs() < 1e-8,
+            "event at {:.17}, expected {want_t}",
+            hit.t
+        );
+        assert!((hit.y[0] - (-hit.t).exp()).abs() < 1e-4);
+    }
+    // The run still reaches t1: a non-terminal event does not stop it.
+    assert!((sol.t.last().unwrap() - 5.0).abs() < 1e-12);
+}
+
+#[test]
+fn sdirk3_terminal_event_stops_at_the_ground() {
+    // Projectile: y'' = -g, starting at height 10 with zero velocity. The
+    // ground y = 0 is reached at sqrt(2 h / g).
+    let g = 9.81_f64;
+    let f = |_t: f64, y: &[f64], dy: &mut [f64]| {
+        dy[0] = y[1];
+        dy[1] = -g;
+    };
+    let jac = |_t: f64, _y: &[f64]| Mat::from_rows(&[vec![0.0, 1.0], vec![0.0, 0.0]]).unwrap();
+    let ground = [Event {
+        g: &|_t: f64, y: &[f64]| y[0],
+        terminal: true,
+        direction: -1,
+    }];
+    let opts = SdirkOptions {
+        rtol: 1e-9,
+        atol: 1e-11,
+        ..SdirkOptions::default()
+    };
+    let sol = sdirk3_events(f, jac, 0.0, 2.0, &[10.0, 0.0], &opts, &ground).unwrap();
+    let want_t = (2.0 * 10.0 / g).sqrt();
+    assert_eq!(sol.events.len(), 1);
+    let hit = &sol.events[0];
+    assert!(
+        (hit.t - want_t).abs() < 1e-6,
+        "impact at {:.17}, expected {want_t}",
+        hit.t
+    );
+    assert!(hit.y[0].abs() < 1e-6, "height at impact {}", hit.y[0]);
+    // A terminal event ends the trajectory at the event point.
+    let last = sol.t.last().unwrap();
+    assert!((last - hit.t).abs() < 1e-14);
+    assert!((last - 2.0).abs() > 0.1);
+}
+
+#[test]
+fn sdirk3_fixed_events_matches_fixed_without_events() {
+    let fixed = sdirk3_fixed(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], 32).unwrap();
+    let no_events = sdirk3_fixed_events(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], 32, &[]).unwrap();
+    assert_eq!(no_events.y.last().unwrap(), &fixed);
+    assert_eq!(no_events.t.len(), 33);
+
+    // The adaptive event entry point with an empty list is the plain solver.
+    let opts = SdirkOptions::default();
+    let plain = sdirk3(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], &opts).unwrap();
+    let via_events = sdirk3_events(cosine_rhs, cosine_jac, 0.0, 1.0, &[1.0], &opts, &[]).unwrap();
+    assert_eq!(plain.t, via_events.t);
+    assert_eq!(plain.y, via_events.y);
+    assert_eq!(plain.nfev, via_events.nfev);
+    assert_eq!(plain.rejected, via_events.rejected);
+    assert!((plain.eval(0.5).unwrap()[0] - (0.5_f64.sin()).exp()).abs() < 1e-6);
+}
+
+#[test]
+fn sdirk3_fixed_events_find_crossings_on_fixed_grid() {
+    let events = [Event {
+        g: &|t: f64, _y: &[f64]| t.cos(),
+        terminal: false,
+        direction: 0,
+    }];
+    let f = |_t: f64, y: &[f64], dy: &mut [f64]| dy[0] = -y[0];
+    let jac = |_t: f64, _y: &[f64]| Mat::from_rows(&[vec![-1.0]]).unwrap();
+    let sol = sdirk3_fixed_events(f, jac, 0.0, 5.0, &[1.0], 200, &events).unwrap();
+    assert_eq!(sol.events.len(), 2);
+    let want = [std::f64::consts::FRAC_PI_2, 1.5 * std::f64::consts::PI];
+    for (hit, want_t) in sol.events.iter().zip(want) {
+        assert!(
+            (hit.t - want_t).abs() < 1e-8,
+            "fixed-grid event at {}",
+            hit.t
+        );
+    }
 }

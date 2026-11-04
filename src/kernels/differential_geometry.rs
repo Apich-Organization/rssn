@@ -9,6 +9,22 @@
 //! is `R^r_{smn} = ∂_m Γ^r_{sn} - ∂_n Γ^r_{sm} + Γ^r_{lm} Γ^l_{sn} -
 //! Γ^r_{ln} Γ^l_{sm}`; the Ricci tensor is `R_{sn} = R^m_{smn}`. With these
 //! a sphere has a positive Ricci scalar.
+//!
+//! # Limitations and coverage
+//!
+//! * The metric is a closure on one coordinate chart: only the covariant
+//!   `g_ij` is consumed, and there is no coordinate-change helper, frame
+//!   connection, geodesic, parallel transport, Weyl tensor or Kretschmann
+//!   scalar; only Christoffel symbols, Riemann, Ricci and the Ricci scalar are
+//!   returned.
+//! * All derivatives are fourth-order central differences with relative step
+//!   `1e-3`, so the Riemann tensor is accurate to about `1e-8` for a smooth
+//!   metric; a rapidly varying metric, a chart edge or a singular/lightlike
+//!   metric loses that accuracy and the matrix inversion can fail.
+//! * Results are plain `Vec<Vec<...>>` with the index ordering above; there is
+//!   no symmetry-aware storage (the Riemann tensor stores every component) and
+//!   no dimension specialisation beyond what the dense linear algebra allows.
+//! * The routines are deterministic and single-threaded.
 
 /// Relative step of the finite differences. With a fourth-order stencil the
 /// truncation error is about `h^4` and the rounding error `eps / h`, both

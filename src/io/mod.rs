@@ -2,12 +2,58 @@
 //!
 //! Reading and writing dense 2-D arrays as `.npy`, CSV and JSON. Simulation
 //! models use this to dump fields; nothing here knows about the expression
-//! graph.
+//! graph. The sibling modules add standalone SVG plotting ([`plot`]), 8-bit
+//! PGM/PPM raster export ([`raster`]) and term rendering for LaTeX
+//! ([`latex`]), Typst ([`typst`]) and a Unicode pretty printer ([`pretty`]).
+//!
+//! # Limitations
+//!
+//! Prioritised gaps of the layer as a whole; each submodule documents its own
+//! details.
+//!
+//! - **Data formats.** CSV, JSON and `.npy` store dense `f64` 2-D arrays only:
+//!   no integer/complex/string/structured dtypes, no headers or metadata, no
+//!   compression, and no streaming (whole files are built in memory). CSV is
+//!   unquoted (a value must not contain a comma) and strict on input; JSON
+//!   uses `serde_json`'s default float formatting, which is not guaranteed
+//!   bit-exact for every `f64` on re-read (`float_roundtrip` is not enabled).
+//! - **`.npy` feature gating.** `.npy` support needs the `npy` feature, which
+//!   is off by default. Without it [`write_npy_file`] and [`read_npy_file`]
+//!   still compile but always return an error naming the missing feature.
+//! - **Plots are SVG** (text, annotated, standalone files): 2-D coverage is
+//!   functions, series, expression terms, vector fields, scaled quivers,
+//!   contour lines, filled contour bands and streamlines; 3-D coverage is
+//!   surfaces, parametric curves, polylines and vector fields through one
+//!   fixed oblique projection. Missing: log axes, subplots, histograms/box
+//!   plots, error bars, chart-like band/area plots, contour labels and any
+//!   interactive output.
+//! - **Raster export is 8-bit netpbm only** ([`raster`]: binary PGM P5,
+//!   8/16-bit, and PPM P6): [`plot::plot_scalar_field_pgm`] and
+//!   [`plot::plot_scalar_field_ppm`] rasterise a sampled field, but there is no
+//!   PNG/JPEG/other compressed format (that needs an encoder dependency), no
+//!   alpha/16-bit PPM, and no resampling, text or annotation in the raster
+//!   path.
+//! - **LaTeX and Typst** emit math fragments, not documents: no delimiters,
+//!   preamble or styling commands, a fixed function/Greek/operator table, and
+//!   no `cases`/`aligned` equivalent. LaTeX escapes literal strings for
+//!   `\text{...}` and Typst escapes string literals, but symbol names are
+//!   assumed identifier-like. Lowercase `omicron` and variant letters
+//!   (`varepsilon`, `varphi`, ...) are not distinguished.
+//! - **Markup walker** (shared by LaTeX/Typst) special-cases core arithmetic,
+//!   lists/matrices, derivatives, binders, limits and relations; other
+//!   operators fall back to a plain call. Assumptions, domains, piecewise
+//!   definitions, sets/intervals and vectors get no dedicated notation.
+//! - **Pretty printer** is a monospace Unicode grid: wide/combining glyphs
+//!   misalign, Unicode super/subscripts cover digits (plus `-` and `n` above)
+//!   and no wrapping, colours or ANSI styles exist.
+//! - **No new dependencies** are allowed for this layer, so anything needing
+//!   an encoder, a font or a typesetter stays a documented gap instead.
 
 pub mod latex;
 pub(crate) mod markup;
 pub mod plot;
 pub mod pretty;
+pub mod raster;
 pub mod typst;
 
 use std::fs::File;

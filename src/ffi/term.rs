@@ -30,11 +30,16 @@ pub struct RssnTensor {
 }
 
 /// Creates a session with every standard rule set. Free it with
-/// `rssn_session_free`. Returns null if the built-in rules fail to install.
+/// `rssn_session_free`. Returns null if the built-in rules fail to install;
+/// the reason is then in `rssn_last_error`.
 #[unsafe(no_mangle)]
 pub extern "C" fn rssn_session_new() -> *mut RssnSession {
-    std::panic::catch_unwind(|| Box::into_raw(Box::new(RssnSession(Session::new()))))
-        .unwrap_or(std::ptr::null_mut())
+    let mut session = std::ptr::null_mut();
+    let _ = guard(|| {
+        session = Box::into_raw(Box::new(RssnSession(Session::new())));
+        RssnStatus::Ok
+    });
+    session
 }
 
 /// Releases a session and all its terms. Null is ignored.
@@ -212,6 +217,11 @@ pub unsafe extern "C" fn rssn_term_to_f64(
     out: *mut f64,
 ) -> RssnStatus {
     guard(|| {
+        // Checked first, like every other entry point, so a null output is
+        // reported as such even when the handle is also wrong.
+        if out.is_null() {
+            return fail(RssnStatus::NullArgument, "null output pointer");
+        }
         // SAFETY: caller contract.
         let s = match unsafe { borrow_session(session) } {
             | Ok(s) => s,
@@ -221,10 +231,9 @@ pub unsafe extern "C" fn rssn_term_to_f64(
             | Ok(t) => t.as_f64(),
             | Err(e) => return e,
         };
-        match (value, out.is_null()) {
-            | (_, true) => fail(RssnStatus::NullArgument, "null output pointer"),
-            | (None, _) => fail(RssnStatus::NoValue, "term is not a literal number"),
-            | (Some(v), false) => {
+        match value {
+            | None => fail(RssnStatus::NoValue, "term is not a literal number"),
+            | Some(v) => {
                 // SAFETY: non-null and valid by contract.
                 unsafe { *out = v };
                 RssnStatus::Ok

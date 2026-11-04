@@ -7,8 +7,17 @@
 //! The symbolic kernel substitutes where the function is continuous and
 //! otherwise resolves the indeterminate form: leading terms for rational
 //! functions at infinity, l'Hôpital's rule for `0/0` and `∞/∞`, products
-//! `0·∞` rewritten as quotients, and powers through `exp(g·ln f)`. A
-//! Gruntz-style kernel (`super::gruntz`) first compares the growth rates of
+//! `0·∞` rewritten as quotients, and powers through `exp(g·ln f)`. Bounded
+//! factors are handled by squeeze reasoning: a product with a factor that is
+//! provably bounded from its form (`sin`, `cos`, `atan`, `erf`, `tanh`, …,
+//! sums and products of such) and a remaining product tending to zero tends
+//! to zero (`sin(x)/x`, `x² sin(1/x)`, `exp(-x) sin(x)`), and a sum with a
+//! bounded term and one term tending to `±∞` diverges to that sign
+//! (`x + sin(x)`). A series fallback expands about a finite point at the
+//! standard order and, when a cancellation leaves its first surviving power
+//! deeper and the expression is small enough, at the extended order; this
+//! decides `0/0` forms that l'Hôpital's rule does not reach within its depth.
+//! A Gruntz-style kernel (`super::gruntz`) first compares the growth rates of
 //! nested exponentials and logarithms and expands in the most rapidly
 //! varying exponential, which decides limits such as
 //! `(exp(exp(x)) + 1)/(exp(exp(x)) - 1)` or `ln(ln(x))/ln(x)`; the
@@ -17,6 +26,15 @@
 //! it is accepted, so a misapplied rule cannot produce a wrong limit. The
 //! numeric kernel returns that probe, extrapolated, when a number is what
 //! was asked for.
+//!
+//! Limitations: boundedness is only recognised syntactically, so an
+//! oscillating factor hidden behind an identity (`sin(x)² + cos(x)²`, or a
+//! bound that needs two factors together) is not used; a squeeze whose
+//! decaying remainder has no limit within the other rules is not concluded;
+//! the series fallback stops at the extended order and only handles
+//! expressions the power-series kernel can expand; and genuinely
+//! non-existent limits (`sin(x)` at infinity, `abs(x)/x` at zero) stay
+//! unevaluated instead of being given a numeric guess.
 
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -186,6 +204,18 @@ pub(super) fn probe(
     }
 }
 
+/// The product of `factors`, without building a node for the empty list.
+fn build_product(
+    graph: &mut Graph,
+    factors: &[NodeId],
+) -> NodeId {
+    match factors {
+        | [] => graph.int(1),
+        | [only] => *only,
+        | _ => graph.node(core::MUL, factors),
+    }
+}
+
 struct Limiter<'c, 'a> {
     cx: &'c mut Cx<'a>,
     f: Functions,
@@ -198,6 +228,35 @@ struct Limiter<'c, 'a> {
 }
 
 const MAX_DEPTH: usize = 6;
+/// Order about the point at which the Laurent-series fallback stops first.
+const SERIES_ORDER: i64 = 6;
+/// Order tried when the standard one is inconclusive: a cancellation can
+/// leave the first surviving power a few orders deeper.
+const SERIES_ORDER_EXTENDED: i64 = 12;
+/// Largest expression (nodes) for which the extended series order is tried.
+const MAX_SERIES_NODES: usize = 160;
+
+/// The number of nodes of the expression below `root`.
+fn expression_size(
+    graph: &Graph,
+    root: NodeId,
+) -> usize {
+    let mut seen = std::collections::HashSet::new();
+    let mut stack = vec![root];
+    let mut count = 0;
+    while let Some(node) = stack.pop() {
+        let class = graph.find(node);
+        if !seen.insert(class) {
+            continue;
+        }
+        count += 1;
+        if count > MAX_SERIES_NODES {
+            return count;
+        }
+        stack.extend_from_slice(graph.children(node));
+    }
+    count
+}
 
 impl Limiter<'_, '_> {
     fn depends(
@@ -271,12 +330,21 @@ impl Limiter<'_, '_> {
             // function), rather than undefined: nothing to be done.
             self.cx.graph.eval(raw, &env)?;
         }
-        match self.probe(f) {
-            | Probe::PlusInfinity if self.simple_divergence(f) => return Some(self.infinite(true)),
-            | Probe::MinusInfinity if self.simple_divergence(f) => {
-                return Some(self.infinite(false));
-            },
-            | _ => {},
+        let observed = self.probe(f);
+        if matches!(observed, Probe::PlusInfinity | Probe::MinusInfinity)
+            && self.simple_divergence(f)
+        {
+            // At a finite point the numeric probe can mistake the rounding
+            // noise of a cancelling `0/0` form for growth (the numerator is
+            // below the representable precision there); the exact Laurent
+            // expansion is the better evidence. Only when it cannot decide is
+            // the probe's divergence reported.
+            if self.target.is_finite()
+                && let Some(found) = self.series_limit(f, depth)
+            {
+                return Some(found);
+            }
+            return Some(self.infinite(observed == Probe::PlusInfinity));
         }
         if let Some(found) = self.rational_at_infinity(f) {
             return Some(found);
@@ -297,13 +365,57 @@ impl Limiter<'_, '_> {
                 return Some(self.cx.simplify(combined));
             }
         }
+        if let Some(found) = self.squeeze(f, depth) {
+            return Some(found);
+        }
         if let Some(found) = self.composition(f, depth) {
             return Some(found);
         }
         if let Some(found) = self.power_form(f, depth) {
             return Some(found);
         }
-        self.hospital(f, depth)
+        if let Some(found) = self.hospital(f, depth) {
+            return Some(found);
+        }
+        self.series_limit(f, depth)
+    }
+
+    /// The analytic fallback for a finite point: expand about the point and
+    /// read the limit off the Laurent series.
+    ///
+    /// This reaches the `0/0` cancellations that l'Hôpital's rule does not
+    /// resolve within its depth: when the numerator agrees with the first
+    /// several terms of the denominator's Taylor expansion, the first
+    /// surviving power can lie beyond the standard series order, so the
+    /// expansion is retried at the extended order (only for expressions small
+    /// enough to keep that affordable). A negative valuation is a pole and is
+    /// left to the other rules; a leading coefficient that still depends on
+    /// the variable is not a result.
+    fn series_limit(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        if !self.target.is_finite() || depth > MAX_DEPTH {
+            return None;
+        }
+        let point = self.point;
+        let mut expansion = super::laurent_expansion(self.cx, f, self.x, point, SERIES_ORDER);
+        if expansion.is_none() && expression_size(self.cx.graph, f) <= MAX_SERIES_NODES {
+            expansion = super::laurent_expansion(self.cx, f, self.x, point, SERIES_ORDER_EXTENDED);
+        }
+        let (valuation, coefficients) = expansion?;
+        if valuation > 0 {
+            return Some(self.cx.graph.int(0));
+        }
+        if valuation < 0 {
+            return None;
+        }
+        let leading = *coefficients.first()?;
+        if self.depends(leading) {
+            return None;
+        }
+        Some(self.cx.simplify(leading))
     }
 
     fn is_infinite(
@@ -605,6 +717,120 @@ impl Limiter<'_, '_> {
         self.limit(next, depth + 1).or_else(|| self.recognised(f))
     }
 
+    /// Bounded-factor (squeeze) reasoning.
+    ///
+    /// * A product with a provably bounded factor and a remaining product
+    ///   that tends to zero tends to zero, however the bounded factor
+    ///   oscillates: `sin(x)/x → 0`, `x² sin(1/x) → 0`, `exp(-x) sin(x) → 0`.
+    /// * A sum with a provably bounded term and one term tending to `±∞`
+    ///   diverges to that sign: `x + sin(x) → ∞`.
+    ///
+    /// Only boundedness that follows from the form of the term is used, so
+    /// the conclusion is a proof, not a numeric guess; the caller still
+    /// compares the result with the numeric probe. The same argument applies
+    /// at a point, at infinity and one-sided.
+    fn squeeze(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let op = self.cx.graph.op(f);
+        let parts = self.cx.graph.children(f).to_vec();
+        if op == core::MUL {
+            let mut rest = Vec::new();
+            let mut any_bounded = false;
+            for part in parts {
+                if self.bounded(part) {
+                    any_bounded = true;
+                } else {
+                    rest.push(part);
+                }
+            }
+            if !any_bounded || rest.is_empty() {
+                return None;
+            }
+            let remaining = build_product(self.cx.graph, &rest);
+            let limit = self.limit(remaining, depth + 1)?;
+            return self.is_zero(limit).then(|| self.cx.graph.int(0));
+        }
+        if op == core::ADD {
+            let mut rest = Vec::new();
+            let mut any_bounded = false;
+            for part in parts {
+                if self.bounded(part) {
+                    any_bounded = true;
+                } else {
+                    rest.push(part);
+                }
+            }
+            if !any_bounded || rest.len() != 1 {
+                return None;
+            }
+            let limit = self.limit(*rest.first()?, depth + 1)?;
+            return self.is_infinite(limit).then_some(limit);
+        }
+        None
+    }
+
+    /// Whether `f` is bounded on a punctured neighbourhood of the limit
+    /// point, from the form of the term alone.
+    ///
+    /// Only the cases that are true on the whole domain of the function are
+    /// accepted, so the property is independent of the side and of the point:
+    /// `sin`, `cos`, `atan`, `acot`, `erf`, `tanh`, `sech`, `asin` and
+    /// `acos` are bounded by one of the constants they are known by, sums and
+    /// products of bounded terms are bounded, `abs` and powers with a
+    /// non-negative constant exponent preserve boundedness, and constants are
+    /// bounded when they have a finite value.
+    fn bounded(
+        &self,
+        f: NodeId,
+    ) -> bool {
+        let graph = &*self.cx.graph;
+        if !graph.depends_on(graph.find(f), self.symbol) {
+            let env = generic_env(graph, f, self.symbol, &Env::numeric(0.0));
+            return graph.eval(f, &env).is_some_and(f64::is_finite);
+        }
+        let op = graph.op(f);
+        if op == core::ADD || op == core::MUL {
+            return graph.children(f).iter().all(|&part| self.bounded(part));
+        }
+        if op == core::POW {
+            let &[base, exponent] = graph.children(f) else {
+                return false;
+            };
+            // A negative exponent turns a bound through zero into a pole;
+            // a varying exponent could be either sign: neither is bounded.
+            let Some(value) = graph.number_of(exponent).map(Number::to_f64) else {
+                return false;
+            };
+            return value >= 0.0 && self.bounded(base);
+        }
+        let name = graph.ops().get(op).name.to_string();
+        match name.as_str() {
+            | "sin" | "cos" | "atan" | "acot" | "erf" | "tanh" | "sech" | "asin" | "acos" => true,
+            | "abs" => {
+                graph
+                    .children(f)
+                    .first()
+                    .is_some_and(|&part| self.bounded(part))
+            },
+            | _ => false,
+        }
+    }
+
+    /// Whether `f` is the literal zero.
+    fn is_zero(
+        &mut self,
+        f: NodeId,
+    ) -> bool {
+        self.cx
+            .graph
+            .number_of(f)
+            .is_some_and(crate::graph::Number::is_zero)
+            || self.cx.is_zero(f)
+    }
+
     /// Last resort for a parameter-free function: if the numeric probe
     /// settles on a small rational, that is the limit.
     fn recognised(
@@ -741,7 +967,13 @@ pub(super) fn limit_at(
         return Some(candidate);
     }
     let candidate = limiter.limit(term, 0)?;
-    limiter.verified(term, candidate).then_some(candidate)
+    if limiter.verified(term, candidate) {
+        return Some(candidate);
+    }
+    // The numeric probe cannot see a finite limit that is hidden behind
+    // catastrophic cancellation near the point; the exact Laurent expansion
+    // can, and it is accepted when the probe is unusable.
+    limiter.series_limit(term, 0)
 }
 
 /// Numeric kernel for `limit`: the extrapolated probe.

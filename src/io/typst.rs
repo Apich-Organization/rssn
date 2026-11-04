@@ -1,4 +1,19 @@
 //! Typst math output for terms of a [`Graph`].
+//!
+//! # Limitations
+//!
+//! - Output is a math fragment only: no `$...$`/`#set`/`#show` styling, no
+//!   preamble and no document structure is emitted.
+//! - Symbol coverage is a fixed table: the functions, Greek letters and infix
+//!   operators listed in this module (and shared with the LaTeX printer);
+//!   matrices become `mat(...)`. Lowercase `omicron` and the variant forms
+//!   (`varepsilon`, `varphi`, ...) are not distinguished.
+//! - Fallback multi-letter symbols and unknown functions become Typst string
+//!   literals (`"name"`, `op("name")`); literal strings and those fallbacks
+//!   only escape `"`, `\` and the usual control characters, so arbitrary
+//!   Unicode text is passed through unescaped (Typst markup is not entered).
+//! - No `cases`/`aligned` equivalent, no delimiter or alignment options for
+//!   matrices, and no line breaking.
 
 use super::markup::BigOp;
 use super::markup::Deriv;
@@ -59,6 +74,23 @@ pub fn to_typst(
 
 struct Typst;
 
+/// Escapes `s` for a Typst string literal: only `\` and `"` (plus newline and
+/// tab) are special inside `"..."`.
+fn escape_text(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            | '\\' => out.push_str(r"\\"),
+            | '"' => out.push_str("\\\""),
+            | '\n' => out.push_str(r"\n"),
+            | '\r' => out.push_str(r"\r"),
+            | '\t' => out.push_str(r"\t"),
+            | other => out.push(other),
+        }
+    }
+    out
+}
+
 /// A script argument: bare when it is a single token, parenthesised otherwise.
 fn script(s: &str) -> String {
     if !s.is_empty() && s.chars().all(char::is_alphanumeric) {
@@ -88,7 +120,7 @@ impl Dialect for Typst {
         let head = match to_greek(base) {
             | Some(g) => g.to_owned(),
             | None if base.chars().count() == 1 => base.to_owned(),
-            | None => format!("\"{base}\""),
+            | None => format!("\"{}\"", escape_text(base)),
         };
         match sub {
             | Some(s) => format!("{head}_{}", script(&s.replace('_', ","))),
@@ -100,7 +132,7 @@ impl Dialect for Typst {
         &self,
         s: &str,
     ) -> String {
-        format!("\"{s}\"")
+        format!("\"{}\"", escape_text(s))
     }
 
     fn constant(
@@ -172,10 +204,10 @@ impl Dialect for Typst {
         if let ("log", [base, x]) = (name, args) {
             return format!("log_{}({x})", script(base));
         }
-        let head = FUNCTIONS
-            .iter()
-            .find(|(n, _)| *n == name)
-            .map_or_else(|| format!("op(\"{name}\")"), |(_, c)| (*c).to_owned());
+        let head = FUNCTIONS.iter().find(|(n, _)| *n == name).map_or_else(
+            || format!("op(\"{}\")", escape_text(name)),
+            |(_, c)| (*c).to_owned(),
+        );
         format!("{head}({})", args.join(", "))
     }
 

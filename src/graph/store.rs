@@ -22,6 +22,7 @@
 //! are flagged *redundant*: they stay valid concrete terms but are skipped
 //! by matching, so the e-graph never processes the same e-node twice.
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::hash::Hasher;
@@ -97,6 +98,14 @@ fn hash_key(
 /// are not identical, so merging them would poison congruence closure. A
 /// witness records what numeric kernels found out about a class while
 /// leaving its exact members untouched.
+///
+/// A witness is not automatically a rigorous enclosure. Literals and
+/// environment bindings are exact; the arithmetic in this file is outward
+/// rounded, so it maps rigorous enclosures to rigorous enclosures; but the
+/// numeric kernels that report [`Outcome::Approx`](super::rule::Outcome)
+/// supply convergence *estimates*. Sign facts therefore never rest on a
+/// witness (see [`Graph::facts`]); use [`Graph::approx_interval`] when a
+/// certificate is needed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Ball {
     /// Centre of the enclosure.
@@ -106,7 +115,18 @@ pub struct Ball {
     pub rad: f64,
 }
 
+// The arithmetic below is deliberately inherent rather than `std::ops`: the
+// method names carry the enclosure semantics (`add` is outward-rounded on the
+// closed interval, `div` returns `ENTIRE` on a zero-containing divisor), which
+// operator syntax would hide. Call sites read as interval operations.
+#[allow(clippy::should_implement_trait)]
 impl Ball {
+    /// The whole line: no finite enclosure is available.
+    pub const ENTIRE: Self = Self {
+        mid: 0.0,
+        rad: f64::INFINITY,
+    };
+
     /// An enclosure with zero radius.
     #[must_use]
     pub const fn exact(mid: f64) -> Self {
@@ -117,6 +137,171 @@ impl Ball {
     #[must_use]
     pub fn excludes_zero(&self) -> bool {
         self.mid.abs() > self.rad
+    }
+
+    /// The real interval the ball stands for, widened outward by one ulp at
+    /// each end.
+    ///
+    /// A NaN centre or radius means "no information" and gives the whole
+    /// line; an infinite radius does the same.
+    #[must_use]
+    pub fn bounds(self) -> (f64, f64) {
+        if self.mid.is_nan() || self.rad.is_nan() {
+            return (f64::NEG_INFINITY, f64::INFINITY);
+        }
+        let lo = (self.mid - self.rad).next_down();
+        let hi = (self.mid + self.rad).next_up();
+        (lo, hi)
+    }
+
+    /// The ball enclosing the interval `[lo, hi]`, or `None` when the bounds
+    /// are NaN or reversed.
+    ///
+    /// The construction rounds the centre to a float and the radius upward,
+    /// so the returned ball contains the whole interval. Bounds at infinity
+    /// give [`Ball::ENTIRE`], which is still a valid (vacuous) enclosure.
+    #[must_use]
+    pub fn from_interval(
+        lo: f64,
+        hi: f64,
+    ) -> Option<Self> {
+        if lo.is_nan() || hi.is_nan() || lo > hi {
+            return None;
+        }
+        if !lo.is_finite() || !hi.is_finite() {
+            return Some(Self::ENTIRE);
+        }
+        let mid = f64::midpoint(lo, hi);
+        if mid.is_nan() {
+            return Some(Self::ENTIRE);
+        }
+        let rad = (mid - lo).next_up().max((hi - mid).next_up());
+        Some(Self { mid, rad })
+    }
+
+    /// Like [`Ball::from_interval`] but total; unusable bounds widen to
+    /// [`Ball::ENTIRE`].
+    fn from_bounds(
+        lo: f64,
+        hi: f64,
+    ) -> Self {
+        Self::from_interval(lo, hi).unwrap_or(Self::ENTIRE)
+    }
+
+    /// `self + other`, outward rounded.
+    ///
+    /// If the operands enclose the exact values then so does the result:
+    /// every operation here is a *sound* map of enclosures to enclosures.
+    #[must_use]
+    pub fn add(
+        self,
+        other: Self,
+    ) -> Self {
+        let (a_lo, a_hi) = self.bounds();
+        let (b_lo, b_hi) = other.bounds();
+        Self::from_bounds((a_lo + b_lo).next_down(), (a_hi + b_hi).next_up())
+    }
+
+    /// `self - other`, outward rounded.
+    #[must_use]
+    pub fn sub(
+        self,
+        other: Self,
+    ) -> Self {
+        self.add(other.neg())
+    }
+
+    /// `-self`.
+    #[must_use]
+    pub fn neg(self) -> Self {
+        Self {
+            mid: -self.mid,
+            rad: self.rad,
+        }
+    }
+
+    /// `self * other`, outward rounded.
+    #[must_use]
+    pub fn mul(
+        self,
+        other: Self,
+    ) -> Self {
+        let (a_lo, a_hi) = self.bounds();
+        let (b_lo, b_hi) = other.bounds();
+        let products = [a_lo * b_lo, a_lo * b_hi, a_hi * b_lo, a_hi * b_hi];
+        if products.iter().any(|p| p.is_nan()) {
+            return Self::ENTIRE;
+        }
+        Self::from_bounds(
+            products
+                .iter()
+                .copied()
+                .fold(f64::INFINITY, f64::min)
+                .next_down(),
+            products
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max)
+                .next_up(),
+        )
+    }
+
+    /// `self / other`, outward rounded.
+    ///
+    /// A divisor whose enclosure contains zero has no finite enclosure, so
+    /// the result is [`Ball::ENTIRE`]; this is the interval convention, not
+    /// a NaN.
+    #[must_use]
+    pub fn div(
+        self,
+        other: Self,
+    ) -> Self {
+        let (b_lo, b_hi) = other.bounds();
+        if b_lo <= 0.0 && b_hi >= 0.0 {
+            return Self::ENTIRE;
+        }
+        let recip = Self::from_bounds((1.0 / b_hi).next_down(), (1.0 / b_lo).next_up());
+        self.mul(recip)
+    }
+
+    /// `self^n` for a machine-sized integer, outward rounded.
+    #[must_use]
+    pub fn powi(
+        self,
+        n: i32,
+    ) -> Self {
+        if n == 0 {
+            return Self::exact(1.0);
+        }
+        if n < 0 {
+            return Self::exact(1.0).div(self.powi(n.saturating_neg()));
+        }
+        let (lo, hi) = self.bounds();
+        let (a, b) = (lo.powi(n), hi.powi(n));
+        if n % 2 == 0 {
+            if lo <= 0.0 && hi >= 0.0 {
+                Self::from_bounds(0.0, a.max(b))
+            } else {
+                Self::from_bounds(a.min(b), a.max(b))
+            }
+        } else {
+            Self::from_bounds(a, b)
+        }
+    }
+
+    /// The strict sign the ball certifies: `Some(Greater)` when it lies
+    /// entirely above zero, `Some(Less)` when entirely below, `None` when
+    /// zero is a possible value.
+    #[must_use]
+    pub fn sign(self) -> Option<Ordering> {
+        let (lo, hi) = self.bounds();
+        if lo > 0.0 {
+            Some(Ordering::Greater)
+        } else if hi < 0.0 {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
     }
 }
 
@@ -1642,6 +1827,89 @@ mod tests {
             .map(|&s| g.interner().symbol_name(s))
             .collect();
         assert_eq!(names, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn ball_bounds_and_signs_round_outward() {
+        let b = Ball::from_interval(1.0, 2.0).unwrap_or(Ball::ENTIRE);
+        let (lo, hi) = b.bounds();
+        assert!(lo <= 1.0 && hi >= 2.0, "{lo}..{hi}");
+        assert_eq!(b.sign(), Some(std::cmp::Ordering::Greater));
+
+        let straddling = Ball::from_interval(-1.0, 1.0).unwrap_or(Ball::ENTIRE);
+        let (lo, hi) = straddling.bounds();
+        assert!(lo <= -1.0 && hi >= 1.0, "{lo}..{hi}");
+        assert_eq!(straddling.sign(), None, "zero is possible");
+
+        let negative = Ball::from_interval(-3.0, -2.0).unwrap_or(Ball::ENTIRE);
+        assert_eq!(negative.sign(), Some(std::cmp::Ordering::Less));
+
+        assert_eq!(Ball::from_interval(f64::NAN, 1.0), None);
+        assert_eq!(Ball::from_interval(2.0, 1.0), None);
+        assert_eq!(
+            Ball::from_interval(f64::NEG_INFINITY, 1.0),
+            Some(Ball::ENTIRE)
+        );
+        assert_eq!(Ball::ENTIRE.sign(), None);
+    }
+
+    #[test]
+    fn ball_arithmetic_encloses_exactly_representable_results() {
+        let a = Ball::from_interval(1.0, 2.0).unwrap_or(Ball::ENTIRE);
+        let b = Ball::from_interval(-4.0, -2.0).unwrap_or(Ball::ENTIRE);
+        // Every sampled value and every operation result below is exactly
+        // representable, so containment is a real-arithmetic statement.
+        let xs = [1.0, 1.25, 1.5, 1.75, 2.0];
+        let ys = [-4.0, -3.5, -3.0, -2.5, -2.0];
+        let inside = |ball: Ball, value: f64| {
+            let (lo, hi) = ball.bounds();
+            assert!(lo <= value && value <= hi, "{value} outside {lo}..{hi}");
+        };
+        for &x in &xs {
+            inside(a.neg(), -x);
+            for &y in &ys {
+                inside(a.add(b), x + y);
+                inside(a.sub(b), x - y);
+                inside(a.mul(b), x * y);
+            }
+            // Powers of two divisors keep the quotients exact.
+            for &y in &[-4.0, -2.0] {
+                inside(a.div(b), x / y);
+            }
+            for n in [2_i32, 3, 5] {
+                inside(a.powi(n), x.powi(n));
+            }
+        }
+        // A divisor whose box contains zero has no finite enclosure.
+        assert_eq!(
+            a.div(Ball::from_interval(-1.0, 1.0).unwrap_or(Ball::ENTIRE)),
+            Ball::ENTIRE
+        );
+    }
+
+    #[test]
+    fn ball_powers_are_tighter_than_repeated_multiplication() {
+        // `x = 1 ± 0.1`; `x - 1` is `0 ± 0.1`, so its square is `[0, 0.01]`.
+        // Squaring by `powi` knows the lower bound is zero; multiplying the
+        // ball by itself loses that and must widen by the cross terms.
+        let x = Ball::from_interval(0.9, 1.1).unwrap_or(Ball::ENTIRE);
+        let d = x.sub(Ball::exact(1.0));
+        let squared = d.powi(2);
+        let naive = d.mul(d);
+        let (_, square_hi) = squared.bounds();
+        let (naive_lo, naive_hi) = naive.bounds();
+        assert!(square_hi <= 0.0101, "{square_hi}");
+        assert!(naive_lo < 0.0, "{naive_lo}");
+        assert!(naive_hi > square_hi);
+        // Both enclose every value the expression can take.
+        for i in 0..=32 {
+            let v = 0.9 + 0.2 * (f64::from(i) / 32.0) - 1.0;
+            let square = v * v;
+            let (lo, hi) = squared.bounds();
+            assert!(lo <= square && square <= hi);
+            let (lo, hi) = naive.bounds();
+            assert!(lo <= square && square <= hi);
+        }
     }
 
     #[test]

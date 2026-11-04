@@ -4,6 +4,28 @@
 //! for robust implementations. It includes descriptive statistics (mean, variance, median,
 //! percentiles, covariance, correlation), probability distributions (Normal, Uniform, Binomial,
 //! Poisson, Exponential, Gamma), and statistical inference methods (ANOVA, t-tests).
+//!
+//! # Limitations and coverage
+//!
+//! * Only the six wrapped distributions exist (`Normal`, `Uniform`,
+//!   `Binomial`, `Poisson`, `Exponential`, `Gamma`); there is no beta,
+//!   log-normal, chi-square, Student-t or multivariate distribution, no
+//!   parameter fitting and no sampling (the samplers live in
+//!   [`crate::kernels::random`]).
+//! * The inference helpers (`one_way_anova`, `two_sample_t_test`,
+//!   `welch_t_test`, `chi_squared_test`, `simple_linear_regression`) report the
+//!   statistic and the asymptotic p-value only: no confidence intervals,
+//!   effect sizes, multiple-comparison correction, paired or repeated-measures
+//!   designs, and no non-parametric alternative.
+//! * `mean` returns `0` for an empty slice and `std_dev` follows the sample
+//!   convention; NaN and infinite inputs propagate through the descriptive
+//!   functions unless stated otherwise, and the in-place helpers (`median`,
+//!   `min`, `max`, `mode`, `skewness`, `kurtosis`, `iqr`) sort or partially
+//!   sort their input.
+//! * The distribution objects wrap `statrs`; the valid parameter ranges and
+//!   the numerical accuracy are inherited from it. `inverse_cdf` returns `NaN`
+//!   outside `[0, 1]` instead of panicking, and no function is streaming: every
+//!   estimator takes the full sample.
 
 use statrs::distribution::Binomial;
 use statrs::distribution::Continuous;
@@ -209,12 +231,17 @@ pub struct NormalDist(Normal);
 impl NormalDist {
     /// Creates a new `NormalDist` instance.
     ///
-    /// # Arguments
-    /// * `mean` - The mean `μ` of the distribution.
-    /// * `std_dev` - The standard deviation `σ` of the distribution.
-    ///
-    /// # Returns
-    /// A `Result` containing the `NormalDist` instance, or an error string if parameters are invalid.
+    /// # Errors
+    /// Returns an error unless both parameters are finite and `std_dev > 0`.
+    pub fn new(
+        mean: f64,
+        std_dev: f64,
+    ) -> Result<Self, String> {
+        Normal::new(mean, std_dev)
+            .map(NormalDist)
+            .map_err(|e| e.to_string())
+    }
+
     /// Returns the probability density function (PDF) value at `x`.
     ///
     /// # Arguments
@@ -243,6 +270,21 @@ impl NormalDist {
         x: f64,
     ) -> f64 {
         self.0.cdf(x)
+    }
+
+    /// Returns the quantile (inverse CDF) at probability `p`.
+    ///
+    /// Returns `NaN` when `p` is outside `[0, 1]`; the boundary values are the
+    /// (possibly infinite) support limits rather than errors.
+    #[must_use]
+    pub fn inverse_cdf(
+        &self,
+        p: f64,
+    ) -> f64 {
+        if !(0.0..=1.0).contains(&p) {
+            return f64::NAN;
+        }
+        self.0.inverse_cdf(p)
     }
 }
 
@@ -286,6 +328,20 @@ impl UniformDist {
         x: f64,
     ) -> f64 {
         self.0.cdf(x)
+    }
+
+    /// Returns the quantile (inverse CDF) at probability `p`.
+    ///
+    /// Returns `NaN` when `p` is outside `[0, 1]`.
+    #[must_use]
+    pub fn inverse_cdf(
+        &self,
+        p: f64,
+    ) -> f64 {
+        if !(0.0..=1.0).contains(&p) {
+            return f64::NAN;
+        }
+        self.0.inverse_cdf(p)
     }
 }
 
@@ -496,6 +552,20 @@ impl ExponentialDist {
     ) -> f64 {
         self.0.cdf(x)
     }
+
+    /// Returns the quantile (inverse CDF) at probability `p`.
+    ///
+    /// Returns `NaN` when `p` is outside `[0, 1]`.
+    #[must_use]
+    pub fn inverse_cdf(
+        &self,
+        p: f64,
+    ) -> f64 {
+        if !(0.0..=1.0).contains(&p) {
+            return f64::NAN;
+        }
+        self.0.inverse_cdf(p)
+    }
 }
 
 /// Represents a Gamma distribution.
@@ -531,6 +601,20 @@ impl GammaDist {
         x: f64,
     ) -> f64 {
         self.0.cdf(x)
+    }
+
+    /// Returns the quantile (inverse CDF) at probability `p`.
+    ///
+    /// Returns `NaN` when `p` is outside `[0, 1]`.
+    #[must_use]
+    pub fn inverse_cdf(
+        &self,
+        p: f64,
+    ) -> f64 {
+        if !(0.0..=1.0).contains(&p) {
+            return f64::NAN;
+        }
+        self.0.inverse_cdf(p)
     }
 }
 

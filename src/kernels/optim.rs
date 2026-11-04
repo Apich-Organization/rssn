@@ -20,10 +20,21 @@
 //!   qualification: a redundant or degenerate constraint at the solution
 //!   (two rows with proportional gradients) leaves them non-unique, and
 //!   only one of the possible multiplier vectors is reported.
-//! * Only first-order (KKT) optimality is certified. Second-order
-//!   sufficiency is not tested, so a stationary point of the Lagrangian
-//!   that is a maximum or a saddle along a feasible direction is reported
-//!   as [`ConstrainedStatus::Optimal`].
+//! * Only first-order (KKT) optimality is what [`sqp`] verifies while it
+//!   iterates, but the returned [`ConstrainedResult::second_order`] now tests
+//!   second-order sufficiency at the reported KKT point: the dense Hessian of
+//!   the Lagrangian (central differences on the objective and the multiplier
+//!   combination) is projected onto the null space of the active constraint
+//!   Jacobian and its smallest eigenvalue is compared with a finite-difference
+//!   noise margin ([`SecondOrderStatus`], also available standalone as
+//!   [`second_order_check`]). The verdict is [`SecondOrderStatus::Inconclusive`]
+//!   when there is no feasible direction (the active gradients span `R^n`), at
+//!   a non-KKT outcome, or when the reduced eigenvalue is inside the margin, so
+//!   a saddle is flagged rather than silently called optimal, but sufficiency
+//!   is never claimed on a degenerate eigenvalue. The Hessian is dense and
+//!   finite-difference, not analytic, and the active set uses the reported
+//!   multipliers (degenerate/LICQ-violating constraints can make the projection
+//!   ill-conditioned and the verdict inconclusive).
 //! * Infeasibility is a *local* verdict: [`ConstrainedStatus::Infeasible`]
 //!   means the restoration phase reached a stationary point of the summed
 //!   squared violation with a positive residual. It is sound for the small
@@ -701,7 +712,8 @@ where
 pub enum ConstrainedStatus {
     /// A KKT point was reached: the constraint violation is at most the
     /// requested tolerance and the stationarity residual is at most
-    /// `max(tolerance, 1e-8)`.
+    /// `max(tolerance, 1e-8)`. This is a *first-order* verdict; see
+    /// [`ConstrainedResult::second_order`] for the second-order one.
     Optimal,
     /// The constraints could not be satisfied to tolerance. The
     /// least-squares restoration phase stopped at a point where no
@@ -710,6 +722,26 @@ pub enum ConstrainedStatus {
     Infeasible,
     /// The iteration limit was reached before either verdict.
     IterationLimit,
+}
+
+/// Second-order sufficiency verdict at the KKT point reported by [`sqp`].
+///
+/// The check builds the Hessian of the Lagrangian `L = f + lambda . h + mu . g`,
+/// projects it onto the null space of the active constraint Jacobian (all
+/// equality rows, plus the inequality rows that are active at the point), and
+/// asks whether the reduced Hessian is positive definite with a margin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SecondOrderStatus {
+    /// The reduced Hessian is positive definite with a margin: the KKT point is
+    /// a strict local minimiser to the accuracy of the finite-difference check.
+    Sufficient,
+    /// A feasible direction has negative curvature: the KKT point is a saddle
+    /// (or a maximum) along the feasible set, not a local minimiser.
+    NotSufficient,
+    /// Not decided: the outcome was not [`ConstrainedStatus::Optimal`], there
+    /// is no feasible direction to test, or the smallest reduced eigenvalue is
+    /// inside the finite-difference noise margin. The check never guesses.
+    Inconclusive,
 }
 
 /// Result of [`sqp`], with feasibility and optimality reported separately.
@@ -739,6 +771,12 @@ pub struct ConstrainedResult {
     /// Multipliers of `g`: non-negative, and zero for every constraint
     /// that is not active at `x` (complementary slackness).
     pub mu: Vec<f64>,
+    /// Second-order sufficiency verdict at the reported point. Computed when
+    /// the status is [`ConstrainedStatus::Optimal`] (with the reported
+    /// multipliers) and [`SecondOrderStatus::Inconclusive`] otherwise; the
+    /// evaluation cost of the check is included in
+    /// [`ConstrainedResult::evaluations`].
+    pub second_order: SecondOrderStatus,
 }
 
 /// Solution of the quadratic program solved at each SQP iteration.
@@ -1010,6 +1048,7 @@ where
     evals += 1;
     let mut iterations = 0;
     let mut status = ConstrainedStatus::IterationLimit;
+    let mut second_order = SecondOrderStatus::Inconclusive;
     let mut kkt = f64::INFINITY;
     loop {
         let violation = max_violation(&hx, &gx);
@@ -1040,6 +1079,10 @@ where
         let viol = max_violation(&hx, &gx);
         if dnorm <= 1e-10 && viol <= tol && kkt <= stat_tol {
             status = ConstrainedStatus::Optimal;
+            let (verdict, check_evals) =
+                second_order_status(&f, &eq, &ineq, &x, &lambda, &mu, stat_tol);
+            second_order = verdict;
+            evals = evals.saturating_add(check_evals);
             break;
         }
         if iterations >= max_iter {
@@ -1128,6 +1171,7 @@ where
         kkt_residual: kkt,
         lambda,
         mu,
+        second_order,
     }
 }
 
@@ -1167,6 +1211,219 @@ pub fn kkt_residual(
     lagrangian_gradient(gf, jh, jg, lambda, mu)
         .iter()
         .fold(0.0, |a, v| a.max(v.abs()))
+}
+
+/// Relative margin inside which the smallest reduced eigenvalue is treated as
+/// numerically zero by [`second_order_check`].
+const SECOND_ORDER_MARGIN: f64 = 1e-6;
+
+/// Second-order sufficiency check at a KKT point `x`.
+///
+/// Builds the dense Hessian of the Lagrangian
+/// `L = f + sum_i lambda_i h_i + sum_j mu_j g_j` by central differences of `L`
+/// itself (so no analytic gradient is required), projects it onto the null
+/// space of the active constraint Jacobian and tests the reduced Hessian for
+/// positive definiteness. Active inequalities are those with `g_j(x)` at least
+/// `-1e-8` or with a strictly positive reported multiplier.
+///
+/// Returns [`SecondOrderStatus::Sufficient`] when the smallest eigenvalue of the
+/// reduced Hessian is larger than a finite-difference margin, and
+/// [`SecondOrderStatus::NotSufficient`] when it is more negative than that
+/// margin. Returns [`SecondOrderStatus::Inconclusive`] when the active
+/// constraint gradients span the whole space (no feasible direction), when the
+/// null space or the eigenproblem cannot be formed, or when the eigenvalue is
+/// inside the margin.
+///
+/// The cost is `O(n^2)` evaluations of `f`, `h` and `g` for the Hessian (each
+/// call is counted as one evaluation), plus the finite-difference Jacobians of
+/// the constraints, and dense `O(n^3)` linear algebra.
+#[must_use]
+pub fn second_order_check<F, H, K>(
+    f: F,
+    eq: H,
+    ineq: K,
+    x: &[f64],
+    lambda: &[f64],
+    mu: &[f64],
+) -> SecondOrderStatus
+where
+    F: Fn(&[f64]) -> f64,
+    H: Fn(&[f64]) -> Vec<f64>,
+    K: Fn(&[f64]) -> Vec<f64>,
+{
+    second_order_status(&f, &eq, &ineq, x, lambda, mu, 1e-8).0
+}
+
+/// Implementation of [`second_order_check`] that also reports how many
+/// `f`/`h`/`g` evaluations the check used, so [`sqp`] can include them in its
+/// count.
+fn second_order_status<F, H, K>(
+    f: &F,
+    eq: &H,
+    ineq: &K,
+    x: &[f64],
+    lambda: &[f64],
+    mu: &[f64],
+    activation_tol: f64,
+) -> (SecondOrderStatus, usize)
+where
+    F: Fn(&[f64]) -> f64,
+    H: Fn(&[f64]) -> Vec<f64>,
+    K: Fn(&[f64]) -> Vec<f64>,
+{
+    let n = x.len();
+    if n == 0 {
+        return (SecondOrderStatus::Inconclusive, 0);
+    }
+    let hx = eq(x);
+    let gx = ineq(x);
+    let ne = hx.len();
+    let ni = gx.len();
+    let lag_cost = 1 + ne + ni;
+    let mut evals = 2;
+    let lag = |z: &[f64]| -> f64 {
+        let mut value = f(z);
+        let h = eq(z);
+        let g = ineq(z);
+        for (i, l) in lambda.iter().enumerate() {
+            value += l * pick(&h, i);
+        }
+        for (i, m) in mu.iter().enumerate() {
+            value += m * pick(&g, i);
+        }
+        value
+    };
+    // Hessian of L by central differences. The step is larger than the one
+    // used for gradients because a second difference divides by h^2: 1e-4
+    // balances truncation (O(h^2)) against round-off (O(eps/h^2)).
+    let mut hess = Mat::zeros(n, n);
+    let l0 = lag(x);
+    evals += lag_cost;
+    let mut z = x.to_vec();
+    let step = |i: usize| 1e-4 * x[i].abs().max(1.0);
+    for i in 0..n {
+        let hi = step(i);
+        z[i] = x[i] + hi;
+        let fp = lag(&z);
+        z[i] = x[i] - hi;
+        let fm = lag(&z);
+        z[i] = x[i];
+        hess.set(i, i, (fp - 2.0 * l0 + fm) / (hi * hi));
+        for j in 0..i {
+            let hj = step(j);
+            z[i] = x[i] + hi;
+            z[j] = x[j] + hj;
+            let pp = lag(&z);
+            z[j] = x[j] - hj;
+            let pm = lag(&z);
+            z[i] = x[i] - hi;
+            z[j] = x[j] + hj;
+            let mp = lag(&z);
+            z[j] = x[j] - hj;
+            let mm = lag(&z);
+            z[i] = x[i];
+            z[j] = x[j];
+            let value = (pp - pm - mp + mm) / (4.0 * hi * hj);
+            hess.set(i, j, value);
+            hess.set(j, i, value);
+        }
+    }
+    // 1 + 2 n^2 Lagrangian evaluations (the diagonal needs 2n, each of the
+    // n(n-1)/2 off-diagonal pairs needs 4, and l0 is one).
+    evals += lag_cost * (1 + 2 * n * n);
+    // Active rows: every equality plus the inequalities active at x.
+    let mut rows: Vec<Vec<f64>> = fd_jacobian(eq, x, ne, &mut evals);
+    for (j, row) in fd_jacobian(ineq, x, ni, &mut evals).into_iter().enumerate() {
+        let g_j = pick(&gx, j);
+        let mu_j = pick(mu, j);
+        if g_j >= -activation_tol || mu_j > 0.0 {
+            rows.push(row);
+        }
+    }
+    // Orthonormal basis of the active row space, two Gram-Schmidt passes.
+    let mut basis: Vec<Vec<f64>> = Vec::new();
+    for mut row in rows {
+        let raw = dot(&row, &row).sqrt();
+        for _ in 0..2 {
+            for q in &basis {
+                let d = dot(&row, q);
+                for (a, b) in row.iter_mut().zip(q) {
+                    *a -= d * b;
+                }
+            }
+        }
+        let norm = dot(&row, &row).sqrt();
+        if norm > 1e-10 * raw.max(1.0) {
+            for a in &mut row {
+                *a /= norm;
+            }
+            basis.push(row);
+        }
+    }
+    let rank = basis.len();
+    let target = n.saturating_sub(rank);
+    if target == 0 {
+        // The active constraints pin the point: there is no feasible direction.
+        return (SecondOrderStatus::Inconclusive, evals);
+    }
+    // Orthonormal basis of the null space of the active rows.
+    let mut null_basis: Vec<Vec<f64>> = Vec::with_capacity(target);
+    for k in 0..n {
+        let mut v = vec![0.0; n];
+        v[k] = 1.0;
+        for _ in 0..2 {
+            for q in &basis {
+                let d = dot(&v, q);
+                for (a, b) in v.iter_mut().zip(q) {
+                    *a -= d * b;
+                }
+            }
+        }
+        let norm = dot(&v, &v).sqrt();
+        if norm > 1e-8 {
+            for a in &mut v {
+                *a /= norm;
+            }
+            null_basis.push(v);
+            if null_basis.len() == target {
+                break;
+            }
+        }
+    }
+    if null_basis.len() != target {
+        return (SecondOrderStatus::Inconclusive, evals);
+    }
+    // Z^T H Z, symmetrised against round-off before the eigen-decomposition.
+    let mut reduced = Mat::zeros(target, target);
+    for a in 0..target {
+        let hz = hess.matvec(&null_basis[a]);
+        for b in 0..target {
+            reduced.set(a, b, dot(&hz, &null_basis[b]));
+        }
+    }
+    for a in 0..target {
+        for b in 0..a {
+            let value = reduced.at(a, b).midpoint(reduced.at(b, a));
+            reduced.set(a, b, value);
+            reduced.set(b, a, value);
+        }
+    }
+    let Ok((eigenvalues, _)) = dense::eigen_symmetric(&reduced) else {
+        return (SecondOrderStatus::Inconclusive, evals);
+    };
+    let Some(&lambda_min) = eigenvalues.first() else {
+        return (SecondOrderStatus::Inconclusive, evals);
+    };
+    let scale = hess.data.iter().fold(0.0_f64, |acc, v| acc.max(v.abs()));
+    let margin = SECOND_ORDER_MARGIN * scale.max(1e-12);
+    let verdict = if lambda_min > margin {
+        SecondOrderStatus::Sufficient
+    } else if lambda_min < -margin {
+        SecondOrderStatus::NotSufficient
+    } else {
+        SecondOrderStatus::Inconclusive
+    };
+    (verdict, evals)
 }
 
 /// Gauss-Newton restoration: moves `x` until the violation is at most

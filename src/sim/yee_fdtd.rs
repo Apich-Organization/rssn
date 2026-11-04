@@ -9,15 +9,22 @@
 //! | Feature | 1D | 2D | 3D |
 //! |---|---|---|---|
 //! | Yee update, isotropic dielectric `ε_r(x)` | yes | yes | yes |
-//! | PEC walls, periodic faces | yes | yes | yes |
+//! | ohmic conduction `σ(x) E` (semi-implicit) | yes | yes | yes |
+//! | PEC walls, PMC walls (`Neumann`/`Symmetry`), periodic faces | yes | yes | yes |
 //! | convolutional PML (graded, `κ = 1`, `α = 0`) per face | yes | yes | yes |
 //! | soft current source (any component) | yes | yes | yes |
 //! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation (1D auxiliary grid) | yes | yes | yes |
 //! | TF/SF plane wave on an **arbitrary box with oblique incidence** ([`ObliquePlaneWave`]) | yes | yes | yes |
 //!
 //! Boundary faces use [`BoundaryCondition`]: `Dirichlet` is a PEC wall,
-//! `Periodic` wraps, `Absorbing` is a PML of `pml_cells` cells terminated by
-//! a PEC wall. PMC walls (`Neumann`/`Symmetry`) are rejected.
+//! `Neumann`/`Symmetry` is a PMC wall, `Periodic` wraps, `Absorbing` is a PML
+//! of `pml_cells` cells terminated by a PEC wall. A PMC wall is the magnetic
+//! dual of a PEC wall (tangential `H = 0`, normal `E = 0`): it reflects the
+//! tangential `E` with coefficient `+1`, whereas a PEC wall reflects it with
+//! `-1`. Because the Yee lattice staggers `E` and `H`, the wall sits half a
+//! cell inside the nominal face (on the tangential-`H` plane where the normal
+//! `E` node lies), so a PMC-terminated cavity of `n` cells is exactly the
+//! mirror half of a PEC cavity of `2n - 1` cells.
 //!
 //! The TF/SF box is a slab spanning the full transverse extent between the
 //! `x` indices `ia` and `ib` (so it needs transverse periodic, PEC or PML
@@ -47,6 +54,16 @@
 //!   is the `ω0 = a = 0` case of the same bound). [`Yee::new`] clamps `dt` to
 //!   the stiffest pole, so a strong Lorentz pole *tightens* the time step;
 //!   [`Yee::ade_dt_limit`] reports the bound.
+//! * *Ohmic conduction* ([`YeeConfig::sigma`], [`Yee::ohmic_loss`]): a scalar
+//!   conductivity `σ(x)` sampled at the `E` nodes adds `-σ E` to Ampère's
+//!   law, integrated semi-implicitly
+//!   `((2ε - σ dt) E^n + 2 dt ∇×H^n)/(2ε + σ dt)`; the term is
+//!   unconditionally stable, leaves the `σ = 0` path bit for bit unchanged
+//!   and combines with the dispersive current. The dissipated power `σ E²` is
+//!   accumulated in [`Yee::ohmic_loss`] with the midpoint rule, so
+//!   `energy() + ohmic_loss()` is conserved up to the scheme's estimator
+//!   wobble. In a lossy medium a monochromatic wave decays as `e^{-α x}` with
+//!   `α = ω sqrt(ε μ / 2) sqrt(sqrt(1 + (σ/(ω ε))²) - 1)`.
 //! * *Complex-frequency-shifted PML*: `κ` stretching and `α` shift
 //!   ([`YeeConfig::pml_kappa_max`], [`YeeConfig::pml_alpha_max`]) absorb
 //!   evanescent and grazing waves that the plain PML reflects.
@@ -61,14 +78,17 @@
 //!   the usual consistent total/scattered correction).
 //!
 //! Limitations: the medium is isotropic and non-magnetic (`μ = μ0`, no
-//! gyrotropy, no tensorial `ε`), it has no ohmic `σ E` term (conduction is
-//! modelled only with inertia, as a Drude pole), and every pole is linear
-//! with fixed parameters (no saturable or field-dependent susceptibility, so
-//! no nonlinear optics). A pole is integrated with second-order central
-//! differences, which caps the time step as described above. The Dey–Mittra
-//! treatment is not combined with the TF/SF source or periodic faces, the
-//! auxiliary-grid plane wave and the analytic oblique wave assume a vacuum
-//! incident medium, and PMC boundaries are not available.
+//! gyrotropy, no tensorial `ε` or `σ`), every pole is linear with fixed
+//! parameters (no saturable or field-dependent susceptibility, so no
+//! nonlinear optics) and conduction is the scalar ohmic term plus optional
+//! Drude poles (no field-dependent mobility). A pole is integrated with
+//! second-order central differences, which caps the time step as described
+//! above; the ohmic term is semi-implicit and does not tighten that bound. A
+//! PMC wall is placed on the tangential-`H` Yee plane, half a cell inside the
+//! nominal face (the price of the `E`/`H` stagger), is not supported by the
+//! Dey–Mittra subcell PEC scheme (PEC walls only) and has not been validated
+//! with the oblique TF/SF source. The auxiliary-grid plane wave and the
+//! analytic oblique wave assume a vacuum incident medium.
 
 use crate::sim::boundary::BoundaryCondition;
 use crate::sim::boundary::Face;
@@ -224,6 +244,9 @@ pub struct YeeConfig {
     pub pml_order: f64,
     /// Relative permittivity at `E` nodes (vacuum when `None`); with poles this is `ε∞`.
     pub eps_r: Option<Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>>,
+    /// Ohmic conductivity at `E` nodes (lossless when `None`); in the solver
+    /// units (`ε0 = μ0 = c = 1`) the ohmic rate is `σ / ε`.
+    pub sigma: Option<Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>>,
     /// Maximum PML coordinate stretching `κ` (1 = plain PML).
     pub pml_kappa_max: f64,
     /// Maximum complex-frequency shift `α` of the PML (0 = plain PML), in
@@ -259,6 +282,7 @@ impl YeeConfig {
             pml_cells: 10,
             pml_order: 3.0,
             eps_r: None,
+            sigma: None,
             pml_kappa_max: 1.0,
             pml_alpha_max: 0.0,
             dispersive: None,
@@ -281,8 +305,12 @@ pub struct Yee {
     /// Fields `[Ex, Ey, Ez, Hx, Hy, Hz]`.
     pub f: [Vec<f64>; 6],
     eps_inv: Vec<f64>,
+    sigma: Vec<f64>,
+    ohmic_loss: f64,
     periodic: [bool; 3],
     pec_lo: [bool; 3],
+    pmc_lo: [bool; 3],
+    pmc_hi: [bool; 3],
     // PML coefficients per axis: (b, a, kappa) at integer and half positions
     pml_int: [Vec<(f64, f64, f64)>; 3],
     pml_half: [Vec<(f64, f64, f64)>; 3],
@@ -356,6 +384,8 @@ impl Yee {
         let dt = cfg.cfl / inv_sum.sqrt();
         let mut periodic = [false; 3];
         let mut pec_lo = [false; 3];
+        let mut pmc_lo = [false; 3];
+        let mut pmc_hi = [false; 3];
         let mut use_pml = false;
         let mut pml_int: [Vec<(f64, f64, f64)>; 3] =
             std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
@@ -368,6 +398,13 @@ impl Yee {
                 let bc = cfg.bcs.get(Face::of_axis(a, max));
                 match bc {
                     | BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {},
+                    | BoundaryCondition::Neumann(_) | BoundaryCondition::Symmetry => {
+                        if max {
+                            pmc_hi[a] = true;
+                        } else {
+                            pmc_lo[a] = true;
+                        }
+                    },
                     | BoundaryCondition::Absorbing => {
                         let d = cfg.pml_cells;
                         if 2 * d >= cfg.n[a] {
@@ -411,7 +448,7 @@ impl Yee {
                         }
                     },
                     | _ => return Err(
-                        "YeeConfig supports PEC (Dirichlet), periodic and PML (Absorbing) faces"
+                        "YeeConfig supports PEC (Dirichlet), PMC (Neumann/Symmetry), periodic and PML (Absorbing) faces"
                             .into(),
                     ),
                 }
@@ -432,6 +469,25 @@ impl Yee {
                 1.0 / cfg.eps_r.as_ref().map_or(1.0, |f| f(x))
             })
             .collect();
+        let sigma: Vec<f64> = match &cfg.sigma {
+            | None => Vec::new(),
+            | Some(f) => {
+                (0..nn)
+                    .map(|p| {
+                        let i = [
+                            p % cfg.n[0],
+                            (p / cfg.n[0]) % cfg.n[1],
+                            p / (cfg.n[0] * cfg.n[1]),
+                        ];
+                        f([
+                            i[0] as f64 * cfg.h[0],
+                            i[1] as f64 * cfg.h[1],
+                            i[2] as f64 * cfg.h[2],
+                        ])
+                    })
+                    .collect()
+            },
+        };
         let psi = if use_pml {
             vec![vec![0.0; nn]; 12]
         } else {
@@ -499,7 +555,11 @@ impl Yee {
         }
         let mut dt = dt.min(ade_dt_limit);
         let dm = if let Some(body) = &cfg.pec_body {
-            if use_pml || periodic.iter().any(|&b| b) {
+            if use_pml
+                || periodic.iter().any(|&b| b)
+                || pmc_lo.iter().any(|&b| b)
+                || pmc_hi.iter().any(|&b| b)
+            {
                 return Err("the subcell PEC scheme is available with PEC walls only".into());
             }
             let outside = |x: [f64; 3]| body(x);
@@ -568,8 +628,12 @@ impl Yee {
             t: 0.0,
             f: std::array::from_fn(|_| vec![0.0; nn]),
             eps_inv,
+            sigma,
+            ohmic_loss: 0.0,
             periodic,
             pec_lo,
+            pmc_lo,
+            pmc_hi,
             pml_int,
             pml_half,
             psi,
@@ -869,10 +933,25 @@ impl Yee {
         self.ade_dt_limit
     }
 
+    /// Ohmic conductivity at every cell (empty when the medium is lossless).
+    #[must_use]
+    pub fn sigma(&self) -> &[f64] {
+        &self.sigma
+    }
+
+    /// Total ohmic energy dissipated so far, `∫ Σ σ E² dV dt` (zero for a
+    /// lossless medium). It is accumulated with the midpoint rule, so
+    /// `energy() + ohmic_loss()` is conserved up to the estimator wobble.
+    #[must_use]
+    pub const fn ohmic_loss(&self) -> f64 {
+        self.ohmic_loss
+    }
+
     /// Conserved energy: `½ Σ (ε∞ E² + H²) ΔV` and, for a dispersive medium,
     /// the oscillator energy `Σ (P_t² + ω0² P²) / (2 a) ΔV` of every pole,
-    /// both taken at `n - 1/2`. Without poles this is the electromagnetic
-    /// energy alone.
+    /// both taken at `n - 1/2`. Without poles and without ohmic conduction
+    /// this is the electromagnetic energy alone; with conduction it excludes
+    /// the dissipated part, which accumulates in [`Yee::ohmic_loss`].
     ///
     /// `E` sits at `n` and `H` at `n + 1/2`, so the estimator itself wobbles
     /// at `O(ω dt)` (a few per cent on a coarse grid) even where the discrete
@@ -930,10 +1009,14 @@ impl Yee {
         (nb - f[self.idx(ijk[0], ijk[1], ijk[2])]) / self.cfg.h[a]
     }
 
-    /// Backward difference `(f[i] - f[i-1]) / h` along `a`.
+    /// Backward difference `(f[i] - f[i-1]) / h` along `a` of field component
+    /// `comp`. At a PMC wall the tangential `H` is odd about the wall, so its
+    /// ghost value used by the `E` update at the boundary node is the mirror
+    /// of the first interior node.
     fn dbw(
         &self,
         f: &[f64],
+        comp: usize,
         ijk: [usize; 3],
         a: usize,
     ) -> f64 {
@@ -948,6 +1031,9 @@ impl Yee {
         } else if self.periodic[a] {
             q[a] = n - 1;
             f[self.idx(q[0], q[1], q[2])]
+        } else if self.pmc_lo[a] && comp >= 3 && comp - 3 != a {
+            q[a] = 1;
+            -f[self.idx(q[0], q[1], q[2])]
         } else {
             0.0
         };
@@ -1004,8 +1090,8 @@ impl Yee {
             axis: a2,
             psi: m2,
         } = t2;
-        let mut d1 = self.dbw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
-        let mut d2 = self.dbw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
+        let mut d1 = self.dbw(&self.f[f1], f1, ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
+        let mut d2 = self.dbw(&self.f[f2], f2, ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
         if self.use_pml {
             let (b, a, k) = self.pml_int[a1][ijk[a1]];
             self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
@@ -1097,6 +1183,27 @@ impl Yee {
                 std::mem::swap(&mut self.f[c], &mut dm.scratch[c]);
             }
         }
+        // A PMC wall (Neumann/Symmetry) is the tangential-H plane of the Yee
+        // cell: the tangential H vanishes there (the reflected tangential E
+        // keeps its sign), so those components are frozen.
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    let ijk = [i, j, k];
+                    let p = self.idx(i, j, k);
+                    for a in 0..self.cfg.dim {
+                        let last = self.cfg.n[a] - 1;
+                        if (self.pmc_lo[a] && ijk[a] == 0) || (self.pmc_hi[a] && ijk[a] == last) {
+                            for c in 0..3 {
+                                if c != a {
+                                    self.f[3 + c][p] = 0.0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn update_e(&mut self) {
@@ -1173,9 +1280,27 @@ impl Yee {
                             layer.p[c][p] = pnew;
                         }
                     }
-                    self.f[0][p] += ei * (dt * cx - dp[0]);
-                    self.f[1][p] += ei * (dt * cy - dp[1]);
-                    self.f[2][p] += ei * (dt * cz - dp[2]);
+                    let sig = self.sigma.get(p).copied().unwrap_or(0.0);
+                    if sig == 0.0 {
+                        self.f[0][p] += ei * (dt * cx - dp[0]);
+                        self.f[1][p] += ei * (dt * cy - dp[1]);
+                        self.f[2][p] += ei * (dt * cz - dp[2]);
+                    } else {
+                        // Semi-implicit ohmic conduction
+                        // (2ε + σdt) E^{n+1} = (2ε - σdt) E^n + 2dt ∇×H - 2ΔP.
+                        let sd = sig * dt * ei;
+                        let den = 2.0 + sd;
+                        let old = [self.f[0][p], self.f[1][p], self.f[2][p]];
+                        for (c, curl) in [cx, cy, cz].into_iter().enumerate() {
+                            self.f[c][p] =
+                                ((2.0 - sd) * old[c] + 2.0 * (dt * ei * curl - ei * dp[c])) / den;
+                        }
+                        let dv: f64 = (0..self.cfg.dim).map(|a| self.cfg.h[a]).product();
+                        for c in 0..3 {
+                            let em = f64::midpoint(old[c], self.f[c][p]);
+                            self.ohmic_loss += sig * em * em * dt * dv;
+                        }
+                    }
                     if let Some(dm) = &self.dm {
                         for c in 0..3 {
                             if dm.len[c][p] <= 0.0 {
@@ -1186,19 +1311,31 @@ impl Yee {
                 }
             }
         }
-        // PEC at the lower faces: tangential E vanishes
+        // Walls. A PEC wall (Dirichlet) zeroes the tangential E at the lower
+        // face; the upper face uses the zero ghost in `dfw`. A PMC wall
+        // (Neumann/Symmetry) zeroes the normal E on the magnetic-wall plane
+        // (`E_a` at index 0 for a lower face and at `n - 1` for an upper one)
+        // and leaves the tangential E free.
         for k in 0..n[2] {
             for j in 0..n[1] {
                 for i in 0..n[0] {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     for a in 0..self.cfg.dim {
-                        if self.pec_lo[a] && ijk[a] == 0 {
+                        let last = self.cfg.n[a] - 1;
+                        if self.pmc_lo[a] {
+                            if ijk[a] == 0 {
+                                self.f[a][p] = 0.0;
+                            }
+                        } else if self.pec_lo[a] && ijk[a] == 0 {
                             for c in 0..3 {
                                 if c != a {
                                     self.f[c][p] = 0.0;
                                 }
                             }
+                        }
+                        if self.pmc_hi[a] && ijk[a] == last {
+                            self.f[a][p] = 0.0;
                         }
                     }
                 }

@@ -2,7 +2,8 @@
 
 use std::os::raw::c_char;
 
-use serde_json::json;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::RSSN_NO_TERM;
 use super::RssnStatus;
@@ -14,6 +15,7 @@ use super::term::borrow_session;
 use super::term::resolve;
 use super::text;
 use super::to_c;
+use crate::api::Answer;
 use crate::api::Config;
 use crate::graph::DimensionMode;
 use crate::graph::Facts;
@@ -41,12 +43,121 @@ pub struct RssnAnswer {
     pub iterations: usize,
 }
 
+/// The answer of one computation, as the record both `rssn_compute_json` and
+/// [`rssn_compute_bincode`] carry.
+///
+/// The JSON text and the `bincode-next` bytes are two encodings of this one
+/// struct, so the two paths cannot drift. The field names are the JSON keys;
+/// the byte form is
+/// [`encode_deterministic`](crate::kernel::codec::encode_deterministic) — the
+/// same configuration plugin ABI messages and content-address digests use —
+/// and
+/// [`decode_deterministic`](crate::kernel::codec::decode_deterministic) reads
+/// it back.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RssnComputeRecord {
+    /// The answer term as infix text: what `rssn_term_to_string` returns for
+    /// it.
+    pub term: String,
+    /// The numeric value, when one is known.
+    pub value: Option<f64>,
+    /// Estimated absolute error of `value`, when one is known.
+    pub error: Option<f64>,
+    /// Whether the request was fully reduced; `false` means the answer still
+    /// contains unevaluated operators.
+    pub reduced: bool,
+    /// Outer iterations the engine performed.
+    ///
+    /// `u64` rather than `usize` so the encoding is the same on 32- and
+    /// 64-bit hosts.
+    pub iterations: u64,
+    /// The inferred dimension as text, when one was inferred.
+    pub dimension: Option<String>,
+    /// Advisory dimensional findings, as text.
+    pub diagnostics: Vec<String>,
+}
+
+/// The record both wire formats carry.
+fn record(answer: &Answer<'_>) -> RssnComputeRecord {
+    RssnComputeRecord {
+        term: answer.term.to_string(),
+        value: answer.value,
+        error: answer.error,
+        reduced: answer.reduced,
+        iterations: u64::try_from(answer.report.iterations).unwrap_or(u64::MAX),
+        dimension: answer
+            .dimension
+            .as_ref()
+            .map(std::string::ToString::to_string),
+        diagnostics: answer
+            .diagnostics
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
+    }
+}
+
+/// One request's entry of a [`RssnComputeBatchRecord`], as
+/// `rssn_compute_all_bincode` writes it.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RssnBatchEntry {
+    /// The status of this request, as the numeric value of [`RssnStatus`]:
+    /// the same code a C host reads from the `statuses` array of
+    /// `rssn_compute_all`.
+    pub status: u32,
+    /// The answer, present exactly when `status` is `RssnStatus::Ok`.
+    pub answer: Option<RssnComputeRecord>,
+}
+
+/// The answer of `rssn_compute_all_bincode`: one [`RssnBatchEntry`] per input
+/// handle, in input order.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RssnComputeBatchRecord {
+    /// The entries, in input order: entry `k` belongs to `terms[k]`.
+    pub entries: Vec<RssnBatchEntry>,
+}
+
+/// Runs one request under `config`; null means the defaults.
+///
+/// # Safety
+/// `session` must be a live session and `config` null or a live
+/// configuration.
+unsafe fn run_request<'s>(
+    session: *const RssnSession,
+    term: u32,
+    config: *const RssnConfig,
+) -> Result<Answer<'s>, RssnStatus> {
+    // SAFETY: caller contract.
+    let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
+        | Ok(t) => t,
+        | Err(status) => return Err(status),
+    };
+    let default;
+    // SAFETY: caller contract.
+    let config = match unsafe { config.as_ref() } {
+        | Some(config) => &config.0,
+        | None => {
+            default = Config::new();
+            &default
+        },
+    };
+    request
+        .session()
+        .compute(request, config)
+        .map_err(|error| compute_error(&error))
+}
+
 /// A configuration with every standard rule set and a symbolic target.
-/// Free it with `rssn_config_free`.
+/// Free it with `rssn_config_free`. Returns null if the built-in rule sets
+/// fail to install; the reason is then in `rssn_last_error`.
 #[unsafe(no_mangle)]
 pub extern "C" fn rssn_config_new() -> *mut RssnConfig {
-    std::panic::catch_unwind(|| Box::into_raw(Box::new(RssnConfig(Config::new()))))
-        .unwrap_or(std::ptr::null_mut())
+    let mut config = std::ptr::null_mut();
+    let _ = guard(|| {
+        config = Box::into_raw(Box::new(RssnConfig(Config::new())));
+        RssnStatus::Ok
+    });
+    config
 }
 
 /// Releases a configuration. Null is ignored.
@@ -167,18 +278,20 @@ pub unsafe extern "C" fn rssn_config_dimension_mode(
     config: *mut RssnConfig,
     mode: u8,
 ) -> RssnStatus {
-    let mode = match mode {
-        | 0 => DimensionMode::Off,
-        | 1 => DimensionMode::Advisory,
-        | 2 => DimensionMode::Strict,
-        | _ => {
-            return fail(
-                RssnStatus::InvalidArgument,
-                "dimension mode must be 0, 1 or 2",
-            );
-        },
-    };
-    edit(config, |c| Ok(c.dimensions(mode)))
+    edit(config, |c| {
+        let mode = match mode {
+            | 0 => DimensionMode::Off,
+            | 1 => DimensionMode::Advisory,
+            | 2 => DimensionMode::Strict,
+            | _ => {
+                return Err(fail(
+                    RssnStatus::InvalidArgument,
+                    "dimension mode must be 0, 1 or 2",
+                ));
+            },
+        };
+        Ok(c.dimensions(mode))
+    })
 }
 
 /// Declares the dimension of `symbol` as `text` (a unit expression, a
@@ -243,22 +356,9 @@ pub unsafe extern "C" fn rssn_compute(
             return fail(RssnStatus::NullArgument, "null output pointer");
         }
         // SAFETY: caller contract.
-        let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
-            | Ok(t) => t,
-            | Err(e) => return e,
-        };
-        let default;
-        // SAFETY: caller contract.
-        let config = match unsafe { config.as_ref() } {
-            | Some(c) => &c.0,
-            | None => {
-                default = Config::new();
-                &default
-            },
-        };
-        let answer = match request.session().compute(request, config) {
-            | Ok(a) => a,
-            | Err(e) => return compute_error(&e),
+        let answer = match unsafe { run_request(session, term, config) } {
+            | Ok(answer) => answer,
+            | Err(status) => return status,
         };
         let result = RssnAnswer {
             term: answer.term.id(),
@@ -276,9 +376,11 @@ pub unsafe extern "C" fn rssn_compute(
 
 /// Computes `term` and writes a JSON object to `*out`.
 ///
-/// The object has `term`, `value`, `error`, `reduced`, `iterations`,
-/// `dimension` (a dimension string or `null`) and `diagnostics` (an array of
-/// strings). Free the string with `rssn_string_free`.
+/// The object is [`RssnComputeRecord`] serialised as JSON: `term`, `value`,
+/// `error`, `reduced`, `iterations`, `dimension` (a dimension string or
+/// `null`) and `diagnostics` (an array of strings). Free the string with
+/// `rssn_string_free`. [`rssn_compute_bincode`] carries the same record in
+/// the crate's binary wire format.
 ///
 /// # Safety
 /// `session` must be a live session, `config` null or a live
@@ -295,38 +397,28 @@ pub unsafe extern "C" fn rssn_compute_json(
             return fail(RssnStatus::NullArgument, "null output pointer");
         }
         // SAFETY: caller contract.
-        let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
-            | Ok(t) => t,
-            | Err(e) => return e,
+        let answer = match unsafe { run_request(session, term, config) } {
+            | Ok(answer) => answer,
+            | Err(status) => return status,
         };
-        let default;
-        // SAFETY: caller contract.
-        let config = match unsafe { config.as_ref() } {
-            | Some(c) => &c.0,
-            | None => {
-                default = Config::new();
-                &default
+        let document = match serde_json::to_value(record(&answer)) {
+            | Ok(document) => document,
+            | Err(error) => {
+                return fail(
+                    RssnStatus::Panic,
+                    &format!("the answer could not be encoded: {error}"),
+                );
             },
         };
-        let answer = match request.session().compute(request, config) {
-            | Ok(a) => a,
-            | Err(e) => return compute_error(&e),
-        };
-        let document = json!({
-            "term": answer.term.to_string(),
-            "value": answer.value,
-            "error": answer.error,
-            "reduced": answer.reduced,
-            "iterations": answer.report.iterations,
-            "dimension": answer.dimension.map(|d| d.to_string()),
-            "diagnostics": answer
-                .diagnostics
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>(),
-        });
-        // SAFETY: non-null by the check above.
-        unsafe { *out = to_c(document.to_string()) };
+        let text = to_c(document.to_string());
+        if text.is_null() {
+            return fail(
+                RssnStatus::Panic,
+                "the answer is not representable as a C string",
+            );
+        }
+        // SAFETY: `out` is non-null by the check above.
+        unsafe { *out = text };
         RssnStatus::Ok
     })
 }
@@ -350,28 +442,79 @@ pub unsafe extern "C" fn rssn_dimension(
             return fail(RssnStatus::NullArgument, "null output pointer");
         }
         // SAFETY: caller contract.
-        let request = match unsafe { borrow_session(session) }.and_then(|s| resolve(s, term)) {
-            | Ok(t) => t,
-            | Err(e) => return e,
-        };
-        let default;
-        // SAFETY: caller contract.
-        let config = match unsafe { config.as_ref() } {
-            | Some(c) => &c.0,
-            | None => {
-                default = Config::new();
-                &default
-            },
-        };
-        let answer = match request.session().compute(request, config) {
-            | Ok(a) => a,
-            | Err(e) => return compute_error(&e),
+        let answer = match unsafe { run_request(session, term, config) } {
+            | Ok(answer) => answer,
+            | Err(status) => return status,
         };
         let text = answer
             .dimension
             .map_or_else(String::new, |dimension| dimension.to_string());
-        // SAFETY: non-null by the check above.
-        unsafe { *out = to_c(text) };
+        let text = to_c(text);
+        if text.is_null() {
+            return fail(
+                RssnStatus::Panic,
+                "the dimension is not representable as a C string",
+            );
+        }
+        // SAFETY: `out` is non-null by the check above.
+        unsafe { *out = text };
+        RssnStatus::Ok
+    })
+}
+
+/// Computes `term` and writes the answer as a `bincode-next` byte string.
+///
+/// The bytes are [`RssnComputeRecord`] — the same record
+/// [`rssn_compute_json`] encodes as JSON — in the deterministic
+/// `bincode-next` format of
+/// [`encode_deterministic`](crate::kernel::codec::encode_deterministic), which
+/// is also the format of the kernel manifest and the plugin ABI. `*out_len`
+/// receives the byte count and `*out` the buffer; release it with
+/// [`rssn_bytes_free`](super::rssn_bytes_free). Neither pointer is written
+/// when the call fails.
+///
+/// The bytes are opaque to C: a host decodes them from a schema generated
+/// from [`RssnComputeRecord`]. `rssn.h` does not declare this entry point
+/// until the header is regenerated by a `DEV=1 cargo build`, so a C host
+/// must declare it itself until then.
+///
+/// # Safety
+/// `session` must be a live session, `config` null or a live configuration,
+/// and `out` and `out_len` valid pointers.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_compute_bincode(
+    session: *const RssnSession,
+    term: u32,
+    config: *const RssnConfig,
+    out: *mut *mut u8,
+    out_len: *mut usize,
+) -> RssnStatus {
+    guard(|| {
+        if out.is_null() || out_len.is_null() {
+            return fail(RssnStatus::NullArgument, "null output pointer");
+        }
+        // SAFETY: caller contract.
+        let answer = match unsafe { run_request(session, term, config) } {
+            | Ok(answer) => answer,
+            | Err(status) => return status,
+        };
+        let bytes = match crate::kernel::codec::encode_deterministic(&record(&answer)) {
+            | Ok(bytes) => bytes,
+            | Err(error) => {
+                return fail(
+                    RssnStatus::Panic,
+                    &format!("the answer could not be encoded: {error}"),
+                );
+            },
+        };
+        let len = bytes.len();
+        let data = Box::into_raw(bytes.into_boxed_slice()).cast::<u8>();
+        // SAFETY: both pointers are non-null by the check above and valid by
+        // the caller's contract.
+        unsafe {
+            *out = data;
+            *out_len = len;
+        }
         RssnStatus::Ok
     })
 }
@@ -469,6 +612,130 @@ pub unsafe extern "C" fn rssn_compute_all(
         }
         if let Some(message) = first_error {
             let _ = fail(RssnStatus::Ok, &message);
+        }
+        RssnStatus::Ok
+    })
+}
+
+/// Computes `n` requests at once and writes the batch answer as a
+/// `bincode-next` byte string.
+///
+/// The bytes are [`RssnComputeBatchRecord`]: one [`RssnBatchEntry`] per input
+/// handle, in input order, each carrying the [`RssnComputeRecord`] that
+/// [`rssn_compute_bincode`] would write for a request that succeeded. As with
+/// [`rssn_compute_all`], the return value is `Ok` when the call itself was
+/// well formed even if some requests failed: the per-request [`RssnStatus`] is
+/// inside the record, and the message of the first failing request is kept for
+/// `rssn_last_error`. `config` may be null for the defaults.
+///
+/// `*out_len` receives the byte count and `*out` the buffer; release it with
+/// [`rssn_bytes_free`](super::rssn_bytes_free). Neither output pointer is
+/// written when the call fails.
+///
+/// The bytes are opaque to C: a host decodes them from a schema generated from
+/// [`RssnComputeBatchRecord`].
+///
+/// # Safety
+/// `session` must be a live session, `config` null or a live configuration,
+/// and `terms` valid for `n` handles (it may be null only when `n` is 0).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_compute_all_bincode(
+    session: *const RssnSession,
+    terms: *const u32,
+    n: usize,
+    config: *const RssnConfig,
+    out: *mut *mut u8,
+    out_len: *mut usize,
+) -> RssnStatus {
+    guard(|| {
+        if out.is_null() || out_len.is_null() {
+            return fail(RssnStatus::NullArgument, "null output pointer");
+        }
+        if n > 0 && terms.is_null() {
+            return fail(RssnStatus::NullArgument, "null array argument");
+        }
+        // SAFETY: caller contract.
+        let session = match unsafe { borrow_session(session) } {
+            | Ok(session) => session,
+            | Err(status) => return status,
+        };
+        let default;
+        // SAFETY: caller contract.
+        let config = match unsafe { config.as_ref() } {
+            | Some(config) => &config.0,
+            | None => {
+                default = Config::new();
+                &default
+            },
+        };
+        // SAFETY: `terms` holds `n` handles by contract (null only when 0).
+        let ids: &[u32] = unsafe {
+            if n == 0 {
+                &[]
+            } else {
+                std::slice::from_raw_parts(terms, n)
+            }
+        };
+        // In input order. `None` marks a handle that resolved, whose result
+        // therefore comes from `compute_all` below; `Some` is the status of a
+        // handle that did not resolve (its message is already in
+        // `rssn_last_error`).
+        let mut statuses: Vec<Option<RssnStatus>> = vec![None; n];
+        let mut live = Vec::new();
+        for (status, &id) in statuses.iter_mut().zip(ids) {
+            match resolve(session, id) {
+                | Ok(term) => live.push(term),
+                | Err(error) => *status = Some(error),
+            }
+        }
+        // `compute_all` answers the resolved handles in their order, which is
+        // the order of the `None` slots, so one pass over `statuses` zips the
+        // results back into input order.
+        let mut results = session.compute_all(&live, config).into_iter();
+        let mut first_error: Option<String> = None;
+        let mut entries: Vec<RssnBatchEntry> = Vec::with_capacity(n);
+        for status in statuses {
+            let (status, answer) = match status {
+                | Some(status) => (status, None),
+                | None => {
+                    match results.next() {
+                        | Some(Ok(answer)) => (RssnStatus::Ok, Some(record(&answer))),
+                        | Some(Err(error)) => {
+                            first_error.get_or_insert_with(|| error.to_string());
+                            (super::status_of(&error), None)
+                        },
+                        // Every resolved handle has a result. This cannot happen;
+                        // a wrong status is still cheaper than unwinding a C
+                        // caller.
+                        | None => (RssnStatus::Panic, None),
+                    }
+                },
+            };
+            entries.push(RssnBatchEntry {
+                status: status as u32,
+                answer,
+            });
+        }
+        if let Some(message) = first_error {
+            let _ = fail(RssnStatus::Ok, &message);
+        }
+        let batch = RssnComputeBatchRecord { entries };
+        let bytes = match crate::kernel::codec::encode_deterministic(&batch) {
+            | Ok(bytes) => bytes,
+            | Err(error) => {
+                return fail(
+                    RssnStatus::Panic,
+                    &format!("the batch could not be encoded: {error}"),
+                );
+            },
+        };
+        let len = bytes.len();
+        let data = Box::into_raw(bytes.into_boxed_slice()).cast::<u8>();
+        // SAFETY: both pointers are non-null by the check above and valid by
+        // the caller's contract.
+        unsafe {
+            *out = data;
+            *out_len = len;
         }
         RssnStatus::Ok
     })

@@ -10,6 +10,23 @@
 //! - **Euclidean Norm ($`L_2`$)**: $||\mathbf{v}||_2 = \sqrt{\sum `v_i^2`}$
 //! - **Cross Product (3D)**: $\mathbf{a} \times \mathbf{b} = (`a_2` `b_3` - `a_3` `b_2`, `a_3` `b_1` - `a_1` `b_3`, `a_1` `b_2` - `a_2` `b_1`)$
 //! - **Projection**: $\text{proj}_{\mathbf{b}}(\mathbf{a}) = \frac{\mathbf{a} \cdot \mathbf{b}}{||\mathbf{b}||^2} \mathbf{b}$
+//!
+//! # Limitations and coverage
+//!
+//! * Vectors are plain `&[f64]` slices of equal length; results are freshly
+//!   allocated `Vec`s, so there is no in-place, SIMD or GPU path and no
+//!   generic scalar type. Only [`cross_product`] is fixed to three dimensions.
+//! * There is no matrix, quaternion or geometric-algebra type here (see
+//!   `matrix`, `computer_graphics` and `geometric_algebra`) and no operator
+//!   overloading; the API is a set of functions returning `Err` on a length
+//!   mismatch.
+//! * Degenerate cases return a value, not an error: [`angle`] is `0` when a
+//!   vector is zero, [`project`] is the zero vector for a zero direction,
+//!   [`is_parallel`] is `true` for a zero vector, and [`reflect`] assumes the
+//!   normal is already normalised.
+//! * [`is_orthogonal`] / [`is_parallel`] take the caller's `epsilon` and test
+//!   the raw or normalised dot product, so the former is an absolute test and
+//!   the latter is scale-free; neither is exact for nearly degenerate inputs.
 
 /// Adds two vectors element-wise.
 ///

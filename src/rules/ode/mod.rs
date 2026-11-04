@@ -47,7 +47,7 @@
 //! an inert `integral(…)` when it has no closed form) or, without one, by
 //! the normal form `y = u exp(-½ ∫ a₁/a₂)`.
 //!
-//! Systems `dsolve(list(eqs), list(funcs))`: constant linear systems
+//! systems `dsolve(list(eqs), list(funcs))`: constant linear systems
 //! (with forcing) by elimination; higher-order systems by reduction to
 //! first order; triangular and decoupled systems one equation at a time;
 //! `X' = a(t) M X` through `s = ∫ a`; two autonomous equations through
@@ -56,6 +56,21 @@
 //! integral of a Lotka–Volterra or SIR system); polynomial first integrals
 //! up to degree three for autonomous polynomial systems in three or four
 //! unknowns (`list(x(t)^2 + y(t)^2 - C1 = 0, …)`).
+//!
+//! **Darboux polynomials and the Jacobi last multiplier** of a planar
+//! autonomous polynomial system `x' = f(x, y)`, `y' = g(x, y)`
+//! (`ode_darboux`, `ode_jacobi_last_multiplier`): polynomials `P` with
+//! `X(P) = k P` and `k` of degree at most `deg X - 1`, found from the
+//! invariant lines of the leading homogeneous vector field (the linear
+//! factors of `x g_m - y f_m`, factored over `Q`) followed by a linear
+//! descent by total degree for the lower coefficients and the cofactor; and
+//! `M = Π P_i^{λ_i}` with `Σ λ_i k_i = -div X` solved over the rationals,
+//! which is a Jacobi last multiplier (`d ln M/dt = -div X`). The polynomials
+//! and the multiplier are returned as expressions in the dependent
+//! variables; the degrees searched default to four and can be given as a
+//! third argument. A system with no Darboux polynomial of the searched
+//! degree returns an empty list, and a multiplier that the found polynomials
+//! do not determine leaves the request unevaluated.
 //!
 //! Linear second-order equations with polynomial coefficients that no
 //! other method solves, in order:
@@ -152,6 +167,8 @@
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
 //! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
 //! | `ode_symmetries(eq, y(x))` | Lie point symmetries `list(ξ, η)` (polynomial ansatz) |
+//! | `ode_darboux(eqs, vars, degree?)` | the Darboux polynomials of a planar autonomous polynomial system with their cofactors: `list(list(P, k), …)` |
+//! | `ode_jacobi_last_multiplier(eqs, vars, degree?)` | the Jacobi last multiplier `M = Π P_i^{λ_i}` with `d ln M/dt = -div X` |
 //! | `ode_fourier(eq, y(x))` | the solution on the whole line decaying at `±∞` of a linear constant-coefficient equation, by the Fourier transform (inverted by residues) |
 
 use num_bigint::BigInt;
@@ -314,6 +331,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.dim(hyper1f1, DimRule::Dimensionless);
     i.dim(hyper2f1, DimRule::Dimensionless);
     i.dim(hyperpfq, DimRule::Dimensionless);
+    // Darboux polynomials and the Jacobi last multiplier of a planar
+    // autonomous polynomial system (additive API: two report operators).
+    let darboux = i.op(OpDescriptor::new("ode_darboux", Arity::Variadic)
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+    // A list of `list(P, k)` pairs: polynomials in the dependent variables.
+    i.dim(darboux, DimRule::NonMetric);
+    i.kernel(
+        "ode/darboux",
+        Tier::Reduce,
+        nonlinear::Darboux { op: darboux },
+    );
+    let last_multiplier = i.op(
+        OpDescriptor::new("ode_jacobi_last_multiplier", Arity::Variadic)
+            .flags(OpFlags::HEAVY)
+            .cost(100),
+    )?;
+    // The multiplier is a rational function of the dependent variables.
+    i.dim(last_multiplier, DimRule::NonMetric);
+    i.kernel(
+        "ode/jacobi-last-multiplier",
+        Tier::Reduce,
+        nonlinear::JacobiLastMultiplier { op: last_multiplier },
+    );
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }

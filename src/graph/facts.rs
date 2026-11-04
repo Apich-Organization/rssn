@@ -6,7 +6,13 @@
 //! conditions are checked against. Facts come from three sources: literal
 //! values, assumptions the user attaches to symbols, and structure
 //! (a sum of positives is positive, `exp` of a real is positive).
+//!
+//! A numeric witness is deliberately *not* a source, even for constant
+//! classes: witnesses are estimates (see [`Ball`]), while a fact licenses a
+//! rewrite. Constants get a sign only from an outward-rounded interval
+//! enclosure of one of their members.
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ops::BitOr;
 
@@ -15,6 +21,7 @@ use super::id::NodeId;
 use super::id::SymbolId;
 use super::number::Number;
 use super::op::core;
+use super::store::Ball;
 use super::store::Graph;
 
 /// A set of properties known to hold for a value.
@@ -166,23 +173,14 @@ impl Graph {
             }
             return facts;
         }
-        // A witness on a class without free symbols holds for every binding.
+        // A witness on a class without free symbols holds for every binding,
+        // but it is an *estimate*: numeric kernels report convergence errors,
+        // not certificates. Only an outward-rounded interval enclosure
+        // through the tape interpreter may turn a constant's value into a
+        // sign fact (an operator without interval rules widens to the whole
+        // line, leaving the sign unknown).
         let mut facts = Facts::NONE;
-        if self.free_symbols(class).is_empty()
-            && let Some(ball) = self.approx(class)
-        {
-            if ball.mid - ball.rad > 0.0 {
-                facts = facts | Facts::POSITIVE;
-            } else if ball.mid + ball.rad < 0.0 {
-                facts = facts | Facts::NEGATIVE;
-            }
-        }
-        // Without a witness, a rigorous interval enclosure of a member (the
-        // tape interpreter with outward rounding) can still decide the sign.
-        if !facts.has(Facts::POSITIVE)
-            && !facts.has(Facts::NEGATIVE)
-            && self.free_symbols(class).is_empty()
-        {
+        if self.free_symbols(class).is_empty() {
             facts = facts | self.enclosure_sign(class);
         }
         // All members denote the same value: what any of them proves
@@ -195,8 +193,13 @@ impl Graph {
         facts
     }
 
-    /// The sign of a constant class from an interval enclosure of one of
-    /// its members.
+    /// The sign of a constant class from an outward-rounded interval
+    /// enclosure of one of its members.
+    ///
+    /// The enclosure runs over the `f64` image of the literals, so it
+    /// certifies the sign of the float evaluation; exact-rational cancellation
+    /// is still covered by the one-ulp outward widening at every instruction,
+    /// but a sign is only reported when zero is strictly outside the box.
     fn enclosure_sign(
         &self,
         class: ClassId,
@@ -214,11 +217,13 @@ impl Graph {
             let Some(e) = tape.enclose(&[], &[]).first().copied() else {
                 continue;
             };
-            if e.lo > 0.0 {
-                return Facts::POSITIVE;
-            }
-            if e.hi < 0.0 {
-                return Facts::NEGATIVE;
+            let Some(ball) = Ball::from_interval(e.lo, e.hi) else {
+                continue;
+            };
+            match ball.sign() {
+                | Some(Ordering::Greater) => return Facts::POSITIVE,
+                | Some(Ordering::Less) => return Facts::NEGATIVE,
+                | _ => {},
             }
         }
         Facts::NONE
@@ -335,7 +340,7 @@ mod tests {
         g: &mut Graph,
         src: &str,
     ) -> Facts {
-        let node = g.parse(src).unwrap_or(NodeId::NONE);
+        let node = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
         g.facts(node)
     }
 
@@ -360,6 +365,41 @@ mod tests {
         assert!(facts_of(&mut g, "sqrt(2) - 141/100").has(Facts::POSITIVE));
         assert!(facts_of(&mut g, "pi - 22/7").has(Facts::NEGATIVE));
         assert!(facts_of(&mut g, "exp(1) - 2718281828/1000000000").has(Facts::POSITIVE));
+    }
+
+    #[test]
+    fn numeric_estimates_do_not_become_sign_facts() {
+        let mut g = Graph::new();
+        assert!(
+            crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok(),
+            "install"
+        );
+        let node = g.parse("tan(1) - 1/2").unwrap_or_else(|e| panic!("{e}"));
+        // A numeric phase may estimate this class as positive. `tan` has no
+        // interval rule, so the tape enclosure is the whole line and there is
+        // no certificate: the sign must stay unknown.
+        assert!(g.set_approx(g.find(node), Ball { mid: 1.0, rad: 0.1 }));
+        let facts = g.facts(node);
+        assert!(!facts.has(Facts::POSITIVE), "{facts:?}");
+        assert!(!facts.has(Facts::NEGATIVE), "{facts:?}");
+    }
+
+    #[test]
+    fn an_enclosure_is_not_overruled_by_a_contradicting_estimate() {
+        let mut g = Graph::new();
+        assert!(
+            crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok(),
+            "install"
+        );
+        let node = g
+            .parse("sqrt(2) - 141/100")
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(g.facts(node).has(Facts::POSITIVE));
+        // A witness claiming the opposite cannot flip a certified sign.
+        assert!(g.set_approx(g.find(node), Ball { mid: -1.0, rad: 0.5 }));
+        let facts = g.facts(node);
+        assert!(facts.has(Facts::POSITIVE), "{facts:?}");
+        assert!(!facts.has(Facts::NEGATIVE), "{facts:?}");
     }
 
     #[test]
@@ -403,7 +443,7 @@ mod tests {
     fn facts_travel_through_equalities() {
         let mut g = setup();
         let x = g.sym("x");
-        let known = g.parse("r^2 + 1").unwrap_or(NodeId::NONE);
+        let known = g.parse("r^2 + 1").unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(g.facts(x), Facts::NONE);
         g.union(x, known);
         g.rebuild();

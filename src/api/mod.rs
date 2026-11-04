@@ -3,7 +3,7 @@
 //! One entry point, [`Session::compute`], for everything that is an identity
 //! transformation. What differs between "simplify", "differentiate",
 //! "evaluate" and "solve" is only the term that is handed in and the
-//! [`Target`] phase of the answer.
+//! [`Target`](crate::kernel::call::Target) phase of the answer.
 //!
 //! ```
 //! use rssn::api::*;
@@ -21,6 +21,97 @@
 //! assert_eq!(numeric.value, Some(1.0));
 //! # Ok::<(), ComputeError>(())
 //! ```
+//!
+//! # Limitations and coverage
+//!
+//! This layer is the *identity-transformation* part of the crate: one entry
+//! point over a general engine. In priority order:
+//!
+//! * **Reduction only.** [`Session::compute`](crate::api::Session::compute)
+//!   replaces a term by an equal term; it does not simulate, optimise or solve
+//!   an arbitrary numerical problem. Time stepping and discretised fields live
+//!   in [`crate::sim`], the standalone numeric routines in [`crate::kernels`].
+//!   "Solve" and "integrate" are ordinary operators handed through the same
+//!   compute path, so what they do is whatever the installed rule sets derive.
+//! * **One session per thread.** A [`Session`](crate::api::Session) is
+//!   single-threaded (its store is a `RefCell`). Use
+//!   [`Session::fork`](crate::api::Session::fork) to move work to another
+//!   thread and [`Session::merge`](crate::api::Session::merge) to bring the
+//!   result back; terms never leave the session that minted them. A
+//!   [`Term`](crate::api::Term) borrows its session and cannot outlive it; for
+//!   language bindings there is
+//!   [`TermRef`](crate::kernel::value::TermRef) (a session id plus a node id),
+//!   which [`Session::term_ref`](crate::api::Session::term_ref) checks before
+//!   use.
+//! * **No cancellation and no wall-clock limit.** The only limits are the
+//!   [`Budget`](crate::graph::Budget) (`max_iterations`, `max_nodes`); a
+//!   pathological rule set runs until the budget is exhausted. There is no
+//!   streaming or incremental API: a computation is one call returning one
+//!   answer.
+//! * **Configurations are per request; rule-set combinations are cached.**
+//!   Every distinct set of rule sets used by a [`Config`](crate::api::Config)
+//!   installs a template (a copy of the graph plus an engine) the first time it
+//!   is seen, and the session keeps it for reuse. Cloning a `Config` per call
+//!   is cheap, but a host that creates unboundedly many distinct configurations
+//!   grows the session.
+//! * **Answers are imported into the store.**
+//!   [`Session::compute`](crate::api::Session::compute) imports the chosen
+//!   answer as a term of the session, so the store grows with computations.
+//!   Handles are `u32` node indices and are not stable across sessions or
+//!   forks. [`Session::compute_all`](crate::api::Session::compute_all) imports
+//!   in input order, which is why its answers equal a loop of `compute`.
+//! * **Dimension assumptions are declarations, not validations.** Text
+//!   assumptions ([`Config::dimension`](crate::api::Config::dimension)) are
+//!   parsed when a request runs: an unknown unit or a malformed expression
+//!   becomes a diagnostic, and only
+//!   [`DimensionMode::Strict`](crate::graph::DimensionMode) turns a *blocking*
+//!   finding into
+//!   [`ComputeError::Dimension`](crate::api::ComputeError::Dimension). The
+//!   findings are carried as
+//!   [`Answer::diagnostics`](crate::api::Answer::diagnostics); no individual
+//!   `DimError` code is part of the C ABI. Structured assumptions
+//!   ([`Config::dimension_term`](crate::api::Config::dimension_term)) never
+//!   parse text and are what a generated typed front end should use.
+//! * **`Value` conversions are total in one direction only.** Every term has
+//!   a [`Value`](crate::kernel::value::Value)
+//!   ([`Term::to_value`](crate::api::Term::to_value),
+//!   [`Session::value_of`](crate::api::Session::value_of)); a value without a
+//!   handle has a term
+//!   ([`Session::term_of`](crate::api::Session::term_of)) *except* the
+//!   boundary kinds: a bare
+//!   [`Value::Unit`](crate::kernel::value::Value::Unit), a complex literal
+//!   with a nonzero imaginary part, and sparse, record, variant, function and
+//!   opaque values.
+//!   [`ValueKindInfo::all`](crate::kernel::value::ValueKindInfo::all) is the
+//!   machine-readable table of which kind can enter the term graph. `Value`
+//!   serialises completely
+//!   ([`Value::to_cbor`](crate::kernel::value::Value::to_cbor)), but a
+//!   serialised `Value::Term` handle is only meaningful to the session that
+//!   minted it.
+//! * **Units resolve against the session.**
+//!   [`Session::value_of`](crate::api::Session::value_of) reads a quantity's
+//!   unit through the session's registry (the built-in table plus
+//!   [`Session::register_unit`](crate::api::Session::register_unit)), so a unit
+//!   the session registered keeps its dimension and display. A compound unit
+//!   expression (`m/s`) keeps its resolved dimension and scale, but not a full
+//!   definition; and the process-wide table is visible to every session,
+//!   session units only to the one that registered them.
+//! * **Text in, text out.** The parser accepts this crate's infix grammar
+//!   only; LaTeX and Typst are output formats
+//!   ([`Term::to_latex`](crate::api::Term::to_latex),
+//!   [`Term::to_typst`](crate::api::Term::to_typst)) and are not accepted as
+//!   input. [`Term::to_pretty`](crate::api::Term::to_pretty) is for display,
+//!   not round-tripping; `Term::to_string` is the parseable form.
+//! * **Known edges.** [`Session::rational`](crate::api::Session::rational)
+//!   returns `None` for a zero denominator; a numeric target without enough
+//!   bindings is
+//!   [`ComputeError::NotNumeric`](crate::api::ComputeError::NotNumeric) and
+//!   carries the best symbolic form in its message;
+//!   [`Session::merge`](crate::api::Session::merge) fails when the two sessions
+//!   declared different dimensions for one symbol rather than silently
+//!   weakening an assumption; and
+//!   [`Term::as_tensor`](crate::api::Term::as_tensor) rejects a ragged nested
+//!   list instead of padding it.
 
 use std::cell::RefCell;
 use std::fmt;
@@ -189,7 +280,7 @@ impl Config {
     }
 
     /// Sets the dimensional checking mode. The default is
-    /// [`DimensionMode::Advisory`].
+    /// [`DimensionMode::Advisory`](crate::graph::DimensionMode).
     #[must_use]
     pub const fn dimensions(
         mut self,
@@ -285,9 +376,10 @@ impl Config {
     }
 
     /// Disables hard dimensional errors even in
-    /// [`DimensionMode::Strict`]: dimensions are still inferred and
-    /// reported, but a conflict never fails the computation. This is the
-    /// explicit escape hatch for intentionally non-physical formulas.
+    /// [`DimensionMode::Strict`](crate::graph::DimensionMode): dimensions are
+    /// still inferred and reported, but a conflict never fails the computation.
+    /// This is the explicit escape hatch for intentionally non-physical
+    /// formulas.
     #[must_use]
     pub const fn bypass_dimension_checks(mut self) -> Self {
         self.bypass_dimensions = true;
@@ -656,12 +748,21 @@ impl Session {
         unit: UnitDef,
     ) -> Result<(), DimError> {
         let mut inner = self.inner.borrow_mut();
-        for template in &mut inner.templates {
+        // The clone in the loop is only for the templates that come after;
+        // the final template takes ownership so the unit is consumed once.
+        let Some((last, earlier)) = inner.templates.split_last_mut() else {
+            return Ok(());
+        };
+        for template in earlier {
             let mut units = SessionUnits::from_manifest(template.engine.manifest());
             units.register(unit.clone())?;
             template.engine.set_unit_registry(units);
             template.engine.refresh_manifest(&template.graph);
         }
+        let mut units = SessionUnits::from_manifest(last.engine.manifest());
+        units.register(unit)?;
+        last.engine.set_unit_registry(units);
+        last.engine.refresh_manifest(&last.graph);
         Ok(())
     }
 

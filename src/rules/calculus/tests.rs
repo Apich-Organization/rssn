@@ -1520,3 +1520,83 @@ fn bessel_antiderivatives() {
         );
     }
 }
+
+
+// ---------------------------------------------------------------------
+// RUL-1: closed form of a sum whose recurrence has boundary terms
+// ---------------------------------------------------------------------
+
+#[test]
+fn zeilberger_pfaff_saalschutz_closed_form() {
+    // 3F2(-n, 2, 3; n + 5, 1 - 2n; 1), written with factorials. The
+    // telescoper of the summand is of first order, but its certificate has
+    // non-zero boundary values, so the (inhomogeneous) boundary-term
+    // conversion is what relates it to the sum. The sum itself is
+    // hypergeometric, and its rational ratio closes it.
+    let rules = crate::rules::standard();
+    let summand = "factorial(n)*factorial(n + 4)/factorial(2*n - 1)/2*factorial(k + 1)*factorial(k + 2)*factorial(2*n - 1 - k)/(factorial(n - k)*factorial(n + 4 + k)*factorial(k))";
+    let request = format!("definite_sum({summand}, k, n)");
+    let (text, reduced) = reduce_with(&rules, &request, &[]);
+    assert!(
+        reduced && !text.contains("definite_sum"),
+        "{request} was not closed: {text}"
+    );
+    let reference = "factorial(2*n + 2)/factorial(n + 2)*factorial(2*n + 1)/factorial(n + 1)/(factorial(2*n + 4)/factorial(n + 4))/(factorial(2*n - 1)/factorial(n - 1))";
+    for n in 1..=5 {
+        let got = eval(&rules, &text, &[("n", f64::from(n))]);
+        let want = eval(&rules, reference, &[("n", f64::from(n))]);
+        assert!(
+            (got - want).abs() <= 1e-8 * want.abs().max(1.0),
+            "definite_sum of the 3F2 at n = {n}: {got} vs {want} (closed form {text})"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------
+// RUL-2: bounded factors and the adaptive series fallback
+// ---------------------------------------------------------------------
+
+#[test]
+fn limits_with_bounded_oscillating_factors() {
+    // A bounded factor times a vanishing one tends to zero.
+    for request in [
+        "limit(sin(x)/x, x, oo)",
+        "limit(cos(x)/x, x, oo)",
+        "limit(atan(x)/x, x, oo)",
+        "limit(x^2*sin(1/x), x, 0)",
+        "limit(x*sin(1/x), x, 0)",
+        "limit(abs(x)*sin(1/x), x, 0)",
+        "limit(exp(-x)*sin(x), x, oo)",
+        "limit(sqrt(x)*sin(1/x), x, 0, plus)",
+    ] {
+        assert_eq!(run(request), "0", "{request}");
+    }
+    // A bounded term added to a divergent one does not change its sign.
+    assert_eq!(run("limit(x + sin(x), x, oo)"), "oo");
+    assert_eq!(run("limit(sin(x) - x, x, oo)"), "-oo");
+    // 0/0 forms whose surviving power lies deeper than the standard series
+    // order: the numeric probe cannot see them (the numerator is rounding
+    // noise), the adaptive Laurent expansion can.
+    assert_eq!(
+        run("limit((sin(x) - x + x^3/6)/x^5, x, 0)"),
+        "1/120",
+        "the cancelling 0/0 form was not resolved"
+    );
+    assert_eq!(
+        run("limit((exp(x) - 1 - x - x^2/2 - x^3/6 - x^4/24 - x^5/120 - x^6/720)/x^7, x, 0)"),
+        "1/5040",
+        "the cancellation beyond the standard series order was not resolved"
+    );
+    // Genuinely non-existent limits stay unevaluated.
+    for request in [
+        "limit(sin(x), x, oo)",
+        "limit(abs(x)/x, x, 0)",
+        "limit(sin(1/x), x, 0)",
+    ] {
+        let (text, reduced) = reduce_with(&[calculus()], request, &[]);
+        assert!(
+            text.contains("limit") && !reduced,
+            "{request} should stay unevaluated, got {text}"
+        );
+    }
+}

@@ -13,6 +13,15 @@
 //!   `s = (f(u_r) - f(u_l))/(u_r - u_l)` when the Oleinik entropy condition
 //!   holds (`u_l > u_r` for convex `f`, `u_l < u_r` for concave `f`), the
 //!   rarefaction fan `f'(u) = (x - x₀)/t` otherwise.
+//! * **The shallow-water Riemann problem.** For the flat-bed Saint-Venant
+//!   system `h_t + (h u)_x = 0`, `(h u)_t + (h u² + ½ g h²)_x = 0` with the
+//!   step data `(h_l, u_l)` / `(h_r, u_r)` the exact two-wave solution is
+//!   found by Newton/bisection on the star depth `h*` (started from the
+//!   two-rarefaction approximation), with the wave type decided by whether
+//!   `h*` exceeds the side's depth, shock speeds from Rankine–Hugoniot and
+//!   rarefaction edges from the Riemann invariants. The operands and
+//!   `x/t` evaluation are `pde_riemann_shallow_water` and
+//!   `pde_riemann_shallow_water_at`/`_velocity`; a vacuum datum is refused.
 //! * **Solitons.** `pde_kdv_soliton(list(κ…), list(x₀…))`: the
 //!   reflectionless N-soliton solution of `u_t - 6 u u_x + u_xxx = 0` from
 //!   the inverse scattering transform, `u = -2 ∂_x² ln det(I + A)`,
@@ -22,6 +31,12 @@
 //!   `u_xt = sin u` from the Bäcklund transformation
 //!   `u₁ = 4 arctan e^{a x + t/a + c}` of the vacuum and the Bianchi
 //!   permutability `tan((u₁₂ - u₀)/4) = (a₁ + a₂)/(a₁ - a₂) tan((u₁ - u₂)/4)`.
+
+#![allow(
+    clippy::single_call_fn,
+    clippy::too_many_lines,
+    clippy::missing_const_for_fn
+)]
 
 use super::Conditions;
 use super::Problem;
@@ -1627,4 +1642,385 @@ pub(super) fn hodograph_solution(
     let x = add(cx.graph, &[rt, f]);
     let (x, t) = (cx.simplify(x), cx.simplify(t));
     cx.graph.node(crate::graph::op::core::LIST, &[x, t])
+}
+
+// ----------------------------------------------------------------------
+// The exact Riemann solver of the shallow-water equations
+// ----------------------------------------------------------------------
+//
+// `h_t + (h u)_x = 0`, `(h u)_t + (h u² + ½ g h²)_x = 0` with the step data
+// `(h_l, u_l)` / `(h_r, u_r)`. The solution has two waves around a constant
+// star state `(h*, u*)`. On each side the wave is a shock when `h*` exceeds
+// the side's depth and a rarefaction otherwise; the star depth solves
+//
+//     f_l(h*) + f_r(h*) = u_l - u_r,
+//     f_K(h) = (h - h_K) sqrt(g (h + h_K) / (2 h_K h))   for h > h_K,
+//     f_K(h) = 2 sqrt(g) (sqrt(h) - sqrt(h_K))           for h <= h_K,
+//
+// a strictly increasing function of `h` with `f_K(0+) = -2 sqrt(g h_K)`.
+// The equation is solved by Newton steps safeguarded by the bracket
+// `[0, h_upper]`, starting from the two-rarefaction approximation
+//
+//     h_TRR = ((u_l - u_r) / (4 sqrt g) + (sqrt(h_l) + sqrt(h_r)) / 2)².
+//
+// Data with `f_l(0+) + f_r(0+) >= u_l - u_r` produce a vacuum (dry bed) and
+// are refused. Shock speeds come from the Rankine–Hugoniot conditions,
+// rarefaction edges from the Riemann invariants `u ± 2 sqrt(g h)`. The exact
+// solution is self-similar in `x/t`.
+
+/// The kind of one wave of a two-wave Riemann solution.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum ShallowWaveKind {
+    /// Compressive shock.
+    Shock,
+    /// Expansion fan.
+    Rarefaction,
+    /// The two states coincide: a zero-strength wave.
+    None,
+}
+
+/// One wave of the shallow-water Riemann solution.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct ShallowWave {
+    /// The wave type.
+    pub(super) kind: ShallowWaveKind,
+    /// Speed of the leading edge (the outer one).
+    pub(super) head: f64,
+    /// Speed of the trailing edge (equal to `head` for a shock).
+    pub(super) tail: f64,
+}
+
+/// The exact solution of the shallow-water Riemann problem.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct ShallowWaterRiemann {
+    /// Left depth.
+    pub(super) h_left: f64,
+    /// Left velocity.
+    pub(super) u_left: f64,
+    /// Right depth.
+    pub(super) h_right: f64,
+    /// Right velocity.
+    pub(super) u_right: f64,
+    /// Gravity.
+    pub(super) gravity: f64,
+    /// Star depth.
+    pub(super) h_star: f64,
+    /// Star velocity.
+    pub(super) u_star: f64,
+    /// Left wave (from the left state to the star state).
+    pub(super) left: ShallowWave,
+    /// Right wave (from the star state to the right state).
+    pub(super) right: ShallowWave,
+}
+
+impl ShallowWaterRiemann {
+    /// The depth and velocity at `x/t = xi` (any real `xi`).
+    pub(super) fn at(
+        &self,
+        xi: f64,
+    ) -> (f64, f64) {
+        let gravity = self.gravity;
+        let left_c = (gravity * self.h_left).sqrt();
+        let right_c = (gravity * self.h_right).sqrt();
+        // Left of the left wave.
+        match self.left.kind {
+            | ShallowWaveKind::Shock => {
+                if xi < self.left.head {
+                    return (self.h_left, self.u_left);
+                }
+            },
+            | ShallowWaveKind::Rarefaction => {
+                if xi < self.left.head {
+                    return (self.h_left, self.u_left);
+                }
+                if xi <= self.left.tail {
+                    let c = (xi - self.u_left + 2.0 * left_c).max(0.0);
+                    return (c * c / gravity, xi + c);
+                }
+            },
+            | ShallowWaveKind::None => {},
+        }
+        // Right of the right wave.
+        match self.right.kind {
+            | ShallowWaveKind::Shock => {
+                if xi > self.right.head {
+                    return (self.h_right, self.u_right);
+                }
+            },
+            | ShallowWaveKind::Rarefaction => {
+                if xi > self.right.head {
+                    return (self.h_right, self.u_right);
+                }
+                if xi >= self.right.tail {
+                    let c = (self.u_right + 2.0 * right_c - xi).max(0.0);
+                    return (c * c / gravity, xi - c);
+                }
+            },
+            | ShallowWaveKind::None => {},
+        }
+        (self.h_star, self.u_star)
+    }
+}
+
+/// The wave jump function of one side (left or right): `u_K - u*` for a
+/// left wave and `u* - u_K` for a right one.
+fn wave_jump(
+    h: f64,
+    h_side: f64,
+    gravity: f64,
+) -> f64 {
+    if h > h_side {
+        (h - h_side) * (gravity * (h + h_side) / (2.0 * h_side * h)).sqrt()
+    } else {
+        2.0 * gravity.sqrt() * (h.sqrt() - h_side.sqrt())
+    }
+}
+
+/// The derivative of [`wave_jump`] with respect to `h`.
+fn wave_jump_derivative(
+    h: f64,
+    h_side: f64,
+    gravity: f64,
+) -> f64 {
+    if h <= 0.0 {
+        return f64::INFINITY;
+    }
+    if h > h_side {
+        let factor = (gravity * (h + h_side) / (2.0 * h_side * h)).sqrt();
+        factor * (1.0 - (h - h_side) * h_side / (2.0 * h * (h + h_side)))
+    } else {
+        gravity.sqrt() / h.sqrt()
+    }
+}
+
+/// The two-rarefaction approximation of the star depth.
+fn two_rarefaction_depth(
+    h_l: f64,
+    u_l: f64,
+    h_r: f64,
+    u_r: f64,
+    gravity: f64,
+) -> f64 {
+    let root = 0.25 * ((u_l - u_r) / gravity.sqrt() + 2.0 * (h_l.sqrt() + h_r.sqrt()));
+    root * root
+}
+
+/// The star state `(h*, u*)` of the shallow-water Riemann problem.
+///
+/// `None` for invalid data (non-positive depths, non-positive gravity,
+/// non-finite values) and for the vacuum case, which has no `h* > 0`.
+fn star_state(
+    h_l: f64,
+    u_l: f64,
+    h_r: f64,
+    u_r: f64,
+    gravity: f64,
+) -> Option<(f64, f64)> {
+    if !(gravity.is_finite()
+        && gravity > 0.0
+        && h_l.is_finite()
+        && h_l > 0.0
+        && h_r.is_finite()
+        && h_r > 0.0
+        && u_l.is_finite()
+        && u_r.is_finite())
+    {
+        return None;
+    }
+    let target = u_l - u_r;
+    let evaluate = |h: f64| wave_jump(h, h_l, gravity) + wave_jump(h, h_r, gravity) - target;
+    // f(0+) must lie below the target, otherwise the two waves separate and
+    // a dry region forms between them.
+    let at_zero = -2.0 * gravity.sqrt() * (h_l.sqrt() + h_r.sqrt()) - target;
+    if at_zero >= 0.0 {
+        return None;
+    }
+    let guess = two_rarefaction_depth(h_l, u_l, h_r, u_r, gravity);
+    let mut upper = guess.max(h_l).max(h_r).max(1.0);
+    let mut expansions = 0_u32;
+    while evaluate(upper) < 0.0 {
+        upper *= 2.0;
+        expansions = expansions.saturating_add(1);
+        if expansions > 80 || !upper.is_finite() {
+            return None;
+        }
+    }
+    let mut lower = 0.0;
+    let mut x = if guess.is_finite() && guess > 0.0 && guess < upper {
+        guess
+    } else {
+        f64::midpoint(lower, upper)
+    };
+    for _ in 0..200 {
+        let value = evaluate(x);
+        if value > 0.0 {
+            upper = x;
+        } else {
+            lower = x;
+        }
+        if upper - lower <= 1e-14 * (1.0 + upper) {
+            break;
+        }
+        let derivative =
+            wave_jump_derivative(x, h_l, gravity) + wave_jump_derivative(x, h_r, gravity);
+        let step = x - value / derivative;
+        x = if step.is_finite() && step > lower && step < upper {
+            step
+        } else {
+            f64::midpoint(lower, upper)
+        };
+    }
+    let h_star = f64::midpoint(lower, upper);
+    let u_from_left = u_l - wave_jump(h_star, h_l, gravity);
+    let u_from_right = u_r + wave_jump(h_star, h_r, gravity);
+    Some((h_star, f64::midpoint(u_from_left, u_from_right)))
+}
+
+/// The type and edge speeds of one wave.
+fn classify_wave(
+    h_star: f64,
+    h_side: f64,
+    u_side: f64,
+    u_star: f64,
+    gravity: f64,
+    left_side: bool,
+) -> ShallowWave {
+    let side_speed = (gravity * h_side).sqrt();
+    let tolerance = 1e-12 * (1.0 + h_side);
+    if h_star > h_side + tolerance {
+        let jump = (gravity * h_star * (h_star + h_side) / (2.0 * h_side)).sqrt();
+        let speed = if left_side {
+            u_side - jump
+        } else {
+            u_side + jump
+        };
+        ShallowWave {
+            kind: ShallowWaveKind::Shock,
+            head: speed,
+            tail: speed,
+        }
+    } else if h_star < h_side - tolerance {
+        let star_speed = (gravity * h_star.max(0.0)).sqrt();
+        let (head, tail) = if left_side {
+            (u_side - side_speed, u_star - star_speed)
+        } else {
+            (u_side + side_speed, u_star + star_speed)
+        };
+        ShallowWave {
+            kind: ShallowWaveKind::Rarefaction,
+            head,
+            tail,
+        }
+    } else {
+        let speed = if left_side {
+            u_side - side_speed
+        } else {
+            u_side + side_speed
+        };
+        ShallowWave {
+            kind: ShallowWaveKind::None,
+            head: speed,
+            tail: speed,
+        }
+    }
+}
+
+/// The exact solution of the shallow-water Riemann problem with the flat-bed
+/// Saint-Venant equations, or `None` for invalid data or a vacuum.
+pub(super) fn shallow_water_riemann(
+    h_l: f64,
+    u_l: f64,
+    h_r: f64,
+    u_r: f64,
+    gravity: f64,
+) -> Option<ShallowWaterRiemann> {
+    let (h_star, u_star) = star_state(h_l, u_l, h_r, u_r, gravity)?;
+    Some(ShallowWaterRiemann {
+        h_left: h_l,
+        u_left: u_l,
+        h_right: h_r,
+        u_right: u_r,
+        gravity,
+        h_star,
+        u_star,
+        left: classify_wave(h_star, h_l, u_l, u_star, gravity, true),
+        right: classify_wave(h_star, h_r, u_r, u_star, gravity, false),
+    })
+}
+
+/// The type of a wave as the symbol of the report.
+fn wave_kind_symbol(kind: ShallowWaveKind) -> &'static str {
+    match kind {
+        | ShallowWaveKind::Shock => "shock",
+        | ShallowWaveKind::Rarefaction => "rarefaction",
+        | ShallowWaveKind::None => "none",
+    }
+}
+
+/// `pde_riemann_shallow_water(h_l, u_l, h_r, u_r, g)`:
+/// `list(h*, u*, list(kind_l, head_l, tail_l), list(kind_r, head_r, tail_r))`.
+pub(super) fn riemann_shallow_water(
+    cx: &mut Cx<'_>,
+    args: &[NodeId],
+) -> Option<NodeId> {
+    let &[h_l, u_l, h_r, u_r, gravity] = args else {
+        return None;
+    };
+    let number = |node: NodeId| exact_value(cx, node);
+    let solution = shallow_water_riemann(
+        number(h_l)?,
+        number(u_l)?,
+        number(h_r)?,
+        number(u_r)?,
+        number(gravity)?,
+    )?;
+    let literal = |cx: &mut Cx<'_>, value: f64| cx.graph.num(crate::graph::Number::from(value));
+    let wave = |cx: &mut Cx<'_>, wave: ShallowWave| {
+        let kind = cx.graph.sym(wave_kind_symbol(wave.kind));
+        let head = literal(cx, wave.head);
+        let tail = literal(cx, wave.tail);
+        cx.graph
+            .node(crate::graph::op::core::LIST, &[kind, head, tail])
+    };
+    let h_star = literal(cx, solution.h_star);
+    let u_star = literal(cx, solution.u_star);
+    let left = wave(cx, solution.left);
+    let right = wave(cx, solution.right);
+    Some(
+        cx.graph
+            .node(crate::graph::op::core::LIST, &[h_star, u_star, left, right]),
+    )
+}
+
+/// The first six arguments `(xi, h_l, u_l, h_r, u_r, g)` of the `_at`
+/// operators, with the solution.
+fn shallow_water_at_arguments(args: &[f64]) -> Option<(ShallowWaterRiemann, f64)> {
+    let (Some(&xi), Some(&h_l), Some(&u_l), Some(&h_r), Some(&u_r), Some(&gravity)) = (
+        args.first(),
+        args.get(1),
+        args.get(2),
+        args.get(3),
+        args.get(4),
+        args.get(5),
+    ) else {
+        return None;
+    };
+    if !xi.is_finite() {
+        return None;
+    }
+    Some((shallow_water_riemann(h_l, u_l, h_r, u_r, gravity)?, xi))
+}
+
+/// `pde_riemann_shallow_water_at(xi, h_l, u_l, h_r, u_r, g)`: the depth
+/// `h(x/t = xi)` of the exact shallow-water Riemann solution (`NaN` for
+/// invalid data or a vacuum).
+pub(super) fn shallow_water_at_depth(args: &[f64]) -> f64 {
+    shallow_water_at_arguments(args).map_or(f64::NAN, |(solution, xi)| solution.at(xi).0)
+}
+
+/// `pde_riemann_shallow_water_velocity(xi, h_l, u_l, h_r, u_r, g)`: the
+/// velocity `u(x/t = xi)` of the exact shallow-water Riemann solution (`NaN`
+/// for invalid data or a vacuum).
+pub(super) fn shallow_water_at_velocity(args: &[f64]) -> f64 {
+    shallow_water_at_arguments(args).map_or(f64::NAN, |(solution, xi)| solution.at(xi).1)
 }

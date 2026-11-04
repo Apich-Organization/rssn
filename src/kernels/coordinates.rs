@@ -10,6 +10,24 @@
 //! * Cylindrical: `(r, theta, z)` with `theta` the angle from the x axis.
 //! * Spherical: `(r, theta, phi)` with `theta` the polar angle measured from
 //!   the z axis (`0..=pi`) and `phi` the azimuth from the x axis.
+//!
+//! # Limitations and coverage
+//!
+//! * Angles are radians and the conventions above are the only ones: polar and
+//!   cylindrical `theta` is measured from the x axis, spherical `theta` from
+//!   the z axis. A caller holding the "math" `(r, phi, theta)` ordering must
+//!   permute the point; no `theta`/`phi` swap option is provided.
+//! * Conversion always goes through Cartesian; 2-D and 3-D systems cannot be
+//!   mixed, and a round trip loses angles to round-off (relative error a few
+//!   `1e-15` for non-degenerate points). Spherical `r` may be negative (the
+//!   point is then reflected through the origin); the origin maps to
+//!   `theta = 0`, `phi = atan2(0, 0)`.
+//! * [`numerical_jacobian`] and [`jacobian_determinant`] use central
+//!   differences with relative step `6e-6`, so they are accurate to roughly
+//!   `1e-9` relative for smooth maps and are meaningless at the singular
+//!   points of a map (`r = 0` for polar, the origin and the z axis for
+//!   spherical). No analytic Jacobian, metric or Christoffel symbol is
+//!   provided.
 
 /// A coordinate system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,4 +213,60 @@ pub fn numerical_jacobian(
         }
     }
     Ok(jacobian)
+}
+
+/// Determinant of a small square matrix by Gaussian elimination with partial
+/// pivoting (the Jacobians here are 2x2 or 3x3).
+fn determinant(matrix: &[Vec<f64>]) -> f64 {
+    let n = matrix.len();
+    let mut a: Vec<Vec<f64>> = matrix.to_vec();
+    let mut det = 1.0;
+    for col in 0..n {
+        let Some((pivot_row, _)) = (col..n)
+            .map(|row| (row, a[row][col].abs()))
+            .max_by(|x, y| x.1.total_cmp(&y.1))
+        else {
+            return 0.0;
+        };
+        if a[pivot_row][col] == 0.0 {
+            return 0.0;
+        }
+        if pivot_row != col {
+            a.swap(pivot_row, col);
+            det = -det;
+        }
+        let head = a[col][col];
+        det *= head;
+        for row in col + 1..n {
+            let factor = a[row][col] / head;
+            for c in col + 1..n {
+                a[row][c] -= factor * a[col][c];
+            }
+        }
+    }
+    det
+}
+
+/// Determinant of the Jacobian of the map `from -> to` at `at_point`.
+///
+/// This is the local volume-element factor `dV_to = |det J| dV_from` of the
+/// two coordinate charts: for example `r` for polar-to-Cartesian and
+/// `r^2 sin(theta)` for spherical-to-Cartesian, while the inverse maps carry
+/// the reciprocal determinant. It is built from the central-difference
+/// Jacobian of [`numerical_jacobian`] and inherits its accuracy and precision
+/// caveat (no analytic Jacobian).
+///
+/// # Errors
+/// As [`numerical_jacobian`].
+pub fn jacobian_determinant(
+    from: CoordinateSystem,
+    to: CoordinateSystem,
+    at_point: &[f64],
+) -> Result<f64, String> {
+    let jacobian = numerical_jacobian(from, to, at_point)?;
+    let rows = jacobian.len();
+    if rows != jacobian.first().map_or(0, Vec::len) {
+        return Err("Jacobian is not square".to_string());
+    }
+    Ok(determinant(&jacobian))
 }

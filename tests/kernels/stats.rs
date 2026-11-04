@@ -7,6 +7,7 @@ use proptest::test_runner::RngSeed;
 use rssn::kernels::stats::BinomialDist;
 use rssn::kernels::stats::ExponentialDist;
 use rssn::kernels::stats::GammaDist;
+use rssn::kernels::stats::NormalDist;
 use rssn::kernels::stats::PoissonDist;
 use rssn::kernels::stats::UniformDist;
 use rssn::kernels::stats::VarianceType;
@@ -423,4 +424,58 @@ fn two_sample_t_test_agrees_with_welch_for_equal_sizes_and_unequal_sizes_hand_va
     assert_approx_eq!(t, -5.0 / (4.4f64 * (1.0 / 3.0 + 0.25)).sqrt(), 1e-12);
     assert!(p > 0.0 && p < 0.05);
     assert!(two_sample_t_test(&[1.0], &[1.0, 2.0]).0.is_nan());
+}
+
+#[test]
+fn normal_distribution_construction_and_inverse_cdf() {
+    let n = NormalDist::new(0.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    // Standard normal quantiles: 0.975 -> 1.959963984540054, median -> 0.
+    assert_approx_eq!(n.inverse_cdf(0.975), 1.959_963_984_540_054, 1e-9);
+    assert_approx_eq!(n.inverse_cdf(0.5), 0.0, 1e-12);
+    for p in [0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999] {
+        assert_approx_eq!(n.cdf(n.inverse_cdf(p)), p, 1e-10);
+    }
+    // Outside [0, 1] the quantile is NaN; the boundaries are infinite.
+    assert!(n.inverse_cdf(-0.1).is_nan());
+    assert!(n.inverse_cdf(1.1).is_nan());
+    assert!(n.inverse_cdf(0.0).is_infinite() && n.inverse_cdf(1.0).is_infinite());
+    // Non-standard parameters: quantiles scale and shift with mean/sigma.
+    let n = NormalDist::new(2.0, 3.0).unwrap_or_else(|e| panic!("{e}"));
+    assert_approx_eq!(n.inverse_cdf(0.5), 2.0, 1e-12);
+    assert_approx_eq!(
+        n.inverse_cdf(0.975),
+        2.0 + 3.0 * 1.959_963_984_540_054,
+        1e-9
+    );
+    // Invalid parameters are rejected by the constructor.
+    assert!(NormalDist::new(0.0, 0.0).is_err());
+    assert!(NormalDist::new(0.0, -1.0).is_err());
+    assert!(NormalDist::new(f64::NAN, 1.0).is_err());
+}
+
+#[test]
+fn continuous_inverse_cdfs_round_trip_through_the_cdf() {
+    let u = UniformDist::new(2.0, 6.0).unwrap_or_else(|e| panic!("{e}"));
+    assert_approx_eq!(u.inverse_cdf(0.25), 3.0, 1e-12);
+    assert_approx_eq!(u.inverse_cdf(0.0), 2.0, 1e-12);
+    assert_approx_eq!(u.inverse_cdf(1.0), 6.0, 1e-12);
+    for p in [0.01, 0.25, 0.5, 0.9] {
+        assert_approx_eq!(u.cdf(u.inverse_cdf(p)), p, 1e-12);
+    }
+    assert!(u.inverse_cdf(-0.5).is_nan());
+
+    let e = ExponentialDist::new(2.0).unwrap_or_else(|err| panic!("{err}"));
+    // The Exp(rate) quantile is -ln(1 - p) / rate.
+    for p in [0.1, 0.5, 0.9] {
+        assert_approx_eq!(e.inverse_cdf(p), -(1.0 - p).ln() / 2.0, 1e-10);
+        assert_approx_eq!(e.cdf(e.inverse_cdf(p)), p, 1e-10);
+    }
+
+    let g = GammaDist::new(2.0, 1.0).unwrap_or_else(|err| panic!("{err}"));
+    // Gamma(2, 1) has cdf(x) = 1 - e^-x (1 + x); its median is the
+    // chi-square(4) median / 2 = 1.6783469900166605.
+    assert_approx_eq!(g.inverse_cdf(0.5), 1.678_346_990_016_660_5, 1e-8);
+    for p in [0.05, 0.3, 0.5, 0.8, 0.99] {
+        assert_approx_eq!(g.cdf(g.inverse_cdf(p)), p, 1e-9);
+    }
 }

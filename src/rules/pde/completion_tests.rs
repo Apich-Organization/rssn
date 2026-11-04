@@ -512,6 +512,253 @@ fn numeric_sturm_liouville_operators() {
     close(residual(0.37), 0.0, 5e-3, "residual of the eigenfunction");
 }
 
+/// `sqrt` of a complex number, principal branch.
+fn complex_sqrt(z: (f64, f64)) -> (f64, f64) {
+    let modulus = z.0.hypot(z.1);
+    let re = f64::midpoint(modulus, z.0).max(0.0).sqrt();
+    let im = f64::midpoint(modulus, -z.0).max(0.0).sqrt();
+    (re, if z.1 < 0.0 { -im } else { im })
+}
+
+fn complex_mul(
+    a: (f64, f64),
+    b: (f64, f64),
+) -> (f64, f64) {
+    (a.0 * b.0 - a.1 * b.1, a.0 * b.1 + a.1 * b.0)
+}
+
+fn complex_div(
+    a: (f64, f64),
+    b: (f64, f64),
+) -> (f64, f64) {
+    let denominator = b.0 * b.0 + b.1 * b.1;
+    (
+        (a.0 * b.0 + a.1 * b.1) / denominator,
+        (a.1 * b.0 - a.0 * b.1) / denominator,
+    )
+}
+
+fn complex_sin(z: (f64, f64)) -> (f64, f64) {
+    (z.0.sin() * z.1.cosh(), z.0.cos() * z.1.sinh())
+}
+
+fn complex_cos(z: (f64, f64)) -> (f64, f64) {
+    (z.0.cos() * z.1.cosh(), -z.0.sin() * z.1.sinh())
+}
+
+/// Golden-section search for the maximum of `f` on `[lo, hi]`.
+fn maximum_of(
+    f: &dyn Fn(f64) -> f64,
+    lo: f64,
+    hi: f64,
+) -> f64 {
+    let ratio = 0.618_033_988_749_894_8_f64;
+    let (mut a, mut b) = (lo, hi);
+    for _ in 0..60 {
+        let c = b - ratio * (b - a);
+        let d = a + ratio * (b - a);
+        if f(c) > f(d) {
+            b = d;
+        } else {
+            a = c;
+        }
+    }
+    f64::midpoint(a, b)
+}
+
+#[test]
+fn weyl_titchmarsh_m_function_closed_forms() {
+    use super::sl::sl_density;
+    use super::sl::sl_mfun_im;
+    use super::sl::sl_mfun_re;
+    let components = |args: &[f64], lambda: (f64, f64)| {
+        let mut v = vec![lambda.0, lambda.1];
+        v.extend_from_slice(args);
+        (sl_mfun_re(&v), sl_mfun_im(&v))
+    };
+    let length = 1.5_f64;
+    let dirichlet = [1.0, 0.0, 1.0, 0.0];
+    let free = sl_arguments(0.0, length, dirichlet, &|_| 1.0, &|_| 0.0, &|_| 1.0);
+    // Constant coefficients p = w = 1, q = q0: m = -p k cot(k L) with
+    // k = sqrt((λ - q0)/p).
+    let cotangent_form = |lambda: (f64, f64), q0: f64| -> (f64, f64) {
+        let k = complex_sqrt((lambda.0 - q0, lambda.1));
+        let argument = complex_mul(k, (length, 0.0));
+        let cotangent = complex_div(complex_cos(argument), complex_sin(argument));
+        complex_mul((-k.0, -k.1), cotangent)
+    };
+    for lambda in [(1.0, 0.5), (3.0, 1.0), (0.5, 0.2), (7.0, -0.4)] {
+        let got = components(&free, lambda);
+        let want = cotangent_form(lambda, 0.0);
+        close(got.0, want.0, 1e-8, "Re m of the constant problem");
+        close(got.1, want.1, 1e-8, "Im m of the constant problem");
+    }
+    // Constant potential shift q0 = 2: the same closed form with λ - q0.
+    let shifted = sl_arguments(0.0, length, dirichlet, &|_| 1.0, &|_| 2.0, &|_| 1.0);
+    for lambda in [(3.0, 0.5), (6.5, 1.2)] {
+        let got = components(&shifted, lambda);
+        let want = cotangent_form(lambda, 2.0);
+        close(got.0, want.0, 1e-8, "Re m of the shifted problem");
+        close(got.1, want.1, 1e-8, "Im m of the shifted problem");
+    }
+    // Below the spectrum m is real: m = -κ coth(κ L) for λ = -κ².
+    let kappa = 1.0_f64;
+    let below = components(&free, (-1.0, 0.0));
+    close(below.1, 0.0, 1e-12, "Im m below the spectrum");
+    close(
+        below.0,
+        -kappa / (kappa * length).tanh(),
+        1e-9,
+        "Re m below the spectrum",
+    );
+    // Between two eigenvalues m is real and the density vanishes.
+    let between = components(&free, (7.0, 0.0));
+    close(between.1, 0.0, 1e-12, "Im m between eigenvalues");
+    let mut density_args = vec![7.0, 1e-9];
+    density_args.extend_from_slice(&free);
+    close(
+        sl_density(&density_args),
+        0.0,
+        1e-9,
+        "density between eigenvalues",
+    );
+    // m(λ̄) = conj m(λ), and m is a Herglotz function: Im m > 0 in the
+    // upper half plane (so that (1/π) Im m is a positive density).
+    let upper = components(&free, (2.5, 0.75));
+    let lower = components(&free, (2.5, -0.75));
+    close(lower.0, upper.0, 1e-10, "conjugate real part of m");
+    close(lower.1, -upper.1, 1e-10, "conjugate imaginary part of m");
+    assert!(
+        upper.1 > 0.0,
+        "Im m must be positive in the upper half plane: {}",
+        upper.1
+    );
+}
+
+#[test]
+fn weyl_titchmarsh_density_reproduces_eigenvalues() {
+    use super::sl::sl_density;
+    use super::sl::sl_eigen;
+    let dirichlet = [1.0, 0.0, 1.0, 0.0];
+    let length = 1.6_f64;
+    let epsilon = 1e-5;
+    let free = sl_arguments(0.0, length, dirichlet, &|_| 1.0, &|_| 0.0, &|_| 1.0);
+    let density = |lambda: f64| {
+        let mut v = vec![lambda, epsilon];
+        v.extend_from_slice(&free);
+        sl_density(&v)
+    };
+    let eigen = |m: f64| {
+        let mut v = vec![m];
+        v.extend_from_slice(&free);
+        sl_eigen(&v)
+    };
+    for n in 1..=3_i32 {
+        let mu = (f64::from(n) * PI / length).powi(2);
+        let located = maximum_of(&density, mu - 0.4, mu + 0.4);
+        close(located, mu, 2e-6, "density peak of the constant problem");
+        close(
+            located,
+            eigen(f64::from(n)),
+            1e-6,
+            "density peak vs sl_eigen",
+        );
+        // The atom weight is (p(a) y_n'(a))² = 2 μ_n / L for p = w = 1, so
+        // the peak of the density is weight / (π ε).
+        let weight = 2.0 * mu / length;
+        close(
+            density(mu),
+            weight / (PI * epsilon),
+            1e-3 * weight / (PI * epsilon),
+            "density peak height (atom weight)",
+        );
+    }
+    // Constant potential shift q0 = 2: μ_n = (n π/L)² + 2 and the weight is
+    // 2 (μ_n - q0)/L.
+    let shifted = sl_arguments(0.0, length, dirichlet, &|_| 1.0, &|_| 2.0, &|_| 1.0);
+    let shifted_density = |lambda: f64| {
+        let mut v = vec![lambda, epsilon];
+        v.extend_from_slice(&shifted);
+        sl_density(&v)
+    };
+    for n in 1..=2_i32 {
+        let mu = (f64::from(n) * PI / length).powi(2) + 2.0;
+        let located = maximum_of(&shifted_density, mu - 0.4, mu + 0.4);
+        close(located, mu, 2e-6, "density peak with a potential shift");
+        let mut v = vec![f64::from(n)];
+        v.extend_from_slice(&shifted);
+        close(located, sl_eigen(&v), 1e-6, "shifted peak vs sl_eigen");
+        let weight = 2.0 * (mu - 2.0) / length;
+        close(
+            shifted_density(mu),
+            weight / (PI * epsilon),
+            1e-3 * weight / (PI * epsilon),
+            "shifted peak height (atom weight)",
+        );
+    }
+    // q(x) = x on [0, 1]: the eigenvalues from sl_eigen are located through
+    // the density alone.
+    let potential = |x: f64| x;
+    let linear = sl_arguments(0.0, 1.0, dirichlet, &|_| 1.0, &potential, &|_| 1.0);
+    let linear_density = |lambda: f64| {
+        let mut v = vec![lambda, epsilon];
+        v.extend_from_slice(&linear);
+        sl_density(&v)
+    };
+    for m in 1..=2_i32 {
+        let mut v = vec![f64::from(m)];
+        v.extend_from_slice(&linear);
+        let mu = sl_eigen(&v);
+        let located = maximum_of(&linear_density, mu - 0.5, mu + 0.5);
+        close(located, mu, 1e-6, "density peak of q(x) = x vs sl_eigen");
+    }
+}
+
+#[test]
+fn weyl_titchmarsh_edge_cases() {
+    use super::sl::sl_density;
+    use super::sl::sl_mfun_im;
+    use super::sl::sl_mfun_re;
+    let dirichlet = [1.0, 0.0, 1.0, 0.0];
+    let components = |args: &[f64], lambda: (f64, f64)| {
+        let mut v = vec![lambda.0, lambda.1];
+        v.extend_from_slice(args);
+        (sl_mfun_re(&v), sl_mfun_im(&v))
+    };
+    let free = sl_arguments(0.0, 1.0, dirichlet, &|_| 1.0, &|_| 0.0, &|_| 1.0);
+    // An empty boundary condition at b.
+    let empty = sl_arguments(0.0, 1.0, [1.0, 0.0, 0.0, 0.0], &|_| 1.0, &|_| 0.0, &|_| 1.0);
+    assert!(components(&empty, (1.0, 0.1)).0.is_nan());
+    // A non-positive coefficient or a reversed interval.
+    for args in [
+        sl_arguments(0.0, 1.0, dirichlet, &|_| 0.0, &|_| 0.0, &|_| 1.0),
+        sl_arguments(0.0, 1.0, dirichlet, &|_| 1.0, &|_| 0.0, &|_| -1.0),
+        sl_arguments(1.0, 0.0, dirichlet, &|_| 1.0, &|_| 0.0, &|_| 1.0),
+    ] {
+        assert!(components(&args, (1.0, 0.1)).1.is_nan());
+    }
+    // The density needs a positive imaginary part; a non-finite λ is NaN.
+    for epsilon in [0.0_f64, -1e-3] {
+        let mut v = vec![1.0, epsilon];
+        v.extend_from_slice(&free);
+        assert!(sl_density(&v).is_nan());
+    }
+    let mut v = vec![f64::NAN, 0.1];
+    v.extend_from_slice(&free);
+    assert!(sl_mfun_im(&v).is_nan());
+    // The three operators are registered by the rule set (additive API).
+    let mut graph = Graph::new();
+    assert!(
+        Engine::install(&mut graph, &crate::rules::standard()).is_ok(),
+        "the rule set did not install"
+    );
+    for name in ["sl_mfun_re", "sl_mfun_im", "sl_density"] {
+        assert!(
+            graph.ops().lookup(name).is_some(),
+            "{name} is not registered"
+        );
+    }
+}
 #[test]
 fn separation_of_variables_for_variable_coefficients() {
     // u_t = (1 + x)² u_xx + (1 + x) u_x on [0, 1] (Dirichlet): s = ln(1 + x), modes sin(m π s / ln 2).
@@ -3438,4 +3685,297 @@ fn hodograph_riemann_function_in_hypergeometric_form() {
         &[("r", 2.0), ("s", 0.3), ("rho", 1.1), ("sigma", 0.5)],
     );
     close(got, epd_riemann(3.0, 2.0, 0.3, 1.1, 0.5), 1e-10, &text);
+}
+
+// ---------------------------------------------------------------------
+// RUL-R3b: the shallow-water Riemann problem
+// ---------------------------------------------------------------------
+
+/// Reference values computed at 50 decimal digits (mpmath) for the Stoker
+/// dam break with `h_l = 1`, `h_r = 0.5`, `u = 0`, `g = 9.81`.
+const STOKER_H_STAR: f64 = 0.726_920_446_187_286_4;
+const STOKER_U_STAR: f64 = 0.923_363_901_977_079_8;
+const STOKER_RAREFACTION_HEAD: f64 = -3.132_091_952_673_165;
+const STOKER_RAREFACTION_TAIL: f64 = -1.747_046_099_707_545_3;
+const STOKER_SHOCK_SPEED: f64 = 2.957_918_120_187_525;
+
+#[test]
+fn shallow_water_riemann_stoker_dam_break() {
+    use super::nonlinear::ShallowWaveKind;
+    use super::nonlinear::shallow_water_riemann;
+    let solution = shallow_water_riemann(1.0, 0.0, 0.5, 0.0, 9.81).expect("Stoker solution");
+    close(solution.h_star, STOKER_H_STAR, 1e-6, "Stoker h*");
+    close(solution.u_star, STOKER_U_STAR, 1e-6, "Stoker u*");
+    assert_eq!(solution.left.kind, ShallowWaveKind::Rarefaction);
+    close(
+        solution.left.head,
+        STOKER_RAREFACTION_HEAD,
+        1e-6,
+        "rarefaction head",
+    );
+    close(
+        solution.left.tail,
+        STOKER_RAREFACTION_TAIL,
+        1e-6,
+        "rarefaction tail",
+    );
+    assert_eq!(solution.right.kind, ShallowWaveKind::Shock);
+    close(solution.right.head, STOKER_SHOCK_SPEED, 1e-6, "shock speed");
+    close(
+        solution.right.tail,
+        solution.right.head,
+        1e-12,
+        "shock tail",
+    );
+    // The self-similar evaluation: the initial states outside the waves and
+    // the star state between them.
+    for (xi, h, u) in [
+        (-10.0_f64, 1.0_f64, 0.0_f64),
+        (10.0, 0.5, 0.0),
+        (0.0, STOKER_H_STAR, STOKER_U_STAR),
+    ] {
+        let (got_h, got_u) = solution.at(xi);
+        close(got_h, h, 1e-10, "depth at x/t");
+        close(got_u, u, 1e-10, "velocity at x/t");
+    }
+    // Inside the rarefaction the self-similar relation and the Riemann
+    // invariant hold.
+    let xi = f64::midpoint(solution.left.head, solution.left.tail);
+    let (h, u) = solution.at(xi);
+    close(u - (9.81 * h).sqrt(), xi, 1e-9, "xi = u - c in the fan");
+    close(
+        u - 2.0 * (9.81 * h).sqrt(),
+        -2.0 * (9.81 * 1.0_f64).sqrt(),
+        1e-9,
+        "left Riemann invariant",
+    );
+    // Rankine-Hugoniot at the right shock.
+    let speed = solution.right.head;
+    let mass = speed * (solution.h_star - 0.5) - (solution.h_star * solution.u_star);
+    close(mass, 0.0, 1e-9, "shock mass jump");
+    let momentum = speed * (solution.h_star * solution.u_star)
+        - (solution.h_star * solution.u_star * solution.u_star
+            + 0.5 * 9.81 * solution.h_star * solution.h_star
+            - 0.5 * 9.81 * 0.5 * 0.5);
+    close(momentum, 0.0, 1e-9, "shock momentum jump");
+}
+
+#[test]
+fn shallow_water_riemann_wet_bed() {
+    use super::nonlinear::ShallowWaveKind;
+    use super::nonlinear::shallow_water_riemann;
+    // h_l = 1, u_l = -0.3, h_r = 0.6, u_r = 0.4, g = 9.81: a left
+    // rarefaction and a right shock. (Reference values at 50 digits.)
+    let solution = shallow_water_riemann(1.0, -0.3, 0.6, 0.4, 9.81).expect("wet-bed solution");
+    close(solution.h_star, 0.691_179_161_397_001_7, 1e-6, "wet-bed h*");
+    close(solution.u_star, 0.756_317_711_479_753_3, 1e-6, "wet-bed u*");
+    assert!(solution.h_star > 0.0, "the star depth must be positive");
+    assert_eq!(solution.left.kind, ShallowWaveKind::Rarefaction);
+    assert_eq!(solution.right.kind, ShallowWaveKind::Shock);
+    close(
+        solution.left.head,
+        -3.432_091_952_673_165,
+        1e-6,
+        "left head",
+    );
+    close(
+        solution.left.tail,
+        -1.847_615_385_453_535_2,
+        1e-6,
+        "left tail",
+    );
+    close(
+        solution.right.head,
+        3.101_048_937_477_651_3,
+        1e-6,
+        "right shock",
+    );
+    // The star velocity is reached from both sides to solver accuracy.
+    let jump = |h: f64, h_side: f64| {
+        if h > h_side {
+            (h - h_side) * (9.81 * (h + h_side) / (2.0 * h_side * h)).sqrt()
+        } else {
+            2.0 * 9.81_f64.sqrt() * (h.sqrt() - h_side.sqrt())
+        }
+    };
+    close(
+        solution.u_star,
+        -0.3 - jump(solution.h_star, 1.0),
+        1e-10,
+        "u* from the left",
+    );
+    close(
+        solution.u_star,
+        0.4 + jump(solution.h_star, 0.6),
+        1e-10,
+        "u* from the right",
+    );
+}
+
+#[test]
+fn shallow_water_riemann_symmetry_positivity_and_refusals() {
+    use super::nonlinear::ShallowWaveKind;
+    use super::nonlinear::shallow_water_riemann;
+    // Reflection symmetry: mirroring the data negates u* and the speeds and
+    // swaps the waves.
+    for (h_l, u_l, h_r, u_r) in [
+        (1.0_f64, 0.0_f64, 0.5_f64, 0.0_f64),
+        (1.0, -0.3, 0.6, 0.4),
+        (0.8, 0.5, 1.2, -0.7),
+    ] {
+        let original = shallow_water_riemann(h_l, u_l, h_r, u_r, 9.81).expect("original");
+        let mirrored = shallow_water_riemann(h_r, -u_r, h_l, -u_l, 9.81).expect("mirrored");
+        close(mirrored.h_star, original.h_star, 1e-10, "mirrored h*");
+        close(mirrored.u_star, -original.u_star, 1e-10, "mirrored u*");
+        assert_eq!(mirrored.left.kind, original.right.kind);
+        assert_eq!(mirrored.right.kind, original.left.kind);
+        close(
+            mirrored.left.head,
+            -original.right.head,
+            1e-10,
+            "mirrored waves",
+        );
+        close(
+            mirrored.right.head,
+            -original.left.head,
+            1e-10,
+            "mirrored waves",
+        );
+        for xi in [-4.0_f64, -1.0, 0.0, 1.0, 4.0] {
+            let (h, u) = original.at(xi);
+            let (mirrored_h, mirrored_u) = mirrored.at(-xi);
+            close(mirrored_h, h, 1e-9, "mirrored depth");
+            close(mirrored_u, -u, 1e-9, "mirrored velocity");
+        }
+    }
+    // A symmetric state is two zero-strength waves.
+    let quiet = shallow_water_riemann(1.0, 0.0, 1.0, 0.0, 9.81).expect("quiet state");
+    assert_eq!(quiet.left.kind, ShallowWaveKind::None);
+    assert_eq!(quiet.right.kind, ShallowWaveKind::None);
+    close(quiet.h_star, 1.0, 1e-12, "quiet h*");
+    close(quiet.u_star, 0.0, 1e-12, "quiet u*");
+    // A vacuum datum has no star state: the two waves separate.
+    assert!(
+        shallow_water_riemann(1.0, -20.0, 1.0, 0.0, 9.81).is_none(),
+        "the vacuum case must be refused"
+    );
+    // Invalid data are refused.
+    for (h_l, u_l, h_r, u_r, g) in [
+        (0.0_f64, 0.0_f64, 1.0_f64, 0.0_f64, 9.81_f64),
+        (1.0, 0.0, -0.5, 0.0, 9.81),
+        (1.0, 0.0, 1.0, 0.0, 0.0),
+        (1.0, f64::NAN, 1.0, 0.0, 9.81),
+    ] {
+        assert!(
+            shallow_water_riemann(h_l, u_l, h_r, u_r, g).is_none(),
+            "invalid data must be refused"
+        );
+    }
+}
+
+#[test]
+fn shallow_water_riemann_operators() {
+    use super::nonlinear::shallow_water_riemann;
+    let solution = shallow_water_riemann(1.0, 0.0, 0.5, 0.0, 9.81).expect("Stoker solution");
+    // The structured report names the wave types.
+    let report = any("pde_riemann_shallow_water(1, 0, 0.5, 0, 9.81)");
+    assert!(
+        report.contains("list(") && report.contains("rarefaction") && report.contains("shock"),
+        "{report}"
+    );
+    // The x/t evaluation operators, evaluated through the rule set.
+    let depth = value(
+        &any("pde_riemann_shallow_water_at(0, 1, 0, 0.5, 0, 9.81)"),
+        &[],
+    );
+    close(depth, solution.h_star, 1e-6, "depth operator at x/t = 0");
+    let velocity = value(
+        &any("pde_riemann_shallow_water_velocity(0, 1, 0, 0.5, 0, 9.81)"),
+        &[],
+    );
+    close(
+        velocity,
+        solution.u_star,
+        1e-6,
+        "velocity operator at x/t = 0",
+    );
+}
+
+#[test]
+fn shallow_water_riemann_matches_finite_volumes() {
+    use super::nonlinear::shallow_water_riemann;
+    use crate::sim::euler_nd::FvConfig;
+    use crate::sim::euler_nd::FvGrid;
+    use crate::sim::euler_nd::solve;
+    // Stoker's dam break h_l = 2, h_r = 1, u = 0, g = 9.81 on [0, 1], the
+    // datum of the finite-volume module's own dam-break test; the exact
+    // solution compared against is the one computed here (an independent
+    // implementation).
+    let (h_l, h_r, gravity) = (2.0_f64, 1.0_f64, 9.81_f64);
+    let solution = shallow_water_riemann(h_l, 0.0, h_r, 0.0, gravity).expect("Stoker solution");
+    let grid = FvGrid::new(&[400], &[0.0], &[1.0]).expect("grid");
+    let config = FvConfig::shallow_water(gravity);
+    let initial = |position: [f64; 3]| {
+        let depth = if position[0] < 0.5 {
+            h_l
+        } else {
+            h_r
+        };
+        [depth, 0.0, 0.0, 0.0, 0.0]
+    };
+    let time = 0.05_f64;
+    let numeric = solve(&grid, &config, &initial, time).expect("finite-volume run");
+    // Mass: the depth integral is conserved by the finite-volume scheme.
+    let mass = numeric.totals()[0];
+    let expected_mass = 0.5 * h_l + 0.5 * h_r;
+    close(mass, expected_mass, 1e-10, "mass of the dam break");
+    // The star plateau between the rarefaction tail and the shock, sampled
+    // in the middle of the plateau.
+    let tail = 0.5 + (solution.u_star - (gravity * solution.h_star).sqrt()) * time;
+    let shock = 0.5 + solution.right.head * time;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let sample = (f64::midpoint(tail, shock) * 400.0) as usize;
+    let state = numeric.primitive(sample);
+    close(
+        state[0],
+        solution.h_star,
+        0.02 * solution.h_star,
+        "star depth in the finite-volume run",
+    );
+    close(
+        state[1],
+        solution.u_star,
+        0.03 * solution.u_star.abs(),
+        "star velocity in the finite-volume run",
+    );
+    // The plateau values outside the waves are the initial data.
+    let left_state = numeric.primitive(0);
+    close(left_state[0], h_l, 1e-10, "left plateau depth");
+    let right_state = numeric.primitive(399);
+    close(right_state[0], h_r, 1e-10, "right plateau depth");
+    // The shock position from the numerical profile, within three cells.
+    let middle = f64::midpoint(solution.h_star, h_r);
+    let cell = (0..400)
+        .rev()
+        .find(|&c| numeric.primitive(c)[0] > middle)
+        .expect("the shock is inside the domain");
+    #[allow(clippy::cast_precision_loss)]
+    let located = (cell as f64 + 0.5) / 400.0;
+    assert!(
+        (located - shock).abs() < 3.0 / 400.0,
+        "shock at {located} vs exact {shock}"
+    );
+    // The rarefaction head from the numerical profile: the first cell (from
+    // the right of the left plateau) whose depth is below 0.99 h_l; the
+    // exact head is at u_l - c_l.
+    let head = 0.5 + (solution.left.head) * time;
+    let first = (0..400)
+        .find(|&c| numeric.primitive(c)[0] < 0.99 * h_l)
+        .expect("the rarefaction is inside the domain");
+    #[allow(clippy::cast_precision_loss)]
+    let located_head = (first as f64 + 0.5) / 400.0;
+    assert!(
+        (located_head - head).abs() < 4.0 / 400.0,
+        "rarefaction head at {located_head} vs exact {head}"
+    );
 }

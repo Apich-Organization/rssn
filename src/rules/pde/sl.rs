@@ -29,6 +29,29 @@
 //! Separation of variables then yields `Σ c_m T_m(t) sl_mode(m, x, …)`,
 //! the coefficients `c_m = ∫ w f y_m dx` being integrals of numeric
 //! operators.
+//!
+//! **Weyl–Titchmarsh m-function.** For the regular problem the m-function at
+//! the left end is `m(λ) = p(a) u'(a)/u(a)`, where `u` solves the equation
+//! with the boundary condition at `b` and complex `λ`; it is integrated
+//! outwards from `b` to `a` in the first-order form `(u, p u')` by
+//! Runge–Kutta. With a Dirichlet condition at `a` its real-axis poles are
+//! the Dirichlet eigenvalues. With this normalisation `m` is a Herglotz
+//! function (`Im m > 0` for `Im λ > 0`, `m(λ̄) = conj m(λ)`), and the
+//! spectral density is `ρ(λ) = (1/π) lim_{ε→0+} Im m(λ + i ε)` — the
+//! formula `-(1/π) Im m_H` of the literature with the Herglotz normalised
+//! `m_H = -m`, i.e. the sign of `m` here is the one that makes the closed
+//! form `-p k cot(k L)` of the constant problem come out. The density is a
+//! sum of atoms at the Dirichlet eigenvalues: with the eigenfunction
+//! normalised by `∫ w y² = 1` the atom at `μ_n` has weight `(p(a) y_n'(a))²`,
+//! so integrating `ρ` across an eigenvalue counts that level.
+//! `sl_mfun_re`/`sl_mfun_im` return the two components of `m` and
+//! `sl_density(λ, ε, …)` the density at a finite `ε > 0`.
+
+#![allow(
+    clippy::single_call_fn,
+    clippy::too_many_lines,
+    clippy::missing_const_for_fn
+)]
 
 use super::Conditions;
 use super::Problem;
@@ -488,6 +511,216 @@ pub(super) fn sl_weight(args: &[f64]) -> f64 {
     parse(rest).map_or(f64::NAN, |sl| sl.w.eval(x))
 }
 
+// ----------------------------------------------------------------------
+// The Weyl–Titchmarsh m-function and the spectral density
+// ----------------------------------------------------------------------
+//
+// For the regular problem `-(p u')' + q u = λ w u` on `[a, b]` the
+// Weyl–Titchmarsh m-function at the left end is
+//
+//     m(λ) = p(a) u'(a) / u(a),
+//
+// where `u = u(·, λ)` solves the equation with the boundary condition at
+// `b` (`α₁ u(b) + β₁ u'(b) = 0`). It is meromorphic in `λ`; for the
+// Dirichlet condition at `a` its poles on the real axis are the eigenvalues
+// `μ_n` of the Dirichlet–Dirichlet problem. The spectral density
+//
+//     ρ(λ) = (1/π) lim_{ε→0+} Im m(λ + i ε)
+//
+// is then a sum of Dirac deltas at the `μ_n` if `y_n` is the eigenfunction
+// normalised by `∫ w y_n² = 1` and `y_n(a) = y_n(b) = 0`; the atom at `μ_n`
+// carries the weight `(p(a) y_n'(a))²`, so integrating `ρ` across `μ_n`
+// counts that level. For other left conditions the eigenvalues are the
+// roots of `α₀ + β₀ m(λ)/p(a) = 0` (`β₀ = 0`: the poles of `m`). The
+// normalisation is fixed by the definition of `m` above; the operators
+// `sl_mfun_re`/`sl_mfun_im` return the two components of `m` and
+// `sl_density` returns `ρ` for a finite `ε`.
+
+/// A complex number for the m-function: the numeric operator layer carries
+/// `f64`s only, so the real and imaginary parts are exposed separately.
+#[derive(Copy, Clone, Debug)]
+struct Complex {
+    re: f64,
+    im: f64,
+}
+
+impl Complex {
+    #[must_use]
+    const fn new(
+        re: f64,
+        im: f64,
+    ) -> Self {
+        Self { re, im }
+    }
+
+    /// `self · (re + i·im)`.
+    #[must_use]
+    fn scaled(
+        self,
+        re: f64,
+        im: f64,
+    ) -> Self {
+        Self {
+            re: self.re * re - self.im * im,
+            im: self.re * im + self.im * re,
+        }
+    }
+
+    #[must_use]
+    fn add(
+        self,
+        other: Self,
+    ) -> Self {
+        Self {
+            re: self.re + other.re,
+            im: self.im + other.im,
+        }
+    }
+
+    fn div(
+        self,
+        other: Self,
+    ) -> Option<Self> {
+        let denominator = other.re * other.re + other.im * other.im;
+        if !denominator.is_finite() || denominator <= 0.0 {
+            return None;
+        }
+        Some(Self {
+            re: (self.re * other.re + self.im * other.im) / denominator,
+            im: (self.im * other.re - self.re * other.im) / denominator,
+        })
+    }
+}
+
+impl Sl {
+    /// The smallest `p` and the largest `w` and `|q|` of the sampled values:
+    /// enough to estimate the local wavelength for a complex `λ`.
+    fn extremes(&self) -> (f64, f64, f64) {
+        let pmin = self.p.values.iter().copied().fold(f64::INFINITY, f64::min);
+        let wmax = self.w.values.iter().copied().fold(0.0, f64::max);
+        let qmax = self
+            .q
+            .values
+            .iter()
+            .copied()
+            .fold(0.0, |largest: f64, value| largest.max(value.abs()));
+        (pmin, wmax, qmax)
+    }
+
+    /// The number of Runge–Kutta steps resolving the complex oscillation of
+    /// the m-equation, from the local wavelength `2π / sqrt(|λ w - q| / p)`.
+    fn m_steps(
+        &self,
+        lambda: Complex,
+    ) -> usize {
+        let (pmin, wmax, qmax) = self.extremes();
+        let magnitude = lambda.re.hypot(lambda.im);
+        let frequency = ((magnitude * wmax + qmax) / pmin).max(0.0).sqrt() * (self.b - self.a);
+        let steps = 3000.0 + 200.0 * frequency.powf(1.25);
+        steps.min(400_000.0) as usize
+    }
+
+    /// The Weyl–Titchmarsh m-function of the regular problem, by integrating
+    /// the first-order form `u' = v/p`, `v' = (q - λ w) u` (`v = p u'`)
+    /// outwards from `b` to `a` with classical Runge–Kutta.
+    ///
+    /// `None` when the boundary condition at `b` is empty (`α₁ = β₁ = 0`).
+    #[allow(clippy::cast_precision_loss)]
+    fn m_function(
+        &self,
+        lambda: Complex,
+    ) -> Option<Complex> {
+        let [_, _, alpha, beta] = self.ends;
+        let p_b = self.p.eval(self.b);
+        // A non-zero pair satisfying α u(b) + β u'(b) = 0; the ratio m is
+        // independent of its scale.
+        let (u0, v0) = if beta.abs() > 0.0 {
+            (beta, -p_b * alpha)
+        } else if alpha.abs() > 0.0 {
+            (0.0, 1.0)
+        } else {
+            return None;
+        };
+        let steps = self.m_steps(lambda);
+        let h = (self.a - self.b) / steps as f64;
+        let derivative = |x: f64, u: Complex, v: Complex| {
+            let p = self.p.eval(x);
+            let (q, w) = (self.q.eval(x), self.w.eval(x));
+            (
+                v.scaled(1.0 / p, 0.0),
+                u.scaled(q - w * lambda.re, -w * lambda.im),
+            )
+        };
+        let half = 0.5 * h;
+        let sixth = h / 6.0;
+        let (mut u, mut v) = (Complex::new(u0, 0.0), Complex::new(v0, 0.0));
+        for k in 0..steps {
+            let x = self.b + h * k as f64;
+            let middle = x + half;
+            let end = x + h;
+            let (du1, dv1) = derivative(x, u, v);
+            let u2 = u.add(du1.scaled(half, 0.0));
+            let v2 = v.add(dv1.scaled(half, 0.0));
+            let (du2, dv2) = derivative(middle, u2, v2);
+            let u3 = u.add(du2.scaled(half, 0.0));
+            let v3 = v.add(dv2.scaled(half, 0.0));
+            let (du3, dv3) = derivative(middle, u3, v3);
+            let u4 = u.add(du3.scaled(h, 0.0));
+            let v4 = v.add(dv3.scaled(h, 0.0));
+            let (du4, dv4) = derivative(end, u4, v4);
+            u = u
+                .add(du1.scaled(sixth, 0.0))
+                .add(du2.scaled(2.0 * sixth, 0.0))
+                .add(du3.scaled(2.0 * sixth, 0.0))
+                .add(du4.scaled(sixth, 0.0));
+            v = v
+                .add(dv1.scaled(sixth, 0.0))
+                .add(dv2.scaled(2.0 * sixth, 0.0))
+                .add(dv3.scaled(2.0 * sixth, 0.0))
+                .add(dv4.scaled(sixth, 0.0));
+        }
+        v.div(u)
+    }
+}
+
+/// The components of the m-function from `(re, im, problem…)`.
+fn m_components(args: &[f64]) -> Option<Complex> {
+    let (Some(&re), Some(&im), Some(rest)) = (args.first(), args.get(1), args.get(2..)) else {
+        return None;
+    };
+    if !re.is_finite() || !im.is_finite() {
+        return None;
+    }
+    parse(rest)?.m_function(Complex::new(re, im))
+}
+
+/// The real part of the Weyl–Titchmarsh m-function of `-(p y')' + q y =
+/// λ w y`: `sl_mfun_re(re, im, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)` for
+/// `λ = re + i·im` (NaN for invalid data).
+pub(super) fn sl_mfun_re(args: &[f64]) -> f64 {
+    m_components(args).map_or(f64::NAN, |m| m.re)
+}
+
+/// The imaginary part of the Weyl–Titchmarsh m-function, same arguments as
+/// [`sl_mfun_re`].
+pub(super) fn sl_mfun_im(args: &[f64]) -> f64 {
+    m_components(args).map_or(f64::NAN, |m| m.im)
+}
+
+/// The spectral density `ρ(λ) = (1/π) Im m(λ + i ε)`: `sl_density(λ, ε,
+/// a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)` for `ε > 0` (NaN otherwise).
+pub(super) fn sl_density(args: &[f64]) -> f64 {
+    let (Some(&lambda), Some(&epsilon), Some(rest)) = (args.first(), args.get(1), args.get(2..))
+    else {
+        return f64::NAN;
+    };
+    if !lambda.is_finite() || !epsilon.is_finite() || epsilon <= 0.0 {
+        return f64::NAN;
+    }
+    parse(rest)
+        .and_then(|sl| sl.m_function(Complex::new(lambda, epsilon)))
+        .map_or(f64::NAN, |m| m.im / PI)
+}
 /// Registers the operators.
 ///
 /// The Sturm-Liouville maps are numeric (`f64` coefficients at Chebyshev
@@ -499,6 +732,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("sl_eigen", sl_eigen as fn(&[f64]) -> f64),
         ("sl_mode", sl_mode),
         ("sl_weight", sl_weight),
+        ("sl_mfun_re", sl_mfun_re),
+        ("sl_mfun_im", sl_mfun_im),
+        ("sl_density", sl_density),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval))?;
         i.dim(op, DimRule::Dimensionless);

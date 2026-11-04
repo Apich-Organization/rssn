@@ -5,6 +5,22 @@
 //! estimators, empirical CDF, bandwidth selectors, Gaussian /
 //! Epanechnikov kernel density estimation, and seeded bootstrap
 //! confidence intervals.
+//!
+//! # Limitations and coverage
+//!
+//! * Quantiles use Hyndman-Fan definitions 1..=9 (type 7 by default); there is
+//!   no type 10, no weighted quantile, and NaN handling is limited to dropping
+//!   NaN samples (infinities are kept and can propagate).
+//! * The location estimators are one-dimensional; the M-estimators use the
+//!   normalised MAD as a fixed scale rather than estimating location and scale
+//!   jointly, and there is no robust covariance, robust regression or outlier
+//!   labelling.
+//! * KDE supports only the Gaussian and Epanechnikov kernels with Silverman or
+//!   Scott bandwidth; no adaptive-bandwidth, boundary-corrected or
+//!   multivariate density is provided.
+//! * Bootstrap intervals are percentile only (`1 - alpha`, seeded resamples);
+//!   there is no BCa, studentised or block bootstrap, and the resampling is
+//!   single-threaded.
 
 use std::f64::consts::PI;
 

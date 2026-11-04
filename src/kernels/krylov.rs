@@ -22,12 +22,17 @@
 //!   ([`Csr::ilu0`]) and IC(0) ([`Csr::ic0`]). There is no ILU(k), no
 //!   threshold dropping and no pivoting, so a structurally or numerically
 //!   zero pivot makes the factorisation fail with `None` instead of producing
-//!   NaN. Callers must then fall back to [`Preconditioner::Jacobi`] or
-//!   [`Preconditioner::None`]; no automatic fallback is performed.
+//!   NaN. [`auto_preconditioner`] / [`AutoPreconditioner`] retries the chain
+//!   IC(0) (only when the pattern is structurally symmetric) → ILU(0) →
+//!   [`Preconditioner::Jacobi`] and reports the kind it used in
+//!   [`AutoPreconditioner::kind`], but a failed factorisation is never
+//!   repaired: there is still no pivoting or reordering inside a factorisation.
 //! * [`Csr::ic0`] reads only the lower triangle and assumes symmetry; on a
 //!   nonsymmetric or indefinite matrix it either returns `None` (non-positive
-//!   pivot) or is not a valid preconditioner. Neither solver checks that the
-//!   operator is SPD, so CG can still stagnate on a matrix that is not.
+//!   pivot) or is not a valid preconditioner. The automatic helper only tries
+//!   IC(0) when the *pattern* is structurally symmetric, which does not prove
+//!   that the matrix is SPD. Neither solver checks that the operator is SPD,
+//!   so CG can still stagnate on a matrix that is not.
 //! * Preconditioners are applied as operators (one forward and one backward
 //!   triangular solve); no dense inverse is formed. Those solves are
 //!   sequential within a row, so they are not parallelised.
@@ -452,6 +457,125 @@ impl Preconditioner<'_> {
             | Self::Ic0(f) => f.apply(r, z),
         }
     }
+}
+
+/// Which factorisation [`AutoPreconditioner`] managed to build.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AutoPreconditionerKind {
+    /// IC(0) factors, on a structurally symmetric pattern.
+    Ic0,
+    /// ILU(0) factors of the general pattern.
+    Ilu0,
+    /// Diagonal scaling, used when both incomplete factorisations failed.
+    Jacobi,
+}
+
+/// A preconditioner chosen automatically for a matrix, owning its factors.
+///
+/// The selection is the chain IC(0) → ILU(0) → Jacobi: IC(0) is tried only
+/// when the sparsity pattern is structurally symmetric (it is the natural
+/// preconditioner for CG on an SPD matrix), then ILU(0) on the general
+/// pattern, and Jacobi when every factorisation broke down. The factorisation
+/// failures never reach the caller: the chosen kind is reported by
+/// [`AutoPreconditioner::kind`] and the operator lives in this struct, so it
+/// can be applied directly or adapted to a [`Preconditioner`] with
+/// [`AutoPreconditioner::as_preconditioner`].
+///
+/// The choice is a heuristic, not a guarantee of quality: a structurally
+/// symmetric pattern does not prove positive definiteness, so IC(0) can be
+/// built for an indefinite matrix whose preconditioner is poor (though valid
+/// as an operator). A successful factorisation is never rejected; only a
+/// `None` from IC(0)/ILU(0) changes the choice.
+#[derive(Debug, Clone)]
+pub struct AutoPreconditioner {
+    kind: AutoPreconditionerKind,
+    ic0: Option<Ic0>,
+    ilu0: Option<Ilu0>,
+    jacobi: Vec<f64>,
+}
+
+impl AutoPreconditioner {
+    /// Builds the strongest incomplete factorisation that succeeds; the
+    /// chain always terminates with Jacobi, so this never fails.
+    #[must_use]
+    pub fn new(a: &Csr) -> Self {
+        let jacobi = a.jacobi_inverse();
+        if is_structurally_symmetric(a)
+            && let Some(factors) = a.ic0()
+        {
+            return Self {
+                kind: AutoPreconditionerKind::Ic0,
+                ic0: Some(factors),
+                ilu0: None,
+                jacobi,
+            };
+        }
+        if let Some(factors) = a.ilu0() {
+            return Self {
+                kind: AutoPreconditionerKind::Ilu0,
+                ic0: None,
+                ilu0: Some(factors),
+                jacobi,
+            };
+        }
+        Self {
+            kind: AutoPreconditionerKind::Jacobi,
+            ic0: None,
+            ilu0: None,
+            jacobi,
+        }
+    }
+
+    /// The preconditioner that [`AutoPreconditioner::new`] selected.
+    #[must_use]
+    pub const fn kind(&self) -> AutoPreconditionerKind {
+        self.kind
+    }
+
+    /// Writes `M^-1 r` into `z`.
+    pub fn apply(
+        &self,
+        r: &[f64],
+        z: &mut [f64],
+    ) {
+        self.as_preconditioner().apply(r, z);
+    }
+
+    /// Borrows the selected factors as a [`Preconditioner`] for
+    /// [`cg_with`], [`gmres_with`] and [`bicgstab_with`].
+    #[must_use]
+    pub fn as_preconditioner(&self) -> Preconditioner<'_> {
+        if let Some(factors) = &self.ic0 {
+            return Preconditioner::Ic0(factors);
+        }
+        if let Some(factors) = &self.ilu0 {
+            return Preconditioner::Ilu0(factors);
+        }
+        Preconditioner::Jacobi(&self.jacobi)
+    }
+}
+
+/// Builds an [`AutoPreconditioner`] for `a`; see [`AutoPreconditioner::new`].
+#[must_use]
+pub fn auto_preconditioner(a: &Csr) -> AutoPreconditioner {
+    AutoPreconditioner::new(a)
+}
+
+/// Whether every stored `(i, j)` has a stored `(j, i)` and the matrix is square.
+fn is_structurally_symmetric(a: &Csr) -> bool {
+    if a.rows != a.cols {
+        return false;
+    }
+    for i in 0..a.rows {
+        for k in a.indptr[i]..a.indptr[i + 1] {
+            let j = a.indices[k];
+            let mirrored = (a.indptr[j]..a.indptr[j + 1]).any(|q| a.indices[q] == i);
+            if !mirrored {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 /// Conjugate gradients with an explicit [`Preconditioner`].

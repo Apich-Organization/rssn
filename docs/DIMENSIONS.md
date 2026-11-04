@@ -157,9 +157,17 @@ pub enum DimRule {
         variable: usize,
         matrix: usize,
     },
+    Quantity,                    // quantity(v, u): the unit layer supplies it
     Custom(fn(&DimCtx<'_>, &[DimTerm]) -> Result<DimTerm, DimError>),
 }
 ```
+
+`matexp` and the contour/Cauchy operators use `Custom` rules
+(`dim::matexp_dimension`, `dim::contour_dimension`,
+`dim::cauchy_derivative_dimension`) because their rules are predicates on a
+combination of arguments (`dim(t) * dim(A) = 1`, `dim(z) = 1`) rather than a
+data-expressible formula; the manifest therefore records them as
+domain-specific rules.
 
 Operators that take a binder (`defint`, `sum`, `product`, `limit`, ...) use the
 binding rules above: the bound symbol's dimension is looked up in the symbol
@@ -177,6 +185,32 @@ A curated table in `graph::dim` supplies rules for the core operator names
 * `pow(x, y)`: `y` is unified with dimensionless; the result is `x^y` with `y`
   converted to an exponent expression. If `x` is `Any`, the result is `Any`.
 * `product(f, k, a, b)`: `dim(f)^(b-a+1)`; the count is an exponent expression.
+* `matexp(A, t)`: only the product `dim(t) * dim(A)` must be dimensionless;
+  `A` may be a rate and `t` a time (`exp(A t)`), and an unknown product is
+  accepted as unknown rather than guessed. The result is `1`, and a product
+  with a concrete dimension is a `Mismatch`. `matfun` keeps the stricter
+  single-total-degree rule above.
+* Complex-analysis operators operate on a **dimensionless complex plane**:
+  every operator that consumes a complex variable (`contour_integral`,
+  `cauchy_integral`, `cauchy_derivative`,
+  `contour_integral_residue_theorem`, `residue`, `poles`, `zeros_of`,
+  `singularity`, `branch_cut`, `check_analytic`, `count_zeros_poles`,
+  `winding_number`, `continue_along`, `radius_of_convergence`,
+  `mobius_apply`, `is_inside_contour`) requires it to be dimensionless and
+  reports `NonDimensionless` otherwise (blocking in Strict mode). A contour
+  integral `∮ f dz` still carries the integrand's dimension, because `dz`
+  contributes `dim(z) = 1`; `cauchy_derivative` keeps its old
+  `dim(f) / dim(z)` form when `z` is still an undeclared symbol, which
+  reduces to `dim(f)` once `z` is known to be dimensionless. The branch
+  wrappers (`log_branch`, `sqrt_branch`, `root_branch`, `power_branch`, the
+  inverse-trig/hyperbolic branches) are `Dimensionless`: every argument,
+  including the branch index, is a pure number and the value is one. This
+  keeps `power_branch(z, w, k)` consistent with its defining rewrite
+  `exp(w log_branch(z, k))`, which a raw `Same(0)` rule contradicted. The
+  two count operators no longer unify their non-scalar contour argument with
+  `1`, which used to report a spurious conflict on every request, and
+  `poles`, `zeros_of`, `singularity` and `branch_cut` are `Container` values:
+  their list answers unify with the request instead of conflicting with it.
 * `sqrt`/`cbrt`: `Root(2)`/`Root(3)`, so `sqrt(m^2) = m`.
 * `abs`, `floor`, `ceil`, `round`, `re`, `im`, `conj`: `Same(0)`.
 * `sign`: dimensionless.
@@ -228,10 +262,16 @@ rewrite changed the dimension unless the dimension is unknown/`Any`.
 Analysis is run on the input and the final answer of every `compute` in
 Advisory/Strict mode. Intermediate tiers are not analysed by default. The
 `graph::soundness` hook is a *numeric* refutation of rewrite rules, not a
-dimensional one; dimensional agreement of the standard algebra rewrites
-(`x + x`/`2*x`, `x^2/x`, `expand`/`factor`, trigonometric identities, unit
-conversions) is covered by `tests/dimensions*.rs`, and a full per-rewrite
-random-dimension check is listed as a limitation in §13.
+dimensional one. Dimensional agreement of rewrites is checked in two layers:
+`tests/dimensions.rs::standard_rewrites_keep_a_consistent_dimension` pins a
+representative set (`x + x`/`2*x`, `x^2/x`, `expand`/`factor`, trigonometric
+identities, unit conversions), and
+`tests/dimensions.rs::per_rewrite_random_dimension_scan` instantiates every
+declarative rewrite of `rules::standard()` under a deterministic fixed-seed set
+of dimension assignments (three structured and three pseudo-random per rule)
+and requires both sides to agree when both are well-typed. The scan counts its
+skips separately and asserts its own non-vacuity, so a rule that stops being
+exercised fails the test rather than silently passing.
 
 Errors are collected, not thrown. In `Advisory` they become
 `Answer::diagnostics`; in `Strict` the errors on the request or answer become
@@ -258,6 +298,9 @@ Answer {
 
 Term::dimension() -> Dimension       // session-level assumptions
 Term::dimension_report() -> DimOutcome
+
+DimError::code() -> &'static str     // stable kind: "mismatch", ...
+DimError::is_blocking() -> bool      // a warning rather than a conflict
 ```
 
 `Dimension` is a printable snapshot (owned strings), independent of the graph:
@@ -307,18 +350,22 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 ## 10. Files
 
 * `src/graph/dim.rs` — arena, `Dim`, `DimTerm`, `Dimension`, `DimRule`,
-  `DimError`, `DimensionMode`, unit/dimension text parsing, core rule table,
-  `Graph` integration.
-* `src/graph/dim/expr.rs` — rational functions over atoms (symbolic
+  `DimError` (including the stable `code()`), `DimensionMode`, unit/dimension
+  text parsing, core rule table, `Graph` integration.
+* `src/graph/dim_expr.rs` — rational functions over atoms (symbolic
   exponents), polynomial arithmetic, display.
-* `src/graph/dim/infer.rs` — `DimInfer`, class memo, unification, diagnostics.
+* `src/graph/dim_infer.rs` — `DimInfer`, class memo, unification, diagnostics.
+* `src/dim/mod.rs`, `src/dim/units.rs`, `src/dim/constants.rs` — the public
+  `rssn::dim` facade over the graph kernel: re-exports, the one unit table
+  (`UnitDef`, `UnitRegistry`, `StandardRegistry`, exact `Scale`s and affine
+  offsets) and the physical constants with their dimensions.
 * `src/graph/store.rs` — `dims: RefCell<DimArena>`, symbol dimension
   assumptions, `Graph::dimension`, `Graph::assume_dimension`,
   `Graph::define_base_dimension`.
 * `src/graph/rule.rs` — `Installer::dim`; `OpTable` iteration for the scanner.
 * `src/rules/units.rs` — install the `quantity` unit resolver and dimension
   rules; dimension text parsing uses it.
-* `src/api.rs` — `Config` fields, `Answer` fields, `ComputeError::Dimension`,
+* `src/api/mod.rs` — `Config` fields, `Answer` fields, `ComputeError::Dimension`,
   `Term::dimension`, application of assumptions in `prepare`, analysis in
   `run_job`/`finish`.
 * `src/kernels/dim.rs` (optional) — numeric helpers for affine units if the
@@ -334,10 +381,19 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 3. Units: exact conversions, affine temperatures, angles, custom bases.
 4. Strict/Advisory/Off: same terms for Advisory/Off, hard errors only in
    Strict; bypass works.
-5. Rewrite soundness: every standard rewrite, random dimensions, both sides
-   must unify.
+5. Rewrite soundness: a representative set of standard rewrites (`x + x`,
+   `x^2/x`, `expand`/`factor`, trigonometric identities, unit conversions)
+   pinned in `tests/dimensions.rs`, plus
+   `per_rewrite_random_dimension_scan`, a deterministic fixed-seed scan over
+   every declarative rewrite of `rules::standard()` (three structured and
+   three pseudo-random dimension assignments per rule; coverage counters and
+   an empty refutation list are asserted).
 6. Coverage scanner: zero `Unspecified` (definition of done).
 7. API/FFI: `Answer.dimension`, `Term::dimension`, diagnostics, serialization.
+8. Machine-readable diagnostics: `DimError::code` pins every variant; the
+   `matexp` product rule and the dimensionless complex plane of the whole
+   complex-analysis family (including branch wrappers) have positive and
+   negative tests. The tests are wired into the build gate in §14.
 
 ## 12. Checklist
 
@@ -345,91 +401,102 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 - [x] `Graph` integration, assumptions, base dimensions, unit resolver.
 - [x] `Installer::dim`, core rule table.
 - [x] `Config`/`Answer`/`Term`/`ComputeError` integration.
-- [x] Tests 1–6 for the core (`graph::dim` unit tests and `tests/dimensions.rs`).
+- [x] Tests 1–8 for the core (`graph::dim` unit tests and `tests/dimensions*.rs`).
 - [x] Operator coverage workstream: every standard operator has a rule,
       scanner green (test unignored).
 - [x] Docs (`ARCHITECTURE.md`, README, `rssn.h`/`rssn.hpp` status code).
 - [x] Serialization of `Dimension` and the C API dimension accessor
-      (`rssn_dimension`, `rssn_compute_json`); diagnostics are text (§13).
+      (`rssn_dimension`, `rssn_compute_json`); diagnostics are text (§13.8).
+- [x] Machine-readable `DimError::code()` (stable snake_case kinds), pinned by
+      tests; the codes are not yet surfaced through the C API (§13.8).
+- [x] `matexp(A, t)` only requires the product `dim(t) * dim(A)` to be
+      dimensionless, so a rate and a time are accepted.
+- [x] Every complex-analysis operator that consumes a complex variable
+      requires it to be dimensionless; branch wrappers are dimensionless
+      (which fixed the `power_branch` inconsistency the scan found).
+- [x] Per-rewrite random dimension scan over the whole standard rule set,
+      deterministic and self-checking (coverage + empty refutation list).
 
 ## 13. Known limitations
 
 These are genuine limits of the current layer, stated so that they are not
-mistaken for supported behaviour. Each is either tested as a diagnostic or
-covered by a test that pins the current behaviour.
+mistaken for supported behaviour. Each is pinned by a test (a diagnostic, a
+hard error, or a test of the current behaviour). The list is ordered by
+priority: typing gaps that can make a dimensionful value look dimensionally
+correct first, then representation and binding ergonomics.
 
-1. **Diagnostics are serialized as text.** The C API exposes the inferred
-   dimension (`rssn_dimension`), includes it in `rssn_compute_json` and
-   returns the diagnostic messages as strings. `DimError` has no stable
-   machine-readable code or structured JSON form, so a binding must parse
-   the message to tell `UnknownUnit` from `Mismatch`.
-2. **`matfun(f, x, A)` is homogeneous only for a single total degree.** If
-   `f` is a polynomial in `x` whose terms all have the same degree `k` and
-   whose coefficients do not mention `x`, `f(A)` has entries
-   `dim(f) * entry^k` (`x^2` gives `A^2`; `x^3 + x` is not homogeneous). A
-   non-homogeneous `f` (including `exp`, `sin` and other non-polynomial
-   functions) requires a dimensionless matrix and is reported with
-   `NonDimensionless` otherwise. Symbolic exponents (`x^n`) are not
-   analysed. `matexp(A, t)` still requires both `A` and `t` dimensionless,
-   although only the product `tA` needs to be.
-3. **A refused term-level unit is `any` plus a non-blocking diagnostic.**
-   `quantity(1, parsec)` or `quantity(1, degC*m)` has no resolvable unit;
-   the resolver returns `None`, the dimension is `any`, the `units` kernel
-   leaves the request unreduced, and `DimError::UnknownUnit` reports the
-   unit text and the term. It is an *unknown*, not a conflict, so Strict
-   mode answers with the diagnostic rather than failing. A unit in requested
-   dimension text (`Config::dimension("x", "parsec")`) is a declaration
-   error: `UnknownUnit` with no context is blocking.
-4. **Contour integrals assume a dimensionless complex variable.**
-   `contour_integral`, `cauchy_integral` and
-   `contour_integral_residue_theorem` keep the dimension of the integrand
-   (`Same(0)`) and ignore `dim(z)`; `cauchy_derivative` divides by `dim(z)`
-   and `residue`/`radius_of_convergence` follow the usual complex-analysis
-   conventions. A dimensionful `z` is not rejected.
-5. **Affine points are boundary-checked, not fully typed.** The kernel and
-   the dimension rule reject scaling, powers and point+point, and report
-   `DimError::Affine` (blocking in Strict). But a point and a difference are
-   both `Temperature` in the type layer: `quantity(t, K)` is read as a
-   difference when added to a `degC` point, `convert` still shifts through
-   kelvin, and `point - point` is left unreduced rather than typed as a
-   difference. A full point/vector distinction would need a separate affine
+Closed in the current audit: diagnostics have a stable machine-readable kind
+(`DimError::code`, §7); `matexp(A, t)` accepts a dimensionful `A`/`t` whose
+product is dimensionless; every complex-analysis operator that consumes a
+complex variable requires it to be dimensionless; branch wrappers are typed as
+the dimensionless-plane functions they are (the scan found and this closed the
+`power_branch` inconsistency); and the highest-priority item, the missing
+per-rewrite random dimensional scan, is now a deterministic test
+(`tests/dimensions.rs::per_rewrite_random_dimension_scan`, §6).
+
+1. **A structured result is a typed container, not a tuple type (priority:
+   medium).** `lu`, `qr`, `svd`, `eigenvects`, `jordan`, `jordan_blocks`,
+   `spectral` and `ldl` are typed `DimRule::Container` (`non-metric`): the
+   operator knows the parts have different dimensions, and an
+   Advisory/Strict computation reports no `MixedList` for a structured
+   request. The dimensions of the parts are documented and tested
+   (`L`/`P`/`Q`/eigenvectors dimensionless, `U`/`R`/`S`/eigenvalues the entry
+   dimension, projectors dimensionless, `d` the pivots), but a `Term` built
+   directly from the expanded literal (for example `Term::dimension` on the
+   stored answer outside `compute`) still analyses it as nested `list`s and
+   can report `MixedList`; there is no re-usable `(A, B, C)` product type.
+   `vandermonde` and `companion` stay `NonMetric` because their entries mix
+   powers of the input.
+2. **Affine points are boundary-checked, not fully typed (priority: medium).**
+   The kernel and the dimension rule reject scaling, powers and point+point,
+   and report `DimError::Affine` (blocking in Strict). But a point and a
+   difference are both `Temperature` in the type layer: `quantity(t, K)` is
+   read as a difference when added to a `degC` point, `convert` still shifts
+   through kelvin, and `point - point` is left unreduced rather than typed as
+   a difference. A full point/vector distinction would need a separate affine
    dimension kind.
-6. **A structured result is a typed container, not a tuple type.** `lu`,
-   `qr`, `svd`, `eigenvects`, `jordan`, `jordan_blocks`, `spectral` and
-   `ldl` are typed `DimRule::Container` (`non-metric`): the operator knows
-   the parts have different dimensions, and an Advisory/Strict computation
-   reports no `MixedList` for a structured request. The dimensions of the
-   parts are documented and tested (`L`/`P`/`Q`/eigenvectors dimensionless,
-   `U`/`R`/`S`/eigenvalues the entry dimension, projectors dimensionless,
-   `d` the pivots), but a `Term` built directly from the expanded literal
-   (for example `Term::dimension` on the stored answer outside `compute`)
-   still analyses it as nested `list`s and can report `MixedList`; there is
-   no re-usable `(A, B, C)` product type. `vandermonde` and `companion` stay
-   `NonMetric` because their entries mix powers of the input.
-7. **Unit text wins over base-dimension text.** `dimension_from_text` first
-   asks the unit resolver, so `"T"` means tesla, `"C"` coulomb, `"F"` farad.
-   A custom base registered under one of those names is only reachable with
-   the explicit `base:Name` syntax; bare text is never silently
-   reinterpreted. `base:` also works for the SI bases (`base:Length`), with
-   the registered name matched exactly (the aliases are not applied). A
-   trailing `/` is tolerated (`"Length/"` is `Length`).
-8. **Strict mode checks the input as written.** A term can be ill-typed
-   although it simplifies to a well-typed one: `ln(exp(x))` with `x` a length
-   is rejected, because `exp(x)` requires a dimensionless argument, even
-   though the term equals `x`. This is inherent in typing the input and the
-   answer independently; Advisory mode still reports the same finding
-   without failing the computation.
-9. **A class containing the literal zero is polymorphic.** This is what makes
-   kernels that simplify intermediate expressions to zero safe (a
-   zero-equivalent expression such as `x - x` has a length dimension
+3. **`matfun(f, x, A)` is homogeneous only for a single total degree
+   (priority: low).** If `f` is a polynomial in `x` whose terms all have the
+   same degree `k` and whose coefficients do not mention `x`, `f(A)` has
+   entries `dim(f) * entry^k` (`x^2` gives `A^2`; `x^3 + x` is not
+   homogeneous). A non-homogeneous `f` (including `exp`, `sin` and other
+   non-polynomial functions) requires a dimensionless matrix and is reported
+   with `NonDimensionless` otherwise. Symbolic exponents (`x^n`) are not
+   analysed.
+4. **A refused term-level unit is `any` plus a non-blocking diagnostic
+   (priority: low).** `quantity(1, parsec)` or `quantity(1, degC*m)` has no
+   resolvable unit; the resolver returns `None`, the dimension is `any`, the
+   `units` kernel leaves the request unreduced, and `DimError::UnknownUnit`
+   reports the unit text and the term. It is an *unknown*, not a conflict, so
+   Strict mode answers with the diagnostic rather than failing. A unit in
+   requested dimension text (`Config::dimension("x", "parsec")`) is a
+   declaration error: `UnknownUnit` with no context is blocking.
+5. **Strict mode checks the input as written (priority: low).** A term can be
+   ill-typed although it simplifies to a well-typed one: `ln(exp(x))` with
+   `x` a length is rejected, because `exp(x)` requires a dimensionless
+   argument, even though the term equals `x`. This is inherent in typing the
+   input and the answer independently; Advisory mode still reports the same
+   finding without failing the computation.
+6. **A class containing the literal zero is polymorphic (priority: low).**
+   This is what makes kernels that simplify intermediate expressions to zero
+   safe (a zero-equivalent expression such as `x - x` has a length dimension
    syntactically, but the class is `any`). It also means Strict mode does not
    catch an ill-typed subterm that is multiplied by zero.
-10. **No per-rewrite random dimensional scan.** The e-graph class
-   unification catches a rewrite that changes a dimension *inside one
-   analysis*, and `tests/dimensions.rs` pins a representative set (`x + x`,
-   `x^2/x`, `expand`/`factor`, `sin^2 + cos^2`, unit conversion,
-   `ln(exp(x))`). There is no test that walks every standard rewrite with
-   random dimension assignments.
+7. **Unit text wins over base-dimension text (priority: low).**
+   `dimension_from_text` first asks the unit resolver, so `"T"` means tesla,
+   `"C"` coulomb, `"F"` farad. A custom base registered under one of those
+   names is only reachable with the explicit `base:Name` syntax; bare text is
+   never silently reinterpreted. `base:` also works for the SI bases
+   (`base:Length`), with the registered name matched exactly (the aliases are
+   not applied). A trailing `/` is tolerated (`"Length/"` is `Length`).
+8. **Diagnostics are not yet surfaced as codes through the C API (priority:
+   low).** `DimError::code()` gives every finding a stable snake_case kind
+   (`mismatch`, `non_dimensionless`, `symbolic_constraint`, `unknown_unit`,
+   `affine`, `mixed_list`, `unannotated`, `parse`), documented and pinned by
+   tests, so a Rust caller no longer has to parse the message. The C API
+   still exposes `Answer.dimension` and the diagnostics as strings in
+   `rssn_compute_json`; a binding that needs to branch on the kind has to
+   parse the text until a later round serializes the code.
 
 ## 14. Landing status
 
@@ -451,4 +518,35 @@ longer ignored. The four coverage workstreams (core, special/math, ODE/PDE and
 physics/misc) annotated the remaining operators; the complex-analysis and
 verify operators were completed centrally in the core signature table.
 
+The limitations audit closed the machine-readable codes, the `matexp` product
+rule and the complex-variable/plane checks. They are pinned by
+`dim::tests::dim_error_codes_pin_every_variant`,
+`dim::tests::matexp_requires_only_a_dimensionless_product`,
+`dim::tests::branch_wrappers_are_dimensionless_plane_functions`,
+`dim::tests::contour_operators_require_a_dimensionless_complex_variable`,
+`tests/dimensions.rs::diagnostics_carry_stable_codes`,
+`tests/dimensions_special.rs::matrix_functions_carry_the_degree_of_an_entry`,
+`tests/dimensions_special.rs::complex_analysis_operators_check_their_complex_variable`
+and
+`tests/dimensions_special.rs::contour_operators_require_a_dimensionless_complex_variable`.
 
+The rewrite-soundness audit added
+`tests/dimensions.rs::per_rewrite_random_dimension_scan`: it instantiates every
+declarative rewrite of `rules::standard()` (261 rules in the current tree)
+under three structured (all dimensionless, all length, all time) and three
+pseudo-random dimension assignments per rule, generated from a fixed per-rule
+seed. A run currently reports 261/261 rewrites exercised, 882 dimensioned
+instantiations checked, 683 skipped because the *pattern* is dimensionally
+ill-typed under the assignment (outside the rewrite's domain), 1 skipped
+because the *right* side is domain-restricted, 0 guarded out, and an empty
+refutation list; the test asserts the counters, so a rule that stops being
+exercised fails rather than passing vacuously. The scan found one genuine
+inconsistency: branch wrappers were typed `Same(0)`, which made
+`power_branch(z, w, k)` disagree with its defining rewrite
+`exp(w log_branch(z, k))`. They are now `Dimensionless` — every argument,
+including the branch index, is a pure number — and every complex-analysis
+operator that consumes a complex variable checks that it is dimensionless.
+The same pass fixed the spurious `non-metric vs 1` conflict on
+`poles`/`zeros_of`/`singularity`/`branch_cut` (now `Container`, so their list
+answers unify) and the spurious `NonDimensionless` on the non-scalar contour
+argument of `count_zeros_poles`/`winding_number`.

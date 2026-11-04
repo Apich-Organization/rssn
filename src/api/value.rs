@@ -15,6 +15,8 @@ use std::sync::Arc;
 use crate::api::Config;
 use crate::api::Session;
 use crate::api::Term;
+use crate::dim::UnitDef;
+use crate::dim::UnitRegistry;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -38,6 +40,7 @@ use crate::kernel::value::QuantityValue;
 use crate::kernel::value::SessionId;
 use crate::kernel::value::TensorValue;
 use crate::kernel::value::TermRef;
+use crate::kernel::value::UnitValue;
 use crate::kernel::value::Value;
 
 /// Why two sessions could not be merged.
@@ -142,6 +145,13 @@ impl Session {
     /// the term itself — the honest answer, because a symbolic expression is
     /// a term and nothing else.
     ///
+    /// A unit inside a quantity is resolved against *this session's*
+    /// registry — the built-in table plus the units registered with
+    /// [`Session::register_unit`] — so a session's own unit keeps its
+    /// dimension and printed form instead of coming back as an opaque
+    /// [`Value::Term`]. A compound unit expression that is not a single known
+    /// unit (`m/s`) is described by its resolved dimension and scale.
+    ///
     /// # Errors
     /// Fails only when a value cannot be represented, which today means a
     /// unit whose definition is inconsistent with the graph's arena.
@@ -150,8 +160,24 @@ impl Session {
         term: Term<'_>,
     ) -> Result<Value, OpError> {
         let inner = self.inner.borrow();
-        let graph = &inner.graph;
-        Ok(value_of_node(graph, NodeId::from_raw(term.id()), self.id))
+        let (units, definitions): (super::SessionUnits, &[UnitValue]) =
+            match inner.templates.first() {
+                | Some(template) => {
+                    let manifest = template.engine.manifest();
+                    (
+                        super::SessionUnits::from_manifest(manifest),
+                        manifest.units.as_slice(),
+                    )
+                },
+                | None => (super::SessionUnits::default(), &[]),
+            };
+        Ok(value_of_node(
+            &inner.graph,
+            NodeId::from_raw(term.id()),
+            self.id,
+            &units,
+            definitions,
+        ))
     }
 
     /// The term a value denotes.
@@ -207,8 +233,9 @@ impl Session {
     /// The `solve` operator itself answers with a `list(...)`, which is the
     /// right thing for a rewrite but loses everything a caller needs to know
     /// besides the values. This lifts that answer into
-    /// [`Solutions`], which carries the unknown and whether the set is
-    /// complete, and converts to a [`Value::Record`] for the dynamic ABI.
+    /// [`Solutions`](crate::kernel::result::Solutions), which carries the
+    /// unknown and whether the set is complete, and converts to a
+    /// [`Value::Record`] for the dynamic ABI.
     ///
     /// Multiplicities are left unreported: the solver returns distinct
     /// roots, and claiming a multiplicity it did not compute would be worse
@@ -954,11 +981,16 @@ fn resolve_op(
 /// The value of a node.
 ///
 /// Infallible: a node that is not a number, a literal, a symbol, a quantity
-/// or a list of numbers is a term, and a term is a value.
+/// or a list of numbers is a term, and a term is a value. `units` is the
+/// session's registry and `definitions` the unit definitions its manifest
+/// describes, so that a unit the session registered is resolved and carried
+/// with the same definition the session's engine uses.
 fn value_of_node(
     graph: &Graph,
     node: NodeId,
     session: SessionId,
+    units: &super::SessionUnits,
+    definitions: &[UnitValue],
 ) -> Value {
     if let Some(number) = graph.number_of(node) {
         return match number {
@@ -978,8 +1010,8 @@ fn value_of_node(
     if let Some(symbol) = graph.as_symbol(node) {
         return Value::Symbol(graph.interner().symbol_name(symbol).to_owned());
     }
-    // A quantity: value plus a unit the registry knows.
-    if let Some(quantity) = quantity_of(graph, node) {
+    // A quantity: value plus a unit the session's registry knows.
+    if let Some(quantity) = quantity_of(graph, node, units, definitions) {
         return Value::Quantity(quantity);
     }
     // A rectangular list of numbers.
@@ -993,9 +1025,20 @@ fn value_of_node(
 }
 
 /// The quantity a `quantity(value, unit)` node denotes.
+///
+/// The unit is resolved through the session's registry, not the process-wide
+/// table: a unit registered with [`Session::register_unit`] is part of the
+/// session, and reporting `quantity(3, furlong)` as an opaque term because
+/// the shared table never heard of `furlong` lost the dimension of the value
+/// the session itself declared. The full definition — display, aliases,
+/// scale, offset — comes from the session's manifest; a compound expression
+/// that is not a single known unit (`m/s`) keeps its resolved dimension and
+/// scale.
 fn quantity_of(
     graph: &Graph,
     node: NodeId,
+    units: &super::SessionUnits,
+    definitions: &[UnitValue],
 ) -> Option<QuantityValue> {
     let op = graph.ops().lookup("quantity")?;
     if graph.op(node) != op {
@@ -1005,10 +1048,20 @@ fn quantity_of(
     let (&value, unit_node) = children.split_first()?;
     let &unit_node = unit_node.first()?;
     let text = unit_text(graph, unit_node)?;
-    let resolved = crate::dim::units::resolve(&text).ok()?;
-    let unit = crate::dim::UnitDef::linear(&text, resolved.dimension, resolved.scale).to_value();
+    let resolved = units.resolve(&text).ok()?;
+    let unit = definitions
+        .iter()
+        .find(|unit| unit.name == text || unit.aliases.contains(&text))
+        .cloned()
+        .unwrap_or_else(|| UnitDef::linear(&text, resolved.dimension, resolved.scale).to_value());
     Some(QuantityValue {
-        value: Box::new(value_of_node(graph, value, SessionId(0))),
+        value: Box::new(value_of_node(
+            graph,
+            value,
+            SessionId(0),
+            units,
+            definitions,
+        )),
         unit,
     })
 }
@@ -1756,7 +1809,7 @@ mod tests {
                         value: Box::new(Value::Float(3.0)),
                         unit: metre.clone(),
                     }),
-                    Value::Unit(metre.clone()),
+                    Value::Unit(metre),
                 ],
                 &CallCtx::new(),
             )
@@ -1786,6 +1839,59 @@ mod tests {
             panic!("expected a quantity, got {back:?}");
         };
         assert_eq!(quantity.unit.dimension, metre.dimension);
+    }
+
+    /// A unit the *session* registered is still a quantity when a term is read
+    /// back: `value_of` resolves the unit through the session's own registry.
+    ///
+    /// It used to resolve against the process-wide table only, so a session
+    /// unit was unknown there and the value came back as an opaque
+    /// [`Value::Term`]: the dimension the session itself declared was lost.
+    #[test]
+    fn a_session_unit_keeps_its_dimension_and_display_in_value_of() {
+        use crate::dim::Scale;
+        use crate::dim::UnitDef;
+        use crate::kernel::signature::DimExpr;
+
+        let mut s = Session::new();
+        s.register_unit(
+            UnitDef::linear("furlong", DimExpr::base("Length"), Scale::one()).display("fur"),
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        let term = s
+            .parse("quantity(3, furlong)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let value = s.value_of(term).unwrap_or_else(|e| panic!("{e}"));
+        let Value::Quantity(quantity) = value else {
+            panic!("a session unit must stay a quantity, got {value:?}");
+        };
+        assert_eq!(quantity.unit.dimension, DimExpr::base("Length"));
+        assert_eq!(quantity.unit.display, "fur");
+        assert_eq!(quantity.value.as_f64(), Some(3.0));
+
+        // The value still denotes the same term.
+        let round_trip = s
+            .term_of(&Value::Quantity(quantity))
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(round_trip.to_string(), "quantity(3, furlong)");
+    }
+
+    /// A built-in unit keeps the printed form of its definition rather than the
+    /// text a term happened to spell: `degC` prints as `°C`, and the quantity
+    /// is still reported as affine.
+    #[test]
+    fn a_known_unit_keeps_its_display_in_value_of() {
+        let s = Session::new();
+        let term = s
+            .parse("quantity(20, degC)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let value = s.value_of(term).unwrap_or_else(|e| panic!("{e}"));
+        let Value::Quantity(quantity) = value else {
+            panic!("expected a quantity, got {value:?}");
+        };
+        assert_eq!(quantity.unit.name, "degC");
+        assert_eq!(quantity.unit.display, "\u{b0}C");
+        assert!(quantity.unit.affine);
     }
 
     #[test]

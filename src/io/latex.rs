@@ -1,4 +1,19 @@
 //! LaTeX output for terms of a [`Graph`].
+//!
+//! # Limitations
+//!
+//! - Output is a math fragment for inline use: no `$...$`/`\[...\]`
+//!   delimiters, no preamble, document class or package requirements.
+//! - Symbol coverage is a fixed table: the functions, Greek letters and
+//!   infix operators listed in this module (and shared with the Typst
+//!   printer), plus `pmatrix` matrices. Lowercase `omicron` and the variant
+//!   forms (`varepsilon`, `varphi`, `vartheta`, ...) are not distinguished;
+//!   other multi-letter symbol names become `\mathrm{...}` without escaping,
+//!   so symbol names are assumed identifier-like.
+//! - Literal strings are escaped for `\text{...}` (see [`Latex::text`]), but
+//!   there is no math-mode escaping of user text, no `cases`/`aligned`
+//!   environments, no line breaking and no automatic sizing of delimiters
+//!   beyond `\left`/`\right`.
 
 use super::markup::BigOp;
 use super::markup::Deriv;
@@ -81,6 +96,28 @@ pub fn to_latex_prec_with_parens(
 
 struct Latex;
 
+/// Escapes `s` for LaTeX text mode (inside `\text{...}`), where `\ { } $ & # %
+/// _ ^ ~` are special.
+fn escape_text(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            | '\\' => out.push_str(r"\textbackslash{}"),
+            | '{' => out.push_str(r"\{"),
+            | '}' => out.push_str(r"\}"),
+            | '$' => out.push_str(r"\$"),
+            | '&' => out.push_str(r"\&"),
+            | '#' => out.push_str(r"\#"),
+            | '%' => out.push_str(r"\%"),
+            | '_' => out.push_str(r"\_"),
+            | '^' => out.push_str(r"\textasciicircum{}"),
+            | '~' => out.push_str(r"\textasciitilde{}"),
+            | other => out.push(other),
+        }
+    }
+    out
+}
+
 fn braced(s: &str) -> String {
     format!("{{{s}}}")
 }
@@ -125,7 +162,7 @@ impl Dialect for Latex {
         &self,
         s: &str,
     ) -> String {
-        format!(r"\text{{{s}}}")
+        format!(r"\text{{{}}}", escape_text(s))
     }
 
     fn constant(

@@ -6,12 +6,23 @@
 //! interned atoms (`x^n`, `x^(a+b)`, `x^(1/n)`).
 //!
 //! Operator signatures are [`DimRule`] attributes. The inference engine in
-//! `infer` walks the hash-consed DAG, unifies the dimensions of all members
-//! of an e-class and reports conflicts. The public entry points are
+//! `dim_infer` walks the hash-consed DAG, unifies the dimensions of all
+//! members of an e-class and reports conflicts. The public entry points are
 //! [`Graph::dimension`] and [`Graph::assume_dimension`]; `Config` and
 //! `Answer` expose the result.
 //!
-//! The design is documented in `docs/DIMENSIONS.md`.
+//! A finding is a [`DimError`]. Its [`DimError::code`] is a stable,
+//! machine-readable kind (`mismatch`, `unknown_unit`, ...) for callers that
+//! should not parse the printable message, and [`DimError::is_blocking`]
+//! says whether Strict mode turns it into a hard error. Rules that are not
+//! data-expressible are [`DimRule::Custom`] functions in this module:
+//! `matexp` (a dimensionless product) and the complex-analysis family, which
+//! lives on a dimensionless complex plane (`dimensionless_complex_variable`).
+//!
+//! The design and the remaining limits are documented in
+//! `docs/DIMENSIONS.md` (§13 lists the current limitations by priority). The
+//! standard rule set's rewrites are dimension-checked by
+//! `tests/dimensions.rs::per_rewrite_random_dimension_scan`.
 
 // The exponent field and the inference engine are implementation details of
 // this module; `pub(crate)` is already the widest visibility reachable from
@@ -306,6 +317,45 @@ impl DimError {
             | Self::MixedList { .. }
             | Self::UnknownUnit { context: Some(_), .. } => false,
             | _ => true,
+        }
+    }
+
+    /// A stable, machine-readable kind for this finding.
+    ///
+    /// The code is part of the public contract: a binding branches on it
+    /// instead of parsing [`Display`]. The list is closed and never changes
+    /// for an existing variant; a future variant gets a new code. In
+    /// particular, [`Self::UnknownUnit`] has one code for both a text
+    /// declaration and an unresolved unit inside a term — the difference is
+    /// [`Self::is_blocking`] (`context` is `None` for a declaration).
+    ///
+    /// | code | variant |
+    /// |---|---|
+    /// | `mismatch` | `Mismatch` |
+    /// | `non_dimensionless` | `NonDimensionless` |
+    /// | `symbolic_constraint` | `SymbolicConstraint` |
+    /// | `unknown_unit` | `UnknownUnit` |
+    /// | `affine` | `Affine` |
+    /// | `mixed_list` | `MixedList` |
+    /// | `unannotated` | `Unannotated` |
+    /// | `parse` | `Parse` |
+    ///
+    /// This exists because diagnostics are otherwise only printable text
+    /// (see `docs/DIMENSIONS.md` §7); a caller that wants to treat a
+    /// coverage gap (`unannotated`) differently from a conflict
+    /// (`mismatch`) can now do so without string matching. Serializing the
+    /// code through the C API is a later round; the method is additive.
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self {
+            | Self::Mismatch { .. } => "mismatch",
+            | Self::NonDimensionless { .. } => "non_dimensionless",
+            | Self::SymbolicConstraint { .. } => "symbolic_constraint",
+            | Self::UnknownUnit { .. } => "unknown_unit",
+            | Self::Affine { .. } => "affine",
+            | Self::MixedList { .. } => "mixed_list",
+            | Self::Unannotated { .. } => "unannotated",
+            | Self::Parse { .. } => "parse",
         }
     }
 }
@@ -1606,40 +1656,45 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         // contour results carry the dimension of the function they analyse;
         // branches/curves/singularity sets are not scalars; winding numbers,
         // zero/pole counts and verification verdicts are pure numbers or
-        // verdicts.
+        // verdicts. A contour lives in a dimensionless complex plane: **every**
+        // operator that consumes a complex variable checks that it is
+        // dimensionless (`dimensionless_complex_variable` via the `Custom`
+        // rules below), while `continue_along`/`mobius_apply`/`residue` keep
+        // the function's dimension and `cauchy_derivative` divides by `z`.
         | "I" => DimRule::Dimensionless,
-        | "log_branch"
-        | "sqrt_branch"
-        | "root_branch"
-        | "power_branch"
-        | "asin_branch"
-        | "acos_branch"
-        | "atan_branch"
-        | "asinh_branch"
-        | "acosh_branch"
-        | "atanh_branch"
-        | "continue_along"
-        | "mobius_apply"
-        | "residue"
-        | "contour_integral"
-        | "cauchy_integral"
-        | "contour_integral_residue_theorem"
+        // Branch wrappers are complex-plane functions (`log_branch(z, k) =
+        // ln|z| + I(arg z + 2 pi k)`, ...): every argument, including the
+        // branch index, is a pure number and the value is one. `Same(0)` used
+        // to return `dim(z)` here, which contradicted the defining rewrites
+        // (`power_branch` vs `exp(w log_branch(z, k))`) and made the
+        // per-rewrite dimension scan fail.
+        | "log_branch" | "sqrt_branch" | "root_branch" | "power_branch" | "asin_branch"
+        | "acos_branch" | "atan_branch" | "asinh_branch" | "acosh_branch" | "atanh_branch" => {
+            DimRule::Dimensionless
+        },
         | "distance" => DimRule::Same(0),
-        | "cauchy_derivative" => DimRule::Diff { f: 0, x: 1 },
-        | "radius_of_convergence" => DimRule::Same(1),
-        | "count_zeros_poles" | "winding_number" => DimRule::Dimensionless,
+        | "residue" => DimRule::Custom(residue_dimension),
+        | "continue_along" => DimRule::Custom(continue_along_dimension),
+        | "mobius_apply" => DimRule::Custom(mobius_apply_dimension),
+        | "radius_of_convergence" => DimRule::Custom(radius_of_convergence_dimension),
+        | "contour_integral" | "cauchy_integral" | "contour_integral_residue_theorem" => {
+            DimRule::Custom(contour_dimension)
+        },
+        | "cauchy_derivative" => DimRule::Custom(cauchy_derivative_dimension),
+        | "count_zeros_poles" => DimRule::Custom(count_zeros_poles_dimension),
+        | "winding_number" => DimRule::Custom(winding_number_dimension),
+        | "poles" => DimRule::Custom(poles_dimension),
+        | "zeros_of" => DimRule::Custom(zeros_of_dimension),
+        | "singularity" => DimRule::Custom(singularity_dimension),
+        | "branch_cut" => DimRule::Custom(branch_cut_dimension),
+        | "check_analytic" => DimRule::Custom(check_analytic_dimension),
+        | "is_inside_contour" => DimRule::Custom(is_inside_contour_dimension),
         | "circle"
         | "path"
         | "polygon"
         | "ray"
-        | "poles"
-        | "zeros_of"
-        | "singularity"
-        | "branch_cut"
         | "mobius_compose"
         | "mobius_inverse"
-        | "is_inside_contour"
-        | "check_analytic"
         | "verify_solution"
         | "verify_integral"
         | "verify_definite_integral"
@@ -1655,6 +1710,179 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
 /// Converts a numeric node to an exact exponent, when it is rational.
 pub(crate) fn exact_exponent(number: &crate::graph::Number) -> Option<BigRational> {
     number.to_rational()
+}
+
+/// The dimension rule of `matexp(A, t)` (`exp(t A)`), installed as a
+/// [`DimRule::Custom`].
+///
+/// Only the *product* `dim(t) * dim(A)` must be dimensionless, so `A` may be
+/// a rate and `t` a time: `exp(A t)` is a pure number. A product with a
+/// dimension is a [`DimError::Mismatch`]; an unknown product (an undeclared
+/// symbol) is accepted, because "unknown" is not "wrong". This is the
+/// relaxation of the former `Dimensionless` rule, which required `A` and `t`
+/// to be dimensionless separately.
+///
+/// # Errors
+/// A [`DimError::Mismatch`] when `dim(t) * dim(A)` has a concrete dimension.
+pub fn matexp_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let matrix = args.first().cloned().unwrap_or_else(DimTerm::any);
+    let scale = args.get(1).cloned().unwrap_or_else(DimTerm::any);
+    let product = matrix.mul(&scale);
+    // An unknown product is not a conflict: leave it unknown (the result is
+    // still the pure number `1`).
+    if product.is_any() || product.has_unknown() || product.is_dimensionless() {
+        return Ok(ctx.dimensionless());
+    }
+    Err(DimError::Mismatch {
+        left: product.describe(ctx.arena),
+        right: String::from("1"),
+        context: ctx.graph.display(ctx.node),
+    })
+}
+
+/// The complex variable of a contour/Cauchy operator, as
+/// `(dim(function), dim(z))`.
+///
+/// A contour lives in a dimensionless complex plane, so `z` must be
+/// dimensionless; an undeclared `z` is an unknown and is accepted rather than
+/// guessed. A dimensionful `z` is a [`DimError::NonDimensionless`] conflict.
+///
+/// # Errors
+/// A [`DimError::NonDimensionless`] when `dim(z)` is a concrete non-`1`
+/// dimension.
+fn dimensionless_complex_variable(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+    variable: usize,
+) -> Result<(DimTerm, DimTerm), DimError> {
+    let function = args.first().cloned().unwrap_or_else(DimTerm::any);
+    let variable_dimension = args.get(variable).cloned().unwrap_or_else(DimTerm::any);
+    if variable_dimension.is_any()
+        || variable_dimension.has_unknown()
+        || variable_dimension.is_dimensionless()
+    {
+        return Ok((function, variable_dimension));
+    }
+    Err(DimError::NonDimensionless {
+        op: ctx.graph.ops().get(ctx.graph.op(ctx.node)).name.to_string(),
+        argument: ctx
+            .graph
+            .children(ctx.node)
+            .get(variable)
+            .map_or_else(String::new, |&child| ctx.graph.display(child)),
+        found: variable_dimension.describe(ctx.arena),
+    })
+}
+
+/// `contour_integral`, `cauchy_integral` and
+/// `contour_integral_residue_theorem`: the complex variable must be
+/// dimensionless, and the value carries the dimension of the integrand.
+///
+/// The differential `dz` contributes `dim(z) = 1`, so the result is
+/// `dim(f)`.
+///
+/// # Errors
+/// A [`DimError::NonDimensionless`] when the complex variable has a
+/// dimension.
+pub fn contour_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (function, _variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(function)
+}
+
+/// `cauchy_derivative`: the complex variable must be dimensionless, and the
+/// value divides by `(z - a)^(n + 1)` and multiplies by `dz`.
+///
+/// With `dim(z) = 1` the result is `dim(f)`; an undeclared `z` keeps the
+/// previous `Diff` result `dim(f) / dim(z)` because its dimension is unknown.
+///
+/// # Errors
+/// A [`DimError::NonDimensionless`] when the complex variable has a
+/// dimension.
+pub fn cauchy_derivative_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (function, variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(function.mul(&variable.inverse()))
+}
+
+/// A [`DimRule::Custom`] rule for a complex-analysis operator: check the
+/// complex variable at `$variable`, then report the operator's fixed
+/// dimensional kind.
+macro_rules! complex_variable_rule {
+    ($name:ident, $variable:expr, $result:expr) => {
+        fn $name(
+            ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            dimensionless_complex_variable(ctx, args, $variable)?;
+            Ok($result)
+        }
+    };
+}
+
+// Structured results (point and singularity sets, branch cuts). The complex
+// variable is checked, and the value is typed as a *container*: it is
+// non-scalar, but it stays compatible with the dimension of the reduced list
+// literal, so a request and its answer unify instead of reporting a spurious
+// `non-metric vs 1` conflict.
+complex_variable_rule!(poles_dimension, 1, DimTerm::container());
+complex_variable_rule!(zeros_of_dimension, 1, DimTerm::container());
+complex_variable_rule!(singularity_dimension, 1, DimTerm::container());
+complex_variable_rule!(branch_cut_dimension, 1, DimTerm::container());
+// Boolean verdicts stay non-metric, exactly as their literal answers are.
+complex_variable_rule!(check_analytic_dimension, 1, DimTerm::non_metric());
+complex_variable_rule!(is_inside_contour_dimension, 0, DimTerm::non_metric());
+
+// Counts are pure numbers, and the contour argument is a non-scalar: unifying
+// *every* argument with `Dimensionless` (the former rule) reported a spurious
+// conflict on the contour.
+complex_variable_rule!(count_zeros_poles_dimension, 1, DimTerm::dimensionless());
+complex_variable_rule!(winding_number_dimension, 0, DimTerm::dimensionless());
+
+/// `residue(f, z, a)`: the residue of `f` at `a` has the dimension of `f`;
+/// the complex variable must be dimensionless.
+fn residue_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (function, _variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(function)
+}
+
+/// `continue_along(f, z, list(...), order)`: the continued expansion is a
+/// value of `f` on the dimensionless z-plane.
+fn continue_along_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (function, _variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(function)
+}
+
+/// `mobius_apply(M, z)`: the image is a point of the dimensionless z-plane.
+fn mobius_apply_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (function, _variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(function)
+}
+
+/// `radius_of_convergence(f, z, a)`: a radius in the dimensionless z-plane,
+/// so it keeps `dim(z)` after the complex variable has been checked.
+fn radius_of_convergence_dimension(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let (_function, variable) = dimensionless_complex_variable(ctx, args, 1)?;
+    Ok(variable)
 }
 
 #[cfg(test)]
@@ -1835,6 +2063,213 @@ mod tests {
             "{:?}",
             bad.errors
         );
+    }
+
+    /// Every `DimError` variant has a stable `snake_case` code, the codes are
+    /// distinct, and the method is total (a new variant fails to compile
+    /// until it is given one). `Display` is unchanged: it still prints the
+    /// human-readable message.
+    #[test]
+    fn dim_error_codes_pin_every_variant() {
+        let variants = [
+            (
+                DimError::Mismatch {
+                    left: String::from("Length"),
+                    right: String::from("Time"),
+                    context: String::from("x + y"),
+                },
+                "mismatch",
+            ),
+            (
+                DimError::NonDimensionless {
+                    op: String::from("exp"),
+                    argument: String::from("x"),
+                    found: String::from("Length"),
+                },
+                "non_dimensionless",
+            ),
+            (
+                DimError::SymbolicConstraint {
+                    constraint: String::from("n = 1"),
+                    context: String::from("x^n"),
+                },
+                "symbolic_constraint",
+            ),
+            (
+                DimError::UnknownUnit {
+                    unit: String::from("parsec"),
+                    context: None,
+                },
+                "unknown_unit",
+            ),
+            (
+                DimError::UnknownUnit {
+                    unit: String::from("parsec"),
+                    context: Some(String::from("quantity(1, parsec)")),
+                },
+                "unknown_unit",
+            ),
+            (
+                DimError::Affine {
+                    operation: String::from("quantity(20, degC) * 2"),
+                },
+                "affine",
+            ),
+            (
+                DimError::MixedList {
+                    context: String::from("list(x, y)"),
+                },
+                "mixed_list",
+            ),
+            (
+                DimError::Unannotated {
+                    op: String::from("mystery"),
+                },
+                "unannotated",
+            ),
+            (
+                DimError::Parse {
+                    text: String::from("m^"),
+                    reason: String::from("missing exponent"),
+                },
+                "parse",
+            ),
+        ];
+        let mut seen: Vec<&str> = Vec::new();
+        for (error, code) in &variants {
+            assert_eq!(error.code(), *code, "wrong code for {error:?}");
+            assert!(
+                code.chars().all(|c| c.is_ascii_lowercase() || c == '_'),
+                "`{code}` is not snake_case"
+            );
+            if !seen.contains(code) {
+                seen.push(code);
+            }
+            // The machine-readable code is additive: `Display` is unchanged.
+            assert!(!error.to_string().is_empty(), "empty Display for {error:?}");
+        }
+        // Eight variants, one code each: the two `UnknownUnit` contexts share
+        // `unknown_unit` (the blocking difference is `is_blocking`).
+        assert_eq!(seen.len(), 8, "{seen:?}");
+        assert!(!seen.contains(&"unresolved_unit"));
+        assert_eq!(
+            DimError::UnknownUnit {
+                unit: String::from("parsec"),
+                context: Some(String::from("quantity(1, parsec)")),
+            }
+            .code(),
+            "unknown_unit"
+        );
+    }
+
+    /// `matfun(f, x, A)` is only homogeneous for a single total degree; a
+    /// non-homogeneous or non-polynomial `f` still requires a dimensionless
+    /// matrix. `matexp(A, t)` is the weaker case: only the *product* `t A`
+    /// has to be dimensionless, so a rate times a time is accepted.
+    #[test]
+    fn matexp_requires_only_a_dimensionless_product() {
+        // An evolution operator: `A` in 1/s, `t` in s.
+        let rate = dimension_of("matexp(list(list(quantity(1, 1/s))), quantity(2, s))", &[]);
+        assert_eq!(rate.dimension.to_string(), "1");
+        assert!(rate.errors.is_empty(), "{:?}", rate.errors);
+        // Dimensionful `A` and `t` whose product cancels.
+        let cancelling = dimension_of(
+            "matexp(list(list(quantity(1, m/s))), quantity(2, s/m))",
+            &[],
+        );
+        assert_eq!(cancelling.dimension.to_string(), "1");
+        assert!(cancelling.errors.is_empty(), "{:?}", cancelling.errors);
+        // Two unknown symbols give an unknown product: accepted as unknown,
+        // not guessed to be dimensionless.
+        let symbolic = dimension_of("matexp(list(list(x)), t)", &[]);
+        assert_eq!(symbolic.dimension.to_string(), "1");
+        assert!(symbolic.errors.is_empty(), "{:?}", symbolic.errors);
+        // A product with a dimension stays an error, for either factor.
+        for source in [
+            "matexp(list(list(quantity(1, m))), 4)",
+            "matexp(list(list(quantity(1, m))), quantity(2, s))",
+            "matexp(list(list(1)), quantity(2, m))",
+        ] {
+            let outcome = dimension_of(source, &[]);
+            assert!(
+                outcome
+                    .errors
+                    .iter()
+                    .any(|error| matches!(error, DimError::Mismatch { .. })),
+                "`{source}`: {:?}",
+                outcome.errors
+            );
+        }
+    }
+
+    /// A contour/Cauchy operator is defined on a dimensionless complex plane:
+    /// a dimensionful complex variable is a conflict, while the dimensionless
+    /// and the undeclared cases are accepted.
+    #[test]
+    fn contour_operators_require_a_dimensionless_complex_variable() {
+        let accepted = dimension_of("contour_integral(z^2, z, c)", &[("z", "1")]);
+        assert_eq!(accepted.dimension.to_string(), "1");
+        assert!(accepted.errors.is_empty(), "{:?}", accepted.errors);
+
+        // An undeclared complex variable is an unknown, so the contour rule
+        // accepts it (the enclosing `exp` binds it to dimensionless here).
+        let undeclared = dimension_of("cauchy_integral(exp(z), z, 0)", &[]);
+        assert_eq!(undeclared.dimension.to_string(), "1");
+        assert!(undeclared.errors.is_empty(), "{:?}", undeclared.errors);
+
+        // A dimensionful `z` is refused by every operator of the family.
+        for source in [
+            "contour_integral(z^2, z, c)",
+            "cauchy_integral(exp(z), z, 0)",
+            "cauchy_derivative(exp(z), z, 0, 1)",
+            "contour_integral_residue_theorem(exp(z), z, list(0))",
+        ] {
+            let outcome = dimension_of(source, &[("z", "m")]);
+            assert!(
+                outcome.errors.iter().any(|error| {
+                    matches!(
+                        error,
+                        DimError::NonDimensionless { op, .. }
+                            if op == "contour_integral"
+                                || op == "cauchy_integral"
+                                || op == "cauchy_derivative"
+                                || op == "contour_integral_residue_theorem"
+                    )
+                }),
+                "`{source}`: {:?}",
+                outcome.errors
+            );
+        }
+    }
+
+    /// Branch wrappers live on the dimensionless complex plane: every
+    /// argument (including the branch index) is a pure number and the value is
+    /// dimensionless. This keeps `power_branch` consistent with its defining
+    /// rewrite `power_branch(z, w, k) => exp(w log_branch(z, k))`: the old
+    /// `Same(0)` rule reported `dim(z)` on the left while the right side was
+    /// dimensionless, which the per-rewrite scan caught.
+    #[test]
+    fn branch_wrappers_are_dimensionless_plane_functions() {
+        let accepted = dimension_of("power_branch(z, w, 2)", &[("z", "1"), ("w", "1")]);
+        assert_eq!(accepted.dimension.to_string(), "1");
+        assert!(accepted.errors.is_empty(), "{:?}", accepted.errors);
+
+        for source in [
+            "log_branch(z, 0)",
+            "sqrt_branch(z, 2)",
+            "root_branch(z, 3, 1)",
+            "power_branch(z, w, 2)",
+        ] {
+            let outcome = dimension_of(source, &[("z", "m"), ("w", "1/m")]);
+            assert!(
+                outcome
+                    .errors
+                    .iter()
+                    .any(|error| matches!(error, DimError::NonDimensionless { .. })),
+                "`{source}`: {:?}",
+                outcome.errors
+            );
+        }
     }
 
     #[test]

@@ -11,6 +11,8 @@
 //! | Poisson / Helmholtz `-Δu + σu = f` ([`solve_helmholtz`]) | yes | yes | yes | all of the above; LU, ILU-BiCGStab or GMRES |
 //! | Heat `u_t = αΔu + s` θ-method ([`heat_fixed`]) | yes | yes | yes | all of the above |
 //! | Heat with step-doubling error control ([`heat_adaptive`]) | yes | yes | yes | all of the above |
+//! | Variable-coefficient heat `u_t = ∇·(α(x)∇u) + s`, θ-method ([`heat_variable_fixed`], [`heat_variable_adaptive`]) | yes | yes | yes | all of the above |
+//! | Variable-coefficient Poisson / Helmholtz `-∇·(α∇u) + σu = f` ([`solve_variable_helmholtz`]) | yes | yes | yes | all of the above; LU, ILU-BiCGStab or GMRES |
 //! | Wave `u_tt = c²Δu + s` leapfrog ([`wave_leapfrog`]) | yes | yes | yes | Dirichlet, Neumann, Robin, periodic, first-order Mur absorbing |
 //! | Nonlinear diffusion `u_t = ∇·(D(u)∇u) + s` ([`nonlinear_diffusion`]) | yes | yes | yes | Dirichlet, Neumann, Robin, periodic; Newton–Krylov (matrix-free GMRES) implicit stepping, optional adaptive steps |
 //!
@@ -18,10 +20,23 @@
 //! nodes (spacing `(hi - lo)/(n - 1)`); a periodic axis has `n` distinct
 //! nodes with spacing `(hi - lo)/n`.
 //!
-//! Limitations: constant-coefficient Laplacian only (variable diffusion is
-//! provided by [`nonlinear_diffusion`]); the scalar wave
-//! equation with a PML is in [`crate::sim::acoustics`]; the Mur condition
-//! here is first order.
+//! The variable-coefficient operator [`VariableDiffusionOp`] samples the
+//! diffusivity `α` at the nodes and combines the two nodal values of a face
+//! with [`FaceAverage`]: the harmonic mean (the recommended choice for
+//! layered media, flux-continuous across a face, so a piecewise-linear steady
+//! solution of a planar layered medium is reproduced to round-off) or the
+//! arithmetic mean. Both stay second order for a smooth `α`. The remaining
+//! terms are folded in exactly as for the constant-coefficient operator:
+//! Dirichlet data are imposed on the nodes and Neumann/Robin data through the
+//! ghost node (with the diffusivity of the inner node mirrored into the
+//! ghost), so a homogeneous Neumann face is conservative and the
+//! trapezoidal mass is preserved to round-off.
+//!
+//! Limitations: `α` is a scalar (no tensorial/anisotropic diffusivity and no
+//! time-dependent `α` without rebuilding the operator); nonlinear
+//! diffusivity `∇·(D(u)∇u)` is provided by [`nonlinear_diffusion`]; the
+//! scalar wave equation with a PML is in [`crate::sim::acoustics`]; the Mur
+//! condition here is first order.
 
 use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::Ilu0;
@@ -210,6 +225,79 @@ struct DirNode {
     x: [f64; 3],
 }
 
+/// Dirichlet nodes of a grid: the datum and position at every node that
+/// carries a Dirichlet condition (a Robin condition with `β = 0` fixes `u`
+/// as well).
+fn dirichlet_nodes(
+    grid: &Grid,
+    bcs: &FaceBcs,
+) -> Result<Vec<Option<DirNode>>, String> {
+    let nn = grid.len();
+    let mut dirichlet: Vec<Option<DirNode>> = vec![None; nn];
+    for p in 0..nn {
+        let ijk = grid.ijk(p);
+        for a in 0..grid.dim {
+            if grid.periodic[a] {
+                continue;
+            }
+            for max in [false, true] {
+                let on = if max {
+                    ijk[a] == grid.n[a] - 1
+                } else {
+                    ijk[a] == 0
+                };
+                if !on || dirichlet[p].is_some() {
+                    continue;
+                }
+                let face = Face::of_axis(a, max);
+                match bcs.get(face) {
+                    | BoundaryCondition::Dirichlet(g) => {
+                        dirichlet[p] = Some(DirNode {
+                            value: g.clone(),
+                            x: grid.coord(p),
+                        });
+                    },
+                    | BoundaryCondition::Robin { alpha, beta, g } if *beta == 0.0 => {
+                        if *alpha == 0.0 {
+                            return Err("degenerate Robin condition".into());
+                        }
+                        let (al, g) = (*alpha, g.clone());
+                        dirichlet[p] = Some(DirNode {
+                            value: BcValue::spacetime(move |t, x| g.eval(t, x) / al),
+                            x: grid.coord(p),
+                        });
+                    },
+                    | _ => {},
+                }
+            }
+        }
+    }
+    Ok(dirichlet)
+}
+
+/// Matrix `shift I + scale L` with identity rows at Dirichlet nodes.
+fn boundary_system(
+    grid: &Grid,
+    l: &Csr,
+    dirichlet: &[Option<DirNode>],
+    shift: f64,
+    scale: f64,
+) -> Csr {
+    let nn = grid.len();
+    let mut trip = Vec::with_capacity(l.values.len() + nn);
+    for p in 0..nn {
+        if dirichlet.get(p).is_some_and(Option::is_some) {
+            trip.push((p, p, 1.0));
+            continue;
+        }
+        trip.push((p, p, shift));
+        for k in l.indptr[p]..l.indptr[p + 1] {
+            trip.push((p, l.indices[k], scale * l.values[k]));
+        }
+    }
+    Csr::from_triplets(nn, nn, &trip)
+}
+
 /// The discrete Laplacian `L` with boundary conditions folded in.
 ///
 /// For a free node `p`, `(L u)_p + forcing_p(t)` approximates `Δu`; Dirichlet
@@ -235,46 +323,7 @@ impl LaplacianOp {
         bcs: &FaceBcs,
     ) -> Result<Self, String> {
         let nn = grid.len();
-        let mut dirichlet: Vec<Option<DirNode>> = vec![None; nn];
-        // Pass 1: Dirichlet nodes.
-        for p in 0..nn {
-            let ijk = grid.ijk(p);
-            for a in 0..grid.dim {
-                if grid.periodic[a] {
-                    continue;
-                }
-                for max in [false, true] {
-                    let on = if max {
-                        ijk[a] == grid.n[a] - 1
-                    } else {
-                        ijk[a] == 0
-                    };
-                    if !on || dirichlet[p].is_some() {
-                        continue;
-                    }
-                    let face = Face::of_axis(a, max);
-                    match bcs.get(face) {
-                        | BoundaryCondition::Dirichlet(g) => {
-                            dirichlet[p] = Some(DirNode {
-                                value: g.clone(),
-                                x: grid.coord(p),
-                            });
-                        },
-                        | BoundaryCondition::Robin { alpha, beta, g } if *beta == 0.0 => {
-                            if *alpha == 0.0 {
-                                return Err("degenerate Robin condition".into());
-                            }
-                            let (al, g) = (*alpha, g.clone());
-                            dirichlet[p] = Some(DirNode {
-                                value: BcValue::spacetime(move |t, x| g.eval(t, x) / al),
-                                x: grid.coord(p),
-                            });
-                        },
-                        | _ => {},
-                    }
-                }
-            }
-        }
+        let dirichlet = dirichlet_nodes(grid, bcs)?;
         let mut trip: Vec<(usize, usize, f64)> = Vec::new();
         let mut forcing = Vec::new();
         let mut absorbing = Vec::new();
@@ -399,19 +448,237 @@ impl LaplacianOp {
         shift: f64,
         scale: f64,
     ) -> Csr {
-        let nn = self.grid.len();
-        let mut trip = Vec::with_capacity(self.l.values.len() + nn);
+        boundary_system(&self.grid, &self.l, &self.dirichlet, shift, scale)
+    }
+}
+
+/// Face-averaging rule for a node-sampled diffusivity `α(x)`.
+///
+/// A face lies between two nodes `p` and `q`; the flux `α ∂u/∂n` must be
+/// continuous there, so the two nodal values are combined into one face
+/// value. [`FaceAverage::Harmonic`] is the flux-continuous choice and the
+/// one to use for layered media: a planar layer interface on a face is then
+/// represented exactly (the piecewise-linear steady solution of a layered
+/// medium is reproduced to round-off), while for a smooth `α` it still
+/// differs from the arithmetic mean by `O(h²)`, so the scheme stays second
+/// order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FaceAverage {
+    /// `2 α_p α_q / (α_p + α_q)`; a face with a vanishing coefficient
+    /// carries no flux.
+    Harmonic,
+    /// `(α_p + α_q) / 2`.
+    Arithmetic,
+}
+
+impl FaceAverage {
+    /// Face value from the two nodal values.
+    ///
+    /// Callers validate that both coefficients are finite and non-negative,
+    /// so the harmonic denominator is positive whenever `a != b`.
+    fn face(
+        self,
+        a: f64,
+        b: f64,
+    ) -> f64 {
+        if a.to_bits() == b.to_bits() {
+            return a;
+        }
+        match self {
+            | Self::Harmonic => {
+                let s = a + b;
+                if s > 0.0 {
+                    2.0 * a * b / s
+                } else {
+                    0.0
+                }
+            },
+            | Self::Arithmetic => f64::midpoint(a, b),
+        }
+    }
+}
+
+/// The discrete operator `∇·(α(x)∇u)` with boundary conditions folded in.
+///
+/// `α` is sampled at the grid nodes and faces use the averaging rule
+/// [`FaceAverage`]; the operator is assembled in flux form
+/// `Σ_a (α_{a+} (u_{a+} - u_p) - α_{a-} (u_p - u_{a-})) / h_a²`, which makes
+/// it a discrete divergence. For a free node `p`,
+/// `(L_α u)_p + forcing_p(t)` approximates `∇·(α∇u)`; Dirichlet nodes carry
+/// `u = g(t, x)` and have no row. Neumann and Robin data enter through the
+/// ghost node with the diffusivity of the inner node mirrored into the ghost,
+/// so a homogeneous Neumann face is conservative. With a constant `α` the
+/// matrix is `α` times the [`LaplacianOp`] matrix up to round-off.
+#[derive(Clone, Debug)]
+pub struct VariableDiffusionOp {
+    /// Grid the operator lives on.
+    pub grid: Grid,
+    /// Diffusivity at every node.
+    pub alpha: Vec<f64>,
+    /// Rule that combines the two nodal values of a face.
+    pub averaging: FaceAverage,
+    /// Matrix of `L_α` without Dirichlet rows (those are empty).
+    pub l: Csr,
+    dirichlet: Vec<Option<DirNode>>,
+    forcing: Vec<(usize, f64, BcValue, [f64; 3])>,
+    absorbing: Vec<(usize, usize, bool)>,
+}
+
+impl VariableDiffusionOp {
+    /// Assembles the operator for a node-sampled diffusivity.
+    ///
+    /// # Errors
+    /// If `alpha` does not have one value per node, is negative or not
+    /// finite, or if a Robin condition is degenerate.
+    pub fn new(
+        grid: &Grid,
+        bcs: &FaceBcs,
+        alpha: &[f64],
+        averaging: FaceAverage,
+    ) -> Result<Self, String> {
+        let nn = grid.len();
+        if alpha.len() != nn {
+            return Err(format!(
+                "alpha has {} values but the grid has {nn} nodes",
+                alpha.len()
+            ));
+        }
+        if alpha.iter().any(|&a| !(a.is_finite() && a >= 0.0)) {
+            return Err("alpha must be finite and non-negative".into());
+        }
+        let dirichlet = dirichlet_nodes(grid, bcs)?;
+        let mut trip: Vec<(usize, usize, f64)> = Vec::new();
+        let mut forcing = Vec::new();
+        let mut absorbing = Vec::new();
         for p in 0..nn {
-            if self.is_dirichlet(p) {
-                trip.push((p, p, 1.0));
+            if dirichlet[p].is_some() {
                 continue;
             }
-            trip.push((p, p, shift));
-            for k in self.l.indptr[p]..self.l.indptr[p + 1] {
-                trip.push((p, self.l.indices[k], scale * self.l.values[k]));
+            let ijk = grid.ijk(p);
+            let x = grid.coord(p);
+            let ap = alpha[p];
+            let mut diag = 0.0;
+            for a in 0..grid.dim {
+                let h = grid.h(a);
+                let h2 = h * h;
+                let n = grid.n[a];
+                let i = ijk[a];
+                let at = |ii: usize| {
+                    let mut q = ijk;
+                    q[a] = ii;
+                    grid.index(q)
+                };
+                if grid.periodic[a] || (i > 0 && i < n - 1) {
+                    let (qm, qp) = if grid.periodic[a] {
+                        (at((i + n - 1) % n), at((i + 1) % n))
+                    } else {
+                        (at(i - 1), at(i + 1))
+                    };
+                    let am = averaging.face(ap, alpha[qm]);
+                    let a_plus = averaging.face(ap, alpha[qp]);
+                    trip.push((p, qm, am / h2));
+                    trip.push((p, qp, a_plus / h2));
+                    diag -= (am + a_plus) / h2;
+                    continue;
+                }
+                let max = i == n - 1;
+                let inner = if max { at(n - 2) } else { at(1) };
+                let af = averaging.face(ap, alpha[inner]);
+                trip.push((p, inner, 2.0 * af / h2));
+                diag -= 2.0 * af / h2;
+                match bcs.get(Face::of_axis(a, max)) {
+                    | BoundaryCondition::Neumann(g) => {
+                        forcing.push((p, 2.0 * af / h, g.clone(), x));
+                    },
+                    | BoundaryCondition::Symmetry => {},
+                    | BoundaryCondition::Absorbing => absorbing.push((p, a, max)),
+                    | BoundaryCondition::Robin { alpha, beta, g } => {
+                        trip.push((p, p, -2.0 * af * alpha / (beta * h)));
+                        forcing.push((p, 2.0 * af / (beta * h), g.clone(), x));
+                    },
+                    | BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {
+                        return Err("inconsistent boundary description".into());
+                    },
+                }
+            }
+            trip.push((p, p, diag));
+        }
+        Ok(Self {
+            grid: grid.clone(),
+            alpha: alpha.to_vec(),
+            averaging,
+            l: Csr::from_triplets(nn, nn, &trip),
+            dirichlet,
+            forcing,
+            absorbing,
+        })
+    }
+
+    /// Whether any face carries an absorbing (wave-only) condition.
+    #[must_use]
+    pub const fn has_absorbing(&self) -> bool {
+        !self.absorbing.is_empty()
+    }
+
+    /// Whether node `p` is a Dirichlet node.
+    #[must_use]
+    pub fn is_dirichlet(
+        &self,
+        p: usize,
+    ) -> bool {
+        self.dirichlet.get(p).is_some_and(Option::is_some)
+    }
+
+    /// Number of Dirichlet nodes.
+    #[must_use]
+    pub fn dirichlet_count(&self) -> usize {
+        self.dirichlet.iter().filter(|d| d.is_some()).count()
+    }
+
+    /// `out = L_α u` at free nodes, `0` at Dirichlet nodes.
+    pub fn apply(
+        &self,
+        u: &[f64],
+        out: &mut [f64],
+    ) {
+        self.l.matvec(u, out);
+    }
+
+    /// Boundary-datum contribution to `∇·(α∇u)` for Neumann and Robin faces
+    /// at time `t`.
+    #[must_use]
+    pub fn forcing(
+        &self,
+        t: f64,
+    ) -> Vec<f64> {
+        let mut f = vec![0.0; self.grid.len()];
+        for (p, c, g, x) in &self.forcing {
+            f[*p] += c * g.eval(t, *x);
+        }
+        f
+    }
+
+    /// Overwrites Dirichlet nodes of `u` with `g(t, x)`.
+    pub fn set_dirichlet(
+        &self,
+        u: &mut [f64],
+        t: f64,
+    ) {
+        for (p, d) in self.dirichlet.iter().enumerate() {
+            if let Some(d) = d {
+                u[p] = d.value.eval(t, d.x);
             }
         }
-        Csr::from_triplets(nn, nn, &trip)
+    }
+
+    /// Matrix `shift I + scale L_α` with identity rows at Dirichlet nodes.
+    #[must_use]
+    pub fn system(
+        &self,
+        shift: f64,
+        scale: f64,
+    ) -> Csr {
+        boundary_system(&self.grid, &self.l, &self.dirichlet, shift, scale)
     }
 }
 
@@ -528,6 +795,35 @@ pub fn solve_helmholtz(
     solver: LinearSolver,
 ) -> Result<Vec<f64>, String> {
     let op = LaplacianOp::new(grid, bcs)?;
+    if op.has_absorbing() {
+        return Err("absorbing boundaries are only valid for waves".into());
+    }
+    let sys = LinearSystem::new(op.system(sigma, -1.0), solver)?;
+    let force = op.forcing(0.0);
+    let mut b: Vec<f64> = (0..grid.len())
+        .map(|p| f(grid.coord(p)) + force[p])
+        .collect();
+    op.set_dirichlet(&mut b, 0.0);
+    sys.solve(&b, None)
+}
+
+/// Solves `-∇·(α(x)∇u) + σ u = f` with a node-sampled diffusivity and the
+/// given boundary conditions (`σ` may be negative for the indefinite
+/// Helmholtz equation). The face values of `α` use `averaging`.
+///
+/// # Errors
+/// On a singular problem (e.g. pure Neumann with `σ = 0`), a solver failure,
+/// an absorbing boundary or a bad `alpha`.
+pub fn solve_variable_helmholtz(
+    grid: &Grid,
+    bcs: &FaceBcs,
+    alpha: &[f64],
+    averaging: FaceAverage,
+    sigma: f64,
+    f: impl Fn([f64; 3]) -> f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
+    let op = VariableDiffusionOp::new(grid, bcs, alpha, averaging)?;
     if op.has_absorbing() {
         return Err("absorbing boundaries are only valid for waves".into());
     }
@@ -764,6 +1060,137 @@ pub fn heat_adaptive(
     opts: &AdaptiveOptions,
 ) -> Result<(Vec<f64>, AdaptiveStats), String> {
     let mut st = HeatStepper::new(prob, 0.5)?;
+    let u0 = st.initial();
+    adaptive_drive(u0, t_end, 2, opts, |u, t, dt| st.step(u, t, dt))
+}
+
+/// Variable-coefficient heat / diffusion problem
+/// `u_t = ∇·(α(x)∇u) + s(t, x)` with `α` sampled at the grid nodes.
+///
+/// The face value of `α` is set by `averaging` (see [`FaceAverage`]); the
+/// θ-method is the same as for [`HeatProblem`], with the operator
+/// [`VariableDiffusionOp`] replacing `α Δ`. For a constant `α` the
+/// integration reproduces [`heat_fixed`] to round-off.
+pub struct VariableHeatProblem<'a> {
+    /// Grid.
+    pub grid: &'a Grid,
+    /// Boundary conditions.
+    pub bcs: &'a FaceBcs,
+    /// Diffusivity at every node (`grid.len()` values).
+    pub alpha: &'a [f64],
+    /// Rule that combines the two nodal values of a face.
+    pub averaging: FaceAverage,
+    /// Initial condition.
+    pub init: &'a dyn Fn([f64; 3]) -> f64,
+    /// Optional volumetric source.
+    pub source: Option<&'a dyn Fn(f64, [f64; 3]) -> f64>,
+    /// Linear solver.
+    pub solver: LinearSolver,
+}
+
+struct VariableHeatStepper<'a> {
+    prob: &'a VariableHeatProblem<'a>,
+    op: VariableDiffusionOp,
+    theta: f64,
+    cache: HashMap<u64, Arc<LinearSystem>>,
+}
+
+impl<'a> VariableHeatStepper<'a> {
+    fn new(
+        prob: &'a VariableHeatProblem<'a>,
+        theta: f64,
+    ) -> Result<Self, String> {
+        let op = VariableDiffusionOp::new(prob.grid, prob.bcs, prob.alpha, prob.averaging)?;
+        if op.has_absorbing() {
+            return Err("absorbing boundaries are only valid for waves".into());
+        }
+        Ok(Self {
+            prob,
+            op,
+            theta,
+            cache: HashMap::new(),
+        })
+    }
+
+    fn step(
+        &mut self,
+        u: &[f64],
+        t: f64,
+        dt: f64,
+    ) -> Result<Vec<f64>, String> {
+        let nn = u.len();
+        let th = self.theta;
+        let key = dt.to_bits();
+        let sys = if let Some(s) = self.cache.get(&key) {
+            Arc::clone(s)
+        } else {
+            if self.cache.len() > 8 {
+                self.cache.clear();
+            }
+            let s = Arc::new(LinearSystem::new(
+                self.op.system(1.0, -dt * th),
+                self.prob.solver,
+            )?);
+            self.cache.insert(key, Arc::clone(&s));
+            s
+        };
+        let mut lu = vec![0.0; nn];
+        self.op.apply(u, &mut lu);
+        let f0 = self.op.forcing(t);
+        let f1 = self.op.forcing(t + dt);
+        let s0 = source_vec(self.prob.grid, self.prob.source, t);
+        let s1 = source_vec(self.prob.grid, self.prob.source, t + dt);
+        let mut b = vec![0.0; nn];
+        for p in 0..nn {
+            b[p] = u[p] + dt * (1.0 - th) * (lu[p] + f0[p] + s0[p]) + dt * th * (f1[p] + s1[p]);
+        }
+        self.op.set_dirichlet(&mut b, t + dt);
+        sys.solve(&b, Some(u))
+    }
+
+    fn initial(&self) -> Vec<f64> {
+        let mut u = self.prob.grid.sample(|x| (self.prob.init)(x));
+        self.op.set_dirichlet(&mut u, 0.0);
+        u
+    }
+}
+
+/// Integrates the variable-coefficient heat equation with the θ-method
+/// (`θ = 1` backward Euler, `θ = 1/2` Crank–Nicolson) using `steps` equal
+/// steps.
+///
+/// # Errors
+/// On solver failure, a bad `alpha` or an invalid `theta` / absorbing
+/// boundary.
+pub fn heat_variable_fixed(
+    prob: &VariableHeatProblem<'_>,
+    t_end: f64,
+    steps: usize,
+    theta: f64,
+) -> Result<Vec<f64>, String> {
+    if !(0.5..=1.0).contains(&theta) || steps == 0 {
+        return Err("theta must be in [1/2, 1] and steps > 0".into());
+    }
+    let mut st = VariableHeatStepper::new(prob, theta)?;
+    let mut u = st.initial();
+    let dt = t_end / steps as f64;
+    for k in 0..steps {
+        u = st.step(&u, k as f64 * dt, dt)?;
+    }
+    Ok(u)
+}
+
+/// Crank–Nicolson integration of the variable-coefficient heat equation with
+/// step-doubling error control.
+///
+/// # Errors
+/// On solver failure, a bad `alpha` or when `max_steps` is exceeded.
+pub fn heat_variable_adaptive(
+    prob: &VariableHeatProblem<'_>,
+    t_end: f64,
+    opts: &AdaptiveOptions,
+) -> Result<(Vec<f64>, AdaptiveStats), String> {
+    let mut st = VariableHeatStepper::new(prob, 0.5)?;
     let u0 = st.initial();
     adaptive_drive(u0, t_end, 2, opts, |u, t, dt| st.step(u, t, dt))
 }

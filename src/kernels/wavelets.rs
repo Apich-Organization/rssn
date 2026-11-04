@@ -14,6 +14,8 @@
 //! * [`wavedec`] / [`waverec`] and [`wavedec_with`] / [`waverec_with`]: the multilevel
 //!   decomposition and its inverse.
 //! * [`dwt2`] / [`idwt2`]: the separable two-dimensional transform on a rectangular grid.
+//! * [`wavedec2`] / [`waverec2`] and [`wavedec2_with`] / [`waverec2_with`]: the multilevel 2-D
+//!   decomposition, recursing the separable transform on the `LL` band.
 //! * [`frft_matrix`] / [`frft`]: the **discrete fractional Fourier transform** of Candan, Kutay
 //!   and Ozaktas / Pei: the eigenvectors of the real symmetric matrix `S` that commutes with the
 //!   unitary DFT are ordered like the Hermite functions and raised to the fractional power
@@ -63,10 +65,17 @@
 //! `db11` and higher, coiflets, discrete Meyer and the other orthogonal families are absent, and
 //! the symlets end at `sym6`; of the biorthogonal splines only the eight listed are present
 //! (`bior5.5`, `bior6.8` are absent). There are no complex wavelets, no wavelet packets, no
-//! lifting scheme and no non-separable or 3-D transforms. The 2-D transform is one level only:
-//! the coefficient counts of the extension modes are not dyadic, so a multilevel 2-D scheme needs
-//! shape bookkeeping that [`dwt2`] does not provide. Only the four [`Boundary`] modes exist, and
-//! one mode applies to both ends. The published symlet tables are orthonormal only to about
+//! lifting scheme and no non-separable or 3-D transforms. The separable 2-D transforms are
+//! one-level ([`dwt2`] / [`idwt2`]) or multilevel ([`wavedec2`] / [`waverec2`] and their
+//! [`Boundary`] variants): [`wavedec2`] recurses on the `LL` band and requires the dyadic shape
+//! `2^levels | rows` and `2^levels | cols`, while [`wavedec2_with`] accepts any shape whose
+//! coefficient counts strictly shrink at every level — once the support of the filters reaches
+//! the whole approximation band the count stops shrinking and the decomposition reports
+//! [`WaveletError::TooManyLevels`]. The returned lists follow [`wavedec`]: `[LL_L, packed_L, ...,
+//! packed_1]`, where `packed_k` is the one-level [`dwt2`] packing of level `k`; the inverse
+//! recomputes the shape of every level from the original `rows` and `cols`. Only the four
+//! [`Boundary`] modes exist, and one mode applies to both ends. The published symlet tables are
+//! orthonormal only to about
 //! `1e-12` (and `bior4.4` biorthogonal to about `1e-12`), so those families round-trip to
 //! `1e-12 * max|x|` rather than to machine epsilon; the Daubechies tables `db2`..`db10` are
 //! orthonormal to machine epsilon and round-trip to machine epsilon. No Daubechies filter has
@@ -303,14 +312,12 @@ impl Wavelet {
             | Self::Db2 | Self::Bior2_2 => (2, 2),
             | Self::Db3 | Self::Bior3_3 => (3, 3),
             | Self::Db4 | Self::Sym4 | Self::Bior4_4 => (4, 4),
-            | Self::Db5 => (5, 5),
-            | Self::Db6 => (6, 6),
+            | Self::Db5 | Self::Sym5 => (5, 5),
+            | Self::Db6 | Self::Sym6 => (6, 6),
             | Self::Db7 => (7, 7),
             | Self::Db8 => (8, 8),
             | Self::Db9 => (9, 9),
             | Self::Db10 => (10, 10),
-            | Self::Sym5 => (5, 5),
-            | Self::Sym6 => (6, 6),
             | Self::Bior1_3 => (1, 3),
             | Self::Bior1_5 => (1, 5),
             | Self::Bior2_4 => (2, 4),
@@ -1177,6 +1184,181 @@ pub fn idwt2(
     Ok(out)
 }
 
+/// Multilevel separable two-dimensional decomposition: `[LL_L, packed_L, ..., packed_1]`.
+///
+/// Every level applies [`dwt2`] to the current `LL` band and keeps the whole packed array
+/// (`LL`, `LH`, `HL`, `HH`) for the inverse; the next level then transforms the extracted `LL`
+/// band. The arrays therefore follow the [`wavedec`] convention: the first array is the final
+/// approximation and the remaining ones are the details of the levels from coarsest to finest.
+/// The periodic transform requires the dyadic shape `2^levels | rows` and `2^levels | cols` (the
+/// sizes halve exactly at every level); use [`wavedec2_with`] for another [`Boundary`] mode or a
+/// non-dyadic shape.
+///
+/// # Errors
+/// [`WaveletError::Shape`] when `rows * cols` does not match `x.len()` or a dimension is zero;
+/// [`WaveletError::TooManyLevels`] when `levels` is zero or exceeds the dyadic depth.
+pub fn wavedec2(
+    x: &[f64],
+    rows: usize,
+    cols: usize,
+    w: Wavelet,
+    levels: usize,
+) -> Result<Vec<Vec<f64>>, WaveletError> {
+    let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
+    if rows == 0 || cols == 0 || x.len() != total {
+        return Err(WaveletError::Shape);
+    }
+    if levels == 0 || levels > 60 {
+        return Err(WaveletError::TooManyLevels);
+    }
+    let factor = 1usize << levels;
+    if !rows.is_multiple_of(factor) || !cols.is_multiple_of(factor) {
+        return Err(WaveletError::TooManyLevels);
+    }
+    wavedec2_with(x, rows, cols, w, levels, Boundary::Periodic)
+}
+
+/// Inverse of [`wavedec2`]: `rows` and `cols` are the shape of the decomposed array.
+///
+/// # Errors
+/// [`WaveletError::Shape`] when the coefficient list or one of its shapes does not fit `rows x
+/// cols` and the periodic rule.
+pub fn waverec2(
+    coeffs: &[Vec<f64>],
+    rows: usize,
+    cols: usize,
+    w: Wavelet,
+) -> Result<Vec<f64>, WaveletError> {
+    waverec2_with(coeffs, rows, cols, w, Boundary::Periodic)
+}
+
+/// Multilevel separable two-dimensional decomposition with an explicit [`Boundary`] mode.
+///
+/// The recursion is the same as in [`wavedec2`], but any shape is accepted as long as every level
+/// strictly shrinks the approximation band in both dimensions. The extension modes return about
+/// `n/2 + (m_hi - m_lo)/2` coefficients, so once the filters reach the whole band the count stops
+/// shrinking; that is detected per level and reported as [`WaveletError::TooManyLevels`] instead
+/// of recursing on a band that does not get smaller.
+///
+/// # Errors
+/// [`WaveletError::Shape`] when `rows * cols` does not match `x.len()` or a dimension is zero;
+/// [`WaveletError::TooManyLevels`] when `levels` is zero, or a level would not shrink the
+/// approximation.
+pub fn wavedec2_with(
+    x: &[f64],
+    rows: usize,
+    cols: usize,
+    w: Wavelet,
+    levels: usize,
+    b: Boundary,
+) -> Result<Vec<Vec<f64>>, WaveletError> {
+    let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
+    if rows == 0 || cols == 0 || x.len() != total {
+        return Err(WaveletError::Shape);
+    }
+    if levels == 0 || levels > 60 {
+        return Err(WaveletError::TooManyLevels);
+    }
+    let mut cur_rows = rows;
+    let mut cur_cols = cols;
+    let mut current = x.to_vec();
+    let mut packed_levels: Vec<Vec<f64>> = Vec::with_capacity(levels);
+    for _ in 0..levels {
+        let ra = w.coeff_len(cur_rows, b);
+        let ca = w.coeff_len(cur_cols, b);
+        // The next level must transform a strictly smaller band; otherwise the
+        // extension-mode counts have stopped shrinking.
+        if ra == 0 || ca == 0 || ra >= cur_rows || ca >= cur_cols {
+            return Err(WaveletError::TooManyLevels);
+        }
+        let packed = dwt2(&current, cur_rows, cur_cols, w, b)?;
+        let out_cols = 2 * ca;
+        // The LL band is the top-left ra x ca block of the packing.
+        let mut ll = Vec::with_capacity(ra.checked_mul(ca).ok_or(WaveletError::TooManyLevels)?);
+        for r in 0..ra {
+            for c in 0..ca {
+                ll.push(packed[r * out_cols + c]);
+            }
+        }
+        packed_levels.push(packed);
+        current = ll;
+        cur_rows = ra;
+        cur_cols = ca;
+    }
+    let mut coeffs = Vec::with_capacity(levels + 1);
+    coeffs.push(current);
+    coeffs.extend(packed_levels.into_iter().rev());
+    Ok(coeffs)
+}
+
+/// Inverse of [`wavedec2_with`]; `rows` and `cols` are the shape of the decomposed array.
+///
+/// The shape of every level is recomputed from `rows`, `cols` and the mode, exactly like
+/// [`waverec_with`]; the `LL` band of each stored level is overwritten with the reconstruction of
+/// the next finer level and [`idwt2`] recovers its input.
+///
+/// # Errors
+/// [`WaveletError::Shape`] when the list is empty, one of its arrays has the wrong size, or the
+/// shape chain does not fit `rows x cols` and the mode.
+pub fn waverec2_with(
+    coeffs: &[Vec<f64>],
+    rows: usize,
+    cols: usize,
+    w: Wavelet,
+    b: Boundary,
+) -> Result<Vec<f64>, WaveletError> {
+    let (first, rest) = coeffs.split_first().ok_or(WaveletError::Shape)?;
+    let levels = rest.len();
+    let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
+    if rows == 0 || cols == 0 || levels == 0 || levels > 60 {
+        return Err(WaveletError::Shape);
+    }
+    let mut shapes = Vec::with_capacity(levels + 1);
+    shapes.push((rows, cols));
+    for _ in 0..levels {
+        let (r, c) = *shapes.last().ok_or(WaveletError::Shape)?;
+        let next = (w.coeff_len(r, b), w.coeff_len(c, b));
+        if next.0 == 0 || next.1 == 0 {
+            return Err(WaveletError::Shape);
+        }
+        shapes.push(next);
+    }
+    let (lr, lc) = shapes[levels];
+    if first.len() != lr.checked_mul(lc).ok_or(WaveletError::Shape)? {
+        return Err(WaveletError::Shape);
+    }
+    let mut current = first.clone();
+    for (i, packed) in rest.iter().enumerate() {
+        let level = levels - i;
+        let (ar, ac) = shapes[level];
+        let (out_rows, out_cols) = shapes[level - 1];
+        let packed_rows = 2 * ar;
+        let packed_cols = 2 * ac;
+        if packed.len()
+            != packed_rows
+                .checked_mul(packed_cols)
+                .ok_or(WaveletError::Shape)?
+        {
+            return Err(WaveletError::Shape);
+        }
+        // Put the current reconstruction into the LL quadrant of this level.
+        let mut filled = packed.clone();
+        for r in 0..ar {
+            for c in 0..ac {
+                filled[r * packed_cols + c] = current[r * ac + c];
+            }
+        }
+        current = idwt2(&filled, out_rows, out_cols, w, b)?;
+        if current.len() != out_rows.checked_mul(out_cols).ok_or(WaveletError::Shape)? {
+            return Err(WaveletError::Shape);
+        }
+    }
+    if current.len() != total {
+        return Err(WaveletError::Shape);
+    }
+    Ok(current)
+}
+
 /// The unitary DFT matrix `F[j][k] = exp(-2 pi i j k / N) / sqrt N`.
 fn dft_apply(
     n: usize,
@@ -1563,7 +1745,7 @@ mod tests {
             let l = w.taps();
             // only the coefficients whose analysis window does not wrap around the periodic seam
             // see a pure polynomial, so the moments are read off the interior
-            let interior = (n - l + 1) / 2;
+            let interior = (n - l).div_ceil(2);
             assert!(interior > 0, "{w:?}: signal too short");
             for d in 0..=p {
                 let (_, c) = dwt(&polynomial(d), w).unwrap();

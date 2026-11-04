@@ -19,6 +19,17 @@
 //! this module re-exports them so that a host depends on `rssn::dim` and
 //! never on the graph kernel's internals.
 //!
+//! # Diagnostics and limits
+//!
+//! A [`DimError`] carries a stable machine-readable kind through
+//! [`DimError::code`] (`"mismatch"`, `"unknown_unit"`, ...) and says whether
+//! Strict mode blocks on it through [`DimError::is_blocking`]. The text is
+//! still what the C API exposes. The layer's remaining limits — container
+//! typing, affine points and the binding ergonomics — are listed by priority
+//! in `docs/DIMENSIONS.md` §13; the per-rewrite random dimension scan that
+//! used to be the top item there is now
+//! `tests/dimensions.rs::per_rewrite_random_dimension_scan`.
+//!
 //! # Why names, not ids, at the boundary
 //!
 //! A [`BaseId`] is an index into one arena. Writing it to a manifest would
@@ -425,7 +436,7 @@ mod tests {
         );
         assert_eq!(
             product,
-            DimTerm::base(length, one.clone()).mul(&DimTerm::base(time, minus_one))
+            DimTerm::base(length, one).mul(&DimTerm::base(time, minus_one))
         );
 
         let half = DimExpr::base("Length")

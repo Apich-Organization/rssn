@@ -30,11 +30,18 @@
 //! ## Source terms ([`solve_with_sources`])
 //!
 //! * **Gravity** (Euler): a uniform acceleration `g` adds `ρ g` to the
-//!   momentum and `ρ u·g` to the energy, evaluated in the cell centres. A
-//!   uniform gas in free fall is reproduced exactly (the time integrator is
-//!   exact for the resulting polynomial in `t`); a hydrostatic atmosphere is
-//!   *not* held exactly (the equilibrium is balanced to the order of the
-//!   scheme only, first order at the walls).
+//!   momentum and `ρ u·g` to the energy, evaluated in the cell centres, and
+//!   the momentum flux uses a **well-balanced** interface pressure: for a
+//!   locally isothermal stratification (`θ = p/ρ` constant across a cell) the
+//!   pressure `P = p_L a / (1 - e^{-a})`, `a = ln(p_R / p_L)`, satisfies
+//!   `P_{i+1/2} - P_{i-1/2} = ρ_i g Δx` exactly, so an isothermal atmosphere
+//!   at rest between two reflective walls is held to round-off (a reflective
+//!   wall in the gravity direction uses the hydrostatic continuation of the
+//!   boundary cell). A uniform gas in free fall is reproduced exactly (the
+//!   interface pressure reduces to the common pressure and the time
+//!   integrator is exact for the resulting polynomial in `t`). The
+//!   well-balanced interface pressure is second order accurate, so gravity
+//!   runs are second order in space even with the high-order reconstruction.
 //! * **Bathymetry** (shallow water): a bed `b(x)` with the **hydrostatic
 //!   reconstruction** of Audusse, Bouchut, Bristeau, Klein and Perthame:
 //!   the free surface `η = h + b`, the velocity and `b` are reconstructed
@@ -46,13 +53,27 @@
 //!   round-off by every reconstruction and Riemann solver, over smooth and
 //!   discontinuous beds, in 1D and 2D. The initial data are the *depth*
 //!   `h = η - b`.
+//! * **Manning bed friction** (shallow water, [`Sources::manning`]): the
+//!   momentum source `-g n² h^{-7/3} |q| q` (equivalently
+//!   `d(h u)/dt = -g n² h^{-1/3} |u| u`, `q = h u`) with a uniform Manning
+//!   coefficient `n`. It is integrated in *operator-split (Strang) form*: a
+//!   half step of the friction before and after the SSP-RK3 hyperbolic step.
+//!   A friction half step is the exact solution of the source ODE with the
+//!   depth held at its current value,
+//!   `q ← q / (1 + dt g n² |q| h^{-7/3})`, which is unconditionally stable
+//!   and leaves `|q|` monotone; `n = 0` is the frictionless solver and stays
+//!   bit for bit unchanged. In a uniform flow over a flat bed this reduces to
+//!   `u(t) = u₀ / (1 + t g n² u₀ / h^{4/3})`.
 //!
 //! Limitations: no dry-bed treatment beyond a small depth floor (the
 //! well-balanced reconstruction is positivity-preserving in `h*`, but a
-//! front over a dry bed is not resolved sharply); gravity is not
-//! well-balanced for hydrostatic gas; shallow water supports one bed
-//! (no friction); this solver itself uses a uniform grid (adaptive refinement
-//! is [`euler_amr`](crate::sim::euler_amr)).
+//! front over a dry bed is not resolved sharply); the Euler gravity source is
+//! well-balanced only for a locally isothermal stratification (`θ = p/ρ`
+//! constant across a cell, so not exactly for a polytropic atmosphere) and
+//! only at reflective walls with gravity aligned with the grid axes; the
+//! Manning coefficient is uniform (no per-cell roughness map) and friction is
+//! not well-balanced against a wet/dry front; this solver itself uses a
+//! uniform grid (adaptive refinement is [`euler_amr`](crate::sim::euler_amr)).
 //!
 //! Parallelism: the flux sweeps of the residual process the lines of a sweep concurrently; the cell
 //! updates are applied in line order, so the residual is bit-identical to the serial sweep.
@@ -238,6 +259,11 @@ pub struct Sources<'a> {
     /// Bed elevation `b(x)` of the shallow-water equations (hydrostatic
     /// reconstruction); the initial data are then the depth `h`.
     pub bed: Option<&'a dyn Fn([f64; 3]) -> f64>,
+    /// Uniform Manning bed-friction coefficient `n` (shallow water; zero is
+    /// frictionless). The momentum source is `-g n² h^{-7/3} |q| q` with
+    /// `q = h u`, integrated in Strang-split form with an exact, stable
+    /// implicit half step.
+    pub manning: f64,
 }
 
 impl Default for Sources<'_> {
@@ -245,6 +271,7 @@ impl Default for Sources<'_> {
         Self {
             gravity: [0.0; 3],
             bed: None,
+            manning: 0.0,
         }
     }
 }
@@ -257,6 +284,7 @@ impl std::fmt::Debug for Sources<'_> {
         f.debug_struct("Sources")
             .field("gravity", &self.gravity)
             .field("bed", &self.bed.map(|_| "<function>"))
+            .field("manning", &self.manning)
             .finish()
     }
 }
@@ -439,6 +467,25 @@ pub(crate) fn sound_speed(
         | Law::Euler { gamma } => (gamma * w[4] / w[0]).max(0.0).sqrt(),
         | Law::ShallowWater { g } => (g * w[0]).max(0.0).sqrt(),
     }
+}
+
+/// Well-balanced Euler interface pressure from the two adjacent cell-centre
+/// pressures: with `a = ln(p_R / p_L)`, `P = p_L a / (1 - e^{-a})` (the limit
+/// `(p_L + p_R)/2` at `p_L = p_R`). `P` reduces to the common pressure of a
+/// uniform state — so a gas in free fall is untouched — and it is a second
+/// order accurate approximation of the face pressure for a general smooth
+/// state.
+fn hydrostatic_face_pressure(
+    p_left: f64,
+    p_right: f64,
+) -> f64 {
+    if p_left > 0.0 && p_right > 0.0 {
+        let a = (p_right / p_left).ln();
+        if a.abs() > 1e-8 {
+            return p_left * a / -(-a).exp_m1();
+        }
+    }
+    f64::midpoint(p_left, p_right)
 }
 
 /// Physical flux in the first (normal) direction of a primitive state.
@@ -774,6 +821,28 @@ fn nrbc_ghost(
 
 const GHOST: usize = 3;
 
+/// One friction half step of the Manning source,
+/// `q ← q / (1 + dt g n² |q| h^{-7/3})`, with the depth frozen at its current
+/// value. This is the exact solution of `dq/dt = -g n² h^{-7/3} |q| q` over
+/// `dt`: unconditionally stable for the source, monotone in `|q|` and
+/// direction preserving.
+fn manning_friction(
+    law: Law,
+    q: &mut State,
+    dt: f64,
+    n: f64,
+) {
+    let Law::ShallowWater { g } = law else { return };
+    let h = q[0];
+    let m = q[1].hypot(q[2]);
+    if !(h > 0.0 && m > 0.0 && dt > 0.0 && n > 0.0 && h.is_finite() && m.is_finite()) {
+        return;
+    }
+    let fac = 1.0 / (1.0 + dt * g * n * n * m / h.powf(7.0 / 3.0));
+    q[1] *= fac;
+    q[2] *= fac;
+}
+
 /// A cell index, its flux-difference update and the optional source term.
 type CellUpdate = (usize, [f64; 5], Option<f64>);
 
@@ -816,6 +885,8 @@ struct Stepper<'a> {
     gravity: [f64; 3],
     /// Bed elevation in the cell centres (shallow water).
     bed: Option<Vec<f64>>,
+    /// Uniform Manning friction coefficient (zero = frictionless).
+    manning: f64,
 }
 
 impl Stepper<'_> {
@@ -941,6 +1012,43 @@ impl Stepper<'_> {
             .fold(0.0, f64::max)
     }
 
+    /// Well-balanced pressure of face `f` of a direction-`d` line.
+    ///
+    /// Interior faces use [`hydrostatic_face_pressure`] with the two adjacent
+    /// cell-centre pressures. A reflective face on an axis of gravity uses the
+    /// hydrostatic continuation of the boundary cell across the wall, so the
+    /// wall momentum flux is the pressure the cell-centred gravity source
+    /// balances.
+    fn well_balanced_face_pressure(
+        &self,
+        line: &[State],
+        d: usize,
+        n: usize,
+        f: usize,
+    ) -> f64 {
+        let g = self.grid;
+        let boundary = |k: usize, max: bool| -> f64 {
+            let (p, rho) = (line[k][4], line[k][0]);
+            if p > 0.0 && rho > 0.0 {
+                let a = self.gravity[d] * g.h(d) / (p / rho);
+                if max {
+                    hydrostatic_face_pressure(p, p * a.exp())
+                } else {
+                    hydrostatic_face_pressure(p * (-a).exp(), p)
+                }
+            } else {
+                hydrostatic_face_pressure(line[GHOST + f - 1][4], line[GHOST + f][4])
+            }
+        };
+        if f == 0 && matches!(self.cfg.bcs[2 * d], GasBc::Reflective) {
+            boundary(GHOST, false)
+        } else if f == n && matches!(self.cfg.bcs[2 * d + 1], GasBc::Reflective) {
+            boundary(GHOST + n - 1, true)
+        } else {
+            hydrostatic_face_pressure(line[GHOST + f - 1][4], line[GHOST + f][4])
+        }
+    }
+
     fn residual(
         &self,
         q: &[State],
@@ -972,6 +1080,7 @@ impl Stepper<'_> {
             let hd = g.h(d);
             let o: Vec<usize> = (0..3).filter(|&b| b != d).collect();
             let (na, nb) = (g.n[o[0]].max(1), g.n[o[1]].max(1));
+            let well_balanced = matches!(law, Law::Euler { .. }) && self.gravity[d] != 0.0;
             // The lines of one sweep are independent: every line computes the
             // updates of its own cells in parallel, and the updates are then
             // applied in line order, so each cell sees exactly the serial
@@ -1063,6 +1172,15 @@ impl Stepper<'_> {
                         }
                         swap_dir(&mut l, d);
                         swap_dir(&mut r, d);
+                        if well_balanced {
+                            // The cell-centred gravity source is balanced by
+                            // the hydrostatic pressure difference across the
+                            // cell, so both Riemann states carry the same
+                            // well-balanced interface pressure.
+                            let p_h = self.well_balanced_face_pressure(&line, d, n, f);
+                            l[4] = p_h;
+                            r[4] = p_h;
+                        }
                         let mut fl = riemann_flux(law, self.cfg.riemann, &l, &r);
                         swap_dir(&mut fl, d);
                         flux[f] = fl;
@@ -1119,9 +1237,11 @@ pub fn solve(
     solve_with_sources(grid, cfg, init, &Sources::default(), t_end)
 }
 
-/// Runs the solver with the source terms of [`Sources`]: gravity for the
-/// Euler equations, a bed (hydrostatic reconstruction, well-balanced for the
-/// lake at rest) for the shallow-water equations.
+/// Runs the solver with the source terms of [`Sources`].
+///
+/// Gravity (Euler) uses the well-balanced interface pressure described in the
+/// module documentation; a bed (shallow water) uses the hydrostatic
+/// reconstruction, which is well-balanced for the lake at rest.
 ///
 /// # Errors
 /// As [`solve`], and for gravity with shallow water or a bed with Euler.
@@ -1143,6 +1263,12 @@ pub fn solve_with_sources(
             return Err("a bed is a shallow-water source".into());
         },
         | _ => {},
+    }
+    if !(sources.manning.is_finite() && sources.manning >= 0.0) {
+        return Err("the Manning coefficient must be finite and non-negative".into());
+    }
+    if sources.manning > 0.0 && matches!(cfg.law, Law::Euler { .. }) {
+        return Err("Manning friction is a shallow-water source".into());
     }
     if matches!(cfg.law, Law::ShallowWater { .. })
         && cfg.bcs.iter().any(|b| matches!(b, GasBc::NonReflecting(_)))
@@ -1181,6 +1307,7 @@ pub fn solve_with_sources(
         nv,
         gravity: sources.gravity,
         bed,
+        manning: sources.manning,
     };
     let mut t = 0.0;
     let mut steps = 0;
@@ -1202,6 +1329,14 @@ pub fn solve_with_sources(
             return Err("non-finite wave speed".into());
         }
         let dt = (cfg.cfl / rate).min(t_end - t);
+        // Strang splitting of the Manning friction: the source is integrated
+        // exactly over a half step before and after the hyperbolic update.
+        let friction = st.manning > 0.0;
+        if friction {
+            for state in &mut q {
+                manning_friction(cfg.law, state, 0.5 * dt, st.manning);
+            }
+        }
         let l0 = st.residual(&q);
         let q1: Vec<State> = add(&q, &l0, 1.0, 1.0, dt);
         let l1 = st.residual(&q1);
@@ -1230,6 +1365,11 @@ pub fn solve_with_sources(
                 o
             })
             .collect();
+        if friction {
+            for state in &mut q {
+                manning_friction(cfg.law, state, 0.5 * dt, st.manning);
+            }
+        }
         t += dt;
         steps += 1;
         if steps > 2_000_000 {

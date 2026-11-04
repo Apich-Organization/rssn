@@ -926,24 +926,57 @@ fn propagate_witnesses(
             }
             let mut found = None;
             for enode in graph.enodes(class) {
-                let Some(eval) = graph.ops().get(graph.op(enode)).eval else {
+                let op = graph.op(enode);
+                let Some(eval) = graph.ops().get(op).eval else {
                     continue;
                 };
                 args.clear();
                 let mut rad = 0.0_f64;
-                let complete = graph.children(enode).iter().all(|&c| {
-                    graph.approx(graph.find(c)).is_some_and(|b| {
-                        args.push(b.mid);
-                        rad = rad.max(b.rad);
-                        true
-                    })
-                });
+                // Outward-rounded ball arithmetic for the additive and
+                // multiplicative structure: the radius of a sum is the sum of
+                // the radii, the radius of a product carries the cross terms.
+                // Every other operator has no interval rule here and only
+                // inherits the largest child radius.
+                let mut sum = Ball::exact(0.0);
+                let mut product = Ball::exact(1.0);
+                let mut complete = true;
+                for &child in graph.children(enode) {
+                    let Some(ball) = graph.approx(graph.find(child)) else {
+                        complete = false;
+                        break;
+                    };
+                    args.push(ball.mid);
+                    rad = rad.max(ball.rad);
+                    match op {
+                        | core::ADD => sum = sum.add(ball),
+                        | core::MUL => product = product.mul(ball),
+                        | _ => {},
+                    }
+                }
                 if !complete {
                     continue;
                 }
                 let value = eval(&args);
                 if value.is_finite() {
-                    found = Some(Ball { mid: value, rad });
+                    // Exact (zero-radius) witnesses stay exact, as before.
+                    let amplified = if rad > 0.0 {
+                        match op {
+                            | core::ADD => sum.rad,
+                            | core::MUL => product.rad,
+                            | _ => rad,
+                        }
+                    } else {
+                        0.0
+                    };
+                    let radius = if amplified.is_finite() {
+                        rad.max(amplified)
+                    } else {
+                        rad
+                    };
+                    found = Some(Ball {
+                        mid: value,
+                        rad: radius,
+                    });
                     break;
                 }
             }
@@ -1152,6 +1185,31 @@ mod tests {
             &Budget::default(),
         );
         assert_eq!(g.approx(g.find(root)), None);
+    }
+
+    #[test]
+    fn witness_radii_are_amplified_through_arithmetic() {
+        let mut g = Graph::new();
+        let x = g.sym("x");
+        let y = g.sym("y");
+        let two = g.int(2);
+        assert!(g.set_approx(g.find(x), Ball { mid: 1.0, rad: 0.05 }));
+        assert!(g.set_approx(g.find(y), Ball::exact(3.0)));
+        let two_x = g.node(core::MUL, &[two, x]);
+        let root = g.node(core::MUL, &[two_x, y]);
+        assert!(propagate_witnesses(&mut g, &[root]));
+        let ball = g.approx(g.find(root)).unwrap_or(Ball::ENTIRE);
+        assert!((ball.mid - 6.0).abs() < 1e-15, "{ball:?}");
+        // 2·(1 ± 0.05)·3 has radius about 0.3; inheriting the largest child
+        // radius (the old estimate) would have said 0.05.
+        assert!(ball.rad > 0.29 && ball.rad < 0.4, "{ball:?}");
+
+        // An exact child keeps the witness exact.
+        let z = g.sym("z");
+        assert!(g.set_approx(g.find(z), Ball::exact(2.5)));
+        let exact = g.node(core::MUL, &[two, z]);
+        assert!(propagate_witnesses(&mut g, &[exact]));
+        assert_eq!(g.approx(g.find(exact)).map(|b| b.rad), Some(0.0));
     }
 
     #[test]

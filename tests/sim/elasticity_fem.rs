@@ -5,10 +5,12 @@ use rssn::sim::boundary::ElasticBoundary;
 use rssn::sim::boundary::MarkerBcs;
 use rssn::sim::elasticity_fem::ElasticSolution;
 use rssn::sim::elasticity_fem::ElasticityProblem;
+use rssn::sim::elasticity_fem::ElasticityProblemVar;
 use rssn::sim::elasticity_fem::Material;
 use rssn::sim::elasticity_fem::Model;
 use rssn::sim::elasticity_fem::constitutive_matrix;
 use rssn::sim::elasticity_fem::solve;
+use rssn::sim::elasticity_fem::solve_heterogeneous;
 use rssn::sim::fem_simplex::FemSpace;
 use rssn::sim::fem_simplex::SimplexMesh;
 use rssn::sim::fem_simplex::marker;
@@ -275,4 +277,214 @@ fn model_dimension_mismatch_is_rejected() {
         bcs: &bcs,
     };
     assert!(solve(&space, &prob, LinearSolver::Auto).is_err());
+}
+
+// ------------------------------------------------- heterogeneous materials
+
+/// Axial displacement of a two-layer bar `E1` on `[0, 1/2]`, `E2` on `[1/2, L]`
+/// under the end displacement `u_end`, for `ν = 0` (so the lateral strain of
+/// the uniaxial-stress solution vanishes and the exact field is piecewise
+/// linear with continuous axial traction).
+fn layered_bar_exact(
+    e1: f64,
+    e2: f64,
+    u_end: f64,
+) -> (
+    impl Fn([f64; 3]) -> [f64; 3] + Copy + Send + Sync + 'static,
+    f64,
+) {
+    let sigma = u_end / (0.5 / e1 + 0.5 / e2);
+    let exact = move |x: [f64; 3]| {
+        let ux = if x[0] <= 0.5 {
+            sigma * x[0] / e1
+        } else {
+            sigma * (0.5 / e1 + (x[0] - 0.5) / e2)
+        };
+        [ux, 0.0, 0.0]
+    };
+    (exact, sigma)
+}
+
+fn cell_centroid(
+    space: &FemSpace,
+    ci: usize,
+) -> [f64; 3] {
+    let dim = space.mesh.dim;
+    let mut x = [0.0; 3];
+    for m in 0..=dim {
+        for a in 0..3 {
+            x[a] += space.mesh.nodes[space.mesh.cells[ci][m]][a] / (dim + 1) as f64;
+        }
+    }
+    x
+}
+
+/// Two layers under prescribed displacement: the patch test is exact (the
+/// piecewise-linear solution is in the P1/P2 spaces), the axial traction
+/// `σ_xx` is continuous across the interface, and every cell's stress uses its
+/// own material (the strain jumps, the stress does not).
+#[test]
+fn heterogeneous_layered_bar_has_piecewise_constant_stress() {
+    let (e1, e2) = (100.0, 400.0);
+    let (l, u_end) = (1.0, 0.01);
+    let (exact, sigma) = layered_bar_exact(e1, e2, u_end);
+    let young = |x: [f64; 3]| if x[0] <= 0.5 { e1 } else { e2 };
+    let poisson = |_: [f64; 3]| 0.0;
+    let bcs = MarkerBcs::new().set(marker::XMIN, dir_exact(exact)).set(
+        marker::XMAX,
+        ElasticBoundary::Displacement([Some(BcValue::constant(u_end)), None, None]),
+    );
+    for degree in [1, 2] {
+        for m in [8, 16] {
+            let space =
+                FemSpace::new(SimplexMesh::rectangle(m, 1, [0.0; 2], [l, 1.0]), degree).unwrap();
+            let prob = ElasticityProblemVar {
+                model: Model::PlaneStress,
+                young: &young,
+                poisson: &poisson,
+                thickness: 1.0,
+                force: &no_force,
+                bcs: &bcs,
+            };
+            let sol = solve_heterogeneous(&space, &prob, LinearSolver::Auto).unwrap();
+            for d in 0..space.size() {
+                let ex = exact(space.dofs[d]);
+                let v = sol.displacement(d);
+                assert!(
+                    (v[0] - ex[0]).abs() < 1e-10 && v[1].abs() < 1e-10,
+                    "P{degree} m={m} dof {d}: {v:?} vs {ex:?}"
+                );
+            }
+            for ci in 0..space.mesh.cells.len() {
+                let st = sol.stress_at_cell(ci);
+                let xc = cell_centroid(&space, ci);
+                assert!(
+                    (st[0] - sigma).abs() < 1e-8 && st[1].abs() < 1e-8 && st[2].abs() < 1e-8,
+                    "P{degree} m={m} cell {ci} at x={}: stress {st:?} vs sigma {sigma}",
+                    xc[0]
+                );
+            }
+        }
+    }
+}
+
+/// The same layered patch test in 3D tetrahedra, with a material that varies
+/// with `x` (a genuinely three-dimensional mesh and model).
+#[test]
+fn heterogeneous_3d_layered_patch_test_is_exact() {
+    let (e1, e2) = (100.0, 400.0);
+    let u_end = 0.02;
+    let (exact, sigma) = layered_bar_exact(e1, e2, u_end);
+    let young = |x: [f64; 3]| if x[0] <= 0.5 { e1 } else { e2 };
+    let poisson = |_: [f64; 3]| 0.0;
+    let bcs = MarkerBcs::new().set(marker::XMIN, dir_exact(exact)).set(
+        marker::XMAX,
+        ElasticBoundary::Displacement([Some(BcValue::constant(u_end)), None, None]),
+    );
+    for degree in [1, 2] {
+        let space =
+            FemSpace::new(SimplexMesh::boxed([8, 1, 1], [0.0; 3], [1.0; 3]), degree).unwrap();
+        let prob = ElasticityProblemVar {
+            model: Model::Solid3d,
+            young: &young,
+            poisson: &poisson,
+            thickness: 1.0,
+            force: &no_force,
+            bcs: &bcs,
+        };
+        let sol = solve_heterogeneous(&space, &prob, LinearSolver::Auto).unwrap();
+        for d in 0..space.size() {
+            let ex = exact(space.dofs[d]);
+            let v = sol.displacement(d);
+            assert!(
+                (v[0] - ex[0]).abs() < 1e-10 && v[1].abs() < 1e-10 && v[2].abs() < 1e-10,
+                "P{degree} dof {d}: {v:?} vs {ex:?}"
+            );
+        }
+        for ci in 0..space.mesh.cells.len() {
+            let st = sol.stress_at_cell(ci);
+            assert!(
+                (st[0] - sigma).abs() < 1e-8
+                    && st[1].abs() < 1e-8
+                    && st[2].abs() < 1e-8
+                    && st[3].abs() < 1e-8
+                    && st[4].abs() < 1e-8
+                    && st[5].abs() < 1e-8,
+                "cell {ci}: stress {st:?} vs sigma {sigma}"
+            );
+        }
+    }
+}
+
+/// A constant material on the heterogeneous path must reproduce the
+/// homogeneous solver (round-off) with both the 2D and 3D models.
+#[test]
+fn uniform_material_reproduces_the_homogeneous_solution() {
+    let mat = Material {
+        young: 100.0,
+        poisson: 0.25,
+        thickness: 1.0,
+    };
+    // 2D cantilever with a transverse tip traction.
+    let bcs = MarkerBcs::new()
+        .set(marker::XMIN, ElasticBoundary::clamped())
+        .set(marker::XMAX, ElasticBoundary::traction([0.0, -1.0, 0.0]));
+    let space = FemSpace::new(SimplexMesh::rectangle(10, 2, [0.0; 2], [2.0, 1.0]), 1).unwrap();
+    let prob = ElasticityProblem {
+        model: Model::PlaneStress,
+        material: mat,
+        force: &no_force,
+        bcs: &bcs,
+    };
+    let a = solve(&space, &prob, LinearSolver::Auto).unwrap();
+    let young = |_: [f64; 3]| mat.young;
+    let poisson = |_: [f64; 3]| mat.poisson;
+    let var = ElasticityProblemVar {
+        model: Model::PlaneStress,
+        young: &young,
+        poisson: &poisson,
+        thickness: 1.0,
+        force: &no_force,
+        bcs: &bcs,
+    };
+    let b = solve_heterogeneous(&space, &var, LinearSolver::Auto).unwrap();
+    let worst =
+        a.u.iter()
+            .zip(&b.u)
+            .fold(0.0_f64, |m, (x, y)| m.max((x - y).abs()));
+    assert!(worst < 1e-12, "2D uniform-material mismatch {worst}");
+    for ci in 0..space.mesh.cells.len() {
+        let (sa, sb) = (a.stress_at_cell(ci), b.stress_at_cell(ci));
+        for r in 0..sa.len() {
+            assert!((sa[r] - sb[r]).abs() < 1e-10, "cell {ci} row {r}");
+        }
+    }
+    // 3D clamped block with a face traction.
+    let bcs3 = MarkerBcs::new()
+        .set(marker::XMIN, ElasticBoundary::clamped())
+        .set(marker::XMAX, ElasticBoundary::traction([1.0, 0.0, 0.0]))
+        .set(marker::YMIN, ElasticBoundary::roller(1))
+        .set(marker::ZMIN, ElasticBoundary::roller(2));
+    let space3 = FemSpace::new(SimplexMesh::boxed([3, 1, 1], [0.0; 3], [1.0; 3]), 1).unwrap();
+    let prob3 = ElasticityProblem {
+        model: Model::Solid3d,
+        material: mat,
+        force: &no_force,
+        bcs: &bcs3,
+    };
+    let a3 = solve(&space3, &prob3, LinearSolver::Auto).unwrap();
+    let var3 = ElasticityProblemVar {
+        model: Model::Solid3d,
+        young: &young,
+        poisson: &poisson,
+        thickness: 1.0,
+        force: &no_force,
+        bcs: &bcs3,
+    };
+    let b3 = solve_heterogeneous(&space3, &var3, LinearSolver::Auto).unwrap();
+    let worst =
+        a3.u.iter()
+            .zip(&b3.u)
+            .fold(0.0_f64, |m, (x, y)| m.max((x - y).abs()));
+    assert!(worst < 1e-12, "3D uniform-material mismatch {worst}");
 }

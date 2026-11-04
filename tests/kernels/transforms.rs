@@ -10,6 +10,8 @@ use rssn::kernels::transforms::fft;
 use rssn::kernels::transforms::fft_slice;
 use rssn::kernels::transforms::ifft;
 use rssn::kernels::transforms::ifft_slice;
+use rssn::kernels::transforms::irfft;
+use rssn::kernels::transforms::rfft;
 
 fn cfg() -> ProptestConfig {
     ProptestConfig {
@@ -341,5 +343,172 @@ fn cost_of_the_general_path() {
         let per = start.elapsed() / reps;
         println!("{label}: {per:?} per forward transform ({reps} reps)");
         assert!(data.iter().all(|c| c.re.is_finite() && c.im.is_finite()));
+    }
+}
+
+// -------------------------------------------------------------------------
+// Real-input transform pair (rfft / irfft)
+// -------------------------------------------------------------------------
+
+/// A deterministic real signal that excites every bin.
+fn real_sample(n: usize) -> Vec<f64> {
+    (0..n)
+        .map(|i| {
+            let t = i as f64;
+            0.5 + (0.3 * t).sin() - 0.25 * (0.11 * t).cos() + 0.1 * ((i * i) as f64 * 0.01).sin()
+        })
+        .collect()
+}
+
+/// Even, odd, prime, highly composite, and the two smallest lengths.
+fn real_lengths() -> Vec<usize> {
+    vec![1, 2, 3, 4, 5, 8, 15, 16, 100, 1000]
+}
+
+#[test]
+fn rfft_matches_the_complex_fft() {
+    for n in real_lengths() {
+        let x = real_sample(n);
+        let half = rfft(&x);
+        assert_eq!(half.len(), n / 2 + 1, "half-spectrum length at n = {n}");
+
+        let mut full: Vec<Complex<f64>> = x.iter().map(|&value| Complex::new(value, 0.0)).collect();
+        fft(&mut full);
+        let scale = full.iter().map(|c| c.norm()).fold(1.0_f64, f64::max);
+
+        for (k, (got, want)) in half.iter().zip(&full).enumerate() {
+            assert!(
+                (got - want).norm() <= 1e-12 * scale,
+                "bin {k} at n = {n}: {got} vs {want}"
+            );
+        }
+        // Bins above n/2 are the conjugate mirror of the half spectrum.
+        for k in 1..=(n - 1) / 2 {
+            let mirrored = half[k].conj();
+            assert!(
+                (full[n - k] - mirrored).norm() <= 1e-12 * scale,
+                "mirror bin {k} at n = {n}: {} vs {mirrored}",
+                full[n - k]
+            );
+        }
+    }
+}
+
+#[test]
+fn real_round_trip() {
+    for n in real_lengths() {
+        let x = real_sample(n);
+        let back = irfft(&rfft(&x), n);
+        assert_eq!(back.len(), n, "round-trip length at n = {n}");
+        for (got, want) in back.iter().zip(&x) {
+            assert!(
+                (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+                "round trip at n = {n}: {got} vs {want}"
+            );
+        }
+    }
+}
+
+#[test]
+fn real_parseval() {
+    for n in real_lengths() {
+        let x = real_sample(n);
+        let spectrum = rfft(&x);
+        let time_energy: f64 = x.iter().map(|value| value * value).sum();
+        // The interior bins stand for their conjugate partner too; the DC and
+        // (even n) Nyquist bins are not repeated.
+        let last = spectrum.len() - 1;
+        let mut freq_energy = spectrum[0].norm_sqr();
+        for (k, bin) in spectrum.iter().enumerate().skip(1) {
+            let weight = if n % 2 == 0 && k == last {
+                1.0
+            } else {
+                2.0
+            };
+            freq_energy += weight * bin.norm_sqr();
+        }
+        let freq_energy = freq_energy / n as f64;
+        assert!(
+            (time_energy - freq_energy).abs() <= 1e-12 * time_energy.max(1.0),
+            "Parseval at n = {n}: {time_energy} vs {freq_energy}"
+        );
+    }
+}
+
+#[test]
+fn real_spectra_of_impulse_constant_and_sine() {
+    let impulse = rfft(&[3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    for bin in &impulse {
+        assert!((bin.re - 3.0).abs() < 1e-12, "{bin}");
+        assert!(bin.im.abs() < 1e-12, "{bin}");
+    }
+
+    let constant = rfft(&[2.0; 8]);
+    assert!((constant[0].re - 16.0).abs() < 1e-12);
+    assert!(constant[1..].iter().all(|bin| bin.norm() < 1e-12));
+
+    let n = 8_usize;
+    let sine: Vec<f64> = (0..n)
+        .map(|j| (2.0 * PI * j as f64 / n as f64).sin())
+        .collect();
+    let spectrum = rfft(&sine);
+    // sin(2 pi j / 8) has X_1 = n/(2i) = -4i and X_7 = +4i.
+    assert!((spectrum[1] - Complex::new(0.0, -4.0)).norm() < 1e-12);
+    assert!(spectrum[0].norm() < 1e-12);
+    assert!(spectrum[2].norm() < 1e-12);
+    assert!(spectrum[3].norm() < 1e-12);
+    assert!(spectrum[4].norm() < 1e-12);
+
+    let cosine: Vec<f64> = (0..n)
+        .map(|j| (2.0 * PI * 2.0 * j as f64 / n as f64).cos())
+        .collect();
+    let spectrum = rfft(&cosine);
+    // cos(2 pi * 2 j / 8) has X_2 = n/2 = 4.
+    assert!((spectrum[2] - Complex::new(4.0, 0.0)).norm() < 1e-12);
+    assert!(spectrum[1].norm() < 1e-12);
+    assert!(spectrum[3].norm() < 1e-12);
+}
+
+#[test]
+fn real_prime_lengths_match_the_direct_dft() {
+    for n in [3usize, 5, 101, 127] {
+        let x = real_sample(n);
+        let full: Vec<Complex<f64>> = x.iter().map(|&value| Complex::new(value, 0.0)).collect();
+        let want = direct_dft(&full);
+        let got = rfft(&x);
+        let scale = want.iter().map(|c| c.norm()).fold(1.0_f64, f64::max);
+        assert_eq!(got.len(), n / 2 + 1);
+        for (k, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert!(
+                (g - w).norm() <= 1e-12 * scale,
+                "prime bin {k} at n = {n}: {g} vs {w}"
+            );
+        }
+    }
+}
+
+#[test]
+fn real_transform_edge_and_error_cases() {
+    assert!(rfft(&[]).is_empty());
+    assert_eq!(rfft(&[2.5]), vec![Complex::new(2.5, 0.0)]);
+    assert_eq!(irfft(&[Complex::new(2.5, 0.0)], 1), vec![2.5]);
+
+    // A half spectrum must have exactly n/2 + 1 bins.
+    assert!(irfft(&[Complex::new(1.0, 0.0); 2], 8).is_empty());
+    assert!(irfft(&[], 8).is_empty());
+    assert!(irfft(&[Complex::new(1.0, 0.0)], 0).is_empty());
+
+    // DC and Nyquist imaginary parts are ignored: a real signal has none.
+    let x = [1.0, 2.0, 3.0, 4.0];
+    let clean = irfft(&rfft(&x), 4);
+    let mut noisy = rfft(&x);
+    noisy[0].im = 0.5;
+    noisy[2].im = -0.25;
+    let from_noisy = irfft(&noisy, 4);
+    for (a, b) in clean.iter().zip(&from_noisy) {
+        assert!((a - b).abs() < 1e-12, "{a} vs {b}");
+    }
+    for (got, want) in from_noisy.iter().zip(&x) {
+        assert!((got - want).abs() < 1e-12);
     }
 }

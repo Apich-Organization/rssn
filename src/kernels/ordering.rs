@@ -19,6 +19,23 @@
 //! All routines take the adjacency lists of a symmetric pattern without self
 //! loops (`adj[i]` lists the neighbours of `i`, each edge in both lists) and
 //! return `perm` with `perm[new] = old`.
+//!
+//! # Limitations and coverage
+//!
+//! * The routines assume a symmetric pattern and validate nothing: a missing
+//!   mirror entry silently orders the symmetrised pattern, and self loops or
+//!   out-of-range indices are not rejected.
+//! * [`amd_order`] is approximate minimum degree without a supernode
+//!   post-processing pass; [`nested_dissection_order`] bisects by BFS level
+//!   structures with separator refinement, not by a multilevel or spectral
+//!   partition, so on very large irregular graphs the fill can be larger than
+//!   a state-of-the-art ordering.
+//! * No numerical pivoting is considered: [`cholesky_fill`] counts the symbolic
+//!   factor of a symmetric pattern only, and no ordering is supplied for
+//!   unsymmetric LU here (the sparse LU in `krylov` builds its own orderings).
+//! * Memory is proportional to the number of nonzeros for AMD; the nested
+//!   dissection recursion stores each separator explicitly, and the routines
+//!   are single-threaded and deterministic.
 
 const NIL: usize = usize::MAX;
 

@@ -1,4 +1,14 @@
 //! Dimension inference over the term DAG.
+//!
+//! [`DimInfer`] is an abstract interpretation: it walks the hash-consed DAG,
+//! derives a dimension for every operator from its [`DimRule`] and the
+//! dimensions of its children, and unifies the results of all members of an
+//! e-class. Conflicts and coverage gaps are collected as [`DimError`]s —
+//! never thrown — and the caller decides whether they are diagnostics
+//! (Advisory) or a hard error (Strict).
+//!
+//! The algorithm is documented in `docs/DIMENSIONS.md` §6; the remaining
+//! limitations of the layer are listed in §13.
 
 // The inference engine is a crate-internal implementation detail; the module
 // declaration in `graph::mod` allows `clippy::redundant_pub_crate`.

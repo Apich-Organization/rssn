@@ -3730,9 +3730,10 @@ fn extension_rule(kind: Kind) -> DimRule {
         // entries `sqrt(entry)`.
         | Kind::Mpow => DimRule::Custom(matrix_power_dimension),
         | Kind::Matsqrt | Kind::Cholesky => DimRule::Root(2),
-        // `exp(A) = Σ A^k/k!` is a pure number, so `A` must be dimensionless
-        // (the rule enforces that on the matrix argument).
-        | Kind::Matexp => DimRule::Dimensionless,
+        // `exp(A t) = Σ (A t)^k/k!` is a pure number, so only the *product*
+        // `t A` must be dimensionless (`A` in `1/s`, `t` in `s` is the
+        // evolution operator `exp(A t)`; a dimensionful product is refused).
+        | Kind::Matexp => DimRule::Custom(crate::graph::dim::matexp_dimension),
         // A polynomial `f` of a single total degree `k` acts homogeneously:
         // `f(A)` has entries `dim(f) * entry^k` (`x^2` gives `A^2`,
         // `x^3 + x` is not homogeneous). A non-homogeneous `f`, and the

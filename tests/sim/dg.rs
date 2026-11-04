@@ -215,6 +215,188 @@ fn fixed_inflow_and_outflow_boundaries() {
     assert!(solve_dg(&mesh, &law, &bad, &|_| vec![0.0], 0.1, 0.3, None).is_err());
 }
 
+mod weno_limiter {
+    use rssn::sim::dg::DgOptions;
+    use rssn::sim::dg::DgSolution;
+    use rssn::sim::dg::Euler2d;
+    use rssn::sim::dg::ShockLimiter;
+    use rssn::sim::dg::solve_dg_with;
+
+    use super::*;
+
+    /// FNV-1a over the bit patterns of a solution vector.
+    fn state_hash(q: &[f64]) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325_u64;
+        for v in q {
+            h ^= v.to_bits();
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
+    }
+
+    /// Element mean of one variable from the LGL quadrature (weights sum to 1
+    /// per element).
+    fn element_mean(
+        s: &DgSolution,
+        e: usize,
+        var: usize,
+    ) -> f64 {
+        let n1 = s.mesh.p + 1;
+        let np = s.mesh.nodes_per_element();
+        let mut acc = 0.0;
+        for nd in 0..np {
+            let ij = [nd % n1, nd / n1];
+            acc += s.w[ij[0]] * s.w[ij[1]] / 4.0 * s.value(e, nd, var);
+        }
+        acc
+    }
+
+    fn weno_2d() -> DgOptions {
+        DgOptions {
+            shock: ShockLimiter::Weno { m: 50.0 },
+            ..DgOptions::default()
+        }
+    }
+
+    /// 1D Sod shock tube with the WENO limiter: the multidimensional port
+    /// reduces to the original 1D Zhong-Shu reconstruction, so the run must be
+    /// bit-identical to the one-dimensional implementation it replaced.
+    #[test]
+    fn weno_limiter_1d_is_bit_identical_to_the_previous_implementation() {
+        let mesh = DgMesh::line(12, 0.0, 1.0, 2);
+        let bcs = [DgBc::Outflow, DgBc::Outflow, DgBc::Outflow, DgBc::Outflow];
+        let init = |x: [f64; 2]| {
+            let (rho, p) = if x[0] < 0.5 {
+                (1.0, 1.0)
+            } else {
+                (0.125, 0.1)
+            };
+            vec![rho, 0.0, p / 0.4]
+        };
+        let opt = DgOptions {
+            shock: ShockLimiter::Weno { m: 10.0 },
+            positivity: true,
+            ..DgOptions::default()
+        };
+        let s = solve_dg_with(&mesh, &Euler1d { gamma: 1.4 }, &bcs, &init, 0.2, 0.3, &opt).unwrap();
+        let h = state_hash(&s.q);
+        println!("1D WENO state hash: {h:#018x}");
+        assert_eq!(h, 0x7513_49b0_15f8_7307);
+    }
+
+    /// The default TVB threshold leaves a smooth wave untouched, so the 2D
+    /// WENO limiter must be a bitwise no-op there and keep the design order.
+    #[test]
+    fn weno_limiter_keeps_2d_smooth_advection_design_order() {
+        let law = LinearAdvection { a: [1.0, 1.0] };
+        let exact = |x: [f64; 2]| (2.0 * PI * (x[0] + x[1])).sin();
+        let run = |ne: usize, o: &DgOptions| {
+            let mesh = DgMesh::rect([ne, ne], [0.0; 2], [1.0; 2], 2);
+            solve_dg_with(&mesh, &law, &periodic(), &|x| vec![exact(x)], 1.0, 0.4, o)
+                .unwrap()
+                .l2_error(0, exact)
+        };
+        let unlimited = DgOptions::default();
+        let (b1, b2) = (run(8, &unlimited), run(16, &unlimited));
+        let (e1, e2) = (run(8, &weno_2d()), run(16, &weno_2d()));
+        let order = (e1 / e2).log2();
+        println!("2D advection p=2 WENO: {e1:.3e} {e2:.3e}, order {order:.2}");
+        assert_eq!(e1, b1, "the WENO limiter changed a smooth solution");
+        assert_eq!(e2, b2, "the WENO limiter changed a smooth solution");
+        assert!(order > 3.0, "2D advection order {order}: {e1} {e2}");
+    }
+
+    /// A 2D Sod problem (shock along x, constant along y) with the WENO
+    /// limiter stays finite and positive and does not create new extrema.
+    #[test]
+    fn weno_limiter_keeps_a_2d_shock_positive_and_bounded() {
+        let law = Euler2d { gamma: 1.4 };
+        let mesh = DgMesh::rect([16, 4], [0.0; 2], [1.0; 2], 2);
+        let bcs = [DgBc::Outflow, DgBc::Outflow, DgBc::Periodic, DgBc::Periodic];
+        let init = |x: [f64; 2]| {
+            let (rho, p) = if x[0] < 0.5 {
+                (1.0, 1.0)
+            } else {
+                (0.125, 0.1)
+            };
+            vec![rho, 0.0, 0.0, p / 0.4]
+        };
+        let opt = DgOptions {
+            shock: ShockLimiter::Weno { m: 10.0 },
+            positivity: true,
+            ..DgOptions::default()
+        };
+        let s = solve_dg_with(&mesh, &law, &bcs, &init, 0.2, 0.3, &opt).unwrap();
+        let (mut rho_min, mut rho_max) = (f64::INFINITY, f64::NEG_INFINITY);
+        let (mut p_min, mut p_max) = (f64::INFINITY, f64::NEG_INFINITY);
+        for e in 0..mesh.elements() {
+            for nd in 0..mesh.nodes_per_element() {
+                let q: Vec<f64> = (0..4).map(|v| s.value(e, nd, v)).collect();
+                let rho = q[0];
+                let p = 0.4 * (q[3] - 0.5 * (q[1] * q[1] + q[2] * q[2]) / rho);
+                assert!(rho.is_finite() && p.is_finite(), "non-finite state");
+                assert!(rho > 0.0 && p > 0.0, "rho {rho}, p {p}");
+                rho_min = rho_min.min(rho);
+                rho_max = rho_max.max(rho);
+                p_min = p_min.min(p);
+                p_max = p_max.max(p);
+            }
+        }
+        println!("2D Sod WENO: rho [{rho_min:.4}, {rho_max:.4}], p [{p_min:.4}, {p_max:.4}]");
+        assert!(rho_min > 0.12 && rho_max < 1.05, "density range");
+        assert!(p_min > 0.09 && p_max < 1.05, "pressure range");
+    }
+
+    /// The multidirectional reconstruction preserves every element mean: with
+    /// an O(1e-15) time step the solution barely moves, so a mean-preserving
+    /// limiter leaves the element means of the initial state at round-off.
+    #[test]
+    fn weno_limiter_preserves_element_means_in_2d() {
+        let law = LinearAdvection { a: [1.0, 1.0] };
+        let mesh = DgMesh::rect([8, 8], [0.0; 2], [1.0; 2], 2);
+        let init = |x: [f64; 2]| vec![if x[0] < 0.5 { 1.0 } else { 0.0 }];
+        let initial = solve_dg_with(
+            &mesh,
+            &law,
+            &periodic(),
+            &init,
+            0.0,
+            0.4,
+            &DgOptions::default(),
+        )
+        .unwrap();
+        // A tiny time step: the flux update is O(1e-14), the limiter is not.
+        let limited =
+            solve_dg_with(&mesh, &law, &periodic(), &init, 1e-15, 0.4, &weno_2d()).unwrap();
+        let unlimited = solve_dg_with(
+            &mesh,
+            &law,
+            &periodic(),
+            &init,
+            1e-15,
+            0.4,
+            &DgOptions::default(),
+        )
+        .unwrap();
+        let smeared = (0..limited.q.len())
+            .map(|i| (limited.q[i] - unlimited.q[i]).abs())
+            .fold(0.0_f64, f64::max);
+        println!("WENO changed the state by at most {smeared:.3e}");
+        assert!(
+            smeared > 1e-3,
+            "the limiter did not fire on the discontinuity: {smeared}"
+        );
+        let mut worst: f64 = 0.0;
+        for e in 0..mesh.elements() {
+            let m0 = element_mean(&initial, e, 0);
+            let m1 = element_mean(&limited, e, 0);
+            worst = worst.max((m1 - m0).abs());
+        }
+        println!("largest element-mean drift after limiting: {worst:.3e}");
+        assert!(worst < 1e-10, "element means are not preserved: {worst}");
+    }
+}
+
 mod hierarchical_boundaries {
     use rssn::sim::dg::DgOptions;
     use rssn::sim::dg::ShockLimiter;

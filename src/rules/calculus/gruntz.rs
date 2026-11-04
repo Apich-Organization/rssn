@@ -14,10 +14,13 @@
 //! in the small variable `q = E` (when `E → 0`) or `q = 1/E` (when
 //! `E → ∞`) with the series kernel of [`super::powerseries`]. The valuation
 //! of that series decides the limit; a zero valuation recurses on the
-//! constant coefficient, which involves only slower functions. Expressions
-//! the algorithm does not understand (trigonometric functions, algebraic
-//! cancellation at the chosen order) make it return `None`, and the caller
-//! falls back on the existing heuristics.
+//! constant coefficient, which involves only slower functions. When the
+//! expansion at the standard order is inconclusive — a cancellation can
+//! leave the first surviving term a few orders deeper — it is retried at the
+//! extended order for expressions small enough to make that affordable.
+//! Expressions the algorithm does not understand (trigonometric functions,
+//! algebraic cancellation beyond the extended order) make it return `None`,
+//! and the caller falls back on the existing heuristics.
 
 #![allow(
     clippy::single_call_fn,
@@ -43,6 +46,12 @@ use super::limits::Side;
 const MAX_DEPTH: usize = 8;
 /// Order of the series in the mrv variable.
 const SERIES_ORDER: i64 = 6;
+/// Order tried when the expansion at [`SERIES_ORDER`] is inconclusive: a
+/// cancellation can leave the first surviving term a few orders deeper.
+const SERIES_ORDER_EXTENDED: i64 = 12;
+/// Largest expression (nodes) for which the extended series order is tried;
+/// beyond it the extra terms are not affordable.
+const EXTENDED_ORDER_SIZE: usize = 160;
 /// Largest denominator accepted for a ratio of exponential arguments.
 const MAX_RATIO_DENOMINATOR: i64 = 12;
 
@@ -135,6 +144,47 @@ fn generic_env(
         }
     }
     env
+}
+
+/// The Laurent expansion in the mrv variable, at the standard order and —
+/// when that is inconclusive and the expression is small — at the extended
+/// order. The retry reaches a cancellation whose first surviving term lies
+/// beyond the standard order.
+fn series_in_q(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    q: NodeId,
+    zero: NodeId,
+) -> Option<(i64, Vec<NodeId>)> {
+    if let Some(found) = laurent_expansion(cx, f, q, zero, SERIES_ORDER) {
+        return Some(found);
+    }
+    if expression_size(cx.graph, f) > EXTENDED_ORDER_SIZE {
+        return None;
+    }
+    laurent_expansion(cx, f, q, zero, SERIES_ORDER_EXTENDED)
+}
+
+/// The number of nodes of the expression below `root`.
+fn expression_size(
+    graph: &Graph,
+    root: NodeId,
+) -> usize {
+    let mut seen = std::collections::HashSet::new();
+    let mut stack = vec![root];
+    let mut count = 0;
+    while let Some(node) = stack.pop() {
+        let class = graph.find(node);
+        if !seen.insert(class) {
+            continue;
+        }
+        count += 1;
+        if count > EXTENDED_ORDER_SIZE {
+            return count;
+        }
+        stack.extend_from_slice(graph.children(node));
+    }
+    count
 }
 
 /// Whether the expression is built from the limit variable, numbers,
@@ -565,7 +615,7 @@ fn limit_around(
         },
     };
     let zero = cx.graph.int(0);
-    let (valuation, coefficients) = laurent_expansion(cx, in_q, q, zero, SERIES_ORDER)?;
+    let (valuation, coefficients) = series_in_q(cx, in_q, q, zero)?;
     if valuation > 0 {
         return Some(cx.graph.int(0));
     }

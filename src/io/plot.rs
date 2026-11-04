@@ -7,7 +7,39 @@
 //! 3D plots use one fixed oblique projection (yaw 0.6, pitch 0.5 radians):
 //! surfaces are painted back to front as height-coloured quads, curves and
 //! vector fields as projected lines inside a wireframe bounding box.
+//!
+//! # Limitations
+//!
+//! - **Output formats.** Most functions write self-contained SVG; the
+//!   [`plot_scalar_field_pgm`] / [`plot_scalar_field_ppm`] pair writes 8-bit
+//!   PGM/PPM rasters through the pure-Rust [`super::raster`] writer. There is
+//!   no PNG, JPEG or other compressed raster export: that needs an image
+//!   encoder, i.e. a new dependency.
+//! - **Plot types.** 2-D: function, series, expression term, vector field,
+//!   scaled quiver ([`plot_quiver_2d`]), contour lines ([`plot_contour_2d`]),
+//!   filled contour bands ([`plot_contour_bands_2d`]) and streamlines
+//!   ([`plot_streamlines_2d`]). 3-D: surface, parametric curve, polyline and
+//!   vector field, all with one fixed oblique projection (no interactive
+//!   rotation or real depth cueing). Missing entirely: log axes, subplots,
+//!   histograms/box plots, error bars, chart-like band/area plots, contour
+//!   labels and any interactive output.
+//! - **Contours** come from marching squares on a regular sample grid: cells
+//!   with a non-finite corner are skipped, plateaus exactly at a level are not
+//!   outlined, and the caller chooses the levels and grid. Saddle cells use
+//!   the bilinear saddle value (the mean of the four corners) to choose a
+//!   connection, so output is deterministic but may differ from a finer grid.
+//!   Filled bands are rasterised as one clipped triangle per cell half: the
+//!   result is an exact partition, but its SVG size grows as
+//!   `O(grid^2 * (levels + 1))` and there is no smoothing, polygon merging or
+//!   contour labelling.
+//! - **Streamlines** are one-sided (forward) RK4 paths from explicit seeds;
+//!   there is no adaptive step, no automatic seeding/density rule, no
+//!   backward/two-sided integration and no arrowheads.
+//! - **Style** is fixed: one palette, a small colour bar for surfaces/heat
+//!   maps, no configuration of axes, fonts, line widths or texts beyond the
+//!   legend names.
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use ndarray::Array2;
@@ -206,9 +238,9 @@ fn padded(range: (f64, f64)) -> (f64, f64) {
     (range.0 - pad, range.1 + pad)
 }
 
-/// A viridis-like colour map; `t` is clamped to `[0, 1]`.
+/// A viridis-like colour map as RGB; `t` is clamped to `[0, 1]`.
 #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
-fn colormap(t: f64) -> String {
+fn colormap_rgb(t: f64) -> (u8, u8, u8) {
     const STOPS: [(f64, f64, f64); 5] = [
         (68.0, 1.0, 84.0),
         (59.0, 82.0, 139.0),
@@ -226,12 +258,14 @@ fn colormap(t: f64) -> String {
     let f = scaled - i as f64;
     let (a, b) = (STOPS[i], STOPS[i + 1]);
     let mix = |x: f64, y: f64| (x + (y - x) * f).round() as u8;
-    format!(
-        "#{:02x}{:02x}{:02x}",
-        mix(a.0, b.0),
-        mix(a.1, b.1),
-        mix(a.2, b.2)
-    )
+    (mix(a.0, b.0), mix(a.1, b.1), mix(a.2, b.2))
+}
+
+/// A viridis-like colour map as an SVG `#rrggbb` string; `t` is clamped to
+/// `[0, 1]`.
+fn colormap(t: f64) -> String {
+    let (r, g, b) = colormap_rgb(t);
+    format!("#{r:02x}{g:02x}{b:02x}")
 }
 
 fn unit(
@@ -530,6 +564,672 @@ pub fn plot_vector_field_2d(
         let from = frame.at((x, y));
         let to = (from.0 + u / max * reach, from.1 - v / max * reach);
         arrow(&mut svg, from, to, &colormap(m / max));
+    }
+    write_svg(svg, path)
+}
+
+/// Plots the 2-D vector field `f(x, y) = (u, v)` as a quiver of scaled arrows.
+///
+/// There is one arrow per grid sample and its length is proportional to the
+/// field magnitude relative to the largest sampled magnitude, so zero vectors
+/// are omitted and long arrows mark the strong regions.
+///
+/// `scale` is the fraction of the smaller grid cell used by the longest arrow;
+/// it must be finite and positive.
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, a non-finite or non-positive
+/// `scale`, or when the file cannot be written.
+#[allow(clippy::float_cmp)] // exact zero is the "field vanishes" sentinel
+pub fn plot_quiver_2d(
+    f: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    scale: f64,
+    path: &Path,
+) -> Result<(), String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    if !(scale.is_finite() && scale > 0.0) {
+        return Err(format!("invalid quiver scale ({scale})"));
+    }
+    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
+    let field: Vec<(f64, f64, f64, f64)> = ys
+        .iter()
+        .flat_map(|&y| xs.iter().map(move |&x| (x, y)))
+        .map(|(x, y)| {
+            let (u, v) = f(x, y);
+            (x, y, u, v)
+        })
+        .filter(|&(_, _, u, v)| u.is_finite() && v.is_finite())
+        .collect();
+    let max = field
+        .iter()
+        .map(|&(_, _, u, v)| u.hypot(v))
+        .fold(0.0, f64::max);
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
+    let mut svg = Svg::new();
+    frame.draw(&mut svg);
+    if max > 0.0 {
+        let cell_x = (WIDTH - MARGIN_LEFT - MARGIN_RIGHT) / (grid - 1) as f64;
+        let cell_y = (HEIGHT - MARGIN_TOP - MARGIN_BOTTOM) / (grid - 1) as f64;
+        let reach = scale * cell_x.min(cell_y);
+        for (x, y, u, v) in field {
+            let m = u.hypot(v);
+            if m == 0.0 {
+                continue;
+            }
+            let part = reach * (m / max);
+            let from = frame.at((x, y));
+            let to = (from.0 + u / m * part, from.1 - v / m * part);
+            arrow(&mut svg, from, to, PALETTE[0]);
+        }
+    }
+    write_svg(svg, path)
+}
+
+/// One contour line of a scalar field at a fixed level, in data coordinates.
+///
+/// A closed contour repeats its first point as its last point.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContourLine {
+    /// The level this line belongs to.
+    pub level: f64,
+    /// The polyline, in plot coordinates.
+    pub points: Vec<(f64, f64)>,
+}
+
+/// Interpolates the crossing of `level` on the edge `p -> q`.
+///
+/// Returns the endpoint itself when the interpolation parameter is exactly
+/// `0` or `1`, so a sample that lies exactly on the level is reproduced
+/// bit-exactly by every cell that touches it.
+fn crossing(
+    p: (f64, f64),
+    vp: f64,
+    q: (f64, f64),
+    vq: f64,
+    level: f64,
+) -> (f64, f64) {
+    let denom = vq - vp;
+    let t = if denom == 0.0 {
+        0.5
+    } else {
+        ((level - vp) / denom).clamp(0.0, 1.0)
+    };
+    if t <= 0.0 {
+        return p;
+    }
+    if t >= 1.0 {
+        return q;
+    }
+    (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+}
+
+/// One marching-squares segment: the two cell-edge crossings it connects.
+type ContourSegment = ((f64, f64), (f64, f64));
+
+/// Marching-squares segments of one cell.
+///
+/// `edges` are the crossings on the bottom, right, top and left edge; `code`
+/// has one bit per corner above the level (bottom-left is bit 0, counter-
+/// clockwise). In the two saddle cases (5 and 10) the bilinear saddle value,
+/// the mean of the four corners, decides how the cell is connected.
+fn cell_segments(
+    edges: [(f64, f64); 4],
+    code: u8,
+    center_above: bool,
+) -> Vec<ContourSegment> {
+    let pair = |a: usize, b: usize| vec![(edges[a], edges[b])];
+    match code {
+        | 1 | 14 => pair(3, 0),
+        | 2 | 13 => pair(0, 1),
+        | 3 | 12 => pair(3, 1),
+        | 4 | 11 => pair(1, 2),
+        | 6 | 9 => pair(0, 2),
+        | 7 | 8 => pair(3, 2),
+        | 5 | 10 => {
+            // The bilinear saddle value decides the connection: for case 5 the
+            // connected branch is chosen when the centre is above the level,
+            // for case 10 when it is below.
+            if (code == 5) == center_above {
+                let mut out = pair(0, 1);
+                out.extend(pair(2, 3));
+                out
+            } else {
+                let mut out = pair(3, 0);
+                out.extend(pair(1, 2));
+                out
+            }
+        },
+        | _ => Vec::new(),
+    }
+}
+
+/// Canonical key of a point: exact bit pattern with `-0.0` normalised, so
+/// points computed in different cells still compare equal.
+fn point_key(p: (f64, f64)) -> String {
+    format!("{:?},{:?}", p.0 + 0.0, p.1 + 0.0)
+}
+
+/// Joins segments that share an endpoint into polylines.
+///
+/// Endpoints are compared by [`point_key`], and shared grid edges are computed
+/// by one canonical formula, so this is deterministic. Closed contours keep
+/// their first point repeated at the end; segments are otherwise chained in
+/// scanning order.
+fn chain_segments(segments: &[ContourSegment]) -> Vec<Vec<(f64, f64)>> {
+    let key = point_key;
+    let mut adjacency: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, &(a, b)) in segments.iter().enumerate() {
+        adjacency.entry(key(a)).or_default().push(i);
+        adjacency.entry(key(b)).or_default().push(i);
+    }
+    let mut used = vec![false; segments.len()];
+    let mut lines: Vec<Vec<(f64, f64)>> = Vec::new();
+    for start in 0..segments.len() {
+        if used[start] {
+            continue;
+        }
+        used[start] = true;
+        let (a, b) = segments[start];
+        let mut points = vec![a, b];
+        loop {
+            let tail = key(*points.last().unwrap());
+            let next = adjacency
+                .get(&tail)
+                .and_then(|ids| ids.iter().copied().find(|&i| !used[i]));
+            let Some(i) = next else {
+                break;
+            };
+            used[i] = true;
+            let (p, q) = segments[i];
+            if key(p) == tail {
+                points.push(q);
+            } else {
+                points.push(p);
+            }
+        }
+        loop {
+            let head = key(points[0]);
+            let next = adjacency
+                .get(&head)
+                .and_then(|ids| ids.iter().copied().find(|&i| !used[i]));
+            let Some(i) = next else {
+                break;
+            };
+            used[i] = true;
+            let (p, q) = segments[i];
+            if key(q) == head {
+                points.insert(0, p);
+            } else {
+                points.insert(0, q);
+            }
+        }
+        lines.push(points);
+    }
+    lines
+}
+
+/// Extracts iso-lines of `f` over a rectangle with marching squares on a
+/// regular `grid` x `grid` sample lattice.
+///
+/// Returns one polyline per connected contour component. Components are
+/// ordered by level (in the given order) and then by the scan order of their
+/// first segment, so the result is deterministic. Non-finite levels are
+/// ignored; cells with a non-finite corner are skipped, and cells whose
+/// corners are all exactly on a level are not outlined. A sample exactly on a
+/// level is treated as below it, so the contour passes through that sample
+/// rather than through a degenerate cell edge (zero-length segments produced by
+/// cells the contour merely touches are dropped). Saddle cells are resolved
+/// with the bilinear saddle value (the mean of the four corners).
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, or an empty `levels` slice.
+pub fn contour_lines_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+) -> Result<Vec<ContourLine>, String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    if levels.is_empty() {
+        return Err("at least one contour level is required".to_owned());
+    }
+    let xs = linspace(x_range, grid);
+    let ys = linspace(y_range, grid);
+    let z: Vec<Vec<f64>> = ys
+        .iter()
+        .map(|&y| xs.iter().map(|&x| f(x, y)).collect())
+        .collect();
+    let mut lines: Vec<ContourLine> = Vec::new();
+    for &level in levels {
+        if !level.is_finite() {
+            continue;
+        }
+        let horizontal = |row: usize, col: usize| {
+            crossing(
+                (xs[col], ys[row]),
+                z[row][col],
+                (xs[col + 1], ys[row]),
+                z[row][col + 1],
+                level,
+            )
+        };
+        let vertical = |row: usize, col: usize| {
+            crossing(
+                (xs[col], ys[row]),
+                z[row][col],
+                (xs[col], ys[row + 1]),
+                z[row + 1][col],
+                level,
+            )
+        };
+        let mut segments = Vec::new();
+        for i in 0..grid - 1 {
+            for j in 0..grid - 1 {
+                let corners = [z[i][j], z[i][j + 1], z[i + 1][j + 1], z[i + 1][j]];
+                if !corners.iter().all(|v| v.is_finite()) {
+                    continue;
+                }
+                let mut code = 0u8;
+                for (bit, &v) in corners.iter().enumerate() {
+                    // Strictly above: a sample exactly on the level is treated
+                    // as below, so crossings land on the sample itself.
+                    if v > level {
+                        code |= 1 << bit;
+                    }
+                }
+                // Shared edges are computed by the same call on both sides, so
+                // neighbouring cells produce bit-identical crossing points.
+                let edges = [
+                    horizontal(i, j),
+                    vertical(i, j + 1),
+                    horizontal(i + 1, j),
+                    vertical(i, j),
+                ];
+                let center_above = corners.iter().sum::<f64>() / 4.0 > level;
+                segments.extend(cell_segments(edges, code, center_above));
+            }
+        }
+        // A contour that only touches a sample degenerates to a zero-length
+        // segment in the neighbouring cell; dropping it keeps tangent points
+        // connected through the two real segments that meet at the sample.
+        segments.retain(|&(a, b)| point_key(a) != point_key(b));
+        for points in chain_segments(&segments) {
+            lines.push(ContourLine { level, points });
+        }
+    }
+    Ok(lines)
+}
+
+/// Plots the contour lines of `f` over the rectangle as SVG: one polyline per
+/// connected contour component, coloured per level.
+///
+/// # Errors
+/// As [`contour_lines_2d`], plus file-writing errors.
+pub fn plot_contour_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    let lines = contour_lines_2d(f, x_range, y_range, grid, levels)?;
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
+    let mut svg = Svg::new();
+    frame.draw(&mut svg);
+    let mut seen: Vec<u64> = Vec::new();
+    for line in &lines {
+        let bits = line.level.to_bits();
+        let color = match seen.iter().position(|&b| b == bits) {
+            | Some(i) => PALETTE[i % PALETTE.len()],
+            | None => {
+                seen.push(bits);
+                PALETTE[(seen.len() - 1) % PALETTE.len()]
+            },
+        };
+        draw_series(&mut svg, &frame, &line.points, color);
+    }
+    write_svg(svg, path)
+}
+
+/// One filled contour band: a scalar range and the filled polygons covering
+/// it, in data coordinates.
+///
+/// Polygons are closed rings (the last vertex is implicit) with at least three
+/// vertices. Adjacent polygons share edges exactly, so drawing them with the
+/// same fill leaves no seams or double-fill artefacts.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContourBand {
+    /// Lower bound of the band (`f64::NEG_INFINITY` below the first level).
+    pub low: f64,
+    /// Upper bound of the band (`f64::INFINITY` above the last level).
+    pub high: f64,
+    /// The filled polygons of the band.
+    pub polygons: Vec<Vec<(f64, f64)>>,
+}
+
+/// A polygon vertex carrying the linear interpolant of the scalar field, so
+/// clipping can intersect on the field value instead of the coordinates.
+type BandVertex = (f64, f64, f64);
+
+/// Sutherland-Hodgman clip of a convex polygon to one side of `value == level`.
+fn clip_values(
+    poly: &[BandVertex],
+    level: f64,
+    keep_above: bool,
+) -> Vec<BandVertex> {
+    let inside = |v: f64| {
+        if keep_above {
+            v >= level
+        } else {
+            v <= level
+        }
+    };
+    let mut out = Vec::with_capacity(poly.len() + 2);
+    for i in 0..poly.len() {
+        let a = poly[i];
+        let b = poly[(i + 1) % poly.len()];
+        let (a_in, b_in) = (inside(a.2), inside(b.2));
+        if a_in {
+            out.push(a);
+        }
+        if a_in != b_in {
+            let denom = b.2 - a.2;
+            let t = if denom == 0.0 {
+                0.5
+            } else {
+                ((level - a.2) / denom).clamp(0.0, 1.0)
+            };
+            out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, level));
+        }
+    }
+    out
+}
+
+/// Clips a triangle to the strip `low <= value <= high`; an infinite bound
+/// leaves that side untouched.
+fn clip_band(
+    poly: &[BandVertex],
+    low: f64,
+    high: f64,
+) -> Vec<BandVertex> {
+    let mut out = poly.to_vec();
+    if low.is_finite() {
+        out = clip_values(&out, low, true);
+    }
+    if high.is_finite() {
+        out = clip_values(&out, high, false);
+    }
+    out
+}
+
+/// Twice the signed area of a polygon (shoelace formula).
+fn band_area2(points: &[BandVertex]) -> f64 {
+    let mut acc = 0.0;
+    for i in 0..points.len() {
+        let a = points[i];
+        let b = points[(i + 1) % points.len()];
+        acc += a.0 * b.1 - b.0 * a.1;
+    }
+    acc
+}
+
+/// Validates contour boundary levels: non-empty, finite and strictly
+/// increasing.
+fn check_levels(levels: &[f64]) -> Result<(), String> {
+    if levels.is_empty() {
+        return Err("at least one contour level is required".to_owned());
+    }
+    if levels.iter().any(|v| !v.is_finite()) {
+        return Err("contour levels must be finite".to_owned());
+    }
+    if levels.windows(2).any(|pair| pair[0] >= pair[1]) {
+        return Err("contour levels must be strictly increasing".to_owned());
+    }
+    Ok(())
+}
+
+/// Splits the sampled rectangle into filled level bands.
+///
+/// There is one band per gap between consecutive `levels`, plus the two open
+/// outer bands `(-inf, levels[0])` and `(levels[last], +inf)`. Each grid cell
+/// is split on its diagonal into two triangles; the scalar field is linearly
+/// interpolated on each triangle and the triangle is clipped to the band with
+/// Sutherland-Hodgman. That makes every polygon convex and the bands an exact
+/// partition of the rectangle (no overlap and no double fill), with band
+/// boundaries piecewise linear on the grid diagonals. Polygons are returned in
+/// band order and then row-major cell order, so the result is deterministic.
+///
+/// Cells with a non-finite corner are skipped. Degenerate zero-area clipped
+/// polygons (a level touching a sample) are dropped.
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, an empty `levels` slice, or levels
+/// that are not finite and strictly increasing.
+#[allow(clippy::float_cmp)] // exact zero area identifies a degenerate clipped polygon
+pub fn contour_bands_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+) -> Result<Vec<ContourBand>, String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    check_levels(levels)?;
+    let xs = linspace(x_range, grid);
+    let ys = linspace(y_range, grid);
+    let z: Vec<Vec<f64>> = ys
+        .iter()
+        .map(|&y| xs.iter().map(|&x| f(x, y)).collect())
+        .collect();
+    let edges: Vec<f64> = std::iter::once(f64::NEG_INFINITY)
+        .chain(levels.iter().copied())
+        .chain(std::iter::once(f64::INFINITY))
+        .collect();
+    let mut bands: Vec<ContourBand> = edges
+        .windows(2)
+        .map(|pair| {
+            ContourBand {
+                low: pair[0],
+                high: pair[1],
+                polygons: Vec::new(),
+            }
+        })
+        .collect();
+    for i in 0..grid - 1 {
+        for j in 0..grid - 1 {
+            let corners: [BandVertex; 4] = [
+                (xs[j], ys[i], z[i][j]),
+                (xs[j + 1], ys[i], z[i][j + 1]),
+                (xs[j + 1], ys[i + 1], z[i + 1][j + 1]),
+                (xs[j], ys[i + 1], z[i + 1][j]),
+            ];
+            if !corners.iter().all(|corner| corner.2.is_finite()) {
+                continue;
+            }
+            for triangle in [[0usize, 1, 2], [0, 2, 3]] {
+                let tri = [
+                    corners[triangle[0]],
+                    corners[triangle[1]],
+                    corners[triangle[2]],
+                ];
+                for band in &mut bands {
+                    let clipped = clip_band(&tri, band.low, band.high);
+                    if clipped.len() >= 3 && band_area2(&clipped) != 0.0 {
+                        band.polygons
+                            .push(clipped.iter().map(|vertex| (vertex.0, vertex.1)).collect());
+                    }
+                }
+            }
+        }
+    }
+    Ok(bands)
+}
+
+/// Plots filled contour bands of `f` over the rectangle as SVG: one filled
+/// polygon per clipped triangle, coloured by band index (low to high).
+///
+/// The axes and grid are drawn on top of the fills.
+///
+/// # Errors
+/// As [`contour_bands_2d`], plus file-writing errors.
+pub fn plot_contour_bands_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    let bands = contour_bands_2d(f, x_range, y_range, grid, levels)?;
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
+    let mut svg = Svg::new();
+    let last = bands.len().saturating_sub(1).max(1) as f64;
+    for (index, band) in bands.iter().enumerate() {
+        let color = colormap(index as f64 / last);
+        for polygon in &band.polygons {
+            let screen: Vec<(f64, f64)> = polygon.iter().map(|&p| frame.at(p)).collect();
+            svg.polygon(&screen, &color, &color);
+        }
+    }
+    frame.draw(&mut svg);
+    write_svg(svg, path)
+}
+
+/// One classical fourth-order Runge-Kutta step of the planar field.
+fn rk4_step(
+    field: &impl Fn(f64, f64) -> (f64, f64),
+    x: f64,
+    y: f64,
+    h: f64,
+) -> Option<(f64, f64)> {
+    let (k1x, k1y) = field(x, y);
+    let (k2x, k2y) = field(x + 0.5 * h * k1x, y + 0.5 * h * k1y);
+    let (k3x, k3y) = field(x + 0.5 * h * k2x, y + 0.5 * h * k2y);
+    let (k4x, k4y) = field(x + h * k3x, y + h * k3y);
+    let next = (
+        x + h / 6.0 * (k1x + 2.0 * k2x + 2.0 * k3x + k4x),
+        y + h / 6.0 * (k1y + 2.0 * k2y + 2.0 * k3y + k4y),
+    );
+    (next.0.is_finite() && next.1.is_finite()).then_some(next)
+}
+
+/// Integrates the planar vector field `f(x, y) = (u, v)` forward from each
+/// seed with fourth-order Runge-Kutta and returns one polyline per seed.
+///
+/// A path starts at its seed and stops as soon as a step would leave the
+/// rectangle, the field becomes non-finite or exactly zero, or `max_steps`
+/// steps were taken. Integration is forward only (no backward or two-sided
+/// lines).
+///
+/// # Errors
+/// Fails for an invalid range, a non-positive or non-finite `step`,
+/// `max_steps == 0`, an empty seed list, or a non-finite seed outside the
+/// rectangle.
+#[allow(clippy::float_cmp)] // exact zero is the "field vanishes" sentinel
+pub fn streamline_paths_2d(
+    field: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    seeds: &[(f64, f64)],
+    step: f64,
+    max_steps: usize,
+) -> Result<Vec<Vec<(f64, f64)>>, String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if !(step.is_finite() && step > 0.0) {
+        return Err(format!("invalid streamline step ({step})"));
+    }
+    if max_steps == 0 {
+        return Err("streamlines need at least one step".to_owned());
+    }
+    if seeds.is_empty() {
+        return Err("no streamline seeds provided".to_owned());
+    }
+    let inside = |p: (f64, f64)| {
+        // Bind the bounds first: comparing `p.0`/`p.1` against tuple fields
+        // directly trips `clippy::suspicious_operation_groupings` in the
+        // reverse reading, even though the chain below is the intended one.
+        let (x0, x1) = x_range;
+        let (y0, y1) = y_range;
+        p.0 >= x0 && p.0 <= x1 && p.1 >= y0 && p.1 <= y1
+    };
+    let mut paths = Vec::with_capacity(seeds.len());
+    for &seed in seeds {
+        if !(seed.0.is_finite() && seed.1.is_finite() && inside(seed)) {
+            return Err(format!(
+                "streamline seed ({}, {}) is outside the ranges",
+                seed.0, seed.1
+            ));
+        }
+        let mut points = vec![seed];
+        let (mut x, mut y) = seed;
+        for _ in 0..max_steps {
+            let (u, v) = field(x, y);
+            if !u.is_finite() || !v.is_finite() || (u == 0.0 && v == 0.0) {
+                break;
+            }
+            let Some(next) = rk4_step(&field, x, y, step) else {
+                break;
+            };
+            if !inside(next) {
+                break;
+            }
+            points.push(next);
+            (x, y) = next;
+        }
+        paths.push(points);
+    }
+    Ok(paths)
+}
+
+/// Plots streamlines of the planar vector field as SVG, one polyline per seed.
+///
+/// # Errors
+/// As [`streamline_paths_2d`], plus file-writing errors.
+pub fn plot_streamlines_2d(
+    field: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    seeds: &[(f64, f64)],
+    step: f64,
+    max_steps: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let paths = streamline_paths_2d(field, x_range, y_range, seeds, step, max_steps)?;
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
+    let mut svg = Svg::new();
+    frame.draw(&mut svg);
+    for (i, points) in paths.iter().enumerate() {
+        draw_series(&mut svg, &frame, points, PALETTE[i % PALETTE.len()]);
     }
     write_svg(svg, path)
 }
@@ -989,6 +1689,73 @@ pub fn plot_heatmap_2d(
     );
     colorbar(&mut svg, range);
     write_svg(svg, path)
+}
+
+/// Writes a 2-D array as an 8-bit grayscale PGM (P5) raster, row 0 on top and
+/// column 0 on the left.
+///
+/// Finite entries are linearly normalised to `0..=255` (rounded); a non-finite
+/// entry becomes `0`, and a constant finite array becomes mid-grey (`128`).
+/// This is the raster counterpart of [`plot_heatmap_2d`]: no axes, colour bar
+/// or annotations are added.
+///
+/// # Errors
+/// Fails for an empty array, an array without a finite entry, or when the file
+/// cannot be written.
+pub fn plot_scalar_field_pgm(
+    data: &Array2<f64>,
+    path: &Path,
+) -> Result<(), String> {
+    let (rows, cols) = data.dim();
+    if rows == 0 || cols == 0 {
+        return Err("the array is empty".to_owned());
+    }
+    let range = extent(data.iter().copied()).ok_or("no finite values")?;
+    let samples: Vec<u8> = data
+        .iter()
+        .map(|&value| {
+            if value.is_finite() {
+                (unit(value, range) * 255.0).round() as u8
+            } else {
+                0
+            }
+        })
+        .collect();
+    super::raster::write_pgm_file(path, cols, rows, &samples)
+}
+
+/// Writes a 2-D array as an 8-bit RGB PPM (P6) raster coloured with the same
+/// viridis-like palette as [`plot_heatmap_2d`], row 0 on top and column 0 on
+/// the left.
+///
+/// Finite entries are normalised over their range and mapped through the
+/// palette; a non-finite entry becomes light grey (`#dddddd`), matching the
+/// SVG heat map. No axes, colour bar or annotations are added.
+///
+/// # Errors
+/// Fails for an empty array, an array without a finite entry, or when the file
+/// cannot be written.
+pub fn plot_scalar_field_ppm(
+    data: &Array2<f64>,
+    path: &Path,
+) -> Result<(), String> {
+    let (rows, cols) = data.dim();
+    if rows == 0 || cols == 0 {
+        return Err("the array is empty".to_owned());
+    }
+    let range = extent(data.iter().copied()).ok_or("no finite values")?;
+    let samples: Vec<u8> = data
+        .iter()
+        .flat_map(|&value| {
+            let (r, g, b) = if value.is_finite() {
+                colormap_rgb(unit(value, range))
+            } else {
+                (0xdd, 0xdd, 0xdd)
+            };
+            [r, g, b]
+        })
+        .collect();
+    super::raster::write_ppm_file(path, cols, rows, &samples)
 }
 
 #[cfg(test)]

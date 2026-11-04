@@ -1,3 +1,25 @@
+//! # Signal processing kernels
+//!
+//! A small signal-processing toolbox built on `rustfft`: the complex forward
+//! and inverse DFT, linear convolution, cross-correlation, and symmetric
+//! Hann/Hamming/Blackman analysis windows.
+//!
+//! # Limitations and coverage
+//!
+//! * `fft` / `ifft` are complex transforms: `fft` is unnormalised and `ifft`
+//!   divides by `n`. A fresh planner is built on every call, so repeated short
+//!   transforms pay rustfft's planning cost; there is no plan reuse, batched,
+//!   multi-dimensional or in-place transform here. For a dependency-free FFT
+//!   with real-input packing see [`crate::kernels::transforms`].
+//! * Convolution and cross-correlation are direct `O(n m)`; there is no
+//!   FFT-based fast convolution in this module, no 2-D or circular convolution
+//!   and no boundary-mode choice.
+//! * The windows are symmetric (not periodic / DFT-even) Hann, Hamming and
+//!   Blackman; there is no Kaiser, flat-top, Tukey or custom window, and the
+//!   windows are provided for analysis, not for filter design.
+//! * There is no filtering, resampling, spectral estimation, STFT or wavelet
+//!   helper; the transform accuracy is rustfft's `O(eps log n)` round-off.
+
 use std::f64::consts::PI;
 
 use rustfft::FftPlanner;
@@ -37,6 +59,56 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
     let mut buffer = input.to_vec();
 
     fft.process(&mut buffer);
+
+    buffer
+}
+
+/// Computes the one-dimensional inverse discrete Fourier Transform.
+///
+/// This is the unnormalised forward transform followed by the `1/n`
+/// normalisation, so `ifft(fft(x)) == x` (up to round-off) for every length.
+///
+/// # Arguments
+/// * `input` - A mutable slice of complex frequency-domain samples.
+///
+/// # Returns
+/// A vector of complex numbers representing the inverse transform.
+///
+/// # Example
+/// ```rust
+/// use rssn::kernels::signal::fft;
+/// use rssn::kernels::signal::ifft;
+/// use rustfft::num_complex::Complex;
+///
+/// let mut input = vec![Complex::new(1.0, 0.5), Complex::new(-2.0, 0.0)];
+///
+/// let spectrum = fft(&mut input);
+///
+/// let back = ifft(&mut spectrum.clone());
+///
+/// assert!((back[0] - input[0]).norm() < 1e-12);
+/// ```
+#[must_use]
+pub fn ifft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = input.len();
+
+    if n == 0 {
+        return vec![];
+    }
+
+    let mut planner = FftPlanner::new();
+
+    let inverse = planner.plan_fft_inverse(n);
+
+    let mut buffer = input.to_vec();
+
+    inverse.process(&mut buffer);
+
+    let scale = 1.0 / n as f64;
+
+    for value in &mut buffer {
+        *value *= scale;
+    }
 
     buffer
 }
@@ -159,5 +231,30 @@ pub fn hamming_window(n: usize) -> Vec<f64> {
 
     (0..n)
         .map(|i| 0.46f64.mul_add(-(2.0 * PI * i as f64 / (n - 1) as f64).cos(), 0.54))
+        .collect()
+}
+
+/// Generates a Blackman window of length `n`.
+///
+/// `w[i] = 0.42 - 0.5 cos(2 pi i / (n - 1)) + 0.08 cos(4 pi i / (n - 1))`,
+/// symmetric with both endpoints at zero (in exact arithmetic).
+///
+/// # Arguments
+/// * `n` - The number of points in the output window.
+#[must_use]
+pub fn blackman_window(n: usize) -> Vec<f64> {
+    if n == 0 {
+        return vec![];
+    }
+
+    if n == 1 {
+        return vec![1.0];
+    }
+
+    (0..n)
+        .map(|i| {
+            let phase = 2.0 * PI * i as f64 / (n - 1) as f64;
+            0.42 - 0.5 * phase.cos() + 0.08 * (2.0 * phase).cos()
+        })
         .collect()
 }

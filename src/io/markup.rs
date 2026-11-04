@@ -4,6 +4,22 @@
 //! `add` / `mul` / `pow` into differences, quotients and roots, and the
 //! recognition of derivative chains, binders and matrices. A [`Dialect`]
 //! only supplies the concrete syntax of each construct.
+//!
+//! # Limitations
+//!
+//! - Only the core structure is special-cased: literals, symbols, `eq`, `add`,
+//!   `mul`, `pow`, lists/matrices, function application and the known
+//!   derivative/binder/limit/relational operators. Any other operator falls
+//!   back to a plain call or a bare symbol, so assumptions, domains,
+//!   piecewise definitions, sets/intervals and vectors are not rendered with
+//!   dedicated notation.
+//! - Symbol and string escaping is delegated to the dialect; a dialect must
+//!   escape anything it writes verbatim. Symbol names are assumed
+//!   identifier-like: only subscripts split at the first `_` are handled
+//!   specially.
+//! - The Greek table is fixed (the lowercase letters and the capitals with a
+//!   distinct LaTeX glyph) and variant letter forms (`varepsilon`, `varphi`,
+//!   `vartheta`, ...) are not distinguished.
 
 use crate::graph::Graph;
 use crate::graph::NodeId;

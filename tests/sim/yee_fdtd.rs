@@ -243,14 +243,233 @@ fn pec_cavity_conserves_energy_and_rejects_unsupported_faces() {
         "energy range {lo} {hi} vs {e0}"
     );
 
+    // PMC walls are accepted; Robin faces are not supported
     let mut cfg = YeeConfig::new(&[10], &[0.1]).unwrap();
     cfg.bcs = FaceBcs::uniform(&Bc::neumann(0.0));
+    assert!(Yee::new(cfg).is_ok());
+    let mut cfg = YeeConfig::new(&[10], &[0.1]).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::robin(1.0, 1.0, 0.0));
     assert!(Yee::new(cfg).is_err());
     let mut cfg = YeeConfig::new(&[10], &[0.1]).unwrap();
     cfg.bcs =
         FaceBcs::uniform(&Bc::Periodic).with(rssn::sim::boundary::Face::XMax, Bc::dirichlet(0.0));
     assert!(Yee::new(cfg).is_err());
 }
+
+/// A PMC wall sits on the tangential-H Yee plane, half a cell inside the
+/// nominal face. A PEC-PMC cavity of `n` cells is therefore the exact left
+/// half of a PEC-PEC cavity of `2n - 1` cells (the doubled PEC domain).
+#[test]
+fn pmc_wall_is_the_mirror_half_of_a_doubled_pec_cavity_1d() {
+    let n = 60;
+    let h = 1.0 / n as f64;
+    let n2 = 2 * n - 1;
+    let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
+    cfg.bcs = FaceBcs::dirichlet_zero().with(rssn::sim::boundary::Face::XMax, Bc::neumann(0.0));
+    let mut a = Yee::new(cfg).unwrap();
+    let mut b = Yee::new(YeeConfig::new(&[n2], &[h]).unwrap()).unwrap();
+    // fundamental mode of the doubled cavity: even about its midpoint,
+    // where H vanishes (the PMC plane of the folded cavity)
+    let mode = |i: usize| (PI * i as f64 / n2 as f64).sin();
+    for i in 0..n {
+        a.field_mut(Comp::Ey)[i] = mode(i);
+    }
+    for i in 0..n2 {
+        b.field_mut(Comp::Ey)[i] = mode(i);
+    }
+    a.half_step_h();
+    b.half_step_h();
+    a.run(400);
+    b.run(400);
+    let worst = (0..n)
+        .map(|i| (a.field(Comp::Ey)[i] - b.field(Comp::Ey)[i]).abs())
+        .fold(0.0, f64::max);
+    assert!(worst < 1e-10, "PMC vs doubled PEC cavity mismatch {worst}");
+}
+
+/// 2D PMC smoke/stability test: a cavity with magnetic walls on both `y`
+/// faces and PEC `x` faces is lossless, finite and energy conserving. The
+/// initial condition is a PMC-compatible TM mode (the tangential `H` vanishes
+/// on both magnetic-wall planes).
+#[test]
+fn pmc_walls_are_stable_in_2d() {
+    let (nx, ny) = (32, 24);
+    let h = 1.0 / 24.0;
+    let mut cfg = YeeConfig::new(&[nx, ny], &[h, h]).unwrap();
+    cfg.bcs = FaceBcs::dirichlet_zero().with_axis(1, &Bc::neumann(0.0));
+    let mut y = Yee::new(cfg).unwrap();
+    for j in 0..ny {
+        for i in 0..nx {
+            let p = y.idx(i, j, 0);
+            let yj = PI * (j as f64 - 0.5) / (ny as f64 - 1.0);
+            y.field_mut(Comp::Ez)[p] = (PI * i as f64 / nx as f64).sin() * yj.cos();
+        }
+    }
+    y.half_step_h();
+    let e0 = y.energy();
+    let (mut lo, mut hi) = (e0, e0);
+    for _ in 0..400 {
+        y.step();
+        lo = lo.min(y.energy());
+        hi = hi.max(y.energy());
+    }
+    assert!(y.f.iter().flatten().all(|v| v.is_finite()));
+    assert!(hi / lo < 1.3, "2D PMC energy range {lo} {hi} vs {e0}");
+}
+
+/// 3D PMC stability: magnetic walls on two faces, a smooth initial field,
+/// energy neither grows nor diverges.
+#[test]
+fn pmc_faces_stay_stable_in_3d() {
+    let (nx, ny, nz) = (16, 12, 8);
+    let h = 1.0 / 16.0;
+    let mut cfg = YeeConfig::new(&[nx, ny, nz], &[h, h, h]).unwrap();
+    cfg.bcs = FaceBcs::dirichlet_zero()
+        .with(rssn::sim::boundary::Face::XMax, Bc::neumann(0.0))
+        .with(rssn::sim::boundary::Face::ZMin, Bc::Symmetry);
+    let mut y = Yee::new(cfg).unwrap();
+    for k in 0..nz {
+        for j in 0..ny {
+            for i in 0..nx {
+                let p = y.idx(i, j, k);
+                let (x, yv, z) = (
+                    (i as f64 + 0.5) * h,
+                    (j as f64 + 0.5) * h,
+                    (k as f64 + 0.5) * h,
+                );
+                // normal E vanishes on the magnetic-wall planes
+                y.field_mut(Comp::Ex)[p] = (PI * (i as f64 + 0.5) / (nx as f64 - 0.5)).sin()
+                    * (PI * yv).sin()
+                    * (PI * z).cos();
+                y.field_mut(Comp::Ey)[p] =
+                    (PI * x).sin() * (PI * j as f64 / ny as f64).sin() * (PI * z).cos();
+                y.field_mut(Comp::Ez)[p] =
+                    (PI * x).sin() * (PI * yv).sin() * (PI * k as f64 / nz as f64).sin();
+            }
+        }
+    }
+    y.half_step_h();
+    let e0 = y.energy();
+    let mut hi = e0;
+    for _ in 0..300 {
+        y.step();
+        hi = hi.max(y.energy());
+    }
+    assert!(hi < 1.5 * e0, "3D PMC energy grew from {e0} to {hi}");
+    let finite = y.f.iter().flatten().all(|v| v.is_finite());
+    assert!(finite, "3D PMC run produced a non-finite field");
+    assert_eq!(y.ohmic_loss(), 0.0);
+}
+
+/// `σ = 0` (explicitly configured, per cell) must reproduce the lossless
+/// code path bit for bit and dissipate nothing.
+#[test]
+fn zero_sigma_reproduces_the_lossless_path_bit_for_bit() {
+    let n = 100;
+    let h = 1.0 / n as f64;
+    let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::Absorbing);
+    cfg.pml_cells = 10;
+    let mut a = Yee::new(cfg).unwrap();
+    let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
+    cfg.bcs = FaceBcs::uniform(&Bc::Absorbing);
+    cfg.pml_cells = 10;
+    cfg.sigma = Some(Box::new(|_| 0.0));
+    let mut b = Yee::new(cfg).unwrap();
+    for y in [&mut a, &mut b] {
+        for i in 0..n {
+            y.field_mut(Comp::Ey)[i] = (-((i as f64 * h - 0.5) / 0.05).powi(2)).exp();
+        }
+        y.half_step_h();
+    }
+    a.run(300);
+    b.run(300);
+    for c in 0..6 {
+        for i in 0..n {
+            assert_eq!(
+                a.f[c][i].to_bits(),
+                b.f[c][i].to_bits(),
+                "component {c} cell {i} differs"
+            );
+        }
+    }
+    assert_eq!(b.ohmic_loss(), 0.0);
+    assert!(a.sigma().is_empty());
+    assert_eq!(b.sigma().len(), n);
+}
+
+/// Analytic attenuation of a monochromatic wave in a lossy medium:
+/// `α = ω sqrt(ε μ / 2) sqrt(sqrt(1 + (σ/(ω ε))²) - 1)`.
+#[test]
+fn ohmic_conductivity_attenuates_a_plane_wave_with_the_analytic_alpha() {
+    let n = 600;
+    let h = 1.0 / 150.0; // domain length 4
+    let omega = 2.0 * PI * 2.0; // two cycles per unit length
+    let sigma = 2.0;
+    // ε = μ = c = 1
+    let alpha = omega / 2.0_f64.sqrt() * ((1.0 + (sigma / omega).powi(2)).sqrt() - 1.0).sqrt();
+    let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
+    cfg.cfl = 0.9;
+    cfg.bcs = FaceBcs::uniform(&Bc::Absorbing);
+    cfg.pml_cells = 40;
+    cfg.sigma = Some(Box::new(move |_| sigma));
+    let mut y = Yee::new(cfg).unwrap();
+    y.add_source(CurrentSource {
+        cell: [150, 0, 0],
+        comp: Comp::Ey,
+        waveform: Box::new(move |t| (omega * t).sin()),
+    });
+    // reach the steady state (transient decay time 2 ε / σ), then measure the
+    // oscillation amplitude over one period at x = 1.5 and x = 2.5
+    let steps = (12.0 / y.dt).round() as usize;
+    y.run(steps);
+    let period_steps = (2.0 * PI / omega / y.dt).round() as usize;
+    let (i1, i2) = (225, 375);
+    let (mut amp1, mut amp2) = (0.0_f64, 0.0_f64);
+    for _ in 0..period_steps {
+        y.step();
+        amp1 = amp1.max(y.field(Comp::Ey)[i1].abs());
+        amp2 = amp2.max(y.field(Comp::Ey)[i2].abs());
+    }
+    let measured = (amp1 / amp2).ln() / ((i2 - i1) as f64 * h);
+    assert!(
+        (measured - alpha).abs() < 0.04 * alpha,
+        "measured α = {measured}, analytic α = {alpha} (amplitudes {amp1} {amp2})"
+    );
+}
+
+/// The ohmic term dissipates energy at the rate `σ E²`: a lossy PEC cavity
+/// decays as `e^{-σ t}`, and `energy() + ohmic_loss()` stays at its start
+/// value.
+#[test]
+fn ohmic_loss_accounts_for_the_damped_energy() {
+    let n = 100;
+    let h = 1.0 / n as f64;
+    let sigma = 0.3;
+    let mut cfg = YeeConfig::new(&[n], &[h]).unwrap();
+    cfg.cfl = 0.5;
+    cfg.sigma = Some(Box::new(move |_| sigma));
+    let mut y = Yee::new(cfg).unwrap();
+    for i in 0..n {
+        y.field_mut(Comp::Ey)[i] = (PI * i as f64 * h).sin();
+    }
+    y.half_step_h();
+    let e0 = y.energy();
+    let steps = (2.0 / y.dt).round() as usize;
+    y.run(steps);
+    let e1 = y.energy();
+    let loss = y.ohmic_loss();
+    let damped = e0 * (-sigma * y.t).exp();
+    assert!(
+        (e1 - damped).abs() < 0.04 * e0,
+        "energy {e1} vs damped envelope {damped}"
+    );
+    assert!(
+        (e0 - e1 - loss).abs() < 0.04 * e0,
+        "energy budget: e0 {e0}, e1 {e1}, ohmic {loss}"
+    );
+}
+
 
 #[test]
 fn periodic_plane_wave_in_2d_travels_one_period_with_tfsf_free_initial_data() {

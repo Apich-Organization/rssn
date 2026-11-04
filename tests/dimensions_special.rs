@@ -185,6 +185,122 @@ fn matrix_functions_carry_the_degree_of_an_entry() {
             "`{source}`: unexpected error {error}"
         );
     }
+    // `matexp(A, t)` is weaker: only the product `t A` must be dimensionless,
+    // so an evolution operator with a rate and a time is accepted.
+    assert_eq!(
+        dimension("matexp(list(list(quantity(1, 1/s))), quantity(2, s))", &[]),
+        "1"
+    );
+    assert_eq!(
+        dimension(
+            "matexp(list(list(quantity(2, 1/s) * x)), quantity(3, s))",
+            &[("x", "1")]
+        ),
+        "1"
+    );
+    // A product with a dimension stays refused (the old rejection is kept).
+    for source in [
+        "matexp(list(list(quantity(1, m))), quantity(2, s))",
+        "matexp(list(list(1)), quantity(2, m))",
+    ] {
+        let error = strict_error(source, &[]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
+}
+
+/// A contour lives in a dimensionless complex plane: the complex variable of
+/// the contour/Cauchy operators must be dimensionless, and a dimensionful one
+/// is a genuine conflict rather than being ignored.
+#[test]
+fn contour_operators_require_a_dimensionless_complex_variable() {
+    // The accepted case: a dimensionless or an undeclared complex variable.
+    assert_eq!(dimension("contour_integral(z^2, z, c)", &[("z", "1")]), "1");
+    assert_eq!(dimension("cauchy_integral(exp(z), z, 0)", &[]), "1");
+    assert_eq!(dimension("cauchy_derivative(exp(z), z, 0, 1)", &[]), "1");
+    // The refused case: a length-valued complex variable, for the whole
+    // contour/Cauchy family.
+    for source in [
+        "contour_integral(z^2, z, c)",
+        "cauchy_integral(exp(z), z, 0)",
+        "cauchy_derivative(exp(z), z, 0, 1)",
+        "contour_integral_residue_theorem(exp(z), z, list(0))",
+    ] {
+        let error = strict_error(source, &[("z", "m")]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
+}
+
+/// The rest of the complex-analysis layer lives on the same dimensionless
+/// complex plane as the contour family: every operator that consumes a complex
+/// variable checks it, branch wrappers are pure-number functions, and the
+/// count operators no longer unify their non-scalar contour argument with
+/// `1` (which used to report a spurious conflict for every valid request).
+#[test]
+fn complex_analysis_operators_check_their_complex_variable() {
+    // Accepted in Strict mode: the plane is dimensionless.
+    for source in [
+        "residue(1/z, z, 0)",
+        "poles(1/z, z)",
+        "singularity(1/z, z, 0)",
+        "zeros_of(z, z)",
+        "branch_cut(ln(z), z)",
+        "check_analytic(z^2, z)",
+        "radius_of_convergence(1/z, z, 0)",
+        "continue_along(1/(1 - z), z, list(0, 1), 2)",
+        "mobius_apply(list(list(1, 0), list(0, 1)), z)",
+        "is_inside_contour(0, circle(0, 1))",
+        "winding_number(0, circle(0, 1))",
+        "count_zeros_poles(1/z, z, circle(0, 2))",
+    ] {
+        let _ = dimension(source, &[("z", "1")]);
+    }
+    // The two count operators accept their contour argument. Before the rule
+    // was fixed they unified the non-scalar `circle(...)` with `1` and
+    // reported a `NonDimensionless` conflict on every request.
+    for source in [
+        "winding_number(0, circle(0, 1))",
+        "count_zeros_poles(1/z, z, circle(0, 2))",
+    ] {
+        let (_, diagnostics) = dimension_advisory(source, &[("z", "1")]);
+        assert_eq!(diagnostics, 0, "`{source}` reported {diagnostics} findings");
+    }
+    // Branch wrappers are complex-plane functions: every argument is a pure
+    // number, including the branch index.
+    assert_eq!(dimension("log_branch(z, 0)", &[("z", "1")]), "1");
+    assert_eq!(
+        dimension("power_branch(z, w, 2)", &[("z", "1"), ("w", "1")]),
+        "1"
+    );
+    // A dimensionful complex variable is refused by every one of them.
+    for source in [
+        "residue(1/z, z, 0)",
+        "poles(1/z, z)",
+        "singularity(1/z, z, 0)",
+        "zeros_of(z, z)",
+        "branch_cut(ln(z), z)",
+        "check_analytic(z^2, z)",
+        "radius_of_convergence(1/z, z, 0)",
+        "continue_along(1/(1 - z), z, list(0, 1), 2)",
+        "mobius_apply(list(list(1, 0), list(0, 1)), z)",
+        "is_inside_contour(z, circle(0, 1))",
+        "winding_number(z, circle(0, 1))",
+        "count_zeros_poles(1/z, z, circle(0, 2))",
+        "log_branch(z, 0)",
+        "sqrt_branch(z, 0)",
+        "power_branch(z, w, 2)",
+    ] {
+        let error = strict_error(source, &[("z", "m"), ("w", "1/m")]);
+        assert!(
+            matches!(error, ComputeError::Dimension(_)),
+            "`{source}`: unexpected error {error}"
+        );
+    }
 }
 
 #[test]
