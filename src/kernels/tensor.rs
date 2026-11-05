@@ -6,19 +6,30 @@
 //!
 //! [`cp_als`] adds a CP (CANDECOMP/PARAFAC) decomposition by alternating
 //! least squares: `T ~= sum_r lambda_r a_r o b_r o c_r`, with unit-norm factor
-//! columns and the scale carried by `lambda`.
+//! columns and the scale carried by `lambda`. [`hosvd`] adds the higher-order
+//! SVD (Tucker decomposition) `T = C x_1 U_1 ... x_N U_N` with orthonormal
+//! factors and an all-orthogonal core.
 //!
 //! # Limitations
 //!
 //! * Tensors are dense `ArrayD<f64>` of any rank. There is no sparse tensor
 //!   type and no complex element type; a complex tensor has to be split into
 //!   real and imaginary parts.
-//! * [`cp_als`] is the only decomposition. CP is ill-posed: the best rank-`R`
-//!   approximation need not exist (a tensor can have border rank below its
-//!   rank), so a small residual after a sweep is not a certificate of
-//!   optimality. The solver reports `converged`, `stagnated`, `diverged` and
-//!   `rank_deficient` rather than hiding that. There is no Tucker/HOSVD, no
-//!   tensor-train, no CP with missing entries and no non-negativity constraint.
+//! * [`cp_als`] and [`hosvd`] are the only decompositions. CP is ill-posed:
+//!   the best rank-`R` approximation need not exist (a tensor can have border
+//!   rank below its rank), so a small residual after a sweep is not a
+//!   certificate of optimality. The solver reports `converged`, `stagnated`,
+//!   `diverged` and `rank_deficient` rather than hiding that. [`hosvd`] is
+//!   exact before truncation and gives orthonormal factors, but its truncated
+//!   form is not the best multilinear-rank approximation (that is Tucker-ALS,
+//!   which is not implemented); there is no tensor-train decomposition, no CP
+//!   with missing entries and no non-negativity constraint.
+//! * [`hosvd`] uses the dense one-sided Jacobi SVD for every well-behaved mode
+//!   unfolding. That SVD reports non-convergence on exactly rank-deficient
+//!   unfoldings (which Tucker routinely produces), so the fallback takes the
+//!   left singular vectors from the eigendecomposition of `A A^T`; that path
+//!   squares the condition number and truncates at its `sqrt(eps)` noise floor,
+//!   so the *numerical* multilinear rank is what is reported and truncated.
 //! * The solver is plain ALS: it is not globally convergent, it can be slow on
 //!   ill-conditioned problems, and it costs `O(R * n^3)` per sweep on an
 //!   `n x n x n` tensor (the mode unfoldings are formed once, but each
@@ -33,7 +44,9 @@ use ndarray::IxDyn;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::cholesky_solve;
+use crate::kernels::dense::eigen_symmetric;
 use crate::kernels::dense::pinv;
+use crate::kernels::dense::svd;
 
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).
 ///
@@ -498,6 +511,258 @@ pub fn cp_als(
         stagnated: !converged && !diverged && last_improvement <= options.tol,
         diverged,
         rank_deficient,
+    })
+}
+
+/// A Tucker decomposition computed by the higher-order SVD (HOSVD).
+///
+/// `T = C x_1 U_1 x_2 ... x_N U_N`, where `factors[k]` is the `n_k x r_k`
+/// matrix of the leading left singular vectors of the mode-`k` unfolding and
+/// `core` is the `r_1 x ... x r_N` core tensor. The factors have orthonormal
+/// columns and the core is all-orthogonal (its mode-`k` slices are mutually
+/// orthogonal); the truncated HOSVD is *not* the best multilinear-rank
+/// approximation — that needs Tucker-ALS — but it is the canonical starting
+/// point and its truncation error is bounded by the discarded singular values.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Hosvd {
+    /// Core tensor, `r_1 x ... x r_N`.
+    pub core: ArrayD<f64>,
+    /// One `n_k x r_k` factor per mode, with orthonormal columns.
+    pub factors: Vec<Mat>,
+    /// The retained singular values of each mode unfolding, descending.
+    pub singular_values: Vec<Vec<f64>>,
+    /// Retained rank per mode.
+    pub ranks: Vec<usize>,
+}
+
+impl Hosvd {
+    /// Reconstructs the tensor: `C x_1 U_1 ... x_N U_N`.
+    ///
+    /// # Errors
+    /// Fails only on an inconsistent shape, which a value produced by
+    /// [`hosvd`] cannot have.
+    pub fn reconstruct(&self) -> Result<ArrayD<f64>, String> {
+        let mut out = self.core.clone();
+        for (mode, factor) in self.factors.iter().enumerate() {
+            out = mode_product(&out, mode, factor)?;
+        }
+        Ok(out)
+    }
+}
+
+/// The mode-`k` product `T x_k M`: `M` is `r x n_k` and the result has `r` in
+/// place of mode `k`.
+fn mode_product(
+    tensor: &ArrayD<f64>,
+    mode: usize,
+    matrix: &Mat,
+) -> Result<ArrayD<f64>, String> {
+    let ndim = tensor.ndim();
+    if mode >= ndim {
+        return Err(String::from("mode out of range"));
+    }
+    let shape = tensor.shape().to_vec();
+    let rows = *shape.get(mode).ok_or("mode out of range")?;
+    if matrix.cols != rows {
+        return Err(String::from("mode-product shape mismatch"));
+    }
+    if rows == 0 {
+        return Err(String::from("cannot contract an empty mode"));
+    }
+    let mut permutation = Vec::with_capacity(ndim);
+    permutation.push(mode);
+    permutation.extend((0..ndim).filter(|&axis| axis != mode));
+    let standard = tensor
+        .clone()
+        .permuted_axes(permutation.clone())
+        .as_standard_layout()
+        .into_owned();
+    let data = standard.into_raw_vec_and_offset().0;
+    let columns = data.len() / rows;
+    let mut product = vec![0.0; matrix.rows * columns];
+    for row in 0..matrix.rows {
+        for slice in 0..rows {
+            let coefficient = matrix.at(row, slice);
+            for column in 0..columns {
+                product[row * columns + column] += coefficient * data[slice * columns + column];
+            }
+        }
+    }
+    let mut contracted = Vec::with_capacity(ndim);
+    contracted.push(matrix.rows);
+    for (axis, &extent) in shape.iter().enumerate() {
+        if axis != mode {
+            contracted.push(extent);
+        }
+    }
+    let result = ArrayD::from_shape_vec(contracted, product).map_err(|e| e.to_string())?;
+    // `result` has the contracted mode first; undo the permutation.
+    let mut inverse = vec![0_usize; ndim];
+    for (position, &axis) in permutation.iter().enumerate() {
+        inverse[axis] = position;
+    }
+    Ok(result.permuted_axes(inverse).into_owned())
+}
+
+/// Appends a column to `u`.
+#[allow(clippy::single_call_fn)]
+fn push_column(
+    u: &mut Mat,
+    column: &[f64],
+) {
+    let next = u.cols;
+    let mut grown = Mat::zeros(u.rows, next + 1);
+    for row in 0..u.rows {
+        for old in 0..next {
+            grown.set(row, old, u.at(row, old));
+        }
+        grown.set(row, next, column.get(row).copied().unwrap_or(0.0));
+    }
+    *u = grown;
+}
+
+/// The non-negligible leading left singular data of a dense matrix.
+///
+/// The primary path is [`svd`](crate::kernels::dense::svd), which is accurate
+/// for every full-rank unfolding. The dense one-sided Jacobi SVD reports
+/// non-convergence on exactly rank-deficient unfoldings — which a Tucker
+/// decomposition routinely produces (the unfolding of a rank-one tensor, for
+/// instance) — so the fallback takes the left singular vectors from the
+/// symmetric eigendecomposition of `A A^T`. The Gram matrix squares the
+/// condition number and its rounding noise floor in the singular values is
+/// about `sqrt(eps) * sigma_max`, so the fallback truncates there; both paths
+/// drop singular values below `max(n, r) * eps * sigma_max`.
+fn reduced_svd(a: &Mat) -> Result<(Mat, Vec<f64>), String> {
+    if let Ok(decomposition) = svd(a) {
+        let sigma_max = decomposition.s.first().copied().unwrap_or(0.0);
+        let tolerance = f64::from(u32::try_from(a.rows.max(a.cols)).unwrap_or(u32::MAX))
+            * f64::EPSILON
+            * sigma_max;
+        let mut u = Mat::zeros(a.rows, 0);
+        let mut singular = Vec::new();
+        for column in 0..decomposition.s.len() {
+            let sigma = decomposition.s.get(column).copied().unwrap_or(0.0);
+            if sigma <= tolerance || !sigma.is_finite() {
+                continue;
+            }
+            let entries: Vec<f64> = (0..a.rows)
+                .map(|row| decomposition.u.at(row, column))
+                .collect();
+            push_column(&mut u, &entries);
+            singular.push(sigma);
+        }
+        if !singular.is_empty() {
+            return Ok((u, singular));
+        }
+    }
+    // Fallback: eigenvectors of `A A^T` are the left singular vectors.
+    let gram = a
+        .matmul(&a.transpose())
+        .map_err(|error| error.to_string())?;
+    let (values, vectors) = eigen_symmetric(&gram).map_err(|error| error.to_string())?;
+    let sigma_max = values
+        .iter()
+        .copied()
+        .fold(0.0_f64, f64::max)
+        .max(0.0)
+        .sqrt();
+    let tolerance = 4.0 * f64::EPSILON.sqrt() * sigma_max;
+    let mut u = Mat::zeros(a.rows, 0);
+    let mut singular = Vec::new();
+    // The eigenvalues come back ascending; keep the significant ones in
+    // descending order.
+    for index in (0..values.len()).rev() {
+        let sigma = values.get(index).copied().unwrap_or(0.0).max(0.0).sqrt();
+        if sigma <= tolerance || !sigma.is_finite() {
+            continue;
+        }
+        let mut entries: Vec<f64> = (0..a.rows).map(|row| vectors.at(row, index)).collect();
+        let norm = entries
+            .iter()
+            .map(|value| value * value)
+            .sum::<f64>()
+            .sqrt();
+        if !norm.is_finite() || norm == 0.0 {
+            continue;
+        }
+        for value in &mut entries {
+            *value /= norm;
+        }
+        push_column(&mut u, &entries);
+        singular.push(sigma);
+    }
+    if singular.is_empty() {
+        return Err(String::from("the matrix has no nonzero singular value"));
+    }
+    Ok((u, singular))
+}
+
+/// The higher-order SVD (Tucker decomposition) of a dense tensor.
+///
+/// For each mode the tensor is unfolded to `n_k x prod(rest)`, the leading left
+/// singular vectors of the unfolding become the factor, and the core is the
+/// tensor contracted with every factor. `ranks` may be `None` for the numerical
+/// multilinear rank of the unfoldings (at most `min(n_k, prod(rest))`, and less
+/// when an unfolding is rank deficient in floating point); a requested rank
+/// above that is clamped to it. The decomposition is exact before truncation
+/// and gives `||T - C x U||_F <= sqrt(sum_k sum_{j > r_k} sigma_{k,j}^2)`.
+///
+/// # Errors
+/// Fails when `ranks` does not have one entry per mode, when a requested rank
+/// is zero, when a mode is empty, or when a mode unfolding has no nonzero
+/// singular value.
+pub fn hosvd(
+    tensor: &ArrayD<f64>,
+    ranks: Option<&[usize]>,
+) -> Result<Hosvd, String> {
+    let shape = tensor.shape().to_vec();
+    if shape.is_empty() {
+        return Ok(Hosvd {
+            core: tensor.clone(),
+            factors: Vec::new(),
+            singular_values: Vec::new(),
+            ranks: Vec::new(),
+        });
+    }
+    if let Some(requested) = ranks {
+        if requested.len() != shape.len() {
+            return Err(String::from("ranks must have one entry per mode"));
+        }
+        if requested.contains(&0) {
+            return Err(String::from("a requested rank is zero"));
+        }
+    }
+    let unfoldings = mode_unfoldings(tensor)?;
+    let mut factors = Vec::with_capacity(shape.len());
+    let mut singular_values = Vec::with_capacity(shape.len());
+    let mut kept = Vec::with_capacity(shape.len());
+    for (mode, unfolding) in unfoldings.iter().enumerate() {
+        let (left, singular) =
+            reduced_svd(unfolding).map_err(|error| format!("mode {mode} unfolding: {error}"))?;
+        let available = singular.len();
+        let rank = ranks.map_or(available, |requested| requested[mode].min(available));
+        if rank == 0 {
+            return Err(String::from("a mode unfolding has no singular value"));
+        }
+        let mut factor = Mat::zeros(unfolding.rows, rank);
+        for row in 0..unfolding.rows {
+            for column in 0..rank {
+                factor.set(row, column, left.at(row, column));
+            }
+        }
+        singular_values.push(singular.iter().take(rank).copied().collect());
+        kept.push(rank);
+        factors.push(factor);
+    }
+    let mut core = tensor.clone();
+    for (mode, factor) in factors.iter().enumerate() {
+        core = mode_product(&core, mode, &factor.transpose())?;
+    }
+    Ok(Hosvd {
+        core,
+        factors,
+        singular_values,
+        ranks: kept,
     })
 }
 

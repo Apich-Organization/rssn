@@ -31,8 +31,12 @@
 //! axis-aligned boxes ([`cubature_genz_malik`], [`cubature_nested`]). The
 //! following remain true.
 //!
-//! * There is no adaptive rule on a simplex, a ball or an implicitly defined
-//!   region. Map such a region to a box and supply the Jacobian, or use
+//! * There is no adaptive rule on a ball or an implicitly defined region, and
+//!   no simplex rule beyond planar triangles: [`integrate_triangle`] adaptively
+//!   bisects a triangle (the degree-five Dunavant panel with an embedded
+//!   degree-two estimate, four-way refinement), with the same
+//!   heuristic-not-enclosure contract as the box cubature. Map any other region
+//!   to a box or a triangle and supply the Jacobian, or use
 //!   [`quasi_monte_carlo`]; the cubature rules accept a box only.
 //! * [`cubature_genz_malik`] halves one axis per split and evaluates the
 //!   `2^n` corners of every region, so its cost per region is exponential in
@@ -1966,6 +1970,216 @@ fn gm_adaptive<F: Fn(&[f64]) -> f64>(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Adaptive quadrature on a triangle
+// ---------------------------------------------------------------------------
+
+/// The seven-point Dunavant rule of degree five on a triangle, as barycentric
+/// coordinates `(u, v, w)` with `u + v + w = 1`. The weights sum to one, so the
+/// rule applied to a triangle of area `A` is `A * sum_i weight_i f(P_i)`.
+const DUNANT5: [([f64; 3], f64); 7] = [
+    ([1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0], 0.225),
+    (
+        [
+            0.059_715_871_789_769_81,
+            0.470_142_064_105_115_05,
+            0.470_142_064_105_115_05,
+        ],
+        0.132_394_152_788_506_16,
+    ),
+    (
+        [
+            0.470_142_064_105_115_05,
+            0.059_715_871_789_769_81,
+            0.470_142_064_105_115_05,
+        ],
+        0.132_394_152_788_506_16,
+    ),
+    (
+        [
+            0.470_142_064_105_115_05,
+            0.470_142_064_105_115_05,
+            0.059_715_871_789_769_81,
+        ],
+        0.132_394_152_788_506_16,
+    ),
+    (
+        [
+            0.797_426_985_353_087_2,
+            0.101_286_507_323_456_33,
+            0.101_286_507_323_456_33,
+        ],
+        0.125_939_180_544_827_13,
+    ),
+    (
+        [
+            0.101_286_507_323_456_33,
+            0.797_426_985_353_087_2,
+            0.101_286_507_323_456_33,
+        ],
+        0.125_939_180_544_827_13,
+    ),
+    (
+        [
+            0.101_286_507_323_456_33,
+            0.101_286_507_323_456_33,
+            0.797_426_985_353_087_2,
+        ],
+        0.125_939_180_544_827_13,
+    ),
+];
+
+/// The three-point midpoint rule of degree two (the edge midpoints, weight
+/// `1/3` each), used as the embedded estimate of the degree-five rule.
+const MIDPOINT3: [([f64; 3], f64); 3] = [
+    ([0.5, 0.5, 0.0], 1.0 / 3.0),
+    ([0.5, 0.0, 0.5], 1.0 / 3.0),
+    ([0.0, 0.5, 0.5], 1.0 / 3.0),
+];
+
+/// The point of the affine triangle with barycentric `weights`.
+fn barycentric_point(
+    vertices: &[[f64; 2]; 3],
+    weights: [f64; 3],
+) -> [f64; 2] {
+    let [[ax, ay], [bx, by], [cx, cy]] = *vertices;
+    [
+        weights[0] * ax + weights[1] * bx + weights[2] * cx,
+        weights[0] * ay + weights[1] * by + weights[2] * cy,
+    ]
+}
+
+/// Area of the triangle with the given vertices.
+fn triangle_area(vertices: &[[f64; 2]; 3]) -> f64 {
+    let [[ax, ay], [bx, by], [cx, cy]] = *vertices;
+    0.5 * ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)).abs()
+}
+
+/// The degree-five value and the embedded degree-two error estimate of one
+/// triangle.
+fn triangle_panel<F: Fn(f64, f64) -> f64>(
+    f: &F,
+    vertices: &[[f64; 2]; 3],
+) -> (f64, f64) {
+    let area = triangle_area(vertices);
+    let mut fine = 0.0;
+    for (weights, weight) in DUNANT5 {
+        let [x, y] = barycentric_point(vertices, weights);
+        fine += weight * f(x, y);
+    }
+    let mut coarse = 0.0;
+    for (weights, weight) in MIDPOINT3 {
+        let [x, y] = barycentric_point(vertices, weights);
+        coarse += weight * f(x, y);
+    }
+    let fine = fine * area;
+    let coarse = coarse * area;
+    (fine, (fine - coarse).abs())
+}
+
+/// Midpoint of two points, without the overflow of `0.5 * (a + b)`.
+const fn midpoint(
+    a: [f64; 2],
+    b: [f64; 2],
+) -> [f64; 2] {
+    [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1])]
+}
+
+/// Splits a triangle into its four congruent corner/central children by the
+/// edge midpoints.
+#[allow(clippy::single_call_fn)] // one adaptive loop; the split is a geometric fact
+const fn split_triangle(vertices: &[[f64; 2]; 3]) -> [[[f64; 2]; 3]; 4] {
+    let [a, b, c] = *vertices;
+    let ab = midpoint(a, b);
+    let bc = midpoint(b, c);
+    let ca = midpoint(c, a);
+    [[a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]]
+}
+
+/// Adaptive integration over a planar triangle.
+///
+/// The panel is the seven-point Dunavant rule of degree five; its error is
+/// estimated against the embedded three-point midpoint rule of degree two, and
+/// the region with the largest estimate is bisected into four congruent
+/// triangles until the summed estimate is below `max(abs_tol, rel_tol * |I|)`
+/// or `max_evals` integrand evaluations have been spent. The estimate is a
+/// heuristic, not a rigorous bound — the same contract as the box cubature in
+/// this module.
+///
+/// The vertices may be given in either orientation; the affine map uses the
+/// absolute area, so the result is the integral over the triangle, not a signed
+/// one. A degenerate triangle (zero area) integrates to zero.
+#[must_use]
+pub fn integrate_triangle<F: Fn(f64, f64) -> f64>(
+    f: &F,
+    vertices: [[f64; 2]; 3],
+    abs_tol: f64,
+    rel_tol: f64,
+    max_evals: usize,
+) -> Integral {
+    /// One refined region.
+    struct Region {
+        vertices: [[f64; 2]; 3],
+        value: f64,
+        error: f64,
+    }
+
+    // Seven Dunavant nodes plus three midpoints.
+    const PER_PANEL: usize = 10;
+
+    if triangle_area(&vertices) == 0.0 {
+        return Integral {
+            value: 0.0,
+            error: 0.0,
+            evaluations: 0,
+            converged: true,
+        };
+    }
+    let tolerance = |value: f64| abs_tol.max(rel_tol * value.abs());
+    let (value, error) = triangle_panel(f, &vertices);
+    let mut evaluations = PER_PANEL;
+    let mut regions = vec![Region {
+        vertices,
+        value,
+        error,
+    }];
+    let mut total = value;
+    let mut total_error = error;
+    while total_error > tolerance(total) {
+        if evaluations.saturating_add(4 * PER_PANEL) > max_evals {
+            break;
+        }
+        // The region with the largest estimate: splitting it removes the most
+        // error per evaluation.
+        let mut worst = 0;
+        for (index, region) in regions.iter().enumerate() {
+            if region.error > regions[worst].error {
+                worst = index;
+            }
+        }
+        let parent = regions.swap_remove(worst);
+        total -= parent.value;
+        total_error -= parent.error;
+        for child_vertices in split_triangle(&parent.vertices) {
+            let (child_value, child_error) = triangle_panel(f, &child_vertices);
+            evaluations += PER_PANEL;
+            total += child_value;
+            total_error += child_error;
+            regions.push(Region {
+                vertices: child_vertices,
+                value: child_value,
+                error: child_error,
+            });
+        }
+    }
+    Integral {
+        value: total,
+        error: total_error,
+        evaluations,
+        converged: total_error <= tolerance(total),
+    }
+}
+
 #[cfg(test)]
 mod quad_cubature_tests {
     //! Adaptive cubature: known values, honest error estimates, tiling of
@@ -2446,5 +2660,156 @@ mod monte_variance_tests {
         let z = bias_z(mean, var, 1.0);
         eprintln!("importance shift 1: mean {mean:.5}, var {var:.3e}, bias z {z:.2}");
         assert!(z.abs() < 3.0, "bias z {z}");
+    }
+}
+
+#[cfg(test)]
+mod triangle_tests {
+    //! Adaptive triangle quadrature: polynomial exactness of the embedded
+    //! Dunavant/midpoint pair, the affine map on a general triangle, adaptive
+    //! convergence at a corner singularity and the evaluation budget.
+
+    #![allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+    #![allow(clippy::single_call_fn)]
+
+    use super::*;
+
+    /// The integral of `x^i y^j` over the unit right triangle with vertices
+    /// `(0,0)`, `(1,0)`, `(0,1)`: `i! j! / (i + j + 2)!`.
+    fn unit_moment(
+        i: u32,
+        j: u32,
+    ) -> f64 {
+        let factorial = |n: u32| (1..=n).map(f64::from).product::<f64>();
+        factorial(i) * factorial(j) / factorial(i.saturating_add(j).saturating_add(2))
+    }
+
+    #[test]
+    fn the_panel_is_exact_for_polynomials_of_degree_five() {
+        let vertices = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+        let cases = [
+            (0_u32, 0_u32),
+            (1, 0),
+            (0, 1),
+            (2, 0),
+            (1, 1),
+            (0, 2),
+            (3, 0),
+            (2, 1),
+            (1, 2),
+            (0, 3),
+            (5, 0),
+            (0, 5),
+        ];
+        for (i, j) in cases {
+            let f = |x: f64, y: f64| x.powi(i as i32) * y.powi(j as i32);
+            let want = unit_moment(i, j);
+            // The fixed panel is the exact rule: this is the property that
+            // matters, independent of the adaptive error estimate.
+            let (panel, _) = triangle_panel(&f, &vertices);
+            assert!(
+                (panel - want).abs() <= 1e-13 * want,
+                "{i},{j}: panel {panel} vs {want}"
+            );
+            // For total degree 2 the embedded midpoint rule is exact too, so
+            // the estimate vanishes; for higher degrees it is merely small and
+            // the adaptive loop refines until it is below a realistic
+            // tolerance. Either way the value is the exact integral.
+            let (abs_tol, rel_tol) = if i + j <= 2 {
+                (1e-13, 1e-13)
+            } else {
+                (0.0, 1e-3)
+            };
+            let result = integrate_triangle(&f, vertices, abs_tol, rel_tol, 100_000);
+            assert!(result.converged, "{i},{j}: {result:?}");
+            assert!(
+                (result.value - want).abs() <= 1e-12 * want,
+                "{i},{j}: {} vs {want}",
+                result.value
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::type_complexity)] // (name, integrand, exact value) cases in one table
+    fn the_affine_map_integrates_a_general_triangle() {
+        // Vertices (1,1), (4,1), (1,3): area 3, centroid (2, 5/3).
+        let vertices = [[1.0, 1.0], [4.0, 1.0], [1.0, 3.0]];
+        let area = 3.0;
+        let xs = [1.0, 4.0, 1.0];
+        let ys = [1.0, 1.0, 3.0];
+        let mean = |values: [f64; 3]| values.iter().sum::<f64>() / 3.0;
+        let mean_square = |values: [f64; 3]| {
+            (values.iter().map(|v| v * v).sum::<f64>()
+                + values[0] * values[1]
+                + values[1] * values[2]
+                + values[2] * values[0])
+                / 6.0
+        };
+        let mean_product = {
+            let diagonal = xs[0] * ys[0] + xs[1] * ys[1] + xs[2] * ys[2];
+            let off = xs[0] * ys[1]
+                + xs[0] * ys[2]
+                + xs[1] * ys[0]
+                + xs[1] * ys[2]
+                + xs[2] * ys[0]
+                + xs[2] * ys[1];
+            (diagonal / 6.0) + (off / 12.0)
+        };
+        let cases: [(&str, fn(f64, f64) -> f64, f64); 4] = [
+            ("1", |_, _| 1.0, area),
+            ("x", |x, _| x, area * mean(xs)),
+            ("x^2", |x, _| x * x, area * mean_square(xs)),
+            ("x*y", |x, y| x * y, area * mean_product),
+        ];
+        for (name, f, want) in cases {
+            let result = integrate_triangle(&f, vertices, 1e-13, 1e-3, 100_000);
+            assert!(result.converged, "{name}: {result:?}");
+            assert!(
+                (result.value - want).abs() <= 1e-12 * want,
+                "{name}: {} vs {want}",
+                result.value
+            );
+        }
+        // Either orientation gives the same (unsigned) integral.
+        let reversed = [vertices[0], vertices[2], vertices[1]];
+        let forward = integrate_triangle(&|x, _| x, vertices, 1e-13, 1e-13, 100_000);
+        let backward = integrate_triangle(&|x, _| x, reversed, 1e-13, 1e-13, 100_000);
+        assert!((forward.value - backward.value).abs() <= 1e-12 * forward.value);
+        // A degenerate triangle has zero area.
+        let flat = integrate_triangle(
+            &|x, y| x + y,
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]],
+            1e-13,
+            1e-13,
+            1_000,
+        );
+        assert_eq!(flat.value, 0.0);
+        assert_eq!(flat.evaluations, 0);
+    }
+
+    #[test]
+    fn a_corner_singularity_converges_adaptively() {
+        // int int (x + y)^(-1/2) over the unit triangle = 2/3.
+        let f = |x: f64, y: f64| (x + y).powf(-0.5);
+        let result =
+            integrate_triangle(&f, [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], 0.0, 1e-7, 400_000);
+        let want = 2.0 / 3.0;
+        assert!(
+            (result.value - want).abs() <= 1e-7,
+            "{} vs {want}",
+            result.value
+        );
+        assert!(result.converged, "{result:?}");
+        assert!(result.evaluations < 400_000, "{}", result.evaluations);
+    }
+
+    #[test]
+    fn the_evaluation_budget_is_respected() {
+        let f = |x: f64, y: f64| (x * y).sqrt();
+        let result = integrate_triangle(&f, [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], 0.0, 1e-16, 30);
+        assert!(!result.converged, "{result:?}");
+        assert_eq!(result.evaluations, 10, "the initial panel only");
+        assert!(result.error > 0.0);
     }
 }

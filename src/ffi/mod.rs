@@ -59,8 +59,12 @@
 //!    the code and never parses the string. Dimension detail is not in the
 //!    status: in strict mode a conflict is `Dimension`, while advisory
 //!    findings and the names of conflicting dimensions are only in the JSON
-//!    `diagnostics` array (or the bincode record). A `DimError` code is not
-//!    exposed.
+//!    `diagnostics` array (or the bincode record). The stable *codes* of those
+//!    findings are exposed separately, per thread, by
+//!    [`rssn_dimension_count`] and [`rssn_dimension_code`] — the
+//!    [`DimError::code`](crate::graph::DimError::code) strings (`mismatch`,
+//!    `unknown_unit`, `unannotated`, ...) — for the most recent computation on
+//!    the thread, so a host branches on them without parsing a message.
 //! 4. **`rssn_last_error` semantics.** The message is thread-local, is set by
 //!    the call that failed and is *not* cleared by a later successful call.
 //!    Read it immediately after a failure; the pointer is valid only until
@@ -247,6 +251,65 @@ pub(crate) fn to_c(text: String) -> *mut c_char {
 #[unsafe(no_mangle)]
 pub extern "C" fn rssn_last_error() -> *const c_char {
     LAST_ERROR.with(|e| e.borrow().as_ptr())
+}
+
+thread_local! {
+    /// The stable codes of the dimension diagnostics of the most recent
+    /// computation on this thread; empty when it reported none.
+    static LAST_DIMENSION_CODES: RefCell<Vec<CString>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Replaces the recorded dimension codes with `codes`.
+pub(crate) fn remember_dimension_codes<'a>(codes: impl IntoIterator<Item = &'a str>) {
+    LAST_DIMENSION_CODES.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        slot.clear();
+        for code in codes {
+            slot.push(CString::new(code).unwrap_or_default());
+        }
+    });
+}
+
+/// Records the dimension findings of an answer's diagnostics.
+pub(crate) fn remember_dimensions(diagnostics: &[crate::graph::DimError]) {
+    remember_dimension_codes(diagnostics.iter().map(crate::graph::DimError::code));
+}
+
+/// Clears the recorded dimension codes (a computation that found none).
+pub(crate) fn clear_dimensions() {
+    remember_dimension_codes([]);
+}
+
+/// Number of dimension diagnostics reported by the most recent computation on
+/// this thread; `0` when it reported none (or when no computation has run).
+///
+/// A strict-mode conflict is one finding (its code is the conflict kind); an
+/// advisory run reports every finding it collected, in answer order. For a
+/// batch call the value describes the *last* request in input order, exactly
+/// as `rssn_last_error` describes the first *failing* one.
+#[unsafe(no_mangle)]
+pub extern "C" fn rssn_dimension_count() -> usize {
+    LAST_DIMENSION_CODES.with(|slot| slot.borrow().len())
+}
+
+/// The stable code of dimension diagnostic `index` of the most recent
+/// computation on this thread.
+///
+/// The code is one of the [`DimError::code`] strings such as `"mismatch"`,
+/// `"unknown_unit"` or `"unannotated"`, or null when `index` is out of range.
+///
+/// The pointer is valid until the next computation on the same thread; it must
+/// not be freed. A computation that reports no findings clears the list, so a
+/// host reads these immediately after the call it cares about.
+///
+/// [`DimError::code`]: crate::graph::DimError::code
+#[unsafe(no_mangle)]
+pub extern "C" fn rssn_dimension_code(index: usize) -> *const c_char {
+    LAST_DIMENSION_CODES.with(|slot| {
+        slot.borrow()
+            .get(index)
+            .map_or(std::ptr::null(), |code| code.as_ptr())
+    })
 }
 
 /// Releases a string returned by rssn. Null is ignored.

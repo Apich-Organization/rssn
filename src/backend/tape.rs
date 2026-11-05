@@ -49,6 +49,13 @@
 //!   `[-1, 1]`, ...) makes every component of the result NaN; a NaN value
 //!   never carries a finite slope or curvature.
 //! * Third and higher derivatives are not available.
+//! * Interval rules cover the arithmetic, `exp`/`ln`, roots, `atan`, the
+//!   trigonometric `sin`/`cos`/`tan`, their inverses, the hyperbolics and
+//!   `abs`. `tan` and `atan2` are sound but deliberately loose where their
+//!   domain breaks: a box containing a `tan` pole encloses the whole line, and
+//!   a box that can reach the negative x axis encloses `[-π, π]`. Any other
+//!   instruction in [`Tape::enclose`] returns the whole line, which is sound
+//!   and says nothing.
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -2072,6 +2079,20 @@ impl Scalar for Interval {
                 };
                 Self::outward(lo, hi).clamp(-1.0, 1.0)
             },
+            | Intrinsic::Tan => {
+                // tan is strictly increasing between consecutive poles and
+                // unbounded on any box that contains one. A width of one
+                // period always covers a pole, and a pole is detected inside
+                // the box exactly; in both cases the whole line is the sound
+                // (if loose) enclosure.
+                if !(self.hi - self.lo).is_finite() || self.hi - self.lo >= PI {
+                    return Self::ENTIRE;
+                }
+                if self.contains_point_of(FRAC_PI_2, PI) {
+                    return Self::ENTIRE;
+                }
+                self.monotone(f64::tan, true)
+            },
             | _ => Self::ENTIRE,
         }
     }
@@ -2080,11 +2101,34 @@ impl Scalar for Interval {
         self,
         x: Self,
     ) -> Self {
-        let _ = x;
-        Self {
-            lo: -std::f64::consts::PI,
-            hi: std::f64::consts::PI,
+        use std::f64::consts::PI;
+
+        // `self` is `y`. The angle of a box is bounded by its corners whenever
+        // the box stays in one branch: in the right half-plane `(x > 0)` the
+        // function is continuous and monotone in each argument once the other
+        // is fixed, and in the left half-plane it is monotone on a box that
+        // does not cross `y = 0`. A box that can touch `x = 0` or cross the
+        // negative x axis (the branch cut) reaches both signs of the full
+        // range, so `[-π, π]` is the sound answer there — loose, but never
+        // missing a value.
+        if !(self.lo.is_finite() && self.hi.is_finite() && x.lo.is_finite() && x.hi.is_finite()) {
+            return Self::ENTIRE;
         }
+        let corners = [
+            self.lo.atan2(x.lo),
+            self.lo.atan2(x.hi),
+            self.hi.atan2(x.lo),
+            self.hi.atan2(x.hi),
+        ];
+        let lo = corners.iter().copied().fold(f64::INFINITY, f64::min);
+        let hi = corners.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        if x.lo > 0.0 {
+            return Self::outward(lo, hi).clamp(-PI, PI);
+        }
+        if x.hi < 0.0 && (self.lo > 0.0 || self.hi < 0.0) {
+            return Self::outward(lo, hi).clamp(-PI, PI);
+        }
+        Self { lo: -PI, hi: PI }
     }
 
     fn compare(
@@ -2335,6 +2379,75 @@ mod tests {
         let positive =
             tape("x^2 + 1").enclose(&[Interval { lo: -5.0, hi: 3.0 }, Interval::point(0.0)], &[]);
         assert!(positive[0].lo > 0.0);
+    }
+
+    #[test]
+    fn interval_tan_and_atan2_are_sound_across_poles_and_branches() {
+        use std::f64::consts::FRAC_PI_2;
+        use std::f64::consts::PI;
+
+        let tangent = tape("tan(x)");
+        let mut out = [0.0];
+        // One monotone branch: a finite enclosure that contains every point of
+        // the box, and is already tight enough to exclude the pole value.
+        let branch =
+            tangent.enclose(&[Interval { lo: -0.5, hi: 0.4 }, Interval::point(0.0)], &[])[0];
+        assert!(branch.lo.is_finite() && branch.hi.is_finite(), "{branch:?}");
+        for i in 0..=20 {
+            let x = -0.5 + 0.045 * f64::from(i);
+            tangent.eval(&[x, 0.0], &[], &mut out);
+            assert!(branch.contains(out[0]), "{x}: {} not in {branch:?}", out[0]);
+        }
+        // Any box containing a pole has no finite enclosure; a width of one
+        // period always does.
+        for boxed in [
+            [Interval { lo: 1.2, hi: 1.8 }, Interval::point(0.0)],
+            [Interval { lo: 1.5, hi: 1.6 }, Interval::point(0.0)],
+            [Interval { lo: -2.0, hi: 2.5 }, Interval::point(0.0)],
+        ] {
+            let enclosure = tangent.enclose(&boxed, &[])[0];
+            assert!(
+                enclosure.lo.is_infinite() && enclosure.hi.is_infinite(),
+                "{enclosure:?}"
+            );
+        }
+
+        // atan2 in the right half-plane: the tight continuous branch.
+        let angle = tape("atan2(y, x)");
+        let right = angle.enclose(&[Interval::point(1.0), Interval { lo: 0.5, hi: 1.0 }], &[])[0];
+        assert!(right.lo > -FRAC_PI_2 && right.hi < FRAC_PI_2, "{right:?}");
+        for i in 0..=20 {
+            let y = 0.5 + 0.025 * f64::from(i);
+            angle.eval(&[1.0, y], &[], &mut out);
+            assert!(right.contains(out[0]), "{y}: {} not in {right:?}", out[0]);
+        }
+        // Left half-plane, one sign of y: still corner-tight.
+        let left = angle.enclose(
+            &[
+                Interval { lo: -2.0, hi: -1.0 },
+                Interval { lo: 0.5, hi: 1.5 },
+            ],
+            &[],
+        )[0];
+        assert!(left.hi <= PI && left.lo > FRAC_PI_2, "{left:?}");
+        // A box crossing the negative x axis reaches both sides of the branch
+        // cut: the whole angle range is the sound enclosure.
+        let cut = angle.enclose(
+            &[
+                Interval { lo: -2.0, hi: -1.0 },
+                Interval { lo: -1.0, hi: 1.0 },
+            ],
+            &[],
+        )[0];
+        assert!(cut.lo <= -PI && cut.hi >= PI, "{cut:?}");
+        let whole = angle.enclose(
+            &[
+                Interval { lo: -1.0, hi: 1.0 },
+                Interval { lo: -1.0, hi: 1.0 },
+            ],
+            &[],
+        )[0];
+        assert!(whole.lo <= -PI && whole.hi >= PI, "{whole:?}");
     }
 
     #[test]

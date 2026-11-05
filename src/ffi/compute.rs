@@ -79,6 +79,7 @@ pub struct RssnComputeRecord {
 
 /// The record both wire formats carry.
 fn record(answer: &Answer<'_>) -> RssnComputeRecord {
+    super::remember_dimensions(&answer.diagnostics);
     RssnComputeRecord {
         term: answer.term.to_string(),
         value: answer.value,
@@ -141,10 +142,17 @@ unsafe fn run_request<'s>(
             &default
         },
     };
-    request
-        .session()
-        .compute(request, config)
-        .map_err(|error| compute_error(&error))
+    let result = request.session().compute(request, config);
+    // The dimension codes are part of the answer a C host may need without
+    // parsing JSON: record them here, where every compute entry point meets.
+    match &result {
+        | Ok(answer) => super::remember_dimensions(&answer.diagnostics),
+        | Err(crate::api::ComputeError::Dimension(error)) => {
+            super::remember_dimension_codes([error.code()]);
+        },
+        | Err(_) => super::clear_dimensions(),
+    }
+    result.map_err(|error| compute_error(&error))
 }
 
 /// A configuration with every standard rule set and a symbolic target.
@@ -594,6 +602,7 @@ pub unsafe extern "C" fn rssn_compute_all(
         for (&k, result) in slots.iter().zip(session.compute_all(&live, config)) {
             match result {
                 | Ok(answer) => {
+                    super::remember_dimensions(&answer.diagnostics);
                     statuses[k] = RssnStatus::Ok;
                     answers[k] = RssnAnswer {
                         term: answer.term.id(),
@@ -605,6 +614,11 @@ pub unsafe extern "C" fn rssn_compute_all(
                     };
                 },
                 | Err(e) => {
+                    if let crate::api::ComputeError::Dimension(error) = &e {
+                        super::remember_dimension_codes([error.code()]);
+                    } else {
+                        super::clear_dimensions();
+                    }
                     statuses[k] = super::status_of(&e);
                     first_error.get_or_insert_with(|| e.to_string());
                 },
@@ -701,6 +715,11 @@ pub unsafe extern "C" fn rssn_compute_all_bincode(
                     match results.next() {
                         | Some(Ok(answer)) => (RssnStatus::Ok, Some(record(&answer))),
                         | Some(Err(error)) => {
+                            if let crate::api::ComputeError::Dimension(dimension) = &error {
+                                super::remember_dimension_codes([dimension.code()]);
+                            } else {
+                                super::clear_dimensions();
+                            }
                             first_error.get_or_insert_with(|| error.to_string());
                             (super::status_of(&error), None)
                         },

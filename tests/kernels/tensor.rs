@@ -7,6 +7,7 @@ use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::tensor::TensorData;
 use rssn::kernels::tensor::contract;
+use rssn::kernels::tensor::hosvd;
 use rssn::kernels::tensor::inner_product;
 use rssn::kernels::tensor::norm;
 use rssn::kernels::tensor::outer_product;
@@ -101,6 +102,126 @@ fn serde_round_trip() {
         data: vec![1.0],
     };
     assert!(bad.to_arrayd().is_err());
+}
+
+/// The inner product of two slices of `core` along `mode`.
+fn slice_inner(
+    core: &ArrayD<f64>,
+    mode: usize,
+    first: usize,
+    second: usize,
+) -> f64 {
+    let ndim = core.ndim();
+    let mut permutation = vec![mode];
+    permutation.extend((0..ndim).filter(|&axis| axis != mode));
+    let standard = core
+        .clone()
+        .permuted_axes(permutation)
+        .as_standard_layout()
+        .into_owned();
+    let data = standard.into_raw_vec_and_offset().0;
+    let slices = core.shape()[mode];
+    let block = data.len() / slices;
+    (0..block)
+        .map(|offset| data[first * block + offset] * data[second * block + offset])
+        .sum()
+}
+
+#[test]
+fn hosvd_is_exact_full_rank_with_orthonormal_factors() {
+    let tensor = ndarray::Array3::from_shape_fn((3, 4, 5), |(i, j, k)| {
+        0.5 + ((i * 7 + j * 3 + k) % 5) as f64 + 0.25 * ((i + 2 * j + 3 * k) as f64).sin()
+    })
+    .into_dyn();
+    let decomposition = hosvd(&tensor, None).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(decomposition.ranks, vec![3, 4, 5]);
+    assert_eq!(decomposition.core.shape(), &[3, 4, 5]);
+    assert_eq!(decomposition.factors.len(), 3);
+    for (mode, factor) in decomposition.factors.iter().enumerate() {
+        assert_eq!(factor.cols, decomposition.ranks[mode]);
+        assert_eq!(factor.rows, tensor.shape()[mode]);
+        // Orthonormal columns: U^T U = I.
+        let gram = factor
+            .transpose()
+            .matmul(factor)
+            .unwrap_or_else(|e| panic!("{e}"));
+        for i in 0..gram.rows {
+            for j in 0..gram.cols {
+                let want = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (gram.at(i, j) - want).abs() < 1e-10,
+                    "mode {mode}: U^T U[{i},{j}] = {}",
+                    gram.at(i, j)
+                );
+            }
+        }
+        // All-orthogonality of the core along this mode.
+        let slices = decomposition.core.shape()[mode];
+        for a in 0..slices {
+            for b in (a + 1)..slices {
+                let inner = slice_inner(&decomposition.core, mode, a, b);
+                assert!(inner.abs() < 1e-12, "mode {mode}: <C_{a}, C_{b}> = {inner}");
+            }
+        }
+    }
+    let back = decomposition
+        .reconstruct()
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(back.shape(), tensor.shape());
+    let worst = tensor
+        .iter()
+        .zip(back.iter())
+        .map(|(left, right)| (left - right).abs())
+        .fold(0.0, f64::max);
+    assert!(worst < 1e-10, "reconstruction error {worst}");
+}
+
+#[test]
+fn hosvd_truncation_is_exact_for_a_rank_one_tensor() {
+    let u = [1.0, -2.0, 0.5];
+    let v = [0.3, 1.5, -2.5, 0.7];
+    let w = [2.0, -1.0, 0.5, 3.0, -0.5];
+    let tensor =
+        ndarray::Array3::from_shape_fn((3, 4, 5), |(i, j, k)| u[i] * v[j] * w[k]).into_dyn();
+    let decomposition = hosvd(&tensor, Some(&[1, 1, 1])).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(decomposition.ranks, vec![1, 1, 1]);
+    assert_eq!(decomposition.core.shape(), &[1, 1, 1]);
+    assert!(decomposition.singular_values[0][0] > 0.0);
+    let back = decomposition
+        .reconstruct()
+        .unwrap_or_else(|e| panic!("{e}"));
+    let worst = tensor
+        .iter()
+        .zip(back.iter())
+        .map(|(left, right)| (left - right).abs())
+        .fold(0.0, f64::max);
+    assert!(worst < 1e-10, "rank-one truncation error {worst}");
+}
+
+#[test]
+fn hosvd_checks_ranks_and_clamps_them() {
+    let tensor = ndarray::Array2::from_shape_fn((3, 4), |(i, j)| (i + j) as f64).into_dyn();
+    assert!(hosvd(&tensor, Some(&[2])).is_err(), "one rank per mode");
+    assert!(hosvd(&tensor, Some(&[0, 2])).is_err(), "a zero rank");
+    // `i + j` has numerical rank two, so a larger request is clamped to it.
+    let clamped = hosvd(&tensor, Some(&[9, 2])).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        clamped.ranks,
+        vec![2, 2],
+        "ranks are clamped to the numerical rank of the unfolding"
+    );
+    assert_eq!(clamped.core.shape(), &[2, 2]);
+    let back = clamped.reconstruct().unwrap_or_else(|e| panic!("{e}"));
+    let error: f64 = tensor
+        .iter()
+        .zip(back.iter())
+        .map(|(left, right)| (left - right).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    assert!(
+        error < 1e-12,
+        "rank-two reconstruction of a rank-two tensor: {error}"
+    );
 }
 
 proptest! {

@@ -343,6 +343,34 @@ fn dimension_c_api_and_json() {
             rssn_compute(s, bad, config, &raw mut answer),
             RssnStatus::Dimension
         );
+        // The stable codes of the findings are exposed without parsing JSON.
+        assert_eq!(rssn_dimension_count(), 1);
+        let code = rssn_dimension_code(0);
+        assert!(!code.is_null());
+        // SAFETY: rssn keeps the code alive until the next computation, and
+        // this whole test body is inside one `unsafe` block.
+        assert_eq!(CStr::from_ptr(code).to_str().unwrap(), "mismatch");
+        assert!(rssn_dimension_code(1).is_null(), "out of range is null");
+        // An advisory run keeps the answer and reports its finding.
+        assert_eq!(rssn_config_dimension_mode(config, 1), RssnStatus::Ok);
+        assert_eq!(
+            rssn_compute(s, bad, config, &raw mut answer),
+            RssnStatus::Ok
+        );
+        assert!(rssn_dimension_count() >= 1);
+        let code = rssn_dimension_code(0);
+        assert!(!code.is_null());
+        // SAFETY: as above.
+        assert_eq!(CStr::from_ptr(code).to_str().unwrap(), "mismatch");
+        // A computation without findings clears them, so a host must read
+        // immediately after the call it cares about.
+        let clean = rssn_term_parse(s, c("quantity(2, m)").as_ptr());
+        assert_eq!(
+            rssn_compute(s, clean, config, &raw mut answer),
+            RssnStatus::Ok
+        );
+        assert_eq!(rssn_dimension_count(), 0);
+        assert!(rssn_dimension_code(0).is_null());
         assert_eq!(rssn_config_bypass_dimensions(config), RssnStatus::Ok);
         assert_eq!(
             rssn_compute(s, bad, config, &raw mut answer),

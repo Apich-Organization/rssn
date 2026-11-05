@@ -7,8 +7,10 @@ use num_complex::Complex;
 use proptest::prelude::*;
 use proptest::test_runner::RngSeed;
 use rssn::kernels::transforms::fft;
+use rssn::kernels::transforms::fft_many_par;
 use rssn::kernels::transforms::fft_slice;
 use rssn::kernels::transforms::ifft;
+use rssn::kernels::transforms::ifft_many_par;
 use rssn::kernels::transforms::ifft_slice;
 use rssn::kernels::transforms::irfft;
 use rssn::kernels::transforms::rfft;
@@ -343,6 +345,112 @@ fn cost_of_the_general_path() {
         let per = start.elapsed() / reps;
         println!("{label}: {per:?} per forward transform ({reps} reps)");
         assert!(data.iter().all(|c| c.re.is_finite() && c.im.is_finite()));
+    }
+}
+
+// -------------------------------------------------------------------------
+// Prime lengths (Rader) and threaded batches
+// -------------------------------------------------------------------------
+
+/// The convolution size Rader uses for a prime against the Bluestein size it
+/// replaces; `p = 2^(k-1) + 1` (17, 257, ...) gets an exact factor two.
+#[test]
+fn prime_length_convolution_sizes() {
+    for p in [17usize, 97, 257, 1021, 4099] {
+        let rader = (2 * p - 3).next_power_of_two();
+        let bluestein = (2 * p).next_power_of_two();
+        println!("p = {p}: Rader m = {rader}, Bluestein m = {bluestein}");
+        assert!(rader <= bluestein, "p = {p}");
+    }
+    assert_eq!(
+        (2 * 17usize - 3).next_power_of_two() * 2,
+        (2 * 17usize).next_power_of_two()
+    );
+    assert_eq!(
+        (2 * 257usize - 3).next_power_of_two() * 2,
+        (2 * 257usize).next_power_of_two()
+    );
+}
+
+#[test]
+fn prime_lengths_round_trip_and_match_the_direct_dft() {
+    for n in [257usize, 1021] {
+        let x = sample(n);
+        let want = direct_dft(&x);
+        let scale = want.iter().map(|c| c.norm()).fold(1.0_f64, f64::max);
+        let mut got = x.clone();
+        fft(&mut got);
+        for (k, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert!(
+                (g - w).norm() <= 1e-12 * scale,
+                "bin {k} at n = {n}: {g} vs {w}"
+            );
+        }
+        ifft(&mut got);
+        for (g, w) in got.iter().zip(&x) {
+            assert!((g - w).norm() <= 1e-12, "round trip at n = {n}: {g} vs {w}");
+        }
+    }
+}
+
+#[test]
+fn large_prime_lengths_round_trip_and_satisfy_parseval() {
+    for n in [4099usize, 8191] {
+        let original = sample(n);
+        let mut data = original.clone();
+        let start = Instant::now();
+        fft(&mut data);
+        let elapsed = start.elapsed();
+        println!("n = {n} (prime): forward transform in {elapsed:?}");
+        let time_energy: f64 = original.iter().map(|c| c.norm_sqr()).sum();
+        let freq_energy: f64 = data.iter().map(|c| c.norm_sqr()).sum::<f64>() / n as f64;
+        assert!(
+            (time_energy - freq_energy).abs() <= 1e-12 * time_energy.max(1.0),
+            "Parseval at n = {n}: {time_energy} vs {freq_energy}"
+        );
+        ifft(&mut data);
+        for (got, want) in data.iter().zip(&original) {
+            let tolerance = 4.0 * f64::EPSILON * n as f64 * want.norm().max(1.0);
+            assert!(
+                (got - want).norm() <= tolerance,
+                "round trip at n = {n}: {got} vs {want}"
+            );
+        }
+    }
+}
+
+#[test]
+fn threaded_batches_are_bit_identical_to_serial_calls() {
+    let rows: Vec<Vec<Complex<f64>>> = [4usize, 8, 16, 32, 64, 128, 256, 1024]
+        .iter()
+        .map(|&n| sample(n))
+        .collect();
+    let mut sequential = rows.clone();
+    for row in &mut sequential {
+        fft(row);
+    }
+    for grain in [2usize, 1000] {
+        let parallel = fft_many_par(&rows, grain);
+        for (row, (a, b)) in sequential.iter().zip(&parallel).enumerate() {
+            for (bin, (g, w)) in a.iter().zip(b).enumerate() {
+                assert_eq!(
+                    g.re.to_bits(),
+                    w.re.to_bits(),
+                    "row {row} bin {bin} re (grain {grain})"
+                );
+                assert_eq!(
+                    g.im.to_bits(),
+                    w.im.to_bits(),
+                    "row {row} bin {bin} im (grain {grain})"
+                );
+            }
+        }
+    }
+    let inverse = ifft_many_par(&sequential, 2);
+    for (row, (a, b)) in inverse.iter().zip(&rows).enumerate() {
+        for (bin, (g, w)) in a.iter().zip(b).enumerate() {
+            assert!((g - w).norm() <= 1e-12, "row {row} bin {bin} round trip");
+        }
     }
 }
 
