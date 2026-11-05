@@ -10,6 +10,7 @@
 //! and returns the accepted points.
 
 use crate::kernels::ode_adaptive::Event;
+use crate::kernels::ode_adaptive::event_time_tolerance;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -70,6 +71,9 @@ pub fn solve_fixed(
     let mut stage = vec![0.0; n];
     for step in 0..steps {
         let t = t_span.0 + h * step as f64;
+        if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
+            return Err("The step is too small to advance time.".to_string());
+        }
         advance(method, &f, t, &mut y, h, &mut k, &mut stage);
         if y.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
@@ -193,6 +197,9 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t_span.0, y0)).collect();
     for step in 0..steps {
         let t = t_span.0 + h * step as f64;
+        if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
+            return Err("The step is too small to advance time.".to_string());
+        }
         let mut next = y.clone();
         advance(method, &f, t, &mut next, h, &mut k, &mut stage);
         if next.iter().any(|v| !v.is_finite()) {
@@ -270,17 +277,20 @@ fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
     stage: &mut [f64],
 ) -> (f64, Vec<f64>) {
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    let tolerance = event_time_tolerance(t, t + h);
     for _ in 0..80 {
         let mid = f64::midpoint(lo, hi);
+        if mid == lo || mid == hi { break; }
         let mut state = y.to_vec();
         advance(method, f, t, &mut state, mid * h, k, stage);
         let gm = (event.g)(t + mid * h, &state);
+        if gm == 0.0 { return (mid, state); }
         if (gm < 0.0) == (g0 < 0.0) {
             lo = mid;
         } else {
             hi = mid;
         }
-        if (hi - lo) * h.abs() < 1e-13 {
+        if (hi - lo) * h.abs() <= tolerance {
             break;
         }
     }

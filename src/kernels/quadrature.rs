@@ -31,11 +31,12 @@
 //! axis-aligned boxes ([`cubature_genz_malik`], [`cubature_nested`]). The
 //! following remain true.
 //!
-//! * There is no adaptive rule on a ball or an implicitly defined region, and
-//!   no simplex rule beyond planar triangles: [`integrate_triangle`] adaptively
+//! * There is no adaptive rule on a ball or an implicitly defined region.
+//!   [`integrate_triangle`] adaptively
 //!   bisects a triangle (the degree-five Dunavant panel with an embedded
 //!   degree-two estimate, four-way refinement), with the same
-//!   heuristic-not-enclosure contract as the box cubature. Map any other region
+//!   heuristic-not-enclosure contract as the box cubature. Higher-dimensional
+//!   simplices are supported by [`crate::kernels::simplex_quadrature`]. Map other regions
 //!   to a box or a triangle and supply the Jacobian, or use
 //!   [`quasi_monte_carlo`]; the cubature rules accept a box only.
 //! * [`cubature_genz_malik`] halves one axis per split and evaluates the
@@ -92,6 +93,9 @@ use std::f64::consts::PI;
 use num_complex::Complex64;
 
 use crate::kernels::random::Rng;
+
+pub use crate::kernels::simplex_quadrature::SimplexError;
+pub use crate::kernels::simplex_quadrature::integrate_simplex;
 
 /// Result of an integration: value, error estimate and cost.
 #[derive(Debug, Clone, Copy, PartialEq)]

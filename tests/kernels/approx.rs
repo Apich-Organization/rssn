@@ -39,6 +39,33 @@ fn cubic_spline_variants() {
 }
 
 #[test]
+fn cubic_spline_large_irregular_grid_and_boundary_conditions() {
+    let xs = [0.0, 0.1, 0.7, 1.8, 3.0];
+    let f = |x: f64| x.powi(3) - 2.0 * x + 1.0;
+    let df = |x: f64| 3.0 * x * x - 2.0;
+    let ys: Vec<_> = xs.iter().map(|&x| f(x)).collect();
+    let clamped = CubicSpline::new(&xs, &ys, SplineBc::Clamped(df(0.0), df(3.0))).unwrap();
+    for x in [0.05, 0.4, 1.3, 2.9] {
+        assert!((clamped.eval(x) - f(x)).abs() < 1e-12);
+        assert!((clamped.derivative(x, 1) - df(x)).abs() < 1e-11);
+    }
+    let natural = CubicSpline::new(&xs, &ys, SplineBc::Natural).unwrap();
+    assert!(natural.derivative(xs[0], 2).abs() < 1e-12);
+    assert!(natural.derivative(xs[4], 2).abs() < 1e-12);
+
+    // This problem requires only linear storage; a dense matrix for the same
+    // grid would require tens of gigabytes.
+    let xs: Vec<_> = (0..50_000).map(|i| f64::from(i) * 0.01).collect();
+    let ys: Vec<_> = xs.iter().map(|x| 2.0 * x + 1.0).collect();
+    for bc in [SplineBc::Natural, SplineBc::Clamped(2.0, 2.0)] {
+        let spline = CubicSpline::new(&xs, &ys, bc).unwrap();
+        assert!((spline.eval(250.125) - 501.25).abs() < 1e-10);
+    }
+    assert!(CubicSpline::new(&[0.0, 1.0, 2.0], &[0.0, f64::NAN, 2.0], SplineBc::Natural).is_err());
+    assert!(CubicSpline::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 2.0], SplineBc::Clamped(f64::NAN, 1.0)).is_err());
+}
+
+#[test]
 fn pchip_is_monotone() {
     let x = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
     let y = [0.0, 0.0, 0.1, 5.0, 5.0, 5.1];

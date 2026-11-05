@@ -309,6 +309,19 @@ pub(crate) struct Tol {
     pub(crate) atol: f64,
 }
 
+/// Event location tolerance: relative to the step, but never finer than the
+/// floating-point spacing at its endpoints.
+pub(crate) fn event_time_tolerance(t0: f64, t1: f64) -> f64 {
+    let magnitude = t0.abs().max(t1.abs());
+    let next = magnitude.next_up();
+    let spacing = if next.is_finite() {
+        next - magnitude
+    } else {
+        magnitude - magnitude.next_down()
+    };
+    ((t1 - t0).abs() * 1e-12).max(spacing).max(f64::from_bits(1))
+}
+
 /// Locates the events crossed during an accepted step and updates the
 /// solution. Returns `true` when a terminal event ended the integration
 /// (the step and the event point are then already recorded).
@@ -329,7 +342,7 @@ pub(crate) fn process_events(
             || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
         if crossing {
             let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
-            let root = rootfind::brent(gf, t_old, tn, 1e-14 * (1.0 + tn.abs()), 200).unwrap_or(tn);
+            let root = rootfind::brent(gf, t_old, tn, event_time_tolerance(t_old, tn), 200).unwrap_or(tn);
             hits.push(EventHit {
                 index: ei,
                 t: root,
@@ -580,6 +593,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
+        if !h.is_finite() || t + h == t { return Err(OdeError::StepLimit); }
         // stages
         for s in 0..6 {
             for i in 0..n {
@@ -758,6 +772,7 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
+        if !h.is_finite() || t + h == t { return Err(OdeError::StepLimit); }
         // Jacobian J and dF/dt by forward differences.
         let mut jac = Mat::zeros(n, n);
         let mut yp = y.clone();

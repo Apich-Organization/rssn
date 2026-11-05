@@ -14,9 +14,7 @@
 use std::f64::consts::PI;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 
 /// Errors of the approximation routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +36,49 @@ fn check_grid(
     Ok(())
 }
 
+// LDLᵀ factorization with linear time and storage. Strictly increasing
+// knots make the natural and clamped systems symmetric positive definite.
+fn solve_symmetric_tridiagonal(
+    mut diagonal: Vec<f64>,
+    mut off: Vec<f64>,
+    mut rhs: Vec<f64>,
+) -> Result<Vec<f64>, ApproxError> {
+    let n = diagonal.len();
+    if diagonal
+        .iter()
+        .chain(&off)
+        .chain(&rhs)
+        .any(|v| !v.is_finite())
+    {
+        return Err(ApproxError::Singular);
+    }
+    for i in 1..n {
+        if diagonal[i - 1] <= 0.0 {
+            return Err(ApproxError::Singular);
+        }
+        let factor = off[i - 1] / diagonal[i - 1];
+        diagonal[i] -= factor * off[i - 1];
+        rhs[i] -= factor * rhs[i - 1];
+        off[i - 1] = factor;
+        if !diagonal[i].is_finite() || !rhs[i].is_finite() || !factor.is_finite() {
+            return Err(ApproxError::Singular);
+        }
+    }
+    if diagonal[n - 1] <= 0.0 {
+        return Err(ApproxError::Singular);
+    }
+    for i in 0..n {
+        rhs[i] /= diagonal[i];
+    }
+    for i in (0..n - 1).rev() {
+        rhs[i] -= off[i] * rhs[i + 1];
+    }
+    if rhs.iter().any(|v| !v.is_finite()) {
+        return Err(ApproxError::Singular);
+    }
+    Ok(rhs)
+}
+
 /// Boundary condition of a cubic spline.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SplineBc {
@@ -50,6 +91,8 @@ pub enum SplineBc {
 }
 
 /// Piecewise cubic spline `y = a + b t + c t^2 + d t^3` with `t = x - x_i`.
+/// Natural and clamped construction takes O(n) time and space; not-a-knot
+/// currently uses a dense O(n³)-time, O(n²)-space solve.
 #[derive(Debug, Clone)]
 pub struct CubicSpline {
     x: Vec<f64>,
@@ -64,7 +107,8 @@ impl CubicSpline {
     ///
     /// # Errors
     /// [`ApproxError::Invalid`] for fewer than 3 points (4 for not-a-knot)
-    /// or non-increasing abscissae.
+    /// non-increasing abscissae, or non-finite data or clamped derivatives;
+    /// [`ApproxError::Singular`] if the system overflows or cannot be solved.
     pub fn new(
         x: &[f64],
         y: &[f64],
@@ -82,37 +126,55 @@ impl CubicSpline {
         )?;
         let h: Vec<f64> = x.windows(2).map(|w| w[1] - w[0]).collect();
         // Solve for second-derivative-like coefficients c_i (c = M/2).
-        let mut m = Mat::zeros(n, n);
+        if x.iter().chain(y).any(|v| !v.is_finite()) || h.iter().any(|v| !v.is_finite()) {
+            return Err(ApproxError::Invalid);
+        }
         let mut r = vec![0.0; n];
         for i in 1..n - 1 {
-            m.set(i, i - 1, h[i - 1]);
-            m.set(i, i, 2.0 * (h[i - 1] + h[i]));
-            m.set(i, i + 1, h[i]);
             r[i] = 3.0 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1]);
         }
-        match bc {
-            | SplineBc::Natural => {
-                m.set(0, 0, 1.0);
-                m.set(n - 1, n - 1, 1.0);
-            },
-            | SplineBc::Clamped(l, rr) => {
-                m.set(0, 0, 2.0 * h[0]);
-                m.set(0, 1, h[0]);
-                r[0] = 3.0 * ((y[1] - y[0]) / h[0] - l);
-                m.set(n - 1, n - 2, h[n - 2]);
-                m.set(n - 1, n - 1, 2.0 * h[n - 2]);
-                r[n - 1] = 3.0 * (rr - (y[n - 1] - y[n - 2]) / h[n - 2]);
-            },
-            | SplineBc::NotAKnot => {
-                m.set(0, 0, h[1]);
-                m.set(0, 1, -(h[0] + h[1]));
-                m.set(0, 2, h[0]);
-                m.set(n - 1, n - 3, h[n - 2]);
-                m.set(n - 1, n - 2, -(h[n - 3] + h[n - 2]));
-                m.set(n - 1, n - 1, h[n - 3]);
-            },
+        if r.iter().any(|v| !v.is_finite()) {
+            return Err(ApproxError::Singular);
         }
-        let c = dense::solve(&m, &r).map_err(|_| ApproxError::Singular)?;
+        let c = if bc == SplineBc::NotAKnot {
+            // This end condition has an extra off-diagonal in each end row.
+            let mut m = Mat::zeros(n, n);
+            for i in 1..n - 1 {
+                m.set(i, i - 1, h[i - 1]);
+                m.set(i, i, 2.0 * (h[i - 1] + h[i]));
+                m.set(i, i + 1, h[i]);
+            }
+            m.set(0, 0, h[1]);
+            m.set(0, 1, -(h[0] + h[1]));
+            m.set(0, 2, h[0]);
+            m.set(n - 1, n - 3, h[n - 2]);
+            m.set(n - 1, n - 2, -(h[n - 3] + h[n - 2]));
+            m.set(n - 1, n - 1, h[n - 3]);
+            dense::solve(&m, &r).map_err(|_| ApproxError::Singular)?
+        } else {
+            // Natural end coefficients are zero, so their couplings may be
+            // eliminated. Both resulting systems are symmetric positive definite.
+            let mut diagonal = vec![1.0; n];
+            let mut off = vec![0.0; n - 1];
+            for i in 1..n - 1 {
+                diagonal[i] = 2.0 * (h[i - 1] + h[i]);
+            }
+            for i in 1..n - 2 {
+                off[i] = h[i];
+            }
+            if let SplineBc::Clamped(left, right) = bc {
+                if !left.is_finite() || !right.is_finite() {
+                    return Err(ApproxError::Invalid);
+                }
+                diagonal[0] = 2.0 * h[0];
+                diagonal[n - 1] = 2.0 * h[n - 2];
+                off[0] = h[0];
+                off[n - 2] = h[n - 2];
+                r[0] = 3.0 * ((y[1] - y[0]) / h[0] - left);
+                r[n - 1] = 3.0 * (right - (y[n - 1] - y[n - 2]) / h[n - 2]);
+            }
+            solve_symmetric_tridiagonal(diagonal, off, r)?
+        };
         let mut b = vec![0.0; n];
         let mut d = vec![0.0; n];
         for i in 0..n - 1 {
@@ -122,6 +184,9 @@ impl CubicSpline {
         // last knot: derivative / third-derivative continuation
         let hl = h[n - 2];
         b[n - 1] = b[n - 2] + 2.0 * c[n - 2] * hl + 3.0 * d[n - 2] * hl * hl;
+        if b.iter().chain(&c).chain(&d).any(|v| !v.is_finite()) {
+            return Err(ApproxError::Singular);
+        }
         Ok(Self {
             x: x.to_vec(),
             a: y.to_vec(),

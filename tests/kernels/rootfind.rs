@@ -29,6 +29,21 @@ fn brent_roots() {
 }
 
 #[test]
+fn brent_handles_tiny_residuals_and_invalid_values() {
+    for scale in [1.0, 1e-200, 1e-300] {
+        for (a, b) in [(0.0, 1.0), (1.0, 0.0)] {
+            let root = brent(|x| scale * (x * x - 0.36), a, b, 1e-12, 200).unwrap();
+            assert!((root - 0.6).abs() < 1e-10, "scale={scale:e}, root={root}");
+        }
+    }
+    assert_eq!(brent(|x| 1e-300 * (x * x + 1.0), -1.0, 1.0, 1e-12, 50), Err(RootError::NotBracketed));
+    assert_eq!(brent(|_| f64::NAN, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
+    assert_eq!(brent(|x| if x == 0.0 { -1.0 } else if x == 1.0 { 1.0 } else { f64::INFINITY }, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
+    assert_eq!(brent(|x| x, 0.0, 1.0, f64::NAN, 50), Err(RootError::Invalid));
+    assert_eq!(brent(|x| x, 0.0, f64::INFINITY, 1e-12, 50), Err(RootError::Invalid));
+}
+
+#[test]
 fn halley_cubic_convergence() {
     let r = halley(
         |x| x * x * x - 2.0,
@@ -56,6 +71,32 @@ fn bracketed_newton() {
     assert!((r - 1.324_717_957_244_746).abs() < 1e-12);
     let r = newton_bracketed(f64::atan, |x| 1.0 / (1.0 + x * x), -10.0, 15.0, 1e-13, 200).unwrap();
     assert!(r.abs() < 1e-10);
+}
+
+#[test]
+fn bracketed_newton_checks_signs_endpoints_and_nonfinite_values() {
+    for scale in [1e-200, 1e-300] {
+        let root = newton_bracketed(|x| scale * (x * x - 0.36), |x| scale * 2.0 * x, 0.0, 1.0, 1e-12, 200).unwrap();
+        assert!((root - 0.6).abs() < 1e-10, "scale={scale:e}, root={root}");
+        assert_eq!(newton_bracketed(|x| scale * (x * x + 1.0), |_| 0.0, -1.0, 1.0, 1e-12, 50), Err(RootError::NotBracketed));
+    }
+    assert_eq!(newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 1e-12, 0), Ok(0.0));
+    assert_eq!(newton_bracketed(|x| x - 1.0, |_| 1.0, 0.0, 1.0, 1e-12, 0), Ok(1.0));
+    assert_eq!(newton_bracketed(|_| f64::NAN, |_| 1.0, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
+    assert_eq!(newton_bracketed(|x| x - 0.6, |_| f64::INFINITY, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
+    assert_eq!(newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 0.0, 50), Err(RootError::Invalid));
+}
+
+#[test]
+fn bracketed_newton_does_not_confuse_a_small_step_with_a_small_bracket() {
+    let f = |x: f64| (1e12 * x).exp() - 100.0_f64.exp();
+    let df = |x: f64| 1e12 * (1e12 * x).exp();
+    for (a, b) in [(0.0, 6e-10), (6e-10, 0.0)] {
+        let root = newton_bracketed(f, df, a, b, 1e-12, 200).unwrap();
+        assert!((root - 1e-10).abs() <= 1e-12, "{root:e}");
+    }
+    let root = newton_bracketed(|x| x * x - 2.0, |x| 2.0 * x, 0.0, 2.0, 1e-14, 100).unwrap();
+    assert!((root - 2.0_f64.sqrt()).abs() < 1e-13);
 }
 
 fn sorted_re(mut v: Vec<(f64, f64)>) -> Vec<(f64, f64)> {

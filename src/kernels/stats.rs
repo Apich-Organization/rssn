@@ -24,8 +24,9 @@
 //!   sort their input.
 //! * The distribution objects wrap `statrs`; the valid parameter ranges and
 //!   the numerical accuracy are inherited from it. `inverse_cdf` returns `NaN`
-//!   outside `[0, 1]` instead of panicking, and no function is streaming: every
-//!   estimator takes the full sample.
+//!   outside `[0, 1]` instead of panicking. The estimators in this module take
+//!   the full sample; streaming means and covariances are available through
+//!   [`crate::kernels::online_stats::OnlineCovariance`].
 
 use statrs::distribution::Binomial;
 use statrs::distribution::Continuous;
@@ -39,6 +40,9 @@ use statrs::statistics::Distribution;
 use statrs::statistics::Max;
 use statrs::statistics::Min;
 use statrs::statistics::OrderStatistics;
+
+pub use crate::kernels::online_stats::OnlineCovariance;
+pub use crate::kernels::online_stats::OnlineStatsError;
 
 /// Computes the mean of a slice of data.
 ///

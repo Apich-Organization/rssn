@@ -39,6 +39,7 @@ use cranelift_codegen::ir::StackSlotData;
 use cranelift_codegen::ir::StackSlotKind;
 use cranelift_codegen::ir::Value;
 use cranelift_codegen::ir::condcodes::FloatCC;
+use cranelift_codegen::ir::condcodes::IntCC;
 use cranelift_codegen::ir::types;
 use cranelift_codegen::settings;
 use cranelift_codegen::settings::Configurable;
@@ -257,6 +258,15 @@ fn error(e: impl std::fmt::Display) -> BackendError {
     BackendError::Codegen(e.to_string())
 }
 
+// Cranelift memory offsets are signed 32-bit bytes, not element indices.
+// Saturating here silently loads the wrong element for large valid tapes.
+fn f64_byte_offset(index: u32) -> Result<i32, BackendError> {
+    i32::try_from(index)
+        .ok()
+        .and_then(|value| value.checked_mul(8))
+        .ok_or_else(|| BackendError::Codegen("floating-point load offset exceeds i32".to_owned()))
+}
+
 /// A program compiled to machine code.
 pub struct JitFunction {
     _owner: Arc<abi::Owner>,
@@ -273,6 +283,10 @@ impl JitFunction {
     /// [`BackendError::Codegen`] when Cranelift rejects the program or the
     /// host is unsupported.
     pub fn compile(tape: &Tape) -> Result<Self, BackendError> {
+        Self::compile_impl(tape, false)
+    }
+
+    fn compile_impl(tape: &Tape, tail_loop: bool) -> Result<Self, BackendError> {
         let mut flags = settings::builder();
         flags
             .set("use_colocated_libcalls", "false")
@@ -404,6 +418,29 @@ impl JitFunction {
                     .copied()
                     .ok_or_else(|| BackendError::Codegen(name.to_owned()))
             };
+            // Tail loops use `out[2..]` as a mutable parameter frame. The
+            // ordinary Tape lowering below runs unchanged inside this block.
+            // The extra final output carries the unconsumed u64 fuel bits.
+            let loop_blocks = if tail_loop {
+                for i in 0..tape.inputs {
+                    let input_offset = f64_byte_offset(u32::try_from(i).map_err(error)?)?;
+                    let output_offset = f64_byte_offset(u32::try_from(i + 2).map_err(error)?)?;
+                    let value = b.ins().load(types::F64, flags, in_ptr, input_offset);
+                    b.ins().store(flags, value, out_ptr, output_offset);
+                }
+                let initial_fuel = b.ins().load(types::I64, flags, par_ptr, 0);
+                let header = b.create_block();
+                let more = b.create_block();
+                let exit = b.create_block();
+                b.append_block_param(header, types::I64);
+                b.append_block_param(exit, types::I64);
+                b.ins().jump(header, &[initial_fuel.into()]);
+                b.switch_to_block(header);
+                Some((header, more, exit))
+            } else {
+                None
+            };
+            let tape_in_ptr = if tail_loop { b.ins().iadd_imm_s(out_ptr, 16) } else { in_ptr };
             let mut values: Vec<Value> = Vec::with_capacity(tape.insts.len());
             let get = |values: &[Value], r: u32| {
                 values
@@ -415,20 +452,11 @@ impl JitFunction {
                 let v = match *inst {
                     | Inst::Const(c) => b.ins().f64const(c),
                     | Inst::Input(i) => {
-                        b.ins().load(
-                            types::F64,
-                            flags,
-                            in_ptr,
-                            i32::try_from(i).map_err(error)?.saturating_mul(8),
-                        )
+                        b.ins().load(types::F64, flags, tape_in_ptr, f64_byte_offset(i)?)
                     },
                     | Inst::Param(i) => {
-                        b.ins().load(
-                            types::F64,
-                            flags,
-                            par_ptr,
-                            i32::try_from(i).map_err(error)?.saturating_mul(8),
-                        )
+                        b.ins()
+                            .load(types::F64, flags, par_ptr, f64_byte_offset(i)?)
                     },
                     | Inst::Add(x, y) => {
                         let (x, y) = (get(&values, x)?, get(&values, y)?);
@@ -592,6 +620,26 @@ impl JitFunction {
                     i32::try_from(k.saturating_mul(8)).map_err(error)?,
                 );
             }
+            if let Some((header, more, exit)) = loop_blocks {
+                let fuel = b.block_params(header)[0];
+                let is_tail = {
+                    let flag = get(&values, tape.outputs[0])?;
+                    let zero = b.ins().f64const(0.0);
+                    b.ins().fcmp(FloatCC::NotEqual, flag, zero)
+                };
+                b.ins().brif(is_tail, more, &[], exit, &[fuel.into()]);
+                b.switch_to_block(more);
+                b.seal_block(more);
+                let has_fuel = b.ins().icmp_imm_s(IntCC::NotEqual, fuel, 0);
+                let next_fuel = b.ins().iadd_imm_s(fuel, -1);
+                b.ins().brif(has_fuel, header, &[next_fuel.into()], exit, &[fuel.into()]);
+                b.seal_block(header);
+                b.switch_to_block(exit);
+                b.seal_block(exit);
+                let remaining = b.block_params(exit)[0];
+                let fuel_offset = f64_byte_offset(u32::try_from(tape.outputs.len()).map_err(error)?)?;
+                b.ins().store(flags, remaining, out_ptr, fuel_offset);
+            }
             b.ins().return_(&[]);
             b.finalize(frontend_config);
         }
@@ -607,8 +655,8 @@ impl JitFunction {
             _owner: Arc::new(abi::Owner(Some(module))),
             entry,
             inputs: tape.inputs,
-            params: tape.params,
-            outputs: tape.outputs.len(),
+            params: if tail_loop { 1 } else { tape.params },
+            outputs: tape.outputs.len() + usize::from(tail_loop),
         })
     }
 
@@ -645,6 +693,70 @@ impl JitFunction {
         unsafe {
             abi::call(self.entry, inputs, params, out);
         }
+    }
+}
+
+/// A pure scalar tail-recursive step compiled together with a native loop.
+///
+/// The tape takes `n` Float inputs and returns `[tail_flag, result, next_0,
+/// ..., next_n]`. A nonzero flag requests a tail jump. The generated loop
+/// executes at most `fuel` jumps, retaining the final step's outputs when it
+/// completes or encounters a jump beyond the budget. Only pure instructions
+/// are accepted, so evaluating all Select arms has no externally visible
+/// effects. No existing Tape API or interpreter is changed.
+pub struct TailLoop(JitFunction);
+
+/// The final step and the remaining number of permitted jumps.
+pub struct TailLoopResult {
+    /// The final step outputs, including its completion flag.
+    pub outputs: Vec<f64>,
+    /// Unused tail-jump budget.
+    pub remaining: u64,
+}
+
+impl TailLoop {
+    /// Compile a pure, well-formed multi-output scalar step to native control flow.
+    ///
+    /// # Errors
+    /// Returns a code-generation error for invalid or unsupported tapes or
+    /// hosts that cannot generate machine code.
+    pub fn compile(tape: &Tape) -> Result<Self, BackendError> {
+        let invalid = || BackendError::Codegen("invalid tail-loop tape".to_string());
+        let expected = tape.inputs.checked_add(2).ok_or_else(invalid)?;
+        if tape.params != 0 || !tape.args.is_empty() || tape.outputs.len() != expected {
+            return Err(invalid());
+        }
+        // Input and result frame offsets must fit Cranelift's signed offset.
+        f64_byte_offset(u32::try_from(expected).map_err(error)?)?;
+        for (index, inst) in tape.insts.iter().enumerate() {
+            let valid = |reg: u32| (reg as usize) < index;
+            match *inst {
+                Inst::Const(_) => {},
+                Inst::Input(i) if (i as usize) < tape.inputs => {
+                    f64_byte_offset(i)?;
+                },
+                Inst::Neg(a) if valid(a) => {},
+                Inst::Add(a, b) | Inst::Sub(a, b) | Inst::Mul(a, b) | Inst::Div(a, b)
+                    | Inst::Cmp(_, a, b) if valid(a) && valid(b) => {},
+                Inst::Select(a, b, c) if valid(a) && valid(b) && valid(c) => {},
+                _ => return Err(invalid()),
+            }
+        }
+        if tape.outputs.iter().any(|&output| output as usize >= tape.insts.len()) {
+            return Err(invalid());
+        }
+        JitFunction::compile_impl(tape, true).map(Self)
+    }
+
+    /// Run until a result or until the next jump would exceed `fuel`.
+    /// Returns `None` for a mismatched input count.
+    #[must_use]
+    pub fn run(&self, inputs: &[f64], fuel: u64) -> Option<TailLoopResult> {
+        if inputs.len() != self.0.inputs { return None; }
+        let mut outputs = vec![0.0; self.0.outputs];
+        self.0.run(inputs, &[f64::from_bits(fuel)], &mut outputs);
+        let remaining = outputs.pop()?.to_bits();
+        Some(TailLoopResult { outputs, remaining })
     }
 }
 
@@ -1079,6 +1191,43 @@ mod tests {
         }
         let (ia, ib) = (a.to_bits().cast_signed(), b.to_bits().cast_signed());
         ia.abs_diff(ib)
+    }
+
+    #[test]
+    fn large_input_and_parameter_offsets_are_checked() {
+        // Constructing this tape does not allocate an input or parameter buffer.
+        let limit = (i32::MAX / 8) as u32;
+        for (input, index, accepted) in [
+            (true, limit, true),
+            (true, limit + 1, false),
+            (false, limit, true),
+            (false, limit + 1, false),
+        ] {
+            let tape = Tape {
+                insts: vec![if input {
+                    Inst::Input(index)
+                } else {
+                    Inst::Param(index)
+                }],
+                args: Vec::new(),
+                inputs: if input {
+                    index as usize + 1
+                } else {
+                    0
+                },
+                params: if input {
+                    0
+                } else {
+                    index as usize + 1
+                },
+                outputs: vec![0],
+            };
+            assert_eq!(
+                JitFunction::compile(&tape).is_ok(),
+                accepted,
+                "input={input}, index={index}"
+            );
+        }
     }
 
     #[test]

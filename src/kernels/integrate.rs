@@ -430,7 +430,7 @@ fn gk15(
     b: f64,
 ) -> (f64, f64) {
     let centre = f64::midpoint(a, b);
-    let half = 0.5 * (b - a);
+    let half = 0.5 * b - 0.5 * a;
     let mut kronrod = 0.0;
     let mut gauss = 0.0;
     for (i, (&node, &weight)) in GK_NODES.iter().zip(&KRONROD_WEIGHTS).enumerate() {
@@ -454,6 +454,8 @@ fn gk15(
 /// estimate drops below `tolerance` or `max_panels` panels exist. The
 /// returned [`Quadrature::error`] is the sum of the panel estimates, so a
 /// caller can tell a converged result from an exhausted budget.
+/// Reversing the limits negates the integral. Non-finite integrand values
+/// are propagated to the result rather than treated as zero.
 #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn gauss_kronrod(
     f: impl Fn(f64) -> f64,
@@ -462,6 +464,13 @@ pub fn gauss_kronrod(
     tolerance: f64,
     max_panels: usize,
 ) -> Quadrature {
+    if a > b {
+        let flipped = gauss_kronrod(f, b, a, tolerance, max_panels);
+        return Quadrature {
+            value: -flipped.value,
+            ..flipped
+        };
+    }
     if a == b {
         return Quadrature {
             value: 0.0,
@@ -490,11 +499,11 @@ pub fn gauss_kronrod(
             .enumerate()
             .max_by(|x, y| x.1.3.total_cmp(&y.1.3))
             .map_or(0, |(i, _)| i);
-        let (lo, hi, _, _) = panels.swap_remove(worst);
+        let (lo, hi, value, error) = panels.swap_remove(worst);
         let mid = f64::midpoint(lo, hi);
         if mid <= lo || mid >= hi {
             // The panel cannot be split any further in floating point.
-            panels.push((lo, hi, 0.0, 0.0));
+            panels.push((lo, hi, value, error));
             let total: f64 = panels.iter().map(|p| p.2).sum();
             return Quadrature {
                 value: total,
@@ -526,16 +535,12 @@ pub fn gauss_kronrod_any(
             ..flipped
         };
     }
-    // Guard the transformed integrands against the end points, where the
-    // Jacobian is infinite but the product is (for a convergent integral)
-    // zero.
-    let guard = |v: f64| if v.is_finite() { v } else { 0.0 };
     match (a.is_finite(), b.is_finite()) {
         | (true, true) => gauss_kronrod(f, a, b, tolerance, max_panels),
         | (true, false) => {
             // x = a + t/(1 - t), t in [0, 1)
             gauss_kronrod(
-                |t| guard(f(a + t / (1.0 - t)) / ((1.0 - t) * (1.0 - t))),
+                |t| f(a + t / (1.0 - t)) / ((1.0 - t) * (1.0 - t)),
                 0.0,
                 1.0,
                 tolerance,
@@ -545,7 +550,7 @@ pub fn gauss_kronrod_any(
         | (false, true) => {
             // x = b - t/(1 - t), t in [0, 1)
             gauss_kronrod(
-                |t| guard(f(b - t / (1.0 - t)) / ((1.0 - t) * (1.0 - t))),
+                |t| f(b - t / (1.0 - t)) / ((1.0 - t) * (1.0 - t)),
                 0.0,
                 1.0,
                 tolerance,
@@ -557,7 +562,7 @@ pub fn gauss_kronrod_any(
             gauss_kronrod(
                 |t| {
                     let d = 1.0 - t * t;
-                    guard(f(t / d) * (1.0 + t * t) / (d * d))
+                    f(t / d) * (1.0 + t * t) / (d * d)
                 },
                 -1.0,
                 1.0,
@@ -632,5 +637,40 @@ mod gauss_kronrod_tests {
     fn exhausted_budget_is_visible_in_the_error() {
         let q = gauss_kronrod(|x| (1.0 / x).sin(), 1e-6, 1.0, 1e-12, 8);
         assert!(q.error > 1e-6, "{q:?}");
+    }
+
+    #[test]
+    fn reversed_finite_interval_retains_adaptivity() {
+        let f = |x: f64| 1.0 / (1e-4 + x * x);
+        let forward = gauss_kronrod(f, -1.0, 1.0, 1e-9, 2_000);
+        let reverse = gauss_kronrod(f, 1.0, -1.0, 1e-9, 2_000);
+        assert!(forward.evaluations > 15);
+        assert_eq!(reverse.value, -forward.value);
+        assert_eq!(reverse.error, forward.error);
+        assert_eq!(reverse.evaluations, forward.evaluations);
+    }
+
+    #[test]
+    fn non_finite_improper_integrand_is_not_silently_discarded() {
+        let q = gauss_kronrod_any(|_| f64::NAN, 0.0, f64::INFINITY, 1e-9, 10);
+        assert!(!q.value.is_finite(), "{q:?}");
+    }
+
+    #[test]
+    fn wide_finite_interval_does_not_overflow_panel_width() {
+        let q = gauss_kronrod(|_| 1e-308, -1e308, 1e308, 1e-12, 10);
+        assert!((q.value - 2.0).abs() < 1e-14, "{q:?}");
+    }
+
+    #[test]
+    fn unsplittable_panel_retains_its_estimate() {
+        let a = 1.0_f64;
+        let b = f64::from_bits(a.to_bits() + 1);
+        let f = |x: f64| if x == a { 1.0 } else { 0.0 };
+        let initial = gauss_kronrod(f, a, b, 0.0, 1);
+        let refined = gauss_kronrod(f, a, b, 0.0, 10);
+        assert_ne!(initial.value, 0.0);
+        assert_eq!(refined.value, initial.value);
+        assert_eq!(refined.error, f64::INFINITY);
     }
 }

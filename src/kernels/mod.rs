@@ -78,6 +78,8 @@ pub mod ode_ext;
 pub mod ode_sdirk;
 /// Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
 pub mod ode_stiff;
+/// Mergeable online multivariate mean and covariance.
+pub mod online_stats;
 /// Unconstrained, global and constrained optimisation and linear programming.
 pub mod optim;
 pub mod optimize;
@@ -95,6 +97,8 @@ pub mod qlinalg;
 pub mod quadratic_sieve;
 /// Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
 pub mod quadrature;
+/// Adaptive integration on finite simplices of arbitrary dimension.
+pub mod simplex_quadrature;
 /// Seeded deterministic random number generation.
 pub mod random;
 /// Real root isolation and refinement for polynomials.

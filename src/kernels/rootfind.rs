@@ -37,6 +37,8 @@ pub enum RootError {
 ///
 /// # Errors
 /// [`RootError::NotBracketed`] if `f(a)` and `f(b)` have the same sign.
+/// [`RootError::Invalid`] if the endpoints, tolerance, or an evaluated
+/// function value are non-finite, or if the tolerance is not positive.
 pub fn brent<F: Fn(f64) -> f64>(
     f: F,
     a: f64,
@@ -44,15 +46,21 @@ pub fn brent<F: Fn(f64) -> f64>(
     tol: f64,
     max_iter: usize,
 ) -> Result<f64, RootError> {
+    if !a.is_finite() || !b.is_finite() || !tol.is_finite() || tol <= 0.0 {
+        return Err(RootError::Invalid);
+    }
     let (mut a, mut b) = (a, b);
     let (mut fa, mut fb) = (f(a), f(b));
+    if !fa.is_finite() || !fb.is_finite() {
+        return Err(RootError::Invalid);
+    }
     if fa == 0.0 {
         return Ok(a);
     }
     if fb == 0.0 {
         return Ok(b);
     }
-    if fa * fb > 0.0 {
+    if fa.is_sign_positive() == fb.is_sign_positive() {
         return Err(RootError::NotBracketed);
     }
     if fa.abs() < fb.abs() {
@@ -73,7 +81,7 @@ pub fn brent<F: Fn(f64) -> f64>(
         } else {
             b - fb * (b - a) / (fb - fa)
         };
-        let lo = (3.0 * a + b) / 4.0;
+        let lo = 0.75 * a + 0.25 * b;
         let (lo, hi) = if lo < b { (lo, b) } else { (b, lo) };
         let cond = !(s > lo && s < hi)
             || (mflag && (s - b).abs() >= (b - c).abs() / 2.0)
@@ -86,11 +94,21 @@ pub fn brent<F: Fn(f64) -> f64>(
         } else {
             mflag = false;
         }
+        if s == a || s == b {
+            // No representable point remains between the bracket endpoints.
+            return Ok(b);
+        }
         let fs = f(s);
+        if !fs.is_finite() {
+            return Err(RootError::Invalid);
+        }
+        if fs == 0.0 {
+            return Ok(s);
+        }
         d = c;
         c = b;
         fc = fb;
-        if fa * fs < 0.0 {
+        if fa.is_sign_positive() != fs.is_sign_positive() {
             b = s;
             fb = fs;
         } else {
@@ -141,12 +159,17 @@ where
     Err(RootError::NoConvergence)
 }
 
-/// Safeguarded Newton: Newton steps are kept inside the bracket `[a, b]`
-/// (bisection is used whenever a step would leave it or fails to shrink
-/// the residual enough).
+/// Safeguarded Newton on a sign-changing bracket `[a, b]`.
+///
+/// Newton steps must lie in the central half of the current bracket;
+/// otherwise bisection guarantees progress. Convergence uses bracket width,
+/// not the Newton step size, which can be tiny far from a root. `tol` is a
+/// relative/absolute width tolerance scaled by `1 + |x|`.
 ///
 /// # Errors
 /// [`RootError::NotBracketed`] / [`RootError::NoConvergence`].
+/// [`RootError::Invalid`] for non-finite inputs, function or derivative values,
+/// or a non-positive tolerance.
 pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     f: F,
     df: D,
@@ -155,27 +178,48 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     tol: f64,
     max_iter: usize,
 ) -> Result<f64, RootError> {
+    if !a.is_finite() || !b.is_finite() || !tol.is_finite() || tol <= 0.0 {
+        return Err(RootError::Invalid);
+    }
     let (mut lo, mut hi) = (a, b);
-    let (flo, fhi) = (f(lo), f(hi));
-    if flo * fhi > 0.0 {
+    let (mut flo, mut fhi) = (f(lo), f(hi));
+    if !flo.is_finite() || !fhi.is_finite() {
+        return Err(RootError::Invalid);
+    }
+    if flo == 0.0 { return Ok(lo); }
+    if fhi == 0.0 { return Ok(hi); }
+    if flo.is_sign_positive() == fhi.is_sign_positive() {
         return Err(RootError::NotBracketed);
     }
     if flo > 0.0 {
         std::mem::swap(&mut lo, &mut hi);
+        std::mem::swap(&mut flo, &mut fhi);
     }
     let mut x = f64::midpoint(lo, hi);
     for _ in 0..max_iter {
         let fx = f(x);
+        if !fx.is_finite() { return Err(RootError::Invalid); }
         if fx == 0.0 {
             return Ok(x);
         }
         if fx < 0.0 {
             lo = x;
+            flo = fx;
         } else {
             hi = x;
+            fhi = fx;
+        }
+        let midpoint = f64::midpoint(lo, hi);
+        if (hi - lo).abs() <= tol * (1.0 + midpoint.abs()) {
+            return Ok(midpoint);
+        }
+        if midpoint == lo || midpoint == hi {
+            // The sign-changing interval has no representable interior point.
+            return Ok(if flo.abs() <= fhi.abs() { lo } else { hi });
         }
         let d = df(x);
-        let mut nx = if d == 0.0 {
+        if !d.is_finite() { return Err(RootError::Invalid); }
+        let nx = if d == 0.0 {
             f64::NAN
         } else {
             x - fx / d
@@ -185,13 +229,9 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
         } else {
             (hi, lo)
         };
-        if !nx.is_finite() || nx <= mn || nx >= mx {
-            nx = f64::midpoint(lo, hi);
-        }
-        if (nx - x).abs() <= tol * (1.0 + x.abs()) {
-            return Ok(nx);
-        }
-        x = nx;
+        let lower = f64::midpoint(mn, midpoint);
+        let upper = f64::midpoint(midpoint, mx);
+        x = if nx.is_finite() && nx > lower && nx < upper { nx } else { midpoint };
     }
     Err(RootError::NoConvergence)
 }
