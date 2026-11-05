@@ -114,6 +114,10 @@ The unit layer supplies dimensions plus exact scales and affine offsets.
   boundary check, not a full affine type (see §13).
 * Dimensionless scaled units (`%`, `ppm`, `rad`, `deg`) keep their scale and an
   `Angle`/`Ratio` kind; `sin(quantity(30, deg))` converts to `sin(pi/6)`.
+  The information units (`bit`, `B`, `KiB`) are dimensionless on purpose and
+  scale by `1`, `8` and `8192` to the bit, so entropy and probability formulas
+  that use them stay dimensionally transparent (§5.3.3 of the Aevia
+  specification).
 * Derived named units (`N`, `Pa`, `J`, ...) are a printing preference: the
   dimension is the same product of bases.
 * User-defined base dimensions are registered per graph before parsing the
@@ -139,7 +143,9 @@ pub enum DimRule {
     Product,                     // sum of exponents
     Quotient,                    // difference of exponents
     Power,                       // exponent argument must be dimensionless
-    Root(u32),                   // exponent divided by n
+    Root(u32),                   // exponent divided by n (argument 0 shorthand)
+    RootOf { degree: u32, index: usize },
+                                 // exponent divided by `degree`; operand `index`
     Dimensionless,               // all arguments dimensionless; result 1
     Inverse,                     // 1 / dim(argument 0)
     Square,                      // dim(argument 0)^2
@@ -212,6 +218,15 @@ A curated table in `graph::dim` supplies rules for the core operator names
   `poles`, `zeros_of`, `singularity` and `branch_cut` are `Container` values:
   their list answers unify with the request instead of conflicting with it.
 * `sqrt`/`cbrt`: `Root(2)`/`Root(3)`, so `sqrt(m^2) = m`.
+* `sde_wiener(seed, m, steps, h)`: `RootOf { degree: 2, index: 3 }` — a
+  Brownian increment over a step of dimension `T` has dimension `sqrt(T)`, and
+  the rooted operand is the fourth argument, not the first. The rule set's
+  other operator, `sde_levy_areas(seed, h, dw, terms)`, is `Same(1)`: the
+  iterated integral of two increments is a step length (`T`), not `sqrt(T)`
+  squared by accident of a `Product` rule. The third `sde` operator,
+  `sde_scheme_info(name)`, is `NonMetric`: its argument is a scheme-name label
+  and its answer a metadata vector, so neither is a quantity a check should
+  unify with anything.
 * `abs`, `floor`, `ceil`, `round`, `re`, `im`, `conj`: `Same(0)`.
 * `sign`: dimensionless.
 * `atan2(y, x)`: arguments must have equal dimensions; result dimensionless.

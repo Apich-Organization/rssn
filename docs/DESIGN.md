@@ -71,12 +71,12 @@ have chosen, and an error instead of a wrong overload.
 
 ### The problem
 
-100% of operators are typed, but only 20 declared + 13 overlay are *semantically*
-precise. The other 1349 are `Derived`, which distinguishes `(Real, …) -> Real`
+100% of operators are typed, but only 7 declared + 25 overlay are *semantically*
+precise. The other 1350 are `Derived`, which distinguishes `(Real, …) -> Real`
 from `(Term, …) -> Term` and nothing else: `det` is `(Term) -> Term` even though
 it is a matrix determinant.
 
-Hand-writing 1349 signatures is not the answer — it would be 1349 judgement calls
+Hand-writing 1350 signatures is not the answer — it would be 1350 judgement calls
 that no test can check, and it would rot the moment an operator changes.
 
 ### Decision
@@ -91,7 +91,15 @@ Three layers, each with a different trust story:
 
 **The overlay is the mechanism for precision, and it is meant to grow.** A host
 that needs `det: Matrix -> Real` gets it from the overlay; the crate ships the
-thirteen that matter most today and the file is designed to be appended to.
+twenty-five that matter most today and the file is designed to be appended to.
+
+The most recent entries show what the mechanism is for beyond naming a matrix
+shape: `sde_wiener` / `sde_levy_areas` are typed with a **dimension type
+parameter**, `(Int, Int, Int, Real[T]) -> Tensor<2, Real[T^(1/2)]>` and
+`(Int, Real[T], Tensor<1, Real>, Int) -> Tensor<1, Real[T]>`, so a generated
+façade states the square-root-of-time dimension the derivation cannot know; and
+`sde_scheme_info` is `String -> Tensor<1, Real>`, the metadata table of the
+stochastic schemes.
 
 §2.1 also gained one rule that raises precision for free: **a `Binder` makes its
 argument a `Symbol`**. That alone fixes every `diff`/`solve`/`sum`/`product`/

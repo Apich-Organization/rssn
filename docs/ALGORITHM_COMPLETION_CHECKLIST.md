@@ -52,14 +52,14 @@ stable must not be used.
 
 | ID | Item | Prio | Where |
 |---|---|---|---|
-| KN-01 | Rader/prime-length FFT, odd-length real packing, threaded transforms | P2/P3 | `transforms.rs` |
+| KN-01 | Odd-length real packing and threading inside a single transform; prime lengths use Rader's transform, and independent transforms have bit-identical threaded entry points (`fft_many_par` / `ifft_many_par`) | P2/P3 | `transforms.rs` |
 | KN-02 | SDIRK DAE/mass-matrix path, banded/sparse Jacobian and factorisation reuse; dense-output order at fixed time | P2 | `ode_sdirk.rs` |
 | KN-03 | Wavelet families beyond db10/sym6/bior4.4; complex/packets/lifting/3-D transforms; multilevel on non-dyadic shapes | P2/P3 | `wavelets.rs` |
 | KN-04 | ILU(k)/threshold dropping/reordering; mesh-independent iteration counts; ILU/IC without pivoting | P2 | `krylov.rs` |
 | KN-05 | SQP second-order check is a dense FD Hessian; no SOCP/SDP/integer constraints; augmented-Lagrangian multipliers asymptotic only | P3 | `optim.rs` |
 | KN-06 | `1F1`/`U` in the turning region `|z| > Re b` (uniform Airy asymptotics); complex corners of `U`; `|ln z| ≥ 4.5` polylog | P2/P3 | `hypergeometric.rs`, `special.rs` |
-| KN-07 | Adaptive rules on simplices/balls; no rigorous enclosure; 2-D oscillatory quadrature is Filon for linear phases with an adaptive Genz–Malik general-phase fallback (no 2-D Levin) | P2/P3 | `quadrature.rs`, `convergence.rs` |
-| KN-08 | Multivariate distributions beyond Dirichlet/Wishart, robust covariance (MCD); Tucker/HOSVD/tensor train; higher-order or C²-monotone splines | P2/P3 | `stats.rs`, `tensor.rs`, `interpolate.rs` |
+| KN-07 | Adaptive rules on balls (planar triangles are done via `integrate_triangle`); no rigorous enclosure; 2-D oscillatory quadrature is Filon for linear phases with an adaptive Genz–Malik general-phase fallback (no 2-D Levin) | P2/P3 | `quadrature.rs`, `convergence.rs` |
+| KN-08 | Multivariate distributions beyond Dirichlet/Wishart, robust covariance (MCD); tensor-train (HOSVD/Tucker is done via `hosvd`); higher-order or C²-monotone splines | P2/P3 | `stats.rs`, `tensor.rs`, `interpolate.rs` |
 | KN-10 | No reverse-mode/Hessian-vector products; third and higher derivatives; interval rules for opaque calls | P2/P3 | `backend/tape.rs` |
 
 ### Rules (`src/rules`)
@@ -78,8 +78,10 @@ stable must not be used.
 
 | ID | Item | Prio | Where |
 |---|---|---|---|
-| CO-01 | E-graph: witness-vs-certificate ball semantics are hardened (rigorous `Ball` ops, `approx_interval`, `EvalCost`, singular-adjacent soundness sampling); remaining: interval rules for `tan`/`atan2`, reverse-mode/Hessian-vector products | P2 | `src/graph/mod.rs`, `src/backend/tape.rs` |
-| DM-01 | Dimension layer: codes exist but are not yet surfaced through the C API; `matfun` homogeneity; affine point typing; container typing; strict-input typing (the per-rewrite scan and complex-plane checks are closed) | P2/P3 | `docs/DIMENSIONS.md` §13 (authoritative), `src/dim`, `src/graph/dim*.rs` |
+| CO-01 | E-graph: witness-vs-certificate ball semantics are hardened (rigorous `Ball` ops, `approx_interval`, `EvalCost`, singular-adjacent soundness sampling); interval rules for `tan`/`atan2` are done (sound but loose across a pole/branch cut); remaining: reverse-mode/Hessian-vector products | P2 | `src/graph/mod.rs`, `src/backend/tape.rs` |
+| CO-02 | Structured answers (`Solutions`) report a multiplicity only for a univariate rational polynomial whose roots are exact numbers, and a condition only for a parameter in a root's denominator; realness and branch conditions of parameters are not reported | P3 | `src/rules/solve/mod.rs`, `src/api/value.rs` |
+| CO-03 | SDE: only the noise is a manifest operator (`sde_wiener`, `sde_levy_areas`); the solver loops stay Rust-only because they take host closures (`&Fn + Sync`, not `FnMut`). Ensemble statistics, host-callback drifts and a `FnMut` adapter are the host's side | P3 | `src/rules/sde.rs`, `src/kernels/sde.rs` |
+| DM-01 | Dimension layer: error codes are surfaced through the C API (`rssn_dimension_count`/`rssn_dimension_code`); remaining: `matfun` homogeneity; affine point typing; container typing; strict-input typing (the per-rewrite scan and complex-plane checks are closed) | P2/P3 | `docs/DIMENSIONS.md` §13 (authoritative), `src/dim`, `src/graph/dim*.rs`, `src/ffi` |
 | IO-01 | Plot coverage beyond SVG contours/streamlines/quiver and PGM/PPM rasters (surface and 3-D views, PNG/JPEG encoder would need a dependency); further symbol coverage | P3 | `src/io` (module header lists the gaps) |
 | FF-01 | C ABI remains JSON+bincode single-request handles (no per-function tensor ABI); session/handle lifetime; headers now regenerated for the bincode entry points | P2 | `src/ffi`, `src/api` |
 
@@ -89,14 +91,58 @@ stable must not be used.
   Radau, DG3D, FMM) have no committed performance baseline. **P2**
 - `rules::ode::linear` / `kovacic` tests take 8–13 minutes; keep them out of
   routine verification filters. **P2**
-- `cargo clippy --lib --tests` still reports 18 pre-existing diagnostics at HEAD
-  under rustc 1.99.1 (toolchain drift in modules this status page does not
-  touch: `kernel/*`, `kernels/{sparse,tensor}`, `rules/poly/{apart,groebner}`,
-  `rules/calculus/tensor`; CI runs clippy with `continue-on-error`). The work
-  of 2026-11-03/04 added none: every diagnostic that appeared on a line added
-  in those rounds was fixed. **P2**
+- `cargo clippy --lib --tests` re-measured on the Round-8 tree under rustc
+  1.99.1: exit 0 and no diagnostics in a forced re-check (the 18 recorded after
+  Round 7 do not reproduce). The crate denies `clippy::all`/`pedantic`/
+  `nursery`, so a diagnostic on a changed line is a hard failure; this round
+  added none (two pedantic errors in its first draft were fixed, not allowed:
+  `collapsible_if` in `root_conditions`, `assert_is_empty` in a test). CI keeps
+  `continue-on-error` because toolchain drift can still surface diagnostics.
+  **P2**
 
 ## Recently completed
+
+**Round 11 — FFT prime-length path and threaded batches (2026-11-05).**
+Manifest-neutral: one row, no operator or hash change.
+
+| Item | Where | Verification / measured evidence |
+|---|---|---|
+| KN-01 (partial) Rader's prime-length transform (exact modular twiddles, `m = next_pow2(2p-3)`, half the Bluestein points for `p = 2^(k-1)+1`), and bit-identical threaded batch transforms (`fft_many_par` / `ifft_many_par`); odd-length real packing and threading inside one transform remain open | `src/kernels/transforms.rs` | `--lib transforms::primes_tests` 4/4 (Rader vs direct DFT for every prime ≤ 257, convolution-size table, accuracy vs Bluestein, dispatch + round trip at 257/1021/4099); `--test kernels -- transforms` all green incl. the new prime and threaded-batch tests; measured accuracy p = 17/257/1021: Rader 2.6e-15 / 3.5e-14 / 1.2e-13 vs Bluestein 2.8e-15 / 3.5e-14 / 1.2e-13 |
+
+**Round 10 — overnight K1 kernel hardening (2026-11-04/05).** Checklist items
+closed overnight, each with implementation, targeted tests and module-header /
+checklist / archive updates. No manifest change unless a row says so.
+
+| Item | Where | Verification / measured evidence |
+|---|---|---|
+| CO-01 interval rules for `tan`/`atan2`: `tan` monotone on a pole-free branch and the whole line through a pole; `atan2` corner-tight off the branch cut, `[-π, π]` across it | `src/backend/tape.rs` | `--lib backend::tape::tests::interval_tan_and_atan2_are_sound_across_poles_and_branches` + `interval_enclosures_are_rigorous` 2/2; the soundness-sampling suite stays green |
+| DM-01 dimension error codes through the C API: `rssn_dimension_count()` / `rssn_dimension_code(index)` expose the stable `DimError::code()` strings of the most recent computation without JSON parsing | `src/ffi/{mod,compute,tests}.rs` | `--lib ffi::` 12 passed (strict conflict `"mismatch"`, advisory findings, clearing on a clean call) |
+| KN-07 adaptive quadrature on a planar triangle: `integrate_triangle` (degree-5 Dunavant panel, embedded degree-2 estimate, four-way bisection, evaluation budget) | `src/kernels/quadrature.rs` | `--lib quadrature::triangle_tests` 4/4 (exact moments through degree 5, general/reversed/degenerate triangles, corner singularity 2/3, budget) |
+| KN-08 HOSVD/Tucker decomposition: `hosvd` + `Hosvd::reconstruct` (orthonormal factors, all-orthogonal core, rank clamping, `A A^T`-eigen fallback for exactly rank-deficient unfoldings) | `src/kernels/tensor.rs` | `--test kernels -- tensor` 14/14 incl. 3 new HOSVD tests |
+| User-facing SDE metadata operator (**manifest change**): `sde_scheme_info(name: String) -> Tensor<1, Real>` returning `strong_order, ito, commutative_only, adaptive, levy_areas` for the eight schemes; dim rule `NonMetric`; overlay signature | `src/rules/sde.rs`, `signatures.overlay.json`, `src/graph/dim.rs` (test) | `--lib rules::sde` 6/6, `--lib graph::dim` 22/22; manifest 1382 ops / 32 rule sets / 82 units / 30 constants, 1568 overloads (7 declared + **25 overlay** + 1350 derived), hash `8d2c3764…654a`; `signature-audit --quiet` exit 0 |
+
+**Round 9 — kernel exactness and SDE exposure (2026-11-04).** Two items: the
+exactness fix landed first because the Aevia round-closing suite was red on one
+assertion (it is manifest-neutral); the SDE manifest exposure then changed the
+manifest as expected.
+
+| Item | Where | Verification / measured evidence |
+|---|---|---|
+| Exact rational endpoints fold: an integral `Number::Rat` crossing the dynamic ABI is normalised to `Int` (as `Number::rat` would), so `cos(0)`, `sin(0)`, `tan(0)`, `exp(0)`, `ln(1)` fire and `limit(sin(t)/t, exact 0)` answers the exact `1` instead of `cos(0/1)` | `src/graph/number.rs` (`Number::normalized`), `src/api/value.rs` (`term_of_value`, module header) | `graph::number` + the new ABI test `an_exact_rational_zero_is_normalised_at_the_abi_boundary` + `rules::calculus` 87 passed / 0 failed; manifest-neutral (hash unchanged by this item) |
+| SDE noise as manifest operators: `sde_wiener(seed, m, steps, h)` (rank-2 Brownian increments, dimension `sqrt(T)` via the new `DimRule::RootOf { degree: 2, index: 3 }`) and `sde_levy_areas(seed, h, dw, terms)` (iterated Ito integrals, `Same(1)`), with overlay signatures carrying a dimension type parameter, `Features.sde`, and the cheap `SdeError`/`SdePath` strengthening; solver loops intentionally not exposed | `src/rules/sde.rs`, `src/graph/{dim,dim_infer}.rs`, `src/kernel/{signature,overload,manifest}.rs`, `signatures.overlay.json`, `src/kernels/sde.rs`, `src/kernels/mod.rs` | `--lib rules::sde` 5/5 (manifest/signature/dimension + seeded reproducibility bit-for-bit + Levy-area identities + request semantics); `--test kernels -- sde` 15/15; `graph::dim` 22, `overload` 18, `signature` 16, `api::` 45, `rules::tests` 1; `signature-audit --quiet` exit 0. Manifest 1381 ops / **32 rule sets** / 82 units / 30 constants, 1567 overloads (7 declared + 24 overlay + 1350 derived), hash `8ed92a22…fb14` |
+
+**Round 8 — units, structured solutions, audit re-verification (2026-11-04).**
+Three items: the seven non-SI units `spec/05-units.md` §5.3.3 declares and the
+registry lacked, the multiplicity/condition facets of `Solutions`, and a
+re-verification of the eighteen items of the Aevia kernel audit against this
+tree. No regression was found. Details, exact scales and the per-item table are
+in the archive (Part 12).
+
+| Item | Where | Verification / measured evidence |
+|---|---|---|
+| `Da`/`u`, `kn`, `mph`, `acre`, `bit`, `B`/`byte`, `KiB` registered with their defining scales | `src/dim/units.rs` | `manifest.units` 75 → **82**; `--lib api::tests::the_manifest_describes_the_common_non_si_units` 1/1 and `--test dimensions -- common_non_si_units_carry_their_defining_scales` 1/1; new manifest hash `1920638b…0c04d9` |
+| `Solutions.multiplicities` from the exact square-free decomposition and `Solutions.conditions` from the parameter denominators the answer states | `src/rules/solve/mod.rs`, `src/api/value.rs`, `src/kernel/result.rs` | 4 `--lib api::value` tests: `(x−1)²(x+2)` → `[1, 2]`, square-free rational → `[1, 1]`, irrational roots unreported, `a*x + b = 0` → `a != 0`; the `solutions` record round-trips |
+| Eighteen audit items re-verified; one matcher test added (unit/point/dimension arms) | `src/kernel/overload.rs` and the audited modules | `--lib api::`, `--lib kernel::`, `--lib overload` green; table in the archive Part 12 |
 
 **Round 7 — deep completion (2026-11-04).** Nine items closing documented
 limitations in the modules that had a limitation record, plus four follow-ups in

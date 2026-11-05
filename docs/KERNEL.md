@@ -93,8 +93,9 @@ Every operator is either typed or explained. The explanation is a
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
 `cargo run --bin signature-audit` reports the split and exits non-zero if any
-operator is neither typed nor explained. Today: 1369 operators, 799 typed
-(58.4%), 570 explained, 0 unexplained.
+operator is neither typed nor explained. Today: 1382 operators, every one typed —
+1568 overloads from 7 declared, 25 overlay and 1350 derived signatures — and 0
+unexplained.
 
 ### 5. Determinism
 
@@ -213,6 +214,30 @@ build can load one, so a host that meets a `kind = "cdylib"` plugin in a build
 without the capability refuses it with a precise diagnostic.
 `tests/cdylib_plugin.rs` builds a plugin in C with `cc` and calls it end to end.
 
+## Build capabilities
+
+`KernelManifest.features` is what a host gates on before generating bindings:
+
+| Field | Meaning |
+|---|---|
+| `dynamic_call`, `parallel_symbolic`, `higher_order` | the dynamic value ABI, the parallel symbolic phase, host callbacks |
+| `jit`, `jit_branch`, `jit_index` | the optional JIT and what it lowers |
+| `exact_units`, `affine_units`, `user_base_dimensions` | the exact unit layer |
+| `structured_results` | `Solutions` / `OdeSolution` records cross the ABI |
+| `sde` | the `sde` rule set ships, so the noise operators below are callable |
+| `plugin_abi`, `plugin_kinds` | the plugin ABI, and how a plugin may reach this build |
+
+`sde` is specifically about *noise*: `sde_wiener(seed, m, steps, h)` returns the
+`steps × m` matrix of seeded Brownian increments (dimension `sqrt(T)` for a step
+of dimension `T`) and `sde_levy_areas(seed, h, dw, terms)` the iterated Ito
+integrals conditioned on given increments. `sde_scheme_info(name)` answers what a
+scheme promises — `list(strong_order, ito, commutative_only, adaptive,
+levy_areas)` for the eight solvers — without running it; the name crosses as a
+string value. The solvers themselves are not in the manifest and never will be:
+they take host closures for `a(t, x)` and `g(t, x)`, which a `Value` cannot
+carry. A host that wants an ensemble keeps its own loop and uses the noise
+operators so that every scheme in the loop sees one path.
+
 ## Which values can enter the graph
 
 `KernelManifest.value_kinds` lists every `Value` variant with
@@ -262,8 +287,11 @@ its exhaustive `list(...)` form; a single root found on the way is reported with
   of a degree is `pi/180`, the offset of `degC` is `27315/100`. A float would
   lose the distinction between `1 in` and `0.0254 m` after a few conversions.
 * The table covers SI, the non-SI units accepted with it, the IAU astronomy
-  units (`au`, `ly`, `pc`, `Rsun`, `Msun`, `Mearth`, `jup`) and the CGS set
-  (`dyn`, `erg`, `Gal`, `P`, `St`, `G`, `Oe`, `Mx`, `Ba`).
+  units (`au`, `ly`, `pc`, `Rsun`, `Msun`, `Mearth`, `jup`), the CGS set
+  (`dyn`, `erg`, `Gal`, `P`, `St`, `G`, `Oe`, `Mx`, `Ba`), and the common
+  non-SI units of the Aevia design standard (`Da`/`u`, `kn`, `mph`, `acre`,
+  and the dimensionless information units `bit`, `B`, `KiB`) — 82 units in
+  total.
 * `KernelManifest.units` carries `aliases`, `prefixable`, `category` and
   `since` as well as the name, dimension and scale, so a host can generate its
   unit table from the manifest alone.

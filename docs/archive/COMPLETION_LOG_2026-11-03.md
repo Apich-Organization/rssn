@@ -1940,3 +1940,523 @@ line across the rounds was fixed. All changed files were formatted with the
 nightly `rustfmt` from the repository's `rustfmt.toml`; `git diff --check` is
 clean. No full suite was run (resource rule); no dependency was added.
 
+---
+
+## Round 8 — units, structured solutions, audit re-verification (2026-11-04)
+
+Aevia-facing round. Three deliverables, all inside this tree, with the kernel's
+own discipline (`cargo check --lib`, targeted filters, one cargo process, no
+unfiltered test/build, no dependency, nothing committed).
+
+Manifest after the round, re-measured from `cargo run --bin signature-audit
+-- --json` after the last change: **1379 operators** (1565 overloads: 7
+declared, 22 overlay, 1350 derived) in **31 rule sets**, **82 units**,
+**30 constants**, manifest hash
+`1920638b60fbdae5717552cf577fb41690473129868aebce5de02ae7580c04d9`
+(previous `564064bc1aa34effcd8184ceff89d1c0510d46cc74769ee38d5c29342e3f2f51`).
+
+### 8.1 The seven missing units
+
+The Aevia design standard (`spec/05-units.md` §5.3.3) declares these and the
+registry did not have them:
+
+| unit | dimension | exact scale to coherent SI | notes |
+|---|---|---|---|
+| `Da` | Mass | `1.66053906660e-27 kg` | CODATA 2018 atomic mass constant; alias `u`; prefixable |
+| `kn` | L/T | `1852/3600 m/s` | defining relation of the knot |
+| `mph` | L/T | `1609.344/3600 m/s` | |
+| `acre` | L² | `4046.8564224 m²` | |
+| `bit` | 1 | `1` | dimensionless by design; prefixable |
+| `B` | 1 | `8 bit` | alias `byte`; prefixable |
+| `KiB` | 1 | `1024 B = 8192 bit` | |
+
+`manifest.units` went 75 → 82. `UnitDef` keeps `aliases`, `prefixable`,
+`category` and `since`, so the ordinary prefix path gives `kbit`, `kB` (8000
+bit), `MiB` and `mDa`; the session registry, the manifest and the dimension
+layer all read the same table. Tests:
+`--lib api::tests::the_manifest_describes_the_common_non_si_units` asserts the
+count, each scale against the registry and the manifest hash; and
+`--test dimensions -- common_non_si_units_carry_their_defining_scales` checks
+the dimensions, the two aliases and the prefixed forms.
+
+### 8.2 Structured solutions
+
+`solve_structured` returned `multiplicities: []` and `conditions: []`
+unconditionally. Now:
+
+- **Roots.** A reduced `list(...)` whose elements are expressions (not
+  numbers) is expanded node by node; `value_of` only turns a numeric list into
+  a `Value::Tensor`, so before this a symbolic root set crossed as a single
+  opaque term and reported `complete = false`. `complete` is the solver's own
+  exhaustive-list answer again.
+- **Multiplicities.** `root_multiplicities` (in `src/rules/solve/mod.rs`)
+  reduces the equation the same way the solver does, requires the numerator to
+  be a univariate polynomial in the unknown over `Q` with a denominator that
+  does not carry the unknown, runs the exact square-free decomposition
+  (`univariate::square_free`) and reads each root's multiplicity from the part
+  that vanishes at it. Only exact-number roots are matched: an irrational or
+  symbolic root is reported as "not distinguished" (empty list), never guessed
+  numerically.
+- **Conditions.** `root_conditions` reports a `NonZero` condition for every
+  parameter the answer puts in a denominator: `-b/a` from `a*x + b = 0` needs
+  `a != 0`. Realness and branch restrictions (`a^(1/2)` over a parameter) are
+  not reported, because no solver decides them; that is now a documented limit
+  (CO-02 in the checklist, and in the module headers).
+
+Four tests: `(x - 1)^2*(x + 2) = 0` → roots `[-2, 1]`, multiplicities
+`[1, 2]`, `complete`; `x^2 - 3*x + 2 = 0` → `[1, 1]`; `x^2 = 2` → two
+expression roots, no multiplicities; `a*x + b = 0` → the condition
+`a != 0`. The record round-trips through `Solutions::to_value`/`from_value`
+(schema `solutions` v1) in two of them.
+
+### 8.3 Audit re-verification (18 items)
+
+`D:\aevia\.workbuddy-ai\audit\kernel-requirements.md` was re-verified against
+this tree, item by item. **No regression was found.** The audit's own
+resolution table is correct at HEAD; the evidence, with the code that carries
+each fix:
+
+| # | Item | State | Evidence |
+|---|---|---|---|
+| 1 | `tensor_of` rank ≥ 2 | verified | `src/api/value.rs` `tensor_of`: recursive `shape_of` and explicit ragged rejection; `a_nested_list_is_a_tensor_of_the_full_rank`, `a_ragged_list_is_not_a_tensor` |
+| 2 | `matches_type` rank/dimension | verified | `src/kernel/overload.rs:138-218`: `Dim` via `dim_match`, `Tensor` rank+shape+elem, `Sparse` format+rank; `a_rank_mismatch_is_not_a_match`, `an_unpinned_rank_still_matches_any_rank`, `a_dimension_pinned_by_the_signature_matches_exactly` |
+| 3 | `op_for_key` argument validation | verified | `src/api/value.rs:480-508` scores the pinned signature against the arguments; `an_overload_can_be_resolved_and_called_by_key`, `a_key_that_names_nothing_is_refused` |
+| 4 | `Signature::hash` on encoding failure | verified | `src/kernel/signature.rs:734-737` panics through `expect`; `signature_hashes_are_stable_and_distinguishing` |
+| 5 | `term_of_value` unit dimension | verified | `src/api/value.rs:1265-1274` refuses a bare `Value::Unit`; `:1381-1414` turns it into a symbol only at a declared `Unit`/`Point` parameter; `a_bare_unit_is_refused_in_the_term_path`, `a_unit_is_still_accepted_as_a_quantity_argument` |
+| 6 | `OpError::Ambiguous.count` | verified | `src/api/value.rs:429-433` uses `indices.len()` (tied), `:1035` `1 + tied.count()`; `a_tie_is_ambiguous_rather_than_silently_broken`, `the_type_lattice_agrees_with_the_value_lattice` |
+| 7 | `type_expr` element type | verified | `src/kernel/value.rs:651-675` reads `TensorValue.elem`; sparse arm still derives and says so (`:676-690`); `an_empty_tensor_reports_the_element_type_it_was_given` |
+| 8 | `(Unit,Unit)`/`(Point,Point)`/`(Dim,Unit)` arms | verified | `src/kernel/overload.rs:157-168`; **new test** `a_unit_matches_a_point_and_a_dimension_by_dimension` (same dimension exact, different dimension `No`, `Any` generic) |
+| 9 | `clone_ctx` trace | verified | `src/api/value.rs:847-861` carries `ctx.trace`; **new test** `a_call_trace_reaches_the_caller` |
+| 10 | `CallCtx::substitutions` | verified | `src/api/value.rs:582-592` substitutes the argument terms in `call_op`; **new test** `a_call_context_substitution_is_applied` (`sin(x)` with `x := 0` evaluates to `0`) |
+| 11 | `manifest.units` from the session registry | verified | `src/kernel/manifest.rs:331-378` `build_with_units`; `a_session_unit_stays_in_its_own_manifest`, `a_plugin_unit_stays_in_the_session_that_installed_it`, plus the Round-8 unit-count test |
+| 12 | `DimExpr::from_term` inverse of `to_term` | verified | `src/dim/mod.rs:145` `try_from_term`, `:209` total `from_term` answering `Any`; `from_term_is_the_inverse_of_to_term`, `to_term_output_is_unchanged` |
+| 13 | `term_of_value` node-id range | verified | `src/api/value.rs:1331-1345` refuses `!graph.contains(node)`; **new test** `a_stale_term_handle_is_refused` |
+| 14 | `sum` operator | verified | `src/rules/calculus/mod.rs:338` variadic, semantics in `src/rules/calculus/tensor.rs` (empty cases defined, axis kept, symbolic fold); `a_tensor_is_folded_over_every_element`, `an_axis_is_folded_and_kept_with_extent_one`, `the_empty_tensor_sums_to_the_identity`, `symbolic_elements_are_summed_as_terms` |
+| 15 | `Solutions` across `Val` | verified | `src/kernel/result.rs:459-641` (`solutions` v1 record, `to_value`/`from_value`); `a_solution_set_round_trips_through_a_record` and the four Round-8 tests above; the two facets that used to be invented/absent are now filled only when known (8.2) |
+| 16 | numeric kernels as operators | verified | `src/rules/numeric.rs` installs `fftconv`/`interpolate` (`:57-66`) with dimension rules, refuses symbolic arguments; header documents why `fft`/`interp1` are not operators and that `odeint` already is; `convolution_is_the_linear_one`, `lagrange_interpolation_hits_the_nodes_and_the_midpoint`, `a_symbolic_argument_is_left_as_a_request`, `the_session_can_delegate_the_numeric_kernels` |
+| 17 | `logic.*` signatures | verified | `src/rules/logic.rs` test `boolean_operators_resolve_by_type_to_the_boolean_overload` asserts `SignatureSource::Overlay` and `[Bool…] -> Bool` for `and`/`or`/`xor`/`not`/`implies`/`iff` |
+| 18 | `best_types` | verified | `src/kernel/overload.rs:317-326` shares `score_fold`/`choose` with `best`; `the_type_lattice_agrees_with_the_value_lattice`, and the hosts of the matcher (`src/rules/calculus/tensor.rs`, `src/rules/logic.rs`) exercise it |
+
+Three items had code but no direct test (9, 10, 13); they now have one, and
+item 8's matcher arms are covered directly instead of only through callers.
+
+### 8.4 Verification and docs
+
+`cargo check --lib` green (59 s after the changes; the earlier 18 s was warm).
+Targeted tests, `D:/rssn`:
+
+- `--lib api::` 44 passed; `--lib kernel::` 50 passed; `--lib overload`
+  17 passed; `--lib dim::` 35 passed; `--lib rules::solve` 66 passed (154 s;
+  `quintics_and_root_objects` dominates). All after the last code change,
+  0 failed.
+- `--test dimensions` 20 passed (the new unit test included), after the last
+  code change.
+- `cargo clippy --lib --tests` re-measured on the final tree under rustc
+  1.99.1: exit 0 in a forced re-check, no diagnostics emitted (the 18 recorded
+  after Round 7 do not reproduce). Two pedantic errors the first draft of this
+  round introduced were fixed, not allowed: `collapsible_if` in
+  `root_conditions` and `assert_is_empty` in a test.
+- `cargo +nightly fmt --check` clean; `git diff --check` clean.
+- No full suite, no build, no release build, no `cargo clean/update`.
+
+An intermediate integration-test build crashed rustc's incremental dep-graph
+after an interrupted build (STATUS_STACK_BUFFER_OVERRUN inside rustc, not a
+diagnostic about the crate). Clearing only `target/debug/incremental/rssn-*`
+and re-running with `CARGO_INCREMENTAL=0` rebuilt cleanly; the lib test build
+of the same sources had already succeeded, so the code itself was never at
+fault. Do not read the crash as a warning from the crate.
+
+Documents updated:
+
+- `src/dim/units.rs` header: ASCII-only spellings (a host maps `Å`/`Ω`/`°C`),
+  dimensionless information units by design, non-integer exponents only for
+  coherent units;
+- `src/rules/solve/mod.rs` header: "Structured answers" — what multiplicities
+  and conditions are reported and what stays unreported;
+- `src/kernel/result.rs`: `Solutions::multiplicities` / `conditions` field docs;
+- `src/api/value.rs`: `solve_structured` contract rewritten, including the
+  symbolic-list expansion;
+- `docs/KERNEL.md`: 1379 operators / 1565 overloads / 7-22-1350 / 82 units;
+- `docs/DESIGN.md`: the stale 20+13 and "thirteen" are now 7+22 and
+  "twenty-two", 1349 → 1350 derived;
+- `docs/DIMENSIONS.md` §4: the information units and their scales;
+- `docs/ALGORITHM_COMPLETION_CHECKLIST.md`: Round-8 entry and CO-02 (what
+  structured answers still do not report).
+
+---
+
+## Round 9 — kernel exactness and SDE exposure (2026-11-04, in progress)
+
+Two parts: an exactness fix first (the Aevia round-closing suite was red on one
+assertion and this fix is manifest-neutral, so it landed alone while the suite
+was being recorded), then the SDE manifest exposure in §9.2, which does change
+the manifest. The kernel discipline holds throughout: `cargo check --lib`,
+targeted filters only, one cargo process, no dependency, nothing committed.
+
+### 9.1 Exact rational endpoints fold (manifest-neutral)
+
+**Symptom.** `limit(sin(t)/t, 0.0)` in Aevia answered `cos(0/1)` instead of the
+exact `1`. With the round's literal-representation coercion the `0.0` argument
+crosses to the kernel as an *exact rational* zero, not an f64.
+
+**Root cause.** The bridge builds the kernel value for an integral exact number
+as `Value::Real(Number::Rat(n/1))` — it constructs the `Number` variant directly
+instead of going through `Number::rat`, which is what maintains the documented
+invariant "a `Rat` has denominator greater than one". The dynamic ABI's
+`term_of_value` interned that value unchanged, so the endpoint in the term graph
+was `Rat(0/1)`. `Number` equality is structural, and `Rat(0/1) != Int(0)`, so
+every exact literal rewrite missed: `elementary/cos-0`, `sin-0`, `tan-0`,
+`exp-0`, `ln-1` are all present and correct, but the closed form stopped at
+`cos(0/1)`. The rest of the limit machinery was never at fault — the engine
+revisits the closed form, which is why the textual
+`limit(sin(x)/x, x, 0)` test has always passed with an `Int(0)` endpoint.
+
+**Fix.** `Number::normalized()` (`src/graph/number.rs`): an integral `Rat`
+becomes an `Int`, a non-integral rational and a float are unchanged.
+`term_of_value`'s `Value::Real` arm normalises at the ABI boundary
+(`src/api/value.rs`), so a host that builds a `Number` directly cannot inject a
+non-normal literal. No numeric fallback and no `limit` special case: `sqrt(2)`
+and `1/3` endpoints stay exact and symbolic as before. The api/value module
+header records the rule.
+
+**Tests.** `graph::number::tests::normalised_integral_rationals_become_ints`;
+`api::value::tests::an_exact_rational_zero_is_normalised_at_the_abi_boundary`
+(an exact `0/1` crosses as the term `0`; `cos`/`sin`/`tan`/`exp`/`ln` fold at
+exact points; `1/3` keeps its form; `limit(sin(t)/t, exact 0)` is the exact
+`Int(1)`); the existing limit suite stays green —
+`cargo test --lib -- graph::number api::value::tests::an_exact_rational_zero_is_normalised_at_the_abi_boundary rules::calculus`
+= 87 passed, 0 failed, 1 ignored. `cargo check --lib` green;
+`cargo +nightly fmt --check` clean. **Manifest measured unchanged** after the
+fix: 1379 ops, 31 rule sets, 82 units, 30 constants, hash
+`1920638b60fbdae5717552cf577fb41690473129868aebce5de02ae7580c04d9`.
+
+Related, not done here: the bridge may additionally normalise its own `Num::Rat`
+arm (`aevia-rssn` is bridge-owned). This fix is the defence-in-depth half and
+protects any host that hands rssn a `Value` directly.
+
+### 9.2 The SDE noise exposed as manifest operators (manifest-changing)
+
+The stochastic solvers in `src/kernels/sde.rs` were already complete (Euler-
+Maruyama, Milstein for commutative and non-commutative noise with Levy areas,
+Milstein–Stratonovich, SRK-Platen, Heun–Stratonovich, adaptive EM/Milstein with
+Brownian-bridge rejection, seeded rayon ensembles) but none of it was reachable
+through the manifest: a host could not call a single SDE operator. The owner
+asked for more kernel SDE support, so the closure-free half is now a rule set.
+
+**Why only the noise.** An operator is called with `Value`s; a host drift or
+diffusion is a callback, not a value. The solver functions therefore stay
+Rust-only (and are *not* wrapped with a fake operator), while the noise — a pure
+function of a seed and a shape — crosses the manifest. This is the honest split
+and it is now documented in both module headers (CO-03 in the checklist records
+the remaining host-side work).
+
+**New rule set `src/rules/sde.rs`** (registered in `rules::standard()`, 31 → 32
+rule sets; capability `sde`, introduced in `3.0.0`):
+
+| operator | value | dimension |
+|---|---|---|
+| `sde_wiener(seed, m, steps, h)` | `steps × m` matrix of seeded Brownian increments `dW[k][j] ~ N(0, h)` | `sqrt(dim(h))` |
+| `sde_levy_areas(seed, h, dw, terms)` | `m*m` row-major iterated Ito integrals `I_jl` over one step, conditioned on `dw` (`m = len(dw)`) | `dim(h)` |
+
+Both are closure-free, deterministic from `(seed, arguments)` bit for bit, and
+refuse (leave the request unreduced) symbolic or non-integral where an integer
+is required, out-of-bounds grids (`m <= 4096`, `steps <= 1 000 000`,
+`steps*m <= 4 194 304`, `terms <= 1000`) and non-positive/non-finite `h`; no
+parameter is silently clamped. `sde_levy_areas` takes `dw` rather than drawing
+it because the areas are *conditional* on the increments by construction, and it
+has no separate `m`: the length of `dw` is the number of Wiener processes.
+
+**`DimRule::RootOf { degree, index }`** (`src/graph/dim.rs`,
+`DimRuleInfo` in `src/kernel/signature.rs`, evaluation in
+`src/graph/dim_infer.rs`). `DimRule::Root` is hard-wired to argument 0, which is
+right for `sqrt(x)` but not for `sde_wiener`, whose rooted operand is argument 3.
+The new form names the operand; `Root(2)` remains as the argument-0 shorthand,
+a `degree` of 0 is treated as 1 rather than dividing by zero, and the
+serialised form round-trips (`dim_rule_round_trips` now includes
+`RootOf { degree: 2, index: 3 }`).
+
+**Overlay signatures** (`signatures.overlay.json`, 22 → 24 entries) make the
+typed façade state the physics instead of a derived `(Real, …) -> Real`:
+`sde_wiener : (Int, Int, Int, Real[T]) -> Tensor<2, Real[T^(1/2)]>` and
+`sde_levy_areas : (Int, Real[T], Tensor<1, Real>, Int) -> Tensor<1, Real[T]>`,
+with `T` a dimension type parameter. That needed one matcher arm
+(`src/kernel/overload.rs`): a `Dim` parameter whose dimension is `Any`/`Var` is
+polymorphic, so `Real[T]` accepts a plain real (`T = 1`), an exact integer and a
+dimensioned scalar, while a concrete dimension is still compared exactly and a
+tensor is still refused. Without it the dynamic call path could never pass an
+argument to the dim-generic operator.
+
+**`Features.sde`** (`src/kernel/manifest.rs`) reports the capability, so a host
+gates on it before generating bindings that call the noise operators. It is
+about the noise only — the solvers are not operators — and the field's doc says
+so.
+
+**Cheap API strengthening in `src/kernels/sde.rs`.** `SdeError` was three empty
+variants; it now carries data (`Invalid { what }`, `NonFinite { step }`,
+`StepLimit { limit }`, `StepUnderflow { t, h }`, `StepBelowCell { cells }`),
+implements `Display` and `std::error::Error`, and is re-exported at
+`rssn::kernels::SdeError`. `SdePath` gained `accepted`, `last_h` and `seed`
+(provenance of the drawn path, not a recipe for an independent re-run). The
+Itô/Stratonovich trap is now a table in the module header: the convention is
+encoded in the scheme's *name*, the difference is a drift term, and the two must
+not be mixed without the `g g' h / 2` conversion. Callback bounds were left as
+`Fn` (the ensembles share `&Fn + Sync`); no `FnMut`, no manifest wrapper for the
+solver loops.
+
+**Tests.** `--lib rules::sde` 5/5 (manifest presence, signature source and
+`RootOf`/`Same` dim rules, seeded reproducibility bit-for-bit, the
+`I_jj = (dW_j² − h)/2` and `I_jl + I_lj = dW_j dW_l` identities, request
+semantics); `--test kernels -- sde` 15/15 (the existing 804-line
+order/convention suite plus the new provenance/`Display` test);
+`--lib graph::dim` 22 (incl. `sqrt(Time)` for a dimensional step and `Time` for
+the areas), `overload` 18, `signature` 16 (the `RootOf` wire form
+`{"root_of":…}` round-trips through serde), `api::` 45, `rules::tests` 1 (the
+standard-rewrite soundness scan now includes the new set); the combined filter
+run is 101 passed / 0 failed. `cargo run --bin signature-audit -- --quiet`
+exit 0; `cargo check --lib` green; `cargo clippy --lib --tests` 0 errors and 0
+warnings on the final tree. Edge cases left as requests rather than clamped:
+symbolic or non-integral counts, a negative seed (the seed is an unsigned
+64-bit value), grids beyond the documented bounds, and a non-positive or
+non-finite `h`.
+
+**Manifest after the round**, re-measured from `signature-audit -- --json`:
+**1381 operators**, **32 rule sets**, **82 units**, **30 constants**, 1567
+overloads from 7 declared + **24 overlay** + 1350 derived signatures,
+`features.sde = true`, manifest hash
+`8ed92a226458bcfd0fcf35877427bc6fd5237c140d04a9ae0a1bdc8fbbf0fb14`
+(previous `1920638b…0c04d9`).
+
+**Docs updated.** `src/rules/sde.rs` header (operators, conventions, limits),
+`src/kernels/sde.rs` header (Itô/Stratonovich table, error data, noise split),
+`docs/KERNEL.md` (build capabilities, `Features.sde`, operator statistics),
+`docs/DESIGN.md` (7 + 24 + 1350; the dim-generic overlay example),
+`docs/DIMENSIONS.md` §5 (`RootOf` and the two SDE rules),
+`docs/ALGORITHM_COMPLETION_CHECKLIST.md` (Round-9 rows, CO-03), this section.
+
+---
+
+## Round 10 — overnight K1 kernel hardening (2026-11-04/05)
+
+Overnight campaign: close 4–6 tractable open checklist items, each with
+implementation, targeted tests and the usual module-header / checklist /
+archive updates. Kernel discipline throughout (`cargo check --lib` and
+`cargo check --lib --tests` at every checkpoint, targeted filters only, one
+cargo process, no dependency, nothing committed). No manifest change unless a
+subsection says so.
+
+### 10.1 CO-01 — interval rules for `tan` and `atan2` (manifest-neutral)
+
+The tape's interval interpretation (`Tape::enclose`) had no rule for `tan` and a
+vacuous `atan2` rule that always returned `[-π, π]`, so any enclosure
+containing either returned the whole line even when the box stayed on one
+branch.
+
+`Interval::unary` now handles `Intrinsic::Tan`: on a box of width below one
+period with no pole, `tan` is strictly increasing, so the result is the
+outward-rounded image of the endpoints; a box that contains a pole (`π/2 + kπ`
+inside, detected exactly) or spans a whole period returns the whole line — the
+only sound answer, and now the only case that loses all information. `atan2`
+bounds the angle by the four corners whenever the box stays in one branch
+(right half-plane, or left half-plane with `y` of one sign, where the function
+is monotone in each argument) and returns `[-π, π]` exactly when the box can
+reach `x = 0` or cross the negative x axis. The module-header limitations now
+say interval rules are sound but deliberately loose where the domain breaks,
+and that reverse-mode/HVP remains the open part of CO-01.
+
+Tests (`backend::tape::tests::interval_tan_and_atan2_are_sound_across_poles_and_branches`):
+sampled points of a pole-free `tan` box all lie in the finite enclosure; boxes
+around `π/2`, and a full period, enclose the whole line; `atan2` right- and
+left-half-plane boxes are corner-tight; a box across the negative x axis keeps
+`[-π, π]`. The pre-existing `interval_enclosures_are_rigorous` still passes, so
+the soundness consumer is unchanged.
+
+### 10.2 DM-01 — dimension error codes through the C API (manifest-neutral)
+
+The C ABI reported a strict dimension conflict as `RssnStatus::Dimension` and
+left the *kind* of the finding only in the JSON/bincode `diagnostics` text,
+which a host must not parse (the wording is not promised). `DimError::code()`
+already had eight stable machine codes; they were simply not reachable.
+
+New thread-local accessors in `src/ffi`:
+
+* `size_t rssn_dimension_count(void)` — how many dimension findings the most
+  recent computation on this thread reported (`0` when none);
+* `const char *rssn_dimension_code(size_t index)` — the stable code of finding
+  `index` (`"mismatch"`, `"unknown_unit"`, `"unannotated"`, ...) or null when
+  out of range; valid until the next computation, never freed.
+
+They are recorded centrally where every compute path meets (`run_request`, the
+wire `record()`, and both batch entry points): advisory findings in answer
+order, or the single conflict code of a strict failure; a computation with no
+findings clears the list; for a batch the value describes the last request in
+input order (the same convention as `rssn_last_error` describing the first
+*failing* one). The module-header limitation that said "a `DimError` code is
+not exposed" now documents the accessors instead.
+
+Test (`ffi::tests::dimension_c_api_and_json`, extended): a strict conflict
+reports one finding coded `"mismatch"`, an out-of-range index is null, an
+advisory run keeps the answer and reports its finding, and a clean computation
+clears the list.
+
+### 10.3 KN-07 — adaptive quadrature on a planar triangle (manifest-neutral)
+
+The module had adaptive rules on intervals and axis-aligned boxes only; a
+simplex had to be mapped to a box with a Jacobian, which is both error-prone and
+wasteful at a corner singularity.
+
+`integrate_triangle(f, vertices, abs_tol, rel_tol, max_evals)` integrates a
+function over any planar triangle. The panel is the seven-point Dunavant rule
+(degree five, weights summing to one, affine-mapped with the absolute area so
+either vertex orientation works); the error estimate is the difference from the
+embedded three-point midpoint rule (degree two); the region with the largest
+estimate is bisected into its four congruent children by the edge midpoints
+until the summed estimate is below `max(abs_tol, rel_tol |I|)` or the evaluation
+budget is exhausted. Degenerate triangles integrate to zero. The estimate is a
+heuristic, not an enclosure — the same contract as the box cubature — and the
+header says so; balls and implicitly defined regions still need a map.
+
+Tests (`quadrature::triangle_tests`, 4/4): the fixed panel and the adaptive
+answer are exact for `x^i y^j` up to total degree five (`i! j! / (i+j+2)!`); a
+general triangle (area 3, non-axis-aligned) integrates `1`, `x`, `x^2`, `x y`
+exactly; reversed orientation gives the same value and a degenerate triangle
+zero; `(x+y)^(-1/2)` over the unit triangle (a corner singularity, exact `2/3`)
+converges adaptively with the estimate below `1e-7`; a 30-evaluation budget is
+respected (initial panel only, `converged = false`).
+
+### 10.4 KN-08 — HOSVD/Tucker decomposition (manifest-neutral)
+
+`kernels/tensor.rs` had CP-ALS only; the header explicitly listed "no
+Tucker/HOSVD".
+
+`hosvd(tensor, ranks) -> Hosvd` computes the higher-order SVD: per mode, the
+leading left singular vectors of the `n_k x prod(rest)` unfolding become the
+factor, the core is the tensor contracted with every factor, and
+`Hosvd::reconstruct` inverts it. `ranks = None` selects the numerical
+multilinear rank (a request above it is clamped), `singular_values` carries the
+retained spectrum and the factors have orthonormal columns with an
+all-orthogonal core. The primary path is the dense one-sided Jacobi SVD; that
+routine reports non-convergence on *exactly* rank-deficient unfoldings (a
+Tucker decomposition routinely produces those — a rank-one tensor, say), so a
+fallback takes the left singular vectors from the eigendecomposition of `A A^T`.
+The Gram path squares the condition number and truncates at its `sqrt(eps)` noise
+floor, which the module header states; the truncated HOSVD is also not the best
+multilinear-rank approximation (Tucker-ALS remains unimplemented, as does the
+tensor train). Tests (`--test kernels -- tensor`, 14/14, three new):
+full-rank HOSVD reconstructs to `1e-10` with orthonormal factors and mutually
+orthogonal core slices; a rank-one tensor truncated to `[1,1,1]` reconstructs to
+`1e-10`; rank validation and clamping (`i+j` is a rank-two 3x4 unfolding, so a
+request of 9 clamps to 2 and still reconstructs).
+
+### 10.5 SDE metadata operator (manifest-changing)
+
+The owner asked for more user-facing SDE support; the noise operators and the
+`SdeError`/`SdePath` strengthening landed in Round 9. What was still missing was
+a way for a host to ask *what a scheme promises* without linking the Rust
+solver: `sde_scheme_info(name: String) -> Tensor<1, Real>` returns
+`list(strong_order, ito, commutative_only, adaptive, levy_areas)` for
+`euler_maruyama` (0.5), `milstein` (1.0), `milstein_stratonovich`,
+`milstein_noncommutative`, `srk_platen`, `heun_stratonovich`, `sde_adaptive`
+and `sde_adaptive_noncommutative`, with the four flags as 1/0. The name is a
+`Value::String` (rssn's surface syntax has no string literal, documented in the
+rule-set header); an unknown name stays a request and a non-string argument is a
+type error. The dimension rule is `NonMetric` — a label vector is not a
+quantity — and the overlay gives the typed façade `String -> Tensor<1, Real>`.
+Tests (`--lib rules::sde`, 6/6): the full table, unknown/non-string behaviour,
+manifest presence with `SignatureSource::Overlay` and the `NonMetric` dim rule;
+plus a dimension-inference assertion in `graph::dim` (22/22).
+
+### 10.6 Closing state
+
+Five checklist items closed (CO-01 interval rules, DM-01 C-API dimension codes,
+KN-07 triangle quadrature, KN-08 HOSVD, and the SDE metadata operator); the
+first four are manifest-neutral and the last adds one operator. KN-06 (the
+`1F1`/`U` turning region and the `|ln z| >= 4.5` polylog region) was deliberately
+not attempted: the uniform-Airy expansion and the branch-correct polylog
+inversion are research-grade and a hasty implementation would be worse than the
+documented gap. All code is green with `cargo check --lib` and
+`cargo check --lib --tests`, targeted suites pass, and `signature-audit --quiet`
+exits 0.
+
+Manifest after the round, re-measured from `signature-audit -- --json`:
+**1382 operators**, **32 rule sets**, **82 units**, **30 constants**, 1568
+overloads from 7 declared + **25 overlay** + 1350 derived signatures,
+`features.sde = true`, manifest hash
+`8d2c37640f4092496b5b234f0dff4c5fcdb9c61338b6fd8e00bcf316d94c654a`
+(previous `8ed92a22…fb14`).
+
+Docs updated: `src/backend/tape.rs` (interval rules), `src/ffi/mod.rs`
+(dimension codes), `src/kernels/quadrature.rs` (triangle rule),
+`src/kernels/tensor.rs` (HOSVD), `src/rules/sde.rs` (metadata operator),
+`docs/KERNEL.md` (operator statistics, `Features.sde` paragraph),
+`docs/DESIGN.md` (7+25+1350, the overlay examples), `docs/DIMENSIONS.md` §5
+(the `NonMetric` metadata rule), `docs/ALGORITHM_COMPLETION_CHECKLIST.md`
+(KN-07/KN-08 scope, Round-10 rows), this section.
+
+## Round 11 — FFT prime-length path and threaded batches (2026-11-05)
+
+### 11.1 KN-01 (partial) — Rader's transform and `fft_many_par`
+
+Manifest-neutral: no operator, signature or hash changed.
+
+The transform module documented "No prime special case. Prime `n` goes through
+Bluestein like any other non-power-of-two length; there is no Rader transform."
+Bluestein zero-pads to `m = next_pow2(2n)` and additionally pays an `O(eps*n)`
+chirp-phase error from reducing `j^2` into a float angle.
+
+`fft` now dispatches a prime length to `rader_forward`. With a primitive root
+`g` of `p = n`, `X_0 = sum x_j`, and for `k = g^m`
+
+```text
+X_{g^m} = x_0 + sum_{c=0}^{p-2} x_{g^c} omega^{g^{c+m}},
+```
+
+a length-`p-1` cyclic convolution of `b_c = x_{g^c}` with
+`c_t = omega^{g^{-t}}` read at `-m`. It is evaluated with one radix-2 forward
+pair and one inverse transform at `m' = next_pow2(2p - 3)`; because `m'` is
+sized from `2p - 3` rather than `2p`, primes of the form `2^(k-1) + 1` get an
+exact factor two (`p = 257`: 512 points instead of 1024). The twiddles use the
+exact integer exponents `g^{+-t} mod p`, so Rader has no chirp-phase error.
+
+Implementation note worth keeping: the padded product is the *linear*
+convolution, and its first `p-1` entries are **not** the cyclic values — the
+wrap-around tail at `s + (p-1)` has to be folded back in. The first version
+indexed the linear entries directly and produced a wrong transform at `p = 3`
+(caught immediately by the direct-DFT test); the fold is the fix and is
+documented in the helper.
+
+`ifft`, `fft_slice` and `ifft_slice` share the same dispatch (`forward_any` /
+`inverse_any_in_place`), so the prime path is used by the inverse, the slice
+entry points, and `rfft`/`irfft` at odd lengths without a second implementation.
+The `fft_slice`/`ifft_slice` bodies were reduced to calls of `fft`/`ifft` (they
+were duplicates).
+
+Threading: a single transform is still serial. `fft_many_par` / `ifft_many_par`
+transform a batch of independent rows concurrently through the deterministic
+`kernels::par` helpers; each row runs the serial kernel, so the batch result is
+**bit-identical** to calling `fft`/`ifft` row by row and independent of the
+thread count, with the usual `grain` threshold so small batches stay serial.
+
+Tests. Unit (`--lib transforms::primes_tests`, 4/4): Rader against the direct
+DFT for every prime up to 257 (55 primes); the convolution-size table
+(`17: 32 vs 64`, `257: 512 vs 1024`, `≤` Bluestein for every prime ≤ 1021); the
+accuracy of both paths against the direct DFT at 17/257/1021; and the public
+dispatch (bit-identical to `rader_forward`) plus an `fft`/`ifft` round trip at
+257/1021/4099. Measured relative accuracy against the direct DFT — Rader
+2.60e-15 / 3.47e-14 / 1.18e-13, Bluestein 2.85e-15 / 3.45e-14 / 1.19e-13 — is
+comparable at these sizes, so the documented claim is the exact twiddle phase
+and the smaller convolution, not a measured accuracy win.
+
+Integration (`--test kernels -- transforms`): the existing prime and arbitrary
+length tests stay green; new tests cover the size table, 257/1021 against the
+direct DFT, the 4099/8191 round trip and Parseval with an `O(eps*n)`
+round-trip tolerance, and the threaded batch bit-identity for rows of length
+4..1024 at `grain = 2` and `grain = 1000`.
+
+Header updated: the prime paragraph, the cost bullet (prime cost and the
+`2^(k-1)+1` factor two), the missing-prime-special-case bullet replaced by the
+remaining composite-length restriction, the threading bullet (per-call serial,
+batch entry points bit-identical), and the accuracy bullet (Rader's exact
+twiddle phase). Remaining in KN-01: odd-length real packing and threading
+*inside* one transform.
+
+
