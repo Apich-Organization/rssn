@@ -113,6 +113,23 @@ impl Number {
         }
     }
 
+    /// The number in normal form: an integral `Rat` becomes an `Int`.
+    ///
+    /// [`Number::rat`] only produces this form and the rest of the crate
+    /// relies on it: literal rewrites such as `cos(0) => 1` match
+    /// structurally, so a `Rat(0/1)` that entered from outside — a host
+    /// building a [`Value`](crate::kernel::value::Value) directly instead of
+    /// going through [`Number::rat`] — would silently fail to fold. The
+    /// dynamic-ABI boundary normalises here; a non-integral rational and a
+    /// float are unchanged.
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        match self {
+            | Self::Rat(rational) if rational.is_integer() => Self::Int(rational.to_integer()),
+            | other => other.clone(),
+        }
+    }
+
     /// Builds the exact fraction `n / d`. Returns `None` when `d == 0`.
     #[must_use]
     pub fn fraction(
@@ -389,6 +406,25 @@ mod tests {
             Number::from(4.0).pow(&Number::from(0.5)),
             Some(Number::from(2.0))
         );
+    }
+
+    #[test]
+    fn normalised_integral_rationals_become_ints() {
+        // `Number::rat` never produces this form; a host can, because the enum
+        // variant is public (the Aevia bridge sends an integral exact value as
+        // `Rat(n/1)`).
+        let non_normal = Number::Rat(BigRational::new(BigInt::from(0), BigInt::from(1)));
+        assert!(non_normal.is_zero(), "the value is still zero");
+        assert_eq!(non_normal.normalized(), Number::from(0));
+        assert!(non_normal.normalized().is_integer());
+        let one = Number::Rat(BigRational::new(BigInt::from(1), BigInt::from(1)));
+        assert_eq!(one.normalized(), Number::from(1));
+        // Everything already in normal form is untouched.
+        let third = Number::fraction(1, 3).unwrap_or_else(|| Number::from(0));
+        assert_eq!(third.normalized(), third);
+        assert!(!third.normalized().is_integer());
+        assert_eq!(Number::from(0.5).normalized(), Number::from(0.5));
+        assert!(!Number::from(0.5).normalized().is_exact());
     }
 
     #[test]

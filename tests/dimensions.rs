@@ -939,6 +939,72 @@ fn astronomy_and_cgs_units_carry_their_exact_si_scales() {
     assert!((ratio - 1000.0).abs() < 1e-9, "{ratio}");
 }
 
+/// `spec/05-units.md` §5.3.3: the non-SI units the standard declares that the
+/// kernel registry lacked. Their scales are defining constants, so they are
+/// compared as exact values; the prefixed forms follow from `prefixable`.
+#[test]
+fn common_non_si_units_carry_their_defining_scales() {
+    let resolved = |name: &str| {
+        rssn::dim::units::resolve(name).unwrap_or_else(|error| panic!("{name}: {error}"))
+    };
+    let approx = |name: &str, want: f64| {
+        let got = resolved(name).scale.rat.to_f64().unwrap_or(f64::NAN);
+        assert!(
+            (got / want - 1.0).abs() < 1e-12,
+            "{name}: {got:e} vs {want:e}"
+        );
+    };
+    // The dalton is the atomic mass constant; `u` is its standard spelling.
+    approx("Da", 1.660_539_066_60e-27);
+    approx("u", 1.660_539_066_60e-27);
+    let dalton = rssn::dim::units::all()
+        .into_iter()
+        .find(|unit| unit.name == "Da")
+        .unwrap_or_else(|| panic!("no unit Da"));
+    assert_eq!(dalton.dimension, resolved("t").dimension);
+    assert!(
+        dalton.aliases.iter().any(|alias| alias == "u"),
+        "the defined-unit list must carry the `u` alias: {:?}",
+        dalton.aliases
+    );
+    // The knot is 1852/3600 m/s, the mile per hour 1609.344/3600 m/s.
+    approx("kn", 1852.0 / 3600.0);
+    approx("mph", 1609.344 / 3600.0);
+    let velocity = resolved("m/s").dimension;
+    assert_eq!(resolved("kn").dimension, velocity);
+    assert_eq!(resolved("mph").dimension, velocity);
+    // An acre is 4046.8564224 square metres.
+    approx("acre", 4046.8564224);
+    assert_eq!(resolved("acre").dimension, resolved("m^2").dimension);
+    // Information units are dimensionless by design (§5.3.3): a bit is the
+    // coherent unit, a byte is eight bits, a kibibyte 1024 bytes.
+    assert_eq!(resolved("bit").dimension, rssn::dim::DimExpr::Dimless);
+    assert_eq!(resolved("B").dimension, rssn::dim::DimExpr::Dimless);
+    assert_eq!(resolved("KiB").dimension, rssn::dim::DimExpr::Dimless);
+    let bit = resolved("bit").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((bit - 1.0).abs() < 1e-15, "{bit}");
+    let byte = resolved("B").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((byte / bit - 8.0).abs() < 1e-12, "{byte}");
+    let kibibyte = resolved("KiB").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((kibibyte / byte - 1024.0).abs() < 1e-12, "{kibibyte}");
+    assert!(
+        rssn::dim::units::all()
+            .into_iter()
+            .find(|unit| unit.name == "B")
+            .is_some_and(|unit| unit.aliases.iter().any(|alias| alias == "byte")),
+        "`byte` is the customary spelling of B"
+    );
+    // The standard prefixes the dalton and the information units, so the SI
+    // prefixes do not stop working on the new entries.
+    let millidalton = resolved("mDa").scale.rat.to_f64().unwrap_or(f64::NAN);
+    let dalton = resolved("Da").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((millidalton / dalton - 1e-3).abs() < 1e-12, "{millidalton}");
+    let kilobit = resolved("kbit").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((kilobit - 1000.0).abs() < 1e-9, "{kilobit}");
+    let kilobyte = resolved("kB").scale.rat.to_f64().unwrap_or(f64::NAN);
+    assert!((kilobyte - 8000.0).abs() < 1e-9, "{kilobyte}");
+}
+
 #[test]
 fn a_unit_on_a_custom_base_dimension_can_be_registered() {
     use rssn::dim::DimExpr;

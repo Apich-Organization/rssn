@@ -174,6 +174,17 @@
 //! Inverse functions are taken on their principal branch by `solve`, so
 //! periodic equations yield one representative per branch; `solve_general`
 //! gives the whole solution set.
+//!
+//! Structured answers. `Session::solve_structured` lifts the `list(...)` into
+//! a [`Solutions`](crate::kernel::result::Solutions) record. Two facets are
+//! reported only when the solver's own answer supports them: a root
+//! multiplicity, from the exact square-free decomposition of a univariate
+//! rational polynomial whose roots are exact numbers
+//! ([`root_multiplicities`]); and a non-zero condition on a parameter that the
+//! root expression puts in a denominator, as in `solve(a*x + b = 0, x)` being
+//! `-b/a` ([`root_conditions`]). Realness and branch conditions of roots such
+//! as `a^(1/2)` are not reported, and neither is a multiplicity that would
+//! require matching a symbolic root to a factor numerically.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -202,6 +213,8 @@ use crate::graph::Tier;
 use crate::graph::VarNames;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernel::result::Condition;
+use crate::kernel::result::ConditionKind;
 use crate::kernels::polynomial::Polynomial;
 use crate::kernels::real_roots;
 use crate::kernels::solve::solve_root;
@@ -546,6 +559,140 @@ pub(crate) fn solve_for(
         solutions = keyed.into_iter().map(|(_, node)| node).collect();
     }
     Some(solutions)
+}
+
+/// The multiplicity of each of `roots` as a zero of the polynomial `expr`
+/// denotes, when that polynomial is univariate in `x` over the rationals.
+///
+/// `solve` answers with the *distinct* real roots. When a root is a multiple
+/// zero, the exact square-free decomposition of the coefficients knows how
+/// many times it occurs, and that is reported here. The answer is `None` —
+/// "not reported" — when the equation is not a univariate rational polynomial,
+/// or when any root is not an exact rational number: matching an irrational or
+/// symbolic root against a factor numerically would turn an association into a
+/// guess, and a wrong multiplicity is worse than no multiplicity.
+pub(crate) fn root_multiplicities(
+    graph: &mut Graph,
+    expr: NodeId,
+    x: NodeId,
+    roots: &[crate::kernel::value::Value],
+) -> Option<Vec<u32>> {
+    let symbol = graph.symbol_of(x)?;
+    let term = best(graph, expr)?;
+    let term = sqrt_as_power(graph, term);
+    let term = normalize::exponentials(graph, term, symbol);
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let fraction = ratio(graph, &mut gens, term, Limits::default())?;
+    // A root of a quotient is a root of its numerator only where the
+    // denominator is not zero. A denominator that carries the unknown makes
+    // the multiplicity a statement about a punctured neighbourhood, so leave
+    // it unreported rather than qualify it.
+    let denominator = to_term(graph, &gens, &fraction.denom);
+    if graph.depends_on(graph.find(denominator), symbol) {
+        return None;
+    }
+    let numbers: Vec<BigRational> = fraction
+        .numer
+        .univariate_in(gx)?
+        .iter()
+        .map(Number::to_rational)
+        .collect::<Option<_>>()?;
+    if numbers.len() < 2 {
+        return None;
+    }
+    // `p = c * prod f_i^i` with the `f_i` monic, square-free parts in the
+    // multiplicity `i`; a root of `f_i` is a zero of `p` of multiplicity `i`.
+    let parts = univariate::square_free(&numbers);
+    let mut out = Vec::with_capacity(roots.len());
+    for root in roots {
+        let value = match root {
+            | crate::kernel::value::Value::Int(value) => BigRational::from_integer(value.clone()),
+            | crate::kernel::value::Value::Real(number) => number.to_rational()?,
+            | _ => return None,
+        };
+        let mut found: Option<u32> = None;
+        for (part, multiplicity) in &parts {
+            if univariate::eval(part, &value).is_zero() {
+                // The parts are pairwise coprime, so a second hit means the
+                // root does not belong to this polynomial at all. That is not
+                // a multiplicity, so report nothing.
+                if found.is_some() {
+                    return None;
+                }
+                found = Some(*multiplicity);
+            }
+        }
+        out.push(found?);
+    }
+    Some(out)
+}
+
+/// The side conditions that the roots as written state about their
+/// parameters.
+///
+/// A root can carry a parameter in a denominator: `solve(a*x + b = 0, x)` is
+/// `-b/a`, an expression that denotes a solution only where `a != 0`. Each
+/// such denominator is a condition the answer states by construction, so it
+/// is reported. Realness and branch conditions of roots such as `a^(1/2)`
+/// are *not* reported: the solver does not decide them here, and inventing
+/// them would be a claim about the parameter space it never made.
+pub(crate) fn root_conditions(
+    graph: &Graph,
+    x: NodeId,
+    roots: &[crate::kernel::value::Value],
+) -> Vec<Condition> {
+    fn denominators(
+        graph: &Graph,
+        node: NodeId,
+        depth: usize,
+        out: &mut Vec<NodeId>,
+    ) {
+        if depth > 24 {
+            return;
+        }
+        let op = graph.op(node);
+        let children = graph.children(node).to_vec();
+        if op == core::POW
+            && let &[base, exponent] = children.as_slice()
+            && graph
+                .number_of(exponent)
+                .and_then(Number::to_rational)
+                .is_some_and(|power| power.is_negative())
+        {
+            out.push(base);
+        }
+        for child in children {
+            denominators(graph, child, depth + 1, out);
+        }
+    }
+    let solved = graph.symbol_of(x);
+    let mut bases: Vec<NodeId> = Vec::new();
+    for root in roots {
+        let crate::kernel::value::Value::Term(handle) = root else {
+            continue;
+        };
+        denominators(graph, NodeId::from_raw(handle.node), 0, &mut bases);
+    }
+    // Only a parameter can be required to be non-zero; a numeric denominator
+    // is already non-zero (the expression reduced), and the unknown does not
+    // appear in an answer.
+    let mut conditions: Vec<String> = Vec::new();
+    for base in bases {
+        let free = graph.free_symbols(graph.find(base));
+        if free.is_empty() || free.iter().any(|symbol| Some(*symbol) == solved) {
+            continue;
+        }
+        let text = format!("{} != 0", graph.display(base));
+        if !conditions.contains(&text) {
+            conditions.push(text);
+        }
+    }
+    conditions.sort();
+    conditions
+        .into_iter()
+        .map(|text| Condition::new(ConditionKind::NonZero, &text))
+        .collect()
 }
 
 /// Whether a polynomial is small enough for the factorisation to be worth

@@ -2048,6 +2048,44 @@ mod tests {
         assert_ne!(mine.manifest_hash, theirs.manifest_hash);
     }
 
+    /// The units `spec/05-units.md` §5.3.3 declares, and the registry used to
+    /// lack, reach the manifest — which is what a host generates `Units.SI`
+    /// from — so the count and the exact scales are visible there.
+    #[test]
+    fn the_manifest_describes_the_common_non_si_units() {
+        let manifest = Session::new().manifest();
+        // 75 built-in units before this round plus the seven §5.3.3 units.
+        assert_eq!(
+            manifest.units.len(),
+            82,
+            "the manifest must carry every built-in unit"
+        );
+        for name in ["Da", "kn", "mph", "acre", "bit", "B", "KiB"] {
+            let unit = manifest
+                .units
+                .iter()
+                .find(|unit| unit.name == name)
+                .unwrap_or_else(|| panic!("the manifest has no unit `{name}`"));
+            let definition = crate::dim::units::lookup(name)
+                .unwrap_or_else(|| panic!("the registry has no unit `{name}`"));
+            assert_eq!(
+                unit.scale.numer,
+                definition.scale.rat.numer().clone(),
+                "`{name}` has a different numerator in the manifest"
+            );
+            assert_eq!(
+                unit.scale.denom,
+                definition.scale.rat.denom().clone(),
+                "`{name}` has a different denominator in the manifest"
+            );
+            assert_eq!(
+                unit.scale.pi, definition.scale.pi,
+                "`{name}` has a different power of pi in the manifest"
+            );
+        }
+        assert!(manifest.verify(), "the hash must match the contents");
+    }
+
     /// A second registration keeps the first: the registry a template's
     /// engine holds is carried forward, not rebuilt from the global table.
     #[test]

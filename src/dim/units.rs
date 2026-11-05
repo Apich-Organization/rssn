@@ -23,6 +23,19 @@
 //! declares one. Registration is additive and checked: a name or alias that
 //! already belongs to a different unit is refused, so a plugin cannot
 //! silently redefine the metre.
+//!
+//! # Limitations
+//!
+//! The table holds ASCII spellings only; the Unicode forms of units (`Å` for
+//! `angstrom`, `Ω` for `ohm`, `°C` for `degC`) are the host's aliases, because
+//! the parser never sees them (a host generates its `Units` module from the
+//! manifest and maps them there). The information units (`bit`, `B`, `KiB`)
+//! are dimensionless by design — `spec/05-units.md` §5.3.3 keeps them so that
+//! entropy and probability formulas that use bits stay dimensionally
+//! transparent; a host that wants a base dimension declares `Information` and
+//! registers its own units on it. A compound unit whose scale has a
+//! non-integer exponent of a non-coherent unit (`ft^(1/2)`) does not resolve,
+//! which is deliberate: only coherent units compose under a root.
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -338,6 +351,19 @@ pub(crate) fn table() -> &'static HashMap<&'static str, Def> {
         add("atm", [-1, 1, -2, 0, 0, 0, 0], "101325", false);
         add("mmHg", [-1, 1, -2, 0, 0, 0, 0], "133.322387415", false);
         add("psi", [-1, 1, -2, 0, 0, 0, 0], "6894.757293168", false);
+        // The Aevia design standard (`spec/05-units.md` §5.3.3) declares these
+        // and the table did not have them. The dalton is exact by the 2018
+        // CODATA relation to the atomic mass constant (1 u = 1.66053906660e-27
+        // kg); the knot and mile per hour are defined velocities; the acre is a
+        // survey measure; an information bit is dimensionless, a byte is eight
+        // bits and a kibibyte is 1024 bytes.
+        add("Da", [0, 1, 0, 0, 0, 0, 0], "1.66053906660e-27", true);
+        add("kn", [1, 0, -1, 0, 0, 0, 0], "1852/3600", false);
+        add("mph", [1, 0, -1, 0, 0, 0, 0], "1609.344/3600", false);
+        add("acre", [2, 0, 0, 0, 0, 0, 0], "4046.8564224", false);
+        add("bit", [0; 7], "1", true);
+        add("B", [0; 7], "8", true);
+        add("KiB", [0; 7], "8192", false);
         add("eV", [2, 1, -2, 0, 0, 0, 0], "1.602176634e-19", true);
         add("cal", [2, 1, -2, 0, 0, 0, 0], "4.184", true);
         add("Wh", [2, 1, -2, 0, 0, 0, 0], "3600", true);
@@ -447,7 +473,7 @@ pub(crate) const PREFIXES: [(&str, i32); 22] = [
 ];
 
 /// Names that stand for a product of other units.
-pub(crate) const ALIASES: [(&str, &[(&str, i32)]); 19] = [
+pub(crate) const ALIASES: [(&str, &[(&str, i32)]); 21] = [
     ("sqm", &[("m", 2)]),
     ("mps", &[("m", 1), ("s", -1)]),
     ("meter", &[("m", 1)]),
@@ -467,6 +493,10 @@ pub(crate) const ALIASES: [(&str, &[(&str, i32)]); 19] = [
     ("fahrenheit", &[("degF", 1)]),
     ("inch", &[("in", 1)]),
     ("foot", &[("ft", 1)]),
+    // The standard names the dalton `Da` / `u` (§5.3.3); a byte is the
+    // customary name of `B`.
+    ("u", &[("Da", 1)]),
+    ("byte", &[("B", 1)]),
 ];
 
 pub(crate) fn resolve_symbol(name: &str) -> Option<Resolved> {

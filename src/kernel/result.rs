@@ -466,8 +466,19 @@ pub struct Solutions {
     /// Empty means the solver did not distinguish them: every root is
     /// listed once, and [`Solutions::multiplicity`] then answers one. That
     /// is different from a reported `1`, which is a claim.
+    ///
+    /// `solve_structured` fills it from the exact square-free decomposition of
+    /// a univariate rational polynomial whose roots are exact numbers, and
+    /// leaves it empty when that association would have to be numeric — an
+    /// irrational or symbolic root is not guessed at.
     pub multiplicities: Vec<u32>,
     /// What must hold for the answer to be valid.
+    ///
+    /// Empty when the solver stated no condition. `solve_structured` reports a
+    /// condition it can derive from the answer as written — a parameter in a
+    /// denominator of a root (`-b/a` from `a*x + b = 0` needs `a != 0`) —
+    /// and no others: realness and branch restrictions of the parameters are
+    /// not decided by the solvers, so they are not invented here.
     pub conditions: Vec<Condition>,
     /// Whether the solver believes it found every root.
     pub complete: bool,

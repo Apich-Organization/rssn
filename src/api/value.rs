@@ -8,6 +8,13 @@
 //! Everything here goes through the ordinary [`Session::compute`] path, so a
 //! dynamic call has exactly the semantics of a typed one: same rules, same
 //! budget, same dimension checks. There is no second engine.
+//!
+//! Numeric values are normalised on the way in. A host can build a
+//! [`Number`] directly, so an integral rational can arrive as `Rat(0/1)`
+//! rather than the `Int(0)` that [`Number::rat`] produces; `term_of_value`
+//! collapses it (see [`Number::normalized`]) because the exact literal
+//! rewrites (`cos(0) => 1`, `ln(1) => 0`, ...) match structurally and an
+//! un-normalised zero would silently stop folding.
 
 use std::fmt;
 use std::sync::Arc;
@@ -237,9 +244,22 @@ impl Session {
     /// unknown and whether the set is complete, and converts to a
     /// [`Value::Record`] for the dynamic ABI.
     ///
-    /// Multiplicities are left unreported: the solver returns distinct
-    /// roots, and claiming a multiplicity it did not compute would be worse
-    /// than saying nothing.
+    /// What the solver does not state is not invented:
+    ///
+    /// * `multiplicities` is filled only when the equation is a univariate
+    ///   polynomial in the unknown over the rationals *and* every root is an
+    ///   exact number; the exact square-free part of the polynomial then says
+    ///   how many times each root occurs. An irrational or symbolic root is
+    ///   left unreported rather than matched against a factor numerically.
+    /// * `conditions` is filled only with the conditions the answer states by
+    ///   construction: a parameter in a denominator of a root — `-b/a` from
+    ///   `a*x + b = 0` is valid only where `a != 0`. Realness and branch
+    ///   conditions (a square root over a parameter, say) are not reported,
+    ///   because the solver does not decide them here.
+    ///
+    /// For anything other than an exhaustive answer (`complete == false`) both
+    /// lists stay empty: a single root found on the way cannot support a claim
+    /// about multiplicity or validity.
     ///
     /// # Errors
     /// Fails when `solve` does not apply, or when the equation does not
@@ -261,17 +281,70 @@ impl Session {
         // A `list(...)` answer is the solver's exhaustive form; a bare value
         // is a single root found on the way, which is not a claim that the
         // others do not exist. Reporting the difference is the point of the
-        // field.
+        // field. A list whose elements are expressions rather than numbers
+        // does not become a [`Value::Tensor`] (`tensor_of` only carries
+        // numbers), so the reduced list node itself is expanded here: the
+        // solver's own answer says the set is exhaustive, and dropping all but
+        // one root would contradict it.
         let (roots, complete) = match value {
             | Value::Tensor(tensor) => (tensor.data, true),
             | Value::Sparse(sparse) => (sparse.data, true),
+            | Value::Term(handle) => {
+                let inner = self.inner.borrow();
+                let node = NodeId::from_raw(handle.node);
+                if inner.graph.op(node) == core::LIST {
+                    let children = inner.graph.children(node).to_vec();
+                    let (units, definitions): (super::SessionUnits, &[UnitValue]) =
+                        match inner.templates.first() {
+                            | Some(template) => {
+                                let manifest = template.engine.manifest();
+                                (
+                                    super::SessionUnits::from_manifest(manifest),
+                                    manifest.units.as_slice(),
+                                )
+                            },
+                            | None => (super::SessionUnits::default(), &[]),
+                        };
+                    let roots = children
+                        .iter()
+                        .map(|&child| {
+                            value_of_node(&inner.graph, child, self.id, &units, definitions)
+                        })
+                        .collect();
+                    (roots, true)
+                } else {
+                    (vec![Value::Term(handle)], false)
+                }
+            },
             | other => (vec![other], false),
+        };
+        let (multiplicities, conditions) = if complete {
+            let mut inner = self.inner.borrow_mut();
+            let expression = crate::rules::solve::as_expression(
+                &mut inner.graph,
+                NodeId::from_raw(equation.id()),
+            );
+            let multiplicities = crate::rules::solve::root_multiplicities(
+                &mut inner.graph,
+                expression,
+                NodeId::from_raw(variable.id()),
+                &roots,
+            )
+            .unwrap_or_default();
+            let conditions = crate::rules::solve::root_conditions(
+                &inner.graph,
+                NodeId::from_raw(variable.id()),
+                &roots,
+            );
+            (multiplicities, conditions)
+        } else {
+            (Vec::new(), Vec::new())
         };
         Ok(crate::kernel::result::Solutions {
             variable: Some(name),
             roots,
-            multiplicities: Vec::new(),
-            conditions: Vec::new(),
+            multiplicities,
+            conditions,
             complete,
         })
     }
@@ -1191,7 +1264,16 @@ fn term_of_value(
 ) -> Result<NodeId, OpError> {
     match value {
         | Value::Int(value) => Ok(graph.num(Number::Int(value.clone()))),
-        | Value::Real(number) => Ok(graph.num(number.clone())),
+        // A host can build the `Number` directly, and the variant is public:
+        // the Aevia bridge sends an integral exact value as `Number::Rat(n/1)`
+        // instead of the `Int(n)` that `Number::rat` produces. Interning that
+        // non-normal form would leave a literal no rewrite recognises —
+        // `cos(0)`, `exp(0)`, `ln(1)` and the rest match structurally — so an
+        // exact limit endpoint would stop at its closed form
+        // (`limit(sin(t)/t, 0/1)` answered `cos(0/1)`) instead of folding to
+        // the exact value. Normalise at the boundary; a non-integral rational
+        // and a float cross unchanged.
+        | Value::Real(number) => Ok(graph.num(number.normalized())),
         | Value::Float(value) => Ok(graph.float(*value)),
         | Value::Bool(value) => Ok(graph.lit(Payload::Bool(*value))),
         | Value::String(text) => Ok(graph.lit(Payload::Str(Arc::from(text.as_str())))),
@@ -1435,6 +1517,7 @@ mod tests {
     use super::*;
     use crate::api::Config;
     use crate::graph::OpDescriptor;
+    use crate::kernel::result::Solutions;
 
     #[test]
     fn a_nested_list_is_a_tensor_of_the_full_rank() {
@@ -1553,6 +1636,60 @@ mod tests {
             )
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(out, Value::int(1_i32));
+    }
+
+    /// The caller's trace collector is carried through `clone_ctx`. It used to
+    /// be dropped at every entry point, so `CallCtx::with_trace` recorded
+    /// nothing and a host's `@trace` attribute had no data source.
+    #[test]
+    fn a_call_trace_reaches_the_caller() {
+        let s = Session::new();
+        let trace = std::cell::RefCell::new(crate::kernel::call::Trace::new());
+        let ctx = CallCtx::new().with_trace(&trace);
+        let _ = s
+            .call_value("sin", &[Value::Float(0.5)], &ctx)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            !trace.borrow().is_empty(),
+            "the caller's collector must receive the call events"
+        );
+    }
+
+    /// `CallCtx::substitute` is applied to the argument terms before the call
+    /// is built. It used to be recorded and never read, so a host that
+    /// replaced a symbol got the unsubstituted answer with no diagnostic.
+    ///
+    /// The substitution happens when the arguments become terms, so overload
+    /// resolution still sees the values the host passed; `sin(x)` resolves
+    /// (it accepts a symbol) and `x` becomes `0` before the rewrite runs.
+    #[test]
+    fn a_call_context_substitution_is_applied() {
+        let s = Session::new();
+        let ctx = CallCtx::new().substitute("x", Value::int(0_i32));
+        let out = s
+            .call_value("sin", &[Value::Symbol("x".to_owned())], &ctx)
+            .unwrap_or_else(|e| panic!("{e}"));
+        // Without the substitution this is the term `sin(x)`.
+        assert_eq!(out, Value::int(0_i32));
+    }
+
+    /// A handle whose node id names nothing in this graph is refused at the
+    /// boundary instead of being indexed in the arena.
+    #[test]
+    fn a_stale_term_handle_is_refused() {
+        let s = Session::new();
+        let stale = TermRef {
+            session: s.id(),
+            node: u32::MAX,
+        };
+        let error = s
+            .term_of(&Value::Term(stale))
+            .err()
+            .unwrap_or_else(|| panic!("a stale handle must not become a term"));
+        assert!(
+            matches!(error, OpError::Internal(_)),
+            "expected Internal, got {error:?}"
+        );
     }
 
     #[test]
@@ -1745,6 +1882,58 @@ mod tests {
         );
     }
 
+    /// An exact integral rational that crosses the ABI — `Number::Rat(0/1)`,
+    /// which a host that builds a [`Value`] directly can send instead of the
+    /// `Int(0)` that `Number::rat` produces — must enter the graph in normal
+    /// form, or every structural literal rewrite misses it.
+    ///
+    /// This is what made `limit(sin(t)/t, exact 0)` answer `cos(0/1)`: the
+    /// endpoint crossed as a rational zero, so `cos(0) => 1` (and `sin(0)`,
+    /// `tan(0)`, `exp(0)`, `ln(1)`) did not fire and the exact contract failed.
+    #[test]
+    fn an_exact_rational_zero_is_normalised_at_the_abi_boundary() {
+        use num_rational::BigRational;
+
+        let s = Session::new();
+        let exact = |numer: i64, denom: i64| {
+            Value::Real(Number::Rat(BigRational::new(
+                BigInt::from(numer),
+                BigInt::from(denom),
+            )))
+        };
+        // The literal becomes the integer zero, not the unrewritable `0/1`.
+        let zero = s.term_of(&exact(0, 1)).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(zero.to_string(), "0");
+        // The closed special functions fold at the exact point.
+        let call = |name: &str, arg: Value| {
+            s.call_value(name, &[arg], &CallCtx::new())
+                .unwrap_or_else(|e| panic!("{name}: {e}"))
+        };
+        assert_eq!(call("cos", exact(0, 1)), Value::int(1_i32));
+        assert_eq!(call("sin", exact(0, 1)), Value::int(0_i32));
+        assert_eq!(call("tan", exact(0, 1)), Value::int(0_i32));
+        assert_eq!(call("exp", exact(0, 1)), Value::int(1_i32));
+        assert_eq!(call("ln", exact(1, 1)), Value::int(0_i32));
+        // A non-integral exact rational keeps its exact form.
+        let third = s.term_of(&exact(1, 3)).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(third.to_string(), "1/3");
+        // The limit endpoint is exact, so the answer is the exact integer —
+        // the closed form is not left as `cos(0)` (or `cos(0/1)`).
+        let quotient = s.parse("sin(t)/t").unwrap_or_else(|e| panic!("{e}"));
+        let answer = s
+            .call_value(
+                "limit",
+                &[
+                    Value::Term(s.handle(quotient)),
+                    Value::Symbol("t".to_owned()),
+                    exact(0, 1),
+                ],
+                &CallCtx::new(),
+            )
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(answer, Value::int(1_i32));
+    }
+
     /// A unit is a definition, not a number, so it has no term of its own.
     ///
     /// It used to become a bare symbol (`m`), which in the graph is a *free
@@ -1892,6 +2081,100 @@ mod tests {
         assert_eq!(quantity.unit.name, "degC");
         assert_eq!(quantity.unit.display, "\u{b0}C");
         assert!(quantity.unit.affine);
+    }
+
+    /// A repeated root is a multiple zero. The solver lists the distinct
+    /// roots, so the multiplicity is the only place the repetition is visible;
+    /// the exact square-free decomposition of the polynomial supplies it.
+    #[test]
+    fn a_repeated_polynomial_root_reports_its_multiplicity() {
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s
+            .parse("(x - 1)^2*(x + 2) = 0")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(solutions.complete, "a solved polynomial is exhaustive");
+        assert_eq!(solutions.variable.as_deref(), Some("x"));
+        assert_eq!(solutions.roots.len(), 2, "{:?}", solutions.roots);
+        // Ascending order: -2 is simple, 1 is the double root.
+        assert_eq!(solutions.multiplicities, vec![1, 2]);
+        assert_eq!(solutions.multiplicity(0), 1);
+        assert_eq!(solutions.multiplicity(1), 2);
+        assert_eq!(solutions.conditions, Vec::new());
+        // The multiplicity crosses the ABI in the record, and the record
+        // reads back to the same answer.
+        let back = Solutions::from_value(&solutions.to_value()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back.multiplicities, solutions.multiplicities);
+    }
+
+    /// A square-free polynomial has only simple roots, and saying so is a
+    /// claim the coefficients support.
+    #[test]
+    fn a_square_free_polynomial_reports_simple_roots() {
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s
+            .parse("x^2 - 3*x + 2 = 0")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(solutions.roots.len(), 2);
+        assert_eq!(solutions.multiplicities, vec![1, 1]);
+    }
+
+    /// Irrational roots are expressions, not exact numbers, so the association
+    /// between a root and a square-free factor cannot be exact. The answer is
+    /// "not reported", not a guessed one.
+    #[test]
+    fn an_irrational_root_is_not_given_a_guessed_multiplicity() {
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s.parse("x^2 = 2").unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        // Both roots are expression handles; the list node is expanded rather
+        // than handed over as one opaque root.
+        assert!(solutions.complete, "the solver's list is exhaustive");
+        assert_eq!(solutions.roots.len(), 2, "{:?}", solutions.roots);
+        assert!(
+            !solutions.has_multiplicities(),
+            "an inexact root must stay unreported, got {:?}",
+            solutions.multiplicities
+        );
+    }
+
+    /// `solve(a*x + b = 0, x)` is `-b/a`: the answer is valid only where
+    /// `a != 0`, and that is the one condition the root states by being a
+    /// quotient. It is reported; branch conditions the solver did not decide
+    /// are not.
+    #[test]
+    fn a_parameter_denominator_in_a_root_is_a_condition() {
+        use crate::kernel::result::ConditionKind;
+
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s.parse("a*x + b = 0").unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(solutions.roots.len(), 1);
+        assert!(
+            solutions.conditions.iter().any(|condition| {
+                condition.kind == ConditionKind::NonZero && condition.text == "a != 0"
+            }),
+            "expected `a != 0`, got {:?}",
+            solutions.conditions
+        );
+        // The root is symbolic, so no multiplicity is claimed.
+        assert!(!solutions.has_multiplicities());
+        // The condition crosses the ABI in the record.
+        let back = Solutions::from_value(&solutions.to_value()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back.conditions, solutions.conditions);
     }
 
     #[test]
