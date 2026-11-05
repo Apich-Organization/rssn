@@ -496,7 +496,23 @@ pub enum DimRule {
     /// `a^b`, with `b` dimensionless.
     Power,
     /// The `n`-th root of argument 0.
+    ///
+    /// Shorthand for [`DimRule::RootOf`] with `index = 0` and `degree = n`.
     Root(u32),
+    /// The `degree`-th root of argument `index`.
+    ///
+    /// [`DimRule::Root`] is hard-wired to argument 0, which is right for
+    /// `sqrt(x)` but not for an operator whose root operand is not its first
+    /// argument — `sde_wiener(seed, m, steps, h)` has dimension
+    /// `sqrt(dim(h))`, the root of argument 3. This form states the operand
+    /// explicitly; a `degree` of 0 is treated as 1 rather than dividing by
+    /// zero.
+    RootOf {
+        /// The root degree (`2` is a square root).
+        degree: u32,
+        /// Index of the operand whose dimension is rooted.
+        index: usize,
+    },
     /// All arguments are dimensionless and so is the result.
     Dimensionless,
     /// `1 / dim(argument 0)`.
@@ -605,6 +621,7 @@ impl fmt::Debug for DimRule {
             | Self::Quotient => "Quotient",
             | Self::Power => "Power",
             | Self::Root(_) => "Root",
+            | Self::RootOf { .. } => "RootOf",
             | Self::Dimensionless => "Dimensionless",
             | Self::Inverse => "Inverse",
             | Self::Square => "Square",
@@ -2385,6 +2402,44 @@ mod tests {
                 .any(|name| name == "audit_unannotated_operator"),
             "the scanner did not report the unannotated operator: {missing:?}"
         );
+    }
+
+    /// `sde_wiener(seed, m, steps, h)` has the dimension `sqrt(dim(h))`: the
+    /// rooted operand is argument 3. This is the case `DimRule::RootOf` exists
+    /// for — `Root(n)` would take the root of the seed.
+    #[test]
+    fn noise_operators_state_their_root_dimension() {
+        let dimensionless = dimension_of("sde_wiener(11, 2, 4, 1/100)", &[]);
+        assert_eq!(dimensionless.dimension.to_string(), "1");
+        assert!(
+            dimensionless.errors.is_empty(),
+            "{:?}",
+            dimensionless.errors
+        );
+        let time = dimension_of("sde_wiener(11, 2, 4, quantity(1/100, s))", &[]);
+        assert_eq!(time.dimension.to_string(), "sqrt(Time)");
+        // Levy areas are iterated integrals of two increments: dimension T.
+        let areas = dimension_of(
+            "sde_levy_areas(11, quantity(1/100, s), list(1/10, -1/5), 8)",
+            &[],
+        );
+        assert_eq!(areas.dimension.to_string(), "Time");
+        assert!(areas.errors.is_empty(), "{:?}", areas.errors);
+        // The scheme metadata is a label vector, not a physical quantity. The
+        // name is a string *value*, and the surface syntax has no string
+        // literal, so the term is built through the node API.
+        let mut graph = Graph::new();
+        crate::graph::Engine::install(&mut graph, &crate::rules::standard())
+            .unwrap_or_else(|error| panic!("{error}"));
+        let op = graph
+            .ops()
+            .lookup("sde_scheme_info")
+            .unwrap_or_else(|| panic!("sde_scheme_info is registered"));
+        let text = graph.lit(crate::graph::Payload::Str(std::sync::Arc::from("milstein")));
+        let call = graph.node(op, &[text]);
+        let metadata = graph.dimension(call);
+        assert_eq!(metadata.dimension.to_string(), "non-metric");
+        assert!(metadata.errors.is_empty(), "{:?}", metadata.errors);
     }
 
     /// No operator bypasses dimensional checking by accident.

@@ -980,7 +980,20 @@ pub enum DimRuleInfo {
     /// `a^b` with `b` dimensionless.
     Power,
     /// The `n`-th root of argument 0.
+    ///
+    /// Shorthand for [`DimRuleInfo::RootOf`] with `index == 0`.
     Root(u32),
+    /// The `degree`-th root of argument `index`.
+    ///
+    /// The operand is explicit, so an operator whose root operand is not its
+    /// first argument (`sde_wiener(seed, m, steps, h)` has dimension
+    /// `sqrt(dim(h))`) can state the rule. A `degree` of 0 is treated as 1.
+    RootOf {
+        /// The root degree (`2` is a square root).
+        degree: u32,
+        /// Index of the operand whose dimension is rooted.
+        index: u8,
+    },
     /// Everything is dimensionless.
     Dimensionless,
     /// `1 / dim(0)`.
@@ -1087,6 +1100,12 @@ impl From<DimRule> for DimRuleInfo {
             | DimRule::Quotient => Self::Quotient,
             | DimRule::Power => Self::Power,
             | DimRule::Root(n) => Self::Root(n),
+            | DimRule::RootOf { degree, index: i } => {
+                Self::RootOf {
+                    degree,
+                    index: index(i, "root operand"),
+                }
+            },
             | DimRule::Dimensionless => Self::Dimensionless,
             | DimRule::Inverse => Self::Inverse,
             | DimRule::Square => Self::Square,
@@ -1184,6 +1203,12 @@ impl DimRuleInfo {
             | Self::Quotient => DimRule::Quotient,
             | Self::Power => DimRule::Power,
             | Self::Root(n) => DimRule::Root(*n),
+            | Self::RootOf { degree, index: i } => {
+                DimRule::RootOf {
+                    degree: *degree,
+                    index: usize::from(*i),
+                }
+            },
             | Self::Dimensionless => DimRule::Dimensionless,
             | Self::Inverse => DimRule::Inverse,
             | Self::Square => DimRule::Square,
@@ -1322,6 +1347,9 @@ mod tests {
             DimRule::Sum,
             DimRule::Diff { f: 0, x: 1 },
             DimRule::Root(2),
+            // The explicit operand form: `sde_wiener(seed, m, steps, h)` is
+            // the square root of argument 3, not of argument 0.
+            DimRule::RootOf { degree: 2, index: 3 },
             DimRule::NonMetric,
             DimRule::Quantity,
         ] {
@@ -1330,6 +1358,19 @@ mod tests {
             // static slices), so the round trip is checked on the
             // owned description, which is what a manifest compares.
             assert_eq!(DimRuleInfo::from(info.to_rule()), info);
+            // The manifest carries the rule as *data*: the serialised form
+            // must round-trip through serde as well, or a host reading a
+            // manifest could not reconstruct the rule it names.
+            let json = serde_json::to_string(&info).unwrap_or_else(|error| panic!("{error}"));
+            let back: DimRuleInfo =
+                serde_json::from_str(&json).unwrap_or_else(|error| panic!("{error}"));
+            assert_eq!(back, info, "{json}");
         }
+        // The explicitly-operand form has a stable wire spelling, which is
+        // what a host parses: `{"root_of":{"degree":2,"index":3}}`.
+        let rooted = DimRuleInfo::RootOf { degree: 2, index: 3 };
+        let json = serde_json::to_string(&rooted).unwrap_or_else(|error| panic!("{error}"));
+        assert!(json.contains("root_of"), "{json}");
+        assert!(json.contains("\"index\":3"), "{json}");
     }
 }

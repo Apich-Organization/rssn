@@ -54,25 +54,104 @@
 //! [`milstein_noncommutative`] or [`sde_adaptive_noncommutative_with`] and
 //! their Levy areas. The
 //! non-commutative adaptive solver cannot take a step shorter than its grid cell
-//! (it reports [`SdeError::StepLimit`]; use more cells) and, being a pathwise
+//! (it reports [`SdeError::StepBelowCell`]; use more cells) and, being a pathwise
 //! Milstein scheme with the Levy areas of [`levy_areas`], inherits their
 //! finite-mode accuracy. No scheme here is better than strong order one, and
 //! [`milstein`] and [`milstein_stratonovich`] are weak order one as well (they
 //! are not weak order two), so ensemble means converge no faster than `O(h)` in
 //! general.
+//!
+//! # Conventions: Ito or Stratonovich
+//!
+//! The interpretation is encoded in the scheme's *name*, and the difference is
+//! a drift term, not an increment term. For `dX = sigma X dW`:
+//!
+//! | functions | interpretation | solution |
+//! |---|---|---|
+//! | [`euler_maruyama`], [`milstein`], [`srk_platen`], [`sde_adaptive`], [`sde_ensemble`] | Ito | `X_0 exp(sigma W_T - sigma^2 T / 2)` |
+//! | [`milstein_stratonovich`], [`heun_stratonovich`] | Stratonovich | `X_0 exp(sigma W_T)` |
+//!
+//! The increments are convention-free — both interpretations sample the same
+//! Brownian path — which is why the closure-free noise can be exposed as
+//! manifest operators (see [`crate::rules::sde`]) while the solvers stay
+//! Rust-only. A caller must not pair a Stratonovich scheme with coefficients
+//! meant for Ito (or the reverse) without the `g g' h / 2` conversion; the two
+//! then differ at strong order one, which is the same order as the schemes
+//! themselves.
+//!
+//! The noise operators `sde_wiener` and `sde_levy_areas` in
+//! [`crate::rules::sde`] draw exactly the increments and iterated integrals the
+//! fixed-step solvers accept, so a host can sample once and integrate several
+//! schemes on the same path.
+
+use std::fmt;
 
 use crate::kernels::random::Rng;
 
 /// Errors of the SDE integrators.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// Each carries the data a caller needs to act on it: which invariant failed,
+/// which step became non-finite, which bound was reached. The variants used to
+/// be empty, which left a host matching on the variant and on nothing else.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SdeError {
-    /// Inconsistent dimensions or parameters.
-    Invalid,
-    /// The state became non-finite.
-    NonFinite,
-    /// Step size underflow or too many steps in the adaptive solver.
-    StepLimit,
+    /// Inconsistent dimensions or parameters; `what` names the input class.
+    Invalid {
+        /// The invariant that failed, for the diagnostic.
+        what: &'static str,
+    },
+    /// The state became non-finite at the given step index.
+    NonFinite {
+        /// Index of the step (0-based) at which the state left the reals.
+        step: usize,
+    },
+    /// The adaptive solver reached its step budget.
+    StepLimit {
+        /// The bound that was hit (`SdeAdaptiveOptions::max_steps`).
+        limit: usize,
+    },
+    /// The adaptive step size shrank below the floating-point floor.
+    StepUnderflow {
+        /// The time reached when the step could shrink no further.
+        t: f64,
+        /// The step size that underflowed.
+        h: f64,
+    },
+    /// The non-commutative adaptive solver cannot step below one grid cell.
+    StepBelowCell {
+        /// Number of cells of its Brownian grid; use more.
+        cells: usize,
+    },
 }
+
+impl fmt::Display for SdeError {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            | Self::Invalid { what } => write!(f, "invalid SDE input: {what}"),
+            | Self::NonFinite { step } => {
+                write!(f, "the SDE state became non-finite at step {step}")
+            },
+            | Self::StepLimit { limit } => {
+                write!(f, "the SDE step limit of {limit} steps was reached")
+            },
+            | Self::StepUnderflow { t, h } => {
+                write!(f, "the SDE step size underflowed at t = {t} (h = {h:e})")
+            },
+            | Self::StepBelowCell { cells } => {
+                write!(
+                    f,
+                    "the adaptive non-commutative SDE solver cannot step below one of its \
+                     {cells} grid cells; use more cells"
+                )
+            },
+        }
+    }
+}
+
+impl std::error::Error for SdeError {}
 
 /// Generates `steps` Brownian increments (`m` components each, variance
 /// `h`) from `rng`.
@@ -94,17 +173,27 @@ fn check(
     m: usize,
     dws: &[Vec<f64>],
 ) -> Result<(), SdeError> {
-    if y0.is_empty() || m == 0 || dws.iter().any(|d| d.len() != m) {
-        return Err(SdeError::Invalid);
+    if y0.is_empty() || m == 0 {
+        return Err(SdeError::Invalid {
+            what: "the state is empty or the noise dimension is zero",
+        });
+    }
+    if dws.iter().any(|d| d.len() != m) {
+        return Err(SdeError::Invalid {
+            what: "a Brownian increment does not have the noise dimension",
+        });
     }
     Ok(())
 }
 
-fn finite(y: &[f64]) -> Result<(), SdeError> {
+fn finite(
+    y: &[f64],
+    step: usize,
+) -> Result<(), SdeError> {
     if y.iter().all(|v| v.is_finite()) {
         Ok(())
     } else {
-        Err(SdeError::NonFinite)
+        Err(SdeError::NonFinite { step })
     }
 }
 
@@ -142,7 +231,7 @@ where
             }
             y[i] += s;
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -238,7 +327,7 @@ where
             }
             y[i] += s;
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -290,7 +379,7 @@ where
         for (((yi, ai), ci), grow) in y.iter_mut().zip(&a).zip(&corr).zip(g.chunks(m)) {
             *yi += ai * h + ci + grow.iter().zip(dw).map(|(gij, dwj)| gij * dwj).sum::<f64>();
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -449,7 +538,9 @@ where
 {
     check(y0, m, &noise.dws)?;
     if noise.areas.len() != noise.dws.len() || noise.areas.iter().any(|a| a.len() != m * m) {
-        return Err(SdeError::Invalid);
+        return Err(SdeError::Invalid {
+            what: "the Levy areas do not match the increments (one m*m block per step)",
+        });
     }
     let n = y0.len();
     let mut y = y0.to_vec();
@@ -467,7 +558,7 @@ where
             }
             y[i] += s;
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -524,7 +615,7 @@ where
             }
             y[i] += s;
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -571,7 +662,7 @@ where
             }
             y[i] += s;
         }
-        finite(&y)?;
+        finite(&y, k)?;
         out.push(y.clone());
     }
     Ok(out)
@@ -586,6 +677,36 @@ pub struct SdePath {
     pub y: Vec<Vec<f64>>,
     /// Number of rejected steps.
     pub rejected: usize,
+    /// Number of accepted steps (`t.len() - 1`).
+    pub accepted: usize,
+    /// Step size of the last accepted step; `0.0` when none was accepted.
+    pub last_h: f64,
+    /// Seed the path's Brownian sample was drawn from.
+    ///
+    /// A host that records it can reproduce the *increments* with
+    /// `sde_wiener`-style sampling if it also knows the step sequence; the
+    /// adaptive solver's own sequence depends on the error control, so this is
+    /// provenance, not a recipe for an independent re-run.
+    pub seed: u64,
+}
+
+impl SdePath {
+    /// A path that has accepted no step yet: origin `(t0, y0)`, drawn from
+    /// `seed`.
+    fn new(
+        seed: u64,
+        t0: f64,
+        y0: &[f64],
+    ) -> Self {
+        Self {
+            t: vec![t0],
+            y: vec![y0.to_vec()],
+            rejected: 0,
+            accepted: 0,
+            last_h: 0.0,
+            seed,
+        }
+    }
 }
 
 /// Pending Brownian increments (a stack of `(length, increment)` pieces
@@ -697,18 +818,16 @@ where
         max_steps,
     } = *opts;
     if y0.is_empty() || m == 0 || t1 <= t0 || rtol <= 0.0 || atol < 0.0 {
-        return Err(SdeError::Invalid);
+        return Err(SdeError::Invalid {
+            what: "empty state, zero noise dimension, inverted interval or non-positive tolerance",
+        });
     }
     let n = y0.len();
     let mut rng = Rng::new(seed);
     let mut stack = BrownianStack { pending: Vec::new() };
     let mut t = t0;
     let mut y = y0.to_vec();
-    let mut path = SdePath {
-        t: vec![t0],
-        y: vec![y0.to_vec()],
-        rejected: 0,
-    };
+    let mut path = SdePath::new(seed, t0, y0);
     let mut h = ((t1 - t0) * 1e-3).max(1e-9);
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
     let mut a2 = vec![0.0; n];
@@ -716,7 +835,7 @@ where
     while t1 - t > 1e-14 * (1.0 + t1.abs()) {
         count += 1;
         if count > max_steps {
-            return Err(SdeError::StepLimit);
+            return Err(SdeError::StepLimit { limit: max_steps });
         }
         h = h.min(t1 - t);
         let dw = stack.take(h, m, &mut rng);
@@ -742,13 +861,15 @@ where
             err = err.max((corr[i].abs() + drift_err) / sc.max(1e-300));
         }
         if !err.is_finite() || ynew.iter().any(|v| !v.is_finite()) {
-            return Err(SdeError::NonFinite);
+            return Err(SdeError::NonFinite { step: count - 1 });
         }
         if err <= 1.0 {
             t += h;
             y = ynew;
             path.t.push(t);
             path.y.push(y.clone());
+            path.accepted += 1;
+            path.last_h = h;
             let fac = if err == 0.0 {
                 2.0
             } else {
@@ -761,7 +882,7 @@ where
             let fac = (0.9 / err.sqrt()).clamp(0.1, 0.9);
             h *= fac;
             if h < 1e-14 * (1.0 + t.abs()) {
-                return Err(SdeError::StepLimit);
+                return Err(SdeError::StepUnderflow { t, h });
             }
         }
     }
@@ -910,18 +1031,17 @@ where
         max_steps,
     } = opts.base;
     if y0.is_empty() || m == 0 || t1 <= t0 || rtol <= 0.0 || atol < 0.0 || opts.cells == 0 {
-        return Err(SdeError::Invalid);
+        return Err(SdeError::Invalid {
+            what: "empty state, zero noise dimension, inverted interval, zero cells or \
+                   non-positive tolerance",
+        });
     }
     let n = y0.len();
     let hc = (t1 - t0) / opts.cells as f64;
     let mut grid = NoiseGrid::new(seed, m, hc, opts.terms);
     let mut cell = 0_usize;
     let mut y = y0.to_vec();
-    let mut path = SdePath {
-        t: vec![t0],
-        y: vec![y0.to_vec()],
-        rejected: 0,
-    };
+    let mut path = SdePath::new(seed, t0, y0);
     let mut size = (opts.cells / 1000).max(1);
     let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
     let mut a2 = vec![0.0; n];
@@ -929,7 +1049,7 @@ where
     while cell < opts.cells {
         count += 1;
         if count > max_steps {
-            return Err(SdeError::StepLimit);
+            return Err(SdeError::StepLimit { limit: max_steps });
         }
         let k = size.clamp(1, opts.cells - cell);
         let h = k as f64 * hc;
@@ -956,13 +1076,15 @@ where
             err = err.max((corr[i].abs() + drift_err) / sc.max(1e-300));
         }
         if !err.is_finite() || ynew.iter().any(|v| !v.is_finite()) {
-            return Err(SdeError::NonFinite);
+            return Err(SdeError::NonFinite { step: count - 1 });
         }
         if err <= 1.0 {
             cell += k;
             y = ynew;
             path.t.push(t0 + cell as f64 * hc);
             path.y.push(y.clone());
+            path.accepted += 1;
+            path.last_h = h;
             let fac = if err == 0.0 {
                 2.0
             } else {
@@ -971,7 +1093,7 @@ where
             size = ((k as f64 * fac).round() as usize).max(1);
         } else {
             if k == 1 {
-                return Err(SdeError::StepLimit);
+                return Err(SdeError::StepBelowCell { cells: opts.cells });
             }
             path.rejected += 1;
             let fac = (0.9 / err.sqrt()).clamp(0.1, 0.9);
@@ -1061,7 +1183,9 @@ where
                 }
             },
         };
-        path.last().cloned().ok_or(SdeError::Invalid)
+        path.last().cloned().ok_or(SdeError::Invalid {
+            what: "an ensemble path came back empty",
+        })
     };
     crate::kernels::par::map_indexed(paths, SDE_ENSEMBLE_PAR_PATHS, member)
         .into_iter()

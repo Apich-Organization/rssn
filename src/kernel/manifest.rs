@@ -90,6 +90,14 @@ pub struct Features {
     pub structured_results: bool,
     /// Higher-order operators accept host callbacks.
     pub higher_order: bool,
+    /// The `sde` rule set ships: closure-free Brownian and Levy noise
+    /// primitives are reachable as manifest operators (`sde_wiener`,
+    /// `sde_levy_areas`).
+    ///
+    /// The stochastic *solvers* are not operators — they take host closures —
+    /// so this capability is about the noise a host can draw itself, not about
+    /// an ensemble API inside the kernel.
+    pub sde: bool,
     /// How a plugin may reach this build: `in-process` always, `cdylib` when
     /// the `plugin-cdylib` feature is on.
     ///
@@ -115,6 +123,7 @@ impl Features {
             user_base_dimensions: true,
             structured_results: true,
             higher_order: true,
+            sde: true,
             plugin_kinds: if cfg!(feature = "plugin-cdylib") {
                 vec![String::from("in-process"), String::from("cdylib")]
             } else {

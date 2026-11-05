@@ -166,6 +166,17 @@ pub fn matches_type(
         | (TypeExpr::Unit(a), TypeExpr::Unit(b)) | (TypeExpr::Point(a), TypeExpr::Point(b)) => {
             dim_match(a, b)
         },
+        // A dimension *variable* is polymorphic in the dimension: `Real[T]`
+        // accepts a plain real (binding `T` to dimensionless) as well as any
+        // dimensioned scalar. Without this arm a signature such as
+        // `sde_wiener(Int, Int, Int, Real[T]) -> Tensor<2, Real[T^(1/2)]>`
+        // could only accept a value whose type already *was* `Dim`, so the
+        // dynamic call path refused every real argument. Concrete dimensions
+        // are still compared by the arms above, and the element type is still
+        // matched, so a `Real[T]` parameter does not accept a tensor.
+        | (TypeExpr::Dim(inner, DimExpr::Any | DimExpr::Var(_)), _) => {
+            weaker(Match::Generic, matches_type(inner, got))
+        },
         | (
             TypeExpr::Tensor {
                 rank: ra,
@@ -457,6 +468,65 @@ mod tests {
     }
 
     #[test]
+    fn a_unit_matches_a_point_and_a_dimension_by_dimension() {
+        // The unit-carrying arms. Before them, a unit-typed parameter that was
+        // not *equal* to the argument scored `No`, so a `Real[Length]`
+        // overload could never beat the all-`Dyn` fallback: `quantity(3, m)`
+        // then ran the overload that loses the dimension. The association is
+        // by measured dimension, and a different dimension is still refused.
+        let length = DimExpr::base("Length");
+        let time = DimExpr::base("Time");
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Real.with_dim(length.clone()),
+                &TypeExpr::Unit(length.clone())
+            ),
+            Match::Exact
+        );
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Real.with_dim(length.clone()),
+                &TypeExpr::Point(length.clone())
+            ),
+            Match::Exact
+        );
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Real.with_dim(length.clone()),
+                &TypeExpr::Unit(time.clone())
+            ),
+            Match::No,
+            "a length parameter must not accept a time unit"
+        );
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Unit(length.clone()),
+                &TypeExpr::Unit(length.clone())
+            ),
+            Match::Exact
+        );
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Point(length.clone()),
+                &TypeExpr::Point(length.clone())
+            ),
+            Match::Exact
+        );
+        assert_eq!(
+            matches_type(&TypeExpr::Unit(length), &TypeExpr::Unit(time)),
+            Match::No
+        );
+        // An unpinned unit parameter is generic over the dimension.
+        assert_eq!(
+            matches_type(
+                &TypeExpr::Unit(DimExpr::Any),
+                &TypeExpr::Unit(DimExpr::base("Length"))
+            ),
+            Match::Generic
+        );
+    }
+
+    #[test]
     fn a_tie_is_ambiguous_rather_than_silently_broken() {
         let a = Signature::scalars(1, TypeExpr::Real);
         let b = Signature::scalars(1, TypeExpr::Complex);
@@ -464,6 +534,30 @@ mod tests {
             best(&[a, b], &[real()]),
             Best::Ambiguous(ref indices) if indices.len() == 2
         ));
+    }
+
+    #[test]
+    fn a_dimension_variable_parameter_accepts_a_plain_scalar() {
+        // `Real[T]` with a dimension variable binds `T`. It must accept a
+        // plain real (`T = 1`), an exact integer and a dimensioned scalar —
+        // otherwise a dim-generic overlay such as `sde_wiener`'s could not be
+        // called through the dynamic ABI at all — but the element type is
+        // still matched, so a tensor is not accepted.
+        let generic = TypeExpr::Real.with_dim(DimExpr::Var("T".to_owned()));
+        assert_eq!(matches_type(&generic, &TypeExpr::Real), Match::Generic);
+        assert_eq!(matches_type(&generic, &TypeExpr::Int), Match::Generic);
+        assert_eq!(
+            matches_type(&generic, &TypeExpr::Real.with_dim(DimExpr::base("Time"))),
+            Match::Generic
+        );
+        assert_eq!(
+            matches_type(&generic, &TypeExpr::Real.vector(3_u64)),
+            Match::No,
+            "a dimensioned scalar must not accept a tensor"
+        );
+        // A concrete dimension is not polymorphic.
+        let concrete = TypeExpr::Real.with_dim(DimExpr::base("Time"));
+        assert_eq!(matches_type(&concrete, &TypeExpr::Real), Match::No);
     }
 
     #[test]

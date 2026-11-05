@@ -802,3 +802,49 @@ fn euler_maruyama_path_is_bit_identical_to_the_pinned_reference() {
         assert_eq!(x.to_bits(), y.to_bits());
     }
 }
+
+/// An adaptive path reports its provenance and step counts, and every error
+/// carries the data its `Display` shows. `SdeError` is re-exported at
+/// `rssn::kernels` because every SDE caller matches on it.
+#[test]
+fn adaptive_paths_carry_their_provenance_and_errors_are_described() {
+    use rssn::kernels::SdeError;
+
+    let options = SdeAdaptiveOptions {
+        rtol: 1e-3,
+        atol: 1e-3,
+        seed: 424_242,
+        max_steps: 100_000,
+    };
+    let path = sde_adaptive_with(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], &options).unwrap();
+    assert_eq!(path.seed, 424_242);
+    assert_eq!(
+        path.accepted + 1,
+        path.t.len(),
+        "every extra point is a step"
+    );
+    assert!(path.accepted > 0);
+    assert!(path.last_h > 0.0 && path.last_h <= 1.0);
+
+    let invalid = SdeError::Invalid {
+        what: "state and noise dimensions",
+    };
+    assert!(invalid.to_string().contains("state and noise"), "{invalid}");
+    let nonfinite = SdeError::NonFinite { step: 3 };
+    assert!(nonfinite.to_string().contains('3'), "{nonfinite}");
+    let limited = SdeError::StepLimit { limit: 17 };
+    assert!(limited.to_string().contains("17"), "{limited}");
+    let underflow = SdeError::StepUnderflow { t: 0.5, h: 1e-30 };
+    assert!(underflow.to_string().contains("0.5"), "{underflow}");
+    let cells = SdeError::StepBelowCell { cells: 64 };
+    assert!(cells.to_string().contains("64"), "{cells}");
+    let boxed: Box<dyn std::error::Error> = Box::new(invalid);
+    assert!(!boxed.to_string().is_empty());
+
+    // A parameter invariant failure reports which one, through the data.
+    let error = sde_adaptive_with(gbm_a, gbm_g, 0, 0.0, 1.0, &[1.0], &options).unwrap_err();
+    let SdeError::Invalid { what } = error else {
+        panic!("expected Invalid, got {error:?}");
+    };
+    assert!(what.contains("noise"), "{what}");
+}

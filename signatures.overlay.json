@@ -1,5 +1,145 @@
 {
   "ops": {
+    "sde_levy_areas": [
+      {
+        "type_params": [
+          {
+            "name": "T",
+            "kind": "dim",
+            "bounds": []
+          }
+        ],
+        "params": [
+          "int",
+          {
+            "dim": [
+              "real",
+              {
+                "var": "T"
+              }
+            ]
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "int"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": {
+              "dim": [
+                "real",
+                {
+                  "var": "T"
+                }
+              ]
+            }
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": {
+          "same": 1
+        },
+        "variadic": null
+      }
+    ],
+    "sde_wiener": [
+      {
+        "type_params": [
+          {
+            "name": "T",
+            "kind": "dim",
+            "bounds": []
+          }
+        ],
+        "params": [
+          "int",
+          "int",
+          "int",
+          {
+            "dim": [
+              "real",
+              {
+                "var": "T"
+              }
+            ]
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 2
+            },
+            "shape": null,
+            "elem": {
+              "dim": [
+                "real",
+                {
+                  "pow": [
+                    {
+                      "var": "T"
+                    },
+                    {
+                      "rat": {
+                        "numer": 1,
+                        "denom": 2
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": {
+          "root_of": {
+            "degree": 2,
+            "index": 3
+          }
+        },
+        "variadic": null
+      }
+    ],
+    "sde_scheme_info": [
+      {
+        "type_params": [],
+        "params": [
+          "string"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": "non_metric",
+        "variadic": null
+      }
+    ],
     "diff": [
       {
         "type_params": [],

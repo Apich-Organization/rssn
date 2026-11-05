@@ -122,6 +122,12 @@ pub mod transforms;
 pub mod vector;
 pub mod wavelets;
 
+/// The error type of the stochastic integrators of [`sde`].
+///
+/// Re-exported at the module root because every caller that uses an SDE scheme
+/// matches on it; the schemes themselves stay under [`sde`].
+pub use sde::SdeError;
+
 /// Exact IEEE-754 equality (`-0.0 == 0.0`, NaN never equal).
 ///
 /// For the few places where bit-exact equality is the intended predicate

@@ -439,6 +439,14 @@ impl<'a> DimInfer<'a> {
                 args.first()
                     .map_or_else(DimTerm::any, |base| base.pow(&exponent))
             },
+            | DimRule::RootOf { degree, index } => {
+                // The operand is explicit; `Root(n)` is the argument-0
+                // shorthand. A zero degree would divide by zero, so it is
+                // treated as the first root rather than panicking.
+                let exponent = BigRational::new(BigInt::one(), BigInt::from(degree.max(1)));
+                args.get(index)
+                    .map_or_else(DimTerm::any, |base| base.pow(&exponent))
+            },
             | DimRule::Dimensionless => {
                 for (index, arg) in args.iter().enumerate() {
                     if let Err(error) = self.unifier.unify(arg, &DimTerm::dimensionless()) {

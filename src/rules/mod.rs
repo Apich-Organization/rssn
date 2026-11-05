@@ -89,6 +89,7 @@ pub mod physics_quantum;
 pub mod poly;
 pub mod radicals;
 pub mod rewriting;
+pub mod sde;
 pub mod solve;
 pub mod special;
 mod special_approx;
@@ -125,6 +126,7 @@ pub use physics_quantum::physics_quantum;
 pub use poly::poly;
 pub use radicals::radicals;
 pub use rewriting::rewriting;
+pub use sde::sde;
 pub use solve::solve;
 pub use special::special;
 pub use stats::stats;
@@ -155,6 +157,7 @@ pub fn standard() -> Vec<RuleSet> {
         stats(),
         transforms(),
         numeric(),
+        sde(),
         variational(),
         pde(),
         functional(),
