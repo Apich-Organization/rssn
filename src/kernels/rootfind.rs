@@ -5,7 +5,7 @@
 //! * polynomials: Aberth-Ehrlich simultaneous iteration (complex roots)
 //!   and companion-matrix eigenvalues;
 //! * systems: Newton with backtracking line search, Broyden's method,
-//!   Levenberg-Marquardt, and homotopy continuation for polynomial
+//!   column-scaled damped least squares using augmented SVD, and homotopy continuation for polynomial
 //!   systems of one complex variable per equation (total-degree start
 //!   system) via [`homotopy_univariate`], and square multivariate
 //!   polynomial systems via [`homotopy_system`] (total-degree start
@@ -14,6 +14,20 @@
 //!   path-jumping protection is [`crate::kernels::homotopy`]);
 //! * polynomial roots by the three-stage Jenkins-Traub algorithm
 //!   ([`polynomial_roots_jenkins_traub`]).
+//!
+//! The least-squares solver uses dense augmented SVD and seeks a local
+//! stationary point; it does not enforce bounds or prove global optimality.
+//! Finite differences may fail when no representable admissible perturbation
+//! exists. Solver statuses distinguish convergence from budget/stagnation.
+
+#[path = "rootfind/least_squares.rs"]
+mod least_squares;
+pub use least_squares::LeastSquaresError;
+pub use least_squares::LeastSquaresJacobian;
+pub use least_squares::LeastSquaresOptions;
+pub use least_squares::LeastSquaresResult;
+pub use least_squares::LeastSquaresStatus;
+pub use least_squares::least_squares;
 
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
@@ -392,7 +406,7 @@ pub fn polynomial_roots_companion(coeffs: &[f64]) -> Result<Vec<(f64, f64)>, Roo
 pub struct SystemSolution {
     /// The approximate root.
     pub x: Vec<f64>,
-    /// Infinity norm of the residual.
+    /// Infinity norm for system roots; Euclidean norm for least squares.
     pub residual: f64,
     /// Iterations used.
     pub iterations: usize,
@@ -403,25 +417,96 @@ fn norm_inf(v: &[f64]) -> f64 {
 }
 
 /// Forward-difference Jacobian of `f: R^n -> R^m` at `x`.
+///
+/// This compatibility function returns a same-shaped NaN matrix when a
+/// callback is malformed or a derivative cannot be represented. Prefer
+/// [`try_numerical_jacobian`] when the failure reason is needed.
 pub fn numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(
     f: &F,
     x: &[f64],
     fx: &[f64],
 ) -> Mat {
+    try_numerical_jacobian(f, x, fx).unwrap_or_else(|_| {
+        let Some(length) = fx.len().checked_mul(x.len()) else {
+            return Mat {
+                rows: 0,
+                cols: 0,
+                data: Vec::new(),
+            };
+        };
+        Mat {
+            rows: fx.len(),
+            cols: x.len(),
+            data: vec![f64::NAN; length],
+        }
+    })
+}
+
+/// Validated forward-difference Jacobian, with a backward-side retry at domain
+/// boundaries and checked callback length and representability.
+///
+/// # Errors
+/// [`RootError::Invalid`] if inputs, samples, shape or a derivative are invalid.
+pub fn try_numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(
+    f: &F,
+    x: &[f64],
+    fx: &[f64],
+) -> Result<Mat, RootError> {
     let n = x.len();
     let m = fx.len();
+    if n == 0 || m == 0 || m.checked_mul(n).is_none() || x.iter().chain(fx).any(|v| !v.is_finite())
+    {
+        return Err(RootError::Invalid);
+    }
     let mut j = Mat::zeros(m, n);
-    let mut xp = x.to_vec();
-    for k in 0..n {
-        let h = 1.5e-8 * x[k].abs().max(1.0);
-        xp[k] = x[k] + h;
-        let fp = f(&xp);
-        xp[k] = x[k];
-        for i in 0..m {
-            j.set(i, k, (fp[i] - fx[i]) / h);
+    let mut trial = x.to_vec();
+    for col in 0..n {
+        let h = f64::EPSILON.sqrt() * x[col].abs().max(1.0);
+        let mut sample = None;
+        for sign in [1.0_f64, -1.0] {
+            trial[col] = sign.mul_add(h, x[col]);
+            let delta = trial[col] - x[col];
+            if !trial[col].is_finite() || !delta.is_finite() || delta == 0.0 {
+                continue;
+            }
+            let values = f(&trial);
+            if values.len() != m {
+                return Err(RootError::Invalid);
+            }
+            if values.iter().all(|v| v.is_finite()) {
+                sample = Some((values, delta));
+                break;
+            }
+        }
+        trial[col] = x[col];
+        let Some((values, delta)) = sample else {
+            return Err(RootError::Invalid);
+        };
+        for row in 0..m {
+            let derivative = (values[row] - fx[row]) / delta;
+            if !derivative.is_finite() {
+                return Err(RootError::Invalid);
+            }
+            j.set(row, col, derivative);
         }
     }
-    j
+    Ok(j)
+}
+fn valid_system_input(
+    x: &[f64],
+    tol: f64,
+) -> bool {
+    !x.is_empty()
+        && x.iter().all(|v| v.is_finite())
+        && tol.is_finite()
+        && tol >= 0.0
+        && x.len().checked_mul(x.len()).is_some()
+}
+fn valid_system_values(
+    values: &[f64],
+    n: usize,
+) -> bool {
+    values.len() == n && values.iter().all(|v| v.is_finite())
 }
 
 /// Newton's method for `f(x) = 0` with a backtracking (Armijo) line search
@@ -441,8 +526,14 @@ where
     F: Fn(&[f64]) -> Vec<f64>,
     J: Fn(&[f64]) -> Mat,
 {
+    if !valid_system_input(x0, tol) {
+        return Err(RootError::Invalid);
+    }
     let mut x = x0.to_vec();
     let mut fx = f(&x);
+    if !valid_system_values(&fx, x.len()) {
+        return Err(RootError::Invalid);
+    }
     for it in 0..max_iter {
         let r = norm_inf(&fx);
         if r <= tol {
@@ -452,17 +543,39 @@ where
                 iterations: it,
             });
         }
-        let j = jac.map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
+        let j = if let Some(jac) = jac {
+            jac(&x)
+        } else {
+            try_numerical_jacobian(&f, &x, &fx)?
+        };
+        if j.rows != x.len()
+            || j.cols != x.len()
+            || j.data.len() != x.len() * x.len()
+            || j.data.iter().any(|v| !v.is_finite())
+        {
+            return Err(RootError::Invalid);
+        }
         let lu = dense::lu_factor(&j).map_err(|_| RootError::Singular)?;
         let neg: Vec<f64> = fx.iter().map(|v| -v).collect();
         let step = lu.solve(&neg);
-        let f0: f64 = fx.iter().map(|v| v * v).sum();
+        if step.iter().any(|v| !v.is_finite()) {
+            return Err(RootError::Singular);
+        }
+        let scale = norm_inf(&fx);
+        let f0: f64 = fx.iter().map(|v| (v / scale) * (v / scale)).sum();
         let mut t = 1.0;
         let mut accepted = false;
         for _ in 0..40 {
             let xn: Vec<f64> = x.iter().zip(&step).map(|(a, b)| a + t * b).collect();
+            if xn.iter().any(|v| !v.is_finite()) {
+                t *= 0.5;
+                continue;
+            }
             let fnw = f(&xn);
-            let f1: f64 = fnw.iter().map(|v| v * v).sum();
+            if fnw.len() != x.len() {
+                return Err(RootError::Invalid);
+            }
+            let f1: f64 = fnw.iter().map(|v| (v / scale) * (v / scale)).sum();
             if f1.is_finite() && f1 <= (1.0 - 2e-4 * t) * f0 {
                 x = xn;
                 fx = fnw;
@@ -498,10 +611,26 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
     tol: f64,
     max_iter: usize,
 ) -> Result<SystemSolution, RootError> {
+    if !valid_system_input(x0, tol) {
+        return Err(RootError::Invalid);
+    }
     let n = x0.len();
     let mut x = x0.to_vec();
     let mut fx = f(&x);
-    let mut b = dense::lu_factor(&numerical_jacobian(&f, &x, &fx))
+    if !valid_system_values(&fx, n) {
+        return Err(RootError::Invalid);
+    }
+    if norm_inf(&fx) <= tol {
+        return Ok(SystemSolution {
+            x,
+            residual: norm_inf(&fx),
+            iterations: 0,
+        });
+    }
+    if max_iter == 0 {
+        return Err(RootError::NoConvergence);
+    }
+    let mut b = dense::lu_factor(&try_numerical_jacobian(&f, &x, &fx)?)
         .map_err(|_| RootError::Singular)?
         .inverse();
     for it in 0..max_iter {
@@ -515,8 +644,14 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
         }
         let step: Vec<f64> = b.matvec(&fx).iter().map(|v| -v).collect();
         let xn: Vec<f64> = x.iter().zip(&step).map(|(a, s)| a + s).collect();
+        if xn.iter().any(|v| !v.is_finite()) {
+            return Err(RootError::NoConvergence);
+        }
         let fnw = f(&xn);
-        if !norm_inf(&fnw).is_finite() {
+        if fnw.len() != n {
+            return Err(RootError::Invalid);
+        }
+        if fnw.iter().any(|v| !v.is_finite()) {
             return Err(RootError::NoConvergence);
         }
         let y: Vec<f64> = fnw.iter().zip(&fx).map(|(a, c)| a - c).collect();
@@ -538,6 +673,9 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
                 }
             }
         }
+        if b.data.iter().any(|v| !v.is_finite()) {
+            return Err(RootError::NoConvergence);
+        }
         x = xn;
         fx = fnw;
     }
@@ -557,72 +695,39 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
 /// finite-difference Jacobian. Works for `m >= n` residuals.
 ///
 /// # Errors
-/// [`RootError::NoConvergence`] when the iteration limit is reached.
+/// [`RootError::NoConvergence`] when work is exhausted or steps stagnate;
+/// [`RootError::Invalid`] for invalid input or malformed residuals and
+/// [`RootError::Singular`] if the augmented decomposition fails.
 pub fn levenberg_marquardt<F: Fn(&[f64]) -> Vec<f64>>(
     f: F,
     x0: &[f64],
     tol: f64,
     max_iter: usize,
 ) -> Result<SystemSolution, RootError> {
-    let n = x0.len();
-    let mut x = x0.to_vec();
-    let mut fx = f(&x);
-    let mut cost: f64 = fx.iter().map(|v| v * v).sum();
-    let mut lambda = 1e-3;
-    for it in 0..max_iter {
-        let j = numerical_jacobian(&f, &x, &fx);
-        let jt = j.transpose();
-        let g = jt.matvec(&fx);
-        if norm_inf(&g) <= tol * 1e-3 || cost.sqrt() <= tol {
-            return Ok(SystemSolution {
-                x,
-                residual: cost.sqrt(),
-                iterations: it,
-            });
+    let options = LeastSquaresOptions {
+        max_iterations: max_iter,
+        max_evaluations: usize::MAX,
+        residual_tolerance: tol,
+        gradient_tolerance: tol * 1e-3,
+        step_tolerance: f64::EPSILON,
+        ..LeastSquaresOptions::default()
+    };
+    let result = least_squares(f, None, x0, options).map_err(|error| {
+        match error {
+            | LeastSquaresError::InvalidInput
+            | LeastSquaresError::InvalidResidual
+            | LeastSquaresError::InvalidJacobian => RootError::Invalid,
+            | LeastSquaresError::Decomposition => RootError::Singular,
         }
-        let jtj = jt.matmul(&j).map_err(|_| RootError::Invalid)?;
-        let mut improved = false;
-        for _ in 0..30 {
-            let mut a = jtj.clone();
-            for i in 0..n {
-                let d = jtj.at(i, i).max(1e-12);
-                a.set(i, i, jtj.at(i, i) + lambda * d);
-            }
-            let neg: Vec<f64> = g.iter().map(|v| -v).collect();
-            let Ok(step) = dense::solve(&a, &neg) else {
-                lambda *= 10.0;
-                continue;
-            };
-            let xn: Vec<f64> = x.iter().zip(&step).map(|(a, b)| a + b).collect();
-            let fnw = f(&xn);
-            let c1: f64 = fnw.iter().map(|v| v * v).sum();
-            if c1.is_finite() && c1 < cost {
-                let small = (cost - c1) <= 1e-16 * cost.max(1e-300);
-                x = xn;
-                fx = fnw;
-                cost = c1;
-                lambda = (lambda * 0.3).max(1e-15);
-                improved = true;
-                if small {
-                    return Ok(SystemSolution {
-                        x,
-                        residual: cost.sqrt(),
-                        iterations: it,
-                    });
-                }
-                break;
-            }
-            lambda *= 4.0;
-        }
-        if !improved {
-            return Ok(SystemSolution {
-                x,
-                residual: cost.sqrt(),
-                iterations: it,
-            });
-        }
+    })?;
+    if !result.converged() {
+        return Err(RootError::NoConvergence);
     }
-    Err(RootError::NoConvergence)
+    Ok(SystemSolution {
+        x: result.x,
+        residual: result.residual_norm,
+        iterations: result.iterations,
+    })
 }
 
 /// Homotopy continuation for the roots of a real-coefficient polynomial.

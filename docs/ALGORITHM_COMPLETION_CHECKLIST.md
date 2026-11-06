@@ -61,6 +61,7 @@ stable must not be used.
 | KN-07 | Adaptive rules on balls (planar triangles are done via `integrate_triangle`); no rigorous enclosure; 2-D oscillatory quadrature is Filon for linear phases with an adaptive Genz–Malik general-phase fallback (no 2-D Levin) | P2/P3 | `quadrature.rs`, `convergence.rs` |
 | KN-08 | Multivariate distributions beyond Dirichlet/Wishart, robust covariance (MCD); higher-order or C²-monotone splines | P2/P3 | `stats.rs`, `tensor.rs`, `interpolate.rs` |
 | KN-10 | Third and higher derivatives; analytic second-order and interval rules for opaque calls | P2/P3 | `backend/tape.rs` |
+| KN-11 | Dense nonlinear least squares remains local and unconstrained; no sparse Jacobian or matrix-free trust-region path, and finite-difference accuracy is limited by callback representability | P2 | `rootfind/least_squares.rs` |
 
 ### Rules (`src/rules`)
 

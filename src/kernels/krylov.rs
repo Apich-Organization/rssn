@@ -407,6 +407,15 @@ mod accurate_dot;
 #[path = "krylov/iterative.rs"]
 mod iterative;
 
+/// Correctly rounded signed significand and exponent without underflow.
+pub(crate) fn exact_product_sum_scaled<I>(pairs: I) -> (f64, i32)
+where
+    I: IntoIterator<Item = (f64, f64)>,
+    I::IntoIter: Clone,
+{
+    accurate_dot::product_sum(pairs)
+}
+
 /// Shared original-system residual arithmetic for validated internal adapters.
 pub(crate) fn residual_ratio(
     b: &[f64],
