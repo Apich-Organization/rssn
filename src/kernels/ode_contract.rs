@@ -161,7 +161,15 @@ pub(super) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     } else {
         0.01 * d0 / d1
     };
-    let step = estimate.min(max_step).min((bound - time).abs());
+    // A step must be resolvable at the current time: far from the origin the
+    // spacing of representable times can exceed the heuristic estimate, and a
+    // step that cannot advance `time` would be reported as a step-limit failure
+    // before the first step is taken.
+    let resolution = 8.0 * (time.abs().next_up() - time.abs());
+    let step = estimate
+        .max(resolution)
+        .min(max_step)
+        .min((bound - time).abs());
     if !step.is_finite() || step <= 0.0 {
         return StepEstimate { step, evaluations: 0 };
     }
