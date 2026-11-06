@@ -18,11 +18,13 @@
 //!
 //! # Limitations
 //!
-//! * The incomplete factorisations are zero-fill on the pattern of `A`: ILU(0)
-//!   ([`Csr::ilu0`]) and IC(0) ([`Csr::ic0`]). There is no ILU(k), no
-//!   threshold dropping and no pivoting, so a structurally or numerically
-//!   zero pivot makes the factorisation fail with `None` instead of producing
-//!   NaN. [`auto_preconditioner`] / [`AutoPreconditioner`] retries the chain
+//! * [`Csr::ilut`] offers threshold dropping and bounded per-row fill but is
+//!   still unpivoted; it can fail on an unsafe pivot and does not guarantee
+//!   convergence or positive definiteness. ILU(0)
+//!   ([`Csr::ilu0`]) and IC(0) ([`Csr::ic0`]) retain zero fill. There is no
+//!   level-of-fill ILU(k) or incomplete pivoting, so a structurally or numerically
+//!   zero pivot makes ILU(0) and IC(0) return `None`; ILUT reports an error.
+//!   [`auto_preconditioner`] / [`AutoPreconditioner`] retries the chain
 //!   IC(0) (only when the pattern is structurally symmetric) → ILU(0) →
 //!   [`Preconditioner::Jacobi`] and reports the kind it used in
 //!   [`AutoPreconditioner::kind`], but a failed factorisation is never
@@ -42,6 +44,13 @@
 //! * The sparse direct solver ([`Csr::sparse_lu`]) is the fallback for
 //!   matrices on which the incomplete factorisation breaks down, at the cost
 //!   of fill-in and `O(nnz(LU))` memory.
+
+#[path = "krylov/ilut.rs"]
+mod ilut;
+pub use ilut::Ilut;
+pub use ilut::IlutError;
+pub use ilut::IlutOptions;
+pub use ilut::IlutStats;
 
 /// Compressed sparse row matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -168,6 +177,9 @@ impl Csr {
     /// unpreconditioned path or falls back to [`Csr::jacobi_inverse`].
     #[must_use]
     pub fn ilu0(&self) -> Option<Ilu0> {
+        if !ilut::valid_csr(self) || self.values.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
         let n = self.rows;
         let mut lu = self.values.clone();
         let mut diag = vec![0usize; n];
@@ -185,16 +197,23 @@ impl Csr {
                 if piv == 0.0 {
                     return None;
                 }
+                let numerator = lu[k];
                 lu[k] /= piv;
                 let l = lu[k];
+                if !l.is_finite() || (l == 0.0 && numerator != 0.0) {
+                    return None;
+                }
                 for kk in diag[j] + 1..self.indptr[j + 1] {
                     let p = pos[self.indices[kk]];
                     if p != usize::MAX {
                         lu[p] -= l * lu[kk];
+                        if !lu[p].is_finite() {
+                            return None;
+                        }
                     }
                 }
             }
-            if lu[diag[i]] == 0.0 {
+            if !lu[diag[i]].is_finite() || lu[diag[i]] == 0.0 {
                 return None;
             }
             for k in self.indptr[i]..self.indptr[i + 1] {

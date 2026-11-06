@@ -39,7 +39,7 @@ enum Method {
     Radau5,
     Bdf,
 }
-fn tensor_type(
+pub(super) fn tensor_type(
     rank: u64,
     dimension: DimExpr,
 ) -> TypeExpr {
@@ -52,7 +52,7 @@ fn tensor_type(
 // N is an operator-side existential shared by the initial state and RHS input.
 // Runtime preflight additionally checks that relationship against the concrete
 // callback bank signature, before any host invocation.
-fn state_type(dimension: DimExpr) -> TypeExpr {
+pub(super) fn state_type(dimension: DimExpr) -> TypeExpr {
     TypeExpr::Tensor {
         rank: NatExpr::Lit(1),
         shape: Some(vec![NatExpr::Var("N".into())]),
@@ -60,7 +60,7 @@ fn state_type(dimension: DimExpr) -> TypeExpr {
     }
 }
 
-fn vector_dimension(
+pub(super) fn vector_dimension(
     ty: &TypeExpr,
     length: Option<usize>,
 ) -> Result<DimExpr, OpError> {
@@ -84,13 +84,13 @@ fn vector_dimension(
         };
         if length.is_some_and(|length| u64::try_from(length).ok() != Some(*extent)) {
             return Err(OpError::Domain(
-                "ODE callback vector extent differs from the initial state".into(),
+                "callback vector extent differs from the expected length".into(),
             ));
         }
     }
     scalar_dimension(elem)
 }
-fn vector(
+pub(super) fn vector(
     value: &Value,
     dimension: &DimExpr,
     length: Option<usize>,
@@ -109,7 +109,7 @@ fn vector(
         || length.is_some_and(|length| length != tensor.data.len())
     {
         return Err(OpError::Domain(format!(
-            "argument {index} must be a vector of the ODE state length with consistent storage"
+            "argument {index} must be a vector of the expected length with consistent storage"
         )));
     }
     let actual = vector_dimension(&ctx.value_type(value)?, length)?;
@@ -133,7 +133,7 @@ fn vector(
         })
         .collect()
 }
-fn output_tensor(
+pub(super) fn output_tensor(
     shape: Vec<usize>,
     data: Vec<f64>,
     dimension: DimExpr,
@@ -145,7 +145,7 @@ fn output_tensor(
         || data.iter().any(|value| !value.is_finite())
     {
         return Err(OpError::Domain(
-            "ODE result has malformed storage or non-finite coefficients".into(),
+            "numerical result has malformed storage or non-finite coefficients".into(),
         ));
     }
     Ok(Value::Tensor(TensorValue {

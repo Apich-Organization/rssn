@@ -387,3 +387,93 @@ fn root_budget_bracket_and_first_error_contracts_are_explicit() {
         Err(OpError::Domain(_))
     ));
 }
+
+#[test]
+fn least_squares_exposes_independent_vector_dimensions_counts_and_status() {
+    let session = Session::new();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let seen = Arc::clone(&calls);
+    let mut ctx = CallCtx::new();
+    let callback = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            move |args: &[Value]| {
+                seen.fetch_add(1, Ordering::Relaxed);
+                let Value::Tensor(x) = &args[0] else {
+                    panic!("expected parameter vector")
+                };
+                let x = number(&x.data[0]);
+                Ok(vector(&[x - 2.0, 2.0 * x - 4.0], time()))
+            },
+            Signature::new(vec![vector_type(length())], vector_type(time())),
+        )))
+        .unwrap();
+    let mut args = vec![
+        vector(&[0.0], length()),
+        dimensional(1e-9, time()),
+        Value::Float(1e-9),
+        Value::Float(1e-9),
+        Value::Float(0.001),
+        Value::int(100),
+        Value::int(1000),
+    ];
+    let result = session
+        .call_ho("num_least_squares", &args, &[callback], &ctx)
+        .unwrap();
+    let Value::Tensor(x) = field(&result, "x") else {
+        panic!("expected fit vector")
+    };
+    assert!((number(&x.data[0]) - 2.0).abs() < 1e-5);
+    assert_eq!(field(&result, "converged"), &Value::Bool(true));
+    assert_eq!(
+        number(field(&result, "evaluations")) as usize,
+        calls.load(Ordering::Relaxed)
+    );
+    args[6] = Value::int(1);
+    let limited = session
+        .call_ho("num_least_squares", &args, &[callback], &ctx)
+        .unwrap();
+    assert_eq!(
+        field(&limited, "status"),
+        &Value::String("evaluation_limit".into())
+    );
+    assert_eq!(number(field(&limited, "evaluations")), 1.0);
+}
+
+#[test]
+fn least_squares_preserves_callback_error_and_rejects_residual_extent_mismatch() {
+    let session = Session::new();
+    let args = vec![
+        vector(&[0.0], length()),
+        dimensional(1e-9, time()),
+        Value::Float(1e-9),
+        Value::Float(1e-9),
+        Value::Float(0.001),
+        Value::int(100),
+        Value::int(1000),
+    ];
+    let mut ctx = CallCtx::new();
+    let fail = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            |_: &[Value]| Err(OpError::Domain("host residual error".into())),
+            Signature::new(vec![vector_type(length())], vector_type(time())),
+        )))
+        .unwrap();
+    assert!(
+        matches!(session.call_ho("num_least_squares", &args, &[fail], &ctx), Err(OpError::Domain(message)) if message == "host residual error")
+    );
+    let mut fixed = vector_type(time());
+    if let TypeExpr::Tensor { shape, .. } = &mut fixed {
+        *shape = Some(vec![NatExpr::Lit(2)]);
+    }
+    let bad = ctx
+        .add_callback(Arc::new(NativeCallback::new(
+            |_: &[Value]| Ok(vector(&[1.0], time())),
+            Signature::new(vec![vector_type(length())], fixed),
+        )))
+        .unwrap();
+    assert!(
+        session
+            .call_ho("num_least_squares", &args, &[bad], &ctx)
+            .is_err()
+    );
+}
