@@ -18,10 +18,10 @@ mod combinatorics;
 mod computer_graphics;
 #[path = "kernels/convergence.rs"]
 mod convergence;
-#[path = "kernels/cp_stability.rs"]
-mod cp_stability;
 #[path = "kernels/coordinates.rs"]
 mod coordinates;
+#[path = "kernels/cp_stability.rs"]
+mod cp_stability;
 #[path = "kernels/dd.rs"]
 mod dd;
 #[path = "kernels/dense.rs"]
@@ -58,10 +58,10 @@ mod integrate;
 mod interpolate;
 #[path = "kernels/krylov.rs"]
 mod krylov;
-#[path = "kernels/krylov_scale.rs"]
-mod krylov_scale;
 #[path = "kernels/krylov_ext.rs"]
 mod krylov_ext;
+#[path = "kernels/krylov_scale.rs"]
+mod krylov_scale;
 #[path = "kernels/matfun.rs"]
 mod matfun;
 #[path = "kernels/matrix.rs"]

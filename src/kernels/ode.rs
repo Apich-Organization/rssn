@@ -286,11 +286,15 @@ fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
     let tolerance = event_time_tolerance(t, t + h);
     for _ in 0..80 {
         let mid = f64::midpoint(lo, hi);
-        if mid == lo || mid == hi { break; }
+        if mid == lo || mid == hi {
+            break;
+        }
         let mut state = y.to_vec();
         advance(method, f, t, &mut state, mid * h, k, stage);
         let gm = (event.g)(t + mid * h, &state);
-        if gm == 0.0 { return (mid, state); }
+        if gm == 0.0 {
+            return (mid, state);
+        }
         if (gm < 0.0) == (g0 < 0.0) {
             lo = mid;
         } else {

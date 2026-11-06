@@ -1,6 +1,8 @@
-use rssn::kernels::newton_cg::{
-    NewtonCgError, NewtonCgOptions, NewtonCgStatus, minimize, minimize_tape,
-};
+use rssn::kernels::newton_cg::NewtonCgError;
+use rssn::kernels::newton_cg::NewtonCgOptions;
+use rssn::kernels::newton_cg::NewtonCgStatus;
+use rssn::kernels::newton_cg::minimize;
+use rssn::kernels::newton_cg::minimize_tape;
 
 #[test]
 fn matrix_free_diagonal_problem_uses_vector_actions_in_high_dimension() {
@@ -198,10 +200,9 @@ fn stationary_saddles_are_only_first_order_certificates_and_invalid_options_fail
 
 #[test]
 fn analytic_tape_reverse_and_hvp_drive_rosenbrock_without_a_dense_hessian() {
-    use rssn::{
-        backend::tape::lower,
-        graph::{Engine, Graph},
-    };
+    use rssn::backend::tape::lower;
+    use rssn::graph::Engine;
+    use rssn::graph::Graph;
     let mut graph = Graph::new();
     Engine::install(&mut graph, &rssn::rules::standard()).unwrap();
     let root = graph.parse("(1-x)^2+100*(y-x^2)^2").unwrap();

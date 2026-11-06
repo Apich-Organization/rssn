@@ -190,8 +190,12 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     if !flo.is_finite() || !fhi.is_finite() {
         return Err(RootError::Invalid);
     }
-    if flo == 0.0 { return Ok(lo); }
-    if fhi == 0.0 { return Ok(hi); }
+    if flo == 0.0 {
+        return Ok(lo);
+    }
+    if fhi == 0.0 {
+        return Ok(hi);
+    }
     if flo.is_sign_positive() == fhi.is_sign_positive() {
         return Err(RootError::NotBracketed);
     }
@@ -202,7 +206,9 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     let mut x = f64::midpoint(lo, hi);
     for _ in 0..max_iter {
         let fx = f(x);
-        if !fx.is_finite() { return Err(RootError::Invalid); }
+        if !fx.is_finite() {
+            return Err(RootError::Invalid);
+        }
         if fx == 0.0 {
             return Ok(x);
         }
@@ -219,10 +225,16 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
         }
         if midpoint == lo || midpoint == hi {
             // The sign-changing interval has no representable interior point.
-            return Ok(if flo.abs() <= fhi.abs() { lo } else { hi });
+            return Ok(if flo.abs() <= fhi.abs() {
+                lo
+            } else {
+                hi
+            });
         }
         let d = df(x);
-        if !d.is_finite() { return Err(RootError::Invalid); }
+        if !d.is_finite() {
+            return Err(RootError::Invalid);
+        }
         let nx = if d == 0.0 {
             f64::NAN
         } else {
@@ -235,7 +247,11 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
         };
         let lower = f64::midpoint(mn, midpoint);
         let upper = f64::midpoint(midpoint, mx);
-        x = if nx.is_finite() && nx > lower && nx < upper { nx } else { midpoint };
+        x = if nx.is_finite() && nx > lower && nx < upper {
+            nx
+        } else {
+            midpoint
+        };
     }
     Err(RootError::NoConvergence)
 }

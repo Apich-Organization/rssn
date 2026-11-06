@@ -1,8 +1,11 @@
 use rssn::api::Session;
+use rssn::kernel::CallCtx;
+use rssn::kernel::OpError;
+use rssn::kernel::Value;
 use rssn::kernel::signature::TypeExpr;
 use rssn::kernel::value::TensorValue;
-use rssn::kernel::{CallCtx, OpError, Value};
-use rssn::rules::numerical_abi::{EXPORTS, GENERATED_EXPORTS};
+use rssn::rules::numerical_abi::EXPORTS;
+use rssn::rules::numerical_abi::GENERATED_EXPORTS;
 use std::collections::BTreeSet;
 
 fn vector(values: &[f64]) -> Value {
@@ -116,8 +119,15 @@ fn numeric_adapters_reject_bad_shapes_and_non_finite_values() {
         Err(OpError::Domain(_))
     ));
     let transposed = call(&session, "num_transpose", &[matrix(2, 1, &[4.0, 5.0])]).unwrap();
-    assert_eq!(call(&session, "num_matmul", &[transposed, matrix(2, 1, &[2.0, 3.0])]).unwrap(), matrix(1, 1, &[23.0]));
-
+    assert_eq!(
+        call(
+            &session,
+            "num_matmul",
+            &[transposed, matrix(2, 1, &[2.0, 3.0])]
+        )
+        .unwrap(),
+        matrix(1, 1, &[23.0])
+    );
 }
 
 #[test]
@@ -319,7 +329,8 @@ fn dimensional_policies_preserve_and_combine_witnesses() {
 #[test]
 fn quantities_are_converted_to_coherent_units_before_numerical_work() {
     use rssn::kernel::signature::DimExpr;
-    use rssn::kernel::value::{DynValue, QuantityValue};
+    use rssn::kernel::value::DynValue;
+    use rssn::kernel::value::QuantityValue;
     let session = Session::new();
     let mut unit = session
         .manifest()
@@ -348,21 +359,72 @@ fn quantities_are_converted_to_coherent_units_before_numerical_work() {
 #[test]
 fn generated_source_bindings_dispatch_and_obey_output_policies() {
     let session = Session::new();
-    let product = call(&session, "num_cross_product", &[vector(&[1.0, 0.0, 0.0]), vector(&[0.0, 1.0, 0.0])]).expect("3D cross product");
-    let Value::Tensor(product) = product else { panic!("expected tensor") };
-    assert_eq!(product.data, vec![Value::Float(0.0), Value::Float(0.0), Value::Float(1.0)]);
-    assert!(call(&session, "num_cross_product", &[vector(&[1.0, 0.0]), vector(&[0.0, 1.0])]).is_err());
-    assert_eq!(call(&session, "num_inverse_erfc", &[Value::Float(0.0)]).unwrap(), Value::Float(f64::INFINITY));
+    let product = call(
+        &session,
+        "num_cross_product",
+        &[vector(&[1.0, 0.0, 0.0]), vector(&[0.0, 1.0, 0.0])],
+    )
+    .expect("3D cross product");
+    let Value::Tensor(product) = product else {
+        panic!("expected tensor")
+    };
+    assert_eq!(
+        product.data,
+        vec![Value::Float(0.0), Value::Float(0.0), Value::Float(1.0)]
+    );
+    assert!(
+        call(
+            &session,
+            "num_cross_product",
+            &[vector(&[1.0, 0.0]), vector(&[0.0, 1.0])]
+        )
+        .is_err()
+    );
+    assert_eq!(
+        call(&session, "num_inverse_erfc", &[Value::Float(0.0)]).unwrap(),
+        Value::Float(f64::INFINITY)
+    );
     assert!(call(&session, "num_inverse_erfc", &[Value::Float(-1.0)]).is_err());
-    let Value::Float(result) = call(&session, "num_erfi", &[Value::Float(1.0)]).unwrap() else { panic!("expected scalar") };
+    let Value::Float(result) = call(&session, "num_erfi", &[Value::Float(1.0)]).unwrap() else {
+        panic!("expected scalar")
+    };
     assert!((result - 1.6504257588).abs() < 1e-8);
     let sample = vector(&[9.0, 1.0, 3.0]);
-    assert_eq!(call(&session, "num_median", std::slice::from_ref(&sample)).unwrap(), Value::Float(3.0));
-    assert_eq!(sample, vector(&[9.0, 1.0, 3.0]), "mutable Rust kernels must not mutate caller tensors");
+    assert_eq!(
+        call(&session, "num_median", std::slice::from_ref(&sample)).unwrap(),
+        Value::Float(3.0)
+    );
+    assert_eq!(
+        sample,
+        vector(&[9.0, 1.0, 3.0]),
+        "mutable Rust kernels must not mutate caller tensors"
+    );
     assert!(call(&session, "num_skewness", &[vector(&[1.0, 2.0])]).is_err());
-    assert_eq!(call(&session, "num_lp_norm", &[vector(&[3.0, 4.0]), Value::Float(2.0)]).unwrap(), Value::Float(5.0));
-    assert!(call(&session, "num_lp_norm", &[vector(&[3.0]), Value::Float(0.0)]).is_err());
-    let Value::Tensor(scaled) = call(&session, "num_scalar_mul", &[vector(&[2.0, 3.0]), Value::Float(4.0)]).unwrap() else { panic!("expected tensor") };
+    assert_eq!(
+        call(
+            &session,
+            "num_lp_norm",
+            &[vector(&[3.0, 4.0]), Value::Float(2.0)]
+        )
+        .unwrap(),
+        Value::Float(5.0)
+    );
+    assert!(
+        call(
+            &session,
+            "num_lp_norm",
+            &[vector(&[3.0]), Value::Float(0.0)]
+        )
+        .is_err()
+    );
+    let Value::Tensor(scaled) = call(
+        &session,
+        "num_scalar_mul",
+        &[vector(&[2.0, 3.0]), Value::Float(4.0)],
+    )
+    .unwrap() else {
+        panic!("expected tensor")
+    };
     assert_eq!(scaled.data, vec![Value::Float(8.0), Value::Float(12.0)]);
 }
 
@@ -370,79 +432,210 @@ fn generated_source_bindings_dispatch_and_obey_output_policies() {
 fn generated_structured_policies_are_exhaustive_and_honest_about_unbound_types() {
     use rssn::rules::numerical_abi::codecs::STRUCTURED_POLICIES;
     use rssn::rules::numerical_abi::dimensions::FieldDimension;
-    let svd = STRUCTURED_POLICIES.iter().find(|policy| policy.rust_path == "crate::kernels::dense::Svd").unwrap();
+    let svd = STRUCTURED_POLICIES
+        .iter()
+        .find(|policy| policy.rust_path == "crate::kernels::dense::Svd")
+        .unwrap();
     assert!(svd.bound);
-    assert_eq!(svd.fields.iter().map(|(name,_)| *name).collect::<Vec<_>>(), ["u", "s", "v"]);
-    assert!(svd.fields.iter().all(|(_, dimension)| matches!(dimension, FieldDimension::Formula(_))));
-    let integral = STRUCTURED_POLICIES.iter().find(|policy| policy.rust_path == "crate::kernels::quadrature::Integral").unwrap();
+    assert_eq!(
+        svd.fields.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
+        ["u", "s", "v"]
+    );
+    assert!(
+        svd.fields
+            .iter()
+            .all(|(_, dimension)| matches!(dimension, FieldDimension::Formula(_)))
+    );
+    let integral = STRUCTURED_POLICIES
+        .iter()
+        .find(|policy| policy.rust_path == "crate::kernels::quadrature::Integral")
+        .unwrap();
     assert!(integral.bound);
     assert!(matches!(integral.fields[0].1, FieldDimension::Formula(_)));
     assert!(matches!(integral.fields[1].1, FieldDimension::Formula(_)));
     assert!(matches!(integral.fields[2].1, FieldDimension::NonNumeric));
-    let iterative = STRUCTURED_POLICIES.iter().find(|policy| policy.rust_path == "crate::kernels::krylov::IterResult" && policy.contract == "ITERATIVE_LINEAR_SOLVE").unwrap();
+    let iterative = STRUCTURED_POLICIES
+        .iter()
+        .find(|policy| {
+            policy.rust_path == "crate::kernels::krylov::IterResult"
+                && policy.contract == "ITERATIVE_LINEAR_SOLVE"
+        })
+        .unwrap();
     assert!(iterative.bound);
     assert!(matches!(iterative.fields[0].1, FieldDimension::Formula(_)));
     assert!(matches!(iterative.fields[1].1, FieldDimension::Formula(_)));
     assert!(matches!(iterative.fields[2].1, FieldDimension::NonNumeric));
 }
 
-fn csr(indptr: &[i64], indices: &[i64], values: &[f64]) -> Value {
+fn csr(
+    indptr: &[i64],
+    indices: &[i64],
+    values: &[f64],
+) -> Value {
     use rssn::kernel::value::RecordValue;
-    let ints = |items: &[i64]| Value::Tensor(TensorValue {
-        shape: vec![items.len()], data: items.iter().copied().map(Value::int).collect(), elem: TypeExpr::Int,
-    });
-    Value::Record(RecordValue { fields: vec![
-        ("rows".into(), Value::int(2)), ("cols".into(), Value::int(2)),
-        ("indptr".into(), ints(indptr)), ("indices".into(), ints(indices)),
-        ("values".into(), vector(values)),
-    ] })
+    let ints = |items: &[i64]| {
+        Value::Tensor(TensorValue {
+            shape: vec![items.len()],
+            data: items.iter().copied().map(Value::int).collect(),
+            elem: TypeExpr::Int,
+        })
+    };
+    Value::Record(RecordValue {
+        fields: vec![
+            ("rows".into(), Value::int(2)),
+            ("cols".into(), Value::int(2)),
+            ("indptr".into(), ints(indptr)),
+            ("indices".into(), ints(indices)),
+            ("values".into(), vector(values)),
+        ],
+    })
 }
-fn result_field<'a>(value: &'a Value, name: &str) -> &'a Value {
-    let Value::Record(record) = value else { panic!("expected record") };
-    &record.fields.iter().find(|(field,_)| field == name).unwrap().1
+fn result_field<'a>(
+    value: &'a Value,
+    name: &str,
+) -> &'a Value {
+    let Value::Record(record) = value else {
+        panic!("expected record")
+    };
+    &record
+        .fields
+        .iter()
+        .find(|(field, _)| field == name)
+        .unwrap()
+        .1
 }
 #[test]
 fn structural_csr_solvers_check_residuals_and_manifest_origins() {
     let session = Session::new();
     for name in ["num_csr_cg", "num_csr_gmres", "num_csr_bicgstab"] {
-        let mut args = vec![csr(&[0,1,2], &[0,1], &[2.0,4.0]), vector(&[2.0,8.0]), Value::Float(1e-10), Value::int(40)];
-        if name == "num_csr_gmres" { args.push(Value::int(2)); }
-        let result = call(&session,name,&args).unwrap();
-        assert_eq!(result_field(&result,"converged"), &Value::Bool(true));
-        assert!(result_field(&result,"residual").as_f64().unwrap() < 1e-10);
+        let mut args = vec![
+            csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]),
+            vector(&[2.0, 8.0]),
+            Value::Float(1e-10),
+            Value::int(40),
+        ];
+        if name == "num_csr_gmres" {
+            args.push(Value::int(2));
+        }
+        let result = call(&session, name, &args).unwrap();
+        assert_eq!(result_field(&result, "converged"), &Value::Bool(true));
+        assert!(result_field(&result, "residual").as_f64().unwrap() < 1e-10);
         let key = session.manifest().op(name).unwrap().keys[0].clone();
-        assert_eq!(session.call_key(&key,&args,&CallCtx::new()).unwrap(), result);
+        assert_eq!(
+            session.call_key(&key, &args, &CallCtx::new()).unwrap(),
+            result
+        );
     }
 }
 #[test]
 fn structural_csr_rejects_bad_rows_columns_and_controls() {
     let session = Session::new();
-    let good_rhs = vector(&[2.0,8.0]);
-    for matrix in [csr(&[0,2,1], &[0,1], &[2.0,4.0]), csr(&[0,1,2], &[2,1], &[2.0,4.0]), csr(&[0,2,2], &[0,0], &[2.0,4.0]), csr(&[0,1,3], &[0,1], &[2.0,4.0])] {
-        assert!(call(&session,"num_csr_cg",&[matrix,good_rhs.clone(),Value::Float(1e-8),Value::int(10)]).is_err());
+    let good_rhs = vector(&[2.0, 8.0]);
+    for matrix in [
+        csr(&[0, 2, 1], &[0, 1], &[2.0, 4.0]),
+        csr(&[0, 1, 2], &[2, 1], &[2.0, 4.0]),
+        csr(&[0, 2, 2], &[0, 0], &[2.0, 4.0]),
+        csr(&[0, 1, 3], &[0, 1], &[2.0, 4.0]),
+    ] {
+        assert!(
+            call(
+                &session,
+                "num_csr_cg",
+                &[matrix, good_rhs.clone(), Value::Float(1e-8), Value::int(10)]
+            )
+            .is_err()
+        );
     }
-    assert!(call(&session,"num_csr_cg",&[csr(&[0,1,2], &[0,1], &[2.0,4.0]), vector(&[1.0]),Value::Float(1e-8),Value::int(10)]).is_err());
-    assert!(call(&session,"num_csr_gmres",&[csr(&[0,1,2], &[0,1], &[2.0,4.0]),good_rhs.clone(),Value::Float(1e-8),Value::int(10),Value::int(0)]).is_err());
-    let mut oversized = csr(&[0,1,2], &[0,1], &[2.0,4.0]);
-    let Value::Record(ref mut record) = oversized else { unreachable!() };
+    assert!(
+        call(
+            &session,
+            "num_csr_cg",
+            &[
+                csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]),
+                vector(&[1.0]),
+                Value::Float(1e-8),
+                Value::int(10)
+            ]
+        )
+        .is_err()
+    );
+    assert!(
+        call(
+            &session,
+            "num_csr_gmres",
+            &[
+                csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]),
+                good_rhs.clone(),
+                Value::Float(1e-8),
+                Value::int(10),
+                Value::int(0)
+            ]
+        )
+        .is_err()
+    );
+    let mut oversized = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let Value::Record(ref mut record) = oversized else {
+        unreachable!()
+    };
     record.fields[0].1 = Value::int(-1);
-    assert!(call(&session,"num_csr_cg",&[oversized,good_rhs.clone(),Value::Float(1e-8),Value::int(10)]).is_err());
-    let mut duplicate = csr(&[0,1,2], &[0,1], &[2.0,4.0]);
-    let Value::Record(ref mut record) = duplicate else { unreachable!() };
+    assert!(
+        call(
+            &session,
+            "num_csr_cg",
+            &[
+                oversized,
+                good_rhs.clone(),
+                Value::Float(1e-8),
+                Value::int(10)
+            ]
+        )
+        .is_err()
+    );
+    let mut duplicate = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let Value::Record(ref mut record) = duplicate else {
+        unreachable!()
+    };
     record.fields[1].0 = "rows".into();
-    assert!(call(&session,"num_csr_cg",&[duplicate,good_rhs,Value::Float(1e-8),Value::int(10)]).is_err());
+    assert!(
+        call(
+            &session,
+            "num_csr_cg",
+            &[duplicate, good_rhs, Value::Float(1e-8), Value::int(10)]
+        )
+        .is_err()
+    );
 }
 
 #[test]
 fn structural_csr_zero_rhs_and_iteration_limit_are_honest() {
     let session = Session::new();
-    let matrix = csr(&[0,1,2], &[0,1], &[2.0,4.0]);
-    let zero = call(&session,"num_csr_cg",&[matrix.clone(),vector(&[0.0,0.0]),Value::Float(1e-10),Value::int(5)]).unwrap();
-    assert_eq!(result_field(&zero,"converged"), &Value::Bool(true));
-    assert_eq!(result_field(&zero,"residual").as_f64(), Some(0.0));
-    let limited = call(&session,"num_csr_cg",&[matrix,vector(&[2.0,8.0]),Value::Float(1e-14),Value::int(1)]).unwrap();
-    assert_eq!(result_field(&limited,"converged"), &Value::Bool(false));
-    assert!(result_field(&limited,"residual").as_f64().unwrap() > 1e-14);
+    let matrix = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let zero = call(
+        &session,
+        "num_csr_cg",
+        &[
+            matrix.clone(),
+            vector(&[0.0, 0.0]),
+            Value::Float(1e-10),
+            Value::int(5),
+        ],
+    )
+    .unwrap();
+    assert_eq!(result_field(&zero, "converged"), &Value::Bool(true));
+    assert_eq!(result_field(&zero, "residual").as_f64(), Some(0.0));
+    let limited = call(
+        &session,
+        "num_csr_cg",
+        &[
+            matrix,
+            vector(&[2.0, 8.0]),
+            Value::Float(1e-14),
+            Value::int(1),
+        ],
+    )
+    .unwrap();
+    assert_eq!(result_field(&limited, "converged"), &Value::Bool(false));
+    assert!(result_field(&limited, "residual").as_f64().unwrap() > 1e-14);
 }
 #[test]
 fn structural_csr_preserves_units_and_rejects_conflicting_element_witnesses() {
@@ -450,25 +643,83 @@ fn structural_csr_preserves_units_and_rejects_conflicting_element_witnesses() {
     use rssn::kernel::value::DynValue;
     let length = DimExpr::Base("Length".into());
     let time = DimExpr::Base("Time".into());
-    let mut matrix = csr(&[0,1,2], &[0,1], &[2.0,4.0]);
-    let Value::Record(ref mut fields) = matrix else { unreachable!() };
-    let Value::Tensor(values) = &mut fields.fields[4].1 else { unreachable!() };
+    let mut matrix = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let Value::Record(ref mut fields) = matrix else {
+        unreachable!()
+    };
+    let Value::Tensor(values) = &mut fields.fields[4].1 else {
+        unreachable!()
+    };
     values.elem = TypeExpr::Dim(Box::new(TypeExpr::Float), length.clone());
-    let mut rhs = vector(&[2.0,8.0]);
-    let Value::Tensor(rhs_values) = &mut rhs else { unreachable!() };
+    let mut rhs = vector(&[2.0, 8.0]);
+    let Value::Tensor(rhs_values) = &mut rhs else {
+        unreachable!()
+    };
     rhs_values.elem = TypeExpr::Dim(Box::new(TypeExpr::Float), time.clone());
     let session = Session::new();
-    let result = call(&session,"num_csr_cg",&[matrix.clone(),rhs.clone(),Value::Float(1e-10),Value::int(10)]).unwrap();
-    let Value::Tensor(x) = result_field(&result,"x") else { panic!("solution tensor") };
-    let TypeExpr::Dim(_, dimension) = &x.elem else { panic!("solution unit") };
-    assert!(rssn::kernel::overload::matches_type(&TypeExpr::Float.with_dim(dimension.clone()), &TypeExpr::Float.with_dim(DimExpr::Mul(vec![time.clone(),DimExpr::Inverse(Box::new(length.clone()))]))).accepted());
-    let Value::Record(ref mut fields) = matrix else { unreachable!() };
-    let Value::Tensor(values) = &mut fields.fields[4].1 else { unreachable!() };
-    values.data[0] = Value::Dyn(DynValue { value: Box::new(Value::Float(2.0)), dim: time });
-    assert!(call(&session,"num_csr_cg",&[matrix.clone(),rhs.clone(),Value::Float(1e-10),Value::int(10)]).is_err());
-    let matrix = csr(&[0,1,2], &[0,1], &[2.0,4.0]);
-    let bad_tol = Value::Dyn(DynValue { value: Box::new(Value::Float(1e-10)), dim: length });
-    assert!(call(&session,"num_csr_cg",&[matrix,rhs,bad_tol,Value::int(10)]).is_err());
+    let result = call(
+        &session,
+        "num_csr_cg",
+        &[
+            matrix.clone(),
+            rhs.clone(),
+            Value::Float(1e-10),
+            Value::int(10),
+        ],
+    )
+    .unwrap();
+    let Value::Tensor(x) = result_field(&result, "x") else {
+        panic!("solution tensor")
+    };
+    let TypeExpr::Dim(_, dimension) = &x.elem else {
+        panic!("solution unit")
+    };
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(dimension.clone()),
+            &TypeExpr::Float.with_dim(DimExpr::Mul(vec![
+                time.clone(),
+                DimExpr::Inverse(Box::new(length.clone()))
+            ]))
+        )
+        .accepted()
+    );
+    let Value::Record(ref mut fields) = matrix else {
+        unreachable!()
+    };
+    let Value::Tensor(values) = &mut fields.fields[4].1 else {
+        unreachable!()
+    };
+    values.data[0] = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(2.0)),
+        dim: time,
+    });
+    assert!(
+        call(
+            &session,
+            "num_csr_cg",
+            &[
+                matrix.clone(),
+                rhs.clone(),
+                Value::Float(1e-10),
+                Value::int(10)
+            ]
+        )
+        .is_err()
+    );
+    let matrix = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let bad_tol = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(1e-10)),
+        dim: length,
+    });
+    assert!(
+        call(
+            &session,
+            "num_csr_cg",
+            &[matrix, rhs, bad_tol, Value::int(10)]
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -482,12 +733,26 @@ fn structural_csr_bindings_solve_uniformly_tiny_and_huge_systems() {
                 Value::Float(1e-10),
                 Value::int(12),
             ];
-            if name == "num_csr_gmres" { args.push(Value::int(2)); }
+            if name == "num_csr_gmres" {
+                args.push(Value::int(2));
+            }
             let result = call(&session, name, &args).unwrap();
-            assert_eq!(result_field(&result, "converged"), &Value::Bool(true), "{name}, scale {scale:e}");
-            let Value::Tensor(x) = result_field(&result, "x") else { panic!("solution tensor") };
-            assert!((x.data[0].as_f64().unwrap() - 1.0).abs() < 1e-10, "{name}, scale {scale:e}");
-            assert!((x.data[1].as_f64().unwrap() + 1.0).abs() < 1e-10, "{name}, scale {scale:e}");
+            assert_eq!(
+                result_field(&result, "converged"),
+                &Value::Bool(true),
+                "{name}, scale {scale:e}"
+            );
+            let Value::Tensor(x) = result_field(&result, "x") else {
+                panic!("solution tensor")
+            };
+            assert!(
+                (x.data[0].as_f64().unwrap() - 1.0).abs() < 1e-10,
+                "{name}, scale {scale:e}"
+            );
+            assert!(
+                (x.data[1].as_f64().unwrap() + 1.0).abs() < 1e-10,
+                "{name}, scale {scale:e}"
+            );
         }
     }
 }
@@ -497,21 +762,59 @@ fn generated_contract_table_preserves_dimension_rules_across_families() {
     use rssn::kernel::signature::DimExpr;
     use rssn::kernel::value::DynValue;
     let session = Session::new();
-    let dimensioned = |name: &str, xs: &[f64]| Value::Tensor(TensorValue {
-        shape: vec![xs.len()], data: xs.iter().copied().map(Value::Float).collect(),
-        elem: TypeExpr::Dim(Box::new(TypeExpr::Float), DimExpr::Base(name.into())),
-    });
-    let length = dimensioned("Length", &[1.0,3.0]);
-    let time = dimensioned("Time", &[1.0,0.0]);
-    let Value::Dyn(variance) = call(&session,"num_variance",std::slice::from_ref(&length)).unwrap() else { panic!("variance quantity") };
-    let expected = DimExpr::Mul(vec![DimExpr::Base("Length".into()),DimExpr::Base("Length".into())]);
-    assert!(rssn::kernel::overload::matches_type(&TypeExpr::Float.with_dim(variance.dim), &TypeExpr::Float.with_dim(expected)).accepted());
-    assert!(matches!(call(&session,"num_cosine_similarity",&[length.clone(),time.clone()]).unwrap(), Value::Float(_)));
-    let Value::Tensor(projected) = call(&session,"num_project",&[length.clone(),time]).unwrap() else { panic!("projection") };
-    assert!(rssn::kernel::overload::matches_type(&projected.elem, &TypeExpr::Float.with_dim(DimExpr::Base("Length".into()))).accepted());
+    let dimensioned = |name: &str, xs: &[f64]| {
+        Value::Tensor(TensorValue {
+            shape: vec![xs.len()],
+            data: xs.iter().copied().map(Value::Float).collect(),
+            elem: TypeExpr::Dim(Box::new(TypeExpr::Float), DimExpr::Base(name.into())),
+        })
+    };
+    let length = dimensioned("Length", &[1.0, 3.0]);
+    let time = dimensioned("Time", &[1.0, 0.0]);
+    let Value::Dyn(variance) =
+        call(&session, "num_variance", std::slice::from_ref(&length)).unwrap()
+    else {
+        panic!("variance quantity")
+    };
+    let expected = DimExpr::Mul(vec![
+        DimExpr::Base("Length".into()),
+        DimExpr::Base("Length".into()),
+    ]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(variance.dim),
+            &TypeExpr::Float.with_dim(expected)
+        )
+        .accepted()
+    );
+    assert!(matches!(
+        call(
+            &session,
+            "num_cosine_similarity",
+            &[length.clone(), time.clone()]
+        )
+        .unwrap(),
+        Value::Float(_)
+    ));
+    let Value::Tensor(projected) = call(&session, "num_project", &[length.clone(), time]).unwrap()
+    else {
+        panic!("projection")
+    };
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &projected.elem,
+            &TypeExpr::Float.with_dim(DimExpr::Base("Length".into()))
+        )
+        .accepted()
+    );
     let empty = dimensioned("Length", &[]);
-    let Value::Dyn(mean) = call(&session,"num_mean",&[empty]).unwrap() else { panic!("empty mean witness") };
+    let Value::Dyn(mean) = call(&session, "num_mean", &[empty]).unwrap() else {
+        panic!("empty mean witness")
+    };
     assert_eq!(mean.dim, DimExpr::Base("Length".into()));
-    let bad_scale = Value::Dyn(DynValue { value: Box::new(Value::Float(2.0)), dim: DimExpr::Base("Time".into()) });
-    assert!(call(&session,"num_lp_norm",&[length,bad_scale]).is_err());
+    let bad_scale = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(2.0)),
+        dim: DimExpr::Base("Time".into()),
+    });
+    assert!(call(&session, "num_lp_norm", &[length, bad_scale]).is_err());
 }

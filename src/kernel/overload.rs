@@ -134,7 +134,8 @@ pub(crate) fn canonical_concrete_dimension(
     dim: &DimExpr
 ) -> Option<std::collections::BTreeMap<String, num_rational::BigRational>> {
     use num_rational::BigRational;
-    use num_traits::{One, Zero};
+    use num_traits::One;
+    use num_traits::Zero;
     fn collect(
         dim: &DimExpr,
         power: &BigRational,
@@ -306,11 +307,12 @@ fn callback_schema_match(
         ) => {
             let shape = match (sa, sb) {
                 | (None, _) => Match::Shaped,
-                | (Some(a), Some(b)) if a.len() == b.len() => a
-                    .iter()
-                    .zip(b)
-                    .map(|(a, b)| nat(a, b, operator_on_left))
-                    .fold(Match::Exact, weaker),
+                | (Some(a), Some(b)) if a.len() == b.len() => {
+                    a.iter()
+                        .zip(b)
+                        .map(|(a, b)| nat(a, b, operator_on_left))
+                        .fold(Match::Exact, weaker)
+                },
                 | _ => Match::No,
             };
             weaker(
@@ -318,10 +320,12 @@ fn callback_schema_match(
                 weaker(shape, callback_schema_match(ea, eb, operator_on_left)),
             )
         },
-        | (TypeExpr::Dim(a, da), TypeExpr::Dim(b, db)) => weaker(
-            dimension(da, db, operator_on_left),
-            callback_schema_match(a, b, operator_on_left),
-        ),
+        | (TypeExpr::Dim(a, da), TypeExpr::Dim(b, db)) => {
+            weaker(
+                dimension(da, db, operator_on_left),
+                callback_schema_match(a, b, operator_on_left),
+            )
+        },
         | (TypeExpr::Unit(a), TypeExpr::Unit(b)) | (TypeExpr::Point(a), TypeExpr::Point(b)) => {
             dimension(a, b, operator_on_left)
         },
@@ -331,14 +335,18 @@ fn callback_schema_match(
         | (a, TypeExpr::Dim(b, d)) if dimensions_equivalent(d, &DimExpr::Dimless) => {
             callback_schema_match(a, b, operator_on_left)
         },
-        | (TypeExpr::Dim(a, d), b) if operator_on_left && matches!(d, DimExpr::Var(_)) => weaker(
-            Match::Generic,
-            callback_schema_match(a, b, operator_on_left),
-        ),
-        | (a, TypeExpr::Dim(b, d)) if !operator_on_left && matches!(d, DimExpr::Var(_)) => weaker(
-            Match::Generic,
-            callback_schema_match(a, b, operator_on_left),
-        ),
+        | (TypeExpr::Dim(a, d), b) if operator_on_left && matches!(d, DimExpr::Var(_)) => {
+            weaker(
+                Match::Generic,
+                callback_schema_match(a, b, operator_on_left),
+            )
+        },
+        | (a, TypeExpr::Dim(b, d)) if !operator_on_left && matches!(d, DimExpr::Var(_)) => {
+            weaker(
+                Match::Generic,
+                callback_schema_match(a, b, operator_on_left),
+            )
+        },
         | (TypeExpr::Dyn(_), _) | (_, TypeExpr::Dyn(_)) => Match::No,
         | (TypeExpr::Var(_), _) if operator_on_left => Match::Generic,
         | (_, TypeExpr::Var(_)) if !operator_on_left => Match::Generic,
@@ -441,13 +449,15 @@ pub fn matches_type(
                 shape: sb,
                 elem: eb,
             },
-        ) => weaker(
-            rank_match(ra, rb),
+        ) => {
             weaker(
-                shape_match(sa.as_deref(), sb.as_deref()),
-                matches_type(ea, eb),
-            ),
-        ),
+                rank_match(ra, rb),
+                weaker(
+                    shape_match(sa.as_deref(), sb.as_deref()),
+                    matches_type(ea, eb),
+                ),
+            )
+        },
         | (
             TypeExpr::Sparse {
                 format: fa,
@@ -883,7 +893,8 @@ mod tests {
 #[cfg(test)]
 mod concrete_dimension_equivalence_tests {
     use super::*;
-    use crate::kernel::signature::{Exp, Rational};
+    use crate::kernel::signature::Exp;
+    use crate::kernel::signature::Rational;
     #[test]
     fn products_powers_cancellation_and_named_bases_match_canonically() {
         let length = DimExpr::Base("Length".into());

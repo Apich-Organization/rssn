@@ -49,35 +49,37 @@ fn dimension(value: &Value) -> Result<Dimension, OpError> {
     let d = match value {
         | Value::Quantity(q) => &q.unit.dimension,
         | Value::Dyn(d) => &d.dim,
-        | Value::Tensor(t) => match &t.elem {
-            | TypeExpr::Dim(_, d) | TypeExpr::Point(d) => {
-                let declared = canonical(d)?;
-                for item in &t.data {
-                    if matches!(item, Value::Quantity(_) | Value::Dyn(_))
-                        && dimension(item)? != declared
-                    {
-                        return Err(OpError::Domain(
-                            "tensor element dimension disagrees with its declared element type"
-                                .into(),
-                        ));
+        | Value::Tensor(t) => {
+            match &t.elem {
+                | TypeExpr::Dim(_, d) | TypeExpr::Point(d) => {
+                    let declared = canonical(d)?;
+                    for item in &t.data {
+                        if matches!(item, Value::Quantity(_) | Value::Dyn(_))
+                            && dimension(item)? != declared
+                        {
+                            return Err(OpError::Domain(
+                                "tensor element dimension disagrees with its declared element type"
+                                    .into(),
+                            ));
+                        }
                     }
-                }
-                return Ok(declared);
-            },
-            | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => {
-                for item in &t.data {
-                    if matches!(item, Value::Quantity(_) | Value::Dyn(_))
-                        && !dimension(item)?.is_empty()
-                    {
-                        return Err(OpError::Domain(
-                            "tensor element dimension disagrees with its declared element type"
-                                .into(),
-                        ));
+                    return Ok(declared);
+                },
+                | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => {
+                    for item in &t.data {
+                        if matches!(item, Value::Quantity(_) | Value::Dyn(_))
+                            && !dimension(item)?.is_empty()
+                        {
+                            return Err(OpError::Domain(
+                                "tensor element dimension disagrees with its declared element type"
+                                    .into(),
+                            ));
+                        }
                     }
-                }
-                return Ok(Dimension::new());
-            },
-            | _ => return Ok(Dimension::new()),
+                    return Ok(Dimension::new());
+                },
+                | _ => return Ok(Dimension::new()),
+            }
         },
         | _ => return Ok(Dimension::new()),
     };
@@ -89,13 +91,12 @@ fn substitute(
 ) -> Result<DimExpr, OpError> {
     match expr {
         | DimExpr::Var(name) => {
-            expression(
-                vars.get(name.as_str())
-                    .ok_or_else(|| OpError::Unsupported {
-                        backend: "numerical".into(),
-                        feature: format!("unbound dimension {name}"),
-                    })?,
-            )
+            expression(vars.get(name.as_str()).ok_or_else(|| {
+                OpError::Unsupported {
+                    backend: "numerical".into(),
+                    feature: format!("unbound dimension {name}"),
+                }
+            })?)
         },
         | DimExpr::Mul(parts) => {
             let items = parts
@@ -129,17 +130,21 @@ fn instantiated_type(
                 TypeExpr::Dim(Box::new(inner), dim)
             }
         },
-        | TypeExpr::Tensor { rank, shape, elem } => TypeExpr::Tensor {
-            rank: rank.clone(),
-            shape: shape.clone(),
-            elem: Box::new(instantiated_type(elem, vars)?),
+        | TypeExpr::Tensor { rank, shape, elem } => {
+            TypeExpr::Tensor {
+                rank: rank.clone(),
+                shape: shape.clone(),
+                elem: Box::new(instantiated_type(elem, vars)?),
+            }
         },
-        | TypeExpr::Record(fields) => TypeExpr::Record(
-            fields
-                .iter()
-                .map(|(name, ty)| Ok((name.clone(), instantiated_type(ty, vars)?)))
-                .collect::<Result<_, OpError>>()?,
-        ),
+        | TypeExpr::Record(fields) => {
+            TypeExpr::Record(
+                fields
+                    .iter()
+                    .map(|(name, ty)| Ok((name.clone(), instantiated_type(ty, vars)?)))
+                    .collect::<Result<_, OpError>>()?,
+            )
+        },
         | other => other.clone(),
     })
 }
@@ -150,21 +155,23 @@ fn scalar_representation_matches(
     match value {
         | Value::Dyn(dynamic) => scalar_representation_matches(&dynamic.value, ty),
         | Value::Quantity(quantity) => scalar_representation_matches(&quantity.value, ty),
-        | _ => matches!(
-            (ty, value),
-            (TypeExpr::Int, Value::Int(_))
-                | (
-                    TypeExpr::Real,
-                    Value::Int(_) | Value::Real(_) | Value::Float(_)
-                )
-                | (TypeExpr::Float, Value::Float(_))
-                | (
-                    TypeExpr::Complex,
-                    Value::Int(_) | Value::Real(_) | Value::Float(_) | Value::Complex(_)
-                )
-                | (TypeExpr::Bool, Value::Bool(_))
-                | (TypeExpr::String, Value::String(_))
-        ),
+        | _ => {
+            matches!(
+                (ty, value),
+                (TypeExpr::Int, Value::Int(_))
+                    | (
+                        TypeExpr::Real,
+                        Value::Int(_) | Value::Real(_) | Value::Float(_)
+                    )
+                    | (TypeExpr::Float, Value::Float(_))
+                    | (
+                        TypeExpr::Complex,
+                        Value::Int(_) | Value::Real(_) | Value::Float(_) | Value::Complex(_)
+                    )
+                    | (TypeExpr::Bool, Value::Bool(_))
+                    | (TypeExpr::String, Value::String(_))
+            )
+        },
     }
 }
 fn schema_representation_matches(
@@ -331,9 +338,11 @@ fn decorate(
             Ok(Value::Record(record))
         },
         | (value, ty) if scalar_representation_matches(&value, ty) => Ok(value),
-        | (_, _) => Err(OpError::Domain(
-            "numerical result does not match its declared schema".into(),
-        )),
+        | (_, _) => {
+            Err(OpError::Domain(
+                "numerical result does not match its declared schema".into(),
+            ))
+        },
     }
 }
 fn path_value<'a>(

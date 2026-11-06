@@ -500,7 +500,8 @@ fn api_v2_manifest_crosses_the_c_string_boundary() {
 
 #[test]
 fn equivalent_concrete_dimensions_work_for_callback_name_and_key_dispatch() {
-    use rssn::kernel::signature::{Exp, Rational};
+    use rssn::kernel::signature::Exp;
+    use rssn::kernel::signature::Rational;
     let session = Session::new();
     let length = DimExpr::Base("Length".into());
     let square = DimExpr::Pow(Box::new(length.clone()), Exp::Rat(Rational::new(2, 1)));
@@ -547,14 +548,18 @@ fn equivalent_concrete_dimensions_work_for_callback_name_and_key_dispatch() {
 
 #[test]
 fn callback_tensor_metadata_uses_algebraic_dimension_equality() {
-    use rssn::kernel::signature::{Exp, NatExpr, Rational};
+    use rssn::kernel::signature::Exp;
+    use rssn::kernel::signature::NatExpr;
+    use rssn::kernel::signature::Rational;
     let length = DimExpr::Base("Length".into());
     let square = DimExpr::Pow(Box::new(length.clone()), Exp::Rat(Rational::new(2, 1)));
     let product = DimExpr::Mul(vec![length.clone(), length]);
-    let tensor_ty = |dim| TypeExpr::Tensor {
-        rank: NatExpr::Lit(1),
-        shape: None,
-        elem: Box::new(TypeExpr::Dim(Box::new(TypeExpr::Float), dim)),
+    let tensor_ty = |dim| {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: None,
+            elem: Box::new(TypeExpr::Dim(Box::new(TypeExpr::Float), dim)),
+        }
     };
     let mut context = CallCtx::new();
     let callback = context
@@ -580,10 +585,12 @@ fn callback_tensor_metadata_uses_algebraic_dimension_equality() {
 fn callback_schema_checks_directional_shapes_and_nested_records() {
     use rssn::kernel::overload::matches_type;
     use rssn::kernel::signature::NatExpr;
-    let tensor = |shape: Option<Vec<NatExpr>>| TypeExpr::Tensor {
-        rank: NatExpr::Lit(1),
-        shape,
-        elem: Box::new(TypeExpr::Float),
+    let tensor = |shape: Option<Vec<NatExpr>>| {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape,
+            elem: Box::new(TypeExpr::Float),
+        }
     };
     let fixed = tensor(Some(vec![NatExpr::Lit(3)]));
     let other = tensor(Some(vec![NatExpr::Lit(4)]));
@@ -625,7 +632,10 @@ fn callback_schema_checks_directional_shapes_and_nested_records() {
     assert!(!accepts(
         &fun(TypeExpr::Float, TypeExpr::Float),
         &fun(
-            TypeExpr::Dyn(rssn::kernel::signature::RepExpr { repr: "unknown".into(), dim: None }),
+            TypeExpr::Dyn(rssn::kernel::signature::RepExpr {
+                repr: "unknown".into(),
+                dim: None
+            }),
             TypeExpr::Float
         )
     ));

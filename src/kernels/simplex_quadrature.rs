@@ -9,7 +9,8 @@
 
 use std::cell::Cell;
 
-use super::quadrature::{Integral, cubature_genz_malik};
+use super::quadrature::Integral;
+use super::quadrature::cubature_genz_malik;
 
 /// Failure to form or evaluate a simplex integral.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

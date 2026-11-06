@@ -1,8 +1,12 @@
 //! Generate declared numerical adapters from Rust syntax plus reviewed policy.
 //! The policy contains semantic choices; it never describes Rust types.
 use quote::ToTokens;
-use std::{collections::BTreeSet, path::Path};
-use syn::{FnArg, Item, ReturnType, Visibility};
+use std::collections::BTreeSet;
+use std::path::Path;
+use syn::FnArg;
+use syn::Item;
+use syn::ReturnType;
+use syn::Visibility;
 
 fn compact(tokens: impl ToTokens) -> String {
     tokens
@@ -36,9 +40,11 @@ fn function_shape(
     let args: Vec<_> = sig
         .inputs
         .iter()
-        .map(|arg| match arg {
-            | FnArg::Typed(arg) => Ok(compact(&arg.ty)),
-            | _ => Err(format!("{} has a receiver", sig.ident)),
+        .map(|arg| {
+            match arg {
+                | FnArg::Typed(arg) => Ok(compact(&arg.ty)),
+                | _ => Err(format!("{} has a receiver", sig.ident)),
+            }
         })
         .collect::<Result<_, _>>()?;
     let result = match &sig.output {
@@ -64,11 +70,13 @@ fn function_shape(
         | (["&[f64]"], "Result<Vec<f64>,String>", "finite") => Ok("VectorVectorFallible"),
         | (["&[f64]", "&[f64]"], "Result<f64,String>", "finite") => Ok("VectorsScalar"),
         | (["&[f64]", "&[f64]"], "Result<Vec<f64>,String>", "finite") => Ok("VectorsVector"),
-        | _ => Err(format!(
-            "{} has unsupported signature or output policy: ({}) -> {result}; {output}",
-            sig.ident,
-            args.join(", ")
-        )),
+        | _ => {
+            Err(format!(
+                "{} has unsupported signature or output policy: ({}) -> {result}; {output}",
+                sig.ident,
+                args.join(", ")
+            ))
+        },
     }
 }
 fn docs(f: &syn::ItemFn) -> Result<String, String> {
@@ -164,9 +172,11 @@ pub fn generate(
         let text =
             std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
         let parsed = syn::parse_file(&text).map_err(|e| format!("{}: {e}", source.display()))?;
-        let mut matches = parsed.items.iter().filter_map(|item| match item {
-            | Item::Fn(f) if f.sig.ident == parts[3] => Some(f),
-            | _ => None,
+        let mut matches = parsed.items.iter().filter_map(|item| {
+            match item {
+                | Item::Fn(f) if f.sig.ident == parts[3] => Some(f),
+                | _ => None,
+            }
         });
         let function = matches
             .next()

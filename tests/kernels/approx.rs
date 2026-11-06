@@ -62,7 +62,14 @@ fn cubic_spline_large_irregular_grid_and_boundary_conditions() {
         assert!((spline.eval(250.125) - 501.25).abs() < 1e-10);
     }
     assert!(CubicSpline::new(&[0.0, 1.0, 2.0], &[0.0, f64::NAN, 2.0], SplineBc::Natural).is_err());
-    assert!(CubicSpline::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 2.0], SplineBc::Clamped(f64::NAN, 1.0)).is_err());
+    assert!(
+        CubicSpline::new(
+            &[0.0, 1.0, 2.0],
+            &[0.0, 1.0, 2.0],
+            SplineBc::Clamped(f64::NAN, 1.0)
+        )
+        .is_err()
+    );
 }
 
 #[test]

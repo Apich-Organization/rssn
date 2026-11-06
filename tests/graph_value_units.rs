@@ -313,7 +313,10 @@ fn symbolic_fallback_keeps_strict_dimension_checks_authoritative() {
     ];
     let context = CallCtx::new().dimensions(rssn::graph::DimensionMode::Strict);
     let result = session.call_value("add", &args, &context);
-    assert!(matches!(result, Err(rssn::kernel::OpError::Dimension(_))), "{result:?}");
+    assert!(
+        matches!(result, Err(rssn::kernel::OpError::Dimension(_))),
+        "{result:?}"
+    );
 }
 
 #[test]

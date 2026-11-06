@@ -36,11 +36,40 @@ fn brent_handles_tiny_residuals_and_invalid_values() {
             assert!((root - 0.6).abs() < 1e-10, "scale={scale:e}, root={root}");
         }
     }
-    assert_eq!(brent(|x| 1e-300 * (x * x + 1.0), -1.0, 1.0, 1e-12, 50), Err(RootError::NotBracketed));
-    assert_eq!(brent(|_| f64::NAN, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
-    assert_eq!(brent(|x| if x == 0.0 { -1.0 } else if x == 1.0 { 1.0 } else { f64::INFINITY }, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
-    assert_eq!(brent(|x| x, 0.0, 1.0, f64::NAN, 50), Err(RootError::Invalid));
-    assert_eq!(brent(|x| x, 0.0, f64::INFINITY, 1e-12, 50), Err(RootError::Invalid));
+    assert_eq!(
+        brent(|x| 1e-300 * (x * x + 1.0), -1.0, 1.0, 1e-12, 50),
+        Err(RootError::NotBracketed)
+    );
+    assert_eq!(
+        brent(|_| f64::NAN, 0.0, 1.0, 1e-12, 50),
+        Err(RootError::Invalid)
+    );
+    assert_eq!(
+        brent(
+            |x| {
+                if x == 0.0 {
+                    -1.0
+                } else if x == 1.0 {
+                    1.0
+                } else {
+                    f64::INFINITY
+                }
+            },
+            0.0,
+            1.0,
+            1e-12,
+            50
+        ),
+        Err(RootError::Invalid)
+    );
+    assert_eq!(
+        brent(|x| x, 0.0, 1.0, f64::NAN, 50),
+        Err(RootError::Invalid)
+    );
+    assert_eq!(
+        brent(|x| x, 0.0, f64::INFINITY, 1e-12, 50),
+        Err(RootError::Invalid)
+    );
 }
 
 #[test]
@@ -76,15 +105,41 @@ fn bracketed_newton() {
 #[test]
 fn bracketed_newton_checks_signs_endpoints_and_nonfinite_values() {
     for scale in [1e-200, 1e-300] {
-        let root = newton_bracketed(|x| scale * (x * x - 0.36), |x| scale * 2.0 * x, 0.0, 1.0, 1e-12, 200).unwrap();
+        let root = newton_bracketed(
+            |x| scale * (x * x - 0.36),
+            |x| scale * 2.0 * x,
+            0.0,
+            1.0,
+            1e-12,
+            200,
+        )
+        .unwrap();
         assert!((root - 0.6).abs() < 1e-10, "scale={scale:e}, root={root}");
-        assert_eq!(newton_bracketed(|x| scale * (x * x + 1.0), |_| 0.0, -1.0, 1.0, 1e-12, 50), Err(RootError::NotBracketed));
+        assert_eq!(
+            newton_bracketed(|x| scale * (x * x + 1.0), |_| 0.0, -1.0, 1.0, 1e-12, 50),
+            Err(RootError::NotBracketed)
+        );
     }
-    assert_eq!(newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 1e-12, 0), Ok(0.0));
-    assert_eq!(newton_bracketed(|x| x - 1.0, |_| 1.0, 0.0, 1.0, 1e-12, 0), Ok(1.0));
-    assert_eq!(newton_bracketed(|_| f64::NAN, |_| 1.0, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
-    assert_eq!(newton_bracketed(|x| x - 0.6, |_| f64::INFINITY, 0.0, 1.0, 1e-12, 50), Err(RootError::Invalid));
-    assert_eq!(newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 0.0, 50), Err(RootError::Invalid));
+    assert_eq!(
+        newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 1e-12, 0),
+        Ok(0.0)
+    );
+    assert_eq!(
+        newton_bracketed(|x| x - 1.0, |_| 1.0, 0.0, 1.0, 1e-12, 0),
+        Ok(1.0)
+    );
+    assert_eq!(
+        newton_bracketed(|_| f64::NAN, |_| 1.0, 0.0, 1.0, 1e-12, 50),
+        Err(RootError::Invalid)
+    );
+    assert_eq!(
+        newton_bracketed(|x| x - 0.6, |_| f64::INFINITY, 0.0, 1.0, 1e-12, 50),
+        Err(RootError::Invalid)
+    );
+    assert_eq!(
+        newton_bracketed(|x| x, |_| 1.0, 0.0, 1.0, 0.0, 50),
+        Err(RootError::Invalid)
+    );
 }
 
 #[test]

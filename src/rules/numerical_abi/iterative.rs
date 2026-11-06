@@ -15,7 +15,9 @@ use crate::kernel::signature::TypeExpr;
 use crate::kernel::value::Value;
 use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::IterResult;
-use crate::kernels::krylov::{self};
+use crate::kernels::krylov::{
+    self,
+};
 use num_traits::ToPrimitive;
 
 #[derive(Clone, Copy)]
@@ -76,10 +78,12 @@ static ITERATIVE_CONTRACT: DimContract = DimContract {
     other_args_dimensionless: true,
 };
 fn csr_type() -> TypeExpr {
-    let vector = |ty| TypeExpr::Tensor {
-        rank: crate::kernel::signature::NatExpr::Lit(1),
-        shape: None,
-        elem: Box::new(ty),
+    let vector = |ty| {
+        TypeExpr::Tensor {
+            rank: crate::kernel::signature::NatExpr::Lit(1),
+            shape: None,
+            elem: Box::new(ty),
+        }
     };
     TypeExpr::Record(vec![
         ("rows".into(), TypeExpr::Int),
@@ -106,9 +110,11 @@ fn integer(
     label: &str,
 ) -> Result<usize, OpError> {
     match value {
-        | Value::Int(n) => n.to_usize().ok_or_else(|| {
-            OpError::Domain(format!("{label} must fit a nonnegative platform integer"))
-        }),
+        | Value::Int(n) => {
+            n.to_usize().ok_or_else(|| {
+                OpError::Domain(format!("{label} must fit a nonnegative platform integer"))
+            })
+        },
         | _ => Err(OpError::Domain(format!("{label} must be an integer"))),
     }
 }

@@ -68,6 +68,9 @@ pub mod matrix;
 pub mod meijer;
 /// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
 pub mod multigrid;
+/// Unconstrained, global and constrained optimisation and linear programming.
+/// Matrix-free trust-region Newton-CG with Hessian-vector actions.
+pub mod newton_cg;
 pub mod number_theory;
 pub mod ode;
 /// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
@@ -81,9 +84,6 @@ pub mod ode_sdirk;
 pub mod ode_stiff;
 /// Mergeable online multivariate mean and covariance.
 pub mod online_stats;
-/// Unconstrained, global and constrained optimisation and linear programming.
-/// Matrix-free trust-region Newton-CG with Hessian-vector actions.
-pub mod newton_cg;
 pub mod optim;
 pub mod optimize;
 /// Fill-reducing orderings: approximate minimum degree and nested dissection.
@@ -100,8 +100,6 @@ pub mod qlinalg;
 pub mod quadratic_sieve;
 /// Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
 pub mod quadrature;
-/// Adaptive integration on finite simplices of arbitrary dimension.
-pub mod simplex_quadrature;
 /// Seeded deterministic random number generation.
 pub mod random;
 /// Real root isolation and refinement for polynomials.
@@ -116,6 +114,8 @@ pub mod sde;
 pub mod series;
 /// Signal processing: filters, windows and spectra.
 pub mod signal;
+/// Adaptive integration on finite simplices of arbitrary dimension.
+pub mod simplex_quadrature;
 pub mod solve;
 pub mod sparse;
 pub mod special;

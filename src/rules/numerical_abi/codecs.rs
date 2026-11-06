@@ -256,19 +256,38 @@ macro_rules! record {
 include!("structured_generated.rs");
 
 /// Build a record's physical result schema from generated field formulas.
-pub(in crate::rules) fn structured_type<T: Output>(fields: &[(&str, super::dimensions::FieldDimension)], d: &crate::kernel::signature::DimExpr, e: &crate::kernel::signature::DimExpr) -> TypeExpr {
+pub(in crate::rules) fn structured_type<T: Output>(
+    fields: &[(&str, super::dimensions::FieldDimension)],
+    d: &crate::kernel::signature::DimExpr,
+    e: &crate::kernel::signature::DimExpr,
+) -> TypeExpr {
     let mut ty = T::ty();
     super::dimensions::apply_record_fields(&mut ty, fields, d, e);
     ty
 }
 
 /// Encode a validated record and apply the same field formulas as its schema.
-pub(in crate::rules) fn structured_value<T: Output>(value: T, fields: &[(&str, super::dimensions::FieldDimension)], d: &crate::kernel::signature::DimExpr, e: &crate::kernel::signature::DimExpr) -> Result<Value, OpError> {
-    if fields.iter().any(|(_, formula)| matches!(formula, super::dimensions::FieldDimension::Unbound)) {
-        return Err(OpError::Unsupported { backend: "numerical".into(), feature: "unbound structured dimensional policy".into() });
+pub(in crate::rules) fn structured_value<T: Output>(
+    value: T,
+    fields: &[(&str, super::dimensions::FieldDimension)],
+    d: &crate::kernel::signature::DimExpr,
+    e: &crate::kernel::signature::DimExpr,
+) -> Result<Value, OpError> {
+    if fields
+        .iter()
+        .any(|(_, formula)| matches!(formula, super::dimensions::FieldDimension::Unbound))
+    {
+        return Err(OpError::Unsupported {
+            backend: "numerical".into(),
+            feature: "unbound structured dimensional policy".into(),
+        });
     }
     let signature = Signature::new(Vec::new(), structured_type::<T>(fields, d, e));
-    runtime_dimensions::finish(&signature, &std::collections::BTreeMap::new(), value.encode()?)
+    runtime_dimensions::finish(
+        &signature,
+        &std::collections::BTreeMap::new(),
+        value.encode()?,
+    )
 }
 
 struct Qr {

@@ -1,6 +1,9 @@
 //! Bootstrap RSSN bindings from source syntax and reviewed semantic policies.
-use rssn_api_model::{contract_codegen, numerical_codegen, structured_codegen};
-use std::path::{Path, PathBuf};
+use rssn_api_model::contract_codegen;
+use rssn_api_model::numerical_codegen;
+use rssn_api_model::structured_codegen;
+use std::path::Path;
+use std::path::PathBuf;
 
 fn generate(
     root: &Path,

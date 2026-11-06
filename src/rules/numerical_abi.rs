@@ -5,9 +5,9 @@
 //! its adapter shape; adding an entry requires no host-language wrapper.
 /// Structured numerical exports built from reusable argument and result codecs.
 pub mod codecs;
-mod iterative;
 /// Declarative dimensional relationships for numerical exports.
 pub mod dimensions;
+mod iterative;
 pub(super) mod runtime_dimensions;
 use dimensions::DimensionPolicy;
 
@@ -287,24 +287,30 @@ impl Adapter {
         use Adapter::MatrixMatrix;
         use Adapter::MatrixScalar;
         use Adapter::MatrixScalarAllowInfinity;
+        use Adapter::MutableVectorScalar;
         use Adapter::Scalar;
         use Adapter::ScalarAllowInfinity;
-        use Adapter::MutableVectorScalar;
         use Adapter::VectorScalar;
+        use Adapter::VectorScalarFallible;
         use Adapter::VectorScalarScalar;
         use Adapter::VectorScalarVector;
-        use Adapter::VectorScalarFallible;
         use Adapter::VectorVector;
         use Adapter::VectorVectorFallible;
         use Adapter::VectorsScalar;
         use Adapter::VectorsVector;
         match self {
-            | Scalar(_) | ScalarAllowInfinity(_) => Signature::new(vec![TypeExpr::Float], TypeExpr::Float),
+            | Scalar(_) | ScalarAllowInfinity(_) => {
+                Signature::new(vec![TypeExpr::Float], TypeExpr::Float)
+            },
             | VectorScalar(_) | VectorScalarFallible(_) | MutableVectorScalar(_) => {
                 Signature::new(vec![tensor_type(1)], TypeExpr::Float)
             },
-            | VectorScalarScalar(_) => Signature::new(vec![tensor_type(1), TypeExpr::Float], TypeExpr::Float),
-            | VectorScalarVector(_) => Signature::new(vec![tensor_type(1), TypeExpr::Float], tensor_type(1)),
+            | VectorScalarScalar(_) => {
+                Signature::new(vec![tensor_type(1), TypeExpr::Float], TypeExpr::Float)
+            },
+            | VectorScalarVector(_) => {
+                Signature::new(vec![tensor_type(1), TypeExpr::Float], tensor_type(1))
+            },
             | VectorVector(_) | VectorVectorFallible(_) => {
                 Signature::new(vec![tensor_type(1)], tensor_type(1))
             },
@@ -462,13 +468,13 @@ impl EvalDyn for Adapter {
         use Adapter::MatrixMatrix;
         use Adapter::MatrixScalar;
         use Adapter::MatrixScalarAllowInfinity;
+        use Adapter::MutableVectorScalar;
         use Adapter::Scalar;
         use Adapter::ScalarAllowInfinity;
-        use Adapter::MutableVectorScalar;
         use Adapter::VectorScalar;
+        use Adapter::VectorScalarFallible;
         use Adapter::VectorScalarScalar;
         use Adapter::VectorScalarVector;
-        use Adapter::VectorScalarFallible;
         use Adapter::VectorVector;
         use Adapter::VectorVectorFallible;
         use Adapter::VectorsScalar;
@@ -487,13 +493,19 @@ impl EvalDyn for Adapter {
             | Scalar(f) => output_scalar(f(numeric(&args[0], 0)?)),
             | ScalarAllowInfinity(f) => {
                 let result = f(numeric(&args[0], 0)?);
-                if result.is_nan() { return Err(OpError::Domain("numerical kernel returned NaN".into())); }
+                if result.is_nan() {
+                    return Err(OpError::Domain("numerical kernel returned NaN".into()));
+                }
                 Ok(Value::Float(result))
             },
             | VectorScalar(f) => output_scalar(f(&tensor(&args[0], 1, 0)?.1)),
             | MutableVectorScalar(f) => output_scalar(f(&mut tensor(&args[0], 1, 0)?.1)),
-            | VectorScalarScalar(f) => output_scalar(f(&tensor(&args[0], 1, 0)?.1, numeric(&args[1], 1)?)),
-            | VectorScalarVector(f) => output_vector(f(&tensor(&args[0], 1, 0)?.1, numeric(&args[1], 1)?)),
+            | VectorScalarScalar(f) => {
+                output_scalar(f(&tensor(&args[0], 1, 0)?.1, numeric(&args[1], 1)?))
+            },
+            | VectorScalarVector(f) => {
+                output_vector(f(&tensor(&args[0], 1, 0)?.1, numeric(&args[1], 1)?))
+            },
             | VectorScalarFallible(f) => {
                 output_scalar(f(&tensor(&args[0], 1, 0)?.1).map_err(OpError::Domain)?)
             },
@@ -572,13 +584,15 @@ fn install(
     if namespace == "numerical_matrix" {
         for export in iterative::EXPORTS {
             let signature = export.signature();
-            i.op(OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
-                .rust_path(export.rust_path)
-                .category(namespace)
-                .doc(export.doc)
-                .stability(Stability::Experimental)
-                .signature(signature)
-                .eval_dyn(Arc::new(export)))?;
+            i.op(
+                OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
+                    .rust_path(export.rust_path)
+                    .category(namespace)
+                    .doc(export.doc)
+                    .stability(Stability::Experimental)
+                    .signature(signature)
+                    .eval_dyn(Arc::new(export)),
+            )?;
         }
     }
     Ok(())

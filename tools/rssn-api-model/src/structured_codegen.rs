@@ -1,11 +1,12 @@
 //! Draft structured codec generator; no result type becomes callable merely
 //! because its public Rust fields can be encoded.
 use quote::ToTokens;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-};
-use syn::{Fields, Item, Visibility};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::path::Path;
+use syn::Fields;
+use syn::Item;
+use syn::Visibility;
 
 fn compact(tokens: impl ToTokens) -> String {
     tokens
@@ -152,9 +153,11 @@ pub fn generate(
         let text =
             std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
         let file = syn::parse_file(&text).map_err(|e| format!("{}: {e}", source.display()))?;
-        let mut matches = file.items.iter().filter_map(|item| match item {
-            | Item::Struct(item) if item.ident == parts[3] => Some(item),
-            | _ => None,
+        let mut matches = file.items.iter().filter_map(|item| {
+            match item {
+                | Item::Struct(item) if item.ident == parts[3] => Some(item),
+                | _ => None,
+            }
         });
         let item = matches
             .next()
@@ -258,10 +261,12 @@ pub fn generate(
                 let value = match dimension.as_str() {
                     | "-" => "super::dimensions::FieldDimension::NonNumeric".to_string(),
                     | "?" => "super::dimensions::FieldDimension::Unbound".to_string(),
-                    | _ => format!(
-                        "super::dimensions::FieldDimension::Formula(&{})",
-                        formula(dimension, &variables).expect("validated formula")
-                    ),
+                    | _ => {
+                        format!(
+                            "super::dimensions::FieldDimension::Formula(&{})",
+                            formula(dimension, &variables).expect("validated formula")
+                        )
+                    },
                 };
                 format!("({name:?}, {value})")
             })
@@ -320,7 +325,8 @@ mod tests {
         );
         assert!(multiple.contains("STRUCTURED_REPORT"));
         assert!(multiple.contains("STRUCTURED_OTHER"));
-        let collision = format!("{policy}crate::kernels::sample::Report\treport\tbound\tD,E\tvalue=1;ok=-\n");
+        let collision =
+            format!("{policy}crate::kernels::sample::Report\treport\tbound\tD,E\tvalue=1;ok=-\n");
         assert!(generate(&root, &collision).is_err());
         assert!(
             generate(

@@ -599,7 +599,10 @@ fn describe(
         jit: desc.jit.map(lowering_name),
         stability: desc.stability,
         since: desc.since.to_string(),
-        rust_path: desc.rust_path.as_ref().map(std::string::ToString::to_string),
+        rust_path: desc
+            .rust_path
+            .as_ref()
+            .map(std::string::ToString::to_string),
         doc: desc.doc.to_string(),
         examples: desc.examples.clone(),
         dim_rule,
@@ -697,13 +700,22 @@ mod tests {
     #[test]
     fn source_origin_defaults_when_reading_older_json_and_round_trips_in_binary() {
         let manifest = standard_manifest();
-        let entry = manifest.ops.iter().find(|op| op.rust_path.is_some()).expect("numerical provenance");
+        let entry = manifest
+            .ops
+            .iter()
+            .find(|op| op.rust_path.is_some())
+            .expect("numerical provenance");
         let mut json = serde_json::to_value(entry).expect("encode operator JSON");
-        json.as_object_mut().expect("operator object").remove("rust_path");
+        json.as_object_mut()
+            .expect("operator object")
+            .remove("rust_path");
         let old: OpInfo = serde_json::from_value(json).expect("read old JSON without provenance");
         assert_eq!(old.rust_path, None);
         let bytes = manifest.to_bytes().expect("encode current binary manifest");
-        assert_eq!(KernelManifest::from_bytes(&bytes).expect("decode current binary manifest"), manifest);
+        assert_eq!(
+            KernelManifest::from_bytes(&bytes).expect("decode current binary manifest"),
+            manifest
+        );
     }
 
     #[test]

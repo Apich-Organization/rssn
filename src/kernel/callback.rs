@@ -2,7 +2,8 @@
 //! bank, never from a fabricated function type on an unscoped integer handle.
 use crate::kernel::call::CallCtx;
 use crate::kernel::call::OpError;
-use crate::kernel::overload::{dimensions_equivalent, matches_type};
+use crate::kernel::overload::dimensions_equivalent;
+use crate::kernel::overload::matches_type;
 use crate::kernel::signature::ArityInfo;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::Exp;
@@ -346,12 +347,17 @@ fn concrete_type(ty: &TypeExpr) -> bool {
         },
         | TypeExpr::Unit(dim) => concrete_dimension(dim),
         | TypeExpr::Tensor { rank, shape, elem } => {
-            let NatExpr::Lit(rank) = rank else { return false; };
-            let Ok(rank) = usize::try_from(*rank) else { return false; };
+            let NatExpr::Lit(rank) = rank else {
+                return false;
+            };
+            let Ok(rank) = usize::try_from(*rank) else {
+                return false;
+            };
             shape.as_ref().is_none_or(|shape| {
-                shape.len() == rank && shape.iter().all(|extent| {
-                    matches!(extent, NatExpr::Lit(n) if usize::try_from(*n).is_ok())
-                })
+                shape.len() == rank
+                    && shape.iter().all(
+                        |extent| matches!(extent, NatExpr::Lit(n) if usize::try_from(*n).is_ok()),
+                    )
             }) && concrete_type(elem)
         },
         | TypeExpr::Record(fields) => {

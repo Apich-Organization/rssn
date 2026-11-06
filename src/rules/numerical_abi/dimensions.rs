@@ -28,12 +28,13 @@ impl DimFormula {
     ) -> DimExpr {
         match self {
             | Self::One => DimExpr::Dimless,
-            | Self::Var(name) => vars
-                .iter()
-                .find(|(key, _)| key == name)
-                .expect("validated formula variable")
-                .1
-                .clone(),
+            | Self::Var(name) => {
+                vars.iter()
+                    .find(|(key, _)| key == name)
+                    .expect("validated formula variable")
+                    .1
+                    .clone()
+            },
             | Self::Mul(parts) => {
                 DimExpr::Mul(parts.iter().map(|part| part.instantiate(vars)).collect())
             },
@@ -224,10 +225,12 @@ pub(in crate::rules) fn apply_contract(
                         attach(target, dim);
                     }
                 },
-                | FieldDimension::NonNumeric => assert!(
-                    nonnumeric_leaf(target),
-                    "contract status field must be integer or bool"
-                ),
+                | FieldDimension::NonNumeric => {
+                    assert!(
+                        nonnumeric_leaf(target),
+                        "contract status field must be integer or bool"
+                    )
+                },
                 | FieldDimension::Unbound => panic!("unbound contract result"),
             }
         }
