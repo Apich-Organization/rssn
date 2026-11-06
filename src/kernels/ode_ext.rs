@@ -220,10 +220,9 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
+    super::ode_contract::validate_problem(t0, t1, y0, opts, &[])?;
+    let f = super::ode_contract::checked_rhs(f);
     let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) {
-        return Err(OdeError::Invalid);
-    }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let m = n + 1;
     // augmented autonomous system Y = (y, t)
@@ -236,22 +235,28 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     let mut t = t0;
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
     let mut nfev = 1usize;
     let mut h = opts
         .h0
         .unwrap_or_else(|| {
-            crate::kernels::ode_adaptive::initial_step(
+            let estimate = super::ode_contract::initial_step(
                 &f,
                 t0,
                 y0,
                 &f0,
-                dir,
-                3.0,
-                crate::kernels::ode_adaptive::Tol {
+                super::ode_contract::InitialStepOptions {
                     rtol: opts.rtol,
                     atol: opts.atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order: 3.0,
                 },
-            )
+            );
+            nfev += estimate.evaluations;
+            estimate.step
         })
         .abs()
         .min(opts.hmax)
@@ -265,11 +270,15 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
+        if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
+            return Err(OdeError::StepLimit);
+        }
         // augmented Jacobian
         let mut ya = y.clone();
         ya.push(t);
         let mut fa0 = vec![0.0; m];
         fa(&ya, &mut fa0);
+        nfev += 1;
         let mut ja = Mat::zeros(m, m);
         if let Some(jf) = jac {
             let jm = jf(t, &y);
@@ -279,9 +288,10 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
                 }
             }
             // time derivative by differences
-            let dt = 1.5e-8 * t.abs().max(1e-3);
+            let probe = super::ode_contract::time_probe(t, t0, t1);
+            let dt = probe - t;
             let mut fp = vec![0.0; n];
-            f(t + dt, &y, &mut fp);
+            f(probe, &y, &mut fp);
             for i in 0..n {
                 ja.set(i, n, (fp[i] - f0[i]) / dt);
             }
@@ -290,8 +300,13 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
             let mut yp = ya.clone();
             let mut fp = vec![0.0; m];
             for j in 0..m {
-                let d = 1.5e-8 * ya[j].abs().max(1e-3);
-                yp[j] = ya[j] + d;
+                let probe = if j == n {
+                    super::ode_contract::time_probe(t, t0, t1)
+                } else {
+                    ya[j] + 1.5e-8 * ya[j].abs().max(1e-3)
+                };
+                let d = probe - ya[j];
+                yp[j] = probe;
                 fa(&yp, &mut fp);
                 yp[j] = ya[j];
                 for i in 0..n {
@@ -322,12 +337,15 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
         if ynew.iter().any(|v| !v.is_finite()) {
             h *= 0.25;
             sol.rejected += 1;
-            if h.abs() < 1e-300 {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::NonFinite);
             }
             continue;
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
         if en <= 1.0 {
             t += h;
             y = ynew;
@@ -347,7 +365,7 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
         } else {
             sol.rejected += 1;
             h *= (0.9 * en.powf(-1.0 / 3.0)).clamp(0.1, 0.9);
-            if h.abs() < 1e-14 * (1.0 + t.abs()) {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::StepLimit);
             }
         }

@@ -24,8 +24,9 @@
 //! operator with scalar semantics compiles.
 //!
 //! Besides plain evaluation the same program can be interpreted over
-//! dual numbers ([`Tape::gradient`], forward-mode automatic
-//! differentiation), over [`HyperDual`] numbers ([`Tape::hessian`],
+//! dual numbers ([`Tape::gradient`]), with reverse accumulation for gradients
+//! ([`Tape::gradient_reverse`] and [`Tape::vjp`]) and forward-over-reverse Hessian-vector products
+//! ([`Tape::hessian_vector_product`]), over [`HyperDual`] numbers ([`Tape::hessian`],
 //! forward-over-forward second derivatives) and over outward-rounded
 //! intervals ([`Tape::enclose`]), which turns a numeric witness into a
 //! rigorous enclosure.
@@ -35,8 +36,9 @@
 //! * Second derivatives are exact for every instruction with an analytic
 //!   rule: the arithmetic, the elementary functions, `atan2`, integer and
 //!   real powers, and any composition of them. A full Hessian costs `n²`
-//!   forward passes for `n` inputs ([`Tape::hessian`]); there is no reverse
-//!   mode and no Hessian-vector product from a single pass.
+//!   forward passes for `n` inputs ([`Tape::hessian`]). Reverse gradients and Hessian-vector
+//!   products use one forward pass and one reverse sweep, with linear storage;
+//!   no dense Hessian is needed for the latter.
 //! * Opaque operators (`Call`, `Extern1`, `Extern2`) have no analytic
 //!   second-order rule. Their values are exact and their first derivatives
 //!   remain central differences (as in [`Tape::gradient`]), but the mixed
@@ -56,6 +58,9 @@
 //!   a box that can reach the negative x axis encloses `[-π, π]`. Any other
 //!   instruction in [`Tape::enclose`] returns the whole line, which is sound
 //!   and says nothing.
+
+mod autodiff;
+mod contracts;
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -137,7 +142,8 @@ pub enum Inst {
     /// its own on the tape — the tape is scalar — so indexing is expressed as
     /// an offset into the flat input buffer, with `base` the constant offset
     /// of the tensor and `index` a computed element offset. An index outside
-    /// `[0, len - base)` reads NaN, which is the same convention as every
+    /// `[0, declared_inputs - base)` reads NaN, as does a missing input element,
+    /// which is the same convention as every
     /// other out-of-range read here.
     Gather(u32, Reg),
 }
@@ -156,6 +162,17 @@ pub struct Tape {
     pub params: usize,
     /// Output registers.
     pub outputs: Vec<Reg>,
+}
+
+// Full equality resolves hash collisions; all constant/function bit patterns
+// and operand order are retained for the native cache.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(super) struct ProgramKey {
+    inputs: usize,
+    params: usize,
+    insts: Vec<(u8, u64, u64, u64)>,
+    args: Vec<Reg>,
+    outputs: Vec<Reg>,
 }
 
 /// Floating-point relaxations the optimiser may apply (all off by default,
@@ -609,7 +626,7 @@ impl Tape {
             let inst = folded.insts.get(i).copied();
             let value = inst.and_then(|inst| {
                 let operands = operands(&inst, &folded.args);
-                if matches!(inst, Inst::Input(_) | Inst::Param(_)) {
+                if matches!(inst, Inst::Input(_) | Inst::Param(_) | Inst::Gather(..)) {
                     return None;
                 }
                 if let Inst::Const(c) = inst {
@@ -696,8 +713,9 @@ impl Tape {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.inputs.hash(&mut h);
         self.params.hash(&mut h);
+        self.insts.len().hash(&mut h);
         for inst in &self.insts {
-            key_of(inst).hash(&mut h);
+            contracts::ordered_key_of(inst).hash(&mut h);
         }
         self.args.hash(&mut h);
         self.outputs.hash(&mut h);
@@ -741,7 +759,8 @@ impl Tape {
                     } else {
                         None
                     };
-                    slot.and_then(|slot| inputs.get(slot).copied())
+                    slot.filter(|&slot| slot < self.inputs)
+                        .and_then(|slot| inputs.get(slot).copied())
                         .unwrap_or_else(T::nan)
                 },
                 | _ => {
@@ -774,6 +793,9 @@ impl Tape {
 
     /// The gradient of output `k` with respect to every input at `inputs`
     /// (forward mode, one pass per input).
+    ///
+    /// This reference path retains its floating-point evaluation order; use [`Self::gradient_reverse`] for
+    /// one forward pass and one reverse sweep on large input spaces.
     #[must_use]
     pub fn gradient(
         &self,
@@ -1345,13 +1367,8 @@ impl Scalar for Dual {
         self,
         n: i32,
     ) -> Self {
-        let value = int_pow(self.0, n);
-        let slope = if n == 0 {
-            0.0
-        } else {
-            f64::from(n) * int_pow(self.0, n - 1)
-        };
-        Self(value, slope * self.1)
+        let (value, slope, _) = autodiff::integer_power_derivatives(self.0, n);
+        Self(value, autodiff::product_unless_zero(self.1, slope))
     }
 
     fn powf(
@@ -1359,17 +1376,14 @@ impl Scalar for Dual {
         b: Self,
     ) -> Self {
         let value = self.0.powf(b.0);
-        let d_base = if self.1 == 0.0 {
-            0.0
-        } else {
-            b.0 * self.0.powf(b.0 - 1.0) * self.1
-        };
-        let d_exp = if b.1 == 0.0 {
-            0.0
-        } else {
-            value * self.0.ln() * b.1
-        };
-        Self(value, d_base + d_exp)
+        if value.is_nan() {
+            return Self::nan();
+        }
+        let [dx, db, _, _, _] = autodiff::power_partials(self.0, b.0);
+        Self(
+            value,
+            autodiff::product_unless_zero(self.1, dx) + autodiff::product_unless_zero(b.1, db),
+        )
     }
 
     fn unary(
@@ -1592,24 +1606,13 @@ impl Scalar for HyperDual {
         self,
         n: i32,
     ) -> Self {
-        let value = int_pow(self.v, n);
-        let (slope, curve) = if n == 0 {
-            (0.0, 0.0)
-        } else {
-            let m = n.saturating_sub(1);
-            let slope = f64::from(n) * int_pow(self.v, m);
-            let curve = if n == 1 {
-                0.0
-            } else {
-                f64::from(n) * f64::from(m) * int_pow(self.v, m.saturating_sub(1))
-            };
-            (slope, curve)
-        };
+        let (value, slope, curve) = autodiff::integer_power_derivatives(self.v, n);
+        let term = autodiff::product_unless_zero;
         Self {
             v: value,
-            d1: slope * self.d1,
-            d2: slope * self.d2,
-            d12: curve * self.d1 * self.d2 + slope * self.d12,
+            d1: term(self.d1, slope),
+            d2: term(self.d2, slope),
+            d12: term(self.d1 * self.d2, curve) + term(self.d12, slope),
         }
     }
 
@@ -1618,53 +1621,20 @@ impl Scalar for HyperDual {
         b: Self,
     ) -> Self {
         let value = self.v.powf(b.v);
-        let d_base1 = if self.d1 == 0.0 {
-            0.0
-        } else {
-            b.v * self.v.powf(b.v - 1.0) * self.d1
-        };
-        let d_exp1 = if b.d1 == 0.0 {
-            0.0
-        } else {
-            value * self.v.ln() * b.d1
-        };
-        let d_base2 = if self.d2 == 0.0 {
-            0.0
-        } else {
-            b.v * self.v.powf(b.v - 1.0) * self.d2
-        };
-        let d_exp2 = if b.d2 == 0.0 {
-            0.0
-        } else {
-            value * self.v.ln() * b.d2
-        };
-        let ln = self.v.ln();
-        let w1 = if b.d1 == 0.0 {
-            b.v * self.d1 / self.v
-        } else {
-            b.d1 * ln + b.v * self.d1 / self.v
-        };
-        let w2 = if b.d2 == 0.0 {
-            b.v * self.d2 / self.v
-        } else {
-            b.d2 * ln + b.v * self.d2 / self.v
-        };
-        let mut w12 = 0.0;
-        if b.d12 != 0.0 {
-            w12 += b.d12 * ln;
+        if value.is_nan() {
+            return Self::nan();
         }
-        if b.d1 != 0.0 {
-            w12 += b.d1 * self.d2 / self.v;
-        }
-        if b.d2 != 0.0 {
-            w12 += b.d2 * self.d1 / self.v;
-        }
-        w12 += b.v * (self.d12 * self.v - self.d1 * self.d2) / (self.v * self.v);
+        let [dx, db, dxx, dxb, dbb] = autodiff::power_partials(self.v, b.v);
+        let term = autodiff::product_unless_zero;
         Self {
             v: value,
-            d1: d_base1 + d_exp1,
-            d2: d_base2 + d_exp2,
-            d12: value * (w1 * w2 + w12),
+            d1: term(self.d1, dx) + term(b.d1, db),
+            d2: term(self.d2, dx) + term(b.d2, db),
+            d12: term(self.d12, dx)
+                + term(b.d12, db)
+                + term(self.d1 * self.d2, dxx)
+                + term(self.d1 * b.d2 + self.d2 * b.d1, dxb)
+                + term(b.d1 * b.d2, dbb),
         }
     }
 

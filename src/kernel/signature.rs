@@ -32,9 +32,10 @@ use crate::graph::dim::FamilySource;
 /// Version of the dynamic ABI described by this module.
 ///
 /// A change that would break an existing host — a removed field, a changed
-/// meaning, a different `Value` layout — increments this number. Additive
-/// changes do not.
-pub const API_VERSION: u32 = 1;
+/// meaning, a different `Value` layout — increments this number. Changes to
+/// the deterministic binary manifest layout also increment it, including added
+/// fields; self-describing formats may remain backward-readable.
+pub const API_VERSION: u32 = 2;
 
 /// Version of the plugin dynamic-library ABI.
 pub const PLUGIN_ABI: u32 = 1;

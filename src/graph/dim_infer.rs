@@ -372,7 +372,7 @@ impl<'a> DimInfer<'a> {
         // predicate answer an unknown dimension.
         if matches!(
             self.graph.payload(node),
-            Some(Payload::Bool(_) | Payload::Str(_) | Payload::Blob(_))
+            Some(Payload::Bool(_) | Payload::Str(_) | Payload::Unit(_) | Payload::Blob(_))
         ) {
             return DimTerm::non_metric();
         }

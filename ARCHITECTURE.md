@@ -39,7 +39,7 @@ number.
 | `io` | Text parsing and printing (round-trippable), LaTeX, Typst, Unicode pretty-printing, markup helpers, plotting, `.npy` (feature `npy`). |
 | `backend` | `Backend` trait: it compiles a closed-form term into a callable function. The reference `Interpreter` ships with the crate. JIT backends live outside the core crate (see below). |
 | `sim` | Time stepping, fields and particles: FDM/FEM/FVM/BEM, CFD, MD (Verlet, BAOAB Langevin, Nosé–Hoover, cell lists), SPH, spectral, multigrid; P1/P2 finite elements on unstructured triangle meshes with adaptive refinement (`fem_triangles`); compressible gas dynamics with HLLC/MUSCL and an exact Riemann solver (`gas_dynamics`); symplectic and stiff integrators (`integrators`); Ising Metropolis and Wolff clusters; and the scenario models. `sim::scenario::run(name, json)` is the uniform entry point. |
-| `ffi` | A minimal C ABI over `api` and `sim::scenario`. cbindgen generates `rssn.h`/`rssn.hpp` from it (`DEV=1 cargo build`). |
+| `ffi` | A minimal C ABI over `api` and `sim::scenario`. cbindgen generates `rssn.h`/`rssn.hpp` from it (`DEV=1 cargo build --features dev-headers`). |
 
 ### Rule sets
 

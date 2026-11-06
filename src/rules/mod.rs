@@ -81,6 +81,9 @@ pub mod linalg;
 pub mod logic;
 pub mod number_theory;
 pub mod numeric;
+pub mod numerical_abi;
+/// Numerical evaluators that invoke checked serial host callbacks.
+pub mod numerical_callbacks;
 pub mod ode;
 pub mod optimize;
 pub mod pde;
@@ -157,6 +160,11 @@ pub fn standard() -> Vec<RuleSet> {
         stats(),
         transforms(),
         numeric(),
+        numerical_abi::numerical_vector(),
+        numerical_abi::numerical_stats(),
+        numerical_abi::numerical_special(),
+        numerical_abi::numerical_matrix(),
+        numerical_callbacks::numerical_callback(),
         sde(),
         variational(),
         pde(),

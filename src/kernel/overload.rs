@@ -116,6 +116,69 @@ fn shape_match(
         .fold(Match::Exact, weaker)
 }
 
+fn polymorphic_dimension(dim: &DimExpr) -> bool {
+    match dim {
+        | DimExpr::Mul(parts) => parts.iter().any(polymorphic_dimension),
+        | DimExpr::Pow(inner, crate::kernel::signature::Exp::Rat(_)) | DimExpr::Inverse(inner) => {
+            polymorphic_dimension(inner)
+        },
+        | DimExpr::Any | DimExpr::Var(_) | DimExpr::Pow(..) => true,
+        | _ => false,
+    }
+}
+
+/// Canonical factors for a fully concrete dimension. Named bases are kept as
+/// exact identities; unknowns, symbolic exponents and invalid rationals never
+/// acquire an invented value.
+pub(crate) fn canonical_concrete_dimension(
+    dim: &DimExpr
+) -> Option<std::collections::BTreeMap<String, num_rational::BigRational>> {
+    use num_rational::BigRational;
+    use num_traits::{One, Zero};
+    fn collect(
+        dim: &DimExpr,
+        power: &BigRational,
+        factors: &mut std::collections::BTreeMap<String, BigRational>,
+    ) -> Option<()> {
+        match dim {
+            | DimExpr::Dimless => {},
+            | DimExpr::Base(name) => *factors.entry(name.clone()).or_default() += power.clone(),
+            | DimExpr::Mul(parts) => {
+                for part in parts {
+                    collect(part, power, factors)?;
+                }
+            },
+            | DimExpr::Inverse(inner) => collect(inner, &(-power.clone()), factors)?,
+            | DimExpr::Pow(inner, crate::kernel::signature::Exp::Rat(r)) if r.denom != 0 => {
+                let exponent = BigRational::new(r.numer.into(), r.denom.into());
+                collect(inner, &(power * exponent), factors)?;
+            },
+            | _ => return None,
+        }
+        factors.retain(|_, exponent| !exponent.is_zero());
+        Some(())
+    }
+    let mut factors = std::collections::BTreeMap::new();
+    collect(dim, &BigRational::one(), &mut factors)?;
+    Some(factors)
+}
+
+pub(crate) fn dimensions_equivalent(
+    a: &DimExpr,
+    b: &DimExpr,
+) -> bool {
+    if a == b && matches!(a, DimExpr::Dimless | DimExpr::Base(_)) {
+        return true;
+    }
+    match (
+        canonical_concrete_dimension(a),
+        canonical_concrete_dimension(b),
+    ) {
+        | (Some(left), Some(right)) => left == right,
+        | _ => false,
+    }
+}
+
 /// How a parameter's dimension accepts the argument's.
 ///
 /// `Any` and a variable accept anything; two concrete dimensions must be
@@ -125,11 +188,162 @@ fn dim_match(
     got: &DimExpr,
 ) -> Match {
     match (param, got) {
-        | (DimExpr::Any | DimExpr::Var(_), _) | (_, DimExpr::Any | DimExpr::Var(_)) => {
-            Match::Generic
-        },
-        | (a, b) if a == b => Match::Exact,
+        | (a, b) if polymorphic_dimension(a) || polymorphic_dimension(b) => Match::Generic,
+        | (a, b) if a == b || dimensions_equivalent(a, b) => Match::Exact,
         | _ => Match::No,
+    }
+}
+
+// A function's advertised schema is a promise, so unknown actual dimensions
+// and extents cannot establish a concrete promise. `operator_on_left` tracks
+// which side may contain the operator's existential variables as variance flips.
+fn callback_schema_match(
+    param: &TypeExpr,
+    got: &TypeExpr,
+    operator_on_left: bool,
+) -> Match {
+    fn nat(
+        param: &NatExpr,
+        got: &NatExpr,
+        operator_on_left: bool,
+    ) -> Match {
+        let operator = if operator_on_left {
+            param
+        } else {
+            got
+        };
+        let actual = if operator_on_left {
+            got
+        } else {
+            param
+        };
+        if !matches!(actual, NatExpr::Lit(_)) {
+            return Match::No;
+        }
+        if matches!(operator, NatExpr::Var(_)) {
+            return Match::Generic;
+        }
+        match (param, got) {
+            | (NatExpr::Lit(a), NatExpr::Lit(b)) if a == b => Match::Exact,
+            | _ => Match::No,
+        }
+    }
+    fn dimension(
+        param: &DimExpr,
+        got: &DimExpr,
+        operator_on_left: bool,
+    ) -> Match {
+        let operator = if operator_on_left {
+            param
+        } else {
+            got
+        };
+        let actual = if operator_on_left {
+            got
+        } else {
+            param
+        };
+        if polymorphic_dimension(actual) {
+            return Match::No;
+        }
+        if matches!(operator, DimExpr::Any) {
+            return Match::No;
+        }
+        if polymorphic_dimension(operator) {
+            return Match::Generic;
+        }
+        if dimensions_equivalent(param, got) {
+            Match::Exact
+        } else {
+            Match::No
+        }
+    }
+    match (param, got) {
+        | (TypeExpr::Function(pa, ra), TypeExpr::Function(pb, rb)) => {
+            if pa.len() != pb.len() {
+                return Match::No;
+            }
+            let arguments = pa
+                .iter()
+                .zip(pb)
+                .map(|(a, b)| callback_schema_match(b, a, !operator_on_left))
+                .fold(Match::Exact, weaker);
+            weaker(arguments, callback_schema_match(ra, rb, operator_on_left))
+        },
+        | (TypeExpr::Record(a), TypeExpr::Record(b)) => {
+            if a.len() != b.len() {
+                return Match::No;
+            }
+            let mut names = std::collections::BTreeSet::new();
+            if a.iter().any(|(name, _)| !names.insert(name)) {
+                return Match::No;
+            }
+            names.clear();
+            if b.iter().any(|(name, _)| !names.insert(name)) {
+                return Match::No;
+            }
+            a.iter()
+                .map(|(name, field)| {
+                    b.iter()
+                        .find(|(other, _)| other == name)
+                        .map_or(Match::No, |(_, other)| {
+                            callback_schema_match(field, other, operator_on_left)
+                        })
+                })
+                .fold(Match::Exact, weaker)
+        },
+        | (
+            TypeExpr::Tensor {
+                rank: ra,
+                shape: sa,
+                elem: ea,
+            },
+            TypeExpr::Tensor {
+                rank: rb,
+                shape: sb,
+                elem: eb,
+            },
+        ) => {
+            let shape = match (sa, sb) {
+                | (None, _) => Match::Shaped,
+                | (Some(a), Some(b)) if a.len() == b.len() => a
+                    .iter()
+                    .zip(b)
+                    .map(|(a, b)| nat(a, b, operator_on_left))
+                    .fold(Match::Exact, weaker),
+                | _ => Match::No,
+            };
+            weaker(
+                nat(ra, rb, operator_on_left),
+                weaker(shape, callback_schema_match(ea, eb, operator_on_left)),
+            )
+        },
+        | (TypeExpr::Dim(a, da), TypeExpr::Dim(b, db)) => weaker(
+            dimension(da, db, operator_on_left),
+            callback_schema_match(a, b, operator_on_left),
+        ),
+        | (TypeExpr::Unit(a), TypeExpr::Unit(b)) | (TypeExpr::Point(a), TypeExpr::Point(b)) => {
+            dimension(a, b, operator_on_left)
+        },
+        | (TypeExpr::Dim(a, d), b) if dimensions_equivalent(d, &DimExpr::Dimless) => {
+            callback_schema_match(a, b, operator_on_left)
+        },
+        | (a, TypeExpr::Dim(b, d)) if dimensions_equivalent(d, &DimExpr::Dimless) => {
+            callback_schema_match(a, b, operator_on_left)
+        },
+        | (TypeExpr::Dim(a, d), b) if operator_on_left && matches!(d, DimExpr::Var(_)) => weaker(
+            Match::Generic,
+            callback_schema_match(a, b, operator_on_left),
+        ),
+        | (a, TypeExpr::Dim(b, d)) if !operator_on_left && matches!(d, DimExpr::Var(_)) => weaker(
+            Match::Generic,
+            callback_schema_match(a, b, operator_on_left),
+        ),
+        | (TypeExpr::Dyn(_), _) | (_, TypeExpr::Dyn(_)) => Match::No,
+        | (TypeExpr::Var(_), _) if operator_on_left => Match::Generic,
+        | (_, TypeExpr::Var(_)) if !operator_on_left => Match::Generic,
+        | (TypeExpr::Var(_), _) | (_, TypeExpr::Var(_)) => Match::No,
+        | _ => matches_type(param, got),
     }
 }
 
@@ -139,6 +353,33 @@ pub fn matches_type(
     param: &TypeExpr,
     got: &TypeExpr,
 ) -> Match {
+    if matches!(
+        (param, got),
+        (TypeExpr::Function(..), TypeExpr::Function(..))
+    ) {
+        return callback_schema_match(param, got, true);
+    }
+    if let (TypeExpr::Record(a), TypeExpr::Record(b)) = (param, got) {
+        if a.len() != b.len() {
+            return Match::No;
+        }
+        let mut names = std::collections::BTreeSet::new();
+        if a.iter().any(|(name, _)| !names.insert(name)) {
+            return Match::No;
+        }
+        names.clear();
+        if b.iter().any(|(name, _)| !names.insert(name)) {
+            return Match::No;
+        }
+        return a
+            .iter()
+            .map(|(name, field)| {
+                b.iter()
+                    .find(|(other, _)| other == name)
+                    .map_or(Match::No, |(_, other)| matches_type(field, other))
+            })
+            .fold(Match::Exact, weaker);
+    }
     if param == got {
         return Match::Exact;
     }
@@ -157,6 +398,12 @@ pub fn matches_type(
         | (TypeExpr::Dim(a, da), TypeExpr::Dim(b, db)) => {
             weaker(dim_match(da, db), matches_type(a, b))
         },
+        | (TypeExpr::Dim(inner, dim), other) if dimensions_equivalent(dim, &DimExpr::Dimless) => {
+            matches_type(inner, other)
+        },
+        | (other, TypeExpr::Dim(inner, dim)) if dimensions_equivalent(dim, &DimExpr::Dimless) => {
+            matches_type(other, inner)
+        },
         // A unit is a dimension carrier: `quantity(value, unit)` declares its
         // unit parameter as `Unit(D)` and passes a `Value::Unit`, and without
         // this arm the typed overload scored `No` and lost to the all-`Dyn`
@@ -174,8 +421,14 @@ pub fn matches_type(
         // dynamic call path refused every real argument. Concrete dimensions
         // are still compared by the arms above, and the element type is still
         // matched, so a `Real[T]` parameter does not accept a tensor.
-        | (TypeExpr::Dim(inner, DimExpr::Any | DimExpr::Var(_)), _) => {
+        | (TypeExpr::Dim(inner, dim), _) if polymorphic_dimension(dim) => {
             weaker(Match::Generic, matches_type(inner, got))
+        },
+        // Contravariant function-input matching reverses the two types. An
+        // operator's still-unbound call dimension is existential here, not a
+        // demand that a concrete callback accept every physical dimension.
+        | (_, TypeExpr::Dim(inner, dim)) if polymorphic_dimension(dim) => {
+            weaker(Match::Generic, matches_type(param, inner))
         },
         | (
             TypeExpr::Tensor {
@@ -188,15 +441,13 @@ pub fn matches_type(
                 shape: sb,
                 elem: eb,
             },
-        ) => {
+        ) => weaker(
+            rank_match(ra, rb),
             weaker(
-                rank_match(ra, rb),
-                weaker(
-                    shape_match(sa.as_deref(), sb.as_deref()),
-                    matches_type(ea, eb),
-                ),
-            )
-        },
+                shape_match(sa.as_deref(), sb.as_deref()),
+                matches_type(ea, eb),
+            ),
+        ),
         | (
             TypeExpr::Sparse {
                 format: fa,
@@ -215,14 +466,6 @@ pub fn matches_type(
                 Match::No
             };
             weaker(format, weaker(rank_match(ra, rb), matches_type(ea, eb)))
-        },
-        | (TypeExpr::Function(pa, ra), TypeExpr::Function(pb, rb)) => {
-            let params = pa
-                .iter()
-                .zip(pb)
-                .map(|(x, y)| matches_type(x, y))
-                .fold(Match::Exact, weaker);
-            weaker(params, matches_type(ra, rb))
         },
         | _ => Match::No,
     }
@@ -634,5 +877,31 @@ mod tests {
             Best::None
         );
         assert_eq!(best_types(&[real_only], &[TypeExpr::String]), Best::None);
+    }
+}
+
+#[cfg(test)]
+mod concrete_dimension_equivalence_tests {
+    use super::*;
+    use crate::kernel::signature::{Exp, Rational};
+    #[test]
+    fn products_powers_cancellation_and_named_bases_match_canonically() {
+        let length = DimExpr::Base("Length".into());
+        let time = DimExpr::Base("Time".into());
+        let square = DimExpr::Pow(Box::new(length.clone()), Exp::Rat(Rational::new(2, 1)));
+        let product = DimExpr::Mul(vec![length.clone(), length.clone()]);
+        let f = |dim| TypeExpr::Dim(Box::new(TypeExpr::Float), dim);
+        assert_eq!(matches_type(&f(square), &f(product)), Match::Exact);
+        let cancelled = DimExpr::Mul(vec![time.clone(), DimExpr::Inverse(Box::new(time))]);
+        assert_eq!(matches_type(&f(cancelled), &TypeExpr::Float), Match::Exact);
+        assert_eq!(
+            matches_type(&f(length), &f(DimExpr::Base("length".into()))),
+            Match::No
+        );
+        assert!(!dimensions_equivalent(&DimExpr::Any, &DimExpr::Dimless));
+        assert!(!dimensions_equivalent(
+            &DimExpr::Var("D".into()),
+            &DimExpr::Dimless
+        ));
     }
 }

@@ -39,6 +39,8 @@ pub enum RootError {
 /// [`RootError::NotBracketed`] if `f(a)` and `f(b)` have the same sign.
 /// [`RootError::Invalid`] if the endpoints, tolerance, or an evaluated
 /// function value are non-finite, or if the tolerance is not positive.
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn brent<F: Fn(f64) -> f64>(
     f: F,
     a: f64,
@@ -108,12 +110,12 @@ pub fn brent<F: Fn(f64) -> f64>(
         d = c;
         c = b;
         fc = fb;
-        if fa.is_sign_positive() != fs.is_sign_positive() {
-            b = s;
-            fb = fs;
-        } else {
+        if fa.is_sign_positive() == fs.is_sign_positive() {
             a = s;
             fa = fs;
+        } else {
+            b = s;
+            fb = fs;
         }
         if fa.abs() < fb.abs() {
             std::mem::swap(&mut a, &mut b);
@@ -170,6 +172,8 @@ where
 /// [`RootError::NotBracketed`] / [`RootError::NoConvergence`].
 /// [`RootError::Invalid`] for non-finite inputs, function or derivative values,
 /// or a non-positive tolerance.
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     f: F,
     df: D,

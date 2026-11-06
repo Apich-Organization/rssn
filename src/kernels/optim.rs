@@ -1,6 +1,7 @@
 //! # Optimisation kernels
 //!
 //! * unconstrained: Nelder-Mead, BFGS, L-BFGS, dogleg trust region;
+//!   matrix-free Newton-CG is available in [`super::newton_cg`];
 //! * global, derivative free: differential evolution and simulated
 //!   annealing (seeded, deterministic);
 //! * constrained: sequential quadratic programming (SQP) with a

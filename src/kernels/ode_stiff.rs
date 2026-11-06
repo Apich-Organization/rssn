@@ -69,6 +69,11 @@
 //! `n2 = 7`, `n3 = 13`; the test module records the mechanism data, the
 //! reference values and the formulation.
 
+use super::ode_contract::InitialStepOptions;
+use super::ode_contract::checked_rhs;
+use super::ode_contract::initial_events;
+use super::ode_contract::initial_step;
+use super::ode_contract::validate_problem;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
@@ -91,8 +96,6 @@ use crate::kernels::ode_adaptive::OdeError;
 use crate::kernels::ode_adaptive::OdeOptions;
 use crate::kernels::ode_adaptive::OdeSolution;
 use crate::kernels::ode_adaptive::StepWindow;
-use crate::kernels::ode_adaptive::Tol;
-use crate::kernels::ode_adaptive::initial_step;
 use crate::kernels::ode_adaptive::process_events;
 
 /// User-supplied Jacobian `J(t, y)` of the right-hand side.
@@ -122,12 +125,12 @@ fn rms(
     scale: &[f64],
 ) -> f64 {
     let n = scale.len().max(1);
-    let s: f64 = v
-        .iter()
-        .enumerate()
-        .map(|(i, x)| (x / scale[i % n]).powi(2))
-        .sum();
-    (s / v.len().max(1) as f64).sqrt()
+    super::ode_contract::rms(
+        v.iter()
+            .enumerate()
+            .map(|(i, &value)| super::ode_contract::scaled_ratio(value, scale[i % n])),
+        v.len(),
+    )
 }
 
 // ------------------------------------------------------------ Radau IIA
@@ -461,7 +464,15 @@ pub fn radau5_events<F: Fn(f64, &[f64], &mut [f64])>(
         events,
         ..RadauOptions::default()
     };
-    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro, &FdMode::serial())
+    let f = checked_rhs(f);
+    radau_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &ro,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// Radau IIA(5) integration with a user-supplied Jacobian `jac(t, y)`.
@@ -494,7 +505,15 @@ where
         max_stages: 3,
         ..RadauOptions::default()
     };
-    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro, &FdMode::serial())
+    let f = checked_rhs(f);
+    radau_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &ro,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// Variable-order Radau IIA integration (orders 5, 9 and 13) of
@@ -525,7 +544,15 @@ pub fn radau_with<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     ro: &RadauOptions<'_>,
 ) -> Result<OdeSolution, OdeError> {
-    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, ro, &FdMode::serial())
+    let f = checked_rhs(f);
+    radau_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        ro,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// System size from which `bdf_with_par` evaluates the finite-difference Jacobian
@@ -556,7 +583,40 @@ pub fn radau<F: Fn(f64, &[f64], &mut [f64])>(
         events,
         ..RadauOptions::default()
     };
-    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro, &FdMode::serial())
+    let f = checked_rhs(f);
+    radau_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &ro,
+        &FdMode::serial(),
+        None,
+    )
+}
+
+/// Serial order-five driver for scoped host callbacks with a first-error slot.
+pub(crate) fn radau5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    stop: &dyn Fn() -> bool,
+) -> Result<OdeSolution, OdeError> {
+    let ro = RadauOptions {
+        min_stages: 3,
+        max_stages: 3,
+        ..Default::default()
+    };
+    let f = super::ode_contract::checked_rhs_with_stop(f, stop);
+    radau_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &ro,
+        &FdMode::serial(),
+        Some(stop),
+    )
 }
 
 fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
@@ -565,12 +625,12 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     ro: &RadauOptions<'_>,
     fd: &FdMode<F>,
+    stop: Option<&dyn Fn() -> bool>,
 ) -> Result<OdeSolution, OdeError> {
     let IvpSpan { t0, t1, y0 } = span;
+    validate_problem(t0, t1, y0, opts, ro.events)?;
+    super::ode_contract::abort_if_requested(stop)?;
     let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) {
-        return Err(OdeError::Invalid);
-    }
     let valid = |s: usize| matches!(s, 3 | 5 | 7);
     if !valid(ro.min_stages) || !valid(ro.max_stages) || ro.min_stages > ro.max_stages {
         return Err(OdeError::Invalid);
@@ -621,18 +681,38 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
     let mut nfev = 1;
     let mut h_abs = match (opts.h0, mass) {
         | (Some(h), _) => h.abs(),
-        | (None, None) => initial_step(f, t0, y0, &f0, dir, 5.0, Tol { rtol, atol }),
+        | (None, None) => {
+            let estimate = initial_step(
+                f,
+                t0,
+                y0,
+                &f0,
+                InitialStepOptions {
+                    rtol,
+                    atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order: 5.0,
+                },
+            );
+            nfev += estimate.evaluations;
+            estimate.step
+        },
         | (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
     }
     .min(opts.hmax);
+    super::ode_contract::abort_if_requested(stop)?;
     let mut jac = provider.eval_with(f, t, &y, &f0, &mut nfev, fd);
     let mut current_jac = true;
     let mut lus: Option<(Factor, Factor)> = None;
     let mut sol = OdeSolution::start(t0, y0);
-    let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
+    let mut gprev = initial_events(events, t0, y0)?;
     let mut prev_dense: Option<crate::kernels::ode_adaptive::DenseStep> = None;
     let mut since_change = 0usize;
     let mut steps = 0;
@@ -649,15 +729,15 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
         }
     };
     while (t1 - t) * dir > 0.0 {
-        if steps >= opts.max_steps {
-            return Err(OdeError::StepLimit);
-        }
-        steps += 1;
-        let min_step = 10.0 * f64::EPSILON * t.abs().max(1e-300);
         h_abs = h_abs.min(opts.hmax);
         let mut accepted = false;
         while !accepted {
-            if h_abs < min_step || h_abs < 1e-300 {
+            super::ode_contract::abort_if_requested(stop)?;
+            if steps >= opts.max_steps {
+                return Err(OdeError::StepLimit);
+            }
+            steps += 1;
+            if !h_abs.is_finite() || crate::kernels::exact_eq(t + dir * h_abs, t) {
                 return Err(OdeError::StepLimit);
             }
             let tab = &tabs[tab_index(stages)];
@@ -767,6 +847,9 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             } else {
                 (safety * en.powf(-expo)).clamp(0.2, 10.0)
             };
+            if en.is_nan() {
+                return Err(OdeError::NonFinite);
+            }
             if en > 1.0 {
                 h_abs *= factor.min(0.9);
                 lus = None;
@@ -795,7 +878,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 ynew: &y_new,
                 dir,
             };
-            if process_events(events, &mut gprev, &mut sol, step, &window) {
+            if process_events(events, &mut gprev, &mut sol, step, &window)? {
                 sol.orders.push(2 * s - 1);
                 sol.nfev = nfev;
                 return Ok(sol);
@@ -866,18 +949,29 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
     stages: usize,
 ) -> Result<Vec<f64>, OdeError> {
     let n = y0.len();
-    if n == 0 || n_steps == 0 || crate::kernels::exact_eq(t0, t1) || !matches!(stages, 3 | 5 | 7) {
+    if n == 0
+        || n_steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || y0.iter().any(|v| !v.is_finite())
+        || crate::kernels::exact_eq(t0, t1)
+        || !matches!(stages, 3 | 5 | 7)
+    {
         return Err(OdeError::Invalid);
     }
+    let f = checked_rhs(f);
     let tab = RadauTab::new(stages).ok_or(OdeError::SolveFailed)?;
-    let h = (t1 - t0) / n_steps as f64;
+    let mut t = t0;
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
     let mut nfev = 0;
     let scale = vec![1.0; n];
-    for s in 0..n_steps {
-        let t = t0 + s as f64 * h;
+    for index in 1..=n_steps {
+        let (next, h) = super::ode_contract::fixed_step(t0, t1, index, n_steps, t)?;
         f(t, &y, &mut f0);
+        if f0.iter().any(|value| !value.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
         let jac = Jac::Dense(fd_jacobian_dense(&f, t, &y, &f0));
         let setup = SolverSetup {
             n,
@@ -914,6 +1008,7 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
         if y.iter().any(|v| !v.is_finite()) {
             return Err(OdeError::NonFinite);
         }
+        t = next;
     }
     Ok(y)
 }
@@ -1023,7 +1118,15 @@ pub fn bdf_events<F: Fn(f64, &[f64], &mut [f64])>(
         events,
         ..BdfOptions::default()
     };
-    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo, &FdMode::serial())
+    let f = checked_rhs(f);
+    bdf_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &bo,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// Variable-order BDF with a user-supplied Jacobian `jac(t, y)`.
@@ -1056,7 +1159,15 @@ where
         max_order,
         ..BdfOptions::default()
     };
-    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo, &FdMode::serial())
+    let f = checked_rhs(f);
+    bdf_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &bo,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// Options of [`bdf_with`]: Jacobian source and structure, maximal order and
@@ -1166,7 +1277,15 @@ pub fn bdf_with<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     bo: &BdfOptions<'_>,
 ) -> Result<OdeSolution, OdeError> {
-    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, bo, &FdMode::serial())
+    let f = checked_rhs(f);
+    bdf_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        bo,
+        &FdMode::serial(),
+        None,
+    )
 }
 
 /// [`bdf_with`] with concurrently evaluated finite-difference Jacobians.
@@ -1186,12 +1305,13 @@ pub fn bdf_with_par<F: Fn(f64, &[f64], &mut [f64]) + Sync>(
     opts: &OdeOptions,
     bo: &BdfOptions<'_>,
 ) -> Result<OdeSolution, OdeError> {
+    let f = checked_rhs(f);
     let fd = if y0.len() < STIFF_PAR_MIN_N {
         FdMode::serial()
     } else {
         FdMode::parallel()
     };
-    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, bo, &fd)
+    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, bo, &fd, None)
 }
 
 /// Variable-order BDF with dense output and event detection; superseded by
@@ -1217,7 +1337,39 @@ pub fn bdf_ex<F: Fn(f64, &[f64], &mut [f64])>(
         events,
         ..BdfOptions::default()
     };
-    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo, &FdMode::serial())
+    let f = checked_rhs(f);
+    bdf_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &bo,
+        &FdMode::serial(),
+        None,
+    )
+}
+
+/// Serial variable-order driver for scoped host callbacks with a first-error slot.
+pub(crate) fn bdf_controlled<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    stop: &dyn Fn() -> bool,
+) -> Result<OdeSolution, OdeError> {
+    let bo = BdfOptions {
+        max_order: 5,
+        ..Default::default()
+    };
+    let f = super::ode_contract::checked_rhs_with_stop(f, stop);
+    bdf_core(
+        &f,
+        IvpSpan { t0, t1, y0 },
+        opts,
+        &bo,
+        &FdMode::serial(),
+        Some(stop),
+    )
 }
 
 fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
@@ -1226,12 +1378,15 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     bo: &BdfOptions<'_>,
     fd: &FdMode<F>,
+    stop: Option<&dyn Fn() -> bool>,
 ) -> Result<OdeSolution, OdeError> {
     let IvpSpan { t0, t1, y0 } = span;
     let max_order = bo.max_order;
     let events = bo.events;
+    validate_problem(t0, t1, y0, opts, events)?;
+    super::ode_contract::abort_if_requested(stop)?;
     let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) || max_order == 0 {
+    if max_order == 0 {
         return Err(OdeError::Invalid);
     }
     let max_order = max_order.min(BDF_MAX_ORDER);
@@ -1266,10 +1421,29 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
     let mut nfev = 1;
     let mut h_abs = match (opts.h0, mass_start) {
         | (Some(h), _) => h,
-        | (None, None) => initial_step(f, t0, y0, &f0, dir, 1.0, Tol { rtol, atol }),
+        | (None, None) => {
+            let estimate = initial_step(
+                f,
+                t0,
+                y0,
+                &f0,
+                InitialStepOptions {
+                    rtol,
+                    atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order: 1.0,
+                },
+            );
+            nfev += estimate.evaluations;
+            estimate.step
+        },
         | (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
     }
     .abs()
@@ -1280,27 +1454,19 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     for q in 0..n {
         d[1][q] = ydot0[q] * h_abs * dir;
     }
+    super::ode_contract::abort_if_requested(stop)?;
     let mut jac = provider.eval_with(f, t, &y, &f0, &mut nfev, fd);
     let mut order = 1usize;
     let mut n_equal = 0usize;
     let mut lu: Option<Factor> = None;
     let mut sol = OdeSolution::start(t0, y0);
-    let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
+    let mut gprev = initial_events(events, t0, y0)?;
     let mut steps = 0;
     while (t1 - t) * dir > 0.0 {
-        if steps >= opts.max_steps {
-            return Err(OdeError::StepLimit);
-        }
-        steps += 1;
-        let min_step = 10.0 * f64::EPSILON * t.abs().max(1e-300);
         if h_abs > opts.hmax {
             bdf_change_d(&mut d, order, opts.hmax / h_abs);
             n_equal = 0;
             h_abs = opts.hmax;
-        } else if h_abs < min_step {
-            bdf_change_d(&mut d, order, min_step / h_abs);
-            n_equal = 0;
-            h_abs = min_step;
         }
         let mut current_jac = false;
         let mut accepted = false;
@@ -1311,7 +1477,12 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         let mut safety = 0.9;
         let mut scale = vec![1.0; n];
         while !accepted {
-            if h_abs < min_step {
+            super::ode_contract::abort_if_requested(stop)?;
+            if steps >= opts.max_steps {
+                return Err(OdeError::StepLimit);
+            }
+            steps += 1;
+            if !h_abs.is_finite() || crate::kernels::exact_eq(t + dir * h_abs, t) {
                 return Err(OdeError::StepLimit);
             }
             let mut h = h_abs * dir;
@@ -1411,6 +1582,9 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             scale = y_new.iter().map(|v| atol + rtol * v.abs()).collect();
             let err: Vec<f64> = d_inc.iter().map(|v| errc[order] * v).collect();
             err_norm_v = rms(&err, &scale);
+            if err_norm_v.is_nan() {
+                return Err(OdeError::NonFinite);
+            }
             if err_norm_v > 1.0 {
                 let factor = (safety * err_norm_v.powf(-1.0 / (order as f64 + 1.0))).max(0.2);
                 h_abs *= factor;
@@ -1455,7 +1629,7 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                 ynew: &y,
                 dir,
             },
-        ) {
+        )? {
             sol.nfev = nfev;
             return Ok(sol);
         }

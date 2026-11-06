@@ -565,3 +565,39 @@ The same pass fixed the spurious `non-metric vs 1` conflict on
 `poles`/`zeros_of`/`singularity`/`branch_cut` (now `Container`, so their list
 answers unify) and the spurious `NonDimensionless` on the non-scalar contour
 argument of `count_zeros_poles`/`winding_number`.
+
+
+## Host values and anonymous unit definitions
+
+A host can pass a complete `UnitValue` without registering its name. Graph
+materialization preserves its dimension, exact rational/pi scale, affine
+offset and display metadata in a structurally interned unit literal. A name
+is resolved to a symbolic unit only when the registry definition equals the
+entire supplied definition; two private units called `m` can therefore differ
+from the registered metre without being conflated. Anonymous unit literals
+have deterministic diagnostic renderings rather than a parser round trip.
+
+The ordinary units algebra resolves products of named and anonymous atoms.
+Conversion, exact scale cancellation and coherent simplification use their
+physical definitions. Coherent quantities and `dimension(...)` retain custom
+base dimensions, including rational powers of products. Affine origins are
+converted into their own coherent dimension rather than being assumed to be
+temperature points. By-value malformed denominators, inconsistent affine
+metadata, symbolic unit dimensions and unsupported pi-valued offsets are
+rejected at materialization.
+
+`Value::Dyn` materializes concrete dimensions instead of stripping them.
+Existing quantity metadata must agree with the dynamic dimension; it is not
+multiplied in twice. Nonempty numeric tensor element dimensions are preserved
+on their leaves and reconstructed on readback. Heterogeneous unit lists stay
+symbolic terms instead of being assigned the first element's schema. Empty
+tensor metadata that nested lists cannot represent is explicitly unsupported,
+including a lost trailing extent or a nontrivial element dimension.
+
+Core algebra descriptors include a symbolic overload alongside the literal
+numeric overload. This permits dimensioned quantities and session term handles
+to enter `add`, `mul`, `pow` and `eq` through the same dynamic dispatch lattice.
+A symbolic signature does not establish a concrete numeric result type.
+The graph's dimension diagnostics remain authoritative, and callers requiring
+proof must reject unknowns and conflicts rather than copying an expected type
+onto the result.

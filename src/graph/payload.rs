@@ -101,6 +101,10 @@ pub enum Payload {
     Bool(bool),
     /// A short string attribute (names of options, units, ...).
     Str(Arc<str>),
+    /// A unit definition supplied by value. Unlike a symbol, its name is
+    /// descriptive; dimensions, exact scale and affine offset are immutable
+    /// structural data and cannot be changed by a registry lookup.
+    Unit(Arc<crate::kernel::value::UnitValue>),
     /// Opaque shared data.
     Blob(Blob),
 }

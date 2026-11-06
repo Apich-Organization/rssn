@@ -15,8 +15,9 @@
 //! * A compiled function owns its code through an [`Arc`]: the machine
 //!   code is freed when the last handle is dropped. There is no global
 //!   state; [`CraneliftBackend`] keeps a cache keyed by the structural
-//!   hash of the optimised tape, so the same function rebuilt in another
-//!   graph is compiled once.
+//!   full identity of the optimised tape, with bitwise constants and ordered
+//!   operands. Hash collisions cannot alias programs; concurrent requests
+//!   for one program share a single compilation, even across graphs.
 //! * [`TieredBackend`] starts with the tape interpreter (no compile
 //!   latency) and switches to JIT code compiled on a background thread
 //!   once a function has been called often enough.
@@ -58,6 +59,7 @@ use super::CompiledMulti;
 use super::Intrinsic;
 use super::tape::Cmp;
 use super::tape::Inst;
+use super::tape::ProgramKey;
 use super::tape::Tape;
 use crate::graph::Graph;
 use crate::graph::NodeId;
@@ -281,12 +283,16 @@ impl JitFunction {
     ///
     /// # Errors
     /// [`BackendError::Codegen`] when Cranelift rejects the program or the
-    /// host is unsupported.
+    /// host is unsupported, or the tape fails structural/arity validation.
     pub fn compile(tape: &Tape) -> Result<Self, BackendError> {
         Self::compile_impl(tape, false)
     }
 
-    fn compile_impl(tape: &Tape, tail_loop: bool) -> Result<Self, BackendError> {
+    fn compile_impl(
+        tape: &Tape,
+        tail_loop: bool,
+    ) -> Result<Self, BackendError> {
+        tape.validate()?;
         let mut flags = settings::builder();
         flags
             .set("use_colocated_libcalls", "false")
@@ -440,7 +446,11 @@ impl JitFunction {
             } else {
                 None
             };
-            let tape_in_ptr = if tail_loop { b.ins().iadd_imm_s(out_ptr, 16) } else { in_ptr };
+            let tape_in_ptr = if tail_loop {
+                b.ins().iadd_imm_s(out_ptr, 16)
+            } else {
+                in_ptr
+            };
             let mut values: Vec<Value> = Vec::with_capacity(tape.insts.len());
             let get = |values: &[Value], r: u32| {
                 values
@@ -452,7 +462,8 @@ impl JitFunction {
                 let v = match *inst {
                     | Inst::Const(c) => b.ins().f64const(c),
                     | Inst::Input(i) => {
-                        b.ins().load(types::F64, flags, tape_in_ptr, f64_byte_offset(i)?)
+                        b.ins()
+                            .load(types::F64, flags, tape_in_ptr, f64_byte_offset(i)?)
                     },
                     | Inst::Param(i) => {
                         b.ins()
@@ -526,6 +537,7 @@ impl JitFunction {
                     },
                     | Inst::Gather(base, index) => {
                         let index = get(&values, index)?;
+                        let index = b.ins().trunc(index);
                         let start = usize::try_from(base).unwrap_or(usize::MAX);
                         let span = tape.inputs.saturating_sub(start);
                         let nan = b.ins().f64const(f64::NAN);
@@ -632,12 +644,14 @@ impl JitFunction {
                 b.seal_block(more);
                 let has_fuel = b.ins().icmp_imm_s(IntCC::NotEqual, fuel, 0);
                 let next_fuel = b.ins().iadd_imm_s(fuel, -1);
-                b.ins().brif(has_fuel, header, &[next_fuel.into()], exit, &[fuel.into()]);
+                b.ins()
+                    .brif(has_fuel, header, &[next_fuel.into()], exit, &[fuel.into()]);
                 b.seal_block(header);
                 b.switch_to_block(exit);
                 b.seal_block(exit);
                 let remaining = b.block_params(exit)[0];
-                let fuel_offset = f64_byte_offset(u32::try_from(tape.outputs.len()).map_err(error)?)?;
+                let fuel_offset =
+                    f64_byte_offset(u32::try_from(tape.outputs.len()).map_err(error)?)?;
                 b.ins().store(flags, remaining, out_ptr, fuel_offset);
             }
             b.ins().return_(&[]);
@@ -680,9 +694,9 @@ impl JitFunction {
         );
         let inputs = padded_in.as_deref().unwrap_or(inputs);
         let params = padded_par.as_deref().unwrap_or(params);
-        let mut scratch;
-        let out: &mut [f64] = if out.len() < self.outputs {
-            scratch = vec![f64::NAN; self.outputs];
+        let mut scratch = Vec::new();
+        let output_buffer: &mut [f64] = if out.len() < self.outputs {
+            scratch.resize(self.outputs, f64::NAN);
             &mut scratch
         } else {
             out
@@ -691,7 +705,10 @@ impl JitFunction {
         // the code alive for the duration of the call.
         #[allow(unsafe_code)]
         unsafe {
-            abi::call(self.entry, inputs, params, out);
+            abi::call(self.entry, inputs, params, output_buffer);
+        }
+        if !scratch.is_empty() {
+            out.copy_from_slice(&scratch[..out.len()]);
         }
     }
 }
@@ -731,18 +748,26 @@ impl TailLoop {
         for (index, inst) in tape.insts.iter().enumerate() {
             let valid = |reg: u32| (reg as usize) < index;
             match *inst {
-                Inst::Const(_) => {},
-                Inst::Input(i) if (i as usize) < tape.inputs => {
+                | Inst::Const(_) => {},
+                | Inst::Input(i) if (i as usize) < tape.inputs => {
                     f64_byte_offset(i)?;
                 },
-                Inst::Neg(a) if valid(a) => {},
-                Inst::Add(a, b) | Inst::Sub(a, b) | Inst::Mul(a, b) | Inst::Div(a, b)
-                    | Inst::Cmp(_, a, b) if valid(a) && valid(b) => {},
-                Inst::Select(a, b, c) if valid(a) && valid(b) && valid(c) => {},
-                _ => return Err(invalid()),
+                | Inst::Neg(a) if valid(a) => {},
+                | Inst::Add(a, b)
+                | Inst::Sub(a, b)
+                | Inst::Mul(a, b)
+                | Inst::Div(a, b)
+                | Inst::Cmp(_, a, b)
+                    if valid(a) && valid(b) => {},
+                | Inst::Select(a, b, c) if valid(a) && valid(b) && valid(c) => {},
+                | _ => return Err(invalid()),
             }
         }
-        if tape.outputs.iter().any(|&output| output as usize >= tape.insts.len()) {
+        if tape
+            .outputs
+            .iter()
+            .any(|&output| output as usize >= tape.insts.len())
+        {
             return Err(invalid());
         }
         JitFunction::compile_impl(tape, true).map(Self)
@@ -751,8 +776,14 @@ impl TailLoop {
     /// Run until a result or until the next jump would exceed `fuel`.
     /// Returns `None` for a mismatched input count.
     #[must_use]
-    pub fn run(&self, inputs: &[f64], fuel: u64) -> Option<TailLoopResult> {
-        if inputs.len() != self.0.inputs { return None; }
+    pub fn run(
+        &self,
+        inputs: &[f64],
+        fuel: u64,
+    ) -> Option<TailLoopResult> {
+        if inputs.len() != self.0.inputs {
+            return None;
+        }
         let mut outputs = vec![0.0; self.0.outputs];
         self.0.run(inputs, &[f64::from_bits(fuel)], &mut outputs);
         let remaining = outputs.pop()?.to_bits();
@@ -892,21 +923,24 @@ impl CompiledMulti for Handle {
     }
 }
 
-/// The Cranelift backend, with a cache keyed by the structural hash of the
-/// optimised tape, mixed with a context key.
+type CompileCell = Arc<OnceLock<Result<Arc<JitFunction>, BackendError>>>;
+type CompilationCache = Mutex<HashMap<(u64, ProgramKey), CompileCell>>;
+
+/// The Cranelift backend, with exact program identity and a context key.
 ///
 /// # Why the key has two halves
 ///
 /// Two graphs that lower to the same tape do not necessarily mean the same
 /// thing: an operator's *semantics* come from the rule set that installed it,
 /// and the same tape compiled for a different CPU may not be valid. The
-/// structural hash covers the first half — the program — and
-/// [`CraneliftBackend::key_extra`] covers the second: the manifest hash of the
-/// build plus the target device. A host that keeps a compiled cache on disk
-/// builds the same pair and gets the same key.
+/// structural fingerprint summarizes the first half, while in-memory cache
+/// equality retains the entire program, including ordered operands and constant
+/// bits. [`CraneliftBackend::key_extra`] covers the second half: the manifest
+/// hash and target device. A persisted cache must likewise verify full program
+/// identity rather than trusting a 64-bit fingerprint alone.
 #[derive(Default)]
 pub struct CraneliftBackend {
-    cache: Mutex<HashMap<u64, Arc<JitFunction>>>,
+    cache: CompilationCache,
     key_extra: u64,
 }
 
@@ -947,7 +981,9 @@ impl CraneliftBackend {
         }
     }
 
-    /// The cache key of `tape` under this backend's context.
+    /// A cache fingerprint of `tape` under this backend's context.
+    /// Internal lookup also checks full program equality, so collisions of
+    /// this fingerprint cannot alias native code.
     #[must_use]
     pub fn cache_key(
         &self,
@@ -956,25 +992,51 @@ impl CraneliftBackend {
         mix(tape.structural_hash(), self.key_extra)
     }
 
+    /// Compile an already-lowered tape through the exact program cache.
+    ///
+    /// Concurrent callers for the same tape share one compilation and code
+    /// owner. Optimize the tape first when desired; this method preserves the
+    /// supplied instruction order and validates it before native code emission.
+    ///
+    /// # Errors
+    /// Returns [`BackendError::Codegen`] for an invalid tape, unsupported host,
+    /// or a code-generation failure.
+    pub fn compile_tape(
+        &self,
+        tape: &Tape,
+    ) -> Result<Arc<JitFunction>, BackendError> {
+        self.get_or_compile(tape)
+    }
+
     fn get_or_compile(
         &self,
         tape: &Tape,
     ) -> Result<Arc<JitFunction>, BackendError> {
-        let key = self.cache_key(tape);
-        if let Some(f) = self.cache.lock().ok().and_then(|c| c.get(&key).cloned()) {
-            return Ok(f);
-        }
-        let compiled = Arc::new(JitFunction::compile(tape)?);
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.insert(key, Arc::clone(&compiled));
-        }
-        Ok(compiled)
+        let key = (self.key_extra, tape.program_key());
+        let cell = if let Ok(mut cache) = self.cache.lock() {
+            Arc::clone(
+                cache
+                    .entry(key)
+                    .or_insert_with(|| Arc::new(OnceLock::new())),
+            )
+        } else {
+            return JitFunction::compile(tape).map(Arc::new);
+        };
+        // No cache mutex is held while compiling. Concurrent requests for the
+        // same exact program share one initialization, including failure.
+        cell.get_or_init(|| JitFunction::compile(tape).map(Arc::new))
+            .clone()
     }
 
     /// Number of distinct programs compiled so far.
     #[must_use]
     pub fn cached(&self) -> usize {
-        self.cache.lock().map_or(0, |c| c.len())
+        self.cache.lock().map_or(0, |cache| {
+            cache
+                .values()
+                .filter(|cell| cell.get().is_some_and(Result::is_ok))
+                .count()
+        })
     }
 }
 

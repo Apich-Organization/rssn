@@ -48,6 +48,8 @@ impl Trajectory {
 ///
 /// # Errors
 /// Returns an error when `steps` is zero or the state stops being finite.
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn solve_fixed(
     f: impl Fn(f64, &[f64], &mut [f64]),
     y0: &[f64],
@@ -169,6 +171,8 @@ pub struct FixedEvent {
 ///
 /// # Errors
 /// As [`solve_fixed`].
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
     y0: &[f64],
@@ -265,6 +269,8 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
 /// Returns the fraction of the step at which `g` changes sign, and the state
 /// there as `method` computes it.
 #[allow(clippy::too_many_arguments)]
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
     f: &F,
     method: OdeSolverMethod,

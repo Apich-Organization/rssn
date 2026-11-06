@@ -59,8 +59,8 @@ stable must not be used.
 | KN-05 | SQP second-order check is a dense FD Hessian; no SOCP/SDP/integer constraints; augmented-Lagrangian multipliers asymptotic only | P3 | `optim.rs` |
 | KN-06 | `1F1`/`U` in the turning region `|z| > Re b` (uniform Airy asymptotics); complex corners of `U`; `|ln z| ≥ 4.5` polylog | P2/P3 | `hypergeometric.rs`, `special.rs` |
 | KN-07 | Adaptive rules on balls (planar triangles are done via `integrate_triangle`); no rigorous enclosure; 2-D oscillatory quadrature is Filon for linear phases with an adaptive Genz–Malik general-phase fallback (no 2-D Levin) | P2/P3 | `quadrature.rs`, `convergence.rs` |
-| KN-08 | Multivariate distributions beyond Dirichlet/Wishart, robust covariance (MCD); tensor-train (HOSVD/Tucker is done via `hosvd`); higher-order or C²-monotone splines | P2/P3 | `stats.rs`, `tensor.rs`, `interpolate.rs` |
-| KN-10 | No reverse-mode/Hessian-vector products; third and higher derivatives; interval rules for opaque calls | P2/P3 | `backend/tape.rs` |
+| KN-08 | Multivariate distributions beyond Dirichlet/Wishart, robust covariance (MCD); higher-order or C²-monotone splines | P2/P3 | `stats.rs`, `tensor.rs`, `interpolate.rs` |
+| KN-10 | Third and higher derivatives; analytic second-order and interval rules for opaque calls | P2/P3 | `backend/tape.rs` |
 
 ### Rules (`src/rules`)
 
@@ -78,7 +78,7 @@ stable must not be used.
 
 | ID | Item | Prio | Where |
 |---|---|---|---|
-| CO-01 | E-graph: witness-vs-certificate ball semantics are hardened (rigorous `Ball` ops, `approx_interval`, `EvalCost`, singular-adjacent soundness sampling); interval rules for `tan`/`atan2` are done (sound but loose across a pole/branch cut); remaining: reverse-mode/Hessian-vector products | P2 | `src/graph/mod.rs`, `src/backend/tape.rs` |
+| CO-01 | E-graph: witness-vs-certificate ball semantics are hardened (rigorous `Ball` ops, `approx_interval`, `EvalCost`, singular-adjacent soundness sampling); interval rules for `tan`/`atan2` are done (sound but loose across a pole/branch cut); remaining: analytic second-order rules for opaque calls and third/higher derivatives | P2 | `src/graph/mod.rs`, `src/backend/tape.rs` |
 | CO-02 | Structured answers (`Solutions`) report a multiplicity only for a univariate rational polynomial whose roots are exact numbers, and a condition only for a parameter in a root's denominator; realness and branch conditions of parameters are not reported | P3 | `src/rules/solve/mod.rs`, `src/api/value.rs` |
 | CO-03 | SDE: only the noise is a manifest operator (`sde_wiener`, `sde_levy_areas`); the solver loops stay Rust-only because they take host closures (`&Fn + Sync`, not `FnMut`). Ensemble statistics, host-callback drifts and a `FnMut` adapter are the host's side | P3 | `src/rules/sde.rs`, `src/kernels/sde.rs` |
 | DM-01 | Dimension layer: error codes are surfaced through the C API (`rssn_dimension_count`/`rssn_dimension_code`); remaining: `matfun` homogeneity; affine point typing; container typing; strict-input typing (the per-rewrite scan and complex-plane checks are closed) | P2/P3 | `docs/DIMENSIONS.md` §13 (authoritative), `src/dim`, `src/graph/dim*.rs`, `src/ffi` |
@@ -102,6 +102,18 @@ stable must not be used.
 
 ## Recently completed
 
+**Overnight tensor and AD expansion (2026-11-05).**
+
+| Item | Where | Verification / measured evidence |
+|---|---|---|
+| Thin SVD scales finite input before the faer decomposition; HOSVD uses it directly without Gram/eigen fallback or a square-root-epsilon rank cutoff. TT-SVD, compressed addition/Hadamard/contractions/rounding and validated core import avoid dense expansion; logical tensors may exceed `usize`, while bounded dense conversion rejects excess output. | `src/kernels/{dense,tensor,tensor_train}.rs` | Native `--test kernels tensor`: 20 passed, including scale/rank-deficiency/core-import cases. |
+| HOOI refines the truncated HOSVD with direct mode SVDs, normalized data and measured residuals. It returns the best observed Tucker approximation and reports local convergence/budget status. | `src/kernels/tensor.rs` | Native `--test kernels tucker`: 3 passed (projection improvement, budget, scales/zero/scalar/domain). |
+| CP-ALS factors the Khatri-Rao design once per mode and solves all right-hand sides through its direct SVD. Normal equations and per-row Gram factorization are removed. Input normalization and hypot norms preserve small/large scales; rank deficiency and border-rank degeneracy remain explicit. | `src/kernels/tensor.rs` | Native `--test kernels cp_`: 6 passed (1e-250/1e250, three-component recovery/seeds, correlated descent, overcomplete zero, invalid options, border rank). |
+| Explicit reverse-mode gradient/VJP and forward-over-reverse Hessian-vector products use one value pass and one reverse sweep with linear storage; the existing forward `gradient` remains the bit-order reference. Shared power rules handle polynomial derivatives at zero and `i32::MIN`. Opaque first derivatives remain finite differences; missing second-order rules remain NaN. | `src/backend/tape{.rs,/autodiff.rs}` | Native `--test tape_autodiff`: 9 passed against independently seeded dual/hyper-dual runs, lowered/optimized graph, branch/gather, weighted outputs and 1000-input call-count regression. |
+| Matrix-free trust-region Newton-CG uses Steihaug truncation and exact HVP actions, with negative-curvature boundary steps, invalid-trial rejection, work counters and explicit first-order/budget/radius termination. A tape wrapper connects reverse AD to optimization without constructing a Hessian. | `src/kernels/newton_cg.rs` | Native `--test newton_cg`: 7 passed (512 dimensions, negative curvature, log-domain rejection, bad derivative buffers, honest statuses and Tape Rosenbrock). |
+| Public Tape validation guards native input/parameter loads and SSA/call/output structure; constant gather remains data dependent, gather truncation/padding/bounds agree across executors, and short JIT outputs receive the computed prefix. Exact cache identities plus shared initialization prevent hash aliasing and duplicate compilation. | `src/backend/{tape,jit}.rs`, `src/backend/tape/contracts.rs` | Native `--test jit_contracts`: 7 passed, including invalid tapes without executing them and 8 concurrent callers sharing one code owner. |
+
+
 **Round 11 — FFT prime-length path and threaded batches (2026-11-05).**
 Manifest-neutral: one row, no operator or hash change.
 
@@ -118,7 +130,7 @@ checklist / archive updates. No manifest change unless a row says so.
 | CO-01 interval rules for `tan`/`atan2`: `tan` monotone on a pole-free branch and the whole line through a pole; `atan2` corner-tight off the branch cut, `[-π, π]` across it | `src/backend/tape.rs` | `--lib backend::tape::tests::interval_tan_and_atan2_are_sound_across_poles_and_branches` + `interval_enclosures_are_rigorous` 2/2; the soundness-sampling suite stays green |
 | DM-01 dimension error codes through the C API: `rssn_dimension_count()` / `rssn_dimension_code(index)` expose the stable `DimError::code()` strings of the most recent computation without JSON parsing | `src/ffi/{mod,compute,tests}.rs` | `--lib ffi::` 12 passed (strict conflict `"mismatch"`, advisory findings, clearing on a clean call) |
 | KN-07 adaptive quadrature on a planar triangle: `integrate_triangle` (degree-5 Dunavant panel, embedded degree-2 estimate, four-way bisection, evaluation budget) | `src/kernels/quadrature.rs` | `--lib quadrature::triangle_tests` 4/4 (exact moments through degree 5, general/reversed/degenerate triangles, corner singularity 2/3, budget) |
-| KN-08 HOSVD/Tucker decomposition: `hosvd` + `Hosvd::reconstruct` (orthonormal factors, all-orthogonal core, rank clamping, `A A^T`-eigen fallback for exactly rank-deficient unfoldings) | `src/kernels/tensor.rs` | `--test kernels -- tensor` 14/14 incl. 3 new HOSVD tests |
+| KN-08 HOSVD/Tucker decomposition: `hosvd` + `Hosvd::reconstruct` (orthonormal factors, all-orthogonal core, rank clamping; the later overnight update removes the original `A A^T` fallback) | `src/kernels/tensor.rs` | `--test kernels -- tensor` 14/14 incl. 3 new HOSVD tests |
 | User-facing SDE metadata operator (**manifest change**): `sde_scheme_info(name: String) -> Tensor<1, Real>` returning `strong_order, ito, commutative_only, adaptive, levy_areas` for the eight schemes; dim rule `NonMetric`; overlay signature | `src/rules/sde.rs`, `signatures.overlay.json`, `src/graph/dim.rs` (test) | `--lib rules::sde` 6/6, `--lib graph::dim` 22/22; manifest 1382 ops / 32 rule sets / 82 units / 30 constants, 1568 overloads (7 declared + **25 overlay** + 1350 derived), hash `8d2c3764…654a`; `signature-audit --quiet` exit 0 |
 
 **Round 9 — kernel exactness and SDE exposure (2026-11-04).** Two items: the

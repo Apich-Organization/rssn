@@ -2,7 +2,7 @@
 //!
 //! A compressed-sparse-row matrix ([`Csr`]), Jacobi, ILU(0) and IC(0)
 //! preconditioners, and the iterative solvers conjugate gradients (CG),
-//! restarted GMRES and BiCGSTAB, all matrix-free: they only need a
+//! restarted GMRES and `BiCGSTAB`, all matrix-free: they only need a
 //! matrix-vector product closure.
 //!
 //! A sparse direct solver complements them: [`Csr::sparse_lu`] performs a
@@ -116,11 +116,9 @@ impl Csr {
         y: &mut [f64],
     ) {
         let row = |i: usize| {
-            let mut s = 0.0;
-            for k in self.indptr[i]..self.indptr[i + 1] {
-                s += self.values[k] * x[self.indices[k]];
-            }
-            s
+            accurate_dot::dot_value(
+                (self.indptr[i]..self.indptr[i + 1]).map(|k| (self.values[k], x[self.indices[k]])),
+            )
         };
         if self.values.len() >= SPMV_PAR_NNZ {
             let rows = self.rows.min(y.len());
@@ -389,23 +387,32 @@ impl Ic0 {
 pub struct IterResult {
     /// Approximate solution.
     pub x: Vec<f64>,
-    /// Final relative residual `|b - A x| / |b|`.
+    /// Independently recomputed relative residual `|b - A x| / |b|`.
+    /// For a zero RHS, this is zero only for an exactly zero residual;
+    /// otherwise it is infinity. Invalid input or operator output also
+    /// produces infinity with `converged = false`. A positive ratio that
+    /// underflows is reported as the smallest positive subnormal, preserving
+    /// the distinction between a tiny residual and an exactly zero one.
     pub residual: f64,
-    /// Iterations performed (matrix-vector products for GMRES).
+    /// Krylov iterations performed (Arnoldi steps for GMRES).
+    /// Operator calibration and residual verification products are additional
+    /// and are not counted.
     pub iterations: usize,
     /// Whether the tolerance was reached.
     pub converged: bool,
 }
 
-fn dot(
-    a: &[f64],
-    b: &[f64],
-) -> f64 {
-    a.iter().zip(b).map(|(x, y)| x * y).sum()
-}
+#[path = "krylov/accurate_dot.rs"]
+mod accurate_dot;
+#[path = "krylov/iterative.rs"]
+mod iterative;
 
-fn nrm(a: &[f64]) -> f64 {
-    dot(a, a).sqrt()
+/// Shared original-system residual arithmetic for validated internal adapters.
+pub(crate) fn residual_ratio(
+    b: &[f64],
+    ax: &[f64],
+) -> Option<f64> {
+    iterative::original_residual_ratio(b, ax)
 }
 
 /// Identity preconditioner helper.
@@ -581,7 +588,7 @@ fn is_structurally_symmetric(a: &Csr) -> bool {
 /// Conjugate gradients with an explicit [`Preconditioner`].
 ///
 /// [`Preconditioner::None`] dispatches to [`cg`] with [`identity_precond`],
-/// so the unpreconditioned result is unchanged bit for bit.
+/// so selection and direct invocation use the same scale-safe algorithm.
 pub fn cg_with<A>(
     apply: A,
     precond: &Preconditioner<'_>,
@@ -649,6 +656,17 @@ where
 /// Preconditioned conjugate gradients for SPD operators.
 ///
 /// `apply(x, y)` computes `y = A x`; `precond(r, z)` computes `z = M^-1 r`.
+/// Both operators must be linear and overwrite every output entry. Inputs,
+/// output entries, and tolerance must be finite; tolerance is nonnegative and
+/// an initial guess must have the RHS length. Invalid inputs or incomplete
+/// operator outputs produce a nonconverged result rather than false success.
+///
+/// The solver normalizes the initial residual correction and search directions;
+/// dot products and coefficient ratios retain binary exponents until vector
+/// updates. Convergence is checked against the original system, not just the
+/// recursive residual. Residual correction is refined under one shared
+/// iteration budget when normalization loses tiny components. A zero iteration
+/// budget still checks the initial guess.
 pub fn cg<A, M>(
     apply: A,
     precond: M,
@@ -661,48 +679,15 @@ where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
-    let n = b.len();
-    let mut x = x0.map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
-    let mut ax = vec![0.0; n];
-    apply(&x, &mut ax);
-    let mut r: Vec<f64> = (0..n).map(|i| b[i] - ax[i]).collect();
-    let bn = nrm(b).max(f64::MIN_POSITIVE);
-    let mut z = vec![0.0; n];
-    precond(&r, &mut z);
-    let mut p = z.clone();
-    let mut rz = dot(&r, &z);
-    let mut ap = vec![0.0; n];
-    let mut it = 0;
-    while it < max_iter && nrm(&r) / bn > tol {
-        apply(&p, &mut ap);
-        let pap = dot(&p, &ap);
-        if pap == 0.0 {
-            break;
-        }
-        let alpha = rz / pap;
-        for i in 0..n {
-            x[i] += alpha * p[i];
-            r[i] -= alpha * ap[i];
-        }
-        precond(&r, &mut z);
-        let rz_new = dot(&r, &z);
-        let beta = rz_new / rz;
-        rz = rz_new;
-        for i in 0..n {
-            p[i] = z[i] + beta * p[i];
-        }
-        it += 1;
-    }
-    let res = nrm(&r) / bn;
-    IterResult {
-        x,
-        residual: res,
-        iterations: it,
-        converged: res <= tol,
-    }
+    iterative::solve(apply, precond, b, x0, tol, max_iter, iterative::Method::Cg)
 }
 
 /// Restarted GMRES(`restart`) with right preconditioning.
+///
+/// Uses the same finite-input and complete-output contract as [`cg`]. The
+/// preconditioned basis vectors are retained, and Arnoldi uses reorthogonalized
+/// modified Gram-Schmidt. A zero restart is clamped to one, as before. Final
+/// convergence uses the original system residual.
 pub fn gmres<A, M>(
     apply: A,
     precond: M,
@@ -716,93 +701,22 @@ where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
-    let n = b.len();
-    let m = restart.clamp(1, n.max(1));
-    let mut x = x0.map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
-    let bn = nrm(b).max(f64::MIN_POSITIVE);
-    let mut total = 0;
-    let mut tmp = vec![0.0; n];
-    let mut w = vec![0.0; n];
-    let mut res;
-    loop {
-        apply(&x, &mut tmp);
-        let r: Vec<f64> = (0..n).map(|i| b[i] - tmp[i]).collect();
-        let beta = nrm(&r);
-        res = beta / bn;
-        if res <= tol || total >= max_iter {
-            break;
-        }
-        let mut v: Vec<Vec<f64>> = vec![r.iter().map(|e| e / beta).collect()];
-        let mut h = vec![vec![0.0; m]; m + 1];
-        let (mut cs, mut sn) = (vec![0.0; m], vec![0.0; m]);
-        let mut g = vec![0.0; m + 1];
-        g[0] = beta;
-        let mut k_used = 0;
-        for j in 0..m {
-            precond(&v[j], &mut tmp);
-            apply(&tmp, &mut w);
-            for i in 0..=j {
-                h[i][j] = dot(&w, &v[i]);
-                for q in 0..n {
-                    w[q] -= h[i][j] * v[i][q];
-                }
-            }
-            h[j + 1][j] = nrm(&w);
-            let breakdown = h[j + 1][j] < 1e-300;
-            if !breakdown {
-                v.push(w.iter().map(|e| e / h[j + 1][j]).collect());
-            }
-            for i in 0..j {
-                let t = cs[i] * h[i][j] + sn[i] * h[i + 1][j];
-                h[i + 1][j] = -sn[i] * h[i][j] + cs[i] * h[i + 1][j];
-                h[i][j] = t;
-            }
-            let d = h[j][j].hypot(h[j + 1][j]);
-            if d == 0.0 {
-                cs[j] = 1.0;
-                sn[j] = 0.0;
-            } else {
-                cs[j] = h[j][j] / d;
-                sn[j] = h[j + 1][j] / d;
-            }
-            h[j][j] = d;
-            h[j + 1][j] = 0.0;
-            g[j + 1] = -sn[j] * g[j];
-            g[j] *= cs[j];
-            total += 1;
-            k_used = j + 1;
-            if g[j + 1].abs() / bn <= tol || breakdown || total >= max_iter {
-                break;
-            }
-        }
-        let mut y = vec![0.0; k_used];
-        for i in (0..k_used).rev() {
-            let mut s = g[i];
-            for j in i + 1..k_used {
-                s -= h[i][j] * y[j];
-            }
-            y[i] = s / h[i][i];
-        }
-        let mut u = vec![0.0; n];
-        for j in 0..k_used {
-            for q in 0..n {
-                u[q] += y[j] * v[j][q];
-            }
-        }
-        precond(&u, &mut tmp);
-        for q in 0..n {
-            x[q] += tmp[q];
-        }
-    }
-    IterResult {
-        x,
-        residual: res,
-        iterations: total,
-        converged: res <= tol,
-    }
+    iterative::solve(
+        apply,
+        precond,
+        b,
+        x0,
+        tol,
+        max_iter,
+        iterative::Method::Gmres(restart),
+    )
 }
 
 /// Preconditioned `BiCGSTAB` for general nonsymmetric operators.
+///
+/// Uses the same finite-input, complete linear-operator, zero-RHS, and verified
+/// convergence contract as [`cg`]. Coefficient ratios and preconditioned
+/// directions retain their scales to avoid spurious arithmetic breakdown.
 pub fn bicgstab<A, M>(
     apply: A,
     precond: M,
@@ -815,70 +729,15 @@ where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
-    let n = b.len();
-    let mut x = x0.map_or_else(|| vec![0.0; n], <[f64]>::to_vec);
-    let mut t = vec![0.0; n];
-    apply(&x, &mut t);
-    let mut r: Vec<f64> = (0..n).map(|i| b[i] - t[i]).collect();
-    let r0 = r.clone();
-    let bn = nrm(b).max(f64::MIN_POSITIVE);
-    let (mut rho, mut alpha, mut omega) = (1.0, 1.0, 1.0);
-    let mut v = vec![0.0; n];
-    let mut p = vec![0.0; n];
-    let mut ph = vec![0.0; n];
-    let mut sh = vec![0.0; n];
-    let mut s = vec![0.0; n];
-    let mut it = 0;
-    while it < max_iter && nrm(&r) / bn > tol {
-        let rho_new = dot(&r0, &r);
-        if rho_new == 0.0 {
-            break;
-        }
-        let beta = (rho_new / rho) * (alpha / omega);
-        rho = rho_new;
-        for i in 0..n {
-            p[i] = r[i] + beta * (p[i] - omega * v[i]);
-        }
-        precond(&p, &mut ph);
-        apply(&ph, &mut v);
-        let denom = dot(&r0, &v);
-        if denom == 0.0 {
-            break;
-        }
-        alpha = rho / denom;
-        for i in 0..n {
-            s[i] = r[i] - alpha * v[i];
-        }
-        it += 1;
-        if nrm(&s) / bn <= tol {
-            for i in 0..n {
-                x[i] += alpha * ph[i];
-            }
-            r.copy_from_slice(&s);
-            break;
-        }
-        precond(&s, &mut sh);
-        apply(&sh, &mut t);
-        let tt = dot(&t, &t);
-        if tt == 0.0 {
-            break;
-        }
-        omega = dot(&t, &s) / tt;
-        for i in 0..n {
-            x[i] += alpha * ph[i] + omega * sh[i];
-            r[i] = s[i] - omega * t[i];
-        }
-        if omega == 0.0 {
-            break;
-        }
-    }
-    let res = nrm(&r) / bn;
-    IterResult {
-        x,
-        residual: res,
-        iterations: it,
-        converged: res <= tol,
-    }
+    iterative::solve(
+        apply,
+        precond,
+        b,
+        x0,
+        tol,
+        max_iter,
+        iterative::Method::Bicgstab,
+    )
 }
 
 // ------------------------------------------------------------------
@@ -1742,7 +1601,7 @@ mod tests {
     }
 
     #[test]
-    fn sparse_unpreconditioned_path_is_unchanged() {
+    fn sparse_unpreconditioned_selector_matches_scale_safe_cg() {
         let a = poisson2d(32);
         let n = a.rows;
         let b = rhs(n);
@@ -1757,7 +1616,12 @@ mod tests {
         );
         assert_eq!(got.iterations, it);
         for i in 0..n {
-            assert_eq!(got.x[i].to_bits(), xr[i].to_bits(), "row {i}");
+            assert!(
+                (got.x[i] - xr[i]).abs() <= 1e-10 * xr[i].abs().max(1.0),
+                "row {i}: {} vs {}",
+                got.x[i],
+                xr[i]
+            );
         }
         let sel = cg_with(
             |x, y| a.matvec(x, y),

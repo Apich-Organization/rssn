@@ -353,7 +353,11 @@ impl Session {
     ///
     /// The callbacks are reachable from the operator's
     /// [`EvalDyn`](crate::graph::op::EvalDyn) through
-    /// [`CallCtx::callbacks`] and the [`CallbackRef`]s in `fns`. Rewrites
+    /// [`CallCtx::callbacks`]. Handles in `fns` are appended to `args` as
+    /// function values, in the given order; ordinary signatures and evaluator
+    /// argument positions remain identical. For large owned argument buffers,
+    /// callers may append `Value::Function` themselves and use `call_value`
+    /// with the same context, avoiding a clone. Rewrites
     /// never call back into the host: a rewrite must be a pure identity
     /// transformation, so an operator that needs the host must be a dynamic
     /// evaluator.
@@ -418,12 +422,27 @@ impl Session {
         name: &str,
         args: &[Value],
     ) -> Result<OpKey, OpError> {
+        self.resolve_overload_with_context(name, args, &CallCtx::new())
+    }
+
+    /// Resolve an overload using the callback bank's immutable signatures.
+    /// Host type queries happen before borrowing the expression graph.
+    ///
+    /// # Errors
+    /// Returns the errors of [`Self::resolve_overload`] or a callback-handle error.
+    pub fn resolve_overload_with_context(
+        &self,
+        name: &str,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+    ) -> Result<OpKey, OpError> {
+        let types = ctx.argument_types(args)?;
         let inner = self.inner.borrow();
         let graph = &inner.graph;
-        let op = resolve_op(graph, name, args)?;
+        let op = resolve_op_types(graph, name, &types)?;
         let descriptor = graph.ops().get(op);
         let (signatures, _) = crate::kernel::infer::signatures(descriptor);
-        let chosen = match crate::kernel::overload::best(&signatures, args) {
+        let chosen = match crate::kernel::overload::best_types(&signatures, &types) {
             | crate::kernel::overload::Best::Unique(index) => signatures.get(index),
             // An operator with no signature has exactly one key, the
             // all-zero one, and `call_key` accepts it.
@@ -473,7 +492,7 @@ impl Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        let op = self.op_for_key(key, args)?;
+        let op = self.op_for_key(key, args, &ctx)?;
         self.call_op(op, &key.name, args, &ctx)
     }
 
@@ -488,7 +507,9 @@ impl Session {
         &self,
         key: &OpKey,
         args: &[Value],
+        ctx: &CallCtx<'_>,
     ) -> Result<OpId, OpError> {
+        let types = ctx.argument_types(args)?;
         let inner = self.inner.borrow();
         let graph = &inner.graph;
         for &id in graph.ops().lookup_all(&key.name) {
@@ -507,7 +528,7 @@ impl Session {
             {
                 // The pinned overload must be one these arguments can reach,
                 // or the executed overload is not the chosen one.
-                if crate::kernel::overload::score(pinned, args).is_some() {
+                if crate::kernel::overload::score_types(pinned, &types).is_some() {
                     return Ok(id);
                 }
             }
@@ -523,10 +544,12 @@ impl Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        check_callbacks(&ctx, fns)?;
+        let combined = callback_arguments(args, fns, &ctx)?;
+        let args = combined.as_deref().unwrap_or(args);
+        let types = ctx.argument_types(args)?;
         let op = {
             let inner = self.inner.borrow();
-            resolve_op(&inner.graph, name, args)?
+            resolve_op_types(&inner.graph, name, &types)?
         };
         self.call_op(op, name, args, &ctx)
     }
@@ -837,8 +860,9 @@ impl Kernel for Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         let ctx = clone_ctx(ctx);
-        check_callbacks(&ctx, fns)?;
-        let registration = self.op_for_key(op, args)?;
+        let combined = callback_arguments(args, fns, &ctx)?;
+        let args = combined.as_deref().unwrap_or(args);
+        let registration = self.op_for_key(op, args, &ctx)?;
         self.call_op(registration, &op.name, args, &ctx)
     }
 
@@ -922,21 +946,38 @@ fn check_callbacks(
     Ok(())
 }
 
+/// Materialize trailing callback arguments while retaining their original bank IDs.
+fn callback_arguments(
+    args: &[Value],
+    fns: &[CallbackRef],
+    ctx: &CallCtx<'_>,
+) -> Result<Option<Vec<Value>>, OpError> {
+    check_callbacks(ctx, fns)?;
+    if fns.is_empty() {
+        return Ok(None);
+    }
+    let mut combined = Vec::with_capacity(args.len().saturating_add(fns.len()));
+    combined.extend_from_slice(args);
+    combined.extend(fns.iter().copied().map(Value::Function));
+    Ok(Some(combined))
+}
+
 /// Checks `args` against the signatures of `descriptor`.
 ///
 /// An operator with no signature accepts anything. One with signatures accepts
 /// only what at least one of them describes, and the error names the first
 /// argument no overload takes — silently executing a `(Real) -> Real` overload
 /// on a tensor is a wrong answer waiting to happen, not a conservative choice.
-fn check_args(
+fn check_arg_types(
     descriptor: &crate::graph::OpDescriptor,
-    args: &[Value],
+    args: &[crate::kernel::signature::TypeExpr],
 ) -> Result<(), OpError> {
     let (signatures, _) = crate::kernel::infer::signatures(descriptor);
     if signatures.is_empty() {
         return Ok(());
     }
-    if crate::kernel::overload::best(&signatures, args) != crate::kernel::overload::Best::None {
+    if crate::kernel::overload::best_types(&signatures, args) != crate::kernel::overload::Best::None
+    {
         return Ok(());
     }
     for (index, value) in args.iter().enumerate() {
@@ -945,7 +986,7 @@ fn check_args(
                 .params
                 .get(index)
                 .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))
-                .is_some_and(|param| crate::kernel::overload::matches(param, value).accepted())
+                .is_some_and(|param| crate::kernel::overload::matches_type(param, value).accepted())
         });
         if accepted {
             continue;
@@ -959,13 +1000,14 @@ fn check_args(
                     .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))
             })
             .find(|param| {
-                crate::kernel::overload::matches(param, value) == crate::kernel::overload::Match::No
+                crate::kernel::overload::matches_type(param, value)
+                    == crate::kernel::overload::Match::No
             })
             .cloned()
             .unwrap_or_else(crate::kernel::infer::term);
         return Err(OpError::Type {
             expected: Box::new(expected),
-            got: Box::new(value.type_expr()),
+            got: Box::new(value.clone()),
             arg: index,
         });
     }
@@ -982,10 +1024,10 @@ fn check_args(
 /// specific first. When none of the candidates declares a signature the first
 /// arity match wins, which is the behaviour an untyped operator has always
 /// had; a tie between typed candidates is refused rather than guessed.
-fn resolve_op(
+fn resolve_op_types(
     graph: &Graph,
     name: &str,
-    args: &[Value],
+    args: &[crate::kernel::signature::TypeExpr],
 ) -> Result<OpId, OpError> {
     let candidates = graph.ops().lookup_all(name);
     let Some(&first) = candidates.first() else {
@@ -1003,7 +1045,7 @@ fn resolve_op(
         });
     };
     if fitting.len() == 1 {
-        check_args(graph.ops().get(only), args)?;
+        check_arg_types(graph.ops().get(only), args)?;
         return Ok(only);
     }
     let mut scored: Vec<(OpId, u32)> = Vec::new();
@@ -1012,7 +1054,7 @@ fn resolve_op(
         let (signatures, _) = crate::kernel::infer::signatures(descriptor);
         let best = signatures
             .iter()
-            .filter_map(|signature| crate::kernel::overload::score(signature, args))
+            .filter_map(|signature| crate::kernel::overload::score_types(signature, args))
             .max();
         if let Some(score) = best {
             scored.push((id, score));
@@ -1028,7 +1070,7 @@ fn resolve_op(
         }) {
             return Ok(only);
         }
-        check_args(graph.ops().get(only), args)?;
+        check_arg_types(graph.ops().get(only), args)?;
         return Ok(only);
     }
     let top = scored.iter().map(|(_, score)| *score).max().unwrap_or(0);
@@ -1041,7 +1083,7 @@ fn resolve_op(
     };
     let count = 1 + tied.count();
     if count == 1 {
-        check_args(graph.ops().get(winner), args)?;
+        check_arg_types(graph.ops().get(winner), args)?;
         Ok(winner)
     } else {
         Err(OpError::Ambiguous {
@@ -1084,11 +1126,11 @@ fn value_of_node(
         return Value::Symbol(graph.interner().symbol_name(symbol).to_owned());
     }
     // A quantity: value plus a unit the session's registry knows.
-    if let Some(quantity) = quantity_of(graph, node, units, definitions) {
+    if let Some(quantity) = quantity_of(graph, node, session, units, definitions) {
         return Value::Quantity(quantity);
     }
     // A rectangular list of numbers.
-    if let Some(tensor) = tensor_of(graph, node) {
+    if let Some(tensor) = tensor_of(graph, node, session, units, definitions) {
         return Value::Tensor(tensor);
     }
     Value::Term(TermRef {
@@ -1110,6 +1152,7 @@ fn value_of_node(
 fn quantity_of(
     graph: &Graph,
     node: NodeId,
+    session: SessionId,
     units: &super::SessionUnits,
     definitions: &[UnitValue],
 ) -> Option<QuantityValue> {
@@ -1120,6 +1163,34 @@ fn quantity_of(
     let children = graph.children(node).to_vec();
     let (&value, unit_node) = children.split_first()?;
     let &unit_node = unit_node.first()?;
+    if let Some(Payload::Unit(unit)) = graph.payload(unit_node) {
+        return Some(QuantityValue {
+            value: Box::new(value_of_node(graph, value, session, units, definitions)),
+            unit: unit.as_ref().clone(),
+        });
+    }
+    // Compound units may contain anonymous definitions as well as names.
+    // Resolve those structurally; rendering a literal's name and looking it
+    // up would reintroduce the very metadata loss the literal prevents.
+    if let Some(map) = crate::dim::units::parse_unit(graph, unit_node, 0)
+        && map
+            .keys()
+            .any(|atom| matches!(atom, crate::dim::units::UnitAtom::Literal(_)))
+    {
+        let resolved = crate::dim::units::resolve_map(&map)?;
+        let mut unit = UnitDef::linear(
+            "compound",
+            crate::dim::units::dim_to_expr(&resolved.dim),
+            resolved.scale,
+        );
+        if let Some(offset) = resolved.offset {
+            unit = unit.affine(offset);
+        }
+        return Some(QuantityValue {
+            value: Box::new(value_of_node(graph, value, session, units, definitions)),
+            unit: unit.to_value(),
+        });
+    }
     let text = unit_text(graph, unit_node)?;
     let resolved = units.resolve(&text).ok()?;
     let unit = definitions
@@ -1128,13 +1199,7 @@ fn quantity_of(
         .cloned()
         .unwrap_or_else(|| UnitDef::linear(&text, resolved.dimension, resolved.scale).to_value());
     Some(QuantityValue {
-        value: Box::new(value_of_node(
-            graph,
-            value,
-            SessionId(0),
-            units,
-            definitions,
-        )),
+        value: Box::new(value_of_node(graph, value, session, units, definitions)),
         unit,
     })
 }
@@ -1185,26 +1250,49 @@ fn unit_text(
 fn tensor_of(
     graph: &Graph,
     node: NodeId,
+    session: SessionId,
+    units: &super::SessionUnits,
+    definitions: &[UnitValue],
 ) -> Option<TensorValue> {
-    /// The shape of a nested list, or `None` when it is ragged.
-    fn shape_of(
+    fn scalar(
         graph: &Graph,
         node: NodeId,
+        session: SessionId,
+        units: &super::SessionUnits,
+        definitions: &[UnitValue],
+    ) -> Option<Value> {
+        if let Some(number) = graph.number_of(node) {
+            return Some(match number {
+                | Number::Int(value) => Value::Int(value.clone()),
+                | other => Value::Real(other.clone()),
+            });
+        }
+        let quantity = quantity_of(graph, node, session, units, definitions)?;
+        quantity.value.as_number()?;
+        Some(Value::Quantity(quantity))
+    }
+    fn visit(
+        graph: &Graph,
+        node: NodeId,
+        session: SessionId,
+        units: &super::SessionUnits,
+        definitions: &[UnitValue],
+        data: &mut Vec<Value>,
     ) -> Option<Vec<usize>> {
-        if graph.number_of(node).is_some() {
+        if let Some(value) = scalar(graph, node, session, units, definitions) {
+            data.push(value);
             return Some(Vec::new());
         }
         if graph.op(node) != core::LIST {
             return None;
         }
-        let items = graph.children(node).to_vec();
+        let items = graph.children(node);
         let Some((&first, rest)) = items.split_first() else {
-            // An empty list is a rank-1 empty tensor.
             return Some(vec![0]);
         };
-        let tail = shape_of(graph, first)?;
+        let tail = visit(graph, first, session, units, definitions, data)?;
         for &item in rest {
-            if shape_of(graph, item)? != tail {
+            if visit(graph, item, session, units, definitions, data)? != tail {
                 return None;
             }
         }
@@ -1212,31 +1300,32 @@ fn tensor_of(
         shape.extend(tail);
         Some(shape)
     }
-    fn flatten(
-        graph: &Graph,
-        node: NodeId,
-        data: &mut Vec<Value>,
-    ) {
-        if let Some(number) = graph.number_of(node) {
-            data.push(match number {
-                | Number::Int(value) => Value::Int(value.clone()),
-                | other => Value::Real(other.clone()),
-            });
-            return;
-        }
-        for &item in &graph.children(node).to_vec() {
-            flatten(graph, item, data);
-        }
-    }
     if graph.op(node) != core::LIST {
         return None;
     }
-    let shape = shape_of(graph, node)?;
     let mut data = Vec::new();
-    flatten(graph, node, &mut data);
-    let elem = data
+    let shape = visit(graph, node, session, units, definitions, &mut data)?;
+    let mut elem = data
         .first()
         .map_or(crate::kernel::signature::TypeExpr::Real, Value::type_expr);
+    for value in &data {
+        if value.type_expr() == elem {
+            continue;
+        }
+        // Mixed exact numeric literals form a real tensor. A list with
+        // heterogeneous units remains a term rather than receiving the first
+        // element's dimension as an invented uniform schema.
+        if value.as_number().is_some()
+            && matches!(
+                elem,
+                crate::kernel::signature::TypeExpr::Int | crate::kernel::signature::TypeExpr::Real
+            )
+        {
+            elem = crate::kernel::signature::TypeExpr::Real;
+        } else {
+            return None;
+        }
+    }
     let tensor = TensorValue { shape, data, elem };
     tensor.is_consistent().then_some(tensor)
 }
@@ -1296,7 +1385,7 @@ fn term_of_value(
                 }
             })?;
             let value = term_of_value(graph, &quantity.value, session)?;
-            let unit = graph.sym(&quantity.unit.name);
+            let unit = term_of_unit(graph, &quantity.unit)?;
             graph
                 .try_node(op, &[value, unit])
                 .ok_or_else(|| OpError::Internal("quantity is not binary".to_owned()))
@@ -1311,39 +1400,7 @@ fn term_of_value(
                 feature: "complex literals".to_owned(),
             })
         },
-        | Value::Tensor(tensor) => {
-            if !tensor.is_consistent() {
-                return Err(OpError::Domain(format!(
-                    "tensor shape {:?} does not match {} elements",
-                    tensor.shape,
-                    tensor.data.len()
-                )));
-            }
-            if tensor.shape.is_empty() {
-                return match tensor.data.first() {
-                    | Some(value) => term_of_value(graph, value, session),
-                    | None => Err(OpError::Domain("empty scalar tensor".to_owned())),
-                };
-            }
-            let extent = *tensor.shape.first().unwrap_or(&0);
-            let stride = tensor.data.len().checked_div(extent).unwrap_or(0);
-            let mut items = Vec::with_capacity(extent);
-            for index in 0..extent {
-                let start = index.saturating_mul(stride);
-                let end = start.saturating_add(stride);
-                let slice = tensor.data.get(start..end).ok_or_else(|| {
-                    OpError::Domain("tensor data is shorter than its shape".to_owned())
-                })?;
-                let inner = TensorValue {
-                    shape: tensor.shape.get(1..).unwrap_or(&[]).to_vec(),
-                    data: slice.to_vec(),
-                    elem: tensor.elem.clone(),
-                };
-                items.push(term_of_value(graph, &Value::Tensor(inner), session)?);
-            }
-            let list = graph.ops().lookup("list").unwrap_or(core::LIST);
-            Ok(graph.node(list, &items))
-        },
+        | Value::Tensor(tensor) => term_of_tensor(graph, tensor, session, None),
         | Value::Term(handle) => {
             if handle.session != session {
                 return Err(OpError::ForeignTerm {
@@ -1360,7 +1417,9 @@ fn term_of_value(
             }
             Ok(node)
         },
-        | Value::Dyn(dynamic) => term_of_value(graph, &dynamic.value, session),
+        | Value::Dyn(dynamic) => {
+            term_of_dimensioned_value(graph, &dynamic.value, &dynamic.dim, session)
+        },
         | Value::Sparse(_) => {
             Err(OpError::Unsupported {
                 backend: "term".to_owned(),
@@ -1386,6 +1445,185 @@ fn term_of_value(
             })
         },
     }
+}
+
+/// Materializes a unit definition structurally unless the registry already
+/// contains this exact definition. Equal display names are never evidence.
+fn term_of_unit(
+    graph: &mut Graph,
+    unit: &UnitValue,
+) -> Result<NodeId, OpError> {
+    crate::dim::units::resolve_value(unit).ok_or_else(|| OpError::Domain(
+        "invalid unit definition: expected a concrete rational dimension, nonzero exact scale and consistent rational affine offset".to_owned(),
+    ))?;
+    graph.with_dim_arena_mut(|arena| unit.dimension.to_term(arena))?;
+    if crate::dim::units::lookup(&unit.name).is_some_and(|known| known.to_value() == *unit) {
+        Ok(graph.sym(&unit.name))
+    } else {
+        Ok(graph.lit(Payload::Unit(Arc::new(unit.clone()))))
+    }
+}
+
+fn coherent_definition(dim: &crate::kernel::signature::DimExpr) -> UnitValue {
+    UnitDef::linear("coherent", dim.clone(), crate::dim::Scale::one()).to_value()
+}
+
+fn same_dimension(
+    left: &crate::kernel::signature::DimExpr,
+    right: &crate::kernel::signature::DimExpr,
+) -> bool {
+    let left = crate::dim::units::resolve_value(&coherent_definition(left));
+    let right = crate::dim::units::resolve_value(&coherent_definition(right));
+    matches!((left, right), (Some(left), Some(right)) if left.dim == right.dim)
+}
+
+/// Dynamic dimensions describe magnitudes, not extra factors to multiply into
+/// an already dimensioned quantity. Preserve existing units or reject conflicts.
+fn term_of_dimensioned_value(
+    graph: &mut Graph,
+    value: &Value,
+    dim: &crate::kernel::signature::DimExpr,
+    session: SessionId,
+) -> Result<NodeId, OpError> {
+    let unit = coherent_definition(dim);
+    crate::dim::units::resolve_value(&unit).ok_or_else(|| {
+        OpError::Domain("a dynamic graph value needs a concrete rational dimension".to_owned())
+    })?;
+    match value {
+        | Value::Dyn(inner) => {
+            if !same_dimension(dim, &inner.dim) {
+                return Err(OpError::Domain(
+                    "conflicting nested dynamic dimensions".to_owned(),
+                ));
+            }
+            return term_of_dimensioned_value(graph, &inner.value, dim, session);
+        },
+        | Value::Quantity(quantity) => {
+            if !same_dimension(dim, &quantity.unit.dimension) {
+                return Err(OpError::Domain(
+                    "dynamic dimension conflicts with quantity unit".to_owned(),
+                ));
+            }
+            return term_of_value(graph, value, session);
+        },
+        | Value::Tensor(tensor) => return term_of_tensor(graph, tensor, session, Some(dim)),
+        | Value::Int(_) | Value::Real(_) | Value::Float(_) | Value::Symbol(_) | Value::Term(_) => {
+        },
+        | _ => {
+            return Err(OpError::Domain(
+                "only scalar magnitudes and numeric tensors can carry a graph dimension".to_owned(),
+            ));
+        },
+    }
+    let magnitude = term_of_value(graph, value, session)?;
+    if matches!(value, Value::Symbol(_) | Value::Term(_)) {
+        let report = graph.dimension(magnitude);
+        if report
+            .errors
+            .iter()
+            .any(crate::graph::dim::DimError::is_blocking)
+        {
+            return Err(OpError::Domain(
+                "dynamic term has conflicting graph dimensions".to_owned(),
+            ));
+        }
+        if report.dimension.unknown.is_empty()
+            && !report.dimension.any
+            && !report.dimension.non_metric
+        {
+            let known = graph.with_dim_arena_mut(|arena| {
+                let term = crate::graph::dim::DimTerm::from_dimension(&report.dimension, arena)?;
+                crate::kernel::signature::DimExpr::try_from_term(&term, arena)
+            })?;
+            if same_dimension(&known, dim) {
+                return Ok(magnitude);
+            }
+            if !report.dimension.is_dimensionless() {
+                return Err(OpError::Domain(
+                    "dynamic dimension conflicts with term dimension".to_owned(),
+                ));
+            }
+        }
+    }
+    if same_dimension(dim, &crate::kernel::signature::DimExpr::Dimless) {
+        return Ok(magnitude);
+    }
+    let op = graph.ops().lookup("quantity").ok_or_else(|| {
+        OpError::Unsupported {
+            backend: "term".to_owned(),
+            feature: "dimensioned values require the units rule set".to_owned(),
+        }
+    })?;
+    let unit = term_of_unit(graph, &unit)?;
+    Ok(graph.node(op, &[magnitude, unit]))
+}
+
+fn term_of_tensor(
+    graph: &mut Graph,
+    tensor: &TensorValue,
+    session: SessionId,
+    dimension: Option<&crate::kernel::signature::DimExpr>,
+) -> Result<NodeId, OpError> {
+    use crate::kernel::signature::DimExpr;
+    use crate::kernel::signature::TypeExpr;
+    fn build(
+        graph: &mut Graph,
+        shape: &[usize],
+        data: &[Value],
+        dimension: Option<&DimExpr>,
+        session: SessionId,
+    ) -> Result<NodeId, OpError> {
+        let Some((&extent, tail)) = shape.split_first() else {
+            let value = data
+                .first()
+                .ok_or_else(|| OpError::Domain("empty scalar tensor".to_owned()))?;
+            return match dimension {
+                | Some(dim) => term_of_dimensioned_value(graph, value, dim, session),
+                | None => term_of_value(graph, value, session),
+            };
+        };
+        let stride = data.len().checked_div(extent).unwrap_or(0);
+        let items = (0..extent)
+            .map(|index| {
+                build(
+                    graph,
+                    tail,
+                    &data[index * stride..(index + 1) * stride],
+                    dimension,
+                    session,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(graph.node(core::LIST, &items))
+    }
+    if !tensor.is_consistent() {
+        return Err(OpError::Domain(
+            "tensor data length differs from its shape".to_owned(),
+        ));
+    }
+    let elem_dimension = match &tensor.elem {
+        | TypeExpr::Dim(_, dim) => Some(dim),
+        | _ => None,
+    };
+    if let (Some(left), Some(right)) = (dimension, elem_dimension)
+        && !same_dimension(left, right)
+    {
+        return Err(OpError::Domain(
+            "tensor element dimension conflicts with its dynamic dimension".to_owned(),
+        ));
+    }
+    let dimension = dimension.or(elem_dimension);
+    if let Some(zero) = tensor.shape.iter().position(|&n| n == 0)
+        && (zero + 1 != tensor.shape.len()
+            || dimension.is_some_and(|dim| !same_dimension(dim, &DimExpr::Dimless)))
+    {
+        return Err(OpError::Unsupported {
+            backend: "term".to_owned(),
+            feature: "empty tensor shape/dimension metadata not representable by nested lists"
+                .to_owned(),
+        });
+    }
+    build(graph, &tensor.shape, &tensor.data, dimension, session)
 }
 
 /// The arguments of `descriptor` that are declared as a unit.
@@ -1425,7 +1663,7 @@ fn term_of_argument(
     unit_position: bool,
 ) -> Result<NodeId, OpError> {
     if unit_position && let Value::Unit(unit) = value {
-        return Ok(graph.sym(&unit.name));
+        return term_of_unit(graph, unit);
     }
     term_of_value(graph, value, session)
 }

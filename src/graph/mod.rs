@@ -55,11 +55,12 @@
 //!   exactly where conditioning is worst; integer and rational magnitudes are
 //!   also clamped so special functions stay cheap. Agreement is still not a
 //!   proof, and opaque operators make a rule inconclusive.
-//! * **Tape derivatives are forward mode only (P2).** First and second
-//!   derivatives only: a Hessian costs `n²` passes, there is no reverse mode
-//!   or Hessian-vector product and no third derivative. Opaque `Call`/`Extern`
-//!   operators are differenced and report a NaN mixed second component;
-//!   `abs`/`floor`/`ceil` report zero second derivative at their kinks.
+//! * **Tape derivative conventions (P2).** Reverse gradients/VJPs and
+//!   Hessian-vector products use linear tape storage; the legacy dense Hessian
+//!   uses forward passes. Third derivatives are not implemented. Opaque
+//!   `Call`/`Extern` first derivatives are differenced and their second
+//!   derivatives remain NaN; `abs`/`floor`/`ceil` use zero second derivative at
+//!   their kinks.
 
 pub mod dim;
 // `pub(crate)` is the intended visibility: these are internal modules, so

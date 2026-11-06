@@ -1,7 +1,7 @@
 /* Minimal C client of rssn: differentiate, evaluate, extract a matrix and
  * run a simulation. Build (from the repository root):
  *
- *   DEV=1 cargo build --release
+ *   DEV=1 bash scripts/build_ffi.sh --features dev-headers
  *   cc -I. examples/c/smoke.c target/release/librssn.a -lm -lpthread -ldl -o smoke
  */
 #include <stdio.h>

@@ -236,6 +236,8 @@ pub struct OpDescriptor {
     /// Typed overloads. Empty means "no signature yet"; `dynamic_reason`
     /// then says why.
     pub overloads: Vec<Signature>,
+    /// Public Rust source function used by this export, when declared.
+    pub rust_path: Option<Arc<str>>,
     /// Markdown documentation.
     pub doc: Arc<str>,
     /// Domain category (`calculus`, `linear-algebra`, ...).
@@ -320,6 +322,7 @@ impl OpDescriptor {
             eval: None,
             eval_dyn: None,
             overloads: Vec::new(),
+            rust_path: None,
             doc: Arc::from(""),
             category: Arc::from(""),
             aliases: Vec::new(),
@@ -336,6 +339,16 @@ impl OpDescriptor {
             higher_order: false,
             jit: None,
         }
+    }
+
+    /// Declares the public Rust source function used by this export.
+    #[must_use]
+    pub fn rust_path(
+        mut self,
+        path: &str,
+    ) -> Self {
+        self.rust_path = Some(Arc::from(path));
+        self
     }
 
     /// Adds flags.
@@ -594,6 +607,9 @@ impl OpDescriptor {
         &mut self,
         other: &Self,
     ) {
+        if self.rust_path.is_none() {
+            self.rust_path.clone_from(&other.rust_path);
+        }
         if self.doc.is_empty() {
             self.doc = Arc::clone(&other.doc);
         }
@@ -715,6 +731,18 @@ impl OpTable {
             attrs: HashMap::new(),
         };
         let ac = OpFlags::COMMUTATIVE.with(OpFlags::ASSOCIATIVE);
+        // Core algebra operates on graph expressions as well as unadorned
+        // numeric literals. Keep the numeric overload for specificity, with
+        // an explicit symbolic overload for quantities and host term handles.
+        // Physical compatibility is checked by the graph's dimension rules;
+        // the symbolic result is never advertised as a concrete numeric type.
+        let symbolic_variadic = Signature::new(Vec::new(), crate::kernel::infer::term()).variadic(
+            crate::kernel::signature::Variadic {
+                min: 0,
+                max: None,
+                elem: crate::kernel::infer::term(),
+            },
+        );
         let builtins = [
             OpDescriptor::new("lit", Arity::Fixed(0))
                 .flags(OpFlags::LEAF)
@@ -755,7 +783,8 @@ impl OpTable {
                             elem: crate::kernel::signature::TypeExpr::Real,
                         },
                     ),
-                ),
+                )
+                .signature(symbolic_variadic.clone()),
             OpDescriptor::new("mul", Arity::Variadic)
                 .flags(ac.with(OpFlags::TRANSPARENT))
                 .cost(1)
@@ -771,7 +800,8 @@ impl OpTable {
                             elem: crate::kernel::signature::TypeExpr::Real,
                         },
                     ),
-                ),
+                )
+                .signature(symbolic_variadic),
             OpDescriptor::new("pow", Arity::Fixed(2))
                 .flags(OpFlags::TRANSPARENT)
                 .cost(1)
@@ -787,6 +817,10 @@ impl OpTable {
                 .signature(Signature::scalars(
                     2,
                     crate::kernel::signature::TypeExpr::Real,
+                ))
+                .signature(Signature::new(
+                    vec![crate::kernel::infer::term(); 2],
+                    crate::kernel::infer::term(),
                 )),
             OpDescriptor::new("apply", Arity::Variadic)
                 .cost(2)
@@ -823,6 +857,10 @@ impl OpTable {
                 .since("0.1")
                 .signature(Signature::scalars(
                     2,
+                    crate::kernel::signature::TypeExpr::Bool,
+                ))
+                .signature(Signature::new(
+                    vec![crate::kernel::infer::term(); 2],
                     crate::kernel::signature::TypeExpr::Bool,
                 )),
         ];

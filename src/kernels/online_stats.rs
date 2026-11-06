@@ -168,13 +168,13 @@ impl OnlineCovariance {
 
     /// Number of variables.
     #[must_use]
-    pub fn dimension(&self) -> usize {
+    pub const fn dimension(&self) -> usize {
         self.mean.len()
     }
 
     /// Number of observations incorporated so far.
     #[must_use]
-    pub fn count(&self) -> u64 {
+    pub const fn count(&self) -> u64 {
         self.count
     }
 

@@ -15,25 +15,23 @@
 //! * Tensors are dense `ArrayD<f64>` of any rank. There is no sparse tensor
 //!   type and no complex element type; a complex tensor has to be split into
 //!   real and imaginary parts.
-//! * [`cp_als`] and [`hosvd`] are the only decompositions. CP is ill-posed:
+//! * CP is ill-posed:
 //!   the best rank-`R` approximation need not exist (a tensor can have border
 //!   rank below its rank), so a small residual after a sweep is not a
 //!   certificate of optimality. The solver reports `converged`, `stagnated`,
 //!   `diverged` and `rank_deficient` rather than hiding that. [`hosvd`] is
 //!   exact before truncation and gives orthonormal factors, but its truncated
-//!   form is not the best multilinear-rank approximation (that is Tucker-ALS,
-//!   which is not implemented); there is no tensor-train decomposition, no CP
+//!   form is not the best multilinear-rank approximation. [`hooi`] refines it
+//!   by alternating orthogonal subspaces, but only local stationarity is
+//!   reported, not global optimality; tensor trains are available in [`super::tensor_train`]; there is no CP
 //!   with missing entries and no non-negativity constraint.
-//! * [`hosvd`] uses the dense one-sided Jacobi SVD for every well-behaved mode
-//!   unfolding. That SVD reports non-convergence on exactly rank-deficient
-//!   unfoldings (which Tucker routinely produces), so the fallback takes the
-//!   left singular vectors from the eigendecomposition of `A A^T`; that path
-//!   squares the condition number and truncates at its `sqrt(eps)` noise floor,
-//!   so the *numerical* multilinear rank is what is reported and truncated.
-//! * The solver is plain ALS: it is not globally convergent, it can be slow on
-//!   ill-conditioned problems, and it costs `O(R * n^3)` per sweep on an
-//!   `n x n x n` tensor (the mode unfoldings are formed once, but each
-//!   matricised least-squares update is cubic in the mode sizes).
+//! * [`hosvd`] uses a thin bidiagonal SVD for mode unfoldings, including
+//!   rank-deficient ones, without forming a Gram matrix.
+//! * The CP solver is plain ALS: it is not globally convergent and can be slow
+//!   on ill-conditioned problems. Each mode uses one direct SVD of its
+//!   Khatri-Rao design, followed by all right-hand sides together; no Gram
+//!   matrix is formed. Mode unfoldings are cached, so dense storage dominates
+//!   for large tensors.
 //! * Factor columns are returned unit-norm with the weights in
 //!   [`CpDecomposition::weights`]; a single term is only identified up to the
 //!   usual permutation and scaling ambiguity, so compare reconstructions, not
@@ -43,9 +41,6 @@ use ndarray::ArrayD;
 use ndarray::IxDyn;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::cholesky_solve;
-use crate::kernels::dense::eigen_symmetric;
-use crate::kernels::dense::pinv;
 use crate::kernels::dense::svd;
 
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).
@@ -276,7 +271,7 @@ pub fn contract(
 /// Computes the Frobenius norm of a tensor.
 #[must_use]
 pub fn norm(a: &ArrayD<f64>) -> f64 {
-    a.iter().map(|x| x * x).sum::<f64>().sqrt()
+    a.iter().fold(0.0_f64, |length, &x| length.hypot(x))
 }
 
 use serde::Deserialize;
@@ -367,8 +362,8 @@ pub struct CpDecomposition {
     /// A factor weight left `divergence_limit * (1 + ||T||_F)` (or a
     /// non-finite value appeared), the signature of a degenerate CP problem.
     pub diverged: bool,
-    /// A Gram matrix was rank deficient and its update used the
-    /// pseudo-inverse; the corresponding components are not identifiable.
+    /// A Khatri-Rao design matrix was numerically rank deficient and its
+    /// update used a minimum-norm SVD solve; components may not be identifiable.
     pub rank_deficient: bool,
 }
 
@@ -391,11 +386,14 @@ pub struct CpDecomposition {
 /// sweeps stopped improving while the residual stayed above `tol`; `diverged`
 /// means a weight blew up, which is how a degenerate problem (border rank
 /// below rank) shows itself; `rank_deficient` means the least-squares system
-/// had to be pseudo-inverted.
+/// was numerically rank deficient in its direct SVD solve.
 ///
 /// # Errors
 /// Returns an error for a tensor of rank below 2, an empty dimension,
-/// non-finite entries, a zero rank, or zero sweeps.
+/// non-finite entries/options, a zero rank, zero sweeps, or rescaling overflow.
+/// Updates solve the Khatri-Rao least-squares system directly by SVD, once
+/// per mode, avoiding normal equations and squared condition numbers. Input
+/// normalization protects uniformly very small or very large tensors.
 pub fn cp_als(
     tensor: &ArrayD<f64>,
     options: &CpOptions,
@@ -417,14 +415,26 @@ pub fn cp_als(
         return Err("Tensor entries must be finite.".to_string());
     }
 
+    if !options.tol.is_finite()
+        || options.tol < 0.0
+        || !options.divergence_limit.is_finite()
+        || options.divergence_limit <= 0.0
+    {
+        return Err(
+            "CP tolerance must be finite/nonnegative and divergence limit finite/positive.".into(),
+        );
+    }
+    let scale = tensor.iter().fold(0.0_f64, |s, x| s.max(x.abs()));
+    let scale = if scale == 0.0 { 1.0 } else { scale };
+    let normalized = tensor.mapv(|x| x / scale);
     let rank = options.rank;
     let shape = tensor.shape().to_vec();
-    let unfoldings = mode_unfoldings(tensor)?;
+    let unfoldings = mode_unfoldings(&normalized)?;
     let t_norm = {
-        let n = norm(tensor);
+        let n = norm(&normalized);
         if n > 0.0 { n } else { 1.0 }
     };
-    let limit = options.divergence_limit * (1.0 + t_norm);
+    let limit = options.divergence_limit * (scale.recip() + t_norm);
 
     let mut factors = init_factors(&shape, rank, options.seed);
     let mut weights = vec![1.0; rank];
@@ -440,21 +450,23 @@ pub fn cp_als(
     for sweep in 1..=options.max_sweeps {
         for (mode, unfold) in unfoldings.iter().enumerate() {
             let kr = khatri_rao(&factors, mode, &shape);
-            let mttkrp = unfold.matmul(&kr).map_err(|e| e.to_string())?;
-            let gram = hadamard_grams(&factors, mode, rank);
-            let rows = mttkrp.rows;
+            let decomposition = svd(&kr).map_err(|e| e.to_string())?;
+            let cutoff = kr.rows.max(kr.cols) as f64
+                * f64::EPSILON
+                * decomposition.s.first().copied().unwrap_or(0.0);
+            let active = decomposition.s.iter().filter(|&&s| s > cutoff).count();
+            rank_deficient |= active < rank;
+            let projected = unfold.matmul(&decomposition.u).map_err(|e| e.to_string())?;
+            let rows = unfold.rows;
             let mut updated = Mat::zeros(rows, rank);
             for row in 0..rows {
-                let rhs: Vec<f64> = (0..rank).map(|c| mttkrp.at(row, c)).collect();
-                let solution = match cholesky_solve(&gram, &rhs) {
-                    | Ok(x) => x,
-                    | Err(_) => {
-                        rank_deficient = true;
-                        pinv(&gram).map_err(|e| e.to_string())?.matvec(&rhs)
-                    },
-                };
-                for (col, value) in solution.iter().enumerate() {
-                    updated.set(row, col, *value);
+                for col in 0..rank {
+                    let mut value = 0.0;
+                    for j in 0..active {
+                        value +=
+                            projected.at(row, j) / decomposition.s[j] * decomposition.v.at(col, j);
+                    }
+                    updated.set(row, col, value);
                 }
             }
             for col in 0..rank {
@@ -474,12 +486,10 @@ pub fn cp_als(
         }
         sweeps = sweep;
         let flat = reconstruct(&factors, &weights, &shape);
-        residual = tensor
+        residual = normalized
             .iter()
             .zip(flat.iter())
-            .map(|(t, r)| (t - r) * (t - r))
-            .sum::<f64>()
-            .sqrt();
+            .fold(0.0_f64, |length, (t, r)| length.hypot(t - r));
         if !residual.is_finite() {
             diverged = true;
             break;
@@ -498,14 +508,25 @@ pub fn cp_als(
         previous = residual;
     }
 
-    let flat = reconstruct(&factors, &weights, &shape);
+    let relative_residual = residual / t_norm;
+    let flat = reconstruct(&factors, &weights, &shape)
+        .into_iter()
+        .map(|x| x * scale)
+        .collect::<Vec<_>>();
+    for weight in &mut weights {
+        *weight *= scale;
+    }
+    let residual = residual * scale;
+    if !flat.iter().chain(weights.iter()).all(|x| x.is_finite()) || !residual.is_finite() {
+        return Err("CP result overflowed while rescaling.".into());
+    }
     let reconstruction = ArrayD::from_shape_vec(IxDyn(&shape), flat).map_err(|e| e.to_string())?;
     Ok(CpDecomposition {
         factors,
         weights,
         reconstruction,
         residual,
-        relative_residual: residual / t_norm,
+        relative_residual,
         sweeps,
         converged,
         stagnated: !converged && !diverged && last_improvement <= options.tol,
@@ -521,7 +542,7 @@ pub fn cp_als(
 /// `core` is the `r_1 x ... x r_N` core tensor. The factors have orthonormal
 /// columns and the core is all-orthogonal (its mode-`k` slices are mutually
 /// orthogonal); the truncated HOSVD is *not* the best multilinear-rank
-/// approximation — that needs Tucker-ALS — but it is the canonical starting
+/// approximation — [`hooi`] can refine it locally — but it is the canonical starting
 /// point and its truncation error is bounded by the discarded singular values.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hosvd {
@@ -533,6 +554,199 @@ pub struct Hosvd {
     pub singular_values: Vec<Vec<f64>>,
     /// Retained rank per mode.
     pub ranks: Vec<usize>,
+}
+
+/// Tucker approximation refined by higher-order orthogonal iteration (HOOI).
+///
+/// Factors have orthonormal columns. Unlike HOSVD, the core need not be
+/// all-orthogonal. Convergence denotes stabilization of the local objective,
+/// not global optimality or a small approximation residual.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tucker {
+    /// Reduced core tensor.
+    pub core: ArrayD<f64>,
+    /// Orthonormal factor for each mode.
+    pub factors: Vec<Mat>,
+    /// Actual retained ranks (bounded by the requested ranks).
+    pub ranks: Vec<usize>,
+    /// Completed alternating sweeps.
+    pub sweeps: usize,
+    /// Directly measured relative Frobenius reconstruction residual.
+    pub relative_error: f64,
+    /// Initial HOSVD residual followed by each completed sweep's residual.
+    pub error_history: Vec<f64>,
+    /// Whether the objective stabilized within the requested tolerance.
+    pub converged: bool,
+}
+
+impl Tucker {
+    /// Reconstruct the dense approximation.
+    ///
+    /// # Errors
+    /// Returns an error if the public core/factor dimensions are inconsistent.
+    pub fn reconstruct(&self) -> Result<ArrayD<f64>, String> {
+        let mut out = self.core.clone();
+        for (mode, factor) in self.factors.iter().enumerate() {
+            out = mode_product(&out, mode, factor)?;
+        }
+        Ok(out)
+    }
+}
+
+/// Refine a truncated HOSVD using higher-order orthogonal iteration.
+///
+/// Each coordinate step computes the leading singular subspace after
+/// projecting all other modes. Ranks are upper bounds and may be clamped to
+/// the available subspace. Initialization is deterministic HOSVD; HOOI can
+/// converge to a local optimum or stationary point. Inspect `relative_error`
+/// independently from `converged`. Exhausting the sweep budget returns the
+/// best observed approximation with `converged = false`. Residuals near
+/// floating-point roundoff also terminate the iteration.
+///
+/// Input normalization protects intermediate norm calculations at uniformly
+/// small/large scales. No Gram matrices or condition-number squaring are used.
+/// Zero tensors use a rank-one zero core.
+///
+/// # Errors
+/// Non-finite data, empty modes, invalid
+/// ranks/tolerance/budget, SVD failure, or arithmetic overflow return an error.
+pub fn hooi(
+    tensor: &ArrayD<f64>,
+    ranks: &[usize],
+    max_sweeps: usize,
+    tolerance: f64,
+) -> Result<Tucker, String> {
+    let shape = tensor.shape();
+    if ranks.len() != shape.len()
+        || ranks.contains(&0)
+        || shape.contains(&0)
+        || max_sweeps == 0
+        || !tolerance.is_finite()
+        || tolerance < 0.0
+    {
+        return Err("invalid Tucker ranks, tolerance or sweep budget".into());
+    }
+    if !tensor.iter().all(|x| x.is_finite()) {
+        return Err("Tucker input contains non-finite values".into());
+    }
+    let scale = tensor.iter().fold(0.0_f64, |s, x| s.max(x.abs()));
+    if scale == 0.0 || shape.is_empty() {
+        let factors = shape
+            .iter()
+            .map(|&n| {
+                let mut u = Mat::zeros(n, 1);
+                u.set(0, 0, 1.0);
+                u
+            })
+            .collect();
+        return Ok(Tucker {
+            core: if shape.is_empty() {
+                tensor.clone()
+            } else {
+                ArrayD::zeros(IxDyn(&vec![1; shape.len()]))
+            },
+            factors,
+            ranks: vec![1; shape.len()],
+            sweeps: 0,
+            relative_error: 0.0,
+            error_history: vec![0.0],
+            converged: true,
+        });
+    }
+    let input = tensor.mapv(|x| x / scale);
+    let input_norm = input.iter().fold(0.0_f64, |s, &x| s.hypot(x));
+    let initial = hosvd(&input, Some(ranks))?;
+    let mut factors = initial.factors;
+    let mut actual_ranks = initial.ranks;
+    let mut core = initial.core;
+    let measure = |core: &ArrayD<f64>, factors: &[Mat]| -> Result<f64, String> {
+        let mut reconstructed = core.clone();
+        for (mode, u) in factors.iter().enumerate() {
+            reconstructed = mode_product(&reconstructed, mode, u)?;
+        }
+        let residual = input
+            .iter()
+            .zip(reconstructed.iter())
+            .fold(0.0_f64, |s, (a, b)| s.hypot(a - b))
+            / input_norm;
+        if !residual.is_finite() {
+            return Err("Tucker reconstruction overflow".into());
+        }
+        Ok(residual)
+    };
+    let mut previous = measure(&core, &factors)?;
+    let mut best_error = previous;
+    let mut best_core = core.clone();
+    let mut best_factors = factors.clone();
+    let mut best_ranks = actual_ranks.clone();
+    let mut history = vec![previous];
+    let noise_floor = 32.0 * f64::EPSILON * shape.len().max(1) as f64;
+    let mut converged = previous <= noise_floor;
+    let mut sweeps = 0;
+    while sweeps < max_sweeps && !converged {
+        for mode in 0..shape.len() {
+            let mut projected = input.clone();
+            for (other, u) in factors.iter().enumerate() {
+                if other != mode {
+                    projected = mode_product(&projected, other, &u.transpose())?;
+                }
+            }
+            let mut permutation = vec![mode];
+            permutation.extend((0..shape.len()).filter(|&k| k != mode));
+            let unfolded = projected
+                .permuted_axes(permutation)
+                .as_standard_layout()
+                .into_owned();
+            let rows = shape[mode];
+            let matrix = Mat {
+                rows,
+                cols: unfolded.len() / rows,
+                data: unfolded.into_raw_vec_and_offset().0,
+            };
+            let d = svd(&matrix).map_err(|e| format!("Tucker mode {mode}: {e}"))?;
+            let rank = actual_ranks[mode].min(d.s.len());
+            if rank == 0 {
+                return Err("Tucker projection has an empty singular subspace".into());
+            }
+            let mut u = Mat::zeros(rows, rank);
+            for i in 0..rows {
+                for j in 0..rank {
+                    u.set(i, j, d.u.at(i, j));
+                }
+            }
+            factors[mode] = u;
+            actual_ranks[mode] = rank;
+        }
+        core.clone_from(&input);
+        for (mode, u) in factors.iter().enumerate() {
+            core = mode_product(&core, mode, &u.transpose())?;
+        }
+        let error = measure(&core, &factors)?;
+        history.push(error);
+        sweeps += 1;
+        if error < best_error {
+            best_error = error;
+            best_core.clone_from(&core);
+            best_factors.clone_from(&factors);
+            best_ranks.clone_from(&actual_ranks);
+        }
+        converged = error <= noise_floor
+            || (previous - error).abs() <= tolerance * previous.max(f64::EPSILON);
+        previous = error;
+    }
+    best_core.mapv_inplace(|x| x * scale);
+    if !best_core.iter().all(|x| x.is_finite()) {
+        return Err("Tucker core rescaling overflow".into());
+    }
+    Ok(Tucker {
+        core: best_core,
+        factors: best_factors,
+        ranks: best_ranks,
+        sweeps,
+        relative_error: best_error,
+        error_history: history,
+        converged,
+    })
 }
 
 impl Hosvd {
@@ -623,76 +837,25 @@ fn push_column(
 
 /// The non-negligible leading left singular data of a dense matrix.
 ///
-/// The primary path is [`svd`](crate::kernels::dense::svd), which is accurate
-/// for every full-rank unfolding. The dense one-sided Jacobi SVD reports
-/// non-convergence on exactly rank-deficient unfoldings — which a Tucker
-/// decomposition routinely produces (the unfolding of a rank-one tensor, for
-/// instance) — so the fallback takes the left singular vectors from the
-/// symmetric eigendecomposition of `A A^T`. The Gram matrix squares the
-/// condition number and its rounding noise floor in the singular values is
-/// about `sqrt(eps) * sigma_max`, so the fallback truncates there; both paths
-/// drop singular values below `max(n, r) * eps * sigma_max`.
+/// Numerical left singular subspace without forming a Gram matrix.
 fn reduced_svd(a: &Mat) -> Result<(Mat, Vec<f64>), String> {
-    if let Ok(decomposition) = svd(a) {
-        let sigma_max = decomposition.s.first().copied().unwrap_or(0.0);
-        let tolerance = f64::from(u32::try_from(a.rows.max(a.cols)).unwrap_or(u32::MAX))
-            * f64::EPSILON
-            * sigma_max;
-        let mut u = Mat::zeros(a.rows, 0);
-        let mut singular = Vec::new();
-        for column in 0..decomposition.s.len() {
-            let sigma = decomposition.s.get(column).copied().unwrap_or(0.0);
-            if sigma <= tolerance || !sigma.is_finite() {
-                continue;
-            }
-            let entries: Vec<f64> = (0..a.rows)
-                .map(|row| decomposition.u.at(row, column))
-                .collect();
-            push_column(&mut u, &entries);
-            singular.push(sigma);
-        }
-        if !singular.is_empty() {
-            return Ok((u, singular));
-        }
-    }
-    // Fallback: eigenvectors of `A A^T` are the left singular vectors.
-    let gram = a
-        .matmul(&a.transpose())
-        .map_err(|error| error.to_string())?;
-    let (values, vectors) = eigen_symmetric(&gram).map_err(|error| error.to_string())?;
-    let sigma_max = values
-        .iter()
-        .copied()
-        .fold(0.0_f64, f64::max)
-        .max(0.0)
-        .sqrt();
-    let tolerance = 4.0 * f64::EPSILON.sqrt() * sigma_max;
+    let decomposition = svd(a).map_err(|error| error.to_string())?;
+    let sigma_max = decomposition.s.first().copied().unwrap_or(0.0);
+    let tolerance = a.rows.max(a.cols) as f64 * f64::EPSILON * sigma_max;
     let mut u = Mat::zeros(a.rows, 0);
     let mut singular = Vec::new();
-    // The eigenvalues come back ascending; keep the significant ones in
-    // descending order.
-    for index in (0..values.len()).rev() {
-        let sigma = values.get(index).copied().unwrap_or(0.0).max(0.0).sqrt();
-        if sigma <= tolerance || !sigma.is_finite() {
+    for (column, &sigma) in decomposition.s.iter().enumerate() {
+        if sigma <= tolerance {
             continue;
         }
-        let mut entries: Vec<f64> = (0..a.rows).map(|row| vectors.at(row, index)).collect();
-        let norm = entries
-            .iter()
-            .map(|value| value * value)
-            .sum::<f64>()
-            .sqrt();
-        if !norm.is_finite() || norm == 0.0 {
-            continue;
-        }
-        for value in &mut entries {
-            *value /= norm;
-        }
+        let entries: Vec<f64> = (0..a.rows)
+            .map(|row| decomposition.u.at(row, column))
+            .collect();
         push_column(&mut u, &entries);
         singular.push(sigma);
     }
     if singular.is_empty() {
-        return Err(String::from("the matrix has no nonzero singular value"));
+        return Err("the matrix has no nonzero singular value".into());
     }
     Ok((u, singular))
 }
@@ -819,51 +982,6 @@ fn init_factors(
         .collect()
 }
 
-/// `A^T A`.
-#[allow(clippy::single_call_fn)]
-fn gram(a: &Mat) -> Mat {
-    let mut g = Mat::zeros(a.cols, a.cols);
-    for i in 0..a.rows {
-        for p in 0..a.cols {
-            let v = a.at(i, p);
-            if v.abs() > 0.0 {
-                for q in 0..a.cols {
-                    g.set(p, q, g.at(p, q) + v * a.at(i, q));
-                }
-            }
-        }
-    }
-    g
-}
-
-/// Hadamard product of the Gram matrices of every factor except `skip`.
-///
-/// The accumulator starts at the all-ones matrix, the identity of the
-/// elementwise product. Starting at `Mat::identity` instead would leave every
-/// off-diagonal at zero, silently dropping the inter-component correlations
-/// from the normal equations.
-#[allow(clippy::single_call_fn)]
-fn hadamard_grams(
-    factors: &[Mat],
-    skip: usize,
-    rank: usize,
-) -> Mat {
-    let mut v = Mat::zeros(rank, rank);
-    v.data.fill(1.0);
-    for (mode, f) in factors.iter().enumerate() {
-        if mode == skip {
-            continue;
-        }
-        let g = gram(f);
-        for a in 0..rank {
-            for b in 0..rank {
-                v.set(a, b, v.at(a, b) * g.at(a, b));
-            }
-        }
-    }
-    v
-}
-
 /// Khatri-Rao product of every factor except `skip`, with the rows ordered
 /// like the corresponding mode unfolding.
 #[allow(clippy::single_call_fn)]
@@ -914,12 +1032,7 @@ fn column_norm(
     a: &Mat,
     col: usize,
 ) -> f64 {
-    let mut sum = 0.0;
-    for i in 0..a.rows {
-        let v = a.at(i, col);
-        sum += v * v;
-    }
-    sum.sqrt()
+    (0..a.rows).fold(0.0_f64, |length, i| length.hypot(a.at(i, col)))
 }
 
 /// Reconstruction in logical (row-major) order.

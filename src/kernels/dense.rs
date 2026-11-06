@@ -2,7 +2,7 @@
 //!
 //! A small self-contained dense toolkit: LU with partial pivoting,
 //! Cholesky, Householder QR, least squares, the Jacobi eigenvalue algorithm
-//! for symmetric matrices, a one-sided Jacobi SVD (singular values,
+//! for symmetric matrices, a thin bidiagonal SVD (singular values,
 //! pseudo-inverse, rank, 2-norm condition number) and the eigenvalues of a
 //! general real matrix by Hessenberg reduction and the shifted QR
 //! algorithm. [`eigen_generalized_symmetric`] solves `A x = lambda B x` (Cholesky reduction for
@@ -540,91 +540,52 @@ pub struct Svd {
     pub v: Mat,
 }
 
-/// One-sided Jacobi SVD.
+/// Thin singular-value decomposition using the bidiagonal SVD backend.
+///
+/// Rank-deficient matrices retain orthonormal null-space columns. No Gram
+/// matrix is formed, so small singular values do not lose accuracy through
+/// squaring the condition number.
 ///
 /// # Errors
-/// [`DenseError::NoConvergence`] after 60 sweeps.
+/// Returns [`DenseError::Shape`] for inconsistent storage or non-finite input,
+/// and [`DenseError::NoConvergence`] if the backend does not converge.
 pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
-    if a.rows < a.cols {
-        let t = svd(&a.transpose())?;
+    if a.rows.checked_mul(a.cols) != Some(a.data.len()) || !a.data.iter().all(|x| x.is_finite()) {
+        return Err(DenseError::Shape);
+    }
+    let k = a.rows.min(a.cols);
+    if k == 0 {
         return Ok(Svd {
-            u: t.v,
-            s: t.s,
-            v: t.u,
+            u: Mat::zeros(a.rows, k),
+            s: Vec::new(),
+            v: Mat::zeros(a.cols, k),
         });
     }
-    let (m, n) = (a.rows, a.cols);
-    let mut u = a.clone();
-    let mut v = Mat::identity(n);
-    let mut converged = false;
-    for _ in 0..60 {
-        let mut rotated = false;
-        for p in 0..n {
-            for q in p + 1..n {
-                let (mut alpha, mut beta, mut gamma) = (0.0, 0.0, 0.0);
-                for i in 0..m {
-                    let (x, y) = (u.at(i, p), u.at(i, q));
-                    alpha += x * x;
-                    beta += y * y;
-                    gamma += x * y;
-                }
-                if gamma == 0.0 || gamma.abs() <= 1e-15 * (alpha * beta).sqrt() {
-                    continue;
-                }
-                rotated = true;
-                let zeta = (beta - alpha) / (2.0 * gamma);
-                let t = if zeta == 0.0 {
-                    1.0
-                } else {
-                    zeta.signum() / (zeta.abs() + zeta.mul_add(zeta, 1.0).sqrt())
-                };
-                let c = 1.0 / t.mul_add(t, 1.0).sqrt();
-                let s = c * t;
-                for i in 0..m {
-                    let (x, y) = (u.at(i, p), u.at(i, q));
-                    u.set(i, p, c * x - s * y);
-                    u.set(i, q, s * x + c * y);
-                }
-                for i in 0..n {
-                    let (x, y) = (v.at(i, p), v.at(i, q));
-                    v.set(i, p, c * x - s * y);
-                    v.set(i, q, s * x + c * y);
-                }
-            }
-        }
-        if !rotated {
-            converged = true;
-            break;
-        }
-    }
-    if !converged {
+    // Bidiagonalization still forms squared local quantities internally.
+    // Normalize first so uniformly tiny/huge matrices retain their rank and
+    // orthogonality instead of underflowing or overflowing those quantities.
+    let scale = a.data.iter().fold(0.0_f64, |s, x| s.max(x.abs()));
+    let scale = if scale == 0.0 { 1.0 } else { scale };
+    let input = faer::Mat::from_fn(a.rows, a.cols, |i, j| a.at(i, j) / scale);
+    let decomposition = input.thin_svd().map_err(|_| DenseError::NoConvergence)?;
+    let singular = decomposition.S().column_vector();
+    let s: Vec<f64> = (0..k).map(|i| *singular.get(i) * scale).collect();
+    if !s.iter().all(|x| x.is_finite()) {
         return Err(DenseError::NoConvergence);
     }
-    let mut sv: Vec<f64> = (0..n)
-        .map(|j| (0..m).map(|i| u.at(i, j) * u.at(i, j)).sum::<f64>().sqrt())
-        .collect();
-    let mut idx: Vec<usize> = (0..n).collect();
-    idx.sort_by(|&x, &y| sv[y].total_cmp(&sv[x]));
-    let mut uo = Mat::zeros(m, n);
-    let mut vo = Mat::zeros(n, n);
-    for (c, &j) in idx.iter().enumerate() {
-        for i in 0..m {
-            uo.set(
-                i,
-                c,
-                if sv[j] > 0.0 {
-                    u.at(i, j) / sv[j]
-                } else {
-                    0.0
-                },
-            );
-        }
-        for i in 0..n {
-            vo.set(i, c, v.at(i, j));
+    let mut u = Mat::zeros(a.rows, k);
+    let mut v = Mat::zeros(a.cols, k);
+    for i in 0..a.rows {
+        for j in 0..k {
+            u.set(i, j, *decomposition.U().get(i, j));
         }
     }
-    sv = idx.iter().map(|&j| sv[j]).collect();
-    Ok(Svd { u: uo, s: sv, v: vo })
+    for i in 0..a.cols {
+        for j in 0..k {
+            v.set(i, j, *decomposition.V().get(i, j));
+        }
+    }
+    Ok(Svd { u, s, v })
 }
 
 /// 2-norm condition number `sigma_max / sigma_min` (infinite when singular).

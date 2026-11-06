@@ -110,7 +110,7 @@ impl ComplexValue {
 
 /// A unit definition carried by value: enough to print, convert and check a
 /// quantity without a registry lookup.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UnitValue {
     /// Symbolic name, as written in a term (`m`, `km`, `degC`).
     pub name: String,
@@ -165,7 +165,7 @@ pub struct ConstantValue {
 }
 
 /// An exact scale factor `rat * pi^pi`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ScaleValue {
     /// Numerator and denominator of the rational factor.
     pub numer: BigInt,
@@ -659,7 +659,7 @@ impl Value {
             | Self::Symbol(_) => TypeExpr::Symbol,
             | Self::Unit(u) => TypeExpr::Unit(u.dimension.clone()),
             | Self::Quantity(q) => {
-                TypeExpr::Dim(Box::new(TypeExpr::Real), q.unit.dimension.clone())
+                TypeExpr::Dim(Box::new(q.value.type_expr()), q.unit.dimension.clone())
             },
             | Self::Tensor(t) => {
                 TypeExpr::Tensor {
@@ -708,7 +708,7 @@ impl Value {
                     dim: None,
                 })
             },
-            | Self::Function(_) => TypeExpr::Function(Vec::new(), Box::new(TypeExpr::Never)),
+            | Self::Function(_) => TypeExpr::Opaque("unresolved callback handle".into()),
             | Self::Dyn(d) => {
                 TypeExpr::Dyn(crate::kernel::signature::RepExpr {
                     repr: "dyn".to_owned(),

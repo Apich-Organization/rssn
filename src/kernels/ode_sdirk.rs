@@ -62,6 +62,11 @@
 //! the right-hand side is a plain closure, so no Jacobian sparsity pattern can
 //! be exploited.
 
+use super::ode_contract::InitialStepOptions;
+use super::ode_contract::checked_rhs;
+use super::ode_contract::initial_events;
+use super::ode_contract::initial_step;
+use super::ode_contract::validate_problem;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::lu_factor;
 use crate::kernels::jacobian::fd_jacobian_dense;
@@ -71,9 +76,7 @@ use crate::kernels::ode_adaptive::Event;
 use crate::kernels::ode_adaptive::OdeError;
 use crate::kernels::ode_adaptive::OdeSolution;
 use crate::kernels::ode_adaptive::StepWindow;
-use crate::kernels::ode_adaptive::Tol;
 use crate::kernels::ode_adaptive::dense_eval;
-use crate::kernels::ode_adaptive::initial_step;
 use crate::kernels::ode_adaptive::process_events;
 
 /// Diagonal coefficient `γ` (root in `(0, 1)` of `6γ³ − 18γ² + 9γ − 1`).
@@ -203,11 +206,13 @@ struct StepOut {
     /// Right-end slope `K_3 = f(t + h, Y_3) = f(t + h, y_{n+1})` (the last
     /// stage is the step by stiff accuracy), for the Hermite extension.
     f_end: Vec<f64>,
-    /// Newton iterations used by the three stages.
+}
+
+/// Accumulated work, including rejected Newton attempts.
+#[derive(Default)]
+struct StepStats {
     newton: usize,
-    /// Right-hand-side evaluations of the step.
     nfev: usize,
-    /// Jacobian evaluations of the step.
     njev: usize,
 }
 
@@ -228,6 +233,7 @@ fn step<F, J>(
     y: &[f64],
     h: f64,
     opts: &SdirkOptions,
+    stats: &mut StepStats,
 ) -> Result<StepOut, OdeError>
 where
     F: Fn(f64, &[f64], &mut [f64]),
@@ -238,9 +244,6 @@ where
         return Err(OdeError::Invalid);
     }
     let mut k: Vec<Vec<f64>> = Vec::with_capacity(STAGES);
-    let mut newton = 0usize;
-    let mut nfev = 0usize;
-    let mut njev = 0usize;
     for stage in 0..STAGES {
         let row = A_EXPLICIT.get(stage).ok_or(OdeError::Invalid)?;
         let c = C.get(stage).ok_or(OdeError::Invalid)?;
@@ -256,8 +259,8 @@ where
         let mut converged = false;
         for _ in 0..opts.newton_max_iter {
             f(tstage, &ystage, &mut fval);
-            nfev = nfev.saturating_add(1);
-            newton = newton.saturating_add(1);
+            stats.nfev = stats.nfev.saturating_add(1);
+            stats.newton = stats.newton.saturating_add(1);
             let residual: Vec<f64> = fval
                 .iter()
                 .zip(ystage.iter())
@@ -265,7 +268,7 @@ where
                 .map(|((fv, ys), yp)| h * GAMMA * fv - (ys - yp))
                 .collect();
             let j = jac(tstage, &ystage);
-            njev = njev.saturating_add(1);
+            stats.njev = stats.njev.saturating_add(1);
             if j.rows != n || j.cols != n {
                 return Err(OdeError::Invalid);
             }
@@ -293,7 +296,7 @@ where
         }
         let mut kstage = vec![0.0; n];
         f(tstage, &ystage, &mut kstage);
-        nfev = nfev.saturating_add(1);
+        stats.nfev = stats.nfev.saturating_add(1);
         if kstage.iter().any(|v| !v.is_finite()) {
             return Err(OdeError::NonFinite);
         }
@@ -313,14 +316,7 @@ where
     // Stiff accuracy makes the last stage the step itself, so its slope is the
     // right-end derivative of the continuous extension.
     let f_end = k.pop().ok_or(OdeError::Invalid)?;
-    Ok(StepOut {
-        y: ynew,
-        err,
-        f_end,
-        newton,
-        nfev,
-        njev,
-    })
+    Ok(StepOut { y: ynew, err, f_end })
 }
 
 /// Dense output and counters of one adaptive run, before conversion to the
@@ -348,37 +344,52 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) {
+    let common = crate::kernels::ode_adaptive::OdeOptions {
+        rtol: opts.rtol,
+        atol: opts.atol,
+        h0: opts.h0,
+        hmax: opts.hmax,
+        max_steps: opts.max_steps,
+    };
+    validate_problem(t0, t1, y0, &common, events)?;
+    if opts.newton_max_iter == 0 || !opts.newton_tol.is_finite() || opts.newton_tol <= 0.0 {
         return Err(OdeError::Invalid);
     }
+    let f = checked_rhs(f);
+    let n = y0.len();
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
-    let floor = 1e-14 * (1.0 + t0.abs());
-    let hmax = opts.hmax.abs().max(floor);
+    let hmax = opts.hmax;
     let mut t = t0;
     let mut y = y0.to_vec();
     let mut f_start = vec![0.0; n];
     f(t, &y, &mut f_start);
-    let mut nfev = 1usize;
+    if f_start.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut stats = StepStats {
+        nfev: 1,
+        ..Default::default()
+    };
     let h_start = opts.h0.unwrap_or_else(|| {
-        initial_step(
+        let estimate = initial_step(
             &f,
             t0,
             y0,
             &f_start,
-            dir,
-            3.0,
-            Tol {
+            InitialStepOptions {
                 rtol: opts.rtol,
                 atol: opts.atol,
+                bound: t1,
+                max_step: hmax,
+                order: 3.0,
             },
-        )
+        );
+        stats.nfev += estimate.evaluations;
+        estimate.step
     });
-    let mut h = h_start.abs().clamp(floor, hmax) * dir;
+    let mut h = h_start.abs().min(hmax) * dir;
     let mut sol = OdeSolution::start(t0, y0);
-    let mut gprev: Vec<f64> = events.iter().map(|ev| (ev.g)(t0, y0)).collect();
-    let mut newton_iterations = 0usize;
-    let mut njev = 0usize;
+    let mut gprev = initial_events(events, t0, y0)?;
     let mut attempts = 0usize;
     while (t1 - t) * dir > 0.0 {
         if attempts >= opts.max_steps {
@@ -388,26 +399,29 @@ where
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
-        let out = match step(&f, &jac, t, &y, h, opts) {
+        if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
+            return Err(OdeError::StepLimit);
+        }
+        let out = match step(&f, &jac, t, &y, h, opts, &mut stats) {
             | Ok(out) => out,
             | Err(OdeError::SolveFailed) => {
                 sol.rejected = sol.rejected.saturating_add(1);
                 h *= 0.5;
-                if h.abs() < floor {
+                if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                     return Err(OdeError::StepLimit);
                 }
                 continue;
             },
             | Err(other) => return Err(other),
         };
-        nfev = nfev.saturating_add(out.nfev);
-        njev = njev.saturating_add(out.njev);
-        newton_iterations = newton_iterations.saturating_add(out.newton);
+
         let en = out
             .err
             .iter()
             .zip(y.iter())
-            .map(|(e, yi)| (e / (opts.atol + opts.rtol * yi.abs())).abs())
+            .map(|(e, yi)| {
+                super::ode_contract::scaled_ratio(*e, opts.atol + opts.rtol * yi.abs()).abs()
+            })
             .fold(0.0_f64, f64::max);
         if en.is_nan() {
             return Err(OdeError::NonFinite);
@@ -430,12 +444,12 @@ where
                 ynew: &out.y,
                 dir,
             };
-            if process_events(events, &mut gprev, &mut sol, dense_step, &window) {
-                sol.nfev = nfev;
+            if process_events(events, &mut gprev, &mut sol, dense_step, &window)? {
+                sol.nfev = stats.nfev;
                 return Ok(SdirkRun {
                     sol,
-                    newton_iterations,
-                    njev,
+                    newton_iterations: stats.newton,
+                    njev: stats.njev,
                 });
             }
             t = t_new;
@@ -452,16 +466,16 @@ where
         } else {
             sol.rejected = sol.rejected.saturating_add(1);
             h *= (0.9 * en.powf(-1.0 / 3.0)).clamp(0.1, 0.9);
-            if h.abs() < floor {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::StepLimit);
             }
         }
     }
-    sol.nfev = nfev;
+    sol.nfev = stats.nfev;
     Ok(SdirkRun {
         sol,
-        newton_iterations,
-        njev,
+        newton_iterations: stats.newton,
+        njev: stats.njev,
     })
 }
 
@@ -549,12 +563,20 @@ pub fn sdirk3_fd<F>(
 where
     F: Fn(f64, &[f64], &mut [f64]),
 {
+    let evaluations = std::cell::Cell::new(0usize);
+    let checked = checked_rhs(f);
+    let f = |time: f64, state: &[f64], derivative: &mut [f64]| {
+        evaluations.set(evaluations.get().saturating_add(1));
+        checked(time, state, derivative);
+    };
     let jac = |t: f64, y: &[f64]| {
         let mut f0 = vec![0.0; y.len()];
         f(t, y, &mut f0);
         fd_jacobian_dense(&f, t, y, &f0)
     };
-    sdirk3(&f, jac, t0, t1, y0, opts)
+    let mut result = sdirk3(f, jac, t0, t1, y0, opts)?;
+    result.nfev = evaluations.get();
+    Ok(result)
 }
 
 /// Integrates `y' = f(t, y)` from `t0` to `t1` in `steps` equal steps with no
@@ -578,16 +600,24 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    if y0.is_empty() || steps == 0 {
+    if y0.is_empty()
+        || steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || crate::kernels::exact_eq(t0, t1)
+        || y0.iter().any(|v| !v.is_finite())
+    {
         return Err(OdeError::Invalid);
     }
+    let f = checked_rhs(f);
     let opts = SdirkOptions::default();
-    let h = (t1 - t0) / steps as f64;
     let mut t = t0;
     let mut y = y0.to_vec();
-    for _ in 0..steps {
-        let out = step(&f, &jac, t, &y, h, &opts)?;
-        t += h;
+    let mut stats = StepStats::default();
+    for index in 1..=steps {
+        let (next, h) = super::ode_contract::fixed_step(t0, t1, index, steps, t)?;
+        let out = step(&f, &jac, t, &y, h, &opts, &mut stats)?;
+        t = next;
         y = out.y;
     }
     Ok(y)
@@ -618,23 +648,42 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    if y0.is_empty() || steps == 0 {
+    if y0.is_empty()
+        || steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || crate::kernels::exact_eq(t0, t1)
+        || y0.iter().any(|v| !v.is_finite())
+    {
         return Err(OdeError::Invalid);
     }
+    let f = checked_rhs(f);
     let opts = SdirkOptions::default();
-    let h = (t1 - t0) / steps as f64;
-    let dir = h.signum();
+    super::ode_contract::validate_problem(
+        t0,
+        t1,
+        y0,
+        &crate::kernels::ode_adaptive::OdeOptions::default(),
+        events,
+    )?;
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let mut t = t0;
     let mut y = y0.to_vec();
+    super::ode_contract::fixed_step(t0, t1, 1, steps, t0)?;
     let mut f_start = vec![0.0; y.len()];
     f(t, &y, &mut f_start);
-    let mut nfev = 1usize;
+    if f_start.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut stats = StepStats {
+        nfev: 1,
+        ..Default::default()
+    };
     let mut sol = OdeSolution::start(t0, y0);
-    let mut gprev: Vec<f64> = events.iter().map(|ev| (ev.g)(t0, y0)).collect();
-    for _ in 0..steps {
-        let out = step(&f, &jac, t, &y, h, &opts)?;
-        nfev = nfev.saturating_add(out.nfev);
-        let t_new = t + h;
+    let mut gprev = initial_events(events, t0, y0)?;
+    for index in 1..=steps {
+        let (t_new, h) = super::ode_contract::fixed_step(t0, t1, index, steps, t)?;
+        let out = step(&f, &jac, t, &y, h, &opts, &mut stats)?;
         let dense_step = DenseStep {
             t0: t,
             h,
@@ -651,8 +700,8 @@ where
             ynew: &out.y,
             dir,
         };
-        if process_events(events, &mut gprev, &mut sol, dense_step, &window) {
-            sol.nfev = nfev;
+        if process_events(events, &mut gprev, &mut sol, dense_step, &window)? {
+            sol.nfev = stats.nfev;
             return Ok(sol);
         }
         t = t_new;
@@ -661,7 +710,7 @@ where
         sol.t.push(t);
         sol.y.push(y.clone());
     }
-    sol.nfev = nfev;
+    sol.nfev = stats.nfev;
     Ok(sol)
 }
 

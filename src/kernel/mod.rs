@@ -73,6 +73,8 @@
 //! ```
 
 pub mod call;
+mod callback;
+pub use callback::CallbackBank;
 pub mod cdylib;
 pub mod codec;
 pub mod infer;

@@ -76,7 +76,8 @@ mod tests {
             .to_owned();
         // SAFETY: the pointer came from `CString::into_raw` and is freed once.
         unsafe { super::super::rssn_string_free(json) };
-        assert!(text.contains("\"api_version\""));
+        let manifest: serde_json::Value = serde_json::from_str(&text).expect("manifest JSON");
+        assert_eq!(manifest["api_version"].as_u64(), Some(u64::from(crate::kernel::API_VERSION)));
         assert!(text.contains("\"ops\""));
         assert_eq!(rssn_manifest_hash(), standard().hash_u64());
     }

@@ -126,7 +126,7 @@ pub struct CallCtx<'a> {
     /// Exact replacements for free symbols, applied before the call.
     pub substitutions: Vec<(String, Value)>,
     /// Host callbacks, addressed by [`CallbackRef`] inside the arguments.
-    pub callbacks: Vec<std::sync::Arc<dyn crate::kernel::plugin::HostCallback>>,
+    pub callbacks: crate::kernel::CallbackBank,
     /// Where to record what happened. A `RefCell` because a trace is
     /// written through a shared reference: the context is read-only for the
     /// operator being called, and the trace is the one thing it appends to.
@@ -168,7 +168,7 @@ impl<'a> CallCtx<'a> {
             assumptions: Vec::new(),
             bindings: Vec::new(),
             substitutions: Vec::new(),
-            callbacks: Vec::new(),
+            callbacks: crate::kernel::CallbackBank::new(),
             trace: None,
         }
     }
@@ -240,12 +240,14 @@ impl<'a> CallCtx<'a> {
     }
 
     /// Registers a host callback and returns its handle.
+    ///
+    /// # Errors
+    /// Rejects unsupported callback signatures or an exhausted handle space.
     pub fn add_callback(
         &mut self,
         callback: std::sync::Arc<dyn crate::kernel::plugin::HostCallback>,
-    ) -> CallbackRef {
-        self.callbacks.push(callback);
-        CallbackRef(u32::try_from(self.callbacks.len().saturating_sub(1)).unwrap_or(u32::MAX))
+    ) -> Result<CallbackRef, OpError> {
+        self.callbacks.add(callback)
     }
 
     /// Records what happened, if the caller asked for a trace.
@@ -338,6 +340,24 @@ pub enum OpError {
     },
     /// A value could not be encoded or decoded.
     Codec(CodecError),
+    /// A callback argument or result does not satisfy its registered type.
+    CallbackType {
+        /// Callback handle in the current call context.
+        callback: CallbackRef,
+        /// Argument position, or `None` for the result.
+        argument: Option<usize>,
+        /// The registered type.
+        expected: Box<crate::kernel::signature::TypeExpr>,
+        /// The observed type.
+        got: Box<crate::kernel::signature::TypeExpr>,
+    },
+    /// A host diagnostic with a stable code, preserved across the ABI.
+    HostDiagnostic {
+        /// The host's static diagnostic code.
+        code: &'static str,
+        /// Human-readable error information.
+        message: String,
+    },
     /// A host callback failed.
     Host(String),
     /// An internal invariant was violated; a bug in rssn.
@@ -376,6 +396,27 @@ impl fmt::Display for OpError {
                 write!(f, "term belongs to {expected}, not to {got}")
             },
             | Self::Codec(e) => write!(f, "encoding error: {e}"),
+            | Self::CallbackType {
+                callback,
+                argument,
+                expected,
+                got,
+            } => {
+                if let Some(argument) = argument {
+                    write!(
+                        f,
+                        "callback {} argument {argument} has type {got}, expected {expected}",
+                        callback.0
+                    )
+                } else {
+                    write!(
+                        f,
+                        "callback {} returned {got}, expected {expected}",
+                        callback.0
+                    )
+                }
+            },
+            | Self::HostDiagnostic { code, message } => write!(f, "{code}: {message}"),
             | Self::Host(message) => write!(f, "host callback failed: {message}"),
             | Self::Internal(message) => write!(f, "internal error: {message}"),
         }

@@ -208,6 +208,9 @@ pub struct OpInfo {
     pub stability: Stability,
     /// Version it appeared in.
     pub since: String,
+    /// Public Rust source function used by this export, if declared.
+    #[serde(default)]
+    pub rust_path: Option<String>,
     /// Markdown documentation.
     pub doc: String,
     /// Worked examples.
@@ -469,6 +472,11 @@ impl KernelManifest {
 
     /// The manifest as deterministic binary.
     ///
+    /// This layout is specific to `api_version`; version 2 adds operator
+    /// source provenance. There is no version-negotiating binary envelope, so
+    /// consumers must know the producer's API version before decoding. Use
+    /// the self-describing JSON or CBOR representation for migration.
+    ///
     /// # Errors
     /// See [`codec::encode_deterministic`].
     pub fn to_bytes(&self) -> Result<Vec<u8>, codec::CodecError> {
@@ -575,7 +583,9 @@ fn describe(
         flags: desc.flags.info(),
         binder: desc.binder.map(crate::graph::op::Binder::info),
         cost: desc.cost,
-        eval: if desc.eval_dyn.is_some() {
+        eval: if desc.eval_dyn.is_some() && desc.higher_order {
+            EvalKind::HostCallback
+        } else if desc.eval_dyn.is_some() {
             EvalKind::Dynamic
         } else if desc.eval.is_some() {
             EvalKind::Scalar
@@ -589,6 +599,7 @@ fn describe(
         jit: desc.jit.map(lowering_name),
         stability: desc.stability,
         since: desc.since.to_string(),
+        rust_path: desc.rust_path.as_ref().map(std::string::ToString::to_string),
         doc: desc.doc.to_string(),
         examples: desc.examples.clone(),
         dim_rule,
@@ -650,25 +661,23 @@ struct Overlay {
 
 /// The overlay shipped with the crate, materialised by `build.rs`.
 ///
-/// `signatures.overlay.json` is matched by the `*.json` ignore rule, so a
-/// clean checkout does not contain it; `build.rs` copies it into `OUT_DIR`
-/// when it is present and writes an empty overlay when it is not. That keeps
-/// the crate buildable from a fresh clone while leaving the file as the one
-/// place a human corrects an inferred signature.
+/// `signatures.overlay.json` is version-controlled source, with an explicit
+/// exception to the JSON ignore rule. `build.rs` requires it and copies its
+/// bytes into `OUT_DIR`; source archives must carry the same file as Git
+/// checkouts so the manifest and generated bindings retain the same signatures.
 const OVERLAY_JSON: &str = include_str!(concat!(env!("OUT_DIR"), "/signatures.overlay.json"));
 
-/// The parsed overlay, or an empty one when the file is unreadable.
+/// The parsed, version-controlled signature overlay.
 ///
-/// A malformed overlay must not take the process down: it is documentation
-/// and inference correction, not data the engine needs. The audit binary
-/// reports it.
+/// Invalid source data is an invariant failure, rather than a reason to
+/// silently drop typed overloads and change the manifest.
 pub(crate) fn overlay() -> &'static BTreeMap<String, Vec<Signature>> {
     static OVERLAY: std::sync::OnceLock<BTreeMap<String, Vec<Signature>>> =
         std::sync::OnceLock::new();
     OVERLAY.get_or_init(|| {
         serde_json::from_str::<Overlay>(OVERLAY_JSON)
-            .map(|o| o.ops)
-            .unwrap_or_default()
+            .expect("version-controlled signatures.overlay.json must contain valid signatures")
+            .ops
     })
 }
 
@@ -683,6 +692,18 @@ mod tests {
         let mut graph = Graph::new();
         Engine::install(&mut graph, &sets).unwrap_or_else(|e| panic!("{e}"));
         KernelManifest::build(&graph, &sets, &[])
+    }
+
+    #[test]
+    fn source_origin_defaults_when_reading_older_json_and_round_trips_in_binary() {
+        let manifest = standard_manifest();
+        let entry = manifest.ops.iter().find(|op| op.rust_path.is_some()).expect("numerical provenance");
+        let mut json = serde_json::to_value(entry).expect("encode operator JSON");
+        json.as_object_mut().expect("operator object").remove("rust_path");
+        let old: OpInfo = serde_json::from_value(json).expect("read old JSON without provenance");
+        assert_eq!(old.rust_path, None);
+        let bytes = manifest.to_bytes().expect("encode current binary manifest");
+        assert_eq!(KernelManifest::from_bytes(&bytes).expect("decode current binary manifest"), manifest);
     }
 
     #[test]

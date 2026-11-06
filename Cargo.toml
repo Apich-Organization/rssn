@@ -1,3 +1,15 @@
+[workspace]
+resolver = "3"
+members = ["tools/rssn-api-model", "tools/rssn-api-gen"]
+default-members = ["."]
+
+[workspace.package]
+version = "3.0.0-rc.1"
+edition = "2024"
+rust-version = "1.97.0"
+license = "Apache-2.0"
+repository = "https://github.com/Apich-Organization/rssn"
+
 [package]
 name = "rssn"
 version = "3.0.0-rc.1"
@@ -38,7 +50,10 @@ exclude = [
 ]
 
 [lib]
-crate-type = ["cdylib", "rlib", "staticlib"]
+# Rust consumers only need an rlib. Build C distribution artifacts explicitly
+# with scripts/build_ffi.sh; otherwise every downstream Rust build also links
+# the shared library and bundles all dependencies into a static archive.
+crate-type = ["rlib"]
 
 # Reports how much of the operator table is typed. Named with a hyphen so
 # that the documented invocation is `cargo run --bin signature-audit`; the
@@ -117,29 +132,13 @@ default-features = false
 features = ["std", "sparse-linalg", "rand"]
 
 [build-dependencies]
-cbindgen = "0.29"
-vergen = { version = "10.0", features = [
-    "build",
-    "cargo",
-    "cargo_metadata",
-    "emit_and_set",
-    "regex",
-    "rustc",
-    "rustc_version",
-    "si",
-    "sysinfo",
-    "time",
-] }
-vergen-gitcl = { version = "10.0", features = [
-    "build",
-    "cargo",
-    "emit_and_set",
-    "rustc",
-    "si",
-] }
+# Only the explicit header workflow compiles cbindgen and its dependency graph.
+cbindgen = { version = "0.29", optional = true }
 
 [features]
 default = []
+# Regenerate checked-in C/C++ headers when combined with DEV=1.
+dev-headers = ["dep:cbindgen"]
 # Cranelift JIT backend (`rssn::backend::jit`).
 jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
 # Reading and writing `.npy` files in `rssn::io`.

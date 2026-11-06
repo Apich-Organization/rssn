@@ -142,7 +142,7 @@ impl Units<'_, '_> {
         }
         let mut factors = Vec::new();
         for (name, &e) in unit {
-            let symbol = self.cx.graph.sym(name);
+            let symbol = name.term(self.cx.graph);
             factors.push(if e.is_one() {
                 symbol
             } else {
@@ -199,8 +199,7 @@ impl Units<'_, '_> {
             let shift = self.cx.graph.num(Number::rat(offset));
             let sum = self.cx.graph.node(core::ADD, &[scaled, shift]);
             let sum = self.cx.simplify(sum);
-            let mut kelvin = UnitMap::new();
-            kelvin.insert("K".to_owned(), Exp::one());
+            let kelvin = coherent_unit(&resolved.dim);
             return Some(Val::Quant {
                 value: sum,
                 unit: kelvin,
@@ -471,7 +470,12 @@ impl Units<'_, '_> {
             | Val::Quant { unit, .. } => resolve_map(&unit)?.dim,
         };
         let mut factors = Vec::new();
-        for (name, &e) in DIMENSIONS.iter().zip(dim.si()) {
+        for (name, &e) in DIMENSIONS
+            .iter()
+            .copied()
+            .zip(dim.si())
+            .chain(dim.extra().iter().map(|(name, e)| (name.as_str(), e)))
+        {
             if e.is_zero() {
                 continue;
             }
@@ -514,13 +518,26 @@ fn coherent_unit(dim: &Dim) -> UnitMap {
         ("H", [2, 1, -2, -2, 0, 0, 0]),
     ];
     let mut map = UnitMap::new();
+    if !dim.extra().is_empty() {
+        let unit = crate::dim::UnitDef::linear(
+            "coherent",
+            crate::dim::units::dim_to_expr(dim),
+            Scale::one(),
+        )
+        .to_value();
+        map.insert(
+            crate::dim::units::UnitAtom::Literal(std::sync::Arc::new(unit)),
+            Exp::one(),
+        );
+        return map;
+    }
     if let Some((name, _)) = NAMED.iter().find(|(_, d)| Dim::of(*d) == *dim) {
-        map.insert((*name).to_owned(), Exp::one());
+        map.insert((*name).to_owned().into(), Exp::one());
         return map;
     }
     for (name, &e) in ["m", "kg", "s", "A", "K", "mol", "cd"].iter().zip(dim.si()) {
         if !e.is_zero() {
-            map.insert((*name).to_owned(), e);
+            map.insert((*name).to_owned().into(), e);
         }
     }
     map
@@ -930,7 +947,7 @@ mod tests {
         let check = |name: &str, product: &[(&str, i32)]| {
             let map: UnitMap = product
                 .iter()
-                .map(|&(n, e)| (n.to_owned(), Exp::from_integer(e)))
+                .map(|&(n, e)| (n.to_owned().into(), Exp::from_integer(e)))
                 .collect();
             let a = resolve_symbol(name).unwrap_or_else(|| panic!("{name}"));
             let b = resolve_map(&map).unwrap_or_else(|| panic!("{name}"));

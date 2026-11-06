@@ -4,6 +4,8 @@
 //! subtraction and division and is parseable by [`Graph::parse`]. Children
 //! of commutative operators are printed in a canonical order that does not
 //! depend on node creation order, so the text is stable across runs.
+//! Host-supplied unit definitions and opaque blobs have diagnostic renderings;
+//! unlike ordinary symbolic expressions these are not parser round trips.
 
 use std::cmp::Ordering;
 use std::fmt::Write;
@@ -42,8 +44,9 @@ impl Graph {
                 | Some(Payload::Bool(_)) => 1,
                 | Some(Payload::Str(_)) => 2,
                 | Some(Payload::Sym(_)) => 3,
-                | Some(Payload::Blob(_)) => 4,
-                | None => 5,
+                | Some(Payload::Unit(_)) => 4,
+                | Some(Payload::Blob(_)) => 5,
+                | None => 6,
             }
         };
         rank(a).cmp(&rank(b)).then_with(|| {
@@ -51,6 +54,7 @@ impl Graph {
                 | (Some(Payload::Num(x)), Some(Payload::Num(y))) => x.total_cmp(y),
                 | (Some(Payload::Bool(x)), Some(Payload::Bool(y))) => x.cmp(y),
                 | (Some(Payload::Str(x)), Some(Payload::Str(y))) => x.cmp(y),
+                | (Some(Payload::Unit(x)), Some(Payload::Unit(y))) => x.cmp(y),
                 | (Some(Payload::Sym(x)), Some(Payload::Sym(y))) => {
                     self.interner()
                         .symbol_name(*x)
@@ -258,6 +262,7 @@ impl Graph {
             | Some(Payload::Sym(s)) => write!(out, "{}", self.interner().symbol_name(*s)),
             | Some(Payload::Bool(b)) => write!(out, "{b}"),
             | Some(Payload::Str(s)) => write!(out, "{s:?}"),
+            | Some(Payload::Unit(unit)) => write!(out, "unit_literal({unit:?})"),
             | Some(Payload::Blob(b)) => write!(out, "{b:?}"),
             | None => write!(out, "?"),
         };

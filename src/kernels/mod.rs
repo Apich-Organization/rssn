@@ -72,6 +72,7 @@ pub mod number_theory;
 pub mod ode;
 /// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
 pub mod ode_adaptive;
+mod ode_contract;
 /// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
 pub mod ode_ext;
 /// L-stable SDIRK3(2) integrator for stiff initial-value problems.
@@ -81,6 +82,8 @@ pub mod ode_stiff;
 /// Mergeable online multivariate mean and covariance.
 pub mod online_stats;
 /// Unconstrained, global and constrained optimisation and linear programming.
+/// Matrix-free trust-region Newton-CG with Hessian-vector actions.
+pub mod newton_cg;
 pub mod optim;
 pub mod optimize;
 /// Fill-reducing orderings: approximate minimum degree and nested dissection.
@@ -143,3 +146,6 @@ pub(crate) fn exact_eq(
 ) -> bool {
     a.partial_cmp(&b) == Some(std::cmp::Ordering::Equal)
 }
+
+/// Tensor-train compression and contractions.
+pub mod tensor_train;

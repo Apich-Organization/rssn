@@ -939,6 +939,12 @@ impl Graph {
         &mut self,
         payload: Payload,
     ) -> NodeId {
+        if let Payload::Unit(unit) = &payload {
+            // A unit carries arena-independent base names. Register them in
+            // every receiving graph, including graphs built by host code.
+            // Invalid literal definitions remain unresolved, never dimensionless.
+            let _ = self.with_dim_arena_mut(|arena| unit.dimension.to_term(arena));
+        }
         let (op, payload) = match payload {
             | Payload::Sym(_) => (core::SYM, payload),
             | other => (core::LIT, other),
@@ -1353,6 +1359,13 @@ impl Graph {
                 | Some(Payload::Sym(s)) => {
                     let symbol = self.interner.symbol(src.interner.symbol_name(*s));
                     self.interner.payload(Payload::Sym(symbol))
+                },
+                | Some(Payload::Unit(unit)) => {
+                    // Private job graphs and merged sessions can assign
+                    // different ids to custom bases; the literal's names are
+                    // the authority, not ids in the source graph's arena.
+                    let _ = self.with_dim_arena_mut(|arena| unit.dimension.to_term(arena));
+                    self.interner.payload(Payload::Unit(unit.clone()))
                 },
                 | Some(other) => self.interner.payload(other.clone()),
                 | None => PayloadId::NONE,

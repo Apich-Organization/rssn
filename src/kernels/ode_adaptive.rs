@@ -35,6 +35,10 @@
 //! locate events by step bisection instead — see
 //! [`solve_fixed_events`](crate::kernels::ode::solve_fixed_events).
 
+use super::ode_contract::InitialStepOptions;
+use super::ode_contract::initial_events;
+use super::ode_contract::initial_step;
+use super::ode_contract::validate_problem;
 use crate::kernels::dense::Mat;
 use crate::kernels::dense::{
     self,
@@ -65,7 +69,7 @@ pub struct OdeOptions {
     pub h0: Option<f64>,
     /// Maximal step size.
     pub hmax: f64,
-    /// Maximal number of steps.
+    /// Maximal number of attempted steps, including rejected steps.
     pub max_steps: usize,
 }
 
@@ -302,16 +306,12 @@ pub(crate) struct StepWindow<'a> {
     pub(crate) dir: f64,
 }
 
-/// Relative and absolute tolerance pair.
-#[derive(Clone, Copy)]
-pub(crate) struct Tol {
-    pub(crate) rtol: f64,
-    pub(crate) atol: f64,
-}
-
 /// Event location tolerance: relative to the step, but never finer than the
 /// floating-point spacing at its endpoints.
-pub(crate) fn event_time_tolerance(t0: f64, t1: f64) -> f64 {
+pub(crate) fn event_time_tolerance(
+    t0: f64,
+    t1: f64,
+) -> f64 {
     let magnitude = t0.abs().max(t1.abs());
     let next = magnitude.next_up();
     let spacing = if next.is_finite() {
@@ -319,7 +319,9 @@ pub(crate) fn event_time_tolerance(t0: f64, t1: f64) -> f64 {
     } else {
         magnitude - magnitude.next_down()
     };
-    ((t1 - t0).abs() * 1e-12).max(spacing).max(f64::from_bits(1))
+    ((t1 - t0).abs() * 1e-12)
+        .max(spacing)
+        .max(f64::from_bits(1))
 }
 
 /// Locates the events crossed during an accepted step and updates the
@@ -331,18 +333,27 @@ pub(crate) fn process_events(
     sol: &mut OdeSolution,
     step: DenseStep,
     window: &StepWindow<'_>,
-) -> bool {
+) -> Result<bool, OdeError> {
     let StepWindow { t_old, tn, ynew, dir } = *window;
     let mut hits: Vec<EventHit> = Vec::new();
     let mut stop = false;
     for (ei, ev) in events.iter().enumerate() {
         let g1 = (ev.g)(tn, ynew);
         let g0 = gprev[ei];
+        if !g0.is_finite() || !g1.is_finite() {
+            return Err(OdeError::NonFinite);
+        }
         let crossing = (g0 < 0.0 && g1 >= 0.0 && ev.direction >= 0)
             || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
         if crossing {
             let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
-            let root = rootfind::brent(gf, t_old, tn, event_time_tolerance(t_old, tn), 200).unwrap_or(tn);
+            let root = rootfind::brent(gf, t_old, tn, event_time_tolerance(t_old, tn), 200)
+                .map_err(|error| {
+                    match error {
+                        | rootfind::RootError::Invalid => OdeError::NonFinite,
+                        | _ => OdeError::SolveFailed,
+                    }
+                })?;
             hits.push(EventHit {
                 index: ei,
                 t: root,
@@ -371,11 +382,11 @@ pub(crate) fn process_events(
             sol.t.push(l.t);
             sol.y.push(l.y);
         }
-        return true;
+        return Ok(true);
     }
     sol.events.extend(hits);
     sol.dense.push(step);
-    false
+    Ok(false)
 }
 
 const DP_A: [[f64; 6]; 6] = [
@@ -464,67 +475,12 @@ pub(crate) fn err_norm(
     rtol: f64,
     atol: f64,
 ) -> f64 {
-    let n = err.len().max(1) as f64;
-    (err.iter()
-        .zip(y0.iter().zip(y1))
-        .map(|(e, (a, b))| {
-            let sc = atol + rtol * a.abs().max(b.abs());
-            (e / sc) * (e / sc)
-        })
-        .sum::<f64>()
-        / n)
-        .sqrt()
-}
-
-pub(crate) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
-    f: &F,
-    t0: f64,
-    y0: &[f64],
-    f0: &[f64],
-    dir: f64,
-    order: f64,
-    tol: Tol,
-) -> f64 {
-    let Tol { rtol, atol } = tol;
-    let n = y0.len();
-    let sc: Vec<f64> = y0.iter().map(|v| atol + rtol * v.abs()).collect();
-    let d0 = (y0
-        .iter()
-        .zip(&sc)
-        .map(|(a, s)| (a / s) * (a / s))
-        .sum::<f64>()
-        / n as f64)
-        .sqrt();
-    let d1 = (f0
-        .iter()
-        .zip(&sc)
-        .map(|(a, s)| (a / s) * (a / s))
-        .sum::<f64>()
-        / n as f64)
-        .sqrt();
-    let h0 = if d0 < 1e-5 || d1 < 1e-5 {
-        1e-6
-    } else {
-        0.01 * d0 / d1
-    };
-    let y1: Vec<f64> = y0.iter().zip(f0).map(|(a, b)| a + dir * h0 * b).collect();
-    let mut f1 = vec![0.0; n];
-    f(t0 + dir * h0, &y1, &mut f1);
-    let d2 = (f1
-        .iter()
-        .zip(f0)
-        .zip(&sc)
-        .map(|((a, b), s)| ((a - b) / s).powi(2))
-        .sum::<f64>()
-        / n as f64)
-        .sqrt()
-        / h0;
-    let h1 = if d1.max(d2) <= 1e-15 {
-        (h0 * 1e-3).max(1e-6)
-    } else {
-        (0.01 / d1.max(d2)).powf(1.0 / (order + 1.0))
-    };
-    (100.0 * h0).min(h1)
+    super::ode_contract::rms(
+        err.iter().zip(y0.iter().zip(y1)).map(|(&error, (&a, &b))| {
+            super::ode_contract::scaled_ratio(error, atol + rtol * a.abs().max(b.abs()))
+        }),
+        err.len(),
+    )
 }
 
 /// Dormand-Prince 5(4) integration of `y' = f(t, y)` from `t0` to `t1`
@@ -536,6 +492,8 @@ pub(crate) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
 ///
 /// # Errors
 /// [`OdeError::StepLimit`] or [`OdeError::NonFinite`].
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
     t0: f64,
@@ -544,31 +502,51 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
+    dopri5_controlled(f, t0, t1, y0, opts, events, None)
+}
+
+// Exact comparisons detect unrepresentable steps and zero local error.
+#[allow(clippy::float_cmp)]
+pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    events: &[Event<'_>],
+    stop: Option<&dyn Fn() -> bool>,
+) -> Result<OdeSolution, OdeError> {
+    validate_problem(t0, t1, y0, opts, events)?;
+    super::ode_contract::abort_if_requested(stop)?;
+    let f = super::ode_contract::checked_rhs_with_stop(f, || stop.is_some_and(|stop| stop()));
     let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) {
-        return Err(OdeError::Invalid);
-    }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let mut t = t0;
     let mut y = y0.to_vec();
     let mut k = vec![vec![0.0; n]; 7];
     f(t, &y, &mut k[0]);
+    if k[0].iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
     let mut nfev = 1;
     let mut h = opts
         .h0
         .unwrap_or_else(|| {
-            initial_step(
+            let estimate = initial_step(
                 &f,
                 t0,
                 y0,
                 &k[0],
-                dir,
-                5.0,
-                Tol {
+                InitialStepOptions {
                     rtol: opts.rtol,
                     atol: opts.atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order: 5.0,
                 },
-            )
+            );
+            nfev += estimate.evaluations;
+            estimate.step
         })
         .abs()
         .min(opts.hmax)
@@ -582,10 +560,11 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         orders: Vec::new(),
         dense: Vec::new(),
     };
-    let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
+    let mut gprev = initial_events(events, t0, y0)?;
     let mut steps = 0;
     let mut tmp = vec![0.0; n];
     while (t1 - t) * dir > 0.0 {
+        super::ode_contract::abort_if_requested(stop)?;
         if steps >= opts.max_steps {
             return Err(OdeError::StepLimit);
         }
@@ -593,7 +572,9 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
-        if !h.is_finite() || t + h == t { return Err(OdeError::StepLimit); }
+        if !h.is_finite() || t + h == t {
+            return Err(OdeError::StepLimit);
+        }
         // stages
         for s in 0..6 {
             for i in 0..n {
@@ -609,6 +590,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
             let _ = head;
             f(t + DP_C[s] * h, &tmp, &mut tail[0]);
             nfev += 1;
+            super::ode_contract::abort_if_requested(stop)?;
         }
         let ynew = tmp.clone();
         // after stage s=5 tmp holds y + h*sum(b k) = y_new (row 6 of A is b)
@@ -623,12 +605,15 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         if ynew.iter().any(|v| !v.is_finite()) {
             h *= 0.25;
             sol.rejected += 1;
-            if h.abs() < 1e-300 {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::NonFinite);
             }
             continue;
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
         if en <= 1.0 {
             // dense coefficients
             let d: [Vec<f64>; 4] = std::array::from_fn(|c| {
@@ -654,7 +639,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
                     ynew: &ynew,
                     dir,
                 },
-            ) {
+            )? {
                 sol.nfev = nfev;
                 return Ok(sol);
             }
@@ -677,7 +662,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         } else {
             sol.rejected += 1;
             h *= (0.9 * en.powf(-0.2)).clamp(0.1, 0.9);
-            if h.abs() < 1e-14 * (1.0 + t.abs()) {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::StepLimit);
             }
         }
@@ -712,6 +697,8 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
 ///
 /// # Errors
 /// As [`rosenbrock23`].
+// Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
+#[allow(clippy::float_cmp)]
 pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
     t0: f64,
@@ -720,10 +707,24 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
+    rosenbrock23_events_controlled(f, t0, t1, y0, opts, events, None)
+}
+
+// Exact comparisons detect unrepresentable steps and zero local error.
+#[allow(clippy::float_cmp)]
+pub(crate) fn rosenbrock23_events_controlled<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    events: &[Event<'_>],
+    stop: Option<&dyn Fn() -> bool>,
+) -> Result<OdeSolution, OdeError> {
+    validate_problem(t0, t1, y0, opts, events)?;
+    super::ode_contract::abort_if_requested(stop)?;
+    let f = super::ode_contract::checked_rhs_with_stop(f, || stop.is_some_and(|stop| stop()));
     let n = y0.len();
-    if n == 0 || crate::kernels::exact_eq(t0, t1) {
-        return Err(OdeError::Invalid);
-    }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let d = 1.0 / (2.0 + 2.0_f64.sqrt());
     let e32 = 6.0 + 2.0_f64.sqrt();
@@ -731,22 +732,28 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
     f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
     let mut nfev = 1;
     let mut h = opts
         .h0
         .unwrap_or_else(|| {
-            initial_step(
+            let estimate = initial_step(
                 &f,
                 t0,
                 y0,
                 &f0,
-                dir,
-                2.0,
-                Tol {
+                InitialStepOptions {
                     rtol: opts.rtol,
                     atol: opts.atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order: 2.0,
                 },
-            )
+            );
+            nfev += estimate.evaluations;
+            estimate.step
         })
         .abs()
         .min(opts.hmax)
@@ -762,9 +769,10 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
     };
     // The event functions at the start of the interval; a crossing is a sign
     // change from one accepted step's end to the next.
-    let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t0, y0)).collect();
+    let mut gprev = initial_events(events, t0, y0)?;
     let mut steps = 0;
     while (t1 - t) * dir > 0.0 {
+        super::ode_contract::abort_if_requested(stop)?;
         if steps >= opts.max_steps {
             return Err(OdeError::StepLimit);
         }
@@ -772,7 +780,9 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
-        if !h.is_finite() || t + h == t { return Err(OdeError::StepLimit); }
+        if !h.is_finite() || t + h == t {
+            return Err(OdeError::StepLimit);
+        }
         // Jacobian J and dF/dt by forward differences.
         let mut jac = Mat::zeros(n, n);
         let mut yp = y.clone();
@@ -786,8 +796,9 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
                 jac.set(i, j, (fp[i] - f0[i]) / dj);
             }
         }
-        let dt = 1.5e-8 * t.abs().max(1e-5);
-        f(t + dt, &y, &mut fp);
+        let probe = super::ode_contract::time_probe(t, t0, t1);
+        let dt = probe - t;
+        f(probe, &y, &mut fp);
         let tder: Vec<f64> = (0..n).map(|i| (fp[i] - f0[i]) / dt).collect();
         nfev += n + 1;
         let mut w = Mat::identity(n);
@@ -800,7 +811,7 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
         let Ok(lu) = dense::lu_factor(&w) else {
             h *= 0.5;
             sol.rejected += 1;
-            if h.abs() < 1e-14 {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::SolveFailed);
             }
             continue;
@@ -827,12 +838,15 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
         if ynew.iter().any(|v| !v.is_finite()) {
             h *= 0.25;
             sol.rejected += 1;
-            if h.abs() < 1e-300 {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::NonFinite);
             }
             continue;
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
         if en <= 1.0 {
             let step = DenseStep {
                 t0: t,
@@ -852,7 +866,8 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
                 ynew: &ynew,
                 dir,
             };
-            if process_events(events, &mut gprev, &mut sol, step, &window) {
+            if process_events(events, &mut gprev, &mut sol, step, &window)? {
+                sol.nfev = nfev;
                 return Ok(sol);
             }
             t += h;
@@ -872,7 +887,7 @@ pub fn rosenbrock23_events<F: Fn(f64, &[f64], &mut [f64])>(
         } else {
             sol.rejected += 1;
             h *= (0.9 * en.powf(-1.0 / 3.0)).clamp(0.1, 0.9);
-            if h.abs() < 1e-14 * (1.0 + t.abs()) {
+            if !h.is_finite() || crate::kernels::exact_eq(t + h, t) {
                 return Err(OdeError::StepLimit);
             }
         }

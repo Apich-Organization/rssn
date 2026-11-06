@@ -159,9 +159,7 @@ impl CubicSpline {
             for i in 1..n - 1 {
                 diagonal[i] = 2.0 * (h[i - 1] + h[i]);
             }
-            for i in 1..n - 2 {
-                off[i] = h[i];
-            }
+            off[1..n - 2].copy_from_slice(&h[1..n - 2]);
             if let SplineBc::Clamped(left, right) = bc {
                 if !left.is_finite() || !right.is_finite() {
                     return Err(ApproxError::Invalid);

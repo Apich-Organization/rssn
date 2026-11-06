@@ -39,6 +39,7 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::RwLock;
 
@@ -66,8 +67,35 @@ use crate::kernel::signature::Rational;
 /// A rational exponent in a unit product.
 pub(crate) type Exp = Ratio<i32>;
 
-/// A unit as a product of symbols with rational exponents.
-pub(crate) type UnitMap = BTreeMap<String, Exp>;
+/// A named unit or an immutable definition carried across the value ABI.
+/// Ordering is structural: two definitions with the same name but different
+/// dimensions/scales must remain distinct factors.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum UnitAtom {
+    Named(String),
+    Literal(Arc<crate::kernel::value::UnitValue>),
+}
+
+impl From<String> for UnitAtom {
+    fn from(name: String) -> Self {
+        Self::Named(name)
+    }
+}
+
+impl UnitAtom {
+    pub(crate) fn term(
+        &self,
+        graph: &mut Graph,
+    ) -> NodeId {
+        match self {
+            | Self::Named(name) => graph.sym(name),
+            | Self::Literal(unit) => graph.lit(crate::graph::Payload::Unit(unit.clone())),
+        }
+    }
+}
+
+/// A unit as a product of atoms with rational exponents.
+pub(crate) type UnitMap = BTreeMap<UnitAtom, Exp>;
 
 /// Names of the seven base dimensions, in the order of [`Dim`].
 pub(crate) const DIMENSIONS: [&str; 7] = [
@@ -509,7 +537,7 @@ pub(crate) fn resolve_symbol(name: &str) -> Option<Resolved> {
     if let Some((_, parts)) = ALIASES.iter().find(|(alias, _)| *alias == name) {
         let map: UnitMap = parts
             .iter()
-            .map(|&(n, e)| (n.to_owned(), Exp::from_integer(e)))
+            .map(|&(n, e)| (n.to_owned().into(), Exp::from_integer(e)))
             .collect();
         return resolve_map(&map);
     }
@@ -546,7 +574,10 @@ pub(crate) fn resolve_map(map: &UnitMap) -> Option<Resolved> {
     let mut scale = Scale::one();
     let mut offset = None;
     for (name, &e) in map {
-        let r = resolve_symbol(name)?;
+        let r = match name {
+            | UnitAtom::Named(name) => resolve_symbol(name)?,
+            | UnitAtom::Literal(unit) => resolve_value(unit)?,
+        };
         dim.add_scaled(&r.dim, e);
         if e.is_integer() {
             scale = scale.times(&r.scale.powi(*e.numer()));
@@ -561,6 +592,35 @@ pub(crate) fn resolve_map(map: &UnitMap) -> Option<Resolved> {
         }
     }
     Some(Resolved { dim, scale, offset })
+}
+
+/// Resolves a by-value definition without interpreting its descriptive name.
+/// Malformed ABI data is rejected before constructing a rational or entering
+/// the rewrite engine. Offsets currently have an exact rational representation.
+pub(crate) fn resolve_value(unit: &crate::kernel::value::UnitValue) -> Option<Resolved> {
+    if unit.scale.denom <= BigInt::zero()
+        || unit.scale.numer.is_zero()
+        || unit.affine != unit.offset.is_some()
+    {
+        return None;
+    }
+    let offset = match &unit.offset {
+        | Some(offset) => {
+            if offset.denom <= BigInt::zero() || offset.pi != 0 {
+                return None;
+            }
+            Some(BigRational::new(offset.numer.clone(), offset.denom.clone()))
+        },
+        | None => None,
+    };
+    Some(Resolved {
+        dim: expr_to_dim(&unit.dimension).ok()?,
+        scale: Scale {
+            rat: BigRational::new(unit.scale.numer.clone(), unit.scale.denom.clone()),
+            pi: unit.scale.pi,
+        },
+        offset,
+    })
 }
 
 /// Maps a resolved unit to the dimension layer's term.
@@ -682,7 +742,7 @@ pub(crate) fn parse_unit_text(text: &str) -> Option<UnitMap> {
                 return None;
             }
             let value = exponent * Exp::new(sign, 1);
-            *map.entry(name.to_string())
+            *map.entry(name.to_string().into())
                 .or_insert_with(|| Exp::new(0, 1)) += value;
         }
     }
@@ -731,8 +791,14 @@ pub(crate) fn parse_unit(
     }
     if let Some(symbol) = graph.symbol_of(node) {
         let mut map = UnitMap::new();
-        map.insert(graph.interner().symbol_name(symbol).to_owned(), Exp::one());
+        map.insert(
+            graph.interner().symbol_name(symbol).to_owned().into(),
+            Exp::one(),
+        );
         return Some(map);
+    }
+    if let Some(crate::graph::Payload::Unit(unit)) = graph.payload(node) {
+        return Some([(UnitAtom::Literal(unit.clone()), Exp::one())].into());
     }
     // Several forms may share a class: take the first that reads as a unit.
     graph.enodes(graph.find(node)).find_map(|e| {
@@ -1193,7 +1259,7 @@ fn category_of(dim: &Dim) -> String {
 }
 
 /// The type-level dimension of an internal `Dim`.
-fn dim_to_expr(dim: &Dim) -> DimExpr {
+pub(crate) fn dim_to_expr(dim: &Dim) -> DimExpr {
     let mut factors = Vec::new();
     for (index, exponent) in dim.si().iter().enumerate() {
         if exponent.is_zero() {
@@ -1230,45 +1296,45 @@ fn dim_to_expr(dim: &Dim) -> DimExpr {
 fn expr_to_dim(dim: &DimExpr) -> Result<Dim, DimError> {
     fn walk(
         dim: &DimExpr,
-        out: &mut Dim,
-        sign: i32,
-    ) -> Result<(), DimError> {
-        let bad = |reason: &str| {
-            DimError::Parse {
-                text: crate::kernel::signature::dim_name(dim),
-                reason: reason.to_owned(),
-            }
-        };
+        factors: &mut BTreeMap<String, BigRational>,
+        power: &BigRational,
+    ) -> Option<()> {
         match dim {
-            | DimExpr::Dimless => Ok(()),
-            | DimExpr::Base(name) => {
-                // Any base name is accepted: the seven SI ones go in the
-                // fixed array, everything else in the side table, and the
-                // graph defines it in the arena when the host declares it.
-                out.add_base(name, Exp::new(sign, 1));
-                Ok(())
-            },
-            | DimExpr::Mul(factors) => {
-                for factor in factors {
-                    walk(factor, out, sign)?;
+            | DimExpr::Dimless => {},
+            | DimExpr::Base(name) => *factors.entry(name.clone()).or_default() += power,
+            | DimExpr::Mul(parts) => {
+                for part in parts {
+                    walk(part, factors, power)?;
                 }
-                Ok(())
             },
             | DimExpr::Pow(base, TypeExp::Rat(r)) => {
-                let DimExpr::Base(name) = &**base else {
-                    return Err(bad("only base dimensions may carry an exponent"));
-                };
-                let numer = i32::try_from(r.numer).map_err(|_| bad("exponent too large"))?;
-                let denom = i32::try_from(r.denom).map_err(|_| bad("exponent too large"))?;
-                out.add_base(name, Exp::new(numer * sign, denom));
-                Ok(())
+                if r.denom <= 0 {
+                    return None;
+                }
+                let exponent = BigRational::new(r.numer.into(), r.denom.into());
+                walk(base, factors, &(power * exponent))?;
             },
-            | DimExpr::Inverse(base) => walk(base, out, -sign),
-            | _ => Err(bad("not a concrete dimension")),
+            | DimExpr::Inverse(base) => walk(base, factors, &-power)?,
+            | _ => return None,
         }
+        Some(())
     }
+    let bad = || {
+        DimError::Parse {
+            text: crate::kernel::signature::dim_name(dim),
+            reason:
+                "unit dimensions must be concrete rational products within the unit exponent range"
+                    .to_owned(),
+        }
+    };
+    let mut factors = BTreeMap::new();
+    walk(dim, &mut factors, &BigRational::one()).ok_or_else(bad)?;
     let mut out = Dim::zero();
-    walk(dim, &mut out, 1)?;
+    for (name, exponent) in factors {
+        let numer = exponent.numer().to_i32().ok_or_else(bad)?;
+        let denom = exponent.denom().to_i32().ok_or_else(bad)?;
+        out.add_base(&name, Exp::new(numer, denom));
+    }
     Ok(out)
 }
 
