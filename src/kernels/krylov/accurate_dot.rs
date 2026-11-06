@@ -237,9 +237,6 @@ fn filtered_bulk<I>(pairs: I) -> Option<f64>
 where
     I: Iterator<Item = (f64, f64)>,
 {
-    if pairs.size_hint().0 <= 8 {
-        return None;
-    }
     let (mut sum, mut correction, mut bound) = (0.0_f64, 0.0_f64, 0.0_f64);
     for (a, b) in pairs {
         if a == 0.0 || b == 0.0 {
@@ -448,7 +445,23 @@ where
     I::IntoIter: Clone,
 {
     let pairs = pairs.into_iter();
+    // A single finite multiplication is already correctly rounded by IEEE
+    // binary64, including overflow and gradual underflow. Exact zero operands
+    // are canonicalized as in the binary accumulator; non-finite cases retain
+    // the general path's exceptional-value handling.
+    if pairs.size_hint() == (1, Some(1))
+        && let Some((a, b)) = pairs.clone().next()
+        && a.is_finite()
+        && b.is_finite()
+    {
+        return if a == 0.0 || b == 0.0 {
+            0.0
+        } else {
+            a * b
+        };
+    }
     short_exact_products(pairs.clone())
+        .or_else(|| filtered_bulk(pairs.clone()))
         .or_else(|| filtered(pairs.clone()))
         .unwrap_or_else(|| accumulate(pairs).value())
 }
@@ -719,5 +732,91 @@ mod tests {
                 assert_eq!(fast.to_bits(), exact.to_bits(), "bulk edge {case}");
             }
         }
+    }
+    #[test]
+    fn short_general_products_match_exact_bins_with_cancellation_and_range_edges() {
+        let mut seed = 0x61c8_8646_80b5_83ebu64;
+        let mut accepted = 0;
+        for case in 0..80_000usize {
+            let mut pairs = Vec::new();
+            for index in 0..(1 + case % 8) {
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let a_exp = match case % 5 {
+                    | 0 => 1 + seed % 200,
+                    | 1 => 1800 + seed % 247,
+                    | _ => 970 + seed % 107,
+                };
+                let a = f64::from_bits(
+                    (a_exp << 52) | (seed & ((1u64 << 52) - 1)) | (seed & (1u64 << 63)),
+                );
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let b_exp = match case % 5 {
+                    | 0 => 1900 - seed % 200,
+                    | 1 => 100 + seed % 147,
+                    | _ => 970 + seed % 107,
+                };
+                let b = f64::from_bits(
+                    (b_exp << 52) | (seed & ((1u64 << 52) - 1)) | (seed & (1u64 << 63)),
+                );
+                pairs.push((a, b));
+                if case % 7 == 0 && index % 2 == 1 {
+                    let (x, y) = pairs[index - 1];
+                    pairs[index] = (-x, y);
+                }
+            }
+            let exact = accumulate(pairs.iter().copied()).value();
+            if let Some(fast) = filtered_bulk(pairs.iter().copied()) {
+                accepted += 1;
+                assert_eq!(
+                    fast.to_bits(),
+                    exact.to_bits(),
+                    "short-general filter case {case}"
+                );
+            }
+            assert_eq!(
+                dot_value(pairs.iter().copied()).to_bits(),
+                exact.to_bits(),
+                "short-general dispatch case {case}"
+            );
+        }
+        assert!(accepted > 10_000);
+    }
+    #[test]
+    fn single_product_fast_path_matches_exact_bins_including_zero_and_underflow() {
+        let mut seed = 0x0d77_1d88_4a5c_b389u64;
+        for case in 0..150_000 {
+            seed ^= seed << 7;
+            seed ^= seed >> 9;
+            seed ^= seed << 8;
+            let a = f64::from_bits(seed);
+            seed ^= seed << 7;
+            seed ^= seed >> 9;
+            seed ^= seed << 8;
+            let b = f64::from_bits(seed);
+            if a.is_finite() && b.is_finite() {
+                let exact = accumulate([(a, b)]).value();
+                assert_eq!(
+                    dot_value([(a, b)]).to_bits(),
+                    exact.to_bits(),
+                    "single case {case}"
+                );
+            }
+        }
+        for (a, b) in [
+            (0.0, -1.0),
+            (-0.0, 1.0),
+            (-f64::from_bits(1), 0.5),
+            (f64::MAX, 2.0),
+        ] {
+            assert_eq!(
+                dot_value([(a, b)]).to_bits(),
+                accumulate([(a, b)]).value().to_bits()
+            );
+        }
+        assert!(dot_value([(f64::INFINITY, 0.0)]).is_nan());
     }
 }

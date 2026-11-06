@@ -441,3 +441,18 @@ fn auto_preconditioner_uses_ilu0_when_ic0_rejects_the_matrix() {
     assert!(sol.converged && sol.iterations <= 2, "{sol:?}");
     check(&a, &sol.x, &b, 1e-12);
 }
+
+#[test]
+fn csr_general_short_rows_keep_exact_cancellation_and_overflow_fallback() {
+    // The first two products cancel exactly; the third is not a power-of-two
+    // product and exercises the short common-range certificate.
+    let ordinary = Csr::from_triplets(1, 3, &[(0, 0, 1.1), (0, 1, -1.1), (0, 2, 1.25)]);
+    let mut out = [f64::NAN];
+    ordinary.matvec(&[1e16, 1e16, 0.8], &mut out);
+    assert_eq!(out[0].to_bits(), 1.0_f64.to_bits());
+    // Each leading product overflows binary64, but their exact sum cancels;
+    // the certified path must defer to the full binary accumulator.
+    let extreme = Csr::from_triplets(1, 3, &[(0, 0, 1e308), (0, 1, -1e308), (0, 2, 1.25)]);
+    extreme.matvec(&[2.0, 2.0, 0.8], &mut out);
+    assert_eq!(out[0].to_bits(), 1.0_f64.to_bits());
+}
