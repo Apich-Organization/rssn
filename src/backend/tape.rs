@@ -167,6 +167,7 @@ pub struct Tape {
 // Full equality resolves hash collisions; all constant/function bit patterns
 // and operand order are retained for the native cache.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg(feature = "jit")]
 pub(super) struct ProgramKey {
     inputs: usize,
     params: usize,

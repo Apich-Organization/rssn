@@ -229,7 +229,7 @@ pub(in crate::rules) fn apply_contract(
                     assert!(
                         nonnumeric_leaf(target),
                         "contract status field must be integer or bool"
-                    )
+                    );
                 },
                 | FieldDimension::Unbound => panic!("unbound contract result"),
             }

@@ -2,6 +2,7 @@
 //! cache identity independent of the hash used to choose a cache bucket.
 use super::BackendError;
 use super::Inst;
+#[cfg(feature = "jit")]
 use super::ProgramKey;
 use super::Tape;
 use super::key_of;
@@ -61,6 +62,7 @@ impl Tape {
         Ok(())
     }
 
+    #[cfg(feature = "jit")]
     pub(in crate::backend) fn program_key(&self) -> ProgramKey {
         ProgramKey {
             inputs: self.inputs,

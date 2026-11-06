@@ -212,8 +212,9 @@ where
     I::IntoIter: Clone,
 {
     let pairs = pairs.into_iter();
-    if let Some(value) =
-        filtered(pairs.clone()).filter(|value| value.is_normal() && value.abs() > f64::MIN_POSITIVE)
+    if let Some(value) = filtered_bulk(pairs.clone())
+        .or_else(|| filtered(pairs.clone()))
+        .filter(|value| value.is_normal() && value.abs() > f64::MIN_POSITIVE)
     {
         let (mantissa, exponent) = Sum::parts(value);
         let fraction = mantissa as f64 / (1u64 << 52) as f64;
@@ -228,6 +229,70 @@ where
     }
     accumulate(pairs).normalized()
 }
+// Certified common-range path for long dots. Every nonzero rounded product is
+// between 2^-863 and 2^928: even usize::MAX terms cannot overflow an f64,
+// and every exact product bit and compensation remains representable. The
+// final outward error interval is checked exactly as in the general filter.
+fn filtered_bulk<I>(pairs: I) -> Option<f64>
+where
+    I: Iterator<Item = (f64, f64)>,
+{
+    if pairs.size_hint().0 <= 8 {
+        return None;
+    }
+    let (mut sum, mut correction, mut bound) = (0.0_f64, 0.0_f64, 0.0_f64);
+    for (a, b) in pairs {
+        if a == 0.0 || b == 0.0 {
+            if !a.is_finite() || !b.is_finite() {
+                return None;
+            }
+            continue;
+        }
+        let product = a * b;
+        let exponent = (product.to_bits() >> 52) & 0x7ff;
+        if !(160..=1950).contains(&exponent) {
+            return None;
+        }
+        let residual = a.mul_add(b, -product);
+        let next = sum + product;
+        let back = next - sum;
+        let error = (sum - (next - back)) + (product - back);
+        sum = next;
+        for item in [residual, error] {
+            if item != 0.0 {
+                let next = correction + item;
+                let back = next - correction;
+                let dropped = (correction - (next - back)) + (item - back);
+                correction = next;
+                if dropped != 0.0 {
+                    bound = (bound + dropped.abs()).next_up();
+                }
+            }
+        }
+    }
+    let result = sum + correction;
+    if bound == 0.0 {
+        return Some(if result == 0.0 { 0.0 } else { result });
+    }
+    if !result.is_normal() {
+        return None;
+    }
+    let back = result - sum;
+    let remainder = (sum - (result - back)) + (correction - back);
+    let low = result.next_down();
+    let high = result.next_up();
+    if !low.is_finite() || !high.is_finite() {
+        return None;
+    }
+    let error_low = (remainder - bound).next_down();
+    let error_high = (remainder + bound).next_up();
+    if error_low > -(result - low) * 0.5 && error_high < (high - result) * 0.5 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
 // Error-free transformation for finite additions. Inputs and intermediates
 // that would require special handling are rejected by the filter.
 fn two_sum(
@@ -323,6 +388,59 @@ fn filtered(pairs: impl Iterator<Item = (f64, f64)>) -> Option<f64> {
     filtered_bounded(pairs).map(|(value, _)| value)
 }
 
+// For short rows with exact power-of-two products, two error-free additions
+// retain the entire sum whenever the accumulated correction itself is exact.
+// Difficult rows are handed to the existing certified filter and exact bins.
+fn short_exact_products<I>(pairs: I) -> Option<f64>
+where
+    I: Iterator<Item = (f64, f64)>,
+{
+    if pairs.size_hint().1.is_none_or(|length| length > 8) {
+        return None;
+    }
+    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+    let (mut low, mut high) = (u64::MAX, 0u64);
+    for (a, b) in pairs {
+        if a == 0.0 || b == 0.0 {
+            if !a.is_finite() || !b.is_finite() {
+                return None;
+            }
+            continue;
+        }
+        let bits = a.to_bits();
+        let exponent = (bits >> 52) & 0x7ff;
+        if exponent == 0 || exponent == 0x7ff || bits & ((1u64 << 52) - 1) != 0 {
+            return None;
+        }
+        let product = a * b;
+        let product_exponent = (product.to_bits() >> 52) & 0x7ff;
+        // Eight such products and all two-sum intermediates stay finite;
+        // even the smallest correction cannot underflow.
+        if !(65..=2040).contains(&product_exponent) {
+            return None;
+        }
+        low = low.min(product_exponent);
+        high = high.max(product_exponent);
+        if high - low > 40 {
+            return None;
+        }
+        let next = sum + product;
+        let back = next - sum;
+        let error = (sum - (next - back)) + (product - back);
+        sum = next;
+        // At most eight input floats span 40 exponent positions. Their
+        // two-sum errors are multiples of the smallest input ulp, and their
+        // total fits within 46 significant bits, so this addition is exact.
+        correction += error;
+    }
+    let result = sum + correction;
+    if result.is_finite() {
+        Some(if result == 0.0 { 0.0 } else { result })
+    } else {
+        None
+    }
+}
+
 /// Round the exact dot product directly to f64, including subnormal ties.
 pub(super) fn dot_value<I>(pairs: I) -> f64
 where
@@ -330,7 +448,9 @@ where
     I::IntoIter: Clone,
 {
     let pairs = pairs.into_iter();
-    filtered(pairs.clone()).unwrap_or_else(|| accumulate(pairs).value())
+    short_exact_products(pairs.clone())
+        .or_else(|| filtered(pairs.clone()))
+        .unwrap_or_else(|| accumulate(pairs).value())
 }
 
 #[cfg(test)]
@@ -490,5 +610,114 @@ mod tests {
         assert!(dot_value([(f64::INFINITY, 1.0), (f64::NEG_INFINITY, 1.0)]).is_nan());
         let (m, e) = product_sum([(1e-300, 1e-300)]);
         assert!(m != 0.0 && e < -1074);
+    }
+    #[test]
+    fn fast_paths_match_exact_bins_bitwise_across_scales_and_cancellation() {
+        let mut seed = 0x3c79_ac49_2ba7_b653_u64;
+        let mut short_accepted = 0;
+        let mut bulk_accepted = 0;
+        for case in 0..50_000 {
+            let count = if case % 2 == 0 {
+                1 + case % 8
+            } else {
+                9 + case % 64
+            };
+            let mut pairs = Vec::with_capacity(count);
+            for index in 0..count {
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let sign = seed & (1 << 63);
+                let exponent = 900 + (seed % 240);
+                let b = f64::from_bits(sign | (exponent << 52) | (seed & ((1 << 52) - 1)));
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let a = if count <= 8 {
+                    f64::from_bits((1020 + seed % 7) << 52 | (seed & (1 << 63)))
+                } else {
+                    f64::from_bits(
+                        (1000 + seed % 47) << 52 | (seed & ((1 << 52) - 1)) | (seed & (1 << 63)),
+                    )
+                };
+                pairs.push((a, b));
+                if index > 0 && case % 13 == 0 && index % 3 == 0 {
+                    let (x, y) = pairs[index - 1];
+                    pairs[index] = (-x, y);
+                }
+            }
+            let exact = accumulate(pairs.iter().copied()).value();
+            if let Some(fast) = short_exact_products(pairs.iter().copied()) {
+                short_accepted += 1;
+                assert_eq!(fast.to_bits(), exact.to_bits(), "short case {case}");
+            }
+            if let Some(fast) = filtered_bulk(pairs.iter().copied()) {
+                bulk_accepted += 1;
+                assert_eq!(fast.to_bits(), exact.to_bits(), "bulk case {case}");
+            }
+            assert_eq!(
+                dot_value(pairs.iter().copied()).to_bits(),
+                exact.to_bits(),
+                "result case {case}"
+            );
+        }
+        assert!(short_accepted > 5_000 && bulk_accepted > 5_000);
+        for pairs in [vec![(0.0, f64::INFINITY)], vec![(f64::NAN, 0.0)]] {
+            assert!(short_exact_products(pairs.iter().copied()).is_none());
+            assert!(dot_value(pairs.iter().copied()).is_nan());
+        }
+        let pairs = vec![(0.0, f64::INFINITY); 9];
+        assert!(filtered_bulk(pairs.iter().copied()).is_none());
+        // Exercise the accepted exponent envelope, including subnormal
+        // operands with a normal product and severe mixed-sign cancellation.
+        for case in 0..20_000u64 {
+            let base = match case % 4 {
+                | 0 => 65,
+                | 1 => 160,
+                | 2 => 1900,
+                | _ => 2000,
+            };
+            let mut pairs = Vec::new();
+            for index in 0..8u64 {
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let exp = base + (seed % 38);
+                let b = f64::from_bits((exp << 52) | (seed & ((1 << 52) - 1)) | (seed & (1 << 63)));
+                let a = if index % 3 == 0 { -1.0 } else { 1.0 };
+                pairs.push((a, b));
+                if index > 0 && case % 5 == 0 && index % 2 == 1 {
+                    let (x, y) = pairs[index as usize - 1];
+                    pairs[index as usize] = (-x, y);
+                }
+            }
+            let exact = accumulate(pairs.iter().copied()).value();
+            if let Some(fast) = short_exact_products(pairs.iter().copied()) {
+                assert_eq!(fast.to_bits(), exact.to_bits(), "edge {case}");
+            }
+        }
+        for case in 0..10_000u64 {
+            let exp = if case % 2 == 0 { 160 } else { 1949 };
+            let mut pairs = Vec::new();
+            for index in 0..16u64 {
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let a = f64::from_bits((1023u64 << 52) | (seed & ((1 << 52) - 1)));
+                seed ^= seed << 7;
+                seed ^= seed >> 9;
+                seed ^= seed << 8;
+                let b = f64::from_bits((exp << 52) | (seed & ((1 << 52) - 1)) | (seed & (1 << 63)));
+                pairs.push((a, b));
+                if index > 0 && case % 7 == 0 && index % 2 == 1 {
+                    let (x, y) = pairs[index as usize - 1];
+                    pairs[index as usize] = (-x, y);
+                }
+            }
+            let exact = accumulate(pairs.iter().copied()).value();
+            if let Some(fast) = filtered_bulk(pairs.iter().copied()) {
+                assert_eq!(fast.to_bits(), exact.to_bits(), "bulk edge {case}");
+            }
+        }
     }
 }
