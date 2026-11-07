@@ -212,6 +212,7 @@
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::Signed;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use crate::graph::Arity;
@@ -600,11 +601,14 @@ pub(crate) fn solve_for(
 ///   non-zero exactly where it holds, and each irreducible factor of it is
 ///   returned as a [`ConditionKind::Distinct`] condition (`a != 0` for
 ///   `x^2 - a`), so the claim is exact rather than generic;
-/// * anything else (a repeated factor with an irrational or symbolic root, a
-///   denominator that carries the unknown, a non-polynomial equation) is
-///   "not reported": matching such a root against a factor numerically
-///   would turn an association into a guess, and a wrong multiplicity is
-///   worse than none.
+/// * a rational polynomial with a repeated factor and an irrational root:
+///   the root belongs to the exact square-free part that vanishes at its
+///   value. The association is made on values and only when it is
+///   unmistakable (one part is rounding noise there, every other part is
+///   clearly non-zero); an unclear case is "not reported";
+/// * anything else (a repeated factor with a symbolic root, a denominator
+///   that carries the unknown, a non-polynomial equation) is "not
+///   reported": a wrong multiplicity is worse than none.
 pub(crate) fn root_multiplicities(
     graph: &mut Graph,
     expr: NodeId,
@@ -660,6 +664,16 @@ pub(crate) fn root_multiplicities(
         let value = match root {
             | crate::kernel::value::Value::Int(value) => BigRational::from_integer(value.clone()),
             | crate::kernel::value::Value::Real(number) => number.to_rational()?,
+            | crate::kernel::value::Value::Term(handle) => {
+                // An irrational root: the factor it belongs to is the one
+                // that vanishes there, decided on values with a margin (the
+                // factors are pairwise coprime, so the others stay clearly
+                // away from zero); an unclear case is not reported.
+                let node = NodeId::from_raw(handle.node);
+                let at = graph.eval(node, &Env::numeric(0.0))?;
+                out.push(factor_multiplicity(&parts, at)?);
+                continue;
+            },
             | _ => return None,
         };
         let mut found: Option<u32> = None;
@@ -677,6 +691,32 @@ pub(crate) fn root_multiplicities(
         out.push(found?);
     }
     Some((out, Vec::new()))
+}
+
+/// The multiplicity of the zero `at` of `c * prod f_i^i`: the exponent of the
+/// one factor `f_i` whose value there is rounding noise while every other
+/// factor is clearly non-zero. `None` when no factor stands out.
+fn factor_multiplicity(
+    parts: &[(univariate::QPoly, u32)],
+    at: f64,
+) -> Option<u32> {
+    if !at.is_finite() {
+        return None;
+    }
+    let mut measured: Vec<(f64, u32)> = Vec::with_capacity(parts.len());
+    for (part, multiplicity) in parts {
+        let mut value = 0.0_f64;
+        let mut scale = 0.0_f64;
+        for coefficient in part.iter().rev() {
+            let c = coefficient.to_f64()?;
+            value = value * at + c;
+            scale = scale * at.abs() + c.abs();
+        }
+        measured.push((value.abs() / scale.max(f64::MIN_POSITIVE), *multiplicity));
+    }
+    measured.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let (&(smallest, multiplicity), rest) = measured.split_first()?;
+    (smallest <= 1e-9 && rest.iter().all(|&(v, _)| v >= 1e-6)).then_some(multiplicity)
 }
 
 /// Where the polynomial `numer` in `gx`, whose other generators are

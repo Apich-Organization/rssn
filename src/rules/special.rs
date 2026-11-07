@@ -866,6 +866,19 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/erf-0: erf(0) => 0",
             "special/erfc-0: erfc(0) => 1",
             "special/erf-odd: erf(-?x) => -erf(?x)",
+            "special/erf-oo: erf(oo) => 1",
+            "special/erfc-oo: erfc(oo) => 0",
+            "special/erfc-minus-oo: erfc(-oo) => 2",
+            "special/si-oo: si(oo) => pi/2",
+            "special/ci-oo: ci(oo) => 0",
+            "special/ei-minus-oo: ei(-oo) => 0",
+            "special/besselj-n-0: besselj(?n, 0) => 0 if integer(?n), positive(?n)",
+            "special/besseli-n-0: besseli(?n, 0) => 0 if integer(?n), positive(?n)",
+            "special/si-0: si(0) => 0",
+            "special/si-odd: si(-?x) => -si(?x)",
+            "special/shi-0: shi(0) => 0",
+            "special/shi-odd: shi(-?x) => -shi(?x)",
+            "special/li-0: li(0) => 0",
             "special/erf-erfc: erfc(?x) + erf(?x) => 1",
             "special/sinc-0: sinc(0) => 1",
             "special/sinc-even: sinc(-?x) => sinc(?x)",
@@ -1316,18 +1329,40 @@ fn gamma_exact(x: &BigRational) -> Option<(BigRational, bool)> {
     Some((value, true))
 }
 
-/// `zeta(2k)` for `k = 1..=6` as the rational `r` in `r * pi^(2k)`.
+/// `zeta(2k)` for `k = 1..=30` as the rational `r` in `r * pi^(2k)`:
+/// `r = |B_2k| 2^(2k-1) / (2k)!`.
 fn zeta_even(n: &BigInt) -> Option<BigRational> {
-    let (numer, denom): (i64, i64) = match n.to_u32()? {
-        | 2 => (1, 6),
-        | 4 => (1, 90),
-        | 6 => (1, 945),
-        | 8 => (1, 9450),
-        | 10 => (1, 93_555),
-        | 12 => (691, 638_512_875),
-        | _ => return None,
+    let n = n.to_u32()?;
+    if n < 2 || !n.is_multiple_of(2) || n > 60 {
+        return None;
+    }
+    let bernoulli = super::combinatorics::bernoulli(usize::try_from(n).ok()?);
+    let magnitude = if bernoulli.is_negative() {
+        -bernoulli
+    } else {
+        bernoulli
     };
-    Some(BigRational::new(numer.into(), denom.into()))
+    Some(
+        magnitude * BigRational::from_integer(BigInt::from(2).pow(n.saturating_sub(1)))
+            / BigRational::from_integer(factorial(n)),
+    )
+}
+
+/// `zeta(s)` at `s = 0` and at the negative integers: the rational
+/// `(-1)^n B_(n+1) / (n+1)` for `s = -n` (with `B_1 = -1/2`).
+fn zeta_nonpositive(s: &BigInt) -> Option<BigRational> {
+    if s.is_positive() {
+        return None;
+    }
+    let n = usize::try_from((-s).to_u32()?).ok().filter(|&n| n <= 200)?;
+    let next = n.saturating_add(1);
+    let value =
+        super::combinatorics::bernoulli(next) / BigRational::from_integer(BigInt::from(next));
+    Some(if n.is_multiple_of(2) {
+        value
+    } else {
+        -value
+    })
 }
 
 /// Exact values of `gamma` at integers and half-integers and of `zeta` at
@@ -1356,6 +1391,9 @@ impl Kernel for Exact {
             let Some(n) = integer(graph, arg) else {
                 return Outcome::Pass;
             };
+            if let Some(value) = zeta_nonpositive(&n) {
+                return Outcome::Equal(graph.num(Number::rat(value)));
+            }
             let Some(coefficient) = zeta_even(&n) else {
                 return Outcome::Pass;
             };
@@ -1415,6 +1453,31 @@ impl Kernel for PolygammaExact {
             },
             | _ => return Outcome::Pass,
         };
+        if order == 0
+            && let Some(half) = graph
+                .number_of(at)
+                .and_then(Number::to_rational)
+                .filter(|r| r.denom() == &BigInt::from(2) && r.is_positive())
+            && let Some(m) = half.numer().to_i64().filter(|m| *m <= 20_001)
+            && let Some(ln) = graph.ops().lookup("ln")
+        {
+            // digamma(n + 1/2) = -gamma - 2 ln 2 + 2 sum_{k=1}^n 1/(2k - 1)
+            let mut partial = BigRational::zero();
+            let mut k = 1_i64;
+            while k < m {
+                partial += BigRational::new(BigInt::from(2), BigInt::from(k));
+                k = k.saturating_add(2);
+            }
+            let constant = graph.node(self.euler_gamma, &[]);
+            let two = graph.int(2);
+            let log_two = graph.node(ln, &[two]);
+            let minus_one = graph.int(-1);
+            let minus_two = graph.int(-2);
+            let negated = graph.node(core::MUL, &[minus_one, constant]);
+            let log_term = graph.node(core::MUL, &[minus_two, log_two]);
+            let h = graph.num(Number::rat(partial));
+            return Outcome::Pinned(graph.node(core::ADD, &[h, negated, log_term]));
+        }
         let Some(n) = graph
             .number_of(at)
             .and_then(Number::to_i64)
@@ -2413,7 +2476,12 @@ mod tests {
             close(ev(&text, &[]), ev("zeta(s)", &[("s", k)]), 1e-13);
         }
         assert_eq!(s("zeta(3)"), "zeta(3)");
-        assert_eq!(s("zeta(14)"), "zeta(14)");
+        assert_eq!(s("zeta(14)"), "2/18243225*pi^14");
+        assert_eq!(s("zeta(62)"), "zeta(62)");
+        assert_eq!(s("zeta(0)"), "-1/2");
+        assert_eq!(s("zeta(-1)"), "-1/12");
+        assert_eq!(s("zeta(-2)"), "0");
+        assert_eq!(s("zeta(-3)"), "1/120");
     }
 
     #[test]

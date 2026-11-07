@@ -89,18 +89,35 @@ pub(super) fn higher_degree(
     }
 }
 
-/// Real roots by exact isolation and bisection to double precision.
+/// Real roots by exact isolation, as exact `root_of` objects (the double
+/// precision bisection value only orders them).
 fn numeric_roots(
     graph: &mut Graph,
     coefficients: &[BigRational],
 ) -> Vec<(f64, NodeId)> {
     let width = BigRational::new(BigInt::one(), BigInt::from(10_u64.pow(16)));
     let intervals = crate::rules::poly::algebra::isolate(coefficients);
+    let root_of = graph.ops().lookup("root_of");
     let mut out = Vec::with_capacity(intervals.len());
-    for interval in intervals {
+    for (index, interval) in intervals.into_iter().enumerate() {
         let (a, b) = crate::rules::poly::algebra::refine_interval(coefficients, interval, &width);
         let mid = Number::rat((a + b) / BigRational::from_integer(BigInt::from(2))).to_f64();
-        out.push((mid, graph.float(mid)));
+        // The root is an exact object, `root_of(k, c0, ..., cn)` (the `k`-th
+        // real root in ascending order), never a float: exact input gives an
+        // exact answer. The float only orders the roots.
+        let node = match i64::try_from(index).ok().zip(root_of) {
+            | Some((k, op)) => {
+                let mut args = vec![graph.int(k)];
+                args.extend(
+                    coefficients
+                        .iter()
+                        .map(|c| graph.num(Number::rat(c.clone()))),
+                );
+                graph.node(op, &args)
+            },
+            | None => graph.float(mid),
+        };
+        out.push((mid, node));
     }
     out
 }

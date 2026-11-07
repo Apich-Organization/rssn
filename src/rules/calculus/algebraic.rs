@@ -568,12 +568,14 @@ fn accept(
 ) -> Option<NodeId> {
     // Prefer the real variant: it evaluates on both sides of a zero of a
     // logarithm's argument, where the complex logarithm does not.
+    // The constructions leave exact radicals (`4^(1/2)`) and odd arguments
+    // (`asin(-t)`) in the answer; it is handed on in normal form.
     let wrapped = real_logs(cx.graph, candidate);
     if wrapped != candidate && verifies(cx, f, x, wrapped) {
-        return Some(wrapped);
+        return Some(cx.simplify(wrapped));
     }
     if verifies(cx, f, x, candidate) {
-        return Some(candidate);
+        return Some(cx.simplify(candidate));
     }
     None
 }

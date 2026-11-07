@@ -20,6 +20,7 @@
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::Signed;
 use num_traits::Zero;
 
 use crate::graph::Ball;
@@ -187,7 +188,10 @@ fn power_series(
         };
         terms.push(term);
     }
-    add(graph, &terms)
+    let sum = add(graph, &terms);
+    // A truncated series prints from its lowest power up.
+    graph.mark_ascending(sum);
+    sum
 }
 
 fn order(
@@ -462,7 +466,7 @@ fn symbolic_sum(
             linear_in_index(graph, exponent, k, symbol)
         };
         if let Some((scale, shift)) = linear {
-            let mut constant = constant.clone();
+            let mut constant = constant;
             if let Some(shift) = shift {
                 constant.push(graph.node(core::POW, &[base, shift]));
             }
@@ -510,6 +514,9 @@ fn symbolic_sum(
     // Hypergeometric terms: Gosper's antidifference; rational terms that
     // are not Gosper-summable: partial fractions and polygamma.
     if infinite_upper {
+        if let Some(found) = infinite_series_sum(cx, term, k, lower) {
+            return Some(found);
+        }
         return rational_sum(cx, term, k, lower, None);
     }
     let from_nonnegative = cx.graph.number_of(lower).is_some_and(|n| !n.is_negative());
@@ -569,6 +576,299 @@ fn linear_in_index(
         return Some((scale, shift));
     }
     None
+}
+
+/// `r^e` for a rational `r` and a small integer `e`.
+fn rational_power(
+    r: &BigRational,
+    e: i64,
+) -> Option<BigRational> {
+    if e.unsigned_abs() > 24 {
+        return None;
+    }
+    let mut value = BigRational::one();
+    for _ in 0..e.unsigned_abs() {
+        value *= r;
+    }
+    if e < 0 {
+        if value.is_zero() {
+            return None;
+        }
+        value = value.recip();
+    }
+    Some(value)
+}
+
+/// `S(p) = sum_{k>=0} k^p r^k` for a rational `|r| < 1`, through the Stirling
+/// numbers of the second kind: `sum_j S2(p, j) j! r^j / (1 - r)^(j + 1)`.
+fn power_geometric_sum(
+    p: usize,
+    r: &BigRational,
+) -> BigRational {
+    // Rows of the triangle S2(n, j), n = 0..=p.
+    let mut row: Vec<BigInt> = vec![BigInt::one()];
+    for n in 1..=p {
+        let mut next = vec![BigInt::zero(); n.saturating_add(1)];
+        for (j, slot) in next.iter_mut().enumerate() {
+            let above = row.get(j).cloned().unwrap_or_default();
+            let left = j
+                .checked_sub(1)
+                .and_then(|i| row.get(i))
+                .cloned()
+                .unwrap_or_default();
+            *slot = above * BigInt::from(j) + left;
+        }
+        row = next;
+    }
+    let one_minus = BigRational::one() - r;
+    let mut total = BigRational::zero();
+    let mut j_factorial = BigInt::one();
+    let mut r_power = BigRational::one();
+    let mut denominator = one_minus.clone();
+    for (j, stirling) in row.iter().enumerate() {
+        if j > 0 {
+            j_factorial *= BigInt::from(j);
+            r_power *= r;
+            denominator *= &one_minus;
+        }
+        total += BigRational::from_integer(stirling * &j_factorial) * &r_power / &denominator;
+    }
+    total
+}
+
+/// Sums to infinity that the geometric and p-series cases above do not see:
+///
+/// * a polynomial in `k` times a rational geometric factor
+///   (`sum k / 2^k = 2`), through `sum k^p r^k`;
+/// * `z^k / k!` (and `(-1)^k z^(a k) / k!`), the exponential series;
+/// * the alternating p-series `sum (-1)^(k+b) / k^s`, which is the Dirichlet
+///   eta function: `ln 2` for `s = 1`, `(1 - 2^(1-s)) zeta(s)` otherwise.
+#[allow(clippy::too_many_lines)]
+fn infinite_series_sum(
+    cx: &mut Cx<'_>,
+    term: NodeId,
+    k: NodeId,
+    lower: NodeId,
+) -> Option<NodeId> {
+    let symbol = cx.graph.symbol_of(k)?;
+    let low = cx
+        .graph
+        .number_of(lower)
+        .and_then(Number::to_i64)
+        .filter(|l| (0..=60).contains(l))?;
+    let factors: Vec<NodeId> = if cx.graph.op(term) == core::MUL {
+        cx.graph.children(term).to_vec()
+    } else {
+        vec![term]
+    };
+    let factorial = cx.graph.ops().lookup("factorial");
+    let mut constant: Vec<NodeId> = Vec::new();
+    let mut polynomial: Vec<NodeId> = Vec::new();
+    let mut geometric: Vec<(NodeId, NodeId)> = Vec::new();
+    let mut inverse_factorial = false;
+    for &factor in &factors {
+        if !cx.graph.depends_on(cx.graph.find(factor), symbol) {
+            constant.push(factor);
+            continue;
+        }
+        if cx.graph.op(factor) == core::POW
+            && let &[base, exponent] = cx.graph.children(factor)
+        {
+            if !cx.graph.depends_on(cx.graph.find(base), symbol) {
+                geometric.push((base, exponent));
+                continue;
+            }
+            let minus_one = cx
+                .graph
+                .number_of(exponent)
+                .is_some_and(|n| *n == Number::from(-1));
+            if minus_one
+                && factorial.is_some_and(|op| cx.graph.op(base) == op)
+                && cx.graph.children(base).first().copied() == Some(k)
+            {
+                inverse_factorial = true;
+                continue;
+            }
+        }
+        polynomial.push(factor);
+    }
+    let &[(base, exponent)] = geometric.as_slice() else {
+        // `z^k / k!` with several geometric factors multiplies their bases.
+        return exponential_series(
+            cx,
+            &constant,
+            &geometric,
+            inverse_factorial,
+            &polynomial,
+            k,
+            low,
+        );
+    };
+    if inverse_factorial {
+        return exponential_series(
+            cx,
+            &constant,
+            &geometric,
+            inverse_factorial,
+            &polynomial,
+            k,
+            low,
+        );
+    }
+    let (scale, shift) = linear_in_index(cx.graph, exponent, k, symbol)?;
+    let slope = match scale {
+        | None => 1_i64,
+        | Some(s) => cx.graph.number_of(s).and_then(Number::to_i64)?,
+    };
+    if slope == 0 {
+        return None;
+    }
+    let base_value = cx.graph.number_of(base).and_then(Number::to_rational)?;
+    let ratio = rational_power(&base_value, slope)?;
+    // Alternating p-series: ratio -1 and a single `k^-s`.
+    if ratio == -BigRational::one()
+        && low == 1
+        && let &[power] = polynomial.as_slice()
+        && cx.graph.op(power) == core::POW
+        && let &[p_base, p_exponent] = cx.graph.children(power)
+        && p_base == k
+        && let Some(s) = cx
+            .graph
+            .number_of(p_exponent)
+            .and_then(Number::to_i64)
+            .filter(|s| *s < 0 && *s >= -40)
+    {
+        let s = s.saturating_neg();
+        // sum_{k>=1} (-1)^k k^-s = -eta(s)
+        let eta = if s == 1 {
+            let ln = cx.graph.ops().lookup("ln")?;
+            let two = cx.graph.int(2);
+            cx.graph.node(ln, &[two])
+        } else {
+            let zeta = cx.graph.ops().lookup("zeta")?;
+            let s_node = cx.graph.int(s);
+            let value = cx.graph.node(zeta, &[s_node]);
+            let two = BigRational::from_integer(BigInt::from(2));
+            let factor = BigRational::one() - rational_power(&two, 1_i64.saturating_sub(s))?;
+            let factor = cx.graph.num(Number::rat(factor));
+            cx.graph.node(core::MUL, &[factor, value])
+        };
+        let minus_one = cx.graph.int(-1);
+        let mut all = constant;
+        all.push(minus_one);
+        all.push(eta);
+        if let Some(shift) = shift {
+            all.push(cx.graph.node(core::POW, &[base, shift]));
+        }
+        return Some(mul(cx.graph, &all));
+    }
+    if polynomial.is_empty() || ratio.is_zero() || ratio.abs() >= BigRational::one() {
+        return None;
+    }
+    // A polynomial in k times r^k.
+    let body = mul(cx.graph, &polynomial);
+    let mut gens = Gens::default();
+    let gk = gens.index(cx.graph, k);
+    let poly = from_term(cx.graph, &mut gens, body, Limits::default())?;
+    let pure = poly.support().iter().all(|&g| {
+        g == gk
+            || gens
+                .node(g)
+                .is_some_and(|n| !cx.graph.depends_on(cx.graph.find(n), symbol))
+    });
+    if !pure {
+        return None;
+    }
+    let coefficients = poly.coefficients_in(gk);
+    if coefficients.len() > 13 {
+        return None;
+    }
+    let mut pieces = Vec::new();
+    for (p, coefficient) in coefficients.iter().enumerate() {
+        if coefficient.is_zero() {
+            continue;
+        }
+        let mut value = power_geometric_sum(p, &ratio);
+        // Remove the terms below the lower bound.
+        let mut r_power = BigRational::one();
+        for j in 0..low {
+            let j_power = BigRational::from_integer(BigInt::from(j).pow(u32::try_from(p).ok()?));
+            let j_power = if p == 0 {
+                BigRational::one()
+            } else {
+                j_power
+            };
+            value -= j_power * &r_power;
+            r_power *= &ratio;
+        }
+        let c = to_term(cx.graph, &gens, coefficient);
+        let v = cx.graph.num(Number::rat(value));
+        pieces.push(mul(cx.graph, &[c, v]));
+    }
+    let mut all = constant;
+    if let Some(shift) = shift {
+        all.push(cx.graph.node(core::POW, &[base, shift]));
+    }
+    all.push(add(cx.graph, &pieces));
+    Some(mul(cx.graph, &all))
+}
+
+/// `sum_{k>=low} c z^k / k!` with `z` the product of the geometric bases
+/// (each raised to its positive integer slope): `exp(z)` less the terms
+/// below `low`.
+fn exponential_series(
+    cx: &mut Cx<'_>,
+    constant: &[NodeId],
+    geometric: &[(NodeId, NodeId)],
+    inverse_factorial: bool,
+    polynomial: &[NodeId],
+    k: NodeId,
+    low: i64,
+) -> Option<NodeId> {
+    if !inverse_factorial || !polynomial.is_empty() {
+        return None;
+    }
+    let symbol = cx.graph.symbol_of(k)?;
+    let exp = cx.graph.ops().lookup("exp")?;
+    let mut constants: Vec<NodeId> = constant.to_vec();
+    let mut z_parts: Vec<NodeId> = Vec::new();
+    for &(base, exponent) in geometric {
+        let (scale, shift) = linear_in_index(cx.graph, exponent, k, symbol)?;
+        let slope = match scale {
+            | None => 1_i64,
+            | Some(s) => cx.graph.number_of(s).and_then(Number::to_i64)?,
+        };
+        if !(1..=8).contains(&slope) {
+            return None;
+        }
+        if let Some(shift) = shift {
+            constants.push(cx.graph.node(core::POW, &[base, shift]));
+        }
+        z_parts.push(if slope == 1 {
+            base
+        } else {
+            let e = cx.graph.int(slope);
+            cx.graph.node(core::POW, &[base, e])
+        });
+    }
+    let z = mul(cx.graph, &z_parts);
+    let total = cx.graph.node(exp, &[z]);
+    let mut pieces = vec![total];
+    let mut factorial = BigInt::one();
+    for j in 0..low {
+        if j > 0 {
+            factorial *= BigInt::from(j);
+        }
+        let weight = cx.graph.num(Number::rat(-BigRational::new(
+            BigInt::one(),
+            factorial.clone(),
+        )));
+        let exponent = cx.graph.int(j);
+        let power = cx.graph.node(core::POW, &[z, exponent]);
+        pieces.push(mul(cx.graph, &[weight, power]));
+    }
+    constants.push(add(cx.graph, &pieces));
+    Some(mul(cx.graph, &constants))
 }
 
 /// `Σ c·sin(a k + b)`, `Σ c·cos(a k + b)` (finite), `Σ c·ln k` and

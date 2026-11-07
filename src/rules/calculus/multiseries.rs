@@ -1581,6 +1581,11 @@ fn finish(
             .all(|e| e.is_integer() && !e.is_negative())
     });
     let term = build(graph, bases, &terms)?;
+    // About a finite point the sum reads from its lowest power up, like
+    // `taylor`; an expansion in `1/x` keeps the descending-degree order.
+    if bases.iter().all(|base| !base.reciprocal && !base.signed) {
+        graph.mark_ascending(term);
+    }
     Some(Expansion { term, is_taylor })
 }
 
@@ -1725,15 +1730,15 @@ mod tests {
     fn taylor_total_degree() {
         assert_eq!(
             run("mseries(exp(x + y), list(x, y), list(0, 0), 2)"),
-            "1/2*x^2 + x*y + 1/2*y^2 + x + y + 1"
+            "1 + y + x + 1/2*y^2 + x*y + 1/2*x^2"
         );
         assert_eq!(
             run("mseries(1/(1 - x - y), list(x, y), list(0, 0), 2)"),
-            "x^2 + 2*x*y + y^2 + x + y + 1"
+            "1 + y + x + y^2 + 2*x*y + x^2"
         );
         assert_eq!(
             run("mseries(ln(1 + x + y), list(x, y), list(0, 0), 2)"),
-            "x - 1/2*x^2 - x*y - 1/2*y^2 + y"
+            "y + x - 1/2*y^2 - x*y - 1/2*x^2"
         );
         assert_eq!(
             run("mtaylor(exp(x + y), list(x, y), list(0, 0), 2)"),
@@ -1742,7 +1747,7 @@ mod tests {
         assert_eq!(run("mseries(exp(x + y), list(x, y), list(0, 0), 0)"), "1");
         assert_eq!(
             run("mseries(exp(x + y), list(x, y), list(0, 0), 1)"),
-            "x + y + 1"
+            "1 + y + x"
         );
     }
 
@@ -1754,7 +1759,7 @@ mod tests {
         );
         assert_eq!(
             run("mseries(exp(x)/y^2, list(x, y), list(0, 0), 2)"),
-            "1/24*x^4/y^2 + 1/6*x^3/y^2 + 1/2*x^2/y^2 + x/y^2 + 1/y^2"
+            "1/y^2 + x/y^2 + 1/2*x^2/y^2 + 1/6*x^3/y^2 + 1/24*x^4/y^2"
         );
         assert_eq!(
             run("mseries(x^(-1)*sin(y), list(x, y), list(0, 0), 3)"),
@@ -1766,11 +1771,11 @@ mod tests {
     fn directional_expansions() {
         assert_eq!(
             run("mseries(1/(x^2 - y^2), list(x, y), list(0, 0), 4)"),
-            "-x^4/y^6 - x^2/y^4 - 1/y^2"
+            "-1/y^2 - x^2/y^4 - x^4/y^6"
         );
         assert_eq!(
             run("mseries((x + y)^(-2), list(x, y), list(0, 0), 2)"),
-            "3*x^2/y^4 - 2*x/y^3 + 1/y^2"
+            "1/y^2 - 2*x/y^3 + 3*x^2/y^4"
         );
     }
 
@@ -1794,7 +1799,7 @@ mod tests {
         );
         assert_eq!(
             run("mseries(1/(x*y), list(x, y), list(1, 2), 2)"),
-            "1/8*(y - 2)^2 + 1/4*(y - 2)*(x - 1) + 1/2*(x - 1)^2 - 1/4*(y - 2) - 1/2*(x - 1) + 1/2"
+            "1/2 - 1/2*(x - 1) - 1/4*(y - 2) + 1/2*(x - 1)^2 + 1/4*(y - 2)*(x - 1) + 1/8*(y - 2)^2"
         );
     }
 
@@ -1811,22 +1816,22 @@ mod tests {
         );
         assert_eq!(
             run("mseries(x^(1/2)*exp(y), list(x, y), list(0, 0), 3)"),
-            "1/2*x^(1/2)*y^2 + x^(1/2)*y + x^(1/2)"
+            "x^(1/2) + x^(1/2)*y + 1/2*x^(1/2)*y^2"
         );
         assert_eq!(
             run("mseries(sqrt(x^2*(1 + y)), list(x, y), list(0, 0), 3)"),
-            "1/2*x*y - 1/8*x*y^2 + x"
+            "x + 1/2*x*y - 1/8*x*y^2"
         );
         assert_eq!(
             run("mseries(x^(1/2)/(1 - x - y), list(x, y), list(0, 0), 2)"),
-            "x^(3/2) + x^(1/2)*y + x^(1/2)"
+            "x^(1/2) + x^(1/2)*y + x^(3/2)"
         );
         assert_eq!(run("mseries(sqrt(x), list(x), list(0), 2)"), "x^(1/2)");
         // A fractional power of an analytic unit is a Taylor series and is
         // expanded by the ordinary recursion.
         assert_eq!(
             run("mseries((1 + x)^(1/2), list(x), list(0), 2)"),
-            "1/2*x - 1/8*x^2 + 1"
+            "1 + 1/2*x - 1/8*x^2"
         );
     }
 
@@ -1972,8 +1977,8 @@ mod tests {
             ("mseries(exp(a)*x/x, list(x), list(0), 1)", "exp(a)"),
             // A non-constant body that cancels: the expansion is the
             // simplified function, without any internal variable.
-            ("mseries((x^2 - 1)/(x - 1), list(x), list(0), 2)", "x + 1"),
-            ("mseries((x*y + y^2)/y, list(x, y), list(0, 0), 2)", "x + y"),
+            ("mseries((x^2 - 1)/(x - 1), list(x), list(0), 2)", "1 + x"),
+            ("mseries((x*y + y^2)/y, list(x, y), list(0, 0), 2)", "y + x"),
         ] {
             let text = run(src);
             assert!(
@@ -2004,11 +2009,11 @@ mod tests {
             ),
             (
                 "mseries(sqrt(x^2 + x^3), list(x, y), list(0, 0), 3)",
-                "1/2*x^2 - 1/8*x^3 + x",
+                "x + 1/2*x^2 - 1/8*x^3",
             ),
             (
                 "mseries(sqrt(x^2*(1 + y^2)), list(x, y), list(0, 0), 3)",
-                "1/2*x*y^2 + x",
+                "x + 1/2*x*y^2",
             ),
             // Negative fractional exponents.
             (
@@ -2058,15 +2063,15 @@ mod tests {
         // there; the essential-singularity refusal must not fire.
         assert_eq!(
             run("mseries(exp(1/x), list(x), list(1), 2)"),
-            "3/2*E*(x - 1)^2 - E*(x - 1) + E"
+            "E - E*(x - 1) + 3/2*E*(x - 1)^2"
         );
         assert_eq!(
             run("mseries(exp(1/(1 + x)), list(x), list(0), 3)"),
-            "3/2*x^2*E - 13/6*x^3*E - x*E + E"
+            "E - x*E + 3/2*x^2*E - 13/6*x^3*E"
         );
         assert_eq!(
             run("mseries(sin(1/x), list(x), list(1), 3)"),
-            "(x - 1)^3*(sin(1) - 5/6*cos(1)) + (x - 1)^2*(cos(1) - 1/2*sin(1)) - (x - 1)*cos(1) + sin(1)"
+            "sin(1) - (x - 1)*cos(1) + (x - 1)^2*(cos(1) - 1/2*sin(1)) + (x - 1)^3*(sin(1) - 5/6*cos(1))"
         );
     }
 
@@ -2074,15 +2079,15 @@ mod tests {
     fn symbolic_exponent_binomial() {
         assert_eq!(
             run("mseries((1 + x)^a, list(x), list(0), 2)"),
-            "1/2*a*x^2*(a - 1) + a*x + 1"
+            "1 + a*x + 1/2*a*x^2*(a - 1)"
         );
         assert_eq!(
             run("mseries((1 + x + y)^a, list(x, y), list(0, 0), 1)"),
-            "a*x + a*y + 1"
+            "1 + a*y + a*x"
         );
         assert_eq!(
             run("mseries((2 + x)^a, list(x), list(0), 1)"),
-            "1/2*a*x*2^a + 2^a"
+            "2^a + 1/2*a*x*2^a"
         );
     }
 }

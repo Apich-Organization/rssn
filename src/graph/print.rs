@@ -295,7 +295,9 @@ impl Graph {
     }
 
     /// The terms of a sum in canonical print order: descending degree,
-    /// leading with a positive term when there is one.
+    /// leading with a positive term when there is one. A sum marked as a
+    /// truncated series ([`Graph::mark_ascending`]) is printed in ascending
+    /// degree instead.
     pub(crate) fn ordered_terms(
         &self,
         node: NodeId,
@@ -321,6 +323,12 @@ impl Graph {
                 })
                 .then_with(|| self.term_cmp(a, b))
         });
+        // A truncated series (`taylor`, `laurent`) reads from its lowest
+        // power up, as it is computed: `1 - 1/6*x^2 + 1/120*x^4`.
+        if self.is_ascending(node) {
+            terms.reverse();
+            return terms;
+        }
         // Lead with a positive term when there is one: `1 - x^2`.
         if terms.first().is_some_and(|&t| self.negated(t).is_some())
             && let Some(i) = terms.iter().position(|&t| self.negated(t).is_none())

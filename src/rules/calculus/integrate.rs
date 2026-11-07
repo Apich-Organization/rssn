@@ -484,6 +484,11 @@ impl Integrator<'_, '_> {
             };
             let head = self.mul(&[u, f]);
             self.add(&[head, tail])
+        } else if Some(op) == self.cx.graph.ops().lookup("abs") {
+            // u |u| / 2
+            let product = self.mul(&[u, f]);
+            let half = self.frac(1, 2);
+            self.mul(&[half, product])
         } else if op == fs.sqrt {
             // (2/3) u^(3/2)
             let exponent = self.frac(3, 2);
@@ -1192,7 +1197,10 @@ impl Integrator<'_, '_> {
         let (&[a], &[b]) = (self.cx.graph.children(p), self.cx.graph.children(q)) else {
             return None;
         };
-        if a == b {
+        // `sin(u) cos(u)` alone is left to the other methods; with further
+        // factors (`exp(x) sin(x) cos(x)`) the double angle is what lets the
+        // exponential-times-trig rule apply.
+        if a == b && factors.len() == 2 {
             return None;
         }
         let (op_p, op_q) = (self.cx.graph.op(p), self.cx.graph.op(q));
@@ -1340,8 +1348,12 @@ impl Integrator<'_, '_> {
                     out.push(child);
                 }
             }
+            let variable_power = op == core::POW
+                && children
+                    .get(1)
+                    .is_some_and(|&exponent| self.depends(exponent));
             if !arithmetic
-                && op != core::POW
+                && (op != core::POW || variable_power)
                 && node != f
                 && !children.is_empty()
                 && self.depends(node)
@@ -1504,9 +1516,10 @@ fn reciprocal_trig_as_cos_sin(
     cx: &mut Cx<'_>,
     functions: Functions,
     term: NodeId,
+    force: bool,
 ) -> NodeId {
     let graph = &*cx.graph;
-    let names: Vec<Option<OpId>> = ["sec", "csc", "cot"]
+    let names: Vec<Option<OpId>> = ["sec", "csc", "cot", "sech", "csch", "coth"]
         .iter()
         .map(|n| graph.ops().lookup(n))
         .collect();
@@ -1517,12 +1530,16 @@ fn reciprocal_trig_as_cos_sin(
         let op = graph.op(n);
         if names.contains(&Some(op)) {
             found.push(n);
-        } else if op == functions.cos || op == functions.sin {
+        } else if op == functions.cos
+            || op == functions.sin
+            || op == functions.cosh
+            || op == functions.sinh
+        {
             plain = true;
         }
         stack.extend_from_slice(graph.children(n));
     }
-    if found.is_empty() || !plain {
+    if found.is_empty() || !(plain || force) {
         return term;
     }
     let mut out = term;
@@ -1538,9 +1555,20 @@ fn reciprocal_trig_as_cos_sin(
         } else if Some(op) == names[1] {
             let s = cx.graph.node(functions.sin, &[u]);
             cx.graph.node(core::POW, &[s, minus_one])
-        } else {
+        } else if Some(op) == names[2] {
             let c = cx.graph.node(functions.cos, &[u]);
             let s = cx.graph.node(functions.sin, &[u]);
+            let inv = cx.graph.node(core::POW, &[s, minus_one]);
+            cx.graph.node(core::MUL, &[c, inv])
+        } else if Some(op) == names[3] {
+            let c = cx.graph.node(functions.cosh, &[u]);
+            cx.graph.node(core::POW, &[c, minus_one])
+        } else if Some(op) == names[4] {
+            let s = cx.graph.node(functions.sinh, &[u]);
+            cx.graph.node(core::POW, &[s, minus_one])
+        } else {
+            let c = cx.graph.node(functions.cosh, &[u]);
+            let s = cx.graph.node(functions.sinh, &[u]);
             let inv = cx.graph.node(core::POW, &[s, minus_one]);
             cx.graph.node(core::MUL, &[c, inv])
         };
@@ -1861,7 +1889,7 @@ pub(super) fn antiderivative(
         return integrator.verified(term, candidate).then_some(candidate);
     }
     let term = cx.simplify(integrand);
-    let term = reciprocal_trig_as_cos_sin(cx, functions, term);
+    let term = reciprocal_trig_as_cos_sin(cx, functions, term, false);
     if opaque_in(cx.graph, term, symbol, functions.diff) {
         return None;
     }
@@ -1872,8 +1900,27 @@ pub(super) fn antiderivative(
         symbol,
         fuel: FUEL,
     };
-    let candidate = integrator.integrate(term, 0)?;
-    integrator.verified(term, candidate).then_some(candidate)
+    let mut term = term;
+    let mut found = integrator.integrate(term, 0);
+    if found.is_none() {
+        // The reciprocal functions (`sech(x)^2`) have no entry of their own;
+        // retried in terms of `cosh` and `sinh`.
+        let alternative = reciprocal_trig_as_cos_sin(integrator.cx, functions, term, true);
+        if alternative != term {
+            integrator.fuel = FUEL;
+            found = integrator.integrate(alternative, 0);
+            term = alternative;
+        }
+    }
+    let candidate = found?;
+    if !integrator.verified(term, candidate) {
+        return None;
+    }
+    // The constructions above leave exact numeric radicals (`4^(1/2)`,
+    // `1^(1/2)`) and odd arguments (`asin(-t)`) unsimplified; the answer is
+    // handed on in normal form so that parity and constant folding apply to
+    // it before it is compared with other spellings.
+    Some(integrator.cx.simplify(candidate))
 }
 
 /// Whether `term` contains an undetermined function of `x` (`A(x)`) but

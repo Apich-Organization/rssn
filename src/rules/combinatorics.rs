@@ -2247,7 +2247,7 @@ fn bracelets(
 }
 
 /// Bernoulli numbers by the Akiyama–Tanigawa transform (`B_1 = -1/2`).
-fn bernoulli(n: usize) -> BigRational {
+pub(crate) fn bernoulli(n: usize) -> BigRational {
     let mut a: Vec<BigRational> = Vec::with_capacity(n + 1);
     for m in 0..=n {
         a.push(BigRational::new(BigInt::one(), BigInt::from(m + 1)));

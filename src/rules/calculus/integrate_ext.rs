@@ -233,7 +233,9 @@ impl Integrator<'_, '_> {
         f: NodeId,
     ) -> Option<NodeId> {
         let fs = self.f;
-        let u = self.single_argument(f, &[fs.exp])?;
+        let Some(u) = self.single_argument(f, &[fs.exp]) else {
+            return self.exp_commensurable(f);
+        };
         let a = self.linear(u)?;
         let w = {
             let s = self.cx.graph.interner_mut().fresh_symbol("w");
@@ -251,6 +253,85 @@ impl Integrator<'_, '_> {
         let primitive = super::antiderivative(self.cx, self.f, integrand, w)?;
         let back = self.cx.graph.substitute(primitive, w, e);
         Some(back)
+    }
+
+    /// Rational functions of exponentials whose slopes are commensurable
+    /// (`exp(x)`, `exp(2 x)` and `exp(-x)` together): every `exp(c x + d)` is
+    /// `exp(d) w^k` for `w = exp(b x)`, `b` the greatest common divisor of the
+    /// slopes, so `1/(exp(x) + exp(-x))` becomes the rational function
+    /// `1/(w + 1/w)` of `w`, integrated with `dx = dw / (b w)`.
+    fn exp_commensurable(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let fs = self.f;
+        let mut found: Vec<(NodeId, NodeId, BigRational)> = Vec::new();
+        let mut stack = vec![f];
+        let mut seen: Vec<NodeId> = Vec::new();
+        while let Some(n) = stack.pop() {
+            if seen.contains(&n) || !self.depends(n) {
+                continue;
+            }
+            seen.push(n);
+            if n == self.x {
+                return None;
+            }
+            if self.cx.graph.op(n) == fs.exp {
+                let &[u] = self.cx.graph.children(n) else {
+                    return None;
+                };
+                let a = self.linear(u)?;
+                let slope = self.number(a)?.to_rational()?;
+                found.push((n, u, slope));
+                continue;
+            }
+            stack.extend_from_slice(self.cx.graph.children(n));
+        }
+        if found.len() < 2 {
+            return None;
+        }
+        let mut numerator = BigInt::zero();
+        let mut denominator = BigInt::one();
+        for (_, _, slope) in &found {
+            numerator = num_integer::Integer::gcd(&numerator, slope.numer());
+            denominator = num_integer::Integer::lcm(&denominator, slope.denom());
+        }
+        let b = BigRational::new(numerator.abs(), denominator);
+        if b.is_zero() {
+            return None;
+        }
+        let w = self.fresh("w");
+        let w_symbol = self.cx.graph.symbol_of(w)?;
+        let b_node = self.cx.graph.num(Number::rat(b.clone()));
+        let bx = self.mul(&[b_node, self.x]);
+        let base = self.call(fs.exp, bx);
+        let mut g = f;
+        for (node, u, slope) in &found {
+            let k = (slope / &b).to_integer();
+            let k = i64::try_from(&k).ok().filter(|k| k.abs() <= 12)?;
+            let x = self.x;
+            let zero = self.int(0);
+            let shift = self.cx.graph.substitute(*u, x, zero);
+            let k_node = self.int(k);
+            let power = self.pow(w, k_node);
+            let shift_is_zero = self.number(shift).is_some_and(|n| n.is_zero());
+            let replacement = if shift_is_zero {
+                power
+            } else {
+                let factor = self.call(fs.exp, shift);
+                self.mul(&[factor, power])
+            };
+            g = self.cx.graph.replace_subterm(g, *node, replacement);
+        }
+        if self.cx.graph.depends_on(self.cx.graph.find(g), self.symbol) {
+            return None;
+        }
+        let _ = w_symbol;
+        let bw = self.mul(&[b_node, w]);
+        let integrand = self.div(g, bw);
+        let integrand = self.cx.simplify(integrand);
+        let primitive = super::antiderivative(self.cx, self.f, integrand, w)?;
+        Some(self.cx.graph.substitute(primitive, w, base))
     }
 
     fn fresh(
@@ -755,13 +836,16 @@ impl Integrator<'_, '_> {
             }
             let disc = self.cx.graph.num(Number::rat(disc));
             let sqrt_d = self.pow(disc, half);
-            let arg = self.div(linear, sqrt_d);
+            // -asin(u)/sqrt(-a) = asin(-u)/sqrt(-a): `a < 0`, so the argument
+            // `-(2 a x + b)/sqrt(d)` has a positive slope and the result needs
+            // no leading minus sign (`asin(x)`, not `-asin(-x)`).
+            let negated_linear = self.neg(linear);
+            let arg = self.div(negated_linear, sqrt_d);
             let asin = self.call(fs.asin, arg);
             let minus_a = self.cx.graph.num(Number::rat(-a.clone()));
             let sqrt_ma = self.pow(minus_a, half);
-            let quotient = self.div(asin, sqrt_ma);
             let _ = x;
-            Some(self.neg(quotient))
+            Some(self.div(asin, sqrt_ma))
         }
     }
 

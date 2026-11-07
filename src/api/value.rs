@@ -246,11 +246,14 @@ impl Session {
     ///
     /// What the solver does not state is not invented:
     ///
-    /// * `multiplicities` is filled only when the equation is a univariate
-    ///   polynomial in the unknown over the rationals *and* every root is an
-    ///   exact number; the exact square-free part of the polynomial then says
-    ///   how many times each root occurs. An irrational or symbolic root is
-    ///   left unreported rather than matched against a factor numerically.
+    /// * `multiplicities` is filled only for a univariate polynomial over the
+    ///   rationals: the exact square-free decomposition says how many times
+    ///   each rational root occurs, a square-free polynomial has only simple
+    ///   roots, and the irrational root of a repeated factor is matched to its
+    ///   factor on values, with a separation margin. Where the solver cannot
+    ///   establish it (a transcendental equation such as `exp(t) = 2`, a
+    ///   symbolic root of a repeated factor) the list stays empty: "not
+    ///   reported" is not the claim "simple".
     /// * `conditions` is filled only with the conditions the answer states by
     ///   construction: a parameter in a denominator of a root — `-b/a` from
     ///   `a*x + b = 0` is valid only where `a != 0`. Realness and branch
@@ -2395,11 +2398,11 @@ mod tests {
         );
     }
 
-    /// An irrational root of a polynomial with a repeated factor would have to
-    /// be matched against that factor numerically; the answer is "not
-    /// reported", not a guessed one.
+    /// An irrational root of a polynomial with a repeated factor is matched
+    /// to its factor on values, with a margin; the multiplicity is the
+    /// factor's, not the default.
     #[test]
-    fn an_irrational_repeated_root_is_not_given_a_guessed_multiplicity() {
+    fn an_irrational_repeated_root_gets_its_factors_multiplicity() {
         let s = Session::new();
         let x = s.sym("x");
         let equation = s.parse("(x^2 - 2)^2 = 0").unwrap_or_else(|e| panic!("{e}"));
@@ -2408,11 +2411,7 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         assert!(solutions.complete);
         assert_eq!(solutions.roots.len(), 2, "{:?}", solutions.roots);
-        assert!(
-            !solutions.has_multiplicities(),
-            "an inexact repeated root must stay unreported, got {:?}",
-            solutions.multiplicities
-        );
+        assert_eq!(solutions.multiplicities, vec![2, 2]);
     }
 
     /// `x^2 - 2x + 1` has the double root 1.

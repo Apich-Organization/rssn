@@ -216,6 +216,34 @@ fn build_product(
     }
 }
 
+/// Whether `term` holds a power `b^e` that is one of the indeterminate forms
+/// `1^oo`, `0^0` or `oo^0` at the bindings of `env`. IEEE arithmetic gives all
+/// of them the value 1, which is not the limit of `(1 + x)^(1/x)` at 0.
+fn indeterminate_power(
+    graph: &Graph,
+    term: NodeId,
+    env: &Env,
+) -> bool {
+    let mut stack = vec![term];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        if graph.op(n) == core::POW
+            && let &[base, exponent] = graph.children(n)
+            && let (Some(b), Some(e)) = (graph.eval(base, env), graph.eval(exponent, env))
+            && (((b.abs() - 1.0).abs() < 1e-12 && e.is_infinite())
+                || (b.abs() < 1e-300 && e.abs() < 1e-300)
+                || (b.is_infinite() && e.abs() < 1e-300))
+        {
+            return true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    false
+}
+
 struct Limiter<'c, 'a> {
     cx: &'c mut Cx<'a>,
     f: Functions,
@@ -323,7 +351,9 @@ impl Limiter<'_, '_> {
         if self.target.is_finite() {
             let raw = self.cx.graph.substitute(f, self.x, self.point);
             let env = generic_env(self.cx.graph, raw, self.symbol, &Env::numeric(0.0));
-            if self.cx.graph.eval(raw, &env).is_some_and(f64::is_finite) {
+            if self.cx.graph.eval(raw, &env).is_some_and(f64::is_finite)
+                && !indeterminate_power(self.cx.graph, raw, &env)
+            {
                 return Some(self.cx.simplify(raw));
             }
             // Not evaluable for lack of semantics (an undetermined
@@ -396,8 +426,11 @@ impl Limiter<'_, '_> {
         f: NodeId,
         depth: usize,
     ) -> Option<NodeId> {
-        if !self.target.is_finite() || depth > MAX_DEPTH {
+        if depth > MAX_DEPTH {
             return None;
+        }
+        if !self.target.is_finite() {
+            return self.series_at_infinity(f);
         }
         let point = self.point;
         let mut expansion = super::laurent_expansion(self.cx, f, self.x, point, SERIES_ORDER);
@@ -416,6 +449,46 @@ impl Limiter<'_, '_> {
             return None;
         }
         Some(self.cx.simplify(leading))
+    }
+
+    /// The limit at `±oo` read off the expansion of `f(±1/t)` about `t = 0+`
+    /// (a positive `t`, so `sqrt(t^2) = t`): the cancellations of
+    /// `sqrt(x^2 + x) - x`, which neither l'Hôpital's rule nor a numeric probe
+    /// (catastrophic cancellation) can see.
+    fn series_at_infinity(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let fresh = self.cx.graph.interner_mut().fresh_symbol("t");
+        self.cx.graph.assume(fresh, crate::graph::Facts::POSITIVE);
+        let t = self.cx.graph.symbol_node(fresh);
+        let minus_one = self.cx.graph.int(-1);
+        let inverse = self.cx.graph.node(core::POW, &[t, minus_one]);
+        let replacement = if self.target > 0.0 {
+            inverse
+        } else {
+            self.cx.graph.node(core::MUL, &[minus_one, inverse])
+        };
+        let substituted = self.cx.graph.substitute(f, self.x, replacement);
+        let g = self.cx.simplify(substituted);
+        let zero = self.cx.graph.int(0);
+        let (valuation, coefficients) =
+            super::laurent_expansion(self.cx, g, t, zero, SERIES_ORDER)?;
+        let leading = *coefficients.first()?;
+        if valuation > 0 {
+            return Some(self.cx.graph.int(0));
+        }
+        if self.cx.graph.depends_on(self.cx.graph.find(leading), fresh) {
+            return None;
+        }
+        let leading = self.cx.simplify(leading);
+        if valuation == 0 {
+            return Some(leading);
+        }
+        // A pole in `t`: the sign of the leading coefficient and of the
+        // power of `t` (positive) decide the direction of the divergence.
+        let sign = self.cx.graph.eval(leading, &Env::numeric(0.0))?;
+        (sign != 0.0 && sign.is_finite()).then(|| self.infinite(sign > 0.0))
     }
 
     fn is_infinite(
@@ -860,6 +933,40 @@ impl Limiter<'_, '_> {
         })
     }
 
+    /// Whether `f` keeps getting closer to `claimed` as the point is
+    /// approached further: a slowly converging limit (`ln(x)/sqrt(x)` is
+    /// still 0.002 away from 0 at `x = 2^26`) is not contradicted by the
+    /// probe's last value, only by a distance that stops shrinking.
+    fn approaches(
+        &self,
+        f: NodeId,
+        claimed: f64,
+        env: &Env,
+    ) -> bool {
+        let mut env = env.clone();
+        let mut distances = Vec::new();
+        for k in [10_i32, 20, 30, 40, 50] {
+            let step = 0.5_f64.powi(k);
+            let point = if self.target.is_infinite() {
+                self.target.signum() * 2.0_f64.powi(k)
+            } else if self.side == Side::Below {
+                self.target - step * self.target.abs().max(1.0)
+            } else {
+                self.target + step * self.target.abs().max(1.0)
+            };
+            env.bind(self.symbol, point);
+            match self.cx.graph.eval(f, &env) {
+                | Some(v) if v.is_finite() => distances.push((v - claimed).abs()),
+                | _ => {},
+            }
+        }
+        distances.len() >= 4
+            && distances.windows(2).all(|w| w[1] <= 0.9 * w[0] + 1e-12)
+            && distances
+                .last()
+                .is_some_and(|&d| d <= 1e-3 * (1.0 + claimed.abs()))
+    }
+
     /// Whether `candidate` agrees with the numeric behaviour of `f`.
     fn verified(
         &self,
@@ -875,7 +982,9 @@ impl Limiter<'_, '_> {
         };
         match observed {
             | Probe::Finite(v) => {
-                claimed.is_finite() && (claimed - v).abs() <= 1e-4 * (1.0 + v.abs())
+                claimed.is_finite()
+                    && ((claimed - v).abs() <= 1e-4 * (1.0 + v.abs())
+                        || self.approaches(f, claimed, &env))
             },
             | Probe::PlusInfinity => claimed == f64::INFINITY,
             | Probe::MinusInfinity => claimed == f64::NEG_INFINITY,

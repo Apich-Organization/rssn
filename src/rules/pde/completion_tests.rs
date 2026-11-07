@@ -1111,11 +1111,16 @@ fn burgers_hopf_cole_and_riemann_problems() {
     let s = any(
         "pdsolve(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 1/2*diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = -tanh(x)))",
     );
-    assert!(s.contains("defint"), "{s}");
-    let text = expand_integrals(
-        &rhs(&s).replace("-oo", "-14").replace(", oo)", ", 14)"),
-        700,
-    );
+    // The Hopf-Cole integrals are either left as `defint` or, now that
+    // rational functions of commensurable exponentials integrate, closed.
+    let text = if s.contains("defint") {
+        expand_integrals(
+            &rhs(&s).replace("-oo", "-14").replace(", oo)", ", 14)"),
+            700,
+        )
+    } else {
+        rhs(&s)
+    };
     let (x, t) = (0.7_f64, 0.8_f64);
     close(value(&text, &[("x", x), ("t", t)]), -x.tanh(), 2e-4, &s);
     // A moving frame and a scaling: v = 2u + 1 obeys the same law, so u_t + (2u + 1) u_x = u_xx/2 is the

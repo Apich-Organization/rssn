@@ -573,6 +573,7 @@ impl Solutions {
     /// The answer as a record.
     #[must_use]
     pub fn to_value(&self) -> Value {
+        // Empty stays empty: "not reported" is not the claim "all one".
         let multiplicities = if self.multiplicities.is_empty() {
             Vec::new()
         } else {

@@ -347,23 +347,23 @@ fn infinite_and_one_sided_limits() {
 fn taylor_and_laurent() {
     assert_eq!(
         run("taylor(exp(x), x, 0, 4)"),
-        "1/24*x^4 + 1/6*x^3 + 1/2*x^2 + x + 1"
+        "1 + x + 1/2*x^2 + 1/6*x^3 + 1/24*x^4"
     );
-    assert_eq!(run("taylor(sin(x), x, 0, 5)"), "1/120*x^5 - 1/6*x^3 + x");
-    assert_eq!(run("taylor(1/(1 - x), x, 0, 3)"), "x^3 + x^2 + x + 1");
+    assert_eq!(run("taylor(sin(x), x, 0, 5)"), "x - 1/6*x^3 + 1/120*x^5");
+    assert_eq!(run("taylor(1/(1 - x), x, 0, 3)"), "1 + x + x^2 + x^3");
     assert_eq!(
         run("taylor(ln(x), x, 1, 3)"),
-        "1/3*(x - 1)^3 - 1/2*(x - 1)^2 + x - 1"
+        "-1 + x - 1/2*(x - 1)^2 + 1/3*(x - 1)^3"
     );
     assert_eq!(
         run("taylor(sin(x)/x, x, 0, 4)"),
-        "1/120*x^4 - 1/6*x^2 + 1",
+        "1 - 1/6*x^2 + 1/120*x^4",
         "removable singularity"
     );
-    assert_eq!(run("laurent(1/(x*(1 - x)), x, 0, 2)"), "x^2 + x + 1 + 1/x");
+    assert_eq!(run("laurent(1/(x*(1 - x)), x, 0, 2)"), "1/x + 1 + x + x^2");
     assert_eq!(
         run("laurent(exp(x)/x^2, x, 0, 1)"),
-        "1/6*x + 1/2 + 1/x + 1/x^2"
+        "1/x^2 + 1/x + 1/2 + 1/6*x"
     );
     // The series approximates the function near the point.
     let series = run("taylor(cos(x)*exp(x), x, 0, 8)");

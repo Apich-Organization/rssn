@@ -732,6 +732,34 @@ fn interesting(
     false
 }
 
+/// Whether the real function `term` has no value on one side of the finite
+/// `target`: sampled at distances `2^-k` from it, every evaluation is
+/// undefined (NaN or not evaluable). `below` selects the side that is tested.
+fn undefined_beside(
+    cx: &Cx<'_>,
+    term: NodeId,
+    symbol: SymbolId,
+    target: f64,
+    below: bool,
+) -> bool {
+    if !target.is_finite() {
+        return false;
+    }
+    let mut env = generic_env(cx.graph, term, symbol);
+    (4..14).all(|k| {
+        let step = 0.5_f64.powi(k) * target.abs().max(1.0);
+        env.bind(
+            symbol,
+            if below {
+                target - step
+            } else {
+                target + step
+            },
+        );
+        cx.graph.eval(term, &env).is_none_or(f64::is_nan)
+    })
+}
+
 /// The limit of `f` as `x → a` from `side`, by the Gruntz core.
 pub(super) fn limit(
     cx: &mut Cx<'_>,
@@ -776,6 +804,14 @@ pub(super) fn limit(
         | Side::Both => {
             let above = run(&mut *cx, above);
             let below = run(&mut *cx, below);
+            // A real function that exists on one side of the point only
+            // (`t*ln(t)` at 0, `sqrt(x)` at 0) has the limit of that side.
+            if undefined_beside(cx, term, symbol, target, true) {
+                return above;
+            }
+            if undefined_beside(cx, term, symbol, target, false) {
+                return below;
+            }
             let (Some(above), Some(below)) = (above, below) else {
                 return None;
             };

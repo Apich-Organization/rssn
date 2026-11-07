@@ -385,6 +385,9 @@ pub struct Graph {
     pub(crate) dims: std::sync::Arc<std::sync::RwLock<crate::graph::dim::DimArena>>,
     /// Declared dimensions of symbols.
     pub(crate) dim_assumptions: HashMap<SymbolId, crate::graph::dim::DimTerm>,
+    /// Sums whose terms print lowest degree first: the truncated series of
+    /// `taylor` / `laurent`. A print hint only; it never changes a value.
+    ascending: std::collections::HashSet<NodeId>,
 }
 
 impl Clone for Graph {
@@ -417,6 +420,7 @@ impl Clone for Graph {
             // Shared until written; see the note on this impl.
             dims: std::sync::Arc::clone(&self.dims),
             dim_assumptions: self.dim_assumptions.clone(),
+            ascending: self.ascending.clone(),
         }
     }
 }
@@ -457,6 +461,7 @@ impl Graph {
             assumptions: HashMap::new(),
             dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
             dim_assumptions: HashMap::new(),
+            ascending: std::collections::HashSet::new(),
         }
     }
 
@@ -1323,6 +1328,28 @@ impl Graph {
         data
     }
 
+    /// Marks the sum `node` as a truncated series: it prints with its terms
+    /// in ascending degree (`1 - x^2/6 + x^4/120`) instead of the descending
+    /// order of an ordinary polynomial. The mark is a print hint carried with
+    /// the node by [`Graph::import`]; it is not part of the term's value.
+    pub fn mark_ascending(
+        &mut self,
+        node: NodeId,
+    ) {
+        if self.op(node) == core::ADD {
+            self.ascending.insert(node);
+        }
+    }
+
+    /// Whether `node` was marked by [`Graph::mark_ascending`].
+    #[must_use]
+    pub fn is_ascending(
+        &self,
+        node: NodeId,
+    ) -> bool {
+        self.ascending.contains(&node)
+    }
+
     /// Copies the concrete term `node` of another graph into this one.
     ///
     /// Operators are matched by name (and registered here if missing),
@@ -1376,6 +1403,9 @@ impl Graph {
                 .collect();
             // The source already is in canonical form: intern verbatim.
             let new = self.intern(op, payload, &kids);
+            if src.ascending.contains(&cur) {
+                self.ascending.insert(new);
+            }
             copied.insert(cur, new);
         }
         copied.get(&node).copied().unwrap_or(NodeId::NONE)

@@ -234,8 +234,22 @@ impl Kernel for Collapse {
             return Outcome::Pass;
         }
         // Only sums with a product of a sum somewhere in them can gain.
+        let power_of_sum = |graph: &Graph, t: NodeId| {
+            graph.op(t) == core::POW
+                && matches!(*graph.children(t), [base, exponent]
+                    if graph.op(base) == core::ADD
+                        && graph
+                            .number_of(exponent)
+                            .and_then(Number::to_i64)
+                            .is_some_and(|n| (2..=8).contains(&n)))
+        };
         let hides_a_sum = graph.children(term).iter().any(|&t| {
-            graph.op(t) == core::MUL && graph.children(t).iter().any(|&f| graph.op(f) == core::ADD)
+            power_of_sum(graph, t)
+                || (graph.op(t) == core::MUL
+                    && graph
+                        .children(t)
+                        .iter()
+                        .any(|&f| graph.op(f) == core::ADD || power_of_sum(graph, f)))
         });
         let before = tree_size(graph, term, CAP);
         if !hides_a_sum || before > CAP {
