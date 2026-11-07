@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-test-bench-fmt-doc:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         toolchain: [stable, beta, nightly, 1.89.0]
@@ -43,21 +43,21 @@ jobs:
                 rustup component add --toolchain nightly clippy
                 rustup component add --toolchain nightly rustfmt
              fi
-      
+
       - name: Install Clippy & Rustfmt if using beta
         run: |
              if [[ "${{ matrix.toolchain }}" == "beta" ]]; then
                 rustup component add --toolchain beta clippy
                 rustup component add --toolchain beta rustfmt
              fi
-      
+
       - name: Install Clippy & Rustfmt if using v1.89
         run: |
              if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
                 rustup component add --toolchain 1.89.0 clippy
                 rustup component add --toolchain 1.89.0 rustfmt
              fi
-      
+
       - name: Build with full features
         run: cargo clippy --all-features --verbose
         continue-on-error: true

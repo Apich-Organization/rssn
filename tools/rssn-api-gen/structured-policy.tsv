@@ -1,0 +1,7 @@
+# Rust result type\tcontract\tstatus\tbound variables\tfield formulas
+crate::kernels::dense::Svd	SVD	bound	D,E	u=1;s=D;v=1
+crate::kernels::quadrature::Integral	INTEGRAL	bound	D,E	value=D*E;error=D*E;evaluations=-;converged=-
+crate::kernels::krylov::IterResult	ITERATIVE_LINEAR_SOLVE	bound	D,E	x=E/D;residual=1;iterations=-;converged=-
+crate::kernels::multigrid::MgResult	MGRESULT	unbound	-	x=?;history=?;converged=-
+crate::kernels::rootfind::SystemSolution	SYSTEMSOLUTION	unbound	-	x=?;residual=?;iterations=-
+crate::kernels::optim::OptResult	OPTRESULT	unbound	-	x=?;fx=?;iterations=-;evaluations=-;converged=-

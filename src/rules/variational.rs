@@ -1,0 +1,708 @@
+//! Calculus of variations.
+//!
+//! A functional `S[u] = ∫ L(x, u, u', u'', ...) dx` is given by its
+//! Lagrangian `L`, written with the undetermined function itself —
+//! `y(x)`, `diff(y(x), x)`, `diff(diff(y(x), x), x)` — exactly as in
+//! [`dsolve`](super::ode). Functions of several variables (`u(x, y)`,
+//! `diff(u(x, y), y)`) give field equations.
+//!
+//! | operator | value |
+//! |---|---|
+//! | `euler_lagrange(L, y(x), x)` | the Euler–Lagrange (Euler–Poisson) expression `Σ (-1)^k d^k/dx^k ∂L/∂y^(k)`; its vanishing is the condition for an extremal |
+//! | `euler_lagrange(L, list(q1(t), ...), t)` | one expression per function |
+//! | `euler_lagrange(L, u(x, y), list(x, y))` | the field equation `∂L/∂u - Σ ∂_i ∂L/∂u_i + ...` |
+//! | `solve_euler_lagrange(L, y(x), x)` | the extremals: `dsolve` applied to the Euler–Lagrange equation |
+//! | `hamiltons_principle(L, q(t), t)` | the equations of motion, `euler_lagrange(L, q(t), t)` |
+//! | `action(L, y(x), path, x, a, b)` | `∫_a^b L dx` along the given path |
+//! | `canonical_momentum(L, y(x), x)`, `natural_boundary(L, y(x), x)` | `∂L/∂y'` (a list for a list of functions): the canonical momentum, which also vanishes at a free end (natural boundary condition) |
+//! | `hamiltonian_of(L, y(x), x)` | `H = Σ q' ∂L/∂q' - L` |
+//! | `legendre_condition(L, y(x), x)` | `∂²L/∂y'²`, non-negative along a minimising extremal |
+//! | `jacobi_equation(L, y(x), x, h(x))` | `(P h')' - Q h` with `P = L_{y'y'}`, `Q = L_{yy} - (L_{yy'})'`: the Jacobi (accessory) equation of the second variation when set to zero |
+//! | `weierstrass_e(L, y(x), x, p)` | the excess function `L(x, y, p) - L(x, y, y') - (p - y') L_{y'}` |
+//! | `isoperimetric(L, G, y(x), x, lam)` | the Euler–Lagrange expression of `L + λ G`: the extremals of `∫ L` under the constraint `∫ G = const` |
+//! | `first_integral(L, y(x), x)` | the Beltrami identity `L - y' ∂L/∂y'`, constant along extremals of an `L` free of `x` |
+//!
+//! The derivatives are taken by replacing every derivative of the
+//! function by a fresh symbol, differentiating with respect to that
+//! symbol and putting the derivative back, then applying the *total*
+//! derivative — the structural differentiator treats `y(x)` as an
+//! undetermined function, so the chain rule produces `y''` and higher
+//! derivatives on its own.
+
+use num_bigint::BigInt;
+use num_rational::BigRational;
+
+use crate::graph::Arity;
+use crate::graph::Cx;
+use crate::graph::Graph;
+use crate::graph::Kernel;
+use crate::graph::NodeId;
+use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
+use crate::graph::OpId;
+use crate::graph::Outcome;
+use crate::graph::RuleError;
+use crate::graph::RuleSet;
+use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
+use crate::rules::complex::build::add;
+use crate::rules::complex::build::mul;
+use crate::rules::complex::build::neg;
+use crate::rules::complex::build::sub;
+use crate::rules::poly::best;
+
+use super::calculus::derivative;
+use super::ode::ode;
+
+/// The calculus-of-variations rule set.
+#[must_use]
+pub fn variational() -> RuleSet {
+    RuleSet::new("variational", install).needs(ode())
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Request {
+    EulerLagrange,
+    Action,
+    FirstIntegral,
+    Momentum,
+    Hamiltonian,
+    Legendre,
+    Jacobi,
+    Weierstrass,
+}
+
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// The product `Π dim(argument_i)^power_i`.
+fn dim_powers(
+    args: &[DimTerm],
+    factors: &[(usize, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(index, power) in factors {
+        let value = dim_arg(args, index);
+        let value = if power == 1 {
+            value
+        } else {
+            value.pow(&BigRational::from_integer(BigInt::from(power)))
+        };
+        out = out.mul(&value);
+    }
+    out
+}
+
+/// Defines a `DimRule::Custom` rule for the dimension `Π arg_i^power_i`.
+macro_rules! dim_powers_rule {
+    ($name:ident, $($index:literal : $power:expr),* $(,)?) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            Ok(dim_powers(args, &[$(($index, $power)),*]))
+        }
+    };
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+// The Euler–Lagrange equation `∂L/∂y - d/dx ∂L/∂y'` is returned by this
+// rule set as a *residual expression*, not as an equation node. The engine
+// unions an operator's e-class with its reduced form, so the rule must give
+// the dimension of that expression: every term has the dimension of
+// `∂L/∂y`, i.e. `dim(L) / dim(y)`. (Operators that really return an `eq`
+// node, such as `solve_euler_lagrange`, stay `NonMetric`.)
+dim_powers_rule!(dim_euler_lagrange, 0: 1, 1: -1);
+dim_powers_rule!(dim_isoperimetric, 0: 1, 2: -1);
+dim_powers_rule!(dim_canonical_momentum, 0: 1, 2: 1, 1: -1);
+dim_powers_rule!(dim_legendre_condition, 0: 1, 2: 2, 1: -2);
+dim_powers_rule!(dim_jacobi_equation, 0: 1, 3: 1, 1: -2);
+
+fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let heavy = |name: &str, arity: u8| {
+        OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+    };
+    let diff = i.graph().ops().lookup("diff").ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "variational".to_owned(),
+            reason: "needs the calculus rule set",
+        }
+    })?;
+    let defint = i.graph().ops().lookup("defint").ok_or_else(|| {
+        RuleError::Invalid {
+            rule: "variational".to_owned(),
+            reason: "needs the calculus rule set",
+        }
+    })?;
+    for (name, arity, request) in [
+        ("euler_lagrange", 3, Request::EulerLagrange),
+        ("action", 6, Request::Action),
+        ("first_integral", 3, Request::FirstIntegral),
+        ("canonical_momentum", 3, Request::Momentum),
+        ("hamiltonian_of", 3, Request::Hamiltonian),
+        ("legendre_condition", 3, Request::Legendre),
+        ("jacobi_equation", 4, Request::Jacobi),
+        ("weierstrass_e", 4, Request::Weierstrass),
+    ] {
+        let op = i.op(heavy(name, arity))?;
+        i.kernel(
+            &format!("variational/{name}"),
+            Tier::Reduce,
+            Variational {
+                op,
+                request,
+                diff,
+                defint,
+            },
+        );
+    }
+    i.define(&[
+        "solve_euler_lagrange(L, y, x) := dsolve(euler_lagrange(L, y, x) = 0, y)",
+        "hamiltons_principle(L, q, t) := euler_lagrange(L, q, t)",
+        "isoperimetric(L, G, y, x, lam) := euler_lagrange(L + lam * G, y, x)",
+        "natural_boundary(L, y, x) := canonical_momentum(L, y, x)",
+    ])?;
+    attach_dim_rules(
+        i,
+        &[
+            // Placed in the same e-class as the expression it returns, so
+            // the rule is the dimension of the residual.
+            ("euler_lagrange", DimRule::Custom(dim_euler_lagrange)),
+            ("hamiltons_principle", DimRule::Custom(dim_euler_lagrange)),
+            ("isoperimetric", DimRule::Custom(dim_isoperimetric)),
+            // An equation object (`y(x) = C1 + C2 x`).
+            ("solve_euler_lagrange", DimRule::NonMetric),
+            // The action is the integral of the Lagrangian over the
+            // parameter `x` (argument 3).
+            ("action", DimRule::Integral { f: 0, x: 3 }),
+            // Beltrami's first integral and the Hamiltonian are built from
+            // terms with the dimension of the Lagrangian.
+            ("first_integral", DimRule::Same(0)),
+            ("hamiltonian_of", DimRule::Same(0)),
+            // The Weierstrass excess function is `L` minus `(p - y') L_y'`,
+            // and both terms have the dimension of `L`.
+            ("weierstrass_e", DimRule::Same(0)),
+            // The canonical momentum is `∂L/∂y'`: dim(L) * dim(x) / dim(y).
+            (
+                "canonical_momentum",
+                DimRule::Custom(dim_canonical_momentum),
+            ),
+            ("natural_boundary", DimRule::Custom(dim_canonical_momentum)),
+            // `∂²L/∂y'²`: dim(L) * dim(x)^2 / dim(y)^2.
+            (
+                "legendre_condition",
+                DimRule::Custom(dim_legendre_condition),
+            ),
+            // `(P h')' - Q h` with `P = L_y'y'` and `Q` of dimension
+            // `L/y²`: the result scales like `dim(L) * dim(h) / dim(y)^2`.
+            ("jacobi_equation", DimRule::Custom(dim_jacobi_equation)),
+        ],
+    );
+    Ok(())
+}
+
+struct Variational {
+    op: OpId,
+    request: Request,
+    diff: OpId,
+    defint: OpId,
+}
+
+impl Kernel for Variational {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        let result = match self.request {
+            | Request::EulerLagrange => self.euler_lagrange(cx, &args),
+            | Request::Action => self.action(cx, &args),
+            | Request::FirstIntegral => self.first_integral(cx, &args),
+            | Request::Momentum => self.momentum(cx, &args),
+            | Request::Hamiltonian => self.hamiltonian(cx, &args),
+            | Request::Legendre => self.legendre(cx, &args),
+            | Request::Jacobi => self.jacobi(cx, &args),
+            | Request::Weierstrass => self.weierstrass(cx, &args),
+        };
+        result.map_or(Outcome::Pass, Outcome::Equal)
+    }
+}
+
+/// A derivative `∂^α u` of the function: the term and the variables it
+/// was differentiated by, in order.
+struct Jet {
+    term: NodeId,
+    by: Vec<NodeId>,
+}
+
+impl Variational {
+    /// Every derivative of `f` (including `f` itself) occurring in `term`,
+    /// highest order first.
+    fn jets(
+        &self,
+        graph: &Graph,
+        term: NodeId,
+        f: NodeId,
+    ) -> Vec<Jet> {
+        let mut found: Vec<Jet> = vec![Jet {
+            term: f,
+            by: Vec::new(),
+        }];
+        let mut stack = vec![term];
+        let mut seen = std::collections::HashSet::new();
+        while let Some(n) = stack.pop() {
+            if !seen.insert(n) {
+                continue;
+            }
+            if let Some(by) = self.chain(graph, n, f) {
+                if !by.is_empty() && !found.iter().any(|j| j.term == n) {
+                    found.push(Jet { term: n, by });
+                }
+                continue;
+            }
+            stack.extend(graph.children(n).iter().copied());
+        }
+        found.sort_by_key(|j| std::cmp::Reverse(j.by.len()));
+        found
+    }
+
+    /// If `n` is `diff(...diff(f, x1)..., xk)`, the variables `x1..xk`.
+    fn chain(
+        &self,
+        graph: &Graph,
+        n: NodeId,
+        f: NodeId,
+    ) -> Option<Vec<NodeId>> {
+        if n == f {
+            return Some(Vec::new());
+        }
+        if graph.op(n) != self.diff {
+            return None;
+        }
+        let &[inner, x] = graph.children(n) else {
+            return None;
+        };
+        let mut by = self.chain(graph, inner, f)?;
+        by.push(x);
+        Some(by)
+    }
+
+    /// `∂L/∂J` for the jet `J`, all jets frozen as symbols.
+    fn partial(
+        cx: &mut Cx<'_>,
+        l: NodeId,
+        jets: &[Jet],
+        which: usize,
+    ) -> Option<NodeId> {
+        let mut frozen = l;
+        let mut symbols = Vec::with_capacity(jets.len());
+        for jet in jets {
+            let fresh = cx.graph.interner_mut().fresh_symbol("jet");
+            let s = cx.graph.symbol_node(fresh);
+            frozen = cx.graph.replace_subterm(frozen, jet.term, s);
+            symbols.push(s);
+        }
+        let mut d = derivative(cx.graph, frozen, symbols[which])?;
+        d = cx.simplify(d);
+        for (k, jet) in jets.iter().enumerate().rev() {
+            d = cx.graph.substitute(d, symbols[k], jet.term);
+        }
+        Some(d)
+    }
+
+    fn equation(
+        &self,
+        cx: &mut Cx<'_>,
+        l: NodeId,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        if cx.graph.op(f) != core::APPLY && cx.graph.symbol_of(f).is_none() {
+            return None;
+        }
+        let jets = self.jets(cx.graph, l, f);
+        let mut terms = Vec::with_capacity(jets.len());
+        for k in 0..jets.len() {
+            let mut term = Self::partial(cx, l, &jets, k)?;
+            for &x in jets[k].by.iter().rev() {
+                term = derivative(cx.graph, term, x)?;
+            }
+            if jets[k].by.len() % 2 == 1 {
+                term = neg(cx.graph, term);
+            }
+            terms.push(term);
+        }
+        // Conventionally d/dt ∂L/∂q' - ∂L/∂q: the negative of the sum.
+        let sum = add(cx.graph, &terms);
+        let value = neg(cx.graph, sum);
+        Some(cx.simplify(value))
+    }
+
+    fn euler_lagrange(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, _] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        if cx.graph.op(f) == core::LIST {
+            let functions = cx.graph.children(f).to_vec();
+            let mut out = Vec::with_capacity(functions.len());
+            for g in functions {
+                out.push(self.equation(cx, l, g)?);
+            }
+            return Some(cx.graph.node(core::LIST, &out));
+        }
+        self.equation(cx, l, f)
+    }
+
+    fn action(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, path, x, a, b] = args else {
+            return None;
+        };
+        cx.graph.symbol_of(x)?;
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let along = cx.graph.replace_subterm(l, f, path);
+        Some(cx.graph.node(self.defint, &[along, x, a, b]))
+    }
+
+    /// `∂L/∂y'` for a function `f` of `x`, with the jets `(y', y)`.
+    fn first_order(
+        &self,
+        cx: &mut Cx<'_>,
+        f: NodeId,
+        x: NodeId,
+    ) -> (NodeId, Vec<Jet>) {
+        let prime = cx.graph.node(self.diff, &[f, x]);
+        (
+            prime,
+            vec![
+                Jet {
+                    term: prime,
+                    by: vec![x],
+                },
+                Jet {
+                    term: f,
+                    by: Vec::new(),
+                },
+            ],
+        )
+    }
+
+    fn momentum(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        if cx.graph.op(f) == core::LIST {
+            let functions = cx.graph.children(f).to_vec();
+            let mut out = Vec::with_capacity(functions.len());
+            for g in functions {
+                let (_, jets) = self.first_order(cx, g, x);
+                out.push(Self::partial(cx, l, &jets, 0)?);
+            }
+            return Some(cx.graph.node(core::LIST, &out));
+        }
+        let (_, jets) = self.first_order(cx, f, x);
+        Self::partial(cx, l, &jets, 0)
+    }
+
+    /// `H = Σ q' ∂L/∂q' - L`.
+    fn hamiltonian(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let functions = if cx.graph.op(f) == core::LIST {
+            cx.graph.children(f).to_vec()
+        } else {
+            vec![f]
+        };
+        let mut terms = Vec::with_capacity(functions.len() + 1);
+        for g in functions {
+            let (prime, jets) = self.first_order(cx, g, x);
+            let p = Self::partial(cx, l, &jets, 0)?;
+            terms.push(mul(cx.graph, &[prime, p]));
+        }
+        terms.push(neg(cx.graph, l));
+        let total = add(cx.graph, &terms);
+        Some(cx.simplify(total))
+    }
+
+    /// The Legendre condition `∂²L/∂y'²` (non-negative for a minimum).
+    fn legendre(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let (_, jets) = self.first_order(cx, f, x);
+        let p = Self::partial(cx, l, &jets, 0)?;
+        Self::partial(cx, p, &jets, 0)
+    }
+
+    /// The Jacobi equation `(P h')' - Q h = 0` of the second variation,
+    /// `P = L_{y'y'}`, `Q = L_{yy} - (L_{yy'})'`, as the expression on the
+    /// left for the variation `h`.
+    fn jacobi(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x, h] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let (_, jets) = self.first_order(cx, f, x);
+        let lp = Self::partial(cx, l, &jets, 0)?;
+        let ly = Self::partial(cx, l, &jets, 1)?;
+        let big_p = Self::partial(cx, lp, &jets, 0)?;
+        let lyy = Self::partial(cx, ly, &jets, 1)?;
+        let lyp = Self::partial(cx, lp, &jets, 1)?;
+        let d_lyp = derivative(cx.graph, lyp, x)?;
+        let q = sub(cx.graph, lyy, d_lyp);
+        let h_prime = cx.graph.node(self.diff, &[h, x]);
+        let flux = mul(cx.graph, &[big_p, h_prime]);
+        let d_flux = derivative(cx.graph, flux, x)?;
+        let qh = mul(cx.graph, &[q, h]);
+        let value = sub(cx.graph, d_flux, qh);
+        Some(cx.simplify(value))
+    }
+
+    /// The Weierstrass excess function
+    /// `E = L(x, y, p) - L(x, y, y') - (p - y') L_{y'}`.
+    fn weierstrass(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x, p] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let (prime, jets) = self.first_order(cx, f, x);
+        let at_p = cx.graph.replace_subterm(l, prime, p);
+        let momentum = Self::partial(cx, l, &jets, 0)?;
+        let step = sub(cx.graph, p, prime);
+        let correction = mul(cx.graph, &[step, momentum]);
+        let difference = sub(cx.graph, at_p, l);
+        let value = sub(cx.graph, difference, correction);
+        Some(cx.simplify(value))
+    }
+
+    fn first_integral(
+        &self,
+        cx: &mut Cx<'_>,
+        args: &[NodeId],
+    ) -> Option<NodeId> {
+        let &[l, f, x] = args else {
+            return None;
+        };
+        let l = best(cx.graph, l)?;
+        let f = best(cx.graph, f)?;
+        let prime = cx.graph.node(self.diff, &[f, x]);
+        let jets = vec![
+            Jet {
+                term: prime,
+                by: vec![x],
+            },
+            Jet {
+                term: f,
+                by: Vec::new(),
+            },
+        ];
+        let p = Self::partial(cx, l, &jets, 0)?;
+        let term = mul(cx.graph, &[prime, p]);
+        let value = sub(cx.graph, l, term);
+        Some(cx.simplify(value))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rules::testing::simplify;
+
+    fn run(src: &str) -> String {
+        simplify(&[variational()], src)
+    }
+
+    #[test]
+    fn harmonic_oscillator() {
+        assert_eq!(
+            run("euler_lagrange(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"),
+            run("k*q(t) + m*diff(diff(q(t), t), t)")
+        );
+    }
+
+    #[test]
+    fn shortest_path_is_a_line() {
+        // L = sqrt(1 + y'^2): the extremals have y'' = 0.
+        let el = run("euler_lagrange((1 + diff(y(x), x)^2)^(1/2), y(x), x)");
+        assert!(el.contains("diff(diff(y(x), x), x)"), "{el}");
+        assert!(!el.contains("diff(diff(diff"), "{el}");
+    }
+
+    #[test]
+    fn several_coordinates_and_higher_derivatives() {
+        assert_eq!(
+            run(
+                "euler_lagrange(diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t), list(x(t), y(t)), t)"
+            ),
+            run("list(y(t) + diff(diff(x(t), t), t), x(t) + diff(diff(y(t), t), t))")
+        );
+        // Euler–Poisson: L = y''^2 gives 2 y'''' = 0.
+        assert_eq!(
+            run("euler_lagrange(diff(diff(y(x), x), x)^2, y(x), x)"),
+            run("-2*diff(diff(diff(diff(y(x), x), x), x), x)")
+        );
+    }
+
+    #[test]
+    fn field_equation() {
+        // L = (u_x^2 + u_y^2)/2 gives Laplace's equation (with a sign).
+        assert_eq!(
+            run("euler_lagrange((diff(u(x, y), x)^2 + diff(u(x, y), y)^2)/2, u(x, y), list(x, y))"),
+            run("diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y)")
+        );
+    }
+
+    #[test]
+    fn extremals_and_action() {
+        let solution = run("solve_euler_lagrange(diff(y(x), x)^2, y(x), x)");
+        assert_eq!(solution, run("y(x) = C1 + C2*x"));
+        assert_eq!(run("action(diff(y(t), t)^2/2, y(t), t, t, 0, 1)"), "1/2");
+        assert_eq!(
+            run("first_integral(diff(y(x), x)^2 - y(x)^2, y(x), x)"),
+            run("-diff(y(x), x)^2 - y(x)^2")
+        );
+    }
+
+    #[test]
+    fn momentum_hamiltonian_and_second_variation() {
+        assert_eq!(
+            run("canonical_momentum(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"),
+            run("m*diff(q(t), t)")
+        );
+        assert_eq!(
+            run("natural_boundary(diff(y(x), x)^2, y(x), x)"),
+            run("2*diff(y(x), x)")
+        );
+        assert_eq!(
+            run("canonical_momentum(diff(x(t), t)^2 + diff(y(t), t)^3, list(x(t), y(t)), t)"),
+            run("list(2*diff(x(t), t), 3*diff(y(t), t)^2)")
+        );
+        assert_eq!(
+            run("hamiltonian_of(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x)"),
+            run("diff(y(x), x)^2/2 + y(x)^2/2")
+        );
+        assert_eq!(
+            run("legendre_condition((1 + diff(y(x), x)^2)^(1/2), y(x), x)"),
+            run("1/(1 + diff(y(x), x)^2)^(1/2) - diff(y(x), x)^2/(1 + diff(y(x), x)^2)^(3/2)")
+        );
+        // Jacobi equation of the oscillator action: h'' + h.
+        assert_eq!(
+            run("jacobi_equation(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x, h(x))"),
+            run("diff(diff(h(x), x), x) + h(x)")
+        );
+        // The excess function of L = y'^2 is (p - y')^2.
+        assert_eq!(
+            run("weierstrass_e(diff(y(x), x)^2, y(x), x, p)"),
+            run("p^2 - 2*p*diff(y(x), x) + diff(y(x), x)^2")
+        );
+    }
+
+    #[test]
+    fn isoperimetric_problem() {
+        assert_eq!(
+            run("isoperimetric(diff(y(x), x)^2, y(x), y(x), x, lam)"),
+            run("euler_lagrange(diff(y(x), x)^2 + lam*y(x), y(x), x)")
+        );
+    }
+
+    #[test]
+    fn hamiltons_principle_gives_the_equations_of_motion() {
+        // The spring: m q'' + k q = 0.
+        assert_eq!(
+            run("hamiltons_principle(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"),
+            run("k*q(t) + m*diff(diff(q(t), t), t)")
+        );
+        // The pendulum: m l² θ'' + m g l sin θ = 0.
+        assert_eq!(
+            run("hamiltons_principle(m*l^2*diff(th(t), t)^2/2 + m*g*l*cos(th(t)), th(t), t)"),
+            run("m*l^2*diff(diff(th(t), t), t) + g*l*m*sin(th(t))")
+        );
+        // A free particle in a uniform field: m x'' + m g = 0 (x up, V = m g x).
+        assert_eq!(
+            run("hamiltons_principle(m*diff(x(t), t)^2/2 - m*g*x(t), x(t), t)"),
+            run("m*g + m*diff(diff(x(t), t), t)")
+        );
+        // No dependence on q: the momentum is conserved, so only q'' remains.
+        assert_eq!(
+            run("hamiltons_principle(m*diff(x(t), t)^2/2, x(t), t)"),
+            run("m*diff(diff(x(t), t), t)")
+        );
+        // It is the same operator as the Euler–Lagrange one.
+        let lagrangian = "diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t)";
+        assert_eq!(
+            run(&format!(
+                "hamiltons_principle({lagrangian}, list(x(t), y(t)), t)"
+            )),
+            run(&format!(
+                "euler_lagrange({lagrangian}, list(x(t), y(t)), t)"
+            ))
+        );
+    }
+}

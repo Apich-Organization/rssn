@@ -1,0 +1,3078 @@
+//! Number theory: divisibility, modular arithmetic, primality and
+//! factorisation of exact integers.
+//!
+//! Every operator is reduced by an exact kernel that fires only when all of
+//! its arguments are literal integers; anything else stays symbolic. Results
+//! are computed with arbitrary-precision integers, so nothing overflows.
+//!
+//! Primality is deterministic Miller-Rabin below `2^64` and the
+//! Baillie-PSW test (base-2 strong probable prime plus strong Lucas with
+//! Selfridge's parameters) above, for which no counterexample is known.
+//! `factorint` and the arithmetic functions built on it (`totient`,
+//! `divisor_count`, `divisor_sum`, `omega`, `bigomega`, `radical`, `mobius`,
+//! `liouville`, `sigma`, `is_squarefree`) factor 64-bit numbers by Pollard's
+//! rho and larger ones by trial division, perfect-power detection, BPSW and
+//! Lenstra's elliptic-curve method (Montgomery curves, Suyama's
+//! parametrisation, stage 1 with bounds 2 000 / 11 000 / 50 000 and the
+//! standard stage 2): prime factors of up to about 25 digits are found. A
+//! composite cofactor of 40 or more digits, where the curves are unlikely to
+//! help, is attacked by the quadratic sieve / MPQS instead (a factor base
+//! with `(n/p) = 1`, log sieving, a large-prime variation and a structured
+//! GF(2) dependency solve); smaller cofactors fall back to it when the curves
+//! are exhausted. The sieve scales its factor base, interval, large-prime
+//! bound and work budget with the digit count using the standard QS
+//! heuristic; its practical range is roughly 55-65 digits, with 60-digit
+//! balanced semiprimes taking tens of seconds on a multi-core machine in the
+//! test profile. After the sieve exhausts its bounded budget on a large
+//! cofactor only a short ECM schedule runs, so an input the sieve cannot
+//! split still returns in bounded time. The other operators below
+//! that need a prime as a machine word (`sqrtmod`, `primitive_root`,
+//! `mult_order`, ...) still stop at 64-bit factors.
+//!
+//! The core operators are `gcd`, `lcm`, `mod`, `powmod`, `invmod`,
+//! `isprime`, `nextprime`, `totient`, `divisor_count`, `divisor_sum`,
+//! `factorint`, `jacobi`, `egcd`, `crt`, `pell`, `primes`, `cfrac`,
+//! `convergents` and `diophantine`. Quadratic residues, orders, discrete
+//! logarithms, arithmetic functions and the like live in
+//! this module: `legendre_symbol`, `kronecker_symbol`, `sqrtmod`,
+//! `quadratic_residues`, `mult_order`, `carmichael`, `primitive_root`,
+//! `dlog`, `mobius`, `liouville`, `omega`, `bigomega`, `radical`, `sigma`,
+//! `divisors`, `is_squarefree`, `is_square`, `isqrt`, `iroot`,
+//! `perfect_power`, `prevprime`, `prime_pi`, `nth_prime`, `two_squares`,
+//! `lincong`, `binomial_mod` and `farey`.
+//!
+//! Parallelism: the ECM curves of one stage run in groups of 1, 2, 4, ... up to one per thread; the
+//! lowest curve index that finds a factor wins, so the divisor found does not depend on the thread
+//! count.
+
+use num_bigint::BigInt;
+use num_integer::Integer;
+use num_rational::BigRational;
+use num_traits::One;
+use num_traits::Signed;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
+
+use crate::graph::Arity;
+use crate::graph::Cx;
+use crate::graph::Graph;
+use crate::graph::Kernel;
+use crate::graph::NodeId;
+use crate::graph::Number;
+use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
+use crate::graph::OpId;
+use crate::graph::Outcome;
+use crate::graph::Payload;
+use crate::graph::RuleError;
+use crate::graph::RuleSet;
+use crate::graph::Tier;
+use crate::graph::dim::DimRule;
+use crate::graph::op::core;
+use crate::graph::rule::Installer;
+
+
+use super::arith::arith;
+use super::poly::best;
+use super::poly::repr::Gens;
+use super::poly::repr::Limits;
+use super::poly::repr::Poly;
+use super::poly::repr::from_term;
+
+/// The number-theory rule set.
+#[must_use]
+pub fn number_theory() -> RuleSet {
+    RuleSet::new("number_theory", install).needs(arith())
+}
+
+/// What an exact kernel computed.
+pub(crate) enum Value {
+    /// An integer.
+    Int(BigInt),
+    /// An exact rational.
+    Rat(BigRational),
+    /// A truth value.
+    Bool(bool),
+    /// `list(a, b, ...)` of integers.
+    Flat(Vec<BigInt>),
+    /// `list(list(a, b), list(c, d), ...)` of integers.
+    Nested(Vec<Vec<BigInt>>),
+}
+
+impl Value {
+    /// Lists are larger than the request that produced them, so extraction
+    /// would otherwise prefer the request.
+    const fn is_list(&self) -> bool {
+        matches!(self, Self::Flat(_) | Self::Nested(_))
+    }
+
+    fn build(
+        self,
+        graph: &mut Graph,
+    ) -> NodeId {
+        match self {
+            | Self::Int(v) => graph.num(Number::Int(v)),
+            | Self::Rat(v) => graph.num(Number::rat(v)),
+            | Self::Bool(b) => graph.lit(Payload::Bool(b)),
+            | Self::Flat(items) => list_node(graph, items),
+            | Self::Nested(rows) => {
+                let mut nodes = Vec::with_capacity(rows.len());
+                for row in rows {
+                    nodes.push(list_node(graph, row));
+                }
+                graph.node(core::LIST, &nodes)
+            },
+        }
+    }
+}
+
+fn list_node(
+    graph: &mut Graph,
+    items: Vec<BigInt>,
+) -> NodeId {
+    let mut nodes = Vec::with_capacity(items.len());
+    for v in items {
+        nodes.push(graph.num(Number::Int(v)));
+    }
+    graph.node(core::LIST, &nodes)
+}
+
+/// An exact computation on integer arguments; `None` when it declines.
+pub(crate) type Run = fn(&[BigInt]) -> Option<Value>;
+
+/// An exact computation on lists of integers; `None` when it declines.
+pub(crate) type ListRun = fn(&[Vec<BigInt>]) -> Option<Value>;
+
+fn int_of(
+    graph: &Graph,
+    node: NodeId,
+) -> Option<BigInt> {
+    match graph.number_of(node)? {
+        | Number::Int(v) => Some(v.clone()),
+        | _ => None,
+    }
+}
+
+fn list_of(
+    graph: &Graph,
+    node: NodeId,
+) -> Option<Vec<BigInt>> {
+    if graph.op(node) != core::LIST {
+        return None;
+    }
+    graph
+        .children(node)
+        .iter()
+        .map(|&c| int_of(graph, c))
+        .collect()
+}
+
+/// Reduces `op` when every argument is a literal integer.
+pub(crate) struct Exact {
+    op: OpId,
+    run: Run,
+}
+
+impl Kernel for Exact {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args: Option<Vec<BigInt>> = cx
+            .graph
+            .children(node)
+            .iter()
+            .map(|&c| int_of(cx.graph, c))
+            .collect();
+        let Some(value) = args.and_then(|a| (self.run)(&a)) else {
+            return Outcome::Pass;
+        };
+        let pinned = value.is_list();
+        let node = value.build(cx.graph);
+        if pinned {
+            Outcome::Pinned(node)
+        } else {
+            Outcome::Equal(node)
+        }
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
+}
+
+/// Reduces `op` when every argument is a `list` of literal integers.
+pub(crate) struct ExactLists {
+    op: OpId,
+    run: ListRun,
+}
+
+impl Kernel for ExactLists {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args: Option<Vec<Vec<BigInt>>> = cx
+            .graph
+            .children(node)
+            .iter()
+            .map(|&c| list_of(cx.graph, c))
+            .collect();
+        let Some(value) = args.and_then(|a| (self.run)(&a)) else {
+            return Outcome::Pass;
+        };
+        let pinned = value.is_list();
+        let node = value.build(cx.graph);
+        if pinned {
+            Outcome::Pinned(node)
+        } else {
+            Outcome::Equal(node)
+        }
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
+}
+
+/// Registers an operator together with its exact integer kernel.
+pub(crate) fn exact(
+    i: &mut Installer<'_>,
+    set: &str,
+    desc: OpDescriptor,
+    run: Run,
+) -> Result<(), RuleError> {
+    let name = format!("{set}/{}", desc.name);
+    let op = i.op(desc)?;
+    i.kernel(&name, Tier::Normalize, Exact { op, run });
+    Ok(())
+}
+
+/// Registers an operator together with its exact kernel on integer lists.
+pub(crate) fn exact_lists(
+    i: &mut Installer<'_>,
+    set: &str,
+    desc: OpDescriptor,
+    run: ListRun,
+) -> Result<(), RuleError> {
+    let name = format!("{set}/{}", desc.name);
+    let op = i.op(desc)?;
+    i.kernel(&name, Tier::Normalize, ExactLists { op, run });
+    Ok(())
+}
+
+/// Rounds a float argument to an integer for the numeric semantics.
+fn round_arg(x: f64) -> Option<i64> {
+    x.round().to_i64().filter(|v| v.unsigned_abs() < 1 << 62)
+}
+
+/// `gcd` on floats: arguments are rounded, since it is defined on integers.
+fn gcd_eval(args: &[f64]) -> f64 {
+    let (Some(&a), Some(&b)) = (args.first(), args.get(1)) else {
+        return f64::NAN;
+    };
+    let (Some(a), Some(b)) = (round_arg(a), round_arg(b)) else {
+        return f64::NAN;
+    };
+    let (mut x, mut y) = (a.unsigned_abs(), b.unsigned_abs());
+    while y != 0 {
+        (x, y) = (y, x % y);
+    }
+    x.to_f64().unwrap_or(f64::NAN)
+}
+
+fn lcm_eval(args: &[f64]) -> f64 {
+    let g = gcd_eval(args);
+    let (Some(&a), Some(&b)) = (args.first(), args.get(1)) else {
+        return f64::NAN;
+    };
+    if g == 0.0 {
+        return 0.0;
+    }
+    (a.round() / g * b.round()).abs()
+}
+
+fn mod_eval(args: &[f64]) -> f64 {
+    let (Some(&a), Some(&m)) = (args.first(), args.get(1)) else {
+        return f64::NAN;
+    };
+    let (Some(a), Some(m)) = (round_arg(a), round_arg(m)) else {
+        return f64::NAN;
+    };
+    if m == 0 {
+        return f64::NAN;
+    }
+    a.rem_euclid(m.abs()).to_f64().unwrap_or(f64::NAN)
+}
+
+/// Greatest common divisor, non-negative.
+pub(crate) fn gcd(
+    a: &BigInt,
+    b: &BigInt,
+) -> BigInt {
+    let (mut x, mut y) = (a.abs(), b.abs());
+    while !y.is_zero() {
+        let r = &x % &y;
+        x = y;
+        y = r;
+    }
+    x
+}
+
+/// Remainder in `[0, |m|)`; `None` for `m == 0`.
+fn modulo(
+    a: &BigInt,
+    m: &BigInt,
+) -> Option<BigInt> {
+    if m.is_zero() {
+        return None;
+    }
+    let m = m.abs();
+    let r = a % &m;
+    Some(if r.is_negative() { r + m } else { r })
+}
+
+/// `(g, x, y)` with `a*x + b*y = g = gcd(a, b) >= 0`.
+fn egcd(
+    a: &BigInt,
+    b: &BigInt,
+) -> (BigInt, BigInt, BigInt) {
+    let (mut r0, mut r1) = (a.abs(), b.abs());
+    let (mut s0, mut s1) = (BigInt::one(), BigInt::zero());
+    let (mut t0, mut t1) = (BigInt::zero(), BigInt::one());
+    while !r1.is_zero() {
+        let q = &r0 / &r1;
+        let r2 = &r0 - &q * &r1;
+        let s2 = &s0 - &q * &s1;
+        let t2 = &t0 - &q * &t1;
+        (r0, r1) = (r1, r2);
+        (s0, s1) = (s1, s2);
+        (t0, t1) = (t1, t2);
+    }
+    if a.is_negative() {
+        s0 = -s0;
+    }
+    if b.is_negative() {
+        t0 = -t0;
+    }
+    (r0, s0, t0)
+}
+
+/// The inverse of `a` modulo `m > 0`, if `gcd(a, m) = 1`.
+fn invmod(
+    a: &BigInt,
+    m: &BigInt,
+) -> Option<BigInt> {
+    if !m.is_positive() {
+        return None;
+    }
+    let (g, x, _) = egcd(&modulo(a, m)?, m);
+    if g.is_one() {
+        modulo(&x, m)
+    } else if m.is_one() {
+        Some(BigInt::zero())
+    } else {
+        None
+    }
+}
+
+const BASES: [u64; 12] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+
+fn mulmod(
+    a: u64,
+    b: u64,
+    m: u64,
+) -> u64 {
+    let wide = u128::from(a) * u128::from(b) % u128::from(m);
+    u64::try_from(wide).unwrap_or(0)
+}
+
+fn powmod_u64(
+    mut base: u64,
+    mut exp: u64,
+    m: u64,
+) -> u64 {
+    let mut acc = 1 % m;
+    base %= m;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = mulmod(acc, base, m);
+        }
+        base = mulmod(base, base, m);
+        exp >>= 1;
+    }
+    acc
+}
+
+/// Deterministic Miller-Rabin: the first 12 primes are witnesses for every
+/// `n < 3.18e23` (the smallest strong pseudoprime to all of them is
+/// 318665857834031151167461), so all of `u64`. Larger numbers use [`bpsw`].
+fn is_prime_u64(n: u64) -> bool {
+    if n < 2 {
+        return false;
+    }
+    for p in BASES {
+        if n == p {
+            return true;
+        }
+        if n.is_multiple_of(p) {
+            return false;
+        }
+    }
+    let s = (n - 1).trailing_zeros();
+    let d = (n - 1) >> s;
+    'witness: for a in BASES {
+        let mut x = powmod_u64(a, d, n);
+        if x == 1 || x == n - 1 {
+            continue;
+        }
+        for _ in 1..s {
+            x = mulmod(x, x, n);
+            if x == n - 1 {
+                continue 'witness;
+            }
+        }
+        return false;
+    }
+    true
+}
+
+pub(crate) fn is_prime(n: &BigInt) -> bool {
+    if let Some(small) = n.to_u64() {
+        return is_prime_u64(small);
+    }
+    if n.is_negative() {
+        return false;
+    }
+    bpsw(n)
+}
+
+const fn gcd_u64(
+    mut a: u64,
+    mut b: u64,
+) -> u64 {
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
+/// A non-trivial factor of the odd composite `n` by Pollard's rho.
+fn rho(n: u64) -> Option<u64> {
+    let step = |x: u64, c: u64| {
+        let wide = (u128::from(x) * u128::from(x) + u128::from(c)) % u128::from(n);
+        u64::try_from(wide).unwrap_or(0)
+    };
+    for c in 1..64 {
+        let (mut x, mut y, mut d) = (2_u64, 2_u64, 1_u64);
+        while d == 1 {
+            x = step(x, c);
+            y = step(step(y, c), c);
+            d = gcd_u64(x.abs_diff(y), n);
+        }
+        if d != n {
+            return Some(d);
+        }
+    }
+    None
+}
+
+/// Appends the prime factors of `n` (with multiplicity) to `out`.
+fn split(
+    n: u64,
+    out: &mut Vec<u64>,
+) -> bool {
+    if n == 1 {
+        return true;
+    }
+    if is_prime_u64(n) {
+        out.push(n);
+        return true;
+    }
+    // Rho cycles too early on prime squares.
+    let root = n.isqrt();
+    if root * root == n {
+        return split(root, out) && split(root, out);
+    }
+    rho(n).is_some_and(|d| split(d, out) && split(n / d, out))
+}
+
+/// Prime factorisation as ascending `(prime, exponent)` pairs.
+pub(crate) fn factor(n: &BigInt) -> Option<Vec<(u64, u32)>> {
+    let mut n = n.to_u64().filter(|&v| v >= 1)?;
+    let mut primes = Vec::new();
+    for d in 2..=1000_u64 {
+        if d * d > n {
+            break;
+        }
+        while n % d == 0 {
+            primes.push(d);
+            n /= d;
+        }
+    }
+    if !split(n, &mut primes) {
+        return None;
+    }
+    primes.sort_unstable();
+    let mut out: Vec<(u64, u32)> = Vec::new();
+    for p in primes {
+        match out.last_mut() {
+            | Some((q, e)) if *q == p => *e += 1,
+            | _ => out.push((p, 1)),
+        }
+    }
+    Some(out)
+}
+
+// ------------------------------------------------- BPSW and Lenstra's ECM
+
+/// `x mod n` in `[0, n)`.
+fn mod_pos(
+    x: &BigInt,
+    n: &BigInt,
+) -> BigInt {
+    let r = x % n;
+    if r.is_negative() { r + n } else { r }
+}
+
+/// Strong probable-prime test of the odd `n > 2` to the base `a`.
+fn strong_probable_prime(
+    n: &BigInt,
+    a: &BigInt,
+) -> bool {
+    let one = BigInt::one();
+    let n1 = n - &one;
+    let s = n1.trailing_zeros().unwrap_or(0);
+    let d = &n1 >> s;
+    let mut x = a.modpow(&d, n);
+    if x == one || x == n1 {
+        return true;
+    }
+    for _ in 1..s {
+        x = &x * &x % n;
+        if x == n1 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Strong Lucas probable-prime test of the odd `n > 2` with Selfridge's
+/// parameters (`D` the first of `5, -7, 9, -11, ...` with Jacobi symbol
+/// `-1`, `P = 1`, `Q = (1 - D)/4`): `U_d = 0` or `V_{d 2^r} = 0` for some
+/// `r < s`, where `n + 1 = d 2^s` with `d` odd.
+fn strong_lucas(n: &BigInt) -> bool {
+    let root = n.sqrt();
+    if &root * &root == *n {
+        return false;
+    }
+    let mut d: i64 = 5;
+    loop {
+        match jacobi(&BigInt::from(d), n) {
+            | Some(-1) => break,
+            // A common factor with D: composite unless n is D itself.
+            | Some(0) if BigInt::from(d.abs()) != *n => return false,
+            | _ => {},
+        }
+        d = if d > 0 { -(d + 2) } else { -d + 2 };
+    }
+    let (d_big, q) = (BigInt::from(d), BigInt::from((1 - d) / 4));
+    let n1: BigInt = n + 1;
+    let s = n1.trailing_zeros().unwrap_or(0);
+    let m = &n1 >> s;
+    // Halving modulo the odd n.
+    let half = |x: BigInt| -> BigInt {
+        let x = mod_pos(&x, n);
+        if x.bit(0) {
+            (x + n) >> 1
+        } else {
+            x >> 1
+        }
+    };
+    let (mut u, mut v, mut qk) = (BigInt::one(), BigInt::one(), mod_pos(&q, n));
+    for i in (0..m.bits().saturating_sub(1)).rev() {
+        u = &u * &v % n;
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if m.bit(i) {
+            let next_u = half(&u + &v);
+            let next_v = half(&d_big * &u + &v);
+            u = next_u;
+            v = next_v;
+            qk = mod_pos(&(&qk * &q), n);
+        }
+    }
+    if u.is_zero() || v.is_zero() {
+        return true;
+    }
+    for _ in 1..s {
+        v = mod_pos(&(&v * &v - 2 * &qk), n);
+        qk = &qk * &qk % n;
+        if v.is_zero() {
+            return true;
+        }
+    }
+    false
+}
+
+/// The Baillie–PSW test: trial division by the primes below 100, a strong
+/// probable-prime test to base 2 and a strong Lucas test. No composite is
+/// known that passes it (and none exists below `2^64`).
+pub(crate) fn bpsw(n: &BigInt) -> bool {
+    if *n < BigInt::from(2) {
+        return false;
+    }
+    for p in SMALL_PRIMES {
+        let p = BigInt::from(p);
+        if *n == p {
+            return true;
+        }
+        if (n % &p).is_zero() {
+            return false;
+        }
+    }
+    strong_probable_prime(n, &BigInt::from(2)) && strong_lucas(n)
+}
+
+const SMALL_PRIMES: [u32; 25] = [
+    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
+];
+
+/// Sieve of Eratosthenes: `flags[k]` says whether `k` is prime.
+fn prime_flags(limit: usize) -> Vec<bool> {
+    let mut flags = vec![true; limit + 1];
+    for k in 0..=1.min(limit) {
+        flags[k] = false;
+    }
+    let mut p = 2;
+    while p * p <= limit {
+        if flags[p] {
+            let mut multiple = p * p;
+            while multiple <= limit {
+                flags[multiple] = false;
+                multiple += p;
+            }
+        }
+        p += 1;
+    }
+    flags
+}
+
+/// A point `(X : Z)` of a Montgomery curve in projective x-only form.
+type XzPoint = (BigInt, BigInt);
+
+/// The curve `B y^2 = x^3 + A x^2 + x` over `Z/n` through `a24 = (A + 2)/4`.
+struct Montgomery<'a> {
+    n: &'a BigInt,
+    a24: BigInt,
+}
+
+impl Montgomery<'_> {
+    fn double(
+        &self,
+        p: &XzPoint,
+    ) -> XzPoint {
+        let n = self.n;
+        let sum = (&p.0 + &p.1) % n;
+        let diff = mod_pos(&(&p.0 - &p.1), n);
+        let (t1, t2) = (&sum * &sum % n, &diff * &diff % n);
+        let t3 = mod_pos(&(&t1 - &t2), n);
+        let x = &t1 * &t2 % n;
+        let z = &t3 * ((&t2 + &self.a24 * &t3) % n) % n;
+        (x, z)
+    }
+
+    /// `P + Q` given `P - Q`.
+    fn add(
+        &self,
+        p: &XzPoint,
+        q: &XzPoint,
+        difference: &XzPoint,
+    ) -> XzPoint {
+        let n = self.n;
+        let u = mod_pos(&(&p.0 - &p.1), n) * ((&q.0 + &q.1) % n) % n;
+        let v = ((&p.0 + &p.1) % n) * mod_pos(&(&q.0 - &q.1), n) % n;
+        let (sum, diff) = ((&u + &v) % n, mod_pos(&(&u - &v), n));
+        let x = &difference.1 * (&sum * &sum % n) % n;
+        let z = &difference.0 * (&diff * &diff % n) % n;
+        (x, z)
+    }
+
+    /// `k P` by the Montgomery ladder (`k >= 1`).
+    fn multiply(
+        &self,
+        p: &XzPoint,
+        k: u64,
+    ) -> XzPoint {
+        if k == 1 {
+            return p.clone();
+        }
+        let (mut r0, mut r1) = (p.clone(), self.double(p));
+        for i in (0..k.ilog2()).rev() {
+            if (k >> i) & 1 == 0 {
+                r1 = self.add(&r0, &r1, p);
+                r0 = self.double(&r0);
+            } else {
+                r0 = self.add(&r0, &r1, p);
+                r1 = self.double(&r1);
+            }
+        }
+        r0
+    }
+}
+
+/// The step of the stage-2 continuation of [`ecm_curve`].
+const D: u64 = 210;
+
+/// One ECM curve (Suyama's parametrisation of Montgomery curves with
+/// torsion `Z/12`) with the given `sigma`: stage 1 multiplies the point by
+/// every prime power up to `b1`, stage 2 (the standard continuation with
+/// `D = 210`) looks for a prime `q` in `(b1, b2]` with `q Q = O`. Returns a
+/// non-trivial divisor of `n`.
+fn ecm_curve(
+    n: &BigInt,
+    sigma: u64,
+    b1: u64,
+    flags: &[bool],
+    b2: u64,
+) -> Option<BigInt> {
+    let sigma = BigInt::from(sigma);
+    let u = mod_pos(&(&sigma * &sigma - 5), n);
+    let v = mod_pos(&(4 * &sigma), n);
+    let u3 = &u * &u % n * &u % n;
+    let diff = mod_pos(&(&v - &u), n);
+    let numerator = &diff * &diff % n * &diff % n * ((3 * &u + &v) % n) % n;
+    let denominator = 16 * &u3 % n * &v % n;
+    let g = Integer::gcd(&denominator, n);
+    if g > BigInt::one() {
+        return (g < *n).then_some(g);
+    }
+    let inverse = invmod(&denominator, n)?;
+    let curve = Montgomery {
+        n,
+        a24: numerator * inverse % n,
+    };
+    let mut point: XzPoint = (u3, &v * &v % n * &v % n);
+    let nontrivial = |z: &BigInt| {
+        let g = Integer::gcd(z, n);
+        (g > BigInt::one() && g < *n).then_some(g)
+    };
+    // Stage 1.
+    for p in (2..=b1).filter(|&p| {
+        flags
+            .get(usize::try_from(p).unwrap_or(usize::MAX))
+            .copied()
+            .unwrap_or(false)
+    }) {
+        let mut power = p;
+        while power.saturating_mul(p) <= b1 {
+            power *= p;
+        }
+        point = curve.multiply(&point, power);
+    }
+    if let Some(found) = nontrivial(&point.1) {
+        return Some(found);
+    }
+    if Integer::gcd(&point.1, n) == *n || point.1.is_zero() {
+        return None;
+    }
+    // Stage 2.
+    let coprime: Vec<u64> = (1..=D / 2).filter(|&j| gcd_u64(j, D) == 1).collect();
+    let mut multiples: Vec<XzPoint> = vec![
+        (BigInt::zero(), BigInt::zero()),
+        point.clone(),
+        curve.double(&point),
+    ];
+    for j in 3..=usize::try_from(D / 2).ok()? {
+        let next = curve.add(&multiples[j - 1], &point, &multiples[j - 2]);
+        multiples.push(next);
+    }
+    let step = curve.multiply(&point, D);
+    let first = (b1 / D).max(2);
+    let mut previous = curve.multiply(&point, (first - 1) * D);
+    let mut current = curve.multiply(&point, first * D);
+    let mut accumulator = BigInt::one();
+    let last = b2 / D + 1;
+    for k in first..=last {
+        for &j in &coprime {
+            let (low, high) = (k * D - j, k * D + j);
+            let hit = |q: u64| {
+                q > b1
+                    && q <= b2
+                    && flags
+                        .get(usize::try_from(q).unwrap_or(usize::MAX))
+                        .copied()
+                        .unwrap_or(false)
+            };
+            if hit(low) || hit(high) {
+                let (xj, zj) = &multiples[usize::try_from(j).ok()?];
+                let term = mod_pos(&(&current.0 * zj - xj * &current.1), n);
+                accumulator = accumulator * term % n;
+            }
+        }
+        if k % 64 == 0
+            && let Some(found) = nontrivial(&accumulator)
+        {
+            return Some(found);
+        }
+        let next = curve.add(&current, &step, &previous);
+        previous = current;
+        current = next;
+    }
+    nontrivial(&accumulator)
+}
+
+/// The full ECM schedule: stage-1 bounds 2 000, 11 000 and 50 000 with 20,
+/// 80 and 60 curves (stage 2 up to 50 times the bound). Finds prime factors
+/// of up to about 25 digits.
+const ECM_FULL: [(u64, usize); 3] = [(2_000, 20), (11_000, 80), (50_000, 60)];
+
+/// The short fallback used after the sieve has exhausted its budget on a
+/// large cofactor: only the two cheap stages, a few seconds at most. Running
+/// the full schedule there would spend minutes on a balanced semiprime whose
+/// factors the curves cannot reach.
+const ECM_AFTER_QS: [(u64, usize); 2] = [(2_000, 12), (11_000, 24)];
+
+/// Lenstra's elliptic-curve method over an explicit schedule.
+fn ecm_schedule(
+    n: &BigInt,
+    schedule: &[(u64, usize)],
+) -> Option<BigInt> {
+    let mut sigma = 6_u64;
+    for &(b1, curves) in schedule {
+        let b2 = 50 * b1;
+        let flags = prime_flags(usize::try_from(b2 + 2 * 210 + 2).ok()?);
+        // Curves are independent: they run in groups of one per thread and
+        // the lowest curve index that succeeds wins, so the divisor found
+        // does not depend on the thread count (one thread = sequential).
+        let sigmas: Vec<u64> = (sigma..sigma + curves as u64).collect();
+        sigma += curves as u64;
+        // The group size ramps up (1, 2, 4, ...) so that a first-curve
+        // success costs no more than in the sequential code.
+        let cap = rayon::current_num_threads().clamp(1, 64);
+        let (mut at, mut width) = (0_usize, 1_usize);
+        while at < sigmas.len() {
+            let end = (at + width).min(sigmas.len());
+            let group = sigmas.get(at..end).unwrap_or(&[]);
+            let found =
+                crate::kernels::par::map_slice(group, 2, |&s| ecm_curve(n, s, b1, &flags, b2));
+            if let Some(d) = found.into_iter().flatten().next() {
+                return Some(d);
+            }
+            at = end;
+            width = (width * 2).min(cap);
+        }
+    }
+    None
+}
+
+/// The full ECM schedule, used as the first attempt for cofactors below the
+/// sieve-first threshold.
+fn ecm(n: &BigInt) -> Option<BigInt> {
+    ecm_schedule(n, &ECM_FULL)
+}
+
+/// The cheap ECM fallback used after the sieve has exhausted its budget.
+fn ecm_after_qs(n: &BigInt) -> Option<BigInt> {
+    ecm_schedule(n, &ECM_AFTER_QS)
+}
+
+/// Cofactors at least this many decimal digits go to the quadratic sieve
+/// before the elliptic curves: at that size the curves rarely find a factor
+/// within their budget, while the sieve is built for balanced 40-65 digit
+/// semiprimes. Smaller cofactors still try the curves first.
+const QS_FIRST_DIGITS: u32 = 40;
+
+/// Decimal digit count of a positive integer.
+fn decimal_digits(n: &BigInt) -> u32 {
+    u32::try_from(n.to_str_radix(10).len()).unwrap_or(u32::MAX)
+}
+
+/// One quadratic-sieve attempt for a composite cofactor.
+///
+/// The factor base, interval and work budget scale with the digit count.
+/// `None` when the cofactor is above the calibrated range, when its matrix
+/// would exceed the documented column limit, or when its polynomial/work
+/// budget is exhausted.
+fn qs_stage(m: &BigInt) -> Option<BigInt> {
+    let digits = decimal_digits(m);
+    if digits > crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS {
+        return None;
+    }
+    crate::kernels::quadratic_sieve::qs_factor(
+        m,
+        crate::kernels::quadratic_sieve::QsLimits::for_digits(digits),
+    )
+}
+
+/// Prime factorisation of any positive integer as ascending
+/// `(prime, exponent)` pairs: the 64-bit path of [`factor`] for small
+/// numbers, otherwise trial division by the primes below 1000, perfect
+/// powers, BPSW primality, then Lenstra's ECM and the quadratic sieve.
+///
+/// Cofactors of at least [`QS_FIRST_DIGITS`] digits go to the sieve first
+/// (the curves rarely reach their prime factors); smaller ones go to the
+/// curves first and fall back to the sieve. The sieve is tried up to
+/// [`QsLimits::MAX_DIGITS`](crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS)
+/// digits, with its own bounded work budget. If it exhausts that budget on a
+/// cofactor of 40 or more digits, only the cheap [`ECM_AFTER_QS`] schedule
+/// runs afterwards, so a balanced semiprime that the sieve cannot split does
+/// not spend minutes in the curves. `None` for `n <= 0` and when a composite
+/// cofactor survives the allowed stages.
+pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
+    if !n.is_positive() {
+        return None;
+    }
+    let widen = |pairs: Vec<(u64, u32)>| -> Vec<(BigInt, u32)> {
+        pairs
+            .into_iter()
+            .map(|(p, e)| (BigInt::from(p), e))
+            .collect()
+    };
+    if n.to_u64().is_some() {
+        return factor(n).map(widen);
+    }
+    let mut primes: Vec<BigInt> = Vec::new();
+    let mut rest = n.clone();
+    for d in 2_u32..=1000 {
+        let d = BigInt::from(d);
+        while (&rest % &d).is_zero() {
+            primes.push(d.clone());
+            rest /= &d;
+        }
+    }
+    let mut stack = vec![rest];
+    while let Some(m) = stack.pop() {
+        if m.is_one() {
+            continue;
+        }
+        if m.to_u64().is_some() {
+            for (p, e) in factor(&m)? {
+                primes.extend(std::iter::repeat_n(
+                    BigInt::from(p),
+                    usize::try_from(e).ok()?,
+                ));
+            }
+            continue;
+        }
+        if is_prime(&m) {
+            primes.push(m);
+            continue;
+        }
+        // Perfect powers (the curves cannot split p^k reliably).
+        if let Some(root) = (2..=8_u32).rev().find_map(|k| {
+            let r = m.nth_root(k);
+            (r.pow(k) == m).then_some((r, k))
+        }) {
+            for _ in 0..root.1 {
+                stack.push(root.0.clone());
+            }
+            continue;
+        }
+        let digits = decimal_digits(&m);
+        let divisor = if digits >= QS_FIRST_DIGITS {
+            qs_stage(&m).or_else(|| ecm_after_qs(&m))
+        } else {
+            ecm(&m).or_else(|| qs_stage(&m))
+        };
+        let d = divisor?;
+        stack.push(&m / &d);
+        stack.push(d);
+    }
+    primes.sort();
+    let mut out: Vec<(BigInt, u32)> = Vec::new();
+    for p in primes {
+        match out.last_mut() {
+            | Some((q, e)) if *q == p => *e += 1,
+            | _ => out.push((p, 1)),
+        }
+    }
+    Some(out)
+}
+
+fn next_prime(n: &BigInt) -> Option<BigInt> {
+    let two = BigInt::from(2);
+    if *n < two {
+        return Some(two);
+    }
+    let mut candidate: BigInt = n + 1;
+    if !candidate.bit(0) {
+        candidate += 1;
+    }
+    // Prime gaps are tiny; the bound only guards against absurd inputs.
+    for _ in 0..1_000_000 {
+        if is_prime(&candidate) {
+            return Some(candidate);
+        }
+        candidate += 2;
+    }
+    None
+}
+
+fn jacobi(
+    a: &BigInt,
+    n: &BigInt,
+) -> Option<i8> {
+    if !n.is_positive() || !n.bit(0) {
+        return None;
+    }
+    let (mut a, mut n) = (modulo(a, n)?, n.clone());
+    let mut sign = 1_i8;
+    let low = |x: &BigInt, m: u32| (x % m).to_u32().unwrap_or(0);
+    while !a.is_zero() {
+        while !a.bit(0) {
+            a >>= 1;
+            if matches!(low(&n, 8), 3 | 5) {
+                sign = -sign;
+            }
+        }
+        std::mem::swap(&mut a, &mut n);
+        if low(&a, 4) == 3 && low(&n, 4) == 3 {
+            sign = -sign;
+        }
+        a = modulo(&a, &n)?;
+    }
+    Some(if n.is_one() { sign } else { 0 })
+}
+
+fn crt(args: &[Vec<BigInt>]) -> Option<Value> {
+    let [residues, moduli] = args else {
+        return None;
+    };
+    if residues.len() != moduli.len() || residues.is_empty() {
+        return None;
+    }
+    let (mut x, mut product) = (BigInt::zero(), BigInt::one());
+    for (r, m) in residues.iter().zip(moduli) {
+        // Solve x + product*t = r (mod m); needs product invertible mod m,
+        // i.e. the moduli are pairwise coprime.
+        let inverse = invmod(&product, m)?;
+        let t = modulo(&(modulo(&(r - &x), m)? * inverse), m)?;
+        x += &product * t;
+        product *= m;
+    }
+    modulo(&x, &product).map(Value::Int)
+}
+
+/// A kernel that works on the argument nodes directly, for operators whose
+/// arguments are not plain integers or lists of integers.
+pub(crate) type Build = fn(&mut Cx<'_>, &[NodeId]) -> Outcome;
+
+/// Reduces `op` with a [`Build`] function.
+pub(crate) struct Procedure {
+    op: OpId,
+    run: Build,
+}
+
+impl Kernel for Procedure {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        (self.run)(cx, &args)
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
+}
+
+/// Registers an operator together with a [`Build`] kernel of the given tier.
+pub(crate) fn procedure(
+    i: &mut Installer<'_>,
+    set: &str,
+    desc: OpDescriptor,
+    tier: Tier,
+    run: Build,
+) -> Result<OpId, RuleError> {
+    let name = format!("{set}/{}", desc.name);
+    let op = i.op(desc)?;
+    i.kernel(&name, tier, Procedure { op, run });
+    Ok(op)
+}
+
+/// Attaches dimension rules by operator name.
+///
+/// The operators of a rule set are registered from descriptors that do not
+/// carry a dimension rule, so the set states its signatures once, after
+/// registration. A name that is not registered is a bug in the table (or the
+/// rule set), not a silent coverage gap.
+pub(crate) fn attach_dimensions(
+    i: &mut Installer<'_>,
+    table: &[(&str, DimRule)],
+) -> Result<(), RuleError> {
+    for &(name, rule) in table {
+        let op = i.graph().ops().lookup(name).ok_or_else(|| {
+            RuleError::Invalid {
+                rule: format!("dimensions/{name}"),
+                reason: "operator is not registered",
+            }
+        })?;
+        i.dim(op, rule);
+    }
+    Ok(())
+}
+
+/// `lhs - rhs` for an equation, the term itself otherwise.
+pub(crate) fn residual(
+    graph: &mut Graph,
+    equation: NodeId,
+) -> NodeId {
+    match *graph.children(equation) {
+        | [lhs, rhs] if graph.op(equation) == core::EQ => {
+            let minus_one = graph.int(-1);
+            let negated = graph.node(core::MUL, &[minus_one, rhs]);
+            graph.node(core::ADD, &[lhs, negated])
+        },
+        | _ => equation,
+    }
+}
+
+/// Longest period of a continued fraction that is searched for.
+const MAX_PERIOD: usize = 200_000;
+/// Most partial quotients or convergents produced by one request.
+const MAX_TERMS: u64 = 10_000;
+/// Largest limit of the prime sieve (9592 primes).
+const MAX_SIEVE: u64 = 100_000;
+
+/// `sqrt(n) = [a0; period, period, ...]` for a positive non-square `n`.
+fn sqrt_expansion(n: &BigInt) -> Option<(BigInt, Vec<BigInt>)> {
+    if !n.is_positive() {
+        return None;
+    }
+    let a0 = n.sqrt();
+    if &a0 * &a0 == *n {
+        return None;
+    }
+    let two_a0 = &a0 * 2;
+    let (mut m, mut d, mut a) = (BigInt::zero(), BigInt::one(), a0.clone());
+    let mut period = Vec::new();
+    while period.len() < MAX_PERIOD {
+        m = &d * &a - &m;
+        d = (n - &m * &m) / &d;
+        a = (&a0 + &m) / &d;
+        period.push(a.clone());
+        if a == two_a0 {
+            return Some((a0, period));
+        }
+    }
+    None
+}
+
+/// The partial quotients of a rational, by the Euclidean algorithm.
+fn rational_expansion(r: &BigRational) -> Vec<BigInt> {
+    let mut out = Vec::new();
+    let mut x = r.clone();
+    loop {
+        let a = x.floor().to_integer();
+        let fraction = &x - BigRational::from_integer(a.clone());
+        out.push(a);
+        if fraction.is_zero() {
+            return out;
+        }
+        x = fraction.recip();
+    }
+}
+
+/// The convergents `h/k` of the continued fraction with these quotients.
+fn convergent_pairs(quotients: &[BigInt]) -> Vec<(BigInt, BigInt)> {
+    let (mut h1, mut h2) = (BigInt::one(), BigInt::zero());
+    let (mut k1, mut k2) = (BigInt::zero(), BigInt::one());
+    let mut out = Vec::with_capacity(quotients.len());
+    for a in quotients {
+        let h = a * &h1 + &h2;
+        let k = a * &k1 + &k2;
+        (h2, h1) = (h1, h.clone());
+        (k2, k1) = (k1, k.clone());
+        out.push((h, k));
+    }
+    out
+}
+
+/// Outcome of a Pell equation.
+enum Pell {
+    Solved(BigInt, BigInt),
+    Unsolvable,
+}
+
+/// The smallest positive solution of `x^2 - n y^2 = 1` (or `= -1` when
+/// `negative`). `None` when `n` is not a positive non-square (or the
+/// search is too long), `Some(Pell::Unsolvable)` when there is none.
+fn pell_solution(
+    n: &BigInt,
+    negative: bool,
+) -> Option<Pell> {
+    let (a0, period) = sqrt_expansion(n)?;
+    let m = period.len();
+    let index = if negative {
+        if m % 2 == 0 {
+            return Some(Pell::Unsolvable);
+        }
+        m - 1
+    } else if m % 2 == 0 {
+        m - 1
+    } else {
+        2 * m - 1
+    };
+    let mut quotients = vec![a0];
+    while quotients.len() <= index {
+        quotients.push(period.get((quotients.len() - 1) % m)?.clone());
+    }
+    convergent_pairs(&quotients)
+        .pop()
+        .map(|(x, y)| Pell::Solved(x, y))
+}
+
+/// A continued fraction: finite, or `[a0; period...]` of a square root.
+enum Expansion {
+    Finite(Vec<BigInt>),
+    Surd(BigInt, Vec<BigInt>),
+}
+
+impl Expansion {
+    /// The first `count` partial quotients.
+    fn terms(
+        &self,
+        count: usize,
+    ) -> Vec<BigInt> {
+        match self {
+            | Self::Finite(q) => q.iter().take(count).cloned().collect(),
+            | Self::Surd(a0, period) => {
+                std::iter::once(a0.clone())
+                    .chain(period.iter().cycle().cloned())
+                    .take(count)
+                    .collect()
+            },
+        }
+    }
+}
+
+/// `n` if `term` is `sqrt(n)` or `n^(1/2)` for a positive integer `n`.
+fn surd_radicand(
+    graph: &Graph,
+    term: NodeId,
+) -> Option<BigInt> {
+    let half = Number::fraction(1, 2)?;
+    let radicand = match (graph.op(term), graph.children(term)) {
+        | (core::POW, [base, exp]) if graph.number_of(*exp).is_some_and(|e| *e == half) => *base,
+        | (op, [arg]) if graph.ops().lookup("sqrt") == Some(op) => *arg,
+        | _ => return None,
+    };
+    int_of(graph, radicand).filter(Signed::is_positive)
+}
+
+/// The continued fraction of a rational, of `sqrt(n)` and — when
+/// `allow_list` — of a `list` of partial quotients.
+fn expansion(
+    graph: &mut Graph,
+    node: NodeId,
+    allow_list: bool,
+) -> Option<Expansion> {
+    let term = best(graph, node)?;
+    if let Some(r) = graph.number_of(term).and_then(Number::to_rational) {
+        return Some(Expansion::Finite(rational_expansion(&r)));
+    }
+    if let Some(n) = surd_radicand(graph, term) {
+        let root = n.sqrt();
+        if &root * &root == n {
+            return Some(Expansion::Finite(vec![root]));
+        }
+        return sqrt_expansion(&n).map(|(a0, period)| Expansion::Surd(a0, period));
+    }
+    if allow_list {
+        return list_of(graph, term).map(Expansion::Finite);
+    }
+    None
+}
+
+fn cfrac(
+    cx: &mut Cx<'_>,
+    args: &[NodeId],
+) -> Outcome {
+    let &[x] = args else {
+        return Outcome::Pass;
+    };
+    let graph = &mut *cx.graph;
+    match expansion(graph, x, false) {
+        | Some(Expansion::Finite(quotients)) => Outcome::Pinned(list_node(graph, quotients)),
+        | Some(Expansion::Surd(a0, period)) => {
+            let first = graph.num(Number::Int(a0));
+            let period = list_node(graph, period);
+            Outcome::Pinned(graph.node(core::LIST, &[first, period]))
+        },
+        | None => Outcome::Pass,
+    }
+}
+
+fn convergents(
+    cx: &mut Cx<'_>,
+    args: &[NodeId],
+) -> Outcome {
+    let &[x, k] = args else {
+        return Outcome::Pass;
+    };
+    let graph = &mut *cx.graph;
+    let Some(k) = int_of(graph, k)
+        .and_then(|k| k.to_u64())
+        .filter(|&k| k < MAX_TERMS)
+    else {
+        return Outcome::Pass;
+    };
+    let Some(expansion) = expansion(graph, x, true) else {
+        return Outcome::Pass;
+    };
+    let count = usize::try_from(k + 1).unwrap_or(0);
+    let mut nodes = Vec::new();
+    for (h, k) in convergent_pairs(&expansion.terms(count)) {
+        nodes.push(graph.num(Number::rat(BigRational::new(h, k))));
+    }
+    Outcome::Pinned(graph.node(core::LIST, &nodes))
+}
+
+/// A quadratic polynomial without mixed terms, by variable.
+struct Shape {
+    constant: BigRational,
+    linear: Vec<BigRational>,
+    square: Vec<BigRational>,
+}
+
+/// The coefficients of `poly` if it only has constant, linear and square
+/// terms in the generators `vars`, all with exact coefficients.
+fn shape(
+    poly: &Poly,
+    vars: &[u32],
+) -> Option<Shape> {
+    let mut out = Shape {
+        constant: BigRational::zero(),
+        linear: vec![BigRational::zero(); vars.len()],
+        square: vec![BigRational::zero(); vars.len()],
+    };
+    for (mono, coeff) in poly.terms() {
+        let c = coeff.to_rational()?;
+        match mono.as_slice() {
+            | [] => out.constant = c,
+            | &[(g, e)] => {
+                let index = vars.iter().position(|&v| v == g)?;
+                let slot = match e {
+                    | 1 => out.linear.get_mut(index)?,
+                    | 2 => out.square.get_mut(index)?,
+                    | _ => return None,
+                };
+                *slot = c;
+            },
+            | _ => return None,
+        }
+    }
+    Some(out)
+}
+
+/// The values scaled by the least common multiple of their denominators.
+fn integers(values: &[&BigRational]) -> Vec<BigInt> {
+    let scale = values.iter().fold(BigInt::one(), |acc, v| {
+        &acc / gcd(&acc, v.denom()) * v.denom()
+    });
+    values
+        .iter()
+        .map(|v| (*v * BigRational::from_integer(scale.clone())).to_integer())
+        .collect()
+}
+
+/// A name for the free parameter that none of `vars` uses.
+fn parameter(
+    graph: &mut Graph,
+    vars: &[NodeId],
+    candidates: &[&str],
+) -> Option<Vec<NodeId>> {
+    let taken: Vec<String> = vars.iter().map(|&v| graph.display(v)).collect();
+    if candidates.iter().any(|c| taken.iter().any(|t| t == c)) {
+        return None;
+    }
+    Some(candidates.iter().map(|c| graph.sym(c)).collect())
+}
+
+/// `a x + b y = c`: all solutions with one integer parameter `t`.
+fn linear_diophantine(
+    graph: &mut Graph,
+    shape: &Shape,
+    vars: &[NodeId],
+) -> Option<NodeId> {
+    let (a, b) = (shape.linear.first()?, shape.linear.get(1)?);
+    let c = -&shape.constant;
+    let [a, b, c] = <[BigInt; 3]>::try_from(integers(&[a, b, &c])).ok()?;
+    if a.is_zero() && b.is_zero() {
+        // `0 = c`: no solution, or every pair (which a list cannot say).
+        return (!c.is_zero()).then(|| graph.node(core::LIST, &[]));
+    }
+    let (g, x0, y0) = egcd(&a, &b);
+    if !(&c % &g).is_zero() {
+        return Some(graph.node(core::LIST, &[]));
+    }
+    let f = &c / &g;
+    let t = *parameter(graph, vars, &["t"])?.first()?;
+    let mut solution = Vec::new();
+    for (particular, step) in [(x0 * &f, &b / &g), (y0 * &f, -(&a / &g))] {
+        let (particular, step) = (
+            graph.num(Number::Int(particular)),
+            graph.num(Number::Int(step)),
+        );
+        let moved = graph.node(core::MUL, &[step, t]);
+        solution.push(graph.node(core::ADD, &[particular, moved]));
+    }
+    Some(graph.node(core::LIST, &solution))
+}
+
+/// `u^2 - n v^2 = ±1` in the two variables, in either order.
+fn pell_diophantine(
+    graph: &mut Graph,
+    shape: &Shape,
+) -> Option<NodeId> {
+    if shape.linear.iter().any(|c| !c.is_zero()) {
+        return None;
+    }
+    let (s0, s1) = (shape.square.first()?, shape.square.get(1)?);
+    // The variable with the positive square coefficient plays `u`.
+    let (u_first, s_u, s_v) = if s0.is_positive() && s1.is_negative() {
+        (true, s0, s1)
+    } else if s1.is_positive() && s0.is_negative() {
+        (false, s1, s0)
+    } else {
+        return None;
+    };
+    let n = -s_v / s_u;
+    let rhs = -&shape.constant / s_u;
+    let negative = if rhs.is_one() {
+        false
+    } else if rhs == -BigRational::one() {
+        true
+    } else {
+        return None;
+    };
+    if !n.is_integer() {
+        return None;
+    }
+    let (u, v) = match pell_solution(&n.to_integer(), negative)? {
+        | Pell::Solved(x, y) => (x, y),
+        | Pell::Unsolvable => return Some(graph.node(core::LIST, &[])),
+    };
+    let pair = if u_first {
+        vec![u, v]
+    } else {
+        vec![v, u]
+    };
+    Some(list_node(graph, pair))
+}
+
+/// `x^2 + y^2 = z^2` (in any arrangement): the Pythagorean triples, with
+/// integer parameters `m`, `n`, `k`.
+fn pythagorean_diophantine(
+    graph: &mut Graph,
+    shape: &Shape,
+    vars: &[NodeId],
+) -> Option<NodeId> {
+    let minus_one = -BigRational::one();
+    let negatives = shape.square.iter().filter(|c| **c == minus_one).count();
+    let positives = shape.square.iter().filter(|c| c.is_one()).count();
+    if negatives != 1
+        || positives != 2
+        || !shape.constant.is_zero()
+        || shape.linear.iter().any(|c| !c.is_zero())
+    {
+        return None;
+    }
+    let names = parameter(graph, vars, &["m", "n", "k"])?;
+    let (&m, &n, &k) = (names.first()?, names.get(1)?, names.get(2)?);
+    let two = graph.int(2);
+    let (m2, n2) = (
+        graph.node(core::POW, &[m, two]),
+        graph.node(core::POW, &[n, two]),
+    );
+    let minus_one_node = graph.int(-1);
+    let minus_n2 = graph.node(core::MUL, &[minus_one_node, n2]);
+    let leg = {
+        let difference = graph.node(core::ADD, &[m2, minus_n2]);
+        graph.node(core::MUL, &[k, difference])
+    };
+    let other = graph.node(core::MUL, &[two, k, m, n]);
+    let hypotenuse = {
+        let sum = graph.node(core::ADD, &[m2, n2]);
+        graph.node(core::MUL, &[k, sum])
+    };
+    let mut legs = [leg, other].into_iter();
+    let solution: Vec<NodeId> = shape
+        .square
+        .iter()
+        .map(|c| {
+            if *c == minus_one {
+                hypotenuse
+            } else {
+                legs.next().unwrap_or(leg)
+            }
+        })
+        .collect();
+    Some(graph.node(core::LIST, &solution))
+}
+
+fn diophantine(
+    cx: &mut Cx<'_>,
+    args: &[NodeId],
+) -> Outcome {
+    let graph = &mut *cx.graph;
+    let &[equation, unknowns] = args else {
+        return Outcome::Pass;
+    };
+    if graph.op(unknowns) != core::LIST {
+        return Outcome::Pass;
+    }
+    let vars = graph.children(unknowns).to_vec();
+    if vars.iter().any(|&v| graph.as_symbol(v).is_none()) {
+        return Outcome::Pass;
+    }
+    let expr = residual(graph, equation);
+    let Some(term) = best(graph, expr) else {
+        return Outcome::Pass;
+    };
+    let mut gens = Gens::default();
+    let indices: Vec<u32> = vars.iter().map(|&v| gens.index(graph, v)).collect();
+    let Some(poly) = from_term(graph, &mut gens, term, Limits::default()) else {
+        return Outcome::Pass;
+    };
+    let Some(shape) = shape(&poly, &indices) else {
+        return Outcome::Pass;
+    };
+    let quadratic = shape.square.iter().any(|c| !c.is_zero());
+    let solution = match (vars.len(), quadratic) {
+        | (2, false) => linear_diophantine(graph, &shape, &vars),
+        | (2, true) => pell_diophantine(graph, &shape),
+        | (3, true) => pythagorean_diophantine(graph, &shape, &vars),
+        | _ => None,
+    };
+    solution.map_or(Outcome::Pass, Outcome::Equal)
+}
+
+fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
+    let unary = |name: &str| OpDescriptor::new(name, Arity::Fixed(1));
+    let commutative = OpFlags::COMMUTATIVE;
+    let set = "number_theory";
+
+    exact(
+        i,
+        set,
+        binary("gcd").flags(commutative).eval(gcd_eval),
+        |a| {
+            match a {
+                | [x, y] => Some(Value::Int(gcd(x, y))),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        binary("lcm").flags(commutative).eval(lcm_eval),
+        |a| {
+            match a {
+                | [x, y] => {
+                    let g = gcd(x, y);
+                    if g.is_zero() {
+                        return Some(Value::Int(g));
+                    }
+                    Some(Value::Int((x / g * y).abs()))
+                },
+                | _ => None,
+            }
+        },
+    )?;
+    exact(i, set, binary("mod").eval(mod_eval), |a| {
+        match a {
+            | [x, m] => modulo(x, m).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, OpDescriptor::new("powmod", Arity::Fixed(3)), |a| {
+        match a {
+            | [b, e, m] if !e.is_negative() && m.is_positive() => {
+                Some(Value::Int(modulo(b, m)?.modpow(e, m)))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, binary("invmod"), |a| {
+        match a {
+            | [x, m] => invmod(x, m).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("isprime"), |a| {
+        match a {
+            | [n] => Some(Value::Bool(is_prime(n))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("nextprime"), |a| {
+        match a {
+            | [n] => next_prime(n).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("totient"), |a| {
+        let [n] = a else {
+            return None;
+        };
+        let mut phi = BigInt::one();
+        for (p, e) in factor_big(n)? {
+            phi *= (&p - 1) * p.pow(e - 1);
+        }
+        Some(Value::Int(phi))
+    })?;
+    exact(i, set, unary("divisor_count"), |a| {
+        let [n] = a else {
+            return None;
+        };
+        let count = factor_big(n)?
+            .iter()
+            .fold(BigInt::one(), |acc, &(_, e)| acc * (e + 1));
+        Some(Value::Int(count))
+    })?;
+    exact(i, set, unary("divisor_sum"), |a| {
+        let [n] = a else {
+            return None;
+        };
+        let mut sigma = BigInt::one();
+        for (p, e) in factor_big(n)? {
+            // 1 + p + ... + p^e
+            sigma *= (0..=e).fold(BigInt::zero(), |acc, k| acc + p.pow(k));
+        }
+        Some(Value::Int(sigma))
+    })?;
+    exact(i, set, unary("factorint"), |a| {
+        let [n] = a else {
+            return None;
+        };
+        let rows = factor_big(n)?
+            .into_iter()
+            .map(|(p, e)| vec![p, BigInt::from(e)])
+            .collect();
+        Some(Value::Nested(rows))
+    })?;
+    exact(i, set, binary("jacobi"), |a| {
+        match a {
+            | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
+            | _ => None,
+        }
+    })?;
+    exact(i, set, binary("egcd"), |a| {
+        match a {
+            | [x, y] => {
+                let (g, s, t) = egcd(x, y);
+                Some(Value::Flat(vec![g, s, t]))
+            },
+            | _ => None,
+        }
+    })?;
+    exact_lists(i, set, binary("crt"), crt)?;
+    exact(i, set, unary("pell"), |a| {
+        match a {
+            | [n] => {
+                match pell_solution(n, false)? {
+                    | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
+                    | Pell::Unsolvable => None,
+                }
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, set, unary("primes"), |a| {
+        match a {
+            | [n] => {
+                let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
+                let primes = crate::kernels::number_theory::primes_sieve(limit);
+                Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
+            },
+            | _ => None,
+        }
+    })?;
+    procedure(i, set, unary("cfrac"), Tier::Normalize, cfrac)?;
+    procedure(i, set, binary("convergents"), Tier::Normalize, convergents)?;
+    procedure(
+        i,
+        set,
+        binary("diophantine").flags(OpFlags::HEAVY).cost(100),
+        Tier::Reduce,
+        diophantine,
+    )?;
+
+    install_ext(i)?;
+
+    // Number theory is arithmetic on pure integers: its values are
+    // dimensionless, its decisions non-metric, and its multi-part results
+    // homogeneous lists of integers.
+    attach_dimensions(
+        i,
+        &[
+            ("gcd", DimRule::Dimensionless),
+            ("lcm", DimRule::Dimensionless),
+            ("mod", DimRule::Dimensionless),
+            ("powmod", DimRule::Dimensionless),
+            ("invmod", DimRule::Dimensionless),
+            ("isprime", DimRule::NonMetric),
+            ("nextprime", DimRule::Dimensionless),
+            ("totient", DimRule::Dimensionless),
+            ("divisor_count", DimRule::Dimensionless),
+            ("divisor_sum", DimRule::Dimensionless),
+            ("factorint", DimRule::List),
+            ("jacobi", DimRule::Dimensionless),
+            ("egcd", DimRule::List),
+            ("crt", DimRule::Dimensionless),
+            ("pell", DimRule::List),
+            ("primes", DimRule::List),
+            ("cfrac", DimRule::List),
+            ("convergents", DimRule::List),
+            ("diophantine", DimRule::NonMetric),
+            ("legendre_symbol", DimRule::Dimensionless),
+            ("kronecker_symbol", DimRule::Dimensionless),
+            ("sqrtmod", DimRule::Dimensionless),
+            ("quadratic_residues", DimRule::List),
+            ("mult_order", DimRule::Dimensionless),
+            ("carmichael", DimRule::Dimensionless),
+            ("primitive_root", DimRule::Dimensionless),
+            ("dlog", DimRule::Dimensionless),
+            ("mobius", DimRule::Dimensionless),
+            ("liouville", DimRule::Dimensionless),
+            ("omega", DimRule::Dimensionless),
+            ("bigomega", DimRule::Dimensionless),
+            ("radical", DimRule::Dimensionless),
+            ("sigma", DimRule::Dimensionless),
+            ("divisors", DimRule::List),
+            ("is_squarefree", DimRule::NonMetric),
+            ("is_square", DimRule::NonMetric),
+            ("isqrt", DimRule::Dimensionless),
+            ("iroot", DimRule::Dimensionless),
+            ("perfect_power", DimRule::List),
+            ("prevprime", DimRule::Dimensionless),
+            ("prime_pi", DimRule::Dimensionless),
+            ("nth_prime", DimRule::Dimensionless),
+            ("two_squares", DimRule::List),
+            ("lincong", DimRule::List),
+            ("binomial_mod", DimRule::Dimensionless),
+            ("farey", DimRule::List),
+        ],
+    )?;
+
+    // Values on floats are rounded integers, so only identities that hold
+    // for every rounding are stated for symbolic arguments. The others are
+    // limited to literal integers, which is what they can be checked on.
+    i.rewrites(
+        Tier::Normalize,
+        &[
+            "number_theory/gcd-0: gcd(?a, 0) => ?a if integer(?a), nonnegative(?a)",
+            "number_theory/gcd-1: gcd(?a, 1) => 1",
+            "number_theory/gcd-gcd: gcd(gcd(?a, ?b), ?b) => gcd(?a, ?b)",
+            "number_theory/lcm-0: lcm(?a, 0) => 0",
+            "number_theory/lcm-1: lcm(?a, 1) => ?a if integer(?a), nonnegative(?a)",
+            "number_theory/lcm-lcm: lcm(lcm(?a, ?b), ?b) => lcm(?a, ?b)",
+            "number_theory/gcd-lcm: gcd(?a, ?b) * lcm(?a, ?b) => ?a * ?b \
+             if integer(?a), integer(?b), positive(?a), positive(?b)",
+            "number_theory/mod-1: mod(?a, 1) => 0",
+            "number_theory/mod-mod: mod(mod(?a, ?m), ?m) => mod(?a, ?m)",
+        ],
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::Facts;
+    use crate::rules::testing::eval;
+    use crate::rules::testing::reduce_with;
+    use crate::rules::testing::simplify;
+
+    fn s(src: &str) -> String {
+        simplify(&[number_theory()], src)
+    }
+
+    #[test]
+    fn gcd_and_lcm() {
+        assert_eq!(s("gcd(12, 18)"), "6");
+        assert_eq!(s("gcd(-12, 18)"), "6");
+        assert_eq!(s("gcd(0, 5)"), "5");
+        assert_eq!(s("gcd(0, 0)"), "0");
+        assert_eq!(s("gcd(17, 5)"), "1");
+        assert_eq!(s("gcd(2^100, 6^50)"), "1125899906842624");
+        assert_eq!(s("lcm(4, 6)"), "12");
+        assert_eq!(s("lcm(-4, 6)"), "12");
+        assert_eq!(s("lcm(0, 6)"), "0");
+        assert_eq!(s("lcm(21, 6)"), "42");
+        assert_eq!(s("gcd(gcd(12, 18), 8)"), "2");
+    }
+
+    #[test]
+    fn mod_is_non_negative() {
+        assert_eq!(s("mod(17, 5)"), "2");
+        assert_eq!(s("mod(-17, 5)"), "3");
+        assert_eq!(s("mod(17, -5)"), "2");
+        assert_eq!(s("mod(0, 7)"), "0");
+        assert_eq!(s("mod(2^100, 1000)"), "376");
+        // Undefined for a zero modulus, so it stays.
+        assert_eq!(s("mod(5, 0)"), "mod(5, 0)");
+    }
+
+    #[test]
+    fn modular_power_and_inverse() {
+        assert_eq!(s("powmod(2, 10, 1000)"), "24");
+        assert_eq!(s("powmod(2, 1000, 1000000007)"), "688423210");
+        assert_eq!(s("powmod(-2, 3, 7)"), "6");
+        assert_eq!(s("powmod(5, 0, 7)"), "1");
+        assert_eq!(s("powmod(5, 3, 1)"), "0");
+        assert_eq!(s("powmod(5, -1, 7)"), "powmod(5, -1, 7)");
+        assert_eq!(s("invmod(3, 7)"), "5");
+        assert_eq!(s("invmod(-3, 7)"), "2");
+        assert_eq!(s("invmod(10, 17)"), "12");
+        assert_eq!(s("invmod(4, 8)"), "invmod(4, 8)");
+        assert_eq!(s("invmod(3, 0)"), "invmod(3, 0)");
+        assert_eq!(s("invmod(5, 1)"), "0");
+    }
+
+    #[test]
+    fn primality() {
+        assert_eq!(s("isprime(2)"), "true");
+        assert_eq!(s("isprime(97)"), "true");
+        assert_eq!(s("isprime(1)"), "false");
+        assert_eq!(s("isprime(0)"), "false");
+        assert_eq!(s("isprime(-7)"), "false");
+        assert_eq!(s("isprime(91)"), "false");
+        // Carmichael number and a strong pseudoprime to small bases.
+        assert_eq!(s("isprime(561)"), "false");
+        assert_eq!(s("isprime(3215031751)"), "false");
+        assert_eq!(s("isprime(2^61 - 1)"), "true");
+        assert_eq!(s("isprime(2^64 - 59)"), "true");
+        // 2^89 - 1 is a Mersenne prime, 2^67 - 1 famously is not.
+        assert_eq!(s("isprime(2^89 - 1)"), "true");
+        assert_eq!(s("isprime(2^67 - 1)"), "false");
+        assert_eq!(s("isprime(2^127 - 1)"), "true");
+    }
+
+    #[test]
+    fn baillie_psw_against_a_sieve_and_known_pseudoprimes() {
+        // Every number below 30 000 through BPSW agrees with the sieve.
+        let flags = prime_flags(30_000);
+        for k in 0..=30_000_usize {
+            assert_eq!(bpsw(&BigInt::from(k)), flags[k], "{k}");
+        }
+        // Strong pseudoprimes to base 2 (the Lucas half rejects them) and
+        // Carmichael numbers.
+        for composite in [
+            2047_u64, 3277, 4033, 4681, 8321, 15841, 29341, 42799, 49141, 52633, 65281, 74665,
+            80581, 85489, 88357, 90751,
+        ] {
+            assert!(!bpsw(&BigInt::from(composite)), "{composite}");
+        }
+        for carmichael in [
+            561_u64, 1105, 1729, 2465, 2821, 6601, 8911, 41041, 825265, 321197185,
+        ] {
+            assert!(!bpsw(&BigInt::from(carmichael)), "{carmichael}");
+        }
+        // Strong Lucas pseudoprimes (5459, 5777, 10877, 16109, 18971) are
+        // caught by the base-2 half.
+        for lucas in [
+            5459_u64, 5777, 10877, 16109, 18971, 22499, 24569, 25199, 40309, 58519,
+        ] {
+            assert!(!bpsw(&BigInt::from(lucas)), "{lucas}");
+        }
+        // The smallest strong pseudoprimes to the first 12 and 13 prime
+        // bases defeat Miller-Rabin with those bases but not BPSW.
+        let spsp12: BigInt = "318665857834031151167461".parse().unwrap();
+        let spsp13: BigInt = "3317044064679887385961981".parse().unwrap();
+        for composite in [&spsp12, &spsp13] {
+            assert!(!bpsw(composite));
+            assert!(!is_prime(composite));
+        }
+        // A few large primes and composites.
+        for exponent in [127_u32, 521, 607] {
+            let mersenne = (BigInt::one() << exponent) - 1;
+            assert!(is_prime(&mersenne), "2^{exponent} - 1");
+            assert!(!is_prime(&(&mersenne + 2)) || exponent == 0);
+        }
+        for exponent in [67_u32, 101, 257, 523] {
+            assert!(
+                !is_prime(&((BigInt::one() << exponent) - 1)),
+                "2^{exponent} - 1"
+            );
+        }
+        // Squares of primes and products of two large primes.
+        let p: BigInt = "1000000000000000000000007".parse().unwrap();
+        let q = super::next_prime(&p).unwrap();
+        assert!(is_prime(&p) && is_prime(&q));
+        assert!(!is_prime(&(&p * &p)) && !is_prime(&(&p * &q)));
+    }
+
+    #[test]
+    fn next_prime() {
+        assert_eq!(s("nextprime(-5)"), "2");
+        assert_eq!(s("nextprime(1)"), "2");
+        assert_eq!(s("nextprime(2)"), "3");
+        assert_eq!(s("nextprime(14)"), "17");
+        assert_eq!(s("nextprime(89)"), "97");
+        assert_eq!(s("nextprime(10^12)"), "1000000000039");
+    }
+
+    #[test]
+    fn arithmetic_functions() {
+        assert_eq!(s("totient(1)"), "1");
+        assert_eq!(s("totient(9)"), "6");
+        assert_eq!(s("totient(36)"), "12");
+        assert_eq!(s("totient(97)"), "96");
+        assert_eq!(s("totient(1000000)"), "400000");
+        assert_eq!(s("totient(0)"), "totient(0)");
+        assert_eq!(s("divisor_count(1)"), "1");
+        assert_eq!(s("divisor_count(12)"), "6");
+        assert_eq!(s("divisor_count(360)"), "24");
+        assert_eq!(s("divisor_count(97)"), "2");
+        assert_eq!(s("divisor_sum(1)"), "1");
+        assert_eq!(s("divisor_sum(12)"), "28");
+        assert_eq!(s("divisor_sum(28)"), "56");
+        assert_eq!(s("divisor_sum(97)"), "98");
+    }
+
+    #[test]
+    fn factorisation() {
+        assert_eq!(
+            s("factorint(360)"),
+            "list(list(2, 3), list(3, 2), list(5, 1))"
+        );
+        assert_eq!(s("factorint(1)"), "list()");
+        assert_eq!(s("factorint(97)"), "list(list(97, 1))");
+        assert_eq!(s("factorint(0)"), "factorint(0)");
+        assert_eq!(s("factorint(-6)"), "factorint(-6)");
+        // 600851475143 is Project Euler's classic.
+        assert_eq!(
+            s("factorint(600851475143)"),
+            "list(list(71, 1), list(839, 1), list(1471, 1), list(6857, 1))"
+        );
+        // Semiprime of two 32-bit primes and a prime square.
+        assert_eq!(
+            s("factorint(4294967291 * 4294967279)"),
+            "list(list(4294967279, 1), list(4294967291, 1))"
+        );
+        assert_eq!(s("factorint(1000003^2)"), "list(list(1000003, 2))");
+        assert_eq!(
+            s("factorint(2^64 - 1)"),
+            "list(list(3, 1), list(5, 1), list(17, 1), list(257, 1), list(641, 1), list(65537, 1), list(6700417, 1))"
+        );
+        // Beyond 64 bits: powers, many small factors and, by the elliptic
+        // curve method, large prime factors.
+        assert_eq!(s("factorint(2^70)"), "list(list(2, 70))");
+        assert_eq!(s("factorint(3^50)"), "list(list(3, 50))");
+    }
+
+    #[test]
+    fn elliptic_curve_factorisation_of_large_numbers() {
+        // Fermat numbers: F6 = 274177 * 67280421310721 and
+        // F7 = 59649589127497217 * 5704689200685129054721.
+        assert_eq!(
+            s("factorint(2^64 + 1)"),
+            "list(list(274177, 1), list(67280421310721, 1))"
+        );
+        assert_eq!(
+            s("factorint(2^128 + 1)"),
+            "list(list(59649589127497217, 1), list(5704689200685129054721, 1))"
+        );
+        // M101 = 7432339208719 * 341117531003194129.
+        assert_eq!(
+            s("factorint(2^101 - 1)"),
+            "list(list(7432339208719, 1), list(341117531003194129, 1))"
+        );
+        // Many small primes beyond 64 bits and a prime power.
+        assert_eq!(
+            s("factorint(2^96 - 1)"),
+            "list(list(3, 2), list(5, 1), list(7, 1), list(13, 1), list(17, 1), list(97, 1), list(193, 1), list(241, 1), list(257, 1), list(673, 1), list(65537, 1), list(22253377, 1))"
+        );
+        assert_eq!(s("factorint(1000003^5)"), "list(list(1000003, 5))");
+        assert_eq!(
+            s("factorint(2^521 - 1)"),
+            "list(list(6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151, 1))"
+        );
+        // The arithmetic functions follow.
+        assert_eq!(s("omega(2^128 + 1)"), "2");
+        assert_eq!(s("totient(2^64 + 1)"), "18446676793287966720"); // 274176 * 67280421310720
+        assert_eq!(s("divisor_count(2^128 + 1)"), "4");
+        assert_eq!(s("is_squarefree(2^101 - 1)"), "true");
+        assert_eq!(s("mobius(2^101 - 1)"), "1");
+        assert_eq!(s("radical((2^64 + 1)^3)"), "18446744073709551617");
+    }
+
+    #[test]
+    fn three_prime_factors_of_twelve_digits_and_degenerate_input() {
+        let p1 = super::next_prime(&BigInt::from(10_u64).pow(11)).unwrap();
+        let p2 = super::next_prime(&(&p1 * 3)).unwrap();
+        let p3 = super::next_prime(&(&p1 * 7)).unwrap();
+        let n = &p1 * &p2 * &p3;
+        let want = {
+            let mut v = vec![p1, p2, p3];
+            v.sort();
+            v.into_iter().map(|p| (p, 1)).collect::<Vec<_>>()
+        };
+        assert_eq!(factor_big(&n), Some(want));
+        // Non-positive input is refused; 1 has no prime factors.
+        assert_eq!(factor_big(&BigInt::zero()), None);
+        assert_eq!(factor_big(&BigInt::from(-12)), None);
+        assert_eq!(factor_big(&BigInt::one()), Some(Vec::new()));
+    }
+
+    #[test]
+    fn jacobi_symbol() {
+        assert_eq!(s("jacobi(1, 1)"), "1");
+        assert_eq!(s("jacobi(2, 7)"), "1");
+        assert_eq!(s("jacobi(3, 7)"), "-1");
+        assert_eq!(s("jacobi(5, 21)"), "1");
+        assert_eq!(s("jacobi(6, 9)"), "0");
+        assert_eq!(s("jacobi(-1, 7)"), "-1");
+        assert_eq!(s("jacobi(1001, 9907)"), "-1");
+        assert_eq!(s("jacobi(2, 8)"), "jacobi(2, 8)");
+        assert_eq!(s("jacobi(2, -7)"), "jacobi(2, -7)");
+    }
+
+    #[test]
+    fn chinese_remainder() {
+        assert_eq!(s("crt(list(2, 3, 2), list(3, 5, 7))"), "23");
+        assert_eq!(s("crt(list(1, 2), list(4, 9))"), "29");
+        assert_eq!(s("crt(list(-1, 0), list(5, 3))"), "9");
+        assert_eq!(s("crt(list(5), list(7))"), "5");
+        assert_eq!(
+            s("crt(list(1, 1), list(4, 6))"),
+            "crt(list(1, 1), list(4, 6))"
+        );
+        assert_eq!(s("crt(list(1), list(3, 5))"), "crt(list(1), list(3, 5))");
+        assert_eq!(
+            s("crt(list(1, x), list(3, 5))"),
+            "crt(list(1, x), list(3, 5))"
+        );
+    }
+
+    #[test]
+    fn extended_gcd() {
+        assert_eq!(s("egcd(240, 46)"), "list(2, -9, 47)");
+        assert_eq!(s("egcd(0, 5)"), "list(5, 0, 1)");
+        assert_eq!(s("egcd(7, 0)"), "list(7, 1, 0)");
+        assert_eq!(s("egcd(0, 0)"), "list(0, 1, 0)");
+        // Bezout's identity through the engine, including negative arguments.
+        for a in [-35_i64, -6, 1, 12, 240] {
+            for b in [-14_i64, 5, 18, 46] {
+                let g = s(&format!("gcd({a}, {b})"));
+                let combo = s(&format!("egcd({a}, {b})"));
+                let nums: Vec<i64> = combo
+                    .trim_start_matches("list(")
+                    .trim_end_matches(')')
+                    .split(", ")
+                    .map(|t| t.parse().unwrap_or(i64::MAX))
+                    .collect();
+                assert_eq!(nums.first().map(ToString::to_string), Some(g));
+                let x = nums.get(1).copied().unwrap_or(0);
+                let y = nums.get(2).copied().unwrap_or(0);
+                assert_eq!(
+                    a * x + b * y,
+                    nums.first().copied().unwrap_or(-1),
+                    "({a}, {b})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn symbolic_arguments_stay() {
+        let sets = [number_theory()];
+        for (src, expected) in [
+            ("gcd(x, 6)", "gcd(6, x)"),
+            ("lcm(x, 6)", "lcm(6, x)"),
+            ("mod(x, 6)", "mod(x, 6)"),
+            ("powmod(2, x, 7)", "powmod(2, x, 7)"),
+            ("isprime(n)", "isprime(n)"),
+            ("factorint(n)", "factorint(n)"),
+            ("egcd(a, 4)", "egcd(a, 4)"),
+        ] {
+            let (text, reduced) = reduce_with(&sets, src, &[]);
+            assert!(reduced);
+            assert_eq!(text, expected);
+        }
+    }
+
+    #[test]
+    fn rewrites_fire() {
+        let sets = [number_theory()];
+        let run = |src: &str, assume: &[(&str, Facts)]| reduce_with(&sets, src, assume).0;
+        assert_eq!(run("gcd(x, 1)", &[]), "1");
+        assert_eq!(run("lcm(x, 0)", &[]), "0");
+        assert_eq!(run("mod(x, 1)", &[]), "0");
+        assert_eq!(run("mod(mod(x, m), m)", &[]), "mod(x, m)");
+        assert_eq!(run("gcd(gcd(a, b), b)", &[]), "gcd(a, b)");
+        assert_eq!(run("lcm(lcm(a, b), b)", &[]), "lcm(a, b)");
+        // The remaining rules apply to literal integers, where the kernels
+        // reach the same value: the rule and the kernel must agree.
+        assert_eq!(run("gcd(12, 0)", &[]), "12");
+        assert_eq!(run("lcm(12, 1)", &[]), "12");
+        assert_eq!(run("gcd(12, 18) * lcm(12, 18)", &[]), "216");
+    }
+
+    #[test]
+    fn float_semantics() {
+        let sets = [number_theory()];
+        assert!((eval(&sets, "gcd(12, 18)", &[]) - 6.0).abs() < 1e-9);
+        assert!((eval(&sets, "gcd(x, 18)", &[("x", 11.6)]) - 6.0).abs() < 1e-9);
+        assert!((eval(&sets, "lcm(4, 6)", &[]) - 12.0).abs() < 1e-9);
+        assert!((eval(&sets, "lcm(0, 6)", &[]) - 0.0).abs() < 1e-9);
+        assert!((eval(&sets, "mod(x, 5)", &[("x", -17.0)]) - 3.0).abs() < 1e-9);
+        assert!(eval(&sets, "mod(x, 0)", &[("x", 1.0)]).is_nan());
+    }
+
+    /// Splits `list(a, b, ...)` into its top-level items.
+    fn items(text: &str) -> Vec<String> {
+        let inner = text
+            .strip_prefix("list(")
+            .and_then(|t| t.strip_suffix(')'))
+            .unwrap_or("");
+        let (mut out, mut depth, mut current) = (Vec::new(), 0_i32, String::new());
+        for ch in inner.chars() {
+            match ch {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | _ => {},
+            }
+            if ch == ',' && depth == 0 {
+                out.push(current.trim().to_owned());
+                current.clear();
+            } else {
+                current.push(ch);
+            }
+        }
+        if !current.trim().is_empty() {
+            out.push(current.trim().to_owned());
+        }
+        out
+    }
+
+    fn integers(text: &str) -> Vec<i128> {
+        items(text)
+            .iter()
+            .map(|t| t.parse().unwrap_or(i128::MIN))
+            .collect()
+    }
+
+    #[test]
+    fn pell_equation() {
+        assert_eq!(s("pell(2)"), "list(3, 2)");
+        assert_eq!(s("pell(3)"), "list(2, 1)");
+        assert_eq!(s("pell(5)"), "list(9, 4)");
+        assert_eq!(s("pell(7)"), "list(8, 3)");
+        assert_eq!(s("pell(13)"), "list(649, 180)");
+        // The famous hard case.
+        assert_eq!(s("pell(61)"), "list(1766319049, 226153980)");
+        assert_eq!(s("pell(109)"), "list(158070671986249, 15140424455100)");
+        // Every result solves the equation; no smaller y does.
+        for n in (2..200_i128).filter(|n| (0..15).all(|r| r * r != *n) && (n.isqrt().pow(2) != *n))
+        {
+            let v = integers(&s(&format!("pell({n})")));
+            let (x, y) = (v[0], v[1]);
+            assert_eq!(x * x - n * y * y, 1, "n = {n}");
+            if y < 100_000 {
+                assert!(
+                    (1..y).all(|t| {
+                        let x2 = 1 + n * t * t;
+                        x2.isqrt().pow(2) != x2
+                    }),
+                    "n = {n}: y = {y} is not minimal"
+                );
+            }
+        }
+        // Squares and non-positive numbers have no non-trivial solution.
+        assert_eq!(s("pell(4)"), "pell(4)");
+        assert_eq!(s("pell(1)"), "pell(1)");
+        assert_eq!(s("pell(0)"), "pell(0)");
+        assert_eq!(s("pell(-3)"), "pell(-3)");
+        assert_eq!(s("pell(n)"), "pell(n)");
+    }
+
+    #[test]
+    fn continued_fractions() {
+        assert_eq!(s("cfrac(415/93)"), "list(4, 2, 6, 7)");
+        assert_eq!(s("cfrac(-7/3)"), "list(-3, 1, 2)");
+        assert_eq!(s("cfrac(5)"), "list(5)");
+        assert_eq!(s("cfrac(0)"), "list(0)");
+        assert_eq!(s("cfrac(1/2)"), "list(0, 2)");
+        // sqrt(n) = [a0; period]
+        assert_eq!(s("cfrac(2^(1/2))"), "list(1, list(2))");
+        assert_eq!(s("cfrac(3^(1/2))"), "list(1, list(1, 2))");
+        assert_eq!(s("cfrac(23^(1/2))"), "list(4, list(1, 3, 1, 8))");
+        assert_eq!(s("cfrac(9^(1/2))"), "list(3)");
+        assert_eq!(
+            simplify(
+                &[number_theory(), crate::rules::elementary()],
+                "cfrac(sqrt(7))"
+            ),
+            "list(2, list(1, 1, 1, 4))"
+        );
+        assert_eq!(s("cfrac(x)"), "cfrac(x)");
+        assert_eq!(s("cfrac(-2^(1/2))"), "cfrac(-2^(1/2))");
+        // The expansion of p/q converges to p/q exactly.
+        for (p, q) in [(415_i128, 93_i128), (-355, 113), (22, 7), (1, 3), (144, 89)] {
+            let last = s(&format!("convergents({p}/{q}, 30)"));
+            let last = items(&last).pop().unwrap_or_default();
+            let value = s(&last);
+            assert_eq!(value, s(&format!("{p}/{q}")));
+        }
+    }
+
+    #[test]
+    fn convergents_of_expansions() {
+        assert_eq!(s("convergents(415/93, 3)"), "list(4, 9/2, 58/13, 415/93)");
+        // The list ends with the expansion of a rational.
+        assert_eq!(s("convergents(415/93, 10)"), "list(4, 9/2, 58/13, 415/93)");
+        assert_eq!(
+            s("convergents(2^(1/2), 5)"),
+            "list(1, 3/2, 7/5, 17/12, 41/29, 99/70)"
+        );
+        assert_eq!(
+            s("convergents(list(1, 2, 2, 2), 10)"),
+            "list(1, 3/2, 7/5, 17/12)"
+        );
+        assert_eq!(s("convergents(list(3, 7, 15, 1), 1)"), "list(3, 22/7)");
+        assert_eq!(s("convergents(x, 3)"), "convergents(x, 3)");
+        assert_eq!(s("convergents(2^(1/2), -1)"), "convergents(2^(1/2), -1)");
+        // Convergents of sqrt(n) approximate it; the pairs of `pell` appear.
+        let c = items(&s("convergents(7^(1/2), 20)"));
+        assert!(c.iter().any(|t| t == "8/3"));
+        for t in &c {
+            let value = eval(&[number_theory()], t, &[]);
+            assert!((value - 7.0_f64.sqrt()).abs() < 1.0, "{t}");
+        }
+        let last = eval(
+            &[number_theory()],
+            c.last().map_or("0", String::as_str),
+            &[],
+        );
+        assert!((last - 7.0_f64.sqrt()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn prime_sieve() {
+        assert_eq!(s("primes(30)"), "list(2, 3, 5, 7, 11, 13, 17, 19, 23, 29)");
+        assert_eq!(s("primes(2)"), "list(2)");
+        assert_eq!(s("primes(1)"), "list()");
+        assert_eq!(s("primes(-5)"), "primes(-5)");
+        assert_eq!(items(&s("primes(100000)")).len(), 9592);
+        assert_eq!(s("primes(1000000000)"), "primes(1000000000)");
+        assert_eq!(s("primes(n)"), "primes(n)");
+        // Agrees with the primality kernel.
+        for p in integers(&s("primes(200)")) {
+            assert_eq!(s(&format!("isprime({p})")), "true");
+        }
+        assert_eq!(
+            integers(&s("primes(200)")).len(),
+            (0..=200)
+                .filter(|&k| s(&format!("isprime({k})")) == "true")
+                .count()
+        );
+    }
+
+    #[test]
+    fn linear_diophantine_equations() {
+        let sets = [number_theory()];
+        let solve = |eq: &str| s(&format!("diophantine({eq}, list(x, y))"));
+        assert_eq!(solve("3*x + 5*y = 7"), "list(5*t + 14, -3*t - 7)");
+        assert_eq!(solve("4*x + 6*y = 7"), "list()");
+        assert_eq!(solve("0*x + 0*y = 3"), "list()");
+        assert_eq!(solve("3*x = 6"), "list(2, -t)");
+        // Substituting the parametric family back into the equation.
+        for (a, b, c) in [
+            (3_i128, 5_i128, 7_i128),
+            (6, 9, 21),
+            (-4, 10, 6),
+            (12, -18, 30),
+            (7, 0, 14),
+            (0, 5, 10),
+            (1, 1, 0),
+        ] {
+            let text = solve(&format!("{a}*x + {b}*y = {c}"));
+            let v = items(&text);
+            assert_eq!(v.len(), 2, "{text}");
+            for t in [-3.0, 0.0, 2.0, 11.0] {
+                let value = eval(
+                    &sets,
+                    &format!("{a}*({}) + {b}*({})", v[0], v[1]),
+                    &[("t", t)],
+                );
+                assert!(
+                    (value - c as f64).abs() < 1e-9,
+                    "{a}x + {b}y = {c}, t = {t}: {text}"
+                );
+            }
+        }
+        // Rational coefficients are scaled to integers; the equation may
+        // be written with everything on one side.
+        assert_eq!(solve("x/2 + y/3 = 1"), solve("3*x + 2*y = 6"));
+        assert_eq!(solve("3*x + 5*y - 7 = 0"), solve("3*x + 5*y = 7"));
+        assert_eq!(solve("y = 2*x + 1"), solve("-2*x + y = 1"));
+        // The parameter avoids the unknowns' names.
+        let (text, reduced) = reduce_with(&sets, "diophantine(3*t + 5*y = 7, list(t, y))", &[]);
+        assert!(!reduced, "{text}");
+    }
+
+    #[test]
+    fn quadratic_diophantine_equations() {
+        let sets = [number_theory()];
+        assert_eq!(s("diophantine(x^2 - 2*y^2 = 1, list(x, y))"), "list(3, 2)");
+        assert_eq!(s("diophantine(y^2 - 7*x^2 = 1, list(x, y))"), "list(3, 8)");
+        assert_eq!(
+            s("diophantine(x^2 - 61*y^2 = 1, list(x, y))"),
+            "list(1766319049, 226153980)"
+        );
+        assert_eq!(
+            s("diophantine(2*x^2 - 6*y^2 = 2, list(x, y))"),
+            "list(2, 1)"
+        );
+        // The negative Pell equation: solvable exactly when the period is odd.
+        assert_eq!(s("diophantine(x^2 - 2*y^2 = -1, list(x, y))"), "list(1, 1)");
+        assert_eq!(
+            s("diophantine(x^2 - 13*y^2 = -1, list(x, y))"),
+            "list(18, 5)"
+        );
+        assert_eq!(s("diophantine(x^2 - 3*y^2 = -1, list(x, y))"), "list()");
+        for (n, sign) in [
+            (2_i128, 1_i128),
+            (5, 1),
+            (7, 1),
+            (13, 1),
+            (41, 1),
+            (2, -1),
+            (5, -1),
+            (13, -1),
+            (29, -1),
+        ] {
+            let v = integers(&s(&format!(
+                "diophantine(x^2 - {n}*y^2 = {sign}, list(x, y))"
+            )));
+            assert_eq!(v.len(), 2, "n = {n}, sign = {sign}");
+            assert_eq!(v[0] * v[0] - n * v[1] * v[1], sign);
+        }
+        // Pythagorean triples: x^2 + y^2 = z^2 in any arrangement.
+        let triple = s("diophantine(x^2 + y^2 = z^2, list(x, y, z))");
+        assert_eq!(triple, "list(k*(m^2 - n^2), 2*k*m*n, k*(m^2 + n^2))");
+        for (m, n, k) in [
+            (2.0, 1.0, 1.0),
+            (3.0, 2.0, 1.0),
+            (5.0, 2.0, 3.0),
+            (4.0, 1.0, 2.0),
+        ] {
+            let v = items(&triple);
+            let b = [("m", m), ("n", n), ("k", k)];
+            let (x, y, z) = (
+                eval(&sets, &v[0], &b),
+                eval(&sets, &v[1], &b),
+                eval(&sets, &v[2], &b),
+            );
+            assert!((x * x + y * y - z * z).abs() < 1e-9);
+        }
+        assert_eq!(
+            s("diophantine(x^2 - z^2 + y^2 = 0, list(x, z, y))"),
+            "list(k*(m^2 - n^2), k*(m^2 + n^2), 2*k*m*n)"
+        );
+        // Forms that are not recognised stay requests.
+        for src in [
+            "diophantine(x^2 - 4*y^2 = 1, list(x, y))",
+            "diophantine(x^2 - 2*y^2 = 3, list(x, y))",
+            "diophantine(x^2 + y^2 = 5, list(x, y))",
+            "diophantine(x*y = 6, list(x, y))",
+            "diophantine(x^3 + y = 1, list(x, y))",
+            "diophantine(a*x + y = 1, list(x, y))",
+            "diophantine(x + y = 1, list(x, 2))",
+            "diophantine(x + y + z = 1, list(x, y, z))",
+            "diophantine(x^2 + y^2 = z^2, list(x, y, m))",
+        ] {
+            let (text, reduced) = reduce_with(&sets, src, &[]);
+            assert!(!reduced, "{src} => {text}");
+        }
+    }
+}
+
+// Further number theory: quadratic residues and modular square roots,
+// orders and primitive roots, discrete logarithms, arithmetic functions,
+// sums of two squares, linear congruences and Farey sequences.
+//
+// | operator | value |
+// |---|---|
+// | `legendre_symbol(a, p)` | the Legendre symbol `(a/p)` for an odd prime `p` (`-1`, `0` or `1`) |
+// | `kronecker_symbol(a, n)` | the Kronecker symbol, extending the Jacobi symbol to even and negative `n` |
+// | `sqrtmod(a, p)` | the smaller square root of `a` modulo the prime `p` (Tonelli–Shanks); stays unreduced when `a` is a non-residue |
+// | `quadratic_residues(n)` | the sorted non-zero squares modulo `n` (`n <= 100000`) |
+// | `mult_order(a, n)` | the multiplicative order of `a` modulo `n` (`gcd(a, n) = 1`) |
+// | `carmichael(n)` | the Carmichael function `λ(n)`, the exponent of the group of units |
+// | `primitive_root(n)` | the smallest primitive root modulo `n` (only for `n = 2, 4, p^k, 2 p^k`) |
+// | `dlog(g, h, n)` | the least `x >= 0` with `g^x ≡ h (mod n)`, by baby-step giant-step; stays unreduced when none exists |
+// | `mobius(n)`, `liouville(n)` | the Möbius and Liouville functions |
+// | `omega(n)`, `bigomega(n)` | the number of distinct prime factors, and with multiplicity |
+// | `radical(n)` | the product of the distinct prime factors |
+// | `sigma(n, k)` | the sum of the `k`-th powers of the divisors of `n` |
+// | `divisors(n)` | the sorted positive divisors |
+// | `is_squarefree(n)`, `is_square(n)` | truth values |
+// | `isqrt(n)`, `iroot(n, k)` | the floor of the square and `k`-th root |
+// | `perfect_power(n)` | `list(b, e)` with `n = b^e` and `e` maximal (`list(n, 1)` when `n` is not a perfect power) |
+// | `prevprime(n)`, `prime_pi(n)`, `nth_prime(k)` | the largest prime below `n`, the number of primes up to `n` (`n <= 100000`), the `k`-th prime |
+// | `two_squares(n)` | `list(a, b)`, `0 <= a <= b`, with `a² + b² = n` (one representation; stays unreduced when none exists) |
+// | `lincong(a, b, m)` | the solutions of `a x ≡ b (mod m)` as `list(x0, step)`, or `list()` when there is none |
+// | `binomial_mod(n, k, p)` | `C(n, k) mod p` for a prime `p`, by Lucas' theorem |
+// | `farey(n)` | the Farey sequence of order `n` as `list(list(num, den), ...)` |
+
+
+const SET: &str = "number_theory";
+const MAX_TABLE: u64 = 100_000;
+const MAX_BSGS: u64 = 1 << 22;
+
+fn big(v: u64) -> BigInt {
+    BigInt::from(v)
+}
+
+fn small(n: &BigInt) -> Option<u64> {
+    n.to_u64().filter(|&v| v >= 1)
+}
+
+#[allow(clippy::unnecessary_wraps)] // used as a `fn(T) -> Option<Value>` in `and_then`
+fn int(v: impl Into<BigInt>) -> Option<Value> {
+    Some(Value::Int(v.into()))
+}
+
+fn count(n: usize) -> Option<Value> {
+    u64::try_from(n).ok().and_then(int)
+}
+
+/// `a^e mod m` on machine words.
+fn pow_mod(
+    a: u64,
+    e: u64,
+    m: u64,
+) -> u64 {
+    big(a).modpow(&big(e), &big(m)).to_u64().unwrap_or(0)
+}
+
+fn mulm(
+    a: u64,
+    b: u64,
+    m: u64,
+) -> u64 {
+    u64::try_from(u128::from(a) * u128::from(b) % u128::from(m)).unwrap_or(0)
+}
+
+/// A square root of `a` modulo the prime `p` by Tonelli–Shanks.
+fn tonelli_shanks(
+    a: u64,
+    p: u64,
+) -> Option<u64> {
+    let a = a % p;
+    if a == 0 {
+        return Some(0);
+    }
+    if p == 2 {
+        return Some(a);
+    }
+    if pow_mod(a, (p - 1) / 2, p) != 1 {
+        return None;
+    }
+    let (mut q, mut s) = (p - 1, 0_u32);
+    while q % 2 == 0 {
+        q /= 2;
+        s += 1;
+    }
+    let mut z = 2;
+    while pow_mod(z, (p - 1) / 2, p) != p - 1 {
+        z += 1;
+    }
+    let mut m = s;
+    let mut c = pow_mod(z, q, p);
+    let mut t = pow_mod(a, q, p);
+    let mut r = pow_mod(a, q.div_ceil(2), p);
+    while t != 1 {
+        let mut i = 0_u32;
+        let mut probe = t;
+        while probe != 1 {
+            probe = pow_mod(probe, 2, p);
+            i += 1;
+            if i >= m {
+                return None;
+            }
+        }
+        let b = pow_mod(c, 1 << (m - i - 1), p);
+        m = i;
+        c = pow_mod(b, 2, p);
+        t = mulm(t, c, p);
+        r = mulm(r, b, p);
+    }
+    Some(r.min(p - r))
+}
+
+/// Carmichael's `λ(n)`.
+fn carmichael(n: &BigInt) -> Option<BigInt> {
+    let mut lambda = BigInt::one();
+    for (p, e) in factor(n)? {
+        let part = if p == 2 {
+            match e {
+                | 1 => BigInt::one(),
+                | 2 => big(2),
+                | _ => big(1) << (e - 2),
+            }
+        } else {
+            big(p - 1) * big(p).pow(e - 1)
+        };
+        lambda = &lambda / gcd(&lambda, &part) * part;
+    }
+    Some(lambda)
+}
+
+fn mult_order(
+    a: &BigInt,
+    n: &BigInt,
+) -> Option<BigInt> {
+    if !n.is_positive() {
+        return None;
+    }
+    if n.is_one() {
+        return Some(BigInt::one());
+    }
+    let a = modulo(a, n)?;
+    if !gcd(&a, n).is_one() {
+        return None;
+    }
+    let mut order = carmichael(n)?;
+    let primes: Vec<u64> = factor(&order)?.into_iter().map(|(p, _)| p).collect();
+    for p in primes {
+        let p = big(p);
+        while (&order % &p).is_zero() && a.modpow(&(&order / &p), n).is_one() {
+            order /= &p;
+        }
+    }
+    Some(order)
+}
+
+fn primitive_root(n: &BigInt) -> Option<BigInt> {
+    let modulus = small(n)?;
+    match modulus {
+        | 1 => return Some(BigInt::zero()),
+        | 2 => return Some(BigInt::one()),
+        | 4 => return Some(big(3)),
+        | _ => {},
+    }
+    let primes = factor(n)?;
+    let cyclic = match primes.as_slice() {
+        | [(p, _)] => *p != 2,
+        | [(2, 1), _] => true,
+        | _ => false,
+    };
+    if !cyclic {
+        return None;
+    }
+    let phi: u64 = primes
+        .iter()
+        .map(|&(p, e)| (p - 1) * p.pow(e - 1))
+        .product();
+    let prime_factors: Vec<u64> = factor(&big(phi))?.into_iter().map(|(p, _)| p).collect();
+    (2..modulus)
+        .find(|&g| {
+            gcd(&big(g), n).is_one()
+                && prime_factors
+                    .iter()
+                    .all(|&q| pow_mod(g, phi / q, modulus) != 1)
+        })
+        .map(BigInt::from)
+}
+
+/// Least `x >= 0` with `g^x = h (mod n)`.
+fn dlog(
+    g: &BigInt,
+    h: &BigInt,
+    n: &BigInt,
+) -> Option<BigInt> {
+    let modulus = small(n)?;
+    if modulus == 1 {
+        return Some(BigInt::zero());
+    }
+    let (g, h) = (modulo(g, n)?, modulo(h, n)?);
+    // Without invertibility, scan (the sequence is eventually periodic).
+    if !gcd(&g, n).is_one() {
+        let mut value = BigInt::one();
+        for x in 0..modulus.min(MAX_BSGS) {
+            if value == h {
+                return Some(big(x));
+            }
+            value = &value * &g % n;
+        }
+        return None;
+    }
+    let order = mult_order(&g, n)?.to_u64()?;
+    let m = order.isqrt() + 1;
+    if m > MAX_BSGS {
+        return None;
+    }
+    let mut table = std::collections::HashMap::with_capacity(usize::try_from(m).ok()?);
+    let mut value = BigInt::one();
+    for j in 0..m {
+        table.entry(value.clone()).or_insert(j);
+        value = &value * &g % n;
+    }
+    let giant_inverse = invmod(&g.modpow(&big(m), n), n)?;
+    let mut gamma = h;
+    for i in 0..=m {
+        if let Some(&j) = table.get(&gamma) {
+            return Some(big(i * m + j));
+        }
+        gamma = gamma * &giant_inverse % n;
+    }
+    None
+}
+
+/// Divisors, ascending.
+fn divisors(n: &BigInt) -> Option<Vec<BigInt>> {
+    let mut out = vec![BigInt::one()];
+    for (p, e) in factor(n)? {
+        let current = out.clone();
+        let mut power = BigInt::one();
+        for _ in 1..=e {
+            power *= p;
+            out.extend(current.iter().map(|d| d * &power));
+        }
+    }
+    out.sort();
+    Some(out)
+}
+
+/// Gaussian multiplication `(a + bi)(c + di)`.
+fn gauss_mul(
+    x: &(BigInt, BigInt),
+    y: &(BigInt, BigInt),
+) -> (BigInt, BigInt) {
+    (&x.0 * &y.0 - &x.1 * &y.1, &x.0 * &y.1 + &x.1 * &y.0)
+}
+
+fn two_squares(n: &BigInt) -> Option<(BigInt, BigInt)> {
+    if n.is_zero() {
+        return Some((BigInt::zero(), BigInt::zero()));
+    }
+    let mut acc = (BigInt::one(), BigInt::zero());
+    for (p, e) in factor(n)? {
+        match p % 4 {
+            | 3 => {
+                if e % 2 == 1 {
+                    return None;
+                }
+                let scale = big(p).pow(e / 2);
+                acc = (&acc.0 * &scale, &acc.1 * &scale);
+            },
+            | 2 => {
+                for _ in 0..e {
+                    acc = gauss_mul(&acc, &(BigInt::one(), BigInt::one()));
+                }
+            },
+            | _ => {
+                let root = tonelli_shanks(p - 1, p)?;
+                // Euclid on (p, root) until the remainder drops below sqrt p.
+                let (mut a, mut b) = (p, root);
+                let bound = p.isqrt();
+                while b > bound {
+                    (a, b) = (b, a % b);
+                }
+                let rest = p - b * b;
+                let c = rest.isqrt();
+                if c * c != rest {
+                    return None;
+                }
+                let prime_part = (big(b), big(c));
+                for _ in 0..e {
+                    acc = gauss_mul(&acc, &prime_part);
+                }
+            },
+        }
+    }
+    let (x, y) = (acc.0.abs(), acc.1.abs());
+    Some(if x <= y { (x, y) } else { (y, x) })
+}
+
+/// The Kronecker symbol `(a/n)`.
+fn kronecker(
+    a: &BigInt,
+    n: &BigInt,
+) -> Option<i8> {
+    if n.is_zero() {
+        return Some(i8::from(a.abs().is_one()));
+    }
+    let mut result = 1_i8;
+    let mut n = n.clone();
+    if n.is_negative() {
+        n = -n;
+        if a.is_negative() {
+            result = -result;
+        }
+    }
+    let twos = n.trailing_zeros().unwrap_or(0);
+    n >>= twos;
+    if twos > 0 {
+        if !a.bit(0) {
+            return Some(0);
+        }
+        let low = modulo(a, &big(8))?.to_u8()?;
+        if twos % 2 == 1 && matches!(low, 3 | 5) {
+            result = -result;
+        }
+    }
+    Some(result * jacobi(a, &n)?)
+}
+
+fn lucas_binomial(
+    mut n: u64,
+    mut k: u64,
+    p: u64,
+) -> u64 {
+    let mut result = 1_u64;
+    while n > 0 || k > 0 {
+        let (ni, ki) = (n % p, k % p);
+        if ki > ni {
+            return 0;
+        }
+        // C(ni, ki) mod p with ni < p, as a product of small factors.
+        let mut term = 1_u64;
+        for j in 0..ki {
+            term = mulm(
+                mulm(term, (ni - j) % p, p),
+                pow_mod((j + 1) % p, p - 2, p),
+                p,
+            );
+        }
+        result = mulm(result, term, p);
+        n /= p;
+        k /= p;
+    }
+    result
+}
+
+fn farey(order: u64) -> Vec<Vec<BigInt>> {
+    let (mut a, mut b, mut c, mut d) = (0_u64, 1_u64, 1_u64, order);
+    let mut out = vec![vec![big(a), big(b)]];
+    while c <= order {
+        let k = (order + b) / d;
+        (a, b, c, d) = (c, d, k * c - a, k * d - b);
+        out.push(vec![big(a), big(b)]);
+    }
+    out
+}
+
+#[allow(clippy::too_many_lines)]
+fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let unary = |name: &str| OpDescriptor::new(name, Arity::Fixed(1));
+    let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
+    let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
+
+    exact(i, SET, binary("legendre_symbol"), |a| {
+        match a {
+            | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, binary("kronecker_symbol"), |a| {
+        match a {
+            | [x, n] => kronecker(x, n).and_then(int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, binary("sqrtmod"), |a| {
+        match a {
+            | [x, p] if is_prime(p) => {
+                let p = p.to_u64()?;
+                let x = modulo(x, &big(p))?.to_u64()?;
+                tonelli_shanks(x, p).and_then(int)
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, unary("quadratic_residues"), |a| {
+        let [n] = a else { return None };
+        let n = small(n).filter(|&v| v <= MAX_TABLE)?;
+        let mut seen: Vec<u64> = (1..n).map(|x| x * x % n).filter(|&r| r != 0).collect();
+        seen.sort_unstable();
+        seen.dedup();
+        Some(Value::Flat(seen.into_iter().map(BigInt::from).collect()))
+    })?;
+    exact(i, SET, binary("mult_order"), |a| {
+        match a {
+            | [x, n] => mult_order(x, n).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, unary("carmichael"), |a| {
+        match a {
+            | [n] => carmichael(n).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, unary("primitive_root"), |a| {
+        match a {
+            | [n] => primitive_root(n).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, ternary("dlog"), |a| {
+        match a {
+            | [g, h, n] => dlog(g, h, n).map(Value::Int),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, unary("mobius"), |a| {
+        let [n] = a else { return None };
+        let primes = factor_big(n)?;
+        if primes.iter().any(|&(_, e)| e > 1) {
+            return int(0);
+        }
+        int(if primes.len() % 2 == 0 {
+            1
+        } else {
+            -1
+        })
+    })?;
+    exact(i, SET, unary("liouville"), |a| {
+        let [n] = a else { return None };
+        let total: u32 = factor_big(n)?.iter().map(|&(_, e)| e).sum();
+        int(if total.is_multiple_of(2) {
+            1
+        } else {
+            -1
+        })
+    })?;
+    exact(i, SET, unary("omega"), |a| {
+        let [n] = a else { return None };
+        count(factor_big(n)?.len())
+    })?;
+    exact(i, SET, unary("bigomega"), |a| {
+        let [n] = a else { return None };
+        int(factor_big(n)?
+            .iter()
+            .map(|&(_, e)| u64::from(e))
+            .sum::<u64>())
+    })?;
+    exact(i, SET, unary("radical"), |a| {
+        let [n] = a else { return None };
+        int(factor_big(n)?
+            .iter()
+            .map(|(p, _)| p.clone())
+            .product::<BigInt>())
+    })?;
+    exact(i, SET, binary("sigma"), |a| {
+        let [n, k] = a else { return None };
+        let k = k.to_u32().filter(|&k| k <= 64)?;
+        let mut total = BigInt::one();
+        for (p, e) in factor_big(n)? {
+            let q = p.pow(k);
+            total *= (0..=e).fold(BigInt::zero(), |acc, j| acc + q.pow(j));
+        }
+        Some(Value::Int(total))
+    })?;
+    exact(i, SET, unary("divisors"), |a| {
+        let [n] = a else { return None };
+        divisors(n).map(Value::Flat)
+    })?;
+    exact(i, SET, unary("is_squarefree"), |a| {
+        let [n] = a else { return None };
+        Some(Value::Bool(factor_big(n)?.iter().all(|&(_, e)| e == 1)))
+    })?;
+    exact(i, SET, unary("is_square"), |a| {
+        let [n] = a else { return None };
+        if n.is_negative() {
+            return Some(Value::Bool(false));
+        }
+        let r = n.sqrt();
+        Some(Value::Bool(&r * &r == *n))
+    })?;
+    exact(i, SET, unary("isqrt"), |a| {
+        match a {
+            | [n] if !n.is_negative() => int(n.sqrt()),
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, binary("iroot"), |a| {
+        match a {
+            | [n, k] if !n.is_negative() && k.is_positive() => {
+                int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
+            },
+            | _ => None,
+        }
+    })?;
+    exact(i, SET, unary("perfect_power"), |a| {
+        let [n] = a else { return None };
+        if *n < big(2) {
+            return None;
+        }
+        let bits = u32::try_from(n.bits()).ok()?;
+        for e in (2..=bits).rev() {
+            let r = n.nth_root(e);
+            if r.pow(e) == *n {
+                return Some(Value::Flat(vec![r, BigInt::from(e)]));
+            }
+        }
+        Some(Value::Flat(vec![n.clone(), BigInt::one()]))
+    })?;
+    exact(i, SET, unary("prevprime"), |a| {
+        let [n] = a else { return None };
+        let mut candidate = n - 1;
+        while candidate >= big(2) {
+            if is_prime(&candidate) {
+                return Some(Value::Int(candidate));
+            }
+            candidate -= 1;
+        }
+        None
+    })?;
+    exact(i, SET, unary("prime_pi"), |a| {
+        let [n] = a else { return None };
+        let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_TABLE)?).ok()?;
+        count(crate::kernels::number_theory::primes_sieve(limit).len())
+    })?;
+    exact(i, SET, unary("nth_prime"), |a| {
+        let [k] = a else { return None };
+        let k = usize::try_from(k.to_u64().filter(|&v| v >= 1)?).ok()?;
+        let mut limit = 100;
+        while limit <= 50_000_000 {
+            let primes = crate::kernels::number_theory::primes_sieve(limit);
+            if let Some(&p) = primes.get(k - 1) {
+                return count(p);
+            }
+            limit *= 4;
+        }
+        None
+    })?;
+    exact(i, SET, unary("two_squares"), |a| {
+        let [n] = a else { return None };
+        if n.is_negative() {
+            return None;
+        }
+        two_squares(n).map(|(x, y)| Value::Flat(vec![x, y]))
+    })?;
+    exact(i, SET, ternary("lincong"), |a| {
+        let [x, b, m] = a else { return None };
+        if !m.is_positive() {
+            return None;
+        }
+        let (g, s, _) = egcd(&modulo(x, m)?, m);
+        let b = modulo(b, m)?;
+        if !(&b % &g).is_zero() {
+            return Some(Value::Flat(Vec::new()));
+        }
+        let step = m / &g;
+        let x0 = modulo(&(s * (b / &g)), &step)?;
+        Some(Value::Flat(vec![x0, step]))
+    })?;
+    exact(i, SET, ternary("binomial_mod"), |a| {
+        let [n, k, p] = a else { return None };
+        if !is_prime(p) || n.is_negative() || k.is_negative() {
+            return None;
+        }
+        int(lucas_binomial(n.to_u64()?, k.to_u64()?, p.to_u64()?))
+    })?;
+    exact(i, SET, unary("farey"), |a| {
+        let [n] = a else { return None };
+        let n = n.to_u64().filter(|&v| (1..=200).contains(&v))?;
+        Some(Value::Nested(farey(n)))
+    })?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod ext_tests {
+    use crate::rules::number_theory::number_theory;
+    use crate::rules::testing::simplify;
+
+    fn s(src: &str) -> String {
+        simplify(&[number_theory()], src)
+    }
+
+    #[test]
+    fn legendre_kronecker_and_sqrtmod() {
+        assert_eq!(s("legendre_symbol(2, 7)"), "1");
+        assert_eq!(s("legendre_symbol(3, 7)"), "-1");
+        assert_eq!(s("legendre_symbol(14, 7)"), "0");
+        assert_eq!(s("kronecker_symbol(2, 15)"), "1");
+        assert_eq!(s("kronecker_symbol(3, 8)"), "-1");
+        assert_eq!(s("kronecker_symbol(-1, 4)"), "1");
+        assert_eq!(s("sqrtmod(10, 13)"), "6");
+        assert_eq!(s("sqrtmod(13, 17)"), "8");
+        assert_eq!(s("mod(sqrtmod(2, 1000000007)^2, 1000000007)"), "2");
+        assert_eq!(s("sqrtmod(3, 7)"), "sqrtmod(3, 7)");
+        assert_eq!(s("quadratic_residues(11)"), "list(1, 3, 4, 5, 9)");
+    }
+
+    #[test]
+    fn orders_and_primitive_roots() {
+        assert_eq!(s("mult_order(2, 7)"), "3");
+        assert_eq!(s("mult_order(3, 7)"), "6");
+        assert_eq!(s("mult_order(2, 15)"), "4");
+        assert_eq!(s("carmichael(561)"), "80");
+        assert_eq!(s("carmichael(8)"), "2");
+        assert_eq!(s("primitive_root(7)"), "3");
+        assert_eq!(s("primitive_root(25)"), "2");
+        assert_eq!(s("primitive_root(14)"), "3");
+        assert_eq!(s("primitive_root(8)"), "primitive_root(8)");
+    }
+
+    #[test]
+    fn discrete_logarithm() {
+        assert_eq!(s("dlog(3, 13, 17)"), "4");
+        assert_eq!(s("powmod(2, dlog(2, 1234, 10007), 10007)"), "1234");
+        assert_eq!(s("dlog(2, 3, 7)"), "dlog(2, 3, 7)");
+        assert_eq!(s("dlog(4, 8, 12)"), "dlog(4, 8, 12)");
+    }
+
+    #[test]
+    fn arithmetic_functions() {
+        assert_eq!(s("mobius(30)"), "-1");
+        assert_eq!(s("mobius(12)"), "0");
+        assert_eq!(s("liouville(12)"), "-1");
+        assert_eq!(s("omega(360)"), "3");
+        assert_eq!(s("bigomega(360)"), "6");
+        assert_eq!(s("radical(360)"), "30");
+        assert_eq!(s("sigma(12, 2)"), "210");
+        assert_eq!(s("divisors(12)"), "list(1, 2, 3, 4, 6, 12)");
+        assert_eq!(s("is_squarefree(30)"), "true");
+        assert_eq!(s("is_square(49)"), "true");
+        assert_eq!(s("isqrt(99)"), "9");
+        assert_eq!(s("iroot(1000, 3)"), "10");
+        assert_eq!(s("perfect_power(64)"), "list(2, 6)");
+        assert_eq!(s("perfect_power(10)"), "list(10, 1)");
+        assert_eq!(s("prevprime(100)"), "97");
+        assert_eq!(s("prime_pi(100)"), "25");
+        assert_eq!(s("nth_prime(10)"), "29");
+    }
+
+    #[test]
+    fn squares_congruences_and_farey() {
+        assert_eq!(s("two_squares(5)"), "list(1, 2)");
+        assert_eq!(s("two_squares(10)"), "list(1, 3)");
+        assert_eq!(s("two_squares(13)"), "list(2, 3)");
+        assert_eq!(s("two_squares(3)"), "two_squares(3)");
+        assert_eq!(s("lincong(6, 4, 10)"), "list(4, 5)");
+        assert_eq!(s("lincong(2, 1, 4)"), "list()");
+        assert_eq!(s("binomial_mod(10, 3, 7)"), "1");
+        assert_eq!(s("binomial_mod(100, 50, 7)"), "4");
+        assert_eq!(
+            s("farey(3)"),
+            "list(list(0, 1), list(1, 3), list(1, 2), list(2, 3), list(1, 1))"
+        );
+    }
+}

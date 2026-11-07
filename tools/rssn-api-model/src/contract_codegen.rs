@@ -1,0 +1,214 @@
+//! Compile reviewed input paths and dimensional formulas to shared contracts.
+use crate::structured_codegen::formula;
+use std::collections::BTreeSet;
+
+fn ident(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .enumerate()
+            .all(|(i, c)| c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit()))
+}
+fn path(s: &str) -> Result<(usize, Vec<&str>), String> {
+    let mut parts = s.split('.');
+    let index = parts
+        .next()
+        .ok_or("missing argument index")?
+        .parse::<usize>()
+        .map_err(|_| "invalid argument index")?;
+    let fields = parts.collect::<Vec<_>>();
+    if !fields.iter().all(|field| ident(field)) {
+        return Err("invalid input path".into());
+    }
+    Ok((index, fields))
+}
+fn path_expr(fields: &[&str]) -> String {
+    fields
+        .iter()
+        .map(|field| format!("{field:?}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+pub fn generate(policy: &str) -> Result<String, String> {
+    let mut names = BTreeSet::new();
+    let mut rows = Vec::new();
+    for (line, text) in policy.lines().enumerate() {
+        if text.trim().is_empty() || text.starts_with('#') {
+            continue;
+        }
+        let fields = text.split('\t').collect::<Vec<_>>();
+        let [name, input, checks, result, output, doc] = fields.as_slice() else {
+            return Err(format!("line {} needs six fields", line + 1));
+        };
+        if doc.trim().is_empty() {
+            return Err("contract documentation must not be empty".into());
+        }
+        if !ident(name)
+            || syn::parse_str::<syn::Ident>(name).is_err()
+            || !names.insert(name.to_ascii_uppercase())
+        {
+            return Err(format!("invalid or duplicate contract {name}"));
+        }
+        let mut variables = BTreeSet::new();
+        let mut paths = BTreeSet::new();
+        let mut bindings = Vec::new();
+        if *input != "-" {
+            for entry in input.split(',') {
+                let (var, source) = entry.split_once('=').ok_or("invalid input binding")?;
+                if !ident(var) || !variables.insert(var) {
+                    return Err(format!("duplicate or invalid variable {var}"));
+                }
+                let (arg, fields) = path(source)?;
+                if !paths.insert((arg, fields.clone())) {
+                    return Err("duplicate input path".into());
+                }
+                bindings.push(format!(
+                    "InputBinding {{ name: {var:?}, argument: {arg}, path: &[{}] }}",
+                    path_expr(&fields)
+                ));
+            }
+        }
+        let mut constraints = Vec::new();
+        if *checks != "-" {
+            for entry in checks.split(',') {
+                let (source, expression) =
+                    entry.split_once('=').ok_or("invalid input constraint")?;
+                let (arg, fields) = path(source)?;
+                if !paths.insert((arg, fields.clone())) {
+                    return Err("duplicate constraint path".into());
+                }
+                constraints.push(format!(
+                    "InputConstraint {{ argument: {arg}, path: &[{}], formula: &{} }}",
+                    path_expr(&fields),
+                    formula(expression, &variables)?
+                ));
+            }
+        }
+        if *result != "-" && *output != "-" {
+            return Err("scalar and record result declarations conflict".into());
+        }
+        let result = if *result == "-" {
+            "None".into()
+        } else {
+            format!("Some(&{})", formula(result, &variables)?)
+        };
+        let mut outputs = Vec::new();
+        let mut fields = BTreeSet::new();
+        let output_ref = output.strip_prefix('@');
+        if output_ref.is_some_and(|name| !ident(name)) {
+            return Err("invalid structured policy reference".into());
+        }
+        if *output != "-" && output_ref.is_none() {
+            for entry in output.split(';') {
+                let (name, expression) = entry.split_once('=').ok_or("invalid result field")?;
+                if !ident(name) || !fields.insert(name) {
+                    return Err("duplicate or invalid result field".into());
+                }
+                let expr = if expression == "-" {
+                    "FieldDimension::NonNumeric".into()
+                } else {
+                    format!(
+                        "FieldDimension::Formula(&{})",
+                        formula(expression, &variables)?
+                    )
+                };
+                outputs.push(format!("({name:?}, {expr})"));
+            }
+        }
+        let output_expr = output_ref.map_or_else(
+            || format!("&[{}]", outputs.join(", ")),
+            |name| format!("super::codecs::STRUCTURED_{name}"),
+        );
+        rows.push((*name, bindings, constraints, result, output_expr, *doc));
+    }
+    rows.sort_by_key(|row| row.0);
+    let mut out = String::from("// Generated by rssn-api-gen from contracts.tsv; do not edit.\n");
+    out.push_str("/// A reusable dimensional relation between ABI parameters and results.\n#[derive(Clone, Copy, Debug, PartialEq, Eq)]\npub enum DimensionPolicy {\n");
+    for (name, _, _, _, _, doc) in &rows {
+        out.push_str(&format!("#[doc = {doc:?}]\n{name},\n"));
+    }
+    out.push_str("}\n");
+    for (name, bindings, constraints, result, outputs, _) in &rows {
+        out.push_str(&format!("static CONTRACT_{}: DimContract = DimContract {{ inputs: &[{}], constraints: &[{}], outputs: {}, output_paths: &[], result: {}, other_args_dimensionless: true }};\n", name.to_ascii_uppercase(),bindings.join(", "),constraints.join(", "),outputs,result));
+    }
+    out.push_str("pub(super) fn contract_for(policy: DimensionPolicy) -> &'static DimContract { match policy {\n");
+    for (name, _, _, _, _, _) in &rows {
+        out.push_str(&format!(
+            "DimensionPolicy::{name} => &CONTRACT_{},\n",
+            name.to_ascii_uppercase()
+        ));
+    }
+    out.push_str("} }\n");
+    Ok(out)
+}
+
+/// A validated contract's compatibility with simple source-derived adapters.
+#[derive(Debug)]
+pub(crate) struct SimpleSummary {
+    pub arguments: Vec<usize>,
+    pub nested_paths: bool,
+    pub structured_result: bool,
+}
+/// Reuse the contract parser and derive only the adapter-relevant facts.
+pub(crate) fn simple_summaries(
+    policy: &str
+) -> Result<std::collections::BTreeMap<String, SimpleSummary>, String> {
+    // The canonical parser validates all formulas, identifiers and paths first.
+    generate(policy)?;
+    let mut result = std::collections::BTreeMap::new();
+    for text in policy
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
+    {
+        let fields: Vec<_> = text.split('\t').collect();
+        let [name, inputs, checks, _, output, _] = fields.as_slice() else {
+            unreachable!("validated contract");
+        };
+        let mut arguments = Vec::new();
+        let mut nested_paths = false;
+        for (entries, is_binding) in [(inputs, true), (checks, false)] {
+            if *entries == "-" {
+                continue;
+            }
+            for item in entries.split(',') {
+                let (left, right) = item.split_once('=').expect("validated binding");
+                let source = if is_binding { right } else { left };
+                let (arg, path) = path(source)?;
+                arguments.push(arg);
+                nested_paths |= !path.is_empty();
+            }
+        }
+        result.insert(
+            (*name).to_string(),
+            SimpleSummary {
+                arguments,
+                nested_paths,
+                structured_result: *output != "-",
+            },
+        );
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn rejects_duplicate_paths_and_unbound_formulas() {
+        assert!(generate("Bad\tD=0,E=0\t-\tD\t-\tBad.\n").is_err());
+        assert!(generate("Bad\tD=0\t0=D\tD\t-\tBad.\n").is_err());
+        assert!(generate("Bad\tD=0\t-\tD*UNKNOWN\t-\tBad.\n").is_err());
+        assert!(generate("Bad\tD=0\t-\t-\tx=D;x=1\tBad.\n").is_err());
+        assert!(generate("type\tD=0\t-\tD\t-\tKeyword.\n").is_err());
+        assert!(generate("Self\tD=0\t-\tD\t-\tKeyword.\n").is_err());
+    }
+    #[test]
+    fn emits_one_contract_for_signature_and_runtime() {
+        let code = generate("Product\tD=0,E=1\t-\tD*E\t-\tProduct.\n").unwrap();
+        assert!(code.contains("InputBinding { name: \"D\", argument: 0"));
+        assert!(code.contains("DimFormula::Mul"));
+        assert!(code.contains("pub enum DimensionPolicy"));
+        assert!(code.contains("Product,"));
+        assert!(code.contains("#[doc = \"Product.\"]"));
+        assert!(code.contains("DimensionPolicy::Product => &CONTRACT_PRODUCT"));
+    }
+}

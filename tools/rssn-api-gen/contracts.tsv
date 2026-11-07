@@ -1,0 +1,18 @@
+# policy	input bindings	constraints	result formula	result fields	documentation
+Dimensionless	-	-	-	-	Every numeric argument/result is dimensionless.
+Preserve	D=0	-	D	-	Argument 0 and the result share a dimension.
+EqualPreserve	D=0	1=D	D	-	Two arguments share a dimension; the result has it too.
+Product	D=0,E=1	-	D*E	-	Two independent argument dimensions are multiplied for the result.
+Square	D=0	-	D^2	-	Argument 0 is dimensioned, the result is its square.
+UnitlessResult	D=0	-	-	-	Argument 0 is dimensioned, the result is dimensionless.
+IndependentUnitless	D=0,E=1	-	-	-	Two independently dimensioned inputs, with dimensionless result.
+IndependentPreserveLeft	D=0,E=1	-	D	-	Two independent inputs, output takes the first dimension.
+PreserveWithUnitlessSecond	D=0	-	D	-	Argument 0 is dimensioned, second is dimensionless; output takes first.
+Inverse	D=0	-	1/D	-	Dimensioned input and inverse-dimensioned result.
+Root	D=0	-	sqrt(D)	-	Dimensioned input and square-root-dimensioned result.
+Svd	D=0	-	-	@SVD	Record fields u/v are dimensionless and s has input dimension.
+Qr	D=0	-	-	q=1;r=D	Record field q is dimensionless and r has input dimension.
+SymmetricEigen	D=0	-	-	values=D;vectors=1	Eigenvectors are dimensionless and eigenvalues have input dimension.
+LeastSquares	D=0,E=1	-	E/D	-	Matrix A and vector b have independent dimensions; x has b/A.
+RankTolerance	D=0	1=D	-	-	Matrix and absolute tolerance share a dimension; rank is dimensionless.
+TensorTrain	D=0	-	-	cores=1;shape=-;scale=D;error=D;tolerance_met=-	Input data sets scale/error; cores and tolerance are dimensionless.

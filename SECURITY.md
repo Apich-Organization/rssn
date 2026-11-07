@@ -2,9 +2,9 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.2.x   | :full:             |
+| Version    | Supported          |
+| ---------- | ------------------ |
+| 3.0.0-rc.1 | :full:             |
 
 ## Reporting a Vulnerability
 

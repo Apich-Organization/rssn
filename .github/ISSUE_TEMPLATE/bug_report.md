@@ -15,7 +15,7 @@ Please clearly and concisely describe the bug you encountered. Specify which mod
 
 A minimal, reproducible example is key to fixing bugs quickly.
 
-1.  `rssn` Version Used: [e.g., `0.1.1`]
+1.  `rssn` Version Used: [e.g., `3.0.0-rc.1`]
 2.  Your `Cargo.toml` dependency configuration (especially the features enabled):
     ```toml
     # [Paste relevant dependency configuration here]

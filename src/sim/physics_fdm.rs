@@ -1,0 +1,953 @@
+//! # Finite Difference Method (FDM) Module
+//!
+//! This module provides tools for solving partial differential equations (PDEs)
+//! using the finite difference method. It includes a generic grid structure
+//! and a solver for the 2D heat equation as an example.
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ripple_3d_slice_frame_02.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_00.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_01.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_02.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_03.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_04.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_05.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_06.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_07.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_08.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_09.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions | Initial data |
+//! |---|---|---|---|---|---|
+//! | heat, explicit | no | yes | no | boundary values frozen (Dirichlet) | grid |
+//! | wave, explicit | no | yes | yes | boundary values frozen (Dirichlet) | grid + velocity |
+//! | Poisson | no | yes | no | Dirichlet | source grid |
+//! | Burgers, advection–diffusion | yes | no | no | boundary values frozen | grid |
+//!
+//! The dimension-generic layer lives in [`crate::sim::structured`]: Laplacian
+//! operators on 1D/2D/3D vertex-centred grids with Dirichlet, Neumann, Robin,
+//! periodic and symmetry faces (per face, time-dependent data), Poisson/Helmholtz
+//! with direct or Krylov solvers, θ-method heat with step-doubling error control,
+//! leapfrog waves with Mur absorbing faces and Newton–Krylov nonlinear diffusion.
+//! Boundary descriptions are shared through [`crate::sim::boundary`].
+
+use std::ops::Index;
+use std::ops::IndexMut;
+
+use rayon::prelude::*;
+use serde::Deserialize;
+use serde::Serialize;
+
+/// Represents the dimensions of the simulation grid.
+/// cbindgen:ignore
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Dimensions {
+    /// 1-dimensional grid with a given size.
+    D1(usize),
+    /// 2-dimensional grid with width and height.
+    D2(usize, usize),
+    /// 3-dimensional grid with width, height, and depth.
+    D3(usize, usize, usize),
+}
+
+/// A generic grid structure for finite difference method simulations.
+/// It can represent a 1D, 2D, or 3D grid.
+/// cbindgen:ignore
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FdmGrid<T> {
+    pub(crate) data: Vec<T>,
+    pub(crate) dims: Dimensions,
+}
+
+impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
+    /// Creates a new grid from existing data and dimensions.
+    #[must_use]
+    pub const fn from_data(
+        data: Vec<T>,
+        dims: Dimensions,
+    ) -> Self {
+        Self { data, dims }
+    }
+
+    /// Creates a new grid with the given dimensions, initialized with a default value.
+    #[must_use]
+    pub fn new(dims: Dimensions) -> Self {
+        let size = match dims {
+            | Dimensions::D1(x) => x,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
+        };
+
+        Self {
+            data: vec![T::default(); size],
+            dims,
+        }
+    }
+
+    /// Creates a new grid with the given dimensions, initialized with a specified value.
+    pub fn with_value(
+        dims: Dimensions,
+        value: T,
+    ) -> Self {
+        let size = match dims {
+            | Dimensions::D1(x) => x,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
+        };
+
+        Self {
+            data: vec![value; size],
+            dims,
+        }
+    }
+
+    /// Returns the dimensions of the grid.
+    #[inline]
+    #[must_use]
+    pub const fn dimensions(&self) -> &Dimensions {
+        &self.dims
+    }
+
+    /// Returns a slice to the underlying data.
+    #[inline]
+    #[must_use]
+    pub fn as_slice(&self) -> &[T] {
+        &self.data
+    }
+
+    /// Returns a mutable slice to the underlying data.
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.data
+    }
+
+    /// Size of the grid.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Is the grid empty.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+}
+
+impl<T> Index<usize> for FdmGrid<T> {
+    type Output = T;
+
+    #[inline]
+    fn index(
+        &self,
+        index: usize,
+    ) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl<T> IndexMut<usize> for FdmGrid<T> {
+    #[inline]
+    fn index_mut(
+        &mut self,
+        index: usize,
+    ) -> &mut Self::Output {
+        &mut self.data[index]
+    }
+}
+
+impl<T> Index<(usize, usize)> for FdmGrid<T> {
+    type Output = T;
+
+    #[inline]
+    fn index(
+        &self,
+        (x, y): (usize, usize),
+    ) -> &Self::Output {
+        if let Dimensions::D2(width, _) = self.dims {
+            &self.data[y * width + x]
+        } else {
+            panic!(
+                "Attempted to use 2D \
+                 indexing on a non-2D \
+                 grid."
+            );
+        }
+    }
+}
+
+impl<T> IndexMut<(usize, usize)> for FdmGrid<T> {
+    #[inline]
+    fn index_mut(
+        &mut self,
+        (x, y): (usize, usize),
+    ) -> &mut Self::Output {
+        if let Dimensions::D2(width, _) = self.dims {
+            &mut self.data[y * width + x]
+        } else {
+            panic!(
+                "Attempted to use 2D \
+                 indexing on a non-2D \
+                 grid."
+            );
+        }
+    }
+}
+
+impl<T> Index<(usize, usize, usize)> for FdmGrid<T> {
+    type Output = T;
+
+    #[inline]
+    fn index(
+        &self,
+        (x, y, z): (usize, usize, usize),
+    ) -> &Self::Output {
+        if let Dimensions::D3(width, height, _) = self.dims {
+            &self.data[z * width * height + y * width + x]
+        } else {
+            panic!(
+                "Attempted to use 3D \
+                 indexing on a non-3D \
+                 grid."
+            );
+        }
+    }
+}
+
+impl<T> IndexMut<(usize, usize, usize)> for FdmGrid<T> {
+    #[inline]
+    fn index_mut(
+        &mut self,
+        (x, y, z): (usize, usize, usize),
+    ) -> &mut Self::Output {
+        if let Dimensions::D3(width, height, _) = self.dims {
+            &mut self.data[z * width * height + y * width + x]
+        } else {
+            panic!(
+                "Attempted to use 3D \
+                 indexing on a non-3D \
+                 grid."
+            );
+        }
+    }
+}
+
+// ============================================================================
+// Solver Configuration
+// ============================================================================
+
+/// Configuration for 2D FDM solvers (heat, wave equations).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FdmSolverConfig2D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Number of time steps.
+    pub steps: usize,
+}
+
+/// Configuration for 3D FDM solvers.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FdmSolverConfig3D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid depth (number of points in z direction).
+    pub depth: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Grid spacing in z direction.
+    pub dz: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Number of time steps.
+    pub steps: usize,
+}
+
+/// Configuration for 2D Poisson solver.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PoissonSolverConfig2D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Relaxation factor for SOR (typically 1.0 < omega < 2.0).
+    pub omega: f64,
+    /// Maximum number of iterations.
+    pub max_iter: usize,
+    /// Convergence tolerance.
+    pub tolerance: f64,
+}
+
+// ============================================================================
+// Solvers
+// ============================================================================
+
+/// Solves a 2D heat equation `u_t = alpha * ∇²u` using the finite difference method.
+pub fn solve_heat_equation_2d<F>(
+    config: &FdmSolverConfig2D,
+    alpha: f64,
+    initial_conditions: F,
+) -> FdmGrid<f64>
+where
+    F: Fn(usize, usize) -> f64 + Sync,
+{
+    let width = config.width;
+
+    let height = config.height;
+
+    let dx = config.dx;
+
+    let dy = config.dy;
+
+    let dt = config.dt;
+
+    let steps = config.steps;
+
+    let dims = Dimensions::D2(width, height);
+
+    let mut grid = FdmGrid::new(dims);
+
+    let mut next_grid = grid.clone();
+
+    grid.as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, val)| {
+            let x = i % width;
+
+            let y = i / width;
+
+            *val = initial_conditions(x, y);
+        });
+
+    let r_x = alpha * dt / dx.powi(2);
+
+    let r_y = alpha * dt / dy.powi(2);
+
+    for _ in 0..steps {
+        next_grid
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
+                let x = i % width;
+
+                let y = i / width;
+
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                    *next_val = grid[i]; // Boundary remains constant
+                    return;
+                }
+
+                let lap_x = 2.0f64.mul_add(-grid[(x, y)], grid[(x + 1, y)]) + grid[(x - 1, y)];
+
+                let lap_y = 2.0f64.mul_add(-grid[(x, y)], grid[(x, y + 1)]) + grid[(x, y - 1)];
+
+                *next_val = grid[i] + r_x * lap_x + r_y * lap_y;
+            });
+
+        std::mem::swap(&mut grid, &mut next_grid);
+    }
+
+    grid
+}
+
+/// Solves 2D Wave equation `u_tt = c^2 * ∇²u`.
+pub fn solve_wave_equation_2d<F>(
+    config: &FdmSolverConfig2D,
+    c: f64,
+    initial_u: F,
+) -> FdmGrid<f64>
+where
+    F: Fn(usize, usize) -> f64 + Sync,
+{
+    let width = config.width;
+
+    let height = config.height;
+
+    let dx = config.dx;
+
+    let dy = config.dy;
+
+    let dt = config.dt;
+
+    let steps = config.steps;
+
+    let dims = Dimensions::D2(width, height);
+
+    let mut u_prev = FdmGrid::new(dims.clone());
+
+    let mut u_curr = FdmGrid::new(dims.clone());
+
+    let mut u_next = FdmGrid::new(dims);
+
+    u_curr
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, val)| {
+            let x = i % width;
+
+            let y = i / width;
+
+            *val = initial_u(x, y);
+        });
+
+    // Second-order start for zero initial velocity: the centred difference
+    // (u^1 - u^-1) / (2 dt) = 0 gives u^-1 = u^1, and the scheme at t = 0
+    // reads u^1 = 2 u^0 - u^-1 + s Lap u^0, hence u^-1 = u^0 + (s/2) Lap u^0.
+    let s_x = (c * dt / dx).powi(2);
+
+    let s_y = (c * dt / dy).powi(2);
+
+    u_prev
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, prev_val)| {
+            let x = i % width;
+
+            let y = i / width;
+
+            if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                *prev_val = 0.0;
+
+                return;
+            }
+
+            let lap_x = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
+
+            let lap_y = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
+
+            *prev_val = u_curr[i] + f64::midpoint(s_x * lap_x, s_y * lap_y);
+        });
+
+    for _ in 0..steps {
+        u_next
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
+                let x = i % width;
+
+                let y = i / width;
+
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                    *next_val = 0.0;
+
+                    return;
+                }
+
+                let lap_x =
+                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
+
+                let lap_y =
+                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
+
+                *next_val = 2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y;
+            });
+
+        std::mem::swap(&mut u_prev, &mut u_curr);
+
+        std::mem::swap(&mut u_curr, &mut u_next);
+    }
+
+    u_curr
+}
+
+/// Solves 3D Wave equation `u_tt = c^2 * ∇²u`.
+pub fn solve_wave_equation_3d<F>(
+    config: &FdmSolverConfig3D,
+    c: f64,
+    initial_u: F,
+) -> FdmGrid<f64>
+where
+    F: Fn(usize, usize, usize) -> f64 + Sync,
+{
+    let width = config.width;
+
+    let height = config.height;
+
+    let depth = config.depth;
+
+    let dx = config.dx;
+
+    let dy = config.dy;
+
+    let dz = config.dz;
+
+    let dt = config.dt;
+
+    let steps = config.steps;
+
+    let dims = Dimensions::D3(width, height, depth);
+
+    let mut u_prev = FdmGrid::new(dims.clone());
+
+    let mut u_curr = FdmGrid::new(dims.clone());
+
+    let mut u_next = FdmGrid::new(dims);
+
+    u_curr
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, val)| {
+            let x = i % width;
+
+            let y = (i / width) % height;
+
+            let z = i / (width * height);
+
+            *val = initial_u(x, y, z);
+        });
+
+    let s_x = (c * dt / dx).powi(2);
+
+    let s_y = (c * dt / dy).powi(2);
+
+    let s_z = (c * dt / dz).powi(2);
+
+    u_prev.data.copy_from_slice(&u_curr.data);
+
+    for _ in 0..steps {
+        u_next
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, next_val)| {
+                let x = i % width;
+
+                let y = (i / width) % height;
+
+                let z = i / (width * height);
+
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 || z == 0 || z == depth - 1
+                {
+                    *next_val = 0.0;
+
+                    return;
+                }
+
+                let lap_x = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x + 1, y, z)])
+                    + u_curr[(x - 1, y, z)];
+
+                let lap_y = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y + 1, z)])
+                    + u_curr[(x, y - 1, z)];
+
+                let lap_z = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y, z + 1)])
+                    + u_curr[(x, y, z - 1)];
+
+                *next_val =
+                    2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y + s_z * lap_z;
+            });
+
+        std::mem::swap(&mut u_prev, &mut u_curr);
+
+        std::mem::swap(&mut u_curr, &mut u_next);
+    }
+
+    u_curr
+}
+
+/// Solves Poisson equation `∇²u = f` using Successive Over-Relaxation (SOR).
+///
+/// # Panics
+///
+/// Panics if the `source` grid's dimensions do not match the `width` and `height` provided.
+/// Panics if internal indexing operations go out of bounds due to incorrect `FdmGrid` usage,
+/// though typical usage within this function should prevent this.
+#[must_use]
+pub fn solve_poisson_2d(
+    config: &PoissonSolverConfig2D,
+    source: &FdmGrid<f64>,
+) -> FdmGrid<f64> {
+    let width = config.width;
+
+    let height = config.height;
+
+    let dx = config.dx;
+
+    let dy = config.dy;
+
+    let omega = config.omega;
+
+    let max_iter = config.max_iter;
+
+    let tolerance = config.tolerance;
+
+    let dims = Dimensions::D2(width, height);
+
+    let mut u: FdmGrid<f64> = FdmGrid::new(dims);
+
+    let dx2 = dx * dx;
+
+    let dy2 = dy * dy;
+
+    let beta = dx2 / dy2;
+
+    let factor = 1.0 / (2.0 * (1.0 + beta));
+
+    for _ in 0..max_iter {
+        let mut max_diff: f64 = 0.0;
+
+        for pass in 0..2 {
+            // Red-black SOR: neighbours read here belong to the opposite colour, which is
+            // untouched in this pass, so computing all updates from a shared view and then
+            // applying them is exactly the in-place sweep.
+            let u_view = u.as_slice();
+
+            let updates: Vec<(usize, f64, f64)> = u_view
+                .par_iter()
+                .enumerate()
+                .filter_map(|(i, &old_val)| {
+                    let x = i % width;
+
+                    let y = i / width;
+
+                    if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                        return None;
+                    }
+
+                    if (x + y) % 2 != pass {
+                        return None;
+                    }
+
+                    let get_u = |nx: usize, ny: usize| u_view[ny * width + nx];
+
+                    let target = factor
+                        * dx2.mul_add(
+                            -source[i],
+                            beta.mul_add(
+                                get_u(x, y + 1) + get_u(x, y - 1),
+                                get_u(x + 1, y) + get_u(x - 1, y),
+                            ),
+                        );
+
+                    let new_val = omega.mul_add(target - old_val, old_val);
+
+                    Some((i, new_val, (new_val - old_val).abs()))
+                })
+                .collect();
+
+            let u_mut = u.as_mut_slice();
+
+            for &(i, new_val, _) in &updates {
+                u_mut[i] = new_val;
+            }
+
+            if let Some(d) = updates
+                .iter()
+                .map(|&(_, _, d)| d)
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                && d > max_diff
+            {
+                max_diff = d;
+            }
+        }
+
+        if max_diff < tolerance {
+            break;
+        }
+    }
+
+    u
+}
+
+/// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
+#[must_use]
+pub fn solve_burgers_1d(
+    initial_u: &[f64],
+    dx: f64,
+    nu: f64,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
+    let mut u = initial_u.to_vec();
+
+    let n = u.len();
+
+    if n < 2 {
+        return u;
+    }
+
+    let mut u_next = vec![0.0; n];
+
+    for _ in 0..steps {
+        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+            if i == 0 || i == n - 1 {
+                *next_val = u[i];
+
+                return;
+            }
+
+            // Central difference for convection and diffusion
+            let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
+
+            let diffusion = nu * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
+
+            *next_val = dt.mul_add(diffusion - convection, u[i]);
+        });
+
+        u.copy_from_slice(&u_next);
+    }
+
+    u
+}
+
+/// Solves a 1D advection-diffusion equation `u_t + c*u_x = d*u_xx` using FDM.
+#[must_use]
+pub fn solve_advection_diffusion_1d(
+    initial_cond: &[f64],
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
+) -> Vec<f64> {
+    let mut u = initial_cond.to_vec();
+
+    let n = u.len();
+
+    if n < 2 {
+        return u;
+    }
+
+    let mut u_next = vec![0.0; n];
+
+    for _ in 0..steps {
+        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+            if i == 0 || i == n - 1 {
+                *next_val = u[i];
+
+                return;
+            }
+
+            // Upwind for advection
+            let advection = if c >= 0.0 {
+                -c * (u[i] - u[i - 1]) / dx
+            } else {
+                -c * (u[i + 1] - u[i]) / dx
+            };
+
+            let diffusion = d * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
+
+            *next_val = dt.mul_add(advection + diffusion, u[i]);
+        });
+
+        u.copy_from_slice(&u_next);
+    }
+
+    u
+}
+
+// ============================================================================
+// Scenarios
+// ============================================================================
+
+/// Example scenario: Simulates heat conduction on a 100x100 plate.
+#[must_use]
+pub fn simulate_2d_heat_conduction_scenario() -> FdmGrid<f64> {
+    const WIDTH: usize = 100;
+
+    const HEIGHT: usize = 100;
+
+    const ALPHA: f64 = 0.02;
+
+    let config = FdmSolverConfig2D {
+        width: WIDTH,
+        height: HEIGHT,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.1,
+        steps: 1000,
+    };
+
+    solve_heat_equation_2d(&config, ALPHA, |x, y| {
+        let dx_cen = x as f64 - (WIDTH / 2) as f64;
+
+        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
+
+        if dy_cen.mul_add(dy_cen, dx_cen.powi(2)) < 25.0 {
+            100.0
+        } else {
+            0.0
+        }
+    })
+}
+
+/// Example scenario: Simulates wave propagation on a 120x120 grid.
+#[must_use]
+pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
+    const WIDTH: usize = 120;
+
+    const HEIGHT: usize = 120;
+
+    const C: f64 = 1.0;
+
+    let config = FdmSolverConfig2D {
+        width: WIDTH,
+        height: HEIGHT,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.5,
+        steps: 200,
+    };
+
+    solve_wave_equation_2d(&config, C, |x, y| {
+        let dx_cen = x as f64 - (WIDTH / 2) as f64;
+
+        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
+
+        let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
+
+        (-dist2 / 50.0).exp() // Gaussian pulse
+    })
+}
+
+fn dims_of(d: &Dimensions) -> Vec<usize> {
+    match *d {
+        | Dimensions::D1(x) => vec![x],
+        | Dimensions::D2(x, y) => vec![x, y],
+        | Dimensions::D3(x, y, z) => vec![x, y, z],
+    }
+}
+
+fn structured_grid(
+    dims: &[usize],
+    spacing: &[f64],
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<crate::sim::structured::Grid, String> {
+    if dims.len() != spacing.len() {
+        return Err("one spacing per axis is required".into());
+    }
+    let hi: Vec<f64> = (0..dims.len())
+        .map(|a| {
+            spacing[a]
+                * if bcs.axis_periodic(a).unwrap_or(false) {
+                    dims[a]
+                } else {
+                    dims[a] - 1
+                } as f64
+        })
+        .collect();
+    crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)
+}
+
+fn node_value(
+    grid: &crate::sim::structured::Grid,
+    data: &[f64],
+    spacing: &[f64],
+    x: [f64; 3],
+) -> f64 {
+    let mut idx = [0usize; 3];
+    for a in 0..grid.dim {
+        idx[a] = ((x[a] / spacing[a]).round() as usize).min(grid.n[a] - 1);
+    }
+    data[grid.index(idx)]
+}
+
+/// Heat equation `u_t = α Δu` on the grid of `initial` (1D, 2D or 3D).
+///
+/// Face conditions `bcs` may be Dirichlet, Neumann, Robin, periodic or time
+/// dependent; the Crank–Nicolson method of [`crate::sim::structured`] is used.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_heat_equation_bc(
+    initial: &FdmGrid<f64>,
+    spacing: &[f64],
+    alpha: f64,
+    dt: f64,
+    steps: usize,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    use crate::sim::structured::HeatProblem;
+    use crate::sim::structured::LinearSolver;
+    use crate::sim::structured::heat_fixed;
+    let dims = dims_of(initial.dimensions());
+    let grid = structured_grid(&dims, spacing, bcs)?;
+    let init = |x: [f64; 3]| node_value(&grid, initial.as_slice(), spacing, x);
+    let prob = HeatProblem {
+        grid: &grid,
+        bcs,
+        alpha,
+        init: &init,
+        source: None,
+        solver: LinearSolver::Auto,
+    };
+    let u = heat_fixed(&prob, dt * steps as f64, steps, 0.5)?;
+    Ok(FdmGrid::from_data(u, initial.dimensions().clone()))
+}
+
+/// Wave equation `u_tt = c² Δu` on a 1D, 2D or 3D grid with face conditions
+/// `bcs` (including first-order absorbing faces) by leapfrog.
+///
+/// # Errors
+/// If the CFL condition is violated or the description is inconsistent.
+pub fn solve_wave_equation_bc(
+    u0: &FdmGrid<f64>,
+    v0: &FdmGrid<f64>,
+    spacing: &[f64],
+    c: f64,
+    dt: f64,
+    steps: usize,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    use crate::sim::structured::WaveProblem;
+    use crate::sim::structured::wave_leapfrog;
+    let dims = dims_of(u0.dimensions());
+    let grid = structured_grid(&dims, spacing, bcs)?;
+    let (f0, f1) = (
+        |x: [f64; 3]| node_value(&grid, u0.as_slice(), spacing, x),
+        |x: [f64; 3]| node_value(&grid, v0.as_slice(), spacing, x),
+    );
+    let prob = WaveProblem {
+        grid: &grid,
+        bcs,
+        c,
+        u0: &f0,
+        v0: &f1,
+        source: None,
+    };
+    let u = wave_leapfrog(&prob, dt * steps as f64, steps)?;
+    Ok(FdmGrid::from_data(u, u0.dimensions().clone()))
+}
+
+/// Poisson/Helmholtz equation `-Δu + σ u = f` on a 1D, 2D or 3D grid with
+/// face conditions `bcs`, solved by geometric multigrid.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_poisson_bc(
+    source: &FdmGrid<f64>,
+    spacing: &[f64],
+    sigma: f64,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    let dims = dims_of(source.dimensions());
+    let r = crate::sim::physics_mtm::solve_poisson_multigrid_nd(
+        &dims,
+        spacing,
+        source.as_slice(),
+        sigma,
+        bcs,
+        crate::sim::multigrid::MgOptions::default(),
+    )?;
+    Ok(FdmGrid::from_data(r.u, source.dimensions().clone()))
+}
