@@ -318,27 +318,36 @@ impl Session {
             },
             | other => (vec![other], false),
         };
-        let (multiplicities, conditions) = if complete {
+        // A list is the solver's own enumeration, but for an equation with a
+        // circular function of the unknown it is one representative per
+        // principal branch: `sin(x) = 0` lists `0`, not `k pi`. That is not a
+        // complete solution set, whatever the route to the roots.
+        let (multiplicities, conditions, complete) = if complete {
             let mut inner = self.inner.borrow_mut();
             let expression = crate::rules::solve::as_expression(
                 &mut inner.graph,
                 NodeId::from_raw(equation.id()),
             );
-            let multiplicities = crate::rules::solve::root_multiplicities(
+            let unknown = NodeId::from_raw(variable.id());
+            let periodic = crate::rules::solve::periodic_in(&inner.graph, expression, unknown);
+            let (multiplicities, mut conditions) = crate::rules::solve::root_multiplicities(
                 &mut inner.graph,
                 expression,
-                NodeId::from_raw(variable.id()),
+                unknown,
                 &roots,
             )
             .unwrap_or_default();
-            let conditions = crate::rules::solve::root_conditions(
-                &inner.graph,
-                NodeId::from_raw(variable.id()),
-                &roots,
-            );
-            (multiplicities, conditions)
+            for condition in crate::rules::solve::root_conditions(&inner.graph, unknown, &roots) {
+                if !conditions.iter().any(|known| known.text == condition.text) {
+                    conditions.push(condition);
+                }
+            }
+            if periodic {
+                conditions.push(crate::rules::solve::principal_branch_condition());
+            }
+            (multiplicities, conditions, !periodic)
         } else {
-            (Vec::new(), Vec::new())
+            (Vec::new(), Vec::new(), false)
         };
         Ok(crate::kernel::result::Solutions {
             variable: Some(name),
@@ -2364,11 +2373,10 @@ mod tests {
         assert_eq!(solutions.multiplicities, vec![1, 1]);
     }
 
-    /// Irrational roots are expressions, not exact numbers, so the association
-    /// between a root and a square-free factor cannot be exact. The answer is
-    /// "not reported", not a guessed one.
+    /// `x^2 = 2` is square-free, so each irrational root is simple: that needs
+    /// no numeric matching of a root to a factor, only the exact decomposition.
     #[test]
-    fn an_irrational_root_is_not_given_a_guessed_multiplicity() {
+    fn an_irrational_root_of_a_square_free_polynomial_is_simple() {
         let s = Session::new();
         let x = s.sym("x");
         let equation = s.parse("x^2 = 2").unwrap_or_else(|e| panic!("{e}"));
@@ -2379,11 +2387,167 @@ mod tests {
         // than handed over as one opaque root.
         assert!(solutions.complete, "the solver's list is exhaustive");
         assert_eq!(solutions.roots.len(), 2, "{:?}", solutions.roots);
+        assert_eq!(solutions.multiplicities, vec![1, 1]);
+        assert!(
+            solutions.conditions.is_empty(),
+            "{:?}",
+            solutions.conditions
+        );
+    }
+
+    /// An irrational root of a polynomial with a repeated factor would have to
+    /// be matched against that factor numerically; the answer is "not
+    /// reported", not a guessed one.
+    #[test]
+    fn an_irrational_repeated_root_is_not_given_a_guessed_multiplicity() {
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s.parse("(x^2 - 2)^2 = 0").unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(solutions.complete);
+        assert_eq!(solutions.roots.len(), 2, "{:?}", solutions.roots);
         assert!(
             !solutions.has_multiplicities(),
-            "an inexact root must stay unreported, got {:?}",
+            "an inexact repeated root must stay unreported, got {:?}",
             solutions.multiplicities
         );
+    }
+
+    /// `x^2 - 2x + 1` has the double root 1.
+    #[test]
+    fn a_perfect_square_has_a_double_root() {
+        let s = Session::new();
+        let x = s.sym("x");
+        let equation = s
+            .parse("x^2 - 2*x + 1 = 0")
+            .unwrap_or_else(|e| panic!("{e}"));
+        let solutions = s
+            .solve_structured(equation, x)
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(solutions.complete);
+        assert_eq!(solutions.roots.len(), 1, "{:?}", solutions.roots);
+        assert_eq!(solutions.multiplicities, vec![2]);
+    }
+
+    /// `sin(x) = 0` has the roots `k pi`; listing `0` is a representative of
+    /// the principal branch, and the answer must not claim to be complete.
+    /// The same holds for every equation solved through the inverse of a
+    /// periodic function, and for a periodic function of an affine argument.
+    #[test]
+    fn a_periodic_equation_is_not_complete() {
+        use crate::kernel::result::ConditionKind;
+
+        let s = Session::new();
+        let x = s.sym("x");
+        for text in [
+            "sin(x) = 0",
+            "cos(x) = c",
+            "tan(x) = c",
+            "sin(a*x + b) = c",
+            "sin(x) = 1/2",
+            "2*sin(x)^2 - sin(x) = 0",
+            "sin(x^2) = 1/2",
+        ] {
+            let equation = s.parse(text).unwrap_or_else(|e| panic!("{e}"));
+            let solutions = s
+                .solve_structured(equation, x)
+                .unwrap_or_else(|e| panic!("{text}: {e}"));
+            assert!(!solutions.complete, "{text}: {:?}", solutions.roots);
+            assert!(!solutions.roots.is_empty(), "{text}: principal roots kept");
+            assert!(
+                solutions
+                    .conditions
+                    .iter()
+                    .any(|condition| condition.kind == ConditionKind::Branch),
+                "{text}: {:?}",
+                solutions.conditions
+            );
+            // The incomplete flag and the branch condition cross the ABI.
+            let back =
+                Solutions::from_value(&solutions.to_value()).unwrap_or_else(|e| panic!("{e}"));
+            assert!(!back.complete);
+            assert_eq!(back.conditions, solutions.conditions);
+        }
+        // A non-periodic equation, and a periodic function of a parameter only,
+        // stay complete.
+        for text in ["x^2 = 4", "sin(a)*x = 1"] {
+            let equation = s.parse(text).unwrap_or_else(|e| panic!("{e}"));
+            let solutions = s
+                .solve_structured(equation, x)
+                .unwrap_or_else(|e| panic!("{text}: {e}"));
+            assert!(solutions.complete, "{text}");
+        }
+    }
+
+    /// `x^2 = a` has real roots only for `a >= 0`, and `exp(x) = a` only for
+    /// `a > 0`: the roots `+-sqrt(a)` and `ln(a)` say so by construction.
+    /// `cos(x) = c` needs `c` in `[-1, 1]` for `acos(c)` to be real.
+    #[test]
+    fn realness_of_the_roots_is_a_condition() {
+        use crate::kernel::result::ConditionKind;
+
+        let s = Session::new();
+        let x = s.sym("x");
+        let solve = |text: &str| {
+            let equation = s.parse(text).unwrap_or_else(|e| panic!("{e}"));
+            s.solve_structured(equation, x)
+                .unwrap_or_else(|e| panic!("{text}: {e}"))
+        };
+        let has = |solutions: &Solutions, kind: ConditionKind, text: &str| {
+            solutions
+                .conditions
+                .iter()
+                .any(|c| c.kind == kind && c.text == text)
+        };
+
+        let even = solve("x^2 - a = 0");
+        assert!(even.complete);
+        assert_eq!(even.roots.len(), 2, "{:?}", even.roots);
+        assert!(
+            has(&even, ConditionKind::Nonnegative, "a >= 0"),
+            "{:?}",
+            even.conditions
+        );
+        // The roots are distinct except at a = 0: simple, with that said.
+        assert_eq!(even.multiplicities, vec![1, 1]);
+        assert!(
+            has(&even, ConditionKind::Distinct, "a != 0"),
+            "{:?}",
+            even.conditions
+        );
+
+        let log = solve("exp(x) - a = 0");
+        assert!(log.complete);
+        assert_eq!(log.roots.len(), 1, "{:?}", log.roots);
+        assert!(
+            has(&log, ConditionKind::Positive, "a > 0"),
+            "{:?}",
+            log.conditions
+        );
+
+        let inverse = solve("cos(x) = c");
+        assert!(
+            has(&inverse, ConditionKind::Interval, "-1 <= c <= 1"),
+            "{:?}",
+            inverse.conditions
+        );
+
+        let quadratic = solve("a*x^2 + b*x + c = 0");
+        assert!(quadratic.complete);
+        assert!(
+            quadratic
+                .conditions
+                .iter()
+                .any(|c| c.kind == ConditionKind::Nonnegative && c.text.ends_with(">= 0")),
+            "{:?}",
+            quadratic.conditions
+        );
+
+        // Kinds serialise by name, the new one included.
+        let back = Solutions::from_value(&even.to_value()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back.conditions, even.conditions);
     }
 
     /// `solve(a*x + b = 0, x)` is `-b/a`: the answer is valid only where
@@ -2408,8 +2572,9 @@ mod tests {
             "expected `a != 0`, got {:?}",
             solutions.conditions
         );
-        // The root is symbolic, so no multiplicity is claimed.
-        assert!(!solutions.has_multiplicities());
+        // A linear polynomial has one simple root wherever it exists, which
+        // the condition `a != 0` already states.
+        assert_eq!(solutions.multiplicities, vec![1]);
         // The condition crosses the ABI in the record.
         let back = Solutions::from_value(&solutions.to_value()).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back.conditions, solutions.conditions);

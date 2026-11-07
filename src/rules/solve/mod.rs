@@ -176,15 +176,38 @@
 //! gives the whole solution set.
 //!
 //! Structured answers. `Session::solve_structured` lifts the `list(...)` into
-//! a [`Solutions`](crate::kernel::result::Solutions) record. Two facets are
-//! reported only when the solver's own answer supports them: a root
-//! multiplicity, from the exact square-free decomposition of a univariate
-//! rational polynomial whose roots are exact numbers
-//! ([`root_multiplicities`]); and a non-zero condition on a parameter that the
-//! root expression puts in a denominator, as in `solve(a*x + b = 0, x)` being
-//! `-b/a` ([`root_conditions`]). Realness and branch conditions of roots such
-//! as `a^(1/2)` are not reported, and neither is a multiplicity that would
-//! require matching a symbolic root to a factor numerically.
+//! a [`Solutions`](crate::kernel::result::Solutions) record. Its facets are
+//! reported only when the solver's own answer supports them:
+//!
+//! * **Completeness.** An equation with a circular function of the unknown
+//!   ([`periodic_in`]) is `complete = false` and carries a `branch` condition:
+//!   the roots are principal-branch representatives (`sin(x) = 0` lists `0`,
+//!   not `k pi`; also `cos(x) = c`, `tan(x) = c`, `sin(a x + b) = c`, `sin(x^2)
+//!   = c`). `Solutions` has no way to express a family with an integer
+//!   parameter, so the families stay with `solve_general`. The check is on the
+//!   equation, not on the route taken, so it covers every periodic inversion
+//!   (inverse functions, the Weierstrass substitution, multiple angles).
+//!   Periodicity hidden from the equation (an unevaluated user function) is not
+//!   seen.
+//! * **Multiplicity** ([`root_multiplicities`]), from the exact square-free
+//!   decomposition of a univariate polynomial: the multiplicity of each exact
+//!   rational root of a rational polynomial; and 1 for every root of a
+//!   square-free polynomial, whatever the roots look like. With parameters,
+//!   square-freeness is decided by the resultant of the polynomial and its
+//!   derivative (`x^2 - a`: roots simple, collide only where `a = 0`), whose
+//!   irreducible factors are returned as `distinct` conditions, so the claim
+//!   is exact rather than generic. A repeated factor with an irrational or
+//!   symbolic root (`(x^2 - a)^2`) stays unreported: that would require matching
+//!   a root to a factor numerically.
+//! * **Conditions** ([`root_conditions`]) that the roots as written state about
+//!   a parameter expression: `e != 0` for a denominator, `e >= 0`
+//!   (`nonnegative`) for an even root such as `sqrt(a)`, `e > 0` for a
+//!   logarithm (`exp(x) = a` gives `ln(a)`) or an even root in a denominator,
+//!   and `-1 <= e <= 1` (`interval`) for `asin`/`acos` (`cos(x) = c`).
+//!   Conditions that the graph proves from the assumptions on the symbols are
+//!   omitted. Odd roots, the domains of the other inverse functions and
+//!   branch conditions of complex roots are not reported, nor are relations
+//!   between several parameters beyond the expressions the roots contain.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -562,21 +585,32 @@ pub(crate) fn solve_for(
 }
 
 /// The multiplicity of each of `roots` as a zero of the polynomial `expr`
-/// denotes, when that polynomial is univariate in `x` over the rationals.
+/// denotes, when that polynomial is univariate in `x`, together with the
+/// conditions under which those multiplicities hold.
 ///
-/// `solve` answers with the *distinct* real roots. When a root is a multiple
-/// zero, the exact square-free decomposition of the coefficients knows how
-/// many times it occurs, and that is reported here. The answer is `None` —
-/// "not reported" — when the equation is not a univariate rational polynomial,
-/// or when any root is not an exact rational number: matching an irrational or
-/// symbolic root against a factor numerically would turn an association into a
-/// guess, and a wrong multiplicity is worse than no multiplicity.
+/// `solve` answers with the *distinct* real roots. Three cases are decided,
+/// each from exact arithmetic and never from a numeric match:
+///
+/// * a rational polynomial whose roots are exact rationals: the exact
+///   square-free decomposition says how many times each occurs;
+/// * a square-free polynomial, rational or with parameters: every root is
+///   simple, whatever the roots look like (`x^2 - 2`, `x^2 - a`). With
+///   parameters, "square-free" is a statement about generic values; the
+///   resultant of the polynomial and its derivative with respect to `x` is
+///   non-zero exactly where it holds, and each irreducible factor of it is
+///   returned as a [`ConditionKind::Distinct`] condition (`a != 0` for
+///   `x^2 - a`), so the claim is exact rather than generic;
+/// * anything else (a repeated factor with an irrational or symbolic root, a
+///   denominator that carries the unknown, a non-polynomial equation) is
+///   "not reported": matching such a root against a factor numerically
+///   would turn an association into a guess, and a wrong multiplicity is
+///   worse than none.
 pub(crate) fn root_multiplicities(
     graph: &mut Graph,
     expr: NodeId,
     x: NodeId,
     roots: &[crate::kernel::value::Value],
-) -> Option<Vec<u32>> {
+) -> Option<(Vec<u32>, Vec<Condition>)> {
     let symbol = graph.symbol_of(x)?;
     let term = best(graph, expr)?;
     let term = sqrt_as_power(graph, term);
@@ -589,21 +623,38 @@ pub(crate) fn root_multiplicities(
     // the multiplicity a statement about a punctured neighbourhood, so leave
     // it unreported rather than qualify it.
     let denominator = to_term(graph, &gens, &fraction.denom);
-    if graph.depends_on(graph.find(denominator), symbol) {
+    if graph.depends_on(graph.find(denominator), symbol) || roots.is_empty() {
         return None;
     }
-    let numbers: Vec<BigRational> = fraction
-        .numer
-        .univariate_in(gx)?
+    // Every other generator must be a parameter: `sin(a)` is, `sin(x)` is not.
+    for generator in fraction.numer.support() {
+        if generator != gx
+            && gens
+                .node(generator)
+                .is_none_or(|n| graph.depends_on(graph.find(n), symbol))
+        {
+            return None;
+        }
+    }
+    let coefficients = fraction.numer.coefficients_in(gx);
+    if coefficients.len() < 2 {
+        return None;
+    }
+    let simple = vec![1_u32; roots.len()];
+    let exact: Option<Vec<BigRational>> = coefficients
         .iter()
-        .map(Number::to_rational)
-        .collect::<Option<_>>()?;
-    if numbers.len() < 2 {
-        return None;
-    }
+        .map(|c| c.as_constant().and_then(|n| n.to_rational()))
+        .collect();
+    let Some(numbers) = exact else {
+        return symbolic_simple_roots(graph, &gens, &fraction.numer, gx)
+            .map(|conditions| (simple, conditions));
+    };
     // `p = c * prod f_i^i` with the `f_i` monic, square-free parts in the
     // multiplicity `i`; a root of `f_i` is a zero of `p` of multiplicity `i`.
     let parts = univariate::square_free(&numbers);
+    if let [(_, 1)] = parts.as_slice() {
+        return Some((simple, Vec::new()));
+    }
     let mut out = Vec::with_capacity(roots.len());
     for root in roots {
         let value = match root {
@@ -625,74 +676,291 @@ pub(crate) fn root_multiplicities(
         }
         out.push(found?);
     }
-    Some(out)
+    Some((out, Vec::new()))
+}
+
+/// Where the polynomial `numer` in `gx`, whose other generators are
+/// parameters, has only simple roots: `Some(conditions)` when it is
+/// square-free for generic parameters, the conditions being the vanishing of
+/// the irreducible factors of the resultant of `numer` and its derivative.
+fn symbolic_simple_roots(
+    graph: &mut Graph,
+    gens: &Gens,
+    numer: &Poly,
+    gx: u32,
+) -> Option<Vec<Condition>> {
+    // A linear polynomial has one root; where its leading coefficient
+    // vanishes the root does not exist, which the root states by its
+    // denominator.
+    if numer.degree_in(gx) == 1 {
+        return Some(Vec::new());
+    }
+    if numer.len() > 40 || numer.degree_in(gx) > 8 || numer.total_degree() > 16 {
+        return None;
+    }
+    let derivative = numer.derivative(gx);
+    let discriminant = elim::resultant(numer, &derivative, gx)?;
+    // A zero resultant means a repeated factor for every value of the
+    // parameters: the multiplicities depend on matching roots to factors.
+    if discriminant.is_zero() {
+        return None;
+    }
+    if discriminant.as_constant().is_some() {
+        return Some(Vec::new());
+    }
+    let pieces = if factorable(&discriminant) {
+        let vars = discriminant.support();
+        let (_, factors) = crate::rules::poly::multifactor::factor(&discriminant, &vars)?;
+        factors.into_iter().map(|(f, _)| f).collect()
+    } else {
+        vec![discriminant]
+    };
+    let mut texts: Vec<String> = Vec::new();
+    for piece in pieces {
+        // `4*a != 0` says `a != 0`: drop the numeric content when the
+        // leading coefficient divides the others.
+        let piece = piece
+            .leading()
+            .and_then(|(_, lead)| lead.to_rational())
+            .filter(|lead| !lead.is_zero())
+            .map(|lead| piece.scale(&Number::rat(lead.recip())))
+            .filter(|scaled| {
+                scaled
+                    .terms()
+                    .all(|(_, c)| c.to_rational().is_some_and(|r| r.is_integer()))
+            })
+            .unwrap_or(piece);
+        let node = to_term(graph, gens, &piece);
+        let text = format!("{} != 0", graph.display(node));
+        if !texts.contains(&text) {
+            texts.push(text);
+        }
+    }
+    texts.sort();
+    Some(
+        texts
+            .into_iter()
+            .map(|text| Condition::new(ConditionKind::Distinct, &text))
+            .collect(),
+    )
+}
+
+/// Whether `expr` has a circular function (`sin`, `cos`, `tan`, `cot`,
+/// `sec`, `csc`) of an argument that carries the unknown `x`.
+///
+/// The solver inverts such a function on its principal branch, so the roots
+/// it lists are one representative per branch and the real solution set is
+/// infinite (`sin(x) = 0` is `k pi`, not `0`). The check is on the equation
+/// as given, whatever route the solver took (the inverse of the function,
+/// the Weierstrass substitution, expansion of multiple angles), so a path
+/// that forgets to say it left branches out cannot claim completeness.
+pub(crate) fn periodic_in(
+    graph: &Graph,
+    expr: NodeId,
+    x: NodeId,
+) -> bool {
+    let Some(symbol) = graph.symbol_of(x) else {
+        return false;
+    };
+    let ops: Vec<OpId> = ["sin", "cos", "tan", "cot", "sec", "csc"]
+        .iter()
+        .filter_map(|name| graph.ops().lookup(name))
+        .collect();
+    !heuristics::nodes_with(graph, expr, |g, n| {
+        ops.contains(&g.op(n))
+            && g.children(n)
+                .iter()
+                .any(|&child| g.depends_on(g.find(child), symbol))
+    })
+    .is_empty()
+}
+
+/// The condition that tells a host the roots are principal-branch
+/// representatives of a periodic equation (see [`periodic_in`]).
+pub(crate) fn principal_branch_condition() -> Condition {
+    Condition::new(
+        ConditionKind::Branch,
+        "principal branch: periodic solutions are omitted (solve_general lists every family)",
+    )
+}
+
+/// What a root as written requires of a parameter expression.
+#[derive(Copy, Clone, Debug, Default)]
+struct Need {
+    /// `e != 0`: `e` is in a denominator.
+    nonzero: bool,
+    /// `e >= 0`: `e` is under an even root.
+    nonnegative: bool,
+    /// `e > 0`: `e` is under a logarithm or an even root in a denominator.
+    positive: bool,
+    /// `-1 <= e <= 1`: `e` is the argument of an inverse sine or cosine.
+    unit: bool,
+}
+
+/// The requirements of the subterms of `node`, keyed by the expression that
+/// is constrained.
+fn requirements(
+    graph: &Graph,
+    node: NodeId,
+    depth: usize,
+    out: &mut Vec<(NodeId, Need)>,
+) {
+    if depth > 24 {
+        return;
+    }
+    let op = graph.op(node);
+    let children = graph.children(node).to_vec();
+    let descriptor = graph.ops().get(op);
+    let name: &str = &descriptor.name;
+    if op == core::POW
+        && let &[base, exponent] = children.as_slice()
+        && let Some(power) = graph.number_of(exponent).and_then(Number::to_rational)
+    {
+        let even_root = (power.denom() % BigInt::from(2)).is_zero();
+        let need = match (even_root, power.is_negative()) {
+            | (true, true) => {
+                Need {
+                    positive: true,
+                    ..Need::default()
+                }
+            },
+            | (true, false) => {
+                Need {
+                    nonnegative: true,
+                    ..Need::default()
+                }
+            },
+            | (false, true) => {
+                Need {
+                    nonzero: true,
+                    ..Need::default()
+                }
+            },
+            | (false, false) => Need::default(),
+        };
+        out.push((base, need));
+    } else if let &[argument] = children.as_slice() {
+        match name {
+            | "sqrt" => {
+                out.push((
+                    argument,
+                    Need {
+                        nonnegative: true,
+                        ..Need::default()
+                    },
+                ))
+            },
+            | "ln" | "log" | "log2" | "log10" => {
+                out.push((
+                    argument,
+                    Need {
+                        positive: true,
+                        ..Need::default()
+                    },
+                ))
+            },
+            | "asin" | "acos" => {
+                out.push((
+                    argument,
+                    Need {
+                        unit: true,
+                        ..Need::default()
+                    },
+                ))
+            },
+            | _ => {},
+        }
+    }
+    for child in children {
+        requirements(graph, child, depth + 1, out);
+    }
 }
 
 /// The side conditions that the roots as written state about their
 /// parameters.
 ///
-/// A root can carry a parameter in a denominator: `solve(a*x + b = 0, x)` is
-/// `-b/a`, an expression that denotes a solution only where `a != 0`. Each
-/// such denominator is a condition the answer states by construction, so it
-/// is reported. Realness and branch conditions of roots such as `a^(1/2)`
-/// are *not* reported: the solver does not decide them here, and inventing
-/// them would be a claim about the parameter space it never made.
+/// A root can carry a parameter expression where it is defined only on part
+/// of the parameter space, and each such place is a condition the answer
+/// states by construction:
+///
+/// * a denominator (`-b/a` from `a*x + b = 0`): `a != 0`;
+/// * an even root (`sqrt(a)`, `a^(1/2)`, `a^(3/2)`): `a >= 0`, and `a > 0`
+///   when it is also in a denominator (`a^(-1/2)`);
+/// * a logarithm (`ln(a)` from `exp(x) = a`): `a > 0`;
+/// * an inverse sine or cosine (`acos(c)` from `cos(x) = c`):
+///   `-1 <= c <= 1`.
+///
+/// The conditions are the *real-domain* restrictions of the roots as
+/// written; an expression whose sign the graph already proves from the
+/// assumptions on its symbols (`a` declared positive, `a^2 + 1`) is not
+/// reported. Odd roots, other inverse functions and branch conditions of
+/// complex roots are not reported: the solver does not decide them here,
+/// and inventing them would be a claim about the parameter space it never
+/// made.
 pub(crate) fn root_conditions(
     graph: &Graph,
     x: NodeId,
     roots: &[crate::kernel::value::Value],
 ) -> Vec<Condition> {
-    fn denominators(
-        graph: &Graph,
-        node: NodeId,
-        depth: usize,
-        out: &mut Vec<NodeId>,
-    ) {
-        if depth > 24 {
-            return;
-        }
-        let op = graph.op(node);
-        let children = graph.children(node).to_vec();
-        if op == core::POW
-            && let &[base, exponent] = children.as_slice()
-            && graph
-                .number_of(exponent)
-                .and_then(Number::to_rational)
-                .is_some_and(|power| power.is_negative())
-        {
-            out.push(base);
-        }
-        for child in children {
-            denominators(graph, child, depth + 1, out);
-        }
-    }
     let solved = graph.symbol_of(x);
-    let mut bases: Vec<NodeId> = Vec::new();
+    let mut found: Vec<(NodeId, Need)> = Vec::new();
     for root in roots {
         let crate::kernel::value::Value::Term(handle) = root else {
             continue;
         };
-        denominators(graph, NodeId::from_raw(handle.node), 0, &mut bases);
+        requirements(graph, NodeId::from_raw(handle.node), 0, &mut found);
     }
-    // Only a parameter can be required to be non-zero; a numeric denominator
-    // is already non-zero (the expression reduced), and the unknown does not
-    // appear in an answer.
-    let mut conditions: Vec<String> = Vec::new();
-    for base in bases {
+    // Only a parameter can be required to satisfy a condition; a numeric
+    // expression is already decided (the expression reduced), and the unknown
+    // does not appear in an answer. Requirements on the same expression
+    // merge.
+    let mut merged: std::collections::BTreeMap<String, (NodeId, Need)> =
+        std::collections::BTreeMap::new();
+    for (base, need) in found {
         let free = graph.free_symbols(graph.find(base));
         if free.is_empty() || free.iter().any(|symbol| Some(*symbol) == solved) {
             continue;
         }
-        let text = format!("{} != 0", graph.display(base));
-        if !conditions.contains(&text) {
-            conditions.push(text);
+        let entry = merged
+            .entry(graph.display(base))
+            .or_insert((base, Need::default()));
+        entry.1.nonzero |= need.nonzero;
+        entry.1.nonnegative |= need.nonnegative;
+        entry.1.positive |= need.positive;
+        entry.1.unit |= need.unit;
+    }
+    let mut conditions: Vec<Condition> = Vec::new();
+    for (text, (base, need)) in merged {
+        let facts = graph.facts(base);
+        let positive = need.positive || (need.nonzero && need.nonnegative);
+        if positive {
+            if !facts.has(Facts::POSITIVE) {
+                conditions.push(Condition::new(
+                    ConditionKind::Positive,
+                    &format!("{text} > 0"),
+                ));
+            }
+        } else if need.nonnegative {
+            if !facts.has(Facts::NONNEGATIVE) {
+                conditions.push(Condition::new(
+                    ConditionKind::Nonnegative,
+                    &format!("{text} >= 0"),
+                ));
+            }
+        } else if need.nonzero && !facts.has(Facts::NONZERO) {
+            conditions.push(Condition::new(
+                ConditionKind::NonZero,
+                &format!("{text} != 0"),
+            ));
+        }
+        if need.unit {
+            conditions.push(Condition::new(
+                ConditionKind::Interval,
+                &format!("-1 <= {text} <= 1"),
+            ));
         }
     }
-    conditions.sort();
     conditions
-        .into_iter()
-        .map(|text| Condition::new(ConditionKind::NonZero, &text))
-        .collect()
 }
 
 /// Whether a polynomial is small enough for the factorisation to be worth

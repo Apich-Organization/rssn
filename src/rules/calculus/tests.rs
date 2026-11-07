@@ -386,6 +386,8 @@ fn sums_and_products() {
         ("k^2", 1.0),
         ("k^3 - 2*k + 1", 1.0),
         ("3*r^k", 0.7),
+        ("r^(2*k + 1)", 0.7),
+        ("5*r^(-k)", 1.6),
         ("k*a + 2", 1.3),
     ] {
         let (closed, reduced) =
@@ -409,6 +411,9 @@ fn sums_and_products() {
     }
     assert_eq!(run("sum((1/2)^k, k, 0, oo)"), "2");
     assert_eq!(run("sum(3*(1/3)^k, k, 1, oo)"), "3/2");
+    // A geometric term written with a linear exponent: 2^(-k) = (1/2)^k.
+    assert_eq!(run("sum(2^(-k), k, 0, oo)"), "2");
+    assert_eq!(run("sum(3^(1 - k), k, 1, oo)"), "3/2");
     let (text, reduced) = reduce_with(&[calculus()], "sum(2^k, k, 0, oo)", &[]);
     assert!(!reduced, "a divergent geometric series has no sum: {text}");
 }

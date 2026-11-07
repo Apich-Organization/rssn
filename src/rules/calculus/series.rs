@@ -452,9 +452,24 @@ fn symbolic_sum(
     let (constant, varying): (Vec<NodeId>, Vec<NodeId>) =
         factors.iter().partition(|&&n| !depends(graph, n));
     if let &[power] = varying.as_slice()
-        && let (true, &[ratio, exponent]) = (graph.op(power) == core::POW, graph.children(power))
+        && let (true, &[base, exponent]) = (graph.op(power) == core::POW, graph.children(power))
     {
-        if exponent == k && !depends(graph, ratio) {
+        // `r^(a*k + b)` with `a`, `b` free of `k` is geometric with ratio
+        // `r^a` and a constant factor `r^b`: `2^(-k)` sums like `(1/2)^k`.
+        let linear = if depends(graph, base) {
+            None
+        } else {
+            linear_in_index(graph, exponent, k, symbol)
+        };
+        if let Some((scale, shift)) = linear {
+            let mut constant = constant.clone();
+            if let Some(shift) = shift {
+                constant.push(graph.node(core::POW, &[base, shift]));
+            }
+            let ratio = match scale {
+                | Some(scale) => graph.node(core::POW, &[base, scale]),
+                | None => base,
+            };
             let one = graph.int(1);
             let start = graph.node(core::POW, &[ratio, lower]);
             let denominator = sub(graph, one, ratio);
@@ -479,7 +494,7 @@ fn symbolic_sum(
         }
         // 1/k^s from 1 to infinity is zeta(s).
         let from_one = graph.number_of(lower).is_some_and(Number::is_one);
-        if infinite_upper && from_one && ratio == k && !depends(graph, exponent) {
+        if infinite_upper && from_one && base == k && !depends(graph, exponent) {
             let zeta = graph.ops().lookup("zeta")?;
             let s = graph.number_of(exponent)?.neg();
             if s.to_f64() <= 1.0 {
@@ -512,6 +527,48 @@ fn symbolic_sum(
     let at_start = graph.substitute(big_t, k, lower);
     let difference = sub(graph, at_end, at_start);
     Some(cx.simplify(difference))
+}
+
+/// Writes `exponent` as `a*k + b` with `a`, `b` free of the index `k`.
+///
+/// Returns `(a, b)` with `None` standing for `a = 1` and `b = 0`, or `None`
+/// when the exponent is not linear in `k`.
+fn linear_in_index(
+    graph: &mut Graph,
+    exponent: NodeId,
+    k: NodeId,
+    symbol: crate::graph::SymbolId,
+) -> Option<(Option<NodeId>, Option<NodeId>)> {
+    let free = |graph: &Graph, node: NodeId| !graph.depends_on(graph.find(node), symbol);
+    if graph.find(exponent) == graph.find(k) {
+        return Some((None, None));
+    }
+    if free(graph, exponent) {
+        return None;
+    }
+    let children = graph.children(exponent).to_vec();
+    if graph.op(exponent) == core::MUL {
+        let (index, rest): (Vec<NodeId>, Vec<NodeId>) = children
+            .iter()
+            .partition(|&&child| graph.find(child) == graph.find(k));
+        if index.len() != 1 || !rest.iter().all(|&child| free(graph, child)) {
+            return None;
+        }
+        return Some((Some(mul(graph, &rest)), None));
+    }
+    if graph.op(exponent) == core::ADD {
+        let (varying, constant): (Vec<NodeId>, Vec<NodeId>) =
+            children.iter().partition(|&&child| !free(graph, child));
+        let &[varying] = varying.as_slice() else {
+            return None;
+        };
+        let (scale, inner_shift) = linear_in_index(graph, varying, k, symbol)?;
+        let mut shift = constant;
+        shift.extend(inner_shift);
+        let shift = (!shift.is_empty()).then(|| add(graph, &shift));
+        return Some((scale, shift));
+    }
+    None
 }
 
 /// `Σ c·sin(a k + b)`, `Σ c·cos(a k + b)` (finite), `Σ c·ln k` and

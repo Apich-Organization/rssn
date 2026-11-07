@@ -386,6 +386,8 @@ pub enum ConditionKind {
     NonZero,
     /// A parameter must be positive.
     Positive,
+    /// A parameter must be non-negative (`a >= 0`, for `sqrt(a)`).
+    Nonnegative,
     /// A parameter must be negative.
     Negative,
     /// A parameter must be real.
@@ -468,19 +470,31 @@ pub struct Solutions {
     /// is different from a reported `1`, which is a claim.
     ///
     /// `solve_structured` fills it from the exact square-free decomposition of
-    /// a univariate rational polynomial whose roots are exact numbers, and
-    /// leaves it empty when that association would have to be numeric — an
-    /// irrational or symbolic root is not guessed at.
+    /// a univariate polynomial: the multiplicities of exact rational roots of
+    /// a rational polynomial, and all ones when the polynomial is square-free
+    /// (irrational or symbolic roots included; for parameters the
+    /// [`ConditionKind::Distinct`] conditions say where roots collide). It
+    /// stays empty when the association between a root and a repeated factor
+    /// would have to be numeric — such a root is not guessed at.
     pub multiplicities: Vec<u32>,
     /// What must hold for the answer to be valid.
     ///
     /// Empty when the solver stated no condition. `solve_structured` reports a
-    /// condition it can derive from the answer as written — a parameter in a
-    /// denominator of a root (`-b/a` from `a*x + b = 0` needs `a != 0`) —
-    /// and no others: realness and branch restrictions of the parameters are
-    /// not decided by the solvers, so they are not invented here.
+    /// condition it can derive from the answer as written: a parameter in a
+    /// denominator of a root (`-b/a` from `a*x + b = 0` needs `a != 0`), an
+    /// even root (`a >= 0` for `sqrt(a)`, `a > 0` for `a^(-1/2)`), a
+    /// logarithm (`ln(a)` needs `a > 0`), an inverse sine or cosine
+    /// (`-1 <= c <= 1`), and, for a polynomial with parameters, where its
+    /// roots coincide. Conditions already implied by the parameters'
+    /// assumptions are omitted; branch choices the solver makes beyond the
+    /// principal branch (see `complete`) are not decided here.
     pub conditions: Vec<Condition>,
     /// Whether the solver believes it found every root.
+    ///
+    /// False for a solution of a periodic equation (`sin(x) = 0`) found on the
+    /// principal branch: the listed roots are representatives and the full
+    /// set is `solve_general`'s families; a [`ConditionKind::Branch`]
+    /// condition says so.
     pub complete: bool,
 }
 
@@ -657,6 +671,7 @@ fn condition_kind(kind: &str) -> ConditionKind {
     match kind {
         | "nonzero" => ConditionKind::NonZero,
         | "positive" => ConditionKind::Positive,
+        | "nonnegative" => ConditionKind::Nonnegative,
         | "negative" => ConditionKind::Negative,
         | "real" => ConditionKind::Real,
         | "branch" => ConditionKind::Branch,
