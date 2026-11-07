@@ -69,19 +69,19 @@ const SMALL: &[(&str, f64)] = &[("x", 0.03), ("y", -0.02)];
 fn taylor_expansions_are_exact() {
     assert_eq!(
         series("mseries(exp(x + y), list(x, y), list(0, 0), 3)"),
-        "1/6*x^3 + 1/2*x^2*y + 1/2*x*y^2 + 1/6*y^3 + 1/2*x^2 + x*y + 1/2*y^2 + x + y + 1"
+        "1 + y + x + 1/2*y^2 + x*y + 1/2*x^2 + 1/6*y^3 + 1/2*x*y^2 + 1/2*x^2*y + 1/6*x^3"
     );
     assert_eq!(
         series("mseries(1/(1 - x - y), list(x, y), list(0, 0), 3)"),
-        "x^3 + 3*x^2*y + 3*x*y^2 + y^3 + x^2 + 2*x*y + y^2 + x + y + 1"
+        "1 + y + x + y^2 + 2*x*y + x^2 + y^3 + 3*x*y^2 + 3*x^2*y + x^3"
     );
     assert_eq!(
         series("mseries((1 + x + y)^(1/2), list(x, y), list(0, 0), 3)"),
-        "1/16*x^3 + 3/16*x^2*y + 3/16*x*y^2 + 1/16*y^3 - 1/8*x^2 - 1/4*x*y - 1/8*y^2 + 1/2*x + 1/2*y + 1"
+        "1 + 1/2*y + 1/2*x - 1/8*y^2 - 1/4*x*y - 1/8*x^2 + 1/16*y^3 + 3/16*x*y^2 + 3/16*x^2*y + 1/16*x^3"
     );
     assert_eq!(
         series("mseries(ln(1 + x + y), list(x, y), list(0, 0), 3)"),
-        "1/3*x^3 + x^2*y + x*y^2 + 1/3*y^3 - 1/2*x^2 - x*y - 1/2*y^2 + x + y"
+        "y + x - 1/2*y^2 - x*y - 1/2*x^2 + 1/3*y^3 + x*y^2 + x^2*y + 1/3*x^3"
     );
     assert_eq!(
         series("mseries(sin(x*y), list(x, y), list(0, 0), 6)"),
@@ -89,11 +89,11 @@ fn taylor_expansions_are_exact() {
     );
     assert_eq!(
         series("mseries(cos(x + y), list(x, y), list(0, 0), 4)"),
-        "1/24*x^4 + 1/6*x^3*y + 1/4*x^2*y^2 + 1/6*x*y^3 + 1/24*y^4 - 1/2*x^2 - x*y - 1/2*y^2 + 1"
+        "1 - 1/2*y^2 - x*y - 1/2*x^2 + 1/24*y^4 + 1/6*x*y^3 + 1/4*x^2*y^2 + 1/6*x^3*y + 1/24*x^4"
     );
     assert_eq!(
         series("mseries(exp(x)/(1 - y), list(x, y), list(0, 0), 3)"),
-        "1/6*x^3 + 1/2*x^2*y + x*y^2 + y^3 + 1/2*x^2 + x*y + y^2 + x + y + 1"
+        "1 + y + x + y^2 + x*y + 1/2*x^2 + y^3 + x*y^2 + 1/2*x^2*y + 1/6*x^3"
     );
 }
 
@@ -101,31 +101,31 @@ fn taylor_expansions_are_exact() {
 fn elementary_functions_compose() {
     assert_eq!(
         series("mseries(tan(x + y), list(x, y), list(0, 0), 3)"),
-        "1/3*x^3 + x^2*y + x*y^2 + 1/3*y^3 + x + y"
+        "y + x + 1/3*y^3 + x*y^2 + x^2*y + 1/3*x^3"
     );
     assert_eq!(
         series("mseries(atan(x + y), list(x, y), list(0, 0), 3)"),
-        "x - 1/3*x^3 - x^2*y - x*y^2 - 1/3*y^3 + y"
+        "y + x - 1/3*y^3 - x*y^2 - x^2*y - 1/3*x^3"
     );
     assert_eq!(
         series("mseries(sinh(x + y), list(x, y), list(0, 0), 3)"),
-        "1/6*x^3 + 1/2*x^2*y + 1/2*x*y^2 + 1/6*y^3 + x + y"
+        "y + x + 1/6*y^3 + 1/2*x*y^2 + 1/2*x^2*y + 1/6*x^3"
     );
     assert_eq!(
         series("mseries(cosh(x + y), list(x, y), list(0, 0), 4)"),
-        "1/24*x^4 + 1/6*x^3*y + 1/4*x^2*y^2 + 1/6*x*y^3 + 1/24*y^4 + 1/2*x^2 + x*y + 1/2*y^2 + 1"
+        "1 + 1/2*y^2 + x*y + 1/2*x^2 + 1/24*y^4 + 1/6*x*y^3 + 1/4*x^2*y^2 + 1/6*x^3*y + 1/24*x^4"
     );
     assert_eq!(
         series("mseries(sin(x + y), list(x, y), list(0, 0), 5)"),
-        "1/120*x^5 + 1/24*x^4*y + 1/12*x^3*y^2 + 1/12*x^2*y^3 + 1/24*x*y^4 + 1/120*y^5 - 1/6*x^3 - 1/2*x^2*y - 1/2*x*y^2 - 1/6*y^3 + x + y"
+        "y + x - 1/6*y^3 - 1/2*x*y^2 - 1/2*x^2*y - 1/6*x^3 + 1/120*y^5 + 1/24*x*y^4 + 1/12*x^2*y^3 + 1/12*x^3*y^2 + 1/24*x^4*y + 1/120*x^5"
     );
     assert_eq!(
         series("mseries(exp(x)*cos(y), list(x, y), list(0, 0), 3)"),
-        "1/6*x^3 - 1/2*x*y^2 + 1/2*x^2 - 1/2*y^2 + x + 1"
+        "1 + x - 1/2*y^2 + 1/2*x^2 - 1/2*x*y^2 + 1/6*x^3"
     );
     assert_eq!(
         series("mseries(1/(2 + x + y), list(x, y), list(0, 0), 2)"),
-        "1/8*x^2 + 1/4*x*y + 1/8*y^2 - 1/4*x - 1/4*y + 1/2"
+        "1/2 - 1/4*y - 1/4*x + 1/8*y^2 + 1/4*x*y + 1/8*x^2"
     );
     // `atan`, `asin` and `acos` are recovered by differentiating and
     // integrating; check them numerically instead of by shape.
@@ -151,12 +151,12 @@ fn elementary_functions_compose() {
 fn rational_functions_and_cancellation() {
     assert_eq!(
         series("mseries((x^2 - y^2)/(x - y), list(x, y), list(0, 0), 2)"),
-        "x + y",
+        "y + x",
         "the removable singularity cancels"
     );
     assert_eq!(
         series("mseries(exp(x)*y^2, list(x, y), list(0, 0), 3)"),
-        "x*y^2 + y^2"
+        "y^2 + x*y^2"
     );
     check(
         "mseries(1/(1 - x - y), list(x, y), list(0, 0), 5)",
@@ -178,7 +178,7 @@ fn total_degree_truncation() {
     // part, and a purely higher-order function truncates to zero.
     assert_eq!(
         series("mseries(exp(x + y), list(x, y), list(0, 0), 1)"),
-        "x + y + 1"
+        "1 + y + x"
     );
     assert_eq!(
         series("mseries(exp(x + y), list(x, y), list(0, 0), 0)"),
@@ -226,7 +226,7 @@ fn laurent_series_with_monomial_factor() {
     );
     assert_eq!(
         series("mseries(exp(x)/y^2, list(x, y), list(0, 0), 3)"),
-        "1/120*x^5/y^2 + 1/24*x^4/y^2 + 1/6*x^3/y^2 + 1/2*x^2/y^2 + x/y^2 + 1/y^2"
+        "1/y^2 + x/y^2 + 1/2*x^2/y^2 + 1/6*x^3/y^2 + 1/24*x^4/y^2 + 1/120*x^5/y^2"
     );
     assert_eq!(
         series("mseries(x^(-1)*sin(y), list(x, y), list(0, 0), 3)"),
@@ -268,12 +268,12 @@ fn directional_laurent_series() {
     //   -sum_{k=0}^{floor(N/2)} x^(2k) y^(-2-2k).
     assert_eq!(
         series("mseries(1/(x^2 - y^2), list(x, y), list(0, 0), 6)"),
-        "-x^6/y^8 - x^4/y^6 - x^2/y^4 - 1/y^2"
+        "-1/y^2 - x^2/y^4 - x^4/y^6 - x^6/y^8"
     );
     // `(x + y)^(-2) = sum_p (-1)^p (p+1) x^p y^(-2-p)`.
     assert_eq!(
         series("mseries((x + y)^(-2), list(x, y), list(0, 0), 4)"),
-        "5*x^4/y^6 - 4*x^3/y^5 + 3*x^2/y^4 - 2*x/y^3 + 1/y^2"
+        "1/y^2 - 2*x/y^3 + 3*x^2/y^4 - 4*x^3/y^5 + 5*x^4/y^6"
     );
     // Multiplying the truncated expansion back telescopes: with N = 6 the
     // remainder is exactly (x/y)^8.
@@ -316,7 +316,7 @@ fn directional_laurent_series() {
 fn points_finite_and_infinite() {
     assert_eq!(
         series("mseries(1/(x*y), list(x, y), list(1, 2), 2)"),
-        "1/8*(y - 2)^2 + 1/4*(y - 2)*(x - 1) + 1/2*(x - 1)^2 - 1/4*(y - 2) - 1/2*(x - 1) + 1/2"
+        "1/2 - 1/2*(x - 1) - 1/4*(y - 2) + 1/2*(x - 1)^2 + 1/4*(y - 2)*(x - 1) + 1/8*(y - 2)^2"
     );
     assert_eq!(
         series("mseries(x/(x - 1), list(x), list(oo), 3)"),
@@ -391,18 +391,18 @@ fn univariate_agreement_and_low_orders() {
         assert_eq!(series(request), series(univariate), "{request}");
     }
     assert_eq!(series("mseries(exp(x), list(x), list(0), 0)"), "1");
-    assert_eq!(series("mseries(exp(x), list(x), list(0), 1)"), "x + 1");
+    assert_eq!(series("mseries(exp(x), list(x), list(0), 1)"), "1 + x");
 }
 
 #[test]
 fn symbolic_parameters() {
     assert_eq!(
         series("mseries(exp(x), list(x), list(a), 2)"),
-        "1/2*(x - a)^2*exp(a) + (x - a)*exp(a) + exp(a)"
+        "exp(a) + (x - a)*exp(a) + 1/2*(x - a)^2*exp(a)"
     );
     assert_eq!(
         series("mseries(a*exp(x + y), list(x, y), list(0, 0), 2)"),
-        "1/2*a*x^2 + a*x*y + 1/2*a*y^2 + a*x + a*y + a"
+        "a + a*y + a*x + 1/2*a*y^2 + a*x*y + 1/2*a*x^2"
     );
     check(
         "mseries(exp(a*x + y), list(x, y), list(0, 0), 4)",
@@ -435,7 +435,7 @@ fn mtaylor_is_the_taylor_special_case() {
     }
     assert_eq!(
         series("mtaylor(1/(1 - x - y), list(x, y), list(0, 0), 2)"),
-        "x^2 + 2*x*y + y^2 + x + y + 1"
+        "1 + y + x + y^2 + 2*x*y + x^2"
     );
 }
 
@@ -480,15 +480,15 @@ fn puiseux_monomial_factors_are_exact() {
     );
     assert_eq!(
         series("mseries(x^(1/2)*exp(y), list(x, y), list(0, 0), 3)"),
-        "1/2*x^(1/2)*y^2 + x^(1/2)*y + x^(1/2)"
+        "x^(1/2) + x^(1/2)*y + 1/2*x^(1/2)*y^2"
     );
     assert_eq!(
         series("mseries(sqrt(x^2*(1 + y)), list(x, y), list(0, 0), 3)"),
-        "1/2*x*y - 1/8*x*y^2 + x"
+        "x + 1/2*x*y - 1/8*x*y^2"
     );
     assert_eq!(
         series("mseries(x^(1/2)/(1 - x - y), list(x, y), list(0, 0), 2)"),
-        "x^(3/2) + x^(1/2)*y + x^(1/2)"
+        "x^(1/2) + x^(1/2)*y + x^(3/2)"
     );
     // A nested root needs a higher ramification index; a square times a
     // unit is `x` times the unit series.
@@ -502,7 +502,7 @@ fn puiseux_monomial_factors_are_exact() {
     );
     assert_eq!(
         series("mseries(sqrt(x^2 + x^3), list(x, y), list(0, 0), 3)"),
-        "1/2*x^2 - 1/8*x^3 + x"
+        "x + 1/2*x^2 - 1/8*x^3"
     );
 }
 

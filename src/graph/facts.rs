@@ -374,9 +374,19 @@ mod tests {
             crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok(),
             "install"
         );
-        let node = g.parse("tan(1) - 1/2").unwrap_or_else(|e| panic!("{e}"));
-        // A numeric phase may estimate this class as positive. `tan` has no
-        // interval rule, so the tape enclosure is the whole line and there is
+        let op = g
+            .ops_mut()
+            .register(crate::graph::OpDescriptor::new(
+                "unlowered",
+                crate::graph::Arity::Fixed(1),
+            ))
+            .unwrap_or(crate::graph::OpId::NONE);
+        let one = g.num(crate::graph::Number::from(1));
+        let unlowered = g.node(op, &[one]);
+        let minus_half = g.parse("-1/2").unwrap_or_else(|e| panic!("{e}"));
+        let node = g.node(core::ADD, &[unlowered, minus_half]);
+        // A numeric phase may estimate this class as positive. The operator has no
+        // lowering or interval rule, so the tape enclosure cannot certify it and there is
         // no certificate: the sign must stay unknown.
         assert!(g.set_approx(g.find(node), Ball { mid: 1.0, rad: 0.1 }));
         let facts = g.facts(node);

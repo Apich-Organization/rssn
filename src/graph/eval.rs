@@ -291,11 +291,16 @@ mod tests {
     fn an_operator_without_interval_rules_gives_the_whole_line() {
         let mut g = Graph::new();
         assert!(crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok());
-        let node = g.parse("tan(1) - 1/2").unwrap_or_else(|e| panic!("{e}"));
+        let x = g.interner_mut().symbol("x");
+        let node = g.parse("gamma(x) - 1/2").unwrap_or_else(|e| panic!("{e}"));
         let ball = g
-            .approx_interval(node, &[])
+            .approx_interval(node, &[(x, Interval { lo: 0.1, hi: 0.9 })])
             .unwrap_or_else(|| panic!("enclosure"));
-        assert_eq!(ball, Ball::ENTIRE, "no interval rule for tan");
+        assert_eq!(
+            ball,
+            Ball::ENTIRE,
+            "no interval rule for gamma on non-point box"
+        );
         assert_eq!(ball.sign(), None);
     }
 

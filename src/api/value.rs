@@ -206,8 +206,9 @@ impl Session {
         &self,
         value: &Value,
     ) -> Result<Term<'_>, OpError> {
+        let manifest = self.manifest();
         let mut inner = self.inner.borrow_mut();
-        let node = term_of_value(&mut inner.graph, value, self.id)?;
+        let node = term_of_value(&mut inner.graph, value, self.id, &manifest.units)?;
         Ok(self.term(node))
     }
 
@@ -594,6 +595,7 @@ impl Session {
             ctx.trace("dispatch", "native evaluator");
             return evaluator.eval(args, ctx);
         }
+        let manifest = self.manifest();
         let unit_positions = unit_parameters(&descriptor, args.len());
         let term = {
             let mut inner = self.inner.borrow_mut();
@@ -606,6 +608,7 @@ impl Session {
                         value,
                         self.id,
                         unit_positions.get(index).copied().unwrap_or(false),
+                        &manifest.units,
                     )
                     .map_err(|error| {
                         match error {
@@ -627,7 +630,7 @@ impl Session {
             // become terms.
             for (symbol, value) in &ctx.substitutions {
                 let from = inner.graph.sym(symbol);
-                let to = term_of_value(&mut inner.graph, value, self.id)?;
+                let to = term_of_value(&mut inner.graph, value, self.id, &manifest.units)?;
                 for node in &mut nodes {
                     *node = inner.graph.substitute(*node, from, to);
                 }
@@ -1362,6 +1365,7 @@ fn term_of_value(
     graph: &mut Graph,
     value: &Value,
     session: SessionId,
+    definitions: &[UnitValue],
 ) -> Result<NodeId, OpError> {
     match value {
         | Value::Int(value) => Ok(graph.num(Number::Int(value.clone()))),
@@ -1396,8 +1400,8 @@ fn term_of_value(
                     feature: "quantities (the `units` rule set is not installed)".to_owned(),
                 }
             })?;
-            let value = term_of_value(graph, &quantity.value, session)?;
-            let unit = term_of_unit(graph, &quantity.unit)?;
+            let value = term_of_value(graph, &quantity.value, session, definitions)?;
+            let unit = term_of_unit(graph, &quantity.unit, definitions)?;
             graph
                 .try_node(op, &[value, unit])
                 .ok_or_else(|| OpError::Internal("quantity is not binary".to_owned()))
@@ -1412,7 +1416,7 @@ fn term_of_value(
                 feature: "complex literals".to_owned(),
             })
         },
-        | Value::Tensor(tensor) => term_of_tensor(graph, tensor, session, None),
+        | Value::Tensor(tensor) => term_of_tensor(graph, tensor, session, None, definitions),
         | Value::Term(handle) => {
             if handle.session != session {
                 return Err(OpError::ForeignTerm {
@@ -1430,7 +1434,7 @@ fn term_of_value(
             Ok(node)
         },
         | Value::Dyn(dynamic) => {
-            term_of_dimensioned_value(graph, &dynamic.value, &dynamic.dim, session)
+            term_of_dimensioned_value(graph, &dynamic.value, &dynamic.dim, session, definitions)
         },
         | Value::Sparse(_) => {
             Err(OpError::Unsupported {
@@ -1464,12 +1468,15 @@ fn term_of_value(
 fn term_of_unit(
     graph: &mut Graph,
     unit: &UnitValue,
+    definitions: &[UnitValue],
 ) -> Result<NodeId, OpError> {
     crate::dim::units::resolve_value(unit).ok_or_else(|| OpError::Domain(
         "invalid unit definition: expected a concrete rational dimension, nonzero exact scale and consistent rational affine offset".to_owned(),
     ))?;
     graph.with_dim_arena_mut(|arena| unit.dimension.to_term(arena))?;
-    if crate::dim::units::lookup(&unit.name).is_some_and(|known| known.to_value() == *unit) {
+    if crate::dim::units::lookup(&unit.name).is_some_and(|known| known.to_value() == *unit)
+        || definitions.iter().any(|known| known == unit)
+    {
         Ok(graph.sym(&unit.name))
     } else {
         Ok(graph.lit(Payload::Unit(Arc::new(unit.clone()))))
@@ -1496,6 +1503,7 @@ fn term_of_dimensioned_value(
     value: &Value,
     dim: &crate::kernel::signature::DimExpr,
     session: SessionId,
+    definitions: &[UnitValue],
 ) -> Result<NodeId, OpError> {
     let unit = coherent_definition(dim);
     crate::dim::units::resolve_value(&unit).ok_or_else(|| {
@@ -1508,7 +1516,7 @@ fn term_of_dimensioned_value(
                     "conflicting nested dynamic dimensions".to_owned(),
                 ));
             }
-            return term_of_dimensioned_value(graph, &inner.value, dim, session);
+            return term_of_dimensioned_value(graph, &inner.value, dim, session, definitions);
         },
         | Value::Quantity(quantity) => {
             if !same_dimension(dim, &quantity.unit.dimension) {
@@ -1516,9 +1524,11 @@ fn term_of_dimensioned_value(
                     "dynamic dimension conflicts with quantity unit".to_owned(),
                 ));
             }
-            return term_of_value(graph, value, session);
+            return term_of_value(graph, value, session, definitions);
         },
-        | Value::Tensor(tensor) => return term_of_tensor(graph, tensor, session, Some(dim)),
+        | Value::Tensor(tensor) => {
+            return term_of_tensor(graph, tensor, session, Some(dim), definitions);
+        },
         | Value::Int(_) | Value::Real(_) | Value::Float(_) | Value::Symbol(_) | Value::Term(_) => {
         },
         | _ => {
@@ -1527,7 +1537,7 @@ fn term_of_dimensioned_value(
             ));
         },
     }
-    let magnitude = term_of_value(graph, value, session)?;
+    let magnitude = term_of_value(graph, value, session, definitions)?;
     if matches!(value, Value::Symbol(_) | Value::Term(_)) {
         let report = graph.dimension(magnitude);
         if report
@@ -1566,7 +1576,7 @@ fn term_of_dimensioned_value(
             feature: "dimensioned values require the units rule set".to_owned(),
         }
     })?;
-    let unit = term_of_unit(graph, &unit)?;
+    let unit = term_of_unit(graph, &unit, definitions)?;
     Ok(graph.node(op, &[magnitude, unit]))
 }
 
@@ -1575,6 +1585,7 @@ fn term_of_tensor(
     tensor: &TensorValue,
     session: SessionId,
     dimension: Option<&crate::kernel::signature::DimExpr>,
+    definitions: &[UnitValue],
 ) -> Result<NodeId, OpError> {
     use crate::kernel::signature::DimExpr;
     use crate::kernel::signature::TypeExpr;
@@ -1584,14 +1595,15 @@ fn term_of_tensor(
         data: &[Value],
         dimension: Option<&DimExpr>,
         session: SessionId,
+        definitions: &[UnitValue],
     ) -> Result<NodeId, OpError> {
         let Some((&extent, tail)) = shape.split_first() else {
             let value = data
                 .first()
                 .ok_or_else(|| OpError::Domain("empty scalar tensor".to_owned()))?;
             return match dimension {
-                | Some(dim) => term_of_dimensioned_value(graph, value, dim, session),
-                | None => term_of_value(graph, value, session),
+                | Some(dim) => term_of_dimensioned_value(graph, value, dim, session, definitions),
+                | None => term_of_value(graph, value, session, definitions),
             };
         };
         let stride = data.len().checked_div(extent).unwrap_or(0);
@@ -1603,6 +1615,7 @@ fn term_of_tensor(
                     &data[index * stride..(index + 1) * stride],
                     dimension,
                     session,
+                    definitions,
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1635,7 +1648,14 @@ fn term_of_tensor(
                 .to_owned(),
         });
     }
-    build(graph, &tensor.shape, &tensor.data, dimension, session)
+    build(
+        graph,
+        &tensor.shape,
+        &tensor.data,
+        dimension,
+        session,
+        definitions,
+    )
 }
 
 /// The arguments of `descriptor` that are declared as a unit.
@@ -1673,11 +1693,12 @@ fn term_of_argument(
     value: &Value,
     session: SessionId,
     unit_position: bool,
+    definitions: &[UnitValue],
 ) -> Result<NodeId, OpError> {
     if unit_position && let Value::Unit(unit) = value {
-        return term_of_unit(graph, unit);
+        return term_of_unit(graph, unit, definitions);
     }
-    term_of_value(graph, value, session)
+    term_of_value(graph, value, session, definitions)
 }
 
 impl Term<'_> {

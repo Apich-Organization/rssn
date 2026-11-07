@@ -130,7 +130,7 @@ pub(super) fn register<E: EvalDyn + 'static>(
     evaluator: E,
 ) -> Result<(), RuleError> {
     let signature = evaluator.signature();
-    installer.op(OpDescriptor::new(name, Arity::Fixed(arity))
+    let op = installer.op(OpDescriptor::new(name, Arity::Fixed(arity))
         .rust_path(path)
         .category("numerical_callback")
         .doc(doc)
@@ -147,6 +147,7 @@ pub(super) fn register<E: EvalDyn + 'static>(
         .higher_order()
         .signature(signature)
         .eval_dyn(Arc::new(evaluator)))?;
+    installer.dim(op, crate::graph::dim::DimRule::Container);
     Ok(())
 }
 

@@ -1,6 +1,7 @@
 //! Dimensional policies for numerical exports.
 //!
 //! Each policy generates parameter and result signatures, including record fields.
+use crate::graph::dim::DimRule;
 use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::Exp;
 use crate::kernel::signature::Rational;
@@ -8,6 +9,29 @@ use crate::kernel::signature::Signature;
 use crate::kernel::signature::TypeExpr;
 use crate::kernel::signature::TypeParam;
 use crate::kernel::signature::TypeParamKind;
+
+impl DimensionPolicy {
+    /// Dimension rule corresponding to this policy.
+    #[must_use]
+    pub const fn dim_rule(&self) -> DimRule {
+        match self {
+            | Self::Dimensionless
+            | Self::IndependentUnitless
+            | Self::UnitlessResult
+            | Self::RankTolerance => DimRule::Dimensionless,
+            | Self::EqualPreserve
+            | Self::IndependentPreserveLeft
+            | Self::Preserve
+            | Self::PreserveWithUnitlessSecond => DimRule::Same(0),
+            | Self::Inverse => DimRule::Inverse,
+            | Self::LeastSquares => DimRule::Quotient,
+            | Self::Root => DimRule::Root(2),
+            | Self::Square => DimRule::Square,
+            | Self::Product => DimRule::Product,
+            | Self::Qr | Self::Svd | Self::SymmetricEigen | Self::TensorTrain => DimRule::Container,
+        }
+    }
+}
 
 /// A composable, exact dimensional expression over named input witnesses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -555,15 +555,17 @@ fn install(
 ) -> Result<(), RuleError> {
     for export in exports().filter(|entry| entry.namespace == namespace) {
         let signature = export.signature();
-        i.op(
-            OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
-                .rust_path(export.rust_path)
-                .category(export.category)
-                .doc(export.doc)
-                .stability(export.stability)
-                .signature(signature)
-                .eval_dyn(Arc::new(export)),
-        )?;
+        let op = i.op(OpDescriptor::new(
+            export.name,
+            Arity::Fixed(signature.params.len() as u8),
+        )
+        .rust_path(export.rust_path)
+        .category(export.category)
+        .doc(export.doc)
+        .stability(export.stability)
+        .signature(signature)
+        .eval_dyn(Arc::new(export)))?;
+        i.dim(op, export.dimension_policy.dim_rule());
     }
     for export in codecs::EXPORTS
         .iter()
@@ -571,28 +573,32 @@ fn install(
         .filter(|entry| entry.namespace == namespace)
     {
         let signature = export.signature();
-        i.op(
-            OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
-                .rust_path(export.rust_path)
-                .category(export.namespace)
-                .doc(export.doc)
-                .stability(export.stability)
-                .signature(signature)
-                .eval_dyn(Arc::new(export)),
-        )?;
+        let op = i.op(OpDescriptor::new(
+            export.name,
+            Arity::Fixed(signature.params.len() as u8),
+        )
+        .rust_path(export.rust_path)
+        .category(export.namespace)
+        .doc(export.doc)
+        .stability(export.stability)
+        .signature(signature)
+        .eval_dyn(Arc::new(export)))?;
+        i.dim(op, export.dimension_policy.dim_rule());
     }
     if namespace == "numerical_matrix" {
         for export in iterative::EXPORTS {
             let signature = export.signature();
-            i.op(
-                OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
-                    .rust_path(export.rust_path)
-                    .category(namespace)
-                    .doc(export.doc)
-                    .stability(Stability::Experimental)
-                    .signature(signature)
-                    .eval_dyn(Arc::new(export)),
-            )?;
+            let op = i.op(OpDescriptor::new(
+                export.name,
+                Arity::Fixed(signature.params.len() as u8),
+            )
+            .rust_path(export.rust_path)
+            .category(namespace)
+            .doc(export.doc)
+            .stability(Stability::Experimental)
+            .signature(signature)
+            .eval_dyn(Arc::new(export)))?;
+            i.dim(op, crate::graph::dim::DimRule::Container);
         }
     }
     Ok(())
