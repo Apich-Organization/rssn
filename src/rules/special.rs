@@ -9,6 +9,19 @@
 //! differentiation and integration kernels see them as ordinary
 //! polynomials.
 //!
+//! Fresnel integrals (normalised, DLMF 7.2.7; numerics in
+//! [`crate::kernels::fresnel`]):
+//!
+//! | Operator | Arity | Meaning | Exact rules |
+//! | --- | --- | --- | --- |
+//! | `fresnels(x)` | 1 | `S(x) = ∫_0^x sin(π t²/2) dt` | `S(0) = 0`, odd, `S(±∞) = ±1/2`, `S(I x) = -I S(x)`, `S' = sin(π x²/2)`; Explore: `erf` of complex argument |
+//! | `fresnelc(x)` | 1 | `C(x) = ∫_0^x cos(π t²/2) dt` | `C(0) = 0`, odd, `C(±∞) = ±1/2`, `C(I x) = I C(x)`, `C' = cos(π x²/2)` |
+//!
+//! Antiderivatives: `∫ x^n sin(a x² + b x + c)` and the cosine version for
+//! literal `n >= 0` (odd `n` elementary, even `n` through `S` and `C`),
+//! `∫ S(a x + b)`, `∫ C(a x + b)`, `∫ x S(a x)`, `∫ x C(a x)`. The complex
+//! evaluator ([`crate::graph::ComplexEval`]) knows both operators.
+//!
 //! Coulomb, polylogarithm, Appell, Kelvin and Anger-Weber operators (the
 //! numeric kernels live in [`crate::kernels::special_ext`]):
 //!
@@ -53,6 +66,7 @@ use crate::graph::dim::DimRule;
 use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+use crate::kernels::fresnel;
 use crate::kernels::special as num;
 use crate::kernels::special_ext as ext;
 
@@ -252,6 +266,14 @@ extern "C" fn c_erfc(x: f64) -> f64 {
     num::erfc_numerical(x)
 }
 
+extern "C" fn c_fresnels(x: f64) -> f64 {
+    fresnel::fresnel_s(x)
+}
+
+extern "C" fn c_fresnelc(x: f64) -> f64 {
+    fresnel::fresnel_c(x)
+}
+
 extern "C" fn c_zeta(x: f64) -> f64 {
     zeta(x)
 }
@@ -307,7 +329,7 @@ fn special_rule(name: &str) -> DimRule {
 #[allow(clippy::too_many_lines)]
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 54] = [
+    let functions: [(&str, u8, EvalFn, Facts); 56] = [
         (
             "gamma",
             1,
@@ -383,6 +405,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "erfi",
             1,
             |a| a.first().map_or(f64::NAN, |&x| num::erfi(x)),
+            Facts::REAL,
+        ),
+        (
+            "fresnels",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| fresnel::fresnel_s(x)),
+            Facts::REAL,
+        ),
+        (
+            "fresnelc",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| fresnel::fresnel_c(x)),
             Facts::REAL,
         ),
         (
@@ -674,12 +708,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     }
     // Compiled backends call these directly instead of through the generic
     // evaluation shim.
-    let lowerings: [(&str, Lowering); 12] = [
+    let lowerings: [(&str, Lowering); 14] = [
         ("gamma", Lowering::Extern1(c_gamma)),
         ("lgamma", Lowering::Extern1(c_lgamma)),
         ("digamma", Lowering::Extern1(c_digamma)),
         ("erf", Lowering::Extern1(c_erf)),
         ("erfc", Lowering::Extern1(c_erfc)),
+        ("fresnels", Lowering::Extern1(c_fresnels)),
+        ("fresnelc", Lowering::Extern1(c_fresnelc)),
         ("zeta", Lowering::Extern1(c_zeta)),
         ("si", Lowering::Extern1(c_si)),
         ("ci", Lowering::Extern1(c_ci)),
@@ -694,6 +730,41 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
     }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
+    // Complex-argument evaluation of erf, erfc and the Fresnel integrals.
+    for (name, eval) in [
+        (
+            "erf",
+            crate::graph::ComplexEval(|a| a.first().map(|&z| fresnel::erf_complex(z))),
+        ),
+        (
+            "erfc",
+            crate::graph::ComplexEval(|a| {
+                a.first()
+                    .map(|&z| num_complex::Complex64::new(1.0, 0.0) - fresnel::erf_complex(z))
+            }),
+        ),
+        (
+            "fresnels",
+            crate::graph::ComplexEval(|a| {
+                let z = a.first()?;
+                let ((re, im), _) = fresnel::fresnel_sc_complex(z.re, z.im);
+                Some(num_complex::Complex64::new(re, im))
+            }),
+        ),
+        (
+            "fresnelc",
+            crate::graph::ComplexEval(|a| {
+                let z = a.first()?;
+                let (_, (re, im)) = fresnel::fresnel_sc_complex(z.re, z.im);
+                Some(num_complex::Complex64::new(re, im))
+            }),
+        ),
+    ] {
+        if let Some(op) = op_named(name) {
+            i.graph().ops_mut().set_attr(op, eval);
+        }
+    }
+
     let pi = i.graph().ops().lookup("pi").ok_or_else(|| {
         RuleError::Invalid {
             rule: "special".to_owned(),
@@ -728,6 +799,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     partials(i, "digamma", &["polygamma(1, ?a)"])?;
     partials(i, "polygamma", &["", "polygamma(?a + 1, ?b)"])?;
     partials(i, "erfi", &["2/pi^(1/2) * exp(?a^2)"])?;
+    partials(i, "fresnels", &["sin(pi * ?a^2 / 2)"])?;
+    partials(i, "fresnelc", &["cos(pi * ?a^2 / 2)"])?;
     partials(i, "lambertw", &["lambertw(?a)/(?a*(1 + lambertw(?a)))"])?;
     partials(
         i,
@@ -768,11 +841,15 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     )?;
     at_infinity(i, "erfi", Some("oo"), Some("-oo"))?;
     at_infinity(i, "erf", Some("1"), Some("-1"))?;
+    at_infinity(i, "fresnels", Some("1/2"), Some("-1/2"))?;
+    at_infinity(i, "fresnelc", Some("1/2"), Some("-1/2"))?;
     at_infinity(i, "erfc", Some("0"), Some("2"))?;
     at_infinity(i, "heaviside", Some("1"), Some("0"))?;
     at_infinity(i, "sign", Some("1"), Some("-1"))?;
     integral_rule(i, gaussian_integral);
     integral_rule(i, erf_integral);
+    integral_rule(i, fresnel_integral);
+    integral_rule(i, trig_quadratic_integral);
     partials(i, "ei", &["exp(?a)/?a"])?;
     partials(i, "airyai", &["airyaiprime(?a)"])?;
     partials(i, "airybi", &["airybiprime(?a)"])?;
@@ -885,6 +962,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/sign-odd: sign(-?x) => -sign(?x)",
             "special/erfi-0: erfi(0) => 0",
             "special/erfi-odd: erfi(-?x) => -erfi(?x)",
+            "special/fresnels-0: fresnels(0) => 0",
+            "special/fresnelc-0: fresnelc(0) => 0",
+            "special/fresnels-odd: fresnels(-?x) => -fresnels(?x)",
+            "special/fresnelc-odd: fresnelc(-?x) => -fresnelc(?x)",
+            "special/fresnels-oo: fresnels(oo) => 1/2",
+            "special/fresnelc-oo: fresnelc(oo) => 1/2",
+            "special/fresnels-minus-oo: fresnels(-oo) => -1/2",
+            "special/fresnelc-minus-oo: fresnelc(-oo) => -1/2",
             "special/polygamma-0: polygamma(0, ?x) => digamma(?x)",
             "special/besselj-half: besselj(1/2, ?x) => (2/(pi*?x))^(1/2) * sin(?x) if positive(?x)",
             "special/besselj-minus-half: besselj(-1/2, ?x) => (2/(pi*?x))^(1/2) * cos(?x) if positive(?x)",
@@ -937,6 +1022,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/angerj-integer: angerj(?n, ?x) => besselj(?n, ?x) if integer(?n)",
         ],
     )?;
+    if let (Some(sine), Some(cosine)) = (op_named("fresnels"), op_named("fresnelc")) {
+        i.kernel(
+            "special/fresnel-imaginary",
+            Tier::Normalize,
+            FresnelImaginary { sine, cosine },
+        );
+        i.kernel(
+            "special/fresnel-as-erf",
+            Tier::Explore,
+            FresnelAsErf { sine, cosine },
+        );
+    }
     i.rewrites(
         Tier::Explore,
         &[
@@ -2137,6 +2234,422 @@ fn erf_integral(
     Some(graph.node(core::MUL, &[sum, inv_a]))
 }
 
+// ----------------------------------------------------------------------
+// Fresnel integrals
+// ----------------------------------------------------------------------
+
+/// `∫ fresnels(a x + b) dx = ((a x + b) S + cos(π (a x + b)² / 2) / π) / a`,
+/// `∫ fresnelc(a x + b) dx = ((a x + b) C - sin(π (a x + b)² / 2) / π) / a`,
+/// and `∫ x S(a x) dx`, `∫ x C(a x) dx` by parts.
+fn fresnel_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (sine, cosine, trig_sin, trig_cos, pi) = (
+        graph.ops().lookup("fresnels")?,
+        graph.ops().lookup("fresnelc")?,
+        graph.ops().lookup("sin")?,
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("pi")?,
+    );
+    let factors = if graph.op(f) == core::MUL {
+        graph.children(f).to_vec()
+    } else {
+        vec![f]
+    };
+    let mut constants = Vec::new();
+    let mut moment = false;
+    let mut kernel = None;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+        } else if graph.symbol_of(factor) == Some(symbol) && !moment {
+            moment = true;
+        } else if (graph.op(factor) == sine || graph.op(factor) == cosine) && kernel.is_none() {
+            kernel = Some(factor);
+        } else {
+            return None;
+        }
+    }
+    let kernel = kernel?;
+    let is_sine = graph.op(kernel) == sine;
+    let &[u] = graph.children(kernel) else {
+        return None;
+    };
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, u, Limits::default())?;
+    for g in poly.support() {
+        if g != gx
+            && gens
+                .node(g)
+                .is_some_and(|node| depends(graph, node, symbol))
+        {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 1 {
+        return None;
+    }
+    let coefficients = poly.coefficients_in(gx);
+    let a = to_term(graph, &gens, coefficients.get(1)?);
+    let constant_part = coefficients.first().is_none_or(Poly::is_zero);
+    let (minus_one, two) = (graph.int(-1), graph.int(2));
+    let half = graph.num(Number::fraction(1, 2)?);
+    let pi_node = graph.node(pi, &[]);
+    let inv_a = graph.node(core::POW, &[a, minus_one]);
+    let inv_pi = graph.node(core::POW, &[pi_node, minus_one]);
+    // π u² / 2, the phase of the derivative.
+    let u2 = graph.node(core::POW, &[u, two]);
+    let phase = graph.node(core::MUL, &[half, pi_node, u2]);
+    let body = if moment {
+        // Only `x S(a x)` and `x C(a x)`.
+        if !constant_part {
+            return None;
+        }
+        // S: x²/2 S + x cos(φ)/(2 π a) - C/(2 π a²)
+        // C: x²/2 C - x sin(φ)/(2 π a) + S/(2 π a²)
+        let x2 = graph.node(core::POW, &[x, two]);
+        let head = graph.node(core::MUL, &[half, x2, kernel]);
+        let (direction, companion_op, sign) = if is_sine {
+            (trig_cos, cosine, 1)
+        } else {
+            (trig_sin, sine, -1)
+        };
+        let wave = graph.node(direction, &[phase]);
+        let inv_two_pi_a = {
+            let denominator = graph.node(core::MUL, &[two, pi_node, a]);
+            graph.node(core::POW, &[denominator, minus_one])
+        };
+        let sign_node = graph.int(sign);
+        let second = graph.node(core::MUL, &[sign_node, x, wave, inv_two_pi_a]);
+        let companion = graph.node(companion_op, &[u]);
+        let a2 = graph.node(core::POW, &[a, two]);
+        let denominator = graph.node(core::MUL, &[two, pi_node, a2]);
+        let inv = graph.node(core::POW, &[denominator, minus_one]);
+        let third_sign = graph.int(-sign);
+        let third = graph.node(core::MUL, &[third_sign, companion, inv]);
+        graph.node(core::ADD, &[head, second, third])
+    } else {
+        let (direction, sign) = if is_sine {
+            (trig_cos, 1)
+        } else {
+            (trig_sin, -1)
+        };
+        let wave = graph.node(direction, &[phase]);
+        let sign_node = graph.int(sign);
+        let tail = graph.node(core::MUL, &[sign_node, wave, inv_pi]);
+        let head = graph.node(core::MUL, &[u, kernel]);
+        let sum = graph.node(core::ADD, &[head, tail]);
+        graph.node(core::MUL, &[sum, inv_a])
+    };
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
+/// `∫ x^n sin(a x² + b x + c) dx` and the cosine version, `a` free of `x`
+/// and nonzero, `n >= 0` literal.
+///
+/// With `u = x + b/(2a)`: `∫ cos(a u²) = (2a/π)^(-1/2) C((2a/π)^(1/2) u)`
+/// (and the same with `S` for the sine), `sin(a u² + c₀) = sin c₀ cos(a u²) +
+/// cos c₀ sin(a u²)` with `c₀ = c - b²/(4a)`. Higher moments follow from
+///
+/// ```text
+/// 2a J^s_n = -x^(n-1) cos q + (n-1) J^c_(n-2) - b J^s_(n-1)
+/// 2a J^c_n =  x^(n-1) sin q - (n-1) J^s_(n-2) - b J^c_(n-1)
+/// ```
+///
+/// A known-positive `a` uses `a` under the root and a known-negative one
+/// `-a`; an `a` of unknown sign uses `|a|` and `sign(a)`
+/// (`∫ sin(a u²) = sign(a) (2|a|/π)^(-1/2) S((2|a|/π)^(1/2) u)`), which is
+/// the real antiderivative for every real `a ≠ 0` rather than a principal
+/// branch that is complex for `a < 0`.
+fn trig_quadratic_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (trig_sin, trig_cos, sine, cosine, pi) = (
+        graph.ops().lookup("sin")?,
+        graph.ops().lookup("cos")?,
+        graph.ops().lookup("fresnels")?,
+        graph.ops().lookup("fresnelc")?,
+        graph.ops().lookup("pi")?,
+    );
+    let factors = if graph.op(f) == core::MUL {
+        graph.children(f).to_vec()
+    } else {
+        vec![f]
+    };
+    let mut constants = Vec::new();
+    let mut n: u32 = 0;
+    let mut kernel = None;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+        } else if graph.symbol_of(factor) == Some(symbol) {
+            n = n.checked_add(1)?;
+        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
+            if graph.symbol_of(base) != Some(symbol) {
+                return None;
+            }
+            n = n.checked_add(integer(graph, e)?.to_u32()?)?;
+        } else if (graph.op(factor) == trig_sin || graph.op(factor) == trig_cos) && kernel.is_none()
+        {
+            kernel = Some(factor);
+        } else {
+            return None;
+        }
+    }
+    let kernel = kernel?;
+    if n > 12 {
+        return None;
+    }
+    let sine_first = graph.op(kernel) == trig_sin;
+    let &[q] = graph.children(kernel) else {
+        return None;
+    };
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, q, Limits::default())?;
+    for g in poly.support() {
+        if g != gx
+            && gens
+                .node(g)
+                .is_some_and(|node| depends(graph, node, symbol))
+        {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 2 {
+        return None;
+    }
+    let coefficients = poly.coefficients_in(gx);
+    let a = to_term(graph, &gens, coefficients.get(2)?);
+    let b_is_zero = coefficients.get(1).is_none_or(Poly::is_zero);
+    let b = to_term(graph, &gens, coefficients.get(1)?);
+    let c = to_term(graph, &gens, coefficients.first()?);
+    let int = |graph: &mut Graph, v: i64| graph.int(v);
+    let mul = |graph: &mut Graph, f: &[NodeId]| graph.node(core::MUL, f);
+    let add = |graph: &mut Graph, t: &[NodeId]| graph.node(core::ADD, t);
+    let pow = |graph: &mut Graph, b: NodeId, e: NodeId| graph.node(core::POW, &[b, e]);
+    let (minus_one, two, four) = (int(graph, -1), int(graph, 2), int(graph, 4));
+    let minus_half = graph.num(Number::fraction(-1, 2)?);
+    let plus_half = graph.num(Number::fraction(1, 2)?);
+    let pi_node = graph.node(pi, &[]);
+    let inv_pi = pow(graph, pi_node, minus_one);
+    let negative = graph.facts(a).has(Facts::NEGATIVE);
+    let positive = graph.facts(a).has(Facts::POSITIVE);
+    let (abs_op, sign_op) = (graph.ops().lookup("abs"), graph.ops().lookup("sign"));
+    let unknown_sign = !negative && !positive && abs_op.is_some() && sign_op.is_some();
+    // root = (2 |a| / π)^(1/2)
+    let scale = if negative {
+        mul(graph, &[minus_one, two, a, inv_pi])
+    } else if let (true, Some(abs_op)) = (unknown_sign, abs_op) {
+        let magnitude = graph.node(abs_op, &[a]);
+        mul(graph, &[two, magnitude, inv_pi])
+    } else {
+        mul(graph, &[two, a, inv_pi])
+    };
+    let root = pow(graph, scale, plus_half);
+    let inv_root = pow(graph, scale, minus_half);
+    let two_a = mul(graph, &[two, a]);
+    let inv_two_a = pow(graph, two_a, minus_one);
+    let four_a = mul(graph, &[four, a]);
+    let inv_four_a = pow(graph, four_a, minus_one);
+    let b2 = pow(graph, b, two);
+    // u = x + b / (2a), c0 = c - b² / (4a)
+    let shift = mul(graph, &[b, inv_two_a]);
+    let u = add(graph, &[x, shift]);
+    let c0 = {
+        let t = mul(graph, &[minus_one, b2, inv_four_a]);
+        add(graph, &[c, t])
+    };
+    let v = mul(graph, &[root, u]);
+    let fresnel_c_of = graph.node(cosine, &[v]);
+    let fresnel_s_of = graph.node(sine, &[v]);
+    // ∫ cos(a u²) and ∫ sin(a u²)
+    let i_cos = mul(graph, &[inv_root, fresnel_c_of]);
+    let i_sin = {
+        let sign = if negative {
+            minus_one
+        } else if let (true, Some(sign_op)) = (unknown_sign, sign_op) {
+            graph.node(sign_op, &[a])
+        } else {
+            int(graph, 1)
+        };
+        mul(graph, &[sign, inv_root, fresnel_s_of])
+    };
+    let (sin_c0, cos_c0) = (graph.node(trig_sin, &[c0]), graph.node(trig_cos, &[c0]));
+    let j0_sin = {
+        let p = mul(graph, &[sin_c0, i_cos]);
+        let r = mul(graph, &[cos_c0, i_sin]);
+        add(graph, &[p, r])
+    };
+    let j0_cos = {
+        let p = mul(graph, &[cos_c0, i_cos]);
+        let r = mul(graph, &[minus_one, sin_c0, i_sin]);
+        add(graph, &[p, r])
+    };
+    let sin_q = graph.node(trig_sin, &[q]);
+    let cos_q = graph.node(trig_cos, &[q]);
+    let mut js: Vec<Option<NodeId>> = vec![Some(j0_sin)];
+    let mut jc: Vec<Option<NodeId>> = vec![Some(j0_cos)];
+    for k in 1..=n {
+        let k_us = k as usize;
+        // With b = 0 only moments of the same parity are reached.
+        let reachable = !b_is_zero || (n - k).is_multiple_of(2);
+        if !reachable {
+            js.push(None);
+            jc.push(None);
+            continue;
+        }
+        let power = int(graph, i64::from(k) - 1);
+        let xk = pow(graph, x, power);
+        let mut s_terms = vec![mul(graph, &[minus_one, xk, cos_q])];
+        let mut c_terms = vec![mul(graph, &[xk, sin_q])];
+        if k >= 2 {
+            let w = int(graph, i64::from(k) - 1);
+            s_terms.push(mul(graph, &[w, jc[k_us - 2]?]));
+            let mw = int(graph, 1 - i64::from(k));
+            c_terms.push(mul(graph, &[mw, js[k_us - 2]?]));
+        }
+        if !b_is_zero {
+            s_terms.push(mul(graph, &[minus_one, b, js[k_us - 1]?]));
+            c_terms.push(mul(graph, &[minus_one, b, jc[k_us - 1]?]));
+        }
+        let s_sum = add(graph, &s_terms);
+        let c_sum = add(graph, &c_terms);
+        js.push(Some(mul(graph, &[s_sum, inv_two_a])));
+        jc.push(Some(mul(graph, &[c_sum, inv_two_a])));
+    }
+    let last = n as usize;
+    let body = if sine_first {
+        js[last]?
+    } else {
+        jc[last]?
+    };
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
+/// `S(I x) = -I S(x)`, `C(I x) = I C(x)`: both integrals are odd entire
+/// functions whose Maclaurin series run in powers `x^(4k+3)` and `x^(4k+1)`.
+struct FresnelImaginary {
+    sine: OpId,
+    cosine: OpId,
+}
+
+impl Kernel for FresnelImaginary {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.sine, self.cosine]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let Some(unit) = graph.ops().lookup("I") else {
+            return Outcome::Pass;
+        };
+        let &[u] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let rest = if graph.op(u) == unit {
+            graph.int(1)
+        } else if graph.op(u) == core::MUL {
+            let children = graph.children(u).to_vec();
+            if children.iter().filter(|&&c| graph.op(c) == unit).count() != 1 {
+                return Outcome::Pass;
+            }
+            let others: Vec<NodeId> = children
+                .into_iter()
+                .filter(|&c| graph.op(c) != unit)
+                .collect();
+            match others.as_slice() {
+                | [single] => *single,
+                | _ => graph.node(core::MUL, &others),
+            }
+        } else {
+            return Outcome::Pass;
+        };
+        let op = graph.op(node);
+        let value = graph.node(op, &[rest]);
+        let i_node = graph.node(unit, &[]);
+        let result = if op == self.sine {
+            let minus_one = graph.int(-1);
+            graph.node(core::MUL, &[minus_one, i_node, value])
+        } else {
+            graph.node(core::MUL, &[i_node, value])
+        };
+        Outcome::Equal(result)
+    }
+}
+
+/// Explore-tier rewrite to the error function of a complex argument
+/// (DLMF 7.2.12 with `a = √π/2`):
+/// `S(z) = (1+I)/4 (erf((1+I)/2 √π z) - I erf((1-I)/2 √π z))`,
+/// `C(z) = (1-I)/4 (erf((1+I)/2 √π z) + I erf((1-I)/2 √π z))`.
+struct FresnelAsErf {
+    sine: OpId,
+    cosine: OpId,
+}
+
+impl Kernel for FresnelAsErf {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.sine, self.cosine]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let (Some(unit), Some(erf), Some(pi)) = (
+            graph.ops().lookup("I"),
+            graph.ops().lookup("erf"),
+            graph.ops().lookup("pi"),
+        ) else {
+            return Outcome::Pass;
+        };
+        let &[z] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let (Some(half), Some(quarter)) = (Number::fraction(1, 2), Number::fraction(1, 4)) else {
+            return Outcome::Pass;
+        };
+        let (half, quarter) = (graph.num(half), graph.num(quarter));
+        let (one, minus_one) = (graph.int(1), graph.int(-1));
+        let i_node = graph.node(unit, &[]);
+        let minus_i = graph.node(core::MUL, &[minus_one, i_node]);
+        let plus = graph.node(core::ADD, &[one, i_node]);
+        let minus = graph.node(core::ADD, &[one, minus_i]);
+        let pi_node = graph.node(pi, &[]);
+        let root_pi = graph.node(core::POW, &[pi_node, half]);
+        let argument = |graph: &mut Graph, c: NodeId| graph.node(core::MUL, &[c, half, root_pi, z]);
+        let (a1, a2) = (argument(graph, plus), argument(graph, minus));
+        let (e_plus, e_minus) = (graph.node(erf, &[a1]), graph.node(erf, &[a2]));
+        let result = if graph.op(node) == self.sine {
+            let second = graph.node(core::MUL, &[minus_one, i_node, e_minus]);
+            let inner = graph.node(core::ADD, &[e_plus, second]);
+            graph.node(core::MUL, &[quarter, plus, inner])
+        } else {
+            let second = graph.node(core::MUL, &[i_node, e_minus]);
+            let inner = graph.node(core::ADD, &[e_plus, second]);
+            graph.node(core::MUL, &[quarter, minus, inner])
+        };
+        Outcome::Equal(result)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2957,5 +3470,259 @@ mod tests {
                 "{src}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod fresnel_tests {
+    use super::*;
+    use crate::graph::Budget;
+    use crate::graph::Engine;
+    use crate::graph::Env;
+    use crate::graph::Saturate;
+    use crate::rules::testing::eval;
+    use crate::rules::testing::numeric;
+    use crate::rules::testing::simplify;
+    use num_complex::Complex64;
+
+    fn sets() -> [RuleSet; 1] {
+        [special()]
+    }
+
+    /// `src` evaluated over the complex numbers with `x` bound.
+    fn complex_value(
+        src: &str,
+        x: Complex64,
+    ) -> Complex64 {
+        let sets = [special(), crate::rules::complex::complex()];
+        let mut g = Graph::new();
+        assert!(Engine::install(&mut g, &sets).is_ok());
+        let root = g.parse(src).unwrap_or_else(|e| panic!("{src}: {e}"));
+        let symbol = g.interner_mut().symbol("x");
+        let bindings = std::collections::HashMap::from([(symbol, x)]);
+        g.eval_complex(root, &bindings)
+            .unwrap_or_else(|| panic!("no complex value for {src}"))
+    }
+
+    #[test]
+    fn fresnel_numeric_values() {
+        let sets = sets();
+        let value = |src: &str| numeric(&sets, src, &[], 1e-14).0;
+        assert!((value("fresnels(1)") - 0.438_259_147_390_354_77).abs() < 1e-15);
+        assert!((value("fresnelc(1)") - 0.779_893_400_376_822_8).abs() < 1e-15);
+        assert!((value("fresnels(-1)") + 0.438_259_147_390_354_77).abs() < 1e-15);
+        let at = |src: &str, x: f64| eval(&sets, src, &[("x", x)]);
+        assert!((at("fresnelc(x)", 10.0) - 0.499_898_694_205_515_7).abs() < 1e-15);
+        assert!((at("fresnels(x)", 1e5) - 0.499_996_816_901_138_16).abs() < 1e-15);
+        assert!(at("fresnels(x)", f64::NAN).is_nan());
+    }
+
+    #[test]
+    fn fresnel_symbolic_identities_and_limits() {
+        let sets = sets();
+        let run = |src: &str| simplify(&sets, src);
+        assert_eq!(run("fresnels(0)"), "0");
+        assert_eq!(run("fresnelc(0)"), "0");
+        assert_eq!(run("fresnels(-x)"), "-fresnels(x)");
+        assert_eq!(run("fresnelc(-x)"), "-fresnelc(x)");
+        assert_eq!(run("fresnels(oo)"), "1/2");
+        assert_eq!(run("fresnelc(oo)"), "1/2");
+        assert_eq!(run("fresnels(-oo)"), "-1/2");
+        assert_eq!(run("fresnelc(-oo)"), "-1/2");
+        assert_eq!(run("limit(fresnels(x), x, oo)"), "1/2");
+        assert_eq!(run("limit(fresnelc(x), x, -oo)"), "-1/2");
+        // A bounded function over a growing one.
+        assert_eq!(run("limit(fresnels(x)/x, x, oo)"), "0");
+    }
+
+    #[test]
+    fn fresnel_derivatives_and_series() {
+        let sets = sets();
+        let run = |src: &str| simplify(&sets, src);
+        assert_eq!(run("diff(fresnels(x), x)"), "sin(1/2*x^2*pi)");
+        assert_eq!(run("diff(fresnelc(x), x)"), "cos(1/2*x^2*pi)");
+        let chain = run("diff(fresnels(x^2), x)");
+        let want = 2.0 * 0.9 * (0.5 * std::f64::consts::PI * 0.9_f64.powi(4)).sin();
+        assert!((eval(&sets, &chain, &[("x", 0.9)]) - want).abs() < 1e-12);
+        assert_eq!(
+            run("taylor(fresnels(x), x, 0, 12)"),
+            "1/6*x^3*pi - 1/336*x^7*pi^3 + 1/42240*x^11*pi^5"
+        );
+        assert_eq!(
+            run("taylor(fresnelc(x), x, 0, 9)"),
+            "x - 1/40*x^5*pi^2 + 1/3456*x^9*pi^4"
+        );
+    }
+
+    /// Differentiates the antiderivative of `integrand` back and compares it
+    /// with the integrand at `points`.
+    #[track_caller]
+    fn antiderivative_roundtrip(
+        integrand: &str,
+        extra: &[(&str, f64)],
+        points: &[f64],
+    ) {
+        let sets = sets();
+        let primitive = simplify(&sets, &format!("integral({integrand}, x)"));
+        let derivative = simplify(&sets, &format!("diff({primitive}, x)"));
+        for &x in points {
+            let mut bindings = vec![("x", x)];
+            bindings.extend_from_slice(extra);
+            let want = eval(&sets, integrand, &bindings);
+            let got = eval(&sets, &derivative, &bindings);
+            assert!(
+                (got - want).abs() <= 1e-10 * (1.0 + want.abs()),
+                "d/dx of {primitive} at {x}: {got} vs {want} ({integrand})"
+            );
+        }
+    }
+
+    #[test]
+    fn fresnel_antiderivatives_of_quadratic_phases() {
+        let pts = [0.3, 0.9, 1.7];
+        let sets = sets();
+        assert_eq!(
+            simplify(&sets, "integral(sin(x^2), x)"),
+            "fresnels(2^(1/2)*x/pi^(1/2))*pi^(1/2)/2^(1/2)"
+        );
+        for integrand in [
+            "sin(x^2)",
+            "cos(x^2)",
+            "5*sin(3*x^2)",
+            "sin(pi*x^2/2)",
+            "cos(2*x^2 + 3*x + 1)",
+            "sin(x^2 - 2*x + 5)",
+            "sin(1 - 2*x^2)",
+            "cos(1 - x^2 + x)",
+        ] {
+            antiderivative_roundtrip(integrand, &[], &pts);
+        }
+        // A symbolic coefficient of unknown sign: the `|a|`/`sign(a)` form is
+        // the real antiderivative on both sides of zero.
+        antiderivative_roundtrip("sin(a*x^2)", &[("a", 1.3)], &pts);
+        antiderivative_roundtrip("sin(a*x^2)", &[("a", -1.3)], &pts);
+        antiderivative_roundtrip("cos(a*x^2 + x)", &[("a", 0.7)], &pts);
+        antiderivative_roundtrip("cos(a*x^2 + x)", &[("a", -0.7)], &pts);
+    }
+
+    #[test]
+    fn fresnel_antiderivatives_of_moments() {
+        let pts = [0.4, 1.1, 1.9];
+        for integrand in [
+            "x*sin(x^2)",
+            "x*cos(3*x^2)",
+            "x^2*sin(x^2)",
+            "x^2*cos(2*x^2)",
+            "x^3*cos(x^2)",
+            "x^4*sin(2*x^2)",
+            "x^2*sin(x^2 + x)",
+            "x^3*cos(x^2 - x + 1)",
+            "7*x^2*cos(x^2)",
+        ] {
+            antiderivative_roundtrip(integrand, &[], &pts);
+        }
+        // Odd moments are elementary.
+        let sets = sets();
+        assert_eq!(simplify(&sets, "integral(x*cos(x^2), x)"), "1/2*sin(x^2)");
+    }
+
+    #[test]
+    fn fresnel_integrals_of_fresnel_functions() {
+        let pts = [0.2, 0.8, 1.6];
+        for integrand in [
+            "fresnels(x)",
+            "fresnelc(x)",
+            "fresnels(2*x)",
+            "fresnelc(3*x + 1)",
+            "x*fresnels(x)",
+            "x*fresnelc(x)",
+            "x*fresnels(2*x)",
+            "x*fresnelc(1/2*x)",
+            "4*fresnels(x - 1)",
+        ] {
+            antiderivative_roundtrip(integrand, &[], &pts);
+        }
+        let sets = sets();
+        assert_eq!(
+            simplify(&sets, "integral(fresnels(2*x), x)"),
+            "x*fresnels(2*x) + 1/2*cos(2*x^2*pi)/pi"
+        );
+    }
+
+    #[test]
+    fn fresnel_definite_integrals() {
+        let sets = sets();
+        let run = |src: &str| simplify(&sets, src);
+        assert_eq!(run("defint(sin(x^2), x, 0, oo)"), "1/4*2^(1/2)*pi^(1/2)");
+        assert_eq!(run("defint(cos(x^2), x, 0, oo)"), "1/4*2^(1/2)*pi^(1/2)");
+        assert_eq!(run("defint(sin(pi*x^2/2), x, 0, 1)"), "fresnels(1)");
+        assert_eq!(run("defint(cos(pi*x^2/2), x, 0, 1)"), "fresnelc(1)");
+        let closed = run("defint(cos(x^2), x, 0, 2)");
+        // ∫_0^2 cos(x²) dx by the reference Fresnel value: sqrt(pi/2) C(2 sqrt(2/pi)).
+        let want = (std::f64::consts::PI / 2.0).sqrt()
+            * crate::kernels::fresnel::fresnel_c(2.0 * (2.0 / std::f64::consts::PI).sqrt());
+        assert!((eval(&sets, &closed, &[]) - want).abs() < 1e-12, "{closed}");
+    }
+
+    #[test]
+    fn fresnel_imaginary_argument() {
+        let sets = [special(), crate::rules::complex::complex()];
+        for (src, sine, scale) in [
+            ("fresnels(I*x)", true, 1.0),
+            ("fresnelc(I*x)", false, 1.0),
+            ("fresnels(2*I*x)", true, 2.0),
+        ] {
+            let reduced = simplify(&sets, src);
+            assert!(
+                !reduced.contains("fresnels(I") && !reduced.contains("fresnelc(I"),
+                "{reduced}"
+            );
+            let y = 0.8;
+            let value = complex_value(&reduced, Complex64::new(y, 0.0));
+            let want = if sine {
+                Complex64::new(0.0, -crate::kernels::fresnel::fresnel_s(scale * y))
+            } else {
+                Complex64::new(0.0, crate::kernels::fresnel::fresnel_c(scale * y))
+            };
+            assert!((value - want).norm() < 1e-13, "{src}: {value} vs {want}");
+        }
+        assert_eq!(simplify(&sets, "fresnels(I*x) + I*fresnels(x)"), "0");
+    }
+
+    #[test]
+    fn fresnel_complex_evaluation_and_erf_form() {
+        // The complex evaluator knows both operators.
+        let z = Complex64::new(0.6, -0.4);
+        let ((sr, si), (cr, ci)) = fresnel::fresnel_sc_complex(z.re, z.im);
+        assert!((complex_value("fresnels(x)", z) - Complex64::new(sr, si)).norm() < 1e-15);
+        assert!((complex_value("fresnelc(x)", z) - Complex64::new(cr, ci)).norm() < 1e-15);
+        // The erf identities (DLMF 7.2.12) hold numerically.
+        let s_form = "(1+I)/4*(erf((1+I)/2*pi^(1/2)*x) - I*erf((1-I)/2*pi^(1/2)*x))";
+        let c_form = "(1-I)/4*(erf((1+I)/2*pi^(1/2)*x) + I*erf((1-I)/2*pi^(1/2)*x))";
+        for z in [
+            Complex64::new(0.6, -0.4),
+            Complex64::new(-1.2, 0.9),
+            Complex64::new(2.5, 0.0),
+        ] {
+            assert!((complex_value(s_form, z) - complex_value("fresnels(x)", z)).norm() < 1e-12);
+            assert!((complex_value(c_form, z) - complex_value("fresnelc(x)", z)).norm() < 1e-12);
+        }
+        // The Explore tier unites the two spellings in one class.
+        let sets = [special(), crate::rules::complex::complex()];
+        let mut g = Graph::new();
+        let engine = Engine::install(&mut g, &sets).unwrap_or_else(|e| panic!("{e}"));
+        let a = g.parse("fresnels(x)").unwrap_or_else(|e| panic!("{e}"));
+        let b = g.parse(s_form).unwrap_or_else(|e| panic!("{e}"));
+        engine.run(
+            &mut g,
+            &[a, b],
+            &Env::symbolic(),
+            &Saturate,
+            &Budget::default(),
+        );
+        assert_eq!(g.find(a), g.find(b));
+        // ... without changing what `simplify` returns.
+        assert_eq!(simplify(&sets, "fresnels(x)"), "fresnels(x)");
+        assert_eq!(simplify(&sets, "fresnelc(x)"), "fresnelc(x)");
     }
 }

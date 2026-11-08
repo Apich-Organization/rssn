@@ -681,6 +681,21 @@ impl Session {
         &mut self,
         plugin: Box<dyn Plugin>,
     ) -> Result<PluginId, PluginError> {
+        self.register_shared(plugin)
+    }
+
+    /// [`Session::register`] through a shared reference.
+    ///
+    /// The session's state is already behind interior mutability; a host
+    /// that keeps its session in an `Rc` (one per thread) registers a plugin
+    /// it compiled from source at run time through this.
+    ///
+    /// # Errors
+    /// As [`Session::register`].
+    pub fn register_shared(
+        &self,
+        plugin: Box<dyn Plugin>,
+    ) -> Result<PluginId, PluginError> {
         let manifest = plugin.manifest();
         if manifest.abi != crate::kernel::signature::PLUGIN_ABI {
             return Err(PluginError::AbiMismatch {

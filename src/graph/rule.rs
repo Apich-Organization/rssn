@@ -793,7 +793,10 @@ impl<'g> Installer<'g> {
                 .is_some_and(|c| c.is_alphabetic() || c == '_')
                 && s.chars().all(|c| c.is_alphanumeric() || c == '_')
         };
-        if !is_ident(name) || !params.iter().all(|p| is_ident(p)) {
+        // A plugin operator keeps its namespace in its name
+        // (`mydomain/softplus`): every `/`-separated segment is an identifier.
+        let is_name = |s: &str| s.split('/').all(is_ident);
+        if !is_name(name) || !params.iter().all(|p| is_ident(p)) {
             return Err(invalid("the head must be `name(param, ...)`"));
         }
         let arity = u8::try_from(params.len()).map_err(|_| invalid("too many parameters"))?;

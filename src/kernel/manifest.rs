@@ -279,6 +279,14 @@ pub struct KernelManifest {
     /// alone: each entry has its exact value, its dimension, its SI unit and
     /// whether the value is exact by definition or measured.
     pub constants: Vec<ConstantValue>,
+    /// Every unit system (natural, Planck, atomic, geometrized), sorted by
+    /// name.
+    ///
+    /// A system is the set of constants it sets to one plus the generators of
+    /// its representative dimensions; a host derives every conversion from
+    /// these and the constants above (`rssn::dim::systems`).
+    #[serde(default)]
+    pub unit_systems: Vec<crate::dim::systems::UnitSystemValue>,
     /// Every [`Value`](crate::kernel::Value) variant and whether it can be
     /// passed to an operator.
     ///
@@ -303,6 +311,7 @@ impl Default for KernelManifest {
             base_dimensions: Vec::new(),
             plugins: Vec::new(),
             constants: Vec::new(),
+            unit_systems: Vec::new(),
             value_kinds: ValueKindInfo::all(),
         }
     }
@@ -416,6 +425,10 @@ impl KernelManifest {
             constants: crate::dim::constants::all()
                 .iter()
                 .map(crate::dim::constants::PhysicalConstant::to_value)
+                .collect(),
+            unit_systems: crate::dim::systems::all()
+                .iter()
+                .map(crate::dim::systems::UnitSystem::to_value)
                 .collect(),
             value_kinds: ValueKindInfo::all(),
         };

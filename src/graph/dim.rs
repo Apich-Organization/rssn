@@ -1650,10 +1650,11 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "sign" | "arg" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec" | "csc"
         | "asin" | "acos" | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh" | "tanh"
         | "coth" | "sech" | "csch" | "asinh" | "acosh" | "atanh" | "acoth" | "asech"
-        | "acsch" | "erf" | "erfc" | "erfi" | "erfcinv" | "gamma" | "lgamma" | "digamma"
-        | "polygamma" | "zeta" | "hurwitz_zeta" | "beta" | "lambertw" | "sinc" | "besselj"
-        | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi" | "airy_aip" | "airy_bip"
-        | "pi" | "e" | "true_pi" | "euler_gamma" | "i" | "golden_ratio" => DimRule::Dimensionless,
+        | "acsch" | "erf" | "erfc" | "erfi" | "fresnels" | "fresnelc" | "erfcinv" | "gamma"
+        | "lgamma" | "digamma" | "polygamma" | "zeta" | "hurwitz_zeta" | "beta" | "lambertw"
+        | "sinc" | "besselj" | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi"
+        | "airy_aip" | "airy_bip" | "pi" | "e" | "true_pi" | "euler_gamma" | "i"
+        | "golden_ratio" => DimRule::Dimensionless,
         | "atan2" => DimRule::Angle,
         | "list" | "tensor" | "vector" | "matrix" => DimRule::List,
         | "eq" | "lt" | "le" | "gt" | "ge" | "ne" => DimRule::Compare,

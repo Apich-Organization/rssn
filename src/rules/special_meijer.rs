@@ -40,6 +40,8 @@
 //! | `G^{1,0}_{0,2}(z | b+1/2, b)` | `z^b sin(2 sqrt z)/sqrt(pi)` |
 //! | `G^{1,1}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erf(sqrt z)` |
 //! | `G^{2,0}_{1,2}(z | 1; 1/2, 0)` | `sqrt(pi) erfc(sqrt z)` |
+//! | `G^{1,1}_{1,3}(z | 1; 3/4, 1/4, 0)` | `2 fresnels(2 z^{1/4}/sqrt(pi))` |
+//! | `G^{1,1}_{1,3}(z | 1; 1/4, 3/4, 0)` | `2 fresnelc(2 z^{1/4}/sqrt(pi))` |
 //! | `G^{1,0}_{0,2}(z | b1, b2)` | `z^{(b1+b2)/2} J_{b1-b2}(2 sqrt z)` |
 //! | `G^{1,0}_{0,2}(-w | nu/2, -nu/2)` | `i^nu I_nu(2 sqrt w)` for `w > 0` |
 //! | `G^{2,0}_{0,2}(z | b1, b2)` | `2 z^{(b1+b2)/2} K_{b1-b2}(2 sqrt z)` |
@@ -157,6 +159,8 @@ struct Ops {
     atan: Option<OpId>,
     erf: Option<OpId>,
     erfc: Option<OpId>,
+    fresnels: Option<OpId>,
+    fresnelc: Option<OpId>,
     besselj: Option<OpId>,
     bessely: Option<OpId>,
     besselk: Option<OpId>,
@@ -240,6 +244,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         atan: i.graph().ops().lookup("atan"),
         erf: i.graph().ops().lookup("erf"),
         erfc: i.graph().ops().lookup("erfc"),
+        fresnels: i.graph().ops().lookup("fresnels"),
+        fresnelc: i.graph().ops().lookup("fresnelc"),
         besselj: i.graph().ops().lookup("besselj"),
         bessely: i.graph().ops().lookup("bessely"),
         besselk: i.graph().ops().lookup("besselk"),
@@ -681,6 +687,10 @@ const ERF_SAMPLES: &[Sample] = &[(&[1.0], &[0.5, 0.0], &[0.2, 0.8, 2.1])];
 
 const ERFC_SAMPLES: &[Sample] = &[(&[1.0], &[0.5, 0.0], &[0.2, 0.8, 2.1])];
 
+const FRESNEL_S_SAMPLES: &[Sample] = &[(&[1.0], &[0.75, 0.25, 0.0], &[0.05, 0.6, 2.3])];
+
+const FRESNEL_C_SAMPLES: &[Sample] = &[(&[1.0], &[0.25, 0.75, 0.0], &[0.05, 0.6, 2.3])];
+
 const J_SAMPLES: &[Sample] = &[
     (&[], &[0.0, 0.0], &[0.4, 1.5]),
     (&[], &[0.25, -0.25], &[0.4, 1.5]),
@@ -886,6 +896,75 @@ fn erf_form(
     let call = graph.node(erf, &[root]);
     let scale = sqrt_pi(graph, ops)?;
     Some(mul(graph, scale, call))
+}
+
+/// `G^{1,1}_{1,3}(w | 1; 3/4, 1/4, 0) = 2 S(2 w^{1/4} / sqrt(pi))` and
+/// `G^{1,1}_{1,3}(w | 1; 1/4, 3/4, 0) = 2 C(2 w^{1/4} / sqrt(pi))`.
+///
+/// From `S(z) = (pi z^3/6) 1F2(3/4; 3/2, 7/4; -pi^2 z^4/16)`, the `1F2`-to-G
+/// identity `1F2(a; b1, b2; -w) = Gamma(b1) Gamma(b2) / Gamma(a)
+/// G^{1,1}_{1,3}(w | 1-a; 0, 1-b1, 1-b2)` and the shift
+/// `G(w | a+c; b+c) = w^c G(w | a; b)`; the constants collapse to `1/2`.
+/// Likewise for `C` from `C(z) = z 1F2(1/4; 1/2, 5/4; -pi^2 z^4/16)`. The
+/// fourth root makes these the principal-branch values, which is what the
+/// numeric check samples.
+fn fresnel_form(
+    graph: &mut Graph,
+    ops: &Ops,
+    a: &[NodeId],
+    b: &[NodeId],
+    z: NodeId,
+    sine: bool,
+) -> Option<NodeId> {
+    if a.len() != 1 || b.len() != 3 {
+        return None;
+    }
+    let (first, second) = if sine {
+        (0.75, 0.25)
+    } else {
+        (0.25, 0.75)
+    };
+    if !near(value_of(graph, *a.first()?)?, 1.0)
+        || !near(value_of(graph, *b.first()?)?, first)
+        || !near(value_of(graph, *b.get(1)?)?, second)
+        || !near(value_of(graph, *b.get(2)?)?, 0.0)
+    {
+        return None;
+    }
+    let op = if sine {
+        ops.fresnels?
+    } else {
+        ops.fresnelc?
+    };
+    let quarter = graph.num(Number::fraction(1, 4)?);
+    let root = pow(graph, z, quarter);
+    let two = int_node(graph, 2);
+    let scale = sqrt_pi(graph, ops)?;
+    let inverse = recip(graph, scale);
+    let argument = mul_many(graph, &[two, root, inverse]);
+    let call = graph.node(op, &[argument]);
+    let two = int_node(graph, 2);
+    Some(mul(graph, two, call))
+}
+
+fn fresnel_s_form(
+    graph: &mut Graph,
+    ops: &Ops,
+    a: &[NodeId],
+    b: &[NodeId],
+    z: NodeId,
+) -> Option<NodeId> {
+    fresnel_form(graph, ops, a, b, z, true)
+}
+
+fn fresnel_c_form(
+    graph: &mut Graph,
+    ops: &Ops,
+    a: &[NodeId],
+    b: &[NodeId],
+    z: NodeId,
+) -> Option<NodeId> {
+    fresnel_form(graph, ops, a, b, z, false)
 }
 
 fn erfc_form(
@@ -1433,6 +1512,18 @@ fn reduce_request(
         m == 2 && n == 0 && p == 1 && q == 2,
         erfc_form,
         ERFC_SAMPLES,
+        1e-8
+    );
+    attempt!(
+        m == 1 && n == 1 && p == 1 && q == 3,
+        fresnel_s_form,
+        FRESNEL_S_SAMPLES,
+        1e-8
+    );
+    attempt!(
+        m == 1 && n == 1 && p == 1 && q == 3,
+        fresnel_c_form,
+        FRESNEL_C_SAMPLES,
         1e-8
     );
     attempt!(
@@ -2219,6 +2310,19 @@ mod tests {
             ("meijerg(1, 0, list(), list(1/2, 0), z)", &[("z", 0.7)]),
             ("meijerg(1, 1, list(1), list(1/2, 0), z)", &[("z", 0.7)]),
             ("meijerg(2, 0, list(1), list(1/2, 0), z)", &[("z", 0.7)]),
+            // The Fresnel integrals (DLMF 7.2.7 normalisation).
+            (
+                "meijerg(1, 1, list(1), list(3/4, 1/4, 0), z)",
+                &[("z", 0.7)],
+            ),
+            (
+                "meijerg(1, 1, list(1), list(1/4, 3/4, 0), z)",
+                &[("z", 0.7)],
+            ),
+            (
+                "meijerg(1, 1, list(1), list(3/4, 1/4, 0), z)",
+                &[("z", 9.0)],
+            ),
             ("meijerg(1, 2, list(1, 1), list(1, 0), z)", &[("z", 0.7)]),
             (
                 "meijerg(1, 2, list(1/2, 1), list(1/2, 0), z)",
