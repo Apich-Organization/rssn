@@ -881,7 +881,8 @@ impl Limiter<'_, '_> {
         }
         let name = graph.ops().get(op).name.to_string();
         match name.as_str() {
-            | "sin" | "cos" | "atan" | "acot" | "erf" | "tanh" | "sech" | "asin" | "acos" => true,
+            | "sin" | "cos" | "atan" | "acot" | "erf" | "fresnels" | "fresnelc" | "tanh"
+            | "sech" | "asin" | "acos" => true,
             | "abs" => {
                 graph
                     .children(f)

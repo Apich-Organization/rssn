@@ -35,6 +35,8 @@ pub mod error_correction;
 pub mod fftconv;
 pub mod finite_field;
 pub mod fractal_geometry_and_chaos;
+/// Fresnel integrals, their auxiliary functions and the complex error function.
+pub mod fresnel;
 pub mod functional_analysis;
 pub mod geometric_algebra;
 /// Weighted shortest paths, and partition refinement, canonical labelling and

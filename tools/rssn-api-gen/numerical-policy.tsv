@@ -12,6 +12,8 @@ crate::kernels::special::exp_integral_e1	num_exp_integral_e1	numerical_special	D
 crate::kernels::special::exp_integral_ei	num_exp_integral_ei	numerical_special	Dimensionless	allow_infinity
 crate::kernels::special::log_integral	num_log_integral	numerical_special	Dimensionless	allow_infinity
 crate::kernels::special::sine_integral	num_sine_integral	numerical_special	Dimensionless	finite
+crate::kernels::fresnel::fresnel_s	num_fresnel_s	numerical_special	Dimensionless	finite
+crate::kernels::fresnel::fresnel_c	num_fresnel_c	numerical_special	Dimensionless	finite
 crate::kernels::special::cosine_integral	num_cosine_integral	numerical_special	Dimensionless	allow_infinity
 crate::kernels::special::sinh_integral	num_sinh_integral	numerical_special	Dimensionless	allow_infinity
 crate::kernels::special::cosh_integral	num_cosh_integral	numerical_special	Dimensionless	allow_infinity

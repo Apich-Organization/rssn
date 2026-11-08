@@ -601,3 +601,27 @@ A symbolic signature does not establish a concrete numeric result type.
 The graph's dimension diagnostics remain authoritative, and callers requiring
 proof must reject unknowns and conflicts rather than copying an expected type
 onto the result.
+
+## Unit systems (`rssn::dim::systems`)
+
+A unit system is a set of physical quantities declared equal to one; the
+kernel defines four and publishes them in `KernelManifest::unit_systems`:
+
+| system | unity quantities | generators |
+|---|---|---|
+| `natural` | `c`, `hbar`, `k_B`, `epsilon_0` (Heaviside–Lorentz) | Energy, Amount, Luminosity |
+| `planck` | `c`, `hbar`, `G`, `k_B`, `4 pi epsilon_0` | Amount, Luminosity |
+| `atomic` | `hbar`, `m_e`, `e`, `4 pi epsilon_0` | Temperature, Amount, Luminosity |
+| `geometrized` | `c`, `G` | Length, Current, Temperature, Amount, Luminosity |
+
+`UnitSystem::reduce(dim)` solves `d = Σ λᵢ dim(qᵢ) + Σ μⱼ gⱼ` over the
+rationals (the unity dimensions and generators must be a basis of the seven SI
+bases; `validate` checks it). The representative `Π gⱼ^μⱼ` is an ordinary SI
+dimension and the system value of `x` is `x / Π Qᵢ^λᵢ`, an ordinary SI quantity
+of that dimension — which is why a host can type values "in natural units"
+with plain SI dimension checking. `Reduction::exact_scale` gives the factor as
+a `Scale` when every exponent is an integer (charges in Heaviside–Lorentz units
+need half-integer exponents); `factor_f64`, `to_system` and `from_system`
+work for any exponents. The electron mass reduces to 0.51099895069 MeV, a fermi
+to 1/(197.3269804 MeV), the Planck length to 1.616255e-35 m and the bohr to
+5.29177210544e-11 m (tests in `src/dim/systems.rs`).

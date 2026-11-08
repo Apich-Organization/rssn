@@ -93,9 +93,8 @@ Every operator is either typed or explained. The explanation is a
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
 `cargo run --bin signature-audit` reports the split and exits non-zero if any
-operator is neither typed nor explained. Today: 1382 operators, every one typed —
-1568 overloads from 7 declared, 25 overlay and 1350 derived signatures — and 0
-unexplained.
+operator is neither typed nor explained. Today: 1476 operators, every one typed —
+124 declared, 25 overlay and 1352 derived signatures — and 0 unexplained.
 
 ### 5. Determinism
 
