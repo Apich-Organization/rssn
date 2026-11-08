@@ -43,7 +43,6 @@ use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
-
 use super::arith::arith;
 
 /// The propositional-logic rule set.
@@ -1681,7 +1680,6 @@ use std::collections::HashMap;
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Zero;
-
 
 /// Most atoms a diagram is built over.
 const MAX_ATOMS: usize = 64;

@@ -455,15 +455,44 @@ impl Limiter<'_, '_> {
     /// (a positive `t`, so `sqrt(t^2) = t`): the cancellations of
     /// `sqrt(x^2 + x) - x`, which neither l'Hôpital's rule nor a numeric probe
     /// (catastrophic cancellation) can see.
+    ///
+    /// `sqrt(x + 1) - sqrt(x)` has no Laurent series in `t = 1/x`: it is a
+    /// Puiseux series in `t^(1/2)`. Substituting `x = t^(-k)` for `k = 2, 3, 6`
+    /// turns half-, third- and sixth-power expansions into Laurent ones; since
+    /// `t > 0` and the map `t ↦ t^k` preserves `t → 0+`, the limit read off is
+    /// the same. Those answers must also pass [`Self::verified`].
     fn series_at_infinity(
         &mut self,
         f: NodeId,
+    ) -> Option<NodeId> {
+        if let Some(found) = self.series_at_infinity_with(f, 1) {
+            return Some(found);
+        }
+        // The Puiseux substitutions put a pole under a root (`sqrt(t^-2 + 1)`),
+        // where the Laurent expander is not trustworthy on its own: their
+        // answers are checked against the substituted function in `t`
+        // (`series_at_infinity_with`), never against `f` at huge `x`, where a
+        // root difference cancels to an exact `0.0` in floating point.
+        for k in [2_i64, 3, 6] {
+            if let Some(found) = self.series_at_infinity_with(f, k) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    /// [`Self::series_at_infinity`] with the substitution `x = ±t^(-k)`.
+    fn series_at_infinity_with(
+        &mut self,
+        f: NodeId,
+        k: i64,
     ) -> Option<NodeId> {
         let fresh = self.cx.graph.interner_mut().fresh_symbol("t");
         self.cx.graph.assume(fresh, crate::graph::Facts::POSITIVE);
         let t = self.cx.graph.symbol_node(fresh);
         let minus_one = self.cx.graph.int(-1);
-        let inverse = self.cx.graph.node(core::POW, &[t, minus_one]);
+        let minus_k = self.cx.graph.int(k.saturating_neg());
+        let inverse = self.cx.graph.node(core::POW, &[t, minus_k]);
         let replacement = if self.target > 0.0 {
             inverse
         } else {
@@ -475,20 +504,60 @@ impl Limiter<'_, '_> {
         let (valuation, coefficients) =
             super::laurent_expansion(self.cx, g, t, zero, SERIES_ORDER)?;
         let leading = *coefficients.first()?;
-        if valuation > 0 {
-            return Some(self.cx.graph.int(0));
-        }
-        if self.cx.graph.depends_on(self.cx.graph.find(leading), fresh) {
+        let found = if valuation > 0 {
+            self.cx.graph.int(0)
+        } else if self.cx.graph.depends_on(self.cx.graph.find(leading), fresh) {
+            return None;
+        } else if valuation == 0 {
+            self.cx.simplify(leading)
+        } else {
+            let leading = self.cx.simplify(leading);
+            // A pole in `t`: the sign of the leading coefficient and of the
+            // power of `t` (positive) decide the direction of the divergence.
+            let sign = self.cx.graph.eval(leading, &Env::numeric(0.0))?;
+            if sign == 0.0 || !sign.is_finite() {
+                return None;
+            }
+            self.infinite(sign > 0.0)
+        };
+        if k > 1 && !self.approached_in_t(g, fresh, found) {
             return None;
         }
-        let leading = self.cx.simplify(leading);
-        if valuation == 0 {
-            return Some(leading);
+        Some(found)
+    }
+
+    /// Whether `g(t)` visibly approaches `claimed` as `t -> 0+`, evaluated at
+    /// moderate `t` where the substituted form is well conditioned.
+    fn approached_in_t(
+        &self,
+        g: NodeId,
+        t: crate::graph::SymbolId,
+        claimed: NodeId,
+    ) -> bool {
+        let base = generic_env(self.cx.graph, g, t, &Env::numeric(0.0));
+        let Some(target) = self.cx.graph.eval(claimed, &base) else {
+            return false;
+        };
+        let mut values = Vec::with_capacity(3);
+        for step in [1e-2_f64, 1e-3, 1e-4] {
+            let mut env = base.clone();
+            env.bind(t, step);
+            let Some(value) = self.cx.graph.eval(g, &env) else {
+                return false;
+            };
+            values.push(value);
         }
-        // A pole in `t`: the sign of the leading coefficient and of the
-        // power of `t` (positive) decide the direction of the divergence.
-        let sign = self.cx.graph.eval(leading, &Env::numeric(0.0))?;
-        (sign != 0.0 && sign.is_finite()).then(|| self.infinite(sign > 0.0))
+        let (Some(&coarse), Some(&fine)) = (values.first(), values.last()) else {
+            return false;
+        };
+        if target.is_infinite() {
+            return fine.is_finite()
+                && fine.signum() == target.signum()
+                && fine.abs() > coarse.abs();
+        }
+        let near = (fine - target).abs() <= 1e-2 * (1.0 + target.abs());
+        let closing = (fine - target).abs() <= (coarse - target).abs();
+        near && closing
     }
 
     fn is_infinite(
@@ -757,17 +826,31 @@ impl Limiter<'_, '_> {
         let (pn, pd) = (self.probe(numer), self.probe(denom));
         let vanishing = |p: Probe| matches!(p, Probe::Finite(v) if v.abs() < 1e-6);
         let diverging = |p: Probe| matches!(p, Probe::PlusInfinity | Probe::MinusInfinity);
-        if !((vanishing(pn) && vanishing(pd)) || (diverging(pn) && diverging(pd))) {
+        let mut indeterminate =
+            (vanishing(pn) && vanishing(pd)) || (diverging(pn) && diverging(pd));
+        if !indeterminate
+            && let (Probe::Finite(_), Probe::Finite(d)) = (pn, pd)
+            && d.abs() > 1e-6
+        {
+            // Finite over non-zero by the probe. The probe samples at finite
+            // distance, so `1/sqrt(x)` (≈ 1e-4 there) looks non-zero; only the
+            // exact limits decide. A zero or infinite part means the form was
+            // indeterminate after all — dividing `0` by `0` here once gave
+            // `limit(sqrt(x)*(sqrt(x+1) - sqrt(x)), x, oo) = 0` instead of 1/2.
+            let top = self.limit(numer, depth + 1)?;
+            let bottom = self.limit(denom, depth + 1)?;
+            if self.is_zero(bottom) || self.is_infinite(bottom) || self.is_infinite(top) {
+                indeterminate = true;
+            } else {
+                let minus_one = self.cx.graph.int(-1);
+                let inverse = self.cx.graph.node(core::POW, &[bottom, minus_one]);
+                let quotient = self.cx.graph.node(core::MUL, &[top, inverse]);
+                return Some(self.cx.simplify(quotient));
+            }
+        }
+        if !indeterminate {
             // Not indeterminate: finite over non-zero, or a genuine pole.
             return match (pn, pd) {
-                | (Probe::Finite(_), Probe::Finite(d)) if d.abs() > 1e-6 => {
-                    let top = self.limit(numer, depth + 1)?;
-                    let bottom = self.limit(denom, depth + 1)?;
-                    let minus_one = self.cx.graph.int(-1);
-                    let inverse = self.cx.graph.node(core::POW, &[bottom, minus_one]);
-                    let quotient = self.cx.graph.node(core::MUL, &[top, inverse]);
-                    Some(self.cx.simplify(quotient))
-                },
                 | (Probe::Finite(_), p) if diverging(p) => Some(self.cx.graph.int(0)),
                 | _ => {
                     match self.probe(f) {

@@ -166,7 +166,6 @@ fn positive_genus_non_elementary_stays_an_identity() {
     }
 }
 
-
 /// Checks a definite integral: the numeric phase must agree with an
 /// independent Simpson rule, and a closed form, when the engine finds one,
 /// must evaluate to the same number.

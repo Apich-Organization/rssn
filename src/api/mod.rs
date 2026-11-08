@@ -43,11 +43,17 @@
 //!   [`TermRef`](crate::kernel::value::TermRef) (a session id plus a node id),
 //!   which [`Session::term_ref`](crate::api::Session::term_ref) checks before
 //!   use.
-//! * **No cancellation and no wall-clock limit.** The only limits are the
-//!   [`Budget`](crate::graph::Budget) (`max_iterations`, `max_nodes`); a
-//!   pathological rule set runs until the budget is exhausted. There is no
-//!   streaming or incremental API: a computation is one call returning one
-//!   answer.
+//! * **No cancellation; the wall clock is a budget field.** The limits are
+//!   the [`Budget`](crate::graph::Budget) (`max_iterations`, `max_nodes`, and
+//!   the optional `time_limit`, which ends a run with
+//!   [`Stop::Time`](crate::graph::Stop)); a pathological rule set runs until
+//!   one of them is exhausted. There is no streaming API: a computation is one
+//!   call returning one answer.
+//! * **Answers are cached; lemmas can be.** A session memoises whole answers
+//!   by request node and configuration fingerprint (exact: a hit equals a
+//!   fresh run), and can reuse the closed forms of heavy sub-requests across
+//!   requests; see [`CachePolicy`](crate::api::CachePolicy) and
+//!   [`Session::cache_stats`](crate::api::Session::cache_stats).
 //! * **Configurations are per request; rule-set combinations are cached.**
 //!   Every distinct set of rule sets used by a [`Config`](crate::api::Config)
 //!   installs a template (a copy of the graph plus an engine) the first time it
@@ -161,8 +167,11 @@ use crate::rules;
 /// ABI ask for phases with the same type.
 pub use crate::kernel::call::Target;
 
+mod cache;
 mod value;
 
+pub use cache::CachePolicy;
+pub use cache::CacheStats;
 pub use value::MergeError;
 
 /// What to compute with and what to aim for.
@@ -626,6 +635,8 @@ struct Inner {
     plugins: Vec<Arc<dyn crate::kernel::plugin::Plugin>>,
     /// Ids handed out to plugins, in registration order.
     plugin_count: u32,
+    /// Answers and lemmas of earlier computations (see [`CachePolicy`]).
+    cache: cache::ComputeCache,
 }
 
 /// Owns the term store and the engines that compute on it.
@@ -722,6 +733,7 @@ impl Session {
                 templates: vec![template],
                 plugins: Vec::new(),
                 plugin_count: 0,
+                cache: cache::ComputeCache::default(),
             }),
         })
     }
@@ -748,6 +760,8 @@ impl Session {
         unit: UnitDef,
     ) -> Result<(), DimError> {
         let mut inner = self.inner.borrow_mut();
+        // A unit changes how every template resolves quantities.
+        inner.cache.invalidate();
         // The clone in the loop is only for the templates that come after;
         // the final template takes ownership so the unit is consumed once.
         let Some((last, earlier)) = inner.templates.split_last_mut() else {
@@ -858,12 +872,20 @@ impl Session {
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
         let index = template_index(inner, config)?;
+        let key = cache::fingerprint(config, true);
+        if let Some(hit) = inner.cache.answer(index, term.node, &key) {
+            return hit.map(|stored| self.answer(stored));
+        }
         let job = prepare(inner, index, term.node, config);
         let Some(template) = inner.templates.get(index) else {
             return Err(ComputeError::UnknownOperator("engine".to_owned()));
         };
         let done = run_job(&template.engine, job, config);
-        finish(self, &mut inner.graph, done)
+        let stored = finish(inner, index, config, done);
+        inner
+            .cache
+            .store_answer(index, term.node, key, stored.clone());
+        stored.map(|stored| self.answer(stored))
     }
 
     /// Reduces every term of `terms` under the same `config`, running the
@@ -875,7 +897,9 @@ impl Session {
     /// concurrently on the rayon pool, and the answers are extracted and
     /// copied back into the store in input order. The answers do not depend
     /// on the thread count. A failure in one request does not affect the
-    /// others.
+    /// others. Requests already in the answer cache are not run again; a
+    /// request repeated inside `terms` runs once per occurrence, as a loop of
+    /// [`Session::compute`] calls before the first answer was stored would.
     ///
     /// # Errors
     /// One entry per term; see [`Session::compute`].
@@ -890,8 +914,17 @@ impl Session {
             | Ok(i) => i,
             | Err(e) => return terms.iter().map(|_| Err(e.clone())).collect(),
         };
-        let jobs: Vec<Job> = terms
+        let key = cache::fingerprint(config, true);
+        let mut slots: Vec<Option<Result<cache::StoredAnswer, ComputeError>>> = terms
             .iter()
+            .map(|t| inner.cache.answer(index, t.node, &key))
+            .collect();
+        let pending: Vec<usize> = (0..terms.len())
+            .filter(|&i| slots.get(i).is_some_and(Option::is_none))
+            .collect();
+        let jobs: Vec<Job> = pending
+            .iter()
+            .filter_map(|&i| terms.get(i))
             .map(|t| prepare(inner, index, t.node, config))
             .collect();
         let Some(template) = inner.templates.get(index) else {
@@ -910,9 +943,74 @@ impl Session {
                 .map(|job| run_job(engine, job, config))
                 .collect()
         };
-        done.into_iter()
-            .map(|d| finish(self, &mut inner.graph, d))
+        for (&i, d) in pending.iter().zip(done) {
+            let stored = finish(inner, index, config, d);
+            if let Some(t) = terms.get(i) {
+                inner
+                    .cache
+                    .store_answer(index, t.node, key.clone(), stored.clone());
+            }
+            if let Some(slot) = slots.get_mut(i) {
+                *slot = Some(stored);
+            }
+        }
+        slots
+            .into_iter()
+            .map(|slot| {
+                slot.unwrap_or_else(|| Err(ComputeError::UnknownOperator("engine".to_owned())))
+                    .map(|stored| self.answer(stored))
+            })
             .collect()
+    }
+
+    /// The cache policy in effect.
+    #[must_use]
+    pub fn cache_policy(&self) -> CachePolicy {
+        self.inner.borrow().cache.policy
+    }
+
+    /// Replaces the cache policy. Entries already stored stay valid (they
+    /// are exact) unless the new policy disables their table, which drops
+    /// them.
+    pub fn set_cache_policy(
+        &self,
+        policy: CachePolicy,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        let keep = inner.cache.policy.answers == policy.answers
+            && inner.cache.policy.lemmas == policy.lemmas
+            && policy.capacity >= inner.cache.policy.capacity;
+        if !keep {
+            inner.cache.invalidate();
+        }
+        inner.cache.policy = policy;
+    }
+
+    /// Counters of the compute cache.
+    #[must_use]
+    pub fn cache_stats(&self) -> CacheStats {
+        self.inner.borrow().cache.stats()
+    }
+
+    /// Drops every cached answer and lemma.
+    pub fn clear_cache(&self) {
+        self.inner.borrow_mut().cache.invalidate();
+    }
+
+    /// An [`Answer`] borrowing this session for a stored answer.
+    fn answer(
+        &self,
+        stored: cache::StoredAnswer,
+    ) -> Answer<'_> {
+        Answer {
+            term: self.term(stored.node),
+            value: stored.value,
+            error: stored.error,
+            reduced: stored.reduced,
+            dimension: stored.dimension,
+            diagnostics: stored.diagnostics,
+            report: stored.report,
+        }
     }
 
     /// Shorthand for a symbolic [`Session::compute`] with the standard
@@ -937,6 +1035,8 @@ struct Job {
     root: NodeId,
     env: Env,
     dim_errors: Vec<crate::graph::DimError>,
+    /// Record closed forms of heavy sub-requests after the run.
+    capture_lemmas: bool,
 }
 
 /// A request after the search: the answer is chosen but not yet copied back
@@ -952,6 +1052,38 @@ struct Done {
     witness: Option<crate::graph::Ball>,
     dimension: Option<crate::graph::Dimension>,
     diagnostics: Vec<crate::graph::DimError>,
+    /// `(heavy, closed)` pairs of the private graph, for the lemma cache.
+    lemmas: Vec<(NodeId, NodeId)>,
+}
+
+/// Most heavy sub-requests one run records as lemmas.
+const LEMMAS_PER_RUN: usize = 64;
+/// Most nodes walked looking for heavy sub-requests.
+const LEMMA_WALK: usize = 4096;
+
+/// The heavy operator nodes of the concrete term `root`, in discovery order.
+fn heavy_subterms(
+    graph: &Graph,
+    root: NodeId,
+) -> Vec<NodeId> {
+    let mut seen = std::collections::HashSet::new();
+    let mut stack = vec![root];
+    let mut heavy = Vec::new();
+    while let Some(node) = stack.pop() {
+        if seen.len() >= LEMMA_WALK || !seen.insert(node) {
+            continue;
+        }
+        if graph
+            .ops()
+            .get(graph.op(node))
+            .flags
+            .has(crate::graph::op::OpFlags::HEAVY)
+        {
+            heavy.push(node);
+        }
+        stack.extend(graph.children(node).iter().rev().copied());
+    }
+    heavy
 }
 
 const _: fn() = || {
@@ -990,7 +1122,7 @@ fn template_index(
 
 /// Copies the request into a private clone of the template.
 fn prepare(
-    inner: &Inner,
+    inner: &mut Inner,
     index: usize,
     node: NodeId,
     config: &Config,
@@ -1030,11 +1162,31 @@ fn prepare(
             | Err(error) => dim_errors.push(error),
         }
     }
+    // Lemmas: identities proven by earlier runs in the same context.
+    let capture_lemmas = inner.cache.policy.lemmas;
+    if capture_lemmas {
+        let context = cache::fingerprint(config, false);
+        let mut seeded = 0_usize;
+        for heavy in heavy_subterms(&inner.graph, node) {
+            if let Some(closed) = inner.cache.lemma(index, &context, heavy) {
+                let a = graph.import(&inner.graph, heavy);
+                let b = graph.import(&inner.graph, closed);
+                if graph.union(a, b) {
+                    seeded = seeded.saturating_add(1);
+                }
+            }
+        }
+        if seeded > 0 {
+            graph.rebuild();
+            inner.cache.note_lemma_hits(seeded);
+        }
+    }
     Job {
         graph,
         root,
         env,
         dim_errors,
+        capture_lemmas,
     }
 }
 
@@ -1049,7 +1201,9 @@ fn run_job(
         root,
         env,
         dim_errors,
+        capture_lemmas,
     } = job;
+    let mut lemmas = Vec::new();
     let roots = [root];
     let report = match config.target {
         | Target::Symbolic => engine.run(&mut graph, &roots, &env, &Saturate, &config.budget),
@@ -1065,7 +1219,20 @@ fn run_job(
     let (best, reduced) = if failure.is_some() {
         (root, false)
     } else {
-        let closed = Extractor::new(&graph, &roots, &ClosedForm).build(&mut graph, root);
+        let extractor = Extractor::new(&graph, &roots, &ClosedForm);
+        if capture_lemmas {
+            for heavy in heavy_subterms(&graph, root) {
+                if lemmas.len() >= LEMMAS_PER_RUN {
+                    break;
+                }
+                if extractor.cost(&graph, heavy).is_some()
+                    && let Some(closed) = extractor.build(&mut graph, heavy)
+                {
+                    lemmas.push((heavy, closed));
+                }
+            }
+        }
+        let closed = extractor.build(&mut graph, root);
         let reduced = closed.is_some();
         let best = match closed {
             | Some(node) => node,
@@ -1126,15 +1293,26 @@ fn run_job(
         witness,
         dimension,
         diagnostics,
+        lemmas,
     }
 }
 
-/// Copies the chosen answer back into the store.
-fn finish<'s>(
-    session: &'s Session,
-    store: &mut Graph,
+/// Copies the chosen answer (and the lemmas of the run) back into the store.
+fn finish(
+    inner: &mut Inner,
+    index: usize,
+    config: &Config,
     done: Done,
-) -> Result<Answer<'s>, ComputeError> {
+) -> Result<cache::StoredAnswer, ComputeError> {
+    let store = &mut inner.graph;
+    if !done.lemmas.is_empty() {
+        let context = cache::fingerprint(config, false);
+        for &(heavy, closed) in &done.lemmas {
+            let heavy = store.import(&done.graph, heavy);
+            let closed = store.import(&done.graph, closed);
+            inner.cache.store_lemma(index, &context, heavy, closed);
+        }
+    }
     let Done {
         graph,
         env,
@@ -1146,6 +1324,7 @@ fn finish<'s>(
         witness,
         dimension,
         diagnostics,
+        lemmas: _,
     } = done;
     if let Some(error) = failure {
         return Err(error);
@@ -1154,8 +1333,8 @@ fn finish<'s>(
         | Target::Symbolic => {
             let exact = graph.as_number(best).map(Number::to_f64);
             let node = store.import(&graph, best);
-            Ok(Answer {
-                term: session.term(node),
+            Ok(cache::StoredAnswer {
+                node,
                 value: exact,
                 error: exact.map(|_| 0.0),
                 reduced,
@@ -1175,8 +1354,8 @@ fn finish<'s>(
                 return Err(ComputeError::NotNumeric(graph.display(best)));
             };
             let node = store.float(ball.mid);
-            Ok(Answer {
-                term: session.term(node),
+            Ok(cache::StoredAnswer {
+                node,
                 value: Some(ball.mid),
                 error: Some(ball.rad),
                 reduced,

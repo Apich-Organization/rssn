@@ -35,7 +35,6 @@
 //! | `metric_geodesic_acceleration(g, vars, v)`, `kretschmann(g, vars)`, `gaussian_curvature(g, vars)`, `volume_element(g, vars)`, `laplace_beltrami(f, g, vars)`, `covariant_divergence(V, g, vars)`, `killing_tensor(xi, g, vars)`, `is_killing(xi, g, vars)` | geodesics, curvature invariants, Beltrami operators, Lie brackets and Killing fields (see the table below) |
 //! | `generalized_stokes(ω, vars, M)` | `integrate_form(exterior_d(ω), vars, M) = integrate_form(ω, vars, boundary(M))`, both sides evaluated |
 
-
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;

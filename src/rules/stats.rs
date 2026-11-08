@@ -98,7 +98,6 @@ use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::stats as num;
 
-
 use super::calculus::calculus;
 use super::calculus::partials;
 use super::combinatorics::choose;
@@ -4286,7 +4285,6 @@ mod tests {
 // | `mean_interval(mean, s, n, z)` | `list(mean - z s/√n, mean + z s/√n)` |
 // | `proportion_z_test(k, n, p0)` | `list(z, p_value)` with the p-value through the normal `cdf` |
 // | `r_squared(xs, ys)`, `residuals(xs, ys)` | the coefficient of determination of the simple regression and its residuals (exact for exact data) |
-
 
 use crate::rules::calculus::derivative;
 

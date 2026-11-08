@@ -1527,7 +1527,6 @@ fn bessel_antiderivatives() {
     }
 }
 
-
 // ---------------------------------------------------------------------
 // RUL-1: closed form of a sum whose recurrence has boundary terms
 // ---------------------------------------------------------------------
@@ -1604,5 +1603,30 @@ fn limits_with_bounded_oscillating_factors() {
             text.contains("limit") && !reduced,
             "{request} should stay unevaluated, got {text}"
         );
+    }
+}
+
+/// Root differences at infinity are Puiseux series in `1/x`, not Laurent ones;
+/// the limiter substitutes `x = t^(-k)` so their cancellation is still read off
+/// an ordinary expansion.
+#[test]
+fn root_differences_at_infinity() {
+    assert_eq!(run("limit(sqrt(x+1) - sqrt(x), x, oo)"), "0");
+    assert_eq!(run("limit(sqrt(x^2+x) - x, x, oo)"), "1/2");
+    // The probe sees `1/sqrt(x)` as non-zero at finite distance; the limits
+    // decide, and the form goes to l'Hôpital instead of a `0/0` division.
+    check_limit("limit(sqrt(x)*(sqrt(x+1) - sqrt(x)), x, oo)", 0.5);
+    // Never a wrong closed form: either the right value or an unreduced request.
+    for (src, value) in [
+        ("limit(sqrt(x)*(sqrt(x+1) - sqrt(x)), x, oo)", 0.5),
+        ("limit((x+1)^(1/3) - x^(1/3), x, oo)", 0.0),
+    ] {
+        let (text, reduced) =
+            crate::rules::testing::reduce_with(&crate::rules::standard(), src, &[]);
+        if reduced {
+            check_limit(src, value);
+        } else {
+            assert!(text.starts_with("limit("), "{src} => {text}");
+        }
     }
 }

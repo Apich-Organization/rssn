@@ -81,7 +81,6 @@ pub fn units() -> RuleSet {
         .needs(elementary())
 }
 
-
 /// A scalar or a quantity with a unit.
 #[derive(Clone, Debug)]
 enum Val {

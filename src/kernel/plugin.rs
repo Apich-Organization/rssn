@@ -382,6 +382,48 @@ impl<'g> Registry<'g> {
         Ok(())
     }
 
+    /// Attaches a polymorphic dimension signature to an operator: the
+    /// dimensions of its parameters and result as monomials over signature
+    /// variables ([`DimExpr::Var`](crate::dim::DimExpr::Var)). The operator's
+    /// dimension rule becomes [`signature_rule`](crate::graph::signature_rule),
+    /// which solves the variables from the arguments at every use.
+    ///
+    /// # Errors
+    /// Fails when `op` does not belong to this graph, when the arity differs
+    /// from the operator's, or when a dimension is not a product of factors
+    /// with rational exponents.
+    pub fn register_dim_signature(
+        &mut self,
+        op: OpId,
+        params: &[crate::dim::DimExpr],
+        result: &crate::dim::DimExpr,
+    ) -> Result<(), OpError> {
+        let Some(desc) = self.installer.graph().ops().try_get(op) else {
+            return Err(OpError::Internal(format!(
+                "plugin `{}` attached a dimension signature to a foreign operator",
+                self.plugin
+            )));
+        };
+        if let crate::graph::op::Arity::Fixed(n) = desc.arity
+            && usize::from(n) != params.len()
+        {
+            return Err(OpError::Domain(format!(
+                "the dimension signature of `{}` has {} parameter(s), the operator takes {n}",
+                desc.name,
+                params.len()
+            )));
+        }
+        let signature = self
+            .installer
+            .graph()
+            .with_dim_arena_mut(|arena| crate::graph::DimSignature::new(params, result, arena))
+            .map_err(|e| OpError::Domain(e.to_string()))?;
+        self.installer.graph().ops_mut().set_attr(op, signature);
+        self.installer
+            .dim(op, DimRule::Custom(crate::graph::signature_rule));
+        Ok(())
+    }
+
     /// Registers a unit.
     ///
     /// The unit goes into the registry this one points at: the session's,

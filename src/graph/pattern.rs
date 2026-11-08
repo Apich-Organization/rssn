@@ -441,9 +441,13 @@ impl<'a> Parser<'a> {
             },
             | Some(_) => {
                 let start = self.pos;
-                let Some(name) = self.ident() else {
+                let Some(mut name) = self.ident() else {
                     return self.err("expected a term");
                 };
+                // A plugin operator keeps its namespace in its name
+                // (`mydomain/softplus`). The longer name is taken only when it
+                // is a registered operator, so `a/b` stays a division.
+                name = self.namespaced(name);
                 if self.eat("(") {
                     let mut args = Vec::new();
                     if !self.eat(")") {
@@ -469,6 +473,44 @@ impl<'a> Parser<'a> {
             },
             | None => self.err("unexpected end of input"),
         }
+    }
+
+    /// Extends `name` over `/segment`s while the longer name is a registered
+    /// operator; the text is contiguous, so the result is a slice of it.
+    fn namespaced(
+        &mut self,
+        name: &'a str,
+    ) -> &'a str {
+        let src: &'a str = self.src;
+        let Some(begin) = self.pos.checked_sub(name.len()) else {
+            return name;
+        };
+        let mut best = name;
+        let mut end = self.pos;
+        loop {
+            let rest = src.get(end..).unwrap_or("");
+            let Some(after) = rest.strip_prefix('/') else {
+                break;
+            };
+            let Some(first) = after.chars().next() else {
+                break;
+            };
+            if !(first.is_alphabetic() || first == '_') {
+                break;
+            }
+            let len = after
+                .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .unwrap_or(after.len());
+            end = end.saturating_add(1).saturating_add(len);
+            let Some(candidate) = src.get(begin..end) else {
+                break;
+            };
+            if self.graph.ops().lookup(candidate).is_some() {
+                best = candidate;
+                self.pos = end;
+            }
+        }
+        best
     }
 
     fn call(
@@ -1145,5 +1187,24 @@ mod tests {
         let p = pat(&mut g, &mut vars, "?a + ?b");
         let node = g.parse("p + q + r + s + t").unwrap_or(NodeId::NONE);
         assert_eq!(p.matches(&g, node, vars.len(), 5).len(), 5);
+    }
+
+    #[test]
+    fn namespaced_operator_names_parse_and_division_survives() {
+        let mut g = setup();
+        assert!(
+            g.ops_mut()
+                .register(OpDescriptor::new("demo/soft", Arity::Fixed(1)))
+                .is_ok()
+        );
+        let applied = g.parse("demo/soft(x)").unwrap_or(NodeId::NONE);
+        assert_eq!(&*g.ops().get(g.op(applied)).name, "demo/soft");
+        // `a/b` is not an operator name, so it stays a quotient.
+        let quotient = g.parse("a/b").unwrap_or(NodeId::NONE);
+        assert_ne!(&*g.ops().get(g.op(quotient)).name, "a/b");
+        let mut vars = VarNames::default();
+        let p = pat(&mut g, &mut vars, "demo/soft(-?x)");
+        assert_eq!(vars.len(), 1);
+        let _ = p;
     }
 }

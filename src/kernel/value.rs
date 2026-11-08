@@ -306,7 +306,7 @@ pub struct SparseValue {
 impl SparseValue {
     /// Number of nonzero entries stored.
     #[must_use]
-    pub fn nnz(&self) -> usize {
+    pub const fn nnz(&self) -> usize {
         self.indices.len()
     }
 

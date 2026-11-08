@@ -67,7 +67,6 @@
     clippy::too_many_arguments
 )]
 
-
 use std::collections::HashSet;
 
 use crate::graph::Arity;

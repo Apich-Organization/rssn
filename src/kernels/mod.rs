@@ -11,6 +11,8 @@ pub mod amg_general;
 pub mod approx;
 /// Complex balls with outward-rounded interval arithmetic (Krawczyk proofs).
 pub mod ball;
+/// Block sparse row (BSR) matrices: block matvec, transpose, product, block Jacobi and block ILU(0).
+pub mod bsr;
 pub mod calculus;
 pub mod combinatorics;
 pub mod complex;

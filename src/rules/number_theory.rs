@@ -71,7 +71,6 @@ use crate::graph::dim::DimRule;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
-
 use super::arith::arith;
 use super::poly::best;
 use super::poly::repr::Gens;
@@ -2436,7 +2435,6 @@ mod tests {
 // | `lincong(a, b, m)` | the solutions of `a x ≡ b (mod m)` as `list(x0, step)`, or `list()` when there is none |
 // | `binomial_mod(n, k, p)` | `C(n, k) mod p` for a prime `p`, by Lucas' theorem |
 // | `farey(n)` | the Farey sequence of order `n` as `list(list(num, den), ...)` |
-
 
 const SET: &str = "number_theory";
 const MAX_TABLE: u64 = 100_000;

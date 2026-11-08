@@ -23,7 +23,6 @@
 //! | `kron`, `diag`, `vandermonde`, `hilbert`, `companion`, `adjugate`, `cofactors`, `colspace`, `rowspace`, `left_nullspace`, `pinv`, `lstsq`, `minpoly`, `matpoly`, `cayley_hamilton`, `jordan`, `jordan_blocks`, `matfun`, `matexp`, `mpow`, `matsqrt`, `spectral`, `ldl`, `cholesky`, `orthogonalize`, `orthonormalize`, `smith`, `invariant_factors`, `hermite_form`, `is_symmetric`, `is_orthogonal`, `is_positive_definite` | exact matrix functions and factorisations, documented in the table below |
 //! | `line_integral(f, curve, t, a, b)`, `line_integral_vec(F, curve, t, a, b)`, `surface_integral(f, surface, u, v, ua, ub, va, vb)`, `volume_integral(f, vars, bounds)` | integrals over parametrised curves, surfaces and boxes, reduced to definite integrals |
 
-
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
@@ -2295,7 +2294,6 @@ mod tests {
 // | `is_symmetric(A)`, `is_orthogonal(A)`, `is_positive_definite(A)` | truth values (the last for exact rational matrices, by Sylvester's criterion) |
 
 use num_traits::Signed;
-
 
 type Mat = Vec<Vec<NodeId>>;
 

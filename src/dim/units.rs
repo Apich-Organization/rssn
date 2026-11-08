@@ -63,7 +63,6 @@ use crate::kernel::signature::DimExpr;
 use crate::kernel::signature::Exp as TypeExp;
 use crate::kernel::signature::Rational;
 
-
 /// A rational exponent in a unit product.
 pub(crate) type Exp = Ratio<i32>;
 

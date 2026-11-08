@@ -262,7 +262,6 @@ fn local_partial(
     }
 }
 
-
 // Shared with forward and hyper-dual power rules, including i32::MIN and
 // polynomial derivatives at zero (where logarithmic differentiation fails).
 pub(super) fn integer_power_derivatives(

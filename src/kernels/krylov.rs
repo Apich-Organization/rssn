@@ -435,6 +435,17 @@ where
     accurate_dot::product_sum(pairs)
 }
 
+/// Correctly rounded dot product of `(a, b)` pairs, shared with the block
+/// sparse kernels so [`crate::kernels::bsr::Bsr::matvec`] is bit-identical
+/// to [`Csr::matvec`].
+pub(crate) fn dot_exact<I>(pairs: I) -> f64
+where
+    I: IntoIterator<Item = (f64, f64)>,
+    I::IntoIter: Clone,
+{
+    accurate_dot::dot_value(pairs)
+}
+
 /// Shared original-system residual arithmetic for validated internal adapters.
 pub(crate) fn residual_ratio(
     b: &[f64],

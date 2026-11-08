@@ -63,10 +63,11 @@
 //!   their kinks.
 
 pub mod dim;
+/// Polymorphic dimension signatures of plugin operators.
+pub mod dim_signature;
 // `pub(crate)` is the intended visibility: these are internal modules, so
 // `pub` items inside them are exactly as crate-private. Keep the explicit
 // `pub(crate)`: no extra visibility attribute is needed on the modules.
-
 
 pub(crate) mod dim_expr;
 pub(crate) mod dim_infer;
@@ -100,6 +101,8 @@ pub use dim::FamilySource;
 pub use dim::UnitInfo;
 pub use dim::UnitResolver;
 pub use dim::UnitTextResolver;
+pub use dim_signature::DimSignature;
+pub use dim_signature::signature_rule;
 pub use eval::ComplexEval;
 pub use extract::ClosedForm;
 pub use extract::CostModel;

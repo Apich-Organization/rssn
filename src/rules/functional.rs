@@ -43,7 +43,6 @@
 //! | `volterra_solve(f, lambda, K, x, t, a)` | exact for kernels `K = k(x - t)` with a Laplace-transformable `k`, by the convolution theorem; for kernels free of `t` and `x`, by the ODE |
 //! | `airfoil_equation(f, x, t)` | the inversion of the finite Hilbert transform, `y(x) = -1/(π sqrt(1 - x²)) ∫_{-1}^{1} sqrt(1 - t²) f(t)/(t - x) dt + C/sqrt(1 - x²)` |
 
-
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::Zero;
@@ -1029,7 +1028,6 @@ mod tests {
 // | `fredholm_eigenvalues(list(a1, ...), list(b1, ...), x, t, a, b)` | the non-zero eigenvalues `μ` of the integral operator with the degenerate kernel `Σ a_i(x) b_i(t)`: the eigenvalues of the matrix `∫ b_i a_j`; the characteristic values are their reciprocals |
 // | `operator_adjoint(A)` | the formal adjoint of an operator term (`op_d(x)* = -op_d(x)`, `op_mul(g)* = op_mul(conj g)`, `(AB)* = B* A*`, the Laplacian and the identity are self-adjoint); `op_int` has no adjoint in this algebra |
 // | `op_commutator(A, B)` | the operator `A B - B A` |
-
 
 #[derive(Copy, Clone)]
 enum Kind {

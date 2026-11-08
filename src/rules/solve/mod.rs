@@ -826,6 +826,7 @@ pub(crate) fn principal_branch_condition() -> Condition {
 
 /// What a root as written requires of a parameter expression.
 #[derive(Copy, Clone, Debug, Default)]
+#[allow(clippy::struct_excessive_bools)] // four independent side conditions, not a state machine
 struct Need {
     /// `e != 0`: `e` is in a denominator.
     nonzero: bool,
@@ -888,7 +889,7 @@ fn requirements(
                         nonnegative: true,
                         ..Need::default()
                     },
-                ))
+                ));
             },
             | "ln" | "log" | "log2" | "log10" => {
                 out.push((
@@ -897,7 +898,7 @@ fn requirements(
                         positive: true,
                         ..Need::default()
                     },
-                ))
+                ));
             },
             | "asin" | "acos" => {
                 out.push((
@@ -906,7 +907,7 @@ fn requirements(
                         unit: true,
                         ..Need::default()
                     },
-                ))
+                ));
             },
             | _ => {},
         }
@@ -963,7 +964,7 @@ pub(crate) fn root_conditions(
         }
         let entry = merged
             .entry(graph.display(base))
-            .or_insert((base, Need::default()));
+            .or_insert_with(|| (base, Need::default()));
         entry.1.nonzero |= need.nonzero;
         entry.1.nonnegative |= need.nonnegative;
         entry.1.positive |= need.positive;

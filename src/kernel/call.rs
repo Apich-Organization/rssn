@@ -47,7 +47,6 @@ pub enum Target {
     },
 }
 
-
 /// One event of a call trace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TraceEvent {

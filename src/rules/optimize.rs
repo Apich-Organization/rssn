@@ -23,7 +23,6 @@
 //! numeric optimisation (`nminimize`, `nmaximize`, `nminimize_global`,
 //! `nmaximize_global`).
 
-
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Env;
@@ -1777,7 +1776,6 @@ mod ext_tests {
 
 use crate::graph::SymbolId;
 use crate::kernels::optim;
-
 
 /// Gradient norm at which BFGS stops.
 const TOLERANCE: f64 = 1e-12;

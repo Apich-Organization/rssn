@@ -37,7 +37,6 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
-
 /// Represents a graph with weighted edges for numerical algorithms.
 /// The graph is represented by an adjacency list.
 pub struct Graph {
@@ -502,7 +501,6 @@ pub fn minimum_spanning_tree(graph: &Graph) -> Graph {
 // operators in `rules::discrete::graphs` fall back to the exhaustive
 // matcher for graphs of at most 64 vertices and otherwise leave the request
 // unreduced.
-
 
 use num_bigint::BigInt;
 

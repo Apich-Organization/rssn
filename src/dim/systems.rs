@@ -464,7 +464,7 @@ impl Reduction {
 
     /// Whether the system leaves this dimension unchanged (no factors).
     #[must_use]
-    pub fn is_identity(&self) -> bool {
+    pub const fn is_identity(&self) -> bool {
         self.factors.is_empty()
     }
 }

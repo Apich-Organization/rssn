@@ -24,7 +24,7 @@
 //!
 //! `sde_scheme_info` answers the question "what does this solver promise?"
 //! without running it: the strong order and four design flags
-//! (`1`/`0`) for the eight schemes of [`crate::kernels::sde`] — the Ito versus
+//! (`1`/`0`) for the thirteen schemes of [`crate::kernels::sde`] — the Ito versus
 //! Stratonovich interpretation, whether the scheme needs commutative noise,
 //! whether it adapts the step size, and whether it needs the Lévy areas. It is
 //! metadata, not a solver, and an unknown name stays a request.
@@ -306,10 +306,15 @@ fn scheme_fields(name: &str) -> Option<[f64; 5]> {
         | "euler_maruyama" => [0.5, 1.0, 0.0, 0.0, 0.0],
         | "milstein" | "srk_platen" => [1.0, 1.0, 1.0, 0.0, 0.0],
         | "milstein_stratonovich" => [1.0, 0.0, 1.0, 0.0, 0.0],
-        | "milstein_noncommutative" => [1.0, 1.0, 0.0, 0.0, 1.0],
+        | "milstein_noncommutative" | "srk_noncommutative" => [1.0, 1.0, 0.0, 0.0, 1.0],
         | "heun_stratonovich" => [1.0, 0.0, 0.0, 0.0, 0.0],
         | "sde_adaptive" => [1.0, 1.0, 1.0, 1.0, 0.0],
         | "sde_adaptive_noncommutative" => [1.0, 1.0, 0.0, 1.0, 1.0],
+        | "milstein_noncommutative_stratonovich" | "srk_noncommutative_stratonovich" => {
+            [1.0, 0.0, 0.0, 0.0, 1.0]
+        },
+        | "sde_adaptive_stratonovich" => [1.0, 0.0, 1.0, 1.0, 0.0],
+        | "sde_adaptive_noncommutative_stratonovich" => [1.0, 0.0, 0.0, 1.0, 1.0],
         | _ => return None,
     };
     Some(fields)
@@ -604,6 +609,17 @@ mod tests {
             ("heun_stratonovich", [1.0, 0.0, 0.0, 0.0, 0.0]),
             ("sde_adaptive", [1.0, 1.0, 1.0, 1.0, 0.0]),
             ("sde_adaptive_noncommutative", [1.0, 1.0, 0.0, 1.0, 1.0]),
+            (
+                "milstein_noncommutative_stratonovich",
+                [1.0, 0.0, 0.0, 0.0, 1.0],
+            ),
+            ("srk_noncommutative", [1.0, 1.0, 0.0, 0.0, 1.0]),
+            ("srk_noncommutative_stratonovich", [1.0, 0.0, 0.0, 0.0, 1.0]),
+            ("sde_adaptive_stratonovich", [1.0, 0.0, 1.0, 1.0, 0.0]),
+            (
+                "sde_adaptive_noncommutative_stratonovich",
+                [1.0, 0.0, 0.0, 1.0, 1.0],
+            ),
         ];
         for (name, want) in table {
             let answer = call("sde_scheme_info", &[Value::String(name.to_owned())]);

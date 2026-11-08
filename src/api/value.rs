@@ -737,6 +737,8 @@ impl Session {
             )?);
         }
         inner.templates = rebuilt;
+        // The plugin's rules can reach answers the old templates could not.
+        inner.cache.invalidate();
         Ok(PluginId(inner.plugin_count.saturating_sub(1)))
     }
 
@@ -767,6 +769,9 @@ impl Session {
                 templates,
                 plugins: inner.plugins.clone(),
                 plugin_count: inner.plugin_count,
+                // The fork's store is a copy, so every cached node id is valid
+                // there too.
+                cache: inner.cache.clone(),
             }),
         }
     }

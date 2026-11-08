@@ -42,22 +42,43 @@
 //!   pool; member `i` is seeded by [`ensemble_seed`]`(seed, i)`, so the ensemble does not depend on
 //!   the thread count.
 //!
-//! All schemes but [`heun_stratonovich`] and [`milstein_stratonovich`]
-//! integrate the Ito SDE; those two integrate `dX = a dt + g o dW` and
+//! * [`milstein_noncommutative_stratonovich`]: the Stratonovich Milstein scheme for
+//!   non-commutative noise, with `J_jl = I_jl + delta_jl h / 2 = dW_j dW_l / 2 + A_jl`.
+//!
+//! * [`srk_noncommutative`] / [`srk_noncommutative_stratonovich`]: the derivative-free
+//!   strong order 1 stochastic Runge-Kutta schemes of Kloeden-Platen (11.1.7 / 11.1.10)
+//!   for non-commutative noise: supporting values `U^j = Y + a h + g^j sqrt(h)`,
+//!   `Y' = Y + a h + sum_j g^j dW_j + h^{-1/2} sum_{j,l} (g^l(U^j) - g^l(Y)) I_jl`
+//!   (`m` extra diffusion evaluations per step); the Stratonovich variant uses the
+//!   `J_jl` and central supporting values `Y +- g^j sqrt(h)` (`2m` evaluations).
+//!
+//! * [`sde_adaptive_stratonovich_with`] / [`sde_adaptive_noncommutative_stratonovich_with`]:
+//!   adaptive Stratonovich integration **by exact conversion to Ito form**. The drift is
+//!   replaced by `a~_i = a_i + (1/2) sum_{j,k} g_{kj} d_k g_{ij}` ([`stratonovich_to_ito_drift`],
+//!   directional central differences along the columns of `g`) and the Ito controllers run
+//!   on `(a~, g)`. The returned path is the *controlled Ito-Milstein solution of the
+//!   equivalent Ito SDE*; it converges to the Stratonovich solution of `(a, g)`.
+//!
+//! All schemes but the Stratonovich ones ([`heun_stratonovich`],
+//! [`milstein_stratonovich`], [`milstein_noncommutative_stratonovich`],
+//! [`srk_noncommutative_stratonovich`], and the two adaptive Stratonovich solvers)
+//! integrate the Ito SDE; the Stratonovich ones integrate `dX = a dt + g o dW` and
 //! converge to the Stratonovich solution, which for `dX = sigma X dW` is
 //! `X_0 exp(sigma W_T)` rather than the Ito `X_0 exp(sigma W_T - sigma^2 T / 2)`.
 //!
-//! Limitation: [`milstein`], [`milstein_stratonovich`], [`srk_platen`] and
-//! [`sde_adaptive_with`] are strong order one only for commutative noise and
-//! cannot integrate non-commutative noise at all; every SDE is commutative when
-//! `m = 1`, so scalar noise is always covered, and otherwise one needs
-//! [`milstein_noncommutative`] or [`sde_adaptive_noncommutative_with`] and
-//! their Levy areas. The
-//! non-commutative adaptive solver cannot take a step shorter than its grid cell
-//! (it reports [`SdeError::StepBelowCell`]; use more cells) and, being a pathwise
-//! Milstein scheme with the Levy areas of [`levy_areas`], inherits their
-//! finite-mode accuracy. No scheme here is better than strong order one, and
-//! [`milstein`] and [`milstein_stratonovich`] are weak order one as well (they
+//! Limitation: [`milstein`], [`milstein_stratonovich`], [`srk_platen`],
+//! [`heun_stratonovich`] (strong order 1/2 only off the commutative case) and
+//! [`sde_adaptive_with`] are strong order one only for commutative noise and do not
+//! simulate the Levy areas non-commutative noise needs; every SDE is commutative when
+//! `m = 1`, so scalar noise is always covered, and otherwise one needs the
+//! `*_noncommutative*` schemes and their Levy areas. The
+//! non-commutative adaptive solvers cannot take a step shorter than their grid cell
+//! (they report [`SdeError::StepBelowCell`]; use more cells) and, being pathwise
+//! Milstein schemes with the Levy areas of [`levy_areas`], inherit their
+//! finite-mode accuracy. The adaptive Stratonovich solvers are as accurate as the
+//! Ito controller on the converted drift (their drift carries a finite-difference
+//! error of order `1e-10`). No scheme here is better than strong order one, and
+//! the Milstein variants are weak order one as well (they
 //! are not weak order two), so ensemble means converge no faster than `O(h)` in
 //! general.
 //!
@@ -68,8 +89,8 @@
 //!
 //! | functions | interpretation | solution |
 //! |---|---|---|
-//! | [`euler_maruyama`], [`milstein`], [`srk_platen`], [`sde_adaptive`], [`sde_ensemble`] | Ito | `X_0 exp(sigma W_T - sigma^2 T / 2)` |
-//! | [`milstein_stratonovich`], [`heun_stratonovich`] | Stratonovich | `X_0 exp(sigma W_T)` |
+//! | [`euler_maruyama`], [`milstein`], [`srk_platen`], [`milstein_noncommutative`], [`srk_noncommutative`], [`sde_adaptive`], [`sde_ensemble`] | Ito | `X_0 exp(sigma W_T - sigma^2 T / 2)` |
+//! | [`milstein_stratonovich`], [`heun_stratonovich`], [`milstein_noncommutative_stratonovich`], [`srk_noncommutative_stratonovich`], [`sde_adaptive_stratonovich_with`], [`sde_adaptive_noncommutative_stratonovich_with`] | Stratonovich | `X_0 exp(sigma W_T)` |
 //!
 //! The increments are convention-free — both interpretations sample the same
 //! Brownian path — which is why the closure-free noise can be exposed as
@@ -536,12 +557,7 @@ where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
-    check(y0, m, &noise.dws)?;
-    if noise.areas.len() != noise.dws.len() || noise.areas.iter().any(|a| a.len() != m * m) {
-        return Err(SdeError::Invalid {
-            what: "the Levy areas do not match the increments (one m*m block per step)",
-        });
-    }
+    check_sample(y0, m, noise)?;
     let n = y0.len();
     let mut y = y0.to_vec();
     let mut out = vec![y.clone()];
@@ -562,6 +578,263 @@ where
         out.push(y.clone());
     }
     Ok(out)
+}
+
+/// Validates a [`NoiseSample`] against the state and the noise dimension.
+fn check_sample(
+    y0: &[f64],
+    m: usize,
+    noise: &NoiseSample,
+) -> Result<(), SdeError> {
+    check(y0, m, &noise.dws)?;
+    if noise.areas.len() != noise.dws.len() || noise.areas.iter().any(|a| a.len() != m * m) {
+        return Err(SdeError::Invalid {
+            what: "the Levy areas do not match the increments (one m*m block per step)",
+        });
+    }
+    Ok(())
+}
+
+/// Stratonovich iterated integrals `J_jl = I_jl + delta_jl h / 2` from the Ito ones.
+fn stratonovich_areas(
+    ito: &[f64],
+    m: usize,
+    h: f64,
+) -> Vec<f64> {
+    let mut j = ito.to_vec();
+    for k in 0..m {
+        j[k * m + k] += 0.5 * h;
+    }
+    j
+}
+
+/// Milstein scheme (strong order 1) for **non-commutative** noise in the
+/// *Stratonovich* interpretation `dX = a dt + g o dW`.
+///
+/// The correction is `sum_{j,l} (D_j g)_{.l} J_jl` with the Stratonovich iterated
+/// integrals `J_jl = I_jl + delta_jl h / 2 = dW_j dW_l / 2 + A_jl` (`A` the Levy
+/// area), i.e. the same sampled areas as [`milstein_noncommutative`] with the
+/// diagonal shifted by `h / 2`. The drift is the Stratonovich drift, unchanged.
+///
+/// # Errors
+/// [`SdeError::Invalid`] or [`SdeError::NonFinite`].
+pub fn milstein_noncommutative_stratonovich<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    noise: &NoiseSample,
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    check_sample(y0, m, noise)?;
+    let n = y0.len();
+    let mut y = y0.to_vec();
+    let mut out = vec![y.clone()];
+    let (mut a, mut g) = (vec![0.0; n], vec![0.0; n * m]);
+    for (k, (dw, ar)) in noise.dws.iter().zip(&noise.areas).enumerate() {
+        let t = t0 + k as f64 * h;
+        drift(t, &y, &mut a);
+        diff(t, &y, &mut g);
+        let j = stratonovich_areas(ar, m, h);
+        let corr = milstein_term_areas(&diff, t, &y, &g, m, &j);
+        for i in 0..n {
+            let mut s = a[i] * h + corr[i];
+            for l in 0..m {
+                s += g[i * m + l] * dw[l];
+            }
+            y[i] += s;
+        }
+        finite(&y, k)?;
+        out.push(y.clone());
+    }
+    Ok(out)
+}
+
+/// Shared body of [`srk_noncommutative`] and [`srk_noncommutative_stratonovich`].
+#[allow(clippy::too_many_arguments)] // the kernel's common argument list plus the calculus flag
+fn srk_noncommutative_run<A, G>(
+    drift: &A,
+    diff: &G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    noise: &NoiseSample,
+    stratonovich: bool,
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    check_sample(y0, m, noise)?;
+    let n = y0.len();
+    let sh = h.abs().sqrt();
+    let mut y = y0.to_vec();
+    let mut out = vec![y.clone()];
+    let (mut a, mut g, mut gs, mut gm) = (
+        vec![0.0; n],
+        vec![0.0; n * m],
+        vec![0.0; n * m],
+        vec![0.0; n * m],
+    );
+    for (k, (dw, ar)) in noise.dws.iter().zip(&noise.areas).enumerate() {
+        let t = t0 + k as f64 * h;
+        drift(t, &y, &mut a);
+        diff(t, &y, &mut g);
+        let areas = if stratonovich {
+            stratonovich_areas(ar, m, h)
+        } else {
+            ar.clone()
+        };
+        let mut corr = vec![0.0; n];
+        for j in 0..m {
+            if stratonovich {
+                // Central supporting values: the mean of J_jj is h / 2, so the
+                // difference quotient must be accurate to O(h) (a forward one leaves
+                // a systematic O(sqrt(h)) error and only strong order 1/2).
+                let up: Vec<f64> = (0..n).map(|i| y[i] + g[i * m + j] * sh).collect();
+                let um: Vec<f64> = (0..n).map(|i| y[i] - g[i * m + j] * sh).collect();
+                diff(t, &up, &mut gs);
+                diff(t, &um, &mut gm);
+                for l in 0..m {
+                    let w = areas[j * m + l] / (2.0 * sh);
+                    for i in 0..n {
+                        corr[i] += (gs[i * m + l] - gm[i * m + l]) * w;
+                    }
+                }
+            } else {
+                let ups: Vec<f64> = (0..n)
+                    .map(|i| y[i] + a[i] * h + g[i * m + j] * sh)
+                    .collect();
+                diff(t, &ups, &mut gs);
+                for l in 0..m {
+                    let w = areas[j * m + l] / sh;
+                    for i in 0..n {
+                        corr[i] += (gs[i * m + l] - g[i * m + l]) * w;
+                    }
+                }
+            }
+        }
+        for i in 0..n {
+            let mut s = a[i] * h + corr[i];
+            for j in 0..m {
+                s += g[i * m + j] * dw[j];
+            }
+            y[i] += s;
+        }
+        finite(&y, k)?;
+        out.push(y.clone());
+    }
+    Ok(out)
+}
+
+/// Derivative-free stochastic Runge-Kutta scheme of strong order 1 for
+/// **non-commutative** Ito noise (Kloeden-Platen, eq. 11.1.7).
+///
+/// With the supporting values `U^j = Y + a h + g^j sqrt(h)` (`g^j` the `j`-th
+/// column of `g`, one per noise channel),
+///
+/// `Y' = Y + a h + sum_j g^j dW_j + h^{-1/2} sum_{j,l} (g^l(U^j) - g^l(Y)) I_jl`,
+///
+/// where `I_jl` are the sampled iterated Ito integrals of `noise`
+/// ([`sample_noise`]). It needs `m` extra diffusion evaluations per step and no
+/// derivative of `g`. On commutative noise the Levy-area part cancels and it
+/// agrees with [`srk_platen`] up to the `O(h)` of the supporting values.
+///
+/// # Errors
+/// [`SdeError::Invalid`] or [`SdeError::NonFinite`].
+pub fn srk_noncommutative<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    noise: &NoiseSample,
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    srk_noncommutative_run(&drift, &diff, m, t0, h, y0, noise, false)
+}
+
+/// The Stratonovich counterpart of [`srk_noncommutative`].
+///
+/// After Kloeden-Platen, eq. 11.1.10: with the Stratonovich iterated integrals
+/// `J_jl = I_jl + delta_jl h / 2` and the Stratonovich drift it converges to the
+/// solution of `dX = a dt + g o dW` with strong order 1.
+///
+/// Because `J_jj` has mean `h / 2` (unlike `I_jj`), the difference quotient must
+/// be accurate to `O(h)`: the scheme uses the *central* supporting values
+/// `U^j_{+-} = Y +- g^j sqrt(h)` and
+/// `Y' = Y + a h + sum_j g^j dW_j + (2 sqrt(h))^{-1} sum_{j,l} (g^l(U^j_+) - g^l(U^j_-)) J_jl`
+/// (a forward quotient would leave a systematic `O(sqrt(h))` error and only
+/// strong order 1/2). It costs `2m` extra diffusion evaluations per step.
+///
+/// # Errors
+/// [`SdeError::Invalid`] or [`SdeError::NonFinite`].
+pub fn srk_noncommutative_stratonovich<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    h: f64,
+    y0: &[f64],
+    noise: &NoiseSample,
+) -> Result<Vec<Vec<f64>>, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    srk_noncommutative_run(&drift, &diff, m, t0, h, y0, noise, true)
+}
+
+/// The Ito-equivalent drift of a Stratonovich SDE `dX = a dt + g o dW`:
+/// `a~_i = a_i + (1/2) sum_j sum_k g_{kj} d_k g_{ij}`.
+///
+/// The correction is `(1/2) sum_j (D_j g)_{.j}` with the directional derivative of
+/// column `j` along itself, taken by central differences with the same scaling as
+/// the Milstein term (`eps = 1e-6 max(1, |y|_inf) / |g^j|`). The closure writes
+/// `a~` into its output, so any Ito integrator applied to `(a~, g)` converges to
+/// the Stratonovich solution of `(a, g)`.
+pub fn stratonovich_to_ito_drift<'a, A, G>(
+    drift: &'a A,
+    diff: &'a G,
+    m: usize,
+) -> impl Fn(f64, &[f64], &mut [f64]) + 'a
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    move |t: f64, y: &[f64], out: &mut [f64]| {
+        drift(t, y, out);
+        let n = y.len();
+        let mut g = vec![0.0; n * m];
+        diff(t, y, &mut g);
+        let (mut gp, mut gm) = (vec![0.0; n * m], vec![0.0; n * m]);
+        let scale = y.iter().map(|v| v.abs()).fold(1.0, f64::max);
+        for j in 0..m {
+            let col: Vec<f64> = (0..n).map(|i| g[i * m + j]).collect();
+            let cn = col.iter().map(|v| v * v).sum::<f64>().sqrt();
+            if cn == 0.0 || !cn.is_finite() {
+                continue;
+            }
+            let eps = 1e-6 * scale / cn;
+            let yp: Vec<f64> = (0..n).map(|i| y[i] + eps * col[i]).collect();
+            let ym: Vec<f64> = (0..n).map(|i| y[i] - eps * col[i]).collect();
+            diff(t, &yp, &mut gp);
+            diff(t, &ym, &mut gm);
+            for i in 0..n {
+                out[i] += 0.5 * (gp[i * m + j] - gm[i * m + j]) / (2.0 * eps);
+            }
+        }
+    }
 }
 
 /// Platen's derivative-free stochastic Runge-Kutta scheme.
@@ -1103,6 +1376,66 @@ where
     Ok(path)
 }
 
+/// Adaptive-step integration of a **Stratonovich** SDE `dX = a dt + g o dW` with
+/// commutative noise on `[t0, t1]`, by exact conversion to Ito form.
+///
+/// The drift is replaced by the Ito-equivalent drift
+/// ([`stratonovich_to_ito_drift`]) and [`sde_adaptive_with`] runs on the Ito SDE
+/// `dX = a~ dt + g dW`, which has the same solution process. The returned path is
+/// therefore the *controlled Ito-Milstein solution of the equivalent Ito SDE*; it
+/// converges to the Stratonovich solution of the original coefficients (for
+/// `dX = sigma X o dW` to `X_0 exp(sigma W_T)`), with the error control of
+/// [`sde_adaptive_with`] applied to the converted drift. The conversion uses
+/// finite-difference derivatives of `g`, which costs `2m + 1` extra diffusion
+/// evaluations per drift evaluation.
+///
+/// # Errors
+/// As [`sde_adaptive_with`].
+pub fn sde_adaptive_stratonovich_with<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdeAdaptiveOptions,
+) -> Result<SdePath, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    let ito = stratonovich_to_ito_drift(&drift, &diff, m);
+    sde_adaptive_with(ito, &diff, m, t0, t1, y0, opts)
+}
+
+/// Adaptive-step integration of a **Stratonovich** SDE with **non-commutative**
+/// noise on `[t0, t1]`, by exact conversion to Ito form.
+///
+/// As [`sde_adaptive_stratonovich_with`], with the controller of
+/// [`sde_adaptive_noncommutative_with`] (fine cell grid, Chen's relation); the
+/// returned path is the controlled Ito-Milstein solution of the equivalent Ito
+/// SDE, which converges to the Stratonovich solution. The Brownian path is the
+/// same as for the Ito solver ([`noncommutative_noise_grid`]).
+///
+/// # Errors
+/// As [`sde_adaptive_noncommutative_with`].
+pub fn sde_adaptive_noncommutative_stratonovich_with<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdeNoncommutativeOptions,
+) -> Result<SdePath, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    let ito = stratonovich_to_ito_drift(&drift, &diff, m);
+    sde_adaptive_noncommutative_with(ito, &diff, m, t0, t1, y0, opts)
+}
+
 /// The fixed-step scheme used by [`sde_ensemble`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnsembleScheme {
@@ -1116,6 +1449,21 @@ pub enum EnsembleScheme {
     HeunStratonovich,
     /// [`milstein_noncommutative`] with [`sample_noise`] (`terms` Fourier modes).
     MilsteinNoncommutative {
+        /// Fourier modes of the Levy areas.
+        terms: usize,
+    },
+    /// [`milstein_noncommutative_stratonovich`] with [`sample_noise`].
+    MilsteinNoncommutativeStratonovich {
+        /// Fourier modes of the Levy areas.
+        terms: usize,
+    },
+    /// [`srk_noncommutative`] with [`sample_noise`].
+    SrkNoncommutative {
+        /// Fourier modes of the Levy areas.
+        terms: usize,
+    },
+    /// [`srk_noncommutative_stratonovich`] with [`sample_noise`].
+    SrkNoncommutativeStratonovich {
         /// Fourier modes of the Levy areas.
         terms: usize,
     },
@@ -1170,6 +1518,18 @@ where
             | EnsembleScheme::MilsteinNoncommutative { terms } => {
                 let noise = sample_noise(&mut rng, m, steps, h, terms);
                 milstein_noncommutative(&drift, &diff, m, t0, h, y0, &noise)?
+            },
+            | EnsembleScheme::MilsteinNoncommutativeStratonovich { terms } => {
+                let noise = sample_noise(&mut rng, m, steps, h, terms);
+                milstein_noncommutative_stratonovich(&drift, &diff, m, t0, h, y0, &noise)?
+            },
+            | EnsembleScheme::SrkNoncommutative { terms } => {
+                let noise = sample_noise(&mut rng, m, steps, h, terms);
+                srk_noncommutative(&drift, &diff, m, t0, h, y0, &noise)?
+            },
+            | EnsembleScheme::SrkNoncommutativeStratonovich { terms } => {
+                let noise = sample_noise(&mut rng, m, steps, h, terms);
+                srk_noncommutative_stratonovich(&drift, &diff, m, t0, h, y0, &noise)?
             },
             | _ => {
                 let dws = brownian_increments(&mut rng, m, steps, h);

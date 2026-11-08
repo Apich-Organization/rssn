@@ -470,7 +470,6 @@ fn ohmic_loss_accounts_for_the_damped_energy() {
     );
 }
 
-
 #[test]
 fn periodic_plane_wave_in_2d_travels_one_period_with_tfsf_free_initial_data() {
     // Standing wave in a periodic-x, PEC-y strip: Ez = cos(2 pi x) sin(pi y) has omega = pi sqrt(5)

@@ -46,7 +46,6 @@ use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
-
 use super::arith::arith;
 use super::number_theory::Value;
 use super::number_theory::attach_dimensions;
@@ -2067,7 +2066,6 @@ mod tests {
 // | `permutation_rank(p)`, `permutation_unrank(n, r)` | lexicographic rank (from 0) of a permutation of `1..n` and its inverse |
 // | `inversions(p)`, `permutation_sign(p)`, `cycle_type(p)`, `permutation_order(p)` | inversion count, sign, sorted cycle lengths and order |
 // | `hook_lengths(lambda)`, `syt_count(lambda)` | hook lengths of a Young diagram and the number of standard tableaux (hook length formula) |
-
 
 const SET: &str = "combinatorics";
 const MAX_N: u64 = 2000;
