@@ -303,6 +303,105 @@ pub struct SparseValue {
     pub data: Vec<Value>,
 }
 
+impl SparseValue {
+    /// Number of nonzero entries stored.
+    #[must_use]
+    pub fn nnz(&self) -> usize {
+        self.indices.len()
+    }
+
+    /// Computes the Frobenius (L2) norm of the entries.
+    #[must_use]
+    pub fn norm(&self) -> f64 {
+        let mut sum = 0.0_f64;
+        for v in &self.data {
+            let x = value_to_f64(v);
+            sum += x * x;
+        }
+        sum.sqrt()
+    }
+
+    /// Transposes a 2D sparse matrix, swapping rows and columns.
+    /// Preserves shape [cols, rows] even when nnz == 0.
+    #[must_use]
+    pub fn transpose(&self) -> Self {
+        if self.shape.len() != 2 {
+            let mut reversed = self.shape.clone();
+            reversed.reverse();
+            return Self {
+                shape: reversed,
+                format: self.format,
+                indices: Vec::new(),
+                data: Vec::new(),
+            };
+        }
+        let rows = self.shape[0];
+        let cols = self.shape[1];
+        if self.indices.is_empty() {
+            return Self {
+                shape: vec![cols, rows],
+                format: self.format,
+                indices: Vec::new(),
+                data: Vec::new(),
+            };
+        }
+        let cols_u64 = cols as u64;
+        let rows_u64 = rows as u64;
+        let mut entries: Vec<(u64, Value)> = self
+            .indices
+            .iter()
+            .zip(&self.data)
+            .map(|(&idx, val)| {
+                let r = idx / cols_u64;
+                let c = idx % cols_u64;
+                let new_idx = c * rows_u64 + r;
+                (new_idx, val.clone())
+            })
+            .collect();
+        entries.sort_by_key(|(idx, _)| *idx);
+        let mut new_indices = Vec::with_capacity(entries.len());
+        let mut new_data = Vec::with_capacity(entries.len());
+        for (idx, val) in entries {
+            new_indices.push(idx);
+            new_data.push(val);
+        }
+        Self {
+            shape: vec![cols, rows],
+            format: self.format,
+            indices: new_indices,
+            data: new_data,
+        }
+    }
+
+    /// Converts to dense `TensorValue`, preserving shape.
+    #[must_use]
+    pub fn to_tensor(&self) -> TensorValue {
+        let total: usize = self.shape.iter().product();
+        let mut dense_data = vec![Value::zero(); total];
+        for (&idx, val) in self.indices.iter().zip(&self.data) {
+            let idx = idx as usize;
+            if idx < dense_data.len() {
+                dense_data[idx] = val.clone();
+            }
+        }
+        TensorValue {
+            shape: self.shape.clone(),
+            data: dense_data,
+            elem: crate::kernel::signature::TypeExpr::Int,
+        }
+    }
+}
+
+fn value_to_f64(v: &Value) -> f64 {
+    match v {
+        | Value::Int(n) => num_traits::ToPrimitive::to_f64(n).unwrap_or(0.0),
+        | Value::Real(r) => r.to_f64(),
+        | Value::Float(f) => *f,
+        | Value::Quantity(q) => value_to_f64(&q.value),
+        | _ => 0.0,
+    }
+}
+
 /// A record: named fields in declaration order.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RecordValue {
@@ -643,6 +742,60 @@ impl Value {
             | Self::Real(n) => n.is_zero(),
             | Self::Float(f) => *f == 0.0,
             | _ => false,
+        }
+    }
+
+    /// Nonzero count when the value is a sparse or dense tensor.
+    #[must_use]
+    pub fn nnz(&self) -> Option<usize> {
+        match self {
+            | Self::Sparse(s) => Some(s.nnz()),
+            | Self::Tensor(t) => Some(t.data.iter().filter(|v| !v.is_zero()).count()),
+            | _ => None,
+        }
+    }
+
+    /// Transpose of a 2D sparse value or dense tensor, preserving shape.
+    #[must_use]
+    pub fn transpose(&self) -> Option<Self> {
+        match self {
+            | Self::Sparse(s) => Some(Self::Sparse(s.transpose())),
+            | Self::Tensor(t) => {
+                if t.shape.len() != 2 {
+                    return None;
+                }
+                let rows = t.shape[0];
+                let cols = t.shape[1];
+                let mut data = vec![Self::zero(); rows * cols];
+                for r in 0..rows {
+                    for c in 0..cols {
+                        data[c * rows + r] = t.data[r * cols + c].clone();
+                    }
+                }
+                Some(Self::Tensor(TensorValue {
+                    shape: vec![cols, rows],
+                    data,
+                    elem: t.elem.clone(),
+                }))
+            },
+            | _ => None,
+        }
+    }
+
+    /// Frobenius norm of a sparse or dense tensor.
+    #[must_use]
+    pub fn norm(&self) -> Option<f64> {
+        match self {
+            | Self::Sparse(s) => Some(s.norm()),
+            | Self::Tensor(t) => {
+                let mut sum = 0.0_f64;
+                for v in &t.data {
+                    let x = value_to_f64(v);
+                    sum += x * x;
+                }
+                Some(sum.sqrt())
+            },
+            | _ => None,
         }
     }
 

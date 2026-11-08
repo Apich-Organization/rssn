@@ -75,6 +75,8 @@ pub struct RssnComputeRecord {
     pub dimension: Option<String>,
     /// Advisory dimensional findings, as text.
     pub diagnostics: Vec<String>,
+    /// Stable machine-readable kinds for findings.
+    pub diagnostic_codes: Vec<String>,
 }
 
 /// The record both wire formats carry.
@@ -94,6 +96,11 @@ fn record(answer: &Answer<'_>) -> RssnComputeRecord {
             .diagnostics
             .iter()
             .map(std::string::ToString::to_string)
+            .collect(),
+        diagnostic_codes: answer
+            .diagnostics
+            .iter()
+            .map(|d| d.code().to_string())
             .collect(),
     }
 }

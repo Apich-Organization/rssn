@@ -474,6 +474,12 @@ pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
         return Err(DenseError::Shape);
     }
     let n = a.rows;
+    if n == 0 {
+        return Ok((Vec::new(), Mat::zeros(0, 0)));
+    }
+    if n == 1 {
+        return Ok((vec![a.at(0, 0)], Mat::identity(1)));
+    }
     let mut m = a.clone();
     let mut v = Mat::identity(n);
     for _ in 0..100 {
@@ -770,6 +776,9 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
     if n == 0 {
         return Ok(Vec::new());
     }
+    if n == 1 {
+        return Ok(vec![(a.at(0, 0), 0.0)]);
+    }
     // 1-based working copy.
     let mut h = vec![vec![0.0; n + 2]; n + 2];
     for i in 0..n {
@@ -1061,6 +1070,14 @@ pub fn eigen(a: &Mat) -> Result<Eigen, DenseError> {
             values: Vec::new(),
             vectors: Vec::new(),
             residuals: Vec::new(),
+            defective: false,
+        });
+    }
+    if n == 1 {
+        return Ok(Eigen {
+            values: vec![(a.at(0, 0), 0.0)],
+            vectors: vec![vec![Complex64::new(1.0, 0.0)]],
+            residuals: vec![0.0],
             defective: false,
         });
     }
@@ -1666,6 +1683,42 @@ mod tests {
             let res = residual(a, *lam, x);
             assert!(res <= 1e-10, "actual residual {res} for {lam:?}");
         }
+    }
+
+    #[test]
+    fn eigen_edge_cases_empty_and_one_by_one() {
+        // n == 0
+        let a0 = Mat::zeros(0, 0);
+        let (vals0, vecs0) = eigen_symmetric(&a0).unwrap();
+        assert!(vals0.is_empty());
+        assert_eq!(vecs0.rows, 0);
+        assert_eq!(vecs0.cols, 0);
+        let e0 = eigen(&a0).unwrap();
+        assert!(e0.values.is_empty());
+        assert!(e0.vectors.is_empty());
+        assert!(e0.residuals.is_empty());
+        assert!(!e0.defective);
+
+        // n == 1
+        let a1 = Mat {
+            rows: 1,
+            cols: 1,
+            data: vec![42.5],
+        };
+        let (vals1, vecs1) = eigen_symmetric(&a1).unwrap();
+        assert_eq!(vals1, vec![42.5]);
+        assert_eq!(vecs1.rows, 1);
+        assert_eq!(vecs1.cols, 1);
+        assert_eq!(vecs1.at(0, 0), 1.0);
+
+        let e1 = eigen(&a1).unwrap();
+        assert_eq!(e1.values, vec![(42.5, 0.0)]);
+        assert_eq!(e1.vectors, vec![vec![Complex64::new(1.0, 0.0)]]);
+        assert_eq!(e1.residuals, vec![0.0]);
+        assert!(!e1.defective);
+
+        let ev1 = eigenvalues(&a1).unwrap();
+        assert_eq!(ev1, vec![(42.5, 0.0)]);
     }
 
     #[test]

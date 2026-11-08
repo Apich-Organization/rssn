@@ -771,6 +771,16 @@ fn a_bad_dimension_declaration_is_diagnosed_and_strict_rejects_it() {
                 .is_some_and(|findings| !findings.is_empty()),
             "an unresolvable declaration must be a diagnostic: {document}"
         );
+        assert_eq!(
+            document["diagnostic_codes"].as_array().map(|codes| {
+                codes
+                    .iter()
+                    .filter_map(serde_json::Value::as_str)
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            }),
+            Some(vec!["unknown_unit".to_string()])
+        );
 
         // Strict mode makes the declaration error blocking.
         assert_ok(rssn_config_dimension_mode(config, 2));
@@ -779,6 +789,46 @@ fn a_bad_dimension_declaration_is_diagnosed_and_strict_rejects_it() {
             RssnStatus::Dimension,
         );
         assert_ne!(last_error(), "");
+
+        rssn_config_free(config);
+        rssn_session_free(s);
+    }
+}
+
+#[test]
+fn diagnostic_codes_populated_in_compute_record() {
+    let s = rssn_session_new();
+    let config = rssn_config_new();
+    assert!(!s.is_null());
+    assert!(!config.is_null());
+    unsafe {
+        assert_ok(rssn_config_dimension(
+            config,
+            c("z").as_ptr(),
+            c("not_a_unit").as_ptr(),
+        ));
+        let term = rssn_term_parse(s, c("z + z").as_ptr());
+        let (_, record) = bincode_record(s, term, config);
+        assert!(!record.diagnostic_codes.is_empty());
+        assert_eq!(record.diagnostic_codes, vec!["unknown_unit".to_string()]);
+        for code in &record.diagnostic_codes {
+            assert!(
+                code.chars().all(|c| c.is_ascii_lowercase() || c == '_'),
+                "`{code}` is not snake_case"
+            );
+        }
+
+        let document = json_record(s, term, config);
+        assert_eq!(
+            document["diagnostic_codes"].as_array().map(|codes| {
+                codes
+                    .iter()
+                    .filter_map(serde_json::Value::as_str)
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            }),
+            Some(vec!["unknown_unit".to_string()])
+        );
 
         rssn_config_free(config);
         rssn_session_free(s);

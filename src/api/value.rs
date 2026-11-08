@@ -1451,11 +1451,9 @@ fn term_of_value(
         | Value::Dyn(dynamic) => {
             term_of_dimensioned_value(graph, &dynamic.value, &dynamic.dim, session, definitions)
         },
-        | Value::Sparse(_) => {
-            Err(OpError::Unsupported {
-                backend: "term".to_owned(),
-                feature: "sparse literals".to_owned(),
-            })
+        | Value::Sparse(sparse) => {
+            let tensor = sparse.to_tensor();
+            term_of_tensor(graph, &tensor, session, None, definitions)
         },
         | Value::Record(_) | Value::Variant(_) => {
             Err(OpError::Unsupported {
@@ -1543,6 +1541,10 @@ fn term_of_dimensioned_value(
         },
         | Value::Tensor(tensor) => {
             return term_of_tensor(graph, tensor, session, Some(dim), definitions);
+        },
+        | Value::Sparse(sparse) => {
+            let tensor = sparse.to_tensor();
+            return term_of_tensor(graph, &tensor, session, Some(dim), definitions);
         },
         | Value::Int(_) | Value::Real(_) | Value::Float(_) | Value::Symbol(_) | Value::Term(_) => {
         },
@@ -1909,6 +1911,55 @@ mod tests {
             s.call_value("sin", &[], &CallCtx::new()),
             Err(OpError::Arity { .. })
         ));
+    }
+
+    #[test]
+    fn sparse_zero_nnz_edge_cases() {
+        use crate::kernel::value::SparseFormat;
+        use crate::kernel::value::SparseValue;
+
+        // 0-nnz 2x3 matrix
+        let sp = SparseValue {
+            shape: vec![2, 3],
+            format: SparseFormat::Csr,
+            indices: Vec::new(),
+            data: Vec::new(),
+        };
+        let val = Value::Sparse(sp.clone());
+
+        assert_eq!(sp.nnz(), 0);
+        assert_eq!(val.nnz(), Some(0));
+        assert_eq!(sp.norm(), 0.0);
+        assert_eq!(val.norm(), Some(0.0));
+
+        // transpose preserves shape [3, 2]
+        let t_sp = sp.transpose();
+        assert_eq!(t_sp.shape, vec![3, 2]);
+        assert_eq!(t_sp.nnz(), 0);
+
+        let t_val = val.transpose().unwrap();
+        if let Value::Sparse(ref s) = t_val {
+            assert_eq!(s.shape, vec![3, 2]);
+            assert_eq!(s.nnz(), 0);
+        } else {
+            panic!("expected sparse value");
+        }
+
+        // term conversion preserves shape in session
+        let s = Session::new();
+        let term = s.term_of(&val).unwrap_or_else(|e| panic!("{e}"));
+        let term_str = term.to_string();
+        assert_eq!(term_str, "list(list(0, 0, 0), list(0, 0, 0))");
+
+        let out = s
+            .call_value("transpose", &[val], &CallCtx::new())
+            .unwrap_or_else(|e| panic!("{e}"));
+        if let Value::Tensor(t) = out {
+            assert_eq!(t.shape, vec![3, 2]);
+            assert_eq!(t.data.len(), 6);
+        } else {
+            panic!("expected transposed tensor, got {out:?}");
+        }
     }
 
     #[test]

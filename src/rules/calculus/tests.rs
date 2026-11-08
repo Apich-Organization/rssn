@@ -310,6 +310,7 @@ fn limits_by_continuity_and_cancellation() {
 #[test]
 fn limits_at_infinity() {
     assert_eq!(run("limit(1/x, x, oo)"), "0");
+    assert_eq!(run("limit(sqrt(x+1) - sqrt(x), x, oo)"), "0");
     assert_eq!(run("limit((2*x^2 + 1)/(x^2 - 3), x, oo)"), "2");
     assert_eq!(run("limit((3*x + 1)/(x^2 + 1), x, -oo)"), "0");
     assert_eq!(run("limit(x^2, x, -oo)"), "oo");

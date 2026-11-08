@@ -2180,6 +2180,58 @@ mod tests {
         );
     }
 
+    #[test]
+    fn all_dim_error_codes_are_non_empty_snake_case() {
+        let all_variants = [
+            DimError::Mismatch {
+                left: "m".into(),
+                right: "s".into(),
+                context: "x + y".into(),
+            },
+            DimError::NonDimensionless {
+                op: "exp".into(),
+                argument: "x".into(),
+                found: "m".into(),
+            },
+            DimError::SymbolicConstraint {
+                constraint: "n = 1".into(),
+                context: "x^n".into(),
+            },
+            DimError::UnknownUnit {
+                unit: "parsec".into(),
+                context: None,
+            },
+            DimError::UnknownUnit {
+                unit: "parsec".into(),
+                context: Some("quantity(1, parsec)".into()),
+            },
+            DimError::Affine {
+                operation: "degC + degC".into(),
+            },
+            DimError::MixedList {
+                context: "list(1 m, 2 s)".into(),
+            },
+            DimError::Unannotated { op: "foo".into() },
+            DimError::Parse {
+                text: "invalid".into(),
+                reason: "syntax".into(),
+            },
+        ];
+
+        for err in &all_variants {
+            let code = err.code();
+            assert!(!code.is_empty(), "code should not be empty for {err:?}");
+            assert!(
+                code.chars().all(|c| c.is_ascii_lowercase() || c == '_'),
+                "code '{code}' should be snake_case"
+            );
+            assert!(
+                !code.starts_with('_') && !code.ends_with('_'),
+                "code '{code}' should not start or end with underscore"
+            );
+        }
+    }
+
     /// `matfun(f, x, A)` is only homogeneous for a single total degree; a
     /// non-homogeneous or non-polynomial `f` still requires a dimensionless
     /// matrix. `matexp(A, t)` is the weaker case: only the *product* `t A`
