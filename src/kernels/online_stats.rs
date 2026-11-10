@@ -57,7 +57,7 @@ mod tests {
         let mut left = all.clone();
         let mut right = all.clone();
         for i in 0..100 {
-            let x = [1e12 + i as f64, -1e12 + 2.0 * i as f64];
+            let x = [1e12 + f64::from(i), -1e12 + 2.0 * f64::from(i)];
             all.push(&x).unwrap();
             if i < 43 {
                 left.push(&x).unwrap();

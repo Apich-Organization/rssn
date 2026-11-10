@@ -61,7 +61,7 @@
 //! );
 //!
 //! // Call an operator by name, dynamically, with a checked argument list.
-//! let value = session.call_value("sin", &[Value::Real(0.5)], CallCtx::new())?;
+//! let value = session.call_value("sin", &[Value::Float(0.5)], &CallCtx::new())?;
 //!
 //! // Or look up what it accepts before calling it.
 //! if let Some(op) = manifest.op("sin") {

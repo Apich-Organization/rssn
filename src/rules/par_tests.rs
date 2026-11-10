@@ -1,5 +1,4 @@
-//! Determinism and timing checks of the symbolic parallel sites (Part 6 of
-//! `docs/ALGORITHM_COMPLETION_CHECKLIST.md`). Each site runs in a one-thread
+//! Determinism and timing checks of the symbolic parallel sites. Each site runs in a one-thread
 //! pool and in the global pool; the results must be equal. The timings are
 //! printed (`--nocapture`, grep `PAR`), never asserted.
 

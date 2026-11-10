@@ -314,7 +314,8 @@ fn dimensional_policies_preserve_and_combine_witnesses() {
             DimExpr::Base("Time".into())
         ])
     );
-    let Value::Dyn(DynValue { value, dim }) = call(&session, "num_mean", &[a.clone()]).unwrap()
+    let Value::Dyn(DynValue { value, dim }) =
+        call(&session, "num_mean", std::slice::from_ref(&a)).unwrap()
     else {
         panic!("mean witness");
     };

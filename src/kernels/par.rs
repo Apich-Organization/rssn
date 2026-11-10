@@ -1,7 +1,7 @@
 //! # Deterministic data-parallel helpers
 //!
 //! Thin wrappers over `rayon` that keep the crate's reproducibility rules in
-//! one place (Part 6 of `docs/ALGORITHM_COMPLETION_CHECKLIST.md`):
+//! one place:
 //!
 //! * results are **independent of the thread count**: maps collect in index
 //!   order, and floating-point reductions use a *fixed-shape* tree whose

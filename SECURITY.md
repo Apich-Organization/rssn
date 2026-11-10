@@ -4,11 +4,18 @@
 
 | Version    | Supported          |
 | ---------- | ------------------ |
-| 3.0.0-rc.1 | :full:             |
+| 3.0.0-rc.1 | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
 Please do not report a vulnerability via Github issues. Any vulnerability shall be reported by emailing to **security@apich.org** or via our official website security reporting section (under construction).
+
+## Security-relevant design notes
+
+* **`plugin-cdylib` runs arbitrary code.** Loading a plugin from a shared library (`rssn::kernel::cdylib`) executes native code inside the host process with no sandbox. The feature is off by default; enable it only for libraries you trust.
+* **The C ABI never unwinds, but it is `unsafe` at the boundary**: pointers, lengths and handle lifetimes are the caller's responsibility (see the `ffi` module documentation). Report memory-safety problems in it as vulnerabilities.
+* **`unsafe` Rust is limited** to the C ABI (`src/ffi`), the shared-library plugin loader (`src/kernel/cdylib.rs`) and the JIT's entry into generated code (`src/backend/jit.rs`); the crate warns on `unsafe_code` everywhere else.
+* **Untrusted input.** Expression text, JSON, `bincode-next` buffers and `.npy` files are parsed by the library. Non-termination or unbounded memory use on small hostile inputs is a bug worth reporting. Set a `Budget` (`max_nodes`, `time_limit`) when computing on untrusted requests, since there is no cancellation.
 
 ## Developer Security Standards (Mandatory for Organization Members and Recommended for Contributors)
 

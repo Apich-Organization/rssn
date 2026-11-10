@@ -1,5 +1,4 @@
-//! Determinism and timing checks of the parallel simulation sites (Part 6 of
-//! `docs/ALGORITHM_COMPLETION_CHECKLIST.md`). Each site runs in a one-thread
+//! Determinism and timing checks of the parallel simulation sites. Each site runs in a one-thread
 //! rayon pool and in the global pool; the results must be equal (Debug text,
 //! so floats are compared bit-exactly). Timings are printed, never asserted:
 //! run with `--nocapture` and grep `PAR`.

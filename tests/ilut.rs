@@ -277,7 +277,7 @@ fn zero_drop_full_fill_matches_random_diagonally_dominant_systems() {
                 seed ^= seed << 7;
                 seed ^= seed >> 9;
                 seed ^= seed << 8;
-                if seed % 3 != 0 {
+                if !seed.is_multiple_of(3) {
                     let value = ((seed % 2001) as f64 - 1000.0) / 1000.0;
                     sum += value.abs();
                     trip.push((row, col, value));

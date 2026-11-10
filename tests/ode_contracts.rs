@@ -284,7 +284,7 @@ fn exponential_rosenbrock_obeys_the_same_tolerance_probe_and_counter_contracts()
         ..Default::default()
     };
     assert_eq!(
-        exprb32(&f, None, 0.0, 1e-12, &[0.0], &bad).unwrap_err(),
+        exprb32(f, None, 0.0, 1e-12, &[0.0], &bad).unwrap_err(),
         OdeError::Invalid
     );
     assert_eq!(calls.get(), 0);
@@ -295,7 +295,7 @@ fn exponential_rosenbrock_obeys_the_same_tolerance_probe_and_counter_contracts()
     };
     for (a, b) in [(0.0, 1e-12), (1e-12, 0.0)] {
         calls.set(0);
-        let solution = exprb32(&f, None, a, b, &[0.0], &options).unwrap();
+        let solution = exprb32(f, None, a, b, &[0.0], &options).unwrap();
         assert_eq!(solution.t.last(), Some(&b));
         assert_eq!(solution.nfev, calls.get());
     }

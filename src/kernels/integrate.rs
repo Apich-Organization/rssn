@@ -666,7 +666,13 @@ mod gauss_kronrod_tests {
     fn unsplittable_panel_retains_its_estimate() {
         let a = 1.0_f64;
         let b = f64::from_bits(a.to_bits() + 1);
-        let f = |x: f64| if x == a { 1.0 } else { 0.0 };
+        let f = |x: f64| {
+            if x.to_bits() == a.to_bits() {
+                1.0
+            } else {
+                0.0
+            }
+        };
         let initial = gauss_kronrod(f, a, b, 0.0, 1);
         let refined = gauss_kronrod(f, a, b, 0.0, 10);
         assert_ne!(initial.value, 0.0);

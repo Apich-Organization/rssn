@@ -26,14 +26,14 @@ fn check(
         let gradient = tape.gradient_reverse(k, x, p);
         let mut values = Vec::new();
         let mut output = vec![Dual(0.0, 0.0); tape.outputs.len()];
-        for i in 0..x.len() {
+        for (i, &expected_gradient) in gradient.iter().enumerate() {
             let input: Vec<_> = x
                 .iter()
                 .enumerate()
                 .map(|(j, &x)| Dual(x, if j == i { 1.0 } else { 0.0 }))
                 .collect();
             tape.run(&input, &params, &mut values, &mut output);
-            near(gradient[i], output[k].1);
+            near(expected_gradient, output[k].1);
         }
         let hessian = tape.hessian(k, x, p);
         let product = tape.hessian_vector_product(k, x, p, direction);

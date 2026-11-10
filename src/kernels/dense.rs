@@ -1690,13 +1690,16 @@ mod tests {
         // n == 0
         let a0 = Mat::zeros(0, 0);
         let (vals0, vecs0) = eigen_symmetric(&a0).unwrap();
-        assert!(vals0.is_empty());
+        assert_eq!(vals0, [] as [f64; 0]);
         assert_eq!(vecs0.rows, 0);
         assert_eq!(vecs0.cols, 0);
         let e0 = eigen(&a0).unwrap();
-        assert!(e0.values.is_empty());
-        assert!(e0.vectors.is_empty());
-        assert!(e0.residuals.is_empty());
+        assert_eq!(e0.values, [] as [(f64, f64); 0]);
+        assert_eq!(
+            e0.vectors,
+            [] as [std::vec::Vec<num_complex::Complex<f64>>; 0]
+        );
+        assert_eq!(e0.residuals, [] as [f64; 0]);
         assert!(!e0.defective);
 
         // n == 1

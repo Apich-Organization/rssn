@@ -809,7 +809,7 @@ fn diagnostic_codes_populated_in_compute_record() {
         ));
         let term = rssn_term_parse(s, c("z + z").as_ptr());
         let (_, record) = bincode_record(s, term, config);
-        assert!(!record.diagnostic_codes.is_empty());
+        assert_ne!(record.diagnostic_codes, [] as [std::string::String; 0]);
         assert_eq!(record.diagnostic_codes, vec!["unknown_unit".to_string()]);
         for code in &record.diagnostic_codes {
             assert!(

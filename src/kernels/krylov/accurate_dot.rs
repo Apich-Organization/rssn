@@ -481,7 +481,7 @@ mod tests {
         let mut accepted = 0;
         for case in 0..40_000 {
             let mut pairs = Vec::new();
-            for _ in 0..(case % 9 + 1) {
+            for _ in 0..=(case % 9) {
                 seed ^= seed << 7;
                 seed ^= seed >> 9;
                 let a = f64::from_bits(
@@ -570,7 +570,7 @@ mod tests {
             );
             let (actual, ae) = product_sum(pairs.iter().copied());
             let (mut expected, mut ee) = accumulate(pairs.iter().copied()).normalized();
-            if expected.abs() == 2.0 {
+            if expected.abs().to_bits() == 2.0_f64.to_bits() {
                 expected *= 0.5;
                 ee += 1;
             }
@@ -679,7 +679,7 @@ mod tests {
             assert!(short_exact_products(pairs.iter().copied()).is_none());
             assert!(dot_value(pairs.iter().copied()).is_nan());
         }
-        let pairs = vec![(0.0, f64::INFINITY); 9];
+        let pairs = [(0.0, f64::INFINITY); 9];
         assert!(filtered_bulk(pairs.iter().copied()).is_none());
         // Exercise the accepted exponent envelope, including subnormal
         // operands with a normal product and severe mixed-sign cancellation.
@@ -739,7 +739,7 @@ mod tests {
         let mut accepted = 0;
         for case in 0..80_000usize {
             let mut pairs = Vec::new();
-            for index in 0..(1 + case % 8) {
+            for index in 0..=(case % 8) {
                 seed ^= seed << 7;
                 seed ^= seed >> 9;
                 seed ^= seed << 8;

@@ -1,8 +1,9 @@
 # Dimensions as a first-class typing layer
 
-This document is the implementation plan for integrating dimensional analysis
-into the whole engine, not just the `units` rule set. It is the contract for
-the core work and for the operator-coverage workstream that follows it.
+This document is the design of the dimensional layer that runs through the whole
+engine, not just the `units` rule set: the contract for the core, the operator
+coverage, the public API and the known limits. The core and the operator coverage
+have landed (§12); §13 lists what remains.
 
 ## 1. Goal
 
@@ -139,34 +140,24 @@ pub enum DimRule {
                                  // compatible with its expanded literal
     Any,                         // explicit bypass
     Same(usize),                 // result = dim of argument i
-    Sum,                         // all arguments equal; result = common
-    Product,                     // sum of exponents
-    Quotient,                    // difference of exponents
+    Sum, Product, Quotient,      // all equal / add exponents / subtract
     Power,                       // exponent argument must be dimensionless
-    Root(u32),                   // exponent divided by n (argument 0 shorthand)
-    RootOf { degree: u32, index: usize },
-                                 // exponent divided by `degree`; operand `index`
-    Dimensionless,               // all arguments dimensionless; result 1
-    Inverse,                     // 1 / dim(argument 0)
-    Square,                      // dim(argument 0)^2
-    Diff { f: usize, x: usize }, // dim(f) / dim(x)
-    Integral { f: usize, x: usize }, // dim(f) * dim(x)
-    SumOver { f: usize, index: usize },
-    ProductOver { f: usize, index: usize }, // dim(f) ^ count
-    Family {                     // a distribution: scale/rate source plus
-        result: FamilySource,    // dimensionless shape parameters
-        same: &'static [usize],
-        dimensionless: &'static [usize],
-    },
-    MatrixFunction {             // matfun(f, x, A): homogeneous degree k
-        function: usize,         // gives dim(f) * entry^k
-        variable: usize,
-        matrix: usize,
-    },
+    Root(u32), RootOf { degree: u32, index: usize },
+    Dimensionless, Inverse, Square,
+    List, Compare, Angle, UnknownFunction,
+    Diff { f: usize, x: usize }, DiffN { .. },   // dim(f) / dim(x)^n
+    Integral { f: usize, x: usize },             // dim(f) * dim(x)
+    SumOver { .. }, ProductOver { .. },          // dim(f) ^ count
+    Family { .. },               // a distribution: scale/rate source plus
+                                 // dimensionless shape parameters
+    MatrixFunction { .. },       // matfun(f, x, A): dim(f) * entry^k
     Quantity,                    // quantity(v, u): the unit layer supplies it
     Custom(fn(&DimCtx<'_>, &[DimTerm]) -> Result<DimTerm, DimError>),
 }
 ```
+
+The listing is abridged; `graph::dim::DimRule` is the authority for the exact
+variants and fields.
 
 `matexp` and the contour/Cauchy operators use `Custom` rules
 (`dim::matexp_dimension`, `dim::contour_dimension`,
@@ -311,6 +302,8 @@ Answer {
     diagnostics: Vec<DimError>,     // Advisory findings
 }
 
+Config::dimension_term(sym, DimExpr) // typed: never parses text
+
 Term::dimension() -> Dimension       // session-level assumptions
 Term::dimension_report() -> DimOutcome
 
@@ -341,26 +334,21 @@ semantic dimension rule** (not `Unspecified`).
   `only_documented_operators_bypass_dimensions` rejects an accidental `Any`
   (the allowlist is `oo`, `infinity`, `big_o`, `hessian_definiteness`), and
   `no_operator_has_an_accidental_rule` pins the core table.
-* The per-operator work is delegated to the coverage workstream, rule set by
-  rule set: add `i.dim(op, rule)` in the install function (or extend the
-  central table for families such as Bessel functions), add positive/negative
-  tests, and remove the operator from the scanner's report. The scanner is the
-  definition of done: it must be unignored and green when the coverage PRs
-  land.
+* To add an operator: add `i.dim(op, rule)` in the install function (or extend
+  the central table for families such as Bessel functions) and add
+  positive/negative tests. The scanner is the definition of done.
 * `Unspecified` falls back to an unknown dimension, so an uncovered operator
   is never silently wrong; it is reported as a coverage gap.
 
-Interim state: the scanner test is present and marked
-`#[ignore = "operator coverage workstream"]` while the core lands. Removing
-the `#[ignore]` is the last step of the coverage workstream; it is a checklist
-item, not an architecture phase.
+The scanner is unignored and green: adding an operator without a rule fails
+the build.
 
 ## 9. Numeric values
 
 Dimensions do not change numeric evaluation of dimensionless terms. For
 `quantity`, the dimension layer uses the unit resolver; `Answer::value` is the
-coherent-SI value and `Answer::dimension` says what it is. Integration with
-`Term::eval_in` and simulation inputs is part of the coverage workstream.
+coherent-SI value and `Answer::dimension` says what it is. The `sim` module works
+on plain `f64` and is not part of this layer.
 
 ## 10. Files
 
@@ -383,8 +371,7 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
 * `src/api/mod.rs` — `Config` fields, `Answer` fields, `ComputeError::Dimension`,
   `Term::dimension`, application of assumptions in `prepare`, analysis in
   `run_job`/`finish`.
-* `src/kernels/dim.rs` (optional) — numeric helpers for affine units if the
-  unit layer needs them.
+* `src/dim/systems.rs` — the unit systems (see the end of this document).
 
 ## 11. Testing
 
@@ -421,9 +408,10 @@ coherent-SI value and `Answer::dimension` says what it is. Integration with
       scanner green (test unignored).
 - [x] Docs (`ARCHITECTURE.md`, README, `rssn.h`/`rssn.hpp` status code).
 - [x] Serialization of `Dimension` and the C API dimension accessor
-      (`rssn_dimension`, `rssn_compute_json`); diagnostics are text (§13.8).
+      (`rssn_dimension`, `rssn_compute_json`).
 - [x] Machine-readable `DimError::code()` (stable snake_case kinds), pinned by
-      tests; the codes are not yet surfaced through the C API (§13.8).
+      tests and surfaced through the C API (`rssn_dimension_count`,
+      `rssn_dimension_code`).
 - [x] `matexp(A, t)` only requires the product `dim(t) * dim(A)` to be
       dimensionless, so a rate and a time are accepted.
 - [x] Every complex-analysis operator that consumes a complex variable
@@ -441,7 +429,8 @@ priority: typing gaps that can make a dimensionful value look dimensionally
 correct first, then representation and binding ergonomics.
 
 Closed in the current audit: diagnostics have a stable machine-readable kind
-(`DimError::code`, §7); `matexp(A, t)` accepts a dimensionful `A`/`t` whose
+(`DimError::code`, §7) that the C API exposes per thread
+(`rssn_dimension_count`, `rssn_dimension_code`); `matexp(A, t)` accepts a dimensionful `A`/`t` whose
 product is dimensionless; every complex-analysis operator that consumes a
 complex variable requires it to be dimensionless; branch wrappers are typed as
 the dimensionless-plane functions they are (the scan found and this closed the
@@ -504,14 +493,6 @@ per-rewrite random dimensional scan, is now a deterministic test
    never silently reinterpreted. `base:` also works for the SI bases
    (`base:Length`), with the registered name matched exactly (the aliases are
    not applied). A trailing `/` is tolerated (`"Length/"` is `Length`).
-8. **Diagnostics are not yet surfaced as codes through the C API (priority:
-   low).** `DimError::code()` gives every finding a stable snake_case kind
-   (`mismatch`, `non_dimensionless`, `symbolic_constraint`, `unknown_unit`,
-   `affine`, `mixed_list`, `unannotated`, `parse`), documented and pinned by
-   tests, so a Rust caller no longer has to parse the message. The C API
-   still exposes `Answer.dimension` and the diagnostics as strings in
-   `rssn_compute_json`; a binding that needs to branch on the kind has to
-   parse the text until a later round serializes the code.
 
 ## 14. Landing status
 
@@ -547,15 +528,14 @@ and
 
 The rewrite-soundness audit added
 `tests/dimensions.rs::per_rewrite_random_dimension_scan`: it instantiates every
-declarative rewrite of `rules::standard()` (261 rules in the current tree)
-under three structured (all dimensionless, all length, all time) and three
-pseudo-random dimension assignments per rule, generated from a fixed per-rule
-seed. A run currently reports 261/261 rewrites exercised, 882 dimensioned
-instantiations checked, 683 skipped because the *pattern* is dimensionally
-ill-typed under the assignment (outside the rewrite's domain), 1 skipped
-because the *right* side is domain-restricted, 0 guarded out, and an empty
-refutation list; the test asserts the counters, so a rule that stops being
-exercised fails rather than passing vacuously. The scan found one genuine
+declarative rewrite of `rules::standard()` under three structured (all
+dimensionless, all length, all time) and three pseudo-random dimension
+assignments per rule, generated from a fixed per-rule seed. It counts the
+instantiations it checked and the ones it skipped (a *pattern* that is
+dimensionally ill-typed under the assignment is outside the rewrite's domain;
+a domain-restricted right side), and asserts that every rule was exercised and
+that the refutation list is empty, so a rule that stops being exercised fails
+rather than passing vacuously. The scan found one genuine
 inconsistency: branch wrappers were typed `Same(0)`, which made
 `power_branch(z, w, k)` disagree with its defining rewrite
 `exp(w log_branch(z, k))`. They are now `Dimensionless` — every argument,
@@ -565,7 +545,6 @@ The same pass fixed the spurious `non-metric vs 1` conflict on
 `poles`/`zeros_of`/`singularity`/`branch_cut` (now `Container`, so their list
 answers unify) and the spurious `NonDimensionless` on the non-scalar contour
 argument of `count_zeros_poles`/`winding_number`.
-
 
 ## Host values and anonymous unit definitions
 

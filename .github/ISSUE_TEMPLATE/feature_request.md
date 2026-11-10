@@ -17,12 +17,12 @@ A clear and concise description of the problem or limitation you are currently f
 
 A clear and concise description of what you want to happen. Ideally, describe how the new API would look in Rust code.
 
-*Which module would this feature belong to? (e.g., `numerical::linalg`, `symbolic::poly`)*
+*Which module would this feature belong to? (e.g., `kernels::krylov`, `rules::poly`, `sim`, `io`)*
 
 ```rust
 // Example of how the new API/functionality would be used:
 
-use rssn::Module::new_function; 
+use rssn::prelude::*;
 
 fn main() {
     let result = new_function(input_data);

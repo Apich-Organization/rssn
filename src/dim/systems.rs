@@ -705,7 +705,10 @@ mod tests {
                 base("Time").pow(Exp::from(-1)),
             ]))
             .unwrap();
-        assert!(velocity.generators.is_empty());
+        assert_eq!(
+            velocity.generators,
+            [] as [(std::string::String, num_rational::Ratio<num_bigint::BigInt>); 0]
+        );
         assert_eq!(velocity.dimension, DimExpr::Dimless);
         // Charge is dimensionless in Heaviside-Lorentz units, with a
         // half-integer factor (epsilon_0 hbar c)^(1/2).
@@ -758,7 +761,7 @@ mod tests {
         let e = constants::value_of(constants::lookup("e").unwrap());
         let e_natural = to_system("natural", &charge, e).unwrap();
         let alpha = e_natural * e_natural / (4.0 * std::f64::consts::PI);
-        assert!(close(alpha, 7.297_352_5643e-3, 1e-8), "{alpha}");
+        assert!(close(alpha, 7.297_352_564_3e-3, 1e-8), "{alpha}");
     }
 
     #[test]

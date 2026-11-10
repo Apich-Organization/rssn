@@ -10,6 +10,7 @@ The name-based and pinned `OpKey` entry points use the same evaluator.
 | --- | --- | --- | --- |
 | `num_integrate` | `a`, `b`, absolute tolerance, relative tolerance, panel budget | `Float[D] -> Float[E]` | `value: Float[D*E]`, `error: Float[D*E]`, `evaluations`, `converged` |
 | `num_brent` | `a`, `b`, positive argument tolerance, positive iteration budget | `Float[D] -> Float[E]` | `root: Float[D]`, `evaluations` |
+| `num_least_squares` | initial parameter vector, residual tolerance, gradient tolerance, step tolerance, initial damping, iteration budget, evaluation budget | `Tensor<1, Float[D]> -> Tensor<1, Float[E]>` | `x: Tensor<1, Float[D]>`, `residual_norm: Float[E]`, `iterations`, `evaluations`, `jacobian_evaluations`, `accepted_steps`, `rejected_steps`, `converged`, `status` |
 | `num_ode_dopri5` | initial time, final time, state vector, absolute state tolerance, relative tolerance, maximal time step, attempt budget | `(Float[D], Tensor<1, Float[E]>) -> Tensor<1, Float[E/D]>` | `times: Tensor<1, Float[D]>`, `states: Tensor<2, Float[E]>`, `evaluations`, `rejected` |
 | `num_ode_rosenbrock23` | same IVP arguments | same vector RHS | same IVP result |
 | `num_ode_radau5` | same IVP arguments | same vector RHS | same IVP result |
@@ -24,7 +25,17 @@ and is dimension-polymorphic. Relative and absolute tolerances are nonnegative
 and cannot both vanish. ODE maximal steps are positive and finite at this ABI;
 its initial step is chosen automatically within the requested interval.
 
-The state vector must be nonempty. Every derivative has the same width. Concrete
+`num_least_squares` is damped nonlinear least squares (Levenberg–Marquardt
+style) over a scoped residual callback. The parameter and residual vectors have
+independent dimensions `D` and `E`; the residual tolerance has dimension `E`, the
+other three tolerances and the damping are dimensionless, and the parameter
+vector must be nonempty. The Jacobian is formed by finite differences of the
+callback (an analytic Jacobian is available only through the Rust kernel
+`kernels::rootfind::least_squares`). `status` is one of `residual_converged`,
+`gradient_converged`, `iteration_limit`, `evaluation_limit` or `stagnated`, and
+`converged` is true only for the first two.
+
+The state vector of an ODE operator must be nonempty. Every derivative has the same width. Concrete
 callback extents, when present in its signature, are checked before executing
 the host, and every returned tensor is checked for rank, shape/storage agreement,
 width and physical dimension. The state result stores one row per accepted time

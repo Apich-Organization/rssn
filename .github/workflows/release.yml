@@ -1,0 +1,136 @@
+# Continuous delivery. Pushing a tag `vX.Y.Z[-pre]` that matches the version in
+# Cargo.toml: builds the C libraries on three platforms, creates a GitHub
+# release with checksummed archives, and publishes the crate to crates.io after
+# a manual approval of the `crates-io` environment.
+#
+# Required repository setup: an environment named `crates-io` (with required
+# reviewers) holding the secret CARGO_REGISTRY_TOKEN.
+
+name: Release
+
+"on":
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build the artifacts but do not create a release or publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: "1.97"
+
+jobs:
+  verify:
+    name: Verify tag and version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "rssn") | .version')
+          echo "Cargo.toml version: $version"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) pre=true ;; *) pre=false ;; esac
+          echo "prerelease=${pre}" >> "$GITHUB_OUTPUT"
+
+  ffi:
+    name: C libraries (${{ matrix.target }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x86_64 }
+          - { os: windows-latest, target: windows-x86_64 }
+          - { os: macos-latest, target: macos-arm64 }
+    env:
+      # Distribution binaries must not depend on the CPU of the build host
+      # (.cargo/config.toml selects `native` for local development).
+      RUSTFLAGS: "-C target-cpu=generic"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Build the static and shared libraries
+        shell: bash
+        run: bash scripts/build_ffi.sh
+      - name: Package
+        shell: bash
+        run: |
+          name="rssn-${{ needs.verify.outputs.version }}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          shopt -s nullglob
+          cp target/release/librssn.a target/release/librssn.so target/release/librssn.dylib \
+             target/release/rssn.dll target/release/rssn.dll.lib target/release/rssn.lib \
+             "dist/${name}/" 2>/dev/null || true
+          cp rssn.h rssn.hpp LICENSE README.md "dist/${name}/"
+          (cd dist && tar -czf "${name}.tar.gz" "${name}")
+          (cd dist && (sha256sum "${name}.tar.gz" 2>/dev/null || shasum -a 256 "${name}.tar.gz") > "${name}.tar.gz.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rssn-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+
+  github-release:
+    name: GitHub release
+    needs: [verify, ffi]
+    if: github.ref_type == 'tag' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then flags="--prerelease"; fi
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "rssn ${{ needs.verify.outputs.version }}" \
+            --generate-notes $flags
+
+  publish:
+    name: Publish to crates.io
+    needs: [verify, ffi]
+    if: github.ref_type == 'tag' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked

@@ -34,11 +34,12 @@ uses `bincode-next`:
 Nothing in rssn writes JSON to a peer. `KernelManifest::to_json` exists for
 humans and for the C ABI's `rssn_manifest_json`, and is documented as such.
 
-The one JSON file the crate *reads* is `signatures.overlay.json`. It is matched
-by the `*.json` ignore rule, so a clean checkout does not contain it; `build.rs`
-copies it into `$OUT_DIR` when it is present and writes an empty overlay when it
-is not, and the crate `include_str!`s that copy. A fresh clone therefore builds,
-and the overlay is still the one place a human corrects an inferred signature.
+The one JSON file the crate *reads* is `signatures.overlay.json`. It is
+version-controlled source (the `*.json` ignore rule has an explicit exception for
+it); `build.rs` copies it into `$OUT_DIR` and the crate `include_str!`s that copy.
+It is the one place a human corrects an inferred signature. A missing file fails
+the build and an invalid signature fails manifest construction; see
+[BUILDING.md](BUILDING.md).
 
 ### 2. One description
 
@@ -92,9 +93,13 @@ Every operator is either typed or explained. The explanation is a
 | `opaque_payload` | it carries host data the kernel does not interpret |
 | `not_yet_specified` | a declaration is missing; the audit treats this as a defect |
 
-`cargo run --bin signature-audit` reports the split and exits non-zero if any
-operator is neither typed nor explained. Today: 1476 operators, every one typed —
-124 declared, 25 overlay and 1352 derived signatures — and 0 unexplained.
+`cargo run --bin signature-audit` reports the split between declared, overlay
+and derived signatures and exits non-zero if any operator is neither typed nor
+explained. At 3.0.0-rc.1 it reports 1476 operators in 37 rule sets, every one
+typed (124 declared, 25 overlay and 1352 derived signatures), 82 units, 30
+constants (18 exact) and 0 unexplained operators. The counts change whenever a
+rule set changes; the audit (and `KernelManifest`) is the authority, not this
+paragraph.
 
 ### 5. Determinism
 
@@ -116,7 +121,7 @@ use rssn::kernel::{CallCtx, OpError, Value};
 let session = rssn::api::Session::new();
 
 // By name, with values.
-let value = session.call_value("sin", &[Value::Real(0.5.into())], &CallCtx::new())?;
+let value = session.call_value("sin", &[Value::Float(0.5)], &CallCtx::new())?;
 
 // An answer that does not reduce comes back as a handle to a term.
 let x = Value::Symbol("x".to_owned());
@@ -289,8 +294,8 @@ its exhaustive `list(...)` form; a single root found on the way is reported with
   units (`au`, `ly`, `pc`, `Rsun`, `Msun`, `Mearth`, `jup`), the CGS set
   (`dyn`, `erg`, `Gal`, `P`, `St`, `G`, `Oe`, `Mx`, `Ba`), and the common
   non-SI units of the Aevia design standard (`Da`/`u`, `kn`, `mph`, `acre`,
-  and the dimensionless information units `bit`, `B`, `KiB`) — 82 units in
-  total.
+  and the dimensionless information units `bit`, `B`, `KiB`) — 82 units at
+  3.0.0-rc.1.
 * `KernelManifest.units` carries `aliases`, `prefixable`, `category` and
   `since` as well as the name, dimension and scale, so a host can generate its
   unit table from the manifest alone.
@@ -313,15 +318,18 @@ a base dimension (`Currency`) the engine has never seen.
 
 ## Threads and handles
 
-`Session` is `Send + Sync` and is the unit of concurrency. `Term<'s>` borrows a
-session and is not `Send`; `TermRef` is `Copy + Send + Sync` and owns nothing —
-it is a `(session_id, node)` pair, refused by any session but the one that minted
-it. That turns a use-after-free of a term handle into an error instead of a wrong
+A `Session` is single-threaded (its store sits behind a `RefCell`, so it is not
+`Sync`): use one session per thread. `Term<'s>` borrows a session and cannot
+outlive it; `TermRef` is `Copy + Send + Sync` and owns nothing — it is a
+`(session_id, node)` pair, refused by any session but the one that minted it.
+That turns a use-after-free of a term handle into an error instead of a wrong
 answer.
 
-`fork` gives a session its own graph; `merge` imports every node of another and
-translates dimension assumptions between the two arenas, failing on a
-disagreement rather than picking a winner.
+`fork` gives a session its own graph, which can be moved to another thread;
+`merge` imports every node of another and translates dimension assumptions
+between the two arenas, failing on a disagreement rather than picking a winner.
+`Session::compute_all` is the supported way to compute several requests in
+parallel inside one session.
 
 ## The C ABI
 
@@ -331,7 +339,8 @@ uint64_t    hash = rssn_manifest_hash();
 ```
 
 Both describe the *standard* build. A host that installed plugins reads the
-richer per-session manifest through the Rust API.
+richer per-session manifest through the Rust API. The rest of the C interface is
+summarised in [ARCHITECTURE.md](../ARCHITECTURE.md#c-interface).
 
 ## What the JIT can do
 

@@ -1,5 +1,4 @@
-//! Determinism and timing checks of the in-algorithm parallel sites
-//! (Part 6 of `docs/ALGORITHM_COMPLETION_CHECKLIST.md`).
+//! Determinism and timing checks of the in-algorithm parallel sites.
 //!
 //! Every site is run once inside a one-thread rayon pool (the serial
 //! behaviour) and once in the global pool; the two results must be equal
