@@ -125,6 +125,11 @@ blake3 = "1.8"
 # Loading a plugin from a shared library (`plugin-cdylib`). Opt-in: it runs
 # arbitrary code in the host process.
 libloading = { version = "0.9", optional = true }
+# GPU execution through wgpu (`rssn::backend::device::gpu`, feature `gpu-wgpu`).
+# Opt-in; off by default so the default build never compiles the GPU stack.
+wgpu = { version = "27", optional = true, default-features = false, features = ["wgsl", "vulkan", "metal", "dx12"] }
+pollster = { version = "0.4", optional = true }
+bytemuck = { version = "1", optional = true }
 
 [dependencies.faer]
 version = "0.24"
@@ -146,6 +151,8 @@ npy = ["dep:ndarray-npy"]
 # Loading plugins from shared libraries (`rssn::kernel::cdylib`). Off by
 # default: a cdylib runs arbitrary code in the host process with no sandbox.
 plugin-cdylib = ["dep:libloading"]
+# GPU device through wgpu: WGSL kernels, f32 arithmetic (`docs/BACKENDS.md`).
+gpu-wgpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 full = ["npy", "jit", "plugin-cdylib"]
 
 [dev-dependencies]

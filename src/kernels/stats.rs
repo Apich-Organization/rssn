@@ -57,7 +57,18 @@ pub fn mean(data: &[f64]) -> f64 {
         return 0.0;
     }
 
-    data.iter().sum::<f64>() / (data.len() as f64)
+    let n = data.len() as f64;
+    let direct = data.iter().sum::<f64>() / n;
+    if direct.is_finite() {
+        return direct;
+    }
+    // The plain sum overflowed (or the data hold a non-finite value). Redo it
+    // with scaled terms; a genuine NaN/inf in the data still propagates.
+    if data.iter().all(|x| x.is_finite()) {
+        data.iter().map(|x| x / n).sum()
+    } else {
+        direct
+    }
 }
 
 /// Represents the type of variance to compute.
@@ -149,6 +160,10 @@ pub fn std_dev(data: &[f64]) -> f64 {
 /// # Returns
 /// The median of the data as an `f64`.
 pub fn median(data: &mut [f64]) -> f64 {
+    if data.is_empty() || data.iter().any(|x| x.is_nan()) {
+        return f64::NAN;
+    }
+
     let mut data_container = Data::new(data);
 
     data_container.median()
@@ -161,41 +176,42 @@ pub fn median(data: &mut [f64]) -> f64 {
 /// * `p` - The desired percentile (e.g., 50.0 for median).
 ///
 /// # Returns
-/// The p-th percentile of the data as an `f64`.
+/// The p-th percentile of the data (fractional `p` allowed), or NaN for empty
+/// data, data containing NaN, or `p` outside `0..=100`.
 pub fn percentile(
     data: &mut [f64],
     p: f64,
 ) -> f64 {
-    let mut data_container = Data::new(data);
-
-    if p < 0.0 {
+    if data.is_empty() || !(0.0..=100.0).contains(&p) || data.iter().any(|x| x.is_nan()) {
         return f64::NAN;
     }
 
-    #[allow(clippy::cast_sign_loss)]
-    data_container.percentile(p as usize)
+    let mut data_container = Data::new(data);
+
+    data_container.quantile(p / 100.0)
 }
 
-/// Computes the covariance of two slices of data.
+/// Computes the sample covariance of two slices of data.
 ///
 /// # Arguments
 /// * `data1` - The first slice of `f64` data points.
 /// * `data2` - The second slice of `f64` data points.
 ///
 /// # Returns
-/// The covariance of the two data sets as an `f64`.
+/// The covariance of the two data sets, or NaN when the slices differ in
+/// length or hold fewer than two points.
 #[must_use]
 pub fn covariance(
     data1: &[f64],
     data2: &[f64],
 ) -> f64 {
-    let data1_vec = data1.to_vec();
+    if data1.len() != data2.len() || data1.len() < 2 {
+        return f64::NAN;
+    }
 
-    let data2_vec = data2.to_vec();
+    let mean1 = mean(data1);
 
-    let mean1 = mean(&data1_vec);
-
-    let mean2 = mean(&data2_vec);
+    let mean2 = mean(data2);
 
     let n = data1.len() as f64;
 
@@ -421,6 +437,10 @@ pub fn simple_linear_regression(data: &[(f64, f64)]) -> (f64, f64) {
 
 /// Computes the minimum value of a slice of data.
 pub fn min(data: &mut [f64]) -> f64 {
+    if data.is_empty() || data.iter().any(|x| x.is_nan()) {
+        return f64::NAN;
+    }
+
     let data_container = Data::new(data);
 
     data_container.min()
@@ -428,6 +448,10 @@ pub fn min(data: &mut [f64]) -> f64 {
 
 /// Computes the maximum value of a slice of data.
 pub fn max(data: &mut [f64]) -> f64 {
+    if data.is_empty() || data.iter().any(|x| x.is_nan()) {
+        return f64::NAN;
+    }
+
     let data_container = Data::new(data);
 
     data_container.max()
@@ -679,7 +703,10 @@ pub fn one_way_anova(groups: &mut [&mut [f64]]) -> (f64, f64) {
         return (f64::NAN, f64::NAN);
     };
 
-    let p_value = 1.0 - f_dist.cdf(f_stat);
+    if f_stat.is_nan() {
+        return (f_stat, f64::NAN);
+    }
+    let p_value = f_dist.sf(f_stat);
 
     (f_stat, p_value)
 }
@@ -723,7 +750,10 @@ pub fn two_sample_t_test(
         return (f64::NAN, f64::NAN);
     };
 
-    let p_value = 2.0 * (1.0 - t_dist.cdf(t_stat.abs()));
+    if t_stat.is_nan() {
+        return (t_stat, f64::NAN);
+    }
+    let p_value = 2.0 * t_dist.sf(t_stat.abs());
 
     (t_stat, p_value)
 }
@@ -732,6 +762,10 @@ pub fn two_sample_t_test(
 /// H(X) = -Σ p(x) * log2(p(x))
 #[must_use]
 pub fn shannon_entropy(probabilities: &[f64]) -> f64 {
+    if probabilities.iter().any(|p| p.is_nan()) {
+        return f64::NAN;
+    }
+
     probabilities
         .iter()
         .filter(|&&p| p > 0.0)
@@ -782,7 +816,7 @@ pub fn range(data: &[f64]) -> f64 {
 
 /// Computes the Interquartile Range (IQR) = Q3 - Q1.
 pub fn iqr(data: &mut [f64]) -> f64 {
-    if data.len() < 4 {
+    if data.len() < 4 || data.iter().any(|x| x.is_nan()) {
         return f64::NAN;
     }
 
@@ -894,7 +928,10 @@ pub fn welch_t_test(
         return (f64::NAN, f64::NAN);
     };
 
-    let p_value = 2.0 * (1.0 - t_dist.cdf(t_stat.abs()));
+    if t_stat.is_nan() {
+        return (t_stat, f64::NAN);
+    }
+    let p_value = 2.0 * t_dist.sf(t_stat.abs());
 
     (t_stat, p_value)
 }
@@ -933,7 +970,10 @@ pub fn chi_squared_test(
         return (chi_sq, f64::NAN);
     };
 
-    let p_value = 1.0 - chi_dist.cdf(chi_sq);
+    if chi_sq.is_nan() {
+        return (chi_sq, f64::NAN);
+    }
+    let p_value = chi_dist.sf(chi_sq);
 
     (chi_sq, p_value)
 }

@@ -123,6 +123,8 @@ pub mod simplex_quadrature;
 pub mod solve;
 pub mod sparse;
 pub mod special;
+/// Gamma, digamma, Lambert W and Bessel J/I functions of a complex argument.
+pub mod special_complex;
 /// Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
 pub mod special_ext;
 pub mod stats;

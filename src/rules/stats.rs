@@ -72,7 +72,6 @@ use statrs::distribution::Normal;
 use statrs::distribution::StudentsT;
 use statrs::function::beta::beta_reg as statrs_beta_reg;
 use statrs::function::erf::erfc;
-use statrs::function::gamma::gamma_lr as statrs_gamma_lr;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -967,13 +966,15 @@ fn gamma_lr_eval(args: &[f64]) -> f64 {
     let (Some(&a), Some(&x)) = (args.first(), args.get(1)) else {
         return f64::NAN;
     };
-    if a.is_nan() || x.is_nan() || a <= 0.0 {
+    if a.is_nan() || x.is_nan() || a <= 0.0 || a.is_infinite() {
         return f64::NAN;
     }
     if x <= 0.0 {
         return 0.0;
     }
-    statrs_gamma_lr(a, x)
+    // The in-crate routine is accurate in both tails and total on x = inf,
+    // where the statrs one panics.
+    crate::kernels::special::regularized_lower_gamma(a, x)
 }
 
 /// Regularised incomplete beta function `I_x(a, b)`, clamped to `[0, 1]`
@@ -982,7 +983,14 @@ fn beta_reg_eval(args: &[f64]) -> f64 {
     let (Some(&a), Some(&b), Some(&x)) = (args.first(), args.get(1), args.get(2)) else {
         return f64::NAN;
     };
-    if a.is_nan() || b.is_nan() || x.is_nan() || a <= 0.0 || b <= 0.0 {
+    if a.is_nan()
+        || b.is_nan()
+        || x.is_nan()
+        || a <= 0.0
+        || b <= 0.0
+        || a.is_infinite()
+        || b.is_infinite()
+    {
         return f64::NAN;
     }
     if x <= 0.0 {

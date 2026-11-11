@@ -46,6 +46,8 @@ pub enum DenseError {
     Singular,
     /// An iteration did not converge.
     NoConvergence,
+    /// The input holds NaN or an infinity.
+    NonFinite,
 }
 
 impl fmt::Display for DenseError {
@@ -57,6 +59,7 @@ impl fmt::Display for DenseError {
             | Self::Shape => write!(f, "incompatible shapes"),
             | Self::Singular => write!(f, "matrix is singular or not positive definite"),
             | Self::NoConvergence => write!(f, "iteration did not converge"),
+            | Self::NonFinite => write!(f, "input contains NaN or infinity"),
         }
     }
 }
@@ -115,6 +118,12 @@ impl Mat {
             cols: c,
             data: rows.concat(),
         })
+    }
+
+    /// Whether every entry is finite (no NaN, no infinity).
+    #[must_use]
+    pub fn is_finite(&self) -> bool {
+        self.data.iter().all(|x| x.is_finite())
     }
 
     /// Entry `(i, j)`.
@@ -229,6 +238,9 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
     let n = a.rows;
     let mut lu = a.clone();
     let mut piv: Vec<usize> = (0..n).collect();
@@ -339,6 +351,9 @@ pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
     let n = a.rows;
     let mut l = Mat::zeros(n, n);
     for i in 0..n {
@@ -368,6 +383,9 @@ pub fn cholesky_solve(
     a: &Mat,
     b: &[f64],
 ) -> Result<Vec<f64>, DenseError> {
+    if b.len() != a.rows {
+        return Err(DenseError::Shape);
+    }
     let l = cholesky(a)?;
     let n = a.rows;
     let mut y = b.to_vec();
@@ -444,6 +462,9 @@ pub fn lstsq(
     if m < n || b.len() != m {
         return Err(DenseError::Shape);
     }
+    if !a.is_finite() || !b.iter().all(|x| x.is_finite()) {
+        return Err(DenseError::NonFinite);
+    }
     let (q, r) = qr(a);
     let qtb = q.transpose().matvec(b);
     let mut x = vec![0.0; n];
@@ -461,6 +482,29 @@ pub fn lstsq(
     Ok(x)
 }
 
+/// Power-of-two factor that brings the largest entry of `a` near 1 when it
+/// is far outside `[1e-100, 1e100]` (so that squares in the QR/Jacobi
+/// iterations neither overflow nor underflow), else `None`.
+fn eigen_scale(a: &Mat) -> Option<f64> {
+    let big = a.data.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+    if big.is_finite() && big > 0.0 && !(1e-100..=1e100).contains(&big) {
+        Some(2f64.powi(big.log2().round() as i32))
+    } else {
+        None
+    }
+}
+
+fn scaled(
+    a: &Mat,
+    factor: f64,
+) -> Mat {
+    let mut out = a.clone();
+    for x in &mut out.data {
+        *x /= factor;
+    }
+    out
+}
+
 /// Eigen-decomposition of a symmetric matrix by cyclic Jacobi rotations.
 ///
 /// Returns eigenvalues in ascending order and the matrix whose columns are
@@ -470,8 +514,17 @@ pub fn lstsq(
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NoConvergence`]
 /// after 100 sweeps.
 pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
+    if let Some(f) = eigen_scale(a) {
+        if a.rows == a.cols && a.is_finite() {
+            let (vals, vecs) = eigen_symmetric(&scaled(a, f))?;
+            return Ok((vals.into_iter().map(|v| v * f).collect(), vecs));
+        }
+    }
     if a.rows != a.cols {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let n = a.rows;
     if n == 0 {
@@ -556,8 +609,11 @@ pub struct Svd {
 /// Returns [`DenseError::Shape`] for inconsistent storage or non-finite input,
 /// and [`DenseError::NoConvergence`] if the backend does not converge.
 pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
-    if a.rows.checked_mul(a.cols) != Some(a.data.len()) || !a.data.iter().all(|x| x.is_finite()) {
+    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let k = a.rows.min(a.cols);
     if k == 0 {
@@ -626,6 +682,66 @@ pub fn rank(
     Ok(s.iter().filter(|&&v| v > t).count())
 }
 
+/// Orthonormal basis of the null space `{x : A x = 0}` as the columns of the
+/// result (`cols x (cols - rank)`), from the SVD.
+///
+/// `tol` is the singular-value threshold (default `max(m, n) * eps * sigma_max`).
+/// An empty matrix has the whole space as null space; a zero matrix too.
+///
+/// # Errors
+/// As [`svd`].
+pub fn null_space(
+    a: &Mat,
+    tol: Option<f64>,
+) -> Result<Mat, DenseError> {
+    let n = a.cols;
+    if n == 0 {
+        return Ok(Mat::zeros(0, 0));
+    }
+    if a.rows == 0 {
+        return Ok(Mat::identity(n));
+    }
+    // Pad a wide matrix with zero rows so that the thin SVD returns all of V.
+    let mut padded = a.clone();
+    if a.rows < n {
+        padded.data.resize(n * n, 0.0);
+        padded.rows = n;
+    }
+    let d = svd(&padded)?;
+    let smax = d.s.first().copied().unwrap_or(0.0);
+    let t = tol.unwrap_or_else(|| a.rows.max(n) as f64 * f64::EPSILON * smax);
+    let rank = d.s.iter().filter(|&&v| v > t).count();
+    let mut out = Mat::zeros(n, n - rank);
+    for j in rank..n {
+        for i in 0..n {
+            out.set(i, j - rank, d.v.at(i, j));
+        }
+    }
+    Ok(out)
+}
+
+/// Orthonormal basis of the column space (range) of `A` as the columns of
+/// the result (`rows x rank`), from the SVD; `tol` as in [`null_space`].
+///
+/// # Errors
+/// As [`svd`].
+pub fn orth(
+    a: &Mat,
+    tol: Option<f64>,
+) -> Result<Mat, DenseError> {
+    let d = svd(a)?;
+    let smax = d.s.first().copied().unwrap_or(0.0);
+    let t = tol.unwrap_or_else(|| a.rows.max(a.cols) as f64 * f64::EPSILON * smax);
+    let rank = d.s.iter().filter(|&&v| v > t).count();
+    let mut out = Mat::zeros(a.rows, rank);
+    for j in 0..rank {
+        for i in 0..a.rows {
+            out.set(i, j, d.u.at(i, j));
+        }
+    }
+    Ok(out)
+}
+
 /// Moore-Penrose pseudo-inverse through the SVD.
 ///
 /// # Errors
@@ -692,6 +808,9 @@ pub fn eigen_generalized_symmetric(
 ) -> Result<GeneralizedEigen, DenseError> {
     if a.rows != a.cols || b.rows != b.cols || a.rows != b.rows {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() || !b.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let n = a.rows;
     if let Ok(l) = cholesky(b) {
@@ -769,8 +888,17 @@ pub fn eigen_generalized_symmetric(
 /// # Errors
 /// [`DenseError::NoConvergence`] when a root needs more than 60 iterations.
 pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
+    if let Some(f) = eigen_scale(a) {
+        if a.rows == a.cols && a.is_finite() {
+            let v = eigenvalues(&scaled(a, f))?;
+            return Ok(v.into_iter().map(|(re, im)| (re * f, im * f)).collect());
+        }
+    }
     if a.rows != a.cols {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let n = a.rows;
     if n == 0 {
@@ -1061,8 +1189,20 @@ pub struct Eigen {
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NoConvergence`]
 /// when a Schur eigenvalue needs more than `200 n` QR sweeps.
 pub fn eigen(a: &Mat) -> Result<Eigen, DenseError> {
+    if let Some(f) = eigen_scale(a) {
+        if a.rows == a.cols && a.is_finite() {
+            let mut e = eigen(&scaled(a, f))?;
+            for v in &mut e.values {
+                *v = (v.0 * f, v.1 * f);
+            }
+            return Ok(e);
+        }
+    }
     if a.rows != a.cols {
         return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
     }
     let n = a.rows;
     if n == 0 {

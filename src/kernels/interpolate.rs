@@ -89,8 +89,8 @@ pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Result<Polynomial, Strin
 
             let denominator = xj - xi;
 
-            if denominator.abs() < 1e-9 {
-                return Err(format!("Duplicate x-coordinates found: {xj}"));
+            if denominator == 0.0 || denominator.is_nan() {
+                return Err(format!("Duplicate or non-finite x-coordinates found: {xj}"));
             }
 
             basis_poly = basis_poly * (numerator / denominator);
@@ -144,10 +144,21 @@ pub fn cubic_spline_interpolation(
             .to_string());
     }
 
+    if points
+        .iter()
+        .any(|&(x, y)| !x.is_finite() || !y.is_finite())
+    {
+        return Err("The data must be finite.".to_string());
+    }
+
     let mut h = vec![0.0; n - 1];
 
     for i in 0..n - 1 {
         h[i] = points[i + 1].0 - points[i].0;
+
+        if h[i] <= 0.0 {
+            return Err("The x-coordinates must be strictly increasing.".to_string());
+        }
     }
 
     // 1. Calculate Alpha (size n)

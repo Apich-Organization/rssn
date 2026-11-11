@@ -105,6 +105,12 @@ pub struct Features {
     /// capability refuses it with a precise diagnostic instead of failing
     /// obscurely at the loader.
     pub plugin_kinds: Vec<String>,
+    /// Execution devices this build can offer (`rssn::backend::device`), as
+    /// kind tags: `cpu`, `cpu-parallel`, and `gpu-wgpu` with feature
+    /// `gpu-wgpu`. A build fact, not a hardware probe: which GPUs are present
+    /// is answered at run time by `backend::device::registry().list()`.
+    #[serde(default)]
+    pub devices: Vec<String>,
 }
 
 impl Features {
@@ -124,6 +130,7 @@ impl Features {
             structured_results: true,
             higher_order: true,
             sde: true,
+            devices: crate::backend::device::build_devices(),
             plugin_kinds: if cfg!(feature = "plugin-cdylib") {
                 vec![String::from("in-process"), String::from("cdylib")]
             } else {

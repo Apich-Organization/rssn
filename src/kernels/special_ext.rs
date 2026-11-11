@@ -1807,8 +1807,14 @@ pub fn polylog_complex(
         }
         return polylog_positive_integer(n, z);
     }
-    if z.norm() <= 0.5 {
+    if z.norm() <= 0.5 || (s.re > 40.0 && z.norm() <= 1.0) {
+        // For large Re s the terms z^k / k^s decay fast even on |z| <= 1.
         return polylog_series(s, z);
+    }
+    if s.norm() > 1e5 {
+        // The logarithmic expansion needs zeta(s - k) for many k: not
+        // meaningful (and extremely slow) for huge orders.
+        return nan;
     }
     let mu = z.ln();
     // The logarithmic expansion needs `|ln z| < 2π`; in practice the term

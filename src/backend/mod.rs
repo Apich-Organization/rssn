@@ -18,6 +18,10 @@
 //!   ([`OpTable::set_attr`](crate::graph::OpTable::set_attr)) without the
 //!   kernel knowing about them.
 //!
+//! * [`device`] is the data-parallel axis: it runs one program over many rows
+//!   on a CPU thread pool or a GPU, behind a capability-described `Device`
+//!   trait (see `docs/BACKENDS.md`).
+//!
 //! Numeric reduction kernels and the simulation steppers only see
 //! `dyn Compiled`, so switching executors never touches them.
 
@@ -27,6 +31,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+pub mod device;
 #[cfg(feature = "jit")]
 pub mod jit;
 pub mod tape;
@@ -270,6 +275,12 @@ pub struct TapeFunction {
 }
 
 impl TapeFunction {
+    /// Wraps a lowered program (the host fallback of [`device::DeviceBackend`]).
+    #[must_use]
+    pub const fn from_tape(tape: tape::Tape) -> Self {
+        Self { tape }
+    }
+
     /// The underlying program.
     #[must_use]
     pub const fn tape(&self) -> &tape::Tape {

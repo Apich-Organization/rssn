@@ -64,6 +64,9 @@ fn cached(
     args: &[f64],
     compute: impl FnOnce() -> f64,
 ) -> f64 {
+    if args.iter().any(|v| !v.is_finite()) {
+        return f64::NAN;
+    }
     let mut key: Vec<u64> = args.iter().map(|v| v.to_bits()).collect();
     key.push(tag);
     if let Some(found) = ROOTS.with(|c| c.borrow().get(&key).copied()) {
@@ -91,7 +94,14 @@ fn nth_sign_change(
     let mut found = 0;
     let mut x = start;
     let mut gx = g(x);
-    for _ in 0..200_000_u32 {
+    // Each evaluation of `g` is a Bessel function whose cost grows with the
+    // order, so a huge order (or a huge m) could take hours: give up after
+    // a few seconds and report NaN (no root found) instead of hanging.
+    let started = std::time::Instant::now();
+    for step_index in 0..200_000_u32 {
+        if step_index % 64 == 63 && started.elapsed() > std::time::Duration::from_secs(3) {
+            return f64::NAN;
+        }
         let next = x + step;
         let gn = g(next);
         if gx.is_finite() && gn.is_finite() && (gx == 0.0 || gx * gn < 0.0) {
@@ -361,7 +371,9 @@ pub(super) fn struve_h(args: &[f64]) -> f64 {
     let (Some(&nu), Some(&x)) = (args.first(), args.get(1)) else {
         return f64::NAN;
     };
-    if nu.is_nan() || x.is_nan() {
+    // Orders and arguments beyond 1e6 would need an unbounded quadrature or
+    // series; they are reported as undefined instead of hanging.
+    if !nu.is_finite() || nu.abs() > 1e6 || x.is_nan() || x.abs() > 1e6 {
         return f64::NAN;
     }
     if x < 0.0 {
@@ -392,7 +404,9 @@ pub(super) fn struve_l(args: &[f64]) -> f64 {
     let (Some(&nu), Some(&x)) = (args.first(), args.get(1)) else {
         return f64::NAN;
     };
-    if nu.is_nan() || x.is_nan() {
+    // Orders and arguments beyond 1e6 would need an unbounded quadrature or
+    // series; they are reported as undefined instead of hanging.
+    if !nu.is_finite() || nu.abs() > 1e6 || x.is_nan() || x.abs() > 1e6 {
         return f64::NAN;
     }
     if x < 0.0 {

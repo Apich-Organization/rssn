@@ -38,12 +38,49 @@ use statrs::function::gamma::ln_gamma;
 /// Γ(n) = (n-1)! for positive integers.
 #[must_use]
 pub fn gamma_numerical(x: f64) -> f64 {
+    if x.is_nan() || x == f64::NEG_INFINITY {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return f64::INFINITY.copysign(x);
+    }
+    if x < 0.0 && x == x.floor() {
+        // Poles at the negative integers have no real limit.
+        return f64::NAN;
+    }
+    if x > 171.624_376_956_302_7 {
+        return f64::INFINITY;
+    }
+    if x > 0.0 && x == x.floor() && x <= 171.0 {
+        // Exact product: statrs overflows one integer too early (171).
+        let mut r = 1.0_f64;
+        let mut k = 2.0_f64;
+        while k < x {
+            r *= k;
+            k += 1.0;
+        }
+        return r;
+    }
+    if x > 140.0 {
+        // Stirling with the power split in two halves, so that
+        // (x/e)^x does not overflow before Gamma does.
+        let series = 1.0 + 1.0 / (12.0 * x) + 1.0 / (288.0 * x * x)
+            - 139.0 / (51_840.0 * x * x * x)
+            - 571.0 / (2_488_320.0 * x.powi(4))
+            + 163_879.0 / (209_018_880.0 * x.powi(5));
+        let half = (x / std::f64::consts::E).powf(x / 2.0);
+        return (2.0 * std::f64::consts::PI / x).sqrt() * series * half * half;
+    }
     gamma(x)
 }
 
 /// Computes the natural logarithm of the gamma function, ln(Γ(x)).
 #[must_use]
 pub fn ln_gamma_numerical(x: f64) -> f64 {
+    if x > 0.0 && x == x.floor() && x <= 171.0 {
+        // ln((x - 1)!) from the exact product: lgamma(1) = lgamma(2) = 0.
+        return gamma_numerical(x).ln();
+    }
     if x < 0.0 && x.is_finite() {
         // ln |Gamma(x)| for negative x by the reflection formula (+inf at the poles)
         let s = (std::f64::consts::PI * x).sin().abs();
@@ -58,71 +95,181 @@ pub fn ln_gamma_numerical(x: f64) -> f64 {
 /// Computes the digamma function, ψ(x) = d/dx ln(Γ(x)) = Γ'(x)/Γ(x).
 #[must_use]
 pub fn digamma_numerical(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    if x < 0.0 && x == x.floor() {
+        return f64::NAN;
+    }
     digamma(x)
+}
+
+/// The regularised incomplete gamma functions `(P(a, x), Q(a, x))`, both
+/// computed on the side where they are small, so that neither tail loses
+/// precision. `a > 0`, `x >= 0`.
+///
+/// Series for `x < a + 1`, modified-Lentz continued fraction otherwise, with
+/// the prefactor `x^a e^-x / Gamma(a)` taken in log space.
+fn gamma_pq(
+    a: f64,
+    x: f64,
+) -> (f64, f64) {
+    if x == 0.0 {
+        return (0.0, 1.0);
+    }
+    if x == f64::INFINITY {
+        return (1.0, 0.0);
+    }
+    let log_prefactor = a.mul_add(x.ln(), -x) - ln_gamma_numerical(a);
+    if x < a + 1.0 {
+        let mut term = 1.0 / a;
+        let mut sum = term;
+        let mut n = a;
+        for _ in 0..2_000_000 {
+            n += 1.0;
+            term *= x / n;
+            sum += term;
+            if term < sum * 1e-17 {
+                break;
+            }
+        }
+        let p = (log_prefactor.exp() * sum).min(1.0);
+        (p, 1.0 - p)
+    } else {
+        // Lentz: Q = prefactor / (x + 1 - a - 1*(1-a)/(x + 3 - a - ...))
+        let tiny = 1e-300;
+        let mut b = x + 1.0 - a;
+        let mut c = 1.0 / tiny;
+        let mut d = 1.0 / b;
+        let mut h = d;
+        for i in 1..2_000_000 {
+            let fi = f64::from(i);
+            let an = -fi * (fi - a);
+            b += 2.0;
+            d = an.mul_add(d, b);
+            if d.abs() < tiny {
+                d = tiny;
+            }
+            c = b + an / c;
+            if c.abs() < tiny {
+                c = tiny;
+            }
+            d = 1.0 / d;
+            let delta = d * c;
+            h *= delta;
+            if (delta - 1.0).abs() < 1e-16 {
+                break;
+            }
+        }
+        let q = (log_prefactor.exp() * h).min(1.0);
+        (1.0 - q, q)
+    }
+}
+
+/// Domain check shared by the incomplete gamma functions (the caller
+/// handles `a <= 0`).
+fn gamma_args_valid(
+    a: f64,
+    x: f64,
+) -> bool {
+    !(a.is_nan() || x.is_nan() || x < 0.0)
 }
 
 /// Computes the lower incomplete gamma function, γ(s, x) = ∫₀ˣ t^(s-1) e^(-t) dt.
 /// Uses series expansion for computation.
+/// Computed as `P(s, x) Gamma(s)` from the regularised function (series or
+/// continued fraction), so it is accurate for large `x` too.
 #[must_use]
 pub fn lower_incomplete_gamma(
     s: f64,
     x: f64,
 ) -> f64 {
-    if x < 0.0 || s <= 0.0 {
+    if !gamma_args_valid(s, x) || s <= 0.0 {
         return f64::NAN;
     }
-
-    if x == 0.0 {
-        return 0.0;
+    let (p, _) = gamma_pq(s, x);
+    if s > 170.0 {
+        // Gamma(s) overflows; combine in log space.
+        return (p.ln() + ln_gamma_numerical(s)).exp();
     }
-
-    // Use series expansion: γ(s,x) = x^s * e^(-x) * Σ(x^n / Γ(s+n+1))
-    // Or regularized: P(s,x) = γ(s,x) / Γ(s)
-    // Using statrs regularized gamma if available, otherwise series
-    let mut sum = 0.0;
-
-    let mut term = 1.0 / s;
-
-    sum += term;
-
-    for n in 1..200 {
-        term *= x / (s + f64::from(n));
-
-        sum += term;
-
-        if term.abs() < 1e-15 * sum.abs() {
-            break;
-        }
-    }
-
-    x.powf(s) * (-x).exp() * sum
+    p * gamma_numerical(s)
 }
 
-/// Computes the upper incomplete gamma function, Γ(s, x) = ∫ₓ^∞ t^(s-1) e^(-t) dt.
+/// The upper incomplete gamma function `Gamma(s, x)`, computed from the
+/// complementary tail (no cancellation against `Gamma(s)`); defined for every
+/// real `s` when `x > 0` (`s <= 0` through the recurrence and `E1`).
 #[must_use]
 pub fn upper_incomplete_gamma(
     s: f64,
     x: f64,
 ) -> f64 {
-    gamma(s) - lower_incomplete_gamma(s, x)
+    if !gamma_args_valid(s, x) {
+        return f64::NAN;
+    }
+    if s > 0.0 {
+        let (_, q) = gamma_pq(s, x);
+        if s > 170.0 {
+            return (q.ln() + ln_gamma_numerical(s)).exp();
+        }
+        return q * gamma_numerical(s);
+    }
+    if x == 0.0 {
+        return f64::NAN;
+    }
+    // s <= 0: lift from Gamma(0, x) = E1(x) or from a positive order by
+    // Gamma(s, x) = (Gamma(s + 1, x) - x^s e^-x) / s.
+    if s == s.floor() {
+        let mut value = exp_integral_e1(x);
+        let mut order = 0.0_f64;
+        while order > s {
+            order -= 1.0;
+            value = (value - x.powf(order) * (-x).exp()) / order;
+        }
+        return value;
+    }
+    let mut order = s + (-s).ceil();
+    let mut value = upper_incomplete_gamma(order, x);
+    while order > s + 0.5 {
+        order -= 1.0;
+        value = (value - x.powf(order) * (-x).exp()) / order;
+    }
+    value
 }
 
-/// Computes the regularized lower incomplete gamma function, P(s, x) = γ(s, x) / Γ(s).
+/// The regularised lower incomplete gamma function `P(s, x)`, accurate in
+/// both tails; `P(0, x) = 1` for `x > 0` and NaN for `s < 0` or `x < 0`.
 #[must_use]
 pub fn regularized_lower_gamma(
     s: f64,
     x: f64,
 ) -> f64 {
-    lower_incomplete_gamma(s, x) / gamma(s)
+    if !gamma_args_valid(s, x) || s < 0.0 {
+        return f64::NAN;
+    }
+    if s == 0.0 {
+        // The limit a -> 0+ is 1 for every x > 0.
+        return if x > 0.0 { 1.0 } else { f64::NAN };
+    }
+    gamma_pq(s, x).0
 }
 
-/// Computes the regularized upper incomplete gamma function, Q(s, x) = Γ(s, x) / Γ(s).
+/// The regularised upper incomplete gamma function `Q(s, x) = 1 - P(s, x)`,
+/// computed directly so that `Q` of order `1e-300` keeps its digits.
 #[must_use]
 pub fn regularized_upper_gamma(
     s: f64,
     x: f64,
 ) -> f64 {
-    1.0 - regularized_lower_gamma(s, x)
+    if !gamma_args_valid(s, x) || s < 0.0 {
+        return f64::NAN;
+    }
+    if s == 0.0 {
+        return if x > 0.0 { 0.0 } else { f64::NAN };
+    }
+    gamma_pq(s, x).1
 }
 
 // ============================================================================
@@ -998,8 +1145,10 @@ pub fn factorial(n: u64) -> f64 {
     if n <= 1 {
         return 1.0;
     }
-
-    gamma((n + 1) as f64)
+    if n > 170 {
+        return f64::INFINITY;
+    }
+    gamma_numerical((n + 1) as f64)
 }
 
 /// Computes the double factorial n!!
@@ -1037,8 +1186,22 @@ pub fn binomial(
         return 1.0;
     }
 
-    // Use gamma for large values to avoid overflow
-    gamma((n + 1) as f64) / (gamma((k + 1) as f64) * gamma((n - k + 1) as f64))
+    let k = k.min(n - k);
+    if k <= 2_000 {
+        // Multiplicative formula: exact intermediate values, no overflow
+        // before the result itself overflows.
+        let mut result = 1.0_f64;
+        for i in 1..=k {
+            result *= ((n - k + i) as f64) / (i as f64);
+        }
+        return result;
+    }
+    // Huge k: through log-gamma (relative accuracy about n ln n * eps).
+    let (nf, kf) = (n as f64, k as f64);
+    (ln_gamma_numerical(nf + 1.0)
+        - ln_gamma_numerical(kf + 1.0)
+        - ln_gamma_numerical(nf - kf + 1.0))
+    .exp()
 }
 
 /// Computes the Riemann zeta function ζ(s) for real `s`.
@@ -1066,6 +1229,35 @@ pub fn riemann_zeta(s: f64) -> f64 {
 
     if (s - 1.0).abs() < 1e-15 {
         return f64::INFINITY;
+    }
+
+    if (s - 1.0).abs() < 0.1 {
+        // Laurent series at the pole, with the Stieltjes constants:
+        // zeta(s) = 1/(s - 1) + sum_n (-1)^n gamma_n (s - 1)^n / n!.
+        const STIELTJES: [f64; 9] = [
+            0.577_215_664_901_532_9,
+            -0.072_815_845_483_676_72,
+            -0.009_690_363_192_872_318,
+            0.002_053_834_420_303_346,
+            0.002_325_370_065_467_3,
+            0.000_793_323_817_301_062_7,
+            -0.000_238_769_345_430_199_6,
+            -0.000_527_289_567_057_751,
+            -0.000_352_123_353_803_039_5,
+        ];
+        let e = s - 1.0;
+        let mut sum = 0.0;
+        let mut power = 1.0;
+        let mut factorial = 1.0;
+        for (n, g) in STIELTJES.iter().enumerate() {
+            if n > 0 {
+                factorial *= n as f64;
+            }
+            let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
+            sum += sign * g * power / factorial;
+            power *= e;
+        }
+        return 1.0 / e + sum;
     }
 
     if s > 1.0 {
@@ -1141,14 +1333,21 @@ pub fn sinc(x: f64) -> f64 {
     px.sin() / px
 }
 
-/// Computes the logit function logit(p) = ln(p / (1-p)).
+/// Computes the logit function logit(p) = ln(p / (1-p)); `-inf` at 0, `+inf` at 1, NaN outside `[0, 1]`.
 #[must_use]
 pub fn logit(p: f64) -> f64 {
-    if p <= 0.0 || p >= 1.0 {
+    if p.is_nan() || !(0.0..=1.0).contains(&p) {
         return f64::NAN;
     }
+    if p == 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    if p == 1.0 {
+        return f64::INFINITY;
+    }
 
-    (p / (1.0 - p)).ln()
+    // ln(p) - ln(1 - p) without the division and the rounding of 1 - p.
+    p.ln() - (-p).ln_1p()
 }
 
 /// Computes the logistic (sigmoid) function σ(x) = 1 / (1 + e^(-x)).
@@ -1254,6 +1453,21 @@ pub fn hurwitz_zeta(
     s: f64,
     q: f64,
 ) -> f64 {
+    if s.is_nan() || q.is_nan() || q.is_infinite() || s == f64::NEG_INFINITY || s < -1e4 || q < -1e6
+    {
+        // (very negative orders would need Bernoulli polynomials of
+        // astronomical degree)
+        return f64::NAN;
+    }
+    if s == f64::INFINITY {
+        return if q > 1.0 {
+            0.0
+        } else if q == 1.0 {
+            1.0
+        } else {
+            f64::INFINITY
+        };
+    }
     if q <= 0.0 {
         // If q is a non-positive integer, the function is undefined/infinite.
         if q == q.round() {
@@ -1387,6 +1601,45 @@ fn is_integer_order(nu: f64) -> bool {
     nu.fract() == 0.0 && nu.is_finite()
 }
 
+/// Ascending series for `J_nu(x)`, `nu >= 0`, `x > 0`, used when it keeps
+/// full relative accuracy. The quadrature and uniform expansions below have
+/// only absolute accuracy near `1e-16`, which for `x << nu` (where `J_nu` is
+/// exponentially small) means no correct digits at all. The ratio of the
+/// largest term to the sum bounds the cancellation: the result is returned
+/// only when it is below `1e3`.
+fn bessel_j_ascending(
+    nu: f64,
+    x: f64,
+) -> Option<f64> {
+    if nu < 0.0 || x > 60.0 || nu > 1e5 {
+        return None;
+    }
+    let half = 0.5 * x;
+    let q = -(half * half);
+    // First term (x/2)^nu / Gamma(nu + 1) in log space (may underflow to 0).
+    let log_first = nu * half.ln() - ln_gamma_numerical(nu + 1.0);
+    if !log_first.is_finite() {
+        return None;
+    }
+    let mut term = 1.0_f64;
+    let mut sum = 1.0_f64;
+    let mut biggest = 1.0_f64;
+    let mut k = 1.0_f64;
+    while k < 400.0 {
+        term *= q / (k * (k + nu));
+        sum += term;
+        biggest = biggest.max(term.abs());
+        if term.abs() <= 1e-17 * sum.abs() && k > half {
+            break;
+        }
+        k += 1.0;
+    }
+    if sum == 0.0 || biggest / sum.abs() > 1e3 {
+        return None;
+    }
+    Some(log_first.exp() * sum)
+}
+
 /// Bessel function of the first kind `J_ν(x)` for real order `ν` and
 /// real `x` (`x < 0` only for integer orders, through `J_n(-x) = (-1)^n
 /// J_n(x)`).
@@ -1437,6 +1690,9 @@ pub fn bessel_j(
             -1.0
         };
         return sign * bessel_j(-nu, x);
+    }
+    if let Some(j) = bessel_j_ascending(nu, x) {
+        return j;
     }
     if let Some((j, _)) = uniform_bessel_jy(nu, x) {
         return j;
@@ -1953,20 +2209,51 @@ pub fn inverse_erfc(p: f64) -> f64 {
     if p == 2.0 {
         return f64::NEG_INFINITY;
     }
-    let mut y = inverse_erf_numerical(1.0 - p);
-    if !y.is_finite() {
-        // 1 - p rounded to ±1: start from the tail asymptotics.
-        y = (-(p / 2.0).ln()).sqrt() * if p < 1.0 { 1.0 } else { -1.0 };
+    if p > 1.0 {
+        // erfc(-y) = 2 - erfc(y)
+        return -inverse_erfc(2.0 - p);
     }
-    for _ in 0..8 {
-        let f = erfc_numerical(y) - p;
-        let derivative = -2.0 / std::f64::consts::PI.sqrt() * (-y * y).exp();
-        if derivative == 0.0 {
+    if p > 1e-3 {
+        let mut y = inverse_erf_numerical(1.0 - p);
+        for _ in 0..8 {
+            let f = erfc_numerical(y) - p;
+            let derivative = -2.0 / std::f64::consts::PI.sqrt() * (-y * y).exp();
+            if derivative == 0.0 {
+                break;
+            }
+            let step = f / derivative;
+            y -= step;
+            if step.abs() <= 1e-16 * y.abs().max(1.0) {
+                break;
+            }
+        }
+        return y;
+    }
+    // Tail: Newton on ln erfc(y) = ln p, which is nearly linear in y^2 and
+    // converges in a few steps from the asymptotic start.
+    let target = p.ln();
+    let sqrt_pi = std::f64::consts::PI.sqrt();
+    let ln_erfc = |y: f64| -> f64 {
+        if y < 25.0 {
+            erfc_numerical(y).ln()
+        } else {
+            // erfc(y) ~ e^-y^2 / (y sqrt(pi)) (1 - 1/(2y^2) + 3/(4y^4) - 15/(8y^6))
+            let u = 1.0 / (2.0 * y * y);
+            let series = 1.0 - u + 3.0 * u * u - 15.0 * u * u * u;
+            -y * y - (y * sqrt_pi).ln() + series.ln()
+        }
+    };
+    let mut y = (-target - (-target).ln().max(0.0) * 0.5).max(0.5).sqrt();
+    for _ in 0..60 {
+        let value = ln_erfc(y);
+        // d/dy ln erfc(y) = -2 exp(-y^2 - ln erfc(y)) / sqrt(pi)
+        let slope = -2.0 * (-y * y - value).exp() / sqrt_pi;
+        if slope == 0.0 || !slope.is_finite() {
             break;
         }
-        let step = f / derivative;
+        let step = (value - target) / slope;
         y -= step;
-        if step.abs() <= 1e-16 * y.abs().max(1.0) {
+        if step.abs() <= 1e-15 * y.abs() {
             break;
         }
     }
@@ -2108,6 +2395,9 @@ pub fn lambert_w(
     upper: bool,
 ) -> f64 {
     let branch_point = -(-1.0_f64).exp();
+    if x == f64::INFINITY && upper {
+        return f64::INFINITY;
+    }
     if !x.is_finite() || x < branch_point || (!upper && x >= 0.0) {
         return f64::NAN;
     }

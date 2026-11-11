@@ -112,6 +112,16 @@ const THETA: [f64; 5] = [
 /// [`DenseError::Shape`] for non-square input, [`DenseError::Singular`] if a
 /// Pade denominator is singular (not expected for finite input).
 pub fn expm(a: &Mat) -> Result<Mat, DenseError> {
+    let r = expm_inner(a)?;
+    if r.is_finite() {
+        Ok(r)
+    } else {
+        // exp(A) overflows (or loses all digits): an error, not Inf/NaN entries
+        Err(DenseError::NoConvergence)
+    }
+}
+
+fn expm_inner(a: &Mat) -> Result<Mat, DenseError> {
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
@@ -204,13 +214,45 @@ fn pade_solve(
     Ok(out)
 }
 
+/// Whether `a` is symmetric to rounding (entries compared with a relative
+/// tolerance of `4 eps` of the largest entry).
+fn is_symmetric(a: &Mat) -> bool {
+    let scale = a.data.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+    let tol = 4.0 * f64::EPSILON * scale;
+    (0..a.rows).all(|i| (0..i).all(|j| (a.at(i, j) - a.at(j, i)).abs() <= tol))
+}
+
+/// `V f(L) V^T` for a symmetric `a = V L V^T`; `f` returns `None` outside its
+/// domain, which becomes [`DenseError::Singular`].
+fn spectral_function(
+    a: &Mat,
+    f: impl Fn(f64, f64) -> Option<f64>,
+) -> Result<Mat, DenseError> {
+    let (values, vectors) = dense::eigen_symmetric(a)?;
+    let n = a.rows;
+    let scale = values.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+    let mut out = Mat::zeros(n, n);
+    for (k, &lambda) in values.iter().enumerate() {
+        let g = f(lambda, scale).ok_or(DenseError::Singular)?;
+        for i in 0..n {
+            let vik = vectors.at(i, k) * g;
+            for j in 0..n {
+                out.data[i * n + j] += vik * vectors.at(j, k);
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Principal square root of `A` (Denman-Beavers iteration with
 /// determinantal scaling, quadratically convergent).
 ///
 /// # Errors
-/// [`DenseError::Shape`], or [`DenseError::NoConvergence`] /
-/// [`DenseError::Singular`] when `A` has eigenvalues on the closed negative
-/// real axis.
+/// [`DenseError::Shape`], [`DenseError::NonFinite`], or
+/// [`DenseError::NoConvergence`] / [`DenseError::Singular`] when `A` has
+/// eigenvalues on the closed negative real axis. Symmetric input goes
+/// through the eigen-decomposition, so singular positive semi-definite
+/// matrices work.
 pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
     if a.rows != a.cols {
         return Err(DenseError::Shape);
@@ -218,6 +260,23 @@ pub fn sqrtm(a: &Mat) -> Result<Mat, DenseError> {
     let n = a.rows;
     if n == 0 {
         return Ok(Mat::zeros(0, 0));
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    if is_symmetric(a) {
+        // Exact for singular positive semi-definite input, which the
+        // Denman-Beavers iteration below cannot factor.
+        let slack = 4.0 * n as f64 * f64::EPSILON;
+        return spectral_function(a, |lambda, scale| {
+            if lambda >= 0.0 {
+                Some(lambda.sqrt())
+            } else if lambda >= -slack * scale {
+                Some(0.0)
+            } else {
+                None
+            }
+        });
     }
     let mut y = a.clone();
     let mut z = Mat::identity(n);
@@ -287,6 +346,12 @@ pub fn logm(a: &Mat) -> Result<Mat, DenseError> {
     let n = a.rows;
     if n == 0 {
         return Ok(Mat::zeros(0, 0));
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    if is_symmetric(a) {
+        return spectral_function(a, |lambda, _| (lambda > 0.0).then(|| lambda.ln()));
     }
     let id = Mat::identity(n);
     let mut t = a.clone();

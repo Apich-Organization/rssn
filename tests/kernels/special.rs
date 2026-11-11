@@ -558,7 +558,7 @@ fn bernoulli_numbers() {
 
 #[test]
 fn logistic_helpers_edge_cases() {
-    assert!(logit(0.0).is_nan() && logit(1.0).is_nan());
+    assert!(logit(0.0) == f64::NEG_INFINITY && logit(1.0) == f64::INFINITY);
     assert!((softplus(-30.0) - (-30.0f64).exp()).abs() < 1e-20);
     assert!((softplus(1.0) - (1.0 + 1.0f64.exp()).ln() + 1.0 - 1.0).abs() < 1e-12);
 }

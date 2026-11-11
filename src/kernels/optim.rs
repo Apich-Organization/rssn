@@ -105,6 +105,16 @@ pub fn nelder_mead<F: Fn(&[f64]) -> f64>(
     max_iter: usize,
 ) -> OptResult {
     let n = x0.len();
+    if n == 0 {
+        // Nothing to optimise: the objective at the empty point.
+        return OptResult {
+            x: Vec::new(),
+            fx: f(&[]),
+            iterations: 0,
+            evaluations: 1,
+            converged: true,
+        };
+    }
     let mut pts: Vec<Vec<f64>> = vec![x0.to_vec()];
     for i in 0..n {
         let mut p = x0.to_vec();

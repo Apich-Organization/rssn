@@ -63,6 +63,10 @@ where
 {
     let (a, b) = range;
 
+    if !a.is_finite() || !b.is_finite() {
+        return f64::NAN;
+    }
+
     if n_steps == 0 {
         return 0.0;
     }
@@ -70,7 +74,7 @@ where
     // Correctly handle a == b (integral is 0)
     // and a > b (integral is negative of b to a)
     // The logic below works for a > b as h will be negative.
-    if (a - b).abs() < f64::EPSILON {
+    if crate::kernels::exact_eq(a, b) {
         return 0.0;
     }
 
@@ -122,11 +126,15 @@ where
 {
     let (a, b) = range;
 
+    if !a.is_finite() || !b.is_finite() {
+        return Err("simpson_rule needs finite bounds".to_string());
+    }
+
     if n_steps == 0 {
         return Ok(0.0);
     }
 
-    if (a - b).abs() < f64::EPSILON {
+    if crate::kernels::exact_eq(a, b) {
         return Ok(0.0);
     }
 
@@ -180,7 +188,10 @@ pub fn adaptive_quadrature<F>(
 where
     F: Fn(f64) -> f64,
 {
-    // Inner recursive function
+    // Inner recursive function. `budget` bounds the number of panels so that
+    // a NaN integrand, a zero tolerance or a non-integrable singularity
+    // cannot make the recursion exponential.
+    #[allow(clippy::too_many_arguments)]
     fn adaptive_recursive<F>(
         f: &F,
         a: f64,
@@ -188,14 +199,17 @@ where
         eps: f64,
         whole_simpson: f64,
         limit: usize,
+        budget: &std::cell::Cell<usize>,
     ) -> f64
     where
         F: Fn(f64) -> f64,
     {
-        if limit == 0 {
+        if limit == 0 || budget.get() == 0 || !whole_simpson.is_finite() {
             // Recursion limit reached, return current best guess
             return whole_simpson;
         }
+
+        budget.set(budget.get() - 1);
 
         let mid = f64::midpoint(a, b);
 
@@ -220,6 +234,10 @@ where
 
         let sum_halves = left_simpson + right_simpson;
 
+        if !sum_halves.is_finite() {
+            return sum_halves;
+        }
+
         // Error estimate (1/15 rule)
         let error = (sum_halves - whole_simpson).abs() / 15.0;
 
@@ -227,14 +245,18 @@ where
             // Richardson extrapolation: S + (S - S_whole)/15
             sum_halves + (sum_halves - whole_simpson) / 15.0
         } else {
-            adaptive_recursive(f, a, mid, eps / 2.0, left_simpson, limit - 1)
-                + adaptive_recursive(f, mid, b, eps / 2.0, right_simpson, limit - 1)
+            adaptive_recursive(f, a, mid, eps / 2.0, left_simpson, limit - 1, budget)
+                + adaptive_recursive(f, mid, b, eps / 2.0, right_simpson, limit - 1, budget)
         }
     }
 
     let (a, b) = range;
 
-    if (a - b).abs() < f64::EPSILON {
+    if !a.is_finite() || !b.is_finite() || tolerance.is_nan() {
+        return f64::NAN;
+    }
+
+    if crate::kernels::exact_eq(a, b) {
         return 0.0;
     }
 
@@ -243,9 +265,29 @@ where
 
     let fm = f(mid);
 
-    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, f(a)) + f(b));
+    let (fa, fb) = (f(a), f(b));
 
-    adaptive_recursive(&f, a, b, tolerance, initial_simpson, 100) // limit depth to avoid stack overflow
+    if fa.is_nan() || fb.is_nan() || fm.is_nan() {
+        return f64::NAN;
+    }
+
+    if !fa.is_finite() || !fb.is_finite() {
+        // An integrable endpoint singularity such as 1/sqrt(x) on [0, 1]:
+        // Simpson would evaluate the pole itself. The double-exponential rule
+        // never samples the endpoints and converges for algebraic and
+        // logarithmic singularities.
+        return crate::kernels::quadrature::tanh_sinh(&f, a, b, tolerance.max(1e-14)).value;
+    }
+
+    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, fa) + fb);
+
+    // Never ask for more than ~1e-15 relative accuracy: a zero tolerance would
+    // otherwise subdivide until the panel budget is gone.
+    let tolerance = tolerance.max(1e-15 * initial_simpson.abs());
+
+    let budget = std::cell::Cell::new(50_000_usize);
+
+    adaptive_recursive(&f, a, b, tolerance, initial_simpson, 60, &budget)
 }
 
 /// # Romberg Integration
@@ -277,13 +319,21 @@ where
 {
     let (a, b) = range;
 
+    if !a.is_finite() || !b.is_finite() {
+        return f64::NAN;
+    }
+
     if max_steps == 0 {
         return 0.0;
     }
 
-    if (a - b).abs() < f64::EPSILON {
+    if crate::kernels::exact_eq(a, b) {
         return 0.0;
     }
+
+    // 2^21 trapezoid panels is far beyond double precision; the cap also
+    // keeps the shifts below and the table size (max_steps^2) sane.
+    let max_steps = max_steps.min(22);
 
     let mut r = vec![vec![0.0; max_steps]; max_steps];
 
@@ -295,14 +345,14 @@ where
     for i in 1..max_steps {
         // Calculate R[i][0] using Trapezoidal rule with 2^i segments
         // But we can update from R[i-1][0] efficiently
-        let steps_prev = 1 << (i - 1);
+        let steps_prev = 1_u64 << (i - 1);
 
-        let h_i = h / f64::from(1 << i);
+        let h_i = h / (1_u64 << i) as f64;
 
         let mut sum = 0.0;
 
         for k in 1..=steps_prev {
-            let x = a + f64::from(2 * k - 1) * h_i;
+            let x = a + (2 * k - 1) as f64 * h_i;
 
             sum += f(x);
         }
@@ -344,7 +394,11 @@ where
 {
     let (a, b) = range;
 
-    if (a - b).abs() < f64::EPSILON {
+    if !a.is_finite() || !b.is_finite() {
+        return f64::NAN;
+    }
+
+    if crate::kernels::exact_eq(a, b) {
         return 0.0;
     }
 
