@@ -174,6 +174,10 @@ pub enum SignatureSource {
     Derived,
     /// It came from `signatures.overlay.json`, written by hand.
     Overlay,
+    /// The derived overloads, plus overloads the engine was observed to
+    /// satisfy and that replay from a recorded call
+    /// (`signatures.witnessed.json`, see [`crate::kernel::sort`]).
+    Witnessed,
     /// There is none; `dynamic_reason` says why.
     None,
 }
@@ -195,6 +199,27 @@ pub struct OpInfo {
     pub overloads: Vec<Signature>,
     /// Where `overloads` came from.
     pub signature_source: SignatureSource,
+    /// Where each element of `overloads` came from, in the same order.
+    ///
+    /// `signature_source` names the best evidence the operator has; a host
+    /// that generates bindings needs it per overload, to tell the derived
+    /// symbolic contract from an overload the engine was seen to satisfy.
+    #[serde(default)]
+    pub overload_sources: Vec<SignatureSource>,
+    /// The recorded calls behind the witnessed overloads: `input` is the
+    /// call, `output` the sort of its answer (see [`crate::kernel::sort`]).
+    #[serde(default)]
+    pub witnesses: Vec<Example>,
+    /// Witnessed signatures that share their parameter list with an entry of
+    /// `overloads` and state a sharper result (`(Term, Term) -> Bool` next
+    /// to the symbolic contract `(Term, Term) -> Term`).
+    ///
+    /// They are not overloads and take no part in resolution. A host whose
+    /// binding has a checked result channel may type the result from them:
+    /// the call is the same, only the claim about its answer is stronger,
+    /// and it is the claim the engine was observed to satisfy.
+    #[serde(default)]
+    pub refinements: Vec<Signature>,
     /// Algebraic and scheduling properties.
     pub flags: OpFlagsInfo,
     /// Binding structure, when the operator binds a variable.
@@ -600,6 +625,22 @@ fn describe(
         arity: ArityInfo::from_arity(desc.arity),
         overloads,
         signature_source: source,
+        overload_sources: crate::kernel::infer::overload_sources(desc),
+        witnesses: crate::kernel::sort::witnessed_for(desc)
+            .iter()
+            .flat_map(|w| w.witnesses.iter())
+            .map(|w| {
+                Example {
+                    input: w.input.clone(),
+                    output: w.output.clone(),
+                    note: String::from("witness"),
+                }
+            })
+            .collect(),
+        refinements: crate::kernel::sort::refinements_for(desc)
+            .iter()
+            .map(|w| w.signature.clone())
+            .collect(),
         flags: desc.flags.info(),
         binder: desc.binder.map(crate::graph::op::Binder::info),
         cost: desc.cost,

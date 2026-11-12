@@ -104,6 +104,8 @@ struct Audit<'m> {
     manifest: &'m KernelManifest,
     declared: usize,
     inferred: usize,
+    /// Operators with at least one witnessed overload.
+    witnessed: usize,
     explained: usize,
     /// Names of operators that are neither typed nor explained.
     unexplained: Vec<String>,
@@ -121,6 +123,7 @@ impl<'m> Audit<'m> {
             manifest,
             declared: 0,
             inferred: 0,
+            witnessed: 0,
             explained: 0,
             unexplained: Vec::new(),
             inferred_names: Vec::new(),
@@ -136,6 +139,9 @@ impl<'m> Audit<'m> {
                         audit.inferred += 1;
                         audit.inferred_names.push(op.name.clone());
                     },
+                    // Derived overloads plus overloads the engine was seen
+                    // to satisfy: more than derived, less than declared.
+                    | SignatureSource::Witnessed => audit.witnessed += 1,
                     // An operator with overloads always has a source; a
                     // `None` here would be a manifest bug, and counting it as
                     // typed is the harmless reading.
@@ -159,7 +165,7 @@ impl<'m> Audit<'m> {
         verbose: bool,
     ) {
         let total = self.manifest.ops.len();
-        let typed = self.declared + self.inferred;
+        let typed = self.declared + self.inferred + self.witnessed;
         // The identity is the 32-byte digest; `hash_u64` is the first eight
         // bytes read little-endian, which is *not* the first eight bytes in
         // hex order. Printing both, labelled, stops a host pinning the wrong
@@ -181,9 +187,10 @@ impl<'m> Audit<'m> {
             self.unexplained.len()
         );
         println!(
-            "  declared: {}   derived: {}   overlay: {}",
+            "  declared: {}   derived only: {}   witnessed: {}   overlay: {}",
             self.declared,
             self.inferred,
+            self.witnessed,
             self.manifest
                 .ops
                 .iter()

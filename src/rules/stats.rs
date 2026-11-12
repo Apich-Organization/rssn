@@ -1223,6 +1223,12 @@ fn t_p_value(
     t: f64,
     df: f64,
 ) -> Option<f64> {
+    // A statistic from overflowing data (an infinite pooled variance gives
+    // NaN) has no p-value, and the distribution's incomplete beta function
+    // panics on it rather than returning NaN.
+    if !t.is_finite() || !df.is_finite() || df <= 0.0 {
+        return None;
+    }
     StudentsT::new(0.0, 1.0, df)
         .ok()
         .map(|d| 2.0 * d.cdf(-t.abs()))

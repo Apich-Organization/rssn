@@ -14,6 +14,8 @@ Cargo.lock
 # into `$OUT_DIR` so that a clean clone still builds, but the corrections it
 # carries have to be versioned.
 !signatures.overlay.json
+# Mined by `signature-mine` and versioned for the same reason.
+!signatures.witnessed.json
 scc
 *.exe
 *.a

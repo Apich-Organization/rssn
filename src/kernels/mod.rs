@@ -45,6 +45,9 @@ pub mod geometric_algebra;
 /// automorphism groups (`refine`, `canonical_labelling`, `isomorphic`, all
 /// over the `ColourGraph` input type).
 pub mod graph;
+/// D-finite functions: annihilating operators, closure, recurrences and
+/// an exact zero test.
+pub mod holonomic;
 /// Exact homology with torsion, persistent homology, cubical complexes.
 pub mod homology;
 /// Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
@@ -65,6 +68,8 @@ pub mod krylov;
 pub mod krylov_ext;
 /// Semisimple Lie algebras: root systems, weights, representations; structure theory.
 pub mod lie_structure;
+/// Rank-revealing QR, randomized SVD, LOBPCG and Anderson acceleration.
+pub mod lowrank;
 /// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
 pub mod matfun;
 pub mod matrix;
@@ -94,6 +99,8 @@ pub mod optimize;
 pub mod ordering;
 /// Multilevel nested dissection (heavy-edge coarsening, FM refinement, vertex-cover separators).
 pub mod ordering_ml;
+/// Highly oscillatory integrals by Levin collocation.
+pub mod oscillatory;
 /// Deterministic data-parallel helpers (ordered maps, fixed-tree sums, chunked loops).
 pub mod par;
 pub mod pde;
@@ -122,6 +129,9 @@ pub mod signal;
 pub mod simplex_quadrature;
 pub mod solve;
 pub mod sparse;
+/// Exact sparse linear algebra: sparsity-preserving elimination over any
+/// domain, modular determinants, Dixon lifting, Wiedemann's algorithm.
+pub mod sparse_exact;
 pub mod special;
 /// Gamma, digamma, Lambert W and Bessel J/I functions of a complex argument.
 pub mod special_complex;

@@ -75,6 +75,7 @@ pub mod elementary;
 pub mod functional;
 pub mod geometric_algebra;
 pub mod geometry;
+pub mod holonomic;
 pub mod lie;
 pub mod lie_structure;
 pub mod linalg;
@@ -94,6 +95,7 @@ pub mod radicals;
 pub mod rewriting;
 pub mod sde;
 pub mod solve;
+pub mod sparse_symbolic;
 pub mod special;
 mod special_approx;
 mod special_meijer;
@@ -115,6 +117,7 @@ pub use elementary::elementary;
 pub use functional::functional;
 pub use geometric_algebra::geometric_algebra;
 pub use geometry::geometry;
+pub use holonomic::holonomic;
 pub use lie::lie;
 pub use lie_structure::lie_structure;
 pub use linalg::linalg;
@@ -131,6 +134,7 @@ pub use radicals::radicals;
 pub use rewriting::rewriting;
 pub use sde::sde;
 pub use solve::solve;
+pub use sparse_symbolic::sparse_symbolic;
 pub use special::special;
 pub use stats::stats;
 pub use transforms::transforms;
@@ -151,6 +155,8 @@ pub fn standard() -> Vec<RuleSet> {
         solve(),
         ode(),
         linalg(),
+        sparse_symbolic(),
+        holonomic(),
         geometry(),
         complex(),
         number_theory(),

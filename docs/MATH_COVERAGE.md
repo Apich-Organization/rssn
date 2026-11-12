@@ -55,6 +55,14 @@ missing. The regression tests named below live in `tests/` and run in CI.
 | Panics anywhere behind the dynamic ABI | `tests/abi_fuzz.rs` |
 | Symbolic classics (definite integrals, limits, sums, series, solve, number theory) | `tests/math_symbolic_classics.rs` (and the 450-case `tests/symbolic_battery.rs`) |
 
+## Exact and structured algorithms added in 3.0
+
+| Area | Where | Tested in |
+|---|---|---|
+| Sparse exact linear algebra: Markowitz-style elimination over any domain (rationals, `GF(p)`, symbolic terms), CRT determinants with Hadamard's bound, Dixon `p`-adic lifting with rational reconstruction, Wiedemann minimal polynomial and solve | `kernels::sparse_exact`, rule set `sparse_symbolic` (`sparse(m, n, entries)`, `sp_*`) | unit tests of both modules |
+| D-finite functions: annihilators of atoms, closure under `+`, `*`, powers and `D`, coefficient recurrences, exact zero test | `kernels::holonomic`, rule set `holonomic` (`holonomic_*`) | unit tests of both modules |
+| Column-pivoted (rank-revealing) QR, randomized SVD, LOBPCG, Anderson acceleration | `kernels::lowrank` | unit tests |
+
 ## Known gaps
 
 This list is deliberately blunt; an entry is removed only when a test pins
@@ -69,8 +77,8 @@ the new behaviour.
 * **Dense linear algebra is real only.** Complex SVD / QR / LU / Cholesky /
   eigen-solvers exist only in the generic `kernels::matrix::Matrix<T: Field>`
   (determinant, rank, inverse, null space) and not as LAPACK-quality
-  routines. There is no pivoted rank-revealing QR, no Schur decomposition
-  exposed, and `lu_factor` only reports an exactly zero pivot (no condition
+  routines. Rank-revealing QR is `kernels::lowrank::qr_pivoted` (real only);
+  no Schur decomposition is exposed, and `lu_factor` only reports an exactly zero pivot (no condition
   estimate). `Lu::solve` panics on a right-hand side of the wrong length;
   use `dense::solve`, which checks it.
 * **Number theory kernels are 64-bit.** Big-integer primality, ECM, quadratic
@@ -96,3 +104,16 @@ the new behaviour.
 * **Symbolic.** `tests/math_symbolic_classics.rs` pins the known failures
   with `.gap()` entries; they are the honest list of classical results rssn
   cannot yet derive.
+* **Sparse exact.** `sp_rank` over the rationals eliminates with rational
+  arithmetic (no modular certificate); there is no sparse Smith or Hermite
+  form, no block Wiedemann, and `sp_minpoly_mod` is Monte Carlo (it returns the
+  least common multiple of four projections, which is the minimal polynomial
+  with probability at least `1 - 8n/p`).
+* **D-finite.** One variable, expansion at the origin only, atoms with
+  rational Taylor coefficients; no algebraic substitution, no singular
+  points (Bessel functions at `0`), no definite integration (creative
+  telescoping lives in `calculus/zeilberger` for sums). The operator found
+  is the least-order one in the closure's vector space, not always the
+  minimal operator of the function.
+* **`kernels::lowrank`** is real, dense-vector code: `lobpcg` has no soft
+  locking of converged vectors and no generalised (`B`-orthogonal) form.

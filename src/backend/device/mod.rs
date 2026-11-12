@@ -70,7 +70,9 @@ use std::sync::atomic::Ordering;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub mod array;
 pub mod cpu;
+pub mod emit;
 #[cfg(feature = "gpu-wgpu")]
 pub mod gpu;
 pub mod kernel;
@@ -80,6 +82,7 @@ pub mod wgsl;
 mod tests;
 
 pub use cpu::CpuDevice;
+pub use kernel::Fold;
 pub use kernel::KernelBuilder;
 pub use kernel::KernelIr;
 pub use kernel::KernelOp;
@@ -198,6 +201,11 @@ pub struct DeviceOps {
     pub reduce: bool,
     /// [`Device::matmul`].
     pub matmul: bool,
+    /// [`Device::launch_cols`] of structured kernels: index arithmetic,
+    /// addressed loads, columns of independent lengths and a fold. A device
+    /// with this flag runs everything in [`array`].
+    #[serde(default)]
+    pub structured: bool,
 }
 
 /// Description of a device, fixed for its lifetime.
@@ -316,7 +324,7 @@ pub trait CompiledKernel: Send + Sync {
 }
 
 /// A reduction.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ReduceOp {
     /// Sum.
     Sum,
@@ -421,6 +429,34 @@ pub trait Device: Send + Sync {
         out: &mut [f64],
     ) -> Result<(), DeviceError>;
 
+    /// Copies `len` elements from `src[src_at..]` to `dst[dst_at..]`, both on
+    /// this device and of one data type.
+    ///
+    /// The default goes through the host (download both, splice, upload), so
+    /// it is correct on any device; a device overrides it to keep the data
+    /// where it is.
+    ///
+    /// # Errors
+    /// [`DeviceError::Mismatch`] on foreign buffers, different data types or
+    /// a range outside either buffer.
+    fn copy(
+        &self,
+        src: &Buffer,
+        src_at: usize,
+        dst: &mut Buffer,
+        dst_at: usize,
+        len: usize,
+    ) -> Result<(), DeviceError> {
+        check_copy(self.uid(), src, src_at, dst, dst_at, len)?;
+        let mut from = vec![0.0; src.len()];
+        self.download(src, &mut from)?;
+        let mut to = vec![0.0; dst.len()];
+        self.download(dst, &mut to)?;
+        to[dst_at..dst_at + len].copy_from_slice(&from[src_at..src_at + len]);
+        *dst = self.upload(&to, dst.dtype())?;
+        Ok(())
+    }
+
     /// Compiles a kernel. Implementations cache by
     /// [`KernelIr::structural_hash`].
     ///
@@ -444,6 +480,38 @@ pub trait Device: Send + Sync {
         params: &[f64],
         output: &mut Buffer,
     ) -> Result<(), DeviceError>;
+
+    /// Runs `kernel` for `rows` rows over input columns of independent
+    /// lengths: `input` holds the columns concatenated, column `i` having
+    /// `lens[i]` elements, and `output` holds `ir.outputs.len()` columns of
+    /// `rows` elements. This is the general entry point; [`Device::launch`]
+    /// is the case in which every column has one element per row.
+    ///
+    /// The default implementation forwards exactly that case to `launch` and
+    /// refuses the rest, so a device written before structured kernels
+    /// existed keeps working and says what it cannot do.
+    ///
+    /// # Errors
+    /// [`DeviceError::Mismatch`] on foreign buffers or wrong sizes,
+    /// [`DeviceError::Unsupported`] unless `info().ops.structured`.
+    fn launch_cols(
+        &self,
+        kernel: &dyn CompiledKernel,
+        rows: usize,
+        input: &Buffer,
+        lens: &[usize],
+        params: &[f64],
+        output: &mut Buffer,
+    ) -> Result<(), DeviceError> {
+        let ir = kernel.ir();
+        if ir.is_elementwise() && lens.len() == ir.inputs && lens.iter().all(|&l| l == rows) {
+            return self.launch(kernel, rows, input, params, output);
+        }
+        Err(DeviceError::Unsupported(format!(
+            "device `{}` does not run structured kernels (launch_cols)",
+            self.info().id
+        )))
+    }
 
     /// Reduces a whole buffer to one number.
     ///
@@ -511,6 +579,81 @@ pub fn check_launch(
             output.len,
             ir.outputs.len(),
             want_out
+        ));
+    }
+    Ok(())
+}
+
+/// Checks the arguments of a [`Device::copy`]. For implementors.
+///
+/// # Errors
+/// [`DeviceError::Mismatch`].
+pub fn check_copy(
+    uid: u64,
+    src: &Buffer,
+    src_at: usize,
+    dst: &Buffer,
+    dst_at: usize,
+    len: usize,
+) -> Result<(), DeviceError> {
+    let bad = |m: &str| Err(DeviceError::Mismatch(m.into()));
+    if src.owner != uid || dst.owner != uid {
+        return bad("a buffer belongs to another device; transfer it explicitly");
+    }
+    if src.dtype != dst.dtype {
+        return bad("copy between buffers of different data types");
+    }
+    let fits = |at: usize, total: usize| at.checked_add(len).is_some_and(|end| end <= total);
+    if !fits(src_at, src.len) || !fits(dst_at, dst.len) {
+        return bad("copy range is outside a buffer");
+    }
+    Ok(())
+}
+
+/// Checks the buffers and sizes of a [`Device::launch_cols`]. For
+/// implementors.
+///
+/// # Errors
+/// [`DeviceError::Mismatch`]; [`DeviceError::Unsupported`] when a length
+/// does not fit the 32-bit indices every device shares.
+pub fn check_launch_cols(
+    uid: u64,
+    ir: &KernelIr,
+    rows: usize,
+    input: &Buffer,
+    lens: &[usize],
+    output: &Buffer,
+) -> Result<(), DeviceError> {
+    let bad = |m: String| Err(DeviceError::Mismatch(m));
+    if input.owner != uid || output.owner != uid {
+        return bad("a buffer belongs to another device; transfer it explicitly".into());
+    }
+    if lens.len() != ir.inputs {
+        return bad(format!(
+            "kernel has {} input columns, {} lengths given",
+            ir.inputs,
+            lens.len()
+        ));
+    }
+    let total = lens.iter().try_fold(0_usize, |acc, &l| acc.checked_add(l));
+    if total != Some(input.len) {
+        return bad(format!(
+            "input has {} elements, the column lengths add up to {total:?}",
+            input.len
+        ));
+    }
+    let want_out = ir.outputs.len().checked_mul(rows);
+    if want_out != Some(output.len) {
+        return bad(format!(
+            "output has {} elements, {} columns of {rows} rows need {want_out:?}",
+            output.len,
+            ir.outputs.len()
+        ));
+    }
+    let limit = i32::MAX as usize;
+    if rows > limit || input.len > limit {
+        return Err(DeviceError::Unsupported(
+            "a launch is limited to 2^31 - 1 rows and input elements (32-bit indices)".into(),
         ));
     }
     Ok(())

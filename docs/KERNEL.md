@@ -76,8 +76,74 @@ one term out. An operator with a scalar evaluator therefore has two overloads,
 `(Real, …) -> Real` and `(Term, …) -> Term`, which is exactly what the engine
 does: `sin(0.5)` folds, `sin(x)` stays a term. `SignatureSource` says where a
 signature came from: `Declared` (the rule set wrote it), `Overlay` (a human
-corrected it in `signatures.overlay.json`), `Derived` (the rules above), or
-`None`.
+corrected it in `signatures.overlay.json`), `Derived` (the rules above),
+`Witnessed` (derived, plus overloads the engine was seen to satisfy; next
+section), or `None`.
+
+### 3a. Witnessed signatures: the engine types its own operators
+
+The derivation above is sound and nearly empty: for `det`, `factorint` or
+`groebner` the registration only says "a heavy operator of arity `n`", so the
+derived signature is the symbolic contract `(Term, ..) -> Term`. A host cannot
+generate a useful typed binding from that, and writing a thousand signatures by
+hand is the drift the manifest exists to prevent.
+
+`kernel::sort` closes the gap with evidence the engine already produces. A
+finished run leaves a request such as `factorint(360)` in the same equivalence
+class as its answer `list(list(2, 3), list(3, 2), list(5, 1))`; that class is a
+typing judgement. The module
+
+1. defines a small lattice of **sorts** (`Int`, `Rat`, `Float`, `Sym`, `Expr`,
+   `Bool`, `Prop`, `Obj<name>`, lists with a rectangularity flag, tuples) with a
+   join, and classifies any e-class into one using only what the graph states
+   (literals, list constructors, the `PREDICATE` flag, a non-scalar dimension
+   rule);
+2. with `RSSN_SORT_TRACE=<file>` set, logs one *fact* per operator application
+   at the end of every top-level run: operator, argument sorts, result sort,
+   and the call that showed it;
+3. `signature-mine` treats the log as a source of *calls*, not of truths (a
+   test may have loaded only some rule sets, and an application is never
+   evidence about itself: `gcd(12, 18)` alone in its class says nothing about
+   `gcd`). It runs every distinct call again on the full engine, keeps the
+   ones that are answered, clusters them by the kinds of their arguments and
+   joins each cluster (anti-unification).
+4. Each candidate is then **probed**: the numbers in its witnesses' reduced
+   arguments are shifted, shapes kept, and the call is run again. This is what
+   stops `sin(0) = 0` from typing `sin` as `(Int) -> Int`, or one matrix of
+   perfect squares from typing `matsqrt` as integer-valued; with fewer than
+   three facts and a symbolic argument, exact number leaves of the result are
+   widened to expressions as well.
+5. A signature is kept when it says something about the *answer* and its
+   parameter list is comparable with, or disjoint from, every other overload
+   of the operator. One whose parameters equal an overload the registration
+   already states is kept as a **refinement** of that overload's result
+   (`holonomic_zero: (Term, Term) -> Bool` next to the symbolic contract),
+   listed separately in the manifest and taking no part in resolution.
+
+```text
+RSSN_SORT_TRACE=sorts.tsv cargo test --lib       # the test suite is the corpus
+cargo run --profile tools --bin signature-mine -- sorts.tsv
+cargo run --profile tools --bin signature-mine -- --check   # replay the shipped table
+```
+
+The table is versioned like the overlay (the manifest of a clean clone must not
+depend on having run the tests) and regenerated, never edited. In the manifest
+such an operator has `signature_source: witnessed`; `overload_sources` says per
+overload whether it is derived or witnessed, `refinements` lists the sharper
+results of existing overloads, and `witnesses` carries the calls. At
+3.0.0-rc.1 the table types the answers of about 700 operators that were
+`(Term, ..) -> Term` before.
+Every operator that has a test is thereby typed, and a new operator arrives
+typed as soon as it is tested.
+
+What a witnessed signature promises is what a gradual type promises at a
+dynamic boundary. It is evidence, not a totality proof: the parameter side may
+be narrower than what the operator accepts (the symbolic contract stays as the
+most general overload, so nothing becomes uncallable), and a host must validate
+the result it decodes. Overload sets stay unambiguous by construction: a
+witnessed signature is kept only when its parameter list is comparable with, or
+disjoint from, every other overload (`sort::coherent`), and the overload
+matcher breaks a tie between comparable overloads by pointwise dominance.
 
 ### 4. No silent unknowns
 

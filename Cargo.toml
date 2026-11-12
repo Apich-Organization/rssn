@@ -64,6 +64,13 @@ path = "src/bin/signature_audit.rs"
 doc = false
 test = false
 
+# Turns sort traces into `signatures.witnessed.json` (`rssn::kernel::sort`).
+[[bin]]
+name = "signature-mine"
+path = "src/bin/signature_mine.rs"
+doc = false
+test = false
+
 [profile.dev]
 lto = false
 opt-level = 0
@@ -74,6 +81,13 @@ incremental = true
 # integrations; unoptimised builds make it several times slower.
 [profile.test]
 opt-level = 1
+
+# For offline tools that run the engine thousands of times (`signature-mine`):
+# optimised enough to be quick, without the link-time cost of `release`.
+[profile.tools]
+inherits = "dev"
+opt-level = 1
+debug = false
 
 [profile.release]
 lto = true

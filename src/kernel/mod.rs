@@ -83,6 +83,7 @@ pub mod overload;
 pub mod plugin;
 pub mod result;
 pub mod signature;
+pub mod sort;
 pub mod value;
 
 pub use call::Assumption;

@@ -436,7 +436,7 @@ impl Kernel for Broadcast {
 // ----------------------------------------------------------------------
 
 /// Entries of a vector `list(...)`, after taking the best form of each.
-fn vector(
+pub(crate) fn vector(
     graph: &mut Graph,
     node: NodeId,
 ) -> Option<Vec<NodeId>> {
@@ -493,7 +493,7 @@ fn operand(
     Some(Operand::Vector(scalars))
 }
 
-fn list(
+pub(crate) fn list(
     graph: &mut Graph,
     items: &[NodeId],
 ) -> NodeId {
@@ -508,7 +508,7 @@ pub(crate) fn matrix_term(
     list(graph, &row_nodes)
 }
 
-fn mul(
+pub(crate) fn mul(
     graph: &mut Graph,
     factors: &[NodeId],
 ) -> NodeId {
@@ -519,7 +519,7 @@ fn mul(
     }
 }
 
-fn add(
+pub(crate) fn add(
     graph: &mut Graph,
     terms: &[NodeId],
 ) -> NodeId {
@@ -530,7 +530,7 @@ fn add(
     }
 }
 
-fn neg(
+pub(crate) fn neg(
     graph: &mut Graph,
     node: NodeId,
 ) -> NodeId {
@@ -538,7 +538,7 @@ fn neg(
     mul(graph, &[minus_one, node])
 }
 
-fn reciprocal(
+pub(crate) fn reciprocal(
     graph: &mut Graph,
     node: NodeId,
 ) -> NodeId {
@@ -597,7 +597,7 @@ fn normalise_entries(
 /// Simplifies `node`, bringing rational functions over one denominator
 /// (with common univariate factors cancelled) so that entries of symbolic
 /// matrices stay in a normal form and zero tests are reliable.
-fn normal(
+pub(crate) fn normal(
     cx: &mut Cx<'_>,
     node: NodeId,
 ) -> NodeId {
@@ -817,7 +817,7 @@ fn rational_matrix(
         .collect()
 }
 
-fn rational_node(
+pub(crate) fn rational_node(
     graph: &mut Graph,
     value: &BigRational,
 ) -> NodeId {

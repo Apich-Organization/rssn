@@ -14,6 +14,13 @@
 //! Semantics are the tape's over `f64` ([`KernelIr::eval_row`] is the
 //! executable specification; the tests compare against it and against
 //! [`Tape::eval`](crate::backend::tape::Tape::eval)).
+//!
+//! Structured kernels (index arithmetic, addressed loads, a fold; see
+//! [`super::kernel`]) do not fit lane blocks: a row may read anywhere and
+//! loop a data-dependent number of times. They run through the reference
+//! evaluator [`KernelIr::eval_at`], one row at a time, with the same
+//! recursive splitting; the lane path is kept for elementwise kernels whose
+//! columns all have one element per row.
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -34,8 +41,12 @@ use super::KernelIr;
 use super::KernelOp;
 use super::ReduceOp;
 use super::Storage;
-use super::check_launch;
+use super::check_launch_cols;
+use super::kernel::Analysis;
+use super::kernel::Columns;
+use super::kernel::Scratch;
 use super::kernel::cmp_value;
+use super::kernel::column_offsets;
 use super::kernel::gather_slot;
 use super::kernel::select_is_true;
 use super::next_uid;
@@ -63,6 +74,7 @@ impl Storage for HostStorage {
 
 struct CpuKernel {
     ir: KernelIr,
+    analysis: Analysis,
 }
 
 impl CompiledKernel for CpuKernel {
@@ -120,6 +132,7 @@ impl CpuDevice {
                 elementwise: true,
                 reduce: true,
                 matmul: true,
+                structured: true,
             },
             parallelism: if parallel {
                 rayon::current_num_threads()
@@ -239,11 +252,26 @@ impl Device for CpuDevice {
         Ok(())
     }
 
+    fn copy(
+        &self,
+        src: &Buffer,
+        src_at: usize,
+        dst: &mut Buffer,
+        dst_at: usize,
+        len: usize,
+    ) -> Result<(), DeviceError> {
+        super::check_copy(self.uid, src, src_at, dst, dst_at, len)?;
+        let from = self.data(src)?;
+        let to = self.data_mut(dst)?;
+        to[dst_at..dst_at + len].copy_from_slice(&from[src_at..src_at + len]);
+        Ok(())
+    }
+
     fn compile(
         &self,
         ir: &KernelIr,
     ) -> Result<Arc<dyn CompiledKernel>, DeviceError> {
-        ir.validate()?;
+        let analysis = ir.analyse()?;
         let key = ir.structural_hash();
         let mut cache = self
             .cache
@@ -252,7 +280,10 @@ impl Device for CpuDevice {
         if let Some(k) = cache.get(&key).filter(|k| k.ir == *ir) {
             return Ok(k.clone());
         }
-        let k = Arc::new(CpuKernel { ir: ir.clone() });
+        let k = Arc::new(CpuKernel {
+            ir: ir.clone(),
+            analysis,
+        });
         cache.insert(key, k.clone());
         Ok(k)
     }
@@ -265,16 +296,48 @@ impl Device for CpuDevice {
         params: &[f64],
         output: &mut Buffer,
     ) -> Result<(), DeviceError> {
+        let lens = vec![rows; kernel.ir().inputs];
+        self.launch_cols(kernel, rows, input, &lens, params, output)
+    }
+
+    fn launch_cols(
+        &self,
+        kernel: &dyn CompiledKernel,
+        rows: usize,
+        input: &Buffer,
+        lens: &[usize],
+        params: &[f64],
+        output: &mut Buffer,
+    ) -> Result<(), DeviceError> {
         let ir = kernel.ir();
-        ir.validate()?;
-        check_launch(self.uid, ir, rows, input, output)?;
+        // A kernel compiled here carries its analysis; one that came from
+        // another device is analysed again, which also validates it.
+        let fresh;
+        let analysis = match kernel.as_any().downcast_ref::<CpuKernel>() {
+            | Some(k) => &k.analysis,
+            | None => {
+                fresh = ir.analyse()?;
+                &fresh
+            },
+        };
+        check_launch_cols(self.uid, ir, rows, input, lens, output)?;
         let input = self.data(input)?;
         let out = self.data_mut(output)?;
         if rows == 0 {
             return Ok(());
         }
         let cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
-        run_range(ir, input, rows, params, 0, cols, self.parallel);
+        if ir.is_elementwise() && lens.iter().all(|&l| l == rows) {
+            run_range(ir, input, rows, params, 0, cols, self.parallel);
+        } else {
+            let offsets = column_offsets(lens);
+            let view = Columns {
+                data: input,
+                offsets: &offsets,
+                lens,
+            };
+            run_rows(ir, analysis, view, rows, params, 0, cols, self.parallel);
+        }
         Ok(())
     }
 
@@ -332,6 +395,54 @@ impl Device for CpuDevice {
             c.chunks_mut(n).enumerate().for_each(row);
         }
         Ok(())
+    }
+}
+
+/// Runs rows `lo..lo + len` of a structured kernel through the reference
+/// evaluator; `cols[k]` is output column `k` restricted to that range.
+#[allow(clippy::too_many_arguments)]
+fn run_rows(
+    ir: &KernelIr,
+    analysis: &Analysis,
+    view: Columns<'_>,
+    rows: usize,
+    params: &[f64],
+    lo: usize,
+    mut cols: Vec<&mut [f64]>,
+    parallel: bool,
+) {
+    let len = cols.first().map_or(0, |c| c.len());
+    // A folded row can cost far more than an elementwise one, so the grain
+    // is smaller than the lane path's.
+    if parallel && len > GRAIN / 16 {
+        let mid = len / 2;
+        let (mut left, mut right) = (Vec::new(), Vec::new());
+        for c in cols {
+            let (a, b) = c.split_at_mut(mid);
+            left.push(a);
+            right.push(b);
+        }
+        rayon::join(
+            || run_rows(ir, analysis, view, rows, params, lo, left, true),
+            || run_rows(ir, analysis, view, rows, params, lo + mid, right, true),
+        );
+        return;
+    }
+    let mut scratch = Scratch::default();
+    let mut out = vec![f64::NAN; ir.outputs.len()];
+    for at in 0..len {
+        ir.eval_at(
+            analysis,
+            lo + at,
+            rows,
+            view,
+            params,
+            &mut scratch,
+            &mut out,
+        );
+        for (col, &value) in cols.iter_mut().zip(&out) {
+            col[at] = value;
+        }
     }
 }
 
@@ -462,6 +573,9 @@ fn exec_block(
                         .map_or(f64::NAN, |slot| input[slot * rows + lo + l]);
                 }
             },
+            // Structured instructions never reach the lane path
+            // (`launch_cols` routes them to `run_rows`).
+            | _ => regs[d * LANES..d * LANES + n].fill(f64::NAN),
         }
     }
 }

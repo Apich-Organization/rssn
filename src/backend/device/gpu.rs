@@ -32,7 +32,7 @@ use super::Dtype;
 use super::GpuApi;
 use super::KernelIr;
 use super::Storage;
-use super::check_launch;
+use super::check_launch_cols;
 use super::next_uid;
 use super::wgsl::WgslOptions;
 use super::wgsl::emit_wgsl;
@@ -154,6 +154,8 @@ impl WgpuDevice {
                     },
                     count: None,
                 },
+                // The column table: (offset, length) per input column.
+                storage_entry(4, true),
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -178,8 +180,11 @@ impl WgpuDevice {
             dtypes: vec![Dtype::F32],
             ops: DeviceOps {
                 elementwise: true,
-                reduce: false,
-                matmul: false,
+                // Both are kernels (`super::array`), not hand-written
+                // shaders: a device that runs structured kernels has them.
+                reduce: true,
+                matmul: true,
+                structured: true,
             },
             parallelism: limits.max_compute_invocations_per_workgroup as usize,
             max_buffer_elems: usize::try_from(limits.max_storage_buffer_binding_size / 4)
@@ -350,6 +355,52 @@ impl Device for WgpuDevice {
         self.take_late_error()
     }
 
+    fn copy(
+        &self,
+        src: &Buffer,
+        src_at: usize,
+        dst: &mut Buffer,
+        dst_at: usize,
+        len: usize,
+    ) -> Result<(), DeviceError> {
+        super::check_copy(self.uid, src, src_at, dst, dst_at, len)?;
+        if len == 0 {
+            return Ok(());
+        }
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.copy_buffer_to_buffer(
+            self.gpu_buffer(src)?,
+            src_at as u64 * 4,
+            self.gpu_buffer(dst)?,
+            dst_at as u64 * 4,
+            len as u64 * 4,
+        );
+        self.queue.submit([enc.finish()]);
+        Ok(())
+    }
+
+    fn reduce(
+        &self,
+        op: super::ReduceOp,
+        input: &Buffer,
+    ) -> Result<f64, DeviceError> {
+        super::array::reduce(self, op, input)
+    }
+
+    fn matmul(
+        &self,
+        a: &Buffer,
+        b: &Buffer,
+        c: &mut Buffer,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> Result<(), DeviceError> {
+        super::array::matmul(self, a, b, c, m, k, n)
+    }
+
     fn compile(
         &self,
         ir: &KernelIr,
@@ -408,8 +459,21 @@ impl Device for WgpuDevice {
         params: &[f64],
         output: &mut Buffer,
     ) -> Result<(), DeviceError> {
+        let lens = vec![rows; kernel.ir().inputs];
+        self.launch_cols(kernel, rows, input, &lens, params, output)
+    }
+
+    fn launch_cols(
+        &self,
+        kernel: &dyn CompiledKernel,
+        rows: usize,
+        input: &Buffer,
+        lens: &[usize],
+        params: &[f64],
+        output: &mut Buffer,
+    ) -> Result<(), DeviceError> {
         let ir = kernel.ir();
-        check_launch(self.uid, ir, rows, input, output)?;
+        check_launch_cols(self.uid, ir, rows, input, lens, output)?;
         let k = kernel
             .as_any()
             .downcast_ref::<GpuKernel>()
@@ -428,6 +492,15 @@ impl Device for WgpuDevice {
             0,
         ];
         let dbuf = self.small(wgpu::BufferUsages::UNIFORM, bytemuck::cast_slice(&dims));
+        // `check_launch_cols` bounded every length by 2^31 - 1.
+        let mut table: Vec<u32> = Vec::with_capacity(lens.len() * 2);
+        let mut at = 0_u32;
+        for &len in lens {
+            let len = u32::try_from(len).unwrap_or(u32::MAX);
+            table.extend([at, len]);
+            at = at.saturating_add(len);
+        }
+        let cbuf = self.small(wgpu::BufferUsages::STORAGE, bytemuck::cast_slice(&table));
         let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("rssn"),
             layout: &self.layout,
@@ -447,6 +520,10 @@ impl Device for WgpuDevice {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: dbuf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: cbuf.as_entire_binding(),
                 },
             ],
         });

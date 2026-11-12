@@ -32,7 +32,9 @@
 //!
 //! 1. a signature the rule set **declared** on the descriptor;
 //! 2. a correction from `signatures.overlay.json`, written by hand;
-//! 3. the derivation below, reported as [`SignatureSource::Derived`];
+//! 3. the derivation below, reported as [`SignatureSource::Derived`], extended
+//!    by the overloads the engine was *seen* to satisfy
+//!    ([`SignatureSource::Witnessed`], see [`crate::kernel::sort`]);
 //! 4. nothing, with a [`DynamicReason`] saying why.
 //!
 //! A derived signature is marked as such rather than as declared, because a
@@ -68,9 +70,67 @@ pub fn signatures(desc: &OpDescriptor) -> (Vec<Signature>, SignatureSource) {
         return (declared.clone(), SignatureSource::Overlay);
     }
     match derive(desc) {
-        | Some(signatures) => (signatures, SignatureSource::Derived),
+        | Some(mut signatures) => {
+            let witnessed = witnessed(desc, &signatures);
+            if witnessed.is_empty() {
+                (signatures, SignatureSource::Derived)
+            } else {
+                // Derived overloads keep their positions (index 0 stays the
+                // primary overload); the witnessed ones follow.
+                signatures.extend(witnessed);
+                (signatures, SignatureSource::Witnessed)
+            }
+        },
         | None => (Vec::new(), SignatureSource::None),
     }
+}
+
+/// Where each overload of `desc` came from, in the order [`signatures`]
+/// returns them.
+///
+/// An operator's [`SignatureSource`] names the *best* evidence it has; this
+/// is the per-overload answer a binding generator needs to tell the derived
+/// symbolic contract from an overload that was seen to hold.
+#[must_use]
+pub fn overload_sources(desc: &OpDescriptor) -> Vec<SignatureSource> {
+    let (all, source) = signatures(desc);
+    if source != SignatureSource::Witnessed {
+        return vec![source; all.len()];
+    }
+    let derived = derive(desc).map_or(0, |d| d.len());
+    (0..all.len())
+        .map(|index| {
+            if index < derived {
+                SignatureSource::Derived
+            } else {
+                SignatureSource::Witnessed
+            }
+        })
+        .collect()
+}
+
+/// The shipped witnessed signatures of `desc` that are coherent with
+/// `derived` (see [`crate::kernel::sort`]).
+///
+/// The table is mined offline, so an entry can be stale with respect to the
+/// registration it is read against (an operator changed arity, or gained a
+/// declared signature). Coherence is therefore re-checked here: a witnessed
+/// overload never makes a call ambiguous that the registration resolves.
+fn witnessed(
+    desc: &OpDescriptor,
+    derived: &[Signature],
+) -> Vec<Signature> {
+    let mut kept: Vec<Signature> = derived.to_vec();
+    let mut out = Vec::new();
+    for entry in crate::kernel::sort::witnessed_for(desc) {
+        // A refinement sharpens the result of an overload that exists; as an
+        // overload of its own it would be ambiguous with that one.
+        if !entry.refines && crate::kernel::sort::coherent(&kept, &entry.signature) {
+            kept.push(entry.signature.clone());
+            out.push(entry.signature.clone());
+        }
+    }
+    out
 }
 
 /// The signatures the rules above imply, or `None` when nothing can be said.

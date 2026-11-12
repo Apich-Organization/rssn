@@ -569,7 +569,14 @@ pub fn best(
     signatures: &[Signature],
     args: &[Value],
 ) -> Best {
-    choose(signatures.iter().map(|signature| score(signature, args)))
+    refine(
+        choose(signatures.iter().map(|signature| score(signature, args))),
+        |index| {
+            signatures.get(index).and_then(|signature| {
+                profile(signature, args.len(), |at, param| matches(param, &args[at]))
+            })
+        },
+    )
 }
 
 /// Chooses among `signatures` for the static types `args`.
@@ -582,11 +589,84 @@ pub fn best_types(
     signatures: &[Signature],
     args: &[TypeExpr],
 ) -> Best {
-    choose(
-        signatures
-            .iter()
-            .map(|signature| score_types(signature, args)),
+    refine(
+        choose(
+            signatures
+                .iter()
+                .map(|signature| score_types(signature, args)),
+        ),
+        |index| {
+            signatures.get(index).and_then(|signature| {
+                profile(signature, args.len(), |at, param| {
+                    matches_type(param, &args[at])
+                })
+            })
+        },
     )
+}
+
+/// The match of every parameter, in order (the detail [`score_fold`] folds
+/// into its minimum).
+fn profile<F>(
+    signature: &Signature,
+    arity: usize,
+    mut match_at: F,
+) -> Option<Vec<Match>>
+where
+    F: FnMut(usize, &TypeExpr) -> Match,
+{
+    if !signature.accepts_arity(arity) {
+        return None;
+    }
+    (0..arity)
+        .map(|index| {
+            let param = signature
+                .params
+                .get(index)
+                .or_else(|| signature.variadic.as_ref().map(|variadic| &variadic.elem))?;
+            let matched = match_at(index, param);
+            matched.accepted().then_some(matched)
+        })
+        .collect()
+}
+
+/// Breaks a tie by pointwise dominance.
+///
+/// The score of an overload is its *worst* parameter, so `(Int, Term)` and
+/// `(Term, Term)` tie on `(Int, Int)` although the first is at least as
+/// specific in every position and strictly more in one. Such a tie is not a
+/// real ambiguity: the dominating overload is the unique best. A tie in which
+/// no overload dominates all the others (`(Int, Term)` against `(Term, Int)`)
+/// stays [`Best::Ambiguous`].
+fn refine(
+    best: Best,
+    mut profile_of: impl FnMut(usize) -> Option<Vec<Match>>,
+) -> Best {
+    let Best::Ambiguous(tied) = best else {
+        return best;
+    };
+    let profiles: Vec<Option<Vec<Match>>> = tied.iter().map(|&index| profile_of(index)).collect();
+    let dominates = |a: &[Match], b: &[Match]| {
+        a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x >= y) && a != b
+    };
+    let winner = tied.iter().zip(&profiles).find(|(_, mine)| {
+        let Some(mine) = mine else {
+            return false;
+        };
+        profiles
+            .iter()
+            .filter(|other| other.as_ref() != Some(mine))
+            .all(|other| other.as_ref().is_some_and(|other| dominates(mine, other)))
+            && profiles
+                .iter()
+                .filter(|other| other.as_ref() == Some(mine))
+                .count()
+                == 1
+    });
+    match winner {
+        | Some((&index, _)) => Best::Unique(index),
+        | None => Best::Ambiguous(tied),
+    }
 }
 
 /// The shared choice fold: keep the accepted scores, pick the highest, and

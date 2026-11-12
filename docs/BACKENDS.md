@@ -44,12 +44,14 @@ Module layout (`src/backend/device/`):
 
 | File | Contents |
 |---|---|
-| `mod.rs` | `Device`, `DeviceInfo`/`DeviceKind`/`DeviceOps`, `Buffer`, `DeviceRegistry`, `registry()`, `build_devices()`, `map_columns`, `ensemble_rk4`, `DeviceBackend` |
-| `kernel.rs` | `KernelIr`, `KernelOp`, `KernelBuilder`, `rk4_step`, reference `eval_row` |
-| `cpu.rs` | `CpuDevice`: lane-block interpreter, rayon splitting, deterministic reductions, matmul |
-| `wgsl.rs` | `KernelEmitter` trait, `emit_wgsl`, golden-tested |
+| `mod.rs` | `Device` (`launch`, `launch_cols`, `copy`, ...), `DeviceInfo`/`DeviceKind`/`DeviceOps`, `Buffer`, `DeviceRegistry`, `registry()`, `build_devices()`, `map_columns`, `ensemble_rk4`, `DeviceBackend` |
+| `kernel.rs` | `KernelIr` (elementwise core, index values, loads, one fold), `KernelOp`, `Fold`, `Analysis`, `KernelBuilder`, `rk4_step`, the reference evaluators `eval_row` / `eval_at` |
+| `array.rs` | array programs as kernel builders and their drivers: reductions, fused map-reduce, matmul, CSR product, stencils, all-pairs, `ensemble_dopri5` |
+| `cpu.rs` | `CpuDevice`: lane-block interpreter for elementwise kernels, the reference evaluator for structured ones, rayon splitting |
+| `emit.rs` | one emitter, five targets: WGSL, GLSL, OpenCL C, CUDA C++, Metal |
+| `wgsl.rs` | `KernelEmitter` trait, `emit_wgsl`, `SourceEmitter` |
 | `gpu.rs` | `WgpuDevice` (feature `gpu-wgpu` only) |
-| `golden/*.wgsl` | expected emitter output |
+| `golden/*` | expected emitter output per target |
 | `tests.rs` | all tests above |
 
 ### Capability-described devices
@@ -59,9 +61,10 @@ Module layout (`src/backend/device/`):
 * `kind`: `Cpu`, `CpuParallel`, `Gpu(GpuApi)`, `Custom(name)`;
 * `dtypes`: `F64` and/or `F32`. **The kernel IR has `f64` semantics;** a device
   that only has `f32` says so and its results are `f32`-rounded;
-* `ops`: `elementwise`, `reduce`, `matmul` flags; an optional method a device
-  does not implement returns `DeviceError::Unsupported` (nothing is emulated
-  silently);
+* `ops`: `elementwise`, `reduce`, `matmul`, `structured` flags; an optional
+  method a device does not implement returns `DeviceError::Unsupported`
+  (nothing is emulated silently). `structured` is the one that matters: a
+  device with it runs every program in `array`;
 * `parallelism`, `max_buffer_elems`, `unified_memory`, `deterministic`.
 
 `registry()` lists them (`list()`), resolves by id (`get("cpu-parallel")`), and
@@ -104,6 +107,72 @@ Convenience layers that use only the trait:
   times into one kernel*, so each step is one launch on any device; trajectories
   are independent, so a row's answer does not depend on the batch.
 
+### Structured kernels: one primitive instead of a list of operations
+
+The first device layer could run an elementwise formula per row and nothing
+else; `reduce` and `matmul` were separate trait methods that only the CPU
+implemented, and every further pattern (a stencil, a sparse product) would
+have meant another method and another hand-written shader per device. That
+does not scale to "broader GPU support", so the IR was extended instead of
+the trait.
+
+`KernelIr` keeps the tape as its elementwise core and adds three things
+(`device/kernel.rs`):
+
+* **index values**: `Row`, `Rows`, `Len(col)`, integer constants and integer
+  arithmetic. Registers are typed (`Ty::Num` / `Ty::Idx`) and never mixed
+  without `ToNum` / `ToIdx`;
+* **addressed reads**: `Load(col, idx)` reads any element of an input column.
+  Columns have independent lengths, so one launch can read a grid, a table and
+  a CSR structure;
+* **one fold**: `Fold { count, accs }` runs a body `count` times with the
+  inner index `Inner` and combines values into accumulators (`Sum`, `Prod`,
+  `Min`, `Max`); `Acc(k)` reads one afterwards.
+
+Phases are *derived*, not written: `KernelIr::analyse` assigns every register
+to `Pre` (once per row), `Body` (once per inner index) or `Post` (after the
+loop) from its data flow, and rejects a register that needs both the inner
+index and an accumulator. Loop-invariant code is therefore hoisted for free.
+
+A device implements **one** entry point for all of it:
+
+```rust
+fn launch_cols(&self, kernel, rows, input: &Buffer, lens: &[usize], params, output: &mut Buffer)
+```
+
+`launch` is the special case "every column has one element per row". The
+default `launch_cols` forwards exactly that case and returns `Unsupported`
+otherwise, so a device written against the old trait keeps compiling and says
+what it cannot do (`DeviceOps::structured`).
+
+Everything else is a **library of kernel builders** (`device/array.rs`) that
+uses only the trait:
+
+| pattern | builder | rows | the fold |
+|---|---|---|---|
+| reduction | `reduce_pass` | `ceil(n / 256)` | one block of the column |
+| map, then reduce, fused | `map_reduce_pass` | `ceil(n / 256)` | evaluates the map inside the block: the mapped column is never stored |
+| matrix product | `matmul_kernel` | `m * n` | a row times a column |
+| CSR matrix times vector | `spmv_csr_kernel` | matrix rows | the stored entries of a row |
+| stencils (zero / clamp / periodic) | `stencil1d_kernel`, `stencil2d_kernel` | grid points | none: a fixed set of loads |
+| all-pairs interaction | `pairwise_kernel` | bodies | every partner |
+| adaptive ODE ensemble | `dopri5_step` | trajectories | none: one embedded step attempt with a per-row step size |
+
+with drivers `array::reduce`, `reduce_column` (one column of a wider buffer,
+in place), `map_reduce`, `matmul`, `run_cols` and `ensemble_dopri5`. The
+`gpu-wgpu` device's `reduce` and `matmul` *are* these drivers: no shader was
+written for either. `array::reduce` combines in a fixed tree (blocks of 256,
+level by level), so two devices with the same float type agree bit for bit.
+
+`ensemble_dopri5` integrates many initial conditions with adaptive
+Dormand-Prince 5(4) steps. Time and step size are columns, so a stiff row
+takes small steps while the others take large ones; the host asks only for
+the minimum of the time column every few launches (one number per check).
+
+`Device::copy` moves a range between two buffers of one device (wgpu: a
+buffer-to-buffer copy; the default goes through the host and is still
+correct).
+
 ### What is portable, and what is not
 
 `KernelIr::from_tape` rejects `Call`, `Extern1` and `Extern2` with
@@ -123,20 +192,36 @@ call `libm` per lane (no SIMD math library is assumed). `cpu-parallel` halves th
 rows recursively with `rayon::join` over disjoint `&mut` slices down to 2048
 rows: no `unsafe`, no atomics.
 
-### The WGSL emitter and the `gpu-wgpu` feature
+### Source emitters and the `gpu-wgpu` feature
 
-`wgsl::emit_wgsl(&KernelIr, &WgslOptions) -> String` is pure string generation.
-Its module documentation fixes the binding layout and lists where `f32` WGSL
-differs from the tape (no `f64`; NaN not guaranteed; `pow` of negatives handled
-by a helper; transcendentals a few ulp). Golden files in `golden/` pin the
-output; regenerate with `RSSN_BLESS_GOLDEN=1 cargo test --lib backend::device`
-and review the diff.
+`emit::emit(&KernelIr, &EmitOptions) -> String` walks a program once and asks
+a `Target` how to spell each construct; the hard part (phases, the fold,
+bounds-checked loads, NaN conventions) exists once.
 
-`cargo test --lib backend::device --features gpu-wgpu` additionally parses and
-validates the emitted WGSL with naga, and, if wgpu finds an adapter, runs an
-ensemble on it and compares with the closed form. The feature is off by default;
-the default build does not compile the GPU stack. `WgpuDevice` implements
-elementwise launch only; `reduce` and `matmul` return `Unsupported` there.
+| target | language | precisions | status |
+|---|---|---|---|
+| `Target::Wgsl` | WGSL | `f32` | executed by `gpu-wgpu`; validated by naga in the tests |
+| `Target::Glsl` | GLSL 4.50 compute | `f32`, `f64` | emitter, golden-tested |
+| `Target::OpenCl` | OpenCL C | `f32`, `f64` | emitter, golden-tested |
+| `Target::Cuda` | CUDA C++ | `f32`, `f64` | emitter, golden-tested |
+| `Target::Metal` | Metal Shading Language | `f32` | emitter, golden-tested |
+
+"Emitter" means the text is generated and pinned by golden files
+(`golden/*.{glsl,cl,cu,metal}`); this crate has no runtime for those APIs and
+their output has **not** been compiled by the vendors' compilers here. A device
+for one of them supplies the launch half and reuses the emitter.
+
+All targets share one interface: `rssn_in` (every column, concatenated),
+`rssn_params`, `rssn_out` (column-major), `rssn_cols` (offset and length of
+each input column) and the row and column counts; bindings 0 to 4 for WGSL,
+GLSL and Metal, kernel arguments in that order for OpenCL and CUDA.
+`wgsl::emit_wgsl` remains as the WGSL-only spelling.
+
+`backend::device::gpu::WgpuDevice` (feature `gpu-wgpu`, off by default) compiles
+the WGSL with wgpu, one cached pipeline per kernel, `f32` buffers, a
+two-dimensional dispatch for more than `65535 * 64` rows, and runs structured
+kernels (`ops.structured`, `ops.reduce`, `ops.matmul`). `gpu::probe()` returns
+one device per adapter; none is not an error.
 
 ## Adding a backend, step by step
 
@@ -207,16 +292,25 @@ therefore host-only until someone writes its kernel.
 
 ## Known gaps
 
-* No GPU `reduce`/`matmul`, no on-device sorting or scans; the WGSL for them is
-  not written.
 * GPU arithmetic is `f32`. There is no `f64` emulation (double-single) and
-  WGSL has no `f64`; a CUDA/Vulkan backend with `f64` would lift this.
+  WGSL has no `f64`; the GLSL, OpenCL and CUDA emitters produce `f64` source,
+  but no device in this crate runs it.
+* The GLSL, OpenCL, CUDA and Metal emitters are golden-tested text. Nothing
+  here compiles them with the vendor toolchains; expect to fix details when
+  the first device for one of them is written.
+* Index data that a kernel reads from a column (CSR row pointers and column
+  indices) is stored as floats: exact below `2^24` on an `f32` device. Typed
+  integer columns are the fix and are not implemented.
+* A kernel has one fold, not nested loops, and reads one input buffer. A
+  product of two buffers is joined with `Device::copy` first.
+* `array::reduce` is a tree of launches with a download of one number at the
+  end; there are no on-device scans, sorts or compactions.
 * Special functions that are host externs do not run on devices.
 * Single-row calls through `DeviceBackend` pay a full launch; use batches.
-* `ensemble_rk4` is fixed-step. Adaptive stepping needs per-row step control
-  and a convergence reduction; the pieces (`reduce`, per-row params) exist but
-  the loop does not.
-* The `gpu-wgpu` path was compiled and validated with naga; execution is tested
-  only where an adapter is present (see the test's skip message).
-* Kernel launches are not yet fused: a chain of launches round-trips through
-  device buffers but never through the host.
+* `ensemble_dopri5` has no dense output and no event detection, and the CPU
+  path for structured kernels is the reference evaluator (correct, parallel,
+  not vectorised).
+* The `gpu-wgpu` path is validated with naga; execution is tested only where
+  an adapter is present (see the test's skip message).
+* Kernel launches are fused only where a builder does it (`map_reduce_pass`);
+  there is no general planner that fuses a chain of launches.

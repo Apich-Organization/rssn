@@ -288,16 +288,35 @@ fn mandelbrot_iterate(
     Some(V::Node(mandelbrot_step(cx, z, c)))
 }
 
+/// Longest exact orbit `mandelbrot_orbit` computes.
+const MAX_ORBIT: usize = 4096;
+/// Largest numerator or denominator, in bits, an exact orbit term may reach.
+const MAX_ORBIT_BITS: u64 = 1 << 14;
+
 fn mandelbrot_orbit(
     cx: &mut Cx<'_>,
     a: &[NodeId],
 ) -> Option<V> {
     let [c, n] = arg(a)?;
     let n = idx(cx.graph, n)?;
+    // The orbit is exact, so outside the Mandelbrot set its terms double in
+    // length at every step: a long orbit of an escaping point is not a
+    // computation that finishes. The request is left unreduced instead.
+    if n > MAX_ORBIT {
+        return None;
+    }
     let mut z = cx.graph.int(0);
     let mut out = vec![z];
     for _ in 0..n {
         z = mandelbrot_step(cx, z, c);
+        let bits = cx
+            .graph
+            .number_of(z)
+            .and_then(crate::graph::Number::to_rational)
+            .map_or(0, |q| q.numer().bits().max(q.denom().bits()));
+        if bits > MAX_ORBIT_BITS {
+            return None;
+        }
         out.push(z);
     }
     Some(V::nodes(&out))

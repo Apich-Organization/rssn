@@ -590,6 +590,11 @@ impl Engine {
             }
         }
 
+        // The finished graph is a set of typing judgements (a request and
+        // its answer share a class); with tracing on they are logged.
+        if env.depth == 0 {
+            crate::kernel::sort::observe(graph);
+        }
         let closed = Extractor::new(graph, roots, &ClosedForm);
         Report {
             stop,
