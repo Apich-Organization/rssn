@@ -536,3 +536,46 @@ pub fn solve_poisson_multigrid_nd(
     let grid = crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)?;
     crate::sim::multigrid::MultigridSolver::new(&grid, bcs, sigma, options)?.solve(f, 0.0)
 }
+
+/// Solves the 3D Poisson equation `-Δu = f` on the unit cube.
+///
+/// Zero Dirichlet boundary, `n` nodes per axis including the boundary, `x` fastest, `n = 2^k + 1`)
+/// with `num_cycles` multigrid V-cycles. 3D counterpart of
+/// [`solve_poisson_2d_multigrid`]; the general 1D/2D/3D entry point with any
+/// boundary conditions is [`solve_poisson_multigrid_nd`].
+///
+/// # Errors
+///
+/// This function will return an error if `n` is not of the form `2^k + 1`, if
+/// `f.len() != n^3` or if the multigrid hierarchy cannot be built.
+pub fn solve_poisson_3d_multigrid(
+    n: usize,
+    f: &[f64],
+    num_cycles: usize,
+) -> Result<Vec<f64>, String> {
+    if n < 3 || !(n - 1).is_power_of_two() {
+        return Err("Grid size `n` must be of the form 2^k + 1.".to_string());
+    }
+
+    if f.len() != n * n * n {
+        return Err("`f` must have n^3 entries.".to_string());
+    }
+
+    let h = 1.0 / (n - 1) as f64;
+
+    let options = crate::sim::multigrid::MgOptions {
+        max_cycles: num_cycles,
+        tol: 0.0,
+        ..crate::sim::multigrid::MgOptions::default()
+    };
+
+    solve_poisson_multigrid_nd(
+        &[n, n, n],
+        &[h, h, h],
+        f,
+        0.0,
+        &crate::sim::boundary::FaceBcs::dirichlet_zero(),
+        options,
+    )
+    .map(|r| r.u)
+}

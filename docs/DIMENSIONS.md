@@ -332,7 +332,11 @@ semantic dimension rule** (not `Unspecified`).
   the scanner honest: `the_coverage_scanner_detects_a_missing_rule` proves it
   reports an operator registered without a rule,
   `only_documented_operators_bypass_dimensions` rejects an accidental `Any`
-  (the allowlist is `oo`, `infinity`, `big_o`, `hessian_definiteness`), and
+  (the allowlist, `DOCUMENTED_BYPASS` in `graph/dim.rs`, is `oo`, `infinity`,
+  `big_o`, `hessian_definiteness` and the `numeric` operators whose result
+  dimension no rule expresses: the Krylov, sparse and multigrid solves,
+  `polynomial_system_roots`, the sampled-function integrals,
+  `oscillatory_integral`, `anderson_fixed_point`, `newton_cg_minimize`), and
   `no_operator_has_an_accidental_rule` pins the core table.
 * To add an operator: add `i.dim(op, rule)` in the install function (or extend
   the central table for families such as Bessel functions) and add

@@ -34,6 +34,8 @@ mod dg;
 mod dg3d;
 #[path = "sim/dg_research.rs"]
 mod dg_research;
+#[path = "sim/dimension_coverage.rs"]
+mod dimension_coverage;
 #[path = "sim/dpd.rs"]
 mod dpd;
 #[path = "sim/elasticity_fem.rs"]
@@ -133,5 +135,17 @@ mod symplectic;
 #[path = "sim/yee_fdtd.rs"]
 mod yee_fdtd;
 
+#[path = "sim/coverage_r2_fem.rs"]
+mod coverage_r2_fem;
+#[path = "sim/coverage_r2_fv.rs"]
+mod coverage_r2_fv;
+#[path = "sim/coverage_r2_md.rs"]
+mod coverage_r2_md;
+#[path = "sim/coverage_r2_nbody.rs"]
+mod coverage_r2_nbody;
+#[path = "sim/coverage_r2_orbits.rs"]
+mod coverage_r2_orbits;
+#[path = "sim/coverage_r2_spectral.rs"]
+mod coverage_r2_spectral;
 #[path = "sim/par_sites.rs"]
 mod par_sites;

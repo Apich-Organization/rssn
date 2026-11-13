@@ -52,7 +52,7 @@ fn non_finite_input_is_an_error_everywhere() {
         assert_eq!(eigenvalues(&a).err(), Some(DenseError::NonFinite));
         assert_eq!(eigen(&a).err(), Some(DenseError::NonFinite));
         assert_eq!(null_space(&a, None).err(), Some(DenseError::NonFinite));
-        assert_eq!(expm(&a).err().is_some(), true);
+        assert!(expm(&a).err().is_some());
         assert_eq!(sqrtm(&a).err(), Some(DenseError::NonFinite));
         assert_eq!(logm(&a).err(), Some(DenseError::NonFinite));
         assert!(eigen_generalized_symmetric(&a, &Mat::identity(2)).is_err());
@@ -225,7 +225,7 @@ fn ill_conditioned_hilbert_matrices() {
     assert!(p.data.iter().all(|v| v.is_finite()));
     // H5 is solved to the expected accuracy.
     let h5 = hilbert(5);
-    let b5 = h5.matvec(&vec![1.0; 5]);
+    let b5 = h5.matvec(&[1.0; 5]);
     let x5 = solve(&h5, &b5).unwrap();
     assert!(x5.iter().all(|v| (v - 1.0).abs() < 1e-9));
 }

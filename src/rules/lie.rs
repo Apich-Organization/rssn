@@ -447,12 +447,80 @@ fn vanishes(
     })
 }
 
+/// Every entry as an exact rational, or `None` when one is not a literal.
+fn exact_matrix(
+    graph: &Graph,
+    entries: &[NodeId],
+) -> Option<Vec<BigRational>> {
+    entries
+        .iter()
+        .map(|&e| graph.number_of(e).and_then(Number::to_rational))
+        .collect()
+}
+
+/// Gauss-Jordan elimination over the rationals of `rows` (the first `d`
+/// columns are unknowns, the rest right-hand sides). Returns the pivot
+/// columns and the reduced rows, or `None` when the system is inconsistent.
+fn eliminate_exact(
+    mut rows: Vec<Vec<BigRational>>,
+    d: usize,
+) -> Option<(Vec<usize>, Vec<Vec<BigRational>>)> {
+    use num_traits::Zero;
+    let len = rows.len();
+    let mut pivots = Vec::new();
+    let mut r = 0;
+    for c in 0..d {
+        let Some(p) = (r..len).find(|&p| !rows[p][c].is_zero()) else {
+            continue;
+        };
+        rows.swap(r, p);
+        let inv = rows[r][c].recip();
+        for entry in &mut rows[r] {
+            *entry = &*entry * &inv;
+        }
+        for q in 0..len {
+            if q == r || rows[q][c].is_zero() {
+                continue;
+            }
+            let f = rows[q][c].clone();
+            for k in 0..rows[q].len() {
+                let t = &f * &rows[r][k];
+                rows[q][k] -= t;
+            }
+        }
+        pivots.push(c);
+        r += 1;
+    }
+    if rows[r..]
+        .iter()
+        .any(|row| row[d..].iter().any(|e| !e.is_zero()))
+    {
+        return None;
+    }
+    Some((pivots, rows))
+}
+
 fn matprod(
     cx: &mut Cx<'_>,
     a: &[NodeId],
     b: &[NodeId],
     n: usize,
 ) -> Vec<NodeId> {
+    if let (Some(x), Some(y)) = (exact_matrix(cx.graph, a), exact_matrix(cx.graph, b)) {
+        // Exact rational entries multiply directly; sending every product
+        // through the rewrite engine made 4x4 brackets dominate the runtime.
+        let mut out = Vec::with_capacity(n * n);
+        for i in 0..n {
+            for j in 0..n {
+                let mut acc = BigRational::from_integer(BigInt::from(0));
+                for k in 0..n {
+                    acc += &x[i * n + k] * &y[k * n + j];
+                }
+                out.push(cx.graph.num(Number::rat(acc)));
+            }
+        }
+        return out;
+    }
     let mut out = Vec::with_capacity(n * n);
     for i in 0..n {
         for j in 0..n {
@@ -574,6 +642,26 @@ fn express(
                 });
             }
             m.push(row);
+        }
+    }
+    if coords.is_none() {
+        let exact: Option<Vec<Vec<BigRational>>> =
+            m.iter().map(|row| exact_matrix(cx.graph, row)).collect();
+        if let Some(rows) = exact {
+            let (pivots, reduced) = eliminate_exact(rows, d)?;
+            let mut out = Vec::with_capacity(targets.len());
+            for j in 0..targets.len() {
+                let mut v = Vec::with_capacity(d);
+                for c in 0..d {
+                    let entry = pivots.iter().position(|&p| p == c).map_or_else(
+                        || BigRational::from_integer(BigInt::from(0)),
+                        |row| reduced[row][d + j].clone(),
+                    );
+                    v.push(cx.graph.num(Number::rat(entry)));
+                }
+                out.push(v);
+            }
+            return Some((out, pivots.len()));
         }
     }
     let len = m.len();

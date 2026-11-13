@@ -44,6 +44,8 @@ pub mod cutcell;
 pub mod dg;
 /// Nodal DG on hexahedra (3D).
 pub mod dg3d;
+/// Dimension-generic (1D/2D/3D) Poisson, transport, heat, Schrodinger and wave kernels.
+pub mod dimensional;
 /// Dissipative particle dynamics (2D/3D).
 pub mod dpd;
 /// Linear elasticity on triangle/tetrahedron meshes (P1/P2).

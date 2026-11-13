@@ -275,7 +275,7 @@ impl Sort {
 
     /// Whether a signature mentioning this sort says more than "a term".
     #[must_use]
-    pub fn informative(&self) -> bool {
+    pub const fn informative(&self) -> bool {
         !matches!(self, Self::Never | Self::Expr | Self::Prop | Self::Any)
     }
 
@@ -533,7 +533,10 @@ fn classify_without(
             prop = true;
         } else if structured(graph, op) {
             let name = desc.name.to_string();
-            object = Some(object.map_or(name.clone(), |best: String| best.min(name)));
+            object = Some(match object {
+                | Some(best) => best.min(name),
+                | None => name,
+            });
         } else {
             scalar = true;
         }
@@ -920,7 +923,7 @@ impl Candidate {
     /// that only narrows its parameters (`(Int) -> Term`) tells a host
     /// nothing the symbolic contract does not, and would only crowd the
     /// overload set.
-    fn informative(&self) -> bool {
+    const fn informative(&self) -> bool {
         self.result.informative()
     }
 }
@@ -1165,8 +1168,7 @@ pub fn coherent(
             let elem = |s: &Signature| {
                 s.variadic
                     .as_ref()
-                    .map(|v| vec![v.elem.clone()])
-                    .unwrap_or_else(|| s.params.clone())
+                    .map_or_else(|| s.params.clone(), |v| vec![v.elem.clone()])
             };
             return match (old.variadic.is_some(), new.variadic.is_some()) {
                 | (true, true) => {
@@ -1511,10 +1513,8 @@ pub fn mine(
         };
         // The same parameters as a registered overload: not a new overload,
         // but possibly a sharper result for that one.
-        let refines = registered.iter().any(|old| same_shape(old));
-        if refines
-            && (!candidate.result.informative() || registered.iter().any(|old| *old == signature))
-        {
+        let refines = registered.iter().any(&same_shape);
+        if refines && (!candidate.result.informative() || registered.contains(&signature)) {
             stats.incoherent += 1;
             continue;
         }
@@ -1563,6 +1563,11 @@ pub fn mine(
 
 /// The witnessed signatures shipped with the crate
 /// (`signatures.witnessed.json`, materialised by `build.rs`).
+///
+/// # Panics
+///
+/// Panics if the embedded table is not valid JSON (it is generated and
+/// version-controlled, so this indicates a broken build).
 #[must_use]
 pub fn shipped() -> &'static WitnessedTable {
     static TABLE: OnceLock<WitnessedTable> = OnceLock::new();
@@ -1754,9 +1759,9 @@ mod tests {
         assert!(coherent(&[generic.clone(), ints.clone()], &left));
         // `(Int, Term)` and `(Term, Int)` both accept `(Int, Int)` and neither
         // is more specific.
-        assert!(!coherent(&[generic.clone(), left], &right));
+        assert!(!coherent(&[generic, left], &right));
         // The same parameter list twice is never coherent.
-        assert!(!coherent(&[ints.clone()], &ints));
+        assert!(!coherent(std::slice::from_ref(&ints), &ints));
         // A matrix parameter and a scalar one cannot receive the same call.
         let matrix = sig(vec![TypeExpr::Int.tensor(2_u64), TypeExpr::Int]);
         assert!(coherent(&[ints], &matrix));

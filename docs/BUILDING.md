@@ -38,6 +38,13 @@ invalid signatures fail manifest construction instead of silently changing the
 typed API. Local signature edits are source changes and should be committed
 alongside the code that uses them.
 
+`signatures.witnessed.json` (the signatures mined from the test corpus, see
+[KERNEL.md](KERNEL.md)) is required in exactly the same way: the build fails with a
+message naming the file when it is missing, so two builds of the same sources
+cannot produce different manifests. Regenerate it with
+`cargo run --profile tools --bin signature-mine` after adding operators; until
+then new operators carry their derived (and overlay) signatures only.
+
 Build metadata honors `SOURCE_DATE_EPOCH`, `VERGEN_IDEMPOTENT`, and explicit
 `VERGEN_*` overrides. On Linux it obtains host details from `/etc/os-release`,
 `/proc`, and `uname`; platforms or source archives without those facilities or

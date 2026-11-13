@@ -28,6 +28,8 @@ mod dd;
 mod dense;
 #[path = "kernels/differential_geometry.rs"]
 mod differential_geometry;
+#[path = "kernels/dimension_coverage.rs"]
+mod dimension_coverage;
 #[path = "kernels/eigs_ext.rs"]
 mod eigs_ext;
 #[path = "kernels/error_correction.rs"]

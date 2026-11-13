@@ -531,6 +531,85 @@ pub fn dot_product(
     v1.z.mul_add(v2.z, v1.x.mul_add(v2.x, v1.y * v2.y))
 }
 
+/// Computes the dot product of two 3D vectors; the explicitly named 3D sibling of
+/// [`dot_product_2d`] (identical to [`dot_product`]).
+#[must_use]
+pub fn dot_product_3d(
+    v1: &Vector3D,
+    v2: &Vector3D,
+) -> f64 {
+    dot_product(v1, v2)
+}
+
+/// Computes the dot product of two vectors of any dimension.
+///
+/// # Errors
+/// Returns an error when the slices have different lengths.
+pub fn dot_product_nd(
+    v1: &[f64],
+    v2: &[f64],
+) -> Result<f64, String> {
+    if v1.len() != v2.len() {
+        return Err(format!(
+            "dot product of vectors of different dimension ({} and {})",
+            v1.len(),
+            v2.len()
+        ));
+    }
+
+    Ok(v1
+        .iter()
+        .zip(v2)
+        .fold(0.0, |acc, (a, b)| a.mul_add(*b, acc)))
+}
+
+/// Inner product that works for 2D vectors, 3D vectors and (via [`dot_product_nd`])
+/// slices alike, so that code can be written once for every dimension.
+pub trait InnerProduct {
+    /// The Euclidean inner product `self . other`.
+    fn inner(
+        &self,
+        other: &Self,
+    ) -> f64;
+}
+
+impl InnerProduct for Vector2D {
+    fn inner(
+        &self,
+        other: &Self,
+    ) -> f64 {
+        dot_product_2d(self, other)
+    }
+}
+
+impl InnerProduct for Vector3D {
+    fn inner(
+        &self,
+        other: &Self,
+    ) -> f64 {
+        dot_product(self, other)
+    }
+}
+
+/// Dimension-generic dot product: dispatches on the vector type.
+#[must_use]
+pub fn dot<V: InnerProduct>(
+    v1: &V,
+    v2: &V,
+) -> f64 {
+    v1.inner(v2)
+}
+
+/// Computes the (scalar) cross product `x1 y2 - y1 x2` of two 2D vectors, the
+/// `z` component of the 3D cross product of their embeddings.
+#[must_use]
+pub fn cross_product_2d(
+    v1: &Vector2D,
+    v2: &Vector2D,
+) -> f64 {
+    v1.x.mul_add(v2.y, -(v1.y * v2.x))
+}
+
 /// Computes the cross product of two 3D vectors.
 #[must_use]
 pub fn cross_product(

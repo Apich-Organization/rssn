@@ -85,6 +85,7 @@ fn chebyshev(n: usize) -> (Vec<f64>, Vec<Vec<f64>>) {
 /// # Errors
 /// A message when `n < 2`, the data is not finite, or the collocation system
 /// cannot be solved.
+#[allow(clippy::float_cmp)] // `a == b` is the exact empty-interval sentinel
 pub fn levin(
     f: &dyn Fn(f64) -> f64,
     g: &dyn Fn(f64) -> f64,
@@ -109,7 +110,7 @@ pub fn levin(
     }
     let (nodes, d) = chebyshev(n);
     let half = 0.5 * (b - a);
-    let mid = 0.5 * (a + b);
+    let mid = f64::midpoint(a, b);
     let xs: Vec<f64> = nodes.iter().map(|t| mid + half * t).collect();
     // (D / half + i w diag(g')) (pr + i pi) = f, as a real 2n x 2n system.
     let mut system = Mat::zeros(2 * n, 2 * n);
@@ -162,6 +163,7 @@ pub fn levin(
 /// A message when no pair of successive collocations agrees: typically a
 /// stationary point of the phase, or an integrand that is itself
 /// oscillatory.
+#[allow(clippy::too_many_arguments)] // flat signature mirroring `levin` plus the two stopping controls
 pub fn levin_adaptive(
     f: &dyn Fn(f64) -> f64,
     g: &dyn Fn(f64) -> f64,

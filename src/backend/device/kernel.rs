@@ -544,8 +544,7 @@ impl KernelIr {
                     ));
                 }
                 here = match (here, phase.get(r).copied().unwrap_or(Phase::Pre)) {
-                    | (p, Phase::Pre) => p,
-                    | (Phase::Pre, p) => p,
+                    | (p, Phase::Pre) | (Phase::Pre, p) => p,
                     | (p, q) if p == q => p,
                     | _ => {
                         return bad(format!(
@@ -890,6 +889,7 @@ pub fn select_is_true(c: f64) -> bool {
 /// A comparison as `1.0` / `0.0` (`!=` is true for NaN operands).
 #[inline]
 #[must_use]
+#[allow(clippy::float_cmp)] // exact IEEE comparison is the semantics of the shader ops
 pub fn cmp_value(
     c: Cmp,
     a: f64,
@@ -1062,13 +1062,13 @@ impl KernelBuilder {
 
     /// Number of instructions so far.
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.ops.len()
     }
 
     /// Whether no instruction was pushed yet.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.ops.is_empty()
     }
 }

@@ -1758,6 +1758,322 @@ pub fn plot_scalar_field_ppm(
     super::raster::write_ppm_file(path, cols, rows, &samples)
 }
 
+// ---------------------------------------------------------------------------
+// 3D fields viewed through planar slices, and 3D streamlines
+// ---------------------------------------------------------------------------
+
+/// Axis perpendicular to the plane of a slice through a 3D box.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SliceAxis {
+    /// Plane `x = const`; the in-plane axes are `(y, z)`.
+    X,
+    /// Plane `y = const`; the in-plane axes are `(x, z)`.
+    Y,
+    /// Plane `z = const`; the in-plane axes are `(x, y)`.
+    Z,
+}
+
+impl SliceAxis {
+    const fn index(self) -> usize {
+        match self {
+            | Self::X => 0,
+            | Self::Y => 1,
+            | Self::Z => 2,
+        }
+    }
+
+    /// The 3D point with in-plane coordinates `(u, v)` on the plane at `position`.
+    const fn point(
+        self,
+        position: f64,
+        u: f64,
+        v: f64,
+    ) -> (f64, f64, f64) {
+        match self {
+            | Self::X => (position, u, v),
+            | Self::Y => (u, position, v),
+            | Self::Z => (u, v, position),
+        }
+    }
+
+    /// The two in-plane ranges `(u, v)` of the box.
+    const fn plane_ranges(
+        self,
+        ranges: [(f64, f64); 3],
+    ) -> ((f64, f64), (f64, f64)) {
+        match self {
+            | Self::X => (ranges[1], ranges[2]),
+            | Self::Y => (ranges[0], ranges[2]),
+            | Self::Z => (ranges[0], ranges[1]),
+        }
+    }
+
+    /// Picks the two in-plane components of a 3D vector.
+    const fn in_plane(
+        self,
+        w: (f64, f64, f64),
+    ) -> (f64, f64) {
+        match self {
+            | Self::X => (w.1, w.2),
+            | Self::Y => (w.0, w.2),
+            | Self::Z => (w.0, w.1),
+        }
+    }
+}
+
+fn check_slice(
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+) -> Result<(), String> {
+    for (range, name) in ranges.iter().zip(["x", "y", "z"]) {
+        check_range(*range, name)?;
+    }
+    let (lo, hi) = ranges[axis.index()];
+    if !position.is_finite() || position < lo || position > hi {
+        return Err(format!("slice position {position} is outside the box"));
+    }
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    Ok(())
+}
+
+/// Samples the scalar field `f(x, y, z)` on a plane perpendicular to `axis`.
+///
+/// The plane is at `position` and the result is a `grid x grid` array; element `[row, col]` is the value at
+/// the `col`-th point of the first in-plane axis and the `row`-th point of the
+/// second one (see [`SliceAxis`]). Feed it to [`plot_heatmap_2d`] or the
+/// raster writers.
+///
+/// # Errors
+/// Fails for an invalid range, a position outside the box or `grid < 2`.
+pub fn slice_scalar_field_3d(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+) -> Result<Array2<f64>, String> {
+    check_slice(ranges, axis, position, grid)?;
+    let (ur, vr) = axis.plane_ranges(ranges);
+    let (us, vs) = (linspace(ur, grid), linspace(vr, grid));
+    Ok(Array2::from_shape_fn((grid, grid), |(row, col)| {
+        let (x, y, z) = axis.point(position, us[col], vs[row]);
+        f(x, y, z)
+    }))
+}
+
+/// Plots a heat map of the 3D scalar field `f` on a planar slice; the 3D
+/// counterpart of [`plot_heatmap_2d`] (row 0 on top is the lower end of the
+/// second in-plane axis).
+///
+/// # Errors
+/// As [`slice_scalar_field_3d`] and [`plot_heatmap_2d`].
+pub fn plot_heatmap_slice_3d(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let data = slice_scalar_field_3d(f, ranges, axis, position, grid)?;
+    plot_heatmap_2d(&data, path)
+}
+
+/// Contour lines of the 3D scalar field `f` on a planar slice: marching squares
+/// of [`contour_lines_2d`] applied to the in-plane coordinates.
+///
+/// # Errors
+/// As [`slice_scalar_field_3d`] and [`contour_lines_2d`].
+pub fn contour_lines_slice_3d(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    levels: &[f64],
+) -> Result<Vec<ContourLine>, String> {
+    check_slice(ranges, axis, position, grid)?;
+    let (ur, vr) = axis.plane_ranges(ranges);
+    contour_lines_2d(
+        |u, v| {
+            let (x, y, z) = axis.point(position, u, v);
+            f(x, y, z)
+        },
+        ur,
+        vr,
+        grid,
+        levels,
+    )
+}
+
+/// Plots contour lines of the 3D scalar field `f` on a planar slice; the 3D
+/// counterpart of [`plot_contour_2d`].
+///
+/// # Errors
+/// As [`contour_lines_slice_3d`] plus file-writing errors.
+pub fn plot_contour_slice_3d(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    levels: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    check_slice(ranges, axis, position, grid)?;
+    let (ur, vr) = axis.plane_ranges(ranges);
+    plot_contour_2d(
+        |u, v| {
+            let (x, y, z) = axis.point(position, u, v);
+            f(x, y, z)
+        },
+        ur,
+        vr,
+        grid,
+        levels,
+        path,
+    )
+}
+
+/// Plots the in-plane projection of the 3D vector field `f` on a planar slice
+/// as scaled arrows; the 3D counterpart of [`plot_quiver_2d`].
+///
+/// # Errors
+/// As [`slice_scalar_field_3d`] and [`plot_quiver_2d`].
+pub fn plot_quiver_slice_3d(
+    f: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    scale: f64,
+    path: &Path,
+) -> Result<(), String> {
+    check_slice(ranges, axis, position, grid)?;
+    let (ur, vr) = axis.plane_ranges(ranges);
+    plot_quiver_2d(
+        |u, v| {
+            let (x, y, z) = axis.point(position, u, v);
+            axis.in_plane(f(x, y, z))
+        },
+        ur,
+        vr,
+        grid,
+        scale,
+        path,
+    )
+}
+
+/// One classical fourth-order Runge-Kutta step of the 3D field.
+fn rk4_step_3d(
+    field: &impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    p: [f64; 3],
+    h: f64,
+) -> Option<[f64; 3]> {
+    let eval = |q: [f64; 3]| field(q[0], q[1], q[2]);
+    let shift =
+        |q: [f64; 3], k: (f64, f64, f64), s: f64| [q[0] + s * k.0, q[1] + s * k.1, q[2] + s * k.2];
+    let k1 = eval(p);
+    let k2 = eval(shift(p, k1, 0.5 * h));
+    let k3 = eval(shift(p, k2, 0.5 * h));
+    let k4 = eval(shift(p, k3, h));
+    let next = [
+        p[0] + h / 6.0 * (k1.0 + 2.0 * k2.0 + 2.0 * k3.0 + k4.0),
+        p[1] + h / 6.0 * (k1.1 + 2.0 * k2.1 + 2.0 * k3.1 + k4.1),
+        p[2] + h / 6.0 * (k1.2 + 2.0 * k2.2 + 2.0 * k3.2 + k4.2),
+    ];
+    next.iter().all(|v| v.is_finite()).then_some(next)
+}
+
+/// Integrates the 3D vector field `f(x, y, z)` forward from each seed.
+///
+/// Uses fourth-order Runge-Kutta and returns one polyline per seed; the 3D
+/// counterpart of [`streamline_paths_2d`] (same stopping rules: leaving the box,
+/// a non-finite or exactly zero field, or `max_steps` steps).
+///
+/// # Errors
+/// Fails for an invalid range, a non-positive or non-finite `step`,
+/// `max_steps == 0`, an empty seed list, or a seed outside the box.
+#[allow(clippy::float_cmp)] // exact zero is the "field vanishes" sentinel
+pub fn streamline_paths_3d(
+    field: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    seeds: &[[f64; 3]],
+    step: f64,
+    max_steps: usize,
+) -> Result<Vec<Vec<[f64; 3]>>, String> {
+    for (range, name) in ranges.iter().zip(["x", "y", "z"]) {
+        check_range(*range, name)?;
+    }
+    if !(step.is_finite() && step > 0.0) {
+        return Err(format!("invalid streamline step ({step})"));
+    }
+    if max_steps == 0 {
+        return Err("streamlines need at least one step".to_owned());
+    }
+    if seeds.is_empty() {
+        return Err("no streamline seeds provided".to_owned());
+    }
+    let inside = |p: [f64; 3]| (0..3).all(|k| p[k] >= ranges[k].0 && p[k] <= ranges[k].1);
+    let mut paths = Vec::with_capacity(seeds.len());
+    for &seed in seeds {
+        if !(seed.iter().all(|v| v.is_finite()) && inside(seed)) {
+            return Err(format!(
+                "streamline seed ({}, {}, {}) is outside the ranges",
+                seed[0], seed[1], seed[2]
+            ));
+        }
+        let mut points = vec![seed];
+        let mut p = seed;
+        for _ in 0..max_steps {
+            let (u, v, w) = field(p[0], p[1], p[2]);
+            if !(u.is_finite() && v.is_finite() && w.is_finite())
+                || (u == 0.0 && v == 0.0 && w == 0.0)
+            {
+                break;
+            }
+            let Some(next) = rk4_step_3d(&field, p, step) else {
+                break;
+            };
+            if !inside(next) {
+                break;
+            }
+            points.push(next);
+            p = next;
+        }
+        paths.push(points);
+    }
+    Ok(paths)
+}
+
+/// Plots 3D streamlines (one coloured polyline per seed) inside the wireframe
+/// box of the oblique projection; the 3D counterpart of [`plot_streamlines_2d`].
+///
+/// # Errors
+/// As [`streamline_paths_3d`], plus file-writing errors.
+pub fn plot_streamlines_3d(
+    field: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    seeds: &[[f64; 3]],
+    step: f64,
+    max_steps: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let paths = streamline_paths_3d(field, ranges, seeds, step, max_steps)?;
+    let scene = Scene::new(ranges);
+    let mut svg = Svg::new();
+    scene.draw_box(&mut svg);
+    for (i, points) in paths.iter().enumerate() {
+        draw_path_3d(&mut svg, &scene, points, PALETTE[i % PALETTE.len()]);
+    }
+    write_svg(svg, path)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

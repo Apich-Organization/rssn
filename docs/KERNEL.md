@@ -127,7 +127,10 @@ cargo run --profile tools --bin signature-mine -- --check   # replay the shipped
 ```
 
 The table is versioned like the overlay (the manifest of a clean clone must not
-depend on having run the tests) and regenerated, never edited. In the manifest
+depend on having run the tests) and, like the overlay, **required**: `build.rs`
+fails with a message naming the file when `signatures.witnessed.json` is
+missing (it used to fall back to an empty table, which made two builds of the
+same sources produce different manifests). It is regenerated, never edited. In the manifest
 such an operator has `signature_source: witnessed`; `overload_sources` says per
 overload whether it is derived or witnessed, `refinements` lists the sharper
 results of existing overloads, and `witnesses` carries the calls. At

@@ -184,9 +184,14 @@ fn split_node<const D: usize>(
 
 /// Dual-tree traversal: calls `far(target, source)` for well-separated node
 /// pairs and `near(target, source)` for leaf pairs that must be summed directly.
+///
+/// A pair is well separated when the opening criterion holds (`rad_a + rad_b <=
+/// theta * distance`) and the gap between the two boxes is at least `min_gap`
+/// (zero for the usual kernels; the 2-D solver raises it with its softening).
 fn traverse<const D: usize>(
     tree: &Tree<D>,
     theta: f64,
+    min_gap: f64,
     mut far: impl FnMut(usize, usize),
     mut near: impl FnMut(usize, usize),
 ) {
@@ -200,7 +205,8 @@ fn traverse<const D: usize>(
             for k in 0..D {
                 d2 += (na.center[k] - nb.center[k]).powi(2);
             }
-            if na.rad + nb.rad <= theta * d2.sqrt() {
+            let distance = d2.sqrt();
+            if na.rad + nb.rad <= theta * distance && distance - na.rad - nb.rad >= min_gap {
                 far(a, b);
                 continue;
             }
@@ -456,6 +462,7 @@ pub fn fmm3d(
     traverse(
         &tree,
         opts.theta,
+        0.0,
         |a, b| m2l_by_target[a].push(b),
         |a, b| near_by_target[a].push(b),
     );
@@ -659,6 +666,15 @@ fn binom_table(n: usize) -> Vec<Vec<f64>> {
 /// Adaptive 2-D FMM: the field `sum_j s_j (x_j - x_i) / (|x_j - x_i|^2 + eps^2)`
 /// at every point (self excluded) on an adaptive quadtree.
 ///
+/// The expansions are those of the unsoftened kernel `1/z`; the softened one
+/// differs from it by a relative `(eps / r)^2`. Box pairs therefore take the
+/// expansions only when their gap is at least `eps / sqrt(theta^(order + 1))`
+/// (below the truncation error), and are summed directly otherwise, so the
+/// result converges to the direct softened sum for every `eps`. A softening
+/// comparable to the extent of the point set makes this the direct `O(N^2)`
+/// sum; use [`fmm3d`] (which differentiates the softened kernel itself) for
+/// large softened problems.
+///
 /// # Errors
 /// Fails for empty input, length mismatch or `theta` outside `(0, 1)`.
 pub fn fmm2d(
@@ -707,9 +723,23 @@ pub fn fmm2d(
     let mut out = vec![[0.0; 2]; n];
     let eps2 = opts.eps * opts.eps;
     let mut m2l_list: Vec<(usize, usize)> = Vec::new();
+    // The multipole and local expansions are those of the unsoftened kernel
+    // 1/z. The softened field differs from it by a relative (eps / r)^2, so a
+    // pair may use them only when that is below the truncation error of the
+    // expansion, theta^(p+1): closer pairs are summed directly. With a
+    // softening comparable to the domain this degrades to the direct sum, which
+    // is the correct answer, not a fast one (the 3-D solver differentiates the
+    // softened kernel itself and has no such limit).
+    let truncation = opts.theta.powi(i32::try_from(p + 1).unwrap_or(i32::MAX));
+    let min_gap = if opts.eps > 0.0 {
+        opts.eps / truncation.sqrt()
+    } else {
+        0.0
+    };
     traverse(
         &tree,
         opts.theta,
+        min_gap,
         |a, b| m2l_list.push((a, b)),
         |a, b| {
             let (na, nb) = (&tree.nodes[a], &tree.nodes[b]);

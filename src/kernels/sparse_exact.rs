@@ -206,7 +206,7 @@ impl Gfp {
         self,
         a: u64,
     ) -> Option<u64> {
-        (a % self.0 != 0).then(|| self.pow_mod(a, self.0 - 2))
+        (!a.is_multiple_of(self.0)).then(|| self.pow_mod(a, self.0 - 2))
     }
 
     /// The residue of an integer.
@@ -588,7 +588,7 @@ pub struct Echelon<E> {
 impl<E: Clone + Debug> Echelon<E> {
     /// The rank over the pivotable columns.
     #[must_use]
-    pub fn rank(&self) -> usize {
+    pub const fn rank(&self) -> usize {
         self.pivots.len()
     }
 
@@ -839,7 +839,7 @@ pub fn solve<D: Domain>(
         .iter()
         .map(|row| entry(row, n).cloned().unwrap_or_else(|| zero.clone()))
         .collect();
-    let mut particular = vec![zero.clone(); n];
+    let mut particular = vec![zero; n];
     back_substitute(dom, &e, &mut particular, &rhs, n)?;
     let nullspace = null_basis(dom, &e, n)?;
     Some(Solution::Family {
@@ -892,7 +892,7 @@ pub fn is_prime_u64(n: u64) -> bool {
         return false;
     }
     for p in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37] {
-        if n % p == 0 {
+        if n.is_multiple_of(p) {
             return n == p;
         }
     }
@@ -1184,7 +1184,7 @@ pub fn solve_dixon(
             if let Some(x) = candidate
                 && verifies(&integer, &rhs, &x)
             {
-                let unscale = BigRational::from(common.clone());
+                let unscale = BigRational::from(common);
                 return Some(x.into_iter().map(|v| v / &unscale).collect());
             }
             if done {
@@ -1323,7 +1323,7 @@ pub fn berlekamp_massey(
 struct Lcg(u64);
 
 impl Lcg {
-    fn next(
+    const fn next(
         &mut self,
         field: Gfp,
     ) -> u64 {
@@ -1390,9 +1390,11 @@ pub fn minpoly_wiedemann(
 }
 
 /// Solves a square non-singular system `A x = b` over `GF(p)` by Wiedemann's
-/// algorithm, or returns `None` when the projection does not determine a
-/// solution (singular matrix, or an unlucky projection in each of the
-/// `trials`). A returned vector always satisfies `A x = b`.
+/// algorithm.
+///
+/// Returns `None` when the projection does not determine a solution
+/// (singular matrix, or an unlucky projection in each of the `trials`). A
+/// returned vector always satisfies `A x = b`.
 #[must_use]
 pub fn solve_wiedemann(
     matrix: &SparseMat<u64>,
@@ -1683,7 +1685,7 @@ mod tests {
                     nullspace,
                 } => {
                     assert_eq!(particular, x);
-                    assert!(nullspace.is_empty());
+                    assert_eq!(nullspace, Vec::<Vec<BigRational>>::new());
                 },
                 | Solution::Inconsistent => panic!("a solvable system"),
             }

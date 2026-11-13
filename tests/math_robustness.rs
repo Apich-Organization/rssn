@@ -114,7 +114,10 @@ fn rhs_overflow(
     }
 }
 
-fn problems() -> Vec<(&'static str, Rhs, Vec<f64>, (f64, f64))> {
+/// A named test problem: right-hand side, initial state and time span.
+type Problem = (&'static str, Rhs, Vec<f64>, (f64, f64));
+
+fn problems() -> Vec<Problem> {
     vec![
         ("nan rhs", rhs_nan, vec![1.0], (0.0, 1.0)),
         ("inf rhs", rhs_inf, vec![1.0], (0.0, 1.0)),
@@ -342,7 +345,8 @@ fn brent_rejects_a_bracket_without_sign_change() {
 #[test]
 fn optimisers_survive_degenerate_objectives() {
     let mut failures = Vec::new();
-    let fns: Vec<(&'static str, fn(&[f64]) -> f64)> = vec![
+    type NamedStatistic = (&'static str, fn(&[f64]) -> f64);
+    let fns: Vec<NamedStatistic> = vec![
         ("nan", |_| NAN),
         ("inf", |_| INF),
         ("neg-inf", |x| -x.iter().map(|v| v * v).sum::<f64>() * INF),

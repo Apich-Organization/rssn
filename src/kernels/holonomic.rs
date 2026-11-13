@@ -233,7 +233,7 @@ impl RatFn {
 
     /// Whether this is zero.
     #[must_use]
-    pub fn is_zero(&self) -> bool {
+    pub const fn is_zero(&self) -> bool {
         self.num.is_empty()
     }
 
@@ -650,10 +650,10 @@ impl Expr {
 // ---------------------------------------------------------------------------
 
 /// Removes the polynomial content of an operator and clears denominators.
-fn primitive(op: Vec<RatFn>) -> Operator {
+fn primitive(op: &[RatFn]) -> Operator {
     // Common denominator.
     let mut den: Poly = vec![Q::one()];
-    for c in &op {
+    for c in op {
         let g = p_gcd(&den, &c.den);
         let (q, _) = p_divrem(&c.den, &g);
         den = p_mul(&den, &q);
@@ -787,7 +787,7 @@ fn minimal_operator(
             // D^order - sum a_k D^k.
             let mut op: Vec<RatFn> = combination.iter().map(RatFn::neg).collect();
             op.push(RatFn::constant(Q::one()));
-            let op = primitive(op);
+            let op = primitive(&op);
             if op.iter().any(|p| p.len() > limits.max_degree + 1) {
                 return None;
             }
@@ -922,7 +922,7 @@ pub fn annihilator(
 }
 
 fn primitive_polys(op: &[Poly]) -> Operator {
-    primitive(op.iter().cloned().map(RatFn::poly).collect())
+    primitive(&op.iter().cloned().map(RatFn::poly).collect::<Vec<_>>())
 }
 
 // ---------------------------------------------------------------------------
@@ -966,9 +966,10 @@ pub fn recurrence(op: &[Poly]) -> Vec<(i64, Poly)> {
 }
 
 /// How many leading Taylor coefficients decide whether a solution of `op`
-/// is zero: every coefficient the recurrence does not determine from earlier
-/// ones lies below this index. `None` when the bound exceeds
-/// `limits.max_terms`.
+/// is zero.
+///
+/// Every coefficient the recurrence does not determine from earlier ones
+/// lies below this index. `None` when the bound exceeds `limits.max_terms`.
 #[must_use]
 pub fn deciding_terms(
     op: &[Poly],
@@ -1106,7 +1107,7 @@ mod tests {
             vec![qi(0), qi(1), q(-1, 2), q(1, 3), q(-1, 4)]
         );
         assert_eq!(
-            Atom::Power(one_plus_x.clone(), q(1, 2)).series(4).unwrap(),
+            Atom::Power(one_plus_x, q(1, 2)).series(4).unwrap(),
             vec![qi(1), q(1, 2), q(-1, 8), q(1, 16)]
         );
         assert_eq!(

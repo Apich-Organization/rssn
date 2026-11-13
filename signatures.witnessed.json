@@ -20,14 +20,10 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "abs(0)",
-            "output": "Int"
-          },
-          {
-            "input": "abs(4)",
             "output": "Int"
           }
         ],
@@ -178,6 +174,65 @@
         "refines": false
       }
     ],
+    "advect_fd": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Int]",
+          "[Int]",
+          "Int",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "advect_fd(list(1), list(0, 1, 2, 3, 4, 5, 6, 7), 1, 8)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "algebraic_connectivity": [
       {
         "signature": {
@@ -254,6 +309,59 @@
           }
         ],
         "refines": true
+      }
+    ],
+    "anderson_fixed_point": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            "int",
+            "float"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "Expr",
+          "Int",
+          "Float"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "anderson_fixed_point(cos(x), x, 1, 0.000000000001)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
       }
     ],
     "angular_momentum": [
@@ -976,130 +1084,6 @@
         "refines": false
       }
     ],
-    "besseli": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "int",
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Int",
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "besseli(0, 2*0.5^(1/2))",
-            "output": "Float"
-          }
-        ],
-        "refines": false
-      }
-    ],
-    "besselj": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "int",
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Int",
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "besselj(0, 2*0.4^(1/2))",
-            "output": "Float"
-          }
-        ],
-        "refines": false
-      }
-    ],
-    "besselk": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "int",
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Int",
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "besselk(0, 2*0.4^(1/2))",
-            "output": "Float"
-          }
-        ],
-        "refines": false
-      }
-    ],
-    "bessely": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "int",
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Int",
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "bessely(0, 2*0.4^(1/2))",
-            "output": "Float"
-          }
-        ],
-        "refines": false
-      }
-    ],
     "beta": [
       {
         "signature": {
@@ -1592,14 +1576,10 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "binomial(0, 0)",
-            "output": "Int"
-          },
-          {
-            "input": "binomial(1, 0)",
             "output": "Int"
           }
         ],
@@ -4381,12 +4361,8 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
-          {
-            "input": "conj(0)",
-            "output": "Int"
-          },
           {
             "input": "conj(2)",
             "output": "Int"
@@ -5064,6 +5040,80 @@
           {
             "input": "covariant_derivative(list(cos(theta), -sin(theta)/r), list(list(1, 0), list(0, r^2)), list(r, theta))",
             "output": "[[Int]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "cp_als": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "int",
+            "int"
+          ],
+          "ret": {
+            "record": [
+              [
+                "_0",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 1
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              ],
+              [
+                "_1",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 3
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              ],
+              [
+                "_2",
+                "float"
+              ]
+            ]
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]",
+          "Int",
+          "Int",
+          "Int"
+        ],
+        "result": "([Float],[[[Float]]],Float)",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "cp_als(list(list(list(3, 0), list(0, 0)), list(list(0, 0), list(0, 2))), 2, 500, 1)",
+            "output": "([Float],[[[Float]]],Float)"
           }
         ],
         "refines": false
@@ -7656,35 +7706,6 @@
         "refines": true
       }
     ],
-    "erfc": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "erfc(inverse_erfc(0.3))",
-            "output": "Float"
-          }
-        ],
-        "refines": false
-      }
-    ],
     "erfcinv": [
       {
         "signature": {
@@ -7885,35 +7906,6 @@
           {
             "input": "eulerian(4, 1)",
             "output": "Int"
-          }
-        ],
-        "refines": false
-      }
-    ],
-    "exp": [
-      {
-        "signature": {
-          "type_params": [],
-          "params": [
-            "float"
-          ],
-          "ret": "float",
-          "constraints": [],
-          "effects": {
-            "effects": []
-          },
-          "dim": null,
-          "variadic": null
-        },
-        "params": [
-          "Float"
-        ],
-        "result": "Float",
-        "support": 1,
-        "witnesses": [
-          {
-            "input": "exp(-0.31)",
-            "output": "Float"
           }
         ],
         "refines": false
@@ -8411,6 +8403,123 @@
           {
             "input": "feynman_slash(list(en, 0, 0, 0))",
             "output": "[[Expr]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "fgmres_solve": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "float"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "[Int]",
+          "Float"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "fgmres_solve(list(list(2, 1), list(1, 3)), list(1, 2), 0.0000000001)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": {
+                  "dyn": {
+                    "repr": "term",
+                    "dim": "any"
+                  }
+                }
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "float"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Expr]]",
+          "[Int]",
+          "Float"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "fgmres_solve(list(list(4, 1, 0, 0), list(-1, 4, 2, 0), list(0, 0.5, 5, 1), list(0, 0, -2, 6)), list(1, 2, 3, 4), 0.000000000001)",
+            "output": "[Float]"
           }
         ],
         "refines": false
@@ -9036,6 +9145,43 @@
         "refines": false
       }
     ],
+    "function_l1_norm": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": "float",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]"
+        ],
+        "result": "Float",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "function_l1_norm(list(list(0, 1), list(1, 1), list(2, 1)))",
+            "output": "Float"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "ga_apply_versor": [
       {
         "signature": {
@@ -9410,7 +9556,7 @@
         "support": 1,
         "witnesses": [
           {
-            "input": "ga_inverse(ga_rotor(mv_blade(list(3, 0, 0), 6, 1), a))",
+            "input": "ga_inverse(mv_vector(list(3, 0, 0), list(2, 0, 0)))",
             "output": "Obj<mv>"
           }
         ],
@@ -9764,12 +9910,8 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
-          {
-            "input": "gamma(2)",
-            "output": "Int"
-          },
           {
             "input": "gamma(1/1)",
             "output": "Int"
@@ -9795,12 +9937,8 @@
           "Float"
         ],
         "result": "Float",
-        "support": 2,
+        "support": 1,
         "witnesses": [
-          {
-            "input": "gamma(0.7)",
-            "output": "Float"
-          },
           {
             "input": "gamma(1.75)",
             "output": "Float"
@@ -9830,14 +9968,10 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "gcd(12, 18)",
-            "output": "Int"
-          },
-          {
-            "input": "gcd(-35, -14)",
             "output": "Int"
           }
         ],
@@ -12601,15 +12735,15 @@
           "Obj<graph>"
         ],
         "result": "[[Int]]",
-        "support": 3,
+        "support": 2,
         "witnesses": [
           {
             "input": "graph_blossom(graph(5, list(list(0, 4, 1))))",
             "output": "[[Int]]"
           },
           {
-            "input": "graph_blossom(graph(7, list(list(0, 1, 1), list(1, 2, 1), list(2, 3, 1), list(3, 4, 1), list(4, 0, 1), list(2, 5, 1), list(4, 6, 1))))",
-            "output": "[[Int]]"
+            "input": "graph_blossom(graph(2, list()))",
+            "output": "[Never]"
           }
         ],
         "refines": false
@@ -14035,7 +14169,7 @@
         "support": 1,
         "witnesses": [
           {
-            "input": "graph_path(7)",
+            "input": "graph_path(3)",
             "output": "Obj<graph>"
           }
         ],
@@ -15038,7 +15172,7 @@
         "support": 2,
         "witnesses": [
           {
-            "input": "group_class_sizes(symmetric_group(4))",
+            "input": "group_class_sizes(symmetric_group(3))",
             "output": "[Int]"
           },
           {
@@ -18297,6 +18431,101 @@
         "refines": true
       }
     ],
+    "hooi": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": {
+                  "dyn": {
+                    "repr": "term",
+                    "dim": "any"
+                  }
+                }
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "float"
+          ],
+          "ret": {
+            "record": [
+              [
+                "_0",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 3
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              ],
+              [
+                "_1",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 1
+                    },
+                    "shape": null,
+                    "elem": {
+                      "tensor": {
+                        "rank": {
+                          "lit": 2
+                        },
+                        "shape": null,
+                        "elem": "float"
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                "_2",
+                "float"
+              ]
+            ]
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Expr]]]",
+          "[Int]",
+          "Int",
+          "Float"
+        ],
+        "result": "([[[Float]]],[[[Float]]]~,Float)",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "hooi(list(list(list(0.5, 1, 2, -1), list(1.5, 3, 6, -3)), list(list(-0.5, -1, -2, 1), list(-1.5, -3, -6, 3)), list(list(1, 2, 4, -2), list(3, 6, 12, -6))), list(1, 1, 1), 10, 0.000000000001)",
+            "output": "([[[Float]]],[[[Float]]]~,Float)"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "hook_lengths": [
       {
         "signature": {
@@ -18345,6 +18574,86 @@
           {
             "input": "hook_lengths(list(3, 2))",
             "output": "[[Int]]~"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "hosvd": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 1
+                      },
+                      "shape": null,
+                      "elem": {
+                        "dyn": {
+                          "repr": "term",
+                          "dim": "any"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]",
+          "[Int]"
+        ],
+        "result": "[[[Any]]~]~",
+        "support": 2,
+        "witnesses": [
+          {
+            "input": "hosvd(list(list(list(6, -3), list(0, 0), list(2, -1)), list(list(12, -6), list(0, 0), list(4, -2))), list(0, 0, 0))",
+            "output": "[[[Any]]~]~"
+          },
+          {
+            "input": "hosvd(list(list(list(1, 2), list(3, 4)), list(list(5, 6), list(7, 9))), list(2, 2, 2))",
+            "output": "[[[Any]]]~"
           }
         ],
         "refines": false
@@ -20861,14 +21170,10 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "lcm(4, 6)",
-            "output": "Int"
-          },
-          {
-            "input": "lcm(12, 18)",
             "output": "Int"
           }
         ],
@@ -22373,15 +22678,60 @@
           "Float"
         ],
         "result": "Float",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "ln(0.3)",
             "output": "Float"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "lobpcg_eigenvalues": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "float"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
           },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "Int",
+          "Float"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
           {
-            "input": "ln(0.5)",
-            "output": "Float"
+            "input": "lobpcg_eigenvalues(list(list(1, 0, 0), list(0, 2, 0), list(0, 0, 3)), 1, 0.00000001)",
+            "output": "[Float]"
           }
         ],
         "refines": false
@@ -25105,6 +25455,63 @@
         "refines": false
       }
     ],
+    "minres_solve": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "float"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "[Int]",
+          "Float"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "minres_solve(list(list(2, 1), list(1, 3)), list(1, 2), 0.0000000001)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "mobius": [
       {
         "signature": {
@@ -26174,7 +26581,7 @@
         "support": 1,
         "witnesses": [
           {
-            "input": "mv_basis(list(3, 0, 0), 2)",
+            "input": "mv_basis(list(3, 0, 0), 1)",
             "output": "Obj<mv>"
           }
         ],
@@ -26525,7 +26932,7 @@
         "support": 1,
         "witnesses": [
           {
-            "input": "mv_vector(list(3, 0, 0), list(1, 1, 0))",
+            "input": "mv_vector(list(3, 0, 0), list(3, 4, 0))",
             "output": "Obj<mv>"
           }
         ],
@@ -26620,6 +27027,121 @@
           {
             "input": "necklaces(6, 2)",
             "output": "Int"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "nested_dissection_order": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "tensor": {
+                    "rank": {
+                      "lit": 1
+                    },
+                    "shape": null,
+                    "elem": "int"
+                  }
+                }
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]~"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "nested_dissection_order(list(list(1), list(0), list()))",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "newton_cg_minimize": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "symbol"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "[Sym]",
+          "[Int]"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "newton_cg_minimize((x - 1)^2 + 2*(y + 2)^2, list(x, y), list(0, 0))",
+            "output": "[Float]"
           }
         ],
         "refines": false
@@ -27483,6 +28005,99 @@
         "refines": true
       }
     ],
+    "ode_etdrk4": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "dyn": {
+                    "repr": "term",
+                    "dim": "any"
+                  }
+                }
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "symbol"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "int",
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "[Expr]",
+          "[Sym]",
+          "Expr",
+          "[Int]",
+          "Int",
+          "Int",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "ode_etdrk4(list(list(0, 1), list(-1, 0)), list(-0.5*u1, -0.5*u2), list(u1, u2), t, list(1, 0), 0, 1, 50)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "ode_frobenius": [
       {
         "signature": {
@@ -27660,6 +28275,247 @@
         "refines": false
       }
     ],
+    "ode_imex": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            "int",
+            "int",
+            "int",
+            "int",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "Expr",
+          "Expr",
+          "Expr",
+          "Int",
+          "Int",
+          "Int",
+          "Int",
+          "Expr"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "ode_imex(-y, -2*y, y, t, 1, 0, 1, 200, euler)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "ode_solve": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            "int",
+            "int",
+            "int",
+            "float",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "Expr",
+          "Expr",
+          "Int",
+          "Int",
+          "Int",
+          "Float",
+          "Expr"
+        ],
+        "result": "[Float]",
+        "support": 2,
+        "witnesses": [
+          {
+            "input": "ode_solve(t, y, t, 0, 0, 2, 0.000000001, dopri5)",
+            "output": "[Float]"
+          },
+          {
+            "input": "ode_solve(-2*y, y, t, 1, 0, 1, 0.000000001, dopri5)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "dyn": {
+                    "repr": "term",
+                    "dim": "any"
+                  }
+                }
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "symbol"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "float",
+            "float",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Expr]",
+          "[Sym]",
+          "Expr",
+          "[Int]",
+          "Int",
+          "Float",
+          "Float",
+          "Expr"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "ode_solve(list(y2, -y1), list(y1, y2), t, list(1, 0), 0, 1.5, 0.0000000001, dopri5)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "ode_symmetries": [
       {
         "signature": {
@@ -27712,6 +28568,179 @@
           }
         ],
         "refines": true
+      }
+    ],
+    "ode_symplectic": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "float",
+            "int",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Expr",
+          "Expr",
+          "[Int]",
+          "[Int]",
+          "Int",
+          "Float",
+          "Int",
+          "Expr"
+        ],
+        "result": "[[Float]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "ode_symplectic(-q, q, list(1), list(0), 0, 3.141592653589793, 4000, verlet)",
+            "output": "[[Float]]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "dyn": {
+                    "repr": "term",
+                    "dim": "any"
+                  }
+                }
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "symbol"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "int",
+            "int",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Expr]",
+          "[Sym]",
+          "[Int]",
+          "[Int]",
+          "Int",
+          "Int",
+          "Int",
+          "Expr"
+        ],
+        "result": "[[Float]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "ode_symplectic(list(-q1, -4*q2), list(q1, q2), list(1, 0), list(0, 1), 0, 1, 400, yoshida6)",
+            "output": "[[Float]]"
+          }
+        ],
+        "refines": false
       }
     ],
     "omega": [
@@ -28052,6 +29081,65 @@
           {
             "input": "orthonormalize(list(list(3, 4), list(1, 0)))",
             "output": "[[Rat]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "oscillatory_integral": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            "int",
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            "int",
+            "int",
+            "int",
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Int",
+          "Expr",
+          "Expr",
+          "Int",
+          "Int",
+          "Int",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "oscillatory_integral(1, x, x, 0, 1, 10, 24)",
+            "output": "[Float]"
           }
         ],
         "refines": false
@@ -29166,7 +30254,7 @@
             "output": "Obj<group>"
           },
           {
-            "input": "point_group(C2v)",
+            "input": "point_group(C4)",
             "output": "Obj<group>"
           }
         ],
@@ -29693,6 +30781,98 @@
         "refines": true
       }
     ],
+    "poisson_fd": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Int]",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "poisson_fd(list(2, 2, 2, 2, 2), 0)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "Int"
+        ],
+        "result": "[[Float]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "poisson_fd(list(list(0, 0, 0, 0, 0), list(0, 0, 0, 0, 0), list(0, 0, 0, 0, 0), list(0, 0, 0, 0, 0), list(0, 0, 0, 0, 0)), 1)",
+            "output": "[[Float]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "poles": [
       {
         "signature": {
@@ -29923,6 +31103,107 @@
           {
             "input": "polynomial_regression(list(a, 2, 3), list(1, 2, 3), 1)",
             "output": "[Expr]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "polynomial_system_roots": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]"
+        ],
+        "result": "[[[Float]]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "polynomial_system_roots(list(list(list(1, 2), list(-3, 1), list(2, 0))))",
+            "output": "[[[Float]]]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "tensor": {
+                    "rank": {
+                      "lit": 2
+                    },
+                    "shape": null,
+                    "elem": {
+                      "dyn": {
+                        "repr": "term",
+                        "dim": "any"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Expr]]]~"
+        ],
+        "result": "[[[Float]]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "polynomial_system_roots(list(list(list(1, 2, 0), list(1, 0, 2), list(-1, 0, 0)), list(list(1, 1, 1), list(-0.25, 0, 0))))",
+            "output": "[[[Float]]]"
           }
         ],
         "refines": false
@@ -31532,6 +32813,53 @@
           {
             "input": "raise_index(list(1, 2), list(list(1, 0), list(0, r^2)))",
             "output": "[Expr]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "randomized_singular_values": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "randomized_singular_values(list(list(3, 0), list(0, 1)), 1)",
+            "output": "[Float]"
           }
         ],
         "refines": false
@@ -33333,14 +34661,10 @@
           "Int"
         ],
         "result": "Int",
-        "support": 2,
+        "support": 1,
         "witnesses": [
           {
             "input": "sc_betti(sc_torus(3, 3), 0)",
-            "output": "Int"
-          },
-          {
-            "input": "sc_betti(sc_complex(list(list(0, 1), list(1, 2), list(0, 2))), 0)",
             "output": "Int"
           }
         ],
@@ -33999,7 +35323,7 @@
         "support": 2,
         "witnesses": [
           {
-            "input": "sc_homology(sc_projective_plane(0), 1)",
+            "input": "sc_homology(sc_product(sc_projective_plane(0), sc_sphere(1)), 1)",
             "output": "(Int,[Int])"
           },
           {
@@ -37870,6 +39194,125 @@
         "refines": false
       }
     ],
+    "tensor_inner": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": "float",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "[[Int]]"
+        ],
+        "result": "Float",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tensor_inner(list(list(3, 0), list(0, 4)), list(list(3, 0), list(0, 4)))",
+            "output": "Float"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "tensor_norm": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": "float",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]"
+        ],
+        "result": "Float",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tensor_norm(list(list(3, 0), list(0, 4)))",
+            "output": "Float"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": "float",
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]"
+        ],
+        "result": "Float",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tensor_norm(list(list(list(6, -3), list(0, 0), list(2, -1)), list(list(12, -6), list(0, 0), list(4, -2))))",
+            "output": "Float"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "tensor_outer": [
       {
         "signature": {
@@ -38072,6 +39515,81 @@
           {
             "input": "tensor_smul(2, list(list(1, x)))",
             "output": "[[Expr]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "tensordot": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Int]]",
+          "[[Int]]",
+          "[Int]",
+          "[Int]"
+        ],
+        "result": "[[Float]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tensordot(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)), list(1), list(0))",
+            "output": "[[Float]]"
           }
         ],
         "refines": false
@@ -38959,6 +40477,169 @@
         "refines": true
       }
     ],
+    "tt_dense": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 4
+                },
+                "shape": null,
+                "elem": "float"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[[Float]]]]"
+        ],
+        "result": "[[[Float]]]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tt_dense(list(list(list(list(-0.44721359549995815), list(-0.8944271909999159))), list(list(list(-0.3015113445777635), list(0.30151134457776363), list(-0.904534033733291))), list(list(list(14.832396974191315), list(7.416198487095657)))))",
+            "output": "[[[Float]]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "tt_svd": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "int"
+          ],
+          "ret": {
+            "record": [
+              [
+                "_0",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 4
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              ],
+              [
+                "_1",
+                "float"
+              ]
+            ]
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]",
+          "Int",
+          "Int"
+        ],
+        "result": "([[[[Float]]]],Float)",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tt_svd(list(list(list(2, 1), list(-2, -1), list(6, 3)), list(list(4, 2), list(-4, -2), list(12, 6))), 0, 1)",
+            "output": "([[[[Float]]]],Float)"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 3
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "float",
+            "int"
+          ],
+          "ret": {
+            "record": [
+              [
+                "_0",
+                {
+                  "tensor": {
+                    "rank": {
+                      "lit": 4
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              ],
+              [
+                "_1",
+                "float"
+              ]
+            ]
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[[Int]]]",
+          "Float",
+          "Int"
+        ],
+        "result": "([[[[Float]]]],Float)",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "tt_svd(list(list(list(2, 1), list(-2, -1), list(6, 3)), list(list(4, 2), list(-4, -2), list(12, 6))), 0.000000000001, 0)",
+            "output": "([[[[Float]]]],Float)"
+          }
+        ],
+        "refines": false
+      }
+    ],
     "vandermonde": [
       {
         "signature": {
@@ -39760,6 +41441,245 @@
           {
             "input": "vietoris_rips_filtration(list(list(0, 0), list(1, 0), list(1, 1), list(0, 1)), 2, 2)",
             "output": "[(Float,Obj<sc>)]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "wave_fd": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            "int",
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            "int",
+            "float",
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "Int",
+          "[Int]",
+          "[Int]",
+          "Int",
+          "Float",
+          "Int"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "wave_fd(1, list(0, 0, 0, 0, 0), list(0, 0, 0, 0, 0), 0, 0.1, 10)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "wavedec": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "int"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            },
+            "int"
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": "float"
+                }
+              }
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[Int]",
+          "Expr",
+          "Int"
+        ],
+        "result": "[[Float]]~",
+        "support": 2,
+        "witnesses": [
+          {
+            "input": "wavedec(list(1, 1, 1, 1, 1, 1, 1, 1), haar, 2)",
+            "output": "[[Float]]~"
+          },
+          {
+            "input": "wavedec(list(3, 1, 4, 1, 5, 9, 2, 6), db2, 1)",
+            "output": "[[Float]]"
+          }
+        ],
+        "refines": false
+      }
+    ],
+    "waverec": [
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": {
+                  "tensor": {
+                    "rank": {
+                      "lit": 1
+                    },
+                    "shape": null,
+                    "elem": "float"
+                  }
+                }
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Float]]~",
+          "Expr"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "waverec(wavedec(list(3, 1, 4, 1, 5, 9, 2, 6), haar, 2), haar)",
+            "output": "[Float]"
+          }
+        ],
+        "refines": false
+      },
+      {
+        "signature": {
+          "type_params": [],
+          "params": [
+            {
+              "tensor": {
+                "rank": {
+                  "lit": 2
+                },
+                "shape": null,
+                "elem": "float"
+              }
+            },
+            {
+              "dyn": {
+                "repr": "term",
+                "dim": "any"
+              }
+            }
+          ],
+          "ret": {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "float"
+            }
+          },
+          "constraints": [],
+          "effects": {
+            "effects": []
+          },
+          "dim": null,
+          "variadic": null
+        },
+        "params": [
+          "[[Float]]",
+          "Expr"
+        ],
+        "result": "[Float]",
+        "support": 1,
+        "witnesses": [
+          {
+            "input": "waverec(wavedec(list(3, 1, 4, 1, 5, 9, 2, 6), haar, 1), haar)",
+            "output": "[Float]"
           }
         ],
         "refines": false

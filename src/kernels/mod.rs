@@ -129,8 +129,10 @@ pub mod signal;
 pub mod simplex_quadrature;
 pub mod solve;
 pub mod sparse;
-/// Exact sparse linear algebra: sparsity-preserving elimination over any
-/// domain, modular determinants, Dixon lifting, Wiedemann's algorithm.
+/// Exact sparse linear algebra.
+///
+/// Sparsity-preserving elimination over any domain, modular determinants,
+/// Dixon lifting and Wiedemann's algorithm.
 pub mod sparse_exact;
 pub mod special;
 /// Gamma, digamma, Lambert W and Bessel J/I functions of a complex argument.

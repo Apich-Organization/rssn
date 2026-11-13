@@ -115,7 +115,7 @@ fn gamma_family_edges() {
     c.val(
         "digamma(1)",
         digamma_numerical(1.0),
-        -0.577_215_664_901_532_9,
+        -std::f64::consts::EULER_GAMMA,
         1e-14,
     );
     c.val(
@@ -127,7 +127,7 @@ fn gamma_family_edges() {
     c.val(
         "digamma(1e-10)",
         digamma_numerical(1e-10),
-        -1e10 - 0.577_215_664_901_532_9,
+        -1e10 - std::f64::consts::EULER_GAMMA,
         1e-12,
     );
     c.val("digamma(0)", digamma_numerical(0.0), f64::NEG_INFINITY, 0.0);
@@ -536,7 +536,7 @@ fn airy_lambert_zeta_polylog() {
     // Near the pole: zeta(1 + e) = 1/e + gamma - gamma_1 e + ...
     for e in [1e-10_f64, 1e-6, 1e-3, 0.05, -1e-10, -1e-6, -1e-3, -0.05] {
         let e = (1.0 + e) - 1.0; // the exact offset of the double nearest 1 + e
-        let want = 1.0 / e + 0.577_215_664_901_532_9 + 0.072_815_845_483_676_72 * e
+        let want = 1.0 / e + std::f64::consts::EULER_GAMMA + 0.072_815_845_483_676_72 * e
             - 0.009_690_363_192_872_318 * e * e / 2.0
             - 0.002_053_834_420_303_346 * e.powi(3) / 6.0
             + 0.002_325_370_065_467_3 * e.powi(4) / 24.0;
@@ -665,7 +665,7 @@ fn elliptic_hypergeometric_and_integrals() {
     c.val(
         "E1(1e-300)",
         exp_integral_e1(1e-300),
-        690.775_527_898_213_7 - 0.577_215_664_901_532_9,
+        690.775_527_898_213_7 - std::f64::consts::EULER_GAMMA,
         1e-12,
     );
     c.val("E1(0)", exp_integral_e1(0.0), f64::INFINITY, 0.0);
@@ -691,7 +691,7 @@ fn elliptic_hypergeometric_and_integrals() {
         1e-13,
     );
     c.val("Ci(0)", cosine_integral(0.0), f64::NEG_INFINITY, 0.0);
-    c.val("li(2)", log_integral(2.0), 1.045_163_780_117_492_8, 1e-13);
+    c.val("li(2)", log_integral(2.0), 1.045_163_780_117_493, 1e-13);
     c.val("li(1)", log_integral(1.0), f64::NEG_INFINITY, 0.0);
     c.finish();
 }
@@ -737,4 +737,28 @@ fn elementary_helpers_do_not_overflow_or_lose_digits() {
     let _ = bernoulli_number(u32::MAX);
     let _ = double_factorial(300);
     let _ = ln_factorial(1e300);
+}
+
+/// Integer orders above one come from a stable recurrence, not quadrature:
+/// they must satisfy the Wronskian `J_{n+1} Y_n - J_n Y_{n+1} = 2 / (pi x)`
+/// and the known values, and stay fast at the arguments the annulus
+/// eigenvalue scans reach.
+#[test]
+fn integer_order_bessel_recurrence_is_consistent_and_fast() {
+    assert!(near(bessel_j(2.0, 10.0), 0.254_630_313_685_121, 1e-12));
+    assert!(near(bessel_y(2.0, 10.0), -0.005_868_082_442_208_6, 1e-10));
+    for n in [1.0, 2.0, 3.0, 7.0, 25.0] {
+        for x in [26.0, 40.0, 95.0, 300.0] {
+            let w = bessel_j(n + 1.0, x) * bessel_y(n, x) - bessel_j(n, x) * bessel_y(n + 1.0, x);
+            assert!(near(w, 2.0 / (PI * x), 1e-9), "n={n} x={x} w={w}");
+        }
+    }
+    let started = std::time::Instant::now();
+    let mut sum = 0.0;
+    for k in 0..2000 {
+        let x = 20.0 + f64::from(k) * 0.05;
+        sum += bessel_j(2.0, x) + bessel_y(2.0, x);
+    }
+    assert!(sum.is_finite());
+    assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
 }

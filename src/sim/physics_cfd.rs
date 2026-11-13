@@ -1044,3 +1044,322 @@ pub fn lid_driven_cavity_mac(
     s.run((t_end / dt).round() as usize)?;
     Ok(s)
 }
+
+// ============================================================================
+// Space-dimension coverage: 1D / 2D / 3D companions and generic entry points
+// ============================================================================
+//
+// The kernels live in [`crate::sim::dimensional`]; the functions below keep the
+// `_1d` / `_2d` / `_3d` naming of this module. Arrays are flat with `x` fastest.
+
+/// Dimension-generic stationary Poisson solver (Jacobi, Gauss-Seidel, SOR) and
+/// explicit transport solver (advection, diffusion, advection-diffusion, Burgers)
+/// for 1D, 2D and 3D grids. The legacy `_1d` and `_2d` functions of this module
+/// are the special cases `dims.len() == 1` / `2`.
+pub use crate::sim::dimensional::IterativeMethod;
+/// See [`IterativeMethod`].
+pub use crate::sim::dimensional::Transport;
+/// See [`IterativeMethod`].
+pub use crate::sim::dimensional::solve_poisson_iterative_nd;
+/// See [`IterativeMethod`].
+pub use crate::sim::dimensional::solve_transport_nd;
+
+/// 1D Poisson equation `u'' = f` by Jacobi iteration (Dirichlet values are the
+/// end values of `u0`). 1D counterpart of [`solve_poisson_2d_jacobi`].
+///
+/// # Errors
+/// For inconsistent lengths or a non-positive spacing.
+pub fn solve_poisson_1d_jacobi(
+    f: &[f64],
+    u0: &[f64],
+    dx: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &[u0.len()],
+        &[dx],
+        IterativeMethod::Jacobi,
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 1D Poisson equation by Gauss-Seidel iteration; see [`solve_poisson_1d_jacobi`].
+///
+/// # Errors
+/// As [`solve_poisson_1d_jacobi`].
+pub fn solve_poisson_1d_gauss_seidel(
+    f: &[f64],
+    u0: &[f64],
+    dx: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &[u0.len()],
+        &[dx],
+        IterativeMethod::GaussSeidel,
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 1D Poisson equation by SOR with relaxation factor `omega`; see
+/// [`solve_poisson_1d_jacobi`].
+///
+/// # Errors
+/// As [`solve_poisson_1d_jacobi`].
+pub fn solve_poisson_1d_sor(
+    f: &[f64],
+    u0: &[f64],
+    dx: f64,
+    omega: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &[u0.len()],
+        &[dx],
+        IterativeMethod::Sor(omega),
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 3D Poisson equation `Δu = f` by Jacobi iteration on `dims = [nx, ny, nz]`
+/// (flat, `x` fastest). 3D counterpart of [`solve_poisson_2d_jacobi`].
+///
+/// # Errors
+/// For inconsistent lengths or non-positive spacings.
+pub fn solve_poisson_3d_jacobi(
+    f: &[f64],
+    u0: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &dims,
+        &h,
+        IterativeMethod::Jacobi,
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 3D Poisson equation by Gauss-Seidel iteration; see [`solve_poisson_3d_jacobi`].
+///
+/// # Errors
+/// As [`solve_poisson_3d_jacobi`].
+pub fn solve_poisson_3d_gauss_seidel(
+    f: &[f64],
+    u0: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &dims,
+        &h,
+        IterativeMethod::GaussSeidel,
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 3D Poisson equation by SOR; see [`solve_poisson_3d_jacobi`].
+///
+/// # Errors
+/// As [`solve_poisson_3d_jacobi`].
+pub fn solve_poisson_3d_sor(
+    f: &[f64],
+    u0: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    omega: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_iterative_nd(
+        f,
+        u0,
+        &dims,
+        &h,
+        IterativeMethod::Sor(omega),
+        max_iter,
+        tolerance,
+    )
+}
+
+/// 2D upwind advection `u_t + c·∇u = 0` (periodic with period `n - 1` per axis);
+/// 2D counterpart of [`solve_advection_1d`]. Returns all snapshots.
+///
+/// # Errors
+/// For inconsistent shapes or a non-positive `dt`.
+pub fn solve_advection_2d(
+    u0: &[f64],
+    dims: [usize; 2],
+    c: [f64; 2],
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(
+        u0,
+        &dims,
+        &h,
+        &Transport::Advection { velocity: c.to_vec() },
+        dt,
+        steps,
+    )
+}
+
+/// 3D upwind advection; see [`solve_advection_2d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_advection_3d(
+    u0: &[f64],
+    dims: [usize; 3],
+    c: [f64; 3],
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(
+        u0,
+        &dims,
+        &h,
+        &Transport::Advection { velocity: c.to_vec() },
+        dt,
+        steps,
+    )
+}
+
+/// 2D explicit diffusion `u_t = α Δu` with frozen boundary values; 2D
+/// counterpart of [`solve_diffusion_1d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_diffusion_2d(
+    u0: &[f64],
+    dims: [usize; 2],
+    alpha: f64,
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(u0, &dims, &h, &Transport::Diffusion { alpha }, dt, steps)
+}
+
+/// 3D explicit diffusion; see [`solve_diffusion_2d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_diffusion_3d(
+    u0: &[f64],
+    dims: [usize; 3],
+    alpha: f64,
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(u0, &dims, &h, &Transport::Diffusion { alpha }, dt, steps)
+}
+
+/// 2D advection-diffusion `u_t + c·∇u = α Δu`; 2D counterpart of
+/// [`solve_advection_diffusion_1d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_advection_diffusion_2d(
+    u0: &[f64],
+    dims: [usize; 2],
+    c: [f64; 2],
+    alpha: f64,
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(
+        u0,
+        &dims,
+        &h,
+        &Transport::AdvectionDiffusion {
+            velocity: c.to_vec(),
+            alpha,
+        },
+        dt,
+        steps,
+    )
+}
+
+/// 3D advection-diffusion; see [`solve_advection_diffusion_2d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_advection_diffusion_3d(
+    u0: &[f64],
+    dims: [usize; 3],
+    c: [f64; 3],
+    alpha: f64,
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(
+        u0,
+        &dims,
+        &h,
+        &Transport::AdvectionDiffusion {
+            velocity: c.to_vec(),
+            alpha,
+        },
+        dt,
+        steps,
+    )
+}
+
+/// 2D viscous Burgers `u_t + u (u_x + u_y) = ν Δu` (upwinded); 2D counterpart of
+/// [`solve_burgers_1d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_burgers_2d(
+    u0: &[f64],
+    dims: [usize; 2],
+    nu: f64,
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(u0, &dims, &h, &Transport::Burgers { nu }, dt, steps)
+}
+
+/// 3D viscous Burgers `u_t + u (u_x + u_y + u_z) = ν Δu`; see [`solve_burgers_2d`].
+///
+/// # Errors
+/// As [`solve_advection_2d`].
+pub fn solve_burgers_3d(
+    u0: &[f64],
+    dims: [usize; 3],
+    nu: f64,
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_transport_nd(u0, &dims, &h, &Transport::Burgers { nu }, dt, steps)
+}

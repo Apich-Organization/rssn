@@ -768,3 +768,258 @@ pub use crate::sim::euler_nd::SlopeLimiter;
 /// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
 /// first-order solvers of this module.
 pub use crate::sim::euler_nd::solve as solve_conservation_law_nd;
+
+// ============================================================================
+// Space-dimension coverage: Burgers 1D/2D/3D and shallow water 2D
+// ============================================================================
+//
+// First-order Lax-Friedrichs finite volumes on cell-centred grids with
+// zero-gradient (outflow) boundaries. High-order MUSCL/WENO solvers for Euler
+// and shallow water in 1D-3D are in [`crate::sim::euler_nd`] (re-exported at the end of this module).
+
+/// Burgers' equation `u_t + Σ_a (u²/2)_{x_a} = 0` on a 1D, 2D or 3D grid.
+///
+/// Cells (`dims` cells per axis, `h` cell sizes, flat, `x` fastest) with the
+/// Lax-Friedrichs flux (numerical viscosity shared between the axes, as the
+/// unsplit multi-dimensional scheme requires) and zero-gradient boundaries. With
+/// `dims.len() == 1` it reproduces [`solve_burgers_1d`]; the scheme is stable for
+/// `max|u| dt Σ_a 1/h_a <= 1`.
+///
+/// # Errors
+/// For 0 or more than 3 axes, a length mismatch or non-positive `dt`/`h`.
+pub fn solve_burgers_nd(
+    u0: &[f64],
+    dims: &[usize],
+    h: &[f64],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    if dims.is_empty() || dims.len() > 3 || dims.len() != h.len() || dims.contains(&0) {
+        return Err("1 to 3 axes with one spacing and a positive size each".to_owned());
+    }
+
+    if u0.len() != dims.iter().product::<usize>()
+        || dt.is_nan()
+        || dt <= 0.0
+        || h.iter().any(|&v| v.is_nan() || v <= 0.0)
+    {
+        return Err("array length / step sizes inconsistent".to_owned());
+    }
+
+    let dim = dims.len();
+
+    let mut n = [1usize; 3];
+
+    n[..dim].copy_from_slice(dims);
+
+    let stride = [1, n[0], n[0] * n[1]];
+
+    let flux = |u: f64| 0.5 * u * u;
+
+    let mut cur = u0.to_vec();
+
+    let mut next = vec![0.0; cur.len()];
+
+    for _ in 0..steps {
+        next.par_iter_mut().enumerate().for_each(|(p, out)| {
+            let u = cur[p];
+
+            let q = [p % n[0], (p / stride[1]) % n[1], p / stride[2]];
+
+            let mut value = u;
+
+            for a in 0..dim {
+                let left = if q[a] > 0 {
+                    cur[p - stride[a]]
+                } else {
+                    u
+                };
+
+                let right = if q[a] + 1 < n[a] {
+                    cur[p + stride[a]]
+                } else {
+                    u
+                };
+
+                // the numerical viscosity is shared between the axes (dim * dt), the
+                // unsplit multi-dimensional Lax-Friedrichs condition
+                let dt_lf = dt * dim as f64;
+
+                let f_left = lax_friedrichs_flux(left, u, dt_lf, h[a], flux);
+
+                let f_right = lax_friedrichs_flux(u, right, dt_lf, h[a], flux);
+
+                value -= dt / h[a] * (f_right - f_left);
+            }
+
+            *out = value;
+        });
+
+        std::mem::swap(&mut cur, &mut next);
+    }
+
+    Ok(cur)
+}
+
+/// 2D Burgers' equation; 2D counterpart of [`solve_burgers_1d`]. See
+/// [`solve_burgers_nd`].
+///
+/// # Errors
+/// As [`solve_burgers_nd`].
+pub fn solve_burgers_2d(
+    u0: &[f64],
+    dims: [usize; 2],
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    solve_burgers_nd(u0, &dims, &h, dt, steps)
+}
+
+/// 3D Burgers' equation; see [`solve_burgers_nd`].
+///
+/// # Errors
+/// As [`solve_burgers_nd`].
+pub fn solve_burgers_3d(
+    u0: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    solve_burgers_nd(u0, &dims, &h, dt, steps)
+}
+
+/// State of the 2D shallow water equations: depth and the two momenta.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SweState2D {
+    /// The height of the water.
+    pub h: f64,
+    /// Momentum in x.
+    pub hu: f64,
+    /// Momentum in y.
+    pub hv: f64,
+}
+
+/// 2D shallow water equations `h_t + (hu)_x + (hv)_y = 0`, ...
+///
+/// On a grid of `dims = [nx, ny]` cells (flat, `x` fastest) with the Lax-Friedrichs flux and
+/// zero-gradient boundaries. 2D counterpart of [`solve_shallow_water_1d`]; the
+/// numerical viscosity is shared between the two axes (unsplit scheme), so it
+/// smears slightly more than the 1D routine on y-independent data. Stable for
+/// `(|u| + sqrt(g h)) dt (1/dx + 1/dy) <= 1` (roughly).
+///
+/// # Errors
+/// For a length mismatch or non-positive step sizes.
+#[allow(clippy::too_many_arguments)]
+pub fn solve_shallow_water_2d(
+    initial_h: &[f64],
+    initial_hu: &[f64],
+    initial_hv: &[f64],
+    dims: [usize; 2],
+    spacing: [f64; 2],
+    dt: f64,
+    steps: usize,
+    g: f64,
+) -> Result<Vec<SweState2D>, String> {
+    let [nx, ny] = dims;
+
+    if nx == 0
+        || ny == 0
+        || initial_h.len() != nx * ny
+        || initial_hu.len() != nx * ny
+        || initial_hv.len() != nx * ny
+        || dt.is_nan()
+        || dt <= 0.0
+        || spacing.iter().any(|&v| v.is_nan() || v <= 0.0)
+    {
+        return Err("array length / step sizes inconsistent".to_owned());
+    }
+
+    let mut current: Vec<SweState2D> = (0..nx * ny)
+        .map(|p| {
+            SweState2D {
+                h: initial_h[p],
+                hu: initial_hu[p],
+                hv: initial_hv[p],
+            }
+        })
+        .collect();
+
+    let mut next = current.clone();
+
+    let flux = |s: SweState2D, axis: usize| -> [f64; 3] {
+        let (u, v) = if s.h > 1e-6 {
+            (s.hu / s.h, s.hv / s.h)
+        } else {
+            (0.0, 0.0)
+        };
+
+        let pressure = 0.5 * g * s.h * s.h;
+
+        if axis == 0 {
+            [s.hu, s.hu.mul_add(u, pressure), s.hu * v]
+        } else {
+            [s.hv, s.hv * u, s.hv.mul_add(v, pressure)]
+        }
+    };
+
+    let components = |s: SweState2D| [s.h, s.hu, s.hv];
+
+    for _ in 0..steps {
+        next.par_iter_mut().enumerate().for_each(|(p, out)| {
+            let (i, j) = (p % nx, p / nx);
+
+            let c = current[p];
+
+            let mut value = components(c);
+
+            for axis in 0..2 {
+                let (stride, index, count) = if axis == 0 {
+                    (1, i, nx)
+                } else {
+                    (nx, j, ny)
+                };
+
+                let left = if index > 0 {
+                    current[p - stride]
+                } else {
+                    c
+                };
+
+                let right = if index + 1 < count {
+                    current[p + stride]
+                } else {
+                    c
+                };
+
+                let h_a = spacing[axis];
+
+                let numerical = |a: SweState2D, b: SweState2D| -> [f64; 3] {
+                    let (fa, fb) = (flux(a, axis), flux(b, axis));
+
+                    let (ca, cb) = (components(a), components(b));
+
+                    [0, 1, 2]
+                        .map(|k| f64::midpoint(fa[k], fb[k]) - 0.25 * (h_a / dt) * (cb[k] - ca[k]))
+                };
+
+                let (f_left, f_right) = (numerical(left, c), numerical(c, right));
+
+                for k in 0..3 {
+                    value[k] -= dt / h_a * (f_right[k] - f_left[k]);
+                }
+            }
+
+            *out = SweState2D {
+                h: value[0],
+                hu: value[1],
+                hv: value[2],
+            };
+        });
+
+        std::mem::swap(&mut current, &mut next);
+    }
+
+    Ok(current)
+}

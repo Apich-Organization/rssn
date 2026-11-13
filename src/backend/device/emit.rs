@@ -8,9 +8,9 @@
 //!
 //! | target | language | precisions | status |
 //! |---|---|---|---|
-//! | [`Target::Wgsl`] | WebGPU Shading Language | `f32` | executed by `gpu-wgpu`, validated by naga |
+//! | [`Target::Wgsl`] | WebGPU Shading Language | `f32`, double-single (`f64`-class, [`super::ds`]) | executed by `gpu-wgpu`, validated by naga |
 //! | [`Target::Glsl`] | GLSL 4.50 compute (Vulkan / OpenGL) | `f32`, `f64` | emitter, golden-tested |
-//! | [`Target::OpenCl`] | OpenCL C 1.2 | `f32`, `f64` | emitter, golden-tested |
+//! | [`Target::OpenCl`] | `OpenCL` C 1.2 | `f32`, `f64` | emitter, golden-tested |
 //! | [`Target::Cuda`] | CUDA C++ | `f32`, `f64` | emitter, golden-tested |
 //! | [`Target::Metal`] | Metal Shading Language | `f32` | emitter, golden-tested |
 //!
@@ -31,7 +31,7 @@
 //!
 //! WGSL and GLSL bind them as `@group(0)`/`set = 0` bindings 0 (`rssn_in`),
 //! 1 (`rssn_params`), 2 (`rssn_out`), 3 (a uniform `rows, inputs, outputs,
-//! pad`) and 4 (`rssn_cols`); OpenCL and CUDA take them as kernel arguments in
+//! pad`) and 4 (`rssn_cols`); `OpenCL` and CUDA take them as kernel arguments in
 //! the order of the table; Metal uses buffer indices 0 to 4 like the
 //! bindings. One invocation computes one row.
 //!
@@ -72,7 +72,7 @@ pub enum Target {
     Wgsl,
     /// GLSL 4.50 compute shader.
     Glsl,
-    /// OpenCL C.
+    /// `OpenCL` C.
     OpenCl,
     /// CUDA C++.
     Cuda,
@@ -116,6 +116,8 @@ pub enum Precision {
     F32,
     /// 64-bit.
     F64,
+    /// Pairs of `f32` carrying about 48 bits ([`super::ds`]); WGSL only.
+    DoubleSingle,
 }
 
 /// Options of [`emit`].
@@ -177,7 +179,7 @@ impl Lang {
     const fn real(self) -> &'static str {
         match (self.target, self.precision) {
             | (Target::Wgsl, _) => "f32",
-            | (_, Precision::F32) => "float",
+            | (_, Precision::F32 | Precision::DoubleSingle) => "float",
             | (_, Precision::F64) => "double",
         }
     }
@@ -236,7 +238,7 @@ impl Lang {
     ) -> String {
         #[allow(clippy::cast_possible_truncation)]
         let rounded = match self.precision {
-            | Precision::F32 => f64::from(c as f32),
+            | Precision::F32 | Precision::DoubleSingle => f64::from(c as f32),
             | Precision::F64 => c,
         };
         if rounded.is_nan() {
@@ -247,13 +249,13 @@ impl Lang {
         }
         #[allow(clippy::cast_possible_truncation)]
         let text = match self.precision {
-            | Precision::F32 => format!("{:?}", c as f32),
+            | Precision::F32 | Precision::DoubleSingle => format!("{:?}", c as f32),
             | Precision::F64 => format!("{c:?}"),
         };
         match (self.target, self.precision) {
-            | (Target::Wgsl, _) | (Target::Glsl, Precision::F32) => text,
+            | (Target::Wgsl, _) | (Target::Glsl, Precision::F32 | Precision::DoubleSingle) => text,
             | (Target::Glsl, Precision::F64) => format!("{text}lf"),
-            | (_, Precision::F32) => format!("{text}f"),
+            | (_, Precision::F32 | Precision::DoubleSingle) => format!("{text}f"),
             | (_, Precision::F64) => text,
         }
     }
@@ -301,7 +303,7 @@ impl Lang {
         }
     }
 
-    fn intrinsic(
+    const fn intrinsic(
         self,
         f: Intrinsic,
     ) -> &'static str {
@@ -394,6 +396,7 @@ const fn cmp_symbol(c: Cmp) -> &'static str {
 
 /// What a program uses, which decides the helpers that are emitted.
 #[derive(Default)]
+#[allow(clippy::struct_excessive_bools)] // one independent flag per helper
 struct Uses {
     powi: bool,
     powf: bool,
@@ -445,6 +448,16 @@ pub fn emit(
     ir: &KernelIr,
     options: &EmitOptions,
 ) -> Result<String, DeviceError> {
+    if options.precision == Precision::DoubleSingle {
+        return if options.target == Target::Wgsl {
+            super::ds::emit_wgsl_ds(ir, options)
+        } else {
+            Err(DeviceError::Unsupported(format!(
+                "double-single arithmetic is emitted for WGSL only, not {}",
+                options.target.name()
+            )))
+        };
+    }
     let analysis = ir.analyse()?;
     if options.workgroup_size == 0 {
         return Err(DeviceError::InvalidKernel(
@@ -858,9 +871,9 @@ fn expression(
         | KernelOp::Const(c) => lang.lit(c),
         | KernelOp::Input(i) => load(&format!("{i}u"), "irow"),
         | KernelOp::Param(i) => format!("rssn_params[{i}u]"),
-        | KernelOp::Add(a, b) => format!("v{a} + v{b}"),
-        | KernelOp::Sub(a, b) => format!("v{a} - v{b}"),
-        | KernelOp::Mul(a, b) => format!("v{a} * v{b}"),
+        | KernelOp::Add(a, b) | KernelOp::IAdd(a, b) => format!("v{a} + v{b}"),
+        | KernelOp::Sub(a, b) | KernelOp::ISub(a, b) => format!("v{a} - v{b}"),
+        | KernelOp::Mul(a, b) | KernelOp::IMul(a, b) => format!("v{a} * v{b}"),
         | KernelOp::Div(a, b) => format!("v{a} / v{b}"),
         | KernelOp::Neg(a) => format!("-v{a}"),
         | KernelOp::PowI(a, n) => {
@@ -907,9 +920,6 @@ fn expression(
                 format!("{c}")
             }
         },
-        | KernelOp::IAdd(a, b) => format!("v{a} + v{b}"),
-        | KernelOp::ISub(a, b) => format!("v{a} - v{b}"),
-        | KernelOp::IMul(a, b) => format!("v{a} * v{b}"),
         | KernelOp::IDiv(a, b) => format!("rssn_idiv(v{a}, v{b})"),
         | KernelOp::IMod(a, b) => format!("rssn_imod(v{a}, v{b})"),
         | KernelOp::IMin(a, b) => {

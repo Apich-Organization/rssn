@@ -33,7 +33,9 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
    ```bash
    cargo test
    ```
-   Useful narrower runs: `cargo test --lib graph::dim`, `cargo test --test dimensions`, `cargo test --lib rules::calculus`. Optional features have their own tests: `cargo test --features jit`, `cargo test --features plugin-cdylib`.
+   Useful narrower runs: `cargo test --lib graph::dim`, `cargo test --test dimensions`, `cargo test --lib rules::calculus`. Optional features have their own tests: `cargo test --features jit`, `cargo test --features plugin-cdylib`, `cargo test --features gpu-wgpu --lib backend::device` (executes on a GPU when an adapter exists).
+
+   Some runs are long (building the library's unit tests takes 10 to 20 minutes, `cargo test --test sim` about 25); use `cargo check --lib --tests` while editing and a filter while testing, as described in [README.md](README.md#testing).
 
 ## Development workflow
 
@@ -48,15 +50,15 @@ Tests sit next to the code they test; cross-module tests live in `tests/`.
 4. **Run the checks** before opening a pull request:
    ```bash
    cargo +nightly fmt --all
-   cargo clippy --all-targets -- -D warnings
-   cargo test
+   cargo clippy --workspace --all-targets --all-features -- -D warnings
+   cargo test --workspace --all-features
    ```
    and, when you touched the corresponding area:
    ```bash
    cargo run --bin signature-audit            # every operator is typed or explained
    cargo run -p rssn-api-gen -- --bindings-check
-cargo run -p rssn-api-gen -- --structured-check
-cargo run -p rssn-api-gen -- --contracts-check
+   cargo run -p rssn-api-gen -- --structured-check
+   cargo run -p rssn-api-gen -- --contracts-check
    cargo test -p rssn-api-model -p rssn-api-gen
    ```
 5. **Commit and push.** Use a clear message, for example `feat(calculus): add Hermite reduction for algebraic integrands`.
@@ -69,7 +71,7 @@ cargo run -p rssn-api-gen -- --contracts-check
 3. Declare a `Signature`, or a `DynamicReason` if it cannot have one. Add `.doc(..)`, `.category(..)` and `.since(..)`; the manifest is the documentation a host reads.
 4. Run the checks above, including `signature-audit`.
 
-`signatures.overlay.json` is version-controlled source: when you correct an inferred signature there, commit the change together with the code that needs it.
+`signatures.overlay.json` is version-controlled source: when you correct an inferred signature there, commit the change together with the code that needs it. `signatures.witnessed.json` is version-controlled too, and `build.rs` fails when either file is missing. The witnessed table is mined from the test corpus, never edited by hand; after adding operators, regenerate it as described in [docs/KERNEL.md](docs/KERNEL.md) (`cargo run --profile tools --bin signature-mine`, about ten minutes) and commit it with the code, or the new operators carry only their derived and overlay signatures.
 
 ### Changing the C interface
 

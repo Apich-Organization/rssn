@@ -73,8 +73,19 @@ impl Gaussian {
     /// A generator; equal seeds give equal streams.
     #[must_use]
     pub const fn new(seed: u64) -> Self {
+        // The seed goes through the SplitMix64 finalizer so that nearby seeds
+        // (`2k` and `2k + 1` collided under the earlier `seed | 1`) give
+        // unrelated streams; xorshift needs a nonzero state.
+        let mut z = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
         Self {
-            state: seed | 1,
+            state: if z == 0 {
+                0x9E37_79B9_7F4A_7C15
+            } else {
+                z
+            },
             spare: None,
         }
     }
@@ -176,7 +187,7 @@ impl PivotedQr {
         } else {
             self.r.at(0, 0).abs()
         };
-        let tol = tol.unwrap_or(self.q.rows.max(self.r.cols) as f64 * f64::EPSILON);
+        let tol = tol.unwrap_or_else(|| self.q.rows.max(self.r.cols) as f64 * f64::EPSILON);
         (0..k)
             .take_while(|&i| self.r.at(i, i).abs() > tol * top && top > 0.0)
             .count()
@@ -452,6 +463,9 @@ pub struct Eigenpairs {
     pub iterations: usize,
 }
 
+/// An optional preconditioner `r -> T r`, applied as `(input, output)`.
+type Preconditioner<'a> = Option<&'a dyn Fn(&[f64], &mut [f64])>;
+
 /// The `k` smallest eigenpairs of a symmetric operator of size `n` by LOBPCG.
 ///
 /// `apply(x, y)` writes `A x`. `precondition`, when given, writes an
@@ -469,7 +483,7 @@ pub struct Eigenpairs {
 /// residual above `tol * max(1, |lambda|)`.
 pub fn lobpcg(
     apply: &dyn Fn(&[f64], &mut [f64]),
-    precondition: Option<&dyn Fn(&[f64], &mut [f64])>,
+    precondition: Preconditioner<'_>,
     n: usize,
     k: usize,
     tol: f64,
@@ -554,7 +568,7 @@ pub fn lobpcg(
             for j in i..size {
                 // Symmetrised, so rounding in the products cannot make the
                 // projected matrix unsymmetric.
-                let value = 0.5 * (dot(&basis[i], &a_basis[j]) + dot(&basis[j], &a_basis[i]));
+                let value = f64::midpoint(dot(&basis[i], &a_basis[j]), dot(&basis[j], &a_basis[i]));
                 h.set(i, j, value);
                 h.set(j, i, value);
             }
@@ -731,7 +745,7 @@ fn least_squares(
             }
         }
         let after = norm(&v);
-        if !(after > 1e-12 * before) {
+        if after.partial_cmp(&(1e-12 * before)) != Some(std::cmp::Ordering::Greater) {
             return None;
         }
         r[j][j] = after;
@@ -802,6 +816,20 @@ mod tests {
             mean.abs() < 0.03 && (var - 1.0).abs() < 0.05,
             "{mean} {var}"
         );
+    }
+
+    #[test]
+    fn neighbouring_seeds_give_different_streams() {
+        // `seed | 1` made 2k and 2k + 1 the same generator.
+        for seed in [0_u64, 2, 42, 1_000_000] {
+            let mut a = Gaussian::new(seed);
+            let mut b = Gaussian::new(seed + 1);
+            let same = (0..32).filter(|_| a.sample() == b.sample()).count();
+            assert_eq!(same, 0, "seeds {seed} and {}", seed + 1);
+        }
+        // Seed zero is a valid, non-degenerate stream.
+        let mut z = Gaussian::new(0);
+        assert!((0..8).any(|_| z.sample() != 0.0));
     }
 
     #[test]

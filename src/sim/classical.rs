@@ -1519,3 +1519,149 @@ pub fn compton_wavelength(mass: f64) -> f64 {
 
     PLANCK_CONSTANT / (mass * SPEED_OF_LIGHT)
 }
+
+// ============================================================================
+// Space-dimension coverage: wave and Crank-Nicolson heat in 1D/2D/3D
+// ============================================================================
+
+/// Dimension-generic explicit wave equation (1D, 2D, 3D) with zero Dirichlet
+/// boundaries; [`solve_wave_equation_1d`] is the `dims.len() == 1` case.
+pub use crate::sim::dimensional::solve_wave_leapfrog_nd;
+
+/// 2D wave equation `u_tt = c^2 (u_xx + u_yy)` by explicit leapfrog.
+///
+/// Zero Dirichlet boundaries, flat arrays with `x` fastest. 2D counterpart of
+/// [`solve_wave_equation_1d`]; stable for `|c| dt sqrt(1/dx^2 + 1/dy^2) <= 1`.
+///
+/// # Errors
+/// For inconsistent lengths or a violated CFL condition.
+pub fn solve_wave_equation_2d(
+    initial_u: &[f64],
+    initial_ut: &[f64],
+    dims: [usize; 2],
+    h: [f64; 2],
+    c: f64,
+    dt: f64,
+    num_steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_wave_leapfrog_nd(initial_u, initial_ut, &dims, &h, c, dt, num_steps)
+}
+
+/// 3D wave equation by explicit leapfrog; see [`solve_wave_equation_2d`].
+///
+/// # Errors
+/// As [`solve_wave_equation_2d`].
+pub fn solve_wave_equation_3d(
+    initial_u: &[f64],
+    initial_ut: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    c: f64,
+    dt: f64,
+    num_steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_wave_leapfrog_nd(initial_u, initial_ut, &dims, &h, c, dt, num_steps)
+}
+
+/// Heat equation `u_t = alpha Laplacian u` on a box by Crank-Nicolson.
+///
+/// Factorised ADI, any of 1D, 2D, 3D, with zero Dirichlet boundaries.
+/// `ranges[a]` is the extent of axis `a`, `nodes[a]` its node count (flat arrays,
+/// `x` fastest) and `init_func` receives the coordinates. Returns `nt + 1`
+/// snapshots like [`solve_heat_equation_1d_crank_nicolson`].
+///
+/// # Errors
+/// For a bad shape (1 to 3 axes, >= 3 nodes each), `nt < 1` or a bad range.
+pub fn solve_heat_equation_nd_crank_nicolson(
+    init_func: &dyn Fn(&[f64]) -> f64,
+    alpha: f64,
+    ranges: &[(f64, f64)],
+    nodes: &[usize],
+    t_range: (f64, f64),
+    nt: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    if ranges.len() != nodes.len() || nodes.is_empty() || nodes.len() > 3 || nt < 1 {
+        return Err("need 1..=3 axes with matching ranges/nodes and nt >= 1".to_owned());
+    }
+    if nodes.iter().any(|&n| n < 3) || ranges.iter().any(|&(a, b)| b <= a) {
+        return Err("each axis needs >= 3 nodes and a positive extent".to_owned());
+    }
+    let dim = nodes.len();
+    let h: Vec<f64> = ranges
+        .iter()
+        .zip(nodes)
+        .map(|(&(a, b), &n)| (b - a) / (n as f64 - 1.0))
+        .collect();
+    let total: usize = nodes.iter().product();
+    let mut u = vec![0.0_f64; total];
+    let mut x = vec![0.0_f64; dim];
+    for (p, value) in u.iter_mut().enumerate() {
+        let mut rem = p;
+        let mut on_boundary = false;
+        for a in 0..dim {
+            let i = rem % nodes[a];
+            rem /= nodes[a];
+            x[a] = (i as f64).mul_add(h[a], ranges[a].0);
+            on_boundary |= i == 0 || i + 1 == nodes[a];
+        }
+        *value = if on_boundary {
+            0.0
+        } else {
+            init_func(&x)
+        };
+    }
+    let dt = (t_range.1 - t_range.0) / nt as f64;
+    let mut results = Vec::with_capacity(nt + 1);
+    results.push(u.clone());
+    for _ in 0..nt {
+        u = crate::sim::dimensional::solve_heat_adi_nd(&u, nodes, &h, alpha, dt, 1)?;
+        results.push(u.clone());
+    }
+    Ok(results)
+}
+
+/// 2D Crank-Nicolson heat equation; 2D counterpart of
+/// [`solve_heat_equation_1d_crank_nicolson`]. `init_func(x, y)`; arrays are flat
+/// with `x` fastest.
+///
+/// # Errors
+/// As [`solve_heat_equation_nd_crank_nicolson`].
+pub fn solve_heat_equation_2d_crank_nicolson(
+    init_func: &dyn Fn(f64, f64) -> f64,
+    alpha: f64,
+    ranges: [(f64, f64); 2],
+    nodes: [usize; 2],
+    t_range: (f64, f64),
+    nt: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_heat_equation_nd_crank_nicolson(
+        &|x: &[f64]| init_func(x[0], x[1]),
+        alpha,
+        &ranges,
+        &nodes,
+        t_range,
+        nt,
+    )
+}
+
+/// 3D Crank-Nicolson heat equation; see [`solve_heat_equation_2d_crank_nicolson`].
+///
+/// # Errors
+/// As [`solve_heat_equation_nd_crank_nicolson`].
+pub fn solve_heat_equation_3d_crank_nicolson(
+    init_func: &dyn Fn(f64, f64, f64) -> f64,
+    alpha: f64,
+    ranges: [(f64, f64); 3],
+    nodes: [usize; 3],
+    t_range: (f64, f64),
+    nt: usize,
+) -> Result<Vec<Vec<f64>>, String> {
+    solve_heat_equation_nd_crank_nicolson(
+        &|x: &[f64]| init_func(x[0], x[1], x[2]),
+        alpha,
+        &ranges,
+        &nodes,
+        t_range,
+        nt,
+    )
+}

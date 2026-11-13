@@ -95,6 +95,16 @@ fn standalone_build_script_supports_overlay_archives_and_worktrees() {
     let baseline =
         fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("signatures.overlay.json")).unwrap();
     fs::write(archive.join("signatures.overlay.json"), &baseline).unwrap();
+    // The witnessed signatures are required too.
+    let absent = run(&executable, &archive, &out, &vars);
+    assert!(!absent.status.success());
+    assert!(
+        String::from_utf8_lossy(&absent.stderr)
+            .contains("required source file signatures.witnessed.json")
+    );
+    let witnessed =
+        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("signatures.witnessed.json")).unwrap();
+    fs::write(archive.join("signatures.witnessed.json"), &witnessed).unwrap();
     let first = run(&executable, &archive, &out, &vars);
     assert!(
         first.status.success(),
@@ -146,8 +156,16 @@ fn standalone_build_script_supports_overlay_archives_and_worktrees() {
     let repo = temp.join("repository");
     fs::create_dir_all(&repo).unwrap();
     fs::write(repo.join("signatures.overlay.json"), &baseline).unwrap();
+    fs::write(repo.join("signatures.witnessed.json"), &witnessed).unwrap();
     if git(&repo, &["init", "-q"])
-        && git(&repo, &["add", "signatures.overlay.json"])
+        && git(
+            &repo,
+            &[
+                "add",
+                "signatures.overlay.json",
+                "signatures.witnessed.json",
+            ],
+        )
         && git(&repo, &["commit", "-q", "--allow-empty", "-m", "initial"])
     {
         let worktree = temp.join("worktree");

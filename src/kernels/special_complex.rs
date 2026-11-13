@@ -29,14 +29,15 @@ const INF: Complex64 = Complex64::new(f64::INFINITY, 0.0);
 const ZERO: Complex64 = Complex64::new(0.0, 0.0);
 const I: Complex64 = Complex64::new(0.0, 1.0);
 
-fn is_nan(z: Complex64) -> bool {
+const fn is_nan(z: Complex64) -> bool {
     z.re.is_nan() || z.im.is_nan()
 }
 
-fn is_inf(z: Complex64) -> bool {
+const fn is_inf(z: Complex64) -> bool {
     z.re.is_infinite() || z.im.is_infinite()
 }
 
+#[allow(clippy::float_cmp)] // exact integer test: poles sit exactly on the non-positive integers
 fn is_pole(z: Complex64) -> bool {
     z.im == 0.0 && z.re <= 0.0 && z.re == z.re.floor()
 }
@@ -138,6 +139,16 @@ pub fn gamma_complex(z: Complex64) -> Complex64 {
 /// The digamma function `ψ(z) = Γ'(z) / Γ(z)`; poles give NaN.
 #[must_use]
 pub fn digamma_complex(z: Complex64) -> Complex64 {
+    // ψ(w) ~ ln w - 1/(2w) - Σ B_{2k} / (2k w^{2k})
+    const B: [f64; 7] = [
+        1.0 / 12.0,
+        -1.0 / 120.0,
+        1.0 / 252.0,
+        -1.0 / 240.0,
+        1.0 / 132.0,
+        -691.0 / 32_760.0,
+        1.0 / 12.0,
+    ];
     if is_nan(z) || is_inf(z) || is_pole(z) {
         return NAN;
     }
@@ -152,16 +163,6 @@ pub fn digamma_complex(z: Complex64) -> Complex64 {
         acc += 1.0 / w;
         w += 1.0;
     }
-    // ψ(w) ~ ln w - 1/(2w) - Σ B_{2k} / (2k w^{2k})
-    const B: [f64; 7] = [
-        1.0 / 12.0,
-        -1.0 / 120.0,
-        1.0 / 252.0,
-        -1.0 / 240.0,
-        1.0 / 132.0,
-        -691.0 / 32_760.0,
-        1.0 / 12.0,
-    ];
     let wi = 1.0 / w;
     let w2 = wi * wi;
     let mut term = w2;
@@ -297,7 +298,7 @@ fn integer_order(nu: f64) -> Option<i64> {
     ((nu - r).abs() < 1e-14 && r.abs() < 1e9).then_some(r as i64)
 }
 
-fn bessel_invalid(
+const fn bessel_invalid(
     nu: f64,
     z: Complex64,
 ) -> bool {
@@ -335,12 +336,12 @@ pub fn bessel_j_complex(
     if bessel_invalid(nu, z) {
         return NAN;
     }
-    if let Some(n) = integer_order(nu) {
-        if n < 0 {
-            // J_{-n} = (-1)^n J_n
-            let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
-            return sign * bessel_j_complex(nu.abs(), z);
-        }
+    if let Some(n) = integer_order(nu)
+        && n < 0
+    {
+        // J_{-n} = (-1)^n J_n
+        let sign = if n % 2 == 0 { 1.0 } else { -1.0 };
+        return sign * bessel_j_complex(nu.abs(), z);
     }
     if z.re == 0.0 && z.im == 0.0 {
         return bessel_at_origin(nu);
@@ -366,11 +367,11 @@ pub fn bessel_i_complex(
     if bessel_invalid(nu, z) {
         return NAN;
     }
-    if let Some(n) = integer_order(nu) {
-        if n < 0 {
-            // I_{-n} = I_n
-            return bessel_i_complex(nu.abs(), z);
-        }
+    if let Some(n) = integer_order(nu)
+        && n < 0
+    {
+        // I_{-n} = I_n
+        return bessel_i_complex(nu.abs(), z);
     }
     if z.re == 0.0 && z.im == 0.0 {
         return bessel_at_origin(nu);

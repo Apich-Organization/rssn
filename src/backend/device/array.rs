@@ -103,9 +103,11 @@ fn block_index(
     (at, ok, fan)
 }
 
-/// The first pass of a fused map-reduce: `map` (elementwise, any number of
-/// inputs and outputs) is evaluated inside the reduction block and each of
-/// its outputs is combined with `op`. The mapped columns never exist.
+/// The first pass of a fused map-reduce.
+///
+/// `map` (elementwise, any number of inputs and outputs) is evaluated inside
+/// the reduction block and each of its outputs is combined with `op`. The
+/// mapped columns never exist.
 ///
 /// # Errors
 /// [`DeviceError::InvalidKernel`] when `map` is not elementwise or uses
@@ -291,7 +293,8 @@ pub fn stencil1d_kernel(
     b.finish(vec![out])
 }
 
-/// A 2-D stencil on a row-major `ny x nx` grid stored in one column:
+/// A 2-D stencil on a row-major `ny x nx` grid stored in one column.
+///
 /// `out[y][x] = sum of weight * u[y + dy][x + dx]` over `points`
 /// (`(dx, dy, weight)`). Parameter 0 is `nx`; `ny` follows from the column
 /// length. The boundary rule applies per axis.
@@ -840,7 +843,7 @@ pub fn ensemble_dopri5(
             params.len()
         )));
     }
-    if !(t1 >= t0) {
+    if matches!(t1.partial_cmp(&t0), Some(std::cmp::Ordering::Less) | None) {
         return Err(DeviceError::Mismatch(
             "ensemble_dopri5 integrates forward: t1 must not be before t0".into(),
         ));
@@ -853,7 +856,7 @@ pub fn ensemble_dopri5(
             "initial conditions differ in length".into(),
         ));
     }
-    if rows == 0 || t1 == t0 {
+    if rows == 0 || t1.partial_cmp(&t0) == Some(std::cmp::Ordering::Equal) {
         return Ok(Ensemble {
             y: y0.iter().map(|c| c.to_vec()).collect(),
             launches: 0,
@@ -861,10 +864,7 @@ pub fn ensemble_dopri5(
     }
     let dtype = preferred_dtype(device.info());
     // A row is finished once it is within a few rounding errors of `t1`.
-    let eps = match dtype {
-        | super::Dtype::F32 => f64::from(f32::EPSILON),
-        | super::Dtype::F64 => f64::EPSILON,
-    };
+    let eps = super::dtype_epsilon(device.info(), dtype);
     let t_done = t1 - 8.0 * eps * t1.abs().max(t0.abs()).max(1.0);
     let h0 = tolerance
         .first_step

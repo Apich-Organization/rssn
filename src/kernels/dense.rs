@@ -514,11 +514,12 @@ fn scaled(
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NoConvergence`]
 /// after 100 sweeps.
 pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
-    if let Some(f) = eigen_scale(a) {
-        if a.rows == a.cols && a.is_finite() {
-            let (vals, vecs) = eigen_symmetric(&scaled(a, f))?;
-            return Ok((vals.into_iter().map(|v| v * f).collect(), vecs));
-        }
+    if let Some(f) = eigen_scale(a)
+        && a.rows == a.cols
+        && a.is_finite()
+    {
+        let (vals, vecs) = eigen_symmetric(&scaled(a, f))?;
+        return Ok((vals.into_iter().map(|v| v * f).collect(), vecs));
     }
     if a.rows != a.cols {
         return Err(DenseError::Shape);
@@ -888,11 +889,12 @@ pub fn eigen_generalized_symmetric(
 /// # Errors
 /// [`DenseError::NoConvergence`] when a root needs more than 60 iterations.
 pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
-    if let Some(f) = eigen_scale(a) {
-        if a.rows == a.cols && a.is_finite() {
-            let v = eigenvalues(&scaled(a, f))?;
-            return Ok(v.into_iter().map(|(re, im)| (re * f, im * f)).collect());
-        }
+    if let Some(f) = eigen_scale(a)
+        && a.rows == a.cols
+        && a.is_finite()
+    {
+        let v = eigenvalues(&scaled(a, f))?;
+        return Ok(v.into_iter().map(|(re, im)| (re * f, im * f)).collect());
     }
     if a.rows != a.cols {
         return Err(DenseError::Shape);
@@ -1189,14 +1191,15 @@ pub struct Eigen {
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NoConvergence`]
 /// when a Schur eigenvalue needs more than `200 n` QR sweeps.
 pub fn eigen(a: &Mat) -> Result<Eigen, DenseError> {
-    if let Some(f) = eigen_scale(a) {
-        if a.rows == a.cols && a.is_finite() {
-            let mut e = eigen(&scaled(a, f))?;
-            for v in &mut e.values {
-                *v = (v.0 * f, v.1 * f);
-            }
-            return Ok(e);
+    if let Some(f) = eigen_scale(a)
+        && a.rows == a.cols
+        && a.is_finite()
+    {
+        let mut e = eigen(&scaled(a, f))?;
+        for v in &mut e.values {
+            *v = (v.0 * f, v.1 * f);
         }
+        return Ok(e);
     }
     if a.rows != a.cols {
         return Err(DenseError::Shape);

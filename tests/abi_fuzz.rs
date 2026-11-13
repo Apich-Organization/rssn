@@ -100,7 +100,7 @@ fn make_arg(
     Some(match ty {
         | TypeExpr::Float | TypeExpr::Real => Value::Float(*rng.pick(FLOATS)),
         | TypeExpr::Int => Value::Int(BigInt::from(*rng.pick(INTS))),
-        | TypeExpr::Bool => Value::Bool(rng.next() % 2 == 0),
+        | TypeExpr::Bool => Value::Bool(rng.next().is_multiple_of(2)),
         | TypeExpr::String => {
             Value::String(String::from(*rng.pick(&["", "x", "sin(x)", "((", "1e999"])))
         },
@@ -116,7 +116,7 @@ fn make_arg(
             };
             let dims = [0usize, 1, 2, 3, 4];
             let shape: Vec<usize> = (0..r).map(|_| *rng.pick(&dims)).collect();
-            let consistent = rng.next() % 6 != 0;
+            let consistent = !rng.next().is_multiple_of(6);
             float_tensor(shape, rng, consistent)
         },
         | _ => return None,
@@ -227,7 +227,7 @@ fn run(
             if sig.variadic.is_some() {
                 continue;
             }
-            let mut rng = Rng(0x9E37_79B9_7F4A_7C15 ^ (op.name.len() as u64 + 1) * 7919);
+            let mut rng = Rng(0x9E37_79B9_7F4A_7C15 ^ ((op.name.len() as u64 + 1) * 7919));
             for _ in 0..40 {
                 let args: Option<Vec<Value>> =
                     sig.params.iter().map(|t| make_arg(t, &mut rng)).collect();

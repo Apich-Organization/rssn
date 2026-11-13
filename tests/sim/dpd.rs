@@ -584,7 +584,10 @@ mod walls {
                 v[0] += 0.8;
             }
             let start = s.mean_velocity(0);
-            s.run(0.02, 1500);
+            // The drift decays as exp(-t / tau) with tau of order 14 for this
+            // box; t = 50 leaves about two percent of it, so the 10% bound
+            // does not depend on the particular noise realisation.
+            s.run(0.02, 2500);
             let drift = s.mean_velocity(0);
             // time average of the peculiar temperature over the last t = 20 in blocks of t = 4
             let mut t = 0.0;

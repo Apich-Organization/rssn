@@ -216,6 +216,9 @@ fn residue_node(
     graph.num(Number::Int(BigInt::from(value)))
 }
 
+/// The shape and raw `(row, column, value)` entries of a `sparse(...)` term.
+type RawEntries = (usize, usize, Vec<(usize, usize, NodeId)>);
+
 impl Sparse {
     /// The shape and raw `(row, column, value)` entries (zero-based) of a
     /// `sparse(...)` term.
@@ -223,7 +226,7 @@ impl Sparse {
         &self,
         graph: &mut Graph,
         node: NodeId,
-    ) -> Option<(usize, usize, Vec<(usize, usize, NodeId)>)> {
+    ) -> Option<RawEntries> {
         let class = graph.find(node);
         let term = graph
             .enodes(class)

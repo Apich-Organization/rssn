@@ -502,3 +502,93 @@ pub fn solve_heat_equation_nd_cn(
     };
     heat_fixed(&prob, dt * steps as f64, steps, 0.5)
 }
+
+// ============================================================================
+// Space-dimension coverage: 3D heat (ADI) and 2D/3D Schrodinger
+// ============================================================================
+
+/// Dimension-generic factorised Crank-Nicolson heat solver for 1D, 2D and 3D
+/// grids (zero Dirichlet).
+pub use crate::sim::dimensional::solve_heat_adi_nd;
+/// Dimension-generic Cayley-split Crank-Nicolson Schrodinger solver for 1D, 2D
+/// and 3D grids (zero Dirichlet).
+pub use crate::sim::dimensional::solve_schrodinger_cn_nd;
+
+/// Configuration for the 3D Crank-Nicolson ADI heat solver.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HeatEquationSolverConfig3D {
+    /// Number of grid points in x.
+    pub nx: usize,
+    /// Number of grid points in y.
+    pub ny: usize,
+    /// Number of grid points in z.
+    pub nz: usize,
+    /// Grid spacing in x.
+    pub dx: f64,
+    /// Grid spacing in y.
+    pub dy: f64,
+    /// Grid spacing in z.
+    pub dz: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Diffusion coefficient.
+    pub d_coeff: f64,
+    /// Number of time steps.
+    pub steps: usize,
+}
+
+/// 3D heat equation `u_t = D (u_xx + u_yy + u_zz)` by Crank-Nicolson.
+///
+/// Uses approximate factorisation (ADI): three tridiagonal sweeps per step,
+/// unconditionally stable, second order, zero Dirichlet boundaries. `x` is the
+/// fastest index. 3D counterpart of [`solve_heat_equation_2d_cn_adi`].
+///
+/// # Errors
+/// For a wrong array length or non-positive step sizes.
+pub fn solve_heat_equation_3d_cn_adi(
+    initial_condition: &[f64],
+    config: &HeatEquationSolverConfig3D,
+) -> Result<Vec<f64>, String> {
+    solve_heat_adi_nd(
+        initial_condition,
+        &[config.nx, config.ny, config.nz],
+        &[config.dx, config.dy, config.dz],
+        config.d_coeff,
+        config.dt,
+        config.steps,
+    )
+}
+
+/// 2D Schrodinger equation `i psi_t = -1/2 Laplacian psi + V psi`.
+///
+/// Zero Dirichlet, by the Cayley/Crank-Nicolson split of
+/// [`solve_schrodinger_cn_nd`]; `x` fastest. 2D counterpart of [`solve_schrodinger_1d_cn`]; conserves the norm.
+///
+/// # Errors
+/// For inconsistent lengths or a non-positive step.
+pub fn solve_schrodinger_2d_cn(
+    psi_initial: &[Complex<f64>],
+    v: &[f64],
+    dims: [usize; 2],
+    h: [f64; 2],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Complex<f64>>, String> {
+    solve_schrodinger_cn_nd(psi_initial, v, &dims, &h, dt, steps)
+}
+
+/// 3D Schrodinger equation by the Cayley/Crank-Nicolson split; see
+/// [`solve_schrodinger_2d_cn`].
+///
+/// # Errors
+/// As [`solve_schrodinger_2d_cn`].
+pub fn solve_schrodinger_3d_cn(
+    psi_initial: &[Complex<f64>],
+    v: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<Complex<f64>>, String> {
+    solve_schrodinger_cn_nd(psi_initial, v, &dims, &h, dt, steps)
+}

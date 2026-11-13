@@ -1105,3 +1105,267 @@ pub use crate::sim::elasticity_fem::Model as ElasticModel;
 /// Distributed loads, mixed displacement/traction markers, P2 triangles and
 /// 3D tetrahedra: see [`crate::sim::elasticity_fem`].
 pub use crate::sim::elasticity_fem::solve as solve_elasticity_simplex;
+
+// ============================================================================
+// Space-dimension coverage: 1D / 2D / 3D global assembly and a 3D element
+// ============================================================================
+
+/// Assembles a global stiffness matrix from local matrices and DOF maps.
+///
+/// `dof_map[i]` is the global DOF of local DOF `i`): the dimension-generic
+/// form of [`assemble_global_stiffness_matrix`] (1D bars, 2 DOFs),
+/// [`assemble_2d_stiffness_matrix`] (triangles, 6 DOFs) and
+/// [`assemble_3d_stiffness_matrix`] (tetrahedra, 12 DOFs).
+///
+/// # Panics
+/// Panics if a local matrix is smaller than its DOF map or a DOF is out of range.
+#[must_use]
+pub fn assemble_stiffness_matrix(
+    num_dofs: usize,
+    elements: &[(Matrix<f64>, Vec<usize>)],
+) -> Matrix<f64> {
+    let mut global_k = Matrix::zeros(num_dofs, num_dofs);
+
+    for (local_k, dof_map) in elements {
+        for (i, &gi) in dof_map.iter().enumerate() {
+            for (j, &gj) in dof_map.iter().enumerate() {
+                *global_k.get_mut(gi, gj) += local_k.get(i, j);
+            }
+        }
+    }
+
+    global_k
+}
+
+/// 1D global stiffness assembly (one DOF per node); alias of
+/// [`assemble_global_stiffness_matrix`] named like its 2D/3D siblings.
+#[must_use]
+pub fn assemble_1d_stiffness_matrix(
+    num_nodes: usize,
+    elements: &[(Matrix<f64>, usize, usize)],
+) -> Matrix<f64> {
+    assemble_global_stiffness_matrix(num_nodes, elements)
+}
+
+/// Assembles a 3D global stiffness matrix from tetrahedral elements (12 DOFs
+/// each, ordered `(u, v, w)` per node).
+#[must_use]
+pub fn assemble_3d_stiffness_matrix(
+    num_dofs: usize,
+    elements: &[(Matrix<f64>, [usize; 12])],
+) -> Matrix<f64> {
+    let mut global_k = Matrix::zeros(num_dofs, num_dofs);
+
+    for (local_k, dof_map) in elements {
+        for i in 0..12 {
+            for j in 0..12 {
+                *global_k.get_mut(dof_map[i], dof_map[j]) += local_k.get(i, j);
+            }
+        }
+    }
+
+    global_k
+}
+
+/// Linear (constant strain) tetrahedron for 3D linear elasticity.
+///
+/// DOFs are `(u, v, w)` of the four nodes in order; node `i` owns global DOFs
+/// `3 nodes[i] .. 3 nodes[i] + 3`. 3D counterpart of [`TriangleElement2D`].
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct TetrahedronElement3D {
+    /// Global node indices.
+    pub nodes: [usize; 4],
+    /// Node coordinates.
+    pub coords: [(f64, f64, f64); 4],
+    /// Material (only Young's modulus and Poisson's ratio are used).
+    pub material: Material,
+}
+
+impl TetrahedronElement3D {
+    /// Creates a tetrahedral element.
+    #[must_use]
+    pub const fn new(
+        nodes: [usize; 4],
+        coords: [(f64, f64, f64); 4],
+        material: Material,
+    ) -> Self {
+        Self {
+            nodes,
+            coords,
+            material,
+        }
+    }
+
+    /// Signed volume `det[1 x y z] / 6` (positive for a right-handed node order).
+    #[must_use]
+    pub fn signed_volume(&self) -> f64 {
+        let c = &self.coords;
+
+        let a = (c[1].0 - c[0].0, c[1].1 - c[0].1, c[1].2 - c[0].2);
+
+        let b = (c[2].0 - c[0].0, c[2].1 - c[0].1, c[2].2 - c[0].2);
+
+        let d = (c[3].0 - c[0].0, c[3].1 - c[0].1, c[3].2 - c[0].2);
+
+        (a.0 * (b.1 * d.2 - b.2 * d.1) - a.1 * (b.0 * d.2 - b.2 * d.0)
+            + a.2 * (b.0 * d.1 - b.1 * d.0))
+            / 6.0
+    }
+
+    /// Element volume (absolute value).
+    #[must_use]
+    pub fn volume(&self) -> f64 {
+        self.signed_volume().abs()
+    }
+
+    /// Global DOF numbers of the 12 local DOFs.
+    #[must_use]
+    pub fn dof_map(&self) -> [usize; 12] {
+        let mut map = [0; 12];
+
+        for (i, &node) in self.nodes.iter().enumerate() {
+            for k in 0..3 {
+                map[3 * i + k] = 3 * node + k;
+            }
+        }
+
+        map
+    }
+
+    /// Shape-function gradients (one row per node). A degenerate (zero volume)
+    /// element yields non-finite entries.
+    #[must_use]
+    pub fn shape_gradients(&self) -> [[f64; 3]; 4] {
+        // Columns of the inverse of M = [1 x_j y_j z_j] (rows j) hold the
+        // coefficients of the shape functions N_i = c0 + c1 x + c2 y + c3 z.
+        let mut aug = [[0.0_f64; 8]; 4];
+
+        for (j, row) in aug.iter_mut().enumerate() {
+            row[0] = 1.0;
+            row[1] = self.coords[j].0;
+            row[2] = self.coords[j].1;
+            row[3] = self.coords[j].2;
+            row[4 + j] = 1.0;
+        }
+
+        for col in 0..4 {
+            let pivot = (col..4)
+                .max_by(|&a, &b| aug[a][col].abs().total_cmp(&aug[b][col].abs()))
+                .unwrap_or(col);
+
+            aug.swap(col, pivot);
+
+            let diag = aug[col][col];
+
+            for v in &mut aug[col] {
+                *v /= diag;
+            }
+
+            let pivot_row = aug[col];
+
+            for (r, row) in aug.iter_mut().enumerate() {
+                if r != col {
+                    let factor = row[col];
+
+                    for k in 0..8 {
+                        row[k] -= factor * pivot_row[k];
+                    }
+                }
+            }
+        }
+
+        let mut grads = [[0.0; 3]; 4];
+
+        for (i, grad) in grads.iter_mut().enumerate() {
+            for (k, g) in grad.iter_mut().enumerate() {
+                // inverse entry (coefficient k + 1, node i)
+                *g = aug[k + 1][4 + i];
+            }
+        }
+
+        grads
+    }
+
+    /// Isotropic elasticity matrix in Voigt order `(xx, yy, zz, xy, yz, zx)`
+    /// (engineering shear strains).
+    #[must_use]
+    pub fn elasticity_matrix(&self) -> [[f64; 6]; 6] {
+        let e = self.material.youngs_modulus;
+
+        let nu = self.material.poissons_ratio;
+
+        let lambda = e * nu / ((1.0 + nu) * 2.0f64.mul_add(-nu, 1.0));
+
+        let mu = self.material.shear_modulus();
+
+        let mut d = [[0.0; 6]; 6];
+
+        for i in 0..3 {
+            for j in 0..3 {
+                d[i][j] = if i == j {
+                    lambda + 2.0 * mu
+                } else {
+                    lambda
+                };
+            }
+
+            d[3 + i][3 + i] = mu;
+        }
+
+        d
+    }
+
+    /// Strain-displacement matrix `B` (6 x 12).
+    #[must_use]
+    pub fn b_matrix(&self) -> Matrix<f64> {
+        let g = self.shape_gradients();
+
+        let mut b = Matrix::zeros(6, 12);
+
+        for (i, gi) in g.iter().enumerate() {
+            let (bx, by, bz) = (gi[0], gi[1], gi[2]);
+
+            let c = 3 * i;
+
+            *b.get_mut(0, c) = bx;
+            *b.get_mut(1, c + 1) = by;
+            *b.get_mut(2, c + 2) = bz;
+            *b.get_mut(3, c) = by;
+            *b.get_mut(3, c + 1) = bx;
+            *b.get_mut(4, c + 1) = bz;
+            *b.get_mut(4, c + 2) = by;
+            *b.get_mut(5, c) = bz;
+            *b.get_mut(5, c + 2) = bx;
+        }
+
+        b
+    }
+
+    /// Local stiffness matrix `V Bt D B` (12 x 12).
+    #[must_use]
+    pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
+        let b = self.b_matrix();
+
+        let d = self.elasticity_matrix();
+
+        let volume = self.volume();
+
+        let mut k = Matrix::zeros(12, 12);
+
+        for i in 0..12 {
+            for j in 0..12 {
+                let mut sum = 0.0;
+
+                for r in 0..6 {
+                    for s in 0..6 {
+                        sum += b.get(r, i) * d[r][s] * b.get(s, j);
+                    }
+                }
+
+                *k.get_mut(i, j) = volume * sum;
+            }
+        }
+
+        k
+    }
+}

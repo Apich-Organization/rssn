@@ -63,7 +63,7 @@ stateful/diverging effects, session-bound threading and interpreter backend
 metadata to each operator. There is no symbolic rewrite, scalar JIT, GPU or C
 function-pointer interpretation for these host handles.
 
-`tools/rssn-api-audit` generates record codecs from public Rust structs. An
+`tools/rssn-api-gen` (structured mode) generates record codecs from public Rust structs. An
 exhaustive typed destructuring pattern makes a source field change a compilation
 error until its policy is reviewed. The quadrature `Integral` record and SVD
 record each derive their manifest field types and runtime dimensional decoration

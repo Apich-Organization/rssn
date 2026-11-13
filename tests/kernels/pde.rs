@@ -6,20 +6,29 @@ use rssn::kernels::pde::AdvectionScheme;
 use rssn::kernels::pde::Boundary;
 use rssn::kernels::pde::Grid1D;
 use rssn::kernels::pde::Grid2D;
+use rssn::kernels::pde::Grid3D;
 use rssn::kernels::pde::PdeError;
 use rssn::kernels::pde::PdeProblem;
 use rssn::kernels::pde::PdeSolution;
 use rssn::kernels::pde::PoissonSolver;
 use rssn::kernels::pde::StiffMethod;
 use rssn::kernels::pde::advection_1d;
+use rssn::kernels::pde::advection_2d;
+use rssn::kernels::pde::advection_3d;
 use rssn::kernels::pde::heat_1d;
 use rssn::kernels::pde::heat_2d;
+use rssn::kernels::pde::heat_3d;
+use rssn::kernels::pde::laplace_1d;
 use rssn::kernels::pde::laplace_2d;
+use rssn::kernels::pde::laplace_3d;
 use rssn::kernels::pde::method_of_lines_1d;
 use rssn::kernels::pde::pde_solver;
+use rssn::kernels::pde::poisson_1d;
 use rssn::kernels::pde::poisson_2d;
+use rssn::kernels::pde::poisson_3d;
 use rssn::kernels::pde::wave_1d;
 use rssn::kernels::pde::wave_2d;
+use rssn::kernels::pde::wave_3d;
 use std::f64::consts::PI;
 
 fn order(
@@ -459,7 +468,7 @@ fn dispatcher_routes_problems() {
         | PdeSolution::D1(f) => {
             assert!(f.max_error(|x| (-PI * PI * 0.1).exp() * (PI * x).sin()) < 1e-3)
         },
-        | PdeSolution::D2(_) => panic!("expected a 1D field"),
+        | _ => panic!("expected a 1D field"),
     }
     let src = |_: f64, _: f64| -6.0;
     let p = PdeProblem::Poisson2D {
@@ -470,6 +479,222 @@ fn dispatcher_routes_problems() {
     };
     match pde_solver(&p).unwrap() {
         | PdeSolution::D2(f) => assert!(f.max_error(|x, y| x * x + 2.0 * y * y + x * y) < 1e-9),
-        | PdeSolution::D1(_) => panic!("expected a 2D field"),
+        | _ => panic!("expected a 2D field"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The dimensions the first version lacked: 1D Poisson, 3D everything,
+// 2D/3D advection.
+// ---------------------------------------------------------------------------
+
+/// Dirichlet data on the six faces of the unit cube taken from `exact`.
+fn dirichlet6(
+    exact: impl Fn(f64, f64, f64) -> f64 + Copy + Send + Sync + 'static
+) -> [Boundary; 6] {
+    [
+        Boundary::dirichlet(move |y, z| exact(0.0, y, z)),
+        Boundary::dirichlet(move |y, z| exact(1.0, y, z)),
+        Boundary::dirichlet(move |x, z| exact(x, 0.0, z)),
+        Boundary::dirichlet(move |x, z| exact(x, 1.0, z)),
+        Boundary::dirichlet(move |x, y| exact(x, y, 0.0)),
+        Boundary::dirichlet(move |x, y| exact(x, y, 1.0)),
+    ]
+}
+
+#[test]
+fn poisson_1d_and_laplace_1d_are_exact_for_quadratics_and_lines() {
+    let grid = Grid1D {
+        x0: 0.0,
+        x1: 2.0,
+        n: 21,
+    };
+    // -u'' = -2 with u = x^2 + 1.
+    let bc = [
+        Boundary::dirichlet_const(1.0),
+        Boundary::dirichlet_const(5.0),
+    ];
+    for solver in [PoissonSolver::SparseLu, PoissonSolver::Cg { tol: 1e-13 }] {
+        let f = poisson_1d(&grid, &bc, &|_| -2.0, solver).unwrap();
+        assert!(f.max_error(|x| x * x + 1.0) < 1e-10, "{solver:?}");
+    }
+    // A Neumann end: u' = 4 at x = 2 for u = x^2 + 1.
+    let mixed = [Boundary::dirichlet_const(1.0), Boundary::neumann_const(4.0)];
+    let f = poisson_1d(&grid, &mixed, &|_| -2.0, PoissonSolver::SparseLu).unwrap();
+    assert!(f.max_error(|x| x * x + 1.0) < 1e-10);
+    // Laplace gives the line between the end values.
+    let l = laplace_1d(&grid, &bc, PoissonSolver::SparseLu).unwrap();
+    assert!(l.max_error(|x| 1.0 + 2.0 * x) < 1e-10);
+    // Pure Neumann is singular, exactly as in 2D.
+    let neumann = [Boundary::neumann_const(0.0), Boundary::neumann_const(0.0)];
+    assert!(matches!(
+        poisson_1d(&grid, &neumann, &|_| 0.0, PoissonSolver::SparseLu),
+        Err(PdeError::Unsupported(_))
+    ));
+}
+
+#[test]
+fn poisson_3d_is_exact_for_quadratics_with_every_solver_and_a_neumann_face() {
+    let exact = |x: f64, y: f64, z: f64| x * x + 2.0 * y * y + 3.0 * z * z + x * y + y * z + 1.0;
+    let grid = Grid3D::unit_cube(9);
+    let src = |_: f64, _: f64, _: f64| -12.0;
+    for solver in [PoissonSolver::SparseLu, PoissonSolver::Cg { tol: 1e-13 }] {
+        let f = poisson_3d(&grid, &dirichlet6(exact), &src, solver).unwrap();
+        assert!(f.max_error(exact) < 1e-9, "{solver:?}");
+    }
+    // du/dx = 2 x + y on the x = 1 face.
+    let mut bc = dirichlet6(exact);
+    bc[1] = Boundary::neumann(|y, _z| 2.0 + y);
+    let f = poisson_3d(&grid, &bc, &src, PoissonSolver::SparseLu).unwrap();
+    assert!(f.max_error(exact) < 1e-9);
+    // CG needs Dirichlet on all faces.
+    assert!(matches!(
+        poisson_3d(&grid, &bc, &src, PoissonSolver::Cg { tol: 1e-10 }),
+        Err(PdeError::Unsupported(_))
+    ));
+    // Harmonic data: x y z is harmonic.
+    let harmonic = |x: f64, y: f64, z: f64| x * y * z;
+    let l = laplace_3d(&grid, &dirichlet6(harmonic), PoissonSolver::SparseLu).unwrap();
+    assert!(l.max_error(harmonic) < 1e-9);
+    // The indexing convention: x fastest.
+    assert_eq!(l.u[(2 * 9 + 3) * 9 + 4], l.at(4, 3, 2));
+    let (x, y, z) = l.point(4, 3, 2);
+    assert!((x - 0.5).abs() < 1e-12 && (y - 0.375).abs() < 1e-12 && (z - 0.25).abs() < 1e-12);
+    // Bad grids are rejected.
+    let mut bad = Grid3D::unit_cube(9);
+    bad.nz = 2;
+    assert!(poisson_3d(&bad, &dirichlet6(exact), &src, PoissonSolver::SparseLu).is_err());
+}
+
+#[test]
+fn heat_3d_decays_like_the_first_eigenmode() {
+    let alpha = 0.5;
+    let t = 0.05;
+    let mode = |x: f64, y: f64, z: f64| (PI * x).sin() * (PI * y).sin() * (PI * z).sin();
+    let f = heat_3d(
+        alpha,
+        &Grid3D::unit_cube(17),
+        &dirichlet6(|_, _, _| 0.0),
+        &mode,
+        t,
+        20,
+    )
+    .unwrap();
+    let decay = (-3.0 * PI * PI * alpha * t).exp();
+    assert!(f.max_error(|x, y, z| decay * mode(x, y, z)) < 5e-3);
+    // Insulated walls conserve the mean: the field relaxes to a constant.
+    let insulated = [
+        Boundary::neumann_const(0.0),
+        Boundary::neumann_const(0.0),
+        Boundary::neumann_const(0.0),
+        Boundary::neumann_const(0.0),
+        Boundary::neumann_const(0.0),
+        Boundary::neumann_const(0.0),
+    ];
+    let g = heat_3d(
+        1.0,
+        &Grid3D::unit_cube(9),
+        &insulated,
+        &|x, _, _| x,
+        5.0,
+        50,
+    )
+    .unwrap();
+    let mean = g.u.iter().sum::<f64>() / g.u.len() as f64;
+    assert!(g.u.iter().all(|v| (v - mean).abs() < 1e-3), "{mean}");
+}
+
+#[test]
+fn wave_3d_standing_mode_and_the_cfl_limit() {
+    let mode = |x: f64, y: f64, z: f64| (PI * x).sin() * (PI * y).sin() * (PI * z).sin();
+    let zero = |_: f64, _: f64, _: f64| 0.0;
+    let (c, t) = (1.0, 0.2);
+    let grid = Grid3D::unit_cube(17);
+    let f = wave_3d(c, &grid, &dirichlet6(|_, _, _| 0.0), &mode, &zero, t, 20).unwrap();
+    let phase = (c * PI * 3.0_f64.sqrt() * t).cos();
+    assert!(f.max_error(|x, y, z| phase * mode(x, y, z)) < 1e-2);
+    // Two steps are far beyond the Courant limit of this grid.
+    assert!(matches!(
+        wave_3d(c, &grid, &dirichlet6(|_, _, _| 0.0), &mode, &zero, t, 2),
+        Err(PdeError::Unstable { .. })
+    ));
+}
+
+#[test]
+fn advection_2d_and_3d_translate_the_profile() {
+    // Courant number one shifts exactly one cell per step, so a full period
+    // returns the initial field.
+    let blob = |x: f64, y: f64| (-30.0 * ((x - 0.5).powi(2) + (y - 0.5).powi(2))).exp();
+    let grid = Grid2D {
+        x0: 0.0,
+        x1: 1.0,
+        y0: 0.0,
+        y1: 1.0,
+        nx: 16,
+        ny: 16,
+    };
+    let f = advection_2d([1.0, 1.0], &grid, AdvectionScheme::Upwind, &blob, 1.0, 16).unwrap();
+    assert!(f.max_error(blob) < 1e-12);
+    let cube = |x: f64, y: f64, z: f64| blob(x, y) * (1.0 + z);
+    let g3 = Grid3D::unit_cube(8);
+    let g = advection_3d([1.0, 1.0, 1.0], &g3, AdvectionScheme::Upwind, &cube, 1.0, 8).unwrap();
+    assert!(g.max_error(cube) < 1e-12);
+    // A smooth wave under Lax-Wendroff keeps second-order accuracy.
+    let wave = |x: f64, y: f64| (2.0 * PI * (x + y)).sin();
+    let fine = Grid2D {
+        x0: 0.0,
+        x1: 1.0,
+        y0: 0.0,
+        y1: 1.0,
+        nx: 64,
+        ny: 64,
+    };
+    let f = advection_2d(
+        [0.5, 0.25],
+        &fine,
+        AdvectionScheme::LaxWendroff,
+        &wave,
+        1.0,
+        128,
+    )
+    .unwrap();
+    assert!(f.max_error(|x, y| wave(x - 0.5, y - 0.25)) < 2e-2);
+    // Each direction has its own Courant limit.
+    assert!(matches!(
+        advection_2d([1.0, 5.0], &fine, AdvectionScheme::Upwind, &wave, 1.0, 64),
+        Err(PdeError::Unstable { .. })
+    ));
+}
+
+#[test]
+fn dispatcher_routes_the_new_dimensions() {
+    let src = |_: f64, _: f64, _: f64| 0.0;
+    let p = PdeProblem::Poisson3D {
+        grid: Grid3D::unit_cube(5),
+        bc: dirichlet6(|x, y, z| x + y + z),
+        f: &src,
+        solver: PoissonSolver::SparseLu,
+    };
+    match pde_solver(&p).unwrap() {
+        | PdeSolution::D3(f) => assert!(f.max_error(|x, y, z| x + y + z) < 1e-10),
+        | _ => panic!("expected a 3D field"),
+    }
+    let line = |_: f64| 0.0;
+    let p = PdeProblem::Poisson1D {
+        grid: Grid1D {
+            x0: 0.0,
+            x1: 1.0,
+            n: 5,
+        },
+        bc: [
+            Boundary::dirichlet_const(0.0),
+            Boundary::dirichlet_const(1.0),
+        ],
+        f: &line,
+        solver: PoissonSolver::SparseLu,
+    };
+    match pde_solver(&p).unwrap() {
+        | PdeSolution::D1(f) => assert!(f.max_error(|x| x) < 1e-12),
+        | _ => panic!("expected a 1D field"),
     }
 }

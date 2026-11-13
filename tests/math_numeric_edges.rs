@@ -54,7 +54,7 @@ fn empty_and_nan_samples_give_nan_not_panics() {
     let mut with_nan = vec![1.0, f64::NAN, 3.0];
     assert!(stats::median(&mut with_nan).is_nan());
     assert!(stats::percentile(&mut with_nan, 10.0).is_nan());
-    assert!(stats::iqr(&mut vec![1.0, 2.0, f64::NAN, 4.0, 5.0]).is_nan());
+    assert!(stats::iqr(&mut [1.0, 2.0, f64::NAN, 4.0, 5.0]).is_nan());
     assert!(stats::shannon_entropy(&[0.5, f64::NAN]).is_nan());
 }
 

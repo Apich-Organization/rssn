@@ -1,10 +1,16 @@
 //! The wgpu device (feature `gpu-wgpu`).
 //!
 //! Kernels are emitted as WGSL by [`super::wgsl`] and run as compute shaders.
-//! Computation is `f32` ([`Dtype::F32`] is the only supported type), so
-//! results differ from the CPU devices by single-precision rounding; reduce
-//! and matmul are not implemented (`DeviceOps` says so and the calls return
-//! [`DeviceError::Unsupported`]).
+//!
+//! Two element types are supported. [`Dtype::F32`] computes in single
+//! precision, so results differ from the CPU devices by single-precision
+//! rounding. [`Dtype::F64`] is **emulated** with double-single arithmetic
+//! ([`super::ds`]): every element is a pair of `f32` (8 bytes), kernels are
+//! emitted by [`super::ds::emit_wgsl_ds`], and the result carries about 48
+//! significant bits (relative error near `1e-14`, the exponent range of
+//! `f32`). The device reports `emulated_f64`, and a kernel is compiled for
+//! the pair layout on its first launch with `F64` buffers. Mixing the two
+//! types in one launch is a [`DeviceError::Mismatch`].
 //!
 //! Adapters are discovered by [`probe`], which never fails: a machine with no
 //! usable adapter simply registers no GPU device. Validation errors raised
@@ -33,6 +39,10 @@ use super::GpuApi;
 use super::KernelIr;
 use super::Storage;
 use super::check_launch_cols;
+use super::ds;
+use super::emit::EmitOptions;
+use super::emit::Precision;
+use super::emit::Target;
 use super::next_uid;
 use super::wgsl::WgslOptions;
 use super::wgsl::emit_wgsl;
@@ -57,6 +67,8 @@ impl Storage for GpuStorage {
 struct GpuKernel {
     ir: KernelIr,
     pipeline: wgpu::ComputePipeline,
+    /// The double-single pipeline, built on the first `F64` launch.
+    pair: Mutex<Option<wgpu::ComputePipeline>>,
 }
 
 impl CompiledKernel for GpuKernel {
@@ -99,7 +111,7 @@ pub fn probe() -> Vec<Arc<dyn Device>> {
     out
 }
 
-fn storage_entry(
+const fn storage_entry(
     binding: u32,
     read_only: bool,
 ) -> wgpu::BindGroupLayoutEntry {
@@ -177,7 +189,7 @@ impl WgpuDevice {
                 ainfo.backend
             ),
             kind: DeviceKind::Gpu(GpuApi::Wgpu),
-            dtypes: vec![Dtype::F32],
+            dtypes: vec![Dtype::F32, Dtype::F64],
             ops: DeviceOps {
                 elementwise: true,
                 // Both are kernels (`super::array`), not hand-written
@@ -187,10 +199,12 @@ impl WgpuDevice {
                 structured: true,
             },
             parallelism: limits.max_compute_invocations_per_workgroup as usize,
-            max_buffer_elems: usize::try_from(limits.max_storage_buffer_binding_size / 4)
+            // Counted in the widest element (a double-single pair is 8 bytes).
+            max_buffer_elems: usize::try_from(limits.max_storage_buffer_binding_size / 8)
                 .unwrap_or(usize::MAX),
             unified_memory: matches!(ainfo.device_type, wgpu::DeviceType::Cpu),
             deterministic: true,
+            emulated_f64: true,
         };
         Ok(Self {
             info,
@@ -202,6 +216,50 @@ impl WgpuDevice {
             cache: Mutex::new(HashMap::new()),
             late_error,
         })
+    }
+
+    /// The double-single pipeline of `kernel`, built on first use.
+    fn pair_pipeline(
+        &self,
+        kernel: &GpuKernel,
+    ) -> Result<wgpu::ComputePipeline, DeviceError> {
+        let mut slot = kernel
+            .pair
+            .lock()
+            .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?;
+        if let Some(p) = slot.as_ref() {
+            return Ok(p.clone());
+        }
+        let options = EmitOptions {
+            target: Target::Wgsl,
+            precision: Precision::DoubleSingle,
+            workgroup_size: WORKGROUP,
+            entry: "main".into(),
+        };
+        let source = ds::emit_wgsl_ds(&kernel.ir, &options)?;
+        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let module = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("rssn-ds"),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("rssn-ds"),
+                layout: Some(&self.pipeline_layout),
+                module: &module,
+                entry_point: Some("main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            });
+        if let Some(e) = pollster::block_on(self.device.pop_error_scope()) {
+            return Err(DeviceError::Backend(e.to_string()));
+        }
+        *slot = Some(pipeline.clone());
+        drop(slot);
+        Ok(pipeline)
     }
 
     fn take_late_error(&self) -> Result<(), DeviceError> {
@@ -228,8 +286,9 @@ impl WgpuDevice {
     fn new_storage(
         &self,
         len: usize,
-    ) -> Result<Buffer, DeviceError> {
-        let bytes = (len.max(1) as u64).saturating_mul(4);
+        dtype: Dtype,
+    ) -> Buffer {
+        let bytes = (len.max(1) as u64).saturating_mul(element_bytes(dtype));
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("rssn"),
             size: bytes,
@@ -238,12 +297,7 @@ impl WgpuDevice {
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        Ok(Buffer::new(
-            self.uid,
-            Dtype::F32,
-            len,
-            Box::new(GpuStorage { buffer }),
-        ))
+        Buffer::new(self.uid, dtype, len, Box::new(GpuStorage { buffer }))
     }
 
     fn small(
@@ -270,6 +324,25 @@ fn to_f32(v: &[f64]) -> Vec<f32> {
     v.iter().map(|&x| x as f32).collect()
 }
 
+/// Bytes of one element: 4 for `F32`, 8 for a double-single pair.
+const fn element_bytes(dtype: Dtype) -> u64 {
+    match dtype {
+        | Dtype::F32 => 4,
+        | Dtype::F64 => 8,
+    }
+}
+
+/// The host values in the layout of `dtype`: floats, or `(hi, lo)` pairs.
+fn to_device(
+    v: &[f64],
+    dtype: Dtype,
+) -> Vec<f32> {
+    match dtype {
+        | Dtype::F32 => to_f32(v),
+        | Dtype::F64 => v.iter().flat_map(|&x| ds::split(x)).collect(),
+    }
+}
+
 impl Device for WgpuDevice {
     fn info(&self) -> &DeviceInfo {
         &self.info
@@ -284,12 +357,7 @@ impl Device for WgpuDevice {
         len: usize,
         dtype: Dtype,
     ) -> Result<Buffer, DeviceError> {
-        if dtype != Dtype::F32 {
-            return Err(DeviceError::Unsupported(
-                "wgpu devices compute in f32".into(),
-            ));
-        }
-        self.new_storage(len)
+        Ok(self.new_storage(len, dtype))
     }
 
     fn upload(
@@ -299,7 +367,7 @@ impl Device for WgpuDevice {
     ) -> Result<Buffer, DeviceError> {
         let b = self.alloc(host.len(), dtype)?;
         if !host.is_empty() {
-            let data = to_f32(host);
+            let data = to_device(host, dtype);
             self.queue
                 .write_buffer(self.gpu_buffer(&b)?, 0, bytemuck::cast_slice(&data));
         }
@@ -322,7 +390,8 @@ impl Device for WgpuDevice {
         if out.is_empty() {
             return Ok(());
         }
-        let bytes = (out.len() as u64) * 4;
+        let dtype = buffer.dtype();
+        let bytes = (out.len() as u64) * element_bytes(dtype);
         let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("rssn-readback"),
             size: bytes,
@@ -347,8 +416,17 @@ impl Device for WgpuDevice {
         {
             let view = staging.slice(..).get_mapped_range();
             let floats: &[f32] = bytemuck::cast_slice(&view);
-            for (o, &f) in out.iter_mut().zip(floats) {
-                *o = f64::from(f);
+            match dtype {
+                | Dtype::F32 => {
+                    for (o, &f) in out.iter_mut().zip(floats) {
+                        *o = f64::from(f);
+                    }
+                },
+                | Dtype::F64 => {
+                    for (o, pair) in out.iter_mut().zip(floats.as_chunks::<2>().0) {
+                        *o = ds::join(*pair);
+                    }
+                },
             }
         }
         staging.unmap();
@@ -364,18 +442,24 @@ impl Device for WgpuDevice {
         len: usize,
     ) -> Result<(), DeviceError> {
         super::check_copy(self.uid, src, src_at, dst, dst_at, len)?;
+        if src.dtype() != dst.dtype() {
+            return Err(DeviceError::Mismatch(
+                "copy between buffers of different element types".into(),
+            ));
+        }
         if len == 0 {
             return Ok(());
         }
+        let width = element_bytes(src.dtype());
         let mut enc = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         enc.copy_buffer_to_buffer(
             self.gpu_buffer(src)?,
-            src_at as u64 * 4,
+            src_at as u64 * width,
             self.gpu_buffer(dst)?,
-            dst_at as u64 * 4,
-            len as u64 * 4,
+            dst_at as u64 * width,
+            len as u64 * width,
         );
         self.queue.submit([enc.finish()]);
         Ok(())
@@ -443,6 +527,7 @@ impl Device for WgpuDevice {
         let k = Arc::new(GpuKernel {
             ir: ir.clone(),
             pipeline,
+            pair: Mutex::new(None),
         });
         self.cache
             .lock()
@@ -481,9 +566,19 @@ impl Device for WgpuDevice {
         if rows == 0 {
             return Ok(());
         }
+        let dtype = input.dtype();
+        if output.dtype() != dtype {
+            return Err(DeviceError::Mismatch(
+                "input and output buffers have different element types".into(),
+            ));
+        }
+        let pipeline = match dtype {
+            | Dtype::F32 => k.pipeline.clone(),
+            | Dtype::F64 => self.pair_pipeline(k)?,
+        };
         let rows32 = u32::try_from(rows)
             .map_err(|_| DeviceError::Unsupported("more than 2^32 rows".into()))?;
-        let p = to_f32(params);
+        let p = to_device(params, dtype);
         let pbuf = self.small(wgpu::BufferUsages::STORAGE, bytemuck::cast_slice(&p));
         let dims: [u32; 4] = [
             rows32,
@@ -528,7 +623,7 @@ impl Device for WgpuDevice {
             ],
         });
         let groups = rows32.div_ceil(WORKGROUP);
-        let gx = groups.min(MAX_GROUPS_X).max(1);
+        let gx = groups.clamp(1, MAX_GROUPS_X);
         let gy = groups.div_ceil(gx).max(1);
         let mut enc = self
             .device
@@ -538,7 +633,7 @@ impl Device for WgpuDevice {
                 label: None,
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&k.pipeline);
+            pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind, &[]);
             pass.dispatch_workgroups(gx, gy, 1);
         }

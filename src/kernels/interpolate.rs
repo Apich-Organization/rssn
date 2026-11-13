@@ -599,6 +599,227 @@ pub(crate) fn basis_functions(
     n
 }
 
+// ============================================================================
+// Tensor-product interpolation on rectilinear grids (1D, 2D, 3D, ...)
+// ============================================================================
+
+/// Checks the axes and the value array of a rectilinear grid and returns the
+/// node count per axis.
+fn check_rectilinear(
+    axes: &[Vec<f64>],
+    values: &[f64],
+    point: &[f64],
+) -> Result<Vec<usize>, String> {
+    if axes.is_empty() {
+        return Err("at least one axis is required".to_string());
+    }
+
+    if point.len() != axes.len() {
+        return Err("the query point needs one coordinate per axis".to_string());
+    }
+
+    let dims: Vec<usize> = axes.iter().map(Vec::len).collect();
+
+    if dims.iter().any(|&n| n < 2) {
+        return Err("every axis needs at least two nodes".to_string());
+    }
+
+    if values.len() != dims.iter().product::<usize>() {
+        return Err("the number of values must equal the product of the axis lengths".to_string());
+    }
+
+    for (axis, &q) in axes.iter().zip(point) {
+        if axis
+            .windows(2)
+            .any(|w| w[0].partial_cmp(&w[1]) != Some(std::cmp::Ordering::Less))
+            || axis.iter().any(|v| !v.is_finite())
+        {
+            return Err("axes must be finite and strictly increasing".to_string());
+        }
+
+        if !q.is_finite() || q < axis[0] || q > axis[axis.len() - 1] {
+            return Err("the query point lies outside the grid".to_string());
+        }
+    }
+
+    if values.iter().any(|v| !v.is_finite()) {
+        return Err("the values must be finite".to_string());
+    }
+
+    Ok(dims)
+}
+
+/// Multilinear (linear / bilinear / trilinear / ...) interpolation on a
+/// rectilinear grid; the dimension is the number of axes.
+///
+/// `values` is flat with the **first axis fastest**
+/// (`values[i0 + n0 * (i1 + n1 * i2)]`). The query point must lie inside the grid
+/// (unlike the 1D interpolants of this module, nothing is extrapolated). The result
+/// is exact for functions that are affine in every coordinate separately.
+/// [`bilinear_interpolation`] and [`trilinear_interpolation`] are the 2D and 3D
+/// names of this routine.
+///
+/// # Errors
+/// Returns an error for inconsistent sizes, non-increasing or non-finite axes, or a
+/// point outside the grid.
+pub fn multilinear_interpolation(
+    axes: &[Vec<f64>],
+    values: &[f64],
+    point: &[f64],
+) -> Result<f64, String> {
+    let dims = check_rectilinear(axes, values, point)?;
+
+    let d = axes.len();
+
+    let mut cell = vec![0usize; d];
+
+    let mut frac = vec![0.0; d];
+
+    for a in 0..d {
+        let i = axes[a]
+            .partition_point(|&v| v <= point[a])
+            .saturating_sub(1)
+            .min(dims[a] - 2);
+
+        cell[a] = i;
+
+        frac[a] = (point[a] - axes[a][i]) / (axes[a][i + 1] - axes[a][i]);
+    }
+
+    let mut total = 0.0;
+
+    for corner in 0..(1usize << d) {
+        let mut weight = 1.0;
+
+        let mut index = 0usize;
+
+        let mut stride = 1usize;
+
+        for a in 0..d {
+            let upper = (corner >> a) & 1 == 1;
+
+            weight *= if upper {
+                frac[a]
+            } else {
+                1.0 - frac[a]
+            };
+
+            index += (cell[a] + usize::from(upper)) * stride;
+
+            stride *= dims[a];
+        }
+
+        if weight > 0.0 {
+            total += weight * values[index];
+        }
+    }
+
+    Ok(total)
+}
+
+/// Bilinear interpolation on the grid `xs x ys` (`values[i + nx * j]`); the 2D case
+/// of [`multilinear_interpolation`].
+///
+/// # Errors
+/// As [`multilinear_interpolation`].
+pub fn bilinear_interpolation(
+    xs: &[f64],
+    ys: &[f64],
+    values: &[f64],
+    x: f64,
+    y: f64,
+) -> Result<f64, String> {
+    multilinear_interpolation(&[xs.to_vec(), ys.to_vec()], values, &[x, y])
+}
+
+/// Trilinear interpolation on the grid `xs x ys x zs` (`values[i + nx * (j + ny * k)]`);
+/// the 3D case of [`multilinear_interpolation`].
+///
+/// # Errors
+/// As [`multilinear_interpolation`].
+pub fn trilinear_interpolation(
+    xs: &[f64],
+    ys: &[f64],
+    zs: &[f64],
+    values: &[f64],
+    x: f64,
+    y: f64,
+    z: f64,
+) -> Result<f64, String> {
+    multilinear_interpolation(&[xs.to_vec(), ys.to_vec(), zs.to_vec()], values, &[x, y, z])
+}
+
+/// Tensor-product cubic spline interpolation on a rectilinear grid (1D, 2D, 3D,
+/// ...) with not-a-knot end conditions along every axis.
+///
+/// The method is fourth order for smooth data. The first axis is reduced first, then the next, and so on, so the result
+/// reproduces any function that is a polynomial of degree three or less in every
+/// coordinate. `values` is flat with the first axis fastest; every axis needs at
+/// least four nodes; the point must lie inside the grid.
+///
+/// # Errors
+/// As [`multilinear_interpolation`], plus a failure of the 1D spline construction.
+pub fn tensor_cubic_spline_interpolation(
+    axes: &[Vec<f64>],
+    values: &[f64],
+    point: &[f64],
+) -> Result<f64, String> {
+    let dims = check_rectilinear(axes, values, point)?;
+
+    if dims.iter().any(|&n| n < 4) {
+        return Err("the not-a-knot cubic spline needs at least four nodes per axis".to_string());
+    }
+
+    let mut current = values.to_vec();
+
+    for a in 0..axes.len() {
+        let n = dims[a];
+
+        let mut reduced = Vec::with_capacity(current.len() / n);
+
+        for line in current.chunks(n) {
+            let points: Vec<(f64, f64)> =
+                axes[a].iter().copied().zip(line.iter().copied()).collect();
+
+            let spline = cubic_spline_with(&points, SplineEnd::NotAKnot)?;
+
+            reduced.push(spline(point[a]));
+        }
+
+        current = reduced;
+    }
+
+    Ok(current[0])
+}
+
+/// Dimension-generic interpolation entry point: the order of the tensor-product
+/// interpolant used by [`interpolate_nd`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TensorOrder {
+    /// Multilinear (second order).
+    Linear,
+    /// Tensor-product not-a-knot cubic spline (fourth order).
+    CubicSpline,
+}
+
+/// Interpolates scalar grid data in any number of dimensions (1D, 2D, 3D, ...)
+/// with the chosen [`TensorOrder`]; see [`multilinear_interpolation`] and
+/// [`tensor_cubic_spline_interpolation`].
+///
+/// # Errors
+/// As the underlying routine.
+pub fn interpolate_nd(
+    axes: &[Vec<f64>],
+    values: &[f64],
+    point: &[f64],
+    order: TensorOrder,
+) -> Result<f64, String> {
+    match order {
+        | TensorOrder::Linear => multilinear_interpolation(axes, values, point),
+        | TensorOrder::CubicSpline => tensor_cubic_spline_interpolation(axes, values, point),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(

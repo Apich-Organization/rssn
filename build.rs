@@ -117,18 +117,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     })?;
     println!("cargo:rerun-if-changed=signatures.overlay.json");
-    // The witnessed signatures are mined, not written (`signature-mine`), and
-    // versioned so that the manifest of a clean clone does not depend on
-    // having run the test suite. Unlike the overlay they are evidence, not
-    // source: a tree without the file still builds, with the derived
-    // signatures only.
+    // The witnessed signatures are mined, not written (`signature-mine`), but
+    // they are versioned and required exactly like the overlay: a manifest
+    // built without them would silently differ from the published one.
     let witnessed = Path::new("signatures.witnessed.json");
     let target = Path::new(&out).join("signatures.witnessed.json");
-    if witnessed.exists() {
-        fs::copy(witnessed, target)?;
-    } else {
-        fs::write(target, "{ \"version\": 1, \"ops\": {} }\n")?;
-    }
+    fs::copy(witnessed, target).map_err(|error| {
+        std::io::Error::new(
+            error.kind(),
+            format!(
+                "required source file signatures.witnessed.json: {error}; restore it from Git or regenerate it with `cargo run --profile tools --bin signature-mine`"
+            ),
+        )
+    })?;
     println!("cargo:rerun-if-changed=signatures.witnessed.json");
     for name in ["SOURCE_DATE_EPOCH", "VERGEN_IDEMPOTENT", "DEV", "RUSTC"] {
         println!("cargo:rerun-if-env-changed={name}");

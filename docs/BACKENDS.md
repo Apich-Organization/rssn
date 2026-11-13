@@ -50,6 +50,8 @@ Module layout (`src/backend/device/`):
 | `cpu.rs` | `CpuDevice`: lane-block interpreter for elementwise kernels, the reference evaluator for structured ones, rayon splitting |
 | `emit.rs` | one emitter, five targets: WGSL, GLSL, OpenCL C, CUDA C++, Metal |
 | `wgsl.rs` | `KernelEmitter` trait, `emit_wgsl`, `SourceEmitter` |
+| `ds.rs` | double-single (`f64`-class) WGSL: the pair arithmetic library, `emit_wgsl_ds`, `split`/`join` |
+| `plan.rs` | `Plan`: a graph of kernels, `fuse` (merges producers into consumers), `run` |
 | `gpu.rs` | `WgpuDevice` (feature `gpu-wgpu` only) |
 | `golden/*` | expected emitter output per target |
 | `tests.rs` | all tests above |
@@ -60,7 +62,10 @@ Module layout (`src/backend/device/`):
 
 * `kind`: `Cpu`, `CpuParallel`, `Gpu(GpuApi)`, `Custom(name)`;
 * `dtypes`: `F64` and/or `F32`. **The kernel IR has `f64` semantics;** a device
-  that only has `f32` says so and its results are `f32`-rounded;
+  that only has `f32` says so and its results are `f32`-rounded. A device may
+  offer `F64` by emulation: `emulated_f64` is then set (the wgpu device does,
+  see "Double-single `f64` on the GPU" below) and `dtype_epsilon` gives the
+  rounding error to use in tolerances;
 * `ops`: `elementwise`, `reduce`, `matmul`, `structured` flags; an optional
   method a device does not implement returns `DeviceError::Unsupported`
   (nothing is emulated silently). `structured` is the one that matters: a
@@ -200,7 +205,7 @@ bounds-checked loads, NaN conventions) exists once.
 
 | target | language | precisions | status |
 |---|---|---|---|
-| `Target::Wgsl` | WGSL | `f32` | executed by `gpu-wgpu`; validated by naga in the tests |
+| `Target::Wgsl` | WGSL | `f32`, double-single | executed by `gpu-wgpu`; validated by naga in the tests |
 | `Target::Glsl` | GLSL 4.50 compute | `f32`, `f64` | emitter, golden-tested |
 | `Target::OpenCl` | OpenCL C | `f32`, `f64` | emitter, golden-tested |
 | `Target::Cuda` | CUDA C++ | `f32`, `f64` | emitter, golden-tested |
@@ -218,7 +223,8 @@ GLSL and Metal, kernel arguments in that order for OpenCL and CUDA.
 `wgsl::emit_wgsl` remains as the WGSL-only spelling.
 
 `backend::device::gpu::WgpuDevice` (feature `gpu-wgpu`, off by default) compiles
-the WGSL with wgpu, one cached pipeline per kernel, `f32` buffers, a
+the WGSL with wgpu, one cached pipeline per kernel (and precision), `f32` buffers or, for
+`F64`, double-single pair buffers (below), a
 two-dimensional dispatch for more than `65535 * 64` rows, and runs structured
 kernels (`ops.structured`, `ops.reduce`, `ops.matmul`). `gpu::probe()` returns
 one device per adapter; none is not an error.
@@ -290,16 +296,79 @@ target lacks (WGSL has no `cbrt`) get a helper emitted only when used. A special
 function with no closed instruction sequence stays a host `Call`/`Extern` and
 therefore host-only until someone writes its kernel.
 
+## Double-single `f64` on the GPU
+
+WGSL has no `f64`. The wgpu device therefore offers `Dtype::F64` as
+**double-single** arithmetic (`device::ds`): an element is a pair of `f32`
+`(hi, lo)` with `hi + lo` the value, 8 bytes in the buffer and
+`array<vec2<f32>>` in the shader. The host splits on upload and joins on
+download; a kernel is emitted for the pair layout
+(`Precision::DoubleSingle`, `ds::emit_wgsl_ds`) and compiled on its first launch
+with `F64` buffers. Mixing `F32` and `F64` buffers in one launch is a
+`DeviceError::Mismatch`.
+
+* `+ - * /`, `sqrt`, comparisons, `min`/`max`, `floor`/`ceil`, integer powers
+  and all index operations are implemented in the pair arithmetic; `exp`,
+  `ln`, `sin`, `cos`, `atan` use range reduction plus a Taylor series or a
+  Newton step, and `tan`, `asin`, `acos`, the hyperbolic functions, their
+  inverses, `cbrt`, `atan2` and `powf` are built from those.
+* Measured on an RTX 3060 (Vulkan): relative error `4e-15` for `+ - * /`,
+  `1e-14` for `sqrt`, `7e-14` for `exp`, against `1e-7` for `F32`.
+  `tests::gpu_tests::gpu_f64_is_double_single_when_an_adapter_exists` pins
+  `5e-12` for every function on a battery of arguments.
+* Limits: the exponent range is the one of `f32` (use data within
+  `1e-30 .. 1e30`); `sin`/`cos`/`tan` return NaN beyond `|x| = 1e6` and lose
+  `|x| * 1e-14` absolute accuracy before that; `pow` and `exp` amplify the
+  relative error by the size of the exponent.
+* **Compilers must not simplify the error-free transformations.** The NVIDIA
+  Vulkan driver reassociates (`x - (x - y)` becomes `y`) and contracts
+  `a * b + c` into a fused multiply-add, either of which silently collapses the
+  pair to one `f32` (the first version measured `1e-7`). Every rounding point
+  in the library therefore passes through `ds_hide`, an integer OR with a zero
+  that only exists in the uniform block, which the optimiser cannot see
+  through. Do not remove it when simplifying the library; the device test
+  fails if it stops working on a given driver.
+* `DeviceInfo::emulated_f64` is set, `max_buffer_elems` is counted in 8-byte
+  elements, and `dtype_epsilon(info, dtype)` returns `2^-44` for it, which the
+  adaptive ensemble driver uses as its rounding unit.
+
+## Fusing launches
+
+`device::plan` fuses chains of launches. A `Plan` is a graph of kernels whose
+inputs are external columns or outputs of earlier kernels:
+
+```rust
+let mut plan = Plan::new(2);
+let y = plan.add(affine, vec![Source::External(0)], vec![3.0])?;
+let z = plan.add(modulate, vec![Source::Output(y, 0), Source::External(1)], vec![])?;
+plan.result(Source::Output(z, 0))?;
+let removed = plan.fuse();            // 1: one launch instead of two
+let out = plan.run(&device, rows, &[&x, &w])?;
+```
+
+`fuse` merges a producer into the consumer that reads its outputs with
+`Input`, so the intermediate column becomes a register and never reaches
+memory. Registers, input columns and parameters are renumbered (the consumer's
+parameters follow the producer's, repeated external columns are shared); an
+output that something else still needs stays an output of the merged kernel and
+is not recomputed. The edge stays a launch when the consumer addresses the
+produced column (`Load`, `Len`, `Gather`) or when both kernels have a fold, and
+a merge that does not validate is undone. Fusion changes where values live, not
+how they are computed, so a fused plan returns the same bits as the unfused
+one on a deterministic device (`plan.rs` tests).
+
 ## Known gaps
 
-* GPU arithmetic is `f32`. There is no `f64` emulation (double-single) and
-  WGSL has no `f64`; the GLSL, OpenCL and CUDA emitters produce `f64` source,
-  but no device in this crate runs it.
+* GPU `F32` arithmetic is `f32`. `F64` on the wgpu device is double-single
+  emulation (about 48 bits, the exponent range of `f32`; see "Double-single `f64` on the GPU"), not IEEE
+  double. The GLSL, OpenCL and CUDA emitters produce native `f64` source, but
+  no device in this crate runs it.
 * The GLSL, OpenCL, CUDA and Metal emitters are golden-tested text. Nothing
   here compiles them with the vendor toolchains; expect to fix details when
   the first device for one of them is written.
 * Index data that a kernel reads from a column (CSR row pointers and column
-  indices) is stored as floats: exact below `2^24` on an `f32` device. Typed
+  indices) is stored as floats: exact below `2^24` in `F32` buffers and below `2^48` in
+  the double-single `F64` ones. Typed
   integer columns are the fix and are not implemented.
 * A kernel has one fold, not nested loops, and reads one input buffer. A
   product of two buffers is joined with `Device::copy` first.
@@ -312,5 +381,7 @@ therefore host-only until someone writes its kernel.
   not vectorised).
 * The `gpu-wgpu` path is validated with naga; execution is tested only where
   an adapter is present (see the test's skip message).
-* Kernel launches are fused only where a builder does it (`map_reduce_pass`);
-  there is no general planner that fuses a chain of launches.
+* `plan::Plan` fuses chains of elementwise launches (see "Fusing launches"); it does not
+  fuse across kernels that read a produced column by address (`Load`, `Gather`,
+  `Len`) or across two folds, and it is an explicit API: the array drivers in
+  `array` still build their launches by hand.

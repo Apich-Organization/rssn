@@ -119,16 +119,16 @@ pub fn mod_inverse(
 /// `true` if `n` is prime, `false` otherwise.
 #[must_use]
 pub const fn is_prime_miller_rabin(n: u64) -> bool {
+    const BASES: [u64; 12] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
     if n < 2 {
         return false;
     }
-    const BASES: [u64; 12] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
     let mut i = 0;
     while i < BASES.len() {
         if n == BASES[i] {
             return true;
         }
-        if n % BASES[i] == 0 {
+        if n.is_multiple_of(BASES[i]) {
             return false;
         }
         i += 1;
@@ -172,7 +172,7 @@ pub fn lcm(
 
 /// The least common multiple, or `None` when it overflows `u64`.
 #[must_use]
-pub fn checked_lcm(
+pub const fn checked_lcm(
     a: u64,
     b: u64,
 ) -> Option<u64> {
@@ -257,7 +257,7 @@ pub fn factorize(mut n: u64) -> Vec<u64> {
         return factors;
     }
     for p in [2_u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47] {
-        while n % p == 0 {
+        while n.is_multiple_of(p) {
             factors.push(p);
             n /= p;
         }
@@ -416,7 +416,7 @@ pub fn discrete_log(
     h: u64,
     p: u64,
 ) -> Option<u64> {
-    if p < 2 || p > 1 << 48 {
+    if !(2..=1 << 48).contains(&p) {
         return None;
     }
     let (g, h) = (g % p, h % p);

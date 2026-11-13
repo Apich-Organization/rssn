@@ -37,6 +37,7 @@ use statrs::function::gamma::ln_gamma;
 /// Computes the gamma function, Γ(x).
 /// Γ(n) = (n-1)! for positive integers.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact integer test: poles and exact factorials
 pub fn gamma_numerical(x: f64) -> f64 {
     if x.is_nan() || x == f64::NEG_INFINITY {
         return f64::NAN;
@@ -76,6 +77,7 @@ pub fn gamma_numerical(x: f64) -> f64 {
 
 /// Computes the natural logarithm of the gamma function, ln(Γ(x)).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact integer test selects the factorial product
 pub fn ln_gamma_numerical(x: f64) -> f64 {
     if x > 0.0 && x == x.floor() && x <= 171.0 {
         // ln((x - 1)!) from the exact product: lgamma(1) = lgamma(2) = 0.
@@ -94,6 +96,7 @@ pub fn ln_gamma_numerical(x: f64) -> f64 {
 
 /// Computes the digamma function, ψ(x) = d/dx ln(Γ(x)) = Γ'(x)/Γ(x).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact integer test: digamma poles at the negative integers
 pub fn digamma_numerical(x: f64) -> f64 {
     if x.is_nan() {
         return f64::NAN;
@@ -179,6 +182,7 @@ fn gamma_args_valid(
 }
 
 /// Computes the lower incomplete gamma function, γ(s, x) = ∫₀ˣ t^(s-1) e^(-t) dt.
+///
 /// Uses series expansion for computation.
 /// Computed as `P(s, x) Gamma(s)` from the regularised function (series or
 /// continued fraction), so it is accurate for large `x` too.
@@ -202,6 +206,7 @@ pub fn lower_incomplete_gamma(
 /// complementary tail (no cancellation against `Gamma(s)`); defined for every
 /// real `s` when `x > 0` (`s <= 0` through the recurrence and `E1`).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact integer test selects the integer-order recurrence
 pub fn upper_incomplete_gamma(
     s: f64,
     x: f64,
@@ -1235,7 +1240,7 @@ pub fn riemann_zeta(s: f64) -> f64 {
         // Laurent series at the pole, with the Stieltjes constants:
         // zeta(s) = 1/(s - 1) + sum_n (-1)^n gamma_n (s - 1)^n / n!.
         const STIELTJES: [f64; 9] = [
-            0.577_215_664_901_532_9,
+            std::f64::consts::EULER_GAMMA,
             -0.072_815_845_483_676_72,
             -0.009_690_363_192_872_318,
             0.002_053_834_420_303_346,
@@ -1335,6 +1340,7 @@ pub fn sinc(x: f64) -> f64 {
 
 /// Computes the logit function logit(p) = ln(p / (1-p)); `-inf` at 0, `+inf` at 1, NaN outside `[0, 1]`.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact `p == 1.0` is the boundary where logit diverges
 pub fn logit(p: f64) -> f64 {
     if p.is_nan() || !(0.0..=1.0).contains(&p) {
         return f64::NAN;
@@ -1640,6 +1646,28 @@ fn bessel_j_ascending(
     Some(log_first.exp() * sum)
 }
 
+/// Largest integer order computed by the upward recurrence.
+const MAX_RECURRENCE_ORDER: f64 = 1000.0;
+
+/// `C_n(x)` for a cylinder function `C` from `C_0` and `C_1` by
+/// `C_{k+1} = (2k/x) C_k - C_{k-1}`.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn bessel_jy_upward(
+    nu: f64,
+    x: f64,
+    c0: f64,
+    c1: f64,
+) -> f64 {
+    let n = nu as usize;
+    let (mut prev, mut cur) = (c0, c1);
+    for k in 1..n {
+        let next = (2.0 * k as f64 / x).mul_add(cur, -prev);
+        prev = cur;
+        cur = next;
+    }
+    cur
+}
+
 /// Bessel function of the first kind `J_ν(x)` for real order `ν` and
 /// real `x` (`x < 0` only for integer orders, through `J_n(-x) = (-1)^n
 /// J_n(x)`).
@@ -1691,6 +1719,12 @@ pub fn bessel_j(
         };
         return sign * bessel_j(-nu, x);
     }
+    // Beyond the turning point the upward recurrence from J0 and J1 is stable
+    // and costs `nu` multiplications; the quadrature below needs seconds for
+    // arguments in the tens (the annulus eigenvalue scans hit this).
+    if is_integer_order(nu) && nu <= MAX_RECURRENCE_ORDER && x > nu {
+        return bessel_jy_upward(nu, x, bessel_j0(x), bessel_j1(x));
+    }
     if let Some(j) = bessel_j_ascending(nu, x) {
         return j;
     }
@@ -1722,6 +1756,10 @@ pub fn bessel_y(
     }
     if nu == 0.0 {
         return bessel_y0(x);
+    }
+    // `Y_n` grows with `n`, so the upward recurrence is stable for every x.
+    if is_integer_order(nu) && (1.0..=MAX_RECURRENCE_ORDER).contains(&nu) {
+        return bessel_jy_upward(nu, x, bessel_y0(x), bessel_y1(x));
     }
     if let Some((_, y)) = uniform_bessel_jy(nu, x) {
         return y;

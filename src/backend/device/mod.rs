@@ -72,10 +72,12 @@ use serde::Serialize;
 
 pub mod array;
 pub mod cpu;
+pub mod ds;
 pub mod emit;
 #[cfg(feature = "gpu-wgpu")]
 pub mod gpu;
 pub mod kernel;
+pub mod plan;
 pub mod wgsl;
 
 #[cfg(test)]
@@ -159,7 +161,7 @@ pub enum GpuApi {
     Metal,
     /// Vulkan directly.
     Vulkan,
-    /// OpenCL.
+    /// `OpenCL`.
     OpenCl,
 }
 
@@ -194,6 +196,7 @@ impl DeviceKind {
 /// The operations a device implements. A launch of an unsupported one
 /// returns [`DeviceError::Unsupported`]; nothing is emulated silently.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)] // independent capability flags of a serialized public type
 pub struct DeviceOps {
     /// [`Device::launch`] of elementwise kernels.
     pub elementwise: bool,
@@ -230,6 +233,10 @@ pub struct DeviceInfo {
     pub unified_memory: bool,
     /// Results do not depend on thread count or scheduling.
     pub deterministic: bool,
+    /// [`Dtype::F64`] is emulated by pairs of `f32` ([`ds`]): about 48
+    /// significant bits and the exponent range of `f32`, not IEEE double.
+    #[serde(default)]
+    pub emulated_f64: bool,
 }
 
 /// Device-private buffer contents.
@@ -712,6 +719,7 @@ impl DeviceRegistry {
             )));
         }
         guard.push(device);
+        drop(guard);
         Ok(())
     }
 
@@ -777,10 +785,11 @@ pub fn registry() -> &'static DeviceRegistry {
     REGISTRY.get_or_init(DeviceRegistry::new)
 }
 
-/// The device kinds this *build* can offer, as [`DeviceKind::tag`]s: a
-/// compile-time fact (it does not probe hardware), so it can go in the kernel
+/// The device kinds this *build* can offer, as [`DeviceKind::tag`]s.
+///
+/// A compile-time fact (it does not probe hardware), so it can go in the kernel
 /// manifest. `gpu-wgpu` here means the build can drive GPUs; whether one is
-/// present is answered by [`registry`]`().list()`.
+/// present is answered by `registry().list()`.
 #[must_use]
 pub fn build_devices() -> Vec<String> {
     let mut v = vec![DeviceKind::Cpu.tag(), DeviceKind::CpuParallel.tag()];
@@ -844,6 +853,20 @@ pub fn map_columns(
     } else {
         host.chunks(rows).map(<[f64]>::to_vec).collect()
     })
+}
+
+/// The relative rounding error of `dtype` on the device: `2^-24` for `F32`,
+/// `2^-52` for a native `F64`, `2^-44` for the double-single emulation.
+#[must_use]
+pub fn dtype_epsilon(
+    info: &DeviceInfo,
+    dtype: Dtype,
+) -> f64 {
+    match dtype {
+        | Dtype::F32 => f64::from(f32::EPSILON),
+        | Dtype::F64 if info.emulated_f64 => 2.0_f64.powi(-44),
+        | Dtype::F64 => f64::EPSILON,
+    }
 }
 
 /// `F64` when the device has it, else `F32`.

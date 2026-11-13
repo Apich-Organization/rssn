@@ -579,10 +579,12 @@ fn refine_separator(
                 | _ => {},
             }
         }
+        // A vertex with no neighbour in side 0 may join side 1 (and vice versa); joining the
+        // side it does *not* touch would put an edge between the two sides.
         if !n0 {
-            st[v] = 0;
-        } else if !n1 {
             st[v] = 1;
+        } else if !n1 {
+            st[v] = 0;
         }
     }
 }

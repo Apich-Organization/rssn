@@ -2417,7 +2417,33 @@ mod tests {
     /// Every entry is a documented bypass: `oo` and order terms are
     /// dimensionless-or-polymorphic by construction, and a definiteness label
     /// is a symbol whose dimension is unknown.
-    const DOCUMENTED_BYPASS: &[&str] = &["oo", "infinity", "big_o", "hessian_definiteness"];
+    const DOCUMENTED_BYPASS: &[&str] = &[
+        "oo",
+        "infinity",
+        "big_o",
+        "hessian_definiteness",
+        // `x = A^-1 b` has the dimension of `b / A`, which no rule expresses.
+        "minres_solve",
+        "fgmres_solve",
+        "bicgstab_l_solve",
+        // The same for the sparse and multigrid solves, whose matrix is a
+        // list of triplets.
+        "sparse_solve",
+        "amg_solve",
+        // The roots' dimensions follow from coefficients that are bare numbers.
+        "polynomial_system_roots",
+        // Integrals over sampled points depend on the abscissa's dimension.
+        "function_l1_norm",
+        "function_l2_norm",
+        "function_inf_norm",
+        "function_inner",
+        "function_project",
+        "function_normalize",
+        // The unknowns carry dimensions independent of the expression's.
+        "oscillatory_integral",
+        "anderson_fixed_point",
+        "newton_cg_minimize",
+    ];
 
     #[test]
     fn every_standard_operator_has_a_dimension_rule() {

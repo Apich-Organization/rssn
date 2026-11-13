@@ -1225,6 +1225,195 @@ mod gpu_tests {
         }
     }
 
+    /// One input column through one elementary function.
+    fn unary(f: Intrinsic) -> KernelIr {
+        KernelIr::from_tape(&tape(
+            vec![Inst::Input(0), Inst::Unary(f, 0)],
+            1,
+            0,
+            vec![1],
+        ))
+        .unwrap()
+    }
+
+    /// The double-single module of every kernel parses and validates under
+    /// naga (no adapter needed), including each elementary function.
+    #[test]
+    fn double_single_wgsl_validates_under_naga() {
+        use wgpu::naga;
+        let options =
+            emit::EmitOptions::new(emit::Target::Wgsl).precision(emit::Precision::DoubleSingle);
+        let mut programs = vec![everything(), decay(), special(), axpy()];
+        programs.extend(structured());
+        for f in [
+            Intrinsic::Exp,
+            Intrinsic::Ln,
+            Intrinsic::Sin,
+            Intrinsic::Cos,
+            Intrinsic::Tan,
+            Intrinsic::Asin,
+            Intrinsic::Acos,
+            Intrinsic::Atan,
+            Intrinsic::Sinh,
+            Intrinsic::Cosh,
+            Intrinsic::Tanh,
+            Intrinsic::Asinh,
+            Intrinsic::Acosh,
+            Intrinsic::Atanh,
+            Intrinsic::Sqrt,
+            Intrinsic::Abs,
+            Intrinsic::Floor,
+            Intrinsic::Ceil,
+            Intrinsic::Cbrt,
+        ] {
+            programs.push(unary(f));
+        }
+        for ir in programs {
+            let src = emit::emit(&ir, &options).unwrap();
+            let module = naga::front::wgsl::parse_str(&src)
+                .unwrap_or_else(|e| panic!("{}\n{src}", e.emit_to_string(&src)));
+            naga::valid::Validator::new(
+                naga::valid::ValidationFlags::all(),
+                naga::valid::Capabilities::all(),
+            )
+            .validate(&module)
+            .unwrap_or_else(|e| panic!("{e:?}\n{src}"));
+        }
+        // Only WGSL has the emitter.
+        assert!(matches!(
+            emit::emit(
+                &axpy(),
+                &emit::EmitOptions::new(emit::Target::Glsl)
+                    .precision(emit::Precision::DoubleSingle)
+            ),
+            Err(DeviceError::Unsupported(_))
+        ));
+    }
+
+    /// `f64` buffers on the GPU are double-single: arithmetic and the
+    /// elementary functions agree with the CPU to about 1e-12 relative, where
+    /// `f32` is good to 1e-7.
+    #[test]
+    fn gpu_f64_is_double_single_when_an_adapter_exists() {
+        let devices = gpu::probe();
+        let Some(dev) = devices.first() else {
+            eprintln!("no wgpu adapter; skipping");
+            return;
+        };
+        assert!(dev.info().emulated_f64 && dev.info().dtypes.contains(&Dtype::F64));
+        let cpu = CpuDevice::sequential();
+        let run = |d: &dyn Device, ir: &KernelIr, x: &[f64], dtype| {
+            let input = d.upload(x, dtype).unwrap();
+            let mut out = d.alloc(x.len() * ir.outputs.len(), dtype).unwrap();
+            let kernel = d.compile(ir).unwrap();
+            d.launch(&*kernel, x.len(), &input, &[], &mut out).unwrap();
+            let mut host = vec![0.0; out.len()];
+            d.download(&out, &mut host).unwrap();
+            host
+        };
+        // Transfers round trip to the pair precision.
+        let values: Vec<f64> = (0..64)
+            .map(|i| (f64::from(i) + 0.1).sqrt() * 1.0e3)
+            .collect();
+        let buffer = dev.upload(&values, Dtype::F64).unwrap();
+        let mut back = vec![0.0; values.len()];
+        dev.download(&buffer, &mut back).unwrap();
+        for (a, b) in values.iter().zip(&back) {
+            assert!(((a - b) / a).abs() < 1.0e-14, "{a} vs {b}");
+        }
+        // Arithmetic: ((x + 1/3) * x - 2) / (x + 0.7) on a spread of magnitudes.
+        let arithmetic = KernelIr::from_tape(&tape(
+            vec![
+                Inst::Input(0),
+                Inst::Const(1.0 / 3.0),
+                Inst::Add(0, 1),
+                Inst::Mul(2, 0),
+                Inst::Const(2.0),
+                Inst::Sub(3, 4),
+                Inst::Const(0.7),
+                Inst::Add(0, 6),
+                Inst::Div(5, 7),
+            ],
+            1,
+            0,
+            vec![8],
+        ))
+        .unwrap();
+        let xs: Vec<f64> = (1..400).map(|i| f64::from(i) * 0.37 + 0.0123).collect();
+        let want = run(&cpu, &arithmetic, &xs, Dtype::F64);
+        let single = run(&**dev, &arithmetic, &xs, Dtype::F32);
+        let pair = run(&**dev, &arithmetic, &xs, Dtype::F64);
+        let worst = |got: &[f64]| {
+            got.iter()
+                .zip(&want)
+                .map(|(g, w)| ((g - w) / w).abs())
+                .fold(0.0_f64, f64::max)
+        };
+        assert!(worst(&pair) < 1.0e-12, "pair {:e}", worst(&pair));
+        assert!(
+            worst(&single) > 1.0e-9,
+            "the f32 run is the less accurate one: {:e}",
+            worst(&single)
+        );
+        // Elementary functions on their natural domains.
+        let cases: Vec<(Intrinsic, Vec<f64>)> = vec![
+            (Intrinsic::Exp, vec![-20.0, -3.3, -0.4, 0.0, 0.7, 5.5, 40.0]),
+            (
+                Intrinsic::Ln,
+                vec![1.0e-20, 0.013, 0.5, 1.0, 2.0, 77.7, 1.0e20],
+            ),
+            (
+                Intrinsic::Sin,
+                vec![-100.0, -3.0, -0.5, 0.0, 0.3, 1.5, 3.2, 1000.0],
+            ),
+            (
+                Intrinsic::Cos,
+                vec![-100.0, -3.0, -0.5, 0.0, 0.3, 1.5, 3.2, 1000.0],
+            ),
+            (Intrinsic::Tan, vec![-1.4, -0.5, 0.1, 0.9, 1.3]),
+            (
+                Intrinsic::Atan,
+                vec![-1.0e6, -3.0, -0.2, 0.0, 0.5, 2.0, 1.0e6],
+            ),
+            (Intrinsic::Asin, vec![-0.99, -0.5, 0.0, 0.3, 0.9]),
+            (Intrinsic::Acos, vec![-0.99, -0.5, 0.0, 0.3, 0.9]),
+            (Intrinsic::Sinh, vec![-5.0, -0.05, 0.0, 0.05, 1.0, 9.0]),
+            (Intrinsic::Cosh, vec![-5.0, -0.05, 0.0, 0.05, 1.0, 9.0]),
+            (Intrinsic::Tanh, vec![-5.0, -0.05, 0.0, 0.05, 1.0, 9.0]),
+            (Intrinsic::Asinh, vec![-50.0, -0.01, 0.0, 0.5, 3.0, 1.0e5]),
+            (Intrinsic::Acosh, vec![1.5, 2.0, 10.0, 1.0e4]),
+            (Intrinsic::Atanh, vec![-0.9, -0.01, 0.0, 0.3, 0.99]),
+            (Intrinsic::Sqrt, vec![1.0e-10, 0.3, 2.0, 1.0e9]),
+            (Intrinsic::Cbrt, vec![-27.0, -0.5, 1.0e-9, 2.0, 1.0e12]),
+            (Intrinsic::Floor, vec![-2.5, -1.0, 0.2, 7.0, 1.0e9 + 0.5]),
+            (Intrinsic::Ceil, vec![-2.5, -1.0, 0.2, 7.0, 1.0e9 + 0.5]),
+            (Intrinsic::Abs, vec![-2.5, 0.0, 3.25]),
+        ];
+        for (f, xs) in cases {
+            let ir = unary(f);
+            let want = run(&cpu, &ir, &xs, Dtype::F64);
+            let got = run(&**dev, &ir, &xs, Dtype::F64);
+            for ((x, g), w) in xs.iter().zip(&got).zip(&want) {
+                // Relative, with an absolute floor where the value is a root.
+                let tolerance = 5.0e-12 * w.abs().max(1.0e-3);
+                assert!((g - w).abs() <= tolerance, "{f:?}({x}) = {g:e}, want {w:e}");
+            }
+        }
+        // Reductions accumulate in double-single: 10^6 terms of 0.1 keep ~1e-9.
+        let data = vec![0.1; 1_000_000];
+        let buffer = dev.upload(&data, Dtype::F64).unwrap();
+        let sum = dev.reduce(ReduceOp::Sum, &buffer).unwrap();
+        assert!((sum - 100_000.0).abs() < 1.0e-6, "{sum}");
+        // Mixed element types in one launch are refused.
+        let f32_in = dev.upload(&[1.0, 2.0], Dtype::F32).unwrap();
+        let mut f64_out = dev.alloc(2, Dtype::F64).unwrap();
+        let kernel = dev.compile(&decay()).unwrap();
+        assert!(matches!(
+            dev.launch(&*kernel, 2, &f32_in, &[1.0], &mut f64_out),
+            Err(DeviceError::Mismatch(_))
+        ));
+    }
+
     /// Runs on whatever adapter wgpu finds (a software one counts); skipped
     /// when there is none.
     #[test]

@@ -165,7 +165,8 @@ npy = ["dep:ndarray-npy"]
 # Loading plugins from shared libraries (`rssn::kernel::cdylib`). Off by
 # default: a cdylib runs arbitrary code in the host process with no sandbox.
 plugin-cdylib = ["dep:libloading"]
-# GPU device through wgpu: WGSL kernels, f32 arithmetic (`docs/BACKENDS.md`).
+# GPU device through wgpu: WGSL kernels, f32 arithmetic and double-single
+# (about 48-bit) emulation of f64 (`docs/BACKENDS.md`).
 gpu-wgpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 full = ["npy", "jit", "plugin-cdylib"]
 

@@ -142,6 +142,7 @@ impl CpuDevice {
             max_buffer_elems: isize::MAX as usize / 8,
             unified_memory: true,
             deterministic: true,
+            emulated_f64: false,
         };
         Self {
             info,
@@ -285,6 +286,7 @@ impl Device for CpuDevice {
             analysis,
         });
         cache.insert(key, k.clone());
+        drop(cache);
         Ok(k)
     }
 

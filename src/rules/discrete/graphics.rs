@@ -265,6 +265,47 @@ fn shear_2d(
     Some(done(cx, &m))
 }
 
+/// The 3D shear `(x, y, z) -> (x + a y + b z, y + c x + d z, z + e x + f y)`.
+fn shear_3d(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [xy, xz, yx, yz, zx, zy] = arg(a)?;
+    let mut m = identity(cx, 4);
+    m[0][1] = xy;
+    m[0][2] = xz;
+    m[1][0] = yx;
+    m[1][2] = yz;
+    m[2][0] = zx;
+    m[2][1] = zy;
+    Some(done(cx, &m))
+}
+
+/// `shear(sx, sy)` is [`shear_2d`]; six arguments are [`shear_3d`].
+fn shear(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    match a.len() {
+        | 2 => shear_2d(cx, a),
+        | 6 => shear_3d(cx, a),
+        | _ => None,
+    }
+}
+
+/// `reflection(theta)` is [`reflection_2d`]; a normal vector is [`reflection_3d`].
+fn reflection(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [x] = arg(a)?;
+    if cx.graph.op(x) == crate::graph::op::core::LIST {
+        reflection_3d(cx, a)
+    } else {
+        reflection_2d(cx, a)
+    }
+}
+
 /// `(cos a, sin a, -sin a)`.
 fn trig(
     cx: &mut Cx<'_>,
@@ -1059,7 +1100,29 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "translation_3d", Arity::Fixed(3), translation)?;
     def(i, "scaling_2d", Arity::Fixed(2), diagonal)?;
     def(i, "scaling_3d", Arity::Fixed(3), diagonal)?;
+    // The dimension-free names take it from the arguments: `translation(tx, ty)`
+    // is `translation_2d`, `translation(tx, ty, tz)` is `translation_3d`, and so
+    // on for any number of coordinates. The `_2d`/`_3d` spellings stay.
+    def(i, "translation", Arity::Variadic, |cx, a| {
+        if a.is_empty() {
+            return None;
+        }
+        translation(cx, a)
+    })?;
+    def(i, "scaling", Arity::Variadic, |cx, a| {
+        if a.is_empty() {
+            return None;
+        }
+        diagonal(cx, a)
+    })?;
+    def(i, "shear", Arity::Variadic, shear)?;
     def(i, "shear_2d", Arity::Fixed(2), shear_2d)?;
+    def(i, "shear_3d", Arity::Fixed(6), shear_3d)?;
+    def(i, "reflection", Arity::Fixed(1), reflection)?;
+    def(i, "rotation", Arity::Fixed(1), |cx, a| {
+        let [t] = arg(a)?;
+        plane_rotation(cx, 3, t, (0, 1), false)
+    })?;
     def(i, "rotation_2d", Arity::Fixed(1), |cx, a| {
         let [t] = arg(a)?;
         plane_rotation(cx, 3, t, (0, 1), false)

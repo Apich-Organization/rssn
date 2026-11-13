@@ -26,16 +26,32 @@
 //!
 //! | Equation | 1D | 2D | 3D | Boundary conditions | Initial data |
 //! |---|---|---|---|---|---|
-//! | heat (Crank–Nicolson) | yes | yes | no | Dirichlet, Neumann (ghost node), per side | `u0(x, y)` |
-//! | wave (leapfrog) | yes | yes | no | Dirichlet, Neumann | `u0`, `v0` |
-//! | Poisson / Laplace | no | yes | no | Dirichlet, Neumann | source `f(x, y)` |
-//! | advection (upwind, Lax–Wendroff) | yes | no | no | periodic | `u0(x)` |
-//! | method of lines (stiff BDF / Radau) | yes | no | no | Dirichlet, Neumann | `u0(x)` |
+//! | heat (Crank–Nicolson) | [`heat_1d`] | [`heat_2d`] | [`heat_3d`] | Dirichlet, Neumann (ghost node), per face | `u0(x, y, z)` |
+//! | wave (leapfrog) | [`wave_1d`] | [`wave_2d`] | [`wave_3d`] | Dirichlet, Neumann | `u0`, `v0` |
+//! | Poisson / Laplace | [`poisson_1d`], [`laplace_1d`] | [`poisson_2d`], [`laplace_2d`] | [`poisson_3d`], [`laplace_3d`] | Dirichlet, Neumann | source `f` |
+//! | advection (upwind, Lax–Wendroff, Strang-split) | [`advection_1d`] | [`advection_2d`] | [`advection_3d`] | periodic | `u0` |
+//! | method of lines (stiff BDF / Radau) | [`method_of_lines_1d`] | no | no | Dirichlet, Neumann | `u0(x)` |
+//!
+//! Faces of a 3D grid are ordered `[x-, x+, y-, y+, z-, z+]`; the boundary
+//! function of a face gets the two tangential coordinates in axis order.
 //!
 //! Not covered here (use [`crate::sim::structured`], [`crate::sim::multigrid`],
-//! [`crate::sim::spectral`]): 3D, Robin and periodic faces for heat/wave/Poisson,
+//! [`crate::sim::spectral`]): Robin and periodic faces for heat/wave/Poisson,
 //! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
 //! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
+
+mod three;
+
+pub use three::Field3D;
+pub use three::Grid3D;
+pub use three::advection_2d;
+pub use three::advection_3d;
+pub use three::heat_3d;
+pub use three::laplace_1d;
+pub use three::laplace_3d;
+pub use three::poisson_1d;
+pub use three::poisson_3d;
+pub use three::wave_3d;
 
 use crate::kernels::krylov::Csr;
 use crate::kernels::krylov::SparseOrdering;
@@ -864,6 +880,26 @@ pub fn poisson_2d(
             })
         })
         .collect();
+    let u = solve_poisson_system(&lap, &rhs, n_dir, 4, solver)?;
+    Ok(field_2d(grid, u, 0.0))
+}
+
+/// Solves the assembled Poisson system `-L u = rhs` (Dirichlet rows are the
+/// identity). `faces` is the number of boundary faces of the domain, all of
+/// which must be Dirichlet for [`PoissonSolver::Cg`].
+fn solve_poisson_system(
+    lap: &Laplacian,
+    rhs: &[f64],
+    n_dir: usize,
+    faces: usize,
+    solver: PoissonSolver,
+) -> Result<Vec<f64>, PdeError> {
+    if n_dir == 0 {
+        return Err(PdeError::Unsupported(
+            "pure Neumann Poisson problem is singular",
+        ));
+    }
+    let n = rhs.len();
     let u = match solver {
         | PoissonSolver::SparseLu => {
             let mut trip = Vec::with_capacity(lap.a.values.len() + n);
@@ -880,19 +916,19 @@ pub fn poisson_2d(
             let lu = m
                 .sparse_lu(SparseOrdering::Rcm)
                 .map_err(|_| PdeError::SolveFailed)?;
-            lu.solve(&rhs)
+            lu.solve(rhs)
         },
         | PoissonSolver::Cg { tol } => {
-            if n_dir != 4 {
+            if n_dir != faces {
                 return Err(PdeError::Unsupported(
                     "CG needs Dirichlet conditions on all sides",
                 ));
             }
-            solve_poisson_cg(&lap, &rhs, tol)?
+            solve_poisson_cg(lap, rhs, tol)?
         },
     };
     check_finite(&u)?;
-    Ok(field_2d(grid, u, 0.0))
+    Ok(u)
 }
 
 /// Solves `Laplace(u) = 0` (see [`poisson_2d`]).
@@ -1216,6 +1252,90 @@ pub enum PdeProblem<'a> {
         /// Linear solver.
         solver: PoissonSolver,
     },
+    /// 3D heat equation, see [`heat_3d`].
+    Heat3D {
+        /// Diffusivity.
+        alpha: f64,
+        /// Grid.
+        grid: Grid3D,
+        /// `[x-, x+, y-, y+, z-, z+]` boundaries.
+        bc: [Boundary; 6],
+        /// Initial condition.
+        u0: &'a dyn Fn(f64, f64, f64) -> f64,
+        /// Final time.
+        t_end: f64,
+        /// Number of time steps.
+        steps: usize,
+    },
+    /// 3D wave equation, see [`wave_3d`].
+    Wave3D {
+        /// Wave speed.
+        c: f64,
+        /// Grid.
+        grid: Grid3D,
+        /// `[x-, x+, y-, y+, z-, z+]` boundaries.
+        bc: [Boundary; 6],
+        /// Initial displacement.
+        u0: &'a dyn Fn(f64, f64, f64) -> f64,
+        /// Initial velocity.
+        v0: &'a dyn Fn(f64, f64, f64) -> f64,
+        /// Final time.
+        t_end: f64,
+        /// Number of time steps.
+        steps: usize,
+    },
+    /// 1D Poisson equation `-u_xx = f`, see [`poisson_1d`].
+    Poisson1D {
+        /// Grid.
+        grid: Grid1D,
+        /// `[left, right]` boundaries.
+        bc: [Boundary; 2],
+        /// Source term.
+        f: &'a dyn Fn(f64) -> f64,
+        /// Linear solver.
+        solver: PoissonSolver,
+    },
+    /// 3D Poisson equation, see [`poisson_3d`].
+    Poisson3D {
+        /// Grid.
+        grid: Grid3D,
+        /// `[x-, x+, y-, y+, z-, z+]` boundaries.
+        bc: [Boundary; 6],
+        /// Source term.
+        f: &'a dyn Fn(f64, f64, f64) -> f64,
+        /// Linear solver.
+        solver: PoissonSolver,
+    },
+    /// 2D periodic advection, see [`advection_2d`].
+    Advection2D {
+        /// Advection velocity.
+        a: [f64; 2],
+        /// Periodic grid.
+        grid: Grid2D,
+        /// Scheme.
+        scheme: AdvectionScheme,
+        /// Initial condition.
+        u0: &'a dyn Fn(f64, f64) -> f64,
+        /// Final time.
+        t_end: f64,
+        /// Number of time steps.
+        steps: usize,
+    },
+    /// 3D periodic advection, see [`advection_3d`].
+    Advection3D {
+        /// Advection velocity.
+        a: [f64; 3],
+        /// Periodic grid.
+        grid: Grid3D,
+        /// Scheme.
+        scheme: AdvectionScheme,
+        /// Initial condition.
+        u0: &'a dyn Fn(f64, f64, f64) -> f64,
+        /// Final time.
+        t_end: f64,
+        /// Number of time steps.
+        steps: usize,
+    },
     /// 1D advection, see [`advection_1d`].
     Advection1D {
         /// Advection speed.
@@ -1240,6 +1360,8 @@ pub enum PdeSolution {
     D1(Field1D),
     /// Field on a 2D grid.
     D2(Field2D),
+    /// Field on a 3D grid.
+    D3(Field3D),
 }
 
 /// Solves a [`PdeProblem`] with the matching finite-difference scheme.
@@ -1285,6 +1407,45 @@ pub fn pde_solver(problem: &PdeProblem<'_>) -> Result<PdeSolution, PdeError> {
         | PdeProblem::Poisson2D { grid, bc, f, solver } => {
             poisson_2d(grid, bc, *f, *solver).map(PdeSolution::D2)
         },
+        | PdeProblem::Heat3D {
+            alpha,
+            grid,
+            bc,
+            u0,
+            t_end,
+            steps,
+        } => heat_3d(*alpha, grid, bc, *u0, *t_end, *steps).map(PdeSolution::D3),
+        | PdeProblem::Wave3D {
+            c,
+            grid,
+            bc,
+            u0,
+            v0,
+            t_end,
+            steps,
+        } => wave_3d(*c, grid, bc, *u0, *v0, *t_end, *steps).map(PdeSolution::D3),
+        | PdeProblem::Poisson1D { grid, bc, f, solver } => {
+            poisson_1d(grid, bc, *f, *solver).map(PdeSolution::D1)
+        },
+        | PdeProblem::Poisson3D { grid, bc, f, solver } => {
+            poisson_3d(grid, bc, *f, *solver).map(PdeSolution::D3)
+        },
+        | PdeProblem::Advection2D {
+            a,
+            grid,
+            scheme,
+            u0,
+            t_end,
+            steps,
+        } => advection_2d(*a, grid, *scheme, *u0, *t_end, *steps).map(PdeSolution::D2),
+        | PdeProblem::Advection3D {
+            a,
+            grid,
+            scheme,
+            u0,
+            t_end,
+            steps,
+        } => advection_3d(*a, grid, *scheme, *u0, *t_end, *steps).map(PdeSolution::D3),
         | PdeProblem::Advection1D {
             a,
             grid,

@@ -324,13 +324,14 @@ enum Method {
     Green,
     Fourier,
     Dalembert,
-    Heat1,
-    Heat3,
-    Wave3,
-    Laplace2,
-    Laplace3,
-    Poisson2,
-    Poisson3,
+    /// Heat equation in any number of space dimensions.
+    Heat,
+    /// Wave equation in any number of space dimensions.
+    Wave,
+    /// Laplace equation in any number of space dimensions.
+    Laplace,
+    /// Poisson equation in any number of space dimensions.
+    Poisson,
     Helmholtz,
     Schrodinger,
     KleinGordon,
@@ -438,13 +439,25 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("solve_pde_by_greens_function", Method::Green),
         ("solve_with_fourier_transform", Method::Fourier),
         ("solve_wave_equation_1d_dalembert", Method::Dalembert),
-        ("solve_heat_equation_1d", Method::Heat1),
-        ("solve_heat_equation_3d", Method::Heat3),
-        ("solve_wave_equation_3d", Method::Wave3),
-        ("solve_laplace_equation_2d", Method::Laplace2),
-        ("solve_laplace_equation_3d", Method::Laplace3),
-        ("solve_poisson_equation_2d", Method::Poisson2),
-        ("solve_poisson_equation_3d", Method::Poisson3),
+        // One solver per equation, whatever the number of space dimensions
+        // (the problem itself says how many there are); the `_Nd` spellings
+        // are kept for every dimension as aliases of the same solver.
+        ("solve_heat_equation", Method::Heat),
+        ("solve_heat_equation_1d", Method::Heat),
+        ("solve_heat_equation_2d", Method::Heat),
+        ("solve_heat_equation_3d", Method::Heat),
+        ("solve_wave_equation", Method::Wave),
+        ("solve_wave_equation_1d", Method::Wave),
+        ("solve_wave_equation_2d", Method::Wave),
+        ("solve_wave_equation_3d", Method::Wave),
+        ("solve_laplace_equation", Method::Laplace),
+        ("solve_laplace_equation_1d", Method::Laplace),
+        ("solve_laplace_equation_2d", Method::Laplace),
+        ("solve_laplace_equation_3d", Method::Laplace),
+        ("solve_poisson_equation", Method::Poisson),
+        ("solve_poisson_equation_1d", Method::Poisson),
+        ("solve_poisson_equation_2d", Method::Poisson),
+        ("solve_poisson_equation_3d", Method::Poisson),
         ("solve_helmholtz_equation", Method::Helmholtz),
         ("solve_schrodinger_equation", Method::Schrodinger),
         ("solve_klein_gordon_equation", Method::KleinGordon),
@@ -1826,11 +1839,7 @@ fn solve(
 ) -> Option<NodeId> {
     let classical = if conditions.has_robin() {
         // Robin conditions on a half-line (heat kernels with the Robin image).
-        if matches!(
-            method,
-            Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier
-        ) && kind(cx, p) == "heat"
-        {
+        if matches!(method, Method::Any | Method::Heat | Method::Fourier) && kind(cx, p) == "heat" {
             let found = diffusion::parabolic(cx, p, conditions);
             let found = if found.is_none() && method == Method::Any {
                 laplace::signalling(cx, p, conditions)
@@ -1840,7 +1849,7 @@ fn solve(
             found.map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
         } else if matches!(
             method,
-            Method::Any | Method::Dalembert | Method::SecondOrder
+            Method::Any | Method::Dalembert | Method::Wave | Method::SecondOrder
         ) && kind(cx, p) == "wave"
         {
             classical::wave_half_line_robin(cx, p, conditions)
@@ -1858,13 +1867,10 @@ fn solve(
         method,
         Method::Any
             | Method::Separation
-            | Method::Heat1
-            | Method::Heat3
-            | Method::Wave3
-            | Method::Laplace2
-            | Method::Laplace3
-            | Method::Poisson2
-            | Method::Poisson3
+            | Method::Heat
+            | Method::Wave
+            | Method::Laplace
+            | Method::Poisson
             | Method::Helmholtz
             | Method::Schrodinger
             | Method::KleinGordon
@@ -1891,20 +1897,20 @@ fn solve_classical(
     use Method::Dalembert;
     use Method::Fourier;
     use Method::Green;
-    use Method::Heat1;
-    use Method::Heat3;
+    use Method::Heat;
     use Method::Helmholtz;
     use Method::KleinGordon;
-    use Method::Laplace2;
-    use Method::Laplace3;
-    use Method::Poisson2;
-    use Method::Poisson3;
+    use Method::Laplace;
+    use Method::Poisson;
     use Method::Schrodinger;
     use Method::SecondOrder;
     use Method::Separation;
-    use Method::Wave3;
+    use Method::Wave;
     let kind = kind(cx, p);
-    let try_method = |m: Method| method == Any || method == m;
+    // The dimension-free names stand for every method of their family.
+    let try_method = |m: Method| {
+        method == Any || method == m || (method == Wave && matches!(m, Dalembert | SecondOrder))
+    };
     let mut solution = if p.nonlinear && (try_method(Characteristics) || try_method(Burgers)) {
         // Hopf–Cole for the viscous Burgers equation, Riemann problems.
         nonlinear::solve(cx, p, conditions)
@@ -1922,7 +1928,7 @@ fn solve_classical(
         {
             solution = dalembert(cx, p, conditions);
         }
-        if solution.is_none() && p.dimension() == 4 && try_method(Wave3) {
+        if solution.is_none() && p.dimension() == 4 && try_method(Wave) {
             solution = kirchhoff(cx, p, conditions);
         }
         if solution.is_none() && p.dimension() == 4 && method == Any {
@@ -1932,7 +1938,7 @@ fn solve_classical(
     if solution.is_none()
         && kind == "heat"
         && solution.is_none()
-        && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3))
+        && (try_method(Fourier) || try_method(Heat))
     {
         solution = heat_kernel(cx, p, conditions);
     }
@@ -1949,10 +1955,7 @@ fn solve_classical(
     {
         solution = klein_gordon(cx, p);
     }
-    if solution.is_none()
-        && kind == "laplace"
-        && (try_method(Separation) || try_method(Laplace2) || try_method(Laplace3))
-    {
+    if solution.is_none() && kind == "laplace" && (try_method(Separation) || try_method(Laplace)) {
         solution = laplace_box(cx, p, conditions);
     }
     if solution.is_none() && method == Any && conditions.is_empty() && !p.nonlinear {
@@ -1960,10 +1963,7 @@ fn solve_classical(
     }
     if solution.is_none()
         && matches!(kind, "poisson" | "laplace" | "helmholtz")
-        && (try_method(Green)
-            || try_method(Poisson2)
-            || try_method(Poisson3)
-            || try_method(Helmholtz))
+        && (try_method(Green) || try_method(Poisson) || try_method(Helmholtz))
     {
         solution = if conditions.is_empty() {
             green(cx, p)
@@ -1971,14 +1971,14 @@ fn solve_classical(
             elliptic::half_space(cx, p, conditions)
         };
     }
-    if solution.is_none() && matches!(method, Any | Heat1 | Heat3 | Fourier | Schrodinger) {
+    if solution.is_none() && matches!(method, Any | Heat | Fourier | Schrodinger) {
         solution = diffusion::similarity(cx, p, conditions)
             .or_else(|| diffusion::parabolic(cx, p, conditions));
     }
     if solution.is_none() && method == Any {
         solution = classical::wave_half_line(cx, p, conditions);
     }
-    if solution.is_none() && matches!(method, Any | Dalembert | Wave3 | SecondOrder | KleinGordon) {
+    if solution.is_none() && matches!(method, Any | Dalembert | Wave | SecondOrder | KleinGordon) {
         solution = waves::wave(cx, p, conditions);
     }
     if solution.is_none() && matches!(method, Any | Dalembert | KleinGordon | SecondOrder) {

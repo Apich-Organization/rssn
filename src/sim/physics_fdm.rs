@@ -951,3 +951,197 @@ pub fn solve_poisson_bc(
     )?;
     Ok(FdmGrid::from_data(r.u, source.dimensions().clone()))
 }
+
+// ============================================================================
+// Space-dimension coverage: Poisson 1D/3D, Burgers 2D/3D, advection-diffusion 2D/3D
+// ============================================================================
+//
+// Kernels: [`crate::sim::dimensional`]. Arrays are flat with `x` fastest and the
+// boundary values are frozen (Poisson: zero Dirichlet).
+
+/// Configuration of the dimension-generic SOR Poisson solver
+/// ([`solve_poisson_nd`]); the 1D/2D/3D special cases are
+/// [`solve_poisson_1d`], [`solve_poisson_2d`] and [`solve_poisson_3d`].
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PoissonSolverConfigNd {
+    /// Nodes per axis (1 to 3 entries).
+    pub dims: Vec<usize>,
+    /// Grid spacing per axis.
+    pub spacing: Vec<f64>,
+    /// SOR relaxation factor.
+    pub omega: f64,
+    /// Maximum number of sweeps.
+    pub max_iter: usize,
+    /// Convergence tolerance on the largest update.
+    pub tolerance: f64,
+}
+
+/// Solves `Δu = f` with zero Dirichlet boundaries on a 1D, 2D or 3D grid by SOR.
+///
+/// # Errors
+/// For inconsistent shapes or lengths.
+pub fn solve_poisson_nd(
+    config: &PoissonSolverConfigNd,
+    source: &[f64],
+) -> Result<Vec<f64>, String> {
+    let zero = vec![0.0; source.len()];
+
+    crate::sim::dimensional::solve_poisson_iterative_nd(
+        source,
+        &zero,
+        &config.dims,
+        &config.spacing,
+        crate::sim::dimensional::IterativeMethod::Sor(config.omega),
+        config.max_iter,
+        config.tolerance,
+    )
+}
+
+/// 1D Poisson equation `u'' = f`, zero Dirichlet ends, SOR. 1D counterpart of
+/// [`solve_poisson_2d`].
+///
+/// # Errors
+/// As [`solve_poisson_nd`].
+pub fn solve_poisson_1d(
+    source: &[f64],
+    dx: f64,
+    omega: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_nd(
+        &PoissonSolverConfigNd {
+            dims: vec![source.len()],
+            spacing: vec![dx],
+            omega,
+            max_iter,
+            tolerance,
+        },
+        source,
+    )
+}
+
+/// 3D Poisson equation `Δu = f`, zero Dirichlet boundaries, SOR. 3D counterpart
+/// of [`solve_poisson_2d`].
+///
+/// # Errors
+/// As [`solve_poisson_nd`].
+pub fn solve_poisson_3d(
+    source: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    omega: f64,
+    max_iter: usize,
+    tolerance: f64,
+) -> Result<Vec<f64>, String> {
+    solve_poisson_nd(
+        &PoissonSolverConfigNd {
+            dims: dims.to_vec(),
+            spacing: h.to_vec(),
+            omega,
+            max_iter,
+            tolerance,
+        },
+        source,
+    )
+}
+
+/// 2D Burgers' equation `u_t + u (u_x + u_y) = nu Δu` with central convection
+/// differences and frozen boundaries; returns the state after `steps` steps.
+/// 2D counterpart of [`solve_burgers_1d`].
+///
+/// # Errors
+/// For inconsistent shapes or a non-positive `dt`.
+pub fn solve_burgers_2d(
+    initial_u: &[f64],
+    dims: [usize; 2],
+    h: [f64; 2],
+    nu: f64,
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    crate::sim::dimensional::advance_transport_nd(
+        initial_u,
+        &dims,
+        &h,
+        &crate::sim::dimensional::Transport::BurgersCentral { nu },
+        dt,
+        steps,
+    )
+}
+
+/// 3D Burgers' equation; see [`solve_burgers_2d`].
+///
+/// # Errors
+/// As [`solve_burgers_2d`].
+pub fn solve_burgers_3d(
+    initial_u: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    nu: f64,
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    crate::sim::dimensional::advance_transport_nd(
+        initial_u,
+        &dims,
+        &h,
+        &crate::sim::dimensional::Transport::BurgersCentral { nu },
+        dt,
+        steps,
+    )
+}
+
+/// 2D advection-diffusion `u_t + c·∇u = d Δu` (upwind + central, frozen
+/// boundaries); returns the final state. 2D counterpart of
+/// [`solve_advection_diffusion_1d`].
+///
+/// # Errors
+/// As [`solve_burgers_2d`].
+pub fn solve_advection_diffusion_2d(
+    initial_cond: &[f64],
+    dims: [usize; 2],
+    h: [f64; 2],
+    c: [f64; 2],
+    d: f64,
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    crate::sim::dimensional::advance_transport_nd(
+        initial_cond,
+        &dims,
+        &h,
+        &crate::sim::dimensional::Transport::AdvectionDiffusion {
+            velocity: c.to_vec(),
+            alpha: d,
+        },
+        dt,
+        steps,
+    )
+}
+
+/// 3D advection-diffusion; see [`solve_advection_diffusion_2d`].
+///
+/// # Errors
+/// As [`solve_burgers_2d`].
+pub fn solve_advection_diffusion_3d(
+    initial_cond: &[f64],
+    dims: [usize; 3],
+    h: [f64; 3],
+    c: [f64; 3],
+    d: f64,
+    dt: f64,
+    steps: usize,
+) -> Result<Vec<f64>, String> {
+    crate::sim::dimensional::advance_transport_nd(
+        initial_cond,
+        &dims,
+        &h,
+        &crate::sim::dimensional::Transport::AdvectionDiffusion {
+            velocity: c.to_vec(),
+            alpha: d,
+        },
+        dt,
+        steps,
+    )
+}
