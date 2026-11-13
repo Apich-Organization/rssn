@@ -12,12 +12,15 @@
 
 use super::bridge::Data;
 use super::bridge::Entry;
+use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::name;
 use super::bridge::num;
+use super::bridge::require;
 use super::bridge::sample;
 use super::bridge::scalar;
 use super::bridge::vec_out;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::robust;
 
 /// Most resamples of one bootstrap.
@@ -31,7 +34,18 @@ fn quantile_hf(a: &[Data]) -> Option<Data> {
     let x = sample(a, 0)?;
     let p = scalar(a, 1)?;
     let kind = count(a, 2, 9)?;
-    ((0.0..=1.0).contains(&p) && kind >= 1).then_some(())?;
+    require(
+        (0.0..=1.0).contains(&p),
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the probability must lie in [0, 1], got {p}"),
+    )?;
+    require(
+        kind >= 1,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the Hyndman-Fan type is an integer from 1 to 9"),
+    )?;
     num(robust::quantile(x, p, kind as u8))
 }
 
@@ -71,13 +85,48 @@ fn statistic(name: &str) -> Option<fn(&[f64]) -> f64> {
 
 fn bootstrap_ci(a: &[Data]) -> Option<Data> {
     let x = sample(a, 0)?;
-    let stat = statistic(name(a, 1)?)?;
+    let label = name(a, 1)?;
+    let Some(stat) = statistic(label) else {
+        return bad(
+            1,
+            DiagKind::Domain,
+            format_args!(
+                "unknown statistic `{label}` (use mean, median, std, variance, mad or iqr)"
+            ),
+        );
+    };
     let alpha = scalar(a, 2)?;
-    (alpha > 0.0 && alpha < 1.0).then_some(())?;
+    require(
+        alpha > 0.0 && alpha < 1.0,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the significance level must lie strictly between 0 and 1, got {alpha}"),
+    )?;
     let resamples = count(a, 3, MAX_RESAMPLES)?;
-    (resamples >= 1 && x.len().checked_mul(resamples)? <= MAX_DRAWS).then_some(())?;
+    require(
+        resamples >= 1,
+        Some(3),
+        DiagKind::Domain,
+        format_args!("at least one resample is needed"),
+    )?;
+    require(
+        x.len()
+            .checked_mul(resamples)
+            .is_some_and(|draws| draws <= MAX_DRAWS),
+        Some(3),
+        DiagKind::Domain,
+        format_args!(
+            "{} observations times {resamples} resamples exceeds the limit of {MAX_DRAWS} draws",
+            x.len()
+        ),
+    )?;
     let seed = scalar(a, 4)?;
-    (seed >= 0.0 && seed.fract() == 0.0 && seed <= MAX_SEED).then_some(())?;
+    require(
+        seed >= 0.0 && seed.fract() == 0.0 && seed <= MAX_SEED,
+        Some(4),
+        DiagKind::Domain,
+        format_args!("the seed must be a non-negative integer below 2^53, got {seed}"),
+    )?;
     let (lo, hi) = robust::bootstrap_ci(x, stat, resamples, alpha, seed as u64);
     vec_out(vec![lo, hi])
 }

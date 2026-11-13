@@ -146,6 +146,23 @@ pub enum PdeError {
     Ode(OdeError),
     /// The solution became non-finite.
     NonFinite,
+    /// The data of a pure-Neumann Poisson problem violate the solvability
+    /// condition: the source and the boundary fluxes must balance
+    /// (`integral f + flux through the boundary = 0`), or no solution exists.
+    Incompatible {
+        /// The discrete imbalance `sum_i w_i (f_i + b_i)` (trapezoid weights).
+        residual: f64,
+        /// The magnitude it is judged against, `sum_i w_i |f_i + b_i|`.
+        scale: f64,
+    },
+    /// The conjugate-gradient solve of a pure-Neumann problem stopped before
+    /// reaching its tolerance.
+    NotConverged {
+        /// Relative residual reached.
+        residual: f64,
+        /// Iterations performed.
+        iterations: usize,
+    },
 }
 
 impl fmt::Display for PdeError {
@@ -165,6 +182,21 @@ impl fmt::Display for PdeError {
             | Self::SolveFailed => f.write_str("linear solve failed"),
             | Self::Ode(e) => write!(f, "ODE integration failed: {e:?}"),
             | Self::NonFinite => f.write_str("solution became non-finite"),
+            | Self::Incompatible { residual, scale } => {
+                write!(
+                    f,
+                    "incompatible Neumann data: the source and boundary fluxes leave an imbalance \
+                     of {residual:e} (against a magnitude of {scale:e}); a pure-Neumann problem \
+                     is solvable only when they sum to zero"
+                )
+            },
+            | Self::NotConverged { residual, iterations } => {
+                write!(
+                    f,
+                    "conjugate gradients stopped at relative residual {residual:e} after \
+                     {iterations} iterations"
+                )
+            },
         }
     }
 }
@@ -831,18 +863,43 @@ pub enum PoissonSolver {
         /// Relative residual tolerance.
         tol: f64,
     },
+    /// The solver that also accepts Neumann conditions on **every** face.
+    ///
+    /// Such a problem is singular (`u + c` solves it whenever `u` does) and
+    /// solvable only if the data are compatible: the discrete counterpart of
+    /// `integral f + (outward flux through the boundary) = 0`, with the
+    /// trapezoid weights that make the ghost-node operator symmetric. Both are
+    /// handled here: the compatibility is checked to a relative `1e-8` and
+    /// violating it is [`PdeError::Incompatible`]; the symmetrised system is
+    /// solved by Jacobi-preconditioned conjugate gradients to the relative
+    /// tolerance `tol` in the subspace orthogonal to the constants; and the
+    /// returned solution is the one of **zero trapezoid-weighted mean**
+    /// (`sum_i w_i u_i = 0`, the discrete `integral u = 0`).
+    ///
+    /// With at least one Dirichlet face the problem is regular and this is the
+    /// same as [`PoissonSolver::SparseLu`].
+    MeanFree {
+        /// Relative residual tolerance of the conjugate-gradient solve.
+        tol: f64,
+    },
 }
+
+/// Relative size of the imbalance the pure-Neumann compatibility check accepts.
+const COMPATIBILITY_TOL: f64 = 1e-8;
 
 /// Solves `-(u_xx + u_yy) = f` with the 5-point stencil;
 /// `bc = [left, right, bottom, top]`.
 ///
 /// A problem with Neumann conditions on all four sides is singular and is
-/// rejected with [`PdeError::Unsupported`].
+/// rejected with [`PdeError::Unsupported`], unless `solver` is
+/// [`PoissonSolver::MeanFree`], which solves it in the zero-mean subspace when
+/// the data are compatible.
 ///
 /// # Errors
 /// [`PdeError::InvalidInput`], [`PdeError::Unsupported`] (pure Neumann, or CG
-/// with a Neumann side) or [`PdeError::SolveFailed`] (singular matrix or CG
-/// not converged).
+/// with a Neumann side), [`PdeError::SolveFailed`] (singular matrix or CG
+/// not converged), [`PdeError::Incompatible`] or [`PdeError::NotConverged`]
+/// ([`PoissonSolver::MeanFree`]).
 pub fn poisson_2d(
     grid: &Grid2D,
     bc: &[Boundary; 4],
@@ -851,7 +908,7 @@ pub fn poisson_2d(
 ) -> Result<Field2D, PdeError> {
     grid.validate()?;
     let n_dir = bc.iter().filter(|b| b.is_dirichlet()).count();
-    if n_dir == 0 {
+    if n_dir == 0 && !matches!(solver, PoissonSolver::MeanFree { .. }) {
         return Err(PdeError::Unsupported(
             "pure Neumann Poisson problem is singular",
         ));
@@ -880,28 +937,127 @@ pub fn poisson_2d(
             })
         })
         .collect();
-    let u = solve_poisson_system(&lap, &rhs, n_dir, 4, solver)?;
+    let u = solve_poisson_system(&lap, &rhs, n_dir, 4, [nx, ny, 1], solver)?;
     Ok(field_2d(grid, u, 0.0))
+}
+
+/// Trapezoid weights of a grid of `dims = [nx, ny, nz]` nodes (an extent of
+/// `1` is an absent axis): the product over axes of `1/2` at an end node and
+/// `1` inside. They are the left null vector of the ghost-node Neumann
+/// Laplacian, so `diag(w) (-L)` is symmetric.
+fn trapezoid_weights(dims: [usize; 3]) -> Vec<f64> {
+    let [nx, ny, nz] = dims;
+    let edge = |i: usize, n: usize| {
+        if n > 1 && (i == 0 || i + 1 == n) {
+            0.5
+        } else {
+            1.0
+        }
+    };
+    let mut w = Vec::with_capacity(nx * ny * nz);
+    for k in 0..nz {
+        for j in 0..ny {
+            for i in 0..nx {
+                w.push(edge(i, nx) * edge(j, ny) * edge(k, nz));
+            }
+        }
+    }
+    w
+}
+
+/// Solves the all-Neumann system `-L u = rhs` (`rhs = f + b`): checks the
+/// compatibility `sum w rhs = 0`, solves the symmetrised system `W (-L) u = W
+/// rhs` by CG in the space orthogonal to the constants and shifts the answer
+/// to zero weighted mean.
+fn solve_poisson_mean_free(
+    lap: &Laplacian,
+    rhs: &[f64],
+    dims: [usize; 3],
+    tol: f64,
+) -> Result<Vec<f64>, PdeError> {
+    if tol.is_nan() || tol <= 0.0 || tol >= 1.0 {
+        return Err(PdeError::InvalidInput("tolerance must lie in (0, 1)"));
+    }
+    let n = rhs.len();
+    let w = trapezoid_weights(dims);
+    let residual: f64 = w.iter().zip(rhs).map(|(w, r)| w * r).sum();
+    let scale: f64 = w.iter().zip(rhs).map(|(w, r)| w * r.abs()).sum();
+    if !residual.is_finite() || !scale.is_finite() {
+        return Err(PdeError::NonFinite);
+    }
+    if residual.abs() > COMPATIBILITY_TOL * scale {
+        return Err(PdeError::Incompatible { residual, scale });
+    }
+    if scale == 0.0 {
+        return Ok(vec![0.0; n]);
+    }
+    let mut trip = Vec::with_capacity(lap.a.values.len());
+    for i in 0..n {
+        for q in lap.a.indptr[i]..lap.a.indptr[i + 1] {
+            trip.push((i, lap.a.indices[q], -w[i] * lap.a.values[q]));
+        }
+    }
+    let s = Csr::from_triplets(n, n, &trip);
+    // The accepted imbalance is rounding level; remove it so the system is
+    // consistent to the last bit.
+    let mut b: Vec<f64> = w.iter().zip(rhs).map(|(w, r)| w * r).collect();
+    let mean = b.iter().sum::<f64>() / n as f64;
+    for v in &mut b {
+        *v -= mean;
+    }
+    let dinv = s.jacobi_inverse();
+    let res = cg(
+        |x, y| s.matvec(x, y),
+        |r, z| {
+            for i in 0..r.len() {
+                z[i] = dinv[i] * r[i];
+            }
+        },
+        &b,
+        None,
+        tol,
+        10 * n + 100,
+    );
+    if !res.converged {
+        return Err(PdeError::NotConverged {
+            residual: res.residual,
+            iterations: res.iterations,
+        });
+    }
+    let mut u = res.x;
+    let total: f64 = w.iter().sum();
+    let shift = w.iter().zip(&u).map(|(w, u)| w * u).sum::<f64>() / total;
+    for v in &mut u {
+        *v -= shift;
+    }
+    Ok(u)
 }
 
 /// Solves the assembled Poisson system `-L u = rhs` (Dirichlet rows are the
 /// identity). `faces` is the number of boundary faces of the domain, all of
-/// which must be Dirichlet for [`PoissonSolver::Cg`].
+/// which must be Dirichlet for [`PoissonSolver::Cg`]; `dims` the node counts
+/// per axis (`1` for an absent axis).
 fn solve_poisson_system(
     lap: &Laplacian,
     rhs: &[f64],
     n_dir: usize,
     faces: usize,
+    dims: [usize; 3],
     solver: PoissonSolver,
 ) -> Result<Vec<f64>, PdeError> {
     if n_dir == 0 {
-        return Err(PdeError::Unsupported(
-            "pure Neumann Poisson problem is singular",
-        ));
+        return match solver {
+            | PoissonSolver::MeanFree { tol } => solve_poisson_mean_free(lap, rhs, dims, tol),
+            | _ => {
+                Err(PdeError::Unsupported(
+                    "pure Neumann Poisson problem is singular",
+                ))
+            },
+        };
     }
     let n = rhs.len();
     let u = match solver {
-        | PoissonSolver::SparseLu => {
+        | PoissonSolver::SparseLu | PoissonSolver::MeanFree { .. } => {
             let mut trip = Vec::with_capacity(lap.a.values.len() + n);
             for i in 0..n {
                 if lap.dirichlet[i].is_some() {

@@ -34,9 +34,23 @@
 //! encoding ([`crate::api`] refuses a `Value::Complex` with a nonzero
 //! imaginary part), so only its real, imaginary and absolute parts are
 //! operators; `odeint` is the scalar operator of the `ode` rule set.
+//!
+//! # Why a call did not reduce
+//!
+//! A table-driven operator whose evaluator rejects its arguments (a shape that
+//! does not fit, a tolerance out of range, a singular system, incompatible
+//! Neumann data) leaves the call as a request, exactly as before. The
+//! evaluators also *say why*: they record a [`crate::kernel::diag::Diag`]
+//! through [`crate::kernel::diag::fail`] (every argument helper of `bridge`
+//! does it for the arguments it decodes), which is a no-op unless a host asks.
+//! `Session::apply_diag` and `Session::explain` ask, by re-running the
+//! evaluator under [`crate::kernel::diag::capture`]; see the diagnostics
+//! chapter of `ARCHITECTURE.md`.
 
 mod bridge;
 mod decomp;
+#[cfg(test)]
+mod diag_tests;
 mod functions;
 mod ode;
 mod resample;
@@ -70,6 +84,37 @@ pub fn numeric() -> RuleSet {
     RuleSet::new("numeric", install).needs(calculus())
 }
 
+/// Every table of operators the bridge reduces.
+const TABLES: [&[bridge::Entry]; 6] = [
+    bridge::ENTRIES,
+    special::ENTRIES,
+    resample::ENTRIES,
+    transform::ENTRIES,
+    decomp::ENTRIES,
+    solvers::ENTRIES,
+];
+
+/// Why the call `node` of a table-driven numeric operator does not reduce.
+///
+/// `None` means the call would reduce, or that the operator is not one of the
+/// table-driven families (`fftconv`, `interpolate` and the expression operators
+/// keep no reasons). The reasons are the ones the evaluators record through
+/// [`crate::kernel::diag`]: the arguments are decoded and the evaluator run
+/// again under a capture, so this costs one more evaluation of a call that
+/// already failed and changes nothing in the graph.
+pub(crate) fn explain(
+    graph: &Graph,
+    node: NodeId,
+) -> Option<crate::kernel::diag::Diag> {
+    let descriptor = graph.ops().get(graph.op(node));
+    let name: &str = &descriptor.name;
+    let entry = TABLES
+        .into_iter()
+        .flatten()
+        .find(|entry| entry.name == name)?;
+    bridge::explain_entry(entry, graph, node)
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let request = |name: &str, arity: u8| {
         OpDescriptor::new(name, Arity::Fixed(arity))
@@ -87,16 +132,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.dim(interpolate, DimRule::Same(1));
     // The table-driven numeric kernels (robust statistics, signal processing,
     // wavelets and the dimension-free finite-difference solvers).
-    let tables: [&[bridge::Entry]; 6] = [
-        bridge::ENTRIES,
-        special::ENTRIES,
-        resample::ENTRIES,
-        transform::ENTRIES,
-        decomp::ENTRIES,
-        solvers::ENTRIES,
-    ];
     let mut bridged = Vec::new();
-    for entry in tables.into_iter().flatten() {
+    for entry in TABLES.into_iter().flatten() {
         let op = i.op(request(entry.name, entry.params.len() as u8))?;
         i.dim(op, bridge_dimension(entry.name));
         bridged.push((op, entry.eval));
@@ -175,7 +212,7 @@ fn bridge_dimension(name: &str) -> DimRule {
         // The unit box has no length scale, so the field keeps its dimension.
         | "heat_fd" | "wave_fd" | "advect_fd" | "heat_fd_bc" | "wave_fd_bc"
         | "advect_fd_upwind" => DimRule::Same(1),
-        | "poisson_fd" => DimRule::Same(0),
+        | "poisson_fd" | "poisson_fd_bc" => DimRule::Same(0),
         // A norm, a trace over two axes, an inverse transform or the dense
         // form of a decomposition keeps the dimension of the tensor (the
         // factors of a decomposition are bare orthonormal or unit-norm
@@ -641,7 +678,8 @@ mod tests {
         );
         close(
             &flat(&run(&format!("tensor_contract({cube}, 0, 2)"))),
-            &[6.0, 14.0],
+            // sum_i cube[i][j][i]: (1 + 6, 3 + 8).
+            &[7.0, 11.0],
             1e-12,
         );
     }

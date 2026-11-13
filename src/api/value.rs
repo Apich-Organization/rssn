@@ -34,6 +34,8 @@ use crate::kernel::call::CallCtx;
 use crate::kernel::call::Kernel;
 use crate::kernel::call::OpError;
 use crate::kernel::call::Target;
+use crate::kernel::diag::Diag;
+use crate::kernel::diag::DiagKind;
 use crate::kernel::manifest::KernelManifest;
 use crate::kernel::plugin::Plugin;
 use crate::kernel::plugin::PluginError;
@@ -234,6 +236,92 @@ impl Session {
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
         self.call_with(name, args, &[], ctx)
+    }
+
+    /// Calls the operator `name` like [`Session::call_value`] and, when the
+    /// call does not reduce, says why.
+    ///
+    /// This is the host entry point of the diagnostics channel
+    /// ([`crate::kernel::diag`]). It returns exactly the value
+    /// [`Session::call_value`] would return whenever that call succeeds, so a
+    /// host can switch to it without changing a result; the difference is the
+    /// failure side:
+    ///
+    /// * the operator is a table-driven numeric one (`poisson_fd_bc`,
+    ///   `tensordot`, `hosvd`, `sparse_solve`, ...) and the call stays
+    ///   unreduced: the [`Diag`] carries the operator, the zero-based argument
+    ///   at fault when one is, a [`DiagKind`](crate::kernel::DiagKind) to branch
+    ///   on and the evaluator's message ("the paired axes 0 (extent 3) and 1
+    ///   (extent 2) must have equal extents");
+    /// * the call fails before evaluation (unknown operator, wrong argument
+    ///   count, an argument with no term form): the [`OpError`] mapped to a
+    ///   [`Diag`] of kind `Unsupported`, `Arity`, `Shape` or `Domain`;
+    /// * a heavy operator that has no recorded reasons stays unreduced: a
+    ///   [`DiagKind::Unspecified`](crate::kernel::DiagKind) finding says so.
+    ///
+    /// A symbolic result that is a legitimate answer (`sin(x)`) is `Ok`: only a
+    /// request an evaluator declined is an error here.
+    ///
+    /// # Errors
+    /// A [`Diag`] as above. `From<Diag>` for [`OpError`] turns it back into
+    /// the host-diagnostic variant.
+    pub fn apply_diag(
+        &self,
+        name: &str,
+        args: &[Value],
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, Diag> {
+        let value = match self.call_value(name, args, ctx) {
+            | Ok(value) => value,
+            | Err(error @ (OpError::NotNumeric(_) | OpError::NotReduced(_))) => {
+                // A numeric target turns an unreduced call into an error that
+                // no longer holds the term: ask again symbolically to get it
+                // back, and explain that.
+                let mut symbolic = clone_ctx(ctx);
+                symbolic.target = Target::Symbolic;
+                if let Ok(Value::Term(handle)) = self.call_value(name, args, &symbolic) {
+                    let inner = self.inner.borrow();
+                    let node = NodeId::from_raw(handle.node);
+                    if let Some(found) = crate::rules::numeric::explain(&inner.graph, node) {
+                        return Err(found);
+                    }
+                }
+                return Err(diag_of_error(name, error));
+            },
+            | Err(error) => return Err(diag_of_error(name, error)),
+        };
+        let Value::Term(handle) = &value else {
+            return Ok(value);
+        };
+        let node = NodeId::from_raw(handle.node);
+        let inner = self.inner.borrow();
+        if let Some(found) = crate::rules::numeric::explain(&inner.graph, node) {
+            return Err(found);
+        }
+        let descriptor = inner.graph.ops().get(inner.graph.op(node));
+        if descriptor.flags.has(crate::graph::OpFlags::HEAVY) && *descriptor.name == *name {
+            return Err(Diag::new(
+                DiagKind::Unspecified,
+                "the call was left unevaluated and the operator recorded no reason",
+            )
+            .in_op(name));
+        }
+        Ok(value)
+    }
+
+    /// Why the call `term` does not reduce, when it is a table-driven numeric
+    /// operator applied to arguments its evaluator rejects.
+    ///
+    /// `None` means there is nothing to explain: the term would reduce, or its
+    /// head is not an operator that records reasons. The check runs the
+    /// evaluator again on the term's own arguments and changes nothing.
+    #[must_use]
+    pub fn explain(
+        &self,
+        term: Term<'_>,
+    ) -> Option<Diag> {
+        let inner = self.inner.borrow();
+        crate::rules::numeric::explain(&inner.graph, NodeId::from_raw(term.id()))
     }
 
     /// Solves `equation = 0` for `variable` and returns a structured answer.
@@ -949,6 +1037,43 @@ fn config_for(
         config = config.assume(&assumption.symbol, assumption.facts);
     }
     config
+}
+
+/// The diagnostic form of an error raised before or around an evaluation.
+fn diag_of_error(
+    name: &str,
+    error: OpError,
+) -> Diag {
+    let diag = match error {
+        | OpError::Arity { expected, got } => {
+            Diag::new(
+                DiagKind::Arity,
+                format!("takes {expected} arguments, got {got}"),
+            )
+        },
+        | OpError::Type { expected, got, arg } => {
+            Diag::new(DiagKind::Shape, format!("expected {expected}, got {got}")).at(arg)
+        },
+        | OpError::UnknownOp(key) => {
+            Diag::new(DiagKind::Unsupported, format!("no operator `{key}`"))
+        },
+        | OpError::Domain(message) | OpError::NotNumeric(message) => {
+            Diag::new(DiagKind::Domain, message)
+        },
+        | OpError::Dimension(error) => Diag::new(DiagKind::Domain, error.to_string()),
+        | OpError::BudgetExceeded => {
+            Diag::new(DiagKind::NotConverged, "the search budget was exhausted")
+        },
+        | OpError::Unsupported { backend, feature } => {
+            Diag::new(
+                DiagKind::Unsupported,
+                format!("backend `{backend}` does not support {feature}"),
+            )
+        },
+        | OpError::HostDiagnostic { message, .. } => Diag::new(DiagKind::Unspecified, message),
+        | other => Diag::new(DiagKind::Unspecified, other.to_string()),
+    };
+    diag.in_op(name)
 }
 
 /// Maps a computation error onto the ABI's error type.

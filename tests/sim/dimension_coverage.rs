@@ -1094,30 +1094,12 @@ fn fvm_shallow_water_3d_preserves_rest_conserves_mass_and_permutes_axes() {
         .collect();
     let z = vec![0.0; n];
     let (dt, steps) = (0.004, 2);
-    let ra = fvm::solve_shallow_water_3d(
-        &a,
-        &z,
-        &z,
-        &z,
-        [nx, ny, nz],
-        [0.1, 0.1, 0.1],
-        dt,
-        steps,
-        g,
-    )
-    .unwrap();
-    let rb = fvm::solve_shallow_water_3d(
-        &b,
-        &z,
-        &z,
-        &z,
-        [nz, nx, ny],
-        [0.1, 0.1, 0.1],
-        dt,
-        steps,
-        g,
-    )
-    .unwrap();
+    let ra =
+        fvm::solve_shallow_water_3d(&a, &z, &z, &z, [nx, ny, nz], [0.1, 0.1, 0.1], dt, steps, g)
+            .unwrap();
+    let rb =
+        fvm::solve_shallow_water_3d(&b, &z, &z, &z, [nz, nx, ny], [0.1, 0.1, 0.1], dt, steps, g)
+            .unwrap();
     for k in 0..nz {
         for j in 0..ny {
             for i in 0..nx {

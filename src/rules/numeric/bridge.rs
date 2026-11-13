@@ -12,7 +12,7 @@
 //! | robust statistics | `mad`, `mad_sigma`, `trimmed_mean`, `winsorized_mean`, `huber_location`, `biweight_location`, `ecdf`, `kde`, `bandwidth_silverman`, `bandwidth_scott` |
 //! | signal | `hann_window`, `hamming_window`, `blackman_window`, `cross_correlation`, `fft_abs`, `fft_re`, `fft_im`, `ifft_re`, `ifft_im`, `ifft_abs` |
 //! | wavelets | `dwt_approx`, `dwt_detail`, `idwt` (the wavelet is a symbol: `haar`, `db2` .. `db10`, `sym4` .. `sym6`, `bior1_1` .. `bior4_4`) |
-//! | finite-difference PDEs | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd`, and the siblings `heat_fd_bc`, `wave_fd_bc` (Dirichlet or Neumann walls) and `advect_fd_upwind` |
+//! | finite-difference PDEs | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd`, and the siblings `heat_fd_bc`, `wave_fd_bc`, `poisson_fd_bc` (Dirichlet or Neumann walls, per face or axis) and `advect_fd_upwind` |
 //! | tensors | `tensor_norm`, `tensor_inner`, `tensor_outer`, `tensordot`, `tensor_contract` |
 //!
 //! The finite-difference operators are **dimension free**: the number of
@@ -30,6 +30,8 @@ use crate::graph::NodeId;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::op::core;
+use crate::kernel::diag;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::functional_analysis;
 use crate::kernels::krylov;
 use crate::kernels::krylov_ext;
@@ -68,6 +70,80 @@ impl Data {
         Self::Array {
             shape: vec![data.len()],
             data,
+        }
+    }
+}
+
+/// What an argument is, for a diagnostic message.
+struct Shown<'a>(Option<&'a Data>);
+
+impl std::fmt::Display for Shown<'_> {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        match self.0 {
+            | None => f.write_str("nothing (the argument is missing)"),
+            | Some(Data::Scalar(x)) => write!(f, "the number {x}"),
+            | Some(Data::Array { shape, .. }) => {
+                let extents: Vec<String> = shape.iter().map(ToString::to_string).collect();
+                write!(
+                    f,
+                    "a {}-level list of shape {}",
+                    shape.len(),
+                    extents.join(" x ")
+                )
+            },
+            | Some(Data::Name(n)) => write!(f, "the symbol `{n}`"),
+            | Some(Data::Tree(parts)) => write!(f, "a ragged list of {} parts", parts.len()),
+        }
+    }
+}
+
+/// Records why argument `at` (zero-based) was rejected and returns `None`.
+pub(super) fn bad<T>(
+    at: usize,
+    kind: DiagKind,
+    message: std::fmt::Arguments<'_>,
+) -> Option<T> {
+    diag::fail(kind, Some(at), message)
+}
+
+/// `Some(())` when `ok`; else records the reason (blaming argument `at`, when
+/// one is at fault) and returns `None`. Written `require(..)?`.
+pub(super) fn require(
+    ok: bool,
+    at: Option<usize>,
+    kind: DiagKind,
+    message: std::fmt::Arguments<'_>,
+) -> Option<()> {
+    if ok {
+        Some(())
+    } else {
+        diag::fail(kind, at, message)
+    }
+}
+
+/// Turns the error of a kernel into a recorded reason.
+pub(super) trait Reason<T> {
+    /// The value, or `None` after recording the error's text as a `kind`
+    /// finding (blaming argument `at` when given).
+    fn reason(
+        self,
+        kind: DiagKind,
+        at: Option<usize>,
+    ) -> Option<T>;
+}
+
+impl<T, E: std::fmt::Display> Reason<T> for Result<T, E> {
+    fn reason(
+        self,
+        kind: DiagKind,
+        at: Option<usize>,
+    ) -> Option<T> {
+        match self {
+            | Ok(value) => Some(value),
+            | Err(error) => diag::fail(kind, at, format_args!("{error}")),
         }
     }
 }
@@ -215,9 +291,22 @@ pub(super) fn scalar(
     args: &[Data],
     at: usize,
 ) -> Option<f64> {
-    match args.get(at)? {
-        | Data::Scalar(x) if x.is_finite() => Some(*x),
-        | _ => None,
+    match args.get(at) {
+        | Some(Data::Scalar(x)) if x.is_finite() => Some(*x),
+        | Some(Data::Scalar(x)) => {
+            bad(
+                at,
+                DiagKind::Domain,
+                format_args!("expected a finite number, got {x}"),
+            )
+        },
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a number, got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -225,13 +314,32 @@ pub(super) fn vector(
     args: &[Data],
     at: usize,
 ) -> Option<&[f64]> {
-    match args.get(at)? {
-        | Data::Array { shape, data }
-            if shape.len() == 1 && data.len() <= MAX_LEN && data.iter().all(|x| x.is_finite()) =>
-        {
+    match args.get(at) {
+        | Some(Data::Array { shape, data }) if shape.len() == 1 => {
+            require(
+                data.len() <= MAX_LEN,
+                Some(at),
+                DiagKind::Domain,
+                format_args!(
+                    "a list may hold at most {MAX_LEN} numbers, got {}",
+                    data.len()
+                ),
+            )?;
+            require(
+                data.iter().all(|x| x.is_finite()),
+                Some(at),
+                DiagKind::Domain,
+                format_args!("the list holds a number that is not finite"),
+            )?;
             Some(data)
         },
-        | _ => None,
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a flat list of numbers, got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -240,7 +348,14 @@ pub(super) fn sample(
     args: &[Data],
     at: usize,
 ) -> Option<&[f64]> {
-    vector(args, at).filter(|v| !v.is_empty())
+    let v = vector(args, at)?;
+    require(
+        !v.is_empty(),
+        Some(at),
+        DiagKind::Domain,
+        format_args!("the sample must not be empty"),
+    )?;
+    Some(v)
 }
 
 pub(super) fn count(
@@ -249,16 +364,28 @@ pub(super) fn count(
     max: usize,
 ) -> Option<usize> {
     let x = scalar(args, at)?;
-    (x >= 0.0 && x.fract() == 0.0 && x <= max as f64).then_some(x as usize)
+    require(
+        x >= 0.0 && x.fract() == 0.0 && x <= max as f64,
+        Some(at),
+        DiagKind::Domain,
+        format_args!("expected an integer from 0 to {max}, got {x}"),
+    )?;
+    Some(x as usize)
 }
 
 pub(super) fn name(
     args: &[Data],
     at: usize,
 ) -> Option<&str> {
-    match args.get(at)? {
-        | Data::Name(n) => Some(n),
-        | _ => None,
+    match args.get(at) {
+        | Some(Data::Name(n)) => Some(n),
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a symbol, got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -342,13 +469,23 @@ fn winsorized_mean(a: &[Data]) -> Option<Data> {
 
 fn huber_location(a: &[Data]) -> Option<Data> {
     let k = scalar(a, 1)?;
-    (k > 0.0).then_some(())?;
+    require(
+        k > 0.0,
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the tuning constant must be positive, got {k}"),
+    )?;
     num(robust::huber_location(sample(a, 0)?, k))
 }
 
 fn biweight_location(a: &[Data]) -> Option<Data> {
     let c = scalar(a, 1)?;
-    (c > 0.0).then_some(())?;
+    require(
+        c > 0.0,
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the tuning constant must be positive, got {c}"),
+    )?;
     num(robust::biweight_location(sample(a, 0)?, c))
 }
 
@@ -358,7 +495,12 @@ fn ecdf(a: &[Data]) -> Option<Data> {
 
 fn kde(a: &[Data]) -> Option<Data> {
     let h = scalar(a, 2)?;
-    (h > 0.0).then_some(())?;
+    require(
+        h > 0.0,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the bandwidth must be positive, got {h}"),
+    )?;
     num(robust::kde(
         sample(a, 0)?,
         scalar(a, 1)?,
@@ -416,9 +558,16 @@ fn fft_im(a: &[Data]) -> Option<Data> {
 
 fn inverse(a: &[Data]) -> Option<Vec<Complex<f64>>> {
     let (re, im) = (vector(a, 0)?, vector(a, 1)?);
-    if re.len() != im.len() {
-        return None;
-    }
+    require(
+        re.len() == im.len(),
+        Some(1),
+        DiagKind::Shape,
+        format_args!(
+            "the imaginary part has {} entries but the real part has {}",
+            im.len(),
+            re.len()
+        ),
+    )?;
     let mut input: Vec<Complex<f64>> = re
         .iter()
         .zip(im)
@@ -450,24 +599,72 @@ pub(super) fn wavelet(
     at: usize,
 ) -> Option<wavelets::Wavelet> {
     let wanted = name(a, at)?.to_ascii_lowercase();
-    wavelets::Wavelet::ALL
+    let found = wavelets::Wavelet::ALL
         .into_iter()
-        .find(|w| format!("{w:?}").to_ascii_lowercase() == wanted)
+        .find(|w| format!("{w:?}").to_ascii_lowercase() == wanted);
+    if found.is_none() {
+        return bad(
+            at,
+            DiagKind::Domain,
+            format_args!(
+                "unknown wavelet `{wanted}` (use haar, db2 .. db10, sym4 .. sym6 or bior1_1 .. bior4_4)"
+            ),
+        );
+    }
+    found
+}
+
+/// A wavelet transform's failure as a recorded reason.
+pub(super) fn wavelet_reason<T>(
+    result: Result<T, wavelets::WaveletError>,
+    what: &str,
+) -> Option<T> {
+    match result {
+        | Ok(value) => Some(value),
+        | Err(wavelets::WaveletError::OddLength) => {
+            bad_op(
+                DiagKind::Shape,
+                format_args!("{what}: the signal length must be even and nonzero"),
+            )
+        },
+        | Err(wavelets::WaveletError::TooManyLevels) => {
+            bad_op(
+                DiagKind::Domain,
+                format_args!("{what}: more levels than the signal length allows"),
+            )
+        },
+        | Err(wavelets::WaveletError::Shape) => {
+            bad_op(
+                DiagKind::Shape,
+                format_args!(
+                    "{what}: the coefficient lists must be nonempty, of equal length and fit together"
+                ),
+            )
+        },
+    }
+}
+
+/// Records a finding that blames no single argument.
+pub(super) fn bad_op<T>(
+    kind: DiagKind,
+    message: std::fmt::Arguments<'_>,
+) -> Option<T> {
+    diag::fail(kind, None, message)
 }
 
 fn dwt_approx(a: &[Data]) -> Option<Data> {
     let (x, w) = (vector(a, 0)?, wavelet(a, 1)?);
-    vec_out(wavelets::dwt(x, w).ok()?.0)
+    vec_out(wavelet_reason(wavelets::dwt(x, w), "dwt_approx")?.0)
 }
 
 fn dwt_detail(a: &[Data]) -> Option<Data> {
     let (x, w) = (vector(a, 0)?, wavelet(a, 1)?);
-    vec_out(wavelets::dwt(x, w).ok()?.1)
+    vec_out(wavelet_reason(wavelets::dwt(x, w), "dwt_detail")?.1)
 }
 
 fn idwt(a: &[Data]) -> Option<Data> {
     let (approx, detail, w) = (vector(a, 0)?, vector(a, 1)?, wavelet(a, 2)?);
-    vec_out(wavelets::idwt(approx, detail, w).ok()?)
+    vec_out(wavelet_reason(wavelets::idwt(approx, detail, w), "idwt")?)
 }
 
 // ---------------------------------------------------------------------------
@@ -482,16 +679,53 @@ fn field(
     a: &[Data],
     at: usize,
 ) -> Option<(&[usize], &[f64])> {
-    match a.get(at)? {
-        | Data::Array { shape, data }
-            if (1..=3).contains(&shape.len())
-                && shape.iter().all(|&n| n >= 3)
-                && data.len() <= MAX_NODES[shape.len() - 1]
-                && data.iter().all(|x| x.is_finite()) =>
-        {
+    match a.get(at) {
+        | Some(Data::Array { shape, data }) if (1..=3).contains(&shape.len()) => {
+            require(
+                shape.iter().all(|&n| n >= 3),
+                Some(at),
+                DiagKind::Domain,
+                format_args!(
+                    "every extent of a grid needs at least 3 nodes, got {}",
+                    Shown(a.get(at))
+                ),
+            )?;
+            require(
+                data.len() <= MAX_NODES[shape.len() - 1],
+                Some(at),
+                DiagKind::Domain,
+                format_args!(
+                    "a {}D grid is limited to {} nodes, got {}",
+                    shape.len(),
+                    MAX_NODES[shape.len() - 1],
+                    data.len()
+                ),
+            )?;
+            require(
+                data.iter().all(|x| x.is_finite()),
+                Some(at),
+                DiagKind::Domain,
+                format_args!("the grid holds a number that is not finite"),
+            )?;
             Some((shape, data))
         },
-        | _ => None,
+        | Some(Data::Array { shape, .. }) => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!(
+                    "a field is a 1D, 2D or 3D nested list, got {} nesting levels",
+                    shape.len()
+                ),
+            )
+        },
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a nested list (the field), got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -594,141 +828,279 @@ enum Condition {
     Neumann,
 }
 
-/// The condition a symbol names, in any case.
-fn condition(
-    args: &[Data],
+/// The condition and value of every face of the unit box, in the order of the
+/// kernel: `[x-, x+, y-, y+, z-, z+]` truncated to `2 * rank` faces. `x` is the
+/// first nesting level of the field, so the faces `x-` and `x+` are
+/// `list[0][..]` and `list[n - 1][..]`, and `y`, `z` follow.
+type Faces = Vec<(Condition, f64)>;
+
+/// The conditions a boundary symbol names for a field of `rank` space
+/// dimensions, one per face.
+///
+/// * `dirichlet` or `neumann`: every face;
+/// * a pattern of `rank` letters from `d`/`n` (any case): one per axis, both
+///   faces of the axis, e.g. `dn` in 2D is Dirichlet on the `x` faces and
+///   Neumann on the `y` faces;
+/// * a pattern of `2 * rank` letters: one per face in the order `x-, x+, y-,
+///   y+, z-, z+`, e.g. `ddnn` in 2D.
+fn conditions(
+    a: &[Data],
     at: usize,
-) -> Option<Condition> {
-    match name(args, at)?.to_ascii_lowercase().as_str() {
-        | "dirichlet" => Some(Condition::Dirichlet),
-        | "neumann" => Some(Condition::Neumann),
-        | _ => None,
+    rank: usize,
+) -> Option<Vec<Condition>> {
+    let symbol = name(a, at)?.to_ascii_lowercase();
+    let letter = |c: char| {
+        match c {
+            | 'd' => Some(Condition::Dirichlet),
+            | 'n' => Some(Condition::Neumann),
+            | _ => None,
+        }
+    };
+    let letters: Option<Vec<Condition>> = symbol.chars().map(letter).collect();
+    match (symbol.as_str(), letters) {
+        | ("dirichlet", _) => Some(vec![Condition::Dirichlet; 2 * rank]),
+        | ("neumann", _) => Some(vec![Condition::Neumann; 2 * rank]),
+        | (_, Some(each)) if each.len() == rank => {
+            Some(each.iter().flat_map(|&c| [c, c]).collect())
+        },
+        | (_, Some(each)) if each.len() == 2 * rank => Some(each),
+        | _ => {
+            bad(
+                at,
+                DiagKind::Domain,
+                format_args!(
+                    "unknown boundary condition `{symbol}`: use dirichlet, neumann, or a pattern \
+                     of d/n letters, {rank} (one per axis) or {} (one per face x-, x+, y-, y+, \
+                     z-, z+) of them for a {rank}D field",
+                    2 * rank
+                ),
+            )
+        },
     }
 }
 
-fn bcs<const N: usize>(
-    kind: Condition,
+/// The boundary value of every face: a number for all of them, a list of
+/// `rank` numbers (one per axis) or of `2 * rank` (one per face).
+fn face_values(
+    a: &[Data],
+    at: usize,
+    rank: usize,
+) -> Option<Vec<f64>> {
+    match a.get(at) {
+        | Some(Data::Scalar(_)) => Some(vec![scalar(a, at)?; 2 * rank]),
+        | Some(Data::Array { shape, .. }) if shape.len() == 1 => {
+            let each = vector(a, at)?;
+            if each.len() == rank {
+                Some(each.iter().flat_map(|&v| [v, v]).collect())
+            } else if each.len() == 2 * rank {
+                Some(each.to_vec())
+            } else {
+                bad(
+                    at,
+                    DiagKind::Shape,
+                    format_args!(
+                        "a {rank}D field takes one boundary value, {rank} (per axis) or {} (per \
+                         face), got {}",
+                        2 * rank,
+                        each.len()
+                    ),
+                )
+            }
+        },
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!(
+                    "expected a boundary value (a number or a list of numbers), got {}",
+                    Shown(other)
+                ),
+            )
+        },
+    }
+}
+
+/// The faces of a `_bc` operator: the condition symbol at `kind_at`, the value
+/// at `value_at`.
+fn faces(
+    a: &[Data],
+    kind_at: usize,
+    value_at: usize,
+    rank: usize,
+) -> Option<Faces> {
+    let kinds = conditions(a, kind_at, rank)?;
+    let values = face_values(a, value_at, rank)?;
+    Some(kinds.into_iter().zip(values).collect())
+}
+
+/// Dirichlet `value` on every face.
+fn all_dirichlet(
     value: f64,
-) -> [pde::Boundary; N] {
-    std::array::from_fn(|_| {
-        match kind {
-            | Condition::Dirichlet => pde::Boundary::dirichlet_const(value),
-            | Condition::Neumann => pde::Boundary::neumann_const(value),
+    rank: usize,
+) -> Faces {
+    vec![(Condition::Dirichlet, value); 2 * rank]
+}
+
+fn bcs<const N: usize>(faces: &[(Condition, f64)]) -> [pde::Boundary; N] {
+    std::array::from_fn(|i| {
+        match faces[i] {
+            | (Condition::Dirichlet, value) => pde::Boundary::dirichlet_const(value),
+            | (Condition::Neumann, value) => pde::Boundary::neumann_const(value),
         }
     })
 }
 
-/// The arguments of a `_bc` operator with the condition symbol at `at` and
-/// the boundary value after it, as the arguments of its Dirichlet sibling
-/// (`value` takes the place of the symbol).
-fn without_condition(
+fn steps_within(
     a: &[Data],
     at: usize,
-) -> Option<(Condition, Vec<Data>)> {
-    let kind = condition(a, at)?;
-    let mut rest = a.to_vec();
-    rest.remove(at);
-    Some((kind, rest))
-}
-
-fn steps_within(
-    steps: f64,
     nodes: usize,
 ) -> Option<usize> {
-    let steps = if steps >= 1.0 && steps.fract() == 0.0 && steps <= 1e6 {
-        steps as usize
-    } else {
-        return None;
+    let steps = scalar(a, at)?;
+    require(
+        steps >= 1.0 && steps.fract() == 0.0 && steps <= 1e6,
+        Some(at),
+        DiagKind::Domain,
+        format_args!("the step count must be an integer from 1 to 1000000, got {steps}"),
+    )?;
+    let steps = steps as usize;
+    require(
+        steps
+            .checked_mul(nodes)
+            .is_some_and(|work| work <= MAX_WORK),
+        Some(at),
+        DiagKind::Domain,
+        format_args!(
+            "{steps} steps on {nodes} nodes exceeds the work limit of {MAX_WORK} node-steps"
+        ),
+    )?;
+    Some(steps)
+}
+
+/// A solver's error as a recorded reason, in the vocabulary of [`DiagKind`].
+fn pde_reason<T>(
+    result: Result<T, pde::PdeError>,
+    solver: &str,
+) -> Option<T> {
+    let error = match result {
+        | Ok(value) => return Some(value),
+        | Err(error) => error,
     };
-    (steps.checked_mul(nodes)? <= MAX_WORK).then_some(steps)
+    let kind = match error {
+        | pde::PdeError::InvalidInput(_)
+        | pde::PdeError::Unstable { .. }
+        | pde::PdeError::NonFinite => DiagKind::Domain,
+        | pde::PdeError::Unsupported(_) => DiagKind::Unsupported,
+        | pde::PdeError::SolveFailed => DiagKind::Singular,
+        | pde::PdeError::Incompatible { .. } => DiagKind::Incompatible,
+        | pde::PdeError::NotConverged { .. } | pde::PdeError::Ode(_) => DiagKind::NotConverged,
+    };
+    bad_op(kind, format_args!("{solver}: {error}"))
 }
 
 /// `heat_fd(alpha, u0, boundary_value, t_end, steps)`: Dirichlet walls.
 fn heat_fd(a: &[Data]) -> Option<Data> {
-    heat(a, Condition::Dirichlet)
+    let (shape, _) = field(a, 1)?;
+    let faces = all_dirichlet(scalar(a, 2)?, shape.len());
+    heat(a, &faces, 3)
 }
 
 /// `heat_fd_bc(alpha, u0, kind, boundary_value, t_end, steps)`: `kind` is
-/// `dirichlet` or `neumann`.
+/// `dirichlet`, `neumann` or a per-axis or per-face pattern of `d`/`n`
+/// letters (see [`conditions`]); `boundary_value` is a number, a list per axis
+/// or a list per face.
 fn heat_fd_bc(a: &[Data]) -> Option<Data> {
-    let (kind, rest) = without_condition(a, 2)?;
-    heat(&rest, kind)
+    let (shape, _) = field(a, 1)?;
+    let faces = faces(a, 2, 3, shape.len())?;
+    heat(a, &faces, 4)
 }
 
+/// The heat solve; `t_at` is the position of `t_end`, `steps` follows it.
 fn heat(
     a: &[Data],
-    kind: Condition,
+    faces: &[(Condition, f64)],
+    t_at: usize,
 ) -> Option<Data> {
-    let (alpha, bv, t_end) = (scalar(a, 0)?, scalar(a, 2)?, scalar(a, 3)?);
+    let (alpha, t_end) = (scalar(a, 0)?, scalar(a, t_at)?);
     let (shape, data) = field(a, 1)?;
-    let steps = steps_within(scalar(a, 4)?, data.len())?;
+    let steps = steps_within(a, t_at + 1, data.len())?;
     let (g1, g2, g3) = unit_grids(shape);
     let at = sampler(shape, data, false);
     let problem = match shape.len() {
         | 1 => {
             let u0 = |x: f64| at(&[x]);
-            return Some(solution(
+            return Some(solution(pde_reason(
                 pde::pde_solver(&pde::PdeProblem::Heat1D {
                     alpha,
                     grid: g1,
-                    bc: bcs(kind, bv),
+                    bc: bcs(faces),
                     u0: &u0,
                     t_end,
                     steps,
-                })
-                .ok()?,
-            ));
+                }),
+                "heat",
+            )?));
         },
         | 2 => {
             let u0 = |x: f64, y: f64| at(&[x, y]);
-            return Some(solution(
+            return Some(solution(pde_reason(
                 pde::pde_solver(&pde::PdeProblem::Heat2D {
                     alpha,
                     grid: g2,
-                    bc: bcs(kind, bv),
+                    bc: bcs(faces),
                     u0: &u0,
                     t_end,
                     steps,
-                })
-                .ok()?,
-            ));
+                }),
+                "heat",
+            )?));
         },
         | _ => {
             let u0 = |x: f64, y: f64, z: f64| at(&[x, y, z]);
             pde::pde_solver(&pde::PdeProblem::Heat3D {
                 alpha,
                 grid: g3,
-                bc: bcs(kind, bv),
+                bc: bcs(faces),
                 u0: &u0,
                 t_end,
                 steps,
             })
         },
     };
-    Some(solution(problem.ok()?))
+    Some(solution(pde_reason(problem, "heat")?))
 }
 
 /// `wave_fd(c, u0, v0, boundary_value, t_end, steps)`: Dirichlet walls.
 fn wave_fd(a: &[Data]) -> Option<Data> {
-    wave(a, Condition::Dirichlet)
+    let (shape, _) = field(a, 1)?;
+    let faces = all_dirichlet(scalar(a, 3)?, shape.len());
+    wave(a, &faces, 4)
 }
 
-/// `wave_fd_bc(c, u0, v0, kind, boundary_value, t_end, steps)`: `kind` is
-/// `dirichlet` (a fixed end) or `neumann` (a free, reflecting end).
+/// `wave_fd_bc(c, u0, v0, kind, boundary_value, t_end, steps)`: `kind` and
+/// `boundary_value` as for [`heat_fd_bc`]; `dirichlet` is a fixed end,
+/// `neumann` a free, reflecting one.
 fn wave_fd_bc(a: &[Data]) -> Option<Data> {
-    let (kind, rest) = without_condition(a, 3)?;
-    wave(&rest, kind)
+    let (shape, _) = field(a, 1)?;
+    let faces = faces(a, 3, 4, shape.len())?;
+    wave(a, &faces, 5)
 }
 
+/// The wave solve; `t_at` is the position of `t_end`, `steps` follows it.
 fn wave(
     a: &[Data],
-    kind: Condition,
+    faces: &[(Condition, f64)],
+    t_at: usize,
 ) -> Option<Data> {
-    let (c, bv, t_end) = (scalar(a, 0)?, scalar(a, 3)?, scalar(a, 4)?);
+    let (c, t_end) = (scalar(a, 0)?, scalar(a, t_at)?);
     let (shape, data) = field(a, 1)?;
     let (vshape, vdata) = field(a, 2)?;
-    (vshape == shape).then_some(())?;
-    let steps = steps_within(scalar(a, 5)?, data.len())?;
+    require(
+        vshape == shape,
+        Some(2),
+        DiagKind::Shape,
+        format_args!("the initial velocity has shape {vshape:?} but the displacement {shape:?}"),
+    )?;
+    let steps = steps_within(a, t_at + 1, data.len())?;
     let (g1, g2, g3) = unit_grids(shape);
     let (at, vt) = (sampler(shape, data, false), sampler(shape, vdata, false));
     let solved = match shape.len() {
@@ -737,7 +1109,7 @@ fn wave(
             pde::pde_solver(&pde::PdeProblem::Wave1D {
                 c,
                 grid: g1,
-                bc: bcs(kind, bv),
+                bc: bcs(faces),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -749,7 +1121,7 @@ fn wave(
             pde::pde_solver(&pde::PdeProblem::Wave2D {
                 c,
                 grid: g2,
-                bc: bcs(kind, bv),
+                bc: bcs(faces),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -764,7 +1136,7 @@ fn wave(
             pde::pde_solver(&pde::PdeProblem::Wave3D {
                 c,
                 grid: g3,
-                bc: bcs(kind, bv),
+                bc: bcs(faces),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -772,25 +1144,59 @@ fn wave(
             })
         },
     };
-    Some(solution(solved.ok()?))
+    Some(solution(pde_reason(solved, "wave")?))
 }
 
 /// `poisson_fd(f, boundary_value)`: `-Laplace(u) = f` with `u = boundary_value`
-/// on the whole boundary of the unit box. Neumann walls on every face would
-/// leave the solution defined only up to a constant (the kernel refuses that
-/// singular problem), so there is no `_bc` sibling.
+/// on the whole boundary of the unit box.
 fn poisson_fd(a: &[Data]) -> Option<Data> {
-    let bv = scalar(a, 1)?;
+    let (shape, _) = field(a, 0)?;
+    let faces = all_dirichlet(scalar(a, 1)?, shape.len());
+    poisson(a, &faces)
+}
+
+/// `poisson_fd_bc(f, kind, boundary_value)`: `-Laplace(u) = f` on the unit box
+/// with `kind` and `boundary_value` as for [`heat_fd_bc`]: Dirichlet
+/// (`u = value`) or Neumann (`du/dn = value`, `n` the outward normal) per face
+/// or per axis.
+///
+/// With at least one Dirichlet face the problem is regular. With Neumann on
+/// **every** face it is singular (`u + c` solves it with `u`) and solvable only
+/// when the source and the boundary fluxes balance: `integral f + integral of
+/// the outward flux = 0`, here its discrete form with trapezoid weights (the
+/// weights that make the ghost-node operator symmetric), to a relative `1e-8`.
+/// Data that violate it are an `Incompatible` finding; otherwise the system is
+/// solved in the space orthogonal to the constants and the **zero-mean**
+/// solution is returned: the trapezoid-weighted mean of the answer is zero (the
+/// discrete `integral u = 0`). Add the constant of your choice.
+fn poisson_fd_bc(a: &[Data]) -> Option<Data> {
+    let (shape, _) = field(a, 0)?;
+    let faces = faces(a, 1, 2, shape.len())?;
+    poisson(a, &faces)
+}
+
+/// Relative tolerance of the conjugate-gradient solve of the pure-Neumann
+/// problem.
+const NEUMANN_CG_TOL: f64 = 1e-11;
+
+fn poisson(
+    a: &[Data],
+    faces: &[(Condition, f64)],
+) -> Option<Data> {
     let (shape, data) = field(a, 0)?;
     let (g1, g2, g3) = unit_grids(shape);
     let at = sampler(shape, data, false);
-    let solver = pde::PoissonSolver::SparseLu;
+    let solver = if faces.iter().all(|&(c, _)| c == Condition::Neumann) {
+        pde::PoissonSolver::MeanFree { tol: NEUMANN_CG_TOL }
+    } else {
+        pde::PoissonSolver::SparseLu
+    };
     let solved = match shape.len() {
         | 1 => {
             let f = |x: f64| at(&[x]);
             pde::pde_solver(&pde::PdeProblem::Poisson1D {
                 grid: g1,
-                bc: bcs(Condition::Dirichlet, bv),
+                bc: bcs(faces),
                 f: &f,
                 solver,
             })
@@ -799,7 +1205,7 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
             let f = |x: f64, y: f64| at(&[x, y]);
             pde::pde_solver(&pde::PdeProblem::Poisson2D {
                 grid: g2,
-                bc: bcs(Condition::Dirichlet, bv),
+                bc: bcs(faces),
                 f: &f,
                 solver,
             })
@@ -808,13 +1214,13 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
             let f = |x: f64, y: f64, z: f64| at(&[x, y, z]);
             pde::pde_solver(&pde::PdeProblem::Poisson3D {
                 grid: g3,
-                bc: bcs(Condition::Dirichlet, bv),
+                bc: bcs(faces),
                 f: &f,
                 solver,
             })
         },
     };
-    Some(solution(solved.ok()?))
+    Some(solution(pde_reason(solved, "poisson")?))
 }
 
 /// `advect_fd(velocity, u0, t_end, steps)`: periodic advection (Lax-Wendroff)
@@ -836,9 +1242,18 @@ fn advect(
 ) -> Option<Data> {
     let velocity = vector(a, 0)?;
     let (shape, data) = field(a, 1)?;
-    (velocity.len() == shape.len()).then_some(())?;
+    require(
+        velocity.len() == shape.len(),
+        Some(0),
+        DiagKind::Shape,
+        format_args!(
+            "the velocity needs one component per space dimension ({}), got {}",
+            shape.len(),
+            velocity.len()
+        ),
+    )?;
     let t_end = scalar(a, 2)?;
-    let steps = steps_within(scalar(a, 3)?, data.len())?;
+    let steps = steps_within(a, 3, data.len())?;
     let (g1, g2, g3) = unit_grids(shape);
     let at = sampler(shape, data, true);
     let solved = match shape.len() {
@@ -876,7 +1291,7 @@ fn advect(
             })
         },
     };
-    Some(solution(solved.ok()?))
+    Some(solution(pde_reason(solved, "advection")?))
 }
 
 // ---------------------------------------------------------------------------
@@ -888,13 +1303,37 @@ pub(super) const MAX_SYSTEM: usize = 1_500;
 
 /// A square matrix and a right-hand side of the same order.
 pub(super) fn system(a: &[Data]) -> Option<(usize, &[f64], &[f64])> {
-    let Data::Array { shape, data } = a.first()? else {
-        return None;
+    let Some(Data::Array { shape, data }) = a.first() else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!("expected a square matrix, got {}", Shown(a.first())),
+        );
     };
     let b = vector(a, 1)?;
     let n = b.len();
-    (n > 0 && n <= MAX_SYSTEM && shape.as_slice() == [n, n] && data.iter().all(|x| x.is_finite()))
-        .then_some((n, data.as_slice(), b))
+    require(
+        n > 0 && n <= MAX_SYSTEM,
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the system order must lie in 1..={MAX_SYSTEM}, got {n}"),
+    )?;
+    require(
+        shape.as_slice() == [n, n],
+        Some(0),
+        DiagKind::Shape,
+        format_args!(
+            "the matrix must be {n} x {n} to match the right-hand side, got {}",
+            Shown(a.first())
+        ),
+    )?;
+    require(
+        data.iter().all(|x| x.is_finite()),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("the matrix holds a number that is not finite"),
+    )?;
+    Some((n, data.as_slice(), b))
 }
 
 pub(super) fn dense_apply(
@@ -920,54 +1359,92 @@ pub(super) const fn identity_precondition(
 }
 
 /// The solution of an iteration that reached `tol`; anything else is not an answer.
-pub(super) fn converged(result: krylov::IterResult) -> Option<Data> {
-    (result.converged && result.x.iter().all(|v| v.is_finite())).then(|| Data::vector(result.x))
+pub(super) fn converged(
+    result: krylov::IterResult,
+    tol: f64,
+) -> Option<Data> {
+    if !result.converged {
+        return bad_op(
+            DiagKind::NotConverged,
+            format_args!(
+                "the iteration reached a relative residual of {:e} after {} steps, short of the \
+                 tolerance {tol:e} (the matrix may be singular, indefinite for this method, or \
+                 badly conditioned)",
+                result.residual, result.iterations
+            ),
+        );
+    }
+    require(
+        result.x.iter().all(|v| v.is_finite()),
+        None,
+        DiagKind::Domain,
+        format_args!("the solution is not finite"),
+    )?;
+    Some(Data::vector(result.x))
 }
 
 pub(super) fn tolerance(a: &[Data]) -> Option<f64> {
     let tol = scalar(a, 2)?;
-    (tol > 0.0 && tol < 1.0).then_some(tol)
+    require(
+        tol > 0.0 && tol < 1.0,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the tolerance must lie strictly between 0 and 1, got {tol}"),
+    )?;
+    Some(tol)
 }
 
 /// `minres_solve(A, b, tol)`: symmetric, possibly indefinite `A`.
 fn minres_solve(a: &[Data]) -> Option<Data> {
     let (n, m, b) = system(a)?;
-    converged(krylov_ext::minres(
-        dense_apply(n, m),
-        identity_precondition,
-        b,
-        None,
-        tolerance(a)?,
-        10 * n + 100,
-    ))
+    let tol = tolerance(a)?;
+    converged(
+        krylov_ext::minres(
+            dense_apply(n, m),
+            identity_precondition,
+            b,
+            None,
+            tol,
+            10 * n + 100,
+        ),
+        tol,
+    )
 }
 
 /// `fgmres_solve(A, b, tol)`: restarted flexible GMRES for a general `A`.
 fn fgmres_solve(a: &[Data]) -> Option<Data> {
     let (n, m, b) = system(a)?;
-    converged(krylov_ext::fgmres(
-        dense_apply(n, m),
-        identity_precondition,
-        b,
-        None,
-        n.min(50),
-        tolerance(a)?,
-        10 * n + 100,
-    ))
+    let tol = tolerance(a)?;
+    converged(
+        krylov_ext::fgmres(
+            dense_apply(n, m),
+            identity_precondition,
+            b,
+            None,
+            n.min(50),
+            tol,
+            10 * n + 100,
+        ),
+        tol,
+    )
 }
 
 /// `bicgstab_l_solve(A, b, tol)`: BiCGSTAB(2) for a general `A`.
 fn bicgstab_l_solve(a: &[Data]) -> Option<Data> {
     let (n, m, b) = system(a)?;
-    converged(krylov_ext::bicgstab_l(
-        dense_apply(n, m),
-        identity_precondition,
-        2,
-        b,
-        None,
-        tolerance(a)?,
-        10 * n + 100,
-    ))
+    let tol = tolerance(a)?;
+    converged(
+        krylov_ext::bicgstab_l(
+            dense_apply(n, m),
+            identity_precondition,
+            2,
+            b,
+            None,
+            tol,
+            10 * n + 100,
+        ),
+        tol,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -981,11 +1458,24 @@ pub(super) fn tensor_arg(
     a: &[Data],
     at: usize,
 ) -> Option<ndarray::ArrayD<f64>> {
-    match a.get(at)? {
-        | Data::Array { shape, data } if data.iter().all(|x| x.is_finite()) => {
-            ndarray::ArrayD::from_shape_vec(ndarray::IxDyn(shape), data.clone()).ok()
+    match a.get(at) {
+        | Some(Data::Array { shape, data }) => {
+            require(
+                data.iter().all(|x| x.is_finite()),
+                Some(at),
+                DiagKind::Domain,
+                format_args!("the tensor holds a number that is not finite"),
+            )?;
+            ndarray::ArrayD::from_shape_vec(ndarray::IxDyn(shape), data.clone())
+                .reason(DiagKind::Shape, Some(at))
         },
-        | _ => None,
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a tensor (a nested list), got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -1004,10 +1494,35 @@ fn axes(
     a: &[Data],
     at: usize,
 ) -> Option<Vec<usize>> {
-    vector(a, at)?
-        .iter()
-        .map(|&x| (x >= 0.0 && x.fract() == 0.0 && x < 16.0).then_some(x as usize))
-        .collect()
+    let list = vector(a, at)?;
+    require(
+        list.iter()
+            .all(|&x| x >= 0.0 && x.fract() == 0.0 && x < 16.0),
+        Some(at),
+        DiagKind::Domain,
+        format_args!("axes are integers from 0 to 15, got {list:?}"),
+    )?;
+    Some(list.iter().map(|&x| x as usize).collect())
+}
+
+/// Both operands of a product are small enough that the result is bounded.
+fn bounded_product(
+    x: &ndarray::ArrayD<f64>,
+    y: &ndarray::ArrayD<f64>,
+) -> Option<()> {
+    require(
+        x.len()
+            .checked_mul(y.len())
+            .is_some_and(|n| n <= MAX_TENSOR),
+        None,
+        DiagKind::Domain,
+        format_args!(
+            "the operands ({} and {} elements) could give a result of more than {MAX_TENSOR} \
+             elements",
+            x.len(),
+            y.len()
+        ),
+    )
 }
 
 fn tensor_norm(a: &[Data]) -> Option<Data> {
@@ -1015,21 +1530,64 @@ fn tensor_norm(a: &[Data]) -> Option<Data> {
 }
 
 fn tensor_inner(a: &[Data]) -> Option<Data> {
-    num(tensor::inner_product(&tensor_arg(a, 0)?, &tensor_arg(a, 1)?).ok()?)
+    let (x, y) = (tensor_arg(a, 0)?, tensor_arg(a, 1)?);
+    num(tensor::inner_product(&x, &y).reason(DiagKind::Shape, Some(1))?)
 }
 
 fn tensor_outer(a: &[Data]) -> Option<Data> {
     let (x, y) = (tensor_arg(a, 0)?, tensor_arg(a, 1)?);
-    (x.len().checked_mul(y.len())? <= MAX_TENSOR).then_some(())?;
-    from_tensor(&tensor::outer_product(&x, &y).ok()?)
+    bounded_product(&x, &y)?;
+    from_tensor(&tensor::outer_product(&x, &y).reason(DiagKind::Domain, None)?)
 }
 
+/// `tensordot(x, y, axes_x, axes_y)`: the sum over the paired axes, whose
+/// extents must agree; an axis past the rank or named twice is rejected.
 fn tensordot(a: &[Data]) -> Option<Data> {
     let (x, y) = (tensor_arg(a, 0)?, tensor_arg(a, 1)?);
     let (ax, ay) = (axes(a, 2)?, axes(a, 3)?);
+    require(
+        ax.len() == ay.len(),
+        Some(3),
+        DiagKind::Shape,
+        format_args!(
+            "{} axes of the first tensor are paired with {} of the second",
+            ax.len(),
+            ay.len()
+        ),
+    )?;
+    for (list, t, at, which) in [(&ax, &x, 2, "first"), (&ay, &y, 3, "second")] {
+        let rank = t.ndim();
+        require(
+            list.iter().all(|&axis| axis < rank),
+            Some(at),
+            DiagKind::Domain,
+            format_args!("an axis is past the rank of the {which} tensor (rank {rank}): {list:?}"),
+        )?;
+        let mut sorted = list.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        require(
+            sorted.len() == list.len(),
+            Some(at),
+            DiagKind::Domain,
+            format_args!("an axis of the {which} tensor is named twice: {list:?}"),
+        )?;
+    }
+    for (&p, &q) in ax.iter().zip(&ay) {
+        require(
+            x.shape()[p] == y.shape()[q],
+            Some(2),
+            DiagKind::Shape,
+            format_args!(
+                "the paired axes {p} (extent {}) and {q} (extent {}) must have equal extents",
+                x.shape()[p],
+                y.shape()[q]
+            ),
+        )?;
+    }
     // The result has at most `len(x) * len(y)` elements.
-    (x.len().checked_mul(y.len())? <= MAX_TENSOR).then_some(())?;
-    from_tensor(&tensor::tensordot(&x, &y, &ax, &ay).ok()?)
+    bounded_product(&x, &y)?;
+    from_tensor(&tensor::tensordot(&x, &y, &ax, &ay).reason(DiagKind::Shape, None)?)
 }
 
 /// `tensor_contract(T, i, j)`: the generalised trace over axes `i` and `j`,
@@ -1037,7 +1595,32 @@ fn tensordot(a: &[Data]) -> Option<Data> {
 fn tensor_contract(a: &[Data]) -> Option<Data> {
     let t = tensor_arg(a, 0)?;
     let (i, j) = (count(a, 1, 15)?, count(a, 2, 15)?);
-    from_tensor(&tensor::contract(&t, i, j).ok()?)
+    require(
+        i < t.ndim() && j < t.ndim(),
+        Some(1),
+        DiagKind::Domain,
+        format_args!(
+            "the axes {i} and {j} must both be below the rank {} of the tensor",
+            t.ndim()
+        ),
+    )?;
+    require(
+        i != j,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("a trace needs two different axes, got {i} twice"),
+    )?;
+    require(
+        t.shape()[i] == t.shape()[j],
+        Some(1),
+        DiagKind::Shape,
+        format_args!(
+            "the traced axes {i} and {j} must have equal extents, got {} and {}",
+            t.shape()[i],
+            t.shape()[j]
+        ),
+    )?;
+    from_tensor(&tensor::contract(&t, i, j).reason(DiagKind::Shape, None)?)
 }
 
 // ---------------------------------------------------------------------------
@@ -1049,17 +1632,32 @@ fn points(
     a: &[Data],
     at: usize,
 ) -> Option<Vec<(f64, f64)>> {
-    match a.get(at)? {
-        | Data::Array { shape, data }
-            if shape.len() == 2
-                && shape[1] == 2
-                && shape[0] >= 2
-                && shape[0] <= MAX_LEN
-                && data.iter().all(|x| x.is_finite()) =>
-        {
+    match a.get(at) {
+        | Some(Data::Array { shape, data }) if shape.len() == 2 && shape[1] == 2 => {
+            require(
+                shape[0] >= 2 && shape[0] <= MAX_LEN,
+                Some(at),
+                DiagKind::Domain,
+                format_args!(
+                    "a sampled function has 2 to {MAX_LEN} points, got {}",
+                    shape[0]
+                ),
+            )?;
+            require(
+                data.iter().all(|x| x.is_finite()),
+                Some(at),
+                DiagKind::Domain,
+                format_args!("the points hold a number that is not finite"),
+            )?;
             Some(data.chunks(2).map(|p| (p[0], p[1])).collect())
         },
-        | _ => None,
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a list of (x, y) pairs, got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -1083,12 +1681,14 @@ fn function_inf_norm(a: &[Data]) -> Option<Data> {
 }
 
 fn function_inner(a: &[Data]) -> Option<Data> {
-    num(functional_analysis::inner_product(&points(a, 0)?, &points(a, 1)?).ok()?)
+    let (f, g) = (points(a, 0)?, points(a, 1)?);
+    num(functional_analysis::inner_product(&f, &g).reason(DiagKind::Domain, Some(1))?)
 }
 
 fn function_project(a: &[Data]) -> Option<Data> {
+    let (f, g) = (points(a, 0)?, points(a, 1)?);
     Some(from_points(
-        &functional_analysis::project(&points(a, 0)?, &points(a, 1)?).ok()?,
+        &functional_analysis::project(&f, &g).reason(DiagKind::Domain, Some(1))?,
     ))
 }
 
@@ -1105,18 +1705,40 @@ pub(super) fn matrix(
     a: &[Data],
     at: usize,
 ) -> Option<(usize, usize, &[f64])> {
-    match a.get(at)? {
-        | Data::Array { shape, data }
-            if shape.len() == 2
-                && shape[0] > 0
-                && shape[1] > 0
-                && shape[0] <= MAX_SYSTEM
-                && shape[1] <= MAX_SYSTEM
-                && data.iter().all(|x| x.is_finite()) =>
-        {
+    matrix_of(a.get(at), at)
+}
+
+/// A matrix argument already picked out (`at` is the position blamed).
+pub(super) fn matrix_of(
+    item: Option<&Data>,
+    at: usize,
+) -> Option<(usize, usize, &[f64])> {
+    match item {
+        | Some(Data::Array { shape, data }) if shape.len() == 2 => {
+            require(
+                shape[0] > 0 && shape[1] > 0 && shape[0] <= MAX_SYSTEM && shape[1] <= MAX_SYSTEM,
+                Some(at),
+                DiagKind::Domain,
+                format_args!(
+                    "a matrix has 1 to {MAX_SYSTEM} rows and columns, got {} x {}",
+                    shape[0], shape[1]
+                ),
+            )?;
+            require(
+                data.iter().all(|x| x.is_finite()),
+                Some(at),
+                DiagKind::Domain,
+                format_args!("the matrix holds a number that is not finite"),
+            )?;
             Some((shape[0], shape[1], data))
         },
-        | _ => None,
+        | other => {
+            bad(
+                at,
+                DiagKind::Shape,
+                format_args!("expected a matrix (a list of rows), got {}", Shown(other)),
+            )
+        },
     }
 }
 
@@ -1152,7 +1774,7 @@ fn randomized_singular_values(a: &[Data]) -> Option<Data> {
         k,
         &lowrank::RandomizedOptions::default(),
     )
-    .ok()?;
+    .reason(DiagKind::Domain, None)?;
     vec_out(svd.s.into_iter().take(k).collect())
 }
 
@@ -1160,17 +1782,28 @@ fn randomized_singular_values(a: &[Data]) -> Option<Data> {
 /// symmetric matrix (`3 k <= n`).
 fn lobpcg_eigenvalues(a: &[Data]) -> Option<Data> {
     let (m, n, data) = matrix(a, 0)?;
-    (m == n).then_some(())?;
+    require(
+        m == n,
+        Some(0),
+        DiagKind::Shape,
+        format_args!("the matrix must be square, got {m} x {n}"),
+    )?;
     let k = count(a, 1, n / 3)?;
-    let tol = tolerance(&[a[0].clone(), a[1].clone(), a.get(2)?.clone()])?;
+    let tol = tolerance(a)?;
     let symmetric = (0..n).all(|i| {
         (0..i).all(|j| {
             (data[i * n + j] - data[j * n + i]).abs() <= 1e-12 * (1.0 + data[i * n + j].abs())
         })
     });
-    symmetric.then_some(())?;
+    require(
+        symmetric,
+        Some(0),
+        DiagKind::Domain,
+        format_args!("the matrix must be symmetric"),
+    )?;
     let apply = dense_apply(n, data);
-    let pairs = lowrank::lobpcg(&apply, None, n, k, tol, 20 * n + 200, 0x5EED).ok()?;
+    let pairs = lowrank::lobpcg(&apply, None, n, k, tol, 20 * n + 200, 0x5EED)
+        .reason(DiagKind::NotConverged, None)?;
     vec_out(pairs.values)
 }
 
@@ -1329,6 +1962,11 @@ pub(super) const ENTRIES: &[Entry] = &[
         eval: poisson_fd,
     },
     Entry {
+        name: "poisson_fd_bc",
+        params: "nws",
+        eval: poisson_fd_bc,
+    },
+    Entry {
         name: "advect_fd",
         params: "vnss",
         eval: advect_fd,
@@ -1419,6 +2057,79 @@ pub(super) const ENTRIES: &[Entry] = &[
         eval: function_normalize,
     },
 ];
+
+/// Whether every number of a result is finite, the condition for encoding it.
+fn finite(data: &Data) -> bool {
+    match data {
+        | Data::Scalar(x) => x.is_finite(),
+        | Data::Array { data, .. } => data.iter().all(|x| x.is_finite()),
+        | Data::Name(_) => false,
+        | Data::Tree(parts) => parts.iter().all(finite),
+    }
+}
+
+/// Why the call `node` of the operator `entry` does not reduce, or `None` when
+/// it does (or when the operator is not a bridged one).
+///
+/// The arguments are decoded as the kernel does and the evaluator is run again
+/// under a [`diag::capture`], so the answer is the reason the evaluator itself
+/// recorded; nothing is added to the graph.
+pub(super) fn explain_entry(
+    entry: &Entry,
+    graph: &Graph,
+    node: NodeId,
+) -> Option<diag::Diag> {
+    let name = entry.name;
+    let children = graph.children(node);
+    if children.len() != entry.params.len() {
+        return Some(
+            diag::Diag::new(
+                DiagKind::Arity,
+                format!(
+                    "takes {} arguments, got {}",
+                    entry.params.len(),
+                    children.len()
+                ),
+            )
+            .in_op(name),
+        );
+    }
+    let mut args = Vec::with_capacity(children.len());
+    for (index, &child) in children.iter().enumerate() {
+        let Some(value) = decode(graph, child) else {
+            return Some(
+                diag::Diag::new(
+                    DiagKind::Symbolic,
+                    "the argument is not a literal number, rectangular list or symbol (it is an \
+                     expression, or a ragged or too deeply nested list); only literals are \
+                     computed",
+                )
+                .at(index)
+                .in_op(name),
+            );
+        };
+        args.push(value);
+    }
+    let (value, found) = diag::capture(|| (entry.eval)(&args));
+    match value {
+        | Some(out) if finite(&out) => None,
+        | Some(_) => {
+            Some(diag::Diag::new(DiagKind::Domain, "the result is not finite").in_op(name))
+        },
+        | None => {
+            Some(
+                found
+                    .unwrap_or_else(|| {
+                        diag::Diag::new(
+                            DiagKind::Unspecified,
+                            "the arguments were declined and the operator gave no reason",
+                        )
+                    })
+                    .in_op(name),
+            )
+        },
+    }
+}
 
 /// The reduction function of one bridged operator.
 pub(super) type BridgeFn = fn(&[Data]) -> Option<Data>;

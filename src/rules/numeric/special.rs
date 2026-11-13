@@ -23,7 +23,9 @@ use num_complex::Complex64;
 
 use super::bridge::Data;
 use super::bridge::Entry;
+use super::bridge::require;
 use super::bridge::scalar;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::fresnel;
 use crate::kernels::special_complex;
 
@@ -40,12 +42,24 @@ fn point(
     at: usize,
 ) -> Option<Complex64> {
     let (re, im) = (scalar(a, at)?, scalar(a, at + 1)?);
-    (re.abs() <= MAX_PART && im.abs() <= MAX_PART).then(|| Complex64::new(re, im))
+    require(
+        re.abs() <= MAX_PART && im.abs() <= MAX_PART,
+        Some(at),
+        DiagKind::Domain,
+        format_args!("the real and imaginary parts must not exceed {MAX_PART:e} in magnitude"),
+    )?;
+    Some(Complex64::new(re, im))
 }
 
 /// A complex answer as `list(re, im)`; a non-finite one is no answer.
 fn pair(value: Complex64) -> Option<Data> {
-    (value.re.is_finite() && value.im.is_finite()).then(|| Data::vector(vec![value.re, value.im]))
+    require(
+        value.re.is_finite() && value.im.is_finite(),
+        None,
+        DiagKind::Domain,
+        format_args!("the value is not finite (a pole, or an overflow)"),
+    )?;
+    Some(Data::vector(vec![value.re, value.im]))
 }
 
 fn lgamma_complex(a: &[Data]) -> Option<Data> {
@@ -329,7 +343,11 @@ mod tests {
             Complex64::new(0.5, 0.5) * e,
             1e-11,
         );
-        for src in ["erf_complex(1e4, 0)", "erf_complex(x, 0)", "fresnel_s_complex(0, 5e3)"] {
+        for src in [
+            "erf_complex(1e4, 0)",
+            "erf_complex(x, 0)",
+            "fresnel_s_complex(0, 5e3)",
+        ] {
             let (text, reduced) = reduce_with(&[numeric()], src, &[]);
             assert!(!reduced, "{text}");
         }

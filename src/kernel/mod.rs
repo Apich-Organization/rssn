@@ -27,6 +27,7 @@
 //! | [`manifest`] | The self-description a host reads: [`KernelManifest`]. |
 //! | [`codec`] | Deterministic encoding, over `bincode-next` only. |
 //! | [`infer`] | How an operator that never declared a signature gets one. |
+//! | [`diag`] | Why an operator call did not reduce: [`Diag`], [`DiagKind`], `Session::apply_diag`. |
 //!
 //! # The invariants
 //!
@@ -77,6 +78,7 @@ mod callback;
 pub use callback::CallbackBank;
 pub mod cdylib;
 pub mod codec;
+pub mod diag;
 pub mod infer;
 pub mod manifest;
 pub mod overload;
@@ -94,6 +96,8 @@ pub use call::Target;
 pub use call::Trace;
 pub use call::TraceEvent;
 pub use codec::CodecError;
+pub use diag::Diag;
+pub use diag::DiagKind;
 pub use manifest::BaseDimInfo;
 pub use manifest::Features;
 pub use manifest::KernelManifest;

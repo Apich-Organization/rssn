@@ -401,7 +401,7 @@ pub fn poisson_3d(
             })
         })
         .collect();
-    let u = solve_poisson_system(&lap, &rhs, n_dir, 6, solver)?;
+    let u = solve_poisson_system(&lap, &rhs, n_dir, 6, [nx, ny, grid.nz], solver)?;
     Ok(field_3d(grid, u, 0.0))
 }
 
@@ -445,7 +445,7 @@ pub fn poisson_1d(
     let rhs: Vec<f64> = (0..grid.n)
         .map(|i| lap.dirichlet[i].unwrap_or_else(|| f(grid.x0 + i as f64 * h) + lap.b[i]))
         .collect();
-    let u = solve_poisson_system(&lap, &rhs, n_dir, 2, solver)?;
+    let u = solve_poisson_system(&lap, &rhs, n_dir, 2, [grid.n, 1, 1], solver)?;
     Ok(Field1D {
         x: grid.nodes(),
         u,

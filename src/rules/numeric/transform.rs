@@ -18,13 +18,18 @@ use num_complex::Complex64;
 use super::bridge::Data;
 use super::bridge::Entry;
 use super::bridge::MAX_LEN;
+use super::bridge::Reason;
+use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::matrix;
+use super::bridge::require;
 use super::bridge::rows;
 use super::bridge::scalar;
 use super::bridge::vec_out;
 use super::bridge::vector;
 use super::bridge::wavelet;
+use super::bridge::wavelet_reason;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::wavelets;
 use crate::kernels::wavelets::Boundary;
 
@@ -36,18 +41,47 @@ const MAX_FRFT: usize = 128;
 fn wavedec(a: &[Data]) -> Option<Data> {
     let (x, w) = (vector(a, 0)?, wavelet(a, 1)?);
     let levels = count(a, 2, 30)?;
-    (levels >= 1 && !x.is_empty()).then_some(())?;
-    let coefficients = wavelets::wavedec(x, w, levels).ok()?;
+    require(
+        levels >= 1,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("at least one level is needed"),
+    )?;
+    require(
+        !x.is_empty(),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("the signal must not be empty"),
+    )?;
+    let coefficients = wavelet_reason(wavelets::wavedec(x, w, levels), "wavedec")?;
     Some(Data::Tree(
         coefficients.into_iter().map(Data::vector).collect(),
     ))
 }
 
 fn waverec(a: &[Data]) -> Option<Data> {
-    let coefficients = rows(a.first()?)?;
+    let Some(coefficients) = a.first().and_then(rows) else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!("expected the list of coefficient lists that wavedec returns"),
+        );
+    };
     let w = wavelet(a, 1)?;
-    (coefficients.len() >= 2 && coefficients.iter().all(|c| c.len() <= MAX_LEN)).then_some(())?;
-    vec_out(wavelets::waverec(&coefficients, w).ok()?)
+    require(
+        coefficients.len() >= 2 && coefficients.iter().all(|c| c.len() <= MAX_LEN),
+        Some(0),
+        DiagKind::Shape,
+        format_args!(
+            "needs an approximation and at least one detail list, each within {MAX_LEN} numbers; \
+             got {} lists",
+            coefficients.len()
+        ),
+    )?;
+    vec_out(wavelet_reason(
+        wavelets::waverec(&coefficients, w),
+        "waverec",
+    )?)
 }
 
 /// A matrix as a `rows x cols` array.
@@ -77,11 +111,27 @@ fn block(
 fn dwt2(a: &[Data]) -> Option<Data> {
     let (rows, cols, x) = matrix(a, 0)?;
     let w = wavelet(a, 1)?;
-    (rows % 2 == 0 && cols % 2 == 0 && rows * cols <= MAX_MATRIX).then_some(())?;
-    let packed = wavelets::dwt2(x, rows, cols, w, Boundary::Periodic).ok()?;
+    require(
+        rows % 2 == 0 && cols % 2 == 0,
+        Some(0),
+        DiagKind::Shape,
+        format_args!("both extents must be even, got {rows} x {cols}"),
+    )?;
+    require(
+        rows * cols <= MAX_MATRIX,
+        Some(0),
+        DiagKind::Domain,
+        format_args!("a transformed matrix is limited to {MAX_MATRIX} elements"),
+    )?;
+    let packed = wavelet_reason(wavelets::dwt2(x, rows, cols, w, Boundary::Periodic), "dwt2")?;
     let (ra, ca) = (rows / 2, cols / 2);
     let width = 2 * ca;
-    (packed.len() == 4 * ra * ca).then_some(())?;
+    require(
+        packed.len() == 4 * ra * ca,
+        None,
+        DiagKind::Domain,
+        format_args!("the transform returned an unexpected number of coefficients"),
+    )?;
     let band =
         |r: (usize, usize), c: (usize, usize)| matrix_out(ra, ca, block(&packed, width, r, c));
     Some(Data::Tree(vec![
@@ -98,10 +148,20 @@ fn idwt2(a: &[Data]) -> Option<Data> {
     let mut bands = vec![ll];
     for at in 1..4 {
         let (r, c, band) = matrix(a, at)?;
-        (r == ra && c == ca).then_some(())?;
+        require(
+            r == ra && c == ca,
+            Some(at),
+            DiagKind::Shape,
+            format_args!("band {at} is {r} x {c} but the approximation is {ra} x {ca}"),
+        )?;
         bands.push(band);
     }
-    (4 * ra * ca <= MAX_MATRIX).then_some(())?;
+    require(
+        4 * ra * ca <= MAX_MATRIX,
+        Some(0),
+        DiagKind::Domain,
+        format_args!("a transformed matrix is limited to {MAX_MATRIX} elements"),
+    )?;
     let (rows, cols) = (2 * ra, 2 * ca);
     let mut packed = vec![0.0; rows * cols];
     for (k, band) in bands.iter().enumerate() {
@@ -111,7 +171,10 @@ fn idwt2(a: &[Data]) -> Option<Data> {
             packed[dst..dst + ca].copy_from_slice(&band[r * ca..(r + 1) * ca]);
         }
     }
-    let out = wavelets::idwt2(&packed, rows, cols, w, Boundary::Periodic).ok()?;
+    let out = wavelet_reason(
+        wavelets::idwt2(&packed, rows, cols, w, Boundary::Periodic),
+        "idwt2",
+    )?;
     Some(matrix_out(rows, cols, out))
 }
 
@@ -119,14 +182,34 @@ fn idwt2(a: &[Data]) -> Option<Data> {
 fn fractional(a: &[Data]) -> Option<Vec<Complex64>> {
     let (re, im) = (vector(a, 0)?, vector(a, 1)?);
     let order = scalar(a, 2)?;
-    (re.len() == im.len() && (2..=MAX_FRFT).contains(&re.len()) && order.abs() <= 1.0e6)
-        .then_some(())?;
+    require(
+        re.len() == im.len(),
+        Some(1),
+        DiagKind::Shape,
+        format_args!(
+            "the imaginary part has {} entries but the real part has {}",
+            im.len(),
+            re.len()
+        ),
+    )?;
+    require(
+        (2..=MAX_FRFT).contains(&re.len()),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("the signal has 2 to {MAX_FRFT} samples, got {}", re.len()),
+    )?;
+    require(
+        order.abs() <= 1.0e6,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the order must not exceed 1e6 in magnitude, got {order}"),
+    )?;
     let signal: Vec<Complex64> = re
         .iter()
         .zip(im)
         .map(|(&r, &i)| Complex64::new(r, i))
         .collect();
-    wavelets::frft(&signal, order).ok()
+    wavelets::frft(&signal, order).reason(DiagKind::Domain, None)
 }
 
 fn frft_re(a: &[Data]) -> Option<Data> {

@@ -1210,10 +1210,12 @@ mod tests {
 
     #[test]
     fn cp_reconstruct_matches_the_rank_one_outer_product() {
-        let col = |v: &[f64]| Mat {
-            rows: v.len(),
-            cols: 1,
-            data: v.to_vec(),
+        let col = |v: &[f64]| {
+            Mat {
+                rows: v.len(),
+                cols: 1,
+                data: v.to_vec(),
+            }
         };
         let built = cp_reconstruct(&[2.0], &[col(&[1.0, 2.0]), col(&[3.0, 4.0, 5.0])]).unwrap();
         assert_eq!(built.shape(), &[2, 3]);

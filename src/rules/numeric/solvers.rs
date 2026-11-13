@@ -19,11 +19,15 @@
 
 use super::bridge::Data;
 use super::bridge::Entry;
+use super::bridge::bad;
+use super::bridge::bad_op;
 use super::bridge::name;
+use super::bridge::require;
 use super::bridge::rows;
 use super::bridge::scalar;
 use super::bridge::vec_out;
 use super::bridge::vector;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::amg_general::AmgGeneral;
 use crate::kernels::amg_general::AmgGeneralOptions;
 use crate::kernels::amg_general::AmgKind;
@@ -45,16 +49,45 @@ fn sparse_matrix(
     a: &[Data],
     n: usize,
 ) -> Option<(Csr, Vec<f64>)> {
-    let triplets = rows(a.first()?)?;
-    (!triplets.is_empty() && triplets.len() <= MAX_ENTRIES).then_some(())?;
+    let Some(triplets) = a.first().and_then(rows) else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!("expected a list of triplets list(i, j, value)"),
+        );
+    };
+    require(
+        !triplets.is_empty() && triplets.len() <= MAX_ENTRIES,
+        Some(0),
+        DiagKind::Domain,
+        format_args!(
+            "a sparse matrix has 1 to {MAX_ENTRIES} stored entries, got {}",
+            triplets.len()
+        ),
+    )?;
     let mut entries = Vec::with_capacity(triplets.len());
     let mut diagonal = vec![0.0; n];
-    for t in &triplets {
+    for (k, t) in triplets.iter().enumerate() {
         let &[i, j, v] = t.as_slice() else {
-            return None;
+            return bad(
+                0,
+                DiagKind::Shape,
+                format_args!(
+                    "entry {k} must be a triplet list(i, j, value), got {} numbers",
+                    t.len()
+                ),
+            );
         };
         let index = |x: f64| (x >= 0.0 && x.fract() == 0.0 && x < n as f64).then_some(x as usize);
-        let (i, j) = (index(i)?, index(j)?);
+        let (Some(i), Some(j)) = (index(i), index(j)) else {
+            return bad(
+                0,
+                DiagKind::Domain,
+                format_args!(
+                    "entry {k} has an index outside 0..{n} (the order is the length of b)"
+                ),
+            );
+        };
         if i == j {
             diagonal[i] += v;
         }
@@ -66,21 +99,59 @@ fn sparse_matrix(
 /// The right-hand side and the tolerance shared by the sparse solvers.
 fn right_hand_side(a: &[Data]) -> Option<(&[f64], f64)> {
     let b = vector(a, 1)?;
-    (!b.is_empty() && b.len() <= MAX_ORDER).then_some(())?;
+    require(
+        !b.is_empty() && b.len() <= MAX_ORDER,
+        Some(1),
+        DiagKind::Domain,
+        format_args!(
+            "the system order must lie in 1..={MAX_ORDER}, got {}",
+            b.len()
+        ),
+    )?;
     let tol = scalar(a, 2)?;
-    (tol > 0.0 && tol < 1.0).then_some((b, tol))
+    require(
+        tol > 0.0 && tol < 1.0,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("the tolerance must lie strictly between 0 and 1, got {tol}"),
+    )?;
+    Some((b, tol))
 }
 
 fn finished(
     x: Vec<f64>,
     converged: bool,
+    tol: f64,
+    reached: f64,
+    steps: usize,
 ) -> Option<Data> {
-    (converged && x.iter().all(|v| v.is_finite())).then(|| Data::vector(x))
+    require(
+        converged,
+        None,
+        DiagKind::NotConverged,
+        format_args!(
+            "the iteration reached a relative residual of {reached:e} after {steps} steps, \
+             short of the tolerance {tol:e}"
+        ),
+    )?;
+    require(
+        x.iter().all(|v| v.is_finite()),
+        None,
+        DiagKind::Domain,
+        format_args!("the solution is not finite"),
+    )?;
+    Some(Data::vector(x))
 }
 
 fn sparse_solve(a: &[Data]) -> Option<Data> {
     let (b, tol) = right_hand_side(a)?;
     let method = name(a, 3)?;
+    require(
+        matches!(method, "minres" | "fgmres" | "bicgstab_l" | "idr_s"),
+        Some(3),
+        DiagKind::Domain,
+        format_args!("unknown method `{method}` (use minres, fgmres, bicgstab_l or idr_s)"),
+    )?;
     let n = b.len();
     let (matrix, diagonal) = sparse_matrix(a, n)?;
     let apply = |x: &[f64], y: &mut [f64]| matrix.matvec(x, y);
@@ -112,9 +183,21 @@ fn sparse_solve(a: &[Data]) -> Option<Data> {
                 },
             )
         },
-        | _ => return None,
+        | other => {
+            return bad(
+                3,
+                DiagKind::Domain,
+                format_args!("unknown method `{other}` (use minres, fgmres, bicgstab_l or idr_s)"),
+            );
+        },
     };
-    finished(result.x, result.converged)
+    finished(
+        result.x,
+        result.converged,
+        tol,
+        result.residual,
+        result.iterations,
+    )
 }
 
 fn amg_solve(a: &[Data]) -> Option<Data> {
@@ -122,20 +205,36 @@ fn amg_solve(a: &[Data]) -> Option<Data> {
     let kind = match name(a, 3)? {
         | "ruge_stuben" => AmgKind::RugeStuben,
         | "smoothed_aggregation" => AmgKind::SmoothedAggregation,
-        | _ => return None,
+        | other => {
+            return bad(
+                3,
+                DiagKind::Domain,
+                format_args!("unknown kind `{other}` (use ruge_stuben or smoothed_aggregation)"),
+            );
+        },
     };
     let (matrix, diagonal) = sparse_matrix(a, b.len())?;
-    diagonal
-        .iter()
-        .all(|&d| d.is_finite() && d > 0.0)
-        .then_some(())?;
+    require(
+        diagonal.iter().all(|&d| d.is_finite() && d > 0.0),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("multigrid needs a positive diagonal (an entry on every row, all above zero)"),
+    )?;
     let options = AmgGeneralOptions {
         kind,
         ..AmgGeneralOptions::default()
     };
-    let hierarchy = AmgGeneral::build(&matrix, &options).ok()?;
+    let Ok(hierarchy) = AmgGeneral::build(&matrix, &options) else {
+        return bad(
+            0,
+            DiagKind::Singular,
+            format_args!("the matrix is not square or has a missing or non-positive diagonal"),
+        );
+    };
     let solved = hierarchy.solve(b, None, tol, MAX_ITERATIONS.min(500));
-    finished(solved.x, solved.converged)
+    let reached = solved.history.last().copied().unwrap_or(f64::NAN);
+    let cycles = solved.history.len().saturating_sub(1);
+    finished(solved.x, solved.converged, tol, reached, cycles)
 }
 
 /// Most vertices of an ordered graph and most adjacency entries.
@@ -143,16 +242,38 @@ const MAX_VERTICES: usize = 50_000;
 const MAX_NEIGHBOURS: usize = 500_000;
 
 fn nested_dissection_order(a: &[Data]) -> Option<Data> {
-    let lists = rows(a.first()?)?;
+    let Some(lists) = a.first().and_then(rows) else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!("expected one list of neighbour indices per vertex"),
+        );
+    };
     let n = lists.len();
-    ((1..=MAX_VERTICES).contains(&n)).then_some(())?;
+    require(
+        (1..=MAX_VERTICES).contains(&n),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("a graph has 1 to {MAX_VERTICES} vertices, got {n}"),
+    )?;
     let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut stored = 0_usize;
     for (v, list) in lists.iter().enumerate() {
         stored += list.len();
-        (stored <= MAX_NEIGHBOURS).then_some(())?;
+        require(
+            stored <= MAX_NEIGHBOURS,
+            Some(0),
+            DiagKind::Domain,
+            format_args!("the adjacency is limited to {MAX_NEIGHBOURS} entries"),
+        )?;
         for &x in list {
-            let w = (x >= 0.0 && x.fract() == 0.0 && x < n as f64).then_some(x as usize)?;
+            require(
+                x >= 0.0 && x.fract() == 0.0 && x < n as f64,
+                Some(0),
+                DiagKind::Domain,
+                format_args!("vertex {v} lists the neighbour {x}, which is not a vertex (0..{n})"),
+            )?;
+            let w = x as usize;
             if w != v {
                 adjacency[v].push(w);
                 adjacency[w].push(v);
@@ -169,7 +290,12 @@ fn nested_dissection_order(a: &[Data]) -> Option<Data> {
         && perm
             .iter()
             .all(|&v| v < n && !std::mem::replace(&mut seen[v], true));
-    valid.then_some(())?;
+    require(
+        valid,
+        None,
+        DiagKind::Domain,
+        format_args!("the ordering routine did not return a permutation of the vertices"),
+    )?;
     vec_out(perm.iter().map(|&v| v as f64).collect())
 }
 
@@ -180,33 +306,100 @@ const MAX_EXPONENT: f64 = 8.0;
 const MAX_PATHS: u64 = 128;
 
 fn polynomial_system_roots(a: &[Data]) -> Option<Data> {
-    let equations = super::bridge::parts_of(a.first()?)?;
+    let Some(equations) = a.first().and_then(super::bridge::parts_of) else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!(
+                "expected a list of equations, each a list of terms list(coefficient, e_1, .., e_n)"
+            ),
+        );
+    };
     let n = equations.len();
-    ((1..=MAX_VARIABLES).contains(&n)).then_some(())?;
+    require(
+        (1..=MAX_VARIABLES).contains(&n),
+        Some(0),
+        DiagKind::Domain,
+        format_args!("a system has 1 to {MAX_VARIABLES} equations (one per variable), got {n}"),
+    )?;
     let mut system: Vec<Vec<PolyTerm>> = Vec::with_capacity(n);
     let mut paths = 1_u64;
-    for equation in &equations {
-        let terms = rows(equation)?;
-        (!terms.is_empty() && terms.len() <= MAX_TERMS).then_some(())?;
+    for (k, equation) in equations.iter().enumerate() {
+        let Some(terms) = rows(equation) else {
+            return bad(
+                0,
+                DiagKind::Shape,
+                format_args!(
+                    "equation {k} must be a list of terms list(coefficient, e_1, .., e_{n})"
+                ),
+            );
+        };
+        require(
+            !terms.is_empty() && terms.len() <= MAX_TERMS,
+            Some(0),
+            DiagKind::Domain,
+            format_args!(
+                "equation {k} has 1 to {MAX_TERMS} terms, got {}",
+                terms.len()
+            ),
+        )?;
         let mut parsed = Vec::with_capacity(terms.len());
         let mut degree = 0_u32;
         for term in &terms {
-            let (&coef, exponents) = term.split_first()?;
-            (exponents.len() == n && coef.is_finite()).then_some(())?;
-            let exps: Option<Vec<u32>> = exponents
-                .iter()
-                .map(|&e| (e >= 0.0 && e.fract() == 0.0 && e <= MAX_EXPONENT).then_some(e as u32))
-                .collect();
-            let exps = exps?;
+            let Some((&coef, exponents)) = term.split_first() else {
+                return bad(
+                    0,
+                    DiagKind::Shape,
+                    format_args!("equation {k} has an empty term"),
+                );
+            };
+            require(
+                exponents.len() == n && coef.is_finite(),
+                Some(0),
+                DiagKind::Shape,
+                format_args!(
+                    "each term of equation {k} needs a finite coefficient and {n} exponents (one \
+                     per variable), got {} exponents",
+                    exponents.len()
+                ),
+            )?;
+            let valid = |e: &f64| *e >= 0.0 && e.fract() == 0.0 && *e <= MAX_EXPONENT;
+            require(
+                exponents.iter().all(valid),
+                Some(0),
+                DiagKind::Domain,
+                format_args!(
+                    "exponents are integers from 0 to {MAX_EXPONENT}, got {exponents:?} in equation {k}"
+                ),
+            )?;
+            let exps: Vec<u32> = exponents.iter().map(|&e| e as u32).collect();
             degree = degree.max(exps.iter().sum());
             parsed.push(PolyTerm { coef, exps });
         }
-        (degree >= 1).then_some(())?;
-        paths = paths.checked_mul(u64::from(degree))?;
-        (paths <= MAX_PATHS).then_some(())?;
+        require(
+            degree >= 1,
+            Some(0),
+            DiagKind::Domain,
+            format_args!("equation {k} is constant: every term has total degree 0"),
+        )?;
+        paths = paths.saturating_mul(u64::from(degree));
+        require(
+            paths <= MAX_PATHS,
+            Some(0),
+            DiagKind::Domain,
+            format_args!(
+                "the total-degree homotopy needs at least {paths} paths after equation {k}, over \
+                 the limit of {MAX_PATHS}"
+            ),
+        )?;
         system.push(parsed);
     }
-    let ends = homotopy::homotopy_solve(&system, &homotopy::HomotopyOptions::default()).ok()?;
+    let Ok(ends) = homotopy::homotopy_solve(&system, &homotopy::HomotopyOptions::default()) else {
+        return bad_op(
+            DiagKind::NotConverged,
+            format_args!("the homotopy continuation failed (a singular or malformed system)"),
+        );
+    };
     let roots: Vec<&homotopy::PathEnd> = ends
         .iter()
         .filter(|end| {

@@ -1150,9 +1150,8 @@ pub fn solve_shallow_water_3d(
 
                     let (ca, cb) = (components(a), components(b));
 
-                    [0, 1, 2, 3].map(|k| {
-                        f64::midpoint(fa[k], fb[k]) - (h_a / (6.0 * dt)) * (cb[k] - ca[k])
-                    })
+                    [0, 1, 2, 3]
+                        .map(|k| f64::midpoint(fa[k], fb[k]) - (h_a / (6.0 * dt)) * (cb[k] - ca[k]))
                 };
 
                 let (f_left, f_right) = (numerical(left, c), numerical(c, right));

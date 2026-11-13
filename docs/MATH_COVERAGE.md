@@ -128,7 +128,7 @@ stay as aliases of the same operator, and a family now has all three.
 | Family | Dimension-free name | Aliases | Kernel |
 |---|---|---|---|
 | heat / wave / Laplace / Poisson (symbolic) | `solve_heat_equation`, `solve_wave_equation`, `solve_laplace_equation`, `solve_poisson_equation` | `_1d`, `_2d`, `_3d` of each | `rules::pde` |
-| heat / wave / Poisson / advection (finite differences, unit box) | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd` | none: depth 1, 2, 3 of the data | `kernels::pde` (`heat_1d` .. `heat_3d`, `poisson_1d` .. `poisson_3d`, `advection_1d` .. `advection_3d`, `wave_1d` .. `wave_3d`) |
+| heat / wave / Poisson / advection (finite differences, unit box) | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd`, and the `heat_fd_bc`, `wave_fd_bc`, `poisson_fd_bc` siblings with Dirichlet/Neumann conditions per face or axis (all-Neumann Poisson: compatibility checked, zero-mean solution) | none: depth 1, 2, 3 of the data | `kernels::pde` (`heat_1d` .. `heat_3d`, `poisson_1d` .. `poisson_3d`, `advection_1d` .. `advection_3d`, `wave_1d` .. `wave_3d`) |
 | affine transforms | `translation`, `scaling`, `shear`, `reflection`, `rotation` | `_2d`, `_3d` (`shear_3d` added) | `rules::discrete::graphics` |
 
 `method_of_lines_1d` (stiff ODE solvers) is the one finite-difference solver

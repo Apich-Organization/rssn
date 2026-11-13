@@ -28,15 +28,20 @@ use ndarray::ArrayD;
 
 use super::bridge::Data;
 use super::bridge::Entry;
+use super::bridge::Reason;
+use super::bridge::bad;
 use super::bridge::count;
 use super::bridge::from_tensor;
 use super::bridge::matrix;
+use super::bridge::matrix_of;
 use super::bridge::num;
 use super::bridge::parts_of;
+use super::bridge::require;
 use super::bridge::scalar;
 use super::bridge::tensor_arg;
 use super::bridge::vec_out;
 use super::bridge::vector;
+use crate::kernel::diag::DiagKind;
 use crate::kernels::dense::Mat;
 use crate::kernels::lowrank;
 use crate::kernels::tensor;
@@ -53,22 +58,33 @@ fn kernel_matrix(
     at: usize,
 ) -> Option<Mat> {
     let (rows, cols, data) = matrix(a, at)?;
-    (rows * cols <= MAX_ELEMENTS).then(|| {
-        Mat {
-            rows,
-            cols,
-            data: data.to_vec(),
-        }
+    require(
+        rows * cols <= MAX_ELEMENTS,
+        Some(at),
+        DiagKind::Domain,
+        format_args!(
+            "a decomposed matrix is limited to {MAX_ELEMENTS} elements, got {rows} x {cols}"
+        ),
+    )?;
+    Some(Mat {
+        rows,
+        cols,
+        data: data.to_vec(),
     })
 }
 
 fn pivoted(a: &[Data]) -> Option<lowrank::PivotedQr> {
-    lowrank::qr_pivoted(&kernel_matrix(a, 0)?).ok()
+    lowrank::qr_pivoted(&kernel_matrix(a, 0)?).reason(DiagKind::Domain, Some(0))
 }
 
 fn qr_pivoted_rank(a: &[Data]) -> Option<Data> {
     let tol = scalar(a, 1)?;
-    (0.0..1.0).contains(&tol).then_some(())?;
+    require(
+        (0.0..1.0).contains(&tol),
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the rank tolerance must lie in [0, 1), got {tol}"),
+    )?;
     num(pivoted(a)?.rank(Some(tol)) as f64)
 }
 
@@ -87,11 +103,31 @@ fn dense_tensor(
     at: usize,
 ) -> Option<ArrayD<f64>> {
     let t = tensor_arg(a, at)?;
-    (t.ndim() >= 2
-        && t.ndim() <= MAX_MODES
-        && t.len() <= MAX_ELEMENTS
-        && t.shape().iter().all(|&n| n >= 1))
-    .then_some(t)
+    require(
+        t.ndim() >= 2 && t.ndim() <= MAX_MODES,
+        Some(at),
+        DiagKind::Shape,
+        format_args!(
+            "a decomposed tensor has 2 to {MAX_MODES} modes (nesting levels), got {}",
+            t.ndim()
+        ),
+    )?;
+    require(
+        t.len() <= MAX_ELEMENTS,
+        Some(at),
+        DiagKind::Domain,
+        format_args!(
+            "a decomposed tensor is limited to {MAX_ELEMENTS} elements, got {}",
+            t.len()
+        ),
+    )?;
+    require(
+        t.shape().iter().all(|&n| n >= 1),
+        Some(at),
+        DiagKind::Shape,
+        format_args!("every extent of the tensor must be positive"),
+    )?;
+    Some(t)
 }
 
 /// Multilinear ranks, one per mode; `0` stands for the full extent.
@@ -101,18 +137,29 @@ fn multilinear_ranks(
     shape: &[usize],
 ) -> Option<Vec<usize>> {
     let ranks = vector(a, at)?;
-    (ranks.len() == shape.len()).then_some(())?;
-    ranks
-        .iter()
-        .zip(shape)
-        .map(|(&r, &n)| {
-            (r >= 0.0 && r.fract() == 0.0 && r <= n as f64).then_some(if r == 0.0 {
-                n
-            } else {
-                r as usize
-            })
-        })
-        .collect()
+    require(
+        ranks.len() == shape.len(),
+        Some(at),
+        DiagKind::Shape,
+        format_args!(
+            "one rank per mode is needed: the tensor has {} modes, got {} ranks",
+            shape.len(),
+            ranks.len()
+        ),
+    )?;
+    let mut out = Vec::with_capacity(ranks.len());
+    for (mode, (&r, &n)) in ranks.iter().zip(shape).enumerate() {
+        require(
+            r >= 0.0 && r.fract() == 0.0 && r <= n as f64,
+            Some(at),
+            DiagKind::Domain,
+            format_args!(
+                "the rank of mode {mode} must be an integer from 0 (the full extent) to its extent {n}, got {r}"
+            ),
+        )?;
+        out.push(if r == 0.0 { n } else { r as usize });
+    }
+    Some(out)
 }
 
 fn matrix_data(m: &Mat) -> Data {
@@ -129,7 +176,7 @@ fn factors_data(factors: &[Mat]) -> Data {
 fn hosvd(a: &[Data]) -> Option<Data> {
     let t = dense_tensor(a, 0)?;
     let ranks = multilinear_ranks(a, 1, t.shape())?;
-    let h = tensor::hosvd(&t, Some(&ranks)).ok()?;
+    let h = tensor::hosvd(&t, Some(&ranks)).reason(DiagKind::Singular, None)?;
     Some(Data::Tree(vec![
         from_tensor(&h.core)?,
         factors_data(&h.factors),
@@ -142,8 +189,19 @@ fn hooi(a: &[Data]) -> Option<Data> {
     let ranks = multilinear_ranks(a, 1, t.shape())?;
     let sweeps = count(a, 2, 200)?;
     let tol = scalar(a, 3)?;
-    (sweeps >= 1 && (0.0..1.0).contains(&tol)).then_some(())?;
-    let fit = tensor::hooi(&t, &ranks, sweeps, tol).ok()?;
+    require(
+        sweeps >= 1,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("at least one sweep is needed"),
+    )?;
+    require(
+        (0.0..1.0).contains(&tol),
+        Some(3),
+        DiagKind::Domain,
+        format_args!("the tolerance must lie in [0, 1), got {tol}"),
+    )?;
+    let fit = tensor::hooi(&t, &ranks, sweeps, tol).reason(DiagKind::Singular, None)?;
     Some(Data::Tree(vec![
         from_tensor(&fit.core)?,
         factors_data(&fit.factors),
@@ -156,14 +214,38 @@ fn cp_als(a: &[Data]) -> Option<Data> {
     let rank = count(a, 1, 24)?;
     let sweeps = count(a, 2, 1_000)?;
     let seed = scalar(a, 3)?;
-    (rank >= 1 && sweeps >= 1 && seed >= 0.0 && seed.fract() == 0.0 && seed <= 9.0e15)
-        .then_some(())?;
+    require(
+        rank >= 1,
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the CP rank must be at least 1"),
+    )?;
+    require(
+        sweeps >= 1,
+        Some(2),
+        DiagKind::Domain,
+        format_args!("at least one sweep is needed"),
+    )?;
+    require(
+        seed >= 0.0 && seed.fract() == 0.0 && seed <= 9.0e15,
+        Some(3),
+        DiagKind::Domain,
+        format_args!("the seed must be a non-negative integer up to 9e15, got {seed}"),
+    )?;
     let mut options = tensor::CpOptions::new(rank);
     options.max_sweeps = sweeps;
     options.seed = seed as u64;
-    let fit = tensor::cp_als(&t, &options).ok()?;
+    let fit = tensor::cp_als(&t, &options).reason(DiagKind::Domain, None)?;
     // A diverged run is the signature of a degenerate problem, not a fit.
-    (!fit.diverged).then_some(())?;
+    require(
+        !fit.diverged,
+        None,
+        DiagKind::NotConverged,
+        format_args!(
+            "the alternating least squares diverged (a degenerate tensor, such as an all-zero one, \
+             or a rank the tensor cannot support)"
+        ),
+    )?;
     Some(Data::Tree(vec![
         Data::vector(fit.weights),
         factors_data(&fit.factors),
@@ -175,9 +257,15 @@ fn tt_svd(a: &[Data]) -> Option<Data> {
     let t = dense_tensor(a, 0)?;
     let tol = scalar(a, 1)?;
     let cap = count(a, 2, 1_000)?;
-    (0.0..1.0).contains(&tol).then_some(())?;
+    require(
+        (0.0..1.0).contains(&tol),
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the relative tolerance must lie in [0, 1), got {tol}"),
+    )?;
     let data: Vec<f64> = t.iter().copied().collect();
-    let train = tensor_train::tt_svd(&data, t.shape(), tol, (cap > 0).then_some(cap)).ok()?;
+    let train = tensor_train::tt_svd(&data, t.shape(), tol, (cap > 0).then_some(cap))
+        .reason(DiagKind::Domain, None)?;
     let cores = train
         .cores()
         .iter()
@@ -195,23 +283,58 @@ fn tt_svd(a: &[Data]) -> Option<Data> {
 }
 
 fn tt_dense(a: &[Data]) -> Option<Data> {
-    let parts = parts_of(a.first()?)?;
-    (!parts.is_empty() && parts.len() <= MAX_MODES * 4).then_some(())?;
+    let Some(parts) = a.first().and_then(parts_of) else {
+        return bad(
+            0,
+            DiagKind::Shape,
+            format_args!("expected a list of cores, each a 3-level list left x mode x right"),
+        );
+    };
+    require(
+        !parts.is_empty() && parts.len() <= MAX_MODES * 4,
+        Some(0),
+        DiagKind::Domain,
+        format_args!(
+            "a train has 1 to {} cores, got {}",
+            MAX_MODES * 4,
+            parts.len()
+        ),
+    )?;
     let mut cores = Vec::with_capacity(parts.len());
     let mut stored = 0_usize;
-    for part in &parts {
+    for (k, part) in parts.iter().enumerate() {
         let Data::Array { shape, data } = part else {
-            return None;
+            return bad(
+                0,
+                DiagKind::Shape,
+                format_args!("core {k} is not a nested list of numbers"),
+            );
         };
         let &[left, mode, right] = shape.as_slice() else {
-            return None;
+            return bad(
+                0,
+                DiagKind::Shape,
+                format_args!(
+                    "core {k} must have 3 levels (left x mode x right), got shape {shape:?}"
+                ),
+            );
         };
         stored += data.len();
-        (stored <= MAX_ELEMENTS).then_some(())?;
-        cores.push(tensor_train::TrainCore::new([left, mode, right], data.clone()).ok()?);
+        require(
+            stored <= MAX_ELEMENTS,
+            Some(0),
+            DiagKind::Domain,
+            format_args!("the cores are limited to {MAX_ELEMENTS} stored elements"),
+        )?;
+        cores.push(
+            tensor_train::TrainCore::new([left, mode, right], data.clone())
+                .reason(DiagKind::Shape, Some(0))?,
+        );
     }
-    let train = tensor_train::TensorTrain::from_cores(cores).ok()?;
-    let dense = train.to_dense_with_limit(MAX_ELEMENTS).ok()?;
+    let train = tensor_train::TensorTrain::from_cores(cores).reason(DiagKind::Shape, Some(0))?;
+    let dense = train
+        .to_dense_with_limit(MAX_ELEMENTS)
+        .reason(DiagKind::Domain, Some(0))?;
     Some(Data::Array {
         shape: train.shape().to_vec(),
         data: dense,
@@ -223,14 +346,33 @@ fn factor_list(
     a: &[Data],
     at: usize,
 ) -> Option<Vec<Mat>> {
-    let parts = parts_of(a.get(at)?)?;
-    (parts.len() >= 2 && parts.len() <= MAX_MODES).then_some(())?;
+    let Some(parts) = a.get(at).and_then(parts_of) else {
+        return bad(
+            at,
+            DiagKind::Shape,
+            format_args!("expected a list of factor matrices"),
+        );
+    };
+    require(
+        parts.len() >= 2 && parts.len() <= MAX_MODES,
+        Some(at),
+        DiagKind::Shape,
+        format_args!(
+            "a model has 2 to {MAX_MODES} factor matrices, got {}",
+            parts.len()
+        ),
+    )?;
     let mut factors = Vec::with_capacity(parts.len());
     let mut stored = 0_usize;
     for part in &parts {
-        let (rows, cols, data) = matrix(std::slice::from_ref(part), 0)?;
+        let (rows, cols, data) = matrix_of(Some(part), at)?;
         stored += data.len();
-        (stored <= MAX_ELEMENTS).then_some(())?;
+        require(
+            stored <= MAX_ELEMENTS,
+            Some(at),
+            DiagKind::Domain,
+            format_args!("the factors are limited to {MAX_ELEMENTS} stored elements"),
+        )?;
         factors.push(Mat {
             rows,
             cols,
@@ -242,24 +384,41 @@ fn factor_list(
 
 fn tucker_dense(a: &[Data]) -> Option<Data> {
     let core = tensor_arg(a, 0)?;
-    (core.ndim() >= 2 && core.ndim() <= MAX_MODES && core.len() <= MAX_ELEMENTS).then_some(())?;
+    require(
+        core.ndim() >= 2 && core.ndim() <= MAX_MODES && core.len() <= MAX_ELEMENTS,
+        Some(0),
+        DiagKind::Shape,
+        format_args!(
+            "the core has 2 to {MAX_MODES} modes and at most {MAX_ELEMENTS} elements, got {} modes \
+             and {} elements",
+            core.ndim(),
+            core.len()
+        ),
+    )?;
     let factors = factor_list(a, 1)?;
-    // The product has one row of each factor per extent: bound it before building.
+    expanded_size(&factors)?;
+    from_tensor(&tensor::tucker_reconstruct(&core, &factors).reason(DiagKind::Shape, Some(1))?)
+}
+
+/// The expanded tensor stays within the element cap (one row of each factor
+/// per extent): checked before it is built.
+fn expanded_size(factors: &[Mat]) -> Option<()> {
     let size = factors
         .iter()
-        .try_fold(1_usize, |n, f| n.checked_mul(f.rows))?;
-    (size <= MAX_ELEMENTS).then_some(())?;
-    from_tensor(&tensor::tucker_reconstruct(&core, &factors).ok()?)
+        .try_fold(1_usize, |n, f| n.checked_mul(f.rows));
+    require(
+        size.is_some_and(|n| n <= MAX_ELEMENTS),
+        Some(1),
+        DiagKind::Domain,
+        format_args!("the expanded tensor would exceed {MAX_ELEMENTS} elements"),
+    )
 }
 
 fn cp_dense(a: &[Data]) -> Option<Data> {
     let weights = vector(a, 0)?;
     let factors = factor_list(a, 1)?;
-    let size = factors
-        .iter()
-        .try_fold(1_usize, |n, f| n.checked_mul(f.rows))?;
-    (size <= MAX_ELEMENTS).then_some(())?;
-    from_tensor(&tensor::cp_reconstruct(weights, &factors).ok()?)
+    expanded_size(&factors)?;
+    from_tensor(&tensor::cp_reconstruct(weights, &factors).reason(DiagKind::Shape, Some(1))?)
 }
 
 pub(super) const ENTRIES: &[Entry] = &[
