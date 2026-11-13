@@ -36,10 +36,10 @@
 //! |---|---|---|---|---|---|
 //! | linear advection | yes | yes | yes | first-order upwind | callback-selected fixed value |
 //! | Burgers | yes | no | no | Lax–Friedrichs | fixed |
-//! | shallow water | yes | no | no | Lax–Friedrichs | fixed |
+//! | shallow water | yes | yes | yes (barotropic, `γ = 2`) | Lax–Friedrichs | fixed |
 //!
 //! High-order finite volumes (MUSCL with four limiters, WENO5; HLLC, Roe and
-//! Rusanov solvers; Euler in 1D–3D and shallow water in 1D–2D; transmissive,
+//! Rusanov solvers; Euler and shallow water in 1D–3D; transmissive,
 //! reflective, periodic and fixed-state faces) are in [`crate::sim::euler_nd`];
 //! nodal discontinuous Galerkin (1D/2D) is in [`crate::sim::dg`].
 
@@ -770,7 +770,7 @@ pub use crate::sim::euler_nd::SlopeLimiter;
 pub use crate::sim::euler_nd::solve as solve_conservation_law_nd;
 
 // ============================================================================
-// Space-dimension coverage: Burgers 1D/2D/3D and shallow water 2D
+// Space-dimension coverage: Burgers 1D/2D/3D and shallow water 2D/3D
 // ============================================================================
 //
 // First-order Lax-Friedrichs finite volumes on cell-centred grids with
@@ -1015,6 +1015,158 @@ pub fn solve_shallow_water_2d(
                 h: value[0],
                 hu: value[1],
                 hv: value[2],
+            };
+        });
+
+        std::mem::swap(&mut current, &mut next);
+    }
+
+    Ok(current)
+}
+
+/// State of the 3D barotropic shallow-water system: depth and the three momenta.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SweState3D {
+    /// The height of the water.
+    pub h: f64,
+    /// Momentum in x.
+    pub hu: f64,
+    /// Momentum in y.
+    pub hv: f64,
+    /// Momentum in z.
+    pub hw: f64,
+}
+
+/// 3D barotropic shallow-water system `h_t + ∇·(h u) = 0`,
+/// `(h u)_t + ∇·(h u ⊗ u) + ∇(g h²/2) = 0` (Euler with `γ = 2`, `p = g h²/2` and no
+/// energy equation: the 3D analogue of the planar shallow-water equations).
+///
+/// On a grid of `dims = [nx, ny, nz]` cells (flat, `x` fastest) with the
+/// Lax-Friedrichs flux and zero-gradient boundaries. 3D counterpart of
+/// [`solve_shallow_water_2d`]; the numerical viscosity is shared between the
+/// three axes (unsplit scheme). Stable for
+/// `(|u| + sqrt(g h)) dt (1/dx + 1/dy + 1/dz) <= 1` (roughly).
+///
+/// # Errors
+/// For a length mismatch or non-positive step sizes.
+#[allow(clippy::too_many_arguments)]
+pub fn solve_shallow_water_3d(
+    initial_h: &[f64],
+    initial_hu: &[f64],
+    initial_hv: &[f64],
+    initial_hw: &[f64],
+    dims: [usize; 3],
+    spacing: [f64; 3],
+    dt: f64,
+    steps: usize,
+    g: f64,
+) -> Result<Vec<SweState3D>, String> {
+    let [nx, ny, nz] = dims;
+    let total = nx * ny * nz;
+
+    if nx == 0
+        || ny == 0
+        || nz == 0
+        || initial_h.len() != total
+        || initial_hu.len() != total
+        || initial_hv.len() != total
+        || initial_hw.len() != total
+        || dt.is_nan()
+        || dt <= 0.0
+        || spacing.iter().any(|&v| v.is_nan() || v <= 0.0)
+    {
+        return Err("array length / step sizes inconsistent".to_owned());
+    }
+
+    let mut current: Vec<SweState3D> = (0..total)
+        .map(|p| {
+            SweState3D {
+                h: initial_h[p],
+                hu: initial_hu[p],
+                hv: initial_hv[p],
+                hw: initial_hw[p],
+            }
+        })
+        .collect();
+
+    let mut next = current.clone();
+
+    let components = |s: SweState3D| [s.h, s.hu, s.hv, s.hw];
+
+    let flux = |s: SweState3D, axis: usize| -> [f64; 4] {
+        let m = components(s);
+
+        let pressure = 0.5 * g * s.h * s.h;
+
+        let mut f = [0.0; 4];
+
+        f[0] = m[1 + axis];
+
+        for k in 1..4 {
+            let velocity = if s.h > 1e-6 {
+                m[1 + axis] / s.h
+            } else {
+                0.0
+            };
+
+            f[k] = m[k] * velocity;
+        }
+
+        f[1 + axis] += pressure;
+
+        f
+    };
+
+    for _ in 0..steps {
+        next.par_iter_mut().enumerate().for_each(|(p, out)| {
+            let q = [p % nx, (p / nx) % ny, p / (nx * ny)];
+
+            let stride = [1, nx, nx * ny];
+
+            let c = current[p];
+
+            let mut value = components(c);
+
+            for axis in 0..3 {
+                let count = dims[axis];
+
+                let left = if q[axis] > 0 {
+                    current[p - stride[axis]]
+                } else {
+                    c
+                };
+
+                let right = if q[axis] + 1 < count {
+                    current[p + stride[axis]]
+                } else {
+                    c
+                };
+
+                let h_a = spacing[axis];
+
+                // 0.5 * h / (3 dt): the viscosity shared between the three axes
+                let numerical = |a: SweState3D, b: SweState3D| -> [f64; 4] {
+                    let (fa, fb) = (flux(a, axis), flux(b, axis));
+
+                    let (ca, cb) = (components(a), components(b));
+
+                    [0, 1, 2, 3].map(|k| {
+                        f64::midpoint(fa[k], fb[k]) - (h_a / (6.0 * dt)) * (cb[k] - ca[k])
+                    })
+                };
+
+                let (f_left, f_right) = (numerical(left, c), numerical(c, right));
+
+                for k in 0..4 {
+                    value[k] -= dt / h_a * (f_right[k] - f_left[k]);
+                }
+            }
+
+            *out = SweState3D {
+                h: value[0],
+                hu: value[1],
+                hv: value[2],
+                hw: value[3],
             };
         });
 

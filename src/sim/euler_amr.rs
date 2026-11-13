@@ -35,8 +35,9 @@
 //! Limitations: the refinement ratio is fixed at 2; characteristic
 //! non-reflecting boundaries are not supported (a patch boundary is filled
 //! from the coarser level or the physical law, so the walls are limited to
-//! transmissive, reflective, periodic and fixed states); shallow water is
-//! 1D and 2D only (its 3D flux is not part of [`euler_nd`]); patches are
+//! transmissive, reflective, periodic and fixed states); shallow water has no
+//! bed or friction source here, and in 3D it is the barotropic (`γ = 2`)
+//! system of [`euler_nd`](crate::sim::euler_nd); patches are
 //! aligned with the coarse grid, and every regridding re-creates the whole
 //! fine hierarchy — the tagging arrays are sized as the full grid of each
 //! level and the data are copied where the old patches overlap the new ones —
@@ -1256,7 +1257,7 @@ impl AmrSolution {
 /// Runs the AMR solver from primitive initial data (evaluated at the cell centres of every level) to `t_end`.
 ///
 /// # Errors
-/// For shallow water in 3D, unsupported boundary conditions, a CFL number
+/// For unsupported boundary conditions, a CFL number
 /// outside `(0, 1)`, a base grid with an odd number of cells, non-admissible
 /// initial data or a blown-up solution.
 pub fn solve_amr(
@@ -1265,9 +1266,6 @@ pub fn solve_amr(
     init: &dyn Fn([f64; 3]) -> State,
     t_end: f64,
 ) -> Result<AmrSolution, String> {
-    if grid.dim > 2 && matches!(cfg.fv.law, Law::ShallowWater { .. }) {
-        return Err("shallow water is available in 1D and 2D".into());
-    }
     if !(cfg.fv.cfl > 0.0 && cfg.fv.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
     }
@@ -1322,7 +1320,11 @@ pub fn solve_amr(
                         0.0
                     },
                 ];
-                let w = init(x);
+                let mut w = init(x);
+                if grid.dim < 3 && matches!(cfg.fv.law, Law::ShallowWater { .. }) {
+                    // Slot 3 is the vertical-axis velocity of the 3D system only.
+                    w[3] = 0.0;
+                }
                 if !admissible(cfg.fv.law, &w) {
                     return Err("initial state is not admissible".into());
                 }

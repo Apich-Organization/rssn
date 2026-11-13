@@ -52,7 +52,7 @@ pub mod dpd;
 pub mod elasticity_fem;
 /// Elliptic integrals of the third kind and Jacobi-function integrals.
 pub mod elliptic;
-/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D and 2D.
+/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D-3D.
 pub mod euler_amr;
 /// High-order finite volumes for Euler and shallow water in 1D-3D.
 pub mod euler_nd;

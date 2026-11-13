@@ -10,9 +10,17 @@
 //! | `cp_als(T, rank, sweeps, seed)` | `list(weights, list(A_1, .., A_N), residual)`: the CP decomposition `sum_r w_r a_r o b_r o ..` by alternating least squares from a seeded start, with the relative residual; a diverged run is not an answer |
 //! | `tt_svd(T, tol, max_rank)` | `list(list(G_1, .., G_N), error)`: the tensor-train cores (`G_k[left][index][right]`) of `T` at relative tolerance `tol` (`max_rank` of `0` is no cap) and the truncation error |
 //! | `tt_dense(cores)` | the dense tensor a list of tensor-train cores represents |
+//! | `tucker_dense(core, factors)` | the dense tensor `core x_1 U_1 .. x_N U_N` of the first two items of a `hosvd` or `hooi` result |
+//! | `cp_dense(weights, factors)` | the dense tensor `sum_r w_r a_r o b_r o ..` of the first two items of a `cp_als` result |
+//!
+//! Every decomposition has its inverse (`tucker_dense`, `cp_dense`,
+//! `tt_dense`), so a result can be checked or compressed data expanded
+//! without leaving the operator surface.
 //!
 //! The tensors are nested lists of any depth from 2 to 6; the number of
-//! elements of each operand is capped so one call stays bounded. CP factors
+//! elements of each operand is capped so one call stays bounded. A `ranks`
+//! entry of `0` stands for the full extent of its mode in both `hosvd` and
+//! `hooi`, and a rank above the extent is not accepted. CP factors
 //! are determined only up to permutation and scaling, so compare
 //! reconstructions rather than factors.
 
@@ -210,6 +218,50 @@ fn tt_dense(a: &[Data]) -> Option<Data> {
     })
 }
 
+/// The factor matrices of a decomposition, as a list of matrices.
+fn factor_list(
+    a: &[Data],
+    at: usize,
+) -> Option<Vec<Mat>> {
+    let parts = parts_of(a.get(at)?)?;
+    (parts.len() >= 2 && parts.len() <= MAX_MODES).then_some(())?;
+    let mut factors = Vec::with_capacity(parts.len());
+    let mut stored = 0_usize;
+    for part in &parts {
+        let (rows, cols, data) = matrix(std::slice::from_ref(part), 0)?;
+        stored += data.len();
+        (stored <= MAX_ELEMENTS).then_some(())?;
+        factors.push(Mat {
+            rows,
+            cols,
+            data: data.to_vec(),
+        });
+    }
+    Some(factors)
+}
+
+fn tucker_dense(a: &[Data]) -> Option<Data> {
+    let core = tensor_arg(a, 0)?;
+    (core.ndim() >= 2 && core.ndim() <= MAX_MODES && core.len() <= MAX_ELEMENTS).then_some(())?;
+    let factors = factor_list(a, 1)?;
+    // The product has one row of each factor per extent: bound it before building.
+    let size = factors
+        .iter()
+        .try_fold(1_usize, |n, f| n.checked_mul(f.rows))?;
+    (size <= MAX_ELEMENTS).then_some(())?;
+    from_tensor(&tensor::tucker_reconstruct(&core, &factors).ok()?)
+}
+
+fn cp_dense(a: &[Data]) -> Option<Data> {
+    let weights = vector(a, 0)?;
+    let factors = factor_list(a, 1)?;
+    let size = factors
+        .iter()
+        .try_fold(1_usize, |n, f| n.checked_mul(f.rows))?;
+    (size <= MAX_ELEMENTS).then_some(())?;
+    from_tensor(&tensor::cp_reconstruct(weights, &factors).ok()?)
+}
+
 pub(super) const ENTRIES: &[Entry] = &[
     Entry {
         name: "qr_pivoted_rank",
@@ -251,6 +303,16 @@ pub(super) const ENTRIES: &[Entry] = &[
         params: "n",
         eval: tt_dense,
     },
+    Entry {
+        name: "tucker_dense",
+        params: "nn",
+        eval: tucker_dense,
+    },
+    Entry {
+        name: "cp_dense",
+        params: "vn",
+        eval: cp_dense,
+    },
 ];
 
 #[cfg(test)]
@@ -284,6 +346,37 @@ mod tests {
             }
         }
         inner.to_owned()
+    }
+
+    /// The top-level items of a printed `list(...)`.
+    fn items(text: &str) -> Vec<String> {
+        let inner = &text["list(".len()..text.len() - 1];
+        let mut out = Vec::new();
+        let (mut depth, mut start) = (0_i32, 0);
+        for (at, ch) in inner.char_indices() {
+            match ch {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    out.push(inner[start..at].trim().to_owned());
+                    start = at + 1;
+                },
+                | _ => {},
+            }
+        }
+        out.push(inner[start..].trim().to_owned());
+        out
+    }
+
+    fn assert_close(
+        got: &[f64],
+        want: &[f64],
+        tol: f64,
+    ) {
+        assert_eq!(got.len(), want.len(), "{got:?} vs {want:?}");
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() <= tol, "{got:?} vs {want:?}");
+        }
     }
 
     /// The outer product `a o b o c` of three vectors as a nested list.
@@ -400,6 +493,37 @@ mod tests {
         // A rank cap of one is exact for a rank-one tensor, and the cores are then 1 x n x 1.
         let capped = run(&format!("tt_svd({t}, 0, 1)"));
         assert_eq!(flat(&capped).len(), 2 + 3 + 2 + 1);
+    }
+
+    #[test]
+    fn tucker_and_cp_models_expand_back_to_their_tensor() {
+        let t = outer3(&[1.0, 2.0], &[3.0, 0.0, 1.0], &[2.0, -1.0]);
+        let want = flat(&t);
+        // A full-rank HOSVD and a converged HOOI reproduce the tensor.
+        for call in [
+            format!("hosvd({t}, list(0, 0, 0))"),
+            format!("hooi({t}, list(1, 1, 1), 10, 1e-12)"),
+        ] {
+            let parts = items(&run(&call));
+            let back = run(&format!("tucker_dense({}, {})", parts[0], parts[1]));
+            assert_close(&flat(&back), &want, 1e-9);
+        }
+        let parts = items(&run(&format!("cp_als({t}, 1, 500, 1)")));
+        let back = run(&format!("cp_dense({}, {})", parts[0], parts[1]));
+        assert_close(&flat(&back), &want, 1e-8);
+        // The shape survives: 2 x 3 x 2 is three levels of nesting.
+        assert_eq!(back.matches("list(").count(), 1 + 2 + 2 * 3);
+        // Too few factors, a wrong column count and a symbol are requests.
+        for src in [
+            "tucker_dense(list(list(1, 2), list(3, 4)), list(list(list(1, 0), list(0, 1))))",
+            "tucker_dense(list(list(1, 2), list(3, 4)), list(list(list(1), list(0)), list(list(1, 0), list(0, 1))))",
+            "cp_dense(list(1, 2), list(list(list(1), list(1)), list(list(1), list(1))))",
+            "cp_dense(list(1), list(list(list(1), list(1))))",
+            "cp_dense(list(a), list(list(list(1), list(1)), list(list(1), list(1))))",
+        ] {
+            let (text, reduced) = reduce_with(&[numeric()], src, &[]);
+            assert!(!reduced, "{text}");
+        }
     }
 
     #[test]

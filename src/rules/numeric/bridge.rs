@@ -10,9 +10,10 @@
 //! | group | operators |
 //! |---|---|
 //! | robust statistics | `mad`, `mad_sigma`, `trimmed_mean`, `winsorized_mean`, `huber_location`, `biweight_location`, `ecdf`, `kde`, `bandwidth_silverman`, `bandwidth_scott` |
-//! | signal | `hann_window`, `hamming_window`, `blackman_window`, `cross_correlation`, `fft_abs`, `fft_re`, `fft_im`, `ifft_re`, `ifft_im` |
+//! | signal | `hann_window`, `hamming_window`, `blackman_window`, `cross_correlation`, `fft_abs`, `fft_re`, `fft_im`, `ifft_re`, `ifft_im`, `ifft_abs` |
 //! | wavelets | `dwt_approx`, `dwt_detail`, `idwt` (the wavelet is a symbol: `haar`, `db2` .. `db10`, `sym4` .. `sym6`, `bior1_1` .. `bior4_4`) |
-//! | finite-difference PDEs | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd` |
+//! | finite-difference PDEs | `heat_fd`, `wave_fd`, `poisson_fd`, `advect_fd`, and the siblings `heat_fd_bc`, `wave_fd_bc` (Dirichlet or Neumann walls) and `advect_fd_upwind` |
+//! | tensors | `tensor_norm`, `tensor_inner`, `tensor_outer`, `tensordot`, `tensor_contract` |
 //!
 //! The finite-difference operators are **dimension free**: the number of
 //! space dimensions is the nesting depth of the initial data (a list is 1D, a
@@ -434,6 +435,10 @@ fn ifft_im(a: &[Data]) -> Option<Data> {
     vec_out(inverse(a)?.iter().map(|c| c.im).collect())
 }
 
+fn ifft_abs(a: &[Data]) -> Option<Data> {
+    vec_out(inverse(a)?.iter().map(|c| c.norm()).collect())
+}
+
 // ---------------------------------------------------------------------------
 // Wavelets
 // ---------------------------------------------------------------------------
@@ -579,8 +584,51 @@ fn solution(sol: pde::PdeSolution) -> Data {
     }
 }
 
-fn bcs<const N: usize>(value: f64) -> [pde::Boundary; N] {
-    std::array::from_fn(|_| pde::Boundary::dirichlet_const(value))
+/// How the boundary value of a finite-difference solve is imposed on every
+/// face of the unit box.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Condition {
+    /// `u = value`.
+    Dirichlet,
+    /// `du/dn = value`, `n` the outward normal (`0` is an insulated wall).
+    Neumann,
+}
+
+/// The condition a symbol names, in any case.
+fn condition(
+    args: &[Data],
+    at: usize,
+) -> Option<Condition> {
+    match name(args, at)?.to_ascii_lowercase().as_str() {
+        | "dirichlet" => Some(Condition::Dirichlet),
+        | "neumann" => Some(Condition::Neumann),
+        | _ => None,
+    }
+}
+
+fn bcs<const N: usize>(
+    kind: Condition,
+    value: f64,
+) -> [pde::Boundary; N] {
+    std::array::from_fn(|_| {
+        match kind {
+            | Condition::Dirichlet => pde::Boundary::dirichlet_const(value),
+            | Condition::Neumann => pde::Boundary::neumann_const(value),
+        }
+    })
+}
+
+/// The arguments of a `_bc` operator with the condition symbol at `at` and
+/// the boundary value after it, as the arguments of its Dirichlet sibling
+/// (`value` takes the place of the symbol).
+fn without_condition(
+    a: &[Data],
+    at: usize,
+) -> Option<(Condition, Vec<Data>)> {
+    let kind = condition(a, at)?;
+    let mut rest = a.to_vec();
+    rest.remove(at);
+    Some((kind, rest))
 }
 
 fn steps_within(
@@ -595,8 +643,22 @@ fn steps_within(
     (steps.checked_mul(nodes)? <= MAX_WORK).then_some(steps)
 }
 
-/// `heat_fd(alpha, u0, boundary_value, t_end, steps)`.
+/// `heat_fd(alpha, u0, boundary_value, t_end, steps)`: Dirichlet walls.
 fn heat_fd(a: &[Data]) -> Option<Data> {
+    heat(a, Condition::Dirichlet)
+}
+
+/// `heat_fd_bc(alpha, u0, kind, boundary_value, t_end, steps)`: `kind` is
+/// `dirichlet` or `neumann`.
+fn heat_fd_bc(a: &[Data]) -> Option<Data> {
+    let (kind, rest) = without_condition(a, 2)?;
+    heat(&rest, kind)
+}
+
+fn heat(
+    a: &[Data],
+    kind: Condition,
+) -> Option<Data> {
     let (alpha, bv, t_end) = (scalar(a, 0)?, scalar(a, 2)?, scalar(a, 3)?);
     let (shape, data) = field(a, 1)?;
     let steps = steps_within(scalar(a, 4)?, data.len())?;
@@ -609,7 +671,7 @@ fn heat_fd(a: &[Data]) -> Option<Data> {
                 pde::pde_solver(&pde::PdeProblem::Heat1D {
                     alpha,
                     grid: g1,
-                    bc: bcs(bv),
+                    bc: bcs(kind, bv),
                     u0: &u0,
                     t_end,
                     steps,
@@ -623,7 +685,7 @@ fn heat_fd(a: &[Data]) -> Option<Data> {
                 pde::pde_solver(&pde::PdeProblem::Heat2D {
                     alpha,
                     grid: g2,
-                    bc: bcs(bv),
+                    bc: bcs(kind, bv),
                     u0: &u0,
                     t_end,
                     steps,
@@ -636,7 +698,7 @@ fn heat_fd(a: &[Data]) -> Option<Data> {
             pde::pde_solver(&pde::PdeProblem::Heat3D {
                 alpha,
                 grid: g3,
-                bc: bcs(bv),
+                bc: bcs(kind, bv),
                 u0: &u0,
                 t_end,
                 steps,
@@ -646,8 +708,22 @@ fn heat_fd(a: &[Data]) -> Option<Data> {
     Some(solution(problem.ok()?))
 }
 
-/// `wave_fd(c, u0, v0, boundary_value, t_end, steps)`.
+/// `wave_fd(c, u0, v0, boundary_value, t_end, steps)`: Dirichlet walls.
 fn wave_fd(a: &[Data]) -> Option<Data> {
+    wave(a, Condition::Dirichlet)
+}
+
+/// `wave_fd_bc(c, u0, v0, kind, boundary_value, t_end, steps)`: `kind` is
+/// `dirichlet` (a fixed end) or `neumann` (a free, reflecting end).
+fn wave_fd_bc(a: &[Data]) -> Option<Data> {
+    let (kind, rest) = without_condition(a, 3)?;
+    wave(&rest, kind)
+}
+
+fn wave(
+    a: &[Data],
+    kind: Condition,
+) -> Option<Data> {
     let (c, bv, t_end) = (scalar(a, 0)?, scalar(a, 3)?, scalar(a, 4)?);
     let (shape, data) = field(a, 1)?;
     let (vshape, vdata) = field(a, 2)?;
@@ -661,7 +737,7 @@ fn wave_fd(a: &[Data]) -> Option<Data> {
             pde::pde_solver(&pde::PdeProblem::Wave1D {
                 c,
                 grid: g1,
-                bc: bcs(bv),
+                bc: bcs(kind, bv),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -673,7 +749,7 @@ fn wave_fd(a: &[Data]) -> Option<Data> {
             pde::pde_solver(&pde::PdeProblem::Wave2D {
                 c,
                 grid: g2,
-                bc: bcs(bv),
+                bc: bcs(kind, bv),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -688,7 +764,7 @@ fn wave_fd(a: &[Data]) -> Option<Data> {
             pde::pde_solver(&pde::PdeProblem::Wave3D {
                 c,
                 grid: g3,
-                bc: bcs(bv),
+                bc: bcs(kind, bv),
                 u0: &u0,
                 v0: &v0,
                 t_end,
@@ -700,7 +776,9 @@ fn wave_fd(a: &[Data]) -> Option<Data> {
 }
 
 /// `poisson_fd(f, boundary_value)`: `-Laplace(u) = f` with `u = boundary_value`
-/// on the whole boundary of the unit box.
+/// on the whole boundary of the unit box. Neumann walls on every face would
+/// leave the solution defined only up to a constant (the kernel refuses that
+/// singular problem), so there is no `_bc` sibling.
 fn poisson_fd(a: &[Data]) -> Option<Data> {
     let bv = scalar(a, 1)?;
     let (shape, data) = field(a, 0)?;
@@ -712,7 +790,7 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
             let f = |x: f64| at(&[x]);
             pde::pde_solver(&pde::PdeProblem::Poisson1D {
                 grid: g1,
-                bc: bcs(bv),
+                bc: bcs(Condition::Dirichlet, bv),
                 f: &f,
                 solver,
             })
@@ -721,7 +799,7 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
             let f = |x: f64, y: f64| at(&[x, y]);
             pde::pde_solver(&pde::PdeProblem::Poisson2D {
                 grid: g2,
-                bc: bcs(bv),
+                bc: bcs(Condition::Dirichlet, bv),
                 f: &f,
                 solver,
             })
@@ -730,7 +808,7 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
             let f = |x: f64, y: f64, z: f64| at(&[x, y, z]);
             pde::pde_solver(&pde::PdeProblem::Poisson3D {
                 grid: g3,
-                bc: bcs(bv),
+                bc: bcs(Condition::Dirichlet, bv),
                 f: &f,
                 solver,
             })
@@ -742,6 +820,20 @@ fn poisson_fd(a: &[Data]) -> Option<Data> {
 /// `advect_fd(velocity, u0, t_end, steps)`: periodic advection (Lax-Wendroff)
 /// of `u0` on the unit box; `velocity` has one component per space dimension.
 fn advect_fd(a: &[Data]) -> Option<Data> {
+    advect(a, pde::AdvectionScheme::LaxWendroff)
+}
+
+/// `advect_fd_upwind(velocity, u0, t_end, steps)`: the same problem by the
+/// first-order upwind scheme, which is monotone (no over- or undershoot at a
+/// front) where Lax-Wendroff is second order and oscillates there.
+fn advect_fd_upwind(a: &[Data]) -> Option<Data> {
+    advect(a, pde::AdvectionScheme::Upwind)
+}
+
+fn advect(
+    a: &[Data],
+    scheme: pde::AdvectionScheme,
+) -> Option<Data> {
     let velocity = vector(a, 0)?;
     let (shape, data) = field(a, 1)?;
     (velocity.len() == shape.len()).then_some(())?;
@@ -749,7 +841,6 @@ fn advect_fd(a: &[Data]) -> Option<Data> {
     let steps = steps_within(scalar(a, 3)?, data.len())?;
     let (g1, g2, g3) = unit_grids(shape);
     let at = sampler(shape, data, true);
-    let scheme = pde::AdvectionScheme::LaxWendroff;
     let solved = match shape.len() {
         | 1 => {
             let u0 = |x: f64| at(&[x]);
@@ -939,6 +1030,14 @@ fn tensordot(a: &[Data]) -> Option<Data> {
     // The result has at most `len(x) * len(y)` elements.
     (x.len().checked_mul(y.len())? <= MAX_TENSOR).then_some(())?;
     from_tensor(&tensor::tensordot(&x, &y, &ax, &ay).ok()?)
+}
+
+/// `tensor_contract(T, i, j)`: the generalised trace over axes `i` and `j`,
+/// a tensor of two modes fewer (a scalar for a matrix).
+fn tensor_contract(a: &[Data]) -> Option<Data> {
+    let t = tensor_arg(a, 0)?;
+    let (i, j) = (count(a, 1, 15)?, count(a, 2, 15)?);
+    from_tensor(&tensor::contract(&t, i, j).ok()?)
 }
 
 // ---------------------------------------------------------------------------
@@ -1185,6 +1284,11 @@ pub(super) const ENTRIES: &[Entry] = &[
         eval: ifft_im,
     },
     Entry {
+        name: "ifft_abs",
+        params: "vv",
+        eval: ifft_abs,
+    },
+    Entry {
         name: "dwt_approx",
         params: "vw",
         eval: dwt_approx,
@@ -1205,9 +1309,19 @@ pub(super) const ENTRIES: &[Entry] = &[
         eval: heat_fd,
     },
     Entry {
+        name: "heat_fd_bc",
+        params: "snwsss",
+        eval: heat_fd_bc,
+    },
+    Entry {
         name: "wave_fd",
         params: "snnsss",
         eval: wave_fd,
+    },
+    Entry {
+        name: "wave_fd_bc",
+        params: "snnwsss",
+        eval: wave_fd_bc,
     },
     Entry {
         name: "poisson_fd",
@@ -1218,6 +1332,11 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "advect_fd",
         params: "vnss",
         eval: advect_fd,
+    },
+    Entry {
+        name: "advect_fd_upwind",
+        params: "vnss",
+        eval: advect_fd_upwind,
     },
     Entry {
         name: "minres_solve",
@@ -1263,6 +1382,11 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "tensordot",
         params: "nnvv",
         eval: tensordot,
+    },
+    Entry {
+        name: "tensor_contract",
+        params: "nss",
+        eval: tensor_contract,
     },
     Entry {
         name: "function_l1_norm",

@@ -16,16 +16,24 @@
 //! | Equation | 1D | 2D | 3D | Riemann solvers | Reconstruction |
 //! |---|---|---|---|---|---|
 //! | Euler (`ρ, ρu, ρv, ρw, E`) | yes | yes | yes | HLLC, Roe, Rusanov | first order, MUSCL (4 limiters), WENO5 |
-//! | Shallow water (`h, hu, hv`) | yes | yes | n/a | HLLC, Roe, Rusanov | same |
+//! | Shallow water (`h, hu, hv, hw`) | yes | yes | yes (barotropic) | HLLC, Roe, Rusanov | same |
 //!
 //! Variables are stored as `[f64; 5]`: Euler uses all five slots, shallow
 //! water the first `1 + dim`. Initial data are given in primitive variables
-//! `[ρ, u, v, w, p]` (Euler) or `[h, u, v, 0, 0]` (shallow water).
+//! `[ρ, u, v, w, p]` (Euler) or `[h, u, v, w, 0]` (shallow water, `w = 0`
+//! below three dimensions).
+//!
+//! The depth-averaged shallow-water model is planar. Its **three-dimensional
+//! version** is the barotropic (isentropic, `γ = 2`) system with the pressure
+//! law `p = g h² / 2` and state `(h, hu, hv, hw)` — the exact 3D analogue of
+//! the shallow-water system (Euler with that pressure law and no energy
+//! equation), with the wave speed `c = √(g h)`. A bed and Manning friction are
+//! planar notions and are rejected in 3D; in 1D and 2D they work as before.
 //!
 //! Block-structured adaptive refinement with sub-cycling and refluxing is
-//! provided by [`euler_amr`](crate::sim::euler_amr) for Euler in 1D–3D and
-//! shallow water in 1D–2D, built on the reconstruction and Riemann kernels of
-//! this module.
+//! provided by [`euler_amr`](crate::sim::euler_amr) for Euler and shallow
+//! water in 1D–3D, built on the reconstruction and Riemann kernels of this
+//! module.
 //!
 //! ## Source terms ([`solve_with_sources`])
 //!
@@ -51,9 +59,9 @@
 //!   normal momentum, and the cell source is the centred
 //!   `-g h̄ Δb / Δx`. The lake at rest `η = const, u = 0` is preserved to
 //!   round-off by every reconstruction and Riemann solver, over smooth and
-//!   discontinuous beds, in 1D and 2D. The initial data are the *depth*
-//!   `h = η - b`.
-//! * **Manning bed friction** (shallow water, [`Sources::manning`]): the
+//!   discontinuous beds, in 1D and 2D (a bed is rejected in 3D). The initial
+//!   data are the *depth* `h = η - b`.
+//! * **Manning bed friction** (shallow water in 1D–2D, [`Sources::manning`]): the
 //!   momentum source `-g n² h^{-7/3} |q| q` (equivalently
 //!   `d(h u)/dt = -g n² h^{-1/3} |u| u`, `q = h u`) with a uniform Manning
 //!   coefficient `n`. It is integrated in *operator-split (Strang) form*: a
@@ -257,7 +265,8 @@ pub struct Sources<'a> {
     /// components beyond the grid dimension are ignored).
     pub gravity: [f64; 3],
     /// Bed elevation `b(x)` of the shallow-water equations (hydrostatic
-    /// reconstruction); the initial data are then the depth `h`.
+    /// reconstruction, 1D–2D; rejected in 3D); the initial data are then the
+    /// depth `h`.
     pub bed: Option<&'a dyn Fn([f64; 3]) -> f64>,
     /// Uniform Manning bed-friction coefficient `n` (shallow water; zero is
     /// frictionless). The momentum source is `-g n² h^{-7/3} |q| q` with
@@ -418,7 +427,7 @@ pub(crate) fn to_cons(
                 w[4] / (gamma - 1.0) + ke,
             ]
         },
-        | Law::ShallowWater { .. } => [w[0], w[0] * w[1], w[0] * w[2], 0.0, 0.0],
+        | Law::ShallowWater { .. } => [w[0], w[0] * w[1], w[0] * w[2], w[0] * w[3], 0.0],
     }
 }
 
@@ -443,7 +452,7 @@ pub(crate) fn to_prim(
             if h < 1e-10 {
                 [h.max(0.0), 0.0, 0.0, 0.0, 0.0]
             } else {
-                [h, q[1] / h, q[2] / h, 0.0, 0.0]
+                [h, q[1] / h, q[2] / h, q[3] / h, 0.0]
             }
         },
     }
@@ -500,8 +509,14 @@ fn flux_x(
             [q[1], q[1] * u + w[4], q[2] * u, q[3] * u, (q[4] + w[4]) * u]
         },
         | Law::ShallowWater { g } => {
-            let (h, u, v) = (w[0], w[1], w[2]);
-            [h * u, h * u * u + 0.5 * g * h * h, h * u * v, 0.0, 0.0]
+            let (h, u, v, ww) = (w[0], w[1], w[2], w[3]);
+            [
+                h * u,
+                h * u * u + 0.5 * g * h * h,
+                h * u * v,
+                h * u * ww,
+                0.0,
+            ]
         },
     }
 }
@@ -545,7 +560,7 @@ pub(crate) fn riemann_flux(
     let sr = (r[1] + cr).max(ut + ct);
     let nv = match law {
         | Law::Euler { .. } => 5,
-        | Law::ShallowWater { .. } => 3,
+        | Law::ShallowWater { .. } => 4,
     };
     match solver {
         | RiemannSolver::Rusanov => {
@@ -586,7 +601,7 @@ pub(crate) fn riemann_flux(
                             k * (q[4] / w[0] + (sm - w[1]) * (sm + w[4] / (w[0] * (s - w[1])))),
                         ]
                     },
-                    | Law::ShallowWater { .. } => [k, k * sm, k * w[2], 0.0, 0.0],
+                    | Law::ShallowWater { .. } => [k, k * sm, k * w[2], k * w[3], 0.0],
                 }
             };
             let (f, w, q, s) = if sm >= 0.0 {
@@ -648,6 +663,7 @@ pub(crate) fn riemann_flux(
                 },
                 | Law::ShallowWater { .. } => {
                     let vt = (sl_ * l[2] + sr_ * r[2]) / (sl_ + sr_);
+                    let wt = (sl_ * l[3] + sr_ * r[3]) / (sl_ + sr_);
                     let ht = f64::midpoint(l[0], r[0]);
                     let c = ct;
                     let (dh, dm) = (r[0] - l[0], r[0] * r[1] - l[0] * l[1]);
@@ -655,13 +671,16 @@ pub(crate) fn riemann_flux(
                     let a3 = (dm - (ut - c) * dh) / (2.0 * c);
                     let delta = 0.1 * c;
                     let (l1, l2, l3) = (fix(ut - c, delta), ut.abs(), fix(ut + c, delta));
-                    let r1 = [1.0, ut - c, vt];
-                    let r3 = [1.0, ut + c, vt];
-                    let dv = r[2] - l[2];
-                    for k in 0..3 {
+                    let r1 = [1.0, ut - c, vt, wt];
+                    let r3 = [1.0, ut + c, vt, wt];
+                    let (dv, dw) = (r[2] - l[2], r[3] - l[3]);
+                    for k in 0..4 {
                         diss[k] = l1 * a1 * r1[k] + l3 * a3 * r3[k];
                     }
+                    // The two transverse (shear) waves; in 1D and 2D the
+                    // second one is identically zero.
                     diss[2] += l2 * ht * dv;
+                    diss[3] += l2 * ht * dw;
                 },
             }
             let mut f = [0.0; 5];
@@ -1106,7 +1125,7 @@ impl Stepper<'_> {
                             let mut i = base;
                             i[d] = k;
                             let (w, z) = (wp[pad.idx(i)], bp[pad.idx(i)]);
-                            eta_line[k] = [w[0] + z, w[1], w[2], 0.0, z];
+                            eta_line[k] = [w[0] + z, w[1], w[2], w[3], z];
                         }
                         let mut flux_right = vec![[0.0; 5]; n + 1];
                         let mut faces = vec![(0.0, 0.0, 0.0, 0.0); n + 1];
@@ -1121,8 +1140,8 @@ impl Stepper<'_> {
                             let (h_l, h_r) = ((l[0] - l[4]).max(0.0), (r[0] - r[4]).max(0.0));
                             let b_star = l[4].max(r[4]);
                             let (hs_l, hs_r) = ((l[0] - b_star).max(0.0), (r[0] - b_star).max(0.0));
-                            let mut wl = [hs_l, l[1], l[2], 0.0, 0.0];
-                            let mut wr = [hs_r, r[1], r[2], 0.0, 0.0];
+                            let mut wl = [hs_l, l[1], l[2], l[3], 0.0];
+                            let mut wr = [hs_r, r[1], r[2], r[3], 0.0];
                             swap_dir(&mut wl, d);
                             swap_dir(&mut wr, d);
                             let mut fl = if hs_l + hs_r > 1e-12
@@ -1227,7 +1246,7 @@ impl Stepper<'_> {
 ///
 /// # Errors
 /// For inconsistent periodic faces, a CFL number outside `(0, 1)`, an
-/// unsupported dimension for shallow water, or non-admissible initial data.
+/// or non-admissible initial data.
 pub fn solve(
     grid: &FvGrid,
     cfg: &FvConfig,
@@ -1244,7 +1263,8 @@ pub fn solve(
 /// reconstruction, which is well-balanced for the lake at rest.
 ///
 /// # Errors
-/// As [`solve`], and for gravity with shallow water or a bed with Euler.
+/// As [`solve`], and for gravity with shallow water, a bed or Manning friction
+/// with Euler, or a bed or Manning friction with shallow water in 3D.
 pub fn solve_with_sources(
     grid: &FvGrid,
     cfg: &FvConfig,
@@ -1276,7 +1296,19 @@ pub fn solve_with_sources(
         return Err("non-reflecting boundaries are available for the Euler equations only".into());
     }
     if matches!(cfg.law, Law::ShallowWater { .. }) && grid.dim == 3 {
-        return Err("shallow water is two-dimensional at most".into());
+        if sources.bed.is_some() {
+            return Err(
+                "a bed is a planar shallow-water notion: not available for the 3D barotropic system"
+                    .into(),
+            );
+        }
+        if sources.manning > 0.0 {
+            return Err(
+                "Manning bed friction is a planar shallow-water notion: not available for the 3D \
+                 barotropic system"
+                    .into(),
+            );
+        }
     }
     for a in 0..grid.dim {
         if (cfg.bcs[2 * a] == GasBc::Periodic) != (cfg.bcs[2 * a + 1] == GasBc::Periodic) {
@@ -1289,7 +1321,11 @@ pub fn solve_with_sources(
     };
     let mut q: Vec<State> = Vec::with_capacity(grid.len());
     for p in 0..grid.len() {
-        let w = init(grid.centre(p));
+        let mut w = init(grid.centre(p));
+        if grid.dim < 3 && matches!(cfg.law, Law::ShallowWater { .. }) {
+            // Slot 3 is the vertical-axis velocity of the 3D system only.
+            w[3] = 0.0;
+        }
         if !admissible(cfg.law, &w) {
             return Err("initial state is not admissible".into());
         }

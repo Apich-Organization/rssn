@@ -1055,6 +1055,94 @@ fn fvm_shallow_water_2d_matches_1d_preserves_rest_and_swaps_axes() {
     );
 }
 
+#[test]
+fn fvm_shallow_water_3d_preserves_rest_conserves_mass_and_permutes_axes() {
+    let g = 9.81;
+    // lake at rest stays at rest
+    let flat = vec![1.5; 6 * 7 * 8];
+    let zero = vec![0.0; 6 * 7 * 8];
+    let rest = fvm::solve_shallow_water_3d(
+        &flat,
+        &zero,
+        &zero,
+        &zero,
+        [6, 7, 8],
+        [0.1, 0.1, 0.1],
+        0.005,
+        30,
+        g,
+    )
+    .unwrap();
+    assert!(rest.iter().all(|s| {
+        (s.h - 1.5).abs() < 1e-14 && s.hu.abs() < 1e-14 && s.hv.abs() < 1e-14 && s.hw.abs() < 1e-14
+    }));
+    // a droplet at (x, y, z) in an [nx, ny, nz] box equals the box with the
+    // axes cyclically permuted and the momenta permuted with them
+    let (nx, ny, nz) = (12, 10, 8);
+    let n = nx * ny * nz;
+    let drop = |x: usize, y: usize, z: usize| {
+        1.0 + (-((x as f64 - 5.0).powi(2) + (y as f64 - 4.0).powi(2) + (z as f64 - 3.0).powi(2))
+            / 0.25)
+            .exp()
+    };
+    let a: Vec<f64> = (0..n)
+        .map(|p| drop(p % nx, (p / nx) % ny, p / (nx * ny)))
+        .collect();
+    // permuted box [nz, nx, ny]: new axes (z, x, y)
+    let b: Vec<f64> = (0..n)
+        .map(|p| drop((p / nz) % nx, p / (nx * nz), p % nz))
+        .collect();
+    let z = vec![0.0; n];
+    let (dt, steps) = (0.004, 2);
+    let ra = fvm::solve_shallow_water_3d(
+        &a,
+        &z,
+        &z,
+        &z,
+        [nx, ny, nz],
+        [0.1, 0.1, 0.1],
+        dt,
+        steps,
+        g,
+    )
+    .unwrap();
+    let rb = fvm::solve_shallow_water_3d(
+        &b,
+        &z,
+        &z,
+        &z,
+        [nz, nx, ny],
+        [0.1, 0.1, 0.1],
+        dt,
+        steps,
+        g,
+    )
+    .unwrap();
+    for k in 0..nz {
+        for j in 0..ny {
+            for i in 0..nx {
+                let s = ra[i + nx * (j + ny * k)];
+                let t = rb[k + nz * (i + nx * j)];
+                assert!((s.h - t.h).abs() < 1e-12, "h at ({i},{j},{k})");
+                assert!((s.hu - t.hv).abs() < 1e-12, "hu/hv at ({i},{j},{k})");
+                assert!((s.hv - t.hw).abs() < 1e-12, "hv/hw at ({i},{j},{k})");
+                assert!((s.hw - t.hu).abs() < 1e-12, "hw/hu at ({i},{j},{k})");
+            }
+        }
+    }
+    // mass is conserved while the wave has not reached the zero-gradient faces
+    let (m0, m1) = (a.iter().sum::<f64>(), ra.iter().map(|s| s.h).sum::<f64>());
+    assert!((m0 - m1).abs() < 1e-9 * m0, "mass {m0} -> {m1}");
+    assert!(
+        ra.iter().any(|s| s.hw.abs() > 1e-6),
+        "the water must be moving"
+    );
+    // inconsistent inputs are rejected
+    assert!(
+        fvm::solve_shallow_water_3d(&a, &z, &z, &z[1..], [nx, ny, nz], [0.1; 3], dt, 1, g).is_err()
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Finite elements
 // ---------------------------------------------------------------------------

@@ -3565,6 +3565,2963 @@
         "dim": null,
         "variadic": null
       }
+    ],
+    "heat_fd": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "heat_fd_bc": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol",
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "wave_fd": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "wave_fd_bc": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol",
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "poisson_fd": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "advect_fd": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "advect_fd_upwind": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "minres_solve": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "fgmres_solve": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "bicgstab_l_solve": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "randomized_singular_values": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "lobpcg_eigenvalues": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tensor_norm": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tensor_inner": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tensor_outer": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "m"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "sum": [
+                {
+                  "var": "n"
+                },
+                {
+                  "var": "m"
+                }
+              ]
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tensordot": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "var": "m"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tensor_contract": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_l1_norm": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_l2_norm": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_inf_norm": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_inner": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": "real",
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_project": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 2
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "function_normalize": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 2
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "ifft_abs": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "wavedec": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": {
+              "tensor": {
+                "rank": {
+                  "lit": 1
+                },
+                "shape": null,
+                "elem": "real"
+              }
+            }
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "waverec": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          },
+          "symbol"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "nested_dissection_order": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "polynomial_system_roots": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 2
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 3
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 3
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "hosvd": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "record": [
+            [
+              "_0",
+              {
+                "tensor": {
+                  "rank": {
+                    "var": "n"
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            ],
+            [
+              "_1",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 2
+                      },
+                      "shape": null,
+                      "elem": "real"
+                    }
+                  }
+                }
+              }
+            ],
+            [
+              "_2",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 1
+                      },
+                      "shape": null,
+                      "elem": "real"
+                    }
+                  }
+                }
+              }
+            ]
+          ]
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "hooi": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "record": [
+            [
+              "_0",
+              {
+                "tensor": {
+                  "rank": {
+                    "var": "n"
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            ],
+            [
+              "_1",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 2
+                      },
+                      "shape": null,
+                      "elem": "real"
+                    }
+                  }
+                }
+              }
+            ],
+            [
+              "_2",
+              "real"
+            ]
+          ]
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "cp_als": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real",
+          "real"
+        ],
+        "ret": {
+          "record": [
+            [
+              "_0",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            ],
+            [
+              "_1",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 2
+                      },
+                      "shape": null,
+                      "elem": "real"
+                    }
+                  }
+                }
+              }
+            ],
+            [
+              "_2",
+              "real"
+            ]
+          ]
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tt_svd": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "real",
+          "real"
+        ],
+        "ret": {
+          "record": [
+            [
+              "_0",
+              {
+                "tensor": {
+                  "rank": {
+                    "lit": 1
+                  },
+                  "shape": null,
+                  "elem": {
+                    "tensor": {
+                      "rank": {
+                        "lit": 3
+                      },
+                      "shape": null,
+                      "elem": "real"
+                    }
+                  }
+                }
+              }
+            ],
+            [
+              "_1",
+              "real"
+            ]
+          ]
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tt_dense": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 3
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "n"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 4
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 3
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "tucker_dense": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 2
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "var": "n"
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "cp_dense": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": {
+                "tensor": {
+                  "rank": {
+                    "lit": 2
+                  },
+                  "shape": null,
+                  "elem": "real"
+                }
+              }
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 3
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          }
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "var": "r"
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "erf_complex": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "fresnel_s_complex": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "fresnel_c_complex": [
+      {
+        "type_params": [],
+        "params": [
+          "real",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
     ]
   }
 }

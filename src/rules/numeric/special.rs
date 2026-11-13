@@ -12,6 +12,8 @@
 //! | `lambert_w_complex(re, im, k)` | branch `k` of the Lambert `W`, the solution of `w exp(w) = z` |
 //! | `bessel_j_complex(nu, re, im)` | `J_nu(z)` for real order, principal branch |
 //! | `bessel_i_complex(nu, re, im)` | `I_nu(z)` for real order, principal branch |
+//! | `erf_complex(re, im)` | the error function `erf(z)` |
+//! | `fresnel_s_complex(re, im)`, `fresnel_c_complex(re, im)` | the Fresnel integrals `S(z)` and `C(z)` in the `sin(pi t^2 / 2)` normalisation |
 //!
 //! The arguments must be finite numbers of moderate size; a pole, a branch
 //! point whose value is infinite, or any non-finite result leaves the call as
@@ -22,6 +24,7 @@ use num_complex::Complex64;
 use super::bridge::Data;
 use super::bridge::Entry;
 use super::bridge::scalar;
+use crate::kernels::fresnel;
 use crate::kernels::special_complex;
 
 /// Largest real or imaginary part of an argument.
@@ -81,6 +84,30 @@ fn bessel_i_complex(a: &[Data]) -> Option<Data> {
     pair(special_complex::bessel_i_complex(nu, z))
 }
 
+/// Largest modulus the error function and Fresnel integrals accept; beyond
+/// it `exp(-z^2)` over- or underflows and the series loses all digits.
+const MAX_ERF: f64 = 1.0e3;
+
+fn erf_argument(a: &[Data]) -> Option<Complex64> {
+    point(a, 0).filter(|z| z.norm() <= MAX_ERF)
+}
+
+fn erf_complex(a: &[Data]) -> Option<Data> {
+    pair(fresnel::erf_complex(erf_argument(a)?))
+}
+
+fn fresnel_s_complex(a: &[Data]) -> Option<Data> {
+    let z = erf_argument(a)?;
+    let ((re, im), _) = fresnel::fresnel_sc_complex(z.re, z.im);
+    pair(Complex64::new(re, im))
+}
+
+fn fresnel_c_complex(a: &[Data]) -> Option<Data> {
+    let z = erf_argument(a)?;
+    let (_, (re, im)) = fresnel::fresnel_sc_complex(z.re, z.im);
+    pair(Complex64::new(re, im))
+}
+
 pub(super) const ENTRIES: &[Entry] = &[
     Entry {
         name: "lgamma_complex",
@@ -111,6 +138,21 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "bessel_i_complex",
         params: "sss",
         eval: bessel_i_complex,
+    },
+    Entry {
+        name: "erf_complex",
+        params: "ss",
+        eval: erf_complex,
+    },
+    Entry {
+        name: "fresnel_s_complex",
+        params: "ss",
+        eval: fresnel_s_complex,
+    },
+    Entry {
+        name: "fresnel_c_complex",
+        params: "ss",
+        eval: fresnel_c_complex,
     },
 ];
 
@@ -239,6 +281,58 @@ mod tests {
             Complex64::new(0.0, -1.0) * jz,
             1e-11,
         );
+    }
+
+    #[test]
+    fn error_function_and_fresnel_integrals_match_known_values() {
+        // erf(1) and the odd symmetry erf(-z) = -erf(z).
+        near(
+            complex("erf_complex(1, 0)"),
+            Complex64::new(0.842_700_792_949_714_9, 0.0),
+            1e-12,
+        );
+        near(
+            complex("erf_complex(-0.5, -0.7)"),
+            -complex("erf_complex(0.5, 0.7)"),
+            1e-12,
+        );
+        // erf(i y) = i erfi(y); erfi(1) = 1.650425758797543.
+        near(
+            complex("erf_complex(0, 1)"),
+            Complex64::new(0.0, 1.650_425_758_797_543),
+            1e-12,
+        );
+        // On the real axis S(1) and C(1) are the tabulated values.
+        near(
+            complex("fresnel_s_complex(1, 0)"),
+            Complex64::new(0.438_259_147_390_354_8, 0.0),
+            1e-10,
+        );
+        near(
+            complex("fresnel_c_complex(1, 0)"),
+            Complex64::new(0.779_893_400_376_822_8, 0.0),
+            1e-10,
+        );
+        // C and S are odd; both are built from erf, so a complex point agrees
+        // with the closed form C(z) + i S(z) = (1 + i)/2 erf((1 - i) sqrt(pi) z / 2).
+        let z = Complex64::new(0.6, 0.4);
+        let c = complex("fresnel_c_complex(0.6, 0.4)");
+        let s = complex("fresnel_s_complex(0.6, 0.4)");
+        let a = PI.sqrt() / 2.0;
+        let e = complex(&format!(
+            "erf_complex({}, {})",
+            (Complex64::new(a, -a) * z).re,
+            (Complex64::new(a, -a) * z).im
+        ));
+        near(
+            c + Complex64::new(0.0, 1.0) * s,
+            Complex64::new(0.5, 0.5) * e,
+            1e-11,
+        );
+        for src in ["erf_complex(1e4, 0)", "erf_complex(x, 0)", "fresnel_s_complex(0, 5e3)"] {
+            let (text, reduced) = reduce_with(&[numeric()], src, &[]);
+            assert!(!reduced, "{text}");
+        }
     }
 
     #[test]

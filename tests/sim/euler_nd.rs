@@ -338,7 +338,32 @@ fn shallow_water_2d_radial_dam_break_conserves_mass_and_rest_state_is_exact() {
 #[test]
 fn invalid_setups_are_rejected() {
     let grid = FvGrid::new(&[8, 8, 8], &[0.0; 3], &[1.0; 3]).unwrap();
-    assert!(solve(&grid, &FvConfig::shallow_water(9.81), &|_| [1.0; 5], 0.1).is_err());
+    // shallow water in 3D is the barotropic system; a bed and bed friction are planar
+    let sw3 = FvConfig::shallow_water(9.81);
+    assert!(solve(&grid, &sw3, &|_| [1.0, 0.0, 0.0, 0.0, 0.0], 0.01).is_ok());
+    let bed = |_x: [f64; 3]| 0.0;
+    let with_bed = Sources {
+        bed: Some(&bed),
+        ..Sources::default()
+    };
+    let err = solve_with_sources(&grid, &sw3, &|_| [1.0, 0.0, 0.0, 0.0, 0.0], &with_bed, 0.01)
+        .unwrap_err();
+    assert!(err.contains("bed"), "{err}");
+    let with_friction = Sources {
+        manning: 0.03,
+        ..Sources::default()
+    };
+    let err = solve_with_sources(
+        &grid,
+        &sw3,
+        &|_| [1.0, 0.0, 0.0, 0.0, 0.0],
+        &with_friction,
+        0.01,
+    )
+    .unwrap_err();
+    assert!(err.contains("Manning"), "{err}");
+    // more than three axes
+    assert!(FvGrid::new(&[4, 4, 4, 4], &[0.0; 4], &[1.0; 4]).is_err());
     let g1 = FvGrid::new(&[8], &[0.0], &[1.0]).unwrap();
     let mut cfg = FvConfig::euler(GAMMA);
     cfg.bcs[0] = GasBc::Periodic;
@@ -875,4 +900,193 @@ fn invalid_manning_setups_are_rejected() {
         )
         .is_err()
     );
+}
+
+// ------------------------------------------------- 3D barotropic shallow water
+
+const SW3_SOLVERS: [RiemannSolver; 3] = [
+    RiemannSolver::Rusanov,
+    RiemannSolver::Hllc,
+    RiemannSolver::Roe,
+];
+
+fn sw3_config(
+    riemann: RiemannSolver,
+    bc: GasBc,
+) -> FvConfig {
+    let mut cfg = FvConfig::shallow_water(G)
+        .with_axis(0, bc)
+        .with_axis(1, bc)
+        .with_axis(2, bc);
+    cfg.riemann = riemann;
+    cfg
+}
+
+#[test]
+fn shallow_water_3d_conserves_mass_and_momentum_with_every_riemann_solver() {
+    let grid = FvGrid::new(&[12, 12, 12], &[0.0; 3], &[1.0; 3]).unwrap();
+    let init = |x: [f64; 3]| {
+        let s = (2.0 * PI * x[0]).sin() + (2.0 * PI * x[1]).cos() + (2.0 * PI * x[2]).sin();
+        [
+            1.0 + 0.2 * (0.5 * s).sin(),
+            0.3 * (2.0 * PI * x[1]).sin(),
+            -0.2 * (2.0 * PI * x[2]).cos(),
+            0.25 * (2.0 * PI * x[0]).cos() + 0.1,
+            0.0,
+        ]
+    };
+    for solver in SW3_SOLVERS {
+        let cfg = sw3_config(solver, GasBc::Periodic);
+        let a = solve(&grid, &cfg, &init, 0.0).unwrap();
+        let b = solve(&grid, &cfg, &init, 0.05).unwrap();
+        assert!(b.steps > 2, "{solver:?}: the flow must evolve");
+        let (ta, tb) = (a.totals(), b.totals());
+        for c in 0..4 {
+            assert!(
+                (ta[c] - tb[c]).abs() < 1e-12 * (1.0 + ta[c].abs()),
+                "{solver:?} slot {c}: {} -> {}",
+                ta[c],
+                tb[c]
+            );
+        }
+        assert!(
+            (0..b.q.len()).any(|p| b.primitive(p)[3].abs() > 1e-3),
+            "{solver:?}: the vertical velocity must be carried"
+        );
+    }
+}
+
+#[test]
+fn shallow_water_3d_rest_state_is_exact() {
+    let grid = FvGrid::new(&[8, 8, 8], &[0.0; 3], &[1.0; 3]).unwrap();
+    for solver in SW3_SOLVERS {
+        for bc in [GasBc::Reflective, GasBc::Periodic, GasBc::Transmissive] {
+            let cfg = sw3_config(solver, bc);
+            let rest = solve(&grid, &cfg, &|_| [1.3, 0.0, 0.0, 0.0, 0.0], 0.2).unwrap();
+            assert!(rest.l1_error(0, |_| 1.3) < 1e-13, "{solver:?} {bc:?}");
+            for c in 1..4 {
+                assert!(rest.l1_error(c, |_| 0.0) < 1e-13, "{solver:?} {bc:?} {c}");
+            }
+        }
+    }
+}
+
+#[test]
+fn shallow_water_3d_is_symmetric_under_axis_permutations() {
+    let n = 12;
+    let grid = FvGrid::new(&[n, n, n], &[0.0; 3], &[1.0; 3]).unwrap();
+    // A radial dam break: invariant under every permutation of the axes.
+    let radial = |x: [f64; 3]| {
+        let r2 = (x[0] - 0.5).powi(2) + (x[1] - 0.5).powi(2) + (x[2] - 0.5).powi(2);
+        [if r2 < 0.04 { 1.5 } else { 1.0 }, 0.0, 0.0, 0.0, 0.0]
+    };
+    // An off-centre blob with a velocity: mapped onto itself by the permutation
+    // of the coordinates and of the velocity components.
+    let blob = |x: [f64; 3]| {
+        let r2 = (x[0] - 0.3).powi(2) + (x[1] - 0.5).powi(2) + (x[2] - 0.7).powi(2);
+        [1.0 + 0.5 * (-r2 / 0.03).exp(), 0.3, -0.2, 0.1, 0.0]
+    };
+    let perms: [[usize; 3]; 6] = [
+        [0, 1, 2],
+        [1, 0, 2],
+        [0, 2, 1],
+        [2, 1, 0],
+        [1, 2, 0],
+        [2, 0, 1],
+    ];
+    for solver in [RiemannSolver::Hllc, RiemannSolver::Roe] {
+        let cfg = sw3_config(solver, GasBc::Reflective);
+        let ra = solve(&grid, &cfg, &radial, 0.04).unwrap();
+        let ba = solve(&grid, &cfg, &blob, 0.04).unwrap();
+        for p in perms {
+            // Axis `a` of the permuted problem is axis `p[a]` of the original.
+            let permuted_blob = |x: [f64; 3]| {
+                let mut y = [0.0; 3];
+                for a in 0..3 {
+                    y[p[a]] = x[a];
+                }
+                let w = blob(y);
+                [w[0], w[1 + p[0]], w[1 + p[1]], w[1 + p[2]], 0.0]
+            };
+            let bb = solve(&grid, &cfg, &permuted_blob, 0.04).unwrap();
+            for k in 0..n {
+                for j in 0..n {
+                    for i in 0..n {
+                        let ib = [i, j, k];
+                        let mut ia = [0; 3];
+                        for a in 0..3 {
+                            ia[p[a]] = ib[a];
+                        }
+                        let (wa, wb) = (ba.primitive(grid.index(ia)), bb.primitive(grid.index(ib)));
+                        assert!(
+                            (wa[0] - wb[0]).abs() < 1e-9,
+                            "{solver:?} {p:?} h at {ib:?}: {} vs {}",
+                            wa[0],
+                            wb[0]
+                        );
+                        for a in 0..3 {
+                            assert!(
+                                (wa[1 + p[a]] - wb[1 + a]).abs() < 1e-9,
+                                "{solver:?} {p:?} velocity {a} at {ib:?}"
+                            );
+                        }
+                        let (pa, pb) = (ra.primitive(grid.index(ia)), ra.primitive(grid.index(ib)));
+                        assert!((pa[0] - pb[0]).abs() < 1e-9, "radial {solver:?} {p:?}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn shallow_water_3d_reduces_to_2d_on_z_independent_data() {
+    let (n, nz) = (16, 4);
+    // A deep z axis keeps the z term of the CFL sum negligible: the two runs
+    // then differ only by the (tiny) difference of their time steps.
+    let g2 = FvGrid::new(&[n, n], &[0.0; 2], &[1.0; 2]).unwrap();
+    let g3 = FvGrid::new(&[n, n, nz], &[0.0, 0.0, 0.0], &[1.0, 1.0, 400.0]).unwrap();
+    let init = |x: [f64; 3]| {
+        let r2 = (x[0] - 0.4).powi(2) + (x[1] - 0.5).powi(2);
+        [1.0 + 0.3 * (-r2 / 0.02).exp(), 0.2, -0.1, 0.0, 0.0]
+    };
+    for solver in SW3_SOLVERS {
+        let mut c2 = FvConfig::shallow_water(G)
+            .with_axis(0, GasBc::Reflective)
+            .with_axis(1, GasBc::Reflective);
+        c2.riemann = solver;
+        let c3 = c2.with_axis(2, GasBc::Periodic);
+        let a = solve(&g2, &c2, &init, 0.05).unwrap();
+        let b = solve(&g3, &c3, &init, 0.05).unwrap();
+        for k in 0..nz {
+            for j in 0..n {
+                for i in 0..n {
+                    let (p2, p3) = (
+                        a.primitive(g2.index([i, j, 0])),
+                        b.primitive(g3.index([i, j, k])),
+                    );
+                    for c in 0..3 {
+                        assert!(
+                            (p2[c] - p3[c]).abs() < 2e-5,
+                            "{solver:?} slot {c} at ({i},{j},{k}): {} vs {}",
+                            p2[c],
+                            p3[c]
+                        );
+                    }
+                    assert!(p3[3].abs() < 1e-13, "{solver:?} w {}", p3[3]);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn shallow_water_ignores_the_vertical_velocity_below_three_dimensions() {
+    // Slot 3 is only meaningful in 3D: a stray value must not change a 1D run.
+    let grid = FvGrid::new(&[40], &[0.0], &[1.0]).unwrap();
+    let cfg = FvConfig::shallow_water(G);
+    let dam = |s: f64| if s < 0.5 { 2.0 } else { 1.0 };
+    let a = solve(&grid, &cfg, &|x| [dam(x[0]), 0.0, 0.0, 0.0, 0.0], 0.05).unwrap();
+    let b = solve(&grid, &cfg, &|x| [dam(x[0]), 0.0, 0.0, 7.0, 0.0], 0.05).unwrap();
+    assert_eq!(a.q, b.q);
 }

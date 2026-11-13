@@ -444,16 +444,44 @@ fn amr_periodic_density_wave_keeps_second_order_accuracy_across_refinement_bound
         (t1[0] - t0[0]).abs() < 1e-12 && (t1[4] - t0[4]).abs() < 1e-11 * t0[4],
         "{t0:?} {t1:?}"
     );
-    // 3D shallow water is the remaining dimension restriction
+    // 3D shallow water (barotropic) is accepted: a lake at rest stays at rest
     let mut sw = AmrConfig::new(FvConfig::shallow_water(9.81));
     sw.max_level = 1;
-    assert!(
-        solve_amr(
-            &FvGrid::new(&[8, 8, 8], &[0.0; 3], &[1.0; 3]).unwrap(),
-            &sw,
-            &|_| [1.0, 0.0, 0.0, 0.0, 0.0],
-            0.1
-        )
-        .is_err()
-    );
+    let rest = solve_amr(
+        &FvGrid::new(&[8, 8, 8], &[0.0; 3], &[1.0; 3]).unwrap(),
+        &sw,
+        &|_| [1.0, 0.0, 0.0, 0.0, 0.0],
+        0.05,
+    )
+    .unwrap();
+    assert!((rest.totals()[0] - 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn amr_shallow_water_3d_refines_and_conserves_mass_and_momentum() {
+    let grid = FvGrid::new(&[12, 12, 12], &[0.0; 3], &[1.0; 3]).unwrap();
+    let init = |x: [f64; 3]| {
+        let r2 = (x[0] - 0.5).powi(2) + (x[1] - 0.5).powi(2) + (x[2] - 0.5).powi(2);
+        [1.0 + 0.5 * (-r2 / 0.02).exp(), 0.3, 0.0, -0.2, 0.0]
+    };
+    let fv = FvConfig::shallow_water(9.81)
+        .with_axis(0, GasBc::Periodic)
+        .with_axis(1, GasBc::Periodic)
+        .with_axis(2, GasBc::Periodic);
+    let mut cfg = AmrConfig::new(fv);
+    cfg.max_level = 1;
+    cfg.buffer = 1;
+    let a = solve_amr(&grid, &cfg, &init, 1e-12).unwrap().totals();
+    let sol = solve_amr(&grid, &cfg, &init, 0.05).unwrap();
+    let b = sol.totals();
+    assert!(sol.cells_per_level()[1] > 0, "the blob must be refined");
+    for c in 0..4 {
+        assert!(
+            (a[c] - b[c]).abs() < 1e-11 * (1.0 + a[c].abs()),
+            "slot {c}: {} -> {}",
+            a[c],
+            b[c]
+        );
+    }
+    assert!(b[3].abs() > 1e-3, "the vertical momentum must be carried");
 }

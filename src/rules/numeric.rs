@@ -164,15 +164,24 @@ fn bridge_dimension(name: &str) -> DimRule {
         // numbers.
         | "hann_window" | "hamming_window" | "blackman_window" | "lgamma_complex"
         | "gamma_complex" | "digamma_complex" | "lambert_w_complex" | "bessel_j_complex"
-        | "bessel_i_complex" => DimRule::Dimensionless,
+        | "bessel_i_complex" | "erf_complex" | "fresnel_s_complex" | "fresnel_c_complex" => {
+            DimRule::Dimensionless
+        },
         | "cross_correlation" | "tensor_inner" | "tensor_outer" | "tensordot" => DimRule::Product,
         // A probability is a pure number whatever the sample's dimension.
         | "ecdf" => DimRule::NonMetric,
         // A density is per unit of the sample's dimension.
         | "kde" => DimRule::Inverse,
         // The unit box has no length scale, so the field keeps its dimension.
-        | "heat_fd" | "wave_fd" | "advect_fd" => DimRule::Same(1),
+        | "heat_fd" | "wave_fd" | "advect_fd" | "heat_fd_bc" | "wave_fd_bc"
+        | "advect_fd_upwind" => DimRule::Same(1),
         | "poisson_fd" => DimRule::Same(0),
+        // A norm, a trace over two axes, an inverse transform or the dense
+        // form of a decomposition keeps the dimension of the tensor (the
+        // factors of a decomposition are bare orthonormal or unit-norm
+        // matrices, so the core or the weights carry it).
+        | "tensor_norm" | "tensor_contract" | "tt_dense" | "tucker_dense" | "cp_dense"
+        | "ifft_abs" => DimRule::Same(0),
         // Ranks and column indices are counts, not quantities.
         | "qr_pivoted_rank" | "qr_pivoted_permutation" | "nested_dissection_order" => {
             DimRule::NonMetric
@@ -486,6 +495,305 @@ mod tests {
             let (text, reduced) = reduce_with(&[numeric()], src, &[]);
             assert!(!reduced, "{text}");
         }
+    }
+
+    /// A nested constant list of the given extents.
+    fn constant(
+        shape: &[usize],
+        value: f64,
+    ) -> String {
+        match shape.split_first() {
+            | None => format!("{value}"),
+            | Some((&n, rest)) => {
+                let inner = constant(rest, value);
+                format!("list({})", vec![inner; n].join(", "))
+            },
+        }
+    }
+
+    /// Insulated (Neumann) walls keep a constant field constant in 1D, 2D and
+    /// 3D, while Dirichlet walls at another value do not.
+    #[test]
+    fn neumann_walls_are_available_in_every_dimension() {
+        for shape in [vec![6], vec![5, 5], vec![4, 4, 4]] {
+            let ones = constant(&shape, 1.0);
+            let zeros = constant(&shape, 0.0);
+            let count: usize = shape.iter().product();
+            let heat = run(&format!("heat_fd_bc(0.1, {ones}, neumann, 0, 0.01, 4)"));
+            assert_eq!(flat(&heat).len(), count, "{shape:?}");
+            assert!(flat(&heat).iter().all(|v| (v - 1.0).abs() < 1e-9), "{heat}");
+            let wave = run(&format!(
+                "wave_fd_bc(1, {ones}, {zeros}, neumann, 0, 0.01, 4)"
+            ));
+            assert_eq!(flat(&wave).len(), count, "{shape:?}");
+            assert!(flat(&wave).iter().all(|v| (v - 1.0).abs() < 1e-9), "{wave}");
+            let held = flat(&run(&format!(
+                "heat_fd_bc(0.1, {ones}, dirichlet, 0, 0.01, 4)"
+            )));
+            assert!(held.iter().any(|v| v.abs() < 1e-9), "{shape:?}");
+            // The plain operator is the Dirichlet case.
+            assert_eq!(
+                run(&format!("heat_fd(0.1, {ones}, 0, 0.01, 4)")),
+                run(&format!("heat_fd_bc(0.1, {ones}, dirichlet, 0, 0.01, 4)"))
+            );
+        }
+        // An unknown kind, a number in its place and mismatched fields stay requests.
+        for src in [
+            "heat_fd_bc(0.1, list(1, 1, 1, 1), robin, 0, 0.01, 4)",
+            "heat_fd_bc(0.1, list(1, 1, 1, 1), 1, 0, 0.01, 4)",
+            "wave_fd_bc(1, list(1, 1, 1), list(0, 0, 0, 0), neumann, 0, 0.01, 4)",
+            "wave_fd_bc(1, list(1, 1, 1), list(0, 0, 0), neumann, 0, 0.01, 0)",
+        ] {
+            let (text, reduced) = reduce_with(&[numeric()], src, &[]);
+            assert!(!reduced, "{text}");
+        }
+    }
+
+    /// Waves and advection in 2D and 3D: a steady Dirichlet state is held, and
+    /// the data's depth chooses the grid.
+    #[test]
+    fn waves_and_advection_run_on_squares_and_cubes() {
+        for shape in [vec![5, 5], vec![4, 4, 4]] {
+            let ones = constant(&shape, 1.0);
+            let zeros = constant(&shape, 0.0);
+            let count: usize = shape.iter().product();
+            let wave = run(&format!("wave_fd(1, {ones}, {zeros}, 1, 0.01, 4)"));
+            assert_eq!(flat(&wave).len(), count, "{shape:?}");
+            assert!(flat(&wave).iter().all(|v| (v - 1.0).abs() < 1e-9), "{wave}");
+            let velocity = format!("list({})", vec!["0.5"; shape.len()].join(", "));
+            for op in ["advect_fd", "advect_fd_upwind"] {
+                let out = run(&format!("{op}({velocity}, {ones}, 0.01, 4)"));
+                assert_eq!(flat(&out).len(), count, "{op} {shape:?}");
+                assert!(flat(&out).iter().all(|v| (v - 1.0).abs() < 1e-9), "{out}");
+            }
+        }
+    }
+
+    /// The upwind scheme is monotone on a front; Lax-Wendroff is not.
+    #[test]
+    fn upwind_advection_does_not_overshoot_a_front() {
+        let step = "list(0, 0, 0, 0, 1, 1, 1, 1)";
+        // A Courant number of one half: velocity 1, dt = 1/16, dx = 1/8.
+        let upwind = flat(&run(&format!("advect_fd_upwind(list(1), {step}, 0.25, 4)")));
+        assert_eq!(upwind.len(), 8);
+        assert!(
+            upwind.iter().all(|v| (-1e-12..=1.0 + 1e-12).contains(v)),
+            "{upwind:?}"
+        );
+        let second_order = flat(&run(&format!("advect_fd(list(1), {step}, 0.25, 4)")));
+        assert!(
+            second_order.iter().any(|v| *v < -1e-3 || *v > 1.0 + 1e-3),
+            "{second_order:?}"
+        );
+        // A Courant number above one is unstable and not an answer.
+        let (text, reduced) = reduce_with(
+            &[numeric()],
+            &format!("advect_fd_upwind(list(1), {step}, 1, 2)"),
+            &[],
+        );
+        assert!(!reduced, "{text}");
+    }
+
+    /// Axes past the rank or repeated used to index out of range inside the
+    /// kernel; they must stay requests.
+    #[test]
+    fn tensor_axes_are_validated() {
+        let m = "list(list(1, 2), list(3, 4))";
+        for src in [
+            format!("tensordot({m}, {m}, list(2), list(0))"),
+            format!("tensordot({m}, {m}, list(0), list(9))"),
+            format!("tensordot({m}, {m}, list(0, 0), list(0, 1))"),
+            format!("tensordot({m}, {m}, list(0), list(0, 1))"),
+            format!("tensor_contract({m}, 0, 0)"),
+            format!("tensor_contract({m}, 0, 2)"),
+            "tensor_contract(list(list(1, 2, 3), list(4, 5, 6)), 0, 1)".to_owned(),
+            format!("tensor_contract({m}, -1, 0)"),
+            format!("tensor_inner({m}, list(1, 2))"),
+            "tensor_norm(5)".to_owned(),
+            "tensor_norm(list(list(1, a), list(3, 4)))".to_owned(),
+        ] {
+            let (text, reduced) = reduce_with(&[numeric()], &src, &[]);
+            assert!(!reduced, "{text}");
+        }
+        // The full contraction of a matrix with itself is its squared norm.
+        assert_eq!(
+            run(&format!("tensordot({m}, {m}, list(0, 1), list(0, 1))")),
+            "30"
+        );
+    }
+
+    #[test]
+    fn tensor_contract_is_the_generalised_trace() {
+        assert_eq!(
+            run("tensor_contract(list(list(1, 2), list(3, 4)), 0, 1)"),
+            "5"
+        );
+        let cube = "list(list(list(1, 2), list(3, 4)), list(list(5, 6), list(7, 8)))";
+        close(
+            &flat(&run(&format!("tensor_contract({cube}, 0, 1)"))),
+            &[8.0, 10.0],
+            1e-12,
+        );
+        close(
+            &flat(&run(&format!("tensor_contract({cube}, 1, 0)"))),
+            &[8.0, 10.0],
+            1e-12,
+        );
+        close(
+            &flat(&run(&format!("tensor_contract({cube}, 0, 2)"))),
+            &[6.0, 14.0],
+            1e-12,
+        );
+    }
+
+    #[test]
+    fn the_inverse_transform_has_a_magnitude_like_the_forward_one() {
+        close(
+            &flat(&run(
+                "ifft_abs(fft_re(list(1, -2, 3)), fft_im(list(1, -2, 3)))",
+            )),
+            &[1.0, 2.0, 3.0],
+            1e-12,
+        );
+        let (text, reduced) = reduce_with(&[numeric()], "ifft_abs(list(1, 2), list(1))", &[]);
+        assert!(!reduced, "{text}");
+    }
+
+    fn tensor(rank: u64) -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(rank),
+            shape: None,
+            elem: Box::new(TypeExpr::Real),
+        }
+    }
+
+    /// Every table operator has a reviewed overlay signature of its own arity,
+    /// with the symbolic fallback after it, so a host's manifest types it
+    /// instead of seeing only the blanket `Term` contract.
+    #[test]
+    fn every_table_operator_has_a_typed_overlay_signature() {
+        let mut graph = Graph::new();
+        let sets: Vec<RuleSet> = vec![numeric()];
+        assert!(Engine::install(&mut graph, &sets).is_ok());
+        let tables: [&[super::bridge::Entry]; 6] = [
+            super::bridge::ENTRIES,
+            super::special::ENTRIES,
+            super::resample::ENTRIES,
+            super::transform::ENTRIES,
+            super::decomp::ENTRIES,
+            super::solvers::ENTRIES,
+        ];
+        let mut seen = 0;
+        for entry in tables.into_iter().flatten() {
+            seen += 1;
+            let op = graph
+                .ops()
+                .lookup(entry.name)
+                .unwrap_or_else(|| panic!("{} is registered", entry.name));
+            let (overloads, source) = signatures(graph.ops().get(op));
+            assert_eq!(source, SignatureSource::Overlay, "{}", entry.name);
+            assert!(overloads.len() >= 2, "{}", entry.name);
+            for overload in &overloads {
+                assert_eq!(
+                    overload.params.len(),
+                    entry.params.len(),
+                    "{}: {overload:?}",
+                    entry.name
+                );
+            }
+            assert!(
+                !overloads[0]
+                    .params
+                    .iter()
+                    .any(|p| matches!(p, TypeExpr::Dyn(_))),
+                "{}: the first overload must be typed",
+                entry.name
+            );
+            assert!(
+                overloads[overloads.len() - 1]
+                    .params
+                    .iter()
+                    .all(|p| matches!(p, TypeExpr::Dyn(_))),
+                "{}: the last overload is the symbolic one",
+                entry.name
+            );
+        }
+        assert!(seen > 60, "only {seen} table operators");
+    }
+
+    /// The dimension-free solvers take a tensor of any rank, tied across their
+    /// arguments, and give back a field of that rank.
+    #[test]
+    fn finite_difference_signatures_follow_the_rank_of_the_data() {
+        let mut graph = Graph::new();
+        let sets: Vec<RuleSet> = vec![numeric()];
+        assert!(Engine::install(&mut graph, &sets).is_ok());
+        let resolve = |name: &str, args: &[TypeExpr]| {
+            let op = graph
+                .ops()
+                .lookup(name)
+                .unwrap_or_else(|| panic!("{name} is registered"));
+            let (overloads, _) = signatures(graph.ops().get(op));
+            match best_types(&overloads, args) {
+                | Best::Unique(chosen) => Some(overloads[chosen].clone()),
+                | _ => None,
+            }
+        };
+        let real = TypeExpr::Real;
+        for rank in 1..=3 {
+            let field = || tensor(rank);
+            let heat = [
+                real.clone(),
+                field(),
+                real.clone(),
+                real.clone(),
+                real.clone(),
+            ];
+            let chosen = resolve("heat_fd", &heat).unwrap_or_else(|| panic!("heat_fd rank {rank}"));
+            assert!(matches!(chosen.ret, TypeExpr::Tensor { .. }), "{chosen:?}");
+            let wave = [
+                real.clone(),
+                field(),
+                field(),
+                real.clone(),
+                real.clone(),
+                real.clone(),
+            ];
+            assert!(resolve("wave_fd", &wave).is_some(), "wave_fd rank {rank}");
+            assert!(
+                resolve("poisson_fd", &[field(), real.clone()]).is_some(),
+                "poisson_fd rank {rank}"
+            );
+            let advect = [tensor(1), field(), real.clone(), real.clone()];
+            assert!(resolve("advect_fd", &advect).is_some(), "advect {rank}");
+            assert!(resolve("advect_fd_upwind", &advect).is_some());
+            assert!(resolve("tensor_norm", &[field()]).is_some(), "norm {rank}");
+            assert!(resolve("tensor_inner", &[field(), field()]).is_some());
+        }
+    }
+
+    /// The dimension rules of the new siblings follow their families.
+    #[test]
+    fn the_dimension_rules_of_the_siblings_match_their_families() {
+        use crate::kernel::signature::DimRuleInfo;
+        let rule = |name: &str| DimRuleInfo::from(super::bridge_dimension(name));
+        for name in ["heat_fd_bc", "wave_fd_bc", "advect_fd_upwind"] {
+            assert_eq!(rule(name), DimRuleInfo::Same(1), "{name}");
+        }
+        for name in [
+            "tensor_norm",
+            "tensor_contract",
+            "tt_dense",
+            "tucker_dense",
+            "cp_dense",
+            "ifft_abs",
+        ] {
+            assert_eq!(rule(name), DimRuleInfo::Same(0), "{name}");
+        }
+        for name in ["erf_complex", "fresnel_s_complex", "fresnel_c_complex"] {
+            assert_eq!(rule(name), DimRuleInfo::Dimensionless, "{name}");
+        }
+        assert_eq!(rule("tensordot"), DimRuleInfo::Product);
     }
 
     #[test]

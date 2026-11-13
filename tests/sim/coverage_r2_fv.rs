@@ -287,10 +287,10 @@ fn amr_validation_errors() {
     // inadmissible initial state
     let bad = |_x: [f64; 3]| [1.0, 0.0, 0.0, 0.0, -1.0];
     assert!(solve_amr(&grid, &good, &bad, 0.01).is_err());
-    // shallow water in 3D
+    // shallow water in 3D is the barotropic system: accepted
     let g3 = FvGrid::new(&[4, 4, 4], &[0.0; 3], &[1.0; 3]).unwrap();
     let sw = AmrConfig::new(FvConfig::shallow_water(9.81));
-    assert!(solve_amr(&g3, &sw, &|_x: [f64; 3]| [1.0, 0.0, 0.0, 0.0, 0.0], 0.01).is_err());
+    assert!(solve_amr(&g3, &sw, &|_x: [f64; 3]| [1.0, 0.0, 0.0, 0.0, 0.0], 0.01).is_ok());
 }
 
 #[test]

@@ -67,6 +67,23 @@ pub fn tensordot(
             .to_string());
     }
 
+    // An axis past the rank, or one named twice, has no meaning; without this
+    // check it indexed out of range or made `permuted_axes` panic.
+    for (name, axes, ndim) in [("a", axes_a, a.ndim()), ("b", axes_b, b.ndim())] {
+        for (position, &axis) in axes.iter().enumerate() {
+            if axis >= ndim {
+                return Err(format!(
+                    "Contracted axis {axis} is out of range for tensor '{name}' of rank {ndim}."
+                ));
+            }
+            if axes[..position].contains(&axis) {
+                return Err(format!(
+                    "Contracted axis {axis} of tensor '{name}' is named more than once."
+                ));
+            }
+        }
+    }
+
     for (&ax_a, &ax_b) in axes_a.iter().zip(axes_b.iter()) {
         if a.shape()[ax_a] != b.shape()[ax_b] {
             return Err(format!(
@@ -764,6 +781,94 @@ impl Hosvd {
     }
 }
 
+/// The dense tensor `core x_1 U_1 .. x_N U_N` of a Tucker model, with
+/// `factors[k]` of size `n_k x r_k` and `core` of shape `r_1 x .. x r_N`.
+///
+/// # Errors
+/// Returns an error if the number of factors differs from the rank of the
+/// core, a factor's column count differs from its core extent, or the result
+/// would be empty.
+pub fn tucker_reconstruct(
+    core: &ArrayD<f64>,
+    factors: &[Mat],
+) -> Result<ArrayD<f64>, String> {
+    if factors.len() != core.ndim() {
+        return Err(format!(
+            "A Tucker model of a rank-{} core needs {} factors, got {}.",
+            core.ndim(),
+            core.ndim(),
+            factors.len()
+        ));
+    }
+    let mut out = core.clone();
+    for (mode, factor) in factors.iter().enumerate() {
+        if factor.rows == 0 || factor.cols != core.shape()[mode] {
+            return Err(format!(
+                "Factor {mode} has {} columns but the core has extent {} in that mode.",
+                factor.cols,
+                core.shape()[mode]
+            ));
+        }
+        out = mode_product(&out, mode, factor)?;
+    }
+    Ok(out)
+}
+
+/// The dense tensor `sum_r weights[r] * a_r o b_r o ..` of a CP model, with
+/// `factors[k]` of size `n_k x rank`.
+///
+/// # Errors
+/// Returns an error if there are fewer than two factors, a factor does not
+/// have one column per weight, or an extent is zero.
+pub fn cp_reconstruct(
+    weights: &[f64],
+    factors: &[Mat],
+) -> Result<ArrayD<f64>, String> {
+    if factors.len() < 2 {
+        return Err("A CP model needs at least two factors.".to_string());
+    }
+    if weights.is_empty() {
+        return Err("A CP model needs at least one component.".to_string());
+    }
+    if let Some(bad) = factors
+        .iter()
+        .position(|f| f.rows == 0 || f.cols != weights.len())
+    {
+        return Err(format!(
+            "Factor {bad} must have one column for each of the {} weights.",
+            weights.len()
+        ));
+    }
+    let shape: Vec<usize> = factors.iter().map(|f| f.rows).collect();
+    let total = shape
+        .iter()
+        .try_fold(1_usize, |n, &e| n.checked_mul(e))
+        .ok_or("CP model is too large.")?;
+    let mut data = vec![0.0; total];
+    let mut index = vec![0_usize; shape.len()];
+    for value in &mut data {
+        *value = weights
+            .iter()
+            .enumerate()
+            .map(|(r, &w)| {
+                factors
+                    .iter()
+                    .zip(&index)
+                    .fold(w, |p, (f, &i)| p * f.data[i * f.cols + r])
+            })
+            .sum();
+        // Advance the multi-index, last axis fastest.
+        for axis in (0..shape.len()).rev() {
+            index[axis] += 1;
+            if index[axis] < shape[axis] {
+                break;
+            }
+            index[axis] = 0;
+        }
+    }
+    ArrayD::from_shape_vec(IxDyn(&shape), data).map_err(|e| e.to_string())
+}
+
 /// The mode-`k` product `T x_k M`: `M` is `r x n_k` and the result has `r` in
 /// place of mode `k`.
 fn mode_product(
@@ -1088,6 +1193,58 @@ mod tests {
         assert_eq!(res.shape(), &[2, 2]);
 
         assert!((res[[0, 0]] - (1.0 * 5.0 + 2.0 * 7.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn tensordot_rejects_bad_axes_instead_of_panicking() {
+        let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
+        assert!(tensordot(&a, &a, &[2], &[0]).is_err());
+        assert!(tensordot(&a, &a, &[0], &[7]).is_err());
+        assert!(tensordot(&a, &a, &[0, 0], &[0, 1]).is_err());
+        assert!(tensordot(&a, &a, &[0, 1], &[1, 1]).is_err());
+        // The full contraction of a matrix with itself is a scalar.
+        let all = tensordot(&a, &a, &[0, 1], &[0, 1]).unwrap();
+        assert_eq!(all.ndim(), 0);
+        assert_eq!(all.iter().next().copied(), Some(30.0));
+    }
+
+    #[test]
+    fn cp_reconstruct_matches_the_rank_one_outer_product() {
+        let col = |v: &[f64]| Mat {
+            rows: v.len(),
+            cols: 1,
+            data: v.to_vec(),
+        };
+        let built = cp_reconstruct(&[2.0], &[col(&[1.0, 2.0]), col(&[3.0, 4.0, 5.0])]).unwrap();
+        assert_eq!(built.shape(), &[2, 3]);
+        assert_eq!(built[[1, 2]], 2.0 * 2.0 * 5.0);
+        // A fit's own reconstruction is reproduced from its parts.
+        let t = array![[[1.0, 2.0], [3.0, 4.0]], [[2.0, 4.0], [6.0, 8.0]]].into_dyn();
+        let mut options = CpOptions::new(1);
+        options.max_sweeps = 200;
+        let fit = cp_als(&t, &options).unwrap();
+        let again = cp_reconstruct(&fit.weights, &fit.factors).unwrap();
+        for (x, y) in again.iter().zip(fit.reconstruction.iter()) {
+            assert!((x - y).abs() < 1e-9, "{x} vs {y}");
+        }
+        // Mismatched component counts and a single factor are errors.
+        assert!(cp_reconstruct(&[1.0, 1.0], &[col(&[1.0]), col(&[1.0])]).is_err());
+        assert!(cp_reconstruct(&[1.0], &[col(&[1.0])]).is_err());
+        assert!(cp_reconstruct(&[], &[col(&[1.0]), col(&[1.0])]).is_err());
+    }
+
+    #[test]
+    fn tucker_reconstruct_inverts_a_full_rank_hosvd() {
+        let t = array![[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 9.0]]].into_dyn();
+        let h = hosvd(&t, None).unwrap();
+        let back = tucker_reconstruct(&h.core, &h.factors).unwrap();
+        for (x, y) in back.iter().zip(t.iter()) {
+            assert!((x - y).abs() < 1e-9, "{x} vs {y}");
+        }
+        assert!(tucker_reconstruct(&h.core, &h.factors[..2]).is_err());
+        let mut wrong = h.factors.clone();
+        wrong[0] = Mat::zeros(2, 1);
+        assert!(tucker_reconstruct(&h.core, &wrong).is_err());
     }
 
     #[test]
