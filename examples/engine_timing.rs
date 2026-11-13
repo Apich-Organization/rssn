@@ -24,7 +24,10 @@ fn main() {
     let t = s.parse("x+1").expect("parses");
     let _ = s.compute(t, &config);
     println!("template build + first request: {:?}", warm.elapsed());
-    let reps: u32 = std::env::args().nth(1).and_then(|a| a.parse().ok()).unwrap_or(20);
+    let reps: u32 = std::env::args()
+        .nth(1)
+        .and_then(|a| a.parse().ok())
+        .unwrap_or(20);
     s.set_cache_policy(rssn::api::CachePolicy::off());
     let no_cache = config.clone();
     let only = std::env::args().nth(2);
@@ -42,6 +45,9 @@ fn main() {
             }
         }
         let per = start.elapsed() / reps;
-        println!("{name:<20} {per:>12.3?}  {}", answer.chars().take(70).collect::<String>());
+        println!(
+            "{name:<20} {per:>12.3?}  {}",
+            answer.chars().take(70).collect::<String>()
+        );
     }
 }

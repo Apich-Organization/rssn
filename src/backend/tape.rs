@@ -848,10 +848,7 @@ impl Tape {
                         for (k, d) in dst.iter_mut().enumerate() {
                             v.clear();
                             v.extend(ops.iter().map(|&o| {
-                                before
-                                    .get(o as usize * B + k)
-                                    .copied()
-                                    .unwrap_or(f64::NAN)
+                                before.get(o as usize * B + k).copied().unwrap_or(f64::NAN)
                             }));
                             *d = apply(inst, &v);
                         }

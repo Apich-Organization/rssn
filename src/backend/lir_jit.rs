@@ -115,9 +115,7 @@ const fn int_cc(c: Cmp) -> IntCC {
 }
 
 /// The native parameter types of a function (without `ctx`/`depth`/`ret`).
-fn native_params(
-    f: &super::lir::Function,
-) -> Vec<Type> {
+fn native_params(f: &super::lir::Function) -> Vec<Type> {
     let mut out = Vec::new();
     for &p in f.blocks.first().map_or(&[][..], |e| &e.params[..]) {
         let ty = f.regs.get(p.0 as usize).copied().unwrap_or(Ty::F64);
@@ -346,7 +344,8 @@ fn trampoline(
     b.seal_block(entry);
     let params = b.block_params(entry).to_vec();
     let (args_ptr, out_ptr) = (params[0], params[1]);
-    let status_slot = b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
+    let status_slot =
+        b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
     let zero32 = b.ins().iconst(types::I32, 0);
     b.ins().stack_store(pointer, zero32, status_slot, 0);
     let ctx = b.ins().stack_addr(pointer, status_slot, 0);
@@ -536,7 +535,12 @@ impl Gen<'_, '_> {
             }
         }
         let mut k = 2_usize;
-        let entry_params = self.f.blocks.first().map(|e| e.params.clone()).unwrap_or_default();
+        let entry_params = self
+            .f
+            .blocks
+            .first()
+            .map(|e| e.params.clone())
+            .unwrap_or_default();
         for p in entry_params {
             let (main, len) = self.vars[p.0 as usize];
             self.b.def_var(main, params[k]);
@@ -641,12 +645,16 @@ impl Gen<'_, '_> {
                         for (k, &r) in values.iter().enumerate() {
                             let v = self.get(r)?;
                             let bits = match self.ty(r) {
-                                | Ty::F64 => self.b.ins().bitcast(types::I64, MemFlagsData::new(), v),
+                                | Ty::F64 => {
+                                    self.b.ins().bitcast(types::I64, MemFlagsData::new(), v)
+                                },
                                 | Ty::Bool => self.b.ins().uextend(types::I64, v),
                                 | Ty::I64 | Ty::Slice => v,
                             };
                             let offset = i32::try_from(k * 8).map_err(error)?;
-                            self.b.ins().store(MemFlagsData::trusted(), bits, ret, offset);
+                            self.b
+                                .ins()
+                                .store(MemFlagsData::trusted(), bits, ret, offset);
                         }
                         self.b.ins().return_(&[]);
                     },
@@ -723,7 +731,8 @@ impl Gen<'_, '_> {
                     | Intrinsic::Floor => self.b.ins().floor(x),
                     | Intrinsic::Ceil => self.b.ins().ceil(x),
                     | other => {
-                        let (name, _) = super::jit::library(*other).ok_or_else(|| error("intrinsic"))?;
+                        let (name, _) =
+                            super::jit::library(*other).ok_or_else(|| error("intrinsic"))?;
                         self.call_shim(name, &[x])?
                     },
                 }
@@ -828,7 +837,10 @@ impl Gen<'_, '_> {
                 self.b.switch_to_block(load);
                 let offset = self.b.ins().imul_imm_s(index, 8);
                 let address = self.b.ins().iadd(ptr, offset);
-                let v = self.b.ins().load(types::F64, MemFlagsData::trusted(), address, 0);
+                let v = self
+                    .b
+                    .ins()
+                    .load(types::F64, MemFlagsData::trusted(), address, 0);
                 self.b.ins().jump(done, &[v.into()]);
                 self.b.seal_block(done);
                 self.b.switch_to_block(done);
@@ -846,7 +858,9 @@ impl Gen<'_, '_> {
                 self.b.switch_to_block(store);
                 let offset = self.b.ins().imul_imm_s(index, 8);
                 let address = self.b.ins().iadd(ptr, offset);
-                self.b.ins().store(MemFlagsData::trusted(), value, address, 0);
+                self.b
+                    .ins()
+                    .store(MemFlagsData::trusted(), value, address, 0);
                 self.b.ins().jump(done, &[]);
                 self.b.seal_block(done);
                 self.b.switch_to_block(done);
@@ -878,7 +892,10 @@ impl Gen<'_, '_> {
                     .copied()
                     .ok_or_else(|| error("call result"))?;
                 // A bail inside the callee: propagate it.
-                let status = self.b.ins().load(types::I32, MemFlagsData::trusted(), ctx, 0);
+                let status = self
+                    .b
+                    .ins()
+                    .load(types::I32, MemFlagsData::trusted(), ctx, 0);
                 let failed = self.b.ins().icmp_imm_s(IntCC::NotEqual, status, 0);
                 let propagate = self.b.create_block();
                 let next_block = self.b.create_block();
@@ -892,36 +909,29 @@ impl Gen<'_, '_> {
             },
             | Inst::Eval(function, args) => {
                 let n = u32::try_from(args.len().max(1) * 8).map_err(error)?;
-                let slot = self
-                    .b
-                    .create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, n, 3));
+                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                    StackSlotKind::ExplicitSlot,
+                    n,
+                    3,
+                ));
                 for (k, &a) in args.iter().enumerate() {
                     let v = self.get(a)?;
                     let offset = i32::try_from(k * 8).map_err(error)?;
                     self.b.ins().stack_store(self.pointer, v, slot, offset);
                 }
                 let base = self.b.ins().stack_addr(self.pointer, slot, 0);
-                let address = self
-                    .b
-                    .ins()
-                    .iconst(self.pointer, *function as usize as i64);
+                let address = self.b.ins().iconst(self.pointer, *function as usize as i64);
                 let count = self.b.ins().iconst(self.pointer, args.len() as i64);
                 self.call_shim("rssn_eval", &[address, base, count])?
             },
             | Inst::Extern1(function, a) => {
                 let x = self.get(*a)?;
-                let address = self
-                    .b
-                    .ins()
-                    .iconst(self.pointer, *function as usize as i64);
+                let address = self.b.ins().iconst(self.pointer, *function as usize as i64);
                 self.call_shim("rssn_extern1", &[address, x])?
             },
             | Inst::Extern2(function, a, c) => {
                 let (x, y) = (self.get(*a)?, self.get(*c)?);
-                let address = self
-                    .b
-                    .ins()
-                    .iconst(self.pointer, *function as usize as i64);
+                let address = self.b.ins().iconst(self.pointer, *function as usize as i64);
                 self.call_shim("rssn_extern2", &[address, x, y])?
             },
         };
@@ -1072,7 +1082,10 @@ mod tests {
         let xs = [1.0, 4.0, -2.0];
         let mut out = [0.0; 2];
         let got = compiled.call(FuncId(0), &mut [Value::Read(&xs), Value::Write(&mut out)]);
-        assert_eq!(got, Ok(Outcome::Returned(vec![Value::F(3.0), Value::F(4.0)])));
+        assert_eq!(
+            got,
+            Ok(Outcome::Returned(vec![Value::F(3.0), Value::F(4.0)]))
+        );
         assert_eq!(out, [3.0, 4.0]);
         // Read-only output is refused before any code runs.
         let refused = compiled.call(FuncId(0), &mut [Value::Read(&xs), Value::Read(&[0.0; 2])]);

@@ -8,7 +8,8 @@ fn main() {
     if std::env::args().any(|a| a == "--bless") {
         let witnessed = rssn::sim::schema::witness().unwrap_or_else(|e| panic!("{e}"));
         let text = serde_json::to_string_pretty(&witnessed).expect("serialises");
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sim/scenario_results.json");
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sim/scenario_results.json");
         std::fs::write(&path, format!("{text}\n")).expect("writes");
         println!("wrote {}", path.display());
         return;

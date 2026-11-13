@@ -171,8 +171,20 @@ const BC: &[&str] = &["dirichlet", "neumann", "periodic"];
 
 /// The annotation table (see the module documentation).
 pub const NOTES: &[Note] = &[
-    note("poisson_multigrid", "cycle", &["v", "w", "fmg"], "", "multigrid cycle"),
-    note("poisson_multigrid", "dim", &[], "", "space dimension, 1 to 3"),
+    note(
+        "poisson_multigrid",
+        "cycle",
+        &["v", "w", "fmg"],
+        "",
+        "multigrid cycle",
+    ),
+    note(
+        "poisson_multigrid",
+        "dim",
+        &[],
+        "",
+        "space dimension, 1 to 3",
+    ),
     note("heat_nd", "bc", BC, "", "boundary condition on every face"),
     note("heat_nd", "dim", &[], "", "space dimension, 1 to 3"),
     note(
@@ -189,14 +201,56 @@ pub const NOTES: &[Note] = &[
         "",
         "reconstruction of interface states",
     ),
-    note("euler_fv", "riemann", &["hllc", "roe", "rusanov"], "", "approximate Riemann solver"),
-    note("dg_conservation", "law", &["advection", "burgers", "euler"], "", "conservation law"),
-    note("navier_stokes_mac", "case", &["cavity", "taylor_green"], "", "test problem"),
-    note("split_step", "mode", &["ground_state", "evolve"], "", "imaginary-time ground state or real-time evolution"),
-    note("bem_laplace", "problem", &["interior", "exterior"], "", "boundary-value problem"),
-    note("bem_laplace", "method", &["aca", "p1"], "", "adaptive cross approximation (P0) or dense P1 elements"),
+    note(
+        "euler_fv",
+        "riemann",
+        &["hllc", "roe", "rusanov"],
+        "",
+        "approximate Riemann solver",
+    ),
+    note(
+        "dg_conservation",
+        "law",
+        &["advection", "burgers", "euler"],
+        "",
+        "conservation law",
+    ),
+    note(
+        "navier_stokes_mac",
+        "case",
+        &["cavity", "taylor_green"],
+        "",
+        "test problem",
+    ),
+    note(
+        "split_step",
+        "mode",
+        &["ground_state", "evolve"],
+        "",
+        "imaginary-time ground state or real-time evolution",
+    ),
+    note(
+        "bem_laplace",
+        "problem",
+        &["interior", "exterior"],
+        "",
+        "boundary-value problem",
+    ),
+    note(
+        "bem_laplace",
+        "method",
+        &["aca", "p1"],
+        "",
+        "adaptive cross approximation (P0) or dense P1 elements",
+    ),
     note("md_lj", "thermostat", &["nve", "langevin"], "", "ensemble"),
-    note("spin_model", "model", &["ising", "xy", "heisenberg"], "", "spin model"),
+    note(
+        "spin_model",
+        "model",
+        &["ising", "xy", "heisenberg"],
+        "",
+        "spin model",
+    ),
     note(
         "spin_model",
         "update",
@@ -204,23 +258,73 @@ pub const NOTES: &[Note] = &[
         "",
         "Monte Carlo update",
     ),
-    note("sod_shock_tube", "limiter", &["van_leer", "minmod", "none"], "", "slope limiter"),
-    typed("sod_shock_tube", "limiter", "choice?", "slope limiter (default van_leer)"),
-    typed("ising", "seed", "int?", "random seed (a fixed default when absent)"),
-    typed("ising_wolff", "seed", "int?", "random seed (a fixed default when absent)"),
-    typed("kepler_symplectic", "order", "int?", "integrator order, 2 or 4 (default 4)"),
-    typed("heat_nd", "adaptive_tol", "float?", "local error tolerance of adaptive time steps (fixed steps when absent)"),
-    typed("navier_stokes_mac", "->taylor_green_decay", "float?", "measured decay rate (Taylor-Green case only)"),
-    note("ising", "temperature", &[], "", "temperature in units of J/k_B"),
-    note("geodesic", "black_hole_mass", &[], "", "mass in geometrized units"),
+    note(
+        "sod_shock_tube",
+        "limiter",
+        &["van_leer", "minmod", "none"],
+        "",
+        "slope limiter",
+    ),
+    typed(
+        "sod_shock_tube",
+        "limiter",
+        "choice?",
+        "slope limiter (default van_leer)",
+    ),
+    typed(
+        "ising",
+        "seed",
+        "int?",
+        "random seed (a fixed default when absent)",
+    ),
+    typed(
+        "ising_wolff",
+        "seed",
+        "int?",
+        "random seed (a fixed default when absent)",
+    ),
+    typed(
+        "kepler_symplectic",
+        "order",
+        "int?",
+        "integrator order, 2 or 4 (default 4)",
+    ),
+    typed(
+        "heat_nd",
+        "adaptive_tol",
+        "float?",
+        "local error tolerance of adaptive time steps (fixed steps when absent)",
+    ),
+    typed(
+        "navier_stokes_mac",
+        "->taylor_green_decay",
+        "float?",
+        "measured decay rate (Taylor-Green case only)",
+    ),
+    note(
+        "ising",
+        "temperature",
+        &[],
+        "",
+        "temperature in units of J/k_B",
+    ),
+    note(
+        "geodesic",
+        "black_hole_mass",
+        &[],
+        "",
+        "mass in geometrized units",
+    ),
 ];
 
 /// Infers the type of a JSON value.
 #[must_use]
 pub fn infer(value: &Value) -> FieldType {
     match value {
-        | Value::Null => FieldType::Optional {
-            inner: Box::new(FieldType::Any),
+        | Value::Null => {
+            FieldType::Optional {
+                inner: Box::new(FieldType::Any),
+            }
         },
         | Value::Bool(_) => FieldType::Bool,
         | Value::Number(n) => {
@@ -234,19 +338,24 @@ pub fn infer(value: &Value) -> FieldType {
         | Value::Array(items) => infer_array(items),
         | Value::Object(map) => {
             // `ndarray`'s encoding: {"v": 1, "dim": [..], "data": [..]}.
-            if let (Some(Value::Array(dim)), Some(Value::Array(data))) = (map.get("dim"), map.get("data"))
+            if let (Some(Value::Array(dim)), Some(Value::Array(data))) =
+                (map.get("dim"), map.get("data"))
                 && map.contains_key("v")
             {
                 let elem = scalar_join(data.iter().map(infer)).unwrap_or(FieldType::Any);
                 return match elem {
                     // Complex entries serialise as [re, im] pairs.
-                    | FieldType::Tensor { rank, elem } => FieldType::Tensor {
-                        rank: dim.len() + rank,
-                        elem,
+                    | FieldType::Tensor { rank, elem } => {
+                        FieldType::Tensor {
+                            rank: dim.len() + rank,
+                            elem,
+                        }
                     },
-                    | elem => FieldType::Tensor {
-                        rank: dim.len(),
-                        elem: Box::new(elem),
+                    | elem => {
+                        FieldType::Tensor {
+                            rank: dim.len(),
+                            elem: Box::new(elem),
+                        }
                     },
                 };
             }
@@ -292,23 +401,23 @@ fn infer_array(items: &[Value]) -> FieldType {
     let types: Vec<FieldType> = items.iter().map(infer).collect();
     // A rectangular array of numbers (or booleans) is a tensor: the rows
     // must agree on their length as well as their type.
-    let lengths: Vec<Option<usize>> = items
-        .iter()
-        .map(|v| v.as_array().map(Vec::len))
-        .collect();
+    let lengths: Vec<Option<usize>> = items.iter().map(|v| v.as_array().map(Vec::len)).collect();
     let rectangular = lengths.windows(2).all(|w| w[0] == w[1]);
     if let Some(joined) = scalar_join(types.iter().cloned()) {
         return match joined {
-            | FieldType::Int | FieldType::Float | FieldType::Bool => FieldType::Tensor {
-                rank: 1,
-                elem: Box::new(joined),
+            | FieldType::Int | FieldType::Float | FieldType::Bool => {
+                FieldType::Tensor {
+                    rank: 1,
+                    elem: Box::new(joined),
+                }
             },
-            | FieldType::Tensor { rank, elem } if rectangular => FieldType::Tensor {
-                rank: rank + 1,
-                elem,
+            | FieldType::Tensor { rank, elem } if rectangular => {
+                FieldType::Tensor { rank: rank + 1, elem }
             },
-            | other => FieldType::List {
-                elem: Box::new(other),
+            | other => {
+                FieldType::List {
+                    elem: Box::new(other),
+                }
             },
         };
     }
@@ -362,33 +471,87 @@ pub fn parse_type(text: &str) -> Option<FieldType> {
 
 /// One-line summaries, in the order of [`SCENARIOS`](super::scenario::SCENARIOS).
 const SUMMARIES: &[(&str, &str)] = &[
-    ("fdtd", "2D finite-difference time-domain electromagnetics with a point source"),
-    ("geodesic", "Timelike geodesic around a Schwarzschild black hole"),
-    ("gpe", "Gross-Pitaevskii ground state in a harmonic trap (imaginary time)"),
+    (
+        "fdtd",
+        "2D finite-difference time-domain electromagnetics with a point source",
+    ),
+    (
+        "geodesic",
+        "Timelike geodesic around a Schwarzschild black hole",
+    ),
+    (
+        "gpe",
+        "Gross-Pitaevskii ground state in a harmonic trap (imaginary time)",
+    ),
     ("ising", "2D Ising model, Metropolis Monte Carlo"),
-    ("elasticity", "Plane linear elasticity on a quadrilateral mesh"),
-    ("lid_driven_cavity", "Incompressible lid-driven cavity (projection method)"),
-    ("channel_flow", "Incompressible channel flow past an obstacle mask"),
-    ("schrodinger", "Time-dependent 2D Schroedinger equation (split operator)"),
-    ("ising_wolff", "2D Ising model, Wolff cluster updates, with statistics"),
-    ("sod_shock_tube", "Sod shock tube: HLLC/MUSCL against the exact Riemann solution"),
-    ("kepler_symplectic", "Kepler orbit with a symplectic integrator"),
-    ("poisson_multigrid", "Poisson equation on a unit box by geometric multigrid, 1D-3D"),
+    (
+        "elasticity",
+        "Plane linear elasticity on a quadrilateral mesh",
+    ),
+    (
+        "lid_driven_cavity",
+        "Incompressible lid-driven cavity (projection method)",
+    ),
+    (
+        "channel_flow",
+        "Incompressible channel flow past an obstacle mask",
+    ),
+    (
+        "schrodinger",
+        "Time-dependent 2D Schroedinger equation (split operator)",
+    ),
+    (
+        "ising_wolff",
+        "2D Ising model, Wolff cluster updates, with statistics",
+    ),
+    (
+        "sod_shock_tube",
+        "Sod shock tube: HLLC/MUSCL against the exact Riemann solution",
+    ),
+    (
+        "kepler_symplectic",
+        "Kepler orbit with a symplectic integrator",
+    ),
+    (
+        "poisson_multigrid",
+        "Poisson equation on a unit box by geometric multigrid, 1D-3D",
+    ),
     ("heat_nd", "Heat equation on a unit box, 1D-3D"),
     ("wave_nd", "Wave equation on a unit box, 1D-3D (leapfrog)"),
     ("euler_fv", "Compressible Euler equations, finite volumes"),
-    ("dg_conservation", "Discontinuous Galerkin for a 1D conservation law"),
-    ("acoustics_pml", "Acoustic waves with a perfectly matched layer"),
+    (
+        "dg_conservation",
+        "Discontinuous Galerkin for a 1D conservation law",
+    ),
+    (
+        "acoustics_pml",
+        "Acoustic waves with a perfectly matched layer",
+    ),
     ("yee_fdtd", "Maxwell's equations on a Yee grid"),
-    ("navier_stokes_mac", "Incompressible Navier-Stokes on a MAC grid"),
-    ("split_step", "Nonlinear Schroedinger / GPE by split-step Fourier"),
-    ("fem_simplex", "Poisson equation by P1 finite elements on simplices"),
+    (
+        "navier_stokes_mac",
+        "Incompressible Navier-Stokes on a MAC grid",
+    ),
+    (
+        "split_step",
+        "Nonlinear Schroedinger / GPE by split-step Fourier",
+    ),
+    (
+        "fem_simplex",
+        "Poisson equation by P1 finite elements on simplices",
+    ),
     ("elasticity_fem", "Linear elasticity by finite elements"),
-    ("bem_laplace", "Laplace equation by the boundary element method"),
+    (
+        "bem_laplace",
+        "Laplace equation by the boundary element method",
+    ),
     ("sph", "Smoothed-particle hydrodynamics (dam break)"),
     ("dpd", "Dissipative particle dynamics"),
     ("md_lj", "Lennard-Jones molecular dynamics with cell lists"),
-    ("spin_model", "Ising / XY / Heisenberg lattice spin models, 1D-3D"),
+    (
+        "spin_model",
+        "Ising / XY / Heisenberg lattice spin models, 1D-3D",
+    ),
     ("nbody_gravity", "Gravitational N-body problem"),
     ("kerr_geodesic", "Geodesics in the Kerr spacetime"),
 ];
@@ -398,31 +561,53 @@ const SUMMARIES: &[(&str, &str)] = &[
 fn example(name: &str) -> Option<Value> {
     use serde_json::json;
     Some(match name {
-        | "fdtd" => json!({"width": 16, "height": 16, "time_steps": 8, "source_pos": [8, 8], "source_freq": 0.1}),
-        | "geodesic" => json!({"black_hole_mass": 1.0, "initial_state": [10.0, 0.0, 0.0, 0.035], "proper_time_end": 5.0, "initial_dt": 0.01}),
-        | "gpe" => json!({"nx": 16, "ny": 16, "lx": 10.0, "ly": 10.0, "d_tau": 0.01, "time_steps": 5, "g": 1.0, "trap_strength": 1.0}),
-        | "ising" => json!({"width": 8, "height": 8, "temperature": 2.0, "mc_steps": 10, "seed": 1}),
-        | "elasticity" => json!({
-            "nodes": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            "elements": [[0, 1, 2, 3]],
-            "youngs_modulus": 1000.0,
-            "poissons_ratio": 0.3,
-            "fixed_nodes": [0, 3],
-            "loads": [[1, 1.0, 0.0], [2, 1.0, 0.0]],
-        }),
-        | "lid_driven_cavity" => json!({"nx": 8, "ny": 8, "re": 100.0, "dt": 0.01, "n_iter": 5, "lid_velocity": 1.0}),
-        | "channel_flow" => json!({"nx": 8, "ny": 8, "re": 50.0, "dt": 0.01, "n_iter": 5,
-            "obstacle_mask": {"v": 1, "dim": [8, 8], "data": vec![false; 64]}}),
+        | "fdtd" => {
+            json!({"width": 16, "height": 16, "time_steps": 8, "source_pos": [8, 8], "source_freq": 0.1})
+        },
+        | "geodesic" => {
+            json!({"black_hole_mass": 1.0, "initial_state": [10.0, 0.0, 0.0, 0.035], "proper_time_end": 5.0, "initial_dt": 0.01})
+        },
+        | "gpe" => {
+            json!({"nx": 16, "ny": 16, "lx": 10.0, "ly": 10.0, "d_tau": 0.01, "time_steps": 5, "g": 1.0, "trap_strength": 1.0})
+        },
+        | "ising" => {
+            json!({"width": 8, "height": 8, "temperature": 2.0, "mc_steps": 10, "seed": 1})
+        },
+        | "elasticity" => {
+            json!({
+                "nodes": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+                "elements": [[0, 1, 2, 3]],
+                "youngs_modulus": 1000.0,
+                "poissons_ratio": 0.3,
+                "fixed_nodes": [0, 3],
+                "loads": [[1, 1.0, 0.0], [2, 1.0, 0.0]],
+            })
+        },
+        | "lid_driven_cavity" => {
+            json!({"nx": 8, "ny": 8, "re": 100.0, "dt": 0.01, "n_iter": 5, "lid_velocity": 1.0})
+        },
+        | "channel_flow" => {
+            json!({"nx": 8, "ny": 8, "re": 50.0, "dt": 0.01, "n_iter": 5,
+            "obstacle_mask": {"v": 1, "dim": [8, 8], "data": vec![false; 64]}})
+        },
         | "schrodinger" => {
-            let psi: Vec<[f64; 2]> = (0..64).map(|i| [if i == 27 { 1.0 } else { 0.0 }, 0.0]).collect();
+            let psi: Vec<[f64; 2]> = (0..64)
+                .map(|i| [if i == 27 { 1.0 } else { 0.0 }, 0.0])
+                .collect();
             json!({"params": {"nx": 8, "ny": 8, "lx": 1.0, "ly": 1.0, "dt": 0.001, "time_steps": 3,
                 "hbar": 1.0, "mass": 1.0, "potential": vec![0.0; 64]}, "initial_psi": psi})
         },
-        | "ising_wolff" => json!({"width": 8, "height": 8, "temperature": 1.5, "thermalisation": 5, "sweeps": 10, "seed": 3}),
+        | "ising_wolff" => {
+            json!({"width": 8, "height": 8, "temperature": 1.5, "thermalisation": 5, "sweeps": 10, "seed": 3})
+        },
         | "sod_shock_tube" => json!({"cells": 32, "t": 0.1, "limiter": "van_leer"}),
-        | "kepler_symplectic" => json!({"q": [1.0, 0.0], "p": [0.0, 1.0], "dt": 0.01, "steps": 10, "order": 4}),
-        | "nbody_gravity" => json!({"positions": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
-            "masses": [1.0, 0.5, 0.25], "g": 1.0, "softening": 1e-3, "theta": 0.5}),
+        | "kepler_symplectic" => {
+            json!({"q": [1.0, 0.0], "p": [0.0, 1.0], "dt": 0.01, "steps": 10, "order": 4})
+        },
+        | "nbody_gravity" => {
+            json!({"positions": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+            "masses": [1.0, 0.5, 0.25], "g": 1.0, "softening": 1e-3, "theta": 0.5})
+        },
         | _ => return None,
     })
 }
@@ -459,8 +644,10 @@ fn annotate(
         if !n.choices.is_empty() {
             let values: Vec<String> = n.choices.iter().map(|c| (*c).to_owned()).collect();
             field.ty = match std::mem::replace(&mut field.ty, FieldType::Any) {
-                | FieldType::Optional { .. } => FieldType::Optional {
-                    inner: Box::new(FieldType::Choice { values }),
+                | FieldType::Optional { .. } => {
+                    FieldType::Optional {
+                        inner: Box::new(FieldType::Choice { values }),
+                    }
                 },
                 | _ => FieldType::Choice { values },
             };
@@ -603,12 +790,15 @@ mod tests {
                 elem: Box::new(FieldType::Float)
             }
         );
-        assert_eq!(parse_type("float[][]?"), Some(FieldType::Optional {
-            inner: Box::new(FieldType::Tensor {
-                rank: 2,
-                elem: Box::new(FieldType::Float)
+        assert_eq!(
+            parse_type("float[][]?"),
+            Some(FieldType::Optional {
+                inner: Box::new(FieldType::Tensor {
+                    rank: 2,
+                    elem: Box::new(FieldType::Float)
+                })
             })
-        }));
+        );
     }
 
     #[test]
@@ -640,12 +830,16 @@ mod tests {
         let fresh = witness().unwrap_or_else(|e| panic!("{e}"));
         let text = serde_json::to_string_pretty(&fresh).unwrap_or_default();
         if std::env::var_os("RSSN_BLESS").is_some() {
-            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sim/scenario_results.json");
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src/sim/scenario_results.json");
             std::fs::write(path, format!("{text}\n")).unwrap_or_else(|e| panic!("{e}"));
             return;
         }
         let stored: Value = serde_json::from_str(WITNESSED).unwrap_or(Value::Null);
-        assert_eq!(stored, fresh, "a scenario's result changed shape; re-bless scenario_results.json");
+        assert_eq!(
+            stored, fresh,
+            "a scenario's result changed shape; re-bless scenario_results.json"
+        );
     }
 
     #[test]

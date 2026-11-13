@@ -303,7 +303,7 @@ pub(super) fn register_shims(builder: &mut JITBuilder) {
 
 /// Declares the shims of [`register_shims`] in `module`, by name.
 pub(super) fn declare_shims(
-    module: &mut JITModule,
+    module: &mut JITModule
 ) -> Result<HashMap<&'static str, FuncId>, BackendError> {
     let pointer = module.target_config().pointer_type();
     let mut sig_unary = module.make_signature();
@@ -963,7 +963,10 @@ impl Compiled for JitFunction {
         out: &mut [f64],
     ) {
         let rows = out.len();
-        if self.outputs == 1 && self.params == 0 && self.run_batch(columns, &[], &mut [&mut *out], rows) {
+        if self.outputs == 1
+            && self.params == 0
+            && self.run_batch(columns, &[], &mut [&mut *out], rows)
+        {
             return;
         }
         let mut point = vec![f64::NAN; self.inputs.max(1)];

@@ -62,7 +62,13 @@ pub fn lower(
     let regs: Vec<Reg> = analysis
         .ty
         .iter()
-        .map(|t| f.reg(if *t == KTy::Idx { Ty::I64 } else { Ty::F64 }))
+        .map(|t| {
+            f.reg(if *t == KTy::Idx {
+                Ty::I64
+            } else {
+                Ty::F64
+            })
+        })
         .collect();
     let zero = f.ins(L::F(0.0));
     let one = f.ins(L::F(1.0));
@@ -197,7 +203,11 @@ pub fn lower(
                 | ReduceOp::Prod => f.assign(acc, L::FMul(acc, v)),
                 | ReduceOp::Min | ReduceOp::Max => {
                     // NaN if either is NaN, else the smaller (larger).
-                    let c = if op == ReduceOp::Min { Cmp::Lt } else { Cmp::Gt };
+                    let c = if op == ReduceOp::Min {
+                        Cmp::Lt
+                    } else {
+                        Cmp::Gt
+                    };
                     let better = f.ins(L::FCmp(c, v, acc));
                     let picked = f.ins(L::Select(better, v, acc));
                     let nan_a = f.ins(L::FCmp(Cmp::Ne, acc, acc));

@@ -67,7 +67,11 @@ fn read_perm(
     let m = images.len();
     let perm: Option<Perm> = images
         .into_iter()
-        .map(|v| v.checked_sub(1).filter(|&v| v < m).and_then(|v| u32::try_from(v).ok()))
+        .map(|v| {
+            v.checked_sub(1)
+                .filter(|&v| v < m)
+                .and_then(|v| u32::try_from(v).ok())
+        })
         .collect();
     let perm = perm?;
     permgroup::is_permutation(&perm).then_some(perm)
@@ -335,16 +339,32 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("perm_group_is_normal", 2, perm_group_is_normal),
         ("perm_group_normal_closure", 2, perm_group_normal_closure),
         ("perm_group_set_stabilizer", 2, perm_group_set_stabilizer),
-        ("perm_group_conjugating_element", 3, perm_group_conjugating_element),
+        (
+            "perm_group_conjugating_element",
+            3,
+            perm_group_conjugating_element,
+        ),
         ("perm_group_are_conjugate", 3, perm_group_are_conjugate),
-        ("perm_group_conjugacy_classes", 1, perm_group_conjugacy_classes),
+        (
+            "perm_group_conjugacy_classes",
+            1,
+            perm_group_conjugacy_classes,
+        ),
         ("perm_group_class_count", 1, perm_group_class_count),
         ("perm_group_exponent", 1, perm_group_exponent),
         ("perm_group_sylow", 2, perm_group_sylow),
-        ("perm_group_composition_factors", 1, perm_group_composition_factors),
+        (
+            "perm_group_composition_factors",
+            1,
+            perm_group_composition_factors,
+        ),
         ("perm_group_is_primitive", 1, perm_group_is_primitive),
         ("perm_group_blocks", 3, perm_group_blocks),
-        ("perm_group_minimal_block_systems", 1, perm_group_minimal_block_systems),
+        (
+            "perm_group_minimal_block_systems",
+            1,
+            perm_group_minimal_block_systems,
+        ),
         ("perm_group_random_element", 2, perm_group_random_element),
     ];
     for &(name, arity, run) in table {
@@ -362,19 +382,31 @@ mod tests {
     #[test]
     fn subgroup_constructions() {
         assert_eq!(
-            s(&format!("perm_group_order(perm_group_centralizer({S5}, list(2,3,4,5,1)))")),
+            s(&format!(
+                "perm_group_order(perm_group_centralizer({S5}, list(2,3,4,5,1)))"
+            )),
             "5"
         );
         assert_eq!(
-            s(&format!("perm_group_order(perm_group_set_stabilizer({S5}, list(1, 2)))")),
+            s(&format!(
+                "perm_group_order(perm_group_set_stabilizer({S5}, list(1, 2)))"
+            )),
             "12"
         );
-        assert_eq!(s(&format!("perm_group_order(perm_group_center({S5}))")), "1");
-        assert_eq!(s(&format!("perm_group_order(perm_group_sylow({S5}, 2))")), "8");
+        assert_eq!(
+            s(&format!("perm_group_order(perm_group_center({S5}))")),
+            "1"
+        );
+        assert_eq!(
+            s(&format!("perm_group_order(perm_group_sylow({S5}, 2))")),
+            "8"
+        );
         assert_eq!(s(&format!("perm_group_class_count({S5})")), "7");
         assert_eq!(s(&format!("perm_group_exponent({S5})")), "60");
         assert_eq!(
-            s(&format!("perm_group_are_conjugate({S5}, list(2,1,3,4,5), list(1,2,3,5,4))")),
+            s(&format!(
+                "perm_group_are_conjugate({S5}, list(2,1,3,4,5), list(1,2,3,5,4))"
+            )),
             "true"
         );
         assert_eq!(s(&format!("perm_group_is_primitive({S5})")), "true");

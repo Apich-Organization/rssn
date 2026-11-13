@@ -119,7 +119,9 @@ pub(crate) struct Chain {
 }
 
 fn to_kernel(p: &[usize]) -> crate::kernels::permgroup::Perm {
-    p.iter().map(|&x| u32::try_from(x).unwrap_or(u32::MAX)).collect()
+    p.iter()
+        .map(|&x| u32::try_from(x).unwrap_or(u32::MAX))
+        .collect()
 }
 
 fn from_kernel(p: &[u32]) -> Perm {
@@ -1073,16 +1075,29 @@ mod tests {
     #[test]
     fn abelian_invariants_of_presentations() {
         // C2 x C3 = C6; the Klein four-group; Z^2; Z x C4.
-        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^3)))"), "list(6)");
         assert_eq!(
-            s("fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^2), list(a, b, a^-1, b^-1)))"),
+            s("fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^3)))"),
+            "list(6)"
+        );
+        assert_eq!(
+            s(
+                "fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^2), list(a, b, a^-1, b^-1)))"
+            ),
             "list(2, 2)"
         );
-        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list())"), "list(0, 0)");
-        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list(list(b^4)))"), "list(4, 0)");
+        assert_eq!(
+            s("fp_group_abelian_invariants(list(a, b), list())"),
+            "list(0, 0)"
+        );
+        assert_eq!(
+            s("fp_group_abelian_invariants(list(a, b), list(list(b^4)))"),
+            "list(4, 0)"
+        );
         // The binary icosahedral group <a, b | (ab)^2 = a^3 = b^5> is perfect.
         assert_eq!(
-            s("fp_group_abelian_invariants(list(a, b), list(list(a, b, a, b, a^-3), list(a, b, a, b, b^-5)))"),
+            s(
+                "fp_group_abelian_invariants(list(a, b), list(list(a, b, a, b, a^-3), list(a, b, a, b, b^-5)))"
+            ),
             "list()"
         );
     }

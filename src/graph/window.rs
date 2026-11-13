@@ -1084,15 +1084,7 @@ impl Search<'_> {
                 }
                 if flags.has(OpFlags::COMMUTATIVE) {
                     let mut used = vec![false; children.len()];
-                    self.assign(
-                        pats,
-                        &children,
-                        0,
-                        &mut used,
-                        goals,
-                        subst,
-                        Mode::Nested,
-                    )
+                    self.assign(pats, &children, 0, &mut used, goals, subst, Mode::Nested)
                 } else {
                     let height = goals.len();
                     goals.extend(pats.iter().zip(children.iter().copied()).rev());

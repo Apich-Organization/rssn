@@ -811,9 +811,9 @@ impl Engine {
                     .map(|&(i, rw)| {
                         let nodes = candidates.get(&rw.trigger())?;
                         let since = states.get(i).and_then(|s| s.searched);
-                        let Some(since) = since.filter(|_| {
-                            incremental && rw.guards.iter().all(local_guard)
-                        }) else {
+                        let Some(since) =
+                            since.filter(|_| incremental && rw.guards.iter().all(local_guard))
+                        else {
                             return Some(nodes.clone());
                         };
                         let depth = rw.lhs.depth();
@@ -839,7 +839,10 @@ impl Engine {
                         Some(search_rewrite(frozen, rw, nodes, times, budget))
                     };
                     if run.len() >= 2 && work >= ENGINE_PAR_MIN_CANDIDATES {
-                        run.par_iter().zip(todo.par_iter()).map(search).collect::<Vec<_>>()
+                        run.par_iter()
+                            .zip(todo.par_iter())
+                            .map(search)
+                            .collect::<Vec<_>>()
                     } else {
                         run.iter().zip(todo.iter()).map(search).collect::<Vec<_>>()
                     }

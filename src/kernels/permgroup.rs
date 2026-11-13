@@ -43,7 +43,9 @@ pub type Perm = Vec<u32>;
 /// The identity of degree `n`.
 #[must_use]
 pub fn identity(n: usize) -> Perm {
-    (0..n).map(|i| u32::try_from(i).unwrap_or(u32::MAX)).collect()
+    (0..n)
+        .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
+        .collect()
 }
 
 /// `p ∘ q`: first `q`, then `p`.
@@ -52,7 +54,9 @@ pub fn compose(
     p: &[u32],
     q: &[u32],
 ) -> Perm {
-    q.iter().map(|&i| p.get(i as usize).copied().unwrap_or(i)).collect()
+    q.iter()
+        .map(|&i| p.get(i as usize).copied().unwrap_or(i))
+        .collect()
 }
 
 /// The inverse permutation.
@@ -312,7 +316,12 @@ impl Group {
             return;
         }
         if j == self.levels.len() {
-            let Some(moved) = h.iter().enumerate().find(|&(i, &x)| x as usize != i).map(|(i, _)| i) else {
+            let Some(moved) = h
+                .iter()
+                .enumerate()
+                .find(|&(i, &x)| x as usize != i)
+                .map(|(i, _)| i)
+            else {
                 return;
             };
             let level = self.new_level(u32::try_from(moved).unwrap_or(u32::MAX));
@@ -344,7 +353,9 @@ impl Group {
             for s in &level.gens {
                 let image = s[delta] as usize;
                 if level.transversal[image].is_none() {
-                    let u = level.transversal[delta].clone().unwrap_or_else(|| identity(s.len()));
+                    let u = level.transversal[delta]
+                        .clone()
+                        .unwrap_or_else(|| identity(s.len()));
                     level.transversal[image] = Some(compose(s, &u));
                     level.orbit.push(u32::try_from(image).unwrap_or(u32::MAX));
                 }
@@ -593,7 +604,11 @@ impl Group {
         }
         g.gens = self.gens.clone();
         // Drop trivial levels of the prefix only at the end of the chain.
-        while g.levels.last().is_some_and(|l| l.orbit.len() == 1 && l.gens.is_empty()) {
+        while g
+            .levels
+            .last()
+            .is_some_and(|l| l.orbit.len() == 1 && l.gens.is_empty())
+        {
             g.levels.pop();
         }
         g
@@ -613,10 +628,9 @@ impl Group {
             .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
             .collect();
         let g = self.with_base_prefix(&support);
-        g.subgroup(
-            &|p| compose(p, &x) == compose(&x, p),
-            &|point, image| lengths[point as usize] == lengths[image as usize],
-        )
+        g.subgroup(&|p| compose(p, &x) == compose(&x, p), &|point, image| {
+            lengths[point as usize] == lengths[image as usize]
+        })
     }
 
     /// The centre.
@@ -756,8 +770,7 @@ impl Group {
         h: &Self,
     ) -> bool {
         self.contains_group(h)
-            && h
-                .gens
+            && h.gens
                 .iter()
                 .all(|x| self.gens.iter().all(|g| h.contains(&conjugate(x, g))))
     }
@@ -815,18 +828,19 @@ impl Group {
         let mut rng = StdRng::seed_from_u64(seed);
         let mut classes: Vec<(Perm, BigUint, Vec<usize>)> = Vec::new();
         let mut total = BigUint::zero();
-        let consider = |g: Perm, classes: &mut Vec<(Perm, BigUint, Vec<usize>)>, total: &mut BigUint| {
-            let ty = cycle_type(&g);
-            let known = classes
-                .iter()
-                .filter(|(_, _, t)| *t == ty)
-                .any(|(rep, _, _)| self.are_conjugate(rep, &g));
-            if !known {
-                let size = &order / self.centralizer(&g).order();
-                *total += &size;
-                classes.push((g, size, ty));
-            }
-        };
+        let consider =
+            |g: Perm, classes: &mut Vec<(Perm, BigUint, Vec<usize>)>, total: &mut BigUint| {
+                let ty = cycle_type(&g);
+                let known = classes
+                    .iter()
+                    .filter(|(_, _, t)| *t == ty)
+                    .any(|(rep, _, _)| self.are_conjugate(rep, &g));
+                if !known {
+                    let size = &order / self.centralizer(&g).order();
+                    *total += &size;
+                    classes.push((g, size, ty));
+                }
+            };
         consider(identity(self.n), &mut classes, &mut total);
         for g in self.gens.clone() {
             if total == order {
@@ -854,7 +868,11 @@ impl Group {
             return None;
         }
         let mut out: Vec<(Perm, BigUint)> = classes.into_iter().map(|(g, s, _)| (g, s)).collect();
-        out.sort_by(|a, b| element_order(&a.0).cmp(&element_order(&b.0)).then(a.1.cmp(&b.1)));
+        out.sort_by(|a, b| {
+            element_order(&a.0)
+                .cmp(&element_order(&b.0))
+                .then(a.1.cmp(&b.1))
+        });
         Some(out)
     }
 
@@ -1021,7 +1039,10 @@ pub fn minimal_blocks(
 ) -> Vec<Vec<u32>> {
     let mut parent: Vec<usize> = (0..n).collect();
     let mut queue = vec![(a as usize, b as usize)];
-    if let (Some(ra), Some(rb)) = (Some(find(&mut parent, a as usize)), Some(find(&mut parent, b as usize))) {
+    if let (Some(ra), Some(rb)) = (
+        Some(find(&mut parent, a as usize)),
+        Some(find(&mut parent, b as usize)),
+    ) {
         if ra != rb {
             parent[ra.max(rb)] = ra.min(rb);
         }
@@ -1039,7 +1060,10 @@ pub fn minimal_blocks(
     let mut blocks: std::collections::BTreeMap<usize, Vec<u32>> = std::collections::BTreeMap::new();
     for x in 0..n {
         let r = find(&mut parent, x);
-        blocks.entry(r).or_default().push(u32::try_from(x).unwrap_or(u32::MAX));
+        blocks
+            .entry(r)
+            .or_default()
+            .push(u32::try_from(x).unwrap_or(u32::MAX));
     }
     blocks.into_values().collect()
 }
@@ -1073,7 +1097,12 @@ pub fn minimal_block_systems(
     }
     // Keep the minimal ones: a system whose block of 0 contains another
     // system's block of 0 is coarser.
-    let block0 = |s: &Vec<Vec<u32>>| s.iter().find(|b| b.contains(&0)).cloned().unwrap_or_default();
+    let block0 = |s: &Vec<Vec<u32>>| {
+        s.iter()
+            .find(|b| b.contains(&0))
+            .cloned()
+            .unwrap_or_default()
+    };
     let all = systems.clone();
     systems.retain(|s| {
         let mine = block0(s);
@@ -1152,7 +1181,10 @@ mod tests {
         assert_eq!(a5.order(), BigUint::from(60_u32));
         let classes = a5.conjugacy_classes(2, 10_000).unwrap_or_default();
         assert_eq!(classes.len(), 5);
-        let sizes: Vec<u64> = classes.iter().map(|(_, s)| s.to_u64().unwrap_or(0)).collect();
+        let sizes: Vec<u64> = classes
+            .iter()
+            .map(|(_, s)| s.to_u64().unwrap_or(0))
+            .collect();
         assert_eq!(sizes.iter().sum::<u64>(), 60);
         assert!(sizes.contains(&12) && sizes.contains(&15) && sizes.contains(&20));
         assert_eq!(a5.exponent(3), Some(BigUint::from(30_u32)));
@@ -1161,11 +1193,17 @@ mod tests {
     #[test]
     fn sylow_subgroups_normalizers_and_intersections() {
         let s6 = sym(6);
-        let p2 = s6.sylow_subgroup(2, 7, 1000).unwrap_or_else(|| Group::trivial(6));
+        let p2 = s6
+            .sylow_subgroup(2, 7, 1000)
+            .unwrap_or_else(|| Group::trivial(6));
         assert_eq!(p2.order(), BigUint::from(16_u32));
-        let p3 = s6.sylow_subgroup(3, 7, 1000).unwrap_or_else(|| Group::trivial(6));
+        let p3 = s6
+            .sylow_subgroup(3, 7, 1000)
+            .unwrap_or_else(|| Group::trivial(6));
         assert_eq!(p3.order(), BigUint::from(9_u32));
-        let p5 = s6.sylow_subgroup(5, 7, 1000).unwrap_or_else(|| Group::trivial(6));
+        let p5 = s6
+            .sylow_subgroup(5, 7, 1000)
+            .unwrap_or_else(|| Group::trivial(6));
         assert_eq!(p5.order(), BigUint::from(5_u32));
         // N(P5) in S6 has order 20 (6 Sylow 5-subgroups).
         assert_eq!(s6.normalizer(&p5).order(), BigUint::from(20_u32));

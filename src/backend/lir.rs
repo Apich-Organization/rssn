@@ -257,7 +257,11 @@ fn bad<T>(message: impl Into<String>) -> Result<T, LirError> {
 /// Builds one function block by block.
 ///
 /// ```
-/// use rssn::backend::lir::{FunctionBuilder, Inst, Module, Ty, Value};
+/// use rssn::backend::lir::FunctionBuilder;
+/// use rssn::backend::lir::Inst;
+/// use rssn::backend::lir::Module;
+/// use rssn::backend::lir::Ty;
+/// use rssn::backend::lir::Value;
 /// use rssn::backend::tape::Cmp;
 /// // sum(n) = 0 + 1 + ... + (n - 1), as a loop.
 /// let mut f = FunctionBuilder::new("sum", &[Ty::I64], &[Ty::I64]);
@@ -275,7 +279,9 @@ fn bad<T>(message: impl Into<String>) -> Result<T, LirError> {
 /// f.jump(head, &[i2, acc2]);
 /// f.switch_to(exit);
 /// f.ret(&[acc]);
-/// let module = Module { functions: vec![f.finish().unwrap()] };
+/// let module = Module {
+///     functions: vec![f.finish().unwrap()],
+/// };
 /// let out = module.interpret(rssn::backend::lir::FuncId(0), &mut [Value::I(10)], 1 << 20);
 /// assert_eq!(out.unwrap().values(), Some(&[Value::I(45)][..]));
 /// ```
@@ -608,7 +614,10 @@ impl Module {
                     if d == t {
                         Ok(())
                     } else {
-                        bad(format!("b{b}: destination r{} is {d:?}, expected {t:?}", dst.0))
+                        bad(format!(
+                            "b{b}: destination r{} is {d:?}, expected {t:?}",
+                            dst.0
+                        ))
                     }
                 };
                 match inst {
@@ -772,7 +781,13 @@ impl Module {
             .iter()
             .map(|f| {
                 let mut from: Vec<Vec<usize>> = vec![Vec::new(); f.regs.len()];
-                for (k, p) in f.blocks.first().map_or(&[][..], |e| &e.params[..]).iter().enumerate() {
+                for (k, p) in f
+                    .blocks
+                    .first()
+                    .map_or(&[][..], |e| &e.params[..])
+                    .iter()
+                    .enumerate()
+                {
                     if let Some(slot) = from.get_mut(p.0 as usize) {
                         slot.push(k);
                     }
@@ -1120,7 +1135,10 @@ impl Module {
         let mut slices = Slices::Host(args);
         Ok(match interp.run(func, &slots, &mut slices, 0) {
             | Flow::Return(values) => {
-                let results = &self.functions.get(func.0 as usize).map_or(&[][..], |f| &f.results[..]);
+                let results = &self
+                    .functions
+                    .get(func.0 as usize)
+                    .map_or(&[][..], |f| &f.results[..]);
                 Outcome::Returned(
                     values
                         .iter()
@@ -1277,7 +1295,13 @@ impl Interp<'_> {
                             | None => return Flow::Bail(BAIL_CONVERT),
                         }
                     },
-                    | Inst::Select(c, a, d) => if g(c).b() { g(a) } else { g(d) },
+                    | Inst::Select(c, a, d) => {
+                        if g(c).b() {
+                            g(a)
+                        } else {
+                            g(d)
+                        }
+                    },
                     | Inst::Len(s) => {
                         match g(s) {
                             | Slot::S(k) => Slot::I(slices.len(k)),
@@ -1510,7 +1534,11 @@ mod tests {
         };
         let x = [1.0, 2.0];
         let mut y = [0.0; 3];
-        let out = m.interpret(FuncId(0), &mut [Value::Read(&x), Value::Write(&mut y)], 1000);
+        let out = m.interpret(
+            FuncId(0),
+            &mut [Value::Read(&x), Value::Write(&mut y)],
+            1000,
+        );
         assert_eq!(out, Ok(Outcome::Returned(vec![])));
         assert_eq!(y[..2], [2.0, 4.0]);
         assert!(y[2].is_nan());
@@ -1519,7 +1547,11 @@ mod tests {
         let refused = m.interpret(FuncId(0), &mut [Value::Read(&x), Value::Read(&[0.0])], 1000);
         assert!(refused.is_err());
         assert_eq!(m.written_params(FuncId(0)), vec![false, true]);
-        let ok = m.interpret(FuncId(0), &mut [Value::Read(&x), Value::Write(&mut z)], 1000);
+        let ok = m.interpret(
+            FuncId(0),
+            &mut [Value::Read(&x), Value::Write(&mut z)],
+            1000,
+        );
         assert!(ok.is_ok());
     }
 
@@ -1562,7 +1594,11 @@ mod tests {
             let point = [xs[row], ys.get(row).copied().unwrap_or(f64::NAN)];
             tape.eval(&point, &[], &mut want);
             assert_eq!(got.to_bits(), want[0].to_bits(), "row {row}");
-            assert_eq!(columns[row].to_bits(), want[0].to_bits(), "columns, row {row}");
+            assert_eq!(
+                columns[row].to_bits(),
+                want[0].to_bits(),
+                "columns, row {row}"
+            );
         }
     }
 
