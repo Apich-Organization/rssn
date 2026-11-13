@@ -127,7 +127,7 @@ pub(super) fn run(
 
 // ------------------------------------------------------------------ continuum
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct PoissonReq {
     dim: usize,
@@ -187,7 +187,7 @@ fn poisson_multigrid(params: &str) -> Result<Value, String> {
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct HeatReq {
     dim: usize,
@@ -299,7 +299,7 @@ fn heat_nd(params: &str) -> Result<Value, String> {
     Ok(json!({ "max_error": err, "line": line, "stats": extra }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct WaveReq {
     dim: usize,
@@ -345,7 +345,7 @@ fn wave_nd(params: &str) -> Result<Value, String> {
     Ok(json!({ "steps": steps, "max_error": g.max_error(&u, |x| mode(x) * (w * r.t_end).cos()) }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct EulerReq {
     dim: usize,
@@ -432,7 +432,7 @@ fn euler_fv(params: &str) -> Result<Value, String> {
     )
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct DgReq {
     law: String,
@@ -529,7 +529,7 @@ fn dg_conservation(params: &str) -> Result<Value, String> {
     Ok(json!({ "x": x, "u": u, "l2_error": error, "integral": s.integral(0), "steps": s.steps }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct AcousticsReq {
     dim: usize,
@@ -579,7 +579,7 @@ fn acoustics_pml(params: &str) -> Result<Value, String> {
     Ok(json!({ "energy_ratio": a.energy() / e0, "line": line, "time": a.t }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct YeeReq {
     dim: usize,
@@ -644,7 +644,7 @@ fn yee_fdtd(params: &str) -> Result<Value, String> {
     Ok(json!({ "dt": y.dt, "energy": y.energy(), "peak_energy": peak, "ez_line": line }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct NsReq {
     case: String,
@@ -743,7 +743,7 @@ fn navier_stokes_mac(params: &str) -> Result<Value, String> {
     )
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct SplitReq {
     dim: usize,
@@ -807,7 +807,7 @@ fn split_step(params: &str) -> Result<Value, String> {
     Ok(json!({ "energy": energy, "mu": mu, "norm": s.norm2(&psi), "density_line": line }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct FemReq {
     dim: usize,
@@ -854,7 +854,7 @@ fn fem_simplex(params: &str) -> Result<Value, String> {
     Ok(json!({ "dofs": space.size(), "l2_error": space.l2_error(&u, exact) }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct ElasticReq {
     dim: usize,
@@ -938,7 +938,7 @@ fn elasticity_fem(params: &str) -> Result<Value, String> {
     Ok(json!({ "tip_displacement": tip, "euler_bernoulli_deflection": beam, "dofs": space.size() }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct BemReq {
     subdivisions: usize,
@@ -970,6 +970,9 @@ fn bem_laplace(params: &str) -> Result<Value, String> {
         | "exterior" => true,
         | other => return Err(format!("unknown problem `{other}` (interior, exterior)")),
     };
+    if !matches!(r.method.as_str(), "aca" | "p1") {
+        return Err(format!("unknown method `{}` (aca, p1)", r.method));
+    }
     // interior: u = x, q = n_x ; exterior: u = 1 (capacitance), q = -1
     if r.method == "p1" {
         let bcs: Vec<El<f64>> = mesh
@@ -1025,7 +1028,7 @@ fn bem_laplace(params: &str) -> Result<Value, String> {
 
 // ------------------------------------------------------------------ particles
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct SphReq {
     t_end: f64,
@@ -1081,7 +1084,7 @@ fn sph(params: &str) -> Result<Value, String> {
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct DpdReq {
     dim: usize,
@@ -1129,7 +1132,7 @@ fn dpd(params: &str) -> Result<Value, String> {
     )
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct MdReq {
     dim: usize,
@@ -1208,7 +1211,7 @@ fn md_lj(params: &str) -> Result<Value, String> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct SpinReq {
     dim: usize,
@@ -1271,7 +1274,7 @@ fn spin_model(params: &str) -> Result<Value, String> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 struct NbodyReq {
     positions: Vec<[f64; 3]>,
     masses: Vec<f64>,
@@ -1300,7 +1303,7 @@ fn nbody_gravity(params: &str) -> Result<Value, String> {
     Ok(json!({ "accelerations": acc }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(default)]
 struct KerrReq {
     mass: f64,
@@ -1347,4 +1350,32 @@ fn kerr_geodesic(params: &str) -> Result<Value, String> {
         "energy": g.energy,
         "angular_momentum": g.lz,
     }))
+}
+
+/// The parameters an engine scenario runs with when given `{}`: every
+/// field and its default value, as JSON. `None` for other names.
+///
+/// This is how [`schema`](super::schema) learns each engine's parameter
+/// names, types and defaults without a second, hand-written description.
+pub(super) fn defaults(name: &str) -> Option<Value> {
+    match name {
+        | "poisson_multigrid" => serde_json::to_value(PoissonReq::default()).ok(),
+        | "heat_nd" => serde_json::to_value(HeatReq::default()).ok(),
+        | "wave_nd" => serde_json::to_value(WaveReq::default()).ok(),
+        | "euler_fv" => serde_json::to_value(EulerReq::default()).ok(),
+        | "dg_conservation" => serde_json::to_value(DgReq::default()).ok(),
+        | "acoustics_pml" => serde_json::to_value(AcousticsReq::default()).ok(),
+        | "yee_fdtd" => serde_json::to_value(YeeReq::default()).ok(),
+        | "navier_stokes_mac" => serde_json::to_value(NsReq::default()).ok(),
+        | "split_step" => serde_json::to_value(SplitReq::default()).ok(),
+        | "fem_simplex" => serde_json::to_value(FemReq::default()).ok(),
+        | "elasticity_fem" => serde_json::to_value(ElasticReq::default()).ok(),
+        | "bem_laplace" => serde_json::to_value(BemReq::default()).ok(),
+        | "sph" => serde_json::to_value(SphReq::default()).ok(),
+        | "dpd" => serde_json::to_value(DpdReq::default()).ok(),
+        | "md_lj" => serde_json::to_value(MdReq::default()).ok(),
+        | "spin_model" => serde_json::to_value(SpinReq::default()).ok(),
+        | "kerr_geodesic" => serde_json::to_value(KerrReq::default()).ok(),
+        | _ => None,
+    }
 }

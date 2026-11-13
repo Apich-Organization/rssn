@@ -90,3 +90,78 @@ pub(crate) fn to_u32(len: usize) -> u32 {
 fn capacity_overflow() -> u32 {
     panic!("rssn graph kernel: more than u32::MAX entities allocated")
 }
+
+/// A fast, non-cryptographic hasher for the engine's internal tables
+/// (FxHash: one rotate, xor and multiply per word).
+///
+/// The keys are node, class and operator ids the engine itself allocates,
+/// never attacker-chosen data, so `SipHash`'s flooding resistance buys
+/// nothing there and costs a large share of a small request.
+#[derive(Clone, Copy, Default)]
+pub struct FxHasher(u64);
+
+const FX_SEED: u64 = 0x51_7c_c1_b7_27_22_0a_95;
+
+impl FxHasher {
+    #[inline]
+    const fn add(
+        &mut self,
+        word: u64,
+    ) {
+        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(FX_SEED);
+    }
+}
+
+impl std::hash::Hasher for FxHasher {
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    fn write(
+        &mut self,
+        bytes: &[u8],
+    ) {
+        for chunk in bytes.chunks(8) {
+            let mut word = [0_u8; 8];
+            word.iter_mut().zip(chunk).for_each(|(w, b)| *w = *b);
+            self.add(u64::from_le_bytes(word));
+        }
+    }
+
+    #[inline]
+    fn write_u8(
+        &mut self,
+        i: u8,
+    ) {
+        self.add(u64::from(i));
+    }
+
+    #[inline]
+    fn write_u32(
+        &mut self,
+        i: u32,
+    ) {
+        self.add(u64::from(i));
+    }
+
+    #[inline]
+    fn write_u64(
+        &mut self,
+        i: u64,
+    ) {
+        self.add(i);
+    }
+
+    #[inline]
+    fn write_usize(
+        &mut self,
+        i: usize,
+    ) {
+        self.add(i as u64);
+    }
+}
+
+/// A `HashMap` keyed by engine ids, hashed with [`FxHasher`].
+pub type FastMap<K, V> = std::collections::HashMap<K, V, std::hash::BuildHasherDefault<FxHasher>>;

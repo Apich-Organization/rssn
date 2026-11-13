@@ -357,6 +357,46 @@ a merge that does not validate is undone. Fusion changes where values live, not
 how they are computed, so a fused plan returns the same bits as the unfused
 one on a deterministic device (`plan.rs` tests).
 
+## LIR: one IR for every compiling front end
+
+The tape is straight-line, the kernel IR runs one program per row with one
+fold. Neither can express "loop until", "call that function" or "branch
+without evaluating both arms", which a language front end, a batch evaluator
+and a device kernel on a CPU all need. `backend::lir` is the IR that can, and
+it is deliberately small:
+
+* **A typed register machine.** Types are `F64`, `I64`, `Bool` and `Slice`
+  (a host `f64` buffer: address and length). Registers are mutable and
+  zero-initialised; an instruction assigns its destination, a jump assigns the
+  target block's parameters in parallel. This is Cranelift's "variables"
+  model, so `backend::lir_jit` is a direct transcription and needs no SSA
+  construction of its own, and the reference interpreter
+  (`Module::interpret`) has the same semantics by construction.
+* **Safe by construction.** Slices cannot be created, offset or stored; loads
+  read NaN out of range and stores out of range do nothing; a function that
+  writes (transitively) refuses read-only slices before any code runs.
+* **Checked integers and bails.** Integer `+ - * / %` and float-to-integer
+  conversion are checked. A failed check, the call-depth limit or an explicit
+  `Term::Bail` abandon the call with a code and no result: front ends use it
+  for "not my case" (an overflow an arbitrary-precision language must handle,
+  a domain error) and re-run the call in their interpreter.
+* **Calls.** `Inst::Call` calls another function of the module directly;
+  recursion is allowed up to `lir::MAX_CALL_DEPTH` in both executors.
+
+Who lowers into it:
+
+| front end | lowering | used by |
+|---|---|---|
+| tape | `lir::batch_from_tape`: the tape inside a row loop over column slices | `JitFunction::call_batch`/`eval_batch` from 64 rows |
+| `KernelIr` | `device::native::lower`: row loop, fold loop, the device's index semantics emulated exactly | `cpu`/`cpu-parallel` launches from 256 rows (feature `jit`) |
+| Aevia Core IR | `aevia-core::jit`: branches, `match`, self tail calls as jumps with fuel, value-position recursion, checked `Int`, guarded elementary functions | `@jit` functions |
+
+Measured (`examples/backend_timing.rs`, 100 000 rows of
+`sin(x)*exp(-x^2/2) + x^3 - 2*x/(1 + x^2) + sqrt(x + 1)`): reference
+interpreter 27 ms, tape row by row 29 ms, `Tape::eval_columns` 11.7 ms,
+Cranelift per row 14.9 ms, Cranelift row loop through LIR 2.4 ms
+(bit-identical to the per-row entry).
+
 ## Known gaps
 
 * GPU `F32` arithmetic is `f32`. `F64` on the wgpu device is double-single
@@ -376,9 +416,10 @@ one on a deterministic device (`plan.rs` tests).
   end; there are no on-device scans, sorts or compactions.
 * Special functions that are host externs do not run on devices.
 * Single-row calls through `DeviceBackend` pay a full launch; use batches.
-* `ensemble_dopri5` has no dense output and no event detection, and the CPU
-  path for structured kernels is the reference evaluator (correct, parallel,
-  not vectorised).
+* `ensemble_dopri5` has no dense output and no event detection. Without the
+  `jit` feature the CPU path for structured kernels is the reference
+  evaluator (correct, parallel, not vectorised); with it, kernels without
+  `Gather` run as native code through LIR (see "LIR").
 * The `gpu-wgpu` path is validated with naga; execution is tested only where
   an adapter is present (see the test's skip message).
 * `plan::Plan` fuses chains of elementwise launches (see "Fusing launches"); it does not

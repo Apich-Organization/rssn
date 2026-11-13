@@ -56,6 +56,7 @@ mod graphs_tests;
 pub mod group_theory;
 pub mod groups;
 pub mod perm_groups;
+pub mod perm_groups_ext;
 pub mod point_groups;
 pub mod representations;
 pub mod topology;
@@ -426,6 +427,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     graphics::install(i)?;
     groups::install(i)?;
     perm_groups::install(i)?;
+    perm_groups_ext::install(i)?;
     group_theory::install(i)?;
     representations::install(i)?;
     point_groups::install(i)?;

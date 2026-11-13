@@ -352,6 +352,9 @@ struct ClassData {
     pin: NodeId,
     /// A childless member (literal, symbol, nullary operator), if any.
     leaf: NodeId,
+    /// The graph epoch of the last change to this class: a new member, a
+    /// union, or a change of its analysis data (see [`Graph::epoch`]).
+    touched: u64,
 }
 
 /// The expression graph. See the [module documentation](self).
@@ -388,6 +391,8 @@ pub struct Graph {
     /// Sums whose terms print lowest degree first: the truncated series of
     /// `taylor` / `laurent`. A print hint only; it never changes a value.
     ascending: std::collections::HashSet<NodeId>,
+    /// Modification clock; see [`Graph::epoch`].
+    epoch: u64,
 }
 
 impl Clone for Graph {
@@ -421,6 +426,7 @@ impl Clone for Graph {
             dims: std::sync::Arc::clone(&self.dims),
             dim_assumptions: self.dim_assumptions.clone(),
             ascending: self.ascending.clone(),
+            epoch: self.epoch,
         }
     }
 }
@@ -462,7 +468,49 @@ impl Graph {
             dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
             dim_assumptions: HashMap::new(),
             ascending: std::collections::HashSet::new(),
+            epoch: 1,
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Modification epochs
+    // ------------------------------------------------------------------
+
+    /// The current modification epoch.
+    ///
+    /// Every change to a class — a new member, a union, new analysis data,
+    /// a witness or a pin — stamps the class with the current epoch
+    /// ([`Graph::touched`]). A scheduler that searched the graph at epoch
+    /// `e` and then called [`Graph::advance_epoch`] knows that a class with
+    /// `touched(c) <= e` is exactly as it was during that search, which is
+    /// what makes incremental (semi-naive) rule matching possible.
+    #[must_use]
+    pub const fn epoch(&self) -> u64 {
+        self.epoch
+    }
+
+    /// Starts a new epoch and returns it. Changes made from now on are
+    /// stamped with the new value.
+    pub const fn advance_epoch(&mut self) -> u64 {
+        self.epoch = self.epoch.saturating_add(1);
+        self.epoch
+    }
+
+    /// The epoch of the last change to the class of `node`.
+    #[must_use]
+    pub fn touched(
+        &self,
+        node: NodeId,
+    ) -> u64 {
+        self.c(self.find(node)).touched
+    }
+
+    fn touch(
+        &mut self,
+        class: ClassId,
+    ) {
+        let epoch = self.epoch;
+        self.c_mut(class).touched = epoch;
     }
 
     // ------------------------------------------------------------------
@@ -839,11 +887,13 @@ impl Graph {
         ball: Ball,
     ) -> bool {
         let root = self.find(NodeId(class.0));
-        let slot = &mut self.c_mut(root).approx;
-        match slot {
+        let epoch = self.epoch;
+        let data = self.c_mut(root);
+        match data.approx {
             | Some(old) if old.rad <= ball.rad => false,
             | _ => {
-                *slot = Some(ball);
+                data.approx = Some(ball);
+                data.touched = epoch;
                 true
             },
         }
@@ -861,9 +911,11 @@ impl Graph {
         term: NodeId,
     ) {
         let root = self.find(term);
-        let slot = &mut self.c_mut(root).pin;
-        if slot.is_none() {
-            *slot = term;
+        let epoch = self.epoch;
+        let data = self.c_mut(root);
+        if data.pin.is_none() {
+            data.pin = term;
+            data.touched = epoch;
         }
     }
 
@@ -1158,8 +1210,10 @@ impl Graph {
             node.flags |= REDUNDANT;
             node.parent = root;
             self.splice(root, id);
+            let epoch = self.epoch;
             let class = self.c_mut(ClassId(root.0));
             class.size = class.size.saturating_add(1);
+            class.touched = epoch;
         } else {
             self.class_count = self.class_count.saturating_add(1);
             self.memo_insert(chash, id);
@@ -1300,6 +1354,7 @@ impl Graph {
             } else {
                 NodeId::NONE
             },
+            touched: self.epoch,
         };
         match self.interner.get(node.payload) {
             | Some(Payload::Num(_)) if node.op == core::LIT => data.konst = node.payload,
@@ -1450,6 +1505,7 @@ impl Graph {
                 approx: None,
                 pin: NodeId::NONE,
                 leaf: NodeId::NONE,
+                touched: 0,
             },
         );
         // Concatenate use lists.
@@ -1515,6 +1571,7 @@ impl Graph {
         if shrunk || (!had_konst && !lost.konst.is_none()) {
             self.analysis_pending.push(win);
         }
+        self.touch(ClassId(win.0));
         self.pending.push(win);
         true
     }
@@ -1594,6 +1651,7 @@ impl Graph {
             let before = data.free.len();
             data.free.retain(|s| fresh.free.binary_search(s).is_ok());
             if data.free.len() != before {
+                self.touch(ClassId(target.0));
                 self.analysis_pending.push(target);
             }
         }

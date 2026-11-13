@@ -142,11 +142,11 @@ const HEAVY: u64 = 100;
 #[derive(Debug, Default)]
 pub struct EvalCost {
     /// Weighted tape cost of a concrete term, by node.
-    terms: RefCell<HashMap<NodeId, Option<u64>>>,
+    terms: RefCell<super::id::FastMap<NodeId, Option<u64>>>,
     /// Price of a class, by class (lowest over its members).
-    classes: RefCell<HashMap<ClassId, Option<u64>>>,
+    classes: RefCell<super::id::FastMap<ClassId, Option<u64>>>,
     /// Own-node instruction price used by the [`CostModel`] implementation.
-    nodes: RefCell<HashMap<NodeId, u64>>,
+    nodes: RefCell<super::id::FastMap<NodeId, u64>>,
 }
 
 impl EvalCost {

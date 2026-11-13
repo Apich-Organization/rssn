@@ -66,7 +66,7 @@ use crate::graph::NodeId;
 use crate::graph::SymbolId;
 
 #[allow(unsafe_code)]
-mod abi {
+pub(super) mod abi {
     //! The calling convention of generated code and the shims it calls.
 
     use crate::graph::op::EvalFn;
@@ -154,6 +154,37 @@ mod abi {
         unsafe { module.free_memory() }
     }
 
+    /// Entry of a LIR host trampoline (`super::super::lir_jit`): argument
+    /// slots, result slots; returns the bail status (`0` = returned).
+    pub type LirEntry = unsafe extern "C" fn(*const u64, *mut u64) -> u32;
+
+    /// Reinterprets a finalized trampoline pointer as a [`LirEntry`].
+    ///
+    /// The pointer must come from `get_finalized_function` of a trampoline
+    /// that `lir_jit` defined with the `LirEntry` signature; it is only
+    /// called through [`lir_call`].
+    pub fn lir_entry(ptr: *const u8) -> LirEntry {
+        // SAFETY: `lir_jit` passes only trampolines it compiled with exactly
+        // this signature (two pointers in, one `i32` out).
+        unsafe { std::mem::transmute::<*const u8, LirEntry>(ptr) }
+    }
+
+    /// Calls a LIR trampoline.
+    ///
+    /// The slot layout was produced by `LirModule::call` from arguments
+    /// that `Module::check_args` accepted: one slot per scalar, two
+    /// (address, length) per slice, every slice borrowed for the duration of
+    /// the call and writable whenever the function writes. Generated code
+    /// bounds-checks every access against the passed length.
+    pub fn lir_call(
+        entry: LirEntry,
+        args: &[u64],
+        out: &mut [u64],
+    ) -> u32 {
+        // SAFETY: see above; `out` has a slot per result (at least one).
+        unsafe { entry(args.as_ptr(), out.as_mut_ptr()) }
+    }
+
     /// Owner of a module's code; frees it when dropped.
     pub struct Owner(pub Option<cranelift_jit::JITModule>);
 
@@ -217,7 +248,7 @@ extern "C" fn shim_atan2(
     y.atan2(x)
 }
 
-fn library(f: Intrinsic) -> Option<(&'static str, extern "C" fn(f64) -> f64)> {
+pub(super) fn library(f: Intrinsic) -> Option<(&'static str, extern "C" fn(f64) -> f64)> {
     Some(match f {
         | Intrinsic::Exp => ("rssn_exp", shim_exp),
         | Intrinsic::Ln => ("rssn_ln", shim_ln),
@@ -256,6 +287,89 @@ const UNARY_SHIMS: [Intrinsic; 15] = [
     Intrinsic::Cbrt,
 ];
 
+/// Makes the math and host shims callable from generated code.
+pub(super) fn register_shims(builder: &mut JITBuilder) {
+    for f in UNARY_SHIMS {
+        if let Some((name, shim)) = library(f) {
+            builder.symbol(name, shim as *const u8);
+        }
+    }
+    builder.symbol("rssn_pow", shim_pow as *const u8);
+    builder.symbol("rssn_atan2", shim_atan2 as *const u8);
+    builder.symbol("rssn_eval", abi::eval_shim as *const u8);
+    builder.symbol("rssn_extern1", abi::extern1_shim as *const u8);
+    builder.symbol("rssn_extern2", abi::extern2_shim as *const u8);
+}
+
+/// Declares the shims of [`register_shims`] in `module`, by name.
+pub(super) fn declare_shims(
+    module: &mut JITModule,
+) -> Result<HashMap<&'static str, FuncId>, BackendError> {
+    let pointer = module.target_config().pointer_type();
+    let mut sig_unary = module.make_signature();
+    sig_unary.params.push(AbiParam::new(types::F64));
+    sig_unary.returns.push(AbiParam::new(types::F64));
+    let mut sig_binary = sig_unary.clone();
+    sig_binary.params.push(AbiParam::new(types::F64));
+    let mut sig_eval = module.make_signature();
+    sig_eval.params.extend([
+        AbiParam::new(pointer),
+        AbiParam::new(pointer),
+        AbiParam::new(pointer),
+    ]);
+    sig_eval.returns.push(AbiParam::new(types::F64));
+    let mut sig_ext1 = module.make_signature();
+    sig_ext1
+        .params
+        .extend([AbiParam::new(pointer), AbiParam::new(types::F64)]);
+    sig_ext1.returns.push(AbiParam::new(types::F64));
+    let mut sig_ext2 = sig_ext1.clone();
+    sig_ext2.params.push(AbiParam::new(types::F64));
+    let mut imports: HashMap<&'static str, FuncId> = HashMap::new();
+    for f in UNARY_SHIMS {
+        if let Some((name, _)) = library(f) {
+            imports.insert(
+                name,
+                module
+                    .declare_function(name, Linkage::Import, &sig_unary)
+                    .map_err(error)?,
+            );
+        }
+    }
+    imports.insert(
+        "rssn_pow",
+        module
+            .declare_function("rssn_pow", Linkage::Import, &sig_binary)
+            .map_err(error)?,
+    );
+    imports.insert(
+        "rssn_atan2",
+        module
+            .declare_function("rssn_atan2", Linkage::Import, &sig_binary)
+            .map_err(error)?,
+    );
+    imports.insert(
+        "rssn_eval",
+        module
+            .declare_function("rssn_eval", Linkage::Import, &sig_eval)
+            .map_err(error)?,
+    );
+    imports.insert(
+        "rssn_extern1",
+        module
+            .declare_function("rssn_extern1", Linkage::Import, &sig_ext1)
+            .map_err(error)?,
+    );
+    imports.insert(
+        "rssn_extern2",
+        module
+            .declare_function("rssn_extern2", Linkage::Import, &sig_ext2)
+            .map_err(error)?,
+    );
+
+    Ok(imports)
+}
+
 fn error(e: impl std::fmt::Display) -> BackendError {
     BackendError::Codegen(e.to_string())
 }
@@ -276,7 +390,17 @@ pub struct JitFunction {
     inputs: usize,
     params: usize,
     outputs: usize,
+    /// The program, kept for the batch kernel.
+    tape: Option<Arc<Tape>>,
+    /// The batch kernel: the tape inside a native row loop
+    /// ([`super::lir::batch_from_tape`]), compiled on the first batch of at
+    /// least [`NATIVE_BATCH_ROWS`] rows; `None` inside when it cannot be built.
+    batch: OnceLock<Option<super::lir_jit::LirModule>>,
 }
+
+/// Rows from which a batch call compiles and uses the native row loop. Below
+/// it the per-row entry is cheaper than compiling a second function.
+pub const NATIVE_BATCH_ROWS: usize = 64;
 
 impl JitFunction {
     /// Compiles `tape` (which should already be optimised).
@@ -307,80 +431,10 @@ impl JitFunction {
         // into the builder below, so take it first.
         let frontend_config = isa.frontend_config();
         let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
-        for f in UNARY_SHIMS {
-            if let Some((name, shim)) = library(f) {
-                builder.symbol(name, shim as *const u8);
-            }
-        }
-        builder.symbol("rssn_pow", shim_pow as *const u8);
-        builder.symbol("rssn_atan2", shim_atan2 as *const u8);
-        builder.symbol("rssn_eval", abi::eval_shim as *const u8);
-        builder.symbol("rssn_extern1", abi::extern1_shim as *const u8);
-        builder.symbol("rssn_extern2", abi::extern2_shim as *const u8);
+        register_shims(&mut builder);
         let mut module = JITModule::new(builder);
         let pointer = module.target_config().pointer_type();
-
-        // Imported shims.
-        let mut sig_unary = module.make_signature();
-        sig_unary.params.push(AbiParam::new(types::F64));
-        sig_unary.returns.push(AbiParam::new(types::F64));
-        let mut sig_binary = sig_unary.clone();
-        sig_binary.params.push(AbiParam::new(types::F64));
-        let mut sig_eval = module.make_signature();
-        sig_eval.params.extend([
-            AbiParam::new(pointer),
-            AbiParam::new(pointer),
-            AbiParam::new(pointer),
-        ]);
-        sig_eval.returns.push(AbiParam::new(types::F64));
-        let mut sig_ext1 = module.make_signature();
-        sig_ext1
-            .params
-            .extend([AbiParam::new(pointer), AbiParam::new(types::F64)]);
-        sig_ext1.returns.push(AbiParam::new(types::F64));
-        let mut sig_ext2 = sig_ext1.clone();
-        sig_ext2.params.push(AbiParam::new(types::F64));
-        let mut imports: HashMap<&'static str, FuncId> = HashMap::new();
-        for f in UNARY_SHIMS {
-            if let Some((name, _)) = library(f) {
-                imports.insert(
-                    name,
-                    module
-                        .declare_function(name, Linkage::Import, &sig_unary)
-                        .map_err(error)?,
-                );
-            }
-        }
-        imports.insert(
-            "rssn_pow",
-            module
-                .declare_function("rssn_pow", Linkage::Import, &sig_binary)
-                .map_err(error)?,
-        );
-        imports.insert(
-            "rssn_atan2",
-            module
-                .declare_function("rssn_atan2", Linkage::Import, &sig_binary)
-                .map_err(error)?,
-        );
-        imports.insert(
-            "rssn_eval",
-            module
-                .declare_function("rssn_eval", Linkage::Import, &sig_eval)
-                .map_err(error)?,
-        );
-        imports.insert(
-            "rssn_extern1",
-            module
-                .declare_function("rssn_extern1", Linkage::Import, &sig_ext1)
-                .map_err(error)?,
-        );
-        imports.insert(
-            "rssn_extern2",
-            module
-                .declare_function("rssn_extern2", Linkage::Import, &sig_ext2)
-                .map_err(error)?,
-        );
+        let imports = declare_shims(&mut module)?;
 
         let mut sig = module.make_signature();
         sig.params.extend([
@@ -671,7 +725,57 @@ impl JitFunction {
             inputs: tape.inputs,
             params: if tail_loop { 1 } else { tape.params },
             outputs: tape.outputs.len() + usize::from(tail_loop),
+            tape: (!tail_loop).then(|| Arc::new(tape.clone())),
+            batch: OnceLock::new(),
         })
+    }
+
+    /// The native batch kernel, compiled on first use.
+    fn batch_kernel(&self) -> Option<&super::lir_jit::LirModule> {
+        self.batch
+            .get_or_init(|| {
+                let tape = self.tape.as_ref()?;
+                let function = super::lir::batch_from_tape(tape)?;
+                super::lir_jit::LirModule::compile(&super::lir::Module {
+                    functions: vec![function],
+                })
+                .ok()
+            })
+            .as_ref()
+    }
+
+    /// Runs the batch kernel over `rows` rows; `false` when there is none
+    /// (the caller then loops over rows itself).
+    fn run_batch(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+        rows: usize,
+    ) -> bool {
+        use super::lir::Value;
+        if rows < NATIVE_BATCH_ROWS || out.len() != self.outputs {
+            return false;
+        }
+        let Some(kernel) = self.batch_kernel() else {
+            return false;
+        };
+        let Ok(rows) = i64::try_from(rows) else {
+            return false;
+        };
+        let mut args: Vec<Value<'_>> = Vec::with_capacity(self.inputs + self.outputs + 2);
+        for i in 0..self.inputs {
+            args.push(Value::Read(columns.get(i).copied().unwrap_or(&[])));
+        }
+        args.push(Value::Read(params));
+        for column in out.iter_mut() {
+            args.push(Value::Write(column));
+        }
+        args.push(Value::I(rows));
+        matches!(
+            kernel.call(super::lir::FuncId(0), &mut args),
+            Ok(super::lir::Outcome::Returned(_))
+        )
     }
 
     fn run(
@@ -812,6 +916,31 @@ impl CompiledMulti for JitFunction {
     ) {
         self.run(inputs, params, out);
     }
+
+    fn eval_batch(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+    ) {
+        let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
+        if self.run_batch(columns, params, out, rows) {
+            return;
+        }
+        let mut point = vec![f64::NAN; self.inputs];
+        let mut values = vec![f64::NAN; self.outputs];
+        for row in 0..rows {
+            for (arg, column) in point.iter_mut().zip(columns) {
+                *arg = column.get(row).copied().unwrap_or(f64::NAN);
+            }
+            self.run(&point, params, &mut values);
+            for (column, &v) in out.iter_mut().zip(&values) {
+                if let Some(slot) = column.get_mut(row) {
+                    *slot = v;
+                }
+            }
+        }
+    }
 }
 
 impl Compiled for JitFunction {
@@ -833,6 +962,10 @@ impl Compiled for JitFunction {
         columns: &[&[f64]],
         out: &mut [f64],
     ) {
+        let rows = out.len();
+        if self.outputs == 1 && self.params == 0 && self.run_batch(columns, &[], &mut [&mut *out], rows) {
+            return;
+        }
         let mut point = vec![f64::NAN; self.inputs.max(1)];
         let mut value = [f64::NAN];
         for (row, slot) in out.iter_mut().enumerate() {
@@ -847,7 +980,7 @@ impl Compiled for JitFunction {
 
 /// `x^n` by square-and-multiply, the same sequence as
 /// [`tape::int_pow`](super::tape::int_pow).
-fn emit_powi(
+pub(super) fn emit_powi(
     b: &mut FunctionBuilder<'_>,
     x: Value,
     n: i32,

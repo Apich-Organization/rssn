@@ -641,48 +641,110 @@ impl Pat {
         fuel: &mut usize,
     ) -> Vec<Match> {
         let mut out = Vec::new();
+        let mut scratch = MatchScratch::default();
+        self.matches_into(graph, root, nvars, limit, fuel, &mut scratch, &mut out);
+        out
+    }
+
+    /// Appends the matches of this pattern at `root` to `out`, stopping
+    /// once `out` holds `limit` entries or `fuel` runs out.
+    ///
+    /// This is the allocation-free core of [`Pat::matches_bounded`]: the
+    /// search runs on one goal stack and one assignment arena kept in
+    /// `scratch`, which a caller matching one pattern against many nodes
+    /// reuses. Only a completed match allocates (its substitution).
+    #[allow(clippy::too_many_arguments)]
+    pub fn matches_into<'p>(
+        &'p self,
+        graph: &Graph,
+        root: NodeId,
+        nvars: usize,
+        limit: usize,
+        fuel: &mut usize,
+        scratch: &mut MatchScratch<'p>,
+        out: &mut Vec<Match>,
+    ) {
         let Self::Node(op, pats) = self else {
-            return out;
+            return;
         };
-        if graph.op(root) != *op {
-            return out;
+        if graph.op(root) != *op || out.len() >= limit {
+            return;
         }
+        scratch.goals.clear();
+        scratch.used.clear();
+        scratch.subst.clear();
+        scratch.subst.resize(nvars, NodeId::NONE);
+        let MatchScratch { goals, used, subst } = scratch;
         let mut matcher = Matcher {
             graph,
             limit,
-            out: &mut out,
+            out,
             root,
             multi: Vec::new(),
             fuel: *fuel,
+            used,
+            root_children: &[],
+            root_window: None,
         };
-        let mut subst = vec![NodeId::NONE; nvars];
         let flags = graph.ops().get(*op).flags;
         let children = graph.children(root);
         if flags.has(OpFlags::COMMUTATIVE) {
             let allow_rest = flags.has(OpFlags::ASSOCIATIVE);
             if pats.len() == children.len() || (allow_rest && pats.len() < children.len()) {
-                let mut used = vec![false; children.len()];
-                matcher.assign(
-                    pats,
-                    children,
-                    0,
-                    &mut used,
-                    &mut Vec::new(),
-                    &mut subst,
-                    true,
-                );
+                matcher.root_children = children;
+                matcher.assign(pats, children, goals, subst, Mode::Root, &[]);
             }
         } else if pats.len() == children.len() {
-            let mut goals: Vec<(&Self, NodeId)> =
-                pats.iter().zip(children.iter().copied()).rev().collect();
-            matcher.solve(&mut goals, &mut subst, &[]);
+            goals.extend(pats.iter().zip(children.iter().copied()).rev());
+            matcher.solve(goals, subst, &[]);
+            goals.clear();
         }
         *fuel = matcher.fuel;
-        out
+    }
+
+    /// The depth of the pattern: `0` for a variable or literal, one more
+    /// than the deepest argument for an application.
+    ///
+    /// A match rooted at a node only inspects classes at most this many
+    /// child steps below it, which is what lets the scheduler skip nodes
+    /// whose neighbourhood has not changed since a rule last searched them.
+    #[must_use]
+    pub fn depth(&self) -> usize {
+        match self {
+            | Self::Node(_, children) => {
+                children
+                    .iter()
+                    .map(Self::depth)
+                    .max()
+                    .unwrap_or(0)
+                    .saturating_add(1)
+            },
+            | Self::Var(_) | Self::Num(_) | Self::Exact(_) => 0,
+        }
     }
 }
 
-struct Matcher<'g, 'o> {
+/// Reusable working memory of the matcher (see [`Pat::matches_into`]).
+#[derive(Debug, Default)]
+pub struct MatchScratch<'p> {
+    goals: Vec<(&'p Pat, NodeId)>,
+    used: Vec<bool>,
+    subst: Vec<NodeId>,
+}
+
+/// Which kind of commutative assignment [`Matcher::assign`] performs.
+#[derive(Clone, Copy)]
+enum Mode {
+    /// At the root: unassigned children become the match's `rest`.
+    Root,
+    /// Below the root: every child must be consumed by a pattern.
+    Exact,
+    /// Below the root, the variable absorbs the children left over, as an
+    /// application of the operator.
+    Absorb(u32, OpId),
+}
+
+struct Matcher<'g, 'o, 'u> {
     graph: &'g Graph,
     limit: usize,
     out: &'o mut Vec<Match>,
@@ -691,88 +753,160 @@ struct Matcher<'g, 'o> {
     multi: Vec<(u32, OpId, Vec<NodeId>)>,
     /// Search steps left.
     fuel: usize,
+    /// Arena of "child already assigned" flags; each commutative
+    /// assignment owns a window `[base, base + children)` of it.
+    used: &'u mut Vec<bool>,
+    /// The root's children and, during a commutative root assignment, the
+    /// base of its window: the match's `rest` is computed from them only
+    /// when a match is emitted, not for every tentative placement.
+    root_children: &'g [NodeId],
+    root_window: Option<usize>,
 }
 
-impl Matcher<'_, '_> {
-    /// Tries every injection of `pats[index..]` into the unused `children`.
+impl<'g, 'p> Matcher<'g, '_, '_> {
+    fn exhausted(&self) -> bool {
+        self.out.len() >= self.limit || self.fuel == 0
+    }
+
+    fn is_used(
+        &self,
+        slot: usize,
+    ) -> bool {
+        self.used.get(slot).copied().unwrap_or(true)
+    }
+
+    fn set_used(
+        &mut self,
+        slot: usize,
+        value: bool,
+    ) {
+        if let Some(flag) = self.used.get_mut(slot) {
+            *flag = value;
+        }
+    }
+
+    /// Tries every injection of `pats` into `children` (commutative
+    /// matching), pushing one goal per assigned child onto `goals` and
+    /// solving them once every pattern is placed. `goals` is restored on
+    /// return; `rest` is the outer remainder threaded through below the
+    /// root.
+    fn assign(
+        &mut self,
+        pats: &'p [Pat],
+        children: &[NodeId],
+        goals: &mut Vec<(&'p Pat, NodeId)>,
+        subst: &mut Vec<NodeId>,
+        mode: Mode,
+        rest: &[NodeId],
+    ) {
+        let base = self.used.len();
+        self.used.resize(base.saturating_add(children.len()), false);
+        self.place(pats, children, 0, base, goals, subst, mode, rest);
+        self.used.truncate(base);
+    }
+
+    /// The children of the current assignment window not assigned yet.
+    fn unused(
+        &self,
+        children: &[NodeId],
+        base: usize,
+    ) -> Vec<NodeId> {
+        children
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| !self.is_used(base.saturating_add(i)))
+            .map(|(_, &c)| c)
+            .collect()
+    }
+
     #[allow(clippy::too_many_arguments)]
-    fn assign<'p>(
+    fn place(
         &mut self,
         pats: &'p [Pat],
         children: &[NodeId],
         index: usize,
-        used: &mut Vec<bool>,
+        base: usize,
         goals: &mut Vec<(&'p Pat, NodeId)>,
         subst: &mut Vec<NodeId>,
-        is_root: bool,
+        mode: Mode,
+        rest: &[NodeId],
     ) {
-        if self.out.len() >= self.limit || self.fuel == 0 {
+        if self.exhausted() {
             return;
         }
         self.fuel -= 1;
         let Some(pat) = pats.get(index) else {
-            let rest: Vec<NodeId> = if is_root {
-                children
-                    .iter()
-                    .zip(used.iter())
-                    .filter(|(_, u)| !**u)
-                    .map(|(c, _)| *c)
-                    .collect()
-            } else {
-                Vec::new()
-            };
-            let mut pending = goals.clone();
-            self.solve(&mut pending, subst, &rest);
+            match mode {
+                | Mode::Root => {
+                    self.root_window = Some(base);
+                    self.solve(goals, subst, &[]);
+                    self.root_window = None;
+                },
+                | Mode::Exact => self.solve(goals, subst, rest),
+                | Mode::Absorb(var, op) => {
+                    let left = self.unused(children, base);
+                    self.multi.push((var, op, left));
+                    self.solve(goals, subst, rest);
+                    self.multi.pop();
+                },
+            }
             return;
         };
-        let mut tried: Vec<NodeId> = Vec::new();
         for (i, &child) in children.iter().enumerate() {
-            if used.get(i).copied().unwrap_or(true) {
+            let slot = base.saturating_add(i);
+            if self.is_used(slot) {
                 continue;
             }
-            // Children in the same class are interchangeable: try one.
-            let class_rep = NodeId(self.graph.find(child).raw());
-            if tried.contains(&class_rep) {
+            // Children in the same class are interchangeable: try one. The
+            // earlier unused children are exactly the ones already tried.
+            let class = self.graph.find(child);
+            let tried = children.iter().take(i).enumerate().any(|(j, &other)| {
+                !self.is_used(base.saturating_add(j)) && self.graph.find(other) == class
+            });
+            if tried {
                 continue;
             }
-            tried.push(class_rep);
-            if let Some(slot) = used.get_mut(i) {
-                *slot = true;
-            }
+            self.set_used(slot, true);
             goals.push((pat, child));
-            self.assign(
+            self.place(
                 pats,
                 children,
                 index.saturating_add(1),
-                used,
+                base,
                 goals,
                 subst,
-                is_root,
+                mode,
+                rest,
             );
             goals.pop();
-            if let Some(slot) = used.get_mut(i) {
-                *slot = false;
+            self.set_used(slot, false);
+            if self.exhausted() {
+                return;
             }
         }
     }
 
     /// Discharges `goals` (a stack) under `subst`, emitting a match when
-    /// none are left.
+    /// none are left. `goals` and `subst` are unchanged on return.
     fn solve(
         &mut self,
-        goals: &mut Vec<(&Pat, NodeId)>,
+        goals: &mut Vec<(&'p Pat, NodeId)>,
         subst: &mut Vec<NodeId>,
         rest: &[NodeId],
     ) {
-        if self.out.len() >= self.limit || self.fuel == 0 {
+        if self.exhausted() {
             return;
         }
         self.fuel -= 1;
         let Some((pat, node)) = goals.pop() else {
+            let rest = match self.root_window {
+                | Some(base) => self.unused(self.root_children, base),
+                | None => rest.to_vec(),
+            };
             self.out.push(Match {
                 root: self.root,
                 subst: subst.clone(),
-                rest: rest.to_vec(),
+                rest,
                 multi: self.multi.clone(),
             });
             return;
@@ -825,8 +959,12 @@ impl Matcher<'_, '_> {
                 }
             },
             | Pat::Node(op, pats) => {
-                let commutative = graph.ops().get(*op).flags.has(OpFlags::COMMUTATIVE);
+                let flags = graph.ops().get(*op).flags;
+                let commutative = flags.has(OpFlags::COMMUTATIVE);
                 for enode in graph.enodes(class) {
+                    if self.exhausted() {
+                        break;
+                    }
                     if graph.op(enode) != *op {
                         continue;
                     }
@@ -834,30 +972,13 @@ impl Matcher<'_, '_> {
                     if commutative && children.len() > pats.len() {
                         // The last operand, if a free variable, absorbs the
                         // operands the others leave over.
-                        let absorber = match pats.split_last() {
-                            | Some((Pat::Var(v), front))
-                                if !front.is_empty()
-                                    && graph.ops().get(*op).flags.has(OpFlags::ASSOCIATIVE)
-                                    && subst.get(*v as usize).is_some_and(|b| b.is_none())
-                                    && !self.multi.iter().any(|(var, _, _)| var == v) =>
-                            {
-                                Some((*v, front))
-                            },
-                            | _ => None,
-                        };
-                        if let Some((var, front)) = absorber {
-                            let mut used = vec![false; children.len()];
-                            let mut inner = goals.clone();
-                            self.assign_nested(
-                                front,
-                                children,
-                                0,
-                                &mut used,
-                                &mut inner,
-                                subst,
-                                rest,
-                                Some((var, *op)),
-                            );
+                        if let Some((Pat::Var(v), front)) = pats.split_last()
+                            && !front.is_empty()
+                            && flags.has(OpFlags::ASSOCIATIVE)
+                            && subst.get(*v as usize).is_some_and(|b| b.is_none())
+                            && !self.multi.iter().any(|(var, _, _)| var == v)
+                        {
+                            self.assign(front, children, goals, subst, Mode::Absorb(*v, *op), rest);
                         }
                         continue;
                     }
@@ -865,87 +986,17 @@ impl Matcher<'_, '_> {
                         continue;
                     }
                     if commutative {
-                        let mut used = vec![false; children.len()];
-                        let mut inner = goals.clone();
-                        self.assign_nested(
-                            pats, children, 0, &mut used, &mut inner, subst, rest, None,
-                        );
+                        self.assign(pats, children, goals, subst, Mode::Exact, rest);
                     } else {
-                        let mut inner = goals.clone();
-                        inner.extend(pats.iter().zip(children.iter().copied()).rev());
-                        self.solve(&mut inner, subst, rest);
+                        let height = goals.len();
+                        goals.extend(pats.iter().zip(children.iter().copied()).rev());
+                        self.solve(goals, subst, rest);
+                        goals.truncate(height);
                     }
                 }
             },
         }
         goals.push((pat, node));
-    }
-
-    /// Like [`Self::assign`] for a nested commutative node: every child
-    /// must be consumed — by a pattern or, with `absorb`, by the variable
-    /// that takes what is left — and the outer `rest` is threaded through.
-    #[allow(clippy::too_many_arguments)]
-    fn assign_nested<'p>(
-        &mut self,
-        pats: &'p [Pat],
-        children: &[NodeId],
-        index: usize,
-        used: &mut Vec<bool>,
-        goals: &mut Vec<(&'p Pat, NodeId)>,
-        subst: &mut Vec<NodeId>,
-        rest: &[NodeId],
-        absorb: Option<(u32, OpId)>,
-    ) {
-        if self.out.len() >= self.limit || self.fuel == 0 {
-            return;
-        }
-        self.fuel -= 1;
-        let Some(pat) = pats.get(index) else {
-            let mut pending = goals.clone();
-            if let Some((var, op)) = absorb {
-                let left: Vec<NodeId> = children
-                    .iter()
-                    .zip(used.iter())
-                    .filter(|(_, u)| !**u)
-                    .map(|(c, _)| *c)
-                    .collect();
-                self.multi.push((var, op, left));
-                self.solve(&mut pending, subst, rest);
-                self.multi.pop();
-            } else {
-                self.solve(&mut pending, subst, rest);
-            }
-            return;
-        };
-        let mut tried: Vec<NodeId> = Vec::new();
-        for (i, &child) in children.iter().enumerate() {
-            if used.get(i).copied().unwrap_or(true) {
-                continue;
-            }
-            let class_rep = NodeId(self.graph.find(child).raw());
-            if tried.contains(&class_rep) {
-                continue;
-            }
-            tried.push(class_rep);
-            if let Some(slot) = used.get_mut(i) {
-                *slot = true;
-            }
-            goals.push((pat, child));
-            self.assign_nested(
-                pats,
-                children,
-                index.saturating_add(1),
-                used,
-                goals,
-                subst,
-                rest,
-                absorb,
-            );
-            goals.pop();
-            if let Some(slot) = used.get_mut(i) {
-                *slot = false;
-            }
-        }
     }
 }
 

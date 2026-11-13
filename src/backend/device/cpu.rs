@@ -75,6 +75,45 @@ impl Storage for HostStorage {
 struct CpuKernel {
     ir: KernelIr,
     analysis: Analysis,
+    /// The kernel as machine code (feature `jit`), compiled on the first
+    /// launch of at least [`NATIVE_ROWS`] rows; `None` inside when it cannot
+    /// be lowered (see [`super::native`]).
+    #[cfg(feature = "jit")]
+    native: std::sync::OnceLock<Option<super::native::NativeKernel>>,
+}
+
+/// Rows from which a launch compiles and runs the kernel natively.
+#[cfg(feature = "jit")]
+pub const NATIVE_ROWS: usize = 256;
+
+/// Runs rows `lo .. lo + len(out[0])` natively, split over the pool like the
+/// interpreter; `false` if any part bailed.
+#[cfg(feature = "jit")]
+fn run_native(
+    native: &super::native::NativeKernel,
+    inputs: &[&[f64]],
+    params: &[f64],
+    mut cols: Vec<&mut [f64]>,
+    lo: usize,
+    rows: usize,
+    parallel: bool,
+) -> bool {
+    let len = cols.first().map_or(0, |c| c.len());
+    if parallel && len > GRAIN {
+        let mid = len / 2;
+        let (mut left, mut right) = (Vec::new(), Vec::new());
+        for c in cols {
+            let (a, b) = c.split_at_mut(mid);
+            left.push(a);
+            right.push(b);
+        }
+        let (a, b) = rayon::join(
+            || run_native(native, inputs, params, left, lo, rows, true),
+            || run_native(native, inputs, params, right, lo + mid, rows, true),
+        );
+        return a && b;
+    }
+    native.run(inputs, params, &mut cols, lo, rows)
 }
 
 impl CompiledKernel for CpuKernel {
@@ -284,6 +323,8 @@ impl Device for CpuDevice {
         let k = Arc::new(CpuKernel {
             ir: ir.clone(),
             analysis,
+            #[cfg(feature = "jit")]
+            native: std::sync::OnceLock::new(),
         });
         cache.insert(key, k.clone());
         drop(cache);
@@ -328,7 +369,27 @@ impl Device for CpuDevice {
         if rows == 0 {
             return Ok(());
         }
-        let cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
+        let mut cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
+        #[cfg(feature = "jit")]
+        if rows >= NATIVE_ROWS
+            && let Some(k) = kernel.as_any().downcast_ref::<CpuKernel>()
+            && let Some(native) = k
+                .native
+                .get_or_init(|| super::native::NativeKernel::compile(&k.ir, &k.analysis))
+                .as_ref()
+        {
+            let offsets = column_offsets(lens);
+            let inputs: Vec<&[f64]> = offsets
+                .iter()
+                .zip(lens)
+                .map(|(&at, &len)| input.get(at..at.saturating_add(len)).unwrap_or(&[]))
+                .collect();
+            let parts: Vec<&mut [f64]> = cols.iter_mut().map(|c| &mut **c).collect();
+            if run_native(native, &inputs, params, parts, 0, rows, self.parallel) {
+                return Ok(());
+            }
+            // A bail (an index overflow): interpret the whole launch.
+        }
         if ir.is_elementwise() && lens.iter().all(|&l| l == rows) {
             run_range(ir, input, rows, params, 0, cols, self.parallel);
         } else {

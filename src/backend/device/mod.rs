@@ -77,6 +77,8 @@ pub mod emit;
 #[cfg(feature = "gpu-wgpu")]
 pub mod gpu;
 pub mod kernel;
+#[cfg(feature = "jit")]
+pub mod native;
 pub mod plan;
 pub mod wgsl;
 

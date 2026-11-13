@@ -25,7 +25,6 @@
 
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -193,8 +192,101 @@ struct RuleState {
     /// kernel again when that number grows: a request whose argument was
     /// itself an unreduced request gets a second chance once the inner one
     /// is resolved.
-    visited: HashMap<NodeId, usize>,
+    visited: super::id::FastMap<NodeId, usize>,
     applied: usize,
+    /// Graph epoch of this rewrite's last complete search, if any; see
+    /// [`Frontier`].
+    searched: Option<u64>,
+}
+
+/// Incremental (semi-naive) matching.
+///
+/// A rewrite whose left-hand side has depth `d` only inspects, at a root
+/// node, the classes at most `d` child steps below it, and a guard that
+/// reads only the bound classes' own data (free symbols, literal values,
+/// identity) adds nothing outside that neighbourhood. If no class in the
+/// neighbourhood changed since the rule's last complete search
+/// ([`Graph::touched`]), and the node was already a candidate then, the
+/// search finds exactly the matches it found before — all of which have
+/// been applied. Such nodes are skipped.
+///
+/// Guards that consult derived facts (`positive`, `integer`, ...) or custom
+/// predicates can change their verdict when something far below changes,
+/// so rewrites carrying them are always searched in full, as are banned
+/// rewrites coming back (their last search did not complete).
+///
+/// Setting `RSSN_FULL_SEARCH=1` disables the skipping (for differential
+/// testing of the scheduler).
+#[derive(Default)]
+struct Frontier {
+    /// `(class, depth)` to the latest epoch at which a class within `depth`
+    /// child steps of it changed.
+    memo: super::id::FastMap<(u32, usize), u64>,
+}
+
+impl Frontier {
+    fn enabled() -> bool {
+        static FULL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        !*FULL.get_or_init(|| std::env::var_os("RSSN_FULL_SEARCH").is_some_and(|v| v != "0"))
+    }
+
+    fn class(
+        &mut self,
+        graph: &Graph,
+        node: NodeId,
+        depth: usize,
+    ) -> u64 {
+        let class = graph.find(node);
+        let own = graph.touched(node);
+        if depth == 0 {
+            return own;
+        }
+        if let Some(&known) = self.memo.get(&(class.raw(), depth)) {
+            return known;
+        }
+        // Seed the entry first: an e-graph may be cyclic, and the cycle
+        // contributes nothing beyond what the walk finds anyway.
+        self.memo.insert((class.raw(), depth), own);
+        let mut latest = own;
+        for enode in graph.enodes(class) {
+            for &child in graph.children(enode) {
+                latest = latest.max(self.class(graph, child, depth - 1));
+            }
+        }
+        self.memo.insert((class.raw(), depth), latest);
+        latest
+    }
+
+    fn node(
+        &mut self,
+        graph: &Graph,
+        node: NodeId,
+        depth: usize,
+    ) -> u64 {
+        let mut latest = graph.touched(node);
+        if depth > 0 {
+            for &child in graph.children(node) {
+                latest = latest.max(self.class(graph, child, depth - 1));
+            }
+        }
+        latest
+    }
+}
+
+/// Whether a guard reads only data of the classes it names.
+fn local_guard(guard: &super::rule::Guard) -> bool {
+    use super::rule::Guard;
+    match guard {
+        | Guard::FreeOf(..) | Guard::IsNumber(_) | Guard::IsSymbol(_) | Guard::Same(..) => true,
+        | Guard::Not(inner) => local_guard(inner),
+        | Guard::IsInteger(_)
+        | Guard::NonZero(_)
+        | Guard::Positive(_)
+        | Guard::Negative(_)
+        | Guard::NonNegative(_)
+        | Guard::Real(_)
+        | Guard::Custom(_) => false,
+    }
 }
 
 /// Applies what a kernel found out about `node`; whether the graph changed.
@@ -244,15 +336,20 @@ fn search_rewrite(
     let limit = budget.match_limit.saturating_mul(1_usize << shift);
     let mut matches = Vec::new();
     let mut fuel = budget.match_fuel;
+    let mut scratch = super::pattern::MatchScratch::default();
+    let cap = limit.saturating_add(1);
     for &node in nodes {
-        let room = limit.saturating_add(1).saturating_sub(matches.len());
-        if room == 0 {
+        if matches.len() >= cap {
             break;
         }
-        matches.extend(
-            rewrite
-                .lhs
-                .matches_bounded(graph, node, rewrite.nvars, room, &mut fuel),
+        rewrite.lhs.matches_into(
+            graph,
+            node,
+            rewrite.nvars,
+            cap,
+            &mut fuel,
+            &mut scratch,
+            &mut matches,
         );
         if fuel == 0 {
             break;
@@ -460,7 +557,8 @@ impl Engine {
             .iter()
             .map(|_| RuleState::default())
             .collect();
-        let mut windowed: HashMap<NodeId, u64> = HashMap::new();
+        let mut windowed: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
+        let mut seen: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let normalizing: Vec<&Rewrite> = self.rewrites_of(Tier::Normalize);
         let exploring: Vec<&Rewrite> = self.rewrites_of(Tier::Explore);
         let passes: Vec<&dyn WindowPass> = self.program.passes.iter().map(|p| &**p).collect();
@@ -494,6 +592,7 @@ impl Engine {
                     iteration,
                     budget,
                     &mut states,
+                    &mut seen,
                 );
                 graph.rebuild();
                 progress |= changed;
@@ -522,6 +621,7 @@ impl Engine {
                 iteration,
                 budget,
                 &mut states,
+                &mut seen,
             );
             graph.rebuild();
 
@@ -543,6 +643,7 @@ impl Engine {
                     iteration,
                     budget,
                     &mut states,
+                    &mut seen,
                 );
                 graph.rebuild();
             }
@@ -641,10 +742,12 @@ impl Engine {
         iteration: usize,
         budget: &Budget,
         states: &mut [RuleState],
+        seen: &mut super::id::FastMap<NodeId, u64>,
     ) -> bool {
         if !self.program.rules.iter().any(|r| r.tier == tier) {
             return false;
         }
+        let incremental = Frontier::enabled();
         let heavy =
             |graph: &Graph, node: NodeId| graph.ops().get(graph.op(node)).flags.has(OpFlags::HEAVY);
         let mut candidates: BTreeMap<OpId, Vec<NodeId>> = BTreeMap::new();
@@ -659,8 +762,10 @@ impl Engine {
             if graph.enodes(class).any(|n| graph.op(n) == core::LIT) {
                 continue;
             }
+            let epoch = graph.epoch();
             for enode in graph.enodes(class) {
                 candidates.entry(graph.op(enode)).or_default().push(enode);
+                seen.entry(enode).or_insert(epoch);
             }
         }
         let mut changed = false;
@@ -696,24 +801,52 @@ impl Engine {
                     })
                     .collect();
                 at = end;
-                let work: usize = run
+                // The nodes each rewrite must search: all candidates of its
+                // trigger, minus (incrementally) those whose neighbourhood
+                // is unchanged since its last complete search.
+                let searched_at = graph.epoch();
+                let mut frontier = Frontier::default();
+                let todo: Vec<Option<Vec<NodeId>>> = run
                     .iter()
-                    .map(|(_, rw)| candidates.get(&rw.trigger()).map_or(0, Vec::len))
-                    .sum();
+                    .map(|&(i, rw)| {
+                        let nodes = candidates.get(&rw.trigger())?;
+                        let since = states.get(i).and_then(|s| s.searched);
+                        let Some(since) = since.filter(|_| {
+                            incremental && rw.guards.iter().all(local_guard)
+                        }) else {
+                            return Some(nodes.clone());
+                        };
+                        let depth = rw.lhs.depth();
+                        Some(
+                            nodes
+                                .iter()
+                                .copied()
+                                .filter(|&n| {
+                                    seen.get(&n).copied().unwrap_or(u64::MAX) > since
+                                        || frontier.node(graph, n, depth) > since
+                                })
+                                .collect(),
+                        )
+                    })
+                    .collect();
+                let work: usize = todo.iter().map(|t| t.as_ref().map_or(0, Vec::len)).sum();
                 let found = {
                     let frozen: &Graph = graph;
                     let states_ro: &[RuleState] = states;
-                    let search = |&(i, rw): &(usize, &Rewrite)| -> Option<Search> {
-                        let nodes = candidates.get(&rw.trigger())?;
+                    let search = |(&(i, rw), nodes): (&(usize, &Rewrite), &Option<Vec<NodeId>>)| {
+                        let nodes = nodes.as_ref()?;
                         let times = states_ro.get(i).map_or(0, |s| s.times_banned);
                         Some(search_rewrite(frozen, rw, nodes, times, budget))
                     };
                     if run.len() >= 2 && work >= ENGINE_PAR_MIN_CANDIDATES {
-                        run.par_iter().map(search).collect::<Vec<_>>()
+                        run.par_iter().zip(todo.par_iter()).map(search).collect::<Vec<_>>()
                     } else {
-                        run.iter().map(search).collect::<Vec<_>>()
+                        run.iter().zip(todo.iter()).map(search).collect::<Vec<_>>()
                     }
                 };
+                // Everything applied from here on is stamped with a later
+                // epoch than the search saw.
+                graph.advance_epoch();
                 for (&(i, rewrite), result) in run.iter().zip(found) {
                     let (Some(result), Some(state)) = (result, states.get_mut(i)) else {
                         continue;
@@ -727,6 +860,7 @@ impl Engine {
                             state.times_banned = state.times_banned.saturating_add(1);
                         },
                         | Search::Found(matches) => {
+                            state.searched = Some(searched_at);
                             for m in &matches {
                                 if let Some(new) = rewrite.build(graph, m)
                                     && graph.union(m.root, new)
@@ -851,7 +985,7 @@ impl Engine {
         normalizing: &[&Rewrite],
         exploring: &[&Rewrite],
         passes: &[&dyn WindowPass],
-        done: &mut HashMap<NodeId, u64>,
+        done: &mut super::id::FastMap<NodeId, u64>,
     ) -> bool {
         if normalizing.is_empty() && passes.is_empty() {
             return false;
@@ -871,15 +1005,24 @@ impl Engine {
                 continue;
             };
             // A term is worth another look once the graph has learnt
-            // something since its last window: what its atoms are known to
-            // equal may have changed.
-            let stamp = graph.union_count();
-            if !graph.children(term).is_empty() && done.insert(term, stamp) != Some(stamp) {
+            // something about one of its classes since its last window:
+            // what its atoms are known to equal may have changed.
+            if graph.children(term).is_empty() {
+                continue;
+            }
+            let fresh = done
+                .get(&term)
+                .is_none_or(|&last| term_touched(graph, term) > last);
+            if fresh {
                 terms.push((NodeId::from_raw(class.raw()), term));
             }
         }
         let mut changed = false;
         for (origin, term) in terms {
+            // Changes this window makes are stamped with its own epoch, so
+            // they do not send it back to work; the next window's are later.
+            let epoch = graph.advance_epoch();
+            done.insert(term, epoch);
             // Building the term may have flattened it into a shape the
             // graph does not yet know to be in the class it came from.
             changed |= graph.union(origin, term);
@@ -903,12 +1046,31 @@ impl Engine {
             }
             if steps > 0 {
                 let out = window.commit(graph);
-                done.insert(out, graph.union_count());
+                done.insert(out, epoch);
                 changed |= graph.union(term, out);
             }
         }
+        graph.advance_epoch();
         changed
     }
+}
+
+/// The latest epoch at which a class of the concrete term `term` changed.
+fn term_touched(
+    graph: &Graph,
+    term: NodeId,
+) -> u64 {
+    let mut latest = 0;
+    let mut stack = vec![term];
+    let mut visited = std::collections::HashSet::new();
+    while let Some(node) = stack.pop() {
+        if !visited.insert(node) {
+            continue;
+        }
+        latest = latest.max(graph.touched(node));
+        stack.extend_from_slice(graph.children(node));
+    }
+    latest
 }
 
 /// Computes numeric witnesses bottom-up for every reachable class whose

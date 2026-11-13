@@ -787,6 +787,14 @@ impl TreeWindow {
     ) -> usize {
         let mut steps = 0_usize;
         let mut rounds = 0_usize;
+        // Only rewrites rooted at a cell's operator can match it; indexing
+        // them once turns the sweep from cells x rules into cells x hits.
+        let mut by_op: std::collections::HashMap<OpId, Vec<&Rewrite>> =
+            std::collections::HashMap::new();
+        for &rewrite in rewrites {
+            by_op.entry(rewrite.trigger()).or_default().push(rewrite);
+        }
+        let none: Vec<&Rewrite> = Vec::new();
         loop {
             rounds = rounds.saturating_add(1);
             let mut changed = self.flatten(graph);
@@ -797,7 +805,11 @@ impl TreeWindow {
                 steps = steps.saturating_add(1);
             }
             'cells: for cell in self.post_order() {
-                for rewrite in rewrites {
+                if self.atom(cell).is_some() {
+                    continue;
+                }
+                let candidates = by_op.get(&self.op(cell)).unwrap_or(&none);
+                for &rewrite in candidates {
                     if !self.cell(cell).live {
                         continue 'cells;
                     }
@@ -930,13 +942,12 @@ impl Search<'_> {
                 .filter(|(_, u)| !**u)
                 .map(|(c, _)| *c)
                 .collect();
-            let mut pending = goals.clone();
             return match mode {
                 | Mode::Root => {
                     self.rest = left;
-                    self.solve(&mut pending, subst)
+                    self.solve(goals, subst)
                 },
-                | Mode::Nested => self.solve(&mut pending, subst),
+                | Mode::Nested => self.solve(goals, subst),
                 | Mode::Absorb(var, op) => {
                     let index = var as usize;
                     if let Some(slot) = subst.get_mut(index) {
@@ -945,7 +956,7 @@ impl Search<'_> {
                     if let Some(slot) = self.ops.get_mut(index) {
                         *slot = op;
                     }
-                    let ok = self.solve(&mut pending, subst);
+                    let ok = self.solve(goals, subst);
                     if !ok && let Some(slot) = subst.get_mut(index) {
                         slot.clear();
                     }
@@ -961,7 +972,6 @@ impl Search<'_> {
                 *slot = true;
             }
             goals.push((pat, child));
-            let saved = subst.clone();
             if self.assign(
                 pats,
                 children,
@@ -973,7 +983,6 @@ impl Search<'_> {
             ) {
                 return true;
             }
-            subst.clone_from(&saved);
             goals.pop();
             if let Some(slot) = used.get_mut(i) {
                 *slot = false;
@@ -984,14 +993,30 @@ impl Search<'_> {
 
     /// Discharges all goals; on success `subst` holds the bindings and the
     /// guards have been checked.
-    fn solve(
+    fn solve<'p>(
         &mut self,
-        goals: &mut Vec<(&Pat, CellId)>,
+        goals: &mut Vec<(&'p Pat, CellId)>,
         subst: &mut Vec<Vec<CellId>>,
     ) -> bool {
         let Some((pat, cell)) = goals.pop() else {
             return self.guards_hold(subst);
         };
+        if self.solve_goal(pat, cell, goals, subst) {
+            return true;
+        }
+        goals.push((pat, cell));
+        false
+    }
+
+    /// Discharges one goal and then the rest of the stack. On failure the
+    /// stack (below the popped goal) and `subst` are as they were.
+    fn solve_goal<'p>(
+        &mut self,
+        pat: &'p Pat,
+        cell: CellId,
+        goals: &mut Vec<(&'p Pat, CellId)>,
+        subst: &mut Vec<Vec<CellId>>,
+    ) -> bool {
         let window = self.window;
         match pat {
             | Pat::Var(v) => {
@@ -1035,7 +1060,6 @@ impl Search<'_> {
                 }
                 let children: Vec<CellId> = window.children(cell).collect();
                 let flags = self.graph.ops().get(*op).flags;
-                let mut inner = goals.clone();
                 if flags.has(OpFlags::COMMUTATIVE) && children.len() > pats.len() {
                     let Some((Pat::Var(v), front)) = pats.split_last() else {
                         return false;
@@ -1050,7 +1074,7 @@ impl Search<'_> {
                         &children,
                         0,
                         &mut used,
-                        &mut inner,
+                        goals,
                         subst,
                         Mode::Absorb(*v, *op),
                     );
@@ -1065,13 +1089,18 @@ impl Search<'_> {
                         &children,
                         0,
                         &mut used,
-                        &mut inner,
+                        goals,
                         subst,
                         Mode::Nested,
                     )
                 } else {
-                    inner.extend(pats.iter().zip(children.iter().copied()).rev());
-                    self.solve(&mut inner, subst)
+                    let height = goals.len();
+                    goals.extend(pats.iter().zip(children.iter().copied()).rev());
+                    if self.solve(goals, subst) {
+                        return true;
+                    }
+                    goals.truncate(height);
+                    false
                 }
             },
         }

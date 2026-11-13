@@ -1605,6 +1605,24 @@ impl<'s> Term<'s> {
         backend.compile(&inner.graph, self.node, &symbols)
     }
 
+    /// The term lowered to the [tape IR](crate::backend::tape) as a function
+    /// of the named symbols, in order, and optimised: the common input of
+    /// the compiling backends (`backend::jit`, `backend::lir`, devices).
+    ///
+    /// # Errors
+    /// See [`BackendError`](crate::backend::BackendError).
+    pub fn tape(
+        self,
+        inputs: &[&str],
+    ) -> Result<crate::backend::tape::Tape, crate::backend::BackendError> {
+        let mut inner = self.session.inner.borrow_mut();
+        let symbols: Vec<_> = inputs
+            .iter()
+            .map(|name| inner.graph.interner_mut().symbol(name))
+            .collect();
+        crate::backend::tape::lower(&inner.graph, &[self.node], &symbols, &[]).map(|t| t.optimise())
+    }
+
     /// Applies a unary operator that the standard rule sets register.
     fn apply(
         self,

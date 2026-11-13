@@ -738,46 +738,135 @@ impl Tape {
                 | Inst::Input(i) => inputs.get(i as usize).copied().unwrap_or_else(T::nan),
                 | Inst::Param(i) => params.get(i as usize).copied().unwrap_or_else(T::nan),
                 | Inst::Gather(base, index) => {
-                    // Truncation, not rounding: an index is an offset, and a
-                    // fractional one is a bug in whatever produced it rather
-                    // than a reason to read a neighbouring element.
                     let offset = values
                         .get(index as usize)
                         .copied()
                         .map_or(f64::NAN, T::to_f64);
-                    let slot = if offset.is_finite() {
-                        #[allow(clippy::cast_possible_truncation)]
-                        let offset = offset.trunc();
-                        usize::try_from(base).ok().and_then(|base| {
-                            if offset < 0.0 || offset > 1.0e18 {
-                                None
-                            } else {
-                                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                                let offset = offset as usize;
-                                base.checked_add(offset)
-                            }
-                        })
-                    } else {
-                        None
-                    };
-                    slot.filter(|&slot| slot < self.inputs)
+                    gather_slot(base, offset, self.inputs)
                         .and_then(|slot| inputs.get(slot).copied())
                         .unwrap_or_else(T::nan)
                 },
-                | _ => {
-                    scratch.clear();
-                    scratch.extend(
-                        operands(inst, &self.args)
-                            .iter()
-                            .map(|&r| values.get(r as usize).copied().unwrap_or_else(T::nan)),
-                    );
-                    apply(inst, &scratch)
-                },
+                | _ => apply_regs(inst, values, &self.args, &mut scratch),
             };
             values.push(value);
         }
         for (slot, &r) in out.iter_mut().zip(&self.outputs) {
             *slot = values.get(r as usize).copied().unwrap_or_else(T::nan);
+        }
+    }
+
+    /// Evaluates the program at every row of a batch, column-wise.
+    ///
+    /// `columns[i][row]` is input `i` (a missing element reads NaN, like a
+    /// missing input of [`Tape::eval`]); `out[k][row]` receives output `k`
+    /// for `row < min(out lengths)`. Rows are processed in blocks of
+    /// [`COLUMN_BLOCK`]: each instruction runs over a whole block before
+    /// the next one, which turns the per-instruction dispatch of the scalar
+    /// interpreter into one dispatch per block and lets the arithmetic
+    /// vectorise. Every row gets exactly the bits [`Tape::eval`] gives it.
+    pub fn eval_columns(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+    ) {
+        const B: usize = COLUMN_BLOCK;
+        let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
+        if rows == 0 || self.outputs.is_empty() {
+            return;
+        }
+        let mut regs = vec![0.0_f64; self.insts.len().saturating_mul(B)];
+        let mut point: Vec<f64> = Vec::new();
+        let mut v: Vec<f64> = Vec::new();
+        let mut row0 = 0;
+        while row0 < rows {
+            let n = B.min(rows - row0);
+            for (r, inst) in self.insts.iter().enumerate() {
+                let (before, after) = regs.split_at_mut(r * B);
+                let dst = &mut after[..n];
+                let src = |reg: Reg| -> &[f64] {
+                    let start = reg as usize * B;
+                    before.get(start..start + n).unwrap_or(&[])
+                };
+                match *inst {
+                    | Inst::Const(c) => dst.fill(c),
+                    | Inst::Param(i) => {
+                        dst.fill(params.get(i as usize).copied().unwrap_or(f64::NAN));
+                    },
+                    | Inst::Input(i) => {
+                        let column = columns.get(i as usize).copied().unwrap_or(&[]);
+                        for (k, d) in dst.iter_mut().enumerate() {
+                            *d = column.get(row0 + k).copied().unwrap_or(f64::NAN);
+                        }
+                    },
+                    | Inst::Add(a, b) => {
+                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = x + y;
+                        }
+                    },
+                    | Inst::Sub(a, b) => {
+                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = x - y;
+                        }
+                    },
+                    | Inst::Mul(a, b) => {
+                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = x * y;
+                        }
+                    },
+                    | Inst::Div(a, b) => {
+                        for ((d, x), y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = x / y;
+                        }
+                    },
+                    | Inst::Neg(a) => {
+                        for (d, x) in dst.iter_mut().zip(src(a)) {
+                            *d = -x;
+                        }
+                    },
+                    | Inst::Gather(base, index) => {
+                        // Row by row through the scalar rule: the offset
+                        // selects a different input column per row.
+                        for (k, d) in dst.iter_mut().enumerate() {
+                            point.clear();
+                            point.extend((0..self.inputs).map(|i| {
+                                columns
+                                    .get(i)
+                                    .and_then(|c| c.get(row0 + k))
+                                    .copied()
+                                    .unwrap_or(f64::NAN)
+                            }));
+                            let offset = before
+                                .get(index as usize * B + k)
+                                .copied()
+                                .unwrap_or(f64::NAN);
+                            *d = gather_one(base, offset, self.inputs, &point);
+                        }
+                    },
+                    | _ => {
+                        let ops = operands(inst, &self.args);
+                        for (k, d) in dst.iter_mut().enumerate() {
+                            v.clear();
+                            v.extend(ops.iter().map(|&o| {
+                                before
+                                    .get(o as usize * B + k)
+                                    .copied()
+                                    .unwrap_or(f64::NAN)
+                            }));
+                            *d = apply(inst, &v);
+                        }
+                    },
+                }
+            }
+            for (column, &r) in out.iter_mut().zip(&self.outputs) {
+                let start = r as usize * B;
+                if let (Some(dst), Some(src)) =
+                    (column.get_mut(row0..row0 + n), regs.get(start..start + n))
+                {
+                    dst.copy_from_slice(src);
+                }
+            }
+            row0 += n;
         }
     }
 
@@ -996,6 +1085,83 @@ pub trait Scalar: Copy + FromExtern {
         f: EvalFn,
         args: &[Self],
     ) -> Self;
+}
+
+/// Rows per block of [`Tape::eval_columns`].
+pub const COLUMN_BLOCK: usize = 256;
+
+/// The input slot a `Gather(base, offset)` reads, if any.
+///
+/// Truncation, not rounding: an index is an offset, and a fractional one is
+/// a bug in whatever produced it rather than a reason to read a
+/// neighbouring element.
+fn gather_slot(
+    base: u32,
+    offset: f64,
+    inputs: usize,
+) -> Option<usize> {
+    if !offset.is_finite() {
+        return None;
+    }
+    let offset = offset.trunc();
+    if offset < 0.0 || offset > 1.0e18 {
+        return None;
+    }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let offset = offset as usize;
+    usize::try_from(base)
+        .ok()
+        .and_then(|base| base.checked_add(offset))
+        .filter(|&slot| slot < inputs)
+}
+
+fn gather_one(
+    base: u32,
+    offset: f64,
+    inputs: usize,
+    point: &[f64],
+) -> f64 {
+    gather_slot(base, offset, inputs)
+        .and_then(|slot| point.get(slot).copied())
+        .unwrap_or(f64::NAN)
+}
+
+/// [`apply`] reading the operands straight from the register file: no
+/// operand vector per instruction (the scalar interpreter's hot path).
+fn apply_regs<T: Scalar>(
+    inst: &Inst,
+    values: &[T],
+    args: &[Reg],
+    scratch: &mut Vec<T>,
+) -> T {
+    let r = |reg: Reg| values.get(reg as usize).copied().unwrap_or_else(T::nan);
+    match *inst {
+        | Inst::Const(c) => T::constant(c),
+        | Inst::Input(_) | Inst::Param(_) | Inst::Gather(..) => T::nan(),
+        | Inst::Add(a, b) => r(a).add(r(b)),
+        | Inst::Sub(a, b) => r(a).sub(r(b)),
+        | Inst::Mul(a, b) => r(a).mul(r(b)),
+        | Inst::Div(a, b) => r(a).div(r(b)),
+        | Inst::Neg(a) => r(a).neg(),
+        | Inst::PowI(a, n) => r(a).powi(n),
+        | Inst::PowF(a, b) => r(a).powf(r(b)),
+        | Inst::Unary(f, a) => r(a).unary(f),
+        | Inst::Atan2(a, b) => r(a).atan2(r(b)),
+        | Inst::Cmp(c, a, b) => r(a).compare(c, r(b)),
+        | Inst::Select(c, a, b) => r(c).select(r(a), r(b)),
+        | Inst::Call(f, start, len) => {
+            scratch.clear();
+            scratch.extend(
+                args.get(start as usize..(start as usize).saturating_add(len as usize))
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(|&a| r(a)),
+            );
+            T::call(f, scratch)
+        },
+        | Inst::Extern1(f, a) => T::from_extern1(f, r(a)),
+        | Inst::Extern2(f, a, b) => T::from_extern2(f, r(a), r(b)),
+    }
 }
 
 fn apply<T: Scalar>(

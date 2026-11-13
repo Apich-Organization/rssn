@@ -34,6 +34,9 @@ use std::sync::RwLock;
 pub mod device;
 #[cfg(feature = "jit")]
 pub mod jit;
+pub mod lir;
+#[cfg(feature = "jit")]
+pub mod lir_jit;
 pub mod tape;
 
 use crate::graph::Graph;
@@ -309,6 +312,15 @@ impl CompiledMulti for TapeFunction {
     ) {
         self.tape.eval(inputs, params, out);
     }
+
+    fn eval_batch(
+        &self,
+        columns: &[&[f64]],
+        params: &[f64],
+        out: &mut [&mut [f64]],
+    ) {
+        self.tape.eval_columns(columns, params, out);
+    }
 }
 
 impl Compiled for TapeFunction {
@@ -323,6 +335,14 @@ impl Compiled for TapeFunction {
         let mut out = [f64::NAN];
         self.tape.eval(args, &[], &mut out);
         out[0]
+    }
+
+    fn call_batch(
+        &self,
+        columns: &[&[f64]],
+        out: &mut [f64],
+    ) {
+        self.tape.eval_columns(columns, &[], &mut [out]);
     }
 }
 

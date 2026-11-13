@@ -116,6 +116,7 @@ pub mod pic;
 /// Kerr-Newman geodesics.
 pub mod relativity;
 pub mod scenario;
+pub mod schema;
 /// Named JSON scenarios of the continuum and particle engines.
 pub mod scenario_engines;
 /// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).

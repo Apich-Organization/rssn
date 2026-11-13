@@ -104,6 +104,7 @@ pub mod oscillatory;
 /// Deterministic data-parallel helpers (ordered maps, fixed-tree sums, chunked loops).
 pub mod par;
 pub mod pde;
+pub mod permgroup;
 pub mod polynomial;
 /// Exact linear algebra over the rationals.
 pub mod qlinalg;

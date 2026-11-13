@@ -31,6 +31,7 @@
 //! | `todd_coxeter_index(gens, relators, subgroup_gens)` | only the index |
 //! | `fp_group_order(gens, relators)` | the order of a presented group (index of the trivial subgroup) |
 //! | `fp_group(gens, relators)` | the presented group as a `group` term (order at most 720) |
+//! | `fp_group_abelian_invariants(gens, relators)` | the invariant factors `> 1` of the abelianisation, then `0` per free factor (Smith normal form of the exponent sums) |
 //!
 //! Presentations: `gens` is a list of generator symbols; a word is a list of
 //! letters, each a generator `a`, a power `a^k` (negative for the inverse),
@@ -49,7 +50,6 @@
 )]
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use num_bigint::BigInt;
 
@@ -96,6 +96,7 @@ pub(crate) fn inverse(p: &[usize]) -> Perm {
     inv
 }
 
+#[cfg(test)]
 pub(crate) fn is_identity(p: &[usize]) -> bool {
     p.iter().enumerate().all(|(i, &x)| i == x)
 }
@@ -108,14 +109,21 @@ fn commutator(
     compose(&compose(&inverse(a), &inverse(b)), &compose(a, b))
 }
 
-/// A stabiliser chain.
+/// A stabiliser chain: the kernel's [`Group`](crate::kernels::permgroup::Group)
+/// (incremental deterministic Schreier–Sims) behind this module's `usize`
+/// permutations.
 #[derive(Clone, Debug)]
 pub(crate) struct Chain {
-    n: usize,
+    group: crate::kernels::permgroup::Group,
     base: Vec<usize>,
-    gens: Vec<Vec<Perm>>,
-    trans: Vec<Vec<Option<Perm>>>,
-    orbit: Vec<Vec<usize>>,
+}
+
+fn to_kernel(p: &[usize]) -> crate::kernels::permgroup::Perm {
+    p.iter().map(|&x| u32::try_from(x).unwrap_or(u32::MAX)).collect()
+}
+
+fn from_kernel(p: &[u32]) -> Perm {
+    p.iter().map(|&x| x as usize).collect()
 }
 
 impl Chain {
@@ -124,125 +132,10 @@ impl Chain {
         n: usize,
         gens: &[Perm],
     ) -> Self {
-        let mut c = Self {
-            n,
-            base: Vec::new(),
-            gens: Vec::new(),
-            trans: Vec::new(),
-            orbit: Vec::new(),
-        };
-        for g in gens {
-            if !is_identity(g) {
-                c.insert_generator(g);
-            }
-        }
-        c.complete(c.base.len());
-        c
-    }
-
-    fn recompute_orbit(
-        &mut self,
-        level: usize,
-    ) {
-        let b = self.base[level];
-        let mut trans: Vec<Option<Perm>> = vec![None; self.n];
-        trans[b] = Some(identity(self.n));
-        let mut orbit = vec![b];
-        let mut head = 0;
-        while head < orbit.len() {
-            let pt = orbit[head];
-            head += 1;
-            let u = trans[pt].clone().unwrap_or_default();
-            for s in &self.gens[level] {
-                let img = s[pt];
-                if trans[img].is_none() {
-                    trans[img] = Some(compose(s, &u));
-                    orbit.push(img);
-                }
-            }
-        }
-        self.trans[level] = trans;
-        self.orbit[level] = orbit;
-    }
-
-    /// Sifts `g` through the levels from `from` on; returns the residue and
-    /// the level at which it got stuck (`base.len()` if it went through).
-    fn sift(
-        &self,
-        mut g: Perm,
-        from: usize,
-    ) -> (Perm, usize) {
-        for l in from..self.base.len() {
-            let pt = g[self.base[l]];
-            match &self.trans[l][pt] {
-                | Some(u) => g = compose(&inverse(u), &g),
-                | None => return (g, l),
-            }
-        }
-        (g, self.base.len())
-    }
-
-    /// Adds the non-identity residue `r` as a strong generator of the levels
-    /// `from..=to` (creating a level if `to` is the depth).
-    fn add_strong(
-        &mut self,
-        r: &Perm,
-        from: usize,
-        to: usize,
-    ) {
-        if to == self.base.len() {
-            let b = (0..self.n).find(|&x| r[x] != x).unwrap_or(0);
-            self.base.push(b);
-            self.gens.push(Vec::new());
-            self.trans.push(Vec::new());
-            self.orbit.push(Vec::new());
-        }
-        for m in from..=to {
-            self.gens[m].push(r.clone());
-            self.recompute_orbit(m);
-        }
-    }
-
-    fn insert_generator(
-        &mut self,
-        g: &Perm,
-    ) {
-        let (r, j) = self.sift(g.clone(), 0);
-        if !is_identity(&r) {
-            self.add_strong(&r, 0, j);
-        }
-    }
-
-    /// Verifies the Schreier generators from level `start - 1` upwards and
-    /// repairs the chain.
-    fn complete(
-        &mut self,
-        start: usize,
-    ) {
-        let mut i = start;
-        while i > 0 {
-            let l = i - 1;
-            let mut added = None;
-            'outer: for &pt in &self.orbit[l].clone() {
-                for s in &self.gens[l].clone() {
-                    let img = s[pt];
-                    let (Some(up), Some(ui)) = (&self.trans[l][pt], &self.trans[l][img]) else {
-                        continue;
-                    };
-                    let h = compose(&inverse(ui), &compose(s, up));
-                    let (r, j) = self.sift(h, l + 1);
-                    if !is_identity(&r) {
-                        self.add_strong(&r, l + 1, j);
-                        added = Some(j + 1);
-                        break 'outer;
-                    }
-                }
-            }
-            match added {
-                | Some(next) => i = next,
-                | None => i -= 1,
-            }
-        }
+        let gens: Vec<_> = gens.iter().map(|g| to_kernel(g)).collect();
+        let group = crate::kernels::permgroup::Group::new(n, &gens);
+        let base = group.base().iter().map(|&b| b as usize).collect();
+        Self { group, base }
     }
 
     /// Adds `g` to the group.
@@ -250,12 +143,8 @@ impl Chain {
         &mut self,
         g: &Perm,
     ) {
-        let (r, j) = self.sift(g.clone(), 0);
-        if !is_identity(&r) {
-            self.add_strong(&r, 0, j);
-            let depth = self.base.len();
-            self.complete(depth);
-        }
+        self.group.extend(to_kernel(g));
+        self.base = self.group.base().iter().map(|&b| b as usize).collect();
     }
 
     /// Whether `g` lies in the group.
@@ -263,97 +152,57 @@ impl Chain {
         &self,
         g: &[usize],
     ) -> bool {
-        g.len() == self.n && {
-            let (r, l) = self.sift(g.to_vec(), 0);
-            l == self.base.len() && is_identity(&r)
-        }
+        self.group.contains(&to_kernel(g))
     }
 
+    /// The order.
     pub(crate) fn order(&self) -> BigInt {
-        self.orbit
-            .iter()
-            .fold(BigInt::from(1), |acc, o| acc * o.len())
+        BigInt::from(self.group.order())
     }
 
+    /// The base.
     pub(crate) fn base(&self) -> &[usize] {
         &self.base
     }
 
+    /// The lengths of the basic orbits.
     pub(crate) fn basic_orbit_lengths(&self) -> Vec<usize> {
-        self.orbit.iter().map(Vec::len).collect()
+        self.group.basic_orbit_lengths()
     }
 
-    /// The strong generators (without repetition), level by level.
+    /// A strong generating set.
     pub(crate) fn strong_generators(&self) -> Vec<Perm> {
-        let mut seen = HashSet::new();
-        let mut out = Vec::new();
-        for level in &self.gens {
-            for g in level {
-                if seen.insert(g.clone()) {
-                    out.push(g.clone());
-                }
-            }
-        }
-        out
+        self.group
+            .strong_generators()
+            .iter()
+            .map(|p| from_kernel(p))
+            .collect()
     }
 
-    /// The order of the stabiliser of `point`, by a chain with `point`
-    /// first in the base.
+    /// The order of the stabiliser of `point`: `|G| / |point^G|`.
     pub(crate) fn stabilizer_order(
         &self,
         point: usize,
     ) -> BigInt {
-        let gens = self.strong_generators();
-        let mut c = Self {
-            n: self.n,
-            base: Vec::new(),
-            gens: Vec::new(),
-            trans: Vec::new(),
-            orbit: Vec::new(),
-        };
-        // Force `point` to be the first base point by a first level with
-        // (possibly) no generators moving it.
-        c.base.push(point);
-        c.gens.push(Vec::new());
-        c.trans.push(Vec::new());
-        c.orbit.push(Vec::new());
-        for g in &gens {
-            if !is_identity(g) {
-                c.gens[0].push(g.clone());
-            }
-        }
-        c.recompute_orbit(0);
-        c.complete(1);
-        // The chain was seeded with the generators at level 0 only; sift
-        // them through the deeper levels to make the chain a proper one.
-        let seeds = c.gens[0].clone();
-        for g in &seeds {
-            c.insert(g);
-        }
-        let total = c.order();
-        total / c.orbit[0].len()
+        let orbit = self
+            .orbits()
+            .into_iter()
+            .find(|o| o.contains(&point))
+            .map_or(1, |o| o.len());
+        self.order() / BigInt::from(orbit)
     }
 
-    /// All elements, by products of coset representatives, if there are at
-    /// most `limit`.
+    /// All elements, sorted, if there are at most `limit`.
     pub(crate) fn elements(
         &self,
         limit: usize,
     ) -> Option<Vec<Perm>> {
-        if self.order() > BigInt::from(limit) {
-            return None;
-        }
-        let mut all = vec![identity(self.n)];
-        for l in (0..self.base.len()).rev() {
-            let reps: Vec<&Perm> = self.trans[l].iter().flatten().collect();
-            let mut next = Vec::with_capacity(all.len() * reps.len());
-            for u in reps {
-                for g in &all {
-                    next.push(compose(u, g));
-                }
-            }
-            all = next;
-        }
+        let mut all: Vec<Perm> = self
+            .group
+            .elements(limit)?
+            .iter()
+            .map(|p| from_kernel(p))
+            .collect();
         all.sort();
         Some(all)
     }
@@ -361,7 +210,7 @@ impl Chain {
     /// The orbits on the points, each sorted.
     pub(crate) fn orbits(&self) -> Vec<Vec<usize>> {
         let gens = self.strong_generators();
-        orbits_of(self.n, &gens)
+        orbits_of(self.group.degree(), &gens)
     }
 }
 
@@ -842,7 +691,7 @@ fn read_gens(
         perms.push(read_perm(g, p)?);
     }
     let degree = perms.first()?.len();
-    if perms.iter().any(|p| p.len() != degree) || degree == 0 || degree > 64 {
+    if perms.iter().any(|p| p.len() != degree) || degree == 0 || degree > 1024 {
         return None;
     }
     Some((degree, perms))
@@ -1078,6 +927,44 @@ fn perm_group_derived_subgroup(
     Some(V::List(g.iter().map(|p| perm_v(p)).collect()))
 }
 
+/// The abelian invariants of a presented group: the invariant factors
+/// `d > 1` of its abelianisation (`d_1 | d_2 | ...`), then a `0` for every
+/// infinite cyclic factor. The abelianisation is `Z^n` modulo the exponent
+/// sums of the relators, so the invariants are the Smith normal form of that
+/// integer matrix.
+fn fp_group_abelian_invariants(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (n, rels, _) = read_presentation(cx.graph, a)?;
+    let matrix: Vec<Vec<i64>> = rels
+        .iter()
+        .map(|word| {
+            let mut row = vec![0_i64; n];
+            for &letter in word {
+                if let Some(entry) = row.get_mut(letter / 2) {
+                    *entry += if letter % 2 == 0 { 1 } else { -1 };
+                }
+            }
+            row
+        })
+        .collect();
+    let factors = if matrix.is_empty() {
+        Vec::new()
+    } else {
+        crate::kernels::homology::smith_invariants(&matrix)
+    };
+    let rank = factors.len();
+    let mut out: Vec<V> = factors
+        .into_iter()
+        .map(|d| num_traits::Signed::abs(&d))
+        .filter(|d| !num_traits::One::is_one(d))
+        .map(V::Int)
+        .collect();
+    out.extend(std::iter::repeat_with(|| V::int(0)).take(n.saturating_sub(rank)));
+    Some(V::List(out))
+}
+
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "perm_group_order", Arity::Fixed(1), perm_group_order)?;
     def(
@@ -1159,6 +1046,12 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "todd_coxeter_index", Arity::Fixed(3), todd_coxeter_index)?;
     def(i, "fp_group_order", Arity::Fixed(2), fp_group_order)?;
     def(i, "fp_group", Arity::Fixed(2), fp_group)?;
+    def(
+        i,
+        "fp_group_abelian_invariants",
+        Arity::Fixed(2),
+        fp_group_abelian_invariants,
+    )?;
     Ok(())
 }
 
@@ -1175,6 +1068,23 @@ mod tests {
         let mut p = identity(n);
         p.swap(0, 1);
         p
+    }
+
+    #[test]
+    fn abelian_invariants_of_presentations() {
+        // C2 x C3 = C6; the Klein four-group; Z^2; Z x C4.
+        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^3)))"), "list(6)");
+        assert_eq!(
+            s("fp_group_abelian_invariants(list(a, b), list(list(a^2), list(b^2), list(a, b, a^-1, b^-1)))"),
+            "list(2, 2)"
+        );
+        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list())"), "list(0, 0)");
+        assert_eq!(s("fp_group_abelian_invariants(list(a, b), list(list(b^4)))"), "list(4, 0)");
+        // The binary icosahedral group <a, b | (ab)^2 = a^3 = b^5> is perfect.
+        assert_eq!(
+            s("fp_group_abelian_invariants(list(a, b), list(list(a, b, a, b, a^-3), list(a, b, a, b, b^-5)))"),
+            "list()"
+        );
     }
 
     #[test]
