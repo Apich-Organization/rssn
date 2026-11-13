@@ -16,6 +16,8 @@ Cargo.lock
 !signatures.overlay.json
 # Mined by `signature-mine` and versioned for the same reason.
 !signatures.witnessed.json
+# Witnessed scenario result shapes, compiled in by `sim::schema`.
+!src/sim/scenario_results.json
 scc
 *.exe
 *.a
