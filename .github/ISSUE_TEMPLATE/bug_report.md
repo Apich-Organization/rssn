@@ -9,13 +9,13 @@ assignees: ''
 
 ### 📦 Bug Description
 
-Please clearly and concisely describe the bug you encountered. Specify which module it occurs in (e.g., `symbolic::grobner`, `numerical::optimize`, `physics::sim`).
+Please clearly and concisely describe the bug you encountered. Specify which module it occurs in (e.g., `rules::calculus`, `kernels::ode`, `sim::scenario`, `graph::dim`, `ffi`).
 
 ### 🔢 Steps to Reproduce
 
 A minimal, reproducible example is key to fixing bugs quickly.
 
-1.  `rssn` Version Used: [e.g., `0.1.1`]
+1.  `rssn` Version Used: [e.g., `3.0.0-rc.1`]
 2.  Your `Cargo.toml` dependency configuration (especially the features enabled):
     ```toml
     # [Paste relevant dependency configuration here]
@@ -28,7 +28,7 @@ A minimal, reproducible example is key to fixing bugs quickly.
         // ...
     }
     ```
-4.  The command used to execute the code (e.g., `cargo run --features "linalg"`)
+4.  The command used to execute the code (e.g., `cargo run --release --features jit`)
 
 ### 📝 Expected Behavior
 

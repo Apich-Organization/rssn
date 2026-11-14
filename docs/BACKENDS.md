@@ -1,0 +1,428 @@
+# Execution backends and devices
+
+rssn runs compiled numeric code along two independent axes. Keep them apart
+when you add something.
+
+| Axis | Trait | Question it answers | Implementations |
+|---|---|---|---|
+| **How is one term turned into a function?** | `backend::Backend` (`Compiled`, `CompiledMulti`) | "evaluate this closed form at a point" | `Interpreter`, the tape `TapeFunction`, Cranelift JIT (`jit`), `TieredBackend` |
+| **Where do many rows run?** | `backend::device::Device` | "evaluate this program on a million rows / integrate ten thousand initial conditions" | `cpu`, `cpu-parallel`, `gpu:wgpu:N` (feature `gpu-wgpu`) |
+
+`device::DeviceBackend` joins them: a `Backend` whose compiled functions send
+batches to a `Device` and fall back to the host tape for programs a device cannot
+run.
+
+## Audit: what existed, what was missing
+
+Honest state before the device layer:
+
+* One scalar abstraction (`Backend::compile -> Compiled: f64^n -> f64`). Its
+  batch methods (`call_batch`, `call_batch_par`) were a loop over rows, or rayon
+  chunks over that loop. There was no notion of memory that lives somewhere else,
+  of a launch, or of a reduction.
+* The tape IR was the right seed for a kernel IR (SSA, hashed, constants folded)
+  but it also carries instructions that only make sense on the host: `Call` (an
+  operator's `EvalFn` pointer) and `Extern1`/`Extern2` (C function pointers).
+  Nothing marked which tapes were portable.
+* The JIT (Cranelift) is a scalar CPU code generator. It is not a template for
+  GPUs: its `unsafe` is about calling machine code, not about buffers.
+* "Add a backend" in `ARCHITECTURE.md` meant "implement `Backend`", which for a
+  GPU means nothing: a GPU is not a better way to evaluate one point.
+
+## Architecture
+
+```
+Term --lower--> Tape --KernelIr::from_tape--> KernelIr --Device::compile--> CompiledKernel
+                  |                              |                              |
+           (host: Call/Extern,           (portable: arithmetic,        Device::launch(rows,
+            autodiff, intervals)          intrinsics, select, gather)   input, params, output)
+                                                 |
+                                                 +--> wgsl::emit_wgsl  (source emitters)
+```
+
+Module layout (`src/backend/device/`):
+
+| File | Contents |
+|---|---|
+| `mod.rs` | `Device` (`launch`, `launch_cols`, `copy`, ...), `DeviceInfo`/`DeviceKind`/`DeviceOps`, `Buffer`, `DeviceRegistry`, `registry()`, `build_devices()`, `map_columns`, `ensemble_rk4`, `DeviceBackend` |
+| `kernel.rs` | `KernelIr` (elementwise core, index values, loads, one fold), `KernelOp`, `Fold`, `Analysis`, `KernelBuilder`, `rk4_step`, the reference evaluators `eval_row` / `eval_at` |
+| `array.rs` | array programs as kernel builders and their drivers: reductions, fused map-reduce, matmul, CSR product, stencils, all-pairs, `ensemble_dopri5` |
+| `cpu.rs` | `CpuDevice`: lane-block interpreter for elementwise kernels, the reference evaluator for structured ones, rayon splitting |
+| `emit.rs` | one emitter, five targets: WGSL, GLSL, OpenCL C, CUDA C++, Metal |
+| `wgsl.rs` | `KernelEmitter` trait, `emit_wgsl`, `SourceEmitter` |
+| `ds.rs` | double-single (`f64`-class) WGSL: the pair arithmetic library, `emit_wgsl_ds`, `split`/`join` |
+| `plan.rs` | `Plan`: a graph of kernels, `fuse` (merges producers into consumers), `run` |
+| `gpu.rs` | `WgpuDevice` (feature `gpu-wgpu` only) |
+| `golden/*` | expected emitter output per target |
+| `tests.rs` | all tests above |
+
+### Capability-described devices
+
+`DeviceInfo` is data, so a caller can choose without trying:
+
+* `kind`: `Cpu`, `CpuParallel`, `Gpu(GpuApi)`, `Custom(name)`;
+* `dtypes`: `F64` and/or `F32`. **The kernel IR has `f64` semantics;** a device
+  that only has `f32` says so and its results are `f32`-rounded. A device may
+  offer `F64` by emulation: `emulated_f64` is then set (the wgpu device does,
+  see "Double-single `f64` on the GPU" below) and `dtype_epsilon` gives the
+  rounding error to use in tolerances;
+* `ops`: `elementwise`, `reduce`, `matmul`, `structured` flags; an optional
+  method a device does not implement returns `DeviceError::Unsupported`
+  (nothing is emulated silently). `structured` is the one that matters: a
+  device with it runs every program in `array`;
+* `parallelism`, `max_buffer_elems`, `unified_memory`, `deterministic`.
+
+`registry()` lists them (`list()`), resolves by id (`get("cpu-parallel")`), and
+picks a default (`default_device()`: first GPU, else `cpu-parallel`). A build's
+*possible* kinds are `build_devices()`, which is what the kernel manifest
+publishes in `features.devices`; whether a GPU is *present* is a run-time
+question for the registry.
+
+### Memory model
+
+* `Buffer` is a typed array owned by one device. Its contents are visible to
+  the host only through `Device::download`; `upload` copies in. Nothing
+  converts implicitly, and a buffer handed to a device that does not own it is a
+  `DeviceError::Mismatch`.
+* Layout is column-major (structure of arrays): `input[i * rows + row]`,
+  `output[k * rows + row]`. One flat buffer carries any number of columns, which
+  is also one storage binding on a GPU.
+* `params` are a host slice delivered with each launch (a uniform).
+
+### Launch interface
+
+```rust
+let dev = backend::device::registry().get("cpu-parallel").unwrap();
+let ir  = KernelIr::from_tape(&tape)?;            // portable?  else Unsupported
+let k   = dev.compile(&ir)?;                       // cached by structural hash
+let inp = dev.upload(&flat_columns, Dtype::F64)?;
+let mut out = dev.alloc(ir.outputs.len() * rows, Dtype::F64)?;
+dev.launch(&*k, rows, &inp, &params, &mut out)?;
+dev.download(&out, &mut host)?;
+```
+
+Convenience layers that use only the trait:
+
+* `map_columns(device, ir, columns, params)`: upload, launch, download.
+* `dev.reduce(ReduceOp::Sum | Prod | Min | Max, &buf)`: fixed 4096-element
+  chunks combined in order, so the result does not depend on thread count.
+* `dev.matmul(a, b, c, m, k, n)`: row-major.
+* `ensemble_rk4(device, rhs, params, y0, t0, t1, steps)`: the "same program,
+  many initial conditions" pattern. `rk4_step` *inlines the right-hand side four
+  times into one kernel*, so each step is one launch on any device; trajectories
+  are independent, so a row's answer does not depend on the batch.
+
+### Structured kernels: one primitive instead of a list of operations
+
+The first device layer could run an elementwise formula per row and nothing
+else; `reduce` and `matmul` were separate trait methods that only the CPU
+implemented, and every further pattern (a stencil, a sparse product) would
+have meant another method and another hand-written shader per device. That
+does not scale to "broader GPU support", so the IR was extended instead of
+the trait.
+
+`KernelIr` keeps the tape as its elementwise core and adds three things
+(`device/kernel.rs`):
+
+* **index values**: `Row`, `Rows`, `Len(col)`, integer constants and integer
+  arithmetic. Registers are typed (`Ty::Num` / `Ty::Idx`) and never mixed
+  without `ToNum` / `ToIdx`;
+* **addressed reads**: `Load(col, idx)` reads any element of an input column.
+  Columns have independent lengths, so one launch can read a grid, a table and
+  a CSR structure;
+* **one fold**: `Fold { count, accs }` runs a body `count` times with the
+  inner index `Inner` and combines values into accumulators (`Sum`, `Prod`,
+  `Min`, `Max`); `Acc(k)` reads one afterwards.
+
+Phases are *derived*, not written: `KernelIr::analyse` assigns every register
+to `Pre` (once per row), `Body` (once per inner index) or `Post` (after the
+loop) from its data flow, and rejects a register that needs both the inner
+index and an accumulator. Loop-invariant code is therefore hoisted for free.
+
+A device implements **one** entry point for all of it:
+
+```rust
+fn launch_cols(&self, kernel, rows, input: &Buffer, lens: &[usize], params, output: &mut Buffer)
+```
+
+`launch` is the special case "every column has one element per row". The
+default `launch_cols` forwards exactly that case and returns `Unsupported`
+otherwise, so a device written against the old trait keeps compiling and says
+what it cannot do (`DeviceOps::structured`).
+
+Everything else is a **library of kernel builders** (`device/array.rs`) that
+uses only the trait:
+
+| pattern | builder | rows | the fold |
+|---|---|---|---|
+| reduction | `reduce_pass` | `ceil(n / 256)` | one block of the column |
+| map, then reduce, fused | `map_reduce_pass` | `ceil(n / 256)` | evaluates the map inside the block: the mapped column is never stored |
+| matrix product | `matmul_kernel` | `m * n` | a row times a column |
+| CSR matrix times vector | `spmv_csr_kernel` | matrix rows | the stored entries of a row |
+| stencils (zero / clamp / periodic) | `stencil1d_kernel`, `stencil2d_kernel` | grid points | none: a fixed set of loads |
+| all-pairs interaction | `pairwise_kernel` | bodies | every partner |
+| adaptive ODE ensemble | `dopri5_step` | trajectories | none: one embedded step attempt with a per-row step size |
+
+with drivers `array::reduce`, `reduce_column` (one column of a wider buffer,
+in place), `map_reduce`, `matmul`, `run_cols` and `ensemble_dopri5`. The
+`gpu-wgpu` device's `reduce` and `matmul` *are* these drivers: no shader was
+written for either. `array::reduce` combines in a fixed tree (blocks of 256,
+level by level), so two devices with the same float type agree bit for bit.
+
+`ensemble_dopri5` integrates many initial conditions with adaptive
+Dormand-Prince 5(4) steps. Time and step size are columns, so a stiff row
+takes small steps while the others take large ones; the host asks only for
+the minimum of the time column every few launches (one number per check).
+
+`Device::copy` moves a range between two buffers of one device (wgpu: a
+buffer-to-buffer copy; the default goes through the host and is still
+correct).
+
+### What is portable, and what is not
+
+`KernelIr::from_tape` rejects `Call`, `Extern1` and `Extern2` with
+`DeviceError::Unsupported`. Special functions that rssn attaches as `Lowering`
+externs (gamma, erf, Bessel, ...) therefore stay on the host; `DeviceBackend`
+falls back to the tape interpreter for such terms and still compiles. Moving them
+onto a device means writing them in kernel instructions or in the target
+language (see "Adding intrinsics" below).
+
+### The CPU reference devices
+
+`cpu` and `cpu-parallel` are bit-identical to each other and to
+`KernelIr::eval_row` (which equals `Tape::eval`), including NaN, `select`
+and out-of-range `gather`. Registers are 128-row blocks; each instruction is one
+loop over a block, which the compiler vectorises for arithmetic. Transcendentals
+call `libm` per lane (no SIMD math library is assumed). `cpu-parallel` halves the
+rows recursively with `rayon::join` over disjoint `&mut` slices down to 2048
+rows: no `unsafe`, no atomics.
+
+### Source emitters and the `gpu-wgpu` feature
+
+`emit::emit(&KernelIr, &EmitOptions) -> String` walks a program once and asks
+a `Target` how to spell each construct; the hard part (phases, the fold,
+bounds-checked loads, NaN conventions) exists once.
+
+| target | language | precisions | status |
+|---|---|---|---|
+| `Target::Wgsl` | WGSL | `f32`, double-single | executed by `gpu-wgpu`; validated by naga in the tests |
+| `Target::Glsl` | GLSL 4.50 compute | `f32`, `f64` | emitter, golden-tested |
+| `Target::OpenCl` | OpenCL C | `f32`, `f64` | emitter, golden-tested |
+| `Target::Cuda` | CUDA C++ | `f32`, `f64` | emitter, golden-tested |
+| `Target::Metal` | Metal Shading Language | `f32` | emitter, golden-tested |
+
+"Emitter" means the text is generated and pinned by golden files
+(`golden/*.{glsl,cl,cu,metal}`); this crate has no runtime for those APIs and
+their output has **not** been compiled by the vendors' compilers here. A device
+for one of them supplies the launch half and reuses the emitter.
+
+All targets share one interface: `rssn_in` (every column, concatenated),
+`rssn_params`, `rssn_out` (column-major), `rssn_cols` (offset and length of
+each input column) and the row and column counts; bindings 0 to 4 for WGSL,
+GLSL and Metal, kernel arguments in that order for OpenCL and CUDA.
+`wgsl::emit_wgsl` remains as the WGSL-only spelling.
+
+`backend::device::gpu::WgpuDevice` (feature `gpu-wgpu`, off by default) compiles
+the WGSL with wgpu, one cached pipeline per kernel (and precision), `f32` buffers or, for
+`F64`, double-single pair buffers (below), a
+two-dimensional dispatch for more than `65535 * 64` rows, and runs structured
+kernels (`ops.structured`, `ops.reduce`, `ops.matmul`). `gpu::probe()` returns
+one device per adapter; none is not an error.
+
+## Adding a backend, step by step
+
+The same recipe covers CUDA, Metal, Vulkan (raw) and OpenCL. Everything that is
+API-independent already exists; you add an *emitter* and a *device*.
+
+1. **Pick the feature name** and add it to `Cargo.toml` as an optional
+   dependency plus feature, additive only and off by default, e.g.
+   `gpu-cuda = ["dep:cudarc"]`. Add the kind to `GpuApi` if it is not there
+   (`Cuda`, `Metal`, `Vulkan`, `OpenCl` already are) and to `build_devices()` under
+   `cfg!(feature = "...")` so the manifest reports it.
+2. **Write the emitter** `src/backend/device/<target>.rs` implementing
+   `wgsl::KernelEmitter` (PTX text, SPIR-V assembly, MSL, OpenCL C). Walk
+   `KernelIr::ops` in order; op `d` defines value `v{d}`. Reuse the WGSL file as
+   the template: one thread per row, column-major `in[i*rows+row]`, parameters
+   from a constant buffer, helpers only when used. Decide `f32` or `f64`
+   deliberately and write the differences from the tape in the module docs, as
+   `wgsl.rs` does.
+3. **Golden-test the emitter** before any hardware is involved: build small
+   `Tape`s by hand, emit, compare with `golden/*.<ext>` (copy the
+   `golden()` helper; the `RSSN_BLESS_GOLDEN` switch regenerates). If the target
+   has an offline validator (naga for WGSL, `ptxas`/`spirv-val` where installed),
+   run it in a test that skips when the tool is missing.
+4. **Implement `Device`** in `src/backend/device/<api>.rs` behind the feature:
+   * `info()`: fill `DeviceInfo` truthfully (`dtypes`, `ops`, memory limits,
+     `unified_memory`). Claim only what is implemented.
+   * `uid()`: `next_uid()` once per instance; every `Buffer` you create carries
+     it.
+   * `alloc`/`upload`/`download`: wrap the API buffer in a type implementing
+     `Storage` and recover it with `as_any().downcast_ref`. Convert `f64` to your
+     dtype on upload, back on download. Check `buffer.owner() == self.uid()`.
+   * `compile`: `ir.validate()?`, emit source, build the pipeline/module, cache
+     by `ir.structural_hash()` and confirm `cached.ir == *ir` (hash collisions).
+     Pipeline-creation errors become `DeviceError::Backend`, never a panic.
+   * `launch`: call `check_launch(self.uid(), ir, rows, input, output)?` first,
+     then bind `input`, `params`, `output` and a dims record, dispatch
+     `ceil(rows / group)` groups (spread over two dimensions past the API's
+     per-dimension limit, as `gpu.rs` does), and submit. Launch may be
+     asynchronous.
+   * `download` and `synchronize` are the sync points; surface errors the API
+     reported late there.
+   * `reduce`, `matmul`: leave the defaults (`Unsupported`) until you implement
+     them and set the `ops` flags to match.
+5. **Discovery**: write `fn probe() -> Vec<Arc<dyn Device>>` that never fails (no
+   adapter means an empty list) and call it from `DeviceRegistry::new()` under
+   the feature, as `gpu::probe()` is. Ids are `gpu:<api>:<ordinal>`.
+6. **Test with the shared contract**, not with new expectations:
+   * `ensemble_rk4` of a decay equation against the closed form, tolerance
+     chosen for your dtype;
+   * `map_columns` of the kernel in `tests.rs::everything()` against
+     `KernelIr::eval_row` within dtype tolerance (skip NaN rows on devices that
+     do not guarantee them);
+   * foreign-buffer and wrong-size launches return `Mismatch`;
+   * gate any test that needs hardware on `probe()` returning a device so CI
+     machines without one pass.
+7. **Document** the precision, the unsupported ops and the feature in this file's
+   table, and keep `unsafe` out of the device (if the API forces it, confine it
+   to one small module with a safety comment per block, as the JIT does in its
+   `abi` module).
+
+### Adding intrinsics
+
+A new elementary function enters at `backend::Intrinsic` (tape and CPU), then
+each emitter's name table (`intrinsic_name` in `wgsl.rs`). Functions that the
+target lacks (WGSL has no `cbrt`) get a helper emitted only when used. A special
+function with no closed instruction sequence stays a host `Call`/`Extern` and
+therefore host-only until someone writes its kernel.
+
+## Double-single `f64` on the GPU
+
+WGSL has no `f64`. The wgpu device therefore offers `Dtype::F64` as
+**double-single** arithmetic (`device::ds`): an element is a pair of `f32`
+`(hi, lo)` with `hi + lo` the value, 8 bytes in the buffer and
+`array<vec2<f32>>` in the shader. The host splits on upload and joins on
+download; a kernel is emitted for the pair layout
+(`Precision::DoubleSingle`, `ds::emit_wgsl_ds`) and compiled on its first launch
+with `F64` buffers. Mixing `F32` and `F64` buffers in one launch is a
+`DeviceError::Mismatch`.
+
+* `+ - * /`, `sqrt`, comparisons, `min`/`max`, `floor`/`ceil`, integer powers
+  and all index operations are implemented in the pair arithmetic; `exp`,
+  `ln`, `sin`, `cos`, `atan` use range reduction plus a Taylor series or a
+  Newton step, and `tan`, `asin`, `acos`, the hyperbolic functions, their
+  inverses, `cbrt`, `atan2` and `powf` are built from those.
+* Measured on an RTX 3060 (Vulkan): relative error `4e-15` for `+ - * /`,
+  `1e-14` for `sqrt`, `7e-14` for `exp`, against `1e-7` for `F32`.
+  `tests::gpu_tests::gpu_f64_is_double_single_when_an_adapter_exists` pins
+  `5e-12` for every function on a battery of arguments.
+* Limits: the exponent range is the one of `f32` (use data within
+  `1e-30 .. 1e30`); `sin`/`cos`/`tan` return NaN beyond `|x| = 1e6` and lose
+  `|x| * 1e-14` absolute accuracy before that; `pow` and `exp` amplify the
+  relative error by the size of the exponent.
+* **Compilers must not simplify the error-free transformations.** The NVIDIA
+  Vulkan driver reassociates (`x - (x - y)` becomes `y`) and contracts
+  `a * b + c` into a fused multiply-add, either of which silently collapses the
+  pair to one `f32` (the first version measured `1e-7`). Every rounding point
+  in the library therefore passes through `ds_hide`, an integer OR with a zero
+  that only exists in the uniform block, which the optimiser cannot see
+  through. Do not remove it when simplifying the library; the device test
+  fails if it stops working on a given driver.
+* `DeviceInfo::emulated_f64` is set, `max_buffer_elems` is counted in 8-byte
+  elements, and `dtype_epsilon(info, dtype)` returns `2^-44` for it, which the
+  adaptive ensemble driver uses as its rounding unit.
+
+## Fusing launches
+
+`device::plan` fuses chains of launches. A `Plan` is a graph of kernels whose
+inputs are external columns or outputs of earlier kernels:
+
+```rust
+let mut plan = Plan::new(2);
+let y = plan.add(affine, vec![Source::External(0)], vec![3.0])?;
+let z = plan.add(modulate, vec![Source::Output(y, 0), Source::External(1)], vec![])?;
+plan.result(Source::Output(z, 0))?;
+let removed = plan.fuse();            // 1: one launch instead of two
+let out = plan.run(&device, rows, &[&x, &w])?;
+```
+
+`fuse` merges a producer into the consumer that reads its outputs with
+`Input`, so the intermediate column becomes a register and never reaches
+memory. Registers, input columns and parameters are renumbered (the consumer's
+parameters follow the producer's, repeated external columns are shared); an
+output that something else still needs stays an output of the merged kernel and
+is not recomputed. The edge stays a launch when the consumer addresses the
+produced column (`Load`, `Len`, `Gather`) or when both kernels have a fold, and
+a merge that does not validate is undone. Fusion changes where values live, not
+how they are computed, so a fused plan returns the same bits as the unfused
+one on a deterministic device (`plan.rs` tests).
+
+## LIR: one IR for every compiling front end
+
+The tape is straight-line, the kernel IR runs one program per row with one
+fold. Neither can express "loop until", "call that function" or "branch
+without evaluating both arms", which a language front end, a batch evaluator
+and a device kernel on a CPU all need. `backend::lir` is the IR that can, and
+it is deliberately small:
+
+* **A typed register machine.** Types are `F64`, `I64`, `Bool` and `Slice`
+  (a host `f64` buffer: address and length). Registers are mutable and
+  zero-initialised; an instruction assigns its destination, a jump assigns the
+  target block's parameters in parallel. This is Cranelift's "variables"
+  model, so `backend::lir_jit` is a direct transcription and needs no SSA
+  construction of its own, and the reference interpreter
+  (`Module::interpret`) has the same semantics by construction.
+* **Safe by construction.** Slices cannot be created, offset or stored; loads
+  read NaN out of range and stores out of range do nothing; a function that
+  writes (transitively) refuses read-only slices before any code runs.
+* **Checked integers and bails.** Integer `+ - * / %` and float-to-integer
+  conversion are checked. A failed check, the call-depth limit or an explicit
+  `Term::Bail` abandon the call with a code and no result: front ends use it
+  for "not my case" (an overflow an arbitrary-precision language must handle,
+  a domain error) and re-run the call in their interpreter.
+* **Calls.** `Inst::Call` calls another function of the module directly;
+  recursion is allowed up to `lir::MAX_CALL_DEPTH` in both executors.
+
+Who lowers into it:
+
+| front end | lowering | used by |
+|---|---|---|
+| tape | `lir::batch_from_tape`: the tape inside a row loop over column slices | `JitFunction::call_batch`/`eval_batch` from 64 rows |
+| `KernelIr` | `device::native::lower`: row loop, fold loop, the device's index semantics emulated exactly | `cpu`/`cpu-parallel` launches from 256 rows (feature `jit`) |
+| Aevia Core IR | `aevia-core::jit`: branches, `match`, self tail calls as jumps with fuel, value-position recursion, checked `Int`, guarded elementary functions | `@jit` functions |
+
+Measured (`examples/backend_timing.rs`, 100 000 rows of
+`sin(x)*exp(-x^2/2) + x^3 - 2*x/(1 + x^2) + sqrt(x + 1)`): reference
+interpreter 27 ms, tape row by row 29 ms, `Tape::eval_columns` 11.7 ms,
+Cranelift per row 14.9 ms, Cranelift row loop through LIR 2.4 ms
+(bit-identical to the per-row entry).
+
+## Known gaps
+
+* GPU `F32` arithmetic is `f32`. `F64` on the wgpu device is double-single
+  emulation (about 48 bits, the exponent range of `f32`; see "Double-single `f64` on the GPU"), not IEEE
+  double. The GLSL, OpenCL and CUDA emitters produce native `f64` source, but
+  no device in this crate runs it.
+* The GLSL, OpenCL, CUDA and Metal emitters are golden-tested text. Nothing
+  here compiles them with the vendor toolchains; expect to fix details when
+  the first device for one of them is written.
+* Index data that a kernel reads from a column (CSR row pointers and column
+  indices) is stored as floats: exact below `2^24` in `F32` buffers and below `2^48` in
+  the double-single `F64` ones. Typed
+  integer columns are the fix and are not implemented.
+* A kernel has one fold, not nested loops, and reads one input buffer. A
+  product of two buffers is joined with `Device::copy` first.
+* `array::reduce` is a tree of launches with a download of one number at the
+  end; there are no on-device scans, sorts or compactions.
+* Special functions that are host externs do not run on devices.
+* Single-row calls through `DeviceBackend` pay a full launch; use batches.
+* `ensemble_dopri5` has no dense output and no event detection. Without the
+  `jit` feature the CPU path for structured kernels is the reference
+  evaluator (correct, parallel, not vectorised); with it, kernels without
+  `Gather` run as native code through LIR (see "LIR").
+* The `gpu-wgpu` path is validated with naga; execution is tested only where
+  an adapter is present (see the test's skip message).
+* `plan::Plan` fuses chains of elementwise launches (see "Fusing launches"); it does not
+  fuse across kernels that read a produced column by address (`Load`, `Gather`,
+  `Len`) or across two folds, and it is an explicit API: the array drivers in
+  `array` still build their launches by hand.

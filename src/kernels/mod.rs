@@ -1,0 +1,317 @@
+//! # Numeric kernels
+//!
+//! Plain numerical routines with no dependency on the expression graph:
+//! they take slices, closures and matrices and return numbers. The rule
+//! sets in [`crate::rules`] wrap them as reduction kernels for the numeric
+//! phase; the simulations in [`crate::sim`] call them directly.
+
+/// Algebraic multigrid for non-symmetric systems (Ruge-Stueben, Petrov-Galerkin aggregation).
+pub mod amg_general;
+/// Interpolation and approximation: splines, PCHIP, B-splines, Chebyshev, AAA, Pade.
+pub mod approx;
+/// Forward-mode dual numbers and reverse-mode tape automatic differentiation.
+pub mod autodiff;
+/// Complex balls with outward-rounded interval arithmetic (Krawczyk proofs).
+pub mod ball;
+/// Block sparse row (BSR) matrices: block matvec, transpose, product, block Jacobi and block ILU(0).
+pub mod bsr;
+pub mod calculus;
+pub mod combinatorics;
+pub mod complex;
+pub mod computer_graphics;
+/// Sequence and series convergence acceleration (Aitken, Richardson, Wynn,
+/// Levin on partial sums and on terms).
+pub mod convergence;
+/// Coordinate transformations between Cartesian, polar, cylindrical and spherical systems.
+pub mod coordinates;
+/// Double-double real and complex arithmetic.
+pub mod dd;
+/// Dense linear algebra: LU, Cholesky, QR, SVD, symmetric and general eigenvalues.
+pub mod dense;
+/// Curvature of a metric given as a closure: Christoffel symbols, Riemann and Ricci tensors.
+pub mod differential_geometry;
+/// Univariate and multivariate probability distributions.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::use_self,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines
+)]
+pub mod distributions;
+/// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
+pub mod eigs;
+/// Krylov-Schur, block Lanczos and Jacobi-Davidson eigensolvers, generalised problems.
+pub mod eigs_ext;
+pub mod error_correction;
+/// FFT for arbitrary lengths and fast convolution.
+pub mod fftconv;
+pub mod finite_field;
+pub mod fractal_geometry_and_chaos;
+/// Fresnel integrals, their auxiliary functions and the complex error function.
+pub mod fresnel;
+pub mod functional_analysis;
+pub mod geometric_algebra;
+#[allow(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    clippy::missing_const_for_fn,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::suboptimal_flops,
+    clippy::needless_pass_by_value
+)]
+pub mod geometry;
+/// Weighted shortest paths, and partition refinement, canonical labelling and
+/// automorphism groups (`refine`, `canonical_labelling`, `isomorphic`, all
+/// over the `ColourGraph` input type).
+pub mod graph;
+/// D-finite functions: annihilating operators, closure, recurrences and
+/// an exact zero test.
+pub mod holonomic;
+/// Exact homology with torsion, persistent homology, cubical complexes.
+pub mod homology;
+/// Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
+pub mod homotopy;
+/// Smale alpha-theory certificates for homotopy endpoints.
+pub mod homotopy_cert;
+/// Complex-parameter pFq, 2F1, 1F1 and Tricomi U by Taylor continuation of the defining ODE.
+pub mod hypergeometric;
+/// Indefinite sums and products at non-integer arguments.
+pub mod indefinite_sum;
+pub mod integrate;
+#[allow(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::single_call_fn,
+    clippy::missing_const_for_fn,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::suboptimal_flops,
+    clippy::needless_pass_by_value,
+    clippy::doc_markdown,
+    clippy::must_use_candidate
+)]
+pub mod interp_ext;
+pub mod interpolate;
+/// Structured (banded, sparse) Jacobians, colouring finite differences and banded LU.
+pub mod jacobian;
+/// Sparse CSR matrices and Krylov solvers with preconditioners.
+pub mod krylov;
+/// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
+pub mod krylov_ext;
+/// Semisimple Lie algebras: root systems, weights, representations; structure theory.
+pub mod lie_structure;
+/// Rank-revealing QR, randomized SVD, LOBPCG and Anderson acceleration.
+pub mod lowrank;
+/// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
+pub mod matfun;
+pub mod matrix;
+/// Meijer G-function by Slater's theorem and numerical Mellin-Barnes integration.
+pub mod meijer;
+/// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
+pub mod multigrid;
+/// Unconstrained, global and constrained optimisation and linear programming.
+/// Matrix-free trust-region Newton-CG with Hessian-vector actions.
+pub mod newton_cg;
+/// L-stable SDIRK3(2) integrator for stiff initial-value problems.
+/// Extended number theory and exact combinatorics kernels.
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::single_call_fn
+)]
+pub mod number_ext;
+pub mod number_theory;
+pub mod ode;
+/// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
+pub mod ode_adaptive;
+mod ode_contract;
+/// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
+pub mod ode_ext;
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::type_complexity,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::excessive_precision
+)]
+pub mod ode_geom;
+pub mod ode_sdirk;
+/// Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
+pub mod ode_stiff;
+/// Mergeable online multivariate mean and covariance.
+pub mod online_stats;
+pub mod optim;
+pub mod optimize;
+/// Fill-reducing orderings: approximate minimum degree and nested dissection.
+pub mod ordering;
+/// Multilevel nested dissection (heavy-edge coarsening, FM refinement, vertex-cover separators).
+pub mod ordering_ml;
+/// Highly oscillatory integrals by Levin collocation.
+pub mod oscillatory;
+/// Deterministic data-parallel helpers (ordered maps, fixed-tree sums, chunked loops).
+pub mod par;
+pub mod pde;
+pub mod permgroup;
+pub mod polynomial;
+/// Exact linear algebra over the rationals.
+pub mod qlinalg;
+/// The quadratic sieve and its self-initialising variant for integer factorisation.
+pub mod quadratic_sieve;
+/// Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
+pub mod quadrature;
+/// Seeded deterministic random number generation.
+pub mod random;
+/// Real root isolation and refinement for polynomials.
+pub mod real_roots;
+/// Robust statistics, quantiles and kernel density estimation.
+pub mod robust;
+/// Scalar and system root finding, polynomial roots, homotopy continuation.
+pub mod rootfind;
+/// Real Schur, QZ (generalized Schur), Sylvester, and Lyapunov decompositions.
+pub mod schur;
+/// Stochastic differential equations: Euler-Maruyama, Milstein, SRK, Heun and adaptive steps.
+pub mod sde;
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::use_self
+)]
+pub mod sde_ext;
+/// Partial sums and accelerated infinite sums.
+pub mod series;
+/// Signal processing: filters, windows and spectra.
+pub mod signal;
+/// Adaptive integration on finite simplices of arbitrary dimension.
+pub mod simplex_quadrature;
+pub mod solve;
+pub mod sparse;
+/// Exact sparse linear algebra.
+///
+/// Sparsity-preserving elimination over any domain, modular determinants,
+/// Dixon lifting and Wiedemann's algorithm.
+pub mod sparse_exact;
+pub mod special;
+/// Gamma, digamma, Lambert W and Bessel J/I functions of a complex argument.
+pub mod special_complex;
+/// Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
+pub mod special_ext;
+pub mod stats;
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps
+)]
+pub mod stats_ext;
+pub mod tensor;
+/// Computational topology: simplicial complexes, Betti numbers, persistence.
+pub mod topology;
+pub mod transforms;
+pub mod vector;
+pub mod wavelets;
+
+/// The error type of the stochastic integrators of [`sde`].
+///
+/// Re-exported at the module root because every caller that uses an SDE scheme
+/// matches on it; the schemes themselves stay under [`sde`].
+pub use sde::SdeError;
+
+/// Exact IEEE-754 equality (`-0.0 == 0.0`, NaN never equal).
+///
+/// For the few places where bit-exact equality is the intended predicate
+/// (sentinels, "no change after rounding" tests such as `|h| + s == s`).
+#[must_use]
+pub(crate) fn exact_eq(
+    a: f64,
+    b: f64,
+) -> bool {
+    a.partial_cmp(&b) == Some(std::cmp::Ordering::Equal)
+}
+
+/// Tensor-train compression and contractions.
+pub mod tensor_train;
+
+/// One- and N-dimensional Fourier transforms and frequency indexing.
+pub mod fft;

@@ -564,7 +564,7 @@ This document lists all third-party dependencies used by the rssn project and th
 * **License:** Apache-2.0 OR MIT
 * **Repository:** https://github.com/rust-lang/regex
 
-## Package: rssn (0.1.11)
+## Package: rssn (3.0.0-rc.1)
 * **License:** Apache-2.0
 * **Repository:** https://github.com/Apich-Organization/rssn
 

@@ -12,64 +12,114 @@
 [![Discord Server](https://img.shields.io/discord/1459399539403522074.svg?label=Discord&logo=discord&color=blue)](https://discord.gg/D5e2czMTT9)
 [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.31044715.svg)](https://doi.org/10.6084/m9.figshare.31044715)
 
-**rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** support and **physics simulations** functionalities.
+**rssn** is an open-source scientific computing library for Rust: a computer algebra system, numerical kernels and physics simulations behind one small API.
 
-At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mathematical expressions, ensuring that they are always in a canonical form. This allows for highly efficient memory use and computational speed.
+Every symbolic operation is an *identity transformation*. Differentiating, integrating, solving and simplifying are all requests like `diff(f, x)`, rewritten by rule sets on a hash-consed **e-graph DAG** until an equal closed form (or a number) is found. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
 ## Key Features
 
-- **Efficient DAG-based Expression Model**: Expressions are stored as a canonical DAG, ensuring that identical subexpressions are represented by a single node in memory for maximum efficiency.
-- **Advanced Symbolic Algebra**: A powerful Computer Algebra System (CAS) that goes beyond simple simplification:
-  - **Polynomial Algebra**: Includes **Gröbner basis** computation for solving polynomial systems.
-  - **Simplification with Relations**: Can simplify expressions with respect to polynomial side-relations (e.g., simplifying `x^2` to `1 - y^2` given `x^2 + y^2 - 1 = 0`).
-- **Symbolic Calculus**: Functions for differentiation, integration, limits, and series expansion.
-- **Numerical Methods**: A rich collection of algorithms for numerical integration, optimization, and solving differential equations.
-- **Versatile Output**: Render expressions as pretty-printed text, LaTeX, or Typst.
-- **Stable FFI Interface**: A robust C-compatible foreign function interface (`cdylib`) is available for integration with other languages like Python, C++, and Fortran.
+- **One entry point**: `Session::compute(term, &config)`. The answer is symbolic or numeric, depending on the target phase.
+- **Dimensions**: every scalar term has an inferred dimension, every operator declares how dimensions combine, and answers report theirs. Exact rational and symbolic exponents (`x^n`, `x^(a+b)`, `x^(1/n)`), SI and affine units, user-defined base dimensions; advisory by default, strict hard errors on request, explicit bypass. See [docs/DIMENSIONS.md](docs/DIMENSIONS.md).
+- **Open e-graph engine**: a hash-consed DAG with equivalence classes, an operator registry open to plugins, tiered rule scheduling, cost-based extraction, assumptions such as `positive`, `integer` and `real`, and a numeric soundness check of every rewrite.
+- **Calculus**: derivatives (including of undetermined functions); indefinite, definite and improper integrals (including Hermite reduction in `Q(x)(√D)` for algebraic integrands); limits; univariate and multivariate series; Meijer G evaluation, reduction, differentiation and integration; Gosper summation, indefinite sums and products (`indefinite_sum`, `indefinite_product`); integral transforms.
+- **Algebra**: rational normal form, multivariate factorisation, Gröbner bases (Buchberger, F4 and F5), polynomial, transcendental and inequality solving, systems of equations (with free parameters), real quantifier elimination by CAD, general trigonometric solution families, linear algebra (symbolic and numeric), number theory (including a quadratic sieve for large composites), combinatorics, logic.
+- **Differential equations**: ODE classification and solution (linear, exact, Bernoulli, Riccati, Clairaut/Lagrange, integrating factors, Lie symmetries, systems with first integrals); PDE solution in 1D/2D/3D on boxes, disks, cylinders, balls, annuli, shells, half-spaces and exterior domains with Dirichlet/Neumann/Robin/periodic conditions (eigenfunction expansions, images, Kirchhoff/Poisson/Riemann formulas, linear systems); calculus of variations (Euler–Lagrange).
+- **Analysis**: special functions (Γ, ζ, Bessel, erf, orthogonal polynomials, …), complex analysis, functional analysis and integral equations (Fredholm, Volterra), optimisation, statistics.
+- **Physics**: formula rule sets for classical mechanics, electromagnetism, relativity, quantum mechanics, QFT, solid state and thermodynamics. Also simulation modules: FDM, FEM, FVM, BEM, CFD, molecular dynamics, SPH, spectral and multigrid methods, plus ready-made scenarios. Many grid solvers (Poisson, advection, diffusion, Burgers, heat, Schrödinger, wave) have 1D, 2D and 3D forms; the table is in [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md).
+- **Output**: round-trippable text, LaTeX, Typst, Unicode pretty-printing, plots, `.npy` export.
+- **Compilation**: compile closed forms into fast callable functions through the `Backend` trait: an SSA tape (with reverse gradients, Hessian-vector products and interval enclosures) and, with the `jit` feature, Cranelift machine code with caching and tiered compilation. `backend::device` runs many rows on CPU devices or, with the `gpu-wgpu` feature, on a GPU through wgpu; `f64` on the GPU is double-single emulation (about 48 bits, `f32` exponent range), not IEEE double, and chains of launches can be fused ([docs/BACKENDS.md](docs/BACKENDS.md)).
+- **Expression optimisation**: `cse(list(...))` extracts shared subexpressions of several expressions into temporaries.
+- **Numeric kernels**: adaptive and double-exponential quadrature, cubature, stiff and non-stiff ODE solvers (Dormand–Prince, Rosenbrock, Radau IIA, BDF), root finding (Brent, Jenkins–Traub, Aberth, homotopy), dense and sparse linear algebra, Krylov solvers, Chebyshev/AAA approximation, optimisation, robust statistics; connected to the symbolic side (`nminimize`, `chebyshev_approx`, compiled numeric `defint`/`odeint`). The `numeric` rule set also exposes kernels as operators on literal numbers (robust statistics, wavelets, Krylov/multigrid solves, tensor decompositions, complex special functions, named-integrator IVPs, finite-difference PDE solvers); the list and its limits are in [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md).
+- **Host callbacks**: concrete checked callback signatures and serial numerical operators (quadrature, Brent, nonlinear least squares, four ODE integrators) through the dynamic ABI, including physical dimensions and error propagation. See [callback embedding](docs/CALLBACKS.md) and [the numerical callback operators](docs/NUMERICAL_CALLBACKS.md).
+- **Embedding kernel**: a self-describing, deterministic *Kernel Manifest* of every operator, typed signature, unit and physical constant; a dynamic call ABI (`Session::call_value`), plugins (in-process, or shared libraries with the `plugin-cdylib` feature) and a deterministic `bincode-next` wire format. See [the embedding kernel](docs/KERNEL.md).
+- **C interface**: a small, panic-safe C ABI (`rssn.h` / `rssn.hpp`), generated by cbindgen. Build C distribution libraries explicitly with `bash scripts/build_ffi.sh`; see [building Rust and C artifacts](docs/BUILDING.md).
 
 ---
 
 ## Quick Start
 
-Add **rssn** to your Rust project:
-
 ```bash
 cargo add rssn
 ```
 
-Then, perform a simple symbolic differentiation:
-
 ```rust
-use rssn::symbolic::core::Expr;
-use rssn::symbolic::calculus::differentiate;
+use rssn::api::*;
 
-// Define a variable 'x'
-let x = Expr::new_variable("x");
+let s = Session::new();
+let x = s.sym("x");
 
-// Define the expression: sin(x)
-let expr = Expr::new_sin(x);
+// Symbolic phase: a closed form.
+let d = s.compute(diff(sin(x) * cos(x), x), &Config::new())?;
+assert_eq!(d.term.to_string(), "cos(2*x)");
 
-// Differentiate with respect to 'x'
-let derivative = differentiate(&expr, "x");
+// Numeric phase: the same request, evaluated.
+let n = s.compute(diff(sin(x) * cos(x), x), &Config::new().numeric(1e-12).bind("x", 0.0))?;
+assert_eq!(n.value, Some(1.0));
 
-// The result will be cos(x)
-println!("The derivative of {} is: {}", expr, derivative);
+// Any request can be parsed from text.
+let sum = s.compute(s.parse("sum(1/(k*(k+1)), k, 1, n)")?, &Config::new())?;
+assert_eq!(sum.term.to_string(), "1 - 1/(n + 1)");
+# Ok::<(), ComputeError>(())
 ```
 
-For more advanced examples, such as simplification with relations, please see the [API documentation](https://docs.rs/rssn).
+More examples:
+
+- `cargo run --release --example quickstart`: a tour of the API.
+- `cargo run --release --example simulation`: simulations by name with JSON parameters.
+- `examples/c/smoke.c`: a C client. Build instructions are in the file.
+
+Benchmarks: `cargo bench --bench engine`.
+
+### Cargo features
+
+| Feature | Enables |
+|---|---|
+| `jit` | the Cranelift JIT backend (`rssn::backend::jit`) |
+| `npy` | reading and writing `.npy` files in `rssn::io` |
+| `plugin-cdylib` | loading plugins from shared libraries (runs arbitrary code in the host process) |
+| `dev-headers` | regenerating `rssn.h`/`rssn.hpp` with cbindgen (together with `DEV=1`) |
+| `gpu-wgpu` | the wgpu GPU device (`rssn::backend::device`): WGSL kernels in `f32`, and `f64` as double-single pairs. Not part of `full`. Execution is tested only where an adapter exists |
+| `full` | `npy`, `jit` and `plugin-cdylib` (not `gpu-wgpu`) |
 
 ---
 
-## Roadmap
+## Testing
 
-* **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
-* **v0.2.0** — Stabilization release, expand numerical methods.
-* **v0.3.0** — Performance improvements & broader algorithm coverage.
-* **v0.4.0** — Building up Computation Ecosystem, expand physics simulations.
-* **v0.5.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
-* **v1.0.0** — Full API stabilization.
+```bash
+cargo test                       # everything: slow, see below
+cargo test --lib kernels::pde    # one module of the unit tests
+cargo test --test dimensions     # one integration test file
+cargo test --test kernels pde    # a filter inside a large test binary
+cargo test --features gpu-wgpu --lib backend::device   # GPU device tests (run on an adapter if present)
+```
+
+The suite is large and these are measured costs on one development machine, not guarantees:
+
+- The test profile is `opt-level = 1`; building the library's unit tests (`cargo test --lib`) takes 10 to 20 minutes after a source change, and running all of them about 19 minutes.
+- `cargo test --test sim` takes about 25 minutes. Pass a substring filter (`cargo test --test sim acoustics`) or name a module path to run a part.
+- `cargo check --lib --tests` (about 2 minutes) is the cheap way to see whether edits compile.
+- CI runs `cargo test --workspace --all-features` on Linux and Windows.
+
+Contract checks (`cargo run --bin signature-audit`, `cargo run -p rssn-api-gen -- --bindings-check`) are listed in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Documentation
+
+| Document | Subject |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How the engine, rule sets, kernels, simulation, C ABI and JIT fit together |
+| [docs/README.md](docs/README.md) | Index of the documents below |
+| [CHANGELOG.md](CHANGELOG.md) | What changed, release by release |
+| [docs/KERNEL.md](docs/KERNEL.md) | The embedding kernel: manifest, dynamic ABI, plugins, units |
+| [docs/DIMENSIONS.md](docs/DIMENSIONS.md) | The dimension and unit layer |
+| [docs/CALLBACKS.md](docs/CALLBACKS.md), [docs/NUMERICAL_CALLBACKS.md](docs/NUMERICAL_CALLBACKS.md) | Host callbacks |
+| [docs/BUILDING.md](docs/BUILDING.md) | Rust and C artifacts |
+| [docs/BACKENDS.md](docs/BACKENDS.md) | Execution backends and devices: CPU, wgpu, double-single `f64`, launch fusion |
+| [docs/MATH_COVERAGE.md](docs/MATH_COVERAGE.md) | Edge-case conventions, space-dimension coverage, operators backed by kernels, known gaps |
+| [API reference](https://docs.rs/rssn) | Generated rustdoc |
 
 ---
 
@@ -80,35 +130,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## Maintainers & Contributors
-
-* **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Xinyu.Yang@apich.org](mailto:Xinyu.Yang@apich.org))
-* **Consultants**:
-  * X. Zhang (Algorithm & Informatics, [@RheaCherry](https://github.com/RheaCherry), [3248998213@qq.com](mailto:3248998213@qq.com))
-  * Z. Wang (Mathematics)
-  * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
-* **Project Reviewer**: Z. Li
-* **Outside Collaborator**: Chahat Patel ([@chahat-101](https://github.com/chahat-101))
-* **Contributors**: Owen Yang ([Owen.Yang@apich.org](mailto:Owen.Yang@apich.org))
-
----
-
 ## License
 
 Licensed under the **Apache 2.0** License.
 Please see [LICENSE](LICENSE) for more details.
-
----
-
-## Architecture
-
-Please see [ARCHITECTURE](ARCHITECTURE.md) for more details.
-
----
-
-## Code Stastics
-
-Please see [CODE_STASTICS](CODE_STASTICS.md) for more details.
 
 ---
 
@@ -128,10 +153,10 @@ Please see [SECURITY](SECURITY.md) for more details.
 
 Please see [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for more details.
 
-Report of abuse are fully avalible in this project.
+Reports of abuse are fully available in this project.
 
 ---
 
 ## Project Wiki
 
-Please see the GitHub wiki Page for more details.
+Please see the GitHub wiki page for more details.

@@ -1,0 +1,64 @@
+# Rust source path\tABI name\tnamespace\tdimension policy\toutput policy
+crate::kernels::vector::cross_product	num_cross_product	numerical_vector	Product	finite
+crate::kernels::special::inverse_erf_numerical	num_inverse_erf	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::bessel_k0	num_bessel_k0	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::bessel_k1	num_bessel_k1	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::erfi	num_erfi	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::inverse_erfc	num_inverse_erfc	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::ln_factorial	num_ln_factorial	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::riemann_zeta	num_riemann_zeta	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::logit	num_logit	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::exp_integral_e1	num_exp_integral_e1	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::exp_integral_ei	num_exp_integral_ei	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::log_integral	num_log_integral	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::sine_integral	num_sine_integral	numerical_special	Dimensionless	finite
+crate::kernels::fresnel::fresnel_s	num_fresnel_s	numerical_special	Dimensionless	finite
+crate::kernels::fresnel::fresnel_c	num_fresnel_c	numerical_special	Dimensionless	finite
+crate::kernels::special::cosine_integral	num_cosine_integral	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::sinh_integral	num_sinh_integral	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::cosh_integral	num_cosh_integral	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::airy_ai_prime	num_airy_ai_prime	numerical_special	Dimensionless	finite
+crate::kernels::special::airy_bi	num_airy_bi	numerical_special	Dimensionless	allow_infinity
+crate::kernels::special::airy_bi_prime	num_airy_bi_prime	numerical_special	Dimensionless	allow_infinity
+crate::kernels::vector::vec_add	num_vector_add	numerical_vector	EqualPreserve	finite	Element-wise sum of equal-length vectors.
+crate::kernels::vector::vec_sub	num_vector_sub	numerical_vector	EqualPreserve	finite	Element-wise difference of equal-length vectors.
+crate::kernels::vector::dot_product	num_dot	numerical_vector	Product	finite	Dot product of equal-length vectors.
+crate::kernels::vector::distance	num_distance	numerical_vector	EqualPreserve	finite	Euclidean distance between vectors.
+crate::kernels::vector::angle	num_angle	numerical_vector	IndependentUnitless	finite	Angle in radians; zero for a zero vector.
+crate::kernels::vector::cosine_similarity	num_cosine_similarity	numerical_vector	IndependentUnitless	finite	Cosine similarity; zero vectors are invalid.
+crate::kernels::vector::project	num_project	numerical_vector	IndependentPreserveLeft	finite	Project a vector onto another; zero direction produces zero.
+crate::kernels::vector::reflect	num_reflect	numerical_vector	PreserveWithUnitlessSecond	finite	Reflect about a unit normal supplied by the caller.
+crate::kernels::vector::norm	num_norm	numerical_vector	Preserve	finite	Euclidean vector norm.
+crate::kernels::vector::l1_norm	num_l1_norm	numerical_vector	Preserve	finite	Manhattan vector norm.
+crate::kernels::vector::linf_norm	num_linf_norm	numerical_vector	Preserve	finite	Infinity vector norm.
+crate::kernels::vector::normalize	num_normalize	numerical_vector	UnitlessResult	finite	Normalize a nonzero vector.
+crate::kernels::stats::mean	num_mean	numerical_stats	Preserve	finite	Arithmetic mean; zero for an empty sample.
+crate::kernels::stats::variance	num_variance	numerical_stats	Square	finite	Population variance; zero for an empty sample.
+crate::kernels::stats::std_dev	num_std_dev	numerical_stats	Preserve	finite	Sample standard deviation.
+crate::kernels::stats::range	num_range	numerical_stats	Preserve	finite	Difference between sample maximum and minimum.
+crate::kernels::stats::coefficient_of_variation	num_cv	numerical_stats	UnitlessResult	finite	Coefficient of variation.
+crate::kernels::stats::standard_error	num_standard_error	numerical_stats	Preserve	finite	Standard error of the mean.
+crate::kernels::stats::z_scores	num_z_scores	numerical_stats	UnitlessResult	finite	Sample z scores.
+crate::kernels::special::gamma_numerical	num_gamma	numerical_special	Dimensionless	finite	Numerical gamma function.
+crate::kernels::special::ln_gamma_numerical	num_log_gamma	numerical_special	Dimensionless	finite	Numerical log gamma function.
+crate::kernels::special::digamma_numerical	num_digamma	numerical_special	Dimensionless	finite	Numerical digamma function.
+crate::kernels::special::erf_numerical	num_erf	numerical_special	Dimensionless	finite	Numerical error function.
+crate::kernels::special::erfc_numerical	num_erfc	numerical_special	Dimensionless	finite	Numerical complementary error function.
+crate::kernels::special::bessel_j0	num_bessel_j0	numerical_special	Dimensionless	finite	Bessel J of order zero.
+crate::kernels::special::bessel_j1	num_bessel_j1	numerical_special	Dimensionless	finite	Bessel J of order one.
+crate::kernels::special::bessel_y0	num_bessel_y0	numerical_special	Dimensionless	finite	Bessel Y of order zero.
+crate::kernels::special::bessel_y1	num_bessel_y1	numerical_special	Dimensionless	finite	Bessel Y of order one.
+crate::kernels::special::bessel_i0	num_bessel_i0	numerical_special	Dimensionless	finite	Modified Bessel I of order zero.
+crate::kernels::special::bessel_i1	num_bessel_i1	numerical_special	Dimensionless	finite	Modified Bessel I of order one.
+crate::kernels::special::sinc	num_sinc	numerical_special	Dimensionless	finite	Unnormalised sinc, sin(x)/x.
+crate::kernels::special::sigmoid	num_sigmoid	numerical_special	Dimensionless	finite	Logistic sigmoid.
+crate::kernels::special::softplus	num_softplus	numerical_special	Dimensionless	finite	Softplus function.
+crate::kernels::special::airy_ai	num_airy_ai	numerical_special	Dimensionless	finite	Airy Ai function.
+crate::kernels::vector::scalar_mul	num_scalar_mul	numerical_vector	Product	finite
+crate::kernels::vector::lp_norm	num_lp_norm	numerical_vector	PreserveWithUnitlessSecond	finite
+crate::kernels::stats::median	num_median	numerical_stats	Preserve	finite
+crate::kernels::stats::min	num_min	numerical_stats	Preserve	finite
+crate::kernels::stats::max	num_max	numerical_stats	Preserve	finite
+crate::kernels::stats::skewness	num_skewness	numerical_stats	UnitlessResult	finite
+crate::kernels::stats::kurtosis	num_kurtosis	numerical_stats	UnitlessResult	finite
+crate::kernels::stats::iqr	num_iqr	numerical_stats	Preserve	finite

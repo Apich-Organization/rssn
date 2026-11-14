@@ -1,190 +1,105 @@
 # Contributing to rssn
 
-First of all, thank you for considering contributing to **rssn**! We are thrilled to have you. This project aims to become a next-generation scientific computing ecosystem in Rust, and every contribution, no matter how small, helps us get there.
+Thank you for considering a contribution to **rssn**. Bug fixes, new algorithms, performance work, tests and documentation are all welcome, and so are small things like typos. If you have an idea, open an issue first and we will be happy to discuss it.
 
-We are building a friendly, open community and are committed to helping you get started.
+## Where things live
 
----
+Read [ARCHITECTURE.md](ARCHITECTURE.md) first; it explains how the pieces fit. In short:
 
-## How Can I Contribute?
+| You want to… | Look in |
+|---|---|
+| add or fix a symbolic identity, solver or integrator | `src/rules/<domain>` (rewrites, definitions and kernels of one `RuleSet`) |
+| add or fix a plain numerical algorithm | `src/kernels` (no terms involved; rules and users both call it) |
+| add or fix a simulation, solver for fields or particles | `src/sim` |
+| change the engine itself (store, scheduler, extraction, facts) | `src/graph` |
+| change dimensions or units | `src/graph/dim*.rs` (inference) and `src/dim` (unit table, constants, unit systems); design in [docs/DIMENSIONS.md](docs/DIMENSIONS.md) |
+| change what a host sees: manifest, signatures, dynamic calls, plugins | `src/kernel` and `src/api/value.rs`; contract in [docs/KERNEL.md](docs/KERNEL.md) |
+| change the C interface | `src/ffi`; see [docs/BUILDING.md](docs/BUILDING.md) for headers |
+| change parsing/printing, LaTeX, Typst, plots | `src/io` |
+| change compiled evaluation or the JIT | `src/backend` |
+| generated numerical bindings | `tools/rssn-api-gen` ([README](tools/rssn-api-gen/README.md)) |
 
-**We welcome contributions across all areas of the project!** Whether you are a seasoned Rust developer, a numerical methods expert, a student learning symbolic math, or just someone who wants to fix a typo, there is a place for you here.
+Tests sit next to the code they test; cross-module tests live in `tests/`.
 
-Good places to start include:
+## Getting started
 
-*   **Symbolic Engine**: Help expand our core CAS capabilities in `src/symbolic`. This could mean adding new simplification rules, improving polynomial algebra, or implementing new calculus functions.
-*   **Numerical Methods**: Add new algorithms or improve existing ones in `src/numerical`, such as optimizers, ODE solvers, or statistical tools.
-*   **Physics Simulations**: Contribute new models or solvers to the `src/physics` module.
-*   **Documentation**: Good documentation is as important as good code. Improving explanations, adding examples, and clarifying concepts is invaluable.
-*   **Testing**: Help us improve test coverage, add new regression tests for bugs, or create new benchmarks.
+1. **Install Rust.** The crate uses edition 2024 and needs the toolchain in `rust-version` of `Cargo.toml` (currently 1.97) or newer; install it with [rustup](https://rustup.rs/).
+2. **Fork and clone.**
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/rssn.git
+   cd rssn
+   ```
+3. **Build and test.** The symbolic suite runs thousands of nested engine runs; the test profile is already optimised (`opt-level = 1`), but expect the first build to take a while.
+   ```bash
+   cargo test
+   ```
+   Useful narrower runs: `cargo test --lib graph::dim`, `cargo test --test dimensions`, `cargo test --lib rules::calculus`. Optional features have their own tests: `cargo test --features jit`, `cargo test --features plugin-cdylib`, `cargo test --features gpu-wgpu --lib backend::device` (executes on a GPU when an adapter exists).
 
-If you have an idea, open an issue and we would be happy to discuss it!
+   Some runs are long (building the library's unit tests takes 10 to 20 minutes, `cargo test --test sim` about 25); use `cargo check --lib --tests` while editing and a filter while testing, as described in [README.md](README.md#testing).
 
----
+## Development workflow
 
-## Getting Started: It's Easy!
-
-We have designed the project to be as easy to set up as possible. You do not need any complex dependencies or special environment configuration.
-
-1.  **Install Rust**: If you don't have it already, install the Rust toolchain via [rustup](https://rustup.rs/).
-
-2.  **Fork and Clone**: Fork the repository on GitHub and clone it to your local machine.
-    ```bash
-    git clone https://github.com/YOUR-USERNAME/rssn.git
-    cd rssn
-    ```
-
-3.  **Build and Test**: Check that everything is working correctly by running the test suite.
-    ```bash
-    cargo test --all
-    ```
-
-That's it! You are now ready to start contributing.
-
----
-
-## 🔧 Development Workflow
-
-1. **Create a feature branch**:
-
+1. **Create a feature branch** from `main`:
    ```bash
    git checkout -b feature/my-new-feature
    ```
-
-2. **Write your code**: Make your changes, and please add tests for any new functionality or bug fixes!
-
-3. **Code style & formatting**:
-
-   * All code must compile with **zero warnings** on the latest stable Rust.
-   * Additional **lint rules** are configured in `lib.rs` and must be respected.
-   * Before creating a pull request, please always run:
-
-     ```bash
-     cargo +nightly fmt --all
-     cargo clippy --all-targets -- -D warnings
-     cargo test --all
-     ```
-
-4. **Commit and Push**:
-
-   Commit your changes with a clear message and push them to your fork.
-
+2. **Write your code, and tests for it.** A new rewrite rule is automatically checked numerically by `rules::tests::no_standard_rewrite_is_refuted`; add identity tests for the behaviour you rely on.
+3. **Follow the style rules.**
+   * `src/lib.rs` denies a strict clippy set (`pedantic`, `nursery`, `unwrap_used`, `expect_used`, `indexing_slicing`, `arithmetic_side_effects`, `missing_docs`, …) and documents the few deliberate exceptions. New code must satisfy it; a local `#[allow]` needs a comment saying why.
+   * Public items need doc comments. Follow the surrounding file's conventions (rustfmt settings are in `rustfmt.toml`).
+4. **Run the checks** before opening a pull request:
    ```bash
-   git commit -m "feat(symbolic): add new integration method"
+   cargo +nightly fmt --all
+   cargo clippy --workspace --all-targets --all-features -- -D warnings
+   cargo test --workspace --all-features
    ```
+   and, when you touched the corresponding area:
+   ```bash
+   cargo run --bin signature-audit            # every operator is typed or explained
+   cargo run -p rssn-api-gen -- --bindings-check
+   cargo run -p rssn-api-gen -- --structured-check
+   cargo run -p rssn-api-gen -- --contracts-check
+   cargo test -p rssn-api-model -p rssn-api-gen
+   ```
+5. **Commit and push.** Use a clear message, for example `feat(calculus): add Hermite reduction for algebraic integrands`.
+6. **Open a pull request** against `main` of `Apich-Organization/rssn` with a description of what changed and why.
 
-5. **Open a Pull Request**: Open a PR against the `main` branch of the `Apich-Organization/rssn` repository. Please provide a clear description of your changes.
+### Adding an operator
 
----
+1. Register it in a rule set's install function (`Installer::op`).
+2. Give it a dimension rule (`i.dim(op, rule)`); the coverage scanner in `graph::dim` fails the build otherwise.
+3. Declare a `Signature`, or a `DynamicReason` if it cannot have one. Add `.doc(..)`, `.category(..)` and `.since(..)`; the manifest is the documentation a host reads.
+4. Run the checks above, including `signature-audit`.
 
-## 🚀 Roadmap: C++ Adapter for FFI
+`signatures.overlay.json` is version-controlled source: when you correct an inferred signature there, commit the change together with the code that needs it. `signatures.witnessed.json` is version-controlled too, and `build.rs` fails when either file is missing. The witnessed table is mined from the test corpus, never edited by hand; after adding operators, regenerate it as described in [docs/KERNEL.md](docs/KERNEL.md) (`cargo run --profile tools --bin signature-mine`, about ten minutes) and commit it with the code, or the new operators carry only their derived and overlay signatures.
 
-We aim to provide a first-class experience for C++ users. While the C-style FFI is functional, it is not idiomatic for C++ developers. We are looking for contributors to help create a modern, header-only C++ wrapper library.
+### Changing the C interface
 
-### Goal
+`rssn.h` and `rssn.hpp` are generated by cbindgen and checked in. Regenerate them with `DEV=1 bash scripts/build_ffi.sh --features dev-headers` and commit the result together with the Rust change.
 
-The goal is to create a `rssn.hpp` that provides a clean, object-oriented C++ interface over the raw C FFI.
+## CI/CD
 
-<details>
-<summary>Click for C++ Adapter Design Details</summary>
+Both repositories (rssn and aevia) use the same three workflows in `.github/workflows`:
 
-### Core Design: `RssnExpr` Class
+| Workflow | Runs on | What it does |
+|---|---|---|
+| `ci.yml` | pushes to `main`, pull requests | rustfmt (nightly), clippy `-D warnings`, tests on Linux and Windows, contract checks (`signature-audit`, generated bindings, C headers and the C smoke test), rustdoc. The single `CI success` job is the one required check. |
+| `security.yml` | `main`, pull requests, weekly | CodeQL, dependency review (pull requests), RustSec advisories. |
+| `release.yml` | tags `vX.Y.Z[-pre]` | checks that the tag equals the `Cargo.toml` version, builds the C libraries for three platforms, creates the GitHub release with checksummed archives, and publishes to crates.io after approval of the `crates-io` environment (secret `CARGO_REGISTRY_TOKEN`). Run it by hand with `dry_run` to only build the artifacts. |
 
-The central piece of the adapter would be a `RssnExpr` class that wraps the `*mut Expr` handle.
+Everything CI checks can be run locally with the commands in the workflow above.
 
-```cpp
-#include <string>
-#include <memory>
-#include <stdexcept> 
+## Help wanted: an idiomatic C++ wrapper
 
-// Forward declarations of the C FFI functions
-extern "C" {
-    struct Expr;
-    Expr* expr_from_json(const char* json_ptr);
-    void expr_free(Expr* handle);
-    char* expr_to_string(Expr* handle);
-    // ... other functions
-}
+`rssn.hpp` contains the raw declarations of the C ABI. We would welcome a small, header-only C++ layer on top of it:
 
-class RssnExpr {
-private:
-    Expr* handle_ = nullptr;
+* RAII owners for the three heap kinds: sessions (`rssn_session_new`/`rssn_session_free`), configurations (`rssn_config_new`/`rssn_config_free`) and returned strings, byte buffers and tensors (`rssn_string_free`, `rssn_bytes_free`, `rssn_tensor_free`). Terms are plain `uint32_t` handles that are only valid in the session that made them.
+* A thin `Term` value type with operator overloads built on `rssn_term_apply`, and a `compute` wrapper over `rssn_compute`.
+* Error handling that turns an `RssnStatus` other than OK, together with `rssn_last_error`, into exceptions or an `expected`-style result.
+* A small CMake example. [examples/c/smoke.c](examples/c/smoke.c) is a complete C client to start from, and [docs/BUILDING.md](docs/BUILDING.md) explains how to build the static and shared libraries.
 
-public:
-    // Constructor is private to force creation via factory methods
-    explicit RssnExpr(Expr* handle) : handle_(handle) {}
+Open an issue if you would like to lead this.
 
-    // RAII: Destructor to automatically free the Rust object
-    ~RssnExpr() {
-        if (handle_) {
-            expr_free(handle_);
-        }
-    }
+## Acknowledgements
 
-    // Disable copy constructor and assignment to prevent double-freeing
-    RssnExpr(const RssnExpr&) = delete;
-    RssnExpr& operator=(const RssnExpr&) = delete;
-
-    // Enable move semantics
-    RssnExpr(RssnExpr&& other) noexcept : handle_(other.handle_) {
-        other.handle_ = nullptr; // Prevent the moved-from object from freeing the handle
-    }
-    RssnExpr& operator=(RssnExpr&& other) noexcept {
-        if (this != &other) {
-            if (handle_) {
-                expr_free(handle_);
-            }
-            handle_ = other.handle_;
-            other.handle_ = nullptr;
-        }
-        return *this;
-    }
-
-    // Static factory method
-    static RssnExpr fromJson(const std::string& json_str) {
-        Expr* handle = expr_from_json(json_str.c_str());
-        if (!handle) {
-            throw std::runtime_error("Failed to create Expr from JSON");
-        }
-        return RssnExpr(handle);
-    }
-
-    // Method to wrap an FFI function
-    RssnExpr simplify() {
-        Expr* new_handle = expr_simplify(handle_);
-        if (!new_handle) {
-            throw std::runtime_error("Failed to simplify expression");
-        }
-        return RssnExpr(new_handle);
-    }
-
-    // Method to wrap a function that returns a string
-    std::string toString() {
-        char* c_str = expr_to_string(handle_);
-        std::string str(c_str);
-        free_string(c_str); // Remember to free the string from Rust
-        return str;
-    }
-};
-```
-
-### Key Responsibilities for the Contributor
-
-1.  **RAII and Memory Management**: Implement robust RAII to ensure that no memory is leaked.
-2.  **JSON Integration**: The C++ adapter will need a dependency on a JSON library (like `nlohmann/json`) to construct and parse JSON strings.
-3.  **Error Handling**: Translate FFI error-reporting (e.g., via JSON) into idiomatic C++ exceptions or error codes.
-4.  **API Design**: Design an intuitive C++ API that hides the complexity of the underlying C FFI.
-5.  **Build System Integration**: Provide a simple CMake/Makefile example to show how a C++ project can use the adapter.
-
-If you are interested in leading this effort, please open an issue on GitHub to discuss the design further!
-
-</details>
-
----
-
-## 🙏 Acknowledgements
-
-Contributors are credited in release notes and on the GitHub page.
-We value every contribution, from fixing typos to implementing new solvers.
-
-Thank you for making **rssn** better!
+Contributors are credited in release notes and on the GitHub page. We value every contribution, from fixing typos to implementing new solvers.

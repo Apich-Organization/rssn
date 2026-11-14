@@ -1,77 +1,137 @@
-name: CI/CD workflow for branch main & pull requests
+# Continuous integration. The same structure is used by the aevia repository:
+# fmt -> clippy -> test (matrix) -> contracts -> docs, summarised by one
+# `ci-success` job so branch protection needs a single required check.
+
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  push:
-    branches:
-      - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # Workspace `rust-version`; the toolchain every gate below uses.
+  RUST_TOOLCHAIN: "1.97"
 
 jobs:
-  build-test-bench-fmt-doc:
-    runs-on: self-hosted
-    strategy:
-      matrix:
-        toolchain: [stable, beta, nightly, 1.89.0]
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          egress-policy: audit
+          components: rustfmt
+      - run: cargo +nightly fmt --all --check
 
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Rust ${{ matrix.toolchain }}
-        uses: step-security/actions-rs-toolchain@40a2f87e50bed6faa2d050e99810b226b75d8c8a # v1.0.7
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.toolchain }}
-          override: true
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Install System Dependencies for fontconfig & bench testing
-        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev linux-tools-common linux-tools-generic linux-tools-`uname -r`
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: cargo test --workspace --all-features
 
-      - name: Install Cargo flamegraph
-        run: cargo install flamegraph
-
-      - name: Install Clippy & Rustfmt if using nightly
+  contracts:
+    name: contracts (signature audit, generated bindings)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Every operator is typed or explained
+        run: cargo run --bin signature-audit
+      - name: Generated numerical bindings are current
         run: |
-             if [[ "${{ matrix.toolchain }}" == "nightly" ]]; then
-                rustup component add --toolchain nightly clippy
-                rustup component add --toolchain nightly rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using beta
+          cargo run -p rssn-api-gen -- --bindings-check
+          cargo run -p rssn-api-gen -- --structured-check
+          cargo run -p rssn-api-gen -- --codecs-check
+          cargo run -p rssn-api-gen -- --contracts-check
+
+  ffi:
+    name: C interface (headers, smoke test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - name: Regenerate headers and build the C libraries
+        run: DEV=1 bash scripts/build_ffi.sh --features dev-headers
+      - name: Checked-in headers are current
+        run: git diff --exit-code -- rssn.h rssn.hpp
+      - name: Build and run the C smoke test
         run: |
-             if [[ "${{ matrix.toolchain }}" == "beta" ]]; then
-                rustup component add --toolchain beta clippy
-                rustup component add --toolchain beta rustfmt
-             fi
-      
-      - name: Install Clippy & Rustfmt if using v1.89
+          cc -I. examples/c/smoke.c target/release/librssn.a -lm -lpthread -ldl -o smoke
+          ./smoke
+
+  docs:
+    name: rustdoc
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+      - run: cargo doc --workspace --no-deps --all-features
+
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [fmt, clippy, test, contracts, ffi, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to have succeeded
         run: |
-             if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
-                rustup component add --toolchain 1.89.0 clippy
-                rustup component add --toolchain 1.89.0 rustfmt
-             fi
-      
-      - name: Build with full features
-        run: cargo clippy --all-features --verbose
-        continue-on-error: true
-
-      - name: Test with full features
-        run: cargo test --all-features --verbose
-
-      - name: Flamegraph with full features
-        run: cargo flamegraph --examples matrix_demo.rs
-        continue-on-error: true
-
-      - name: Check formatting
-        run: cargo fmt --all --check
-        continue-on-error: true
-
-      - name: Check docing
-        run: cargo doc --all
+          echo '${{ toJSON(needs) }}'
+          test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "false"
