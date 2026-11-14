@@ -6,6 +6,7 @@
 mod brent;
 mod common;
 mod evolution;
+mod extended;
 mod least_squares;
 use super::numerical_abi::numeric;
 use super::numerical_abi::runtime_dimensions::canonical;
@@ -206,6 +207,7 @@ fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
     brent::install(installer)?;
     evolution::install(installer)?;
     least_squares::install(installer)?;
+    extended::install(installer)?;
     Ok(())
 }
 /// Serial numerical operators with checked host callbacks.

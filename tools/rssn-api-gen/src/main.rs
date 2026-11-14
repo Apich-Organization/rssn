@@ -29,6 +29,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.next().is_some() {
         return Err("usage: rssn-api-gen COMMAND [RSSN_ROOT]".into());
     }
+    if let Some(action) = command.strip_prefix("--codecs-") {
+        let policy = root.join("tools/rssn-api-gen/codec-policy.tsv");
+        let target = root.join("src/rules/numerical_abi/codec_generated.rs");
+        let result =
+            rssn_api_model::codec_codegen::generate(&root, &std::fs::read_to_string(policy)?)?;
+        match action {
+            | "report" => print!("{result}"),
+            | "write" => {
+                std::fs::write(&target, result)?;
+                println!("wrote {}", target.display());
+            },
+            | "check" => {
+                if std::fs::read_to_string(&target)? != result {
+                    return Err("generated codecs are stale".into());
+                }
+                println!("generated codecs verified");
+            },
+            | _ => return Err("unknown generator action".into()),
+        }
+        return Ok(());
+    }
     if let Some(action) = command.strip_prefix("--contracts-") {
         let policy = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("contracts.tsv");
         let target = root.join("src/rules/numerical_abi/contract_generated.rs");

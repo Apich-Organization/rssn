@@ -253,6 +253,455 @@ macro_rules! record {
         }
     };
 }
+// The same concrete codecs serve every source-generated binding.
+macro_rules! integer_codec {
+    ($($ty:ty),*) => {$(
+        impl Arg for $ty {
+            fn ty() -> TypeExpr { TypeExpr::Int }
+            fn decode(value: &Value, index: usize) -> Result<Self, OpError> {
+                let Value::Int(value) = value else { return Err(OpError::Type { expected: Box::new(TypeExpr::Int), got: Box::new(value.type_expr()), arg:index }); };
+                value.to_string().parse::<Self>().map_err(|_| OpError::Domain(format!("argument {index} does not fit {}",stringify!($ty))))
+            }
+        }
+    )*};
+}
+integer_codec!(usize, i64, u32, i32, i128);
+macro_rules! integer_output {
+    ($($ty:ty),*) => {$(impl Output for $ty {
+        fn ty() -> TypeExpr { TypeExpr::Int }
+        fn encode(self) -> Result<Value,OpError> { Ok(Value::int(self)) }
+    })*};
+}
+integer_output!(u64, i64, u32, i32, i128, num_bigint::BigInt);
+impl Arg for bool {
+    fn ty() -> TypeExpr {
+        TypeExpr::Bool
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        match value {
+            | Value::Bool(value) => Ok(*value),
+            | _ => {
+                Err(OpError::Type {
+                    expected: Box::new(TypeExpr::Bool),
+                    got: Box::new(value.type_expr()),
+                    arg: index,
+                })
+            },
+        }
+    }
+}
+impl Arg for num_bigint::BigInt {
+    fn ty() -> TypeExpr {
+        TypeExpr::Int
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        match value {
+            | Value::Int(value) => Ok(value.clone()),
+            | _ => {
+                Err(OpError::Type {
+                    expected: Box::new(TypeExpr::Int),
+                    got: Box::new(value.type_expr()),
+                    arg: index,
+                })
+            },
+        }
+    }
+}
+impl Output for num_complex::Complex64 {
+    fn ty() -> TypeExpr {
+        TypeExpr::Complex
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        if !self.re.is_finite() || !self.im.is_finite() {
+            return Err(OpError::Domain("non-finite complex result".into()));
+        }
+        Ok(Value::Complex(crate::kernel::value::ComplexValue::Float {
+            re: self.re,
+            im: self.im,
+        }))
+    }
+}
+impl<T: Output> Output for Option<T> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            ("Some".into(), vec![T::ty()]),
+        ])
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::Variant(crate::kernel::value::VariantValue {
+            tag: if self.is_some() {
+                "Some"
+            } else {
+                "None"
+            }
+            .into(),
+            payload: match self {
+                | Some(value) => vec![value.encode()?],
+                | None => vec![],
+            },
+        }))
+    }
+}
+impl<T: Arg, const N: usize> Arg for [T; N] {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: Some(vec![NatExpr::Lit(N as u64)]),
+            elem: Box::new(T::ty()),
+        }
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(t) = value else {
+            return Err(OpError::Type {
+                expected: Box::new(<Self as Arg>::ty()),
+                got: Box::new(value.type_expr()),
+                arg: index,
+            });
+        };
+        if t.shape != [N] || t.data.len() != N {
+            return Err(OpError::Domain(format!(
+                "argument {index} must have shape [{N}]"
+            )));
+        }
+        t.data
+            .iter()
+            .map(|v| T::decode(v, index))
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .map_err(|_| OpError::Domain("invalid fixed array length".into()))
+    }
+}
+impl<T: Output, const N: usize> Output for [T; N] {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: Some(vec![NatExpr::Lit(N as u64)]),
+            elem: Box::new(T::ty()),
+        }
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![N],
+            data: self
+                .into_iter()
+                .map(Output::encode)
+                .collect::<Result<_, _>>()?,
+            elem: T::ty(),
+        }))
+    }
+}
+impl<T: Arg, const N: usize> Arg for Vec<[T; N]> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(2),
+            shape: None,
+            elem: Box::new(T::ty()),
+        }
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(t) = value else {
+            return Err(OpError::Type {
+                expected: Box::new(<Self as Arg>::ty()),
+                got: Box::new(value.type_expr()),
+                arg: index,
+            });
+        };
+        if t.shape.len() != 2
+            || t.shape.get(1) != Some(&N)
+            || t.shape.first().and_then(|n| n.checked_mul(N)) != Some(t.data.len())
+            || N == 0
+        {
+            return Err(OpError::Domain(format!(
+                "argument {index} requires a matrix with {N} columns"
+            )));
+        }
+        t.data
+            .as_chunks::<N>()
+            .0
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|v| T::decode(v, index))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .try_into()
+                    .map_err(|_| OpError::Domain("invalid row length".into()))
+            })
+            .collect()
+    }
+}
+impl<T: Output, const N: usize> Output for Vec<[T; N]> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(2),
+            shape: None,
+            elem: Box::new(T::ty()),
+        }
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        let n = self.len();
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![n, N],
+            data: self
+                .into_iter()
+                .flatten()
+                .map(Output::encode)
+                .collect::<Result<_, _>>()?,
+            elem: T::ty(),
+        }))
+    }
+}
+impl Arg for Vec<i64> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: None,
+            elem: Box::new(TypeExpr::Int),
+        }
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(t) = value else {
+            return Err(OpError::Type {
+                expected: Box::new(<Self as Arg>::ty()),
+                got: Box::new(value.type_expr()),
+                arg: index,
+            });
+        };
+        if t.shape != [t.data.len()] {
+            return Err(OpError::Domain("expected integer vector".into()));
+        }
+        t.data
+            .iter()
+            .map(|v| <i64 as Arg>::decode(v, index))
+            .collect()
+    }
+}
+impl Output for Vec<i64> {
+    fn ty() -> TypeExpr {
+        <Self as Arg>::ty()
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![self.len()],
+            data: self.into_iter().map(Value::int).collect(),
+            elem: TypeExpr::Int,
+        }))
+    }
+}
+impl Arg for Vec<Vec<f64>> {
+    fn ty() -> TypeExpr {
+        tensor_type(2)
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let (shape, data) = tensor(value, 2, index)?;
+        if shape[1] == 0 {
+            Ok(vec![vec![]; shape[0]])
+        } else {
+            Ok(data.chunks_exact(shape[1]).map(<[f64]>::to_vec).collect())
+        }
+    }
+}
+impl Output for Vec<Vec<f64>> {
+    fn ty() -> TypeExpr {
+        tensor_type(2)
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        let n = self.len();
+        let m = self.first().map_or(0, Vec::len);
+        if self.iter().any(|r| r.len() != m) {
+            return Err(OpError::Domain("ragged matrix result".into()));
+        }
+        output_tensor(vec![n, m], self.into_iter().flatten().collect())
+    }
+}
+macro_rules! tuple_output {
+    ($($ty:ident:$field:ident:$index:tt),+) => {impl<$($ty:Output),+> Output for ($($ty,)+) {
+        fn ty()->TypeExpr {TypeExpr::Record(vec![$((stringify!($field).into(),$ty::ty())),+])}
+        fn encode(self)->Result<Value,OpError>{Ok(Value::Record(RecordValue{fields:vec![$((stringify!($field).into(),self.$index.encode()?)),+]}))}
+    }};
+}
+tuple_output!(A:item0:0,B:item1:1);
+tuple_output!(A:item0:0,B:item1:1,C:item2:2);
+tuple_output!(A:item0:0,B:item1:1,C:item2:2,D:item3:3);
+
+impl Arg for num_complex::Complex64 {
+    fn ty() -> TypeExpr {
+        TypeExpr::Complex
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let result = match value {
+            | Value::Complex(c) => {
+                let (re, im) = c.to_f64();
+                Self::new(re, im)
+            },
+            | _ => Self::new(numeric(value, index)?, 0.0),
+        };
+        if !result.re.is_finite() || !result.im.is_finite() {
+            return Err(OpError::Domain(format!(
+                "argument {index} contains a non-finite complex value"
+            )));
+        }
+        Ok(result)
+    }
+}
+impl Arg for Vec<num_complex::Complex64> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: None,
+            elem: Box::new(TypeExpr::Complex),
+        }
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(t) = value else {
+            return Err(OpError::Type {
+                expected: Box::new(<Self as Arg>::ty()),
+                got: Box::new(value.type_expr()),
+                arg: index,
+            });
+        };
+        if t.shape != [t.data.len()] {
+            return Err(OpError::Domain("expected a complex vector".into()));
+        }
+        t.data
+            .iter()
+            .map(|v| <num_complex::Complex64 as Arg>::decode(v, index))
+            .collect()
+    }
+}
+impl Output for Vec<num_complex::Complex64> {
+    fn ty() -> TypeExpr {
+        <Self as Arg>::ty()
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![self.len()],
+            data: self
+                .into_iter()
+                .map(Output::encode)
+                .collect::<Result<_, _>>()?,
+            elem: TypeExpr::Complex,
+        }))
+    }
+}
+impl<T: Arg> Arg for Option<T> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            ("Some".into(), vec![T::ty()]),
+        ])
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        match value {
+            | Value::Variant(v) if v.tag == "None" && v.payload.is_empty() => Ok(None),
+            | Value::Variant(v) if v.tag == "Some" && v.payload.len() == 1 => {
+                Ok(Some(T::decode(&v.payload[0], index)?))
+            },
+            | _ => {
+                Err(OpError::Type {
+                    expected: Box::new(<Self as Arg>::ty()),
+                    got: Box::new(value.type_expr()),
+                    arg: index,
+                })
+            },
+        }
+    }
+}
+
+impl Arg for String {
+    fn ty() -> TypeExpr {
+        TypeExpr::String
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        match value {
+            | Value::String(value) => Ok(value.clone()),
+            | _ => {
+                Err(OpError::Type {
+                    expected: Box::new(TypeExpr::String),
+                    got: Box::new(value.type_expr()),
+                    arg: index,
+                })
+            },
+        }
+    }
+}
+impl Arg for Vec<String> {
+    fn ty() -> TypeExpr {
+        TypeExpr::Tensor {
+            rank: NatExpr::Lit(1),
+            shape: None,
+            elem: Box::new(TypeExpr::String),
+        }
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(t) = value else {
+            return Err(OpError::Type {
+                expected: Box::new(<Self as Arg>::ty()),
+                got: Box::new(value.type_expr()),
+                arg: index,
+            });
+        };
+        if t.shape != [t.data.len()] {
+            return Err(OpError::Domain("expected a vector of names".into()));
+        }
+        t.data
+            .iter()
+            .map(|v| <String as Arg>::decode(v, index))
+            .collect()
+    }
+}
+
 include!("structured_generated.rs");
 
 /// Build a record's physical result schema from generated field formulas.
@@ -328,6 +777,84 @@ impl CodecExport {
         dimensions::apply((self.base_signature)(), self.dimension_policy)
     }
 }
+// Compound raw-number arguments must not hide physical quantities in Some,
+// records, or tensor elements. Top-level dimension inference cannot see these.
+fn require_dimensionless_type(ty: &TypeExpr) -> Result<(), OpError> {
+    match ty {
+        | TypeExpr::Dim(inner, dim) => {
+            if !runtime_dimensions::canonical(dim)?.is_empty() {
+                return Err(OpError::Domain(
+                    "raw numerical arguments must be dimensionless".into(),
+                ));
+            }
+            require_dimensionless_type(inner)
+        },
+        | TypeExpr::Point(_) => {
+            Err(OpError::Domain(
+                "raw numerical arguments cannot be affine points".into(),
+            ))
+        },
+        | TypeExpr::Tensor { elem, .. } | TypeExpr::Sparse { elem, .. } => {
+            require_dimensionless_type(elem)
+        },
+        | TypeExpr::Record(fields) => {
+            for (_, ty) in fields {
+                require_dimensionless_type(ty)?;
+            }
+            Ok(())
+        },
+        | TypeExpr::Variant(variants) => {
+            for (_, payload) in variants {
+                for ty in payload {
+                    require_dimensionless_type(ty)?;
+                }
+            }
+            Ok(())
+        },
+        | _ => Ok(()),
+    }
+}
+fn require_dimensionless(value: &Value) -> Result<(), OpError> {
+    require_dimensionless_type(&value.type_expr())?;
+    match value {
+        | Value::Quantity(quantity) => {
+            if !runtime_dimensions::canonical(&quantity.unit.dimension)?.is_empty() {
+                return Err(OpError::Domain(
+                    "raw numerical arguments must be dimensionless".into(),
+                ));
+            }
+            require_dimensionless(&quantity.value)
+        },
+        | Value::Dyn(dynamic) => {
+            if !runtime_dimensions::canonical(&dynamic.dim)?.is_empty() {
+                return Err(OpError::Domain(
+                    "raw numerical arguments must be dimensionless".into(),
+                ));
+            }
+            require_dimensionless(&dynamic.value)
+        },
+        | Value::Tensor(tensor) => {
+            for value in &tensor.data {
+                require_dimensionless(value)?;
+            }
+            Ok(())
+        },
+        | Value::Record(record) => {
+            for (_, value) in &record.fields {
+                require_dimensionless(value)?;
+            }
+            Ok(())
+        },
+        | Value::Variant(variant) => {
+            for value in &variant.payload {
+                require_dimensionless(value)?;
+            }
+            Ok(())
+        },
+        | _ => Ok(()),
+    }
+}
+
 impl EvalDyn for &'static CodecExport {
     fn signature(&self) -> Signature {
         CodecExport::signature(self)
@@ -344,6 +871,19 @@ impl EvalDyn for &'static CodecExport {
                 expected: crate::kernel::signature::ArityInfo::fixed(arity as u8),
                 got: args.len(),
             });
+        }
+        let contract = dimensions::contract_for(self.dimension_policy);
+        if contract.other_args_dimensionless {
+            for (index, value) in args.iter().enumerate() {
+                if !contract.inputs.iter().any(|input| input.argument == index)
+                    && !contract
+                        .constraints
+                        .iter()
+                        .any(|input| input.argument == index)
+                {
+                    require_dimensionless(value)?;
+                }
+            }
         }
         let dimensions = runtime_dimensions::prepare(self.dimension_policy, args)?;
         let result = (self.call)(args)?;
@@ -428,3 +968,5 @@ pub static EXPORTS: &[&CodecExport] = &[
     &binomial::EXPORT,
     &tt_svd::EXPORT,
 ];
+
+include!("codec_generated.rs");

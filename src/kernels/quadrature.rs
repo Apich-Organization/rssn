@@ -406,8 +406,7 @@ pub fn integrate_semi_infinite<F: Fn(f64) -> f64>(
         if s <= 0.0 {
             return 0.0;
         }
-        let v = f(a + t / s) / (s * s);
-        if v.is_finite() { v } else { 0.0 }
+        f(a + t / s) / (s * s)
     };
     integrate_gk(g, 0.0, 1.0, GkRule::G10K21, tol * 1e-3, tol, 2000)
 }
@@ -422,8 +421,7 @@ pub fn integrate_infinite<F: Fn(f64) -> f64>(
         if s <= 0.0 {
             return 0.0;
         }
-        let v = f(t / s) * (1.0 + t * t) / (s * s);
-        if v.is_finite() { v } else { 0.0 }
+        f(t / s) * (1.0 + t * t) / (s * s)
     };
     integrate_gk(g, -1.0, 1.0, GkRule::G10K21, tol * 1e-3, tol, 2000)
 }
@@ -444,8 +442,7 @@ fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> (f64, f64)>(
         if !w.is_finite() || w == 0.0 {
             return 0.0;
         }
-        let v = f(x) * w;
-        if v.is_finite() { v } else { 0.0 }
+        f(x) * w
     };
     let mut sum = term(0.0);
     let mut evals = 1;
@@ -455,6 +452,14 @@ fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> (f64, f64)>(
         sum += term(k) + term(-k);
         evals += 2;
         k += 1.0;
+    }
+    if !sum.is_finite() {
+        return Integral {
+            value: f64::NAN,
+            error: f64::INFINITY,
+            evaluations: evals,
+            converged: false,
+        };
     }
     let mut prev = sum * h;
     let mut result = Integral {
@@ -470,6 +475,14 @@ fn de_driver<F: Fn(f64) -> f64, M: Fn(f64) -> (f64, f64)>(
             sum += term(k) + term(-k);
             evals += 2;
             k += 2.0 * h;
+        }
+        if !sum.is_finite() {
+            return Integral {
+                value: f64::NAN,
+                error: f64::INFINITY,
+                evaluations: evals,
+                converged: false,
+            };
         }
         let cur = sum * h;
         let err = (cur - prev).abs();
@@ -498,6 +511,36 @@ pub fn tanh_sinh<F: Fn(f64) -> f64>(
     b: f64,
     tol: f64,
 ) -> Integral {
+    tanh_sinh_with_levels(f, a, b, tol, 10)
+}
+
+/// Tanh-sinh quadrature with an explicit refinement budget.
+///
+/// A zero budget returns an unconverged estimate. Refinement is capped at 20
+/// levels to keep its exponentially growing node count bounded.
+pub fn tanh_sinh_with_levels<F: Fn(f64) -> f64>(
+    f: F,
+    a: f64,
+    b: f64,
+    tol: f64,
+    max_levels: usize,
+) -> Integral {
+    if !a.is_finite() || !b.is_finite() || a > b || !tol.is_finite() || tol <= 0.0 {
+        return Integral {
+            value: f64::NAN,
+            error: f64::INFINITY,
+            evaluations: 0,
+            converged: false,
+        };
+    }
+    if crate::kernels::exact_eq(a, b) {
+        return Integral {
+            value: 0.0,
+            error: 0.0,
+            evaluations: 0,
+            converged: true,
+        };
+    }
     let half = 0.5 * (b - a);
     let map = |t: f64| {
         let u = 0.5 * PI * t.sinh();
@@ -513,9 +556,12 @@ pub fn tanh_sinh<F: Fn(f64) -> f64>(
         } else {
             a + half * d
         };
+        if x <= a || x >= b {
+            return (x, 0.0);
+        }
         (x, w)
     };
-    de_driver(&f, &map, 6.5, tol, 10)
+    de_driver(&f, &map, 6.5, tol, max_levels.min(20) as u32)
 }
 
 /// Exp-sinh quadrature on `[a, inf)`; suitable for algebraic or
@@ -543,6 +589,69 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(
         (u.sinh(), 0.5 * PI * t.cosh() * u.cosh())
     };
     de_driver(&f, &map, 6.5, tol, 10)
+}
+
+/// Gauss-Legendre nodes and weights on `[-1, 1]` with `n` points
+/// (Newton iteration on the Legendre recurrence).
+#[must_use]
+pub fn gauss_legendre_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
+    if n == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    let mut x = vec![0.0; n];
+    let mut w = vec![0.0; n];
+    let nf = n as f64;
+    for i in 0..n.div_ceil(2) {
+        let mut z = (PI * (i as f64 + 0.75) / (nf + 0.5)).cos();
+        let mut dp = 0.0;
+        for _ in 0..100 {
+            let (mut p0, mut p1) = (1.0, z);
+            for k in 2..=n {
+                let kf = k as f64;
+                let p2 = ((2.0 * kf - 1.0) * z * p1 - (kf - 1.0) * p0) / kf;
+                p0 = p1;
+                p1 = p2;
+            }
+            dp = nf * (z * p1 - p0) / (z * z - 1.0);
+            let dz = p1 / dp;
+            z -= dz;
+            if dz.abs() <= 1e-15 * z.abs().max(1.0) {
+                break;
+            }
+        }
+        let wi = 2.0 / ((1.0 - z * z) * dp * dp);
+        let j = n.saturating_sub(1).saturating_sub(i);
+        if let Some(slot) = x.get_mut(i) {
+            *slot = -z;
+        }
+        if let Some(slot) = x.get_mut(j) {
+            *slot = z;
+        }
+        if let Some(slot) = w.get_mut(i) {
+            *slot = wi;
+        }
+        if let Some(slot) = w.get_mut(j) {
+            *slot = wi;
+        }
+    }
+    (x, w)
+}
+
+/// `n`-point Gauss-Legendre quadrature of `f` on `[a, b]`.
+pub fn gauss_legendre<F: Fn(f64) -> f64>(
+    f: F,
+    a: f64,
+    b: f64,
+    n: usize,
+) -> f64 {
+    let (x, w) = gauss_legendre_rule(n);
+    let h = 0.5 * (b - a);
+    let m = f64::midpoint(a, b);
+    h * x
+        .iter()
+        .zip(&w)
+        .map(|(&xi, &wi)| wi * f(m + h * xi))
+        .sum::<f64>()
 }
 
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points
@@ -594,7 +703,29 @@ pub fn romberg<F: Fn(f64) -> f64>(
     tol: f64,
     max_levels: usize,
 ) -> Integral {
-    let m = max_levels.max(2);
+    if !a.is_finite()
+        || !b.is_finite()
+        || a > b
+        || !tol.is_finite()
+        || tol <= 0.0
+        || !(2..=24).contains(&max_levels)
+    {
+        return Integral {
+            value: f64::NAN,
+            error: f64::INFINITY,
+            evaluations: 0,
+            converged: false,
+        };
+    }
+    if crate::kernels::exact_eq(a, b) {
+        return Integral {
+            value: 0.0,
+            error: 0.0,
+            evaluations: 0,
+            converged: true,
+        };
+    }
+    let m = max_levels;
     let mut r = vec![vec![0.0; m]; m];
     let mut h = b - a;
     r[0][0] = 0.5 * h * (f(a) + f(b));
@@ -609,6 +740,14 @@ pub fn romberg<F: Fn(f64) -> f64>(
             s += f(a + (2 * k + 1) as f64 * h);
         }
         evals += cnt;
+        if !s.is_finite() {
+            return Integral {
+                value: f64::NAN,
+                error: f64::INFINITY,
+                evaluations: evals,
+                converged: false,
+            };
+        }
         r[i][0] = 0.5 * r[i - 1][0] + h * s;
         for j in 1..=i {
             let p = 4f64.powi(j as i32);

@@ -87,6 +87,7 @@ jobs:
         run: |
           cargo run -p rssn-api-gen -- --bindings-check
           cargo run -p rssn-api-gen -- --structured-check
+          cargo run -p rssn-api-gen -- --codecs-check
           cargo run -p rssn-api-gen -- --contracts-check
 
   ffi:

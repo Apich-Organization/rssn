@@ -42,59 +42,94 @@ use crate::kernels::special::digamma_numerical;
 use crate::kernels::special::gamma_numerical;
 use crate::kernels::special::ln_gamma_numerical;
 
-/// Carlson's symmetric elliptic integral `R_F(x, y, z)` (arguments non-negative, at most one zero).
+/// Carlson's symmetric elliptic integral `R_F(x, y, z)`.
+/// Arguments must be finite and non-negative, with at most one zero;
+/// invalid arguments or failure of bounded duplication return NaN.
 #[must_use]
 pub fn carlson_rf(
     x: f64,
     y: f64,
     z: f64,
 ) -> f64 {
+    if [x, y, z].iter().any(|v| !v.is_finite() || *v < 0.0)
+        || [x, y, z].iter().filter(|v| **v == 0.0).count() > 1
+    {
+        return f64::NAN;
+    }
+    let scale = x.max(y).max(z);
+    if scale < 1e-100 {
+        return carlson_rf(x / scale, y / scale, z / scale) / scale.sqrt();
+    }
+
     let (mut x, mut y, mut z) = (x, y, z);
-    let (mut delx, mut dely, mut delz, mut ave);
-    loop {
+    let (mut delx, mut dely, mut delz, mut ave) = (0.0, 0.0, 0.0, 0.0);
+    let mut converged = false;
+    for _ in 0..128 {
         let (sx, sy, sz) = (x.sqrt(), y.sqrt(), z.sqrt());
-        let lam = sx * (sy + sz) + sy * sz;
-        x = 0.25 * (x + lam);
-        y = 0.25 * (y + lam);
-        z = 0.25 * (z + lam);
-        ave = (x + y + z) / 3.0;
+        // Form lambda/4 and the weighted updates directly, avoiding
+        // overflow when valid finite arguments are close to f64::MAX.
+        let lam_quarter =
+            (sx * 0.5) * (sy * 0.5) + (sx * 0.5) * (sz * 0.5) + (sy * 0.5) * (sz * 0.5);
+        x = 0.25 * x + lam_quarter;
+        y = 0.25 * y + lam_quarter;
+        z = 0.25 * z + lam_quarter;
+        ave = x + (y - x) / 3.0 + (z - x) / 3.0;
         delx = (ave - x) / ave;
         dely = (ave - y) / ave;
         delz = (ave - z) / ave;
         if delx.abs().max(dely.abs()).max(delz.abs()) < 1e-3 {
+            converged = true;
             break;
         }
+    }
+    if !converged {
+        return f64::NAN;
     }
     let e2 = delx * dely - delz.powi(2);
     let e3 = delx * dely * delz;
     (1.0 + (e2 / 24.0 - 0.1 - 3.0 * e3 / 44.0) * e2 + e3 / 14.0) / ave.sqrt()
 }
 
-/// Carlson's `R_D(x, y, z)` (`z > 0`).
+/// Carlson's `R_D(x, y, z)` for finite non-negative `x, y`, not both zero,
+/// and finite positive `z`; invalid arguments or nonconvergence return NaN.
 #[must_use]
 pub fn carlson_rd(
     x: f64,
     y: f64,
     z: f64,
 ) -> f64 {
+    if [x, y, z].iter().any(|v| !v.is_finite() || *v < 0.0) || z <= 0.0 || (x == 0.0 && y == 0.0) {
+        return f64::NAN;
+    }
+    let scale = x.max(y).max(z);
+    if scale < 1e-100 {
+        return carlson_rd(x / scale, y / scale, z / scale) / scale / scale.sqrt();
+    }
+
     let (mut x, mut y, mut z) = (x, y, z);
     let (mut sum, mut fac) = (0.0, 1.0);
-    let (mut delx, mut dely, mut delz, mut ave);
-    loop {
+    let (mut delx, mut dely, mut delz, mut ave) = (0.0, 0.0, 0.0, 0.0);
+    let mut converged = false;
+    for _ in 0..128 {
         let (sx, sy, sz) = (x.sqrt(), y.sqrt(), z.sqrt());
-        let lam = sx * (sy + sz) + sy * sz;
-        sum += fac / (sz * (z + lam));
+        let lam_quarter =
+            (sx * 0.5) * (sy * 0.5) + (sx * 0.5) * (sz * 0.5) + (sy * 0.5) * (sz * 0.5);
+        sum += ((fac * 0.25) / sz) / (0.25 * z + lam_quarter);
         fac *= 0.25;
-        x = 0.25 * (x + lam);
-        y = 0.25 * (y + lam);
-        z = 0.25 * (z + lam);
-        ave = 0.2 * (x + y + 3.0 * z);
+        x = 0.25 * x + lam_quarter;
+        y = 0.25 * y + lam_quarter;
+        z = 0.25 * z + lam_quarter;
+        ave = 0.2 * x + 0.2 * y + 0.6 * z;
         delx = (ave - x) / ave;
         dely = (ave - y) / ave;
         delz = (ave - z) / ave;
         if delx.abs().max(dely.abs()).max(delz.abs()) < 1e-3 {
+            converged = true;
             break;
         }
+    }
+    if !converged {
+        return f64::NAN;
     }
     let (c1, c2, c3, c4) = (3.0 / 14.0, 1.0 / 6.0, 9.0 / 22.0, 3.0 / 26.0);
     let (c5, c6) = (0.25 * c3, 1.5 * c4);

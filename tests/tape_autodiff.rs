@@ -334,3 +334,57 @@ fn graph_lowering_and_optimization_preserve_reverse_and_hvp_semantics() {
         check(program, &[0.3, 1.2], &[], &[0.4, -0.7]);
     }
 }
+
+#[test]
+fn checked_expression_ad_exposes_forward_reverse_hessian_and_vjp_without_differencing() {
+    use rssn::backend::autodiff;
+    let variables = vec!["x".to_string(), "y".to_string()];
+    let point = [2.0, 3.0];
+    let expression = "x^2*y + sin(y)";
+    let expected = [12.0, 4.0 + 3.0_f64.cos()];
+    for gradient in [
+        autodiff::forward_gradient(expression, &variables, &point).unwrap(),
+        autodiff::reverse_gradient(expression, &variables, &point).unwrap(),
+    ] {
+        for (actual, want) in gradient.iter().zip(expected) {
+            near(*actual, want);
+        }
+    }
+    let hessian = autodiff::hessian(expression, &variables, &point).unwrap();
+    assert_eq!((hessian.rows, hessian.cols), (2, 2));
+    for (actual, want) in hessian.data.iter().zip([6.0, 4.0, 4.0, -3.0_f64.sin()]) {
+        near(*actual, want);
+    }
+    let expressions = vec!["x*y".to_string(), "x^2+y".to_string()];
+    let jacobian = autodiff::jacobian(&expressions, &variables, &point).unwrap();
+    assert_eq!(jacobian.data, vec![3.0, 2.0, 4.0, 1.0]);
+    assert_eq!(
+        autodiff::vjp(&expressions, &variables, &point, &[2.0, -1.0]).unwrap(),
+        vec![2.0, 3.0]
+    );
+    // A finite difference at this scale loses the entire x contribution.
+    let scalar = vec!["x".to_string()];
+    assert_eq!(
+        autodiff::forward_gradient("10000000000000000+x", &scalar, &[1.0]).unwrap(),
+        vec![1.0]
+    );
+    assert_eq!(
+        autodiff::reverse_gradient("10000000000000000+x", &scalar, &[1.0]).unwrap(),
+        vec![1.0]
+    );
+}
+
+#[test]
+fn checked_expression_ad_rejects_invalid_domains_and_fallback_rules() {
+    use rssn::backend::autodiff;
+    let variables = vec!["x".to_string()];
+    for expression in ["abs(x)", "floor(x)", "unknown(x)", "ln(-1)", "x+z"] {
+        assert!(
+            autodiff::reverse_gradient(expression, &variables, &[1.0]).is_err(),
+            "{expression}"
+        );
+    }
+    assert!(autodiff::forward_gradient("x", &["x".into(), "x".into()], &[1.0, 2.0]).is_err());
+    assert!(autodiff::hessian("x", &variables, &[f64::NAN]).is_err());
+    assert!(autodiff::vjp(&["x".into()], &variables, &[1.0], &[]).is_err());
+}

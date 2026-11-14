@@ -271,6 +271,11 @@ fn callback_schema_match(
                 .fold(Match::Exact, weaker);
             weaker(arguments, callback_schema_match(ra, rb, operator_on_left))
         },
+        | (TypeExpr::Variant(a), TypeExpr::Variant(b)) => {
+            variants_match(a, b, |expected, actual| {
+                callback_schema_match(expected, actual, operator_on_left)
+            })
+        },
         | (TypeExpr::Record(a), TypeExpr::Record(b)) => {
             if a.len() != b.len() {
                 return Match::No;
@@ -355,6 +360,42 @@ fn callback_schema_match(
     }
 }
 
+// A runtime tagged value advertises only its active branch. It is accepted
+// by a union schema iff every advertised branch exists with matching arity
+// and compatible payloads; duplicate or empty schemas are never evidence.
+fn variants_match(
+    param: &[(String, Vec<TypeExpr>)],
+    got: &[(String, Vec<TypeExpr>)],
+    mut payload_match: impl FnMut(&TypeExpr, &TypeExpr) -> Match,
+) -> Match {
+    let expected: std::collections::BTreeSet<_> = param.iter().map(|(tag, _)| tag).collect();
+    let actual: std::collections::BTreeSet<_> = got.iter().map(|(tag, _)| tag).collect();
+    if param.is_empty()
+        || got.is_empty()
+        || expected.len() != param.len()
+        || actual.len() != got.len()
+    {
+        return Match::No;
+    }
+    let mut result = if expected == actual {
+        Match::Exact
+    } else {
+        Match::Shaped
+    };
+    for (tag, payload) in got {
+        let Some((_, fields)) = param.iter().find(|(name, _)| name == tag) else {
+            return Match::No;
+        };
+        if fields.len() != payload.len() {
+            return Match::No;
+        }
+        for (expected, actual) in fields.iter().zip(payload) {
+            result = weaker(result, payload_match(expected, actual));
+        }
+    }
+    result
+}
+
 /// How the type `param` accepts the type `got`.
 #[must_use]
 pub fn matches_type(
@@ -366,6 +407,9 @@ pub fn matches_type(
         (TypeExpr::Function(..), TypeExpr::Function(..))
     ) {
         return callback_schema_match(param, got, true);
+    }
+    if let (TypeExpr::Variant(a), TypeExpr::Variant(b)) = (param, got) {
+        return variants_match(a, b, matches_type);
     }
     if let (TypeExpr::Record(a), TypeExpr::Record(b)) = (param, got) {
         if a.len() != b.len() {
@@ -994,5 +1038,43 @@ mod concrete_dimension_equivalence_tests {
             &DimExpr::Var("D".into()),
             &DimExpr::Dimless
         ));
+    }
+}
+
+#[cfg(test)]
+mod variant_tests {
+    use super::*;
+    #[test]
+    fn union_matching_accepts_active_branches_directionally_with_checked_payloads() {
+        let schema = TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            ("Some".into(), vec![TypeExpr::Float]),
+        ]);
+        let some = TypeExpr::Variant(vec![("Some".into(), vec![TypeExpr::Float])]);
+        let none = TypeExpr::Variant(vec![("None".into(), vec![])]);
+        assert_eq!(matches_type(&schema, &some), Match::Shaped);
+        assert_eq!(matches_type(&schema, &none), Match::Shaped);
+        assert_eq!(matches_type(&some, &schema), Match::No);
+        for invalid in [
+            TypeExpr::Variant(vec![]),
+            TypeExpr::Variant(vec![("Some".into(), vec![])]),
+            TypeExpr::Variant(vec![("Unknown".into(), vec![])]),
+            TypeExpr::Variant(vec![("Some".into(), vec![TypeExpr::Bool])]),
+            TypeExpr::Variant(vec![("None".into(), vec![]), ("None".into(), vec![])]),
+        ] {
+            assert_eq!(matches_type(&schema, &invalid), Match::No);
+        }
+        let callback = TypeExpr::Function(vec![], Box::new(schema));
+        let unknown = TypeExpr::Variant(vec![(
+            "Some".into(),
+            vec![TypeExpr::Dyn(crate::kernel::signature::RepExpr {
+                repr: "opaque".into(),
+                dim: None,
+            })],
+        )]);
+        assert_eq!(
+            matches_type(&callback, &TypeExpr::Function(vec![], Box::new(unknown))),
+            Match::No
+        );
     }
 }

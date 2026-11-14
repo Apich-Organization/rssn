@@ -156,9 +156,15 @@ where
     D: Fn(f64) -> f64,
     E: Fn(f64) -> f64,
 {
+    if !x0.is_finite() || !tol.is_finite() || tol <= 0.0 {
+        return Err(RootError::Invalid);
+    }
     let mut x = x0;
     for _ in 0..max_iter {
         let (fx, dfx, d2) = (f(x), df(x), d2f(x));
+        if !fx.is_finite() || !dfx.is_finite() || !d2.is_finite() {
+            return Err(RootError::Invalid);
+        }
         if fx == 0.0 {
             return Ok(x);
         }
@@ -167,7 +173,13 @@ where
             return Err(RootError::Singular);
         }
         let dx = 2.0 * fx * dfx / denom;
+        if !dx.is_finite() {
+            return Err(RootError::Invalid);
+        }
         x -= dx;
+        if !x.is_finite() {
+            return Err(RootError::Invalid);
+        }
         if dx.abs() <= tol * (1.0 + x.abs()) {
             return Ok(x);
         }
@@ -684,6 +696,135 @@ pub fn broyden<F: Fn(&[f64]) -> Vec<f64>>(
         Ok(SystemSolution {
             x,
             residual: r,
+            iterations: max_iter,
+        })
+    } else {
+        Err(RootError::NoConvergence)
+    }
+}
+
+/// Powell's trust-region dogleg solver for nonlinear systems `f(x) = 0`.
+///
+/// # Errors
+/// As [`newton_system`].
+pub fn dogleg<F: Fn(&[f64]) -> Vec<f64>>(
+    f: F,
+    x0: &[f64],
+    tol: f64,
+    max_iter: usize,
+) -> Result<SystemSolution, RootError> {
+    if !valid_system_input(x0, tol) {
+        return Err(RootError::Invalid);
+    }
+    let n = x0.len();
+    let mut x = x0.to_vec();
+    let mut fx = f(&x);
+    if !valid_system_values(&fx, n) {
+        return Err(RootError::Invalid);
+    }
+    let norm2 = |v: &[f64]| v.iter().map(|xi| xi * xi).sum::<f64>().sqrt();
+    if norm2(&fx) <= tol {
+        return Ok(SystemSolution {
+            x,
+            residual: norm2(&fx),
+            iterations: 0,
+        });
+    }
+    let mut delta = 1.0_f64;
+    for it in 0..max_iter {
+        let f_norm2: f64 = fx.iter().map(|v| v * v).sum();
+        if f_norm2.sqrt() <= tol {
+            return Ok(SystemSolution {
+                x,
+                residual: f_norm2.sqrt(),
+                iterations: it,
+            });
+        }
+        let j = try_numerical_jacobian(&f, &x, &fx)?;
+        let mut g = vec![0.0; n];
+        for r in 0..n {
+            let fxr = fx.get(r).copied().unwrap_or(0.0);
+            for c in 0..n {
+                if let Some(gc) = g.get_mut(c) {
+                    *gc += j.at(r, c) * fxr;
+                }
+            }
+        }
+        let g_norm = norm2(&g);
+        if !g_norm.is_finite() || g_norm <= tol * 1e-2 {
+            return Err(RootError::NoConvergence);
+        }
+        let jg = j.matvec(&g);
+        let jg_norm2: f64 = jg.iter().map(|v| v * v).sum();
+        let alpha_c = if jg_norm2 > 1e-300 {
+            (g_norm * g_norm) / jg_norm2
+        } else {
+            delta / g_norm
+        };
+        let p_c: Vec<f64> = g.iter().map(|&gi| -alpha_c * gi).collect();
+        let neg_fx: Vec<f64> = fx.iter().map(|v| -v).collect();
+        let p_gn = dense::solve(&j, &neg_fx).unwrap_or_else(|_| p_c.clone());
+
+        let step = if norm2(&p_gn) <= delta {
+            p_gn
+        } else if norm2(&p_c) >= delta {
+            let scale = delta / norm2(&p_c);
+            p_c.iter().map(|&v| v * scale).collect()
+        } else {
+            let d: Vec<f64> = p_gn.iter().zip(&p_c).map(|(a, b)| a - b).collect();
+            let a_q: f64 = d.iter().map(|v| v * v).sum();
+            if a_q <= 1e-300 {
+                p_c
+            } else {
+                let b_q: f64 = 2.0 * p_c.iter().zip(&d).map(|(a, b)| a * b).sum::<f64>();
+                let c_q: f64 = p_c.iter().map(|v| v * v).sum::<f64>() - delta * delta;
+                let disc = (b_q * b_q - 4.0 * a_q * c_q).max(0.0).sqrt();
+                let tau = ((-b_q + disc) / (2.0 * a_q)).clamp(0.0, 1.0);
+                p_c.iter().zip(&d).map(|(pc, di)| pc + tau * di).collect()
+            }
+        };
+
+        let step_norm = norm2(&step);
+        if !step_norm.is_finite() || step_norm <= f64::EPSILON * norm2(&x).max(1.0) {
+            return Err(RootError::NoConvergence);
+        }
+        let j_step = j.matvec(&step);
+        let pred_norm2: f64 = fx.iter().zip(&j_step).map(|(a, b)| (a + b) * (a + b)).sum();
+        let pred_red = 0.5 * f_norm2 - 0.5 * pred_norm2;
+
+        let x_cand: Vec<f64> = x.iter().zip(&step).map(|(xi, si)| xi + si).collect();
+        if x_cand.iter().any(|v| !v.is_finite()) {
+            return Err(RootError::NoConvergence);
+        }
+        let fx_cand = f(&x_cand);
+        if !valid_system_values(&fx_cand, n) {
+            return Err(RootError::Invalid);
+        }
+        let f_cand_norm2: f64 = fx_cand.iter().map(|v| v * v).sum();
+        let actual_red = 0.5 * f_norm2 - 0.5 * f_cand_norm2;
+        let rho = if pred_red > 0.0 {
+            actual_red / pred_red
+        } else {
+            0.0
+        };
+        if rho < 0.25 {
+            delta *= 0.25;
+        } else if rho > 0.75 && (step_norm - delta).abs() <= 1e-10 * delta {
+            delta = (2.0 * delta).min(1e6);
+        }
+        if rho > 1e-4 {
+            x = x_cand;
+            fx = fx_cand;
+        }
+        if delta < 1e-15 {
+            return Err(RootError::NoConvergence);
+        }
+    }
+    let residual = norm2(&fx);
+    if residual <= tol {
+        Ok(SystemSolution {
+            x,
+            residual,
             iterations: max_iter,
         })
     } else {
@@ -1487,4 +1628,125 @@ pub fn homotopy_system_with_gamma(
         out.push(track_path(system, &deg, g, &start));
     }
     Ok(out)
+}
+
+/// A root of `f` near `guess`, by Newton's method with a bisection fallback.
+///
+/// # Errors
+///
+/// [`RootError::NoConvergence`] when neither method finds a sign change or a
+/// stationary point.
+pub fn root_near<F>(
+    f: &mut F,
+    guess: f64,
+) -> Result<f64, RootError>
+where
+    F: FnMut(f64) -> f64,
+{
+    if !guess.is_finite() {
+        return Err(RootError::Invalid);
+    }
+    let mut x = guess;
+    for _ in 0..100 {
+        let value = f(x);
+        if !value.is_finite() {
+            break;
+        }
+        if value == 0.0 {
+            return Ok(x);
+        }
+        let slope = crate::kernels::calculus::richardson_derivative(f, x);
+        if slope.abs() < 1e-14 {
+            break;
+        }
+        let next = x - value / slope;
+        if !next.is_finite() {
+            break;
+        }
+        if (next - x).abs() <= 1e-14 * x.abs().max(1.0) {
+            return Ok(next);
+        }
+        x = next;
+    }
+    // Newton stalled: look for a sign change around the guess.
+    let mut width = 1.0;
+    for _ in 0..60 {
+        let (low, high) = (guess - width, guess + width);
+        let low_value = f(low);
+        let high_value = f(high);
+        if low_value.is_finite() && high_value.is_finite() && low_value * high_value < 0.0 {
+            let mut low = low;
+            let mut high = high;
+            let mut low_value = low_value;
+            for _ in 0..200 {
+                let middle = f64::midpoint(low, high);
+                let value = f(middle);
+                if value == 0.0 || (high - low) <= 1e-15 * middle.abs().max(1.0) {
+                    return Ok(middle);
+                }
+                if low_value * value < 0.0 {
+                    high = middle;
+                } else {
+                    low = middle;
+                    low_value = value;
+                }
+            }
+            return Ok(f64::midpoint(low, high));
+        }
+        width *= 2.0;
+        if width > 1e9 {
+            break;
+        }
+    }
+    // No sign change: the root may be a touching one, where `f` never crosses
+    // zero. Minimise `f^2` instead — `(x - 1)^2` is the standard example.
+    for scale in [1.0, 10.0, 100.0, 1_000.0, 10_000.0] {
+        let mut squared = |value: f64| {
+            let evaluated = f(value);
+            evaluated * evaluated
+        };
+        let candidate = golden_minimum(&mut squared, guess - scale, guess + scale);
+        if f(candidate).abs() <= 1e-9 * (1.0 + candidate.abs()) {
+            return Ok(candidate);
+        }
+    }
+    Err(RootError::NoConvergence)
+}
+
+/// The minimum of a unimodal function on `[low, high]`, by golden-section
+/// search.
+fn golden_minimum<F>(
+    f: &mut F,
+    low: f64,
+    high: f64,
+) -> f64
+where
+    F: FnMut(f64) -> f64,
+{
+    const RATIO: f64 = 0.618_033_988_749_894_9;
+    let mut low = low;
+    let mut high = high;
+    let mut left = high - RATIO * (high - low);
+    let mut right = low + RATIO * (high - low);
+    let mut left_value = f(left);
+    let mut right_value = f(right);
+    for _ in 0..200 {
+        if (high - low).abs() <= 1e-15 * high.abs().max(1.0) {
+            break;
+        }
+        if left_value < right_value {
+            high = right;
+            right = left;
+            right_value = left_value;
+            left = high - RATIO * (high - low);
+            left_value = f(left);
+        } else {
+            low = left;
+            left = right;
+            left_value = right_value;
+            right = low + RATIO * (high - low);
+            right_value = f(right);
+        }
+    }
+    f64::midpoint(low, high)
 }

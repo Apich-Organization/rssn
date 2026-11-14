@@ -1031,8 +1031,8 @@ pub fn fcmp(
         | Cmp::Le => a <= b,
         | Cmp::Gt => a > b,
         | Cmp::Ge => a >= b,
-        | Cmp::Eq => a == b,
-        | Cmp::Ne => a != b,
+        | Cmp::Eq => a.partial_cmp(&b) == Some(std::cmp::Ordering::Equal),
+        | Cmp::Ne => a.partial_cmp(&b) != Some(std::cmp::Ordering::Equal),
     }
 }
 
@@ -1068,7 +1068,7 @@ pub fn f64_to_i64(x: f64) -> Option<i64> {
 
 /// The float minimum with NaN propagation (both executors agree on it).
 #[must_use]
-pub fn fmin(
+pub const fn fmin(
     a: f64,
     b: f64,
 ) -> f64 {
@@ -1081,7 +1081,7 @@ pub fn fmin(
 
 /// The float maximum with NaN propagation.
 #[must_use]
-pub fn fmax(
+pub const fn fmax(
     a: f64,
     b: f64,
 ) -> f64 {

@@ -92,7 +92,7 @@ fn capacity_overflow() -> u32 {
 }
 
 /// A fast, non-cryptographic hasher for the engine's internal tables
-/// (FxHash: one rotate, xor and multiply per word).
+/// (`FxHash`: one rotate, xor and multiply per word).
 ///
 /// The keys are node, class and operator ids the engine itself allocates,
 /// never attacker-chosen data, so `SipHash`'s flooding resistance buys

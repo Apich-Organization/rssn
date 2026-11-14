@@ -27,6 +27,19 @@ pub enum ApproxError {
     Singular,
 }
 
+impl std::fmt::Display for ApproxError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        match self {
+            | Self::Invalid => f.write_str("invalid approximation grid or parameters"),
+            | Self::Singular => f.write_str("singular approximation system"),
+        }
+    }
+}
+impl std::error::Error for ApproxError {}
+
 fn check_grid(
     x: &[f64],
     y: &[f64],

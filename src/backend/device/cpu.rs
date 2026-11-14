@@ -369,7 +369,7 @@ impl Device for CpuDevice {
         if rows == 0 {
             return Ok(());
         }
-        let mut cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
+        let cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
         #[cfg(feature = "jit")]
         if rows >= NATIVE_ROWS
             && let Some(k) = kernel.as_any().downcast_ref::<CpuKernel>()

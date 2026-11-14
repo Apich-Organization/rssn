@@ -132,6 +132,47 @@ pub fn hessian(
     out
 }
 
+/// The step a *second* difference uses.
+///
+/// A second difference subtracts three values that nearly cancel, so the
+/// rounding noise is `eps/h^2` while the truncation error is `h^2`: the
+/// balance is at `eps^(1/4)`, which is a hundred times larger than the first
+/// difference's step. Using `eps^(1/3)` here loses the answer in the noise.
+fn second_difference_step(x: f64) -> f64 {
+    let scale = x.abs().max(1.0);
+    f64::EPSILON.sqrt().sqrt() * scale
+}
+
+/// The first derivative of `f` at `x`, by a central difference with one
+/// Richardson extrapolation step.
+pub fn richardson_derivative<F>(
+    f: &mut F,
+    x: f64,
+) -> f64
+where
+    F: FnMut(f64) -> f64,
+{
+    let h = f64::EPSILON.cbrt() * x.abs().max(1.0);
+    let coarse = (f(x + h) - f(x - h)) / (2.0 * h);
+    let fine = (f(x + h / 2.0) - f(x - h / 2.0)) / h;
+    // 4/3 * fine - 1/3 * coarse cancels the h^2 term.
+    (4.0 * fine - coarse) / 3.0
+}
+
+/// The second derivative of `f` at `x`.
+pub fn second_derivative<F>(
+    f: &mut F,
+    x: f64,
+) -> f64
+where
+    F: FnMut(f64) -> f64,
+{
+    let h = second_difference_step(x);
+    let coarse = (f(x + h) - 2.0 * f(x) + f(x - h)) / (h * h);
+    let fine = (f(x + h / 2.0) - 2.0 * f(x) + f(x - h / 2.0)) / (h * h / 4.0);
+    (4.0 * fine - coarse) / 3.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,4 +211,43 @@ mod tests {
         }
         assert_eq!(h[1].to_bits(), h[2].to_bits());
     }
+}
+
+/// Divergence of a vector field, using central differences.
+pub fn divergence(
+    f: impl Fn(&[f64]) -> Vec<f64>,
+    x: &[f64],
+) -> f64 {
+    let fx = f(x);
+    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
+    (0..j.rows.min(j.cols)).map(|i| j.at(i, i)).sum()
+}
+
+/// Curl of a three-dimensional vector field. Returns `None` for wrong dimensions.
+pub fn curl(
+    f: impl Fn(&[f64]) -> Vec<f64>,
+    x: &[f64],
+) -> Option<Vec<f64>> {
+    if x.len() != 3 {
+        return None;
+    }
+    let fx = f(x);
+    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
+    if j.rows != 3 {
+        return None;
+    }
+    Some(vec![
+        j.at(2, 1) - j.at(1, 2),
+        j.at(0, 2) - j.at(2, 0),
+        j.at(1, 0) - j.at(0, 1),
+    ])
+}
+
+/// Laplacian of a scalar field, using central differences.
+pub fn laplacian(
+    f: impl Fn(&[f64]) -> f64,
+    x: &[f64],
+) -> f64 {
+    let h = hessian(f, x);
+    (0..x.len()).map(|i| h[i * x.len() + i]).sum()
 }

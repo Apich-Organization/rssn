@@ -569,6 +569,7 @@ fn install(
     }
     for export in codecs::EXPORTS
         .iter()
+        .chain(codecs::GENERATED_CODEC_EXPORTS.iter())
         .copied()
         .filter(|entry| entry.namespace == namespace)
     {

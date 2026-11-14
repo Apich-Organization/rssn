@@ -1038,8 +1038,10 @@ pub struct SweState3D {
 }
 
 /// 3D barotropic shallow-water system `h_t + ∇·(h u) = 0`,
-/// `(h u)_t + ∇·(h u ⊗ u) + ∇(g h²/2) = 0` (Euler with `γ = 2`, `p = g h²/2` and no
-/// energy equation: the 3D analogue of the planar shallow-water equations).
+/// `(h u)_t + ∇·(h u ⊗ u) + ∇(g h²/2) = 0`.
+///
+/// Euler with `γ = 2`, `p = g h²/2` and no
+/// energy equation: the 3D analogue of the planar shallow-water equations.
 ///
 /// On a grid of `dims = [nx, ny, nz]` cells (flat, `x` fastest) with the
 /// Lax-Friedrichs flux and zero-gradient boundaries. 3D counterpart of

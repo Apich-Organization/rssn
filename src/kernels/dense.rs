@@ -1761,6 +1761,31 @@ fn is_defective(
     false
 }
 
+/// Real Schur decomposition `A = Q T Q^T` with orthogonal `Q` and
+/// quasi-upper-triangular `T`.
+///
+/// # Errors
+/// [`DenseError::Shape`] for non-square input, [`DenseError::NonFinite`] for
+/// non-finite entries, [`DenseError::NoConvergence`] if QR sweeps fail.
+pub fn schur(a: &Mat) -> Result<(Mat, Mat), DenseError> {
+    if a.rows != a.cols {
+        return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    let n = a.rows;
+    if n == 0 {
+        return Ok((Mat::zeros(0, 0), Mat::zeros(0, 0)));
+    }
+    if n == 1 {
+        return Ok((Mat::identity(1), a.clone()));
+    }
+    let (h, q0) = hessenberg(a);
+    let (t, q) = real_schur(h, q0)?;
+    Ok((q, t))
+}
+
 /// Spectral radius estimate through [`eigenvalues`].
 ///
 /// # Errors
@@ -2016,3 +2041,106 @@ mod tests {
         assert_residuals(&b, &eb);
     }
 }
+
+/// Matrix norm kind for [`norm`] and [`cond_norm`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MatrixNorm {
+    /// Maximum absolute column sum: `max_j sum_i |A_{i,j}|`.
+    One,
+    /// Maximum absolute row sum: `max_i sum_j |A_{i,j}|`.
+    Inf,
+    /// Frobenius norm: `sqrt(sum_{i,j} |A_{i,j}|^2)`.
+    Frobenius,
+    /// Spectral (2-norm): largest singular value `sigma_1(A)`.
+    Spectral,
+}
+
+/// Matrix norm with checked shape and finite entries.
+///
+/// # Errors
+/// Returns shape, non-finite input, or SVD convergence errors.
+pub fn norm(
+    a: &Mat,
+    kind: MatrixNorm,
+) -> Result<f64, DenseError> {
+    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+        return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    if a.rows == 0 || a.cols == 0 {
+        return Ok(0.0);
+    }
+    Ok(match kind {
+        | MatrixNorm::One => crate::kernels::matfun::norm1(a),
+        | MatrixNorm::Inf => crate::kernels::schur::norm_inf(a),
+        | MatrixNorm::Frobenius => a.norm_fro(),
+        | MatrixNorm::Spectral => svd(a)?.s.first().copied().unwrap_or(0.0),
+    })
+}
+
+/// Condition number in the selected norm; singular matrices have infinite condition number.
+///
+/// # Errors
+/// Returns shape, non-finite input, or factorization errors.
+pub fn cond_norm(
+    a: &Mat,
+    kind: MatrixNorm,
+) -> Result<f64, DenseError> {
+    let norm_a = norm(a, kind)?;
+    if kind == MatrixNorm::Spectral {
+        return cond(a);
+    }
+    if a.rows != a.cols {
+        return Err(DenseError::Shape);
+    }
+    if a.rows == 0 {
+        return Ok(1.0);
+    }
+    let lu = match lu_factor(a) {
+        | Ok(lu) => lu,
+        | Err(DenseError::Singular) => return Ok(f64::INFINITY),
+        | Err(error) => return Err(error),
+    };
+    Ok(norm_a * norm(&lu.inverse(), kind)?)
+}
+
+/// Moore-Penrose pseudoinverse with a relative singular-value threshold.
+///
+/// # Errors
+/// Returns non-finite input for invalid relative tolerance, or SVD errors.
+pub fn pinv_tol(
+    a: &Mat,
+    rcond: f64,
+) -> Result<Mat, DenseError> {
+    if !rcond.is_finite() || rcond < 0.0 {
+        return Err(DenseError::NonFinite);
+    }
+    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+        return Err(DenseError::Shape);
+    }
+    if !a.is_finite() {
+        return Err(DenseError::NonFinite);
+    }
+    if a.rows == 0 || a.cols == 0 {
+        return Ok(Mat::zeros(a.cols, a.rows));
+    }
+    let d = svd(a)?;
+    let cutoff = rcond * d.s.first().copied().unwrap_or(0.0);
+    let mut out = Mat::zeros(a.cols, a.rows);
+    for r in 0..d.s.len() {
+        if d.s[r] <= cutoff {
+            continue;
+        }
+        for i in 0..a.cols {
+            for j in 0..a.rows {
+                out.data[i * a.rows + j] += d.v.at(i, r) * d.u.at(j, r) / d.s[r];
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Optimized host-compatible dense operations preserving blocked faer arithmetic.
+pub mod optimized;

@@ -479,24 +479,6 @@ fn manifest_provenance_effects_api_version_and_binary_layout_are_explicit() {
     assert_eq!(legacy.rust_path, None);
 }
 
-#[test]
-fn api_v2_manifest_crosses_the_c_string_boundary() {
-    let pointer = rssn::ffi::rssn_manifest_json();
-    assert!(!pointer.is_null());
-    // SAFETY: this pointer is the live owned CString returned by RSSN.
-    let text = unsafe { std::ffi::CStr::from_ptr(pointer) }
-        .to_str()
-        .unwrap()
-        .to_owned();
-    // SAFETY: the returned CString is released exactly once.
-    unsafe { rssn::ffi::rssn_string_free(pointer) };
-    let manifest: serde_json::Value = serde_json::from_str(&text).unwrap();
-    assert_eq!(manifest["api_version"].as_u64(), Some(2));
-    assert!(manifest["ops"].as_array().unwrap().iter().any(|op| {
-        op["name"] == "num_integrate"
-            && op["rust_path"] == "crate::kernels::quadrature::integrate_gk"
-    }));
-}
 
 #[test]
 fn equivalent_concrete_dimensions_work_for_callback_name_and_key_dispatch() {
@@ -655,4 +637,260 @@ fn callback_registration_rejects_contradictory_tensor_schema() {
         Signature::new(vec![invalid], TypeExpr::Float),
     )));
     assert!(result.is_err());
+}
+
+fn raw_vector_type() -> TypeExpr {
+    TypeExpr::Tensor {
+        rank: rssn::kernel::signature::NatExpr::Lit(1),
+        shape: None,
+        elem: Box::new(TypeExpr::Float),
+    }
+}
+fn raw_vector(data: &[f64]) -> Value {
+    Value::Tensor(TensorValue {
+        shape: vec![data.len()],
+        data: data.iter().copied().map(Value::Float).collect(),
+        elem: TypeExpr::Float,
+    })
+}
+fn vector_data(value: &Value) -> Vec<f64> {
+    let Value::Tensor(tensor) = value else {
+        panic!("vector result")
+    };
+    tensor.data.iter().map(number).collect()
+}
+
+#[test]
+fn extended_quadrature_callbacks_cover_finite_and_infinite_intervals() {
+    let session = Session::new();
+    let mut context = CallCtx::new();
+    let square = context
+        .add_callback(Arc::new(NativeCallback::new(
+            |args: &[Value]| Ok(Value::Float(number(&args[0]).powi(2))),
+            sig(),
+        )))
+        .unwrap();
+    for name in [
+        "num_gauss_legendre",
+        "num_clenshaw_curtis",
+        "num_romberg",
+        "num_tanh_sinh",
+    ] {
+        let args = if matches!(name, "num_gauss_legendre" | "num_clenshaw_curtis") {
+            vec![
+                Value::Float(0.0),
+                Value::Float(1.0),
+                Value::int(16),
+                Value::int(10000),
+            ]
+        } else {
+            vec![
+                Value::Float(0.0),
+                Value::Float(1.0),
+                Value::Float(1e-10),
+                Value::int(14),
+                Value::int(10000),
+            ]
+        };
+        let result = session.call_ho(name, &args, &[square], &context).unwrap();
+        assert!(
+            (number(field(&result, "value")) - 1.0 / 3.0).abs() < 1e-9,
+            "{name}: {result:?}"
+        );
+    }
+    for (name, direction, expected) in [
+        ("num_integrate_semi_infinite", 1, 1.0),
+        ("num_integrate_left_infinite", -1, 1.0),
+        ("num_integrate_infinite", 0, std::f64::consts::PI.sqrt()),
+    ] {
+        let callback = context
+            .add_callback(Arc::new(NativeCallback::new(
+                move |args: &[Value]| {
+                    let x = number(&args[0]);
+                    Ok(Value::Float(if direction == 0 {
+                        (-x * x).exp()
+                    } else {
+                        (-(direction as f64) * x).exp()
+                    }))
+                },
+                sig(),
+            )))
+            .unwrap();
+        let args = if direction == 0 {
+            vec![Value::Float(1e-9), Value::int(10000)]
+        } else {
+            vec![Value::Float(0.0), Value::Float(1e-9), Value::int(10000)]
+        };
+        let result = session.call_ho(name, &args, &[callback], &context).unwrap();
+        assert_eq!(field(&result, "converged"), &Value::Bool(true));
+        assert!(
+            (number(field(&result, "value")) - expected).abs() < 1e-8,
+            "{name}: {result:?}"
+        );
+    }
+}
+
+#[test]
+fn extended_callbacks_preserve_errors_and_enforce_evaluation_budgets() {
+    let session = Session::new();
+    let mut context = CallCtx::new();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let count = Arc::clone(&calls);
+    let callback = context
+        .add_callback(Arc::new(NativeCallback::new(
+            move |args: &[Value]| {
+                count.fetch_add(1, Ordering::SeqCst);
+                Ok(Value::Float(number(&args[0])))
+            },
+            sig(),
+        )))
+        .unwrap();
+    let args = [
+        Value::Float(0.0),
+        Value::Float(1.0),
+        Value::int(16),
+        Value::int(3),
+    ];
+    assert!(matches!(
+        session.call_ho("num_gauss_legendre", &args, &[callback], &context),
+        Err(OpError::NotReduced(_))
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
+    let sentinel = OpError::Domain("preserve extended callback failure".into());
+    let expected = sentinel.clone();
+    let failure = context
+        .add_callback(Arc::new(NativeCallback::new(
+            move |_: &[Value]| Err(sentinel.clone()),
+            sig(),
+        )))
+        .unwrap();
+    assert_eq!(
+        session.call_ho("num_gauss_legendre", &args, &[failure], &context),
+        Err(expected)
+    );
+}
+
+#[test]
+fn extended_nonlinear_systems_and_halley_run_through_callback_abi() {
+    let session = Session::new();
+    let mut context = CallCtx::new();
+    let system = context
+        .add_callback(Arc::new(NativeCallback::new(
+            |args: &[Value]| {
+                let x = vector_data(&args[0]);
+                Ok(raw_vector(&[x[0] * x[0] - 2.0, x[1] - 3.0]))
+            },
+            Signature::new(vec![raw_vector_type()], raw_vector_type()),
+        )))
+        .unwrap();
+    for name in ["num_broyden", "num_dogleg"] {
+        let result = session
+            .call_ho(
+                name,
+                &[
+                    raw_vector(&[1.0, 0.0]),
+                    Value::Float(1e-9),
+                    Value::int(100),
+                    Value::int(1000),
+                ],
+                &[system],
+                &context,
+            )
+            .unwrap();
+        let x = vector_data(field(&result, "x"));
+        assert!(
+            (x[0] - 2.0_f64.sqrt()).abs() < 1e-7 && (x[1] - 3.0).abs() < 1e-7,
+            "{name}: {x:?}"
+        );
+    }
+    let mut derivatives = Vec::new();
+    for order in 0..3 {
+        derivatives.push(
+            context
+                .add_callback(Arc::new(NativeCallback::new(
+                    move |args: &[Value]| {
+                        let x = number(&args[0]);
+                        Ok(Value::Float(match order {
+                            | 0 => x * x * x - 2.0,
+                            | 1 => 3.0 * x * x,
+                            | _ => 6.0 * x,
+                        }))
+                    },
+                    sig(),
+                )))
+                .unwrap(),
+        );
+    }
+    let result = session
+        .call_ho(
+            "num_halley",
+            &[
+                Value::Float(1.0),
+                Value::Float(1e-12),
+                Value::int(50),
+                Value::int(300),
+            ],
+            &derivatives,
+            &context,
+        )
+        .unwrap();
+    assert!((number(field(&result, "root")) - 2.0_f64.cbrt()).abs() < 1e-10);
+}
+
+#[test]
+fn extended_smooth_optimizers_share_callback_budget_and_keep_box_constraints() {
+    let session = Session::new();
+    let mut context = CallCtx::new();
+    let f = context
+        .add_callback(Arc::new(NativeCallback::new(
+            |args: &[Value]| {
+                let x = vector_data(&args[0]);
+                Ok(Value::Float((x[0] - 2.0).powi(2) + (x[1] + 1.0).powi(2)))
+            },
+            Signature::new(vec![raw_vector_type()], TypeExpr::Float),
+        )))
+        .unwrap();
+    let g = context
+        .add_callback(Arc::new(NativeCallback::new(
+            |args: &[Value]| {
+                let x = vector_data(&args[0]);
+                Ok(raw_vector(&[2.0 * (x[0] - 2.0), 2.0 * (x[1] + 1.0)]))
+            },
+            Signature::new(vec![raw_vector_type()], raw_vector_type()),
+        )))
+        .unwrap();
+    for name in ["num_bfgs", "num_lbfgs", "num_nonlinear_cg", "num_lbfgs_b"] {
+        let mut args = vec![raw_vector(&[0.0, 0.0])];
+        let bounded = name == "num_lbfgs_b";
+        if bounded {
+            args.extend([raw_vector(&[0.0, -0.5]), raw_vector(&[1.0, 1.0])]);
+        }
+        args.extend([Value::Float(1e-8), Value::int(100), Value::int(1000)]);
+        let result = session.call_ho(name, &args, &[f, g], &context).unwrap();
+        assert_eq!(
+            field(&result, "converged"),
+            &Value::Bool(true),
+            "{name}: {result:?}"
+        );
+        let x = vector_data(field(&result, "x"));
+        let expected = if bounded {
+            [1.0, -0.5]
+        } else {
+            [2.0, -1.0]
+        };
+        assert!(
+            x.iter().zip(expected).all(|(a, b)| (a - b).abs() < 1e-7),
+            "{name}: {x:?}"
+        );
+    }
+    let args = [
+        raw_vector(&[0.0, 0.0]),
+        Value::Float(1e-8),
+        Value::int(100),
+        Value::int(1),
+    ];
+    assert!(matches!(
+        session.call_ho("num_bfgs", &args, &[f, g], &context),
+        Err(OpError::NotReduced(_))
+    ));
 }

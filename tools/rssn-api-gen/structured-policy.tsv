@@ -5,3 +5,10 @@ crate::kernels::krylov::IterResult	ITERATIVE_LINEAR_SOLVE	bound	D,E	x=E/D;residu
 crate::kernels::multigrid::MgResult	MGRESULT	unbound	-	x=?;history=?;converged=-
 crate::kernels::rootfind::SystemSolution	SYSTEMSOLUTION	unbound	-	x=?;residual=?;iterations=-
 crate::kernels::optim::OptResult	OPTRESULT	unbound	-	x=?;fx=?;iterations=-;evaluations=-;converged=-
+crate::kernels::stats_ext::TestResult	TEST_RESULT	bound	-	statistic=1;p_value=1;df=1
+crate::kernels::stats_ext::LinearRegressionResult	LINEAR_REGRESSION	bound	-	coefficients=1;intercept=1;r_squared=1;residuals=1
+crate::kernels::stats_ext::LogisticRegressionResult	LOGISTIC_REGRESSION	bound	-	coefficients=1;intercept=1;log_likelihood=1;iterations=-
+crate::kernels::stats_ext::PcaResult	PCA_RESULT	bound	-	mean=1;components=1;explained_variance=1;explained_variance_ratio=1;transformed=1;n_components=-
+crate::kernels::schur::Schur	SCHUR_RESULT	bound	-	q=1;t=1
+crate::kernels::schur::Qz	QZ_RESULT	bound	-	s=1;t=1;q=1;z=1;alpha=1;beta=1
+crate::kernels::lowrank::PivotedQr	PIVOTED_QR	bound	-	q=1;r=1;perm=-

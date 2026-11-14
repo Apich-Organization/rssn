@@ -58,6 +58,34 @@ pub mod euler_amr;
 pub mod euler_nd;
 /// Ewald summation and particle-mesh Ewald.
 pub mod ewald;
+#[allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::single_call_fn,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::redundant_else,
+    clippy::if_not_else,
+    clippy::suboptimal_flops,
+    clippy::doc_markdown,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::manual_let_else,
+    clippy::option_if_let_else,
+    clippy::collapsible_if,
+    clippy::unnecessary_wraps,
+    clippy::many_single_char_names,
+    clippy::manual_clamp,
+    clippy::needless_range_loop,
+    clippy::trivially_copy_pass_by_ref
+)]
+pub mod fdm_nd;
 /// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
 pub mod fem_simplex;
 /// Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
@@ -135,3 +163,9 @@ pub mod structured;
 pub mod symplectic;
 /// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
 pub mod yee_fdtd;
+
+/// Stochastic integration, jump diffusions, Levy processes, and multilevel Monte Carlo.
+pub mod stochastic;
+
+/// Structured FEM, FVM, discontinuous Galerkin, and spectral entry points.
+pub mod pde_api;

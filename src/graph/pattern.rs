@@ -763,8 +763,8 @@ struct Matcher<'g, 'o, 'u> {
     root_window: Option<usize>,
 }
 
-impl<'g, 'p> Matcher<'g, '_, '_> {
-    fn exhausted(&self) -> bool {
+impl<'p> Matcher<'_, '_, '_> {
+    const fn exhausted(&self) -> bool {
         self.out.len() >= self.limit || self.fuel == 0
     }
 

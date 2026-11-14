@@ -819,3 +819,100 @@ fn generated_contract_table_preserves_dimension_rules_across_families() {
     });
     assert!(call(&session, "num_lp_norm", &[length, bad_scale]).is_err());
 }
+
+#[test]
+fn source_codecs_reject_dimensions_hidden_inside_optional_arguments() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::DynValue;
+    use rssn::kernel::value::VariantValue;
+    let session = Session::new();
+    let optional = |value| {
+        Value::Variant(VariantValue {
+            tag: "Some".into(),
+            payload: vec![value],
+        })
+    };
+    let args = [
+        vector(&[0.0, 1.0, 2.0]),
+        vector(&[1.0]),
+        optional(Value::Float(0.5)),
+    ];
+    let valid = call(&session, "num_stats_ext_kde", &args);
+    assert!(
+        valid.is_ok(),
+        "valid KDE optional bandwidth rejected: {valid:?}"
+    );
+    let none = Value::Variant(VariantValue {
+        tag: "None".into(),
+        payload: vec![],
+    });
+    let inferred = call(
+        &session,
+        "num_stats_ext_kde",
+        &[args[0].clone(), args[1].clone(), none],
+    );
+    assert!(
+        inferred.is_ok(),
+        "valid KDE None bandwidth rejected: {inferred:?}"
+    );
+    for malformed in [
+        Value::Variant(VariantValue {
+            tag: "None".into(),
+            payload: vec![Value::Float(0.5)],
+        }),
+        Value::Variant(VariantValue {
+            tag: "Some".into(),
+            payload: vec![],
+        }),
+        Value::Variant(VariantValue {
+            tag: "Unknown".into(),
+            payload: vec![],
+        }),
+        optional(Value::Bool(true)),
+    ] {
+        assert!(
+            call(
+                &session,
+                "num_stats_ext_kde",
+                &[args[0].clone(), args[1].clone(), malformed]
+            )
+            .is_err()
+        );
+    }
+    let test_result = call(
+        &session,
+        "num_stats_ext_t_test_one_sample",
+        &[vector(&[1.0, 2.0, 3.0]), Value::Float(2.0)],
+    )
+    .unwrap();
+    let Value::Record(test_result) = test_result else {
+        panic!("expected test-result record")
+    };
+    assert_eq!(test_result.get("df"), Some(&optional(Value::Float(2.0))));
+    let ks_result = call(
+        &session,
+        "num_stats_ext_ks_test_two_sample",
+        &[vector(&[1.0, 2.0]), vector(&[1.0, 2.0])],
+    )
+    .unwrap();
+    let Value::Record(ks_result) = ks_result else {
+        panic!("expected test-result record")
+    };
+    assert_eq!(
+        ks_result.get("df"),
+        Some(&Value::Variant(VariantValue {
+            tag: "None".into(),
+            payload: vec![]
+        }))
+    );
+    let dimensioned = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(0.5)),
+        dim: DimExpr::Base("Length".into()),
+    });
+    let bad_args = [args[0].clone(), args[1].clone(), optional(dimensioned)];
+    let rejected = call(&session, "num_stats_ext_kde", &bad_args);
+    assert!(
+        rejected.is_err(),
+        "dimensioned optional bandwidth was accepted: {rejected:?}"
+    );
+}

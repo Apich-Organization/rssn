@@ -145,6 +145,22 @@ fn instantiated_type(
                     .collect::<Result<_, OpError>>()?,
             )
         },
+        | TypeExpr::Variant(variants) => {
+            TypeExpr::Variant(
+                variants
+                    .iter()
+                    .map(|(tag, payload)| {
+                        Ok((
+                            tag.clone(),
+                            payload
+                                .iter()
+                                .map(|ty| instantiated_type(ty, vars))
+                                .collect::<Result<_, OpError>>()?,
+                        ))
+                    })
+                    .collect::<Result<_, OpError>>()?,
+            )
+        },
         | other => other.clone(),
     })
 }
@@ -214,6 +230,27 @@ fn schema_representation_matches(
                     b.iter().filter(|(n, _)| n == name).count() == 1
                         && b.iter()
                             .any(|(n, other)| n == name && schema_representation_matches(ty, other))
+                })
+        },
+        | (TypeExpr::Variant(expected), TypeExpr::Variant(actual)) => {
+            let expected_tags: std::collections::BTreeSet<_> =
+                expected.iter().map(|(tag, _)| tag).collect();
+            let actual_tags: std::collections::BTreeSet<_> =
+                actual.iter().map(|(tag, _)| tag).collect();
+            !expected.is_empty()
+                && !actual.is_empty()
+                && expected_tags.len() == expected.len()
+                && actual_tags.len() == actual.len()
+                && actual.iter().all(|(tag, payload)| {
+                    expected
+                        .iter()
+                        .find(|(name, _)| name == tag)
+                        .is_some_and(|(_, schema)| {
+                            schema.len() == payload.len()
+                                && schema.iter().zip(payload).all(|(expected, actual)| {
+                                    schema_representation_matches(expected, actual)
+                                })
+                        })
                 })
         },
         | (TypeExpr::Real, TypeExpr::Int | TypeExpr::Real | TypeExpr::Float)
@@ -336,6 +373,33 @@ fn decorate(
                 *value = decorate(value.clone(), ty)?;
             }
             Ok(Value::Record(record))
+        },
+        | (Value::Variant(mut variant), TypeExpr::Variant(variants)) => {
+            let tags: std::collections::BTreeSet<_> = variants.iter().map(|(tag, _)| tag).collect();
+            if tags.len() != variants.len() {
+                return Err(OpError::Domain(
+                    "numerical variant result schema contains duplicate tags".into(),
+                ));
+            }
+            let schema = variants
+                .iter()
+                .find(|(tag, _)| tag == &variant.tag)
+                .map(|(_, payload)| payload)
+                .ok_or_else(|| {
+                    OpError::Domain("numerical variant result has an undeclared tag".into())
+                })?;
+            if schema.len() != variant.payload.len() {
+                return Err(OpError::Domain(
+                    "numerical variant result payload has incorrect arity".into(),
+                ));
+            }
+            variant.payload = variant
+                .payload
+                .into_iter()
+                .zip(schema)
+                .map(|(value, ty)| decorate(value, ty))
+                .collect::<Result<_, _>>()?;
+            Ok(Value::Variant(variant))
         },
         | (value, ty) if scalar_representation_matches(&value, ty) => Ok(value),
         | (_, _) => {
@@ -539,5 +603,60 @@ mod contract_tests {
             elem: Box::new(TypeExpr::Float),
         };
         assert!(decorate(value(vec![0], vec![], TypeExpr::Bool), &empty).is_err());
+    }
+}
+
+#[cfg(test)]
+mod variant_contract_tests {
+    use super::*;
+    use crate::kernel::value::VariantValue;
+
+    fn tagged(
+        tag: &str,
+        payload: Vec<Value>,
+    ) -> Value {
+        Value::Variant(VariantValue {
+            tag: tag.into(),
+            payload,
+        })
+    }
+
+    #[test]
+    fn option_payloads_receive_instantiated_dimensions_without_accepting_malformed_tags() {
+        let schema = TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            (
+                "Some".into(),
+                vec![TypeExpr::Float.with_dim(DimExpr::Var("D".into()))],
+            ),
+        ]);
+        let length = canonical(&DimExpr::Base("Length".into())).unwrap();
+        let schema = instantiated_type(&schema, &BTreeMap::from([("D", length)])).unwrap();
+        assert!(decorate(tagged("None", vec![]), &schema).is_ok());
+        let value = decorate(tagged("Some", vec![Value::Float(2.0)]), &schema).unwrap();
+        let Value::Variant(value) = value else {
+            panic!("expected variant")
+        };
+        let Value::Dyn(value) = &value.payload[0] else {
+            panic!("expected dimensional payload")
+        };
+        assert_eq!(value.dim, DimExpr::Base("Length".into()));
+        for invalid in [
+            tagged("Some", vec![]),
+            tagged("None", vec![Value::Float(2.0)]),
+            tagged("Unknown", vec![]),
+            tagged("Some", vec![Value::Bool(true)]),
+            tagged(
+                "Some",
+                vec![Value::Dyn(DynValue {
+                    value: Box::new(Value::Float(2.0)),
+                    dim: DimExpr::Base("Time".into()),
+                })],
+            ),
+        ] {
+            assert!(decorate(invalid, &schema).is_err());
+        }
+        let malformed = TypeExpr::Variant(vec![("None".into(), vec![]), ("None".into(), vec![])]);
+        assert!(decorate(tagged("None", vec![]), &malformed).is_err());
     }
 }

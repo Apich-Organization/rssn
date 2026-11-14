@@ -135,7 +135,7 @@ impl Diag {
 
     /// The same finding blamed on argument `index` (zero-based).
     #[must_use]
-    pub fn at(
+    pub const fn at(
         mut self,
         index: usize,
     ) -> Self {

@@ -212,13 +212,12 @@ fn bridge_dimension(name: &str) -> DimRule {
         // The unit box has no length scale, so the field keeps its dimension.
         | "heat_fd" | "wave_fd" | "advect_fd" | "heat_fd_bc" | "wave_fd_bc"
         | "advect_fd_upwind" => DimRule::Same(1),
-        | "poisson_fd" | "poisson_fd_bc" => DimRule::Same(0),
         // A norm, a trace over two axes, an inverse transform or the dense
         // form of a decomposition keeps the dimension of the tensor (the
         // factors of a decomposition are bare orthonormal or unit-norm
         // matrices, so the core or the weights carry it).
         | "tensor_norm" | "tensor_contract" | "tt_dense" | "tucker_dense" | "cp_dense"
-        | "ifft_abs" => DimRule::Same(0),
+        | "ifft_abs" | "poisson_fd" | "poisson_fd_bc" => DimRule::Same(0),
         // Ranks and column indices are counts, not quantities.
         | "qr_pivoted_rank" | "qr_pivoted_permutation" | "nested_dissection_order" => {
             DimRule::NonMetric

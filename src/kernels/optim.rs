@@ -404,6 +404,223 @@ pub fn lbfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
     }
 }
 
+/// Nonlinear Conjugate Gradient (Polak-Ribiere+ with automatic steepest-descent
+/// restarts) for smooth unconstrained minimization.
+pub fn nonlinear_cg<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
+    f: F,
+    grad: Option<&G>,
+    x0: &[f64],
+    tol: f64,
+    max_iter: usize,
+) -> OptResult {
+    let gfun = |x: &[f64]| grad.map_or_else(|| numerical_gradient(&f, x), |g| g(x));
+    let n = x0.len();
+    let mut x = x0.to_vec();
+    let mut fx = f(&x);
+    let mut gx = gfun(&x);
+    let mut d: Vec<f64> = gx.iter().map(|v| -v).collect();
+    let mut evals = 1usize;
+    let mut it = 0usize;
+    let mut converged = false;
+    let restart_period = n.max(20);
+    while it < max_iter {
+        if gx.iter().fold(0.0_f64, |a, v| a.max(v.abs())) <= tol {
+            converged = true;
+            break;
+        }
+        it += 1;
+        let (t, fnw) = line_search(&f, &gfun, &x, fx, &gx, &d, &mut evals);
+        if t == 0.0 {
+            d = gx.iter().map(|v| -v).collect();
+            let (t2, fnw2) = line_search(&f, &gfun, &x, fx, &gx, &d, &mut evals);
+            if t2 == 0.0 {
+                break;
+            }
+            let xn: Vec<f64> = x.iter().zip(&d).map(|(a, b)| a + t2 * b).collect();
+            gx = gfun(&xn);
+            x = xn;
+            fx = fnw2;
+            d = gx.iter().map(|v| -v).collect();
+            continue;
+        }
+        let xn: Vec<f64> = x.iter().zip(&d).map(|(a, b)| a + t * b).collect();
+        let gn = gfun(&xn);
+        let gg = dot(&gx, &gx);
+        let gg_next = dot(&gn, &gn);
+        let y: Vec<f64> = gn.iter().zip(&gx).map(|(a, b)| a - b).collect();
+        let beta = if gg > 1e-300
+            && !it.is_multiple_of(restart_period)
+            && dot(&gn, &gx).abs() < 0.2 * gg_next
+        {
+            (dot(&gn, &y) / gg).max(0.0)
+        } else {
+            0.0
+        };
+        let mut dn: Vec<f64> = gn
+            .iter()
+            .zip(&d)
+            .map(|(&gi, &di)| -gi + beta * di)
+            .collect();
+        if dot(&gn, &dn) >= 0.0 {
+            dn = gn.iter().map(|v| -v).collect();
+        }
+        x = xn;
+        fx = fnw;
+        gx = gn;
+        d = dn;
+    }
+    OptResult {
+        x,
+        fx,
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
+}
+
+/// Box-constrained L-BFGS (`lower <= x <= upper`) using projected gradient
+/// steps and active-bound clamping.
+// The established slice API keeps objective, gradient, bounds and work controls
+// independent; bundling them would break callers without changing the method.
+#[allow(clippy::too_many_arguments)]
+pub fn lbfgs_b<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
+    f: F,
+    grad: Option<&G>,
+    x0: &[f64],
+    lower: &[f64],
+    upper: &[f64],
+    m: usize,
+    tol: f64,
+    max_iter: usize,
+) -> OptResult {
+    let gfun = |x: &[f64]| grad.map_or_else(|| numerical_gradient(&f, x), |g| g(x));
+    let project = |v: &[f64]| -> Vec<f64> {
+        v.iter()
+            .zip(lower.iter().zip(upper.iter()))
+            .map(|(&vi, (&lo, &hi))| vi.clamp(lo, hi))
+            .collect()
+    };
+    let n = x0.len();
+    let mut x = project(x0);
+    let mut fx = f(&x);
+    let mut gx = gfun(&x);
+    let mut hist: Vec<(Vec<f64>, Vec<f64>, f64)> = Vec::new();
+    let mut evals = 1usize;
+    let mut it = 0usize;
+    let mut converged = false;
+    let m = m.max(1);
+    while it < max_iter {
+        let x_pg = project(
+            &x.iter()
+                .zip(&gx)
+                .map(|(xi, gi)| xi - gi)
+                .collect::<Vec<_>>(),
+        );
+        let pg_norm = x
+            .iter()
+            .zip(&x_pg)
+            .map(|(a, b)| (a - b) * (a - b))
+            .sum::<f64>()
+            .sqrt();
+        if pg_norm <= tol {
+            converged = true;
+            break;
+        }
+        it += 1;
+        let mut q = gx.clone();
+        let mut alpha = vec![0.0; hist.len()];
+        for (i, (s, y, rho)) in hist.iter().enumerate().rev() {
+            let a = rho * dot(s, &q);
+            if let Some(slot) = alpha.get_mut(i) {
+                *slot = a;
+            }
+            for (qj, &yj) in q.iter_mut().zip(y.iter()) {
+                *qj -= a * yj;
+            }
+        }
+        if let Some((s, y, _)) = hist.last() {
+            let yy = dot(y, y);
+            if yy > 1e-300 {
+                let gamma = dot(s, y) / yy;
+                for v in &mut q {
+                    *v *= gamma;
+                }
+            }
+        }
+        for (i, (s, y, rho)) in hist.iter().enumerate() {
+            let beta = rho * dot(y, &q);
+            let a = alpha.get(i).copied().unwrap_or(0.0);
+            for (qj, &sj) in q.iter_mut().zip(s.iter()) {
+                *qj += sj * (a - beta);
+            }
+        }
+        let mut d: Vec<f64> = q.iter().map(|v| -v).collect();
+        for i in 0..n {
+            let xi = x.get(i).copied().unwrap_or(0.0);
+            let lo = lower.get(i).copied().unwrap_or(f64::NEG_INFINITY);
+            let hi = upper.get(i).copied().unwrap_or(f64::INFINITY);
+            if let Some(di) = d.get_mut(i)
+                && ((xi <= lo && *di < 0.0) || (xi >= hi && *di > 0.0))
+            {
+                *di = 0.0;
+            }
+        }
+        if dot(&gx, &d) >= 0.0 {
+            d = (0..n)
+                .map(|i| {
+                    let xi = x.get(i).copied().unwrap_or(0.0);
+                    let gi = gx.get(i).copied().unwrap_or(0.0);
+                    let lo = lower.get(i).copied().unwrap_or(f64::NEG_INFINITY);
+                    let hi = upper.get(i).copied().unwrap_or(f64::INFINITY);
+                    if (xi <= lo && gi > 0.0) || (xi >= hi && gi < 0.0) {
+                        0.0
+                    } else {
+                        -gi
+                    }
+                })
+                .collect();
+        }
+        let mut step = 1.0;
+        let mut x_next = x.clone();
+        let mut f_next = fx;
+        for _ in 0..40 {
+            let cand: Vec<f64> = x.iter().zip(&d).map(|(&xi, &di)| xi + step * di).collect();
+            let p_cand = project(&cand);
+            let diff: Vec<f64> = p_cand.iter().zip(&x).map(|(a, b)| a - b).collect();
+            let fc = f(&p_cand);
+            evals += 1;
+            if fc.is_finite() && fc <= fx + 1e-4 * dot(&gx, &diff) {
+                x_next = p_cand;
+                f_next = fc;
+                break;
+            }
+            step *= 0.5;
+        }
+        let gn = gfun(&x_next);
+        let s: Vec<f64> = x_next.iter().zip(&x).map(|(a, b)| a - b).collect();
+        let y: Vec<f64> = gn.iter().zip(&gx).map(|(a, b)| a - b).collect();
+        let sy = dot(&s, &y);
+        let sn = dot(&s, &s).sqrt();
+        let yn = dot(&y, &y).sqrt();
+        if sy > 1e-14 * sn * yn {
+            if hist.len() == m {
+                hist.remove(0);
+            }
+            hist.push((s, y, 1.0 / sy));
+        }
+        x = x_next;
+        fx = f_next;
+        gx = gn;
+    }
+    OptResult {
+        x,
+        fx,
+        iterations: it,
+        evaluations: evals,
+        converged,
+    }
+}
+
 /// Trust-region method with the dogleg step. The Hessian is supplied
 /// by `hess`; pass `None` for a finite-difference Hessian from gradients.
 pub fn trust_region<F, G, H>(

@@ -993,9 +993,9 @@ impl Search<'_> {
 
     /// Discharges all goals; on success `subst` holds the bindings and the
     /// guards have been checked.
-    fn solve<'p>(
+    fn solve(
         &mut self,
-        goals: &mut Vec<(&'p Pat, CellId)>,
+        goals: &mut Vec<(&Pat, CellId)>,
         subst: &mut Vec<Vec<CellId>>,
     ) -> bool {
         let Some((pat, cell)) = goals.pop() else {

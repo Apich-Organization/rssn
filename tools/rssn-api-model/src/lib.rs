@@ -4,3 +4,6 @@ pub mod structured_codegen;
 
 /// Generator for reviewed numerical dimensional contracts.
 pub mod contract_codegen;
+
+/// Source-derived composable codec bindings.
+pub mod codec_codegen;

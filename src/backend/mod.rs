@@ -31,6 +31,8 @@ use std::fmt;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// Checked forward/reverse differentiation of elementary expressions.
+pub mod autodiff;
 pub mod device;
 #[cfg(feature = "jit")]
 pub mod jit;

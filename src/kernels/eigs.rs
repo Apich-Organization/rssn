@@ -688,3 +688,93 @@ pub fn eigs_shift_invert<S: Fn(&[f64], &mut [f64])>(
     }
     Ok(r)
 }
+
+/// Errors when factoring and solving a sparse shift-invert eigenproblem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShiftInvertError {
+    /// Invalid CSR arrays, dimension, shift, or tolerance.
+    Invalid,
+    /// The shifted matrix is singular.
+    Singular,
+    /// The projected eigenproblem failed.
+    Eigen(EigsError),
+}
+
+/// Sparse-LU shift-invert eigensolve with verified residuals in the original problem.
+/// Duplicate CSR entries are accumulated, and the shift is subtracted once per row.
+///
+/// # Errors
+/// Invalid CSR data, singular shifted factorization, or failed eigensolve.
+pub fn eigs_csr_shift_invert(
+    a: &crate::kernels::krylov::Csr,
+    k: usize,
+    sigma: f64,
+    symmetric: bool,
+    opts: &EigsOptions,
+) -> Result<EigsResult, ShiftInvertError> {
+    use faer::linalg::solvers::Solve;
+    use faer::sparse::SparseColMat;
+    use faer::sparse::Triplet;
+    let n = a.rows;
+    if n != a.cols
+        || n.checked_add(1) != Some(a.indptr.len())
+        || a.indices.len() != a.values.len()
+        || a.indptr.first() != Some(&0)
+        || a.indptr.last() != Some(&a.values.len())
+        || a.indptr.windows(2).any(|v| v[0] > v[1])
+        || a.indices.iter().any(|&j| j >= n)
+        || a.values.iter().any(|v| !v.is_finite())
+        || !sigma.is_finite()
+        || !opts.tol.is_finite()
+        || opts.tol <= 0.0
+    {
+        return Err(ShiftInvertError::Invalid);
+    }
+    let mut triplets = Vec::with_capacity(a.values.len() + n);
+    for row in 0..n {
+        for index in a.indptr[row]..a.indptr[row + 1] {
+            triplets.push(Triplet::new(row, a.indices[index], a.values[index]));
+        }
+        triplets.push(Triplet::new(row, row, -sigma));
+    }
+    let shifted = SparseColMat::<usize, f64>::try_new_from_triplets(n, n, &triplets)
+        .map_err(|_| ShiftInvertError::Singular)?;
+    let lu = shifted.sp_lu().map_err(|_| ShiftInvertError::Singular)?;
+    let solve = |x: &[f64], y: &mut [f64]| {
+        let rhs = faer::Col::<f64>::from_fn(n, |i| x[i]);
+        let solution = lu.solve(&rhs);
+        for i in 0..n {
+            y[i] = solution[i];
+        }
+    };
+    let mut result = if symmetric {
+        eigs_sym_shift_invert(solve, n, k, sigma, opts)
+    } else {
+        eigs_shift_invert(solve, n, k, sigma, opts)
+    }
+    .map_err(ShiftInvertError::Eigen)?;
+    for index in 0..result.values.len() {
+        let (re, im) = result.values[index];
+        let xr = &result.vectors_re[index];
+        let xi = &result.vectors_im[index];
+        let mut ar = vec![0.0; n];
+        let mut ai = vec![0.0; n];
+        a.matvec(xr, &mut ar);
+        a.matvec(xi, &mut ai);
+        result.residuals[index] = (0..n)
+            .map(|j| {
+                let rr = ar[j] - re * xr[j] + im * xi[j];
+                let ri = ai[j] - re * xi[j] - im * xr[j];
+                rr * rr + ri * ri
+            })
+            .sum::<f64>()
+            .sqrt();
+    }
+    result.converged = result.values.len() == k
+        && result
+            .values
+            .iter()
+            .zip(&result.residuals)
+            .all(|(&(re, im), &r)| r.is_finite() && r <= opts.tol * re.hypot(im).max(1.0));
+    Ok(result)
+}

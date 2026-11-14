@@ -202,9 +202,10 @@ pub fn generate(
                 .to_string();
             let ty = compact(&field.ty);
             let (codec, numeric) = match ty.as_str() {
-                | "f64" | "Vec<f64>" => (ty, true),
+                | "f64" | "Vec<f64>" | "Option<f64>" => (ty, true),
                 | "usize" | "bool" | "Vec<usize>" => (ty, false),
-                | "Mat" if parts[2] == "dense" => ("crate::kernels::dense::Mat".to_string(), true),
+                | "Vec<Complex64>" => ("Vec<num_complex::Complex64>".to_string(), true),
+                | "Mat" => ("crate::kernels::dense::Mat".to_string(), true),
                 | _ => return Err(format!("{path}.{name} has unsupported field type {ty}")),
             };
             let dim = policy_fields

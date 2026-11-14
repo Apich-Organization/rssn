@@ -330,7 +330,7 @@ impl Group {
         // `h` fixes the base points before `j`, so it belongs to every level
         // from `level` to `j`; add it from the deepest one up.
         for l in (level..=j).rev() {
-            self.add_generator(l, h.clone());
+            self.add_generator(l, &h);
         }
     }
 
@@ -339,7 +339,7 @@ impl Group {
     fn add_generator(
         &mut self,
         l: usize,
-        h: Perm,
+        h: &Perm,
     ) {
         let Some(level) = self.levels.get_mut(l) else {
             return;
@@ -377,7 +377,7 @@ impl Group {
             (!is_identity(&g)).then_some(g)
         };
         for &delta in orbit.iter().take(old_len) {
-            if let Some(g) = schreier_gen(&h, delta as usize) {
+            if let Some(g) = schreier_gen(h, delta as usize) {
                 schreier.push(g);
             }
         }
@@ -486,6 +486,7 @@ impl Group {
     /// it maps the base point `point` to `image`: return `false` when no
     /// element of the subgroup can do that. Pruning must never reject a
     /// subgroup element; it only makes the search faster.
+    #[must_use]
     pub fn subgroup(
         &self,
         property: &dyn Fn(&Perm) -> bool,
@@ -602,7 +603,7 @@ impl Group {
             g.gens.push(s.clone());
             g.insert(s, 0);
         }
-        g.gens = self.gens.clone();
+        g.gens.clone_from(&self.gens);
         // Drop trivial levels of the prefix only at the end of the chain.
         while g
             .levels
@@ -893,7 +894,7 @@ impl Group {
         let order = self.order();
         let pb = BigUint::from(p);
         let mut target = BigUint::one();
-        let mut rest = order.clone();
+        let mut rest = order;
         while (&rest % &pb).is_zero() {
             rest /= &pb;
             target *= &pb;
@@ -1016,7 +1017,7 @@ pub fn orbits(
 // Blocks
 // ---------------------------------------------------------------------------
 
-fn find(
+const fn find(
     parent: &mut [usize],
     mut x: usize,
 ) -> usize {
@@ -1039,13 +1040,10 @@ pub fn minimal_blocks(
 ) -> Vec<Vec<u32>> {
     let mut parent: Vec<usize> = (0..n).collect();
     let mut queue = vec![(a as usize, b as usize)];
-    if let (Some(ra), Some(rb)) = (
-        Some(find(&mut parent, a as usize)),
-        Some(find(&mut parent, b as usize)),
-    ) {
-        if ra != rb {
-            parent[ra.max(rb)] = ra.min(rb);
-        }
+    let ra = find(&mut parent, a as usize);
+    let rb = find(&mut parent, b as usize);
+    if ra != rb {
+        parent[ra.max(rb)] = ra.min(rb);
     }
     while let Some((x, y)) = queue.pop() {
         for g in gens {

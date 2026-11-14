@@ -25,6 +25,7 @@ enum Method {
     Cg,
     Gmres,
     Bicgstab,
+    Minres,
 }
 
 /// Reviewed solver semantics; the Rust kernel supplies the actual algorithm.
@@ -35,6 +36,12 @@ pub(super) struct IterativeExport {
     method: Method,
 }
 pub(super) static EXPORTS: &[IterativeExport] = &[
+    IterativeExport {
+        name: "num_csr_minres",
+        rust_path: "crate::kernels::krylov_ext::minres",
+        doc: "MINRES for symmetric indefinite systems, identity preconditioning; reports independently recomputed original-system residual.",
+        method: Method::Minres,
+    },
     IterativeExport {
         name: "num_csr_cg",
         rust_path: "crate::kernels::krylov::cg",
@@ -252,6 +259,9 @@ impl EvalDyn for &'static IterativeExport {
         let identity = |r: &[f64], z: &mut [f64]| z.copy_from_slice(r);
         let mut result = match self.method {
             | Method::Cg => krylov::cg(apply, identity, &b, None, tol, max_iter),
+            | Method::Minres => {
+                crate::kernels::krylov_ext::minres(apply, identity, &b, None, tol, max_iter)
+            },
             | Method::Bicgstab => krylov::bicgstab(apply, identity, &b, None, tol, max_iter),
             | Method::Gmres => {
                 let restart = integer(&args[4], "restart")?;
