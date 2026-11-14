@@ -56,6 +56,44 @@ pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     seq
 }
 
+// Count distinct roots using a square-free, positively rescaled chain. The
+// public Sturm sequence retains its original coefficient conventions; removing
+// its common polynomial factor prevents cancellation in repeated-root powers
+// from moving a sign change by sqrt(machine epsilon).
+fn counting_sequence(poly: &Polynomial) -> Vec<Polynomial> {
+    let scale = poly
+        .coeffs
+        .iter()
+        .copied()
+        .map(f64::abs)
+        .fold(0.0, f64::max);
+    if !scale.is_finite() || super::exact_eq(scale, 0.0) {
+        return Vec::new();
+    }
+    let normalized = Polynomial::new(poly.coeffs.iter().map(|value| value / scale).collect());
+    let mut sequence = sturm_sequence(&normalized);
+    if let Some(gcd) = sequence.last().filter(|p| p.coeffs.len() > 1).cloned() {
+        sequence = sequence
+            .into_iter()
+            .map(|p| p.long_division(&gcd).0)
+            .collect();
+    }
+    for polynomial in &mut sequence {
+        let scale = polynomial
+            .coeffs
+            .iter()
+            .copied()
+            .map(f64::abs)
+            .fold(0.0, f64::max);
+        if scale > 0.0 && scale.is_finite() {
+            for coefficient in &mut polynomial.coeffs {
+                *coefficient /= scale;
+            }
+        }
+    }
+    sequence
+}
+
 /// Counts sign changes of the Sturm sequence at a point.
 pub(crate) fn count_sign_changes(
     sequence: &[Polynomial],
@@ -68,9 +106,9 @@ pub(crate) fn count_sign_changes(
     for poly in sequence {
         let val = poly.eval(point);
 
-        let sign = if val > 1e-9 {
+        let sign = if val > 0.0 {
             Some(1)
-        } else if val < -1e-9 {
+        } else if val < 0.0 {
             Some(-1)
         } else {
             None
@@ -110,9 +148,15 @@ pub fn isolate_real_roots(
     poly: &Polynomial,
     precision: f64,
 ) -> Result<Vec<(f64, f64)>, String> {
-    let seq = sturm_sequence(poly);
+    if !precision.is_finite() || precision <= 0.0 {
+        return Err("root isolation precision must be finite and positive".into());
+    }
+    let seq = counting_sequence(poly);
 
     let bound = root_bound(poly)?;
+    if !bound.is_finite() {
+        return Err("polynomial root bound is not representable".into());
+    }
 
     let mut roots = Vec::new();
 
@@ -148,7 +192,12 @@ pub fn isolate_real_roots(
             roots.push((a, b));
         } else {
             let mid = f64::midpoint(a, b);
-
+            if super::exact_eq(mid, a) || super::exact_eq(mid, b) {
+                return Err("roots cannot be separated at requested floating precision".into());
+            }
+            if stack.len() > 131072 {
+                return Err("root isolation work budget exhausted".into());
+            }
             stack.push((a, mid));
 
             stack.push((mid, b));
@@ -210,37 +259,46 @@ pub fn refine_root_bisection(
     tolerance: f64,
 ) -> f64 {
     let (mut a, mut b) = interval;
-
-    let mut mid = f64::midpoint(a, b);
-
-    // Check endpoints first
-    if poly.eval(a).abs() < tolerance {
+    if !a.is_finite() || !b.is_finite() || a > b || !tolerance.is_finite() || tolerance <= 0.0 {
+        return f64::NAN;
+    }
+    let sequence = counting_sequence(poly);
+    if sequence
+        .first()
+        .is_some_and(|p| super::exact_eq(p.eval(a), 0.0))
+    {
         return a;
     }
-
-    if poly.eval(b).abs() < tolerance {
+    if sequence
+        .first()
+        .is_some_and(|p| super::exact_eq(p.eval(b), 0.0))
+    {
         return b;
     }
-
-    loop {
-        if (b - a).abs() <= tolerance {
-            break;
+    let mut changes_a = count_sign_changes(&sequence, a);
+    if changes_a <= count_sign_changes(&sequence, b) {
+        return f64::NAN;
+    }
+    // Root counts, rather than a sign-changing residual, also refine roots of
+    // even multiplicity. Absolute residual tolerances depend on coefficient
+    // scaling and cannot certify an error in the root coordinate.
+    for _ in 0..4096 {
+        let midpoint = f64::midpoint(a, b);
+        if (b - a).abs() <= tolerance
+            || super::exact_eq(midpoint, a)
+            || super::exact_eq(midpoint, b)
+        {
+            return midpoint;
         }
-
-        mid = f64::midpoint(a, b);
-
-        if poly.eval(mid).abs() < f64::EPSILON {
-            return mid;
-        }
-
-        if poly.eval(a).signum() * poly.eval(mid).signum() < 0.0 {
-            b = mid;
+        let changes_mid = count_sign_changes(&sequence, midpoint);
+        if changes_a > changes_mid {
+            b = midpoint;
         } else {
-            a = mid;
+            a = midpoint;
+            changes_a = changes_mid;
         }
     }
-
-    mid
+    f64::NAN
 }
 
 /// Finds all distinct real roots of a polynomial.

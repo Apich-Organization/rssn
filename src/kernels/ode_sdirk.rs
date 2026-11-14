@@ -345,6 +345,7 @@ where
     J: Fn(f64, &[f64]) -> Mat,
 {
     let common = crate::kernels::ode_adaptive::OdeOptions {
+        hmin: 0.0,
         rtol: opts.rtol,
         atol: opts.atol,
         h0: opts.h0,

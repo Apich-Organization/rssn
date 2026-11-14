@@ -18,6 +18,21 @@ pub enum OnlineStatsError {
     Overflow,
 }
 
+impl std::fmt::Display for OnlineStatsError {
+    fn fmt(
+        &self,
+        formatter: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        formatter.write_str(match self {
+            | Self::InvalidDimension => "online covariance dimension is zero or unallocatable",
+            | Self::DimensionMismatch => "online covariance dimensions disagree",
+            | Self::NonFiniteInput => "online covariance input must be finite",
+            | Self::Overflow => "online covariance count or arithmetic overflow",
+        })
+    }
+}
+impl std::error::Error for OnlineStatsError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -89,6 +89,27 @@ pub trait Field:
     fn magnitude(&self) -> f64;
 }
 
+// Exact monomorphization: a nonzero rational is always an admissible pivot.
+// The magnitude heuristic deliberately stays above floating rank thresholds;
+// no exact input is converted to a floating value for an invertibility test.
+impl Field for num_rational::BigRational {
+    fn is_invertible(&self) -> bool {
+        !self.is_zero()
+    }
+
+    fn inverse(&self) -> Result<Self, String> {
+        if self.is_zero() {
+            Err("Cannot invert zero rational".into())
+        } else {
+            Ok(self.recip())
+        }
+    }
+
+    fn magnitude(&self) -> f64 {
+        if self.is_zero() { 0.0 } else { 1.0 }
+    }
+}
+
 impl Field for f64 {
     fn is_invertible(&self) -> bool {
         *self != 0.0
@@ -948,7 +969,7 @@ impl<T: Field> Matrix<T> {
             let mut pivot_row = j;
 
             for i in j..n {
-                if self.get(i, j).is_invertible() {
+                if lu.get(i, j).is_invertible() {
                     pivot_row = i;
 
                     break;

@@ -331,6 +331,7 @@ where
         .collect();
     let mut t = 0.0;
     loop {
+        crate::sim::models_geodesic_relativity::native_charge();
         if t >= t_end - 1e-14 {
             break;
         }

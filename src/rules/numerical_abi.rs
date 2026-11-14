@@ -8,7 +8,56 @@ pub mod codecs;
 /// Declarative dimensional relationships for numerical exports.
 pub mod dimensions;
 mod iterative;
+#[path = "numerical_abi/native_analysis/argmin.rs"]
+mod native_analysis_argmin;
+#[path = "numerical_abi/native_analysis/holonomic.rs"]
+mod native_analysis_holonomic;
+#[path = "numerical_abi/native_analysis/jacobian.rs"]
+pub(in crate::rules) mod native_analysis_jacobian;
+#[path = "numerical_abi/native_analysis/nbody.rs"]
+mod native_analysis_nbody;
+#[path = "numerical_abi/native_analysis/newton_cg.rs"]
+mod native_analysis_newton_cg;
+#[path = "numerical_abi/native_analysis/objects.rs"]
+mod native_analysis_objects;
+#[path = "numerical_abi/native_analysis/ode.rs"]
+mod native_analysis_ode;
+#[path = "numerical_abi/native_analysis/ode_common.rs"]
+pub(in crate::rules) mod native_analysis_ode_common;
+#[path = "numerical_abi/native_analysis/oscillatory.rs"]
+mod native_analysis_oscillatory;
+#[path = "numerical_abi/native_analysis/parallel.rs"]
+mod native_analysis_parallel;
+#[path = "numerical_abi/native_analysis/pde.rs"]
+mod native_analysis_pde;
+#[path = "numerical_abi/native_analysis/physics_ode.rs"]
+mod native_analysis_physics_ode;
+#[path = "numerical_abi/native_analysis/pic.rs"]
+mod native_analysis_pic;
+#[path = "numerical_abi/native_analysis/sde.rs"]
+mod native_analysis_sde;
+#[path = "numerical_abi/native_analysis/yee.rs"]
+mod native_analysis_yee;
+pub(in crate::rules) mod native_backend;
+pub(in crate::rules) mod native_backend_extended;
+mod native_backend_scalar;
+mod native_device;
+mod native_discrete;
+mod native_fdtd_model;
+mod native_grids;
+mod native_homology;
+mod native_jit;
+mod native_linear;
+mod native_lir;
+mod native_misc;
+pub(super) mod native_models;
+pub(in crate::rules) mod native_object_api;
+mod native_particles;
+mod native_relativity;
+pub(in crate::rules) mod native_runtime;
+mod native_scenario;
 pub(super) mod runtime_dimensions;
+mod spectral_sparse;
 use dimensions::DimensionPolicy;
 
 use crate::graph::Arity;
@@ -553,6 +602,48 @@ fn install(
     i: &mut Installer<'_>,
     namespace: &str,
 ) -> Result<(), RuleError> {
+    native_models::install(i, namespace)?;
+    native_discrete::install(i, namespace)?;
+    if namespace == "numerical_vector" {
+        native_backend_extended::install(i)?;
+        native_backend_scalar::install(i)?;
+        native_particles::install(i)?;
+        native_device::install(i)?;
+        native_lir::install(i)?;
+        native_relativity::install(i)?;
+        native_jit::install(i)?;
+        native_analysis_ode::install(i)?;
+        native_analysis_holonomic::install(i)?;
+        native_analysis_sde::install(i)?;
+        native_analysis_pic::install(i)?;
+        native_analysis_physics_ode::install(i)?;
+        native_analysis_nbody::install(i)?;
+        native_analysis_yee::install(i)?;
+        native_scenario::install(i)?;
+        native_misc::install(i)?;
+        native_fdtd_model::install(i)?;
+    }
+    if namespace == "numerical_vector" {
+        native_grids::install(i)?;
+        native_analysis_objects::install(i)?;
+        native_analysis_parallel::install(i)?;
+        native_analysis_oscillatory::install(i)?;
+        native_analysis_pde::install(i)?;
+        native_analysis_newton_cg::install(i)?;
+        native_analysis_argmin::install(i)?;
+        native_analysis_ode_common::install(i)?;
+        native_analysis_jacobian::install(i)?;
+    }
+    if namespace == "numerical_matrix" {
+        native_linear::install(i)?;
+    }
+    if namespace == "numerical_matrix" {
+        native_backend::install(i)?;
+    }
+    if namespace == "numerical_vector" {
+        native_runtime::install(i)?;
+        native_homology::install(i)?;
+    }
     for export in exports().filter(|entry| entry.namespace == namespace) {
         let signature = export.signature();
         let op = i.op(OpDescriptor::new(
@@ -570,23 +661,32 @@ fn install(
     for export in codecs::EXPORTS
         .iter()
         .chain(codecs::GENERATED_CODEC_EXPORTS.iter())
+        .chain(codecs::OBJECT_EXPORTS.iter())
+        .chain(codecs::GEOMETRY_EXPORTS.iter())
+        .chain(codecs::NATIVE_SCALAR_EXPORTS.iter())
+        .chain(codecs::NATIVE_DISCRETE_EXPORTS.iter())
+        .chain(codecs::DUAL_EXPORTS.iter())
+        .chain(codecs::ANALYSIS_EXPORTS.iter())
+        .chain(codecs::LINEAR_CODEC_EXPORTS.iter())
         .copied()
         .filter(|entry| entry.namespace == namespace)
     {
         let signature = export.signature();
-        let op = i.op(OpDescriptor::new(
-            export.name,
-            Arity::Fixed(signature.params.len() as u8),
-        )
-        .rust_path(export.rust_path)
-        .category(export.namespace)
-        .doc(export.doc)
-        .stability(export.stability)
-        .signature(signature)
-        .eval_dyn(Arc::new(export)))?;
+        let mut descriptor =
+            OpDescriptor::new(export.name, Arity::Fixed(signature.params.len() as u8))
+                .category(export.namespace)
+                .doc(export.doc)
+                .stability(export.stability)
+                .signature(signature)
+                .eval_dyn(Arc::new(export));
+        if !export.rust_path.is_empty() {
+            descriptor = descriptor.rust_path(export.rust_path);
+        }
+        let op = i.op(descriptor)?;
         i.dim(op, export.dimension_policy.dim_rule());
     }
     if namespace == "numerical_matrix" {
+        spectral_sparse::install(i)?;
         for export in iterative::EXPORTS {
             let signature = export.signature();
             let op = i.op(OpDescriptor::new(

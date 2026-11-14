@@ -13,6 +13,8 @@ use argmin::core::OptimizationResult;
 use argmin::core::PopulationState;
 use argmin::core::Solver;
 use argmin::core::State;
+use argmin::solver::conjugategradient::NonlinearConjugateGradient;
+use argmin::solver::conjugategradient::beta::PolakRibierePlus;
 use argmin::solver::gradientdescent::SteepestDescent;
 use argmin::solver::linesearch::MoreThuenteLineSearch;
 use argmin::solver::particleswarm::ParticleSwarm;
@@ -318,8 +320,9 @@ type CGLineSearch<P, G, F> = MoreThuenteLineSearch<P, G, F>;
 
 type CGIterState<P, G, F> = IterState<P, G, (), (), (), F>;
 
-// SteepestDescent<LineSearch>
-type CGOptimizer<P, G, F> = SteepestDescent<CGLineSearch<P, G, F>>;
+// Genuine nonlinear conjugate gradient with a nonnegative Polak–Ribière update.
+type CGOptimizer<P, G, F> =
+    NonlinearConjugateGradient<P, CGLineSearch<P, G, F>, PolakRibierePlus, F>;
 
 // OptimizationResult<CostFunction, Optimizer, IterState>
 type CGResult<C, P, G, F> = OptimizationResult<C, CGOptimizer<P, G, F>, CGIterState<P, G, F>>;
@@ -422,7 +425,7 @@ impl EquationOptimizer {
     {
         let linesearch: MThLineSearch = MoreThuenteLineSearch::new();
 
-        let solver: SteepestDescent<MThLineSearch> = SteepestDescent::new(linesearch);
+        let solver = NonlinearConjugateGradient::new(linesearch, PolakRibierePlus::new());
 
         let res = Executor::new(cost_function, solver)
             .configure(|state| {

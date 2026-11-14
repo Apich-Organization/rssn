@@ -84,7 +84,7 @@ fn error(e: impl std::fmt::Display) -> BackendError {
     BackendError::Codegen(e.to_string())
 }
 
-fn cl_type(ty: Ty) -> Type {
+const fn cl_type(ty: Ty) -> Type {
     match ty {
         | Ty::F64 => types::F64,
         | Ty::I64 | Ty::Slice => types::I64,
@@ -351,8 +351,7 @@ fn trampoline(
     let ctx = b.ins().stack_addr(pointer, status_slot, 0);
     let depth = b.ins().iconst(types::I64, 0);
     let mut call_args = vec![ctx, depth];
-    let mut slot = 0_i32;
-    for t in native_params(f) {
+    for (slot, t) in (0_i32..).zip(native_params(f)) {
         let raw = b.ins().load(types::I64, flags, args_ptr, slot * 8);
         let v = if t == types::F64 {
             b.ins().bitcast(types::F64, MemFlagsData::new(), raw)
@@ -362,7 +361,6 @@ fn trampoline(
             raw
         };
         call_args.push(v);
-        slot += 1;
     }
     if f.results.len() > 1 {
         call_args.push(out_ptr);

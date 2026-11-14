@@ -242,6 +242,7 @@ impl EvalDyn for Method {
         let hmax = numeric(&args[5], 5)?;
         let max_steps = positive_budget(&args[6], 6, "ODE attempt budget")?;
         let options = OdeOptions {
+            hmin: 0.0,
             atol,
             rtol,
             hmax,

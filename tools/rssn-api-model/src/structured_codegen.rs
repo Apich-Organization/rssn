@@ -84,7 +84,42 @@ pub(crate) fn formula(
                 let syn::Expr::Path(name) = call.func.as_ref() else {
                     return Err("invalid formula function".into());
                 };
-                if name.path.is_ident("sqrt") && call.args.len() == 1 {
+                if name.path.is_ident("base") && call.args.len() == 1 {
+                    let syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(base),
+                        ..
+                    }) = &call.args[0]
+                    else {
+                        return Err("base requires an explicit SI dimension string".into());
+                    };
+                    // The canonical names in src/dim/units.rs::DIMENSIONS.
+                    if !matches!(
+                        base.value().as_str(),
+                        "Length"
+                            | "Mass"
+                            | "Time"
+                            | "Current"
+                            | "Temperature"
+                            | "Amount"
+                            | "Luminosity"
+                    ) {
+                        return Err("base requires a canonical SI base dimension".into());
+                    }
+                    Ok(format!("{prefix}::Base({:?})", base.value()))
+                } else if name.path.is_ident("extent_pow") && call.args.len() == 4 {
+                    let argument = integer(&call.args[1])
+                        .filter(|n| *n >= 0)
+                        .ok_or("extent argument must be nonnegative")?;
+                    let axis = integer(&call.args[2])
+                        .filter(|n| *n >= 0)
+                        .ok_or("extent axis must be nonnegative")?;
+                    let sign =
+                        integer(&call.args[3]).ok_or("extent power multiplier must be integral")?;
+                    Ok(format!(
+                        "{prefix}::ShapePower(&{}, {argument}, {axis}, {sign})",
+                        emit(&call.args[0], variables)?
+                    ))
+                } else if name.path.is_ident("sqrt") && call.args.len() == 1 {
                     Ok(format!(
                         "{prefix}::Pow(&{}, 1, 2)",
                         emit(&call.args[0], variables)?
@@ -287,6 +322,61 @@ pub fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fixed_si_formulas_accept_only_canonical_base_dimensions() {
+        let vars = BTreeSet::new();
+        assert!(
+            formula(
+                "base(\"Mass\")*(base(\"Length\")^2)/(base(\"Time\")^2)",
+                &vars
+            )
+            .unwrap()
+            .contains("Base(\"Mass\")")
+        );
+        for invalid in [
+            "base(\"Energy\")",
+            "base(\"Length;code\")",
+            "base(Length)",
+            "base(\"Length\",1)",
+        ] {
+            assert!(formula(invalid, &vars).is_err(), "{invalid}");
+        }
+        let source = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/dim/units.rs"),
+        )
+        .unwrap();
+        for name in [
+            "Length",
+            "Mass",
+            "Time",
+            "Current",
+            "Temperature",
+            "Amount",
+            "Luminosity",
+        ] {
+            assert!(
+                source.contains(&format!("\"{name}\"")),
+                "SI base name drift: {name}"
+            );
+        }
+    }
+    #[test]
+    fn shape_powers_require_explicit_checked_integer_indices() {
+        let vars = ["D"].into_iter().collect();
+        assert!(
+            formula("extent_pow(D,0,0,-1)", &vars)
+                .unwrap()
+                .contains("ShapePower")
+        );
+        for invalid in [
+            "extent_pow(D,-1,0,1)",
+            "extent_pow(D,0,-1,1)",
+            "extent_pow(D,0,0,0.5)",
+            "extent_pow(Unknown,0,0,1)",
+        ] {
+            assert!(formula(invalid, &vars).is_err(), "{invalid}");
+        }
+    }
     #[test]
     fn dimensional_formulas_are_composable_and_reject_unbound_or_invalid_powers() {
         let variables = BTreeSet::from(["D", "E", "velocity"]);

@@ -170,6 +170,8 @@ pub fn run_schrodinger_simulation(
         }
     }
 
+    initial_psi.copy_from_slice(&psi);
+
     Ok(snapshots)
 }
 

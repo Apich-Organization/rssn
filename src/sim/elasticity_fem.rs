@@ -316,6 +316,21 @@ pub fn solve_heterogeneous<'a>(
     )
 }
 
+fn checked_material(
+    model: Model,
+    material: Material,
+) -> Result<Vec<Vec<f64>>, String> {
+    if !material.young.is_finite()
+        || material.young <= 0.0
+        || !material.poisson.is_finite()
+        || material.poisson <= -1.0
+        || material.poisson >= 0.5
+    {
+        return Err("elastic material requires finite E>0 and -1<nu<1/2".into());
+    }
+    Ok(constitutive_matrix(model, &material))
+}
+
 /// Assembly and solve shared by [`solve`] and [`solve_heterogeneous`]:
 /// `mat_at` is sampled at every quadrature point; when `per_cell_c` is set the
 /// constitutive matrix at each cell centroid is stored for stress recovery.
@@ -331,6 +346,9 @@ fn solve_with_material<'a>(
     per_cell_c: bool,
 ) -> Result<ElasticSolution<'a>, String> {
     let dim = space.mesh.dim;
+    if dim == 2 && (!thickness.is_finite() || thickness <= 0.0) {
+        return Err("elastic thickness must be finite positive".into());
+    }
     let scale = if dim == 2 { thickness } else { 1.0 };
     let nd = space.size();
     let ndof = nd * dim;
@@ -371,9 +389,12 @@ fn solve_with_material<'a>(
                     x[a] += l * space.mesh.nodes[space.mesh.cells[ci][m]][a];
                 }
             }
-            let c = constitutive_matrix(model, &mat_at(x));
+            let c = checked_material(model, mat_at(x))?;
             let nv = c.len();
             let f = (force)(x);
+            if f.iter().any(|v| !v.is_finite()) {
+                return Err("elastic body force must be finite".into());
+            }
             for i in 0..nl {
                 for a in 0..dim {
                     load[cd[i] * dim + a] += scale * vol * wq * f[a] * b[i];
@@ -398,7 +419,7 @@ fn solve_with_material<'a>(
                     xc[a] += space.mesh.nodes[space.mesh.cells[ci][m]][a] / (dim + 1) as f64;
                 }
             }
-            cell_c.push(constitutive_matrix(model, &mat_at(xc)));
+            cell_c.push(checked_material(model, mat_at(xc))?);
         }
     }
     let mut dirichlet: Vec<Option<f64>> = vec![None; ndof];
@@ -458,11 +479,44 @@ fn solve_with_material<'a>(
     }
     let a = Csr::from_triplets(ndof, ndof, &t2);
     let u = LinearSystem::new(a, solver)?.solve(&load, None)?;
-    let c0 = constitutive_matrix(model, &mat_at([0.0; 3]));
+    let c0 = checked_material(model, mat_at([0.0; 3]))?;
     Ok(ElasticSolution {
         space,
         u,
         c: c0,
         cell_c: per_cell_c.then_some(cell_c),
     })
+}
+
+/// Owning adapter snapshot used by session capabilities. This keeps the native
+/// constitutive data with its native space without self-referential borrowing.
+pub(crate) struct OwnedElasticSolution {
+    space: FemSpace,
+    u: Vec<f64>,
+    c: Vec<Vec<f64>>,
+    cell_c: Option<Vec<Vec<Vec<f64>>>>,
+}
+impl ElasticSolution<'_> {
+    pub(crate) fn into_owned(self) -> OwnedElasticSolution {
+        OwnedElasticSolution {
+            space: self.space.clone(),
+            u: self.u,
+            c: self.c,
+            cell_c: self.cell_c,
+        }
+    }
+}
+impl OwnedElasticSolution {
+    pub(crate) fn with<R>(
+        &self,
+        f: impl FnOnce(&ElasticSolution<'_>) -> R,
+    ) -> R {
+        let borrowed = ElasticSolution {
+            space: &self.space,
+            u: self.u.clone(),
+            c: self.c.clone(),
+            cell_c: self.cell_c.clone(),
+        };
+        f(&borrowed)
+    }
 }

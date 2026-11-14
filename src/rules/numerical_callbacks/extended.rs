@@ -235,18 +235,49 @@ impl EvalDyn for Quad {
         } else {
             vec![TypeExpr::Float, TypeExpr::Float, TypeExpr::Int]
         };
-        params.push(function(TypeExpr::Float, TypeExpr::Float));
+        let d = DimExpr::Var("D".into());
+        let e = DimExpr::Var("E".into());
+        let product = DimExpr::Mul(vec![d.clone(), e.clone()]);
+        if self.finite() {
+            params[0] = super::dimensional_type(d.clone());
+            params[1] = super::dimensional_type(d.clone());
+        } else if !matches!(self, Self::Infinite) {
+            params[0] = super::dimensional_type(d.clone());
+        }
+        if !self.fixed() {
+            let i = if self.finite() {
+                2
+            } else {
+                usize::from(!matches!(self, Self::Infinite))
+            };
+            params[i] = super::dimensional_type(product.clone());
+        }
+        params.push(function(
+            super::dimensional_type(d),
+            super::dimensional_type(e),
+        ));
         let mut fields = vec![
-            ("value".into(), TypeExpr::Float),
+            ("value".into(), super::dimensional_type(product.clone())),
             ("evaluations".into(), TypeExpr::Int),
         ];
         if !self.fixed() {
             fields.extend([
-                ("error".into(), TypeExpr::Float),
+                ("error".into(), super::dimensional_type(product)),
                 ("converged".into(), TypeExpr::Bool),
             ]);
         }
-        effectful(Signature::new(params, TypeExpr::Record(fields)))
+        let mut sig = effectful(Signature::new(params, TypeExpr::Record(fields)));
+        sig.type_params = ["D", "E"]
+            .into_iter()
+            .map(|name| {
+                super::TypeParam {
+                    name: name.into(),
+                    kind: super::TypeParamKind::Dim,
+                    bounds: vec![],
+                }
+            })
+            .collect();
+        sig
     }
 
     fn eval(
@@ -263,7 +294,27 @@ impl EvalDyn for Quad {
             1,
             self.signature().params[last].clone(),
         )?;
-        scalar_callback(&signature)?;
+        let domain = scalar_dimension(&signature.params[0])?;
+        let codomain = scalar_dimension(&signature.ret)?;
+        let output = super::expression(&super::canonical(&DimExpr::Mul(vec![
+            domain.clone(),
+            codomain.clone(),
+        ]))?)?;
+        let bound = |i| -> Result<f64, OpError> {
+            check_dimension(ctx, &args[i], &domain, i)?;
+            numeric(&args[i], i)
+        };
+        let tolerance = |i| -> Result<f64, OpError> {
+            check_dimension(ctx, &args[i], &output, i)?;
+            let t = numeric(&args[i], i)?;
+            if t > 0.0 {
+                Ok(t)
+            } else {
+                Err(OpError::Domain(
+                    "absolute quadrature tolerance must be positive".into(),
+                ))
+            }
+        };
         let budget = Budget::new(positive_budget(
             &args[last - 1],
             last - 1,
@@ -271,12 +322,19 @@ impl EvalDyn for Quad {
         )?);
         let evaluate = |x: f64| {
             budget
-                .evaluate(&callback, &[Value::Float(x)], |value| numeric(&value, last))
+                .evaluate(
+                    &callback,
+                    &[super::dimensional_float(x, domain.clone())],
+                    |value| {
+                        check_dimension(ctx, &value, &codomain, last)?;
+                        numeric(&value, last)
+                    },
+                )
                 .unwrap_or(f64::NAN)
         };
         let result = if self.fixed() {
-            let a = scalar(args, 0, ctx)?;
-            let b = scalar(args, 1, ctx)?;
+            let a = bound(0)?;
+            let b = bound(1)?;
             if b < a {
                 return Err(OpError::Domain("quadrature requires a <= b".into()));
             }
@@ -299,16 +357,16 @@ impl EvalDyn for Quad {
                 return Err(OpError::Domain("quadrature value is not finite".into()));
             }
             return Ok(record(vec![
-                ("value", Value::Float(value)),
+                ("value", super::dimensional_float(value, output.clone())),
                 ("evaluations", Value::int(budget.used.get())),
             ]));
         } else if self.finite() {
-            let a = scalar(args, 0, ctx)?;
-            let b = scalar(args, 1, ctx)?;
+            let a = bound(0)?;
+            let b = bound(1)?;
             if b < a {
                 return Err(OpError::Domain("quadrature requires a <= b".into()));
             }
-            let tol = tolerance(args, 2, ctx)?;
+            let tol = tolerance(2)?;
             let levels = positive_budget(&args[3], 3, "quadrature refinement budget")?;
             if matches!(self, Self::Romberg) {
                 if !(2..=24).contains(&levels) {
@@ -326,10 +384,10 @@ impl EvalDyn for Quad {
                 quadrature::tanh_sinh_with_levels(evaluate, a, b, tol, levels)
             }
         } else if matches!(self, Self::Infinite) {
-            quadrature::integrate_infinite(evaluate, tolerance(args, 0, ctx)?)
+            quadrature::integrate_infinite(evaluate, tolerance(0)?)
         } else {
-            let bound = scalar(args, 0, ctx)?;
-            let tol = tolerance(args, 1, ctx)?;
+            let bound = bound(0)?;
+            let tol = tolerance(1)?;
             if matches!(self, Self::RightInfinite) {
                 quadrature::integrate_semi_infinite(evaluate, bound, tol)
             } else {
@@ -344,9 +402,12 @@ impl EvalDyn for Quad {
             ));
         }
         Ok(record(vec![
-            ("value", Value::Float(result.value)),
+            (
+                "value",
+                super::dimensional_float(result.value, output.clone()),
+            ),
             ("evaluations", Value::int(budget.used.get())),
-            ("error", Value::Float(result.error)),
+            ("error", super::dimensional_float(result.error, output)),
             ("converged", Value::Bool(result.converged)),
         ]))
     }
@@ -652,7 +713,7 @@ pub(super) fn install(installer: &mut Installer<'_>) -> Result<(), RuleError> {
             installer,
             name,
             path,
-            "Dimensionless serial quadrature with a strict callback evaluation budget. Fixed rules: a,b,order,max_evaluations,callback. Romberg/tanh-sinh: a,b,tolerance,max_levels,max_evaluations,callback. Semi-infinite rules: finite_bound,tolerance,max_evaluations,callback; left-infinite integrates (-infinity,bound], right-infinite [bound,infinity). Full infinite rule: tolerance,max_evaluations,callback. Adaptive results include value,error,evaluations,converged; fixed rules report value,evaluations. Callback failures propagate unchanged.",
+            "Dimension-aware serial quadrature with a strict callback evaluation budget. Fixed rules: a,b,order,max_evaluations,callback. Romberg/tanh-sinh: a,b,tolerance,max_levels,max_evaluations,callback. Semi-infinite rules: finite_bound,tolerance,max_evaluations,callback; left-infinite integrates (-infinity,bound], right-infinite [bound,infinity). Full infinite rule: tolerance,max_evaluations,callback. Adaptive results include value,error,evaluations,converged; fixed rules report value,evaluations. Callback failures propagate unchanged.",
             method.count(),
             method,
         )?;

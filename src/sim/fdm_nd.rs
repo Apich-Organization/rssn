@@ -1637,125 +1637,51 @@ pub fn solve_heat_with_bc(
     bc.validate()?;
     if spec.initial.len() != spec.grid.len() {
         return Err(FdmError::ShapeMismatch(
-            "the initial field does not fit the grid".into(),
+            "initial heat field does not fit the grid".into(),
         ));
     }
-    let (nx, ny, h) = (spec.grid.nx, spec.grid.ny, spec.grid.h);
-    let r = spec.alpha * spec.dt / (h * h);
-    if !r.is_finite() || spec.alpha < 0.0 || spec.dt <= 0.0 {
-        return Err(FdmError::Domain("invalid heat parameters".into()));
+    if !spec.alpha.is_finite()
+        || spec.alpha < 0.0
+        || !spec.dt.is_finite()
+        || spec.dt <= 0.0
+        || spec.initial.iter().any(|v| !v.is_finite())
+    {
+        return Err(FdmError::Domain(
+            "invalid heat field or coefficients".into(),
+        ));
     }
-    if stepping == TimeStepping::Explicit && r > 0.25 {
-        return Err(FdmError::Domain(format!(
-            "the explicit heat scheme needs `alpha*dt/h^2 <= 0.25`, found {r}"
-        )));
+    let spacing_squared = spec.grid.h * spec.grid.h;
+    let r = spec.alpha * spec.dt / spacing_squared;
+    if !r.is_finite() || (stepping == TimeStepping::Explicit && r > 0.25) {
+        return Err(FdmError::Domain("unstable explicit heat step".into()));
     }
-
+    let grid = Grid3D {
+        nx: spec.grid.nx,
+        ny: spec.grid.ny,
+        nz: 1,
+        h: spec.grid.h,
+    };
+    let boundary = Boundary3D {
+        x_min: bc.left.clone(),
+        x_max: bc.right.clone(),
+        y_min: bc.bottom.clone(),
+        y_max: bc.top.clone(),
+        z_min: BoundaryCondition::Periodic,
+        z_max: BoundaryCondition::Periodic,
+    };
     let mut u = spec.initial.clone();
     enforce_dirichlet_2d(&mut u, spec.grid, bc);
-    let mut out = Vec::with_capacity(spec.steps + 1);
-    out.push(Field {
+    let mut out = vec![Field {
         grid: spec.grid,
         values: u.clone(),
-    });
-
-    // Helper: compute \partial_{xx} u for every row y
-    let diff_xx = |field: &[f64]| -> Vec<f64> {
-        let mut dxx = vec![0.0; nx * ny];
-        for y in 0..ny {
-            let row = &field[y * nx..(y + 1) * nx];
-            let d2 = line_second_diff(row, h, &bc.left, &bc.right, y);
-            dxx[y * nx..(y + 1) * nx].copy_from_slice(&d2);
-        }
-        dxx
-    };
-
-    // Helper: compute \partial_{yy} u for every column x
-    let diff_yy = |field: &[f64]| -> Vec<f64> {
-        let mut dyy = vec![0.0; nx * ny];
-        let mut col = vec![0.0; ny];
-        for x in 0..nx {
-            for y in 0..ny {
-                col[y] = field[y * nx + x];
-            }
-            let d2 = line_second_diff(&col, h, &bc.bottom, &bc.top, x);
-            for y in 0..ny {
-                dyy[y * nx + x] = d2[y];
-            }
-        }
-        dyy
-    };
-
-    // Helper: implicit line solves along x: (I - rx h^2 \partial_{xx}) u = rhs
-    let implicit_x = |rhs_field: &[f64], rx: f64| -> Result<Vec<f64>, FdmError> {
-        let mut res = vec![0.0; nx * ny];
-        for y in 0..ny {
-            let row = &rhs_field[y * nx..(y + 1) * nx];
-            let sol = solve_line_implicit(row, rx, h, &bc.left, &bc.right, y)?;
-            res[y * nx..(y + 1) * nx].copy_from_slice(&sol);
-        }
-        Ok(res)
-    };
-
-    // Helper: implicit line solves along y: (I - ry h^2 \partial_{yy}) u = rhs
-    let implicit_y = |rhs_field: &[f64], ry: f64| -> Result<Vec<f64>, FdmError> {
-        let mut res = vec![0.0; nx * ny];
-        let mut col = vec![0.0; ny];
-        for x in 0..nx {
-            for y in 0..ny {
-                col[y] = rhs_field[y * nx + x];
-            }
-            let sol = solve_line_implicit(&col, ry, h, &bc.bottom, &bc.top, x)?;
-            for y in 0..ny {
-                res[y * nx + x] = sol[y];
-            }
-        }
-        Ok(res)
-    };
-
+    }];
     for _ in 0..spec.steps {
-        u = match stepping {
-            | TimeStepping::Explicit => {
-                let dxx = diff_xx(&u);
-                let dyy = diff_yy(&u);
-                let mut next: Vec<f64> = (0..u.len())
-                    .map(|i| u[i] + spec.alpha * spec.dt * (dxx[i] + dyy[i]))
-                    .collect();
-                enforce_dirichlet_2d(&mut next, spec.grid, bc);
-                next
-            },
-            | TimeStepping::BackwardEuler => {
-                // Fractional-step / LOD Backward Euler: (I - dt alpha d_xx)(I - dt alpha d_yy) u^{n+1} = u^n
-                let u_half = implicit_x(&u, r)?;
-                let mut u_next = implicit_y(&u_half, r)?;
-                enforce_dirichlet_2d(&mut u_next, spec.grid, bc);
-                u_next
-            },
-            | TimeStepping::CrankNicolson | TimeStepping::Adi => {
-                // Peaceman-Rachford ADI (2nd-order in time and space, unconditionally stable):
-                // Step 1 (half step): (I - r/2 h^2 d_xx) u* = (I + r/2 h^2 d_yy) u^n
-                let dyy = diff_yy(&u);
-                let rhs1: Vec<f64> = (0..u.len())
-                    .map(|i| u[i] + 0.5 * spec.alpha * spec.dt * dyy[i])
-                    .collect();
-                let u_star = implicit_x(&rhs1, 0.5 * r)?;
-
-                // Step 2 (half step): (I - r/2 h^2 d_yy) u^{n+1} = (I + r/2 h^2 d_xx) u*
-                let dxx_star = diff_xx(&u_star);
-                let rhs2: Vec<f64> = (0..u.len())
-                    .map(|i| u_star[i] + 0.5 * spec.alpha * spec.dt * dxx_star[i])
-                    .collect();
-                let mut u_next = implicit_y(&rhs2, 0.5 * r)?;
-                enforce_dirichlet_2d(&mut u_next, spec.grid, bc);
-                u_next
-            },
-        };
+        u = adaptive::heat_step(grid, &boundary, spec.alpha, stepping, &u, spec.dt)?;
         out.push(Field {
             grid: spec.grid,
             values: u.clone(),
         });
     }
-
     Ok(out)
 }
 
@@ -2420,3 +2346,6 @@ pub fn solve_advection_3d(
 // ---------------------------------------------------------------------------
 // Finite Element Method (FEM) Solvers (1D, 2D, 3D via rssn::sim::fem_*)
 // ---------------------------------------------------------------------------
+
+/// Error-controlled time evolution of semidiscrete PDEs.
+pub mod adaptive;

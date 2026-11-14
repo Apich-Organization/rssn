@@ -708,12 +708,29 @@ impl LinearSystem {
     /// Prepares `a` for repeated solves.
     ///
     /// # Errors
-    /// If the matrix is singular (direct solver).
+    /// Invalid/non-finite CSR storage or tolerance, or a singular direct system.
     pub fn new(
         a: Csr,
         solver: LinearSolver,
     ) -> Result<Self, String> {
         let n = a.rows;
+        if a.cols != n
+            || n.checked_add(1) != Some(a.indptr.len())
+            || a.indices.len() != a.values.len()
+            || a.indptr.first() != Some(&0)
+            || a.indptr.last() != Some(&a.values.len())
+            || a.indptr.windows(2).any(|w| w[0] > w[1])
+            || a.indices.iter().any(|column| *column >= n)
+            || a.values.iter().any(|value| !value.is_finite())
+        {
+            return Err(
+                "linear system requires a finite square CSR matrix with valid storage".into(),
+            );
+        }
+        if matches!(solver, LinearSolver::BiCgStab(tol) | LinearSolver::Gmres(tol) if !tol.is_finite() || tol <= 0.0)
+        {
+            return Err("linear solver tolerance must be finite and positive".into());
+        }
         let direct = match solver {
             | LinearSolver::Direct => true,
             | LinearSolver::Auto => n <= 30_000,
@@ -749,14 +766,26 @@ impl LinearSystem {
     /// Solves `A x = b` (`x0` is the Krylov initial guess).
     ///
     /// # Errors
-    /// If an iterative solve does not reach its tolerance.
+    /// Invalid/non-finite RHS or initial data, unrepresentable output, or an iterative solve that misses its tolerance.
     pub fn solve(
         &self,
         b: &[f64],
         x0: Option<&[f64]>,
     ) -> Result<Vec<f64>, String> {
+        if b.len() != self.a.rows
+            || b.iter().any(|value| !value.is_finite())
+            || x0.is_some_and(|x| x.len() != b.len() || x.iter().any(|value| !value.is_finite()))
+        {
+            return Err(
+                "linear system RHS/initial guess must be finite and match its dimension".into(),
+            );
+        }
         if let Some(lu) = &self.lu {
-            return Ok(lu.solve(b));
+            let out = lu.solve(b);
+            if out.iter().any(|value| !value.is_finite()) {
+                return Err("linear solve produced an unrepresentable solution".into());
+            }
+            return Ok(out);
         }
         let apply = |x: &[f64], y: &mut [f64]| self.a.matvec(x, y);
         let pre = |r: &[f64], z: &mut [f64]| {

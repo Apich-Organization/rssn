@@ -1360,6 +1360,7 @@ pub fn solve_with_sources(
             .collect()
     };
     while t < t_end * (1.0 - 1e-14) {
+        crate::sim::models_geodesic_relativity::native_charge();
         let rate = st.max_rate(&q);
         if !rate.is_finite() || rate <= 0.0 {
             return Err("non-finite wave speed".into());

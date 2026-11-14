@@ -55,8 +55,6 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
     let dy = params.ly / params.ny as f64;
 
-    let n_total = (params.nx * params.ny) as f64;
-
     let mut potential = vec![0.0; params.nx * params.ny];
 
     let nx = params.nx;
@@ -131,7 +129,10 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 
         let norm: f64 = psi.par_iter().map(num_complex::Complex::norm_sqr).sum();
 
-        let norm_factor = (n_total / (norm * dx * dy)).sqrt();
+        if norm <= 0.0 || !norm.is_finite() {
+            return Err("GPE imaginary-time state has zero or non-finite norm".into());
+        }
+        let norm_factor = (1.0 / (norm * dx * dy)).sqrt();
 
         psi.par_iter_mut().for_each(|p| {
             *p *= norm_factor;

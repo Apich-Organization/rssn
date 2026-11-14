@@ -108,12 +108,12 @@ where
     D: Fn(f64, &[f64], &mut [f64]),
 {
     let n = base.len();
-    if scale.abs() < 1e-16 {
+    if scale == 0.0 {
         return Ok(base.to_vec());
     }
     let mut y = y_init.to_vec();
     let mut a_val = vec![0.0; n];
-    let tol = 1e-11 * (1.0 + base.iter().fold(0.0f64, |acc, x| acc.max(x.abs())));
+    let tol = 64.0 * f64::EPSILON * (1.0 + base.iter().fold(0.0f64, |acc, x| acc.max(x.abs())));
 
     for _ in 0..25 {
         drift(t_imp, &y, &mut a_val);
@@ -177,7 +177,7 @@ where
     let final_norm = (0..n)
         .map(|i| (y[i] - base[i] - scale * a_val[i]).abs())
         .fold(0.0f64, f64::max);
-    if final_norm <= 1e-6 * (1.0 + final_norm) {
+    if final_norm.is_finite() && final_norm <= tol {
         Ok(y)
     } else {
         Err(SdeExtError::StepLimit(
@@ -186,7 +186,124 @@ where
     }
 }
 
-/// Core fixed-step drift-implicit integrator over pre-sampled Wiener increments.
+/// One drift-implicit step with prescribed Brownian increments and iterated Itô integrals.
+///
+/// Noncommutative Milstein uses the supplied full iterated-integral matrix;
+/// Euler/theta schemes do not need those integrals. Invalid shapes and
+/// nonconvergent Newton iterations return errors.
+pub fn drift_implicit_step_with_areas<D, F>(
+    drift: &D,
+    diffusion: &F,
+    noise: usize,
+    t: f64,
+    h: f64,
+    y: &[f64],
+    dw: &[f64],
+    areas: &[f64],
+    scheme: DriftImplicitScheme,
+) -> Result<Vec<f64>, SdeExtError>
+where
+    D: Fn(f64, &[f64], &mut [f64]),
+    F: Fn(f64, &[f64], &mut [f64]),
+{
+    if noise.checked_mul(noise) != Some(areas.len()) || areas.iter().any(|v| !v.is_finite()) {
+        return Err(SdeExtError::invalid(
+            "invalid implicit Milstein iterated-integral matrix",
+        ));
+    }
+    implicit_step(drift, diffusion, noise, t, h, y, dw, Some(areas), scheme)
+}
+
+fn implicit_step<D, F>(
+    drift: &D,
+    diffusion: &F,
+    noise: usize,
+    t: f64,
+    h: f64,
+    y: &[f64],
+    dw: &[f64],
+    areas: Option<&[f64]>,
+    scheme: DriftImplicitScheme,
+) -> Result<Vec<f64>, SdeExtError>
+where
+    D: Fn(f64, &[f64], &mut [f64]),
+    F: Fn(f64, &[f64], &mut [f64]),
+{
+    let n = y.len();
+    if n == 0
+        || noise == 0
+        || dw.len() != noise
+        || !h.is_finite()
+        || h <= 0.0
+        || !t.is_finite()
+        || !(t + h).is_finite()
+        || t + h <= t
+        || y.iter().chain(dw).any(|v| !v.is_finite())
+        || n.checked_mul(noise).is_none_or(|size| size > 8_388_608)
+        || n.checked_mul(n).is_none_or(|size| size > 8_388_608)
+    {
+        return Err(SdeExtError::invalid(
+            "invalid or oversized drift-implicit step",
+        ));
+    }
+    let theta = match scheme {
+        | DriftImplicitScheme::Theta(theta) => theta,
+        | DriftImplicitScheme::Trapezoidal => 0.5,
+        | _ => 1.0,
+    };
+    if !(0.0..=1.0).contains(&theta) {
+        return Err(SdeExtError::invalid("theta must be in [0,1]"));
+    }
+    let mut base = y.to_vec();
+    let mut a = vec![0.0; n];
+    let mut g = vec![0.0; n * noise];
+    let split = scheme == DriftImplicitScheme::SplitStepBackwardEuler;
+    if split {
+        base = solve_implicit_drift(drift, t + h, y, y, h)?;
+    } else if theta < 1.0 {
+        drift(t, y, &mut a);
+        if a.iter().any(|v| !v.is_finite()) {
+            return Err(SdeExtError::NonFinite("non-finite explicit drift".into()));
+        }
+        for i in 0..n {
+            base[i] += (1.0 - theta) * h * a[i];
+        }
+    }
+    diffusion(t, if split { &base } else { y }, &mut g);
+    if g.iter().any(|v| !v.is_finite()) {
+        return Err(SdeExtError::NonFinite(
+            "non-finite implicit diffusion".into(),
+        ));
+    }
+    for i in 0..n {
+        for j in 0..noise {
+            base[i] += g[i * noise + j] * dw[j];
+        }
+    }
+    if scheme == DriftImplicitScheme::DriftImplicitMilstein {
+        let correction = if let Some(areas) = areas {
+            crate::kernels::sde::milstein_term_areas(diffusion, t, y, &g, noise, areas)
+        } else {
+            crate::kernels::sde::milstein_term(diffusion, t, y, &g, noise, dw, h)
+        };
+        for i in 0..n {
+            base[i] += correction[i];
+        }
+    }
+    if base.iter().any(|v| !v.is_finite()) {
+        return Err(SdeExtError::NonFinite("non-finite implicit base".into()));
+    }
+    if split {
+        Ok(base)
+    } else {
+        solve_implicit_drift(drift, t + h, &base, &base, theta * h)
+    }
+}
+
+/// Fixed-step drift-implicit integration over prescribed Wiener increments.
+///
+/// Rejects inconsistent shapes, invalid timesteps, non-finite coefficients and
+/// nonconvergent implicit equations. Milstein includes all commutative cross terms.
 pub fn drift_implicit_core<D, F>(
     drift: &D,
     diffusion: &F,
@@ -201,111 +318,38 @@ where
     D: Fn(f64, &[f64], &mut [f64]),
     F: Fn(f64, &[f64], &mut [f64]),
 {
-    let n = y0.len();
-    let steps = increments.len();
-    let mut states = Vec::with_capacity(steps + 1);
-    let mut y = y0.to_vec();
-    states.push(y.clone());
-
-    let mut a_curr = vec![0.0; n];
-    let mut g_curr = vec![0.0; n * noise];
-    let mut g_pert = vec![0.0; n * noise];
-
-    for (step_idx, dw) in increments.iter().enumerate() {
-        let t_curr = t0 + step_idx as f64 * dt;
-        let t_next = t0 + (step_idx + 1) as f64 * dt;
-
-        match scheme {
-            | DriftImplicitScheme::SplitStepBackwardEuler => {
-                // Step 1: Y* = Y_k + a(t_{k+1}, Y*) dt
-                let y_star = solve_implicit_drift(drift, t_next, &y, &y, dt)?;
-                // Step 2: Y_{k+1} = Y* + G(t_k, Y*) dW_k
-                diffusion(t_curr, &y_star, &mut g_curr);
-                if !g_curr.iter().all(|v| v.is_finite()) {
-                    return Err(SdeExtError::NonFinite(
-                        "diffusion became non-finite in split-step backward Euler".into(),
-                    ));
-                }
-                let mut y_next = y_star;
-                for i in 0..n {
-                    let mut diff_sum = 0.0;
-                    for j in 0..noise {
-                        diff_sum += g_curr[i * noise + j] * dw[j];
-                    }
-                    y_next[i] += diff_sum;
-                }
-                if !y_next.iter().all(|v| v.is_finite()) {
-                    return Err(SdeExtError::NonFinite(
-                        "state left the reals in split-step backward Euler".into(),
-                    ));
-                }
-                y = y_next;
-            },
-            | DriftImplicitScheme::BackwardEuler
-            | DriftImplicitScheme::Trapezoidal
-            | DriftImplicitScheme::Theta(_)
-            | DriftImplicitScheme::DriftImplicitMilstein => {
-                let theta = match scheme {
-                    | DriftImplicitScheme::BackwardEuler
-                    | DriftImplicitScheme::DriftImplicitMilstein => 1.0,
-                    | DriftImplicitScheme::Trapezoidal => 0.5,
-                    | DriftImplicitScheme::Theta(th) => th,
-                    | DriftImplicitScheme::SplitStepBackwardEuler => unreachable!(),
-                };
-                if !(0.0..=1.0).contains(&theta) || !theta.is_finite() {
-                    return Err(SdeExtError::invalid(
-                        "theta in drift-implicit scheme must be in [0, 1]",
-                    ));
-                }
-                if theta < 1.0 {
-                    drift(t_curr, &y, &mut a_curr);
-                    if !a_curr.iter().all(|v| v.is_finite()) {
-                        return Err(SdeExtError::NonFinite("drift became non-finite".into()));
-                    }
-                }
-                diffusion(t_curr, &y, &mut g_curr);
-                if !g_curr.iter().all(|v| v.is_finite()) {
-                    return Err(SdeExtError::NonFinite("diffusion became non-finite".into()));
-                }
-
-                let mut base = y.clone();
-                if theta < 1.0 {
-                    let w_exp = (1.0 - theta) * dt;
-                    for i in 0..n {
-                        base[i] += w_exp * a_curr[i];
-                    }
-                }
-                for i in 0..n {
-                    let mut diff_sum = 0.0;
-                    for j in 0..noise {
-                        diff_sum += g_curr[i * noise + j] * dw[j];
-                    }
-                    base[i] += diff_sum;
-                }
-
-                // Add Milstein correction 1/2 \sum_j (D g_j) g_j (dW_j^2 - dt) if requested
-                if scheme == DriftImplicitScheme::DriftImplicitMilstein {
-                    let eps = 1e-7;
-                    for j in 0..noise {
-                        let mut y_supp = y.clone();
-                        for i in 0..n {
-                            y_supp[i] += eps * g_curr[i * noise + j];
-                        }
-                        diffusion(t_curr, &y_supp, &mut g_pert);
-                        let dw2_minus_dt = dw[j] * dw[j] - dt;
-                        for i in 0..n {
-                            let dg_g = (g_pert[i * noise + j] - g_curr[i * noise + j]) / eps;
-                            base[i] += 0.5 * dg_g * dw2_minus_dt;
-                        }
-                    }
-                }
-
-                y = solve_implicit_drift(drift, t_next, &base, &base, theta * dt)?;
-            },
-        }
-        states.push(y.clone());
+    if y0.is_empty()
+        || noise == 0
+        || !t0.is_finite()
+        || !dt.is_finite()
+        || dt <= 0.0
+        || y0.iter().any(|v| !v.is_finite())
+        || increments
+            .iter()
+            .any(|dw| dw.len() != noise || dw.iter().any(|v| !v.is_finite()))
+    {
+        return Err(SdeExtError::invalid(
+            "invalid drift-implicit initial data, grid, or increments",
+        ));
     }
-
+    let mut states = vec![y0.to_vec()];
+    for (index, dw) in increments.iter().enumerate() {
+        let t = t0 + index as f64 * dt;
+        let state = implicit_step(
+            drift,
+            diffusion,
+            noise,
+            t,
+            dt,
+            states
+                .last()
+                .ok_or_else(|| SdeExtError::invalid("empty implicit trajectory"))?,
+            dw,
+            None,
+            scheme,
+        )?;
+        states.push(state);
+    }
     Ok(states)
 }
 
@@ -383,7 +427,7 @@ pub fn sample_alpha_stable_with(
             "alpha-stable parameters require alpha in (0, 2], beta in [-1, 1], and scale > 0",
         ));
     }
-    if (alpha - 2.0).abs() < 1e-12 {
+    if crate::kernels::exact_eq(alpha, 2.0) {
         return Ok(location + 2.0f64.sqrt() * scale * next_normal());
     }
     let u = next_unit().clamp(1e-15, 1.0 - 1e-15);
@@ -391,7 +435,7 @@ pub fn sample_alpha_stable_with(
     let w = -next_unit().max(f64::MIN_POSITIVE).ln();
 
     let half_pi = std::f64::consts::FRAC_PI_2;
-    if (alpha - 1.0).abs() < 1e-12 {
+    if crate::kernels::exact_eq(alpha, 1.0) {
         let term1 = (half_pi + beta * v) * v.tan();
         let term2 = beta * ((half_pi * w * v.cos()) / (half_pi + beta * v)).ln();
         let x = (term1 - term2) / half_pi;

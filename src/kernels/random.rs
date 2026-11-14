@@ -84,7 +84,13 @@ impl Rng {
         a: f64,
         b: f64,
     ) -> f64 {
-        a + (b - a) * self.uniform()
+        let u = self.uniform();
+        let width = b - a;
+        if width.is_finite() {
+            a + width * u
+        } else {
+            a * (1.0 - u) + b * u
+        }
     }
 
     /// Uniform integer in `0..n` (`n > 0`), without modulo bias.

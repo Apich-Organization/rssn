@@ -1091,7 +1091,7 @@ pub fn coulomb_force(
     q2: f64,
     r: f64,
 ) -> f64 {
-    if r.abs() < 1e-15 {
+    if crate::kernels::exact_eq(r, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1110,7 +1110,7 @@ pub fn electric_field_point_charge(
     q: f64,
     r: f64,
 ) -> f64 {
-    if r.abs() < 1e-15 {
+    if crate::kernels::exact_eq(r, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1129,7 +1129,7 @@ pub fn electric_potential_point_charge(
     q: f64,
     r: f64,
 ) -> f64 {
-    if r.abs() < 1e-15 {
+    if crate::kernels::exact_eq(r, 0.0) {
         return f64::INFINITY * q.signum();
     }
 
@@ -1148,7 +1148,7 @@ pub fn magnetic_field_infinite_wire(
     current: f64,
     r: f64,
 ) -> f64 {
-    if r.abs() < 1e-15 {
+    if crate::kernels::exact_eq(r, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1190,7 +1190,7 @@ pub fn cyclotron_radius(
     charge: f64,
     b_field: f64,
 ) -> f64 {
-    if charge.abs() < 1e-30 || b_field.abs() < 1e-30 {
+    if crate::kernels::exact_eq(charge, 0.0) || crate::kernels::exact_eq(b_field, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1213,7 +1213,7 @@ pub fn ideal_gas_pressure(
     t: f64,
     v: f64,
 ) -> f64 {
-    if v.abs() < 1e-30 {
+    if crate::kernels::exact_eq(v, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1227,7 +1227,7 @@ pub fn ideal_gas_volume(
     t: f64,
     p: f64,
 ) -> f64 {
-    if p.abs() < 1e-30 {
+    if crate::kernels::exact_eq(p, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1241,7 +1241,7 @@ pub fn ideal_gas_temperature(
     v: f64,
     n: f64,
 ) -> f64 {
-    if n.abs() < 1e-30 {
+    if crate::kernels::exact_eq(n, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1264,7 +1264,7 @@ pub fn maxwell_boltzmann_speed_distribution(
 ) -> f64 {
     let kt = BOLTZMANN_CONSTANT * temperature;
 
-    if kt < 1e-30 {
+    if kt <= 0.0 {
         return 0.0;
     }
 
@@ -1317,7 +1317,7 @@ pub fn blackbody_power(
 pub fn wien_displacement_wavelength(temperature: f64) -> f64 {
     const WIEN_CONSTANT: f64 = 2.897_771_955e-3;
 
-    if temperature < 1e-10 {
+    if temperature <= 0.0 {
         return f64::INFINITY;
     }
 
@@ -1468,7 +1468,7 @@ pub fn hydrogen_energy_level(n: u64) -> f64 {
 /// * `momentum` - Particle momentum (kg·m/s)
 #[must_use]
 pub fn de_broglie_wavelength(momentum: f64) -> f64 {
-    if momentum.abs() < 1e-40 {
+    if crate::kernels::exact_eq(momentum, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1480,11 +1480,12 @@ pub fn de_broglie_wavelength(momentum: f64) -> f64 {
 /// Returns minimum position uncertainty given momentum uncertainty.
 #[must_use]
 pub fn heisenberg_position_uncertainty(momentum_uncertainty: f64) -> f64 {
-    if momentum_uncertainty.abs() < 1e-40 {
-        return 0.0;
+    if momentum_uncertainty < 0.0 {
+        return f64::NAN;
     }
-
-    HBAR / (2.0 * momentum_uncertainty)
+    // No arbitrary SI cutoff: small positive momentum uncertainty implies a
+    // large position uncertainty. Zero diverges rather than returning zero.
+    (HBAR / momentum_uncertainty) / 2.0
 }
 
 /// Photon energy: E = hf = hc/λ
@@ -1493,7 +1494,7 @@ pub fn heisenberg_position_uncertainty(momentum_uncertainty: f64) -> f64 {
 /// * `wavelength` - Wavelength (m)
 #[must_use]
 pub fn photon_energy(wavelength: f64) -> f64 {
-    if wavelength.abs() < 1e-20 {
+    if crate::kernels::exact_eq(wavelength, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1503,7 +1504,7 @@ pub fn photon_energy(wavelength: f64) -> f64 {
 /// Photon wavelength from energy.
 #[must_use]
 pub fn photon_wavelength(energy: f64) -> f64 {
-    if energy.abs() < 1e-40 {
+    if crate::kernels::exact_eq(energy, 0.0) {
         return f64::INFINITY;
     }
 
@@ -1513,7 +1514,7 @@ pub fn photon_wavelength(energy: f64) -> f64 {
 /// Compton wavelength of a particle: `λ_C` = h/(mc)
 #[must_use]
 pub fn compton_wavelength(mass: f64) -> f64 {
-    if mass.abs() < 1e-40 {
+    if crate::kernels::exact_eq(mass, 0.0) {
         return f64::INFINITY;
     }
 

@@ -1520,3 +1520,115 @@ fn solve_adaptive_data(
         mesh = space.mesh.refine_marked(&marked);
     }
 }
+
+/// Advance nodal finite-element heat data by one theta-method step.
+///
+/// Uses the existing consistent mass/stiffness assembly and boundary load
+/// machinery at both physical times; no reinterpolation of the state occurs.
+///
+/// # Errors
+/// Invalid state/control data, incompatible boundary conditions, or failed linear solve.
+#[allow(clippy::too_many_arguments)] // Explicit restart state and physical time.
+pub fn heat_step(
+    space: &FemSpace,
+    prob: &FemProblem<'_>,
+    state: &[f64],
+    t: f64,
+    dt: f64,
+    theta: f64,
+    solver: LinearSolver,
+) -> Result<Vec<f64>, String> {
+    heat_step_source_data(space, prob, state, t, dt, theta, solver, None)
+}
+
+/// Advance FEM heat data with additional nodal source values at both times.
+///
+/// The source is interpolated in the existing finite-element basis and mapped
+/// to a load by the consistent mass matrix, preserving the theta method.
+///
+/// # Errors
+/// Invalid nodal source/state data, controls, boundary data, or linear solve.
+#[allow(clippy::too_many_arguments)]
+pub fn heat_step_nodal_source(
+    space: &FemSpace,
+    prob: &FemProblem<'_>,
+    state: &[f64],
+    t: f64,
+    dt: f64,
+    theta: f64,
+    solver: LinearSolver,
+    before: &[f64],
+    after: &[f64],
+) -> Result<Vec<f64>, String> {
+    if before.len() != state.len()
+        || after.len() != state.len()
+        || before.iter().chain(after).any(|v| !v.is_finite())
+    {
+        return Err("FEM source must contain one finite rate per nodal degree of freedom".into());
+    }
+    heat_step_source_data(
+        space,
+        prob,
+        state,
+        t,
+        dt,
+        theta,
+        solver,
+        Some((before, after)),
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn heat_step_source_data(
+    space: &FemSpace,
+    prob: &FemProblem<'_>,
+    state: &[f64],
+    t: f64,
+    dt: f64,
+    theta: f64,
+    solver: LinearSolver,
+    nodal: Option<(&[f64], &[f64])>,
+) -> Result<Vec<f64>, String> {
+    if state.len() != space.dofs.len()
+        || state.iter().any(|v| !v.is_finite())
+        || !t.is_finite()
+        || !dt.is_finite()
+        || dt <= 0.0
+        || !(0.5..=1.0).contains(&theta)
+    {
+        return Err("invalid FEM heat step".into());
+    }
+    let mut before = assemble(space, &prob.into(), t, true)?;
+    for (actual, prescribed) in state.iter().zip(&before.dirichlet) {
+        if let Some(value) = prescribed
+            && (actual - value).abs() > 64.0 * f64::EPSILON * actual.abs().max(value.abs())
+        {
+            return Err("FEM initial/restart state conflicts with Dirichlet boundary data".into());
+        }
+    }
+    let mut after = assemble(space, &prob.into(), t + dt, false)?;
+    if let Some((f0, f1)) = nodal {
+        let mut load = vec![0.0; state.len()];
+        before.m.matvec(f0, &mut load);
+        for (value, source) in before.load.iter_mut().zip(&load) {
+            *value += source;
+        }
+        before.m.matvec(f1, &mut load);
+        for (value, source) in after.load.iter_mut().zip(load) {
+            *value += source;
+        }
+    }
+    let lhs = with_dirichlet(
+        &combine(&before.m, &after.k, 1.0, dt * theta),
+        &after.dirichlet,
+    );
+    let rhs_operator = combine(&before.m, &before.k, 1.0, -dt * (1.0 - theta));
+    let mut rhs = vec![0.0; state.len()];
+    rhs_operator.matvec(state, &mut rhs);
+    for i in 0..state.len() {
+        rhs[i] += dt * (theta * after.load[i] + (1.0 - theta) * before.load[i]);
+        if let Some(value) = after.dirichlet[i] {
+            rhs[i] = value;
+        }
+    }
+    LinearSystem::new(lhs, solver)?.solve(&rhs, Some(state))
+}

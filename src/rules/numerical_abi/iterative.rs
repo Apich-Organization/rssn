@@ -84,7 +84,7 @@ static ITERATIVE_CONTRACT: DimContract = DimContract {
     result: None,
     other_args_dimensionless: true,
 };
-fn csr_type() -> TypeExpr {
+pub(super) fn csr_type() -> TypeExpr {
     let vector = |ty| {
         TypeExpr::Tensor {
             rank: crate::kernel::signature::NatExpr::Lit(1),
@@ -112,7 +112,7 @@ impl IterativeExport {
         )
     }
 }
-fn integer(
+pub(super) fn integer(
     value: &Value,
     label: &str,
 ) -> Result<usize, OpError> {
@@ -141,7 +141,7 @@ fn index_vector(
     }
     t.data.iter().map(|item| integer(item, label)).collect()
 }
-fn decode_csr(value: &Value) -> Result<Csr, OpError> {
+pub(super) fn decode_csr(value: &Value) -> Result<Csr, OpError> {
     let Value::Record(record) = value else {
         return Err(OpError::Domain("CSR matrix must be a record".into()));
     };
@@ -200,7 +200,7 @@ fn decode_csr(value: &Value) -> Result<Csr, OpError> {
 }
 // Reuse the solver's scale-safe original-system residual, including a positive
 // subnormal sentinel when a nonzero ratio is below f64's representable range.
-fn relative_residual(
+pub(super) fn relative_residual(
     a: &Csr,
     x: &[f64],
     b: &[f64],

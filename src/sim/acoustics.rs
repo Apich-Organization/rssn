@@ -67,6 +67,7 @@ use crate::sim::boundary::FaceBcs;
 type SourceFn = Box<dyn Fn(f64) -> f64 + Send + Sync>;
 
 /// Configuration of the acoustics solver.
+#[derive(Clone)]
 pub struct AcousticsConfig {
     /// Cells per axis (inactive axes: 1).
     pub n: [usize; 3],

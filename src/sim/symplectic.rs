@@ -284,6 +284,20 @@ pub struct TtlState {
     pub t: f64,
 }
 
+/// Native kinetic energy used by TTL stepping and its checked adapter boundary.
+/// The caller supplies one positive mass per momentum component.
+pub(crate) fn ttl_kinetic(
+    state: &TtlState,
+    mass: &[f64],
+) -> f64 {
+    state
+        .p
+        .iter()
+        .zip(mass)
+        .map(|(p, m)| p * p / (2.0 * m))
+        .sum()
+}
+
 /// Time-transformed leapfrog for `H = T(p) + V(q)` with `V < 0`.
 ///
 /// Uses the extended Hamiltonian `K = ln(T + B) - ln(-V)` with `B = -E0`
@@ -303,7 +317,7 @@ pub fn ttl_step<F>(
 {
     let n = s.q.len();
     let half_drift = |s: &mut TtlState| {
-        let kin: f64 = (0..n).map(|i| s.p[i] * s.p[i] / (2.0 * mass[i])).sum();
+        let kin = ttl_kinetic(s, mass);
         let w = 1.0 / (kin + b);
         for i in 0..n {
             s.q[i] += 0.5 * h * w * s.p[i] / mass[i];
@@ -1261,6 +1275,9 @@ pub fn ks_advance<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
             ds_nominal
         };
         y = rk4(&y, ds);
+    }
+    if !y[9].is_finite() || (dt - y[9]).abs() > 1e-14 * dt {
+        return Err("ks_advance: physical-time endpoint not reached within step budget".into());
     }
     let (x, v) = ks_to_cartesian(&[y[0], y[1], y[2], y[3]], &[y[4], y[5], y[6], y[7]]);
     Ok((x, v))

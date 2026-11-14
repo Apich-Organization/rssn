@@ -9,7 +9,8 @@
 //! graph.
 
 use num_complex::Complex64 as Complex;
-use num_complex::Complex64;
+/// Complex representation used by the FFT kernels.
+pub use num_complex::Complex64;
 use rustfft::FftPlanner;
 
 /// The normalisation convention of [`fft_norm`] (§8.8).

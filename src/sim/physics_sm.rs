@@ -80,15 +80,18 @@ pub(crate) fn create_k_grid(
 ) -> Vec<f64> {
     let dk = 2.0 * std::f64::consts::PI / (n as f64 * dx);
 
-    let mut k: Vec<f64> = (0..n / 2).map(|i| i as f64 * dk).collect();
-
-    let mut k_neg: Vec<f64> = (0..n / 2)
-        .map(|i| -(n as f64 / 2.0 - i as f64) * dk)
-        .collect();
-
-    k.append(&mut k_neg);
-
-    k
+    // Odd transforms have one more nonnegative bin; in particular n=1
+    // contains only the zero mode. Every transform coefficient needs a bin.
+    let nonnegative = n.div_ceil(2);
+    (0..n)
+        .map(|i| {
+            if i < nonnegative {
+                i as f64 * dk
+            } else {
+                -(n as f64 - i as f64) * dk
+            }
+        })
+        .collect()
 }
 
 /// Solves the 1D advection-diffusion equation (`u_t` + c*`u_x` = D*`u_xx`) using a Fourier spectral method.

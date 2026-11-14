@@ -46,45 +46,37 @@ pub(in crate::rules) fn expression(dim: &Dimension) -> Result<DimExpr, OpError> 
     })
 }
 fn dimension(value: &Value) -> Result<Dimension, OpError> {
-    let d = match value {
-        | Value::Quantity(q) => &q.unit.dimension,
-        | Value::Dyn(d) => &d.dim,
+    fn schema_dimension(ty: &TypeExpr) -> Result<Dimension, OpError> {
+        match ty {
+            | TypeExpr::Dim(_, d) | TypeExpr::Point(d) => canonical(d),
+            | TypeExpr::Tensor { elem, .. } => schema_dimension(elem),
+            | _ => Ok(Dimension::new()),
+        }
+    }
+    match value {
+        | Value::Quantity(q) => canonical(&q.unit.dimension),
+        | Value::Dyn(d) => canonical(&d.dim),
+        | Value::Variant(v) if v.tag == "None" && v.payload.is_empty() => Ok(Dimension::new()),
+        | Value::Variant(v) if v.tag == "Some" && v.payload.len() == 1 => dimension(&v.payload[0]),
         | Value::Tensor(t) => {
-            match &t.elem {
-                | TypeExpr::Dim(_, d) | TypeExpr::Point(d) => {
-                    let declared = canonical(d)?;
-                    for item in &t.data {
-                        if matches!(item, Value::Quantity(_) | Value::Dyn(_))
-                            && dimension(item)? != declared
-                        {
-                            return Err(OpError::Domain(
-                                "tensor element dimension disagrees with its declared element type"
-                                    .into(),
-                            ));
-                        }
-                    }
-                    return Ok(declared);
-                },
-                | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => {
-                    for item in &t.data {
-                        if matches!(item, Value::Quantity(_) | Value::Dyn(_))
-                            && !dimension(item)?.is_empty()
-                        {
-                            return Err(OpError::Domain(
-                                "tensor element dimension disagrees with its declared element type"
-                                    .into(),
-                            ));
-                        }
-                    }
-                    return Ok(Dimension::new());
-                },
-                | _ => return Ok(Dimension::new()),
+            let declared = schema_dimension(&t.elem)?;
+            for item in &t.data {
+                if matches!(
+                    item,
+                    Value::Quantity(_) | Value::Dyn(_) | Value::Tensor(_) | Value::Variant(_)
+                ) && dimension(item)? != declared
+                {
+                    return Err(OpError::Domain(
+                        "tensor element dimension disagrees with its declared element type".into(),
+                    ));
+                }
             }
+            Ok(declared)
         },
-        | _ => return Ok(Dimension::new()),
-    };
-    canonical(d)
+        | _ => Ok(Dimension::new()),
+    }
 }
+
 fn substitute(
     expr: &DimExpr,
     vars: &BTreeMap<&str, Dimension>,
@@ -401,6 +393,9 @@ fn decorate(
                 .collect::<Result<_, _>>()?;
             Ok(Value::Variant(variant))
         },
+        | (Value::Opaque(value), TypeExpr::Opaque(kind)) if &value.kind == kind => {
+            Ok(Value::Opaque(value))
+        },
         | (value, ty) if scalar_representation_matches(&value, ty) => Ok(value),
         | (_, _) => {
             Err(OpError::Domain(
@@ -434,6 +429,13 @@ fn path_value<'a>(
     }
     Ok(value)
 }
+fn numeric_element(ty: &TypeExpr) -> bool {
+    match ty {
+        | TypeExpr::Dim(inner, _) | TypeExpr::Tensor { elem: inner, .. } => numeric_element(inner),
+        | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => true,
+        | _ => false,
+    }
+}
 /// Bind and check the exact input paths described by a dimensional contract.
 pub(super) fn prepare_contract(
     contract: &super::dimensions::DimContract,
@@ -461,10 +463,7 @@ pub(super) fn prepare_contract(
                 | TypeExpr::Dim(inner, _) => inner.as_ref(),
                 | other => other,
             };
-            if !matches!(
-                elem,
-                TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex
-            ) {
+            if !numeric_element(elem) {
                 return Err(OpError::Domain(
                     "contract dimension requires a numeric tensor element".into(),
                 ));
@@ -502,7 +501,11 @@ pub(super) fn prepare_contract(
         .map(|(name, expr)| (*name, expr))
         .collect::<Vec<_>>();
     for check in contract.constraints {
-        let actual = dimension(path_value(args, check.argument, check.path)?)?;
+        let value = path_value(args, check.argument, check.path)?;
+        if matches!(value, Value::Variant(v) if v.tag == "None" && v.payload.is_empty()) {
+            continue;
+        }
+        let actual = dimension(value)?;
         let expected = canonical(&check.formula.instantiate(&refs))?;
         if actual != expected {
             return Err(OpError::Domain(format!(
@@ -519,6 +522,96 @@ pub(super) fn prepare(
     args: &[Value],
 ) -> Result<BTreeMap<&'static str, Dimension>, OpError> {
     prepare_contract(super::dimensions::contract_for(policy), args)
+}
+/// Resolve explicitly declared shape-dependent output powers using validated input tensors.
+pub(super) fn finish_shaped(
+    signature: &crate::kernel::signature::Signature,
+    vars: &BTreeMap<&str, Dimension>,
+    args: &[Value],
+    result: Value,
+) -> Result<Value, OpError> {
+    fn resolve_dim(
+        dim: &mut DimExpr,
+        args: &[Value],
+    ) -> Result<(), OpError> {
+        match dim {
+            | DimExpr::Pow(base, exponent) => {
+                resolve_dim(base, args)?;
+                if let Exp::Symbol(symbol) = exponent
+                    && let Some(source) = symbol.strip_prefix("shape:")
+                {
+                    let parts = source
+                        .split(':')
+                        .map(str::parse::<i64>)
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|_| {
+                            OpError::Internal("invalid shape dimension expression".into())
+                        })?;
+                    if parts.len() != 3 {
+                        return Err(OpError::Internal("invalid shape power arity".into()));
+                    }
+                    let arg = usize::try_from(parts[0])
+                        .map_err(|_| OpError::Internal("invalid shape argument".into()))?;
+                    let axis = usize::try_from(parts[1])
+                        .map_err(|_| OpError::Internal("invalid shape axis".into()))?;
+                    let Some(Value::Tensor(tensor)) = args.get(arg) else {
+                        return Err(OpError::Domain(
+                            "shape-dependent units require a tensor argument".into(),
+                        ));
+                    };
+                    let extent = tensor.shape.get(axis).copied().ok_or_else(|| {
+                        OpError::Domain("shape dimension axis is out of range".into())
+                    })?;
+                    let power = i64::try_from(extent)
+                        .ok()
+                        .and_then(|n| n.checked_mul(parts[2]))
+                        .ok_or_else(|| {
+                            OpError::Domain("shape dimension exponent overflows".into())
+                        })?;
+                    *exponent = Exp::Rat(Rational::new(power, 1));
+                }
+            },
+            | DimExpr::Mul(parts) => {
+                for part in parts {
+                    resolve_dim(part, args)?;
+                }
+            },
+            | DimExpr::Inverse(base) => resolve_dim(base, args)?,
+            | _ => {},
+        }
+        Ok(())
+    }
+    fn resolve_type(
+        ty: &mut TypeExpr,
+        args: &[Value],
+    ) -> Result<(), OpError> {
+        match ty {
+            | TypeExpr::Dim(inner, dim) => {
+                resolve_dim(dim, args)?;
+                resolve_type(inner, args)?;
+            },
+            | TypeExpr::Tensor { elem, .. } | TypeExpr::Sparse { elem, .. } => {
+                resolve_type(elem, args)?;
+            },
+            | TypeExpr::Record(fields) => {
+                for (_, ty) in fields {
+                    resolve_type(ty, args)?;
+                }
+            },
+            | TypeExpr::Variant(variants) => {
+                for (_, payload) in variants {
+                    for ty in payload {
+                        resolve_type(ty, args)?;
+                    }
+                }
+            },
+            | _ => {},
+        }
+        Ok(())
+    }
+    let mut signature = signature.clone();
+    resolve_type(&mut signature.ret, args)?;
+    finish(&signature, vars, result)
 }
 /// Attach the instantiated dimensional witnesses to a kernel result.
 pub(super) fn finish(

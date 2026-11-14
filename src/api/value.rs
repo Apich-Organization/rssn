@@ -663,6 +663,9 @@ impl Session {
         args: &[Value],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
+        let mut scoped_context = clone_ctx(ctx);
+        scoped_context.native_objects = Some(self.native_objects.clone());
+        let ctx = &scoped_context;
         let sets = {
             let inner = self.inner.borrow();
             inner
@@ -852,6 +855,7 @@ impl Session {
             .collect();
         Self {
             id: crate::api::next_session_id(),
+            native_objects: crate::kernel::native_objects::NativeObjects::new(),
             inner: std::cell::RefCell::new(crate::api::Inner {
                 graph: inner.graph.clone(),
                 templates,
@@ -1007,6 +1011,7 @@ fn clone_ctx<'a>(ctx: &CallCtx<'a>) -> CallCtx<'a> {
         bindings: ctx.bindings.clone(),
         substitutions: ctx.substitutions.clone(),
         callbacks: ctx.callbacks.clone(),
+        native_objects: ctx.native_objects.clone(),
         // Carried through, not dropped. It used to be `None`, so every public
         // entry point silently discarded the caller's collector and
         // `CallCtx::with_trace` recorded nothing at all.

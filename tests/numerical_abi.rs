@@ -916,3 +916,325 @@ fn source_codecs_reject_dimensions_hidden_inside_optional_arguments() {
         "dimensioned optional bandwidth was accepted: {rejected:?}"
     );
 }
+
+#[test]
+fn sparse_eigen_and_amg_contracts_preserve_physical_dimensions_and_verified_residuals() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::DynValue;
+    let length = DimExpr::Base("Length".into());
+    let time = DimExpr::Base("Time".into());
+    let mut a = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let Value::Record(ref mut record) = a else {
+        unreachable!()
+    };
+    let Value::Tensor(values) = &mut record.fields[4].1 else {
+        unreachable!()
+    };
+    values.elem = TypeExpr::Dim(Box::new(TypeExpr::Float), length.clone());
+    let session = Session::new();
+    for name in ["num_csr_eigs_sym", "num_csr_eigs"] {
+        let result = call(
+            &session,
+            name,
+            &[
+                a.clone(),
+                Value::int(1),
+                Value::String("largest_magnitude".into()),
+                Value::Float(1e-8),
+                Value::int(30),
+                Value::int(0),
+            ],
+        )
+        .unwrap();
+        assert_eq!(result_field(&result, "converged"), &Value::Bool(true));
+        for field in ["values_re", "residuals"] {
+            let Value::Tensor(values) = result_field(&result, field) else {
+                panic!("tensor")
+            };
+            assert_eq!(
+                values.elem,
+                TypeExpr::Dim(Box::new(TypeExpr::Float), length.clone())
+            );
+        }
+        let Value::Tensor(vectors) = result_field(&result, "vectors_re") else {
+            panic!("vectors")
+        };
+        assert_eq!(vectors.elem, TypeExpr::Float);
+        assert_eq!(vectors.shape, vec![2, 1]);
+    }
+    let sigma = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(3.8)),
+        dim: length.clone(),
+    });
+    let result = call(
+        &session,
+        "num_csr_eigs_shift_invert",
+        &[
+            a.clone(),
+            Value::int(1),
+            sigma,
+            Value::Bool(true),
+            Value::Float(1e-8),
+            Value::int(30),
+            Value::int(0),
+        ],
+    )
+    .unwrap();
+    let Value::Tensor(values) = result_field(&result, "values_re") else {
+        panic!("values")
+    };
+    assert!((sparse_number(&values.data[0]) - 4.0).abs() < 1e-8);
+    let mut rhs = vector(&[2.0, 8.0]);
+    let Value::Tensor(ref mut v) = rhs else {
+        unreachable!()
+    };
+    v.elem = TypeExpr::Dim(Box::new(TypeExpr::Float), time);
+    for name in [
+        "num_csr_amg_solve",
+        "num_csr_amg_general_solve",
+        "num_csr_cg_amg",
+    ] {
+        let result = call(
+            &session,
+            name,
+            &[a.clone(), rhs.clone(), Value::Float(1e-8), Value::int(30)],
+        )
+        .unwrap();
+        assert_eq!(result_field(&result, "converged"), &Value::Bool(true));
+        let Value::Tensor(x) = result_field(&result, "x") else {
+            panic!("x")
+        };
+        assert!(matches!(&x.elem, TypeExpr::Dim(..)));
+        assert!((sparse_number(&x.data[1]) - 2.0).abs() < 1e-8);
+        assert!(result_field(&result, "residual").as_f64().unwrap() < 1e-8);
+    }
+}
+
+#[test]
+fn sparse_eigen_adapters_reject_wrong_symmetry_controls_and_shift_units() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::DynValue;
+    let session = Session::new();
+    let nonsymmetric = csr(&[0, 2, 3], &[0, 1, 1], &[2.0, 1.0, 4.0]);
+    assert!(
+        call(
+            &session,
+            "num_csr_eigs_sym",
+            &[
+                nonsymmetric,
+                Value::int(1),
+                Value::String("largest_real".into()),
+                Value::Float(1e-8),
+                Value::int(20),
+                Value::int(0)
+            ]
+        )
+        .is_err()
+    );
+    let good = csr(&[0, 1, 2], &[0, 1], &[2.0, 4.0]);
+    let wrong = Value::Dyn(DynValue {
+        value: Box::new(Value::Float(3.8)),
+        dim: DimExpr::Base("Time".into()),
+    });
+    assert!(
+        call(
+            &session,
+            "num_csr_eigs_shift_invert",
+            &[
+                good.clone(),
+                Value::int(1),
+                wrong,
+                Value::Bool(true),
+                Value::Float(1e-8),
+                Value::int(20),
+                Value::int(0)
+            ]
+        )
+        .is_err()
+    );
+    assert!(
+        call(
+            &session,
+            "num_csr_eigs",
+            &[
+                good,
+                Value::int(0),
+                Value::String("largest_real".into()),
+                Value::Float(1e-8),
+                Value::int(20),
+                Value::int(0)
+            ]
+        )
+        .is_err()
+    );
+}
+
+fn sparse_number(value: &Value) -> f64 {
+    match value {
+        | Value::Dyn(v) => sparse_number(&v.value),
+        | other => other.as_f64().unwrap(),
+    }
+}
+
+fn geometry_field<'a>(
+    value: &'a Value,
+    name: &str,
+) -> &'a Value {
+    let Value::Record(record) = value else {
+        panic!("expected geometry result record")
+    };
+    record.get(name).unwrap()
+}
+fn geometry_scalar(value: &Value) -> f64 {
+    match value {
+        | Value::Dyn(v) => geometry_scalar(&v.value),
+        | _ => value.as_f64().unwrap(),
+    }
+}
+fn measured_geometry(
+    shape: Vec<usize>,
+    values: &[f64],
+    unit: &str,
+) -> Value {
+    Value::Tensor(TensorValue {
+        shape,
+        data: values.iter().copied().map(Value::Float).collect(),
+        elem: TypeExpr::Float.with_dim(rssn::kernel::signature::DimExpr::Base(unit.into())),
+    })
+}
+#[test]
+fn portable_bvh_roundtrips_dimensions_and_rejects_corrupt_or_inconsistent_definitions() {
+    let session = Session::new();
+    let lower = measured_geometry(vec![2, 3], &[0.0, 0.0, 0.0, 10.0, 0.0, 0.0], "Length");
+    let upper = measured_geometry(vec![2, 3], &[1.0, 1.0, 1.0, 11.0, 1.0, 1.0], "Length");
+    let model = call(&session, "num_bvh_build", &[lower, upper]).unwrap();
+    let serialized = serde_json::to_vec(&model).unwrap();
+    let model: Value = serde_json::from_slice(&serialized).unwrap();
+    let query = measured_geometry(vec![3], &[2.0, 0.5, 0.5], "Length");
+    let nearest = call(&session, "num_bvh_nearest", &[model.clone(), query]).unwrap();
+    let Value::Tensor(indices) = geometry_field(&nearest, "indices") else {
+        panic!("indices")
+    };
+    assert_eq!(indices.data, [Value::int(0)]);
+    let Value::Tensor(distances) = geometry_field(&nearest, "distances") else {
+        panic!("distances")
+    };
+    assert_eq!(geometry_scalar(&distances.data[0]), 1.0);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(rssn::kernel::signature::DimExpr::Base("Length".into())),
+            &distances.elem
+        )
+        .accepted()
+    );
+    let origin = measured_geometry(vec![3], &[-1.0, 0.5, 0.5], "Length");
+    let hits = call(
+        &session,
+        "num_bvh_ray",
+        &[model.clone(), origin.clone(), vector(&[1e-300, 0.0, 0.0])],
+    )
+    .unwrap();
+    let Value::Tensor(hits) = hits else {
+        panic!("hits")
+    };
+    let mut hit_indices: Vec<_> = hits.data.iter().map(geometry_scalar).collect();
+    hit_indices.sort_by(f64::total_cmp);
+    assert_eq!(hit_indices, [0.0, 1.0]);
+    assert!(
+        call(
+            &session,
+            "num_bvh_ray",
+            &[
+                model.clone(),
+                origin.clone(),
+                measured_geometry(vec![3], &[1.0, 0.0, 0.0], "Length")
+            ]
+        )
+        .is_err()
+    );
+    assert!(
+        call(
+            &session,
+            "num_bvh_ray",
+            &[model.clone(), origin.clone(), vector(&[0.0, 0.0, 0.0])]
+        )
+        .is_err()
+    );
+    for corrupt_version in [true, false] {
+        let mut corrupt = model.clone();
+        let Value::Record(record) = &mut corrupt else {
+            unreachable!()
+        };
+        let Value::Opaque(payload) = &mut record
+            .fields
+            .iter_mut()
+            .find(|(name, _)| name == "payload")
+            .unwrap()
+            .1
+        else {
+            unreachable!()
+        };
+        if corrupt_version {
+            payload.kind = "rssn/bvh-defining-data/v99".into();
+        } else {
+            payload.bytes.push(0);
+        }
+        assert!(call(&session, "num_bvh_nearest", &[corrupt, origin.clone()]).is_err());
+    }
+    assert!(
+        call(
+            &session,
+            "num_bvh_build",
+            &[
+                measured_geometry(vec![1, 3], &[2.0, 0.0, 0.0], "Length"),
+                measured_geometry(vec![1, 3], &[1.0, 0.0, 0.0], "Length")
+            ]
+        )
+        .is_err()
+    );
+}
+#[test]
+fn voronoi_topology_is_flat_and_only_vertices_carry_coordinate_units() {
+    let session = Session::new();
+    let sites = measured_geometry(
+        vec![5, 2],
+        &[0.0, 0.0, 2.0, 0.0, 2.0, 2.0, 0.0, 2.0, 1.0, 1.0],
+        "Length",
+    );
+    let diagram = call(&session, "num_voronoi_2d", &[sites]).unwrap();
+    let Value::Tensor(vertices) = geometry_field(&diagram, "vertices") else {
+        panic!("vertices")
+    };
+    assert_eq!(vertices.shape, [4, 2]);
+    assert!(
+        rssn::kernel::overload::matches_type(
+            &TypeExpr::Float.with_dim(rssn::kernel::signature::DimExpr::Base("Length".into())),
+            &vertices.elem
+        )
+        .accepted()
+    );
+    let Value::Tensor(directions) = geometry_field(&diagram, "ray_directions") else {
+        panic!("ray directions")
+    };
+    assert_eq!(directions.elem, TypeExpr::Float);
+    let Value::Tensor(offsets) = geometry_field(&diagram, "cell_offsets") else {
+        panic!("offsets")
+    };
+    assert_eq!(offsets.shape, [6]);
+    let Value::Tensor(indices) = geometry_field(&diagram, "cell_indices") else {
+        panic!("cell indices")
+    };
+    assert_eq!(
+        offsets.data.last().unwrap(),
+        &Value::int(indices.data.len())
+    );
+    assert!(indices.data.iter().all(|v| geometry_scalar(v) < 4.0));
+    assert!(
+        call(
+            &session,
+            "num_voronoi_2d",
+            &[matrix(2, 2, &[0.0, 0.0, 1.0, 1.0])]
+        )
+        .is_err()
+    );
+}

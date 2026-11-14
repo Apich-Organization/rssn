@@ -26,6 +26,9 @@ pub(super) fn validate_problem(
         || options
             .h0
             .is_some_and(|step| !step.is_finite() || super::exact_eq(step, 0.0))
+        || !options.hmin.is_finite()
+        || options.hmin < 0.0
+        || options.hmin > options.hmax
         || options.hmax.is_nan()
         || options.hmax <= 0.0
         || options.max_steps == 0

@@ -360,3 +360,32 @@ pub use crate::sim::elasticity_fem::ElasticityProblem;
 pub use crate::sim::elasticity_fem::Material as SimplexMaterial;
 /// Simplex-mesh elasticity (plane stress/strain, 3D, P1/P2): see [`crate::sim::elasticity_fem`].
 pub use crate::sim::elasticity_fem::solve as solve_simplex_elasticity;
+
+/// Validate the Q4 reference mapping at every native quadrature point before
+/// assembly. Session adapters use this preflight instead of duplicating it.
+pub(crate) fn validate_quadrilateral(points: [(f64, f64); 4]) -> Result<(), String> {
+    let g = 1.0 / 3.0_f64.sqrt();
+    let xi_n = [-1.0, 1.0, 1.0, -1.0];
+    let eta_n = [-1.0, -1.0, 1.0, 1.0];
+    for xi in [-g, g] {
+        for eta in [-g, g] {
+            let mut j = [[0.0; 2]; 2];
+            for n in 0..4 {
+                let dx = 0.25 * xi_n[n] * (1.0 + eta_n[n] * eta);
+                let de = 0.25 * eta_n[n] * (1.0 + xi_n[n] * xi);
+                j[0][0] += dx * points[n].0;
+                j[0][1] += dx * points[n].1;
+                j[1][0] += de * points[n].0;
+                j[1][1] += de * points[n].1;
+            }
+            let det = j[0][0].mul_add(j[1][1], -(j[0][1] * j[1][0]));
+            if !det.is_finite() || det <= 0.0 {
+                return Err(
+                    "Q4 mapping must have finite positive Jacobian at every quadrature point"
+                        .into(),
+                );
+            }
+        }
+    }
+    Ok(())
+}

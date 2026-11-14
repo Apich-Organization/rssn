@@ -2144,3 +2144,8 @@ pub fn pinv_tol(
 
 /// Optimized host-compatible dense operations preserving blocked faer arithmetic.
 pub mod optimized;
+
+/// Exact rational dense factorizations and perfect-square arithmetic.
+pub mod exact;
+/// Sequential reference operations with stable row-major layouts.
+pub mod reference;

@@ -654,7 +654,9 @@ impl ChebSeries {
             m.set(i, i + 1, 0.5);
             m.set(i + 1, i, 0.5);
         }
-        m.set(0, 1, if n > 1 { 1.0 } else { 0.0 });
+        if n > 1 {
+            m.set(0, 1, 1.0);
+        }
         if n == 1 {
             m.set(0, 0, -c[0] / c[1]);
         } else {

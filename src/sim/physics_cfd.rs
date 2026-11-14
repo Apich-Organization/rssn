@@ -967,9 +967,7 @@ pub fn max_velocity_magnitude(
 
     for i in 0..nx {
         for j in 0..ny {
-            let vel = (*u.get(i, j))
-                .mul_add(*u.get(i, j), *v.get(i, j) * *v.get(i, j))
-                .sqrt();
+            let vel = u.get(i, j).hypot(*v.get(i, j));
 
             if vel > max_vel {
                 max_vel = vel;
@@ -983,19 +981,34 @@ pub fn max_velocity_magnitude(
 /// Computes the L2 norm of a field for convergence checking.
 #[must_use]
 pub fn l2_norm(field: &Matrix<f64>) -> f64 {
-    let nx = field.rows();
-
-    let ny = field.cols();
-
-    let mut sum = 0.0;
-
-    for i in 0..nx {
-        for j in 0..ny {
-            sum += *field.get(i, j) * *field.get(i, j);
-        }
+    let count = field.rows() * field.cols();
+    if count == 0 {
+        return f64::NAN;
     }
-
-    (sum / (nx * ny) as f64).sqrt()
+    let scale = (0..field.rows())
+        .flat_map(|i| (0..field.cols()).map(move |j| field.get(i, j).abs()))
+        .fold(0.0_f64, |scale, value| {
+            if scale.is_nan() || value.is_nan() {
+                f64::NAN
+            } else {
+                scale.max(value)
+            }
+        });
+    if scale == 0.0 {
+        return 0.0;
+    }
+    if !scale.is_finite() {
+        return scale;
+    }
+    let sum = (0..field.rows())
+        .flat_map(|i| {
+            (0..field.cols()).map(move |j| {
+                let x = field.get(i, j) / scale;
+                x * x
+            })
+        })
+        .sum::<f64>();
+    scale * (sum / count as f64).sqrt()
 }
 
 /// Computes the maximum absolute value in a field.

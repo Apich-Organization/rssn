@@ -126,6 +126,8 @@ pub struct CallCtx<'a> {
     pub substitutions: Vec<(String, Value)>,
     /// Host callbacks, addressed by [`CallbackRef`] inside the arguments.
     pub callbacks: crate::kernel::CallbackBank,
+    /// Native objects owned by the active session; unavailable outside session dispatch.
+    pub native_objects: Option<crate::kernel::native_objects::NativeObjects>,
     /// Where to record what happened. A `RefCell` because a trace is
     /// written through a shared reference: the context is read-only for the
     /// operator being called, and the trace is the one thing it appends to.
@@ -168,6 +170,7 @@ impl<'a> CallCtx<'a> {
             bindings: Vec::new(),
             substitutions: Vec::new(),
             callbacks: crate::kernel::CallbackBank::new(),
+            native_objects: None,
             trace: None,
         }
     }

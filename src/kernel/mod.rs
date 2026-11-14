@@ -176,3 +176,6 @@ pub use value::Value;
 pub use value::ValueKind;
 pub use value::ValueKindInfo;
 pub use value::VariantValue;
+
+/// Session-scoped, checked opaque native object ownership.
+pub mod native_objects;

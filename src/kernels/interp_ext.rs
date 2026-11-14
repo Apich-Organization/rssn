@@ -435,12 +435,19 @@ pub fn bspline_eval(
     if coeffs.is_empty() {
         return Err(InterpError::Empty);
     }
-    if knots.len() != coeffs.len() + degree + 1 {
-        return Err(InterpError::ShapeMismatch(format!(
-            "B-spline requires knots.len() == coeffs.len() + degree + 1 ({}), found {}",
-            coeffs.len() + degree + 1,
-            knots.len()
-        )));
+    let expected = coeffs
+        .len()
+        .checked_add(degree)
+        .and_then(|n| n.checked_add(1));
+    if degree >= coeffs.len() || expected != Some(knots.len()) {
+        return Err(InterpError::ShapeMismatch(
+            "B-spline requires degree < coefficient count and knots.len() == coeffs.len() + degree + 1".into(),
+        ));
+    }
+    if !x.is_finite() || knots.iter().chain(coeffs).any(|value| !value.is_finite()) {
+        return Err(InterpError::Domain(
+            "B-spline knots, coefficients and query must be finite".into(),
+        ));
     }
     for i in 1..knots.len() {
         if knots[i] < knots[i - 1] {
@@ -450,6 +457,11 @@ pub fn bspline_eval(
         }
     }
     let n = coeffs.len() - 1;
+    if knots[degree] >= knots[n + 1] {
+        return Err(InterpError::Domain(
+            "B-spline support must have positive width".into(),
+        ));
+    }
     let x_clamped = x.clamp(knots[degree], knots[n + 1]);
 
     // Find knot span k such that knots[k] <= x_clamped < knots[k+1]

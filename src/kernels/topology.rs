@@ -484,6 +484,19 @@ pub enum PersistenceError {
     TooManySimplices,
 }
 
+impl std::fmt::Display for PersistenceError {
+    fn fmt(
+        &self,
+        formatter: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        formatter.write_str(match self {
+            | Self::InvalidFiltration => "simplex filtration has a missing or later-entering face",
+            | Self::TooManySimplices => "Vietoris-Rips filtration exceeds its simplex budget",
+        })
+    }
+}
+impl std::error::Error for PersistenceError {}
+
 /// Default cap on the number of simplices of a Vietoris-Rips filtration.
 pub const DEFAULT_SIMPLEX_LIMIT: usize = 20_000_000;
 

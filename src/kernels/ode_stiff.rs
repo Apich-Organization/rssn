@@ -737,7 +737,10 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 return Err(OdeError::StepLimit);
             }
             steps += 1;
-            if !h_abs.is_finite() || crate::kernels::exact_eq(t + dir * h_abs, t) {
+            if !h_abs.is_finite()
+                || crate::kernels::exact_eq(t + dir * h_abs, t)
+                || (h_abs < opts.hmin && (t1 - t).abs() > opts.hmin)
+            {
                 return Err(OdeError::StepLimit);
             }
             let tab = &tabs[tab_index(stages)];
@@ -1482,7 +1485,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                 return Err(OdeError::StepLimit);
             }
             steps += 1;
-            if !h_abs.is_finite() || crate::kernels::exact_eq(t + dir * h_abs, t) {
+            if !h_abs.is_finite()
+                || crate::kernels::exact_eq(t + dir * h_abs, t)
+                || (h_abs < opts.hmin && (t1 - t).abs() > opts.hmin)
+            {
                 return Err(OdeError::StepLimit);
             }
             let mut h = h_abs * dir;

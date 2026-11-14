@@ -211,29 +211,73 @@ impl Multivector3D {
         self.norm_sq().sqrt()
     }
 
-    /// Returns the inverse of the multivector, if it exists.
+    /// Returns the inverse of a general Cl(3,0) multivector, if representable.
     ///
-    /// For simple multivectors (like vectors or blades), this is `A_rev` / |A|^2.
+    /// The product with its Clifford conjugate is central (scalar plus
+    /// pseudoscalar). Inverting that complex scalar gives the general inverse;
+    /// reversal divided by the Euclidean norm only works for special blades.
     #[must_use]
     pub fn inv(self) -> Option<Self> {
-        let n2 = self.norm_sq();
-
-        if n2.abs() < f64::EPSILON {
-            None
-        } else {
-            let rev = self.reverse();
-
-            Some(Self {
-                s: rev.s / n2,
-                v1: rev.v1 / n2,
-                v2: rev.v2 / n2,
-                v3: rev.v3 / n2,
-                b12: rev.b12 / n2,
-                b23: rev.b23 / n2,
-                b31: rev.b31 / n2,
-                pss: rev.pss / n2,
-            })
+        let coefficients = [
+            self.s, self.v1, self.v2, self.v3, self.b12, self.b23, self.b31, self.pss,
+        ];
+        if coefficients.iter().any(|value| !value.is_finite()) {
+            return None;
         }
+        let scale = coefficients
+            .iter()
+            .copied()
+            .map(f64::abs)
+            .fold(0.0, f64::max);
+        if super::exact_eq(scale, 0.0) {
+            return None;
+        }
+        let normalized = Self::new(
+            self.s / scale,
+            self.v1 / scale,
+            self.v2 / scale,
+            self.v3 / scale,
+            self.b12 / scale,
+            self.b23 / scale,
+            self.b31 / scale,
+            self.pss / scale,
+        );
+        let conjugate = normalized.conjugate();
+        let determinant = normalized * conjugate;
+        let central_scale = determinant.s.abs().max(determinant.pss.abs());
+        if super::exact_eq(central_scale, 0.0) {
+            return None;
+        }
+        let real = determinant.s / central_scale;
+        let imaginary = determinant.pss / central_scale;
+        let denominator = real * real + imaginary * imaginary;
+        // Divide by the original scale first when it is large; this avoids
+        // overflowing an intermediate reciprocal of a tiny central determinant.
+        let reciprocal = |value: f64| {
+            if scale >= 1.0 {
+                (value / denominator / scale) / central_scale
+            } else {
+                (value / denominator / central_scale) / scale
+            }
+        };
+        let centre = Self::new(
+            reciprocal(real),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            reciprocal(-imaginary),
+        );
+        let result = conjugate * centre;
+        [
+            result.s, result.v1, result.v2, result.v3, result.b12, result.b23, result.b31,
+            result.pss,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+        .then_some(result)
     }
 
     /// Performs the outer (wedge) product.

@@ -115,9 +115,9 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
             .for_each(|(i, ez_row)| {
                 for (j, v) in ez_row.iter_mut().enumerate() {
                     if i < pml_thickness
-                        || i >= nx - pml_thickness
+                        || i >= nx.saturating_sub(pml_thickness)
                         || j < pml_thickness
-                        || j >= ny - pml_thickness
+                        || j >= ny.saturating_sub(pml_thickness)
                     {
                         *v *= 0.95;
                     }

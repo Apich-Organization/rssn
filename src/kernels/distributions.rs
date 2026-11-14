@@ -214,7 +214,7 @@ pub enum Distribution {
 }
 
 impl Distribution {
-    fn validate(&self) -> Result<(), DistError> {
+    pub(crate) fn validate(&self) -> Result<(), DistError> {
         let positive = |x: f64| x.is_finite() && x > 0.0;
         let valid = match *self {
             | Self::Normal { mu, sigma } | Self::LogNormal { mu, sigma } => {

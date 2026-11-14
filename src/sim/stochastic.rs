@@ -1,95 +1,45 @@
-//! Stochastic differential equations (§8.9.1, new in this round).
+//! Stochastic paths with explicit methods, noise structure and bounded schedules.
 //!
-//! The differential-equation chapter now has a second surface next to
-//! [`crate::kernels::ode`]: `dX = a(t, X) dt + G(t, X) dW` with a typed drift and a
-//! diffusion, integrated by the schemes of `crate::kernels::sde`. This crate owns
-//! the *interface*: method/calculus/structure selection, the state as a flat
-//! `Vec<f64>` (the runtime flattens and rebuilds records and tensors exactly as
-//! for the ODE path, §8.9), and one deterministic RNG contract.
+//! Brownian fixed/uniform-grid and adaptive paths retain the requested Itô or
+//! Stratonovich scheme, including backward Euler, theta-Maruyama and implicit
+//! Milstein. General noncommutative Milstein uses all iterated integrals.
+//! Adaptive integration compares one step with two coupled half steps. Accepted
+//! half-step states are retained; rejected proposals never redraw noise.
 //!
-//! # What is implemented
+//! The finest independent increments are sampled before stepping and stored in
+//! a bounded dyadic tree. Coarse increments are sums of the same leaves; Brownian
+//! areas use Chen's relation. `cells` is rounded up to a power of two (minimum
+//! two, default 4096). Tolerance failure at the finest coupled interval returns
+//! `StepLimit`; it never switches to fixed stepping or forces acceptance.
+//! Brownian defects use a second-moment allocation proportional to sqrt(dt/T),
+//! while a separate drift-only defect uses dt/T. Stable noise uses q=0.9*alpha,
+//! strictly below its finite-moment boundary. These are local sample-path error
+//! estimates, not certified global probabilistic bounds. Relative scaling uses
+//! the maximum magnitude of initial/current/trial state in each component.
 //!
-//! The **method name selects the scheme family and the calculus; the structure
-//! selects the commutative or the non-commutative kernel**:
+//! Adaptive compound Poisson integration samples exponential arrival times and
+//! marks independently of Brownian refinement, stops continuous integration at
+//! each arrival, then applies its jump. Rejection changes neither arrivals nor
+//! marks. Constant-mark compensation and an explicit expectation callback are
+//! available. JumpPath node values are post-jump; chord interpolation across a
+//! jump is not a reconstruction of its left limit.
 //!
-//! | method | calculus | commutative noise (`Diagonal`, `General{commutative: true}`) | non-commutative noise (`General{commutative: false}`) | order strong/weak |
-//! |---|---|---|---|---|
-//! | `EulerMaruyama` | Itô | Euler–Maruyama | Euler–Maruyama | 0.5 / 1 |
-//! | `Milstein` | Itô | Milstein | Milstein with Lévy areas | 1 / 1 |
-//! | `MilsteinStratonovich` | Stratonovich | Milstein (Strat.) | Milstein (Strat.) with Lévy areas | 1 / 1 |
-//! | `HeunStratonovich` | Stratonovich | Heun | Heun | 1 / 1 (commutative); **0.5 / 1** (non-commutative) |
-//! | `SrkPlaten` | Itô | Platen's derivative-free SRK | Kloeden–Platen SRK (11.1.7) with Lévy areas | 1 / 1 |
-//! | `MilsteinNoncommutative` | Itô | Milstein with Lévy areas (explicit alias) | same | 1 / 1 |
-//! | `MilsteinNoncommutativeStratonovich` | Stratonovich | Milstein (Strat.) with Lévy areas (alias) | same | 1 / 1 |
+//! Non-Gaussian stable noise supports Itô Euler, drift-implicit Euler and theta
+//! stepping, on fixed/uniform grids and adaptive schedules. Brownian Milstein or
+//! Stratonovich corrections are rejected for alpha<2. Alpha=2 is the correctly
+//! scaled Brownian process, so every Brownian method is available. Stable
+//! finest-cell sums preserve the process law, including the alpha=1 skew shift.
 //!
-//! The calculus is part of the method name, not an orthogonal option: nearly
-//! every Itô/Stratonovich mix-up in the wild is a scheme whose name does not say
-//! which integral it converges to. [`sde_order_for`] reports the order for a
-//! `(method, structure)` pair; [`sde_order`] is the commutative-noise order.
-//!
-//! Step policy is fixed (`dt`/`steps`, or an explicit **uniform** grid) or
-//! adaptive (`rtol`/`atol`, Brownian-bridge rejection in the kernel). Adaptive
-//! integration works for every method:
-//!
-//! * Itô, commutative noise (`EulerMaruyama`, `Milstein`, `SrkPlaten`): the
-//!   kernel's embedded EM/Milstein controller, which returns the *Milstein*
-//!   solution, so these requests give the same controlled path (the requested
-//!   name is kept in [`Path::method`]);
-//! * Stratonovich, commutative noise (`MilsteinStratonovich`,
-//!   `HeunStratonovich`): **exact conversion to Itô form** — the drift becomes
-//!   `a~ = a + 1/2 sum_j (D_j g)_{.j}` and the Itô controller runs on `(a~, g)`.
-//!   The returned path is the controlled Itô–Milstein solution of the equivalent
-//!   Itô SDE, which converges to the Stratonovich solution;
-//! * non-commutative noise (and the `*Noncommutative*` methods): the fine-cell
-//!   controller with Chen's relation (`cells`, default [`DEFAULT_CELLS`]), the
-//!   Itô one, or the Itô-converted one for Stratonovich methods.
-//!
-//! # Determinism and the two RNG streams
-//!
-//! * Fixed-step paths on the **language stream** ([`wiener`], [`Stream`]): the
-//!   stream is the interpreter's `rng(seed)` LCG (state → `seed * 6364136223846793005 + 1`,
-//!   `(state >> 11) / 2^53`), with standard normals by Box–Muller (two uniforms
-//!   per normal, cosine branch). [`wiener`] and a fixed-step diagonal/general path
-//!   therefore consume *the same numbers* — a test asserts the path equals a
-//!   hand-driven kernel EM run on `wiener`'s increments. Same build ⇒
-//!   bit-identical; cross-platform bit identity is not promised.
-//! * Fixed-step schemes that use Lévy areas (every method on non-commutative
-//!   noise except Euler–Maruyama and Heun, and the `*Noncommutative*` methods)
-//!   and every adaptive path need the
-//!   kernel's internal xoshiro stream (`crate::kernels::random::Rng`) because the
-//!   kernel samples Brownian bridges and Lévy areas as it goes. They are
-//!   seeded from [`Options::seed`] and deterministic for a given build; they do
-//!   not share the language LCG stream. This is a documented two-stream
-//!   reality: the language stream is the one `wiener`/`rng` expose, the kernel
-//!   stream is what bridge splitting consumes.
-//!
-//! # Limitations (deliberate, not silent)
-//!
-//! * Fixed-step kernels assume a uniform step; an explicit non-uniform grid is
-//!   rejected with `E0802` (use the adaptive schedule for variable steps).
-//! * A `General { commutative: true }` structure is a **claim by the caller**:
-//!   the Milstein/SRK corrections without Lévy areas are only valid for
-//!   commutative noise. Declare `commutative: false` and the same method names
-//!   dispatch to the Lévy-area kernels instead (no error).
-//! * Lévy areas are simulated with a finite Fourier expansion
-//!   ([`Options::terms`]) plus the Gaussian tail correction; accuracy improves
-//!   with the mode count. `terms == 0` means "default": [`default_terms`]
-//!   `= clamp(ceil(1/sqrt(h)), 16, 4096)` for the step (or the Brownian cell) `h`.
-//!   Non-commutative schemes are strong order one at best.
-//! * `HeunStratonovich` on non-commutative noise is accepted but is only strong
-//!   order 1/2 there (it uses no Lévy areas); use `MilsteinStratonovich` or a
-//!   `*Noncommutative*` method for order one.
-//! * No events/root-finding and no dense output in this round (`SdeError::Unsupported`,
-//!   capability `sde.events`, is reserved for them; no current combination produces it).
-//! * Ensembles run paths sequentially: an Aevia interpreter closure is
-//!   single-threaded (`!Send`), so the kernel's rayon ensemble cannot be used
-//!   without an `unsafe` callback. The per-path seed is derived from the pair
-//!   `(seed, index)` only, so the result is independent of execution order.
-//! * Record/tensor states are handled by the caller: this module sees the flat
-//!   slice produced by the same flatten/rebuild contract as [`crate::kernels::ode`].
-//!
-//! The statistical order/convergence tests live in the kernel's own suite; the
-//! tests here are deterministic (pinned seeds, path equality, error codes).
+//! Allocation products are checked before presampling: at most 1048576 noise
+//! leaves, 8388608 tree coefficients/path state values, and 268435456 Levy-area
+//! coefficient updates. `max_steps` bounds both proposals and accepted path
+//! steps; it also bounds sampled Poisson arrivals. Callback-ABI adapters add an
+//! independent host-evaluation budget and explicit physical reference time.
+//! Fixed and adaptive commutative paths use the language LCG/Box-Muller stream;
+//! area paths use the kernel xoshiro stream. Seeds reproduce results within a
+//! build. Ensemble member seeds depend only on (seed,index).
+
+mod adaptive_ext;
 
 use crate::kernels::random::Rng;
 use crate::kernels::sde as kernel;
@@ -451,9 +401,8 @@ pub enum Schedule {
         atol: f64,
         /// Step budget; exhaustion is `E0807`.
         max_steps: usize,
-        /// Brownian cells for the non-commutative adaptive solver on `[t0,t1]`.
-        /// Ignored by the commutative solvers; `0` selects [`DEFAULT_CELLS`] when
-        /// the non-commutative solver is used.
+        /// Finest independent noise cells on `[t0,t1]`, rounded up to a power
+        /// of two; `0` selects [`DEFAULT_CELLS`]. Used by every adaptive method.
         cells: usize,
     },
 }
@@ -542,8 +491,8 @@ impl Options {
         }
     }
 
-    /// Adaptive integration on `[t0, t1]` (`cells` is used only by the
-    /// non-commutative method; pass `0` otherwise).
+    /// Adaptive integration on `[t0,t1]` using bounded dyadic coupled noise.
+    /// `cells=0` selects the default finest resolution for every method.
     #[must_use]
     #[allow(clippy::too_many_arguments)] // the option record is the language's, not a builder
     pub const fn adaptive(
@@ -584,7 +533,7 @@ impl Options {
     }
 }
 
-/// Brownian cells of the non-commutative adaptive solver when `cells == 0`.
+/// Finest noise cells of every adaptive solver when `cells == 0`.
 pub const DEFAULT_CELLS: usize = 4096;
 
 /// The default number of Fourier modes of the simulated Lévy areas for a step
@@ -723,8 +672,7 @@ pub struct Path {
     pub seed: u64,
     /// The number of noise channels (`m`).
     pub noise: usize,
-    /// The method actually used (adaptive `EulerMaruyama` runs the kernel's
-    /// controlled Milstein solution, but keeps the requested name).
+    /// The method actually used for every accepted half step.
     pub method: Method,
 }
 
@@ -789,7 +737,7 @@ where
         y: &[f64],
         out: &mut [f64],
     ) {
-        if self.drift_error.borrow().is_some() {
+        if self.drift_error.borrow().is_some() || self.diffusion_error.borrow().is_some() {
             out.fill(0.0);
             return;
         }
@@ -822,7 +770,7 @@ where
         y: &[f64],
         out: &mut [f64],
     ) {
-        if self.diffusion_error.borrow().is_some() {
+        if self.diffusion_error.borrow().is_some() || self.drift_error.borrow().is_some() {
             out.fill(0.0);
             return;
         }
@@ -858,6 +806,13 @@ where
         }
     }
 
+    fn pending_failure(&self) -> Option<SdeError> {
+        self.drift_error
+            .borrow()
+            .clone()
+            .or_else(|| self.diffusion_error.borrow().clone())
+    }
+
     /// The first callback failure, if any.
     fn failure(&self) -> Option<SdeError> {
         self.drift_error
@@ -881,21 +836,10 @@ where
 /// [`Structure::Diagonal`] (the diagonal entries) or `n × m` values in
 /// row-major order for [`Structure::General`].
 ///
-/// The step policy comes from [`Options::schedule`]. Fixed steps consume
-/// [`wiener`]'s language-stream increments; the non-commutative method and every
-/// adaptive path consume the kernel's internal stream (seeded from
-/// [`Options::seed`]); see the module docs.
-///
-/// The adaptive controller integrates with the kernel's Milstein-controlled
-/// step size: the returned states are the kernel's Milstein solution for the
-/// `EulerMaruyama`, `Milstein` and `SrkPlaten` requests (Itô). For the
-/// Stratonovich methods the drift is converted exactly to its Itô equivalent
-/// (`a~ = a + 1/2 sum_j (D_j g)_{.j}`) and the same controller runs on the
-/// converted SDE: the returned path is the controlled Itô–Milstein solution of
-/// the equivalent Itô SDE, which converges to the Stratonovich solution.
-/// Non-commutative noise uses the fine-cell controller (`cells`, default
-/// [`DEFAULT_CELLS`]). This is the kernel's documented contract, not a hidden
-/// substitution of the requested scheme's control law.
+/// Fixed/uniform-grid schedules use prescribed increments. Adaptive schedules
+/// retain the requested method and use a bounded noise tree with coupled step
+/// doubling, a separate drift-error check, and explicit resolution/work errors.
+/// See the module documentation for tolerance scaling and finite allocations.
 ///
 /// # Errors
 ///
@@ -913,15 +857,6 @@ where
     G: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
 {
     validate_options(options, y0)?;
-    if matches!(
-        options.method,
-        Method::DriftImplicitEuler | Method::ThetaMaruyama | Method::DriftImplicitMilstein
-    ) && matches!(options.schedule, Schedule::Adaptive { .. })
-    {
-        return Err(SdeError::invalid(
-            "drift-implicit schemes require a fixed or uniform-grid schedule",
-        ));
-    }
     let state = y0.len();
     let noise = options.structure.noise(state);
     let adapters = Adapters::new(drift, diffusion, state, options.structure);
@@ -943,9 +878,8 @@ where
             max_steps,
             cells,
         } => {
-            adaptive(
-                &adapters, y0, options, *t1, *rtol, *atol, *max_steps, *cells,
-            )
+            let _ = (t1, rtol, atol, max_steps, cells);
+            adaptive_ext::brownian(&adapters, y0, options, None)
         },
     };
     // A callback failure is recorded inside the adapter (the kernel callbacks
@@ -1015,6 +949,15 @@ fn validate_options(
     if options.structure.noise(y0.len()) == 0 {
         return Err(SdeError::invalid("the noise dimension is zero"));
     }
+    if y0
+        .len()
+        .checked_mul(options.structure.noise(y0.len()))
+        .is_none_or(|n| n > 8_388_608)
+    {
+        return Err(SdeError::invalid(
+            "SDE coefficient storage exceeds the finite allocation budget",
+        ));
+    }
     match &options.schedule {
         | Schedule::Fixed { dt, steps } => {
             if !dt.is_finite() || *dt <= 0.0 {
@@ -1036,7 +979,7 @@ fn validate_options(
             max_steps,
             cells,
         } => {
-            if !t1.is_finite() || *t1 <= options.t0 {
+            if !t1.is_finite() || *t1 <= options.t0 || !(*t1 - options.t0).is_finite() {
                 return Err(SdeError::invalid(
                     "the end time must be after the initial time",
                 ));
@@ -1091,25 +1034,17 @@ fn uniform_grid(times: &[f64]) -> Result<(f64, usize), SdeError> {
 const fn uses_levy_areas(options: &Options) -> bool {
     match options.method {
         | Method::MilsteinNoncommutative | Method::MilsteinNoncommutativeStratonovich => true,
-        | Method::Milstein | Method::MilsteinStratonovich | Method::SrkPlaten => {
-            !options.structure.is_commutative()
-        },
+        | Method::Milstein
+        | Method::MilsteinStratonovich
+        | Method::SrkPlaten
+        | Method::DriftImplicitMilstein => !options.structure.is_commutative(),
         | Method::EulerMaruyama
         | Method::HeunStratonovich
         | Method::DriftImplicitEuler
-        | Method::ThetaMaruyama
-        | Method::DriftImplicitMilstein => false,
+        | Method::ThetaMaruyama => false,
     }
 }
 
-/// Whether an adaptive run uses the non-commutative (fine-cell) controller.
-const fn adaptive_noncommutative(options: &Options) -> bool {
-    !options.structure.is_commutative()
-        || matches!(
-            options.method,
-            Method::MilsteinNoncommutative | Method::MilsteinNoncommutativeStratonovich
-        )
-}
 
 /// A fixed-step integration.
 fn fixed<A, G>(
@@ -1142,6 +1077,28 @@ where
                 kernel::milstein_noncommutative_stratonovich(
                     drift, diffusion, noise, t0, dt, y0, &sample,
                 )
+            },
+            | Method::DriftImplicitMilstein => {
+                let mut states = vec![y0.to_vec()];
+                for (index, (dw, areas)) in sample.dws.iter().zip(&sample.areas).enumerate() {
+                    let current = states
+                        .last()
+                        .ok_or_else(|| SdeError::invalid("empty implicit path"))?;
+                    let next = crate::kernels::sde_ext::drift_implicit_step_with_areas(
+                        &drift,
+                        &diffusion,
+                        noise,
+                        t0 + index as f64 * dt,
+                        dt,
+                        current,
+                        dw,
+                        areas,
+                        DriftImplicitScheme::DriftImplicitMilstein,
+                    )
+                    .map_err(map_sde_ext_err)?;
+                    states.push(next);
+                }
+                Ok(states)
             },
             | Method::SrkPlaten => {
                 kernel::srk_noncommutative(drift, diffusion, noise, t0, dt, y0, &sample)
@@ -1214,78 +1171,6 @@ where
     })
 }
 
-/// An adaptive-step integration.
-#[allow(clippy::too_many_arguments)] // mirrors the kernel's adaptive entry points
-fn adaptive<A, G>(
-    adapters: &Adapters<A, G>,
-    y0: &[f64],
-    options: &Options,
-    t1: f64,
-    rtol: f64,
-    atol: f64,
-    max_steps: usize,
-    cells: usize,
-) -> Result<Path, SdeError>
-where
-    A: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
-    G: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
-{
-    let noise = options.structure.noise(y0.len());
-    let drift = |t: f64, y: &[f64], out: &mut [f64]| adapters.drift_at(t, y, out);
-    let diffusion = |t: f64, y: &[f64], out: &mut [f64]| adapters.diffusion_at(t, y, out);
-    let stratonovich = options.method.calculus() == Calculus::Stratonovich;
-    let base = kernel::SdeAdaptiveOptions {
-        rtol,
-        atol,
-        seed: options.seed,
-        max_steps,
-    };
-    let path = if adaptive_noncommutative(options) {
-        let cell_count = if cells == 0 {
-            DEFAULT_CELLS
-        } else {
-            cells
-        };
-        let cell_width = (t1 - options.t0) / cell_count as f64;
-        let terms = if options.terms == 0 {
-            default_terms(cell_width)
-        } else {
-            options.terms
-        };
-        let nc = kernel::SdeNoncommutativeOptions {
-            base,
-            cells: cell_count,
-            terms,
-        };
-        if stratonovich {
-            kernel::sde_adaptive_noncommutative_stratonovich_with(
-                drift, diffusion, noise, options.t0, t1, y0, &nc,
-            )
-        } else {
-            kernel::sde_adaptive_noncommutative_with(
-                drift, diffusion, noise, options.t0, t1, y0, &nc,
-            )
-        }
-    } else if stratonovich {
-        kernel::sde_adaptive_stratonovich_with(drift, diffusion, noise, options.t0, t1, y0, &base)
-    } else {
-        kernel::sde_adaptive_with(drift, diffusion, noise, options.t0, t1, y0, &base)
-    }
-    .map_err(SdeError::from)?;
-    if let Some(failure) = adapters.failure() {
-        return Err(failure);
-    }
-    Ok(Path {
-        steps: path.y.len().saturating_sub(1),
-        t: path.t,
-        y: path.y,
-        rejected: path.rejected,
-        nfev: adapters.nfev(),
-        seed: options.seed,
-        noise,
-        method: options.method,
-    })
-}
 
 // ---------------------------------------------------------------------------
 // Continuous output and events on paths (§8.9.1)
@@ -1512,6 +1397,10 @@ where
 {
     validate_options(options, y0)?;
     let noise = options.structure.noise(y0.len());
+    if matches!(options.schedule, Schedule::Adaptive { .. }) {
+        let adapters = Adapters::new(drift, diffusion, y0.len(), options.structure);
+        return adaptive_ext::brownian(&adapters, y0, options, Some(scheme));
+    }
     let (dt, steps) = match &options.schedule {
         | Schedule::Fixed { dt, steps } => (*dt, *steps),
         | Schedule::Grid { times } => uniform_grid(times)?,
@@ -1795,7 +1684,11 @@ pub fn sample_alpha_stable(
     scale: f64,
     location: f64,
 ) -> Result<f64, SdeError> {
-    if (alpha - 2.0).abs() < 1e-12 && alpha > 0.0 && (-1.0..=1.0).contains(&beta) && scale > 0.0 {
+    if crate::kernels::exact_eq(alpha, 2.0)
+        && alpha > 0.0
+        && (-1.0..=1.0).contains(&beta)
+        && scale > 0.0
+    {
         let mut dummy_u = || 0.5;
         let mut next_n = || stream.next_normal();
         return crate::kernels::sde_ext::sample_alpha_stable_with(
@@ -1835,6 +1728,11 @@ pub fn levy_increments(
     alpha: f64,
     beta: f64,
 ) -> Result<Vec<Vec<f64>>, SdeError> {
+    if !(alpha.is_finite() && 0.0 < alpha && alpha <= 2.0 && (-1.0..=1.0).contains(&beta)) {
+        return Err(SdeError::invalid(
+            "stable parameters require alpha in (0,2] and beta in [-1,1]",
+        ));
+    }
     if dim == 0 || !dt.is_finite() || dt <= 0.0 {
         return Err(SdeError::invalid(
             "levy_increments requires dim > 0 and finite dt > 0",
@@ -1891,6 +1789,9 @@ where
     let n = y0.len();
     let noise = options.structure.noise(n);
 
+    if matches!(options.schedule, Schedule::Adaptive { .. }) {
+        return adaptive_ext::jump(drift, diffusion, jump_coeff, y0, jump_spec, options);
+    }
     let (dt, steps) = match &options.schedule {
         | Schedule::Fixed { dt, steps } => (*dt, *steps),
         | Schedule::Grid { times } => uniform_grid(times)?,
@@ -1901,16 +1802,6 @@ where
         },
     };
 
-    if !options.structure.is_commutative()
-        || matches!(
-            options.method,
-            Method::MilsteinNoncommutative | Method::MilsteinNoncommutativeStratonovich
-        )
-    {
-        return Err(SdeError::invalid(
-            "jump diffusion currently requires commutative noise",
-        ));
-    }
     // c(E[Z]) is not E[c(Z)] for a nonlinear jump coefficient. Only constant
     // marks have an exact compensator without an additional expectation callback.
     let mean_mark = if jump_spec.compensated {
@@ -1929,6 +1820,25 @@ where
     let increments = wiener(options.seed, noise, steps, dt);
     // Use a distinct deterministic seed stream for the Poisson jump counts and marks
     let mut jump_stream = Stream::new(ensemble_seed(options.seed, 0x4A55_4D50));
+    let mut area_stream = Rng::new(ensemble_seed(options.seed, 0x4152_4541));
+    let terms = if options.terms == 0 {
+        default_terms(dt)
+    } else {
+        options.terms
+    };
+    if uses_levy_areas(options)
+        && (terms > 4096
+            || steps
+                .checked_mul(noise)
+                .and_then(|n| n.checked_mul(noise))
+                .and_then(|n| n.checked_mul(terms))
+                .is_none_or(|n| n > 268_435_456))
+    {
+        return Err(SdeError::invalid(
+            "jump-diffusion Levy-area work exceeds its finite budget",
+        ));
+    }
+
 
     let mut ts = Vec::with_capacity(steps + 1);
     let mut ys = Vec::with_capacity(steps + 1);
@@ -1944,6 +1854,11 @@ where
         let t_curr = options.t0 + step_idx as f64 * dt;
         let t_next = options.t0 + (step_idx + 1) as f64 * dt;
 
+        let areas = if uses_levy_areas(options) {
+            Some(kernel::levy_areas(&mut area_stream, noise, dt, dw, terms))
+        } else {
+            None
+        };
         let mut y_cont = {
             let adjusted_drift = |t: f64, state: &[f64]| {
                 let mut value = drift(t, state)?;
@@ -1966,15 +1881,16 @@ where
                 |t: f64, state: &[f64], out: &mut [f64]| adapters.drift_at(t, state, out);
             let diff_fn =
                 |t: f64, state: &[f64], out: &mut [f64]| adapters.diffusion_at(t, state, out);
-            let next = simulate_terminal_with_increments(
+            let next = adaptive_ext::prescribed_step(
                 &drift_fn,
                 &diff_fn,
                 noise,
+                options.method,
                 t_curr,
                 dt,
                 &y,
-                std::slice::from_ref(dw),
-                options.method,
+                dw,
+                areas.as_deref(),
             );
             if let Some(error) = adapters.failure() {
                 return Err(error);
@@ -2085,7 +2001,8 @@ where
 /// # Errors
 ///
 /// Returns [`SdeError`] for invalid `\alpha \notin (0, 2]`, `\beta \notin [-1, 1]`,
-/// mismatched callback shapes, non-finite states, or a method other than `EulerMaruyama`.
+/// mismatched callback shapes, non-finite states, or a Brownian-only method
+/// requested for non-Gaussian stable noise.
 pub fn integrate_levy<A, G>(
     mut drift: A,
     mut levy_diffusion: G,
@@ -2099,10 +2016,31 @@ where
     G: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
 {
     validate_options(options, y0)?;
-    if options.method != Method::EulerMaruyama {
+    if !(alpha.is_finite() && 0.0 < alpha && alpha <= 2.0 && (-1.0..=1.0).contains(&beta)) {
         return Err(SdeError::invalid(
-            "alpha-stable Levy integration currently requires EulerMaruyama",
+            "stable parameters require alpha in (0,2] and beta in [-1,1]",
         ));
+    }
+    if crate::kernels::exact_eq(alpha, 2.0) {
+        let scaled = |t: f64, y: &[f64]| {
+            let mut values = levy_diffusion(t, y)?;
+            for value in &mut values {
+                *value *= std::f64::consts::SQRT_2;
+            }
+            Ok(values)
+        };
+        return integrate(drift, scaled, y0, options);
+    }
+    if !matches!(
+        options.method,
+        Method::EulerMaruyama | Method::DriftImplicitEuler | Method::ThetaMaruyama
+    ) {
+        return Err(SdeError::invalid(
+            "non-Gaussian Levy noise supports Ito Euler, drift-implicit Euler, and theta-Maruyama; Brownian Milstein/Stratonovich corrections do not define a Levy scheme",
+        ));
+    }
+    if matches!(options.schedule, Schedule::Adaptive { .. }) {
+        return adaptive_ext::levy(drift, levy_diffusion, y0, alpha, beta, options);
     }
     let n = y0.len();
     let noise = options.structure.noise(n);
@@ -2117,6 +2055,40 @@ where
         },
     };
     let dl_increments = levy_increments(options.seed, noise, steps, dt, alpha, beta)?;
+    if options.method != Method::EulerMaruyama {
+        let adapters = Adapters::new(drift, levy_diffusion, n, options.structure);
+        let drift = |t: f64, y: &[f64], out: &mut [f64]| adapters.drift_at(t, y, out);
+        let diffusion = |t: f64, y: &[f64], out: &mut [f64]| adapters.diffusion_at(t, y, out);
+        let scheme = if options.method == Method::ThetaMaruyama {
+            DriftImplicitScheme::Trapezoidal
+        } else {
+            DriftImplicitScheme::BackwardEuler
+        };
+        let states = drift_implicit_core(
+            &drift,
+            &diffusion,
+            noise,
+            options.t0,
+            dt,
+            y0,
+            &dl_increments,
+            scheme,
+        );
+        if let Some(error) = adapters.failure() {
+            return Err(error);
+        }
+        let states = states?;
+        return Ok(Path {
+            t: (0..=steps).map(|i| options.t0 + i as f64 * dt).collect(),
+            y: states,
+            steps,
+            rejected: 0,
+            nfev: adapters.nfev(),
+            seed: options.seed,
+            noise,
+            method: options.method,
+        });
+    }
     let mut ts = Vec::with_capacity(steps + 1);
     let mut ys = Vec::with_capacity(steps + 1);
     let mut y = y0.to_vec();

@@ -529,10 +529,15 @@ impl Device for WgpuDevice {
             pipeline,
             pair: Mutex::new(None),
         });
-        self.cache
+        let mut cache = self
+            .cache
             .lock()
-            .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?
-            .insert(key, k.clone());
+            .map_err(|_| DeviceError::Backend("kernel cache poisoned".into()))?;
+        if cache.len() >= 8 {
+            cache.clear();
+        }
+        cache.insert(key, k.clone());
+        drop(cache);
         Ok(k)
     }
 

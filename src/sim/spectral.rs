@@ -297,6 +297,9 @@ impl SpectralGrid {
 /// Nonlinear term `N(t, uh)` of a spectral PDE, returning its spectral transform.
 pub type NonlinearTerm = dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>;
 
+/// Borrowed nonlinear spectral callback with a caller-controlled lifetime.
+pub type BorrowedNonlinearTerm<'a> = dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>> + 'a;
+
 /// Fourth-order ETDRK4 time stepping of `u_t = L u + N(u, t)` in the spectral domain.
 ///
 /// Integrates `u_t = L u + N(u, t)` in the spectral domain with the
@@ -308,7 +311,7 @@ pub type NonlinearTerm = dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>;
 pub fn etdrk4(
     mut uh: Vec<Complex<f64>>,
     lin: &[Complex<f64>],
-    nonlinear: &NonlinearTerm,
+    nonlinear: &BorrowedNonlinearTerm<'_>,
     t_end: f64,
     steps: usize,
 ) -> Vec<Complex<f64>> {

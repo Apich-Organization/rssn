@@ -2121,3 +2121,101 @@ pub fn solve_dg_with(
     sol.steps = steps;
     Ok(sol)
 }
+
+/// Advance periodic scalar DG advection from its nodal state by one SSPRK3 step.
+///
+/// The caller controls the physical step and must respect the DG CFL limit;
+/// this restart interface reuses the existing DG volume/surface operator.
+///
+/// # Errors
+/// Invalid mesh/state/time, a non-finite speed, or a step above the DG CFL limit.
+pub fn advection_step(
+    mesh: &DgMesh,
+    velocity: f64,
+    state: &[f64],
+    t: f64,
+    dt: f64,
+) -> Result<Vec<f64>, String> {
+    advection_step_nd(mesh, [velocity, 0.0], state, t, dt)
+}
+
+/// Advance periodic scalar DG advection in one or two dimensions by SSPRK3.
+///
+/// # Errors
+/// Invalid mesh, velocity/state dimensions, time controls, or multidimensional CFL.
+pub fn advection_step_nd(
+    mesh: &DgMesh,
+    velocity: [f64; 2],
+    state: &[f64],
+    t: f64,
+    dt: f64,
+) -> Result<Vec<f64>, String> {
+    if !(1..=2).contains(&mesh.dim)
+        || mesh.ne[..mesh.dim].contains(&0)
+        || mesh.p == 0
+        || velocity.iter().any(|v| !v.is_finite())
+        || !t.is_finite()
+        || !dt.is_finite()
+        || dt <= 0.0
+        || (0..mesh.dim)
+            .any(|a| !mesh.lo[a].is_finite() || !mesh.hi[a].is_finite() || mesh.hi[a] <= mesh.lo[a])
+        || mesh.ne[..mesh.dim]
+            .iter()
+            .try_fold(1usize, |n, d| n.checked_mul(*d))
+            .and_then(|n| {
+                mesh.p
+                    .checked_add(1)
+                    .and_then(|p| p.checked_pow(mesh.dim as u32))
+                    .and_then(|p| n.checked_mul(p))
+            })
+            != Some(state.len())
+        || state.iter().any(|v| !v.is_finite())
+    {
+        return Err("invalid DG advection restart data".into());
+    }
+    let rate = (0..mesh.dim)
+        .map(|a| velocity[a].abs() / mesh.h(a))
+        .sum::<f64>();
+    if rate * dt * (2.0 * mesh.p as f64 + 1.0) > 1.0 {
+        return Err("DG advection CFL bound exceeded".into());
+    }
+    let (xi, w) = lgl(mesh.p);
+    let d = lgl_diff_matrix(&xi);
+    let n1 = mesh.p + 1;
+    let vmat: Vec<Vec<f64>> = xi.iter().map(|&x| legendre(mesh.p, x)).collect();
+    let vinv = invert(vmat.clone());
+    let law = LinearAdvection { a: velocity };
+    let bcs = [
+        DgBc::Periodic,
+        DgBc::Periodic,
+        DgBc::Periodic,
+        DgBc::Periodic,
+    ];
+    let ctx = Ctx {
+        mesh: *mesh,
+        law: &law,
+        bcs: &bcs,
+        d,
+        w,
+        nv: 1,
+        np: mesh.nodes_per_element(),
+        n1,
+        es: false,
+        vmat,
+        vinv,
+    };
+    let l0 = ctx.rhs(state, t, &xi);
+    let first: Vec<_> = state.iter().zip(l0).map(|(u, l)| u + dt * l).collect();
+    let l1 = ctx.rhs(&first, t + dt, &xi);
+    let second: Vec<_> = (0..state.len())
+        .map(|i| 0.75 * state[i] + 0.25 * (first[i] + dt * l1[i]))
+        .collect();
+    let l2 = ctx.rhs(&second, t + 0.5 * dt, &xi);
+    let next: Vec<_> = (0..state.len())
+        .map(|i| state[i] / 3.0 + (2.0 / 3.0) * (second[i] + dt * l2[i]))
+        .collect();
+    if next.iter().any(|v| !v.is_finite()) {
+        return Err("non-finite DG state".into());
+    }
+    Ok(next)
+}

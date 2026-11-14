@@ -261,7 +261,7 @@ where
 /// Milstein correction `sum_{j,k} (D_j g)_{.k} I_jk` for the iterated Ito
 /// integrals `areas[j * m + k] = I_jk` (row-major), with the directional
 /// derivatives `D_j g` taken by central differences along the columns of `g`.
-fn milstein_term_areas<G: Fn(f64, &[f64], &mut [f64])>(
+pub(crate) fn milstein_term_areas<G: Fn(f64, &[f64], &mut [f64])>(
     diff: &G,
     t: f64,
     y: &[f64],
@@ -295,7 +295,7 @@ fn milstein_term_areas<G: Fn(f64, &[f64], &mut [f64])>(
 
 /// One Milstein correction `(1/2) sum_{j,k} (D_j g)_{.k} (dW_j dW_k - delta_jk h)`
 /// for commutative noise, by central differences along the columns of `g`.
-fn milstein_term<G: Fn(f64, &[f64], &mut [f64])>(
+pub(crate) fn milstein_term<G: Fn(f64, &[f64], &mut [f64])>(
     diff: &G,
     t: f64,
     y: &[f64],

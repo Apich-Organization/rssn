@@ -1,6 +1,32 @@
 //! Symplectic/geometric integrators, Gauss-Legendre implicit RK,
 //! Differential-Algebraic Equation (DAE) solvers, and Delay Differential Equation (DDE) solvers.
 
+#[path = "ode_geom/adaptive.rs"]
+mod adaptive;
+#[path = "ode_geom/bridge.rs"]
+mod bridge;
+#[path = "ode_geom/implicit.rs"]
+mod implicit;
+pub use adaptive::AdaptiveGeomOptions;
+pub use adaptive::solve_adaptive_geometric;
+pub use bridge::ShootingError;
+pub use bridge::hermite_segment;
+pub use bridge::sample_fixed_geometric;
+pub use bridge::shoot_initial;
+
+/// A classical fourth-order Runge-Kutta step.
+///
+/// # Errors
+/// Callback dimension or nonfinite-value errors, or an unrepresentable result.
+pub fn rk4_step(
+    rhs: &mut Rate<'_>,
+    t: f64,
+    y: &[f64],
+    h: f64,
+) -> Result<Vec<f64>, OdeGeomError> {
+    adaptive::geometric_step(GeometricMethod::Rk4, rhs, t, y, h)
+}
+
 /// Type alias for ODE right-hand-side callback.
 pub type Rate<'a> = dyn FnMut(f64, &[f64]) -> Vec<f64> + 'a;
 
@@ -742,7 +768,7 @@ pub fn gauss_legendre_step(
             res = eval_residual(rhs, &k, &mut nfev)?;
         }
         let norm = res.iter().fold(0.0f64, |acc, x| acc.max(x.abs()));
-        if !converged && norm * h.abs().max(1.0) > 1e-7 * (1.0 + norm) {
+        if !converged && norm * h.abs().max(1.0) > tol {
             return Err(OdeGeomError::NotConverged);
         }
     }
@@ -780,6 +806,8 @@ pub struct DaeOptions {
     pub h_max: f64,
     /// Maximum number of steps before returning [`OdeGeomError::NotConverged`].
     pub max_steps: usize,
+    /// Maximum total RHS and constraint/residual callback invocations.
+    pub max_evaluations: usize,
     /// Tolerance for Newton iterations on stage and algebraic constraints.
     pub newton_tol: f64,
     /// Maximum Newton iterations per stage solve.
@@ -795,10 +823,29 @@ impl Default for DaeOptions {
             h_min: 1e-12,
             h_max: f64::INFINITY,
             max_steps: 100_000,
+            max_evaluations: 10_000_000,
             newton_tol: 1e-10,
             max_newton_iter: 25,
         }
     }
+}
+
+fn validate_dae_options(options: DaeOptions) -> Result<(), OdeGeomError> {
+    adaptive::AdaptiveGeomOptions {
+        rtol: options.rtol,
+        atol: options.atol,
+        h0: options.h0,
+        h_min: options.h_min,
+        h_max: options.h_max,
+        max_steps: options.max_steps,
+        max_evaluations: options.max_evaluations,
+    }
+    .validate()?;
+    if !options.newton_tol.is_finite() || options.newton_tol <= 0.0 || options.max_newton_iter == 0
+    {
+        return Err(OdeGeomError::Domain("invalid DAE Newton controls".into()));
+    }
+    Ok(())
 }
 
 /// Solution of a Differential-Algebraic Equation (DAE) system with differential
@@ -1012,7 +1059,7 @@ where
 /// [`OdeGeomError::ShapeMismatch`] if `f` or `g` returns the wrong dimension,
 /// [`OdeGeomError::Singular`] if the algebraic Jacobian `dg/dz` is singular, and
 /// [`OdeGeomError::NotConverged`] if step refinement or Newton iteration fails.
-pub fn solve_dae_index1<F, G>(
+fn solve_dae_index1_impl<F, G>(
     f: &mut F,
     g: &mut G,
     y0: &[f64],
@@ -1087,7 +1134,7 @@ where
     let mut z = z0;
     let mut dy = dy0;
     let mut h = if options.h0 > 0.0 {
-        options.h0.min(t1 - t0)
+        options.h0.min(t1 - t0).min(options.h_max)
     } else {
         ((t1 - t0) / 50.0).clamp(options.h_min, options.h_max)
     };
@@ -1241,7 +1288,7 @@ where
             err = err.max((est / scale).abs());
         }
 
-        if err <= 1.0 || step <= options.h_min {
+        if err <= 1.0 {
             t = if crate::kernels::exact_eq(step, remaining) {
                 t1
             } else {
@@ -1264,7 +1311,7 @@ where
         } else {
             rejected += 1;
             let factor = (0.9 * err.powf(-1.0 / 3.0)).clamp(0.2, 0.8);
-            h = (step * factor).max(options.h_min);
+            h = step * factor;
         }
     }
 
@@ -1557,7 +1604,7 @@ where
 /// [`OdeGeomError::Domain`] for invalid span or non-finite values,
 /// [`OdeGeomError::Singular`] if the index-2 matrix `G (\partial f / \partial z)` is singular,
 /// and [`OdeGeomError::NotConverged`] if step refinement fails.
-pub fn solve_dae_index2<F, G>(
+fn solve_dae_index2_impl<F, G>(
     f: &mut F,
     g: &mut G,
     y0_guess: &[f64],
@@ -1629,7 +1676,7 @@ where
     let mut z = z0;
     let mut dy = dy0;
     let mut h = if options.h0 > 0.0 {
-        options.h0.min(t1 - t0)
+        options.h0.min(t1 - t0).min(options.h_max)
     } else {
         ((t1 - t0) / 50.0).clamp(options.h_min, options.h_max)
     };
@@ -1739,7 +1786,7 @@ where
             err = err.max(est / scale);
         }
 
-        if err <= 1.0 || step <= options.h_min {
+        if err <= 1.0 {
             let (y_proj, z_proj) = dae_consistent_ic_index2(
                 f,
                 g,
@@ -1770,7 +1817,7 @@ where
         } else {
             rejected += 1;
             let factor = (0.9 * err.powf(-1.0 / 3.0)).clamp(0.25, 0.8);
-            h = (step * factor).max(options.h_min);
+            h = step * factor;
         }
     }
 
@@ -1787,8 +1834,9 @@ where
 /// Solves a fully implicit Differential-Algebraic Equation `F(t, y, y') = 0` over
 /// `span = (t0, t1)` using variable-step BDF1/BDF2 with Newton iteration.
 ///
-/// First refines `yp0_guess` so that `F(t0, y0, yp0) = 0` (fixing algebraic components
-/// of `y0` if needed), and then steps forward in time.
+/// Refines differential derivatives when possible; algebraic initial states
+/// must already be consistent. Step doubling controls the BDF local error;
+/// Newton failure alone is never treated as an accuracy estimate.
 ///
 /// # Errors
 ///
@@ -1804,168 +1852,7 @@ pub fn solve_dae_implicit<R>(
 where
     R: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
 {
-    let (t0, t1) = span;
-    let n = y0.len();
-    if n == 0 {
-        return Err(OdeGeomError::Empty);
-    }
-    if yp0_guess.len() != n {
-        return Err(OdeGeomError::ShapeMismatch(format!(
-            "y0 has length {n} but yp0_guess has length {}",
-            yp0_guess.len()
-        )));
-    }
-    if !t0.is_finite()
-        || !t1.is_finite()
-        || t1 < t0
-        || !(t1 - t0).is_finite()
-        || !y0.iter().chain(yp0_guess).all(|x| x.is_finite())
-    {
-        return Err(OdeGeomError::Domain(
-            "invalid implicit DAE span or initial state".into(),
-        ));
-    }
-
-    let mut ts = vec![t0];
-    let mut ys = vec![y0.to_vec()];
-    let mut rates = vec![yp0_guess.to_vec()];
-    let mut nfev = 0usize;
-    let mut rejected = 0usize;
-
-    if crate::kernels::exact_eq(t1, t0) {
-        return Ok(GeomSolution {
-            t: ts,
-            y: ys,
-            rates,
-            nfev,
-            rejected,
-        });
-    }
-
-    let mut t = t0;
-    let mut y = y0.to_vec();
-    let mut yp = yp0_guess.to_vec();
-    let mut h = if options.h0 > 0.0 {
-        options.h0.min(t1 - t0)
-    } else {
-        ((t1 - t0) / 100.0).clamp(options.h_min, options.h_max)
-    };
-
-    let mut step_count = 0usize;
-    while t < t1 {
-        step_count += 1;
-        if step_count > options.max_steps {
-            return Err(OdeGeomError::NotConverged);
-        }
-        let remaining = t1 - t;
-        let step = if h >= remaining {
-            remaining
-        } else {
-            h
-        };
-        let t_next = if crate::kernels::exact_eq(step, remaining) {
-            t1
-        } else {
-            t + step
-        };
-
-        // BDF2 when we have at least 2 previous points with uniform-ish step, else BDF1 (Backward Euler)
-        let use_bdf2 = ts.len() >= 2;
-        let h_prev = if use_bdf2 {
-            ts[ts.len() - 1] - ts[ts.len() - 2]
-        } else {
-            step
-        };
-        let y_prev = if use_bdf2 {
-            &ys[ys.len() - 2]
-        } else {
-            &y
-        };
-
-        let mut y_cand: Vec<f64> = (0..n).map(|i| y[i] + step * yp[i]).collect();
-        let compute_yp = |y_trial: &[f64]| -> Vec<f64> {
-            if use_bdf2 && h_prev > 0.0 {
-                let r = step / h_prev;
-                let a0 = (1.0 + 2.0 * r) / (1.0 + r);
-                let a1 = -(1.0 + r);
-                let a2 = (r * r) / (1.0 + r);
-                (0..n)
-                    .map(|i| (a0 * y_trial[i] + a1 * y[i] + a2 * y_prev[i]) / step)
-                    .collect()
-            } else {
-                (0..n).map(|i| (y_trial[i] - y[i]) / step).collect()
-            }
-        };
-
-        let mut newton_ok = false;
-        let mut yp_cand = compute_yp(&y_cand);
-        let mut res = residual(t_next, &y_cand, &yp_cand);
-        nfev += 1;
-        if res.len() != n {
-            return Err(OdeGeomError::ShapeMismatch(
-                "implicit DAE residual returned wrong length".into(),
-            ));
-        }
-
-        for _ in 0..options.max_newton_iter {
-            let norm = res.iter().fold(0.0f64, |acc, x| acc.max(x.abs()));
-            if norm <= options.newton_tol {
-                newton_ok = true;
-                break;
-            }
-            let mut jac = vec![vec![0.0; n]; n];
-            for col in 0..n {
-                let eps = f64::EPSILON.sqrt() * y_cand[col].abs().max(1.0);
-                let mut y_pert = y_cand.clone();
-                y_pert[col] += eps;
-                let yp_pert = compute_yp(&y_pert);
-                let r_pert = residual(t_next, &y_pert, &yp_pert);
-                nfev += 1;
-                for row in 0..n {
-                    jac[row][col] = (r_pert[row] - res[row]) / eps;
-                }
-            }
-            let rhs_vec: Vec<f64> = res.iter().map(|x| -x).collect();
-            let Ok(dy_step) = solve_dense(jac, rhs_vec) else {
-                break;
-            };
-            for i in 0..n {
-                y_cand[i] += dy_step[i];
-            }
-            yp_cand = compute_yp(&y_cand);
-            res = residual(t_next, &y_cand, &yp_cand);
-            nfev += 1;
-            let new_norm = res.iter().fold(0.0f64, |acc, x| acc.max(x.abs()));
-            if new_norm <= options.newton_tol {
-                newton_ok = true;
-                break;
-            }
-        }
-
-        if !newton_ok {
-            rejected += 1;
-            h = (0.5 * step).max(options.h_min);
-            if step <= options.h_min {
-                return Err(OdeGeomError::NotConverged);
-            }
-            continue;
-        }
-
-        t = t_next;
-        y = y_cand;
-        yp = yp_cand;
-        ts.push(t);
-        ys.push(y.clone());
-        rates.push(yp.clone());
-    }
-
-    Ok(GeomSolution {
-        t: ts,
-        y: ys,
-        rates,
-        nfev,
-        rejected,
-    })
+    implicit::solve(residual, y0, yp0_guess, span, options)
 }
 
 // ---------------------------------------------------------------------------
@@ -1987,6 +1874,8 @@ pub struct DdeOptions {
     pub h_max: f64,
     /// Maximum number of steps before returning [`OdeGeomError::NotConverged`].
     pub max_steps: usize,
+    /// Maximum total RHS and prehistory callback invocations.
+    pub max_evaluations: usize,
 }
 
 impl Default for DdeOptions {
@@ -1998,6 +1887,7 @@ impl Default for DdeOptions {
             h_min: 1e-12,
             h_max: f64::INFINITY,
             max_steps: 100_000,
+            max_evaluations: 10_000_000,
         }
     }
 }
@@ -2105,31 +1995,53 @@ where
             "DDE delays must be finite and strictly positive".into(),
         ));
     }
+    adaptive::AdaptiveGeomOptions {
+        rtol: options.rtol,
+        atol: options.atol,
+        h0: options.h0,
+        h_min: options.h_min,
+        h_max: options.h_max,
+        max_steps: options.max_steps,
+        max_evaluations: options.max_evaluations,
+    }
+    .validate()?;
     let (t0, t1) = span;
-    // Precompute derivative discontinuity breakpoints t0 + m * tau_j within (t0, t1]
+    if !t0.is_finite() || !t1.is_finite() || t1 < t0 || !(t1 - t0).is_finite() {
+        return Err(OdeGeomError::Domain("invalid DDE span".into()));
+    }
+    // Track every reachable delay-sum discontinuity inside the interval.
+    // Positive offsets have monotonically ordered IEEE bit patterns.
+    let mut frontier = std::collections::BTreeSet::from([0_u64]);
+    let mut seen = frontier.clone();
     let mut breakpoints = Vec::new();
-    if t1 > t0 && !delays.is_empty() {
-        let mut generation = vec![t0];
-        for _gen in 0..4 {
-            let mut next_gen = Vec::new();
-            for &base in &generation {
-                for &tau in delays {
-                    let bp = base + tau;
-                    if bp > t0 && bp < t1 {
-                        next_gen.push(bp);
-                        breakpoints.push(bp);
-                    }
-                }
-            }
-            next_gen.sort_by(f64::total_cmp);
-            next_gen.dedup_by(|a, b| (*a - *b).abs() < 1e-12);
-            generation = next_gen;
-            if generation.is_empty() || breakpoints.len() > 256 {
-                break;
-            }
+    while let Some(bits) = frontier.pop_first() {
+        let offset = f64::from_bits(bits);
+        if offset > 0.0 {
+            breakpoints.push(t0 + offset);
         }
-        breakpoints.sort_by(f64::total_cmp);
-        breakpoints.dedup_by(|a, b| (*a - *b).abs() < 1e-12);
+        for delay in delays {
+            let next = offset + delay;
+            if next >= t1 - t0 {
+                continue;
+            }
+            let eps = 32.0 * f64::EPSILON * next.abs().max(1.0);
+            let lo = (next - eps).max(0.0).to_bits();
+            let hi = (next + eps).to_bits();
+            if seen.range(lo..=hi).next().is_some() {
+                continue;
+            }
+            if seen.len() >= options.max_steps {
+                return Err(OdeGeomError::NotConverged);
+            }
+            seen.insert(next.to_bits());
+            frontier.insert(next.to_bits());
+        }
+    }
+    let mut options = options;
+    // Retarded queries must use accepted history, never an Euler predictor
+    // for unknown values inside the current step.
+    if let Some(delay) = delays.iter().copied().reduce(f64::min) {
+        options.h_max = options.h_max.min(delay);
     }
 
     let mut wrapped_rhs =
@@ -2192,6 +2104,61 @@ where
 
 #[allow(clippy::type_complexity)]
 fn solve_dde_internal<R, H>(
+    rhs: &mut R,
+    history: &mut H,
+    y0: &[f64],
+    span: (f64, f64),
+    breakpoints: &[f64],
+    options: DdeOptions,
+) -> Result<DdeSolution, OdeGeomError>
+where
+    R: FnMut(
+        f64,
+        &[f64],
+        &dyn Fn(f64) -> Result<Vec<f64>, OdeGeomError>,
+    ) -> Result<Vec<f64>, OdeGeomError>,
+    H: FnMut(f64) -> Vec<f64> + ?Sized,
+{
+    adaptive::AdaptiveGeomOptions {
+        rtol: options.rtol,
+        atol: options.atol,
+        h0: options.h0,
+        h_min: options.h_min,
+        h_max: options.h_max,
+        max_steps: options.max_steps,
+        max_evaluations: options.max_evaluations,
+    }
+    .validate()?;
+    let calls = std::cell::Cell::new(0usize);
+    let exhausted = std::cell::Cell::new(false);
+    let mut f = |t: f64, y: &[f64], lookup: &dyn Fn(f64) -> Result<Vec<f64>, OdeGeomError>| {
+        if calls.get() >= options.max_evaluations {
+            exhausted.set(true);
+            return Err(OdeGeomError::NotConverged);
+        }
+        calls.set(calls.get() + 1);
+        rhs(t, y, lookup)
+    };
+    let mut hist = |t: f64| {
+        if calls.get() >= options.max_evaluations {
+            exhausted.set(true);
+            return vec![f64::NAN; y0.len()];
+        }
+        calls.set(calls.get() + 1);
+        history(t)
+    };
+    let result = solve_dde_core(&mut f, &mut hist, y0, span, breakpoints, options);
+    if exhausted.get() {
+        return Err(OdeGeomError::NotConverged);
+    }
+    result.map(|mut solution| {
+        solution.nfev = calls.get();
+        solution
+    })
+}
+
+#[allow(clippy::type_complexity)]
+fn solve_dde_core<R, H>(
     rhs: &mut R,
     history: &mut H,
     y0: &[f64],
@@ -2285,9 +2252,10 @@ where
         } else if t_past <= *ts.last().unwrap_or(&t0) {
             eval_hermite_history(ts, ys, rates, t_past).ok_or(OdeGeomError::NotConverged)
         } else {
-            // Overlapping step (delay smaller than current step size h): linear/Euler predictor
-            let dt = t_past - t_curr;
-            Ok((0..n).map(|i| y_curr[i] + dt * r_curr[i]).collect())
+            // The requested history is not accepted yet. The driver rejects
+            // this trial and shortens the step instead of fabricating history.
+            let _ = (t_curr, y_curr, r_curr);
+            Err(OdeGeomError::NotConverged)
         }
     };
 
@@ -2330,7 +2298,7 @@ where
     let mut t = t0;
     let mut y = y0.to_vec();
     let mut h = if options.h0 > 0.0 {
-        options.h0.min(t1 - t0)
+        options.h0.min(t1 - t0).min(options.h_max)
     } else {
         ((t1 - t0) / 100.0).clamp(options.h_min, options.h_max)
     };
@@ -2356,80 +2324,97 @@ where
         } else {
             h
         };
-        if step < options.h_min && (t1 - t) > options.h_min {
+        if crate::kernels::exact_eq(t + step, t)
+            || (step < options.h_min && (t1 - t) > options.h_min)
+        {
             return Err(OdeGeomError::NotConverged);
         }
 
-        let k1 = rates.last().unwrap().clone();
-        let eval_stage = |rhs: &mut R,
-                          t_stage: f64,
-                          y_stage: &[f64],
-                          nfev: &mut usize|
-         -> Result<Vec<f64>, OdeGeomError> {
-            let lookup = |tp: f64| eval_hist_fn(tp, &ts, &ys, &rates, t, &y, &k1);
-            let v = rhs(t_stage, y_stage, &lookup)?;
-            *nfev += 1;
-            if v.len() != n {
-                return Err(OdeGeomError::ShapeMismatch(format!(
-                    "DDE right-hand side returned {} values for a state of {n}",
-                    v.len()
-                )));
+        let trial = (|| {
+            let k1 = rates.last().unwrap().clone();
+            let eval_stage = |rhs: &mut R,
+                              t_stage: f64,
+                              y_stage: &[f64],
+                              nfev: &mut usize|
+             -> Result<Vec<f64>, OdeGeomError> {
+                let lookup = |tp: f64| eval_hist_fn(tp, &ts, &ys, &rates, t, &y, &k1);
+                let v = rhs(t_stage, y_stage, &lookup)?;
+                *nfev += 1;
+                if v.len() != n {
+                    return Err(OdeGeomError::ShapeMismatch(format!(
+                        "DDE right-hand side returned {} values for a state of {n}",
+                        v.len()
+                    )));
+                }
+                if !v.iter().all(|x| x.is_finite()) {
+                    return Err(OdeGeomError::Domain(
+                        "DDE right-hand side returned a non-finite value".into(),
+                    ));
+                }
+                Ok(v)
+            };
+
+            let y2: Vec<f64> = (0..n).map(|i| y[i] + step * A21 * k1[i]).collect();
+            let k2 = eval_stage(rhs, t + C2 * step, &y2, &mut nfev)?;
+
+            let y3: Vec<f64> = (0..n)
+                .map(|i| y[i] + step * (A31 * k1[i] + A32 * k2[i]))
+                .collect();
+            let k3 = eval_stage(rhs, t + C3 * step, &y3, &mut nfev)?;
+
+            let y4: Vec<f64> = (0..n)
+                .map(|i| y[i] + step * (A41 * k1[i] + A42 * k2[i] + A43 * k3[i]))
+                .collect();
+            let k4 = eval_stage(rhs, t + C4 * step, &y4, &mut nfev)?;
+
+            let y5: Vec<f64> = (0..n)
+                .map(|i| y[i] + step * (A51 * k1[i] + A52 * k2[i] + A53 * k3[i] + A54 * k4[i]))
+                .collect();
+            let k5 = eval_stage(rhs, t + C5 * step, &y5, &mut nfev)?;
+
+            let y6: Vec<f64> = (0..n)
+                .map(|i| {
+                    y[i] + step
+                        * (A61 * k1[i] + A62 * k2[i] + A63 * k3[i] + A64 * k4[i] + A65 * k5[i])
+                })
+                .collect();
+            let k6 = eval_stage(rhs, t + step, &y6, &mut nfev)?;
+
+            let candidate: Vec<f64> = (0..n)
+                .map(|i| {
+                    y[i] + step * (B1 * k1[i] + B3 * k3[i] + B4 * k4[i] + B5 * k5[i] + B6 * k6[i])
+                })
+                .collect();
+            let t_next = if crate::kernels::exact_eq(step, remaining) {
+                target_end
+            } else {
+                t + step
+            };
+            let k7 = eval_stage(rhs, t_next, &candidate, &mut nfev)?;
+
+            let mut error = 0.0f64;
+            for i in 0..n {
+                let est = step
+                    * (E1 * k1[i] + E3 * k3[i] + E4 * k4[i] + E5 * k5[i] + E6 * k6[i] + E7 * k7[i]);
+                let scale = options.atol + options.rtol * y[i].abs().max(candidate[i].abs());
+                error = error.max((est / scale).abs());
             }
-            if !v.iter().all(|x| x.is_finite()) {
-                return Err(OdeGeomError::Domain(
-                    "DDE right-hand side returned a non-finite value".into(),
-                ));
-            }
-            Ok(v)
+            Ok::<_, OdeGeomError>((candidate, k7, error, t_next))
+        })();
+        let (candidate, k7, error, t_next) = match trial {
+            | Ok(values) => values,
+            | Err(OdeGeomError::NotConverged) => {
+                rejected += 1;
+                h = step * 0.5;
+                continue;
+            },
+            | Err(error) => return Err(error),
         };
-
-        let y2: Vec<f64> = (0..n).map(|i| y[i] + step * A21 * k1[i]).collect();
-        let k2 = eval_stage(rhs, t + C2 * step, &y2, &mut nfev)?;
-
-        let y3: Vec<f64> = (0..n)
-            .map(|i| y[i] + step * (A31 * k1[i] + A32 * k2[i]))
-            .collect();
-        let k3 = eval_stage(rhs, t + C3 * step, &y3, &mut nfev)?;
-
-        let y4: Vec<f64> = (0..n)
-            .map(|i| y[i] + step * (A41 * k1[i] + A42 * k2[i] + A43 * k3[i]))
-            .collect();
-        let k4 = eval_stage(rhs, t + C4 * step, &y4, &mut nfev)?;
-
-        let y5: Vec<f64> = (0..n)
-            .map(|i| y[i] + step * (A51 * k1[i] + A52 * k2[i] + A53 * k3[i] + A54 * k4[i]))
-            .collect();
-        let k5 = eval_stage(rhs, t + C5 * step, &y5, &mut nfev)?;
-
-        let y6: Vec<f64> = (0..n)
-            .map(|i| {
-                y[i] + step * (A61 * k1[i] + A62 * k2[i] + A63 * k3[i] + A64 * k4[i] + A65 * k5[i])
-            })
-            .collect();
-        let k6 = eval_stage(rhs, t + step, &y6, &mut nfev)?;
-
-        let candidate: Vec<f64> = (0..n)
-            .map(|i| y[i] + step * (B1 * k1[i] + B3 * k3[i] + B4 * k4[i] + B5 * k5[i] + B6 * k6[i]))
-            .collect();
-        let t_next = if crate::kernels::exact_eq(step, remaining) {
-            target_end
-        } else {
-            t + step
-        };
-        let k7 = eval_stage(rhs, t_next, &candidate, &mut nfev)?;
-
-        let mut error = 0.0f64;
-        for i in 0..n {
-            let est = step
-                * (E1 * k1[i] + E3 * k3[i] + E4 * k4[i] + E5 * k5[i] + E6 * k6[i] + E7 * k7[i]);
-            let scale = options.atol + options.rtol * y[i].abs().max(candidate[i].abs());
-            error = error.max((est / scale).abs());
-        }
         if !error.is_finite() {
             return Err(OdeGeomError::NotConverged);
         }
 
-        if error <= 1.0 || step <= options.h_min {
+        if error <= 1.0 {
             t = t_next;
             y = candidate;
             ts.push(t);
@@ -2447,7 +2432,7 @@ where
         } else {
             rejected += 1;
             let factor = (0.9 * error.powf(-0.2)).clamp(0.2, 0.8);
-            h = (step * factor).max(options.h_min);
+            h = step * factor;
         }
     }
 
@@ -2463,6 +2448,10 @@ where
 /// Fixed-step geometric ODE method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GeometricMethod {
+    /// Classical fourth-order Runge-Kutta.
+    Rk4,
+    /// One-stage Gauss-Legendre implicit midpoint.
+    ImplicitMidpoint,
     /// Partitioned second-order Verlet method.
     StormerVerlet,
     /// Fourth-order Forest-Ruth method.
@@ -2557,6 +2546,10 @@ pub fn solve_fixed_geometric(
             return gauss_legendre_step(rhs, t, y, dt, s);
         }
         match method {
+            | GeometricMethod::Rk4 => {
+                adaptive::geometric_step(method, rhs, t, y, dt).map(|y| (y, 4))
+            },
+            | GeometricMethod::ImplicitMidpoint => gauss_legendre_step(rhs, t, y, dt, 1),
             | GeometricMethod::StormerVerlet => partitioned_verlet_step(rhs, t, y, dt),
             | GeometricMethod::Ruth4 => partitioned_ruth4_step(rhs, t, y, dt),
             | GeometricMethod::GaussLegendre4 => gauss_legendre_step(rhs, t, y, dt, 2),
@@ -2691,4 +2684,183 @@ pub fn solve_fixed_geometric(
         rejected: 0,
         rates,
     })
+}
+
+
+/// Adaptive semi-explicit DAE solver with bounded callback work.
+///
+/// # Errors
+/// Invalid controls, malformed/nonfinite callbacks, failed consistency or
+/// stage solves, exhausted budgets, or an unsatisfied tolerance at minimum step.
+pub fn solve_dae_index1<F, G>(
+    f: &mut F,
+    g: &mut G,
+    y0: &[f64],
+    z0: &[f64],
+    span: (f64, f64),
+    options: DaeOptions,
+) -> Result<DaeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    G: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+{
+    validate_dae_options(options)?;
+    let calls = std::cell::Cell::new(0usize);
+    let exhausted = std::cell::Cell::new(false);
+    let failure = std::cell::RefCell::new(None::<OdeGeomError>);
+    let mut wf = |t: f64, y: &[f64], z: &[f64]| {
+        if failure.borrow().is_some() || calls.get() >= options.max_evaluations {
+            if failure.borrow().is_none() {
+                exhausted.set(true);
+            }
+            return vec![f64::NAN; y0.len()];
+        }
+        calls.set(calls.get() + 1);
+        let out = f(t, y, z);
+        if out.len() != y0.len() {
+            *failure.borrow_mut() = Some(OdeGeomError::ShapeMismatch(
+                "DAE rate length differs from differential state".into(),
+            ));
+            return vec![f64::NAN; y0.len()];
+        }
+        if out.iter().any(|x| !x.is_finite()) {
+            *failure.borrow_mut() = Some(OdeGeomError::Domain("nonfinite DAE rate".into()));
+        }
+        out
+    };
+    let mut wg = |t: f64, y: &[f64], z: &[f64]| {
+        if failure.borrow().is_some() || calls.get() >= options.max_evaluations {
+            if failure.borrow().is_none() {
+                exhausted.set(true);
+            }
+            return vec![f64::NAN; z0.len()];
+        }
+        calls.set(calls.get() + 1);
+        let out = g(t, y, z);
+        if out.len() != z0.len() {
+            *failure.borrow_mut() = Some(OdeGeomError::ShapeMismatch(
+                "DAE constraint length differs from algebraic state".into(),
+            ));
+            return vec![f64::NAN; z0.len()];
+        }
+        if out.iter().any(|x| !x.is_finite()) {
+            *failure.borrow_mut() = Some(OdeGeomError::Domain("nonfinite DAE constraint".into()));
+        }
+        out
+    };
+    let output = solve_dae_index1_impl(&mut wf, &mut wg, y0, z0, span, options);
+    if let Some(error) = failure.into_inner() {
+        return Err(error);
+    }
+    if exhausted.get() {
+        return Err(OdeGeomError::NotConverged);
+    }
+    output.map(|mut solution| {
+        solution.nfev = calls.get();
+        solution
+    })
+}
+
+
+/// Adaptive semi-explicit DAE solver with bounded callback work.
+///
+/// # Errors
+/// Invalid controls, malformed/nonfinite callbacks, failed consistency or
+/// stage solves, exhausted budgets, or an unsatisfied tolerance at minimum step.
+pub fn solve_dae_index2<F, G>(
+    f: &mut F,
+    g: &mut G,
+    y0: &[f64],
+    z0: &[f64],
+    span: (f64, f64),
+    options: DaeOptions,
+) -> Result<DaeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    G: FnMut(f64, &[f64]) -> Vec<f64> + ?Sized,
+{
+    validate_dae_options(options)?;
+    let calls = std::cell::Cell::new(0usize);
+    let exhausted = std::cell::Cell::new(false);
+    let failure = std::cell::RefCell::new(None::<OdeGeomError>);
+    let mut wf = |t: f64, y: &[f64], z: &[f64]| {
+        if failure.borrow().is_some() || calls.get() >= options.max_evaluations {
+            if failure.borrow().is_none() {
+                exhausted.set(true);
+            }
+            return vec![f64::NAN; y0.len()];
+        }
+        calls.set(calls.get() + 1);
+        let out = f(t, y, z);
+        if out.len() != y0.len() {
+            *failure.borrow_mut() = Some(OdeGeomError::ShapeMismatch(
+                "DAE rate length differs from differential state".into(),
+            ));
+            return vec![f64::NAN; y0.len()];
+        }
+        if out.iter().any(|x| !x.is_finite()) {
+            *failure.borrow_mut() = Some(OdeGeomError::Domain("nonfinite DAE rate".into()));
+        }
+        out
+    };
+    let mut wg = |t: f64, y: &[f64]| {
+        if failure.borrow().is_some() || calls.get() >= options.max_evaluations {
+            if failure.borrow().is_none() {
+                exhausted.set(true);
+            }
+            return vec![f64::NAN; z0.len()];
+        }
+        calls.set(calls.get() + 1);
+        let out = g(t, y);
+        if out.len() != z0.len() {
+            *failure.borrow_mut() = Some(OdeGeomError::ShapeMismatch(
+                "DAE constraint length differs from algebraic state".into(),
+            ));
+            return vec![f64::NAN; z0.len()];
+        }
+        if out.iter().any(|x| !x.is_finite()) {
+            *failure.borrow_mut() = Some(OdeGeomError::Domain("nonfinite DAE constraint".into()));
+        }
+        out
+    };
+    let output = solve_dae_index2_impl(&mut wf, &mut wg, y0, z0, span, options);
+    if let Some(error) = failure.into_inner() {
+        return Err(error);
+    }
+    if exhausted.get() {
+        return Err(OdeGeomError::NotConverged);
+    }
+    output.map(|mut solution| {
+        solution.nfev = calls.get();
+        solution
+    })
+}
+
+/// Evaluate a cubic Hermite solution history after validating its storage.
+///
+/// # Errors
+/// Malformed, empty or nonfinite history, nonincreasing times, or an out-of-span query.
+pub fn evaluate_history(
+    ts: &[f64],
+    states: &[Vec<f64>],
+    rates: &[Vec<f64>],
+    t: f64,
+) -> Result<Vec<f64>, OdeGeomError> {
+    let n = states.first().map_or(0, Vec::len);
+    if ts.is_empty()
+        || n == 0
+        || states.len() != ts.len()
+        || rates.len() != ts.len()
+        || states
+            .iter()
+            .chain(rates)
+            .any(|v| v.len() != n || v.iter().any(|x| !x.is_finite()))
+        || ts.iter().any(|x| !x.is_finite())
+        || ts.windows(2).any(|v| v[1] <= v[0])
+        || !t.is_finite()
+    {
+        return Err(OdeGeomError::Domain("invalid Hermite history".into()));
+    }
+    eval_hermite_history(ts, states, rates, t)
+        .ok_or_else(|| OdeGeomError::Domain("query lies outside the integrated history".into()))
 }

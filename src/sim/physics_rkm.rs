@@ -297,6 +297,12 @@ impl DormandPrince54 {
             }
 
             error = (error / dim as f64).sqrt();
+            // Invalid stages cannot produce an accepted path. In particular a
+            // bounded host oracle returns NaN after its first failure; allowing
+            // NaN step sizes here would otherwise leave the loop running forever.
+            if !error.is_finite() || !dt.is_finite() || dt <= 0.0 || t + dt <= t {
+                break;
+            }
 
             let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
 
@@ -438,6 +444,12 @@ impl CashKarp45 {
             }
 
             error = (error / dim as f64).sqrt();
+            // Invalid stages cannot produce an accepted path. In particular a
+            // bounded host oracle returns NaN after its first failure; allowing
+            // NaN step sizes here would otherwise leave the loop running forever.
+            if !error.is_finite() || !dt.is_finite() || dt <= 0.0 || t + dt <= t {
+                break;
+            }
 
             let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
 
@@ -558,6 +570,12 @@ impl BogackiShampine23 {
             }
 
             error = (error / dim as f64).sqrt();
+            // Invalid stages cannot produce an accepted path. In particular a
+            // bounded host oracle returns NaN after its first failure; allowing
+            // NaN step sizes here would otherwise leave the loop running forever.
+            if !error.is_finite() || !dt.is_finite() || dt <= 0.0 || t + dt <= t {
+                break;
+            }
 
             let factor = (0.9 * (1.0 / error).powf(0.33)).clamp(0.1, 4.0);
 

@@ -274,9 +274,15 @@ where
             })
             .collect();
         let f0 = f(t, &y);
+        if f0.len() != n || f0.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
         let k1 = solve_dense(w.clone(), f0)?;
         let y_mid: Vec<f64> = y.iter().zip(&k1).map(|(yi, ki)| yi + h * ki).collect();
         let f1 = f(t + h, &y_mid);
+        if f1.len() != n || f1.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
         let rhs: Vec<f64> = f1.iter().zip(&k1).map(|(fi, ki)| fi - 2.0 * ki).collect();
         let k2 = solve_dense(w, rhs)?;
         let next: Vec<f64> = y

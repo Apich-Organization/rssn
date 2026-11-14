@@ -133,9 +133,16 @@ impl Dual {
         if n == 0 {
             return Self::constant(1.0);
         }
+        // MIN - 1 is not representable as i32. Saturation would keep the
+        // exponent even and reverse the derivative sign on negative bases.
+        let derivative_power = if n == i32::MIN {
+            self.val.powi(n) / self.val
+        } else {
+            self.val.powi(n - 1)
+        };
         Self::new(
             self.val.powi(n),
-            self.deriv * f64::from(n) * self.val.powi(n.saturating_sub(1)),
+            self.deriv * f64::from(n) * derivative_power,
         )
     }
 
@@ -265,10 +272,23 @@ impl Div for Dual {
         self,
         rhs: Self,
     ) -> Self {
-        Self::new(
-            self.val / rhs.val,
-            (self.deriv * rhs.val - self.val * rhs.deriv) / (rhs.val * rhs.val),
-        )
+        let value = self.val / rhs.val;
+        // Form the quotient first: squaring the denominator can overflow or
+        // underflow even when both the value and tangent are representable.
+        let correction = value * rhs.deriv;
+        let direct = (self.deriv - correction) / rhs.val;
+        let deriv =
+            if !direct.is_finite() || (correction == 0.0 && value != 0.0 && rhs.deriv != 0.0) {
+                let scaled = self.deriv / rhs.val - value * (rhs.deriv / rhs.val);
+                if scaled.is_finite() {
+                    scaled
+                } else {
+                    direct
+                }
+            } else {
+                direct
+            };
+        Self::new(value, deriv)
     }
 }
 
@@ -416,6 +436,18 @@ impl Tape {
         Self::default()
     }
 
+    /// Number of recorded nodes, for bounded host adapters.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.nodes.borrow().len()
+    }
+
+    /// Whether the tape contains no variables or operations.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.nodes.borrow().is_empty()
+    }
+
     /// Creates a differentiable input variable on the tape.
     #[must_use]
     pub fn var(
@@ -489,6 +521,30 @@ pub struct Var {
 }
 
 impl Var {
+    /// Whether two variables belong to exactly the same differentiation tape.
+    #[must_use]
+    pub fn shares_tape(
+        &self,
+        other: &Self,
+    ) -> bool {
+        Rc::ptr_eq(&self.tape, &other.tape)
+    }
+
+    /// Number of nodes retained by this variable's tape.
+    #[must_use]
+    pub fn node_count(&self) -> usize {
+        self.tape.borrow().len()
+    }
+
+    // Only checked adapters use this immediately after a failed single-node
+    // operation. Never removes nodes referenced by an existing handle.
+    pub(crate) fn discard_newest(&self) {
+        let mut nodes = self.tape.borrow_mut();
+        if self.idx.checked_add(1) == Some(nodes.len()) {
+            nodes.pop();
+        }
+    }
+
     /// Runs reverse-mode backpropagation from `self` and returns the adjoint
     /// vector indexed by [`Var::grad_in`].
     #[must_use]
@@ -656,7 +712,7 @@ impl Div for &Var {
             self.idx,
             1.0 / rhs.val,
             rhs.idx,
-            -self.val / (rhs.val * rhs.val),
+            -(self.val / rhs.val) / rhs.val,
         )
     }
 }

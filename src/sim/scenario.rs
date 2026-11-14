@@ -259,8 +259,12 @@ const SCENARIO_PAR_MIN_REQUESTS: usize = 2;
 /// inside a scenario runs on the same rayon pool (work stealing).
 #[must_use]
 pub fn run_many(requests: &[(&str, &str)]) -> Vec<Result<String, String>> {
+    let budget = super::models_geodesic_relativity::inherited_native_budget();
     crate::kernels::par::map_slice(requests, SCENARIO_PAR_MIN_REQUESTS, |&(name, params)| {
-        run(name, params)
+        super::models_geodesic_relativity::shared_native_budget(budget.clone(), || {
+            run(name, params)
+        })
+        .and_then(|result| result)
     })
 }
 

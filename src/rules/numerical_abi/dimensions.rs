@@ -28,7 +28,7 @@ impl DimensionPolicy {
             | Self::Root => DimRule::Root(2),
             | Self::Square => DimRule::Square,
             | Self::Product => DimRule::Product,
-            | Self::Qr | Self::Svd | Self::SymmetricEigen | Self::TensorTrain => DimRule::Container,
+            | _ => DimRule::Container,
         }
     }
 }
@@ -38,12 +38,16 @@ impl DimensionPolicy {
 pub enum DimFormula {
     /// The dimensionless dimension.
     One,
+    /// A reviewed SI base dimension, independent of argument witnesses.
+    Base(&'static str),
     /// A dimension bound by an input path.
     Var(&'static str),
     /// The product of any number of dimensions.
     Mul(&'static [Self]),
     /// An exact rational power; generated denominators are positive.
     Pow(&'static Self, i64, i64),
+    /// Power determined by a checked runtime tensor extent.
+    ShapePower(&'static Self, usize, usize, i64),
 }
 impl DimFormula {
     pub(in crate::rules) fn instantiate(
@@ -52,6 +56,7 @@ impl DimFormula {
     ) -> DimExpr {
         match self {
             | Self::One => DimExpr::Dimless,
+            | Self::Base(name) => DimExpr::Base((*name).into()),
             | Self::Var(name) => {
                 vars.iter()
                     .find(|(key, _)| key == name)
@@ -63,6 +68,10 @@ impl DimFormula {
                 DimExpr::Mul(parts.iter().map(|part| part.instantiate(vars)).collect())
             },
             | Self::Pow(base, n, d) => base.instantiate(vars).pow(Exp::Rat(Rational::new(*n, *d))),
+            | Self::ShapePower(base, argument, axis, sign) => {
+                base.instantiate(vars)
+                    .pow(Exp::Symbol(format!("shape:{argument}:{axis}:{sign}")))
+            },
         }
     }
 }
@@ -155,13 +164,24 @@ fn numeric_leaf(ty: &TypeExpr) -> bool {
     match ty {
         | TypeExpr::Tensor { elem, .. } | TypeExpr::Sparse { elem, .. } => numeric_leaf(elem),
         | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => true,
+        | TypeExpr::Variant(variants) => {
+            variants
+                .iter()
+                .all(|(_, payload)| payload.iter().all(numeric_leaf))
+        },
         | _ => false,
     }
 }
 fn nonnumeric_leaf(ty: &TypeExpr) -> bool {
     match ty {
         | TypeExpr::Tensor { elem, .. } => nonnumeric_leaf(elem),
-        | TypeExpr::Int | TypeExpr::Bool => true,
+        | TypeExpr::Record(fields) => fields.iter().all(|(_, field)| nonnumeric_leaf(field)),
+        | TypeExpr::Variant(variants) => {
+            variants
+                .iter()
+                .all(|(_, payload)| payload.iter().all(nonnumeric_leaf))
+        },
+        | TypeExpr::Int | TypeExpr::Bool | TypeExpr::String | TypeExpr::Opaque(_) => true,
         | _ => false,
     }
 }
@@ -222,7 +242,16 @@ pub(in crate::rules) fn apply_contract(
     }
     let mut output_names = std::collections::BTreeSet::new();
     if !contract.outputs.is_empty() {
-        let TypeExpr::Record(fields) = &mut sig.ret else {
+        let mut result = &mut sig.ret;
+        if let TypeExpr::Variant(variants) = result {
+            let some = variants
+                .iter_mut()
+                .find(|(tag, _)| tag == "Some")
+                .expect("optional record result");
+            assert_eq!(some.1.len(), 1, "optional result payload");
+            result = &mut some.1[0];
+        }
+        let TypeExpr::Record(fields) = result else {
             panic!("contract outputs require a record");
         };
         assert_eq!(
@@ -252,7 +281,7 @@ pub(in crate::rules) fn apply_contract(
                 | FieldDimension::NonNumeric => {
                     assert!(
                         nonnumeric_leaf(target),
-                        "contract status field must be integer or bool"
+                        "contract metadata field {name} must be integer, bool, text or opaque; got {target:?}"
                     );
                 },
                 | FieldDimension::Unbound => panic!("unbound contract result"),
@@ -314,6 +343,13 @@ fn attach(
 ) {
     match ty {
         | TypeExpr::Tensor { elem, .. } | TypeExpr::Sparse { elem, .. } => attach(elem, dim),
+        | TypeExpr::Variant(variants) => {
+            for (_, payload) in variants {
+                for item in payload {
+                    attach(item, dim.clone());
+                }
+            }
+        },
         | TypeExpr::Int | TypeExpr::Real | TypeExpr::Float | TypeExpr::Complex => {
             let scalar = std::mem::replace(ty, TypeExpr::Never);
             *ty = TypeExpr::Dim(Box::new(scalar), dim);
@@ -416,5 +452,35 @@ mod contract_validation_tests {
             other_args_dimensionless: false,
         };
         assert!(std::panic::catch_unwind(|| apply_contract(signature(), &duplicate)).is_err());
+    }
+
+    #[test]
+    fn optional_nonnumeric_metadata_field_is_accepted_and_float_variant_rejected() {
+        let optional_int = TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            ("Some".into(), vec![TypeExpr::Int]),
+        ]);
+        let optional_float = TypeExpr::Variant(vec![
+            ("None".into(), vec![]),
+            ("Some".into(), vec![TypeExpr::Float]),
+        ]);
+        let contract = DimContract {
+            inputs: &[],
+            constraints: &[],
+            outputs: &[("iterations", FieldDimension::NonNumeric)],
+            output_paths: &[],
+            result: None,
+            other_args_dimensionless: false,
+        };
+        let valid_sig = Signature::new(
+            vec![],
+            TypeExpr::Record(vec![("iterations".into(), optional_int)]),
+        );
+        let invalid_sig = Signature::new(
+            vec![],
+            TypeExpr::Record(vec![("iterations".into(), optional_float)]),
+        );
+        assert_eq!(apply_contract(valid_sig.clone(), &contract), valid_sig);
+        assert!(std::panic::catch_unwind(|| apply_contract(invalid_sig, &contract)).is_err());
     }
 }

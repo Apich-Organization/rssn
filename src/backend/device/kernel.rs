@@ -763,6 +763,70 @@ impl KernelIr {
         }
     }
 
+    /// Preflight exact reference-interpreter fold work before an ABI launch.
+    /// This does not evaluate the fold body or alter externally visible state.
+    pub(crate) fn check_execution_work(
+        &self,
+        rows: usize,
+        cols: Columns<'_>,
+        params: &[f64],
+        limit: usize,
+    ) -> Result<(), DeviceError> {
+        let analysis = self.analyse()?;
+        let Some(fold) = &self.fold else {
+            return if rows
+                .checked_mul(self.ops.len() + self.outputs.len())
+                .is_some_and(|n| n <= limit)
+            {
+                Ok(())
+            } else {
+                Err(DeviceError::InvalidKernel(
+                    "launch work budget exceeded".into(),
+                ))
+            };
+        };
+        let mut scratch = Scratch::default();
+        let mut work = 0usize;
+        for row in 0..rows {
+            scratch.num.clear();
+            scratch.num.resize(self.ops.len(), f64::NAN);
+            scratch.idx.clear();
+            scratch.idx.resize(self.ops.len(), 0);
+            for &reg in &analysis.pre {
+                self.step(
+                    &analysis,
+                    reg,
+                    row as i64,
+                    rows as i64,
+                    0,
+                    cols,
+                    params,
+                    &mut scratch,
+                );
+            }
+            let count = scratch
+                .idx
+                .get(fold.count as usize)
+                .copied()
+                .unwrap_or(0)
+                .max(0) as usize;
+            work = work
+                .checked_add(
+                    count
+                        .checked_mul(analysis.body.len() + fold.accs.len())
+                        .and_then(|n| {
+                            n.checked_add(
+                                analysis.pre.len() + analysis.post.len() + self.outputs.len(),
+                            )
+                        })
+                        .ok_or_else(|| DeviceError::InvalidKernel("fold work overflows".into()))?,
+                )
+                .filter(|n| *n <= limit)
+                .ok_or_else(|| DeviceError::InvalidKernel("fold work budget exceeded".into()))?;
+        }
+        Ok(())
+    }
+
     /// Computes register `d`.
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     #[inline]

@@ -1359,6 +1359,7 @@ pub fn solve_amr(
     }
     let (mut t, mut steps) = (0.0, 0usize);
     while t < t_end * (1.0 - 1e-14) {
+        crate::sim::models_geodesic_relativity::native_charge();
         if steps > 0 && steps % cfg.regrid_interval.max(1) == 0 {
             amr.regrid();
         }

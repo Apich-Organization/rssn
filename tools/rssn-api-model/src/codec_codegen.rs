@@ -64,6 +64,8 @@ fn qualify(
                 | "Mat" | "dense::Mat" => "crate::kernels::dense::Mat".into(),
                 | "String" => "String".into(),
                 | "BigInt" => "num_bigint::BigInt".into(),
+                | "BigUint" => "num_bigint::BigUint".into(),
+                | "BigRational" => "num_rational::BigRational".into(),
                 | "Complex" | "Complex64" | "Complex<f64>"
                     if complex_alias.contains(text.trim_end_matches("<f64>")) =>
                 {
@@ -193,7 +195,7 @@ pub fn generate(
         let parts: Vec<_> = path.split("::").collect();
         if parts.len() != 4
             || parts[0] != "crate"
-            || !matches!(parts[1], "kernels" | "backend")
+            || !matches!(parts[1], "kernels" | "backend" | "sim")
             || !parts[2..].iter().all(|p| ident(p))
             || !ident(name)
             || !ident(namespace)
@@ -221,7 +223,7 @@ pub fn generate(
         let public_modules = std::fs::read_to_string(root.join(format!("src/{}/mod.rs", parts[1])))
             .map_err(|e| e.to_string())?;
         let module_items = syn::parse_file(&public_modules).map_err(|e| e.to_string())?;
-        if !module_items.items.iter().any(|item| matches!(item,Item::Mod(m) if m.ident == module && matches!(m.vis,Visibility::Public(_)) && !m.attrs.iter().any(|a| a.path().is_ident("cfg") || a.path().is_ident("cfg_attr")))) { return Err(format!("{path} parent is not an unconditional public kernel module")); }
+        if !module_items.items.iter().any(|item| matches!(item,Item::Mod(m) if m.ident == module && matches!(m.vis,Visibility::Public(_)) && !m.attrs.iter().any(|a| a.path().is_ident("cfg") || a.path().is_ident("cfg_attr")))) { return Err(format!("{path} parent is not an unconditional public numerical module")); }
         let source = std::fs::read_to_string(root.join(format!("src/{}/{module}.rs", parts[1])))
             .map_err(|e| e.to_string())?;
         let file = syn::parse_file(&source).map_err(|e| e.to_string())?;
@@ -392,6 +394,33 @@ pub fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn simulation_scalar_exports_keep_public_source_and_safety_checks() {
+        let root = std::env::temp_dir().join(format!("rssn-codecs-sim-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("src/sim")).unwrap();
+        std::fs::create_dir_all(root.join("tools/rssn-api-gen")).unwrap();
+        std::fs::write(root.join("tools/rssn-api-gen/contracts.tsv"), "Energy\t-\t0=base(\"Mass\")\tbase(\"Mass\")*(base(\"Length\")^2)/(base(\"Time\")^2)\t-\tSI energy.\n").unwrap();
+        std::fs::write(root.join("src/sim/mod.rs"), "pub mod example;").unwrap();
+        let policy = "crate::sim::example::energy\tnum_sim_energy\tnumerical_special\tEnergy";
+        let path = root.join("src/sim/example.rs");
+        std::fs::write(&path, "/// SI energy.\npub fn energy(mass:f64)->f64{mass}").unwrap();
+        assert!(
+            generate(&root, policy)
+                .unwrap()
+                .contains("crate::sim::example::energy(arg0)")
+        );
+        for source in [
+            "fn energy(mass:f64)->f64{mass}",
+            "pub unsafe fn energy(mass:f64)->f64{mass}",
+            "pub fn energy<T>(mass:T)->T{mass}",
+            "pub fn energy(mass:&mut f64)->f64{*mass}",
+            "#[cfg(feature=\"optional\")] pub fn energy(mass:f64)->f64{mass}",
+        ] {
+            std::fs::write(&path, source).unwrap();
+            assert!(generate(&root, policy).is_err(), "{source}");
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn codecs_derive_arguments_results_and_reject_private_paths() {
         let root = std::env::temp_dir().join(format!("rssn-codecs-{}", std::process::id()));

@@ -58,6 +58,21 @@ pub enum OdeError {
     Invalid,
 }
 
+impl std::fmt::Display for OdeError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(match self {
+            | Self::StepLimit => "ODE step size underflow or step budget exhausted",
+            | Self::NonFinite => "ODE state or rate became nonfinite",
+            | Self::SolveFailed => "ODE nonlinear or linear solve failed",
+            | Self::Invalid => "invalid ODE arguments",
+        })
+    }
+}
+impl std::error::Error for OdeError {}
+
 /// Tolerances and limits for adaptive integrators.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OdeOptions {
@@ -67,6 +82,8 @@ pub struct OdeOptions {
     pub atol: f64,
     /// Initial step (`None` selects one automatically).
     pub h0: Option<f64>,
+    /// Minimum step magnitude, except a final clipped interval; zero uses only representability.
+    pub hmin: f64,
     /// Maximal step size.
     pub hmax: f64,
     /// Maximal number of attempted steps, including rejected steps.
@@ -79,6 +96,7 @@ impl Default for OdeOptions {
             rtol: 1e-8,
             atol: 1e-10,
             h0: None,
+            hmin: 0.0,
             hmax: f64::INFINITY,
             max_steps: 1_000_000,
         }
@@ -572,7 +590,7 @@ pub(crate) fn dopri5_controlled<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
-        if !h.is_finite() || t + h == t {
+        if !h.is_finite() || t + h == t || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin) {
             return Err(OdeError::StepLimit);
         }
         // stages
@@ -780,7 +798,7 @@ pub(crate) fn rosenbrock23_events_controlled<F: Fn(f64, &[f64], &mut [f64])>(
         if (t + h - t1) * dir > 0.0 {
             h = t1 - t;
         }
-        if !h.is_finite() || t + h == t {
+        if !h.is_finite() || t + h == t || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin) {
             return Err(OdeError::StepLimit);
         }
         // Jacobian J and dF/dt by forward differences.
@@ -1087,7 +1105,14 @@ where
     F: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
     H: Fn(f64) -> Vec<f64>,
 {
-    if h <= 0.0 || tau < h {
+    if !h.is_finite()
+        || !tau.is_finite()
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || t1 < t0
+        || h <= 0.0
+        || tau < h
+    {
         return Err(OdeError::Invalid);
     }
     let mut ts = vec![t0];
@@ -1098,10 +1123,17 @@ where
         if t <= t0 {
             return hist(t);
         }
-        let idx = ts
+        // The endpoint time is appended before its rate is evaluated. Restrict
+        // interpolation to samples whose state and derivative already exist;
+        // tau == h lands exactly on the last complete sample.
+        let len = ts.len().min(ys.len()).min(fs.len());
+        if len < 2 || t >= ts[len - 1] {
+            return ys[len - 1].clone();
+        }
+        let idx = ts[..len]
             .partition_point(|&x| x <= t)
             .saturating_sub(1)
-            .min(ts.len() - 2);
+            .min(len - 2);
         let (ta, tb) = (ts[idx], ts[idx + 1]);
         let s = (t - ta) / (tb - ta);
         let (h00, h10, h01, h11) = (
@@ -1122,6 +1154,7 @@ where
     let steps = ((t1 - t0) / h).ceil() as usize;
     for s in 0..steps {
         let t = t0 + s as f64 * h;
+        let h = h.min(t1 - t);
         let y = ys[s].clone();
         // delayed values at t, t+h/2, t+h; only history available up to t is
         // needed when tau >= h, except when the delayed point equals t (tau == h):

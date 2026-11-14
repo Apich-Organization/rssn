@@ -63,6 +63,36 @@
 
 use crate::kernels::random::Rng;
 
+// Per-call native work accounting for potentially long Wang-Landau continuations.
+// Existing public callers keep their original behavior; checked language adapters
+// install a scoped budget and receive an error instead of an unfinished estimate.
+std::thread_local! { static NATIVE_WL_BUDGET: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) }; }
+pub(crate) fn with_wang_landau_budget<T>(
+    budget: usize,
+    work: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    struct Restore(Option<usize>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            NATIVE_WL_BUDGET.set(self.0);
+        }
+    }
+    let prior = NATIVE_WL_BUDGET.replace(Some(budget));
+    let _restore = Restore(prior);
+    work()
+}
+fn wang_landau_charge() -> Result<(), String> {
+    NATIVE_WL_BUDGET.with(|slot| {
+        if let Some(left) = slot.get() {
+            let next = left
+                .checked_sub(1)
+                .ok_or_else(|| "Wang-Landau native spin-proposal budget exhausted".to_string())?;
+            slot.set(Some(next));
+        }
+        Ok(())
+    })
+}
+
 /// Hypercubic lattice with nearest-neighbour and diagonal (next-nearest-neighbour) tables.
 #[derive(Clone, Debug)]
 pub struct Lattice<const D: usize> {
@@ -1380,6 +1410,7 @@ pub fn wang_landau_on<const D: usize, const N: usize>(
         let mut hist = vec![0usize; nbins];
         loop {
             for _ in 0..check {
+                wang_landau_charge()?;
                 let i = m.rng.below(n as u64) as usize;
                 let f = m.local_field_public(i);
                 let old = m.spins[i];
@@ -1514,6 +1545,7 @@ pub fn wang_landau_ising<const D: usize>(
         let mut checks = 0usize;
         loop {
             for _ in 0..n * 100 {
+                wang_landau_charge()?;
                 let i = rng.below(n as u64) as usize;
                 let mut s = 0;
                 for &j in lat.neighbours(i) {
@@ -1827,6 +1859,7 @@ fn steer_into_window<const D: usize, const N: usize>(
     let target = f64::midpoint(lo, hi);
     let mut e = m.energy();
     for _ in 0..4000 * n.max(16) {
+        wang_landau_charge()?;
         if e >= lo && e < hi {
             return Ok(e);
         }
@@ -1950,6 +1983,7 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
             for (w, &(lo, hi)) in ranges.iter().enumerate() {
                 for wk in &mut walkers[w] {
                     for _ in 0..steps {
+                        wang_landau_charge()?;
                         let i = wk.model.rng.below(n as u64) as usize;
                         let f = wk.model.local_field_public(i);
                         let old = wk.model.spins[i];

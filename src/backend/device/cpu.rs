@@ -326,6 +326,10 @@ impl Device for CpuDevice {
             #[cfg(feature = "jit")]
             native: std::sync::OnceLock::new(),
         });
+        // Retain a bounded working set; returned Arc kernels remain valid after eviction.
+        if cache.len() >= 8 {
+            cache.clear();
+        }
         cache.insert(key, k.clone());
         drop(cache);
         Ok(k)
@@ -370,6 +374,8 @@ impl Device for CpuDevice {
             return Ok(());
         }
         let cols: Vec<&mut [f64]> = out.chunks_mut(rows).collect();
+        #[cfg(feature = "jit")]
+        let mut cols = cols;
         #[cfg(feature = "jit")]
         if rows >= NATIVE_ROWS
             && let Some(k) = kernel.as_any().downcast_ref::<CpuKernel>()

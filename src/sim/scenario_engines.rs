@@ -1072,6 +1072,7 @@ fn sph(params: &str) -> Result<Value, String> {
     let e0 = s.total_energy();
     let mut t = 0.0;
     while t < r.t_end {
+        super::models_geodesic_relativity::native_charge();
         let dt = s.suggest_dt(0.25).min(r.t_end - t);
         s.step(dt);
         t += dt;

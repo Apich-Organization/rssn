@@ -315,3 +315,19 @@ pub mod tensor_train;
 
 /// One- and N-dimensional Fourier transforms and frequency indexing.
 pub mod fft;
+
+/// Scalar complex arithmetic and transcendental functions.
+pub mod complex_scalar;
+/// Descriptive statistics on floating and exact samples.
+pub mod descriptive;
+/// Exact integer arithmetic and factorization.
+pub mod number_exact;
+/// Shared errors for low-level numerical routines.
+pub mod numeric_common;
+/// Native CSR arithmetic, solvers and preconditioners.
+pub mod sparse_native;
+/// Exact special-function polynomial recurrences.
+pub mod special_exact;
+
+/// Generic tensor contractions with caller-provided scalar operations.
+pub mod contractions;

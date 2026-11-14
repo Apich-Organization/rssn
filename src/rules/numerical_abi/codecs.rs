@@ -26,7 +26,7 @@ use crate::kernel::value::RecordValue;
 use num_traits::ToPrimitive;
 
 /// A value type that can be decoded from and described in the kernel ABI.
-trait Arg: Sized {
+pub(in crate::rules) trait Arg: Sized {
     fn ty() -> TypeExpr;
     fn decode(
         v: &Value,
@@ -265,14 +265,14 @@ macro_rules! integer_codec {
         }
     )*};
 }
-integer_codec!(usize, i64, u32, i32, i128);
+integer_codec!(usize, i64, u32, i32, i128, u8, u128);
 macro_rules! integer_output {
     ($($ty:ty),*) => {$(impl Output for $ty {
         fn ty() -> TypeExpr { TypeExpr::Int }
         fn encode(self) -> Result<Value,OpError> { Ok(Value::int(self)) }
     })*};
 }
-integer_output!(u64, i64, u32, i32, i128, num_bigint::BigInt);
+integer_output!(u64, i64, u32, i32, i128, u8, u128, num_bigint::BigInt);
 impl Arg for bool {
     fn ty() -> TypeExpr {
         TypeExpr::Bool
@@ -702,6 +702,30 @@ impl Arg for Vec<String> {
     }
 }
 
+impl Output for Vec<String> {
+    fn ty() -> TypeExpr {
+        <Self as Arg>::ty()
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        if self.len() > 65536
+            || self
+                .iter()
+                .try_fold(0usize, |n, v| n.checked_add(v.len()))
+                .is_none_or(|n| n > 1_048_576)
+        {
+            return Err(OpError::Domain(
+                "native text-vector allocation budget exceeded".into(),
+            ));
+        }
+        Ok(Value::Tensor(TensorValue {
+            shape: vec![self.len()],
+            elem: TypeExpr::String,
+            data: self.into_iter().map(Value::String).collect(),
+        }))
+    }
+}
+
 include!("structured_generated.rs");
 
 /// Build a record's physical result schema from generated field formulas.
@@ -755,7 +779,8 @@ record!(SymmetricEigen { values: Vec<f64>, vectors: dense::Mat });
 
 /// A descriptor whose arity, types, and conversion are generated together.
 pub struct CodecExport {
-    /// Public Rust kernel function invoked by the adapter.
+    /// Public Rust function invoked by the adapter; empty for trait operators
+    /// without a public inherent-function source path.
     pub rust_path: &'static str,
     /// Name as exposed to hosts.
     pub name: &'static str,
@@ -872,6 +897,9 @@ impl EvalDyn for &'static CodecExport {
                 got: args.len(),
             });
         }
+        for value in args {
+            super::native_object_api::bounded(value)?;
+        }
         let contract = dimensions::contract_for(self.dimension_policy);
         if contract.other_args_dimensionless {
             for (index, value) in args.iter().enumerate() {
@@ -886,8 +914,9 @@ impl EvalDyn for &'static CodecExport {
             }
         }
         let dimensions = runtime_dimensions::prepare(self.dimension_policy, args)?;
+        native_scalar_preflight(self.name, args)?;
         let result = (self.call)(args)?;
-        runtime_dimensions::finish(&self.signature(), &dimensions, result)
+        runtime_dimensions::finish_shaped(&self.signature(), &dimensions, args, result)
     }
 }
 // A descriptor contains only the kernel call. Its codecs generate both the
@@ -902,7 +931,10 @@ macro_rules! binding {
                 DimensionPolicy, dense, dense_error, special, Qr, SymmetricEigen, TrainResult, TrainCores};
             fn signature() -> Signature { Signature::new(vec![$(<$argty as Arg>::ty()),*], <$ret as Output>::ty()) }
             fn call(args: &[Value]) -> Result<Value, OpError> {
+                // A zero-arity export has no argument bindings.
+                #[allow(unused_mut)]
                 let mut index = 0usize;
+                let _ = args;
                 $(let $arg: $argty = { let value = <$argty as Arg>::decode(&args[index], index)?; index += 1; value };)*
                 let _ = index;
                 let result: $ret = ($body)($($arg),*);
@@ -969,4 +1001,32 @@ pub static EXPORTS: &[&CodecExport] = &[
     &tt_svd::EXPORT,
 ];
 
+include!("native_scalar_codecs.rs");
 include!("codec_generated.rs");
+
+include!("functional_codecs.rs");
+include!("object_codecs.rs");
+include!("dual_codecs.rs");
+include!("geometry_codecs.rs");
+include!("native_analysis/mod.rs");
+include!("native_linear/codecs.rs");
+
+impl Output for String {
+    fn ty() -> TypeExpr {
+        TypeExpr::String
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::String(self))
+    }
+}
+// Native void methods acknowledge completion with Bool; the ABI has no unit tuple.
+impl Output for () {
+    fn ty() -> TypeExpr {
+        TypeExpr::Bool
+    }
+
+    fn encode(self) -> Result<Value, OpError> {
+        Ok(Value::Bool(true))
+    }
+}

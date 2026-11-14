@@ -94,6 +94,23 @@ pub fn inner_product(
             .to_string());
     }
 
+    if f_points
+        .iter()
+        .chain(g_points)
+        .any(|(x, y)| !x.is_finite() || !y.is_finite())
+        || f_points.windows(2).any(|w| w[0].0 >= w[1].0)
+        || g_points.windows(2).any(|w| w[0].0 >= w[1].0)
+        || f_points
+            .iter()
+            .zip(g_points)
+            .any(|(f, g)| !crate::kernels::exact_eq(f.0, g.0))
+    {
+        return Err(
+            "Inner products require finite samples on the same strictly increasing coordinate grid"
+                .into(),
+        );
+    }
+
     let integral = f_points
         .windows(2)
         .enumerate()
@@ -105,10 +122,6 @@ pub fn inner_product(
             let (_, y1_g) = g_points[i];
 
             let (_, y2_g) = g_points[i + 1];
-
-            if (x1 - g_points[i].0).abs() > 1e-9 || (x2 - g_points[i + 1].0).abs() > 1e-9 {
-                return 0.0;
-            }
 
             y1_f.mul_add(y1_g, y2_f * y2_g) / 2.0 * (x2 - x1)
         })
@@ -130,7 +143,10 @@ pub fn project(
 
     let ip_gg = inner_product(g_points, g_points)?;
 
-    if ip_gg.abs() < 1e-15 {
+    if !ip_gg.is_finite() || ip_gg < 0.0 {
+        return Err("Projection requires a finite nonnegative target norm".into());
+    }
+    if crate::kernels::exact_eq(ip_gg, 0.0) {
         return Ok(g_points.iter().map(|&(x, _)| (x, 0.0)).collect());
     }
 
@@ -144,7 +160,7 @@ pub fn project(
 pub fn normalize(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
     let n = l2_norm(points);
 
-    if n.abs() < 1e-15 {
+    if crate::kernels::exact_eq(n, 0.0) {
         return points.to_vec();
     }
 

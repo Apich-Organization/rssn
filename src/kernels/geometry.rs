@@ -865,21 +865,22 @@ impl Aabb {
         ]
     }
 
-    fn dist_sq_to_point(
+    fn distance_to_point(
         self,
         p: [f64; 3],
     ) -> f64 {
-        let mut d2 = 0.0;
+        let mut distance = 0.0_f64;
         for axis in 0..3 {
-            if p[axis] < self.min[axis] {
-                let d = self.min[axis] - p[axis];
-                d2 += d * d;
+            let offset = if p[axis] < self.min[axis] {
+                self.min[axis] - p[axis]
             } else if p[axis] > self.max[axis] {
-                let d = p[axis] - self.max[axis];
-                d2 += d * d;
-            }
+                p[axis] - self.max[axis]
+            } else {
+                0.0
+            };
+            distance = distance.hypot(offset);
         }
-        d2
+        distance
     }
 
     fn ray_hits(
@@ -890,14 +891,13 @@ impl Aabb {
         let mut tmin = 0.0f64;
         let mut tmax = f64::INFINITY;
         for axis in 0..3 {
-            if dir[axis].abs() < GEOM_EPS {
+            if crate::kernels::exact_eq(dir[axis], 0.0) {
                 if origin[axis] < self.min[axis] || origin[axis] > self.max[axis] {
                     return false;
                 }
             } else {
-                let inv = 1.0 / dir[axis];
-                let mut t1 = (self.min[axis] - origin[axis]) * inv;
-                let mut t2 = (self.max[axis] - origin[axis]) * inv;
+                let mut t1 = (self.min[axis] - origin[axis]) / dir[axis];
+                let mut t2 = (self.max[axis] - origin[axis]) / dir[axis];
                 if t1 > t2 {
                     std::mem::swap(&mut t1, &mut t2);
                 }
@@ -1007,7 +1007,7 @@ impl Bvh {
         let root = self.root?;
         let mut best: Option<(usize, f64)> = None;
         self.nearest_rec(root, point, &mut best);
-        best.map(|(idx, d2)| (idx, d2.sqrt()))
+        best
     }
 
     fn nearest_rec(
@@ -1019,23 +1019,23 @@ impl Bvh {
         let best_d2 = best.map_or(f64::INFINITY, |x| x.1);
         match self.nodes[node_idx] {
             | BvhNode::Leaf { bounds, item_index } => {
-                let d2 = bounds.dist_sq_to_point(point);
-                if d2 < best_d2 {
+                let d2 = bounds.distance_to_point(point);
+                if best.is_none() || d2 < best_d2 {
                     *best = Some((item_index, d2));
                 }
             },
             | BvhNode::Internal { left, right, .. } => {
-                let dl = self.nodes[left].bounds().dist_sq_to_point(point);
-                let dr = self.nodes[right].bounds().dist_sq_to_point(point);
+                let dl = self.nodes[left].bounds().distance_to_point(point);
+                let dr = self.nodes[right].bounds().distance_to_point(point);
                 let (first, d_first, second, d_second) = if dl <= dr {
                     (left, dl, right, dr)
                 } else {
                     (right, dr, left, dl)
                 };
-                if d_first < best.map_or(f64::INFINITY, |x| x.1) {
+                if best.is_none() || d_first < best.map_or(f64::INFINITY, |x| x.1) {
                     self.nearest_rec(first, point, best);
                 }
-                if d_second < best.map_or(f64::INFINITY, |x| x.1) {
+                if best.is_none() || d_second < best.map_or(f64::INFINITY, |x| x.1) {
                     self.nearest_rec(second, point, best);
                 }
             },

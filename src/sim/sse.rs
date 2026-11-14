@@ -26,6 +26,48 @@
 
 use crate::kernels::random::Rng;
 
+// Native language calls bound random-walk work and operator storage together.
+// The original direct Rust API remains unchanged unless a scoped budget is installed.
+std::thread_local! {static NATIVE_SSE_BUDGET:std::cell::Cell<Option<(usize,usize)>>=const{std::cell::Cell::new(None)};}
+struct SseBudgetExhausted;
+pub(crate) fn with_native_budget<T>(
+    work: usize,
+    operators: usize,
+    run: impl FnOnce() -> T,
+) -> Result<T, String> {
+    struct Restore(Option<(usize, usize)>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            NATIVE_SSE_BUDGET.set(self.0);
+        }
+    }
+    let old = NATIVE_SSE_BUDGET.replace(Some((work, operators)));
+    let _restore = Restore(old);
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)) {
+        | Ok(v) => Ok(v),
+        | Err(e) if e.is::<SseBudgetExhausted>() => {
+            Err("SSE native operation/storage budget exhausted".into())
+        },
+        | Err(e) => std::panic::resume_unwind(e),
+    }
+}
+fn budget_tick(
+    operations: usize,
+    storage: usize,
+) {
+    NATIVE_SSE_BUDGET.with(|slot| {
+        if let Some((left, maximum)) = slot.get() {
+            if let Some(next) = left.checked_sub(operations)
+                && storage <= maximum
+            {
+                slot.set(Some((next, maximum)));
+            } else {
+                std::panic::resume_unwind(Box::new(SseBudgetExhausted));
+            }
+        }
+    });
+}
+
 /// Graph helper: nearest-neighbour bonds of a chain with `l` sites.
 #[must_use]
 pub fn chain_bonds(
@@ -207,6 +249,7 @@ impl SseXxz {
     fn diag_update(&mut self) {
         let nb = self.bonds.len() as f64;
         let m = self.ops.len();
+        budget_tick(m, m);
         for p in 0..m {
             let op = self.ops[p];
             if op == 0 {
@@ -238,6 +281,7 @@ impl SseXxz {
 
     fn build_links(&mut self) {
         let m = self.ops.len();
+        budget_tick(m, m);
         self.link.clear();
         self.link.resize(4 * m, NONE);
         self.legspin.clear();
@@ -285,6 +329,7 @@ impl SseXxz {
     fn loop_update(&mut self) -> usize {
         self.build_links();
         let m = self.ops.len();
+        budget_tick(m, m);
         if self.n_ops == 0 {
             return 0;
         }
@@ -293,6 +338,7 @@ impl SseXxz {
         while visited < target {
             // random leg of a random existing operator
             let v0 = loop {
+                budget_tick(1, m);
                 let v = self.rng.below(4 * m as u64) as usize;
                 if self.ops[v / 4] != 0 {
                     break v;
@@ -300,6 +346,7 @@ impl SseXxz {
             };
             let mut v = v0;
             loop {
+                budget_tick(1, m);
                 let p = v / 4;
                 let l_in = v % 4;
                 let mut s = [
@@ -363,6 +410,7 @@ impl SseXxz {
         self.loop_update();
         let want = self.n_ops + self.n_ops / 3 + 8;
         if want > self.ops.len() {
+            budget_tick(0, want);
             self.ops.resize(want, 0);
         }
     }

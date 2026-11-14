@@ -55,7 +55,9 @@ impl FemSolution {
     }
 }
 
-fn to_rssn_bc(bc: &BoundaryCondition) -> Result<crate::sim::boundary::BoundaryCondition, FdmError> {
+pub(crate) fn to_rssn_bc(
+    bc: &BoundaryCondition
+) -> Result<crate::sim::boundary::BoundaryCondition, FdmError> {
     use crate::sim::boundary::BcValue;
     use crate::sim::boundary::BoundaryCondition as RssnBc;
     match bc {
@@ -640,7 +642,7 @@ pub fn solve_spectral_etdrk4<NL>(
     nonlinear_phys: NL,
 ) -> Result<Vec<f64>, FdmError>
 where
-    NL: Fn(f64, &[f64]) -> Vec<f64> + 'static,
+    NL: Fn(f64, &[f64]) -> Vec<f64>,
 {
     use crate::sim::spectral::SpectralGrid;
     use crate::sim::spectral::etdrk4;
@@ -719,3 +721,6 @@ where
     let coords = (0..grid.size()).map(|p| grid.coord(p)).collect();
     Ok((coords, values))
 }
+
+/// Temporal adaptivity for finite elements, finite volumes, DG and spectral evolution.
+pub mod adaptive;

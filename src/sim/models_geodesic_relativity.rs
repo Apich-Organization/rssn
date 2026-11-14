@@ -45,6 +45,68 @@ use crate::sim::relativity::Geodesic;
 use crate::sim::relativity::KerrNewman;
 use crate::sim::relativity::Termination;
 
+// Scoped native accounting bounds both implicit steps and legacy adaptive RHS calls.
+// The Arc is explicitly inherited by parallel file-scenario workers.
+std::thread_local! {static NATIVE_GEODESIC_BUDGET:std::cell::RefCell<Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>>=const{std::cell::RefCell::new(None)};}
+struct GeodesicBudgetExhausted;
+pub(crate) fn shared_native_budget<T>(
+    budget: Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>,
+    run: impl FnOnce() -> T,
+) -> Result<T, String> {
+    struct Restore(Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            NATIVE_GEODESIC_BUDGET.with(|b| {
+                b.replace(self.0.take());
+            });
+        }
+    }
+    let prior = NATIVE_GEODESIC_BUDGET.with(|b| b.replace(budget));
+    let _restore = Restore(prior);
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)) {
+        | Ok(v) => Ok(v),
+        | Err(e) if e.is::<GeodesicBudgetExhausted>() => {
+            Err("native geodesic step/RHS budget exhausted".into())
+        },
+        | Err(e) => std::panic::resume_unwind(e),
+    }
+}
+pub(crate) fn with_native_budget<T>(
+    budget: usize,
+    run: impl FnOnce() -> T,
+) -> Result<T, String> {
+    shared_native_budget(
+        Some(std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(
+            budget,
+        ))),
+        run,
+    )
+}
+pub(crate) fn inherited_native_budget() -> Option<std::sync::Arc<std::sync::atomic::AtomicUsize>> {
+    NATIVE_GEODESIC_BUDGET.with(|b| b.borrow().clone())
+}
+pub(crate) fn native_charge() {
+    NATIVE_GEODESIC_BUDGET.with(|b| {
+        if let Some(budget) = b.borrow().as_ref() {
+            let mut old = budget.load(std::sync::atomic::Ordering::Relaxed);
+            loop {
+                let Some(next) = old.checked_sub(1) else {
+                    std::panic::resume_unwind(Box::new(GeodesicBudgetExhausted));
+                };
+                match budget.compare_exchange_weak(
+                    old,
+                    next,
+                    std::sync::atomic::Ordering::Relaxed,
+                    std::sync::atomic::Ordering::Relaxed,
+                ) {
+                    | Ok(_) => break,
+                    | Err(value) => old = value,
+                }
+            }
+        }
+    });
+}
+
 /// Parameters for the geodesic simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GeodesicParameters {
@@ -89,6 +151,7 @@ impl OdeSystem for SchwarzschildSystem {
         y: &[f64],
         dy: &mut [f64],
     ) {
+        native_charge();
         let (r, r_dot, _phi, phi_dot) = (y[0], y[1], y[2], y[3]);
 
         let l = r * r * phi_dot;
@@ -182,6 +245,7 @@ pub fn run_kerr_newman_geodesic(
     let mut tau = 0.0;
     let mut guard = 0usize;
     while tau < params.proper_time_end && guard < 2_000_000 {
+        native_charge();
         guard += 1;
         let h = h0.min(params.proper_time_end - tau);
         let before = g.lambda;
@@ -301,27 +365,36 @@ pub fn simulate_black_hole_orbits_scenario(output_dir: &Path) -> std::io::Result
         ("photon_orbit", photon_orbit_params),
     ];
 
-    orbits.into_par_iter().for_each(|(name, params)| {
-        println!("Simulating {name}...");
+    let budget = NATIVE_GEODESIC_BUDGET.with(|b| b.borrow().clone());
+    let results: Vec<Result<(), String>> = orbits
+        .into_par_iter()
+        .map(|(name, params)| {
+            shared_native_budget(budget.clone(), || {
+                println!("Simulating {name}...");
 
-        let path = run_geodesic_simulation(&params);
+                let path = run_geodesic_simulation(&params);
 
-        let filename = output_dir.join(format!("orbit_{name}.csv"));
+                let filename = output_dir.join(format!("orbit_{name}.csv"));
 
-        if let Ok(mut file) = File::create(&filename) {
-            let _ = writeln!(file, "x,y");
+                if let Ok(mut file) = File::create(&filename) {
+                    let _ = writeln!(file, "x,y");
 
-            for (x, y) in path {
-                let _ = writeln!(file, "{x},{y}");
-            }
+                    for (x, y) in path {
+                        let _ = writeln!(file, "{x},{y}");
+                    }
 
-            println!(
-                "Saved path to \
+                    println!(
+                        "Saved path to \
                      {}",
-                filename.display()
-            );
-        }
-    });
+                        filename.display()
+                    );
+                }
+            })
+        })
+        .collect();
+    for result in results {
+        result.map_err(std::io::Error::other)?;
+    }
 
     Ok(())
 }
