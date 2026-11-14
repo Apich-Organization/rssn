@@ -2073,7 +2073,6 @@ pub fn plot_streamlines_3d(
     write_svg(svg, path)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

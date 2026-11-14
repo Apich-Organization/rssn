@@ -1071,7 +1071,6 @@ impl Bvh {
     }
 }
 
-
 /// The area of a polygon given its vertices, by the shoelace formula.
 ///
 /// `points` is `[x0, y0, x1, y1, …]`; the result is non-negative and does not

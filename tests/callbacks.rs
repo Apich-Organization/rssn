@@ -479,7 +479,6 @@ fn manifest_provenance_effects_api_version_and_binary_layout_are_explicit() {
     assert_eq!(legacy.rust_path, None);
 }
 
-
 #[test]
 fn equivalent_concrete_dimensions_work_for_callback_name_and_key_dispatch() {
     use rssn::kernel::signature::Exp;

@@ -76,7 +76,6 @@ fn cholesky(
         .map_err(|_| DistError::NotPositiveDefinite)
 }
 
-
 // Bounded integer bisection avoids unbounded mass summation and overflow in
 // a doubling search for quantiles outside the u64 count range.
 fn discrete_quantile(
