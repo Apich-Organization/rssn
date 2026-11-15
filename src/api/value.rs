@@ -663,6 +663,7 @@ impl Session {
         args: &[Value],
         ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
+        crate::cancellation::checkpoint()?;
         let mut scoped_context = clone_ctx(ctx);
         scoped_context.native_objects = Some(self.native_objects.clone());
         let ctx = &scoped_context;
@@ -684,7 +685,9 @@ impl Session {
         );
         if let Some(evaluator) = descriptor.eval_dyn.clone() {
             ctx.trace("dispatch", "native evaluator");
-            return evaluator.eval(args, ctx);
+            let result = evaluator.eval(args, ctx);
+            crate::cancellation::checkpoint()?;
+            return result;
         }
         let manifest = self.manifest();
         let unit_positions = unit_parameters(&descriptor, args.len());
@@ -1084,6 +1087,7 @@ fn diag_of_error(
 /// Maps a computation error onto the ABI's error type.
 fn op_error(error: crate::api::ComputeError) -> OpError {
     match error {
+        | crate::api::ComputeError::Cancelled => crate::cancellation::Cancelled.into(),
         | crate::api::ComputeError::UnknownOperator(name) => {
             OpError::UnknownOp(OpKey::new("", &name, None))
         },

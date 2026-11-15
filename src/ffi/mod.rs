@@ -177,6 +177,8 @@ pub enum RssnStatus {
     /// A scalar argument has an invalid value (for example an unknown
     /// dimension mode).
     InvalidArgument = 13,
+    /// The embedding host cancelled the computation.
+    Cancelled = 14,
 }
 
 thread_local! {
@@ -200,6 +202,7 @@ pub(crate) fn fail(
 /// The status code of a computation error.
 pub(crate) const fn status_of(e: &ComputeError) -> RssnStatus {
     match e {
+        | ComputeError::Cancelled => RssnStatus::Cancelled,
         | ComputeError::Rule(_) => RssnStatus::Rule,
         | ComputeError::Parse(_) => RssnStatus::Parse,
         | ComputeError::UnknownOperator(_) => RssnStatus::UnknownOperator,

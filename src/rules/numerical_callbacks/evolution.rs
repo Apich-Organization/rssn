@@ -298,6 +298,7 @@ impl EvalDyn for Method {
         callback.finish()?;
         let OdeSolution { t, y, rejected, .. } = solution.map_err(|error| {
             match error {
+                | OdeError::Cancelled => crate::cancellation::Cancelled.into(),
                 | OdeError::Invalid => {
                     OpError::Domain(
                         "invalid ODE times, state, tolerances, maximum step or attempt budget"

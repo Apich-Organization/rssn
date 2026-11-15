@@ -40,6 +40,8 @@ use num_complex::Complex64;
 /// Errors of the dense routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DenseError {
+    /// The embedding host cancelled the computation.
+    Cancelled,
     /// Shapes of the operands do not match.
     Shape,
     /// The matrix is singular (or not positive definite for Cholesky).
@@ -56,6 +58,7 @@ impl fmt::Display for DenseError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
+            | Self::Cancelled => write!(f, "computation cancelled"),
             | Self::Shape => write!(f, "incompatible shapes"),
             | Self::Singular => write!(f, "matrix is singular or not positive definite"),
             | Self::NoConvergence => write!(f, "iteration did not converge"),
@@ -65,6 +68,11 @@ impl fmt::Display for DenseError {
 }
 
 impl std::error::Error for DenseError {}
+impl From<crate::cancellation::Cancelled> for DenseError {
+    fn from(_: crate::cancellation::Cancelled) -> Self {
+        Self::Cancelled
+    }
+}
 
 /// Multiply-adds from which dense products run in parallel.
 const DENSE_PAR_FLOPS: usize = 4_000_000;
@@ -235,6 +243,7 @@ pub struct Lu {
 /// [`DenseError::Shape`] for non-square input, [`DenseError::Singular`]
 /// when a pivot is exactly zero.
 pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
+    crate::cancellation::checkpoint()?;
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
@@ -246,6 +255,7 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
     let mut piv: Vec<usize> = (0..n).collect();
     let mut sign = 1.0;
     for k in 0..n {
+        crate::cancellation::checkpoint()?;
         let mut p = k;
         for i in k + 1..n {
             if lu.at(i, k).abs() > lu.at(p, k).abs() {
@@ -348,6 +358,7 @@ pub fn solve(
 /// # Errors
 /// [`DenseError::Singular`] if `A` is not symmetric positive definite.
 pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
+    crate::cancellation::checkpoint()?;
     if a.rows != a.cols {
         return Err(DenseError::Shape);
     }
@@ -357,6 +368,7 @@ pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
     let n = a.rows;
     let mut l = Mat::zeros(n, n);
     for i in 0..n {
+        crate::cancellation::checkpoint()?;
         for j in 0..=i {
             let mut s = a.at(i, j);
             for k in 0..j {
@@ -514,6 +526,7 @@ fn scaled(
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NoConvergence`]
 /// after 100 sweeps.
 pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
+    crate::cancellation::checkpoint()?;
     if let Some(f) = eigen_scale(a)
         && a.rows == a.cols
         && a.is_finite()
@@ -537,6 +550,7 @@ pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
     let mut m = a.clone();
     let mut v = Mat::identity(n);
     for _ in 0..100 {
+        crate::cancellation::checkpoint()?;
         let mut off = 0.0;
         for i in 0..n {
             for j in 0..n {
@@ -558,6 +572,7 @@ pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
             return Ok((vals, vs));
         }
         for p in 0..n {
+            crate::cancellation::checkpoint()?;
             for q in p + 1..n {
                 let apq = m.at(p, q);
                 if apq == 0.0 {

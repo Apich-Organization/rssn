@@ -165,6 +165,8 @@ pub enum Stop {
     Iterations,
     /// The time limit was hit.
     Time,
+    /// The embedding host cancelled the current computation scope.
+    Cancelled,
 }
 
 /// Summary of a run.
@@ -339,6 +341,9 @@ fn search_rewrite(
     let mut scratch = super::pattern::MatchScratch::default();
     let cap = limit.saturating_add(1);
     for &node in nodes {
+        if crate::cancellation::is_cancelled() {
+            break;
+        }
         if matches.len() >= cap {
             break;
         }
@@ -549,6 +554,15 @@ impl Engine {
         goal: &dyn Goal,
         budget: &Budget,
     ) -> Report {
+        if crate::cancellation::is_cancelled() {
+            return Report {
+                stop: Stop::Cancelled,
+                iterations: 0,
+                unions: 0,
+                applied: Vec::new(),
+                solved: false,
+            };
+        }
         let start = Instant::now();
         let unions_at_start = graph.union_count();
         let mut states: Vec<RuleState> = self
@@ -578,7 +592,11 @@ impl Engine {
         let mut iterations = 0;
         let mut best_cost = u64::MAX;
         let mut stalled = 0_usize;
-        for iteration in 0..budget.max_iterations {
+        'run: for iteration in 0..budget.max_iterations {
+            if crate::cancellation::is_cancelled() {
+                stop = Stop::Cancelled;
+                break;
+            }
             iterations = iteration.saturating_add(1);
             let mut progress = false;
 
@@ -594,6 +612,10 @@ impl Engine {
                     &mut states,
                     &mut seen,
                 );
+                if crate::cancellation::is_cancelled() {
+                    stop = Stop::Cancelled;
+                    break 'run;
+                }
                 graph.rebuild();
                 progress |= changed;
                 if !changed {
@@ -601,6 +623,10 @@ impl Engine {
                 }
             }
 
+            if crate::cancellation::is_cancelled() {
+                stop = Stop::Cancelled;
+                break;
+            }
             // Tier 1: destructive clean-up in windows, then the same
             // simplifications modulo the graph's equalities.
             progress |= Self::windows(
@@ -625,6 +651,10 @@ impl Engine {
             );
             graph.rebuild();
 
+            if crate::cancellation::is_cancelled() {
+                stop = Stop::Cancelled;
+                break;
+            }
             if env.numeric {
                 progress |= propagate_witnesses(graph, roots);
             }
@@ -648,6 +678,10 @@ impl Engine {
                 graph.rebuild();
             }
 
+            if crate::cancellation::is_cancelled() {
+                stop = Stop::Cancelled;
+                break;
+            }
             if !progress {
                 // Banned rules may still have work to do; a run is only
                 // saturated when none is waiting.
@@ -691,12 +725,20 @@ impl Engine {
             }
         }
 
+        if crate::cancellation::is_cancelled() {
+            stop = Stop::Cancelled;
+        }
         // The finished graph is a set of typing judgements (a request and
         // its answer share a class); with tracing on they are logged.
-        if env.depth == 0 {
+        if env.depth == 0 && stop != Stop::Cancelled {
             crate::kernel::sort::observe(graph);
         }
-        let closed = Extractor::new(graph, roots, &ClosedForm);
+        let solved = if stop == Stop::Cancelled {
+            false
+        } else {
+            let closed = Extractor::new(graph, roots, &ClosedForm);
+            roots.iter().all(|&r| closed.cost(graph, r).is_some())
+        };
         Report {
             stop,
             iterations,
@@ -709,7 +751,7 @@ impl Engine {
                 .filter(|(_, s)| s.applied > 0)
                 .map(|(r, s)| (Arc::clone(&r.name), s.applied))
                 .collect(),
-            solved: roots.iter().all(|&r| closed.cost(graph, r).is_some()),
+            solved,
         }
     }
 
@@ -752,6 +794,9 @@ impl Engine {
             |graph: &Graph, node: NodeId| graph.ops().get(graph.op(node)).flags.has(OpFlags::HEAVY);
         let mut candidates: BTreeMap<OpId, Vec<NodeId>> = BTreeMap::new();
         for class in reachable(graph, roots) {
+            if crate::cancellation::is_cancelled() {
+                return false;
+            }
             // A request that already has an answer is not reduced again
             // through its other spellings.
             if tier == Tier::Reduce && graph.enodes(class).any(|n| !heavy(graph, n)) {
@@ -772,6 +817,9 @@ impl Engine {
         let rules = &self.program.rules;
         let mut at = 0;
         while at < rules.len() {
+            if crate::cancellation::is_cancelled() {
+                return changed;
+            }
             let Some(rule) = rules.get(at) else { break };
             if rule.tier != tier {
                 at += 1;
@@ -833,7 +881,9 @@ impl Engine {
                 let found = {
                     let frozen: &Graph = graph;
                     let states_ro: &[RuleState] = states;
+                    let cancellation = crate::cancellation::current();
                     let search = |(&(i, rw), nodes): (&(usize, &Rewrite), &Option<Vec<NodeId>>)| {
+                        let _scope = crate::cancellation::install_optional(cancellation.clone());
                         let nodes = nodes.as_ref()?;
                         let times = states_ro.get(i).map_or(0, |s| s.times_banned);
                         Some(search_rewrite(frozen, rw, nodes, times, budget))
@@ -851,6 +901,9 @@ impl Engine {
                 // epoch than the search saw.
                 graph.advance_epoch();
                 for (&(i, rewrite), result) in run.iter().zip(found) {
+                    if crate::cancellation::is_cancelled() {
+                        return changed;
+                    }
                     let (Some(result), Some(state)) = (result, states.get_mut(i)) else {
                         continue;
                     };
@@ -865,6 +918,9 @@ impl Engine {
                         | Search::Found(matches) => {
                             state.searched = Some(searched_at);
                             for m in &matches {
+                                if crate::cancellation::is_cancelled() {
+                                    return changed;
+                                }
                                 if let Some(new) = rewrite.build(graph, m)
                                     && graph.union(m.root, new)
                                 {
@@ -904,6 +960,9 @@ impl Engine {
                     // heavy parts in parallel, commit in node order.
                     let mut staged: Vec<Staged> = Vec::new();
                     for node in nodes {
+                        if crate::cancellation::is_cancelled() {
+                            return changed;
+                        }
                         if !revisit {
                             let ready = reduced_arguments(graph, node);
                             match state.visited.get(&node) {
@@ -939,19 +998,26 @@ impl Engine {
                         let works: Vec<Option<Box<dyn PreparedWork>>> =
                             staged.iter_mut().map(|(_, _, w)| w.take()).collect();
                         let heavy_jobs = works.iter().filter(|w| w.is_some()).count();
+                        let cancellation = crate::cancellation::current();
+                        let run = |work: Option<Box<dyn PreparedWork>>| {
+                            let _scope =
+                                crate::cancellation::install_optional(cancellation.clone());
+                            if crate::cancellation::is_cancelled() {
+                                None
+                            } else {
+                                work.map(PreparedWork::run)
+                            }
+                        };
                         let results: Vec<Option<Box<dyn std::any::Any + Send>>> = if heavy_jobs >= 2
                         {
-                            works
-                                .into_par_iter()
-                                .map(|w| w.map(PreparedWork::run))
-                                .collect()
+                            works.into_par_iter().map(run).collect()
                         } else {
-                            works
-                                .into_iter()
-                                .map(|w| w.map(PreparedWork::run))
-                                .collect()
+                            works.into_iter().map(run).collect()
                         };
                         for ((node, done, _), result) in staged.into_iter().zip(results) {
+                            if crate::cancellation::is_cancelled() {
+                                return changed;
+                            }
                             let outcome = match (done, result) {
                                 | (Some(outcome), _) => outcome,
                                 | (None, Some(result)) => {
@@ -1000,6 +1066,9 @@ impl Engine {
         // describes the graph as it is now.
         let mut terms = Vec::new();
         for &class in classes.iter().rev() {
+            if crate::cancellation::is_cancelled() {
+                return false;
+            }
             if !root_classes.contains(&class) && graph.parents(class).len() <= 1 {
                 // Unshared: some ancestor's window covers it.
                 continue;
@@ -1022,6 +1091,9 @@ impl Engine {
         }
         let mut changed = false;
         for (origin, term) in terms {
+            if crate::cancellation::is_cancelled() {
+                return changed;
+            }
             // Changes this window makes are stamped with its own epoch, so
             // they do not send it back to work; the next window's are later.
             let epoch = graph.advance_epoch();
@@ -1091,6 +1163,9 @@ fn propagate_witnesses(
     loop {
         let mut round = false;
         for &class in classes.iter().rev() {
+            if crate::cancellation::is_cancelled() {
+                return changed;
+            }
             if graph.approx(class).is_some() {
                 continue;
             }

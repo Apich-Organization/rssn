@@ -78,6 +78,8 @@ enum class RssnStatus {
      * dimension mode).
      */
     RSSN_STATUS_INVALID_ARGUMENT = 13,
+    /** The embedding host cancelled the computation. */
+    RSSN_STATUS_CANCELLED = 14,
 };
 
 /**

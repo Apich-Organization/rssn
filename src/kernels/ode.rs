@@ -57,6 +57,7 @@ pub fn solve_fixed(
     steps: usize,
     method: OdeSolverMethod,
 ) -> Result<Trajectory, String> {
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
     if steps == 0 {
         return Err("The number of steps must be positive.".to_string());
     }
@@ -72,11 +73,13 @@ pub fn solve_fixed(
     let mut k = vec![vec![0.0; n]; 4];
     let mut stage = vec![0.0; n];
     for step in 0..steps {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         let t = t_span.0 + h * step as f64;
         if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
             return Err("The step is too small to advance time.".to_string());
         }
         advance(method, &f, t, &mut y, h, &mut k, &mut stage);
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         if y.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
@@ -181,6 +184,7 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     method: OdeSolverMethod,
     events: &[Event<'_>],
 ) -> Result<(Trajectory, Vec<FixedEvent>), String> {
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
     if steps == 0 {
         return Err("The number of steps must be positive.".to_string());
     }
@@ -200,12 +204,14 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     let mut probe_stage = vec![0.0; n];
     let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t_span.0, y0)).collect();
     for step in 0..steps {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         let t = t_span.0 + h * step as f64;
         if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
             return Err("The step is too small to advance time.".to_string());
         }
         let mut next = y.clone();
         advance(method, &f, t, &mut next, h, &mut k, &mut stage);
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         if next.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
@@ -368,6 +374,7 @@ pub fn solve_adaptive(
     atol: f64,
     max_steps: usize,
 ) -> Result<Trajectory, String> {
+    crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
     let n = y0.len();
     let (t0, t1) = t_span;
     let direction = if t1 >= t0 { 1.0 } else { -1.0 };
@@ -386,6 +393,7 @@ pub fn solve_adaptive(
     let mut h = direction * ((t1 - t0).abs() * 1e-2).max(1e-8);
     f(t, &y, &mut k[0]);
     for _ in 0..max_steps {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         if (t1 - t) * direction <= 0.0 {
             return Ok(out);
         }

@@ -48,6 +48,8 @@ use crate::kernels::rootfind;
 /// Errors of the ODE kernels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OdeError {
+    /// The embedding host cancelled the computation.
+    Cancelled,
     /// Step size underflow or too many steps.
     StepLimit,
     /// The state became non-finite.
@@ -64,6 +66,7 @@ impl std::fmt::Display for OdeError {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.write_str(match self {
+            | Self::Cancelled => "computation cancelled",
             | Self::StepLimit => "ODE step size underflow or step budget exhausted",
             | Self::NonFinite => "ODE state or rate became nonfinite",
             | Self::SolveFailed => "ODE nonlinear or linear solve failed",
@@ -72,6 +75,12 @@ impl std::fmt::Display for OdeError {
     }
 }
 impl std::error::Error for OdeError {}
+impl From<crate::cancellation::Cancelled> for OdeError {
+    fn from(_: crate::cancellation::Cancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 
 /// Tolerances and limits for adaptive integrators.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1067,6 +1076,7 @@ where
     let mut cur: Vec<f64> = y0.iter().chain(z0).copied().collect();
     let mut out = vec![cur.clone()];
     for s in 0..steps {
+        crate::cancellation::checkpoint()?;
         let tn = t0 + (s + 1) as f64 * h;
         let prev = cur.clone();
         let sys = |u: &[f64]| -> Vec<f64> {
@@ -1153,6 +1163,7 @@ where
     };
     let steps = ((t1 - t0) / h).ceil() as usize;
     for s in 0..steps {
+        crate::cancellation::checkpoint()?;
         let t = t0 + s as f64 * h;
         let h = h.min(t1 - t);
         let y = ys[s].clone();

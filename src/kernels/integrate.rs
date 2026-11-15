@@ -151,6 +151,7 @@ where
     let mut sum = f(a) + f(b);
 
     for i in 1..steps {
+        crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         let x = (i as f64).mul_add(h, a);
 
         let weight = if i % 2 == 0 { 2.0 } else { 4.0 };

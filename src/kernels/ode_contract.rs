@@ -298,6 +298,7 @@ pub(super) fn fixed_step(
 /// escape stops adaptive retries after that failure, without panic unwinding
 /// or changing the public infallible-RHS API.
 pub(super) fn abort_if_requested(stop: Option<&dyn Fn() -> bool>) -> Result<(), OdeError> {
+    crate::cancellation::checkpoint()?;
     if stop.is_some_and(|stop| stop()) {
         Err(OdeError::NonFinite)
     } else {

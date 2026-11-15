@@ -123,6 +123,7 @@
 /// Unified mathematical compute engine.
 pub mod api;
 pub mod backend;
+pub mod cancellation;
 /// Build metadata and mathematical constants.
 pub mod constant;
 /// The dimension and unit layer.

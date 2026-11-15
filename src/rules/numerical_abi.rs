@@ -497,6 +497,7 @@ fn output_matrix(m: dense::Mat) -> Result<Value, OpError> {
 }
 fn dense_error(error: dense::DenseError) -> OpError {
     match error {
+        | dense::DenseError::Cancelled => crate::cancellation::Cancelled.into(),
         | dense::DenseError::NoConvergence => {
             OpError::NotReduced("numerical matrix algorithm did not converge".into())
         },

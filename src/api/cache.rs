@@ -233,7 +233,10 @@ impl ComputeCache {
         config: String,
         answer: Result<StoredAnswer, ComputeError>,
     ) {
-        if !self.policy.answers || self.policy.capacity == 0 {
+        if !self.policy.answers
+            || self.policy.capacity == 0
+            || matches!(&answer, Err(ComputeError::Cancelled))
+        {
             return;
         }
         if let Ok(stored) = &answer

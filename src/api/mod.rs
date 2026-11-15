@@ -43,12 +43,14 @@
 //!   [`TermRef`](crate::kernel::value::TermRef) (a session id plus a node id),
 //!   which [`Session::term_ref`](crate::api::Session::term_ref) checks before
 //!   use.
-//! * **No cancellation; the wall clock is a budget field.** The limits are
+//! * **Cooperative cancellation and run budgets.** Embedding hosts can install
+//!   [`crate::cancellation`] scopes; graph and supported numeric kernels stop
+//!   at checkpoints with [`ComputeError::Cancelled`]. The limits are
 //!   the [`Budget`](crate::graph::Budget) (`max_iterations`, `max_nodes`, and
 //!   the optional `time_limit`, which ends a run with
 //!   [`Stop::Time`](crate::graph::Stop)); a pathological rule set runs until
-//!   one of them is exhausted. There is no streaming API: a computation is one
-//!   call returning one answer.
+//!   one of them is exhausted or its scope is cancelled. There is no streaming
+//!   API: a computation is one call returning one answer.
 //! * **Answers are cached; lemmas can be.** A session memoises whole answers
 //!   by request node and configuration fingerprint (exact: a hit equals a
 //!   fresh run), and can reuse the closed forms of heavy sub-requests across
@@ -409,6 +411,8 @@ impl Config {
 /// Why a computation could not produce an answer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ComputeError {
+    /// The embedding host cancelled the computation.
+    Cancelled,
     /// A rule set failed to install.
     Rule(RuleError),
     /// Input text could not be parsed.
@@ -431,6 +435,7 @@ impl fmt::Display for ComputeError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
+            | Self::Cancelled => write!(f, "computation cancelled"),
             | Self::Rule(e) => write!(f, "{e}"),
             | Self::Parse(e) => write!(f, "{e}"),
             | Self::UnknownOperator(name) => write!(f, "unknown operator `{name}`"),
@@ -871,6 +876,7 @@ impl Session {
         term: Term<'s>,
         config: &Config,
     ) -> Result<Answer<'s>, ComputeError> {
+        crate::cancellation::checkpoint().map_err(|_| ComputeError::Cancelled)?;
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
         let index = template_index(inner, config)?;
@@ -910,6 +916,10 @@ impl Session {
         terms: &[Term<'s>],
         config: &Config,
     ) -> Vec<Result<Answer<'s>, ComputeError>> {
+        if crate::cancellation::is_cancelled() {
+            return terms.iter().map(|_| Err(ComputeError::Cancelled)).collect();
+        }
+        let cancellation = crate::cancellation::current();
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
         let index = match template_index(inner, config) {
@@ -938,11 +948,17 @@ impl Session {
         let engine = &template.engine;
         let done: Vec<Done> = if jobs.len() >= COMPUTE_ALL_PAR_MIN {
             jobs.into_par_iter()
-                .map(|job| run_job(engine, job, config))
+                .map(|job| {
+                    let _scope = crate::cancellation::install_optional(cancellation.clone());
+                    run_job(engine, job, config)
+                })
                 .collect()
         } else {
             jobs.into_iter()
-                .map(|job| run_job(engine, job, config))
+                .map(|job| {
+                    let _scope = crate::cancellation::install_optional(cancellation.clone());
+                    run_job(engine, job, config)
+                })
                 .collect()
         };
         for (&i, d) in pending.iter().zip(done) {
@@ -1213,6 +1229,21 @@ fn run_job(
             engine.run(&mut graph, &roots, &env, &Evaluated, &config.budget)
         },
     };
+    if report.stop == crate::graph::Stop::Cancelled || crate::cancellation::is_cancelled() {
+        return Done {
+            graph,
+            env,
+            report,
+            target: config.target,
+            failure: Some(ComputeError::Cancelled),
+            best: root,
+            reduced: false,
+            witness: None,
+            dimension: None,
+            diagnostics: dim_errors,
+            lemmas: Vec::new(),
+        };
+    }
     let mut failure = graph
         .conflicts()
         .first()
@@ -1306,6 +1337,7 @@ fn finish(
     config: &Config,
     done: Done,
 ) -> Result<cache::StoredAnswer, ComputeError> {
+    crate::cancellation::checkpoint().map_err(|_| ComputeError::Cancelled)?;
     let store = &mut inner.graph;
     if !done.lemmas.is_empty() {
         let context = cache::fingerprint(config, false);
