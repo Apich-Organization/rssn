@@ -254,9 +254,7 @@ macro_rules! native_factor {
 
             fn validate(&self) -> Result<(), OpError> {
                 if self.n == 0 || self.n > 512 || !self.scale.is_finite() || self.scale <= 0.0 {
-                    return Err(err(
-                        "invalid factor dimension/reference or storage budget",
-                    ));
+                    return Err(err("invalid factor dimension/reference or storage budget"));
                 }
                 Ok(())
             }
