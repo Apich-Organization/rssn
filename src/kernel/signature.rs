@@ -747,7 +747,20 @@ impl Signature {
 /// Two builds that register the same operator with the same signature
 /// produce the same key, whatever the registration order. Hosts key caches
 /// on `(manifest_hash, OpKey)`.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+    bincode_next::Fingerprint,
+)]
 pub struct OpKey {
     /// Rule set that registered the operator.
     pub rule_set: String,
