@@ -127,46 +127,55 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "lgamma_complex",
         params: "ss",
         eval: lgamma_complex,
+        doc: "`lgamma_complex(re, im)`: `list(re, im)` of `ln Gamma(z)` for `z = re + i*im`, continuous off the non-positive real axis.",
     },
     Entry {
         name: "gamma_complex",
         params: "ss",
         eval: gamma_complex,
+        doc: "`gamma_complex(re, im)`: `list(re, im)` of the complex Gamma function `Gamma(re + i*im)`.",
     },
     Entry {
         name: "digamma_complex",
         params: "ss",
         eval: digamma_complex,
+        doc: "`digamma_complex(re, im)`: `list(re, im)` of the complex digamma function `psi(z) = Gamma'(z) / Gamma(z)`.",
     },
     Entry {
         name: "lambert_w_complex",
         params: "sss",
         eval: lambert_w_complex,
+        doc: "`lambert_w_complex(re, im, k)`: `list(re, im)` of branch `k` of the complex Lambert W function solving `w exp(w) = re + i*im`.",
     },
     Entry {
         name: "bessel_j_complex",
         params: "sss",
         eval: bessel_j_complex,
+        doc: "`bessel_j_complex(nu, re, im)`: `list(re, im)` of the Bessel function of the first kind `J_nu(re + i*im)` for real order `nu`.",
     },
     Entry {
         name: "bessel_i_complex",
         params: "sss",
         eval: bessel_i_complex,
+        doc: "`bessel_i_complex(nu, re, im)`: `list(re, im)` of the modified Bessel function of the first kind `I_nu(re + i*im)` for real order `nu`.",
     },
     Entry {
         name: "erf_complex",
         params: "ss",
         eval: erf_complex,
+        doc: "`erf_complex(re, im)`: `list(re, im)` of the complex error function `erf(re + i*im)`.",
     },
     Entry {
         name: "fresnel_s_complex",
         params: "ss",
         eval: fresnel_s_complex,
+        doc: "`fresnel_s_complex(re, im)`: `list(re, im)` of the complex Fresnel sine integral `S(re + i*im)`.",
     },
     Entry {
         name: "fresnel_c_complex",
         params: "ss",
         eval: fresnel_c_complex,
+        doc: "`fresnel_c_complex(re, im)`: `list(re, im)` of the complex Fresnel cosine integral `C(re + i*im)`.",
     },
 ];
 

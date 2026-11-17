@@ -452,6 +452,536 @@ pub fn solve_adaptive(
     }
 }
 
+/// Step-size control mode for unified ODE, geometric, symplectic, and PDE
+/// solvers.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum OdeStepMode {
+    /// Fixed step size `dt` (the final step may be adjusted to land on `t1`).
+    Fixed {
+        /// Positive step size magnitude.
+        dt: f64,
+    },
+    /// Adaptive step-size control with local error tolerances.
+    Adaptive {
+        /// Relative error tolerance.
+        rtol: f64,
+        /// Absolute error tolerance.
+        atol: f64,
+        /// Optional initial step size (`None` selects automatically).
+        dt_init: Option<f64>,
+        /// Optional minimum step size (`None` uses representability / `0.0`).
+        dt_min: Option<f64>,
+        /// Optional maximum step size (`None` is unbounded).
+        dt_max: Option<f64>,
+        /// Maximum number of attempted steps (accepted plus rejected).
+        max_steps: usize,
+    },
+}
+
+impl Default for OdeStepMode {
+    fn default() -> Self {
+        Self::Adaptive {
+            rtol: 1e-8,
+            atol: 1e-10,
+            dt_init: None,
+            dt_min: None,
+            dt_max: None,
+            max_steps: 1_000_000,
+        }
+    }
+}
+
+impl OdeStepMode {
+    /// Constructs a fixed-step mode with step size `dt`.
+    #[must_use]
+    pub const fn fixed(dt: f64) -> Self {
+        Self::Fixed { dt }
+    }
+
+    /// Constructs an adaptive-step mode with the given tolerances and default
+    /// step bounds.
+    #[must_use]
+    pub const fn adaptive(
+        rtol: f64,
+        atol: f64,
+    ) -> Self {
+        Self::Adaptive {
+            rtol,
+            atol,
+            dt_init: None,
+            dt_min: None,
+            dt_max: None,
+            max_steps: 1_000_000,
+        }
+    }
+
+    /// Converts an [`OdeStepMode::Adaptive`] into [`OdeOptions`].
+    ///
+    /// # Errors
+    /// Returns [`OdeError::Invalid`](crate::kernels::ode_adaptive::OdeError::Invalid)
+    /// when called on [`OdeStepMode::Fixed`] or with invalid tolerances/bounds.
+    pub fn to_ode_options(
+        &self
+    ) -> Result<crate::kernels::ode_adaptive::OdeOptions, crate::kernels::ode_adaptive::OdeError>
+    {
+        match *self {
+            | Self::Fixed { .. } => Err(crate::kernels::ode_adaptive::OdeError::Invalid),
+            | Self::Adaptive {
+                rtol,
+                atol,
+                dt_init,
+                dt_min,
+                dt_max,
+                max_steps,
+            } => {
+                let hmin = dt_min.unwrap_or(0.0);
+                let hmax = dt_max.unwrap_or(f64::INFINITY);
+                if !rtol.is_finite()
+                    || rtol < 0.0
+                    || !atol.is_finite()
+                    || atol <= 0.0
+                    || !hmin.is_finite()
+                    || hmin < 0.0
+                    || hmax.is_nan()
+                    || hmax < hmin
+                    || max_steps == 0
+                    || dt_init.is_some_and(|v| !v.is_finite() || v <= 0.0)
+                {
+                    return Err(crate::kernels::ode_adaptive::OdeError::Invalid);
+                }
+                Ok(crate::kernels::ode_adaptive::OdeOptions {
+                    rtol,
+                    atol,
+                    h0: dt_init,
+                    hmin,
+                    hmax,
+                    max_steps,
+                })
+            },
+        }
+    }
+
+    /// Computes the number of fixed steps for `[t0, t1]` when `self` is
+    /// [`OdeStepMode::Fixed`].
+    ///
+    /// # Errors
+    /// Returns [`OdeError::Invalid`](crate::kernels::ode_adaptive::OdeError::Invalid)
+    /// for non-fixed modes or non-positive/non-finite `dt`.
+    pub(crate) fn fixed_steps(
+        &self,
+        t0: f64,
+        t1: f64,
+    ) -> Result<usize, crate::kernels::ode_adaptive::OdeError> {
+        match *self {
+            | Self::Fixed { dt } => {
+                if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                    return Err(crate::kernels::ode_adaptive::OdeError::Invalid);
+                }
+                Ok(((t1 - t0).abs() / dt).ceil().max(1.0) as usize)
+            },
+            | Self::Adaptive { .. } => Err(crate::kernels::ode_adaptive::OdeError::Invalid),
+        }
+    }
+}
+
+/// Unified selection of initial-value ODE integrators.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum OdeMethod {
+    /// Forward Euler (order 1; adaptive via Richardson step-doubling).
+    Euler,
+    /// Heun's method (order 2; adaptive via Richardson step-doubling).
+    Heun,
+    /// Classical Runge–Kutta (order 4; adaptive via Richardson step-doubling).
+    RungeKutta4,
+    /// Dormand–Prince 5(4) explicit Runge–Kutta pair.
+    Dopri5,
+    /// Shampine–Reichelt L-stable Rosenbrock 2(3) pair.
+    Rosenbrock23,
+    /// Alexander L-stable SDIRK3(2) with finite-difference Jacobian.
+    Sdirk3,
+    /// 3-stage, order-5 Radau IIA implicit Runge–Kutta.
+    Radau5,
+    /// Variable-order (1..5) Backward Differentiation Formulas.
+    Bdf,
+    /// Exponential Rosenbrock 3(2) method.
+    Exprb32,
+}
+
+fn explicit_fixed_with_events<F: Fn(f64, &[f64], &mut [f64])>(
+    method: OdeSolverMethod,
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    events: &[Event<'_>],
+) -> Result<crate::kernels::ode_adaptive::OdeSolution, crate::kernels::ode_adaptive::OdeError> {
+    use crate::kernels::ode_adaptive::DenseKind;
+    use crate::kernels::ode_adaptive::DenseStep;
+    use crate::kernels::ode_adaptive::OdeError;
+    use crate::kernels::ode_adaptive::OdeOptions;
+    use crate::kernels::ode_adaptive::OdeSolution;
+    use crate::kernels::ode_adaptive::StepWindow;
+    use crate::kernels::ode_adaptive::process_events;
+    use crate::kernels::ode_contract::fixed_step;
+    use crate::kernels::ode_contract::initial_events;
+    use crate::kernels::ode_contract::validate_problem;
+
+    if steps == 0 {
+        return Err(OdeError::Invalid);
+    }
+    validate_problem(t0, t1, y0, &OdeOptions::default(), events)?;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let f = crate::kernels::ode_contract::checked_rhs(f);
+    let n = y0.len();
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut k = vec![vec![0.0; n]; 4];
+    let mut stage = vec![0.0; n];
+    let mut f0 = vec![0.0; n];
+    let mut f1 = vec![0.0; n];
+    f(t, &y, &mut f0);
+    if f0.iter().any(|v| !v.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let evals_per_step = match method {
+        | OdeSolverMethod::Euler => 1usize,
+        | OdeSolverMethod::Heun => 2usize,
+        | OdeSolverMethod::RungeKutta4 => 4usize,
+    };
+    let mut nfev = 1usize;
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev = initial_events(events, t0, y0)?;
+    for idx in 1..=steps {
+        crate::cancellation::checkpoint()?;
+        let (tn, h) = fixed_step(t0, t1, idx, steps, t)?;
+        let mut ynew = y.clone();
+        advance(method, &f, t, &mut ynew, h, &mut k, &mut stage);
+        nfev = nfev.saturating_add(evals_per_step);
+        if ynew.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        f(tn, &ynew, &mut f1);
+        nfev = nfev.saturating_add(1);
+        if f1.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let step_dense = DenseStep {
+            t0: t,
+            h,
+            y0: y.clone(),
+            kind: DenseKind::Hermite {
+                y1: ynew.clone(),
+                f0: f0.clone(),
+                f1: f1.clone(),
+            },
+        };
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step_dense,
+            &StepWindow {
+                t_old: t,
+                tn,
+                ynew: &ynew,
+                dir,
+            },
+        )? {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        sol.t.push(tn);
+        sol.y.push(ynew.clone());
+        t = tn;
+        y = ynew;
+        f0.copy_from_slice(&f1);
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
+#[allow(clippy::float_cmp)]
+fn explicit_doubling_adaptive<F: Fn(f64, &[f64], &mut [f64])>(
+    method: OdeSolverMethod,
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &crate::kernels::ode_adaptive::OdeOptions,
+    events: &[Event<'_>],
+) -> Result<crate::kernels::ode_adaptive::OdeSolution, crate::kernels::ode_adaptive::OdeError> {
+    use crate::kernels::ode_adaptive::DenseKind;
+    use crate::kernels::ode_adaptive::DenseStep;
+    use crate::kernels::ode_adaptive::OdeError;
+    use crate::kernels::ode_adaptive::OdeSolution;
+    use crate::kernels::ode_adaptive::StepWindow;
+    use crate::kernels::ode_adaptive::err_norm;
+    use crate::kernels::ode_adaptive::process_events;
+    use crate::kernels::ode_contract::InitialStepOptions;
+    use crate::kernels::ode_contract::initial_events;
+    use crate::kernels::ode_contract::initial_step;
+    use crate::kernels::ode_contract::validate_problem;
+
+    validate_problem(t0, t1, y0, opts, events)?;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let f = crate::kernels::ode_contract::checked_rhs(f);
+    let n = y0.len();
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let (order, evals_per_substep) = match method {
+        | OdeSolverMethod::Euler => (1.0_f64, 1usize),
+        | OdeSolverMethod::Heun => (2.0_f64, 2usize),
+        | OdeSolverMethod::RungeKutta4 => (4.0_f64, 4usize),
+    };
+    let denom = 2.0_f64.powf(order) - 1.0;
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut f0 = vec![0.0; n];
+    f(t, &y, &mut f0);
+    if f0.iter().any(|v| !v.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut nfev = 1usize;
+    let mut h = opts
+        .h0
+        .unwrap_or_else(|| {
+            let est = initial_step(
+                &f,
+                t0,
+                y0,
+                &f0,
+                InitialStepOptions {
+                    rtol: opts.rtol,
+                    atol: opts.atol,
+                    bound: t1,
+                    max_step: opts.hmax,
+                    order,
+                },
+            );
+            nfev = nfev.saturating_add(est.evaluations);
+            est.step
+        })
+        .abs()
+        .min(opts.hmax)
+        * dir;
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev = initial_events(events, t0, y0)?;
+    let mut k = vec![vec![0.0; n]; 4];
+    let mut stage = vec![0.0; n];
+    let mut f1 = vec![0.0; n];
+    let mut attempts = 0usize;
+    while (t1 - t) * dir > 0.0 {
+        crate::cancellation::checkpoint()?;
+        if attempts >= opts.max_steps {
+            return Err(OdeError::StepLimit);
+        }
+        attempts = attempts.saturating_add(1);
+        if (t + h - t1) * dir > 0.0 {
+            h = t1 - t;
+        }
+        if !h.is_finite()
+            || crate::kernels::exact_eq(t + h, t)
+            || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin)
+        {
+            return Err(OdeError::StepLimit);
+        }
+        let mut y_full = y.clone();
+        advance(method, &f, t, &mut y_full, h, &mut k, &mut stage);
+        let mut y_half = y.clone();
+        advance(method, &f, t, &mut y_half, 0.5 * h, &mut k, &mut stage);
+        advance(
+            method,
+            &f,
+            t + 0.5 * h,
+            &mut y_half,
+            0.5 * h,
+            &mut k,
+            &mut stage,
+        );
+        nfev = nfev.saturating_add(evals_per_substep.saturating_mul(3));
+        if y_half.iter().chain(&y_full).any(|v| !v.is_finite()) {
+            h *= 0.25;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        }
+        let err_vec: Vec<f64> = y_half
+            .iter()
+            .zip(&y_full)
+            .map(|(yh, yf)| (*yh - *yf).abs() / denom)
+            .collect();
+        let en = err_norm(&err_vec, &y, &y_half, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
+        if en <= 1.0 {
+            let tn = t + h;
+            f(tn, &y_half, &mut f1);
+            nfev = nfev.saturating_add(1);
+            if f1.iter().any(|v| !v.is_finite()) {
+                return Err(OdeError::NonFinite);
+            }
+            let step_dense = DenseStep {
+                t0: t,
+                h,
+                y0: y.clone(),
+                kind: DenseKind::Hermite {
+                    y1: y_half.clone(),
+                    f0: f0.clone(),
+                    f1: f1.clone(),
+                },
+            };
+            if process_events(
+                events,
+                &mut gprev,
+                &mut sol,
+                step_dense,
+                &StepWindow {
+                    t_old: t,
+                    tn,
+                    ynew: &y_half,
+                    dir,
+                },
+            )? {
+                sol.nfev = nfev;
+                return Ok(sol);
+            }
+            sol.t.push(tn);
+            sol.y.push(y_half.clone());
+            t = tn;
+            y = y_half;
+            f0.copy_from_slice(&f1);
+        } else {
+            sol.rejected = sol.rejected.saturating_add(1);
+        }
+        let factor = if en == 0.0 {
+            5.0
+        } else {
+            (0.9 * en.powf(-1.0 / (order + 1.0))).clamp(0.2, 5.0)
+        };
+        h = (h.abs() * factor).min(opts.hmax) * dir;
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
+/// Unified initial-value ODE solver supporting every [`OdeMethod`] in both
+/// fixed and adaptive [`OdeStepMode`]s without events.
+///
+/// # Errors
+/// Returns [`OdeError`](crate::kernels::ode_adaptive::OdeError) when inputs are
+/// invalid, the step budget or step floor is reached, the state becomes
+/// non-finite, or an implicit solve fails.
+pub fn solve_ode<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    y0: &[f64],
+    t_span: (f64, f64),
+    method: OdeMethod,
+    step_mode: OdeStepMode,
+) -> Result<crate::kernels::ode_adaptive::OdeSolution, crate::kernels::ode_adaptive::OdeError> {
+    solve_ode_events(f, y0, t_span, method, step_mode, &[])
+}
+
+/// Unified initial-value ODE solver supporting every [`OdeMethod`] in both
+/// fixed and adaptive [`OdeStepMode`]s with direction-aware / terminal [`Event`]
+/// detection.
+///
+/// # Errors
+/// As [`solve_ode`], or [`OdeError::Invalid`](crate::kernels::ode_adaptive::OdeError::Invalid)
+/// if an event callback returns a non-finite value.
+pub fn solve_ode_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    y0: &[f64],
+    t_span: (f64, f64),
+    method: OdeMethod,
+    step_mode: OdeStepMode,
+    events: &[Event<'_>],
+) -> Result<crate::kernels::ode_adaptive::OdeSolution, crate::kernels::ode_adaptive::OdeError> {
+    let (t0, t1) = t_span;
+    match (method, step_mode) {
+        | (OdeMethod::Euler, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            explicit_fixed_with_events(OdeSolverMethod::Euler, f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Euler, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            explicit_doubling_adaptive(OdeSolverMethod::Euler, f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::Heun, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            explicit_fixed_with_events(OdeSolverMethod::Heun, f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Heun, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            explicit_doubling_adaptive(OdeSolverMethod::Heun, f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::RungeKutta4, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            explicit_fixed_with_events(OdeSolverMethod::RungeKutta4, f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::RungeKutta4, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            explicit_doubling_adaptive(OdeSolverMethod::RungeKutta4, f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::Dopri5, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            crate::kernels::ode_adaptive::dopri5_fixed(f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Dopri5, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            crate::kernels::ode_adaptive::dopri5(f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::Rosenbrock23, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            crate::kernels::ode_adaptive::rosenbrock23_fixed_events(f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Rosenbrock23, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            crate::kernels::ode_adaptive::rosenbrock23_events(f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::Sdirk3, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            crate::kernels::ode_sdirk::sdirk3_fd_fixed_events(f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Sdirk3, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            let sdirk_opts = crate::kernels::ode_sdirk::SdirkOptions {
+                rtol: opts.rtol,
+                atol: opts.atol,
+                h0: opts.h0,
+                hmax: opts.hmax,
+                max_steps: opts.max_steps,
+                ..crate::kernels::ode_sdirk::SdirkOptions::default()
+            };
+            crate::kernels::ode_sdirk::sdirk3_fd_events(f, t0, t1, y0, &sdirk_opts, events)
+        },
+        | (OdeMethod::Radau5, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            crate::kernels::ode_stiff::radau5_fixed_events(f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Radau5, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            crate::kernels::ode_stiff::radau5_events(f, t0, t1, y0, &opts, events)
+        },
+        | (OdeMethod::Bdf, OdeStepMode::Fixed { .. }) => {
+            let steps = step_mode.fixed_steps(t0, t1)?;
+            crate::kernels::ode_stiff::bdf_fixed_events(f, t0, t1, y0, steps, events)
+        },
+        | (OdeMethod::Bdf, OdeStepMode::Adaptive { .. }) => {
+            let opts = step_mode.to_ode_options()?;
+            crate::kernels::ode_stiff::bdf_events(f, t0, t1, y0, &opts, 5, events)
+        },
+        | (OdeMethod::Exprb32, _) => {
+            let _ = events;
+            crate::kernels::ode_ext::exprb32_with(f, None, t0, t1, y0, step_mode)
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

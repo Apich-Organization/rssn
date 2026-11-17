@@ -105,10 +105,12 @@ pub(crate) enum Routed {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let qe_op = i.op(OpDescriptor::new("real_qe", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`real_qe(formula, vars)`: eliminates quantifiers over `vars` from a first-order real polynomial `formula` via cylindrical algebraic decomposition."))?;
     let cells_op = i.op(OpDescriptor::new("cad_cells", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`cad_cells(polys, vars)`: decomposes `R^n` over `vars` into sign-invariant cylindrical algebraic decomposition cells for `polys`."))?;
     // `real_qe` returns an equivalent formula; `cad_cells` describes cells of
     // the space of the listed variables, so it carries their dimension.
     i.dim(qe_op, DimRule::NonMetric);

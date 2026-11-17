@@ -8,8 +8,8 @@
 //! - Only binary PGM (P5, 8- or 16-bit) and PPM (P6, 8-bit): no ASCII P2/P3
 //!   variants, no 16-bit PPM, no alpha channel, no comments or metadata, no
 //!   colour management.
-//! - No PNG, JPEG, GIF or any compressed format: those need an encoder, i.e. a
-//!   new dependency, so they stay a documented gap.
+//! - No PNG, JPEG or other compressed formats beyond GIF: GIF animation I/O
+//!   is provided in [`super::gif`] and re-exported here.
 //! - The API is raw samples with explicit dimensions: there is no resampling,
 //!   scaling, text or annotation. Use [`super::plot`] for annotated vector
 //!   output and [`super::plot::plot_scalar_field_pgm`] /
@@ -19,6 +19,13 @@
 //!   written, so a failed call leaves no partial file behind.
 
 use std::path::Path;
+
+pub use super::gif::GifAnimation;
+pub use super::gif::GifFrame;
+pub use super::gif::decode_gif;
+pub use super::gif::encode_gif;
+pub use super::gif::read_gif_file;
+pub use super::gif::write_gif_file;
 
 /// Rejects empty or inconsistent raster shapes before a file is touched.
 fn check_image(

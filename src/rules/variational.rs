@@ -141,10 +141,11 @@ dim_powers_rule!(dim_legendre_condition, 0: 1, 2: 2, 1: -2);
 dim_powers_rule!(dim_jacobi_equation, 0: 1, 3: 1, 1: -2);
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str, arity: u8| {
+    let heavy = |name: &str, arity: u8, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
     let diff = i.graph().ops().lookup("diff").ok_or_else(|| {
         RuleError::Invalid {
@@ -158,17 +159,57 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             reason: "needs the calculus rule set",
         }
     })?;
-    for (name, arity, request) in [
-        ("euler_lagrange", 3, Request::EulerLagrange),
-        ("action", 6, Request::Action),
-        ("first_integral", 3, Request::FirstIntegral),
-        ("canonical_momentum", 3, Request::Momentum),
-        ("hamiltonian_of", 3, Request::Hamiltonian),
-        ("legendre_condition", 3, Request::Legendre),
-        ("jacobi_equation", 4, Request::Jacobi),
-        ("weierstrass_e", 4, Request::Weierstrass),
+    for (name, arity, request, doc) in [
+        (
+            "euler_lagrange",
+            3,
+            Request::EulerLagrange,
+            "`euler_lagrange(L, y, x)`: computes the Euler-Lagrange residual expression `d/dx(dL/dy') - dL/dy` (with higher-order jet terms when present) for Lagrangian `L` and dependent variable(s) `y` of `x`.",
+        ),
+        (
+            "action",
+            6,
+            Request::Action,
+            "`action(L, y, path, x, a, b)`: substitutes `path` for `y` in Lagrangian `L` and forms the definite action integral `defint(L[y:=path], x, a, b)`.",
+        ),
+        (
+            "first_integral",
+            3,
+            Request::FirstIntegral,
+            "`first_integral(L, y, x)`: computes the Beltrami / energy first integral `L - y' * dL/dy'` for a first-order Lagrangian `L(x, y, y')`.",
+        ),
+        (
+            "canonical_momentum",
+            3,
+            Request::Momentum,
+            "`canonical_momentum(L, y, x)`: computes the canonical conjugate momentum `dL/dy'` (or list of momenta) for Lagrangian `L` and coordinate(s) `y` with respect to `x`.",
+        ),
+        (
+            "hamiltonian_of",
+            3,
+            Request::Hamiltonian,
+            "`hamiltonian_of(L, y, x)`: computes the Hamiltonian `sum(y' * dL/dy') - L` via Legendre transform of Lagrangian `L`.",
+        ),
+        (
+            "legendre_condition",
+            3,
+            Request::Legendre,
+            "`legendre_condition(L, y, x)`: computes the second partial derivative `d^2 L / d(y')^2` used in the Legendre necessary condition for an extremum.",
+        ),
+        (
+            "jacobi_equation",
+            4,
+            Request::Jacobi,
+            "`jacobi_equation(L, y, x, h)`: computes the Jacobi accessory differential expression for variation `h` around an extremal of Lagrangian `L(x, y, y')`.",
+        ),
+        (
+            "weierstrass_e",
+            4,
+            Request::Weierstrass,
+            "`weierstrass_e(L, y, x, p)`: computes the Weierstrass excess function `E = L(x, y, p) - L(x, y, y') - (p - y') * dL/dy'`.",
+        ),
     ] {
-        let op = i.op(heavy(name, arity))?;
+        let op = i.op(heavy(name, arity, doc))?;
         i.kernel(
             &format!("variational/{name}"),
             Tier::Reduce,
@@ -186,6 +227,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "isoperimetric(L, G, y, x, lam) := euler_lagrange(L + lam * G, y, x)",
         "natural_boundary(L, y, x) := canonical_momentum(L, y, x)",
     ])?;
+    for (name, arity, doc) in [
+        (
+            "solve_euler_lagrange",
+            3,
+            "`solve_euler_lagrange(L, y, x)`: solves the Euler-Lagrange differential equation `euler_lagrange(L, y, x) = 0` for `y`.",
+        ),
+        (
+            "hamiltons_principle",
+            3,
+            "`hamiltons_principle(L, q, t)`: applies Hamilton's principle to Lagrangian `L`, returning `euler_lagrange(L, q, t)`.",
+        ),
+        (
+            "isoperimetric",
+            5,
+            "`isoperimetric(L, G, y, x, lam)`: computes the constrained Euler-Lagrange expression `euler_lagrange(L + lam * G, y, x)` with Lagrange multiplier `lam`.",
+        ),
+        (
+            "natural_boundary",
+            3,
+            "`natural_boundary(L, y, x)`: returns the natural boundary expression `canonical_momentum(L, y, x)`.",
+        ),
+    ] {
+        i.op(heavy(name, arity, doc))?;
+    }
     attach_dim_rules(
         i,
         &[

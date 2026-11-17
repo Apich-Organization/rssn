@@ -83,6 +83,8 @@ use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
+use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::dim::DimRule;
@@ -1280,6 +1282,298 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             ("matrix_log", DimRule::List),
         ],
     )?;
+    for (name, arity, flags, doc) in [
+        (
+            "lie_cartan_matrix",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_cartan_matrix(T)`: Cartan matrix of Lie algebra type `T` (Bourbaki numbering).",
+        ),
+        (
+            "lie_cartan_type",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_cartan_type(M)`: Cartan classification string (such as `\"A2+A1\"`) of Cartan matrix `M`.",
+        ),
+        (
+            "lie_rank",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_rank(T)`: rank (dimension of Cartan subalgebra) of Lie algebra type `T`.",
+        ),
+        (
+            "lie_dimension",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_dimension(T)`: dimension `n + 2*N` of semisimple Lie algebra type `T`.",
+        ),
+        (
+            "lie_num_positive_roots",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_num_positive_roots(T)`: number of positive roots of Lie algebra type `T`.",
+        ),
+        (
+            "lie_simple_roots",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_simple_roots(T)`: simple roots of Lie algebra type `T` in Euclidean coordinates.",
+        ),
+        (
+            "lie_positive_roots",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_positive_roots(T)`: positive roots of type `T` in simple-root coordinates, ordered by height.",
+        ),
+        (
+            "lie_highest_root",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_highest_root(T)`: highest root of irreducible Lie algebra type `T` in simple-root coordinates.",
+        ),
+        (
+            "lie_weyl_group_order",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_weyl_group_order(T)`: order `|W|` of the Weyl group of Lie algebra type `T`.",
+        ),
+        (
+            "lie_exponents",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_exponents(T)`: exponents of Lie algebra type `T`.",
+        ),
+        (
+            "lie_coxeter_number",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_coxeter_number(T)`: Coxeter number `h` of irreducible Lie algebra type `T`.",
+        ),
+        (
+            "lie_dual_coxeter_number",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_dual_coxeter_number(T)`: dual Coxeter number `h^vee` of irreducible Lie algebra type `T`.",
+        ),
+        (
+            "lie_dynkin_diagram",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_dynkin_diagram(T)`: Dynkin diagram edges `list(i, j, multiplicity)` (1-based; arrow from longer root `i` to `j`).",
+        ),
+        (
+            "lie_fundamental_weights",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_fundamental_weights(T)`: fundamental weights of type `T` in simple-root coordinates.",
+        ),
+        (
+            "lie_gram",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_gram(T)`: Gram matrix of simple roots of type `T` with long roots of squared length 2.",
+        ),
+        (
+            "dim_irrep",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`dim_irrep(T, hw)`: dimension of the irreducible representation of type `T` with highest weight `hw` (Dynkin labels).",
+        ),
+        (
+            "weight_multiplicity",
+            Arity::Fixed(3),
+            OpFlags::NONE,
+            "`weight_multiplicity(T, hw, w)`: multiplicity of weight `w` in the irrep of type `T` with highest weight `hw`.",
+        ),
+        (
+            "irrep_weights",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`irrep_weights(T, hw)`: dominant weights with multiplicities `list(list(w, m), ...)` of irrep `V(hw)` of type `T`.",
+        ),
+        (
+            "tensor_decomposition",
+            Arity::Fixed(3),
+            OpFlags::NONE,
+            "`tensor_decomposition(T, hw1, hw2)`: irreducible decomposition `list(list(hw, m), ...)` of `V(hw1) (x) V(hw2)` for type `T`.",
+        ),
+        (
+            "casimir_eigenvalue",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`casimir_eigenvalue(T, hw)`: quadratic Casimir eigenvalue `(hw, hw + 2*rho)` for irrep `V(hw)` of type `T`.",
+        ),
+        (
+            "dynkin_index",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`dynkin_index(T, hw)`: Dynkin index `dim(V) * C(V) / dim(g)` of irrep `V(hw)` of type `T`.",
+        ),
+        (
+            "lie_sc",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_sc(c)`: inert Lie algebra wrapper for structure constants tensor `c[i][j][k]`.",
+        ),
+        (
+            "lie_sc_of",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_sc_of(L)`: `lie_sc(...)` structure-constants representation of matrix Lie algebra basis `L`.",
+        ),
+        (
+            "lie_derived_series",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_derived_series(L)`: derived series `L >= [L, L] >= ...` as a list of coordinate bases.",
+        ),
+        (
+            "lie_derived_dims",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_derived_dims(L)`: dimensions of the subalgebras in the derived series of `L`.",
+        ),
+        (
+            "lie_lower_central_series",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_lower_central_series(L)`: lower central series `L >= [L, L] >= [L, [L, L]] >= ...` as a list of bases.",
+        ),
+        (
+            "lie_lower_central_dims",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_lower_central_dims(L)`: dimensions of the subalgebras in the lower central series of `L`.",
+        ),
+        (
+            "lie_upper_central_series",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_upper_central_series(L)`: upper central series `Z_1 <= Z_2 <= ...` (omitting leading 0) as a list of bases.",
+        ),
+        (
+            "lie_upper_central_dims",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_upper_central_dims(L)`: dimensions of the ideals in the upper central series of `L`.",
+        ),
+        (
+            "lie_center",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_center(L)`: basis of the center `{x in L : [x, L] = 0}` of Lie algebra `L`.",
+        ),
+        (
+            "lie_radical",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_radical(L)`: basis of the solvable radical of Lie algebra `L`.",
+        ),
+        (
+            "lie_is_solvable",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_is_solvable(L)`: `true` if Lie algebra `L` is solvable, `false` otherwise.",
+        ),
+        (
+            "lie_is_nilpotent",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_is_nilpotent(L)`: `true` if Lie algebra `L` is nilpotent, `false` otherwise.",
+        ),
+        (
+            "lie_is_semisimple",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_is_semisimple(L)`: `true` if Lie algebra `L` is semisimple (nondegenerate Killing form), `false` otherwise.",
+        ),
+        (
+            "lie_cartan_solvable_test",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_cartan_solvable_test(L)`: `true` if Cartan's solvability criterion `K(L, [L, L]) = 0` holds.",
+        ),
+        (
+            "lie_levi",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_levi(L)`: Levi decomposition `list(levi_factor, radical)` of Lie algebra `L`.",
+        ),
+        (
+            "lie_cartan_subalgebra",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`lie_cartan_subalgebra(L)`: basis of a Cartan subalgebra of Lie algebra `L`.",
+        ),
+        (
+            "lie_root_decomposition",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`lie_root_decomposition(L, h)`: root-space decomposition `list(list(list(root, basis), ...), missing_dim)` of `L` with respect to Cartan subalgebra `h`.",
+        ),
+        (
+            "lie_is_subalgebra",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`lie_is_subalgebra(L, vectors)`: `true` if `span(vectors)` is closed under the Lie bracket of `L`.",
+        ),
+        (
+            "lie_elements",
+            Arity::Fixed(2),
+            OpFlags::NONE,
+            "`lie_elements(L, vectors)`: matrices in `L` corresponding to coordinate `vectors`.",
+        ),
+        (
+            "lie_casimir_operator",
+            Arity::Variadic,
+            OpFlags::NONE,
+            "`lie_casimir_operator(L[, rho])`: quadratic Casimir operator `sum K^ab rho(e_a) rho(e_b)` of semisimple `L` in representation `rho`.",
+        ),
+        (
+            "gl_basis",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`gl_basis(n)`: standard matrix basis `E_ij` of the general linear Lie algebra `gl(n)`.",
+        ),
+        (
+            "sl_basis",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`sl_basis(n)`: standard traceless matrix basis of the special linear Lie algebra `sl(n)`.",
+        ),
+        (
+            "so_basis",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`so_basis(n)`: standard skew-symmetric matrix basis `E_ij - E_ji` of `so(n)`.",
+        ),
+        (
+            "sp_basis",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`sp_basis(n)`: standard symplectic matrix basis of `sp(2n)`.",
+        ),
+        (
+            "su_basis",
+            Arity::Fixed(1),
+            OpFlags::NONE,
+            "`su_basis(n)`: standard skew-Hermitian traceless matrix basis of `su(n)`.",
+        ),
+        (
+            "one_parameter_subgroup",
+            Arity::Fixed(2),
+            OpFlags::HEAVY,
+            "`one_parameter_subgroup(A, t)`: one-parameter subgroup `exp_map(t * A)` generated by matrix `A`.",
+        ),
+        (
+            "matrix_log",
+            Arity::Fixed(1),
+            OpFlags::HEAVY,
+            "`matrix_log(g)`: principal matrix logarithm `log(g)` for supported invertible matrices `g`.",
+        ),
+    ] {
+        i.op(OpDescriptor::new(name, arity).flags(flags).doc(doc))?;
+    }
     Ok(())
 }
 

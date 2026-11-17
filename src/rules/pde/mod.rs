@@ -365,40 +365,81 @@ enum Request {
     ShallowWaterRiemann,
 }
 
+fn heavy(
+    name: &str,
+    arity: Arity,
+    doc: &str,
+) -> OpDescriptor {
+    OpDescriptor::new(name, arity)
+        .flags(OpFlags::HEAVY)
+        .cost(100)
+        .doc(doc)
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     numeric::install(i)?;
     sl::install(i)?;
     hill::install(i)?;
     coulomb::install(i)?;
     spheroidal::install(i)?;
-    let heavy = |name: &str, arity: Arity| {
-        OpDescriptor::new(name, arity)
-            .flags(OpFlags::HEAVY)
-            .cost(100)
-    };
-    let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
+    let at = i.op(
+        heavy(
+            "at",
+            Arity::Fixed(3),
+            "`at(f, x, a)`: boundary or point evaluation `f|_{x = a}` used in PDE initial/boundary conditions.",
+        )
+        .flags(OpFlags::OPAQUE_ON_APPLY),
+    )?;
     // `at(f, x, a)` is the value of `f` at `x = a`: same dimension as `f`.
     i.dim(at, DimRule::Same(0));
-    let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
+    let symmetries = i.op(heavy(
+        "pde_symmetries",
+        Arity::Fixed(2),
+        "`pde_symmetries(pde, u)`: Lie point symmetry infinitesimal generators of `pde` for unknown `u`.",
+    ))?;
     // A list of infinitesimal generators.
     i.dim(symmetries, DimRule::NonMetric);
-    let traveling = i.op(heavy("pde_traveling_wave", Arity::Fixed(3)))?;
+    let traveling = i.op(heavy(
+        "pde_traveling_wave",
+        Arity::Fixed(3),
+        "`pde_traveling_wave(pde, u, c)`: traveling-wave ansatz `u = F(x - c t)` and reduced ODE for speed `c`.",
+    ))?;
     // `u = F(x - c t)` or `list(ansatz, ODE)`: an equation object.
     i.dim(traveling, DimRule::NonMetric);
-    let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
+    let similarity = i.op(heavy(
+        "pde_similarity",
+        Arity::Fixed(3),
+        "`pde_similarity(pde, u, generator)`: similarity reduction `list(u = g F(z), ODE)` along a scaling/symmetry `generator`.",
+    ))?;
     // `list(u = g F(z), ODE)` or the closed-form equation.
     i.dim(similarity, DimRule::NonMetric);
-    let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
+    let noether = i.op(heavy(
+        "noether_current",
+        Arity::Fixed(3),
+        "`noether_current(L, u, generator)`: conserved Noether current `list(J^x, J^t)` for Lagrangian `L` and symmetry `generator`.",
+    ))?;
     // The current density `list(J^x, J^t)` carries the Lagrangian's
     // dimension.
     i.dim(noether, DimRule::Custom(dim::rule));
-    let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
+    let laws = i.op(heavy(
+        "conservation_laws",
+        Arity::Fixed(2),
+        "`conservation_laws(pde, u)`: conserved densities and fluxes of `pde` for unknown `u`.",
+    ))?;
     // Conservation-law densities are functions of the field `u`.
     i.dim(laws, DimRule::Custom(dim::rule));
-    let complete = i.op(heavy("pde_complete_integral", Arity::Fixed(2)))?;
+    let complete = i.op(heavy(
+        "pde_complete_integral",
+        Arity::Fixed(2),
+        "`pde_complete_integral(pde, u)`: complete integral `u(x, y) = ...` of a first-order PDE via Charpit's method.",
+    ))?;
     // `u(x, y) = ...`: an equation object.
     i.dim(complete, DimRule::NonMetric);
-    let separate = i.op(heavy("pde_separate", Arity::Fixed(2)))?;
+    let separate = i.op(heavy(
+        "pde_separate",
+        Arity::Fixed(2),
+        "`pde_separate(pde, u)`: separated-variables ansatz and decoupled ODEs for `pde` and unknown `u`.",
+    ))?;
     // `X(x) T(t)` (or the additive split) is an expression in `u`.
     i.dim(separate, DimRule::Custom(dim::rule));
     i.kernel(
@@ -406,8 +447,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         Tier::Reduce,
         Frameworks { complete, separate },
     );
-    let disk = i.op(heavy("laplace_disk", Arity::Fixed(4)))?;
-    let ball = i.op(heavy("laplace_ball", Arity::Fixed(4)))?;
+    let disk = i.op(heavy(
+        "laplace_disk",
+        Arity::Fixed(4),
+        "`laplace_disk(g, r, theta, R)`: harmonic solution of the Dirichlet Laplace equation on a disk of radius `R` with boundary data `g(theta)`.",
+    ))?;
+    let ball = i.op(heavy(
+        "laplace_ball",
+        Arity::Fixed(4),
+        "`laplace_ball(g, r, theta, R)`: harmonic solution of the Dirichlet Laplace equation on a 3D ball of radius `R` with boundary data `g`.",
+    ))?;
     // The harmonic function inherits the boundary data's dimension.
     i.dim(disk, DimRule::Same(0));
     i.dim(ball, DimRule::Same(0));
@@ -431,41 +480,375 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::At,
         },
     );
+    install_solvers_and_greens(i)?;
+    let op = i.op(heavy(
+        "pde_classify",
+        Arity::Fixed(2),
+        "`pde_classify(pde, u)`: classifies `pde` for unknown `u` by type (elliptic, parabolic, hyperbolic), order, dimension, and linearity.",
+    ))?;
+    // A list of labels (`type`, order, dimension, linear, ...).
+    i.dim(op, DimRule::NonMetric);
+    i.kernel(
+        "pde/pde_classify",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Classify,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_order",
+        Arity::Fixed(2),
+        "`pde_order(pde, u)`: highest partial-derivative order of `u` appearing in `pde`.",
+    ))?;
+    // The derivative order is a count.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_order",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Order,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_kdv_soliton",
+        Arity::Fixed(2),
+        "`pde_kdv_soliton(kappas, x_t)`: N-soliton Hirota tau-function solution `-2 d^2/dx^2 ln det(I + A)` of the KdV equation.",
+    ))?;
+    // `u = -2 ∂² ln det(I + A)` of a soliton: `u` scales as `κ²`.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_kdv_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvSoliton,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_kdv_reflectionless",
+        Arity::Fixed(2),
+        "`pde_kdv_reflectionless(params, x_t)`: KdV time evolution of the reflectionless potential `-N(N+1) kappa^2 sech^2(kappa x)`.",
+    ))?;
+    // The reflectionless datum `-N(N + 1) κ² sech²(κ x)` and its evolution:
+    // `u` scales as `κ²`.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_kdv_reflectionless",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvReflectionless,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_darboux_kdv",
+        Arity::Fixed(2),
+        "`pde_darboux_kdv(u, psi)`: single Darboux-Bäcklund transformation `u - 2 d^2/dx^2 ln(psi)` for KdV.",
+    ))?;
+    // `ũ = u - 2 ∂² ln ψ` has the dimension of the seed solution `u`.
+    i.dim(op, DimRule::Same(0));
+    i.kernel(
+        "pde/pde_darboux_kdv",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::DarbouxKdv,
+        },
+    );
+    // Crum's determinant is the seed solution minus a second derivative of
+    // a logarithm: same dimension as `u`.
+    let op = i.op(heavy(
+        "pde_crum_kdv",
+        Arity::Fixed(2),
+        "`pde_crum_kdv(u, psis)`: iterated Crum-Darboux transformation of KdV seed `u` using eigenfunctions `psis`.",
+    ))?;
+    // Crum's determinant is the seed solution minus a second derivative of
+    // a logarithm: same dimension as `u`.
+    i.dim(op, DimRule::Same(0));
+    i.kernel(
+        "pde/pde_crum_kdv",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::CrumKdv,
+        },
+    );
+    // pde_hodograph_solution(F, G) or pde_hodograph_solution(F, G, lambda, mu).
+    let op = i.op(heavy(
+        "pde_hodograph_solution",
+        Arity::Variadic,
+        "`pde_hodograph_solution(F, G, ...)`: hodograph-transformed parametric solution `list(x(r, s), t(r, s))` in Riemann invariants.",
+    ))?;
+    // `list(x(r, s), t(r, s))`; the first component has the dimension of
+    // `F(r)` (mixed lists collapse to an unknown dimension).
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_hodograph_solution",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::HodographSolution,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_hodograph_riemann",
+        Arity::Fixed(1),
+        "`pde_hodograph_riemann(gamma)`: Riemann function for the Euler-Poisson-Darboux hodograph equation.",
+    ))?;
+    // A Riemann function of dimensionless characteristic coordinates.
+    i.dim(op, DimRule::Dimensionless);
+    i.kernel(
+        "pde/pde_hodograph_riemann",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::HodographRiemann,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_hodograph",
+        Arity::Fixed(2),
+        "`pde_hodograph(sys, vars)`: derives the linear hodograph PDE `(lambda - mu) t_rs + lambda_r t_s - mu_s t_r = 0` for a 2x2 hyperbolic system.",
+    ))?;
+    // The hodograph equation `(λ - μ) t_rs + λ_r t_s - μ_s t_r = 0`.
+    i.dim(op, DimRule::NonMetric);
+    i.kernel(
+        "pde/pde_hodograph",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::Hodograph,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_kdv_scattering",
+        Arity::Fixed(3),
+        "`pde_kdv_scattering(data, x, t)`: numeric KdV inverse-scattering (Gelfand-Levitan-Marchenko) evaluation at `(x, t)`.",
+    ))?;
+    // A numeric point value of the Gelfand-Levitan-Marchenko solver.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_kdv_scattering",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::KdvScattering,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_nls_soliton",
+        Arity::Fixed(1),
+        "`pde_nls_soliton(params)`: bright soliton solution of the focusing nonlinear Schrodinger equation.",
+    ))?;
+    // `ψ = η sech(...) exp(...)`: the amplitude `η` carries the dimension.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_nls_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::NlsSoliton,
+        },
+    );
+    let op = i.op(heavy(
+        "pde_sine_gordon_soliton",
+        Arity::Fixed(2),
+        "`pde_sine_gordon_soliton(params, x_t)`: kink/antikink or breather soliton solution of the sine-Gordon equation.",
+    ))?;
+    // The kink is a phase: dimensionless.
+    i.dim(op, DimRule::Custom(dim::rule));
+    i.kernel(
+        "pde/pde_sine_gordon_soliton",
+        Tier::Reduce,
+        Pde {
+            op,
+            request: Request::SineGordonSoliton,
+        },
+    );
+    let shallow_water = i.op(heavy(
+        "pde_riemann_shallow_water",
+        Arity::Fixed(5),
+        "`pde_riemann_shallow_water(hL, uL, hR, uR, g)`: exact Riemann problem solution `list(h*, u*, left_wave, right_wave)` for 1D shallow-water equations.",
+    ))?;
+    // `list(h*, u*, list(kind, head, tail), list(kind, head, tail))`: mixed
+    // physical quantities, analysed by the rule directly.
+    i.dim(shallow_water, DimRule::NonMetric);
+    i.kernel(
+        "pde/pde_riemann_shallow_water",
+        Tier::Reduce,
+        Pde {
+            op: shallow_water,
+            request: Request::ShallowWaterRiemann,
+        },
+    );
+    for (name, eval, doc) in [
+        (
+            "pde_riemann_shallow_water_at",
+            nonlinear::shallow_water_at_depth as fn(&[f64]) -> f64,
+            "`pde_riemann_shallow_water_at(hL, uL, hR, uR, g, xi)`: self-similar shallow-water depth `h(x/t = xi)` from the Riemann solver.",
+        ),
+        (
+            "pde_riemann_shallow_water_velocity",
+            nonlinear::shallow_water_at_velocity,
+            "`pde_riemann_shallow_water_velocity(hL, uL, hR, uR, g, xi)`: self-similar shallow-water velocity `u(x/t = xi)` from the Riemann solver.",
+        ),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(6)).eval(eval).doc(doc))?;
+        i.dim(op, DimRule::Dimensionless);
+    }
+    Ok(())
+}
+
+fn install_solvers_and_greens(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let table = [
-        ("pdsolve", Method::Any),
-        ("solve_pde", Method::Any),
-        ("solve_pde_by_characteristics", Method::Characteristics),
-        ("solve_pde_by_separation_of_variables", Method::Separation),
-        ("solve_pde_by_greens_function", Method::Green),
-        ("solve_with_fourier_transform", Method::Fourier),
-        ("solve_wave_equation_1d_dalembert", Method::Dalembert),
+        (
+            "pdsolve",
+            Method::Any,
+            "`pdsolve(pde, u, ...)`: general symbolic/numeric PDE solver for unknown `u` with optional boundary/initial conditions.",
+        ),
+        (
+            "solve_pde",
+            Method::Any,
+            "`solve_pde(pde, u, ...)`: alias for `pdsolve`; solves `pde` for unknown `u`.",
+        ),
+        (
+            "solve_pde_by_characteristics",
+            Method::Characteristics,
+            "`solve_pde_by_characteristics(pde, u, ...)`: solves first-order or quasilinear PDEs via the method of characteristics.",
+        ),
+        (
+            "solve_pde_by_separation_of_variables",
+            Method::Separation,
+            "`solve_pde_by_separation_of_variables(pde, u, ...)`: solves linear boundary-value PDEs by separation of variables.",
+        ),
+        (
+            "solve_pde_by_greens_function",
+            Method::Green,
+            "`solve_pde_by_greens_function(pde, u, ...)`: solves linear inhomogeneous PDEs via Green's function integration.",
+        ),
+        (
+            "solve_with_fourier_transform",
+            Method::Fourier,
+            "`solve_with_fourier_transform(pde, u, ...)`: solves linear constant-coefficient PDEs using the Fourier transform.",
+        ),
+        (
+            "solve_wave_equation_1d_dalembert",
+            Method::Dalembert,
+            "`solve_wave_equation_1d_dalembert(pde, u, ...)`: solves the 1D wave equation via d'Alembert's traveling-wave formula.",
+        ),
         // One solver per equation, whatever the number of space dimensions
         // (the problem itself says how many there are); the `_Nd` spellings
         // are kept for every dimension as aliases of the same solver.
-        ("solve_heat_equation", Method::Heat),
-        ("solve_heat_equation_1d", Method::Heat),
-        ("solve_heat_equation_2d", Method::Heat),
-        ("solve_heat_equation_3d", Method::Heat),
-        ("solve_wave_equation", Method::Wave),
-        ("solve_wave_equation_1d", Method::Wave),
-        ("solve_wave_equation_2d", Method::Wave),
-        ("solve_wave_equation_3d", Method::Wave),
-        ("solve_laplace_equation", Method::Laplace),
-        ("solve_laplace_equation_1d", Method::Laplace),
-        ("solve_laplace_equation_2d", Method::Laplace),
-        ("solve_laplace_equation_3d", Method::Laplace),
-        ("solve_poisson_equation", Method::Poisson),
-        ("solve_poisson_equation_1d", Method::Poisson),
-        ("solve_poisson_equation_2d", Method::Poisson),
-        ("solve_poisson_equation_3d", Method::Poisson),
-        ("solve_helmholtz_equation", Method::Helmholtz),
-        ("solve_schrodinger_equation", Method::Schrodinger),
-        ("solve_klein_gordon_equation", Method::KleinGordon),
-        ("solve_burgers_equation", Method::Burgers),
-        ("solve_second_order_pde", Method::SecondOrder),
+        (
+            "solve_heat_equation",
+            Method::Heat,
+            "`solve_heat_equation(pde, u, ...)`: solves the heat/diffusion equation `u_t = alpha laplacian(u) + f`.",
+        ),
+        (
+            "solve_heat_equation_1d",
+            Method::Heat,
+            "`solve_heat_equation_1d(pde, u, ...)`: solves the 1D heat equation.",
+        ),
+        (
+            "solve_heat_equation_2d",
+            Method::Heat,
+            "`solve_heat_equation_2d(pde, u, ...)`: solves the 2D heat equation.",
+        ),
+        (
+            "solve_heat_equation_3d",
+            Method::Heat,
+            "`solve_heat_equation_3d(pde, u, ...)`: solves the 3D heat equation.",
+        ),
+        (
+            "solve_wave_equation",
+            Method::Wave,
+            "`solve_wave_equation(pde, u, ...)`: solves the wave equation `u_tt = c^2 laplacian(u) + f`.",
+        ),
+        (
+            "solve_wave_equation_1d",
+            Method::Wave,
+            "`solve_wave_equation_1d(pde, u, ...)`: solves the 1D wave equation.",
+        ),
+        (
+            "solve_wave_equation_2d",
+            Method::Wave,
+            "`solve_wave_equation_2d(pde, u, ...)`: solves the 2D wave equation.",
+        ),
+        (
+            "solve_wave_equation_3d",
+            Method::Wave,
+            "`solve_wave_equation_3d(pde, u, ...)`: solves the 3D wave equation.",
+        ),
+        (
+            "solve_laplace_equation",
+            Method::Laplace,
+            "`solve_laplace_equation(pde, u, ...)`: solves Laplace's equation `laplacian(u) = 0`.",
+        ),
+        (
+            "solve_laplace_equation_1d",
+            Method::Laplace,
+            "`solve_laplace_equation_1d(pde, u, ...)`: solves the 1D Laplace equation.",
+        ),
+        (
+            "solve_laplace_equation_2d",
+            Method::Laplace,
+            "`solve_laplace_equation_2d(pde, u, ...)`: solves the 2D Laplace equation.",
+        ),
+        (
+            "solve_laplace_equation_3d",
+            Method::Laplace,
+            "`solve_laplace_equation_3d(pde, u, ...)`: solves the 3D Laplace equation.",
+        ),
+        (
+            "solve_poisson_equation",
+            Method::Poisson,
+            "`solve_poisson_equation(pde, u, ...)`: solves Poisson's equation `laplacian(u) = f`.",
+        ),
+        (
+            "solve_poisson_equation_1d",
+            Method::Poisson,
+            "`solve_poisson_equation_1d(pde, u, ...)`: solves the 1D Poisson equation.",
+        ),
+        (
+            "solve_poisson_equation_2d",
+            Method::Poisson,
+            "`solve_poisson_equation_2d(pde, u, ...)`: solves the 2D Poisson equation.",
+        ),
+        (
+            "solve_poisson_equation_3d",
+            Method::Poisson,
+            "`solve_poisson_equation_3d(pde, u, ...)`: solves the 3D Poisson equation.",
+        ),
+        (
+            "solve_helmholtz_equation",
+            Method::Helmholtz,
+            "`solve_helmholtz_equation(pde, u, ...)`: solves the Helmholtz equation `laplacian(u) + k^2 u = f`.",
+        ),
+        (
+            "solve_schrodinger_equation",
+            Method::Schrodinger,
+            "`solve_schrodinger_equation(pde, u, ...)`: solves the time-dependent or stationary Schrodinger PDE.",
+        ),
+        (
+            "solve_klein_gordon_equation",
+            Method::KleinGordon,
+            "`solve_klein_gordon_equation(pde, u, ...)`: solves the Klein-Gordon wave equation.",
+        ),
+        (
+            "solve_burgers_equation",
+            Method::Burgers,
+            "`solve_burgers_equation(pde, u, ...)`: solves Burgers' inviscid or viscous nonlinear PDE.",
+        ),
+        (
+            "solve_second_order_pde",
+            Method::SecondOrder,
+            "`solve_second_order_pde(pde, u, ...)`: general solver for linear second-order PDEs.",
+        ),
     ];
-    for (name, method) in table {
-        let op = i.op(heavy(name, Arity::Variadic))?;
+    for (name, method, doc) in table {
+        let op = i.op(heavy(name, Arity::Variadic, doc))?;
         // Every solver in the table returns the equation `u(...) = ...` (or a
         // list of them for a system).
         i.dim(op, DimRule::NonMetric);
@@ -478,63 +861,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             },
         );
     }
-    let op = i.op(heavy("pde_classify", Arity::Fixed(2)))?;
-    // A list of labels (`type`, order, dimension, linear, ...).
-    i.dim(op, DimRule::NonMetric);
-    i.kernel(
-        "pde/pde_classify",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::Classify,
-        },
-    );
-    let op = i.op(heavy("pde_order", Arity::Fixed(2)))?;
-    // The derivative order is a count.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_order",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::Order,
-        },
-    );
-    let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
-    // `u = -2 ∂² ln det(I + A)` of a soliton: `u` scales as `κ²`.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_kdv_soliton",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::KdvSoliton,
-        },
-    );
-    let op = i.op(heavy("pde_kdv_reflectionless", Arity::Fixed(2)))?;
-    // The reflectionless datum `-N(N + 1) κ² sech²(κ x)` and its evolution:
-    // `u` scales as `κ²`.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_kdv_reflectionless",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::KdvReflectionless,
-        },
-    );
-    let op = i.op(heavy("pde_darboux_kdv", Arity::Fixed(2)))?;
-    // `ũ = u - 2 ∂² ln ψ` has the dimension of the seed solution `u`.
-    i.dim(op, DimRule::Same(0));
-    i.kernel(
-        "pde/pde_darboux_kdv",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::DarbouxKdv,
-        },
-    );
-    let op = i.op(heavy("pde_poisson_integral", Arity::Fixed(3)))?;
+    let op = i.op(heavy(
+        "pde_poisson_integral",
+        Arity::Fixed(3),
+        "`pde_poisson_integral(g, x, domain)`: Poisson integral representation of the harmonic function with boundary data `g` on `domain`.",
+    ))?;
     // The Poisson integral of boundary data `g` has the dimension of `g`.
     i.dim(op, DimRule::Same(0));
     i.kernel(
@@ -545,7 +876,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::PoissonIntegral,
         },
     );
-    let op = i.op(heavy("pde_greens_ball", Arity::Fixed(2)))?;
+    let op = i.op(heavy(
+        "pde_greens_ball",
+        Arity::Fixed(2),
+        "`pde_greens_ball(x, s)`: Dirichlet Green's function for the Laplacian on a unit/radius ball.",
+    ))?;
     // `1/(4π|x - s|)` in 3D (`1/R`), a logarithm in 2D.
     i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
@@ -556,47 +891,38 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::GreensBall,
         },
     );
-    // pde_hodograph_solution(F, G) or pde_hodograph_solution(F, G, lambda, mu).
-    let op = i.op(heavy("pde_hodograph_solution", Arity::Variadic))?;
-    // `list(x(r, s), t(r, s))`; the first component has the dimension of
-    // `F(r)` (mixed lists collapse to an unknown dimension).
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_hodograph_solution",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::HodographSolution,
-        },
-    );
-    for (name, request, rule) in [
-        // Crum's determinant is the seed solution minus a second derivative of
-        // a logarithm: same dimension as `u`.
-        ("pde_crum_kdv", Request::CrumKdv, DimRule::Same(0)),
+    for (name, request, rule, doc) in [
         // Half-space Robin: `G` carries the dimension of `h` in 3D.
         (
             "pde_greens_robin",
             Request::GreensRobin,
             DimRule::Custom(dim::rule),
+            "`pde_greens_robin(x, s)`: Robin boundary Green's function for the Laplacian on a half-space.",
         ),
         // Interior ball Robin: every term scales as `1/R`.
         (
             "pde_greens_ball_robin",
             Request::GreensBallRobin,
             DimRule::Custom(dim::rule),
+            "`pde_greens_ball_robin(x, s)`: interior Robin Green's function for the Laplacian on a ball.",
         ),
         // Zero-mean Neumann Green's function: `1/R` in 3D, a logarithm in 2D.
         (
             "pde_greens_ball_neumann",
             Request::GreensBallNeumann,
             DimRule::Custom(dim::rule),
+            "`pde_greens_ball_neumann(x, s)`: zero-mean Neumann Green's function for the Laplacian on a ball.",
         ),
     ] {
-        let op = i.op(heavy(name, Arity::Fixed(2)))?;
+        let op = i.op(heavy(name, Arity::Fixed(2), doc))?;
         i.dim(op, rule);
         i.kernel(&format!("pde/{name}"), Tier::Reduce, Pde { op, request });
     }
-    let op = i.op(heavy("pde_greens_exterior_robin", Arity::Fixed(3)))?;
+    let op = i.op(heavy(
+        "pde_greens_exterior_robin",
+        Arity::Fixed(3),
+        "`pde_greens_exterior_robin(x, s, R)`: exterior Robin Green's function for the Laplacian outside a ball of radius `R`.",
+    ))?;
     // Exterior Robin: a logarithm in 2D and `1/R` in 3D.
     i.dim(op, DimRule::Custom(dim::rule));
     i.kernel(
@@ -607,87 +933,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             request: Request::GreensExteriorRobin,
         },
     );
-    let op = i.op(heavy("pde_hodograph_riemann", Arity::Fixed(1)))?;
-    // A Riemann function of dimensionless characteristic coordinates.
-    i.dim(op, DimRule::Dimensionless);
-    i.kernel(
-        "pde/pde_hodograph_riemann",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::HodographRiemann,
-        },
-    );
-    let op = i.op(heavy("pde_hodograph", Arity::Fixed(2)))?;
-    // The hodograph equation `(λ - μ) t_rs + λ_r t_s - μ_s t_r = 0`.
-    i.dim(op, DimRule::NonMetric);
-    i.kernel(
-        "pde/pde_hodograph",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::Hodograph,
-        },
-    );
-    let op = i.op(heavy("pde_kdv_scattering", Arity::Fixed(3)))?;
-    // A numeric point value of the Gelfand-Levitan-Marchenko solver.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_kdv_scattering",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::KdvScattering,
-        },
-    );
-    let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
-    // `ψ = η sech(...) exp(...)`: the amplitude `η` carries the dimension.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_nls_soliton",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::NlsSoliton,
-        },
-    );
-    let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
-    // The kink is a phase: dimensionless.
-    i.dim(op, DimRule::Custom(dim::rule));
-    i.kernel(
-        "pde/pde_sine_gordon_soliton",
-        Tier::Reduce,
-        Pde {
-            op,
-            request: Request::SineGordonSoliton,
-        },
-    );
-    let shallow_water = i.op(heavy("pde_riemann_shallow_water", Arity::Fixed(5)))?;
-    // `list(h*, u*, list(kind, head, tail), list(kind, head, tail))`: mixed
-    // physical quantities, analysed by the rule directly.
-    i.dim(shallow_water, DimRule::NonMetric);
-    i.kernel(
-        "pde/pde_riemann_shallow_water",
-        Tier::Reduce,
-        Pde {
-            op: shallow_water,
-            request: Request::ShallowWaterRiemann,
-        },
-    );
-    for (name, eval) in [
-        (
-            "pde_riemann_shallow_water_at",
-            nonlinear::shallow_water_at_depth as fn(&[f64]) -> f64,
-        ),
-        (
-            "pde_riemann_shallow_water_velocity",
-            nonlinear::shallow_water_at_velocity,
-        ),
-    ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(6)).eval(eval))?;
-        i.dim(op, DimRule::Dimensionless);
-    }
-    let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
+    let op = i.op(heavy(
+        "pde_greens_function",
+        Arity::Variadic,
+        "`pde_greens_function(op, domain, ...)`: symbolic Green's function for differential operator `op` on `domain`.",
+    ))?;
     // The Green's function's dimension is fixed by the operator and the
     // domain; its expression is analysed directly, so the rule only has to
     // stay consistent with the dependent variable.

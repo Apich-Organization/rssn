@@ -411,6 +411,7 @@ fn integrate(
         rtol,
         atol,
         h0: Some(1e-6),
+        hmin: 0.0,
         // The mechanism has a sub-millisecond time scale (IFToMM benchmark
         // statement); capping the step also keeps the simplified Newton
         // iteration well behaved at loose tolerances.

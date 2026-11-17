@@ -648,8 +648,20 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("annulus_neg_root", Arity::Fixed(8), annulus_neg_root),
         ("annulus_root", Arity::Fixed(8), annulus_root),
     ];
-    for (name, arity, eval) in roots {
-        let op = i.op(OpDescriptor::new(name, arity).eval(eval))?;
+    let docs: [&str; 10] = [
+        "`bessel_zero(nu, k)`: `k`-th positive zero `j_{nu, k}` of the Bessel function `J_nu(z)`.",
+        "`bessel_root(nu, h, k)`: `k`-th positive root of the Robin Bessel equation `z J_nu'(z) + h J_nu(z) = 0`.",
+        "`sl_root(alpha1, beta1, alpha2, beta2, L, k)`: `k`-th positive Sturm-Liouville eigenvalue root on `[0, L]` with general linear boundary conditions.",
+        "`sl_neg_root(alpha1, beta1, alpha2, beta2, L)`: unique negative Sturm-Liouville eigenvalue root (if any) for Robin boundary conditions on `[0, L]`.",
+        "`sl_neg_root_n(alpha1, beta1, alpha2, beta2, L, k)`: `k`-th negative Sturm-Liouville eigenvalue root on `[0, L]`.",
+        "`bessel_neg_root(nu, h)`: unique positive `s` such that `s I_nu'(s) + h I_nu(s) = 0` (corresponding to negative eigenvalue `-s^2`).",
+        "`struve_h(nu, z)`: Struve function `H_nu(z)`.",
+        "`struve_l(nu, z)`: modified Struve function `L_nu(z)`.",
+        "`annulus_neg_root(nu, a, b, alpha1, beta1, alpha2, beta2, k)`: `k`-th negative radial Sturm-Liouville root on the annulus `[a, b]`.",
+        "`annulus_root(nu, a, b, alpha1, beta1, alpha2, beta2, k)`: `k`-th positive radial Bessel-cross-product root on the annulus `[a, b]`.",
+    ];
+    for ((name, arity, eval), doc) in roots.into_iter().zip(docs) {
+        let op = i.op(OpDescriptor::new(name, arity).eval(eval).doc(doc))?;
         i.dim(op, DimRule::Dimensionless);
     }
     Ok(())

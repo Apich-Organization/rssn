@@ -197,6 +197,271 @@ pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
     Ok(out)
 }
 
+/// Shared Richardson step-doubling adaptive driver for fixed-step methods in
+/// `ode_ext`.
+fn ext_doubling_adaptive<S>(
+    mut step_fn: S,
+    order: f64,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    evals_per_attempt: usize,
+) -> Result<OdeSolution, OdeError>
+where
+    S: FnMut(f64, &[f64], f64) -> Result<Vec<f64>, OdeError>,
+{
+    if y0.is_empty()
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || !opts.rtol.is_finite()
+        || opts.rtol < 0.0
+        || !opts.atol.is_finite()
+        || opts.atol <= 0.0
+        || opts.max_steps == 0
+        || y0.iter().any(|v| !v.is_finite())
+    {
+        return Err(OdeError::Invalid);
+    }
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let mut h = opts
+        .h0
+        .unwrap_or_else(|| ((t1 - t0).abs() * 0.01).max(1e-6))
+        .abs()
+        .clamp(opts.hmin.max(1e-14), opts.hmax)
+        * dir;
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut sol = OdeSolution::start(t0, y0);
+    let denom = 2.0_f64.powf(order) - 1.0;
+    let mut attempts = 0usize;
+    while (t1 - t) * dir > 0.0 {
+        crate::cancellation::checkpoint()?;
+        if attempts >= opts.max_steps {
+            return Err(OdeError::StepLimit);
+        }
+        attempts = attempts.saturating_add(1);
+        if (t + h - t1) * dir > 0.0 {
+            h = t1 - t;
+        }
+        if !h.is_finite()
+            || crate::kernels::exact_eq(t + h, t)
+            || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin)
+        {
+            return Err(OdeError::StepLimit);
+        }
+        let Ok(y_full) = step_fn(t, &y, h) else {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        };
+        let Ok(y_mid) = step_fn(t, &y, 0.5 * h) else {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        };
+        let Ok(y_half) = step_fn(t + 0.5 * h, &y_mid, 0.5 * h) else {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        };
+        sol.nfev = sol.nfev.saturating_add(evals_per_attempt);
+        if y_half.iter().chain(&y_full).any(|v| !v.is_finite()) {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        }
+        let err_vec: Vec<f64> = y_half
+            .iter()
+            .zip(&y_full)
+            .map(|(yh, yf)| (*yh - *yf).abs() / denom)
+            .collect();
+        let en = err_norm(&err_vec, &y, &y_half, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
+        if en <= 1.0 {
+            t += h;
+            y = y_half;
+            sol.t.push(t);
+            sol.y.push(y.clone());
+        } else {
+            sol.rejected = sol.rejected.saturating_add(1);
+        }
+        let factor = if crate::kernels::exact_eq(en, 0.0) {
+            5.0
+        } else {
+            (0.9 * en.powf(-1.0 / (order + 1.0))).clamp(0.2, 5.0)
+        };
+        h = (h.abs() * factor).min(opts.hmax) * dir;
+    }
+    Ok(sol)
+}
+
+/// Adaptive ETDRK4 for `u' = L u + N(t, u)` with a dense matrix `L`, using
+/// Richardson step-doubling error control.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], [`OdeError::NonFinite`],
+/// or [`OdeError::StepLimit`].
+pub fn etdrk4_adaptive<N: Fn(f64, &[f64], &mut [f64])>(
+    l: &Mat,
+    nl: N,
+    t0: f64,
+    t1: f64,
+    u0: &[f64],
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError> {
+    if l.rows != u0.len() || l.cols != u0.len() {
+        return Err(OdeError::Invalid);
+    }
+    ext_doubling_adaptive(
+        |t, u, dt| {
+            let states = etdrk4(l, &nl, t, t + dt, u, 1)?;
+            states.last().cloned().ok_or(OdeError::SolveFailed)
+        },
+        4.0,
+        t0,
+        t1,
+        u0,
+        opts,
+        12,
+    )
+}
+
+/// Unified ETDRK4 for a dense linear operator `L`, supporting both fixed and
+/// adaptive step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`etdrk4`] and [`etdrk4_adaptive`].
+pub fn etdrk4_with<N: Fn(f64, &[f64], &mut [f64])>(
+    l: &Mat,
+    nl: N,
+    t0: f64,
+    t1: f64,
+    u0: &[f64],
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                return Err(OdeError::Invalid);
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(OdeSolution::start(t0, u0));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let states = etdrk4(l, nl, t0, t1, u0, steps)?;
+            let h = (t1 - t0) / steps as f64;
+            let ts: Vec<f64> = (0..=steps)
+                .map(|i| {
+                    if i == steps {
+                        t1
+                    } else {
+                        t0 + i as f64 * h
+                    }
+                })
+                .collect();
+            Ok(OdeSolution {
+                t: ts,
+                y: states,
+                events: Vec::new(),
+                nfev: steps.saturating_mul(4),
+                rejected: 0,
+                orders: Vec::new(),
+                dense: Vec::new(),
+            })
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            etdrk4_adaptive(l, nl, t0, t1, u0, &opts)
+        },
+    }
+}
+
+/// Adaptive ETDRK4 for a diagonal linear operator, using Richardson
+/// step-doubling error control.
+///
+/// # Errors
+/// As [`etdrk4_diag`] and [`etdrk4_adaptive`].
+pub fn etdrk4_diag_adaptive<N: Fn(f64, &[f64], &mut [f64])>(
+    lambda: &[f64],
+    nl: N,
+    t0: f64,
+    t1: f64,
+    u0: &[f64],
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError> {
+    if lambda.len() != u0.len() {
+        return Err(OdeError::Invalid);
+    }
+    ext_doubling_adaptive(
+        |t, u, dt| {
+            let states = etdrk4_diag(lambda, &nl, t, t + dt, u, 1)?;
+            states.last().cloned().ok_or(OdeError::SolveFailed)
+        },
+        4.0,
+        t0,
+        t1,
+        u0,
+        opts,
+        12,
+    )
+}
+
+/// Unified diagonal ETDRK4 supporting both fixed and adaptive step sizes via
+/// [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`etdrk4_diag`] and [`etdrk4_diag_adaptive`].
+pub fn etdrk4_diag_with<N: Fn(f64, &[f64], &mut [f64])>(
+    lambda: &[f64],
+    nl: N,
+    t0: f64,
+    t1: f64,
+    u0: &[f64],
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                return Err(OdeError::Invalid);
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(OdeSolution::start(t0, u0));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let states = etdrk4_diag(lambda, nl, t0, t1, u0, steps)?;
+            let h = (t1 - t0) / steps as f64;
+            let ts: Vec<f64> = (0..=steps)
+                .map(|i| {
+                    if i == steps {
+                        t1
+                    } else {
+                        t0 + i as f64 * h
+                    }
+                })
+                .collect();
+            Ok(OdeSolution {
+                t: ts,
+                y: states,
+                events: Vec::new(),
+                nfev: steps.saturating_mul(4),
+                rejected: 0,
+                orders: Vec::new(),
+                dense: Vec::new(),
+            })
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            etdrk4_diag_adaptive(lambda, nl, t0, t1, u0, &opts)
+        },
+    }
+}
+
 // ------------------------------------------------------ Exp. Rosenbrock
 
 /// Adaptive exponential Rosenbrock method `exprb32` (order 3 with an
@@ -372,6 +637,169 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     }
     sol.nfev = nfev;
     Ok(sol)
+}
+
+/// Fixed-step exponential Rosenbrock 3(2) integrator.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::NonFinite`], [`OdeError::SolveFailed`]
+/// or [`OdeError::StepLimit`].
+pub fn exprb32_fixed<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    jac: Option<&JacobianFn<'_>>,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+) -> Result<OdeSolution, OdeError> {
+    if steps == 0 {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    super::ode_contract::validate_problem(t0, t1, y0, &default_opts, &[])?;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let f = super::ode_contract::checked_rhs(f);
+    let n = y0.len();
+    let m = n.saturating_add(1);
+    let fa = |y: &[f64], out: &mut [f64]| {
+        if let (Some(&tn), Some(yn), Some(out_n)) = (y.get(n), y.get(..n), out.get_mut(..n)) {
+            f(tn, yn, out_n);
+        }
+        if let Some(last) = out.get_mut(n) {
+            *last = 1.0;
+        }
+    };
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut y = y0.to_vec();
+    let mut t = t0;
+    let mut f0 = vec![0.0; n];
+    f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut nfev = 1usize;
+    for step_idx in 1..=steps {
+        crate::cancellation::checkpoint()?;
+        let (tn, h) = super::ode_contract::fixed_step(t0, t1, step_idx, steps, t)?;
+        let mut ya = y.clone();
+        ya.push(t);
+        let mut fa0 = vec![0.0; m];
+        fa(&ya, &mut fa0);
+        nfev = nfev.saturating_add(1);
+        let mut ja = Mat::zeros(m, m);
+        if let Some(jf) = jac {
+            let jm = jf(t, &y);
+            for i in 0..n {
+                for j in 0..n {
+                    ja.set(i, j, jm.at(i, j));
+                }
+            }
+            let probe = super::ode_contract::time_probe(t, t0, t1);
+            let dt = probe - t;
+            let mut fp = vec![0.0; n];
+            f(probe, &y, &mut fp);
+            for i in 0..n {
+                let df = fp.get(i).copied().unwrap_or(0.0) - f0.get(i).copied().unwrap_or(0.0);
+                ja.set(i, n, df / dt);
+            }
+            nfev = nfev.saturating_add(1);
+        } else {
+            let mut yp = ya.clone();
+            let mut fp = vec![0.0; m];
+            for j in 0..m {
+                let yj = ya.get(j).copied().unwrap_or(0.0);
+                let probe = if j == n {
+                    super::ode_contract::time_probe(t, t0, t1)
+                } else {
+                    yj + 1.5e-8 * yj.abs().max(1e-3)
+                };
+                let d = probe - yj;
+                if let Some(slot) = yp.get_mut(j) {
+                    *slot = probe;
+                }
+                fa(&yp, &mut fp);
+                if let Some(slot) = yp.get_mut(j) {
+                    *slot = yj;
+                }
+                for i in 0..n {
+                    let df = fp.get(i).copied().unwrap_or(0.0) - fa0.get(i).copied().unwrap_or(0.0);
+                    ja.set(i, j, df / d);
+                }
+            }
+            nfev = nfev.saturating_add(m);
+        }
+        let mut hj = ja.clone();
+        hj.data.iter_mut().for_each(|x| *x *= h);
+        let ph = phi_matrices(&hj, 3).map_err(|_| OdeError::SolveFailed)?;
+        let nterm = |yv: &[f64]| -> Vec<f64> {
+            let mut fv = vec![0.0; m];
+            fa(yv, &mut fv);
+            let jy = ja.matvec(yv);
+            fv.iter().zip(&jy).map(|(a, b)| *a - *b).collect()
+        };
+        let p1 = ph.get(1).ok_or(OdeError::SolveFailed)?;
+        let p3 = ph.get(3).ok_or(OdeError::SolveFailed)?;
+        let u_inc = p1.matvec(&fa0);
+        let ua: Vec<f64> = ya
+            .iter()
+            .zip(&u_inc)
+            .map(|(yi, ui)| *yi + h * *ui)
+            .collect();
+        let n0 = nterm(&ya);
+        let n1 = nterm(&ua);
+        nfev = nfev.saturating_add(2);
+        let d_vec: Vec<f64> = n1.iter().zip(&n0).map(|(a, b)| *a - *b).collect();
+        let p3d = p3.matvec(&d_vec);
+        let ynew: Vec<f64> = (0..n)
+            .map(|i| {
+                ua.get(i).copied().unwrap_or(0.0) + 2.0 * h * p3d.get(i).copied().unwrap_or(0.0)
+            })
+            .collect();
+        if ynew.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        t = tn;
+        y = ynew;
+        f(t, &y, &mut f0);
+        nfev = nfev.saturating_add(1);
+        sol.t.push(t);
+        sol.y.push(y.clone());
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
+/// Unified exponential Rosenbrock 3(2) integrator supporting both fixed and
+/// adaptive step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`exprb32`] and [`exprb32_fixed`].
+pub fn exprb32_with<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    jac: Option<&JacobianFn<'_>>,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                return Err(OdeError::Invalid);
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(OdeSolution::start(t0, y0));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            exprb32_fixed(f, jac, t0, t1, y0, steps)
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            exprb32(f, jac, t0, t1, y0, &opts)
+        },
+    }
 }
 
 // ----------------------------------------------------------------- IMEX
@@ -634,6 +1062,124 @@ where
     )
 }
 
+/// Adaptive additive IMEX Runge-Kutta integrator using Richardson step-doubling
+/// error control.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], [`OdeError::NonFinite`],
+/// or [`OdeError::StepLimit`].
+pub fn imex_rk_adaptive<E, I>(
+    f_ex: E,
+    f_im: I,
+    jac_im: Option<&JacobianFn<'_>>,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    scheme: ImexScheme,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError>
+where
+    E: Fn(f64, &[f64], &mut [f64]),
+    I: Fn(f64, &[f64], &mut [f64]),
+{
+    let order = match scheme {
+        | ImexScheme::Euler => 1.0,
+        | ImexScheme::Ars222 => 2.0,
+        | ImexScheme::Ars343 => 3.0,
+    };
+    ext_doubling_adaptive(
+        |t, y, dt| {
+            let states = imex_rk_with(
+                &f_ex,
+                &f_im,
+                t,
+                t + dt,
+                y,
+                &ImexOptions {
+                    jac_im,
+                    steps: 1,
+                    scheme,
+                },
+            )?;
+            states.last().cloned().ok_or(OdeError::SolveFailed)
+        },
+        order,
+        t0,
+        t1,
+        y0,
+        opts,
+        9,
+    )
+}
+
+/// Unified additive IMEX Runge-Kutta integrator supporting both fixed and
+/// adaptive step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`imex_rk_with`] and [`imex_rk_adaptive`].
+#[allow(clippy::too_many_arguments)]
+pub fn imex_rk_step_mode<E, I>(
+    f_ex: E,
+    f_im: I,
+    jac_im: Option<&JacobianFn<'_>>,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    scheme: ImexScheme,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError>
+where
+    E: Fn(f64, &[f64], &mut [f64]),
+    I: Fn(f64, &[f64], &mut [f64]),
+{
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                return Err(OdeError::Invalid);
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(OdeSolution::start(t0, y0));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let states = imex_rk_with(
+                f_ex,
+                f_im,
+                t0,
+                t1,
+                y0,
+                &ImexOptions {
+                    jac_im,
+                    steps,
+                    scheme,
+                },
+            )?;
+            let h = (t1 - t0) / steps as f64;
+            let ts: Vec<f64> = (0..=steps)
+                .map(|i| {
+                    if i == steps {
+                        t1
+                    } else {
+                        t0 + i as f64 * h
+                    }
+                })
+                .collect();
+            Ok(OdeSolution {
+                t: ts,
+                y: states,
+                events: Vec::new(),
+                nfev: steps.saturating_mul(3),
+                rejected: 0,
+                orders: Vec::new(),
+                dense: Vec::new(),
+            })
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            imex_rk_adaptive(f_ex, f_im, jac_im, t0, t1, y0, scheme, &opts)
+        },
+    }
+}
+
 // ------------------------------------------------------------ Symplectic
 
 /// Composition method for separable Hamiltonians.
@@ -742,6 +1288,108 @@ pub fn symplectic_split<A: Fn(&[f64]) -> Vec<f64>>(
         }
     }
     Ok((q, p))
+}
+
+/// Adaptive symplectic composition integrator using Richardson step-doubling
+/// error control, returning an [`OdeSolution`] whose states are `[q..., p...]`.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::NonFinite`], or [`OdeError::StepLimit`].
+pub fn symplectic_split_adaptive<A: Fn(&[f64]) -> Vec<f64>>(
+    accel: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    method: SplitMethod,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError> {
+    if q0.is_empty() || q0.len() != p0.len() {
+        return Err(OdeError::Invalid);
+    }
+    let n = q0.len();
+    let order = match method {
+        | SplitMethod::Verlet => 2.0,
+        | SplitMethod::TripleJump(o) => {
+            if o < 2 || o % 2 != 0 || o > 12 {
+                return Err(OdeError::Invalid);
+            }
+            o as f64
+        },
+        | SplitMethod::Yoshida6 => 6.0,
+        | SplitMethod::Yoshida8 => 8.0,
+    };
+    let init: Vec<f64> = q0.iter().chain(p0).copied().collect();
+    ext_doubling_adaptive(
+        |t, y, dt| {
+            let (q, p) = y.split_at(n);
+            let (qn, pn) = symplectic_split(&accel, q, p, t, t + dt, 1, method)?;
+            Ok(qn.into_iter().chain(pn).collect())
+        },
+        order,
+        t0,
+        t1,
+        &init,
+        opts,
+        3,
+    )
+}
+
+/// Unified symplectic composition integrator supporting both fixed and adaptive
+/// step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`symplectic_split`] and [`symplectic_split_adaptive`].
+pub fn symplectic_split_with<A: Fn(&[f64]) -> Vec<f64>>(
+    accel: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    method: SplitMethod,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if q0.is_empty()
+                || q0.len() != p0.len()
+                || !dt.is_finite()
+                || dt <= 0.0
+                || !t0.is_finite()
+                || !t1.is_finite()
+            {
+                return Err(OdeError::Invalid);
+            }
+            let init: Vec<f64> = q0.iter().chain(p0).copied().collect();
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(OdeSolution::start(t0, &init));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let mut sol = OdeSolution::start(t0, &init);
+            let mut q = q0.to_vec();
+            let mut p = p0.to_vec();
+            let mut t = t0;
+            for idx in 1..=steps {
+                crate::cancellation::checkpoint()?;
+                let (tn, h) = super::ode_contract::fixed_step(t0, t1, idx, steps, t)?;
+                let (qn, pn) = symplectic_split(&accel, &q, &p, t, t + h, 1, method)?;
+                if qn.iter().chain(&pn).any(|v| !v.is_finite()) {
+                    return Err(OdeError::NonFinite);
+                }
+                q = qn;
+                p = pn;
+                t = tn;
+                sol.t.push(t);
+                sol.y.push(q.iter().chain(&p).copied().collect());
+                sol.nfev = sol.nfev.saturating_add(1);
+            }
+            Ok(sol)
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            symplectic_split_adaptive(accel, q0, p0, t0, t1, method, &opts)
+        },
+    }
 }
 
 // ------------------------------------------------------------ Variational

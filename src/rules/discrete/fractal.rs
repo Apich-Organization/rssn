@@ -33,8 +33,8 @@ use num_complex::Complex;
 
 use super::V;
 use super::apply;
-use super::def;
-use super::def_request;
+use super::def_doc;
+use super::def_request_doc;
 use super::div;
 use super::float;
 use super::idx;
@@ -911,76 +911,223 @@ fn orbit_entropy(
 
 /// Registers the fractal and chaos operators.
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "mandelbrot_escape", Arity::Fixed(3), mandelbrot_escape)?;
-    def(i, "julia_escape", Arity::Fixed(5), julia_escape)?;
-    def(
+    def_doc(
+        i,
+        "mandelbrot_escape",
+        Arity::Fixed(3),
+        mandelbrot_escape,
+        "Computes the Mandelbrot escape time of `z^2 + c` for `c = cr + i*ci` starting at `z = 0` (`max_iter` if bounded).",
+    )?;
+    def_doc(
+        i,
+        "julia_escape",
+        Arity::Fixed(5),
+        julia_escape,
+        "Computes the Julia set escape time of `z^2 + c` starting at `z = zr + i*zi` with parameter `c = cr + i*ci` (`max_iter` if bounded).",
+    )?;
+    def_doc(
         i,
         "burning_ship_escape",
         Arity::Fixed(3),
         burning_ship_escape,
+        "Computes the Burning Ship fractal escape time at `c = cr + i*ci` up to `max_iter` iterations.",
     )?;
-    def(i, "multibrot_escape", Arity::Fixed(4), multibrot_escape)?;
-    def(
+    def_doc(
+        i,
+        "multibrot_escape",
+        Arity::Fixed(4),
+        multibrot_escape,
+        "Computes the Multibrot escape time of `z^d + c` for exponent `d` and parameter `c = cr + i*ci` up to `max_iter` iterations.",
+    )?;
+    def_doc(
         i,
         "newton_fractal_root",
         Arity::Fixed(4),
         newton_fractal_root,
+        "Runs Newton's method on polynomial `coeffs` (highest degree first) from `zr + i*zi` up to `max_iter`, returning `list(re, im, iterations)` or `false`.",
     )?;
-    def_request(i, "mandelbrot_iterate", Arity::Fixed(2), mandelbrot_iterate)?;
-    def(i, "mandelbrot_orbit", Arity::Fixed(2), mandelbrot_orbit)?;
-    def(
+    def_request_doc(
+        i,
+        "mandelbrot_iterate",
+        Arity::Fixed(2),
+        mandelbrot_iterate,
+        "Computes one Mandelbrot iteration `z^2 + c` symbolically or numerically.",
+    )?;
+    def_doc(
+        i,
+        "mandelbrot_orbit",
+        Arity::Fixed(2),
+        mandelbrot_orbit,
+        "Computes the Mandelbrot orbit `0, c, c^2 + c, ...` of length `n + 1` for parameter `c`.",
+    )?;
+    def_doc(
         i,
         "mandelbrot_fixed_points",
         Arity::Fixed(1),
         mandelbrot_fixed_points,
+        "Returns the two fixed points `(1 +- sqrt(1 - 4*c)) / 2` of `z^2 + c`.",
     )?;
-    def_request(
+    def_request_doc(
         i,
         "mandelbrot_stability",
         Arity::Fixed(1),
         mandelbrot_stability,
+        "Computes the stability multiplier `|2*z|` at fixed point `z` of `z^2 + c`.",
     )?;
-    def_request(i, "complex_map_fixed_points", Arity::Fixed(2), fixed_points)?;
-    def_request(i, "complex_map_stability", Arity::Fixed(3), |cx, a| {
-        stability(cx, a, true)
-    })?;
-    def_request(i, "map_fixed_points", Arity::Fixed(2), fixed_points)?;
-    def_request(i, "map_stability", Arity::Fixed(3), |cx, a| {
-        stability(cx, a, false)
-    })?;
-    def_request(i, "lyapunov_exponent", Arity::Fixed(4), lyapunov_exponent)?;
-    def(i, "logistic_iterate", Arity::Fixed(3), logistic_iterate)?;
-    def(
+    def_request_doc(
+        i,
+        "complex_map_fixed_points",
+        Arity::Fixed(2),
+        fixed_points,
+        "Finds fixed points solving `f(z) = z` for map `f` in variable `z`.",
+    )?;
+    def_request_doc(
+        i,
+        "complex_map_stability",
+        Arity::Fixed(3),
+        |cx, a| stability(cx, a, true),
+        "Computes the stability multiplier `|f'(z0)|` of complex map `f` in `z` at `z0`.",
+    )?;
+    def_request_doc(
+        i,
+        "map_fixed_points",
+        Arity::Fixed(2),
+        fixed_points,
+        "Finds fixed points solving `f(x) = x` for 1D map `f` in variable `x`.",
+    )?;
+    def_request_doc(
+        i,
+        "map_stability",
+        Arity::Fixed(3),
+        |cx, a| stability(cx, a, false),
+        "Computes the derivative `f'(x0)` of 1D map `f` in `x` at `x0`.",
+    )?;
+    def_request_doc(
+        i,
+        "lyapunov_exponent",
+        Arity::Fixed(4),
+        lyapunov_exponent,
+        "Computes the Lyapunov exponent `(1/n) * sum ln|f'(x_k)|` of 1D map `f` in `x` along the `n`-step orbit from `x0`.",
+    )?;
+    def_doc(
+        i,
+        "logistic_iterate",
+        Arity::Fixed(3),
+        logistic_iterate,
+        "Computes the orbit of length `n + 1` of the logistic map `r*x*(1 - x)` starting from `x0`.",
+    )?;
+    def_doc(
         i,
         "logistic_bifurcation",
         Arity::Fixed(5),
         logistic_bifurcation,
+        "Samples the logistic map bifurcation diagram over `[r_min, r_max]` in `steps` increments, discarding `transient` steps and returning `keep` `list(r, x)` points per `r`.",
     )?;
-    def(i, "logistic_lyapunov", Arity::Fixed(3), logistic_lyapunov)?;
-    def(i, "lorenz", Arity::Variadic, lorenz)?;
-    def(i, "lorenz_orbit", Arity::Variadic, lorenz_orbit)?;
-    def(i, "lorenz_lyapunov", Arity::Variadic, lorenz_lyapunov)?;
-    def(i, "rossler_orbit", Arity::Fixed(6), rossler_orbit)?;
-    def(i, "henon_orbit", Arity::Fixed(4), henon_orbit)?;
-    def(i, "tinkerbell_orbit", Arity::Fixed(6), tinkerbell_orbit)?;
-    def(i, "ifs_apply", Arity::Fixed(3), ifs_apply)?;
-    def(i, "ifs_generate", Arity::Fixed(3), ifs_generate)?;
-    def_request(
+    def_doc(
+        i,
+        "logistic_lyapunov",
+        Arity::Fixed(3),
+        logistic_lyapunov,
+        "Computes the Lyapunov exponent of the logistic map `r*x*(1 - x)` from `x0` over `n` steps after a 100-step transient.",
+    )?;
+    def_doc(
+        i,
+        "lorenz",
+        Arity::Variadic,
+        lorenz,
+        "Returns the Lorenz vector field `list(sigma*(y - x), x*(rho - z) - y, x*y - beta*z)` in `(x, y, z)` with default or given `(sigma, rho, beta)`.",
+    )?;
+    def_doc(
+        i,
+        "lorenz_orbit",
+        Arity::Variadic,
+        lorenz_orbit,
+        "Integrates the Lorenz system `lorenz_orbit(p0, dt, n[, sigma, rho, beta])` for `n` steps of size `dt` from `p0`.",
+    )?;
+    def_doc(
+        i,
+        "lorenz_lyapunov",
+        Arity::Variadic,
+        lorenz_lyapunov,
+        "Estimates the largest Lyapunov exponent of the Lorenz system `lorenz_lyapunov(p0, dt, n[, sigma, rho, beta])`.",
+    )?;
+    def_doc(
+        i,
+        "rossler_orbit",
+        Arity::Fixed(6),
+        rossler_orbit,
+        "Integrates the Rossler system `(p0, dt, n, a, b, c)` for `n` steps of size `dt` from `p0`.",
+    )?;
+    def_doc(
+        i,
+        "henon_orbit",
+        Arity::Fixed(4),
+        henon_orbit,
+        "Computes an `n`-step orbit of the 2D Henon map `(p0, n, a, b)` starting from `p0`.",
+    )?;
+    def_doc(
+        i,
+        "tinkerbell_orbit",
+        Arity::Fixed(6),
+        tinkerbell_orbit,
+        "Computes an `n`-step orbit of the 2D Tinkerbell map `(p0, n, a, b, c, d)` starting from `p0`.",
+    )?;
+    def_doc(
+        i,
+        "ifs_apply",
+        Arity::Fixed(3),
+        ifs_apply,
+        "Applies every symbolic coordinate map in `maps` (in variables `vars`) to `point`.",
+    )?;
+    def_doc(
+        i,
+        "ifs_generate",
+        Arity::Fixed(3),
+        ifs_generate,
+        "Generates `n` points via the deterministic chaos game with `seed` for `\"sierpinski\"`, `\"barnsley\"`, or a list of 6-coefficient affine maps.",
+    )?;
+    def_request_doc(
         i,
         "similarity_dimension",
         Arity::Fixed(1),
         similarity_dimension,
+        "Computes the similarity dimension `-ln(N)/ln(r)` for equal contraction ratios, or builds the Moran equation `sum r_i^D = 1`.",
     )?;
-    def(i, "moran_dimension", Arity::Fixed(1), moran_dimension)?;
-    def(i, "box_counting", Arity::Fixed(2), box_counting)?;
-    def(
+    def_doc(
+        i,
+        "moran_dimension",
+        Arity::Fixed(1),
+        moran_dimension,
+        "Numerically solves the Moran equation `sum r_i^D = 1` by bisection for a list of contraction ratios.",
+    )?;
+    def_doc(
+        i,
+        "box_counting",
+        Arity::Fixed(2),
+        box_counting,
+        "Estimates the box-counting dimension of `points` using `k` automatic scales or an explicit list of box sizes.",
+    )?;
+    def_doc(
         i,
         "correlation_dimension",
         Arity::Fixed(2),
         correlation_dimension,
+        "Estimates the correlation dimension of `points` using `k` automatic scales or an explicit list of radii.",
     )?;
-    def(i, "orbit_density", Arity::Fixed(7), orbit_density)?;
-    def(i, "orbit_entropy", Arity::Fixed(1), orbit_entropy)?;
+    def_doc(
+        i,
+        "orbit_density",
+        Arity::Fixed(7),
+        orbit_density,
+        "Computes an `nx` by `ny` 2D occupancy histogram of `points` over `[xmin, xmax] × [ymin, ymax]`.",
+    )?;
+    def_doc(
+        i,
+        "orbit_entropy",
+        Arity::Fixed(1),
+        orbit_entropy,
+        "Computes the Shannon entropy of a 2D occupancy histogram `density`.",
+    )?;
     Ok(())
 }
 

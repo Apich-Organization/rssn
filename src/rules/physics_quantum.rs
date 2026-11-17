@@ -156,18 +156,62 @@ enum Request {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, request) in [
-        ("clebsch_gordan", 6, Request::ClebschGordan),
-        ("wigner_3j", 6, Request::Wigner3j),
-        ("spherical_harmonic", 4, Request::SphericalHarmonic),
-        ("hydrogen_radial", 3, Request::HydrogenRadial),
-        ("second_order_energy_correction", 5, Request::SecondOrder),
-        ("variational_ground_state", 4, Request::Variational),
-        ("wkb_energy", 4, Request::Wkb),
+    for (name, arity, request, doc) in [
+        (
+            "clebsch_gordan",
+            6,
+            Request::ClebschGordan,
+            "`clebsch_gordan(j1, m1, j2, m2, J, M)`: exact Clebsch-Gordan coefficient \
+             `<j1 m1; j2 m2 | J M>` via Racah's formula (half-integers allowed), returned as `+-sqrt(q)`.",
+        ),
+        (
+            "wigner_3j",
+            6,
+            Request::Wigner3j,
+            "`wigner_3j(j1, j2, j3, m1, m2, m3)`: exact Wigner 3j symbol computed from the \
+             corresponding Clebsch-Gordan coefficient (half-integers allowed).",
+        ),
+        (
+            "spherical_harmonic",
+            4,
+            Request::SphericalHarmonic,
+            "`spherical_harmonic(l, m, theta, phi)`: orthonormal spherical harmonic `Y_l^m(theta, phi)` \
+             with the Condon-Shortley phase as an explicit trigonometric expression.",
+        ),
+        (
+            "hydrogen_radial",
+            3,
+            Request::HydrogenRadial,
+            "`hydrogen_radial(n, l, r)`: normalized hydrogenic radial wavefunction `R_nl(r)` \
+             expressed in terms of the Bohr radius `a_0`.",
+        ),
+        (
+            "second_order_energy_correction",
+            5,
+            Request::SecondOrder,
+            "`second_order_energy_correction(V, states, energies, n, x)`: second-order \
+             Rayleigh-Schrodinger energy shift `sum_{m != n} |<m|V|n>|^2 / (E_n - E_m)` over \
+             basis `states` in variable `x` (1-based index `n`).",
+        ),
+        (
+            "variational_ground_state",
+            4,
+            Request::Variational,
+            "`variational_ground_state(H, trial, x, a)`: Rayleigh-Ritz ground-state estimate \
+             `list(a*, E(a*))` minimizing `E(a) = <trial|H|trial> / <trial|trial>` over `a > 0`.",
+        ),
+        (
+            "wkb_energy",
+            4,
+            Request::Wkb,
+            "`wkb_energy(c, nu, m, n)`: Bohr-Sommerfeld WKB energy level `n` for potential \
+             `V(x) = c |x|^nu` and mass `m`, in closed form via the beta function.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("physics_quantum/{name}"),
             Tier::Reduce,
@@ -178,6 +222,25 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "hydrogen_wavefunction(n, l, m, r, theta, phi) := hydrogen_radial(n, l, r) * spherical_harmonic(l, m, theta, phi)",
         "hydrogen_energy(n) := -hbar^2/(2*m_e*a_0^2*n^2)",
     ])?;
+    for (name, arity, doc) in [
+        (
+            "hydrogen_wavefunction",
+            6,
+            "`hydrogen_wavefunction(n, l, m, r, theta, phi)`: full hydrogen atom eigenfunction \
+             `R_nl(r) * Y_l^m(theta, phi)`.",
+        ),
+        (
+            "hydrogen_energy",
+            1,
+            "`hydrogen_energy(n)`: hydrogen atom energy level `-hbar^2 / (2 * m_e * a_0^2 * n^2)` \
+             for principal quantum number `n`.",
+        ),
+    ] {
+        i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc(doc))?;
+    }
     attach_dim_rules(
         i,
         &[

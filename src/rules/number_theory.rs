@@ -1573,7 +1573,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     exact(
         i,
         set,
-        binary("gcd").flags(commutative).eval(gcd_eval),
+        binary("gcd")
+            .flags(commutative)
+            .eval(gcd_eval)
+            .doc("`gcd(a, b)`: greatest common divisor of integers `a` and `b`."),
         |a| {
             match a {
                 | [x, y] => Some(Value::Int(gcd(x, y))),
@@ -1584,7 +1587,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     exact(
         i,
         set,
-        binary("lcm").flags(commutative).eval(lcm_eval),
+        binary("lcm")
+            .flags(commutative)
+            .eval(lcm_eval)
+            .doc("`lcm(a, b)`: least common multiple of integers `a` and `b`."),
         |a| {
             match a {
                 | [x, y] => {
@@ -1598,121 +1604,219 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             }
         },
     )?;
-    exact(i, set, binary("mod").eval(mod_eval), |a| {
-        match a {
-            | [x, m] => modulo(x, m).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, OpDescriptor::new("powmod", Arity::Fixed(3)), |a| {
-        match a {
-            | [b, e, m] if !e.is_negative() && m.is_positive() => {
-                Some(Value::Int(modulo(b, m)?.modpow(e, m)))
-            },
-            | _ => None,
-        }
-    })?;
-    exact(i, set, binary("invmod"), |a| {
-        match a {
-            | [x, m] => invmod(x, m).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, unary("isprime"), |a| {
-        match a {
-            | [n] => Some(Value::Bool(is_prime(n))),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, unary("nextprime"), |a| {
-        match a {
-            | [n] => next_prime(n).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, unary("totient"), |a| {
-        let [n] = a else {
-            return None;
-        };
-        let mut phi = BigInt::one();
-        for (p, e) in factor_big(n)? {
-            phi *= (&p - 1) * p.pow(e - 1);
-        }
-        Some(Value::Int(phi))
-    })?;
-    exact(i, set, unary("divisor_count"), |a| {
-        let [n] = a else {
-            return None;
-        };
-        let count = factor_big(n)?
-            .iter()
-            .fold(BigInt::one(), |acc, &(_, e)| acc * (e + 1));
-        Some(Value::Int(count))
-    })?;
-    exact(i, set, unary("divisor_sum"), |a| {
-        let [n] = a else {
-            return None;
-        };
-        let mut sigma = BigInt::one();
-        for (p, e) in factor_big(n)? {
-            // 1 + p + ... + p^e
-            sigma *= (0..=e).fold(BigInt::zero(), |acc, k| acc + p.pow(k));
-        }
-        Some(Value::Int(sigma))
-    })?;
-    exact(i, set, unary("factorint"), |a| {
-        let [n] = a else {
-            return None;
-        };
-        let rows = factor_big(n)?
-            .into_iter()
-            .map(|(p, e)| vec![p, BigInt::from(e)])
-            .collect();
-        Some(Value::Nested(rows))
-    })?;
-    exact(i, set, binary("jacobi"), |a| {
-        match a {
-            | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, binary("egcd"), |a| {
-        match a {
-            | [x, y] => {
-                let (g, s, t) = egcd(x, y);
-                Some(Value::Flat(vec![g, s, t]))
-            },
-            | _ => None,
-        }
-    })?;
-    exact_lists(i, set, binary("crt"), crt)?;
-    exact(i, set, unary("pell"), |a| {
-        match a {
-            | [n] => {
-                match pell_solution(n, false)? {
-                    | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
-                    | Pell::Unsolvable => None,
-                }
-            },
-            | _ => None,
-        }
-    })?;
-    exact(i, set, unary("primes"), |a| {
-        match a {
-            | [n] => {
-                let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
-                let primes = crate::kernels::number_theory::primes_sieve(limit);
-                Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
-            },
-            | _ => None,
-        }
-    })?;
-    procedure(i, set, unary("cfrac"), Tier::Normalize, cfrac)?;
-    procedure(i, set, binary("convergents"), Tier::Normalize, convergents)?;
+    exact(
+        i,
+        set,
+        binary("mod")
+            .eval(mod_eval)
+            .doc("`mod(x, m)`: least non-negative residue of `x` modulo `m > 0`."),
+        |a| {
+            match a {
+                | [x, m] => modulo(x, m).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        OpDescriptor::new("powmod", Arity::Fixed(3))
+            .doc("`powmod(b, e, m)`: modular exponentiation `b^e mod m` for `e >= 0` and `m > 0`."),
+        |a| {
+            match a {
+                | [b, e, m] if !e.is_negative() && m.is_positive() => {
+                    Some(Value::Int(modulo(b, m)?.modpow(e, m)))
+                },
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        binary("invmod").doc(
+            "`invmod(x, m)`: modular multiplicative inverse `x^-1 mod m` when `gcd(x, m) = 1`.",
+        ),
+        |a| {
+            match a {
+                | [x, m] => invmod(x, m).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("isprime").doc("`isprime(n)`: `true` if integer `n` is prime, `false` otherwise."),
+        |a| {
+            match a {
+                | [n] => Some(Value::Bool(is_prime(n))),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("nextprime").doc("`nextprime(n)`: smallest prime strictly greater than `n`."),
+        |a| {
+            match a {
+                | [n] => next_prime(n).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("totient").doc("`totient(n)`: Euler's totient function `phi(n)`, counting integers in `[1, n]` coprime to `n`."),
+        |a| {
+            let [n] = a else {
+                return None;
+            };
+            let mut phi = BigInt::one();
+            for (p, e) in factor_big(n)? {
+                phi *= (&p - 1) * p.pow(e - 1);
+            }
+            Some(Value::Int(phi))
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("divisor_count").doc(
+            "`divisor_count(n)`: number of positive divisors `tau(n)` of positive integer `n`.",
+        ),
+        |a| {
+            let [n] = a else {
+                return None;
+            };
+            let count = factor_big(n)?
+                .iter()
+                .fold(BigInt::one(), |acc, &(_, e)| acc * (e + 1));
+            Some(Value::Int(count))
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("divisor_sum").doc(
+            "`divisor_sum(n)`: sum of positive divisors `sigma_1(n)` of positive integer `n`.",
+        ),
+        |a| {
+            let [n] = a else {
+                return None;
+            };
+            let mut sigma = BigInt::one();
+            for (p, e) in factor_big(n)? {
+                // 1 + p + ... + p^e
+                sigma *= (0..=e).fold(BigInt::zero(), |acc, k| acc + p.pow(k));
+            }
+            Some(Value::Int(sigma))
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("factorint")
+            .doc("`factorint(n)`: prime factorization of `n` as `list(list(p, e), ...)`."),
+        |a| {
+            let [n] = a else {
+                return None;
+            };
+            let rows = factor_big(n)?
+                .into_iter()
+                .map(|(p, e)| vec![p, BigInt::from(e)])
+                .collect();
+            Some(Value::Nested(rows))
+        },
+    )?;
+    exact(
+        i,
+        set,
+        binary("jacobi")
+            .doc("`jacobi(x, n)`: Jacobi symbol `(x / n)` for odd positive integer `n`."),
+        |a| {
+            match a {
+                | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        binary("egcd").doc("`egcd(x, y)`: extended Euclidean algorithm returning `list(g, s, t)` with `g = s*x + t*y = gcd(x, y)`."),
+        |a| {
+            match a {
+                | [x, y] => {
+                    let (g, s, t) = egcd(x, y);
+                    Some(Value::Flat(vec![g, s, t]))
+                },
+                | _ => None,
+            }
+        },
+    )?;
+    exact_lists(
+        i,
+        set,
+        binary("crt").doc("`crt(remainders, moduli)`: Chinese remainder theorem solution `x` satisfying `x = r_i (mod m_i)`."),
+        crt,
+    )?;
+    exact(
+        i,
+        set,
+        unary("pell").doc("`pell(D)`: fundamental solution `list(x, y)` to Pell's equation `x^2 - D*y^2 = 1` for non-square `D > 0`."),
+        |a| {
+            match a {
+                | [n] => {
+                    match pell_solution(n, false)? {
+                        | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
+                        | Pell::Unsolvable => None,
+                    }
+                },
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        set,
+        unary("primes").doc("`primes(n)`: list of all prime numbers `<= n`."),
+        |a| {
+            match a {
+                | [n] => {
+                    let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
+                    let primes = crate::kernels::number_theory::primes_sieve(limit);
+                    Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
+                },
+                | _ => None,
+            }
+        },
+    )?;
     procedure(
         i,
         set,
-        binary("diophantine").flags(OpFlags::HEAVY).cost(100),
+        unary("cfrac").doc("`cfrac(x)`: continued fraction expansion `[a0, a1, ...]` of rational or quadratic-irrational `x`."),
+        Tier::Normalize,
+        cfrac,
+    )?;
+    procedure(
+        i,
+        set,
+        binary("convergents").doc(
+            "`convergents(x, n)`: first `n` continued-fraction convergents `p_k / q_k` of `x`.",
+        ),
+        Tier::Normalize,
+        convergents,
+    )?;
+    procedure(
+        i,
+        set,
+        binary("diophantine")
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc("`diophantine(eq, vars)`: integer solutions to Diophantine equation `eq` in variables `vars`."),
         Tier::Reduce,
         diophantine,
     )?;
@@ -2780,215 +2884,378 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
 
-    exact(i, SET, binary("legendre_symbol"), |a| {
-        match a {
-            | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, binary("kronecker_symbol"), |a| {
-        match a {
-            | [x, n] => kronecker(x, n).and_then(int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, binary("sqrtmod"), |a| {
-        match a {
-            | [x, p] if is_prime(p) => {
-                let p = p.to_u64()?;
-                let x = modulo(x, &big(p))?.to_u64()?;
-                tonelli_shanks(x, p).and_then(int)
-            },
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, unary("quadratic_residues"), |a| {
-        let [n] = a else { return None };
-        let n = small(n).filter(|&v| v <= MAX_TABLE)?;
-        let mut seen: Vec<u64> = (1..n).map(|x| x * x % n).filter(|&r| r != 0).collect();
-        seen.sort_unstable();
-        seen.dedup();
-        Some(Value::Flat(seen.into_iter().map(BigInt::from).collect()))
-    })?;
-    exact(i, SET, binary("mult_order"), |a| {
-        match a {
-            | [x, n] => mult_order(x, n).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, unary("carmichael"), |a| {
-        match a {
-            | [n] => carmichael(n).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, unary("primitive_root"), |a| {
-        match a {
-            | [n] => primitive_root(n).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, ternary("dlog"), |a| {
-        match a {
-            | [g, h, n] => dlog(g, h, n).map(Value::Int),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, unary("mobius"), |a| {
-        let [n] = a else { return None };
-        let primes = factor_big(n)?;
-        if primes.iter().any(|&(_, e)| e > 1) {
-            return int(0);
-        }
-        int(if primes.len() % 2 == 0 {
-            1
-        } else {
-            -1
-        })
-    })?;
-    exact(i, SET, unary("liouville"), |a| {
-        let [n] = a else { return None };
-        let total: u32 = factor_big(n)?.iter().map(|&(_, e)| e).sum();
-        int(if total.is_multiple_of(2) {
-            1
-        } else {
-            -1
-        })
-    })?;
-    exact(i, SET, unary("omega"), |a| {
-        let [n] = a else { return None };
-        count(factor_big(n)?.len())
-    })?;
-    exact(i, SET, unary("bigomega"), |a| {
-        let [n] = a else { return None };
-        int(factor_big(n)?
-            .iter()
-            .map(|&(_, e)| u64::from(e))
-            .sum::<u64>())
-    })?;
-    exact(i, SET, unary("radical"), |a| {
-        let [n] = a else { return None };
-        int(factor_big(n)?
-            .iter()
-            .map(|(p, _)| p.clone())
-            .product::<BigInt>())
-    })?;
-    exact(i, SET, binary("sigma"), |a| {
-        let [n, k] = a else { return None };
-        let k = k.to_u32().filter(|&k| k <= 64)?;
-        let mut total = BigInt::one();
-        for (p, e) in factor_big(n)? {
-            let q = p.pow(k);
-            total *= (0..=e).fold(BigInt::zero(), |acc, j| acc + q.pow(j));
-        }
-        Some(Value::Int(total))
-    })?;
-    exact(i, SET, unary("divisors"), |a| {
-        let [n] = a else { return None };
-        divisors(n).map(Value::Flat)
-    })?;
-    exact(i, SET, unary("is_squarefree"), |a| {
-        let [n] = a else { return None };
-        Some(Value::Bool(factor_big(n)?.iter().all(|&(_, e)| e == 1)))
-    })?;
-    exact(i, SET, unary("is_square"), |a| {
-        let [n] = a else { return None };
-        if n.is_negative() {
-            return Some(Value::Bool(false));
-        }
-        let r = n.sqrt();
-        Some(Value::Bool(&r * &r == *n))
-    })?;
-    exact(i, SET, unary("isqrt"), |a| {
-        match a {
-            | [n] if !n.is_negative() => int(n.sqrt()),
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, binary("iroot"), |a| {
-        match a {
-            | [n, k] if !n.is_negative() && k.is_positive() => {
-                int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
-            },
-            | _ => None,
-        }
-    })?;
-    exact(i, SET, unary("perfect_power"), |a| {
-        let [n] = a else { return None };
-        if *n < big(2) {
-            return None;
-        }
-        let bits = u32::try_from(n.bits()).ok()?;
-        for e in (2..=bits).rev() {
-            let r = n.nth_root(e);
-            if r.pow(e) == *n {
-                return Some(Value::Flat(vec![r, BigInt::from(e)]));
+    exact(
+        i,
+        SET,
+        binary("legendre_symbol")
+            .doc("`legendre_symbol(a, p)`: Legendre symbol `(a / p)` for odd prime `p`."),
+        |a| {
+            match a {
+                | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
+                | _ => None,
             }
-        }
-        Some(Value::Flat(vec![n.clone(), BigInt::one()]))
-    })?;
-    exact(i, SET, unary("prevprime"), |a| {
-        let [n] = a else { return None };
-        let mut candidate = n - 1;
-        while candidate >= big(2) {
-            if is_prime(&candidate) {
-                return Some(Value::Int(candidate));
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        binary("kronecker_symbol")
+            .doc("`kronecker_symbol(a, n)`: Kronecker symbol `(a / n)` for arbitrary integer `n`."),
+        |a| {
+            match a {
+                | [x, n] => kronecker(x, n).and_then(int),
+                | _ => None,
             }
-            candidate -= 1;
-        }
-        None
-    })?;
-    exact(i, SET, unary("prime_pi"), |a| {
-        let [n] = a else { return None };
-        let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_TABLE)?).ok()?;
-        count(crate::kernels::number_theory::primes_sieve(limit).len())
-    })?;
-    exact(i, SET, unary("nth_prime"), |a| {
-        let [k] = a else { return None };
-        let k = usize::try_from(k.to_u64().filter(|&v| v >= 1)?).ok()?;
-        let mut limit = 100;
-        while limit <= 50_000_000 {
-            let primes = crate::kernels::number_theory::primes_sieve(limit);
-            if let Some(&p) = primes.get(k - 1) {
-                return count(p);
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        binary("sqrtmod").doc(
+            "`sqrtmod(a, p)`: modular square root `r` satisfying `r^2 = a (mod p)` for prime `p`.",
+        ),
+        |a| {
+            match a {
+                | [x, p] if is_prime(p) => {
+                    let p = p.to_u64()?;
+                    let x = modulo(x, &big(p))?.to_u64()?;
+                    tonelli_shanks(x, p).and_then(int)
+                },
+                | _ => None,
             }
-            limit *= 4;
-        }
-        None
-    })?;
-    exact(i, SET, unary("two_squares"), |a| {
-        let [n] = a else { return None };
-        if n.is_negative() {
-            return None;
-        }
-        two_squares(n).map(|(x, y)| Value::Flat(vec![x, y]))
-    })?;
-    exact(i, SET, ternary("lincong"), |a| {
-        let [x, b, m] = a else { return None };
-        if !m.is_positive() {
-            return None;
-        }
-        let (g, s, _) = egcd(&modulo(x, m)?, m);
-        let b = modulo(b, m)?;
-        if !(&b % &g).is_zero() {
-            return Some(Value::Flat(Vec::new()));
-        }
-        let step = m / &g;
-        let x0 = modulo(&(s * (b / &g)), &step)?;
-        Some(Value::Flat(vec![x0, step]))
-    })?;
-    exact(i, SET, ternary("binomial_mod"), |a| {
-        let [n, k, p] = a else { return None };
-        if !is_prime(p) || n.is_negative() || k.is_negative() {
-            return None;
-        }
-        int(lucas_binomial(n.to_u64()?, k.to_u64()?, p.to_u64()?))
-    })?;
-    exact(i, SET, unary("farey"), |a| {
-        let [n] = a else { return None };
-        let n = n.to_u64().filter(|&v| (1..=200).contains(&v))?;
-        Some(Value::Nested(farey(n)))
-    })?;
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("quadratic_residues")
+            .doc("`quadratic_residues(n)`: sorted list of nonzero quadratic residues modulo `n`."),
+        |a| {
+            let [n] = a else { return None };
+            let n = small(n).filter(|&v| v <= MAX_TABLE)?;
+            let mut seen: Vec<u64> = (1..n).map(|x| x * x % n).filter(|&r| r != 0).collect();
+            seen.sort_unstable();
+            seen.dedup();
+            Some(Value::Flat(seen.into_iter().map(BigInt::from).collect()))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        binary("mult_order")
+            .doc("`mult_order(a, n)`: multiplicative order of `a` modulo `n` (smallest `k >= 1` with `a^k = 1 (mod n)`)."),
+        |a| {
+            match a {
+                | [x, n] => mult_order(x, n).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("carmichael")
+            .doc("`carmichael(n)`: Carmichael's lambda function `lambda(n)`, the exponent of `(Z/nZ)^*`."),
+        |a| {
+            match a {
+                | [n] => carmichael(n).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("primitive_root").doc(
+            "`primitive_root(n)`: smallest primitive root modulo `n`, if `(Z/nZ)^*` is cyclic.",
+        ),
+        |a| {
+            match a {
+                | [n] => primitive_root(n).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        ternary("dlog")
+            .doc("`dlog(g, h, n)`: discrete logarithm `k` satisfying `g^k = h (mod n)`."),
+        |a| {
+            match a {
+                | [g, h, n] => dlog(g, h, n).map(Value::Int),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("mobius")
+            .doc("`mobius(n)`: Möbius function `mu(n)` (`0` if not squarefree, `(-1)^omega(n)` otherwise)."),
+        |a| {
+            let [n] = a else { return None };
+            let primes = factor_big(n)?;
+            if primes.iter().any(|&(_, e)| e > 1) {
+                return int(0);
+            }
+            int(if primes.len() % 2 == 0 {
+                1
+            } else {
+                -1
+            })
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("liouville").doc("`liouville(n)`: Liouville function `lambda(n) = (-1)^Omega(n)`."),
+        |a| {
+            let [n] = a else { return None };
+            let total: u32 = factor_big(n)?.iter().map(|&(_, e)| e).sum();
+            int(if total.is_multiple_of(2) {
+                1
+            } else {
+                -1
+            })
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("omega").doc("`omega(n)`: number of distinct prime factors of `n`."),
+        |a| {
+            let [n] = a else { return None };
+            count(factor_big(n)?.len())
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("bigomega").doc(
+            "`bigomega(n)`: number of prime factors of `n` counted with multiplicity (`Omega(n)`).",
+        ),
+        |a| {
+            let [n] = a else { return None };
+            int(factor_big(n)?
+                .iter()
+                .map(|&(_, e)| u64::from(e))
+                .sum::<u64>())
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("radical").doc(
+            "`radical(n)`: radical `rad(n)`, the product of the distinct prime factors of `n`.",
+        ),
+        |a| {
+            let [n] = a else { return None };
+            int(factor_big(n)?
+                .iter()
+                .map(|(p, _)| p.clone())
+                .product::<BigInt>())
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        binary("sigma")
+            .doc("`sigma(n, k)`: sum of `k`-th powers of positive divisors `sigma_k(n)` of `n`."),
+        |a| {
+            let [n, k] = a else { return None };
+            let k = k.to_u32().filter(|&k| k <= 64)?;
+            let mut total = BigInt::one();
+            for (p, e) in factor_big(n)? {
+                let q = p.pow(k);
+                total *= (0..=e).fold(BigInt::zero(), |acc, j| acc + q.pow(j));
+            }
+            Some(Value::Int(total))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("divisors").doc("`divisors(n)`: sorted list of all positive divisors of `n`."),
+        |a| {
+            let [n] = a else { return None };
+            divisors(n).map(Value::Flat)
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("is_squarefree")
+            .doc("`is_squarefree(n)`: `true` if `n` is divisible by no square of a prime, `false` otherwise."),
+        |a| {
+            let [n] = a else { return None };
+            Some(Value::Bool(factor_big(n)?.iter().all(|&(_, e)| e == 1)))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("is_square").doc(
+            "`is_square(n)`: `true` if `n` is a perfect square (`n = k^2`), `false` otherwise.",
+        ),
+        |a| {
+            let [n] = a else { return None };
+            if n.is_negative() {
+                return Some(Value::Bool(false));
+            }
+            let r = n.sqrt();
+            Some(Value::Bool(&r * &r == *n))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("isqrt").doc("`isqrt(n)`: integer square root `floor(sqrt(n))` for `n >= 0`."),
+        |a| {
+            match a {
+                | [n] if !n.is_negative() => int(n.sqrt()),
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        binary("iroot")
+            .doc("`iroot(n, k)`: integer `k`-th root `floor(n^(1/k))` for `n >= 0` and `k >= 1`."),
+        |a| {
+            match a {
+                | [n, k] if !n.is_negative() && k.is_positive() => {
+                    int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
+                },
+                | _ => None,
+            }
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("perfect_power")
+            .doc("`perfect_power(n)`: `list(b, e)` with maximal `e >= 1` such that `b^e = n` (for `n >= 2`)."),
+        |a| {
+            let [n] = a else { return None };
+            if *n < big(2) {
+                return None;
+            }
+            let bits = u32::try_from(n.bits()).ok()?;
+            for e in (2..=bits).rev() {
+                let r = n.nth_root(e);
+                if r.pow(e) == *n {
+                    return Some(Value::Flat(vec![r, BigInt::from(e)]));
+                }
+            }
+            Some(Value::Flat(vec![n.clone(), BigInt::one()]))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("prevprime")
+            .doc("`prevprime(n)`: largest prime strictly less than `n` (for `n > 2`)."),
+        |a| {
+            let [n] = a else { return None };
+            let mut candidate = n - 1;
+            while candidate >= big(2) {
+                if is_prime(&candidate) {
+                    return Some(Value::Int(candidate));
+                }
+                candidate -= 1;
+            }
+            None
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("prime_pi")
+            .doc("`prime_pi(n)`: prime-counting function `pi(n)`, the number of primes `<= n`."),
+        |a| {
+            let [n] = a else { return None };
+            let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_TABLE)?).ok()?;
+            count(crate::kernels::number_theory::primes_sieve(limit).len())
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("nth_prime")
+            .doc("`nth_prime(k)`: the `k`-th prime number (1-based, so `nth_prime(1) = 2`)."),
+        |a| {
+            let [k] = a else { return None };
+            let k = usize::try_from(k.to_u64().filter(|&v| v >= 1)?).ok()?;
+            let mut limit = 100;
+            while limit <= 50_000_000 {
+                let primes = crate::kernels::number_theory::primes_sieve(limit);
+                if let Some(&p) = primes.get(k - 1) {
+                    return count(p);
+                }
+                limit *= 4;
+            }
+            None
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("two_squares")
+            .doc("`two_squares(n)`: representation `list(x, y)` with `x^2 + y^2 = n` for `n >= 0`, if one exists."),
+        |a| {
+            let [n] = a else { return None };
+            if n.is_negative() {
+                return None;
+            }
+            two_squares(n).map(|(x, y)| Value::Flat(vec![x, y]))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        ternary("lincong")
+            .doc("`lincong(a, b, m)`: general solution `list(x0, step)` to `a*x = b (mod m)`, or empty list if unsolvable."),
+        |a| {
+            let [x, b, m] = a else { return None };
+            if !m.is_positive() {
+                return None;
+            }
+            let (g, s, _) = egcd(&modulo(x, m)?, m);
+            let b = modulo(b, m)?;
+            if !(&b % &g).is_zero() {
+                return Some(Value::Flat(Vec::new()));
+            }
+            let step = m / &g;
+            let x0 = modulo(&(s * (b / &g)), &step)?;
+            Some(Value::Flat(vec![x0, step]))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        ternary("binomial_mod")
+            .doc("`binomial_mod(n, k, p)`: binomial coefficient `C(n, k) mod p` for prime `p` via Lucas's theorem."),
+        |a| {
+            let [n, k, p] = a else { return None };
+            if !is_prime(p) || n.is_negative() || k.is_negative() {
+                return None;
+            }
+            int(lucas_binomial(n.to_u64()?, k.to_u64()?, p.to_u64()?))
+        },
+    )?;
+    exact(
+        i,
+        SET,
+        unary("farey")
+            .doc("`farey(n)`: Farey sequence `F_n` of reduced fractions in `[0, 1]` with denominator `<= n`, as `list(list(p, q), ...)`."),
+        |a| {
+            let [n] = a else { return None };
+            let n = n.to_u64().filter(|&v| (1..=200).contains(&v))?;
+            Some(Value::Nested(farey(n)))
+        },
+    )?;
     Ok(())
 }
 

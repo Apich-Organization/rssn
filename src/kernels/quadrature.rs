@@ -525,7 +525,15 @@ pub fn tanh_sinh_with_levels<F: Fn(f64) -> f64>(
     tol: f64,
     max_levels: usize,
 ) -> Integral {
-    if !a.is_finite() || !b.is_finite() || a > b || !tol.is_finite() || tol <= 0.0 {
+    if a > b {
+        // An oriented integral: ∫_a^b f = -∫_b^a f.
+        let reversed = tanh_sinh_with_levels(f, b, a, tol, max_levels);
+        return Integral {
+            value: -reversed.value,
+            ..reversed
+        };
+    }
+    if !a.is_finite() || !b.is_finite() || !tol.is_finite() || tol <= 0.0 {
         return Integral {
             value: f64::NAN,
             error: f64::INFINITY,

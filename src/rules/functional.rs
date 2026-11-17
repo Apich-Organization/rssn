@@ -259,19 +259,55 @@ fn dim_lp_norm(
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let plain = |name: &str, arity: Arity| OpDescriptor::new(name, arity);
-    for (name, arity) in [
-        ("op_mul", Arity::Fixed(1)),
-        ("op_d", Arity::Fixed(1)),
-        ("op_int", Arity::Fixed(2)),
-        ("op_laplacian", Arity::Fixed(1)),
-        ("op_identity", Arity::Fixed(0)),
-        ("op_add", Arity::Variadic),
-        ("op_scale", Arity::Fixed(2)),
-        ("op_compose", Arity::Variadic),
-        ("op_power", Arity::Fixed(2)),
+    let plain = |name: &str, arity: Arity, doc: &str| OpDescriptor::new(name, arity).doc(doc);
+    for (name, arity, doc) in [
+        (
+            "op_mul",
+            Arity::Fixed(1),
+            "`op_mul(g)`: linear multiplication operator `f -> g * f`.",
+        ),
+        (
+            "op_d",
+            Arity::Fixed(1),
+            "`op_d(x)`: differential operator `f -> d/dx(f)`.",
+        ),
+        (
+            "op_int",
+            Arity::Fixed(2),
+            "`op_int(a, x)`: Volterra integration operator `f -> int_a^x f(t) dt`.",
+        ),
+        (
+            "op_laplacian",
+            Arity::Fixed(1),
+            "`op_laplacian(vars)`: Laplacian differential operator `sum_i d^2 / dx_i^2` over `vars`.",
+        ),
+        (
+            "op_identity",
+            Arity::Fixed(0),
+            "`op_identity()`: identity linear operator `f -> f`.",
+        ),
+        (
+            "op_add",
+            Arity::Variadic,
+            "`op_add(A, B, ...)`: sum `A + B + ...` of linear operators.",
+        ),
+        (
+            "op_scale",
+            Arity::Fixed(2),
+            "`op_scale(c, A)`: linear operator `A` scaled by `c`.",
+        ),
+        (
+            "op_compose",
+            Arity::Variadic,
+            "`op_compose(A, B, ...)`: composition `A o B o ...` of linear operators (rightmost acts first).",
+        ),
+        (
+            "op_power",
+            Arity::Fixed(2),
+            "`op_power(A, n)`: `n`-fold composition `A^n` of linear operator `A`.",
+        ),
     ] {
-        i.op(plain(name, arity))?;
+        i.op(plain(name, arity, doc))?;
     }
     let algebra = op_algebra(i.graph()).ok_or_else(|| {
         RuleError::Invalid {
@@ -279,28 +315,75 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             reason: "needs the linear algebra and calculus rule sets",
         }
     })?;
-    let heavy = |name: &str, arity: u8| {
+    let heavy = |name: &str, arity: u8, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
-    for (name, arity, request) in [
-        ("op_apply", 2, Request::Apply),
-        ("are_orthogonal", 5, Request::Orthogonal),
-        ("gram_schmidt", 4, Request::GramSchmidt { normalise: false }),
+    for (name, arity, request, doc) in [
+        (
+            "op_apply",
+            2,
+            Request::Apply,
+            "`op_apply(A, f)`: apply linear operator `A` to function or vector `f`.",
+        ),
+        (
+            "are_orthogonal",
+            5,
+            Request::Orthogonal,
+            "`are_orthogonal(f, g, x, a, b)`: `true` if `<f, g> = int_a^b conj(f) g dx = 0`.",
+        ),
+        (
+            "gram_schmidt",
+            4,
+            Request::GramSchmidt { normalise: false },
+            "`gram_schmidt(funcs, x, a, b)`: orthogonal basis of `span(funcs)` on `[a, b]` in `L^2(x)`.",
+        ),
         (
             "gram_schmidt_orthonormal",
             4,
             Request::GramSchmidt { normalise: true },
+            "`gram_schmidt_orthonormal(funcs, x, a, b)`: orthonormal basis of `span(funcs)` on `[a, b]` in `L^2(x)`.",
         ),
-        ("fredholm_neumann", 8, Request::NeumannSeries),
-        ("fredholm_separable", 8, Request::Separable),
-        ("fredholm_solve", 7, Request::FredholmSolve),
-        ("volterra_successive", 7, Request::Successive),
-        ("volterra_to_ode", 7, Request::VolterraToOde),
-        ("volterra_solve", 6, Request::VolterraSolve),
+        (
+            "fredholm_neumann",
+            8,
+            Request::NeumannSeries,
+            "`fredholm_neumann(f, lambda, K, x, t, a, b, n)`: `n`-th Neumann series iterate for `y(x) = f(x) + lambda int_a^b K(x, t) y(t) dt`.",
+        ),
+        (
+            "fredholm_separable",
+            8,
+            Request::Separable,
+            "`fredholm_separable(f, lambda, us, vs, x, t, a, b)`: exact solution of the Fredholm equation with separable kernel `sum u_i(x) v_i(t)`.",
+        ),
+        (
+            "fredholm_solve",
+            7,
+            Request::FredholmSolve,
+            "`fredholm_solve(f, lambda, K, x, t, a, b)`: exact solution of the Fredholm integral equation `y(x) = f(x) + lambda int_a^b K(x, t) y(t) dt`.",
+        ),
+        (
+            "volterra_successive",
+            7,
+            Request::Successive,
+            "`volterra_successive(f, lambda, K, x, t, a, n)`: `n`-th Picard iterate for `y(x) = f(x) + lambda int_a^x K(x, t) y(t) dt`.",
+        ),
+        (
+            "volterra_to_ode",
+            7,
+            Request::VolterraToOde,
+            "`volterra_to_ode(f, lambda, K, x, t, a, y)`: equivalent differential equation for the Volterra integral equation.",
+        ),
+        (
+            "volterra_solve",
+            6,
+            Request::VolterraSolve,
+            "`volterra_solve(f, lambda, K, x, t, a)`: exact solution of the Volterra integral equation `y(x) = f(x) + lambda int_a^x K(x, t) y(t) dt`.",
+        ),
     ] {
-        let op = i.op(heavy(name, arity))?;
+        let op = i.op(heavy(name, arity, doc))?;
         i.kernel(
             &format!("functional/{name}"),
             Tier::Reduce,
@@ -314,6 +397,35 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "project_onto(f, g, x, a, b) := inner_product(g, f, x, a, b) / inner_product(g, g, x, a, b) * g",
         "airfoil_equation(f, x, t) := -1/(pi*(1 - x^2)^(1/2)) * defint((1 - t^2)^(1/2) * f/(t - x), t, -1, 1) + C/(1 - x^2)^(1/2)",
     ])?;
+    for (name, arity, doc) in [
+        (
+            "inner_product",
+            5,
+            "`inner_product(f, g, x, a, b)`: inner product `<f, g> = int_a^b conj(f) g dx`.",
+        ),
+        (
+            "l2_norm",
+            4,
+            "`l2_norm(f, x, a, b)`: `L^2` norm `sqrt(int_a^b |f|^2 dx)`.",
+        ),
+        (
+            "lp_norm",
+            5,
+            "`lp_norm(f, p, x, a, b)`: `L^p` norm `(int_a^b |f|^p dx)^(1/p)`.",
+        ),
+        (
+            "project_onto",
+            5,
+            "`project_onto(f, g, x, a, b)`: orthogonal projection of `f` onto `g` in `L^2([a, b])`.",
+        ),
+        (
+            "airfoil_equation",
+            3,
+            "`airfoil_equation(f, x, t)`: inversion of the finite Hilbert transform on `[-1, 1]`.",
+        ),
+    ] {
+        i.op(heavy(name, arity, doc))?;
+    }
     install_ext(i)?;
     attach_dim_rules(
         i,
@@ -1235,16 +1347,42 @@ impl Kernel for Extension {
 }
 
 fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, kind) in [
-        ("gram_matrix", 4, Kind::GramMatrix),
-        ("orthogonal_coefficients", 5, Kind::Coefficients),
-        ("best_approximation", 5, Kind::BestApproximation),
-        ("fredholm_eigenvalues", 6, Kind::FredholmEigenvalues),
-        ("operator_adjoint", 1, Kind::Adjoint),
+    for (name, arity, kind, doc) in [
+        (
+            "gram_matrix",
+            4,
+            Kind::GramMatrix,
+            "`gram_matrix(funcs, x, a, b)`: Gram matrix of `L^2([a, b])` inner products `<f_i, f_j>`.",
+        ),
+        (
+            "orthogonal_coefficients",
+            5,
+            Kind::Coefficients,
+            "`orthogonal_coefficients(f, basis, x, a, b)`: Fourier coefficients `<e_i, f> / <e_i, e_i>` of `f` in orthogonal `basis`.",
+        ),
+        (
+            "best_approximation",
+            5,
+            Kind::BestApproximation,
+            "`best_approximation(f, basis, x, a, b)`: `L^2([a, b])` orthogonal projection of `f` onto `span(basis)`.",
+        ),
+        (
+            "fredholm_eigenvalues",
+            6,
+            Kind::FredholmEigenvalues,
+            "`fredholm_eigenvalues(us, vs, x, t, a, b)`: eigenvalues of the separable Fredholm operator with kernel `sum u_i(x) v_i(t)` on `[a, b]`.",
+        ),
+        (
+            "operator_adjoint",
+            1,
+            Kind::Adjoint,
+            "`operator_adjoint(A)`: formal `L^2` adjoint `A*` of differential/multiplication operator `A`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("functional/{name}"),
             Tier::Reduce,
@@ -1255,7 +1393,30 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "l2_distance(f, g, x, a, b) := l2_norm(f - g, x, a, b)",
         "sobolev_h1(f, x, a, b) := (l2_norm(f, x, a, b)^2 + l2_norm(diff(f, x), x, a, b)^2)^(1/2)",
         "op_commutator(A, B) := op_add(op_compose(A, B), op_scale(-1, op_compose(B, A)))",
-    ])
+    ])?;
+    for (name, arity, doc) in [
+        (
+            "l2_distance",
+            5,
+            "`l2_distance(f, g, x, a, b)`: `L^2` distance `||f - g||_2` on `[a, b]`.",
+        ),
+        (
+            "sobolev_h1",
+            4,
+            "`sobolev_h1(f, x, a, b)`: Sobolev `H^1` norm `sqrt(||f||_2^2 + ||f'||_2^2)` on `[a, b]`.",
+        ),
+        (
+            "op_commutator",
+            2,
+            "`op_commutator(A, B)`: commutator `[A, B] = A B - B A` of operators `A` and `B`.",
+        ),
+    ] {
+        i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc(doc))?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -724,3 +724,4 @@ where
 
 /// Temporal adaptivity for finite elements, finite volumes, DG and spectral evolution.
 pub mod adaptive;
+pub use adaptive::solve_pde;

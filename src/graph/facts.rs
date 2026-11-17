@@ -13,10 +13,10 @@
 //! enclosure of one of their members.
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::ops::BitOr;
 
 use super::id::ClassId;
+use super::id::FastMap;
 use super::id::NodeId;
 use super::id::SymbolId;
 use super::number::Number;
@@ -140,8 +140,24 @@ impl Graph {
         &self,
         node: NodeId,
     ) -> Facts {
-        let mut memo = HashMap::new();
-        self.class_facts(self.find(node), &mut memo)
+        let class = self.find(node);
+        let revision = self.revision();
+        if let Ok(table) = self.facts_cache.table.lock()
+            && table.0 == revision
+            && let Some(&known) = table.1.get(&class.raw())
+        {
+            return known;
+        }
+        let mut memo = FastMap::default();
+        let facts = self.class_facts(class, &mut memo);
+        if let Ok(mut table) = self.facts_cache.table.lock() {
+            if table.0 != revision {
+                table.0 = revision;
+                table.1.clear();
+            }
+            table.1.insert(class.raw(), facts);
+        }
+        facts
     }
 
     /// Facts of a class, computed once per query. A class that is reached
@@ -150,7 +166,7 @@ impl Graph {
     fn class_facts(
         &self,
         class: ClassId,
-        memo: &mut HashMap<ClassId, Facts>,
+        memo: &mut FastMap<ClassId, Facts>,
     ) -> Facts {
         if let Some(&known) = memo.get(&class) {
             return known;
@@ -164,7 +180,7 @@ impl Graph {
     fn derive_facts(
         &self,
         class: ClassId,
-        memo: &mut HashMap<ClassId, Facts>,
+        memo: &mut FastMap<ClassId, Facts>,
     ) -> Facts {
         if let Some(n) = self.class_number(class) {
             let mut facts = Facts::of_f64(n.to_f64());
@@ -232,7 +248,7 @@ impl Graph {
     fn node_facts(
         &self,
         node: NodeId,
-        memo: &mut HashMap<ClassId, Facts>,
+        memo: &mut FastMap<ClassId, Facts>,
     ) -> Facts {
         if let Some(symbol) = self.as_symbol(node) {
             return self.assumption(symbol);

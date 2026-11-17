@@ -39,22 +39,63 @@ fn root(
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity) in [
-        ("log_branch", 2),
-        ("sqrt_branch", 2),
-        ("root_branch", 3),
-        ("power_branch", 3),
-        ("asin_branch", 2),
-        ("acos_branch", 3),
-        ("atan_branch", 2),
-        ("asinh_branch", 2),
-        ("acosh_branch", 2),
-        ("atanh_branch", 2),
+    for (name, arity, doc) in [
+        (
+            "log_branch",
+            2,
+            "`log_branch(z, k)`: branch `k` of the complex logarithm `ln|z| + I * (arg(z) + 2*pi*k)`.",
+        ),
+        (
+            "sqrt_branch",
+            2,
+            "`sqrt_branch(z, k)`: branch `k` of the square root `|z|^(1/2) * exp(I * (arg(z) + 2*pi*k) / 2)`.",
+        ),
+        (
+            "root_branch",
+            3,
+            "`root_branch(z, n, k)`: branch `k` of the `n`-th root `|z|^(1/n) * exp(I * (arg(z) + 2*pi*k) / n)`.",
+        ),
+        (
+            "power_branch",
+            3,
+            "`power_branch(z, w, k)`: branch `k` of the complex power `exp(w * log_branch(z, k))`.",
+        ),
+        (
+            "asin_branch",
+            2,
+            "`asin_branch(z, k)`: branch `k` of the inverse sine `k*pi + (-1)^k * asin(z)`.",
+        ),
+        (
+            "acos_branch",
+            3,
+            "`acos_branch(z, k, s)`: branch `(k, s)` of the inverse cosine `2*k*pi + s * acos(z)` with sign `s` in `{+1, -1}`.",
+        ),
+        (
+            "atan_branch",
+            2,
+            "`atan_branch(z, k)`: branch `k` of the inverse tangent `k*pi + atan(z)`.",
+        ),
+        (
+            "asinh_branch",
+            2,
+            "`asinh_branch(z, k)`: branch `k` of the inverse hyperbolic sine.",
+        ),
+        (
+            "acosh_branch",
+            2,
+            "`acosh_branch(z, k)`: branch `k` of the inverse hyperbolic cosine.",
+        ),
+        (
+            "atanh_branch",
+            2,
+            "`atanh_branch(z, k)`: branch `k` of the inverse hyperbolic tangent.",
+        ),
     ] {
         // Requests: the definitions below must win extraction.
         i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
     }
     // Independent numeric definitions, so that the rewrites below are
     // checked against something other than themselves.

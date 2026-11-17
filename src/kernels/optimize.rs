@@ -423,9 +423,21 @@ impl EquationOptimizer {
         G: ArgminL2Norm<F>,
         F: ArgminFloat + ArgminL2Norm<F>,
     {
-        let linesearch: MThLineSearch = MoreThuenteLineSearch::new();
+        // Nonlinear CG only produces descent directions when the line search
+        // satisfies the strong Wolfe conditions with c2 < 1/2; the default
+        // c2 = 0.9 (meant for quasi-Newton methods) let Polak-Ribiere+ step
+        // into an ascent direction on curved valleys such as Rosenbrock's.
+        // Powell's orthogonality restart resets to steepest descent when
+        // successive gradients stop being nearly orthogonal.
+        let constant = |value: f64| {
+            <F as num_traits::FromPrimitive>::from_f64(value)
+                .ok_or_else(|| Error::msg("conjugate gradient: constant not representable"))
+        };
+        let linesearch: MThLineSearch =
+            MoreThuenteLineSearch::new().with_c(constant(1e-4)?, constant(0.1)?)?;
 
-        let solver = NonlinearConjugateGradient::new(linesearch, PolakRibierePlus::new());
+        let solver = NonlinearConjugateGradient::new(linesearch, PolakRibierePlus::new())
+            .restart_orthogonality(constant(0.1)?);
 
         let res = Executor::new(cost_function, solver)
             .configure(|state| {

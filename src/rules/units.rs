@@ -583,7 +583,8 @@ impl Kernel for Request1 {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let quantity = i.op(OpDescriptor::new("quantity", Arity::Fixed(2)))?;
+    let quantity = i.op(OpDescriptor::new("quantity", Arity::Fixed(2))
+        .doc("`quantity(value, unit)`: constructs a dimensional quantity pairing numeric or symbolic `value` with `unit`."))?;
     i.graph()
         .ops_mut()
         .set_attr(quantity, crate::graph::dim::UnitResolver(resolve_unit_node));
@@ -591,15 +592,36 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         quantity,
         crate::graph::dim::UnitTextResolver(resolve_unit_text),
     );
-    for (name, arity, request) in [
-        ("unify_expression", 1, Request::Unify),
-        ("convert", 2, Request::Convert),
-        ("dimension", 1, Request::Dimension),
-        ("simplify_units", 1, Request::Simplify),
+    for (name, arity, request, doc) in [
+        (
+            "unify_expression",
+            1,
+            Request::Unify,
+            "`unify_expression(expr)`: evaluates and simplifies a dimensional expression `expr` into a unified `quantity(value, unit)`.",
+        ),
+        (
+            "convert",
+            2,
+            Request::Convert,
+            "`convert(qty, target_unit)`: converts quantity `qty` to compatible `target_unit`.",
+        ),
+        (
+            "dimension",
+            1,
+            Request::Dimension,
+            "`dimension(qty)`: returns the physical dimension of quantity `qty`.",
+        ),
+        (
+            "simplify_units",
+            1,
+            Request::Simplify,
+            "`simplify_units(expr)`: reduces a dimensional expression `expr` to coherent SI base units.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("units/{name}"),
             Tier::Reduce,

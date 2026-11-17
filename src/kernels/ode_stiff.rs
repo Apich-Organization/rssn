@@ -1016,6 +1016,137 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
     Ok(y)
 }
 
+/// Constant-step 3-stage Radau IIA (order 5) returning a full [`OdeSolution`]
+/// with collocation dense output and event detection.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], or [`OdeError::NonFinite`].
+pub fn radau5_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    n_steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
+    let n = y0.len();
+    if n == 0
+        || n_steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || y0.iter().any(|v| !v.is_finite())
+        || crate::kernels::exact_eq(t0, t1)
+    {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    validate_problem(t0, t1, y0, &default_opts, events)?;
+    let f = checked_rhs(f);
+    let tab = RadauTab::new(3).ok_or(OdeError::SolveFailed)?;
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut f0 = vec![0.0; n];
+    let mut nfev = 0usize;
+    let scale = vec![1.0; n];
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev = initial_events(events, t0, y0)?;
+    for index in 1..=n_steps {
+        crate::cancellation::checkpoint()?;
+        let (next, h) = super::ode_contract::fixed_step(t0, t1, index, n_steps, t)?;
+        f(t, &y, &mut f0);
+        nfev = nfev.saturating_add(1);
+        if f0.iter().any(|value| !value.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let jac = Jac::Dense(fd_jacobian_dense(&f, t, &y, &f0));
+        nfev = nfev.saturating_add(n);
+        let setup = SolverSetup {
+            n,
+            kind: SolverKind::Dense,
+            band: (0, 0),
+        };
+        let (lu, _) = radau_factors(&tab, None, &jac, h, setup).ok_or(OdeError::SolveFailed)?;
+        let mut z0 = vec![0.0; 3 * n];
+        for (i, &ci) in tab.c.iter().enumerate() {
+            for (k, &f0k) in f0.iter().enumerate() {
+                if let Some(slot) = z0.get_mut(i.saturating_mul(n).saturating_add(k)) {
+                    *slot = ci * h * f0k;
+                }
+            }
+        }
+        let (z, _, _) = radau_newton(
+            &f,
+            t,
+            &y,
+            h,
+            &NewtonCtx {
+                tab: &tab,
+                mass: None,
+                lu: &lu,
+                scale: &scale,
+                tol: 1e-13,
+                maxit: 60,
+            },
+            z0,
+            &mut nfev,
+        )
+        .ok_or(OdeError::SolveFailed)?;
+        let mut ynew = y.clone();
+        for (q, yq) in ynew.iter_mut().enumerate() {
+            let dz = z
+                .get(2usize.saturating_mul(n).saturating_add(q))
+                .copied()
+                .unwrap_or(0.0);
+            *yq += dz;
+        }
+        if ynew.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let mut nodes = vec![0.0];
+        nodes.extend_from_slice(&tab.c);
+        let mut vals = vec![y.clone()];
+        for i in 0usize..3 {
+            let stage_val: Vec<f64> = (0..n)
+                .map(|q| {
+                    y.get(q).copied().unwrap_or(0.0)
+                        + z.get(i.saturating_mul(n).saturating_add(q))
+                            .copied()
+                            .unwrap_or(0.0)
+                })
+                .collect();
+            vals.push(stage_val);
+        }
+        let step_dense = DenseStep {
+            t0: t,
+            h,
+            y0: y.clone(),
+            kind: DenseKind::Lagrange { nodes, vals },
+        };
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step_dense,
+            &StepWindow {
+                t_old: t,
+                tn: next,
+                ynew: &ynew,
+                dir,
+            },
+        )? {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        sol.t.push(next);
+        sol.y.push(ynew.clone());
+        t = next;
+        y = ynew;
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
 // ------------------------------------------------------------------ BDF
 
 const BDF_MAX_ORDER: usize = 5;
@@ -1349,6 +1480,185 @@ pub fn bdf_ex<F: Fn(f64, &[f64], &mut [f64])>(
         &FdMode::serial(),
         None,
     )
+}
+
+/// Constant-step variable-order BDF (orders 1 to 5), returning the final state.
+///
+/// Uses BDF1 on step 1, BDF2 on step 2, ..., up to BDF5, with simplified Newton
+/// iteration and a finite-difference Jacobian.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], or [`OdeError::NonFinite`].
+pub fn bdf_fixed<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    n_steps: usize,
+) -> Result<Vec<f64>, OdeError> {
+    let sol = bdf_fixed_events(f, t0, t1, y0, n_steps, &[])?;
+    Ok(sol.y.last().cloned().unwrap_or_else(|| y0.to_vec()))
+}
+
+/// Constant-step variable-order BDF (orders 1 to 5) returning a full
+/// [`OdeSolution`] with cubic Hermite dense output and event detection.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], or [`OdeError::NonFinite`].
+pub fn bdf_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    n_steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
+    let n = y0.len();
+    if n == 0
+        || n_steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || y0.iter().any(|v| !v.is_finite())
+        || crate::kernels::exact_eq(t0, t1)
+    {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    validate_problem(t0, t1, y0, &default_opts, events)?;
+    let f = checked_rhs(f);
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    const BDF_BETA: [f64; 5] = [1.0, 2.0 / 3.0, 6.0 / 11.0, 12.0 / 25.0, 60.0 / 137.0];
+    const BDF_HIST: [[f64; 5]; 5] = [
+        [1.0, 0.0, 0.0, 0.0, 0.0],
+        [4.0 / 3.0, -1.0 / 3.0, 0.0, 0.0, 0.0],
+        [18.0 / 11.0, -9.0 / 11.0, 2.0 / 11.0, 0.0, 0.0],
+        [48.0 / 25.0, -36.0 / 25.0, 16.0 / 25.0, -3.0 / 25.0, 0.0],
+        [
+            300.0 / 137.0,
+            -300.0 / 137.0,
+            200.0 / 137.0,
+            -75.0 / 137.0,
+            12.0 / 137.0,
+        ],
+    ];
+    let mut t = t0;
+    let mut history: Vec<Vec<f64>> = vec![y0.to_vec()];
+    let mut f_prev = vec![0.0; n];
+    f(t0, y0, &mut f_prev);
+    if f_prev.iter().any(|v| !v.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut nfev = 1usize;
+    let mut sol = OdeSolution::start(t0, y0);
+    let mut gprev = initial_events(events, t0, y0)?;
+    let mut f_cur = vec![0.0; n];
+    for step_idx in 1..=n_steps {
+        crate::cancellation::checkpoint()?;
+        let (next, h) = super::ode_contract::fixed_step(t0, t1, step_idx, n_steps, t)?;
+        let order = step_idx.min(5);
+        let beta = BDF_BETA
+            .get(order.saturating_sub(1))
+            .copied()
+            .unwrap_or(1.0);
+        let coeffs = BDF_HIST
+            .get(order.saturating_sub(1))
+            .ok_or(OdeError::Invalid)?;
+        let mut psi = vec![0.0; n];
+        for (j, &c_j) in coeffs.iter().take(order).enumerate() {
+            let Some(hist_idx) = history.len().checked_sub(j.saturating_add(1)) else {
+                return Err(OdeError::Invalid);
+            };
+            let Some(y_hist) = history.get(hist_idx) else {
+                return Err(OdeError::Invalid);
+            };
+            for (psi_i, &yh_i) in psi.iter_mut().zip(y_hist) {
+                *psi_i += c_j * yh_i;
+            }
+        }
+        let Some(y_prev) = history.last() else {
+            return Err(OdeError::Invalid);
+        };
+        let mut y_cand = y_prev.clone();
+        let jac = fd_jacobian_dense(&f, t, y_prev, &f_prev);
+        nfev = nfev.saturating_add(n);
+        let mut w = Mat::identity(n);
+        for i in 0..n {
+            for j in 0..n {
+                w.set(i, j, w.at(i, j) - h * beta * jac.at(i, j));
+            }
+        }
+        let lu = dense::lu_factor(&w).map_err(|_| OdeError::SolveFailed)?;
+        let mut converged = false;
+        for _ in 0..30 {
+            f(next, &y_cand, &mut f_cur);
+            nfev = nfev.saturating_add(1);
+            if f_cur.iter().any(|v| !v.is_finite()) {
+                return Err(OdeError::NonFinite);
+            }
+            let res: Vec<f64> = (0..n)
+                .map(|i| {
+                    let yc = y_cand.get(i).copied().unwrap_or(0.0);
+                    let ps = psi.get(i).copied().unwrap_or(0.0);
+                    let fc = f_cur.get(i).copied().unwrap_or(0.0);
+                    -(yc - ps - h * beta * fc)
+                })
+                .collect();
+            let dy = lu.solve(&res);
+            for (yc, &d) in y_cand.iter_mut().zip(&dy) {
+                *yc += d;
+            }
+            let dn = dy.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
+            let yn = y_cand.iter().map(|v| v.abs()).fold(1.0_f64, f64::max);
+            if dn <= 1e-12 * yn {
+                converged = true;
+                break;
+            }
+        }
+        if !converged || y_cand.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::SolveFailed);
+        }
+        f(next, &y_cand, &mut f_cur);
+        nfev = nfev.saturating_add(1);
+        if f_cur.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let step_dense = DenseStep {
+            t0: t,
+            h,
+            y0: y_prev.clone(),
+            kind: DenseKind::Hermite {
+                y1: y_cand.clone(),
+                f0: f_prev.clone(),
+                f1: f_cur.clone(),
+            },
+        };
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step_dense,
+            &StepWindow {
+                t_old: t,
+                tn: next,
+                ynew: &y_cand,
+                dir,
+            },
+        )? {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        sol.t.push(next);
+        sol.y.push(y_cand.clone());
+        sol.orders.push(order);
+        history.push(y_cand);
+        if history.len() > 6 {
+            history.remove(0);
+        }
+        t = next;
+        f_prev.copy_from_slice(&f_cur);
+    }
+    sol.nfev = nfev;
+    Ok(sol)
 }
 
 /// Serial variable-order driver for scoped host callbacks with a first-error slot.

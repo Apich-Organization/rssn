@@ -80,7 +80,7 @@ use num_complex::Complex64;
 
 use super::V;
 use super::apply;
-use super::def;
+use super::def_doc;
 use super::group_theory::Tab;
 use super::groups::build_group;
 use super::items;
@@ -2157,130 +2157,210 @@ fn def_molecule(
     i: &mut Installer<'_>,
     name: &str,
     run: super::Run,
+    doc: &str,
 ) -> Result<(), RuleError> {
-    def(i, name, Arity::Variadic, run)?;
+    def_doc(i, name, Arity::Variadic, run, doc)?;
     Ok(())
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "point_group", Arity::Fixed(1), point_group)?;
-    def(i, "point_group_order", Arity::Fixed(1), point_group_order)?;
-    def(
+    def_doc(
+        i,
+        "point_group",
+        Arity::Fixed(1),
+        point_group,
+        "Constructs the point group named by Schoenflies symbol `name` (e.g. `C2v`, `D4h`, `Td`, `Oh`, `Ih`) as a `group` term of 3x3 orthogonal matrices.",
+    )?;
+    def_doc(
+        i,
+        "point_group_order",
+        Arity::Fixed(1),
+        point_group_order,
+        "Returns the order (number of symmetry operations) of point group `name`.",
+    )?;
+    def_doc(
         i,
         "point_group_is_crystallographic",
         Arity::Fixed(1),
         point_group_is_crystallographic,
+        "Returns `true` if point group `name` is crystallographic (all element orders in `{1, 2, 3, 4, 6}`).",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_classes",
         Arity::Fixed(1),
         point_group_classes,
+        "Returns the conjugacy class labels (e.g. `E`, `8C3`, `3C2`) of point group `name`.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_class_sizes",
         Arity::Fixed(1),
         point_group_class_sizes,
+        "Returns the sizes of the conjugacy classes of point group `name`.",
     )?;
-    def(i, "point_group_irreps", Arity::Fixed(1), point_group_irreps)?;
-    def(
+    def_doc(
+        i,
+        "point_group_irreps",
+        Arity::Fixed(1),
+        point_group_irreps,
+        "Returns the Mulliken labels of the irreducible representations of point group `name`.",
+    )?;
+    def_doc(
         i,
         "point_group_irrep_dimensions",
         Arity::Fixed(1),
         point_group_irrep_dimensions,
+        "Returns the dimensions of the irreducible representations of point group `name` (`2` for combined complex-conjugate `E` pairs).",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_character_table",
         Arity::Fixed(1),
         point_group_character_table,
+        "Returns the exact character table of point group `name` as rows of class values.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_decompose",
         Arity::Fixed(2),
         point_group_decompose,
+        "Decomposes class function `chi` of point group `name` into a symbolic linear combination of Mulliken irreps (e.g. `2*A1 + B2`).",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_multiplicities",
         Arity::Fixed(2),
         point_group_multiplicities,
+        "Returns the integer multiplicities of class function `chi` aligned with `point_group_irreps(name)`.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_vector_character",
         Arity::Fixed(1),
         point_group_vector_character,
+        "Returns the character of the polar vector `(x, y, z)` representation in point group `name`.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_rotation_character",
         Arity::Fixed(1),
         point_group_rotation_character,
+        "Returns the character of the axial rotation `(Rx, Ry, Rz)` representation in point group `name`.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_ir_active",
         Arity::Fixed(1),
         point_group_ir_active,
+        "Returns the Mulliken irreps of point group `name` that are infrared-active (transforming as `x`, `y`, or `z`).",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_raman_active",
         Arity::Fixed(1),
         point_group_raman_active,
+        "Returns the Mulliken irreps of point group `name` that are Raman-active (transforming as quadratic forms `x^2`, `xy`, etc.).",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_function_irreps",
         Arity::Fixed(1),
         point_group_function_irreps,
+        "Returns for each of `x, y, z, x^2, y^2, z^2, x*y, x*z, y*z` the irreps of point group `name` in which it transforms.",
     )?;
-    def(i, "point_group_hm", Arity::Fixed(1), point_group_hm)?;
-    def(
+    def_doc(
+        i,
+        "point_group_hm",
+        Arity::Fixed(1),
+        point_group_hm,
+        "Converts a crystallographic Schoenflies point group symbol `name` to its Hermann-Mauguin symbol.",
+    )?;
+    def_doc(
         i,
         "point_group_from_hm",
         Arity::Fixed(1),
         point_group_from_hm,
+        "Converts a Hermann-Mauguin crystallographic point group symbol `hm` to its Schoenflies symbol.",
     )?;
-    def(
+    def_doc(
         i,
         "point_group_crystal_system",
         Arity::Fixed(1),
         point_group_crystal_system,
+        "Returns the crystal system of crystallographic point group `name`.",
     )?;
-    def(
+    def_doc(
         i,
         "crystallographic_point_groups",
         Arity::Fixed(0),
         crystallographic_point_groups,
+        "Returns the list of all 32 crystallographic point groups in Schoenflies notation.",
     )?;
-    def(i, "crystal_systems", Arity::Fixed(0), crystal_systems)?;
-    def(i, "bravais_lattices", Arity::Fixed(0), bravais_lattices)?;
-    def(
+    def_doc(
+        i,
+        "crystal_systems",
+        Arity::Fixed(0),
+        crystal_systems,
+        "Returns the 7 crystal systems as `list(system, holohedry, point_groups, lattices)`.",
+    )?;
+    def_doc(
+        i,
+        "bravais_lattices",
+        Arity::Fixed(0),
+        bravais_lattices,
+        "Returns the 14 Bravais lattices as `list(pearson_symbol, system, centering, holohedry)`.",
+    )?;
+    def_doc(
         i,
         "crystallographic_restriction",
         Arity::Variadic,
         crystallographic_restriction,
+        "Tests whether an `n`-fold rotation is compatible with a lattice in 3D (or optional dimension `d`).",
     )?;
-    def(
+    def_doc(
         i,
         "crystallographic_min_dimension",
         Arity::Fixed(1),
         crystallographic_min_dimension,
+        "Returns the minimum lattice dimension supporting an `n`-fold crystallographic symmetry.",
     )?;
     def_molecule(
         i,
         "molecule_symmetry_operations",
         molecule_symmetry_operations,
+        "Finds the 3x3 symmetry operation matrices of molecule `atoms` (optional trailing tolerance, default `1e-3`).",
     )?;
-    def_molecule(i, "molecule_point_group", molecule_point_group)?;
-    def_molecule(i, "molecule_decomposition", molecule_decomposition)?;
-    def_molecule(i, "molecule_vibrations", molecule_vibrations)?;
-    def_molecule(i, "molecule_vibrations_table", molecule_vibrations_table)?;
-    def_molecule(i, "molecule_spectroscopy", molecule_spectroscopy)?;
+    def_molecule(
+        i,
+        "molecule_point_group",
+        molecule_point_group,
+        "Identifies the Schoenflies point group symbol of molecule `atoms` (including `Cinfv` and `Dinfh` for linear molecules).",
+    )?;
+    def_molecule(
+        i,
+        "molecule_decomposition",
+        molecule_decomposition,
+        "Decomposes the 3N nuclear degrees of freedom of molecule `atoms` into `list(irrep, n_3N, n_trans, n_rot, n_vib)` rows.",
+    )?;
+    def_molecule(
+        i,
+        "molecule_vibrations",
+        molecule_vibrations,
+        "Computes the vibrational representation `Gamma_vib = Gamma_3N - Gamma_trans - Gamma_rot` of molecule `atoms` as a sum of irreps.",
+    )?;
+    def_molecule(
+        i,
+        "molecule_vibrations_table",
+        molecule_vibrations_table,
+        "Returns the vibrational modes of molecule `atoms` as `list(list(irrep, multiplicity), ...)`.",
+    )?;
+    def_molecule(
+        i,
+        "molecule_spectroscopy",
+        molecule_spectroscopy,
+        "Returns vibrational spectroscopy activity of molecule `atoms` as `list(irrep, multiplicity, ir_active, raman_active)`.",
+    )?;
     Ok(())
 }
 

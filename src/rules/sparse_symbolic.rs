@@ -684,7 +684,9 @@ impl Kernel for Sparse {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // The constructor is data, not a request: it is never "unreduced".
-    let ctor = i.op(OpDescriptor::new("sparse", Arity::Fixed(3)).cost(4))?;
+    let ctor = i.op(OpDescriptor::new("sparse", Arity::Fixed(3))
+        .cost(4)
+        .doc("`sparse(rows, cols, entries)`: canonical sparse matrix constructor with dimensions `rows x cols` and sorted nonzero `[row, col, value]` triples."))?;
     i.dim(ctor, DimRule::Container);
     i.kernel(
         "sparse_symbolic/normalize",
@@ -695,37 +697,153 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             kind: Kind::Normalize,
         },
     );
-    let table: [(&str, u8, Kind, DimRule); 20] = [
-        ("sp_from_dense", 1, Kind::FromDense, DimRule::Container),
-        ("sp_to_dense", 1, Kind::ToDense, DimRule::Container),
-        ("sp_identity", 1, Kind::Identity, DimRule::Container),
-        ("sp_diag", 1, Kind::Diag, DimRule::Container),
-        ("sp_dims", 1, Kind::Dims, DimRule::NonMetric),
-        ("sp_nnz", 1, Kind::Nnz, DimRule::NonMetric),
-        ("sp_transpose", 1, Kind::Transpose, DimRule::Container),
-        ("sp_add", 2, Kind::Add, DimRule::Container),
-        ("sp_scale", 2, Kind::Scale, DimRule::Container),
-        ("sp_matmul", 2, Kind::Matmul, DimRule::Container),
-        ("sp_matvec", 2, Kind::Matvec, DimRule::Container),
-        ("sp_rank", 1, Kind::Rank, DimRule::NonMetric),
-        ("sp_det", 1, Kind::Det, DimRule::Container),
-        ("sp_solve", 2, Kind::Solve, DimRule::Container),
+    let table: [(&str, u8, Kind, DimRule, &str); 20] = [
+        (
+            "sp_from_dense",
+            1,
+            Kind::FromDense,
+            DimRule::Container,
+            "`sp_from_dense(mat)`: converts a dense matrix (list of row lists) into a canonical `sparse` matrix.",
+        ),
+        (
+            "sp_to_dense",
+            1,
+            Kind::ToDense,
+            DimRule::Container,
+            "`sp_to_dense(sp)`: converts a `sparse` matrix into a dense list of row lists.",
+        ),
+        (
+            "sp_identity",
+            1,
+            Kind::Identity,
+            DimRule::Container,
+            "`sp_identity(n)`: constructs the `n x n` sparse identity matrix.",
+        ),
+        (
+            "sp_diag",
+            1,
+            Kind::Diag,
+            DimRule::Container,
+            "`sp_diag(entries)`: constructs a sparse diagonal matrix from a list of diagonal entries.",
+        ),
+        (
+            "sp_dims",
+            1,
+            Kind::Dims,
+            DimRule::NonMetric,
+            "`sp_dims(sp)`: returns `[rows, cols]` for a `sparse` matrix.",
+        ),
+        (
+            "sp_nnz",
+            1,
+            Kind::Nnz,
+            DimRule::NonMetric,
+            "`sp_nnz(sp)`: returns the number of nonzero entries in a `sparse` matrix.",
+        ),
+        (
+            "sp_transpose",
+            1,
+            Kind::Transpose,
+            DimRule::Container,
+            "`sp_transpose(sp)`: returns the transpose of a `sparse` matrix.",
+        ),
+        (
+            "sp_add",
+            2,
+            Kind::Add,
+            DimRule::Container,
+            "`sp_add(A, B)`: returns the sum `A + B` of two `sparse` matrices.",
+        ),
+        (
+            "sp_scale",
+            2,
+            Kind::Scale,
+            DimRule::Container,
+            "`sp_scale(scalar, A)`: scales a `sparse` matrix `A` by `scalar`.",
+        ),
+        (
+            "sp_matmul",
+            2,
+            Kind::Matmul,
+            DimRule::Container,
+            "`sp_matmul(A, B)`: returns the matrix product `A * B` of two `sparse` matrices.",
+        ),
+        (
+            "sp_matvec",
+            2,
+            Kind::Matvec,
+            DimRule::Container,
+            "`sp_matvec(A, v)`: multiplies a `sparse` matrix `A` by a dense vector `v`.",
+        ),
+        (
+            "sp_rank",
+            1,
+            Kind::Rank,
+            DimRule::NonMetric,
+            "`sp_rank(A)`: computes the exact rank of a `sparse` matrix `A`.",
+        ),
+        (
+            "sp_det",
+            1,
+            Kind::Det,
+            DimRule::Container,
+            "`sp_det(A)`: computes the exact determinant of a square `sparse` matrix `A`.",
+        ),
+        (
+            "sp_solve",
+            2,
+            Kind::Solve,
+            DimRule::Container,
+            "`sp_solve(A, b)`: solves the square linear system `A * x = b` for a `sparse` matrix `A`.",
+        ),
         (
             "sp_solve_general",
             2,
             Kind::SolveGeneral,
             DimRule::Container,
+            "`sp_solve_general(A, b)`: solves a general (possibly rectangular or rank-deficient) sparse linear system `A * x = b`.",
         ),
-        ("sp_nullspace", 1, Kind::Nullspace, DimRule::Container),
-        ("sp_rank_mod", 2, Kind::RankMod, DimRule::NonMetric),
-        ("sp_det_mod", 2, Kind::DetMod, DimRule::NonMetric),
-        ("sp_solve_mod", 3, Kind::SolveMod, DimRule::NonMetric),
-        ("sp_minpoly_mod", 2, Kind::MinpolyMod, DimRule::NonMetric),
+        (
+            "sp_nullspace",
+            1,
+            Kind::Nullspace,
+            DimRule::Container,
+            "`sp_nullspace(A)`: computes a basis for the right nullspace `{x : A * x = 0}` of a `sparse` matrix `A`.",
+        ),
+        (
+            "sp_rank_mod",
+            2,
+            Kind::RankMod,
+            DimRule::NonMetric,
+            "`sp_rank_mod(A, p)`: computes the rank of integer `sparse` matrix `A` modulo prime `p`.",
+        ),
+        (
+            "sp_det_mod",
+            2,
+            Kind::DetMod,
+            DimRule::NonMetric,
+            "`sp_det_mod(A, p)`: computes the determinant of integer `sparse` matrix `A` modulo prime `p`.",
+        ),
+        (
+            "sp_solve_mod",
+            3,
+            Kind::SolveMod,
+            DimRule::NonMetric,
+            "`sp_solve_mod(A, b, p)`: solves `A * x = b (mod p)` for integer `sparse` matrix `A` and prime `p`.",
+        ),
+        (
+            "sp_minpoly_mod",
+            2,
+            Kind::MinpolyMod,
+            DimRule::NonMetric,
+            "`sp_minpoly_mod(A, p)`: computes the minimal polynomial coefficients of integer `sparse` matrix `A` modulo prime `p`.",
+        ),
     ];
-    for (name, arity, kind, rule) in table {
+    for (name, arity, kind, rule, doc) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, rule);
         i.kernel(
             &format!("sparse_symbolic/{name}"),

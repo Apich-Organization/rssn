@@ -226,73 +226,130 @@ fn convolution_dimension(
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let dirac = i.op(OpDescriptor::new("dirac", Arity::Fixed(1)))?;
+    let dirac = i.op(OpDescriptor::new("dirac", Arity::Fixed(1))
+        .doc("`dirac(x)`: Dirac delta distribution centered at `x = 0`."))?;
     // A delta is a density in its argument: `1 / dim(x)`.
     i.dim(dirac, DimRule::Inverse);
-    let kronecker = i.op(OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| {
-        match a {
-            | [n] if *n == 0.0 => 1.0,
-            | [n] if n.is_finite() => 0.0,
-            | _ => f64::NAN,
-        }
-    }))?;
+    let kronecker = i.op(OpDescriptor::new("kronecker", Arity::Fixed(1))
+        .eval(|a| {
+            match a {
+                | [n] if *n == 0.0 => 1.0,
+                | [n] if n.is_finite() => 0.0,
+                | _ => f64::NAN,
+            }
+        })
+        .doc("`kronecker(n)`: Kronecker delta `delta_{n, 0}`, equal to `1` when `n = 0` and `0` for nonzero integers."))?;
     i.dim(kronecker, DimRule::Dimensionless);
     i.rewrites(
         Tier::Normalize,
         &["transforms/kronecker: kronecker(?n) => 0 if integer(?n), nonzero(?n)"],
     )?;
-    let request = |name: &str, arity: u8, binder: Option<(u8, u32)>| {
+    let request = |name: &str, arity: u8, binder: Option<(u8, u32)>, doc: &str| {
         let desc = OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100);
+            .cost(100)
+            .doc(doc);
         match binder {
             | Some((var, scope)) => desc.binder(var, scope),
             | None => desc,
         }
     };
     let table = [
-        ("laplace", Request::Laplace, 3, Some((1, 0b1))),
+        (
+            "laplace",
+            Request::Laplace,
+            3,
+            Some((1, 0b1)),
+            "`laplace(f, t, s)`: unilateral Laplace transform `int_0^oo f(t) * exp(-s*t) dt`.",
+        ),
         (
             "inverse_laplace",
             Request::InverseLaplace,
             3,
             Some((1, 0b1)),
+            "`inverse_laplace(F, s, t)`: inverse Laplace transform recovering `f(t)` from `F(s)`.",
         ),
-        ("fourier", Request::Fourier, 3, Some((1, 0b1))),
+        (
+            "fourier",
+            Request::Fourier,
+            3,
+            Some((1, 0b1)),
+            "`fourier(f, t, omega)`: continuous Fourier transform of `f(t)` into frequency `omega`.",
+        ),
         (
             "inverse_fourier",
             Request::InverseFourier,
             3,
             Some((1, 0b1)),
+            "`inverse_fourier(F, omega, t)`: inverse Fourier transform recovering `f(t)` from `F(omega)`.",
         ),
-        ("ztransform", Request::Z, 3, Some((1, 0b1))),
-        ("inverse_ztransform", Request::InverseZ, 3, Some((1, 0b1))),
-        ("convolve", Request::Convolve, 3, None),
-        ("convolution", Request::Convolution, 3, None),
+        (
+            "ztransform",
+            Request::Z,
+            3,
+            Some((1, 0b1)),
+            "`ztransform(f, n, z)`: unilateral Z-transform `sum_{n=0}^oo f(n) * z^(-n)`.",
+        ),
+        (
+            "inverse_ztransform",
+            Request::InverseZ,
+            3,
+            Some((1, 0b1)),
+            "`inverse_ztransform(F, z, n)`: inverse Z-transform recovering sequence `f(n)` from `F(z)`.",
+        ),
+        (
+            "convolve",
+            Request::Convolve,
+            3,
+            None,
+            "`convolve(f, g, t)`: continuous convolution `(f * g)(t)`.",
+        ),
+        (
+            "convolution",
+            Request::Convolution,
+            3,
+            None,
+            "`convolution(f, g, t)`: continuous convolution `(f * g)(t)`.",
+        ),
         (
             "discrete_convolution",
             Request::DiscreteConvolution,
             3,
             None,
+            "`discrete_convolution(f, g, n)`: discrete convolution sum `sum_k f(k) * g(n - k)`.",
         ),
         (
             "initial_value_laplace",
             Request::InitialLaplace,
             2,
             Some((1, 0b1)),
+            "`initial_value_laplace(F, s)`: applies the Laplace initial-value theorem `lim_{s->oo} s * F(s)`.",
         ),
         (
             "final_value_laplace",
             Request::FinalLaplace,
             2,
             Some((1, 0b1)),
+            "`final_value_laplace(F, s)`: applies the Laplace final-value theorem `lim_{s->0} s * F(s)`.",
         ),
-        ("initial_value_z", Request::InitialZ, 2, Some((1, 0b1))),
-        ("final_value_z", Request::FinalZ, 2, Some((1, 0b1))),
+        (
+            "initial_value_z",
+            Request::InitialZ,
+            2,
+            Some((1, 0b1)),
+            "`initial_value_z(F, z)`: applies the Z-transform initial-value theorem `lim_{z->oo} F(z)`.",
+        ),
+        (
+            "final_value_z",
+            Request::FinalZ,
+            2,
+            Some((1, 0b1)),
+            "`final_value_z(F, z)`: applies the Z-transform final-value theorem `lim_{z->1} (z - 1) * F(z)`.",
+        ),
     ];
     let mut registered = Vec::new();
-    for (name, kind, arity, binder) in table {
-        let op = i.op(request(name, arity, binder))?;
+    for (name, kind, arity, binder, doc) in table {
+        let op = i.op(request(name, arity, binder, doc))?;
         i.dim(op, transform_rule(kind));
         registered.push((op, kind));
     }

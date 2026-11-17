@@ -11,8 +11,6 @@
 //! closed-form extraction once some rule has actually reduced the request.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::collections::HashSet;
 
 use super::id::ClassId;
 use super::id::NodeId;
@@ -362,7 +360,7 @@ fn symbols_of(
     graph: &Graph,
     node: NodeId,
 ) -> Vec<SymbolId> {
-    let mut seen: HashSet<NodeId> = HashSet::new();
+    let mut seen: super::id::FastSet<NodeId> = super::id::FastSet::default();
     let mut symbols = Vec::new();
     let mut stack = vec![node];
     while let Some(cur) = stack.pop() {
@@ -457,17 +455,26 @@ pub fn reachable(
     graph: &Graph,
     roots: &[NodeId],
 ) -> Vec<ClassId> {
-    let mut seen = vec![false; graph.len()];
+    // One bit per node: this runs on every scheduler pass, and inside nested
+    // runs on a graph that already holds a whole template, so the table is
+    // kept eight times smaller than a `Vec<bool>`.
+    let mut seen = vec![0_u64; graph.len().div_ceil(64)];
+    let is_seen = |seen: &[u64], index: usize| {
+        seen.get(index / 64)
+            .is_none_or(|word| word & (1 << (index % 64)) != 0)
+    };
     let mut order = Vec::new();
     let mut stack: Vec<ClassId> = roots.iter().rev().map(|&r| graph.find(r)).collect();
     while let Some(class) = stack.pop() {
-        let Some(flag) = seen.get_mut(class.index()) else {
+        let index = class.index();
+        let Some(word) = seen.get_mut(index / 64) else {
             continue;
         };
-        if *flag {
+        let bit = 1_u64 << (index % 64);
+        if *word & bit != 0 {
             continue;
         }
-        *flag = true;
+        *word |= bit;
         order.push(class);
         // A class holding a literal is fully known: its other members
         // (`sin(pi)`, `x - x`, a reduced request ...) lead nowhere useful,
@@ -482,7 +489,7 @@ pub fn reachable(
         for enode in graph.enodes(class) {
             for &child in graph.children(enode) {
                 let child_class = graph.find(child);
-                if !seen.get(child_class.index()).copied().unwrap_or(true) {
+                if !is_seen(&seen, child_class.index()) {
                     stack.push(child_class);
                 }
             }
@@ -491,12 +498,33 @@ pub fn reachable(
     order
 }
 
+/// An admissible e-node with its price, gathered once per extraction.
+struct Candidate {
+    /// Local index (see [`Extractor`]) of its class.
+    class: u32,
+    enode: NodeId,
+    own: u64,
+    scale: u64,
+    /// Range of its children's local class indices in the shared `kids`
+    /// array ([`NOT_REACHED`] for a child outside the reachable set).
+    kids: std::ops::Range<usize>,
+}
+
+/// A child class outside the reachable set: it has no extraction.
+const NOT_REACHED: u32 = u32::MAX;
+
 /// The cheapest member of every class reachable from a set of roots.
+///
+/// Classes are numbered locally, in discovery order: the table holds one
+/// entry per *reachable* class rather than one per graph node. Extraction
+/// runs on every scheduler iteration and inside every nested simplification,
+/// on graphs that keep growing while a request is solved, so sizing the
+/// table by the graph made each call pay for the whole arena.
 #[derive(Clone, Debug)]
 pub struct Extractor {
-    /// Best `(cost, e-node)` per class, indexed by class id. Class ids are
-    /// dense arena indices and this table is rebuilt on every scheduler
-    /// iteration, so a direct vector beats hashing.
+    /// Local index of each reachable class, by class id.
+    local: super::id::FastMap<u32, u32>,
+    /// Best `(cost, e-node)` per reachable class, by local index.
     best: Vec<Option<(u64, NodeId)>>,
 }
 
@@ -510,54 +538,92 @@ impl Extractor {
         model: &dyn CostModel,
     ) -> Self {
         let classes = reachable(graph, roots);
-        let mut best: Vec<Option<(u64, NodeId)>> = vec![None; graph.len()];
+        let mut local: super::id::FastMap<u32, u32> = super::id::FastMap::default();
+        local.reserve(classes.len());
+        for (i, class) in classes.iter().enumerate() {
+            local.insert(class.raw(), u32::try_from(i).unwrap_or(NOT_REACHED));
+        }
+        let mut best: Vec<Option<(u64, NodeId)>> = vec![None; classes.len()];
         // Bellman-Ford style relaxation. Processing in reverse discovery
         // order visits most children before their parents, so this usually
         // converges in two or three sweeps.
-        for &class in &classes {
-            if let Some(pin) = graph.pinned(class)
-                && let Some(slot) = best.get_mut(class.index())
-            {
+        for (slot, &class) in best.iter_mut().zip(&classes) {
+            if let Some(pin) = graph.pinned(class) {
                 *slot = Some((1, pin));
+            }
+        }
+        // The prices and child classes of the candidate e-nodes do not change
+        // between sweeps: gather them once, in sweep order, so every sweep is
+        // a pass over two flat arrays instead of re-walking class rings,
+        // re-running the cost model and re-resolving children.
+        let mut items: Vec<Candidate> = Vec::new();
+        let mut kids: Vec<u32> = Vec::new();
+        for (index, &class) in classes.iter().enumerate().rev() {
+            if graph.pinned(class).is_some() {
+                continue;
+            }
+            for enode in graph.enodes(class) {
+                let Some(own) = model.cost(graph, enode) else {
+                    continue;
+                };
+                let start = kids.len();
+                kids.extend(graph.children(enode).iter().map(|&c| {
+                    local
+                        .get(&graph.find(c).raw())
+                        .copied()
+                        .unwrap_or(NOT_REACHED)
+                }));
+                items.push(Candidate {
+                    class: u32::try_from(index).unwrap_or(NOT_REACHED),
+                    enode,
+                    own,
+                    scale: model.scale(graph, enode),
+                    kids: start..kids.len(),
+                });
             }
         }
         let mut changed = true;
         while changed {
             changed = false;
-            for &class in classes.iter().rev() {
-                if graph.pinned(class).is_some() {
-                    continue;
-                }
-                for enode in graph.enodes(class) {
-                    let Some(own) = model.cost(graph, enode) else {
-                        continue;
-                    };
-                    let below = graph.children(enode).iter().try_fold(0_u64, |acc, &child| {
-                        best.get(graph.find(child).index())
+            for item in &items {
+                let below = kids.get(item.kids.clone()).unwrap_or(&[]).iter().try_fold(
+                    0_u64,
+                    |acc, &child| {
+                        best.get(child as usize)
                             .copied()
                             .flatten()
                             .map(|(c, _)| acc.saturating_add(c))
-                    });
-                    let Some(below) = below else {
-                        continue;
-                    };
-                    let total = own.saturating_add(below.saturating_mul(model.scale(graph, enode)));
-                    // On a tie the younger node wins: simplification results
-                    // are created after the terms they simplify.
-                    let old = best.get(class.index()).copied().flatten();
-                    let better = old.is_none_or(|(old_cost, old_node)| {
-                        total < old_cost || (total == old_cost && enode > old_node)
-                    });
-                    if better {
-                        if let Some(slot) = best.get_mut(class.index()) {
-                            *slot = Some((total, enode));
-                        }
-                        changed = true;
-                    }
+                    },
+                );
+                let Some(below) = below else {
+                    continue;
+                };
+                let total = item.own.saturating_add(below.saturating_mul(item.scale));
+                // On a tie the younger node wins: simplification results
+                // are created after the terms they simplify.
+                let Some(slot) = best.get_mut(item.class as usize) else {
+                    continue;
+                };
+                let better = slot.is_none_or(|(old_cost, old_node)| {
+                    total < old_cost || (total == old_cost && item.enode > old_node)
+                });
+                if better {
+                    *slot = Some((total, item.enode));
+                    changed = true;
                 }
             }
         }
-        Self { best }
+        Self { local, best }
+    }
+
+    /// The best `(cost, e-node)` of `class`, if it was reachable and has an
+    /// admissible member.
+    fn best_of(
+        &self,
+        class: ClassId,
+    ) -> Option<(u64, NodeId)> {
+        let index = *self.local.get(&class.raw())?;
+        self.best.get(index as usize).copied().flatten()
     }
 
     /// Total cost of the best term of `node`'s class, or `None` when the
@@ -568,11 +634,7 @@ impl Extractor {
         graph: &Graph,
         node: NodeId,
     ) -> Option<u64> {
-        self.best
-            .get(graph.find(node).index())
-            .copied()
-            .flatten()
-            .map(|(c, _)| c)
+        self.best_of(graph.find(node)).map(|(c, _)| c)
     }
 
     /// Builds the best term of `node`'s class as a concrete node.
@@ -586,8 +648,8 @@ impl Extractor {
         node: NodeId,
     ) -> Option<NodeId> {
         let root = graph.find(node);
-        let mut built: HashMap<ClassId, NodeId> = HashMap::new();
-        let mut open: HashSet<ClassId> = HashSet::new();
+        let mut built: super::id::FastMap<ClassId, NodeId> = super::id::FastMap::default();
+        let mut open: super::id::FastSet<ClassId> = super::id::FastSet::default();
         let mut stack = vec![(root, false)];
         while let Some((class, expanded)) = stack.pop() {
             if built.contains_key(&class) {
@@ -597,7 +659,7 @@ impl Extractor {
                 // The class is its own descendant: stale choices.
                 return None;
             }
-            let (_, enode) = self.best.get(class.index()).copied().flatten()?;
+            let (_, enode) = self.best_of(class)?;
             if graph.pinned(class) == Some(enode) {
                 built.insert(class, enode);
                 continue;

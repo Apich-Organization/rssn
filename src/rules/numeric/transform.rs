@@ -225,31 +225,37 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "wavedec",
         params: "vws",
         eval: wavedec,
+        doc: "`wavedec(x, wavelet, levels)`: multilevel periodized discrete wavelet decomposition `list(a_L, d_L, ..., d_1)`.",
     },
     Entry {
         name: "waverec",
         params: "nw",
         eval: waverec,
+        doc: "`waverec(coeffs, wavelet)`: reconstruct signal from a `wavedec` coefficient list.",
     },
     Entry {
         name: "dwt2",
         params: "nw",
         eval: dwt2,
+        doc: "`dwt2(matrix, wavelet)`: single-level 2D separable discrete wavelet transform returning `list(LL, LH, HL, HH)`.",
     },
     Entry {
         name: "idwt2",
         params: "nnnnw",
         eval: idwt2,
+        doc: "`idwt2(ll, lh, hl, hh, wavelet)`: single-level 2D inverse discrete wavelet transform from four sub-bands.",
     },
     Entry {
         name: "frft_re",
         params: "vvs",
         eval: frft_re,
+        doc: "`frft_re(re, im, a)`: real part of the discrete fractional Fourier transform of order `a` of `re + i*im`.",
     },
     Entry {
         name: "frft_im",
         params: "vvs",
         eval: frft_im,
+        doc: "`frft_im(re, im, a)`: imaginary part of the discrete fractional Fourier transform of order `a` of `re + i*im`.",
     },
 ];
 

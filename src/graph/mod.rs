@@ -153,6 +153,7 @@ pub use schedule::Stop;
 pub use store::Ball;
 pub use store::Graph;
 pub use window::CellId;
+pub use window::RewriteIndex;
 pub use window::TreeWindow;
 pub use window::WindowMatch;
 pub use window::WindowPass;

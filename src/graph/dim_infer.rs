@@ -272,7 +272,7 @@ pub struct DimInfer<'a> {
     assumptions: &'a HashMap<SymbolId, DimTerm>,
     unifier: Unifier,
     memo: crate::graph::id::FastMap<ClassId, DimTerm>,
-    visiting: HashSet<ClassId>,
+    visiting: crate::graph::id::FastSet<ClassId>,
     errors: Vec<DimError>,
     unannotated: HashSet<String>,
 }
@@ -285,7 +285,7 @@ impl<'a> DimInfer<'a> {
             assumptions: &graph.dim_assumptions,
             unifier: Unifier::default(),
             memo: crate::graph::id::FastMap::default(),
-            visiting: HashSet::new(),
+            visiting: crate::graph::id::FastSet::default(),
             errors: Vec::new(),
             unannotated: HashSet::new(),
         }

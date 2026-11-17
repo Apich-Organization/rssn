@@ -226,11 +226,19 @@ pub(super) fn hill_mode(args: &[f64]) -> f64 {
 /// Hill's method is a numeric Fourier-Galerkin solve: the eigenvalue `μ` and
 /// the eigenfunction are pure numbers, so both operators are dimensionless.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, eval) in [
-        ("hill_eigen", hill_eigen as fn(&[f64]) -> f64),
-        ("hill_mode", hill_mode),
+    for (name, eval, doc) in [
+        (
+            "hill_eigen",
+            hill_eigen as fn(&[f64]) -> f64,
+            "`hill_eigen(n, L, c_samples...)`: `n`-th periodic Sturm-Liouville eigenvalue computed by Hill's Fourier-Galerkin method on `[0, L]`.",
+        ),
+        (
+            "hill_mode",
+            hill_mode,
+            "`hill_mode(n, x, L, c_samples...)`: `n`-th normalized periodic eigenfunction at `x` computed by Hill's Fourier-Galerkin method.",
+        ),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval).doc(doc))?;
         i.dim(op, DimRule::Dimensionless);
     }
     Ok(())

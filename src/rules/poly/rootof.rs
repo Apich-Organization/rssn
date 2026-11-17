@@ -65,7 +65,8 @@ use crate::graph::rule::Installer;
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("root_of", Arity::Variadic)
         .cost(40)
-        .eval(evaluate))?;
+        .eval(evaluate)
+        .doc("`root_of(c0, c1, ..., cn, index)`: represents the `index`-th root (by root-ordering convention) of polynomial `c0 + c1*x + ... + cn*x^n = 0`."))?;
     i.graph()
         .ops_mut()
         .set_attr(op, crate::graph::ComplexEval(evaluate_complex));

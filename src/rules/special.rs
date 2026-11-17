@@ -57,6 +57,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::OnReals;
 use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
 use crate::graph::OpId;
 use crate::graph::Outcome;
 use crate::graph::RuleError;
@@ -693,7 +694,147 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ];
     let mut registered = Vec::with_capacity(functions.len());
     for (name, arity, eval, on_reals) in functions {
-        let descriptor = OpDescriptor::new(name, Arity::Fixed(arity)).eval(eval);
+        let doc = match name {
+            | "gamma" => "`gamma(z)`: Euler gamma function `Gamma(z)`.",
+            | "lgamma" => "`lgamma(z)`: natural logarithm of `|Gamma(z)|`.",
+            | "digamma" => "`digamma(z)`: logarithmic derivative `psi(z) = Gamma'(z) / Gamma(z)`.",
+            | "beta" => {
+                "`beta(x, y)`: Euler beta function `B(x, y) = Gamma(x) Gamma(y) / Gamma(x + y)`."
+            },
+            | "erf" => "`erf(x)`: Gauss error function `(2 / sqrt(pi)) * int_0^x exp(-t^2) dt`.",
+            | "erfc" => "`erfc(x)`: complementary error function `1 - erf(x)`.",
+            | "zeta" => "`zeta(s)`: Riemann zeta function `sum_{n=1}^infty n^{-s}`.",
+            | "besselj" => "`besselj(nu, x)`: Bessel function of the first kind `J_nu(x)`.",
+            | "bessely" => "`bessely(nu, x)`: Bessel function of the second kind `Y_nu(x)`.",
+            | "besseli" => {
+                "`besseli(nu, x)`: modified Bessel function of the first kind `I_nu(x)`."
+            },
+            | "besselk" => {
+                "`besselk(nu, x)`: modified Bessel function of the second kind `K_nu(x)`."
+            },
+            | "erfi" => "`erfi(x)`: imaginary error function `-i * erf(i * x)`.",
+            | "fresnels" => "`fresnels(x)`: Fresnel sine integral `int_0^x sin(pi * t^2 / 2) dt`.",
+            | "fresnelc" => {
+                "`fresnelc(x)`: Fresnel cosine integral `int_0^x cos(pi * t^2 / 2) dt`."
+            },
+            | "erfcinv" => {
+                "`erfcinv(y)`: inverse complementary error function solving `erfc(x) = y`."
+            },
+            | "polygamma" => {
+                "`polygamma(n, x)`: `n`-th derivative of the digamma function `psi^(n)(x)`."
+            },
+            | "laguerre_gen" => {
+                "`laguerre_gen(n, alpha, x)`: generalized Laguerre polynomial `L_n^(alpha)(x)`."
+            },
+            | "legendre" => "`legendre(n, x)`: Legendre polynomial `P_n(x)` of degree `n`.",
+            | "chebyshevt" => {
+                "`chebyshevt(n, x)`: Chebyshev polynomial of the first kind `T_n(x)`."
+            },
+            | "chebyshevu" => {
+                "`chebyshevu(n, x)`: Chebyshev polynomial of the second kind `U_n(x)`."
+            },
+            | "hermite" => "`hermite(n, x)`: physicists' Hermite polynomial `H_n(x)`.",
+            | "laguerre" => "`laguerre(n, x)`: Laguerre polynomial `L_n(x)`.",
+            | "sinc" => {
+                "`sinc(x)`: normalized cardinal sine `sin(pi * x) / (pi * x)` with `sinc(0) = 1`."
+            },
+            | "heaviside" => {
+                "`heaviside(x)`: Heaviside step function (`0` for `x < 0`, `1/2` at `0`, `1` for `x > 0`)."
+            },
+            | "hurwitz_zeta" => {
+                "`hurwitz_zeta(s, q)`: Hurwitz zeta function `sum_{n=0}^infty (n + q)^{-s}`."
+            },
+            | "lambertw" => {
+                "`lambertw(x)`: principal branch `W_0(x)` of the Lambert W function solving `w exp(w) = x`."
+            },
+            | "ei" => "`ei(x)`: exponential integral `Ei(x) = -PV int_{-x}^infty exp(-t)/t dt`.",
+            | "airyai" => "`airyai(x)`: Airy function of the first kind `Ai(x)`.",
+            | "airybi" => "`airybi(x)`: Airy function of the second kind `Bi(x)`.",
+            | "airyaiprime" => {
+                "`airyaiprime(x)`: derivative `Ai'(x)` of the Airy function of the first kind."
+            },
+            | "airybiprime" => {
+                "`airybiprime(x)`: derivative `Bi'(x)` of the Airy function of the second kind."
+            },
+            | "li" => "`li(x)`: logarithmic integral `li(x) = int_0^x dt / ln(t)`.",
+            | "si" => "`si(x)`: sine integral `Si(x) = int_0^x sin(t)/t dt`.",
+            | "ci" => "`ci(x)`: cosine integral `Ci(x) = -int_x^infty cos(t)/t dt`.",
+            | "shi" => "`shi(x)`: hyperbolic sine integral `Shi(x) = int_0^x sinh(t)/t dt`.",
+            | "chi" => {
+                "`chi(x)`: hyperbolic cosine integral `Chi(x) = gamma + ln|x| + int_0^x (cosh(t) - 1)/t dt`."
+            },
+            | "lambertw_m1" => {
+                "`lambertw_m1(x)`: lower real branch `W_{-1}(x)` of the Lambert W function for `-1/e <= x < 0`."
+            },
+            | "floor" => "`floor(x)`: greatest integer less than or equal to `x`.",
+            | "ceil" => "`ceil(x)`: smallest integer greater than or equal to `x`.",
+            | "round" => "`round(x)`: nearest integer to `x`, rounding half away from zero.",
+            | "sign" => {
+                "`sign(x)`: signum function (`-1` for `x < 0`, `0` at `0`, `1` for `x > 0`)."
+            },
+            | "coulomb_f" => {
+                "`coulomb_f(l, eta, rho)`: regular Coulomb wave function `F_l(eta, rho)`."
+            },
+            | "coulomb_g" => {
+                "`coulomb_g(l, eta, rho)`: irregular Coulomb wave function `G_l(eta, rho)`."
+            },
+            | "coulomb_fp" => {
+                "`coulomb_fp(l, eta, rho)`: derivative `F_l'(eta, rho)` with respect to `rho`."
+            },
+            | "coulomb_gp" => {
+                "`coulomb_gp(l, eta, rho)`: derivative `G_l'(eta, rho)` with respect to `rho`."
+            },
+            | "coulomb_c" => "`coulomb_c(l, eta)`: Coulomb Gamow normalization factor `C_l(eta)`.",
+            | "coulomb_sigma" => {
+                "`coulomb_sigma(l, eta)`: Coulomb phase shift `sigma_l(eta) = arg Gamma(l + 1 + i*eta)`."
+            },
+            | "polylog" => "`polylog(s, z)`: polylogarithm `Li_s(z) = sum_{k=1}^infty z^k / k^s`.",
+            | "lerch" => {
+                "`lerch(z, s, a)`: Lerch transcendent `Phi(z, s, a) = sum_{n=0}^infty z^n / (n + a)^s`."
+            },
+            | "appell_f1" => {
+                "`appell_f1(a, b1, b2, c, x, y)`: Appell hypergeometric function `F_1(a; b1, b2; c; x, y)`."
+            },
+            | "ber" => "`ber(n, x)`: Kelvin function `ber_n(x)` of integer order `n`.",
+            | "bei" => "`bei(n, x)`: Kelvin function `bei_n(x)` of integer order `n`.",
+            | "ker" => "`ker(n, x)`: Kelvin function `ker_n(x)` of integer order `n`.",
+            | "kei" => "`kei(n, x)`: Kelvin function `kei_n(x)` of integer order `n`.",
+            | "angerj" => {
+                "`angerj(nu, x)`: Anger function `J_nu(x) = (1/pi) int_0^pi cos(nu*theta - x*sin(theta)) dtheta`."
+            },
+            | "webere" => {
+                "`webere(nu, x)`: Weber function `E_nu(x) = (1/pi) int_0^pi sin(nu*theta - x*sin(theta)) dtheta`."
+            },
+            | _ => "",
+        };
+        let alias = match name {
+            | "besselj" => Some("bessel_j"),
+            | "bessely" => Some("bessel_y"),
+            | "besseli" => Some("bessel_i"),
+            | "besselk" => Some("bessel_k"),
+            | "fresnels" => Some("fresnel_s"),
+            | "fresnelc" => Some("fresnel_c"),
+            | "erfcinv" => Some("erfc_inv"),
+            | "chebyshevt" => Some("chebyshev_t"),
+            | "chebyshevu" => Some("chebyshev_u"),
+            | "lambertw" => Some("lambert_w"),
+            | "lambertw_m1" => Some("lambert_w_m1"),
+            | "airyai" => Some("airy_ai"),
+            | "airybi" => Some("airy_bi"),
+            | "airyaiprime" => Some("airy_ai_prime"),
+            | "airybiprime" => Some("airy_bi_prime"),
+            | "angerj" => Some("anger_j"),
+            | "webere" => Some("weber_e"),
+            | _ => None,
+        };
+        let descriptor = OpDescriptor::new(name, Arity::Fixed(arity))
+            .eval(eval)
+            .doc(doc);
+        let descriptor = if let Some(alias) = alias {
+            descriptor.alias(alias)
+        } else {
+            descriptor
+        };
         let descriptor = if let Some(cost) = extended_cost(name) {
             descriptor.cost(cost)
         } else {
@@ -882,6 +1023,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("special/step", Tier::Normalize, Step { sign, heaviside });
     let euler_gamma = i.op(OpDescriptor::new("euler_gamma", Arity::Fixed(0))
         .cost(3)
+        .doc("`euler_gamma`: Euler-Mascheroni constant `gamma = lim_{n->infty} (H_n - ln n) ≈ 0.5772156649`.")
         .eval(|_| std::f64::consts::EULER_GAMMA))?;
     i.graph()
         .ops_mut()
@@ -1065,6 +1207,74 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "hermite_differential_equation(y, x, n) := diff(diff(y, x), x) - 2 * x * diff(y, x) + 2 * n * y = 0",
         "chebyshev_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - x * diff(y, x) + n^2 * y = 0",
     ])?;
+    for (name, arity, doc) in [
+        ("frac", 1, "`frac(x)`: fractional part `x - floor(x)`."),
+        (
+            "ln_factorial",
+            1,
+            "`ln_factorial(n)`: natural logarithm of factorial `ln(n!) = ln Gamma(n + 1)`.",
+        ),
+        (
+            "bessel_k0",
+            1,
+            "`bessel_k0(x)`: modified Bessel function of the second kind of order zero `K_0(x)`.",
+        ),
+        (
+            "bessel_k1",
+            1,
+            "`bessel_k1(x)`: modified Bessel function of the second kind of order one `K_1(x)`.",
+        ),
+        (
+            "inverse_erfc",
+            1,
+            "`inverse_erfc(x)`: inverse complementary error function solving `erfc(y) = x`.",
+        ),
+        (
+            "legendre_rodrigues",
+            2,
+            "`legendre_rodrigues(n, x)`: Rodrigues' formula for Legendre polynomials `(1 / (2^n n!)) d^n/dx^n (x^2 - 1)^n`.",
+        ),
+        (
+            "hermite_rodrigues",
+            2,
+            "`hermite_rodrigues(n, x)`: Rodrigues' formula for Hermite polynomials `(-1)^n exp(x^2) d^n/dx^n exp(-x^2)`.",
+        ),
+        (
+            "laguerre_rodrigues",
+            2,
+            "`laguerre_rodrigues(n, x)`: Rodrigues' formula for Laguerre polynomials `(exp(x) / n!) d^n/dx^n (exp(-x) x^n)`.",
+        ),
+        (
+            "bessel_differential_equation",
+            3,
+            "`bessel_differential_equation(y, x, n)`: Bessel differential equation `x^2 y'' + x y' + (x^2 - n^2) y = 0`.",
+        ),
+        (
+            "legendre_differential_equation",
+            3,
+            "`legendre_differential_equation(y, x, n)`: Legendre differential equation `(1 - x^2) y'' - 2 x y' + n (n + 1) y = 0`.",
+        ),
+        (
+            "laguerre_differential_equation",
+            3,
+            "`laguerre_differential_equation(y, x, n)`: Laguerre differential equation `x y'' + (1 - x) y' + n y = 0`.",
+        ),
+        (
+            "hermite_differential_equation",
+            3,
+            "`hermite_differential_equation(y, x, n)`: Hermite differential equation `y'' - 2 x y' + 2 n y = 0`.",
+        ),
+        (
+            "chebyshev_differential_equation",
+            3,
+            "`chebyshev_differential_equation(y, x, n)`: Chebyshev differential equation `(1 - x^2) y'' - x y' + n^2 y = 0`.",
+        ),
+    ] {
+        i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc(doc))?;
+    }
 
     // Operators registered by the definitions above. The Rodrigues
     // polynomials are polynomials in their variable, so they keep its

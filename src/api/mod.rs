@@ -1284,6 +1284,16 @@ fn run_job(
         let answer = graph.dimension(best);
         let input = if best == root {
             None
+        } else if graph.same(best, root) && answer.errors.is_empty() {
+            // Inference works on whole classes: the request's class is the
+            // answer's, so a second run derives the same dimension from the
+            // same members and, like the first, finds nothing to report.
+            // (With findings, the second run is kept: their text may name
+            // fresh dimension variables, which the deduplication below sees.)
+            Some(crate::graph::DimOutcome {
+                dimension: answer.dimension.clone(),
+                errors: Vec::new(),
+            })
         } else {
             Some(graph.dimension(root))
         };

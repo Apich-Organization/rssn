@@ -28,7 +28,7 @@ use num_traits::Zero;
 use super::V;
 use super::big;
 use super::bigs;
-use super::def;
+use super::def_doc;
 use super::items;
 use super::mod_inverse;
 use super::modulo;
@@ -475,25 +475,139 @@ fn rsa_power(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "ec_curve", Arity::Fixed(3), ec_curve)?;
-    def(i, "ec_on_curve", Arity::Fixed(2), ec_on_curve)?;
-    def(i, "ec_is_infinity", Arity::Fixed(1), ec_is_infinity)?;
-    def(i, "ec_x", Arity::Fixed(1), |cx, a| ec_coord(cx, a, 0))?;
-    def(i, "ec_y", Arity::Fixed(1), |cx, a| ec_coord(cx, a, 1))?;
-    def(i, "ec_neg", Arity::Fixed(2), ec_neg)?;
-    def(i, "ec_double", Arity::Fixed(2), ec_double)?;
-    def(i, "ec_add", Arity::Fixed(3), ec_add)?;
-    def(i, "ec_mul", Arity::Fixed(3), ec_mul)?;
-    def(i, "ec_order", Arity::Fixed(2), ec_order)?;
-    def(i, "ecdh_public", Arity::Fixed(3), ecdh_public)?;
-    def(i, "ecdh_shared", Arity::Fixed(3), ecdh_shared)?;
-    def(i, "ec_compress", Arity::Fixed(1), ec_compress)?;
-    def(i, "ec_decompress", Arity::Fixed(3), ec_decompress)?;
-    def(i, "ecdsa_sign", Arity::Fixed(6), ecdsa_sign)?;
-    def(i, "ecdsa_verify", Arity::Fixed(6), ecdsa_verify)?;
-    def(i, "rsa_keygen", Arity::Fixed(3), rsa_keygen)?;
-    def(i, "rsa_encrypt", Arity::Fixed(3), rsa_power)?;
-    def(i, "rsa_decrypt", Arity::Fixed(3), rsa_power)?;
+    def_doc(
+        i,
+        "ec_curve",
+        Arity::Fixed(3),
+        ec_curve,
+        "Constructs an elliptic curve `list(a, b, p)` for `y^2 = x^3 + a*x + b (mod p)` with `a` and `b` reduced modulo odd prime `p`.",
+    )?;
+    def_doc(
+        i,
+        "ec_on_curve",
+        Arity::Fixed(2),
+        ec_on_curve,
+        "Returns `true` if point `P` lies on elliptic curve `C` (including the point at infinity `list()`).",
+    )?;
+    def_doc(
+        i,
+        "ec_is_infinity",
+        Arity::Fixed(1),
+        ec_is_infinity,
+        "Returns `true` if elliptic curve point `P` is the point at infinity `list()`.",
+    )?;
+    def_doc(
+        i,
+        "ec_x",
+        Arity::Fixed(1),
+        |cx, a| ec_coord(cx, a, 0),
+        "Returns the x-coordinate of an affine elliptic curve point `list(x, y)`.",
+    )?;
+    def_doc(
+        i,
+        "ec_y",
+        Arity::Fixed(1),
+        |cx, a| ec_coord(cx, a, 1),
+        "Returns the y-coordinate of an affine elliptic curve point `list(x, y)`.",
+    )?;
+    def_doc(
+        i,
+        "ec_neg",
+        Arity::Fixed(2),
+        ec_neg,
+        "Returns the additive inverse `-P` of point `P` on elliptic curve `C`.",
+    )?;
+    def_doc(
+        i,
+        "ec_double",
+        Arity::Fixed(2),
+        ec_double,
+        "Computes `2*P` on elliptic curve `C`.",
+    )?;
+    def_doc(
+        i,
+        "ec_add",
+        Arity::Fixed(3),
+        ec_add,
+        "Computes the elliptic curve point sum `P + Q` on curve `C`.",
+    )?;
+    def_doc(
+        i,
+        "ec_mul",
+        Arity::Fixed(3),
+        ec_mul,
+        "Computes scalar multiplication `k*P` on elliptic curve `C` for integer `k` (which may be negative).",
+    )?;
+    def_doc(
+        i,
+        "ec_order",
+        Arity::Fixed(2),
+        ec_order,
+        "Computes the order of point `P` on elliptic curve `C` by repeated addition (up to 10^6 steps).",
+    )?;
+    def_doc(
+        i,
+        "ecdh_public",
+        Arity::Fixed(3),
+        ecdh_public,
+        "Computes an ECDH public key `d*G` on curve `C` from generator `G` and private scalar `d`.",
+    )?;
+    def_doc(
+        i,
+        "ecdh_shared",
+        Arity::Fixed(3),
+        ecdh_shared,
+        "Computes the ECDH shared secret point `d*Q` on curve `C` from private scalar `d` and peer public point `Q`.",
+    )?;
+    def_doc(
+        i,
+        "ec_compress",
+        Arity::Fixed(1),
+        ec_compress,
+        "Compresses an affine point `list(x, y)` to `list(x, odd)` where `odd` is `0` or `1` indicating the parity of `y`.",
+    )?;
+    def_doc(
+        i,
+        "ec_decompress",
+        Arity::Fixed(3),
+        ec_decompress,
+        "Decompresses `(C, x, odd)` to the affine point `list(x, y)` on curve `C` using Tonelli-Shanks modular square root.",
+    )?;
+    def_doc(
+        i,
+        "ecdsa_sign",
+        Arity::Fixed(6),
+        ecdsa_sign,
+        "Computes an ECDSA signature `list(r, s)` for `(C, G, n, d, h, k)` with generator `G` of order `n`, private key `d`, message hash `h`, and explicit nonce `k`.",
+    )?;
+    def_doc(
+        i,
+        "ecdsa_verify",
+        Arity::Fixed(6),
+        ecdsa_verify,
+        "Verifies an ECDSA signature `list(r, s)` for `(C, G, n, Q, h, sig)` against public key `Q` and message hash `h`, returning a boolean.",
+    )?;
+    def_doc(
+        i,
+        "rsa_keygen",
+        Arity::Fixed(3),
+        rsa_keygen,
+        "Generates an RSA key tuple `list(n, e, d)` from distinct primes `p`, `q` and public exponent `e` with `d*e = 1 (mod (p-1)*(q-1))`.",
+    )?;
+    def_doc(
+        i,
+        "rsa_encrypt",
+        Arity::Fixed(3),
+        rsa_power,
+        "Computes RSA encryption `m^e mod n` for message `m`, public exponent `e`, and modulus `n`.",
+    )?;
+    def_doc(
+        i,
+        "rsa_decrypt",
+        Arity::Fixed(3),
+        rsa_power,
+        "Computes RSA decryption `c^d mod n` for ciphertext `c`, private exponent `d`, and modulus `n`.",
+    )?;
     Ok(())
 }
 

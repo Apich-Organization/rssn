@@ -152,72 +152,197 @@ fn request_rule(request: Request) -> DimRule {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let mv = i.op(OpDescriptor::new("mv", Arity::Fixed(2)))?;
+    let mv = i.op(OpDescriptor::new("mv", Arity::Fixed(2)).doc(
+        "`mv(sig, terms)`: canonical multivector over metric signature `sig = list(p, q, r)` with `terms = list(list(blade_mask, coeff), ...)`.",
+    ))?;
     i.dim(mv, DimRule::NonMetric);
     i.kernel("geometric_algebra/mv", Tier::Normalize, Normalise { mv });
-    for (name, arity, request) in [
-        ("mv_scalar", Arity::Fixed(2), Request::Scalar),
-        ("mv_vector", Arity::Fixed(2), Request::Vector),
-        ("mv_blade", Arity::Fixed(3), Request::Blade),
-        ("mv_basis", Arity::Fixed(2), Request::Basis),
-        ("mv_pseudoscalar", Arity::Fixed(1), Request::Pseudoscalar),
-        ("mv_add", Arity::Variadic, Request::Add),
-        ("mv_sub", Arity::Fixed(2), Request::Sub),
-        ("mv_scale", Arity::Fixed(2), Request::Scale),
-        ("mv_coeff", Arity::Fixed(2), Request::Coeff),
-        ("mv_scalar_part", Arity::Fixed(1), Request::ScalarPart),
+    for (name, arity, request, doc) in [
+        (
+            "mv_scalar",
+            Arity::Fixed(2),
+            Request::Scalar,
+            "`mv_scalar(sig, s)`: scalar multivector with value `s` in Clifford algebra with signature `sig`.",
+        ),
+        (
+            "mv_vector",
+            Arity::Fixed(2),
+            Request::Vector,
+            "`mv_vector(sig, coords)`: grade-1 vector multivector from coordinate list `coords` in signature `sig`.",
+        ),
+        (
+            "mv_blade",
+            Arity::Fixed(3),
+            Request::Blade,
+            "`mv_blade(sig, mask, c)`: single-blade multivector `c * e_mask` in signature `sig`.",
+        ),
+        (
+            "mv_basis",
+            Arity::Fixed(2),
+            Request::Basis,
+            "`mv_basis(sig, k)`: `k`-th basis vector `e_k` (1-based) in signature `sig`.",
+        ),
+        (
+            "mv_pseudoscalar",
+            Arity::Fixed(1),
+            Request::Pseudoscalar,
+            "`mv_pseudoscalar(sig)`: unit pseudoscalar `e_1 ... e_n` of the Clifford algebra with signature `sig`.",
+        ),
+        (
+            "mv_add",
+            Arity::Variadic,
+            Request::Add,
+            "`mv_add(A, B, ...)`: sum of multivectors in the same signature.",
+        ),
+        (
+            "mv_sub",
+            Arity::Fixed(2),
+            Request::Sub,
+            "`mv_sub(A, B)`: difference `A - B` of two multivectors.",
+        ),
+        (
+            "mv_scale",
+            Arity::Fixed(2),
+            Request::Scale,
+            "`mv_scale(c, A)`: multivector `A` scaled by scalar `c`.",
+        ),
+        (
+            "mv_coeff",
+            Arity::Fixed(2),
+            Request::Coeff,
+            "`mv_coeff(A, mask)`: coefficient of blade `mask` in multivector `A` (0 if absent).",
+        ),
+        (
+            "mv_scalar_part",
+            Arity::Fixed(1),
+            Request::ScalarPart,
+            "`mv_scalar_part(A)`: grade-0 scalar part `<A>_0` of multivector `A`.",
+        ),
         (
             "ga_gp",
             Arity::Fixed(2),
             Request::Product(Product::Geometric),
+            "`ga_gp(A, B)`: geometric product `A B` of multivectors `A` and `B`.",
         ),
         (
             "ga_wedge",
             Arity::Fixed(2),
             Request::Product(Product::Outer),
+            "`ga_wedge(A, B)`: outer (exterior) product `A ^ B = sum_{r,s} <A_r B_s>_{r+s}`.",
         ),
         (
             "ga_lcontract",
             Arity::Fixed(2),
             Request::Product(Product::Left),
+            "`ga_lcontract(A, B)`: left contraction `sum_{r,s} <A_r B_s>_{s-r}`.",
         ),
         (
             "ga_rcontract",
             Arity::Fixed(2),
             Request::Product(Product::Right),
+            "`ga_rcontract(A, B)`: right contraction `sum_{r,s} <A_r B_s>_{r-s}`.",
         ),
         (
             "ga_inner",
             Arity::Fixed(2),
             Request::Product(Product::Inner),
+            "`ga_inner(A, B)`: Hestenes inner product `sum_{r,s>0} <A_r B_s>_{|r-s|}`.",
         ),
         (
             "ga_scalar_product",
             Arity::Fixed(2),
             Request::Product(Product::Scalar),
+            "`ga_scalar_product(A, B)`: scalar product `<A B>_0` of multivectors `A` and `B`.",
         ),
         (
             "ga_commutator",
             Arity::Fixed(2),
             Request::Product(Product::Commutator),
+            "`ga_commutator(A, B)`: commutator product `(A B - B A) / 2`.",
         ),
-        ("ga_grade", Arity::Fixed(2), Request::Grade),
-        ("ga_reverse", Arity::Fixed(1), Request::Reverse),
-        ("ga_involute", Arity::Fixed(1), Request::Involute),
-        ("ga_conjugate", Arity::Fixed(1), Request::Conjugate),
-        ("ga_dual", Arity::Fixed(1), Request::Dual),
-        ("ga_undual", Arity::Fixed(1), Request::Undual),
-        ("ga_norm_squared", Arity::Fixed(1), Request::NormSquared),
-        ("ga_norm", Arity::Fixed(1), Request::Norm),
-        ("ga_normalize", Arity::Fixed(1), Request::Normalize),
-        ("ga_inverse", Arity::Fixed(1), Request::Inverse),
-        ("ga_exp", Arity::Fixed(1), Request::Exp),
-        ("ga_rotor", Arity::Fixed(2), Request::Rotor),
-        ("ga_apply_versor", Arity::Fixed(2), Request::Apply),
+        (
+            "ga_grade",
+            Arity::Fixed(2),
+            Request::Grade,
+            "`ga_grade(A, k)`: grade-`k` projection `<A>_k` of multivector `A`.",
+        ),
+        (
+            "ga_reverse",
+            Arity::Fixed(1),
+            Request::Reverse,
+            "`ga_reverse(A)`: reversion `A~` scaling each grade-`k` part by `(-1)^(k*(k-1)/2)`.",
+        ),
+        (
+            "ga_involute",
+            Arity::Fixed(1),
+            Request::Involute,
+            "`ga_involute(A)`: grade involution `A^` scaling each grade-`k` part by `(-1)^k`.",
+        ),
+        (
+            "ga_conjugate",
+            Arity::Fixed(1),
+            Request::Conjugate,
+            "`ga_conjugate(A)`: Clifford conjugate scaling each grade-`k` part by `(-1)^(k*(k+1)/2)`.",
+        ),
+        (
+            "ga_dual",
+            Arity::Fixed(1),
+            Request::Dual,
+            "`ga_dual(A)`: dual `A I^-1` with respect to pseudoscalar `I` (or `A I` for degenerate metrics).",
+        ),
+        (
+            "ga_undual",
+            Arity::Fixed(1),
+            Request::Undual,
+            "`ga_undual(A)`: undual `A I` with respect to pseudoscalar `I`.",
+        ),
+        (
+            "ga_norm_squared",
+            Arity::Fixed(1),
+            Request::NormSquared,
+            "`ga_norm_squared(A)`: squared norm `<A A~>_0` of multivector `A`.",
+        ),
+        (
+            "ga_norm",
+            Arity::Fixed(1),
+            Request::Norm,
+            "`ga_norm(A)`: norm `sqrt(<A A~>_0)` of multivector `A`.",
+        ),
+        (
+            "ga_normalize",
+            Arity::Fixed(1),
+            Request::Normalize,
+            "`ga_normalize(A)`: normalized multivector `A / ga_norm(A)`.",
+        ),
+        (
+            "ga_inverse",
+            Arity::Fixed(1),
+            Request::Inverse,
+            "`ga_inverse(A)`: multiplicative inverse `A^-1` for a versor or blade with nonzero scalar square.",
+        ),
+        (
+            "ga_exp",
+            Arity::Fixed(1),
+            Request::Exp,
+            "`ga_exp(A)`: Clifford exponential `exp(A)` when `A^2` is a scalar.",
+        ),
+        (
+            "ga_rotor",
+            Arity::Fixed(2),
+            Request::Rotor,
+            "`ga_rotor(B, angle)`: rotor `exp(-angle * B_hat / 2)` for bivector `B` and rotation angle `angle`.",
+        ),
+        (
+            "ga_apply_versor",
+            Arity::Fixed(2),
+            Request::Apply,
+            "`ga_apply_versor(V, X)`: versor sandwich product `V X^ V^-1` (grade-involuted `X^` for odd versor `V`).",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, request_rule(request));
         i.kernel(
             &format!("geometric_algebra/{name}"),

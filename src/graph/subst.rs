@@ -1,7 +1,5 @@
 //! Substitution on concrete terms.
 
-use std::collections::HashMap;
-
 use super::id::NodeId;
 use super::store::Graph;
 
@@ -22,7 +20,8 @@ impl Graph {
         let Some(symbol) = self.as_symbol(from) else {
             return term;
         };
-        let mut done: HashMap<NodeId, NodeId> = HashMap::new();
+        let mut done: crate::graph::id::FastMap<NodeId, NodeId> =
+            crate::graph::id::FastMap::default();
         let mut stack = vec![(term, false)];
         while let Some((node, expanded)) = stack.pop() {
             if done.contains_key(&node) {
@@ -90,7 +89,8 @@ impl Graph {
         from: NodeId,
         to: NodeId,
     ) -> NodeId {
-        let mut done: HashMap<NodeId, NodeId> = HashMap::new();
+        let mut done: crate::graph::id::FastMap<NodeId, NodeId> =
+            crate::graph::id::FastMap::default();
         done.insert(from, to);
         let mut stack = vec![(term, false)];
         while let Some((node, expanded)) = stack.pop() {

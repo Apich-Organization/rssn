@@ -200,7 +200,8 @@ fn dimensionless_value(
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let diff_op = i.op(OpDescriptor::new("diff", Arity::Fixed(2))
         .flags(OpFlags::HEAVY.with(OpFlags::OPAQUE_ON_APPLY))
-        .cost(100))?;
+        .cost(100)
+        .doc("`diff(f, x)`: symbolic derivative of `f` with respect to `x`."))?;
 
     partials(i, "pow", &["?b * ?a^(?b - 1)", "?a^?b * ln(?a)"])?;
     partials(i, "exp", &["exp(?a)"])?;
@@ -242,7 +243,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // diffn(f, x, n): the n-th derivative for a literal n.
     let diffn = i.op(OpDescriptor::new("diffn", Arity::Fixed(3))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`diffn(f, x, n)`: `n`-th order symbolic derivative of `f` with respect to `x` for non-negative integer `n`."))?;
     i.kernel(
         "calculus/diffn",
         Tier::Reduce,
@@ -258,12 +260,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // `defint(f, x, a, b)` binds x inside f.
     let integral = i.op(OpDescriptor::new("integral", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`integral(f, x)`: symbolic indefinite integral (antiderivative) of `f` with respect to `x`."))?;
     let defint = i.op(OpDescriptor::new("defint", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .binder(1, 0b1))?;
-    let infinity = i.op(OpDescriptor::new("oo", Arity::Fixed(0)).eval(|_| f64::INFINITY))?;
+        .binder(1, 0b1)
+        .doc("`defint(f, x, a, b)`: definite integral of `f` with respect to bound variable `x` from `a` to `b`."))?;
+    let infinity = i.op(OpDescriptor::new("oo", Arity::Fixed(0))
+        .eval(|_| f64::INFINITY)
+        .doc("`oo`: positive real infinity (`+infinity`)."))?;
     i.graph()
         .ops_mut()
         .set_attr(infinity, OnReals(Facts::POSITIVE));
@@ -310,7 +316,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let limit = i.op(OpDescriptor::new("limit", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .binder(1, 0b1))?;
+        .binder(1, 0b1)
+        .doc("`limit(f, x, a, [dir])`: limit of `f` as bound variable `x` approaches `a` (optional direction `plus` or `minus`)."))?;
     i.kernel(
         "calculus/limit",
         Tier::Reduce,
@@ -326,10 +333,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         limits::NumericLimit { limit },
     );
     // Series, sums and products. The index of a sum or product is bound.
-    let request = |name: &str, arity: u8| {
+    let request = |name: &str, arity: u8, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
     // `sum` also has a tensor overload — `sum(t)` and `sum(t, axis)` — which
     // the manifest cannot express as a second registration (one name, one
@@ -338,17 +346,40 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let sum = i.op(OpDescriptor::new("sum", Arity::Variadic)
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .binder(1, 0b1))?;
+        .binder(1, 0b1)
+        .doc("`sum(expr, k, lo, hi)` or `sum(tensor, [axis])`: symbolic/numeric summation over bound index `k` from `lo` to `hi`, or tensor reduction along `axis`."))?;
     let ops = series::SeriesOps {
         functions,
         infinity,
         defint,
-        taylor: i.op(request("taylor", 4))?,
-        laurent: i.op(request("laurent", 4))?,
-        fourier: i.op(request("fourier_series", 4))?,
+        taylor: i.op(request(
+            "taylor",
+            4,
+            "`taylor(f, x, a, n)`: Taylor polynomial of `f` about `x = a` up to degree `n`.",
+        ))?,
+        laurent: i.op(request(
+            "laurent",
+            4,
+            "`laurent(f, x, a, n)`: Laurent/Puiseux series expansion of `f` about `x = a` up to order `n`.",
+        ))?,
+        fourier: i.op(request(
+            "fourier_series",
+            4,
+            "`fourier_series(f, x, L, n)`: trigonometric Fourier series of `f(x)` on `[-L, L]` up to `n` harmonics.",
+        ))?,
         sum,
-        product: i.op(request("product", 4).binder(1, 0b1))?,
-        converges: i.op(request("converges", 2).binder(1, 0b1))?,
+        product: i.op(request(
+            "product",
+            4,
+            "`product(expr, k, lo, hi)`: symbolic/numeric product over bound index `k` from `lo` to `hi`.",
+        )
+        .binder(1, 0b1))?,
+        converges: i.op(request(
+            "converges",
+            2,
+            "`converges(term, k)`: tests convergence of infinite series `sum_{k} term(k)`.",
+        )
+        .binder(1, 0b1))?,
     };
     i.kernel(
         "calculus/series",
@@ -361,7 +392,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         tensor::SumTensor { sum },
     );
     // antidifference(t, k): T with T(k+1) - T(k) = t(k).
-    let antidifference = i.op(request("antidifference", 2))?;
+    let antidifference = i.op(request(
+        "antidifference",
+        2,
+        "`antidifference(t, k)`: computes a closed-form antidifference `T(k)` satisfying `T(k+1) - T(k) = t(k)` (Gosper's algorithm).",
+    ))?;
     // Sums and differences leave the dimension of the summand unchanged.
     i.dim(antidifference, DimRule::Same(0));
     i.kernel(
@@ -370,15 +405,27 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         Antidifference { op: antidifference },
     );
     // real_integral(f, x): the antiderivative with ln|u|.
-    let real_integral = i.op(request("real_integral", 2))?;
+    let real_integral = i.op(request(
+        "real_integral",
+        2,
+        "`real_integral(f, x)`: real-valued antiderivative of `f` with respect to `x` using `ln(abs(...))` where appropriate.",
+    ))?;
     i.kernel(
         "calculus/real-integral",
         Tier::Reduce,
         RealIntegral { op: real_integral },
     );
     // indefinite_sum(f, k), indefinite_product(f, k).
-    let indefinite_sum = i.op(request("indefinite_sum", 2))?;
-    let indefinite_product = i.op(request("indefinite_product", 2))?;
+    let indefinite_sum = i.op(request(
+        "indefinite_sum",
+        2,
+        "`indefinite_sum(f, k)`: symbolic indefinite sum `T(k)` satisfying `T(k+1) - T(k) = f(k)`.",
+    ))?;
+    let indefinite_product = i.op(request(
+        "indefinite_product",
+        2,
+        "`indefinite_product(f, k)`: symbolic indefinite product `P(k)` satisfying `P(k+1)/P(k) = f(k)`.",
+    ))?;
     // T(k+1) - T(k) = f(k) fixes dim(T) = dim(f). A product P(k+1)/P(k) = f(k)
     // only has a constant dimension when dim(f) = 1; the layer reports the
     // factor's dimension (`ProductOver` with an unbounded count), which is the
@@ -396,8 +443,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // Zeilberger's creative telescoping and definite hypergeometric sums:
     // the index `k` is bound in the summand, the recurrence variable `n`
     // stays free.
-    let zeilberger = i.op(request("zeilberger", 3).binder(1, 0b1))?;
-    let definite_sum = i.op(request("definite_sum", 3).binder(1, 0b1))?;
+    let zeilberger = i.op(request(
+        "zeilberger",
+        3,
+        "`zeilberger(F, k, n)`: applies Zeilberger's creative telescoping to hypergeometric term `F(n, k)` over bound `k`, returning recurrence and certificate.",
+    )
+    .binder(1, 0b1))?;
+    let definite_sum = i.op(request(
+        "definite_sum",
+        3,
+        "`definite_sum(F, k, n)`: evaluates a definite hypergeometric sum over bound index `k` as a function of `n`.",
+    )
+    .binder(1, 0b1))?;
     // The recurrence and its certificate are a list of equations, not a
     // scalar. The closed form of a definite sum is a sum of summands, so it
     // keeps the summand's dimension. The recurrence coefficients and the
@@ -434,6 +491,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     algebraic::install(i)?;
     multiseries::install(i)?;
     i.define(&["asymptotic(f, x, n) := laurent(f, x, oo, n)"])?;
+    i.op(request(
+        "asymptotic",
+        3,
+        "`asymptotic(f, x, n)`: asymptotic expansion of `f(x)` as `x -> oo` up to order `n`.",
+    ))?;
     // `asymptotic` is the `laurent` request at infinity, so it expands `f`
     // and keeps its dimension.
     if let Some(op) = i.graph().ops().lookup("asymptotic") {

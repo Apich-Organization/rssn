@@ -662,7 +662,7 @@ fn dim_ideal_gas_pressure(
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, eval) in constant_eval!(
+    for ((name, eval), doc) in constant_eval!(
         "c_0",
         "hbar",
         "h_planck",
@@ -677,8 +677,25 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "R_gas",
         "sigma_SB",
         "a_0"
-    ) {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
+    )
+    .into_iter()
+    .zip([
+        "`c_0`: speed of light in vacuum (299792458 m/s, exact SI).",
+        "`hbar`: reduced Planck constant `h / (2 * pi)` in J*s.",
+        "`h_planck`: Planck constant in J*s (exact SI).",
+        "`k_B`: Boltzmann constant in J/K (exact SI).",
+        "`epsilon_0`: vacuum electric permittivity in F/m.",
+        "`mu_0`: vacuum magnetic permeability in N/A^2.",
+        "`G_N`: Newtonian constant of gravitation in m^3/(kg*s^2).",
+        "`q_e`: elementary charge in C (exact SI).",
+        "`m_e`: electron rest mass in kg.",
+        "`m_p`: proton rest mass in kg.",
+        "`N_A`: Avogadro constant in mol^-1 (exact SI).",
+        "`R_gas`: molar gas constant `N_A * k_B` in J/(mol*K).",
+        "`sigma_SB`: Stefan-Boltzmann constant in W/(m^2*K^4).",
+        "`a_0`: Bohr radius in m.",
+    ]) {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval).doc(doc))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
     let algebra = op_algebra(i.graph()).ok_or_else(|| {
@@ -687,40 +704,103 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             reason: "needs the functional analysis rule set",
         }
     })?;
-    let heavy = |name: &str, arity: u8| {
-        OpDescriptor::new(name, Arity::Fixed(arity))
+    for (name, arity, request, doc) in [
+        (
+            "energy_eigenvalue",
+            3,
+            Request::Eigenvalue,
+            "`energy_eigenvalue(H, psi, x)`: energy eigenvalue `E` satisfying `H psi = E psi` in variable `x`.",
+        ),
+        (
+            "poisson_bracket",
+            4,
+            Request::PoissonBracket,
+            "`poisson_bracket(f, g, q, p)`: canonical Poisson bracket `{f, g} = (df/dq)(dg/dp) - (df/dp)(dg/dq)`.",
+        ),
+        (
+            "geodesic_acceleration",
+            2,
+            Request::GeodesicAcceleration,
+            "`geodesic_acceleration(metric, coords)`: geodesic equation acceleration vector `-Gamma^mu_{alpha beta} u^alpha u^beta` for `metric` and `coords`.",
+        ),
+        (
+            "schwarzschild_metric",
+            2,
+            Request::Schwarzschild,
+            "`schwarzschild_metric(M, coords)`: Schwarzschild metric tensor in `(-, +, +, +)` signature for mass `M` and `coords = list(t, r, theta, phi)`.",
+        ),
+        (
+            "dirac_gamma",
+            1,
+            Request::DiracGamma,
+            "`dirac_gamma(mu)`: 4x4 Dirac gamma matrix in the Dirac representation (`mu = 0..3`, or `5` for `gamma^5`).",
+        ),
+        (
+            "dirac_equation",
+            3,
+            Request::DiracEquation,
+            "`dirac_equation(psi, m, x)`: residual `(i gamma^mu partial_mu - m) psi` of the free Dirac equation in natural units.",
+        ),
+        (
+            "klein_gordon_equation",
+            3,
+            Request::KleinGordon,
+            "`klein_gordon_equation(phi, m, x)`: residual `(partial_mu partial^mu + m^2) phi` of the Klein-Gordon equation in natural units.",
+        ),
+        (
+            "feynman_slash",
+            1,
+            Request::Slash,
+            "`feynman_slash(p)`: Feynman slash `gamma^mu p_mu` for a four-vector `p = list(p0, p1, p2, p3)`.",
+        ),
+        (
+            "dirac_adjoint",
+            1,
+            Request::DiracAdjoint,
+            "`dirac_adjoint(psi)`: Dirac adjoint `psi^dagger gamma^0` of a four-component spinor `psi`.",
+        ),
+        (
+            "minkowski_dot",
+            2,
+            Request::MinkowskiDot,
+            "`minkowski_dot(a, b)`: Minkowski inner product `a^mu b_mu` with signature `(+1, -1, -1, -1)`.",
+        ),
+        (
+            "scalar_field_lagrangian",
+            3,
+            Request::ScalarLagrangian,
+            "`scalar_field_lagrangian(phi, m, x)`: free real scalar field Lagrangian density `(1/2)(partial_mu phi)^2 - (1/2) m^2 phi^2`.",
+        ),
+        (
+            "fermion_propagator",
+            2,
+            Request::FermionPropagator,
+            "`fermion_propagator(p, m)`: momentum-space Dirac fermion propagator `i (p_slash + m) / (p^2 - m^2)`.",
+        ),
+        (
+            "partition_function",
+            2,
+            Request::PartitionFunction,
+            "`partition_function(energies, T)`: canonical partition function `sum_i exp(-E_i / (k_B T))` over energy levels `energies`.",
+        ),
+    ] {
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100)
-    };
-    for (name, arity, request) in [
-        ("energy_eigenvalue", 3, Request::Eigenvalue),
-        ("poisson_bracket", 4, Request::PoissonBracket),
-        ("geodesic_acceleration", 2, Request::GeodesicAcceleration),
-        ("schwarzschild_metric", 2, Request::Schwarzschild),
-        ("dirac_gamma", 1, Request::DiracGamma),
-        ("dirac_equation", 3, Request::DiracEquation),
-        ("klein_gordon_equation", 3, Request::KleinGordon),
-        ("feynman_slash", 1, Request::Slash),
-        ("dirac_adjoint", 1, Request::DiracAdjoint),
-        ("minkowski_dot", 2, Request::MinkowskiDot),
-        ("scalar_field_lagrangian", 3, Request::ScalarLagrangian),
-        ("fermion_propagator", 2, Request::FermionPropagator),
-        ("partition_function", 2, Request::PartitionFunction),
-    ] {
-        let op = i.op(heavy(name, arity))?;
+            .doc(doc))?;
         i.kernel(
             &format!("physics/{name}"),
             Tier::Reduce,
             Physics { op, request, algebra },
         );
     }
-    i.define(&CLASSICAL)?;
-    i.define(&ELECTROMAGNETISM)?;
-    i.define(&RELATIVITY)?;
-    i.define(&QUANTUM)?;
-    i.define(&FIELD_THEORY)?;
-    i.define(&SOLID_STATE)?;
-    i.define(&THERMODYNAMICS)?;
+    define_documented(i, &CLASSICAL)?;
+    define_documented(i, &ELECTROMAGNETISM)?;
+    define_documented(i, &RELATIVITY)?;
+    define_documented(i, &QUANTUM)?;
+    define_documented(i, &FIELD_THEORY)?;
+    define_documented(i, &SOLID_STATE)?;
+    define_documented(i, &THERMODYNAMICS)?;
     attach_dim_rules(
         i,
         &[
@@ -1059,136 +1139,496 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     Ok(())
 }
 
-const CLASSICAL: [&str; 21] = [
-    "kinematics(r, t) := list(r, diff(r, t), diff(diff(r, t), t))",
-    "newtons_second_law(m, a) := m * a",
-    "momentum(m, v) := m * v",
-    "kinetic_energy(m, v) := m * v^2 / 2",
-    "potential_energy_gravity_uniform(m, h, g) := m * g * h",
-    "potential_energy_gravity_universal(m1, m2, r, G) := -G * m1 * m2 / r",
-    "potential_energy_spring(k, x) := k * x^2 / 2",
-    "work_constant_force(F, d) := dot(F, d)",
-    "work_line_integral(F, curve, t, a, b) := line_integral_vec(F, curve, t, a, b)",
-    "power(F, v) := dot(F, v)",
-    "torque(r, F) := cross(r, F)",
-    "angular_momentum(r, p) := cross(r, p)",
-    "centripetal_acceleration(v, r) := v^2 / r",
-    "moment_of_inertia_point_mass(m, r) := m * r^2",
-    "rotational_kinetic_energy(inertia, w) := inertia * w^2 / 2",
-    "lagrangian(T, V) := T - V",
-    "hamiltonian(T, V) := T + V",
-    "euler_lagrange_equation(L, q, t) := euler_lagrange(L, q, t)",
-    "hamilton_equations(H, q, p) := list(diff(H, p), -diff(H, q))",
-    "gravitational_force(m1, m2, r) := G_N * m1 * m2 / r^2",
-    "harmonic_oscillator_frequency(k, m) := (k / m)^(1/2)",
+fn define_documented(
+    i: &mut Installer<'_>,
+    entries: &[(&str, &str)],
+) -> Result<(), RuleError> {
+    for &(def, doc) in entries {
+        i.define(&[def])?;
+        let head = def.split(":=").next().unwrap_or(def).trim();
+        let (name, arity) = match head.split_once('(') {
+            | Some((n, rest)) => {
+                let inner = rest.trim_end().strip_suffix(')').unwrap_or(rest);
+                let count = inner
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|p| !p.is_empty())
+                    .count();
+                (n.trim(), u8::try_from(count).unwrap_or(0))
+            },
+            | None => (head, 0),
+        };
+        i.op(OpDescriptor::new(name, Arity::Fixed(arity))
+            .flags(OpFlags::HEAVY)
+            .cost(100)
+            .doc(doc))?;
+    }
+    Ok(())
+}
+
+const CLASSICAL: [(&str, &str); 21] = [
+    (
+        "kinematics(r, t) := list(r, diff(r, t), diff(diff(r, t), t))",
+        "`kinematics(r, t)`: position, velocity `dr/dt`, and acceleration `d^2r/dt^2` as `list(r, v, a)`.",
+    ),
+    (
+        "newtons_second_law(m, a) := m * a",
+        "`newtons_second_law(m, a)`: net force `F = m * a` for mass `m` and acceleration `a`.",
+    ),
+    (
+        "momentum(m, v) := m * v",
+        "`momentum(m, v)`: linear momentum `p = m * v`.",
+    ),
+    (
+        "kinetic_energy(m, v) := m * v^2 / 2",
+        "`kinetic_energy(m, v)`: translational kinetic energy `(1/2) m v^2`.",
+    ),
+    (
+        "potential_energy_gravity_uniform(m, h, g) := m * g * h",
+        "`potential_energy_gravity_uniform(m, h, g)`: gravitational potential energy `m g h` in a uniform field.",
+    ),
+    (
+        "potential_energy_gravity_universal(m1, m2, r, G) := -G * m1 * m2 / r",
+        "`potential_energy_gravity_universal(m1, m2, r, G)`: Newtonian gravitational potential energy `-G m1 m2 / r`.",
+    ),
+    (
+        "potential_energy_spring(k, x) := k * x^2 / 2",
+        "`potential_energy_spring(k, x)`: elastic potential energy `(1/2) k x^2` of a Hookean spring.",
+    ),
+    (
+        "work_constant_force(F, d) := dot(F, d)",
+        "`work_constant_force(F, d)`: mechanical work `F . d` by a constant force `F` over displacement `d`.",
+    ),
+    (
+        "work_line_integral(F, curve, t, a, b) := line_integral_vec(F, curve, t, a, b)",
+        "`work_line_integral(F, curve, t, a, b)`: line integral of force field `F` along `curve(t)` for `t in [a, b]`.",
+    ),
+    (
+        "power(F, v) := dot(F, v)",
+        "`power(F, v)`: instantaneous mechanical power `F . v`.",
+    ),
+    (
+        "torque(r, F) := cross(r, F)",
+        "`torque(r, F)`: torque vector `r x F` about the origin.",
+    ),
+    (
+        "angular_momentum(r, p) := cross(r, p)",
+        "`angular_momentum(r, p)`: orbital angular momentum `r x p`.",
+    ),
+    (
+        "centripetal_acceleration(v, r) := v^2 / r",
+        "`centripetal_acceleration(v, r)`: centripetal acceleration magnitude `v^2 / r` for speed `v` and radius `r`.",
+    ),
+    (
+        "moment_of_inertia_point_mass(m, r) := m * r^2",
+        "`moment_of_inertia_point_mass(m, r)`: moment of inertia `m r^2` of a point mass at distance `r`.",
+    ),
+    (
+        "rotational_kinetic_energy(inertia, w) := inertia * w^2 / 2",
+        "`rotational_kinetic_energy(inertia, w)`: rotational kinetic energy `(1/2) I w^2`.",
+    ),
+    (
+        "lagrangian(T, V) := T - V",
+        "`lagrangian(T, V)`: classical Lagrangian `L = T - V` from kinetic energy `T` and potential energy `V`.",
+    ),
+    (
+        "hamiltonian(T, V) := T + V",
+        "`hamiltonian(T, V)`: total mechanical energy `H = T + V` from kinetic energy `T` and potential energy `V`.",
+    ),
+    (
+        "euler_lagrange_equation(L, q, t) := euler_lagrange(L, q, t)",
+        "`euler_lagrange_equation(L, q, t)`: Euler-Lagrange residual `d/dt(dL/dq_dot) - dL/dq` for generalized coordinate `q(t)`.",
+    ),
+    (
+        "hamilton_equations(H, q, p) := list(diff(H, p), -diff(H, q))",
+        "`hamilton_equations(H, q, p)`: Hamilton's canonical equations `list(dH/dp, -dH/dq)` for `(q_dot, p_dot)`.",
+    ),
+    (
+        "gravitational_force(m1, m2, r) := G_N * m1 * m2 / r^2",
+        "`gravitational_force(m1, m2, r)`: Newtonian gravitational force magnitude `G_N m1 m2 / r^2`.",
+    ),
+    (
+        "harmonic_oscillator_frequency(k, m) := (k / m)^(1/2)",
+        "`harmonic_oscillator_frequency(k, m)`: angular frequency `sqrt(k / m)` of a simple harmonic oscillator.",
+    ),
 ];
 
-const ELECTROMAGNETISM: [&str; 10] = [
-    "maxwell_equations(E, B, rho, J, vars, t) := list(div(E, vars) - rho / epsilon_0, div(B, vars), curl(E, vars) + diff(B, t), curl(B, vars) - mu_0 * (J + epsilon_0 * diff(E, t)))",
-    "lorentz_force(q, E, v, B) := q * (E + cross(v, B))",
-    "electric_field_from_potentials(V, A, vars, t) := -(grad(V, vars) + diff(A, t))",
-    "electric_field_from_potential(V, vars) := -grad(V, vars)",
-    "magnetic_field_from_vector_potential(A, vars) := curl(A, vars)",
-    "poynting_vector(E, B) := cross(E, B) / mu_0",
-    "em_energy_density(E, B) := (epsilon_0 * dot(E, E) + dot(B, B) / mu_0) / 2",
-    "coulombs_law(q, r) := q * r / (4 * pi * epsilon_0 * norm(r)^3)",
-    "coulomb_force(q1, q2, r) := q1 * q2 / (4 * pi * epsilon_0 * r^2)",
-    "point_charge_potential(q, r) := q / (4 * pi * epsilon_0 * r)",
+const ELECTROMAGNETISM: [(&str, &str); 10] = [
+    (
+        "maxwell_equations(E, B, rho, J, vars, t) := list(div(E, vars) - rho / epsilon_0, div(B, vars), curl(E, vars) + diff(B, t), curl(B, vars) - mu_0 * (J + epsilon_0 * diff(E, t)))",
+        "`maxwell_equations(E, B, rho, J, vars, t)`: list of the four Maxwell equation residuals (Gauss, Gauss-magnetism, Faraday, Ampere-Maxwell).",
+    ),
+    (
+        "lorentz_force(q, E, v, B) := q * (E + cross(v, B))",
+        "`lorentz_force(q, E, v, B)`: electromagnetic Lorentz force `q (E + v x B)`.",
+    ),
+    (
+        "electric_field_from_potentials(V, A, vars, t) := -(grad(V, vars) + diff(A, t))",
+        "`electric_field_from_potentials(V, A, vars, t)`: electric field `-(grad V + dA/dt)` from scalar potential `V` and vector potential `A`.",
+    ),
+    (
+        "electric_field_from_potential(V, vars) := -grad(V, vars)",
+        "`electric_field_from_potential(V, vars)`: electrostatic field `-grad V` from scalar potential `V`.",
+    ),
+    (
+        "magnetic_field_from_vector_potential(A, vars) := curl(A, vars)",
+        "`magnetic_field_from_vector_potential(A, vars)`: magnetic field `curl A` from vector potential `A`.",
+    ),
+    (
+        "poynting_vector(E, B) := cross(E, B) / mu_0",
+        "`poynting_vector(E, B)`: electromagnetic energy flux `(E x B) / mu_0`.",
+    ),
+    (
+        "em_energy_density(E, B) := (epsilon_0 * dot(E, E) + dot(B, B) / mu_0) / 2",
+        "`em_energy_density(E, B)`: electromagnetic energy density `(epsilon_0 |E|^2 + |B|^2 / mu_0) / 2`.",
+    ),
+    (
+        "coulombs_law(q, r) := q * r / (4 * pi * epsilon_0 * norm(r)^3)",
+        "`coulombs_law(q, r)`: electric field vector `q r / (4 pi epsilon_0 |r|^3)` of a point charge `q`.",
+    ),
+    (
+        "coulomb_force(q1, q2, r) := q1 * q2 / (4 * pi * epsilon_0 * r^2)",
+        "`coulomb_force(q1, q2, r)`: electrostatic force magnitude `q1 q2 / (4 pi epsilon_0 r^2)`.",
+    ),
+    (
+        "point_charge_potential(q, r) := q / (4 * pi * epsilon_0 * r)",
+        "`point_charge_potential(q, r)`: electrostatic potential `q / (4 pi epsilon_0 r)` of a point charge.",
+    ),
 ];
 
-const RELATIVITY: [&str; 12] = [
-    "lorentz_factor(v) := (1 - v^2 / c_0^2)^(-1/2)",
-    "lorentz_transformation_x(x, t, v) := list(lorentz_factor(v) * (x - v * t), lorentz_factor(v) * (t - v * x / c_0^2))",
-    "velocity_addition(v, u) := (v + u) / (1 + v * u / c_0^2)",
-    "mass_energy_equivalence(m) := m * c_0^2",
-    "relativistic_momentum(m, v) := lorentz_factor(v) * m * v",
-    "relativistic_energy(m, p) := ((p * c_0)^2 + (m * c_0^2)^2)^(1/2)",
-    "doppler_effect(f, v) := f * ((1 - v / c_0) / (1 + v / c_0))^(1/2)",
-    "schwarzschild_radius(M) := 2 * G_N * M / c_0^2",
-    "gravitational_time_dilation(t, r, M) := t * (1 - schwarzschild_radius(M) / r)^(1/2)",
-    "einstein_tensor_from(Ric, R, g) := Ric - R * g / 2",
-    "einstein_field_equations(Ric, R, g, T) := Ric - R * g / 2 - 8 * pi * G_N * T / c_0^4",
-    "minkowski_metric := list(list(1, 0, 0, 0), list(0, -1, 0, 0), list(0, 0, -1, 0), list(0, 0, 0, -1))",
+const RELATIVITY: [(&str, &str); 12] = [
+    (
+        "lorentz_factor(v) := (1 - v^2 / c_0^2)^(-1/2)",
+        "`lorentz_factor(v)`: special-relativistic Lorentz factor `gamma = (1 - v^2 / c_0^2)^(-1/2)`.",
+    ),
+    (
+        "lorentz_transformation_x(x, t, v) := list(lorentz_factor(v) * (x - v * t), lorentz_factor(v) * (t - v * x / c_0^2))",
+        "`lorentz_transformation_x(x, t, v)`: 1+1D Lorentz boost `list(x', t')` along `x` at velocity `v`.",
+    ),
+    (
+        "velocity_addition(v, u) := (v + u) / (1 + v * u / c_0^2)",
+        "`velocity_addition(v, u)`: relativistic collinear velocity addition `(v + u) / (1 + v u / c_0^2)`.",
+    ),
+    (
+        "mass_energy_equivalence(m) := m * c_0^2",
+        "`mass_energy_equivalence(m)`: rest energy `E_0 = m c_0^2`.",
+    ),
+    (
+        "relativistic_momentum(m, v) := lorentz_factor(v) * m * v",
+        "`relativistic_momentum(m, v)`: relativistic momentum `gamma m v`.",
+    ),
+    (
+        "relativistic_energy(m, p) := ((p * c_0)^2 + (m * c_0^2)^2)^(1/2)",
+        "`relativistic_energy(m, p)`: relativistic energy `sqrt((p c_0)^2 + (m c_0^2)^2)`.",
+    ),
+    (
+        "doppler_effect(f, v) := f * ((1 - v / c_0) / (1 + v / c_0))^(1/2)",
+        "`doppler_effect(f, v)`: longitudinal relativistic Doppler-shifted frequency for receding velocity `v`.",
+    ),
+    (
+        "schwarzschild_radius(M) := 2 * G_N * M / c_0^2",
+        "`schwarzschild_radius(M)`: Schwarzschild event-horizon radius `2 G_N M / c_0^2`.",
+    ),
+    (
+        "gravitational_time_dilation(t, r, M) := t * (1 - schwarzschild_radius(M) / r)^(1/2)",
+        "`gravitational_time_dilation(t, r, M)`: proper time `t sqrt(1 - r_s / r)` at radius `r` outside mass `M`.",
+    ),
+    (
+        "einstein_tensor_from(Ric, R, g) := Ric - R * g / 2",
+        "`einstein_tensor_from(Ric, R, g)`: Einstein tensor `G = Ric - (1/2) R g` from Ricci tensor, scalar curvature, and metric.",
+    ),
+    (
+        "einstein_field_equations(Ric, R, g, T) := Ric - R * g / 2 - 8 * pi * G_N * T / c_0^4",
+        "`einstein_field_equations(Ric, R, g, T)`: residual `G - (8 pi G_N / c_0^4) T` of the Einstein field equations.",
+    ),
+    (
+        "minkowski_metric := list(list(1, 0, 0, 0), list(0, -1, 0, 0), list(0, 0, -1, 0), list(0, 0, 0, -1))",
+        "`minkowski_metric`: 4x4 Minkowski metric tensor `diag(1, -1, -1, -1)`.",
+    ),
 ];
 
-const QUANTUM: [&str; 28] = [
-    "qm_apply(A, psi) := op_apply(A, psi)",
-    "position_operator(x) := op_mul(x)",
-    "momentum_operator(x) := op_scale(-I * hbar, op_d(x))",
-    "kinetic_operator(m, x) := op_scale(-hbar^2 / (2 * m), op_compose(op_d(x), op_d(x)))",
-    "hamiltonian_operator(m, V, x) := op_add(kinetic_operator(m, x), op_mul(V))",
-    "hamiltonian_3d(m, V, vars) := op_add(op_scale(-hbar^2 / (2 * m), op_laplacian(vars)), op_mul(V))",
-    "hamiltonian_free_particle(m, x) := kinetic_operator(m, x)",
-    "hamiltonian_harmonic_oscillator(m, w, x) := hamiltonian_operator(m, m * w^2 * x^2 / 2, x)",
-    "angular_momentum_z(phi) := op_scale(-I * hbar, op_d(phi))",
-    "commutator(A, B, psi) := qm_apply(A, qm_apply(B, psi)) - qm_apply(B, qm_apply(A, psi))",
-    "matrix_commutator(A, B) := matmul(A, B) - matmul(B, A)",
-    "matrix_anticommutator(A, B) := matmul(A, B) + matmul(B, A)",
-    "braket(phi, psi, x) := defint(conj(phi) * psi, x, -oo, oo)",
-    "braket_on(phi, psi, x, a, b) := defint(conj(phi) * psi, x, a, b)",
-    "expectation_value(A, psi, x) := braket(psi, qm_apply(A, psi), x) / braket(psi, psi, x)",
-    "uncertainty(A, psi, x) := (expectation_value(op_compose(A, A), psi, x) - expectation_value(A, psi, x)^2)^(1/2)",
-    "probability_density(psi) := conj(psi) * psi",
-    "normalize_wavefunction(psi, x) := psi / braket(psi, psi, x)^(1/2)",
-    "time_dependent_schrodinger_equation(H, psi, t) := I * hbar * diff(psi, t) - qm_apply(H, psi)",
-    "time_independent_schrodinger_equation(H, psi, E) := qm_apply(H, psi) - E * psi",
-    "solve_time_independent_schrodinger(H, psi, x) := list(energy_eigenvalue(H, psi, x), psi)",
-    "first_order_energy_correction(V, psi, x) := expectation_value(V, psi, x)",
-    "scattering_amplitude(psi_i, psi_f, V, x) := braket(psi_f, qm_apply(V, psi_i), x)",
-    "pauli_x := list(list(0, 1), list(1, 0))",
-    "pauli_y := list(list(0, -I), list(I, 0))",
-    "pauli_z := list(list(1, 0), list(0, -1))",
-    "pauli_matrices := list(pauli_x, pauli_y, pauli_z)",
-    "spin_operator(sigma) := hbar * sigma / 2",
+const QUANTUM: [(&str, &str); 28] = [
+    (
+        "qm_apply(A, psi) := op_apply(A, psi)",
+        "`qm_apply(A, psi)`: applies quantum operator `A` to wavefunction `psi`.",
+    ),
+    (
+        "position_operator(x) := op_mul(x)",
+        "`position_operator(x)`: 1D position operator multiplying by `x`.",
+    ),
+    (
+        "momentum_operator(x) := op_scale(-I * hbar, op_d(x))",
+        "`momentum_operator(x)`: 1D momentum operator `-i hbar d/dx`.",
+    ),
+    (
+        "kinetic_operator(m, x) := op_scale(-hbar^2 / (2 * m), op_compose(op_d(x), op_d(x)))",
+        "`kinetic_operator(m, x)`: 1D kinetic energy operator `-(hbar^2 / (2 m)) d^2/dx^2`.",
+    ),
+    (
+        "hamiltonian_operator(m, V, x) := op_add(kinetic_operator(m, x), op_mul(V))",
+        "`hamiltonian_operator(m, V, x)`: 1D Hamiltonian operator `-(hbar^2 / (2 m)) d^2/dx^2 + V`.",
+    ),
+    (
+        "hamiltonian_3d(m, V, vars) := op_add(op_scale(-hbar^2 / (2 * m), op_laplacian(vars)), op_mul(V))",
+        "`hamiltonian_3d(m, V, vars)`: multi-dimensional Hamiltonian `-(hbar^2 / (2 m)) nabla^2 + V` in coordinates `vars`.",
+    ),
+    (
+        "hamiltonian_free_particle(m, x) := kinetic_operator(m, x)",
+        "`hamiltonian_free_particle(m, x)`: 1D free-particle Hamiltonian `-(hbar^2 / (2 m)) d^2/dx^2`.",
+    ),
+    (
+        "hamiltonian_harmonic_oscillator(m, w, x) := hamiltonian_operator(m, m * w^2 * x^2 / 2, x)",
+        "`hamiltonian_harmonic_oscillator(m, w, x)`: 1D quantum harmonic oscillator Hamiltonian with frequency `w`.",
+    ),
+    (
+        "angular_momentum_z(phi) := op_scale(-I * hbar, op_d(phi))",
+        "`angular_momentum_z(phi)`: z-component angular momentum operator `-i hbar d/dphi`.",
+    ),
+    (
+        "commutator(A, B, psi) := qm_apply(A, qm_apply(B, psi)) - qm_apply(B, qm_apply(A, psi))",
+        "`commutator(A, B, psi)`: action `[A, B] psi = A(B(psi)) - B(A(psi))` of the operator commutator.",
+    ),
+    (
+        "matrix_commutator(A, B) := matmul(A, B) - matmul(B, A)",
+        "`matrix_commutator(A, B)`: matrix commutator `A B - B A`.",
+    ),
+    (
+        "matrix_anticommutator(A, B) := matmul(A, B) + matmul(B, A)",
+        "`matrix_anticommutator(A, B)`: matrix anticommutator `A B + B A`.",
+    ),
+    (
+        "braket(phi, psi, x) := defint(conj(phi) * psi, x, -oo, oo)",
+        "`braket(phi, psi, x)`: inner product `int_{-oo}^{oo} conj(phi) psi dx`.",
+    ),
+    (
+        "braket_on(phi, psi, x, a, b) := defint(conj(phi) * psi, x, a, b)",
+        "`braket_on(phi, psi, x, a, b)`: inner product `int_a^b conj(phi) psi dx` on `[a, b]`.",
+    ),
+    (
+        "expectation_value(A, psi, x) := braket(psi, qm_apply(A, psi), x) / braket(psi, psi, x)",
+        "`expectation_value(A, psi, x)`: normalized expectation value `<psi|A|psi> / <psi|psi>`.",
+    ),
+    (
+        "uncertainty(A, psi, x) := (expectation_value(op_compose(A, A), psi, x) - expectation_value(A, psi, x)^2)^(1/2)",
+        "`uncertainty(A, psi, x)`: standard deviation `sqrt(<A^2> - <A>^2)` in state `psi`.",
+    ),
+    (
+        "probability_density(psi) := conj(psi) * psi",
+        "`probability_density(psi)`: probability density `|psi|^2 = conj(psi) * psi`.",
+    ),
+    (
+        "normalize_wavefunction(psi, x) := psi / braket(psi, psi, x)^(1/2)",
+        "`normalize_wavefunction(psi, x)`: normalizes `psi` by `sqrt(<psi|psi>)` over `x in (-oo, oo)`.",
+    ),
+    (
+        "time_dependent_schrodinger_equation(H, psi, t) := I * hbar * diff(psi, t) - qm_apply(H, psi)",
+        "`time_dependent_schrodinger_equation(H, psi, t)`: residual `i hbar d(psi)/dt - H psi`.",
+    ),
+    (
+        "time_independent_schrodinger_equation(H, psi, E) := qm_apply(H, psi) - E * psi",
+        "`time_independent_schrodinger_equation(H, psi, E)`: residual `H psi - E psi`.",
+    ),
+    (
+        "solve_time_independent_schrodinger(H, psi, x) := list(energy_eigenvalue(H, psi, x), psi)",
+        "`solve_time_independent_schrodinger(H, psi, x)`: returns `list(E, psi)` for eigenstate `psi` of `H`.",
+    ),
+    (
+        "first_order_energy_correction(V, psi, x) := expectation_value(V, psi, x)",
+        "`first_order_energy_correction(V, psi, x)`: first-order perturbation energy shift `<psi|V|psi> / <psi|psi>`.",
+    ),
+    (
+        "scattering_amplitude(psi_i, psi_f, V, x) := braket(psi_f, qm_apply(V, psi_i), x)",
+        "`scattering_amplitude(psi_i, psi_f, V, x)`: Born-approximation transition matrix element `<psi_f|V|psi_i>`.",
+    ),
+    (
+        "pauli_x := list(list(0, 1), list(1, 0))",
+        "`pauli_x`: 2x2 Pauli matrix `sigma_x = [[0, 1], [1, 0]]`.",
+    ),
+    (
+        "pauli_y := list(list(0, -I), list(I, 0))",
+        "`pauli_y`: 2x2 Pauli matrix `sigma_y = [[0, -i], [i, 0]]`.",
+    ),
+    (
+        "pauli_z := list(list(1, 0), list(0, -1))",
+        "`pauli_z`: 2x2 Pauli matrix `sigma_z = [[1, 0], [0, -1]]`.",
+    ),
+    (
+        "pauli_matrices := list(pauli_x, pauli_y, pauli_z)",
+        "`pauli_matrices`: list of the three 2x2 Pauli matrices `list(pauli_x, pauli_y, pauli_z)`.",
+    ),
+    (
+        "spin_operator(sigma) := hbar * sigma / 2",
+        "`spin_operator(sigma)`: spin-1/2 operator `(hbar / 2) * sigma`.",
+    ),
 ];
 
-const FIELD_THEORY: [&str; 5] = [
-    "qed_lagrangian(psibar, psi, A, m, e) := psibar * (I * gamma_mu * partial_mu - e * gamma_mu * A - m) * psi - F_mu_nu^2 / 4",
-    "qcd_lagrangian(psibar, psi, G, m, gs) := psibar * (I * gamma_mu * partial_mu + gs * gamma_mu * G - m) * psi - G_mu_nu_a^2 / 4",
-    "propagator(p, m) := I / (p^2 - m^2 + I * epsilon)",
-    "scattering_cross_section(M, flux, dphi) := abs(M)^2 / flux * dphi",
-    "feynman_propagator_position_space(x, y, m) := defint(propagator(p, m) * exp(-I * p * (x - y)), p, -oo, oo)",
+const FIELD_THEORY: [(&str, &str); 5] = [
+    (
+        "qed_lagrangian(psibar, psi, A, m, e) := psibar * (I * gamma_mu * partial_mu - e * gamma_mu * A - m) * psi - F_mu_nu^2 / 4",
+        "`qed_lagrangian(psibar, psi, A, m, e)`: symbolic QED Lagrangian density for Dirac spinor `psi` and gauge field `A`.",
+    ),
+    (
+        "qcd_lagrangian(psibar, psi, G, m, gs) := psibar * (I * gamma_mu * partial_mu + gs * gamma_mu * G - m) * psi - G_mu_nu_a^2 / 4",
+        "`qcd_lagrangian(psibar, psi, G, m, gs)`: symbolic QCD Lagrangian density for quark field `psi` and gluon field `G`.",
+    ),
+    (
+        "propagator(p, m) := I / (p^2 - m^2 + I * epsilon)",
+        "`propagator(p, m)`: Feynman scalar propagator `i / (p^2 - m^2 + i epsilon)` in momentum space.",
+    ),
+    (
+        "scattering_cross_section(M, flux, dphi) := abs(M)^2 / flux * dphi",
+        "`scattering_cross_section(M, flux, dphi)`: differential cross section `|M|^2 / flux * dphi`.",
+    ),
+    (
+        "feynman_propagator_position_space(x, y, m) := defint(propagator(p, m) * exp(-I * p * (x - y)), p, -oo, oo)",
+        "`feynman_propagator_position_space(x, y, m)`: 1D Fourier transform of the scalar Feynman propagator from `x` to `y`.",
+    ),
 ];
 
-const SOLID_STATE: [&str; 14] = [
-    "lattice_volume(a1, a2, a3) := dot(a1, cross(a2, a3))",
-    "reciprocal_lattice_vectors(a1, a2, a3) := list(2 * pi * cross(a2, a3) / lattice_volume(a1, a2, a3), 2 * pi * cross(a3, a1) / lattice_volume(a1, a2, a3), 2 * pi * cross(a1, a2) / lattice_volume(a1, a2, a3))",
-    "bloch_wave(k, r, u) := exp(I * dot(k, r)) * u",
-    "energy_band(k, m, E0) := E0 + hbar^2 * k^2 / (2 * m)",
-    "density_of_states_3d(E, m, V) := V / (2 * pi^2) * (2 * m / hbar^2)^(3/2) * E^(1/2)",
-    "fermi_energy_3d(n, m) := hbar^2 / (2 * m) * (3 * pi^2 * n)^(2/3)",
-    "drude_conductivity(n, e, tau, m) := n * e^2 * tau / m",
-    "hall_coefficient(n, q) := 1 / (n * q)",
-    "debye_frequency(v, n) := v * (6 * pi^2 * n)^(1/3)",
-    "einstein_heat_capacity(N, TE, T) := 3 * N * k_B * (TE / T)^2 * exp(TE / T) / (exp(TE / T) - 1)^2",
-    "debye_heat_capacity(N, TD, T) := 9 * N * k_B * (T / TD)^3 * defint(u^4 * exp(u) / (exp(u) - 1)^2, u, 0, TD / T)",
-    "plasma_frequency(n, e, eps, m) := (n * e^2 / (eps * m))^(1/2)",
-    "london_penetration_depth(m, mu, ns, q) := (m / (mu * ns * q^2))^(1/2)",
-    "fermi_wavevector_3d(n) := (3 * pi^2 * n)^(1/3)",
+const SOLID_STATE: [(&str, &str); 14] = [
+    (
+        "lattice_volume(a1, a2, a3) := dot(a1, cross(a2, a3))",
+        "`lattice_volume(a1, a2, a3)`: primitive cell volume `a1 . (a2 x a3)` from basis vectors.",
+    ),
+    (
+        "reciprocal_lattice_vectors(a1, a2, a3) := list(2 * pi * cross(a2, a3) / lattice_volume(a1, a2, a3), 2 * pi * cross(a3, a1) / lattice_volume(a1, a2, a3), 2 * pi * cross(a1, a2) / lattice_volume(a1, a2, a3))",
+        "`reciprocal_lattice_vectors(a1, a2, a3)`: reciprocal lattice basis `list(b1, b2, b3)`.",
+    ),
+    (
+        "bloch_wave(k, r, u) := exp(I * dot(k, r)) * u",
+        "`bloch_wave(k, r, u)`: Bloch wavefunction `exp(i k . r) * u` with wavevector `k` and periodic part `u`.",
+    ),
+    (
+        "energy_band(k, m, E0) := E0 + hbar^2 * k^2 / (2 * m)",
+        "`energy_band(k, m, E0)`: parabolic band dispersion `E0 + hbar^2 k^2 / (2 m)`.",
+    ),
+    (
+        "density_of_states_3d(E, m, V) := V / (2 * pi^2) * (2 * m / hbar^2)^(3/2) * E^(1/2)",
+        "`density_of_states_3d(E, m, V)`: 3D free-electron density of states at energy `E`, mass `m`, and volume `V`.",
+    ),
+    (
+        "fermi_energy_3d(n, m) := hbar^2 / (2 * m) * (3 * pi^2 * n)^(2/3)",
+        "`fermi_energy_3d(n, m)`: 3D Fermi energy for electron number density `n` and mass `m`.",
+    ),
+    (
+        "drude_conductivity(n, e, tau, m) := n * e^2 * tau / m",
+        "`drude_conductivity(n, e, tau, m)`: Drude electrical conductivity `n e^2 tau / m`.",
+    ),
+    (
+        "hall_coefficient(n, q) := 1 / (n * q)",
+        "`hall_coefficient(n, q)`: Hall coefficient `1 / (n q)` for carrier density `n` and charge `q`.",
+    ),
+    (
+        "debye_frequency(v, n) := v * (6 * pi^2 * n)^(1/3)",
+        "`debye_frequency(v, n)`: Debye cutoff frequency `v (6 pi^2 n)^(1/3)` for sound speed `v` and atomic density `n`.",
+    ),
+    (
+        "einstein_heat_capacity(N, TE, T) := 3 * N * k_B * (TE / T)^2 * exp(TE / T) / (exp(TE / T) - 1)^2",
+        "`einstein_heat_capacity(N, TE, T)`: Einstein model heat capacity at temperature `T` with Einstein temperature `TE`.",
+    ),
+    (
+        "debye_heat_capacity(N, TD, T) := 9 * N * k_B * (T / TD)^3 * defint(u^4 * exp(u) / (exp(u) - 1)^2, u, 0, TD / T)",
+        "`debye_heat_capacity(N, TD, T)`: Debye model heat capacity at temperature `T` with Debye temperature `TD`.",
+    ),
+    (
+        "plasma_frequency(n, e, eps, m) := (n * e^2 / (eps * m))^(1/2)",
+        "`plasma_frequency(n, e, eps, m)`: plasma angular frequency `sqrt(n e^2 / (eps m))`.",
+    ),
+    (
+        "london_penetration_depth(m, mu, ns, q) := (m / (mu * ns * q^2))^(1/2)",
+        "`london_penetration_depth(m, mu, ns, q)`: London penetration depth `sqrt(m / (mu n_s q^2))`.",
+    ),
+    (
+        "fermi_wavevector_3d(n) := (3 * pi^2 * n)^(1/3)",
+        "`fermi_wavevector_3d(n)`: 3D Fermi wavevector `(3 pi^2 n)^(1/3)` for number density `n`.",
+    ),
 ];
 
-const THERMODYNAMICS: [&str; 21] = [
-    "first_law_thermodynamics(dU, Q, W) := dU - (Q - W)",
-    "ideal_gas_law(P, V, n, R, T) := P * V - n * R * T",
-    "enthalpy(U, P, V) := U + P * V",
-    "helmholtz_free_energy(U, T, S) := U - T * S",
-    "gibbs_free_energy(H, T, S) := H - T * S",
-    "boltzmann_entropy(Omega) := k_B * ln(Omega)",
-    "carnot_efficiency(Tc, Th) := 1 - Tc / Th",
-    "boltzmann_distribution(E, T, Z) := exp(-E / (k_B * T)) / Z",
-    "fermi_dirac_distribution(E, mu, T) := 1 / (exp((E - mu) / (k_B * T)) + 1)",
-    "bose_einstein_distribution(E, mu, T) := 1 / (exp((E - mu) / (k_B * T)) - 1)",
-    "work_isothermal_expansion(n, R, T, V1, V2) := n * R * T * ln(V2 / V1)",
-    "verify_maxwell_relation_helmholtz(A, T, V) := diff(diff(A, T), V) - diff(diff(A, V), T)",
-    "helmholtz_from_partition(Z, T) := -k_B * T * ln(Z)",
-    "internal_energy_from_partition(Z, T) := k_B * T^2 * diff(ln(Z), T)",
-    "entropy_from_helmholtz(A, T) := -diff(A, T)",
-    "pressure_from_helmholtz(A, V) := -diff(A, V)",
-    "heat_capacity(U, T) := diff(U, T)",
-    "planck_law(nu, T) := 2 * h_planck * nu^3 / c_0^2 / (exp(h_planck * nu / (k_B * T)) - 1)",
-    "stefan_boltzmann_law(T) := sigma_SB * T^4",
-    "wien_peak_wavelength(T) := 2.897771955e-3 / T",
-    "ideal_gas_pressure(n, T, V) := n * R_gas * T / V",
+const THERMODYNAMICS: [(&str, &str); 21] = [
+    (
+        "first_law_thermodynamics(dU, Q, W) := dU - (Q - W)",
+        "`first_law_thermodynamics(dU, Q, W)`: first law residual `dU - (Q - W)`.",
+    ),
+    (
+        "ideal_gas_law(P, V, n, R, T) := P * V - n * R * T",
+        "`ideal_gas_law(P, V, n, R, T)`: ideal gas equation of state residual `P V - n R T`.",
+    ),
+    (
+        "enthalpy(U, P, V) := U + P * V",
+        "`enthalpy(U, P, V)`: enthalpy `H = U + P V`.",
+    ),
+    (
+        "helmholtz_free_energy(U, T, S) := U - T * S",
+        "`helmholtz_free_energy(U, T, S)`: Helmholtz free energy `A = U - T S`.",
+    ),
+    (
+        "gibbs_free_energy(H, T, S) := H - T * S",
+        "`gibbs_free_energy(H, T, S)`: Gibbs free energy `G = H - T S`.",
+    ),
+    (
+        "boltzmann_entropy(Omega) := k_B * ln(Omega)",
+        "`boltzmann_entropy(Omega)`: statistical entropy `S = k_B ln(Omega)`.",
+    ),
+    (
+        "carnot_efficiency(Tc, Th) := 1 - Tc / Th",
+        "`carnot_efficiency(Tc, Th)`: Carnot thermal efficiency `1 - T_c / T_h`.",
+    ),
+    (
+        "boltzmann_distribution(E, T, Z) := exp(-E / (k_B * T)) / Z",
+        "`boltzmann_distribution(E, T, Z)`: canonical Boltzmann probability `exp(-E / (k_B T)) / Z`.",
+    ),
+    (
+        "fermi_dirac_distribution(E, mu, T) := 1 / (exp((E - mu) / (k_B * T)) + 1)",
+        "`fermi_dirac_distribution(E, mu, T)`: Fermi-Dirac mean occupation number at energy `E`, chemical potential `mu`, temperature `T`.",
+    ),
+    (
+        "bose_einstein_distribution(E, mu, T) := 1 / (exp((E - mu) / (k_B * T)) - 1)",
+        "`bose_einstein_distribution(E, mu, T)`: Bose-Einstein mean occupation number at energy `E`, chemical potential `mu`, temperature `T`.",
+    ),
+    (
+        "work_isothermal_expansion(n, R, T, V1, V2) := n * R * T * ln(V2 / V1)",
+        "`work_isothermal_expansion(n, R, T, V1, V2)`: reversible isothermal ideal-gas work `n R T ln(V2 / V1)`.",
+    ),
+    (
+        "verify_maxwell_relation_helmholtz(A, T, V) := diff(diff(A, T), V) - diff(diff(A, V), T)",
+        "`verify_maxwell_relation_helmholtz(A, T, V)`: mixed-partial symmetry check `d^2A/dTdV - d^2A/dVdT` for Helmholtz free energy `A`.",
+    ),
+    (
+        "helmholtz_from_partition(Z, T) := -k_B * T * ln(Z)",
+        "`helmholtz_from_partition(Z, T)`: Helmholtz free energy `-k_B T ln(Z)` from partition function `Z`.",
+    ),
+    (
+        "internal_energy_from_partition(Z, T) := k_B * T^2 * diff(ln(Z), T)",
+        "`internal_energy_from_partition(Z, T)`: internal energy `k_B T^2 d(ln Z)/dT` from partition function `Z`.",
+    ),
+    (
+        "entropy_from_helmholtz(A, T) := -diff(A, T)",
+        "`entropy_from_helmholtz(A, T)`: thermodynamic entropy `-dA/dT` from Helmholtz free energy `A`.",
+    ),
+    (
+        "pressure_from_helmholtz(A, V) := -diff(A, V)",
+        "`pressure_from_helmholtz(A, V)`: thermodynamic pressure `-dA/dV` from Helmholtz free energy `A`.",
+    ),
+    (
+        "heat_capacity(U, T) := diff(U, T)",
+        "`heat_capacity(U, T)`: heat capacity `dU/dT` at constant volume.",
+    ),
+    (
+        "planck_law(nu, T) := 2 * h_planck * nu^3 / c_0^2 / (exp(h_planck * nu / (k_B * T)) - 1)",
+        "`planck_law(nu, T)`: Planck blackbody spectral radiance at frequency `nu` and temperature `T`.",
+    ),
+    (
+        "stefan_boltzmann_law(T) := sigma_SB * T^4",
+        "`stefan_boltzmann_law(T)`: blackbody total emissive power `sigma_SB T^4`.",
+    ),
+    (
+        "wien_peak_wavelength(T) := 2.897771955e-3 / T",
+        "`wien_peak_wavelength(T)`: Wien's displacement peak wavelength `b / T` in meters.",
+    ),
+    (
+        "ideal_gas_pressure(n, T, V) := n * R_gas * T / V",
+        "`ideal_gas_pressure(n, T, V)`: ideal gas pressure `n R_gas T / V`.",
+    ),
 ];
 
 struct Physics {

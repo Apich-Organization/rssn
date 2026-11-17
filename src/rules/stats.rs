@@ -842,6 +842,7 @@ fn standard_error(
 /// parameters `?a`, `?b` and the argument `?x`.
 struct Family {
     name: &'static str,
+    doc: &'static str,
     params: u8,
     pdf: &'static str,
     cdf: &'static str,
@@ -854,6 +855,7 @@ struct Family {
 const FAMILIES: [Family; 10] = [
     Family {
         name: "normal",
+        doc: "`normal(mu, sigma)`: normal (Gaussian) distribution with mean `mu` and standard deviation `sigma`.",
         params: 2,
         pdf: "exp(-(?x - ?a)^2 / (2 * ?b^2)) / (?b * (2 * pi)^(1/2))",
         cdf: "1/2 * (1 + erf((?x - ?a) / (?b * 2^(1/2))))",
@@ -864,6 +866,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "uniform",
+        doc: "`uniform(a, b)`: continuous uniform distribution on the interval `[a, b]`.",
         params: 2,
         pdf: "heaviside(?x - ?a) * heaviside(?b - ?x) / (?b - ?a)",
         cdf: "(?x - ?a) / (?b - ?a) * heaviside(?x - ?a) * heaviside(?b - ?x) + heaviside(?x - ?b)",
@@ -874,6 +877,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "exponential",
+        doc: "`exponential(rate)`: exponential distribution with rate parameter `rate`.",
         params: 1,
         pdf: "?a * exp(-?a * ?x) * heaviside(?x)",
         cdf: "(1 - exp(-?a * ?x)) * heaviside(?x)",
@@ -884,6 +888,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "bernoulli",
+        doc: "`bernoulli(p)`: Bernoulli distribution with success probability `p`.",
         params: 1,
         pdf: "?a^?x * (1 - ?a)^(1 - ?x)",
         cdf: "(1 - ?a) * heaviside(?x + 1/2) + ?a * heaviside(?x - 1/2)",
@@ -894,6 +899,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "binomial_dist",
+        doc: "`binomial_dist(n, p)`: binomial distribution with `n` trials and success probability `p`.",
         params: 2,
         pdf: "gamma(?a + 1) / (gamma(?x + 1) * gamma(?a - ?x + 1)) * ?b^?x * (1 - ?b)^(?a - ?x)",
         cdf: "beta_reg(?a - ?x, ?x + 1, 1 - ?b)",
@@ -904,6 +910,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "poisson",
+        doc: "`poisson(rate)`: Poisson distribution with rate (mean) parameter `rate`.",
         params: 1,
         pdf: "?a^?x * exp(-?a) / gamma(?x + 1)",
         cdf: "1 - gamma_lr(?x + 1, ?a)",
@@ -914,6 +921,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "gamma_dist",
+        doc: "`gamma_dist(shape, rate)`: gamma distribution with shape parameter `shape` and rate parameter `rate`.",
         params: 2,
         pdf: "?b^?a * abs(?x)^(?a - 1) * exp(-?b * ?x) / gamma(?a) * heaviside(?x)",
         cdf: "gamma_lr(?a, ?b * ?x)",
@@ -924,6 +932,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "beta_dist",
+        doc: "`beta_dist(a, b)`: beta distribution with shape parameters `a` and `b`.",
         params: 2,
         pdf: "abs(?x)^(?a - 1) * abs(1 - ?x)^(?b - 1) / beta(?a, ?b) * heaviside(?x) * heaviside(1 - ?x)",
         cdf: "beta_reg(?a, ?b, ?x)",
@@ -937,6 +946,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "student_t",
+        doc: "`student_t(nu)`: Student's t-distribution with `nu` degrees of freedom.",
         params: 1,
         pdf: "gamma((?a + 1) / 2) / ((?a * pi)^(1/2) * gamma(?a / 2)) * (1 + ?x^2 / ?a)^(-(?a + 1) / 2)",
         cdf: "1/2 + sign(?x) / 2 * (1 - beta_reg(?a / 2, 1/2, ?a / (?a + ?x^2)))",
@@ -950,6 +960,7 @@ const FAMILIES: [Family; 10] = [
     },
     Family {
         name: "chi_squared",
+        doc: "`chi_squared(k)`: chi-squared distribution with `k` degrees of freedom.",
         params: 1,
         pdf: "abs(?x)^(?a / 2 - 1) * exp(-?x / 2) / (2^(?a / 2) * gamma(?a / 2)) * heaviside(?x)",
         cdf: "gamma_lr(?a / 2, ?x / 2)",
@@ -2217,43 +2228,73 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 
     // Distributions: inert terms and the requests on them.
     for family in &FAMILIES {
-        i.op(OpDescriptor::new(family.name, Arity::Fixed(family.params)))?;
+        i.op(OpDescriptor::new(family.name, Arity::Fixed(family.params)).doc(family.doc))?;
     }
     install_ext(i)?;
-    procedure(i, set, request(binary("pdf")), Tier::Reduce, |cx, a| {
-        distribution_request(cx, a, Request::Pdf)
-    })?;
-    procedure(i, set, request(binary("cdf")), Tier::Reduce, |cx, a| {
-        distribution_request(cx, a, Request::Cdf)
-    })?;
     procedure(
         i,
         set,
-        request(unary("expectation")),
+        request(binary("pdf").doc(
+            "`pdf(d, x)`: probability density function (or probability mass function) of distribution `d` at point `x`.",
+        )),
+        Tier::Reduce,
+        |cx, a| distribution_request(cx, a, Request::Pdf),
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("cdf").doc(
+            "`cdf(d, x)`: cumulative distribution function `P(X <= x)` of distribution `d` at point `x`.",
+        )),
+        Tier::Reduce,
+        |cx, a| distribution_request(cx, a, Request::Cdf),
+    )?;
+    procedure(
+        i,
+        set,
+        request(
+            unary("expectation")
+                .doc("`expectation(d)`: expected value (mean) `E[X]` of distribution `d`."),
+        ),
         Tier::Reduce,
         |cx, a| distribution_request(cx, a, Request::Mean),
     )?;
     procedure(
         i,
         set,
-        request(unary("variance_of")),
+        request(
+            unary("variance_of")
+                .doc("`variance_of(d)`: variance `Var(X) = E[(X - E[X])^2]` of distribution `d`."),
+        ),
         Tier::Reduce,
         |cx, a| distribution_request(cx, a, Request::Variance),
     )?;
-    procedure(i, set, request(binary("mgf")), Tier::Reduce, |cx, a| {
-        distribution_request(cx, a, Request::Mgf)
-    })?;
     procedure(
         i,
         set,
-        request(unary("entropy_of")),
+        request(binary("mgf").doc(
+            "`mgf(d, t)`: moment-generating function `M_X(t) = E[exp(t X)]` of distribution `d` at argument `t`.",
+        )),
+        Tier::Reduce,
+        |cx, a| distribution_request(cx, a, Request::Mgf),
+    )?;
+    procedure(
+        i,
+        set,
+        request(unary("entropy_of").doc(
+            "`entropy_of(d)`: differential or discrete information entropy of distribution `d`.",
+        )),
         Tier::Reduce,
         |cx, a| distribution_request(cx, a, Request::Entropy),
     )?;
 
     // Regularised incomplete gamma and beta functions for the cdfs.
-    i.op(binary("gamma_lr").eval(gamma_lr_eval))?;
-    i.op(ternary("beta_reg").eval(beta_reg_eval))?;
+    i.op(binary("gamma_lr")
+        .eval(gamma_lr_eval)
+        .doc("`gamma_lr(a, x)`: regularized lower incomplete gamma function `P(a, x) = gamma(a, x) / Gamma(a)`."))?;
+    i.op(ternary("beta_reg")
+        .eval(beta_reg_eval)
+        .doc("`beta_reg(a, b, x)`: regularized incomplete beta function `I_x(a, b) = B(x; a, b) / B(a, b)`."))?;
     // Only the derivative in the last argument is known; `?c` and `?d` name
     // arguments that do not exist, which marks the others as unavailable.
     partials(i, "gamma_lr", &["?c", "?b^(?a - 1) * exp(-?b) / gamma(?a)"])?;
@@ -2273,123 +2314,189 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     )?;
 
     // Descriptive statistics.
-    let lists: [(&str, ListFn); 17] = [
-        ("mean", mean),
-        ("variance", variance),
-        ("sample_variance", sample_variance),
-        ("std", std_dev),
-        ("sample_std", sample_std),
-        ("median", median),
-        ("mode", mode),
-        ("skewness", skewness),
-        ("kurtosis", kurtosis),
-        ("min_of", min_of),
-        ("max_of", max_of),
-        ("range_of", range_of),
-        ("geometric_mean", geometric_mean),
-        ("harmonic_mean", harmonic_mean),
-        ("iqr", iqr),
-        ("zscores", zscores),
-        ("coefficient_of_variation", coefficient_of_variation),
+    let lists: [(&str, &str, ListFn); 17] = [
+        ("mean", "`mean(xs)`: arithmetic mean of list `xs`.", mean),
+        (
+            "variance",
+            "`variance(xs)`: population variance `(1/n) sum (x_i - mean)^2` of list `xs`.",
+            variance,
+        ),
+        (
+            "sample_variance",
+            "`sample_variance(xs)`: sample variance `(1/(n-1)) sum (x_i - mean)^2` of list `xs`.",
+            sample_variance,
+        ),
+        (
+            "std",
+            "`std(xs)`: population standard deviation of list `xs`.",
+            std_dev,
+        ),
+        (
+            "sample_std",
+            "`sample_std(xs)`: sample standard deviation of list `xs`.",
+            sample_std,
+        ),
+        (
+            "median",
+            "`median(xs)`: median (50th percentile) of list `xs`.",
+            median,
+        ),
+        (
+            "mode",
+            "`mode(xs)`: most frequent value (mode) of list `xs`.",
+            mode,
+        ),
+        (
+            "skewness",
+            "`skewness(xs)`: Pearson skewness `m3 / m2^(3/2)` of list `xs`.",
+            skewness,
+        ),
+        (
+            "kurtosis",
+            "`kurtosis(xs)`: Pearson kurtosis `m4 / m2^2` of list `xs`.",
+            kurtosis,
+        ),
+        (
+            "min_of",
+            "`min_of(xs)`: minimum element of list `xs`.",
+            min_of,
+        ),
+        (
+            "max_of",
+            "`max_of(xs)`: maximum element of list `xs`.",
+            max_of,
+        ),
+        (
+            "range_of",
+            "`range_of(xs)`: range `max(xs) - min(xs)` of list `xs`.",
+            range_of,
+        ),
+        (
+            "geometric_mean",
+            "`geometric_mean(xs)`: geometric mean `(prod x_i)^(1/n)` of list `xs`.",
+            geometric_mean,
+        ),
+        (
+            "harmonic_mean",
+            "`harmonic_mean(xs)`: harmonic mean `n / (sum 1/x_i)` of list `xs`.",
+            harmonic_mean,
+        ),
+        (
+            "iqr",
+            "`iqr(xs)`: interquartile range `Q3 - Q1` of list `xs`.",
+            iqr,
+        ),
+        (
+            "zscores",
+            "`zscores(xs)`: z-score standardization `(x_i - mean) / std` of list `xs`.",
+            zscores,
+        ),
+        (
+            "coefficient_of_variation",
+            "`coefficient_of_variation(xs)`: coefficient of variation `std / mean` of list `xs`.",
+            coefficient_of_variation,
+        ),
     ];
-    for (name, f) in lists {
-        register_list(i, name, f)?;
+    for (name, doc, f) in lists {
+        register_list(i, name, doc, f)?;
     }
-    register_list(i, "standard_error", standard_error)?;
-    register_list(i, "entropy", entropy)?;
-    register_list(i, "entropy_bits", entropy_bits)?;
-    register_list(i, "gini", gini)?;
-    register_pair(i, "covariance", covariance)?;
-    register_pair(i, "correlation", correlation)?;
-    register_pair(i, "kl_divergence", kl_divergence)?;
-    register_pair(i, "cross_entropy", cross_entropy)?;
-    register_list_with(i, "moment", moment)?;
-    register_list_with(i, "quantile", quantile)?;
-    register_list_with(i, "percentile", percentile)?;
+    register_list(
+        i,
+        "standard_error",
+        "`standard_error(xs)`: standard error of the mean `sample_std / sqrt(n)` of list `xs`.",
+        standard_error,
+    )?;
+    register_list(
+        i,
+        "entropy",
+        "`entropy(ps)`: Shannon entropy (in nats) `-sum p_i ln(p_i)` of probability list `ps`.",
+        entropy,
+    )?;
+    register_list(
+        i,
+        "entropy_bits",
+        "`entropy_bits(ps)`: Shannon entropy (in bits) `-sum p_i log2(p_i)` of probability list `ps`.",
+        entropy_bits,
+    )?;
+    register_list(
+        i,
+        "gini",
+        "`gini(ps)`: Gini impurity `1 - sum p_i^2` of categorical distribution `ps`.",
+        gini,
+    )?;
+    register_pair(
+        i,
+        "covariance",
+        "`covariance(xs, ys)`: population covariance `(1/n) sum (x_i - mean_x)(y_i - mean_y)` of lists `xs` and `ys`.",
+        covariance,
+    )?;
+    register_pair(
+        i,
+        "correlation",
+        "`correlation(xs, ys)`: Pearson correlation coefficient `cov(xs, ys) / (std(xs) * std(ys))` of lists `xs` and `ys`.",
+        correlation,
+    )?;
+    register_pair(
+        i,
+        "kl_divergence",
+        "`kl_divergence(p, q)`: Kullback-Leibler divergence `D_KL(P || Q) = sum p_i ln(p_i / q_i)` from `q` to `p`.",
+        kl_divergence,
+    )?;
+    register_pair(
+        i,
+        "cross_entropy",
+        "`cross_entropy(p, q)`: cross-entropy `H(P, Q) = -sum p_i ln(q_i)` between probability distributions `p` and `q`.",
+        cross_entropy,
+    )?;
+    register_list_with(
+        i,
+        "moment",
+        "`moment(xs, k)`: `k`-th central moment `(1/n) sum (x_i - mean)^k` of list `xs`.",
+        moment,
+    )?;
+    register_list_with(
+        i,
+        "quantile",
+        "`quantile(xs, p)`: `p`-th quantile (interpolated order statistic, `p in [0, 1]`) of list `xs`.",
+        quantile,
+    )?;
+    register_list_with(
+        i,
+        "percentile",
+        "`percentile(xs, p)`: `p`-th percentile (`quantile(xs, p / 100)`) of list `xs`.",
+        percentile,
+    )?;
 
     // Information theory on joint distributions.
     procedure(
         i,
         set,
-        request(unary("joint_entropy")),
+        request(unary("joint_entropy").doc(
+            "`joint_entropy(mat)`: joint Shannon entropy (in nats) of joint probability matrix `mat`.",
+        )),
         Tier::Normalize,
         |cx, a| matrix_op(cx, a, joint_entropy),
     )?;
     procedure(
         i,
         set,
-        request(unary("conditional_entropy")),
+        request(unary("conditional_entropy").doc(
+            "`conditional_entropy(mat)`: conditional entropy `H(Y | X) = H(X, Y) - H(X)` for joint probability matrix `mat`.",
+        )),
         Tier::Normalize,
         |cx, a| matrix_op(cx, a, conditional_entropy),
     )?;
     procedure(
         i,
         set,
-        request(unary("mutual_information")),
+        request(unary("mutual_information").doc(
+            "`mutual_information(mat)`: mutual information `I(X; Y) = H(X) + H(Y) - H(X, Y)` for joint probability matrix `mat`.",
+        )),
         Tier::Normalize,
         |cx, a| matrix_op(cx, a, mutual_information),
     )?;
 
-    // Inference and regression are requests.
-    procedure(i, set, request(ternary("z_test")), Tier::Reduce, z_test)?;
-    procedure(i, set, request(binary("t_test")), Tier::Reduce, t_test)?;
-    procedure(
-        i,
-        set,
-        request(ternary("welch_test")),
-        Tier::Reduce,
-        welch_test,
-    )?;
-    procedure(
-        i,
-        set,
-        request(binary("pooled_t_test")),
-        Tier::Reduce,
-        pooled_t_test,
-    )?;
-    procedure(
-        i,
-        set,
-        request(binary("chi_squared_test")),
-        Tier::Reduce,
-        chi_squared_test,
-    )?;
-    procedure(i, set, request(unary("anova")), Tier::Reduce, anova)?;
-    procedure(
-        i,
-        set,
-        request(binary("confidence_interval")),
-        Tier::Reduce,
-        confidence_interval,
-    )?;
-    procedure(
-        i,
-        set,
-        request(ternary("z_interval")),
-        Tier::Reduce,
-        z_interval,
-    )?;
-    procedure(
-        i,
-        set,
-        request(binary("linear_regression")),
-        Tier::Reduce,
-        linear_regression,
-    )?;
-    procedure(
-        i,
-        set,
-        request(ternary("polynomial_regression")),
-        Tier::Reduce,
-        polynomial_regression,
-    )?;
-    procedure(
-        i,
-        set,
-        request(OpDescriptor::new("nonlinear_regression", Arity::Fixed(5))),
-        Tier::Reduce,
-        nonlinear_regression,
-    )?;
+    install_inference(i)?;
 
     // Distributions are model descriptors whose dimension is the dimension
     // of their location/scale parameter, so that `mean`, `variance` and
@@ -2533,6 +2640,129 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     Ok(())
 }
 
+fn install_inference(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let set = "stats";
+    let unary = |name: &str| OpDescriptor::new(name, Arity::Fixed(1));
+    let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
+    let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
+    let request = |desc: OpDescriptor| desc.flags(OpFlags::HEAVY).cost(100);
+
+    // Inference and regression are requests.
+    procedure(
+        i,
+        set,
+        request(ternary("z_test").doc(
+            "`z_test(sample, mu, sigma)`: one-sample z-test returning `list(statistic, p_value)` \
+             for `sample` against mean `mu` with known standard deviation `sigma`.",
+        )),
+        Tier::Reduce,
+        z_test,
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("t_test").doc(
+            "`t_test(sample, mu)`: one-sample Student's t-test returning `list(statistic, p_value)` \
+             for `sample` against population mean `mu`.",
+        )),
+        Tier::Reduce,
+        t_test,
+    )?;
+    procedure(
+        i,
+        set,
+        request(ternary("welch_test").doc(
+            "`welch_test(xs, ys, delta)`: Welch's two-sample t-test returning `list(statistic, p_value)` \
+             for samples `xs` and `ys` with hypothesised difference `delta`.",
+        )),
+        Tier::Reduce,
+        welch_test,
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("pooled_t_test").doc(
+            "`pooled_t_test(xs, ys)`: two-sample pooled t-test returning `list(statistic, p_value)` \
+             assuming equal population variances.",
+        )),
+        Tier::Reduce,
+        pooled_t_test,
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("chi_squared_test").doc(
+            "`chi_squared_test(observed, expected)`: Pearson's chi-squared goodness-of-fit test \
+             returning `list(statistic, p_value)`.",
+        )),
+        Tier::Reduce,
+        chi_squared_test,
+    )?;
+    procedure(
+        i,
+        set,
+        request(unary("anova").doc(
+            "`anova(groups)`: one-way analysis of variance returning `list(f_statistic, p_value)` \
+             for a list of sample `groups`.",
+        )),
+        Tier::Reduce,
+        anova,
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("confidence_interval").doc(
+            "`confidence_interval(sample, level)`: confidence interval `list(lo, hi)` for the \
+             population mean at confidence level `level` via Student's t-distribution.",
+        )),
+        Tier::Reduce,
+        confidence_interval,
+    )?;
+    procedure(
+        i,
+        set,
+        request(ternary("z_interval").doc(
+            "`z_interval(sample, sigma, level)`: confidence interval `list(lo, hi)` for the \
+             population mean with known standard deviation `sigma` at level `level`.",
+        )),
+        Tier::Reduce,
+        z_interval,
+    )?;
+    procedure(
+        i,
+        set,
+        request(binary("linear_regression").doc(
+            "`linear_regression(xs, ys)`: ordinary least-squares linear regression returning \
+             `list(intercept, slope)` (or coefficient list for multiple regression).",
+        )),
+        Tier::Reduce,
+        linear_regression,
+    )?;
+    procedure(
+        i,
+        set,
+        request(ternary("polynomial_regression").doc(
+            "`polynomial_regression(xs, ys, degree)`: polynomial least-squares fit returning \
+             coefficients `list(c0, c1, ..., cd)` up to degree `degree`.",
+        )),
+        Tier::Reduce,
+        polynomial_regression,
+    )?;
+    procedure(
+        i,
+        set,
+        request(
+            OpDescriptor::new("nonlinear_regression", Arity::Fixed(5)).doc(
+                "`nonlinear_regression(xs, ys, model, x, params)`: non-linear least-squares fit \
+             returning normal equations as a solve request.",
+            ),
+        ),
+        Tier::Reduce,
+        nonlinear_regression,
+    )?;
+    Ok(())
+}
+
 /// A kernel for one operator that runs a closure.
 struct Wrapped<F> {
     op: OpId,
@@ -2561,11 +2791,13 @@ impl<F: Fn(&mut Cx<'_>, &[NodeId]) -> Outcome + Send + Sync> Kernel for Wrapped<
 fn register_list(
     i: &mut Installer<'_>,
     name: &str,
+    doc: &str,
     f: ListFn,
 ) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new(name, Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc(doc))?;
     i.kernel(
         &format!("stats/{name}"),
         Tier::Normalize,
@@ -2580,11 +2812,13 @@ fn register_list(
 fn register_pair(
     i: &mut Installer<'_>,
     name: &str,
+    doc: &str,
     f: PairFn,
 ) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new(name, Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc(doc))?;
     i.kernel(
         &format!("stats/{name}"),
         Tier::Normalize,
@@ -2599,11 +2833,13 @@ fn register_pair(
 fn register_list_with(
     i: &mut Installer<'_>,
     name: &str,
+    doc: &str,
     f: ScalarFn,
 ) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new(name, Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc(doc))?;
     i.kernel(
         &format!("stats/{name}"),
         Tier::Normalize,
@@ -4307,6 +4543,7 @@ use crate::rules::calculus::derivative;
 const FAMILIES_EXT: [Family; 11] = [
     Family {
         name: "cauchy",
+        doc: "`cauchy(x0, gamma)`: Cauchy-Lorentz distribution with location `x0` and scale `gamma`.",
         params: 2,
         pdf: "1 / (pi * ?b * (1 + ((?x - ?a) / ?b)^2))",
         cdf: "1/2 + atan((?x - ?a) / ?b) / pi",
@@ -4317,6 +4554,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "laplace_dist",
+        doc: "`laplace_dist(mu, b)`: Laplace distribution with location `mu` and scale `b`.",
         params: 2,
         pdf: "exp(-abs(?x - ?a) / ?b) / (2 * ?b)",
         cdf: "1/2 + sign(?x - ?a) / 2 * (1 - exp(-abs(?x - ?a) / ?b))",
@@ -4327,6 +4565,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "lognormal",
+        doc: "`lognormal(mu, sigma)`: log-normal distribution with underlying normal mean `mu` and standard deviation `sigma`.",
         params: 2,
         pdf: "exp(-(ln(abs(?x)) - ?a)^2 / (2 * ?b^2)) / (abs(?x) * ?b * (2 * pi)^(1/2)) * heaviside(?x)",
         cdf: "1/2 * (1 + erf((ln(abs(?x)) - ?a) / (?b * 2^(1/2)))) * heaviside(?x)",
@@ -4337,6 +4576,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "weibull",
+        doc: "`weibull(shape, scale)`: Weibull distribution with shape parameter `shape` and scale parameter `scale`.",
         params: 2,
         pdf: "?a / ?b * (abs(?x) / ?b)^(?a - 1) * exp(-(abs(?x) / ?b)^?a) * heaviside(?x)",
         cdf: "(1 - exp(-(abs(?x) / ?b)^?a)) * heaviside(?x)",
@@ -4347,6 +4587,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "geometric",
+        doc: "`geometric(p)`: geometric distribution with success probability `p`.",
         params: 1,
         pdf: "(1 - ?a)^(?x - 1) * ?a * heaviside(?x - 1/2)",
         cdf: "(1 - (1 - ?a)^floor(?x)) * heaviside(?x - 1/2)",
@@ -4357,6 +4598,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "negative_binomial",
+        doc: "`negative_binomial(r, p)`: negative binomial distribution for `r` successes with probability `p`.",
         params: 2,
         pdf: "gamma(?x + ?a) / (gamma(?x + 1) * gamma(?a)) * ?b^?a * (1 - ?b)^?x * heaviside(?x + 1/2)",
         cdf: "beta_reg(?a, floor(?x) + 1, ?b) * heaviside(?x + 1/2)",
@@ -4367,6 +4609,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "f_dist",
+        doc: "`f_dist(d1, d2)`: Fisher-Snedecor F-distribution with degrees of freedom `d1` and `d2`.",
         params: 2,
         pdf: "((?a * abs(?x))^?a * ?b^?b / (?a * abs(?x) + ?b)^(?a + ?b))^(1/2) / (abs(?x) * beta(?a / 2, ?b / 2)) * heaviside(?x)",
         cdf: "beta_reg(?a / 2, ?b / 2, ?a * ?x / (?a * ?x + ?b)) * heaviside(?x)",
@@ -4377,6 +4620,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "pareto",
+        doc: "`pareto(scale, shape)`: Pareto distribution with minimum scale `scale` and shape parameter `shape`.",
         params: 2,
         pdf: "?b * ?a^?b / abs(?x)^(?b + 1) * heaviside(?x - ?a)",
         cdf: "(1 - (?a / abs(?x))^?b) * heaviside(?x - ?a)",
@@ -4387,6 +4631,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "rayleigh",
+        doc: "`rayleigh(sigma)`: Rayleigh distribution with scale parameter `sigma`.",
         params: 1,
         pdf: "?x / ?a^2 * exp(-?x^2 / (2 * ?a^2)) * heaviside(?x)",
         cdf: "(1 - exp(-?x^2 / (2 * ?a^2))) * heaviside(?x)",
@@ -4397,6 +4642,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "logistic",
+        doc: "`logistic(mu, s)`: logistic distribution with location `mu` and scale `s`.",
         params: 2,
         pdf: "exp(-(?x - ?a) / ?b) / (?b * (1 + exp(-(?x - ?a) / ?b))^2)",
         cdf: "1 / (1 + exp(-(?x - ?a) / ?b))",
@@ -4407,6 +4653,7 @@ const FAMILIES_EXT: [Family; 11] = [
     },
     Family {
         name: "gumbel",
+        doc: "`gumbel(mu, beta)`: Gumbel (type-I extreme value) distribution with location `mu` and scale `beta`.",
         params: 2,
         pdf: "exp(-(?x - ?a) / ?b - exp(-(?x - ?a) / ?b)) / ?b",
         cdf: "exp(-exp(-(?x - ?a) / ?b))",
@@ -5335,39 +5582,157 @@ impl Kernel for Extension {
 
 fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for family in &FAMILIES_EXT {
-        i.op(OpDescriptor::new(family.name, Arity::Fixed(family.params)))?;
+        i.op(OpDescriptor::new(family.name, Arity::Fixed(family.params)).doc(family.doc))?;
     }
     // Inert model descriptors for `bayes_update`.
-    i.op(OpDescriptor::new("binomial_trials", Arity::Fixed(1)))?;
-    i.op(OpDescriptor::new("normal_known_sd", Arity::Fixed(1)))?;
-    for (name, arity, kind) in [
-        ("charfn", 2, Kind::CharFn),
-        ("skewness_of", 1, Kind::Skewness),
-        ("kurtosis_of", 1, Kind::Kurtosis),
-        ("median_of", 1, Kind::Median),
-        ("mode_of", 1, Kind::Mode),
-        ("quantile_of", 2, Kind::Quantile),
-        ("std_of", 1, Kind::Std),
-        ("moment_of", 2, Kind::Moment),
-        ("central_moment_of", 2, Kind::CentralMoment),
-        ("expect_of", 3, Kind::ExpectOf),
-        ("sum_dist", 2, Kind::SumDist),
-        ("iid_sum", 2, Kind::IidSum),
-        ("iid_mean", 2, Kind::IidMean),
-        ("scale_dist", 2, Kind::ScaleDist),
-        ("shift_dist", 2, Kind::ShiftDist),
-        ("bayes_update", 3, Kind::Bayes),
-        ("binomial_test", 3, Kind::BinomialTest),
-        ("fisher_exact", 4, Kind::FisherExact),
-        ("wilson_interval", 3, Kind::Wilson),
-        ("mean_interval", 4, Kind::MeanInterval),
-        ("proportion_z_test", 3, Kind::ProportionZ),
-        ("r_squared", 2, Kind::RSquared),
-        ("residuals", 2, Kind::Residuals),
+    i.op(OpDescriptor::new("binomial_trials", Arity::Fixed(1))
+        .doc("`binomial_trials(n)`: inert binomial likelihood descriptor with `n` trials for Bayesian updates."))?;
+    i.op(OpDescriptor::new("normal_known_sd", Arity::Fixed(1))
+        .doc("`normal_known_sd(sigma)`: inert normal likelihood descriptor with known standard deviation `sigma` for Bayesian updates."))?;
+    for (name, arity, kind, doc) in [
+        (
+            "charfn",
+            2,
+            Kind::CharFn,
+            "`charfn(d, t)`: characteristic function `E[exp(i t X)]` of distribution `d` at argument `t`.",
+        ),
+        (
+            "skewness_of",
+            1,
+            Kind::Skewness,
+            "`skewness_of(d)`: skewness (standardized 3rd central moment) of distribution `d`.",
+        ),
+        (
+            "kurtosis_of",
+            1,
+            Kind::Kurtosis,
+            "`kurtosis_of(d)`: excess kurtosis (standardized 4th central moment minus 3) of distribution `d`.",
+        ),
+        (
+            "median_of",
+            1,
+            Kind::Median,
+            "`median_of(d)`: median (50th percentile) of distribution `d`.",
+        ),
+        (
+            "mode_of",
+            1,
+            Kind::Mode,
+            "`mode_of(d)`: mode (point of maximum density or probability mass) of distribution `d`.",
+        ),
+        (
+            "quantile_of",
+            2,
+            Kind::Quantile,
+            "`quantile_of(d, p)`: quantile function (inverse CDF) of distribution `d` at probability `p`.",
+        ),
+        (
+            "std_of",
+            1,
+            Kind::Std,
+            "`std_of(d)`: standard deviation `sqrt(Var(X))` of distribution `d`.",
+        ),
+        (
+            "moment_of",
+            2,
+            Kind::Moment,
+            "`moment_of(d, k)`: `k`-th raw moment `E[X^k]` of distribution `d`.",
+        ),
+        (
+            "central_moment_of",
+            2,
+            Kind::CentralMoment,
+            "`central_moment_of(d, k)`: `k`-th central moment `E[(X - E[X])^k]` of distribution `d`.",
+        ),
+        (
+            "expect_of",
+            3,
+            Kind::ExpectOf,
+            "`expect_of(d, x, expr)`: expected value `E[expr(x)]` under random variable `x ~ d`.",
+        ),
+        (
+            "sum_dist",
+            2,
+            Kind::SumDist,
+            "`sum_dist(d1, d2)`: distribution of the sum `X + Y` of independent random variables `X ~ d1` and `Y ~ d2`.",
+        ),
+        (
+            "iid_sum",
+            2,
+            Kind::IidSum,
+            "`iid_sum(d, n)`: distribution of the sum of `n` independent, identically distributed copies of `d`.",
+        ),
+        (
+            "iid_mean",
+            2,
+            Kind::IidMean,
+            "`iid_mean(d, n)`: distribution of the sample mean of `n` independent, identically distributed copies of `d`.",
+        ),
+        (
+            "scale_dist",
+            2,
+            Kind::ScaleDist,
+            "`scale_dist(c, d)`: distribution of scaled random variable `c * X` where `X ~ d`.",
+        ),
+        (
+            "shift_dist",
+            2,
+            Kind::ShiftDist,
+            "`shift_dist(c, d)`: distribution of shifted random variable `X + c` where `X ~ d`.",
+        ),
+        (
+            "bayes_update",
+            3,
+            Kind::Bayes,
+            "`bayes_update(prior, likelihood, data)`: conjugate Bayesian posterior distribution given `prior`, `likelihood` model, and `data`.",
+        ),
+        (
+            "binomial_test",
+            3,
+            Kind::BinomialTest,
+            "`binomial_test(k, n, p)`: exact two-sided binomial test p-value for `k` successes in `n` trials under null probability `p`.",
+        ),
+        (
+            "fisher_exact",
+            4,
+            Kind::FisherExact,
+            "`fisher_exact(a, b, c, d)`: two-sided Fisher's exact test p-value for a 2x2 contingency table `[[a, b], [c, d]]`.",
+        ),
+        (
+            "wilson_interval",
+            3,
+            Kind::Wilson,
+            "`wilson_interval(k, n, c)`: Wilson score confidence interval `list(lo, hi)` for a binomial proportion at critical value `c`.",
+        ),
+        (
+            "mean_interval",
+            4,
+            Kind::MeanInterval,
+            "`mean_interval(mean, std, n, z)`: confidence interval `list(lo, hi)` for population mean given sample `mean`, `std`, `n`, and critical value `z`.",
+        ),
+        (
+            "proportion_z_test",
+            3,
+            Kind::ProportionZ,
+            "`proportion_z_test(k, n, p0)`: two-sided one-sample z-test `list(statistic, p_value)` for proportion given `k` successes in `n` trials against null `p0`.",
+        ),
+        (
+            "r_squared",
+            2,
+            Kind::RSquared,
+            "`r_squared(actual, predicted)`: coefficient of determination `R^2 = 1 - SS_res / SS_tot` between `actual` and `predicted` lists.",
+        ),
+        (
+            "residuals",
+            2,
+            Kind::Residuals,
+            "`residuals(xs, ys)`: residuals `y_i - f(x_i)` from simple linear regression on pairs `(xs, ys)`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("stats/{name}"),
             Tier::Reduce,

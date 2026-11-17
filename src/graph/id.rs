@@ -165,3 +165,6 @@ impl std::hash::Hasher for FxHasher {
 
 /// A `HashMap` keyed by engine ids, hashed with [`FxHasher`].
 pub type FastMap<K, V> = std::collections::HashMap<K, V, std::hash::BuildHasherDefault<FxHasher>>;
+
+/// A `HashSet` of engine ids, hashed with [`FxHasher`].
+pub type FastSet<K> = std::collections::HashSet<K, std::hash::BuildHasherDefault<FxHasher>>;

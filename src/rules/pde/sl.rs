@@ -728,15 +728,39 @@ pub(super) fn sl_density(args: &[f64]) -> f64 {
 /// `μ` of `-(p y')' + q y = μ w y` belongs to the symbolic expansion around
 /// them.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, eval) in [
-        ("sl_eigen", sl_eigen as fn(&[f64]) -> f64),
-        ("sl_mode", sl_mode),
-        ("sl_weight", sl_weight),
-        ("sl_mfun_re", sl_mfun_re),
-        ("sl_mfun_im", sl_mfun_im),
-        ("sl_density", sl_density),
+    for (name, eval, doc) in [
+        (
+            "sl_eigen",
+            sl_eigen as fn(&[f64]) -> f64,
+            "`sl_eigen(n, coeffs...)`: `n`-th eigenvalue of a regular Sturm-Liouville problem `-(p y')' + q y = mu w y` via Chebyshev collocation.",
+        ),
+        (
+            "sl_mode",
+            sl_mode,
+            "`sl_mode(n, x, coeffs...)`: `n`-th normalized Sturm-Liouville eigenfunction evaluated at `x`.",
+        ),
+        (
+            "sl_weight",
+            sl_weight,
+            "`sl_weight(x, coeffs...)`: Sturm-Liouville weight function `w(x)` evaluated at `x`.",
+        ),
+        (
+            "sl_mfun_re",
+            sl_mfun_re,
+            "`sl_mfun_re(lambda, epsilon, coeffs...)`: real part of the Weyl-Titchmarsh `m`-function at `lambda + i * epsilon`.",
+        ),
+        (
+            "sl_mfun_im",
+            sl_mfun_im,
+            "`sl_mfun_im(lambda, epsilon, coeffs...)`: imaginary part of the Weyl-Titchmarsh `m`-function at `lambda + i * epsilon`.",
+        ),
+        (
+            "sl_density",
+            sl_density,
+            "`sl_density(lambda, epsilon, coeffs...)`: spectral density `Im(m(lambda + i * epsilon)) / pi` of a Sturm-Liouville operator.",
+        ),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Variadic).eval(eval).doc(doc))?;
         i.dim(op, DimRule::Dimensionless);
     }
     Ok(())

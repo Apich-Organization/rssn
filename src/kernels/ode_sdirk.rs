@@ -580,6 +580,68 @@ where
     Ok(result)
 }
 
+/// Adaptive SDIRK3(2) with a forward-difference Jacobian and event detection.
+///
+/// # Errors
+/// As [`sdirk3_events`].
+pub fn sdirk3_fd_events<F>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &SdirkOptions,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &mut [f64]),
+{
+    let evaluations = std::cell::Cell::new(0usize);
+    let checked = checked_rhs(f);
+    let f = |time: f64, state: &[f64], derivative: &mut [f64]| {
+        evaluations.set(evaluations.get().saturating_add(1));
+        checked(time, state, derivative);
+    };
+    let jac = |t: f64, y: &[f64]| {
+        let mut f0 = vec![0.0; y.len()];
+        f(t, y, &mut f0);
+        fd_jacobian_dense(&f, t, y, &f0)
+    };
+    let mut result = sdirk3_events(f, jac, t0, t1, y0, opts, events)?;
+    result.nfev = evaluations.get();
+    Ok(result)
+}
+
+/// Fixed-step SDIRK3(2) with a forward-difference Jacobian and event detection.
+///
+/// # Errors
+/// As [`sdirk3_fixed_events`].
+pub fn sdirk3_fd_fixed_events<F>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &mut [f64]),
+{
+    let evaluations = std::cell::Cell::new(0usize);
+    let checked = checked_rhs(f);
+    let f = |time: f64, state: &[f64], derivative: &mut [f64]| {
+        evaluations.set(evaluations.get().saturating_add(1));
+        checked(time, state, derivative);
+    };
+    let jac = |t: f64, y: &[f64]| {
+        let mut f0 = vec![0.0; y.len()];
+        f(t, y, &mut f0);
+        fd_jacobian_dense(&f, t, y, &f0)
+    };
+    let mut result = sdirk3_fixed_events(f, jac, t0, t1, y0, steps, events)?;
+    result.nfev = evaluations.get();
+    Ok(result)
+}
+
 /// Integrates `y' = f(t, y)` from `t0` to `t1` in `steps` equal steps with no
 /// step-size control, returning the final state.
 ///

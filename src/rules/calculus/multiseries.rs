@@ -1694,10 +1694,12 @@ impl Kernel for MultiSeries {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let mseries = i.op(OpDescriptor::new("mseries", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`mseries(f, vars, point, N)`: multivariate series expansion of `f` in `vars` about `point` truncated at total degree `N`."))?;
     let mtaylor = i.op(OpDescriptor::new("mtaylor", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`mtaylor(f, vars, point, N)`: multivariate Taylor polynomial of `f` in `vars` about finite `point` up to total degree `N`."))?;
     // A series is a way of writing the function it expands, so both requests
     // keep the dimension of their first argument.
     i.dim(mseries, DimRule::Same(0));

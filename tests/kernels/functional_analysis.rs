@@ -236,9 +236,10 @@ fn inner_product_rejects_length_mismatch_and_grid_mismatch() {
     let a = [(0.0, 1.0), (1.0, 1.0)];
     let b = [(0.0, 1.0), (1.0, 1.0), (2.0, 1.0)];
     assert!(inner_product(&a, &b).is_err());
-    // Different abscissae contribute nothing.
+    // Samples on different grids have no common quadrature: rejected rather
+    // than silently treated as orthogonal.
     let c = [(5.0, 1.0), (6.0, 1.0)];
-    assert_eq!(inner_product(&a, &c), Ok(0.0));
+    assert!(inner_product(&a, &c).is_err());
 }
 
 #[test]

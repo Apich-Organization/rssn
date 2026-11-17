@@ -407,3 +407,60 @@ pub fn solve_adaptive_geometric(
         Err(OdeGeomError::NotConverged)
     }
 }
+
+/// Unified geometric ODE solver supporting both fixed and adaptive step sizes
+/// via [`OdeStepMode`](crate::kernels::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`solve_fixed_geometric`](super::solve_fixed_geometric) and
+/// [`solve_adaptive_geometric`].
+#[allow(clippy::too_many_arguments)]
+pub fn solve_geometric(
+    rhs: &mut Rate<'_>,
+    y0: &[f64],
+    span: (f64, f64),
+    method: GeometricMethod,
+    step_mode: crate::kernels::ode::OdeStepMode,
+    specs: &[EventSpec],
+    events: &mut Events<'_>,
+    invalid_event: &Cell<bool>,
+) -> Result<FixedGeomSolution, OdeGeomError> {
+    match step_mode {
+        | crate::kernels::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !span.0.is_finite() || !span.1.is_finite() {
+                return Err(OdeGeomError::Domain("invalid fixed step size dt".into()));
+            }
+            let steps = ((span.1 - span.0).abs() / dt).ceil().max(1.0) as usize;
+            super::solve_fixed_geometric(
+                rhs,
+                y0,
+                span,
+                steps,
+                method,
+                None,
+                specs,
+                events,
+                invalid_event,
+            )
+        },
+        | crate::kernels::ode::OdeStepMode::Adaptive {
+            rtol,
+            atol,
+            dt_init,
+            dt_min,
+            dt_max,
+            max_steps,
+        } => {
+            let options = AdaptiveGeomOptions {
+                rtol,
+                atol,
+                h0: dt_init.unwrap_or(0.0),
+                h_min: dt_min.unwrap_or(1e-14),
+                h_max: dt_max.unwrap_or(f64::INFINITY),
+                max_steps,
+                max_evaluations: max_steps.saturating_mul(100),
+            };
+            solve_adaptive_geometric(rhs, y0, span, method, options, specs, events, invalid_event)
+        },
+    }
+}

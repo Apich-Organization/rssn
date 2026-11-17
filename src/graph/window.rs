@@ -100,7 +100,7 @@ impl TreeWindow {
             let inline = !children.is_empty()
                 && (parent == NIL
                     || (window.live < max_cells
-                        && (transparent || graph.parents(graph.find(node)).len() <= 1)));
+                        && (transparent || graph.has_single_parent(graph.find(node)))));
             let cell = if inline {
                 window.alloc(graph.op(node), NodeId::NONE)
             } else {
@@ -321,17 +321,37 @@ impl TreeWindow {
             return u64::from(graph.find(atom).raw()).wrapping_mul(K) ^ 0x5555;
         }
         let op = self.op(cell);
+        let seed = u64::from(op.raw()).wrapping_add(1).wrapping_mul(K);
+        let step = |h: u64, c: u64| (h.rotate_left(7) ^ c).wrapping_mul(K);
+        if !graph.ops().get(op).flags.has(OpFlags::COMMUTATIVE) {
+            // In order: no buffer needed.
+            return self
+                .children(cell)
+                .fold(seed, |h, c| step(h, self.fingerprint(graph, c)));
+        }
         let mut hashes: Vec<u64> = self
             .children(cell)
             .map(|c| self.fingerprint(graph, c))
             .collect();
-        if graph.ops().get(op).flags.has(OpFlags::COMMUTATIVE) {
-            hashes.sort_unstable();
+        hashes.sort_unstable();
+        hashes.into_iter().fold(seed, step)
+    }
+
+    /// Sorts `cells` (stably) by [`TreeWindow::fingerprint`].
+    ///
+    /// A fingerprint hashes a whole subtree, so a long list computes each
+    /// key once; a short one (the usual two or three operands) recomputes
+    /// them rather than allocating a key buffer. Both orders are the same.
+    fn sort_by_fingerprint(
+        &self,
+        graph: &Graph,
+        cells: &mut [CellId],
+    ) {
+        if cells.len() <= 8 {
+            cells.sort_by_key(|&c| self.fingerprint(graph, c));
+        } else {
+            cells.sort_by_cached_key(|&c| self.fingerprint(graph, c));
         }
-        hashes.into_iter().fold(
-            u64::from(op.raw()).wrapping_add(1).wrapping_mul(K),
-            |h, c| (h.rotate_left(7) ^ c).wrapping_mul(K),
-        )
     }
 
     /// Structural equality of two subtrees (commutative children compared
@@ -357,8 +377,8 @@ impl TreeWindow {
         let mut ca: Vec<CellId> = self.children(a).collect();
         let mut cb: Vec<CellId> = self.children(b).collect();
         if graph.ops().get(self.op(a)).flags.has(OpFlags::COMMUTATIVE) {
-            ca.sort_by_key(|&c| self.fingerprint(graph, c));
-            cb.sort_by_key(|&c| self.fingerprint(graph, c));
+            self.sort_by_fingerprint(graph, &mut ca);
+            self.sort_by_fingerprint(graph, &mut cb);
         }
         ca.iter().zip(&cb).all(|(&x, &y)| self.same(graph, x, y))
     }
@@ -648,8 +668,37 @@ impl TreeWindow {
         if self.atom(cell).is_some() || self.op(cell) != *op {
             return None;
         }
-        let children: Vec<CellId> = self.children(cell).collect();
         let flags = graph.ops().get(*op).flags;
+        // Reject on arity before allocating the match state: the optimiser
+        // tries every rewrite of a cell's operator at every sweep.
+        let arity = self.arity(cell);
+        let arity_fits = if flags.has(OpFlags::COMMUTATIVE) {
+            pats.len() == arity || (flags.has(OpFlags::ASSOCIATIVE) && pats.len() < arity)
+        } else {
+            pats.len() == arity
+        };
+        if !arity_fits {
+            return None;
+        }
+        // Every operand pattern that is not a variable must be able to match
+        // some operand (the one in its position, for a non-commutative
+        // operator): a necessary condition, checked without allocating.
+        let commutative = flags.has(OpFlags::COMMUTATIVE);
+        let possible = pats.iter().enumerate().all(|(i, pat)| {
+            matches!(pat, Pat::Var(_))
+                || if commutative {
+                    self.children(cell)
+                        .any(|child| self.may_match(graph, pat, child))
+                } else {
+                    self.children(cell)
+                        .nth(i)
+                        .is_some_and(|child| self.may_match(graph, pat, child))
+                }
+        });
+        if !possible {
+            return None;
+        }
+        let children: Vec<CellId> = self.children(cell).collect();
         let mut found = WindowMatch {
             subst: vec![Vec::new(); rewrite.nvars],
             ops: vec![OpId::NONE; rewrite.nvars],
@@ -686,6 +735,22 @@ impl TreeWindow {
         found.rest = std::mem::take(&mut search.rest);
         found.ops = std::mem::take(&mut search.ops);
         matched.then_some(found)
+    }
+
+    /// A necessary condition for `pat` to match `cell`: the checks
+    /// `Search::solve_goal` makes first, before it binds or recurses.
+    fn may_match(
+        &self,
+        graph: &Graph,
+        pat: &Pat,
+        cell: CellId,
+    ) -> bool {
+        match pat {
+            | Pat::Node(op, _) => self.op(cell) == *op,
+            | Pat::Num(n) => self.number(graph, cell) == Some(n),
+            | Pat::Exact(node) => self.atom(cell).is_some_and(|a| graph.same(a, *node)),
+            | Pat::Var(_) => true,
+        }
     }
 
     /// Replaces `cell` by the right-hand side of `rewrite` under a match
@@ -761,7 +826,7 @@ impl TreeWindow {
         }
         let sorted = |cells: &[CellId]| {
             let mut v = cells.to_vec();
-            v.sort_by_key(|&c| self.fingerprint(graph, c));
+            self.sort_by_fingerprint(graph, &mut v);
             v
         };
         sorted(a)
@@ -785,16 +850,21 @@ impl TreeWindow {
         passes: &[&dyn WindowPass],
         max_steps: usize,
     ) -> usize {
+        self.optimize_with(graph, &RewriteIndex::new(rewrites), passes, max_steps)
+    }
+
+    /// [`TreeWindow::optimize`] with the rewrites already indexed by their
+    /// root operator, for a caller that optimises many windows with the
+    /// same rule set.
+    pub fn optimize_with(
+        &mut self,
+        graph: &mut Graph,
+        by_op: &RewriteIndex<'_>,
+        passes: &[&dyn WindowPass],
+        max_steps: usize,
+    ) -> usize {
         let mut steps = 0_usize;
         let mut rounds = 0_usize;
-        // Only rewrites rooted at a cell's operator can match it; indexing
-        // them once turns the sweep from cells x rules into cells x hits.
-        let mut by_op: std::collections::HashMap<OpId, Vec<&Rewrite>> =
-            std::collections::HashMap::new();
-        for &rewrite in rewrites {
-            by_op.entry(rewrite.trigger()).or_default().push(rewrite);
-        }
-        let none: Vec<&Rewrite> = Vec::new();
         loop {
             rounds = rounds.saturating_add(1);
             let mut changed = self.flatten(graph);
@@ -808,8 +878,7 @@ impl TreeWindow {
                 if self.atom(cell).is_some() {
                     continue;
                 }
-                let candidates = by_op.get(&self.op(cell)).unwrap_or(&none);
-                for &rewrite in candidates {
+                for &rewrite in by_op.get(self.op(cell)) {
                     if !self.cell(cell).live {
                         continue 'cells;
                     }
@@ -849,6 +918,7 @@ impl TreeWindow {
         depth: usize,
         max_steps: usize,
     ) -> Self {
+        let index = RewriteIndex::new(rewrites);
         let mut best = self.clone();
         let mut best_cost = best.cost(graph);
         let mut seen: HashSet<u64> = HashSet::new();
@@ -866,7 +936,7 @@ impl TreeWindow {
                         if succ.apply(graph, rewrite, cell, &found).is_none() {
                             continue;
                         }
-                        succ.optimize(graph, rewrites, passes, max_steps);
+                        succ.optimize_with(graph, &index, passes, max_steps);
                         if seen.insert(succ.fingerprint(graph, succ.root)) {
                             next.push((succ.cost(graph), succ));
                         }
@@ -887,6 +957,43 @@ impl TreeWindow {
             frontier = next.into_iter().map(|(_, s)| s).collect();
         }
         best
+    }
+}
+
+/// Rewrites grouped by the operator at their root.
+///
+/// Only rewrites rooted at a cell's operator can match it; indexing them
+/// turns an optimisation sweep from cells x rules into cells x hits. Build
+/// it once per rule set and reuse it for every window.
+#[derive(Debug, Default)]
+pub struct RewriteIndex<'r> {
+    by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>>,
+}
+
+impl<'r> RewriteIndex<'r> {
+    /// Indexes `rewrites`, keeping their order within each operator.
+    #[must_use]
+    pub fn new(rewrites: &[&'r Rewrite]) -> Self {
+        let mut by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>> = super::id::FastMap::default();
+        for &rewrite in rewrites {
+            by_op.entry(rewrite.trigger()).or_default().push(rewrite);
+        }
+        Self { by_op }
+    }
+
+    /// The rewrites rooted at `op`, in their original order.
+    #[must_use]
+    pub fn get(
+        &self,
+        op: OpId,
+    ) -> &[&'r Rewrite] {
+        self.by_op.get(&op).map_or(&[], Vec::as_slice)
+    }
+
+    /// Whether no rewrite is indexed.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.by_op.is_empty()
     }
 }
 
@@ -936,19 +1043,29 @@ impl Search<'_> {
         mode: Mode,
     ) -> bool {
         let Some(pat) = pats.get(index) else {
-            let left: Vec<CellId> = children
-                .iter()
-                .zip(used.iter())
-                .filter(|(_, u)| !**u)
-                .map(|(c, _)| *c)
-                .collect();
+            // The operands left over: read by an absorbing variable while
+            // its goals are solved, and by the root only once it matched (no
+            // goal looks at `rest`). Built only then: this is the leaf of a
+            // search over every placement.
+            let left = || -> Vec<CellId> {
+                children
+                    .iter()
+                    .zip(used.iter())
+                    .filter(|(_, u)| !**u)
+                    .map(|(c, _)| *c)
+                    .collect()
+            };
             return match mode {
                 | Mode::Root => {
-                    self.rest = left;
-                    self.solve(goals, subst)
+                    let matched = self.solve(goals, subst);
+                    if matched {
+                        self.rest = left();
+                    }
+                    matched
                 },
                 | Mode::Nested => self.solve(goals, subst),
                 | Mode::Absorb(var, op) => {
+                    let left = left();
                     let index = var as usize;
                     if let Some(slot) = subst.get_mut(index) {
                         *slot = left;
@@ -966,6 +1083,12 @@ impl Search<'_> {
         };
         for (i, &child) in children.iter().enumerate() {
             if used.get(i).copied().unwrap_or(true) {
+                continue;
+            }
+            // A placement whose goal must fail is never worth completing:
+            // without this, every assignment of the remaining patterns is
+            // enumerated before the goal is even looked at.
+            if !self.may_match(pat, child) {
                 continue;
             }
             if let Some(slot) = used.get_mut(i) {
@@ -989,6 +1112,16 @@ impl Search<'_> {
             }
         }
         false
+    }
+
+    /// A necessary condition for `pat` to match `cell`: the checks
+    /// [`Search::solve_goal`] makes first, before it binds or recurses.
+    fn may_match(
+        &self,
+        pat: &Pat,
+        cell: CellId,
+    ) -> bool {
+        self.window.may_match(self.graph, pat, cell)
     }
 
     /// Discharges all goals; on success `subst` holds the bindings and the

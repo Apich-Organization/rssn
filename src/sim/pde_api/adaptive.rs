@@ -302,3 +302,160 @@ where
         event,
     )
 }
+
+/// Unified time-dependent PDE evolution driver supporting both fixed and
+/// adaptive step sizes via [`OdeStepMode`](crate::kernels::ode::OdeStepMode).
+///
+/// `step_fn(t, state, dt)` advances `state` by a single step `dt` from time
+/// `t`. In [`OdeStepMode::Fixed`](crate::kernels::ode::OdeStepMode::Fixed),
+/// it takes uniform steps of size `dt` (with the final step landing on
+/// `t_span.1`). In
+/// [`OdeStepMode::Adaptive`](crate::kernels::ode::OdeStepMode::Adaptive), it
+/// delegates to [`adaptive_evolve`] with Richardson step-doubling of `order`.
+///
+/// # Errors
+/// Returns [`FdmError::Domain`] for invalid time spans, step sizes,
+/// tolerances, non-finite states, or step-budget exhaustion.
+pub fn solve_pde<S, C>(
+    initial: &[f64],
+    t_span: (f64, f64),
+    order: usize,
+    step_mode: crate::kernels::ode::OdeStepMode,
+    mut step_fn: S,
+    mut cfl_cap: C,
+    mut event: Option<&mut PdeTerminalEvent<'_>>,
+) -> Result<PdeAdaptiveSolution, FdmError>
+where
+    S: FnMut(f64, &[f64], f64) -> Result<Vec<f64>, FdmError>,
+    C: FnMut(f64, &[f64]) -> Result<f64, FdmError>,
+{
+    let (t0, t1) = t_span;
+    if initial.is_empty()
+        || initial.iter().any(|v| !v.is_finite())
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || t1 < t0
+        || !(t1 - t0).is_finite()
+        || order == 0
+    {
+        return Err(FdmError::Domain("invalid PDE evolution inputs".into()));
+    }
+    match step_mode {
+        | crate::kernels::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 {
+                return Err(FdmError::Domain(
+                    "fixed PDE step dt must be positive".into(),
+                ));
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                return Ok(PdeAdaptiveSolution {
+                    times: vec![t0],
+                    states: vec![initial.to_vec()],
+                    accepted: 0,
+                    rejected: 0,
+                    step_calls: 0,
+                    error_ratio: 0.0,
+                    event_time: None,
+                });
+            }
+            let steps = ((t1 - t0) / dt).ceil().max(1.0) as usize;
+            let h = (t1 - t0) / steps as f64;
+            let mut times = Vec::with_capacity(steps.saturating_add(1));
+            let mut states = Vec::with_capacity(steps.saturating_add(1));
+            let mut cur = initial.to_vec();
+            let mut t = t0;
+            times.push(t0);
+            states.push(cur.clone());
+            let mut g_prev = if let Some(ev) = event.as_deref_mut() {
+                Some((ev.evaluate)(t0, &cur)?)
+            } else {
+                None
+            };
+            let mut step_calls = 0usize;
+            for idx in 1..=steps {
+                let tn = if idx == steps {
+                    t1
+                } else {
+                    t0 + idx as f64 * h
+                };
+                let step_dt = tn - t;
+                let cap = cfl_cap(t, &cur)?;
+                if cap.is_finite() && step_dt > cap {
+                    return Err(FdmError::Domain(
+                        "fixed PDE step exceeds CFL stability limit".into(),
+                    ));
+                }
+                let next = step_fn(t, &cur, step_dt)?;
+                step_calls = step_calls.saturating_add(1);
+                if next.len() != cur.len() || next.iter().any(|v| !v.is_finite()) {
+                    return Err(FdmError::Domain(
+                        "PDE step returned mismatched or non-finite state".into(),
+                    ));
+                }
+                times.push(tn);
+                states.push(next.clone());
+                if let (Some(ev), Some(g0)) = (event.as_deref_mut(), g_prev) {
+                    let g1 = (ev.evaluate)(tn, &next)?;
+                    let crossing = (g0 < 0.0 && g1 >= 0.0 && ev.direction >= 0)
+                        || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
+                    if crossing {
+                        return Ok(PdeAdaptiveSolution {
+                            times,
+                            states,
+                            accepted: idx,
+                            rejected: 0,
+                            step_calls,
+                            error_ratio: 0.0,
+                            event_time: Some(tn),
+                        });
+                    }
+                    g_prev = Some(g1);
+                }
+                t = tn;
+                cur = next;
+            }
+            Ok(PdeAdaptiveSolution {
+                times,
+                states,
+                accepted: steps,
+                rejected: 0,
+                step_calls,
+                error_ratio: 0.0,
+                event_time: None,
+            })
+        },
+        | crate::kernels::ode::OdeStepMode::Adaptive {
+            rtol,
+            atol,
+            dt_init,
+            dt_min,
+            dt_max,
+            max_steps,
+        } => {
+            let span = (t1 - t0).max(1e-12);
+            let options = PdeAdaptiveOptions {
+                t0,
+                t1,
+                rtol,
+                atol,
+                h0: dt_init.unwrap_or(0.0),
+                h_min: dt_min.unwrap_or(1e-12),
+                h_max: dt_max.filter(|v| v.is_finite()).unwrap_or(span),
+                max_steps,
+                max_step_calls: max_steps.saturating_mul(10),
+                max_rejections: max_steps,
+            };
+            let order_u32 = u32::try_from(order)
+                .map_err(|_| FdmError::Domain("PDE time-stepper order exceeds u32".into()))?;
+            adaptive_evolve(
+                initial,
+                order_u32,
+                &vec![atol; initial.len()],
+                &options,
+                step_fn,
+                cfl_cap,
+                event,
+            )
+        },
+    }
+}

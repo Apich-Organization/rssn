@@ -57,98 +57,206 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             eval
         }};
     }
-    let functions: [(&str, EvalFn, Option<Parity>, Facts); 28] = [
-        ("exp", unary!(exp), None, Facts::POSITIVE),
-        ("ln", unary!(ln), None, Facts::NONE),
-        ("sin", unary!(sin), Some(Parity::Odd), Facts::REAL),
-        ("cos", unary!(cos), Some(Parity::Even), Facts::REAL),
-        ("tan", unary!(tan), Some(Parity::Odd), Facts::REAL),
-        ("asin", unary!(asin), Some(Parity::Odd), Facts::NONE),
-        ("acos", unary!(acos), None, Facts::NONE),
-        ("atan", unary!(atan), Some(Parity::Odd), Facts::REAL),
-        ("sinh", unary!(sinh), Some(Parity::Odd), Facts::REAL),
-        ("cosh", unary!(cosh), Some(Parity::Even), Facts::POSITIVE),
-        ("tanh", unary!(tanh), Some(Parity::Odd), Facts::REAL),
-        ("sqrt", unary!(sqrt), None, Facts::NONE),
-        ("abs", unary!(abs), Some(Parity::Even), Facts::NONNEGATIVE),
+    let functions: [(&str, EvalFn, Option<Parity>, Facts, &str); 28] = [
+        (
+            "exp",
+            unary!(exp),
+            None,
+            Facts::POSITIVE,
+            "`exp(x)`: natural exponential function `e^x`.",
+        ),
+        (
+            "ln",
+            unary!(ln),
+            None,
+            Facts::NONE,
+            "`ln(x)`: natural logarithm (base `e`) of `x`.",
+        ),
+        (
+            "sin",
+            unary!(sin),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`sin(x)`: sine of angle `x` in radians.",
+        ),
+        (
+            "cos",
+            unary!(cos),
+            Some(Parity::Even),
+            Facts::REAL,
+            "`cos(x)`: cosine of angle `x` in radians.",
+        ),
+        (
+            "tan",
+            unary!(tan),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`tan(x)`: tangent `sin(x) / cos(x)` of angle `x` in radians.",
+        ),
+        (
+            "asin",
+            unary!(asin),
+            Some(Parity::Odd),
+            Facts::NONE,
+            "`asin(x)`: principal inverse sine of `x`, in `[-pi/2, pi/2]` for real `x` in `[-1, 1]`.",
+        ),
+        (
+            "acos",
+            unary!(acos),
+            None,
+            Facts::NONE,
+            "`acos(x)`: principal inverse cosine of `x`, in `[0, pi]` for real `x` in `[-1, 1]`.",
+        ),
+        (
+            "atan",
+            unary!(atan),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`atan(x)`: principal inverse tangent of `x`, in `(-pi/2, pi/2)` for real `x`.",
+        ),
+        (
+            "sinh",
+            unary!(sinh),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`sinh(x)`: hyperbolic sine `(e^x - e^-x) / 2`.",
+        ),
+        (
+            "cosh",
+            unary!(cosh),
+            Some(Parity::Even),
+            Facts::POSITIVE,
+            "`cosh(x)`: hyperbolic cosine `(e^x + e^-x) / 2`.",
+        ),
+        (
+            "tanh",
+            unary!(tanh),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`tanh(x)`: hyperbolic tangent `sinh(x) / cosh(x)`.",
+        ),
+        (
+            "sqrt",
+            unary!(sqrt),
+            None,
+            Facts::NONE,
+            "`sqrt(x)`: principal square root of `x`.",
+        ),
+        (
+            "abs",
+            unary!(abs),
+            Some(Parity::Even),
+            Facts::NONNEGATIVE,
+            "`abs(x)`: absolute value (or complex modulus) `|x|`.",
+        ),
         (
             "cot",
             closure!(|x: &f64| 1.0 / x.tan()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`cot(x)`: cotangent `cos(x) / sin(x)` of angle `x` in radians.",
         ),
         (
             "sec",
             closure!(|x: &f64| 1.0 / x.cos()),
             Some(Parity::Even),
             Facts::REAL,
+            "`sec(x)`: secant `1 / cos(x)` of angle `x` in radians.",
         ),
         (
             "csc",
             closure!(|x: &f64| 1.0 / x.sin()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`csc(x)`: cosecant `1 / sin(x)` of angle `x` in radians.",
         ),
         (
             "acot",
             closure!(|x: &f64| (1.0 / x).atan()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`acot(x)`: principal inverse cotangent `atan(1 / x)`.",
         ),
         (
             "asec",
             closure!(|x: &f64| (1.0 / x).acos()),
             None,
             Facts::NONE,
+            "`asec(x)`: principal inverse secant `acos(1 / x)`.",
         ),
         (
             "acsc",
             closure!(|x: &f64| (1.0 / x).asin()),
             Some(Parity::Odd),
             Facts::NONE,
+            "`acsc(x)`: principal inverse cosecant `asin(1 / x)`.",
         ),
         (
             "coth",
             closure!(|x: &f64| 1.0 / x.tanh()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`coth(x)`: hyperbolic cotangent `cosh(x) / sinh(x)`.",
         ),
         (
             "sech",
             closure!(|x: &f64| 1.0 / x.cosh()),
             Some(Parity::Even),
             Facts::POSITIVE,
+            "`sech(x)`: hyperbolic secant `1 / cosh(x)`.",
         ),
         (
             "csch",
             closure!(|x: &f64| 1.0 / x.sinh()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`csch(x)`: hyperbolic cosecant `1 / sinh(x)`.",
         ),
-        ("asinh", unary!(asinh), Some(Parity::Odd), Facts::REAL),
-        ("acosh", unary!(acosh), None, Facts::NONE),
-        ("atanh", unary!(atanh), Some(Parity::Odd), Facts::NONE),
+        (
+            "asinh",
+            unary!(asinh),
+            Some(Parity::Odd),
+            Facts::REAL,
+            "`asinh(x)`: inverse hyperbolic sine `ln(x + sqrt(x^2 + 1))`.",
+        ),
+        (
+            "acosh",
+            unary!(acosh),
+            None,
+            Facts::NONE,
+            "`acosh(x)`: principal inverse hyperbolic cosine `ln(x + sqrt(x^2 - 1))`.",
+        ),
+        (
+            "atanh",
+            unary!(atanh),
+            Some(Parity::Odd),
+            Facts::NONE,
+            "`atanh(x)`: inverse hyperbolic tangent `ln((1 + x) / (1 - x)) / 2`.",
+        ),
         (
             "acoth",
             closure!(|x: &f64| (1.0 / x).atanh()),
             Some(Parity::Odd),
             Facts::NONE,
+            "`acoth(x)`: inverse hyperbolic cotangent `atanh(1 / x)`.",
         ),
         (
             "asech",
             closure!(|x: &f64| (1.0 / x).acosh()),
             None,
             Facts::NONE,
+            "`asech(x)`: principal inverse hyperbolic secant `acosh(1 / x)`.",
         ),
         (
             "acsch",
             closure!(|x: &f64| (1.0 / x).asinh()),
             Some(Parity::Odd),
             Facts::REAL,
+            "`acsch(x)`: inverse hyperbolic cosecant `asinh(1 / x)`.",
         ),
     ];
     let mut with_parity = Vec::new();
-    for (name, f, parity, on_reals) in functions {
+    for (name, f, parity, on_reals, doc) in functions {
         // `sqrt(x)` and `x^(1/2)` are the same thing; keep the shorter
         // spelling for display.
         // Inverse circular functions cost more than `pi` times a rational, so
@@ -158,7 +266,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             | "asin" | "acos" | "atan" => 5,
             | _ => 3,
         };
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(1)).cost(cost).eval(f))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(1))
+            .cost(cost)
+            .eval(f)
+            .doc(doc))?;
         if let Some(parity) = parity {
             i.graph().ops_mut().set_attr(op, parity);
             with_parity.push(op);
@@ -167,30 +278,39 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             i.graph().ops_mut().set_attr(op, OnReals(on_reals));
         }
     }
-    let pi = i.op(OpDescriptor::new("pi", Arity::Fixed(0)).eval(|_| std::f64::consts::PI))?;
+    let pi = i.op(OpDescriptor::new("pi", Arity::Fixed(0))
+        .eval(|_| std::f64::consts::PI)
+        .doc(
+            "`pi`: Archimedes' constant, the ratio of a circle's circumference to its diameter.",
+        ))?;
     i.graph().ops_mut().set_attr(pi, OnReals(Facts::POSITIVE));
     // Cost 3, not 1: `exp(x)` is the preferred spelling of `E^x`.
     let euler = i.op(OpDescriptor::new("E", Arity::Fixed(0))
         .cost(3)
-        .eval(|_| std::f64::consts::E))?;
+        .eval(|_| std::f64::consts::E)
+        .doc("`E`: Euler's number `exp(1)`, the base of the natural logarithm."))?;
     i.graph()
         .ops_mut()
         .set_attr(euler, OnReals(Facts::POSITIVE));
     // `E` is a pure number: no unit is attached to a transcendental constant.
     i.dim(euler, DimRule::Dimensionless);
-    i.op(OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| {
-        match a {
-            | [y, x] => y.atan2(*x),
-            | _ => f64::NAN,
-        }
-    }))?;
+    i.op(OpDescriptor::new("atan2", Arity::Fixed(2))
+        .eval(|a| {
+            match a {
+                | [y, x] => y.atan2(*x),
+                | _ => f64::NAN,
+            }
+        })
+        .doc("`atan2(y, x)`: two-argument arctangent of `(y, x)`, giving the angle in `(-pi, pi]` from the positive x-axis."))?;
     // log(b, x): the logarithm of x to base b.
-    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2)).eval(|a| {
-        match a {
-            | [b, x] => x.ln() / b.ln(),
-            | _ => f64::NAN,
-        }
-    }))?;
+    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2))
+        .eval(|a| {
+            match a {
+                | [b, x] => x.ln() / b.ln(),
+                | _ => f64::NAN,
+            }
+        })
+        .doc("`log(b, x)`: logarithm of `x` to base `b`, equal to `ln(x) / ln(b)`."))?;
     i.kernel("elementary/exact-log", Tier::Normalize, ExactLog { log });
     if let (Some(sin), Some(cos), Some(sinh), Some(cosh)) = (
         i.graph().ops().lookup("sin"),

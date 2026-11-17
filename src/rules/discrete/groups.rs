@@ -37,8 +37,8 @@ use num_integer::Integer;
 
 use super::V;
 use super::apply;
-use super::def;
-use super::def_inert;
+use super::def_doc;
+use super::def_inert_doc;
 use super::idx;
 use super::idxs;
 use super::items;
@@ -773,47 +773,187 @@ fn perm_sign(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def_inert(i, "group", Arity::Fixed(2))?;
-    def(i, "cyclic_group", Arity::Fixed(1), cyclic_group)?;
-    def(i, "dihedral_group", Arity::Fixed(1), dihedral_group)?;
-    def(i, "symmetric_group", Arity::Fixed(1), symmetric_group)?;
-    def(i, "klein_four_group", Arity::Fixed(0), klein_four_group)?;
-    def(i, "group_from_table", Arity::Fixed(2), group_from_table)?;
-    def(i, "group_elements", Arity::Fixed(1), group_elements)?;
-    def(i, "group_order", Arity::Fixed(1), group_order)?;
-    def(i, "group_identity", Arity::Fixed(1), group_identity)?;
-    def(i, "group_mul", Arity::Fixed(3), group_mul)?;
-    def(i, "group_inverse", Arity::Fixed(2), group_inverse)?;
-    def(i, "group_is_abelian", Arity::Fixed(1), group_is_abelian)?;
-    def(
+    def_inert_doc(
+        i,
+        "group",
+        Arity::Fixed(2),
+        "Inert finite group constructor `group(elements, table)` storing element list and Cayley multiplication table.",
+    )?;
+    def_doc(
+        i,
+        "cyclic_group",
+        Arity::Fixed(1),
+        cyclic_group,
+        "Constructs the cyclic group `Z_n` of order `n` on elements `0..n-1` under addition modulo `n`.",
+    )?;
+    def_doc(
+        i,
+        "dihedral_group",
+        Arity::Fixed(1),
+        dihedral_group,
+        "Constructs the dihedral group `D_n` of order `2*n` with rotations `r0..r(n-1)` and reflections `s0..s(n-1)`.",
+    )?;
+    def_doc(
+        i,
+        "symmetric_group",
+        Arity::Fixed(1),
+        symmetric_group,
+        "Constructs the symmetric group `S_n` (`n <= 6`) of permutations in lexicographic order.",
+    )?;
+    def_doc(
+        i,
+        "klein_four_group",
+        Arity::Fixed(0),
+        klein_four_group,
+        "Constructs the Klein four-group `V_4` on elements `e, a, b, c`.",
+    )?;
+    def_doc(
+        i,
+        "group_from_table",
+        Arity::Fixed(2),
+        group_from_table,
+        "Constructs `group(elements, table)` if the Cayley table satisfies the group axioms.",
+    )?;
+    def_doc(
+        i,
+        "group_elements",
+        Arity::Fixed(1),
+        group_elements,
+        "Returns the element list of finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_order",
+        Arity::Fixed(1),
+        group_order,
+        "Returns the order (number of elements) of finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_identity",
+        Arity::Fixed(1),
+        group_identity,
+        "Returns the identity element of finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_mul",
+        Arity::Fixed(3),
+        group_mul,
+        "Computes the group product `a * b` in finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_inverse",
+        Arity::Fixed(2),
+        group_inverse,
+        "Returns the inverse `a^(-1)` of element `a` in finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_is_abelian",
+        Arity::Fixed(1),
+        group_is_abelian,
+        "Returns `true` if finite group `G` is abelian (commutative).",
+    )?;
+    def_doc(
         i,
         "group_element_order",
         Arity::Fixed(2),
         group_element_order,
+        "Computes the multiplicative order of element `a` in finite group `G`.",
     )?;
-    def(
+    def_doc(
         i,
         "group_conjugacy_classes",
         Arity::Fixed(1),
         group_conjugacy_classes,
+        "Returns the conjugacy classes of finite group `G` as lists of elements.",
     )?;
-    def(i, "group_center", Arity::Fixed(1), group_center)?;
-    def(i, "group_is_valid", Arity::Fixed(1), group_is_valid)?;
-    def(i, "group_subgroups", Arity::Fixed(1), group_subgroups)?;
-    def(i, "group_cosets", Arity::Fixed(2), group_cosets)?;
-    def(i, "group_is_normal", Arity::Fixed(2), group_is_normal)?;
-    def(
+    def_doc(
+        i,
+        "group_center",
+        Arity::Fixed(1),
+        group_center,
+        "Returns the center `Z(G)` of finite group `G` as a list of elements.",
+    )?;
+    def_doc(
+        i,
+        "group_is_valid",
+        Arity::Fixed(1),
+        group_is_valid,
+        "Verifies closure, associativity, identity, and inverses for finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_subgroups",
+        Arity::Fixed(1),
+        group_subgroups,
+        "Enumerates all subgroups of finite group `G` (for orders up to 48) as element lists.",
+    )?;
+    def_doc(
+        i,
+        "group_cosets",
+        Arity::Fixed(2),
+        group_cosets,
+        "Returns the left cosets of subgroup `H` in finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_is_normal",
+        Arity::Fixed(2),
+        group_is_normal,
+        "Returns `true` if `H` is a normal subgroup of finite group `G`.",
+    )?;
+    def_doc(
         i,
         "representation_is_valid",
         Arity::Fixed(2),
         representation_is_valid,
+        "Verifies whether matrix list `mats` (aligned with `G`'s elements) satisfies `M(a*b) = M(a)*M(b)` for all pairs.",
     )?;
-    def(i, "group_character", Arity::Fixed(1), group_character)?;
-    def(i, "perm_compose", Arity::Fixed(2), perm_compose)?;
-    def(i, "perm_inverse", Arity::Fixed(1), perm_inverse)?;
-    def(i, "perm_order", Arity::Fixed(1), perm_order)?;
-    def(i, "perm_cycles", Arity::Fixed(1), perm_cycles)?;
-    def(i, "perm_sign", Arity::Fixed(1), perm_sign)?;
+    def_doc(
+        i,
+        "group_character",
+        Arity::Fixed(1),
+        group_character,
+        "Computes the character (list of matrix traces) of a matrix representation `mats`.",
+    )?;
+    def_doc(
+        i,
+        "perm_compose",
+        Arity::Fixed(2),
+        perm_compose,
+        "Composes two permutations `p` and `q` (1-based image lists) as `(p * q)(i) = p(q(i))`.",
+    )?;
+    def_doc(
+        i,
+        "perm_inverse",
+        Arity::Fixed(1),
+        perm_inverse,
+        "Computes the inverse permutation `p^(-1)` of a 1-based permutation list `p`.",
+    )?;
+    def_doc(
+        i,
+        "perm_order",
+        Arity::Fixed(1),
+        perm_order,
+        "Computes the order (LCM of cycle lengths) of permutation `p`.",
+    )?;
+    def_doc(
+        i,
+        "perm_cycles",
+        Arity::Fixed(1),
+        perm_cycles,
+        "Decomposes permutation `p` into its non-trivial disjoint cycles.",
+    )?;
+    def_doc(
+        i,
+        "perm_sign",
+        Arity::Fixed(1),
+        perm_sign,
+        "Computes the sign (`1` for even, `-1` for odd) of permutation `p`.",
+    )?;
     Ok(())
 }
 

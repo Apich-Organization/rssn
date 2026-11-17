@@ -985,7 +985,8 @@ pub fn f5_basis_with_stats_in(
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("groebner_f5", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`groebner_f5(polys, vars, [order])`: computes a reduced Groebner basis of ideal `polys` over `vars` using Faugere's signature-based F5 algorithm."))?;
     // A basis is a list of polynomials with the common dimension of the
     // generators (the first argument), matching the reduced `list(...)`.
     i.dim(op, DimRule::Same(0));

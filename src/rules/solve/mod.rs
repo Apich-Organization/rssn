@@ -338,22 +338,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     }
     let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`solve(eq_or_system, var_or_vars)`: symbolically solves an equation, inequality, or system for `var_or_vars`."))?;
     let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`solve_general(eq_or_system, var_or_vars)`: solves an equation or system symbolically, including parameterized/underdetermined solution sets."))?;
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`nsolve(eq_or_system, var_or_vars, guess)`: numerically finds a root of `eq_or_system` starting from `guess`."))?;
     let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`nsolve_certified(eq, var, interval)`: computes a certified enclosure for a root of `eq` in `interval` via interval arithmetic."))?;
     let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`solve_box(system, vars, box_bounds)`: isolates all roots of `system` in `vars` within `box_bounds`."))?;
     let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc(
+            "`solve_complex(poly, var)`: finds all complex roots of polynomial `poly` in `var`.",
+        ))?;
     // The solutions, boxes and complex roots are values of the solved
     // variable (argument 1), so they carry its dimension — as does the
     // reduced `list(...)` answer.

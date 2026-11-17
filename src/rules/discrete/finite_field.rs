@@ -30,7 +30,7 @@ use num_traits::Zero;
 use super::V;
 use super::big;
 use super::bigs;
-use super::def;
+use super::def_doc;
 use super::mod_inverse;
 use super::modulo;
 use crate::graph::Arity;
@@ -476,45 +476,197 @@ fn gfx_pow(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "gf_add", Arity::Fixed(3), |cx, a| {
-        scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p)))
-    })?;
-    def(i, "gf_sub", Arity::Fixed(3), |cx, a| {
-        scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p)))
-    })?;
-    def(i, "gf_mul", Arity::Fixed(3), |cx, a| {
-        scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p)))
-    })?;
-    def(i, "gf_div", Arity::Fixed(3), |cx, a| {
-        scalar2(cx, a, |x, y, p| Some(modulo(&(x * mod_inverse(y, p)?), p)))
-    })?;
-    def(i, "gf_neg", Arity::Fixed(2), gf_neg)?;
-    def(i, "gf_inv", Arity::Fixed(2), gf_inv)?;
-    def(i, "gf_pow", Arity::Fixed(3), gf_pow)?;
-    def(i, "gf_is_zero", Arity::Fixed(2), |cx, a| {
-        gf_is(cx, a, false)
-    })?;
-    def(i, "gf_is_one", Arity::Fixed(2), |cx, a| gf_is(cx, a, true))?;
+    def_doc(
+        i,
+        "gf_add",
+        Arity::Fixed(3),
+        |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x + y), p))),
+        "Computes `(a + b) mod p` in the prime field GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gf_sub",
+        Arity::Fixed(3),
+        |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x - y), p))),
+        "Computes `(a - b) mod p` in the prime field GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gf_mul",
+        Arity::Fixed(3),
+        |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x * y), p))),
+        "Computes `(a * b) mod p` in the prime field GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gf_div",
+        Arity::Fixed(3),
+        |cx, a| scalar2(cx, a, |x, y, p| Some(modulo(&(x * mod_inverse(y, p)?), p))),
+        "Computes `a * b^(-1) mod p` in GF(p) when `gcd(b, p) = 1`.",
+    )?;
+    def_doc(
+        i,
+        "gf_neg",
+        Arity::Fixed(2),
+        gf_neg,
+        "Computes `(-a) mod p` in the prime field GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gf_inv",
+        Arity::Fixed(2),
+        gf_inv,
+        "Computes the modular multiplicative inverse `a^(-1) mod p` when `gcd(a, p) = 1`.",
+    )?;
+    def_doc(
+        i,
+        "gf_pow",
+        Arity::Fixed(3),
+        gf_pow,
+        "Computes `a^e mod p` in GF(p) for integer exponent `e` (negative exponents use the modular inverse).",
+    )?;
+    def_doc(
+        i,
+        "gf_is_zero",
+        Arity::Fixed(2),
+        |cx, a| gf_is(cx, a, false),
+        "Returns `true` if `a = 0 (mod p)` in GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gf_is_one",
+        Arity::Fixed(2),
+        |cx, a| gf_is(cx, a, true),
+        "Returns `true` if `a = 1 (mod p)` in GF(p).",
+    )?;
 
-    def(i, "gfp_norm", Arity::Fixed(2), gfp_norm)?;
-    def(i, "gfp_degree", Arity::Fixed(2), gfp_degree)?;
-    def(i, "gfp_add", Arity::Fixed(3), |cx, a| poly2(cx, a, padd))?;
-    def(i, "gfp_sub", Arity::Fixed(3), |cx, a| poly2(cx, a, psub))?;
-    def(i, "gfp_mul", Arity::Fixed(3), |cx, a| poly2(cx, a, pmul))?;
-    def(i, "gfp_divmod", Arity::Fixed(3), gfp_divmod)?;
-    def(i, "gfp_gcd", Arity::Fixed(3), gfp_gcd)?;
-    def(i, "gfp_egcd", Arity::Fixed(3), gfp_egcd)?;
-    def(i, "gfp_eval", Arity::Fixed(3), gfp_eval)?;
-    def(i, "gfp_isirreducible", Arity::Fixed(2), gfp_isirreducible)?;
+    def_doc(
+        i,
+        "gfp_norm",
+        Arity::Fixed(2),
+        gfp_norm,
+        "Normalizes a highest-degree-first polynomial `f` over GF(p) by reducing coefficients modulo `p` and stripping leading zeros.",
+    )?;
+    def_doc(
+        i,
+        "gfp_degree",
+        Arity::Fixed(2),
+        gfp_degree,
+        "Returns the degree of polynomial `f` over GF(p), or `-1` for the zero polynomial.",
+    )?;
+    def_doc(
+        i,
+        "gfp_add",
+        Arity::Fixed(3),
+        |cx, a| poly2(cx, a, padd),
+        "Computes the sum `f + g` of two polynomials over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_sub",
+        Arity::Fixed(3),
+        |cx, a| poly2(cx, a, psub),
+        "Computes the difference `f - g` of two polynomials over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_mul",
+        Arity::Fixed(3),
+        |cx, a| poly2(cx, a, pmul),
+        "Computes the product `f * g` of two polynomials over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_divmod",
+        Arity::Fixed(3),
+        gfp_divmod,
+        "Computes Euclidean polynomial division `f / g` over GF(p), returning `list(quotient, remainder)`.",
+    )?;
+    def_doc(
+        i,
+        "gfp_gcd",
+        Arity::Fixed(3),
+        gfp_gcd,
+        "Computes the monic greatest common divisor of polynomials `f` and `g` over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_egcd",
+        Arity::Fixed(3),
+        gfp_egcd,
+        "Computes the extended Euclidean algorithm on polynomials `f` and `g` over GF(p), returning `list(d, s, t)` with `s*f + t*g = d`.",
+    )?;
+    def_doc(
+        i,
+        "gfp_eval",
+        Arity::Fixed(3),
+        gfp_eval,
+        "Evaluates polynomial `f` at scalar `x` in GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_isirreducible",
+        Arity::Fixed(2),
+        gfp_isirreducible,
+        "Tests whether polynomial `f` is irreducible over GF(p) using Rabin's irreducibility test.",
+    )?;
 
-    def(i, "gfx_reduce", Arity::Fixed(3), gfx_reduce)?;
-    def(i, "gfx_add", Arity::Fixed(4), |cx, a| gfx2(cx, a, xadd))?;
-    def(i, "gfx_sub", Arity::Fixed(4), |cx, a| gfx2(cx, a, xsub))?;
-    def(i, "gfx_mul", Arity::Fixed(4), |cx, a| gfx2(cx, a, xmul))?;
-    def(i, "gfx_div", Arity::Fixed(4), |cx, a| gfx2(cx, a, xdiv))?;
-    def(i, "gfx_neg", Arity::Fixed(3), gfx_neg)?;
-    def(i, "gfx_inv", Arity::Fixed(3), gfx_inv)?;
-    def(i, "gfx_pow", Arity::Fixed(4), gfx_pow)?;
+    def_doc(
+        i,
+        "gfx_reduce",
+        Arity::Fixed(3),
+        gfx_reduce,
+        "Reduces polynomial `a` modulo `m` over GF(p) in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_add",
+        Arity::Fixed(4),
+        |cx, a| gfx2(cx, a, xadd),
+        "Computes `(a + b) mod m` in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_sub",
+        Arity::Fixed(4),
+        |cx, a| gfx2(cx, a, xsub),
+        "Computes `(a - b) mod m` in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_mul",
+        Arity::Fixed(4),
+        |cx, a| gfx2(cx, a, xmul),
+        "Computes `(a * b) mod m` in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_div",
+        Arity::Fixed(4),
+        |cx, a| gfx2(cx, a, xdiv),
+        "Computes `a * b^(-1) mod m` in the extension field GF(p)[x]/(m) when `b` is invertible modulo `m`.",
+    )?;
+    def_doc(
+        i,
+        "gfx_neg",
+        Arity::Fixed(3),
+        gfx_neg,
+        "Computes `(-a) mod m` in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_inv",
+        Arity::Fixed(3),
+        gfx_inv,
+        "Computes the multiplicative inverse `a^(-1) mod m` in the extension field GF(p)[x]/(m).",
+    )?;
+    def_doc(
+        i,
+        "gfx_pow",
+        Arity::Fixed(4),
+        gfx_pow,
+        "Computes `a^e mod m` in the extension field GF(p)[x]/(m) for integer exponent `e`.",
+    )?;
     Ok(())
 }
 

@@ -49,6 +49,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     };
     let series = i.op(OpDescriptor::new("chebyshev_series", Arity::Variadic)
         .cost(4)
+        .doc("`chebyshev_series(t, c0, ..., cn)`: evaluate the Chebyshev series `sum c_k T_k(t)` via Clenshaw's recurrence.")
         .eval(|a| {
             match a.split_first() {
                 | Some((&t, coeffs)) if !coeffs.is_empty() => clenshaw(coeffs, t),
@@ -57,7 +58,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }))?;
     // A Chebyshev series is a polynomial in its dimensionless variable.
     i.dim(series, DimRule::Dimensionless);
-    let op = i.op(heavy("chebyshev_approx"))?;
+    let op = i.op(heavy("chebyshev_approx").doc(
+        "`chebyshev_approx(f, x, a, b)`: adaptive Chebyshev polynomial interpolant of `f(x)` on `[a, b]` returned as `chebyshev_series(...)`.",
+    ))?;
     // The approximant of `f` on an interval has the dimension of `f`.
     i.dim(op, DimRule::Same(0));
     i.kernel(
@@ -68,7 +71,9 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             kind: Kind::Chebyshev(series),
         },
     );
-    let op = i.op(heavy("rational_approx"))?;
+    let op = i.op(heavy("rational_approx").doc(
+        "`rational_approx(f, x, a, b)`: AAA barycentric rational approximant of `f(x)` on `[a, b]`.",
+    ))?;
     i.dim(op, DimRule::Same(0));
     i.kernel(
         "special/rational_approx",

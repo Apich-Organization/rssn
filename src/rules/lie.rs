@@ -125,32 +125,90 @@ fn request_rule(request: Request) -> DimRule {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, request) in [
-        ("lie_bracket", Arity::Variadic, Request::Bracket),
+    for (name, arity, request, doc) in [
+        (
+            "lie_bracket",
+            Arity::Variadic,
+            Request::Bracket,
+            "`lie_bracket(A, B)` or `lie_bracket(X, Y, coords)`: Lie bracket `[A, B] = A B - B A` for matrices, or `[X, Y]^i = X^j d_j Y^i - Y^j d_j X^i` for vector fields.",
+        ),
         (
             "structure_constants",
             Arity::Variadic,
             Request::StructureConstants,
+            "`structure_constants(basis[, coords])`: structure constants tensor `c[i][j][k]` satisfying `[e_i, e_j] = sum_k c_ijk e_k`.",
         ),
-        ("adjoint_rep", Arity::Variadic, Request::AdjointRep),
-        ("adjoint_group", Arity::Fixed(2), Request::AdjointGroup),
-        ("killing_form", Arity::Variadic, Request::Killing),
-        ("check_jacobi", Arity::Variadic, Request::Jacobi),
-        ("is_lie_algebra", Arity::Variadic, Request::IsLieAlgebra),
+        (
+            "adjoint_rep",
+            Arity::Variadic,
+            Request::AdjointRep,
+            "`adjoint_rep(X, basis[, coords])`: matrix of the adjoint map `ad_X` in `basis`, with column `j` holding the coordinates of `[X, e_j]`.",
+        ),
+        (
+            "adjoint_group",
+            Arity::Fixed(2),
+            Request::AdjointGroup,
+            "`adjoint_group(g, X)`: adjoint group action `Ad_g(X) = g X g^-1` for invertible matrix `g` and Lie algebra element `X`.",
+        ),
+        (
+            "killing_form",
+            Arity::Variadic,
+            Request::Killing,
+            "`killing_form(basis[, coords])`: Killing form matrix `K_ab = tr(ad_a ad_b)` of the Lie algebra spanned by `basis`.",
+        ),
+        (
+            "check_jacobi",
+            Arity::Variadic,
+            Request::Jacobi,
+            "`check_jacobi(basis[, coords])`: `true` if the Jacobi identity `[x, [y, z]] + [y, [z, x]] + [z, [x, y]] = 0` holds for all basis triples, `false` otherwise.",
+        ),
+        (
+            "is_lie_algebra",
+            Arity::Variadic,
+            Request::IsLieAlgebra,
+            "`is_lie_algebra(basis[, coords])`: `true` if `span(basis)` is closed under the Lie bracket and satisfies the Jacobi identity.",
+        ),
         (
             "commutator_table",
             Arity::Variadic,
             Request::CommutatorTable,
+            "`commutator_table(basis[, coords])`: matrix `list(list([e_i, e_j]))` of all pairwise Lie brackets of `basis`.",
         ),
-        ("exp_map", Arity::Variadic, Request::ExpMap),
-        ("baker_campbell_hausdorff", Arity::Variadic, Request::Bch),
-        ("so3_basis", Arity::Fixed(0), Request::So3),
-        ("su2_basis", Arity::Fixed(0), Request::Su2),
-        ("sl2_basis", Arity::Fixed(0), Request::Sl2),
+        (
+            "exp_map",
+            Arity::Variadic,
+            Request::ExpMap,
+            "`exp_map(A)` or `exp_map(A, n)`: matrix exponential `exp(A)` in closed form, or truncated Taylor polynomial `sum_{k<=n} A^k / k!`.",
+        ),
+        (
+            "baker_campbell_hausdorff",
+            Arity::Variadic,
+            Request::Bch,
+            "`baker_campbell_hausdorff(X, Y, n[, coords])`: Baker-Campbell-Hausdorff series `log(exp(X) exp(Y))` truncated at order `n <= 4`.",
+        ),
+        (
+            "so3_basis",
+            Arity::Fixed(0),
+            Request::So3,
+            "`so3_basis()`: standard basis `(Lx, Ly, Lz)` of `so(3)` with `[Li, Lj] = eps_ijk Lk`.",
+        ),
+        (
+            "su2_basis",
+            Arity::Fixed(0),
+            Request::Su2,
+            "`su2_basis()`: standard basis `-I * sigma_k / 2` of `su(2)` with `[e_i, e_j] = eps_ijk e_k`.",
+        ),
+        (
+            "sl2_basis",
+            Arity::Fixed(0),
+            Request::Sl2,
+            "`sl2_basis()`: Chevalley basis `(h, e, f)` of `sl(2)` with `[h, e] = 2e`, `[h, f] = -2f`, `[e, f] = h`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, request_rule(request));
         i.kernel(
             &format!("lie/{name}"),

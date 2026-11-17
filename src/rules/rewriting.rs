@@ -52,14 +52,30 @@ enum Request {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, request) in [
-        ("knuth_bendix", Arity::Variadic, Request::Complete),
-        ("rewrite_with", Arity::Fixed(3), Request::Rewrite),
-        ("critical_pairs", Arity::Fixed(2), Request::CriticalPairs),
+    for (name, arity, request, doc) in [
+        (
+            "knuth_bendix",
+            Arity::Variadic,
+            Request::Complete,
+            "`knuth_bendix(equations, vars, [order])`: runs Knuth-Bendix completion on `equations` over `vars` (with optional symbol precedence `order`) and returns a confluent rewrite rule list.",
+        ),
+        (
+            "rewrite_with",
+            Arity::Fixed(3),
+            Request::Rewrite,
+            "`rewrite_with(term, rules, vars)`: normalizes `term` to a normal form by exhaustively applying the rewrite `rules` over `vars`.",
+        ),
+        (
+            "critical_pairs",
+            Arity::Fixed(2),
+            Request::CriticalPairs,
+            "`critical_pairs(rules, vars)`: computes the list of critical pairs induced by overlaps among the rewrite `rules` over `vars`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, arity)
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         let rule = match request {
             // A normal form is equal to the term it rewrites.
             | Request::Rewrite => DimRule::Same(0),

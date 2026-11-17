@@ -30,7 +30,7 @@ use num_traits::Zero;
 
 use super::V;
 use super::big;
-use super::def;
+use super::def_doc;
 use super::finite_field::Poly;
 use super::finite_field::norm;
 use super::finite_field::pdivmod;
@@ -785,22 +785,85 @@ impl Kernel for ModRequest {
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "gfp_monic", Arity::Fixed(2), gfp_monic_op)?;
-    def(i, "gfp_derivative", Arity::Fixed(2), gfp_derivative_op)?;
-    def(i, "gfp_powmod", Arity::Fixed(4), gfp_powmod_op)?;
-    def(i, "gfp_invmod", Arity::Fixed(3), gfp_invmod_op)?;
-    def(i, "gfp_squarefree", Arity::Fixed(2), gfp_squarefree_op)?;
-    def(i, "gfp_ddf", Arity::Fixed(2), gfp_ddf_op)?;
-    def(i, "gfp_edf", Arity::Fixed(3), gfp_edf_op)?;
-    def(i, "gfp_factor", Arity::Fixed(2), gfp_factor_op)?;
-    def(i, "gfp_berlekamp", Arity::Fixed(2), gfp_berlekamp_op)?;
-    for (name, request) in [
-        ("factor_mod", Request::FactorMod),
-        ("is_irreducible_mod", Request::IsIrreducibleMod),
+    def_doc(
+        i,
+        "gfp_monic",
+        Arity::Fixed(2),
+        gfp_monic_op,
+        "Divides polynomial `f` by its leading coefficient modulo prime `p` to produce the monic polynomial.",
+    )?;
+    def_doc(
+        i,
+        "gfp_derivative",
+        Arity::Fixed(2),
+        gfp_derivative_op,
+        "Computes the formal derivative `f'` of polynomial `f` over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_powmod",
+        Arity::Fixed(4),
+        gfp_powmod_op,
+        "Computes `f^e mod m` for polynomial `f`, non-negative integer `e`, and modulus polynomial `m` over GF(p).",
+    )?;
+    def_doc(
+        i,
+        "gfp_invmod",
+        Arity::Fixed(3),
+        gfp_invmod_op,
+        "Computes the inverse of polynomial `f` modulo `m` over GF(p) when `gcd(f, m) = 1`.",
+    )?;
+    def_doc(
+        i,
+        "gfp_squarefree",
+        Arity::Fixed(2),
+        gfp_squarefree_op,
+        "Computes the squarefree factorization of polynomial `f` over GF(p) as `list(list(g1, m1), ...)` using Yun's algorithm.",
+    )?;
+    def_doc(
+        i,
+        "gfp_ddf",
+        Arity::Fixed(2),
+        gfp_ddf_op,
+        "Computes the distinct-degree factorization of a squarefree polynomial `f` over GF(p) as `list(list(g_d, d), ...)`.",
+    )?;
+    def_doc(
+        i,
+        "gfp_edf",
+        Arity::Fixed(3),
+        gfp_edf_op,
+        "Computes the equal-degree factorization (Cantor-Zassenhaus) of a squarefree polynomial `f` of degree `k*d` over GF(p) into irreducible factors of degree `d`.",
+    )?;
+    def_doc(
+        i,
+        "gfp_factor",
+        Arity::Fixed(2),
+        gfp_factor_op,
+        "Computes the complete factorization of polynomial `f` over GF(p) as `list(lc, list(g1, m1), ...)`, ordered by degree.",
+    )?;
+    def_doc(
+        i,
+        "gfp_berlekamp",
+        Arity::Fixed(2),
+        gfp_berlekamp_op,
+        "Computes the complete factorization of polynomial `f` over a small prime field GF(p) using Berlekamp's algorithm.",
+    )?;
+    for (name, request, doc) in [
+        (
+            "factor_mod",
+            Request::FactorMod,
+            "Factors a polynomial expression `f` in variable `x` modulo prime `p` into a product `lc * g1^m1 * ...` with coefficients in `[0, p)`.",
+        ),
+        (
+            "is_irreducible_mod",
+            Request::IsIrreducibleMod,
+            "Tests whether a polynomial expression `f` in variable `x` is irreducible modulo prime `p`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(3))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         // Factoring rewrites the polynomial expression, so it keeps the
         // dimension of the polynomial; irreducibility is a predicate.
         i.dim(

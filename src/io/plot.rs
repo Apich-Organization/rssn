@@ -162,13 +162,6 @@ fn escape(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
-fn write_svg(
-    svg: Svg,
-    path: &Path,
-) -> Result<(), String> {
-    std::fs::write(path, svg.finish()).map_err(|e| format!("cannot write {}: {e}", path.display()))
-}
-
 fn format_tick(v: f64) -> String {
     if v == 0.0 {
         return "0".to_owned();
@@ -367,14 +360,16 @@ fn linspace(
 /// interrupt the curve.
 ///
 /// # Errors
-/// Fails for an invalid range, fewer than two samples, a function that is
-/// nowhere finite, or when the file cannot be written.
-pub fn plot_function_2d(
+/// Renders `f(x)` over `range` with `samples` points into an SVG string.
+///
+/// # Errors
+/// Fails for an invalid range, fewer than two samples, or a function that is
+/// nowhere finite.
+pub fn render_function_2d_svg(
     f: impl Fn(f64) -> f64,
     range: (f64, f64),
     samples: usize,
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     check_range(range, "x")?;
     if samples < 2 {
         return Err("at least two samples are required".to_owned());
@@ -383,11 +378,46 @@ pub fn plot_function_2d(
         .into_iter()
         .map(|x| (x, f(x)))
         .collect();
-    plot_series_2d(&[("f(x)".to_owned(), points)], path)
+    render_series_2d_svg(&[("f(x)".to_owned(), points)])
+}
+
+/// Plots `f(x)` over `range` with `samples` points to an SVG file at `path`.
+///
+/// # Errors
+/// Fails for an invalid range, fewer than two samples, a function that is
+/// nowhere finite, or when the file cannot be written.
+pub fn plot_function_2d(
+    f: impl Fn(f64) -> f64,
+    range: (f64, f64),
+    samples: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_function_2d_svg(f, range, samples)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// Samples from which [`plot_function_2d_par`] / [`plot_term_2d`] evaluate concurrently.
 const PLOT_PAR_SAMPLES: usize = 256;
+
+/// [`render_function_2d_svg`] for a `Sync` function: the samples are evaluated concurrently
+/// (collected in order, so the picture is identical) from `PLOT_PAR_SAMPLES` points on.
+///
+/// # Errors
+/// As [`render_function_2d_svg`].
+pub fn render_function_2d_par_svg(
+    f: impl Fn(f64) -> f64 + Sync + Send,
+    range: (f64, f64),
+    samples: usize,
+) -> Result<String, String> {
+    check_range(range, "x")?;
+    if samples < 2 {
+        return Err("at least two samples are required".to_owned());
+    }
+    let xs = linspace(range, samples);
+    let ys = crate::kernels::par::map_slice(&xs, PLOT_PAR_SAMPLES, |&x| f(x));
+    let points: Vec<(f64, f64)> = xs.into_iter().zip(ys).collect();
+    render_series_2d_svg(&[("f(x)".to_owned(), points)])
+}
 
 /// [`plot_function_2d`] for a `Sync` function: the samples are evaluated concurrently (collected in
 /// order, so the picture is identical) from `PLOT_PAR_SAMPLES` points on.
@@ -400,14 +430,31 @@ pub fn plot_function_2d_par(
     samples: usize,
     path: &Path,
 ) -> Result<(), String> {
-    check_range(range, "x")?;
-    if samples < 2 {
-        return Err("at least two samples are required".to_owned());
+    let svg = render_function_2d_par_svg(f, range, samples)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// [`render_surface_3d_svg`] for a `Sync` function: the rows of the grid are evaluated concurrently.
+///
+/// # Errors
+/// As [`render_surface_3d_svg`].
+pub fn render_surface_3d_par_svg(
+    f: impl Fn(f64, f64) -> f64 + Sync + Send,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+) -> Result<String, String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
     }
-    let xs = linspace(range, samples);
-    let ys = crate::kernels::par::map_slice(&xs, PLOT_PAR_SAMPLES, |&x| f(x));
-    let points: Vec<(f64, f64)> = xs.into_iter().zip(ys).collect();
-    plot_series_2d(&[("f(x)".to_owned(), points)], path)
+    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
+    let z: Vec<Vec<f64>> =
+        crate::kernels::par::map_slice(&ys, 16, |&y| xs.iter().map(|&x| f(x, y)).collect());
+    let mut svg = Svg::new();
+    draw_surface(&mut svg, &xs, &ys, &z)?;
+    Ok(svg.finish())
 }
 
 /// [`plot_surface_3d`] for a `Sync` function: the rows of the grid are evaluated concurrently.
@@ -421,17 +468,30 @@ pub fn plot_surface_3d_par(
     grid: usize,
     path: &Path,
 ) -> Result<(), String> {
-    check_range(x_range, "x")?;
-    check_range(y_range, "y")?;
-    if grid < 2 {
-        return Err("the grid needs at least two points per axis".to_owned());
-    }
-    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
-    let z: Vec<Vec<f64>> =
-        crate::kernels::par::map_slice(&ys, 16, |&y| xs.iter().map(|&x| f(x, y)).collect());
-    let mut svg = Svg::new();
-    draw_surface(&mut svg, &xs, &ys, &z)?;
-    write_svg(svg, path)
+    let svg = render_surface_3d_par_svg(f, x_range, y_range, grid)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders the term `node` as a function of the symbol `var` into an SVG string,
+/// evaluating it with [`Graph::eval`].
+///
+/// # Errors
+/// As [`plot_term_2d`], without file-writing errors.
+pub fn render_term_2d_svg(
+    graph: &mut Graph,
+    node: NodeId,
+    var: &str,
+    range: (f64, f64),
+    samples: usize,
+) -> Result<String, String> {
+    let symbol = graph.interner_mut().symbol(var);
+    let value_at = |graph: &Graph, x: f64| {
+        let mut env = Env::numeric(0.0);
+        env.bind(symbol, x);
+        graph.eval(node, &env).unwrap_or(f64::NAN)
+    };
+    let graph: &Graph = graph;
+    render_function_2d_par_svg(|x| value_at(graph, x), range, samples)
 }
 
 /// Plots the term `node` as a function of the symbol `var`, evaluating it
@@ -449,25 +509,16 @@ pub fn plot_term_2d(
     samples: usize,
     path: &Path,
 ) -> Result<(), String> {
-    let symbol = graph.interner_mut().symbol(var);
-    let value_at = |graph: &Graph, x: f64| {
-        let mut env = Env::numeric(0.0);
-        env.bind(symbol, x);
-        graph.eval(node, &env).unwrap_or(f64::NAN)
-    };
-    let graph: &Graph = graph;
-    plot_function_2d_par(|x| value_at(graph, x), range, samples, path)
+    let svg = render_term_2d_svg(graph, node, var, range, samples)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
-/// Plots several named point series on common axes, with a legend.
+/// Renders several named point series on common axes, with a legend, into an
+/// SVG string.
 ///
 /// # Errors
-/// Fails when there is no series, no finite point, or the file cannot be
-/// written.
-pub fn plot_series_2d(
-    series: &[(String, Vec<(f64, f64)>)],
-    path: &Path,
-) -> Result<(), String> {
+/// Fails when there is no series or no finite point.
+pub fn render_series_2d_svg(series: &[(String, Vec<(f64, f64)>)]) -> Result<String, String> {
     if series.is_empty() {
         return Err("no data series provided".to_owned());
     }
@@ -486,7 +537,20 @@ pub fn plot_series_2d(
         svg.line((lx, ly - 4.0), (lx + 22.0, ly - 4.0), color, 2.0);
         svg.text((lx + 28.0, ly), "start", name);
     }
-    write_svg(svg, path)
+    Ok(svg.finish())
+}
+
+/// Plots several named point series on common axes, with a legend.
+///
+/// # Errors
+/// Fails when there is no series, no finite point, or the file cannot be
+/// written.
+pub fn plot_series_2d(
+    series: &[(String, Vec<(f64, f64)>)],
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_series_2d_svg(series)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 fn arrow(
@@ -515,19 +579,17 @@ fn arrow(
     );
 }
 
-/// Plots the 2D vector field `f(x, y) = (u, v)` as arrows on a
-/// `grid` x `grid` lattice, coloured by magnitude.
+/// Renders the 2D vector field `f(x, y) = (u, v)` as arrows on a
+/// `grid` x `grid` lattice, coloured by magnitude, into an SVG string.
 ///
 /// # Errors
-/// Fails for an invalid range, `grid < 2`, or when the file cannot be
-/// written.
-pub fn plot_vector_field_2d(
+/// Fails for an invalid range or `grid < 2`.
+pub fn render_vector_field_2d_svg(
     f: impl Fn(f64, f64) -> (f64, f64),
     x_range: (f64, f64),
     y_range: (f64, f64),
     grid: usize,
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     check_range(x_range, "x")?;
     check_range(y_range, "y")?;
     if grid < 2 {
@@ -565,30 +627,40 @@ pub fn plot_vector_field_2d(
         let to = (from.0 + u / max * reach, from.1 - v / max * reach);
         arrow(&mut svg, from, to, &colormap(m / max));
     }
-    write_svg(svg, path)
+    Ok(svg.finish())
 }
 
-/// Plots the 2-D vector field `f(x, y) = (u, v)` as a quiver of scaled arrows.
-///
-/// There is one arrow per grid sample and its length is proportional to the
-/// field magnitude relative to the largest sampled magnitude, so zero vectors
-/// are omitted and long arrows mark the strong regions.
-///
-/// `scale` is the fraction of the smaller grid cell used by the longest arrow;
-/// it must be finite and positive.
+/// Plots the 2D vector field `f(x, y) = (u, v)` as arrows on a
+/// `grid` x `grid` lattice, coloured by magnitude.
 ///
 /// # Errors
-/// Fails for an invalid range, `grid < 2`, a non-finite or non-positive
-/// `scale`, or when the file cannot be written.
+/// Fails for an invalid range, `grid < 2`, or when the file cannot be
+/// written.
+pub fn plot_vector_field_2d(
+    f: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_vector_field_2d_svg(f, x_range, y_range, grid)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders the 2-D vector field `f(x, y) = (u, v)` as a quiver of scaled arrows
+/// into an SVG string.
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, or a non-finite or non-positive
+/// `scale`.
 #[allow(clippy::float_cmp)] // exact zero is the "field vanishes" sentinel
-pub fn plot_quiver_2d(
+pub fn render_quiver_2d_svg(
     f: impl Fn(f64, f64) -> (f64, f64),
     x_range: (f64, f64),
     y_range: (f64, f64),
     grid: usize,
     scale: f64,
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     check_range(x_range, "x")?;
     check_range(y_range, "y")?;
     if grid < 2 {
@@ -632,7 +704,31 @@ pub fn plot_quiver_2d(
             arrow(&mut svg, from, to, PALETTE[0]);
         }
     }
-    write_svg(svg, path)
+    Ok(svg.finish())
+}
+
+/// Plots the 2-D vector field `f(x, y) = (u, v)` as a quiver of scaled arrows.
+///
+/// There is one arrow per grid sample and its length is proportional to the
+/// field magnitude relative to the largest sampled magnitude, so zero vectors
+/// are omitted and long arrows mark the strong regions.
+///
+/// `scale` is the fraction of the smaller grid cell used by the longest arrow;
+/// it must be finite and positive.
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, a non-finite or non-positive
+/// `scale`, or when the file cannot be written.
+pub fn plot_quiver_2d(
+    f: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    scale: f64,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_quiver_2d_svg(f, x_range, y_range, grid, scale)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// One contour line of a scalar field at a fixed level, in data coordinates.
@@ -875,19 +971,18 @@ pub fn contour_lines_2d(
     Ok(lines)
 }
 
-/// Plots the contour lines of `f` over the rectangle as SVG: one polyline per
-/// connected contour component, coloured per level.
+/// Renders contour lines of `f` over the rectangle into an SVG string: one
+/// polyline per connected contour component, coloured per level.
 ///
 /// # Errors
-/// As [`contour_lines_2d`], plus file-writing errors.
-pub fn plot_contour_2d(
+/// As [`contour_lines_2d`].
+pub fn render_contour_2d_svg(
     f: impl Fn(f64, f64) -> f64,
     x_range: (f64, f64),
     y_range: (f64, f64),
     grid: usize,
     levels: &[f64],
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let lines = contour_lines_2d(f, x_range, y_range, grid, levels)?;
     let frame = Frame {
         x: x_range,
@@ -907,7 +1002,24 @@ pub fn plot_contour_2d(
         };
         draw_series(&mut svg, &frame, &line.points, color);
     }
-    write_svg(svg, path)
+    Ok(svg.finish())
+}
+
+/// Plots the contour lines of `f` over the rectangle as SVG: one polyline per
+/// connected contour component, coloured per level.
+///
+/// # Errors
+/// As [`contour_lines_2d`], plus file-writing errors.
+pub fn plot_contour_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_contour_2d_svg(f, x_range, y_range, grid, levels)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// One filled contour band: a scalar range and the filled polygons covering
@@ -1088,21 +1200,21 @@ pub fn contour_bands_2d(
     Ok(bands)
 }
 
-/// Plots filled contour bands of `f` over the rectangle as SVG: one filled
-/// polygon per clipped triangle, coloured by band index (low to high).
+/// Renders filled contour bands of `f` over the rectangle into an SVG string:
+/// one filled polygon per clipped triangle, coloured by band index (low to
+/// high).
 ///
 /// The axes and grid are drawn on top of the fills.
 ///
 /// # Errors
-/// As [`contour_bands_2d`], plus file-writing errors.
-pub fn plot_contour_bands_2d(
+/// As [`contour_bands_2d`].
+pub fn render_contour_bands_2d_svg(
     f: impl Fn(f64, f64) -> f64,
     x_range: (f64, f64),
     y_range: (f64, f64),
     grid: usize,
     levels: &[f64],
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let bands = contour_bands_2d(f, x_range, y_range, grid, levels)?;
     let frame = Frame {
         x: x_range,
@@ -1118,7 +1230,24 @@ pub fn plot_contour_bands_2d(
         }
     }
     frame.draw(&mut svg);
-    write_svg(svg, path)
+    Ok(svg.finish())
+}
+
+/// Plots filled contour bands of `f` over the rectangle as SVG: one filled
+/// polygon per clipped triangle, coloured by band index (low to high).
+///
+/// # Errors
+/// As [`contour_bands_2d`], plus file-writing errors.
+pub fn plot_contour_bands_2d(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+    levels: &[f64],
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_contour_bands_2d_svg(f, x_range, y_range, grid, levels)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// One classical fourth-order Runge-Kutta step of the planar field.
@@ -1208,6 +1337,32 @@ pub fn streamline_paths_2d(
     Ok(paths)
 }
 
+/// Renders streamlines of the planar vector field as an SVG string, one
+/// polyline per seed.
+///
+/// # Errors
+/// As [`streamline_paths_2d`].
+pub fn render_streamlines_2d_svg(
+    field: impl Fn(f64, f64) -> (f64, f64),
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    seeds: &[(f64, f64)],
+    step: f64,
+    max_steps: usize,
+) -> Result<String, String> {
+    let paths = streamline_paths_2d(field, x_range, y_range, seeds, step, max_steps)?;
+    let frame = Frame {
+        x: x_range,
+        y: y_range,
+    };
+    let mut svg = Svg::new();
+    frame.draw(&mut svg);
+    for (i, points) in paths.iter().enumerate() {
+        draw_series(&mut svg, &frame, points, PALETTE[i % PALETTE.len()]);
+    }
+    Ok(svg.finish())
+}
+
 /// Plots streamlines of the planar vector field as SVG, one polyline per seed.
 ///
 /// # Errors
@@ -1221,17 +1376,8 @@ pub fn plot_streamlines_2d(
     max_steps: usize,
     path: &Path,
 ) -> Result<(), String> {
-    let paths = streamline_paths_2d(field, x_range, y_range, seeds, step, max_steps)?;
-    let frame = Frame {
-        x: x_range,
-        y: y_range,
-    };
-    let mut svg = Svg::new();
-    frame.draw(&mut svg);
-    for (i, points) in paths.iter().enumerate() {
-        draw_series(&mut svg, &frame, points, PALETTE[i % PALETTE.len()]);
-    }
-    write_svg(svg, path)
+    let svg = render_streamlines_2d_svg(field, x_range, y_range, seeds, step, max_steps)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// Fixed oblique projection of the unit cube `[-1, 1]^3` to the plane;
@@ -1420,6 +1566,33 @@ fn colorbar(
     svg.text((x + 5.0, top + h + 14.0), "middle", &format_tick(range.0));
 }
 
+/// Renders the surface `z = f(x, y)` on a `grid` x `grid` lattice into an SVG
+/// string as height-coloured cells in a fixed oblique projection. Non-finite
+/// cells are left out.
+///
+/// # Errors
+/// Fails for an invalid range, `grid < 2`, or no finite value.
+pub fn render_surface_3d_svg(
+    f: impl Fn(f64, f64) -> f64,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    grid: usize,
+) -> Result<String, String> {
+    check_range(x_range, "x")?;
+    check_range(y_range, "y")?;
+    if grid < 2 {
+        return Err("the grid needs at least two points per axis".to_owned());
+    }
+    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
+    let z: Vec<Vec<f64>> = ys
+        .iter()
+        .map(|&y| xs.iter().map(|&x| f(x, y)).collect())
+        .collect();
+    let mut svg = Svg::new();
+    draw_surface(&mut svg, &xs, &ys, &z)?;
+    Ok(svg.finish())
+}
+
 /// Plots the surface `z = f(x, y)` on a `grid` x `grid` lattice as height
 /// coloured cells in a fixed oblique projection. Non-finite cells are left
 /// out.
@@ -1434,19 +1607,27 @@ pub fn plot_surface_3d(
     grid: usize,
     path: &Path,
 ) -> Result<(), String> {
-    check_range(x_range, "x")?;
-    check_range(y_range, "y")?;
-    if grid < 2 {
-        return Err("the grid needs at least two points per axis".to_owned());
+    let svg = render_surface_3d_svg(f, x_range, y_range, grid)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders a 2D array as a 3D surface into an SVG string; the column index is
+/// `x`, the row index is `y` and the entry is the height.
+///
+/// # Errors
+/// Fails when the array has fewer than 2 rows or columns or holds no finite
+/// value.
+pub fn render_surface_2d_svg(data: &Array2<f64>) -> Result<String, String> {
+    let (rows, cols) = data.dim();
+    if rows < 2 || cols < 2 {
+        return Err("a surface needs at least a 2 x 2 array".to_owned());
     }
-    let (xs, ys) = (linspace(x_range, grid), linspace(y_range, grid));
-    let z: Vec<Vec<f64>> = ys
-        .iter()
-        .map(|&y| xs.iter().map(|&x| f(x, y)).collect())
-        .collect();
+    let xs: Vec<f64> = (0..cols).map(|i| i as f64).collect();
+    let ys: Vec<f64> = (0..rows).map(|i| i as f64).collect();
+    let z: Vec<Vec<f64>> = data.rows().into_iter().map(|r| r.to_vec()).collect();
     let mut svg = Svg::new();
     draw_surface(&mut svg, &xs, &ys, &z)?;
-    write_svg(svg, path)
+    Ok(svg.finish())
 }
 
 /// Plots a 2D array as a surface; the column index is `x`, the row index
@@ -1459,16 +1640,8 @@ pub fn plot_surface_2d(
     data: &Array2<f64>,
     path: &Path,
 ) -> Result<(), String> {
-    let (rows, cols) = data.dim();
-    if rows < 2 || cols < 2 {
-        return Err("a surface needs at least a 2 x 2 array".to_owned());
-    }
-    let xs: Vec<f64> = (0..cols).map(|i| i as f64).collect();
-    let ys: Vec<f64> = (0..rows).map(|i| i as f64).collect();
-    let z: Vec<Vec<f64>> = data.rows().into_iter().map(|r| r.to_vec()).collect();
-    let mut svg = Svg::new();
-    draw_surface(&mut svg, &xs, &ys, &z)?;
-    write_svg(svg, path)
+    let svg = render_surface_2d_svg(data)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 fn draw_path_3d(
@@ -1501,19 +1674,17 @@ fn bounds_3d(points: &[[f64; 3]]) -> Result<[(f64, f64); 3], String> {
     Ok([axis(0)?, axis(1)?, axis(2)?])
 }
 
-/// Plots the space curve `t -> (x, y, z)` over `range` with `samples`
-/// points.
+/// Renders the space curve `t -> (x, y, z)` over `range` with `samples`
+/// points into an SVG string.
 ///
 /// # Errors
-/// Fails for an invalid range, fewer than two samples, no finite point, or
-/// when the file cannot be written.
+/// Fails for an invalid range, fewer than two samples, or no finite point.
 #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
-pub fn plot_parametric_curve_3d(
+pub fn render_parametric_curve_3d_svg(
     f: impl Fn(f64) -> (f64, f64, f64),
     range: (f64, f64),
     samples: usize,
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     check_range(range, "t")?;
     if samples < 2 {
         return Err("at least two samples are required".to_owned());
@@ -1525,7 +1696,38 @@ pub fn plot_parametric_curve_3d(
             [x, y, z]
         })
         .collect();
-    plot_3d_path_from_points(&points, path)
+    render_3d_path_from_points_svg(&points)
+}
+
+/// Plots the space curve `t -> (x, y, z)` over `range` with `samples`
+/// points.
+///
+/// # Errors
+/// Fails for an invalid range, fewer than two samples, no finite point, or
+/// when the file cannot be written.
+pub fn plot_parametric_curve_3d(
+    f: impl Fn(f64) -> (f64, f64, f64),
+    range: (f64, f64),
+    samples: usize,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_parametric_curve_3d_svg(f, range, samples)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders a polyline through the given 3D points into an SVG string.
+///
+/// # Errors
+/// Fails when fewer than two points are given or none is finite.
+pub fn render_3d_path_from_points_svg(points: &[[f64; 3]]) -> Result<String, String> {
+    if points.len() < 2 {
+        return Err("a path needs at least two points".to_owned());
+    }
+    let scene = Scene::new(bounds_3d(points)?);
+    let mut svg = Svg::new();
+    scene.draw_box(&mut svg);
+    draw_path_3d(&mut svg, &scene, points, PALETTE[0]);
+    Ok(svg.finish())
 }
 
 /// Plots a polyline through the given 3D points.
@@ -1537,31 +1739,24 @@ pub fn plot_3d_path_from_points(
     points: &[[f64; 3]],
     path: &Path,
 ) -> Result<(), String> {
-    if points.len() < 2 {
-        return Err("a path needs at least two points".to_owned());
-    }
-    let scene = Scene::new(bounds_3d(points)?);
-    let mut svg = Svg::new();
-    scene.draw_box(&mut svg);
-    draw_path_3d(&mut svg, &scene, points, PALETTE[0]);
-    write_svg(svg, path)
+    let svg = render_3d_path_from_points_svg(points)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// A projected arrow: depth, tail, tip, relative magnitude.
 type Arrow = (f64, (f64, f64), (f64, f64), f64);
 
-/// Plots the 3D vector field `f(x, y, z) = (u, v, w)` as arrows on a
-/// `grid`^3 lattice over the three ranges, coloured by magnitude.
+/// Renders the 3D vector field `f(x, y, z) = (u, v, w)` as arrows on a
+/// `grid`^3 lattice over the three ranges, coloured by magnitude, into an SVG
+/// string.
 ///
 /// # Errors
-/// Fails for an invalid range, `grid < 2`, or when the file cannot be
-/// written.
-pub fn plot_vector_field_3d(
+/// Fails for an invalid range or `grid < 2`.
+pub fn render_vector_field_3d_svg(
     f: impl Fn(f64, f64, f64) -> (f64, f64, f64),
     ranges: [(f64, f64); 3],
     grid: usize,
-    path: &Path,
-) -> Result<(), String> {
+) -> Result<String, String> {
     for (range, name) in ranges.iter().zip(["x", "y", "z"]) {
         check_range(*range, name)?;
     }
@@ -1615,19 +1810,31 @@ pub fn plot_vector_field_3d(
         arrow(&mut svg, from, to, &colormap(t));
     }
     colorbar(&mut svg, (0.0, max));
-    write_svg(svg, path)
+    Ok(svg.finish())
 }
 
-/// Plots a 2D array as a heat map: row 0 on top, one coloured cell per
-/// entry, with a colour bar.
+/// Plots the 3D vector field `f(x, y, z) = (u, v, w)` as arrows on a
+/// `grid`^3 lattice over the three ranges, coloured by magnitude.
 ///
 /// # Errors
-/// Fails for an empty array, no finite value, or when the file cannot be
+/// Fails for an invalid range, `grid < 2`, or when the file cannot be
 /// written.
-pub fn plot_heatmap_2d(
-    data: &Array2<f64>,
+pub fn plot_vector_field_3d(
+    f: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    grid: usize,
     path: &Path,
 ) -> Result<(), String> {
+    let svg = render_vector_field_3d_svg(f, ranges, grid)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders a 2D array as a heat map into an SVG string: row 0 on top, one
+/// coloured cell per entry, with a colour bar.
+///
+/// # Errors
+/// Fails for an empty array or no finite value.
+pub fn render_heatmap_2d_svg(data: &Array2<f64>) -> Result<String, String> {
     let (rows, cols) = data.dim();
     if rows == 0 || cols == 0 {
         return Err("the array is empty".to_owned());
@@ -1688,7 +1895,21 @@ pub fn plot_heatmap_2d(
         &rows.to_string(),
     );
     colorbar(&mut svg, range);
-    write_svg(svg, path)
+    Ok(svg.finish())
+}
+
+/// Plots a 2D array as a heat map: row 0 on top, one coloured cell per
+/// entry, with a colour bar.
+///
+/// # Errors
+/// Fails for an empty array, no finite value, or when the file cannot be
+/// written.
+pub fn plot_heatmap_2d(
+    data: &Array2<f64>,
+    path: &Path,
+) -> Result<(), String> {
+    let svg = render_heatmap_2d_svg(data)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// Writes a 2-D array as an 8-bit grayscale PGM (P5) raster, row 0 on top and
@@ -1865,6 +2086,22 @@ pub fn slice_scalar_field_3d(
     }))
 }
 
+/// Renders a heat map of the 3D scalar field `f` on a planar slice into an SVG
+/// string; the 3D counterpart of [`render_heatmap_2d_svg`].
+///
+/// # Errors
+/// As [`slice_scalar_field_3d`] and [`render_heatmap_2d_svg`].
+pub fn render_heatmap_slice_3d_svg(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+) -> Result<String, String> {
+    let data = slice_scalar_field_3d(f, ranges, axis, position, grid)?;
+    render_heatmap_2d_svg(&data)
+}
+
 /// Plots a heat map of the 3D scalar field `f` on a planar slice; the 3D
 /// counterpart of [`plot_heatmap_2d`] (row 0 on top is the lower end of the
 /// second in-plane axis).
@@ -1879,8 +2116,8 @@ pub fn plot_heatmap_slice_3d(
     grid: usize,
     path: &Path,
 ) -> Result<(), String> {
-    let data = slice_scalar_field_3d(f, ranges, axis, position, grid)?;
-    plot_heatmap_2d(&data, path)
+    let svg = render_heatmap_slice_3d_svg(f, ranges, axis, position, grid)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// Contour lines of the 3D scalar field `f` on a planar slice: marching squares
@@ -1910,6 +2147,33 @@ pub fn contour_lines_slice_3d(
     )
 }
 
+/// Renders contour lines of the 3D scalar field `f` on a planar slice into an
+/// SVG string; the 3D counterpart of [`render_contour_2d_svg`].
+///
+/// # Errors
+/// As [`contour_lines_slice_3d`].
+pub fn render_contour_slice_3d_svg(
+    f: impl Fn(f64, f64, f64) -> f64,
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    levels: &[f64],
+) -> Result<String, String> {
+    check_slice(ranges, axis, position, grid)?;
+    let (ur, vr) = axis.plane_ranges(ranges);
+    render_contour_2d_svg(
+        |u, v| {
+            let (x, y, z) = axis.point(position, u, v);
+            f(x, y, z)
+        },
+        ur,
+        vr,
+        grid,
+        levels,
+    )
+}
+
 /// Plots contour lines of the 3D scalar field `f` on a planar slice; the 3D
 /// counterpart of [`plot_contour_2d`].
 ///
@@ -1924,18 +2188,35 @@ pub fn plot_contour_slice_3d(
     levels: &[f64],
     path: &Path,
 ) -> Result<(), String> {
+    let svg = render_contour_slice_3d_svg(f, ranges, axis, position, grid, levels)?;
+    super::svg::write_svg_file(path, &svg)
+}
+
+/// Renders the in-plane projection of the 3D vector field `f` on a planar slice
+/// as scaled arrows into an SVG string; the 3D counterpart of
+/// [`render_quiver_2d_svg`].
+///
+/// # Errors
+/// As [`slice_scalar_field_3d`] and [`render_quiver_2d_svg`].
+pub fn render_quiver_slice_3d_svg(
+    f: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    axis: SliceAxis,
+    position: f64,
+    grid: usize,
+    scale: f64,
+) -> Result<String, String> {
     check_slice(ranges, axis, position, grid)?;
     let (ur, vr) = axis.plane_ranges(ranges);
-    plot_contour_2d(
+    render_quiver_2d_svg(
         |u, v| {
             let (x, y, z) = axis.point(position, u, v);
-            f(x, y, z)
+            axis.in_plane(f(x, y, z))
         },
         ur,
         vr,
         grid,
-        levels,
-        path,
+        scale,
     )
 }
 
@@ -1953,19 +2234,8 @@ pub fn plot_quiver_slice_3d(
     scale: f64,
     path: &Path,
 ) -> Result<(), String> {
-    check_slice(ranges, axis, position, grid)?;
-    let (ur, vr) = axis.plane_ranges(ranges);
-    plot_quiver_2d(
-        |u, v| {
-            let (x, y, z) = axis.point(position, u, v);
-            axis.in_plane(f(x, y, z))
-        },
-        ur,
-        vr,
-        grid,
-        scale,
-        path,
-    )
+    let svg = render_quiver_slice_3d_svg(f, ranges, axis, position, grid, scale)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 /// One classical fourth-order Runge-Kutta step of the 3D field.
@@ -2050,6 +2320,29 @@ pub fn streamline_paths_3d(
     Ok(paths)
 }
 
+/// Renders 3D streamlines (one coloured polyline per seed) inside the wireframe
+/// box of the oblique projection into an SVG string; the 3D counterpart of
+/// [`render_streamlines_2d_svg`].
+///
+/// # Errors
+/// As [`streamline_paths_3d`].
+pub fn render_streamlines_3d_svg(
+    field: impl Fn(f64, f64, f64) -> (f64, f64, f64),
+    ranges: [(f64, f64); 3],
+    seeds: &[[f64; 3]],
+    step: f64,
+    max_steps: usize,
+) -> Result<String, String> {
+    let paths = streamline_paths_3d(field, ranges, seeds, step, max_steps)?;
+    let scene = Scene::new(ranges);
+    let mut svg = Svg::new();
+    scene.draw_box(&mut svg);
+    for (i, points) in paths.iter().enumerate() {
+        draw_path_3d(&mut svg, &scene, points, PALETTE[i % PALETTE.len()]);
+    }
+    Ok(svg.finish())
+}
+
 /// Plots 3D streamlines (one coloured polyline per seed) inside the wireframe
 /// box of the oblique projection; the 3D counterpart of [`plot_streamlines_2d`].
 ///
@@ -2063,14 +2356,8 @@ pub fn plot_streamlines_3d(
     max_steps: usize,
     path: &Path,
 ) -> Result<(), String> {
-    let paths = streamline_paths_3d(field, ranges, seeds, step, max_steps)?;
-    let scene = Scene::new(ranges);
-    let mut svg = Svg::new();
-    scene.draw_box(&mut svg);
-    for (i, points) in paths.iter().enumerate() {
-        draw_path_3d(&mut svg, &scene, points, PALETTE[i % PALETTE.len()]);
-    }
-    write_svg(svg, path)
+    let svg = render_streamlines_3d_svg(field, ranges, seeds, step, max_steps)?;
+    super::svg::write_svg_file(path, &svg)
 }
 
 #[cfg(test)]

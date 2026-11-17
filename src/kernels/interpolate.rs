@@ -502,11 +502,25 @@ pub fn b_spline(
     knots: &[f64],
     t: f64,
 ) -> Option<Vec<f64>> {
-    let n = control_points.len() - 1;
+    // Empty inputs, mismatched knot counts and ragged control points have
+    // no curve: `None` rather than an index or subtraction panic.
+    let n = control_points.len().checked_sub(1)?;
 
-    let m = knots.len() - 1;
+    let m = knots.len().checked_sub(1)?;
 
-    if degree > n || m != n + degree + 1 {
+    if degree > n || Some(m) != n.checked_add(degree)?.checked_add(1) {
+        return None;
+    }
+
+    let dimension = control_points.first().map_or(0, Vec::len);
+
+    if control_points.iter().any(|p| p.len() != dimension) {
+        return None;
+    }
+
+    // The knot-span search is a bisection that assumes a sorted knot
+    // vector; an unsorted or non-finite one could make it spin.
+    if knots.iter().any(|k| !k.is_finite()) || knots.windows(2).any(|w| w[1] < w[0]) {
         return None;
     }
 

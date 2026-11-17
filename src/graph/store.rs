@@ -383,6 +383,8 @@ pub struct Graph {
     unions: u64,
     conflicts: Vec<(Number, Number)>,
     scratch: Vec<u32>,
+    /// Reused operand buffer of [`Graph::try_node`].
+    operands: Vec<NodeId>,
     assumptions: HashMap<SymbolId, Facts>,
     /// Interned base dimensions, exponent atoms and dimension variables.
     pub(crate) dims: std::sync::Arc<std::sync::RwLock<crate::graph::dim::DimArena>>,
@@ -390,9 +392,23 @@ pub struct Graph {
     pub(crate) dim_assumptions: HashMap<SymbolId, crate::graph::dim::DimTerm>,
     /// Sums whose terms print lowest degree first: the truncated series of
     /// `taylor` / `laurent`. A print hint only; it never changes a value.
-    ascending: std::collections::HashSet<NodeId>,
+    ascending: super::id::FastSet<NodeId>,
     /// Modification clock; see [`Graph::epoch`].
     epoch: u64,
+    /// Bumped by every change that can alter a derived fact: a union, an
+    /// assumption, or write access to the operator table (attributes).
+    revision: u64,
+    /// Answers of [`Graph::facts`] at `revision`, by root class.
+    pub(super) facts_cache: FactsCache,
+}
+
+/// Memoised [`Graph::facts`] answers; valid while the revision is unchanged.
+///
+/// Guards such as `positive(?a)` ask for facts during (possibly parallel)
+/// matching against a frozen graph, so the cache sits behind a lock.
+#[derive(Debug, Default)]
+pub(super) struct FactsCache {
+    pub(super) table: std::sync::Mutex<(u64, super::id::FastMap<u32, Facts>)>,
 }
 
 impl Clone for Graph {
@@ -420,13 +436,16 @@ impl Clone for Graph {
             class_count: self.class_count,
             unions: self.unions,
             conflicts: self.conflicts.clone(),
-            scratch: self.scratch.clone(),
+            scratch: Vec::new(),
+            operands: Vec::new(),
             assumptions: self.assumptions.clone(),
             // Shared until written; see the note on this impl.
             dims: std::sync::Arc::clone(&self.dims),
             dim_assumptions: self.dim_assumptions.clone(),
             ascending: self.ascending.clone(),
             epoch: self.epoch,
+            revision: self.revision,
+            facts_cache: FactsCache::default(),
         }
     }
 }
@@ -464,17 +483,26 @@ impl Graph {
             unions: 0,
             conflicts: Vec::new(),
             scratch: Vec::new(),
+            operands: Vec::new(),
             assumptions: HashMap::new(),
             dims: std::sync::Arc::new(std::sync::RwLock::new(crate::graph::dim::DimArena::new())),
             dim_assumptions: HashMap::new(),
-            ascending: std::collections::HashSet::new(),
+            ascending: super::id::FastSet::default(),
             epoch: 1,
+            revision: 0,
+            facts_cache: FactsCache::default(),
         }
     }
 
     // ------------------------------------------------------------------
     // Modification epochs
     // ------------------------------------------------------------------
+
+    /// Revision of everything [`Graph::facts`] reads; see the field.
+    #[must_use]
+    pub(super) const fn revision(&self) -> u64 {
+        self.revision
+    }
 
     /// The current modification epoch.
     ///
@@ -529,6 +557,7 @@ impl Graph {
     /// cloned from a template gives this graph its own table and leaves the
     /// template alone.
     pub fn ops_mut(&mut self) -> &mut OpTable {
+        self.revision = self.revision.wrapping_add(1);
         std::sync::Arc::make_mut(&mut self.ops)
     }
 
@@ -784,18 +813,23 @@ impl Graph {
         &self,
         class: ClassId,
     ) -> impl Iterator<Item = NodeId> + '_ {
-        let root = self.find(NodeId(class.0));
-        let leaf = self.c(root).leaf;
-        let (collapsed, ring) = if leaf.is_none() {
-            (None, Some(self.members(root)))
+        let root = NodeId(self.find(NodeId(class.0)).0);
+        let leaf = self.c(ClassId(root.0)).leaf;
+        if leaf.is_none() {
+            Enodes {
+                graph: self,
+                leaf: None,
+                next: Some(root),
+                start: root,
+            }
         } else {
-            (Some(leaf), None)
-        };
-        collapsed.into_iter().chain(
-            ring.into_iter()
-                .flatten()
-                .filter(|&id| !self.is_redundant(id)),
-        )
+            Enodes {
+                graph: self,
+                leaf: Some(leaf),
+                next: None,
+                start: root,
+            }
+        }
     }
 
     /// Whether `id` is currently an e-node of its class (see
@@ -946,6 +980,7 @@ impl Graph {
         symbol: SymbolId,
         facts: Facts,
     ) {
+        self.revision = self.revision.wrapping_add(1);
         self.assumptions.insert(symbol, facts);
     }
 
@@ -977,14 +1012,57 @@ impl Graph {
     ) -> Vec<NodeId> {
         let root = self.find(NodeId(class.0));
         let mut out = Vec::new();
+        // Hub classes (a symbol, the literal `1`) have thousands of users; a
+        // linear `contains` would make this quadratic. Small lists stay on
+        // the cheap scan, larger ones switch to a set. Order is first
+        // occurrence either way.
+        let mut seen: Option<super::id::FastSet<NodeId>> = None;
         let mut cell = self.c(root).uses_head;
         while let Some(u) = self.uses.get(cell as usize) {
-            if !self.is_redundant(u.node) && !out.contains(&u.node) {
+            cell = u.next;
+            if self.is_redundant(u.node) {
+                continue;
+            }
+            let fresh = match &mut seen {
+                | Some(set) => set.insert(u.node),
+                | None if out.len() < 32 => !out.contains(&u.node),
+                | None => {
+                    let mut set: super::id::FastSet<NodeId> = out.iter().copied().collect();
+                    let fresh = set.insert(u.node);
+                    seen = Some(set);
+                    fresh
+                },
+            };
+            if fresh {
                 out.push(u.node);
             }
-            cell = u.next;
         }
         out
+    }
+
+    /// Whether `class` has at most one distinct e-node parent; the same
+    /// answer as `parents(class).len() <= 1`, without collecting them.
+    #[must_use]
+    pub fn has_single_parent(
+        &self,
+        class: ClassId,
+    ) -> bool {
+        let root = self.find(NodeId(class.0));
+        let mut first = NodeId::NONE;
+        let mut cell = self.c(root).uses_head;
+        while let Some(u) = self.uses.get(cell as usize) {
+            cell = u.next;
+            let node = u.node;
+            if node == first || self.is_redundant(node) || !self.is_enode(node) {
+                continue;
+            }
+            if first.is_none() {
+                first = node;
+            } else {
+                return false;
+            }
+        }
+        true
     }
 
     // ------------------------------------------------------------------
@@ -1085,7 +1163,8 @@ impl Graph {
             return None;
         }
         let flags = desc.flags;
-        let mut buf: Vec<NodeId> = Vec::with_capacity(children.len());
+        let mut buf = std::mem::take(&mut self.operands);
+        buf.clear();
         if flags.has(OpFlags::ASSOCIATIVE) {
             for &c in children {
                 let inner = self.children(c);
@@ -1102,7 +1181,9 @@ impl Graph {
                 self.merge_literals(op, &mut buf);
             }
             if let [only] = buf.as_slice() {
-                return Some(*only);
+                let only = *only;
+                self.operands = buf;
+                return Some(only);
             }
         } else {
             buf.extend_from_slice(children);
@@ -1110,7 +1191,9 @@ impl Graph {
         if flags.has(OpFlags::COMMUTATIVE) {
             buf.sort_unstable();
         }
-        Some(self.intern(op, PayloadId::NONE, &buf))
+        let id = self.intern(op, PayloadId::NONE, &buf);
+        self.operands = buf;
+        Some(id)
     }
 
     /// Combines the literal operands of a sum or product into one and
@@ -1252,8 +1335,18 @@ impl Graph {
         while !cur.is_none() {
             let n = self.n(cur);
             if n.op == op && n.payload == payload && n.child_len as usize == key.len() {
-                self.canonical_key(cur, &mut other);
-                if other == key {
+                // Non-commutative nodes compare child by child, with no
+                // buffer; commutative ones need the sorted key.
+                let equal = if self.ops.get(op).flags.has(OpFlags::COMMUTATIVE) {
+                    self.canonical_key(cur, &mut other);
+                    other == key
+                } else {
+                    self.children(cur)
+                        .iter()
+                        .zip(key)
+                        .all(|(&c, &k)| self.find(c).0 == k)
+                };
+                if equal {
                     return Some(cur);
                 }
             }
@@ -1415,7 +1508,7 @@ impl Graph {
         src: &Self,
         node: NodeId,
     ) -> NodeId {
-        let mut copied: HashMap<NodeId, NodeId> = HashMap::new();
+        let mut copied: super::id::FastMap<NodeId, NodeId> = super::id::FastMap::default();
         let mut stack = vec![(node, false)];
         while let Some((cur, expanded)) = stack.pop() {
             if copied.contains_key(&cur) {
@@ -1493,6 +1586,7 @@ impl Graph {
         self.splice(win, lose);
         self.class_count = self.class_count.saturating_sub(1);
         self.unions = self.unions.saturating_add(1);
+        self.revision = self.revision.wrapping_add(1);
 
         let lost = std::mem::replace(
             self.c_mut(ClassId(lose.0)),
@@ -1651,6 +1745,7 @@ impl Graph {
             let before = data.free.len();
             data.free.retain(|s| fresh.free.binary_search(s).is_ok());
             if data.free.len() != before {
+                self.revision = self.revision.wrapping_add(1);
                 self.touch(ClassId(target.0));
                 self.analysis_pending.push(target);
             }
@@ -1731,6 +1826,37 @@ impl Graph {
             ));
         }
         Ok(())
+    }
+}
+
+/// The iterator of [`Graph::enodes`]: the collapsed leaf, or the
+/// non-redundant members of the class ring.
+///
+/// A dedicated type rather than an adapter chain: this is the innermost
+/// loop of matching, extraction and the scheduler.
+struct Enodes<'g> {
+    graph: &'g Graph,
+    leaf: Option<NodeId>,
+    next: Option<NodeId>,
+    start: NodeId,
+}
+
+impl Iterator for Enodes<'_> {
+    type Item = NodeId;
+
+    #[inline]
+    fn next(&mut self) -> Option<NodeId> {
+        if let Some(leaf) = self.leaf.take() {
+            return Some(leaf);
+        }
+        loop {
+            let id = self.next?;
+            let node = self.graph.n(id);
+            self.next = (node.ring_next != self.start).then_some(node.ring_next);
+            if node.flags & REDUNDANT == 0 {
+                return Some(id);
+            }
+        }
     }
 }
 

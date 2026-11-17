@@ -229,56 +229,248 @@ fn volume_element_dimension(
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let table: [(&str, u8, Request); 37] = [
-        ("tensor_rank", 1, Request::Rank),
-        ("component", 2, Request::Component),
-        ("tensor_add", 2, Request::Add),
-        ("tensor_smul", 2, Request::Smul),
-        ("tensor_outer", 2, Request::Outer),
-        ("contract", 3, Request::Contract),
-        ("lower_index", 2, Request::Lower),
-        ("raise_index", 2, Request::Raise),
-        ("christoffel1", 2, Request::Christoffel1),
-        ("christoffel", 2, Request::Christoffel2),
-        ("riemann", 2, Request::Riemann),
-        ("ricci", 2, Request::Ricci),
-        ("ricci_scalar", 2, Request::RicciScalar),
-        ("einstein", 2, Request::Einstein),
-        ("covariant_derivative", 3, Request::Covariant),
-        ("to_cartesian", 2, Request::ToCartesian),
-        ("from_cartesian", 2, Request::FromCartesian),
-        ("coordinate_metric", 2, Request::Metric),
-        ("scale_factors", 2, Request::ScaleFactors),
-        ("transform_point", 3, Request::TransformPoint),
-        ("transform_expression", 5, Request::TransformExpression),
-        ("transform_vector", 5, Request::TransformVector),
-        ("transform_covector", 5, Request::TransformCovector),
-        ("transform_tensor2", 5, Request::TransformTensor2),
-        ("grad_in", 3, Request::GradIn),
-        ("div_in", 3, Request::DivIn),
-        ("curl_in", 3, Request::CurlIn),
-        ("laplacian_in", 3, Request::LaplacianIn),
-        ("exterior_d", 2, Request::ExteriorD),
-        ("wedge", 2, Request::Wedge),
-        ("greens_theorem", 4, Request::Greens),
-        ("gauss_theorem", 3, Request::Gauss),
-        ("stokes_theorem", 8, Request::Stokes),
-        ("boundary", 1, Request::Boundary),
-        ("pullback", 4, Request::Pullback),
-        ("integrate_form", 3, Request::IntegrateForm),
-        ("generalized_stokes", 3, Request::GeneralizedStokes),
+    let table: [(&str, u8, Request, &str); 37] = [
+        (
+            "tensor_rank",
+            1,
+            Request::Rank,
+            "`tensor_rank(T)`: rank (number of indices) of nested-list tensor `T`.",
+        ),
+        (
+            "component",
+            2,
+            Request::Component,
+            "`component(T, indices)`: entry of tensor `T` at 1-based index list `indices`.",
+        ),
+        (
+            "tensor_add",
+            2,
+            Request::Add,
+            "`tensor_add(A, B)`: componentwise sum `A + B` of tensors of the same shape.",
+        ),
+        (
+            "tensor_smul",
+            2,
+            Request::Smul,
+            "`tensor_smul(c, T)`: tensor `T` scaled componentwise by scalar `c`.",
+        ),
+        (
+            "tensor_outer",
+            2,
+            Request::Outer,
+            "`tensor_outer(A, B)`: outer (tensor) product `A (x) B` of tensors `A` and `B`.",
+        ),
+        (
+            "contract",
+            3,
+            Request::Contract,
+            "`contract(T, i, j)`: trace of tensor `T` over 1-based index slots `i` and `j`.",
+        ),
+        (
+            "lower_index",
+            2,
+            Request::Lower,
+            "`lower_index(V, g)`: covariant vector `g_ij V^j` obtained by lowering index of `V` with metric `g`.",
+        ),
+        (
+            "raise_index",
+            2,
+            Request::Raise,
+            "`raise_index(W, g)`: contravariant vector `g^ij W_j` obtained by raising index of `W` with inverse of metric `g`.",
+        ),
+        (
+            "christoffel1",
+            2,
+            Request::Christoffel1,
+            "`christoffel1(g, vars)`: Christoffel symbols of the first kind `Gamma_kij` for metric `g` in `vars`.",
+        ),
+        (
+            "christoffel",
+            2,
+            Request::Christoffel2,
+            "`christoffel(g, vars)`: Christoffel symbols of the second kind `Gamma^k_ij` for metric `g` in `vars`.",
+        ),
+        (
+            "riemann",
+            2,
+            Request::Riemann,
+            "`riemann(g, vars)`: Riemann curvature tensor `R^r_smn` for metric `g` in coordinates `vars`.",
+        ),
+        (
+            "ricci",
+            2,
+            Request::Ricci,
+            "`ricci(g, vars)`: Ricci curvature tensor `R_sn = R^r_srn` for metric `g` in `vars`.",
+        ),
+        (
+            "ricci_scalar",
+            2,
+            Request::RicciScalar,
+            "`ricci_scalar(g, vars)`: scalar curvature `R = g^sn R_sn` for metric `g` in `vars`.",
+        ),
+        (
+            "einstein",
+            2,
+            Request::Einstein,
+            "`einstein(g, vars)`: Einstein tensor `G = Ric - (R / 2) * g` for metric `g` in `vars`.",
+        ),
+        (
+            "covariant_derivative",
+            3,
+            Request::Covariant,
+            "`covariant_derivative(V, g, vars)`: covariant derivative `nabla_k V^i` of vector `V` with respect to metric `g` in `vars`.",
+        ),
+        (
+            "to_cartesian",
+            2,
+            Request::ToCartesian,
+            "`to_cartesian(sys, vars)`: Cartesian coordinates expressed in coordinate system `sys` (`cartesian`, `polar`, `cylindrical`, `spherical`) with variables `vars`.",
+        ),
+        (
+            "from_cartesian",
+            2,
+            Request::FromCartesian,
+            "`from_cartesian(sys, coords)`: coordinates in system `sys` expressed in terms of Cartesian `coords`.",
+        ),
+        (
+            "coordinate_metric",
+            2,
+            Request::Metric,
+            "`coordinate_metric(sys, vars)`: metric tensor `g = J^T J` of coordinate system `sys` in `vars`.",
+        ),
+        (
+            "scale_factors",
+            2,
+            Request::ScaleFactors,
+            "`scale_factors(sys, vars)`: Lamé scale factors `h_i = sqrt(g_ii)` of orthogonal coordinate system `sys` in `vars`.",
+        ),
+        (
+            "transform_point",
+            3,
+            Request::TransformPoint,
+            "`transform_point(from, to, point)`: coordinates of `point` converted from system `from` to system `to`.",
+        ),
+        (
+            "transform_expression",
+            5,
+            Request::TransformExpression,
+            "`transform_expression(f, from, from_vars, to, to_vars)`: scalar expression `f` rewritten from `from(from_vars)` into `to(to_vars)`.",
+        ),
+        (
+            "transform_vector",
+            5,
+            Request::TransformVector,
+            "`transform_vector(V, from, from_vars, to, to_vars)`: contravariant vector `V` transformed from `from(from_vars)` to `to(to_vars)`.",
+        ),
+        (
+            "transform_covector",
+            5,
+            Request::TransformCovector,
+            "`transform_covector(W, from, from_vars, to, to_vars)`: covariant vector `W` transformed from `from(from_vars)` to `to(to_vars)`.",
+        ),
+        (
+            "transform_tensor2",
+            5,
+            Request::TransformTensor2,
+            "`transform_tensor2(T, from, from_vars, to, to_vars)`: contravariant rank-2 tensor `T` transformed from `from(from_vars)` to `to(to_vars)`.",
+        ),
+        (
+            "grad_in",
+            3,
+            Request::GradIn,
+            "`grad_in(f, sys, vars)`: physical-component gradient of scalar `f` in orthogonal coordinate system `sys(vars)`.",
+        ),
+        (
+            "div_in",
+            3,
+            Request::DivIn,
+            "`div_in(F, sys, vars)`: divergence of physical-component vector `F` in orthogonal coordinate system `sys(vars)`.",
+        ),
+        (
+            "curl_in",
+            3,
+            Request::CurlIn,
+            "`curl_in(F, sys, vars)`: physical-component curl of vector `F` in 3D orthogonal coordinate system `sys(vars)`.",
+        ),
+        (
+            "laplacian_in",
+            3,
+            Request::LaplacianIn,
+            "`laplacian_in(f, sys, vars)`: scalar Laplacian of `f` in orthogonal coordinate system `sys(vars)`.",
+        ),
+        (
+            "exterior_d",
+            2,
+            Request::ExteriorD,
+            "`exterior_d(omega, vars)`: exterior derivative `d omega` of differential form `omega` in variables `vars`.",
+        ),
+        (
+            "wedge",
+            2,
+            Request::Wedge,
+            "`wedge(omega, eta)`: exterior (wedge) product `omega ^ eta` of differential forms.",
+        ),
+        (
+            "greens_theorem",
+            4,
+            Request::Greens,
+            "`greens_theorem(P, Q, list(x, y), bounds)`: circulation integral of `(P, Q)` around rectangle `bounds` via Green's theorem.",
+        ),
+        (
+            "gauss_theorem",
+            3,
+            Request::Gauss,
+            "`gauss_theorem(F, vars, bounds)`: outward flux integral of vector field `F` over box `bounds` via the divergence theorem.",
+        ),
+        (
+            "stokes_theorem",
+            8,
+            Request::Stokes,
+            "`stokes_theorem(F, surface, u, v, u0, u1, v0, v1)`: circulation of `F` around the boundary of `surface(u, v)` via Stokes' theorem.",
+        ),
+        (
+            "boundary",
+            1,
+            Request::Boundary,
+            "`boundary(M)`: oriented `(k-1)`-chain boundary `dM` of a `k`-cell or `k`-chain `M`.",
+        ),
+        (
+            "pullback",
+            4,
+            Request::Pullback,
+            "`pullback(omega, vars, phi, params)`: pullback `phi* omega` of form `omega(vars)` along map `phi(params)`.",
+        ),
+        (
+            "integrate_form",
+            3,
+            Request::IntegrateForm,
+            "`integrate_form(omega, vars, M)`: integral `int_M omega` of differential form `omega(vars)` over cell or chain `M`.",
+        ),
+        (
+            "generalized_stokes",
+            3,
+            Request::GeneralizedStokes,
+            "`generalized_stokes(omega, vars, M)`: evaluates both sides of `int_M d(omega) = int_{dM} omega` as an equation.",
+        ),
     ];
-    let form = i.op(OpDescriptor::new("form", Arity::Fixed(1)))?;
-    let cell = i.op(OpDescriptor::new("cell", Arity::Fixed(3)))?;
-    let chain = i.op(OpDescriptor::new("chain", Arity::Fixed(1)))?;
+    let form = i.op(OpDescriptor::new("form", Arity::Fixed(1)).doc(
+        "`form(terms)`: differential form `sum c dx_i ^ ...` represented by `list(list(coeff, list(i, ...)), ...)`.",
+    ))?;
+    let cell = i.op(OpDescriptor::new("cell", Arity::Fixed(3)).doc(
+        "`cell(phi, params, bounds)`: oriented `k`-cell parametrized by `phi(params)` over parameter box `bounds`.",
+    ))?;
+    let chain = i.op(OpDescriptor::new("chain", Arity::Fixed(1)).doc(
+        "`chain(terms)`: formal linear combination `list(list(mult, cell), ...)` of oriented cells.",
+    ))?;
     // Forms, cells and chains are containers, not scalars.
     i.dim(form, DimRule::NonMetric);
     i.dim(cell, DimRule::NonMetric);
     i.dim(chain, DimRule::NonMetric);
-    for (name, arity, request) in table {
+    for (name, arity, request, doc) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, request_rule(request));
         i.kernel(
             &format!("geometry/{name}"),
@@ -2375,19 +2567,60 @@ fn extension_rule(kind: Kind) -> DimRule {
 }
 
 fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, kind) in [
-        ("metric_geodesic_acceleration", 3, Kind::Geodesic),
-        ("kretschmann", 2, Kind::Kretschmann),
-        ("gaussian_curvature", 2, Kind::Gaussian),
-        ("volume_element", 2, Kind::Volume),
-        ("laplace_beltrami", 3, Kind::Beltrami),
-        ("covariant_divergence", 3, Kind::Divergence),
-        ("killing_tensor", 3, Kind::KillingTensor),
-        ("is_killing", 3, Kind::IsKilling),
+    for (name, arity, kind, doc) in [
+        (
+            "metric_geodesic_acceleration",
+            3,
+            Kind::Geodesic,
+            "`metric_geodesic_acceleration(g, vars, v)`: geodesic acceleration `-Gamma^k_ij v^i v^j` for metric `g(vars)` and velocity `v`.",
+        ),
+        (
+            "kretschmann",
+            2,
+            Kind::Kretschmann,
+            "`kretschmann(g, vars)`: Kretschmann curvature scalar `R_ijkl R^ijkl` of metric `g` in `vars`.",
+        ),
+        (
+            "gaussian_curvature",
+            2,
+            Kind::Gaussian,
+            "`gaussian_curvature(g, vars)`: Gaussian curvature `K = R / 2` of a 2D metric `g` in `vars`.",
+        ),
+        (
+            "volume_element",
+            2,
+            Kind::Volume,
+            "`volume_element(g, vars)`: Riemannian volume density `sqrt(|det(g)|)` of metric `g` in `vars`.",
+        ),
+        (
+            "laplace_beltrami",
+            3,
+            Kind::Beltrami,
+            "`laplace_beltrami(f, g, vars)`: Laplace-Beltrami operator `(1/sqrt|g|) d_i(sqrt|g| g^ij d_j f)` of `f` for metric `g(vars)`.",
+        ),
+        (
+            "covariant_divergence",
+            3,
+            Kind::Divergence,
+            "`covariant_divergence(V, g, vars)`: covariant divergence `nabla_i V^i` of vector `V` for metric `g(vars)`.",
+        ),
+        (
+            "killing_tensor",
+            3,
+            Kind::KillingTensor,
+            "`killing_tensor(xi, g, vars)`: Lie derivative `(L_xi g)_ij = nabla_i xi_j + nabla_j xi_i` of metric `g(vars)` along vector `xi`.",
+        ),
+        (
+            "is_killing",
+            3,
+            Kind::IsKilling,
+            "`is_killing(xi, g, vars)`: `true` if vector field `xi` is a Killing field (`L_xi g = 0`) of metric `g(vars)`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, extension_rule(kind));
         i.kernel(
             &format!("geometry/{name}"),

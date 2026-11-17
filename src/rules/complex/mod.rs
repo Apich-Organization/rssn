@@ -65,11 +65,21 @@ pub use crate::graph::ComplexEval;
 const MAX_POWER: i64 = 32;
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let unit = i.op(OpDescriptor::new("I", Arity::Fixed(0)).cost(1))?;
-    let re = i.op(OpDescriptor::new("re", Arity::Fixed(1)).cost(8))?;
-    let im = i.op(OpDescriptor::new("im", Arity::Fixed(1)).cost(8))?;
-    let conj = i.op(OpDescriptor::new("conj", Arity::Fixed(1)).cost(8))?;
-    let arg = i.op(OpDescriptor::new("arg", Arity::Fixed(1)).cost(8))?;
+    let unit = i.op(OpDescriptor::new("I", Arity::Fixed(0))
+        .cost(1)
+        .doc("`I`: the imaginary unit satisfying `I^2 = -1`."))?;
+    let re = i.op(OpDescriptor::new("re", Arity::Fixed(1))
+        .cost(8)
+        .doc("`re(z)`: real part of complex number `z`."))?;
+    let im = i.op(OpDescriptor::new("im", Arity::Fixed(1))
+        .cost(8)
+        .doc("`im(z)`: imaginary part of complex number `z`."))?;
+    let conj = i.op(OpDescriptor::new("conj", Arity::Fixed(1))
+        .cost(8)
+        .doc("`conj(z)`: complex conjugate `re(z) - I * im(z)` of `z`."))?;
+    let arg = i.op(OpDescriptor::new("arg", Arity::Fixed(1))
+        .cost(8)
+        .doc("`arg(z)`: principal argument (phase angle) of `z` in `(-pi, pi]`."))?;
     {
         let ops = i.graph().ops_mut();
         ops.set_attr(unit, Always(Facts::NONZERO));

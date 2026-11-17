@@ -972,6 +972,18 @@ const COULOMB_ASYMPTOTIC_MIN: f64 = 24.0;
 /// `None`.
 const COULOMB_SERIES_MAX: f64 = 34.0;
 
+/// Largest `|η|` the Coulomb functions accept. Steed's fraction recurses
+/// from a depth of about `2|η|` (so the bound caps it near two million
+/// steps, and a huge `η` would never finish), and well before it the
+/// normalisation `C_l(η) ~ e^{-πη/2}` leaves the floating-point range for a
+/// repulsive field.
+const COULOMB_ETA_MAX: f64 = 1.0e6;
+
+/// Whether `eta` is a finite Sommerfeld parameter within [`COULOMB_ETA_MAX`].
+fn coulomb_eta_in_range(eta: f64) -> bool {
+    eta.is_finite() && eta.abs() <= COULOMB_ETA_MAX
+}
+
 /// `(ln Γ(z), arg Γ(z))` for complex `z`, by Stirling's series after
 /// shifting the argument to `Re z ≥ 16` (relative accuracy about `1e-15`).
 ///
@@ -1258,7 +1270,7 @@ pub fn coulomb_g_from_u(
     rho: f64,
 ) -> Option<(f64, f64)> {
     use crate::kernels::hypergeometric::hyp_u_cplx;
-    if !eta.is_finite() || !rho.is_finite() || rho <= 0.0 || l > 64 {
+    if !coulomb_eta_in_range(eta) || !rho.is_finite() || rho <= 0.0 || l > 64 {
         return None;
     }
     let lf = l as f64;
@@ -1283,7 +1295,7 @@ pub fn coulomb_g_from_u(
 /// that `G ~ cos θ` at large `ρ`). The dimensionless variables are the
 /// Sommerfeld parameter `η` and `ρ = k r`; `l ≥ 0` is the integer angular
 /// momentum. The result is `None` outside the domain of the implemented
-/// representations (`ρ ≤ 0`, non-finite arguments, `l > 64`, or
+/// representations (`ρ ≤ 0`, non-finite arguments, `|η| > 10⁶`, `l > 64`, or
 /// `24 < ρ ≤ 34` outside the classically allowed region), and also when
 /// Steed's fraction fails to certify the physical solution.
 ///
@@ -1297,7 +1309,7 @@ pub fn coulomb_fg(
     l: usize,
     rho: f64,
 ) -> Option<(f64, f64, f64, f64)> {
-    if !eta.is_finite() || !rho.is_finite() || rho <= 0.0 || l > 64 {
+    if !coulomb_eta_in_range(eta) || !rho.is_finite() || rho <= 0.0 || l > 64 {
         return None;
     }
     if rho >= COULOMB_ASYMPTOTIC_MIN && rho >= 2.0 * eta.abs() + 2.0 {
@@ -1336,10 +1348,10 @@ pub fn coulomb_f(
     l: usize,
     rho: f64,
 ) -> Option<f64> {
-    if rho == 0.0 && eta.is_finite() && l <= 64 {
+    if rho == 0.0 && coulomb_eta_in_range(eta) && l <= 64 {
         return Some(0.0); // F_l(eta, 0) = 0
     }
-    if !eta.is_finite() || !rho.is_finite() || rho <= 0.0 || l > 64 {
+    if !coulomb_eta_in_range(eta) || !rho.is_finite() || rho <= 0.0 || l > 64 {
         return None;
     }
     if rho >= COULOMB_ASYMPTOTIC_MIN && rho >= 2.0 * eta.abs() + 2.0 {
@@ -1373,7 +1385,7 @@ pub fn coulomb_f_prime(
     l: usize,
     rho: f64,
 ) -> Option<f64> {
-    if rho == 0.0 && eta.is_finite() && l <= 64 {
+    if rho == 0.0 && coulomb_eta_in_range(eta) && l <= 64 {
         // F'_0(eta, 0) = C_0(eta), F'_l(eta, 0) = 0 for l >= 1
         return Some(if l == 0 {
             coulomb_c(eta, 0)
@@ -1381,7 +1393,7 @@ pub fn coulomb_f_prime(
             0.0
         });
     }
-    if !eta.is_finite() || !rho.is_finite() || rho <= 0.0 || l > 64 {
+    if !coulomb_eta_in_range(eta) || !rho.is_finite() || rho <= 0.0 || l > 64 {
         return None;
     }
     if rho >= COULOMB_ASYMPTOTIC_MIN && rho >= 2.0 * eta.abs() + 2.0 {
@@ -2235,9 +2247,15 @@ fn kelvin_j(
     nu: usize,
     x: f64,
 ) -> Complex64 {
+    #[allow(clippy::cast_precision_loss)]
+    let hankel_from = ((nu * nu) as f64).max(1_000.0);
     if x <= KELVIN_SERIES_MAX {
         kelvin_j_series(nu, x)
-    } else if nu <= 1 {
+    } else if nu <= 1 || x >= hankel_from {
+        // The Hankel expansion is accurate once `x` is well above `ν²`.
+        // Beyond that point Miller's recurrence, which starts at index
+        // `ceil(x)`, would only cost time and memory (a table of `x`
+        // entries: ~1.6 GB at `x = 1e8`, an integer overflow at `1e308`).
         kelvin_j_asymptotic(nu, x)
     } else {
         kelvin_j_miller(nu, x)

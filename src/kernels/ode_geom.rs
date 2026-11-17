@@ -9,6 +9,7 @@ mod bridge;
 mod implicit;
 pub use adaptive::AdaptiveGeomOptions;
 pub use adaptive::solve_adaptive_geometric;
+pub use adaptive::solve_geometric;
 pub use bridge::ShootingError;
 pub use bridge::hermite_segment;
 pub use bridge::sample_fixed_geometric;
@@ -2863,4 +2864,338 @@ pub fn evaluate_history(
     }
     eval_hermite_history(ts, states, rates, t)
         .ok_or_else(|| OdeGeomError::Domain("query lies outside the integrated history".into()))
+}
+
+/// Fixed-step semi-explicit index-1 DAE solver (`y' = f(t, y, z)`,
+/// `0 = g(t, y, z)`) using backward Euler with Newton iteration.
+///
+/// # Errors
+/// [`OdeGeomError::Empty`], [`OdeGeomError::Domain`], [`OdeGeomError::Singular`],
+/// or [`OdeGeomError::NotConverged`].
+pub fn solve_dae_index1_fixed<F, G>(
+    f: &mut F,
+    g: &mut G,
+    y0: &[f64],
+    z0: &[f64],
+    span: (f64, f64),
+    steps: usize,
+) -> Result<DaeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    G: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+{
+    let (t0, t1) = span;
+    if y0.is_empty() {
+        return Err(OdeGeomError::Empty);
+    }
+    if steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || t1 < t0
+        || y0.iter().chain(z0).any(|v| !v.is_finite())
+    {
+        return Err(OdeGeomError::Domain("invalid fixed DAE inputs".into()));
+    }
+    let ny = y0.len();
+    let nz = z0.len();
+    let n = ny.saturating_add(nz);
+    let mut y = y0.to_vec();
+    let mut z = z0.to_vec();
+    let dy0 = f(t0, &y, &z);
+    if dy0.len() != ny || dy0.iter().any(|v| !v.is_finite()) {
+        return Err(OdeGeomError::ShapeMismatch(
+            "DAE rate length differs from differential state".into(),
+        ));
+    }
+    let mut ts = vec![t0];
+    let mut ys = vec![y.clone()];
+    let mut zs = vec![z.clone()];
+    let mut dys = vec![dy0];
+    let mut nfev = 1usize;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(DaeSolution {
+            t: ts,
+            y: ys,
+            z: zs,
+            dy: dys,
+            nfev,
+            rejected: 0,
+        });
+    }
+    let h = (t1 - t0) / steps as f64;
+    for step_idx in 1..=steps {
+        let tn = if step_idx == steps {
+            t1
+        } else {
+            t0 + step_idx as f64 * h
+        };
+        let y_prev = y.clone();
+        let mut u: Vec<f64> = y.iter().chain(&z).copied().collect();
+        let mut converged = false;
+        for _ in 0..30 {
+            let (yc, zc) = u.split_at(ny);
+            let fy = f(tn, yc, zc);
+            let gz = g(tn, yc, zc);
+            nfev = nfev.saturating_add(2);
+            if fy.len() != ny || gz.len() != nz {
+                return Err(OdeGeomError::ShapeMismatch(
+                    "DAE callback returned mismatched length".into(),
+                ));
+            }
+            let mut r: Vec<f64> = (0..ny).map(|i| yc[i] - y_prev[i] - h * fy[i]).collect();
+            r.extend(gz);
+            if r.iter().any(|v| !v.is_finite()) {
+                return Err(OdeGeomError::Domain("nonfinite DAE residual".into()));
+            }
+            let rnorm = r.iter().map(|v| v * v).sum::<f64>().sqrt();
+            if rnorm <= 1e-12 * (1.0 + u.iter().map(|v| v.abs()).fold(0.0_f64, f64::max)) {
+                converged = true;
+                break;
+            }
+            let mut jac = vec![vec![0.0; n]; n];
+            let mut up = u.clone();
+            for j in 0..n {
+                let uj = u[j];
+                let d = 1.5e-8 * uj.abs().max(1e-5);
+                if let Some(slot) = up.get_mut(j) {
+                    *slot = uj + d;
+                }
+                let (yp, zp) = up.split_at(ny);
+                let fyp = f(tn, yp, zp);
+                let gzp = g(tn, yp, zp);
+                nfev = nfev.saturating_add(2);
+                let mut rp: Vec<f64> = (0..ny).map(|i| yp[i] - y_prev[i] - h * fyp[i]).collect();
+                if let Some(slot) = up.get_mut(j) {
+                    *slot = uj;
+                }
+                rp.extend(gzp);
+                for i in 0..n {
+                    jac[i][j] = (rp[i] - r[i]) / d;
+                }
+            }
+            let neg_r: Vec<f64> = r.into_iter().map(|v| -v).collect();
+            let du = solve_dense(jac, neg_r)?;
+            for (ui, dui) in u.iter_mut().zip(&du) {
+                *ui += *dui;
+            }
+            if du.iter().map(|v| v.abs()).fold(0.0_f64, f64::max) <= 1e-13 {
+                converged = true;
+                break;
+            }
+        }
+        if !converged {
+            return Err(OdeGeomError::NotConverged);
+        }
+        let (yn, zn) = u.split_at(ny);
+        y = yn.to_vec();
+        z = zn.to_vec();
+        let dyn_ = f(tn, &y, &z);
+        nfev = nfev.saturating_add(1);
+        ts.push(tn);
+        ys.push(y.clone());
+        zs.push(z.clone());
+        dys.push(dyn_);
+    }
+    Ok(DaeSolution {
+        t: ts,
+        y: ys,
+        z: zs,
+        dy: dys,
+        nfev,
+        rejected: 0,
+    })
+}
+
+/// Unified semi-explicit index-1 DAE solver supporting both fixed and adaptive
+/// step sizes via [`OdeStepMode`](crate::kernels::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`solve_dae_index1_fixed`] and [`solve_dae_index1`].
+pub fn solve_dae_index1_with<F, G>(
+    f: &mut F,
+    g: &mut G,
+    y0: &[f64],
+    z0: &[f64],
+    span: (f64, f64),
+    step_mode: crate::kernels::ode::OdeStepMode,
+) -> Result<DaeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    G: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+{
+    match step_mode {
+        | crate::kernels::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !span.0.is_finite() || !span.1.is_finite() {
+                return Err(OdeGeomError::Domain("invalid fixed step size dt".into()));
+            }
+            let steps = ((span.1 - span.0).abs() / dt).ceil().max(1.0) as usize;
+            solve_dae_index1_fixed(f, g, y0, z0, span, steps)
+        },
+        | crate::kernels::ode::OdeStepMode::Adaptive {
+            rtol,
+            atol,
+            dt_init,
+            dt_min,
+            dt_max,
+            max_steps,
+        } => {
+            let options = DaeOptions {
+                rtol,
+                atol,
+                h0: dt_init.unwrap_or(0.0),
+                h_min: dt_min.unwrap_or(1e-12),
+                h_max: dt_max.unwrap_or(f64::INFINITY),
+                max_steps,
+                ..DaeOptions::default()
+            };
+            solve_dae_index1(f, g, y0, z0, span, options)
+        },
+    }
+}
+
+/// Fixed-step constant-delay DDE solver (`y'(t) = f(t, y(t), y(t - tau))`)
+/// using classical RK4 with cubic Hermite history interpolation.
+///
+/// # Errors
+/// [`OdeGeomError::Empty`], [`OdeGeomError::Domain`], or
+/// [`OdeGeomError::ShapeMismatch`].
+pub fn solve_dde_fixed<F, H>(
+    f: &mut F,
+    hist: &mut H,
+    tau: f64,
+    span: (f64, f64),
+    steps: usize,
+) -> Result<DdeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    H: FnMut(f64) -> Vec<f64> + ?Sized,
+{
+    let (t0, t1) = span;
+    if steps == 0 || !tau.is_finite() || tau <= 0.0 || !t0.is_finite() || !t1.is_finite() || t1 < t0
+    {
+        return Err(OdeGeomError::Domain("invalid fixed DDE inputs".into()));
+    }
+    let y0 = hist(t0);
+    if y0.is_empty() {
+        return Err(OdeGeomError::Empty);
+    }
+    let n = y0.len();
+    let f0 = f(t0, &y0, &hist(t0 - tau));
+    if f0.len() != n || f0.iter().any(|v| !v.is_finite()) {
+        return Err(OdeGeomError::ShapeMismatch(
+            "DDE callback returned mismatched or non-finite rate".into(),
+        ));
+    }
+    let mut ts = vec![t0];
+    let mut ys = vec![y0.clone()];
+    let mut rates = vec![f0];
+    let mut nfev = 1usize;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(DdeSolution {
+            t: ts,
+            y: ys,
+            rates,
+            nfev,
+            rejected: 0,
+        });
+    }
+    let h = (t1 - t0) / steps as f64;
+    let mut y = y0;
+    for step_idx in 0..steps {
+        let t = t0 + step_idx as f64 * h;
+        let tn = if step_idx + 1 == steps {
+            t1
+        } else {
+            t0 + (step_idx + 1) as f64 * h
+        };
+        let dt = tn - t;
+        let mut eval_delay = |target: f64| -> Vec<f64> {
+            if target <= t0 {
+                hist(target)
+            } else {
+                eval_hermite_history(&ts, &ys, &rates, target)
+                    .unwrap_or_else(|| ys.last().cloned().unwrap_or_default())
+            }
+        };
+        let d1 = eval_delay(t - tau);
+        let k1 = f(t, &y, &d1);
+        let y2: Vec<f64> = (0..n).map(|i| y[i] + 0.5 * dt * k1[i]).collect();
+        let d2 = eval_delay(t + 0.5 * dt - tau);
+        let k2 = f(t + 0.5 * dt, &y2, &d2);
+        let y3: Vec<f64> = (0..n).map(|i| y[i] + 0.5 * dt * k2[i]).collect();
+        let k3 = f(t + 0.5 * dt, &y3, &d2);
+        let y4: Vec<f64> = (0..n).map(|i| y[i] + dt * k3[i]).collect();
+        let d4 = eval_delay(tn - tau);
+        let k4 = f(tn, &y4, &d4);
+        let yn: Vec<f64> = (0..n)
+            .map(|i| y[i] + dt / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]))
+            .collect();
+        if yn.iter().any(|v| !v.is_finite()) {
+            return Err(OdeGeomError::Domain("non-finite DDE state".into()));
+        }
+        let fn_ = f(tn, &yn, &d4);
+        nfev = nfev.saturating_add(5);
+        ts.push(tn);
+        ys.push(yn.clone());
+        rates.push(fn_);
+        y = yn;
+    }
+    Ok(DdeSolution {
+        t: ts,
+        y: ys,
+        rates,
+        nfev,
+        rejected: 0,
+    })
+}
+
+/// Unified constant-delay DDE solver supporting both fixed and adaptive step
+/// sizes via [`OdeStepMode`](crate::kernels::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`solve_dde_fixed`] and [`solve_dde`].
+pub fn solve_dde_with<F, H>(
+    f: &mut F,
+    hist: &mut H,
+    tau: f64,
+    span: (f64, f64),
+    step_mode: crate::kernels::ode::OdeStepMode,
+) -> Result<DdeSolution, OdeGeomError>
+where
+    F: FnMut(f64, &[f64], &[f64]) -> Vec<f64> + ?Sized,
+    H: FnMut(f64) -> Vec<f64> + ?Sized,
+{
+    match step_mode {
+        | crate::kernels::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !span.0.is_finite() || !span.1.is_finite() {
+                return Err(OdeGeomError::Domain("invalid fixed step size dt".into()));
+            }
+            let steps = ((span.1 - span.0).abs() / dt).ceil().max(1.0) as usize;
+            solve_dde_fixed(f, hist, tau, span, steps)
+        },
+        | crate::kernels::ode::OdeStepMode::Adaptive {
+            rtol,
+            atol,
+            dt_init,
+            dt_min,
+            dt_max,
+            max_steps,
+        } => {
+            let options = DdeOptions {
+                rtol,
+                atol,
+                h0: dt_init.unwrap_or(0.0),
+                h_min: dt_min.unwrap_or(1e-12),
+                h_max: dt_max.unwrap_or(f64::INFINITY),
+                max_steps,
+                ..DdeOptions::default()
+            };
+            let y0 = hist(span.0);
+            let mut rhs = |t: f64, y: &[f64], delayed: &[Vec<f64>]| -> Vec<f64> {
+                let y_tau = delayed.first().map_or(&[][..], Vec::as_slice);
+                f(t, y, y_tau)
+            };
+            solve_dde(&mut rhs, hist, &y0, &[tau], span, options)
+        },
+    }
 }

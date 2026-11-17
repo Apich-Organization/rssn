@@ -142,35 +142,56 @@ fn gamma_pq(
         let p = (log_prefactor.exp() * sum).min(1.0);
         (p, 1.0 - p)
     } else {
-        // Lentz: Q = prefactor / (x + 1 - a - 1*(1-a)/(x + 3 - a - ...))
-        let tiny = 1e-300;
-        let mut b = x + 1.0 - a;
-        let mut c = 1.0 / tiny;
-        let mut d = 1.0 / b;
-        let mut h = d;
-        for i in 1..2_000_000 {
-            let fi = f64::from(i);
-            let an = -fi * (fi - a);
-            b += 2.0;
-            d = an.mul_add(d, b);
-            if d.abs() < tiny {
-                d = tiny;
-            }
-            c = b + an / c;
-            if c.abs() < tiny {
-                c = tiny;
-            }
-            d = 1.0 / d;
-            let delta = d * c;
-            h *= delta;
-            if (delta - 1.0).abs() < 1e-16 {
-                break;
-            }
+        // Q = prefactor * h with h <= 1 here (x >= a + 1). A prefactor that
+        // underflows makes Q exactly zero, which is also what the loop would
+        // return; for huge `x` the loop itself never converges (`1/x` is
+        // subnormal and gets clamped), so it would run all its iterations.
+        if log_prefactor < -746.0 {
+            return (1.0, 0.0);
         }
-        let q = (log_prefactor.exp() * h).min(1.0);
+        let q = (log_prefactor.exp() * upper_gamma_fraction(a, x)).min(1.0);
         (1.0 - q, q)
     }
 }
+
+/// The continued fraction `h` of `Gamma(a, x) = x^a e^-x h` (Lentz):
+/// `h = 1 / (x + 1 - a - 1 (1 - a) / (x + 3 - a - ...))`. Valid for every
+/// real `a` when `x > 0`, and fastest when `x > a + 1`.
+fn upper_gamma_fraction(
+    a: f64,
+    x: f64,
+) -> f64 {
+    let tiny = 1e-300;
+    let mut b = x + 1.0 - a;
+    let mut c = 1.0 / tiny;
+    let mut d = 1.0 / b;
+    let mut h = d;
+    for i in 1..2_000_000 {
+        let fi = f64::from(i);
+        let an = -fi * (fi - a);
+        b += 2.0;
+        d = an.mul_add(d, b);
+        if d.abs() < tiny {
+            d = tiny;
+        }
+        c = b + an / c;
+        if c.abs() < tiny {
+            c = tiny;
+        }
+        d = 1.0 / d;
+        let delta = d * c;
+        h *= delta;
+        if (delta - 1.0).abs() < 1e-16 {
+            break;
+        }
+    }
+    h
+}
+
+/// Orders below this use the continued fraction directly in
+/// [`upper_incomplete_gamma`]; above it the recurrence from `E1` or from a
+/// positive order takes at most this many steps.
+const UPPER_GAMMA_RECURRENCE_MIN: f64 = -100.0;
 
 /// Domain check shared by the incomplete gamma functions (the caller
 /// handles `a <= 0`).
@@ -221,8 +242,22 @@ pub fn upper_incomplete_gamma(
         }
         return q * gamma_numerical(s);
     }
-    if x == 0.0 {
+    if x == 0.0 || !s.is_finite() {
         return f64::NAN;
+    }
+    if s < UPPER_GAMMA_RECURRENCE_MIN {
+        if x == f64::INFINITY {
+            return 0.0;
+        }
+        // The recurrence below would take |s| steps (forever for a huge
+        // order); here x > s + 1, where the continued fraction converges
+        // quickly. The power is combined in log space so that it does not
+        // overflow before the fraction scales it down.
+        let h = upper_gamma_fraction(s, x);
+        if !(h.is_finite() && h > 0.0) {
+            return f64::NAN;
+        }
+        return s.mul_add(x.ln(), -x + h.ln()).exp();
     }
     // s <= 0: lift from Gamma(0, x) = E1(x) or from a positive order by
     // Gamma(s, x) = (Gamma(s + 1, x) - x^s e^-x) / s.
@@ -282,21 +317,35 @@ pub fn regularized_upper_gamma(
 // ============================================================================
 
 /// Computes the beta function, B(a, b) = Γ(a)Γ(b)/Γ(a+b).
+///
+/// Defined here for `a, b > 0`; any other argument (zero, negative, NaN)
+/// gives NaN rather than reaching `statrs`, which panics on it.
 #[must_use]
 pub fn beta_numerical(
     a: f64,
     b: f64,
 ) -> f64 {
-    beta(a, b)
+    if a > 0.0 && b > 0.0 {
+        beta(a, b)
+    } else {
+        f64::NAN
+    }
 }
 
 /// Computes the natural logarithm of the beta function, ln(B(a, b)).
+///
+/// Defined for `a, b > 0`; other arguments give NaN (see
+/// [`beta_numerical`]).
 #[must_use]
 pub fn ln_beta_numerical(
     a: f64,
     b: f64,
 ) -> f64 {
-    ln_beta(a, b)
+    if a > 0.0 && b > 0.0 {
+        ln_beta(a, b)
+    } else {
+        f64::NAN
+    }
 }
 
 /// Computes the incomplete beta function, B(x; a, b) = ∫₀ˣ t^(a-1) (1-t)^(b-1) dt.

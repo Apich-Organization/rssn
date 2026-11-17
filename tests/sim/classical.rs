@@ -753,7 +753,8 @@ mod strengthened {
             ) < 1e-9
         );
         assert!(rel(heisenberg_position_uncertainty(1e-24), HBAR / 2e-24) < 1e-12);
-        assert_eq!(heisenberg_position_uncertainty(0.0), 0.0);
+        // A vanishing momentum uncertainty leaves the position unbounded.
+        assert_eq!(heisenberg_position_uncertainty(0.0), f64::INFINITY);
         assert_eq!(de_broglie_wavelength(0.0), f64::INFINITY);
         assert_eq!(photon_energy(0.0), f64::INFINITY);
     }

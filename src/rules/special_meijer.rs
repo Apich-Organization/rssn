@@ -206,13 +206,18 @@ fn common_b_exponent(ctx: &DimCtx<'_>) -> Option<BigRational> {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let meijerg = i.op(OpDescriptor::new("meijerg", Arity::Fixed(5))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc(
+            "`meijerg(m, n, list(a), list(b), z)`: Meijer G-function `G^{m,n}_{p,q}(z | a; b)`.",
+        ))?;
     let mellin = i.op(OpDescriptor::new("meijer_mellin", Arity::Fixed(5))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`meijer_mellin(m, n, list(a), list(b), s)`: exact Mellin transform `int_0^infty x^{s-1} G^{m,n}_{p,q}(x | a; b) dx` as a Gamma product."))?;
     let series = i.op(OpDescriptor::new("meijer_series", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`meijer_series(m, n, list(a), list(b), z, k[, direction])`: first `k` terms of the residue series at `z = 0` or asymptotic expansion at `oo`."))?;
     i.dim(meijerg, DimRule::Custom(meijer_dimension));
     // The Mellin transform is a gamma product in the Mellin variable; its
     // value is a pure number when the parameters are.

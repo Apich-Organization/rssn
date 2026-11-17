@@ -2193,11 +2193,78 @@ fn robust_quadrature(
             push(q::sinh_sinh(&f, tolerance));
         },
     }
-    candidates
+    let best = candidates
         .into_iter()
         .filter(|(v, e)| v.is_finite() && e.is_finite())
-        .min_by(|x, y| x.1.total_cmp(&y.1))
-        .unwrap_or((first.value, first.error))
+        .min_by(|x, y| x.1.total_cmp(&y.1));
+    if let Some(best) = best {
+        return best;
+    }
+    truncated_tail(&f, a, b, tolerance, max_panels).unwrap_or((first.value, first.error))
+}
+
+/// Last resort for an infinite range on which every rule produced a
+/// non-finite value: the integrand is finite and negligible far out but its
+/// floating-point evaluation is not (`gaussian(s) * exp(2 s)` is
+/// `0 * inf = NaN` once `exp(2 s)` overflows, although the product tends to
+/// zero). Walk out from the finite end by doubling steps to the last point
+/// where the integrand is finite; if it is negligible there against the
+/// largest value seen, integrate up to that point and charge the omitted
+/// tail to the error estimate. `None` when that cannot be established.
+fn truncated_tail(
+    // `dyn`: this calls `robust_quadrature`, which calls back here; a generic
+    // parameter would instantiate the pair for `&F`, `&&F`, ... forever.
+    f: &dyn Fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    tolerance: f64,
+    max_panels: usize,
+) -> Option<(f64, f64)> {
+    // The last finite point walking from `start` in direction `sign`, with
+    // the largest magnitude met on the way.
+    let walk = |start: f64, sign: f64| -> Option<(f64, f64, f64)> {
+        let mut last = None;
+        let mut peak = 0.0_f64;
+        let mut step = 1.0_f64;
+        while step <= 1e12 {
+            let x = sign.mul_add(step, start);
+            let y = f(x);
+            if !y.is_finite() {
+                break;
+            }
+            peak = peak.max(y.abs());
+            last = Some((x, y.abs()));
+            step *= 2.0;
+        }
+        let (x, at) = last?;
+        Some((x, at, peak))
+    };
+    let negligible = |at: f64, peak: f64| at <= f64::EPSILON * peak.max(f64::MIN_POSITIVE);
+    let (lo, hi, tail) = match (a.is_finite(), b.is_finite()) {
+        | (true, false) => {
+            let (x, at, peak) = walk(a, 1.0)?;
+            negligible(at, peak).then_some((a, x, at))?
+        },
+        | (false, true) => {
+            let (x, at, peak) = walk(b, -1.0)?;
+            negligible(at, peak).then_some((x, b, at))?
+        },
+        | (false, false) => {
+            let (left, at_left, peak_left) = walk(0.0, -1.0)?;
+            let (right, at_right, peak_right) = walk(0.0, 1.0)?;
+            let peak = peak_left.max(peak_right);
+            (negligible(at_left, peak) && negligible(at_right, peak)).then_some((
+                left,
+                right,
+                at_left.max(at_right),
+            ))?
+        },
+        | (true, true) => return None,
+    };
+    let (value, error) = robust_quadrature(f, lo, hi, tolerance, max_panels);
+    value
+        .is_finite()
+        .then_some((value, error + tail * (hi - lo).abs().max(1.0)))
 }
 
 pub(super) struct Quadrature {

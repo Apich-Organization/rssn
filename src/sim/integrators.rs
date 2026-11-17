@@ -159,6 +159,207 @@ where
     out
 }
 
+/// Symplectic integrator scheme for separable Hamiltonians `H(q, p) = T(p) + V(q)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymplecticIntegratorMethod {
+    /// Second-order Störmer–Verlet (leapfrog).
+    Verlet,
+    /// Fourth-order Forest–Ruth / Yoshida composition.
+    Yoshida4,
+}
+
+/// Trajectory returned by [`solve_symplectic`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct SymplecticTrajectory {
+    /// Sample times.
+    pub t: Vec<f64>,
+    /// Generalised positions at each sample time.
+    pub q: Vec<Vec<f64>>,
+    /// Generalised momenta at each sample time.
+    pub p: Vec<Vec<f64>>,
+    /// Number of rejected adaptive steps (zero in fixed-step mode).
+    pub rejected: usize,
+}
+
+/// Unified symplectic integrator supporting both fixed and adaptive step sizes
+/// (adaptive via Richardson step-doubling error control).
+///
+/// # Errors
+/// Returns an error when inputs are invalid, `mass <= 0`, states become
+/// non-finite, or the adaptive step budget or step floor is exceeded.
+#[allow(clippy::float_cmp)]
+pub fn solve_symplectic<A>(
+    q0: &[f64],
+    p0: &[f64],
+    mass: f64,
+    t_span: (f64, f64),
+    method: SymplecticIntegratorMethod,
+    step_mode: crate::kernels::ode::OdeStepMode,
+    acceleration: A,
+) -> Result<SymplecticTrajectory, String>
+where
+    A: Fn(&[f64]) -> Vec<f64>,
+{
+    let (t0, t1) = t_span;
+    if q0.is_empty()
+        || q0.len() != p0.len()
+        || !mass.is_finite()
+        || mass <= 0.0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || q0.iter().chain(p0).any(|v| !v.is_finite())
+    {
+        return Err("Invalid symplectic integration inputs.".to_string());
+    }
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(SymplecticTrajectory {
+            t: vec![t0],
+            q: vec![q0.to_vec()],
+            p: vec![p0.to_vec()],
+            rejected: 0,
+        });
+    }
+    let advance_one = |q: &mut Vec<f64>, p: &mut Vec<f64>, dt: f64| {
+        match method {
+            | SymplecticIntegratorMethod::Verlet => verlet_step(q, p, mass, dt, &acceleration),
+            | SymplecticIntegratorMethod::Yoshida4 => yoshida4_step(q, p, mass, dt, &acceleration),
+        }
+    };
+    match step_mode {
+        | crate::kernels::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 {
+                return Err("Fixed step size dt must be positive and finite.".to_string());
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let h = (t1 - t0) / steps as f64;
+            let mut q = q0.to_vec();
+            let mut p = p0.to_vec();
+            let mut ts = Vec::with_capacity(steps.saturating_add(1));
+            let mut qs = Vec::with_capacity(steps.saturating_add(1));
+            let mut ps = Vec::with_capacity(steps.saturating_add(1));
+            ts.push(t0);
+            qs.push(q.clone());
+            ps.push(p.clone());
+            for step_idx in 1..=steps {
+                crate::cancellation::checkpoint().map_err(|e| e.to_string())?;
+                advance_one(&mut q, &mut p, h);
+                if q.iter().chain(&p).any(|v| !v.is_finite()) {
+                    return Err(
+                        "Non-finite state encountered in symplectic integration.".to_string()
+                    );
+                }
+                let tn = if step_idx == steps {
+                    t1
+                } else {
+                    t0 + step_idx as f64 * h
+                };
+                ts.push(tn);
+                qs.push(q.clone());
+                ps.push(p.clone());
+            }
+            Ok(SymplecticTrajectory {
+                t: ts,
+                q: qs,
+                p: ps,
+                rejected: 0,
+            })
+        },
+        | crate::kernels::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options().map_err(|e| e.to_string())?;
+            let order = match method {
+                | SymplecticIntegratorMethod::Verlet => 2.0_f64,
+                | SymplecticIntegratorMethod::Yoshida4 => 4.0_f64,
+            };
+            let denom = 2.0_f64.powf(order) - 1.0;
+            let dir = if t1 > t0 { 1.0 } else { -1.0 };
+            let mut h = opts
+                .h0
+                .unwrap_or_else(|| ((t1 - t0).abs() * 0.01).max(1e-6))
+                .abs()
+                .clamp(opts.hmin.max(1e-14), opts.hmax)
+                * dir;
+            let mut t = t0;
+            let mut q = q0.to_vec();
+            let mut p = p0.to_vec();
+            let mut ts = vec![t0];
+            let mut qs = vec![q.clone()];
+            let mut ps = vec![p.clone()];
+            let mut rejected = 0usize;
+            let mut attempts = 0usize;
+            while (t1 - t) * dir > 0.0 {
+                crate::cancellation::checkpoint().map_err(|e| e.to_string())?;
+                if attempts >= opts.max_steps {
+                    return Err("Symplectic adaptive step limit exceeded.".to_string());
+                }
+                attempts = attempts.saturating_add(1);
+                if (t + h - t1) * dir > 0.0 {
+                    h = t1 - t;
+                }
+                if !h.is_finite()
+                    || crate::kernels::exact_eq(t + h, t)
+                    || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin)
+                {
+                    return Err("Symplectic adaptive step size underflow.".to_string());
+                }
+                let (mut qf, mut pf) = (q.clone(), p.clone());
+                advance_one(&mut qf, &mut pf, h);
+                let (mut qh, mut ph) = (q.clone(), p.clone());
+                advance_one(&mut qh, &mut ph, 0.5 * h);
+                advance_one(&mut qh, &mut ph, 0.5 * h);
+                if qh
+                    .iter()
+                    .chain(&ph)
+                    .chain(&qf)
+                    .chain(&pf)
+                    .any(|v| !v.is_finite())
+                {
+                    h *= 0.5;
+                    rejected = rejected.saturating_add(1);
+                    continue;
+                }
+                let n_tot = q.len().saturating_add(p.len()) as f64;
+                let sq_sum: f64 = q
+                    .iter()
+                    .zip(&qh)
+                    .zip(&qf)
+                    .chain(p.iter().zip(&ph).zip(&pf))
+                    .map(|((&y0, &yh), &yf)| {
+                        let err_i = (yh - yf).abs() / denom;
+                        let scale = opts.atol + opts.rtol * y0.abs().max(yh.abs());
+                        (err_i / scale).powi(2)
+                    })
+                    .sum();
+                let en = (sq_sum / n_tot).sqrt();
+                if en.is_nan() {
+                    return Err("Non-finite error estimate in symplectic integration.".to_string());
+                }
+                if en <= 1.0 {
+                    t += h;
+                    q = qh;
+                    p = ph;
+                    ts.push(t);
+                    qs.push(q.clone());
+                    ps.push(p.clone());
+                } else {
+                    rejected = rejected.saturating_add(1);
+                }
+                let factor = if en == 0.0 {
+                    5.0
+                } else {
+                    (0.9 * en.powf(-1.0 / (order + 1.0))).clamp(0.2, 5.0)
+                };
+                h = (h.abs() * factor).min(opts.hmax) * dir;
+            }
+            Ok(SymplecticTrajectory {
+                t: ts,
+                q: qs,
+                p: ps,
+                rejected,
+            })
+        },
+    }
+}
+
 /// Solves `g(z) = 0` by Newton's method from `z0` with the
 /// finite-difference Jacobian of `g`.
 fn newton<G>(

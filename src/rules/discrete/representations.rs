@@ -60,7 +60,7 @@ use num_integer::Integer;
 
 use super::V;
 use super::apply;
-use super::def;
+use super::def_doc;
 use super::group_theory::Tab;
 use super::group_theory::tab_of;
 use super::groups::lookup;
@@ -1074,89 +1074,138 @@ fn character_projection(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "group_class_count", Arity::Fixed(1), group_class_count)?;
-    def(i, "group_class_sizes", Arity::Fixed(1), group_class_sizes)?;
-    def(
+    def_doc(
+        i,
+        "group_class_count",
+        Arity::Fixed(1),
+        group_class_count,
+        "Returns the number of conjugacy classes of finite group `G`.",
+    )?;
+    def_doc(
+        i,
+        "group_class_sizes",
+        Arity::Fixed(1),
+        group_class_sizes,
+        "Returns the sizes of the conjugacy classes of finite group `G`.",
+    )?;
+    def_doc(
         i,
         "group_class_representatives",
         Arity::Fixed(1),
         group_class_representatives,
+        "Returns one representative element per conjugacy class of finite group `G`.",
     )?;
-    def(i, "group_class_index", Arity::Fixed(2), group_class_index)?;
-    def(
+    def_doc(
+        i,
+        "group_class_index",
+        Arity::Fixed(2),
+        group_class_index,
+        "Returns the 1-based conjugacy class index of element `x` in finite group `G`.",
+    )?;
+    def_doc(
         i,
         "group_character_table",
         Arity::Fixed(1),
         group_character_table,
+        "Computes the exact character table of finite group `G` via Burnside-Dixon's algorithm, returning irreducible characters as lists of class values.",
     )?;
-    def(
+    def_doc(
         i,
         "group_character_degrees",
         Arity::Fixed(1),
         group_character_degrees,
+        "Returns the degrees (dimensions) of the irreducible characters of finite group `G`.",
     )?;
-    def(
+    def_doc(
         i,
         "character_table_is_orthogonal",
         Arity::Fixed(1),
         character_table_is_orthogonal,
+        "Verifies row and column orthogonality of the computed character table of finite group `G`.",
     )?;
-    def(
+    def_doc(
         i,
         "character_inner_product",
         Arity::Fixed(3),
         character_inner_product,
+        "Computes the character inner product `(1/|G|) * sum_{g in G} chi(g) * conj(psi(g))` for class functions `chi` and `psi`.",
     )?;
-    def(
+    def_doc(
         i,
         "character_is_irreducible",
         Arity::Fixed(2),
         character_is_irreducible,
+        "Returns `true` if class function `chi` of finite group `G` has `<chi, chi> = 1`.",
     )?;
-    def(
+    def_doc(
         i,
         "character_decompose",
         Arity::Fixed(2),
         character_decompose,
+        "Decomposes class function `chi` into multiplicities of the irreducible characters of finite group `G`.",
     )?;
-    def(i, "character_tensor", Arity::Fixed(3), character_tensor)?;
-    def(
+    def_doc(
+        i,
+        "character_tensor",
+        Arity::Fixed(3),
+        character_tensor,
+        "Computes the pointwise (tensor) product `chi * psi` of two class functions on finite group `G`.",
+    )?;
+    def_doc(
         i,
         "character_sym_square",
         Arity::Fixed(2),
         character_sym_square,
+        "Computes the symmetric square `(chi(g)^2 + chi(g^2)) / 2` of class function `chi` on finite group `G`.",
     )?;
-    def(
+    def_doc(
         i,
         "character_alt_square",
         Arity::Fixed(2),
         character_alt_square,
+        "Computes the alternating (exterior) square `(chi(g)^2 - chi(g^2)) / 2` of class function `chi` on finite group `G`.",
     )?;
-    def(i, "character_adams", Arity::Fixed(3), character_adams)?;
-    def(
+    def_doc(
+        i,
+        "character_adams",
+        Arity::Fixed(3),
+        character_adams,
+        "Computes the `k`-th Adams operation `g -> chi(g^k)` on class function `chi` of finite group `G`.",
+    )?;
+    def_doc(
         i,
         "character_conjugate",
         Arity::Fixed(2),
         character_conjugate,
+        "Computes the complex conjugate `conj(chi)` of class function `chi` on finite group `G`.",
     )?;
-    def(i, "character_regular", Arity::Fixed(1), character_regular)?;
-    def(
+    def_doc(
+        i,
+        "character_regular",
+        Arity::Fixed(1),
+        character_regular,
+        "Returns the character of the regular representation of finite group `G`.",
+    )?;
+    def_doc(
         i,
         "character_of_matrices",
         Arity::Fixed(2),
         character_of_matrices,
+        "Computes the class function (traces at conjugacy class representatives) of matrix representation `mats` of `G`.",
     )?;
-    def(
+    def_doc(
         i,
         "representation_decompose",
         Arity::Fixed(2),
         representation_decompose,
+        "Decomposes matrix representation `mats` of finite group `G` into multiplicities of irreducible representations.",
     )?;
-    def(
+    def_doc(
         i,
         "character_projection",
         Arity::Fixed(3),
         character_projection,
+        "Computes the isotypic projection matrix `(d_i/|G|) * sum_{g in G} conj(chi_i(g)) * M(g)` onto the `i`-th irreducible component.",
     )?;
     Ok(())
 }

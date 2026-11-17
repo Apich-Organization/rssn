@@ -40,11 +40,13 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let denest = i.op(OpDescriptor::new("denest_sqrt", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .eval(identity))?;
+        .eval(identity)
+        .doc("`denest_sqrt(expr)`: denests nested square roots in `expr` (e.g. `sqrt(a + b*sqrt(c))`) into simpler radical sums when possible."))?;
     let simplify = i.op(OpDescriptor::new("simplify_radicals", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
         .cost(100)
-        .eval(identity))?;
+        .eval(identity)
+        .doc("`simplify_radicals(expr)`: simplifies radical expressions in `expr` by denesting nested roots and combining or rationalizing surds."))?;
     // Both requests rewrite the expression into an equal one.
     i.dim(denest, DimRule::Same(0));
     i.dim(simplify, DimRule::Same(0));

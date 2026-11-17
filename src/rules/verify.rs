@@ -59,18 +59,54 @@ enum Request {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, request) in [
-        ("verify_solution", 2, Request::Solution),
-        ("verify_integral", 3, Request::Integral),
-        ("verify_definite_integral", 5, Request::DefiniteIntegral),
-        ("verify_ode_solution", 3, Request::Ode),
-        ("verify_inverse", 2, Request::Inverse),
-        ("verify_derivative", 3, Request::Derivative),
-        ("verify_limit", 4, Request::Limit),
+    for (name, arity, request, doc) in [
+        (
+            "verify_solution",
+            2,
+            Request::Solution,
+            "`verify_solution(eq_or_expr, subst)`: checks whether substituting `subst` into `eq_or_expr` satisfies the equation or expression (returns `true` or `false`).",
+        ),
+        (
+            "verify_integral",
+            3,
+            Request::Integral,
+            "`verify_integral(integrand, antiderivative, var)`: checks whether `diff(antiderivative, var) == integrand`.",
+        ),
+        (
+            "verify_definite_integral",
+            5,
+            Request::DefiniteIntegral,
+            "`verify_definite_integral(integrand, var, a, b, value)`: numerically and symbolically checks whether the definite integral of `integrand` over `[a, b]` equals `value`.",
+        ),
+        (
+            "verify_ode_solution",
+            3,
+            Request::Ode,
+            "`verify_ode_solution(ode, solution, var)`: checks whether `solution` satisfies the ordinary differential equation `ode` with respect to `var`.",
+        ),
+        (
+            "verify_inverse",
+            2,
+            Request::Inverse,
+            "`verify_inverse(f, g)`: checks whether functions/expressions `f` and `g` are mutual inverses.",
+        ),
+        (
+            "verify_derivative",
+            3,
+            Request::Derivative,
+            "`verify_derivative(expr, derivative, var)`: checks whether `diff(expr, var) == derivative`.",
+        ),
+        (
+            "verify_limit",
+            4,
+            Request::Limit,
+            "`verify_limit(expr, var, point, value)`: checks whether the limit of `expr` as `var -> point` equals `value`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("verify/{name}"),
             Tier::Reduce,

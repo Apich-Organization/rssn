@@ -36,8 +36,8 @@
 
 use super::V;
 use super::apply;
-use super::def;
-use super::def_request;
+use super::def_doc;
+use super::def_request_doc;
 use super::div;
 use super::float;
 use super::idx;
@@ -1096,94 +1096,356 @@ fn reflect(
 
 /// Registers the graphics operators.
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "translation_2d", Arity::Fixed(2), translation)?;
-    def(i, "translation_3d", Arity::Fixed(3), translation)?;
-    def(i, "scaling_2d", Arity::Fixed(2), diagonal)?;
-    def(i, "scaling_3d", Arity::Fixed(3), diagonal)?;
+    def_doc(
+        i,
+        "translation_2d",
+        Arity::Fixed(2),
+        translation,
+        "Constructs a 3x3 homogeneous 2D translation matrix for `(tx, ty)`.",
+    )?;
+    def_doc(
+        i,
+        "translation_3d",
+        Arity::Fixed(3),
+        translation,
+        "Constructs a 4x4 homogeneous 3D translation matrix for `(tx, ty, tz)`.",
+    )?;
+    def_doc(
+        i,
+        "scaling_2d",
+        Arity::Fixed(2),
+        diagonal,
+        "Constructs a 3x3 homogeneous 2D scaling matrix for `(sx, sy)`.",
+    )?;
+    def_doc(
+        i,
+        "scaling_3d",
+        Arity::Fixed(3),
+        diagonal,
+        "Constructs a 4x4 homogeneous 3D scaling matrix for `(sx, sy, sz)`.",
+    )?;
     // The dimension-free names take it from the arguments: `translation(tx, ty)`
     // is `translation_2d`, `translation(tx, ty, tz)` is `translation_3d`, and so
     // on for any number of coordinates. The `_2d`/`_3d` spellings stay.
-    def(i, "translation", Arity::Variadic, |cx, a| {
-        if a.is_empty() {
-            return None;
-        }
-        translation(cx, a)
-    })?;
-    def(i, "scaling", Arity::Variadic, |cx, a| {
-        if a.is_empty() {
-            return None;
-        }
-        diagonal(cx, a)
-    })?;
-    def(i, "shear", Arity::Variadic, shear)?;
-    def(i, "shear_2d", Arity::Fixed(2), shear_2d)?;
-    def(i, "shear_3d", Arity::Fixed(6), shear_3d)?;
-    def(i, "reflection", Arity::Fixed(1), reflection)?;
-    def(i, "rotation", Arity::Fixed(1), |cx, a| {
-        let [t] = arg(a)?;
-        plane_rotation(cx, 3, t, (0, 1), false)
-    })?;
-    def(i, "rotation_2d", Arity::Fixed(1), |cx, a| {
-        let [t] = arg(a)?;
-        plane_rotation(cx, 3, t, (0, 1), false)
-    })?;
-    def(i, "rotation_3d_x", Arity::Fixed(1), |cx, a| {
-        let [t] = arg(a)?;
-        plane_rotation(cx, 4, t, (1, 2), false)
-    })?;
-    def(i, "rotation_3d_y", Arity::Fixed(1), |cx, a| {
-        let [t] = arg(a)?;
-        plane_rotation(cx, 4, t, (0, 2), true)
-    })?;
-    def(i, "rotation_3d_z", Arity::Fixed(1), |cx, a| {
-        let [t] = arg(a)?;
-        plane_rotation(cx, 4, t, (0, 1), false)
-    })?;
-    def(
+    def_doc(
+        i,
+        "translation",
+        Arity::Variadic,
+        |cx, a| {
+            if a.is_empty() {
+                return None;
+            }
+            translation(cx, a)
+        },
+        "Constructs an `(n+1)x(n+1)` homogeneous translation matrix from `n` translation offsets.",
+    )?;
+    def_doc(
+        i,
+        "scaling",
+        Arity::Variadic,
+        |cx, a| {
+            if a.is_empty() {
+                return None;
+            }
+            diagonal(cx, a)
+        },
+        "Constructs an `(n+1)x(n+1)` homogeneous scaling matrix from `n` scale factors.",
+    )?;
+    def_doc(
+        i,
+        "shear",
+        Arity::Variadic,
+        shear,
+        "Constructs a homogeneous shear matrix from 2 (`2D`) or 6 (`3D`) shear parameters, or a general off-diagonal list.",
+    )?;
+    def_doc(
+        i,
+        "shear_2d",
+        Arity::Fixed(2),
+        shear_2d,
+        "Constructs a 3x3 homogeneous 2D shear matrix from `(shx, shy)`.",
+    )?;
+    def_doc(
+        i,
+        "shear_3d",
+        Arity::Fixed(6),
+        shear_3d,
+        "Constructs a 4x4 homogeneous 3D shear matrix from 6 off-diagonal shear factors.",
+    )?;
+    def_doc(
+        i,
+        "reflection",
+        Arity::Fixed(1),
+        reflection,
+        "Constructs a homogeneous reflection matrix across a line (2D angle or normal) or hyperplane (normal vector).",
+    )?;
+    def_doc(
+        i,
+        "rotation",
+        Arity::Fixed(1),
+        |cx, a| {
+            let [t] = arg(a)?;
+            plane_rotation(cx, 3, t, (0, 1), false)
+        },
+        "Constructs a 3x3 homogeneous 2D rotation matrix by angle `theta`.",
+    )?;
+    def_doc(
+        i,
+        "rotation_2d",
+        Arity::Fixed(1),
+        |cx, a| {
+            let [t] = arg(a)?;
+            plane_rotation(cx, 3, t, (0, 1), false)
+        },
+        "Constructs a 3x3 homogeneous 2D rotation matrix by angle `theta`.",
+    )?;
+    def_doc(
+        i,
+        "rotation_3d_x",
+        Arity::Fixed(1),
+        |cx, a| {
+            let [t] = arg(a)?;
+            plane_rotation(cx, 4, t, (1, 2), false)
+        },
+        "Constructs a 4x4 homogeneous 3D rotation matrix about the x-axis by angle `theta`.",
+    )?;
+    def_doc(
+        i,
+        "rotation_3d_y",
+        Arity::Fixed(1),
+        |cx, a| {
+            let [t] = arg(a)?;
+            plane_rotation(cx, 4, t, (0, 2), true)
+        },
+        "Constructs a 4x4 homogeneous 3D rotation matrix about the y-axis by angle `theta`.",
+    )?;
+    def_doc(
+        i,
+        "rotation_3d_z",
+        Arity::Fixed(1),
+        |cx, a| {
+            let [t] = arg(a)?;
+            plane_rotation(cx, 4, t, (0, 1), false)
+        },
+        "Constructs a 4x4 homogeneous 3D rotation matrix about the z-axis by angle `theta`.",
+    )?;
+    def_doc(
         i,
         "rotation_axis_angle",
         Arity::Fixed(2),
         rotation_axis_angle,
+        "Constructs a 4x4 homogeneous 3D Rodrigues rotation matrix about normalized axis `list(ax, ay, az)` by angle `theta`.",
     )?;
-    def(i, "reflection_2d", Arity::Fixed(1), reflection_2d)?;
-    def(i, "reflection_3d", Arity::Fixed(1), reflection_3d)?;
-    def(i, "perspective", Arity::Fixed(4), perspective)?;
-    def(i, "orthographic", Arity::Fixed(6), orthographic)?;
-    def(i, "look_at", Arity::Fixed(3), look_at)?;
-    def(i, "apply_transform", Arity::Fixed(2), |cx, a| {
-        transform(cx, a, true)
-    })?;
-    def(i, "apply_transform_vector", Arity::Fixed(2), |cx, a| {
-        transform(cx, a, false)
-    })?;
-    def(i, "bezier", Arity::Fixed(2), bezier)?;
-    def(i, "bezier_derivative", Arity::Fixed(2), bezier_derivative)?;
-    def(i, "bezier_split", Arity::Fixed(2), bezier_split)?;
-    def(i, "bspline", Arity::Fixed(4), bspline)?;
-    def(i, "catmull_rom", Arity::Fixed(5), catmull_rom)?;
-    def(i, "quat_mul", Arity::Fixed(2), quat_binary)?;
-    def(i, "quat_conj", Arity::Fixed(1), quat_conj)?;
-    def(i, "quat_inverse", Arity::Fixed(1), quat_inverse)?;
-    def_request(i, "quat_norm", Arity::Fixed(1), quat_norm)?;
-    def(i, "quat_normalize", Arity::Fixed(1), quat_normalize)?;
-    def(
+    def_doc(
+        i,
+        "reflection_2d",
+        Arity::Fixed(1),
+        reflection_2d,
+        "Constructs a 3x3 homogeneous 2D reflection matrix across the line through the origin at angle `theta`.",
+    )?;
+    def_doc(
+        i,
+        "reflection_3d",
+        Arity::Fixed(1),
+        reflection_3d,
+        "Constructs a 4x4 homogeneous 3D reflection matrix across the plane through the origin with normal `list(a, b, c)`.",
+    )?;
+    def_doc(
+        i,
+        "perspective",
+        Arity::Fixed(4),
+        perspective,
+        "Constructs a 4x4 OpenGL-style perspective projection matrix from `(fovy, aspect, near, far)`.",
+    )?;
+    def_doc(
+        i,
+        "orthographic",
+        Arity::Fixed(6),
+        orthographic,
+        "Constructs a 4x4 OpenGL-style orthographic projection matrix from `(left, right, bottom, top, near, far)`.",
+    )?;
+    def_doc(
+        i,
+        "look_at",
+        Arity::Fixed(3),
+        look_at,
+        "Constructs a 4x4 view matrix from `eye`, `center`, and `up` 3D vectors.",
+    )?;
+    def_doc(
+        i,
+        "apply_transform",
+        Arity::Fixed(2),
+        |cx, a| transform(cx, a, true),
+        "Applies homogeneous transform matrix `M` to point `p` (appending `1` if `p` is one dimension short and performing perspective divide).",
+    )?;
+    def_doc(
+        i,
+        "apply_transform_vector",
+        Arity::Fixed(2),
+        |cx, a| transform(cx, a, false),
+        "Applies homogeneous transform matrix `M` to direction vector `v` (appending `0` if `v` is one dimension short).",
+    )?;
+    def_doc(
+        i,
+        "bezier",
+        Arity::Fixed(2),
+        bezier,
+        "Evaluates a Bezier curve with control points `P` at parameter `t` using de Casteljau's algorithm.",
+    )?;
+    def_doc(
+        i,
+        "bezier_derivative",
+        Arity::Fixed(2),
+        bezier_derivative,
+        "Evaluates the derivative of a Bezier curve with control points `P` at parameter `t`.",
+    )?;
+    def_doc(
+        i,
+        "bezier_split",
+        Arity::Fixed(2),
+        bezier_split,
+        "Splits a Bezier curve with control points `P` at parameter `t0`, returning `list(left, right)` control polygons.",
+    )?;
+    def_doc(
+        i,
+        "bspline",
+        Arity::Fixed(4),
+        bspline,
+        "Evaluates a B-spline of `degree` with control points `P` and `knots` at numeric parameter `t` using de Boor's algorithm.",
+    )?;
+    def_doc(
+        i,
+        "catmull_rom",
+        Arity::Fixed(5),
+        catmull_rom,
+        "Evaluates a Catmull-Rom spline segment between `p1` and `p2` using `(p0, p1, p2, p3, t)`.",
+    )?;
+    def_doc(
+        i,
+        "quat_mul",
+        Arity::Fixed(2),
+        quat_binary,
+        "Computes the Hamilton product `q * r` of two quaternions `list(w, x, y, z)`.",
+    )?;
+    def_doc(
+        i,
+        "quat_conj",
+        Arity::Fixed(1),
+        quat_conj,
+        "Computes the quaternion conjugate `list(w, -x, -y, -z)` of `q`.",
+    )?;
+    def_doc(
+        i,
+        "quat_inverse",
+        Arity::Fixed(1),
+        quat_inverse,
+        "Computes the multiplicative inverse `q* / |q|^2` of quaternion `q`.",
+    )?;
+    def_request_doc(
+        i,
+        "quat_norm",
+        Arity::Fixed(1),
+        quat_norm,
+        "Computes the Euclidean norm `sqrt(w^2 + x^2 + y^2 + z^2)` of quaternion `q`.",
+    )?;
+    def_doc(
+        i,
+        "quat_normalize",
+        Arity::Fixed(1),
+        quat_normalize,
+        "Normalizes quaternion `q` to unit length.",
+    )?;
+    def_doc(
         i,
         "quat_from_axis_angle",
         Arity::Fixed(2),
         quat_from_axis_angle,
+        "Constructs a unit rotation quaternion `list(cos(theta/2), ax*sin(theta/2), ...)` from `axis` and angle `theta`.",
     )?;
-    def(i, "quat_rotate", Arity::Fixed(2), quat_rotate)?;
-    def(i, "quat_to_matrix", Arity::Fixed(1), quat_to_matrix)?;
-    def(i, "quat_slerp", Arity::Fixed(3), quat_slerp)?;
-    def(i, "mesh_transform", Arity::Fixed(2), mesh_transform)?;
-    def(i, "mesh_normals", Arity::Fixed(2), mesh_normals)?;
-    def(i, "mesh_triangulate", Arity::Fixed(1), mesh_triangulate)?;
-    def(i, "ray_sphere", Arity::Fixed(4), ray_sphere)?;
-    def(i, "ray_plane", Arity::Fixed(4), ray_plane)?;
-    def(i, "ray_triangle", Arity::Fixed(5), ray_triangle)?;
-    def(i, "reflect", Arity::Fixed(2), reflect)?;
-    def(i, "refract", Arity::Fixed(3), refract)?;
-    def(i, "barycentric", Arity::Fixed(4), barycentric)?;
+    def_doc(
+        i,
+        "quat_rotate",
+        Arity::Fixed(2),
+        quat_rotate,
+        "Rotates 3D vector `v` by unit quaternion `q` via `q * (0, v) * q*`.",
+    )?;
+    def_doc(
+        i,
+        "quat_to_matrix",
+        Arity::Fixed(1),
+        quat_to_matrix,
+        "Converts quaternion `q` into a 3x3 rotation matrix.",
+    )?;
+    def_doc(
+        i,
+        "quat_slerp",
+        Arity::Fixed(3),
+        quat_slerp,
+        "Computes numeric spherical linear interpolation (SLERP) between quaternions `q1` and `q2` at parameter `t`.",
+    )?;
+    def_doc(
+        i,
+        "mesh_transform",
+        Arity::Fixed(2),
+        mesh_transform,
+        "Transforms a list of 3D mesh `vertices` by 4x4 homogeneous matrix `M` with perspective divide.",
+    )?;
+    def_doc(
+        i,
+        "mesh_normals",
+        Arity::Fixed(2),
+        mesh_normals,
+        "Computes unit face normals for mesh `(vertices, faces)` from the first three vertices of each face.",
+    )?;
+    def_doc(
+        i,
+        "mesh_triangulate",
+        Arity::Fixed(1),
+        mesh_triangulate,
+        "Triangulates polygonal mesh `faces` into triangles using a triangle fan from each face's first vertex.",
+    )?;
+    def_doc(
+        i,
+        "ray_sphere",
+        Arity::Fixed(4),
+        ray_sphere,
+        "Intersects ray `(origin, dir)` with sphere `(center, radius)`, returning `list(t, hit_point, normal)` or `false`.",
+    )?;
+    def_doc(
+        i,
+        "ray_plane",
+        Arity::Fixed(4),
+        ray_plane,
+        "Intersects ray `(origin, dir)` with plane `(point, normal)`, returning `list(t, hit_point, normal)` or `false`.",
+    )?;
+    def_doc(
+        i,
+        "ray_triangle",
+        Arity::Fixed(5),
+        ray_triangle,
+        "Intersects ray `(origin, dir)` with triangle `(a, b, c)`, returning `list(t, hit_point, normal)` or `false`.",
+    )?;
+    def_doc(
+        i,
+        "reflect",
+        Arity::Fixed(2),
+        reflect,
+        "Computes the reflection vector `d - 2 * dot(d, n) * n` of incident vector `d` across unit normal `n`.",
+    )?;
+    def_doc(
+        i,
+        "refract",
+        Arity::Fixed(3),
+        refract,
+        "Computes the numeric Snell-refracted direction for incident vector `d`, normal `n`, and index ratio `eta`, or `false` on total internal reflection.",
+    )?;
+    def_doc(
+        i,
+        "barycentric",
+        Arity::Fixed(4),
+        barycentric,
+        "Computes numeric barycentric coordinates `list(u, v, w)` of point `p` with respect to triangle `(a, b, c)`.",
+    )?;
     Ok(())
 }
 

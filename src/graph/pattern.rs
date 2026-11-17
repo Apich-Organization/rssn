@@ -674,7 +674,13 @@ impl Pat {
         scratch.used.clear();
         scratch.subst.clear();
         scratch.subst.resize(nvars, NodeId::NONE);
-        let MatchScratch { goals, used, subst } = scratch;
+        scratch.classes.clear();
+        let MatchScratch {
+            goals,
+            used,
+            subst,
+            classes,
+        } = scratch;
         let mut matcher = Matcher {
             graph,
             limit,
@@ -683,6 +689,7 @@ impl Pat {
             multi: Vec::new(),
             fuel: *fuel,
             used,
+            classes,
             root_children: &[],
             root_window: None,
         };
@@ -730,6 +737,7 @@ pub struct MatchScratch<'p> {
     goals: Vec<(&'p Pat, NodeId)>,
     used: Vec<bool>,
     subst: Vec<NodeId>,
+    classes: Vec<u32>,
 }
 
 /// Which kind of commutative assignment [`Matcher::assign`] performs.
@@ -756,6 +764,10 @@ struct Matcher<'g, 'o, 'u> {
     /// Arena of "child already assigned" flags; each commutative
     /// assignment owns a window `[base, base + children)` of it.
     used: &'u mut Vec<bool>,
+    /// The canonical class of every child of the open commutative
+    /// assignments, in the same windows as `used`: resolved once per
+    /// assignment instead of on every tentative placement.
+    classes: &'u mut Vec<u32>,
     /// The root's children and, during a commutative root assignment, the
     /// base of its window: the match's `rest` is computed from them only
     /// when a match is emitted, not for every tentative placement.
@@ -801,8 +813,12 @@ impl<'p> Matcher<'_, '_, '_> {
     ) {
         let base = self.used.len();
         self.used.resize(base.saturating_add(children.len()), false);
+        self.classes.truncate(base);
+        self.classes
+            .extend(children.iter().map(|&c| self.graph.find(c).raw()));
         self.place(pats, children, 0, base, goals, subst, mode, rest);
         self.used.truncate(base);
+        self.classes.truncate(base);
     }
 
     /// The children of the current assignment window not assigned yet.
@@ -859,11 +875,20 @@ impl<'p> Matcher<'_, '_, '_> {
             }
             // Children in the same class are interchangeable: try one. The
             // earlier unused children are exactly the ones already tried.
-            let class = self.graph.find(child);
-            let tried = children.iter().take(i).enumerate().any(|(j, &other)| {
-                !self.is_used(base.saturating_add(j)) && self.graph.find(other) == class
-            });
+            let class_of = |j: usize| self.classes.get(base.saturating_add(j)).copied();
+            let Some(raw) = class_of(i) else {
+                continue;
+            };
+            let class = super::id::ClassId::from_raw(raw);
+            let tried =
+                (0..i).any(|j| !self.is_used(base.saturating_add(j)) && class_of(j) == Some(raw));
             if tried {
+                continue;
+            }
+            // Skip placements whose goal must fail (see `may_match`): the
+            // remaining patterns would otherwise be placed in every way
+            // before this one is checked.
+            if !self.may_match(pat, class) {
                 continue;
             }
             self.set_used(slot, true);
@@ -883,6 +908,22 @@ impl<'p> Matcher<'_, '_, '_> {
             if self.exhausted() {
                 return;
             }
+        }
+    }
+
+    /// A necessary condition for `pat` to match a node of `class`: the
+    /// tests [`Matcher::solve`] applies before binding anything.
+    fn may_match(
+        &self,
+        pat: &Pat,
+        class: super::id::ClassId,
+    ) -> bool {
+        let graph = self.graph;
+        match pat {
+            | Pat::Node(op, _) => graph.enodes(class).any(|enode| graph.op(enode) == *op),
+            | Pat::Num(n) => graph.class_number(class) == Some(n),
+            | Pat::Exact(target) => graph.find(*target) == class,
+            | Pat::Var(_) => true,
         }
     }
 

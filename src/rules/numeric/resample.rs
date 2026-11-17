@@ -136,11 +136,13 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "quantile_hf",
         params: "vss",
         eval: quantile_hf,
+        doc: "`quantile_hf(data, p, kind)`: sample quantile at probability `p` in `[0, 1]` using Hyndman-Fan definition `kind` (1 to 9).",
     },
     Entry {
         name: "bootstrap_ci",
         params: "vwsss",
         eval: bootstrap_ci,
+        doc: "`bootstrap_ci(data, statistic, alpha, resamples, seed)`: `list(lo, hi)` percentile bootstrap confidence interval of level `1 - alpha`.",
     },
 ];
 

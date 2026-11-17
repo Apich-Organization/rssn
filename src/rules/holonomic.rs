@@ -322,21 +322,47 @@ impl Kernel for Holonomic {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, kind, rule) in [
-        ("holonomic_ode", 2, Kind::Ode, DimRule::Container),
+    for (name, arity, kind, rule, doc) in [
+        (
+            "holonomic_ode",
+            2,
+            Kind::Ode,
+            DimRule::Container,
+            "`holonomic_ode(f, x)`: finds a linear homogeneous ODE annihilator for holonomic expression `f` in `x`, returned as a list of polynomial coefficients.",
+        ),
         (
             "holonomic_recurrence",
             3,
             Kind::Recurrence,
             DimRule::Container,
+            "`holonomic_recurrence(f, x, n)`: finds a linear recurrence relation for the Taylor coefficients of `f(x)` in index `n`, returned as `[shift, poly]` pairs.",
         ),
-        ("holonomic_series", 3, Kind::Series, DimRule::Same(0)),
-        ("holonomic_zero", 2, Kind::Zero, DimRule::NonMetric),
-        ("holonomic_equal", 3, Kind::Equal, DimRule::NonMetric),
+        (
+            "holonomic_series",
+            3,
+            Kind::Series,
+            DimRule::Same(0),
+            "`holonomic_series(f, x, k)`: computes the degree-`k` Taylor polynomial expansion of holonomic expression `f` in `x`.",
+        ),
+        (
+            "holonomic_zero",
+            2,
+            Kind::Zero,
+            DimRule::NonMetric,
+            "`holonomic_zero(f, x)`: decides whether holonomic expression `f(x)` is identically zero (`true` or `false`).",
+        ),
+        (
+            "holonomic_equal",
+            3,
+            Kind::Equal,
+            DimRule::NonMetric,
+            "`holonomic_equal(f, g, x)`: decides whether holonomic expressions `f(x)` and `g(x)` are identically equal (`true` or `false`).",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.dim(op, rule);
         i.kernel(
             &format!("holonomic/{name}"),

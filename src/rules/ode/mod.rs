@@ -239,39 +239,46 @@ pub fn ode() -> RuleSet {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dsolve = i.op(OpDescriptor::new("dsolve", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`dsolve(eq_or_system, func_or_vars, [ics...])`: symbolically solves an ordinary differential equation or system of ODEs for `func_or_vars`, optionally subject to initial/boundary conditions."))?;
     // The answer is an equation `y(x) = ...` (or a list of equations).
     i.dim(dsolve, DimRule::NonMetric);
     let odeint = i.op(OpDescriptor::new("odeint", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`odeint(f, y, x, x0, y0, x1)`: numerically integrates `dy/dx = f(x, y)` from `(x0, y0)` to `x1`."))?;
     // `odeint(f, y, x, x0, y0, x1)` returns values of the solution: their
     // dimension is that of the initial data `y0`.
     i.dim(odeint, DimRule::Same(4));
     i.kernel("ode/dsolve", Tier::Reduce, Dsolve { dsolve });
     let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_series(ode, y, x0, order)`: computes a power-series solution `y(x) = ...` of `ode` about `x0` up to `order`."))?;
     // `ode_series` returns the equation `y(x) = series`.
     i.dim(series, DimRule::NonMetric);
     let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`rsolve_z(rec, seq, [ics...])`: solves a linear constant-coefficient recurrence relation `rec` for sequence `seq` via Z-transform."))?;
     // `rsolve_z` returns the equation `y(n) = ...`.
     i.dim(rsolve, DimRule::NonMetric);
     let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_classify(ode, y)`: classifies an ordinary differential equation `ode` for dependent function `y`, returning a list of applicable solver classes."))?;
     // A list of class names.
     i.dim(classify, DimRule::NonMetric);
     let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_symmetries(ode, y)`: finds Lie point symmetry generators `[xi, eta]` admitted by `ode` for dependent function `y`."))?;
     // A list of generator pairs.
     i.dim(symmetries, DimRule::NonMetric);
     let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_fourier(ode, y)`: solves linear constant-coefficient `ode` for `y` using Fourier transform."))?;
     // `ode_fourier` returns the equation `y(x) = ...`.
     i.dim(fourier, DimRule::NonMetric);
     i.kernel(
@@ -287,7 +294,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_frobenius(ode, y, x0, order)`: applies the Frobenius method around regular singular point `x0`, returning solution, indicial roots, and recurrence."))?;
     // A list of the solution equation, the indicial roots and the recurrence.
     i.dim(frobenius, DimRule::NonMetric);
     i.kernel(
@@ -297,7 +305,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_asymptotic(ode, y, x0, c, order, point)`: evaluates a truncated formal asymptotic expansion of `ode` at `point` around singular point `x0`."))?;
     // `list(re, im, error)` are the components of the solution at the sample
     // point, so they carry the dependent variable's dimension.
     i.dim(asymptotic, DimRule::Custom(dim::rule));
@@ -311,7 +320,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_borel(ode, y, x0, c, order, point)`: evaluates the Borel-Pade resummation of a divergent formal asymptotic solution of `ode` at `point`."))?;
     // The Borel-Pade sum of the same formal solution.
     i.dim(borel, DimRule::Custom(dim::rule));
     i.kernel(
@@ -322,10 +332,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             borel: true,
         },
     );
-    i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
-    let hyper1f1 = i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
-    let hyper2f1 = i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
-    let hyperpfq = i.op(OpDescriptor::new("hyperpfq", Arity::Variadic).eval(linear::hyper_pfq))?;
+    i.op(OpDescriptor::new("big_o", Arity::Fixed(1))
+        .eval(|_| 0.0)
+        .doc("`big_o(term)`: Landau big-O remainder term representing omitted higher-order terms of order `term`."))?;
+    let hyper1f1 = i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3))
+        .eval(frobenius::hyper1f1)
+        .doc("`hyper1f1(a, b, z)`: Kummer confluent hypergeometric function `_1F_1(a; b; z)`."))?;
+    let hyper2f1 = i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4))
+        .eval(frobenius::hyper2f1)
+        .doc("`hyper2f1(a, b, c, z)`: Gauss hypergeometric function `_2F_1(a, b; c; z)`."))?;
+    let hyperpfq = i.op(OpDescriptor::new("hyperpfq", Arity::Variadic)
+        .eval(linear::hyper_pfq)
+        .doc("`hyperpfq(a_list, b_list, z)`: generalized hypergeometric function `_pF_q(a_1..a_p; b_1..b_q; z)`."))?;
     // Hypergeometric functions are dimensionless, like `besselj` in the core
     // table: their parameters and argument are pure numbers.
     i.dim(hyper1f1, DimRule::Dimensionless);
@@ -335,7 +353,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // autonomous polynomial system (additive API: two report operators).
     let darboux = i.op(OpDescriptor::new("ode_darboux", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`ode_darboux(dx, dy, x, y, [max_deg])`: finds Darboux polynomials and cofactors `[P, k]` for planar autonomous system `x' = dx, y' = dy`."))?;
     // A list of `list(P, k)` pairs: polynomials in the dependent variables.
     i.dim(darboux, DimRule::NonMetric);
     i.kernel(
@@ -346,7 +365,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let last_multiplier = i.op(
         OpDescriptor::new("ode_jacobi_last_multiplier", Arity::Variadic)
             .flags(OpFlags::HEAVY)
-            .cost(100),
+            .cost(100)
+            .doc("`ode_jacobi_last_multiplier(dx, dy, x, y, [max_deg])`: computes a Jacobi last multiplier (integrating factor) for planar system `x' = dx, y' = dy`."),
     )?;
     // The multiplier is a rational function of the dependent variables.
     i.dim(last_multiplier, DimRule::NonMetric);

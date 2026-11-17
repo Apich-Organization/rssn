@@ -27,7 +27,7 @@ use super::V;
 use super::big;
 use super::byte_list;
 use super::bytes;
-use super::def;
+use super::def_doc;
 use super::idx;
 use super::items;
 use super::small;
@@ -451,66 +451,270 @@ fn poly_derivative(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "hamming_distance", Arity::Fixed(2), hamming_distance)?;
-    def(i, "hamming_weight", Arity::Fixed(1), hamming_weight)?;
-    def(i, "hamming_encode", Arity::Fixed(1), hamming_encode)?;
-    def(i, "hamming_check", Arity::Fixed(1), hamming_check)?;
-    def(i, "hamming_decode", Arity::Fixed(1), hamming_decode)?;
-    def(i, "rs_encode", Arity::Fixed(2), rs_encode)?;
-    def(i, "rs_check", Arity::Fixed(2), rs_check)?;
-    def(i, "rs_decode", Arity::Fixed(2), rs_decode)?;
-    def(i, "rs_error_count", Arity::Fixed(2), rs_error_count)?;
-    def(i, "bch_encode", Arity::Fixed(2), bch_encode)?;
-    def(i, "bch_decode", Arity::Fixed(2), bch_decode)?;
-    def(i, "crc32", Arity::Fixed(1), crc32)?;
-    def(i, "crc32_verify", Arity::Fixed(2), crc32_verify)?;
-    def(i, "crc32_update", Arity::Fixed(2), crc32_update)?;
-    def(i, "crc32_finalize", Arity::Fixed(1), crc32_finalize)?;
-    def(i, "crc16", Arity::Fixed(1), crc16)?;
-    def(i, "crc8", Arity::Fixed(1), crc8)?;
-    def(i, "interleave", Arity::Fixed(2), |cx, a| {
-        interleave(cx, a, true)
-    })?;
-    def(i, "deinterleave", Arity::Fixed(2), |cx, a| {
-        interleave(cx, a, false)
-    })?;
-    def(i, "conv_encode", Arity::Fixed(1), conv_encode)?;
-    def(i, "code_min_distance", Arity::Fixed(1), code_min_distance)?;
-    def(i, "code_rate", Arity::Fixed(2), code_rate)?;
+    def_doc(
+        i,
+        "hamming_distance",
+        Arity::Fixed(2),
+        hamming_distance,
+        "Computes the Hamming distance (number of differing positions) between two equal-length byte lists `a` and `b`.",
+    )?;
+    def_doc(
+        i,
+        "hamming_weight",
+        Arity::Fixed(1),
+        hamming_weight,
+        "Computes the Hamming weight (number of non-zero symbols) of a byte list `a`.",
+    )?;
+    def_doc(
+        i,
+        "hamming_encode",
+        Arity::Fixed(1),
+        hamming_encode,
+        "Encodes a 4-bit data word into a 7-bit Hamming(7,4) codeword with parity bits at positions 1, 2, and 4.",
+    )?;
+    def_doc(
+        i,
+        "hamming_check",
+        Arity::Fixed(1),
+        hamming_check,
+        "Checks whether a 7-bit Hamming(7,4) codeword has a zero syndrome (no detected single-bit error).",
+    )?;
+    def_doc(
+        i,
+        "hamming_decode",
+        Arity::Fixed(1),
+        hamming_decode,
+        "Decodes a 7-bit Hamming(7,4) codeword, returning `list(data, position)` where `position` is the 1-based corrected bit index (`0` if error-free).",
+    )?;
+    def_doc(
+        i,
+        "rs_encode",
+        Arity::Fixed(2),
+        rs_encode,
+        "Encodes `data` using systematic Reed-Solomon over GF(2^8) with `n` parity symbols.",
+    )?;
+    def_doc(
+        i,
+        "rs_check",
+        Arity::Fixed(2),
+        rs_check,
+        "Verifies whether a Reed-Solomon codeword `c` with `n` parity symbols has zero syndromes.",
+    )?;
+    def_doc(
+        i,
+        "rs_decode",
+        Arity::Fixed(2),
+        rs_decode,
+        "Decodes a Reed-Solomon codeword `c` with `n` parity symbols, correcting up to `n/2` symbol errors and returning the data part.",
+    )?;
+    def_doc(
+        i,
+        "rs_error_count",
+        Arity::Fixed(2),
+        rs_error_count,
+        "Estimates the number of errors in a Reed-Solomon codeword `c` with `n` parity symbols as the degree of the Berlekamp-Massey error locator polynomial.",
+    )?;
+    def_doc(
+        i,
+        "bch_encode",
+        Arity::Fixed(2),
+        bch_encode,
+        "Encodes `data` bits with a shortened binary BCH code capable of correcting `t` bit errors.",
+    )?;
+    def_doc(
+        i,
+        "bch_decode",
+        Arity::Fixed(2),
+        bch_decode,
+        "Decodes a shortened binary BCH codeword `c` correcting up to `t` bit errors.",
+    )?;
+    def_doc(
+        i,
+        "crc32",
+        Arity::Fixed(1),
+        crc32,
+        "Computes the standard 32-bit CRC-32 checksum of byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "crc32_verify",
+        Arity::Fixed(2),
+        crc32_verify,
+        "Returns `true` if `crc32(data)` equals `crc`.",
+    )?;
+    def_doc(
+        i,
+        "crc32_update",
+        Arity::Fixed(2),
+        crc32_update,
+        "Updates a running CRC-32 state `crc` with byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "crc32_finalize",
+        Arity::Fixed(1),
+        crc32_finalize,
+        "Finalizes a running CRC-32 state `crc` by applying the final XOR mask.",
+    )?;
+    def_doc(
+        i,
+        "crc16",
+        Arity::Fixed(1),
+        crc16,
+        "Computes the 16-bit CRC-16 checksum of byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "crc8",
+        Arity::Fixed(1),
+        crc8,
+        "Computes the 8-bit CRC-8 checksum of byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "interleave",
+        Arity::Fixed(2),
+        |cx, a| interleave(cx, a, true),
+        "Applies block interleaving of depth `depth` to byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "deinterleave",
+        Arity::Fixed(2),
+        |cx, a| interleave(cx, a, false),
+        "Reverses block interleaving of depth `depth` on byte list `data`.",
+    )?;
+    def_doc(
+        i,
+        "conv_encode",
+        Arity::Fixed(1),
+        conv_encode,
+        "Encodes bit list `data` using a rate-1/2 convolutional encoder.",
+    )?;
+    def_doc(
+        i,
+        "code_min_distance",
+        Arity::Fixed(1),
+        code_min_distance,
+        "Computes the minimum pairwise Hamming distance among a list of equal-length codewords.",
+    )?;
+    def_doc(
+        i,
+        "code_rate",
+        Arity::Fixed(2),
+        code_rate,
+        "Computes the code rate `k / n` as a rational number for message length `k` and block length `n`.",
+    )?;
 
-    def(i, "gf256_add", Arity::Fixed(2), |cx, a| {
-        gf256_binary(cx, a, |x, y| Some(ff::gf256_add(x, y)))
-    })?;
-    def(i, "gf256_mul", Arity::Fixed(2), |cx, a| {
-        gf256_binary(cx, a, |x, y| Some(ff::gf256_mul(x, y)))
-    })?;
-    def(i, "gf256_div", Arity::Fixed(2), |cx, a| {
-        gf256_binary(cx, a, |x, y| ff::gf256_div(x, y).ok())
-    })?;
-    def(i, "gf256_inv", Arity::Fixed(1), gf256_inv)?;
-    def(i, "gf256_pow", Arity::Fixed(2), gf256_pow)?;
-    def(i, "gf256_exp", Arity::Fixed(1), gf256_exp)?;
-    def(i, "gf256_log", Arity::Fixed(1), gf256_log)?;
-    def(i, "gf256_poly_eval", Arity::Fixed(2), poly_eval)?;
-    def(i, "gf256_poly_add", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, q| Some(byte_list(&padd(p, q))))
-    })?;
-    def(i, "gf256_poly_mul", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, q| Some(byte_list(&pmul(p, q))))
-    })?;
-    def(i, "gf256_poly_scale", Arity::Fixed(2), poly_scale)?;
-    def(i, "gf256_poly_derivative", Arity::Fixed(1), poly_derivative)?;
-    def(i, "gf256_poly_mod", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, d| pdivmod(p, d).map(|(_, r)| byte_list(&r)))
-    })?;
-    def(i, "gf256_poly_divmod", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, d| {
-            pdivmod(p, d).map(|(q, r)| V::List(vec![byte_list(&q), byte_list(&r)]))
-        })
-    })?;
-    def(i, "gf256_poly_gcd", Arity::Fixed(2), |cx, a| {
-        poly_pair(cx, a, |p, q| Some(byte_list(&pgcd(p, q))))
-    })?;
+    def_doc(
+        i,
+        "gf256_add",
+        Arity::Fixed(2),
+        |cx, a| gf256_binary(cx, a, |x, y| Some(ff::gf256_add(x, y))),
+        "Computes `a + b` (bitwise XOR) in GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_mul",
+        Arity::Fixed(2),
+        |cx, a| gf256_binary(cx, a, |x, y| Some(ff::gf256_mul(x, y))),
+        "Computes `a * b` in GF(2^8) modulo the primitive polynomial `0x11d`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_div",
+        Arity::Fixed(2),
+        |cx, a| gf256_binary(cx, a, |x, y| ff::gf256_div(x, y).ok()),
+        "Computes `a / b` in GF(2^8) for non-zero `b`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_inv",
+        Arity::Fixed(1),
+        gf256_inv,
+        "Computes the multiplicative inverse `a^(-1)` in GF(2^8) for non-zero `a`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_pow",
+        Arity::Fixed(2),
+        gf256_pow,
+        "Computes `a^e` in GF(2^8) for integer exponent `e`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_exp",
+        Arity::Fixed(1),
+        gf256_exp,
+        "Computes `2^k` in GF(2^8) using generator `2`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_log",
+        Arity::Fixed(1),
+        gf256_log,
+        "Computes the discrete logarithm base `2` of non-zero element `a` in GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_eval",
+        Arity::Fixed(2),
+        poly_eval,
+        "Evaluates a highest-degree-first polynomial `p` over GF(2^8) at `x`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_add",
+        Arity::Fixed(2),
+        |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&padd(p, q)))),
+        "Computes the sum `p + q` of two polynomials over GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_mul",
+        Arity::Fixed(2),
+        |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&pmul(p, q)))),
+        "Computes the product `p * q` of two polynomials over GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_scale",
+        Arity::Fixed(2),
+        poly_scale,
+        "Multiplies polynomial `p` over GF(2^8) by scalar `c` in GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_derivative",
+        Arity::Fixed(1),
+        poly_derivative,
+        "Computes the formal derivative of polynomial `p` over GF(2^8).",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_mod",
+        Arity::Fixed(2),
+        |cx, a| poly_pair(cx, a, |p, d| pdivmod(p, d).map(|(_, r)| byte_list(&r))),
+        "Computes the remainder of polynomial `p` divided by `d` over GF(2^8), padded to `deg(d)` coefficients.",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_divmod",
+        Arity::Fixed(2),
+        |cx, a| {
+            poly_pair(cx, a, |p, d| {
+                pdivmod(p, d).map(|(q, r)| V::List(vec![byte_list(&q), byte_list(&r)]))
+            })
+        },
+        "Computes polynomial division `p / d` over GF(2^8), returning `list(quotient, remainder)`.",
+    )?;
+    def_doc(
+        i,
+        "gf256_poly_gcd",
+        Arity::Fixed(2),
+        |cx, a| poly_pair(cx, a, |p, q| Some(byte_list(&pgcd(p, q)))),
+        "Computes the monic greatest common divisor of polynomials `p` and `q` over GF(2^8).",
+    )?;
     Ok(())
 }
 

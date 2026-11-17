@@ -38,19 +38,20 @@ fn density_has_the_grid_shape_and_is_normalised() {
     let rho = run_gpe_ground_state_finder(&p).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!((rho.nrows(), rho.ncols()), (32, 32));
     let dx = p.lx / p.nx as f64;
-    // The code normalises sum(|psi|^2) dx dy to nx * ny.
+    // The density is normalised physically: sum(|psi|^2) dx dy = 1.
     let total = rho.iter().sum::<f64>() * dx * dx;
-    assert!((total - 1024.0).abs() < 1e-6, "total = {total}");
+    assert!((total - 1.0).abs() < 1e-9, "total = {total}");
 }
 
 #[test]
 fn noninteracting_ground_state_is_the_harmonic_oscillator_gaussian() {
-    // g = 0, omega = 1: rho(x, y) = A exp(-(x^2 + y^2)), A = N / pi with the code's normalisation.
+    // g = 0, omega = 1: rho(x, y) = A exp(-(x^2 + y^2)) with A = 1 / pi, the
+    // unit-normalised ground state.
     let n = 64;
     let p = params(n, 10.0, 0.05, 400, 0.0);
     let rho = run_gpe_ground_state_finder(&p).unwrap_or_else(|e| panic!("{e}"));
     let dx = 10.0 / n as f64;
-    let a = (n * n) as f64 / std::f64::consts::PI;
+    let a = 1.0 / std::f64::consts::PI;
     for (j, i) in [(32usize, 32usize), (32, 40), (40, 32), (36, 36), (32, 45)] {
         let (x, y) = ((i as f64 - 32.0) * dx, (j as f64 - 32.0) * dx);
         let exact = a * (-(x * x + y * y)).exp();

@@ -146,6 +146,10 @@ pub mod newton_cg;
 pub mod number_ext;
 pub mod number_theory;
 pub mod ode;
+pub use ode::OdeMethod;
+pub use ode::OdeStepMode;
+pub use ode::solve_ode;
+pub use ode::solve_ode_events;
 /// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
 pub mod ode_adaptive;
 mod ode_contract;

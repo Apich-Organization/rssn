@@ -46,15 +46,30 @@
 //! - **Pretty printer** is a monospace Unicode grid: wide/combining glyphs
 //!   misalign, Unicode super/subscripts cover digits (plus `-` and `n` above)
 //!   and no wrapping, colours or ANSI styles exist.
-//! - **No new dependencies** are allowed for this layer, so anything needing
-//!   an encoder, a font or a typesetter stays a documented gap instead.
+//! - **No PNG/JPEG** in this layer, so anything needing those encoders stays
+//!   a documented gap; GIF animation I/O is in [`gif`] and SVG parsing/I/O is
+//!   in [`svg`].
 
+pub mod gif;
 pub mod latex;
 pub(crate) mod markup;
 pub mod plot;
 pub mod pretty;
 pub mod raster;
+pub mod svg;
 pub mod typst;
+
+pub use gif::GifAnimation;
+pub use gif::GifFrame;
+pub use gif::decode_gif;
+pub use gif::encode_gif;
+pub use gif::read_gif_file;
+pub use gif::write_gif_file;
+pub use svg::SvgDocument;
+pub use svg::SvgElement;
+pub use svg::parse_svg;
+pub use svg::read_svg_file;
+pub use svg::write_svg_file;
 
 use std::fs::File;
 use std::io::BufRead;

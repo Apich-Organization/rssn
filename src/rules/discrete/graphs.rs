@@ -68,9 +68,9 @@ use num_traits::Zero;
 
 use super::V;
 use super::apply;
-use super::def;
-use super::def_inert;
-use super::def_request;
+use super::def_doc;
+use super::def_inert_doc;
+use super::def_request_doc;
 use super::idx;
 use super::idxs;
 use super::items;
@@ -2306,170 +2306,451 @@ fn graph_join(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def_inert(i, "graph", Arity::Variadic)?;
-    def_inert(i, "digraph", Arity::Variadic)?;
-    def(i, "graph_empty", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |_| Vec::new())
-    })?;
-    def(i, "graph_complete", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |n| {
-            (0..n)
-                .flat_map(|u| ((u + 1)..n).map(move |v| (u, v)))
-                .collect()
-        })
-    })?;
-    def(i, "graph_path", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |n| (1..n).map(|v| (v - 1, v)).collect())
-    })?;
-    def(i, "graph_cycle", Arity::Fixed(1), |cx, a| {
-        standard(cx, a, |n| {
-            (0..n)
-                .filter(|_| n >= 3)
-                .map(|u| (u, (u + 1) % n))
-                .collect()
-        })
-    })?;
-    def(i, "graph_nodes", Arity::Fixed(1), graph_nodes)?;
-    def(i, "graph_node_count", Arity::Fixed(1), |cx, a| {
-        let gr = read(cx, *a.first()?)?;
-        Some(V::uint(gr.n))
-    })?;
-    def(i, "graph_is_directed", Arity::Fixed(1), |cx, a| {
-        let gr = read(cx, *a.first()?)?;
-        Some(V::Bool(gr.directed))
-    })?;
-    def(i, "graph_node_id", Arity::Fixed(2), graph_node_id)?;
-    def(i, "graph_add_node", Arity::Fixed(1), graph_add_node)?;
-    def(i, "graph_add_edge", Arity::Variadic, graph_add_edge)?;
-    def(
+    def_inert_doc(
+        i,
+        "graph",
+        Arity::Variadic,
+        "Undirected graph constructor `graph(n, edges[, hyperedges])` with vertices `0..n-1`, edge list `list(list(u, v[, w]), ...)`, and optional hyperedges.",
+    )?;
+    def_inert_doc(
+        i,
+        "digraph",
+        Arity::Variadic,
+        "Directed graph constructor `digraph(n, edges[, hyperedges])` with vertices `0..n-1`, edge list `list(list(u, v[, w]), ...)`, and optional hyperedges.",
+    )?;
+    def_doc(
+        i,
+        "graph_empty",
+        Arity::Fixed(1),
+        |cx, a| standard(cx, a, |_| Vec::new()),
+        "Constructs an undirected empty graph on `n` vertices with no edges.",
+    )?;
+    def_doc(
+        i,
+        "graph_complete",
+        Arity::Fixed(1),
+        |cx, a| {
+            standard(cx, a, |n| {
+                (0..n)
+                    .flat_map(|u| ((u + 1)..n).map(move |v| (u, v)))
+                    .collect()
+            })
+        },
+        "Constructs the undirected complete graph K_n on `n` vertices.",
+    )?;
+    def_doc(
+        i,
+        "graph_path",
+        Arity::Fixed(1),
+        |cx, a| standard(cx, a, |n| (1..n).map(|v| (v - 1, v)).collect()),
+        "Constructs the undirected path graph P_n on `n` vertices.",
+    )?;
+    def_doc(
+        i,
+        "graph_cycle",
+        Arity::Fixed(1),
+        |cx, a| {
+            standard(cx, a, |n| {
+                (0..n)
+                    .filter(|_| n >= 3)
+                    .map(|u| (u, (u + 1) % n))
+                    .collect()
+            })
+        },
+        "Constructs the undirected cycle graph C_n on `n` vertices (empty if `n < 3`).",
+    )?;
+    def_doc(
+        i,
+        "graph_nodes",
+        Arity::Fixed(1),
+        graph_nodes,
+        "Returns the list of vertex indices `0..n-1` of graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_node_count",
+        Arity::Fixed(1),
+        |cx, a| {
+            let gr = read(cx, *a.first()?)?;
+            Some(V::uint(gr.n))
+        },
+        "Returns the number of vertices in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_is_directed",
+        Arity::Fixed(1),
+        |cx, a| {
+            let gr = read(cx, *a.first()?)?;
+            Some(V::Bool(gr.directed))
+        },
+        "Returns `true` if `g` is a directed graph (`digraph`) and `false` if undirected (`graph`).",
+    )?;
+    def_doc(
+        i,
+        "graph_node_id",
+        Arity::Fixed(2),
+        graph_node_id,
+        "Validates and returns vertex index `v` if `0 <= v < n` in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_add_node",
+        Arity::Fixed(1),
+        graph_add_node,
+        "Returns a new graph with one additional isolated vertex appended.",
+    )?;
+    def_doc(
+        i,
+        "graph_add_edge",
+        Arity::Variadic,
+        graph_add_edge,
+        "Returns a new graph with edge `(u, v)` (and optional weight `w`, default `1`) added to `g`.",
+    )?;
+    def_doc(
         i,
         "graph_add_hyperedge",
         Arity::Fixed(3),
         graph_add_hyperedge,
+        "Returns a new graph with hyperedge `(vs, w)` added to `g`.",
     )?;
-    def(i, "graph_hyperedges", Arity::Fixed(1), graph_hyperedges)?;
-    def(i, "graph_neighbors", Arity::Fixed(2), graph_neighbors)?;
-    def(i, "graph_out_degree", Arity::Fixed(2), |cx, a| {
-        graph_degree(cx, a, false)
-    })?;
-    def(i, "graph_in_degree", Arity::Fixed(2), |cx, a| {
-        graph_degree(cx, a, true)
-    })?;
-    def(i, "graph_edges", Arity::Fixed(1), graph_edges)?;
-    def(i, "graph_adjacency", Arity::Fixed(1), graph_adjacency)?;
-    def(i, "graph_incidence", Arity::Fixed(1), graph_incidence)?;
-    def(i, "graph_laplacian", Arity::Fixed(1), graph_laplacian)?;
+    def_doc(
+        i,
+        "graph_hyperedges",
+        Arity::Fixed(1),
+        graph_hyperedges,
+        "Returns the list of hyperedges `list(list(vs, w), ...)` of graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_neighbors",
+        Arity::Fixed(2),
+        graph_neighbors,
+        "Returns the outgoing neighbors of vertex `u` in graph `g` as `list(list(v, w), ...)`.",
+    )?;
+    def_doc(
+        i,
+        "graph_out_degree",
+        Arity::Fixed(2),
+        |cx, a| graph_degree(cx, a, false),
+        "Returns the out-degree (or degree for undirected graphs) of vertex `u` in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_in_degree",
+        Arity::Fixed(2),
+        |cx, a| graph_degree(cx, a, true),
+        "Returns the in-degree (or degree for undirected graphs) of vertex `u` in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_edges",
+        Arity::Fixed(1),
+        graph_edges,
+        "Returns the edge list `list(list(u, v, w), ...)` of graph `g` (undirected edges listed once with `u <= v`).",
+    )?;
+    def_doc(
+        i,
+        "graph_adjacency",
+        Arity::Fixed(1),
+        graph_adjacency,
+        "Returns the weighted adjacency matrix of graph `g` as `list(list(...))`, summing parallel edge weights.",
+    )?;
+    def_doc(
+        i,
+        "graph_incidence",
+        Arity::Fixed(1),
+        graph_incidence,
+        "Returns the vertex-edge incidence matrix of graph `g` (`-1/+1` for directed edges, `1/1` for undirected edges).",
+    )?;
+    def_doc(
+        i,
+        "graph_laplacian",
+        Arity::Fixed(1),
+        graph_laplacian,
+        "Returns the weighted graph Laplacian matrix `D - A` of graph `g`.",
+    )?;
 
-    def(i, "graph_dfs", Arity::Fixed(2), graph_dfs)?;
-    def(i, "graph_bfs", Arity::Fixed(2), graph_bfs)?;
-    def(i, "graph_components", Arity::Fixed(1), graph_components)?;
-    def(i, "graph_is_connected", Arity::Fixed(1), graph_is_connected)?;
-    def(i, "graph_scc", Arity::Fixed(1), graph_scc)?;
-    def(i, "graph_has_cycle", Arity::Fixed(1), graph_has_cycle)?;
-    def(i, "graph_bridges", Arity::Fixed(1), graph_bridges)?;
-    def(i, "graph_kruskal", Arity::Fixed(1), graph_kruskal)?;
-    def(i, "graph_prim", Arity::Fixed(2), graph_prim)?;
-    def(i, "graph_edmonds_karp", Arity::Fixed(3), |cx, a| {
-        max_flow(cx, a, edmonds_karp)
-    })?;
-    def(i, "graph_dinic", Arity::Fixed(3), |cx, a| {
-        max_flow(cx, a, dinic)
-    })?;
-    def(
+    def_doc(
+        i,
+        "graph_dfs",
+        Arity::Fixed(2),
+        graph_dfs,
+        "Returns the depth-first search vertex visitation order starting from vertex `s` in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_bfs",
+        Arity::Fixed(2),
+        graph_bfs,
+        "Returns the breadth-first search vertex visitation order starting from vertex `s` in graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_components",
+        Arity::Fixed(1),
+        graph_components,
+        "Returns the connected components (weakly connected for digraphs) of graph `g` as lists of vertices.",
+    )?;
+    def_doc(
+        i,
+        "graph_is_connected",
+        Arity::Fixed(1),
+        graph_is_connected,
+        "Returns `true` if graph `g` has at most one connected component.",
+    )?;
+    def_doc(
+        i,
+        "graph_scc",
+        Arity::Fixed(1),
+        graph_scc,
+        "Returns the strongly connected components of directed graph `g` as sorted vertex lists.",
+    )?;
+    def_doc(
+        i,
+        "graph_has_cycle",
+        Arity::Fixed(1),
+        graph_has_cycle,
+        "Returns `true` if graph `g` contains a cycle.",
+    )?;
+    def_doc(
+        i,
+        "graph_bridges",
+        Arity::Fixed(1),
+        graph_bridges,
+        "Returns `list(bridges, articulation_points)` of an undirected graph `g`.",
+    )?;
+    def_doc(
+        i,
+        "graph_kruskal",
+        Arity::Fixed(1),
+        graph_kruskal,
+        "Computes a minimum spanning forest of undirected graph `g` using Kruskal's algorithm, returning edges `list(list(u, v, w), ...)`.",
+    )?;
+    def_doc(
+        i,
+        "graph_prim",
+        Arity::Fixed(2),
+        graph_prim,
+        "Computes a minimum spanning tree of undirected graph `g` rooted at vertex `s` using Prim's algorithm.",
+    )?;
+    def_doc(
+        i,
+        "graph_edmonds_karp",
+        Arity::Fixed(3),
+        |cx, a| max_flow(cx, a, edmonds_karp),
+        "Computes the maximum flow from source `s` to sink `t` in graph `g` using the Edmonds-Karp algorithm.",
+    )?;
+    def_doc(
+        i,
+        "graph_dinic",
+        Arity::Fixed(3),
+        |cx, a| max_flow(cx, a, dinic),
+        "Computes the maximum flow from source `s` to sink `t` in graph `g` using Dinic's algorithm.",
+    )?;
+    def_doc(
         i,
         "graph_min_cost_flow",
         Arity::Fixed(3),
         graph_min_cost_flow,
+        "Computes a minimum-cost maximum flow from `s` to `t` in graph `g` with `list(capacity, cost)` edge weights, returning `list(flow, cost)`.",
     )?;
-    def(i, "graph_dijkstra", Arity::Fixed(2), graph_dijkstra)?;
-    def(i, "graph_bellman_ford", Arity::Fixed(2), graph_bellman_ford)?;
-    def(
+    def_doc(
+        i,
+        "graph_dijkstra",
+        Arity::Fixed(2),
+        graph_dijkstra,
+        "Computes single-source shortest paths from `s` in non-negatively weighted graph `g` using Dijkstra's algorithm, returning `list(list(dist, prev), ...)`.",
+    )?;
+    def_doc(
+        i,
+        "graph_bellman_ford",
+        Arity::Fixed(2),
+        graph_bellman_ford,
+        "Computes single-source shortest paths from `s` in graph `g` using Bellman-Ford, returning `list(list(dist, prev), ...)` or `false` on a negative cycle.",
+    )?;
+    def_doc(
         i,
         "graph_floyd_warshall",
         Arity::Fixed(1),
         graph_floyd_warshall,
+        "Computes the all-pairs shortest-path distance matrix of graph `g` using the Floyd-Warshall algorithm.",
     )?;
-    def(
+    def_doc(
         i,
         "graph_shortest_path_unweighted",
         Arity::Fixed(2),
         graph_shortest_path_unweighted,
+        "Computes unweighted shortest paths from `s` in graph `g` via BFS, returning `list(list(v, dist, prev), ...)` for reachable vertices.",
     )?;
-    def(i, "graph_is_bipartite", Arity::Fixed(1), graph_is_bipartite)?;
-    def(
+    def_doc(
+        i,
+        "graph_is_bipartite",
+        Arity::Fixed(1),
+        graph_is_bipartite,
+        "Tests if graph `g` is bipartite, returning a 2-coloring list of `0`/`1` per vertex or `false`.",
+    )?;
+    def_doc(
         i,
         "graph_bipartite_matching",
         Arity::Fixed(2),
         graph_bipartite_matching,
+        "Computes a maximum bipartite matching of graph `g` with bipartition coloring `part`, returning matched pairs `list(list(u, v), ...)`.",
     )?;
-    def(
+    def_doc(
         i,
         "graph_hopcroft_karp",
         Arity::Fixed(2),
         graph_hopcroft_karp,
+        "Computes a maximum bipartite matching of graph `g` with bipartition coloring `part` using the Hopcroft-Karp algorithm.",
     )?;
-    def(i, "graph_vertex_cover", Arity::Fixed(3), graph_vertex_cover)?;
-    def(i, "graph_blossom", Arity::Fixed(1), graph_blossom)?;
-    def(i, "graph_toposort", Arity::Fixed(1), |cx, a| {
-        toposort(cx, a, kahn)
-    })?;
-    def(i, "graph_toposort_kahn", Arity::Fixed(1), |cx, a| {
-        toposort(cx, a, kahn)
-    })?;
-    def(i, "graph_toposort_dfs", Arity::Fixed(1), |cx, a| {
-        toposort(cx, a, topological_dfs)
-    })?;
-    def_request(i, "spectral_analysis", Arity::Fixed(1), spectral_analysis)?;
-    def(
+    def_doc(
+        i,
+        "graph_vertex_cover",
+        Arity::Fixed(3),
+        graph_vertex_cover,
+        "Computes a minimum vertex cover of bipartite graph `g` from bipartition `part` and maximum `matching` via Konig's theorem.",
+    )?;
+    def_doc(
+        i,
+        "graph_blossom",
+        Arity::Fixed(1),
+        graph_blossom,
+        "Computes a maximum cardinality matching of general undirected graph `g` using Edmonds' blossom algorithm.",
+    )?;
+    def_doc(
+        i,
+        "graph_toposort",
+        Arity::Fixed(1),
+        |cx, a| toposort(cx, a, kahn),
+        "Computes a topological ordering of directed acyclic graph `g`, or `false` if `g` contains a cycle.",
+    )?;
+    def_doc(
+        i,
+        "graph_toposort_kahn",
+        Arity::Fixed(1),
+        |cx, a| toposort(cx, a, kahn),
+        "Computes a topological ordering of directed graph `g` using Kahn's algorithm, or `false` if cyclic.",
+    )?;
+    def_doc(
+        i,
+        "graph_toposort_dfs",
+        Arity::Fixed(1),
+        |cx, a| toposort(cx, a, topological_dfs),
+        "Computes a topological ordering of directed graph `g` using DFS post-order, or `false` if cyclic.",
+    )?;
+    def_request_doc(
+        i,
+        "spectral_analysis",
+        Arity::Fixed(1),
+        spectral_analysis,
+        "Returns `list(eigenvals(M), eigenvects(M))` for square matrix `M`.",
+    )?;
+    def_doc(
         i,
         "algebraic_connectivity",
         Arity::Fixed(1),
         algebraic_connectivity,
+        "Computes the algebraic connectivity (second smallest Laplacian eigenvalue) of undirected graph `g`.",
     )?;
-    def(
+    def_doc(
         i,
         "graph_isomorphic_heuristic",
         Arity::Fixed(2),
         graph_isomorphic_heuristic,
+        "Tests a necessary condition for isomorphism between graphs `g` and `h` using 1-dimensional Weisfeiler-Lehman refinement.",
     )?;
-    def(i, "graph_isomorphic", Arity::Fixed(2), graph_isomorphic)?;
-    def(
+    def_doc(
+        i,
+        "graph_isomorphic",
+        Arity::Fixed(2),
+        graph_isomorphic,
+        "Tests whether graphs `g` and `h` are isomorphic (ignoring edge weights) by canonical labeling with exhaustive fallback.",
+    )?;
+    def_doc(
         i,
         "graph_canonical_form",
         Arity::Fixed(1),
         graph_canonical_form,
+        "Computes the canonical labeling `list(order, adjacency)` of graph `g` (up to search budget).",
     )?;
-    def(
+    def_doc(
         i,
         "graph_automorphisms",
         Arity::Fixed(1),
         graph_automorphisms,
+        "Computes the automorphism group of graph `g` as `list(order, generators, orbits)`.",
     )?;
-    def(
+    def_doc(
         i,
         "graph_greedy_coloring",
         Arity::Fixed(1),
         graph_greedy_coloring,
+        "Computes a greedy Welsh-Powell vertex coloring of undirected graph `g` as color indices `0, 1, ...`.",
     )?;
-    def(
+    def_doc(
         i,
         "graph_chromatic_number",
         Arity::Fixed(1),
         graph_chromatic_number,
+        "Computes the exact chromatic number of undirected graph `g` (up to 40 vertices, no self-loops).",
     )?;
 
-    def(i, "induced_subgraph", Arity::Fixed(2), induced_subgraph)?;
-    def(i, "graph_union", Arity::Fixed(2), graph_union)?;
-    def(i, "graph_intersection", Arity::Fixed(2), graph_intersection)?;
-    def(i, "graph_cartesian", Arity::Fixed(2), graph_cartesian)?;
-    def(i, "graph_tensor", Arity::Fixed(2), graph_tensor)?;
-    def(i, "graph_complement", Arity::Fixed(1), graph_complement)?;
-    def(
+    def_doc(
+        i,
+        "induced_subgraph",
+        Arity::Fixed(2),
+        induced_subgraph,
+        "Returns the subgraph of `g` induced by the vertex list `vs`.",
+    )?;
+    def_doc(
+        i,
+        "graph_union",
+        Arity::Fixed(2),
+        graph_union,
+        "Returns the graph union of `g` and `h` on `max(|V(g)|, |V(h)|)` vertices.",
+    )?;
+    def_doc(
+        i,
+        "graph_intersection",
+        Arity::Fixed(2),
+        graph_intersection,
+        "Returns the graph intersection of `g` and `h` on `min(|V(g)|, |V(h)|)` vertices.",
+    )?;
+    def_doc(
+        i,
+        "graph_cartesian",
+        Arity::Fixed(2),
+        graph_cartesian,
+        "Computes the Cartesian product `g □ h` with vertex pairs `(u, v)` numbered `u * |V(h)| + v`.",
+    )?;
+    def_doc(
+        i,
+        "graph_tensor",
+        Arity::Fixed(2),
+        graph_tensor,
+        "Computes the tensor (direct) product `g × h` with vertex pairs `(u, v)` numbered `u * |V(h)| + v`.",
+    )?;
+    def_doc(
+        i,
+        "graph_complement",
+        Arity::Fixed(1),
+        graph_complement,
+        "Returns the complement graph of simple graph `g`.",
+    )?;
+    def_doc(
         i,
         "graph_disjoint_union",
         Arity::Fixed(2),
         graph_disjoint_union,
+        "Returns the disjoint union of graphs `g` and `h`, shifting `h`'s vertices by `|V(g)|`.",
     )?;
-    def(i, "graph_join", Arity::Fixed(2), graph_join)?;
+    def_doc(
+        i,
+        "graph_join",
+        Arity::Fixed(2),
+        graph_join,
+        "Returns the graph join of `g` and `h` (disjoint union plus all edges between `V(g)` and `V(h)`).",
+    )?;
     Ok(())
 }

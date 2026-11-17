@@ -62,7 +62,6 @@
 mod autodiff;
 mod contracts;
 
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::hash::Hasher;
 
@@ -213,7 +212,7 @@ fn key_of(inst: &Inst) -> (u8, u64, u64, u64) {
 /// Builds a tape with hash-consing of identical instructions.
 struct Builder {
     tape: Tape,
-    seen: HashMap<(u8, u64, u64, u64), Reg>,
+    seen: crate::graph::id::FastMap<(u8, u64, u64, u64), Reg>,
 }
 
 impl Builder {
@@ -334,9 +333,9 @@ pub fn lower(
             params: params.len(),
             ..Tape::default()
         },
-        seen: HashMap::new(),
+        seen: crate::graph::id::FastMap::default(),
     };
-    let mut slot: HashMap<NodeId, Reg> = HashMap::new();
+    let mut slot: crate::graph::id::FastMap<NodeId, Reg> = crate::graph::id::FastMap::default();
     for &root in roots {
         let r = lower_node(graph, root, inputs, params, &mut b, &mut slot)?;
         b.tape.outputs.push(r);
@@ -358,7 +357,7 @@ fn lower_node(
     inputs: &[SymbolId],
     params: &[SymbolId],
     b: &mut Builder,
-    slot: &mut HashMap<NodeId, Reg>,
+    slot: &mut crate::graph::id::FastMap<NodeId, Reg>,
 ) -> Result<Reg, BackendError> {
     // Iterative post-order so that deep terms cannot overflow the stack.
     let mut stack = vec![(root, false)];
@@ -389,7 +388,7 @@ fn lower_one(
     inputs: &[SymbolId],
     params: &[SymbolId],
     b: &mut Builder,
-    slot: &HashMap<NodeId, Reg>,
+    slot: &crate::graph::id::FastMap<NodeId, Reg>,
 ) -> Result<Reg, BackendError> {
     if let Some(c) = literal(graph, node) {
         return Ok(b.constant(c));
@@ -538,7 +537,7 @@ fn negated(
     graph: &Graph,
     child: NodeId,
     b: &mut Builder,
-    slot: &HashMap<NodeId, Reg>,
+    slot: &crate::graph::id::FastMap<NodeId, Reg>,
 ) -> Result<Option<Reg>, BackendError> {
     if let Some(c) = literal(graph, child) {
         return Ok((c < 0.0).then(|| b.constant(-c)));
@@ -795,8 +794,12 @@ impl Tape {
                     },
                     | Inst::Input(i) => {
                         let column = columns.get(i as usize).copied().unwrap_or(&[]);
-                        for (k, d) in dst.iter_mut().enumerate() {
-                            *d = column.get(row0 + k).copied().unwrap_or(f64::NAN);
+                        if let Some(block) = column.get(row0..row0 + n) {
+                            dst.copy_from_slice(block);
+                        } else {
+                            for (k, d) in dst.iter_mut().enumerate() {
+                                *d = column.get(row0 + k).copied().unwrap_or(f64::NAN);
+                            }
                         }
                     },
                     | Inst::Add(a, b) => {
@@ -822,6 +825,47 @@ impl Tape {
                     | Inst::Neg(a) => {
                         for (d, x) in dst.iter_mut().zip(src(a)) {
                             *d = -x;
+                        }
+                    },
+                    // The remaining scalar instructions run as straight
+                    // column loops too, so no row goes through the generic
+                    // operand buffer below; each uses the same scalar rule
+                    // as `Tape::eval`, so results are bit-identical.
+                    | Inst::PowI(a, 2) => {
+                        for (d, &x) in dst.iter_mut().zip(src(a)) {
+                            *d = <f64 as Scalar>::powi(x, 2);
+                        }
+                    },
+                    | Inst::PowI(a, k) => {
+                        for (d, &x) in dst.iter_mut().zip(src(a)) {
+                            *d = <f64 as Scalar>::powi(x, k);
+                        }
+                    },
+                    | Inst::PowF(a, b) => {
+                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = <f64 as Scalar>::powf(x, y);
+                        }
+                    },
+                    | Inst::Unary(f, a) => {
+                        for (d, &x) in dst.iter_mut().zip(src(a)) {
+                            *d = f.apply(x);
+                        }
+                    },
+                    | Inst::Atan2(a, b) => {
+                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = <f64 as Scalar>::atan2(x, y);
+                        }
+                    },
+                    | Inst::Cmp(c, a, b) => {
+                        for ((d, &x), &y) in dst.iter_mut().zip(src(a)).zip(src(b)) {
+                            *d = <f64 as Scalar>::compare(x, c, y);
+                        }
+                    },
+                    | Inst::Select(c, a, b) => {
+                        for (((d, &w), &x), &y) in
+                            dst.iter_mut().zip(src(c)).zip(src(a)).zip(src(b))
+                        {
+                            *d = <f64 as Scalar>::select(w, x, y);
                         }
                     },
                     | Inst::Gather(base, index) => {
@@ -874,8 +918,26 @@ impl Tape {
         params: &[f64],
         out: &mut [f64],
     ) {
-        let mut values = Vec::with_capacity(self.insts.len());
-        self.run(inputs, params, &mut values, out);
+        // This is the per-point path of every compiled function under the
+        // interpreter backend (quadrature nodes, ODE right-hand sides,
+        // objective evaluations), so the register file is reused per thread
+        // instead of allocated per call. A nested evaluation (a `Call` whose
+        // scalar semantics evaluate another tape) finds the buffer taken and
+        // uses a fresh one.
+        thread_local! {
+            static REGISTERS: std::cell::RefCell<Vec<f64>> = const {
+                std::cell::RefCell::new(Vec::new())
+            };
+        }
+        REGISTERS.with(|registers| {
+            match registers.try_borrow_mut() {
+                | Ok(mut values) => self.run(inputs, params, &mut values, out),
+                | Err(_) => {
+                    let mut values = Vec::with_capacity(self.insts.len());
+                    self.run(inputs, params, &mut values, out);
+                },
+            }
+        });
     }
 
     /// The gradient of output `k` with respect to every input at `inputs`

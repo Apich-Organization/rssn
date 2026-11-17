@@ -35,7 +35,7 @@ impl Graph {
         node: NodeId,
         env: &Env,
     ) -> Option<f64> {
-        let mut values: HashMap<NodeId, f64> = HashMap::new();
+        let mut values: super::id::FastMap<NodeId, f64> = super::id::FastMap::default();
         let mut stack = vec![(node, false)];
         let mut args: Vec<f64> = Vec::new();
         while let Some((cur, expanded)) = stack.pop() {
@@ -108,7 +108,7 @@ impl Graph {
         node: NodeId,
         bindings: &HashMap<SymbolId, Complex64>,
     ) -> Option<Complex64> {
-        let mut values: HashMap<NodeId, Complex64> = HashMap::new();
+        let mut values: super::id::FastMap<NodeId, Complex64> = super::id::FastMap::default();
         let mut stack = vec![(node, false)];
         while let Some((cur, expanded)) = stack.pop() {
             if values.contains_key(&cur) {

@@ -99,22 +99,89 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // A form request has the value of its first argument.
     let identity = |a: &[f64]| a.first().copied().unwrap_or(f64::NAN);
     let requests = [
-        ("expand", 1, Request::Expand, true),
-        ("collect", 2, Request::Collect, true),
-        ("factor", 1, Request::Factor, true),
-        ("together", 1, Request::Together, true),
-        ("cancel", 1, Request::Cancel, true),
-        ("apart", 2, Request::Apart, true),
-        ("degree", 2, Request::Degree, false),
-        ("coeff", 3, Request::Coeff, false),
-        ("quo", 3, Request::Quo, false),
-        ("rem", 3, Request::Rem, false),
-        ("pgcd", 3, Request::Gcd, false),
+        (
+            "expand",
+            1,
+            Request::Expand,
+            true,
+            "`expand(expr)`: expands products and integer powers in `expr` into a sum of terms.",
+        ),
+        (
+            "collect",
+            2,
+            Request::Collect,
+            true,
+            "`collect(expr, var)`: groups terms of `expr` by powers of `var`.",
+        ),
+        (
+            "factor",
+            1,
+            Request::Factor,
+            true,
+            "`factor(expr)`: factors a polynomial or rational expression into irreducible factors over the rationals.",
+        ),
+        (
+            "together",
+            1,
+            Request::Together,
+            true,
+            "`together(expr)`: combines sums of rational expressions over a common denominator.",
+        ),
+        (
+            "cancel",
+            1,
+            Request::Cancel,
+            true,
+            "`cancel(expr)`: cancels common polynomial factors between numerator and denominator of `expr`.",
+        ),
+        (
+            "apart",
+            2,
+            Request::Apart,
+            true,
+            "`apart(expr, var)`: computes the partial fraction decomposition of rational `expr` with respect to `var`.",
+        ),
+        (
+            "degree",
+            2,
+            Request::Degree,
+            false,
+            "`degree(poly, var)`: returns the polynomial degree of `poly` in `var`.",
+        ),
+        (
+            "coeff",
+            3,
+            Request::Coeff,
+            false,
+            "`coeff(poly, var, n)`: returns the coefficient of `var^n` in polynomial `poly`.",
+        ),
+        (
+            "quo",
+            3,
+            Request::Quo,
+            false,
+            "`quo(p, q, var)`: returns the polynomial quotient of `p` divided by `q` in `var`.",
+        ),
+        (
+            "rem",
+            3,
+            Request::Rem,
+            false,
+            "`rem(p, q, var)`: returns the polynomial remainder of `p` divided by `q` in `var`.",
+        ),
+        (
+            "pgcd",
+            3,
+            Request::Gcd,
+            false,
+            "`pgcd(p, q, var)`: computes the polynomial greatest common divisor of `p` and `q` in `var`.",
+        ),
     ];
-    for (name, arity, request, is_form) in requests {
+    for (name, arity, request, is_form, doc) in requests {
         let mut desc = OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100);
+            .cost(100)
+            .doc(doc);
         if is_form {
             desc = desc.eval(identity);
         }
@@ -153,7 +220,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // of the symbols `lex`, `grlex`, `grevlex`.
     let op = i.op(OpDescriptor::new("groebner", Arity::Variadic)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`groebner(polys, vars, [order])`: computes a reduced Groebner basis of ideal `polys` over `vars` using monomial order `order` (`lex`, `grlex`, or `grevlex`, default `grevlex`)."))?;
     // A basis is a list of polynomials; every element is a combination of the
     // generators, so it has the common dimension of the generator list (the
     // first argument). This also matches the reduced `list(...)` answer.

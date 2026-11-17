@@ -52,10 +52,12 @@ pub fn cse() -> RuleSet {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("cse", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`cse(expr_or_list)`: common subexpression elimination returning a pair `(temporaries, rewritten)` of shared bindings and rewritten expressions."))?;
     let cost = i.op(OpDescriptor::new("cse_cost", Arity::Fixed(1))
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100)
+        .doc("`cse_cost(expr_or_list)`: returns a pair `(before, after)` of operation counts before and after common subexpression elimination."))?;
     // `cse` returns a pair of lists (temporaries, rewritten expressions); the
     // rewritten expressions keep the common dimension of the input list.
     // `cse_cost` returns a pair of operation counts, i.e. pure numbers,

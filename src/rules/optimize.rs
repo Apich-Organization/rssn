@@ -90,12 +90,17 @@ pub fn optimize() -> RuleSet {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str, arity: u8| {
+    let heavy = |name: &str, arity: u8, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
-    let op = i.op(heavy("find_extrema", 2))?;
+    let op = i.op(heavy(
+        "find_extrema",
+        2,
+        "`find_extrema(f, vars)`: finds unconstrained critical points of `f` with respect to `vars` and classifies them via the Hessian.",
+    ))?;
     i.kernel(
         "optimize/find_extrema",
         Tier::Reduce,
@@ -104,7 +109,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             constrained: false,
         },
     );
-    let op = i.op(heavy("find_constrained_extrema", 3))?;
+    let op = i.op(heavy(
+        "find_constrained_extrema",
+        3,
+        "`find_constrained_extrema(f, constraints, vars)`: finds extrema of `f` subject to equality `constraints` over `vars` using Lagrange multipliers.",
+    ))?;
     i.kernel(
         "optimize/find_constrained_extrema",
         Tier::Reduce,
@@ -1471,7 +1480,7 @@ impl Kernel for Extension {
 }
 
 fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, kind) in [
+    for (name, arity, kind, doc) in [
         (
             "linprog",
             3,
@@ -1479,6 +1488,7 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 maximise: false,
                 equality: false,
             },
+            "`linprog(c, A, b)`: minimizes `c^T x` subject to `A x <= b, x >= 0` using the simplex method.",
         ),
         (
             "linprog_max",
@@ -1487,6 +1497,7 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 maximise: true,
                 equality: false,
             },
+            "`linprog_max(c, A, b)`: maximizes `c^T x` subject to `A x <= b, x >= 0` using the simplex method.",
         ),
         (
             "linprog_eq",
@@ -1495,18 +1506,55 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 maximise: false,
                 equality: true,
             },
+            "`linprog_eq(c, A, b)`: minimizes `c^T x` subject to `A x = b, x >= 0` using the two-phase simplex method.",
         ),
-        ("kkt_points", 3, Kind::KktPoints),
-        ("kkt_minimum", 3, Kind::KktMinimum),
-        ("is_convex", 2, Kind::Convex { concave: false }),
-        ("is_concave", 2, Kind::Convex { concave: true }),
-        ("hessian_definiteness", 3, Kind::Definiteness),
-        ("qp_eq", 4, Kind::QpEq),
-        ("legendre_transform", 3, Kind::Legendre),
+        (
+            "kkt_points",
+            3,
+            Kind::KktPoints,
+            "`kkt_points(f, constraints, vars)`: enumerates Karush-Kuhn-Tucker candidate points and multipliers for inequality-constrained optimization.",
+        ),
+        (
+            "kkt_minimum",
+            3,
+            Kind::KktMinimum,
+            "`kkt_minimum(f, constraints, vars)`: returns the KKT candidate point minimizing `f` subject to `constraints`.",
+        ),
+        (
+            "is_convex",
+            2,
+            Kind::Convex { concave: false },
+            "`is_convex(f, vars)`: tests whether `f` is convex in `vars` via Hessian positive semidefiniteness.",
+        ),
+        (
+            "is_concave",
+            2,
+            Kind::Convex { concave: true },
+            "`is_concave(f, vars)`: tests whether `f` is concave in `vars` via Hessian negative semidefiniteness.",
+        ),
+        (
+            "hessian_definiteness",
+            3,
+            Kind::Definiteness,
+            "`hessian_definiteness(f, vars, point)`: classifies the Hessian of `f` with respect to `vars` at `point` (e.g. `positive_definite`, `negative_definite`, `indefinite`).",
+        ),
+        (
+            "qp_eq",
+            4,
+            Kind::QpEq,
+            "`qp_eq(Q, c, A, b)`: solves the equality-constrained quadratic program `min 1/2 x^T Q x + c^T x` subject to `A x = b`.",
+        ),
+        (
+            "legendre_transform",
+            3,
+            Kind::Legendre,
+            "`legendre_transform(f, x, p)`: computes the Legendre-Fenchel transform `sup_x (p * x - f(x))`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("optimize/{name}"),
             Tier::Reduce,
@@ -1782,18 +1830,39 @@ const TOLERANCE: f64 = 1e-12;
 const MAX_ITERATIONS: usize = 2_000;
 
 fn install_numeric(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let heavy = |name: &str| {
+    let heavy = |name: &str, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(3))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
-    for (name, sign, global) in [
-        ("nminimize", 1.0, false),
-        ("nmaximize", -1.0, false),
-        ("nminimize_global", 1.0, true),
-        ("nmaximize_global", -1.0, true),
+    for (name, sign, global, doc) in [
+        (
+            "nminimize",
+            1.0,
+            false,
+            "`nminimize(f, vars, start)`: numerically minimizes `f(vars)` from initial point `start` using BFGS with compiled gradient.",
+        ),
+        (
+            "nmaximize",
+            -1.0,
+            false,
+            "`nmaximize(f, vars, start)`: numerically maximizes `f(vars)` from initial point `start` using BFGS with compiled gradient.",
+        ),
+        (
+            "nminimize_global",
+            1.0,
+            true,
+            "`nminimize_global(f, vars, bounds)`: numerically finds the global minimum of `f(vars)` over box `bounds`.",
+        ),
+        (
+            "nmaximize_global",
+            -1.0,
+            true,
+            "`nmaximize_global(f, vars, bounds)`: numerically finds the global maximum of `f(vars)` over box `bounds`.",
+        ),
     ] {
-        let op = i.op(heavy(name))?;
+        let op = i.op(heavy(name, doc))?;
         i.kernel(
             &format!("optimize/{name}"),
             Tier::Reduce,

@@ -544,7 +544,22 @@ pub(crate) fn def(
     arity: Arity,
     run: Run,
 ) -> Result<OpId, RuleError> {
-    let op = i.op(OpDescriptor::new(name, arity))?;
+    def_doc(i, name, arity, run, "")
+}
+
+/// Registers a documented operator with a kernel; list results are pinned.
+pub(crate) fn def_doc(
+    i: &mut Installer<'_>,
+    name: &str,
+    arity: Arity,
+    run: Run,
+    doc: &str,
+) -> Result<OpId, RuleError> {
+    let mut desc = OpDescriptor::new(name, arity);
+    if !doc.is_empty() {
+        desc = desc.doc(doc);
+    }
+    let op = i.op(desc)?;
     i.dim(op, dim_rule(name));
     i.kernel(
         &format!("discrete/{name}"),
@@ -563,9 +578,26 @@ pub(crate) fn def_request(
     arity: Arity,
     run: Run,
 ) -> Result<OpId, RuleError> {
-    let op = i.op(OpDescriptor::new(name, arity)
+    def_request_doc(i, name, arity, run, "")
+}
+
+/// Registers a documented *request* operator: it stands for a computation whose
+/// answer is a term still to be simplified, so it is flagged heavy and the
+/// answer is not pinned.
+pub(crate) fn def_request_doc(
+    i: &mut Installer<'_>,
+    name: &str,
+    arity: Arity,
+    run: Run,
+    doc: &str,
+) -> Result<OpId, RuleError> {
+    let mut desc = OpDescriptor::new(name, arity)
         .flags(OpFlags::HEAVY)
-        .cost(100))?;
+        .cost(100);
+    if !doc.is_empty() {
+        desc = desc.doc(doc);
+    }
+    let op = i.op(desc)?;
     i.dim(op, dim_rule(name));
     i.kernel(
         &format!("discrete/{name}"),
@@ -581,7 +613,21 @@ pub(crate) fn def_inert(
     name: &str,
     arity: Arity,
 ) -> Result<OpId, RuleError> {
-    let op = i.op(OpDescriptor::new(name, arity))?;
+    def_inert_doc(i, name, arity, "")
+}
+
+/// Registers a documented data constructor with no kernel (an inert term).
+pub(crate) fn def_inert_doc(
+    i: &mut Installer<'_>,
+    name: &str,
+    arity: Arity,
+    doc: &str,
+) -> Result<OpId, RuleError> {
+    let mut desc = OpDescriptor::new(name, arity);
+    if !doc.is_empty() {
+        desc = desc.doc(doc);
+    }
+    let op = i.op(desc)?;
     i.dim(op, dim_rule(name));
     Ok(op)
 }

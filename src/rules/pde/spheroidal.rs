@@ -211,8 +211,14 @@ pub(super) fn spheroidal_radial(args: &[f64]) -> f64 {
 /// The radial spheroidal function is a normalised numeric value in the
 /// dimensionless spheroidal coordinates `(ξ, ζ)`, so it is dimensionless.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let op =
-        i.op(OpDescriptor::new("spheroidal_radial", Arity::Fixed(5)).eval(spheroidal_radial))?;
+    let op = i.op(
+        OpDescriptor::new("spheroidal_radial", Arity::Fixed(5))
+            .eval(spheroidal_radial)
+            .doc(
+                "`spheroidal_radial(kind, m, n, gamma, xi)`: prolate (`kind > 0`) or oblate \
+                 radial spheroidal wave function of degree `n`, order `m`, parameter `gamma` at `xi`.",
+            ),
+    )?;
     i.dim(op, DimRule::Dimensionless);
     Ok(())
 }

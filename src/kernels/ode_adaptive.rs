@@ -1196,3 +1196,960 @@ where
     }
     Ok((ts, ys))
 }
+
+/// Fixed-step Dormand-Prince 5(4) integrator with dense output and event
+/// location.
+///
+/// Integrates `y' = f(t, y)` from `t0` to `t1` in `steps` equal steps with no
+/// step-size rejection. Populates the fourth-order continuous extension
+/// ([`OdeSolution::eval`]) and locates events by Brent iteration.
+///
+/// # Errors
+/// [`OdeError::Invalid`] if `steps == 0` or inputs are invalid,
+/// [`OdeError::NonFinite`] on non-finite values, or [`OdeError::StepLimit`] on
+/// underflow.
+#[allow(clippy::float_cmp)]
+pub fn dopri5_fixed<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
+    if steps == 0 {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    validate_problem(t0, t1, y0, &default_opts, events)?;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let f = super::ode_contract::checked_rhs(f);
+    let n = y0.len();
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut k = vec![vec![0.0; n]; 7];
+    let Some(k0) = k.first_mut() else {
+        return Err(OdeError::Invalid);
+    };
+    f(t, &y, k0);
+    if k0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut nfev = 1usize;
+    let mut sol = OdeSolution {
+        t: vec![t0],
+        y: vec![y0.to_vec()],
+        events: Vec::new(),
+        nfev: 0,
+        rejected: 0,
+        orders: Vec::new(),
+        dense: Vec::new(),
+    };
+    let mut gprev = initial_events(events, t0, y0)?;
+    let mut tmp = vec![0.0; n];
+    for step_idx in 1..=steps {
+        let (tn, h) = super::ode_contract::fixed_step(t0, t1, step_idx, steps, t)?;
+        for s in 0..6 {
+            let row = DP_A.get(s).ok_or(OdeError::Invalid)?;
+            for (i, tmp_i) in tmp.iter_mut().enumerate() {
+                let mut acc = 0.0;
+                for j in 0..=s {
+                    let a_sj = row.get(j).copied().unwrap_or(0.0);
+                    if a_sj != 0.0 {
+                        let k_ji = k.get(j).and_then(|kj| kj.get(i)).copied().unwrap_or(0.0);
+                        acc += a_sj * k_ji;
+                    }
+                }
+                *tmp_i = y.get(i).copied().unwrap_or(0.0) + h * acc;
+            }
+            let c_s = DP_C.get(s).copied().unwrap_or(0.0);
+            let (_, tail) = k.split_at_mut(s.saturating_add(1));
+            let Some(next_k) = tail.first_mut() else {
+                return Err(OdeError::Invalid);
+            };
+            f(t + c_s * h, &tmp, next_k);
+            nfev = nfev.saturating_add(1);
+        }
+        let ynew = tmp.clone();
+        if ynew.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let d: [Vec<f64>; 4] = std::array::from_fn(|c| {
+            (0..n)
+                .map(|i| {
+                    (0..7)
+                        .map(|j| {
+                            let p_jc = DP_P
+                                .get(j)
+                                .and_then(|row| row.get(c))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let k_ji = k.get(j).and_then(|kj| kj.get(i)).copied().unwrap_or(0.0);
+                            p_jc * k_ji
+                        })
+                        .sum()
+                })
+                .collect()
+        });
+        let step_dense = DenseStep {
+            t0: t,
+            h,
+            y0: y.clone(),
+            kind: DenseKind::Poly(d.to_vec()),
+        };
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step_dense,
+            &StepWindow {
+                t_old: t,
+                tn,
+                ynew: &ynew,
+                dir,
+            },
+        )? {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        sol.t.push(tn);
+        sol.y.push(ynew.clone());
+        t = tn;
+        y = ynew;
+        k.swap(0, 6);
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
+/// Fixed-step Rosenbrock 2(3) integrator without event detection.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::NonFinite`], [`OdeError::SolveFailed`]
+/// or [`OdeError::StepLimit`].
+pub fn rosenbrock23_fixed<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+) -> Result<OdeSolution, OdeError> {
+    rosenbrock23_fixed_events(f, t0, t1, y0, steps, &[])
+}
+
+/// Fixed-step Rosenbrock 2(3) integrator with cubic Hermite dense output and
+/// event location.
+///
+/// # Errors
+/// As [`rosenbrock23_fixed`].
+#[allow(clippy::float_cmp)]
+pub fn rosenbrock23_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    events: &[Event<'_>],
+) -> Result<OdeSolution, OdeError> {
+    if steps == 0 {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    validate_problem(t0, t1, y0, &default_opts, events)?;
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, y0));
+    }
+    let f = super::ode_contract::checked_rhs(f);
+    let n = y0.len();
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let d = 1.0 / (2.0 + 2.0_f64.sqrt());
+    let mut t = t0;
+    let mut y = y0.to_vec();
+    let mut f0 = vec![0.0; n];
+    f(t, &y, &mut f0);
+    if f0.iter().any(|value| !value.is_finite()) {
+        return Err(OdeError::NonFinite);
+    }
+    let mut nfev = 1usize;
+    let mut sol = OdeSolution {
+        t: vec![t0],
+        y: vec![y0.to_vec()],
+        events: Vec::new(),
+        nfev: 0,
+        rejected: 0,
+        orders: Vec::new(),
+        dense: Vec::new(),
+    };
+    let mut gprev = initial_events(events, t0, y0)?;
+    for step_idx in 1..=steps {
+        let (tn, h) = super::ode_contract::fixed_step(t0, t1, step_idx, steps, t)?;
+        let mut jac = Mat::zeros(n, n);
+        let mut yp = y.clone();
+        let mut fp = vec![0.0; n];
+        for j in 0..n {
+            let yj = y.get(j).copied().unwrap_or(0.0);
+            let dj = 1.5e-8 * yj.abs().max(1e-5);
+            if let Some(slot) = yp.get_mut(j) {
+                *slot = yj + dj;
+            }
+            f(t, &yp, &mut fp);
+            if let Some(slot) = yp.get_mut(j) {
+                *slot = yj;
+            }
+            for i in 0..n {
+                let df = fp.get(i).copied().unwrap_or(0.0) - f0.get(i).copied().unwrap_or(0.0);
+                jac.set(i, j, df / dj);
+            }
+        }
+        let probe = super::ode_contract::time_probe(t, t0, t1);
+        let dt = probe - t;
+        f(probe, &y, &mut fp);
+        let tder: Vec<f64> = fp
+            .iter()
+            .zip(&f0)
+            .map(|(fpi, f0i)| (*fpi - *f0i) / dt)
+            .collect();
+        nfev = nfev.saturating_add(n.saturating_add(1));
+        let mut w = Mat::identity(n);
+        for i in 0..n {
+            for j in 0..n {
+                let v = w.at(i, j) - h * d * jac.at(i, j);
+                w.set(i, j, v);
+            }
+        }
+        let lu = dense::lu_factor(&w).map_err(|_| OdeError::SolveFailed)?;
+        let rhs1: Vec<f64> = f0
+            .iter()
+            .zip(&tder)
+            .map(|(f0i, tdi)| *f0i + h * d * *tdi)
+            .collect();
+        let k1 = lu.solve(&rhs1);
+        let ymid: Vec<f64> = y
+            .iter()
+            .zip(&k1)
+            .map(|(yi, k1i)| *yi + 0.5 * h * *k1i)
+            .collect();
+        let mut f1 = vec![0.0; n];
+        f(t + 0.5 * h, &ymid, &mut f1);
+        let rhs2: Vec<f64> = f1
+            .iter()
+            .zip(&k1)
+            .zip(&tder)
+            .map(|((f1i, k1i), tdi)| *f1i - *k1i + h * d * *tdi)
+            .collect();
+        let k2 = lu
+            .solve(&rhs2)
+            .iter()
+            .zip(&k1)
+            .map(|(a, b)| *a + *b)
+            .collect::<Vec<_>>();
+        let ynew: Vec<f64> = y
+            .iter()
+            .zip(&k1)
+            .zip(&k2)
+            .map(|((yi, k1i), k2i)| *yi + h * (*k1i + *k2i) / 2.0)
+            .collect();
+        if ynew.iter().any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let mut f2 = vec![0.0; n];
+        f(tn, &ynew, &mut f2);
+        nfev = nfev.saturating_add(2);
+        if f2.iter().any(|value| !value.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        let step_dense = DenseStep {
+            t0: t,
+            h,
+            y0: y.clone(),
+            kind: DenseKind::Hermite {
+                y1: ynew.clone(),
+                f0: f0.clone(),
+                f1: f2.clone(),
+            },
+        };
+        if process_events(
+            events,
+            &mut gprev,
+            &mut sol,
+            step_dense,
+            &StepWindow {
+                t_old: t,
+                tn,
+                ynew: &ynew,
+                dir,
+            },
+        )? {
+            sol.nfev = nfev;
+            return Ok(sol);
+        }
+        sol.t.push(tn);
+        sol.y.push(ynew.clone());
+        t = tn;
+        y = ynew;
+        f0 = f2;
+    }
+    sol.nfev = nfev;
+    Ok(sol)
+}
+
+/// Adaptive velocity-Verlet (leapfrog) via Richardson step-doubling error control.
+///
+/// Integrates `q'' = acc(q)` over `[t0, t1]`, returning an [`OdeSolution`] whose
+/// state vector at each node is `[q..., p...]`.
+///
+/// # Errors
+/// [`OdeError::Invalid`] for mismatched or empty states, [`OdeError::NonFinite`]
+/// on non-finite values, or [`OdeError::StepLimit`] if `max_steps` or `hmin` is
+/// exceeded.
+pub fn leapfrog_adaptive<A: Fn(&[f64]) -> Vec<f64>>(
+    acc: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError> {
+    symplectic_doubling_adaptive(
+        |q, p, dt| leapfrog(&acc, q, p, dt, 1),
+        2.0,
+        q0,
+        p0,
+        t0,
+        t1,
+        opts,
+    )
+}
+
+/// Adaptive fourth-order Yoshida composition via Richardson step-doubling error
+/// control.
+///
+/// Integrates `q'' = acc(q)` over `[t0, t1]`, returning an [`OdeSolution`] whose
+/// state vector at each node is `[q..., p...]`.
+///
+/// # Errors
+/// As [`leapfrog_adaptive`].
+pub fn yoshida4_adaptive<A: Fn(&[f64]) -> Vec<f64>>(
+    acc: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError> {
+    symplectic_doubling_adaptive(
+        |q, p, dt| yoshida4(&acc, q, p, dt, 1),
+        4.0,
+        q0,
+        p0,
+        t0,
+        t1,
+        opts,
+    )
+}
+
+fn symplectic_doubling_adaptive<S>(
+    step_fn: S,
+    order: f64,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError>
+where
+    S: Fn(&[f64], &[f64], f64) -> (Vec<f64>, Vec<f64>),
+{
+    if q0.is_empty()
+        || q0.len() != p0.len()
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || !opts.rtol.is_finite()
+        || opts.rtol < 0.0
+        || !opts.atol.is_finite()
+        || opts.atol <= 0.0
+        || opts.max_steps == 0
+        || q0.iter().chain(p0).any(|v| !v.is_finite())
+    {
+        return Err(OdeError::Invalid);
+    }
+    let y_init: Vec<f64> = q0.iter().chain(p0).copied().collect();
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, &y_init));
+    }
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let span = (t1 - t0).abs();
+    let mut h = opts
+        .h0
+        .unwrap_or_else(|| (span * 0.01).max(1e-6))
+        .abs()
+        .clamp(opts.hmin.max(1e-14), opts.hmax)
+        * dir;
+    let mut t = t0;
+    let mut q = q0.to_vec();
+    let mut p = p0.to_vec();
+    let mut sol = OdeSolution::start(t0, &y_init);
+    let denom_err = 2.0_f64.powf(order) - 1.0;
+    let mut attempts = 0usize;
+    while (t1 - t) * dir > 0.0 {
+        crate::cancellation::checkpoint()?;
+        if attempts >= opts.max_steps {
+            return Err(OdeError::StepLimit);
+        }
+        attempts = attempts.saturating_add(1);
+        if (t + h - t1) * dir > 0.0 {
+            h = t1 - t;
+        }
+        if !h.is_finite()
+            || crate::kernels::exact_eq(t + h, t)
+            || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin)
+        {
+            return Err(OdeError::StepLimit);
+        }
+        let (qf, pf) = step_fn(&q, &p, h);
+        let (qm, pm) = step_fn(&q, &p, 0.5 * h);
+        let (qh, ph) = step_fn(&qm, &pm, 0.5 * h);
+        sol.nfev = sol.nfev.saturating_add(3);
+        if qh
+            .iter()
+            .chain(&ph)
+            .chain(&qf)
+            .chain(&pf)
+            .any(|v| !v.is_finite())
+        {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        }
+        let y_cur: Vec<f64> = q.iter().chain(&p).copied().collect();
+        let y_half: Vec<f64> = qh.iter().chain(&ph).copied().collect();
+        let y_full: Vec<f64> = qf.iter().chain(&pf).copied().collect();
+        let err_vec: Vec<f64> = y_half
+            .iter()
+            .zip(&y_full)
+            .map(|(yh, yf)| (*yh - *yf).abs() / denom_err)
+            .collect();
+        let en = err_norm(&err_vec, &y_cur, &y_half, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
+        if en <= 1.0 {
+            t += h;
+            q = qh;
+            p = ph;
+            sol.t.push(t);
+            sol.y.push(y_half);
+        } else {
+            sol.rejected = sol.rejected.saturating_add(1);
+        }
+        let factor = if en == 0.0 {
+            5.0
+        } else {
+            (0.9 * en.powf(-1.0 / (order + 1.0))).clamp(0.2, 5.0)
+        };
+        let next_h = (h.abs() * factor).min(opts.hmax);
+        h = next_h * dir;
+    }
+    Ok(sol)
+}
+
+/// Unified velocity-Verlet integrator supporting both fixed and adaptive step
+/// sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`leapfrog_adaptive`].
+pub fn leapfrog_with<A: Fn(&[f64]) -> Vec<f64>>(
+    acc: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            symplectic_fixed(|q, p, h| leapfrog(&acc, q, p, h, 1), q0, p0, t0, t1, dt)
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            leapfrog_adaptive(acc, q0, p0, t0, t1, &opts)
+        },
+    }
+}
+
+/// Unified fourth-order Yoshida integrator supporting both fixed and adaptive
+/// step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`yoshida4_adaptive`].
+pub fn yoshida4_with<A: Fn(&[f64]) -> Vec<f64>>(
+    acc: A,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError> {
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            symplectic_fixed(|q, p, h| yoshida4(&acc, q, p, h, 1), q0, p0, t0, t1, dt)
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            yoshida4_adaptive(acc, q0, p0, t0, t1, &opts)
+        },
+    }
+}
+
+fn symplectic_fixed<S>(
+    step_fn: S,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    dt: f64,
+) -> Result<OdeSolution, OdeError>
+where
+    S: Fn(&[f64], &[f64], f64) -> (Vec<f64>, Vec<f64>),
+{
+    if q0.is_empty()
+        || q0.len() != p0.len()
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || !dt.is_finite()
+        || dt <= 0.0
+        || q0.iter().chain(p0).any(|v| !v.is_finite())
+    {
+        return Err(OdeError::Invalid);
+    }
+    let y_init: Vec<f64> = q0.iter().chain(p0).copied().collect();
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, &y_init));
+    }
+    let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+    let mut t = t0;
+    let mut q = q0.to_vec();
+    let mut p = p0.to_vec();
+    let mut sol = OdeSolution::start(t0, &y_init);
+    for idx in 1..=steps {
+        crate::cancellation::checkpoint()?;
+        let (tn, h) = super::ode_contract::fixed_step(t0, t1, idx, steps, t)?;
+        let (qn, pn) = step_fn(&q, &p, h);
+        if qn.iter().chain(&pn).any(|v| !v.is_finite()) {
+            return Err(OdeError::NonFinite);
+        }
+        q = qn;
+        p = pn;
+        t = tn;
+        sol.t.push(t);
+        sol.y.push(q.iter().chain(&p).copied().collect());
+        sol.nfev = sol.nfev.saturating_add(1);
+    }
+    Ok(sol)
+}
+
+/// Adaptive semi-explicit index-1 DAE solver (`y' = f(t, y, z)`,
+/// `0 = g(t, y, z)`) using backward Euler with Richardson step-doubling.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::SolveFailed`], [`OdeError::NonFinite`],
+/// or [`OdeError::StepLimit`].
+#[allow(clippy::float_cmp)]
+pub fn dae_index1_adaptive<F, G>(
+    f: F,
+    g: G,
+    y0: &[f64],
+    z0: &[f64],
+    t0: f64,
+    t1: f64,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+    G: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+{
+    if y0.is_empty()
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || !opts.rtol.is_finite()
+        || opts.rtol < 0.0
+        || !opts.atol.is_finite()
+        || opts.atol <= 0.0
+        || opts.max_steps == 0
+        || y0.iter().chain(z0).any(|v| !v.is_finite())
+    {
+        return Err(OdeError::Invalid);
+    }
+    let ny = y0.len();
+    let init: Vec<f64> = y0.iter().chain(z0).copied().collect();
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, &init));
+    }
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
+    let mut h = opts
+        .h0
+        .unwrap_or_else(|| ((t1 - t0).abs() * 0.01).max(1e-6))
+        .abs()
+        .clamp(opts.hmin.max(1e-14), opts.hmax)
+        * dir;
+    let mut t = t0;
+    let mut cur = init;
+    let mut sol = OdeSolution::start(t0, &cur);
+    let mut attempts = 0usize;
+    while (t1 - t) * dir > 0.0 {
+        crate::cancellation::checkpoint()?;
+        if attempts >= opts.max_steps {
+            return Err(OdeError::StepLimit);
+        }
+        attempts = attempts.saturating_add(1);
+        if (t + h - t1) * dir > 0.0 {
+            h = t1 - t;
+        }
+        if !h.is_finite()
+            || crate::kernels::exact_eq(t + h, t)
+            || (h.abs() < opts.hmin && (t1 - t).abs() > opts.hmin)
+        {
+            return Err(OdeError::StepLimit);
+        }
+        let (y_cur, z_cur) = cur.split_at(ny);
+        let Ok(full_traj) = dae_index1(&f, &g, y_cur, z_cur, t, h, 1) else {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        };
+        let Ok(half_traj) = dae_index1(&f, &g, y_cur, z_cur, t, 0.5 * h, 2) else {
+            h *= 0.5;
+            sol.rejected = sol.rejected.saturating_add(1);
+            continue;
+        };
+        let Some(full) = full_traj.last() else {
+            return Err(OdeError::SolveFailed);
+        };
+        let Some(half) = half_traj.last() else {
+            return Err(OdeError::SolveFailed);
+        };
+        sol.nfev = sol.nfev.saturating_add(3);
+        let err_vec: Vec<f64> = half
+            .iter()
+            .zip(full)
+            .map(|(a, b)| (*a - *b).abs())
+            .collect();
+        let en = err_norm(&err_vec, &cur, half, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
+        if en <= 1.0 {
+            t += h;
+            cur = half.clone();
+            sol.t.push(t);
+            sol.y.push(cur.clone());
+        } else {
+            sol.rejected = sol.rejected.saturating_add(1);
+        }
+        let factor = if en == 0.0 {
+            5.0
+        } else {
+            (0.9 * en.powf(-0.5)).clamp(0.2, 5.0)
+        };
+        h = (h.abs() * factor).min(opts.hmax) * dir;
+    }
+    Ok(sol)
+}
+
+/// Unified semi-explicit index-1 DAE solver supporting both fixed and adaptive
+/// step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`dae_index1_adaptive`].
+pub fn dae_index1_with<F, G>(
+    f: F,
+    g: G,
+    y0: &[f64],
+    z0: &[f64],
+    t0: f64,
+    t1: f64,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+    G: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+{
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
+                return Err(OdeError::Invalid);
+            }
+            if crate::kernels::exact_eq(t0, t1) {
+                let init: Vec<f64> = y0.iter().chain(z0).copied().collect();
+                return Ok(OdeSolution::start(t0, &init));
+            }
+            let steps = ((t1 - t0).abs() / dt).ceil().max(1.0) as usize;
+            let h = (t1 - t0) / steps as f64;
+            let states = dae_index1(f, g, y0, z0, t0, h, steps)?;
+            let ts: Vec<f64> = (0..=steps)
+                .map(|i| {
+                    if i == steps {
+                        t1
+                    } else {
+                        t0 + i as f64 * h
+                    }
+                })
+                .collect();
+            Ok(OdeSolution {
+                t: ts,
+                y: states,
+                events: Vec::new(),
+                nfev: steps,
+                rejected: 0,
+                orders: Vec::new(),
+                dense: Vec::new(),
+            })
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            dae_index1_adaptive(f, g, y0, z0, t0, t1, &opts)
+        },
+    }
+}
+
+/// Adaptive constant-delay DDE integrator using RK4 with Richardson
+/// step-doubling error control and cubic Hermite history interpolation.
+///
+/// # Errors
+/// [`OdeError::Invalid`], [`OdeError::NonFinite`], or [`OdeError::StepLimit`].
+#[allow(clippy::float_cmp)]
+pub fn dde_rk4_adaptive<F, H>(
+    f: F,
+    hist: H,
+    tau: f64,
+    t0: f64,
+    t1: f64,
+    opts: &OdeOptions,
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+    H: Fn(f64) -> Vec<f64>,
+{
+    if !tau.is_finite()
+        || tau <= 0.0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || t1 < t0
+        || !opts.rtol.is_finite()
+        || opts.rtol < 0.0
+        || !opts.atol.is_finite()
+        || opts.atol <= 0.0
+        || opts.max_steps == 0
+    {
+        return Err(OdeError::Invalid);
+    }
+    let y0 = hist(t0);
+    if y0.is_empty() || y0.iter().any(|v| !v.is_finite()) {
+        return Err(OdeError::Invalid);
+    }
+    if crate::kernels::exact_eq(t0, t1) {
+        return Ok(OdeSolution::start(t0, &y0));
+    }
+    let n = y0.len();
+    let f0 = f(t0, &y0, &hist(t0 - tau));
+    let mut ts = vec![t0];
+    let mut ys = vec![y0.clone()];
+    let mut fs = vec![f0];
+    let mut h = opts
+        .h0
+        .unwrap_or_else(|| ((t1 - t0) * 0.02).min(tau * 0.5).max(1e-6))
+        .abs()
+        .clamp(opts.hmin.max(1e-14), opts.hmax.min(tau));
+    let mut t = t0;
+    let mut y = y0;
+    let mut rejected = 0usize;
+    let mut nfev = 1usize;
+    let mut attempts = 0usize;
+    let eval_delay = |target: f64, ts: &[f64], ys: &[Vec<f64>], fs: &[Vec<f64>]| -> Vec<f64> {
+        if target <= t0 {
+            return hist(target);
+        }
+        let len = ts.len().min(ys.len()).min(fs.len());
+        let Some(last_t) = len.checked_sub(1).and_then(|i| ts.get(i)).copied() else {
+            return hist(target);
+        };
+        if len < 2 || target >= last_t {
+            return len
+                .checked_sub(1)
+                .and_then(|i| ys.get(i))
+                .cloned()
+                .unwrap_or_else(|| hist(target));
+        }
+        let idx = ts
+            .get(..len)
+            .map_or(0, |slice| slice.partition_point(|&x| x <= target))
+            .saturating_sub(1)
+            .min(len.saturating_sub(2));
+        let ta = ts.get(idx).copied().unwrap_or(t0);
+        let tb = ts.get(idx.saturating_add(1)).copied().unwrap_or(last_t);
+        let dt_seg = tb - ta;
+        let s = (target - ta) / dt_seg;
+        let (h00, h10, h01, h11) = (
+            (1.0 + 2.0 * s) * (1.0 - s) * (1.0 - s),
+            s * (1.0 - s) * (1.0 - s),
+            s * s * (3.0 - 2.0 * s),
+            s * s * (s - 1.0),
+        );
+        (0..n)
+            .map(|i| {
+                let ya = ys.get(idx).and_then(|v| v.get(i)).copied().unwrap_or(0.0);
+                let fa = fs.get(idx).and_then(|v| v.get(i)).copied().unwrap_or(0.0);
+                let yb = ys
+                    .get(idx.saturating_add(1))
+                    .and_then(|v| v.get(i))
+                    .copied()
+                    .unwrap_or(0.0);
+                let fb = fs
+                    .get(idx.saturating_add(1))
+                    .and_then(|v| v.get(i))
+                    .copied()
+                    .unwrap_or(0.0);
+                h00 * ya + h10 * dt_seg * fa + h01 * yb + h11 * dt_seg * fb
+            })
+            .collect()
+    };
+    let rk4_substep =
+        |t_cur: f64, y_cur: &[f64], dt: f64, ts: &[f64], ys: &[Vec<f64>], fs: &[Vec<f64>]| {
+            let k1 = f(t_cur, y_cur, &eval_delay(t_cur - tau, ts, ys, fs));
+            let y2: Vec<f64> = y_cur
+                .iter()
+                .zip(&k1)
+                .map(|(yi, ki)| *yi + 0.5 * dt * *ki)
+                .collect();
+            let k2 = f(
+                t_cur + 0.5 * dt,
+                &y2,
+                &eval_delay(t_cur + 0.5 * dt - tau, ts, ys, fs),
+            );
+            let y3: Vec<f64> = y_cur
+                .iter()
+                .zip(&k2)
+                .map(|(yi, ki)| *yi + 0.5 * dt * *ki)
+                .collect();
+            let k3 = f(
+                t_cur + 0.5 * dt,
+                &y3,
+                &eval_delay(t_cur + 0.5 * dt - tau, ts, ys, fs),
+            );
+            let y4: Vec<f64> = y_cur
+                .iter()
+                .zip(&k3)
+                .map(|(yi, ki)| *yi + dt * *ki)
+                .collect();
+            let k4 = f(t_cur + dt, &y4, &eval_delay(t_cur + dt - tau, ts, ys, fs));
+            (0..n)
+                .map(|i| {
+                    let yi = y_cur.get(i).copied().unwrap_or(0.0);
+                    let k1i = k1.get(i).copied().unwrap_or(0.0);
+                    let k2i = k2.get(i).copied().unwrap_or(0.0);
+                    let k3i = k3.get(i).copied().unwrap_or(0.0);
+                    let k4i = k4.get(i).copied().unwrap_or(0.0);
+                    yi + dt / 6.0 * (k1i + 2.0 * k2i + 2.0 * k3i + k4i)
+                })
+                .collect::<Vec<f64>>()
+        };
+    while t < t1 {
+        crate::cancellation::checkpoint()?;
+        if attempts >= opts.max_steps {
+            return Err(OdeError::StepLimit);
+        }
+        attempts = attempts.saturating_add(1);
+        h = h.min(tau).min(t1 - t);
+        if !h.is_finite()
+            || crate::kernels::exact_eq(t + h, t)
+            || (h < opts.hmin && (t1 - t) > opts.hmin)
+        {
+            return Err(OdeError::StepLimit);
+        }
+        let y_full = rk4_substep(t, &y, h, &ts, &ys, &fs);
+        let y_mid = rk4_substep(t, &y, 0.5 * h, &ts, &ys, &fs);
+        let y_half = rk4_substep(t + 0.5 * h, &y_mid, 0.5 * h, &ts, &ys, &fs);
+        nfev = nfev.saturating_add(12);
+        if y_half.iter().chain(&y_full).any(|v| !v.is_finite()) {
+            h *= 0.5;
+            rejected = rejected.saturating_add(1);
+            continue;
+        }
+        let err_vec: Vec<f64> = y_half
+            .iter()
+            .zip(&y_full)
+            .map(|(yh, yf)| (*yh - *yf).abs() / 15.0)
+            .collect();
+        let en = err_norm(&err_vec, &y, &y_half, opts.rtol, opts.atol);
+        if en.is_nan() {
+            return Err(OdeError::NonFinite);
+        }
+        if en <= 1.0 {
+            t += h;
+            y = y_half;
+            let fn_ = f(t, &y, &eval_delay(t - tau, &ts, &ys, &fs));
+            nfev = nfev.saturating_add(1);
+            ts.push(t);
+            ys.push(y.clone());
+            fs.push(fn_);
+        } else {
+            rejected = rejected.saturating_add(1);
+        }
+        let factor = if en == 0.0 {
+            5.0
+        } else {
+            (0.9 * en.powf(-0.2)).clamp(0.2, 5.0)
+        };
+        h = (h * factor).min(opts.hmax).min(tau);
+    }
+    Ok(OdeSolution {
+        t: ts,
+        y: ys,
+        events: Vec::new(),
+        nfev,
+        rejected,
+        orders: Vec::new(),
+        dense: Vec::new(),
+    })
+}
+
+/// Unified constant-delay DDE integrator supporting both fixed and adaptive
+/// step sizes via [`OdeStepMode`](super::ode::OdeStepMode).
+///
+/// # Errors
+/// As [`dde_rk4_adaptive`] and [`dde_rk4`].
+pub fn dde_rk4_with<F, H>(
+    f: F,
+    hist: H,
+    tau: f64,
+    t0: f64,
+    t1: f64,
+    step_mode: super::ode::OdeStepMode,
+) -> Result<OdeSolution, OdeError>
+where
+    F: Fn(f64, &[f64], &[f64]) -> Vec<f64>,
+    H: Fn(f64) -> Vec<f64>,
+{
+    match step_mode {
+        | super::ode::OdeStepMode::Fixed { dt } => {
+            let (ts, ys) = dde_rk4(f, hist, tau, t0, t1, dt)?;
+            let nfev = ts.len().saturating_sub(1).saturating_mul(5);
+            Ok(OdeSolution {
+                t: ts,
+                y: ys,
+                events: Vec::new(),
+                nfev,
+                rejected: 0,
+                orders: Vec::new(),
+                dense: Vec::new(),
+            })
+        },
+        | super::ode::OdeStepMode::Adaptive { .. } => {
+            let opts = step_mode.to_ode_options()?;
+            dde_rk4_adaptive(f, hist, tau, t0, t1, &opts)
+        },
+    }
+}

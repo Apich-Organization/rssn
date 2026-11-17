@@ -210,30 +210,54 @@ fn number_atom(
     window.new_atom(graph, node)
 }
 
+/// A group of like terms (or factors): its key cells, a hash of their
+/// fingerprints, and the accumulated number.
+struct Group {
+    key: Vec<CellId>,
+    hash: u64,
+    value: Number,
+}
+
 /// Finds the entry of `groups` whose key cells are structurally the same as
 /// `key`, comparing element-wise after sorting by fingerprint.
-fn find_group<T>(
+///
+/// Structurally equal cells have equal fingerprints, so a group whose hash
+/// differs cannot match: the hash turns the quadratic scan of deep `same`
+/// comparisons into one integer comparison per group.
+fn find_group(
     graph: &Graph,
     window: &TreeWindow,
-    groups: &[(Vec<CellId>, T)],
+    groups: &[Group],
     key: &[CellId],
+    hash: u64,
 ) -> Option<usize> {
-    groups.iter().position(|(other, _)| {
-        other.len() == key.len()
-            && other
+    groups.iter().position(|group| {
+        group.hash == hash
+            && group.key.len() == key.len()
+            && group
+                .key
                 .iter()
                 .zip(key)
                 .all(|(&a, &b)| window.same(graph, a, b))
     })
 }
 
+/// `cells` sorted by fingerprint (stably), with a hash of the sorted
+/// fingerprints.
 fn sorted_by_fingerprint(
     graph: &Graph,
     window: &TreeWindow,
-    mut cells: Vec<CellId>,
-) -> Vec<CellId> {
-    cells.sort_by_key(|&c| window.fingerprint(graph, c));
-    cells
+    cells: Vec<CellId>,
+) -> (Vec<CellId>, u64) {
+    let mut keyed: Vec<(u64, CellId)> = cells
+        .into_iter()
+        .map(|c| (window.fingerprint(graph, c), c))
+        .collect();
+    keyed.sort_by_key(|&(fingerprint, _)| fingerprint);
+    let hash = keyed.iter().fold(0x51_7cc1_b727_220a_u64, |h, &(f, _)| {
+        (h.rotate_left(9) ^ f).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+    });
+    (keyed.into_iter().map(|(_, c)| c).collect(), hash)
 }
 
 /// Builds a detached product cell of `coeff` and clones of `factors`.
@@ -286,27 +310,33 @@ fn sum(
     cell: CellId,
 ) -> CellId {
     let mut constant = Number::from(0);
-    let mut groups: Vec<(Vec<CellId>, Number)> = Vec::new();
+    let mut groups: Vec<Group> = Vec::new();
     for term in window.children(cell) {
         let (coeff, factors) = split_term(graph, window, term);
         if factors.is_empty() {
             constant = constant.add(&coeff);
             continue;
         }
-        let key = sorted_by_fingerprint(graph, window, factors);
-        match find_group(graph, window, &groups, &key) {
+        let (key, hash) = sorted_by_fingerprint(graph, window, factors);
+        match find_group(graph, window, &groups, &key, hash) {
             | Some(i) => {
                 if let Some(group) = groups.get_mut(i) {
-                    group.1 = group.1.add(&coeff);
+                    group.value = group.value.add(&coeff);
                 }
             },
-            | None => groups.push((key, coeff)),
+            | None => {
+                groups.push(Group {
+                    key,
+                    hash,
+                    value: coeff,
+                });
+            },
         }
     }
     let mut pieces = Vec::with_capacity(groups.len().saturating_add(1));
-    for (factors, coeff) in &groups {
-        if !coeff.is_zero() {
-            pieces.push(build_product(graph, window, coeff, factors));
+    for group in &groups {
+        if !group.value.is_zero() {
+            pieces.push(build_product(graph, window, &group.value, &group.key));
         }
     }
     if !constant.is_zero() || pieces.is_empty() {
@@ -341,7 +371,7 @@ fn product(
     cell: CellId,
 ) -> CellId {
     let mut coeff = Number::from(1);
-    let mut groups: Vec<(Vec<CellId>, Number)> = Vec::new();
+    let mut groups: Vec<Group> = Vec::new();
     for factor in window.children(cell) {
         if let Some(n) = window.number(graph, factor) {
             coeff = coeff.mul(n);
@@ -353,13 +383,20 @@ fn product(
             continue;
         }
         let key = [base];
-        match find_group(graph, window, &groups, &key) {
+        let hash = window.fingerprint(graph, base);
+        match find_group(graph, window, &groups, &key, hash) {
             | Some(i) => {
                 if let Some(group) = groups.get_mut(i) {
-                    group.1 = group.1.add(&exp);
+                    group.value = group.value.add(&exp);
                 }
             },
-            | None => groups.push((key.to_vec(), exp)),
+            | None => {
+                groups.push(Group {
+                    key: key.to_vec(),
+                    hash,
+                    value: exp,
+                });
+            },
         }
     }
     if coeff.is_zero() {
@@ -367,7 +404,13 @@ fn product(
     }
     // A numeric coefficient is distributed over a sum so that like terms on
     // both sides of a parenthesis can meet: 2*(x + y) - 2*x.
-    if let [(base, exp)] = groups.as_slice()
+    if let [
+        Group {
+            key: base,
+            value: exp,
+            ..
+        },
+    ] = groups.as_slice()
         && let Some(&base) = base.first()
         && exp.is_one()
         && !coeff.is_one()
@@ -382,7 +425,12 @@ fn product(
         return window.new_node(core::ADD, &pieces);
     }
     let mut pieces = Vec::with_capacity(groups.len().saturating_add(1));
-    for (base, exp) in &groups {
+    for Group {
+        key: base,
+        value: exp,
+        ..
+    } in &groups
+    {
         let Some(&base) = base.first() else {
             continue;
         };

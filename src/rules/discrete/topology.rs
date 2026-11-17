@@ -71,8 +71,8 @@
 
 use super::V;
 use super::apply;
-use super::def;
-use super::def_inert;
+use super::def_doc;
+use super::def_inert_doc;
 use super::float;
 use super::floats;
 use super::idx;
@@ -1149,180 +1149,424 @@ fn cubical_euler_characteristic(
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def_inert(i, "sc", Arity::Fixed(1))?;
-    def(i, "sc_complex", Arity::Fixed(1), sc_complex)?;
-    def(i, "sc_dimension", Arity::Fixed(1), sc_dimension)?;
-    def(i, "sc_simplices", Arity::Fixed(2), sc_simplices)?;
-    def(
+    def_inert_doc(
+        i,
+        "sc",
+        Arity::Fixed(1),
+        "Inert simplicial complex wrapper `sc(list(simplex, ...))` where each simplex is a sorted list of integer vertices.",
+    )?;
+    def_doc(
+        i,
+        "sc_complex",
+        Arity::Fixed(1),
+        sc_complex,
+        "Constructs a normalized simplicial complex `sc(...)` closed under faces from a list of simplices.",
+    )?;
+    def_doc(
+        i,
+        "sc_dimension",
+        Arity::Fixed(1),
+        sc_dimension,
+        "Returns the dimension of simplicial complex `K`, or `-1` for the empty complex.",
+    )?;
+    def_doc(
+        i,
+        "sc_simplices",
+        Arity::Fixed(2),
+        sc_simplices,
+        "Returns the list of `k`-simplices in simplicial complex `K`.",
+    )?;
+    def_doc(
         i,
         "sc_simplex_dimension",
         Arity::Fixed(1),
         sc_simplex_dimension,
+        "Returns the dimension `len(s) - 1` of simplex `s`.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_euler_characteristic",
         Arity::Fixed(1),
         sc_euler_characteristic,
+        "Computes the Euler characteristic `sum (-1)^k * |K_k|` of simplicial complex `K`.",
     )?;
-    def(i, "sc_boundary", Arity::Fixed(1), sc_boundary)?;
-    def(i, "sc_boundary_matrix", Arity::Fixed(2), sc_boundary_matrix)?;
-    def(
+    def_doc(
+        i,
+        "sc_boundary",
+        Arity::Fixed(1),
+        sc_boundary,
+        "Computes the oriented boundary chain `list(list((-1)^i, face_i), ...)` of simplex `s`.",
+    )?;
+    def_doc(
+        i,
+        "sc_boundary_matrix",
+        Arity::Fixed(2),
+        sc_boundary_matrix,
+        "Returns the integer boundary matrix `d_k` of simplicial complex `K` with `(k-1)`-simplices as rows and `k`-simplices as columns.",
+    )?;
+    def_doc(
         i,
         "sc_coboundary_matrix",
         Arity::Fixed(2),
         sc_coboundary_matrix,
+        "Returns the integer coboundary matrix `d^k` (transpose of `d_{k+1}`) of simplicial complex `K`.",
     )?;
-    def(i, "sc_chain_boundary", Arity::Fixed(2), sc_chain_boundary)?;
-    def(i, "sc_betti", Arity::Fixed(2), sc_betti)?;
-    def(
+    def_doc(
+        i,
+        "sc_chain_boundary",
+        Arity::Fixed(2),
+        sc_chain_boundary,
+        "Computes the boundary of a `k`-chain in simplicial complex `K`, simplifying coefficients and dropping zero terms.",
+    )?;
+    def_doc(
+        i,
+        "sc_betti",
+        Arity::Fixed(2),
+        sc_betti,
+        "Computes the `k`-th Betti number of simplicial complex `K` over the rationals.",
+    )?;
+    def_doc(
         i,
         "sc_cohomology_betti",
         Arity::Fixed(2),
         sc_cohomology_betti,
+        "Computes the `k`-th cohomology Betti number of simplicial complex `K`.",
     )?;
-    def(i, "sc_verify_boundary", Arity::Fixed(1), sc_verify_boundary)?;
-    def(
+    def_doc(
+        i,
+        "sc_verify_boundary",
+        Arity::Fixed(1),
+        sc_verify_boundary,
+        "Verifies that the boundary operator satisfies `d_k * d_{k+1} = 0` for all dimensions in complex `K`.",
+    )?;
+    def_doc(
         i,
         "sc_verify_coboundary",
         Arity::Fixed(1),
         sc_verify_coboundary,
+        "Verifies that the coboundary operator satisfies `d^{k+1} * d^k = 0` for all dimensions in complex `K`.",
     )?;
-    def(i, "sc_components", Arity::Fixed(1), sc_components)?;
-    def(i, "sc_grid", Arity::Fixed(2), sc_grid)?;
-    def(i, "sc_torus", Arity::Fixed(2), sc_torus)?;
-    def(i, "vietoris_rips", Arity::Variadic, vietoris_rips)?;
-    def(
+    def_doc(
+        i,
+        "sc_components",
+        Arity::Fixed(1),
+        sc_components,
+        "Returns the connected components of the 1-skeleton of simplicial complex `K` as sorted vertex lists.",
+    )?;
+    def_doc(
+        i,
+        "sc_grid",
+        Arity::Fixed(2),
+        sc_grid,
+        "Constructs a triangulated `w` by `h` rectangular grid simplicial complex.",
+    )?;
+    def_doc(
+        i,
+        "sc_torus",
+        Arity::Fixed(2),
+        sc_torus,
+        "Constructs a triangulated `m` by `n` torus simplicial complex (`m, n >= 3`).",
+    )?;
+    def_doc(
+        i,
+        "vietoris_rips",
+        Arity::Variadic,
+        vietoris_rips,
+        "Constructs the Vietoris-Rips simplicial complex `vietoris_rips(points, eps[, max_dim])` for a point cloud at radius `eps` (`max_dim` defaults to `2`).",
+    )?;
+    def_doc(
         i,
         "vietoris_rips_filtration",
         Arity::Fixed(3),
         vietoris_rips_filtration,
+        "Constructs the Vietoris-Rips 1-skeleton filtration `list(list(eps, K), ...)` over `steps + 1` radii up to `max_eps`.",
     )?;
-    def(i, "betti_at_radius", Arity::Fixed(3), betti_at_radius)?;
-    def(i, "persistence", Arity::Fixed(4), persistence)?;
-    def(i, "euclidean_distance", Arity::Fixed(2), euclidean_distance)?;
-    def(i, "sc_homology", Arity::Fixed(2), sc_homology)?;
-    def(i, "sc_homology_all", Arity::Fixed(1), sc_homology_all)?;
-    def(
+    def_doc(
+        i,
+        "betti_at_radius",
+        Arity::Fixed(3),
+        betti_at_radius,
+        "Computes `list(b0, ..., b_max_dim)` of Betti numbers for the Vietoris-Rips complex of `points` at radius `eps`.",
+    )?;
+    def_doc(
+        i,
+        "persistence",
+        Arity::Fixed(4),
+        persistence,
+        "Computes persistence intervals `list(birth, death)` per dimension up to `max_dim` by tracking Betti numbers over `steps + 1` radii up to `max_eps`.",
+    )?;
+    def_doc(
+        i,
+        "euclidean_distance",
+        Arity::Fixed(2),
+        euclidean_distance,
+        "Computes the Euclidean distance between two coordinate lists `p` and `q`.",
+    )?;
+    def_doc(
+        i,
+        "sc_homology",
+        Arity::Fixed(2),
+        sc_homology,
+        "Computes the exact integral homology group `H_k(K; Z)` via Smith normal form as `list(rank, list(torsion...))`.",
+    )?;
+    def_doc(
+        i,
+        "sc_homology_all",
+        Arity::Fixed(1),
+        sc_homology_all,
+        "Computes exact integral homology groups `H_k(K; Z)` for all dimensions `k = 0..dim(K)`.",
+    )?;
+    def_doc(
         i,
         "sc_reduced_homology",
         Arity::Fixed(2),
         sc_reduced_homology,
+        "Computes the reduced integral homology group `H~_k(K; Z)` as `list(rank, list(torsion...))`.",
     )?;
-    def(i, "sc_cohomology", Arity::Fixed(2), sc_cohomology)?;
-    def(i, "sc_homology_mod", Arity::Fixed(3), sc_homology_mod)?;
-    def(
+    def_doc(
+        i,
+        "sc_cohomology",
+        Arity::Fixed(2),
+        sc_cohomology,
+        "Computes the exact integral cohomology group `H^k(K; Z)` via the universal coefficient theorem.",
+    )?;
+    def_doc(
+        i,
+        "sc_homology_mod",
+        Arity::Fixed(3),
+        sc_homology_mod,
+        "Computes `dim H_k(K; Z/p)` of simplicial complex `K` over prime field `Z/p`.",
+    )?;
+    def_doc(
         i,
         "sc_relative_homology",
         Arity::Fixed(3),
         sc_relative_homology,
+        "Computes the exact relative integral homology group `H_k(K, L; Z)` for subcomplex `L` of `K`.",
     )?;
-    def(i, "sc_union", Arity::Fixed(2), sc_union)?;
-    def(i, "sc_intersection", Arity::Fixed(2), sc_intersection)?;
-    def(i, "sc_is_subcomplex", Arity::Fixed(2), sc_is_subcomplex)?;
-    def(i, "sc_skeleton", Arity::Fixed(2), sc_skeleton)?;
-    def(
+    def_doc(
+        i,
+        "sc_union",
+        Arity::Fixed(2),
+        sc_union,
+        "Returns the union `K ∪ L` of two simplicial complexes.",
+    )?;
+    def_doc(
+        i,
+        "sc_intersection",
+        Arity::Fixed(2),
+        sc_intersection,
+        "Returns the intersection `K ∩ L` of two simplicial complexes.",
+    )?;
+    def_doc(
+        i,
+        "sc_is_subcomplex",
+        Arity::Fixed(2),
+        sc_is_subcomplex,
+        "Returns `true` if simplicial complex `L` is a subcomplex of `K`.",
+    )?;
+    def_doc(
+        i,
+        "sc_skeleton",
+        Arity::Fixed(2),
+        sc_skeleton,
+        "Returns the `d`-skeleton of simplicial complex `K` (all simplices of dimension `<= d`).",
+    )?;
+    def_doc(
         i,
         "sc_mayer_vietoris_ranks",
         Arity::Fixed(2),
         sc_mayer_vietoris_ranks,
+        "Computes the ranks of the connecting maps in the Mayer-Vietoris exact sequence for `A` and `B`.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_mayer_vietoris_check",
         Arity::Fixed(2),
         sc_mayer_vietoris_check,
+        "Verifies rank-level exactness and Euler characteristic additivity of the Mayer-Vietoris sequence for `A` and `B`.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_euler_from_betti",
         Arity::Fixed(1),
         sc_euler_from_betti,
+        "Computes the Euler characteristic `sum (-1)^k * b_k` from the Betti numbers of simplicial complex `K`.",
     )?;
-    def(i, "sc_verify_euler", Arity::Fixed(1), sc_verify_euler)?;
-    def(i, "sc_simplex", Arity::Fixed(1), sc_simplex)?;
-    def(i, "sc_sphere", Arity::Fixed(1), sc_sphere)?;
-    def(i, "sc_klein_bottle", Arity::Fixed(2), sc_klein_bottle)?;
-    def(
+    def_doc(
+        i,
+        "sc_verify_euler",
+        Arity::Fixed(1),
+        sc_verify_euler,
+        "Verifies that the alternating sum of Betti numbers equals the alternating simplex count of complex `K`.",
+    )?;
+    def_doc(
+        i,
+        "sc_simplex",
+        Arity::Fixed(1),
+        sc_simplex,
+        "Constructs the standard `n`-simplex simplicial complex on `n + 1` vertices.",
+    )?;
+    def_doc(
+        i,
+        "sc_sphere",
+        Arity::Fixed(1),
+        sc_sphere,
+        "Constructs the `n`-sphere `S^n` as the boundary of the `(n+1)`-simplex.",
+    )?;
+    def_doc(
+        i,
+        "sc_klein_bottle",
+        Arity::Fixed(2),
+        sc_klein_bottle,
+        "Constructs a triangulated `m` by `n` Klein bottle simplicial complex (`m, n >= 3`).",
+    )?;
+    def_doc(
         i,
         "sc_projective_plane",
         Arity::Fixed(1),
         sc_projective_plane,
+        "Constructs a triangulation of the real projective plane `RP^2` (`k = 0` gives the minimal 6-vertex triangulation; `k >= 3` refines the boundary to `2k` edges).",
     )?;
-    def(i, "sc_dunce_cap", Arity::Fixed(1), sc_dunce_cap)?;
-    def(i, "sc_cone", Arity::Fixed(1), sc_cone)?;
-    def(i, "sc_suspension", Arity::Fixed(1), sc_suspension)?;
-    def(i, "sc_join", Arity::Fixed(2), sc_join)?;
-    def(i, "sc_wedge", Arity::Variadic, sc_wedge)?;
-    def(i, "sc_product", Arity::Fixed(2), sc_product)?;
-    def(
+    def_doc(
+        i,
+        "sc_dunce_cap",
+        Arity::Fixed(1),
+        sc_dunce_cap,
+        "Constructs a triangulation of the dunce cap with `k >= 3` edges per boundary arc (contractible but not collapsible).",
+    )?;
+    def_doc(
+        i,
+        "sc_cone",
+        Arity::Fixed(1),
+        sc_cone,
+        "Constructs the cone `CK` over simplicial complex `K`.",
+    )?;
+    def_doc(
+        i,
+        "sc_suspension",
+        Arity::Fixed(1),
+        sc_suspension,
+        "Constructs the suspension `SK` of simplicial complex `K`.",
+    )?;
+    def_doc(
+        i,
+        "sc_join",
+        Arity::Fixed(2),
+        sc_join,
+        "Constructs the simplicial join `K * L` of complexes `K` and `L`.",
+    )?;
+    def_doc(
+        i,
+        "sc_wedge",
+        Arity::Variadic,
+        sc_wedge,
+        "Constructs the wedge sum `sc_wedge(K, L[, u, v])` by identifying vertex `u` of `K` with `v` of `L` (defaulting to smallest vertices).",
+    )?;
+    def_doc(
+        i,
+        "sc_product",
+        Arity::Fixed(2),
+        sc_product,
+        "Constructs the triangulated Cartesian product `K × L` of two simplicial complexes.",
+    )?;
+    def_doc(
         i,
         "sc_fundamental_group",
         Arity::Fixed(1),
         sc_fundamental_group,
+        "Computes a simplified edge-path presentation `list(n, relators)` of the fundamental group `pi_1(K)` for the component of the smallest vertex.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_fundamental_group_raw",
         Arity::Fixed(1),
         sc_fundamental_group_raw,
+        "Computes the unsimplified edge-path presentation `list(n, relators, edges)` of `pi_1(K)` before Tietze simplification.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_pi1_abelianization",
         Arity::Fixed(1),
         sc_pi1_abelianization,
+        "Computes the abelianization of `pi_1(K)` via Smith normal form as `list(rank, list(torsion...))`.",
     )?;
-    def(
+    def_doc(
         i,
         "presentation_abelianization",
         Arity::Fixed(2),
         presentation_abelianization,
+        "Computes the abelianization of a finitely presented group `list(n, relators)` via Smith normal form.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_is_simplicial_map",
         Arity::Fixed(3),
         sc_is_simplicial_map,
+        "Returns `true` if vertex map `f` sends every simplex of `K` to a simplex of `L`.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_induced_homology",
         Arity::Fixed(4),
         sc_induced_homology,
+        "Computes the rational matrix of the induced homomorphism `f_* : H_k(K; Q) -> H_k(L; Q)` for simplicial map `f`.",
     )?;
-    def(
+    def_doc(
         i,
         "sc_induced_homology_rank",
         Arity::Fixed(4),
         sc_induced_homology_rank,
+        "Computes the rank of the induced homomorphism `f_* : H_k(K; Q) -> H_k(L; Q)` for simplicial map `f`.",
     )?;
-    def(
+    def_doc(
         i,
         "persistent_homology",
         Arity::Fixed(2),
         persistent_homology,
+        "Computes persistent homology barcodes over `Z/2` for a filtered complex up to `max_dim`, returning `list(birth, death)` pairs per dimension.",
     )?;
-    def(i, "rips_filtration", Arity::Fixed(3), rips_filtration)?;
-    def(i, "rips_persistence", Arity::Fixed(3), rips_persistence)?;
-    def(
+    def_doc(
+        i,
+        "rips_filtration",
+        Arity::Fixed(3),
+        rips_filtration,
+        "Constructs the Vietoris-Rips filtration of `points` up to diameter `max_eps` and simplex dimension `max_dim + 1`.",
+    )?;
+    def_doc(
+        i,
+        "rips_persistence",
+        Arity::Fixed(3),
+        rips_persistence,
+        "Computes Vietoris-Rips persistence barcodes `H_0 .. H_max_dim` for `points` up to `max_eps`.",
+    )?;
+    def_doc(
         i,
         "rips_persistence_diagram",
         Arity::Fixed(3),
         rips_persistence_diagram,
+        "Computes the Vietoris-Rips persistence diagram for `points` up to `max_eps` and `max_dim` as a flat list of `list(dim, birth, death)`.",
     )?;
-    def(
+    def_doc(
         i,
         "bottleneck_distance",
         Arity::Fixed(2),
         bottleneck_distance,
+        "Computes the bottleneck distance between two persistence diagrams `D1` and `D2` (lists of `list(birth, death)`).",
     )?;
-    def(i, "cubical_betti", Arity::Variadic, cubical_betti)?;
-    def(
+    def_doc(
+        i,
+        "cubical_betti",
+        Arity::Variadic,
+        cubical_betti,
+        "Computes `list(b0, b1)` Betti numbers of a binary image `cubical_betti(image[, 4 or 8])` with 8-connected (default) or 4-connected foreground.",
+    )?;
+    def_doc(
         i,
         "cubical_euler_characteristic",
         Arity::Variadic,
         cubical_euler_characteristic,
+        "Computes the Euler characteristic `b0 - b1` of a binary image `cubical_euler_characteristic(image[, 4 or 8])`.",
     )?;
     Ok(())
 }

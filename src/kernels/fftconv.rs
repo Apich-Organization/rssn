@@ -143,16 +143,26 @@ pub fn convolve(
     fa.iter().take(n).map(|v| v.0 / m as f64).collect()
 }
 
-/// Circular convolution of two equal-length real sequences.
+/// Circular convolution of two real sequences of period
+/// `max(a.len(), b.len())`.
+///
+/// Equal lengths are the usual case. A shorter sequence is zero-padded to
+/// the period, which is the circular convolution of the padded sequences
+/// (and what indexing past its end used to make a panic).
 #[must_use]
 pub fn circular_convolve(
     a: &[f64],
     b: &[f64],
 ) -> Vec<f64> {
-    let n = a.len();
-    let fa = fft(&a.iter().map(|&v| (v, 0.0)).collect::<Vec<_>>(), false);
-    let fb = fft(&b.iter().map(|&v| (v, 0.0)).collect::<Vec<_>>(), false);
-    let prod: Vec<Complex> = (0..n).map(|i| cm(fa[i], fb[i])).collect();
+    let n = a.len().max(b.len());
+    let padded = |x: &[f64]| -> Vec<Complex> {
+        let mut out: Vec<Complex> = x.iter().map(|&v| (v, 0.0)).collect();
+        out.resize(n, (0.0, 0.0));
+        out
+    };
+    let fa = fft(&padded(a), false);
+    let fb = fft(&padded(b), false);
+    let prod: Vec<Complex> = fa.iter().zip(&fb).map(|(&x, &y)| cm(x, y)).collect();
     fft(&prod, true).iter().map(|v| v.0).collect()
 }
 

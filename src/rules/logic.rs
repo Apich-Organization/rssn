@@ -170,16 +170,22 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .with(OpFlags::PREDICATE);
     let and = i.op(OpDescriptor::new("and", Arity::Variadic)
         .flags(ac)
-        .eval(|a| bit(a.iter().all(|&x| is_true(x)))))?;
+        .eval(|a| bit(a.iter().all(|&x| is_true(x))))
+        .doc(
+            "`and(p1, p2, ...)`: variadic logical conjunction, true when all operands are true.",
+        ))?;
     let or = i.op(OpDescriptor::new("or", Arity::Variadic)
         .flags(ac)
-        .eval(|a| bit(a.iter().any(|&x| is_true(x)))))?;
+        .eval(|a| bit(a.iter().any(|&x| is_true(x))))
+        .doc("`or(p1, p2, ...)`: variadic logical disjunction, true when at least one operand is true."))?;
     let xor = i.op(OpDescriptor::new("xor", Arity::Variadic)
         .flags(ac)
-        .eval(|a| bit(a.iter().filter(|&&x| is_true(x)).count() % 2 == 1)))?;
+        .eval(|a| bit(a.iter().filter(|&&x| is_true(x)).count() % 2 == 1))
+        .doc("`xor(p1, p2, ...)`: variadic exclusive-or (parity), true when an odd number of operands are true."))?;
     let not = i.op(OpDescriptor::new("not", Arity::Fixed(1))
         .flags(OpFlags::PREDICATE)
-        .eval(|a| a.first().map_or(f64::NAN, |&x| bit(!is_true(x)))))?;
+        .eval(|a| a.first().map_or(f64::NAN, |&x| bit(!is_true(x))))
+        .doc("`not(p)`: logical negation of `p`."))?;
     // Costlier than their expansions, so extraction prefers and/or/not.
     let implies = i.op(OpDescriptor::new("implies", Arity::Fixed(2))
         .flags(OpFlags::PREDICATE)
@@ -189,7 +195,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 | [p, q] => bit(!is_true(*p) || is_true(*q)),
                 | _ => f64::NAN,
             }
-        }))?;
+        })
+        .doc("`implies(p, q)`: material implication `p => q`, equivalent to `or(not(p), q)`."))?;
     let iff = i.op(OpDescriptor::new("iff", Arity::Fixed(2))
         .flags(OpFlags::PREDICATE)
         .cost(30)
@@ -198,9 +205,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 | [p, q] => bit(is_true(*p) == is_true(*q)),
                 | _ => f64::NAN,
             }
-        }))?;
-    let tru = i.op(OpDescriptor::new("true", Arity::Fixed(0)).eval(|_| 1.0))?;
-    let fals = i.op(OpDescriptor::new("false", Arity::Fixed(0)).eval(|_| 0.0))?;
+        })
+        .doc("`iff(p, q)`: logical biconditional `p <=> q`, true when `p` and `q` have the same truth value."))?;
+    let tru = i.op(OpDescriptor::new("true", Arity::Fixed(0))
+        .eval(|_| 1.0)
+        .doc("`true`: Boolean truth constant."))?;
+    let fals = i.op(OpDescriptor::new("false", Arity::Fixed(0))
+        .eval(|_| 0.0)
+        .doc("`false`: Boolean falsity constant."))?;
     let ops = Ops {
         and,
         or,
@@ -218,45 +230,100 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let ge: EvalFn = |a| compare2(a, |x, y| x >= y);
     let ne: EvalFn = |a| compare2(a, |x, y| x.total_cmp(&y).is_ne());
     let mut comparisons = Vec::new();
-    for (name, eval, cmp) in [
-        ("lt", lt, Cmp::Lt),
-        ("le", le, Cmp::Le),
-        ("gt", gt, Cmp::Gt),
-        ("ge", ge, Cmp::Ge),
-        ("ne", ne, Cmp::Ne),
+    for (name, eval, cmp, doc) in [
+        (
+            "lt",
+            lt,
+            Cmp::Lt,
+            "`lt(a, b)`: strict less-than comparison `a < b`.",
+        ),
+        (
+            "le",
+            le,
+            Cmp::Le,
+            "`le(a, b)`: less-than-or-equal comparison `a <= b`.",
+        ),
+        (
+            "gt",
+            gt,
+            Cmp::Gt,
+            "`gt(a, b)`: strict greater-than comparison `a > b`.",
+        ),
+        (
+            "ge",
+            ge,
+            Cmp::Ge,
+            "`ge(a, b)`: greater-than-or-equal comparison `a >= b`.",
+        ),
+        (
+            "ne",
+            ne,
+            Cmp::Ne,
+            "`ne(a, b)`: inequality comparison `a != b`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(2))
             .flags(OpFlags::PREDICATE)
-            .eval(eval))?;
+            .eval(eval)
+            .doc(doc))?;
         comparisons.push((op, cmp));
     }
     comparisons.push((core::EQ, Cmp::Eq));
     i.kernel("logic/compare", Tier::Normalize, Compare { comparisons });
 
-    let request = |name: &str| {
+    let request = |name: &str, doc: &str| {
         OpDescriptor::new(name, Arity::Fixed(1))
             .flags(OpFlags::HEAVY)
             .cost(100)
+            .doc(doc)
     };
     let identity: EvalFn = |a| a.first().copied().unwrap_or(f64::NAN);
     let mut forms = Vec::new();
-    for (name, form) in [
-        ("cnf", Form::Cnf),
-        ("dnf", Form::Dnf),
-        ("nnf", Form::Nnf),
-        ("simplify_logic", Form::Minimal),
+    for (name, form, doc) in [
+        (
+            "cnf",
+            Form::Cnf,
+            "`cnf(formula)`: converts propositional `formula` to conjunctive normal form.",
+        ),
+        (
+            "dnf",
+            Form::Dnf,
+            "`dnf(formula)`: converts propositional `formula` to disjunctive normal form.",
+        ),
+        (
+            "nnf",
+            Form::Nnf,
+            "`nnf(formula)`: converts propositional `formula` to negation normal form.",
+        ),
+        (
+            "simplify_logic",
+            Form::Minimal,
+            "`simplify_logic(formula)`: simplifies propositional `formula` using Quine-McCluskey minimization.",
+        ),
     ] {
-        let op = i.op(request(name).eval(identity))?;
+        let op = i.op(request(name, doc).eval(identity))?;
         // A formula in another normal form is still a formula.
         i.dim(op, DimRule::NonMetric);
         forms.push((op, form));
     }
-    for (name, form) in [
-        ("satisfiable", Form::Satisfiable),
-        ("tautology", Form::Tautology),
-        ("truth_table", Form::Table),
+    for (name, form, doc) in [
+        (
+            "satisfiable",
+            Form::Satisfiable,
+            "`satisfiable(formula)`: decides whether propositional `formula` has at least one satisfying assignment (`true` or `false`).",
+        ),
+        (
+            "tautology",
+            Form::Tautology,
+            "`tautology(formula)`: decides whether propositional `formula` holds under all variable assignments (`true` or `false`).",
+        ),
+        (
+            "truth_table",
+            Form::Table,
+            "`truth_table(formula)`: returns the truth table of `formula` as a list of variable-assignment rows and outputs.",
+        ),
     ] {
-        let op = i.op(request(name))?;
+        let op = i.op(request(name, doc))?;
         // A decision, a table of truth values or a model is not a scalar.
         i.dim(op, DimRule::NonMetric);
         forms.push((op, form));
@@ -2359,22 +2426,78 @@ fn install_ext(
     ops: Ops,
 ) -> Result<(), RuleError> {
     let mut kinds = Vec::new();
-    for (name, arity, kind) in [
-        ("count_models", 1, Kind::Count),
-        ("sat_model", 1, Kind::Model),
-        ("all_models", 1, Kind::AllModels),
-        ("bdd", 1, Kind::Diagram),
-        ("bdd_size", 1, Kind::Size),
-        ("exists", 2, Kind::Exists),
-        ("forall", 2, Kind::Forall),
-        ("restrict", 3, Kind::Restrict),
-        ("entails", 2, Kind::Entails),
-        ("equivalent", 2, Kind::Equivalent),
-        ("prime_implicants", 1, Kind::Primes),
+    for (name, arity, kind, doc) in [
+        (
+            "count_models",
+            1,
+            Kind::Count,
+            "`count_models(formula)`: counts the exact number of satisfying Boolean assignments of `formula` via ROBDD.",
+        ),
+        (
+            "sat_model",
+            1,
+            Kind::Model,
+            "`sat_model(formula)`: returns one satisfying assignment for `formula` (or `false` if unsatisfiable).",
+        ),
+        (
+            "all_models",
+            1,
+            Kind::AllModels,
+            "`all_models(formula)`: enumerates all satisfying Boolean assignments of `formula`.",
+        ),
+        (
+            "bdd",
+            1,
+            Kind::Diagram,
+            "`bdd(formula)`: constructs the canonical reduced ordered binary decision diagram (ROBDD) representation of `formula`.",
+        ),
+        (
+            "bdd_size",
+            1,
+            Kind::Size,
+            "`bdd_size(formula)`: returns the number of decision nodes in the ROBDD of `formula`.",
+        ),
+        (
+            "exists",
+            2,
+            Kind::Exists,
+            "`exists(var_or_list, formula)`: existentially quantifies Boolean variable(s) out of `formula`.",
+        ),
+        (
+            "forall",
+            2,
+            Kind::Forall,
+            "`forall(var_or_list, formula)`: universally quantifies Boolean variable(s) out of `formula`.",
+        ),
+        (
+            "restrict",
+            3,
+            Kind::Restrict,
+            "`restrict(formula, var, val)`: cofactors `formula` by assigning Boolean constant `val` (`true`/`false`) to `var`.",
+        ),
+        (
+            "entails",
+            2,
+            Kind::Entails,
+            "`entails(premise, conclusion)`: decides whether `premise` semantically entails `conclusion` (`true` or `false`).",
+        ),
+        (
+            "equivalent",
+            2,
+            Kind::Equivalent,
+            "`equivalent(f, g)`: decides whether propositional formulas `f` and `g` are logically equivalent (`true` or `false`).",
+        ),
+        (
+            "prime_implicants",
+            1,
+            Kind::Primes,
+            "`prime_implicants(formula)`: computes the list of prime implicants of propositional `formula`.",
+        ),
     ] {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         // Counting is a pure number; every other extension returns a formula,
         // a model or a list of them.
         let rule = match kind {

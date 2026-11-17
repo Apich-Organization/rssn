@@ -44,7 +44,8 @@ pub struct GpeParameters {
 /// Finds the ground state of a 2D BEC by evolving the GPE in imaginary time.
 ///
 /// # Returns
-/// The final wave function `psi` representing the ground state.
+/// The ground-state probability density `|psi|^2` on the grid (rows are
+/// `y`, columns `x`), normalised physically: `sum(|psi|^2) dx dy = 1`.
 ///
 /// # Errors
 ///

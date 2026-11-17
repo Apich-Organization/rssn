@@ -283,18 +283,39 @@ pub(super) fn spheroidal_mode(args: &[f64]) -> f64 {
 /// (`f64` in, `f64` out), so they are dimensionless; a dimensionful charge or
 /// coordinate belongs to a symbolic wrapper, not to these maps.
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    for (name, arity, eval) in [
+    for (name, arity, eval, doc) in [
         (
             "coulomb_eigen",
             Arity::Fixed(3),
             coulomb_eigen as fn(&[f64]) -> f64,
+            "`coulomb_eigen(l, Z, n)`: numeric bound-state energy eigenvalue `E_n` of the radial Coulomb operator with angular momentum `l` and charge `Z`.",
         ),
-        ("coulomb_mode", Arity::Fixed(4), coulomb_mode),
-        ("coulomb_wave", Arity::Fixed(4), coulomb_wave),
-        ("spheroidal_eigen", Arity::Fixed(3), spheroidal_eigen),
-        ("spheroidal_mode", Arity::Fixed(4), spheroidal_mode),
+        (
+            "coulomb_mode",
+            Arity::Fixed(4),
+            coulomb_mode,
+            "`coulomb_mode(l, Z, n, r)`: normalized numeric bound-state radial Coulomb eigenfunction evaluated at radius `r`.",
+        ),
+        (
+            "coulomb_wave",
+            Arity::Fixed(4),
+            coulomb_wave,
+            "`coulomb_wave(l, eta, k, r)`: regular Coulomb continuum wavefunction `F_l(eta, k * r)`.",
+        ),
+        (
+            "spheroidal_eigen",
+            Arity::Fixed(3),
+            spheroidal_eigen,
+            "`spheroidal_eigen(m, n, gamma)`: numeric angular spheroidal eigenvalue `lambda_{mn}(gamma)`.",
+        ),
+        (
+            "spheroidal_mode",
+            Arity::Fixed(4),
+            spheroidal_mode,
+            "`spheroidal_mode(m, n, gamma, x)`: normalized angular spheroidal wave function `S_{mn}(gamma, x)`.",
+        ),
     ] {
-        let op = i.op(OpDescriptor::new(name, arity).eval(eval))?;
+        let op = i.op(OpDescriptor::new(name, arity).eval(eval).doc(doc))?;
         i.dim(op, DimRule::Dimensionless);
     }
     Ok(())

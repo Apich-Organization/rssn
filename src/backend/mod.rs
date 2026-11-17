@@ -26,7 +26,6 @@
 //! `dyn Compiled`, so switching executors never touches them.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -472,7 +471,7 @@ impl Backend for Interpreter {
             instrs: Vec::new(),
             args: Vec::new(),
         };
-        let mut slot: HashMap<NodeId, u32> = HashMap::new();
+        let mut slot: crate::graph::id::FastMap<NodeId, u32> = crate::graph::id::FastMap::default();
         let mut stack = vec![(root, false)];
         while let Some((node, expanded)) = stack.pop() {
             if slot.contains_key(&node) {

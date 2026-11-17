@@ -52,6 +52,7 @@ use super::rule::RuleSet;
 use super::rule::Tier;
 use super::store::Ball;
 use super::store::Graph;
+use super::window::RewriteIndex;
 use super::window::TreeWindow;
 use super::window::WindowPass;
 
@@ -199,6 +200,99 @@ struct RuleState {
     /// Graph epoch of this rewrite's last complete search, if any; see
     /// [`Frontier`].
     searched: Option<u64>,
+}
+
+/// The per-rule state of one run, materialised only for rules that had
+/// something to look at.
+///
+/// A standard program holds about 1500 rules and a request's candidates
+/// reach a few dozen of them; every run (and every nested `Cx::simplify`
+/// run) used to allocate, initialise and drop a state for all of them.
+/// A rule without an entry is in the default state: never banned, never
+/// searched, nothing applied.
+///
+/// Rules are looked up on every sweep, so the table is a dense array of
+/// `u32` slots (one per rule, 4 bytes each) into a small vector of the
+/// states actually created.
+struct RuleStates {
+    slots: Vec<u32>,
+    states: Vec<(usize, RuleState)>,
+}
+
+impl RuleStates {
+    const EMPTY: u32 = u32::MAX;
+
+    fn new(rules: usize) -> Self {
+        Self {
+            slots: vec![Self::EMPTY; rules],
+            states: Vec::new(),
+        }
+    }
+
+    fn get(
+        &self,
+        rule: usize,
+    ) -> Option<&RuleState> {
+        let slot = *self.slots.get(rule)?;
+        self.states.get(slot as usize).map(|(_, state)| state)
+    }
+
+    /// The state of `rule`, created on first use.
+    fn entry(
+        &mut self,
+        rule: usize,
+    ) -> &mut RuleState {
+        if rule >= self.slots.len() {
+            self.slots.resize(rule.saturating_add(1), Self::EMPTY);
+        }
+        let known = self
+            .slots
+            .get(rule)
+            .copied()
+            .filter(|&slot| slot != Self::EMPTY)
+            .map(|slot| slot as usize);
+        let index = known.unwrap_or_else(|| {
+            let index = self.states.len();
+            self.states.push((rule, RuleState::default()));
+            if let Some(slot) = self.slots.get_mut(rule) {
+                *slot = u32::try_from(index).unwrap_or(Self::EMPTY);
+            }
+            index
+        });
+        // `index` is a valid position: either recorded by an earlier push
+        // or the push just above.
+        match self.states.get_mut(index) {
+            | Some((_, state)) => state,
+            | None => unreachable!("rule state slot {index} out of range"),
+        }
+    }
+
+    fn banned_until(
+        &self,
+        rule: usize,
+    ) -> usize {
+        self.get(rule).map_or(0, |s| s.banned_until)
+    }
+
+    fn any_banned_after(
+        &self,
+        iteration: usize,
+    ) -> bool {
+        self.states.iter().any(|(_, s)| s.banned_until > iteration)
+    }
+
+    /// `(rule, applied)` for every rule that changed the graph, in program
+    /// order.
+    fn applied(&self) -> Vec<(usize, usize)> {
+        let mut out: Vec<(usize, usize)> = self
+            .states
+            .iter()
+            .filter(|(_, s)| s.applied > 0)
+            .map(|&(rule, ref s)| (rule, s.applied))
+            .collect();
+        out.sort_unstable();
+        out
+    }
 }
 
 /// Incremental (semi-naive) matching.
@@ -383,29 +477,50 @@ fn looks_reduced(
     graph: &Graph,
     node: NodeId,
     depth: u8,
+    memo: &mut ReducedMemo,
 ) -> bool {
     if depth == 0 {
         return true;
     }
+    let class = graph.find(node);
+    if let Some(&known) = memo.map.get(&(class.raw(), depth)) {
+        return known;
+    }
     let closed = ClosedForm;
-    graph.enodes(graph.find(node)).any(|n| {
+    let answer = graph.enodes(class).any(|n| {
         closed.cost(graph, n).is_some()
             && graph
                 .children(n)
                 .iter()
-                .all(|&c| looks_reduced(graph, c, depth.saturating_sub(1)))
-    })
+                .all(|&c| looks_reduced(graph, c, depth.saturating_sub(1), memo))
+    });
+    memo.map.insert((class.raw(), depth), answer);
+    answer
+}
+
+/// Memo of [`looks_reduced`] by `(class, depth)`, valid for one graph
+/// revision: the answer reads only class members and operator flags, which
+/// change only through unions (each of which bumps the revision).
+#[derive(Default)]
+struct ReducedMemo {
+    revision: u64,
+    map: super::id::FastMap<(u32, u8), bool>,
 }
 
 /// How many arguments of `node` look fully reduced.
 fn reduced_arguments(
     graph: &Graph,
     node: NodeId,
+    memo: &mut ReducedMemo,
 ) -> usize {
+    if memo.revision != graph.revision() {
+        memo.revision = graph.revision();
+        memo.map.clear();
+    }
     graph
         .children(node)
         .iter()
-        .filter(|&&c| looks_reduced(graph, c, 4))
+        .filter(|&&c| looks_reduced(graph, c, 4, memo))
         .count()
 }
 
@@ -425,6 +540,142 @@ pub struct Engine {
     /// [`KernelManifest::build`]: crate::kernel::manifest::KernelManifest::build
     units: Option<Arc<dyn crate::dim::UnitRegistry + Send + Sync>>,
     manifest: std::sync::Arc<crate::kernel::manifest::KernelManifest>,
+    /// The program grouped by tier, built on first use and dropped whenever
+    /// the program can change; see [`TierIndex`].
+    index: std::sync::OnceLock<Arc<TierIndex>>,
+}
+
+/// A set of operators, one bit per operator id.
+#[derive(Default)]
+struct OpSet {
+    words: Vec<u64>,
+}
+
+impl OpSet {
+    fn insert(
+        &mut self,
+        op: OpId,
+    ) {
+        let index = op.index();
+        let word = index / 64;
+        if word >= self.words.len() {
+            self.words.resize(word.saturating_add(1), 0);
+        }
+        if let Some(bits) = self.words.get_mut(word) {
+            *bits |= 1_u64 << (index % 64);
+        }
+    }
+
+    fn contains(
+        &self,
+        op: OpId,
+    ) -> bool {
+        let index = op.index();
+        self.words
+            .get(index / 64)
+            .is_some_and(|bits| bits & (1_u64 << (index % 64)) != 0)
+    }
+}
+
+/// One step of a tier's sweep over the program.
+#[derive(Debug)]
+enum Segment {
+    /// A maximal run of consecutive rewrites of the tier (rule indices),
+    /// searched in one batch.
+    Rewrites(std::ops::Range<usize>),
+    /// A kernel at this rule index.
+    Kernel(usize),
+}
+
+/// The operators a kernel wants, listed once.
+#[derive(Debug, Default)]
+struct KernelOps {
+    /// The kernel looks at every operator.
+    all: bool,
+    ops: Vec<OpId>,
+}
+
+/// The program's rules grouped by tier, with every kernel's operator list.
+///
+/// `apply_tier` runs many times per request (and again inside every nested
+/// `Cx::simplify`), while a standard program holds thousands of rules of
+/// which a request's candidates touch a handful. Walking the whole rule list
+/// and asking each kernel for a freshly allocated operator list on every
+/// call was most of the engine's own overhead.
+#[derive(Debug, Default)]
+struct TierIndex {
+    /// Number of rules the index was built from.
+    rules: usize,
+    /// Segments of `Reduce`, `Normalize` and `Explore`, in program order.
+    tiers: [Vec<Segment>; 3],
+    /// Operators of the kernel at each rule index (empty for rewrites).
+    kernel_ops: Vec<KernelOps>,
+}
+
+impl TierIndex {
+    fn build(program: &Program) -> Self {
+        let rules = &program.rules;
+        let mut tiers: [Vec<Segment>; 3] = Default::default();
+        let mut at = 0;
+        while let Some(rule) = rules.get(at) {
+            let slot = tier_slot(rule.tier);
+            if matches!(rule.action, Action::Rewrite(_)) {
+                // Consecutive in the whole program: a rule of another tier
+                // ends the run, exactly as the sweep always treated it.
+                let mut end = at;
+                while rules
+                    .get(end)
+                    .is_some_and(|r| r.tier == rule.tier && matches!(r.action, Action::Rewrite(_)))
+                {
+                    end += 1;
+                }
+                if let Some(segments) = tiers.get_mut(slot) {
+                    segments.push(Segment::Rewrites(at..end));
+                }
+                at = end;
+            } else {
+                if let Some(segments) = tiers.get_mut(slot) {
+                    segments.push(Segment::Kernel(at));
+                }
+                at += 1;
+            }
+        }
+        let kernel_ops = rules
+            .iter()
+            .map(|rule| {
+                match &rule.action {
+                    | Action::Kernel(kernel) => {
+                        let ops = kernel.ops();
+                        KernelOps {
+                            all: ops.contains(&OpId::NONE),
+                            ops,
+                        }
+                    },
+                    | Action::Rewrite(_) => KernelOps::default(),
+                }
+            })
+            .collect();
+        Self {
+            rules: rules.len(),
+            tiers,
+            kernel_ops,
+        }
+    }
+
+    fn segments(
+        &self,
+        tier: Tier,
+    ) -> &[Segment] {
+        self.tiers.get(tier_slot(tier)).map_or(&[], Vec::as_slice)
+    }
+}
+
+const fn tier_slot(tier: Tier) -> usize {
+    match tier {
+        | Tier::Reduce => 0,
+        | Tier::Normalize => 1,
+        | Tier::Explore => 2,
+    }
 }
 
 impl std::fmt::Debug for Engine {
@@ -438,6 +689,7 @@ impl std::fmt::Debug for Engine {
             .field("plugins", &self.plugins)
             .field("units", &self.units.as_ref().map(|_| "<session registry>"))
             .field("manifest", &self.manifest)
+            .field("index", &self.index.get().is_some())
             .finish()
     }
 }
@@ -465,6 +717,7 @@ impl Engine {
         graph: &mut Graph,
         sets: &[RuleSet],
     ) -> Result<(), RuleError> {
+        self.index = std::sync::OnceLock::new();
         for set in sets {
             set.install_into(graph, &mut self.program)?;
             if !self.sets.iter().any(|s| s.name() == set.name()) {
@@ -479,8 +732,23 @@ impl Engine {
     ///
     /// Call [`Engine::refresh_manifest`] afterwards so that the new
     /// operators appear in the manifest.
-    pub const fn program_mut(&mut self) -> &mut Program {
+    pub fn program_mut(&mut self) -> &mut Program {
+        self.index = std::sync::OnceLock::new();
         &mut self.program
+    }
+
+    /// The tier index of the current program (see [`TierIndex`]).
+    fn tier_index(&self) -> Arc<TierIndex> {
+        let cached = self
+            .index
+            .get_or_init(|| Arc::new(TierIndex::build(&self.program)));
+        if cached.rules == self.program.rules.len() {
+            Arc::clone(cached)
+        } else {
+            // `Program::rules` is public: a program changed behind the
+            // engine's back gets a fresh index rather than a stale one.
+            Arc::new(TierIndex::build(&self.program))
+        }
     }
 
     /// Records a plugin's declaration, so that it appears in the manifest.
@@ -565,15 +833,11 @@ impl Engine {
         }
         let start = Instant::now();
         let unions_at_start = graph.union_count();
-        let mut states: Vec<RuleState> = self
-            .program
-            .rules
-            .iter()
-            .map(|_| RuleState::default())
-            .collect();
+        let mut states = RuleStates::new(self.program.rules.len());
         let mut windowed: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let mut seen: super::id::FastMap<NodeId, u64> = super::id::FastMap::default();
         let normalizing: Vec<&Rewrite> = self.rewrites_of(Tier::Normalize);
+        let normalizing_index = RewriteIndex::new(&normalizing);
         let exploring: Vec<&Rewrite> = self.rewrites_of(Tier::Explore);
         let passes: Vec<&dyn WindowPass> = self.program.passes.iter().map(|p| &**p).collect();
 
@@ -634,6 +898,7 @@ impl Engine {
                 roots,
                 budget,
                 &normalizing,
+                &normalizing_index,
                 &exploring,
                 &passes,
                 &mut windowed,
@@ -685,7 +950,7 @@ impl Engine {
             if !progress {
                 // Banned rules may still have work to do; a run is only
                 // saturated when none is waiting.
-                if states.iter().any(|s| s.banned_until > iteration) {
+                if states.any_banned_after(iteration) {
                     continue;
                 }
                 stop = Stop::Saturated;
@@ -743,13 +1008,13 @@ impl Engine {
             stop,
             iterations,
             unions: graph.union_count().saturating_sub(unions_at_start),
-            applied: self
-                .program
-                .rules
-                .iter()
-                .zip(&states)
-                .filter(|(_, s)| s.applied > 0)
-                .map(|(r, s)| (Arc::clone(&r.name), s.applied))
+            applied: states
+                .applied()
+                .into_iter()
+                .filter_map(|(rule, applied)| {
+                    let rule = self.program.rules.get(rule)?;
+                    Some((Arc::clone(&rule.name), applied))
+                })
                 .collect(),
             solved,
         }
@@ -759,10 +1024,17 @@ impl Engine {
         &self,
         tier: Tier,
     ) -> Vec<&Rewrite> {
-        self.program
-            .rules
+        let index = self.tier_index();
+        index
+            .segments(tier)
             .iter()
-            .filter(|r| r.tier == tier)
+            .filter_map(|segment| {
+                match segment {
+                    | Segment::Rewrites(span) => self.program.rules.get(span.clone()),
+                    | Segment::Kernel(_) => None,
+                }
+            })
+            .flatten()
             .filter_map(|r| {
                 match &r.action {
                     | Action::Rewrite(rw) => Some(rw),
@@ -783,89 +1055,90 @@ impl Engine {
         tier: Tier,
         iteration: usize,
         budget: &Budget,
-        states: &mut [RuleState],
+        states: &mut RuleStates,
         seen: &mut super::id::FastMap<NodeId, u64>,
     ) -> bool {
-        if !self.program.rules.iter().any(|r| r.tier == tier) {
+        let index = self.tier_index();
+        let segments = index.segments(tier);
+        if segments.is_empty() {
             return false;
         }
         let incremental = Frontier::enabled();
         let heavy =
             |graph: &Graph, node: NodeId| graph.ops().get(graph.op(node)).flags.has(OpFlags::HEAVY);
         let mut candidates: BTreeMap<OpId, Vec<NodeId>> = BTreeMap::new();
+        // Which operators have candidates, as a bit set: every kernel of the
+        // tier asks, and most of them find none.
+        let mut present = OpSet::default();
         for class in reachable(graph, roots) {
             if crate::cancellation::is_cancelled() {
                 return false;
             }
             // A request that already has an answer is not reduced again
             // through its other spellings.
-            if tier == Tier::Reduce && graph.enodes(class).any(|n| !heavy(graph, n)) {
-                continue;
-            }
-            // Rules have nothing to gain on a class already equal to a
-            // literal (see `reachable`).
-            if graph.enodes(class).any(|n| graph.op(n) == core::LIT) {
+            if tier == Tier::Reduce {
+                // (A literal is not heavy, so this also covers the literal
+                // test below.)
+                if graph.enodes(class).any(|n| !heavy(graph, n)) {
+                    continue;
+                }
+            } else if graph.enodes(class).any(|n| graph.op(n) == core::LIT) {
+                // Rules have nothing to gain on a class already equal to a
+                // literal (see `reachable`).
                 continue;
             }
             let epoch = graph.epoch();
             for enode in graph.enodes(class) {
-                candidates.entry(graph.op(enode)).or_default().push(enode);
+                let op = graph.op(enode);
+                present.insert(op);
+                candidates.entry(op).or_default().push(enode);
                 seen.entry(enode).or_insert(epoch);
             }
         }
         let mut changed = false;
         let rules = &self.program.rules;
-        let mut at = 0;
-        while at < rules.len() {
+        for segment in segments {
             if crate::cancellation::is_cancelled() {
                 return changed;
-            }
-            let Some(rule) = rules.get(at) else { break };
-            if rule.tier != tier {
-                at += 1;
-                continue;
             }
             // A maximal run of consecutive rewrites of this tier is searched
             // in one batch against the frozen graph (egg's scheme) and then
             // applied in program order; kernels keep their place.
-            if matches!(rule.action, Action::Rewrite(_)) {
-                let mut end = at;
-                while rules
-                    .get(end)
-                    .is_some_and(|r| r.tier == tier && matches!(r.action, Action::Rewrite(_)))
-                {
-                    end += 1;
-                }
-                let run: Vec<(usize, &Rewrite)> = (at..end)
+            if let Segment::Rewrites(span) = segment {
+                let run: Vec<(usize, &Rewrite)> = span
+                    .clone()
                     .filter_map(|i| {
                         let rule = rules.get(i)?;
-                        let state = states.get(i)?;
                         match &rule.action {
-                            | Action::Rewrite(rw) if state.banned_until <= iteration => {
+                            | Action::Rewrite(rw) if states.banned_until(i) <= iteration => {
                                 Some((i, rw))
                             },
                             | _ => None,
                         }
                     })
                     .collect();
-                at = end;
                 // The nodes each rewrite must search: all candidates of its
                 // trigger, minus (incrementally) those whose neighbourhood
                 // is unchanged since its last complete search.
                 let searched_at = graph.epoch();
                 let mut frontier = Frontier::default();
-                let todo: Vec<Option<Vec<NodeId>>> = run
+                // A full search borrows the candidate list; only an
+                // incremental one builds its own (filtered) list.
+                let todo: Vec<Option<std::borrow::Cow<'_, [NodeId]>>> = run
                     .iter()
                     .map(|&(i, rw)| {
+                        if !present.contains(rw.trigger()) {
+                            return None;
+                        }
                         let nodes = candidates.get(&rw.trigger())?;
                         let since = states.get(i).and_then(|s| s.searched);
                         let Some(since) =
                             since.filter(|_| incremental && rw.guards.iter().all(local_guard))
                         else {
-                            return Some(nodes.clone());
+                            return Some(std::borrow::Cow::Borrowed(nodes.as_slice()));
                         };
                         let depth = rw.lhs.depth();
-                        Some(
+                        Some(std::borrow::Cow::Owned(
                             nodes
                                 .iter()
                                 .copied()
@@ -874,15 +1147,18 @@ impl Engine {
                                         || frontier.node(graph, n, depth) > since
                                 })
                                 .collect(),
-                        )
+                        ))
                     })
                     .collect();
-                let work: usize = todo.iter().map(|t| t.as_ref().map_or(0, Vec::len)).sum();
+                let work: usize = todo.iter().map(|t| t.as_ref().map_or(0, |n| n.len())).sum();
                 let found = {
                     let frozen: &Graph = graph;
-                    let states_ro: &[RuleState] = states;
+                    let states_ro: &RuleStates = states;
                     let cancellation = crate::cancellation::current();
-                    let search = |(&(i, rw), nodes): (&(usize, &Rewrite), &Option<Vec<NodeId>>)| {
+                    let search = |(&(i, rw), nodes): (
+                        &(usize, &Rewrite),
+                        &Option<std::borrow::Cow<'_, [NodeId]>>,
+                    )| {
                         let _scope = crate::cancellation::install_optional(cancellation.clone());
                         let nodes = nodes.as_ref()?;
                         let times = states_ro.get(i).map_or(0, |s| s.times_banned);
@@ -904,9 +1180,10 @@ impl Engine {
                     if crate::cancellation::is_cancelled() {
                         return changed;
                     }
-                    let (Some(result), Some(state)) = (result, states.get_mut(i)) else {
+                    let Some(result) = result else {
                         continue;
                     };
+                    let state = states.entry(i);
                     match result {
                         | Search::Banned => {
                             let shift = state.times_banned.min(16);
@@ -933,22 +1210,34 @@ impl Engine {
                 }
                 continue;
             }
-            let Some(state) = states.get_mut(at) else {
+            let Segment::Kernel(at) = *segment else {
+                continue;
+            };
+            let Some(rule) = rules.get(at) else {
                 break;
             };
-            at += 1;
-            if state.banned_until > iteration {
+            if states.banned_until(at) > iteration {
                 continue;
             }
+            // The kernel's operators were listed once per program; a kernel
+            // none of whose operators occurs among the candidates has no
+            // node to look at, so it costs one lookup per operator.
+            let Some(wanted) = index.kernel_ops.get(at) else {
+                continue;
+            };
+            if !wanted.all && !wanted.ops.iter().any(|&op| present.contains(op)) {
+                continue;
+            }
+            let state = states.entry(at);
             match &rule.action {
                 | Action::Rewrite(_) => {},
                 | Action::Kernel(kernel) => {
                     let revisit = kernel.revisit();
-                    let wanted = kernel.ops();
-                    let nodes: Vec<NodeId> = if wanted.contains(&OpId::NONE) {
+                    let nodes: Vec<NodeId> = if wanted.all {
                         candidates.values().flatten().copied().collect()
                     } else {
                         wanted
+                            .ops
                             .iter()
                             .filter_map(|op| candidates.get(op))
                             .flatten()
@@ -959,12 +1248,16 @@ impl Engine {
                     // Two-phase kernels: prepare every eligible node, run the
                     // heavy parts in parallel, commit in node order.
                     let mut staged: Vec<Staged> = Vec::new();
+                    let mut memo = ReducedMemo {
+                        revision: graph.revision(),
+                        map: super::id::FastMap::default(),
+                    };
                     for node in nodes {
                         if crate::cancellation::is_cancelled() {
                             return changed;
                         }
                         if !revisit {
-                            let ready = reduced_arguments(graph, node);
+                            let ready = reduced_arguments(graph, node, &mut memo);
                             match state.visited.get(&node) {
                                 | Some(&seen) if seen >= ready => continue,
                                 | _ => {
@@ -1052,6 +1345,7 @@ impl Engine {
         roots: &[NodeId],
         budget: &Budget,
         normalizing: &[&Rewrite],
+        normalizing_index: &RewriteIndex<'_>,
         exploring: &[&Rewrite],
         passes: &[&dyn WindowPass],
         done: &mut super::id::FastMap<NodeId, u64>,
@@ -1069,7 +1363,7 @@ impl Engine {
             if crate::cancellation::is_cancelled() {
                 return false;
             }
-            if !root_classes.contains(&class) && graph.parents(class).len() <= 1 {
+            if !root_classes.contains(&class) && graph.has_single_parent(class) {
                 // Unshared: some ancestor's window covers it.
                 continue;
             }
@@ -1102,7 +1396,8 @@ impl Engine {
             // graph does not yet know to be in the class it came from.
             changed |= graph.union(origin, term);
             let mut window = TreeWindow::carve(graph, term, budget.window_cells);
-            let mut steps = window.optimize(graph, normalizing, passes, budget.window_steps);
+            let mut steps =
+                window.optimize_with(graph, normalizing_index, passes, budget.window_steps);
             if budget.beam_width > 0 && !exploring.is_empty() {
                 let before = window.cost(graph);
                 let best = window.beam(
@@ -1137,7 +1432,7 @@ fn term_touched(
 ) -> u64 {
     let mut latest = 0;
     let mut stack = vec![term];
-    let mut visited = std::collections::HashSet::new();
+    let mut visited: super::id::FastSet<NodeId> = super::id::FastSet::default();
     while let Some(node) = stack.pop() {
         if !visited.insert(node) {
             continue;

@@ -121,8 +121,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .flags(OpFlags::HEAVY)
             .cost(100)
     };
-    let fftconv = i.op(request("fftconv", 2))?;
-    let interpolate = i.op(request("interpolate", 3))?;
+    let fftconv = i.op(request("fftconv", 2).doc(
+        "`fftconv(a, b)`: linear convolution of two real numeric sequences `a` and `b` via FFT.",
+    ))?;
+    let interpolate = i.op(request("interpolate", 3).doc(
+        "`interpolate(xs, ys, x)`: evaluate the Lagrange interpolating polynomial through `(xs, ys)` at `x`.",
+    ))?;
     // A convolution multiplies the two signals' dimensions; interpolation
     // carries the ordinate's dimension through. Without these the operators
     // would be dimensionally polymorphic by omission, which the coverage test
@@ -134,7 +138,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // wavelets and the dimension-free finite-difference solvers).
     let mut bridged = Vec::new();
     for entry in TABLES.into_iter().flatten() {
-        let op = i.op(request(entry.name, entry.params.len() as u8))?;
+        let op = i.op(request(entry.name, entry.params.len() as u8).doc(entry.doc))?;
         i.dim(op, bridge_dimension(entry.name));
         bridged.push((op, entry.eval));
     }
@@ -144,9 +148,15 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         bridge::Bridge { ops: bridged },
     );
     let heavy = |name: &str, arity: u8| request(name, arity);
-    let oscillatory = i.op(heavy("oscillatory_integral", 7))?;
-    let anderson = i.op(heavy("anderson_fixed_point", 4))?;
-    let newton_cg = i.op(heavy("newton_cg_minimize", 3))?;
+    let oscillatory = i.op(heavy("oscillatory_integral", 7).doc(
+        "`oscillatory_integral(f, g, x, a, b, w, n)`: `list(re, im)` of `int_a^b f(x) exp(i w g(x)) dx` by Levin collocation at `n` Chebyshev points.",
+    ))?;
+    let anderson = i.op(heavy("anderson_fixed_point", 4).doc(
+        "`anderson_fixed_point(g, vars, x0, tol)`: fixed point `x = g(x)` by Anderson acceleration starting from `x0` within tolerance `tol`.",
+    ))?;
+    let newton_cg = i.op(heavy("newton_cg_minimize", 3).doc(
+        "`newton_cg_minimize(f, vars, x0)`: minimiser of `f(vars)` starting from `x0` by trust-region Newton-CG with symbolic gradient and Hessian.",
+    ))?;
     // The unknowns carry dimensions independent of the expression's.
     for op in [oscillatory, anderson, newton_cg] {
         i.dim(op, DimRule::Any);
@@ -163,10 +173,18 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // Initial-value problems with a named integrator. The state keeps the
     // initial state's dimension; the symplectic pair mixes positions and
     // momenta, so it is a container.
-    let ode_solve = i.op(heavy("ode_solve", 8))?;
-    let ode_symplectic = i.op(heavy("ode_symplectic", 8))?;
-    let ode_imex = i.op(heavy("ode_imex", 9))?;
-    let ode_etdrk4 = i.op(heavy("ode_etdrk4", 8))?;
+    let ode_solve = i.op(heavy("ode_solve", 8).doc(
+        "`ode_solve(rhs, vars, t, y0, t0, t1, tol, method)`: `y(t1)` for `y' = rhs(t, y)` with `y(t0) = y0` using `dopri5`, `rosenbrock23`, `radau5`, `bdf`, `sdirk3`, or `exprb32`.",
+    ))?;
+    let ode_symplectic = i.op(heavy("ode_symplectic", 8).doc(
+        "`ode_symplectic(accel, vars, q0, p0, t0, t1, steps, method)`: `list(q, p)` at `t1` for `q' = p`, `p' = accel(q)` using `verlet`, `yoshida4`, `yoshida6`, or `yoshida8`.",
+    ))?;
+    let ode_imex = i.op(heavy("ode_imex", 9).doc(
+        "`ode_imex(f_ex, f_im, vars, t, y0, t0, t1, steps, scheme)`: `y(t1)` for `y' = f_ex + f_im` with explicit `f_ex` and stiff implicit `f_im` using `euler`, `ars222`, or `ars343`.",
+    ))?;
+    let ode_etdrk4 = i.op(heavy("ode_etdrk4", 8).doc(
+        "`ode_etdrk4(L, f, vars, t, u0, t0, t1, steps)`: `u(t1)` for `u' = L u + f(t, u)` by fourth-order exponential time differencing.",
+    ))?;
     i.dim(ode_solve, DimRule::Same(3));
     i.dim(ode_symplectic, DimRule::Container);
     i.dim(ode_imex, DimRule::Same(4));

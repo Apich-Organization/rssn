@@ -130,6 +130,8 @@ num-traits = "0.2"
 num-integer = "0.1"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
+gif = "0.13"
+roxmltree = "0.20"
 # Every byte RSSN writes or reads goes through `bincode-next`: it is ours, it
 # has a frozen bincode format and a frozen high-speed CBOR encoder, and it is
 # the only wire format the kernel ABI and the manifest are allowed to use.

@@ -427,21 +427,25 @@ pub(super) const ENTRIES: &[Entry] = &[
         name: "sparse_solve",
         params: "nvsw",
         eval: sparse_solve,
+        doc: "`sparse_solve(entries, b, tol, method)`: solve sparse `A x = b` from `(i, j, v)` triplets using `minres`, `fgmres`, `bicgstab_l`, or `idr_s`.",
     },
     Entry {
         name: "amg_solve",
         params: "nvsw",
         eval: amg_solve,
+        doc: "`amg_solve(entries, b, tol, kind)`: solve sparse `A x = b` by algebraic multigrid (`ruge_stuben` or `smoothed_aggregation`).",
     },
     Entry {
         name: "nested_dissection_order",
         params: "n",
         eval: nested_dissection_order,
+        doc: "`nested_dissection_order(adjacency)`: fill-reducing elimination ordering `perm` of a symmetric graph by multilevel nested dissection.",
     },
     Entry {
         name: "polynomial_system_roots",
         params: "n",
         eval: polynomial_system_roots,
+        doc: "`polynomial_system_roots(system)`: finite roots of a square polynomial system by total-degree homotopy continuation as `list(list(re, im), ...)`.",
     },
 ];
 

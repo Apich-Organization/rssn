@@ -83,6 +83,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
       - name: Every operator is typed or explained
         run: cargo run --bin signature-audit
+      - name: Every operator has documentation
+        run: cargo run --bin doc_gen_check
       - name: Generated numerical bindings are current
         run: |
           cargo run -p rssn-api-gen -- --bindings-check

@@ -114,14 +114,22 @@ enum Request {
 }
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    i.op(OpDescriptor::new("circle", Arity::Fixed(2)))?;
-    i.op(OpDescriptor::new("path", Arity::Fixed(4)).binder(1, 0b1))?;
-    let distance = i.op(OpDescriptor::new("distance", Arity::Fixed(2)).eval(|a| {
-        match a {
-            | [x, y] => (x - y).abs(),
-            | _ => f64::NAN,
-        }
-    }))?;
+    i.op(OpDescriptor::new("circle", Arity::Fixed(2)).doc(
+        "`circle(c, r)`: counter-clockwise circular contour with center `c` and radius `r`.",
+    ))?;
+    i.op(OpDescriptor::new("path", Arity::Fixed(4))
+        .binder(1, 0b1)
+        .doc("`path(g, t, t0, t1)`: parameterized contour `g(t)` as `t` runs from `t0` to `t1`."))?;
+    let distance = i.op(OpDescriptor::new("distance", Arity::Fixed(2))
+        .eval(|a| {
+            match a {
+                | [x, y] => (x - y).abs(),
+                | _ => f64::NAN,
+            }
+        })
+        .doc(
+            "`distance(a, b)`: Euclidean distance `abs(a - b)` between complex points `a` and `b`.",
+        ))?;
     i.graph().ops_mut().set_attr(
         distance,
         crate::graph::ComplexEval(|a| {
@@ -135,31 +143,121 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         Tier::Normalize,
         &["complex/distance: distance(?a, ?b) => abs(?a - ?b)"],
     )?;
-    i.op(OpDescriptor::new("polygon", Arity::Fixed(1)))?;
-    i.op(OpDescriptor::new("ray", Arity::Fixed(2)))?;
-    let table: [(&str, u8, Request); 18] = [
-        ("poles", 2, Request::Poles),
-        ("zeros_of", 2, Request::Zeros),
-        ("residue", 3, Request::Residue),
-        ("singularity", 3, Request::Singularity),
-        ("contour_integral", 3, Request::Contour),
-        ("cauchy_integral", 3, Request::CauchyIntegral),
-        ("cauchy_derivative", 4, Request::CauchyDerivative),
-        ("count_zeros_poles", 3, Request::CountZerosPoles),
-        ("radius_of_convergence", 3, Request::Radius),
-        ("continue_along", 4, Request::Continue),
-        ("mobius_apply", 2, Request::MobiusApply),
-        ("mobius_compose", 2, Request::MobiusCompose),
-        ("mobius_inverse", 1, Request::MobiusInverse),
-        ("check_analytic", 2, Request::CheckAnalytic),
-        ("is_inside_contour", 2, Request::InsideContour),
-        ("winding_number", 2, Request::WindingNumber),
+    i.op(OpDescriptor::new("polygon", Arity::Fixed(1)).doc(
+        "`polygon(vertices)`: closed polygonal contour through `list(z1, ..., zn)` in order.",
+    ))?;
+    i.op(OpDescriptor::new("ray", Arity::Fixed(2)).doc(
+        "`ray(p, theta)`: half-line `{p + r * exp(I * theta) : r >= 0}` representing a branch cut.",
+    ))?;
+    let table: [(&str, u8, Request, &str); 18] = [
+        (
+            "poles",
+            2,
+            Request::Poles,
+            "`poles(f, z)`: list of `list(p, order)` pairs for the poles of meromorphic `f(z)`.",
+        ),
+        (
+            "zeros_of",
+            2,
+            Request::Zeros,
+            "`zeros_of(f, z)`: list of `list(q, order)` pairs for the zeros of `f(z)`.",
+        ),
+        (
+            "residue",
+            3,
+            Request::Residue,
+            "`residue(f, z, a)`: residue of `f(z)` at point `a`.",
+        ),
+        (
+            "singularity",
+            3,
+            Request::Singularity,
+            "`singularity(f, z, a)`: classification of `f(z)` at `a` (`regular`, `removable`, `list(pole, m)`, or `essential`).",
+        ),
+        (
+            "contour_integral",
+            3,
+            Request::Contour,
+            "`contour_integral(f, z, C)`: contour integral of `f(z)` along contour `C` (`circle`, `polygon`, or `path`).",
+        ),
+        (
+            "cauchy_integral",
+            3,
+            Request::CauchyIntegral,
+            "`cauchy_integral(f, z, a)`: Cauchy integral `∮ f(z) / (z - a) dz` around `a`.",
+        ),
+        (
+            "cauchy_derivative",
+            4,
+            Request::CauchyDerivative,
+            "`cauchy_derivative(f, z, a, n)`: Cauchy integral `∮ f(z) / (z - a)^(n + 1) dz` around `a`.",
+        ),
+        (
+            "count_zeros_poles",
+            3,
+            Request::CountZerosPoles,
+            "`count_zeros_poles(f, z, C)`: zeros minus poles of `f(z)` inside contour `C`, counted with multiplicity.",
+        ),
+        (
+            "radius_of_convergence",
+            3,
+            Request::Radius,
+            "`radius_of_convergence(f, z, a)`: distance from `a` to the nearest singularity of `f(z)` (`oo` if entire).",
+        ),
+        (
+            "continue_along",
+            4,
+            Request::Continue,
+            "`continue_along(f, z, points, order)`: Taylor expansion of `f(z)` at the last point, analytically continued along `points`.",
+        ),
+        (
+            "mobius_apply",
+            2,
+            Request::MobiusApply,
+            "`mobius_apply(M, z)`: apply Möbius transformation matrix `M = list(list(a, b), list(c, d))` to `z`.",
+        ),
+        (
+            "mobius_compose",
+            2,
+            Request::MobiusCompose,
+            "`mobius_compose(M, N)`: composition of two Möbius transformation matrices `M` and `N`.",
+        ),
+        (
+            "mobius_inverse",
+            1,
+            Request::MobiusInverse,
+            "`mobius_inverse(M)`: inverse Möbius transformation matrix of `M`.",
+        ),
+        (
+            "check_analytic",
+            2,
+            Request::CheckAnalytic,
+            "`check_analytic(f, z)`: `true` if `f(z)` satisfies the Cauchy-Riemann equations, `false` otherwise.",
+        ),
+        (
+            "is_inside_contour",
+            2,
+            Request::InsideContour,
+            "`is_inside_contour(p, C)`: `true` if point `p` lies strictly inside contour `C`, `false` otherwise.",
+        ),
+        (
+            "winding_number",
+            2,
+            Request::WindingNumber,
+            "`winding_number(p, C)`: winding number of closed contour `C` around point `p`.",
+        ),
         (
             "contour_integral_residue_theorem",
             3,
             Request::ResidueTheorem,
+            "`contour_integral_residue_theorem(f, z, poles)`: `2*pi*I` times the sum of residues of `f(z)` at the listed poles.",
         ),
-        ("branch_cut", 2, Request::BranchCut),
+        (
+            "branch_cut",
+            2,
+            Request::BranchCut,
+            "`branch_cut(f, z)`: list of `ray(p, theta)` branch cuts of principal multi-valued functions in `f(z)`.",
+        ),
     ];
     let ops = Ops::of(i.graph()).ok_or_else(|| {
         RuleError::Invalid {
@@ -167,10 +265,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             reason: "needs elementary",
         }
     })?;
-    for (name, arity, request) in table {
+    for (name, arity, request, doc) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity))
             .flags(OpFlags::HEAVY)
-            .cost(100))?;
+            .cost(100)
+            .doc(doc))?;
         i.kernel(
             &format!("complex/{name}"),
             Tier::Reduce,
