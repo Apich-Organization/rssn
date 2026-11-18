@@ -339,11 +339,28 @@ impl Cx<'_> {
             patience: 2,
             ..Budget::default()
         };
+        let started = super::profile::start();
+        let before = self.graph.revision();
         self.engine
             .run(self.graph, &[term], &env, &Saturate, &budget);
-        Extractor::new(self.graph, &[term], &SizeCost)
+        let unchanged = self.graph.revision() == before;
+        let out = Extractor::new(self.graph, &[term], &SizeCost)
             .build(self.graph, term)
-            .unwrap_or(term)
+            .unwrap_or(term);
+        super::profile::record(
+            started,
+            "simplify",
+            usize::from(unchanged),
+            usize::from(out == term),
+            || {
+                if unchanged {
+                    "Cx::simplify (graph unchanged by the run)".to_string()
+                } else {
+                    "Cx::simplify (graph changed)".to_string()
+                }
+            },
+        );
+        out
     }
 
     /// Whether `term` simplifies to the literal zero.

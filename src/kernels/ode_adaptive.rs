@@ -374,18 +374,30 @@ pub(crate) fn process_events(
             || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
         if crossing {
             let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
-            let root = rootfind::brent(gf, t_old, tn, event_time_tolerance(t_old, tn), 200)
-                .map_err(|error| {
-                    match error {
-                        | rootfind::RootError::Invalid => OdeError::NonFinite,
-                        | _ => OdeError::SolveFailed,
+            let hit = match rootfind::brent(gf, t_old, tn, event_time_tolerance(t_old, tn), 200) {
+                | Ok(root) => {
+                    EventHit {
+                        index: ei,
+                        t: root,
+                        y: dense_eval(&step, root),
                     }
-                })?;
-            hits.push(EventHit {
-                index: ei,
-                t: root,
-                y: dense_eval(&step, root),
-            });
+                },
+                // `g1` was measured at the accepted state, while Brent samples
+                // the dense output, which differs from it by the interpolation
+                // error. When `g` is (nearly) zero at `tn` the two can disagree
+                // on the sign, so the dense output shows no bracket: the event
+                // is at the end of the step.
+                | Err(rootfind::RootError::NotBracketed) => {
+                    EventHit {
+                        index: ei,
+                        t: tn,
+                        y: ynew.to_vec(),
+                    }
+                },
+                | Err(rootfind::RootError::Invalid) => return Err(OdeError::NonFinite),
+                | Err(_) => return Err(OdeError::SolveFailed),
+            };
+            hits.push(hit);
             if ev.terminal {
                 stop = true;
             }

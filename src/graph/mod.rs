@@ -78,6 +78,7 @@ pub mod id;
 pub mod number;
 pub mod op;
 pub mod pattern;
+pub mod profile;
 pub mod payload;
 pub mod print;
 #[cfg(test)]

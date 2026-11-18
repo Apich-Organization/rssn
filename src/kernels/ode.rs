@@ -491,6 +491,10 @@ impl Default for OdeStepMode {
     }
 }
 
+/// The most steps a fixed-step integration may be asked for (the solution
+/// stores every one of them).
+pub(crate) const MAX_FIXED_STEPS: usize = 100_000_000;
+
 impl OdeStepMode {
     /// Constructs a fixed-step mode with step size `dt`.
     #[must_use]
@@ -566,7 +570,8 @@ impl OdeStepMode {
     ///
     /// # Errors
     /// Returns [`OdeError::Invalid`](crate::kernels::ode_adaptive::OdeError::Invalid)
-    /// for non-fixed modes or non-positive/non-finite `dt`.
+    /// for non-fixed modes, non-positive/non-finite `dt`, or a step count above
+    /// [`MAX_FIXED_STEPS`].
     pub(crate) fn fixed_steps(
         &self,
         t0: f64,
@@ -577,7 +582,13 @@ impl OdeStepMode {
                 if !dt.is_finite() || dt <= 0.0 || !t0.is_finite() || !t1.is_finite() {
                     return Err(crate::kernels::ode_adaptive::OdeError::Invalid);
                 }
-                Ok(((t1 - t0).abs() / dt).ceil().max(1.0) as usize)
+                let steps = ((t1 - t0).abs() / dt).ceil().max(1.0);
+                // A tiny `dt` over a long span would otherwise allocate until
+                // memory runs out (`inf` and huge counts saturate the cast).
+                if steps > MAX_FIXED_STEPS as f64 {
+                    return Err(crate::kernels::ode_adaptive::OdeError::Invalid);
+                }
+                Ok(steps as usize)
             },
             | Self::Adaptive { .. } => Err(crate::kernels::ode_adaptive::OdeError::Invalid),
         }
@@ -984,6 +995,15 @@ pub fn solve_ode_events<F: Fn(f64, &[f64], &mut [f64])>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fixed_steps_refuses_an_unbounded_step_count() {
+        use crate::kernels::ode_adaptive::OdeError;
+        let tiny = OdeStepMode::Fixed { dt: 1e-300 };
+        assert_eq!(tiny.fixed_steps(0.0, 1.0), Err(OdeError::Invalid));
+        let ok = OdeStepMode::Fixed { dt: 0.25 };
+        assert_eq!(ok.fixed_steps(0.0, 1.0), Ok(4));
+    }
+
     use super::*;
 
     fn decay(

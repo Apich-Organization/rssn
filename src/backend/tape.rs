@@ -770,6 +770,7 @@ impl Tape {
         out: &mut [&mut [f64]],
     ) {
         const B: usize = COLUMN_BLOCK;
+        static NAN_BLOCK: [f64; COLUMN_BLOCK] = [f64::NAN; COLUMN_BLOCK];
         let rows = out.iter().map(|o| o.len()).min().unwrap_or(0);
         if rows == 0 || self.outputs.is_empty() {
             return;
@@ -785,7 +786,12 @@ impl Tape {
                 let dst = &mut after[..n];
                 let src = |reg: Reg| -> &[f64] {
                     let start = reg as usize * B;
-                    before.get(start..start + n).unwrap_or(&[])
+                    // An out-of-range register reads as NaN, as in the generic
+                    // arm: an empty slice would end the `zip` early and leave
+                    // `dst` holding the previous block's values.
+                    before
+                        .get(start..start + n)
+                        .unwrap_or(&NAN_BLOCK[..n])
                 };
                 match *inst {
                     | Inst::Const(c) => dst.fill(c),
@@ -831,11 +837,6 @@ impl Tape {
                     // column loops too, so no row goes through the generic
                     // operand buffer below; each uses the same scalar rule
                     // as `Tape::eval`, so results are bit-identical.
-                    | Inst::PowI(a, 2) => {
-                        for (d, &x) in dst.iter_mut().zip(src(a)) {
-                            *d = <f64 as Scalar>::powi(x, 2);
-                        }
-                    },
                     | Inst::PowI(a, k) => {
                         for (d, &x) in dst.iter_mut().zip(src(a)) {
                             *d = <f64 as Scalar>::powi(x, k);
@@ -2769,5 +2770,22 @@ mod tests {
             assert!(d.second().is_nan(), "{src}({x}): d2 {}", d.second());
             assert!(d.mixed().is_nan(), "{src}({x}): d12 {}", d.mixed());
         }
+    }
+
+    #[test]
+    fn eval_columns_reads_an_out_of_range_register_as_nan() {
+        let tape = Tape {
+            insts: vec![Inst::Input(0), Inst::Add(0, 99)],
+            args: Vec::new(),
+            inputs: 1,
+            params: 0,
+            outputs: vec![1],
+        };
+        // Two blocks, so a stale register file from the first would show.
+        let rows = COLUMN_BLOCK * 2;
+        let xs = vec![1.0; rows];
+        let mut out = vec![7.0; rows];
+        tape.eval_columns(&[&xs], &[], &mut [&mut out]);
+        assert!(out.iter().all(|v| v.is_nan()), "{out:?}");
     }
 }

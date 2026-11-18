@@ -28,6 +28,21 @@ fn main() {
         .nth(1)
         .and_then(|a| a.parse().ok())
         .unwrap_or(20);
+    // `ENGINE_TIMING_FILE` adds requests, one `name<TAB>request` per line.
+    let extra: Vec<(String, String)> = std::env::var_os("ENGINE_TIMING_FILE")
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .map(|text| {
+            text.lines()
+                .filter_map(|line| line.split_once('\t'))
+                .map(|(name, src)| (name.to_string(), src.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let requests: Vec<(&str, &str)> = requests
+        .iter()
+        .copied()
+        .chain(extra.iter().map(|(n, s)| (n.as_str(), s.as_str())))
+        .collect();
     s.set_cache_policy(rssn::api::CachePolicy::off());
     let no_cache = config.clone();
     let only = std::env::args().nth(2);
@@ -49,5 +64,8 @@ fn main() {
             "{name:<20} {per:>12.3?}  {}",
             answer.chars().take(70).collect::<String>()
         );
+        if rssn::graph::profile::enabled() {
+            println!("{}", rssn::graph::profile::report());
+        }
     }
 }

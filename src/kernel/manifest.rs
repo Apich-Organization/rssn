@@ -182,6 +182,24 @@ pub enum SignatureSource {
     None,
 }
 
+/// Where an operator's `doc` came from.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DocSource {
+    /// The registration wrote it (`.doc("...")`).
+    Declared,
+    /// Taken from the rustdoc of the function the operator's `rust_path`
+    /// names, possibly after the declared one-liner.
+    RustPath,
+    /// Taken from the rustdoc of the one public function that has the
+    /// operator's name (see [`crate::kernel::rustdoc`]); weaker evidence than
+    /// `RustPath`, and shown as such.
+    RustName,
+    /// There is no documentation anywhere.
+    #[default]
+    Missing,
+}
+
 /// One operator as the manifest describes it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpInfo {
@@ -243,8 +261,15 @@ pub struct OpInfo {
     /// Public Rust source function used by this export, if declared.
     #[serde(default)]
     pub rust_path: Option<String>,
-    /// Markdown documentation.
+    /// Markdown documentation: what the registration declared, completed from
+    /// the rustdoc of the function behind the operator (see `doc_source`).
     pub doc: String,
+    /// Where `doc` came from.
+    #[serde(default)]
+    pub doc_source: DocSource,
+    /// The public Rust function whose rustdoc completed `doc`, when one did.
+    #[serde(default)]
+    pub doc_path: Option<String>,
     /// Worked examples.
     pub examples: Vec<Example>,
     /// The dimension rule, when it has one.
@@ -613,6 +638,9 @@ fn describe(
     } else {
         None
     };
+    let docs = crate::kernel::rustdoc::enrich(desc);
+    let mut examples = desc.examples.clone();
+    examples.extend(docs.examples);
     OpInfo {
         keys,
         name: desc.name.to_string(),
@@ -664,8 +692,10 @@ fn describe(
             .rust_path
             .as_ref()
             .map(std::string::ToString::to_string),
-        doc: desc.doc.to_string(),
-        examples: desc.examples.clone(),
+        doc: docs.doc,
+        doc_source: docs.source,
+        doc_path: docs.path,
+        examples,
         dim_rule,
         backend_support: desc.backend,
         dynamic_reason,

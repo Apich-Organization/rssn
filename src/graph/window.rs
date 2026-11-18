@@ -47,6 +47,14 @@ struct Cell {
     next: CellId,
     arity: u32,
     live: bool,
+    /// Every rewrite of the rule set with this [`RewriteIndex::id`] failed
+    /// here at graph revision `clean_revision`, and the subtree has not
+    /// changed since (`0`: not known to be clean). A rewrite's match at a
+    /// cell reads only the cell's subtree and the graph, so the sweep of
+    /// [`TreeWindow::optimize_with`] skips such cells instead of retrying
+    /// every rule after each rewrite elsewhere in the window.
+    clean_rules: u64,
+    clean_revision: u64,
 }
 
 /// A custom transformation over a whole window (constant folding, like-term
@@ -135,6 +143,8 @@ impl TreeWindow {
             next: NIL,
             arity: 0,
             live: true,
+            clean_rules: 0,
+            clean_revision: 0,
         };
         self.live = self.live.saturating_add(1);
         if let Some(id) = self.free.pop() {
@@ -430,6 +440,19 @@ impl TreeWindow {
         let p = self.cell_mut(parent);
         p.last = child;
         p.arity = p.arity.saturating_add(1);
+        self.touch(parent);
+    }
+
+    /// Forgets that `cell` and its ancestors were found clean: their
+    /// subtrees changed.
+    fn touch(
+        &mut self,
+        mut cell: CellId,
+    ) {
+        while let Some(c) = self.cells.get_mut(cell as usize) {
+            c.clean_rules = 0;
+            cell = c.parent;
+        }
     }
 
     /// Unlinks `cell` from its parent, leaving it a detached subtree.
@@ -462,6 +485,7 @@ impl TreeWindow {
         c.parent = NIL;
         c.prev = NIL;
         c.next = NIL;
+        self.touch(parent);
     }
 
     /// Frees the detached subtree at `cell`.
@@ -517,6 +541,9 @@ impl TreeWindow {
         o.prev = NIL;
         o.next = NIL;
         self.discard(old);
+        if parent != NIL {
+            self.touch(parent);
+        }
     }
 
     /// Replaces `child` by its own children, in place: the O(1) list splice
@@ -561,6 +588,7 @@ impl TreeWindow {
         }
         let p = self.cell_mut(parent);
         p.arity = p.arity.saturating_add(arity).saturating_sub(1);
+        self.touch(parent);
         let c = self.cell_mut(child);
         c.first = NIL;
         c.last = NIL;
@@ -874,15 +902,29 @@ impl TreeWindow {
             if changed {
                 steps = steps.saturating_add(1);
             }
+            let revision = graph.revision();
             'cells: for cell in self.post_order() {
                 if self.atom(cell).is_some() {
+                    continue;
+                }
+                let state = self.cell(cell);
+                if by_op.id != 0 && state.clean_rules == by_op.id && state.clean_revision == revision {
                     continue;
                 }
                 for &rewrite in by_op.get(self.op(cell)) {
                     if !self.cell(cell).live {
                         continue 'cells;
                     }
-                    if let Some(found) = self.find_match(graph, rewrite, cell)
+                    let started = super::profile::start();
+                    let found = self.find_match(graph, rewrite, cell);
+                    super::profile::record(
+                        started,
+                        "window",
+                        std::ptr::from_ref(rewrite) as usize,
+                        usize::from(found.is_some()),
+                        || super::profile::describe(&rewrite.lhs, graph.ops()),
+                    );
+                    if let Some(found) = found
                         && self.apply(graph, rewrite, cell, &found).is_some()
                     {
                         changed = true;
@@ -890,6 +932,13 @@ impl TreeWindow {
                         // The cell list is stale now; restart the sweep.
                         break 'cells;
                     }
+                }
+                // No rewrite applies here. A guard may have consulted the
+                // graph, so the mark is only good at this revision.
+                if graph.revision() == revision {
+                    let state = self.cell_mut(cell);
+                    state.clean_rules = by_op.id;
+                    state.clean_revision = revision;
                 }
             }
             // `rounds` also bounds passes that keep reporting changes.
@@ -929,7 +978,16 @@ impl TreeWindow {
             for state in &frontier {
                 for cell in state.post_order() {
                     for rewrite in moves {
-                        let Some(found) = state.find_match(graph, rewrite, cell) else {
+                        let started = super::profile::start();
+                        let found = state.find_match(graph, rewrite, cell);
+                        super::profile::record(
+                            started,
+                            "beam",
+                            std::ptr::from_ref(*rewrite) as usize,
+                            usize::from(found.is_some()),
+                            || super::profile::describe(&rewrite.lhs, graph.ops()),
+                        );
+                        let Some(found) = found else {
                             continue;
                         };
                         let mut succ = state.clone();
@@ -968,6 +1026,10 @@ impl TreeWindow {
 #[derive(Debug, Default)]
 pub struct RewriteIndex<'r> {
     by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>>,
+    /// Identifies the rule list (by the rules' addresses), never `0`: two
+    /// indexes of the same rules share it, so a window's clean marks carry
+    /// over between them.
+    id: u64,
 }
 
 impl<'r> RewriteIndex<'r> {
@@ -975,10 +1037,13 @@ impl<'r> RewriteIndex<'r> {
     #[must_use]
     pub fn new(rewrites: &[&'r Rewrite]) -> Self {
         let mut by_op: super::id::FastMap<OpId, Vec<&'r Rewrite>> = super::id::FastMap::default();
+        let mut id: u64 = 0x9e37_79b9_7f4a_7c15;
         for &rewrite in rewrites {
             by_op.entry(rewrite.trigger()).or_default().push(rewrite);
+            id = (id.rotate_left(5) ^ std::ptr::from_ref(rewrite) as u64)
+                .wrapping_mul(0x0100_0000_01b3);
         }
-        Self { by_op }
+        Self { by_op, id: id | 1 }
     }
 
     /// The rewrites rooted at `op`, in their original order.
@@ -1154,11 +1219,14 @@ impl Search<'_> {
         match pat {
             | Pat::Var(v) => {
                 let index = *v as usize;
-                let bound = subst.get(index).cloned().unwrap_or_default();
-                match bound.as_slice() {
-                    | [] => {
+                let bound_len = subst.get(index).map_or(0, Vec::len);
+                match bound_len {
+                    | 0 => {
                         if let Some(slot) = subst.get_mut(index) {
-                            *slot = vec![cell];
+                            // Reuses the slot's buffer: a failed binding
+                            // is cleared, not freed, and retried often.
+                            slot.clear();
+                            slot.push(cell);
                         }
                         if self.solve(goals, subst) {
                             return true;
@@ -1168,13 +1236,25 @@ impl Search<'_> {
                         }
                         false
                     },
-                    | [only] => window.same(self.graph, *only, cell) && self.solve(goals, subst),
-                    | several => {
-                        let operands: Vec<CellId> = window.children(cell).collect();
-                        window.atom(cell).is_none()
-                            && self.ops.get(index).is_some_and(|&op| op == window.op(cell))
-                            && window.same_multiset(self.graph, several, &operands)
+                    | 1 => {
+                        let only = subst.get(index).and_then(|b| b.first().copied());
+                        only.is_some_and(|only| window.same(self.graph, only, cell))
                             && self.solve(goals, subst)
+                    },
+                    | count => {
+                        // Cheap structural tests before any operand list is
+                        // built: most candidates differ in operator or arity.
+                        if window.atom(cell).is_some()
+                            || self.ops.get(index).is_none_or(|&op| op != window.op(cell))
+                            || window.arity(cell) as usize != count
+                        {
+                            return false;
+                        }
+                        let operands: Vec<CellId> = window.children(cell).collect();
+                        let same = subst.get(index).is_some_and(|several| {
+                            window.same_multiset(self.graph, several, &operands)
+                        });
+                        same && self.solve(goals, subst)
                     },
                 }
             },
@@ -1191,9 +1271,16 @@ impl Search<'_> {
                     // Only a nullary operator can match an atom structurally.
                     return pats.is_empty() && self.solve(goals, subst);
                 }
-                let children: Vec<CellId> = window.children(cell).collect();
                 let flags = self.graph.ops().get(*op).flags;
-                if flags.has(OpFlags::COMMUTATIVE) && children.len() > pats.len() {
+                // Arity decides most failures; test it before the operand
+                // list is built.
+                let arity = window.arity(cell) as usize;
+                let absorbing = flags.has(OpFlags::COMMUTATIVE) && arity > pats.len();
+                if !absorbing && arity != pats.len() {
+                    return false;
+                }
+                if absorbing {
+                    // The last operand, a free variable, absorbs the rest.
                     let Some((Pat::Var(v), front)) = pats.split_last() else {
                         return false;
                     };
@@ -1201,6 +1288,7 @@ impl Search<'_> {
                     if front.is_empty() || !free || !flags.has(OpFlags::ASSOCIATIVE) {
                         return false;
                     }
+                    let children: Vec<CellId> = window.children(cell).collect();
                     let mut used = vec![false; children.len()];
                     return self.assign(
                         front,
@@ -1212,9 +1300,7 @@ impl Search<'_> {
                         Mode::Absorb(*v, *op),
                     );
                 }
-                if children.len() != pats.len() {
-                    return false;
-                }
+                let children: Vec<CellId> = window.children(cell).collect();
                 if flags.has(OpFlags::COMMUTATIVE) {
                     let mut used = vec![false; children.len()];
                     self.assign(pats, &children, 0, &mut used, goals, subst, Mode::Nested)

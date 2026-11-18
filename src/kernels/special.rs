@@ -120,6 +120,18 @@ fn gamma_pq(
     a: f64,
     x: f64,
 ) -> (f64, f64) {
+    if a.is_nan() || x.is_nan() {
+        return (f64::NAN, f64::NAN);
+    }
+    if a == f64::INFINITY {
+        // P(a, x) -> 0 as a -> +inf for every finite x; both infinite is
+        // indeterminate.
+        return if x == f64::INFINITY {
+            (f64::NAN, f64::NAN)
+        } else {
+            (0.0, 1.0)
+        };
+    }
     if x == 0.0 {
         return (0.0, 1.0);
     }
@@ -139,7 +151,7 @@ fn gamma_pq(
                 break;
             }
         }
-        let p = (log_prefactor.exp() * sum).min(1.0);
+        let p = clamp_unit(log_prefactor.exp() * sum);
         (p, 1.0 - p)
     } else {
         // Q = prefactor * h with h <= 1 here (x >= a + 1). A prefactor that
@@ -149,9 +161,15 @@ fn gamma_pq(
         if log_prefactor < -746.0 {
             return (1.0, 0.0);
         }
-        let q = (log_prefactor.exp() * upper_gamma_fraction(a, x)).min(1.0);
+        let q = clamp_unit(log_prefactor.exp() * upper_gamma_fraction(a, x));
         (1.0 - q, q)
     }
+}
+
+/// Clamps a probability to at most 1, keeping NaN (`f64::min` would turn it
+/// into 1).
+fn clamp_unit(value: f64) -> f64 {
+    if value.is_nan() { value } else { value.min(1.0) }
 }
 
 /// The continued fraction `h` of `Gamma(a, x) = x^a e^-x h` (Lentz):
@@ -3231,5 +3249,15 @@ mod debye_tests {
             bessel_j(10.0, 20.0).to_bits(),
             1.864_825_580_239_450_3e-1_f64.to_bits()
         );
+    }
+
+    #[test]
+    fn regularized_gamma_handles_a_non_finite_order() {
+        use super::regularized_lower_gamma;
+        use super::regularized_upper_gamma;
+        assert_eq!(regularized_lower_gamma(f64::INFINITY, 3.0), 0.0);
+        assert_eq!(regularized_upper_gamma(f64::INFINITY, 3.0), 1.0);
+        assert!(regularized_lower_gamma(f64::INFINITY, f64::INFINITY).is_nan());
+        assert!(regularized_lower_gamma(f64::NAN, 1.0).is_nan());
     }
 }

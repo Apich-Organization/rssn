@@ -10,7 +10,9 @@
 //! a bounded dyadic tree. Coarse increments are sums of the same leaves; Brownian
 //! areas use Chen's relation. `cells` is rounded up to a power of two (minimum
 //! two, default 4096). Tolerance failure at the finest coupled interval returns
-//! `StepLimit`; it never switches to fixed stepping or forces acceptance.
+//! `StepLimit`; it never switches to fixed stepping or forces acceptance. With
+//! `cells = 0` a Brownian solve first retries on trees 4x finer (a new
+//! realisation for the same seed) while the allocation budget allows.
 //! Brownian defects use a second-moment allocation proportional to sqrt(dt/T),
 //! while a separate drift-only defect uses dt/T. Stable noise uses q=0.9*alpha,
 //! strictly below its finite-moment boundary. These are local sample-path error
@@ -402,7 +404,9 @@ pub enum Schedule {
         /// Step budget; exhaustion is `E0807`.
         max_steps: usize,
         /// Finest independent noise cells on `[t0,t1]`, rounded up to a power
-        /// of two; `0` selects [`DEFAULT_CELLS`]. Used by every adaptive method.
+        /// of two; `0` selects [`DEFAULT_CELLS`] and, for Brownian noise,
+        /// refines it (4x at a time, within the allocation budget) while the
+        /// finest level cannot meet the tolerance. Used by every adaptive method.
         cells: usize,
     },
 }

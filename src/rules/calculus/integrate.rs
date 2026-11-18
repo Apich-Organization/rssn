@@ -2220,10 +2220,15 @@ fn truncated_tail(
     tolerance: f64,
     max_panels: usize,
 ) -> Option<(f64, f64)> {
-    // The last finite point walking from `start` in direction `sign`, with
-    // the largest magnitude met on the way.
-    let walk = |start: f64, sign: f64| -> Option<(f64, f64, f64)> {
-        let mut last = None;
+    // Walk from `start` in direction `sign` by doubling steps while the
+    // integrand is finite. The tail beyond the last point is only trusted when
+    // the final three samples are all negligible against the largest value seen
+    // and shrink steadily; the omitted integral is then charged from the last
+    // samples, scaled up when the decay per doubling is slow (a power-law tail
+    // `x^-p` leaves about `y * x / (p - 1)` behind). Returns the last point and
+    // that charge, or `None` when the tail cannot be established.
+    let walk = |start: f64, sign: f64| -> Option<(f64, f64)> {
+        let mut samples: Vec<(f64, f64)> = Vec::new();
         let mut peak = 0.0_f64;
         let mut step = 1.0_f64;
         while step <= 1e12 {
@@ -2233,38 +2238,45 @@ fn truncated_tail(
                 break;
             }
             peak = peak.max(y.abs());
-            last = Some((x, y.abs()));
+            samples.push((x, y.abs()));
             step *= 2.0;
         }
-        let (x, at) = last?;
-        Some((x, at, peak))
+        let [.., (_, y1), (_, y2), (x, y3)] = samples[..] else {
+            return None;
+        };
+        let negligible = |at: f64| at <= f64::EPSILON * peak.max(f64::MIN_POSITIVE);
+        if !(negligible(y1) && negligible(y2) && negligible(y3)) {
+            return None;
+        }
+        // The slowest decay ratio per doubling among the last samples.
+        let ratio = |earlier: f64, later: f64| if earlier > 0.0 { later / earlier } else { 0.0 };
+        let r = ratio(y1, y2).max(ratio(y2, y3));
+        if r > 0.9 {
+            return None;
+        }
+        let slowness = if r > 0.0 { (-r.log2()).recip() } else { 0.0 };
+        let recent = y1.max(y2).max(y3);
+        let width = (x - start).abs().max(1.0);
+        Some((x, recent * width * slowness.max(1.0)))
     };
-    let negligible = |at: f64, peak: f64| at <= f64::EPSILON * peak.max(f64::MIN_POSITIVE);
     let (lo, hi, tail) = match (a.is_finite(), b.is_finite()) {
         | (true, false) => {
-            let (x, at, peak) = walk(a, 1.0)?;
-            negligible(at, peak).then_some((a, x, at))?
+            let (x, charge) = walk(a, 1.0)?;
+            (a, x, charge)
         },
         | (false, true) => {
-            let (x, at, peak) = walk(b, -1.0)?;
-            negligible(at, peak).then_some((x, b, at))?
+            let (x, charge) = walk(b, -1.0)?;
+            (x, b, charge)
         },
         | (false, false) => {
-            let (left, at_left, peak_left) = walk(0.0, -1.0)?;
-            let (right, at_right, peak_right) = walk(0.0, 1.0)?;
-            let peak = peak_left.max(peak_right);
-            (negligible(at_left, peak) && negligible(at_right, peak)).then_some((
-                left,
-                right,
-                at_left.max(at_right),
-            ))?
+            let (left, charge_left) = walk(0.0, -1.0)?;
+            let (right, charge_right) = walk(0.0, 1.0)?;
+            (left, right, charge_left + charge_right)
         },
         | (true, true) => return None,
     };
     let (value, error) = robust_quadrature(f, lo, hi, tolerance, max_panels);
-    value
-        .is_finite()
-        .then_some((value, error + tail * (hi - lo).abs().max(1.0)))
+    value.is_finite().then_some((value, error + tail))
 }
 
 pub(super) struct Quadrature {

@@ -84,6 +84,7 @@ pub mod manifest;
 pub mod overload;
 pub mod plugin;
 pub mod result;
+pub mod rustdoc;
 pub mod signature;
 pub mod sort;
 pub mod value;

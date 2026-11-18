@@ -31,6 +31,9 @@ use super::wiener;
 
 const MAX_NOISE_VALUES: usize = 8_388_608;
 const MAX_CELLS: usize = 1_048_576;
+/// The rejection at the finest noise level: only a finer tree can help.
+const FINEST_RESOLUTION: &str =
+    "adaptive error exceeds tolerance at the finest coupled noise resolution; increase cells";
 
 #[derive(Clone, Default)]
 struct Block {
@@ -309,7 +312,7 @@ where
             | _ => {
                 control.rejected += 1;
                 if count <= 2 {
-                    return Err(SdeError::StepLimit("adaptive error exceeds tolerance at the finest coupled noise resolution; increase cells".into()));
+                    return Err(SdeError::StepLimit(FINEST_RESOLUTION.into()));
                 }
                 stack.push((2 * node + 1, first + count / 2, count / 2));
                 stack.push((2 * node, first, count / 2));
@@ -398,6 +401,77 @@ where
 }
 
 pub(super) fn brownian<A, G>(
+    adapters: &Adapters<A, G>,
+    y0: &[f64],
+    options: &Options,
+    scheme: Option<DriftImplicitScheme>,
+) -> Result<Path, SdeError>
+where
+    A: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
+    G: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
+{
+    // `cells == 0` asks the solver to choose the noise resolution. A
+    // strong-order-1/2 scheme's normalised defect shrinks only like the
+    // square root of the cell width, so at a tight tolerance the default
+    // tree can be too coarse; a finer one (a new, equally valid realisation
+    // for the seed) is tried before giving up. An explicit `cells` is
+    // honoured as given.
+    let Schedule::Adaptive { cells: 0, .. } = options.schedule else {
+        return brownian_on(adapters, y0, options, scheme);
+    };
+    let first = brownian_on(adapters, y0, &with_cells(options, super::DEFAULT_CELLS), scheme);
+    match first {
+        | Err(SdeError::StepLimit(message)) if message == FINEST_RESOLUTION => {
+            brownian_on_finer(adapters, y0, options, scheme, super::DEFAULT_CELLS * 4)
+                .unwrap_or(Err(SdeError::StepLimit(message)))
+        },
+        | other => other,
+    }
+}
+
+/// `options` with the adaptive schedule's finest cells set to `cells`.
+fn with_cells(
+    options: &Options,
+    cells: usize,
+) -> Options {
+    let mut attempt = options.clone();
+    if let Schedule::Adaptive { cells: slot, .. } = &mut attempt.schedule {
+        *slot = cells;
+    }
+    attempt
+}
+
+/// [`brownian`] on trees of `cells`, `4 cells`, ... finest cells, while the
+/// finest level is the limit and the tree fits the allocation budget;
+/// `None` when every tree that fits still hits the finest level.
+fn brownian_on_finer<A, G>(
+    adapters: &Adapters<A, G>,
+    y0: &[f64],
+    options: &Options,
+    scheme: Option<DriftImplicitScheme>,
+    mut cells: usize,
+) -> Option<Result<Path, SdeError>>
+where
+    A: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
+    G: FnMut(f64, &[f64]) -> Result<Vec<f64>, SdeError>,
+{
+    loop {
+        if cells > MAX_CELLS {
+            return None;
+        }
+        match brownian_on(adapters, y0, &with_cells(options, cells), scheme) {
+            | Err(SdeError::StepLimit(message)) if message == FINEST_RESOLUTION => {
+                cells = cells.saturating_mul(4);
+            },
+            // The finer tree does not fit the budget: the coarser failure
+            // is the meaningful one.
+            | Err(SdeError::Invalid(_)) => return None,
+            | other => return Some(other),
+        }
+    }
+}
+
+fn brownian_on<A, G>(
     adapters: &Adapters<A, G>,
     y0: &[f64],
     options: &Options,

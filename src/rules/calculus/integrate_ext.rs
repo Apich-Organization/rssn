@@ -1026,7 +1026,10 @@ impl Integrator<'_, '_> {
         } else {
             (0..=fraction.numer.degree_in(gt) + 1).collect()
         };
+        // `unknowns[k]` multiplies `basis[k]`: a monomial `x^i θ^j` of the
+        // numerator over `h`, or the logarithm of a factor of `D`.
         let mut unknowns = Vec::new();
+        let mut monomials = Vec::new();
         let mut terms = Vec::new();
         for &j in &theta_degrees {
             for i in 0..=(deg_x + h.len()) {
@@ -1037,12 +1040,15 @@ impl Integrator<'_, '_> {
                 let ej = self.int(i64::from(j));
                 let xi = self.pow(x, ei);
                 let tj = self.pow(theta, ej);
+                let monomial = self.mul(&[xi, tj]);
+                monomials.push(monomial);
                 terms.push(self.mul(&[c, xi, tj]));
             }
         }
         let numerator = self.add(&terms);
         let h_term = self.q_term(&h);
         let mut candidate = self.div(numerator, h_term);
+        let mut logs = Vec::new();
         // Logarithms of the squarefree factors of D.
         let (_, factors) = univariate::factor(&squarefree);
         for (factor, _) in factors {
@@ -1055,6 +1061,7 @@ impl Integrator<'_, '_> {
             unknowns.push(c);
             let p = self.q_term(&fq);
             let log = self.call(fs.ln, p);
+            logs.push(log);
             let term = self.mul(&[c, log]);
             candidate = self.add(&[candidate, term]);
         }
@@ -1073,11 +1080,37 @@ impl Integrator<'_, '_> {
             .into_iter()
             .find(|v| v.last().is_some_and(|k| !k.is_zero()))?;
         let k = solution.last()?.clone();
-        let mut result = candidate;
-        for (u, value) in unknowns.iter().zip(&solution) {
-            let v = self.cx.graph.num(Number::rat(value / &k));
-            result = self.cx.graph.substitute(result, *u, v);
+        if std::env::var_os("BISECT_OLDRN").is_some() {
+            let mut result = candidate;
+            for (u, value) in unknowns.iter().zip(&solution) {
+                let v = self.cx.graph.num(Number::rat(value / &k));
+                result = self.cx.graph.substitute(result, *u, v);
+            }
+            return Some(self.cx.simplify(result));
         }
+        // The antiderivative, built from the nonzero coefficients only: the
+        // candidate with every unknown substituted would carry each zero term
+        // (most of them) into the final simplification.
+        let mut numerator = Vec::new();
+        let mut log_terms = Vec::new();
+        for (index, value) in solution.iter().enumerate() {
+            if value.is_zero() || index + 1 == solution.len() {
+                continue;
+            }
+            let v = self.cx.graph.num(Number::rat(value / &k));
+            if let Some(&monomial) = monomials.get(index) {
+                numerator.push(self.mul(&[v, monomial]));
+            } else if let Some(&log) = logs.get(index - monomials.len()) {
+                log_terms.push(self.mul(&[v, log]));
+            }
+        }
+        let mut pieces = Vec::new();
+        if !numerator.is_empty() {
+            let sum = self.add(&numerator);
+            pieces.push(self.div(sum, h_term));
+        }
+        pieces.extend(log_terms);
+        let result = self.add(&pieces);
         Some(self.cx.simplify(result))
     }
 

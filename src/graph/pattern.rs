@@ -675,11 +675,13 @@ impl Pat {
         scratch.subst.clear();
         scratch.subst.resize(nvars, NodeId::NONE);
         scratch.classes.clear();
+        scratch.possible.clear();
         let MatchScratch {
             goals,
             used,
             subst,
             classes,
+            possible,
         } = scratch;
         let mut matcher = Matcher {
             graph,
@@ -690,6 +692,7 @@ impl Pat {
             fuel: *fuel,
             used,
             classes,
+            possible,
             root_children: &[],
             root_window: None,
         };
@@ -738,6 +741,18 @@ pub struct MatchScratch<'p> {
     used: Vec<bool>,
     subst: Vec<NodeId>,
     classes: Vec<u32>,
+    possible: Vec<u8>,
+}
+
+/// The arena windows of one commutative assignment.
+#[derive(Clone, Copy)]
+struct Window {
+    /// Start of its `used` / `classes` window.
+    base: usize,
+    /// Start of its `possible` block.
+    memo: usize,
+    /// Whether its children lie in pairwise distinct classes.
+    distinct: bool,
 }
 
 /// Which kind of commutative assignment [`Matcher::assign`] performs.
@@ -768,6 +783,11 @@ struct Matcher<'g, 'o, 'u> {
     /// assignments, in the same windows as `used`: resolved once per
     /// assignment instead of on every tentative placement.
     classes: &'u mut Vec<u32>,
+    /// Memoised [`Matcher::may_match`] of every (pattern, child) pair of the
+    /// open commutative assignments (`0` unknown, `1` yes, `2` no), one
+    /// `patterns x children` block per assignment: the test is the same at
+    /// every placement that reaches the pair.
+    possible: &'u mut Vec<u8>,
     /// The root's children and, during a commutative root assignment, the
     /// base of its window: the match's `rest` is computed from them only
     /// when a match is emitted, not for every tentative placement.
@@ -816,9 +836,27 @@ impl<'p> Matcher<'_, '_, '_> {
         self.classes.truncate(base);
         self.classes
             .extend(children.iter().map(|&c| self.graph.find(c).raw()));
-        self.place(pats, children, 0, base, goals, subst, mode, rest);
+        // With no two children in one class, the same-class skip in `place`
+        // never fires; knowing that up front saves its scan.
+        let window = self.classes.get(base..).unwrap_or(&[]);
+        let distinct = window
+            .iter()
+            .enumerate()
+            .all(|(i, c)| !window.get(..i).unwrap_or(&[]).contains(c));
+        let memo = self.possible.len();
+        self.possible.resize(
+            memo.saturating_add(pats.len().saturating_mul(children.len())),
+            0,
+        );
+        let at = Window {
+            base,
+            memo,
+            distinct,
+        };
+        self.place(pats, children, 0, at, goals, subst, mode, rest);
         self.used.truncate(base);
         self.classes.truncate(base);
+        self.possible.truncate(memo);
     }
 
     /// The children of the current assignment window not assigned yet.
@@ -841,7 +879,7 @@ impl<'p> Matcher<'_, '_, '_> {
         pats: &'p [Pat],
         children: &[NodeId],
         index: usize,
-        base: usize,
+        at: Window,
         goals: &mut Vec<(&'p Pat, NodeId)>,
         subst: &mut Vec<NodeId>,
         mode: Mode,
@@ -851,6 +889,7 @@ impl<'p> Matcher<'_, '_, '_> {
             return;
         }
         self.fuel -= 1;
+        let base = at.base;
         let Some(pat) = pats.get(index) else {
             match mode {
                 | Mode::Root => {
@@ -880,15 +919,30 @@ impl<'p> Matcher<'_, '_, '_> {
                 continue;
             };
             let class = super::id::ClassId::from_raw(raw);
-            let tried =
-                (0..i).any(|j| !self.is_used(base.saturating_add(j)) && class_of(j) == Some(raw));
+            let tried = !at.distinct
+                && (0..i).any(|j| !self.is_used(base.saturating_add(j)) && class_of(j) == Some(raw));
             if tried {
                 continue;
             }
             // Skip placements whose goal must fail (see `may_match`): the
             // remaining patterns would otherwise be placed in every way
             // before this one is checked.
-            if !self.may_match(pat, class) {
+            let memo_slot = at
+                .memo
+                .saturating_add(index.saturating_mul(children.len()))
+                .saturating_add(i);
+            let possible = match self.possible.get(memo_slot) {
+                | Some(1) => true,
+                | Some(2) => false,
+                | _ => {
+                    let answer = self.may_match(pat, class);
+                    if let Some(memo) = self.possible.get_mut(memo_slot) {
+                        *memo = if answer { 1 } else { 2 };
+                    }
+                    answer
+                },
+            };
+            if !possible {
                 continue;
             }
             self.set_used(slot, true);
@@ -897,7 +951,7 @@ impl<'p> Matcher<'_, '_, '_> {
                 pats,
                 children,
                 index.saturating_add(1),
-                base,
+                at,
                 goals,
                 subst,
                 mode,
@@ -960,19 +1014,28 @@ impl<'p> Matcher<'_, '_, '_> {
                 let bound = subst.get(index).copied().unwrap_or(NodeId::NONE);
                 if let Some((_, op, operands)) = self.multi.iter().find(|(var, _, _)| var == v) {
                     // Bound to several operands elsewhere: this occurrence
-                    // must be a node made of the same operands.
-                    let mut want: Vec<u32> =
-                        operands.iter().map(|&o| graph.find(o).raw()).collect();
-                    want.sort_unstable();
+                    // must be a node made of the same operands. Operator and
+                    // arity are compared before any operand list is built.
                     let op = *op;
+                    let arity = operands.len();
+                    let mut want: Option<Vec<u32>> = None;
                     let same = graph.enodes(class).any(|enode| {
+                        if graph.op(enode) != op || graph.children(enode).len() != arity {
+                            return false;
+                        }
+                        let want = want.get_or_insert_with(|| {
+                            let mut want: Vec<u32> =
+                                operands.iter().map(|&o| graph.find(o).raw()).collect();
+                            want.sort_unstable();
+                            want
+                        });
                         let mut have: Vec<u32> = graph
                             .children(enode)
                             .iter()
                             .map(|&c| graph.find(c).raw())
                             .collect();
                         have.sort_unstable();
-                        graph.op(enode) == op && have == want
+                        have == *want
                     });
                     if same {
                         self.solve(goals, subst, rest);
@@ -1203,6 +1266,31 @@ mod tests {
             p.matches(&g, square, vars.len(), 16).len(),
             1,
             "equal children are tried once"
+        );
+    }
+
+    #[test]
+    fn commutative_match_uses_each_operand_once() {
+        let mut g = setup();
+        let mut vars = VarNames::default();
+        // Three distinct operands, two (and three) pattern positions: every
+        // match is an injection, so 3·2 and 3! assignments respectively.
+        let node = g.parse("sin(x) * cos(y) * z").unwrap_or(NodeId::NONE);
+        let p = pat(&mut g, &mut vars, "sin(?a) * ?b * ?c");
+        let found = p.matches(&g, node, vars.len(), 64);
+        assert_eq!(found.len(), 2, "sin(?a) has one place, ?b/?c two orders");
+        for m in &found {
+            let bound: Vec<_> = m.subst.iter().filter(|n| !n.is_none()).collect();
+            let mut classes: Vec<_> = bound.iter().map(|&&n| g.find(n)).collect();
+            classes.sort_unstable_by_key(|c| c.raw());
+            classes.dedup();
+            assert_eq!(classes.len(), bound.len(), "an operand was used twice");
+        }
+        let mut vars = VarNames::default();
+        let same = pat(&mut g, &mut vars, "?a * ?a * ?b");
+        assert!(
+            same.matches(&g, node, vars.len(), 64).is_empty(),
+            "no two distinct operands are equal"
         );
     }
 

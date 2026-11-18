@@ -5,6 +5,8 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
+#[path = "buildsrc/rustdocs.rs"]
+mod rustdocs;
 const KEYS: &[&str] = &[
     "VERGEN_BUILD_DATE",
     "VERGEN_BUILD_TIMESTAMP",
@@ -131,6 +133,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     })?;
     println!("cargo:rerun-if-changed=signatures.witnessed.json");
+    // Rustdoc of the public functions behind operators, embedded for the manifest
+    // (`kernel::rustdoc`). A directory is watched by modification time, so this
+    // reruns on any source edit; the scan reads plain text and costs well under a
+    // second, and the lib recompiles on those edits anyway.
+    rustdocs::generate(Path::new("src"), &Path::new(&out).join("rustdocs.txt"))?;
+    println!("cargo:rerun-if-changed=src");
+    println!("cargo:rerun-if-changed=buildsrc/rustdocs.rs");
     for name in ["SOURCE_DATE_EPOCH", "VERGEN_IDEMPOTENT", "DEV", "RUSTC"] {
         println!("cargo:rerun-if-env-changed={name}");
     }

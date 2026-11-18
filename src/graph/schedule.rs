@@ -434,6 +434,7 @@ fn search_rewrite(
     let mut fuel = budget.match_fuel;
     let mut scratch = super::pattern::MatchScratch::default();
     let cap = limit.saturating_add(1);
+    let started = super::profile::start();
     for &node in nodes {
         if crate::cancellation::is_cancelled() {
             break;
@@ -454,6 +455,13 @@ fn search_rewrite(
             break;
         }
     }
+    super::profile::record(
+        started,
+        "search",
+        std::ptr::from_ref(rewrite) as usize,
+        matches.len(),
+        || super::profile::describe(&rewrite.lhs, graph.ops()),
+    );
     if matches.len() > limit || fuel == 0 {
         Search::Banned
     } else {
@@ -608,6 +616,12 @@ struct TierIndex {
     rules: usize,
     /// Segments of `Reduce`, `Normalize` and `Explore`, in program order.
     tiers: [Vec<Segment>; 3],
+    /// Per tier: the positions (in `tiers`) every sweep visits — rewrite
+    /// batches and kernels that look at every operator.
+    always: [Vec<u32>; 3],
+    /// Per tier: for each operator, the positions of the kernels that want
+    /// it. A sweep visits only the kernels of the operators present.
+    by_op: [super::id::FastMap<OpId, Vec<u32>>; 3],
     /// Operators of the kernel at each rule index (empty for rewrites).
     kernel_ops: Vec<KernelOps>,
 }
@@ -640,7 +654,7 @@ impl TierIndex {
                 at += 1;
             }
         }
-        let kernel_ops = rules
+        let kernel_ops: Vec<KernelOps> = rules
             .iter()
             .map(|rule| {
                 match &rule.action {
@@ -655,9 +669,39 @@ impl TierIndex {
                 }
             })
             .collect();
+        let mut always: [Vec<u32>; 3] = Default::default();
+        let mut by_op: [super::id::FastMap<OpId, Vec<u32>>; 3] = Default::default();
+        for (slot, segments) in tiers.iter().enumerate() {
+            for (position, segment) in segments.iter().enumerate() {
+                let position = super::id::to_u32(position);
+                let wanted = match segment {
+                    | Segment::Kernel(at) => kernel_ops.get(*at).filter(|k: &&KernelOps| !k.all),
+                    | Segment::Rewrites(_) => None,
+                };
+                match wanted {
+                    | Some(kernel) => {
+                        if let Some(map) = by_op.get_mut(slot) {
+                            for &op in &kernel.ops {
+                                let list = map.entry(op).or_default();
+                                if list.last() != Some(&position) {
+                                    list.push(position);
+                                }
+                            }
+                        }
+                    },
+                    | None => {
+                        if let Some(list) = always.get_mut(slot) {
+                            list.push(position);
+                        }
+                    },
+                }
+            }
+        }
         Self {
             rules: rules.len(),
             tiers,
+            always,
+            by_op,
             kernel_ops,
         }
     }
@@ -667,6 +711,32 @@ impl TierIndex {
         tier: Tier,
     ) -> &[Segment] {
         self.tiers.get(tier_slot(tier)).map_or(&[], Vec::as_slice)
+    }
+
+    /// The segments of `tier` a sweep over candidates with operators
+    /// `present` must visit, in program order: every other segment is a
+    /// kernel none of whose operators occurs, which the sweep would skip.
+    fn active<'a>(
+        &'a self,
+        tier: Tier,
+        present: impl Iterator<Item = OpId>,
+    ) -> Vec<&'a Segment> {
+        let slot = tier_slot(tier);
+        let segments = self.segments(tier);
+        let mut positions: Vec<u32> = self.always.get(slot).cloned().unwrap_or_default();
+        if let Some(map) = self.by_op.get(slot) {
+            for op in present {
+                if let Some(list) = map.get(&op) {
+                    positions.extend_from_slice(list);
+                }
+            }
+        }
+        positions.sort_unstable();
+        positions.dedup();
+        positions
+            .into_iter()
+            .filter_map(|p| segments.get(p as usize))
+            .collect()
     }
 }
 
@@ -1097,7 +1167,7 @@ impl Engine {
         }
         let mut changed = false;
         let rules = &self.program.rules;
-        for segment in segments {
+        for segment in index.active(tier, candidates.keys().copied()) {
             if crate::cancellation::is_cancelled() {
                 return changed;
             }
@@ -1281,7 +1351,16 @@ impl Engine {
                             }
                             continue;
                         }
+                        let started = super::profile::start();
                         let outcome = kernel.reduce(&mut cx, node);
+                        let hit = !matches!(outcome, Outcome::Pass);
+                        super::profile::record(
+                            started,
+                            "kernel",
+                            at,
+                            usize::from(hit),
+                            || rule.name.to_string(),
+                        );
                         if apply_outcome(graph, node, outcome) {
                             state.applied = state.applied.saturating_add(1);
                             changed = true;

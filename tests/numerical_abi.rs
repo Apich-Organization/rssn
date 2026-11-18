@@ -44,7 +44,15 @@ fn descriptors_register_exact_manifest_overloads_and_unique_keys() {
         let info = manifest.op(export.name).expect(export.name);
         assert_eq!(info.rule_set, export.namespace);
         assert_eq!(info.rust_path.as_deref(), Some(export.rust_path));
-        assert_eq!(info.doc, export.doc);
+        // The manifest keeps the declared text first and may complete it
+        // from the rustdoc of `rust_path` (`doc_source` says which).
+        assert!(
+            info.doc.starts_with(export.doc.trim()),
+            "{}: {:?} does not start with the declared {:?}",
+            export.name,
+            info.doc,
+            export.doc
+        );
         assert_eq!(info.stability, export.stability);
         assert_eq!(info.overloads.len(), 1);
         assert_eq!(info.keys.len(), 1);

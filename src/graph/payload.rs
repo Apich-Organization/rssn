@@ -6,7 +6,6 @@
 //! to the same node.
 
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -113,9 +112,9 @@ pub enum Payload {
 #[derive(Clone, Debug, Default)]
 pub struct Interner {
     payloads: Vec<Payload>,
-    payload_ids: HashMap<Payload, PayloadId>,
+    payload_ids: super::id::FastMap<Payload, PayloadId>,
     symbols: Vec<Arc<str>>,
-    symbol_ids: HashMap<Arc<str>, SymbolId>,
+    symbol_ids: super::id::FastMap<Arc<str>, SymbolId>,
 }
 
 impl Interner {
