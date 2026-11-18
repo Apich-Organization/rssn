@@ -848,11 +848,7 @@ impl<'p> Matcher<'_, '_, '_> {
             memo.saturating_add(pats.len().saturating_mul(children.len())),
             0,
         );
-        let at = Window {
-            base,
-            memo,
-            distinct,
-        };
+        let at = Window { base, memo, distinct };
         self.place(pats, children, 0, at, goals, subst, mode, rest);
         self.used.truncate(base);
         self.classes.truncate(base);
@@ -920,7 +916,8 @@ impl<'p> Matcher<'_, '_, '_> {
             };
             let class = super::id::ClassId::from_raw(raw);
             let tried = !at.distinct
-                && (0..i).any(|j| !self.is_used(base.saturating_add(j)) && class_of(j) == Some(raw));
+                && (0..i)
+                    .any(|j| !self.is_used(base.saturating_add(j)) && class_of(j) == Some(raw));
             if tried {
                 continue;
             }

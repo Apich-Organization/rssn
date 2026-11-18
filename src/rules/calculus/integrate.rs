@@ -2249,12 +2249,22 @@ fn truncated_tail(
             return None;
         }
         // The slowest decay ratio per doubling among the last samples.
-        let ratio = |earlier: f64, later: f64| if earlier > 0.0 { later / earlier } else { 0.0 };
+        let ratio = |earlier: f64, later: f64| {
+            if earlier > 0.0 {
+                later / earlier
+            } else {
+                0.0
+            }
+        };
         let r = ratio(y1, y2).max(ratio(y2, y3));
         if r > 0.9 {
             return None;
         }
-        let slowness = if r > 0.0 { (-r.log2()).recip() } else { 0.0 };
+        let slowness = if r > 0.0 {
+            (-r.log2()).recip()
+        } else {
+            0.0
+        };
         let recent = y1.max(y2).max(y3);
         let width = (x - start).abs().max(1.0);
         Some((x, recent * width * slowness.max(1.0)))

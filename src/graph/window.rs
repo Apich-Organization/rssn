@@ -908,7 +908,10 @@ impl TreeWindow {
                     continue;
                 }
                 let state = self.cell(cell);
-                if by_op.id != 0 && state.clean_rules == by_op.id && state.clean_revision == revision {
+                if by_op.id != 0
+                    && state.clean_rules == by_op.id
+                    && state.clean_revision == revision
+                {
                     continue;
                 }
                 for &rewrite in by_op.get(self.op(cell)) {

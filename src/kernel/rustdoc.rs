@@ -53,8 +53,7 @@ fn index() -> &'static Index {
         let mut by_name: HashMap<&'static str, Vec<RustDoc>> = HashMap::new();
         for record in TABLE.split('\u{1e}') {
             let mut fields = record.splitn(3, '\u{1f}');
-            let (Some(path), Some(name), Some(doc)) =
-                (fields.next(), fields.next(), fields.next())
+            let (Some(path), Some(name), Some(doc)) = (fields.next(), fields.next(), fields.next())
             else {
                 continue;
             };
@@ -274,7 +273,10 @@ mod tests {
     #[test]
     fn splits_assertions_at_the_top_level() {
         assert_eq!(split_top_level("f(1, 2), 3"), Some(("f(1, 2)", " 3")));
-        assert_eq!(split_top_level("f(\"a,b\"), 3, \"m\""), Some(("f(\"a,b\")", " 3")));
+        assert_eq!(
+            split_top_level("f(\"a,b\"), 3, \"m\""),
+            Some(("f(\"a,b\")", " 3"))
+        );
         assert_eq!(split_top_level("nothing"), None);
     }
 
@@ -291,7 +293,8 @@ mod tests {
 
     #[test]
     fn examples_come_only_from_calls_to_the_function() {
-        let doc = "Square.\n\n```\nlet x = 2;\nassert_eq!(square(x), 4);\nassert_eq!(other(1), 2);\n```";
+        let doc =
+            "Square.\n\n```\nlet x = 2;\nassert_eq!(square(x), 4);\nassert_eq!(other(1), 2);\n```";
         let examples = examples_from(doc, "square", "square");
         assert_eq!(examples.len(), 1);
         assert_eq!(examples[0].input, "square(x)");

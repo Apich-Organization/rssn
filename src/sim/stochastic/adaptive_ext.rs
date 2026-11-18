@@ -419,7 +419,12 @@ where
     let Schedule::Adaptive { cells: 0, .. } = options.schedule else {
         return brownian_on(adapters, y0, options, scheme);
     };
-    let first = brownian_on(adapters, y0, &with_cells(options, super::DEFAULT_CELLS), scheme);
+    let first = brownian_on(
+        adapters,
+        y0,
+        &with_cells(options, super::DEFAULT_CELLS),
+        scheme,
+    );
     match first {
         | Err(SdeError::StepLimit(message)) if message == FINEST_RESOLUTION => {
             brownian_on_finer(adapters, y0, options, scheme, super::DEFAULT_CELLS * 4)

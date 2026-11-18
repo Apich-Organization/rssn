@@ -169,7 +169,11 @@ fn gamma_pq(
 /// Clamps a probability to at most 1, keeping NaN (`f64::min` would turn it
 /// into 1).
 fn clamp_unit(value: f64) -> f64 {
-    if value.is_nan() { value } else { value.min(1.0) }
+    if value.is_nan() {
+        value
+    } else {
+        value.min(1.0)
+    }
 }
 
 /// The continued fraction `h` of `Gamma(a, x) = x^a e^-x h` (Lentz):

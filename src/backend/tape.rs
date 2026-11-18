@@ -789,9 +789,7 @@ impl Tape {
                     // An out-of-range register reads as NaN, as in the generic
                     // arm: an empty slice would end the `zip` early and leave
                     // `dst` holding the previous block's values.
-                    before
-                        .get(start..start + n)
-                        .unwrap_or(&NAN_BLOCK[..n])
+                    before.get(start..start + n).unwrap_or(&NAN_BLOCK[..n])
                 };
                 match *inst {
                     | Inst::Const(c) => dst.fill(c),

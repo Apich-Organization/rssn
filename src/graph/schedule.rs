@@ -1354,13 +1354,9 @@ impl Engine {
                         let started = super::profile::start();
                         let outcome = kernel.reduce(&mut cx, node);
                         let hit = !matches!(outcome, Outcome::Pass);
-                        super::profile::record(
-                            started,
-                            "kernel",
-                            at,
-                            usize::from(hit),
-                            || rule.name.to_string(),
-                        );
+                        super::profile::record(started, "kernel", at, usize::from(hit), || {
+                            rule.name.to_string()
+                        });
                         if apply_outcome(graph, node, outcome) {
                             state.applied = state.applied.saturating_add(1);
                             changed = true;

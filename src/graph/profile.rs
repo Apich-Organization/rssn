@@ -122,7 +122,10 @@ pub fn report() -> String {
     let mut rows: Vec<((&'static str, usize), Entry)> = table.drain().collect();
     rows.sort_by(|a, b| b.1.nanos.cmp(&a.1.nanos));
     let total: u128 = rows.iter().map(|(_, e)| e.nanos).sum();
-    let mut out = format!("{:>10} {:>6} {:>8} {:>8}  rule\n", "ms", "%", "calls", "hits");
+    let mut out = format!(
+        "{:>10} {:>6} {:>8} {:>8}  rule\n",
+        "ms", "%", "calls", "hits"
+    );
     for ((kind, _), entry) in rows.iter().take(60) {
         let ms = entry.nanos as f64 / 1e6;
         let share = if total == 0 {
