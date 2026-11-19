@@ -396,8 +396,12 @@ fn topology_counts_parallel_arcs_and_keeps_isolated_vertices() {
     graph.add_edge(1, 3, 1.0);
     graph.add_edge(2, 3, 1.0);
     assert_eq!(topological_sort(&graph).unwrap(), [0, 2, 4, 1, 3]);
-    assert_eq!(topological_sort(&Graph::new(0)).unwrap(), []);
-    assert_eq!(strongly_connected_components(&Graph::new(0)).unwrap(), []);
+    assert!(topological_sort(&Graph::new(0)).unwrap().is_empty());
+    assert!(
+        strongly_connected_components(&Graph::new(0))
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
