@@ -9,17 +9,21 @@ name: CI
     branches: [main, v0.3]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: '17 7 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
   # Workspace `rust-version`; the toolchain every gate below uses.
   RUST_TOOLCHAIN: "1.100.0"
 
@@ -52,7 +56,7 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
   test:
-    name: test (${{ matrix.os }})
+    name: test (${{ matrix.os }}, ${{ matrix.features }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -60,7 +64,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - { os: ubuntu-latest, features: full, args: "--all-features" }
+          - { os: windows-latest, features: full, args: "--all-features" }
+          - { os: macos-latest, features: default, args: "--no-default-features" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
@@ -74,7 +81,10 @@ jobs:
         env:
           # MSVC otherwise writes a large PDB for every linked test.
           _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
-        run: cargo test --locked --workspace --all-features
+        run: cargo test --locked --workspace ${{ matrix.args }}
+      - name: Run long numerical regressions
+        if: runner.os == 'Linux' && github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1'
+        run: cargo test --locked --workspace --all-features -- --ignored --test-threads=1
 
   contracts:
     name: contracts (signature audit, generated bindings)
@@ -100,28 +110,59 @@ jobs:
           cargo run --locked -p rssn-api-gen -- --contracts-check
 
   ffi:
-    name: C interface (headers, smoke test)
-    runs-on: ubuntu-latest
+    name: C and C++ API (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
-      - name: System dependencies
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
-      - name: Regenerate headers and build the C libraries
-        run: DEV=1 bash scripts/build_ffi.sh --locked --features dev-headers
-      - name: Checked-in headers are current
-        run: git diff --exit-code -- rssn.h rssn.hpp
-      - name: Build and run the C smoke test
+      - name: Regenerate headers, link both C interfaces and run them on Linux
+        if: runner.os == 'Linux'
         run: |
-          cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
-          ./smoke
+          DEV=1 bash scripts/build_ffi.sh --profile dev --locked --features dev-headers
+          git diff --exit-code -- rssn.h rssn.hpp
+          cc -I. examples/c/smoke.c target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-smoke
+          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.a -lm -lpthread -ldl -o target/debug/ffi-headers
+          target/debug/ffi-smoke
+          target/debug/ffi-headers
+      - name: Link and run C and C++ clients on macOS
+        if: runner.os == 'macOS'
+        run: |
+          bash scripts/build_ffi.sh --profile dev --locked
+          cc -I. examples/c/smoke.c target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-smoke
+          c++ -std=c++17 -I. tests/ffi/headers.cpp target/debug/librssn.dylib -Wl,-rpath,@loader_path -o target/debug/ffi-headers
+          target/debug/ffi-smoke
+          target/debug/ffi-headers
+      - name: Link and run C and C++ clients on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Visual Studio C++ tools were not found' }
+          & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          & scripts/build_ffi.ps1 -Profile dev -CargoArgs @('--locked')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cl /nologo /utf-8 /I. examples/c/smoke.c /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-smoke.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cl /nologo /utf-8 /std:c++17 /I. tests/ffi/headers.cpp /link target/debug/rssn.dll.lib /OUT:target/debug/ffi-headers.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/debug/ffi-smoke.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/debug/ffi-headers.exe
 
   docs:
-    name: rustdoc
+    name: documentation and examples
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -134,6 +175,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
       - run: python3 scripts/check_doc_editions.py
       - run: cargo doc --locked --workspace --no-deps --all-features
+      - name: Build every Rust example and run the functional examples
+        run: |
+          cargo build --locked --examples
+          for path in examples/*.rs; do
+            example="${path##*/}"
+            example="${example%.rs}"
+            case "$example" in
+              backend_timing|engine_timing) continue ;;
+            esac
+            "target/debug/examples/$example"
+          done
 
   ci-success:
     name: CI success

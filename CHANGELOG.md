@@ -12,6 +12,8 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 
 ### Numerical and symbolic algorithms
 
+- Add one-sided Welch spectral density, inverse STFT with overlap normalization, and polyphase FIR resampling. Add checked topological ordering and a nonrecursive strongly connected component API shared with symbolic graph operators.
+
 - Added weighted empirical quantiles and CDFs, discrete logarithms for composite moduli with non-invertible bases, and checked exact integer polynomial products. Improved LU factor reuse, eigensolver scaling, least-squares projections and parallel fractal correlation counts.
 - The Rust LOBPCG API solves matrix-free generalized eigenproblems with a positive-definite mass operator and soft-locks converged vectors.
 - Fixed-step ODE solvers reject invalid time grids and unrepresentable trajectory sizes before calling user functions. Event location reuses its state buffers.
@@ -34,6 +36,8 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 - 二进制清单、插件消息和计算记录采用 bincode-next 3.2 原生编码。签名和清单保持确定性编码，校验清单时直接读取现有的算子表和单位表，逐段将规范编码传给哈希器。兼容性测试将支持的旧线格式与原生编码进行比较。JSON 与 CBOR 继续提供自描述元数据。
 
 ### 数值与符号算法
+
+- 增加单边 Welch 功率谱密度、重叠归一化逆 STFT 和多相 FIR 重采样。增加受检查的拓扑排序，并让 Rust 和符号图算子共用非递归强连通分量实现。
 
 - 增加加权经验分位数和累积分布、含不可逆底数的复合模数离散对数，以及带溢出检查的精确整数多项式乘法。改进 LU 分解复用、特征值计算的缩放、最小二乘投影和并行分形关联计数。
 - Rust LOBPCG API 支持带正定质量算子的无矩阵广义特征值问题，并软锁定已收敛的向量。

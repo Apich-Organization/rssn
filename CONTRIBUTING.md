@@ -83,7 +83,7 @@ Both repositories (rssn and aevia) use the same three workflows in `.github/work
 
 | Workflow | Runs on | What it does |
 |---|---|---|
-| `ci.yml` | pushes to `main` or `v0.3`, pull requests, manual dispatch | rustfmt (nightly), clippy `-D warnings`, tests on Linux and Windows, contract checks (`signature-audit`, generated bindings, C headers and the C smoke test), rustdoc. The single `CI success` job is the one required check. |
+| `ci.yml` | pushes to `main` or `v0.3`, pull requests, manual dispatch, weekly, release gate | Nightly rustfmt, strict Clippy, all-feature tests on Linux and Windows, default-feature tests on macOS, generated contracts, C and C++ clients on each host, Rust examples and rustdoc. The weekly Linux run also covers the long numerical regressions. The required branch check is `CI success`. |
 | `security.yml` | `main` and `v0.3`, pull requests, weekly | CodeQL, dependency review (pull requests), RustSec advisories. |
 | `release.yml` | manual dispatch | validates the Cargo version and change notes, builds C libraries on the release target matrix, and creates a draft with checksummed archives. The crates.io job uses the `crates-io` environment. `dry_run` builds artifacts without publishing. |
 

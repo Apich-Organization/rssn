@@ -58,3 +58,9 @@ Git use `unknown` for unavailable details. The reported CPU count uses Rust's
 available parallelism and may reflect a container quota. For reproducible
 metadata across hosts, set `VERGEN_IDEMPOTENT=1` with `SOURCE_DATE_EPOCH`, and
 supply explicit `VERGEN_*` values for any desired archive provenance.
+
+## Distribution channels
+
+Push a version tag that matches `Cargo.toml` to start the versioned release workflow. The workflow tests the tagged commit and uploads the checksummed C archives to a draft. Publishing the draft locks its tag and assets and creates a GitHub release attestation. Check the package version and SHA-256 file against the archive before linking. With authenticated GitHub CLI, verify the downloaded archive with `gh release verify-asset TAG ARCHIVE --repo Apich-Organization/rssn`.
+
+Daily builds from the repository's default branch use UTC tags `nightly-YYYY-MM-DD`. Each is an immutable GitHub prerelease. The crates.io job applies only to versioned publications and requires environment approval. The **Release** workflow's `dry_run` option runs validation and builds without publishing.

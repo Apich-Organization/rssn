@@ -21,3 +21,9 @@ cc -I. examples/c/smoke.c target/ffi/librssn.a -lm -lpthread -ldl -o smoke
 `signatures.overlay.json` 和 `signatures.witnessed.json` 都是必需的源码文件，源码归档与 Cargo 包也必须包含它们。构建会原样复制 overlay，缺少文件直接报错，签名无效则在构建内核清单时报错。手写覆盖应与使用它的代码一起更新。见证表根据实际调用生成。修改算子后，运行 `cargo run --profile tools --bin signature-mine` 更新。无见证的算子仍具有其直接声明、覆盖或推导的签名。[签名生成规则](KERNEL.zh.md#3a-见证签名)
 
 构建元数据支持 `SOURCE_DATE_EPOCH`、`VERGEN_IDEMPOTENT` 和显式 `VERGEN_*` 覆盖。Linux 可从 `/etc/os-release`、`/proc` 与 `uname` 查询主机信息。相应来源或 Git 不可用时，缺失值显示为 `unknown`。CPU 数取自 Rust 可用并行度，可能反映容器配额。跨宿主复现元数据时同时设置 `VERGEN_IDEMPOTENT=1` 与 `SOURCE_DATE_EPOCH`，并按需要为归档来源设置 `VERGEN_*`。
+
+## 发布频道
+
+推送和 `Cargo.toml` 一致的版本标签会启动发布工作流。工作流测试标签对应的提交，并将带校验和的 C 归档上传至草稿。发布草稿后，GitHub 锁定标签与附件并生成发布证明。链接前核验归档的版本与 SHA-256。有已登录的 GitHub CLI 时，用 `gh release verify-asset TAG ARCHIVE --repo Apich-Organization/rssn` 验证下载的归档。
+
+每日构建使用仓库默认分支和 UTC 标签 `nightly-YYYY-MM-DD`。每次构建发布为独立的不可变 GitHub 预发布。crates.io 任务仅适用于版本发布，并需要环境批准。启用 **Release** 工作流的 `dry_run` 可运行验证和构建，且不会发布。
