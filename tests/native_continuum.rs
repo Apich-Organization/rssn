@@ -95,7 +95,15 @@ fn native_bem_geometry_retains_length_area_volume_and_bounds() {
         "num_grid_bem_mesh_cube",
         &[frame.clone(), f(1.), t(vec![3], &[0.; 3]), i(1)],
     );
-    assert!((scalar(&call(&s, "num_grid_bem_mesh_volume", &[mesh.clone()])) - 8.).abs() < 1e-12);
+    assert!(
+        (scalar(&call(
+            &s,
+            "num_grid_bem_mesh_volume",
+            std::slice::from_ref(&mesh)
+        )) - 8.)
+            .abs()
+            < 1e-12
+    );
     assert!((scalar(&call(&s, "num_grid_bem_mesh_total_area", &[mesh])) - 24.).abs() < 1e-12);
     let v = call(
         &s,
@@ -127,7 +135,7 @@ fn native_hyperelastic_identity_stress_and_lame_references() {
             f(1.),
         ],
     );
-    let lame = call(&s, "num_grid_hyper_lame", &[material.clone()]);
+    let lame = call(&s, "num_grid_hyper_lame", std::slice::from_ref(&material));
     let Value::Tensor(values) = field(&lame, "normalized") else {
         panic!("vector")
     };
@@ -204,10 +212,14 @@ fn native_acoustics_reduced_energy_and_invalid_work_budget() {
         ],
     );
     let solver = call(&s, "num_grid_acoustics_new", &[config]);
-    call(&s, "num_grid_acoustics_rest", &[solver.clone()]);
+    call(&s, "num_grid_acoustics_rest", std::slice::from_ref(&solver));
     call(&s, "num_grid_acoustics_run", &[solver.clone(), i(3)]);
     assert_eq!(
-        scalar(&call(&s, "num_grid_acoustics_energy", &[solver.clone()])),
+        scalar(&call(
+            &s,
+            "num_grid_acoustics_energy",
+            std::slice::from_ref(&solver)
+        )),
         0.
     );
     assert!(
@@ -311,7 +323,11 @@ fn native_bem_dense_solution_keeps_potential_and_flux_reference_separate() {
         "num_grid_bem_solve3",
         &[mesh, kinds, t(vec![12], &[1.; 12])],
     );
-    let fields = call(&s, "num_grid_bem_solution_fields", &[solution.clone()]);
+    let fields = call(
+        &s,
+        "num_grid_bem_solution_fields",
+        std::slice::from_ref(&solution),
+    );
     assert_eq!(scalar(field(&fields, "potential_reference")), 3.);
     assert_eq!(scalar(field(&fields, "flux_reference")), 1.5);
     let value = call(&s, "num_grid_bem_eval3", &[solution, t(vec![3], &[0.; 3])]);

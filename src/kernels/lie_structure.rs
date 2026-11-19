@@ -1447,7 +1447,7 @@ impl Lie {
                 best = Some((h, missing));
             }
         }
-        best.map(|(h, _)| h).unwrap_or_default()
+        best.map_or_default(|(h, _)| h)
     }
 
     /// The decomposition of `g` into simultaneous generalised eigenspaces

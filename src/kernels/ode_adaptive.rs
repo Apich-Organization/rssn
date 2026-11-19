@@ -1855,7 +1855,7 @@ where
         }
         if en <= 1.0 {
             t += h;
-            cur = half.clone();
+            cur.clone_from(half);
             sol.t.push(t);
             sol.y.push(cur.clone());
         } else {

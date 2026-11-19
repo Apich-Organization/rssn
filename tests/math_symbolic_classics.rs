@@ -4,9 +4,6 @@
 //! checked against an independent oracle: a known constant, a numeric
 //! evaluation at sample points, or substitution back into the equation.
 //!
-//! NOTE: `limit((1 + 1/x)^(x^2)/exp(x), x, oo)` currently answers `0`; the
-//! true value is `exp(-1/2)`. That is a wrong answer, not a missing one.
-//!
 //! Cases that rssn cannot do yet are listed with `known_gap` and must keep
 //! failing; the test fails when a gap closes so that it is moved into the
 //! passing set. `CLASSICS_REPORT=1 cargo test --test math_symbolic_classics
@@ -148,10 +145,7 @@ fn close(
     b: f64,
     tol: f64,
 ) -> bool {
-    if a == b {
-        return true;
-    }
-    (a - b).abs() <= tol * (1.0 + b.abs())
+    a == b || (a.is_finite() && b.is_finite() && (a - b).abs() <= tol * (1.0 + b.abs()))
 }
 
 /// `Ok` when the case passes, `Err(reason)` otherwise.
@@ -168,9 +162,7 @@ fn judge(case: &Case) -> (Result<(), String>, String) {
         match case.kind {
             | Kind::Value(want) => {
                 match eval(&o.text, &[]) {
-                    | Some(got) if close(got, want, 1e-8) || (want.is_infinite() && got == want) => {
-                        Ok(())
-                    },
+                    | Some(got) if close(got, want, 1e-8) => Ok(()),
                     | Some(got) => Err(format!("value {got} != {want}")),
                     | None => Err("not a number".to_owned()),
                 }
@@ -282,8 +274,8 @@ fn cases() -> Vec<Case> {
         v(PI, "defint(1/(1 + x^2), x, -oo, oo)"),
         v(PI, "defint(1/(x^2 + 2*x + 2), x, -oo, oo)"),
         v(PI / 4.0, "defint(x^2/(1 + x^2)^2, x, 0, oo)"),
-        v(PI * PI / 6.0, "defint(x/(exp(x) - 1), x, 0, oo)").gap(),
-        v(-PI / 2.0 * ln2, "defint(ln(sin(x)), x, 0, pi/2)").gap(),
+        v(PI * PI / 6.0, "defint(x/(exp(x) - 1), x, 0, oo)"),
+        v(-PI / 2.0 * ln2, "defint(ln(sin(x)), x, 0, pi/2)"),
         v(2.0, "defint(1/sqrt(x), x, 0, 1)"),
         v(PI, "defint(1/sqrt(1 - x^2), x, -1, 1)"),
         v(PI / 2.0, "defint(sqrt(1 - x^2), x, -1, 1)"),
@@ -301,13 +293,12 @@ fn cases() -> Vec<Case> {
         v(PI / 4.0, "defint(sin(x)^2*cos(x)^2, x, 0, 2*pi)"),
         v((2.0 * PI).sqrt(), "defint(exp(-x^2/2), x, -oo, oo)"),
         v(PI.sqrt() / 2.0, "defint(sqrt(x)*exp(-x), x, 0, oo)"),
-        v(PI * PI / 12.0, "defint(ln(1 + x)/x, x, 0, 1)").gap(),
+        v(PI * PI / 12.0, "defint(ln(1 + x)/x, x, 0, 1)"),
         v(PI, "defint(1/sqrt(x*(1 - x)), x, 0, 1)"),
         v(
             2.0 * PI / (3.0 * 3f64.sqrt()),
             "defint(1/(1 + x^3), x, 0, oo)",
-        )
-        .gap(),
+        ),
         v(PI / 2.0, "defint(sin(x)/x, x, 0, oo)"),
         v(0.0, "defint(x^3, x, -1, 1)"),
         v(2.0 / 3.0, "defint(sqrt(x), x, 0, 1)"),
@@ -318,7 +309,7 @@ fn cases() -> Vec<Case> {
         v(ln2, "limit((2^x - 1)/x, x, 0)"),
         v(1.0, "limit((exp(x) - exp(-x))/(2*x), x, 0)"),
         v(0.6, "limit(sin(3*x)/sin(5*x), x, 0)"),
-        v((-0.5f64).exp(), "limit((1 + 1/x)^(x^2)/exp(x), x, oo)").gap(),
+        v((-0.5f64).exp(), "limit((1 + 1/x)^(x^2)/exp(x), x, oo)"),
         v(1.5, "limit(sqrt(x^2 + 3*x) - x, x, oo)"),
         v(1.0, "limit(x*(exp(1/x) - 1), x, oo)"),
         v(0.5, "limit((tan(x) - sin(x))/x^3, x, 0)"),
@@ -343,9 +334,9 @@ fn cases() -> Vec<Case> {
         // ---- sums and products
         v(0.75, "sum(1/(k^2 - 1), k, 2, oo)"),
         v(-ln2, "sum((-1)^k/k, k, 1, oo)"),
-        v(ln2, "sum(1/(2^k*k), k, 1, oo)").gap(),
+        v(ln2, "sum(1/(2^k*k), k, 1, oo)"),
         v(6.0, "sum(k^2/2^k, k, 1, oo)"),
-        v(PI / 4.0, "sum((-1)^k/(2*k + 1), k, 0, oo)").gap(),
+        v(PI / 4.0, "sum((-1)^k/(2*k + 1), k, 0, oo)"),
         v(0.5, "sum(1/(4*k^2 - 1), k, 1, oo)"),
         v(PI.powi(6) / 945.0, "sum(1/k^6, k, 1, oo)"),
         v(0.25, "sum(1/(k*(k + 1)*(k + 2)), k, 1, oo)"),
@@ -356,7 +347,7 @@ fn cases() -> Vec<Case> {
         v(3f64.exp(), "sum(3^k/factorial(k), k, 0, oo)"),
         v((-1f64).exp(), "sum((-1)^k/factorial(k), k, 0, oo)"),
         v(0.5, "sum(1/3^k, k, 1, oo)"),
-        v(f64::INFINITY, "sum(1/k, k, 1, oo)").gap(),
+        v(f64::INFINITY, "sum(1/k, k, 1, oo)"),
         v(720.0, "product(k, k, 1, 6)"),
         // ---- Maclaurin series
         series(7, "taylor(tan(x), x, 0, 7)"),

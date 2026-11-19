@@ -358,6 +358,102 @@ fn distribution_parameters_are_consistent() {
 }
 
 #[test]
+fn distribution_support_endpoints_have_their_exact_mass_and_density() {
+    use rssn::kernels::distributions::Distribution;
+
+    for (distribution, lower, upper) in [
+        (
+            Distribution::Beta {
+                alpha: 1.0,
+                beta: 1.0,
+            },
+            1.0,
+            1.0,
+        ),
+        (
+            Distribution::Beta {
+                alpha: 1.0,
+                beta: 3.0,
+            },
+            3.0,
+            0.0,
+        ),
+        (
+            Distribution::Beta {
+                alpha: 5.0,
+                beta: 1.0,
+            },
+            0.0,
+            5.0,
+        ),
+        (
+            Distribution::Beta {
+                alpha: 0.5,
+                beta: 0.5,
+            },
+            f64::INFINITY,
+            f64::INFINITY,
+        ),
+    ] {
+        assert_eq!(distribution.pdf(0.0), lower);
+        assert_eq!(distribution.pdf(1.0), upper);
+    }
+    for (n, p, count, absent) in [
+        (10, 0.0, 0.0, 10.0),
+        (10, 1.0, 10.0, 0.0),
+        (0, 0.2, 0.0, 1.0),
+    ] {
+        let binomial = Distribution::Binomial { n, p };
+        assert_eq!(binomial.pdf(count), 1.0);
+        assert_eq!(binomial.pdf(absent), 0.0);
+        assert_eq!(binomial.quantile(0.5).unwrap(), count);
+        assert_eq!(
+            binomial
+                .sample(&mut || panic!("deterministic sample used RNG"))
+                .unwrap(),
+            count
+        );
+    }
+    let rare = Distribution::Binomial {
+        n: 1_000_000_000_000_000_000,
+        p: 1e-18,
+    };
+    assert!((rare.pdf(0.0) - (-1.0_f64).exp()).abs() < 1e-14);
+    assert_eq!(rare.cdf(0.0), rare.pdf(0.0));
+    assert!((rare.pdf(1.0) - (-1.0_f64).exp()).abs() < 1e-14);
+    assert!((rare.cdf(1.0) - 2.0 * (-1.0_f64).exp()).abs() < 1e-14);
+    assert_eq!(rare.quantile(0.5).unwrap(), 1.0);
+    assert_eq!(rare.sample(&mut || 0.5).unwrap(), 1.0);
+}
+
+#[test]
+fn distribution_samples_handle_large_counts_and_ranges() {
+    use rssn::kernels::distributions::Distribution;
+
+    let binomial = Distribution::Binomial { n: 10_000, p: 0.5 };
+    let mut draws = 0;
+    let count = binomial
+        .sample(&mut || {
+            draws += 1;
+            0.5
+        })
+        .unwrap();
+    assert_eq!(count, 5_000.0);
+    assert_eq!(draws, 1);
+
+    let uniform = Distribution::Uniform {
+        lo: -f64::MAX,
+        hi: f64::MAX,
+    };
+    assert_eq!(uniform.cdf(-f64::MAX), 0.0);
+    assert_eq!(uniform.cdf(0.0), 0.5);
+    assert_eq!(uniform.cdf(f64::MAX), 1.0);
+    assert!(uniform.pdf(0.0).is_subnormal());
+    assert_eq!(uniform.sample(&mut || 0.0).unwrap(), -f64::MAX);
+    assert_eq!(uniform.sample(&mut || 0.5).unwrap(), 0.0);
+}
+
+#[test]
 fn determinant_of_a_mixed_matrix_is_diagnosed() {
     // A matrix whose entries have different dimensions is not a scalar
     // conflict: the determinant still has the product dimension, and the

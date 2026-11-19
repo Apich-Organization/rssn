@@ -116,7 +116,7 @@ fn retained_time_boundary_evaluates_coherent_seconds_and_holds_parent() {
         ],
     )
     .unwrap();
-    assert!(call(&s, "num_backend_release", &[program.clone()]).is_err());
+    assert!(call(&s, "num_backend_release", std::slice::from_ref(&program)).is_err());
     let point = vec(vec![Value::Float(0.0); 3], TypeExpr::Float);
     let value = call(
         &s,

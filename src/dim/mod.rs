@@ -19,16 +19,13 @@
 //! this module re-exports them so that a host depends on `rssn::dim` and
 //! never on the graph kernel's internals.
 //!
-//! # Diagnostics and limits
+//! # Dimension diagnostics
 //!
 //! A [`DimError`] carries a stable machine-readable kind through
 //! [`DimError::code`] (`"mismatch"`, `"unknown_unit"`, ...) and says whether
-//! Strict mode blocks on it through [`DimError::is_blocking`]. The text is
-//! still what the C API exposes. The layer's remaining limits — container
-//! typing, affine points and the binding ergonomics — are listed by priority
-//! in `docs/DIMENSIONS.md` §13; the per-rewrite random dimension scan that
-//! used to be the top item there is now
-//! `tests/dimensions.rs::per_rewrite_random_dimension_scan`.
+//! Strict mode blocks on it through [`DimError::is_blocking`]. The C API
+//! exposes the machine-readable code and the diagnostic text.
+//! `docs/DIMENSIONS.md` describes the dimension and quantity contracts.
 //!
 //! # Why names, not ids, at the boundary
 //!

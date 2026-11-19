@@ -237,30 +237,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rustc-env={key}={}", value.replace(['\r', '\n'], " "));
     }
     if env::var("DEV").as_deref() == Ok("1") {
-        headers()?;
+        headers(Path::new(&root))?;
     }
     Ok(())
 }
 #[cfg(not(feature = "dev-headers"))]
-fn headers() -> Result<(), Box<dyn std::error::Error>> {
+fn headers(_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Err("DEV=1 requires --features dev-headers".into())
 }
 #[cfg(feature = "dev-headers")]
-fn headers() -> Result<(), Box<dyn std::error::Error>> {
-    let root = env::var("CARGO_MANIFEST_DIR")?;
-    cbindgen::generate(&root)?.write_to_file(Path::new(&root).join("rssn.h"));
-    let config = cbindgen::Config {
+fn headers(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    println!("cargo:rerun-if-changed=cbindgen.toml");
+    let config = cbindgen::Config::from_file(root.join("cbindgen.toml"))?;
+    let cpp_config = cbindgen::Config {
         language: cbindgen::Language::Cxx,
-        namespace: Some("rssn".into()),
-        ..cbindgen::Config::from_file("cbindgen.toml")?
+        ..config.clone()
     };
-    cbindgen::Builder::new()
-        .with_crate(&root)
-        .with_config(config)
-        .generate()?
-        .write_to_file(Path::new(&root).join("rssn.hpp"));
-    for path in ["src", "cbindgen.toml", "Cargo.toml"] {
-        println!("cargo:rerun-if-changed={path}");
-    }
+    let generate = |config| {
+        cbindgen::Builder::new()
+            .with_src(root.join("src/ffi/mod.rs"))
+            // Preserve the existing opaque Ball and Wavelet declarations.
+            .with_src(root.join("src/graph/store.rs"))
+            .with_src(root.join("src/kernels/wavelets.rs"))
+            .with_config(config)
+            .generate()
+    };
+    let c = generate(config)?;
+    let cpp = generate(cpp_config)?;
+    c.write_to_file(root.join("rssn.h"));
+    cpp.write_to_file(root.join("rssn.hpp"));
     Ok(())
 }

@@ -43,7 +43,20 @@ use crate::kernel::signature::TypeExpr;
 ///
 /// Handles minted by one session are refused by another, which turns a
 /// use-after-free of a term handle into an error instead of a wrong answer.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct SessionId(pub u64);
 
 impl fmt::Display for SessionId {
@@ -63,7 +76,20 @@ impl fmt::Display for SessionId {
 /// into a `Term` with
 /// [`Session::term_ref`](crate::api::Session::term_ref) — on the session
 /// that minted it.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct TermRef {
     /// The session that owns the node.
     pub session: SessionId,
@@ -72,7 +98,9 @@ pub struct TermRef {
 }
 
 /// An exact or floating complex number.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ComplexValue {
     /// Both parts exact.
@@ -110,7 +138,19 @@ impl ComplexValue {
 
 /// A unit definition carried by value: enough to print, convert and check a
 /// quantity without a registry lookup.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct UnitValue {
     /// Symbolic name, as written in a term (`m`, `km`, `degC`).
     pub name: String,
@@ -144,7 +184,9 @@ pub struct UnitValue {
 /// plus whether the value is exact by definition and, when it is not, its
 /// standard uncertainty. A host that generates `Units.Constants` reads this and
 /// nothing else.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct ConstantValue {
     /// What it is called (`speed of light in vacuum`).
     pub name: String,
@@ -165,11 +207,25 @@ pub struct ConstantValue {
 }
 
 /// An exact scale factor `rat * pi^pi`.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct ScaleValue {
     /// Numerator and denominator of the rational factor.
+    #[bincode(with_serde)]
     pub numer: BigInt,
     /// Denominator of the rational factor, always positive.
+    #[bincode(with_serde)]
     pub denom: BigInt,
     /// Power of pi in the factor.
     pub pi: i32,
@@ -201,7 +257,9 @@ impl From<BigRational> for ScaleValue {
 }
 
 /// A value with a unit: `3 m`, `20 degC`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct QuantityValue {
     /// The numeric part.
     pub value: Box<Value>,
@@ -210,7 +268,9 @@ pub struct QuantityValue {
 }
 
 /// A dense tensor in row-major order.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct TensorValue {
     /// Extents, outermost first. Empty for a scalar.
     pub shape: Vec<usize>,
@@ -279,7 +339,17 @@ impl TensorValue {
 }
 
 /// How a sparse tensor stores its entries.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum SparseFormat {
     /// Compressed sparse row.
@@ -291,7 +361,9 @@ pub enum SparseFormat {
 }
 
 /// A sparse tensor.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct SparseValue {
     /// Extents, outermost first.
     pub shape: Vec<usize>,
@@ -403,7 +475,9 @@ fn value_to_f64(v: &Value) -> f64 {
 }
 
 /// A record: named fields in declaration order.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct RecordValue {
     /// Field names and values.
     pub fields: Vec<(String, Value)>,
@@ -424,7 +498,9 @@ impl RecordValue {
 }
 
 /// A tagged union value.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct VariantValue {
     /// The tag.
     pub tag: String,
@@ -437,11 +513,26 @@ pub struct VariantValue {
 /// The index refers to the callback table of the
 /// [`CallCtx`](super::CallCtx) of the call in progress; it is not a global
 /// identifier.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct CallbackRef(pub u32);
 
 /// A value whose dimension is only known at run time.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct DynValue {
     /// The value.
     pub value: Box<Value>,
@@ -450,7 +541,9 @@ pub struct DynValue {
 }
 
 /// A value rssn does not interpret: a host type, or a plugin's own data.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct OpaqueValue {
     /// What the bytes mean, by convention `vendor/type`.
     pub kind: String,
@@ -463,7 +556,20 @@ pub struct OpaqueValue {
 /// A host that generates bindings needs to know, per variant, whether the
 /// value can be passed *into* an operator or only returned by one; see
 /// [`ValueKindInfo`].
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ValueKind {
     /// An exact integer.
@@ -531,7 +637,9 @@ impl fmt::Display for ValueKind {
 }
 
 /// Whether a [`Value`] variant can cross the boundary, and how.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct ValueKindInfo {
     /// The variant.
     pub kind: ValueKind,
@@ -610,11 +718,13 @@ impl ValueKindInfo {
 }
 
 /// A dynamically typed value.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Value {
     /// An exact integer.
-    Int(BigInt),
+    Int(#[bincode(with_serde)] BigInt),
     /// An exact rational, or a symbolic real when it came from a term.
     Real(Number),
     /// A double-precision float.

@@ -1567,12 +1567,12 @@ impl NsSolver {
             (0..cfg_dim).map(|c| self.extended(c, self.t)).collect();
         let (conv, lap) = self.convection_and_laplacian(&ext);
         let les = self.les_force(&ext);
-        if self.th.is_some() {
-            let adv = self
-                .temperature_advection(&self.th.as_ref().map(|t| t.t.clone()).unwrap_or_default());
-            if let Some(st) = &mut self.th {
-                st.adv_now = adv;
-            }
+        let thermal_advection = self
+            .th
+            .as_ref()
+            .map(|state| self.temperature_advection(&state.t));
+        if let (Some(adv), Some(state)) = (thermal_advection, &mut self.th) {
+            state.adv_now = adv;
         }
         let drho = if self.transports_density() {
             self.dens.as_ref().map(|st| self.scalar_advection(&st.rho))

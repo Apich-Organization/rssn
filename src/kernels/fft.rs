@@ -24,40 +24,48 @@ pub enum Norm {
     Unitary,
 }
 
-fn to_internal(input: &[Complex]) -> Vec<Complex64> {
-    input.to_vec()
-}
-
-const fn from_internal(input: Vec<Complex64>) -> Vec<Complex> {
-    input
-}
-
 /// The unnormalised forward transform.
 #[must_use]
 pub fn fft(input: &[Complex]) -> Vec<Complex> {
-    if input.is_empty() {
-        return Vec::new();
-    }
-    let mut buffer = to_internal(input);
-    let mut planner = FftPlanner::new();
-    let transform = planner.plan_fft_forward(buffer.len());
-    transform.process(&mut buffer);
-    from_internal(buffer)
+    fft_owned(input.to_vec())
+}
+
+pub(crate) fn fft_owned(input: Vec<Complex>) -> Vec<Complex> {
+    transform(input, false, Norm::Backward)
 }
 
 /// The inverse transform, scaled by `1/N`.
 #[must_use]
 pub fn ifft(input: &[Complex]) -> Vec<Complex> {
+    ifft_owned(input.to_vec())
+}
+
+pub(crate) fn ifft_owned(input: Vec<Complex>) -> Vec<Complex> {
+    transform(input, true, Norm::Backward)
+}
+
+fn transform(
+    mut input: Vec<Complex>,
+    inverse: bool,
+    norm: Norm,
+) -> Vec<Complex> {
     if input.is_empty() {
-        return Vec::new();
+        return input;
     }
-    let mut buffer = to_internal(input);
-    let len = buffer.len();
     let mut planner = FftPlanner::new();
-    let transform = planner.plan_fft_inverse(buffer.len());
-    transform.process(&mut buffer);
-    let scale = 1.0 / len.max(1) as f64;
-    from_internal(buffer.into_iter().map(|value| value * scale).collect())
+    let direction = if inverse {
+        rustfft::FftDirection::Inverse
+    } else {
+        rustfft::FftDirection::Forward
+    };
+    planner.plan_fft(input.len(), direction).process(&mut input);
+    let scale = scale_for(norm, inverse, input.len());
+    if scale < 1.0 {
+        for value in &mut input {
+            *value *= scale;
+        }
+    }
+    input
 }
 
 /// The scale a transform over `count` points carries under `norm`.
@@ -83,11 +91,7 @@ pub fn fft_norm(
     input: &[Complex],
     norm: Norm,
 ) -> Vec<Complex> {
-    let scale = scale_for(norm, false, input.len());
-    fft(input)
-        .into_iter()
-        .map(|value| Complex::new(value.re * scale, value.im * scale))
-        .collect()
+    transform(input.to_vec(), false, norm)
 }
 
 /// The inverse transform under a chosen normalisation: `Backward` scales by
@@ -97,14 +101,14 @@ pub fn ifft_norm(
     input: &[Complex],
     norm: Norm,
 ) -> Vec<Complex> {
-    if input.is_empty() {
-        return Vec::new();
+    transform(input.to_vec(), true, norm)
+}
+
+fn shape_len(shape: &[usize]) -> Option<usize> {
+    if shape.contains(&0) {
+        return Some(0);
     }
-    let scale = scale_for(norm, true, input.len());
-    let mut buffer = to_internal(input);
-    let mut planner = FftPlanner::new();
-    planner.plan_fft_inverse(buffer.len()).process(&mut buffer);
-    from_internal(buffer.into_iter().map(|value| value * scale).collect())
+    shape.iter().try_fold(1_usize, |n, &d| n.checked_mul(d))
 }
 
 fn check_shape(
@@ -112,7 +116,7 @@ fn check_shape(
     shape: &[usize],
     axes: &[usize],
 ) -> Result<(), String> {
-    if shape.iter().try_fold(1usize, |n, &d| n.checked_mul(d)) != Some(len) {
+    if shape_len(shape) != Some(len) {
         return Err(format!("the shape {shape:?} does not match {len} elements"));
     }
     for (position, axis) in axes.iter().enumerate() {
@@ -144,10 +148,19 @@ pub fn fft_axes(
     norm: Norm,
 ) -> Result<Vec<Complex>, String> {
     check_shape(input.len(), shape, axes)?;
-    if input.is_empty() {
-        return Ok(Vec::new());
+    Ok(transform_axes(input.to_vec(), shape, axes, inverse, norm))
+}
+
+fn transform_axes(
+    mut data: Vec<Complex>,
+    shape: &[usize],
+    axes: &[usize],
+    inverse: bool,
+    norm: Norm,
+) -> Vec<Complex> {
+    if data.is_empty() || axes.is_empty() {
+        return data;
     }
-    let mut data = to_internal(input);
     let mut planner = FftPlanner::new();
     for axis in axes {
         let extent = shape[*axis];
@@ -161,14 +174,20 @@ pub fn fft_axes(
         } else {
             planner.plan_fft_forward(extent)
         };
-        let mut lane = vec![Complex64::new(0.0, 0.0); extent];
+        let mut scratch = vec![Complex64::default(); transform.get_inplace_scratch_len()];
+        if inner == 1 {
+            // The planner processes a buffer of contiguous lanes as a batch.
+            transform.process_with_scratch(&mut data, &mut scratch);
+            continue;
+        }
+        let mut lane = vec![Complex64::default(); extent];
         for block in 0..outer {
             for offset in 0..inner {
                 let base = block * extent * inner + offset;
                 for (index, slot) in lane.iter_mut().enumerate() {
                     *slot = data[base + index * inner];
                 }
-                transform.process(&mut lane);
+                transform.process_with_scratch(&mut lane, &mut scratch);
                 for (index, slot) in lane.iter().enumerate() {
                     data[base + index * inner] = *slot;
                 }
@@ -177,9 +196,12 @@ pub fn fft_axes(
     }
     let count: usize = axes.iter().map(|axis| shape[*axis]).product();
     let scale = scale_for(norm, inverse, count);
-    Ok(from_internal(
-        data.into_iter().map(|value| value * scale).collect(),
-    ))
+    if scale < 1.0 {
+        for value in &mut data {
+            *value *= scale;
+        }
+    }
+    data
 }
 
 /// The half-spectrum transform of a real tensor over `axes`: the last listed
@@ -195,18 +217,22 @@ pub fn rfft_axes(
     let Some(last) = axes.last().copied() else {
         return Err("a real transform needs at least one axis".to_string());
     };
-    let complex: Vec<Complex> = input
-        .iter()
-        .map(|value| Complex::new(*value, 0.0))
-        .collect();
-    let full = fft_axes(&complex, shape, axes, false, Norm::Backward)?;
+    check_shape(input.len(), shape, axes)?;
     if shape[last] == 0 {
         return Err("real transform axis must be nonempty".to_string());
     }
     let keep = shape[last] / 2 + 1;
-    let inner: usize = shape[last + 1..].iter().product();
     let mut out_shape = shape.to_vec();
     out_shape[last] = keep;
+    if input.is_empty() {
+        return Ok((Vec::new(), out_shape));
+    }
+    let complex = input
+        .iter()
+        .map(|&value| Complex::new(value, 0.0))
+        .collect();
+    let full = transform_axes(complex, shape, axes, false, Norm::Backward);
+    let inner: usize = shape[last + 1..].iter().product();
     let mut out = Vec::with_capacity(out_shape.iter().product());
     for (index, value) in full.into_iter().enumerate() {
         if (index / inner.max(1)) % shape[last].max(1) < keep {
@@ -240,11 +266,11 @@ pub fn irfft_axes(
     }
     let mut full_shape = shape.to_vec();
     full_shape[last] = n_last;
-    let total = full_shape
-        .iter()
-        .try_fold(1usize, |n, &d| n.checked_mul(d))
-        .ok_or_else(|| "tensor shape overflows usize".to_string())?;
-    let mut full = vec![Complex::new(0.0, 0.0); total];
+    let total = shape_len(&full_shape).ok_or_else(|| "tensor shape overflows usize".to_string())?;
+    let mut full = Vec::new();
+    full.try_reserve_exact(total)
+        .map_err(|_| "tensor is too large".to_string())?;
+    full.resize(total, Complex64::default());
     let rank = shape.len();
     let mut coordinate = vec![0usize; rank];
     for (slot, target) in full.iter_mut().enumerate() {
@@ -271,7 +297,7 @@ pub fn irfft_axes(
             value
         };
     }
-    let real = fft_axes(&full, &full_shape, axes, true, Norm::Backward)?;
+    let real = transform_axes(full, &full_shape, axes, true, Norm::Backward);
     Ok((real.into_iter().map(|value| value.re).collect(), full_shape))
 }
 
@@ -286,13 +312,12 @@ pub fn shift_permutation(
     axes: &[usize],
     inverse: bool,
 ) -> Result<Vec<usize>, String> {
-    let total = shape
-        .iter()
-        .try_fold(1usize, |n, &d| n.checked_mul(d))
-        .ok_or_else(|| "tensor shape overflows usize".to_string())?;
+    let total = shape_len(shape).ok_or_else(|| "tensor shape overflows usize".to_string())?;
     check_shape(total, shape, axes)?;
     let rank = shape.len();
-    let mut out = Vec::with_capacity(total);
+    let mut out = Vec::new();
+    out.try_reserve_exact(total)
+        .map_err(|_| "tensor is too large".to_string())?;
     let mut coordinate = vec![0usize; rank];
     for slot in 0..total {
         let mut rest = slot;
@@ -312,7 +337,11 @@ pub fn shift_permutation(
                 } else {
                     extent / 2
                 };
-                at = (at + extent - by % extent) % extent;
+                at = if at >= by {
+                    at - by
+                } else {
+                    extent - (by - at)
+                };
             }
             source = source * extent + at;
         }
@@ -328,22 +357,24 @@ pub fn rfftfreq(
     n: usize,
     d: f64,
 ) -> Vec<f64> {
-    if n == 0 || d == 0.0 {
-        return Vec::new();
+    let mut out = Vec::new();
+    if n == 0 || d == 0.0 || out.try_reserve_exact(n / 2 + 1).is_err() {
+        return out;
     }
-    (0..=n / 2)
-        .map(|index| index as f64 / (n as f64 * d))
-        .collect()
+    out.extend((0..=n / 2).map(|index| (index as f64 / n as f64) / d));
+    out
 }
 
 /// The transform of a real signal: the non-redundant half of the spectrum,
 /// `n/2 + 1` bins.
 #[must_use]
 pub fn rfft(input: &[f64]) -> Vec<Complex> {
-    let spectrum = fft(&input
-        .iter()
-        .map(|value| Complex::new(*value, 0.0))
-        .collect::<Vec<_>>());
+    let spectrum = fft_owned(
+        input
+            .iter()
+            .map(|value| Complex::new(*value, 0.0))
+            .collect(),
+    );
     spectrum.into_iter().take(input.len() / 2 + 1).collect()
 }
 
@@ -353,7 +384,11 @@ pub fn irfft(
     input: &[Complex],
     n: usize,
 ) -> Vec<f64> {
-    let mut spectrum = vec![Complex::new(0.0, 0.0); n];
+    let mut spectrum = Vec::new();
+    if spectrum.try_reserve_exact(n).is_err() {
+        return Vec::new();
+    }
+    spectrum.resize(n, Complex64::default());
     for (index, value) in input.iter().enumerate() {
         if index < n {
             spectrum[index] = *value;
@@ -362,7 +397,10 @@ pub fn irfft(
             }
         }
     }
-    ifft(&spectrum).into_iter().map(|value| value.re).collect()
+    ifft_owned(spectrum)
+        .into_iter()
+        .map(|value| value.re)
+        .collect()
 }
 
 /// The sample frequencies of a length-`n` transform with spacing `d`.
@@ -371,16 +409,16 @@ pub fn fftfreq(
     n: usize,
     d: f64,
 ) -> Vec<f64> {
-    let mut out = Vec::with_capacity(n);
-    if n == 0 || d == 0.0 {
+    let mut out = Vec::new();
+    if n == 0 || d == 0.0 || out.try_reserve_exact(n).is_err() {
         return out;
     }
     let half = n.div_ceil(2);
     for index in 0..n {
         if index < half {
-            out.push(index as f64 / (n as f64 * d));
+            out.push((index as f64 / n as f64) / d);
         } else {
-            out.push((index as f64 - n as f64) / (n as f64 * d));
+            out.push(-((n - index) as f64 / n as f64) / d);
         }
     }
     out

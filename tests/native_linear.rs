@@ -84,7 +84,12 @@ fn train_native_entry_roundtrip_and_inner_product_retain_units() {
     .unwrap();
     assert!((scalar(&entry) - 12.0).abs() < 1e-10);
     assert!(matches!(entry, Value::Dyn(_)));
-    let restored = call(&s, "num_linear_train_to_dense", &[train.clone()]).unwrap();
+    let restored = call(
+        &s,
+        "num_linear_train_to_dense",
+        std::slice::from_ref(&train),
+    )
+    .unwrap();
     let raw = call(&s, "num_linear_array_data", &[restored]).unwrap();
     let Value::Tensor(t) = field(&raw, "data") else {
         panic!("tensor")

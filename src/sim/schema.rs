@@ -864,7 +864,7 @@ mod tests {
                     );
                 }
             }
-            let mut params = base.clone();
+            let mut params = base;
             params[n.field] = Value::String("not-a-choice".to_owned());
             assert!(
                 super::super::scenario::run(n.scenario, &params.to_string()).is_err(),

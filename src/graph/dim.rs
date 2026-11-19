@@ -19,8 +19,7 @@
 //! `matexp` (a dimensionless product) and the complex-analysis family, which
 //! lives on a dimensionless complex plane (`dimensionless_complex_variable`).
 //!
-//! The design and the remaining limits are documented in
-//! `docs/DIMENSIONS.md` (§13 lists the current limitations by priority). The
+//! `docs/DIMENSIONS.md` documents the dimension contracts. The
 //! standard rule set's rewrites are dimension-checked by
 //! `tests/dimensions.rs::per_rewrite_random_dimension_scan`.
 

@@ -295,9 +295,9 @@ mod tests {
 
     #[test]
     fn captures_nest_and_restore_the_outer_collector() {
-        let (_, outer) = capture_all(|| {
+        let ((), outer) = capture_all(|| {
             report(Diag::new(DiagKind::Shape, "outer one"));
-            let (_, inner) = capture_all(|| report(Diag::new(DiagKind::Domain, "inner")));
+            let ((), inner) = capture_all(|| report(Diag::new(DiagKind::Domain, "inner")));
             assert_eq!(inner.len(), 1);
             report(Diag::new(DiagKind::Singular, "outer two"));
         });

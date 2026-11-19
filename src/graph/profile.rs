@@ -120,7 +120,7 @@ pub fn report() -> String {
         return String::new();
     };
     let mut rows: Vec<((&'static str, usize), Entry)> = table.drain().collect();
-    rows.sort_by(|a, b| b.1.nanos.cmp(&a.1.nanos));
+    rows.sort_by_key(|(_, entry)| std::cmp::Reverse(entry.nanos));
     let total: u128 = rows.iter().map(|(_, e)| e.nanos).sum();
     let mut out = format!(
         "{:>10} {:>6} {:>8} {:>8}  rule\n",

@@ -334,14 +334,10 @@ fn worth_naming(
     };
     let leaf = |k: usize| matches!(dag.nodes.get(k), Some(Local::Leaf(_)));
     let number = |k: usize| matches!(dag.nodes.get(k), Some(Local::Leaf(n)) if graph.number_of(*n).is_some());
-    if *op == core::MUL
+    !(*op == core::MUL
         && kids.len() == 2
         && kids.iter().any(|&k| number(k))
-        && kids.iter().all(|&k| leaf(k))
-    {
-        return false;
-    }
-    true
+        && kids.iter().all(|&k| leaf(k)))
 }
 
 struct Plan {

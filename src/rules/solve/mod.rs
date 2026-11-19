@@ -2512,7 +2512,7 @@ mod tests {
         );
         let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
             .build(&mut g, root);
-        let text = answer.map(|n| g.display(n)).unwrap_or_default();
+        let text = answer.map_or_default(|n| g.display(n));
         let value: f64 = text
             .trim_start_matches("list(")
             .trim_end_matches(')')
@@ -2567,7 +2567,7 @@ mod tests {
         );
         let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
             .build(&mut g, root);
-        answer.map(|n| g.display(n)).unwrap_or_default()
+        answer.map_or_default(|n| g.display(n))
     }
 
     fn numbers(text: &str) -> Vec<f64> {

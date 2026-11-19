@@ -138,7 +138,7 @@ fn cancelled_graph_answers_are_errors_and_do_not_poison_the_cache() {
             Ok(())
         })
     };
-    let session = Session::with_rules(&[rules.clone()]).unwrap();
+    let session = Session::with_rules(std::slice::from_ref(&rules)).unwrap();
     let request = session.parse("interruptible(x)").unwrap();
     let config = Config::empty().with(rules);
     let _scope = cancellation::install(Arc::clone(&token));

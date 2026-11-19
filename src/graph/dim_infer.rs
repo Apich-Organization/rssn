@@ -7,8 +7,7 @@
 //! never thrown — and the caller decides whether they are diagnostics
 //! (Advisory) or a hard error (Strict).
 //!
-//! The algorithm is documented in `docs/DIMENSIONS.md` §6; the remaining
-//! limitations of the layer are listed in §13.
+//! `docs/DIMENSIONS.md` describes inference in §6 and structured results in §13.
 
 // The inference engine is a crate-internal implementation detail; the module
 // declaration in `graph::mod` allows `clippy::redundant_pub_crate`.

@@ -173,6 +173,45 @@ where
     (4.0 * fine - coarse) / 3.0
 }
 
+/// Divergence of a vector field, using central differences.
+pub fn divergence(
+    f: impl Fn(&[f64]) -> Vec<f64>,
+    x: &[f64],
+) -> f64 {
+    let fx = f(x);
+    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
+    (0..j.rows.min(j.cols)).map(|i| j.at(i, i)).sum()
+}
+
+/// Curl of a three-dimensional vector field. Returns `None` for wrong dimensions.
+pub fn curl(
+    f: impl Fn(&[f64]) -> Vec<f64>,
+    x: &[f64],
+) -> Option<Vec<f64>> {
+    if x.len() != 3 {
+        return None;
+    }
+    let fx = f(x);
+    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
+    if j.rows != 3 {
+        return None;
+    }
+    Some(vec![
+        j.at(2, 1) - j.at(1, 2),
+        j.at(0, 2) - j.at(2, 0),
+        j.at(1, 0) - j.at(0, 1),
+    ])
+}
+
+/// Laplacian of a scalar field, using central differences.
+pub fn laplacian(
+    f: impl Fn(&[f64]) -> f64,
+    x: &[f64],
+) -> f64 {
+    let h = hessian(f, x);
+    (0..x.len()).map(|i| h[i * x.len() + i]).sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,43 +250,4 @@ mod tests {
         }
         assert_eq!(h[1].to_bits(), h[2].to_bits());
     }
-}
-
-/// Divergence of a vector field, using central differences.
-pub fn divergence(
-    f: impl Fn(&[f64]) -> Vec<f64>,
-    x: &[f64],
-) -> f64 {
-    let fx = f(x);
-    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
-    (0..j.rows.min(j.cols)).map(|i| j.at(i, i)).sum()
-}
-
-/// Curl of a three-dimensional vector field. Returns `None` for wrong dimensions.
-pub fn curl(
-    f: impl Fn(&[f64]) -> Vec<f64>,
-    x: &[f64],
-) -> Option<Vec<f64>> {
-    if x.len() != 3 {
-        return None;
-    }
-    let fx = f(x);
-    let j = crate::kernels::rootfind::numerical_jacobian(&f, x, &fx);
-    if j.rows != 3 {
-        return None;
-    }
-    Some(vec![
-        j.at(2, 1) - j.at(1, 2),
-        j.at(0, 2) - j.at(2, 0),
-        j.at(1, 0) - j.at(0, 1),
-    ])
-}
-
-/// Laplacian of a scalar field, using central differences.
-pub fn laplacian(
-    f: impl Fn(&[f64]) -> f64,
-    x: &[f64],
-) -> f64 {
-    let h = hessian(f, x);
-    (0..x.len()).map(|i| h[i * x.len() + i]).sum()
 }

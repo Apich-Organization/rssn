@@ -97,7 +97,12 @@ fn native_compiled_point_and_parallel_columns_use_real_normalized_program() {
     let session = Session::new();
     let program = compile(&session, 1_000_000);
     assert_eq!(
-        call(&session, "num_backend_arity", &[program.clone()]).unwrap(),
+        call(
+            &session,
+            "num_backend_arity",
+            std::slice::from_ref(&program)
+        )
+        .unwrap(),
         Value::int(2)
     );
     let x = scalar(&session, 4.0, DimExpr::Base("Length".into()), false);
@@ -164,13 +169,25 @@ fn native_compiled_rejects_wrong_units_budgets_stale_and_foreign_handles() {
         )
         .is_err()
     );
-    assert!(call(&Session::new(), "num_backend_arity", &[program.clone()]).is_err());
+    assert!(
+        call(
+            &Session::new(),
+            "num_backend_arity",
+            std::slice::from_ref(&program)
+        )
+        .is_err()
+    );
     assert!(call(&session, "num_backend_reference", &[Value::Float(0.0)]).is_err());
     let mut forged = program.clone();
     if let Value::Opaque(v) = &mut forged {
         v.kind = "rssn/native/backend/v1".into();
     }
     assert!(call(&session, "num_backend_arity", &[forged]).is_err());
-    call(&session, "num_backend_release", &[program.clone()]).unwrap();
+    call(
+        &session,
+        "num_backend_release",
+        std::slice::from_ref(&program),
+    )
+    .unwrap();
     assert!(call(&session, "num_backend_arity", &[program]).is_err());
 }

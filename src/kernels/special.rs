@@ -168,7 +168,7 @@ fn gamma_pq(
 
 /// Clamps a probability to at most 1, keeping NaN (`f64::min` would turn it
 /// into 1).
-fn clamp_unit(value: f64) -> f64 {
+const fn clamp_unit(value: f64) -> f64 {
     if value.is_nan() {
         value
     } else {

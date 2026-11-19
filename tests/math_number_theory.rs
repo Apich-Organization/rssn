@@ -235,6 +235,36 @@ fn discrete_log_baby_giant() {
     assert_eq!(nt::discrete_log(0, 0, 7), Some(1));
 }
 
+#[test]
+fn discrete_log_matches_power_orbits_over_composite_moduli() {
+    let modulus = 202;
+    let target = nt::mod_pow(2, 73, modulus);
+    assert_eq!(nt::discrete_log(2, target, modulus), Some(73));
+    assert_eq!(nt::discrete_log(2, 0, 1 << 47), Some(47));
+
+    for modulus in 2..=50_u64 {
+        for base in 0..modulus {
+            let mut first = vec![None; modulus as usize];
+            let mut value = 1;
+            for exponent in 0.. {
+                let cell = &mut first[value as usize];
+                if cell.is_some() {
+                    break;
+                }
+                *cell = Some(exponent);
+                value = value * base % modulus;
+            }
+            for (target, exponent) in first.into_iter().enumerate() {
+                assert_eq!(
+                    nt::discrete_log(base, target as u64, modulus),
+                    exponent,
+                    "base {base}, target {target}, modulus {modulus}"
+                );
+            }
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(cfg())]
 

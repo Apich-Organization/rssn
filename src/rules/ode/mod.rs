@@ -3550,7 +3550,7 @@ mod tests {
         );
         let out = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm)
             .build(&mut g, root);
-        let text = out.map(|n| g.display(n)).unwrap_or_default();
+        let text = out.map_or_default(|n| g.display(n));
         let values: Vec<f64> = text
             .trim_start_matches("list(")
             .trim_end_matches(')')

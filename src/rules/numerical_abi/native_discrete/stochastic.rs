@@ -25,6 +25,8 @@ object_binding!(rng_new,"num_native_rng_new","crate::kernels::random::Rng::new",
 object_binding!(rng_uniform,"num_native_rng_uniform","crate::kernels::random::Rng::uniform","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>)->f64,|ctx:&CallCtx<'_>,rng:Handle<Rng>|{rng.with_mut(ctx,|r|Ok(r.uniform()))});
 object_binding!(rng_normal,"num_native_rng_normal","crate::kernels::random::Rng::normal","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>)->f64,|ctx:&CallCtx<'_>,rng:Handle<Rng>|{rng.with_mut(ctx,|r|Ok(r.normal()))});
 object_binding!(rng_next_u64,"num_native_rng_next_u64","crate::kernels::random::Rng::next_u64","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>)->u64,|ctx:&CallCtx<'_>,rng:Handle<Rng>|{rng.with_mut(ctx,|r|Ok(r.next_u64()))});
+object_binding!(rng_jump,"num_native_rng_jump","crate::kernels::random::Rng::jump","Advance the session-owned random generator by 2^128 raw steps and clear its cached normal sample. Returns true when the generator was updated.",true,(rng:Handle<Rng>)->bool,|ctx:&CallCtx<'_>,rng:Handle<Rng>|{rng.with_mut(ctx,|r|{r.jump();Ok(true)})});
+object_binding!(rng_long_jump,"num_native_rng_long_jump","crate::kernels::random::Rng::long_jump","Advance the session-owned random generator by 2^192 raw steps and clear its cached normal sample. Returns true when the generator was updated.",true,(rng:Handle<Rng>)->bool,|ctx:&CallCtx<'_>,rng:Handle<Rng>|{rng.with_mut(ctx,|r|{r.long_jump();Ok(true)})});
 object_binding!(rng_below,"num_native_rng_below","crate::kernels::random::Rng::below","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>,n:u64)->u64,|ctx:&CallCtx<'_>,rng:Handle<Rng>,n:u64|{if n==0{return Err(error("uniform integer range must be nonempty"));}rng.with_mut(ctx,|r|Ok(r.below(n)))});
 object_binding!(rng_beta,"num_native_rng_beta","crate::kernels::random::Rng::beta","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>,a:f64,b:f64)->f64,|ctx:&CallCtx<'_>,rng:Handle<Rng>,a:f64,b:f64|{if a<=0.0||b<=0.0||a>1e8||b>1e8{return Err(error("beta shapes must be positive and within native sampling budget"));}rng.with_mut(ctx,|r|Ok(r.beta(a,b)))});
 object_binding!(rng_binomial,"num_native_rng_binomial","crate::kernels::random::Rng::binomial","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(rng:Handle<Rng>,n:u64,p:f64)->u64,|ctx:&CallCtx<'_>,rng:Handle<Rng>,n:u64,p:f64|{if n>1_048_576||!(0.0..=1.0).contains(&p){return Err(error("binomial count/probability exceeds sampling domain or work budget"));}rng.with_mut(ctx,|r|Ok(r.binomial(n,p)))});
@@ -52,6 +54,8 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             &rng_uniform::BINDING,
             &rng_normal::BINDING,
             &rng_next_u64::BINDING,
+            &rng_jump::BINDING,
+            &rng_long_jump::BINDING,
             &rng_below::BINDING,
             &rng_beta::BINDING,
             &rng_binomial::BINDING,

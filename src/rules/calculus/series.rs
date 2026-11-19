@@ -498,17 +498,23 @@ fn symbolic_sum(
         }
         // 1/k^s from 1 to infinity is zeta(s).
         let from_one = graph.number_of(lower).is_some_and(Number::is_one);
-        if infinite_upper && from_one && base == k && !depends(graph, exponent) {
-            let zeta = graph.ops().lookup("zeta")?;
+        if infinite_upper && from_one && graph.same(base, k) && !depends(graph, exponent) {
             let s = graph.number_of(exponent)?.neg();
+            let coefficient = mul(graph, &constant);
             if s.to_f64() <= 1.0 {
-                return None;
+                // Every term has the sign of its coefficient, so this
+                // p-series diverges to a signed infinity when that sign is
+                // known and nonzero.
+                let c = graph.eval(coefficient, &Env::numeric(0.0))?;
+                if !c.is_finite() || c == 0.0 {
+                    return None;
+                }
+                return Some(mul(graph, &[coefficient, upper]));
             }
+            let zeta = graph.ops().lookup("zeta")?;
             let s = graph.num(s);
             let value = graph.node(zeta, &[s]);
-            let mut all = constant;
-            all.push(value);
-            return Some(mul(graph, &all));
+            return Some(mul(graph, &[coefficient, value]));
         }
     }
     // Hypergeometric terms: Gosper's antidifference; rational terms that
@@ -642,7 +648,9 @@ fn power_geometric_sum(
 ///   (`sum k / 2^k = 2`), through `sum k^p r^k`;
 /// * `z^k / k!` (and `(-1)^k z^(a k) / k!`), the exponential series;
 /// * the alternating p-series `sum (-1)^(k+b) / k^s`, which is the Dirichlet
-///   eta function: `ln 2` for `s = 1`, `(1 - 2^(1-s)) zeta(s)` otherwise.
+///   eta function: `ln 2` for `s = 1`, `(1 - 2^(1-s)) zeta(s)` otherwise;
+/// * geometric factors times inverse powers of affine functions of `k`,
+///   through polylogarithms and the Lerch transcendent.
 #[allow(clippy::too_many_lines)]
 fn infinite_series_sum(
     cx: &mut Cx<'_>,
@@ -656,11 +664,46 @@ fn infinite_series_sum(
         .number_of(lower)
         .and_then(Number::to_i64)
         .filter(|l| (0..=60).contains(l))?;
-    let factors: Vec<NodeId> = if cx.graph.op(term) == core::MUL {
-        cx.graph.children(term).to_vec()
-    } else {
-        vec![term]
-    };
+    // The extractor can keep a reciprocal product packed as
+    // `(k 2^k)^(-1)`. Split it locally to expose the geometric factor.
+    let mut factors = Vec::new();
+    let mut pending = vec![(term, false)];
+    while let Some((factor, reciprocal)) = pending.pop() {
+        let op = cx.graph.op(factor);
+        if op == core::MUL {
+            pending.extend(
+                cx.graph
+                    .children(factor)
+                    .iter()
+                    .rev()
+                    .map(|&n| (n, reciprocal)),
+            );
+            continue;
+        }
+        if op == core::POW
+            && let &[base, exponent] = cx.graph.children(factor)
+            && cx.graph.number_of(exponent).and_then(Number::to_i64) == Some(-1)
+            && (reciprocal || cx.graph.op(base) == core::MUL)
+        {
+            pending.push((base, !reciprocal));
+            continue;
+        }
+        if reciprocal {
+            let minus_one = cx.graph.int(-1);
+            let (base, exponent) = if op == core::POW
+                && let &[base, exponent] = cx.graph.children(factor)
+            {
+                // Keep the exponent linear in k. The extractor can prefer
+                // a nested reciprocal to the equivalent negative exponent.
+                (base, mul(cx.graph, &[minus_one, exponent]))
+            } else {
+                (factor, minus_one)
+            };
+            factors.push(cx.graph.node(core::POW, &[base, exponent]));
+        } else {
+            factors.push(factor);
+        }
+    }
     let factorial = cx.graph.ops().lookup("factorial");
     let mut constant: Vec<NodeId> = Vec::new();
     let mut polynomial: Vec<NodeId> = Vec::new();
@@ -762,11 +805,21 @@ fn infinite_series_sum(
         }
         return Some(mul(cx.graph, &all));
     }
-    if polynomial.is_empty() || ratio.is_zero() || ratio.abs() >= BigRational::one() {
+    if polynomial.is_empty() || ratio.is_zero() {
+        return None;
+    }
+    let body = mul(cx.graph, &polynomial);
+    if let Some(value) = reciprocal_geometric_sum(cx, body, k, low, &ratio) {
+        if let Some(shift) = shift {
+            constant.push(cx.graph.node(core::POW, &[base, shift]));
+        }
+        constant.push(value);
+        return Some(mul(cx.graph, &constant));
+    }
+    if ratio.abs() >= BigRational::one() {
         return None;
     }
     // A polynomial in k times r^k.
-    let body = mul(cx.graph, &polynomial);
     let mut gens = Gens::default();
     let gk = gens.index(cx.graph, k);
     let poly = from_term(cx.graph, &mut gens, body, Limits::default())?;
@@ -811,6 +864,60 @@ fn infinite_series_sum(
     }
     all.push(add(cx.graph, &pieces));
     Some(mul(cx.graph, &all))
+}
+
+/// A geometric factor times a rational term whose poles are linear.
+fn reciprocal_geometric_sum(
+    cx: &mut Cx<'_>,
+    fraction: NodeId,
+    k: NodeId,
+    lower: i64,
+    ratio: &BigRational,
+) -> Option<NodeId> {
+    // At ratio -1, each inverse power is conditionally or absolutely
+    // convergent. At +1, the ordinary rational-sum kernel handles the case.
+    if ratio.abs() > BigRational::one() || ratio.is_one() {
+        return None;
+    }
+    let graph = &mut *cx.graph;
+    let (numerator, denominator) = crate::rules::poly::rational_function_in(graph, fraction, k)?;
+    if denominator.len() < 2 {
+        return None;
+    }
+    let partial = crate::rules::poly::apart::apart(&numerator, &denominator)?;
+    if !partial.quotient.is_empty() {
+        return None;
+    }
+    let start = BigRational::from_integer(BigInt::from(lower));
+    let prefix = ratio.pow(i32::try_from(lower).ok()?);
+    let z = graph.num(Number::rat(ratio.clone()));
+    let mut pieces = Vec::with_capacity(partial.pieces.len());
+    for piece in partial.pieces {
+        let ([offset, slope], [c]) = (piece.factor.as_slice(), piece.numerator.as_slice()) else {
+            return None;
+        };
+        let a = &start + offset / slope;
+        if !a.is_positive() {
+            // A pole at or above the lower bound needs a different analysis.
+            return None;
+        }
+        let power = graph.int(i64::from(piece.power));
+        let coefficient = c / slope.pow(i32::try_from(piece.power).ok()?);
+        let value = if lower == 1 && a.is_one() {
+            let polylog = graph.ops().lookup("polylog")?;
+            let factor = graph.num(Number::rat(coefficient));
+            let tail = graph.node(polylog, &[power, z]);
+            mul(graph, &[factor, tail])
+        } else {
+            let lerch = graph.ops().lookup("lerch")?;
+            let factor = graph.num(Number::rat(coefficient * &prefix));
+            let a = graph.num(Number::rat(a));
+            let tail = graph.node(lerch, &[z, power, a]);
+            mul(graph, &[factor, tail])
+        };
+        pieces.push(value);
+    }
+    Some(add(graph, &pieces))
 }
 
 /// `sum_{k>=low} c z^k / k!` with `z` the product of the geometric bases

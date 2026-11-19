@@ -108,8 +108,7 @@ impl Jets {
         k: usize,
     ) -> Option<NodeId> {
         let mut terms = vec![derivative(cx.graph, f, self.vars[k])?];
-        for (index, node) in self.occurring(cx, f) {
-            let mut next = index.clone();
+        for (mut next, node) in self.occurring(cx, f) {
             next[k] += 1;
             let higher = self.get(cx, &next);
             let partial = derivative(cx.graph, f, node)?;

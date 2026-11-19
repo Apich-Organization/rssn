@@ -511,12 +511,13 @@ impl AmgGeneral {
         b: &[f64],
     ) {
         if l == self.levels.len() {
-            if let Some(lu) = &self.coarse_lu {
-                x.copy_from_slice(&lu.solve(b));
-            } else {
-                let d = self.coarse_a.diagonal();
-                Self::gauss_seidel(&self.coarse_a, x, b, &d, 20, true);
+            if let Some(lu) = &self.coarse_lu
+                && lu.solve_into(b, x).is_ok()
+            {
+                return;
             }
+            let d = self.coarse_a.diagonal();
+            Self::gauss_seidel(&self.coarse_a, x, b, &d, 20, true);
             return;
         }
         let lev = &self.levels[l];

@@ -94,7 +94,10 @@ fn measured_interpolation_fft_statistics_and_matrix_functions() {
         )
         .is_err()
     );
-    assert_dimension(&call(&s, "num_signal_dct", &[y.clone()]), dim("Length"));
+    assert_dimension(
+        &call(&s, "num_signal_dct", std::slice::from_ref(&y)),
+        dim("Length"),
+    );
     let none = Value::Variant(VariantValue {
         tag: "None".into(),
         payload: vec![],
@@ -106,7 +109,10 @@ fn measured_interpolation_fft_statistics_and_matrix_functions() {
         &[4.0, 0.0, 0.0, 9.0],
         dim("Length").pow(Exp::Rat(Rational::new(2, 1))),
     );
-    assert_dimension(&call(&s, "num_matfun_sqrtm", &[a.clone()]), dim("Length"));
+    assert_dimension(
+        &call(&s, "num_matfun_sqrtm", std::slice::from_ref(&a)),
+        dim("Length"),
+    );
     let schur = call(&s, "num_schur_schur", &[a]);
     assert_dimension(field(&schur, "q"), DimExpr::Dimless);
     assert_dimension(
@@ -169,11 +175,10 @@ fn opaque_models_roundtrip_with_distinct_axis_and_value_units() {
     );
     assert_dimension(&out, dim("Length"));
     let mut malformed = model;
-    if let Value::Record(r) = &mut malformed {
-        if let Value::Opaque(p) = &mut r.fields.iter_mut().find(|(n, _)| n == "payload").unwrap().1
-        {
-            p.bytes = vec![255; 8];
-        }
+    if let Value::Record(r) = &mut malformed
+        && let Value::Opaque(p) = &mut r.fields.iter_mut().find(|(n, _)| n == "payload").unwrap().1
+    {
+        p.bytes = vec![255; 8];
     }
     assert!(matches!(
         s.call_value(

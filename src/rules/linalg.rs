@@ -2873,11 +2873,10 @@ fn spectral(
         }
         // P = V (Vᵀ V)⁻¹ Vᵀ with the eigenvectors as columns of V.
         let v = transpose(&basis);
-        let vt = basis.clone();
-        let gram = product(cx, &vt, &v)?;
+        let gram = product(cx, &basis, &v)?;
         let gram_inverse = inverse(cx, &gram)?;
         let left = product(cx, &v, &gram_inverse)?;
-        let projector = product(cx, &left, &vt)?;
+        let projector = product(cx, &left, &basis)?;
         debug_assert_eq!(projector.len(), n);
         let projector = matrix_term(cx.graph, &projector);
         items.push(list(cx.graph, &[value, projector]));

@@ -1920,6 +1920,42 @@ pub fn diff_n<'s>(
     (0..n).fold(f, |acc, _| diff(acc, x))
 }
 
+impl Session {
+    // Keep graph borrowing inside the session while native bridge adapters lower
+    // multiple roots and parameters. Only owned compiled programs may escape.
+    pub(crate) fn with_native_compilation<R>(
+        &self,
+        expressions: &[String],
+        inputs: &[String],
+        params: &[String],
+        build: impl FnOnce(
+            &Graph,
+            &[NodeId],
+            &[crate::graph::SymbolId],
+            &[crate::graph::SymbolId],
+        ) -> Result<R, crate::backend::BackendError>,
+    ) -> Result<R, crate::backend::BackendError> {
+        let roots = expressions
+            .iter()
+            .map(|source| {
+                self.parse(source)
+                    .map(|term| term.node)
+                    .map_err(|e| crate::backend::BackendError::Codegen(e.to_string()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut inner = self.inner.borrow_mut();
+        let input_symbols = inputs
+            .iter()
+            .map(|name| inner.graph.interner_mut().symbol(name))
+            .collect::<Vec<_>>();
+        let param_symbols = params
+            .iter()
+            .map(|name| inner.graph.interner_mut().symbol(name))
+            .collect::<Vec<_>>();
+        build(&inner.graph, &roots, &input_symbols, &param_symbols)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2421,41 +2457,5 @@ mod tests {
         );
         assert!(neither.verify(), "the hash must match the contents");
         assert_ne!(half.manifest_hash, tenths.manifest_hash);
-    }
-}
-
-impl Session {
-    // Keep graph borrowing inside the session while native bridge adapters lower
-    // multiple roots and parameters. Only owned compiled programs may escape.
-    pub(crate) fn with_native_compilation<R>(
-        &self,
-        expressions: &[String],
-        inputs: &[String],
-        params: &[String],
-        build: impl FnOnce(
-            &Graph,
-            &[NodeId],
-            &[crate::graph::SymbolId],
-            &[crate::graph::SymbolId],
-        ) -> Result<R, crate::backend::BackendError>,
-    ) -> Result<R, crate::backend::BackendError> {
-        let roots = expressions
-            .iter()
-            .map(|source| {
-                self.parse(source)
-                    .map(|term| term.node)
-                    .map_err(|e| crate::backend::BackendError::Codegen(e.to_string()))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut inner = self.inner.borrow_mut();
-        let input_symbols = inputs
-            .iter()
-            .map(|name| inner.graph.interner_mut().symbol(name))
-            .collect::<Vec<_>>();
-        let param_symbols = params
-            .iter()
-            .map(|name| inner.graph.interner_mut().symbol(name))
-            .collect::<Vec<_>>();
-        build(&inner.graph, &roots, &input_symbols, &param_symbols)
     }
 }

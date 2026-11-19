@@ -730,8 +730,7 @@ impl DeviceRegistry {
     pub fn list(&self) -> Vec<DeviceInfo> {
         self.devices
             .read()
-            .map(|g| g.iter().map(|d| d.info().clone()).collect())
-            .unwrap_or_default()
+            .map_or_default(|devices| devices.iter().map(|device| device.info().clone()).collect())
     }
 
     /// The device with this id.

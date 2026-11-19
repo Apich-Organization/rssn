@@ -83,7 +83,12 @@ fn retained_projective_plane_chains_have_exact_torsion_and_checked_session_ident
         );
     }
     let complex = call(&s, "num_homology_projective_plane", &[Value::int(0)]).unwrap();
-    let chains = call(&s, "num_homology_complex_chains", &[complex.clone()]).unwrap();
+    let chains = call(
+        &s,
+        "num_homology_complex_chains",
+        std::slice::from_ref(&complex),
+    )
+    .unwrap();
     let group = call(
         &s,
         "num_homology_chain_homology",
@@ -125,7 +130,7 @@ fn retained_projective_plane_chains_have_exact_torsion_and_checked_session_ident
         .is_err()
     );
     assert!(call(&s, "num_homology_chain_homology", &[complex, Value::int(1)]).is_err());
-    call(&s, "num_native_release", &[chains.clone()]).unwrap();
+    call(&s, "num_native_release", std::slice::from_ref(&chains)).unwrap();
     assert!(call(&s, "num_homology_chain_homology", &[chains, Value::int(1)]).is_err());
 }
 #[test]
@@ -205,7 +210,12 @@ fn exact_matrix_and_complex_constructions_reject_invalid_budgets_before_math() {
         elem: TypeExpr::Int,
     });
     assert_eq!(
-        call(&s, "num_homology_smith_invariants", &[matrix.clone()]).unwrap(),
+        call(
+            &s,
+            "num_homology_smith_invariants",
+            std::slice::from_ref(&matrix)
+        )
+        .unwrap(),
         ints(&[2, 4])
     );
     assert!(call(&s, "num_homology_rank_mod_p", &[matrix, Value::int(0)]).is_err());

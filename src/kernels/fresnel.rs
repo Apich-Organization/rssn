@@ -26,11 +26,12 @@
 //!
 //! ## Complex argument
 //!
-//! `C(z) + i S(z) = (1+i)/2 · erf(√π/2 (1-i) z)` holds for real `z` only; for
-//! complex `z` the sine and cosine integrals are the combinations of
-//! `erf(√π/2 (1 ± i) z)` given at [`fresnel_sc_complex`]. The complex error
-//! function uses its Maclaurin series for `|z| < 1.5` and Weideman's rational
-//! approximation of the Faddeeva function otherwise (about `1e-14` relative).
+//! The sine and cosine integrals are recovered separately from
+//! `erf(√π/2 (1 ± i) z)` as given at [`fresnel_sc_complex`]. The error
+//! function uses a Maclaurin series for `|z| < 1.5`, then Weideman's rational
+//! approximation of the Faddeeva function or its large-argument expansion.
+//! For large complex Fresnel arguments the tails use the expansion directly,
+//! computing their exponential phases before rotating the argument.
 
 use std::f64::consts::FRAC_PI_2;
 use std::f64::consts::PI;
@@ -252,10 +253,35 @@ fn weideman() -> &'static (Vec<f64>, f64) {
     })
 }
 
+/// Reciprocal with scale chosen before squaring to preserve large-argument tails.
+fn scaled_reciprocal(z: Complex64) -> Complex64 {
+    let scale = z.re.abs().max(z.im.abs());
+    let normalized = z / scale;
+    normalized.conj() / normalized.norm_sqr() / scale
+}
+
+/// The asymptotic factor in `w(z) ~ i/(sqrt(π) z) Σ (2n-1)!! / (2z²)^n`.
+fn faddeeva_asymptotic_factor(inverse_squared: Complex64) -> Complex64 {
+    let mut term = Complex64::new(1.0, 0.0);
+    let mut sum = term;
+    for n in 1..=16 {
+        term *= (f64::from(n) - 0.5) * inverse_squared;
+        sum += term;
+        if term.norm_sqr() < 1e-36 {
+            break;
+        }
+    }
+    sum
+}
+
 /// Faddeeva function `w(z) = exp(-z²) erfc(-i z)` for `Im z >= 0`.
 fn faddeeva_upper(z: Complex64) -> Complex64 {
-    let (coefficients, l) = weideman();
     let i = Complex64::new(0.0, 1.0);
+    if z.re.is_finite() && z.im.is_finite() && z.re.abs().max(z.im) >= 32.0 {
+        let inverse = scaled_reciprocal(z);
+        return i * inverse * faddeeva_asymptotic_factor(inverse * inverse) / PI.sqrt();
+    }
+    let (coefficients, l) = weideman();
     let denominator = Complex64::new(*l, 0.0) - i * z;
     let zz = (Complex64::new(*l, 0.0) + i * z) / denominator;
     let mut p = Complex64::new(0.0, 0.0);
@@ -265,25 +291,99 @@ fn faddeeva_upper(z: Complex64) -> Complex64 {
     2.0 * p / (denominator * denominator) + (1.0 / PI.sqrt()) / denominator
 }
 
-/// The Faddeeva function `w(z) = exp(-z²) erfc(-i z)`, any `z` (about `1e-14`).
+/// Multiply by an exponential after rotating the prefactor, allowing either
+/// result component to stay finite when the exponential alone would overflow.
+fn scale_exponential(
+    factor: Complex64,
+    exponent: f64,
+    (sin_phase, cos_phase): (f64, f64),
+) -> Complex64 {
+    let rotated = factor * Complex64::new(cos_phase, sin_phase);
+    if exponent.abs() < 700.0 {
+        return rotated * exponent.exp();
+    }
+    let half_scale = (0.5 * exponent).exp();
+    let scale_component = |component: f64| {
+        if component == 0.0 {
+            component
+        } else if half_scale.is_infinite() {
+            // A subnormal prefactor may still bring the result into range.
+            (exponent + component.abs().ln()).exp().copysign(component)
+        } else {
+            component * half_scale * half_scale
+        }
+    };
+    Complex64::new(scale_component(rotated.re), scale_component(rotated.im))
+}
+
+/// `factor * exp(-z²)` while avoiding cancellation in the real exponent.
+fn scale_exp_neg_square(
+    factor: Complex64,
+    z: Complex64,
+) -> Complex64 {
+    if !z.re.is_finite() || !z.im.is_finite() {
+        return factor * (-(z * z)).exp();
+    }
+    let x = z.re.abs();
+    let y = z.im.abs();
+    let difference = y - x;
+    let exponent = if difference == 0.0 {
+        0.0
+    } else {
+        difference * (y + x)
+    };
+    // All callers use prefactors of magnitude at most two.
+    if exponent < -746.0 {
+        return Complex64::new(0.0, 0.0);
+    }
+    let product = z.re * z.im;
+    let angle = -2.0 * product;
+    let remainder = -2.0 * z.re.mul_add(z.im, -product);
+    let (sin_hi, cos_hi) = if angle.is_finite() {
+        angle.sin_cos()
+    } else {
+        // Reduce the product before doubling if the angle itself overflows.
+        let (s, c) = product.sin_cos();
+        (-2.0 * s * c, (c + s) * (c - s))
+    };
+    if remainder == 0.0 {
+        return scale_exponential(factor, exponent, (sin_hi, cos_hi));
+    }
+    let (sin_lo, cos_lo) = remainder.sin_cos();
+    scale_exponential(
+        factor,
+        exponent,
+        (
+            sin_hi * cos_lo + cos_hi * sin_lo,
+            cos_hi * cos_lo - sin_hi * sin_lo,
+        ),
+    )
+}
+
+/// The Faddeeva function `w(z) = exp(-z²) erfc(-i z)`.
 #[must_use]
 pub fn faddeeva_w(z: Complex64) -> Complex64 {
     if z.re.is_nan() || z.im.is_nan() {
         return Complex64::new(f64::NAN, f64::NAN);
     }
     if z.im >= 0.0 {
-        faddeeva_upper(z)
+        let mut value = faddeeva_upper(z);
+        if z.im == 0.0 && z.re.is_finite() {
+            // The real component is exactly exp(-x²) on the real axis.
+            value.re = (-z.re * z.re).exp();
+        }
+        value
     } else {
         // w(z) = 2 exp(-z²) - w(-z)
-        2.0 * (-(z * z)).exp() - faddeeva_upper(-z)
+        scale_exp_neg_square(Complex64::new(2.0, 0.0), z) - faddeeva_upper(-z)
     }
 }
 
 /// Error function of a complex argument.
 ///
 /// Maclaurin series for `|z| < 1.5`, otherwise `1 - exp(-z²) w(i z)` after
-/// folding to `Re z >= 0` with `erf(-z) = -erf(z)`. Accurate to roughly
-/// `1e-14` relative to `max(1, |erf z|)`.
+/// folding to `Re z >= 0` with `erf(-z) = -erf(z)`. The exponential is
+/// scaled with the Faddeeva factor near the floating-point range limits.
 #[must_use]
 pub fn erf_complex(z: Complex64) -> Complex64 {
     if z.re.is_nan() || z.im.is_nan() {
@@ -294,7 +394,13 @@ pub fn erf_complex(z: Complex64) -> Complex64 {
     }
     if z.re == 0.0 {
         // erf(i y) = i erfi(y)
-        return Complex64::new(0.0, crate::kernels::special::erfi(z.im));
+        let value = if z.im.abs() >= 26.0 && z.im.is_finite() {
+            let tail = -faddeeva_upper(Complex64::new(-z.im, 0.0)).im;
+            scale_exp_neg_square(Complex64::new(0.0, tail), z).im
+        } else {
+            crate::kernels::special::erfi(z.im)
+        };
+        return Complex64::new(0.0, value);
     }
     if z.norm() < 1.5 {
         let z2 = z * z;
@@ -314,8 +420,54 @@ pub fn erf_complex(z: Complex64) -> Complex64 {
     if z.re < 0.0 {
         return -erf_complex(-z);
     }
+    let tail = faddeeva_upper(Complex64::new(-z.im, z.re));
+    Complex64::new(1.0, 0.0) - scale_exp_neg_square(tail, z)
+}
+
+/// Large-argument Fresnel tails using the Faddeeva asymptotic factor after
+/// canceling the constant factors introduced by the two erf rotations.
+fn fresnel_complex_asymptotic(
+    re: f64,
+    im: f64,
+) -> (Complex64, Complex64) {
+    let (x, y) = (re.abs(), im.abs());
+    let inverse = scaled_reciprocal(Complex64::new(x, y));
     let i = Complex64::new(0.0, 1.0);
-    Complex64::new(1.0, 0.0) - (-(z * z)).exp() * faddeeva_upper(i * z)
+    let leading = (i * inverse) / (2.0 * PI);
+    let inverse_squared = (i * (inverse * inverse)) * (2.0 / PI);
+    let (sin_x, cos_x) = sin_cos_half_pi_square(x);
+    let (sin_y, cos_y) = sin_cos_half_pi_square(y);
+    let sin_phase = sin_x * cos_y - cos_x * sin_y;
+    let cos_phase = cos_x * cos_y + sin_x * sin_y;
+    let exponent = PI * (x * y);
+    let decay = scale_exponential(
+        leading * faddeeva_asymptotic_factor(-inverse_squared),
+        -exponent,
+        (sin_phase, cos_phase),
+    );
+    let growth = scale_exponential(
+        -leading * faddeeva_asymptotic_factor(inverse_squared),
+        exponent,
+        (-sin_phase, cos_phase),
+    );
+    // C and S tend to (1/2, 1/2) on the real axis and (i/2, -i/2) on the
+    // imaginary axis. The corresponding constants follow from erf's folding.
+    let (sr, si, cr, ci) = if x >= y {
+        (0.5, 0.0, 0.5, 0.0)
+    } else {
+        (0.0, -0.5, 0.0, 0.5)
+    };
+    let (re_sign, im_sign) = (re.signum(), im.signum());
+    (
+        Complex64::new(
+            re_sign * (sr - decay.im + growth.im),
+            im_sign * (si + decay.re - growth.re),
+        ),
+        Complex64::new(
+            re_sign * (cr - decay.re - growth.re),
+            im_sign * (ci - decay.im - growth.im),
+        ),
+    )
 }
 
 /// `(S(z), C(z))` for a complex argument `z = re + i·im`, returned as
@@ -335,9 +487,15 @@ pub fn fresnel_sc_complex(
         return ((s, 0.0), (c, 0.0));
     }
     if re == 0.0 {
-        // S(i y) = -i S(y) and C(i y) = i C(y) by oddness and S(iy) = i^3 S(y)... (see tests)
+        // The Fresnel series give S(i y) = -i S(y) and C(i y) = i C(y).
         let (s, c) = fresnel_sc(im);
         return ((0.0, -s), (0.0, c));
+    }
+    // Both rotated arguments have magnitude at least 10 sqrt(π / 2)
+    // here, which keeps the truncated asymptotic terms below roundoff.
+    if re.is_finite() && im.is_finite() && re.abs().max(im.abs()) >= 10.0 {
+        let (s, c) = fresnel_complex_asymptotic(re, im);
+        return ((s.re, s.im), (c.re, c.im));
     }
     let z = Complex64::new(re, im);
     let a = PI.sqrt() / 2.0;
@@ -555,6 +713,95 @@ mod tests {
                 (c - cr).hypot(d - ci) <= 1e-12 * c_want.max(1e-3),
                 "C({re},{im}) = {c}+{d}i vs {cr}+{ci}i"
             );
+        }
+    }
+
+    #[test]
+    fn faddeeva_preserves_large_argument_tails() {
+        // References rounded from mpmath's exp(-z*z) * erfc(-i*z).
+        let w = faddeeva_w(Complex64::new(1e200, 2e200));
+        rel(w.re, 2.256_758_334_191_025_2e-201, 8e-15);
+        rel(w.im, 1.128_379_167_095_512_6e-201, 8e-15);
+        let subnormal = faddeeva_w(Complex64::new(1e308, 2e307));
+        assert!(
+            subnormal
+                .re
+                .to_bits()
+                .abs_diff(1.084_979_968_361_07e-309_f64.to_bits())
+                <= 4
+        );
+        assert!(
+            subnormal
+                .im
+                .to_bits()
+                .abs_diff(5.424_899_841_805_35e-309_f64.to_bits())
+                <= 4
+        );
+        let overflow = faddeeva_w(Complex64::new(0.0, -26.7));
+        assert_eq!(overflow, Complex64::new(f64::INFINITY, 0.0));
+        let on_axis = faddeeva_w(Complex64::new(26.7, 0.0));
+        assert!((on_axis.re / 2.487_750_349_879_84e-310 - 1.0).abs() < 1e-13);
+    }
+
+    #[test]
+    fn complex_erf_scales_the_exponential_with_its_tail() {
+        // Both components fit in f64 even though exp(-z*z) alone overflows.
+        let value = erf_complex(Complex64::new(1.0, 26.7));
+        rel(value.re, 1.392_022_541_981_101e306, 2e-13);
+        rel(value.im, -3.121_624_159_369_983e307, 2e-13);
+        let imaginary = erf_complex(Complex64::new(0.0, -26.71));
+        assert_eq!(imaginary.re, 0.0);
+        rel(imaginary.im, -1.449_459_118_932_731e308, 2e-13);
+        // The phase remains usable when doubling the product would overflow.
+        let diagonal = erf_complex(Complex64::new(1e154, 1e154));
+        assert_eq!(diagonal.re, 1.0);
+        rel(diagonal.im, 3.382_541_622_759_758e-155, 2e-13);
+    }
+
+    #[test]
+    fn complex_fresnel_large_argument_reference_values() {
+        // mpmath references for the exact binary64 inputs.
+        for (re, im, expected) in [
+            (
+                121.1,
+                1.87001,
+                [
+                    1.122_889_345_238_742_8e306,
+                    5.222_030_795_549_502e305,
+                    5.222_030_795_549_502e305,
+                    -1.122_889_345_238_742_8e306,
+                ],
+            ),
+            (
+                10.0,
+                22.75,
+                [
+                    -4.302_217_351_434_045e307,
+                    -1.533_993_149_635_644_5e308,
+                    -1.533_993_149_635_644_5e308,
+                    4.302_217_351_434_045e307,
+                ],
+            ),
+            (
+                1e20,
+                1e-18,
+                [
+                    -4.359_689_060_304_287e115,
+                    -6.804_725_444_503_684e79,
+                    -6.804_725_444_503_684e79,
+                    4.359_689_060_304_287e115,
+                ],
+            ),
+        ] {
+            for (sign_re, sign_im) in [(1.0, 1.0), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+                let ((sr, si), (cr, ci)) = fresnel_sc_complex(sign_re * re, sign_im * im);
+                for (got, want) in [sign_re * sr, sign_im * si, sign_re * cr, sign_im * ci]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    rel(got, want, 3e-13);
+                }
+            }
         }
     }
 

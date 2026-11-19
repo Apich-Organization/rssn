@@ -5,10 +5,12 @@
 //! message — goes through this module, and this module uses **bincode-next**
 //! exclusively:
 //!
-//! * [`encode_deterministic`] / [`decode_deterministic`] — bincode-next's
+//! * [`encode_binary`] / [`decode_binary`] — bincode-next's
 //!   stable binary format with deterministic map ordering. This is the
 //!   format whose bytes are part of rssn's public contract: equal values
 //!   always produce equal bytes, on every platform and in every process.
+//!   [`encode_deterministic`] and [`decode_deterministic`] also expose this
+//!   format to host types that implement the Serde traits.
 //! * [`encode_cbor`] / [`decode_cbor`] — bincode-next's CBOR implementation,
 //!   also in deterministic mode, for hosts that want a self-describing
 //!   format (browsers, JavaScript, anything that already speaks CBOR).
@@ -38,6 +40,41 @@ impl std::fmt::Display for CodecError {
 }
 
 impl std::error::Error for CodecError {}
+
+/// Encodes a value using bincode-next's native deterministic binary codec.
+///
+/// # Errors
+/// Propagates an error from the value's [`bincode_next::Encode`] implementation.
+pub fn encode_binary<T: bincode_next::Encode + ?Sized>(value: &T) -> Result<Vec<u8>, CodecError> {
+    bincode_next::encode_to_vec(value, config::standard().with_deterministic_bincode()).map_err(
+        |error| {
+            CodecError {
+                message: error.to_string(),
+            }
+        },
+    )
+}
+
+/// Decodes one complete value using bincode-next's native codec.
+///
+/// # Errors
+/// Returns an error on an invalid or incomplete value, or when bytes remain
+/// after decoding the value.
+pub fn decode_binary<T: bincode_next::Decode<()>>(bytes: &[u8]) -> Result<T, CodecError> {
+    let (value, read) =
+        bincode_next::decode_from_slice(bytes, config::standard().with_deterministic_bincode())
+            .map_err(|error| {
+                CodecError {
+                    message: error.to_string(),
+                }
+            })?;
+    if read != bytes.len() {
+        return Err(CodecError {
+            message: String::from("trailing bytes after binary payload"),
+        });
+    }
+    Ok(value)
+}
 
 /// Encodes `value` with bincode-next's deterministic binary format.
 ///

@@ -240,6 +240,10 @@ UnitlessResult,
 VoronoiGeometry,
 #[doc = "Wavelet approximation and detail coefficients retain signal units."]
 WaveletSplit,
+#[doc = "Sample and query share units, weights and the CDF value are dimensionless."]
+WeightedEcdf,
+#[doc = "Weights and probability are dimensionless, and the result retains sample units."]
+WeightedQuantile,
 }
 static CONTRACT_ANALYSISHOMOTOPY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 3, path: &[] }, InputBinding { name: "E", argument: 4, path: &[] }], constraints: &[], outputs: &[("roots", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("offsets", FieldDimension::NonNumeric), ("finite", FieldDimension::NonNumeric), ("residuals", FieldDimension::Formula(&super::dimensions::DimFormula::Var("E")))], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_ANALYSISKKT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 5, path: &[] }, InputBinding { name: "E", argument: 6, path: &[] }, InputBinding { name: "C", argument: 7, path: &[] }, InputBinding { name: "G", argument: 8, path: &[] }], constraints: &[InputConstraint { argument: 0, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }, InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("C"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("G"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("D"), -1, 1)]) }, InputConstraint { argument: 3, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("C"), -1, 1)]) }, InputConstraint { argument: 4, path: &[], formula: &super::dimensions::DimFormula::Mul(&[super::dimensions::DimFormula::Var("E"), super::dimensions::DimFormula::Pow(&super::dimensions::DimFormula::Var("G"), -1, 1)]) }], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
@@ -360,6 +364,8 @@ static CONTRACT_TUPLEPRESERVE: DimContract = DimContract { inputs: &[InputBindin
 static CONTRACT_UNITLESSRESULT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_VORONOIGEOMETRY: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("vertices", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("edges", FieldDimension::NonNumeric), ("ray_vertices", FieldDimension::NonNumeric), ("ray_directions", FieldDimension::Formula(&super::dimensions::DimFormula::One)), ("cell_offsets", FieldDimension::NonNumeric), ("cell_indices", FieldDimension::NonNumeric)], output_paths: &[], result: None, other_args_dimensionless: true };
 static CONTRACT_WAVELETSPLIT: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[], outputs: &[("item0", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D"))), ("item1", FieldDimension::Formula(&super::dimensions::DimFormula::Var("D")))], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_WEIGHTEDECDF: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::One }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::Var("D") }], outputs: &[], output_paths: &[], result: None, other_args_dimensionless: true };
+static CONTRACT_WEIGHTEDQUANTILE: DimContract = DimContract { inputs: &[InputBinding { name: "D", argument: 0, path: &[] }], constraints: &[InputConstraint { argument: 1, path: &[], formula: &super::dimensions::DimFormula::One }, InputConstraint { argument: 2, path: &[], formula: &super::dimensions::DimFormula::One }], outputs: &[], output_paths: &[], result: Some(&super::dimensions::DimFormula::Var("D")), other_args_dimensionless: true };
 pub(super) fn contract_for(policy: DimensionPolicy) -> &'static DimContract { match policy {
 DimensionPolicy::AnalysisHomotopy => &CONTRACT_ANALYSISHOMOTOPY,
 DimensionPolicy::AnalysisKkt => &CONTRACT_ANALYSISKKT,
@@ -480,4 +486,6 @@ DimensionPolicy::TuplePreserve => &CONTRACT_TUPLEPRESERVE,
 DimensionPolicy::UnitlessResult => &CONTRACT_UNITLESSRESULT,
 DimensionPolicy::VoronoiGeometry => &CONTRACT_VORONOIGEOMETRY,
 DimensionPolicy::WaveletSplit => &CONTRACT_WAVELETSPLIT,
+DimensionPolicy::WeightedEcdf => &CONTRACT_WEIGHTEDECDF,
+DimensionPolicy::WeightedQuantile => &CONTRACT_WEIGHTEDQUANTILE,
 } }

@@ -90,8 +90,7 @@ pub fn lower(
     let accs: Vec<Reg> = ir
         .fold
         .as_ref()
-        .map(|fold| fold.accs.iter().map(|_| f.reg(Ty::F64)).collect())
-        .unwrap_or_default();
+        .map_or_default(|fold| fold.accs.iter().map(|_| f.reg(Ty::F64)).collect());
 
     // Emits register `d`.
     let emit = |f: &mut FunctionBuilder, d: usize| -> Option<()> {

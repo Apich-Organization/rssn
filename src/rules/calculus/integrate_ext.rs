@@ -31,11 +31,13 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Signed;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::Integrator;
 use crate::graph::Cx;
 use crate::graph::Env;
+use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
@@ -1424,4 +1426,211 @@ fn poly_term(
     let gx = gens.index(cx.graph, x);
     let numbers: Vec<Number> = p.iter().cloned().map(Number::rat).collect();
     to_term(cx.graph, &gens, &Poly::from_univariate(gx, &numbers))
+}
+
+/// Exact evaluations with separate endpoint or convergence conditions.
+pub(super) fn classical_definite(
+    cx: &mut Cx<'_>,
+    integrand: NodeId,
+    x: NodeId,
+    lower: NodeId,
+    upper: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let lo = super::best(graph, lower)?;
+    if !graph.number_of(lo).is_some_and(Number::is_zero) {
+        return None;
+    }
+    let integrand = super::best(graph, integrand)?;
+    let upper = super::best(graph, upper)?;
+    if graph.ops().lookup("oo") == Some(graph.op(upper)) {
+        return beta_mellin(graph, integrand, x).or_else(|| bose_mellin(graph, integrand, x));
+    }
+
+    let ln = graph.ops().lookup("ln")?;
+    if graph.op(integrand) == ln
+        && let &[trig] = graph.children(integrand)
+        && let &[arg] = graph.children(trig)
+        && graph.same(arg, x)
+    {
+        let is_sin = graph.ops().lookup("sin") == Some(graph.op(trig));
+        let is_cos = graph.ops().lookup("cos") == Some(graph.op(trig));
+        if is_sin || is_cos {
+            let pi_op = graph.ops().lookup("pi")?;
+            let pi = graph.node(pi_op, &[]);
+            let half = graph.num(Number::fraction(1, 2)?);
+            let half_pi = graph.node(core::MUL, &[pi, half]);
+            if graph.same(upper, half_pi) || (is_sin && graph.same(upper, pi)) {
+                // Differentiate the beta integral of sin(x)^s at s = 0.
+                // Reflection gives the cos case and doubles the full period.
+                let minus_one = graph.int(-1);
+                let two = graph.int(2);
+                let ln_two = graph.node(ln, &[two]);
+                return Some(graph.node(core::MUL, &[minus_one, upper, ln_two]));
+            }
+        }
+    }
+    logarithm_dilogarithm(graph, integrand, x, upper, ln)
+}
+
+/// Mellin integral of c*x^(m-1)/(a + b*x^n), with 0 < m < n and a/b > 0.
+fn beta_mellin(
+    graph: &mut Graph,
+    integrand: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let (numer, denom) = crate::rules::poly::rational_function_in(graph, integrand, x)?;
+    let (c, lower_powers) = numer.split_last()?;
+    let (a, nonconstant) = denom.split_first()?;
+    let (b, interior) = nonconstant.split_last()?;
+    if !lower_powers.iter().all(Zero::is_zero)
+        || !interior.iter().all(Zero::is_zero)
+        || a.is_zero()
+        || b.is_zero()
+        || a.is_positive() != b.is_positive()
+        || numer.len() >= nonconstant.len()
+    {
+        return None;
+    }
+
+    let m = i64::try_from(numer.len()).ok()?;
+    let n = i64::try_from(nonconstant.len()).ok()?;
+    let coeff = c / a / BigRational::from_integer(BigInt::from(n));
+    let coeff = graph.num(Number::rat(coeff));
+    let exponent = graph.num(Number::fraction(m, n)?);
+    let ratio = graph.num(Number::rat(a / b));
+    let scale = graph.node(core::POW, &[ratio, exponent]);
+    let (pi_op, sin) = (graph.ops().lookup("pi")?, graph.ops().lookup("sin")?);
+    let pi = graph.node(pi_op, &[]);
+    let theta = graph.node(core::MUL, &[pi, exponent]);
+    let sine = graph.node(sin, &[theta]);
+    let minus_one = graph.int(-1);
+    let reciprocal = graph.node(core::POW, &[sine, minus_one]);
+    Some(graph.node(core::MUL, &[coeff, scale, pi, reciprocal]))
+}
+
+/// Mellin integral of c*x^(m-1)/(exp(a*x) - 1), with a > 0 and m > 1.
+fn bose_mellin(
+    graph: &mut Graph,
+    integrand: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let exp = graph.ops().lookup("exp")?;
+    let zeta = graph.ops().lookup("zeta")?;
+    if graph.op(integrand) != core::MUL {
+        return None;
+    }
+    let mut numerator = Vec::new();
+    let mut linear = None;
+    for &factor in graph.children(integrand) {
+        if graph.op(factor) == core::POW
+            && let &[base, exponent] = graph.children(factor)
+            && graph.number_of(exponent).and_then(Number::to_i64) == Some(-1)
+            && graph.op(base) == core::ADD
+            && let &[one, other] = graph.children(base)
+        {
+            let is_minus_one = |n| graph.number_of(n).and_then(Number::to_i64) == Some(-1);
+            let exponential = if is_minus_one(one) {
+                Some(other)
+            } else if is_minus_one(other) {
+                Some(one)
+            } else {
+                None
+            };
+            if let Some(node) = exponential
+                && graph.op(node) == exp
+                && let &[arg] = graph.children(node)
+            {
+                if linear.replace(arg).is_some() {
+                    return None;
+                }
+                continue;
+            }
+        }
+        numerator.push(factor);
+    }
+    let arg = linear?;
+    let (slope, denom) = crate::rules::poly::rational_function_in(graph, arg, x)?;
+    let ([origin, a], [a_den]) = (slope.as_slice(), denom.as_slice()) else {
+        return None;
+    };
+    if !origin.is_zero() {
+        return None;
+    }
+    let a = a / a_den;
+    if !a.is_positive() {
+        return None;
+    }
+    let body = match numerator.as_slice() {
+        | [only] => *only,
+        | [] => return None,
+        | _ => graph.node(core::MUL, &numerator),
+    };
+    let (numer, denom) = crate::rules::poly::rational_function_in(graph, body, x)?;
+    let ([c_den], (c, lower_powers)) = (denom.as_slice(), numer.split_last()?) else {
+        return None;
+    };
+    if numer.len() < 2 || numer.len() > 128 || !lower_powers.iter().all(Zero::is_zero) {
+        return None;
+    }
+
+    let m = i32::try_from(numer.len()).ok()?;
+    let gamma = (2..m).map(BigInt::from).product::<BigInt>();
+    let coeff = c / c_den * BigRational::from_integer(gamma) / a.pow(m);
+    let coeff = graph.num(Number::rat(coeff));
+    let order = graph.int(i64::from(m));
+    let value = graph.node(zeta, &[order]);
+    Some(graph.node(core::MUL, &[coeff, value]))
+}
+
+/// At a finite nonnegative endpoint b, integrate ln(1 + a*x)/x as -Li₂(-a*b).
+fn logarithm_dilogarithm(
+    graph: &mut Graph,
+    integrand: NodeId,
+    x: NodeId,
+    upper: NodeId,
+    ln: crate::graph::OpId,
+) -> Option<NodeId> {
+    let polylog = graph.ops().lookup("polylog")?;
+    if graph.op(integrand) != core::MUL {
+        return None;
+    }
+    let &[left, right] = graph.children(integrand) else {
+        return None;
+    };
+    let (log, divisor) = if graph.op(left) == ln {
+        (left, right)
+    } else {
+        (right, left)
+    };
+    let &[arg] = graph.children(log) else {
+        return None;
+    };
+    let &[base, exponent] = graph.children(divisor) else {
+        return None;
+    };
+    if graph.op(log) != ln
+        || graph.op(divisor) != core::POW
+        || !graph.same(base, x)
+        || graph.number_of(exponent).and_then(Number::to_i64) != Some(-1)
+    {
+        return None;
+    }
+    let (numer, denom) = crate::rules::poly::rational_function_in(graph, arg, x)?;
+    let ([one, a], [den]) = (numer.as_slice(), denom.as_slice()) else {
+        return None;
+    };
+    if one != den {
+        return None;
+    }
+    let end = graph.number_of(upper)?.to_rational()?;
+    let db = a / den * &end;
+    if end.is_negative() || !db.to_f64()?.is_finite() || db <= -BigRational::one() {
+        return None;
+    }
+    let arg = graph.num(Number::rat(-db));
+    let two = graph.int(2);
+    let value = graph.node(polylog, &[two, arg]);
+    let minus_one = graph.int(-1);
+    Some(graph.node(core::MUL, &[minus_one, value]))
 }

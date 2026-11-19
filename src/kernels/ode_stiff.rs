@@ -1513,20 +1513,6 @@ pub fn bdf_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     n_steps: usize,
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
-    let n = y0.len();
-    if n == 0
-        || n_steps == 0
-        || !t0.is_finite()
-        || !t1.is_finite()
-        || y0.iter().any(|v| !v.is_finite())
-        || crate::kernels::exact_eq(t0, t1)
-    {
-        return Err(OdeError::Invalid);
-    }
-    let default_opts = OdeOptions::default();
-    validate_problem(t0, t1, y0, &default_opts, events)?;
-    let f = checked_rhs(f);
-    let dir = if t1 > t0 { 1.0 } else { -1.0 };
     const BDF_BETA: [f64; 5] = [1.0, 2.0 / 3.0, 6.0 / 11.0, 12.0 / 25.0, 60.0 / 137.0];
     const BDF_HIST: [[f64; 5]; 5] = [
         [1.0, 0.0, 0.0, 0.0, 0.0],
@@ -1541,6 +1527,21 @@ pub fn bdf_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
             12.0 / 137.0,
         ],
     ];
+
+    let n = y0.len();
+    if n == 0
+        || n_steps == 0
+        || !t0.is_finite()
+        || !t1.is_finite()
+        || y0.iter().any(|v| !v.is_finite())
+        || crate::kernels::exact_eq(t0, t1)
+    {
+        return Err(OdeError::Invalid);
+    }
+    let default_opts = OdeOptions::default();
+    validate_problem(t0, t1, y0, &default_opts, events)?;
+    let f = checked_rhs(f);
+    let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let mut t = t0;
     let mut history: Vec<Vec<f64>> = vec![y0.to_vec()];
     let mut f_prev = vec![0.0; n];

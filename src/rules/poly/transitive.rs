@@ -355,13 +355,11 @@ mod tests {
         // C6: blocks of size 2 and of size 3. S6 and A5(6): primitive.
         let c6 = transitive_groups(6)
             .first()
-            .map(TransitiveGroup::block_systems)
-            .unwrap_or_default();
+            .map_or_default(TransitiveGroup::block_systems);
         assert_eq!(c6.len(), 2);
         let s6 = transitive_groups(6)
             .last()
-            .map(TransitiveGroup::block_systems)
-            .unwrap_or_default();
+            .map_or_default(TransitiveGroup::block_systems);
         assert!(s6.is_empty(), "not empty");
         for group in transitive_groups(6) {
             assert_eq!(

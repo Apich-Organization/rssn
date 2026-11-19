@@ -11,7 +11,8 @@
 //!   integrand at sample points, and a disagreement discards it. A wrong
 //!   antiderivative therefore cannot enter the graph through a heuristic
 //!   that misfired.
-//! * [`Definite`] evaluates an antiderivative at finite limits.
+//! * [`Definite`] evaluates antiderivatives at the bounds and recognizes
+//!   classical definite integrals through exact formulas.
 //! * [`Quadrature`] answers a definite integral numerically, with an error
 //!   estimate, when a numeric result is wanted and no closed form was
 //!   found — including over infinite intervals.
@@ -326,8 +327,7 @@ impl Integrator<'_, '_> {
             .ops()
             .lookup("integral")
             .and_then(|op| self.cx.graph.ops().attr::<IntegralTable>(op))
-            .map(|t| t.0.clone())
-            .unwrap_or_default();
+            .map_or_default(|t| t.0.clone());
         for rule in extensions {
             if let Some(found) = rule(self.cx, f, self.x) {
                 return Some(found);
@@ -723,9 +723,9 @@ impl Integrator<'_, '_> {
             }
             let numer = to_term(self.cx.graph, &gens, &fraction.numer);
             let c = self.cx.graph.num(coeff);
-            let minus_q = self.cx.graph.num(Number::rat(-q.clone()));
+            let minus_q = self.cx.graph.num(Number::rat(-&q));
             let x_power = self.cx.graph.num(Number::rat(
-                -(q.clone() * BigRational::from_integer(BigInt::from(m))),
+                -(q * BigRational::from_integer(BigInt::from(m))),
             ));
             let n_q = self.pow(numer, exponent);
             let c_q = self.pow(c, minus_q);
@@ -2057,6 +2057,11 @@ impl Kernel for Definite {
             },
             | _ => (variable, integrand),
         };
+        if let Some(value) =
+            integrate_ext::classical_definite(cx, integrand, variable, lower, upper)
+        {
+            return Outcome::Equal(value);
+        }
         // Rational and Fourier-type integrals over the whole line: residues.
         if lower_infinite
             && upper_infinite

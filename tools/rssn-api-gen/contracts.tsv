@@ -17,6 +17,8 @@ LeastSquares	D=0,E=1	-	E/D	-	Matrix A and vector b have independent dimensions; 
 RankTolerance	D=0	1=D	-	-	Matrix and absolute tolerance share a dimension; rank is dimensionless.
 TensorTrain	D=0	-	-	cores=1;shape=-;scale=D;error=D;tolerance_met=-	Input data sets scale/error; cores and tolerance are dimensionless.
 EqualInputs	D=0	1=D	-	-	Two measured inputs must share a dimension; the result is dimensionless.
+WeightedEcdf	D=0	1=1,2=D	-	-	Sample and query share units, weights and the CDF value are dimensionless.
+WeightedQuantile	D=0	1=1,2=1	D	-	Weights and probability are dimensionless, and the result retains sample units.
 Cube	D=0	-	D^3	-	Volume has cubed coordinate dimension.
 InverseSecond	D=1	-	1/D	-	Spacing determines reciprocal frequency dimension.
 PreserveThird	D=2	-	D	-	Filter coefficients are dimensionless; signal units are preserved.

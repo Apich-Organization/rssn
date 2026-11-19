@@ -302,7 +302,7 @@ impl EvalDyn for CdylibEval {
         args: &[Value],
         _ctx: &CallCtx<'_>,
     ) -> Result<Value, OpError> {
-        let encoded = codec::encode_deterministic(&args.to_vec()).map_err(OpError::Codec)?;
+        let encoded = codec::encode_binary(args).map_err(OpError::Codec)?;
         // SAFETY: the plugin promised this entry point follows the ABI in the
         // module documentation; it may not keep `encoded` after returning.
         let out = (self.call)(self.state, encoded.as_ptr(), encoded.len());
@@ -310,7 +310,7 @@ impl EvalDyn for CdylibEval {
         // until `free_buf` is called below.
         let answer: Result<Value, String> = {
             let bytes = unsafe { out.as_slice() };
-            codec::decode_deterministic(bytes).map_err(OpError::Codec)?
+            codec::decode_binary(bytes).map_err(OpError::Codec)?
         };
         if let Some(free) = self.free_buf {
             // SAFETY: `out` came from this plugin and is freed exactly once.
@@ -397,7 +397,7 @@ pub fn load(path: &Path) -> Result<CdylibPlugin, PluginError> {
             // SAFETY: the plugin declared this many bytes at this address.
             let bytes =
                 unsafe { std::slice::from_raw_parts(entry.signatures, entry.signatures_len) };
-            codec::decode_deterministic(bytes).map_err(|error| {
+            codec::decode_binary(bytes).map_err(|error| {
                 PluginError::Registration(format!("cannot read the signatures: {error}"))
             })?
         };

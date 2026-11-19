@@ -28,13 +28,13 @@ fn native_reverse_tape_propagates_physical_product_and_gradient_dimensions() {
     });
     let x = call(&s, "num_ad_tape_var", &[tape.clone(), physical]).unwrap();
     let square = call(&s, "num_ad_var_mul", &[x.clone(), x.clone()]).unwrap();
-    let output = call(&s, "num_ad_var_value", &[square.clone()]).unwrap();
+    let output = call(&s, "num_ad_var_value", std::slice::from_ref(&square)).unwrap();
     let Value::Dyn(d) = &output else {
         panic!("squared length witness")
     };
     assert_eq!(d.dim, DimExpr::base("Length").pow(2));
     assert_eq!(scalar(output), 9.0);
-    let g = call(&s, "num_ad_var_backward", &[square.clone()]).unwrap();
+    let g = call(&s, "num_ad_var_backward", std::slice::from_ref(&square)).unwrap();
     let derivative = call(&s, "num_ad_var_grad_in", &[x.clone(), g.clone()]).unwrap();
     let Value::Dyn(d) = &derivative else {
         panic!("derivative length witness")
@@ -51,12 +51,12 @@ fn native_reverse_tape_propagates_physical_product_and_gradient_dimensions() {
         0.0
     );
     call(&s, "num_native_release", &[later]).unwrap();
-    assert!(call(&s, "num_ad_var_exp", &[x.clone()]).is_err());
-    assert!(call(&s, "num_native_release", &[tape.clone()]).is_err());
+    assert!(call(&s, "num_ad_var_exp", std::slice::from_ref(&x)).is_err());
+    assert!(call(&s, "num_native_release", std::slice::from_ref(&tape)).is_err());
     let foreign = Session::new();
-    assert!(call(&foreign, "num_ad_var_value", &[x.clone()]).is_err());
+    assert!(call(&foreign, "num_ad_var_value", std::slice::from_ref(&x)).is_err());
     for handle in [g, square, x, tape] {
-        call(&s, "num_native_release", &[handle.clone()]).unwrap();
+        call(&s, "num_native_release", std::slice::from_ref(&handle)).unwrap();
         assert!(call(&s, "num_native_release", &[handle]).is_err());
     }
 }
@@ -123,9 +123,9 @@ fn rejected_native_ad_operations_do_not_consume_persistent_tape_nodes() {
     let s = Session::new();
     let tape = call(&s, "num_ad_tape_new", &[Value::int(2)]).unwrap();
     let x = call(&s, "num_ad_tape_var", &[tape.clone(), Value::Float(-1.0)]).unwrap();
-    assert!(call(&s, "num_ad_var_sqrt", &[x.clone()]).is_err());
+    assert!(call(&s, "num_ad_var_sqrt", std::slice::from_ref(&x)).is_err());
     assert_eq!(
-        call(&s, "num_ad_tape_len", &[tape.clone()]).unwrap(),
+        call(&s, "num_ad_tape_len", std::slice::from_ref(&tape)).unwrap(),
         Value::int(1)
     );
     assert!(call(&s, "num_ad_var_sin", &[x]).is_ok());

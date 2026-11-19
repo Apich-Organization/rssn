@@ -593,6 +593,11 @@ fn native_scalar_preflight(
             let points = shape.first().copied().unwrap_or(0);
             native_budget(&[points, points], NATIVE_VALUE_LIMIT)?;
             native_budget(&[points, native_count(args, 1)?], 50_000_000)?;
+        } else if operation == "correlation_dimension_with_radii" {
+            let points = native_tensor_shape(&args[0])?.first().copied().unwrap_or(0);
+            let radii = native_tensor_shape(&args[1])?.first().copied().unwrap_or(0);
+            native_budget(&[points, points], NATIVE_VALUE_LIMIT)?;
+            native_budget(&[radii, 16], NATIVE_VALUE_LIMIT)?;
         } else if operation == "orbit_density" {
             native_budget(
                 &[native_count(args, 1)?, native_count(args, 2)?],
@@ -895,6 +900,8 @@ binding!(native_fractal_box,"num_fractal_geometry_and_chaos_box_counting_dimensi
 (points:Vec<[f64;2]>,scales:usize)->f64,|points:Vec<[f64;2]>,scales:usize|crate::kernels::fractal_geometry_and_chaos::box_counting_dimension(&points.into_iter().map(|[x,y]|(x,y)).collect::<Vec<_>>(),scales));
 binding!(native_fractal_correlation,"num_fractal_geometry_and_chaos_correlation_dimension","numerical_vector","Correlation dimension of a finite N x 2 coordinate tensor. Pair allocation and radius-work counts are bounded.","crate::kernels::fractal_geometry_and_chaos::correlation_dimension",DimensionPolicy::UnitlessResult,
 (points:Vec<[f64;2]>,radii:usize)->f64,|points:Vec<[f64;2]>,radii:usize|crate::kernels::fractal_geometry_and_chaos::correlation_dimension(&points.into_iter().map(|[x,y]|(x,y)).collect::<Vec<_>>(),radii));
+binding!(native_fractal_correlation_with_radii,"num_fractal_geometry_and_chaos_correlation_dimension_with_radii","numerical_vector","Correlation dimension from an N x 2 point tensor and explicit positive finite radii. Radii have the same units as the coordinates. Returns None when fewer than two radii determine a slope.","crate::kernels::fractal_geometry_and_chaos::correlation_dimension_with_radii",DimensionPolicy::EqualInputs,
+(points:Vec<[f64;2]>,radii:Vec<f64>)->Option<f64>,|points:Vec<[f64;2]>,radii:Vec<f64>|crate::kernels::fractal_geometry_and_chaos::correlation_dimension_with_radii(&points.into_iter().map(|[x,y]|(x,y)).collect::<Vec<_>>(),&radii));
 binding!(native_fractal_henon,"num_fractal_geometry_and_chaos_generate_henon_map","numerical_vector","Native Henon map in normalized dimensionless coordinates. Returns an N x 2 point tensor with a checked finite allocation budget.","crate::kernels::fractal_geometry_and_chaos::generate_henon_map",DimensionPolicy::Dimensionless,
 (start:(f64,f64),steps:usize,a:f64,b:f64)->Vec<[f64;2]>,|start:(f64,f64),steps:usize,a:f64,b:f64|crate::kernels::fractal_geometry_and_chaos::generate_henon_map(start,steps,a,b).into_iter().map(|(x,y)|[x,y]).collect());
 binding!(native_fractal_tinkerbell,"num_fractal_geometry_and_chaos_generate_tinkerbell_map","numerical_vector","Native Tinkerbell map in normalized dimensionless coordinates. Returns an N x 2 tensor under a finite path budget.","crate::kernels::fractal_geometry_and_chaos::generate_tinkerbell_map",DimensionPolicy::Dimensionless,
@@ -915,6 +922,7 @@ pub const NATIVE_SCALAR_EXPORTS: &[&CodecExport] = &[
     &native_line_fit::EXPORT,
     &native_fractal_box::EXPORT,
     &native_fractal_correlation::EXPORT,
+    &native_fractal_correlation_with_radii::EXPORT,
     &native_fractal_henon::EXPORT,
     &native_fractal_tinkerbell::EXPORT,
     &native_fractal_bifurcation::EXPORT,

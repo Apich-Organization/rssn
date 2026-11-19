@@ -3,7 +3,7 @@
 //! Machine-word integer number theory: greatest common divisors, modular
 //! arithmetic, deterministic primality testing, factorisation (trial
 //! division plus Pollard–Brent rho), square roots modulo a prime
-//! (Tonelli–Shanks) and discrete logarithms (baby-step giant-step).
+//! (Tonelli–Shanks) and discrete logarithms for prime or composite moduli.
 //!
 //! None of the functions panic on any input: undefined results are `None`
 //! (or `0` where the signature predates `Option` and says so), and every
@@ -407,9 +407,12 @@ pub fn sqrt_mod_prime(
     Some(r.min(p - r))
 }
 
-/// The discrete logarithm: the least `x >= 0` with `g^x ≡ h (mod p)`
-/// (baby-step giant-step, `O(sqrt p)` time and memory), or `None` when none
-/// exists or `p` is too large for the table (`p > 2^48`).
+/// The least `x >= 0` with `g^x ≡ h (mod p)`.
+///
+/// Accepts prime and composite moduli, including bases that share factors with
+/// the modulus. Returns `None` if there is no solution or `p` is outside
+/// `2..=2^48`. After removing common factors, baby-step giant-step takes
+/// `O(sqrt p)` time and memory in the worst case.
 #[must_use]
 pub fn discrete_log(
     g: u64,
@@ -419,26 +422,64 @@ pub fn discrete_log(
     if !(2..=1 << 48).contains(&p) {
         return None;
     }
-    let (g, h) = (g % p, h % p);
-    if h == 1 % p {
-        return Some(0);
+    let g = g % p;
+    let (mut target, mut modulus) = (h % p, p);
+    let (mut removed, mut prefix) = (0, 1);
+    loop {
+        if target == prefix {
+            return Some(removed);
+        }
+        let divisor = gcd(g, modulus);
+        if divisor == 1 {
+            break;
+        }
+        // For each further factor of g, divide the congruence by its gcd
+        // with the current modulus. The prefix accounts for those factors.
+        if !target.is_multiple_of(divisor) {
+            return None;
+        }
+        target /= divisor;
+        modulus /= divisor;
+        prefix = mul_mod(prefix, g / divisor, modulus);
+        removed += 1;
     }
+    if gcd(target, modulus) != 1 {
+        return None;
+    }
+
+    let inverse = mod_inverse(i64::try_from(prefix).ok()?, i64::try_from(modulus).ok()?)?;
+    let target = mul_mod(target, u64::try_from(inverse).ok()?, modulus);
+    discrete_log_coprime(g, target, modulus).map(|x| x + removed)
+}
+
+fn discrete_log_coprime(
+    g: u64,
+    h: u64,
+    p: u64,
+) -> Option<u64> {
     let m = isqrt(p) + 1;
-    let mut table = std::collections::HashMap::with_capacity(m as usize);
-    let mut e = 1 % p;
+    let mut table = std::collections::HashMap::new();
+    let mut e = 1;
     for j in 0..m {
-        table.entry(e).or_insert(j);
+        if e == h {
+            return Some(j);
+        }
+        if j > 0 && e == 1 {
+            // The cycle containing 1 did not reach h.
+            return None;
+        }
+        table.insert(e, j);
         e = mul_mod(e, g, p);
     }
-    // g^{-m}, if g is invertible; otherwise only exponents below m can match.
-    let factor = mod_inverse(i64::try_from(g).ok()?, i64::try_from(p).ok()?)
-        .map(|inv| mod_pow(u128::from(inv as u64), m, p));
+    // e = g^m; stepping backwards by m scans exponents in ascending blocks.
+    let inverse = mod_inverse(i64::try_from(e).ok()?, i64::try_from(p).ok()?)?;
+    let factor = u64::try_from(inverse).ok()?;
     let mut gamma = h;
-    for i in 0..m {
+    for i in 1..=m {
+        gamma = mul_mod(gamma, factor, p);
         if let Some(&j) = table.get(&gamma) {
             return Some(i * m + j);
         }
-        gamma = mul_mod(gamma, factor?, p);
     }
     None
 }

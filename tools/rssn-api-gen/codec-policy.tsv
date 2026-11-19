@@ -56,6 +56,7 @@ crate::kernels::fftconv::circular_convolve	num_fftconv_circular_convolve	numeric
 crate::kernels::fftconv::convolve	num_fftconv_convolve	numerical_vector	Product
 crate::kernels::fftconv::correlate	num_fftconv_correlate	numerical_vector	Product
 crate::kernels::fftconv::poly_mul_i64	num_fftconv_poly_mul_i64	numerical_vector	Dimensionless
+crate::kernels::fftconv::poly_mul_i64_checked	num_fftconv_poly_mul_i64_checked	numerical_vector	Dimensionless
 crate::kernels::fresnel::erf_complex	num_fresnel_erf_complex	numerical_special	Dimensionless
 crate::kernels::fresnel::faddeeva_w	num_fresnel_faddeeva_w	numerical_special	Dimensionless
 crate::kernels::fresnel::fresnel_f	num_fresnel_fresnel_f	numerical_special	Dimensionless
@@ -126,6 +127,8 @@ crate::kernels::robust::iqr	num_robust_iqr	numerical_stats	Preserve
 crate::kernels::robust::mad	num_robust_mad	numerical_stats	Preserve
 crate::kernels::robust::median	num_robust_median	numerical_stats	Preserve
 crate::kernels::robust::trimmed_mean	num_robust_trimmed_mean	numerical_stats	Preserve
+crate::kernels::robust::weighted_ecdf	num_robust_weighted_ecdf	numerical_stats	WeightedEcdf
+crate::kernels::robust::weighted_quantile	num_robust_weighted_quantile	numerical_stats	WeightedQuantile
 crate::kernels::robust::winsorized_mean	num_robust_winsorized_mean	numerical_stats	Preserve
 crate::kernels::schur::eigvals_generalized	num_schur_eigvals_generalized	numerical_matrix	Quotient
 crate::kernels::schur::lyapunov	num_schur_lyapunov	numerical_matrix	Lyapunov

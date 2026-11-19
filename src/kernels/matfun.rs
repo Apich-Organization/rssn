@@ -513,8 +513,7 @@ pub fn expm_krylov<A: Fn(&[f64], &mut [f64])>(
         if beta == 0.0 {
             return Some(w);
         }
-        let (basis, h, fnorm) = crate::kernels::eigs::arnoldi(&apply, &w, m);
-        let mut th = h.clone();
+        let (basis, mut th, fnorm) = crate::kernels::eigs::arnoldi(&apply, &w, m);
         for x in &mut th.data {
             *x *= tau;
         }

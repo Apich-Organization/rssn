@@ -481,6 +481,122 @@ impl Limiter<'_, '_> {
         None
     }
 
+    /// Exact finite-point limits for quotients containing exponentials.
+    ///
+    /// Substituting into a vanishing numerator can erase a pole in the
+    /// denominator, and near the point floating-point subtraction can obscure
+    /// the first nonzero coefficient. A Laurent expansion of these analytic
+    /// building blocks keeps that coefficient.
+    fn exponential_quotient_at_point(
+        &mut self,
+        term: NodeId,
+    ) -> Option<NodeId> {
+        if !self.target.is_finite() || self.cx.graph.op(term) != core::MUL {
+            return None;
+        }
+        let graph = &*self.cx.graph;
+        let mut saw_exp = false;
+        let mut saw_reciprocal = false;
+        let mut stack = vec![term];
+        let mut visited = std::collections::HashSet::new();
+        while let Some(node) = stack.pop() {
+            if !visited.insert(node) || !self.depends(node) {
+                continue;
+            }
+            let children = graph.children(node);
+            match graph.op(node) {
+                | op if op == self.f.exp => saw_exp = true,
+                | core::ADD | core::MUL | core::SYM => {},
+                | core::POW => {
+                    let &[_, exponent] = children else {
+                        return None;
+                    };
+                    saw_reciprocal |= graph.number_of(exponent)?.to_i64()? < 0;
+                },
+                | _ => return None,
+            }
+            stack.extend_from_slice(children);
+        }
+        if saw_exp && saw_reciprocal {
+            self.series_limit(term, 0)
+        } else {
+            None
+        }
+    }
+
+    /// Combines positive exponential factors in the logarithm before taking
+    /// the limit. A quotient may have a finite answer even when both factors
+    /// overflow at ordinary floating-point probe points.
+    fn exponential_product_at_infinity(
+        &mut self,
+        term: NodeId,
+    ) -> Option<NodeId> {
+        if self.target.is_finite() || self.cx.graph.op(term) != core::MUL {
+            return None;
+        }
+        let factors = self.cx.graph.children(term).to_vec();
+        let exp = self.f.exp;
+        let is_exponential = |graph: &Graph, n: NodeId| {
+            graph.op(n) == exp
+                || (graph.op(n) == core::POW
+                    && graph
+                        .children(n)
+                        .first()
+                        .is_some_and(|&base| graph.op(base) == exp))
+        };
+        if !factors.iter().any(|&n| is_exponential(self.cx.graph, n)) {
+            return None;
+        }
+        let mut logarithms = Vec::with_capacity(factors.len());
+        for factor in factors {
+            if self.cx.graph.op(factor) == exp {
+                let &[argument] = self.cx.graph.children(factor) else {
+                    return None;
+                };
+                crate::rules::poly::rational_function_in(self.cx.graph, argument, self.x)?;
+                logarithms.push(argument);
+                continue;
+            }
+            if self.cx.graph.op(factor) != core::POW {
+                return None;
+            }
+            let &[base, exponent] = self.cx.graph.children(factor) else {
+                return None;
+            };
+            crate::rules::poly::rational_function_in(self.cx.graph, exponent, self.x)?;
+            let log_base = if self.cx.graph.op(base) == exp {
+                let &[argument] = self.cx.graph.children(base) else {
+                    return None;
+                };
+                crate::rules::poly::rational_function_in(self.cx.graph, argument, self.x)?;
+                argument
+            } else {
+                // A rational base with positive limiting value is
+                // eventually positive on the approached side.
+                crate::rules::poly::rational_function_in(self.cx.graph, base, self.x)?;
+                let base_limit = self.rational_at_infinity(base)?;
+                let v = self.cx.graph.eval(base_limit, &Env::numeric(0.0))?;
+                if !v.is_finite() || v <= 0.0 {
+                    return None;
+                }
+                self.cx.graph.node(self.f.ln, &[base])
+            };
+            logarithms.push(build_product(self.cx.graph, &[exponent, log_base]));
+        }
+        let sum = self.cx.graph.node(core::ADD, &logarithms);
+        let sum = self.cx.simplify(sum);
+        let exponent = self.series_at_infinity_with(sum, 1)?;
+        if !self
+            .cx
+            .graph
+            .eval(exponent, &Env::numeric(0.0))?
+            .is_finite()
+        {
+            return None;
+        }
+        Some(self.cx.graph.node(exp, &[exponent]))
+    }
+
     /// [`Self::series_at_infinity`] with the substitution `x = ±t^(-k)`.
     fn series_at_infinity_with(
         &mut self,
@@ -1141,9 +1257,6 @@ pub(super) fn limit_at(
     let env = generic_env(cx.graph, point, symbol, &Env::numeric(0.0));
     let target = cx.graph.eval(point, &env)?;
     let term = cx.simplify(f);
-    // Gruntz's growth comparison decides the limits of nested exp-log
-    // expressions that the heuristics below cannot see.
-    let gruntz = super::gruntz::limit(cx, infinity, term, x, point, target, side);
     let mut limiter = Limiter {
         cx,
         f: functions,
@@ -1154,6 +1267,15 @@ pub(super) fn limit_at(
         target,
         side,
     };
+    if let Some(exact) = limiter
+        .exponential_quotient_at_point(term)
+        .or_else(|| limiter.exponential_product_at_infinity(term))
+    {
+        return Some(exact);
+    }
+    // Gruntz's growth comparison decides the limits of nested exp-log
+    // expressions that the other heuristics cannot see.
+    let gruntz = super::gruntz::limit(limiter.cx, infinity, term, x, point, target, side);
     if let Some(candidate) = gruntz
         && limiter.verified(term, candidate)
     {

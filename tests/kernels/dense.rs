@@ -1,5 +1,6 @@
 //! Tests for the dense linear algebra kernels.
 
+use rssn::kernels::dense::DenseError;
 use rssn::kernels::dense::Mat;
 use rssn::kernels::dense::cholesky;
 use rssn::kernels::dense::cholesky_solve;
@@ -32,6 +33,54 @@ fn lu_solve_det_inverse() {
     let prod = a.matmul(&lu.inverse()).unwrap();
     assert!((prod.at(0, 0) - 1.0).abs() < 1e-12 && prod.at(0, 1).abs() < 1e-12);
     assert!(lu_factor(&m(&[&[1.0, 2.0], &[2.0, 4.0]])).is_err());
+}
+
+#[test]
+fn lu_reuses_caller_storage_and_validates_before_writing() {
+    let a = m(&[&[2.0, 1.0, 1.0], &[4.0, -6.0, 0.0], &[-2.0, 7.0, 2.0]]);
+    let lu = lu_factor(&a).unwrap();
+    let b = [5.0, -2.0, 9.0];
+    let mut out = [99.0; 3];
+    lu.solve_into(&b, &mut out).unwrap();
+    assert_eq!(out.as_slice(), lu.solve(&b));
+    let expected = out;
+    assert_eq!(lu.solve_into(&b[..2], &mut out), Err(DenseError::Shape));
+    assert_eq!(
+        lu.solve_into(&[f64::NAN, 0.0, 0.0], &mut out),
+        Err(DenseError::NonFinite)
+    );
+    assert_eq!(out, expected);
+    assert!(lu.solve(&b[..2]).is_empty());
+    assert_eq!(
+        solve(&a, &[0.0, f64::INFINITY, 0.0]),
+        Err(DenseError::NonFinite)
+    );
+}
+
+#[test]
+fn dense_shapes_and_full_exponent_range() {
+    let malformed = Mat {
+        rows: 2,
+        cols: 2,
+        data: vec![1.0],
+    };
+    assert!(matches!(lu_factor(&malformed), Err(DenseError::Shape)));
+    assert_eq!(malformed.matmul(&Mat::identity(2)), Err(DenseError::Shape));
+    assert!(matches!(
+        eigen_symmetric(&malformed),
+        Err(DenseError::Shape)
+    ));
+    assert_eq!(lstsq_svd(&Mat::identity(2), &[1.0]), Err(DenseError::Shape));
+
+    for factor in [f64::MAX, f64::from_bits(1)] {
+        let a = m(&[&[factor]]);
+        assert_eq!(a.norm_fro(), factor);
+        assert_eq!(eigen_symmetric(&a).unwrap().0, [factor]);
+        assert_eq!(eigenvalues(&a).unwrap(), [(factor, 0.0)]);
+    }
+    let a = m(&[&[1e308], &[1e308]]);
+    let solution = lstsq_svd(&a, &[f64::MAX, f64::MAX]).unwrap();
+    assert!((solution[0] - f64::MAX / 1e308).abs() < 1e-14);
 }
 
 #[test]

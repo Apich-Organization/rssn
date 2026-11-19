@@ -287,17 +287,14 @@ fn ir(
     v: KernelIr,
     frame: Option<TapeSnapshot>,
 ) -> NewObject<KernelObject> {
-    let dims = frame
-        .as_ref()
-        .map(|f| {
-            f.input_dimensions
-                .iter()
-                .chain(&f.parameter_dimensions)
-                .chain(&f.output_dimensions)
-                .cloned()
-                .collect()
-        })
-        .unwrap_or_default();
+    let dims = frame.as_ref().map_or_default(|f| {
+        f.input_dimensions
+            .iter()
+            .chain(&f.parameter_dimensions)
+            .chain(&f.output_dimensions)
+            .cloned()
+            .collect()
+    });
     NewObject::new(KernelObject { ir: v, frame }, dims)
 }
 fn list(v: &Value) -> Result<&[Value], OpError> {

@@ -427,14 +427,13 @@ pub(super) fn eliminate(
                 complete = false;
                 break;
             };
-            for tail in tails {
+            for mut tail in tails {
                 let mut v = value;
                 for (&other, &t) in rest_unknowns.iter().zip(&tail) {
                     v = graph.substitute(v, other, t);
                 }
-                let mut full = tail.clone();
-                full.insert(j, v);
-                out.push(full);
+                tail.insert(j, v);
+                out.push(tail);
             }
         }
         if complete {

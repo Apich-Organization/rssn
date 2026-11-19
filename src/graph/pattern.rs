@@ -1244,7 +1244,7 @@ mod tests {
             .unwrap_or(NodeId::NONE);
         let m = p.matches(&g, node, vars.len(), 16);
         assert_eq!(m.len(), 1);
-        let mut rest = m.first().map(|m| m.rest.clone()).unwrap_or_default();
+        let mut rest = m.first().map_or_default(|m| m.rest.clone());
         rest.sort_unstable();
         let mut expect = vec![g.sym("u"), g.sym("v")];
         expect.sort_unstable();

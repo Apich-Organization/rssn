@@ -131,6 +131,18 @@ fn zero_steps_is_an_error() {
 }
 
 #[test]
+fn fixed_grid_rejects_unrepresentable_requests_before_calling_rhs() {
+    let rhs = |_t, _y: &[f64], _dy: &mut [f64]| panic!("invalid grid reached the callback");
+    let method = OdeSolverMethod::Euler;
+    for steps in [usize::MAX, usize::MAX.saturating_sub(1)] {
+        assert!(solve_fixed(rhs, &[1.0], (0.0, 1.0), steps, method).is_err());
+        assert!(solve_fixed_events(rhs, &[1.0], (0.0, 1.0), steps, method, &[]).is_err());
+    }
+    assert!(solve_fixed(rhs, &[1.0], (0.0, f64::INFINITY), 1, method).is_err());
+    assert!(solve_fixed_events(rhs, &[f64::NAN], (0.0, 1.0), 1, method, &[]).is_err());
+}
+
+#[test]
 fn adaptive_matches_exponential() {
     let tr = solve_adaptive(grow, &[1.0], (0.0, 1.0), 1e-10, 1e-12, 10_000)
         .unwrap_or_else(|e| panic!("{e}"));

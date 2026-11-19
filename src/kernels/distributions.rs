@@ -83,12 +83,22 @@ fn discrete_quantile(
     u: f64,
     maximum: u64,
 ) -> Result<f64, DistError> {
-    if u <= cdf(0) {
+    let probability = |count| {
+        let value = cdf(count);
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(DistError::Domain(
+                "distribution CDF did not produce a finite probability".to_string(),
+            ))
+        }
+    };
+    if u <= probability(0)? {
         return Ok(0.0);
     }
     let mut low = 0u64;
     let mut high = maximum.min(2);
-    while cdf(high) < u {
+    while probability(high)? < u {
         if high == maximum {
             return Err(DistError::Domain(
                 "quantile exceeds the supported integer range".to_string(),
@@ -97,20 +107,69 @@ fn discrete_quantile(
         low = high;
         high = high.saturating_mul(2).min(maximum);
     }
-    if !cdf(high).is_finite() {
-        return Err(DistError::Domain(
-            "distribution CDF did not produce a finite probability".to_string(),
-        ));
-    }
     while high - low > 1 {
         let middle = low + (high - low) / 2;
-        if cdf(middle) >= u {
+        if probability(middle)? >= u {
             high = middle;
         } else {
             low = middle;
         }
     }
     Ok(high as f64)
+}
+
+// Very small p can round 1 - p to 1. Use the exact binomial mass recurrence
+// in the low-mean regime, where it starts at a representable mass and needs only
+// a small bounded number of terms. For mean <= 128, the Chernoff bound for
+// P(X >= 512) lies below machine epsilon.
+const RARE_BINOMIAL_CDF_CUTOFF: u64 = 512;
+
+fn rare_binomial_masses(
+    n: u64,
+    p: f64,
+) -> Option<impl Iterator<Item = f64>> {
+    let n_float = n as f64;
+    if p > 1e-8 || n_float * p > 128.0 {
+        return None;
+    }
+    let ratio = p / (1.0 - p);
+    let mut mass = (n_float * (-p).ln_1p()).exp();
+    Some((0..=n).map(move |k| {
+        let current = mass;
+        mass *= (n - k) as f64 * ratio / (k as f64 + 1.0);
+        current
+    }))
+}
+
+fn binomial_cdf(
+    n: u64,
+    p: f64,
+    k: u64,
+) -> f64 {
+    if k >= n || p == 0.0 {
+        return 1.0;
+    }
+    if k == 0 {
+        return (n as f64 * (-p).ln_1p()).exp();
+    }
+    if let Some(mut masses) = rare_binomial_masses(n, p) {
+        if k >= RARE_BINOMIAL_CDF_CUTOFF {
+            return 1.0;
+        }
+        let lower = masses.by_ref().take(k as usize + 1).sum::<f64>();
+        if lower <= 0.5 {
+            return lower;
+        }
+        // Use the upper tail near 1 so accumulated errors in the lower sum
+        // do not move large-probability quantiles to the cutoff.
+        let upper = masses
+            .take((RARE_BINOMIAL_CDF_CUTOFF - k) as usize)
+            .sum::<f64>();
+        return 1.0 - upper;
+    }
+    // P(X <= k) = I_{1-p}(n-k, k+1).
+    statrs::function::beta::checked_beta_reg((n - k) as f64, k as f64 + 1.0, 1.0 - p)
+        .unwrap_or(f64::NAN)
 }
 
 /// One of the univariate distributions.
@@ -263,12 +322,14 @@ impl Distribution {
                 (-0.5 * z * z).exp() / (sigma * (2.0 * PI).sqrt())
             },
             | Self::Uniform { lo, hi } => {
-                if hi <= lo {
-                    f64::NAN
-                } else if x >= lo && x <= hi {
-                    1.0 / (hi - lo)
+                if x < lo || x > hi {
+                    return 0.0;
+                }
+                let width = hi - lo;
+                if width.is_finite() {
+                    width.recip()
                 } else {
-                    0.0
+                    0.5 / (hi * 0.5 - lo * 0.5)
                 }
             },
             | Self::Exponential { rate } => {
@@ -299,17 +360,26 @@ impl Distribution {
                 ((shape - 1.0) * x.ln() - rate * x + shape * rate.ln() - ln_gamma(shape)).exp()
             },
             | Self::Beta { alpha, beta } => {
-                if alpha <= 0.0 || beta <= 0.0 {
-                    return f64::NAN;
-                }
                 if !(0.0..=1.0).contains(&x) {
                     return 0.0;
                 }
-                let log =
-                    (alpha - 1.0) * x.ln() + (beta - 1.0) * (1.0 - x).ln() + ln_gamma(alpha + beta)
-                        - ln_gamma(alpha)
-                        - ln_gamma(beta);
-                log.exp()
+                if x == 0.0 || crate::kernels::exact_eq(x, 1.0) {
+                    let (edge, opposite) = if x == 0.0 {
+                        (alpha, beta)
+                    } else {
+                        (beta, alpha)
+                    };
+                    return if edge < 1.0 {
+                        f64::INFINITY
+                    } else if crate::kernels::exact_eq(edge, 1.0) {
+                        opposite
+                    } else {
+                        0.0
+                    };
+                }
+                ((alpha - 1.0) * x.ln() + (beta - 1.0) * (-x).ln_1p()
+                    - crate::kernels::special::ln_beta_numerical(alpha, beta))
+                .exp()
             },
             | Self::ChiSquared { df } => {
                 if df <= 0.0 {
@@ -344,16 +414,30 @@ impl Distribution {
                 (-lambda + x * lambda.ln() - ln_gamma(x + 1.0)).exp()
             },
             | Self::Binomial { n, p } => {
-                if !(0.0..=1.0).contains(&p) {
-                    return f64::NAN;
-                }
                 if x < 0.0 || x.fract() != 0.0 || x > n as f64 {
                     return 0.0;
                 }
-                let k = x;
-                (ln_gamma(n as f64 + 1.0) - ln_gamma(k + 1.0) - ln_gamma(n as f64 - k + 1.0)
-                    + k * p.ln()
-                    + (n as f64 - k) * (1.0 - p).ln())
+                if n == 0 || p == 0.0 {
+                    return f64::from(x == 0.0);
+                }
+                if crate::kernels::exact_eq(p, 1.0) {
+                    return f64::from(crate::kernels::exact_eq(x, n as f64));
+                }
+                if x == 0.0 {
+                    return (n as f64 * (-p).ln_1p()).exp();
+                }
+                if crate::kernels::exact_eq(x, n as f64) {
+                    return (n as f64 * p.ln()).exp();
+                }
+                if x < RARE_BINOMIAL_CDF_CUTOFF as f64
+                    && let Some(mut masses) = rare_binomial_masses(n, p)
+                    && let Some(mass) = masses.nth(x as usize)
+                {
+                    return mass;
+                }
+                (ln_gamma(n as f64 + 1.0) - ln_gamma(x + 1.0) - ln_gamma(n as f64 - x + 1.0)
+                    + x * p.ln()
+                    + (n as f64 - x) * (-p).ln_1p())
                 .exp()
             },
             | Self::LogNormal { mu, sigma } => {
@@ -469,10 +553,18 @@ impl Distribution {
                 0.5 * erfc(-z / std::f64::consts::SQRT_2)
             },
             | Self::Uniform { lo, hi } => {
-                if hi <= lo {
-                    return f64::NAN;
+                if x <= lo {
+                    return 0.0;
                 }
-                ((x - lo) / (hi - lo)).clamp(0.0, 1.0)
+                if x >= hi {
+                    return 1.0;
+                }
+                let width = hi - lo;
+                if width.is_finite() {
+                    (x - lo) / width
+                } else {
+                    (x * 0.5 - lo * 0.5) / (hi * 0.5 - lo * 0.5)
+                }
             },
             | Self::Exponential { rate } => {
                 if rate <= 0.0 {
@@ -536,8 +628,7 @@ impl Distribution {
                 if x >= n as f64 {
                     return 1.0;
                 }
-                // P(X <= k) = I_{1-p}(n-k, k+1).
-                regularized_beta(1.0 - p, n as f64 - x.floor(), x.floor() + 1.0)
+                binomial_cdf(n, p, x as u64)
             },
             | Self::LogNormal { mu, sigma } => {
                 if sigma <= 0.0 {
@@ -688,11 +779,9 @@ impl Distribution {
 
     /// The `u`-quantile, `0 ≤ u ≤ 1`: the inverse of [`Distribution::cdf`].
     ///
-    /// This is what `sample` uses at run time, because the interpreter's RNG
-    /// hands out one uniform per action (§6.10) and an inverse-CDF sample needs
-    /// exactly one. Continuous distributions invert by bisection on the CDF,
-    /// which converges to machine precision and needs no
-    /// distribution-specific algebra; discrete ones invert their CDF using bracketed integer searches.
+    /// Closed-form inverses are used when available. Other continuous distributions
+    /// invert the CDF by bracketed bisection, and discrete distributions search
+    /// for the smallest supported count whose CDF reaches `u`.
     ///
     /// # Errors
     ///
@@ -731,9 +820,13 @@ impl Distribution {
                 discrete_quantile(|k| distribution.cdf(k), u, u64::MAX)
             },
             | Self::Binomial { n, p } => {
-                let distribution = statrs::distribution::Binomial::new(p, n)
-                    .map_err(|e| DistError::Domain(e.to_string()))?;
-                discrete_quantile(|k| distribution.cdf(k), u, n)
+                if n == 0 || p == 0.0 {
+                    return Ok(0.0);
+                }
+                if crate::kernels::exact_eq(p, 1.0) || crate::kernels::exact_eq(u, 1.0) {
+                    return Ok(n as f64);
+                }
+                discrete_quantile(|k| binomial_cdf(n, p, k), u, n)
             },
             | Self::NegativeBinomial { r, p } => {
                 if crate::kernels::exact_eq(p, 1.0) || u == 0.0 {
@@ -899,7 +992,15 @@ impl Distribution {
                 let u2 = uniform();
                 mu + sigma * (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos()
             },
-            | Self::Uniform { lo, hi } => lo + (hi - lo) * uniform(),
+            | Self::Uniform { lo, hi } => {
+                let u = uniform();
+                let width = hi - lo;
+                if width.is_finite() {
+                    lo + width * u
+                } else {
+                    lo * (1.0 - u) + hi * u
+                }
+            },
             | Self::Exponential { rate } => -one(uniform()).ln() / rate,
             | Self::Gamma { shape, rate } => gamma_sample(shape, uniform)? / rate,
             | Self::Beta { alpha, beta } => {
@@ -925,13 +1026,13 @@ impl Distribution {
                 }
             },
             | Self::Binomial { n, p } => {
-                let mut successes = 0.0;
-                for _ in 0..n {
-                    if uniform() < p {
-                        successes += 1.0;
-                    }
+                if n == 0 || p == 0.0 {
+                    0.0
+                } else if crate::kernels::exact_eq(p, 1.0) {
+                    n as f64
+                } else {
+                    self.quantile(uniform())?
                 }
-                successes
             },
             | Self::LogNormal { mu, sigma } => (Self::Normal { mu, sigma }.sample(uniform)?).exp(),
             | Self::Weibull { shape, scale } => {

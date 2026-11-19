@@ -1223,7 +1223,7 @@ pub fn polynomial_roots_jenkins_traub_complex(
             }
             h = hn;
         }
-        let saved = h.clone();
+        let saved = h;
         let (mut xx, mut yy) = (0.5_f64.sqrt(), -(0.5_f64.sqrt()));
         let mut found: Option<Cx> = None;
         'outer: for _pass in 0..2 {

@@ -14,6 +14,8 @@
 //! * [`lobpcg`]: the smallest eigenpairs of a large symmetric operator by
 //!   locally optimal block preconditioned conjugate gradients (Knyazev), which
 //!   needs products and an optional preconditioner but no factorisation;
+//!   [`lobpcg_generalized`] uses a positive-definite mass operator and
+//!   optional soft locking for converged approximations;
 //! * [`anderson`]: Anderson acceleration of a fixed-point iteration
 //!   `x = g(x)`, which turns the linear convergence of a self-consistent
 //!   iteration into something close to a quasi-Newton method without a
@@ -457,7 +459,7 @@ pub struct Eigenpairs {
     pub values: Vec<f64>,
     /// `vectors[i]` is the unit eigenvector of `values[i]`.
     pub vectors: Vec<Vec<f64>>,
-    /// Residual norms `|A x - lambda x|`.
+    /// Euclidean residual norms of the eigenvalue equation.
     pub residuals: Vec<f64>,
     /// Iterations used.
     pub iterations: usize,
@@ -479,7 +481,8 @@ type Preconditioner<'a> = Option<&'a dyn Fn(&[f64], &mut [f64])>;
 /// # Errors
 /// [`LowRankError::Shape`] when `k` is zero or more than `n / 3` would allow
 /// (`3 k <= n` is needed for the trial subspace), or a product is not
-/// finite; [`LowRankError::NoConvergence`] when `max_iterations` pass with a
+/// finite, or when the tolerance is not positive and finite.
+/// Returns [`LowRankError::NoConvergence`] when `max_iterations` pass with a
 /// residual above `tol * max(1, |lambda|)`.
 pub fn lobpcg(
     apply: &dyn Fn(&[f64], &mut [f64]),
@@ -495,6 +498,7 @@ pub fn lobpcg(
             "{k} eigenpairs requested of an operator of size {n}; LOBPCG needs 3 k <= n"
         )));
     }
+    validate_lobpcg_workspace(n, k, tol)?;
     let mul = |x: &[f64]| -> Vec<f64> {
         let mut y = vec![0.0; n];
         apply(x, &mut y);
@@ -529,6 +533,11 @@ pub fn lobpcg(
             match precondition {
                 | Some(f) => f(&r, &mut t),
                 | None => t.copy_from_slice(&r),
+            }
+            if t.iter().any(|value| !value.is_finite()) {
+                return Err(LowRankError::Shape(
+                    "non-finite LOBPCG preconditioner product".into(),
+                ));
             }
             w.push(t);
         }
@@ -597,6 +606,354 @@ pub fn lobpcg(
     Err(LowRankError::NoConvergence(
         "iteration budget exhausted".into(),
     ))
+}
+
+/// Controls for the generalized symmetric-definite LOBPCG solver.
+#[derive(Clone, Copy, Debug)]
+pub struct LobpcgOptions {
+    /// Positive finite tolerance on `||A x - lambda B x||₂ / max(1, |lambda|)`.
+    pub tolerance: f64,
+    /// Maximum number of trial-space expansions after the initial projection.
+    pub max_iterations: usize,
+    /// Seed for the starting block.
+    pub seed: u64,
+    /// Omit converged approximations from residual and search-direction updates.
+    ///
+    /// All approximations participate in Rayleigh–Ritz. A converged pair can
+    /// resume its updates if a later projection increases its residual.
+    pub soft_lock: bool,
+}
+
+impl Default for LobpcgOptions {
+    fn default() -> Self {
+        Self {
+            tolerance: 1e-8,
+            max_iterations: 200,
+            seed: 0x5eed,
+            soft_lock: true,
+        }
+    }
+}
+
+struct GeneralizedTrial {
+    x: Vec<f64>,
+    bx: Vec<f64>,
+    ax: Vec<f64>,
+}
+
+impl GeneralizedTrial {
+    fn linear_combination(
+        basis: &[Self],
+        coefficients: impl Iterator<Item = f64>,
+    ) -> Self {
+        let n = basis.first().map_or(0, |column| column.x.len());
+        let mut result = Self {
+            x: vec![0.0; n],
+            bx: vec![0.0; n],
+            ax: vec![0.0; n],
+        };
+        for (column, coefficient) in basis.iter().zip(coefficients) {
+            axpy(&mut result.x, coefficient, &column.x);
+            axpy(&mut result.bx, coefficient, &column.bx);
+            axpy(&mut result.ax, coefficient, &column.ax);
+        }
+        result
+    }
+}
+
+fn axpy(
+    target: &mut [f64],
+    coefficient: f64,
+    source: &[f64],
+) {
+    for (out, value) in target.iter_mut().zip(source) {
+        *out += coefficient * value;
+    }
+}
+
+fn generalized_candidate(
+    mut x: Vec<f64>,
+    apply: &dyn Fn(&[f64], &mut [f64]),
+    mass: &dyn Fn(&[f64], &mut [f64]),
+    basis: &[GeneralizedTrial],
+) -> Result<Option<GeneralizedTrial>, LowRankError> {
+    if x.iter().any(|value| !value.is_finite()) {
+        return Err(LowRankError::Shape("non-finite LOBPCG trial vector".into()));
+    }
+    if x.iter().all(|&value| value == 0.0) {
+        return Ok(None);
+    }
+    let mut bx = vec![0.0; x.len()];
+    mass(&x, &mut bx);
+    let initial_squared = dot(&x, &bx);
+    if !initial_squared.is_finite() || initial_squared <= 0.0 {
+        return Err(LowRankError::Shape(
+            "mass products must be finite and positive definite on trial vectors".into(),
+        ));
+    }
+    for _ in 0..2 {
+        for q in basis {
+            let coefficient = dot(&q.x, &bx);
+            axpy(&mut x, -coefficient, &q.x);
+            axpy(&mut bx, -coefficient, &q.bx);
+        }
+    }
+    let squared = dot(&x, &bx);
+    if !squared.is_finite() {
+        return Err(LowRankError::Shape("non-finite mass inner product".into()));
+    }
+    if squared <= initial_squared * 1e-20 {
+        // A direction in the current subspace contributes no new information.
+        return Ok(None);
+    }
+    let scale = squared.sqrt();
+    for value in x.iter_mut().chain(&mut bx) {
+        *value /= scale;
+    }
+    let mut ax = vec![0.0; x.len()];
+    apply(&x, &mut ax);
+    if x.iter()
+        .chain(&bx)
+        .chain(&ax)
+        .any(|value| !value.is_finite())
+    {
+        return Err(LowRankError::Shape(
+            "non-finite LOBPCG operator product".into(),
+        ));
+    }
+    Ok(Some(GeneralizedTrial { x, bx, ax }))
+}
+
+fn generalized_ritz(
+    basis: &[GeneralizedTrial],
+    k: usize,
+) -> Result<(Vec<f64>, Vec<GeneralizedTrial>), LowRankError> {
+    let size = basis.len();
+    let mut projected = Mat::zeros(size, size);
+    for (i, left) in basis.iter().enumerate() {
+        for (j, right) in basis.iter().enumerate().skip(i) {
+            let entry = f64::midpoint(dot(&left.x, &right.ax), dot(&right.x, &left.ax));
+            projected.set(i, j, entry);
+            projected.set(j, i, entry);
+        }
+    }
+    let (mut values, coefficients) = dense::eigen_symmetric(&projected).map_err(|error| {
+        LowRankError::NoConvergence(format!("projected eigenproblem: {error:?}"))
+    })?;
+    values.truncate(k);
+    let vectors = (0..k)
+        .map(|column| {
+            GeneralizedTrial::linear_combination(
+                basis,
+                (0..size).map(|row| coefficients.at(row, column)),
+            )
+        })
+        .collect();
+    Ok((values, vectors))
+}
+
+fn scaled_residual_norm(residual: &[f64]) -> f64 {
+    let scale = residual.iter().map(|value| value.abs()).fold(0.0, f64::max);
+    if scale == 0.0 || !scale.is_finite() {
+        return scale;
+    }
+    scale
+        * residual
+            .iter()
+            .map(|value| (value / scale).powi(2))
+            .sum::<f64>()
+            .sqrt()
+}
+
+/// The `k` smallest eigenpairs of a symmetric-definite pencil `A x = lambda B x`.
+///
+/// Both operators use callbacks of the form `(input, output)`. `apply` writes
+/// `A x`, and `mass` writes `B x` for symmetric positive-definite `B`.
+/// `precondition` optionally applies a symmetric positive-definite approximation
+/// to the inverse of the shifted operator. The solver returns B-orthonormal
+/// vectors in ascending eigenvalue order. It forms neither full matrix.
+///
+/// # Errors
+/// Rejects invalid dimensions, a nonpositive or non-finite tolerance,
+/// non-finite products, and mass products that are nonpositive on trial
+/// vectors. Reports nonconvergence when the work budget is exhausted or
+/// the trial subspace cannot advance.
+pub fn lobpcg_generalized(
+    apply: &dyn Fn(&[f64], &mut [f64]),
+    mass: &dyn Fn(&[f64], &mut [f64]),
+    precondition: Preconditioner<'_>,
+    n: usize,
+    k: usize,
+    options: LobpcgOptions,
+) -> Result<Eigenpairs, LowRankError> {
+    validate_lobpcg_workspace(n, k, options.tolerance)?;
+
+    let mut rng = Gaussian::new(options.seed);
+    let mut basis = Vec::with_capacity(k);
+    for _ in 0..k {
+        let mut vector = Vec::new();
+        vector
+            .try_reserve_exact(n)
+            .map_err(|_| LowRankError::Shape("LOBPCG cannot allocate a trial vector".into()))?;
+        vector.extend((0..n).map(|_| rng.sample()));
+        let q = generalized_candidate(vector, apply, mass, &basis)?.ok_or_else(|| {
+            LowRankError::NoConvergence("the initial block is numerically rank deficient".into())
+        })?;
+        basis.push(q);
+    }
+    let (mut values, mut vectors) = generalized_ritz(&basis, k)?;
+    let mut directions: Vec<Option<Vec<f64>>> = vec![None; k];
+
+    for iteration in 0..=options.max_iterations {
+        crate::cancellation::checkpoint()
+            .map_err(|error| LowRankError::NoConvergence(error.to_string()))?;
+        let (mut residuals, mut norms) = generalized_residuals(&vectors, &values)?;
+        let mut converged = convergence_flags(&norms, &values, options.tolerance);
+        if converged.iter().all(|&done| done) {
+            // Ritz vector products are assembled from cached trial images.
+            // Reapply the original operators to certify the reported residuals.
+            for column in &mut vectors {
+                column.ax.fill(0.0);
+                column.bx.fill(0.0);
+                apply(&column.x, &mut column.ax);
+                mass(&column.x, &mut column.bx);
+            }
+            (residuals, norms) = generalized_residuals(&vectors, &values)?;
+            converged = convergence_flags(&norms, &values, options.tolerance);
+            if converged.iter().all(|&done| done) {
+                return Ok(Eigenpairs {
+                    values,
+                    vectors: vectors.into_iter().map(|column| column.x).collect(),
+                    residuals: norms,
+                    iterations: iteration,
+                });
+            }
+        }
+        if iteration == options.max_iterations {
+            return Err(LowRankError::NoConvergence(format!(
+                "largest residual {:e} after {iteration} iterations",
+                norms.iter().copied().fold(0.0, f64::max)
+            )));
+        }
+
+        // Converged approximations stay in Rayleigh–Ritz, while soft locking
+        // keeps their residuals out of the preconditioner and search block.
+        let active = |i: usize| !options.soft_lock || !converged[i];
+        basis = vectors;
+        for (_, rate) in residuals
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| active(*i))
+        {
+            if basis.len() == n {
+                break;
+            }
+            let search = if let Some(precondition) = precondition {
+                let mut output = vec![0.0; n];
+                precondition(&rate, &mut output);
+                output
+            } else {
+                rate
+            };
+            if let Some(column) = generalized_candidate(search, apply, mass, &basis)? {
+                basis.push(column);
+            }
+        }
+        for (index, slot) in directions.iter_mut().enumerate() {
+            if basis.len() == n {
+                break;
+            }
+            if active(index)
+                && let Some(search) = slot.take()
+                && let Some(column) = generalized_candidate(search, apply, mass, &basis)?
+            {
+                basis.push(column);
+            }
+        }
+        if basis.len() == k {
+            return Err(LowRankError::NoConvergence(
+                "no independent LOBPCG search direction".into(),
+            ));
+        }
+
+        (values, vectors) = generalized_ritz(&basis, k)?;
+        for (index, (slot, next)) in directions.iter_mut().zip(&vectors).enumerate() {
+            *slot = active(index).then(|| {
+                let mut step = next.x.clone();
+                for previous in basis.iter().take(k) {
+                    let coefficient = dot(&previous.x, &next.bx);
+                    axpy(&mut step, -coefficient, &previous.x);
+                }
+                step
+            });
+        }
+    }
+    Err(LowRankError::NoConvergence(
+        "iteration budget exhausted".into(),
+    ))
+}
+
+fn validate_lobpcg_workspace(
+    n: usize,
+    k: usize,
+    tolerance: f64,
+) -> Result<(), LowRankError> {
+    let error = || LowRankError::Shape("invalid or unrepresentable LOBPCG workspace".into());
+    if k == 0 || k > n || tolerance <= 0.0 || !tolerance.is_finite() {
+        return Err(error());
+    }
+    let trial_width = k.saturating_mul(3).min(n);
+    let elements = n
+        .checked_mul(trial_width)
+        .and_then(|basis| {
+            trial_width
+                .checked_mul(trial_width)
+                .and_then(|gram| gram.checked_add(basis))
+        })
+        .ok_or_else(error)?;
+    if elements
+        .checked_mul(std::mem::size_of::<f64>())
+        .is_none_or(|bytes| isize::try_from(bytes).is_err())
+    {
+        return Err(error());
+    }
+    Ok(())
+}
+
+fn convergence_flags(
+    norms: &[f64],
+    values: &[f64],
+    tolerance: f64,
+) -> Vec<bool> {
+    norms
+        .iter()
+        .zip(values)
+        .map(|(&residual, &lambda)| residual <= tolerance * lambda.abs().max(1.0))
+        .collect()
+}
+
+fn generalized_residuals(
+    vectors: &[GeneralizedTrial],
+    values: &[f64],
+) -> Result<(Vec<Vec<f64>>, Vec<f64>), LowRankError> {
+    let mut residuals = Vec::with_capacity(values.len());
+    let mut norms = Vec::with_capacity(values.len());
+    for (column, &lambda) in vectors.iter().zip(values) {
+        let residual: Vec<_> = column
+            .ax
+            .iter()
+            .zip(&column.bx)
+            .map(|(&ax, &bx)| ax - lambda * bx)
+            .collect();
+        if residual.iter().any(|value| !value.is_finite()) {
+            return Err(LowRankError::NoConvergence(
+                "non-finite generalized eigenpair residual".into(),
+            ));
+        }
+        norms.push(scaled_residual_norm(&residual));
+        residuals.push(residual);
+    }
+    Ok((residuals, norms))
 }
 
 // ---------------------------------------------------------------------------
@@ -1023,5 +1380,158 @@ mod tests {
         assert!(anderson(&g, &[f64::NAN], 2, 1.0, 1e-8, 10).is_err());
         assert!(anderson(&|_| vec![1.0, 2.0], &[0.0], 2, 1.0, 1e-8, 10).is_err());
         assert!(anderson(&|x| vec![x[0] * 2.0 + 1.0], &[1.0], 0, 1.0, 1e-8, 5000).is_err());
+    }
+}
+
+#[cfg(test)]
+mod generalized_lobpcg_tests {
+    use super::*;
+    use std::cell::Cell;
+
+    fn close(
+        left: f64,
+        right: f64,
+        tolerance: f64,
+    ) {
+        assert!((left - right).abs() < tolerance, "{left} != {right}");
+    }
+
+    #[test]
+    fn weighted_lobpcg_solves_a_nondiagonal_pencil() -> Result<(), LowRankError> {
+        let n = 18;
+        let apply = |x: &[f64], out: &mut [f64]| {
+            out[0] = 5.0 * x[0] - x[1];
+            out[1] = 5.0 * x[1] - x[0];
+            for i in 2..n {
+                out[i] = if i == 2 {
+                    2.0 * x[i]
+                } else {
+                    (i as f64 + 2.0) * x[i]
+                };
+            }
+        };
+        let mass = |x: &[f64], out: &mut [f64]| {
+            out[0] = 3.0 * x[0] + x[1];
+            out[1] = 3.0 * x[1] + x[0];
+            out[2..].copy_from_slice(&x[2..]);
+        };
+        let result = lobpcg_generalized(
+            &apply,
+            &mass,
+            None,
+            n,
+            3,
+            LobpcgOptions {
+                tolerance: 1e-9,
+                max_iterations: 250,
+                ..LobpcgOptions::default()
+            },
+        )?;
+        for (&actual, expected) in result.values.iter().zip([1.0, 2.0, 3.0]) {
+            close(actual, expected, 1e-10);
+        }
+        for (i, x) in result.vectors.iter().enumerate() {
+            let mut bx = vec![0.0; n];
+            let mut ax = vec![0.0; n];
+            mass(x, &mut bx);
+            apply(x, &mut ax);
+            for (j, y) in result.vectors.iter().enumerate() {
+                close(dot(&bx, y), if i == j { 1.0 } else { 0.0 }, 1e-9);
+            }
+            axpy(&mut ax, -result.values[i], &bx);
+            close(norm(&ax), result.residuals[i], 1e-13);
+            assert!(result.residuals[i] < 3.1e-9);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn soft_locking_can_skip_converged_preconditioner_calls() -> Result<(), LowRankError> {
+        let n = 30;
+        let diagonal: Vec<_> = (0..n)
+            .map(|i| {
+                if i == 0 {
+                    0.1
+                } else {
+                    i as f64 + 2.0
+                }
+            })
+            .collect();
+        let apply = |x: &[f64], out: &mut [f64]| {
+            for ((slot, value), scale) in out.iter_mut().zip(x).zip(&diagonal) {
+                *slot = value * scale;
+            }
+        };
+        let mass = |x: &[f64], out: &mut [f64]| out.copy_from_slice(x);
+        let calls = Cell::new(0_usize);
+        let precondition = |x: &[f64], out: &mut [f64]| {
+            calls.set(calls.get().saturating_add(1));
+            for ((slot, value), scale) in out.iter_mut().zip(x).zip(&diagonal) {
+                *slot = value / scale;
+            }
+        };
+        let mut options = LobpcgOptions {
+            tolerance: 1e-7,
+            ..LobpcgOptions::default()
+        };
+        let locked = lobpcg_generalized(&apply, &mass, Some(&precondition), n, 3, options)?;
+        let locked_calls = calls.replace(0);
+        options.soft_lock = false;
+        let free = lobpcg_generalized(&apply, &mass, Some(&precondition), n, 3, options)?;
+        for (&lock_value, &free_value) in locked.values.iter().zip(&free.values) {
+            close(lock_value, free_value, 1e-10);
+        }
+        assert!(locked_calls < locked.iterations.saturating_mul(locked.values.len()));
+        assert_eq!(
+            calls.get(),
+            free.iterations.saturating_mul(free.values.len())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_full_initial_block_supports_small_indefinite_stiffness() -> Result<(), LowRankError> {
+        let apply = |x: &[f64], out: &mut [f64]| {
+            out[0] = 2.0 * x[0] - 6.0 * x[1];
+            out[1] = 2.0 * x[1] - 6.0 * x[0];
+        };
+        let mass = |x: &[f64], out: &mut [f64]| {
+            out[0] = 3.0 * x[0] + x[1];
+            out[1] = 3.0 * x[1] + x[0];
+        };
+        let options = LobpcgOptions {
+            max_iterations: 0,
+            ..LobpcgOptions::default()
+        };
+        let result = lobpcg_generalized(&apply, &mass, None, 2, 2, options)?;
+        close(result.values[0], -1.0, 1e-12);
+        close(result.values[1], 4.0, 1e-12);
+        assert_eq!(result.iterations, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_mass_and_workspace_are_refused() {
+        let identity = |x: &[f64], out: &mut [f64]| out.copy_from_slice(x);
+        let indefinite = |x: &[f64], out: &mut [f64]| {
+            for (y, v) in out.iter_mut().zip(x) {
+                *y = -*v;
+            }
+        };
+        assert!(matches!(
+            lobpcg_generalized(&identity, &indefinite, None, 4, 1, LobpcgOptions::default()),
+            Err(LowRankError::Shape(_)),
+        ));
+        assert!(matches!(
+            lobpcg_generalized(
+                &identity,
+                &identity,
+                None,
+                usize::MAX,
+                2,
+                LobpcgOptions::default()
+            ),
+            Err(LowRankError::Shape(_)),
+        ));
     }
 }

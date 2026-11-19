@@ -19,7 +19,6 @@ authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy and SymPy."
 license = "Apache-2.0"
 repository = "https://github.com/Apich-Organization/rssn"
-homepage = "https://github.com/Apich-Organization/rssn"
 readme = "README.md"
 
 keywords = [
@@ -42,10 +41,6 @@ exclude = [
     ".github/*",
     ".vscode/*",
     ".idea/*",
-    "*.sh",
-    "*.bat",
-    "scripts/*",
-    "docs/*",
     "certificates/*",
 ]
 
@@ -99,6 +94,11 @@ debug = false
 debug-assertions = false
 overflow-checks = false
 incremental = true
+
+# C exports translate caught Rust panics into RssnStatus::Panic.
+[profile.ffi]
+inherits = "release"
+panic = "unwind"
 
 [dependencies]
 cranelift-codegen = { version = "0.137", optional = true }

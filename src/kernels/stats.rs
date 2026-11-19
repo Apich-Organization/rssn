@@ -36,10 +36,10 @@ use statrs::distribution::DiscreteCDF;
 use statrs::distribution::Normal;
 use statrs::distribution::Uniform;
 use statrs::statistics::Data;
-use statrs::statistics::Distribution;
 use statrs::statistics::Max;
 use statrs::statistics::Min;
 use statrs::statistics::OrderStatistics;
+use statrs::statistics::Statistics;
 
 pub use crate::kernels::online_stats::OnlineCovariance;
 pub use crate::kernels::online_stats::OnlineStatsError;
@@ -141,15 +141,7 @@ pub fn variance(data: &[f64]) -> f64 {
 /// The standard deviation of the data as an `f64`.
 #[must_use]
 pub fn std_dev(data: &[f64]) -> f64 {
-    let data_vec: Vec<f64> = data.to_vec();
-
-    let _data_container = Data::new(data_vec);
-
-    let data_vec: Vec<f64> = data.to_vec();
-
-    let data_container = Data::new(data_vec);
-
-    data_container.std_dev().unwrap_or(f64::NAN)
+    Statistics::std_dev(data.iter())
 }
 
 /// Computes the median of a slice of data.

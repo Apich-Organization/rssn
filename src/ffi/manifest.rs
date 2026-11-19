@@ -43,9 +43,8 @@ fn standard() -> &'static KernelManifest {
 /// Returns a NUL-terminated string the caller owns and must release with
 /// [`rssn_string_free`](super::rssn_string_free). Never returns null.
 ///
-/// JSON is used here and nowhere else: it is a human-facing debugging
-/// format. Anything rssn sends to another rssn goes through
-/// [`KernelManifest::to_cbor`], which is deterministic.
+/// This JSON view is intended for inspecting build metadata. Use
+/// [`KernelManifest::to_cbor`] for deterministic, self-describing exchange.
 #[unsafe(no_mangle)]
 pub extern "C" fn rssn_manifest_json() -> *mut std::os::raw::c_char {
     to_c(standard().to_json())

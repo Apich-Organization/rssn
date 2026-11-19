@@ -22,7 +22,8 @@ after_includes = """
 "target_os = macos" = "RSSN_MACOS"
 
 [export]
-include = []
+# Preserve the two opaque names in existing C and C++ headers.
+include = ["Ball", "Wavelet"]
 # Rust-only types that are public but never cross the C boundary.
 exclude = ["Color", "Facts", "OpFlags", "Dd", "Face", "Interval"]
 item_types = ["enums", "structs", "typedefs", "opaque", "functions"]

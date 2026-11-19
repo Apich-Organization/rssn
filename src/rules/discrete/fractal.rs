@@ -856,25 +856,7 @@ fn correlation_dimension(
         .into_iter()
         .map(|s| float(g, s))
         .collect::<Option<_>>()?;
-    let total = (pts.len() * (pts.len() - 1) / 2) as f64;
-    let (mut xs, mut ys) = (Vec::new(), Vec::new());
-    for r in radii {
-        if r <= 0.0 {
-            return None;
-        }
-        let mut close = 0_usize;
-        for (i, p) in pts.iter().enumerate() {
-            close += pts[i + 1..]
-                .iter()
-                .filter(|q| (p.0 - q.0).hypot(p.1 - q.1) < r)
-                .count();
-        }
-        if close > 0 {
-            xs.push(r.ln());
-            ys.push((close as f64 / total).ln());
-        }
-    }
-    slope(&xs, &ys).map(V::Float)
+    fg::correlation_dimension_with_radii(&pts, &radii).map(V::Float)
 }
 
 fn orbit_density(

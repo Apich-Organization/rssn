@@ -441,7 +441,7 @@ fn native_mac_state_is_callable_and_keeps_velocity_pressure_and_length_domains()
         .is_err()
     );
     assert!(matches!(
-        call(&s, "num_ns_step", &[state.clone()]),
+        call(&s, "num_ns_step", std::slice::from_ref(&state)),
         Value::Bool(true)
     ));
     let cell_size = call(&s, "num_ns_cell_size", &[state.clone(), Value::int(0)]);

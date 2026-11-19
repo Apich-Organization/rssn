@@ -672,8 +672,7 @@ impl Session {
             inner
                 .templates
                 .first()
-                .map(|t| t.rule_sets.clone())
-                .unwrap_or_default()
+                .map_or_default(|template| template.rule_sets.clone())
         };
         let descriptor = {
             let inner = self.inner.borrow();

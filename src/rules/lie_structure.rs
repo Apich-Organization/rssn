@@ -1101,6 +1101,10 @@ fn log_rotation(
     Some(V::List(out))
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "keeps registrations for the Lie structure rule set in one catalog"
+)]
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "lie_cartan_matrix", Arity::Fixed(1), lie_cartan_matrix)?;
     def(i, "lie_cartan_type", Arity::Fixed(1), lie_cartan_type)?;

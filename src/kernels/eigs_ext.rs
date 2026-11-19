@@ -2450,7 +2450,7 @@ where
             q.push(u.clone());
             p.push(wv.iter().map(|e| e / rho.conj()).collect());
             lam.push(theta);
-            unit_pairs.push((u.clone(), wv.clone()));
+            unit_pairs.push((u, wv));
             let (mut nv, mut nw) = restart(&petrov, 1, min_dim, &q, &p, &v, &w);
             if nv.is_empty() {
                 let mut x = deflate_r(&random_vec(&mut rng), &q, &p);
@@ -2469,11 +2469,11 @@ where
         // correction equations with the transient pair added to the deflation
         let mut qt = q.clone();
         let mut pt = p.clone();
-        qt.push(u.clone());
+        qt.push(u);
         pt.push(if rho.norm() > 1e-12 {
             wv.iter().map(|e| e / rho.conj()).collect()
         } else {
-            wv.clone()
+            wv
         });
         let d_t = gram_pq(&pt, &qt);
         let d_th = adjoint_small(&d_t);

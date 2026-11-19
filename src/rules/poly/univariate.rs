@@ -166,8 +166,7 @@ pub fn square_free(p: &[BigRational]) -> Vec<(QPoly, u32)> {
     }
     let df = derivative(&f);
     let g = gcd(&f, &df);
-    let exact =
-        |a: &[BigRational], b: &[BigRational]| divrem(a, b).map(|(q, _)| q).unwrap_or_default();
+    let exact = |a: &[BigRational], b: &[BigRational]| divrem(a, b).map_or_default(|(q, _)| q);
     let mut c = exact(&f, &g);
     let mut d = sub(&exact(&df, &g), &derivative(&c));
     let mut multiplicity = 1_u32;

@@ -1,53 +1,14 @@
 //! # FFT and fast convolution
 //!
-//! Complex FFT for arbitrary lengths (radix-2 for powers of two,
-//! Bluestein's chirp-z algorithm otherwise), real convolution and
-//! correlation through the FFT, and exact-ish polynomial multiplication.
+//! Arbitrary-length complex FFT, real convolution and correlation, and exact
+//! integer polynomial products.
 
-use std::f64::consts::PI;
+use num_bigint::BigInt;
+use num_complex::Complex64;
+use rustfft::FftPlanner;
 
 /// Complex number as `(re, im)`.
 pub type Complex = (f64, f64);
-
-fn cm(
-    a: Complex,
-    b: Complex,
-) -> Complex {
-    (a.0 * b.0 - a.1 * b.1, a.0 * b.1 + a.1 * b.0)
-}
-
-fn fft_pow2(
-    a: &mut [Complex],
-    inverse: bool,
-) {
-    let n = a.len();
-    let mut j = 0;
-    for i in 1..n {
-        let mut bit = n >> 1;
-        while j & bit != 0 {
-            j ^= bit;
-            bit >>= 1;
-        }
-        j ^= bit;
-        if i < j {
-            a.swap(i, j);
-        }
-    }
-    let mut len = 2;
-    while len <= n {
-        let ang = 2.0 * PI / len as f64 * if inverse { 1.0 } else { -1.0 };
-        for i in (0..n).step_by(len) {
-            for k in 0..len / 2 {
-                let w = ((ang * k as f64).cos(), (ang * k as f64).sin());
-                let u = a[i + k];
-                let v = cm(a[i + k + len / 2], w);
-                a[i + k] = (u.0 + v.0, u.1 + v.1);
-                a[i + k + len / 2] = (u.0 - v.0, u.1 - v.1);
-            }
-        }
-        len <<= 1;
-    }
-}
 
 /// Discrete Fourier transform of any length (`inverse` includes the `1/n` scaling).
 #[must_use]
@@ -55,56 +16,51 @@ pub fn fft(
     x: &[Complex],
     inverse: bool,
 ) -> Vec<Complex> {
-    let n = x.len();
-    if n <= 1 {
+    if x.len() <= 1 {
         return x.to_vec();
     }
-    if n.is_power_of_two() {
-        let mut a = x.to_vec();
-        fft_pow2(&mut a, inverse);
-        if inverse {
-            for v in &mut a {
-                *v = (v.0 / n as f64, v.1 / n as f64);
-            }
-        }
-        return a;
+    let samples: Vec<_> = x.iter().map(|&(re, im)| Complex64::new(re, im)).collect();
+    let transformed = if inverse {
+        super::fft::ifft_owned(samples)
+    } else {
+        super::fft::fft_owned(samples)
+    };
+    transformed.into_iter().map(|z| (z.re, z.im)).collect()
+}
+
+fn convolution_fft(
+    a: &[f64],
+    b: &[f64],
+    period: usize,
+    used: usize,
+) -> Vec<f64> {
+    if a.is_empty() || b.is_empty() {
+        return vec![0.0; used];
     }
-    // Bluestein: X_k = conj(w_k) sum (x_j conj(w_j)) w_{k-j}, w_j = e^{i pi j^2 / n}
-    let sign = if inverse { 1.0 } else { -1.0 };
-    let chirp: Vec<Complex> = (0..n)
-        .map(|j| {
-            let jj = (j * j) % (2 * n);
-            let ang = sign * PI * jj as f64 / n as f64;
-            (ang.cos(), ang.sin())
-        })
-        .collect();
-    let m = (2 * n - 1).next_power_of_two();
-    let mut a = vec![(0.0, 0.0); m];
-    let mut b = vec![(0.0, 0.0); m];
-    for j in 0..n {
-        a[j] = cm(x[j], chirp[j]);
+    let padded = |x: &[f64]| {
+        let mut result: Vec<_> = x.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+        result.resize(period, Complex64::default());
+        result
+    };
+    let mut left = padded(a);
+    let mut right = padded(b);
+    let mut planner = FftPlanner::new();
+    let forward = planner.plan_fft_forward(period);
+    let inverse = planner.plan_fft_inverse(period);
+    let scratch_len = forward
+        .get_inplace_scratch_len()
+        .max(inverse.get_inplace_scratch_len());
+    let mut scratch = vec![Complex64::default(); scratch_len];
+    forward.process_with_scratch(&mut left, &mut scratch);
+    forward.process_with_scratch(&mut right, &mut scratch);
+    for (x, y) in left.iter_mut().zip(right) {
+        *x *= y;
     }
-    b[0] = (chirp[0].0, -chirp[0].1);
-    for j in 1..n {
-        let c = (chirp[j].0, -chirp[j].1);
-        b[j] = c;
-        b[m - j] = c;
-    }
-    fft_pow2(&mut a, false);
-    fft_pow2(&mut b, false);
-    for i in 0..m {
-        a[i] = cm(a[i], b[i]);
-    }
-    fft_pow2(&mut a, true);
-    (0..n)
-        .map(|k| {
-            let v = cm((a[k].0 / m as f64, a[k].1 / m as f64), chirp[k]);
-            if inverse {
-                (v.0 / n as f64, v.1 / n as f64)
-            } else {
-                v
-            }
-        })
+    inverse.process_with_scratch(&mut left, &mut scratch);
+    let normalization = 1.0 / period as f64;
+    left.into_iter()
+        .take(used)
+        .map(|v| v.re * normalization)
         .collect()
 }
 
@@ -127,43 +83,20 @@ pub fn convolve(
         }
         return out;
     }
-    let m = n.next_power_of_two();
-    let mut fa: Vec<Complex> = (0..m)
-        .map(|i| (a.get(i).copied().unwrap_or(0.0), 0.0))
-        .collect();
-    let mut fb: Vec<Complex> = (0..m)
-        .map(|i| (b.get(i).copied().unwrap_or(0.0), 0.0))
-        .collect();
-    fft_pow2(&mut fa, false);
-    fft_pow2(&mut fb, false);
-    for i in 0..m {
-        fa[i] = cm(fa[i], fb[i]);
-    }
-    fft_pow2(&mut fa, true);
-    fa.iter().take(n).map(|v| v.0 / m as f64).collect()
+    convolution_fft(a, b, n.next_power_of_two(), n)
 }
 
 /// Circular convolution of two real sequences of period
 /// `max(a.len(), b.len())`.
 ///
-/// Equal lengths are the usual case. A shorter sequence is zero-padded to
-/// the period, which is the circular convolution of the padded sequences
-/// (and what indexing past its end used to make a panic).
+/// A shorter sequence is zero-padded to the period.
 #[must_use]
 pub fn circular_convolve(
     a: &[f64],
     b: &[f64],
 ) -> Vec<f64> {
-    let n = a.len().max(b.len());
-    let padded = |x: &[f64]| -> Vec<Complex> {
-        let mut out: Vec<Complex> = x.iter().map(|&v| (v, 0.0)).collect();
-        out.resize(n, (0.0, 0.0));
-        out
-    };
-    let fa = fft(&padded(a), false);
-    let fb = fft(&padded(b), false);
-    let prod: Vec<Complex> = fa.iter().zip(&fb).map(|(&x, &y)| cm(x, y)).collect();
-    fft(&prod, true).iter().map(|v| v.0).collect()
+    let period = a.len().max(b.len());
+    convolution_fft(a, b, period, period)
 }
 
 /// Cross-correlation `c[k] = sum_i a[i + k - (len(b) - 1)] * b[i]`
@@ -177,34 +110,123 @@ pub fn correlate(
     convolve(a, &rb)
 }
 
-/// Multiplies two integer polynomials (ascending coefficients) exactly by
-/// splitting into 15-bit limbs so the floating-point FFT stays exact for
-/// moderate sizes.
+/// Multiplies two integer polynomials (ascending coefficients) exactly.
+///
+/// Each output is the corresponding integer coefficient modulo `2^64`,
+/// interpreted as an `i64`. Use [`poly_mul_i64_checked`] to detect overflow.
 #[must_use]
 pub fn poly_mul_i64(
     a: &[i64],
     b: &[i64],
 ) -> Vec<i64> {
+    integer_convolution(a, b, false).unwrap_or_default()
+}
+
+/// Multiplies two integer polynomials (ascending coefficients) exactly.
+/// Returns `None` if any output coefficient is outside the range of `i64`.
+#[must_use]
+pub fn poly_mul_i64_checked(
+    a: &[i64],
+    b: &[i64],
+) -> Option<Vec<i64>> {
+    integer_convolution(a, b, true)
+}
+
+fn integer_convolution(
+    a: &[i64],
+    b: &[i64],
+    checked: bool,
+) -> Option<Vec<i64>> {
     if a.is_empty() || b.is_empty() {
-        return Vec::new();
+        return Some(Vec::new());
     }
-    let split = |v: &[i64]| -> (Vec<f64>, Vec<f64>) {
-        (
-            v.iter().map(|&x| (x & 0x7fff) as f64).collect(),
-            v.iter().map(|&x| (x >> 15) as f64).collect(),
-        )
+    let len = a.len().checked_add(b.len())? - 1;
+    let overlap = a.len().min(b.len());
+    if !checked && overlap <= 16 {
+        let mut out = vec![0_i64; len];
+        for (i, &x) in a.iter().enumerate() {
+            for (j, &y) in b.iter().enumerate() {
+                out[i + j] = out[i + j].wrapping_add(x.wrapping_mul(y));
+            }
+        }
+        return Some(out);
+    }
+    let max_a = a.iter().map(|x| x.unsigned_abs()).max()?;
+    let max_b = b.iter().map(|x| x.unsigned_abs()).max()?;
+    if max_a == 0 || max_b == 0 {
+        return Some(vec![0; len]);
+    }
+    let magnitude_bits = (max_a.ilog2() + 1) + (max_b.ilog2() + 1) + (overlap.ilog2() + 1);
+    if checked && overlap <= 16 && magnitude_bits < 128 {
+        let mut exact = vec![0_i128; len];
+        for (i, &x) in a.iter().enumerate() {
+            for (j, &y) in b.iter().enumerate() {
+                exact[i + j] += i128::from(x) * i128::from(y);
+            }
+        }
+        return exact.into_iter().map(|v| i64::try_from(v).ok()).collect();
+    }
+
+    // Kronecker substitution. Choose a power-of-two base wide enough for
+    // every signed convolution coefficient, multiply the packed integers,
+    // then decode balanced digits without floating-point rounding.
+    let width = (magnitude_bits + 1).div_ceil(8) as usize;
+    let product = pack_coefficients(a, width)? * pack_coefficients(b, width)?;
+    let mut bytes = product.to_signed_bytes_le();
+    let extension = if product.sign() == num_bigint::Sign::Minus {
+        0xff
+    } else {
+        0
     };
-    let (alo, ahi) = split(a);
-    let (blo, bhi) = split(b);
-    let ll = convolve(&alo, &blo);
-    let lh = convolve(&alo, &bhi);
-    let hl = convolve(&ahi, &blo);
-    let hh = convolve(&ahi, &bhi);
-    (0..ll.len())
-        .map(|i| {
-            (ll[i].round() as i64)
-                + (((lh[i] + hl[i]).round() as i64) << 15)
-                + ((hh[i].round() as i64) << 30)
+    let size = width.checked_mul(len)?;
+    bytes
+        .try_reserve_exact(size.saturating_sub(bytes.len()))
+        .ok()?;
+    bytes.resize(size, extension);
+
+    let mut carry = 0_i64;
+    bytes
+        .chunks_exact(width)
+        .map(|digit| {
+            let sign = digit.last().is_some_and(|b| b & 0x80 != 0);
+            // Restore the borrow from the previous negative coefficient.
+            // With wrapping results only the low 64 bits are needed.
+            let mut low = [if sign { 0xff } else { 0 }; 8];
+            let take = width.min(low.len());
+            low[..take].copy_from_slice(&digit[..take]);
+            let word = i64::from_le_bytes(low);
+            let value = if !checked {
+                word.wrapping_add(carry)
+            } else if width <= low.len() {
+                word.checked_add(carry)?
+            } else {
+                let value = BigInt::from_signed_bytes_le(digit) + carry;
+                i64::try_from(value).ok()?
+            };
+            carry = i64::from(sign);
+            Some(value)
         })
         .collect()
+}
+
+fn pack_coefficients(
+    values: &[i64],
+    width: usize,
+) -> Option<BigInt> {
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(values.len().checked_mul(width)?)
+        .ok()?;
+    let mut borrow = 0_i128;
+    for &value in values {
+        let adjusted = i128::from(value) + borrow;
+        borrow = if adjusted < 0 { -1 } else { 0 };
+        let digits = adjusted.to_le_bytes();
+        bytes.extend_from_slice(&digits[..width.min(digits.len())]);
+        bytes.extend(std::iter::repeat_n(
+            borrow as u8,
+            width.saturating_sub(digits.len()),
+        ));
+    }
+    Some(BigInt::from_signed_bytes_le(&bytes))
 }

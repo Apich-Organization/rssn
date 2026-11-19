@@ -247,14 +247,29 @@ fn permutation_algorithms_validate_bijections_and_preserve_ragged_cycles() {
     let s = Session::new();
     let permutation = ints(&[1, 0, 2]);
     assert_eq!(
-        call(&s, "num_permgroup_is_permutation", &[permutation.clone()]).unwrap(),
+        call(
+            &s,
+            "num_permgroup_is_permutation",
+            std::slice::from_ref(&permutation)
+        )
+        .unwrap(),
         Value::Bool(true)
     );
-    let cycles = call(&s, "num_permgroup_cycles", &[permutation.clone()]).unwrap();
+    let cycles = call(
+        &s,
+        "num_permgroup_cycles",
+        std::slice::from_ref(&permutation),
+    )
+    .unwrap();
     assert_eq!(field(&cycles, "offsets"), &ints(&[0, 2, 3]));
     assert_eq!(field(&cycles, "indices"), &ints(&[0, 1, 2]));
     assert_eq!(
-        call(&s, "num_permgroup_element_order", &[permutation.clone()]).unwrap(),
+        call(
+            &s,
+            "num_permgroup_element_order",
+            std::slice::from_ref(&permutation)
+        )
+        .unwrap(),
         Value::int(2)
     );
     assert_eq!(

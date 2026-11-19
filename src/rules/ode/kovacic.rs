@@ -824,7 +824,7 @@ fn build(
             continue;
         };
         let shifted = {
-            let minus_c = node_of(cx, &-c.clone());
+            let minus_c = node_of(cx, &-c);
             cx.graph.node(core::ADD, &[x, minus_c])
         };
         for (j, coefficient) in coefficients.iter().enumerate() {
@@ -1719,8 +1719,8 @@ fn find_third_order_quadratic(
             let coefficient = apply(j);
             rational_row.push(coefficient.a.clone());
             rational_row.push(&coefficient.b * d);
-            surd_row.push(coefficient.b.clone());
-            surd_row.push(coefficient.a.clone());
+            surd_row.push(coefficient.b);
+            surd_row.push(coefficient.a);
         }
         let top = apply(degree);
         rows.push(rational_row);

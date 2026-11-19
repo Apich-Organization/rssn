@@ -18,6 +18,7 @@
 //!   edge stays a launch boundary);
 //! * at most one of the two has a [`Fold`](super::kernel::Fold) (a kernel has
 //!   one loop);
+//! * every other live reader of `P` runs after `C`'s execution slot;
 //! * the merged program validates ([`KernelIr::analyse`]).
 //!
 //! If other kernels or the results still need an output of `P`, the merged
@@ -306,6 +307,15 @@ impl Plan {
         let (Some(producer), Some(consumer)) = (&self.nodes[p], &self.nodes[c]) else {
             return false;
         };
+        // The merged kernel runs in slot c. A live reader before c must see
+        // the original output in slot p before any redirection.
+        if self.nodes.iter().take(c).flatten().any(|node| {
+            node.inputs
+                .iter()
+                .any(|source| matches!(source, Source::Output(NodeId(n), _) if *n == p))
+        }) {
+            return false;
+        }
         // The merged kernel's columns: the producer's, then the consumer's
         // other sources, without repeats.
         let mut sources = producer.inputs.clone();
@@ -560,6 +570,39 @@ mod tests {
         assert_eq!(plan.launches(), 1);
         assert_eq!(plan.run(&device, 100, &[&x, &w]).unwrap(), want);
         assert_eq!(want[0][10], 2.0 * x[10] + 1.0);
+    }
+
+    #[test]
+    fn an_earlier_indexed_reader_keeps_a_producer_in_its_execution_slot() {
+        let (x, w) = data();
+        let indexed = KernelIr {
+            ops: vec![KernelOp::Row, KernelOp::Load(0, 0)],
+            inputs: 1,
+            params: 0,
+            outputs: vec![1],
+            fold: None,
+        };
+        let mut plan = Plan::new(2);
+        let producer = plan
+            .add(affine(), vec![Source::External(0)], vec![2.0])
+            .unwrap();
+        let earlier = plan
+            .add(indexed, vec![Source::Output(producer, 0)], vec![])
+            .unwrap();
+        let later = plan
+            .add(
+                modulate(),
+                vec![Source::Output(producer, 0), Source::External(1)],
+                vec![],
+            )
+            .unwrap();
+        plan.result(Source::Output(earlier, 0)).unwrap();
+        plan.result(Source::Output(later, 0)).unwrap();
+
+        let device = CpuDevice::sequential();
+        let want = plan.run(&device, x.len(), &[&x, &w]).unwrap();
+        assert_eq!(plan.fuse(), 0);
+        assert_eq!(plan.run(&device, x.len(), &[&x, &w]).unwrap(), want);
     }
 
     #[test]

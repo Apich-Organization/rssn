@@ -1148,6 +1148,10 @@ fn cubical_euler_characteristic(
     Some(V::int(i64::try_from(b0).ok()? - i64::try_from(b1).ok()?))
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "keeps the topology operator registrations and their descriptions together"
+)]
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def_inert_doc(
         i,

@@ -2305,6 +2305,10 @@ fn graph_join(
     Some(graph_value(cx, &out))
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "keeps the graph operator registrations and their descriptions together"
+)]
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def_inert_doc(
         i,

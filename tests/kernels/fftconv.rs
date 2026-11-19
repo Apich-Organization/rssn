@@ -1,4 +1,4 @@
-//! `kernels::fftconv`: the arbitrary-length FFT (radix-2 and Bluestein),
+//! `kernels::fftconv`: the arbitrary-length FFT,
 //! convolution, correlation and exact integer polynomial multiplication,
 //! each against the textbook O(n²) definition.
 
@@ -7,6 +7,7 @@ use rssn::kernels::fftconv::convolve;
 use rssn::kernels::fftconv::correlate;
 use rssn::kernels::fftconv::fft;
 use rssn::kernels::fftconv::poly_mul_i64;
+use rssn::kernels::fftconv::poly_mul_i64_checked;
 use rssn::kernels::random::Rng;
 use std::f64::consts::PI;
 
@@ -288,4 +289,76 @@ fn integer_polynomial_products_are_exact() {
         assert_eq!(got[k], want, "coefficient {k}");
     }
     assert!(poly_mul_i64(&[], &[1]).is_empty());
+}
+
+#[test]
+fn full_width_integer_convolution_is_exact_and_deterministic() {
+    assert_eq!(
+        poly_mul_i64_checked(&[i64::MIN], &[1]),
+        Some(vec![i64::MIN])
+    );
+    assert_eq!(poly_mul_i64_checked(&[i64::MIN], &[-1]), None);
+    assert_eq!(poly_mul_i64(&[i64::MIN], &[-1]), vec![i64::MIN]);
+    let mut wide = vec![0; 35];
+    wide[20] = i64::MIN;
+    let narrow: Vec<_> = (0..27).map(|i| i64::from(i % 2)).collect();
+    let mut product = vec![0; 61];
+    for (dest, &factor) in product[20..47].iter_mut().zip(&narrow) {
+        *dest = i64::MIN * factor;
+    }
+    assert_eq!(poly_mul_i64_checked(&wide, &narrow), Some(product.clone()));
+    assert_eq!(poly_mul_i64(&wide, &narrow), product);
+
+    let mut rng = Rng::new(3418);
+    for (m, n) in [(18, 18), (50, 37), (300, 250)] {
+        let a: Vec<_> = (0..m).map(|_| rng.next_u64() as i64).collect();
+        let b: Vec<_> = (0..n).map(|_| rng.next_u64() as i64).collect();
+        let mut expected = vec![0_i64; m + n - 1];
+        for (i, &x) in a.iter().enumerate() {
+            for (j, &y) in b.iter().enumerate() {
+                expected[i + j] = expected[i + j].wrapping_add(x.wrapping_mul(y));
+            }
+        }
+        assert_eq!(poly_mul_i64(&a, &b), expected);
+        assert!(poly_mul_i64_checked(&a, &b).is_none());
+    }
+}
+
+#[test]
+fn fft_axes_batch_strided_and_empty_shapes() {
+    use rssn::kernels::fft::Complex64;
+    use rssn::kernels::fft::Norm;
+    use rssn::kernels::fft::fft_axes;
+    use rssn::kernels::fft::fftfreq;
+    use rssn::kernels::fft::irfft_axes;
+    use rssn::kernels::fft::rfft_axes;
+    use rssn::kernels::fft::rfftfreq;
+    let samples: Vec<_> = (0..12).map(|i| (f64::from(i) / 2.0).sin()).collect();
+    let complex: Vec<_> = samples.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+    for axes in [[0, 1], [1, 0]] {
+        let f = fft_axes(&complex, &[3, 4], &axes, false, Norm::Unitary).unwrap();
+        let recovered = fft_axes(&f, &[3, 4], &axes, true, Norm::Unitary).unwrap();
+        for (actual, expected) in recovered.iter().zip(&complex) {
+            assert!((actual - expected).norm() < 1e-13);
+        }
+
+        let (f, shape) = rfft_axes(&samples, &[3, 4], &axes).unwrap();
+        let n = [3, 4][axes[1]];
+        let (recovered, full_shape) = irfft_axes(&f, &shape, &axes, n).unwrap();
+        assert_eq!(full_shape, [3, 4]);
+        for (actual, expected) in recovered.iter().zip(&samples) {
+            assert!((actual - expected).abs() < 1e-13);
+        }
+    }
+    let empty_shape = [usize::MAX, 2, 0];
+    let (f, shape) = rfft_axes(&[], &empty_shape, &[1]).unwrap();
+    assert!(f.is_empty());
+    assert_eq!(
+        irfft_axes(&f, &shape, &[1], 2).unwrap(),
+        (vec![], empty_shape.to_vec())
+    );
+    assert!(rfftfreq(4, f64::MAX)[1] > 0.0);
+    assert!(fftfreq(4, f64::MAX)[2] < 0.0);
+    assert!(fftfreq(usize::MAX, 1.0).is_empty());
+    assert!(rfftfreq(usize::MAX, 1.0).is_empty());
 }

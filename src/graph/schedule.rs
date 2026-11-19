@@ -716,11 +716,11 @@ impl TierIndex {
     /// The segments of `tier` a sweep over candidates with operators
     /// `present` must visit, in program order: every other segment is a
     /// kernel none of whose operators occurs, which the sweep would skip.
-    fn active<'a>(
-        &'a self,
+    fn active(
+        &self,
         tier: Tier,
         present: impl Iterator<Item = OpId>,
-    ) -> Vec<&'a Segment> {
+    ) -> Vec<&Segment> {
         let slot = tier_slot(tier);
         let segments = self.segments(tier);
         let mut positions: Vec<u32> = self.always.get(slot).cloned().unwrap_or_default();

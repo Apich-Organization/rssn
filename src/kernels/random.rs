@@ -1,27 +1,16 @@
 //! # Seeded random number generation
 //!
 //! A small, fully deterministic xoshiro256++ generator (seeded through
-//! SplitMix64) and samplers for the common distributions. The same seed
-//! always yields the same stream on every platform.
+//! `SplitMix64`) and samplers for the common distributions. The same seed
+//! always yields the same integer stream on every platform.
 //!
-//! # Limitations and coverage
+//! [`Rng::jump`] and [`Rng::long_jump`] advance the raw generator by fixed
+//! powers of two. Clone and jump the same initial stream to assign
+//! deterministic subsequences to parallel workers. The generator is intended
+//! for numerical simulation and sampling.
 //!
-//! * The generator is **not** cryptographically secure and is not jumpable or
-//!   splittable: one `Rng` is a single mutable stream, so parallel sampling
-//!   needs one generator per worker with distinct seeds.
-//! * Samplers cover uniform, normal, exponential, gamma, beta, Poisson and
-//!   binomial plus Fisher-Yates shuffle; there is no Student-t, chi-square,
-//!   log-normal, Dirichlet, multivariate normal, rejection-free discrete table
-//!   or quasi-Monte Carlo generator.
-//! * The gamma/beta/Poisson/binomial samplers are rejection methods: exact in
-//!   distribution for valid parameters, but their cost is data-dependent and an
-//!   extreme parameter set can loop for a long time. Invalid parameters are
-//!   rejected by the individual functions (`assert`/`Option`) rather than
-//!   silently clamped.
-//! * Box-Muller caches one spare normal value, so the number of raw draws per
-//!   reported normal sample is two and the stream depends on the interleaving
-//!   of calls; changing the order of sampling calls changes the stream even
-//!   for the same seed.
+//! The Gaussian sampler caches one spare normal value. Mixed distribution
+//! calls consume the raw stream in an order determined by the samplers.
 
 use std::f64::consts::PI;
 
@@ -71,6 +60,51 @@ impl Rng {
         self.s[2] ^= t;
         self.s[3] = self.s[3].rotate_left(45);
         r
+    }
+
+    /// Advances the raw stream by `2^128` steps and clears the cached normal.
+    pub const fn jump(&mut self) {
+        self.apply_jump([
+            0x180E_C6D3_3CFD_0ABA,
+            0xD5A6_1266_F0C9_392C,
+            0xA958_2618_E03F_C9AA,
+            0x39AB_DC45_29B1_661C,
+        ]);
+    }
+
+    /// Advances the raw stream by `2^192` steps and clears the cached normal.
+    pub const fn long_jump(&mut self) {
+        self.apply_jump([
+            0x76E1_5D3E_FEFD_CBBF,
+            0xC500_4E44_1C52_2FB3,
+            0x7771_0069_854E_E241,
+            0x3910_9BB0_2ACB_E635,
+        ]);
+    }
+
+    const fn apply_jump(
+        &mut self,
+        polynomial: [u64; 4],
+    ) {
+        // Blackman and Vigna's xoshiro256++ jump polynomials.
+        let mut state = [0; 4];
+        let mut word = 0;
+        while word < polynomial.len() {
+            let mut bit = 0;
+            while bit < 64 {
+                if (polynomial[word] >> bit) & 1 != 0 {
+                    state[0] ^= self.s[0];
+                    state[1] ^= self.s[1];
+                    state[2] ^= self.s[2];
+                    state[3] ^= self.s[3];
+                }
+                self.next_u64();
+                bit += 1;
+            }
+            word += 1;
+        }
+        self.s = state;
+        self.spare_normal = None;
     }
 
     /// Uniform sample in `[0, 1)` with 53 random bits.
@@ -131,92 +165,168 @@ impl Rng {
         mean + sd * self.normal()
     }
 
-    /// Exponential sample with the given rate.
+    /// Exponential sample with a positive finite rate. Invalid rates give NaN.
     pub fn exponential(
         &mut self,
         rate: f64,
     ) -> f64 {
-        -(1.0 - self.uniform()).ln() / rate
+        if !rate.is_finite() || rate <= 0.0 {
+            return f64::NAN;
+        }
+        -(-self.uniform()).ln_1p() / rate
     }
 
-    /// Gamma sample (shape `k > 0`, scale `theta`), Marsaglia-Tsang.
+    /// Gamma sample with positive finite shape `k` and scale `theta`.
+    /// Invalid parameters give NaN.
     pub fn gamma(
         &mut self,
         k: f64,
         theta: f64,
     ) -> f64 {
-        if k < 1.0 {
-            let u = 1.0 - self.uniform();
-            return self.gamma(k + 1.0, theta) * u.powf(1.0 / k);
+        if !k.is_finite() || k <= 0.0 || !theta.is_finite() || theta <= 0.0 {
+            return f64::NAN;
         }
+        if k < 1.0 {
+            return (self.log_gamma_scaled(k, 1.0) + theta.ln()).exp();
+        }
+        self.gamma_shape_ge_one(k) * theta
+    }
+
+    fn gamma_shape_ge_one(
+        &mut self,
+        k: f64,
+    ) -> f64 {
         let d = k - 1.0 / 3.0;
-        let c = 1.0 / (9.0 * d).sqrt();
+        let c = (1.0 / 3.0) / d.sqrt();
         loop {
             let x = self.normal();
-            let v = (1.0 + c * x).powi(3);
-            if v <= 0.0 {
+            let w = c * x;
+            if w <= -1.0 {
                 continue;
             }
             let u = 1.0 - self.uniform();
-            if u.ln() < 0.5 * x * x + d - d * v + d * v.ln() {
-                return d * v * theta;
+            let v = (1.0 + w).powi(3);
+            // Marsaglia-Tsang squeeze and log acceptance. Use log1p for
+            // the small relative change in v at large shape.
+            let delta = w * (3.0 + w * (3.0 + w));
+            if u < 1.0 - 0.0331 * x.powi(4) || u.ln() < 0.5 * x * x + d * (delta.ln_1p() - delta) {
+                return d * v;
             }
         }
     }
 
-    /// Beta(`a`, `b`) sample.
+    fn log_gamma_scaled(
+        &mut self,
+        shape: f64,
+        scale: f64,
+    ) -> f64 {
+        if shape < 1.0 {
+            let log_uniform = (-self.uniform()).ln_1p();
+            scale * self.gamma_shape_ge_one(shape + 1.0).ln() + (scale / shape) * log_uniform
+        } else {
+            scale * self.gamma_shape_ge_one(shape).ln()
+        }
+    }
+
+    /// Beta sample with positive finite shapes `a` and `b`.
+    /// Invalid shapes give NaN.
     pub fn beta(
         &mut self,
         a: f64,
         b: f64,
     ) -> f64 {
-        let x = self.gamma(a, 1.0);
-        let y = self.gamma(b, 1.0);
-        x / (x + y)
+        if !a.is_finite() || !b.is_finite() || a <= 0.0 || b <= 0.0 {
+            return f64::NAN;
+        }
+        if a >= 1.0 && b >= 1.0 {
+            let x = self.gamma_shape_ge_one(a);
+            let y = self.gamma_shape_ge_one(b);
+            let total = x + y;
+            if total.is_finite() {
+                return x / total;
+            }
+            let scale = x.max(y);
+            return (x / scale) / (x / scale + y / scale);
+        }
+        // Gamma variates can both underflow for small shapes. Their log
+        // ratio still distinguishes the two endpoints of the beta sample.
+        let scale = a.min(b).min(1.0);
+        let log_x = self.log_gamma_scaled(a, scale);
+        let log_y = self.log_gamma_scaled(b, scale);
+        let spread = (log_y - log_x) / scale;
+        if spread > 0.0 {
+            let odds = (-spread).exp();
+            odds / (1.0 + odds)
+        } else {
+            1.0 / (1.0 + spread.exp())
+        }
     }
 
-    /// Poisson sample (Knuth for small means, normal-corrected rejection
-    /// via gamma splitting for large ones).
+    /// Poisson sample by Knuth's algorithm at small means and gamma
+    /// splitting at large means. NaN and nonpositive means give zero.
+    /// Positive means or results outside the `u64` range saturate.
     pub fn poisson(
         &mut self,
-        lambda: f64,
+        mut lambda: f64,
     ) -> u64 {
-        if lambda < 30.0 {
-            let l = (-lambda).exp();
-            let (mut k, mut p) = (0u64, 1.0);
-            loop {
-                p *= self.uniform();
-                if p <= l {
-                    return k;
-                }
-                k += 1;
+        if lambda.is_nan() || lambda <= 0.0 {
+            return 0;
+        }
+        if lambda >= u64::MAX as f64 {
+            return u64::MAX;
+        }
+
+        let mut events = 0_u64;
+        while lambda >= 30.0 {
+            // The time of the m-th arrival in a rate-one process is Gamma(m, 1).
+            let m = (lambda * 0.875).floor() as u64;
+            let arrival = self.gamma_shape_ge_one(m as f64);
+            if arrival >= lambda {
+                return events.saturating_add(self.binomial(m - 1, lambda / arrival));
             }
+            events = events.saturating_add(m);
+            lambda -= arrival;
         }
-        // Split: Poisson(lambda) via the order-statistics of a gamma variate.
-        let m = (lambda * 7.0 / 8.0).floor();
-        let g = self.gamma(m, 1.0);
-        if g < lambda {
-            m as u64 + self.poisson(lambda - g)
-        } else {
-            self.binomial_count(m as u64 - 1, lambda / g)
+
+        let limit = (-lambda).exp();
+        let mut product = self.uniform();
+        while product > limit {
+            events = events.saturating_add(1);
+            product *= self.uniform();
         }
+        events
     }
 
-    fn binomial_count(
-        &mut self,
-        n: u64,
-        p: f64,
-    ) -> u64 {
-        (0..n).filter(|_| self.uniform() < p).count() as u64
-    }
-
-    /// Binomial(`n`, `p`) sample.
+    /// Binomial sample with `n` trials and a probability in `[0, 1]`.
+    /// Degenerate probabilities give 0 or `n`. Invalid probabilities give 0.
     pub fn binomial(
         &mut self,
-        n: u64,
-        p: f64,
+        mut n: u64,
+        mut p: f64,
     ) -> u64 {
-        self.binomial_count(n, p)
+        if !(0.0..=1.0).contains(&p) || p == 0.0 {
+            return 0;
+        }
+        if p >= 1.0 {
+            return n;
+        }
+        let mut count = 0;
+        while n > 64 {
+            // The k-th order statistic of n uniform trials has law
+            // Beta(k, n+1-k). Given that value, the remaining relevant
+            // uniforms lie on its side of the threshold independently.
+            let k = n / 2 + 1;
+            let split = self.beta(k as f64, (n - k + 1) as f64);
+            if split <= p {
+                count += k;
+                n -= k;
+                p = (p - split) / (1.0 - split);
+            } else {
+                n = k - 1;
+                p /= split;
+            }
+        }
+        count + (0..n).filter(|_| self.uniform() < p).count() as u64
     }
 
     /// Fisher-Yates shuffle in place.

@@ -995,7 +995,7 @@ pub(crate) fn f_isolate(
         for root in crate::rules::poly::univariate::rational_roots(&dense) {
             for interval in &mut out {
                 if interval.0 < root && root < interval.1 {
-                    *interval = (root.clone(), root.clone());
+                    *interval = (root.clone(), root);
                     break;
                 }
             }

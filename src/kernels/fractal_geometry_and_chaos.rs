@@ -1059,113 +1059,180 @@ pub fn box_counting_dimension(
         return 0.0;
     }
 
-    linear_regression_slope(&log_inv_eps, &log_n)
+    linear_regression_slope(&log_inv_eps, &log_n).unwrap_or(0.0)
 }
 
-/// Estimates the correlation dimension from a set of points.
+/// Estimates the correlation dimension from the log-log slope of the fraction
+/// of pairs closer than each of `num_radii` logarithmically spaced radii.
 ///
-/// The correlation dimension is estimated from the correlation integral:
-/// C(r) ~ r^D
-///
-/// # Arguments
-/// * `points` - A slice of 2D points.
-/// * `num_radii` - Number of radius values to sample.
-///
-/// # Returns
-/// An estimate of the correlation dimension.
-///
-/// # Panics
-/// Panics if any pairwise distance between points is NaN during sorting.
+/// Returns zero when fewer than two scales can determine a slope, and NaN for
+/// non-finite coordinates or distances outside the range of `f64`.
 #[must_use]
 pub fn correlation_dimension(
-    points: &[(f64, f64)],
+    points: &[Point2D],
     num_radii: usize,
 ) -> f64 {
     if points.len() < 2 || num_radii < 2 {
         return 0.0;
     }
+    if !valid_points(points) {
+        return f64::NAN;
+    }
 
-    // Compute all pairwise distances
-    let n = points.len();
-
-    let mut distances: Vec<f64> = Vec::with_capacity(n * (n - 1) / 2);
-
-    for i in 0..n {
-        for j in (i + 1)..n {
-            let dx = points[i].0 - points[j].0;
-
-            let dy = points[i].1 - points[j].1;
-
-            distances.push(dx.hypot(dy));
+    let ranges = map_pair_blocks(points.len(), |rows| {
+        let mut min = f64::INFINITY;
+        let mut max: f64 = 0.0;
+        for distance in pair_distances(points, rows) {
+            if distance > 0.0 {
+                min = min.min(distance);
+                max = max.max(distance);
+            }
         }
+        (min, max)
+    });
+    let (min, max) = ranges.iter().fold((f64::INFINITY, 0.0_f64), |a, b| {
+        (a.0.min(b.0), a.1.max(b.1))
+    });
+    if !max.is_finite() {
+        return f64::NAN;
     }
-
-    if distances.is_empty() {
+    if max <= min {
         return 0.0;
     }
 
-    distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-    let r_min = distances[0].max(1e-10);
-
-    let r_max = distances[distances.len() - 1];
-
-    if r_max <= r_min {
-        return 0.0;
+    let mut radii = Vec::new();
+    if radii.try_reserve_exact(num_radii).is_err() {
+        return f64::NAN;
     }
-
-    // Sample radii logarithmically
-    let mut log_r = Vec::with_capacity(num_radii);
-
-    let mut log_c = Vec::with_capacity(num_radii);
-
-    for i in 0..num_radii {
-        let log_r_val =
-            r_min.ln() + (r_max.ln() - r_min.ln()) * (i as f64) / (num_radii as f64 - 1.0);
-
-        let r = log_r_val.exp();
-
-        // Count pairs with distance < r
-        let count = distances.partition_point(|&d| d < r);
-
-        let c_r = (2.0 * count as f64) / ((n * (n - 1)) as f64);
-
-        if c_r > 0.0 {
-            log_r.push(r.ln());
-
-            log_c.push(c_r.ln());
-        }
+    let (start, end) = (min.ln(), max.ln());
+    radii.push(min);
+    for i in 1..num_radii - 1 {
+        let log_radius = start + (end - start) * (i as f64 / (num_radii - 1) as f64);
+        radii.push(log_radius.exp().clamp(min, max));
     }
-
-    if log_r.len() < 2 {
-        return 0.0;
-    }
-
-    linear_regression_slope(&log_r, &log_c)
+    radii.push(max);
+    correlation_slope(points, &radii).unwrap_or(0.0)
 }
 
-/// Helper function for linear regression slope estimation.
-pub(crate) fn linear_regression_slope(
+/// Estimates correlation dimension from caller-supplied positive, finite radii.
+///
+/// Radii can be supplied in any order. At radius `r`, only pairs strictly
+/// closer than `r` contribute. At least two distinct radii with close pairs
+/// are needed for a fit.
+///
+/// Returns `None` for non-finite coordinates or when the radii cannot determine
+/// a slope.
+#[must_use]
+pub fn correlation_dimension_with_radii(
+    points: &[Point2D],
+    radii: &[f64],
+) -> Option<f64> {
+    if points.len() < 2
+        || radii.len() < 2
+        || !valid_points(points)
+        || radii.iter().any(|&r| !r.is_finite() || r <= 0.0)
+    {
+        return None;
+    }
+    let mut radii = radii.to_vec();
+    radii.sort_unstable_by(f64::total_cmp);
+    correlation_slope(points, &radii)
+}
+
+fn valid_points(points: &[Point2D]) -> bool {
+    points.iter().all(|(x, y)| x.is_finite() && y.is_finite())
+}
+
+fn map_pair_blocks<T: Send>(
+    num_points: usize,
+    f: impl Fn(std::ops::Range<usize>) -> T + Sync,
+) -> Vec<T> {
+    // Bound the number of scratch histograms independently of the point count
+    // and of the number of worker threads.
+    let block = if num_points >= 256 {
+        num_points.div_ceil(16)
+    } else {
+        num_points
+    };
+    crate::kernels::par::map_indexed(num_points.div_ceil(block), 2, |i| {
+        let start = i * block;
+        f(start..(start + block).min(num_points))
+    })
+}
+
+fn pair_distances(
+    points: &[Point2D],
+    rows: std::ops::Range<usize>,
+) -> impl Iterator<Item = f64> {
+    rows.flat_map(|j| {
+        let (x, y) = points[j];
+        points[j + 1..]
+            .iter()
+            .map(move |&(u, v)| (x - u).hypot(y - v))
+    })
+}
+
+fn correlation_slope(
+    points: &[Point2D],
+    radii: &[f64],
+) -> Option<f64> {
+    let counts = map_pair_blocks(points.len(), |rows| {
+        let mut histogram = vec![0_u128; radii.len()];
+        for distance in pair_distances(points, rows) {
+            // A pair contributes to the suffix of radii strictly above it.
+            let first = radii.partition_point(|&r| r <= distance);
+            if let Some(bucket) = histogram.get_mut(first) {
+                *bucket += 1;
+            }
+        }
+        histogram
+    });
+    let mut counts = counts.into_iter();
+    let mut totals = counts.next()?;
+    for histogram in counts {
+        for (total, count) in totals.iter_mut().zip(histogram) {
+            *total += count;
+        }
+    }
+    // The normalising number of pairs is constant across all radii. Its
+    // logarithm shifts the intercept and leaves the fitted slope unchanged.
+    let mut cumulative = 0;
+    let mut log_radii = Vec::with_capacity(radii.len());
+    let mut log_counts = Vec::with_capacity(radii.len());
+    for (&radius, count) in radii.iter().zip(totals) {
+        cumulative += count;
+        if cumulative > 0 {
+            log_radii.push(radius.ln());
+            log_counts.push((cumulative as f64).ln());
+        }
+    }
+    linear_regression_slope(&log_radii, &log_counts)
+}
+
+fn linear_regression_slope(
     x: &[f64],
     y: &[f64],
-) -> f64 {
-    let n = x.len() as f64;
-
-    let sum_x: f64 = x.iter().sum();
-
-    let sum_y: f64 = y.iter().sum();
-
-    let sum_xy: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum();
-
-    let sum_xx: f64 = x.iter().map(|xi| xi * xi).sum();
-
-    let denom = n.mul_add(sum_xx, -(sum_x * sum_x));
-
-    if denom.abs() < 1e-10 {
-        return 0.0;
+) -> Option<f64> {
+    if x.len() < 2 {
+        return None;
     }
-
-    n.mul_add(sum_xy, -(sum_x * sum_y)) / denom
+    let n = x.len() as f64;
+    let mean_x = x.iter().sum::<f64>() / n;
+    let mean_y = y.iter().sum::<f64>() / n;
+    let mut variance = 0.0;
+    let mut covariance = 0.0;
+    for (&a, &b) in x.iter().zip(y) {
+        let dx = a - mean_x;
+        variance += dx * dx;
+        covariance += dx * (b - mean_y);
+    }
+    // The subtraction from the mean can introduce residual variance even
+    // when every x is the same, so also test for an actual distinct log scale.
+    (variance > 0.0
+        && x.windows(2)
+            .any(|pair| !crate::kernels::exact_eq(pair[0], pair[1])))
+    .then(|| covariance / variance)
+    .filter(|slope| slope.is_finite())
 }
 
 // ============================================================================

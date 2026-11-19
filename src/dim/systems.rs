@@ -148,7 +148,9 @@ impl std::fmt::Display for SystemError {
 impl std::error::Error for SystemError {}
 
 /// The wire form of a unit system, carried in the kernel manifest.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct UnitSystemValue {
     /// The name a host selects it by.
     pub name: String,

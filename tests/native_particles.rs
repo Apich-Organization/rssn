@@ -145,7 +145,7 @@ fn native_md_transfers_forcefield_and_preserves_free_particle_energy() {
     let before = number(&call(
         &s,
         "num_native_engine_simulation_total_energy_d3",
-        &[sim.clone()],
+        std::slice::from_ref(&sim),
     ));
     call(
         &s,
@@ -155,7 +155,7 @@ fn native_md_transfers_forcefield_and_preserves_free_particle_energy() {
     let after = number(&call(
         &s,
         "num_native_engine_simulation_total_energy_d3",
-        &[sim.clone()],
+        std::slice::from_ref(&sim),
     ));
     assert!((before - 1.).abs() < 1e-14);
     assert!((after - before).abs() < 1e-14);

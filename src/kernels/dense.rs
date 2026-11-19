@@ -128,6 +128,10 @@ impl Mat {
         })
     }
 
+    fn has_valid_shape(&self) -> bool {
+        self.rows.checked_mul(self.cols) == Some(self.data.len())
+    }
+
     /// Whether every entry is finite (no NaN, no infinity).
     #[must_use]
     pub fn is_finite(&self) -> bool {
@@ -189,22 +193,31 @@ impl Mat {
     /// Matrix product.
     ///
     /// # Errors
-    /// Returns [`DenseError::Shape`] on mismatched inner dimensions.
+    /// Returns [`DenseError::Shape`] for incompatible matrix dimensions or storage.
     pub fn matmul(
         &self,
         other: &Self,
     ) -> Result<Self, DenseError> {
-        if self.cols != other.rows {
+        if self.cols != other.rows || !self.has_valid_shape() || !other.has_valid_shape() {
             return Err(DenseError::Shape);
         }
-        let mut out = Self::zeros(self.rows, other.cols);
+        let size = self.rows.checked_mul(other.cols).ok_or(DenseError::Shape)?;
+        let mut data = Vec::new();
+        data.try_reserve_exact(size)
+            .map_err(|_| DenseError::Shape)?;
+        data.resize(size, 0.0);
+        let mut out = Self {
+            rows: self.rows,
+            cols: other.cols,
+            data,
+        };
         let (m, oc) = (self.cols, other.cols);
         if oc == 0 {
             return Ok(out);
         }
         // one output row per task; the row's own accumulation order is the
         // serial one, so the product is bit-identical
-        let grain = if self.rows * m * oc >= DENSE_PAR_FLOPS {
+        let grain = if size.saturating_mul(m) >= DENSE_PAR_FLOPS {
             2
         } else {
             usize::MAX
@@ -225,7 +238,25 @@ impl Mat {
     /// Frobenius norm.
     #[must_use]
     pub fn norm_fro(&self) -> f64 {
-        self.data.iter().map(|v| v * v).sum::<f64>().sqrt()
+        let sum = self.data.iter().map(|v| v * v).sum::<f64>();
+        if sum.is_normal() || sum.is_nan() {
+            return sum.sqrt();
+        }
+        // The squares can overflow or underflow even when the norm fits in f64.
+        let scale = self
+            .data
+            .iter()
+            .fold(0.0_f64, |m, value| m.max(value.abs()));
+        if scale == 0.0 || !scale.is_finite() {
+            return scale;
+        }
+        scale
+            * self
+                .data
+                .iter()
+                .map(|v| (v / scale).powi(2))
+                .sum::<f64>()
+                .sqrt()
     }
 }
 
@@ -240,11 +271,12 @@ pub struct Lu {
 /// Computes the LU factorisation of a square matrix.
 ///
 /// # Errors
-/// [`DenseError::Shape`] for non-square input, [`DenseError::Singular`]
-/// when a pivot is exactly zero.
+/// [`DenseError::Shape`] for non-square input or incompatible matrix storage,
+/// [`DenseError::Singular`] when a pivot is exactly zero, or
+/// [`DenseError::NonFinite`] for NaN or infinite entries.
 pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
     crate::cancellation::checkpoint()?;
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -291,14 +323,54 @@ pub fn lu_factor(a: &Mat) -> Result<Lu, DenseError> {
 }
 
 impl Lu {
-    /// Solves `A x = b`.
+    /// Solves `A x = b`, returning a new solution vector.
+    ///
+    /// Returns an empty vector for a short right-hand side and ignores any
+    /// trailing entries. Use [`Lu::solve_into`] to check shape and finiteness.
     #[must_use]
     pub fn solve(
         &self,
         b: &[f64],
     ) -> Vec<f64> {
+        if b.len() < self.factors.rows {
+            return Vec::new();
+        }
+        let mut x = vec![0.0; self.factors.rows];
+        self.substitute(b, &mut x);
+        x
+    }
+
+    /// Solves `A x = b` into caller-provided storage without allocating.
+    ///
+    /// # Errors
+    /// [`DenseError::Shape`] if either slice has the wrong length, or
+    /// [`DenseError::NonFinite`] for a NaN or infinite right-hand side.
+    /// On an input error, `x` is left untouched.
+    pub fn solve_into(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+    ) -> Result<(), DenseError> {
         let n = self.factors.rows;
-        let mut x: Vec<f64> = self.piv.iter().map(|&p| b[p]).collect();
+        if b.len() != n || x.len() != n {
+            return Err(DenseError::Shape);
+        }
+        if b.iter().any(|v| !v.is_finite()) {
+            return Err(DenseError::NonFinite);
+        }
+        self.substitute(b, x);
+        Ok(())
+    }
+
+    fn substitute(
+        &self,
+        b: &[f64],
+        x: &mut [f64],
+    ) {
+        let n = self.factors.rows;
+        for (value, &pivot) in x.iter_mut().zip(&self.piv) {
+            *value = b[pivot];
+        }
         for i in 0..n {
             for j in 0..i {
                 x[i] -= self.factors.at(i, j) * x[j];
@@ -310,7 +382,6 @@ impl Lu {
             }
             x[i] /= self.factors.at(i, i);
         }
-        x
     }
 
     /// Determinant of the factored matrix.
@@ -327,12 +398,14 @@ impl Lu {
     pub fn inverse(&self) -> Mat {
         let n = self.factors.rows;
         let mut inv = Mat::zeros(n, n);
+        let mut e = vec![0.0; n];
+        let mut c = vec![0.0; n];
         for j in 0..n {
-            let mut e = vec![0.0; n];
             e[j] = 1.0;
-            let c = self.solve(&e);
-            for i in 0..n {
-                inv.data[i * n + j] = c[i];
+            self.substitute(&e, &mut c);
+            e[j] = 0.0;
+            for (i, &value) in c.iter().enumerate() {
+                inv.data[i * n + j] = value;
             }
         }
         inv
@@ -342,7 +415,7 @@ impl Lu {
 /// Solves the square system `A x = b` by LU.
 ///
 /// # Errors
-/// Propagates the errors of [`lu_factor`]; [`DenseError::Shape`] if `b` has the wrong length.
+/// Propagates the errors of [`lu_factor`] and [`Lu::solve_into`].
 pub fn solve(
     a: &Mat,
     b: &[f64],
@@ -350,7 +423,10 @@ pub fn solve(
     if b.len() != a.rows {
         return Err(DenseError::Shape);
     }
-    Ok(lu_factor(a)?.solve(b))
+    let factors = lu_factor(a)?;
+    let mut x = vec![0.0; b.len()];
+    factors.solve_into(b, &mut x)?;
+    Ok(x)
 }
 
 /// Cholesky factor `L` (lower triangular) with `A = L L^T`.
@@ -359,7 +435,7 @@ pub fn solve(
 /// [`DenseError::Singular`] if `A` is not symmetric positive definite.
 pub fn cholesky(a: &Mat) -> Result<Mat, DenseError> {
     crate::cancellation::checkpoint()?;
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -474,6 +550,9 @@ pub fn lstsq(
     if m < n || b.len() != m {
         return Err(DenseError::Shape);
     }
+    if !a.has_valid_shape() {
+        return Err(DenseError::Shape);
+    }
     if !a.is_finite() || !b.iter().all(|x| x.is_finite()) {
         return Err(DenseError::NonFinite);
     }
@@ -500,7 +579,14 @@ pub fn lstsq(
 fn eigen_scale(a: &Mat) -> Option<f64> {
     let big = a.data.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
     if big.is_finite() && big > 0.0 && !(1e-100..=1e100).contains(&big) {
-        Some(2f64.powi(big.log2().round() as i32))
+        // Use the exact binary exponent, including for subnormal inputs.
+        // Rounding log2(MAX) would give 1024, an overflowing scale.
+        let power = if big.is_normal() {
+            big.to_bits() & 0x7ff0_0000_0000_0000
+        } else {
+            1 << big.to_bits().ilog2()
+        };
+        Some(f64::from_bits(power))
     } else {
         None
     }
@@ -534,7 +620,7 @@ pub fn eigen_symmetric(a: &Mat) -> Result<(Vec<f64>, Mat), DenseError> {
         let (vals, vecs) = eigen_symmetric(&scaled(a, f))?;
         return Ok((vals.into_iter().map(|v| v * f).collect(), vecs));
     }
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -625,7 +711,7 @@ pub struct Svd {
 /// Returns [`DenseError::Shape`] for inconsistent storage or non-finite input,
 /// and [`DenseError::NoConvergence`] if the backend does not converge.
 pub fn svd(a: &Mat) -> Result<Svd, DenseError> {
-    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+    if !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -710,6 +796,9 @@ pub fn null_space(
     a: &Mat,
     tol: Option<f64>,
 ) -> Result<Mat, DenseError> {
+    if !a.has_valid_shape() {
+        return Err(DenseError::Shape);
+    }
     let n = a.cols;
     if n == 0 {
         return Ok(Mat::zeros(0, 0));
@@ -785,12 +874,50 @@ pub fn pinv(a: &Mat) -> Result<Mat, DenseError> {
 /// deficiency).
 ///
 /// # Errors
-/// As [`svd`].
+/// Propagates errors from [`svd`]. Returns [`DenseError::Shape`] for a wrong
+/// right-hand side length or [`DenseError::NonFinite`] for non-finite entries.
 pub fn lstsq_svd(
     a: &Mat,
     b: &[f64],
 ) -> Result<Vec<f64>, DenseError> {
-    Ok(pinv(a)?.matvec(b))
+    if b.len() != a.rows {
+        return Err(DenseError::Shape);
+    }
+    if b.iter().any(|v| !v.is_finite()) {
+        return Err(DenseError::NonFinite);
+    }
+    let d = svd(a)?;
+    let k = d.s.len();
+    if k == 0 {
+        return Ok(vec![0.0; a.cols]);
+    }
+    let smax = d.s.first().copied().unwrap_or(0.0);
+    let tol = a.rows.max(a.cols) as f64 * f64::EPSILON * smax;
+    let active = d.s.partition_point(|&sigma| sigma > tol);
+    let max_b = b.iter().fold(0.0_f64, |max, v| max.max(v.abs()));
+    let scale = if max_b > 0.0 && !(1e-100..=1e100).contains(&max_b) {
+        max_b
+    } else {
+        1.0
+    };
+    // Apply V Σ⁺ Uᵀ to b directly. A row-major pass projects onto the
+    // retained columns of U without materialising either Uᵀ or A⁺.
+    let mut coefficients = vec![0.0; k];
+    for (row, &rhs) in d.u.data.chunks_exact(k).zip(b) {
+        let rhs = rhs / scale;
+        for (coefficient, u) in coefficients.iter_mut().take(active).zip(row) {
+            *coefficient += u * rhs;
+        }
+    }
+    for (coefficient, &sigma) in coefficients.iter_mut().take(active).zip(&d.s) {
+        *coefficient = if crate::kernels::exact_eq(scale, 1.0) {
+            *coefficient / sigma
+        } else {
+            crate::kernels::numeric_common::scale_product(*coefficient, &[scale], &[sigma])
+                .map_err(|_| DenseError::NoConvergence)?
+        };
+    }
+    Ok(d.v.matvec(&coefficients))
 }
 
 /// Result of [`eigen_generalized_symmetric`].
@@ -822,7 +949,12 @@ pub fn eigen_generalized_symmetric(
     a: &Mat,
     b: &Mat,
 ) -> Result<GeneralizedEigen, DenseError> {
-    if a.rows != a.cols || b.rows != b.cols || a.rows != b.rows {
+    if a.rows != a.cols
+        || b.rows != b.cols
+        || a.rows != b.rows
+        || !a.has_valid_shape()
+        || !b.has_valid_shape()
+    {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() || !b.is_finite() {
@@ -911,7 +1043,7 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
         let v = eigenvalues(&scaled(a, f))?;
         return Ok(v.into_iter().map(|(re, im)| (re * f, im * f)).collect());
     }
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -1216,7 +1348,7 @@ pub fn eigen(a: &Mat) -> Result<Eigen, DenseError> {
         }
         return Ok(e);
     }
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -1783,7 +1915,7 @@ fn is_defective(
 /// [`DenseError::Shape`] for non-square input, [`DenseError::NonFinite`] for
 /// non-finite entries, [`DenseError::NoConvergence`] if QR sweeps fail.
 pub fn schur(a: &Mat) -> Result<(Mat, Mat), DenseError> {
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -2078,7 +2210,7 @@ pub fn norm(
     a: &Mat,
     kind: MatrixNorm,
 ) -> Result<f64, DenseError> {
-    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+    if !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {
@@ -2107,7 +2239,7 @@ pub fn cond_norm(
     if kind == MatrixNorm::Spectral {
         return cond(a);
     }
-    if a.rows != a.cols {
+    if a.rows != a.cols || !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if a.rows == 0 {
@@ -2132,7 +2264,7 @@ pub fn pinv_tol(
     if !rcond.is_finite() || rcond < 0.0 {
         return Err(DenseError::NonFinite);
     }
-    if a.rows.checked_mul(a.cols) != Some(a.data.len()) {
+    if !a.has_valid_shape() {
         return Err(DenseError::Shape);
     }
     if !a.is_finite() {

@@ -1128,9 +1128,7 @@ fn every_target_has_goldens_for_an_elementwise_and_a_folded_kernel() {
                 Err(DeviceError::Unsupported(_))
             ));
         }
-        let emitter = wgsl::SourceEmitter {
-            options: options.clone(),
-        };
+        let emitter = wgsl::SourceEmitter { options };
         assert_eq!(emitter.target(), ext);
         assert!(
             emitter

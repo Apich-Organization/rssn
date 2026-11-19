@@ -84,10 +84,10 @@ fn native_group_and_exact_lie_objects_are_actual_checked_algorithms() {
     );
     let g = call(&s, "num_native_group_new", &[Value::int(3), generators]);
     assert_eq!(
-        call(&s, "num_native_group_order", &[g.clone()]),
+        call(&s, "num_native_group_order", std::slice::from_ref(&g)),
         Value::int(6)
     );
-    let center = call(&s, "num_native_group_center", &[g.clone()]);
+    let center = call(&s, "num_native_group_center", std::slice::from_ref(&g));
     assert_eq!(call(&s, "num_native_group_order", &[center]), Value::int(1));
     assert!(
         s.call_value(
@@ -105,7 +105,11 @@ fn native_group_and_exact_lie_objects_are_actual_checked_algorithms() {
     let r = call(&s, "num_native_root_system_new", &[some(&c).clone()]);
     let r = some(&r).clone();
     assert_eq!(
-        call(&s, "num_native_root_system_dimension", &[r.clone()]),
+        call(
+            &s,
+            "num_native_root_system_dimension",
+            std::slice::from_ref(&r)
+        ),
         Value::int(8)
     );
     assert_eq!(
@@ -380,7 +384,7 @@ fn native_rng_and_online_covariance_are_mutable_session_objects() {
     let a = call(&s, "num_native_rng_new", &[Value::int(42)]);
     let b = call(&s, "num_native_rng_new", &[Value::int(42)]);
     assert_eq!(
-        call(&s, "num_native_rng_next_u64", &[a.clone()]),
+        call(&s, "num_native_rng_next_u64", std::slice::from_ref(&a)),
         call(&s, "num_native_rng_next_u64", &[b])
     );
     assert!(
@@ -401,7 +405,11 @@ fn native_rng_and_online_covariance_are_mutable_session_objects() {
         );
     }
     assert_eq!(
-        call(&s, "num_native_online_covariance_count", &[c.clone()]),
+        call(
+            &s,
+            "num_native_online_covariance_count",
+            std::slice::from_ref(&c)
+        ),
         Value::int(2)
     );
     let cov = call(&s, "num_native_online_covariance_sample_covariance", &[c]);

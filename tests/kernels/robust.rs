@@ -19,6 +19,8 @@ use rssn::kernels::robust::mad;
 use rssn::kernels::robust::median;
 use rssn::kernels::robust::quantile;
 use rssn::kernels::robust::trimmed_mean;
+use rssn::kernels::robust::weighted_ecdf;
+use rssn::kernels::robust::weighted_quantile;
 use rssn::kernels::robust::winsorized_mean;
 
 #[test]
@@ -67,6 +69,65 @@ fn robust_estimators_resist_outliers() {
     assert!((mad(&[1.0, 2.0, 3.0, 4.0, 100.0], false) - 1.0).abs() < 1e-12);
     assert!((mad(&[1.0, 2.0, 3.0, 4.0, 100.0], true) - 1.482_602_218_505_602).abs() < 1e-12);
     assert!((ecdf(&[1.0, 2.0, 3.0, 4.0], 2.5) - 0.5).abs() < 1e-15);
+}
+
+#[test]
+fn robust_statistics_handle_empty_nonfinite_and_extreme_inputs() {
+    for kind in 1..=9 {
+        assert_eq!(quantile(&[f64::INFINITY], 0.5, kind), f64::INFINITY);
+        assert_eq!(quantile(&[42.0, f64::INFINITY], 0.0, kind), 42.0);
+    }
+    assert_eq!(median(&[f64::MAX, -f64::MAX]), 0.0);
+    assert_eq!(quantile(&[-f64::MAX, f64::MAX], 0.5, 7), 0.0);
+    assert_eq!(quantile(&[0.0, 1.0, f64::INFINITY], 0.5, 7), 1.0);
+    assert_eq!(quantile(&[1.0, f64::INFINITY], 0.5, 7), f64::INFINITY);
+    assert_eq!(trimmed_mean(&[f64::MAX, f64::MAX], 0.0), f64::MAX);
+    assert!(trimmed_mean(&[f64::NAN], 0.1).is_nan());
+    assert!(winsorized_mean(&[1.0], f64::NAN).is_nan());
+    assert!(ecdf(&[], 0.0).is_nan());
+    assert!(ecdf(&[0.0], f64::NAN).is_nan());
+    assert_eq!(ecdf(&[0.0, f64::NAN, 1.0], 0.0), 0.5);
+
+    let samples = [0.0, 1.0, 2.0, 3.0, 1_000.0];
+    let samples_with_nan = [0.0, 1.0, f64::NAN, 2.0, 3.0, 1_000.0];
+    assert!(huber_location(&samples, -1.0).is_nan());
+    assert!(huber_location(&samples, f64::NAN).is_nan());
+    assert!(biweight_location(&samples, 0.0).is_nan());
+    assert_eq!(
+        huber_location(&samples, 1.345),
+        huber_location(&samples_with_nan, 1.345)
+    );
+    for kernel in [Kernel::Gaussian, Kernel::Epanechnikov] {
+        assert!(kde(&samples, 1.0, 0.0, kernel).is_nan());
+        assert_eq!(
+            kde(&samples, 1.0, 1.0, kernel),
+            kde(&samples_with_nan, 1.0, 1.0, kernel)
+        );
+    }
+    assert!(kde(&[-f64::MAX], f64::MAX, f64::MAX, Kernel::Gaussian) > 0.0);
+    let invalid = bootstrap_ci(&[], |_| panic!("empty resample"), 100, 0.05, 1);
+    assert!(invalid.0.is_nan() && invalid.1.is_nan());
+}
+
+#[test]
+fn weighted_quantiles_invert_the_empirical_distribution() {
+    let sample = [10.0, 2.0, 6.0, -50.0, f64::NAN, 2.0];
+    let weights = [1.0, 0.5, 1.0, 0.0, 0.0, 0.5];
+    assert_eq!(weighted_quantile(&sample, &weights, 0.0), 2.0);
+    assert_eq!(weighted_quantile(&sample, &weights, 1.0 / 3.0), 2.0);
+    assert_eq!(weighted_quantile(&sample, &weights, 0.5), 6.0);
+    assert_eq!(weighted_quantile(&sample, &weights, 1.0), 10.0);
+    assert_eq!(weighted_ecdf(&sample, &weights, 0.0), 0.0);
+    assert_eq!(weighted_ecdf(&sample, &weights, 2.0), 1.0 / 3.0);
+    assert_eq!(weighted_ecdf(&sample, &weights, 6.0), 2.0 / 3.0);
+    assert_eq!(weighted_ecdf(&sample, &weights, 10.0), 1.0);
+    assert_eq!(weighted_ecdf(&[2.0, 6.0], &[f64::MAX; 2], 2.0), 0.5);
+    assert_eq!(weighted_quantile(&[2.0, 6.0], &[f64::MAX; 2], 0.5), 2.0);
+    assert!(weighted_ecdf(&[1.0], &[f64::INFINITY], 1.0).is_nan());
+    assert!(weighted_ecdf(&[f64::NAN], &[1.0], 1.0).is_nan());
+    assert!(weighted_quantile(&[1.0], &[], 0.5).is_nan());
+    assert!(weighted_quantile(&[1.0], &[0.0], 0.5).is_nan());
+    assert!(weighted_quantile(&[1.0], &[-1.0], 0.5).is_nan());
 }
 
 #[test]
@@ -137,6 +198,52 @@ fn rng_reproducible_and_distributed() {
     assert_eq!(v, (0..20).collect::<Vec<_>>());
     let u = r.below(10);
     assert!(u < 10);
+}
+
+#[test]
+fn rng_jump_substreams_and_extreme_distribution_parameters() {
+    let mut stream = Rng::new(0);
+    stream.jump();
+    assert_eq!(stream.next_u64(), 0x2107_D23F_5380_538B);
+    let mut stream = Rng::new(0);
+    stream.long_jump();
+    assert_eq!(stream.next_u64(), 0x7089_19B1_47F7_8AF3);
+
+    let mut with_spare = Rng::new(61);
+    let mut raw = with_spare.clone();
+    let _ = with_spare.normal();
+    let _ = raw.next_u64();
+    let _ = raw.next_u64();
+    with_spare.jump();
+    raw.jump();
+    assert_eq!(with_spare.normal(), raw.normal());
+
+    let mut rng = Rng::new(27);
+    assert!(rng.gamma(f64::NAN, 1.0).is_nan());
+    assert!(rng.gamma(f64::INFINITY, 1.0).is_nan());
+    assert!(rng.gamma(2.0, -1.0).is_nan());
+    assert!(rng.exponential(0.0).is_nan());
+    assert!(rng.beta(1.0, 0.0).is_nan());
+    assert_eq!(rng.poisson(f64::NAN), 0);
+    assert_eq!(rng.poisson(f64::INFINITY), u64::MAX);
+    assert_eq!(rng.binomial(u64::MAX, 0.0), 0);
+    assert_eq!(rng.binomial(u64::MAX, 1.0), u64::MAX);
+    let binomial = rng.binomial(u64::MAX, 0.25);
+    assert!(binomial.abs_diff(u64::MAX / 4) < (1_u64 << 40));
+    let poisson = rng.poisson((1_u64 << 60) as f64);
+    assert!(poisson.abs_diff(1_u64 << 60) < (1_u64 << 40));
+
+    let a = f64::from_bits(1);
+    let samples: Vec<_> = (0..100).map(|_| rng.beta(a, a)).collect();
+    assert!(samples.iter().all(|x| (0.0..=1.0).contains(x)));
+    assert!(samples.contains(&0.0) && samples.contains(&1.0));
+    let samples: Vec<_> = (0..4000)
+        .map(|_| rng.binomial(10_000, 0.3) as f64)
+        .collect();
+    let mean = samples.iter().sum::<f64>() / samples.len() as f64;
+    let var = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+    assert!((mean - 3000.0).abs() < 5.0, "{mean}");
+    assert!((var - 2100.0).abs() < 180.0, "{var}");
 }
 
 #[test]

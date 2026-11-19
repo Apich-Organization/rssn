@@ -1249,7 +1249,7 @@ impl Search<'_> {
                         // built: most candidates differ in operator or arity.
                         if window.atom(cell).is_some()
                             || self.ops.get(index).is_none_or(|&op| op != window.op(cell))
-                            || window.arity(cell) as usize != count
+                            || window.arity(cell) != count
                         {
                             return false;
                         }
@@ -1277,7 +1277,7 @@ impl Search<'_> {
                 let flags = self.graph.ops().get(*op).flags;
                 // Arity decides most failures; test it before the operand
                 // list is built.
-                let arity = window.arity(cell) as usize;
+                let arity = window.arity(cell);
                 let absorbing = flags.has(OpFlags::COMMUTATIVE) && arity > pats.len();
                 if !absorbing && arity != pats.len() {
                     return false;

@@ -1016,7 +1016,7 @@ fn homology_basis(
     for z in cycles {
         let r = ql::reduce_mod(&z, &echelon, &pivots);
         if !ql::is_zero_vec(&r) {
-            echelon.push(r.clone());
+            echelon.push(r);
             pivots = ql::rref(&mut echelon, n);
             reps.push(z);
         }

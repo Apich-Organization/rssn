@@ -130,7 +130,9 @@ impl std::fmt::Display for SchemaError {
 impl std::error::Error for SchemaError {}
 
 /// What a field of a structured result holds.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum FieldKind {
     /// One number, possibly dimensional.
@@ -195,7 +197,9 @@ impl FieldKind {
 }
 
 /// One field of a structured result.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct Field {
     /// The name a host looks the value up by.
     pub name: String,
@@ -247,7 +251,9 @@ impl Field {
 ///
 /// Field order is part of the contract: it is what
 /// [`OdeSolutionView::flatten_order`] and a generated host struct agree on.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct FlattenSchema {
     /// What the record is called (`solutions`, `ode_solution`, ...).
     pub name: String,
@@ -379,7 +385,9 @@ impl FlattenSchema {
 // ---------------------------------------------------------------------------
 
 /// The kind of a side condition.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ConditionKind {
     /// A parameter must not be zero.
@@ -403,7 +411,9 @@ pub enum ConditionKind {
 }
 
 /// A condition under which a solution set is valid.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct Condition {
     /// What kind of condition it is.
     pub kind: ConditionKind,
@@ -457,7 +467,9 @@ impl Condition {
 /// The point of the type is that `roots`, `multiplicities` and `conditions`
 /// are three parallel facts about one answer, and a bare list cannot carry
 /// two of them.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct Solutions {
     /// The unknown that was solved for, when it is a symbol.
     pub variable: Option<String>,
@@ -711,7 +723,9 @@ fn elements(value: Option<&Value>) -> Vec<Value> {
 // ---------------------------------------------------------------------------
 
 /// One event located during integration.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct EventRecord {
     /// The time it happened.
     pub t: f64,
@@ -727,7 +741,9 @@ pub struct EventRecord {
 /// [`OdeSolution`](crate::kernels::ode_adaptive::OdeSolution): the same data,
 /// with the field layout made explicit so a host can build an array or a
 /// table without guessing.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct OdeSolutionView {
     /// Accepted time points.
     pub t: Vec<f64>,
@@ -899,7 +915,9 @@ impl OdeSolutionView {
 // ---------------------------------------------------------------------------
 
 /// One output channel of a simulation.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct SimField {
     /// The name the model declared.
     pub name: String,
@@ -912,7 +930,9 @@ pub struct SimField {
 }
 
 /// A simulation result with the metadata needed to reshape it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct SimResult {
     /// Which scenario produced it.
     pub scenario: String,

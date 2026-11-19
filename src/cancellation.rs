@@ -47,15 +47,14 @@ impl Drop for Guard {
 
 /// Installs a cancellation token on the calling thread until the guard drops.
 /// Nested scopes restore the outer token, including when a computation fails.
-#[must_use]
 pub fn install(token: Arc<AtomicBool>) -> Guard {
     install_optional(Some(token))
 }
 
 /// Installs a captured worker scope, including an explicitly absent token.
-/// `None` clears a previous worker token for this scope; this prevents unrelated
+///
+/// `None` clears the worker's token for this scope. This prevents unrelated
 /// nested work stolen by Rayon from inheriting another computation's flag.
-#[must_use]
 pub fn install_optional(token: Option<Arc<AtomicBool>>) -> Guard {
     Guard {
         previous: CURRENT.with(|current| current.replace(token)),

@@ -93,10 +93,10 @@ fn field<'a>(
 #[test]
 fn sampled_norms_projection_and_normalization_keep_independent_units() {
     let f = sample(&[0., 1., 2.], &[2., 2., 2.], dim("Length"));
-    let l1 = call("num_functional_l1_norm", &[f.clone()]);
+    let l1 = call("num_functional_l1_norm", std::slice::from_ref(&f));
     assert_eq!(number(&l1), 4.);
     assert_units(&l1, DimExpr::Mul(vec![dim("Time"), dim("Length")]));
-    let l2 = call("num_functional_l2_norm", &[f.clone()]);
+    let l2 = call("num_functional_l2_norm", std::slice::from_ref(&f));
     assert!((number(&l2) - 8f64.sqrt()).abs() < 1e-14);
     assert_units(
         &l2,
@@ -210,4 +210,146 @@ fn source_integer_and_quadrature_policies_are_executable() {
         panic!("weights")
     };
     assert!((weights.data.iter().map(number).sum::<f64>() - 2.).abs() < 1e-13);
+}
+
+#[test]
+fn weighted_statistics_preserve_measurement_units() {
+    let samples = vector(&[1., 2., 3.], dim("Length"));
+    let weights = vector(&[1., 1., 2.], DimExpr::Dimless);
+    let quantile = call(
+        "num_robust_weighted_quantile",
+        &[samples.clone(), weights.clone(), Value::Float(0.5)],
+    );
+    assert_eq!(number(&quantile), 2.0);
+    assert_units(&quantile, dim("Length"));
+    let ecdf = call(
+        "num_robust_weighted_ecdf",
+        &[samples.clone(), weights.clone(), scalar(2., dim("Length"))],
+    );
+    assert_eq!(number(&ecdf), 0.5);
+    assert_units(&ecdf, DimExpr::Dimless);
+
+    let session = Session::new();
+    assert!(
+        session
+            .call_value(
+                "num_robust_weighted_quantile",
+                &[samples.clone(), samples.clone(), Value::Float(0.5)],
+                &CallCtx::new(),
+            )
+            .is_err()
+    );
+    assert!(
+        session
+            .call_value(
+                "num_robust_weighted_ecdf",
+                &[samples, weights, scalar(2., dim("Time"))],
+                &CallCtx::new(),
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn native_integer_polynomial_product_reports_overflow() {
+    let integers = |data: &[i64]| {
+        Value::Tensor(TensorValue {
+            shape: vec![data.len()],
+            data: data.iter().copied().map(Value::int).collect(),
+            elem: TypeExpr::Int,
+        })
+    };
+    let product = call(
+        "num_fftconv_poly_mul_i64_checked",
+        &[integers(&[i64::MAX, i64::MAX]), integers(&[1, -1])],
+    );
+    let Value::Variant(product) = product else {
+        panic!("expected the checked product variant")
+    };
+    let [Value::Tensor(coefficients)] = product.payload.as_slice() else {
+        panic!("expected a coefficient vector")
+    };
+    assert_eq!(product.tag, "Some");
+    assert_eq!(
+        coefficients.data,
+        [Value::int(i64::MAX), Value::int(0), Value::int(-i64::MAX)]
+    );
+    let overflow = call(
+        "num_fftconv_poly_mul_i64_checked",
+        &[integers(&[i64::MAX]), integers(&[2])],
+    );
+    assert!(matches!(overflow, Value::Variant(v) if v.tag == "None" && v.payload.is_empty()));
+}
+
+#[test]
+fn native_rng_jumps_mutate_the_session_owned_stream() {
+    let session = Session::new();
+    let context = CallCtx::new();
+    for (jump, next) in [
+        ("num_native_rng_jump", 0x2107_D23F_5380_538B_u64),
+        ("num_native_rng_long_jump", 0x7089_19B1_47F7_8AF3),
+    ] {
+        let handle = session
+            .call_value("num_native_rng_new", &[Value::int(0)], &context)
+            .unwrap();
+        assert_eq!(
+            session
+                .call_value(jump, std::slice::from_ref(&handle), &context)
+                .unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            session
+                .call_value("num_native_rng_next_u64", &[handle], &context)
+                .unwrap(),
+            Value::int(next)
+        );
+    }
+}
+
+#[test]
+fn explicit_correlation_radii_share_coordinate_units() {
+    let name = "num_fractal_geometry_and_chaos_correlation_dimension_with_radii";
+    let points = |rows, data| {
+        Value::Tensor(TensorValue {
+            shape: vec![rows, 2],
+            data,
+            elem: TypeExpr::Dim(Box::new(TypeExpr::Float), dim("Length")),
+        })
+    };
+    let samples = points(
+        3,
+        [0., 0., 1., 0., 3., 0.]
+            .into_iter()
+            .map(Value::Float)
+            .collect(),
+    );
+    let length = vector(&[2., 4.], dim("Length"));
+    let result = call(name, &[samples.clone(), length.clone()]);
+    let Value::Variant(result) = result else {
+        panic!("expected a correlation estimate")
+    };
+    let [estimate] = result.payload.as_slice() else {
+        panic!("expected two radii to determine a slope")
+    };
+    assert_eq!(result.tag, "Some");
+    assert!((number(estimate) - 3_f64.ln() / 2_f64.ln()).abs() < 1e-14);
+    assert_units(estimate, DimExpr::Dimless);
+
+    let session = Session::new();
+    let ctx = CallCtx::new();
+    assert!(
+        session
+            .call_value(name, &[samples, vector(&[2., 4.], dim("Time"))], &ctx)
+            .is_err()
+    );
+    assert!(
+        session
+            .call_value(
+                name,
+                &[points(1025, vec![Value::Float(0.); 2050]), length],
+                &ctx
+            )
+            .is_err()
+    );
 }

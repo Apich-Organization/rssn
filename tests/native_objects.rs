@@ -189,7 +189,13 @@ fn dependent_handles_guard_parent_release_and_invalid_parent_inserts_are_atomic(
     let foreign = NativeObjects::new();
     let parent = objects.insert(KIND, vec![], 10i64, 1024).unwrap();
     let child = objects
-        .insert_dependent("rssn/test-dependent/v1", vec![], (), 128, &[parent.clone()])
+        .insert_dependent(
+            "rssn/test-dependent/v1",
+            vec![],
+            (),
+            128,
+            std::slice::from_ref(&parent),
+        )
         .unwrap();
     let alias = parent.clone();
     assert!(objects.release(&alias).is_err());
@@ -222,7 +228,7 @@ fn nested_dynamic_scopes_invalidate_escaped_handles_and_preserve_older_objects()
     {
         let outer = objects.scoped().unwrap();
         escaped = objects
-            .insert_dependent(KIND, vec![], 2i64, 2000, &[base.clone()])
+            .insert_dependent(KIND, vec![], 2i64, 2000, std::slice::from_ref(&base))
             .unwrap();
         let inner_escaped;
         {

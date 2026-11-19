@@ -64,7 +64,9 @@ use crate::kernel::value::ValueKindInfo;
 // A capability set is a list of independent facts; a bitfield would make
 // the manifest JSON unreadable and the struct no smaller in practice.
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct Features {
     /// Operators can be called by name with [`Value`](crate::kernel::Value)
     /// arguments.
@@ -141,7 +143,18 @@ impl Features {
 }
 
 /// One rule set as the manifest describes it.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct RuleSetInfo {
     /// The set's name.
     pub name: String,
@@ -165,7 +178,19 @@ pub struct RuleSetInfo {
 /// [`crate::kernel::infer`], so it is sound in the same way a declaration is:
 /// it never guesses from the operator's name. A host may generate typed
 /// bindings from all three; only `None` means "there is no signature".
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum SignatureSource {
     /// The rule set declared it on the descriptor.
@@ -183,7 +208,20 @@ pub enum SignatureSource {
 }
 
 /// Where an operator's `doc` came from.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DocSource {
     /// The registration wrote it (`.doc("...")`).
@@ -201,7 +239,9 @@ pub enum DocSource {
 }
 
 /// One operator as the manifest describes it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub struct OpInfo {
     /// Stable keys, one per overload. `keys[0]` is the primary overload.
     pub keys: Vec<OpKey>,
@@ -288,7 +328,18 @@ pub struct OpInfo {
 }
 
 /// One base dimension.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct BaseDimInfo {
     /// Its name (`Length`, `Currency`).
     pub name: String,
@@ -297,7 +348,18 @@ pub struct BaseDimInfo {
 }
 
 /// A plugin, as the manifest describes it.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct PluginInfo {
     /// Plugin name.
     pub name: String,
@@ -310,7 +372,7 @@ pub struct PluginInfo {
 }
 
 /// Everything a host needs to know about this build.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, bincode_next::Decode)]
 pub struct KernelManifest {
     /// Version of rssn.
     pub rssn_version: String,
@@ -351,6 +413,61 @@ pub struct KernelManifest {
     /// conversion to `Value` is enough or whether the value has to reach a
     /// dynamic evaluator.
     pub value_kinds: Vec<ValueKindInfo>,
+}
+
+// The same borrowed layout is used for the wire payload and for hashing it
+// with its hash field zeroed. Keep the fields in declaration order so the
+// derived decoder and older binaries read both encodings identically.
+struct ManifestWithHash<'a> {
+    manifest: &'a KernelManifest,
+    hash: [u8; 32],
+}
+
+impl bincode_next::Encode for ManifestWithHash<'_> {
+    fn encode<E: bincode_next::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode_next::error::EncodeError> {
+        let KernelManifest {
+            rssn_version,
+            api_version,
+            manifest_hash: _,
+            features,
+            rule_sets,
+            ops,
+            units,
+            base_dimensions,
+            plugins,
+            constants,
+            unit_systems,
+            value_kinds,
+        } = self.manifest;
+        rssn_version.encode(encoder)?;
+        api_version.encode(encoder)?;
+        self.hash.encode(encoder)?;
+        features.encode(encoder)?;
+        rule_sets.encode(encoder)?;
+        ops.encode(encoder)?;
+        units.encode(encoder)?;
+        base_dimensions.encode(encoder)?;
+        plugins.encode(encoder)?;
+        constants.encode(encoder)?;
+        unit_systems.encode(encoder)?;
+        value_kinds.encode(encoder)
+    }
+}
+
+impl bincode_next::Encode for KernelManifest {
+    fn encode<E: bincode_next::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode_next::error::EncodeError> {
+        ManifestWithHash {
+            manifest: self,
+            hash: self.manifest_hash,
+        }
+        .encode(encoder)
+    }
 }
 
 impl Default for KernelManifest {
@@ -500,16 +617,32 @@ impl KernelManifest {
     /// be able to seal it again, and because a manifest read from disk must
     /// be checked against its own hash.
     pub fn seal(&mut self) {
-        self.manifest_hash = [0_u8; 32];
-        self.manifest_hash = codec::digest(self);
+        self.manifest_hash = self.content_hash().unwrap_or_default();
     }
 
     /// Whether the stored hash matches the contents.
     #[must_use]
     pub fn verify(&self) -> bool {
-        let mut copy = self.clone();
-        copy.seal();
-        copy.manifest_hash == self.manifest_hash
+        self.content_hash() == Ok(self.manifest_hash)
+    }
+
+    fn content_hash(&self) -> Result<[u8; 32], codec::CodecError> {
+        let mut hasher = blake3::Hasher::new();
+        // The encoder buffers writes and streams the deterministic bytes into the digest.
+        bincode_next::encode_into_std_write(
+            ManifestWithHash {
+                manifest: self,
+                hash: [0; 32],
+            },
+            &mut hasher,
+            bincode_next::config::standard().with_deterministic_bincode(),
+        )
+        .map_err(|error| {
+            codec::CodecError {
+                message: error.to_string(),
+            }
+        })?;
+        Ok(*hasher.finalize().as_bytes())
     }
 
     /// The operator registered under `name` or an alias.
@@ -548,17 +681,17 @@ impl KernelManifest {
     /// the self-describing JSON or CBOR representation for migration.
     ///
     /// # Errors
-    /// See [`codec::encode_deterministic`].
+    /// See [`codec::encode_binary`].
     pub fn to_bytes(&self) -> Result<Vec<u8>, codec::CodecError> {
-        codec::encode_deterministic(self)
+        codec::encode_binary(self)
     }
 
     /// Reads a manifest written by [`KernelManifest::to_bytes`].
     ///
     /// # Errors
-    /// See [`codec::decode_deterministic`].
+    /// See [`codec::decode_binary`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, codec::CodecError> {
-        codec::decode_deterministic(bytes)
+        codec::decode_binary(bytes)
     }
 
     /// Reads a manifest written by [`KernelManifest::to_cbor`].
@@ -847,11 +980,31 @@ mod tests {
     fn the_manifest_round_trips_through_both_encodings() {
         let manifest = standard_manifest();
         let bytes = manifest.to_bytes().unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            bytes,
+            codec::encode_deterministic(&manifest).unwrap_or_else(|e| panic!("{e}"))
+        );
         let back = KernelManifest::from_bytes(&bytes).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, manifest);
         let cbor = manifest.to_cbor().unwrap_or_else(|e| panic!("{e}"));
         let back = KernelManifest::from_cbor(&cbor).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, manifest);
+    }
+
+    #[test]
+    fn the_manifest_hash_matches_the_original_wire_digest() {
+        let mut manifest = standard_manifest();
+        let hash = manifest.manifest_hash;
+        manifest.manifest_hash = [0; 32];
+        let bytes = codec::encode_deterministic(&manifest).expect("legacy manifest encoding");
+        assert_eq!(hash, codec::blake3_256(&bytes));
+        assert!(!manifest.verify());
+        manifest.seal();
+        assert_eq!(manifest.manifest_hash, hash);
+        assert!(manifest.verify());
+
+        manifest.features.jit = !manifest.features.jit;
+        assert!(!manifest.verify());
     }
 
     #[test]

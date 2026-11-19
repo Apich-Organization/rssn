@@ -233,19 +233,23 @@ fn compute_all_matches_compute_and_reports_per_request_codes() {
         let cos = rssn_term_apply(s, c("cos").as_ptr(), &raw const x, 1);
         let d2 = rssn_term_apply(s, c("diff").as_ptr(), [cos, x].as_ptr(), 2);
         let handles = [d1, 999_999, d2];
-        let mut answers = [std::mem::zeroed::<RssnAnswer>(); 3];
-        let mut statuses = [RssnStatus::Panic; 3];
+        // C callers may reserve output buffers without initializing any entries.
+        let mut answers = std::mem::MaybeUninit::<[RssnAnswer; 3]>::uninit();
+        let mut statuses = std::mem::MaybeUninit::<[RssnStatus; 3]>::uninit();
         assert_eq!(
             rssn_compute_all(
                 s,
                 handles.as_ptr(),
                 3,
                 std::ptr::null(),
-                answers.as_mut_ptr(),
-                statuses.as_mut_ptr()
+                answers.as_mut_ptr().cast::<RssnAnswer>(),
+                statuses.as_mut_ptr().cast::<RssnStatus>()
             ),
             RssnStatus::Ok
         );
+        // An Ok batch initializes both arrays, including any failed request.
+        let answers = answers.assume_init();
+        let statuses = statuses.assume_init();
         assert_eq!(
             statuses,
             [RssnStatus::Ok, RssnStatus::NoSuchTerm, RssnStatus::Ok]
@@ -710,16 +714,16 @@ fn compute_bincode_matches_the_json_path() {
             document["reduced"].as_bool().unwrap_or(false)
         );
         assert_eq!(Some(record.iterations), document["iterations"].as_u64());
-        let diagnostics: Vec<String> = document["diagnostics"]
-            .as_array()
-            .map(|findings| {
-                findings
-                    .iter()
-                    .filter_map(serde_json::Value::as_str)
-                    .map(str::to_owned)
-                    .collect()
-            })
-            .unwrap_or_default();
+        let diagnostics: Vec<String> =
+            document["diagnostics"]
+                .as_array()
+                .map_or_default(|findings| {
+                    findings
+                        .iter()
+                        .filter_map(serde_json::Value::as_str)
+                        .map(str::to_owned)
+                        .collect()
+                });
         assert_eq!(record.diagnostics, diagnostics);
 
         // A numeric target fills the Option fields.
@@ -867,6 +871,60 @@ unsafe fn batch_record(
     let record = crate::kernel::codec::decode_deterministic(&bytes)
         .unwrap_or_else(|e| panic!("the batch bytes rssn wrote must decode: {e}"));
     (bytes, record)
+}
+
+#[test]
+fn compute_batches_keep_the_first_failure_message_in_input_order() {
+    let session = rssn_session_new();
+    let config = rssn_config_new();
+    assert!(!session.is_null());
+    assert!(!config.is_null());
+    unsafe {
+        assert_ok(rssn_config_numeric(config, 1e-9));
+        let unbound = rssn_term_parse(session, c("y + 1").as_ptr());
+        assert_ne!(unbound, RSSN_NO_TERM);
+        let mut single = std::mem::MaybeUninit::<RssnAnswer>::uninit();
+        assert_status(
+            rssn_compute(session, RSSN_NO_TERM, config, single.as_mut_ptr()),
+            RssnStatus::NoSuchTerm,
+        );
+        let missing = last_error();
+        assert_status(
+            rssn_compute(session, unbound, config, single.as_mut_ptr()),
+            RssnStatus::NotNumeric,
+        );
+        let not_numeric = last_error();
+        assert_ne!(missing, not_numeric);
+
+        let mut terms = [RSSN_NO_TERM, unbound];
+        let mut expected_statuses = [RssnStatus::NoSuchTerm, RssnStatus::NotNumeric];
+        for expected_message in [missing, not_numeric] {
+            let mut answers = [const { std::mem::MaybeUninit::<RssnAnswer>::uninit() }; 2];
+            let mut statuses = [RssnStatus::Panic; 2];
+            assert_ok(rssn_compute_all(
+                session,
+                terms.as_ptr(),
+                terms.len(),
+                config,
+                answers.as_mut_ptr().cast::<RssnAnswer>(),
+                statuses.as_mut_ptr(),
+            ));
+            assert_eq!(statuses, expected_statuses);
+            assert_eq!(last_error(), expected_message, "C array batch");
+
+            let (_, batch) = batch_record(session, &terms, config);
+            assert_eq!(batch.entries.len(), terms.len());
+            for (entry, status) in batch.entries.iter().zip(expected_statuses) {
+                assert_eq!(entry.status, status as u32);
+                assert!(entry.answer.is_none());
+            }
+            assert_eq!(last_error(), expected_message, "bincode batch");
+            terms.reverse();
+            expected_statuses.reverse();
+        }
+        rssn_config_free(config);
+        rssn_session_free(session);
+    }
 }
 
 /// The batch bincode path carries one entry per input handle, in input order,

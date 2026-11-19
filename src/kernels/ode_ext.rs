@@ -1068,6 +1068,7 @@ where
 /// # Errors
 /// [`OdeError::Invalid`], [`OdeError::SolveFailed`], [`OdeError::NonFinite`],
 /// or [`OdeError::StepLimit`].
+#[allow(clippy::too_many_arguments)] // preserve the public IMEX signature
 pub fn imex_rk_adaptive<E, I>(
     f_ex: E,
     f_im: I,

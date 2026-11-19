@@ -408,7 +408,7 @@ fn yee_source_owns_its_charged_program_after_original_handle_release() {
         ],
     );
     call("num_backend_release", &[program]);
-    call("num_analysis_yee_step", &[solver.clone()]);
+    call("num_analysis_yee_step", std::slice::from_ref(&solver));
     let field = call(
         "num_analysis_yee_field",
         &[solver, Value::String("Ey".into())],
@@ -520,7 +520,10 @@ fn native_ttl_accepts_negative_binding_for_valid_unbound_constant_potential() {
             Value::int(100),
         ],
     );
-    let result = call("num_analysis_symplectic_ttl_data", &[state.clone()]);
+    let result = call(
+        "num_analysis_symplectic_ttl_data",
+        std::slice::from_ref(&state),
+    );
     let Value::Record(result) = result else {
         panic!("physical TTL state expected")
     };

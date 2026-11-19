@@ -46,7 +46,20 @@ pub const PLUGIN_ABI: u32 = 1;
 
 /// An exact rational number written in a type: a dimension exponent or a
 /// shape component.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct Rational {
     /// Numerator, carrying the sign.
     pub numer: i64,
@@ -128,7 +141,19 @@ const fn gcd(
 
 /// An exponent in a dimension expression: a rational, or a symbol standing
 /// for an integer (`x^n`).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Exp {
     /// A rational exponent.
@@ -166,7 +191,19 @@ impl fmt::Display for Exp {
 /// dimensions and dimension variables with exact exponents. It is a *type*
 /// in the sense that two terms with the same `DimExpr` are dimensionally
 /// interchangeable; the run-time unifier works on `DimTerm`.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DimExpr {
     /// Any dimension: the polymorphic scalar `0`.
@@ -211,7 +248,19 @@ impl DimExpr {
 }
 
 /// A natural number written in a type: an array rank or extent.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum NatExpr {
     /// A literal.
@@ -231,7 +280,19 @@ impl From<u64> for NatExpr {
 }
 
 /// A row shape for tables: named columns and a row count.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct RowExpr {
     /// Column names and their types, in declaration order.
     pub columns: Vec<(String, TypeExpr)>,
@@ -240,7 +301,19 @@ pub struct RowExpr {
 }
 
 /// The run-time representation a `Dyn` value carries.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct RepExpr {
     /// Name of the representation (`"term"`, `"cbor"`, `"f64"`).
     pub repr: String,
@@ -253,7 +326,19 @@ pub struct RepExpr {
 /// Scalar variants carry no dimension; wrap them in [`TypeExpr::Dim`] to
 /// attach one (`Real` of `Length/Time`). That keeps the common dimensionless
 /// case short while still allowing a fully dimensioned signature.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum TypeExpr {
     /// An exact integer.
@@ -375,7 +460,20 @@ impl TypeExpr {
 // ---------------------------------------------------------------------------
 
 /// What a type parameter may stand for.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum TypeParamKind {
     /// Any type.
@@ -389,7 +487,19 @@ pub enum TypeParamKind {
 }
 
 /// A type parameter of a signature.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct TypeParam {
     /// Name, as written in [`TypeExpr::Var`].
     pub name: String,
@@ -400,7 +510,20 @@ pub struct TypeParam {
 }
 
 /// A class of types, used by [`Constraint`].
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ConstraintKind {
     /// Values can be compared for equality.
@@ -424,7 +547,19 @@ pub enum ConstraintKind {
 }
 
 /// A side condition of a signature.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct Constraint {
     /// The class the arguments must belong to.
     pub kind: ConstraintKind,
@@ -433,7 +568,20 @@ pub struct Constraint {
 }
 
 /// An effect an operator may have.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Effect {
     /// No observable effect.
@@ -447,7 +595,20 @@ pub enum Effect {
 }
 
 /// The effect row of a signature.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct EffectRow {
     /// Effects the operator may perform. Empty means pure.
     pub effects: Vec<Effect>,
@@ -468,7 +629,19 @@ impl EffectRow {
 }
 
 /// How many trailing arguments an operator accepts.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct Variadic {
     /// Fewest accepted arguments, counted after the fixed ones.
     pub min: u8,
@@ -483,7 +656,20 @@ pub struct Variadic {
 // ---------------------------------------------------------------------------
 
 /// How many arguments an operator accepts, as manifest data.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct ArityInfo {
     /// Fewest accepted arguments.
     pub min: u8,
@@ -629,7 +815,19 @@ impl fmt::Display for NatExpr {
 }
 
 /// The type of one overload of an operator.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct Signature {
     /// Type parameters introduced by this overload.
     pub type_params: Vec<TypeParam>,
@@ -733,7 +931,7 @@ impl Signature {
     /// that cannot be computed is a bug, so it is reported as one.
     #[must_use]
     pub fn hash(&self) -> [u8; 16] {
-        let bytes = super::codec::encode_deterministic(self)
+        let bytes = super::codec::encode_binary(self)
             .expect("a signature must be encodable to have a stable hash");
         let full = *blake3::hash(&bytes).as_bytes();
         let mut out = [0_u8; 16];
@@ -807,7 +1005,19 @@ impl fmt::Display for OpKey {
 
 /// How settled an operator's behaviour is.
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Stability {
@@ -822,7 +1032,19 @@ pub enum Stability {
 
 /// Whether an operator touches anything but its arguments.
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Purity {
@@ -837,7 +1059,19 @@ pub enum Purity {
 
 /// Whether repeated calls agree.
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Determinism {
@@ -852,7 +1086,19 @@ pub enum Determinism {
 
 /// How an operator may be used across threads.
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum ThreadSafety {
@@ -867,7 +1113,19 @@ pub enum ThreadSafety {
 
 /// How an operator produces values.
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum EvalKind {
@@ -887,7 +1145,20 @@ pub enum EvalKind {
 /// One flag per backend, deliberately: a host asks "can the JIT run this",
 /// not "what is the backend mask".
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct BackendSupport {
     /// The tree-walking interpreter.
     pub interpreter: bool,
@@ -924,7 +1195,20 @@ impl BackendSupport {
 }
 
 /// A worked example, shown in generated documentation.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct Example {
     /// The call, in surface syntax: `diff(x^3, x)`.
     pub input: String,
@@ -940,7 +1224,19 @@ pub struct Example {
 /// `flags.commutative`, it does not mask bits.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(
-    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
 )]
 pub struct OpFlagsInfo {
     /// `f(f(a, b), c) = f(a, b, c)`.
@@ -960,7 +1256,20 @@ pub struct OpFlagsInfo {
 }
 
 /// The binding structure of an operator, as data.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 pub struct BinderInfo {
     /// Index of the child holding the bound symbol.
     pub var: u8,
@@ -972,7 +1281,19 @@ pub struct BinderInfo {
 ///
 /// The run-time rule carries function pointers in two variants; those become
 /// the name of the registering rule set here.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DimRuleInfo {
     /// No rule: a coverage gap.
@@ -1084,7 +1405,20 @@ pub enum DimRuleInfo {
 }
 
 /// Where a [`DimRuleInfo::Family`] value's dimension comes from.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum FamilySourceInfo {
     /// The dimension of argument `i`.
@@ -1282,7 +1616,20 @@ impl DimRuleInfo {
 /// The audit binary fails the build on an operator that has neither a
 /// signature nor one of these reasons, so no operator is silently
 /// untyped.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    bincode_next::Encode,
+    bincode_next::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DynamicReason {
     /// It takes or returns a container whose shape depends on its arguments.

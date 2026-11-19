@@ -17,12 +17,14 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 /// A literal number: exact integer, exact rational, or binary float.
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Debug, serde::Serialize, serde::Deserialize, bincode_next::Encode, bincode_next::Decode,
+)]
 pub enum Number {
     /// Arbitrary precision integer.
-    Int(BigInt),
+    Int(#[bincode(with_serde)] BigInt),
     /// Arbitrary precision rational, always with denominator `> 1`.
-    Rat(BigRational),
+    Rat(#[bincode(with_serde)] BigRational),
     /// IEEE-754 double. Never produced from exact inputs by exact operations.
     Float(f64),
 }

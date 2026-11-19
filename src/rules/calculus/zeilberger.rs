@@ -2670,12 +2670,10 @@ fn rational_ratio_through(
             };
             let numerator: QPoly = solution
                 .get(..=numerator_degree)
-                .map(<[BigRational]>::to_vec)
-                .unwrap_or_default();
+                .map_or_default(<[BigRational]>::to_vec);
             let denominator: QPoly = solution
                 .get(numerator_degree.saturating_add(1)..)
-                .map(<[BigRational]>::to_vec)
-                .unwrap_or_default();
+                .map_or_default(<[BigRational]>::to_vec);
             let Some((numerator, denominator)) = trim_ratio(numerator, denominator) else {
                 continue;
             };

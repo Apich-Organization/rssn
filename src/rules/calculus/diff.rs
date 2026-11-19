@@ -156,8 +156,7 @@ impl Differentiate {
                 let partials = graph
                     .ops()
                     .attr::<super::Partials>(op)
-                    .map(|p| p.0.clone())
-                    .unwrap_or_default();
+                    .map_or_default(|p| p.0.clone());
                 for (i, &d) in derivs.iter().enumerate() {
                     if d == zero {
                         continue;

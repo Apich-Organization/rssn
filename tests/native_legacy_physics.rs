@@ -111,7 +111,11 @@ fn explicit_fdm_grid_specialization_handles_empty_and_mutable_physical_data() {
             q(10., "Temperature"),
         ],
     );
-    let before = call(&s, "num_grid_legacy_fdm_as_slice", &[grid.clone()]);
+    let before = call(
+        &s,
+        "num_grid_legacy_fdm_as_slice",
+        std::slice::from_ref(&grid),
+    );
     let Value::Tensor(before) = before else {
         panic!()
     };

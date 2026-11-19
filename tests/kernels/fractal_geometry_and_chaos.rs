@@ -375,6 +375,30 @@ fn test_correlation_dimension_empty() {
     assert_eq!(dim, 0.0);
 }
 
+#[test]
+fn correlation_dimension_uses_strict_distances_and_preserves_scale() {
+    let pts = [(0.0, 0.0), (1.0, 0.0), (3.0, 0.0)];
+    let expected = 3_f64.ln() / 2_f64.ln();
+    let estimate = correlation_dimension_with_radii(&pts, &[4.0, 2.0]).unwrap();
+    assert!((estimate - expected).abs() < 1e-14);
+    assert!(correlation_dimension_with_radii(&pts, &[2.0, 2.0]).is_none());
+    assert!(correlation_dimension_with_radii(&pts, &[0.0, 1.0]).is_none());
+    assert!(correlation_dimension(&[(0.0, 0.0), (f64::NAN, 0.0)], 8).is_nan());
+
+    let points: Vec<_> = (0..300).map(|i| (f64::from(i) / 300.0, 0.0)).collect();
+    let small: Vec<_> = points.iter().map(|&(x, y)| (x * 1e-100, y)).collect();
+    let regular = correlation_dimension(&points, 8);
+    assert!((regular - correlation_dimension(&small, 8)).abs() < 1e-12);
+    let parallel = |num_threads| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+            .unwrap()
+            .install(|| correlation_dimension(&points, 8))
+    };
+    assert_eq!(parallel(1).to_bits(), parallel(4).to_bits());
+}
+
 // ============================================================================
 // Orbit Analysis Tests
 // ============================================================================

@@ -8,6 +8,10 @@ use crate::kernels::dense::{
 };
 use crate::kernels::distributions::Distribution;
 use crate::kernels::robust;
+use crate::kernels::special::ln_beta_numerical;
+use crate::kernels::special::regularized_beta;
+use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::f64::consts::PI;
 
 /// Error returned by extended statistics kernels.
@@ -42,53 +46,17 @@ impl std::fmt::Display for StatsExtError {
 
 impl std::error::Error for StatsExtError {}
 
-fn solve(
-    rows: usize,
-    cols: usize,
-    a: &[f64],
-    b: &[f64],
-) -> Result<Vec<f64>, StatsExtError> {
-    let m = Mat {
-        rows,
-        cols,
-        data: a.to_vec(),
-    };
-    dense::solve(&m, b).map_err(|e| {
-        match e {
-            | DenseError::Singular => StatsExtError::Singular,
-            | _ => StatsExtError::Domain(format!("solve failed: {e:?}")),
-        }
-    })
-}
-
-fn lstsq(
-    rows: usize,
-    cols: usize,
-    a: &[f64],
-    b: &[f64],
-) -> Result<Vec<f64>, StatsExtError> {
-    let m = Mat {
-        rows,
-        cols,
-        data: a.to_vec(),
-    };
-    dense::lstsq(&m, b).map_err(|e| StatsExtError::Domain(format!("lstsq failed: {e:?}")))
-}
-
-type SvdFactors = (Vec<f64>, Vec<f64>, Vec<f64>);
-
-fn svd(
-    rows: usize,
-    cols: usize,
-    a: &[f64],
-) -> Result<SvdFactors, StatsExtError> {
-    let m = Mat {
-        rows,
-        cols,
-        data: a.to_vec(),
-    };
-    let res = dense::svd(&m).map_err(|e| StatsExtError::Domain(format!("svd failed: {e:?}")))?;
-    Ok((res.u.data, res.s, res.v.transpose().data))
+fn map_fit_error(error: DenseError) -> StatsExtError {
+    match error {
+        | DenseError::Singular => StatsExtError::Singular,
+        | DenseError::Cancelled | DenseError::NoConvergence => StatsExtError::NotConverged,
+        | DenseError::Shape => {
+            StatsExtError::ShapeMismatch("inconsistent regression matrix".into())
+        },
+        | DenseError::NonFinite => {
+            StatsExtError::Domain("regression produced non-finite data".into())
+        },
+    }
 }
 
 fn quantile(
@@ -233,18 +201,60 @@ fn finite(values: &[f64]) -> Result<(), StatsExtError> {
     Ok(())
 }
 
-fn mean_and_var(values: &[f64]) -> Result<(f64, f64), StatsExtError> {
+// Moments in unitless coordinates avoid overflowing the sum or the squares of
+// finite measurements. Keep the scale separate when the final statistic is
+// dimensionless or only needs the standard deviation.
+struct ScaledMoments {
+    mean: f64,
+    variance: f64,
+    scale: f64,
+}
+
+fn max_abs(values: &[f64]) -> f64 {
+    values.iter().map(|value| value.abs()).fold(0.0, f64::max)
+}
+
+fn scaled_moments(values: &[f64]) -> Result<ScaledMoments, StatsExtError> {
     finite(values)?;
     let n = values.len();
-    if n == 0 {
-        return Err(StatsExtError::Empty);
+    let first = *values.first().ok_or(StatsExtError::Empty)?;
+    let scale = max_abs(values).max(f64::MIN_POSITIVE);
+    let anchor = first / scale;
+    // An anchored sum keeps a constant sample exactly constant and avoids
+    // losing a small spread to rounding of a large common offset.
+    let mean_offset = values
+        .iter()
+        .map(|&v| scaled_difference(v, first, scale))
+        .sum::<f64>()
+        / n as f64;
+    let mean = (anchor + mean_offset).clamp(-1.0, 1.0);
+    let variance = if n > 1 {
+        values
+            .iter()
+            .map(|&v| (scaled_difference(v, first, scale) - mean_offset).powi(2))
+            .sum::<f64>()
+            / n.saturating_sub(1) as f64
+    } else {
+        0.0
+    };
+    Ok(ScaledMoments {
+        mean,
+        variance,
+        scale,
+    })
+}
+
+fn scaled_difference(
+    left: f64,
+    right: f64,
+    scale: f64,
+) -> f64 {
+    let difference = left - right;
+    if difference.is_finite() {
+        difference / scale
+    } else {
+        left / scale - right / scale
     }
-    let mean = values.iter().sum::<f64>() / n as f64;
-    if n == 1 {
-        return Ok((mean, 0.0));
-    }
-    let ss: f64 = values.iter().map(|&v| (v - mean) * (v - mean)).sum();
-    Ok((mean, ss / (n - 1) as f64))
 }
 
 /// Average 1-based ranks with tie averaging, plus `sum(t^3 - t)` for tie groups.
@@ -278,48 +288,60 @@ fn two_sided_t_p_value(
     t_stat: f64,
     df: f64,
 ) -> f64 {
-    let dist = Distribution::StudentT { df };
-    (2.0 * dist.cdf(-t_stat.abs())).clamp(0.0, 1.0)
+    let abs_t = t_stat.abs();
+    let root_df = df.sqrt();
+    let hypotenuse = root_df.hypot(abs_t);
+    let ratio = root_df / hypotenuse;
+    let a = df * 0.5;
+    if abs_t < root_df * 0.5 {
+        let complement = (abs_t / hypotenuse).powi(2);
+        return (1.0 - regularized_beta(complement, 0.5, a)).clamp(0.0, 1.0);
+    }
+    if ratio < f64::MIN_POSITIVE.sqrt() {
+        // In the far tail I_x(a, b) = x^a / (a B(a, b)) to floating-point
+        // accuracy. Here x may underflow even though x^a is representable.
+        let log_x = 2.0 * (root_df.ln() - abs_t.ln());
+        return (a * log_x - a.ln() - ln_beta_numerical(a, 0.5)).exp();
+    }
+    regularized_beta(ratio * ratio, a, 0.5).clamp(0.0, 1.0)
 }
 
 /// One-sample Student's t-test against population mean `mu0`.
 ///
 /// # Errors
-///
-/// [`StatsExtError::Domain`] when `sample.len() < 2` or the sample variance is zero.
+/// [`StatsExtError::Domain`] for fewer than two observations, non-finite
+/// observations or null mean, or a sample with zero variance.
 pub fn t_test_one_sample(
     sample: &[f64],
     mu0: f64,
 ) -> Result<TestResult, StatsExtError> {
-    if sample.len() < 2 {
+    if sample.len() < 2 || !mu0.is_finite() {
         return Err(StatsExtError::Domain(
-            "t_test_one_sample requires at least 2 observations".to_string(),
+            "t_test_one_sample requires at least 2 observations and a finite mean".into(),
         ));
     }
-    let (mean, var) = mean_and_var(sample)?;
-    if var == 0.0 {
+    let moments = scaled_moments(sample)?;
+    if moments.variance == 0.0 {
         return Err(StatsExtError::Domain(
-            "t_test_one_sample is undefined for zero-variance samples".to_string(),
+            "t_test_one_sample is undefined for zero-variance samples".into(),
         ));
     }
     let n = sample.len() as f64;
-    let se = (var / n).sqrt();
-    let t_stat = (mean - mu0) / se;
+    let se = (moments.variance / n).sqrt();
+    let statistic = (moments.mean - mu0 / moments.scale) / se;
     let df = n - 1.0;
     Ok(TestResult {
-        statistic: t_stat,
-        p_value: two_sided_t_p_value(t_stat, df),
+        statistic,
+        p_value: two_sided_t_p_value(statistic, df),
         df: Some(df),
     })
 }
 
-/// Two-sample t-test (Student's pooled-variance when `equal_var` is `true`,
-/// Welch's unequal-variance otherwise).
+/// Two-sample t-test with pooled variance or Welch's unequal-variance formula.
 ///
 /// # Errors
-///
-/// [`StatsExtError::Domain`] when either sample has fewer than 2 elements or
-/// the combined standard error is zero.
+/// [`StatsExtError::Domain`] for fewer than two observations per sample,
+/// non-finite data, or zero combined standard error.
 pub fn t_test_two_sample(
     left: &[f64],
     right: &[f64],
@@ -327,41 +349,48 @@ pub fn t_test_two_sample(
 ) -> Result<TestResult, StatsExtError> {
     if left.len() < 2 || right.len() < 2 {
         return Err(StatsExtError::Domain(
-            "t_test_two_sample requires at least 2 observations per sample".to_string(),
+            "t_test_two_sample requires at least 2 observations per sample".into(),
         ));
     }
-    let (m1, v1) = mean_and_var(left)?;
-    let (m2, v2) = mean_and_var(right)?;
+    let left_moments = scaled_moments(left)?;
+    let right_moments = scaled_moments(right)?;
+    let customary_scale = |sample: &ScaledMoments| {
+        if sample.variance > 0.0 {
+            sample.scale
+        } else {
+            0.0
+        }
+    };
+    let scale = customary_scale(&left_moments).max(customary_scale(&right_moments));
+    if scale == 0.0 {
+        return Err(StatsExtError::Domain(
+            "t_test_two_sample is undefined when both samples have zero variance".into(),
+        ));
+    }
+    let std_at_scale =
+        |sample: &ScaledMoments| sample.variance.sqrt() * (customary_scale(sample) / scale);
+    let left_std = std_at_scale(&left_moments);
+    let right_std = std_at_scale(&right_moments);
     let n1 = left.len() as f64;
     let n2 = right.len() as f64;
-
     let (se, df) = if equal_var {
         let df = n1 + n2 - 2.0;
-        let pooled = ((n1 - 1.0) * v1 + (n2 - 1.0) * v2) / df;
-        ((pooled * (1.0 / n1 + 1.0 / n2)).sqrt(), df)
+        let pooled =
+            (left_std * ((n1 - 1.0) / df).sqrt()).hypot(right_std * ((n2 - 1.0) / df).sqrt());
+        (pooled * (1.0 / n1 + 1.0 / n2).sqrt(), df)
     } else {
-        let s1 = v1 / n1;
-        let s2 = v2 / n2;
-        let sum = s1 + s2;
-        if sum == 0.0 {
-            return Err(StatsExtError::Domain(
-                "t_test_two_sample is undefined when both samples have zero variance".to_string(),
-            ));
-        }
-        let denom = (s1 * s1) / (n1 - 1.0) + (s2 * s2) / (n2 - 1.0);
-        let df = (sum * sum) / denom;
-        (sum.sqrt(), df)
+        let s1 = left_std / n1.sqrt();
+        let s2 = right_std / n2.sqrt();
+        let se = s1.hypot(s2);
+        let df = 1.0 / ((s1 / se).powi(4) / (n1 - 1.0) + (s2 / se).powi(4) / (n2 - 1.0));
+        (se, df)
     };
-
-    if se == 0.0 {
-        return Err(StatsExtError::Domain(
-            "t_test_two_sample is undefined when standard error is zero".to_string(),
-        ));
-    }
-    let t_stat = (m1 - m2) / se;
+    let left_mean = left_moments.mean * left_moments.scale;
+    let right_mean = right_moments.mean * right_moments.scale;
+    let statistic = scaled_difference(left_mean, right_mean, scale) / se;
     Ok(TestResult {
-        statistic: t_stat,
-        p_value: two_sided_t_p_value(t_stat, df),
+        statistic,
+        p_value: two_sided_t_p_value(statistic, df),
         df: Some(df),
     })
 }
@@ -383,7 +412,12 @@ pub fn t_test_paired(
             right.len()
         )));
     }
-    let diffs: Vec<f64> = left.iter().zip(right).map(|(a, b)| a - b).collect();
+    let scale = max_abs(left).max(max_abs(right)).max(f64::MIN_POSITIVE);
+    let diffs: Vec<f64> = left
+        .iter()
+        .zip(right)
+        .map(|(&a, &b)| scaled_difference(a, b, scale))
+        .collect();
     t_test_one_sample(&diffs, 0.0)
 }
 
@@ -419,7 +453,7 @@ pub fn chi_squared_goodness_of_fit(
             ));
         }
         let diff = o - e;
-        stat += (diff * diff) / e;
+        stat += (diff / e.sqrt()).powi(2);
     }
     let df = (observed.len() - 1) as f64;
     let p_value =
@@ -455,35 +489,44 @@ pub fn chi_squared_independence(
             "chi_squared_independence requires at least a 2x2 table".to_string(),
         ));
     }
-    let mut row_sums = vec![0.0; rows];
-    let mut col_sums = vec![0.0; cols];
-    let mut total = 0.0;
-    for r in 0..rows {
-        for c in 0..cols {
-            let v = observed[r * cols + c];
-            if v < 0.0 {
-                return Err(StatsExtError::Domain(
-                    "contingency table counts cannot be negative".to_string(),
-                ));
-            }
-            row_sums[r] += v;
-            col_sums[c] += v;
-            total += v;
-        }
-    }
-    if total <= 0.0 || row_sums.iter().any(|&s| s <= 0.0) || col_sums.iter().any(|&s| s <= 0.0) {
+    let scale = max_abs(observed);
+    if scale == 0.0 || observed.iter().any(|&value| value < 0.0) {
         return Err(StatsExtError::Domain(
-            "contingency table marginals must all be positive".to_string(),
+            "contingency table needs nonnegative counts and positive marginals".into(),
         ));
     }
-    let mut stat = 0.0;
-    for r in 0..rows {
-        for c in 0..cols {
-            let expected = row_sums[r] * col_sums[c] / total;
-            let diff = observed[r * cols + c] - expected;
-            stat += (diff * diff) / expected;
+    let mut row_sums = vec![0.0; rows];
+    let mut col_sums = vec![0.0; cols];
+    for (row, row_sum) in observed.chunks_exact(cols).zip(&mut row_sums) {
+        for (col_sum, &value) in col_sums.iter_mut().zip(row) {
+            let relative = value / scale;
+            *row_sum += relative;
+            *col_sum += relative;
         }
     }
+    if row_sums.contains(&0.0) || col_sums.contains(&0.0) {
+        return Err(StatsExtError::Domain(
+            "contingency table marginals must all be positive at the working scale".into(),
+        ));
+    }
+    let total: f64 = row_sums.iter().sum();
+    let mut scaled_statistic = 0.0;
+    for (row, &row_sum) in observed.chunks_exact(cols).zip(&row_sums) {
+        for (&value, &col_sum) in row.iter().zip(&col_sums) {
+            let expected = (row_sum / total) * col_sum;
+            let relative = value / scale;
+            let standardized = if expected > 0.0 {
+                (relative - expected) / expected.sqrt()
+            } else {
+                // Taking roots first retains expected counts that are too
+                // small to represent in the scaled table itself.
+                let root_expected = (row_sum.sqrt() / total.sqrt()) * col_sum.sqrt();
+                relative / root_expected - root_expected
+            };
+            scaled_statistic += standardized.powi(2);
+        }
+    }
+    let stat = scale * scaled_statistic;
     let df = ((rows - 1) * (cols - 1)) as f64;
     let p_value =
         crate::kernels::special::regularized_upper_gamma(df * 0.5, stat * 0.5).clamp(0.0, 1.0);
@@ -510,44 +553,55 @@ pub fn anova_one_way(groups: &[&[f64]]) -> Result<TestResult, StatsExtError> {
         ));
     }
     let mut n_total = 0usize;
-    let mut grand_sum = 0.0;
-    for g in groups {
-        finite(g)?;
-        if g.is_empty() {
+    let mut samples = Vec::with_capacity(k);
+    for group in groups {
+        if group.is_empty() {
             return Err(StatsExtError::Domain(
-                "anova_one_way groups must be non-empty".to_string(),
+                "anova_one_way groups must be non-empty".into(),
             ));
         }
-        n_total += g.len();
-        grand_sum += g.iter().sum::<f64>();
+        n_total = n_total.checked_add(group.len()).ok_or_else(|| {
+            StatsExtError::Domain("anova_one_way observation count overflows".into())
+        })?;
+        samples.push((group.len(), scaled_moments(group)?));
     }
     if n_total <= k {
         return Err(StatsExtError::Domain(
-            "anova_one_way requires more total observations than groups".to_string(),
+            "anova_one_way requires more total observations than groups".into(),
         ));
     }
-    let grand_mean = grand_sum / n_total as f64;
+    let scale = samples
+        .iter()
+        .map(|(_, sample)| sample.scale)
+        .fold(0.0, f64::max);
+    let scaled_mean = |sample: &ScaledMoments| sample.mean * (sample.scale / scale);
+    let grand_mean: f64 = samples
+        .iter()
+        .map(|(n, sample)| scaled_mean(sample) * (*n as f64 / n_total as f64))
+        .sum();
     let mut ss_between = 0.0;
     let mut ss_within = 0.0;
-    for g in groups {
-        let g_mean = g.iter().sum::<f64>() / g.len() as f64;
-        ss_between += g.len() as f64 * (g_mean - grand_mean) * (g_mean - grand_mean);
-        for &x in *g {
-            ss_within += (x - g_mean) * (x - g_mean);
-        }
+    let mut variable = false;
+    for (n, sample) in &samples {
+        ss_between += *n as f64 * (scaled_mean(sample) - grand_mean).powi(2);
+        let standard_deviation = sample.variance.sqrt() * (sample.scale / scale);
+        ss_within += n.saturating_sub(1) as f64 * standard_deviation.powi(2);
+        variable |= sample.variance > 0.0;
     }
-    let df1 = (k - 1) as f64;
-    let df2 = (n_total - k) as f64;
-    let ms_within = ss_within / df2;
-    if ms_within == 0.0 {
+    if !variable {
         return Err(StatsExtError::Domain(
-            "anova_one_way is undefined when within-group variance is zero".to_string(),
+            "anova_one_way is undefined when within-group variance is zero".into(),
         ));
     }
-    let f_stat = (ss_between / df1) / ms_within;
-    let p_value =
-        crate::kernels::special::regularized_beta(df2 / (df2 + df1 * f_stat), df2 * 0.5, df1 * 0.5)
-            .clamp(0.0, 1.0);
+    let df1 = k.saturating_sub(1) as f64;
+    let df2 = n_total.saturating_sub(k) as f64;
+    let f_stat = if ss_within == 0.0 {
+        f64::INFINITY
+    } else {
+        (ss_between / df1) / (ss_within / df2)
+    };
+    let ratio = df2 / df1;
+    let p_value = regularized_beta(ratio / (ratio + f_stat), df2 * 0.5, df1 * 0.5).clamp(0.0, 1.0);
     Ok(TestResult {
         statistic: f_stat,
         p_value,
@@ -747,38 +801,58 @@ fn validate_regression_inputs(
     Ok(())
 }
 
-fn center_xy(
+fn center_design(
     rows: usize,
     cols: usize,
     x: &[f64],
-    y: &[f64],
-    fit_intercept: bool,
-) -> (Vec<f64>, Vec<f64>, Vec<f64>, f64) {
-    if !fit_intercept {
-        return (x.to_vec(), y.to_vec(), vec![0.0; cols], 0.0);
-    }
+) -> (Vec<f64>, Vec<f64>) {
     let mut x_mean = vec![0.0; cols];
-    for r in 0..rows {
-        for c in 0..cols {
-            x_mean[c] += x[r * cols + c];
+    for row in x.chunks_exact(cols) {
+        for (mean, value) in x_mean.iter_mut().zip(row) {
+            *mean += *value;
         }
     }
-    for m in &mut x_mean {
-        *m /= rows as f64;
-    }
-    let y_mean = y.iter().sum::<f64>() / rows as f64;
-    let mut xc = vec![0.0; rows * cols];
-    for r in 0..rows {
-        for c in 0..cols {
-            xc[r * cols + c] = x[r * cols + c] - x_mean[c];
+    for (column, mean) in x_mean.iter_mut().enumerate() {
+        *mean /= rows as f64;
+        if !mean.is_finite() {
+            // Fall back to a scaled sum when a finite column mean overflowed
+            // on the ordinary summation path.
+            let values = || x.iter().skip(column).step_by(cols);
+            let scale = values().map(|value| value.abs()).fold(0.0, f64::max);
+            let normalized =
+                (values().map(|value| value / scale).sum::<f64>() / rows as f64).clamp(-1.0, 1.0);
+            *mean = normalized * scale;
         }
     }
+    let centered = x
+        .chunks_exact(cols)
+        .flat_map(|row| row.iter().zip(&x_mean).map(|(&value, &mean)| value - mean))
+        .collect();
+    (centered, x_mean)
+}
+
+type CenteredData<'a> = (Cow<'a, [f64]>, Cow<'a, [f64]>, Vec<f64>, f64);
+
+fn center_xy<'a>(
+    rows: usize,
+    cols: usize,
+    x: &'a [f64],
+    y: &'a [f64],
+    fit_intercept: bool,
+) -> Result<CenteredData<'a>, StatsExtError> {
+    if !fit_intercept {
+        return Ok((Cow::Borrowed(x), Cow::Borrowed(y), Vec::new(), 0.0));
+    }
+    let (xc, x_mean) = center_design(rows, cols, x);
+    let moments = scaled_moments(y)?;
+    let y_mean = moments.mean * moments.scale;
     let yc: Vec<f64> = y.iter().map(|&v| v - y_mean).collect();
-    (xc, yc, x_mean, y_mean)
+    finite(&xc)?;
+    finite(&yc)?;
+    Ok((Cow::Owned(xc), Cow::Owned(yc), x_mean, y_mean))
 }
 
 fn build_linear_result(
-    rows: usize,
     cols: usize,
     x: &[f64],
     y: &[f64],
@@ -786,7 +860,8 @@ fn build_linear_result(
     x_mean: &[f64],
     y_mean: f64,
     fit_intercept: bool,
-) -> LinearRegressionResult {
+) -> Result<LinearRegressionResult, StatsExtError> {
+    finite(&coefficients)?;
     let intercept = if fit_intercept {
         y_mean
             - x_mean
@@ -797,38 +872,53 @@ fn build_linear_result(
     } else {
         0.0
     };
-    let mut residuals = Vec::with_capacity(rows);
-    let mut ss_res = 0.0;
-    let mut ss_tot = 0.0;
-    let raw_y_mean = y.iter().sum::<f64>() / rows as f64;
-    for r in 0..rows {
-        let mut pred = intercept;
-        for c in 0..cols {
-            pred += x[r * cols + c] * coefficients[c];
+    let residuals: Vec<_> = x
+        .chunks_exact(cols)
+        .zip(y)
+        .map(|(row, &target)| {
+            target
+                - row
+                    .iter()
+                    .zip(&coefficients)
+                    .fold(intercept, |pred, (value, weight)| pred + value * weight)
+        })
+        .collect();
+    finite(&residuals)?;
+
+    let response = scaled_moments(y)?;
+    let sum_squares = response.variance * y.len().saturating_sub(1) as f64;
+    let residual_scale = max_abs(&residuals);
+    let r_squared = if sum_squares == 0.0 {
+        // A constant response is explained only by an exact constant fit.
+        if residual_scale == 0.0 {
+            1.0
+        } else {
+            0.0
         }
-        let res = y[r] - pred;
-        residuals.push(res);
-        ss_res += res * res;
-        ss_tot += (y[r] - raw_y_mean) * (y[r] - raw_y_mean);
-    }
-    let r_squared = if ss_tot == 0.0 {
+    } else if residual_scale == 0.0 {
         1.0
     } else {
-        1.0 - ss_res / ss_tot
+        let residual_norm = residuals
+            .iter()
+            .map(|&r| (r / residual_scale).powi(2))
+            .sum::<f64>()
+            .sqrt();
+        let relative = (residual_scale / response.scale) * (residual_norm / sum_squares.sqrt());
+        1.0 - relative.powi(2)
     };
-    LinearRegressionResult {
+    Ok(LinearRegressionResult {
         coefficients,
         intercept,
         r_squared,
         residuals,
-    }
+    })
 }
 
-/// Ordinary Least Squares linear regression using SVD least-squares.
+/// Ordinary least squares with a minimum-norm solution for deficient designs.
 ///
 /// # Errors
 ///
-/// [`StatsExtError::Empty`], [`StatsExtError::ShapeMismatch`], or [`StatsExtError::NotConverged`].
+/// Rejects invalid dimensions, non-finite data or results, or failed decomposition.
 pub fn ols(
     rows: usize,
     cols: usize,
@@ -837,26 +927,25 @@ pub fn ols(
     fit_intercept: bool,
 ) -> Result<LinearRegressionResult, StatsExtError> {
     validate_regression_inputs(rows, cols, x, y)?;
-    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept);
-    let coefficients = lstsq(rows, cols, &xc, &yc)?;
-    Ok(build_linear_result(
+    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept)?;
+    let design = Mat {
         rows,
         cols,
-        x,
-        y,
-        coefficients,
-        &x_mean,
-        y_mean,
-        fit_intercept,
-    ))
+        data: xc.into_owned(),
+    };
+    let coefficients = dense::lstsq_svd(&design, &yc).map_err(map_fit_error)?;
+    build_linear_result(cols, x, y, coefficients, &x_mean, y_mean, fit_intercept)
 }
 
 /// Ridge (L2-regularized) linear regression minimizing `||y - Xβ||₂² + alpha ||β||₂²`.
 ///
+/// Uses the thin SVD of the design without allocating a square feature matrix.
+///
 /// # Errors
 ///
-/// [`StatsExtError::Empty`], [`StatsExtError::ShapeMismatch`], [`StatsExtError::Domain`]
-/// when `alpha < 0`, or [`StatsExtError::Singular`].
+/// Rejects invalid dimensions, non-finite data or results, and failed decomposition.
+/// A negative or non-finite `alpha` is invalid. For `alpha == 0`, a design without
+/// full column rank returns [`StatsExtError::Singular`].
 pub fn ridge(
     rows: usize,
     cols: usize,
@@ -871,32 +960,44 @@ pub fn ridge(
             "ridge regularization parameter alpha must be >= 0".to_string(),
         ));
     }
-    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept);
-    let mut xtx = vec![0.0; cols * cols];
-    let mut xty = vec![0.0; cols];
-    for r in 0..rows {
-        for c1 in 0..cols {
-            let v1 = xc[r * cols + c1];
-            xty[c1] += v1 * yc[r];
-            for c2 in 0..cols {
-                xtx[c1 * cols + c2] += v1 * xc[r * cols + c2];
-            }
-        }
-    }
-    for c in 0..cols {
-        xtx[c * cols + c] += alpha;
-    }
-    let coefficients = solve(cols, cols, &xtx, &xty)?;
-    Ok(build_linear_result(
+    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept)?;
+    let design = Mat {
         rows,
         cols,
-        x,
-        y,
-        coefficients,
-        &x_mean,
-        y_mean,
-        fit_intercept,
-    ))
+        data: xc.into_owned(),
+    };
+    let factors = dense::svd(&design).map_err(map_fit_error)?;
+    let k = factors.s.len();
+    if alpha == 0.0 {
+        let largest = factors.s.first().copied().unwrap_or(0.0);
+        let cutoff = (rows.max(cols) as f64 * f64::EPSILON) * largest;
+        if k < cols || factors.s.last().is_none_or(|&value| value <= cutoff) {
+            return Err(StatsExtError::Singular);
+        }
+    }
+
+    let root_alpha = alpha.sqrt();
+    let mut projected = vec![0.0; k];
+    for (row, &target) in factors.u.data.chunks_exact(k).zip(yc.iter()) {
+        for (coordinate, value) in projected.iter_mut().zip(row) {
+            *coordinate += target * value;
+        }
+    }
+    for (coordinate, &sigma) in projected.iter_mut().zip(&factors.s) {
+        // Evaluate sigma / (sigma² + alpha) without squaring sigma or alpha.
+        if sigma > root_alpha {
+            *coordinate = (*coordinate / sigma) / (1.0 + (root_alpha / sigma).powi(2));
+        } else if alpha > 0.0 {
+            *coordinate *= (sigma / alpha) / (1.0 + (sigma / root_alpha).powi(2));
+        }
+    }
+    let coefficients = factors
+        .v
+        .data
+        .chunks_exact(k)
+        .map(|row| row.iter().zip(&projected).map(|(v, w)| v * w).sum())
+        .collect();
+    build_linear_result(cols, x, y, coefficients, &x_mean, y_mean, fit_intercept)
 }
 
 fn soft_threshold(
@@ -940,7 +1041,7 @@ pub fn lasso(
             "lasso requires tol > 0 and max_iter > 0".to_string(),
         ));
     }
-    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept);
+    let (xc, yc, x_mean, y_mean) = center_xy(rows, cols, x, y, fit_intercept)?;
     let n = rows as f64;
     let mut col_sq_norms = vec![0.0; cols];
     for r in 0..rows {
@@ -950,8 +1051,9 @@ pub fn lasso(
         }
     }
 
+    finite(&col_sq_norms)?;
     let mut beta = vec![0.0; cols];
-    let mut residual = yc;
+    let mut residual = yc.into_owned();
     let mut converged = false;
 
     for _ in 0..max_iter {
@@ -968,6 +1070,9 @@ pub fn lasso(
                 rho += xij * (residual[r] + old_b * xij);
             }
             let new_b = soft_threshold(rho / n, alpha) / (norm_sq / n);
+            if !new_b.is_finite() {
+                return Err(StatsExtError::NotConverged);
+            }
             let diff = new_b - old_b;
             if diff != 0.0 {
                 for r in 0..rows {
@@ -985,16 +1090,7 @@ pub fn lasso(
     if !converged {
         return Err(StatsExtError::NotConverged);
     }
-    Ok(build_linear_result(
-        rows,
-        cols,
-        x,
-        y,
-        beta,
-        &x_mean,
-        y_mean,
-        fit_intercept,
-    ))
+    build_linear_result(cols, x, y, beta, &x_mean, y_mean, fit_intercept)
 }
 
 /// Binary logistic regression via Newton-Raphson (IRLS).
@@ -1026,80 +1122,112 @@ pub fn logistic_regression(
         ));
     }
 
-    let p = if fit_intercept {
-        cols + 1
-    } else {
-        cols
+    let width_error =
+        || StatsExtError::Domain("logistic design is too wide for its Hessian".into());
+    let p = cols
+        .checked_add(usize::from(fit_intercept))
+        .ok_or_else(width_error)?;
+    let hessian_len = p.checked_mul(p).ok_or_else(width_error)?;
+    let mut data = Vec::new();
+    data.try_reserve_exact(hessian_len)
+        .map_err(|_| width_error())?;
+    data.resize(hessian_len, 0.0);
+    let mut hessian = Mat {
+        data,
+        rows: p,
+        cols: p,
     };
-    let mut w = vec![0.0; p];
-    let mut converged = false;
-    let mut iterations = 0usize;
-
-    let feature = |r: usize, j: usize| -> f64 {
-        if fit_intercept && j == 0 {
-            1.0
-        } else if fit_intercept {
-            x[r * cols + (j - 1)]
-        } else {
-            x[r * cols + j]
-        }
-    };
+    let mut grad = vec![0.0; p];
+    let mut coefficients = vec![0.0; p];
+    let mut features = vec![1.0; p];
 
     for iter in 1..=max_iter {
-        iterations = iter;
-        let mut grad = vec![0.0; p];
-        let mut hess = vec![0.0; p * p];
-
-        for r in 0..rows {
-            let mut eta = 0.0;
-            for j in 0..p {
-                eta += w[j] * feature(r, j);
+        grad.fill(0.0);
+        hessian.data.fill(0.0);
+        for (row, &target) in x.chunks_exact(cols).zip(y) {
+            let values = if fit_intercept {
+                features[1..].copy_from_slice(row);
+                features.as_slice()
+            } else {
+                row
+            };
+            let eta = values
+                .iter()
+                .zip(&coefficients)
+                .map(|(v, w)| v * w)
+                .sum::<f64>();
+            if !eta.is_finite() {
+                return Err(StatsExtError::NotConverged);
             }
-            let prob = 1.0 / (1.0 + (-eta).exp());
-            let weight = (prob * (1.0 - prob)).max(1e-12);
-            let err = prob - y[r];
-            for j in 0..p {
-                let xj = feature(r, j);
-                grad[j] += xj * err;
-                for k in 0..p {
-                    hess[j * p + k] += weight * xj * feature(r, k);
+            let z = (-eta.abs()).exp();
+            let small_probability = z / (1.0 + z);
+            let weight = (z / (1.0 + z).powi(2)).max(1e-12);
+            let error = if eta >= 0.0 {
+                (1.0 - target) - small_probability
+            } else {
+                small_probability - target
+            };
+            for (j, (grow, (hrow, xj))) in grad
+                .iter_mut()
+                .zip(hessian.data.chunks_exact_mut(p).zip(values))
+                .enumerate()
+            {
+                *grow += xj * error;
+                for (entry, xk) in hrow.iter_mut().zip(values).take(j + 1) {
+                    *entry += (weight * xj) * xk;
                 }
             }
         }
-        // Small ridge damping for numerical stability near separation.
+        // The Hessian is symmetric. The lower triangle is enough work for each row.
         for j in 0..p {
-            hess[j * p + j] += 1e-8;
+            for k in 0..j {
+                hessian.data[k * p + j] = hessian.data[j * p + k];
+            }
+            hessian.data[j * p + j] += 1e-8;
         }
-        let step = solve(p, p, &hess, &grad)?;
-        let mut max_step = 0.0f64;
-        for j in 0..p {
-            w[j] -= step[j];
-            max_step = max_step.max(step[j].abs());
+        let step = dense::solve(&hessian, &grad).map_err(map_fit_error)?;
+        let mut max_step = 0.0_f64;
+        for (weight, update) in coefficients.iter_mut().zip(step) {
+            *weight -= update;
+            max_step = max_step.max(update.abs());
         }
+        finite(&coefficients)?;
         if max_step < tol {
-            converged = true;
-            break;
+            return logistic_result(cols, x, y, coefficients, fit_intercept, iter);
         }
     }
-    if !converged {
-        return Err(StatsExtError::NotConverged);
-    }
+    Err(StatsExtError::NotConverged)
+}
 
-    let mut log_likelihood = 0.0;
-    for r in 0..rows {
-        let mut eta = 0.0;
-        for j in 0..p {
-            eta += w[j] * feature(r, j);
-        }
-        let prob = (1.0 / (1.0 + (-eta).exp())).clamp(1e-15, 1.0 - 1e-15);
-        log_likelihood += y[r] * prob.ln() + (1.0 - y[r]) * (1.0 - prob).ln();
-    }
-
-    let (intercept, coefficients) = if fit_intercept {
-        (w[0], w[1..].to_vec())
+fn logistic_result(
+    cols: usize,
+    x: &[f64],
+    y: &[f64],
+    mut coefficients: Vec<f64>,
+    fit_intercept: bool,
+    iterations: usize,
+) -> Result<LogisticRegressionResult, StatsExtError> {
+    let intercept = if fit_intercept {
+        coefficients.remove(0)
     } else {
-        (0.0, w)
+        0.0
     };
+    let mut log_likelihood = 0.0;
+    for (row, &target) in x.chunks_exact(cols).zip(y) {
+        let eta = row
+            .iter()
+            .zip(&coefficients)
+            .fold(intercept, |sum, (value, weight)| sum + value * weight);
+        if !eta.is_finite() {
+            return Err(StatsExtError::NotConverged);
+        }
+        let loss = if eta >= 0.0 {
+            (1.0 - target) * eta
+        } else {
+            -target * eta
+        };
+        log_likelihood -= loss + (-eta.abs()).exp().ln_1p();
+    }
     Ok(LogisticRegressionResult {
         coefficients,
         intercept,
@@ -1143,28 +1271,32 @@ pub fn pca(
         )));
     }
 
-    let (centered, _, mean, _) = center_xy(rows, cols, data, &vec![0.0; rows], true);
-    let (u, s, vt) = svd(rows, cols, &centered)?;
+    let (data, mean) = center_design(rows, cols, data);
+    let centered = Mat { rows, cols, data };
+    let factors = dense::svd(&centered).map_err(map_fit_error)?;
+    let (u, s, vt) = (factors.u.data, factors.s, factors.v.transpose().data);
 
-    let denom = if rows > 1 {
-        (rows - 1) as f64
-    } else {
-        1.0
-    };
-    let all_var: Vec<f64> = s.iter().map(|&sv| (sv * sv) / denom).collect();
-    let total_var: f64 = all_var.iter().sum();
-
-    let explained_variance = all_var[..k].to_vec();
-    let explained_variance_ratio = explained_variance
+    let standard_deviation_divisor = (rows.saturating_sub(1).max(1) as f64).sqrt();
+    let explained_variance = s
         .iter()
-        .map(|&v| {
-            if total_var > 0.0 {
-                v / total_var
-            } else {
-                0.0
-            }
-        })
+        .take(k)
+        .map(|value| (value / standard_deviation_divisor).powi(2))
         .collect();
+    let singular_scale = s.first().copied().unwrap_or(0.0);
+    let explained_variance_ratio = if singular_scale > 0.0 {
+        let scaled: Vec<_> = s
+            .iter()
+            .map(|value| (value / singular_scale).powi(2))
+            .collect();
+        let total: f64 = scaled.iter().sum();
+        scaled
+            .into_iter()
+            .take(k)
+            .map(|value| value / total)
+            .collect()
+    } else {
+        vec![0.0; k]
+    };
     let components = vt[..k * cols].to_vec();
 
     // U is rows × max_comp; scores = U[:, :k] * diag(s[:k]).
@@ -1214,12 +1346,14 @@ pub fn spearman(
     corr(&r_left, &r_right, false)
 }
 
-/// Kendall's tau-b rank correlation coefficient (adjusted for ties).
+/// Kendall's tau-b rank correlation, adjusted for ties in either sample.
+///
+/// Lexicographic sorting and merge-based inversion counting take
+/// `O(n log n)` time and `O(n)` scratch space.
 ///
 /// # Errors
-///
-/// [`StatsExtError::ShapeMismatch`] when lengths differ, [`StatsExtError::Empty`]
-/// when empty, or [`StatsExtError::Domain`] when all values in either sample are tied.
+/// Returns an error for mismatched lengths, fewer than two observations,
+/// non-finite observations, or a constant sample.
 pub fn kendall(
     left: &[f64],
     right: &[f64],
@@ -1233,44 +1367,102 @@ pub fn kendall(
             right.len()
         )));
     }
-    let n = left.len();
-    if n == 0 {
+    if left.is_empty() {
         return Err(StatsExtError::Empty);
     }
-    if n < 2 {
+    if left.len() < 2 {
         return Err(StatsExtError::Domain(
-            "kendall requires at least 2 observations".to_string(),
+            "kendall requires at least 2 observations".into(),
         ));
     }
-    let mut concordant = 0i64;
-    let mut discordant = 0i64;
-    let mut ties_x = 0i64;
-    let mut ties_y = 0i64;
-    let mut ties_xy = 0i64;
 
-    for i in 0..n {
-        for j in (i + 1)..n {
-            let dx = left[i].total_cmp(&left[j]);
-            let dy = right[i].total_cmp(&right[j]);
-            match (dx, dy) {
-                | (std::cmp::Ordering::Equal, std::cmp::Ordering::Equal) => ties_xy += 1,
-                | (std::cmp::Ordering::Equal, _) => ties_x += 1,
-                | (_, std::cmp::Ordering::Equal) => ties_y += 1,
-                | (a, b) if a == b => concordant += 1,
-                | _ => discordant += 1,
-            }
+    let mut observations: Vec<(f64, f64)> =
+        left.iter().copied().zip(right.iter().copied()).collect();
+    observations.sort_unstable_by(|(ax, ay), (bx, by)| {
+        ax.partial_cmp(bx)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| ay.partial_cmp(by).unwrap_or(Ordering::Equal))
+    });
+    let mut left_ties = 0;
+    let mut joint_ties = 0;
+    for left_group in observations.chunk_by(|a, b| crate::kernels::exact_eq(a.0, b.0)) {
+        left_ties += pair_count(left_group.len());
+        for joint_group in left_group.chunk_by(|a, b| crate::kernels::exact_eq(a.1, b.1)) {
+            joint_ties += pair_count(joint_group.len());
         }
     }
-    let n0 = (n * (n - 1) / 2) as f64;
-    let n1 = (ties_x + ties_xy) as f64;
-    let n2 = (ties_y + ties_xy) as f64;
-    let denom = ((n0 - n1) * (n0 - n2)).sqrt();
-    if denom == 0.0 {
+    let pairs = pair_count(observations.len());
+    if left_ties == pairs {
         return Err(StatsExtError::Domain(
-            "kendall is undefined when all elements in a sample are tied".to_string(),
+            "kendall is undefined for a constant sample".into(),
         ));
     }
-    Ok(((concordant - discordant) as f64 / denom).clamp(-1.0, 1.0))
+
+    // Within each left tie, the right values already ascend. Strict inversions
+    // of the right values therefore count only genuinely discordant pairs.
+    let mut sorted: Vec<f64> = observations.into_iter().map(|(_, y)| y).collect();
+    let mut scratch = vec![0.0; sorted.len()];
+    let discordant = sort_and_count_inversions(&mut sorted, &mut scratch);
+    let right_ties: u128 = sorted
+        .chunk_by(|&a, &b| crate::kernels::exact_eq(a, b))
+        .map(|group| pair_count(group.len()))
+        .sum();
+    if right_ties == pairs {
+        return Err(StatsExtError::Domain(
+            "kendall is undefined for a constant sample".into(),
+        ));
+    }
+
+    let comparable = pairs - left_ties - (right_ties - joint_ties);
+    let concordant = comparable - discordant;
+    let denom = ((pairs - left_ties) as f64).sqrt() * ((pairs - right_ties) as f64).sqrt();
+    Ok((((concordant as i128 - discordant as i128) as f64) / denom).clamp(-1.0, 1.0))
+}
+
+const fn pair_count(count: usize) -> u128 {
+    count as u128 * count.saturating_sub(1) as u128 / 2
+}
+
+fn sort_and_count_inversions(
+    values: &mut [f64],
+    scratch: &mut [f64],
+) -> u128 {
+    if values.len() < 2 {
+        return 0;
+    }
+    let (left, right) = values.split_at_mut(values.len() / 2);
+    let (left_scratch, right_scratch) = scratch.split_at_mut(left.len());
+    let mut inversions = sort_and_count_inversions(left, left_scratch)
+        + sort_and_count_inversions(right, right_scratch);
+    if left
+        .last()
+        .zip(right.first())
+        .is_some_and(|(lower, upper)| lower <= upper)
+    {
+        return inversions;
+    }
+    let mut left = &*left;
+    let mut right = &*right;
+    for slot in &mut *scratch {
+        match (left.split_first(), right.split_first()) {
+            | (Some((&a, rest)), Some((&b, _))) if a <= b => {
+                *slot = a;
+                left = rest;
+            },
+            | (_, Some((&b, rest))) => {
+                *slot = b;
+                right = rest;
+                inversions += left.len() as u128;
+            },
+            | (Some((&a, rest)), None) => {
+                *slot = a;
+                left = rest;
+            },
+            | (None, None) => break,
+        }
+    }
+    values.copy_from_slice(scratch);
+    inversions
 }
 
 // ----- KDE ------------------------------------------------------------------
@@ -1303,17 +1495,15 @@ pub fn kde(
             bw
         },
         | None => {
-            let (_, var) = mean_and_var(samples)?;
-            let std = var.sqrt();
-            let q75 = quantile(samples, 0.75)?;
-            let q25 = quantile(samples, 0.25)?;
-            let iqr = q75 - q25;
-            let scale = if iqr > 0.0 {
+            let moments = scaled_moments(samples)?;
+            let std = moments.variance.sqrt();
+            let iqr = robust::iqr(samples) / moments.scale;
+            let spread = if iqr > 0.0 {
                 std.min(iqr / 1.34)
             } else {
                 std
             };
-            let bw = 0.9 * scale * (samples.len() as f64).powf(-0.2);
+            let bw = moments.scale * (0.9 * spread * (samples.len() as f64).powf(-0.2));
             if bw <= 0.0 || !bw.is_finite() {
                 return Err(StatsExtError::Domain(
                     "cannot infer kde bandwidth for a zero-spread sample".to_string(),
@@ -1324,29 +1514,43 @@ pub fn kde(
     };
 
     let n = samples.len() as f64;
-    let norm = 1.0 / (n * h * (2.0 * PI).sqrt());
+    let divisor = n * (2.0 * PI).sqrt();
     let mut densities = Vec::with_capacity(points.len());
     for &x in points {
         let sum: f64 = samples
             .iter()
             .map(|&xi| {
-                let u = (x - xi) / h;
+                let u = scaled_difference(x, xi, h);
                 (-0.5 * u * u).exp()
             })
             .sum();
-        densities.push(norm * sum);
+        densities.push((sum / divisor) / h);
     }
     Ok(densities)
 }
 
 // ----- resampling (bootstrap & jackknife) -----------------------------------
 
+fn finite_statistic(
+    statistic: &dyn Fn(&[f64]) -> Result<f64, StatsExtError>,
+    sample: &[f64],
+) -> Result<f64, StatsExtError> {
+    let value = statistic(sample)?;
+    if !value.is_finite() {
+        return Err(StatsExtError::Domain(
+            "resampling statistic must return a finite value".into(),
+        ));
+    }
+    Ok(value)
+}
+
 /// Non-parametric bootstrap resampling with `n_resamples` draws.
 ///
 /// # Errors
 ///
 /// [`StatsExtError::Empty`] when `samples` is empty, [`StatsExtError::Domain`]
-/// when `n_resamples == 0`, or any error returned by `statistic`.
+/// when the resample count is zero or cannot be allocated, a uniform draw is
+/// outside `[0, 1)`, or a statistic is non-finite. Callback errors propagate.
 pub fn bootstrap(
     samples: &[f64],
     n_resamples: usize,
@@ -1361,9 +1565,12 @@ pub fn bootstrap(
             "bootstrap requires n_resamples > 0".to_string(),
         ));
     }
-    let estimate = statistic(samples)?;
+    let mut replicates = Vec::new();
+    replicates.try_reserve_exact(n_resamples).map_err(|_| {
+        StatsExtError::Domain("bootstrap resample count exceeds available storage".into())
+    })?;
+    let estimate = finite_statistic(statistic, samples)?;
     let n = samples.len();
-    let mut replicates = Vec::with_capacity(n_resamples);
     let mut resample = vec![0.0; n];
 
     for _ in 0..n_resamples {
@@ -1375,19 +1582,19 @@ pub fn bootstrap(
                 ));
             }
             let idx = (draw * n as f64).floor() as usize;
-            *slot = samples[idx];
+            *slot = samples[idx.min(n.saturating_sub(1))];
         }
-        replicates.push(statistic(&resample)?);
+        replicates.push(finite_statistic(statistic, &resample)?);
     }
 
-    let (mean, var) = mean_and_var(&replicates)?;
+    let moments = scaled_moments(&replicates)?;
     let ci_low = quantile(&replicates, 0.025)?;
     let ci_high = quantile(&replicates, 0.975)?;
 
     Ok(BootstrapResult {
         estimate,
-        mean,
-        std_error: var.sqrt(),
+        mean: moments.mean * moments.scale,
+        std_error: moments.variance.sqrt() * moments.scale,
         ci_low,
         ci_high,
         replicates,
@@ -1398,7 +1605,8 @@ pub fn bootstrap(
 ///
 /// # Errors
 ///
-/// [`StatsExtError::Domain`] when `samples.len() < 2`, or any error returned by `statistic`.
+/// [`StatsExtError::Domain`] for fewer than two observations or a non-finite
+/// statistic. Callback errors propagate.
 pub fn jackknife(
     samples: &[f64],
     statistic: &dyn Fn(&[f64]) -> Result<f64, StatsExtError>,
@@ -1409,7 +1617,7 @@ pub fn jackknife(
             "jackknife requires at least 2 observations".to_string(),
         ));
     }
-    let estimate = statistic(samples)?;
+    let estimate = finite_statistic(statistic, samples)?;
     let mut jackknife_estimates = Vec::with_capacity(n);
     let mut loo = Vec::with_capacity(n - 1);
 
@@ -1417,17 +1625,13 @@ pub fn jackknife(
         loo.clear();
         loo.extend_from_slice(&samples[..i]);
         loo.extend_from_slice(&samples[i + 1..]);
-        jackknife_estimates.push(statistic(&loo)?);
+        jackknife_estimates.push(finite_statistic(statistic, &loo)?);
     }
 
-    let nf = n as f64;
-    let mean_jack = jackknife_estimates.iter().sum::<f64>() / nf;
-    let bias = (nf - 1.0) * (mean_jack - estimate);
-    let ss: f64 = jackknife_estimates
-        .iter()
-        .map(|&v| (v - mean_jack) * (v - mean_jack))
-        .sum();
-    let std_error = (((nf - 1.0) / nf) * ss).sqrt();
+    let moments = scaled_moments(&jackknife_estimates)?;
+    let correction = n.saturating_sub(1) as f64;
+    let bias = correction * (moments.mean * moments.scale - estimate);
+    let std_error = moments.scale * (correction * (moments.variance / n as f64).sqrt());
 
     Ok(JackknifeResult {
         estimate,
@@ -1435,4 +1639,170 @@ pub fn jackknife(
         std_error,
         jackknife_estimates,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    fn close(
+        actual: f64,
+        expected: f64,
+    ) {
+        assert!(
+            (actual - expected).abs() <= expected.abs().max(1.0) * 5e-12,
+            "{actual} != {expected}",
+        );
+    }
+
+    #[test]
+    fn t_statistics_are_scale_invariant_and_preserve_small_tails() -> Result<(), StatsExtError> {
+        let left = [1.0, 2.0, 4.0];
+        let right = [3.0, 5.0, 7.0];
+        let big_left = left.map(|value| value * 1e250);
+        let big_right = right.map(|value| value * 1e250);
+        let small = t_test_one_sample(&left, 0.0)?;
+        let big = t_test_one_sample(&big_left, 0.0)?;
+        close(big.statistic, small.statistic);
+        close(big.p_value, small.p_value);
+        for equal_variance in [false, true] {
+            let reference = t_test_two_sample(&left, &right, equal_variance)?;
+            let result = t_test_two_sample(&big_left, &big_right, equal_variance)?;
+            close(result.statistic, reference.statistic);
+            close(result.p_value, reference.p_value);
+        }
+        assert!(t_test_one_sample(&left, f64::INFINITY).is_err());
+
+        let tail = t_test_one_sample(&[-1.0, 1.0], -1e200)?;
+        let exact_cauchy_tail = (2.0 / PI) * (1.0 / tail.statistic).atan();
+        assert!(tail.p_value > 0.0);
+        close(tail.p_value / exact_cauchy_tail, 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn hypothesis_tests_keep_large_counts_and_measurements_finite() -> Result<(), StatsExtError> {
+        let biggest = f64::MAX;
+        let reference = t_test_one_sample(&[-2.0, 1.5], 0.0)?;
+        let paired = t_test_paired(&[-biggest, biggest], &[biggest, -biggest / 2.0])?;
+        close(paired.statistic, reference.statistic);
+
+        let balanced = chi_squared_independence(2, 2, &[1e200; 4])?;
+        close(balanced.statistic, 0.0);
+        close(balanced.p_value, 1.0);
+        let fit = chi_squared_goodness_of_fit(&[1e200, 2e200], &[2e200, 1e200])?;
+        close(fit.statistic, 1.5e200);
+
+        let normal = anova_one_way(&[&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0]])?;
+        let large = anova_one_way(&[&[1e200, 2e200, 3e200], &[4e200, 5e200, 6e200]])?;
+        close(large.statistic, normal.statistic);
+        close(large.p_value, normal.p_value);
+        Ok(())
+    }
+
+    #[test]
+    fn kendall_merge_count_agrees_with_pairwise_reference() -> Result<(), StatsExtError> {
+        let left = [-0.0, 4.0, 3.0, 0.0, -2.0, 3.0, 7.0, 4.0];
+        let right = [2.0, -4.0, 5.0, 2.0, 3.0, -0.0, 0.0, 8.0];
+        let mut numerator = 0.0;
+        let mut left_untied = 0.0_f64;
+        let mut right_untied = 0.0_f64;
+        for (i, (&x, &y)) in left.iter().zip(&right).enumerate() {
+            for (&other_x, &other_y) in left.iter().zip(&right).skip(i + 1) {
+                let sign = |a: f64, b: f64| {
+                    if a < b {
+                        -1.0
+                    } else if a > b {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                };
+                let a: f64 = sign(x, other_x);
+                let b: f64 = sign(y, other_y);
+                left_untied += a.abs();
+                right_untied += b.abs();
+                numerator += a * b;
+            }
+        }
+        close(
+            kendall(&left, &right)?,
+            numerator / (left_untied * right_untied).sqrt(),
+        );
+        assert!(kendall(&[-0.0, 0.0], &[1.0, -1.0]).is_err());
+        let sorted: Vec<_> = (0..10_000).map(f64::from).collect();
+        let descending: Vec<_> = sorted.iter().rev().copied().collect();
+        close(kendall(&sorted, &descending)?, -1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn singular_and_wide_designs_have_well_defined_regularized_solutions()
+    -> Result<(), StatsExtError> {
+        let x = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0];
+        let y = [2.0, 4.0, 6.0];
+        let least_squares = ols(3, 2, &x, &y, false)?;
+        for value in least_squares.coefficients {
+            close(value, 1.0);
+        }
+        assert_eq!(
+            ridge(3, 2, &x, &y, 0.0, false),
+            Err(StatsExtError::Singular)
+        );
+        let wide = ridge(1, 2, &[1.0, 2.0], &[3.0], 1.0, false)?;
+        for (&actual, expected) in wide.coefficients.iter().zip([0.5, 1.0]) {
+            close(actual, expected);
+        }
+        let large = ridge(2, 1, &[1e200, -1e200], &[2e200, -2e200], 1.0, false)?;
+        close(large.coefficients.first().copied().unwrap_or_default(), 2.0);
+        close(large.r_squared, 1.0);
+        Ok(())
+    }
+
+    #[test]
+    fn large_scale_pca_kde_and_logistic_outputs_stay_meaningful() -> Result<(), StatsExtError> {
+        let principal = pca(3, 1, &[1e154, -1e154, 0.0], None)?;
+        close(
+            principal
+                .explained_variance
+                .first()
+                .copied()
+                .unwrap_or_default(),
+            1e308,
+        );
+        assert_eq!(principal.explained_variance_ratio, [1.0]);
+
+        let densities = kde(&[-f64::MAX], &[f64::MAX], Some(f64::MAX))?;
+        let density = densities.first().copied().unwrap_or_default();
+        close(density * f64::MAX, (-2.0_f64).exp() / (2.0 * PI).sqrt());
+
+        let fit = logistic_regression(
+            6,
+            1,
+            &[-2.0, -1.0, -0.5, 0.5, 1.0, 2.0],
+            &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0],
+            true,
+            100,
+            1e-8,
+        )?;
+        assert!(fit.coefficients.first().is_some_and(|&value| value > 0.5));
+        assert!(fit.log_likelihood < 0.0 && fit.log_likelihood.is_finite());
+        close(fit.intercept, 0.0);
+        Ok(())
+    }
+
+    #[test]
+    fn resampling_rejects_impossible_storage_and_nonfinite_statistics() {
+        let invoked = Cell::new(false);
+        let statistic = |_: &[f64]| {
+            invoked.set(true);
+            Ok(1.0)
+        };
+        assert!(bootstrap(&[1.0], usize::MAX, &statistic, &mut || 0.0).is_err());
+        assert!(!invoked.get());
+        let bad = |_: &[f64]| Ok(f64::NAN);
+        assert!(bootstrap(&[1.0], 1, &bad, &mut || 0.0).is_err());
+        assert!(jackknife(&[1.0, 2.0], &bad).is_err());
+    }
 }

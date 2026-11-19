@@ -915,7 +915,7 @@ impl Group {
                     continue;
                 }
                 // The p-part of g: g^(ord / p^a).
-                let mut cofactor = ord.clone();
+                let mut cofactor = ord;
                 while (&cofactor % &pb).is_zero() {
                     cofactor /= &pb;
                 }

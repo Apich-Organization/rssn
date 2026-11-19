@@ -47,6 +47,10 @@ macro_rules! unary {
     }};
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "keeps scalar semantics and derivative registrations together"
+)]
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, scalar semantics, parity, what is known of the value for real
     // arguments

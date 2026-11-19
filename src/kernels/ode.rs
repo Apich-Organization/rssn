@@ -29,7 +29,7 @@ pub enum OdeSolverMethod {
 /// A discrete trajectory: times and the state at each time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Trajectory {
-    /// Sample times, strictly monotone.
+    /// Sample times in integration order.
     pub t: Vec<f64>,
     /// `y[k]` is the state at `t[k]`.
     pub y: Vec<Vec<f64>>,
@@ -47,7 +47,9 @@ impl Trajectory {
 /// steps.
 ///
 /// # Errors
-/// Returns an error when `steps` is zero or the state stops being finite.
+/// Rejects zero steps, non-finite inputs, unrepresentable steps, or a
+/// trajectory that cannot be reserved. Returns an error when the state stops
+/// being finite.
 // Equality detects an unrepresentable step/interval endpoint, not approximate convergence.
 #[allow(clippy::float_cmp)]
 pub fn solve_fixed(
@@ -58,16 +60,9 @@ pub fn solve_fixed(
     method: OdeSolverMethod,
 ) -> Result<Trajectory, String> {
     crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
-    if steps == 0 {
-        return Err("The number of steps must be positive.".to_string());
-    }
+    let (h, mut out) = fixed_grid(y0, t_span, steps)?;
     let n = y0.len();
-    let h = (t_span.1 - t_span.0) / steps as f64;
     let mut y = y0.to_vec();
-    let mut out = Trajectory {
-        t: Vec::with_capacity(steps + 1),
-        y: Vec::with_capacity(steps + 1),
-    };
     out.t.push(t_span.0);
     out.y.push(y.clone());
     let mut k = vec![vec![0.0; n]; 4];
@@ -87,6 +82,35 @@ pub fn solve_fixed(
         out.y.push(y.clone());
     }
     Ok(out)
+}
+
+/// Validates the fixed grid and reserves a complete trajectory.
+#[allow(clippy::float_cmp, reason = "detects a step rounded to the same time")]
+fn fixed_grid(
+    y0: &[f64],
+    t_span: (f64, f64),
+    steps: usize,
+) -> Result<(f64, Trajectory), String> {
+    if steps == 0 {
+        return Err("The number of steps must be positive.".to_owned());
+    }
+    let duration = t_span.1 - t_span.0;
+    if !duration.is_finite() || y0.iter().any(|value| !value.is_finite()) {
+        return Err("The time interval length and initial state must be finite.".to_owned());
+    }
+    let h = duration / steps as f64;
+    if duration != 0.0 && t_span.0 + h == t_span.0 {
+        return Err("The step is too small to advance time.".to_owned());
+    }
+    let capacity = steps
+        .checked_add(1)
+        .ok_or_else(|| "The number of trajectory samples is too large.".to_owned())?;
+    let mut t = Vec::new();
+    let mut y = Vec::new();
+    t.try_reserve_exact(capacity)
+        .and_then(|()| y.try_reserve_exact(capacity))
+        .map_err(|error| format!("Cannot reserve the ODE trajectory: {error}"))?;
+    Ok((h, Trajectory { t, y }))
 }
 
 /// One step of `method` from `(t, y)` with step `h`, in place.
@@ -185,16 +209,9 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     events: &[Event<'_>],
 ) -> Result<(Trajectory, Vec<FixedEvent>), String> {
     crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
-    if steps == 0 {
-        return Err("The number of steps must be positive.".to_string());
-    }
+    let (h, mut out) = fixed_grid(y0, t_span, steps)?;
     let n = y0.len();
-    let h = (t_span.1 - t_span.0) / steps as f64;
     let mut y = y0.to_vec();
-    let mut out = Trajectory {
-        t: Vec::with_capacity(steps + 1),
-        y: Vec::with_capacity(steps + 1),
-    };
     out.t.push(t_span.0);
     out.y.push(y.clone());
     let mut hits: Vec<FixedEvent> = Vec::new();
@@ -203,20 +220,21 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
     let mut probe_k = vec![vec![0.0; n]; 4];
     let mut probe_stage = vec![0.0; n];
     let mut gprev: Vec<f64> = events.iter().map(|event| (event.g)(t_span.0, y0)).collect();
+    let mut next = y.clone();
+    let mut step_hits: Vec<FixedEvent> = Vec::new();
     for step in 0..steps {
         crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         let t = t_span.0 + h * step as f64;
         if t_span.0 != t_span.1 && (h == 0.0 || t + h == t) {
             return Err("The step is too small to advance time.".to_string());
         }
-        let mut next = y.clone();
+        next.copy_from_slice(&y);
         advance(method, &f, t, &mut next, h, &mut k, &mut stage);
         crate::cancellation::checkpoint().map_err(|error| error.to_string())?;
         if next.iter().any(|v| !v.is_finite()) {
             return Err("Overflow or invalid value encountered during ODE solving.".to_string());
         }
         // Locate every crossing inside this step, in time order.
-        let mut step_hits: Vec<FixedEvent> = Vec::new();
         for (index, event) in events.iter().enumerate() {
             let g1 = (event.g)(t + h, &next);
             let g0 = gprev.get(index).copied().unwrap_or(g1);
@@ -254,16 +272,15 @@ pub fn solve_fixed_events<F: Fn(f64, &[f64], &mut [f64])>(
             ta.total_cmp(&tb)
         });
         if let Some(position) = step_hits.iter().position(|hit| hit.terminal) {
-            let kept: Vec<FixedEvent> = step_hits.into_iter().take(position + 1).collect();
-            if let Some(last) = kept.last() {
+            if let Some(last) = step_hits.get(position) {
                 out.t.push(last.t);
                 out.y.push(last.y.clone());
             }
-            hits.extend(kept);
+            hits.extend(step_hits.into_iter().take(position + 1));
             return Ok((out, hits));
         }
-        hits.extend(step_hits);
-        y = next;
+        hits.append(&mut step_hits);
+        std::mem::swap(&mut y, &mut next);
         out.t.push(t_span.0 + h * (step + 1) as f64);
         out.y.push(y.clone());
     }
@@ -290,12 +307,13 @@ fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
 ) -> (f64, Vec<f64>) {
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
     let tolerance = event_time_tolerance(t, t + h);
+    let mut state = y.to_vec();
     for _ in 0..80 {
         let mid = f64::midpoint(lo, hi);
         if mid == lo || mid == hi {
             break;
         }
-        let mut state = y.to_vec();
+        state.copy_from_slice(y);
         advance(method, f, t, &mut state, mid * h, k, stage);
         let gm = (event.g)(t + mid * h, &state);
         if gm == 0.0 {
@@ -311,9 +329,9 @@ fn locate_in_step<F: Fn(f64, &[f64], &mut [f64])>(
         }
     }
     // Report the state at the bracket's far end, which is on the other side.
-    let mut final_state = y.to_vec();
-    advance(method, f, t, &mut final_state, hi * h, k, stage);
-    (hi, final_state)
+    state.copy_from_slice(y);
+    advance(method, f, t, &mut state, hi * h, k, stage);
+    (hi, state)
 }
 
 // Dormand–Prince 5(4) coefficients.

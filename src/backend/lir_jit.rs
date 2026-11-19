@@ -537,8 +537,7 @@ impl Gen<'_, '_> {
             .f
             .blocks
             .first()
-            .map(|e| e.params.clone())
-            .unwrap_or_default();
+            .map_or_default(|entry| entry.params.clone());
         for p in entry_params {
             let (main, len) = self.vars[p.0 as usize];
             self.b.def_var(main, params[k]);

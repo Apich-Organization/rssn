@@ -1,20 +1,9 @@
 //! The embedding kernel: everything a host needs to drive RSSN from outside
 //! the crate.
 //!
-//! # Why this module exists
-//!
-//! A downstream project asked RSSN to be split into `rssn-api` (the dynamic
-//! call ABI, the manifest, the plugin registry) and `rssn-dim` (the dimension
-//! and unit layer). Splitting a crate that is mid-migration buys nothing here:
-//! the two halves share the expression graph, the operator table and the
-//! dimension arena, so a hard crate boundary would mean re-exporting half of
-//! `graph` through a public facade and paying a versioning tax for the
-//! privilege.
-//!
-//! So the *interfaces* live here instead, as ordinary modules with no
-//! `pub(crate)` shortcuts, and the day a split becomes worthwhile the modules
-//! can be lifted into crates without touching a call site. [`crate::dim`] is
-//! the other half of that arrangement.
+//! The embedding API and [`crate::dim`] share the expression graph and the
+//! operator table. Hosts use this module for dynamic calls and metadata, and
+//! `dim` for unit definitions and dimensional evidence.
 //!
 //! # The pieces
 //!
@@ -31,10 +20,9 @@
 //!
 //! # The invariants
 //!
-//! * **One wire format.** [`codec`] is the only place that turns a value into
-//!   bytes, and it always uses `bincode-next` — deterministic bincode for
-//!   hashing and storage, deterministic CBOR for interchange. Nothing in RSSN
-//!   writes JSON to a peer; JSON exists only for humans reading a manifest.
+//! * **Deterministic encodings.** [`codec`] uses native deterministic bincode
+//!   for hashing and binary storage, and deterministic CBOR for interchange.
+//!   The manifest and C ABI also expose JSON views.
 //! * **One description.** A [`Signature`] is declared once, hashed once, and
 //!   every [`OpKey`], manifest entry and overload check derives from it.
 //! * **No silent unknowns.** An operator either declares a signature, has one
@@ -48,7 +36,6 @@
 //! ```no_run
 //! use rssn::kernel::CallCtx;
 //! use rssn::kernel::OpError;
-//! use rssn::kernel::Signature;
 //! use rssn::kernel::TypeExpr;
 //! use rssn::kernel::Value;
 //!
@@ -66,8 +53,11 @@
 //!
 //! // Or look up what it accepts before calling it.
 //! if let Some(op) = manifest.op("sin") {
-//!     let signature: &Signature = &op.signatures[0];
-//!     assert_eq!(signature.params[0].ty, TypeExpr::Real);
+//!     assert!(
+//!         op.overloads
+//!             .iter()
+//!             .any(|signature| signature.params.first() == Some(&TypeExpr::Real))
+//!     );
 //! }
 //! # Ok(())
 //! # }

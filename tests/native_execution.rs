@@ -229,10 +229,18 @@ fn particle_frame_keeps_energy_momentum_and_kelvin_distinct() {
             velocities,
         ],
     );
-    let k = call(&s, "num_native_md_particle_kinetic_energy", &[p.clone()]);
+    let k = call(
+        &s,
+        "num_native_md_particle_kinetic_energy",
+        std::slice::from_ref(&p),
+    );
     assert_eq!(number(&k), 9.);
     unit(&k, DimExpr::Mul(vec![mass.clone(), v.clone().pow(2)]));
-    let mom = call(&s, "num_native_md_particle_momentum", &[p.clone()]);
+    let mom = call(
+        &s,
+        "num_native_md_particle_momentum",
+        std::slice::from_ref(&p),
+    );
     assert_eq!(number(&data(&mom)[0]), 6.);
     unit(&data(&mom)[0], DimExpr::Mul(vec![mass, v]));
     let cloud = call(
@@ -317,7 +325,7 @@ fn physical_device_columns_and_loop_ir_execute_real_native_programs() {
         "num_native_lir_ret",
         &[b.clone(), vector(vec![out_reg])],
     );
-    let f = call(&s, "num_native_lir_finish", &[b.clone()]);
+    let f = call(&s, "num_native_lir_finish", std::slice::from_ref(&b));
     assert!(
         s.call_value("num_native_lir_current", &[b], &CallCtx::new())
             .is_err()
