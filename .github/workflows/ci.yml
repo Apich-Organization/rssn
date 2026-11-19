@@ -76,12 +76,28 @@ jobs:
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
       - name: System dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev libvulkan1 mesa-vulkan-drivers
       - name: Run the workspace tests
         env:
           # MSVC otherwise writes a large PDB for every linked test.
           _LINK_: ${{ runner.os == 'Windows' && '/DEBUG:NONE' || '' }}
         run: cargo test --locked --workspace ${{ matrix.args }}
+      - name: Require wgpu compute execution on software Vulkan
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export VK_DRIVER_FILES
+          VK_DRIVER_FILES="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -s "$VK_DRIVER_FILES"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/rssn-vulkan"
+          install -d -m 700 "$XDG_RUNTIME_DIR"
+          cargo test --locked --workspace --all-features --lib gpu_ -- --nocapture 2>&1 |
+            tee "$RUNNER_TEMP/rssn-vulkan.log"
+          if grep -Fq 'no wgpu adapter; skipping' "$RUNNER_TEMP/rssn-vulkan.log"; then
+            echo 'A wgpu runtime test skipped despite the installed software adapter'
+            exit 1
+          fi
+          grep -F 'gpu test device:' "$RUNNER_TEMP/rssn-vulkan.log"
       - name: Run long numerical regressions
         if: runner.os == 'Linux' && github.event_name == 'schedule' && github.event.schedule == '17 7 * * 1'
         run: cargo test --locked --workspace --all-features -- --ignored --test-threads=1
