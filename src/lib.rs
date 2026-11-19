@@ -132,6 +132,7 @@ pub mod constant;
 /// shares the dimension arena and the operator table with the rest of the
 /// crate; see [`kernel`] for the same reasoning about `rssn-api`.
 pub mod dim;
+pub mod execution;
 pub mod ffi;
 pub mod graph;
 pub mod io;

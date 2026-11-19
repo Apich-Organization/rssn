@@ -4,30 +4,26 @@ use crate::kernels::graph::CanonicalLabelling;
 use crate::kernels::graph::CellCertificate;
 use crate::kernels::graph::ColourGraph;
 use crate::kernels::graph::Graph;
+use crate::kernels::graph::MaxFlow;
 use crate::kernels::graph::Permutation;
 use crate::kernels::graph::Refinement;
 use crate::kernels::graph::RefinementCertificate;
 use crate::kernels::graph::SearchBudget;
+use crate::kernels::graph::ShortestPaths;
+
+const MAX_VERTICES: usize = 256;
+const MAX_EDGES: usize = 65_536;
+const GRAPH_WORK_LIMIT: usize = 50_000_000;
+
 impl NativeType for Graph {
     const KIND: &'static str = "rssn/native/discrete/graph-graph/v1";
     const MAX_BYTES: usize = 2097152;
 
     fn validate(&self) -> Result<(), OpError> {
-        if self.num_nodes() > 256 {
-            return Err(error("weighted graph vertex budget exceeded"));
-        }
-        let mut edges = 0usize;
-        for u in 0..self.num_nodes() {
-            edges += self.adj(u).len();
-            if self
-                .adj(u)
-                .iter()
-                .any(|(v, w)| *v >= self.num_nodes() || !w.is_finite())
-            {
-                return Err(error("invalid weighted graph edge"));
-            }
-        }
-        limit(edges, 65536)?;
+        // The constructors validate endpoints and weights before storage, and
+        // the only mutator validates every new edge before editing the graph.
+        limit(self.num_nodes(), MAX_VERTICES)?;
+        limit(self.num_edges(), MAX_EDGES)?;
         Ok(())
     }
 }
@@ -118,6 +114,113 @@ fn weighted_vector(
         elem: TypeExpr::Float.with_dim(dimension),
     })))
 }
+
+struct EdgeWeights {
+    values: Vec<f64>,
+    dim: DimExpr,
+}
+
+impl NativeArg for EdgeWeights {
+    fn ty() -> TypeExpr {
+        api::tensor_type(1, TypeExpr::Float.with_dim(DimExpr::Var("D".into())))
+    }
+
+    fn decode(
+        value: &Value,
+        index: usize,
+        _: &CallCtx<'_>,
+    ) -> Result<Self, OpError> {
+        let Value::Tensor(weights) = value else {
+            return Err(error("expected a graph weight vector"));
+        };
+        if weights.shape != [weights.data.len()] {
+            return Err(error("graph weight vector shape is invalid"));
+        }
+        limit(weights.data.len(), MAX_EDGES)?;
+        Ok(Self {
+            dim: api::dimension(value)?,
+            values: weights
+                .data
+                .iter()
+                .map(|weight| numeric(weight, index))
+                .collect::<Result<_, _>>()?,
+        })
+    }
+}
+
+struct PathResult(ShortestPaths, DimExpr);
+
+impl NativeOutput for PathResult {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("distances".into(), api::tensor_type(1, api::dynamic_type())),
+            (
+                "previous".into(),
+                <Many<Option<usize>> as NativeOutput>::ty(),
+            ),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let Self(ShortestPaths { distances, previous }, dim) = self;
+        Ok(api::record(vec![
+            ("distances", weighted_vector(distances, dim)?.0),
+            ("previous", NativeOutput::encode(Many(previous), ctx)?),
+        ]))
+    }
+}
+
+struct FlowResult(MaxFlow, DimExpr);
+
+impl NativeOutput for FlowResult {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("value".into(), api::dynamic_type()),
+            ("source_side".into(), <Vec<bool> as NativeOutput>::ty()),
+        ])
+    }
+
+    fn encode(
+        self,
+        ctx: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        let Self(MaxFlow { value, source_side }, dim) = self;
+        Ok(api::record(vec![
+            ("value", extended_quantity(value, dim)?.0),
+            ("source_side", NativeOutput::encode(source_side, ctx)?),
+        ]))
+    }
+}
+
+fn edge_weight(
+    nodes: usize,
+    weight: f64,
+) -> Result<f64, OpError> {
+    if weight.abs() <= f64::MAX / nodes.max(1) as f64 {
+        Ok(weight)
+    } else {
+        Err(error(
+            "edge magnitude exceeds finite path representation range",
+        ))
+    }
+}
+
+fn graph_work(
+    multiplicand: usize,
+    factor: usize,
+) -> Result<(), OpError> {
+    if multiplicand
+        .checked_mul(factor)
+        .is_some_and(|work| work <= GRAPH_WORK_LIMIT)
+    {
+        Ok(())
+    } else {
+        Err(error("graph algorithm work budget exceeded"))
+    }
+}
 fn vertex_pairs(data: &[(usize, u32)]) -> Vec<[usize; 2]> {
     data.iter().map(|(a, b)| [*a, *b as usize]).collect()
 }
@@ -131,7 +234,7 @@ fn graph_search(
     if g.num_nodes()
         .checked_mul(g.num_nodes())
         .and_then(|n| n.checked_mul(budget.max_nodes()))
-        .is_none_or(|n| n > 50_000_000)
+        .is_none_or(|n| n > GRAPH_WORK_LIMIT)
     {
         return Err(error(
             "graph canonical search exceeds vertex/node work budget",
@@ -139,16 +242,16 @@ fn graph_search(
     }
     Ok(budget)
 }
-object_binding!(graph_new,"num_native_graph_new","crate::kernels::graph::Graph::new","Construct a directed weighted graph with an explicit positive reference quantity declaring edge-weight units. Edge values and all shortest-path distances use coherent units.",false,(n:usize,weight_unit:Input)->NewObject<Graph>,|_ctx:&CallCtx<'_>,n:usize,weight_unit:Input|{limit(n,256)?;let(_,d)=api::reference(&weight_unit.0)?;Ok(NewObject::new(Graph::new(n),vec![d]))});
-object_binding!(graph_num_nodes,"num_native_graph_num_nodes","crate::kernels::graph::Graph::num_nodes","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>)->usize,|ctx:&CallCtx<'_>,g:Handle<Graph>|{g.with(ctx,|g|Ok(g.num_nodes()))});
-object_binding!(graph_add_edge,"num_native_graph_add_edge","crate::kernels::graph::Graph::add_edge","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>,u:usize,v:usize,weight:Input)->bool,|ctx:&CallCtx<'_>,g:Handle<Graph>,u:usize,v:usize,weight:Input|{let(w,d)=scalar(&weight)?;api::same_dimension(&d,&object_dimension(&g,ctx)?)?;g.with_mut(ctx,|g|{index(u,g.num_nodes())?;index(v,g.num_nodes())?;if w.abs()>f64::MAX/g.num_nodes().max(1) as f64{return Err(error("edge magnitude exceeds finite path representation range"));}let edges=(0..g.num_nodes()).map(|v|g.adj(v).len()).sum::<usize>();if edges>=65536{return Err(error("weighted graph edge budget exhausted"));}g.add_edge(u,v,w);Ok(true)})});
-object_binding!(graph_adj,"num_native_graph_adj","crate::kernels::graph::Graph::adj","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>,u:usize)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>,u:usize|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{index(u,g.num_nodes())?;let(indices,weights):(Vec<_>,Vec<_>)=g.adj(u).iter().copied().unzip();Ok(Dynamic(api::record(vec![("indices",Output::encode(indices)?),("weights",weighted_vector(weights,d)?.0)])))})});
-object_binding!(graph_bfs,"num_native_graph_bfs","crate::kernels::graph::bfs","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>,start:usize)->Vec<usize>,|ctx:&CallCtx<'_>,g:Handle<Graph>,start:usize|{g.with(ctx,|g|{index(start,g.num_nodes())?;Ok(crate::kernels::graph::bfs(g,start))})});
-object_binding!(graph_connected_components,"num_native_graph_connected_components","crate::kernels::graph::connected_components","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>)->Vec<usize>,|ctx:&CallCtx<'_>,g:Handle<Graph>|{g.with(ctx,|g|Ok(crate::kernels::graph::connected_components(g)))});
-object_binding!(graph_minimum_spanning_tree,"num_native_graph_minimum_spanning_tree","crate::kernels::graph::minimum_spanning_tree","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>)->NewObject<Graph>,|ctx:&CallCtx<'_>,g:Handle<Graph>|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|Ok(NewObject::new(crate::kernels::graph::minimum_spanning_tree(g),vec![d])))});
-object_binding!(graph_dijkstra,"num_native_graph_dijkstra","crate::kernels::graph::dijkstra","Native Dijkstra with nonnegative coherent edge weights; infinity denotes unreachable vertices, and predecessor entries are native Options. Finite edge/path representation and allocation bounds are checked.",false,(g:Handle<Graph>,start:usize)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>,start:usize|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{index(start,g.num_nodes())?;if(0..g.num_nodes()).any(|u|g.adj(u).iter().any(|(_,w)|*w<0.0)){return Err(error("Dijkstra requires nonnegative edge weights"));}let(dist,previous)=crate::kernels::graph::dijkstra(g,start);Ok(Dynamic(api::record(vec![("distances",weighted_vector(dist,d)?.0),("previous",NativeOutput::encode(Many(previous),ctx)?)])))})});
-object_binding!(graph_floyd_warshall,"num_native_graph_floyd_warshall","crate::kernels::graph::floyd_warshall","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",false,(g:Handle<Graph>)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{let n=g.num_nodes();let distances=crate::kernels::graph::floyd_warshall(g);if(0..n).any(|i|distances[i*n+i]<0.0){return Err(error("all-pairs distances contain a negative cycle"));}let mut result=weighted_vector(distances,d)?.0;if let Value::Tensor(t)=&mut result{t.shape=vec![n,n];}Ok(Dynamic(result))})});
-object_binding!(graph_page_rank,"num_native_graph_page_rank","crate::kernels::graph::page_rank","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(g:Handle<Graph>,damping:f64,tolerance:f64,iterations:usize)->Vec<f64>,|ctx:&CallCtx<'_>,g:Handle<Graph>,damping:f64,tolerance:f64,iterations:usize|{if !(0.0..1.0).contains(&damping)||tolerance<=0.0{return Err(error("PageRank damping/tolerance domain invalid"));}g.with(ctx,|g|{let edges=(0..g.num_nodes()).map(|u|g.adj(u).len()).sum::<usize>();if iterations.checked_mul(edges.max(g.num_nodes())).is_none_or(|n|n>50_000_000){return Err(error("PageRank iteration work budget exceeded"));}Ok(crate::kernels::graph::page_rank(g,damping,tolerance,iterations))})});
+object_binding!(graph_new,"num_native_graph_new","crate::kernels::graph::Graph::new","Construct a directed weighted graph with an explicit positive reference quantity declaring edge-weight units. Edge values and all shortest-path distances use coherent units.",false,(n:usize,weight_unit:Input)->NewObject<Graph>,|_ctx:&CallCtx<'_>,n:usize,weight_unit:Input|{limit(n,MAX_VERTICES)?;let(_,d)=api::reference(&weight_unit.0)?;Ok(NewObject::new(Graph::new(n),vec![d]))});
+object_binding!(graph_num_nodes,"num_native_graph_num_nodes","crate::kernels::graph::Graph::num_nodes","Returns the number of vertices in the weighted graph.",false,(g:Handle<Graph>)->usize,|ctx:&CallCtx<'_>,g:Handle<Graph>|{g.with(ctx,|g|Ok(g.num_nodes()))});
+object_binding!(graph_add_edge,"num_native_graph_add_edge","crate::kernels::graph::Graph::add_edge","Appends one directed arc with a finite weight in the graph’s declared physical dimension. Loops and parallel arcs are retained.",false,(g:Handle<Graph>,u:usize,v:usize,weight:Input)->bool,|ctx:&CallCtx<'_>,g:Handle<Graph>,u:usize,v:usize,weight:Input|{let(w,d)=scalar(&weight)?;api::same_dimension(&d,&object_dimension(&g,ctx)?)?;g.with_mut(ctx,|g|{index(u,g.num_nodes())?;index(v,g.num_nodes())?;let w=edge_weight(g.num_nodes(),w)?;if g.num_edges()>=MAX_EDGES{return Err(error("weighted graph edge budget exhausted"));}g.add_edge(u,v,w);Ok(true)})});
+object_binding!(graph_adj,"num_native_graph_adj","crate::kernels::graph::Graph::adj","Returns one vertex’s outgoing endpoints and matching coherent weights, in insertion order.",false,(g:Handle<Graph>,u:usize)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>,u:usize|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{index(u,g.num_nodes())?;let(indices,weights):(Vec<_>,Vec<_>)=g.adj(u).iter().copied().unzip();Ok(Dynamic(api::record(vec![("indices",Output::encode(indices)?),("weights",weighted_vector(weights,d)?.0)])))})});
+object_binding!(graph_bfs,"num_native_graph_bfs","crate::kernels::graph::bfs","Returns unweighted distance by vertex from the start vertex. Unreachable vertices have the native usize maximum sentinel.",false,(g:Handle<Graph>,start:usize)->Vec<usize>,|ctx:&CallCtx<'_>,g:Handle<Graph>,start:usize|{g.with(ctx,|g|{index(start,g.num_nodes())?;Ok(crate::kernels::graph::bfs(g,start))})});
+object_binding!(graph_connected_components,"num_native_graph_connected_components","crate::kernels::graph::connected_components","Labels an undirected graph represented by symmetric arcs. For asymmetric arcs, use the weakly or strongly connected components operator.",false,(g:Handle<Graph>)->Vec<usize>,|ctx:&CallCtx<'_>,g:Handle<Graph>|{g.with(ctx,|g|Ok(crate::kernels::graph::connected_components(g)))});
+object_binding!(graph_minimum_spanning_tree,"num_native_graph_minimum_spanning_tree","crate::kernels::graph::minimum_spanning_tree","Computes a minimum spanning forest with Prim’s algorithm. The input contains symmetric, equally weighted arcs and the result retains their physical dimension.",false,(g:Handle<Graph>)->NewObject<Graph>,|ctx:&CallCtx<'_>,g:Handle<Graph>|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|Ok(NewObject::new(crate::kernels::graph::minimum_spanning_tree(g),vec![d])))});
+object_binding!(graph_dijkstra,"num_native_graph_dijkstra","crate::kernels::graph::dijkstra","Native Dijkstra with nonnegative coherent edge weights; infinity denotes unreachable vertices, and predecessor entries are native Options. Finite edge/path representation and allocation bounds are checked.",false,(g:Handle<Graph>,start:usize)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>,start:usize|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{index(start,g.num_nodes())?;if(0..g.num_nodes()).any(|u|g.adj(u).iter().any(|(_,w)|*w<0.0)){return Err(error("Dijkstra requires nonnegative edge weights"));}let(distances,previous)=crate::kernels::graph::dijkstra(g,start);PathResult(ShortestPaths{distances,previous},d).encode(ctx).map(Dynamic)})});
+object_binding!(graph_floyd_warshall,"num_native_graph_floyd_warshall","crate::kernels::graph::floyd_warshall","Returns a row-major all-pairs distance matrix in the graph’s edge units. Unreachable vertices have infinite distance. Negative cycles are rejected.",false,(g:Handle<Graph>)->Dynamic,|ctx:&CallCtx<'_>,g:Handle<Graph>|{let d=object_dimension(&g,ctx)?;g.with(ctx,|g|{let n=g.num_nodes();let distances=crate::kernels::graph::floyd_warshall(g);if(0..n).any(|i|distances[i*n+i]<0.0){return Err(error("all-pairs distances contain a negative cycle"));}let mut result=weighted_vector(distances,d)?.0;if let Value::Tensor(t)=&mut result{t.shape=vec![n,n];}Ok(Dynamic(result))})});
+object_binding!(graph_page_rank,"num_native_graph_page_rank","crate::kernels::graph::page_rank","Returns dimensionless PageRank scores. Each outgoing arc counts equally and dangling mass is distributed uniformly. Work is bounded by the graph size and iteration count.",true,(g:Handle<Graph>,damping:f64,tolerance:f64,iterations:usize)->Vec<f64>,|ctx:&CallCtx<'_>,g:Handle<Graph>,damping:f64,tolerance:f64,iterations:usize|{if !(0.0..1.0).contains(&damping)||tolerance<=0.0{return Err(error("PageRank damping/tolerance domain invalid"));}g.with(ctx,|g|{graph_work(iterations,g.num_edges().max(g.num_nodes()))?;Ok(crate::kernels::graph::page_rank(g,damping,tolerance,iterations))})});
 object_binding!(colour_graph_new,"num_native_colour_graph_new","crate::kernels::graph::ColourGraph::new","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(n:usize,directed:bool)->NewObject<ColourGraph>,|_ctx:&CallCtx<'_>,n:usize,directed:bool|{limit(n,64)?;Ok(NewObject::normalized(ColourGraph::new(n,directed)))});
 object_binding!(colour_graph_with_colours,"num_native_colour_graph_with_colours","crate::kernels::graph::ColourGraph::with_colours","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(n:usize,directed:bool,colours:Vec<u32>)->Maybe<NewObject<ColourGraph>>,|_ctx:&CallCtx<'_>,n:usize,directed:bool,colours:Vec<u32>|{limit(n,64)?;Ok(Maybe(ColourGraph::with_colours(n,directed,&colours).map(NewObject::normalized)))});
 object_binding!(colour_graph_num_nodes,"num_native_colour_graph_num_nodes","crate::kernels::graph::ColourGraph::num_nodes","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(g:Handle<ColourGraph>)->usize,|ctx:&CallCtx<'_>,g:Handle<ColourGraph>|{g.with(ctx,|g|Ok(g.num_nodes()))});
@@ -208,20 +311,139 @@ object_binding!(graph_cell_certificate_in_counts,"num_native_graph_cell_certific
 object_binding!(graph_cell_certificate_out_counts,"num_native_graph_cell_certificate_out_counts","crate::kernels::graph::CellCertificate::out_counts","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(a:Handle<CellCertificate>)->Vec<[usize;3]>,|ctx:&CallCtx<'_>,a:Handle<CellCertificate>|{a.with(ctx,|o|Ok(cell_counts(o.out_counts())))});
 object_binding!(graph_canonical_generators,"num_native_graph_canonical_generators","crate::kernels::graph::CanonicalLabelling::generators","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(a:Handle<CanonicalLabelling>)->Many<NewObject<Permutation>>,|ctx:&CallCtx<'_>,a:Handle<CanonicalLabelling>|{a.with(ctx,|o|Ok(Many(o.generators().iter().cloned().map(NewObject::normalized).collect())))});
 object_binding!(graph_canonical_position,"num_native_graph_canonical_position","crate::kernels::graph::CanonicalLabelling::position","Checked native method over explicitly normalized values. Session/kind, shape and work/allocation bounds are enforced.",true,(a:Handle<CanonicalLabelling>,vertex:usize)->Option<usize>,|ctx:&CallCtx<'_>,a:Handle<CanonicalLabelling>,vertex:usize|{a.with(ctx,|o|Ok(o.position(vertex)))});
+object_binding!(
+    graph_from_edges,
+    "num_native_graph_from_edges",
+    "crate::kernels::graph::Graph::from_edges",
+    "Constructs a directed graph from a two-column endpoint matrix and an equally long weight vector. The vector declares coherent edge units. Loops and parallel arcs are retained in input order.",
+    false,
+    (n: usize, endpoints: Vec<[usize; 2]>, weights: EdgeWeights) -> NewObject<Graph>,
+    |_ctx: &CallCtx<'_>, n: usize, endpoints: Vec<[usize; 2]>, weights: EdgeWeights| {
+        limit(n, MAX_VERTICES)?;
+        if endpoints.len() != weights.values.len() {
+            return Err(error("graph endpoint and weight counts differ"));
+        }
+        let edges = endpoints
+            .into_iter()
+            .zip(weights.values)
+            .map(|([source, target], weight)| Ok((source, target, edge_weight(n, weight)?)))
+            .collect::<Result<Vec<_>, OpError>>()?;
+        let graph = Graph::from_edges(n, &edges).map_err(error)?;
+        Ok(NewObject::new(graph, vec![weights.dim]))
+    }
+);
+object_binding!(
+    graph_num_edges,
+    "num_native_graph_num_edges",
+    "crate::kernels::graph::Graph::num_edges",
+    "Returns the number of directed arcs, counting loops and parallel arcs.",
+    false,
+    (g: Handle<Graph>) -> usize,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>| g.with(ctx, |g| Ok(g.num_edges()))
+);
+object_binding!(
+    graph_topological_sort,
+    "num_native_graph_topological_sort",
+    "crate::kernels::graph::topological_sort",
+    "Returns a vertex ordering in which every source precedes its targets. A directed cycle is rejected and weights are ignored.",
+    false,
+    (g: Handle<Graph>) -> Vec<usize>,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>| {
+        g.with(ctx, |g| crate::kernels::graph::topological_sort(g).map_err(error))
+    }
+);
+object_binding!(
+    graph_strongly_connected_components,
+    "num_native_graph_strongly_connected_components",
+    "crate::kernels::graph::strongly_connected_components",
+    "Returns a dense strongly connected component label per vertex, numbered in topological order. Weights are ignored.",
+    false,
+    (g: Handle<Graph>) -> Vec<usize>,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>| {
+        g.with(ctx, |g| crate::kernels::graph::strongly_connected_components(g).map_err(error))
+    }
+);
+object_binding!(
+    graph_weakly_connected_components,
+    "num_native_graph_weakly_connected_components",
+    "crate::kernels::graph::weakly_connected_components",
+    "Returns a dense component label per vertex after ignoring arc directions and weights. Components are ordered by their smallest vertex.",
+    false,
+    (g: Handle<Graph>) -> Vec<usize>,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>| {
+        g.with(ctx, |g| crate::kernels::graph::weakly_connected_components(g).map_err(error))
+    }
+);
+object_binding!(
+    graph_bellman_ford,
+    "num_native_graph_bellman_ford",
+    "crate::kernels::graph::bellman_ford",
+    "Returns shortest distances and optional predecessors from one source. Distances retain the graph’s edge units and are infinite for unreachable vertices. A reachable negative cycle is rejected.",
+    false,
+    (g: Handle<Graph>, start: usize) -> PathResult,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>, start: usize| {
+        let dim = object_dimension(&g, ctx)?;
+        g.with(ctx, |g| {
+            graph_work(g.num_nodes(), g.num_edges().max(g.num_nodes()))?;
+            let result = crate::kernels::graph::bellman_ford(g, start).map_err(error)?;
+            Ok(PathResult(result, dim))
+        })
+    }
+);
+object_binding!(
+    graph_dag_shortest_paths,
+    "num_native_graph_dag_shortest_paths",
+    "crate::kernels::graph::dag_shortest_paths",
+    "Returns shortest distances and optional predecessors in linear time for a directed acyclic graph. Distances retain the graph’s edge units. Negative weights are supported and all directed cycles are rejected.",
+    false,
+    (g: Handle<Graph>, start: usize) -> PathResult,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>, start: usize| {
+        let dim = object_dimension(&g, ctx)?;
+        g.with(ctx, |g| {
+            let result = crate::kernels::graph::dag_shortest_paths(g, start).map_err(error)?;
+            Ok(PathResult(result, dim))
+        })
+    }
+);
+object_binding!(
+    graph_maximum_flow,
+    "num_native_graph_maximum_flow",
+    "crate::kernels::graph::maximum_flow",
+    "Computes a maximum source-to-sink flow and returns its value in capacity units and a Boolean mask for the source side of a minimum cut. Distinct terminals and nonnegative capacities are required.",
+    false,
+    (g: Handle<Graph>, source: usize, sink: usize) -> FlowResult,
+    |ctx: &CallCtx<'_>, g: Handle<Graph>, source: usize, sink: usize| {
+        let dim = object_dimension(&g, ctx)?;
+        g.with(ctx, |g| {
+            graph_work(g.num_nodes().saturating_pow(2), g.num_edges())?;
+            let result = crate::kernels::graph::maximum_flow(g, source, sink).map_err(error)?;
+            Ok(FlowResult(result, dim))
+        })
+    }
+);
+
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     api::install(
         i,
         &[
             &graph_new::BINDING,
+            &graph_from_edges::BINDING,
             &graph_num_nodes::BINDING,
+            &graph_num_edges::BINDING,
             &graph_add_edge::BINDING,
             &graph_adj::BINDING,
             &graph_bfs::BINDING,
             &graph_connected_components::BINDING,
+            &graph_weakly_connected_components::BINDING,
+            &graph_strongly_connected_components::BINDING,
+            &graph_topological_sort::BINDING,
             &graph_minimum_spanning_tree::BINDING,
             &graph_dijkstra::BINDING,
+            &graph_bellman_ford::BINDING,
+            &graph_dag_shortest_paths::BINDING,
             &graph_floyd_warshall::BINDING,
             &graph_page_rank::BINDING,
+            &graph_maximum_flow::BINDING,
             &colour_graph_new::BINDING,
             &colour_graph_with_colours::BINDING,
             &colour_graph_num_nodes::BINDING,

@@ -361,10 +361,9 @@ struct ClassData {
 ///
 /// # Cloning
 ///
-/// Cloning is how a request gets a private workspace: the operator table is
-/// shared through an [`Arc`] (it is large and never changes during a run),
-/// while the dimension arena is copied. The arena is tiny, and copying it is
-/// what keeps one request's user-defined base dimensions out of another's.
+/// Cloning gives a request a private workspace. The operator table and
+/// dimension arena remain shared until a mutation copies them. User-defined
+/// base dimensions and operator registrations then stay local to the request.
 #[derive(Debug)]
 pub struct Graph {
     ops: std::sync::Arc<OpTable>,
@@ -1509,7 +1508,10 @@ impl Graph {
         node: NodeId,
     ) -> NodeId {
         let mut copied: super::id::FastMap<NodeId, NodeId> = super::id::FastMap::default();
+        let shared_ops = std::sync::Arc::ptr_eq(&self.ops, &src.ops);
+        let mut operators = super::id::FastMap::default();
         let mut stack = vec![(node, false)];
+        let mut kids = Vec::new();
         while let Some((cur, expanded)) = stack.pop() {
             if copied.contains_key(&cur) {
                 continue;
@@ -1525,10 +1527,17 @@ impl Graph {
                 );
                 continue;
             }
-            let desc = src.ops.get(src.op(cur));
-            let op = match self.ops().lookup_exact(desc) {
-                | Some(op) => op,
-                | None => self.ops_mut().register(desc.clone()).unwrap_or(OpId::NONE),
+            let id = src.op(cur);
+            let op = if shared_ops {
+                id
+            } else {
+                *operators.entry(id).or_insert_with(|| {
+                    let desc = src.ops.get(id);
+                    match self.ops().lookup_exact(desc) {
+                        | Some(op) => op,
+                        | None => self.ops_mut().register(desc.clone()).unwrap_or(OpId::NONE),
+                    }
+                })
             };
             let payload = match src.payload(cur) {
                 | Some(Payload::Sym(s)) => {
@@ -1545,10 +1554,8 @@ impl Graph {
                 | Some(other) => self.interner.payload(other.clone()),
                 | None => PayloadId::NONE,
             };
-            let kids: Vec<NodeId> = children
-                .iter()
-                .filter_map(|c| copied.get(c).copied())
-                .collect();
+            kids.clear();
+            kids.extend(children.iter().filter_map(|c| copied.get(c).copied()));
             // The source already is in canonical form: intern verbatim.
             let new = self.intern(op, payload, &kids);
             if src.ascending.contains(&cur) {

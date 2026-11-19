@@ -26,8 +26,35 @@ The checked ABI reports malformed shapes and unsupported domains as an error or 
 - Numeric finite fields include prime `GF(p)` and `GF(256)`. The symbolic `gf_*`, `gfx_*` and `gfp_factor` families add extension fields and symbolic factorization. The constructor and operations check their own field invariants.
 - Numbered Bessel J and Y use recurrence in suitable parameter regions. Complex asymptotic expansions can lose relative precision close to zeros or with large order relative to the argument. Where residual or component-level accuracy matters, check it against independent values in the regime of interest.
 
-- `kernels::signal::welch_psd` averages complete, optionally overlapping windowed frames into a one-sided power spectral density. `inverse_stft` reconstructs a covered interval from full STFT spectra and rejects any sample with no nonzero window contribution. `upfirdn` applies explicit FIR taps while resampling without allocating an upsampled buffer. The taps determine filter gain, delay and alias rejection.
-- `kernels::graph` provides topological sorting and strongly connected components for directed graphs. Component labels follow topological order. The underlying iterative traversal also serves the symbolic SCC operator.
+
+## Signal processing
+
+- `kernels::signal` implements orthonormal DCT-II and DST-II with their inverses using cached FFT plans. The legacy `signal::fft` and `signal::ifft` entry points and FFT convolution use the same plan and scratch pools as `kernels::fft`. Multidimensional real FFTs shrink the Hermitian axis before processing the other axes. Large independent FFT batches and STFT frames can run in parallel with deterministic ordering.
+- `welch_psd` averages complete, optionally overlapping windowed frames into a one-sided power spectral density. `welch_cross_spectrum` also returns cross-spectral density using `conj(X) * Y` and magnitude-squared coherence. Coherence is zero in bins where either input has zero power. `inverse_stft` reconstructs a covered interval from full STFT spectra and rejects any sample with no nonzero window contribution. `upfirdn` applies explicit FIR taps without materializing the upsampled signal.
+- The typed `num_signal_welch_psd` and `num_signal_welch_cross_spectrum` records carry separate dimensions for frequencies, density and coherence. Frequency bins use the sample rate units. Density is measured per unit frequency, and coherence is dimensionless.
+- `analytic_signal`, `hilbert` and `analytic_envelope` use periodic boundaries. `zoom_fft` evaluates uniformly spaced frequencies in cycles per input sample via chirp convolution. The typed `num_signal_zoom_fft` operator takes and returns a vector of complex samples.
+- `kernels::wavelets::wavelet_packet` decomposes both low and high branches into equal-width leaf bands, with the low branch preceding the high branch. `inverse_wavelet_packet` reconstructs a signal from that leaf matrix. `FrftPlan` reuses the eigenbasis of the discrete fractional Fourier transform for multiple orders on signals of the same length.
+
+## Weighted graphs
+
+`kernels::graph::Graph` stores directed arcs, including self-loops and parallel arcs. `Graph::from_edges` validates a batch and reserves each adjacency list before insertion. Model an undirected weighted graph with two equally weighted arcs per edge.
+
+| Operation | Contract |
+|---|---|
+| Dijkstra | Single-source shortest paths with nonnegative weights. |
+| Bellman–Ford | Single-source shortest paths with negative weights, rejecting negative cycles reachable from the source. |
+| DAG shortest paths | Single-source shortest paths in linear time on directed acyclic graphs, including negative weights. |
+| Floyd–Warshall | All-pairs shortest paths in row-major order. A negative matrix diagonal signals a negative cycle. |
+| Topological sorting, strong and weak components | Edge weights are ignored. Strong component labels follow topological order. Weak component labels follow the smallest vertex in each component. The symbolic SCC operator shares the iterative strong-component traversal. |
+| Prim's minimum spanning forest | Preserves all components and isolated vertices of an undirected input represented by symmetric arcs. |
+| PageRank | Counts each outgoing arc separately and redistributes dangling mass uniformly. |
+| Dinic maximum flow and minimum cut | Uses finite nonnegative capacities and distinct terminals. Returns the flow value and a Boolean mask for the source side of a minimum cut. |
+
+The `num_native_graph_*` handles retain the physical dimension of edge weights. Bulk construction takes a two-column endpoint matrix and a rank-one weight tensor. Path records return `distances` in coherent edge units and `previous` as optional predecessor indices. Unreachable distances are positive infinity. Maximum flow returns its `value` in coherent capacity units and a dimensionless `source_side` mask. Native weighted graphs allow up to 256 vertices and 65,536 arcs. The maximum-flow call further limits `V² E` to 50 million. Consult the manifest for the callable names and typed schemas.
+
+## Low-rank matrices
+
+`kernels::lowrank::interpolative_decomposition` runs truncated column-pivoted QR to approximate a matrix using its original columns and a dimensionless coefficient matrix. The actual rank can fall below the requested maximum on rank-deficient input. `num_linear_interpolative_decomposition` accepts a native matrix handle and returns the selected column indices and the coefficients in original column order.
 
 ## Dimensions and grids
 
@@ -37,7 +64,7 @@ Symbolic heat, wave, Laplace and Poisson equations use one operator per family. 
 
 ## Selecting a callable interface
 
-Literal term operators under `rules::numeric` accept numbers, lists and method symbols. An unresolved input or failed precondition can leave the call symbolic. Use `Session::apply_diag` to inspect reported numerical rejections. The expression-level families cover robust statistics, Fourier and wavelet transforms, sparse iterative solves, exact integer convolution, tensor decompositions, sampled functions, polynomial roots and grid solvers. Where indices enter the interface they are zero-based.
+Literal term operators under `rules::numeric` accept numbers, lists and method symbols. An unresolved input or failed precondition can leave the call symbolic. Use `Session::apply_diag` to inspect reported numerical rejections. The expression-level families cover robust statistics, Fourier and wavelet transforms, `coherence`, `wavelet_packet`, `inverse_wavelet_packet`, sparse iterative solves, exact integer convolution, tensor decompositions, sampled functions, polynomial roots and grid solvers. Where indices enter the interface they are zero-based. The native numerical manifest exposes the cosine and sine transforms, analytic signal, Hilbert transform, amplitude envelope and zoom FFT under `num_signal_*`.
 
 The typed numerical ABI additionally exposes checked records, tensors and session-owned models. It supports reusable CHOL/LU and multigrid state, tensor-train algebra, complex transform data, checked homotopy certificates and ODE/SDE objects with solver-specific controls. Discover the exact callable names and signatures in `KernelManifest` or Aevia's `aevia rssn` output. Native methods that accept Rust callbacks or borrow host storage also remain available directly. [Kernel embedding contract](KERNEL.md) · [Numerical callbacks](NUMERICAL_CALLBACKS.md)
 
@@ -53,5 +80,8 @@ The typed numerical ABI additionally exposes checked records, tensors and sessio
 | Integrals, limits, sums, series and symbolic solving | `tests/math_symbolic_classics.rs`, `tests/symbolic_battery.rs` |
 | Scientific layouts and invariants | `tests/native_*.rs`, `tests/dimensioned_coverage.rs` |
 | Signal analysis, FIR resampling, directed graph traversal | `tests/numerical_signal_graph.rs` |
+| Real tensor FFTs, cosine and sine transforms, Hilbert, zoom FFT, coherence and wavelet packets | `tests/signal_transforms.rs` |
+| Weighted paths, minimum cuts, graph isomorphism and native graph schemas | `tests/kernels/graph.rs`, `tests/native_discrete.rs` |
+| Low-rank approximation and units of interpolation coefficients | `src/kernels/lowrank.rs`, `tests/native_linear.rs` |
 
 The symbolic battery distinguishes exact-value checks from documented requests that remain unresolved in symbolic mode. Use the named test as the source of its expected behavior. Numerical answers also depend on precision, conditioning and the applicable error thresholds.

@@ -762,7 +762,8 @@ impl DeviceRegistry {
     }
 
     /// The device to use when the caller names none: the first GPU, else the
-    /// parallel CPU, else any.
+    /// parallel CPU with at least two workers, else the sequential CPU or
+    /// any registered device.
     #[must_use]
     pub fn default_device(&self) -> Option<Arc<dyn Device>> {
         let guard = self.devices.read().ok()?;
@@ -773,7 +774,9 @@ impl DeviceRegistry {
                 guard
                     .iter()
                     .find(|d| d.info().kind == DeviceKind::CpuParallel)
+                    .filter(|_| crate::execution::cpu_threads() > 1)
             })
+            .or_else(|| guard.iter().find(|d| d.info().kind == DeviceKind::Cpu))
             .or_else(|| guard.first())
             .cloned()
     }

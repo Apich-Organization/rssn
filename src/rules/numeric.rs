@@ -24,7 +24,7 @@
 //! | `bridge` | robust statistics, windows and spectra, one-level wavelets, finite-difference PDEs, dense Krylov solves, low-rank, tensors, sampled functions |
 //! | `special` | `lgamma_complex`, `gamma_complex`, `digamma_complex`, `lambert_w_complex`, `bessel_j_complex`, `bessel_i_complex` (complex values as `re, im` arguments and `list(re, im)` results) |
 //! | `resample` | `quantile_hf`, `bootstrap_ci` |
-//! | `transform` | `wavedec`, `waverec`, `dwt2`, `idwt2`, `frft_re`, `frft_im` |
+//! | `transform` | coherence, wavelets and wavelet packets, fractional Fourier transforms |
 //! | `decomp` | `qr_pivoted_*`, `hosvd`, `hooi`, `cp_als`, `tt_svd`, `tt_dense` |
 //! | `solvers` | `sparse_solve`, `amg_solve`, `nested_dissection_order`, `polynomial_system_roots` |
 //! | `functions` | expression operators: `oscillatory_integral`, `anderson_fixed_point`, `newton_cg_minimize` |
@@ -223,8 +223,8 @@ fn bridge_dimension(name: &str) -> DimRule {
             DimRule::Dimensionless
         },
         | "cross_correlation" | "tensor_inner" | "tensor_outer" | "tensordot" => DimRule::Product,
-        // A probability is a pure number whatever the sample's dimension.
-        | "ecdf" => DimRule::NonMetric,
+        // Probability and coherence are independent of the samples' units.
+        | "ecdf" | "coherence" => DimRule::NonMetric,
         // A density is per unit of the sample's dimension.
         | "kde" => DimRule::Inverse,
         // The unit box has no length scale, so the field keeps its dimension.

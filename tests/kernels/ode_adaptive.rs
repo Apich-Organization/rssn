@@ -1,6 +1,7 @@
 //! Tests for the adaptive / stiff / symplectic / BVP ODE kernels.
 
 use rssn::kernels::ode_adaptive::Event;
+use rssn::kernels::ode_adaptive::OdeError;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_adaptive::bvp_fd;
 use rssn::kernels::ode_adaptive::dae_index1;
@@ -213,6 +214,26 @@ fn dde_delayed_decay() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn fixed_dde_checks_representable_time_and_clips_the_endpoint() {
+    let rate = |_: f64, _: &[f64], _: &[f64]| vec![1.0];
+    let history = |_| vec![0.0];
+    let start = 2.0_f64.powi(52);
+    assert!(matches!(
+        dde_rk4(rate, history, 0.25, start, start + 1.0, 0.25),
+        Err(OdeError::StepLimit)
+    ));
+    assert!(matches!(
+        dde_rk4(rate, history, 1e-300, 0.0, 1.0, 1e-300),
+        Err(OdeError::StepLimit)
+    ));
+    let (times, states) = dde_rk4(rate, history, 0.25, 0.0, 0.75 + 0.125, 0.25).unwrap();
+    assert_eq!(times, [0.0, 0.25, 0.5, 0.75, 0.875]);
+    for (time, state) in times.into_iter().zip(states) {
+        assert!((state[0] - time).abs() <= f64::EPSILON);
+    }
 }
 
 #[test]

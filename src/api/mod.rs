@@ -884,10 +884,25 @@ impl Session {
         if let Some(hit) = inner.cache.answer(index, term.node, &key) {
             return hit.map(|stored| self.answer(stored));
         }
-        let job = prepare(inner, index, term.node, config);
         let Some(template) = inner.templates.get(index) else {
             return Err(ComputeError::UnknownOperator("engine".to_owned()));
         };
+        let capture_lemmas = inner.cache.policy.lemmas;
+        let seeds = if capture_lemmas {
+            let context = cache::fingerprint(config, false);
+            lemma_seeds(inner, index, term.node, &context)
+        } else {
+            Vec::new()
+        };
+        let (job, seeded) = prepare(
+            template,
+            &inner.graph,
+            term.node,
+            config,
+            capture_lemmas,
+            &seeds,
+        );
+        inner.cache.note_lemma_hits(seeded);
         let done = run_job(&template.engine, job, config);
         let stored = finish(inner, index, config, done);
         inner
@@ -899,15 +914,12 @@ impl Session {
     /// Reduces every term of `terms` under the same `config`, running the
     /// searches in parallel.
     ///
-    /// The result equals `terms.iter().map(|&t| self.compute(t, config))`:
-    /// each request is copied into its own private clone of the template
-    /// (sequentially, because the store is borrowed), the engines run
-    /// concurrently on the rayon pool, and the answers are extracted and
-    /// copied back into the store in input order. The answers do not depend
-    /// on the thread count. A failure in one request does not affect the
-    /// others. Requests already in the answer cache are not run again; a
-    /// request repeated inside `terms` runs once per occurrence, as a loop of
-    /// [`Session::compute`] calls before the first answer was stored would.
+    /// Workers copy each request into a private graph and run the engine.
+    /// A bounded batch holds only a few private graphs per worker, and the
+    /// session copies answers back into the store in input order. A failure
+    /// in one request does not affect the others. The answer and opt-in
+    /// lemma caches are sampled before the batch runs, so repeat misses are
+    /// evaluated independently and only later calls reuse newly proved lemmas.
     ///
     /// # Errors
     /// One entry per term; see [`Session::compute`].
@@ -919,7 +931,9 @@ impl Session {
         if crate::cancellation::is_cancelled() {
             return terms.iter().map(|_| Err(ComputeError::Cancelled)).collect();
         }
-        let cancellation = crate::cancellation::current();
+        if terms.is_empty() {
+            return Vec::new();
+        }
         let mut guard = self.inner.borrow_mut();
         let inner = &mut *guard;
         let index = match template_index(inner, config) {
@@ -931,45 +945,69 @@ impl Session {
             .iter()
             .map(|t| inner.cache.answer(index, t.node, &key))
             .collect();
-        let pending: Vec<usize> = (0..terms.len())
-            .filter(|&i| slots.get(i).is_some_and(Option::is_none))
-            .collect();
-        let jobs: Vec<Job> = pending
+        let capture_lemmas = inner.cache.policy.lemmas;
+        let context = capture_lemmas.then(|| cache::fingerprint(config, false));
+        let pending: Vec<_> = slots
             .iter()
-            .filter_map(|&i| terms.get(i))
-            .map(|t| prepare(inner, index, t.node, config))
+            .zip(terms)
+            .enumerate()
+            .filter(|(_, (slot, _))| slot.is_none())
+            .map(|(i, (_, term))| {
+                let seeds = context.as_deref().map_or_else(Vec::new, |context| {
+                    lemma_seeds(inner, index, term.node, context)
+                });
+                BatchRequest {
+                    slot: i,
+                    node: term.node,
+                    seeds,
+                }
+            })
             .collect();
-        let Some(template) = inner.templates.get(index) else {
-            return terms
-                .iter()
-                .map(|_| Err(ComputeError::UnknownOperator("engine".to_owned())))
-                .collect();
-        };
-        let engine = &template.engine;
-        let done: Vec<Done> = if jobs.len() >= COMPUTE_ALL_PAR_MIN {
-            jobs.into_par_iter()
-                .map(|job| {
-                    let _scope = crate::cancellation::install_optional(cancellation.clone());
-                    run_job(engine, job, config)
-                })
-                .collect()
+        let threads = if pending.len() >= 2 {
+            crate::execution::cpu_threads()
         } else {
-            jobs.into_iter()
-                .map(|job| {
-                    let _scope = crate::cancellation::install_optional(cancellation.clone());
-                    run_job(engine, job, config)
-                })
-                .collect()
+            1
         };
-        for (&i, d) in pending.iter().zip(done) {
-            let stored = finish(inner, index, config, d);
-            if let Some(t) = terms.get(i) {
+        let batch_size = if threads > 1 {
+            threads.saturating_mul(2)
+        } else {
+            1
+        };
+        let cancellation = crate::cancellation::current();
+        for batch in pending.chunks(batch_size) {
+            let Some(template) = inner.templates.get(index) else {
+                break;
+            };
+            let source = &inner.graph;
+            let run = |request: &BatchRequest| {
+                let _scope = crate::cancellation::install_optional(cancellation.clone());
+                crate::cancellation::checkpoint().map_err(|_| ComputeError::Cancelled)?;
+                let (job, seeded) = prepare(
+                    template,
+                    source,
+                    request.node,
+                    config,
+                    capture_lemmas,
+                    &request.seeds,
+                );
+                Ok((run_job(&template.engine, job, config), seeded))
+            };
+            let done: Vec<_> = if batch.len() >= 2 {
+                batch.par_iter().map(run).collect()
+            } else {
+                batch.iter().map(run).collect()
+            };
+            for (request, result) in batch.iter().zip(done) {
+                let stored = result.and_then(|(done, seeded)| {
+                    inner.cache.note_lemma_hits(seeded);
+                    finish(inner, index, config, done)
+                });
                 inner
                     .cache
-                    .store_answer(index, t.node, key.clone(), stored.clone());
-            }
-            if let Some(slot) = slots.get_mut(i) {
-                *slot = Some(stored);
+                    .store_answer(index, request.node, key.clone(), stored.clone());
+                if let Some(slot) = slots.get_mut(request.slot) {
+                    *slot = Some(stored);
+                }
             }
         }
         slots
@@ -1044,8 +1082,11 @@ impl Session {
     }
 }
 
-/// Number of requests from which [`Session::compute_all`] uses the pool.
-const COMPUTE_ALL_PAR_MIN: usize = 2;
+struct BatchRequest {
+    slot: usize,
+    node: NodeId,
+    seeds: Vec<(NodeId, NodeId)>,
+}
 
 /// A request copied into its private graph, ready to run.
 struct Job {
@@ -1061,13 +1102,11 @@ struct Job {
 /// into the store.
 struct Done {
     graph: Graph,
-    env: Env,
     report: Report,
-    target: Target,
     failure: Option<ComputeError>,
     best: NodeId,
     reduced: bool,
-    witness: Option<crate::graph::Ball>,
+    numeric: Option<crate::graph::Ball>,
     dimension: Option<crate::graph::Dimension>,
     diagnostics: Vec<crate::graph::DimError>,
     /// `(heavy, closed)` pairs of the private graph, for the lemma cache.
@@ -1111,6 +1150,7 @@ const _: fn() = || {
     send::<Done>();
     sync::<Engine>();
     sync::<Config>();
+    sync::<Template>();
 };
 
 /// Index of the template for `config`'s rule sets, installing it on first use.
@@ -1138,21 +1178,38 @@ fn template_index(
     }
 }
 
-/// Copies the request into a private clone of the template.
-fn prepare(
-    inner: &mut Inner,
+/// Takes a snapshot of the lemma matches for one request.
+fn lemma_seeds(
+    inner: &Inner,
     index: usize,
     node: NodeId,
+    context: &str,
+) -> Vec<(NodeId, NodeId)> {
+    heavy_subterms(&inner.graph, node)
+        .into_iter()
+        .filter_map(|heavy| {
+            inner
+                .cache
+                .lemma(index, context, heavy)
+                .map(|closed| (heavy, closed))
+        })
+        .collect()
+}
+
+/// Copies the request into a private clone of the template.
+fn prepare(
+    template: &Template,
+    source: &Graph,
+    node: NodeId,
     config: &Config,
-) -> Job {
-    let mut graph = inner
-        .templates
-        .get(index)
-        .map_or_else(Graph::new, |t| t.graph.clone());
+    capture_lemmas: bool,
+    seeds: &[(NodeId, NodeId)],
+) -> (Job, usize) {
+    let mut graph = template.graph.clone();
     for name in &config.base_dimensions {
         graph.define_base_dimension(name);
     }
-    let root = graph.import(&inner.graph, node);
+    let root = graph.import(source, node);
     let mut env = match config.target {
         | Target::Symbolic => Env::symbolic(),
         | Target::Numeric { tolerance } => Env::numeric(tolerance),
@@ -1181,31 +1238,27 @@ fn prepare(
         }
     }
     // Lemmas: identities proven by earlier runs in the same context.
-    let capture_lemmas = inner.cache.policy.lemmas;
-    if capture_lemmas {
-        let context = cache::fingerprint(config, false);
-        let mut seeded = 0_usize;
-        for heavy in heavy_subterms(&inner.graph, node) {
-            if let Some(closed) = inner.cache.lemma(index, &context, heavy) {
-                let a = graph.import(&inner.graph, heavy);
-                let b = graph.import(&inner.graph, closed);
-                if graph.union(a, b) {
-                    seeded = seeded.saturating_add(1);
-                }
-            }
-        }
-        if seeded > 0 {
-            graph.rebuild();
-            inner.cache.note_lemma_hits(seeded);
+    let mut seeded = 0_usize;
+    for &(heavy, closed) in seeds {
+        let a = graph.import(source, heavy);
+        let b = graph.import(source, closed);
+        if graph.union(a, b) {
+            seeded = seeded.saturating_add(1);
         }
     }
-    Job {
-        graph,
-        root,
-        env,
-        dim_errors,
-        capture_lemmas,
+    if seeded > 0 {
+        graph.rebuild();
     }
+    (
+        Job {
+            graph,
+            root,
+            env,
+            dim_errors,
+            capture_lemmas,
+        },
+        seeded,
+    )
 }
 
 /// Runs the engine on the private graph and chooses the answer in it.
@@ -1232,13 +1285,11 @@ fn run_job(
     if report.stop == crate::graph::Stop::Cancelled || crate::cancellation::is_cancelled() {
         return Done {
             graph,
-            env,
             report,
-            target: config.target,
             failure: Some(ComputeError::Cancelled),
             best: root,
             reduced: false,
-            witness: None,
+            numeric: None,
             dimension: None,
             diagnostics: dim_errors,
             lemmas: Vec::new(),
@@ -1248,7 +1299,9 @@ fn run_job(
         .conflicts()
         .first()
         .map(|(a, b)| ComputeError::Inconsistent(format!("{a} = {b}")));
-    let witness = graph.approx(graph.find(root));
+    let witness = matches!(config.target, Target::Numeric { .. })
+        .then(|| graph.approx(graph.find(root)))
+        .flatten();
     let (best, reduced) = if failure.is_some() {
         (root, false)
     } else {
@@ -1325,15 +1378,22 @@ fn run_job(
         }
         Some(answer.dimension)
     };
+    let numeric = if failure.is_none() && matches!(config.target, Target::Numeric { .. }) {
+        // Prefer evaluating the chosen term; fall back to the kernel witness.
+        graph
+            .eval(best, &env)
+            .map(crate::graph::Ball::exact)
+            .or(witness)
+    } else {
+        None
+    };
     Done {
         graph,
-        env,
         report,
-        target: config.target,
         failure,
         best,
         reduced,
-        witness,
+        numeric,
         dimension,
         diagnostics,
         lemmas,
@@ -1359,13 +1419,11 @@ fn finish(
     }
     let Done {
         graph,
-        env,
         report,
-        target,
         failure,
         best,
         reduced,
-        witness,
+        numeric,
         dimension,
         diagnostics,
         lemmas: _,
@@ -1373,7 +1431,7 @@ fn finish(
     if let Some(error) = failure {
         return Err(error);
     }
-    match target {
+    match config.target {
         | Target::Symbolic => {
             let exact = graph.as_number(best).map(Number::to_f64);
             let node = store.import(&graph, best);
@@ -1388,13 +1446,7 @@ fn finish(
             })
         },
         | Target::Numeric { .. } => {
-            // Prefer evaluating the closed form; fall back to the
-            // witness numeric kernels produced.
-            let ball = graph
-                .eval(best, &env)
-                .map(crate::graph::Ball::exact)
-                .or(witness);
-            let Some(ball) = ball else {
+            let Some(ball) = numeric else {
                 return Err(ComputeError::NotNumeric(graph.display(best)));
             };
             let node = store.float(ball.mid);
@@ -1427,7 +1479,7 @@ impl Template {
         units: SessionUnits,
     ) -> Result<Self, RuleError> {
         let mut graph = Graph::new();
-        let mut engine = Engine::install(&mut graph, sets)?;
+        let mut engine = Engine::install_rules(&mut graph, sets)?;
         let mut units = units;
         for plugin in plugins {
             let manifest = plugin.manifest();
@@ -1970,6 +2022,11 @@ mod tests {
             "(x + 1)^4 - (x - 1)^4",
             "diff(x^3 + 2*x, x)",
             "integral(x*exp(x), x)",
+            "diff(x^5, x)",
+            "cos(x)^2 + sin(x)^2",
+            "diff(ln(x), x)",
+            "(x + 2)^2",
+            "diff(x^4, x)",
         ];
         let run = |batch: bool| -> Vec<String> {
             let s = Session::new();
@@ -1997,6 +2054,11 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(one.install(|| run(true)), looped);
+        let two = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap();
+        assert_eq!(two.install(|| run(true)), looped);
     }
 
     #[test]

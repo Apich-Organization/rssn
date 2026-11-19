@@ -1,5 +1,4 @@
-//! Multilevel and two-dimensional wavelet transforms and the fractional
-//! Fourier transform.
+//! Discrete signal transforms, spectral analysis and wavelet filter banks.
 //!
 //! | operator | value |
 //! |---|---|
@@ -18,6 +17,7 @@ use num_complex::Complex64;
 use super::bridge::Data;
 use super::bridge::Entry;
 use super::bridge::MAX_LEN;
+use super::bridge::MAX_SYSTEM;
 use super::bridge::Reason;
 use super::bridge::bad;
 use super::bridge::count;
@@ -30,6 +30,7 @@ use super::bridge::vector;
 use super::bridge::wavelet;
 use super::bridge::wavelet_reason;
 use crate::kernel::diag::DiagKind;
+use crate::kernels::signal;
 use crate::kernels::wavelets;
 use crate::kernels::wavelets::Boundary;
 
@@ -220,7 +221,74 @@ fn frft_im(a: &[Data]) -> Option<Data> {
     vec_out(fractional(a)?.iter().map(|c| c.im).collect())
 }
 
+fn coherence(a: &[Data]) -> Option<Data> {
+    let (x, y, window) = (vector(a, 0)?, vector(a, 1)?, vector(a, 2)?);
+    require(
+        x.len() == y.len(),
+        Some(1),
+        DiagKind::Shape,
+        format_args!("paired signals must have the same length"),
+    )?;
+    let (hop, rate) = (count(a, 3, MAX_LEN)?, scalar(a, 4)?);
+    let spectrum =
+        signal::welch_cross_spectrum(x, y, window, hop, rate).reason(DiagKind::Domain, None)?;
+    vec_out(spectrum.coherence)
+}
+
+fn wavelet_packet(a: &[Data]) -> Option<Data> {
+    let (x, w) = (vector(a, 0)?, wavelet(a, 1)?);
+    let levels = count(a, 2, MAX_SYSTEM.ilog2() as usize)?;
+    let rows = 1_usize << levels;
+    let cols = x.len() / rows;
+    require(
+        cols <= MAX_SYSTEM,
+        Some(0),
+        DiagKind::Shape,
+        format_args!("each packet band may hold at most {MAX_SYSTEM} numbers"),
+    )?;
+    let bands = wavelet_reason(wavelets::wavelet_packet(x, w, levels), "wavelet_packet")?;
+    Some(matrix_out(
+        rows,
+        cols,
+        bands.into_iter().flatten().collect(),
+    ))
+}
+
+fn inverse_wavelet_packet(a: &[Data]) -> Option<Data> {
+    let (_, cols, data) = matrix(a, 0)?;
+    require(
+        data.len() <= MAX_LEN,
+        Some(0),
+        DiagKind::Shape,
+        format_args!("packet bands may hold at most {MAX_LEN} numbers in total"),
+    )?;
+    let w = wavelet(a, 1)?;
+    let bands: Vec<_> = data.chunks_exact(cols).map(<[f64]>::to_vec).collect();
+    vec_out(wavelet_reason(
+        wavelets::inverse_wavelet_packet(&bands, w),
+        "inverse_wavelet_packet",
+    )?)
+}
+
 pub(super) const ENTRIES: &[Entry] = &[
+    Entry {
+        name: "coherence",
+        params: "vvvss",
+        eval: coherence,
+        doc: "`coherence(x, y, window, hop, sample_rate)`: one-sided magnitude-squared Welch coherence. Bins with zero power have zero coherence.",
+    },
+    Entry {
+        name: "wavelet_packet",
+        params: "vws",
+        eval: wavelet_packet,
+        doc: "`wavelet_packet(x, wavelet, levels)`: equal-width leaf bands of a complete periodic wavelet packet tree, with each low child before its high sibling.",
+    },
+    Entry {
+        name: "inverse_wavelet_packet",
+        params: "nw",
+        eval: inverse_wavelet_packet,
+        doc: "`inverse_wavelet_packet(bands, wavelet)`: reconstruct the signal from the equal-width leaf bands of `wavelet_packet`.",
+    },
     Entry {
         name: "wavedec",
         params: "vws",
@@ -400,9 +468,32 @@ mod tests {
             "frft_re(list(1), list(0), 1)",
             "frft_re(list(1, 2), list(0), 1)",
             "frft_re(list(1, a), list(0, 0), 1)",
+            "coherence(list(1), list(1, 2), list(1), 1, 1)",
+            "wavelet_packet(list(1, 2, 3), haar, 1)",
+            "inverse_wavelet_packet(list(list(1), list(2), list(3)), haar)",
         ] {
             let (text, reduced) = reduce_with(&[numeric()], src, &[]);
             assert!(!reduced, "{text}");
         }
+    }
+
+    #[test]
+    fn signal_transforms_reduce_to_their_typed_vector_and_matrix_layouts() {
+        let cosine = "list(1, 0, -1, 0)";
+        let sine = "list(0, 1, 0, -1)";
+        close(
+            &flat(&run(&format!(
+                "coherence({cosine}, {sine}, list(1, 1, 1, 1), 4, 4)"
+            ))),
+            &[0.0, 1.0, 0.0],
+            1e-12,
+        );
+        close(
+            &flat(&run(
+                "inverse_wavelet_packet(wavelet_packet(list(1, 2, 3, 4), haar, 2), haar)",
+            )),
+            &[1.0, 2.0, 3.0, 4.0],
+            1e-12,
+        );
     }
 }

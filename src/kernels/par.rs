@@ -4,13 +4,14 @@
 //! one place:
 //!
 //! * results are **independent of the thread count**: maps collect in index
-//!   order, and floating-point reductions use a *fixed-shape* tree whose
-//!   leaves are fixed-size blocks, so `RAYON_NUM_THREADS=1` and 16 threads
+//!   order, and floating-point reductions fold fixed-size blocks in order,
+//!   so `RAYON_NUM_THREADS=1` and 16 threads
 //!   give the same bits;
 //! * every helper has a **sequential path** below a grain-size threshold
 //!   (small problems must not get slower);
 //! * only the outermost loop of a kernel should call these; a helper called
-//!   from inside a rayon task simply runs on the same pool.
+//!   from inside a Rayon task runs on the same pool. Work items inherit the
+//!   active cancellation scope.
 
 use rayon::prelude::*;
 
@@ -26,10 +27,17 @@ where
     T: Send,
     F: Fn(usize) -> T + Sync + Send,
 {
-    if n < grain.max(2) {
-        (0..n).map(f).collect()
+    if crate::execution::should_split(n, grain) {
+        let cancellation = crate::cancellation::current();
+        (0..n)
+            .into_par_iter()
+            .map_init(
+                || crate::cancellation::install_optional(cancellation.clone()),
+                |_, index| f(index),
+            )
+            .collect()
     } else {
-        (0..n).into_par_iter().map(f).collect()
+        (0..n).map(f).collect()
     }
 }
 
@@ -44,10 +52,17 @@ where
     T: Send,
     F: Fn(&A) -> T + Sync + Send,
 {
-    if items.len() < grain.max(2) {
-        items.iter().map(f).collect()
+    if crate::execution::should_split(items.len(), grain) {
+        let cancellation = crate::cancellation::current();
+        items
+            .par_iter()
+            .map_init(
+                || crate::cancellation::install_optional(cancellation.clone()),
+                |_, item| f(item),
+            )
+            .collect()
     } else {
-        items.par_iter().map(f).collect()
+        items.iter().map(f).collect()
     }
 }
 
@@ -65,12 +80,14 @@ pub fn for_chunks_mut<T, F>(
     F: Fn(usize, &mut [T]) + Sync + Send,
 {
     let chunk = chunk.max(1);
-    if data.len() / chunk < grain.max(2) {
-        data.chunks_mut(chunk)
-            .enumerate()
-            .for_each(|(i, c)| f(i, c));
+    if crate::execution::should_split(data.len().div_ceil(chunk), grain) {
+        let cancellation = crate::cancellation::current();
+        data.par_chunks_mut(chunk).enumerate().for_each_init(
+            || crate::cancellation::install_optional(cancellation.clone()),
+            |_, (i, c)| f(i, c),
+        );
     } else {
-        data.par_chunks_mut(chunk)
+        data.chunks_mut(chunk)
             .enumerate()
             .for_each(|(i, c)| f(i, c));
     }
@@ -119,9 +136,43 @@ pub fn for_each_mut<T, F>(
     T: Send,
     F: Fn(usize, &mut T) + Sync + Send,
 {
-    if items.len() < grain.max(2) {
-        items.iter_mut().enumerate().for_each(|(i, x)| f(i, x));
+    if crate::execution::should_split(items.len(), grain) {
+        let cancellation = crate::cancellation::current();
+        items.par_iter_mut().enumerate().for_each_init(
+            || crate::cancellation::install_optional(cancellation.clone()),
+            |_, (i, x)| f(i, x),
+        );
     } else {
-        items.par_iter_mut().enumerate().for_each(|(i, x)| f(i, x));
+        items.iter_mut().enumerate().for_each(|(i, x)| f(i, x));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+
+    use super::*;
+    use crate::cancellation;
+
+    #[test]
+    fn rayon_jobs_restore_and_inherit_the_callers_scope() {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap_or_else(|error| panic!("cannot start test pool: {error}"));
+        pool.install(|| {
+            {
+                let _scope = cancellation::install(Arc::new(AtomicBool::new(true)));
+                let flags = map_indexed(100, 2, |_| cancellation::is_cancelled());
+                assert!(flags.into_iter().all(|flag| flag));
+                assert!(cancellation::is_cancelled());
+            }
+            let mut flags = vec![true; 100];
+            for_each_mut(&mut flags, 2, |_, flag| {
+                *flag = cancellation::is_cancelled()
+            });
+            assert!(flags.into_iter().all(|flag| !flag));
+        });
     }
 }

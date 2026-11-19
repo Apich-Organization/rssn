@@ -4,6 +4,8 @@ Preserve	D=0	-	D	-	Argument 0 and the result share a dimension.
 EqualPreserve	D=0	1=D	D	-	Two arguments share a dimension; the result has it too.
 Product	D=0,E=1	-	D*E	-	Two independent argument dimensions are multiplied for the result.
 Square	D=0	-	D^2	-	Argument 0 is dimensioned, the result is its square.
+WelchPower	D=0,W=1,F=3	-	-	frequencies=F;density=(D^2)/F	Window scaling cancels. Frequencies use the sample rate units and power density uses squared sample units per unit frequency.
+WelchCross	D=0,E=1,W=2,F=4	-	-	frequencies=F;density=D*E/F;coherence=1	Window scaling cancels. Cross density uses the product of the sample units per unit frequency. Coherence is dimensionless.
 UnitlessResult	D=0	-	-	-	Argument 0 is dimensioned, the result is dimensionless.
 IndependentUnitless	D=0,E=1	-	-	-	Two independently dimensioned inputs, with dimensionless result.
 IndependentPreserveLeft	D=0,E=1	-	D	-	Two independent inputs, output takes the first dimension.

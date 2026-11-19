@@ -1114,7 +1114,9 @@ where
 /// `tau >= h`. Returns the grid and states.
 ///
 /// # Errors
-/// [`OdeError::Invalid`] if `tau < h` or `h <= 0`.
+/// [`OdeError::Invalid`] for invalid span, delay or step size, or
+/// [`OdeError::StepLimit`] when the requested grid cannot advance in
+/// floating-point time.
 pub fn dde_rk4<F, H>(
     f: F,
     hist: H,
@@ -1137,6 +1139,15 @@ where
     {
         return Err(OdeError::Invalid);
     }
+    let steps = if t1 > t0 {
+        ((t1 - t0) / h).ceil().max(1.0)
+    } else {
+        0.0
+    };
+    if steps >= usize::MAX as f64 {
+        return Err(OdeError::StepLimit);
+    }
+    let steps = steps as usize;
     let mut ts = vec![t0];
     let mut ys = vec![hist(t0)];
     let mut fs = vec![f(t0, &ys[0], &hist(t0 - tau))];
@@ -1173,11 +1184,15 @@ where
             })
             .collect()
     };
-    let steps = ((t1 - t0) / h).ceil() as usize;
     for s in 0..steps {
         crate::cancellation::checkpoint()?;
-        let t = t0 + s as f64 * h;
-        let h = h.min(t1 - t);
+        let t = ts[s];
+        let tn = if s + 1 == steps {
+            t1
+        } else {
+            (t0 + (s + 1) as f64 * h).min(t1)
+        };
+        let h = super::ode_contract::checked_advance(t, tn, true)?;
         let y = ys[s].clone();
         // delayed values at t, t+h/2, t+h; only history available up to t is
         // needed when tau >= h, except when the delayed point equals t (tau == h):
@@ -1196,15 +1211,17 @@ where
         let y3: Vec<f64> = (0..n).map(|i| y[i] + 0.5 * h * k2[i]).collect();
         let k3 = f(t + 0.5 * h, &y3, &dl(t + 0.5 * h, &ts, &ys, &fs));
         let y4: Vec<f64> = (0..n).map(|i| y[i] + h * k3[i]).collect();
-        let k4 = f(t + h, &y4, &dl(t + h, &ts, &ys, &fs));
+        let k4 = f(tn, &y4, &dl(tn, &ts, &ys, &fs));
         let yn: Vec<f64> = (0..n)
             .map(|i| y[i] + h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]))
             .collect();
-        let tn = t + h;
         ts.push(tn);
         let fn_ = f(tn, &yn, &dl(tn, &ts, &ys, &fs));
         ys.push(yn);
         fs.push(fn_);
+        if tn >= t1 {
+            break;
+        }
     }
     Ok((ts, ys))
 }

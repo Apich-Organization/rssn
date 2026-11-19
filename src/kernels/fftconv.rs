@@ -5,7 +5,10 @@
 
 use num_bigint::BigInt;
 use num_complex::Complex64;
-use rustfft::FftPlanner;
+use rustfft::FftDirection;
+
+use super::reuse::fft_plan;
+use super::reuse::fft_scratch;
 
 /// Complex number as `(re, im)`.
 pub type Complex = (f64, f64);
@@ -38,19 +41,20 @@ fn convolution_fft(
         return vec![0.0; used];
     }
     let padded = |x: &[f64]| {
-        let mut result: Vec<_> = x.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+        let mut result = Vec::with_capacity(period);
+        result.extend(x.iter().map(|&v| Complex64::new(v, 0.0)));
         result.resize(period, Complex64::default());
         result
     };
     let mut left = padded(a);
     let mut right = padded(b);
-    let mut planner = FftPlanner::new();
-    let forward = planner.plan_fft_forward(period);
-    let inverse = planner.plan_fft_inverse(period);
+    let forward = fft_plan(period, FftDirection::Forward);
+    let inverse = fft_plan(period, FftDirection::Inverse);
     let scratch_len = forward
         .get_inplace_scratch_len()
         .max(inverse.get_inplace_scratch_len());
-    let mut scratch = vec![Complex64::default(); scratch_len];
+    let mut scratch = fft_scratch();
+    scratch.resize(scratch_len, Complex64::default());
     forward.process_with_scratch(&mut left, &mut scratch);
     forward.process_with_scratch(&mut right, &mut scratch);
     for (x, y) in left.iter_mut().zip(right) {
@@ -75,15 +79,25 @@ pub fn convolve(
     }
     let n = a.len() + b.len() - 1;
     if a.len().min(b.len()) <= 16 {
-        let mut out = vec![0.0; n];
-        for (i, &x) in a.iter().enumerate() {
-            for (j, &y) in b.iter().enumerate() {
-                out[i + j] += x * y;
-            }
-        }
-        return out;
+        return convolve_direct(a, b);
     }
     convolution_fft(a, b, n.next_power_of_two(), n)
+}
+
+pub(super) fn convolve_direct(
+    a: &[f64],
+    b: &[f64],
+) -> Vec<f64> {
+    if a.is_empty() || b.is_empty() {
+        return Vec::new();
+    }
+    let mut output = vec![0.0; a.len() + b.len() - 1];
+    for (offset, &x) in a.iter().enumerate() {
+        for (coefficient, &y) in output.iter_mut().skip(offset).zip(b) {
+            *coefficient += x * y;
+        }
+    }
+    output
 }
 
 /// Circular convolution of two real sequences of period
@@ -106,6 +120,9 @@ pub fn correlate(
     a: &[f64],
     b: &[f64],
 ) -> Vec<f64> {
+    if a.is_empty() || b.is_empty() {
+        return Vec::new();
+    }
     let rb: Vec<f64> = b.iter().rev().copied().collect();
     convolve(a, &rb)
 }

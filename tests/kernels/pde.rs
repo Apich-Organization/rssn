@@ -183,6 +183,19 @@ fn wave_1d_dirichlet_second_order() {
 }
 
 #[test]
+fn wave_1d_combines_speed_and_time_before_squaring() {
+    let grid = Grid1D {
+        x0: 0.0,
+        x1: 1.0,
+        n: 3,
+    };
+    for (speed, time) in [(1e200, 1e-201), (1e-200, 1e199)] {
+        let field = wave_1d(speed, &grid, &dirichlet0(), &|_| 1.0, &|_| 0.0, time, 1).unwrap();
+        assert!((field.u[1] - 0.96).abs() < 1e-14);
+    }
+}
+
+#[test]
 fn wave_1d_neumann_and_initial_velocity() {
     // u = cos(pi x) sin(pi t) / pi with u_t(x,0) = cos(pi x).
     let bc = [Boundary::neumann_const(0.0), Boundary::neumann_const(0.0)];

@@ -1,8 +1,8 @@
 //! # Numerical Graph Algorithms
 //!
 //! This module provides graph data structures and algorithms tailored for numerical
-//! applications. It includes a weighted graph representation and an implementation
-//! of Dijkstra's algorithm for finding shortest paths.
+//! applications. A weighted graph supports path finding, component analysis,
+//! spanning forests, PageRank and flow networks.
 //!
 //! # Canonical labelling
 //!
@@ -36,23 +36,33 @@
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::collections::VecDeque;
 
 mod directed;
+mod flow;
+mod paths;
 
 pub use directed::GraphStructureError;
 pub(crate) use directed::strongly_connected_by;
 pub use directed::strongly_connected_components;
 pub(crate) use directed::topological_by;
 pub use directed::topological_sort;
+pub use directed::weakly_connected_components;
+pub use flow::MaxFlow;
+pub use flow::maximum_flow;
+pub use paths::ShortestPaths;
+pub use paths::bellman_ford;
+pub use paths::dag_shortest_paths;
 
 /// Represents a graph with weighted edges for numerical algorithms.
 /// The graph is represented by an adjacency list.
 pub struct Graph {
     adj: Vec<Vec<(usize, f64)>>,
+    edges: usize,
 }
 
 /// Represents a state in Dijkstra's algorithm.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone)]
 pub struct State {
     cost: f64,
     position: usize,
@@ -65,8 +75,8 @@ impl Ord for State {
     ) -> Ordering {
         other
             .cost
-            .partial_cmp(&self.cost)
-            .unwrap_or(Ordering::Equal)
+            .total_cmp(&self.cost)
+            .then_with(|| other.position.cmp(&self.position))
     }
 }
 
@@ -80,6 +90,15 @@ impl PartialOrd for State {
 }
 
 impl Eq for State {}
+
+impl PartialEq for State {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
 
 impl Graph {
     /// Creates a new graph with a specified number of nodes.
@@ -95,7 +114,42 @@ impl Graph {
     pub fn new(num_nodes: usize) -> Self {
         Self {
             adj: vec![vec![]; num_nodes],
+            edges: 0,
         }
+    }
+
+    /// Builds a graph from directed arcs in input order, retaining parallel arcs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an out-of-range endpoint or non-finite weight.
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        reason = "source vertices were validated and degrees are bounded by the length of the edge slice"
+    )]
+    pub fn from_edges(
+        num_nodes: usize,
+        edges: &[(usize, usize, f64)],
+    ) -> Result<Self, GraphStructureError> {
+        let mut degrees = vec![0; num_nodes];
+        for &(source, target, weight) in edges {
+            if source >= num_nodes || target >= num_nodes {
+                return Err(GraphStructureError::InvalidVertex);
+            }
+            if !weight.is_finite() {
+                return Err(GraphStructureError::NonFiniteWeight);
+            }
+            degrees[source] += 1;
+        }
+        let mut graph = Self {
+            adj: degrees.into_iter().map(Vec::with_capacity).collect(),
+            edges: edges.len(),
+        };
+        for &(source, target, weight) in edges {
+            graph.adj[source].push((target, weight));
+        }
+        Ok(graph)
     }
 
     /// Adds a directed edge with a weight between two nodes.
@@ -104,6 +158,13 @@ impl Graph {
     /// * `u` - The index of the source node.
     /// * `v` - The index of the destination node.
     /// * `weight` - The weight of the edge.
+    ///
+    /// The caller must supply a valid destination and a weight in the domain
+    /// of each algorithm it will call. [`Self::from_edges`] validates input.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `u` is outside the vertex range.
     pub fn add_edge(
         &mut self,
         u: usize,
@@ -111,12 +172,19 @@ impl Graph {
         weight: f64,
     ) {
         self.adj[u].push((v, weight));
+        self.edges += 1;
     }
 
     /// Returns the total number of nodes in the graph.
     #[must_use]
     pub const fn num_nodes(&self) -> usize {
         self.adj.len()
+    }
+
+    /// Returns the number of directed arcs, including loops and parallel arcs.
+    #[must_use]
+    pub const fn num_edges(&self) -> usize {
+        self.edges
     }
 
     /// Returns an immutable slice of the neighbors and edge weights for a given node.
@@ -149,6 +217,13 @@ impl Graph {
 /// A tuple containing:
 ///   - A vector of distances from the start node to each node.
 ///   - A vector of predecessors to reconstruct the shortest paths.
+///
+/// Unreachable vertices have infinite distance and no predecessor. When
+/// costs tie, the queue visits vertices in increasing vertex order.
+///
+/// # Panics
+///
+/// Panics on an out-of-range start vertex or encountered edge endpoint.
 #[must_use]
 pub fn dijkstra(
     graph: &Graph,
@@ -175,13 +250,14 @@ pub fn dijkstra(
         }
 
         for &(neighbor, weight) in &graph.adj[position] {
-            if dist[position] + weight < dist[neighbor] {
-                dist[neighbor] = dist[position] + weight;
+            let next_cost = cost + weight;
+            if next_cost < dist[neighbor] {
+                dist[neighbor] = next_cost;
 
                 prev[neighbor] = Some(position);
 
                 heap.push(State {
-                    cost: dist[neighbor],
+                    cost: next_cost,
                     position: neighbor,
                 });
             }
@@ -194,6 +270,10 @@ pub fn dijkstra(
 /// Performs a Breadth-First Search (BFS) starting from a node.
 /// Returns the unweighted shortest path distances from the start node to all other reachable nodes.
 /// Returns `usize::MAX` for unreachable nodes.
+///
+/// # Panics
+///
+/// Panics on an out-of-range start vertex or encountered edge endpoint.
 #[must_use]
 pub fn bfs(
     graph: &Graph,
@@ -203,16 +283,17 @@ pub fn bfs(
 
     let mut dist = vec![usize::MAX; num_nodes];
 
-    let mut queue = std::collections::VecDeque::new();
+    let mut queue = VecDeque::new();
 
     dist[start_node] = 0;
 
     queue.push_back(start_node);
 
     while let Some(u) = queue.pop_front() {
+        let next_distance = dist[u] + 1;
         for &(v, _) in graph.adj(u) {
             if dist[v] == usize::MAX {
-                dist[v] = dist[u] + 1;
+                dist[v] = next_distance;
 
                 queue.push_back(v);
             }
@@ -231,7 +312,12 @@ pub fn bfs(
 /// * `max_iter` - The maximum number of iterations.
 ///
 /// # Returns
-/// A vector of scores summing to 1.
+/// A vector of scores summing to 1, or an empty vector for an empty graph.
+/// Parallel arcs each contribute an equal share, and weights are ignored.
+///
+/// # Panics
+///
+/// Panics on an encountered out-of-range edge endpoint.
 #[must_use]
 pub fn page_rank(
     graph: &Graph,
@@ -239,105 +325,98 @@ pub fn page_rank(
     tolerance: f64,
     max_iter: usize,
 ) -> Vec<f64> {
-    let num_nodes = graph.num_nodes();
-
-    if num_nodes == 0 {
-        return vec![];
+    let n = graph.num_nodes();
+    if n == 0 {
+        return Vec::new();
     }
 
-    let initial_score = 1.0 / num_nodes as f64;
-
-    let mut scores = vec![initial_score; num_nodes];
-
-    let mut new_scores = vec![0.0; num_nodes];
-
-    // Calculate out-degree for each node
-    let _out_degree = vec![0; num_nodes];
-
-    let out_degree: Vec<usize> = (0..num_nodes).map(|u| graph.adj(u).len()).collect();
+    let vertices = n as f64;
+    let mut scores = vec![1.0 / vertices; n];
+    let mut new_scores = vec![0.0; n];
+    let base_score = (1.0 - damping_factor) / vertices;
 
     for _ in 0..max_iter {
-        let mut total_sink_score = 0.0;
-
-        for u in 0..num_nodes {
-            if out_degree[u] == 0 {
-                total_sink_score += scores[u];
-            }
-        }
-
-        let base_score = (1.0 - damping_factor) / num_nodes as f64;
-
-        let sink_share = damping_factor * total_sink_score / num_nodes as f64;
-
+        let total_sink_score: f64 = graph
+            .adj
+            .iter()
+            .zip(&scores)
+            .filter_map(|(edges, &score)| edges.is_empty().then_some(score))
+            .sum();
+        let sink_share = damping_factor * total_sink_score / vertices;
         new_scores.fill(base_score + sink_share);
 
-        for u in 0..num_nodes {
-            if out_degree[u] > 0 {
-                let share = damping_factor * scores[u] / out_degree[u] as f64;
-
-                for &(v, _) in graph.adj(u) {
-                    new_scores[v] += share;
+        for (edges, &score) in graph.adj.iter().zip(&scores) {
+            if !edges.is_empty() {
+                let share = damping_factor * score / edges.len() as f64;
+                for &(target, _) in edges {
+                    new_scores[target] += share;
                 }
             }
         }
 
-        // Check convergence
-        let mut diff = 0.0;
-
-        for i in 0..num_nodes {
-            diff += (new_scores[i] - scores[i]).abs();
-        }
-
-        scores.copy_from_slice(&new_scores);
-
+        let diff: f64 = new_scores
+            .iter()
+            .zip(&scores)
+            .map(|(next, previous)| (next - previous).abs())
+            .sum();
+        std::mem::swap(&mut scores, &mut new_scores);
         if diff < tolerance {
             break;
         }
     }
-
     scores
 }
 
-/// Solves the All-Pairs Shortest Path problem using the Floyd-Warshall algorithm.
+/// Solves the all-pairs shortest path problem using Floyd–Warshall.
 ///
-/// # Returns
-/// A flattened vector of size `n * n` representing the distance matrix.
-/// `dist[i * n + j]` is the distance from i to j.
+/// The result is a row-major distance matrix. Element `i * n + j` is the
+/// distance from `i` to `j`, or positive infinity when `j` is unreachable.
+/// A negative diagonal entry detects a negative cycle, in which case
+/// distances that can traverse a cycle are undefined.
+///
+/// # Panics
+///
+/// Panics on an out-of-range edge endpoint or a matrix too large to allocate.
 #[must_use]
 pub fn floyd_warshall(graph: &Graph) -> Vec<f64> {
     let n = graph.num_nodes();
-
-    let mut dist = vec![f64::INFINITY; n * n];
-
-    // Initialize distances
-    for i in 0..n {
-        dist[i * n + i] = 0.0;
-
-        for &(j, w) in graph.adj(i) {
-            dist[i * n + j] = dist[i * n + j].min(w);
+    if n == 0 {
+        return Vec::new();
+    }
+    let Some(size) = n.checked_mul(n) else {
+        panic!("distance matrix size overflow");
+    };
+    let mut dist = vec![f64::INFINITY; size];
+    for (source, (row, edges)) in dist.chunks_exact_mut(n).zip(&graph.adj).enumerate() {
+        row[source] = 0.0;
+        for &(target, weight) in edges {
+            row[target] = row[target].min(weight);
         }
     }
 
+    let mut pivot = vec![0.0; n];
     for k in 0..n {
-        for i in 0..n {
-            for j in 0..n {
-                let d_ik = dist[i * n + k];
-
-                let d_kj = dist[k * n + j];
-
-                if d_ik + d_kj < dist[i * n + j] {
-                    dist[i * n + j] = d_ik + d_kj;
+        pivot.copy_from_slice(&dist[k * n..(k + 1) * n]);
+        for row in dist.chunks_exact_mut(n) {
+            let to_pivot = row[k];
+            if to_pivot == f64::INFINITY {
+                continue;
+            }
+            for (distance, &from_pivot) in row.iter_mut().zip(&pivot) {
+                let candidate = to_pivot + from_pivot;
+                if candidate < *distance {
+                    *distance = candidate;
                 }
             }
         }
     }
-
     dist
 }
 
 /// Finds the connected components of an undirected graph stored as symmetric arcs.
 ///
 /// For directed reachability in both directions, use [`strongly_connected_components`].
+/// For weak connectivity of asymmetric arcs, use [`weakly_connected_components`].
 /// Returns a vector where each element corresponds to a node and contains its component ID.
 #[must_use]
 pub fn connected_components(graph: &Graph) -> Vec<usize> {
@@ -346,11 +425,10 @@ pub fn connected_components(graph: &Graph) -> Vec<usize> {
     let mut component = vec![usize::MAX; num_nodes];
 
     let mut current_component = 0;
+    let mut queue = VecDeque::new();
 
     for i in 0..num_nodes {
         if component[i] == usize::MAX {
-            let mut queue = std::collections::VecDeque::new();
-
             queue.push_back(i);
 
             component[i] = current_component;
@@ -372,9 +450,11 @@ pub fn connected_components(graph: &Graph) -> Vec<usize> {
     component
 }
 
-/// Computes the Minimum Spanning Tree (MST) using Prim's algorithm.
-/// Returns a Graph representing the MST.
-/// Assumes graph is connected (or computes MST forest).
+/// Computes a minimum spanning forest using Prim's algorithm.
+///
+/// The input is an undirected graph represented by equally weighted arcs
+/// in both directions. Every selected arc is included in both directions
+/// in the result. Disconnected vertices and components are retained.
 #[must_use]
 pub fn minimum_spanning_tree(graph: &Graph) -> Graph {
     let num_nodes = graph.num_nodes();
@@ -414,11 +494,6 @@ pub fn minimum_spanning_tree(graph: &Graph) -> Graph {
             visited[u] = true;
 
             if let Some(p) = parent[u] {
-                // For undirected logic on directed graph, we'd need to be careful.
-                // Usually MST is defined for undirected graphs.
-                // Here our Graph is directed.
-                // If it represents undirected, edges are doubled.
-                // We add edge p->u and u->p to MST.
                 mst.add_edge(p, u, cost);
 
                 mst.add_edge(u, p, cost);
@@ -559,8 +634,12 @@ impl ColourGraph {
         directed: bool,
         colours: &[u32],
     ) -> Option<Self> {
+        if colours.len() != n {
+            return None;
+        }
         let mut graph = Self::new(n, directed);
-        graph.set_colours(colours).then_some(graph)
+        graph.colours.copy_from_slice(colours);
+        Some(graph)
     }
 
     /// Replaces the vertex colours.
@@ -614,8 +693,6 @@ impl ColourGraph {
         update_list(&mut self.out[u], v, label);
         if self.directed {
             update_list(&mut self.incoming[v], u, label);
-        } else {
-            update_list(&mut self.out[v], u, label);
         }
     }
 
@@ -750,14 +827,16 @@ type Signature = (usize, Profile, Profile);
 fn profile(
     arcs: &[(usize, u32)],
     cell_of: &[usize],
+    keys: &mut Vec<(usize, u32)>,
 ) -> Profile {
-    let mut keys: Vec<(usize, u32)> = arcs
-        .iter()
-        .map(|&(u, label)| (cell_of.get(u).copied().unwrap_or(0), label))
-        .collect();
+    keys.clear();
+    keys.extend(
+        arcs.iter()
+            .map(|&(u, label)| (cell_of.get(u).copied().unwrap_or(0), label)),
+    );
     keys.sort_unstable();
     let mut out: Profile = Vec::new();
-    for (cell, label) in keys {
+    for &(cell, label) in keys.iter() {
         match out.last_mut() {
             | Some(last) if (last.0, last.1) == (cell, label) => last.2 += 1,
             | _ => out.push((cell, label, 1)),
@@ -771,11 +850,12 @@ fn signature(
     graph: &ColourGraph,
     v: usize,
     cell_of: &[usize],
+    keys: &mut Vec<(usize, u32)>,
 ) -> Signature {
     let cell = cell_of.get(v).copied().unwrap_or(0);
-    let out = profile(graph.out_arcs(v), cell_of);
+    let out = profile(graph.out_arcs(v), cell_of, keys);
     let incoming = if graph.is_directed() {
-        profile(graph.in_arcs(v), cell_of)
+        profile(graph.in_arcs(v), cell_of, keys)
     } else {
         Vec::new()
     };
@@ -811,21 +891,30 @@ fn refine_cells(
     cells: &mut Vec<Vec<usize>>,
 ) -> usize {
     let mut rounds = 0;
+    let mut keys = Vec::new();
+    let mut next = Vec::new();
     loop {
         rounds += 1;
         let cell_of = cell_indices(graph.num_nodes(), cells);
-        let mut next: Vec<Vec<usize>> = Vec::with_capacity(cells.len());
+        next.reserve(cells.len());
         let mut split = false;
-        for cell in cells.iter() {
+        for cell in cells.drain(..) {
             if cell.len() < 2 {
-                next.push(cell.clone());
+                next.push(cell);
                 continue;
             }
             let mut keyed: Vec<(Signature, usize)> = cell
                 .iter()
-                .map(|&v| (signature(graph, v, &cell_of), v))
+                .map(|&v| (signature(graph, v, &cell_of, &mut keys), v))
                 .collect();
-            keyed.sort();
+            keyed.sort_unstable();
+            if keyed.first().map(|(signature, _)| signature)
+                == keyed.last().map(|(signature, _)| signature)
+            {
+                next.push(cell);
+                continue;
+            }
+            split = true;
             let mut start = 0;
             while start < keyed.len() {
                 let mut end = start + 1;
@@ -833,13 +922,10 @@ fn refine_cells(
                     end += 1;
                 }
                 next.push(keyed[start..end].iter().map(|&(_, v)| v).collect());
-                if end - start < cell.len() {
-                    split = true;
-                }
                 start = end;
             }
         }
-        *cells = next;
+        std::mem::swap(cells, &mut next);
         if !split {
             return rounds;
         }
@@ -1007,8 +1093,7 @@ impl Refinement {
     /// each cell has one colour, and each cell is equitable — every vertex of
     /// a cell has the same neighbour counts (per label) into every cell.
     ///
-    /// Returns `false` when `graph` is not the graph the partition came from
-    /// (a different number of vertices, or a vertex out of range).
+    /// Returns `false` when the stated partition conditions fail for `graph`.
     #[must_use]
     pub fn verify(
         &self,
@@ -1018,6 +1103,7 @@ impl Refinement {
             return false;
         }
         let mut seen = vec![false; self.n];
+        let mut keys = Vec::new();
         for cell in &self.cells {
             if cell.is_empty() {
                 return false;
@@ -1029,7 +1115,7 @@ impl Refinement {
                     return false;
                 }
                 seen[v] = true;
-                let sig = signature(graph, v, &self.cell_of);
+                let sig = signature(graph, v, &self.cell_of, &mut keys);
                 match &first {
                     | None => first = Some(sig),
                     | Some(want) if *want != sig => return false,
@@ -1053,6 +1139,7 @@ pub fn refine(graph: &ColourGraph) -> Refinement {
     let mut cells = graph.initial_cells();
     let rounds = refine_cells(graph, &mut cells);
     let cell_of = cell_indices(n, &cells);
+    let mut keys = Vec::new();
     let certificate = RefinementCertificate {
         n,
         directed: graph.is_directed(),
@@ -1063,9 +1150,9 @@ pub fn refine(graph: &ColourGraph) -> Refinement {
                 CellCertificate {
                     colour: graph.colours[v],
                     size: cell.len(),
-                    out: profile(graph.out_arcs(v), &cell_of),
+                    out: profile(graph.out_arcs(v), &cell_of, &mut keys),
                     incoming: if graph.is_directed() {
-                        profile(graph.in_arcs(v), &cell_of)
+                        profile(graph.in_arcs(v), &cell_of, &mut keys)
                     } else {
                         Vec::new()
                     },
@@ -1246,11 +1333,10 @@ fn inverse(p: &[usize]) -> Vec<usize> {
 /// group, maintained incrementally with the Schreier–Sims algorithm.
 ///
 /// Only what the canonical labelling needs is here: [`insert`] a generator
-/// (redundant ones are sifted away), [`contains`] a permutation, and the
-/// [`order`] of the group as a product of basic orbit lengths.
+/// if it enlarges the group, and the [`order`] of the group as a product of
+/// basic orbit lengths.
 ///
 /// [`insert`]: Self::insert
-/// [`contains`]: Self::contains
 /// [`order`]: Self::order
 #[derive(Clone, Debug)]
 struct StabiliserChain {
@@ -1260,9 +1346,24 @@ struct StabiliserChain {
     gens: Vec<Vec<Vec<usize>>>,
     /// `trans[level][point]`: a group element taking `base[level]` to
     /// `point`.
-    trans: Vec<Vec<Option<Vec<usize>>>>,
+    trans: Vec<Vec<Option<Transversal>>>,
     /// `orbit[level]`: the orbit of `base[level]` under `gens[level]`.
     orbit: Vec<Vec<usize>>,
+}
+
+#[derive(Clone, Debug)]
+struct Transversal {
+    images: Vec<usize>,
+    inverse: Vec<usize>,
+}
+
+impl Transversal {
+    fn new(images: Vec<usize>) -> Self {
+        Self {
+            inverse: inverse(&images),
+            images,
+        }
+    }
 }
 
 impl StabiliserChain {
@@ -1283,20 +1384,19 @@ impl StabiliserChain {
         level: usize,
     ) {
         let b = self.base[level];
-        let mut trans: Vec<Option<Vec<usize>>> = vec![None; self.n];
-        trans[b] = Some((0..self.n).collect());
+        let mut trans = vec![None; self.n];
+        trans[b] = Some(Transversal::new((0..self.n).collect()));
         let mut orbit = vec![b];
         let mut head = 0;
         while head < orbit.len() {
             let point = orbit[head];
             head += 1;
-            let u = trans[point]
-                .clone()
-                .unwrap_or_else(|| (0..self.n).collect());
             for s in &self.gens[level] {
                 let image = s[point];
-                if trans[image].is_none() {
-                    trans[image] = Some(compose(s, &u));
+                if trans[image].is_none()
+                    && let Some(u) = &trans[point]
+                {
+                    trans[image] = Some(Transversal::new(compose(s, &u.images)));
                     orbit.push(image);
                 }
             }
@@ -1305,21 +1405,28 @@ impl StabiliserChain {
         self.orbit[level] = orbit;
     }
 
-    /// Sifts `g` through the levels from `from` on, returning the residue and
-    /// the level at which it got stuck (the depth when it went through).
+    /// Replaces `g` with its residue and returns the stopping level.
     fn sift(
         &self,
-        mut g: Vec<usize>,
+        g: &mut [usize],
         from: usize,
-    ) -> (Vec<usize>, usize) {
+    ) -> usize {
         for level in from..self.base.len() {
-            let point = g[self.base[level]];
+            let base = self.base[level];
+            let point = g[base];
+            if point == base {
+                continue;
+            }
             match &self.trans[level][point] {
-                | Some(u) => g = compose(&inverse(u), &g),
-                | None => return (g, level),
+                | Some(u) => {
+                    for image in &mut *g {
+                        *image = u.inverse[*image];
+                    }
+                },
+                | None => return level,
             }
         }
-        (g, self.base.len())
+        self.base.len()
     }
 
     /// Adds the non-identity residue `r` as a strong generator of the levels
@@ -1350,55 +1457,50 @@ impl StabiliserChain {
         start: usize,
     ) {
         let mut i = start;
+        let mut residue = Vec::with_capacity(self.n);
         while i > 0 {
             let level = i - 1;
             let mut added = None;
-            'outer: for &point in &self.orbit[level].clone() {
-                for s in &self.gens[level].clone() {
+            'outer: for &point in &self.orbit[level] {
+                for s in &self.gens[level] {
                     let image = s[point];
                     let (Some(up), Some(ui)) =
                         (&self.trans[level][point], &self.trans[level][image])
                     else {
                         continue;
                     };
-                    let h = compose(&inverse(ui), &compose(s, up));
-                    let (r, j) = self.sift(h, level + 1);
-                    if !is_identity(&r) {
-                        self.add_strong(&r, level + 1, j);
-                        added = Some(j + 1);
+                    residue.clear();
+                    residue.extend(up.images.iter().map(|&image| ui.inverse[s[image]]));
+                    let j = self.sift(&mut residue, level + 1);
+                    if !is_identity(&residue) {
+                        added = Some(j);
                         break 'outer;
                     }
                 }
             }
             match added {
-                | Some(next) => i = next,
+                | Some(next) => {
+                    self.add_strong(&residue, level + 1, next);
+                    i = next + 1;
+                },
                 | None => i -= 1,
             }
         }
     }
 
-    /// Adds a generator to the group.
+    /// Adds a generator and reports whether it enlarged the group.
     fn insert(
         &mut self,
         g: &[usize],
-    ) {
-        let (r, j) = self.sift(g.to_vec(), 0);
-        if !is_identity(&r) {
-            self.add_strong(&r, 0, j);
-            let depth = self.base.len();
-            self.complete(depth);
-        }
-    }
-
-    /// Whether `g` lies in the group.
-    fn contains(
-        &self,
-        g: &[usize],
     ) -> bool {
-        g.len() == self.n && {
-            let (r, level) = self.sift(g.to_vec(), 0);
-            level == self.base.len() && is_identity(&r)
+        let mut residue = g.to_vec();
+        let level = self.sift(&mut residue, 0);
+        if is_identity(&residue) {
+            return false;
         }
+        self.add_strong(&residue, 0, level);
+        self.complete(self.base.len());
+        true
     }
 
     /// The order of the group.
@@ -1441,15 +1543,17 @@ fn orbits_of(
     out
 }
 
-/// A disjoint-set forest used for the orbit test of the automorphism pruning.
-struct Orbits {
+/// A disjoint-set forest with path halving and union by rank.
+struct DisjointSet {
     parent: Vec<usize>,
+    rank: Vec<u8>,
 }
 
-impl Orbits {
+impl DisjointSet {
     fn new(n: usize) -> Self {
         Self {
             parent: (0..n).collect(),
+            rank: vec![0; n],
         }
     }
 
@@ -1470,9 +1574,16 @@ impl Orbits {
         a: usize,
         b: usize,
     ) {
-        let (ra, rb) = (self.find(a), self.find(b));
-        if ra != rb {
-            self.parent[ra] = rb;
+        let (mut root, mut other) = (self.find(a), self.find(b));
+        if root == other {
+            return;
+        }
+        if self.rank[root] < self.rank[other] {
+            std::mem::swap(&mut root, &mut other);
+        }
+        self.parent[other] = root;
+        if self.rank[root] == self.rank[other] {
+            self.rank[root] += 1;
         }
     }
 }
@@ -1559,8 +1670,8 @@ impl CanonicalLabelling {
     /// The canonical code: the `n` vertex colours in canonical order,
     /// followed by the `n * n` adjacency matrix rows in canonical order.
     ///
-    /// Two graphs are isomorphic if and only if their canonical codes are
-    /// equal, provided both searches were exact.
+    /// For graphs of the same directedness, equality of exact canonical codes
+    /// is equivalent to isomorphism.
     #[must_use]
     pub fn code(&self) -> &[u32] {
         &self.code
@@ -1625,7 +1736,6 @@ struct Search<'a> {
     n: usize,
     best: Option<Vec<u32>>,
     best_order: Vec<usize>,
-    candidate: Vec<u32>,
     chain: StabiliserChain,
     generators: Vec<Permutation>,
     nodes: usize,
@@ -1657,7 +1767,7 @@ impl Search<'_> {
         // The orbits of the found automorphisms that fix the prefix are only
         // invalidated by a new generator, so one disjoint-set forest serves
         // every vertex of the cell until then.
-        let mut orbit_cache: Option<(usize, Orbits)> = None;
+        let mut orbit_cache: Option<(usize, DisjointSet)> = None;
         for v in targets {
             if self.aborted {
                 return;
@@ -1697,8 +1807,8 @@ impl Search<'_> {
     fn orbits_fixing(
         &self,
         prefix: &[usize],
-    ) -> Orbits {
-        let mut orbits = Orbits::new(self.n);
+    ) -> DisjointSet {
+        let mut orbits = DisjointSet::new(self.n);
         for g in &self.generators {
             if prefix.iter().all(|&p| g.image[p] == p) {
                 for x in 0..self.n {
@@ -1709,28 +1819,22 @@ impl Search<'_> {
         orbits
     }
 
-    /// Builds the code of a leaf order and compares it with the best code.
+    /// Compares a leaf's code lazily and retains it when it improves the best.
     fn leaf(
         &mut self,
         order: &[usize],
     ) {
-        self.candidate.clear();
-        self.candidate.reserve(self.n * (self.n + 1));
-        for &v in order {
-            self.candidate.push(self.graph.colours[v]);
-        }
-        for &u in order {
-            for &v in order {
-                self.candidate.push(self.graph.matrix[u][v]);
-            }
-        }
         let ordering = match &self.best {
-            | Some(best) => self.candidate.cmp(best),
+            | Some(best) => code_in_order(self.graph, order).cmp(best.iter().copied()),
             | None => Ordering::Less,
         };
         match ordering {
             | Ordering::Less => {
-                self.best = Some(self.candidate.clone());
+                let best = self
+                    .best
+                    .get_or_insert_with(|| Vec::with_capacity(self.n * (self.n + 1)));
+                best.clear();
+                best.extend(code_in_order(self.graph, order));
                 self.best_order.clear();
                 self.best_order.extend_from_slice(order);
             },
@@ -1739,8 +1843,7 @@ impl Search<'_> {
                 for (i, &v) in order.iter().enumerate() {
                     sigma[self.best_order[i]] = v;
                 }
-                if !is_identity(&sigma) && !self.chain.contains(&sigma) {
-                    self.chain.insert(&sigma);
+                if !is_identity(&sigma) && self.chain.insert(&sigma) {
                     self.generators.push(Permutation::exact(sigma));
                 }
             },
@@ -1758,10 +1861,10 @@ impl Search<'_> {
 ///
 /// # Complexity
 ///
-/// A node costs one equitable refinement, `O(n + m)` (times the number of
-/// rounds, at most `n`), and a leaf costs one code, `O(n^2)`. The number of
-/// nodes is that of the individualisation tree after automorphism pruning;
-/// for a graph whose colouring is discrete it is one.
+/// Each node refines the partition by sorting vertex signatures until it
+/// becomes equitable. Comparing a leaf takes up to `O(n^2)`. The search
+/// visits the individualisation tree after automorphism pruning, with just
+/// one node for a graph whose colouring is already discrete.
 #[must_use]
 pub fn canonical_labelling(
     graph: &ColourGraph,
@@ -1773,7 +1876,6 @@ pub fn canonical_labelling(
         n,
         best: None,
         best_order: Vec::new(),
-        candidate: Vec::new(),
         chain: StabiliserChain::new(n),
         generators: Vec::new(),
         nodes: 0,
@@ -1794,7 +1896,7 @@ pub fn canonical_labelling(
         )
     } else {
         let order: Vec<usize> = (0..n).collect();
-        let code = identity_code(graph, &order);
+        let code = code_in_order(graph, &order).collect();
         (order, code, false)
     };
     let mut position = vec![0; n];
@@ -1816,22 +1918,18 @@ pub fn canonical_labelling(
     }
 }
 
-/// The code of `graph` in the given vertex order.
-fn identity_code(
-    graph: &ColourGraph,
-    order: &[usize],
-) -> Vec<u32> {
-    let n = graph.num_nodes();
-    let mut code = Vec::with_capacity(n * (n + 1));
-    for &v in order {
-        code.push(graph.colours[v]);
-    }
-    for &u in order {
-        for &v in order {
-            code.push(graph.matrix[u][v]);
-        }
-    }
-    code
+/// Produces the colours followed by row-major edge labels in the given order.
+fn code_in_order<'a>(
+    graph: &'a ColourGraph,
+    order: &'a [usize],
+) -> impl Iterator<Item = u32> + 'a {
+    order
+        .iter()
+        .map(|&v| graph.colours[v])
+        .chain(order.iter().flat_map(|&u| {
+            let row = &graph.matrix[u];
+            order.iter().map(move |&v| row[v])
+        }))
 }
 
 /// Whether two coloured graphs are isomorphic.

@@ -621,25 +621,14 @@ pub(super) fn wavelet_reason<T>(
 ) -> Option<T> {
     match result {
         | Ok(value) => Some(value),
-        | Err(wavelets::WaveletError::OddLength) => {
-            bad_op(
-                DiagKind::Shape,
-                format_args!("{what}: the signal length must be even and nonzero"),
-            )
-        },
-        | Err(wavelets::WaveletError::TooManyLevels) => {
-            bad_op(
-                DiagKind::Domain,
-                format_args!("{what}: more levels than the signal length allows"),
-            )
-        },
-        | Err(wavelets::WaveletError::Shape) => {
-            bad_op(
-                DiagKind::Shape,
-                format_args!(
-                    "{what}: the coefficient lists must be nonempty, of equal length and fit together"
-                ),
-            )
+        | Err(error) => {
+            let kind = match error {
+                | wavelets::WaveletError::TooManyLevels => DiagKind::Domain,
+                | wavelets::WaveletError::OddLength | wavelets::WaveletError::Shape => {
+                    DiagKind::Shape
+                },
+            };
+            bad_op(kind, format_args!("{what}: {error}"))
         },
     }
 }

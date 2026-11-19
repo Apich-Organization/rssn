@@ -3957,7 +3957,9 @@ fn install_ext(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "hilbert",
             1,
             Kind::Hilbert,
-            "`hilbert(n)`: `n x n` Hilbert matrix `H_{ij} = 1 / (i + j + 1)`.",
+            "`hilbert(n)` constructs the `n × n` Hilbert matrix.\n\n\
+             With zero-based row and column indices its entries are `H_{ij} = 1 / (i + j + 1)`.\n\
+             The entries are exact rational numbers.",
         ),
         (
             "companion",

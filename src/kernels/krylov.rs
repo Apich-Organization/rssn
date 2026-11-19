@@ -72,6 +72,32 @@ const SPMV_PAR_NNZ: usize = 60_000;
 /// Rows per parallel block of [`Csr::matvec`].
 const SPMV_BLOCK: usize = 512;
 
+/// Applies validated CSR arrays using the same accumulation on both sparse APIs.
+pub(super) fn csr_matvec(
+    rows: usize,
+    indptr: &[usize],
+    indices: &[usize],
+    values: &[f64],
+    x: &[f64],
+    y: &mut [f64],
+) {
+    let row = |i: usize| {
+        accurate_dot::dot_value((indptr[i]..indptr[i + 1]).map(|k| (values[k], x[indices[k]])))
+    };
+    if values.len() >= SPMV_PAR_NNZ {
+        let rows = rows.min(y.len());
+        super::par::for_chunks_mut(&mut y[..rows], SPMV_BLOCK, 2, |b, block| {
+            for (r, slot) in block.iter_mut().enumerate() {
+                *slot = row(b * SPMV_BLOCK + r);
+            }
+        });
+    } else {
+        for i in 0..rows {
+            y[i] = row(i);
+        }
+    }
+}
+
 impl Csr {
     /// Builds a matrix from `(row, col, value)` triplets; duplicates are summed.
     #[must_use]
@@ -124,23 +150,7 @@ impl Csr {
         x: &[f64],
         y: &mut [f64],
     ) {
-        let row = |i: usize| {
-            accurate_dot::dot_value(
-                (self.indptr[i]..self.indptr[i + 1]).map(|k| (self.values[k], x[self.indices[k]])),
-            )
-        };
-        if self.values.len() >= SPMV_PAR_NNZ {
-            let rows = self.rows.min(y.len());
-            super::par::for_chunks_mut(&mut y[..rows], SPMV_BLOCK, 2, |b, block| {
-                for (r, slot) in block.iter_mut().enumerate() {
-                    *slot = row(b * SPMV_BLOCK + r);
-                }
-            });
-        } else {
-            for i in 0..self.rows {
-                y[i] = row(i);
-            }
-        }
+        csr_matvec(self.rows, &self.indptr, &self.indices, &self.values, x, y);
     }
 
     /// Diagonal of the matrix.
@@ -719,6 +729,25 @@ where
     M: Fn(&[f64], &mut [f64]),
 {
     iterative::solve(apply, precond, b, x0, tol, max_iter, iterative::Method::Cg)
+        .unwrap_or_else(std::convert::identity)
+}
+
+/// The checked sparse solver also requires positive curvature and reports breakdowns.
+pub(super) fn cg_positive(
+    apply: impl Fn(&[f64], &mut [f64]),
+    b: &[f64],
+    tol: f64,
+    max_iter: usize,
+) -> Result<IterResult, IterResult> {
+    iterative::solve(
+        apply,
+        identity_precond,
+        b,
+        None,
+        tol,
+        max_iter,
+        iterative::Method::PositiveCg,
+    )
 }
 
 /// Restarted GMRES(`restart`) with right preconditioning.
@@ -749,6 +778,7 @@ where
         max_iter,
         iterative::Method::Gmres(restart),
     )
+    .unwrap_or_else(std::convert::identity)
 }
 
 /// Preconditioned `BiCGSTAB` for general nonsymmetric operators.
@@ -777,6 +807,7 @@ where
         max_iter,
         iterative::Method::Bicgstab,
     )
+    .unwrap_or_else(std::convert::identity)
 }
 
 // ------------------------------------------------------------------

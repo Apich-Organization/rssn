@@ -773,8 +773,19 @@ impl Engine {
         graph: &mut Graph,
         sets: &[RuleSet],
     ) -> Result<Self, RuleError> {
+        let mut engine = Self::install_rules(graph, sets)?;
+        engine.refresh_manifest(graph);
+        Ok(engine)
+    }
+
+    /// Installs rules before the caller registers plugins and units and
+    /// builds the complete manifest.
+    pub(crate) fn install_rules(
+        graph: &mut Graph,
+        sets: &[RuleSet],
+    ) -> Result<Self, RuleError> {
         let mut engine = Self::default();
-        engine.extend(graph, sets)?;
+        engine.extend_rules(graph, sets)?;
         Ok(engine)
     }
 
@@ -787,6 +798,16 @@ impl Engine {
         graph: &mut Graph,
         sets: &[RuleSet],
     ) -> Result<(), RuleError> {
+        self.extend_rules(graph, sets)?;
+        self.refresh_manifest(graph);
+        Ok(())
+    }
+
+    fn extend_rules(
+        &mut self,
+        graph: &mut Graph,
+        sets: &[RuleSet],
+    ) -> Result<(), RuleError> {
         self.index = std::sync::OnceLock::new();
         for set in sets {
             set.install_into(graph, &mut self.program)?;
@@ -794,7 +815,6 @@ impl Engine {
                 self.sets.push(set.clone());
             }
         }
-        self.refresh_manifest(graph);
         Ok(())
     }
 
@@ -1234,7 +1254,9 @@ impl Engine {
                         let times = states_ro.get(i).map_or(0, |s| s.times_banned);
                         Some(search_rewrite(frozen, rw, nodes, times, budget))
                     };
-                    if run.len() >= 2 && work >= ENGINE_PAR_MIN_CANDIDATES {
+                    if run.len() >= 2
+                        && crate::execution::should_split(work, ENGINE_PAR_MIN_CANDIDATES)
+                    {
                         run.par_iter()
                             .zip(todo.par_iter())
                             .map(search)
@@ -1376,12 +1398,12 @@ impl Engine {
                                 work.map(PreparedWork::run)
                             }
                         };
-                        let results: Vec<Option<Box<dyn std::any::Any + Send>>> = if heavy_jobs >= 2
-                        {
-                            works.into_par_iter().map(run).collect()
-                        } else {
-                            works.into_iter().map(run).collect()
-                        };
+                        let results: Vec<Option<Box<dyn std::any::Any + Send>>> =
+                            if crate::execution::should_split(heavy_jobs, 2) {
+                                works.into_par_iter().map(run).collect()
+                            } else {
+                                works.into_iter().map(run).collect()
+                            };
                         for ((node, done, _), result) in staged.into_iter().zip(results) {
                             if crate::cancellation::is_cancelled() {
                                 return changed;

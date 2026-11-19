@@ -11,8 +11,8 @@
 //! * limits, sums and definite integrals are compared with a known value;
 //! * solutions are substituted back into the equation.
 //!
-//! `AUDIT_TABLE=<path> cargo test --test symbolic_battery` writes the status
-//! table used by `docs/SYMBOLIC_AUDIT.md`.
+//! `AUDIT_TABLE=<path> cargo test --test symbolic_battery` writes a table of
+//! the cases, reconstructed answers and numerical verdicts.
 mod common;
 use common::*;
 use std::fmt::Write as _;

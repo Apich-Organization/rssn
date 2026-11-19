@@ -211,6 +211,8 @@ pub mod quadrature;
 pub mod random;
 /// Real root isolation and refinement for polynomials.
 pub mod real_roots;
+/// Bounded storage for reusable numerical plans and scratch buffers.
+pub mod reuse;
 /// Robust statistics, quantiles and kernel density estimation.
 pub mod robust;
 /// Scalar and system root finding, polynomial roots, homotopy continuation.

@@ -15,6 +15,7 @@ impl Arg for crate::kernels::complex_scalar::Complex {
     fn ty() -> TypeExpr {
         TypeExpr::Complex
     }
+
     fn decode(
         v: &Value,
         i: usize,
@@ -27,6 +28,7 @@ impl Output for crate::kernels::complex_scalar::Complex {
     fn ty() -> TypeExpr {
         TypeExpr::Complex
     }
+
     fn encode(self) -> Result<Value, OpError> {
         num_complex::Complex64::new(self.re, self.im).encode()
     }
@@ -40,6 +42,7 @@ impl Arg for crate::kernels::complex::Mobius {
                 .collect(),
         )
     }
+
     fn decode(
         v: &Value,
         i: usize,
@@ -56,6 +59,15 @@ record!(crate::kernels::complex::Mobius {
     c: num_complex::Complex64,
     d: num_complex::Complex64
 });
+record!(crate::kernels::signal::PowerSpectrum {
+    frequencies: Vec<f64>,
+    density: Vec<f64>
+});
+record!(crate::kernels::signal::CrossSpectrum {
+    frequencies: Vec<f64>,
+    density: Vec<num_complex::Complex64>,
+    coherence: Vec<f64>
+});
 impl Arg for Vec<Vec<num_complex::Complex64>> {
     fn ty() -> TypeExpr {
         TypeExpr::Tensor {
@@ -64,6 +76,7 @@ impl Arg for Vec<Vec<num_complex::Complex64>> {
             elem: Box::new(TypeExpr::Complex),
         }
     }
+
     fn decode(
         v: &Value,
         i: usize,
@@ -98,6 +111,7 @@ impl Output for Vec<Vec<num_complex::Complex64>> {
     fn ty() -> TypeExpr {
         <Self as Arg>::ty()
     }
+
     fn encode(self) -> Result<Value, OpError> {
         let n = self.len();
         let m = self.first().map_or(0, Vec::len);
@@ -124,6 +138,7 @@ impl Arg for AnalysisWaveletBands {
             ("offsets".into(), <Vec<usize> as Arg>::ty()),
         ])
     }
+
     fn decode(
         v: &Value,
         i: usize,
@@ -153,6 +168,7 @@ impl Output for AnalysisWaveletBands {
     fn ty() -> TypeExpr {
         <Self as Arg>::ty()
     }
+
     fn encode(self) -> Result<Value, OpError> {
         let mut offsets = vec![0usize];
         let mut data = Vec::new();
@@ -292,6 +308,7 @@ impl Arg for crate::kernels::rootfind::LeastSquaresResult {
             ("status".into(), TypeExpr::String),
         ])
     }
+
     fn decode(
         v: &Value,
         index: usize,

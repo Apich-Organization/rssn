@@ -8,6 +8,8 @@
 //! * [`qr_pivoted`]: column-pivoted Householder QR (Businger-Golub), the
 //!   standard *rank-revealing* factorisation, with a numerical rank and the
 //!   basic least-squares solution of a rank-deficient system;
+//! * [`interpolative_decomposition`]: a low-rank approximation in terms of
+//!   a subset of the original matrix columns;
 //! * [`randomized_svd`]: a rank-`k` approximation of an operator that is only
 //!   available as products `A x` and `A^T y` (Halko, Martinsson and Tropp),
 //!   in `O(k)` products instead of a full decomposition;
@@ -183,16 +185,8 @@ impl PivotedQr {
         &self,
         tol: Option<f64>,
     ) -> usize {
-        let k = self.r.rows.min(self.r.cols);
-        let top = if k == 0 {
-            0.0
-        } else {
-            self.r.at(0, 0).abs()
-        };
         let tol = tol.unwrap_or_else(|| self.q.rows.max(self.r.cols) as f64 * f64::EPSILON);
-        (0..k)
-            .take_while(|&i| self.r.at(i, i).abs() > tol * top && top > 0.0)
-            .count()
+        numerical_rank(&self.r, self.r.rows.min(self.r.cols), tol)
     }
 
     /// The basic solution of the least-squares problem `min |A x - b|`: the
@@ -217,18 +211,46 @@ impl PivotedQr {
         let mut y: Vec<f64> = (0..rank)
             .map(|j| (0..self.q.rows).map(|i| self.q.at(i, j) * b[i]).sum())
             .collect();
-        for i in (0..rank).rev() {
-            for j in i + 1..rank {
-                y[i] -= self.r.at(i, j) * y[j];
-            }
-            y[i] /= self.r.at(i, i);
-        }
+        solve_triangular(&self.r, &mut y);
         let mut x = vec![0.0; self.r.cols];
         for (j, value) in y.into_iter().enumerate() {
             x[self.perm[j]] = value;
         }
         Ok(x)
     }
+}
+
+fn numerical_rank(
+    r: &Mat,
+    limit: usize,
+    tolerance: f64,
+) -> usize {
+    if limit == 0 {
+        return 0;
+    }
+    let top = r.at(0, 0).abs();
+    (0..limit)
+        .take_while(|&i| r.at(i, i).abs() > tolerance * top && top > 0.0)
+        .count()
+}
+
+fn solve_triangular(
+    r: &Mat,
+    y: &mut [f64],
+) {
+    for i in (0..y.len()).rev() {
+        for j in i + 1..y.len() {
+            y[i] -= r.at(i, j) * y[j];
+        }
+        y[i] /= r.at(i, i);
+    }
+}
+
+struct PivotedReduction {
+    r: Mat,
+    perm: Vec<usize>,
+    reflectors: Vec<Vec<f64>>,
+    scale: f64,
 }
 
 /// Column-pivoted Householder QR (Businger and Golub).
@@ -239,16 +261,77 @@ impl PivotedQr {
 /// cancellation makes the downdate unreliable.
 ///
 /// # Errors
-/// [`LowRankError::Shape`] for inconsistent storage or non-finite entries.
+/// [`LowRankError::Shape`] for inconsistent storage or non-finite entries,
+/// and [`LowRankError::NoConvergence`] if the resulting factor exceeds the
+/// representable floating-point range.
 pub fn qr_pivoted(a: &Mat) -> Result<PivotedQr, LowRankError> {
     let (m, n) = (a.rows, a.cols);
-    if m.checked_mul(n) != Some(a.data.len()) || !a.is_finite() {
+    let k = m.min(n);
+    let PivotedReduction {
+        r,
+        perm,
+        reflectors,
+        scale,
+    } = reduce_columns(a, k)?;
+    // Thin Q: apply the reflectors to the first k columns of the identity.
+    let mut q = Mat::zeros(m, k);
+    for j in 0..k {
+        q.set(j, j, 1.0);
+    }
+    for (step, v) in reflectors.iter().enumerate().rev() {
+        for j in 0..k {
+            let s: f64 = 2.0 * (step..m).map(|i| v[i - step] * q.at(i, j)).sum::<f64>();
+            for i in step..m {
+                let value = q.at(i, j) - s * v[i - step];
+                q.set(i, j, value);
+            }
+        }
+    }
+    let mut thin = Mat::zeros(k, n);
+    for i in 0..k {
+        for j in i..n {
+            thin.set(i, j, r.at(i, j) * scale);
+        }
+    }
+    if !thin.is_finite() {
+        return Err(LowRankError::NoConvergence(
+            "the triangular factor exceeds finite floating-point range".into(),
+        ));
+    }
+    Ok(PivotedQr { q, r: thin, perm })
+}
+
+fn reduce_columns(
+    a: &Mat,
+    k: usize,
+) -> Result<PivotedReduction, LowRankError> {
+    let (m, n) = (a.rows, a.cols);
+    let magnitude = a
+        .data
+        .iter()
+        .try_fold(0.0_f64, |max, &x| x.is_finite().then_some(max.max(x.abs())));
+    let Some(magnitude) = magnitude.filter(|_| m.checked_mul(n) == Some(a.data.len())) else {
         return Err(LowRankError::Shape(
             "the matrix storage is inconsistent or has non-finite entries".into(),
         ));
-    }
-    let k = m.min(n);
+    };
+    // Scale only extreme inputs, so the fast sum-of-squares norms operate in
+    // a safe range without changing the common path's rounding.
+    let scale = if magnitude > 0.0 && !(1e-140..=1e140).contains(&magnitude) {
+        magnitude
+    } else {
+        1.0
+    };
     let mut r = a.clone();
+    #[allow(
+        clippy::float_cmp,
+        reason = "only the exact identity scale skips multiplication"
+    )]
+    if scale != 1.0 {
+        for x in &mut r.data {
+            *x /= scale;
+        }
+    }
     let mut perm: Vec<usize> = (0..n).collect();
     let mut norms: Vec<f64> = (0..n)
         .map(|j| (0..m).map(|i| r.at(i, j).powi(2)).sum::<f64>().sqrt())
@@ -311,27 +394,72 @@ pub fn qr_pivoted(a: &Mat) -> Result<PivotedQr, LowRankError> {
         }
         reflectors.push(v);
     }
-    // Thin Q: apply the reflectors to the first k columns of the identity.
-    let mut q = Mat::zeros(m, k);
-    for j in 0..k {
-        q.set(j, j, 1.0);
+    Ok(PivotedReduction {
+        r,
+        perm,
+        reflectors,
+        scale,
+    })
+}
+
+/// An approximation `A ≈ A[:, columns] * coefficients`.
+#[derive(Clone, Debug)]
+pub struct ColumnInterpolation {
+    /// Indices of the original columns used as the basis, in pivot order.
+    pub columns: Vec<usize>,
+    /// Dimensionless interpolation weights, one row per selected column.
+    /// Columns appear in the same order as in the input matrix.
+    pub coefficients: Mat,
+}
+
+/// Computes a column interpolative decomposition by truncated pivoted QR.
+///
+/// The actual rank is at most `max_rank`. The leading triangular block
+/// determines the interpolation coefficients; selected columns have identity
+/// coefficients. A zero-rank result has a zero-row coefficient matrix.
+///
+/// # Errors
+///
+/// Returns an error when the input has inconsistent storage or non-finite
+/// entries, the requested rank exceeds either extent, or the coefficients
+/// cannot be represented as finite floats.
+pub fn interpolative_decomposition(
+    a: &Mat,
+    max_rank: usize,
+) -> Result<ColumnInterpolation, LowRankError> {
+    if max_rank > a.rows.min(a.cols) {
+        return Err(LowRankError::Shape(
+            "interpolative rank exceeds a matrix extent".into(),
+        ));
     }
-    for (step, v) in reflectors.iter().enumerate().rev() {
-        for j in 0..k {
-            let s: f64 = 2.0 * (step..m).map(|i| v[i - step] * q.at(i, j)).sum::<f64>();
-            for i in step..m {
-                let value = q.at(i, j) - s * v[i - step];
-                q.set(i, j, value);
-            }
+    let PivotedReduction { r, mut perm, .. } = reduce_columns(a, max_rank)?;
+    let tolerance = a.rows.max(a.cols) as f64 * f64::EPSILON;
+    let rank = numerical_rank(&r, max_rank, tolerance);
+    let mut coefficients = Mat::zeros(rank, a.cols);
+    let mut rhs = vec![0.0; rank];
+    for (pivot, &column) in perm.iter().enumerate() {
+        if pivot < rank {
+            coefficients.set(pivot, column, 1.0);
+            continue;
+        }
+        for (i, value) in rhs.iter_mut().enumerate() {
+            *value = r.at(i, pivot);
+        }
+        solve_triangular(&r, &mut rhs);
+        for (i, &value) in rhs.iter().enumerate() {
+            coefficients.set(i, column, value);
         }
     }
-    let mut thin = Mat::zeros(k, n);
-    for i in 0..k {
-        for j in i..n {
-            thin.set(i, j, r.at(i, j));
-        }
+    if !coefficients.is_finite() {
+        return Err(LowRankError::NoConvergence(
+            "interpolation coefficients exceed finite floating-point range".into(),
+        ));
     }
-    Ok(PivotedQr { q, r: thin, perm })
+    perm.truncate(rank);
+    Ok(ColumnInterpolation {
+        columns: perm,
+        coefficients,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -388,40 +516,52 @@ pub fn randomized_svd(
             "rank {k} requested of a {m} x {n} operator"
         )));
     }
-    let l = (k + options.oversample).min(m.min(n));
+    let l = k.saturating_add(options.oversample).min(m.min(n));
     let mut rng = Gaussian::new(options.seed);
-    let apply = |f: &dyn Fn(&[f64], &mut [f64]), xs: &[Vec<f64>], len: usize| -> Vec<Vec<f64>> {
-        xs.iter()
-            .map(|x| {
-                let mut y = vec![0.0; len];
-                f(x, &mut y);
-                y
-            })
-            .collect()
+    let write_product = |f: &dyn Fn(&[f64], &mut [f64]), x: &[f64], y: &mut [f64]| {
+        f(x, y);
+        if y.iter().any(|v| !v.is_finite()) {
+            Err(LowRankError::Shape(
+                "the operator returned a non-finite product".into(),
+            ))
+        } else {
+            Ok(())
+        }
     };
-    let omega: Vec<Vec<f64>> = (0..l)
-        .map(|_| (0..n).map(|_| rng.sample()).collect())
-        .collect();
-    let mut q = apply(matvec, &omega, m);
+    let apply =
+        |f: &dyn Fn(&[f64], &mut [f64]), x: &[f64], len: usize| -> Result<Vec<f64>, LowRankError> {
+            let mut y = vec![0.0; len];
+            write_product(f, x, &mut y)?;
+            Ok(y)
+        };
+    let mut omega = vec![0.0; n];
+    let mut q = Vec::with_capacity(l);
+    for _ in 0..l {
+        omega.fill_with(|| rng.sample());
+        q.push(apply(matvec, &omega, m)?);
+    }
     orthonormalize(&[], &mut q);
     for _ in 0..options.power_iterations {
-        let mut z = apply(rmatvec, &q, n);
+        let mut z = q
+            .iter()
+            .map(|x| apply(rmatvec, x, n))
+            .collect::<Result<Vec<_>, _>>()?;
         orthonormalize(&[], &mut z);
-        q = apply(matvec, &z, m);
+        q = z
+            .iter()
+            .map(|x| apply(matvec, x, m))
+            .collect::<Result<Vec<_>, _>>()?;
         orthonormalize(&[], &mut q);
     }
-    if q.is_empty() || q.iter().flatten().any(|v| !v.is_finite()) {
+    if q.is_empty() {
         return Err(LowRankError::Shape(
-            "the operator returned zero or non-finite products".into(),
+            "the operator returned a numerically zero sampled range".into(),
         ));
     }
     // B = Q^T A, row i being (A^T q_i)^T.
-    let rows = apply(rmatvec, &q, n);
-    let mut b = Mat::zeros(rows.len(), n);
-    for (i, row) in rows.iter().enumerate() {
-        for (j, v) in row.iter().enumerate() {
-            b.set(i, j, *v);
-        }
+    let mut b = Mat::zeros(q.len(), n);
+    for (row, x) in b.data.chunks_exact_mut(n).zip(&q) {
+        write_product(rmatvec, x, row)?;
     }
     let small = dense::svd(&b).map_err(|e| LowRankError::NoConvergence(format!("{e:?}")))?;
     let k = k.min(small.s.len());
@@ -1233,6 +1373,82 @@ mod tests {
         let mut bad = Mat::zeros(2, 2);
         bad.set(0, 0, f64::NAN);
         assert!(qr_pivoted(&bad).is_err());
+    }
+
+    #[test]
+    fn pivoted_qr_preserves_extreme_uniform_scales() {
+        for scale in [1e-250, 1e250] {
+            let a = mat(&[&[scale, 2.0 * scale], &[2.0 * scale, -scale]]);
+            let factor = qr_pivoted(&a).unwrap();
+            assert_eq!(factor.rank(None), 2);
+            let product = factor.q.matmul(&factor.r).unwrap();
+            for i in 0..a.rows {
+                for j in 0..a.cols {
+                    let want = a.at(i, factor.perm[j]) / scale;
+                    assert!((product.at(i, j) / scale - want).abs() < 1e-14);
+                }
+            }
+        }
+        let overflowing = mat(&[&[f64::MAX], &[f64::MAX]]);
+        assert!(matches!(
+            qr_pivoted(&overflowing),
+            Err(LowRankError::NoConvergence(_))
+        ));
+    }
+
+    #[test]
+    fn interpolative_decomposition_uses_original_columns_in_input_order() {
+        let a = mat(&[
+            &[1.0, 2.0, 3.0, 2.0],
+            &[2.0, 4.0, 6.0, 1.0],
+            &[0.0, 0.0, 0.0, 3.0],
+        ]);
+        let result = interpolative_decomposition(&a, 3).unwrap();
+        assert_eq!(result.columns, [2, 3]);
+        let mut selected = Mat::zeros(a.rows, result.columns.len());
+        for (j, &source) in result.columns.iter().enumerate() {
+            for i in 0..a.rows {
+                selected.set(i, j, a.at(i, source));
+            }
+        }
+        let product = selected.matmul(&result.coefficients).unwrap();
+        assert!(
+            product
+                .data
+                .iter()
+                .zip(&a.data)
+                .all(|(x, y)| (x - y).abs() < 1e-14)
+        );
+        let rank_one = interpolative_decomposition(&a, 1).unwrap();
+        assert_eq!(rank_one.columns, [2]);
+        assert_eq!(rank_one.coefficients.at(0, 2), 1.0);
+        let zero = interpolative_decomposition(&Mat::zeros(2, 3), 2).unwrap();
+        assert!(zero.columns.is_empty());
+        assert_eq!((zero.coefficients.rows, zero.coefficients.cols), (0, 3));
+        assert!(interpolative_decomposition(&a, 4).is_err());
+        assert!(interpolative_decomposition(&mat(&[&[f64::NAN]]), 0).is_err());
+    }
+
+    #[test]
+    fn randomized_svd_saturates_oversampling_and_rejects_any_invalid_product() {
+        let identity = |x: &[f64], y: &mut [f64]| y.copy_from_slice(x);
+        let options = RandomizedOptions {
+            oversample: usize::MAX,
+            ..RandomizedOptions::default()
+        };
+        let result = randomized_svd(&identity, &identity, 2, 2, 1, &options).unwrap();
+        assert!((result.s[0] - 1.0).abs() < 1e-14);
+        let first = std::cell::Cell::new(true);
+        let invalid = |x: &[f64], y: &mut [f64]| {
+            y.copy_from_slice(x);
+            if first.replace(false) {
+                y[0] = f64::INFINITY;
+            }
+        };
+        assert!(matches!(
+            randomized_svd(&invalid, &identity, 2, 2, 1, &options),
+            Err(LowRankError::Shape(_))
+        ));
     }
 
     #[test]

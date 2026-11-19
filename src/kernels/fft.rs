@@ -11,7 +11,11 @@
 use num_complex::Complex64 as Complex;
 /// Complex representation used by the FFT kernels.
 pub use num_complex::Complex64;
-use rustfft::FftPlanner;
+use rustfft::FftDirection;
+
+use super::par;
+use super::reuse::fft_plan;
+use super::reuse::fft_scratch;
 
 /// The normalisation convention of [`fft_norm`] (§8.8).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,13 +56,10 @@ fn transform(
     if input.is_empty() {
         return input;
     }
-    let mut planner = FftPlanner::new();
-    let direction = if inverse {
-        rustfft::FftDirection::Inverse
-    } else {
-        rustfft::FftDirection::Forward
-    };
-    planner.plan_fft(input.len(), direction).process(&mut input);
+    let plan = fft_plan(input.len(), direction(inverse));
+    let mut scratch = fft_scratch();
+    scratch.resize(plan.get_inplace_scratch_len(), Complex64::default());
+    plan.process_with_scratch(&mut input, &mut scratch);
     let scale = scale_for(norm, inverse, input.len());
     if scale < 1.0 {
         for value in &mut input {
@@ -66,6 +67,14 @@ fn transform(
         }
     }
     input
+}
+
+const fn direction(inverse: bool) -> FftDirection {
+    if inverse {
+        FftDirection::Inverse
+    } else {
+        FftDirection::Forward
+    }
 }
 
 /// The scale a transform over `count` points carries under `norm`.
@@ -161,38 +170,13 @@ fn transform_axes(
     if data.is_empty() || axes.is_empty() {
         return data;
     }
-    let mut planner = FftPlanner::new();
     for axis in axes {
         let extent = shape[*axis];
-        if extent == 0 {
+        if extent <= 1 {
             continue;
         }
         let inner: usize = shape[axis + 1..].iter().product();
-        let outer: usize = shape[..*axis].iter().product();
-        let transform = if inverse {
-            planner.plan_fft_inverse(extent)
-        } else {
-            planner.plan_fft_forward(extent)
-        };
-        let mut scratch = vec![Complex64::default(); transform.get_inplace_scratch_len()];
-        if inner == 1 {
-            // The planner processes a buffer of contiguous lanes as a batch.
-            transform.process_with_scratch(&mut data, &mut scratch);
-            continue;
-        }
-        let mut lane = vec![Complex64::default(); extent];
-        for block in 0..outer {
-            for offset in 0..inner {
-                let base = block * extent * inner + offset;
-                for (index, slot) in lane.iter_mut().enumerate() {
-                    *slot = data[base + index * inner];
-                }
-                transform.process_with_scratch(&mut lane, &mut scratch);
-                for (index, slot) in lane.iter().enumerate() {
-                    data[base + index * inner] = *slot;
-                }
-            }
-        }
+        transform_axis(&mut data, extent, inner, inverse);
     }
     let count: usize = axes.iter().map(|axis| shape[*axis]).product();
     let scale = scale_for(norm, inverse, count);
@@ -202,6 +186,48 @@ fn transform_axes(
         }
     }
     data
+}
+
+/// Independent lanes are batched into disjoint blocks of the tensor.
+fn transform_axis(
+    data: &mut [Complex64],
+    extent: usize,
+    inner: usize,
+    inverse: bool,
+) {
+    // The shape has already been checked. Each chunk is a whole number of
+    // outer blocks and therefore contains only complete transforms.
+    let block_len = extent * inner;
+    let plan = fft_plan(extent, direction(inverse));
+    let work = |_: usize, data: &mut [Complex64]| {
+        let mut scratch = fft_scratch();
+        scratch.resize(plan.get_inplace_scratch_len(), Complex64::default());
+        if inner == 1 {
+            plan.process_with_scratch(data, &mut scratch);
+            return;
+        }
+        let mut lane = vec![Complex64::default(); extent];
+        for block in data.chunks_exact_mut(block_len) {
+            for offset in 0..inner {
+                for (slot, value) in lane
+                    .iter_mut()
+                    .zip(block.iter().skip(offset).step_by(inner))
+                {
+                    *slot = *value;
+                }
+                plan.process_with_scratch(&mut lane, &mut scratch);
+                for (slot, value) in block.iter_mut().skip(offset).step_by(inner).zip(&lane) {
+                    *slot = *value;
+                }
+            }
+        }
+    };
+    let chunk_len = block_len * (32_768 / block_len).max(1);
+    if data.len() >= 262_144 {
+        par::for_chunks_mut(data, chunk_len, 2, work);
+    } else {
+        work(0, data);
+    }
 }
 
 /// The half-spectrum transform of a real tensor over `axes`: the last listed
@@ -227,18 +253,26 @@ pub fn rfft_axes(
     if input.is_empty() {
         return Ok((Vec::new(), out_shape));
     }
-    let complex = input
+    let mut complex: Vec<_> = input
         .iter()
         .map(|&value| Complex::new(value, 0.0))
         .collect();
-    let full = transform_axes(complex, shape, axes, false, Norm::Backward);
+    // Hermitian symmetry holds along this axis while all other axes still
+    // contain real-valued inputs. Transform the remaining axes on half as
+    // many lanes by truncating before processing them.
     let inner: usize = shape[last + 1..].iter().product();
+    transform_axis(&mut complex, shape[last], inner, false);
     let mut out = Vec::with_capacity(out_shape.iter().product());
-    for (index, value) in full.into_iter().enumerate() {
-        if (index / inner.max(1)) % shape[last].max(1) < keep {
-            out.push(value);
-        }
+    for block in complex.chunks_exact(shape[last] * inner) {
+        out.extend_from_slice(&block[..keep * inner]);
     }
+    let out = transform_axes(
+        out,
+        &out_shape,
+        &axes[..axes.len() - 1],
+        false,
+        Norm::Backward,
+    );
     Ok((out, out_shape))
 }
 
@@ -267,37 +301,35 @@ pub fn irfft_axes(
     let mut full_shape = shape.to_vec();
     full_shape[last] = n_last;
     let total = shape_len(&full_shape).ok_or_else(|| "tensor shape overflows usize".to_string())?;
+    if total == 0 {
+        return Ok((Vec::new(), full_shape));
+    }
     let mut full = Vec::new();
     full.try_reserve_exact(total)
         .map_err(|_| "tensor is too large".to_string())?;
-    full.resize(total, Complex64::default());
-    let rank = shape.len();
-    let mut coordinate = vec![0usize; rank];
-    for (slot, target) in full.iter_mut().enumerate() {
-        let mut rest = slot;
-        for axis in (0..rank).rev() {
-            coordinate[axis] = rest % full_shape[axis];
-            rest /= full_shape[axis];
+    // Undo the other axes before expanding the half spectrum. The inverse
+    // across those axes reduces the mirror relation to one dimension.
+    let half = transform_axes(
+        input.to_vec(),
+        shape,
+        &axes[..axes.len() - 1],
+        true,
+        Norm::Backward,
+    );
+    let inner = shape[last + 1..].iter().product::<usize>();
+    let keep = shape[last];
+    for block in half.chunks_exact(keep * inner) {
+        full.extend_from_slice(block);
+        for bin in keep..n_last {
+            let mirrored = (n_last - bin) * inner;
+            full.extend(
+                block[mirrored..mirrored + inner]
+                    .iter()
+                    .map(Complex64::conj),
+            );
         }
-        // Bins past the half spectrum are the conjugates of their mirror
-        // image, mirrored on every transformed axis.
-        let mirrored = coordinate[last] >= shape[last];
-        let mut source = 0usize;
-        for axis in 0..rank {
-            let mut at = coordinate[axis];
-            if mirrored && axes.contains(&axis) {
-                at = (full_shape[axis] - at) % full_shape[axis];
-            }
-            source = source * shape[axis] + at;
-        }
-        let value = input[source];
-        *target = if mirrored {
-            value.conj()
-        } else {
-            value
-        };
     }
-    let real = transform_axes(full, &full_shape, axes, true, Norm::Backward);
+    let real = transform_axes(full, &full_shape, &[last], true, Norm::Backward);
     Ok((real.into_iter().map(|value| value.re).collect(), full_shape))
 }
 
@@ -465,18 +497,14 @@ pub fn fftn(
 /// Center the zero frequency in a one-dimensional spectrum.
 #[must_use]
 pub fn fftshift(input: &[Complex]) -> Vec<Complex> {
-    shift_permutation(&[input.len()], &[0], false)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|i| input[i])
-        .collect()
+    let mut output = input.to_vec();
+    output.rotate_right(input.len() / 2);
+    output
 }
 /// Undo a centered one-dimensional spectrum.
 #[must_use]
 pub fn ifftshift(input: &[Complex]) -> Vec<Complex> {
-    shift_permutation(&[input.len()], &[0], true)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|i| input[i])
-        .collect()
+    let mut output = input.to_vec();
+    output.rotate_left(input.len() / 2);
+    output
 }

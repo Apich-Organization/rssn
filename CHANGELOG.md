@@ -8,11 +8,15 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 
 - The scientific kernel exposes a deterministic manifest, type and dimension contracts, structured results and typed numerical callbacks. Embedded hosts generate checked interfaces from the operator registry that executes the calls.
 - Indexed rewrites and incremental matching reduce repeated search. Independent requests use private computation graphs with ordered result import. Optional JIT and device backends define their supported precision and fallback behavior.
+- Workers prepare and evaluate symbolic batches on private graphs with bounded in-flight jobs. CPU dispatch reads the active Rayon pool size, and FFT routines share plans and scratch storage through `kernels::reuse`.
 - Binary manifest, plugin and compute records use native bincode-next 3.2 traits. Signature and manifest bytes remain deterministic. Manifest verification reads the existing operator and unit tables in place and streams the canonical encoding into the hash. Compatibility tests compare the supported previous wire layouts with the native encoding. JSON and CBOR expose metadata to self-describing consumers.
 
 ### Numerical and symbolic algorithms
 
 - Add one-sided Welch spectral density, inverse STFT with overlap normalization, and polyphase FIR resampling. Add checked topological ordering and a nonrecursive strongly connected component API shared with symbolic graph operators.
+- Add analytic signals, Hilbert transforms, zoom FFT, spectral coherence and wavelet packets. DCT and DST use FFT-based algorithms and fractional Fourier transforms can reuse their spectral basis.
+- Add signed shortest paths, weak components, maximum flow with its minimum cut, and column interpolative decomposition. The kernel manifest carries the numerical inputs, structured results and dimensional contracts.
+- Sparse conjugate gradients rescale extreme right-hand sides. Fixed-step delay solvers reject time grids that cannot advance, and the wave stencil combines speed and step before squaring.
 
 - Added weighted empirical quantiles and CDFs, discrete logarithms for composite moduli with non-invertible bases, and checked exact integer polynomial products. Improved LU factor reuse, eigensolver scaling, least-squares projections and parallel fractal correlation counts.
 - The Rust LOBPCG API solves matrix-free generalized eigenproblems with a positive-definite mass operator and soft-locks converged vectors.
@@ -33,11 +37,15 @@ Release changes to the RSSN kernel, algorithms and embedding APIs. 本文记录 
 
 - 科学计算内核提供确定性的清单、类型与量纲契约、结构化结果以及类型化数值回调。宿主从实际执行调用的同一算子注册表生成受检查的接口。
 - 重写索引和增量匹配减少重复搜索。独立请求使用各自的计算图，结果按输入顺序导入。可选 JIT 和设备后端明确支持的精度与回退行为。
+- 工作线程在独立计算图中准备和执行符号批处理，并限制同时保留的任务数。CPU 调度读取当前 Rayon 池的大小，FFT 通过 `kernels::reuse` 共享计划并复用临时空间。
 - 二进制清单、插件消息和计算记录采用 bincode-next 3.2 原生编码。签名和清单保持确定性编码，校验清单时直接读取现有的算子表和单位表，逐段将规范编码传给哈希器。兼容性测试将支持的旧线格式与原生编码进行比较。JSON 与 CBOR 继续提供自描述元数据。
 
 ### 数值与符号算法
 
 - 增加单边 Welch 功率谱密度、重叠归一化逆 STFT 和多相 FIR 重采样。增加受检查的拓扑排序，并让 Rust 和符号图算子共用非递归强连通分量实现。
+- 增加解析信号、Hilbert 变换、zoom FFT、谱相干度和小波包。DCT、DST 采用 FFT 算法，分数阶 Fourier 变换支持复用谱基。
+- 增加含负边权的最短路径、弱连通分量、最大流及最小割、列插值分解。内核清单声明输入、结构化输出和量纲契约。
+- 稀疏共轭梯度对极端尺度的右端项做缩放。固定步长时滞求解拒绝无法前进的时间网格，波动方程离散格式先合并波速和步长再计算平方。
 
 - 增加加权经验分位数和累积分布、含不可逆底数的复合模数离散对数，以及带溢出检查的精确整数多项式乘法。改进 LU 分解复用、特征值计算的缩放、最小二乘投影和并行分形关联计数。
 - Rust LOBPCG API 支持带正定质量算子的无矩阵广义特征值问题，并软锁定已收敛的向量。

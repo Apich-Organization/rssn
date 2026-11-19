@@ -4,12 +4,14 @@
 use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use rssn::api::CachePolicy;
 use rssn::api::Config;
 use rssn::api::Session;
 use std::hint::black_box;
 
 fn symbolic(c: &mut Criterion) {
     let s = Session::new();
+    s.set_cache_policy(CachePolicy::off());
     let config = Config::new();
     let mut group = c.benchmark_group("symbolic");
     for (name, request) in [
@@ -30,12 +32,36 @@ fn symbolic(c: &mut Criterion) {
 
 fn numeric(c: &mut Criterion) {
     let s = Session::new();
+    s.set_cache_policy(CachePolicy::off());
     let term = s
         .parse("defint(exp(-x^2)*cos(x), x, 0, 2)")
         .expect("parses");
     let config = Config::new().numeric(1e-10);
     c.bench_function("numeric/quadrature", |b| {
         b.iter(|| s.compute(black_box(term), &config))
+    });
+}
+
+fn symbolic_batch(c: &mut Criterion) {
+    let s = Session::new();
+    s.set_cache_policy(CachePolicy::off());
+    let config = Config::new();
+    let terms: Vec<_> = (1..=32)
+        .map(|power| {
+            s.parse(&format!("diff(x^{power} * sin(x), x)"))
+                .expect("benchmark request parses")
+        })
+        .collect();
+    c.bench_function("symbolic_batch/ordered_loop_32", |b| {
+        b.iter(|| {
+            black_box(&terms)
+                .iter()
+                .map(|&term| s.compute(term, &config))
+                .collect::<Vec<_>>()
+        });
+    });
+    c.bench_function("symbolic_batch/compute_all_32", |b| {
+        b.iter(|| s.compute_all(black_box(&terms), &config));
     });
 }
 
@@ -83,5 +109,5 @@ fn jit(c: &mut Criterion) {
 #[cfg(not(feature = "jit"))]
 fn jit(_: &mut Criterion) {}
 
-criterion_group!(benches, symbolic, numeric, compiled, jit);
+criterion_group!(benches, symbolic, numeric, symbolic_batch, compiled, jit);
 criterion_main!(benches);

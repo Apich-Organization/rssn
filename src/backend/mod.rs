@@ -123,7 +123,7 @@ pub fn call_batch_par(
     out: &mut [f64],
 ) {
     use rayon::prelude::*;
-    if out.len() <= 2 * BATCH_PAR_ROWS {
+    if !crate::execution::should_split(out.len().div_ceil(BATCH_PAR_ROWS), 3) {
         f.call_batch(columns, out);
         return;
     }

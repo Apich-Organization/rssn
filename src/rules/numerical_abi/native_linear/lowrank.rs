@@ -2,6 +2,7 @@
 use super::super::native_backend::compiled_snapshot;
 use super::Array;
 use super::ArrayD;
+use super::CallCtx;
 use super::DimExpr;
 use super::Dynamic;
 use super::Handle;
@@ -14,6 +15,7 @@ use super::NewObject;
 use super::OpError;
 use super::Output;
 use super::RuleError;
+use super::TypeExpr;
 use super::Value;
 use super::api;
 use super::array;
@@ -69,6 +71,37 @@ fn sresult(
         ("singular_value_reference", api::quantity(reference, d)?),
     ])))
 }
+
+impl super::super::native_object_api::NativeOutput for lowrank::ColumnInterpolation {
+    fn ty() -> TypeExpr {
+        TypeExpr::Record(vec![
+            ("columns".into(), <Vec<usize> as Output>::ty()),
+            ("coefficients".into(), <Mat as Output>::ty()),
+        ])
+    }
+
+    fn encode(
+        self,
+        _: &CallCtx<'_>,
+    ) -> Result<Value, OpError> {
+        Ok(api::record(vec![
+            ("columns", Output::encode(self.columns)?),
+            ("coefficients", Output::encode(self.coefficients)?),
+        ]))
+    }
+}
+
+object_binding!(
+    lowrank_interpolative_decomposition,
+    "num_linear_interpolative_decomposition",
+    "crate::kernels::lowrank::interpolative_decomposition",
+    "Approximates a matrix using a subset of its original columns and dimensionless interpolation coefficients. Returns zero-based column indices and a coefficient matrix in the original column order.",
+    true,
+    (a: Handle<Array>, max_rank: usize) -> lowrank::ColumnInterpolation,
+    |ctx: &CallCtx<'_>, a: Handle<Array>, max_rank: usize| {
+        a.with(ctx, |a| lowrank::interpolative_decomposition(&matrix(a)?, max_rank).map_err(err))
+    }
+);
 object_binding!(lowrank_gaussian_new,"num_linear_gaussian_new","crate::kernels::lowrank::Gaussian::new","Actual native low-rank/operator method. Matrices and state arrays retain explicit physical references; orthonormal factors are dimensionless. Shapes, iterations, callbacks and allocations are bounded.",true,(seed:u64)->NewObject<lowrank::Gaussian>,|ctx,seed|{let _=ctx;Ok(NewObject::normalized(lowrank::Gaussian::new(seed)))});
 object_binding!(lowrank_gaussian_sample,"num_linear_gaussian_sample","crate::kernels::lowrank::Gaussian::sample","Actual native low-rank/operator method. Matrices and state arrays retain explicit physical references; orthonormal factors are dimensionless. Shapes, iterations, callbacks and allocations are bounded.",true,(generator:Handle<lowrank::Gaussian>)->f64,|ctx,generator|{let _=ctx;generator.with_mut(ctx,|g|Ok(g.sample()))});
 object_binding!(lowrank_pivoted_qr,"num_linear_pivoted_qr","crate::kernels::lowrank::qr_pivoted","Actual native low-rank/operator method. Matrices and state arrays retain explicit physical references; orthonormal factors are dimensionless. Shapes, iterations, callbacks and allocations are bounded.",true,(a:Handle<Array>)->NewObject<Pivot>,|ctx,a|{let _=ctx;let d=dim(ctx,&a.value)?;a.with(ctx,|a|Ok(NewObject::new(Pivot{data:lowrank::qr_pivoted(&matrix(a)?).map_err(err)?,scale:a.scale},vec![d])))});
@@ -87,6 +120,7 @@ static BINDINGS: &[&api::Binding] = &[
     &lowrank_pivoted_qr::BINDING,
     &lowrank_pivoted_qr_rank::BINDING,
     &lowrank_pivoted_qr_solve::BINDING,
+    &lowrank_interpolative_decomposition::BINDING,
     &lowrank_randomized_svd::BINDING,
     &lowrank_lobpcg::BINDING,
     &lowrank_anderson::BINDING,

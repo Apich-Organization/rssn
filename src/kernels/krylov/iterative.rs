@@ -251,6 +251,7 @@ mod tests {
 #[derive(Clone, Copy)]
 pub(super) enum Method {
     Cg,
+    PositiveCg,
     Gmres(usize),
     Bicgstab,
 }
@@ -410,7 +411,7 @@ pub(super) fn solve(
     tol: f64,
     max_iter: usize,
     method: Method,
-) -> IterResult {
+) -> Result<IterResult, IterResult> {
     let mut guess = x0.map(<[f64]>::to_vec);
     let mut total = 0;
     loop {
@@ -436,7 +437,11 @@ pub(super) fn solve(
                 .is_some_and(|old| old == result.x.as_slice());
         if stopped {
             result.iterations = total;
-            return result;
+            return if failed {
+                Err(result)
+            } else {
+                Ok(result)
+            };
         }
         guess = Some(result.x);
     }
@@ -504,7 +509,16 @@ fn solve_correction(
         }
     };
     let inner = match method {
-        | Method::Cg => cg(&adjusted, &precond, &rhs, target, max_iter),
+        | Method::Cg | Method::PositiveCg => {
+            cg(
+                &adjusted,
+                &precond,
+                &rhs,
+                target,
+                max_iter,
+                matches!(method, Method::PositiveCg),
+            )
+        },
         | Method::Gmres(restart) => gmres(&adjusted, &precond, &rhs, restart, target, max_iter),
         | Method::Bicgstab => bicgstab(&adjusted, &precond, &rhs, target, max_iter),
     };
@@ -536,6 +550,7 @@ fn cg(
     b: &[f64],
     tol: f64,
     max_iter: usize,
+    require_positive_curvature: bool,
 ) -> Inner {
     let n = b.len();
     let bn = norm(b);
@@ -556,8 +571,8 @@ fn cg(
             return inner_result(x, it, true);
         }
         let pap = dot(&p, &ap);
-        if pap.zero() || !pap.finite() {
-            return inner_result(x, it, false);
+        if pap.zero() || !pap.finite() || (require_positive_curvature && pap.fraction < 0.0) {
+            return inner_result(x, it, require_positive_curvature);
         }
         let alpha = rz.ratio(pap);
         let alpha_step = PreparedScale::new(alpha);

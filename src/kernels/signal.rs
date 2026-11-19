@@ -5,7 +5,7 @@
 //! and [`inverse_stft`] for overlap-add reconstruction. [`upfirdn`] applies
 //! a caller-supplied FIR filter while changing the sample rate.
 //!
-//! The single-frame [`fft`] and [`ifft`] functions build a plan on each call.
+//! The Fourier transforms reuse plans and work buffers by transform length.
 //! Direct [`convolve`] and [`cross_correlation`] cost `O(n m)`; for FFT-based
 //! convolution see [`crate::kernels::fftconv`]. The built-in Hann, Hamming,
 //! Blackman and Kaiser windows are symmetric. Filtered frames use the exact
@@ -13,23 +13,170 @@
 
 use std::f64::consts::PI;
 
-use rustfft::FftPlanner;
+use num_complex::Complex64;
+use rustfft::FftDirection;
 use rustfft::num_complex::Complex;
 
-mod framed;
+use super::fftconv::convolve_direct;
+use super::par;
+use super::reuse::fft_plan;
+use super::reuse::fft_scratch;
 
+mod framed;
+mod spectral;
+
+pub use framed::CrossSpectrum;
 pub use framed::PowerSpectrum;
 pub use framed::SignalError;
-pub use framed::inverse_stft;
-pub use framed::upfirdn;
-pub use framed::welch_psd;
+/// Estimates the one-sided power spectral density of real samples by Welch's method.
+///
+/// Averages the periodograms of complete windowed frames, whose starts are
+/// `hop` samples apart. Pass the window coefficients explicitly, for example
+/// with [`hann_window`]. The transform uses the window length and
+/// performs no detrending. Frequencies have the same unit as `sample_rate`.
+/// Only bins with a negative-frequency partner are doubled. Multiplying each
+/// bin by the frequency spacing and summing gives the mean window-weighted
+/// frame power. Trailing samples that do not complete a frame are ignored.
+///
+/// # Errors
+///
+/// Returns an error for an invalid window, hop or sample rate, insufficient
+/// samples, non-finite data in a complete frame or non-finite computed power.
+pub fn welch_psd(
+    samples: &[f64],
+    window: &[f64],
+    hop: usize,
+    sample_rate: f64,
+) -> Result<PowerSpectrum, SignalError> {
+    framed::welch_psd(samples, window, hop, sample_rate)
+}
+
+/// Estimates one-sided cross-spectral density and magnitude-squared coherence.
+///
+/// Applies the same complete-frame Welch convention as [`welch_psd`] to
+/// both inputs. For the Fourier bins `X` and `Y`, it averages `conj(X) * Y`
+/// across frames to obtain the cross-spectral density `Pxy`, and computes
+/// `abs(Pxy)^2 / (Pxx * Pyy)`. Auto-spectra and cross-spectra share the
+/// same window energy and one-sided scaling.
+///
+/// # Errors
+/// Returns an error on unequal lengths or on the invalid input domains
+/// described by [`welch_psd`].
+pub fn welch_cross_spectrum(
+    x: &[f64],
+    y: &[f64],
+    window: &[f64],
+    hop: usize,
+    sample_rate: f64,
+) -> Result<CrossSpectrum, SignalError> {
+    framed::welch_cross_spectrum(x, y, window, hop, sample_rate)
+}
+
+/// Reconstructs a real signal from full [`stft`] spectra.
+///
+/// Applies the same window on synthesis and divides each sample by its sum of
+/// squared window weights. Returns the interval covered by the frames, of
+/// length `(frames.len() - 1) * hop + window.len()`. The imaginary part after
+/// the inverse transform is discarded. Use a window and hop that have
+/// nonzero overlap weights across that interval, or pad the analysis when
+/// endpoint samples must be preserved.
+///
+/// # Errors
+///
+/// Returns an error for invalid parameters, inconsistent or non-finite frames,
+/// uncovered samples, output size overflow or non-finite reconstruction.
+pub fn inverse_stft(
+    frames: &[Vec<Complex64>],
+    window: &[f64],
+    hop: usize,
+) -> Result<Vec<f64>, SignalError> {
+    framed::inverse_stft(frames, window, hop)
+}
+
+/// Upsamples, applies a finite impulse response filter and downsamples.
+///
+/// This implements zero insertion by `up`, linear convolution with `taps`,
+/// then retention of every `down`th sample starting at index zero. It works
+/// directly on filter phases without allocating the upsampled signal or
+/// multiplying by its inserted zeros. The boundaries are zero extended. The
+/// supplied taps determine gain, passband, alias rejection and delay.
+///
+/// If either input slice is empty the result is empty. Otherwise the output
+/// length is `floor(((samples.len() - 1) * up + taps.len() - 1) / down) + 1`.
+///
+/// # Errors
+///
+/// Returns an error for a zero factor, non-finite data, non-finite output
+/// or an output extent that overflows or cannot be allocated.
+pub fn upfirdn(
+    samples: &[f64],
+    taps: &[f64],
+    up: usize,
+    down: usize,
+) -> Result<Vec<f64>, SignalError> {
+    framed::upfirdn(samples, taps, up, down)
+}
+
+/// Forms the complex analytic signal of real periodic samples.
+///
+/// The real part is the original signal and the imaginary part is its
+/// discrete Hilbert transform. Positive-frequency bins are doubled and
+/// negative bins removed. DC and the Nyquist bin of an even-length signal
+/// are preserved. An empty input gives an empty result.
+///
+/// # Errors
+/// Returns an error for non-finite samples or an unrepresentable transform.
+pub fn analytic_signal(samples: &[f64]) -> Result<Vec<Complex64>, SignalError> {
+    spectral::analytic_signal(samples)
+}
+
+/// Returns the discrete Hilbert transform of real periodic samples.
+///
+/// A positive-frequency cosine becomes a sine, and DC and Nyquist components
+/// contribute zero. See [`analytic_signal`] for the boundary convention.
+///
+/// # Errors
+/// Returns an error for non-finite samples or an unrepresentable transform.
+pub fn hilbert(samples: &[f64]) -> Result<Vec<f64>, SignalError> {
+    spectral::hilbert(samples)
+}
+
+/// Returns the amplitude envelope `hypot(x, hilbert(x))` of real samples.
+///
+/// # Errors
+/// Returns an error for non-finite samples or an unrepresentable envelope.
+pub fn analytic_envelope(samples: &[f64]) -> Result<Vec<f64>, SignalError> {
+    spectral::analytic_envelope(samples)
+}
+
+/// Computes arbitrary equally spaced Fourier samples using a chirp convolution.
+///
+/// Bin `k` is `sum_n x[n] exp(-2 pi i (start + k * step) n)` with `start`
+/// and `step` measured in cycles per input sample. Frequencies are periodic
+/// modulo one. This is the unit-circle chirp z-transform. It can resolve a
+/// sub-band without evaluating the rest of the spectrum. A zero step repeats
+/// one frequency. Zero bins give an empty result and an empty input gives
+/// `bins` zeros. Time and storage scale with the input and output extents,
+/// using an FFT of length `next_power_of_two(x.len() + bins - 1)`.
+///
+/// # Errors
+/// Returns an error for non-finite frequencies or input, unrepresentable
+/// intermediate arithmetic, or an output or work extent that is too large.
+pub fn zoom_fft(
+    samples: &[Complex64],
+    start: f64,
+    step: f64,
+    bins: usize,
+) -> Result<Vec<Complex64>, SignalError> {
+    spectral::zoom_fft(samples, start, step, bins)
+}
 
 /// Computes the one-dimensional discrete Fourier Transform.
 ///
 /// This function uses the `rustfft` library to perform the FFT.
 ///
 /// # Arguments
-/// * `input` - A mutable slice of complex numbers.
+/// * `input` - A slice of complex samples. Its contents are preserved.
 ///
 /// # Returns
 /// A vector of complex numbers representing the FFT of the input.
@@ -51,23 +198,12 @@ pub use framed::welch_psd;
 /// assert!((output[0].re - 4.0).abs() < 1e-9);
 /// ```
 pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
-    if input.is_empty() {
-        return Vec::new();
-    }
-    let mut planner = FftPlanner::new();
-
-    let fft = planner.plan_fft_forward(input.len());
-
-    let mut buffer = input.to_vec();
-
-    fft.process(&mut buffer);
-
-    buffer
+    super::fft::fft(input)
 }
 
 /// Computes the one-dimensional inverse discrete Fourier Transform.
 ///
-/// This is the unnormalised forward transform followed by the `1/n`
+/// This is the positive-sign transform followed by the `1/n`
 /// normalisation, so `ifft(fft(x)) == x` (up to round-off) for every length.
 ///
 /// # Arguments
@@ -92,27 +228,7 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
 /// ```
 #[must_use]
 pub fn ifft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
-    let n = input.len();
-
-    if n == 0 {
-        return vec![];
-    }
-
-    let mut planner = FftPlanner::new();
-
-    let inverse = planner.plan_fft_inverse(n);
-
-    let mut buffer = input.to_vec();
-
-    inverse.process(&mut buffer);
-
-    let scale = 1.0 / n as f64;
-
-    for value in &mut buffer {
-        *value *= scale;
-    }
-
-    buffer
+    super::fft::ifft(input)
 }
 
 /// Computes the one-dimensional discrete linear convolution of two sequences.
@@ -145,23 +261,7 @@ pub fn convolve(
     a: &[f64],
     v: &[f64],
 ) -> Vec<f64> {
-    let n = a.len();
-
-    let m = v.len();
-
-    if n == 0 || m == 0 {
-        return vec![];
-    }
-
-    let mut out = vec![0.0; n + m - 1];
-
-    for i in 0..n {
-        for j in 0..m {
-            out[i + j] += a[i] * v[j];
-        }
-    }
-
-    out
+    convolve_direct(a, v)
 }
 
 /// Computes the discrete cross-correlation of two sequences.
@@ -191,10 +291,10 @@ pub fn cross_correlation(
     a: &[f64],
     v: &[f64],
 ) -> Vec<f64> {
-    let mut v_rev = v.to_vec();
-
-    v_rev.reverse();
-
+    if a.is_empty() || v.is_empty() {
+        return Vec::new();
+    }
+    let v_rev: Vec<_> = v.iter().rev().copied().collect();
     convolve(a, &v_rev)
 }
 
@@ -295,108 +395,108 @@ pub fn kaiser_window(
         .collect()
 }
 
-/// Orthonormal Type-II Discrete Cosine Transform (DCT-II).
+/// Orthonormal Type-II Discrete Cosine Transform (DCT-II) in `O(n log n)`.
 #[must_use]
 pub fn dct(x: &[f64]) -> Vec<f64> {
-    let n = x.len();
-    if n == 0 {
-        return Vec::new();
-    }
-    let nf = n as f64;
-    let s0 = (1.0 / nf).sqrt();
-    let sk = (2.0 / nf).sqrt();
-    (0..n)
-        .map(|k| {
-            let scale = if k == 0 { s0 } else { sk };
-            let kf = k as f64;
-            let sum: f64 = x
-                .iter()
-                .enumerate()
-                .map(|(i, &xi)| xi * (PI * kf * (i as f64 + 0.5) / nf).cos())
-                .sum();
-            scale * sum
-        })
-        .collect()
+    cosine_transform(x, false)
 }
 
 /// Inverse of [`dct`] (orthonormal Type-III DCT).
 #[must_use]
 pub fn idct(x: &[f64]) -> Vec<f64> {
-    let n = x.len();
-    if n == 0 {
-        return Vec::new();
-    }
-    let nf = n as f64;
-    let s0 = (1.0 / nf).sqrt();
-    let sk = (2.0 / nf).sqrt();
-    (0..n)
-        .map(|i| {
-            let if64 = i as f64 + 0.5;
-            x.iter()
-                .enumerate()
-                .map(|(k, &xk)| {
-                    let scale = if k == 0 { s0 } else { sk };
-                    scale * xk * (PI * (k as f64) * if64 / nf).cos()
-                })
-                .sum()
-        })
-        .collect()
+    inverse_cosine_transform(x.iter().copied(), x.len(), false)
 }
 
-/// Orthonormal Type-II Discrete Sine Transform (DST-II).
+/// Orthonormal Type-II Discrete Sine Transform (DST-II) in `O(n log n)`.
 #[must_use]
 pub fn dst(x: &[f64]) -> Vec<f64> {
-    let n = x.len();
-    if n == 0 {
-        return Vec::new();
-    }
-    let nf = n as f64;
-    let sk = (2.0 / nf).sqrt();
-    let sn = (1.0 / nf).sqrt();
-    (0..n)
-        .map(|k| {
-            let scale = if k.saturating_add(1) == n {
-                sn
-            } else {
-                sk
-            };
-            let kp1 = k.saturating_add(1) as f64;
-            let sum: f64 = x
-                .iter()
-                .enumerate()
-                .map(|(i, &xi)| xi * (PI * kp1 * (i as f64 + 0.5) / nf).sin())
-                .sum();
-            scale * sum
-        })
-        .collect()
+    let mut output = cosine_transform(x, true);
+    output.reverse();
+    output
 }
 
 /// Inverse of [`dst`] (orthonormal Type-III DST).
 #[must_use]
 pub fn idst(x: &[f64]) -> Vec<f64> {
-    let n = x.len();
-    if n == 0 {
-        return Vec::new();
+    inverse_cosine_transform(x.iter().rev().copied(), x.len(), true)
+}
+
+fn cosine_transform(
+    input: &[f64],
+    alternating: bool,
+) -> Vec<f64> {
+    let n = input.len();
+    if n <= 1 {
+        return input.to_vec();
     }
-    let nf = n as f64;
-    let sk = (2.0 / nf).sqrt();
-    let sn = (1.0 / nf).sqrt();
-    (0..n)
-        .map(|i| {
-            let if64 = i as f64 + 0.5;
-            x.iter()
-                .enumerate()
-                .map(|(k, &xk)| {
-                    let scale = if k.saturating_add(1) == n {
-                        sn
-                    } else {
-                        sk
-                    };
-                    scale * xk * (PI * (k.saturating_add(1) as f64) * if64 / nf).sin()
-                })
-                .sum()
+    // Arrange the even-indexed samples first, then the odd-indexed samples
+    // in reverse. A phase rotation of this n-point FFT yields the DCT.
+    // Negating odd samples and reversing the resulting bins yields the DST.
+    let scale = (2.0 / n as f64).sqrt();
+    let odd_scale = if alternating { -scale } else { scale };
+    let mut reordered = Vec::with_capacity(n);
+    reordered.extend(
+        input
+            .iter()
+            .step_by(2)
+            .map(|&value| Complex::new(value * scale, 0.0)),
+    );
+    reordered.extend(
+        input
+            .iter()
+            .skip(1)
+            .step_by(2)
+            .rev()
+            .map(|&value| Complex::new(value * odd_scale, 0.0)),
+    );
+    let phase = std::f64::consts::FRAC_PI_2 / n as f64;
+    super::fft::fft_owned(reordered)
+        .into_iter()
+        .enumerate()
+        .map(|(bin, value)| {
+            if bin == 0 {
+                value.re * std::f64::consts::FRAC_1_SQRT_2
+            } else {
+                (value * Complex::from_polar(1.0, -phase * bin as f64)).re
+            }
         })
         .collect()
+}
+
+fn inverse_cosine_transform(
+    input: impl DoubleEndedIterator<Item = f64> + Clone,
+    n: usize,
+    alternating: bool,
+) -> Vec<f64> {
+    if n <= 1 {
+        return input.collect();
+    }
+    // Undo the phase rotation. The cosine coefficient of bin n-k contains
+    // the negative imaginary component of the rotated bin k.
+    let mut spectrum = Vec::with_capacity(n);
+    let dc = input.clone().next().unwrap_or_default() / (n as f64).sqrt();
+    spectrum.push(Complex::new(dc, 0.0));
+    let scale = (0.5 / n as f64).sqrt();
+    let phase = std::f64::consts::FRAC_PI_2 / n as f64;
+    for (offset, (re, neg_im)) in input.clone().skip(1).zip(input.rev()).enumerate() {
+        let angle = phase * (offset + 1) as f64;
+        spectrum.push(Complex::new(re * scale, -neg_im * scale) * Complex::from_polar(1.0, angle));
+    }
+    let plan = fft_plan(n, FftDirection::Inverse);
+    let mut scratch = fft_scratch();
+    scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+    plan.process_with_scratch(&mut spectrum, &mut scratch);
+    let (even, odd) = spectrum.split_at(n.div_ceil(2));
+    let mut result = Vec::with_capacity(n);
+    let sign = if alternating { -1.0 } else { 1.0 };
+    let mut odd = odd.iter().rev();
+    for value in even {
+        result.push(value.re);
+        if let Some(value) = odd.next() {
+            result.push(sign * value.re);
+        }
+    }
+    result
 }
 
 /// Short-time Fourier transform of complete frames with starts `hop` samples apart.
@@ -414,20 +514,32 @@ pub fn stft(
     if frame_len == 0 || hop == 0 || x.len() < frame_len {
         return Vec::new();
     }
-    let fft = FftPlanner::new().plan_fft_forward(frame_len);
-    let mut scratch = vec![Complex::ZERO; fft.get_inplace_scratch_len()];
-    x.windows(frame_len)
-        .step_by(hop)
-        .map(|samples| {
-            let mut frame: Vec<_> = samples
+    let plan = fft_plan(frame_len, FftDirection::Forward);
+    let count = (x.len() - frame_len) / hop + 1;
+    let mut output = vec![Vec::new(); count];
+    let transform_frames = |block: usize, frames: &mut [Vec<Complex<f64>>]| {
+        let mut scratch = fft_scratch();
+        scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+        for (offset, frame) in frames.iter_mut().enumerate() {
+            let start = (block + offset) * hop;
+            *frame = x
                 .iter()
+                .skip(start)
                 .zip(window)
                 .map(|(sample, weight)| Complex::new(sample * weight, 0.0))
                 .collect();
-            fft.process_with_scratch(&mut frame, &mut scratch);
-            frame
-        })
-        .collect()
+            plan.process_with_scratch(frame, &mut scratch);
+        }
+    };
+    let block_size = (16_384 / frame_len).max(1);
+    if count.saturating_mul(frame_len) >= 262_144 {
+        par::for_chunks_mut(&mut output, block_size, 2, |block, frames| {
+            transform_frames(block * block_size, frames);
+        });
+    } else {
+        transform_frames(0, &mut output);
+    }
+    output
 }
 
 /// Power spectrogram `|STFT|^2` of `x` with `window` and `hop`.

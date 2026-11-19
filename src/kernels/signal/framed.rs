@@ -1,7 +1,10 @@
 use std::fmt;
 
-use rustfft::FftPlanner;
+use rustfft::FftDirection;
 use rustfft::num_complex::Complex;
+
+use crate::kernels::reuse::fft_plan;
+use crate::kernels::reuse::fft_scratch;
 
 /// Error in a checked signal transform, spectral estimate or resampler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,10 +15,14 @@ pub enum SignalError {
     InvalidHop,
     /// The sample rate must be finite and positive.
     InvalidSampleRate,
+    /// The start frequency and frequency step must be finite.
+    InvalidFrequency,
     /// The input does not contain a complete frame.
     InsufficientSamples,
     /// A spectrum has a different length than its analysis window.
     FrameShape,
+    /// Paired signals must have the same number of samples.
+    SampleShape,
     /// A signal, spectrum or filter coefficient is non-finite.
     NonFiniteInput,
     /// An output or intermediate arithmetic result is not representable.
@@ -39,8 +46,10 @@ impl fmt::Display for SignalError {
             | Self::InvalidSampleRate => {
                 formatter.write_str("sample rate must be finite and positive")
             },
+            | Self::InvalidFrequency => formatter.write_str("frequency and step must be finite"),
             | Self::InsufficientSamples => formatter.write_str("no complete frame"),
             | Self::FrameShape => formatter.write_str("spectrum and window lengths differ"),
+            | Self::SampleShape => formatter.write_str("paired signals have different lengths"),
             | Self::NonFiniteInput => formatter.write_str("signal inputs must be finite"),
             | Self::NonFiniteResult => formatter.write_str("non-finite signal result"),
             | Self::UncoveredSample(index) => {
@@ -63,6 +72,18 @@ pub struct PowerSpectrum {
     pub density: Vec<f64>,
 }
 
+/// One-sided cross-spectrum and magnitude-squared coherence of two real signals.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CrossSpectrum {
+    /// Frequencies from DC through the highest nonnegative DFT bin.
+    pub frequencies: Vec<f64>,
+    /// Mean `conj(X) * Y` per unit frequency after window and one-sided scaling.
+    pub density: Vec<Complex<f64>>,
+    /// Magnitude-squared coherence at each bin, in `[0, 1]`.
+    /// Bins with zero power in either signal have coherence zero.
+    pub coherence: Vec<f64>,
+}
+
 #[allow(
     clippy::float_cmp,
     reason = "an all-zero window is specifically invalid"
@@ -75,25 +96,42 @@ fn window_scale(window: &[f64]) -> Result<f64, SignalError> {
     Ok(scale)
 }
 
-/// Estimates the one-sided power spectral density of real samples by Welch's method.
-///
-/// Averages the periodograms of complete windowed frames, whose starts are
-/// `hop` samples apart. Pass the window coefficients explicitly, for example
-/// with [`super::hann_window`]. The transform uses the window length and
-/// performs no detrending. Frequencies have the same unit as `sample_rate`.
-/// Only bins with a negative-frequency partner are doubled. Multiplying each
-/// bin by the frequency spacing and summing gives the mean window-weighted
-/// frame power. Trailing samples that do not complete a frame are ignored.
-///
-/// # Errors
-///
-/// Returns an error for an invalid window, hop or sample rate, insufficient
-/// samples, non-finite data in a complete frame or non-finite computed power.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "the checked window has nonzero finite energy"
+)]
+fn normalized_window(window: &[f64]) -> Result<Vec<f64>, SignalError> {
+    let scale = window_scale(window)?;
+    let mut weights: Vec<_> = window.iter().map(|value| value / scale).collect();
+    let energy = weights
+        .iter()
+        .map(|value| value * value)
+        .sum::<f64>()
+        .sqrt();
+    for value in &mut weights {
+        *value /= energy;
+    }
+    Ok(weights)
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "a frequency is a fraction of a checked sample rate"
+)]
+fn frequencies(
+    frame_len: usize,
+    sample_rate: f64,
+) -> Vec<f64> {
+    (0..=frame_len / 2)
+        .map(|bin| (bin as f64 / frame_len as f64) * sample_rate)
+        .collect()
+}
+
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "the spectral formulas use nonzero frame lengths and checked finite results"
 )]
-pub fn welch_psd(
+pub(super) fn welch_psd(
     samples: &[f64],
     window: &[f64],
     hop: usize,
@@ -105,26 +143,17 @@ pub fn welch_psd(
     if !sample_rate.is_finite() || sample_rate <= 0.0 {
         return Err(SignalError::InvalidSampleRate);
     }
-    let scale = window_scale(window)?;
+    let weights = normalized_window(window)?;
     let frame_len = window.len();
     if samples.len() < frame_len {
         return Err(SignalError::InsufficientSamples);
     }
 
-    let mut weights: Vec<_> = window.iter().map(|value| value / scale).collect();
-    let energy_scale = weights
-        .iter()
-        .map(|value| value * value)
-        .sum::<f64>()
-        .sqrt();
-    for weight in &mut weights {
-        *weight /= energy_scale;
-    }
-
     let rate_scale = sample_rate.sqrt();
-    let fft = FftPlanner::new().plan_fft_forward(frame_len);
+    let fft = fft_plan(frame_len, FftDirection::Forward);
     let mut spectrum = vec![Complex::ZERO; frame_len];
-    let mut scratch = vec![Complex::ZERO; fft.get_inplace_scratch_len()];
+    let mut scratch = fft_scratch();
+    scratch.resize(fft.get_inplace_scratch_len(), Complex::ZERO);
     let bins = frame_len / 2 + 1;
     let mut density = vec![0.0; bins];
     for (index, frame) in samples.windows(frame_len).step_by(hop).enumerate() {
@@ -150,10 +179,103 @@ pub fn welch_psd(
         }
     }
 
-    let frequencies = (0..bins)
-        .map(|bin| (bin as f64 / frame_len as f64) * sample_rate)
-        .collect();
+    let frequencies = frequencies(frame_len, sample_rate);
     Ok(PowerSpectrum { frequencies, density })
+}
+
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "spectral statistics check every arithmetic result used for output"
+)]
+pub(super) fn welch_cross_spectrum(
+    x: &[f64],
+    y: &[f64],
+    window: &[f64],
+    hop: usize,
+    sample_rate: f64,
+) -> Result<CrossSpectrum, SignalError> {
+    if x.len() != y.len() {
+        return Err(SignalError::SampleShape);
+    }
+    if hop == 0 {
+        return Err(SignalError::InvalidHop);
+    }
+    if !sample_rate.is_finite() || sample_rate <= 0.0 {
+        return Err(SignalError::InvalidSampleRate);
+    }
+    let weights = normalized_window(window)?;
+    let frame_len = window.len();
+    if x.len() < frame_len {
+        return Err(SignalError::InsufficientSamples);
+    }
+    let plan = fft_plan(frame_len, FftDirection::Forward);
+    let mut first = vec![Complex::ZERO; frame_len];
+    let mut second = vec![Complex::ZERO; frame_len];
+    let mut scratch = fft_scratch();
+    scratch.resize(plan.get_inplace_scratch_len(), Complex::ZERO);
+    let mut statistics = vec![(0.0, 0.0, Complex::ZERO); frame_len / 2 + 1];
+    let rate_scale = sample_rate.sqrt();
+    let frames = x.windows(frame_len).zip(y.windows(frame_len)).step_by(hop);
+    for (index, (x, y)) in frames.enumerate() {
+        for ((a, b), ((&u, &v), &weight)) in first
+            .iter_mut()
+            .zip(&mut second)
+            .zip(x.iter().zip(y).zip(&weights))
+        {
+            if !u.is_finite() || !v.is_finite() {
+                return Err(SignalError::NonFiniteInput);
+            }
+            *a = Complex::new(u * weight, 0.0);
+            *b = Complex::new(v * weight, 0.0);
+        }
+        plan.process_with_scratch(&mut first, &mut scratch);
+        plan.process_with_scratch(&mut second, &mut scratch);
+        let n = (index + 1) as f64;
+        for (bin, ((xx, yy, xy), (a, b))) in statistics
+            .iter_mut()
+            .zip(first.iter().zip(&second))
+            .enumerate()
+        {
+            let fold = if bin == 0 || (frame_len.is_multiple_of(2) && bin == frame_len / 2) {
+                1.0
+            } else {
+                std::f64::consts::SQRT_2
+            };
+            let a = (a / rate_scale) * fold;
+            let b = (b / rate_scale) * fold;
+            let power_x = a.norm_sqr();
+            let power_y = b.norm_sqr();
+            let cross = a.conj() * b;
+            if !power_x.is_finite()
+                || !power_y.is_finite()
+                || !cross.re.is_finite()
+                || !cross.im.is_finite()
+            {
+                return Err(SignalError::NonFiniteResult);
+            }
+            *xx += (power_x - *xx) / n;
+            *yy += (power_y - *yy) / n;
+            // The sign can differ between frames. Scale the terms separately
+            // so subtracting two large, opposite-signed values cannot overflow.
+            *xy += cross / n - *xy / n;
+        }
+    }
+    let (density, coherence) = statistics
+        .into_iter()
+        .map(|(xx, yy, cross)| {
+            let magnitude = if xx > 0.0 && yy > 0.0 {
+                (cross.norm() / xx.sqrt() / yy.sqrt()).min(1.0)
+            } else {
+                0.0
+            };
+            (cross, magnitude * magnitude)
+        })
+        .unzip();
+    Ok(CrossSpectrum {
+        frequencies: frequencies(frame_len, sample_rate),
+        density,
+        coherence,
+    })
 }
 
 #[derive(Clone, Default)]
@@ -163,24 +285,11 @@ struct Overlap {
     scale: f64,
 }
 
-/// Reconstructs a real signal from full [`super::stft`] spectra.
-///
-/// Applies the same window on synthesis and divides each sample by its sum of
-/// squared window weights. Returns the interval covered by the frames, of
-/// length `(frames.len() - 1) * hop + window.len()`. The imaginary part after
-/// the inverse transform is discarded. Use a window and hop that have
-/// nonzero overlap weights across that interval, or pad the analysis when
-/// endpoint samples must be preserved.
-///
-/// # Errors
-///
-/// Returns an error for invalid parameters, inconsistent or non-finite frames,
-/// uncovered samples, output size overflow or non-finite reconstruction.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "overlap-add indices are bounded by the checked reconstruction length"
 )]
-pub fn inverse_stft(
+pub(super) fn inverse_stft(
     frames: &[Vec<Complex<f64>>],
     window: &[f64],
     hop: usize,
@@ -218,9 +327,10 @@ pub fn inverse_stft(
         .try_reserve_exact(len)
         .map_err(|_| SignalError::OutputSize)?;
     overlapping.resize(len, Overlap::default());
-    let fft = FftPlanner::new().plan_fft_inverse(frame_len);
+    let fft = fft_plan(frame_len, FftDirection::Inverse);
     let mut time = vec![Complex::ZERO; frame_len];
-    let mut scratch = vec![Complex::ZERO; fft.get_inplace_scratch_len()];
+    let mut scratch = fft_scratch();
+    scratch.resize(fft.get_inplace_scratch_len(), Complex::ZERO);
     let inverse_len = 1.0 / frame_len as f64;
     for (index, frame) in frames.iter().enumerate() {
         let offset = index * hop;
@@ -274,26 +384,11 @@ fn zeroed_output(len: usize) -> Result<Vec<f64>, SignalError> {
     Ok(output)
 }
 
-/// Upsamples, applies a finite impulse response filter and downsamples.
-///
-/// This implements zero insertion by `up`, linear convolution with `taps`,
-/// then retention of every `down`th sample starting at index zero. It works
-/// directly on filter phases without allocating the upsampled signal or
-/// multiplying by its inserted zeros. The boundaries are zero extended. The
-/// supplied taps determine gain, passband, alias rejection and delay.
-///
-/// If either input slice is empty the result is empty. Otherwise the output
-/// length is `floor(((samples.len() - 1) * up + taps.len() - 1) / down) + 1`.
-///
-/// # Errors
-///
-/// Returns an error for a zero factor, non-finite data, non-finite output
-/// or an output extent that overflows or cannot be allocated.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "resampling indices are bounded by checked support and there are no zero sampling factors"
 )]
-pub fn upfirdn(
+pub(super) fn upfirdn(
     samples: &[f64],
     taps: &[f64],
     up: usize,

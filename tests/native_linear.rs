@@ -66,6 +66,38 @@ fn array(
     )
     .unwrap()
 }
+
+#[test]
+fn interpolative_decomposition_has_a_typed_dimensionless_result() {
+    let session = Session::new();
+    let matrix = array(
+        &session,
+        &[2, 3],
+        &[1.0, 2.0, 3.0, 2.0, 4.0, 6.0],
+        measured(2.0, "Length"),
+    );
+    let name = "num_linear_interpolative_decomposition";
+    let manifest = session.manifest();
+    let signature = &manifest.op(name).unwrap().overloads[0];
+    assert!(matches!(&signature.ret, TypeExpr::Record(fields) if fields.len() == 2));
+    let result = call(&session, name, &[matrix.clone(), Value::int(2)]).unwrap();
+    assert_eq!(field(&result, "columns"), &ints(&[2]));
+    let Value::Tensor(coefficients) = field(&result, "coefficients") else {
+        panic!("expected interpolation coefficient tensor");
+    };
+    assert_eq!(coefficients.shape, [1, 3]);
+    assert_eq!(coefficients.elem, TypeExpr::Float);
+    for (actual, want) in coefficients
+        .data
+        .iter()
+        .map(scalar)
+        .zip([1.0 / 3.0, 2.0 / 3.0, 1.0])
+    {
+        assert!((actual - want).abs() < 1e-14);
+    }
+    assert!(call(&session, name, &[matrix, Value::int(3)]).is_err());
+}
+
 #[test]
 fn train_native_entry_roundtrip_and_inner_product_retain_units() {
     let s = Session::new();

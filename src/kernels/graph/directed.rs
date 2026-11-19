@@ -1,15 +1,26 @@
 use std::collections::VecDeque;
 use std::fmt;
 
+use super::DisjointSet;
 use super::Graph;
 
-/// Structural failure in a directed graph operation.
+/// Invalid input or unrepresentable result in a checked graph operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphStructureError {
-    /// An edge points outside the vertex range.
+    /// A requested vertex or an edge endpoint lies outside the vertex range.
     InvalidVertex,
     /// A directed cycle prevents a topological order.
     DirectedCycle,
+    /// A reachable cycle has negative total weight.
+    NegativeCycle,
+    /// An edge weight is not finite.
+    NonFiniteWeight,
+    /// A flow edge has negative capacity.
+    NegativeCapacity,
+    /// The source and sink of a flow network coincide.
+    IdenticalTerminals,
+    /// A path cost or flow value overflows finite floating-point arithmetic.
+    NumericOverflow,
 }
 
 impl fmt::Display for GraphStructureError {
@@ -18,13 +29,56 @@ impl fmt::Display for GraphStructureError {
         formatter: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         formatter.write_str(match self {
-            | Self::InvalidVertex => "edge points outside the graph",
+            | Self::InvalidVertex => "vertex lies outside the graph",
             | Self::DirectedCycle => "graph contains a directed cycle",
+            | Self::NegativeCycle => "graph contains a reachable negative cycle",
+            | Self::NonFiniteWeight => "graph edge weight is not finite",
+            | Self::NegativeCapacity => "flow capacities must be nonnegative",
+            | Self::IdenticalTerminals => "flow source and sink must be distinct",
+            | Self::NumericOverflow => "graph computation exceeds finite floating-point range",
         })
     }
 }
 
 impl std::error::Error for GraphStructureError {}
+
+/// Labels the connected components obtained by ignoring arc directions.
+///
+/// Component labels are dense, ordered by the smallest vertex in each
+/// component, and independent of self-loops, edge weights and repeated arcs.
+///
+/// # Errors
+///
+/// Reports an invalid edge endpoint.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "all vertices were checked and at most one component is created per vertex"
+)]
+pub fn weakly_connected_components(graph: &Graph) -> Result<Vec<usize>, GraphStructureError> {
+    let n = graph.num_nodes();
+    let mut sets = DisjointSet::new(n);
+    for (source, edges) in graph.adj.iter().enumerate() {
+        for &(target, _) in edges {
+            if target >= n {
+                return Err(GraphStructureError::InvalidVertex);
+            }
+            sets.union(source, target);
+        }
+    }
+    let mut label_of_root = vec![usize::MAX; n];
+    let mut next_label = 0;
+    Ok((0..n)
+        .map(|vertex| {
+            let label = &mut label_of_root[sets.find(vertex)];
+            if *label == usize::MAX {
+                *label = next_label;
+                next_label += 1;
+            }
+            *label
+        })
+        .collect())
+}
 
 /// Returns a topological ordering of the vertices using Kahn's algorithm.
 ///

@@ -62,6 +62,165 @@ fn descriptors_register_exact_manifest_overloads_and_unique_keys() {
         );
     }
 }
+
+#[test]
+fn analytic_signal_and_zoom_fft_cross_the_typed_value_abi() {
+    use rssn::kernel::value::ComplexValue;
+
+    let session = Session::new();
+    let Value::Tensor(analytic) = call(
+        &session,
+        "num_signal_analytic_signal",
+        &[vector(&[1.0, 0.0, -1.0, 0.0])],
+    )
+    .unwrap() else {
+        panic!("analytic signal must return a complex tensor")
+    };
+    assert_eq!(analytic.shape, [4]);
+    assert_eq!(analytic.elem, TypeExpr::Complex);
+    let samples: Vec<_> = analytic
+        .data
+        .into_iter()
+        .map(|value| {
+            let Value::Complex(value) = value else {
+                panic!("expected a complex sample")
+            };
+            value.to_f64()
+        })
+        .collect();
+    for ((re, im), (expected_re, expected_im)) in
+        samples
+            .into_iter()
+            .zip([(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)])
+    {
+        assert!((re - expected_re).abs() <= 1e-12);
+        assert!((im - expected_im).abs() <= 1e-12);
+    }
+
+    let impulse = Value::Tensor(TensorValue {
+        shape: vec![2],
+        data: vec![
+            Value::Complex(ComplexValue::Float { re: 1.0, im: -0.25 }),
+            Value::Complex(ComplexValue::Float { re: 0.0, im: 0.0 }),
+        ],
+        elem: TypeExpr::Complex,
+    });
+    let Value::Tensor(spectrum) = call(
+        &session,
+        "num_signal_zoom_fft",
+        &[
+            impulse,
+            Value::Float(0.07),
+            Value::Float(0.21),
+            Value::int(5),
+        ],
+    )
+    .unwrap() else {
+        panic!("zoom FFT must return a complex tensor")
+    };
+    assert_eq!(spectrum.shape, [5]);
+    assert_eq!(spectrum.elem, TypeExpr::Complex);
+    for sample in spectrum.data {
+        let Value::Complex(sample) = sample else {
+            panic!("expected a complex frequency bin")
+        };
+        let (re, im) = sample.to_f64();
+        assert!((re - 1.0).abs() <= 1e-12);
+        assert!((im + 0.25).abs() <= 1e-12);
+    }
+}
+
+#[test]
+fn typed_signal_resampling_and_inverse_stft_reconstruct_samples() {
+    let session = Session::new();
+    let samples = vector(&[1.0, 2.0, 3.0, 4.0]);
+    let window = vector(&[1.0, 1.0]);
+    let hop = Value::int(2);
+    let spectrum = call(
+        &session,
+        "num_analysis_signal_stft",
+        &[samples.clone(), window.clone(), hop.clone()],
+    )
+    .unwrap();
+    assert_eq!(
+        call(
+            &session,
+            "num_signal_inverse_stft",
+            &[spectrum, window, hop]
+        )
+        .unwrap(),
+        samples
+    );
+    assert_eq!(
+        call(
+            &session,
+            "num_signal_upfirdn",
+            &[
+                vector(&[1.0, 2.0]),
+                vector(&[1.0, 1.0]),
+                Value::int(2),
+                Value::int(1)
+            ]
+        )
+        .unwrap(),
+        vector(&[1.0, 1.0, 2.0, 2.0])
+    );
+    assert_eq!(
+        call(&session, "num_special_bessel_i0e", &[Value::Float(0.0)]).unwrap(),
+        Value::Float(1.0)
+    );
+}
+
+#[test]
+fn welch_record_fields_preserve_their_independent_dimensions() {
+    use rssn::kernel::signature::DimExpr;
+    use rssn::kernel::value::QuantityValue;
+
+    let session = Session::new();
+    let hertz = session
+        .manifest()
+        .units
+        .iter()
+        .find(|unit| unit.name == "Hz")
+        .unwrap()
+        .clone();
+    let frequency = hertz.dimension.clone();
+    let sample_rate = Value::Quantity(QuantityValue {
+        value: Box::new(Value::Float(4.0)),
+        unit: hertz,
+    });
+    let spectrum = call(
+        &session,
+        "num_signal_welch_psd",
+        &[
+            measured_geometry(vec![4], &[1.0; 4], "Length"),
+            vector(&[1.0; 4]),
+            Value::int(4),
+            sample_rate,
+        ],
+    )
+    .unwrap();
+    let Value::Record(record) = spectrum else {
+        panic!("expected a Welch power record")
+    };
+    let Value::Tensor(frequencies) = record.get("frequencies").unwrap() else {
+        panic!("expected a frequency vector")
+    };
+    let Value::Tensor(density) = record.get("density").unwrap() else {
+        panic!("expected a density vector")
+    };
+    let density_dimension =
+        DimExpr::Mul(vec![DimExpr::base("Length").pow(2), DimExpr::base("Time")]);
+    for (tensor, expected) in [(frequencies, frequency), (density, density_dimension)] {
+        assert!(
+            rssn::kernel::overload::matches_type(&TypeExpr::Float.with_dim(expected), &tensor.elem)
+                .accepted()
+        );
+    }
+    assert!((geometry_scalar(&frequencies.data[1]) - 1.0).abs() < 1e-12);
+    assert!((geometry_scalar(&density.data[0]) - 1.0).abs() < 1e-12);
+}
+
 #[test]
 fn numeric_families_dispatch_through_name_and_key() {
     let session = Session::new();

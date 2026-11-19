@@ -6,6 +6,7 @@ use rssn::kernels::graph;
 use rssn::kernels::graph::CanonicalLabelling;
 use rssn::kernels::graph::ColourGraph;
 use rssn::kernels::graph::Graph;
+use rssn::kernels::graph::GraphStructureError;
 use rssn::kernels::graph::Permutation;
 use rssn::kernels::graph::SearchBudget;
 use rssn::kernels::graph::bfs;
@@ -22,6 +23,262 @@ fn cfg() -> proptest::prelude::ProptestConfig {
         rng_seed: proptest::test_runner::RngSeed::Fixed(0x5EED),
         failure_persistence: None,
         ..proptest::prelude::ProptestConfig::default()
+    }
+}
+
+#[test]
+fn batch_graph_construction_preserves_arcs_and_checks_input() {
+    let mut graph = Graph::from_edges(3, &[(1, 2, 2.0), (1, 2, 3.0), (1, 1, 1.0)]).unwrap();
+    assert_eq!(graph.num_edges(), 3);
+    assert_eq!(graph.adj(1), [(2, 2.0), (2, 3.0), (1, 1.0)]);
+    graph.add_edge(0, 1, 0.0);
+    assert_eq!(graph.num_edges(), 4);
+    assert!(matches!(
+        Graph::from_edges(3, &[(0, 3, 0.0)]),
+        Err(GraphStructureError::InvalidVertex)
+    ));
+    assert!(matches!(
+        Graph::from_edges(3, &[(0, 1, f64::NAN)]),
+        Err(GraphStructureError::NonFiniteWeight)
+    ));
+    assert!(Graph::from_edges(0, &[]).is_ok());
+}
+
+#[test]
+fn weak_components_ignore_arc_orientation_and_parallel_edges() {
+    let g = Graph::from_edges(
+        7,
+        &[
+            (2, 0, 0.0),
+            (2, 0, -3.0),
+            (2, 4, 1.0),
+            (6, 5, 1.0),
+            (3, 3, 2.0),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        graph::weakly_connected_components(&g),
+        Ok(vec![0, 1, 0, 2, 0, 3, 3])
+    );
+    assert_eq!(
+        graph::weakly_connected_components(&Graph::new(0)),
+        Ok(vec![])
+    );
+    let mut invalid = Graph::new(1);
+    invalid.add_edge(0, 1, 0.0);
+    assert_eq!(
+        graph::weakly_connected_components(&invalid),
+        Err(GraphStructureError::InvalidVertex)
+    );
+}
+
+#[test]
+fn bellman_ford_and_dag_match_distance_matrix_on_weighted_dags() {
+    let n = 6;
+    let mut rng = Lcg::new(0x5a8c);
+    for _ in 0..40 {
+        let mut g = Graph::new(n);
+        // The backwards numbering prevents vertex-order Bellman–Ford from
+        // solving the whole network in a single sweep.
+        for source in 1..n {
+            for target in 0..source {
+                if rng.below(5) < 3 {
+                    g.add_edge(source, target, rng.below(21) as f64 - 10.0);
+                    if rng.below(4) == 0 {
+                        g.add_edge(source, target, rng.below(21) as f64 - 10.0);
+                    }
+                }
+            }
+        }
+        let all_pairs = floyd_warshall(&g);
+        for (start, expected) in all_pairs.chunks_exact(n).enumerate() {
+            for paths in [
+                graph::bellman_ford(&g, start).unwrap(),
+                graph::dag_shortest_paths(&g, start).unwrap(),
+            ] {
+                assert_eq!(paths.distances, expected);
+                for (vertex, previous) in paths.previous.iter().enumerate() {
+                    if let Some(previous) = *previous {
+                        assert!(g.adj(previous).iter().any(|&(target, weight)| {
+                            target == vertex
+                                && paths.distances[previous] + weight == paths.distances[vertex]
+                        }));
+                    } else {
+                        assert!(vertex == start || expected[vertex] == f64::INFINITY);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn checked_paths_report_cycles_bad_endpoints_and_overflow() {
+    let g = Graph::from_edges(5, &[(0, 1, -1.0), (2, 3, -1.0), (3, 2, -1.0)]).unwrap();
+    assert_eq!(
+        graph::bellman_ford(&g, 0).unwrap().distances,
+        [0.0, -1.0, f64::INFINITY, f64::INFINITY, f64::INFINITY]
+    );
+    assert_eq!(
+        graph::bellman_ford(&g, 2),
+        Err(GraphStructureError::NegativeCycle)
+    );
+    assert_eq!(
+        graph::dag_shortest_paths(&g, 0),
+        Err(GraphStructureError::DirectedCycle)
+    );
+    assert!(floyd_warshall(&g)[2 * 5 + 2] < 0.0);
+    assert_eq!(
+        graph::bellman_ford(&g, 5),
+        Err(GraphStructureError::InvalidVertex)
+    );
+    let looped = Graph::from_edges(1, &[(0, 0, -1.0)]).unwrap();
+    assert_eq!(
+        graph::bellman_ford(&looped, 0),
+        Err(GraphStructureError::NegativeCycle)
+    );
+    let overflowing = Graph::from_edges(3, &[(0, 1, f64::MAX), (1, 2, f64::MAX)]).unwrap();
+    for result in [
+        graph::bellman_ford(&overflowing, 0),
+        graph::dag_shortest_paths(&overflowing, 0),
+    ] {
+        assert_eq!(result, Err(GraphStructureError::NumericOverflow));
+    }
+    let mut invalid = Graph::new(2);
+    invalid.add_edge(1, 0, f64::NEG_INFINITY);
+    for result in [
+        graph::bellman_ford(&invalid, 0),
+        graph::dag_shortest_paths(&invalid, 0),
+    ] {
+        assert_eq!(result, Err(GraphStructureError::NonFiniteWeight));
+    }
+}
+
+#[test]
+fn maximum_flow_agrees_with_exhaustive_cuts() {
+    let n = 6;
+    let sink = n - 1;
+    let mut rng = Lcg::new(0x4f29);
+    for _ in 0..80 {
+        let mut edges = Vec::new();
+        for source in 0..n {
+            for target in 0..n {
+                if rng.below(4) == 0 {
+                    edges.push((source, target, rng.below(12) as f64 / 4.0));
+                    if rng.below(3) == 0 {
+                        edges.push((source, target, rng.below(12) as f64 / 4.0));
+                    }
+                }
+            }
+        }
+        let capacity = |side: &[bool]| -> f64 {
+            edges
+                .iter()
+                .filter(|&&(u, v, _)| side[u] && !side[v])
+                .map(|&(_, _, w)| w)
+                .sum()
+        };
+        let cut = (0..(1 << (n - 2)))
+            .map(|bits| {
+                let mut side = vec![false; n];
+                side[0] = true;
+                for (i, member) in side[1..sink].iter_mut().enumerate() {
+                    *member = bits & (1 << i) != 0;
+                }
+                capacity(&side)
+            })
+            .fold(f64::INFINITY, f64::min);
+        let network = Graph::from_edges(n, &edges).unwrap();
+        let result = graph::maximum_flow(&network, 0, sink).unwrap();
+        assert!(result.source_side[0]);
+        assert!(!result.source_side[sink]);
+        assert_eq!(result.value, cut, "arcs: {edges:?}");
+        assert_eq!(capacity(&result.source_side), cut, "arcs: {edges:?}");
+    }
+}
+
+#[test]
+fn maximum_flow_handles_deep_paths_and_rejects_invalid_networks() {
+    let n = 12_000;
+    let capacity = f64::from_bits(1);
+    let edges: Vec<_> = (1..n)
+        .map(|target| (target - 1, target, capacity))
+        .collect();
+    let network = Graph::from_edges(n, &edges).unwrap();
+    let flow = graph::maximum_flow(&network, 0, n - 1).unwrap();
+    assert_eq!(flow.value, capacity);
+    assert_eq!(flow.source_side.iter().filter(|&&side| side).count(), 1);
+    assert_eq!(
+        graph::maximum_flow(&network, 0, 0),
+        Err(GraphStructureError::IdenticalTerminals)
+    );
+    assert_eq!(
+        graph::maximum_flow(&network, 1, n),
+        Err(GraphStructureError::InvalidVertex)
+    );
+    let negative = Graph::from_edges(2, &[(0, 1, -1.0)]).unwrap();
+    assert_eq!(
+        graph::maximum_flow(&negative, 0, 1),
+        Err(GraphStructureError::NegativeCapacity)
+    );
+    let overflowing = Graph::from_edges(2, &[(0, 1, f64::MAX), (0, 1, f64::MAX)]).unwrap();
+    assert_eq!(
+        graph::maximum_flow(&overflowing, 0, 1),
+        Err(GraphStructureError::NumericOverflow)
+    );
+    assert_eq!(
+        graph::maximum_flow(&Graph::new(2), 0, 1),
+        Ok(graph::MaxFlow {
+            value: 0.0,
+            source_side: vec![true, false],
+        })
+    );
+}
+
+#[test]
+fn weighted_graph_algorithms_cover_parallel_arcs_and_ties() {
+    let dag = Graph::from_edges(
+        5,
+        &[
+            (0, 2, 1.0),
+            (0, 1, 1.0),
+            (1, 3, 1.0),
+            (2, 3, 1.0),
+            (0, 3, 6.0),
+        ],
+    )
+    .unwrap();
+    assert_eq!(dijkstra(&dag, 0).1, [None, Some(0), Some(0), Some(1), None]);
+    let undirected = Graph::from_edges(
+        6,
+        &[
+            (0, 0, -20.0),
+            (0, 1, 7.0),
+            (1, 0, 7.0),
+            (0, 1, -3.0),
+            (1, 0, -3.0),
+            (1, 2, 1.0),
+            (2, 1, 1.0),
+            (3, 4, 1.0),
+            (4, 3, 1.0),
+        ],
+    )
+    .unwrap();
+    assert_eq!(graph::connected_components(&undirected), [0, 0, 0, 1, 1, 2]);
+    let forest = graph::minimum_spanning_tree(&undirected);
+    assert_eq!(forest.num_nodes(), 6);
+    assert_eq!(forest.num_edges(), 6);
+    assert_eq!(forest.adj(0), [(1, -3.0)]);
+    assert!(forest.adj(5).is_empty());
+
+    // One walk step follows parallel arcs separately and distributes mass
+    // from the dangling vertex equally to all three vertices.
+    let parallel =
+        Graph::from_edges(3, &[(0, 1, 1.0), (0, 1, 4.0), (0, 2, 1.0), (1, 1, 0.0)]).unwrap();
+    let scores = page_rank(&parallel, 0.75, 1e-10, 1);
+    for (got, expected) in scores.into_iter().zip([1.0 / 6.0, 7.0 / 12.0, 1.0 / 4.0]) {
+        assert!((got - expected).abs() <= f64::EPSILON);
     }
 }
 

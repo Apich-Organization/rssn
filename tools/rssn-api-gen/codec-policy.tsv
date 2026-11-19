@@ -137,6 +137,8 @@ crate::kernels::schur::qz	num_schur_qz	numerical_matrix	QzUnits
 crate::kernels::schur::schur	num_schur_schur	numerical_matrix	SchurUnits
 crate::kernels::schur::sylvester	num_schur_sylvester	numerical_matrix	Sylvester
 crate::kernels::series::evaluate_power_series	num_series_evaluate_power_series	numerical_vector	Dimensionless
+crate::kernels::signal::analytic_envelope	num_signal_analytic_envelope	numerical_vector	Preserve
+crate::kernels::signal::analytic_signal	num_signal_analytic_signal	numerical_vector	Preserve
 crate::kernels::signal::blackman_window	num_signal_blackman_window	numerical_vector	Dimensionless
 crate::kernels::signal::butterworth_lowpass	num_signal_butterworth_lowpass	numerical_vector	Dimensionless
 crate::kernels::signal::convolve	num_signal_convolve	numerical_vector	Product
@@ -145,16 +147,23 @@ crate::kernels::signal::dct	num_signal_dct	numerical_vector	Preserve
 crate::kernels::signal::dst	num_signal_dst	numerical_vector	Preserve
 crate::kernels::signal::hamming_window	num_signal_hamming_window	numerical_vector	Dimensionless
 crate::kernels::signal::hann_window	num_signal_hann_window	numerical_vector	Dimensionless
+crate::kernels::signal::hilbert	num_signal_hilbert	numerical_vector	Preserve
 crate::kernels::signal::idct	num_signal_idct	numerical_vector	Preserve
 crate::kernels::signal::idst	num_signal_idst	numerical_vector	Preserve
+crate::kernels::signal::inverse_stft	num_signal_inverse_stft	numerical_vector	Quotient
 crate::kernels::signal::kaiser_window	num_signal_kaiser_window	numerical_vector	Dimensionless
 crate::kernels::signal::lfilter	num_signal_lfilter	numerical_vector	PreserveThird
 crate::kernels::signal::savgol_coeffs	num_signal_savgol_coeffs	numerical_vector	Dimensionless
 crate::kernels::signal::savgol_filter	num_signal_savgol_filter	numerical_vector	Preserve
 crate::kernels::signal::spectrogram	num_signal_spectrogram	numerical_vector	Square
+crate::kernels::signal::upfirdn	num_signal_upfirdn	numerical_vector	Product
+crate::kernels::signal::welch_cross_spectrum	num_signal_welch_cross_spectrum	numerical_vector	WelchCross
+crate::kernels::signal::welch_psd	num_signal_welch_psd	numerical_vector	WelchPower
+crate::kernels::signal::zoom_fft	num_signal_zoom_fft	numerical_vector	Preserve
 crate::kernels::special::bernoulli_number	num_special_bernoulli_number	numerical_special	Dimensionless
 crate::kernels::special::bernoulli_poly	num_special_bernoulli_poly	numerical_special	Dimensionless
 crate::kernels::special::bessel_i	num_special_bessel_i	numerical_special	Dimensionless
+crate::kernels::special::bessel_i0e	num_special_bessel_i0e	numerical_special	Dimensionless
 crate::kernels::special::bessel_j	num_special_bessel_j	numerical_special	Dimensionless
 crate::kernels::special::bessel_k	num_special_bessel_k	numerical_special	Dimensionless
 crate::kernels::special::bessel_y	num_special_bessel_y	numerical_special	Dimensionless
@@ -234,6 +243,8 @@ crate::kernels::vector::is_parallel	num_vector_is_parallel	numerical_vector	Inde
 crate::kernels::vector::lerp	num_vector_lerp	numerical_vector	EqualPreserve
 crate::kernels::wavelets::frft	num_wavelets_frft	numerical_vector	Preserve
 crate::kernels::wavelets::frft_matrix	num_wavelets_frft_matrix	numerical_vector	Dimensionless
+crate::kernels::wavelets::inverse_wavelet_packet	num_wavelets_inverse_wavelet_packet	numerical_vector	Preserve
+crate::kernels::wavelets::wavelet_packet	num_wavelets_wavelet_packet	numerical_vector	Preserve
 
 crate::kernels::functional_analysis::l1_norm	num_functional_l1_norm	numerical_vector	SampledL1
 crate::kernels::functional_analysis::l2_norm	num_functional_l2_norm	numerical_vector	SampledL2

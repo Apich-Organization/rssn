@@ -5331,6 +5331,233 @@
         "variadic": null
       }
     ],
+    "coherence": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "int",
+          "real"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "wavelet_packet": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 1
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol",
+          "int"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 2
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
+    "inverse_wavelet_packet": [
+      {
+        "type_params": [],
+        "params": [
+          {
+            "tensor": {
+              "rank": {
+                "lit": 2
+              },
+              "shape": null,
+              "elem": "real"
+            }
+          },
+          "symbol"
+        ],
+        "ret": {
+          "tensor": {
+            "rank": {
+              "lit": 1
+            },
+            "shape": null,
+            "elem": "real"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      },
+      {
+        "type_params": [],
+        "params": [
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          },
+          {
+            "dyn": {
+              "repr": "term",
+              "dim": "any"
+            }
+          }
+        ],
+        "ret": {
+          "dyn": {
+            "repr": "term",
+            "dim": "any"
+          }
+        },
+        "constraints": [],
+        "effects": {
+          "effects": []
+        },
+        "dim": null,
+        "variadic": null
+      }
+    ],
     "wavedec": [
       {
         "type_params": [],

@@ -26,8 +26,35 @@
 - 数值有限域包括素域 `GF(p)` 和 `GF(256)`。符号 `gf_*`、`gfx_*` 和 `gfp_factor` 提供扩域和符号因式分解。构造和运算检查各自适用的域不变量。
 - 适当区域中的整数阶 Bessel J 和 Y 使用递推。复数渐近展开在零点附近或相对参数很大的阶数下可能损失相对精度。对残差或单个分量有误差要求时，应在目标参数区域与独立参考值比较。
 
-- `kernels::signal::welch_psd` 对完整加窗数据帧的周期图取平均，得到单边功率谱密度。窗口可以重叠。`inverse_stft` 用完整的短时傅里叶频谱重建各帧覆盖的区间，如果某个样本缺少非零窗口贡献则返回错误。`upfirdn` 使用明确给出的 FIR 系数重采样，无需为上采样的中间信号分配缓冲区。滤波器增益、延迟和抗混叠特性由这些系数决定。
-- `kernels::graph` 提供有向图的拓扑排序和强连通分量。分量编号遵循拓扑顺序。符号强连通分量算子也复用同一迭代遍历。
+
+## 信号处理
+
+- `kernels::signal` 使用可复用的 FFT 计划实现正交归一的 DCT-II、DST-II 及其逆变换。既有的 `signal::fft` 和 `signal::ifft`、FFT 卷积与 `kernels::fft` 共用计划和工作缓冲区。多维实 FFT 在计算其余各轴前利用 Hermitian 对称性缩减一轴。规模较大的独立 FFT 批次和 STFT 帧可并行计算，结果顺序固定。
+- `welch_psd` 对完整加窗帧取平均，得到单边功率谱密度，窗口可以重叠。`welch_cross_spectrum` 还计算 `conj(X) * Y` 的互谱密度和幅值平方相干度。任一信号在某个频点功率为零时，该频点的相干度为零。`inverse_stft` 用完整的短时傅里叶频谱重建各帧覆盖的区间，某个样本缺少非零窗口贡献时返回错误。`upfirdn` 在重采样时应用给定的 FIR 系数，无需生成上采样信号。
+- 带类型的 `num_signal_welch_psd` 和 `num_signal_welch_cross_spectrum` 为各返回字段记录各自的量纲。频率沿用采样率单位，谱密度按单位频率计，相干度无量纲。
+- `analytic_signal`、`hilbert` 和 `analytic_envelope` 使用周期边界。`zoom_fft` 通过线性调频卷积计算等间隔频点，频率单位为每输入样本的周期数。带类型的 `num_signal_zoom_fft` 算子接收和返回复数向量。
+- `kernels::wavelets::wavelet_packet` 对低频和高频分支继续分解，得到等宽的叶子频带，每个低频子带排列在相应高频子带之前。`inverse_wavelet_packet` 从叶子矩阵重建信号。对长度相同的信号计算多个阶数的离散分数傅里叶变换时，`FrftPlan` 可以复用特征基。
+
+## 加权图
+
+`kernels::graph::Graph` 存储有向边，支持自环和平行边。`Graph::from_edges` 先验证整批输入，并为每个邻接表预分配空间。无向加权图的每条边用两条权值相等、方向相反的有向边表示。
+
+| 算法 | 输入与结果 |
+|---|---|
+| Dijkstra | 计算非负权图的单源最短路。 |
+| Bellman–Ford | 支持带负权的单源最短路，拒绝从源点可达的负环。 |
+| DAG 最短路 | 在有向无环图上以线性时间计算单源最短路，支持负权。 |
+| Floyd–Warshall | 返回按行排列的全点对最短路矩阵。负对角元表明图中存在负环。 |
+| 拓扑排序、强连通和弱连通分量 | 忽略边权。强连通分量按拓扑顺序编号，弱连通分量按各自的最小顶点编号。符号强连通分量算子复用同一迭代遍历。 |
+| Prim 最小生成森林 | 输入为以对称有向边表示的无向图，结果保留各分量及孤立顶点。 |
+| PageRank | 平行边分别计入出度，出度为零的顶点将其权重均匀分配。 |
+| Dinic 最大流与最小割 | 容量必须有限且非负，源点与汇点必须不同。返回流量值和最小割源侧顶点的布尔掩码。 |
+
+`num_native_graph_*` 句柄保留边权的物理量纲。批量构造接收两列端点矩阵和一阶权值张量。路径记录的 `distances` 使用边权的一贯单位，`previous` 为可选的前驱顶点编号。不可达顶点的距离为正无穷。最大流的 `value` 使用容量的一贯单位，`source_side` 为无量纲掩码。原生加权图最多支持 256 个顶点和 65,536 条有向边，最大流还要求 `V² E` 不超过 5,000 万。可调用的算子名称及类型签名见清单。
+
+## 低秩矩阵
+
+`kernels::lowrank::interpolative_decomposition` 通过截断列主元 QR 分解，用原矩阵的部分列和无量纲系数矩阵近似输入矩阵。输入秩不足时，实际秩可能低于指定的上限。`num_linear_interpolative_decomposition` 接收原生矩阵句柄，返回所选列的索引以及按原始列顺序排列的插值系数。
 
 ## 空间维数与网格
 
@@ -53,5 +80,8 @@
 | 积分、极限、求和、级数和符号求解 | `tests/math_symbolic_classics.rs`、`tests/symbolic_battery.rs` |
 | 科学计算布局与不变量 | `tests/native_*.rs`、`tests/dimensioned_coverage.rs` |
 | 信号分析、FIR 重采样与有向图遍历 | `tests/numerical_signal_graph.rs` |
+| 实数张量 FFT、余弦与正弦变换、Hilbert 变换、局部 FFT、相干度、小波包 | `tests/signal_transforms.rs` |
+| 带权路径、最小割、图同构与原生图算子类型 | `tests/kernels/graph.rs`、`tests/native_discrete.rs` |
+| 低秩近似及插值系数的量纲 | `src/kernels/lowrank.rs`、`tests/native_linear.rs` |
 
 符号测试区分可检查的精确值与保持为符号请求的已记录样例。具体期望以测试用例为准。数值结果还受精度、条件数和相应误差阈值影响。

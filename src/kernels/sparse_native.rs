@@ -6,6 +6,7 @@
 //! (fill-reducing COLAMD ordering, left-looking numeric factorisation), and
 //! the iterative solver only needs the matrix-vector product.
 
+use crate::kernels::krylov;
 use crate::kernels::numeric_common::NumericError;
 use faer::linalg::solvers::Solve;
 use faer::sparse::SparseColMat;
@@ -62,14 +63,16 @@ impl Csr<'_> {
             )));
         }
         let mut y = vec![0.0; self.rows];
-        for row in 0..self.rows {
-            let mut acc = 0.0;
-            for k in self.row_ptr[row]..self.row_ptr[row + 1] {
-                acc += self.values[k] * x[self.col_idx[k]];
-            }
-            y[row] = acc;
-        }
+        self.matvec_validated(x, &mut y);
         Ok(y)
+    }
+
+    fn matvec_validated(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+    ) {
+        krylov::csr_matvec(self.rows, self.row_ptr, self.col_idx, self.values, x, y);
     }
 }
 
@@ -133,7 +136,8 @@ pub struct CgResult {
 /// matrix, starting from zero.
 ///
 /// # Errors
-/// [`NumericError::NotSquare`] and [`NumericError::ShapeMismatch`].
+/// Returns shape and input-domain errors, or [`NumericError::NotPositiveDefinite`]
+/// when a search direction has nonpositive curvature or the iteration breaks down.
 pub fn cg(
     a: &Csr<'_>,
     b: &[f64],
@@ -151,41 +155,76 @@ pub fn cg(
             b.len()
         )));
     }
-    let n = a.rows;
-    let dot = |x: &[f64], y: &[f64]| x.iter().zip(y).map(|(p, q)| p * q).sum::<f64>();
-    let b_norm = dot(b, b).sqrt();
-    let scale = if b_norm > 0.0 { b_norm } else { 1.0 };
-    let mut x = vec![0.0; n];
-    let mut r = b.to_vec();
-    let mut p = r.clone();
-    let mut rs = dot(&r, &r);
-    let mut iterations = 0;
-    while iterations < max_iterations && rs.sqrt() / scale > tolerance {
-        let ap = a.matvec(&p)?;
-        let denominator = dot(&p, &ap);
-        if denominator <= 0.0 || !denominator.is_finite() {
-            return Err(NumericError::NotPositiveDefinite);
-        }
-        let alpha = rs / denominator;
-        for i in 0..n {
-            x[i] += alpha * p[i];
-            r[i] -= alpha * ap[i];
-        }
-        let next = dot(&r, &r);
-        let beta = next / rs;
-        for i in 0..n {
-            p[i] = r[i] + beta * p[i];
-        }
-        rs = next;
-        iterations += 1;
+    if !tolerance.is_finite() || tolerance < 0.0 || b.iter().any(|value| !value.is_finite()) {
+        return Err(NumericError::Domain(
+            "CG needs a finite right-hand side and finite nonnegative tolerance".into(),
+        ));
     }
-    let residual = rs.sqrt() / scale;
+    let result = krylov::cg_positive(
+        |x, y| a.matvec_validated(x, y),
+        b,
+        tolerance,
+        max_iterations,
+    )
+    .map_err(|_| NumericError::NotPositiveDefinite)?;
     Ok(CgResult {
-        x,
-        iterations,
-        residual,
-        converged: residual <= tolerance,
+        x: result.x,
+        iterations: result.iterations,
+        residual: result.residual,
+        converged: result.converged,
     })
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod cg_contract_tests {
+    use super::Csr;
+    use super::NumericError;
+    use super::cg;
+
+    #[test]
+    fn native_cg_checks_the_original_residual_at_extreme_rhs_scales() {
+        let identity = Csr {
+            rows: 1,
+            cols: 1,
+            row_ptr: &[0, 1],
+            col_idx: &[0],
+            values: &[1.0],
+        };
+        for rhs in [1e-200, 1e200] {
+            let initial = cg(&identity, &[rhs], 1e-8, 0).unwrap();
+            assert!(!initial.converged);
+            assert!((initial.residual - 1.0).abs() <= f64::EPSILON);
+            let solved = cg(&identity, &[rhs], 1e-8, 4).unwrap();
+            assert!(solved.converged);
+            assert_eq!(solved.iterations, 1);
+            assert!((solved.x[0] / rhs - 1.0).abs() <= f64::EPSILON);
+            assert!(solved.residual <= f64::EPSILON);
+        }
+    }
+
+    #[test]
+    fn native_cg_still_rejects_negative_and_zero_curvature() {
+        let indefinite = Csr {
+            rows: 2,
+            cols: 2,
+            row_ptr: &[0, 2, 4],
+            col_idx: &[0, 1, 0, 1],
+            values: &[1.0, 2.0, 2.0, 1.0],
+        };
+        assert!(matches!(
+            cg(&indefinite, &[1.0, -1.0], 1e-8, 4),
+            Err(NumericError::NotPositiveDefinite)
+        ));
+        let singular = Csr {
+            values: &[1.0, 1.0, 1.0, 1.0],
+            ..indefinite
+        };
+        assert!(matches!(
+            cg(&singular, &[1.0, -1.0], 1e-8, 4),
+            Err(NumericError::NotPositiveDefinite)
+        ));
+    }
 }
 
 /// Whether `a` is exactly symmetric (pattern and values) with a positive

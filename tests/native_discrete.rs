@@ -74,6 +74,146 @@ fn some(x: &Value) -> &Value {
     assert_eq!(v.tag, "Some");
     &v.payload[0]
 }
+
+#[test]
+fn native_weighted_graph_operators_keep_dimensions_and_manifest_shapes() {
+    let s = Session::new();
+    let length = dim("Length");
+    let endpoint_matrix = tensor(
+        vec![4, 2],
+        [0, 1, 0, 2, 1, 3, 2, 3]
+            .into_iter()
+            .map(Value::int)
+            .collect(),
+        TypeExpr::Int,
+    );
+    let graph = call(
+        &s,
+        "num_native_graph_from_edges",
+        &[
+            Value::int(5),
+            endpoint_matrix.clone(),
+            floats(&[2.0, 5.0, 4.0, 2.0], length.clone()),
+        ],
+    );
+    let handle = std::slice::from_ref(&graph);
+    assert_eq!(
+        call(&s, "num_native_graph_num_edges", handle),
+        Value::int(4)
+    );
+    assert_eq!(
+        call(&s, "num_native_graph_weakly_connected_components", handle),
+        ints(&[0, 0, 0, 0, 1])
+    );
+
+    let ordered = |name: &str| {
+        let Value::Tensor(t) = call(&s, name, handle) else {
+            panic!("{name} should return a vertex vector");
+        };
+        t.data
+            .iter()
+            .map(|v| v.as_f64().unwrap() as usize)
+            .collect::<Vec<_>>()
+    };
+    let topological = ordered("num_native_graph_topological_sort");
+    let scc = ordered("num_native_graph_strongly_connected_components");
+    for (u, v) in [(0, 1), (0, 2), (1, 3), (2, 3)] {
+        let position = |vertex| topological.iter().position(|&w| w == vertex).unwrap();
+        assert!(position(u) < position(v));
+        assert!(scc[u] < scc[v]);
+    }
+
+    let manifest = s.manifest();
+    for name in [
+        "num_native_graph_from_edges",
+        "num_native_graph_num_edges",
+        "num_native_graph_topological_sort",
+        "num_native_graph_strongly_connected_components",
+        "num_native_graph_weakly_connected_components",
+        "num_native_graph_bellman_ford",
+        "num_native_graph_dag_shortest_paths",
+        "num_native_graph_maximum_flow",
+    ] {
+        let op = manifest.op(name).expect(name);
+        assert_eq!(op.overloads.len(), 1);
+        assert!(op.rust_path.is_some());
+        assert!(!op.doc.is_empty());
+        assert_eq!(
+            op.signature_source,
+            rssn::kernel::manifest::SignatureSource::Declared
+        );
+    }
+
+    for name in [
+        "num_native_graph_bellman_ford",
+        "num_native_graph_dag_shortest_paths",
+    ] {
+        let schema = &manifest.op(name).unwrap().overloads[0].ret;
+        assert!(matches!(schema, TypeExpr::Record(fields) if fields.len() == 2));
+        let Value::Record(result) = call(&s, name, &[graph.clone(), Value::int(0)]) else {
+            panic!("{name} should return a path record");
+        };
+        let Value::Tensor(distances) = &result.fields[0].1 else {
+            panic!("expected distance vector");
+        };
+        assert_eq!(distances.elem, TypeExpr::Float.with_dim(length.clone()));
+        assert_eq!(
+            distances.data.iter().map(number).collect::<Vec<_>>(),
+            [0.0, 2.0, 5.0, 6.0, f64::INFINITY]
+        );
+        let Value::Tensor(previous) = &result.fields[1].1 else {
+            panic!("expected predecessor vector");
+        };
+        assert_eq!(some(&previous.data[3]), &Value::int(1));
+        assert!(matches!(&previous.data[4], Value::Variant(v) if v.tag == "None"));
+    }
+
+    let Value::Record(flow) = call(
+        &s,
+        "num_native_graph_maximum_flow",
+        &[graph.clone(), Value::int(0), Value::int(3)],
+    ) else {
+        panic!("expected a flow record");
+    };
+    assert_eq!(flow.fields[0].1, scalar(4.0, length.clone()));
+    let Value::Tensor(source_side) = &flow.fields[1].1 else {
+        panic!("expected a cut mask");
+    };
+    assert_eq!(
+        source_side.data,
+        [true, false, true, false, false].map(Value::Bool)
+    );
+    assert!(
+        s.call_value(
+            "num_native_graph_from_edges",
+            &[
+                Value::int(5),
+                endpoint_matrix,
+                floats(&[2.0], length.clone())
+            ],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
+    assert!(
+        s.call_value(
+            "num_native_graph_add_edge",
+            &[
+                graph.clone(),
+                Value::int(0),
+                Value::int(4),
+                Value::Float(1.0)
+            ],
+            &CallCtx::new()
+        )
+        .is_err()
+    );
+    assert_eq!(
+        call(&s, "num_native_graph_num_edges", handle),
+        Value::int(4)
+    );
+}
+
 #[test]
 fn native_group_and_exact_lie_objects_are_actual_checked_algorithms() {
     let s = Session::new();

@@ -283,15 +283,24 @@ pub(super) fn fixed_step(
             (1.0 - fraction) * t0 + fraction * t1
         }
     };
+    Ok((next, checked_advance(current, next, t1 > t0)?))
+}
+
+/// Rejects a non-finite endpoint or a step that cannot advance in its direction.
+pub(super) fn checked_advance(
+    current: f64,
+    next: f64,
+    forward: bool,
+) -> Result<f64, OdeError> {
     let step = next - current;
     if !next.is_finite()
         || !step.is_finite()
         || super::exact_eq(next, current)
-        || (step > 0.0) != (t1 > t0)
+        || (step > 0.0) != forward
     {
         return Err(OdeError::StepLimit);
     }
-    Ok((next, step))
+    Ok(step)
 }
 
 /// Internal host adapters keep the original error in their own slot. This

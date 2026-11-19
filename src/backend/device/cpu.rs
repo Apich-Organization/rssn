@@ -174,7 +174,7 @@ impl CpuDevice {
                 structured: true,
             },
             parallelism: if parallel {
-                rayon::current_num_threads()
+                crate::execution::cpu_threads()
             } else {
                 1
             },

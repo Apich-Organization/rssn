@@ -37,11 +37,17 @@ explicit `Device` API for structured error handling.
 
 `registry().list()` describes devices present at run time. Use `get(id)` for an
 explicit choice or `default_device()` for the first registered GPU, then
-`cpu-parallel`, then the first available device. wgpu may expose software adapters
+`cpu-parallel` when the active Rayon pool has multiple workers, then `cpu` or
+the first available device. wgpu may expose software adapters
 and marks them in their names. An absent adapter leaves both CPU devices
 available. The kernel manifest's `features.devices` uses `build_devices()` to
 describe capabilities compiled into a build, independently of adapter discovery.
 [Registry](../src/backend/device/mod.rs) · [Adapter discovery](../src/backend/device/gpu.rs) · [Kernel manifest](../src/kernel/manifest.rs)
+
+The global Rayon pool detects available CPUs. `RAYON_NUM_THREADS` sets its
+size, and a host can install a dedicated Rayon pool around its kernel work.
+Parallel helpers use the active pool and skip dispatch below their work limits
+or with one worker. [CPU execution policy](../src/execution.rs)
 
 `DeviceInfo` describes device kind, supported `Dtype` values and operations,
 parallelism, buffer capacity, unified memory and determinism. Use `ops.structured`

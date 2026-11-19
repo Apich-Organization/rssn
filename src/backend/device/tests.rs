@@ -20,6 +20,20 @@ use crate::backend::tape::Tape;
 use crate::graph::Engine;
 use crate::rules;
 
+#[test]
+fn default_cpu_device_follows_the_active_pool() {
+    let devices = DeviceRegistry::empty();
+    devices.register(Arc::new(CpuDevice::sequential())).unwrap();
+    devices.register(Arc::new(CpuDevice::parallel())).unwrap();
+    for (threads, kind) in [(1, DeviceKind::Cpu), (2, DeviceKind::CpuParallel)] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        pool.install(|| assert_eq!(devices.default_device().unwrap().info().kind, kind));
+    }
+}
+
 fn same(
     a: f64,
     b: f64,

@@ -13,6 +13,8 @@
 //!   odd as well as even lengths.
 //! * [`wavedec`] / [`waverec`] and [`wavedec_with`] / [`waverec_with`]: the multilevel
 //!   decomposition and its inverse.
+//! * [`wavelet_packet`] / [`inverse_wavelet_packet`]: the complete periodic binary tree,
+//!   decomposing both branches at each level into equal-length leaf bands.
 //! * [`dwt2`] / [`idwt2`]: the separable two-dimensional transform on a rectangular grid.
 //! * [`wavedec2`] / [`waverec2`] and [`wavedec2_with`] / [`waverec2_with`]: the multilevel 2-D
 //!   decomposition, recursing the separable transform on the `LL` band.
@@ -64,7 +66,7 @@
 //! The families stop where the tables stop: the Daubechies ladder ends at `db10` (20 taps), so
 //! `db11` and higher, coiflets, discrete Meyer and the other orthogonal families are absent, and
 //! the symlets end at `sym6`; of the biorthogonal splines only the eight listed are present
-//! (`bior5.5`, `bior6.8` are absent). There are no complex wavelets, no wavelet packets, no
+//! (`bior5.5`, `bior6.8` are absent). There are no complex wavelets, no
 //! lifting scheme and no non-separable or 3-D transforms. The separable 2-D transforms are
 //! one-level ([`dwt2`] / [`idwt2`]) or multilevel ([`wavedec2`] / [`waverec2`] and their
 //! [`Boundary`] variants): [`wavedec2`] recurses on the `LL` band and requires the dyadic shape
@@ -85,6 +87,8 @@
 //! once the length is comparable to the filter length. The fractional Fourier matrix costs an
 //! `O(N^3)` symmetric eigensolve (use it for lengths up to a few hundred; the continuous
 //! transform of a sampled chirp-like function needs the sampling rate chosen by the caller).
+
+use std::fmt;
 
 use num_complex::Complex64;
 
@@ -187,20 +191,22 @@ impl Wavelet {
     /// The analysis (decomposition) low-pass filter `h~`, normalised to `sum h~ = sqrt 2`.
     #[must_use]
     pub fn low_pass(self) -> Vec<f64> {
+        self.analysis_low_taps().to_vec()
+    }
+
+    const fn analysis_low_taps(self) -> &'static [f64] {
         match self {
-            | Self::Haar => vec![std::f64::consts::FRAC_1_SQRT_2; 2],
+            | Self::Haar => &[std::f64::consts::FRAC_1_SQRT_2; 2],
             | Self::Db2 => {
-                let s3 = 3.0_f64.sqrt();
-                let d = 4.0 * std::f64::consts::SQRT_2;
-                vec![
-                    (1.0 + s3) / d,
-                    (3.0 + s3) / d,
-                    (3.0 - s3) / d,
-                    (1.0 - s3) / d,
+                &[
+                    0.4829629131445341,
+                    0.8365163037378077,
+                    0.2241438680420134,
+                    -0.12940952255126034,
                 ]
             },
             | Self::Db3 => {
-                vec![
+                &[
                     0.332_670_552_950_082_5,
                     0.806_891_509_311_092_4,
                     0.459_877_502_118_491_4,
@@ -210,7 +216,7 @@ impl Wavelet {
                 ]
             },
             | Self::Db4 => {
-                vec![
+                &[
                     0.230_377_813_308_896_4,
                     0.714_846_570_552_915_4,
                     0.630_880_767_929_858_7,
@@ -221,23 +227,23 @@ impl Wavelet {
                     -0.010_597_401_785_069_0,
                 ]
             },
-            | Self::Db5 => DB5.to_vec(),
-            | Self::Db6 => DB6.to_vec(),
-            | Self::Db7 => DB7.to_vec(),
-            | Self::Db8 => DB8.to_vec(),
-            | Self::Db9 => DB9.to_vec(),
-            | Self::Db10 => DB10.to_vec(),
-            | Self::Sym4 => SYM4.to_vec(),
-            | Self::Sym5 => SYM5.to_vec(),
-            | Self::Sym6 => SYM6.to_vec(),
-            | Self::Bior1_1 => BIOR11_LOW.to_vec(),
-            | Self::Bior1_3 => BIOR13_LOW.to_vec(),
-            | Self::Bior1_5 => BIOR15_LOW.to_vec(),
-            | Self::Bior2_2 => BIOR22_LOW.to_vec(),
-            | Self::Bior2_4 => BIOR24_LOW.to_vec(),
-            | Self::Bior3_3 => BIOR33_LOW.to_vec(),
-            | Self::Bior3_5 => BIOR35_LOW.to_vec(),
-            | Self::Bior4_4 => BIOR44_LOW.to_vec(),
+            | Self::Db5 => &DB5,
+            | Self::Db6 => &DB6,
+            | Self::Db7 => &DB7,
+            | Self::Db8 => &DB8,
+            | Self::Db9 => &DB9,
+            | Self::Db10 => &DB10,
+            | Self::Sym4 => &SYM4,
+            | Self::Sym5 => &SYM5,
+            | Self::Sym6 => &SYM6,
+            | Self::Bior1_1 => &BIOR11_LOW,
+            | Self::Bior1_3 => &BIOR13_LOW,
+            | Self::Bior1_5 => &BIOR15_LOW,
+            | Self::Bior2_2 => &BIOR22_LOW,
+            | Self::Bior2_4 => &BIOR24_LOW,
+            | Self::Bior3_3 => &BIOR33_LOW,
+            | Self::Bior3_5 => &BIOR35_LOW,
+            | Self::Bior4_4 => &BIOR44_LOW,
         }
     }
 
@@ -250,7 +256,7 @@ impl Wavelet {
     /// The analysis high-pass filter `g~`, the alternating mirror of the synthesis low-pass.
     #[must_use]
     pub fn analysis_high(self) -> Vec<f64> {
-        alternating_mirror(&self.synthesis_low())
+        alternating_mirror(self.synthesis_low_taps())
     }
 
     /// The analysis low-pass filter `h~` (the same as [`Wavelet::low_pass`]).
@@ -263,6 +269,10 @@ impl Wavelet {
     /// orthogonal families.
     #[must_use]
     pub fn synthesis_low(self) -> Vec<f64> {
+        self.synthesis_low_taps().to_vec()
+    }
+
+    const fn synthesis_low_taps(self) -> &'static [f64] {
         match self {
             | Self::Haar
             | Self::Db2
@@ -276,28 +286,28 @@ impl Wavelet {
             | Self::Db10
             | Self::Sym4
             | Self::Sym5
-            | Self::Sym6 => self.low_pass(),
-            | Self::Bior1_1 => BIOR11_SYN.to_vec(),
-            | Self::Bior1_3 => BIOR13_SYN.to_vec(),
-            | Self::Bior1_5 => BIOR15_SYN.to_vec(),
-            | Self::Bior2_2 => BIOR22_SYN.to_vec(),
-            | Self::Bior2_4 => BIOR24_SYN.to_vec(),
-            | Self::Bior3_3 => BIOR33_SYN.to_vec(),
-            | Self::Bior3_5 => BIOR35_SYN.to_vec(),
-            | Self::Bior4_4 => BIOR44_SYN.to_vec(),
+            | Self::Sym6 => self.analysis_low_taps(),
+            | Self::Bior1_1 => &BIOR11_SYN,
+            | Self::Bior1_3 => &BIOR13_SYN,
+            | Self::Bior1_5 => &BIOR15_SYN,
+            | Self::Bior2_2 => &BIOR22_SYN,
+            | Self::Bior2_4 => &BIOR24_SYN,
+            | Self::Bior3_3 => &BIOR33_SYN,
+            | Self::Bior3_5 => &BIOR35_SYN,
+            | Self::Bior4_4 => &BIOR44_SYN,
         }
     }
 
     /// The synthesis high-pass filter `g[n] = (-1)^n h~[L-1-n]`.
     #[must_use]
     pub fn synthesis_high(self) -> Vec<f64> {
-        alternating_mirror(&self.low_pass())
+        alternating_mirror(self.analysis_low_taps())
     }
 
     /// Number of filter taps (the length of the banks).
     #[must_use]
-    pub fn taps(self) -> usize {
-        self.low_pass().len()
+    pub const fn taps(self) -> usize {
+        self.analysis_low_taps().len()
     }
 
     /// The vanishing moments of the analysis and of the synthesis wavelet, `(Nr, Nd)`.
@@ -339,20 +349,12 @@ impl Wavelet {
         match b {
             | Boundary::Periodic => n.div_ceil(2),
             | _ => {
-                let (_, _, h, g) = self.banks();
-                let (_, count) = ext_layout(&h, &g, n);
+                let h = self.synthesis_low_taps();
+                let g = self.synthesis_high();
+                let (_, count) = ext_layout(h, &g, n);
                 count
             },
         }
-    }
-
-    /// The four banks `(h~, g~, h, g)` in one call.
-    fn banks(self) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
-        let low = self.low_pass();
-        let synthesis = self.synthesis_low();
-        let analysis_high = alternating_mirror(&synthesis);
-        let synthesis_high = alternating_mirror(&low);
-        (low, analysis_high, synthesis, synthesis_high)
     }
 }
 
@@ -689,7 +691,7 @@ pub enum Boundary {
 ///
 /// `Periodic` has period `n`, `Symmetric` period `2n` (mirror with the edge sample repeated) and
 /// `Reflect` period `2(n-1)` (mirror without repeating it); `Zero` returns `0.0` outside
-/// `[0, n)`. For `n = 1` every mode returns `x[0]`, and an empty signal has no samples.
+/// `[0, n)`. For `n = 1` the nonzero extension modes return `x[0]`, and an empty signal has no samples.
 #[must_use]
 pub fn extend(
     x: &[f64],
@@ -780,6 +782,23 @@ pub enum WaveletError {
     Shape,
 }
 
+impl fmt::Display for WaveletError {
+    fn fmt(
+        &self,
+        formatter: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        formatter.write_str(match self {
+            | Self::OddLength => "the signal length must be even and nonzero",
+            | Self::TooManyLevels => "more levels than the signal length allows",
+            | Self::Shape => {
+                "the coefficient lists must be nonempty, of equal length and fit together"
+            },
+        })
+    }
+}
+
+impl std::error::Error for WaveletError {}
+
 /// One level of the periodised discrete wavelet transform: returns `(approximation, detail)`.
 ///
 /// `a[k] = sum_m h~[m] x[(2k + m) mod n]`, `d[k] = sum_m g~[m] x[(2k + m) mod n]` with the
@@ -832,58 +851,67 @@ pub fn dwt_with(
     if n == 0 {
         return Err(WaveletError::OddLength);
     }
-    let (ha, ga, hs, gs) = w.banks();
+    let ha = w.analysis_low_taps();
+    let ga = w.analysis_high();
     match b {
         | Boundary::Periodic => {
             // an odd signal is extended by one sample so that the circular transform acts on an
             // even length; the inverse truncates the extra sample away again
-            let mut y = x.to_vec();
-            if !n.is_multiple_of(2) {
-                y.extend(x.first().copied());
-            }
-            let len = y.len();
+            let len = n + usize::from(!n.is_multiple_of(2));
             let half = len / 2;
-            let a = (0..half)
+            Ok((0..half)
                 .map(|k| {
-                    ha.iter()
-                        .enumerate()
-                        .map(|(m, hm)| hm * y.get((2 * k + m) % len).copied().unwrap_or(0.0))
-                        .sum()
+                    let start = 2 * k;
+                    if let Some(samples) = x.get(start..start + ha.len()) {
+                        return apply_analysis(ha, &ga, samples.iter().copied());
+                    }
+                    apply_analysis(
+                        ha,
+                        &ga,
+                        (0..ha.len()).map(|m| {
+                            // The only slot not in x is the duplicate x[0] at
+                            // the end of an odd-length periodic extension.
+                            let index = (start + m) % len;
+                            x.get(index)
+                                .or_else(|| x.first())
+                                .copied()
+                                .unwrap_or_default()
+                        }),
+                    )
                 })
-                .collect();
-            let d = (0..half)
-                .map(|k| {
-                    ga.iter()
-                        .enumerate()
-                        .map(|(m, gm)| gm * y.get((2 * k + m) % len).copied().unwrap_or(0.0))
-                        .sum()
-                })
-                .collect();
-            Ok((a, d))
+                .unzip())
         },
         | _ => {
-            let (j_lo, count) = ext_layout(&hs, &gs, n);
-            let a = (0..count)
+            let hs = w.synthesis_low_taps();
+            let gs = w.synthesis_high();
+            let (j_lo, count) = ext_layout(hs, &gs, n);
+            Ok((0..count)
                 .map(|q| {
                     let j = j_lo + isize::try_from(q).unwrap_or(0);
-                    ha.iter()
-                        .enumerate()
-                        .map(|(m, hm)| hm * extend(x, 2 * j + isize::try_from(m).unwrap_or(0), b))
-                        .sum()
+                    apply_analysis(
+                        ha,
+                        &ga,
+                        (0..ha.len())
+                            .map(|m| extend(x, 2 * j + isize::try_from(m).unwrap_or(0), b)),
+                    )
                 })
-                .collect();
-            let d = (0..count)
-                .map(|q| {
-                    let j = j_lo + isize::try_from(q).unwrap_or(0);
-                    ga.iter()
-                        .enumerate()
-                        .map(|(m, gm)| gm * extend(x, 2 * j + isize::try_from(m).unwrap_or(0), b))
-                        .sum()
-                })
-                .collect();
-            Ok((a, d))
+                .unzip())
         },
     }
+}
+
+fn apply_analysis(
+    low: &[f64],
+    high: &[f64],
+    samples: impl Iterator<Item = f64>,
+) -> (f64, f64) {
+    let mut approximation = 0.0;
+    let mut detail = 0.0;
+    for (sample, (&h, &g)) in samples.zip(low.iter().zip(high)) {
+        approximation += h * sample;
+        detail += g * sample;
+    }
+    (approximation, detail)
 }
 
 /// Inverse of [`dwt_with`]; `n` is the length of the signal that produced the coefficients.
@@ -901,7 +929,8 @@ pub fn idwt_with(
     if a.len() != d.len() || a.is_empty() || a.len() != w.coeff_len(n, b) {
         return Err(WaveletError::Shape);
     }
-    let (_, _, hs, gs) = w.banks();
+    let hs = w.synthesis_low_taps();
+    let gs = w.synthesis_high();
     match b {
         | Boundary::Periodic => {
             // the odd case reconstructs the padded even signal and drops the extra sample
@@ -922,7 +951,7 @@ pub fn idwt_with(
             Ok(x)
         },
         | _ => {
-            let (j_lo, _) = ext_layout(&hs, &gs, n);
+            let (j_lo, _) = ext_layout(hs, &gs, n);
             let mut x = vec![0.0; n];
             for (q, (aq, dq)) in a.iter().zip(d).enumerate() {
                 let j = j_lo + isize::try_from(q).unwrap_or(0);
@@ -951,7 +980,7 @@ pub fn wavedec(
     w: Wavelet,
     levels: usize,
 ) -> Result<Vec<Vec<f64>>, WaveletError> {
-    if x.is_empty() || levels == 0 || !x.len().is_multiple_of(1_usize << levels.min(60)) {
+    if x.is_empty() || levels == 0 || levels > x.len().trailing_zeros() as usize {
         return Err(WaveletError::TooManyLevels);
     }
     let mut details = Vec::new();
@@ -985,6 +1014,68 @@ pub fn waverec(
     Ok(current)
 }
 
+/// Decomposes both the low and high branches of a periodic wavelet transform.
+///
+/// Returns `2^levels` equally sized leaf bands in tree order, with each low
+/// child before its high sibling. For example, level two returns `LL`, `LH`,
+/// `HL`, `HH`. Level zero returns one band containing the input.
+///
+/// # Errors
+/// [`WaveletError::TooManyLevels`] when the signal is empty or its length is
+/// incompatible with the requested depth.
+pub fn wavelet_packet(
+    signal: &[f64],
+    wavelet: Wavelet,
+    levels: usize,
+) -> Result<Vec<Vec<f64>>, WaveletError> {
+    if signal.is_empty() || levels > signal.len().trailing_zeros() as usize {
+        return Err(WaveletError::TooManyLevels);
+    }
+    let mut bands = vec![signal.to_vec()];
+    for _ in 0..levels {
+        // A level processes the same number of samples, divided among its
+        // disjoint bands. Keep the original tree order on every thread count.
+        let grain = (16_384 / (signal.len() / bands.len())).max(2);
+        let children = super::par::map_slice(&bands, grain, |band| dwt(band, wavelet));
+        let mut next = Vec::with_capacity(bands.len() * 2);
+        for children in children {
+            let (low, high) = children?;
+            next.push(low);
+            next.push(high);
+        }
+        bands = next;
+    }
+    Ok(bands)
+}
+
+/// Reconstructs a signal from the complete leaf level of [`wavelet_packet`].
+///
+/// # Errors
+/// [`WaveletError::Shape`] when the number of bands is not a power of two,
+/// their lengths differ, or they are empty.
+pub fn inverse_wavelet_packet(
+    bands: &[Vec<f64>],
+    wavelet: Wavelet,
+) -> Result<Vec<f64>, WaveletError> {
+    let width = bands.first().ok_or(WaveletError::Shape)?.len();
+    if width == 0 || !bands.len().is_power_of_two() || bands.iter().any(|band| band.len() != width)
+    {
+        return Err(WaveletError::Shape);
+    }
+    let mut current = bands.to_vec();
+    while current.len() > 1 {
+        let count = current.len() / 2;
+        let width = current.first().ok_or(WaveletError::Shape)?.len();
+        let grain = (8_192 / width).max(2);
+        current = super::par::map_indexed(count, grain, |index| {
+            idwt(&current[2 * index], &current[2 * index + 1], wavelet)
+        })
+        .into_iter()
+        .collect::<Result<_, _>>()?;
+    }
+    current.pop().ok_or(WaveletError::Shape)
+}
+
 /// Multilevel decomposition with a [`Boundary`] mode, for any non-empty signal.
 ///
 /// Every level keeps the number of coefficients that [`Wavelet::coeff_len`] reports for its
@@ -1000,7 +1091,7 @@ pub fn wavedec_with(
     b: Boundary,
 ) -> Result<Vec<Vec<f64>>, WaveletError> {
     let n = x.len();
-    if n == 0 || levels == 0 || levels > 60 || (n >> (levels - 1)) == 0 {
+    if n == 0 || levels == 0 || levels > n.ilog2() as usize + 1 {
         return Err(WaveletError::TooManyLevels);
     }
     let mut details = Vec::with_capacity(levels);
@@ -1208,11 +1299,8 @@ pub fn wavedec2(
     if rows == 0 || cols == 0 || x.len() != total {
         return Err(WaveletError::Shape);
     }
-    if levels == 0 || levels > 60 {
-        return Err(WaveletError::TooManyLevels);
-    }
-    let factor = 1usize << levels;
-    if !rows.is_multiple_of(factor) || !cols.is_multiple_of(factor) {
+    let depth = (rows | cols).trailing_zeros() as usize;
+    if levels == 0 || levels > depth {
         return Err(WaveletError::TooManyLevels);
     }
     wavedec2_with(x, rows, cols, w, levels, Boundary::Periodic)
@@ -1256,7 +1344,7 @@ pub fn wavedec2_with(
     if rows == 0 || cols == 0 || x.len() != total {
         return Err(WaveletError::Shape);
     }
-    if levels == 0 || levels > 60 {
+    if levels == 0 || levels >= usize::BITS as usize {
         return Err(WaveletError::TooManyLevels);
     }
     let mut cur_rows = rows;
@@ -1310,7 +1398,7 @@ pub fn waverec2_with(
     let (first, rest) = coeffs.split_first().ok_or(WaveletError::Shape)?;
     let levels = rest.len();
     let total = rows.checked_mul(cols).ok_or(WaveletError::Shape)?;
-    if rows == 0 || cols == 0 || levels == 0 || levels > 60 {
+    if rows == 0 || cols == 0 || levels == 0 || levels >= usize::BITS as usize {
         return Err(WaveletError::Shape);
     }
     let mut shapes = Vec::with_capacity(levels + 1);
@@ -1359,38 +1447,108 @@ pub fn waverec2_with(
     Ok(current)
 }
 
-/// The unitary DFT matrix `F[j][k] = exp(-2 pi i j k / N) / sqrt N`.
-fn dft_apply(
-    n: usize,
-    v: &[f64],
-) -> Vec<Complex64> {
-    let s = 1.0 / (n as f64).sqrt();
-    (0..n)
-        .map(|j| {
-            let mut acc = Complex64::new(0.0, 0.0);
-            for (k, x) in v.iter().enumerate() {
-                let ang = -2.0 * std::f64::consts::PI * ((j * k) % n) as f64 / n as f64;
-                acc += Complex64::from_polar(*x, ang);
-            }
-            acc * s
-        })
-        .collect()
+/// Applies the unitary DFT to a real vector.
+fn dft_apply(vector: &[f64]) -> Vec<Complex64> {
+    let input: Vec<_> = vector.iter().map(|&x| Complex64::new(x, 0.0)).collect();
+    super::fft::fft_norm(&input, super::fft::Norm::Unitary)
 }
 
-/// The `n x n` matrix of the discrete fractional Fourier transform of order `a` (row-major).
+/// A reusable eigenbasis for the discrete fractional Fourier transform.
 ///
-/// `a = 1` is the unitary DFT; the matrix is unitary and `frft_matrix(n, a) * frft_matrix(n, b)
-/// = frft_matrix(n, a + b)`.
-///
-/// # Errors
-/// `Err` for `n < 2` or when the eigensolver fails.
-pub fn frft_matrix(
+/// The basis is built once for a signal length and can apply many fractional
+/// orders in quadratic time per signal.
+#[derive(Clone, Debug)]
+pub struct FrftPlan {
     n: usize,
-    a: f64,
-) -> Result<Vec<Complex64>, String> {
-    if n < 2 {
-        return Err("the fractional Fourier transform needs n >= 2".into());
+    basis: Vec<(Vec<f64>, usize)>,
+}
+
+impl FrftPlan {
+    /// Builds a transform for signals of length `n`.
+    ///
+    /// # Errors
+    /// Returns an error for `n < 2`, an unrepresentable matrix size or an eigensolver failure.
+    pub fn new(n: usize) -> Result<Self, String> {
+        if n < 2 {
+            return Err("the fractional Fourier transform needs n >= 2".into());
+        }
+        n.checked_mul(n)
+            .and_then(|size| size.checked_mul(std::mem::size_of::<Complex64>()))
+            .and_then(|bytes| isize::try_from(bytes).ok())
+            .ok_or_else(|| "fractional Fourier matrix size overflows".to_string())?;
+        Ok(Self {
+            n,
+            basis: fractional_basis(n)?,
+        })
     }
+
+    /// Evaluates the transform in the eigenbasis without forming a dense matrix.
+    ///
+    /// # Errors
+    /// Returns an error if the input length differs from the planned length
+    /// or the order is not finite.
+    pub fn transform(
+        &self,
+        x: &[Complex64],
+        a: f64,
+    ) -> Result<Vec<Complex64>, String> {
+        if x.len() != self.n {
+            return Err(format!("expected {} samples, got {}", self.n, x.len()));
+        }
+        let order = fractional_order(a)?;
+        let mut output = vec![Complex64::ZERO; self.n];
+        for (vector, index) in &self.basis {
+            let projection: Complex64 = x
+                .iter()
+                .zip(vector)
+                .map(|(sample, &weight)| sample * weight)
+                .sum();
+            let projection = projection * fractional_phase(order, *index);
+            for (value, &weight) in output.iter_mut().zip(vector) {
+                *value += projection * weight;
+            }
+        }
+        Ok(output)
+    }
+
+    /// Forms the row-major matrix for the specified order.
+    ///
+    /// # Errors
+    /// Returns an error if the order is not finite.
+    pub fn matrix(
+        &self,
+        a: f64,
+    ) -> Result<Vec<Complex64>, String> {
+        let order = fractional_order(a)?;
+        let mut matrix = vec![Complex64::ZERO; self.n * self.n];
+        for (vector, index) in &self.basis {
+            let phase = fractional_phase(order, *index);
+            for (row, &u) in matrix.chunks_exact_mut(self.n).zip(vector) {
+                for (value, &v) in row.iter_mut().zip(vector) {
+                    *value += phase * (u * v);
+                }
+            }
+        }
+        Ok(matrix)
+    }
+}
+
+fn fractional_order(a: f64) -> Result<f64, String> {
+    if a.is_finite() {
+        Ok(a % 4.0)
+    } else {
+        Err("fractional Fourier order must be finite".into())
+    }
+}
+
+fn fractional_phase(
+    order: f64,
+    index: usize,
+) -> Complex64 {
+    Complex64::from_polar(1.0, -std::f64::consts::FRAC_PI_2 * order * index as f64)
+}
+
+fn fractional_basis(n: usize) -> Result<Vec<(Vec<f64>, usize)>, String> {
     // S commutes with the DFT; its eigenvectors approximate the Hermite-Gauss functions
     let mut s = Mat::zeros(n, n);
     for i in 0..n {
@@ -1427,7 +1585,7 @@ pub fn frft_matrix(
         let pure: Vec<Vec<f64>> = if m == 1 {
             cols
         } else {
-            let fcols: Vec<Vec<Complex64>> = cols.iter().map(|u| dft_apply(n, u)).collect();
+            let fcols: Vec<Vec<Complex64>> = cols.iter().map(|u| dft_apply(u)).collect();
             let mut r = Mat::zeros(m, m);
             for i in 0..m {
                 for j in 0..m {
@@ -1452,7 +1610,7 @@ pub fn frft_matrix(
                 .collect()
         };
         for (offset, u) in pure.into_iter().enumerate() {
-            let fu = dft_apply(n, &u);
+            let fu = dft_apply(&u);
             let lam: Complex64 = fu.iter().zip(&u).map(|(f, x)| f * x).sum();
             let class = [
                 Complex64::new(1.0, 0.0),
@@ -1472,36 +1630,68 @@ pub fn frft_matrix(
     // rank (the missing index of an even length is skipped this way)
     let mut used = vec![false; n + 1];
     vectors.sort_by_key(|v| v.2);
-    let mut mat = vec![Complex64::new(0.0, 0.0); n * n];
-    for (u, class, rank) in &vectors {
-        let k = (0..=n)
-            .filter(|k| k % 4 == *class && !used[*k])
-            .min_by_key(|k| k.abs_diff(*rank))
-            .unwrap_or(*rank);
-        used[k.min(n)] = true;
-        let phase = Complex64::from_polar(1.0, -std::f64::consts::FRAC_PI_2 * a * k as f64);
-        for i in 0..n {
-            for j in 0..n {
-                mat[i * n + j] += phase * (u[i] * u[j]);
-            }
-        }
-    }
-    Ok(mat)
+    Ok(vectors
+        .into_iter()
+        .map(|(vector, class, rank)| {
+            let index = (0..=n)
+                .filter(|k| k % 4 == class && !used[*k])
+                .min_by_key(|k| k.abs_diff(rank))
+                .unwrap_or(rank);
+            used[index.min(n)] = true;
+            (vector, index)
+        })
+        .collect())
+}
+
+/// The row-major matrix of the discrete fractional Fourier transform of order `a`.
+///
+/// `a = 1` is the unitary DFT. The unitary transforms compose by addition
+/// of their orders. For repeated orders, construct one [`FrftPlan`].
+///
+/// # Errors
+/// Returns an error for `n < 2`, a non-finite order, an unrepresentable matrix
+/// size or an eigensolver failure.
+pub fn frft_matrix(
+    n: usize,
+    a: f64,
+) -> Result<Vec<Complex64>, String> {
+    let order = fractional_order(a)?;
+    FrftPlan::new(n)?.matrix(order)
 }
 
 /// Discrete fractional Fourier transform of order `a` of the complex signal `x`.
 ///
+/// Integer orders use the identity, unitary forward FFT, reversal or unitary
+/// inverse FFT as appropriate. For repeated fractional orders, reuse a
+/// [`FrftPlan`] to amortize the eigensolve.
+///
 /// # Errors
 /// As [`frft_matrix`].
+#[allow(
+    clippy::float_cmp,
+    reason = "only exact integer orders use the FFT shortcuts"
+)]
 pub fn frft(
     x: &[Complex64],
     a: f64,
 ) -> Result<Vec<Complex64>, String> {
-    let n = x.len();
-    let m = frft_matrix(n, a)?;
-    Ok((0..n)
-        .map(|i| (0..n).map(|j| m[i * n + j] * x[j]).sum())
-        .collect())
+    if x.len() < 2 {
+        return Err("the fractional Fourier transform needs n >= 2".into());
+    }
+    let order = fractional_order(a)?;
+    match order {
+        | 0.0 => Ok(x.to_vec()),
+        | 1.0 | -3.0 => Ok(super::fft::fft_norm(x, super::fft::Norm::Unitary)),
+        | 2.0 | -2.0 => {
+            Ok(x.iter()
+                .take(1)
+                .chain(x.iter().skip(1).rev())
+                .copied()
+                .collect())
+        },
+        | 3.0 | -1.0 => Ok(super::fft::ifft_norm(x, super::fft::Norm::Unitary)),
+        | _ => FrftPlan::new(x.len())?.transform(x, order),
+    }
 }
 
 #[cfg(test)]

@@ -3231,48 +3231,39 @@ mod debye_tests {
         assert!(rel_err(scaled, constant) < 1e-6, "{scaled} vs {constant}");
     }
 
-    // The pinned values are the ones glibc's `libm` produces. MSVC's `sin`,
-    // `cos` and `powi` differ from glibc in the last bits, and this branch is
-    // all three, so on Windows the guard compares against another library's
-    // answer and cannot pass. Ignored rather than deleted or relaxed: the
-    // assertion still means what it says on the platforms it was written for,
-    // and `--ignored` still runs it here.
     #[test]
-    #[cfg_attr(
-        windows,
-        ignore = "the pinned values are glibc's libm; MSVC's differs in the last bits"
-    )]
-    fn outside_band_and_small_orders_are_bit_identical() {
-        // Values produced by the quadrature branch before the uniform path was
-        // added; the guard must leave them untouched.
-        assert_eq!(
-            bessel_j(100.0, 74.0).to_bits(),
-            3.017_594_391_878_188_9e-8_f64.to_bits()
-        );
-        assert_eq!(
-            bessel_y(100.0, 74.0).to_bits(),
-            (-1.568_827_309_478_636_9e5_f64).to_bits()
-        );
-        assert_eq!(
-            bessel_j(100.0, 126.0).to_bits(),
-            (-4.630_129_654_029_885_3e-2_f64).to_bits()
-        );
-        assert_eq!(
-            bessel_y(100.0, 126.0).to_bits(),
-            (-7.846_463_206_197_208_7e-2_f64).to_bits()
-        );
-        assert_eq!(
-            bessel_j(2.5, 5.0).to_bits(),
-            2.403_772_011_113_173_3e-1_f64.to_bits()
-        );
-        assert_eq!(
-            bessel_y(2.5, 5.0).to_bits(),
-            2.943_723_749_617_924_2e-1_f64.to_bits()
-        );
-        assert_eq!(
-            bessel_j(10.0, 20.0).to_bits(),
-            1.864_825_580_239_450_3e-1_f64.to_bits()
-        );
+    fn outside_band_and_small_orders_keep_nonuniform_accuracy() {
+        // Check the dispatch condition independently of the reference values.
+        // Quadrature and recurrence can vary with the platform's libm.
+        for (nu, x, j, y, j_tol) in [
+            (
+                100.0,
+                74.0,
+                3.017_594_391_878_188_9e-8,
+                -1.568_827_309_478_636_9e5,
+                1e-8,
+            ),
+            (
+                100.0,
+                126.0,
+                -4.630_129_654_029_885_3e-2,
+                -7.846_463_206_197_208_7e-2,
+                5e-12,
+            ),
+            (
+                2.5,
+                5.0,
+                2.403_772_011_113_173_3e-1,
+                2.943_723_749_617_924_2e-1,
+                5e-12,
+            ),
+        ] {
+            assert!(uniform_bessel_jy(nu, x).is_none());
+            assert!(rel_err(bessel_j(nu, x), j) < j_tol, "J({nu}, {x})");
+            assert!(rel_err(bessel_y(nu, x), y) < 5e-12, "Y({nu}, {x})");
+        }
+        assert!(uniform_bessel_jy(10.0, 20.0).is_none());
+        assert!(rel_err(bessel_j(10.0, 20.0), 1.864_825_580_239_450_3e-1) < 5e-12);
     }
 
     #[test]

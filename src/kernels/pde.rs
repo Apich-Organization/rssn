@@ -728,7 +728,7 @@ fn leapfrog(
     v0: &[f64],
 ) -> Result<Vec<f64>, PdeError> {
     let n = u0.len();
-    let c2dt2 = c * c * dt * dt;
+    let c2dt2 = (c * dt).powi(2);
     let mut lu = vec![0.0; n];
     lap.a.matvec(u0, &mut lu);
     // second-order start: u1 = u0 + dt v0 + dt^2/2 c^2 (L u0 + b)
