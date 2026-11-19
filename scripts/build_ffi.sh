@@ -4,7 +4,7 @@
 set -euo pipefail
 
 rssn_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-profile="${RSSN_FFI_PROFILE:-release}"
+profile="${RSSN_FFI_PROFILE:-ffi}"
 target=""
 package=false
 dist_name=""
@@ -66,10 +66,16 @@ if [[ "$package" != true ]]; then
     exit 0
 fi
 
+case "$profile" in
+    dev|test) artifact_profile=debug ;;
+    bench) artifact_profile=release ;;
+    *) artifact_profile="$profile" ;;
+esac
+artifact_root="${CARGO_TARGET_DIR:-$rssn_root/target}"
 if [[ -n "$target" ]]; then
-    artifact_dir="$rssn_root/target/$target/$profile"
+    artifact_dir="$artifact_root/$target/$artifact_profile"
 else
-    artifact_dir="$rssn_root/target/$profile"
+    artifact_dir="$artifact_root/$artifact_profile"
 fi
 
 if [[ -z "$dist_name" ]]; then
@@ -97,10 +103,29 @@ if ((copied == 0)); then
     exit 1
 fi
 
-for doc in rssn.h rssn.hpp LICENSE README.md; do
-    if [[ -f "$rssn_root/$doc" ]]; then
-        cp "$rssn_root/$doc" "$stage_dir/"
-    fi
+for doc in rssn.h rssn.hpp LICENSE ARCHITECTURE.md \
+    ATTRIBUTIONS.md CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md SECURITY.md; do
+    cp "$rssn_root/$doc" "$stage_dir/"
+done
+cp "$rssn_root"/scripts/ffi-package/README*.md "$stage_dir/"
+mkdir -p "$stage_dir/docs" "$stage_dir/examples/c"
+cp "$rssn_root"/docs/*.md "$stage_dir/docs/"
+cp "$rssn_root"/examples/README.md "$rssn_root"/examples/*.rs "$stage_dir/examples/"
+cp "$rssn_root"/examples/c/*.c "$stage_dir/examples/c/"
+
+# Source links in the shared guides refer to files outside the C archive.
+source_ref=v0.3
+if [[ -e "$rssn_root/.git" ]] && revision=$(git -C "$rssn_root" rev-parse --verify HEAD 2>/dev/null); then
+    source_ref="$revision"
+fi
+source_repository=https://github.com/Apich-Organization/rssn
+for doc in "$stage_dir"/*.md "$stage_dir"/docs/*.md "$stage_dir"/examples/*.md; do
+    sed -E \
+        -e "s#@RSSN_SOURCE@#$source_repository/tree/$source_ref#g" \
+        -e "s#(\]\()(\.\./)?((src|tools)/[^[:space:])]+)#\1$source_repository/blob/$source_ref/\3#g" \
+        -e "s~\]\(README\.md#testing\)~]($source_repository/blob/$source_ref/README.md#testing)~g" \
+        "$doc" > "$doc.rendered"
+    mv "$doc.rendered" "$doc"
 done
 
 (
